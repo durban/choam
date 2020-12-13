@@ -1,0 +1,194 @@
+[
+  {
+    "benchmark" : "dev.tauri.choam.bench.CounterBench.react(contention=0, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 0.25
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.CounterBenchN.reactN(contention=0, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 0.006346
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.QueueBench.michaelScottQueue(contention=0, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 0.0428
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.QueueTransferBench.michaelScottQueue(contention=0, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 0.0233
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.StackBench.treiberStack(contention=0, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 0.115
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.StackTransferBench.treiberStack(contention=0, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 0.0635
+  },
+  {
+    "benchmark" : "dev.tauri.choam.kcas.bench.CAS1LoopBench.successfulCAS1Loop(contention=0, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 1.64272865642667E-13
+  },
+  {
+    "benchmark" : "dev.tauri.choam.kcas.bench.FailedCAS1Bench.failedCAS1(contention=0, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 4.52420751487336E-14
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.CounterBench.react(contention=0, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 0.1
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.CounterBenchN.reactN(contention=0, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 0.005685
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.QueueBench.michaelScottQueue(contention=0, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 0.0270
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.QueueTransferBench.michaelScottQueue(contention=0, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 0.0190
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.StackBench.treiberStack(contention=0, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 0.0544
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.StackTransferBench.treiberStack(contention=0, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 0.0354
+  },
+  {
+    "benchmark" : "dev.tauri.choam.kcas.bench.CAS1LoopBench.successfulCAS1Loop(contention=0, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 2.8062921107528E-13
+  },
+  {
+    "benchmark" : "dev.tauri.choam.kcas.bench.FailedCAS1Bench.failedCAS1(contention=0, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 6.653158874015974E-14
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.CounterBench.react(contention=0, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 0.16
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.CounterBenchN.reactN(contention=0, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 0.005195
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.QueueBench.michaelScottQueue(contention=0, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 0.0319
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.QueueTransferBench.michaelScottQueue(contention=0, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 0.0213
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.StackBench.treiberStack(contention=0, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 0.069
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.StackTransferBench.treiberStack(contention=0, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 0.0419
+  },
+  {
+    "benchmark" : "dev.tauri.choam.kcas.bench.CAS1LoopBench.successfulCAS1Loop(contention=0, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 2.3879938212812E-13
+  },
+  {
+    "benchmark" : "dev.tauri.choam.kcas.bench.FailedCAS1Bench.failedCAS1(contention=0, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 5.24789448394090E-14
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.CounterBench.react(contention=4, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 0.0592
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.CounterBenchN.reactN(contention=4, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 0.00608
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.QueueBench.michaelScottQueue(contention=4, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 0.033
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.QueueTransferBench.michaelScottQueue(contention=4, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 0.020
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.StackBench.treiberStack(contention=4, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 0.0560
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.StackTransferBench.treiberStack(contention=4, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 0.04969
+  },
+  {
+    "benchmark" : "dev.tauri.choam.kcas.bench.CAS1LoopBench.successfulCAS1Loop(contention=4, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 4.07049689552093E-13
+  },
+  {
+    "benchmark" : "dev.tauri.choam.kcas.bench.FailedCAS1Bench.failedCAS1(contention=4, kcasName=dev.tauri.choam.kcas.NaiveKCAS)",
+    "relativeScore" : 3.96006458638889E-13
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.CounterBench.react(contention=4, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 0.0567
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.CounterBenchN.reactN(contention=4, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 0.005554
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.QueueBench.michaelScottQueue(contention=4, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 0.030
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.QueueTransferBench.michaelScottQueue(contention=4, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 0.0176
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.StackBench.treiberStack(contention=4, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 0.050
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.StackTransferBench.treiberStack(contention=4, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 0.0441
+  },
+  {
+    "benchmark" : "dev.tauri.choam.kcas.bench.CAS1LoopBench.successfulCAS1Loop(contention=4, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 4.27286075598883E-13
+  },
+  {
+    "benchmark" : "dev.tauri.choam.kcas.bench.FailedCAS1Bench.failedCAS1(contention=4, kcasName=dev.tauri.choam.kcas.CASN)",
+    "relativeScore" : 4.17976626771575E-13
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.CounterBench.react(contention=4, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 0.05774
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.CounterBenchN.reactN(contention=4, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 0.005585
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.QueueBench.michaelScottQueue(contention=4, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 0.031
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.QueueTransferBench.michaelScottQueue(contention=4, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 0.0190
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.StackBench.treiberStack(contention=4, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 0.05260
+  },
+  {
+    "benchmark" : "dev.tauri.choam.bench.StackTransferBench.treiberStack(contention=4, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 0.0453
+  },
+  {
+    "benchmark" : "dev.tauri.choam.kcas.bench.CAS1LoopBench.successfulCAS1Loop(contention=4, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 4.1895259207308E-13
+  },
+  {
+    "benchmark" : "dev.tauri.choam.kcas.bench.FailedCAS1Bench.failedCAS1(contention=4, kcasName=dev.tauri.choam.kcas.MCAS)",
+    "relativeScore" : 4.02843898546897E-13
+  }
+]
