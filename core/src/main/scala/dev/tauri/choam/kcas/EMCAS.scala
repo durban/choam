@@ -160,6 +160,9 @@ private[kcas] object EMCAS extends KCAS { self =>
         w.cast[A].get() match {
           case null =>
             val a = w.cast[A].getValueVolatile()
+            if (equ(a, EMCASWeakData.UNINITIALIZED)) {
+              throw new IllegalStateException
+            }
             // Replace the descriptor with the final value:
             // TODO: only do this occasionally
             ref.unsafeTryPerformCas(w.asInstanceOf[A], a)
@@ -213,6 +216,9 @@ private[kcas] object EMCAS extends KCAS { self =>
             w.cast[A].get() match {
               case null =>
                 value = w.cast[A].getValueVolatile()
+                if (equ(value, EMCASWeakData.UNINITIALIZED)) {
+                  throw new IllegalStateException
+                }
                 go = false
               case wd =>
                 if (wd eq wordDesc) {

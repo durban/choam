@@ -24,6 +24,11 @@ import java.lang.invoke.MethodHandles;
 final class EMCASWeakData<A>
   extends WeakReference<EMCAS.WordDescriptor<A>> {
 
+  private static final class UninitializedValue {}
+
+  static final Object UNINITIALIZED =
+    new UninitializedValue();
+
   private static final VarHandle VALUE;
 
   static {
@@ -39,6 +44,7 @@ final class EMCASWeakData<A>
 
   EMCASWeakData(EMCAS.WordDescriptor<A> desc) {
     super(desc);
+    this.setValuePlain((A) UNINITIALIZED);
   }
 
   <B> EMCASWeakData<B> cast() {

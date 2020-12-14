@@ -125,6 +125,37 @@ class EMCASSpec
     assert(ok2)
   }
 
+  it should "be finalizable even if a thread dies mid-op" ignore {
+    val r1 = Ref.mkWithId[String]("x")(0L, 0L, 0L, 0L)
+    val r2 = Ref.mkWithId[String]("y")(0L, 0L, 0L, 1L)
+    val t1 = new Thread(() => {
+      val desc = EMCAS
+        .start()
+        .withCAS(r1, "x", "a")
+        .withCAS(r2, "y", "b")
+        .asInstanceOf[EMCAS.MCASDescriptor]
+      desc.sort()
+      val d0 = desc.words.get(0)
+      assert(d0.address eq r1)
+      r1.unsafeSet(polluteTheHeap[String](d0.holder))
+      // and the thread dies here, with an active CAS
+    })
+    t1.start()
+    t1.join()
+    System.gc()
+    val succ = EMCAS
+      .start()
+      .withCAS(r1, "x", "x2")
+      .withCAS(r2, "y", "y2")
+      .tryPerform()
+    assert(!succ)
+    System.gc()
+    assert(EMCAS.tryReadOne(r1) eq "a")
+    assert(EMCAS.tryReadOne(r2) eq "b")
+    assert(r1.unsafeTryRead() eq "a")
+    assert(r2.unsafeTryRead() eq "b")
+  }
+
   "EMCAS Read" should "help the other operation" in {
     val r1 = Ref.mkWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId("r2")(0L, 0L, 0L, 42L)
@@ -136,7 +167,7 @@ class EMCASSpec
     other.sort()
     val d0 = other.words.get(0)
     assert(d0.address eq r1)
-    r1.unsafeSet(polluteTheHeap[String](new EMCASWeakData(d0)))
+    r1.unsafeSet(polluteTheHeap[String](d0.holder))
     val res = EMCAS.tryReadOne(r1)
     res should === ("x")
     EMCAS.tryReadOne(r1) should === ("x")
@@ -155,7 +186,7 @@ class EMCASSpec
     other.sort()
     val d0 = other.words.get(0)
     assert(d0.address eq r1)
-    r1.unsafeSet(polluteTheHeap[String](new EMCASWeakData(d0)))
+    r1.unsafeSet(polluteTheHeap[String](d0.holder))
     val res = EMCAS.tryReadOne(r1)
     res should === ("r1")
     EMCAS.tryReadOne(r1) should === ("r1")
