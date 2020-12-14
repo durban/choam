@@ -70,8 +70,8 @@ class EMCASTest {
       (this.ref2.unsafeTryRead() : Any) match {
         case s: String if s eq "x" =>
           go() // retry
-        case wd: EMCAS.WeakData[_] =>
-          wd.contents() match {
+        case wd: EMCASWeakData[_] =>
+          wd.get() match {
             case d: EMCAS.WordDescriptor[_] =>
               val it = d.parent.words.iterator()
               val dFirst = it.next()
@@ -83,8 +83,9 @@ class EMCASTest {
                 // mustn't happen
                 r.r5 = s"unexpected 3rd descriptor: ${it.next().toString}"
               }
-            case x =>
+            case null =>
               // descriptor was already cleaned up
+              val x = wd.getValueVolatile()
               r.r4 = x
               r.r2 = -1L
               r.r3 = -1L

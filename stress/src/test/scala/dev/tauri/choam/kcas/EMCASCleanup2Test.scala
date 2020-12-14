@@ -75,10 +75,10 @@ class EMCASCleanup2Test {
       case s: String if s eq "a" =>
         // no CAS yet, retry:
         read1(r)
-      case wd: EMCAS.WeakData[_] =>
+      case wd: EMCASWeakData[_] =>
         // observing the descriptor:
         r.r2 = wd.get()
-        r.r3 = wd.value
+        r.r3 = wd.getValueVolatile()
       case x =>
         // we're late:
         r.r2 = x
@@ -93,10 +93,10 @@ class EMCASCleanup2Test {
       case s: String if s eq "x" =>
         // no CAS yet, retry:
         read2(r)
-      case wd: EMCAS.WeakData[_] =>
+      case wd: EMCASWeakData[_] =>
         // observing the descriptor:
         r.r4 = wd.get()
-        r.r5 = wd.value
+        r.r5 = wd.getValueVolatile()
       case x =>
         // we're late:
         r.r4 = x

@@ -19,6 +19,7 @@ package dev.tauri.choam
 package kcas
 
 import java.util.{ ArrayList, Comparator }
+import java.lang.invoke.VarHandle
 
 import scala.annotation.tailrec
 
@@ -34,22 +35,6 @@ import scala.annotation.tailrec
  * https://arxiv.org/pdf/2008.02527.pdf
  */
 private[kcas] object EMCAS extends KCAS { self =>
-
-  final class WeakData[A](d: WordDescriptor[A])
-    extends java.lang.ref.WeakReference[WordDescriptor[A]](d) {
-
-    @volatile // TODO: rel/acq
-    var value: A =
-      _
-
-    def cast[B]: WeakData[B] =
-      this.asInstanceOf[WeakData[B]]
-
-    def contents(): A = this.get() match {
-      case null => this.value
-      case wd => wd.asInstanceOf[A]
-    }
-  }
 
   // Listing 1 in the paper:
 
@@ -69,7 +54,7 @@ private[kcas] object EMCAS extends KCAS { self =>
   ) extends EMCASDescriptorBase with self.Desc with self.Snap {
 
     override def withCAS[A](ref: Ref[A], ov: A, nv: A): Desc = {
-      this.words.add(new WordDescriptor[A](ref, ov, nv, this))
+      this.words.add(WordDescriptor[A](ref, ov, nv, this))
       this
     }
 
@@ -112,21 +97,35 @@ private[kcas] object EMCAS extends KCAS { self =>
       ()
   }
 
-  final class WordDescriptor[A](
+  final class WordDescriptor[A] private (
     val address: Ref[A],
     val ov: A,
     val nv: A,
     val parent: MCASDescriptor
   ) {
 
+    private var _holder: EMCASWeakData[A] =
+      _
+
+    def holder: EMCASWeakData[A] =
+      this._holder
+
     final def withParent(newParent: MCASDescriptor): WordDescriptor[A] =
-      new WordDescriptor[A](this.address, this.ov, this.nv, newParent)
+      WordDescriptor[A](this.address, this.ov, this.nv, newParent)
 
     final override def toString: String =
       s"WordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
   }
 
   final object WordDescriptor {
+
+    def apply[A](address: Ref[A], ov: A, nv: A, parent: MCASDescriptor): WordDescriptor[A] = {
+      val r = new WordDescriptor[A](address, ov, nv, parent)
+      r._holder = new EMCASWeakData[A](r)
+      VarHandle.releaseFence()
+      r
+    }
+
     val comparator: Comparator[WordDescriptor[_]] = new Comparator[WordDescriptor[_]] {
       final override def compare(x: WordDescriptor[_], y: WordDescriptor[_]): Int = {
         // NB: `x ne y` is always true, because we create fresh descriptors in `withCAS`
@@ -157,10 +156,10 @@ private[kcas] object EMCAS extends KCAS { self =>
   @tailrec
   private def readValue[A](ref: Ref[A]): A = {
     ref.unsafeTryRead() match {
-      case w: WeakData[_] =>
+      case w: EMCASWeakData[_] =>
         w.cast[A].get() match {
           case null =>
-            val a = w.cast[A].value
+            val a = w.cast[A].getValueVolatile()
             // Replace the descriptor with the final value:
             // TODO: only do this occasionally
             ref.unsafeTryPerformCas(w.asInstanceOf[A], a)
@@ -210,10 +209,10 @@ private[kcas] object EMCAS extends KCAS { self =>
       do {
         content = wordDesc.address.unsafeTryRead()
         content match {
-          case w: WeakData[_] =>
+          case w: EMCASWeakData[_] =>
             w.cast[A].get() match {
               case null =>
-                value = w.cast[A].value
+                value = w.cast[A].getValueVolatile()
                 go = false
               case wd =>
                 if (wd eq wordDesc) {
@@ -252,7 +251,7 @@ private[kcas] object EMCAS extends KCAS { self =>
         true // TODO: we should break from `go`
         // TODO: `true` is not necessarily correct, the helping thread could've finalized us to failed too
       } else {
-        val weakData = new WeakData[A](wordDesc)
+        val weakData = wordDesc.holder
         if (!wordDesc.address.unsafeTryPerformCas(content, weakData.asInstanceOf[A])) {
           tryWord(wordDesc) // retry this word
         } else {
@@ -271,28 +270,34 @@ private[kcas] object EMCAS extends KCAS { self =>
       }
     }
 
+    @tailrec
+    def writeFinalValues[A](
+      success: Boolean,
+      curr: WordDescriptor[A],
+      words: java.util.Iterator[WordDescriptor[_]]
+    ): Unit = {
+      val finalValue = if (success) curr.nv else curr.ov
+      if (words.hasNext) {
+        curr.holder.setValuePlain(finalValue)
+        writeFinalValues(success, words.next(), words)
+      } else {
+        curr.holder.setValueVolatile(finalValue) // FIXME: release?
+      }
+    }
+
     if (!helping) {
       // we're not helping, so `desc` is not yet visible to other threads
       desc.sort()
     } // else: the thread which published `desc` already sorted it
-    val success = go(desc.words.iterator)
+    val success = go(desc.words.iterator())
     if (desc.casStatus(
       EMCASStatus.ACTIVE,
       if (success) EMCASStatus.SUCCESSFUL else EMCASStatus.FAILED
     )) {
       // we finalized the descriptor, so we record final values:
       val it = desc.words.iterator()
-      while (it.hasNext) {
-        it.next() match { case wordDesc: WordDescriptor[a] =>
-          wordDesc.address.unsafeTryRead() match {
-            case wd: WeakData[_] =>
-              if (wd.get() eq wordDesc) {
-                wd.cast[a].value = if (success) wordDesc.nv else wordDesc.ov
-              }
-            case _ =>
-              ()
-          }
-        }
+      if (it.hasNext) {
+        writeFinalValues(success, it.next(), it)
       }
       // make sure GC doesn't clear weakrefs before we could set the final values:
       java.lang.ref.Reference.reachabilityFence(desc)
@@ -313,7 +318,7 @@ private[kcas] object EMCAS extends KCAS { self =>
     while (true) {
       Thread.onSpinWait()
       ref.unsafeTryRead() match {
-        case wd: WeakData[_] =>
+        case wd: EMCASWeakData[_] =>
           desc = wd.get()
           if (desc ne null) {
             if (desc.parent.getStatus() eq EMCASStatus.ACTIVE) {
