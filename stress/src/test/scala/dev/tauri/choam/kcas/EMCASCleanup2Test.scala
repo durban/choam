@@ -30,24 +30,24 @@ import java.util.concurrent.ThreadLocalRandom
 @State
 @Description("EMCASCleanup2Test")
 @Outcomes(Array(
-  new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), null, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), null"), expect = ACCEPTABLE, desc = "(1) read1: has desc, no value yet; read2: has desc, no value yet"),
-  new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), b, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), null"), expect = ACCEPTABLE, desc = "(2) read1: has desc, has value; read2: has desc, no value yet"),
-  new Outcome(id = Array("true, null, null, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), null"), expect = FORBIDDEN, desc = "(X) read1: no desc, no value; read2: has desc, no value yet"),
-  new Outcome(id = Array("true, null, b, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), null"), expect = ACCEPTABLE, desc = "(3) read1: no desc, has value; read2: has desc, no value yet"),
+  new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), UNINITIALIZED, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), UNINITIALIZED"), expect = ACCEPTABLE, desc = "(1) read1: has desc, no value yet; read2: has desc, no value yet"),
+  new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), b, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), UNINITIALIZED"), expect = ACCEPTABLE, desc = "(2) read1: has desc, has value; read2: has desc, no value yet"),
+  new Outcome(id = Array("true, null, UNINITIALIZED, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), UNINITIALIZED"), expect = FORBIDDEN, desc = "(X) read1: no desc, no value; read2: has desc, no value yet"),
+  new Outcome(id = Array("true, null, b, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), UNINITIALIZED"), expect = ACCEPTABLE, desc = "(3) read1: no desc, has value; read2: has desc, no value yet"),
 
-  new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), null, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), y"), expect = ACCEPTABLE, desc = "(4) read1: has desc, no value yet; read2: has desc, has value"),
+  new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), UNINITIALIZED, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), y"), expect = ACCEPTABLE, desc = "(4) read1: has desc, no value yet; read2: has desc, has value"),
   new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), b, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), y"), expect = ACCEPTABLE, desc = "(5) read1: has desc, has value; read2: has desc, has value"),
-  new Outcome(id = Array("true, null, null, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), y"), expect = FORBIDDEN, desc = "(X) read1: no desc, no value; read2: has desc, has value"),
+  new Outcome(id = Array("true, null, UNINITIALIZED, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), y"), expect = FORBIDDEN, desc = "(X) read1: no desc, no value; read2: has desc, has value"),
   new Outcome(id = Array("true, null, b, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), y"), expect = ACCEPTABLE, desc = "(6) read1: no desc, has value; read2: has desc, has value"),
 
-  new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), null, null, null"), expect = FORBIDDEN, desc = "(X) read1: has desc, no value yet; read2: no desc, no value"),
-  new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), b, null, null"), expect = FORBIDDEN, desc = "(X) read1: has desc, has value; read2: no desc, no value"),
-  new Outcome(id = Array("true, null, null, null, null"), expect = FORBIDDEN, desc = "(X) read1: no desc, no value; read2: no desc, no value"),
-  new Outcome(id = Array("true, null, b, null, null"), expect = FORBIDDEN, desc = "(X) read1: no desc, has value; read2: no desc, no value"),
+  new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), UNINITIALIZED, null, UNINITIALIZED"), expect = FORBIDDEN, desc = "(X) read1: has desc, no value yet; read2: no desc, no value"),
+  new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), b, null, UNINITIALIZED"), expect = FORBIDDEN, desc = "(X) read1: has desc, has value; read2: no desc, no value"),
+  new Outcome(id = Array("true, null, UNINITIALIZED, null, UNINITIALIZED"), expect = FORBIDDEN, desc = "(X) read1: no desc, no value; read2: no desc, no value"),
+  new Outcome(id = Array("true, null, b, null, UNINITIALIZED"), expect = FORBIDDEN, desc = "(X) read1: no desc, has value; read2: no desc, no value"),
 
-  new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), null, null, y"), expect = ACCEPTABLE, desc = "(7) read1: has desc, no value yet; read2: no desc, has value"),
+  new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), UNINITIALIZED, null, y"), expect = ACCEPTABLE, desc = "(7) read1: has desc, no value yet; read2: no desc, has value"),
   new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), b, null, y"), expect = ACCEPTABLE, desc = "(8) read1: has desc, has value; read2: no desc, has value"),
-  new Outcome(id = Array("true, null, null, null, y"), expect = FORBIDDEN, desc = "(X) read1: no desc, no value; read2: no desc, has value"),
+  new Outcome(id = Array("true, null, UNINITIALIZED, null, y"), expect = FORBIDDEN, desc = "(X) read1: no desc, no value; read2: no desc, has value"),
   new Outcome(id = Array("true, null, b, null, y"), expect = ACCEPTABLE, desc = "(9) read1: no desc, has value; read2: no desc, has value")
 ))
 class EMCASCleanup2Test {

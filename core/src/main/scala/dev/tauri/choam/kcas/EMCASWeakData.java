@@ -20,11 +20,19 @@ package dev.tauri.choam.kcas;
 import java.lang.ref.WeakReference;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
+import java.io.Serializable;
 
 public final class EMCASWeakData<A>
   extends WeakReference<EMCAS.WordDescriptor<A>> {
 
-  private static final class UninitializedValue {}
+  private static final class UninitializedValue
+    implements Serializable {
+
+    @Override
+    public final String toString() {
+      return "UNINITIALIZED";
+    }
+  }
 
   public static final Object UNINITIALIZED =
     new UninitializedValue();

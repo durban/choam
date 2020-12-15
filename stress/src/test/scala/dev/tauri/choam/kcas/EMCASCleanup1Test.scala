@@ -30,9 +30,9 @@ import java.util.concurrent.ThreadLocalRandom
 @State
 @Description("EMCASCleanup1Test")
 @Outcomes(Array(
-  new Outcome(id = Array("1, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), null"), expect = ACCEPTABLE, desc = "(1) has desc, but no value yet"),
+  new Outcome(id = Array("1, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), UNINITIALIZED"), expect = ACCEPTABLE, desc = "(1) has desc, but no value yet"),
   new Outcome(id = Array("1, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), b"), expect = ACCEPTABLE, desc = "(2) has desc and value too"),
-  new Outcome(id = Array("1, null, null"), expect = FORBIDDEN, desc = "(X) no desc, no value"),
+  new Outcome(id = Array("1, null, UNINITIALIZED"), expect = FORBIDDEN, desc = "(X) no desc, no value"),
   new Outcome(id = Array("1, null, b"), expect = ACCEPTABLE_INTERESTING, desc = "(3) no desc, but has value")
 ))
 class EMCASCleanup1Test {
