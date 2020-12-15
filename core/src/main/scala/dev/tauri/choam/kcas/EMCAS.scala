@@ -22,6 +22,7 @@ import java.util.{ ArrayList, Comparator }
 import java.lang.invoke.VarHandle
 
 import scala.annotation.tailrec
+import java.util.concurrent.ThreadLocalRandom
 
 // TODO: integrate with IBR
 
@@ -154,7 +155,7 @@ private[kcas] object EMCAS extends KCAS { self =>
    * see the do-while loop.)
    */
   @tailrec
-  private def readValue[A](ref: Ref[A]): A = {
+  private[choam] final def readValue[A](ref: Ref[A], replace: Int = 256): A = {
     ref.unsafeTryRead() match {
       case w: EMCASWeakData[_] =>
         w.cast[A].get() match {
@@ -163,15 +164,13 @@ private[kcas] object EMCAS extends KCAS { self =>
             if (equ(a, EMCASWeakData.UNINITIALIZED)) {
               throw new IllegalStateException
             }
-            // Replace the descriptor with the final value:
-            // TODO: only do this occasionally
-            ref.unsafeTryPerformCas(w.asInstanceOf[A], a)
+            this.maybeReplaceDescriptor[A](ref, w.cast[A], a, replace = replace)
             a
           case wd =>
             val parentStatus = wd.parent.getStatus()
             if (parentStatus eq EMCASStatus.ACTIVE) {
               MCAS(wd.parent, helping = true) // help the other op
-              readValue(ref) // retry
+              readValue(ref, replace) // retry
             } else if (parentStatus eq EMCASStatus.SUCCESSFUL) {
               wd.nv
             } else { // FAILED
@@ -180,6 +179,20 @@ private[kcas] object EMCAS extends KCAS { self =>
         }
       case a =>
         a
+    }
+  }
+
+  private final def maybeReplaceDescriptor[A](ref: Ref[A], ov: EMCASWeakData[A], nv: A, replace: Int): Unit = {
+    if (replace != 0) {
+      val n = ThreadLocalRandom.current().nextInt()
+      if ((n % replace) == 0) {
+        ref.unsafeTryPerformCas(ov.asInstanceOf[A], nv)
+        // If this CAS fails, someone else might've been
+        // replaced the desc with the final value, or
+        // maybe started another operation; in either case,
+        // there is nothing to do here.
+        ()
+      }
     }
   }
 
@@ -319,10 +332,11 @@ private[kcas] object EMCAS extends KCAS { self =>
   }
 
   /** For testing */
+  @throws[InterruptedException]
   private[kcas] def spinUntilCleanup[A](ref: Ref[A]): A = {
     var desc: WordDescriptor[_] = null
+    var ctr: Int = 0
     while (true) {
-      Thread.onSpinWait()
       ref.unsafeTryRead() match {
         case wd: EMCASWeakData[_] =>
           desc = wd.get()
@@ -336,12 +350,21 @@ private[kcas] object EMCAS extends KCAS { self =>
               System.gc()
             }
           } else {
-            // descriptor have been collected, but not replaced yet:
-            EMCAS.tryReadOne(ref) // this should replace it
+            // descriptor have been collected, but not replaced yet;
+            // this should replace it with a small probability (if
+            // not, we'll retry):
+            EMCAS.tryReadOne(ref)
           }
         case a =>
           // descriptor have been cleaned up:
           return a // scalastyle:ignore return
+      }
+      Thread.onSpinWait()
+      ctr += 1
+      if ((ctr % 1024) == 0) {
+        if (Thread.interrupted()) {
+          throw new InterruptedException
+        }
       }
     }
     // unreachable code:

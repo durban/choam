@@ -21,12 +21,12 @@ import java.lang.ref.WeakReference;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
-final class EMCASWeakData<A>
+public final class EMCASWeakData<A>
   extends WeakReference<EMCAS.WordDescriptor<A>> {
 
   private static final class UninitializedValue {}
 
-  static final Object UNINITIALIZED =
+  public static final Object UNINITIALIZED =
     new UninitializedValue();
 
   private static final VarHandle VALUE;
@@ -51,7 +51,7 @@ final class EMCASWeakData<A>
     return (EMCASWeakData<B>) this;
   }
 
-  A getValueVolatile() {
+  public A getValueVolatile() {
     return (A) VALUE.getVolatile(this);
   }
 

@@ -29,5 +29,3 @@
 - Optimization ideas:
   - Boxing
   - React interpreter (external interpreter?)
-- EMCAS: read should not always replace descriptors (only do it
-  with a low probability)

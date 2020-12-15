@@ -67,9 +67,8 @@ class EMCASSpec
     assert(EMCAS.tryReadOne(r1) eq "a")
     assert(EMCAS.tryReadOne(r2) eq "b")
     desc = null
-    System.gc() // TODO: this makes the test non-deterministic
-    EMCAS.tryReadOne(r1) // this read should replace the desc with the final value
-    EMCAS.tryReadOne(r2) // this read should replace the desc with the final value
+    assert(EMCAS.spinUntilCleanup(r1) eq "a")
+    assert(EMCAS.spinUntilCleanup(r2) eq "b")
     assert(r1.unsafeTryRead() eq "a")
     assert(r2.unsafeTryRead() eq "b")
     assert(r1.unsafeTryPerformCas("a", "x")) // reset
@@ -79,9 +78,8 @@ class EMCASSpec
     assert(EMCAS.tryReadOne(r2) eq "b")
     snap = null
     desc2 = null
-    System.gc() // TODO: this makes the test non-deterministic
-    EMCAS.tryReadOne(r1) // this read should replace the desc with the final value
-    EMCAS.tryReadOne(r2) // this read should replace the desc with the final value
+    assert(EMCAS.spinUntilCleanup(r1) eq "x")
+    assert(EMCAS.spinUntilCleanup(r2) eq "b")
     assert(r1.unsafeTryRead() eq "x")
     assert(r2.unsafeTryRead() eq "b")
   }
