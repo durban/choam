@@ -23,6 +23,18 @@
 
 - EMCAS: What happens when a thread dies during an op? Descriptors
   could be freed then, but there is no final value!
+  - When starting a k-CAS op (but after sorting), store the whole
+    descriptor in a thread-local context.
+  - All these thread contexts are in a global "map".
+  - If the thread finishes (either fails or succeeds), remove the
+    descriptor from the thread context.
+  - If the thread dies before finishing, descriptors won't be
+    collected by the GC, because the context still holds them.
+  - (If another thread finalizes the op, it could clear the context,
+    however this should be done carefully, as it's another thread's
+    context.)
+  - Prerequisite: a way of passing thread-local contexts (requires
+    changes to `React`.)
 
 ## Other improvements
 
@@ -34,3 +46,7 @@
   - CASN, MCAS
   - IBR
   - Review benchmarks, remove useless ones
+- Finish Ctrie
+- Port tests to munit
+- Scala 3:
+  - Macro annotations??? (JcStressMacros)
