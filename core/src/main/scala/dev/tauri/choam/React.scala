@@ -242,7 +242,7 @@ object React {
   }
 
   // TODO: MonadReader (?)
-  implicit def monadInstance[X]: Monad[React[X, ?]] = new Monad[React[X, ?]] {
+  implicit def monadInstance[X]: Monad[React[X, *]] = new Monad[React[X, *]] {
 
     def pure[A](x: A): React[X, A] =
       React.ret(x)

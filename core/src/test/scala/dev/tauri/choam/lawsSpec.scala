@@ -102,5 +102,5 @@ abstract class LawsSpec extends AnyFunSuite with Configuration with FunSuiteDisc
   }
 
   checkAll("Arrow[React]", ArrowTests[React].arrow[Int, Int, Int, Int, Int, Int])
-  checkAll("Monad[React]", MonadTests[React[String, ?]].monad[Int, String, Int])
+  checkAll("Monad[React]", MonadTests[React[String, *]].monad[Int, String, Int])
 }
