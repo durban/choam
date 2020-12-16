@@ -29,3 +29,8 @@
 - Optimization ideas:
   - Boxing
   - React interpreter (external interpreter?)
+  - Review writes/reads in EMCAS, check if we can relax them
+- Cleanup:
+  - CASN, MCAS
+  - IBR
+  - Review benchmarks, remove useless ones

@@ -40,7 +40,7 @@ class QueueBench {
   }
 
   @Benchmark
-  def lockedQueue(s: LockedSt, bh: Blackhole, t: KCASImplState): Unit = {
+  def lockedQueue(s: LockedSt, bh: Blackhole, t: RandomState): Unit = {
     bh.consume(s.lockedQueue.enqueue(t.nextString()))
     Blackhole.consumeCPU(waitTime)
     if (s.lockedQueue.tryDequeue() eq None) throw Errors.EmptyQueue
@@ -48,7 +48,7 @@ class QueueBench {
   }
 
   @Benchmark
-  def concurrentQueue(s: JdkSt, bh: Blackhole, t: KCASImplState): Unit = {
+  def concurrentQueue(s: JdkSt, bh: Blackhole, t: RandomState): Unit = {
     bh.consume(s.concurrentQueue.offer(t.nextString()))
     Blackhole.consumeCPU(waitTime)
     if (s.concurrentQueue.poll() eq null) throw Errors.EmptyQueue
@@ -56,7 +56,7 @@ class QueueBench {
   }
 
   @Benchmark
-  def stmQueue(s: StmSt, bh: Blackhole, t: KCASImplState): Unit = {
+  def stmQueue(s: StmSt, bh: Blackhole, t: RandomState): Unit = {
     bh.consume(s.stmQueue.enqueue(t.nextString()))
     Blackhole.consumeCPU(waitTime)
     if (s.stmQueue.tryDequeue() eq None) throw Errors.EmptyQueue

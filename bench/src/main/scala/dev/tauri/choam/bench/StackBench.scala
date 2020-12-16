@@ -40,7 +40,7 @@ class StackBench {
   }
 
   @Benchmark
-  def referenceStack(s: ReferenceSt, bh: Blackhole, ct: KCASImplState): Unit = {
+  def referenceStack(s: ReferenceSt, bh: Blackhole, ct: RandomState): Unit = {
     bh.consume(s.referenceStack.push(ct.nextString()))
     Blackhole.consumeCPU(waitTime)
     if (s.referenceStack.tryPop() eq None) throw Errors.EmptyStack
@@ -48,7 +48,7 @@ class StackBench {
   }
 
   @Benchmark
-  def lockedStack(s: LockedSt, bh: Blackhole, ct: KCASImplState): Unit = {
+  def lockedStack(s: LockedSt, bh: Blackhole, ct: RandomState): Unit = {
     bh.consume(s.lockedStack.push(ct.nextString()))
     Blackhole.consumeCPU(waitTime)
     if (s.lockedStack.tryPop() eq None) throw Errors.EmptyStack
@@ -56,7 +56,7 @@ class StackBench {
   }
 
   @Benchmark
-  def stmStack(s: StmSt, bh: Blackhole, ct: KCASImplState): Unit = {
+  def stmStack(s: StmSt, bh: Blackhole, ct: RandomState): Unit = {
     bh.consume(s.stmStack.push(ct.nextString()))
     Blackhole.consumeCPU(waitTime)
     if (s.stmStack.tryPop() eq None) throw Errors.EmptyStack

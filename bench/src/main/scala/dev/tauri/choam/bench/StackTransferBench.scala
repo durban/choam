@@ -40,7 +40,7 @@ class StackTransferBench {
   }
 
   @Benchmark
-  def lockedStack(s: LockedSt, bh: Blackhole, ct: KCASImplState): Unit = {
+  def lockedStack(s: LockedSt, bh: Blackhole, ct: RandomState): Unit = {
     bh.consume(s.lockedStack1.push(ct.nextString()))
 
     s.lockedStack1.lock.lock()
@@ -59,7 +59,7 @@ class StackTransferBench {
   }
 
   @Benchmark
-  def stmStack(s: StmSt, bh: Blackhole, ct: KCASImplState): Unit = {
+  def stmStack(s: StmSt, bh: Blackhole, ct: RandomState): Unit = {
     import scala.concurrent.stm._
     bh.consume(s.stmStack1.push(ct.nextString()))
     bh.consume(atomic { implicit txn =>
