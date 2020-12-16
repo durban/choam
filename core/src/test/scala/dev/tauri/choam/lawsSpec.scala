@@ -34,10 +34,6 @@ final class LawsSpecNaiveKCAS
   extends LawsSpec
   with SpecNaiveKCAS
 
-final class LawsSpecMCAS
-  extends LawsSpec
-  with SpecMCAS
-
 final class LawsSpecEMCAS
   extends LawsSpec
   with SpecEMCAS

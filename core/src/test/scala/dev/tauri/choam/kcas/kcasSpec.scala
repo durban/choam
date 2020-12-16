@@ -171,10 +171,6 @@ final class KCASSpecNaiveKCAS
   extends KCASSpec
   with SpecNaiveKCAS
 
-final class KCASSpecMCAS
-  extends KCASSpec
-  with SpecMCAS
-
 final class KCASSpecEMCAS
   extends KCASSpec
   with SpecEMCAS

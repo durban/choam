@@ -29,10 +29,6 @@ class MichaelScottQueueSpecNaiveKCAS
   extends MichaelScottQueueSpec
   with SpecNaiveKCAS
 
-class MichaelScottQueueSpecMCAS
-  extends MichaelScottQueueSpec
-  with SpecMCAS
-
 class MichaelScottQueueSpecEMCAS
   extends MichaelScottQueueSpec
   with SpecEMCAS

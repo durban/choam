@@ -42,7 +42,7 @@ class RandomState {
 @State(Scope.Thread)
 class KCASImplState extends RandomState {
 
-  @Param(Array(KCAS.fqns.NaiveKCAS, /*KCAS.fqns.MCAS,*/ KCAS.fqns.EMCAS))
+  @Param(Array(KCAS.fqns.NaiveKCAS, KCAS.fqns.EMCAS))
   private[choam] var kcasName: String = _
 
   private[choam] implicit var kcasImpl: KCAS = _

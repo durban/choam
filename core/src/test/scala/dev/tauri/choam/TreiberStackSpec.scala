@@ -29,10 +29,6 @@ class TreiberStackSpecNaiveKCAS
   extends TreiberStackSpec
   with SpecNaiveKCAS
 
-class TreiberStackSpecMCAS
-  extends TreiberStackSpec
-  with SpecMCAS
-
 class TreiberStackSpecEMCAS
   extends TreiberStackSpec
   with SpecEMCAS

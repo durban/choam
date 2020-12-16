@@ -26,10 +26,6 @@ class AsyncStackSpecNaiveKCAS
   extends AsyncStackSpec
   with SpecNaiveKCAS
 
-class AsyncStackSpecMCAS
-  extends AsyncStackSpec
-  with SpecMCAS
-
 class AsyncStackSpecEMCAS
   extends AsyncStackSpec
   with SpecEMCAS

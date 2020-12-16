@@ -74,11 +74,6 @@ trait SpecNaiveKCAS extends KCASImplSpec {
     kcas.KCAS.NaiveKCAS
 }
 
-trait SpecMCAS extends KCASImplSpec {
-  implicit override def kcasImpl: kcas.KCAS =
-    kcas.KCAS.MCAS
-}
-
 trait SpecEMCAS extends KCASImplSpec {
   implicit override def kcasImpl: kcas.KCAS =
     kcas.KCAS.EMCAS

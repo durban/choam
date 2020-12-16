@@ -31,7 +31,6 @@ object JcStressMacros {
     import c.universe._
 
     val impls = List(
-      "MCAS" -> q"_root_.dev.tauri.choam.kcas.KCAS.MCAS",
       "EMCAS" -> q"_root_.dev.tauri.choam.kcas.KCAS.EMCAS",
       "NaiveKCAS" -> q"_root_.dev.tauri.choam.kcas.KCAS.NaiveKCAS"
     )

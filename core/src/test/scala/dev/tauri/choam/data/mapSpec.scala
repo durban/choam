@@ -24,10 +24,6 @@ class MapSpecNaiveKCAS
   extends MapSpec
   with SpecNaiveKCAS
 
-class MapSpecMCAS
-  extends MapSpec
-  with SpecMCAS
-
 class MapSpecEMCAS
   extends MapSpec
   with SpecEMCAS

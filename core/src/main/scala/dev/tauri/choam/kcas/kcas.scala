@@ -75,9 +75,6 @@ private[choam] object KCAS {
   private[choam] lazy val NaiveKCAS: KCAS =
     kcas.NaiveKCAS
 
-  private[choam] lazy val MCAS: KCAS =
-    kcas.MCAS
-
   private[choam] lazy val EMCAS: KCAS =
     kcas.EMCAS
 
@@ -90,8 +87,6 @@ private[choam] object KCAS {
   def unsafeLookup(fqn: String): KCAS = fqn match {
     case fqns.NaiveKCAS =>
       NaiveKCAS
-    case fqns.MCAS =>
-      MCAS
     case fqns.EMCAS =>
       EMCAS
     case _ =>
@@ -101,14 +96,12 @@ private[choam] object KCAS {
   object fqns {
     final val NaiveKCAS =
       "dev.tauri.choam.kcas.NaiveKCAS"
-    final val MCAS =
-      "dev.tauri.choam.kcas.MCAS"
     final val EMCAS =
       "dev.tauri.choam.kcas.EMCAS"
   }
 }
 
-// TODO: eliminate this (or preserve only as an impl detail of CASN)
+// TODO: move this to NaiveKCAS
 
 /** CAS descriptor */
 private[choam] sealed case class CASD[A](ref: Ref[A], ov: A, nv: A) {

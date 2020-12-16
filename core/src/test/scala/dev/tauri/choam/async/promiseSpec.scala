@@ -26,10 +26,6 @@ class PromiseSpecNaiveKCAS
   extends PromiseSpec
   with SpecNaiveKCAS
 
-class PromiseSpecMCAS
-  extends PromiseSpec
-  with SpecMCAS
-
 class PromiseSpecEMCAS
   extends PromiseSpec
   with SpecEMCAS

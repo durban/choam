@@ -31,10 +31,6 @@ final class ReactSpecNaiveKCAS
   extends ReactSpec
   with SpecNaiveKCAS
 
-final class ReactSpecMCAS
-  extends ReactSpec
-  with SpecMCAS
-
 final class ReactSpecEMCAS
   extends ReactSpec
   with SpecEMCAS
