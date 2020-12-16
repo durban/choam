@@ -31,15 +31,11 @@ final class ReactSpecNaiveKCAS
   extends ReactSpec
   with SpecNaiveKCAS
 
-final class ReactSpecCASN
-  extends ReactSpec
-  with SpecCASN
-
 final class ReactSpecMCAS
   extends ReactSpec
   with SpecMCAS
 
-final class ReactSpecEMCAS // TODO: this fails!
+final class ReactSpecEMCAS
   extends ReactSpec
   with SpecEMCAS
 

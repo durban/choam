@@ -24,13 +24,13 @@ class MapSpecNaiveKCAS
   extends MapSpec
   with SpecNaiveKCAS
 
-class MapSpecCASN
-  extends MapSpec
-  with SpecCASN
-
 class MapSpecMCAS
   extends MapSpec
   with SpecMCAS
+
+class MapSpecEMCAS
+  extends MapSpec
+  with SpecEMCAS
 
 abstract class MapSpec extends BaseSpec {
 

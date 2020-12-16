@@ -143,10 +143,6 @@ final class CtrieSpecNaiveKCAS
   extends CtrieSpec
   with SpecNaiveKCAS
 
-final class CtrieSpecCASN
-  extends CtrieSpec
-  with SpecCASN
-
 final class CtrieSpecMCAS
   extends CtrieSpec
   with SpecMCAS

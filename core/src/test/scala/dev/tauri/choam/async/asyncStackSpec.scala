@@ -26,13 +26,13 @@ class AsyncStackSpecNaiveKCAS
   extends AsyncStackSpec
   with SpecNaiveKCAS
 
-class AsyncStackSpecCASN
-  extends AsyncStackSpec
-  with SpecCASN
-
 class AsyncStackSpecMCAS
   extends AsyncStackSpec
   with SpecMCAS
+
+class AsyncStackSpecEMCAS
+  extends AsyncStackSpec
+  with SpecEMCAS
 
 abstract class AsyncStackSpec extends BaseSpec {
 

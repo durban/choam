@@ -26,13 +26,13 @@ class PromiseSpecNaiveKCAS
   extends PromiseSpec
   with SpecNaiveKCAS
 
-class PromiseSpecCASN
-  extends PromiseSpec
-  with SpecCASN
-
 class PromiseSpecMCAS
   extends PromiseSpec
   with SpecMCAS
+
+class PromiseSpecEMCAS
+  extends PromiseSpec
+  with SpecEMCAS
 
 abstract class PromiseSpec extends BaseSpec {
 

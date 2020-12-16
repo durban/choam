@@ -43,7 +43,7 @@
   - React interpreter (external interpreter?)
   - Review writes/reads in EMCAS, check if we can relax them
 - Cleanup:
-  - CASN, MCAS
+  - MCAS
   - IBR
   - Review benchmarks, remove useless ones
 - Finish Ctrie
