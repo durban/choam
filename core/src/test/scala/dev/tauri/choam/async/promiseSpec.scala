@@ -20,7 +20,11 @@ package async
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.concurrent.duration._
+
 import cats.effect.IO
+
+import munit.{ CatsEffectSuite, Location }
 
 class PromiseSpecNaiveKCAS
   extends PromiseSpec
@@ -30,43 +34,57 @@ class PromiseSpecEMCAS
   extends PromiseSpec
   with SpecEMCAS
 
-abstract class PromiseSpec extends BaseSpec {
+abstract class PromiseSpec extends CatsEffectSuite { this: KCASImplSpec =>
 
-  "Completing an empty promise" should "call all registered callbacks" in {
-    val p = Promise[Int].unsafeRun
-    val act = p.get[IO]
-    val tsk = for {
+  // TODO:
+  def assertF(cond: Boolean, clue: String = "assertion failed")(implicit loc: Location): IO[Unit] =
+    IO { this.assert(cond, clue) }
+
+  // TODO:
+  def assertEqualsF[A, B](obtained: A, expected: B, clue: String = "values are not the same")(implicit loc: Location, ev: B <:< A): IO[Unit] =
+    IO { this.assertEquals[A, B](obtained, expected, clue) }
+
+  test("Completing an empty promise should call all registered callbacks") {
+    for {
+      p <- Promise[Int].run[IO]
+      act = p.get[IO]
       fib1 <- act.start
       fib2 <- act.start
-      _ <- IO { Thread.sleep(100L) }
+      _ <- IO.sleep(0.1.seconds)
       b <- (React.pure(42) >>> p.tryComplete).run[IO]
       res1 <- fib1.join
       res2 <- fib2.join
-    } yield (b, res1, res2)
-    tsk.unsafeRunSync() should === ((true, 42, 42))
+      _ <- assertF(b)
+      _ <- assertEqualsF(res1, 42)
+      _ <- assertEqualsF(res2, 42)
+    } yield ()
   }
 
-  "Completing a fulfilled promise" should "not be possible" in {
-    val p = Promise[Int].unsafeRun
-    p.tryComplete.unsafePerform(42) should === (true)
-    p.tryComplete.unsafePerform(42) should === (false)
-    p.tryComplete.unsafePerform(99) should === (false)
+  test("Completing a fulfilled promise should not be possible") {
+    for {
+      p <- Promise[Int].run[IO]
+      _ <- assertIO(p.tryComplete[IO](42), true)
+      _ <- assertIO(p.tryComplete[IO](42), false)
+      _ <- assertIO(p.tryComplete[IO](99), false)
+    } yield ()
   }
 
-  it should "not call any callbacks" in {
-    val p = Promise[Int].unsafeRun
-    p.tryComplete.unsafePerform(42) should === (true)
-    val cnt = new AtomicLong(0L)
-    val act = p.get[IO].map { x =>
-      cnt.incrementAndGet()
-      x
-    }
-    val tsk = for {
+  test("Completing a fulfilled promise should not call any callbacks") {
+    for {
+      p <- Promise[Int].run[IO]
+      _ <- assertIO(p.tryComplete[IO](42), true)
+      cnt <- IO { new AtomicLong(0L) }
+      act = p.get[IO].map { x =>
+        cnt.incrementAndGet()
+        x
+      }
       res1 <- act
       res2 <- act
       b <- (React.pure(42) >>> p.tryComplete).run[IO]
-    } yield (b, res1, res2)
-    tsk.unsafeRunSync() should === ((false, 42, 42))
-    cnt.get() should === (2L)
+      _ <- assertF(!b)
+      _ <- assertEqualsF(res1, 42)
+      _ <- assertEqualsF(res2, 42)
+      _ <- assertIO(IO { cnt.get() }, 2L)
+    } yield ()
   }
 }

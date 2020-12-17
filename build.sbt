@@ -115,6 +115,7 @@ lazy val commonSettings = Seq[Setting[_]](
     ),
     dependencies.test.map(_ % "test-internal")
   ).flatten,
+  testFrameworks += new TestFramework("munit.Framework"),
   organization := "dev.tauri",
   publishMavenStyle := true,
   publishArtifact := false, // TODO,
@@ -167,7 +168,8 @@ lazy val dependencies = new {
   val test = Seq(
     "org.scalatest" %% "scalatest" % "3.1.0",
     "org.typelevel" %% "discipline-scalatest" % "1.0.0-RC4",
-    "org.typelevel" %% "cats-laws" % catsVersion
+    "org.typelevel" %% "cats-laws" % catsVersion,
+    "org.typelevel" %% "munit-cats-effect-2" % "0.11.0"
   )
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.0"
