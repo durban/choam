@@ -35,6 +35,9 @@
     context.)
   - Prerequisite: a way of passing thread-local contexts (requires
     changes to `React`.)
+- EMCAS: When CAS-ing from a weak data to another, we lose the original
+  weakref. Later, the new one could be cleared, and detached; however
+  the old one could still be in use. This is unsafe.
 
 ## Other improvements
 
@@ -42,10 +45,12 @@
   - Boxing
   - React interpreter (external interpreter?)
   - Review writes/reads in EMCAS, check if we can relax them
+  - Check if weakrefs affect performance.
 - Cleanup:
   - IBR
   - Review benchmarks, remove useless ones
 - Finish Ctrie
-- Port tests to munit
 - Scala 3:
-  - Macro annotations??? (JcStressMacros)
+  - Port tests to munit
+  - Macro annotations (JcStressMacros): no replacement; we'll have to
+    ignore NaiveKCAS for these, and only run stress tests for EMCAS.

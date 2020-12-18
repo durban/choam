@@ -24,8 +24,6 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-import munit.{ CatsEffectSuite, Location }
-
 class PromiseSpecNaiveKCAS
   extends PromiseSpec
   with SpecNaiveKCAS
@@ -34,15 +32,7 @@ class PromiseSpecEMCAS
   extends PromiseSpec
   with SpecEMCAS
 
-abstract class PromiseSpec extends CatsEffectSuite { this: KCASImplSpec =>
-
-  // TODO:
-  def assertF(cond: Boolean, clue: String = "assertion failed")(implicit loc: Location): IO[Unit] =
-    IO { this.assert(cond, clue) }
-
-  // TODO:
-  def assertEqualsF[A, B](obtained: A, expected: B, clue: String = "values are not the same")(implicit loc: Location, ev: B <:< A): IO[Unit] =
-    IO { this.assertEquals[A, B](obtained, expected, clue) }
+abstract class PromiseSpec extends BaseSpecMUnit { this: KCASImplSpec =>
 
   test("Completing an empty promise should call all registered callbacks") {
     for {
@@ -63,16 +53,16 @@ abstract class PromiseSpec extends CatsEffectSuite { this: KCASImplSpec =>
   test("Completing a fulfilled promise should not be possible") {
     for {
       p <- Promise[Int].run[IO]
-      _ <- assertIO(p.tryComplete[IO](42), true)
-      _ <- assertIO(p.tryComplete[IO](42), false)
-      _ <- assertIO(p.tryComplete[IO](99), false)
+      _ <- assertResultF(p.tryComplete[IO](42), true)
+      _ <- assertResultF(p.tryComplete[IO](42), false)
+      _ <- assertResultF(p.tryComplete[IO](99), false)
     } yield ()
   }
 
   test("Completing a fulfilled promise should not call any callbacks") {
     for {
       p <- Promise[Int].run[IO]
-      _ <- assertIO(p.tryComplete[IO](42), true)
+      _ <- assertResultF(p.tryComplete[IO](42), true)
       cnt <- IO { new AtomicLong(0L) }
       act = p.get[IO].map { x =>
         cnt.incrementAndGet()
@@ -84,7 +74,7 @@ abstract class PromiseSpec extends CatsEffectSuite { this: KCASImplSpec =>
       _ <- assertF(!b)
       _ <- assertEqualsF(res1, 42)
       _ <- assertEqualsF(res2, 42)
-      _ <- assertIO(IO { cnt.get() }, 2L)
+      _ <- assertResultF(IO { cnt.get() }, 2L)
     } yield ()
   }
 }

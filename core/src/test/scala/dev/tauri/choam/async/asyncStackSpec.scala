@@ -20,7 +20,7 @@ package async
 
 import scala.concurrent.duration._
 
-import cats.effect.{ IO, Timer }
+import cats.effect.IO
 
 class AsyncStackSpecNaiveKCAS
   extends AsyncStackSpec
@@ -30,73 +30,59 @@ class AsyncStackSpecEMCAS
   extends AsyncStackSpec
   with SpecEMCAS
 
-abstract class AsyncStackSpec extends BaseSpec {
+abstract class AsyncStackSpec extends BaseSpecMUnit { this: KCASImplSpec =>
 
-  val timer: Timer[IO] =
-    this.timerIo
-
-  "pop on a non-empty stack" should "work like on Treiber stack" in {
-    val s = AsyncStack[String].unsafeRun
-    s.push.unsafePerform("foo")
-    s.push.unsafePerform("bar")
-    s.pop[IO].unsafeRunSync() should === ("bar")
-    s.pop[IO].unsafeRunSync() should === ("foo")
+  test("pop on a non-empty stack should work like on Treiber stack") {
+    for {
+      s <- AsyncStack[String].run[IO]
+      _ <- s.push[IO]("foo")
+      _ <- s.push[IO]("bar")
+      _ <- assertResultF(s.pop[IO], "bar")
+      _ <- assertResultF(s.pop[IO], "foo")
+    } yield ()
   }
 
-  it should "work for concurrent pops" in {
-    val s = AsyncStack[String].unsafeRun
-    s.push.unsafePerform("xyz")
-    s.push.unsafePerform("foo")
-    s.push.unsafePerform("bar")
-    val pop = s.pop[IO]
-    val tsk = for {
+  test("pop on a non-empty stack should work for concurrent pops") {
+    for {
+      s <- AsyncStack[String].run[IO]
+      _ <- s.push[IO]("xyz")
+      _ <- s.push[IO]("foo")
+      _ <- s.push[IO]("bar")
+      pop = s.pop[IO]
       f1 <- pop.start
       f2 <- pop.start
       p1 <- f1.join
       p2 <- f2.join
-    } yield (p1, p2)
-    val res = tsk.unsafeRunSync()
-    Set(res._1, res._2) should === (Set("foo", "bar"))
-    pop.unsafeRunSync() should === ("xyz")
+      _ <- assertEqualsF(Set(p1, p2), Set("foo", "bar"))
+      _ <- assertResultF(pop, "xyz")
+    } yield ()
   }
 
-  def tid(): String = Thread.currentThread().getId.toString()
-
-  "pop on an empty stack" should "complete with the correponding push" in {
-    val s = AsyncStack[String].unsafeRun
-    val tsk = for {
+  test("pop on an empty stack should complete with the correponding push") {
+    for {
+      s <- AsyncStack[String].run[IO]
       f1 <- s.pop[IO].start
-      _ <- timer.sleep(100.milliseconds)
+      _ <- IO.sleep(0.1.seconds)
       _ <- s.push[IO]("foo")
       p1 <- f1.join
-    } yield p1
-    val res = tsk.unsafeRunSync()
-    res should === ("foo")
+      _ <- assertEqualsF(p1, "foo")
+    } yield ()
   }
 
-  it should "work with racing pushes" in {
-    val s = AsyncStack[String].unsafeRun
-    val tsk = for {
+  test("pop on an empty stack should work with racing pushes") {
+    for {
+      s <- AsyncStack[String].run[IO]
       f1 <- s.pop[IO].start
-      _ <- timer.sleep(100.milliseconds)
+      _ <- IO.sleep(0.1.seconds)
       f2 <- s.pop[IO].start
-      _ <- timer.sleep(100.milliseconds)
+      _ <- IO.sleep(0.1.seconds)
       _ <- s.push[IO]("foo")
-      p1 <- f1.join
+      _ <- assertResultF(f1.join, "foo")
       _ <- s.push[IO]("bar")
-      p2 <- f2.join
-    } yield (p1, p2)
-    val res = tsk.unsafeRunSync()
-    res should === (("foo", "bar"))
+      _ <- assertResultF(f2.join, "bar")
+    } yield ()
   }
 
-  // TODO:
-  // it should "serve pops in a FIFO manner" in {
-  //   ???
-  // }
-
-  // TODO:
-  // it should "be cancellable" in {
-  //   ???
-  // }
+  // TODO: it should "serve pops in a FIFO manner"
+  // TODO: it should "be cancellable"
 }
