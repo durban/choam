@@ -17,21 +17,25 @@
 
 package dev.tauri.choam
 
-import cats.effect.{ IO, ConcurrentEffect, ContextShift, Timer }
+import cats.effect._
 
 import munit.{ CatsEffectSuite, Location, FunSuite }
 
+trait MUnitUtils { this: FunSuite =>
+}
+
+trait BaseSpecA
+  extends FunSuite
+  with MUnitUtils {
+}
+
 trait BaseSpecF[F[_]]
   extends FunSuite
+  with MUnitUtils
   with cats.syntax.AllSyntax
   with cats.effect.syntax.AllCatsEffectSyntax {
 
-  // TODO: use `Concurrent` with ce3
-  implicit def F: ConcurrentEffect[F]
-
-  implicit def csF: ContextShift[F]
-
-  implicit def tmF: Timer[F]
+  implicit def F: Sync[F]
 
   def assertF(cond: Boolean, clue: String = "assertion failed")(implicit loc: Location): F[Unit] = {
     F.delay { this.assert(cond, clue) }
@@ -48,7 +52,17 @@ trait BaseSpecF[F[_]]
   ): F[Unit]
 }
 
-abstract class IOSpecMUnit extends CatsEffectSuite with BaseSpecF[IO] {
+trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] {
+  implicit override def F: ConcurrentEffect[F]
+  implicit def csF: ContextShift[F]
+  implicit def tmF: Timer[F]
+}
+
+trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] {
+  implicit override def F: SyncEffect[F]
+}
+
+abstract class IOSpecMUnit extends CatsEffectSuite with BaseSpecAsyncF[IO] {
 
   implicit final override def F: ConcurrentEffect[IO] =
     IO.ioConcurrentEffect(munitContextShift)
@@ -63,5 +77,17 @@ abstract class IOSpecMUnit extends CatsEffectSuite with BaseSpecF[IO] {
     implicit loc: Location, ev: B <:< A
   ): IO[Unit] = {
     assertIO(obtained, expected, clue)
+  }
+}
+
+abstract class SyncIOSpecMUnit extends CatsEffectSuite with BaseSpecSyncF[SyncIO] {
+
+  implicit final override def F: SyncEffect[SyncIO] =
+    SyncIO.syncIOsyncEffect
+
+  final override def assertResultF[A, B](obtained: SyncIO[A], expected: B, clue: String)(
+    implicit loc: Location, ev: B <:< A
+  ): SyncIO[Unit] = {
+    assertSyncIO(obtained, expected, clue)
   }
 }

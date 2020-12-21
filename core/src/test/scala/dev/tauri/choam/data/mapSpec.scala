@@ -20,84 +20,100 @@ package data
 
 import scala.collection.immutable
 
-class MapSpecNaiveKCAS
-  extends MapSpec
+import cats.effect.SyncIO
+
+class MapSpec_NaiveKCAS_SyncIO
+  extends SyncIOSpecMUnit
   with SpecNaiveKCAS
+  with MapSpec[SyncIO]
 
-class MapSpecEMCAS
-  extends MapSpec
+class MapSpec_EMCAS_SyncIO
+  extends SyncIOSpecMUnit
   with SpecEMCAS
+  with MapSpec[SyncIO]
 
-abstract class MapSpec extends BaseSpec {
+trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
 
-  def mkEmptyMap[K, V](): Map[K, V] =
-    Map.naive[K, V].unsafeRun
+  def mkEmptyMap[K, V]: F[Map[K, V]] =
+    Map.naive[K, V].run[F]
 
-  "Map" should "perform put correctly" in {
-    val m = mkEmptyMap[Int, Int]()
-    (React.pure(42 -> 21) >>> m.put).unsafeRun
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> 21))
-    (React.pure(44 -> 22) >>> m.put).unsafeRun
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> 21, 44 -> 22))
-    (React.pure(42 -> 0) >>> m.put).unsafeRun
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> 0, 44 -> 22))
+  test("Map should perform put correctly") {
+    for {
+      m <- mkEmptyMap[Int, Int]
+      _ <- (React.pure(42 -> 21) >>> m.put).run[F]
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21))
+      _ <- (React.pure(44 -> 22) >>> m.put).run[F]
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21, 44 -> 22))
+      _ <- (React.pure(42 -> 0) >>> m.put).run[F]
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 0, 44 -> 22))
+    } yield ()
   }
 
-  it should "perform get correctly" in {
-    val m = mkEmptyMap[Int, Int]()
-    (React.pure(42 -> 21) >>> m.put).unsafeRun
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> 21))
-    m.get.unsafePerform(42) should === (Some(21))
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> 21))
-    m.get.unsafePerform(99) should === (None)
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> 21))
+  test("Map should perform get correctly") {
+    for {
+      m <- mkEmptyMap[Int, Int]
+      _ <- (React.pure(42 -> 21) >>> m.put).run[F]
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21))
+      _ <- assertResultF(m.get.apply[F](42), Some(21))
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21))
+      _ <- assertResultF(m.get.apply[F](99), None)
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21))
+    } yield ()
   }
 
-  it should "perform del correctly" in {
-    val m = mkEmptyMap[Int, Int]()
-    (React.pure(42 -> 21) >>> m.put).unsafeRun
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> 21))
-    (React.pure(56) >>> m.del).unsafeRun should === (false)
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> 21))
-    (React.pure(42) >>> m.del).unsafeRun should === (true)
-    m.snapshot.unsafeRun should === (immutable.Map.empty[Int, Int])
-    (React.pure(42) >>> m.del).unsafeRun should === (false)
-    m.snapshot.unsafeRun should === (immutable.Map.empty[Int, Int])
+  test("Map should perform del correctly") {
+    for {
+      m <- mkEmptyMap[Int, Int]
+      _ <- (React.pure(42 -> 21) >>> m.put).run[F]
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21))
+      _ <- assertResultF((React.pure(56) >>> m.del).run[F], false)
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21))
+      _ <- assertResultF((React.pure(42) >>> m.del).run[F], true)
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map.empty[Int, Int])
+      _ <- assertResultF((React.pure(42) >>> m.del).run[F], false)
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map.empty[Int, Int])
+    } yield ()
   }
 
-  it should "perform replace correctly" in {
-    val m = mkEmptyMap[Int, String]()
-    (React.pure(42 -> "foo") >>> m.put).unsafeRun
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> "foo"))
-    m.replace.unsafePerform((42, "xyz", "bar")) should === (false)
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> "foo"))
-    m.replace.unsafePerform((42, "foo", "bar")) should === (true)
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> "bar"))
-    m.replace.unsafePerform((99, "foo", "bar")) should === (false)
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> "bar"))
+  test("Map should perform replace correctly") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      _ <- (React.pure(42 -> "foo") >>> m.put).run[F]
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> "foo"))
+      _ <- assertResultF(m.replace.apply[F]((42, "xyz", "bar")), false)
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> "foo"))
+      _ <- assertResultF(m.replace.apply[F]((42, "foo", "bar")), true)
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> "bar"))
+      _ <- assertResultF(m.replace.apply[F]((99, "foo", "bar")), false)
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> "bar"))
+    } yield ()
   }
 
-  it should "perform remove correctly" in {
-    val m = mkEmptyMap[Int, String]()
-    (React.pure(42 -> "foo") >>> m.put).unsafeRun
-    (React.pure(99 -> "bar") >>> m.put).unsafeRun
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> "foo", 99 -> "bar"))
-    m.remove.unsafePerform(42 -> "x") should === (false)
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> "foo", 99 -> "bar"))
-    m.remove.unsafePerform(42 -> "foo") should === (true)
-    m.snapshot.unsafeRun should === (immutable.Map(99 -> "bar"))
-    m.remove.unsafePerform(42 -> "foo") should === (false)
-    m.snapshot.unsafeRun should === (immutable.Map(99 -> "bar"))
+  test("Map should perform remove correctly") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      _ <- (React.pure(42 -> "foo") >>> m.put).run[F]
+      _ <- (React.pure(99 -> "bar") >>> m.put).run[F]
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> "foo", 99 -> "bar"))
+      _ <- assertResultF(m.remove.apply[F](42 -> "x"), false)
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> "foo", 99 -> "bar"))
+      _ <- assertResultF(m.remove.apply[F](42 -> "foo"), true)
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(99 -> "bar"))
+      _ <- assertResultF(m.remove.apply[F](42 -> "foo"), false)
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(99 -> "bar"))
+    } yield ()
   }
 
-  it should "perform clear correctly" in {
-    val m = mkEmptyMap[Int, String]()
-    (React.pure(42 -> "foo") >>> m.put).unsafeRun
-    (React.pure(99 -> "bar") >>> m.put).unsafeRun
-    m.snapshot.unsafeRun should === (immutable.Map(42 -> "foo", 99 -> "bar"))
-    m.clear.unsafeRun should === (immutable.Map(42 -> "foo", 99 -> "bar"))
-    m.snapshot.unsafeRun should === (immutable.Map.empty[Int, String])
-    m.clear.unsafeRun should === (immutable.Map.empty[Int, String])
-    m.snapshot.unsafeRun should === (immutable.Map.empty[Int, String])
+  test("Map should perform clear correctly") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      _ <- (React.pure(42 -> "foo") >>> m.put).run[F]
+      _ <- (React.pure(99 -> "bar") >>> m.put).run
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> "foo", 99 -> "bar"))
+      _ <- assertResultF(m.clear.run[F], immutable.Map(42 -> "foo", 99 -> "bar"))
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map.empty[Int, String])
+      _ <- assertResultF(m.clear.run[F], immutable.Map.empty[Int, String])
+      _ <- assertResultF(m.snapshot.run[F], immutable.Map.empty[Int, String])
+    } yield ()
   }
 }

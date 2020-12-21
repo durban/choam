@@ -32,7 +32,7 @@ class AsyncStackSpec_EMCAS_IO
   with SpecEMCAS
   with AsyncStackSpec[IO]
 
-trait AsyncStackSpec[F[_]] extends BaseSpecF[F] { this: KCASImplSpec =>
+trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("pop on a non-empty stack should work like on Treiber stack") {
     for {

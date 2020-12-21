@@ -59,6 +59,10 @@ public final class EMCASWeakData<A>
     return (EMCASWeakData<B>) this;
   }
 
+  A castToData() {
+    return (A) this;
+  }
+
   public A getValueVolatile() {
     return (A) VALUE.getVolatile(this);
   }

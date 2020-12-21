@@ -34,7 +34,7 @@ class PromiseSpec_EMCAS_IO
   with SpecEMCAS
   with PromiseSpec[IO]
 
-trait PromiseSpec[F[_]] extends BaseSpecF[F] { this: KCASImplSpec =>
+trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("Completing an empty promise should call all registered callbacks") {
     for {
