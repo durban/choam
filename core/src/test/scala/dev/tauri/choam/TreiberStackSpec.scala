@@ -17,18 +17,18 @@
 
 package dev.tauri.choam
 
-abstract class TreiberStackSpec extends BaseSpec {
-
-  "TreiberStack" should "include the elements passed to its constructor" in {
-    new TreiberStack[Int]().unsafeToList should === (Nil)
-    new TreiberStack[Int](1 :: 2 :: 3 :: Nil).unsafeToList should === (3 :: 2 :: 1 :: Nil)
-  }
-}
-
-class TreiberStackSpecNaiveKCAS
+final class TreiberStackSpecNaiveKCAS
   extends TreiberStackSpec
   with SpecNaiveKCAS
 
-class TreiberStackSpecEMCAS
+final class TreiberStackSpecEMCAS
   extends TreiberStackSpec
   with SpecEMCAS
+
+abstract class TreiberStackSpec extends BaseSpecA { this: KCASImplSpec =>
+
+  test("TreiberStack should include the elements passed to its constructor") {
+    assertEquals(new TreiberStack[Int]().unsafeToList, Nil)
+    assertEquals(new TreiberStack[Int](1 :: 2 :: 3 :: Nil).unsafeToList, 3 :: 2 :: 1 :: Nil)
+  }
+}
