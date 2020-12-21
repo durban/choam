@@ -22,33 +22,35 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-class AsyncStackSpecNaiveKCAS
-  extends AsyncStackSpec
+class AsyncStackSpec_NaiveKCAS_IO
+  extends IOSpecMUnit
   with SpecNaiveKCAS
+  with AsyncStackSpec[IO]
 
-class AsyncStackSpecEMCAS
-  extends AsyncStackSpec
+class AsyncStackSpec_EMCAS_IO
+  extends IOSpecMUnit
   with SpecEMCAS
+  with AsyncStackSpec[IO]
 
-abstract class AsyncStackSpec extends BaseSpecMUnit { this: KCASImplSpec =>
+trait AsyncStackSpec[F[_]] extends BaseSpecF[F] { this: KCASImplSpec =>
 
   test("pop on a non-empty stack should work like on Treiber stack") {
     for {
-      s <- AsyncStack[String].run[IO]
-      _ <- s.push[IO]("foo")
-      _ <- s.push[IO]("bar")
-      _ <- assertResultF(s.pop[IO], "bar")
-      _ <- assertResultF(s.pop[IO], "foo")
+      s <- AsyncStack[String].run[F]
+      _ <- s.push[F]("foo")
+      _ <- s.push[F]("bar")
+      _ <- assertResultF(s.pop[F], "bar")
+      _ <- assertResultF(s.pop[F], "foo")
     } yield ()
   }
 
   test("pop on a non-empty stack should work for concurrent pops") {
     for {
-      s <- AsyncStack[String].run[IO]
-      _ <- s.push[IO]("xyz")
-      _ <- s.push[IO]("foo")
-      _ <- s.push[IO]("bar")
-      pop = s.pop[IO]
+      s <- AsyncStack[String].run[F]
+      _ <- s.push[F]("xyz")
+      _ <- s.push[F]("foo")
+      _ <- s.push[F]("bar")
+      pop = s.pop[F]
       f1 <- pop.start
       f2 <- pop.start
       p1 <- f1.join
@@ -60,10 +62,10 @@ abstract class AsyncStackSpec extends BaseSpecMUnit { this: KCASImplSpec =>
 
   test("pop on an empty stack should complete with the correponding push") {
     for {
-      s <- AsyncStack[String].run[IO]
-      f1 <- s.pop[IO].start
-      _ <- IO.sleep(0.1.seconds)
-      _ <- s.push[IO]("foo")
+      s <- AsyncStack[String].run[F]
+      f1 <- s.pop[F].start
+      _ <- tmF.sleep(0.1.seconds)
+      _ <- s.push[F]("foo")
       p1 <- f1.join
       _ <- assertEqualsF(p1, "foo")
     } yield ()
@@ -71,14 +73,14 @@ abstract class AsyncStackSpec extends BaseSpecMUnit { this: KCASImplSpec =>
 
   test("pop on an empty stack should work with racing pushes") {
     for {
-      s <- AsyncStack[String].run[IO]
-      f1 <- s.pop[IO].start
-      _ <- IO.sleep(0.1.seconds)
-      f2 <- s.pop[IO].start
-      _ <- IO.sleep(0.1.seconds)
-      _ <- s.push[IO]("foo")
+      s <- AsyncStack[String].run[F]
+      f1 <- s.pop[F].start
+      _ <- tmF.sleep(0.1.seconds)
+      f2 <- s.pop[F].start
+      _ <- tmF.sleep(0.1.seconds)
+      _ <- s.push[F]("foo")
       _ <- assertResultF(f1.join, "foo")
-      _ <- s.push[IO]("bar")
+      _ <- s.push[F]("bar")
       _ <- assertResultF(f2.join, "bar")
     } yield ()
   }
