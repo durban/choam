@@ -22,6 +22,14 @@ import cats.effect._
 import munit.{ CatsEffectSuite, Location, FunSuite }
 
 trait MUnitUtils { this: FunSuite =>
+
+  def assertSameInstance[A](
+    obtained: A,
+    expected: A,
+    clue: String = "objects are not the same instance"
+  )(implicit loc: Location): Unit = {
+    assert(equ(this.clue(obtained), this.clue(expected)), clue)
+  }
 }
 
 trait BaseSpecA

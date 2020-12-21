@@ -43,10 +43,9 @@ lazy val bench = project.in(file("bench"))
   .settings(name := "choam-bench")
   .settings(commonSettings)
   .settings(
-    libraryDependencies ++= (
-      dependencies.scalaStm
-      +: (dependencies.circe.map(_ % Test)
-      :+ dependencies.fs2io % Test)
+    libraryDependencies ++= Seq(
+      dependencies.scalaStm,
+      dependencies.fs2io % Test,
     )
   )
   .settings(macroSettings)
@@ -146,21 +145,13 @@ lazy val macroSettings = Seq(
 
 lazy val dependencies = new {
 
-  val catsVersion = "2.3.0"
-  val circeVersion = "0.14.0-M1"
-  val fs2Version = "2.5.0-M1"
+  val catsVersion = "2.3.1"
+  val fs2Version = "2.5.0"
 
   val shapeless = "com.chuusai" %% "shapeless" % "2.3.3"
   val cats = "org.typelevel" %% "cats-core" % catsVersion
   val catsFree = "org.typelevel" %% "cats-free" % catsVersion
-  val catsEffect = "org.typelevel" %% "cats-effect" % "2.3.0"
-
-  val circe = Seq(
-    "io.circe" %% "circe-core" % circeVersion,
-    "io.circe" %% "circe-generic" % circeVersion,
-    "io.circe" %% "circe-parser" % circeVersion,
-    "io.circe" %% "circe-fs2" % "0.13.0"
-  )
+  val catsEffect = "org.typelevel" %% "cats-effect" % "2.3.1"
 
   val fs2 = "co.fs2" %% "fs2-core" % fs2Version
   val fs2io = "co.fs2" %% "fs2-io" % fs2Version
@@ -169,7 +160,10 @@ lazy val dependencies = new {
     "org.scalatest" %% "scalatest" % "3.1.0",
     "org.typelevel" %% "discipline-scalatest" % "1.0.0-RC4",
     "org.typelevel" %% "cats-laws" % catsVersion,
-    "org.typelevel" %% "munit-cats-effect-2" % "0.11.0"
+    "org.typelevel" %% "munit-cats-effect-2" % "0.11.0",
+    "org.typelevel" %% "scalacheck-effect" % "0.7.0",
+    "org.typelevel" %% "scalacheck-effect-munit" % "0.7.0",
+    // "org.typelevel" %% "discipline-munit" % "1.0.4", // FIXME
   )
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.0"

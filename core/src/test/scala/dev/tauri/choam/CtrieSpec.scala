@@ -18,107 +18,131 @@
 package dev.tauri.choam
 
 import cats.Eq
-import cats.implicits._
-import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
-abstract class CtrieSpec extends BaseSpec with ScalaCheckDrivenPropertyChecks {
+import cats.effect.SyncIO
+import org.scalacheck.effect.PropF
+import munit.ScalaCheckEffectSuite
+
+final class CtrieSpecNaiveKCAS
+  extends SyncIOSpecMUnit
+  with SpecNaiveKCAS
+  with CtrieSpec2[SyncIO]
+
+final class CtrieSpecEMCAS
+  extends SyncIOSpecMUnit
+  with SpecEMCAS
+  with CtrieSpec2[SyncIO]
+
+trait CtrieSpec2[F[_]]
+  extends BaseSpecSyncF[F]
+  with ScalaCheckEffectSuite { this: KCASImplSpec =>
 
   val hs: Int => Int = { x => x }
 
   def newEmpty(
     hashFunc: Int => Int = hs,
     eqFunc: (Int, Int) => Boolean = _ == _
-  ): Ctrie[Int, String] = {
+  ): F[Ctrie[Int, String]] = F.delay {
     new Ctrie[Int, String](hashFunc, Eq.instance(eqFunc))
   }
 
-  "Ctrie#lookup" should "not find anything in an empty trie" in {
-    val ct = newEmpty()
-    forAll { i: Int =>
-      ct.lookup.unsafePerform(i) should === (None)
-    }
-  }
-
-  it should "find a previously inserted single key" in {
-    forAll { (k: Int, i: Int) =>
-      val ct = newEmpty()
-      ct.insert.unsafePerform(k -> k.toString)
-      ct.lookup.unsafePerform(k) should === (Some(k.toString))
-      if (i =!= k) {
-        ct.lookup.unsafePerform(i) should === (None)
+  test("Ctrie#lookup should not find anything in an empty trie") {
+    PropF.forAllF { (i: Int) =>
+      newEmpty().flatMap { ct =>
+        assertResultF(ct.lookup.apply[F](i), None)
       }
     }
   }
 
-  it should "find all previously inserted keys" in {
-    forAll { (ks: Set[Int], x: Int) =>
-      val ct = newEmpty()
-      val shadow = new scala.collection.mutable.HashSet[Int]
-      for (k <- ks) {
-        ct.insert.unsafePerform(k -> k.toString)
-        shadow += k
-        for (i <- shadow) {
-          ct.lookup.unsafePerform(i) should === (Some(i.toString))
+  test("Ctrie#lookup should find a previously inserted single key") {
+    PropF.forAllF { (k: Int, i: Int) =>
+      for {
+        ct <- newEmpty()
+        _ <- ct.insert.apply[F](k -> k.toString)
+        _ <- assertResultF(ct.lookup.apply[F](k), Some(k.toString))
+        _ <- if (i =!= k) {
+          assertResultF(ct.lookup.apply[F](i), None)
+        } else {
+          F.unit
         }
-        if (!shadow.contains(x)) {
-          ct.lookup.unsafePerform(x) should === (None)
+      } yield ()
+    }
+  }
+
+  test("Ctrie#lookup should find all previously inserted keys") {
+    PropF.forAllF { (ks: Set[Int], x: Int) =>
+      for {
+        ct <- newEmpty()
+        shadow <- F.delay { new scala.collection.mutable.HashSet[Int] }
+        _ <- ks.toList.traverse { k =>
+          for {
+            _ <- ct.insert.apply[F](k -> k.toString)
+            _ <- F.delay { shadow += k }
+            _ <- shadow.toList.traverse { i =>
+              assertResultF(ct.lookup.apply[F](i), Some(i.toString))
+            }
+            cont <- F.delay { shadow.contains(x) }
+            _ <- if (!cont) {
+              assertResultF(ct.lookup.apply[F](x), None)
+            } else {
+              F.unit
+            }
+          } yield ()
         }
-      }
+      } yield ()
     }
   }
 
-  it should "find an equal key which is not equal according to universal equality" in {
-    val ct = newEmpty(_ % 4, (x, y) => (x % 8) == (y % 8))
-    ct.insert.unsafePerform(0 -> "0")
-    ct.lookup.unsafePerform(0) should === (Some("0"))
-    ct.lookup.unsafePerform(8) should === (Some("0"))
-    ct.insert.unsafePerform(4 -> "4")
-    ct.lookup.unsafePerform(0) should === (Some("0"))
-    ct.lookup.unsafePerform(8) should === (Some("0"))
-    ct.lookup.unsafePerform(4) should === (Some("4"))
-    ct.lookup.unsafePerform(12) should === (Some("4"))
+  test("Ctrie#lookup should find an equal key which is not equal according to universal equality") {
+    for {
+      ct <- newEmpty(_ % 4, (x, y) => (x % 8) == (y % 8))
+      _ <- ct.insert(0 -> "0")
+      _ <- assertResultF(ct.lookup(0), Some("0"))
+      _ <- assertResultF(ct.lookup(8), Some("0"))
+      _ <- ct.insert(4 -> "4")
+      _ <- assertResultF(ct.lookup(0), Some("0"))
+      _ <- assertResultF(ct.lookup(8), Some("0"))
+      _ <- assertResultF(ct.lookup(4), Some("4"))
+      _ <- assertResultF(ct.lookup(12), Some("4"))
+    } yield ()
   }
 
-  "Ctrie#insert" should "handle hash collisions correctly" in {
-    forAll { (ks: Set[Int], x: Int) =>
-      val ct = newEmpty(_ % 8)
-      ct.insert.unsafePerform(x -> x.toString)
-      ct.lookup.unsafePerform(x) should === (Some(x.toString))
-      ct.insert.unsafePerform(x + 8 -> (x + 8).toString)
-      ct.lookup.unsafePerform(x) should === (Some(x.toString))
-      ct.lookup.unsafePerform(x + 8) should === (Some((x + 8).toString))
-      ct.insert.unsafePerform(x + 16 -> (x + 16).toString)
-      ct.lookup.unsafePerform(x) should === (Some(x.toString))
-      ct.lookup.unsafePerform(x + 8) should === (Some((x + 8).toString))
-      ct.lookup.unsafePerform(x + 16) should === (Some((x + 16).toString))
-      ct.insert.unsafePerform(x + 1 -> (x + 1).toString)
-      ct.lookup.unsafePerform(x) should === (Some(x.toString))
-      ct.lookup.unsafePerform(x + 8) should === (Some((x + 8).toString))
-      ct.lookup.unsafePerform(x + 16) should === (Some((x + 16).toString))
-      ct.lookup.unsafePerform(x + 1) should === (Some((x + 1).toString))
-      ct.insert.unsafePerform(x + 9 -> (x + 9).toString)
-      ct.lookup.unsafePerform(x) should === (Some(x.toString))
-      ct.lookup.unsafePerform(x + 8) should === (Some((x + 8).toString))
-      ct.lookup.unsafePerform(x + 16) should === (Some((x + 16).toString))
-      ct.lookup.unsafePerform(x + 1) should === (Some((x + 1).toString))
-      ct.lookup.unsafePerform(x + 9) should === (Some((x + 9).toString))
-      for (k <- ks) {
-        ct.insert.unsafePerform(k -> k.toString)
-        ct.lookup.unsafePerform(k) should === (Some(k.toString))
-      }
-      ct.insert.unsafePerform(x + 17 -> (x + 17).toString)
-      ct.lookup.unsafePerform(x + 17) should === (Some((x + 17).toString))
+  test("Ctrie#insert should handle hash collisions correctly") {
+    PropF.forAllF { (ks: Set[Int], x: Int) =>
+      for {
+        ct <- newEmpty(_ % 8)
+        _ <- ct.insert(x -> x.toString)
+        _ <- assertResultF(ct.lookup(x), Some(x.toString))
+        _ <- ct.insert(x + 8 -> (x + 8).toString)
+        _ <- assertResultF(ct.lookup(x), Some(x.toString))
+        _ <- assertResultF(ct.lookup(x + 8), Some((x + 8).toString))
+        _ <- ct.insert(x + 16 -> (x + 16).toString)
+        _ <- assertResultF(ct.lookup(x), Some(x.toString))
+        _ <- assertResultF(ct.lookup(x + 8), Some((x + 8).toString))
+        _ <- assertResultF(ct.lookup(x + 16), Some((x + 16).toString))
+        _ <- ct.insert(x + 1 -> (x + 1).toString)
+        _ <- assertResultF(ct.lookup(x), Some(x.toString))
+        _ <- assertResultF(ct.lookup(x + 8), Some((x + 8).toString))
+        _ <- assertResultF(ct.lookup(x + 16), Some((x + 16).toString))
+        _ <- assertResultF(ct.lookup(x + 1), Some((x + 1).toString))
+        _ <- ct.insert(x + 9 -> (x + 9).toString)
+        _ <- assertResultF(ct.lookup(x), Some(x.toString))
+        _ <- assertResultF(ct.lookup(x + 8), Some((x + 8).toString))
+        _ <- assertResultF(ct.lookup(x + 16), Some((x + 16).toString))
+        _ <- assertResultF(ct.lookup(x + 1), Some((x + 1).toString))
+        _ <- assertResultF(ct.lookup(x + 9), Some((x + 9).toString))
+        _ <- ks.toList.traverse { k =>
+          ct.insert(k -> k.toString).flatMap { _ =>
+            assertResultF(ct.lookup(k), Some(k.toString))
+          }
+        }
+        _ <- ct.insert(x + 17 -> (x + 17).toString)
+        _ <- assertResultF(ct.lookup(x + 17), Some((x + 17).toString))
+      } yield ()
     }
   }
 
-  "Ctrie#debugStr" should "pretty print the trie structure" in {
-    val ct = new Ctrie[Int, String](_ % 4, Eq.instance(_ % 8 == _ % 8))
-    ct.insert.unsafePerform(0 -> "0")
-    ct.insert.unsafePerform(1 -> "1")
-    ct.insert.unsafePerform(4 -> "4")
-    ct.insert.unsafePerform(5 -> "5")
-    ct.insert.unsafePerform(8 -> "8") // overwrites 0
-    ct.insert.unsafePerform(9 -> "9") // overwrites 1
+  test("Ctrie#debugStr should pretty print the trie structure") {
     val expStr = """INode -> CNode 3
     |  INode -> CNode 1
     |    INode -> CNode 1
@@ -134,15 +158,15 @@ abstract class CtrieSpec extends BaseSpec with ScalaCheckDrivenPropertyChecks {
     |          INode -> CNode 1
     |            INode -> CNode 1
     |              INode -> LNode(9 -> 9, 5 -> 5)""".stripMargin
-
-    ct.debugStr should === (expStr)
+    for {
+      ct <- F.delay { new Ctrie[Int, String](_ % 4, Eq.instance(_ % 8 == _ % 8)) }
+      _ <- ct.insert(0 -> "0")
+      _ <- ct.insert(1 -> "1")
+      _ <- ct.insert(4 -> "4")
+      _ <- ct.insert(5 -> "5")
+      _ <- ct.insert(8 -> "8") // overwrites 0
+      _ <- ct.insert(9 -> "9") // overwrites 1
+      _ <- assertResultF(F.delay { ct.debugStr }, expStr)
+    } yield ()
   }
 }
-
-final class CtrieSpecNaiveKCAS
-  extends CtrieSpec
-  with SpecNaiveKCAS
-
-final class CtrieSpecEMCAS
-  extends CtrieSpec
-  with SpecEMCAS

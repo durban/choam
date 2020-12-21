@@ -18,7 +18,15 @@
 package dev.tauri.choam
 package kcas
 
-abstract class KCASSpec extends BaseSpec {
+final class KCASSpecNaiveKCAS
+  extends KCASSpec
+  with SpecNaiveKCAS
+
+final class KCASSpecEMCAS
+  extends KCASSpec
+  with SpecEMCAS
+
+abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
 
   private final def tryPerformBatch(ops: List[CASD[_]]): Boolean = {
     val desc = ops.foldLeft(kcasImpl.start()) { (d, op) =>
@@ -30,7 +38,7 @@ abstract class KCASSpec extends BaseSpec {
     desc.tryPerform()
   }
 
-  "k-CAS" should "succeed if old values match, and there is no contention" in {
+  test("k-CAS should succeed if old values match, and there is no contention") {
     val r1 = Ref.mk("r1")
     val r2 = Ref.mk("r2")
     val r3 = Ref.mk("r3")
@@ -40,12 +48,12 @@ abstract class KCASSpec extends BaseSpec {
       CASD(r3, "r3", "z")
     ))
     assert(succ)
-    kcasImpl.read(r1) shouldBe theSameInstanceAs ("x")
-    kcasImpl.read(r2) shouldBe theSameInstanceAs ("y")
-    kcasImpl.read(r3) shouldBe theSameInstanceAs ("z")
+    assertSameInstance(kcasImpl.read(r1), "x")
+    assertSameInstance(kcasImpl.read(r2), "y")
+    assertSameInstance(kcasImpl.read(r3), "z")
   }
 
-  it should "fail if any of the old values doesn't match" in {
+  test("k-CAS should fail if any of the old values doesn't match") {
     val r1 = Ref.mk("r1")
     val r2 = Ref.mk("r2")
     val r3 = Ref.mk("r3")
@@ -60,32 +68,32 @@ abstract class KCASSpec extends BaseSpec {
 
     r1.unsafeSet("x")
     assert(!go())
-    kcasImpl.read(r1) shouldBe theSameInstanceAs ("x")
-    kcasImpl.read(r2) shouldBe theSameInstanceAs ("r2")
-    kcasImpl.read(r3) shouldBe theSameInstanceAs ("r3")
+    assertSameInstance(kcasImpl.read(r1), "x")
+    assertSameInstance(kcasImpl.read(r2), "r2")
+    assertSameInstance(kcasImpl.read(r3), "r3")
 
     r1.unsafeSet("r1")
     r2.unsafeSet("x")
     assert(!go())
-    kcasImpl.read(r1) shouldBe theSameInstanceAs ("r1")
-    kcasImpl.read(r2) shouldBe theSameInstanceAs ("x")
-    kcasImpl.read(r3) shouldBe theSameInstanceAs ("r3")
+    assertSameInstance(kcasImpl.read(r1), "r1")
+    assertSameInstance(kcasImpl.read(r2), "x")
+    assertSameInstance(kcasImpl.read(r3), "r3")
 
     r2.unsafeSet("r2")
     r3.unsafeSet("x")
     assert(!go())
-    kcasImpl.read(r1) shouldBe theSameInstanceAs ("r1")
-    kcasImpl.read(r2) shouldBe theSameInstanceAs ("r2")
-    kcasImpl.read(r3) shouldBe theSameInstanceAs ("x")
+    assertSameInstance(kcasImpl.read(r1), "r1")
+    assertSameInstance(kcasImpl.read(r2), "r2")
+    assertSameInstance(kcasImpl.read(r3), "x")
 
     r3.unsafeSet("r3")
     assert(go())
-    kcasImpl.read(r1) shouldBe theSameInstanceAs ("x")
-    kcasImpl.read(r2) shouldBe theSameInstanceAs ("y")
-    kcasImpl.read(r3) shouldBe theSameInstanceAs ("z")
+    assertSameInstance(kcasImpl.read(r1), "x")
+    assertSameInstance(kcasImpl.read(r2), "y")
+    assertSameInstance(kcasImpl.read(r3), "z")
   }
 
-  it should "not accept more than one CAS for the same ref" in {
+  test("k-CAS should not accept more than one CAS for the same ref") {
     val r1 = Ref.mk("r1")
     val r2 = Ref.mk("r2")
     val exc = intercept[Exception] {
@@ -95,12 +103,12 @@ abstract class KCASSpec extends BaseSpec {
         CASD(r1, "r1", "x") // this is a duplicate
       ))
     }
-    exc.getMessage should include ("Impossible k-CAS")
-    kcasImpl.read(r1) shouldBe theSameInstanceAs ("r1")
-    kcasImpl.read(r2) shouldBe theSameInstanceAs ("r2")
+    assert(clue(exc.getMessage).contains("Impossible k-CAS"))
+    assertSameInstance(kcasImpl.read(r1), "r1")
+    assertSameInstance(kcasImpl.read(r2), "r2")
   }
 
-  it should "be able to succeed after one successful operation" in {
+  test("k-CAS should be able to succeed after one successful operation") {
     val r1 = Ref.mk("r1")
     val r2 = Ref.mk("r2")
     val r3 = Ref.mk("r3")
@@ -123,12 +131,12 @@ abstract class KCASSpec extends BaseSpec {
       CASD(r3, "z2", "z3")
     )))
 
-    kcasImpl.read(r1) shouldBe theSameInstanceAs ("x2")
-    kcasImpl.read(r2) shouldBe theSameInstanceAs ("y2")
-    kcasImpl.read(r3) shouldBe theSameInstanceAs ("z2")
+    assertSameInstance(kcasImpl.read(r1), "x2")
+    assertSameInstance(kcasImpl.read(r2), "y2")
+    assertSameInstance(kcasImpl.read(r3), "z2")
   }
 
-  "Snapshotting" should "work" in {
+  test("Snapshotting should work") {
     val r1 = Ref.mk("r1")
     val r2 = Ref.mk("r2")
     val r3 = Ref.mk("r3")
@@ -137,17 +145,17 @@ abstract class KCASSpec extends BaseSpec {
     val snap = d1.snapshot()
     val d21 = d1.withCAS(r2, "foo", "bar")
     assert(!d21.tryPerform())
-    kcasImpl.read(r1) shouldBe theSameInstanceAs ("r1")
-    kcasImpl.read(r2) shouldBe theSameInstanceAs ("r2")
-    kcasImpl.read(r3) shouldBe theSameInstanceAs ("r3")
+    assertSameInstance(kcasImpl.read(r1), "r1")
+    assertSameInstance(kcasImpl.read(r2), "r2")
+    assertSameInstance(kcasImpl.read(r3), "r3")
     val d22 = snap.load().withCAS(r3, "r3", "r3x")
     assert(d22.tryPerform())
-    kcasImpl.read(r1) shouldBe theSameInstanceAs ("r1x")
-    kcasImpl.read(r2) shouldBe theSameInstanceAs ("r2")
-    kcasImpl.read(r3) shouldBe theSameInstanceAs ("r3x")
+    assertSameInstance(kcasImpl.read(r1), "r1x")
+    assertSameInstance(kcasImpl.read(r2), "r2")
+    assertSameInstance(kcasImpl.read(r3), "r3x")
   }
 
-  it should "work when cancelling" in {
+  test("Snapshotting should work when cancelling") {
     val r1 = Ref.mk("r1")
     val r2 = Ref.mk("r2")
     val r3 = Ref.mk("r3")
@@ -156,21 +164,13 @@ abstract class KCASSpec extends BaseSpec {
     val snap = d1.snapshot()
     val d21 = d1.withCAS(r2, "foo", "bar")
     d21.cancel()
-    kcasImpl.read(r1) shouldBe theSameInstanceAs ("r1")
-    kcasImpl.read(r2) shouldBe theSameInstanceAs ("r2")
-    kcasImpl.read(r3) shouldBe theSameInstanceAs ("r3")
+    assertSameInstance(kcasImpl.read(r1), "r1")
+    assertSameInstance(kcasImpl.read(r2), "r2")
+    assertSameInstance(kcasImpl.read(r3), "r3")
     val d22 = snap.load().withCAS(r3, "r3", "r3x")
     assert(d22.tryPerform())
-    kcasImpl.read(r1) shouldBe theSameInstanceAs ("r1x")
-    kcasImpl.read(r2) shouldBe theSameInstanceAs ("r2")
-    kcasImpl.read(r3) shouldBe theSameInstanceAs ("r3x")
+    assertSameInstance(kcasImpl.read(r1), "r1x")
+    assertSameInstance(kcasImpl.read(r2), "r2")
+    assertSameInstance(kcasImpl.read(r3), "r3x")
   }
 }
-
-final class KCASSpecNaiveKCAS
-  extends KCASSpec
-  with SpecNaiveKCAS
-
-final class KCASSpecEMCAS
-  extends KCASSpec
-  with SpecEMCAS
