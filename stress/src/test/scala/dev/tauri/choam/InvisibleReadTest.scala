@@ -24,16 +24,18 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLZ_Result
 
-import kcas.{ KCAS, Ref }
+import kcas.Ref
 
-@KCASParams("Invisible read may see intermediate values, but not descriptors")
+@JCStressTest
+@State
+@Description("Invisible read may see intermediate values, but not descriptors")
 @Outcomes(Array(
   new Outcome(id = Array("a, x, true"), expect = ACCEPTABLE, desc = "Sees old values"),
   new Outcome(id = Array("b, x, true"), expect = ACCEPTABLE_INTERESTING, desc = "Sees new ref1"),
   new Outcome(id = Array("a, y, true"), expect = ACCEPTABLE_INTERESTING, desc = "Sees new ref2"),
   new Outcome(id = Array("b, y, true"), expect = ACCEPTABLE, desc = "Sees new values")
 ))
-abstract class InvisibleReadTest(impl: KCAS) {
+class InvisibleReadTest extends StressTestBase {
 
   private[this] val ref1: Ref[String] =
     Ref.mk("a")

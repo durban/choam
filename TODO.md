@@ -41,6 +41,7 @@
 
 ## Other improvements
 
+- Compile-time detection of impossible k-CAS operations
 - Optimization ideas:
   - Boxing
   - React interpreter (external interpreter?)
@@ -50,7 +51,4 @@
   - IBR
   - Review benchmarks, remove useless ones
 - Finish Ctrie
-- Scala 3:
-  - Port tests to munit
-  - Macro annotations (JcStressMacros): no replacement; we'll have to
-    ignore NaiveKCAS for these, and only run stress tests for EMCAS.
+- Scala 3

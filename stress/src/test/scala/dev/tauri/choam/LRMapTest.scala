@@ -22,13 +22,15 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLLLLL_Result
 
-import kcas.{ KCAS, Ref }
+import kcas.Ref
 
-@KCASParams("lmap and rmap must run before committing")
+@JCStressTest
+@State
+@Description("lmap and rmap must run before committing")
 @Outcomes(Array(
   new Outcome(id = Array("a, x, a, x, ab, a"), expect = ACCEPTABLE, desc = "See old values")
 ))
-abstract class LRMapTest(impl: KCAS) {
+class LRMapTest extends StressTestBase {
 
   private[this] val ref1: Ref[String] =
     Ref.mk("a")

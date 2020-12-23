@@ -22,14 +22,14 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import kcas.KCAS
-
-@KCASParams("Composed Ctrie insert/lookup should be atomic")
+@JCStressTest
+@State
+@Description("Composed Ctrie insert/lookup should be atomic")
 @Outcomes(Array(
   new Outcome(id = Array("(Some(0),Some(1)), (Some(x),Some(y))"), expect = ACCEPTABLE, desc = "get first"),
   new Outcome(id = Array("(Some(x),Some(y)), (Some(x),Some(y))"), expect = ACCEPTABLE, desc = "ins first")
 ))
-abstract class CtrieComposedTest(impl: KCAS) {
+class CtrieComposedTest extends StressTestBase {
 
   private[this] val ct1 =
     CtrieTest.newCtrie714()

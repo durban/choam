@@ -23,14 +23,16 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLZ_Result
 
-@KCASParams("CAS2 should be atomic to readers")
+@JCStressTest
+@State
+@Description("CAS2 should be atomic to readers")
 @Outcomes(Array(
   new Outcome(id = Array("ov1, ov2, true"), expect = ACCEPTABLE, desc = "Read old values"),
   new Outcome(id = Array("ov1, b, true"), expect = ACCEPTABLE_INTERESTING, desc = "Read old from ref1, new from ref2"),
   new Outcome(id = Array("a, ov2, true"), expect = FORBIDDEN, desc = "Read new from ref1, but old from ref2"),
   new Outcome(id = Array("a, b, true"), expect = ACCEPTABLE, desc = "Read new values")
 ))
-abstract class CAS2ReadTest(impl: KCAS) {
+class CAS2ReadTest extends StressTestBase {
 
   private[this] val ref1: Ref[String] =
     Ref.mk("ov1")

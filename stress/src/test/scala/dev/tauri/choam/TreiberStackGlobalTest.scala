@@ -28,11 +28,13 @@ import org.openjdk.jcstress.infra.results.ZZZ_Result
 
 import kcas._
 
-@KCASParams("Treiber stack global pop/push should be atomic")
+@JCStressTest
+@State
+@Description("Treiber stack global pop/push should be atomic")
 @Outcomes(Array(
   new Outcome(id = Array("true, true, true"), expect = ACCEPTABLE, desc = "Pop sees consistent values")
 ))
-abstract class TreiberStackGlobalTest(impl: KCAS) {
+class TreiberStackGlobalTest extends StressTestBase {
 
   import TreiberStackGlobalTest._
 

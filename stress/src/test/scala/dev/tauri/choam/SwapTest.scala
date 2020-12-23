@@ -17,19 +17,21 @@
 
 package dev.tauri.choam
 
-import org.openjdk.jcstress.annotations.{ Actor, Arbiter, Outcome }
+import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
 import kcas._
 
-@KCASParams("React.swap (updWith) should be atomic")
+@JCStressTest
+@State
+@Description("React.swap (updWith) should be atomic")
 @Outcomes(Array(
   new Outcome(id = Array("(x,y), (y,x)"), expect = ACCEPTABLE, desc = "Read before swap"),
   new Outcome(id = Array("(y,x), (y,x)"), expect = ACCEPTABLE, desc = "Read after swap")
 ))
-abstract class SwapTest(impl: KCAS) {
+class SwapTest extends StressTestBase {
 
   private[this] val ref1 =
     Ref.mk("x")

@@ -23,12 +23,14 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZL_Result
 
-@KCASParams("k-CAS should be atomic")
+@JCStressTest
+@State
+@Description("k-CAS should be atomic")
 @Outcomes(Array(
   new Outcome(id = Array("true, false, x"), expect = ACCEPTABLE, desc = "T1 succeeded"),
   new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE, desc = "T2 succeeded")
 ))
-abstract class KCASTest(impl: KCAS) {
+class KCASTest extends StressTestBase {
 
   private[this] val refs: List[Ref[String]] =
     List.fill(8)(Ref.mk("ov"))

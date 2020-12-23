@@ -17,21 +17,23 @@
 
 package dev.tauri.choam
 
-import org.openjdk.jcstress.annotations.{ Actor, Arbiter, Outcome }
+import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLLLL_Result
 
 import kcas._
 
-@KCASParams("Changes by the reaction must be visible in post-commit actions")
+@JCStressTest
+@State
+@Description("Changes by the reaction must be visible in post-commit actions")
 @Outcomes(Array(
   new Outcome(id = Array("(foo,bar), x, (x,x), y, (y,y)"), expect = ACCEPTABLE, desc = "u1 first, pc reads result"),
   new Outcome(id = Array("(foo,bar), y, (x,x), y, (y,y)"), expect = ACCEPTABLE, desc = "u1 first, pc reads u2 result"),
   new Outcome(id = Array("(y,y), x, (foo,bar), y, (x,x)"), expect = ACCEPTABLE, desc = "u2 first, pc reads result"),
   new Outcome(id = Array("(y,y), x, (foo,bar), x, (x,x)"), expect = ACCEPTABLE, desc = "u2 first, pc reads u1 result")
 ))
-abstract class PostCommitTest(impl: KCAS) {
+class PostCommitTest extends StressTestBase {
 
   private[this] val r1 =
     Ref.mk("foo")

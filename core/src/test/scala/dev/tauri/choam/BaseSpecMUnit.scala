@@ -34,8 +34,7 @@ trait MUnitUtils { this: FunSuite =>
 
 trait BaseSpecA
   extends FunSuite
-  with MUnitUtils {
-}
+  with MUnitUtils
 
 trait BaseSpecF[F[_]]
   extends FunSuite

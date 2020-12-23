@@ -22,16 +22,16 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-import kcas._
-
-@KCASParams("Treiber stack composed pop/push should be atomic")
+@JCStressTest
+@State
+@Description("Treiber stack composed pop/push should be atomic")
 @Outcomes(Array(
   new Outcome(id = Array("(Some(z1),Some(z2)), List(x, y), List(x, y)",
                          "(Some(z1),Some(z2)), List(y, x), List(y, x)"), expect = ACCEPTABLE, desc = "Pop is the first"),
   new Outcome(id = Array("(Some(x),Some(x)), List(y, z1), List(y, z2)",
                          "(Some(y),Some(y)), List(x, z1), List(x, z2)"), expect = ACCEPTABLE, desc = "Pop one of the pushed values")
 ))
-abstract class TreiberStackComposedTest(impl: KCAS) {
+class TreiberStackComposedTest extends StressTestBase {
 
   private[this] val stack1 =
     new TreiberStack[String](List("z1"))

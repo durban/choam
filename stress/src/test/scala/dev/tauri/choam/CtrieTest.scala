@@ -26,14 +26,16 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import kcas.KCAS
 
-@KCASParams("Ctrie insert/lookup should be atomic")
+@JCStressTest
+@State
+@Description("Ctrie insert/lookup should be atomic")
 @Outcomes(Array(
   new Outcome(id = Array("Some(0), Some(x)", "Some(0), Some(y)"), expect = ACCEPTABLE, desc = "get first"),
   new Outcome(id = Array("Some(x), Some(y)"), expect = ACCEPTABLE, desc = "ins1, get, ins2"),
   new Outcome(id = Array("Some(y), Some(x)"), expect = ACCEPTABLE, desc = "ins2, get, ins1"),
   new Outcome(id = Array("Some(x), Some(x)", "Some(y), Some(y)"), expect = ACCEPTABLE, desc = "get last")
 ))
-abstract class CtrieTest(impl: KCAS) {
+class CtrieTest extends StressTestBase {
 
   private[this] val ctrie =
     CtrieTest.newCtrie714()

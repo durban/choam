@@ -17,19 +17,21 @@
 
 package dev.tauri.choam
 
-import org.openjdk.jcstress.annotations.{ Actor, Arbiter, Outcome }
+import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
 import kcas._
 
-@KCASParams("Ref#getter should be consistent")
+@JCStressTest
+@State
+@Description("Ref#getter should be consistent")
 @Outcomes(Array(
   new Outcome(id = Array("(foo,bar), (x,y)"), expect = ACCEPTABLE, desc = "Read old values"),
   new Outcome(id = Array("(x,y), (x,y)"), expect = ACCEPTABLE, desc = "Read new values")
 ))
-abstract class ConsistentReadTest(impl: KCAS) {
+class ConsistentReadTest extends StressTestBase {
 
   private[this] var ref1 =
     Ref.mk("foo")

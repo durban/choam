@@ -17,21 +17,23 @@
 
 package dev.tauri.choam
 
-import org.openjdk.jcstress.annotations.{ Actor, Arbiter, Outcome }
+import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
 import kcas._
 
-@KCASParams("Side effect in lifted 'functions' are not part of the reaction")
+@JCStressTest
+@State
+@Description("Side effect in lifted 'functions' are not part of the reaction")
 @Outcomes(Array(
   new Outcome(id = Array("foo, (x,x), (y,x)"), expect = ACCEPTABLE, desc = "act1 runs first, act2 reads written value"),
   new Outcome(id = Array("foo, (bar,x), (y,x)"), expect = ACCEPTABLE, desc = "act1 runs first, act2 reads stale value"),
   new Outcome(id = Array("y, (bar,foo), (x,x)"), expect = ACCEPTABLE, desc = "act2 runs first"),
   new Outcome(id = Array("y, (x,foo), (x,x)"), expect = ACCEPTABLE, desc = "act2 runs first, but reads modified value")
 ))
-abstract class LiftTest(impl: KCAS) {
+class LiftTest extends StressTestBase {
 
   private[this] val ref =
     Ref.mk("foo")

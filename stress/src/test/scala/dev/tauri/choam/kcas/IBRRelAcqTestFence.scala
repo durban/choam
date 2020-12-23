@@ -23,7 +23,6 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.infra.results._
 
-
 @JCStressTest
 @State
 @Description("IBR reservation rel/acq: store/load fence")

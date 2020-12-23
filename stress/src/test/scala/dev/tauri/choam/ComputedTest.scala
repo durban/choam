@@ -17,14 +17,16 @@
 
 package dev.tauri.choam
 
-import org.openjdk.jcstress.annotations.{ Actor, Arbiter, Outcome }
+import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
 import kcas._
 
-@KCASParams("Computed reagents should be executed atomically")
+@JCStressTest
+@State
+@Description("Computed reagents should be executed atomically")
 @Outcomes(Array(
   new Outcome(id = Array("www, (foo,bar), (www,y)"), expect = ACCEPTABLE, desc = "Writer runs first; reader sees old values"),
   new Outcome(id = Array("www, (www,y), (www,y)"), expect = ACCEPTABLE, desc = "Writer runs first; reader sees new values"),
@@ -34,7 +36,7 @@ import kcas._
   new Outcome(id = Array("foo, (www,bar), (www,x)"), expect = ACCEPTABLE, desc = "Computed runs first; reader sees new/old values"),
   new Outcome(id = Array("foo, (foo,x), (www,x)"), expect = ACCEPTABLE, desc = "Computed runs first; reader sees old/new values")
 ))
-abstract class ComputedTest(impl: KCAS) {
+class ComputedTest extends StressTestBase {
 
   private[this] val r1 =
     Ref.mk("foo")

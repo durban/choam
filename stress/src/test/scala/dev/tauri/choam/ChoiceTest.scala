@@ -22,14 +22,16 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-import kcas.{ Ref, KCAS }
+import kcas.Ref
 
-@KCASParams("Only one side of a `+` should be visible")
+@JCStressTest
+@State
+@Description("Only one side of a `+` should be visible")
 @Outcomes(Array(
   new Outcome(id = Array("(b,bar), (b,bar), (a,rab)"), expect = ACCEPTABLE, desc = "read first"),
   new Outcome(id = Array("(b,bar), (a,rab), (a,rab)"), expect = ACCEPTABLE, desc = "write first")
 ))
-abstract class ChoiceTest(impl: KCAS) {
+class ChoiceTest extends StressTestBase {
 
   private[this] val ref0 =
     Ref.mk("b")

@@ -22,14 +22,14 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.JJJJ_Result
 
-import kcas._
-
-@KCASParams("Counter incr/decr/count should be atomic")
+@JCStressTest
+@State
+@Description("Counter incr/decr/count should be atomic")
 @Outcomes(Array(
   new Outcome(id = Array("0, 1, 0, 0", "0, 1, 1, 0"), expect = ACCEPTABLE, desc = "incr is first"),
   new Outcome(id = Array("-1, 0, 0, 0", "-1, 0, -1, 0"), expect = ACCEPTABLE, desc = "decr is first")
 ))
-abstract class CounterTest(impl: KCAS) {
+class CounterTest extends StressTestBase {
 
   private[this] val ctr =
     new Counter()

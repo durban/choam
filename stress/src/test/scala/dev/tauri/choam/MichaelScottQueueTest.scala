@@ -22,16 +22,16 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-import kcas.KCAS
-
-@KCASParams("Michael-Scott queue enq/deq should be atomic")
+@JCStressTest
+@State
+@Description("Michael-Scott queue enq/deq should be atomic")
 @Outcomes(Array(
   new Outcome(id = Array("Some(z), Some(x), List(y)", "Some(z), None, List(x, y)"), expect = ACCEPTABLE, desc = "enq1 first; deq1 first"),
   new Outcome(id = Array("Some(x), Some(z), List(y)", "None, Some(z), List(x, y)"), expect = ACCEPTABLE, desc = "enq1 first; deq2 first"),
   new Outcome(id = Array("Some(z), Some(y), List(x)", "Some(z), None, List(y, x)"), expect = ACCEPTABLE, desc = "enq2 first; deq1 first"),
   new Outcome(id = Array("Some(y), Some(z), List(x)", "None, Some(z), List(y, x)"), expect = ACCEPTABLE, desc = "enq2 first; deq2 first")
 ))
-abstract class MichaelScottQueueTest(impl: KCAS) {
+class MichaelScottQueueTest extends StressTestBase {
 
   private[this] val queue =
     new MichaelScottQueue[String](List("z"))
