@@ -74,7 +74,7 @@ class EMCASCleanup1Test {
    * when descriptors were collected.
    */
   private final def maybeGc(): Unit = {
-    if ((ThreadLocalRandom.current().nextInt() % 4096) == 0) {
+    if ((ThreadLocalRandom.current().nextInt() % 2048) == 0) {
       System.gc()
     }
   }
