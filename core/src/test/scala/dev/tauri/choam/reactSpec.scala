@@ -460,7 +460,7 @@ trait ReactSpec2[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("Michael-Scott queue should allow multiple producers and consumers".only) {
+  test("Michael-Scott queue should allow multiple producers and consumers") {
     val max = 10000
     for {
       q <- F.delay { new MichaelScottQueue[String] }
