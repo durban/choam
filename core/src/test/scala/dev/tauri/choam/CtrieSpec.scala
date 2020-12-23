@@ -24,12 +24,12 @@ import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
 final class CtrieSpecNaiveKCAS
-  extends SyncIOSpecMUnit
+  extends BaseSpecSyncIO
   with SpecNaiveKCAS
   with CtrieSpec2[SyncIO]
 
 final class CtrieSpecEMCAS
-  extends SyncIOSpecMUnit
+  extends BaseSpecSyncIO
   with SpecEMCAS
   with CtrieSpec2[SyncIO]
 

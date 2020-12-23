@@ -30,12 +30,12 @@ import cats.effect.IO
 import kcas._
 
 final class ReactSpecNaiveKCAS
-  extends IOSpecMUnit
+  extends BaseSpecIO
   with SpecNaiveKCAS
   with ReactSpec2[IO]
 
 final class ReactSpecEMCAS
-  extends IOSpecMUnit
+  extends BaseSpecIO
   with SpecEMCAS
   with ReactSpec2[IO]
 

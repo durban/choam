@@ -25,12 +25,12 @@ import scala.concurrent.duration._
 import cats.effect.IO
 
 class PromiseSpec_NaiveKCAS_IO
-  extends IOSpecMUnit
+  extends BaseSpecIO
   with SpecNaiveKCAS
   with PromiseSpec[IO]
 
 class PromiseSpec_EMCAS_IO
-  extends IOSpecMUnit
+  extends BaseSpecIO
   with SpecEMCAS
   with PromiseSpec[IO]
 

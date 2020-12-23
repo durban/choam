@@ -23,12 +23,12 @@ import scala.collection.immutable
 import cats.effect.SyncIO
 
 class MapSpec_NaiveKCAS_SyncIO
-  extends SyncIOSpecMUnit
+  extends BaseSpecSyncIO
   with SpecNaiveKCAS
   with MapSpec[SyncIO]
 
 class MapSpec_EMCAS_SyncIO
-  extends SyncIOSpecMUnit
+  extends BaseSpecSyncIO
   with SpecEMCAS
   with MapSpec[SyncIO]
 

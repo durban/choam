@@ -23,12 +23,12 @@ import scala.concurrent.duration._
 import cats.effect.IO
 
 class AsyncStackSpec_NaiveKCAS_IO
-  extends IOSpecMUnit
+  extends BaseSpecIO
   with SpecNaiveKCAS
   with AsyncStackSpec[IO]
 
 class AsyncStackSpec_EMCAS_IO
-  extends IOSpecMUnit
+  extends BaseSpecIO
   with SpecEMCAS
   with AsyncStackSpec[IO]
 
