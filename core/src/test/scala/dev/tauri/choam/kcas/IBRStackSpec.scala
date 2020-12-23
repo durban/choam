@@ -20,10 +20,6 @@ package kcas
 
 import java.util.concurrent.{ CountDownLatch, CyclicBarrier }
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import org.scalactic.TypeCheckedTripleEquals
-
 final class IBRStackDebugSpec extends IBRStackSpec[IBRStackDebug] {
 
   override protected def name: String =
@@ -55,9 +51,7 @@ final class IBRStackFastSpec extends IBRStackSpec[IBRStackFast] {
 }
 
 abstract class IBRStackSpec[S[a] <: IBRStackFast[a]]
-  extends AnyFlatSpec
-  with Matchers
-  with TypeCheckedTripleEquals {
+  extends BaseSpecA {
 
   protected def name: String
 
@@ -67,19 +61,19 @@ abstract class IBRStackSpec[S[a] <: IBRStackFast[a]]
 
   protected def reuseCount[A](stack: S[A]): Option[Long]
 
-  this.name should "work" in {
+  test(s"$name should work") {
     val s = this.mkEmpty[String]()
     val tc = this.threadLocalContext[String]()
     s.push("a", tc)
     s.push("b", tc)
     s.push("c", tc)
-    assert(s.tryPop(tc) === "c")
-    assert(s.tryPop(tc) === "b")
-    assert(s.tryPop(tc) === "a")
+    assertEquals(s.tryPop(tc), "c")
+    assertEquals(s.tryPop(tc), "b")
+    assertEquals(s.tryPop(tc), "a")
     assert(Option(s.tryPop(tc)).isEmpty)
   }
 
-  it should "reuse nodes from the freelist" in {
+  test(s"$name should reuse nodes from the freelist") {
     val N = 42L
     val SYNC = 128L
     val s = this.mkEmpty[String]()
@@ -125,16 +119,16 @@ abstract class IBRStackSpec[S[a] <: IBRStackFast[a]]
     }
   }
 
-  it should "copy itself to a List" in {
+  test(s"$name should copy itself to a List") {
     val s = this.mkEmpty[Int]()
     val tc = this.threadLocalContext[Int]()
     s.push(1, tc)
     s.push(2, tc)
     s.push(3, tc)
-    assert(s.unsafeToList(tc) === List(3, 2, 1))
+    assertEquals(s.unsafeToList(tc), List(3, 2, 1))
   }
 
-  it should "not leak memory" in {
+  test(s"$name should not leak memory") {
     val s = this.mkEmpty[String]()
     val tc = this.threadLocalContext[String]()
     s.push("1", tc)
@@ -146,10 +140,10 @@ abstract class IBRStackSpec[S[a] <: IBRStackFast[a]]
       assert(s.tryPop(tc) ne null)
     }
     tc.fullGc()
-    assert(tc.getRetiredCount() === 0L) // all of it should've been freed
+    assertEquals(tc.getRetiredCount(), 0L) // all of it should've been freed
   }
 
-  "tryPopN" should "pop `n` items if possible" in {
+  test(s"$name#tryPopN should pop `n` items if possible") {
     val s = this.mkEmpty[String]()
     val tc = this.threadLocalContext[String]()
     s.push("1", tc)
@@ -157,22 +151,22 @@ abstract class IBRStackSpec[S[a] <: IBRStackFast[a]]
     s.push("3", tc)
     s.push("4", tc)
     val arr = Array.ofDim[String](3)
-    assert(s.tryPopN(arr, 3, tc) === 3)
-    assert(arr(0) === "4")
-    assert(arr(1) === "3")
-    assert(arr(2) === "2")
-    assert(s.tryPopN(arr, 2, tc) === 1)
-    assert(arr(0) === "1")
-    assert(arr(1) === "3")
-    assert(arr(2) === "2")
+    assertEquals(s.tryPopN(arr, 3, tc), 3)
+    assertEquals(arr(0), "4")
+    assertEquals(arr(1), "3")
+    assertEquals(arr(2), "2")
+    assertEquals(s.tryPopN(arr, 2, tc), 1)
+    assertEquals(arr(0), "1")
+    assertEquals(arr(1), "3")
+    assertEquals(arr(2), "2")
   }
 
-  "pushAll" should "push all items" in {
+  test(s"$name#pushAll should push all items") {
     val s = this.mkEmpty[String]()
     val tc = this.threadLocalContext[String]()
     val arr = Array("a", "b", "c", "d", "e")
     s.pushAll(arr, tc)
-    assert(s.tryPopN(arr, arr.length, tc) === arr.length)
-    assert(arr.toList === List("e", "d", "c", "b", "a"))
+    assertEquals(s.tryPopN(arr, arr.length, tc), arr.length)
+    assertEquals(arr.toList, List("e", "d", "c", "b", "a"))
   }
 }

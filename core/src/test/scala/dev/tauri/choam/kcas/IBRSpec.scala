@@ -21,18 +21,12 @@ package kcas
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.CountDownLatch
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import org.scalactic.TypeCheckedTripleEquals
-
 final class IBRSpec
-  extends AnyFlatSpec
-  with Matchers
-  with TypeCheckedTripleEquals {
+  extends BaseSpecA {
 
   import IBRSpec.{ Descriptor, GC }
 
-  "IBR" should "work" in {
+  test("IBR should work") {
     val gc = new GC
     val tc = gc.threadContext()
     tc.startOp()
@@ -48,10 +42,10 @@ final class IBRSpec
       ref
     } finally tc.endOp()
     tc.fullGc()
-    assert(ref.get().freed == 1)
+    assertEquals(ref.get().freed, 1)
   }
 
-  it should "not free an object referenced from another thread" in {
+  test("IBR should not free an object referenced from another thread") {
     val gc = new GC
     val ref = new AtomicReference[Descriptor](null)
     val latch1 = new CountDownLatch(1)
@@ -91,10 +85,10 @@ final class IBRSpec
     assert(!error)
     // now it can be freed:
     tc.fullGc()
-    assert(d1.freed == 1)
+    assertEquals(d1.freed, 1)
   }
 
-  it should "reuse objects form the freelist" in {
+  test("IBR should reuse objects form the freelist") {
     val gc = new GC
     val tc = gc.threadContext()
     tc.startOp()
@@ -104,7 +98,7 @@ final class IBRSpec
       d
     } finally tc.endOp()
     tc.fullGc()
-    assert(d.freed == 1)
+    assertEquals(d.freed, 1)
     tc.startOp()
     try {
       val d2 = tc.alloc()
@@ -112,10 +106,10 @@ final class IBRSpec
       tc.retire(d2)
     } finally tc.endOp()
     tc.fullGc()
-    assert(d.freed == 2)
+    assertEquals(d.freed, 2)
   }
 
-  "The epoch" should "be incremented after a few allocations" in {
+  test("The epoch should be incremented after a few allocations") {
     val gc = new GC
     val tc = gc.threadContext()
     val startEpoch = gc.epochNumber
@@ -131,7 +125,7 @@ final class IBRSpec
       tc.alloc()
     } finally tc.endOp()
     val newEpoch = gc.epochNumber
-    assert(newEpoch === (startEpoch + 1))
+    assertEquals(newEpoch, (startEpoch + 1))
     for (desc <- descs) {
       tc.startOp()
       try {
@@ -139,12 +133,12 @@ final class IBRSpec
       } finally tc.endOp()
     }
     for (desc <- descs) {
-      assert(desc.getBirthEpochOpaque() == startEpoch)
-      assert(desc.getRetireEpochOpaque() === newEpoch)
+      assertEquals(desc.getBirthEpochOpaque(), startEpoch)
+      assertEquals(desc.getRetireEpochOpaque(), newEpoch)
     }
   }
 
-  "A reclamation" should "run after a few retirements" in {
+  test("A reclamation should run after a few retirements") {
     val gc = new GC
     val tc = gc.threadContext()
     val ref = new AtomicReference[Descriptor](null)
@@ -155,7 +149,7 @@ final class IBRSpec
         val d = tc.alloc()
         if (seen.containsKey(d)) {
           // a descriptor was freed and reused
-          assert(d.freed == 1)
+          assertEquals(d.freed, 1)
           // we're done
           true
         } else {
@@ -171,10 +165,10 @@ final class IBRSpec
       else go(cnt + 1)
     }
     val cnt = go(0)
-    assert(cnt === IBR.emptyFreq)
+    assertEquals(cnt, IBR.emptyFreq)
   }
 
-  "ThreadContext" should "be collected by the JVM GC if a thread terminates" in {
+  test("ThreadContext should be collected by the JVM GC if a thread terminates") {
     val gc = new GC
     val tc = gc.threadContext()
     val firstEpoch = gc.epochNumber
@@ -190,11 +184,11 @@ final class IBRSpec
         val tc = gc.threadContext()
         tc.startOp()
         val d = tc.readAcquire(ref)
-        assert(d.freed === 0)
+        assertEquals(d.freed, 0)
         // now the thread exits while still "using" the
         // descriptor, because it doesn't call `endOp`
-        assert(tc.snapshotReservation.lower === firstEpoch)
-        assert(tc.snapshotReservation.upper === firstEpoch)
+        assertEquals(tc.snapshotReservation.lower, firstEpoch)
+        assertEquals(tc.snapshotReservation.upper, firstEpoch)
         d.foobar()
       } catch {
         case ex: Throwable =>
@@ -214,13 +208,13 @@ final class IBRSpec
       tc.cas(ref, d, null)
       tc.retire(d)
     }
-    assert(d.getRetireEpochOpaque() === firstEpoch)
+    assertEquals(d.getRetireEpochOpaque(), firstEpoch)
     tc.fullGc() // this should collect `d`
-    assert(d.freed === 1)
+    assertEquals(d.freed, 1)
     assert(gc.snapshotReservations.get(t.getId()).isEmpty)
   }
 
-  it should "not block reclamation of newer blocks if a thread deadlocks" in {
+  test("ThreadContext should not block reclamation of newer blocks if a thread deadlocks") {
     val gc = new GC
     val tc = gc.threadContext()
     val firstEpoch = gc.epochNumber
@@ -238,11 +232,11 @@ final class IBRSpec
         val tc = gc.threadContext()
         tc.startOp()
         val d = tc.readAcquire(ref)
-        assert(d.freed === 0)
+        assertEquals(d.freed, 0)
         // now the thread deadlocks while still "using" the
         // descriptor, because it doesn't call `endOp`
-        assert(tc.snapshotReservation.lower === firstEpoch)
-        assert(tc.snapshotReservation.upper === firstEpoch)
+        assertEquals(tc.snapshotReservation.lower, firstEpoch)
+        assertEquals(tc.snapshotReservation.upper, firstEpoch)
         latch1.countDown()
         latch2.await() // blocks forever
       } catch {
@@ -260,9 +254,9 @@ final class IBRSpec
       tc.cas(ref, d, null)
       tc.retire(d) // `d` will never be collected, because `t` protects it
     }
-    assert(d.getRetireEpochOpaque() === firstEpoch)
+    assertEquals(d.getRetireEpochOpaque(), firstEpoch)
     tc.fullGc() // this will not collect `d`
-    assert(d.freed === 0)
+    assertEquals(d.freed, 0)
     // but newet objects should be reclaimed:
     val d2 = tc.op {
       val d2 = tc.alloc()
@@ -270,16 +264,16 @@ final class IBRSpec
       tc.cas(ref, null, d2)
       d2
     }
-    assert(d.freed === 0)
-    assert(d2.freed === 0)
+    assertEquals(d.freed, 0)
+    assertEquals(d2.freed, 0)
     tc.op {
       tc.cas(ref, d2, null)
       tc.retire(d2)
     }
-    assert(d2.getRetireEpochOpaque() === gc.epochNumber)
+    assertEquals(d2.getRetireEpochOpaque(), gc.epochNumber)
     tc.fullGc() // this should collect `d2` (but not `d`)
-    assert(d.freed === 0)
-    assert(d2.freed === 1)
+    assertEquals(d.freed, 0)
+    assertEquals(d2.freed, 1)
   }
 }
 
