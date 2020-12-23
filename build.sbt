@@ -157,13 +157,11 @@ lazy val dependencies = new {
   val fs2io = "co.fs2" %% "fs2-io" % fs2Version
 
   val test = Seq(
-    "org.scalatest" %% "scalatest" % "3.1.0",
-    "org.typelevel" %% "discipline-scalatest" % "1.0.0-RC4",
     "org.typelevel" %% "cats-laws" % catsVersion,
     "org.typelevel" %% "munit-cats-effect-2" % "0.11.0",
     "org.typelevel" %% "scalacheck-effect" % "0.7.0",
     "org.typelevel" %% "scalacheck-effect-munit" % "0.7.0",
-    // "org.typelevel" %% "discipline-munit" % "1.0.4", // FIXME
+    "org.typelevel" %% "discipline-munit" % "1.0.4",
   )
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.0"

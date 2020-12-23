@@ -23,10 +23,7 @@ import cats.implicits._
 
 import org.scalacheck.{ Gen, Arbitrary }
 
-import org.scalatest.funsuite.AnyFunSuite
-import org.scalatest.prop.Configuration
-
-import org.typelevel.discipline.scalatest.FunSuiteDiscipline
+import munit.DisciplineSuite
 
 import kcas._
 
@@ -38,7 +35,7 @@ final class LawsSpecEMCAS
   extends LawsSpec
   with SpecEMCAS
 
-abstract class LawsSpec extends AnyFunSuite with Configuration with FunSuiteDiscipline with KCASImplSpec {
+trait LawsSpec extends DisciplineSuite { this: KCASImplSpec =>
 
   implicit def arbReact[A, B](implicit arbA: Arbitrary[A], arbB: Arbitrary[B], arbAB: Arbitrary[A => B]): Arbitrary[React[A, B]] = Arbitrary {
     Gen.oneOf(
@@ -86,10 +83,10 @@ abstract class LawsSpec extends AnyFunSuite with Configuration with FunSuiteDisc
     )
   }
 
-  implicit def sketchyEq[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[React[A, B]] = new Eq[React[A, B]] {
+  implicit def testingEqReact[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[React[A, B]] = new Eq[React[A, B]] {
     def eqv(x: React[A, B], y: React[A, B]): Boolean = {
       (1 to 1000).forall { _ =>
-        val a = arbA.arbitrary.sample.getOrElse(fail())
+        val a = arbA.arbitrary.sample.getOrElse(fail("no sample"))
         val bx = x.unsafePerform(a)
         val by = y.unsafePerform(a)
         equB.eqv(bx, by)
