@@ -19,24 +19,24 @@ package dev.tauri.choam
 package bench
 package util
 
-class XorShiftSpec extends BaseSpec {
+class XorShiftSpec extends BaseSpecA {
 
-  "XorShift" should "mostly work" in {
+  test("XorShift should mostly work") {
     val xs = XorShift()
     val N = 1000000
 
     // check Ints:
     val ns = Vector.fill(N) { xs.nextInt() }
-    ns.toSet.size.toDouble should be >= (0.9 * N)
+    assert(clue(ns.toSet.size.toDouble) >= (0.9 * N))
     val negs = ns.filter(n => n < 0).size.toDouble
-    negs should be >= (0.4 * N)
-    negs should be <= (0.6 * N)
+    assert(clue(negs) >= (0.4 * N))
+    assert(clue(negs) <= (0.6 * N))
 
     // check Longs:
     val ms = Vector.fill(N) { xs.nextLong() }
-    ms.toSet.size.toDouble should be >= (0.9 * N)
+    assert(clue(ms.toSet.size.toDouble) >= (0.9 * N))
     val negls = ms.filter(m => m < 0).size.toDouble
-    negls should be >= (0.4 * N)
-    negls should be <= (0.6 * N)
+    assert(clue(negls) >= (0.4 * N))
+    assert(clue(negls) <= (0.6 * N))
   }
 }

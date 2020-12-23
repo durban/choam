@@ -20,6 +20,8 @@ package dev.tauri.choam
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
+import scala.concurrent.duration._
+
 import scala.jdk.CollectionConverters._
 
 import cats.implicits._
@@ -28,212 +30,225 @@ import cats.effect.IO
 import kcas._
 
 final class ReactSpecNaiveKCAS
-  extends ReactSpec
+  extends IOSpecMUnit
   with SpecNaiveKCAS
+  with ReactSpec2[IO]
 
 final class ReactSpecEMCAS
-  extends ReactSpec
+  extends IOSpecMUnit
   with SpecEMCAS
+  with ReactSpec2[IO]
 
-abstract class ReactSpec extends BaseSpec {
+trait ReactSpec2[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   import React._
 
-  "Simple CAS" should "work as expected" in {
-    val ref = Ref.mk("ert")
-    val rea = lift((_: Int).toString) × (ref.cas("ert", "xyz") >>> lift(_ => "boo"))
-    val (s1, s2) = rea.unsafePerform((5, ()))
-    s1 should === ("5")
-    s2 should === ("boo")
-    ref.invisibleRead.unsafeRun should === ("xyz")
+  test("Simple CAS should work as expected") {
+    for {
+      ref <- React.newRef("ert").run[F]
+      rea = lift((_: Int).toString) × (ref.cas("ert", "xyz") >>> lift(_ => "boo"))
+      s12 <- rea((5, ()))
+      (s1, s2) = s12
+      _ <- assertEqualsF(s1, "5")
+      _ <- assertEqualsF(s2, "boo")
+      _ <- assertResultF(ref.invisibleRead.run[F], "xyz")
+    } yield ()
   }
 
-  "updWith" should "behave correctly when used through modifyWith" in {
-    val r1 = Ref.mk("foo")
-    val r2 = Ref.mk("x")
-    val r = r1.modifyWith { ov =>
-      if (ov eq "foo") React.ret("bar")
-      else r2.upd[Unit, String] { (o2, _) =>
-        (ov, o2)
+  test("updWith should behave correctly when used through modifyWith") {
+    for {
+      r1 <- React.newRef("foo").run[F]
+      r2 <- React.newRef("x").run[F]
+      r = r1.modifyWith { ov =>
+        if (ov eq "foo") React.ret("bar")
+        else r2.upd[Unit, String] { (o2, _) => (ov, o2) }
       }
-    }
-
-    r.unsafeRun
-    r1.invisibleRead.unsafeRun should === ("bar")
-    r2.invisibleRead.unsafeRun should === ("x")
-
-    r.unsafeRun
-    r1.invisibleRead.unsafeRun should === ("x")
-    r2.invisibleRead.unsafeRun should === ("bar")
+      _ <- r.run
+      _ <- assertResultF(r1.invisibleRead.run, "bar")
+      _ <- assertResultF(r2.invisibleRead.run, "x")
+      _ <- r.run
+      _ <- assertResultF(r1.invisibleRead.run, "x")
+      _ <- assertResultF(r2.invisibleRead.run, "bar")
+    } yield ()
   }
 
-  "Choice" should "prefer the first option" in {
-    val r1 = Ref.mk("r1")
-    val r2 = Ref.mk("r2")
-    val rea = r1.cas("r1", "x") + r2.cas("r2", "x")
-    val res = rea.unsafeRun
-    res should === (())
-    r1.invisibleRead.unsafeRun should === ("x")
-    r2.invisibleRead.unsafeRun should === ("r2")
+  test("Choice should prefer the first option") {
+    for {
+      r1 <- React.newRef("r1").run[F]
+      r2 <- React.newRef("r2").run[F]
+      rea = r1.cas("r1", "x") + r2.cas("r2", "x")
+      _ <- assertResultF(rea.run, ())
+      _ <- assertResultF(r1.invisibleRead.run, "x")
+      _ <- assertResultF(r2.invisibleRead.run, "r2")
+    } yield ()
   }
 
-  it should "use the second option, if the first is not available" in {
-    val r1 = Ref.mk("z")
-    val r2 = Ref.mk("r2")
-    val rea = r1.cas("r1", "x") + (r2.cas("r2", "x") * r1.cas("z", "r1"))
-    // r2: "r2" -> "x" AND r1: "z" -> "r1"
-    rea.unsafeRun
-    r2.invisibleRead.unsafeRun should === ("x")
-    r1.invisibleRead.unsafeRun should === ("r1")
-    // r1: "r1" -> "x"
-    rea.unsafeRun
-    r1.invisibleRead.unsafeRun should === ("x")
-    r2.invisibleRead.unsafeRun should === ("x")
+  test("Choice should use the second option, if the first is not available") {
+    for {
+      r1 <- React.newRef("z").run[F]
+      r2 <- React.newRef("r2").run[F]
+      rea = r1.cas("r1", "x") + (r2.cas("r2", "x") * r1.cas("z", "r1"))
+      // r2: "r2" -> "x" AND r1: "z" -> "r1"
+      _ <- rea.run
+      _ <- assertResultF(r2.invisibleRead.run, "x")
+      _ <- assertResultF(r1.invisibleRead.run, "r1")
+      // r1: "r1" -> "x"
+      _ <- rea.run
+      _ <- assertResultF(r1.invisibleRead.run, "x")
+      _ <- assertResultF(r2.invisibleRead.run, "x")
+    } yield ()
   }
 
-  it should "work if it's after some other operation" in {
-    val r1a = Ref.mk("1a")
-    val r1b = Ref.mk("1b")
-    val r2a = Ref.mk("2a")
-    val r2b = Ref.mk("2b")
-    val r3a = Ref.mk("3a")
-    val r3b = Ref.mk("3b")
-    val rea =
-      r1a.cas("1a", "xa") >>>
-      r1b.cas("1b", "xb") >>>
-      (
-       (r2a.cas("2a", "ya") >>> r2b.cas("2b", "yb")) +
-       (r3a.cas("3a", "za") >>> r3b.cas("3b", "zb"))
-      )
-
-    // 1st choice selected:
-    rea.unsafeRun
-    r1a.invisibleRead.unsafeRun should === ("xa")
-    r1b.invisibleRead.unsafeRun should === ("xb")
-    r2a.invisibleRead.unsafeRun should === ("ya")
-    r2b.invisibleRead.unsafeRun should === ("yb")
-    r3a.invisibleRead.unsafeRun should === ("3a")
-    r3b.invisibleRead.unsafeRun should === ("3b")
-
-    r1a.cas("xa", "1a").unsafeRun
-    r1b.cas("xb", "1b").unsafeRun
-    r1a.invisibleRead.unsafeRun should === ("1a")
-    r1b.invisibleRead.unsafeRun should === ("1b")
-
-    // 2nd choice selected:
-    rea.unsafeRun
-    r1a.invisibleRead.unsafeRun should === ("xa")
-    r1b.invisibleRead.unsafeRun should === ("xb")
-    r2a.invisibleRead.unsafeRun should === ("ya")
-    r2b.invisibleRead.unsafeRun should === ("yb")
-    r3a.invisibleRead.unsafeRun should === ("za")
-    r3b.invisibleRead.unsafeRun should === ("zb")
+  test("Choice should work if it's after some other operation") {
+    for {
+      r1a <- React.newRef("1a").run[F]
+      r1b <- React.newRef("1b").run[F]
+      r2a <- React.newRef("2a").run[F]
+      r2b <- React.newRef("2b").run[F]
+      r3a <- React.newRef("3a").run[F]
+      r3b <- React.newRef("3b").run[F]
+      rea = {
+        r1a.cas("1a", "xa") >>>
+        r1b.cas("1b", "xb") >>>
+        (
+        (r2a.cas("2a", "ya") >>> r2b.cas("2b", "yb")) +
+        (r3a.cas("3a", "za") >>> r3b.cas("3b", "zb"))
+        )
+      }
+      // 1st choice selected:
+      _ <- rea.run
+      _ <- assertResultF(r1a.invisibleRead.run, "xa")
+      _ <- assertResultF(r1b.invisibleRead.run, "xb")
+      _ <- assertResultF(r2a.invisibleRead.run, "ya")
+      _ <- assertResultF(r2b.invisibleRead.run, "yb")
+      _ <- assertResultF(r3a.invisibleRead.run, "3a")
+      _ <- assertResultF(r3b.invisibleRead.run, "3b")
+      _ <- r1a.cas("xa", "1a").run
+      _ <- r1b.cas("xb", "1b").run
+      _ <- assertResultF(r1a.invisibleRead.run, "1a")
+      _ <- assertResultF(r1b.invisibleRead.run, "1b")
+      // 2nd choice selected:
+      _ <- rea.run
+      _ <- assertResultF(r1a.invisibleRead.run, "xa")
+      _ <- assertResultF(r1b.invisibleRead.run, "xb")
+      _ <- assertResultF(r2a.invisibleRead.run, "ya")
+      _ <- assertResultF(r2b.invisibleRead.run, "yb")
+      _ <- assertResultF(r3a.invisibleRead.run, "za")
+      _ <- assertResultF(r3b.invisibleRead.run, "zb")
+    } yield ()
   }
 
-  it should "work even if it's computed" in {
-    val r1a = Ref.mk("1a")
-    val r1b = Ref.mk("1b")
-    val r2a = Ref.mk("2a")
-    val r2b = Ref.mk("2b")
-    val r3a = Ref.mk("3a")
-    val r3b = Ref.mk("3b")
-    val rea =
-      r1a.invisibleRead >>>
-      React.computed { s =>
-        if (s eq "1a") {
-          r1b.cas("1b", "xb") >>> (r2a.cas("2a", "ya") + r3a.cas("3a", "za"))
-        } else {
-          r1b.cas("1b", "xx") >>> (r2b.cas("2b", "yb") + r3b.cas("3b", "zb"))
+  test("Choice should work even if it's computed") {
+    for {
+      r1a <- React.newRef("1a").run[F]
+      r1b <- React.newRef("1b").run[F]
+      r2a <- React.newRef("2a").run[F]
+      r2b <- React.newRef("2b").run[F]
+      r3a <- React.newRef("3a").run[F]
+      r3b <- React.newRef("3b").run[F]
+      rea = {
+        r1a.invisibleRead >>>
+        React.computed { s =>
+          if (s eq "1a") {
+            r1b.cas("1b", "xb") >>> (r2a.cas("2a", "ya") + r3a.cas("3a", "za"))
+          } else {
+            r1b.cas("1b", "xx") >>> (r2b.cas("2b", "yb") + r3b.cas("3b", "zb"))
+          }
         }
       }
 
-    // THEN selected, 1st choice selected:
-    rea.unsafeRun
-    r1a.invisibleRead.unsafeRun should === ("1a")
-    r1b.invisibleRead.unsafeRun should === ("xb")
-    r2a.invisibleRead.unsafeRun should === ("ya")
-    r2b.invisibleRead.unsafeRun should === ("2b")
-    r3a.invisibleRead.unsafeRun should === ("3a")
-    r3b.invisibleRead.unsafeRun should === ("3b")
+      // THEN selected, 1st choice selected:
+      _ <- rea.run
+      _ <- assertResultF(r1a.invisibleRead.run, "1a")
+      _ <- assertResultF(r1b.invisibleRead.run, "xb")
+      _ <- assertResultF(r2a.invisibleRead.run, "ya")
+      _ <- assertResultF(r2b.invisibleRead.run, "2b")
+      _ <- assertResultF(r3a.invisibleRead.run, "3a")
+      _ <- assertResultF(r3b.invisibleRead.run, "3b")
 
-    r1b.cas("xb", "1b").unsafeRun
+      _ <- r1b.cas("xb", "1b").run
 
-    // THEN selected, 2nd choice selected:
-    rea.unsafeRun
-    r1a.invisibleRead.unsafeRun should === ("1a")
-    r1b.invisibleRead.unsafeRun should === ("xb")
-    r2a.invisibleRead.unsafeRun should === ("ya")
-    r2b.invisibleRead.unsafeRun should === ("2b")
-    r3a.invisibleRead.unsafeRun should === ("za")
-    r3b.invisibleRead.unsafeRun should === ("3b")
+      // THEN selected, 2nd choice selected:
+      _ <- rea.run
+      _ <- assertResultF(r1a.invisibleRead.run, "1a")
+      _ <- assertResultF(r1b.invisibleRead.run, "xb")
+      _ <- assertResultF(r2a.invisibleRead.run, "ya")
+      _ <- assertResultF(r2b.invisibleRead.run, "2b")
+      _ <- assertResultF(r3a.invisibleRead.run, "za")
+      _ <- assertResultF(r3b.invisibleRead.run, "3b")
 
-    r1a.cas("1a", "xa").unsafeRun
-    r1b.cas("xb", "1b").unsafeRun
+      _ <- r1a.cas("1a", "xa").run
+      _ <- r1b.cas("xb", "1b").run
 
-    // ELSE selected, 1st choice selected:
-    rea.unsafeRun
-    r1a.invisibleRead.unsafeRun should === ("xa")
-    r1b.invisibleRead.unsafeRun should === ("xx")
-    r2a.invisibleRead.unsafeRun should === ("ya")
-    r2b.invisibleRead.unsafeRun should === ("yb")
-    r3a.invisibleRead.unsafeRun should === ("za")
-    r3b.invisibleRead.unsafeRun should === ("3b")
+      // ELSE selected, 1st choice selected:
+      _ <- rea.run
+      _ <- assertResultF(r1a.invisibleRead.run, "xa")
+      _ <- assertResultF(r1b.invisibleRead.run, "xx")
+      _ <- assertResultF(r2a.invisibleRead.run, "ya")
+      _ <- assertResultF(r2b.invisibleRead.run, "yb")
+      _ <- assertResultF(r3a.invisibleRead.run, "za")
+      _ <- assertResultF(r3b.invisibleRead.run, "3b")
 
-    r1b.cas("xx", "1b").unsafeRun
+      _ <- r1b.cas("xx", "1b").run
 
-    // ELSE selected, 2nd choice selected:
-    rea.unsafeRun
-    r1a.invisibleRead.unsafeRun should === ("xa")
-    r1b.invisibleRead.unsafeRun should === ("xx")
-    r2a.invisibleRead.unsafeRun should === ("ya")
-    r2b.invisibleRead.unsafeRun should === ("yb")
-    r3a.invisibleRead.unsafeRun should === ("za")
-    r3b.invisibleRead.unsafeRun should === ("zb")
+      // ELSE selected, 2nd choice selected:
+      _ <- rea.run
+      _ <- assertResultF(r1a.invisibleRead.run, "xa")
+      _ <- assertResultF(r1b.invisibleRead.run, "xx")
+      _ <- assertResultF(r2a.invisibleRead.run, "ya")
+      _ <- assertResultF(r2b.invisibleRead.run, "yb")
+      _ <- assertResultF(r3a.invisibleRead.run, "za")
+      _ <- assertResultF(r3b.invisibleRead.run, "zb")
+    } yield ()
   }
 
-  it should "be stack-safe (even when deeply nested)" in {
+  test("Choice should be stack-safe (even when deeply nested)") {
     val n = 16 * React.maxStackDepth
-    val ref = Ref.mk("foo")
-    val successfulCas = ref.cas("foo", "bar")
-    val fails = (1 to n).foldLeft[React[Unit, Unit]](React.retry) { (r, _) =>
-      r + React.retry
-    }
-
-    val r: React[Unit, Unit] = fails + successfulCas
-    r.unsafeRun should === (())
-    ref.getter.unsafeRun should === ("bar")
+    for {
+      ref <- React.newRef("foo").run[F]
+      successfulCas = ref.cas("foo", "bar")
+      fails = (1 to n).foldLeft[React[Unit, Unit]](React.retry) { (r, _) =>
+        r + React.retry
+      }
+      r = fails + successfulCas
+      _ <- assertResultF(r.run, ())
+      _ <- assertResultF(ref.getter.run, "bar")
+    } yield ()
   }
 
-  it should "be stack-safe (even when deeply nested and doing actual CAS-es)" in {
+  test("Choice should be stack-safe (even when deeply nested and doing actual CAS-es)") {
     val n = 16 * React.maxStackDepth
-    val ref = Ref.mk("foo")
-    val successfulCas = ref.cas("foo", "bar")
-    val refs = Array.fill(n)(Ref.mk("x"))
-    val fails = refs.foldLeft[React[Unit, Unit]](React.retry) { (r, ref) =>
-      r + ref.cas("y", "this will never happen")
-    }
-
-    val r: React[Unit, Unit] = fails + successfulCas
-    r.unsafeRun should === (())
-    ref.getter.unsafeRun should === ("bar")
-    refs.foreach { ref =>
-      ref.getter.unsafeRun should === ("x")
-    }
+    for {
+      ref <- React.newRef("foo").run[F]
+      successfulCas = ref.cas("foo", "bar")
+      refs <- (1 to n).toList.traverse { _ =>
+        React.newRef("x").run[F]
+      }
+      fails = refs.foldLeft[React[Unit, Unit]](React.retry) { (r, ref) =>
+        r + ref.cas("y", "this will never happen")
+      }
+      r = fails + successfulCas
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(ref.getter.run[F], "bar")
+      _ <- refs.traverse { ref =>
+        assertResultF(ref.getter.run[F], "x")
+      }
+    } yield ()
   }
 
-  it should "correctly backtrack (1) (no jumps)" in {
+  test("Choice should correctly backtrack (1) (no jumps)") {
     backtrackTest1(2)
   }
 
-  it should "correctly backtrack (1) (even with jumps)" in {
+  test("Choice should correctly backtrack (1) (even with jumps)") {
     backtrackTest1(React.maxStackDepth + 1)
   }
 
-  it should "correctly backtrack (2) (no jumps)" in {
+  test("Choice should correctly backtrack (2) (no jumps)") {
     backtrackTest2(2)
   }
 
-  it should "correctly backtrack (2) (even with jumps)" in {
+  test("Choice should correctly backtrack (2) (even with jumps)") {
     backtrackTest2(React.maxStackDepth / 4)
   }
 
@@ -260,27 +275,28 @@ abstract class ReactSpec extends BaseSpec {
    *   /       \
    * CAS_fail  Retry
    */
-  def backtrackTest1(x: Int): Unit = {
-    val (okRefs1, ok1) = mkOkCASes(x, "foo1", "bar1")
-    val (okRefs2, ok2) = mkOkCASes(x, "foo2", "bar2")
-    val okRef3 = Ref.mk("foo3")
-    val okRef4 = Ref.mk("foo4")
-    val failRef = Ref.mk("fail")
-    val left = ok1 >>> ((ok2 >>> (failRef.cas("x_fail", "y_fail") + React.retry)) + okRef3.cas("foo3", "bar3"))
-    val right = okRef4.cas("foo4", "bar4")
-    val r = left + right
-    r.unsafeRun should === (())
-    okRefs1.foreach { ref =>
-      ref.getter.unsafeRun should === ("bar1")
+  def backtrackTest1(x: Int): F[Unit] = for {
+    r1 <- mkOkCASes(x, "foo1", "bar1")
+    (okRefs1, ok1) = r1
+    r2 <- mkOkCASes(x, "foo2", "bar2")
+    (okRefs2, ok2) = r2
+    okRef3 <- React.newRef("foo3").run
+    okRef4 <- React.newRef("foo4").run
+    failRef <- React.newRef("fail").run
+    left = ok1 >>> ((ok2 >>> (failRef.cas("x_fail", "y_fail") + React.retry)) + okRef3.cas("foo3", "bar3"))
+    right = okRef4.cas("foo4", "bar4")
+    r = left + right
+    _ <- assertResultF(r.run[F], ())
+    _ <- okRefs1.traverse { ref =>
+      assertResultF(ref.getter.run, "bar1")
     }
-    okRefs2.foreach { ref =>
-      ref.getter.unsafeRun should === ("foo2")
+    _ <- okRefs2.traverse { ref =>
+      assertResultF(ref.getter.run[F], "foo2")
     }
-    okRef3.getter.unsafeRun should === ("bar3")
-    okRef4.getter.unsafeRun should === ("foo4")
-    failRef.getter.unsafeRun should === ("fail")
-    ()
-  }
+    _ <- assertResultF(okRef3.getter.run[F], "bar3")
+    _ <- assertResultF(okRef4.getter.run[F], "foo4")
+    _ <- assertResultF(failRef.getter.run[F], "fail")
+  } yield ()
 
   /**            +
    *            / \
@@ -298,234 +314,222 @@ abstract class ReactSpec extends BaseSpec {
    *     |              |
    * CAS_leaf0  ... CAS_leaf15
    */
-  def backtrackTest2(x: Int): Unit = {
+  def backtrackTest2(x: Int): F[Unit] = {
 
-    def oneChoice(leftCont: React[Unit, Unit], rightCont: React[Unit, Unit], x: Int, label: String): (React[Unit, Unit], () => Unit) = {
-      val ol = s"old-${label}-left"
-      val nl = s"new-${label}-left"
-      val (lRefs, left) = mkOkCASes(x, ol, nl)
-      val or = s"old-${label}-right"
-      val nr = s"new-${label}-right"
-      val (rRefs, right) = mkOkCASes(x, or, nr)
-      def reset(): Unit = {
-        lRefs.foreach { ref => ref.modify(_ => ol).unsafeRun }
-        rRefs.foreach { ref => ref.modify(_ => or).unsafeRun }
+    def oneChoice(leftCont: React[Unit, Unit], rightCont: React[Unit, Unit], x: Int, label: String): F[(React[Unit, Unit], F[Unit])] = for {
+      _ <- F.unit
+      ol = s"old-${label}-left"
+      nl = s"new-${label}-left"
+      ok1 <- mkOkCASes(x, ol, nl)
+      (lRefs, left) = ok1
+      or = s"old-${label}-right"
+      nr = s"new-${label}-right"
+      ok2 <- mkOkCASes(x, or, nr)
+      (rRefs, right) = ok2
+      reset = {
+        lRefs.traverse { ref => ref.modify(_ => ol).run[F] }.flatMap { _ =>
+          rRefs.traverse { ref => ref.modify(_ => or).run[F] }
+        }.void
       }
-      (((left >>> leftCont) + (right >>> rightCont)).discard, reset _)
-    }
+    } yield (((left >>> leftCont) + (right >>> rightCont)).discard, reset)
 
-    val leafs = Array.tabulate(16)(idx => Ref.mk(s"foo-${idx}"))
+    for {
+      leafs <- (0 until 16).toList.traverse(idx => React.newRef(s"foo-${idx}").run[F])
+      lr1 <- leafs.grouped(2).toList.traverse[F, (React[Unit, Unit], F[Unit])] {
+        case List(refLeft, refRight) =>
+          val ol = refLeft.invisibleRead.unsafeRun
+          val or = refRight.invisibleRead.unsafeRun
+          oneChoice(refLeft.cas(ol, s"${ol}-new"), refRight.cas(or, s"${or}-new"), x, "l1")
+        case _ =>
+          failF()
+      }.map(_.toList.unzip)
+      (l1, rss1) = lr1
+      _ <- assertEqualsF(l1.size, 8)
 
-    val (l1, rss1) = leafs.grouped(2).map {
-      case Array(refLeft, refRight) =>
-        val ol = refLeft.invisibleRead.unsafeRun
-        val or = refRight.invisibleRead.unsafeRun
-        oneChoice(refLeft.cas(ol, s"${ol}-new"), refRight.cas(or, s"${or}-new"), x, "l1")
-      case _ =>
-        fail()
-    }.toList.unzip
-    assert(l1.size == 8)
+      lr2 <- l1.grouped(2).toList.traverse[F, (React[Unit, Unit], F[Unit])] {
+        case List(rl, rr) =>
+          oneChoice(rl, rr, x, "l2")
+        case _ =>
+          failF()
+      }.map(_.toList.unzip)
+      (l2, rss2) = lr2
+      _ <- assertEqualsF(l2.size, 4)
 
-    val (l2, rss2) = l1.grouped(2).map {
-      case List(rl, rr) =>
-        oneChoice(rl, rr, x, "l2")
-      case _ =>
-        fail()
-    }.toList.unzip
-    assert(l2.size == 4)
+      lr3 <- l2.grouped(2).toList.traverse[F, (React[Unit, Unit], F[Unit])] {
+        case List(rl, rr) =>
+          oneChoice(rl, rr, x, "l3")
+        case _ =>
+          failF()
+      }.map(_.toList.unzip)
+      (l3, rss3) = lr3
+      _ <- assertEqualsF(l3.size, 2)
 
-    val (l3, rss3) = l2.grouped(2).map {
-      case List(rl, rr) =>
-        oneChoice(rl, rr, x, "l3")
-      case _ =>
-        fail()
-    }.toList.unzip
-    assert(l3.size == 2)
+      tr <- oneChoice(l3(0), l3(1), x, "top")
+      (top, rs) = tr
 
-    val (top, rs) = oneChoice(l3(0), l3(1), x, "top")
-
-    def reset(): Unit = {
-      rss1.foreach(_())
-      rss2.foreach(_())
-      rss3.foreach(_())
-      rs()
-    }
-
-    def checkLeafs(expLastNew: Int): Unit = {
-      for ((ref, idx) <- leafs.zipWithIndex) {
-        val expContents = if (idx <= expLastNew) s"foo-${idx}-new" else s"foo-${idx}"
-        val contents = ref.invisibleRead.unsafeRun
-        contents should === (expContents)
+      reset = {
+        rss1.sequence >> rss2.sequence >> rss3.sequence >> rs
       }
-    }
 
-    checkLeafs(-1)
-    for (e <- 0 until leafs.size) {
-      top.unsafeRun
-      checkLeafs(e)
-      reset()
-    }
-  }
-
-  def mkOkCASes(n: Int, ov: String, nv: String): (Array[Ref[String]], React[Unit, Unit]) = {
-    val ref0 = Ref.mk(ov)
-    val refs = Array.fill(n - 1)(Ref.mk(ov))
-    val r = refs.foldLeft(ref0.cas(ov, nv)) { (r, ref) =>
-      (r * ref.cas(ov, nv)).discard
-    }
-    (ref0 +: refs, r)
-  }
-
-  "Post-commit actions" should "be executed" in {
-    val r1 = Ref.mk("x")
-    val r2 = Ref.mk("")
-    val r3 = Ref.mk("")
-    val r = r1.upd[Unit, String] {
-      case (s, _) =>
-        val r = s + "x"
-        (r, r)
-    }
-    val pc1 = r.postCommit(r2.upd[String, Unit] { case (_, x) => (x, ()) })
-    val pc2 = pc1.postCommit(r3.upd[String, Unit] { case (_, x) => (x, ()) })
-
-    pc1.unsafeRun should === ("xx")
-    r1.invisibleRead.unsafeRun should === ("xx")
-    r2.invisibleRead.unsafeRun should === ("xx")
-    r3.invisibleRead.unsafeRun should === ("")
-
-    pc2.unsafeRun should === ("xxx")
-    r1.invisibleRead.unsafeRun should === ("xxx")
-    r2.invisibleRead.unsafeRun should === ("xxx")
-    r3.invisibleRead.unsafeRun should === ("xxx")
-  }
-
-  // TODO: this is a conflicting CAS
-  "Popping then pushing back" should "work (???)" ignore {
-    val stack = new TreiberStack[Int]
-    val popPush = stack.tryPop.rmap(_.getOrElse(0)) >>> stack.push
-
-    stack.unsafeToList should === (List())
-    stack.push.unsafePerform(1)
-    stack.unsafeToList should === (List(1))
-
-    // FIXME:
-    popPush.unsafeRun
-    stack.unsafeToList should === (List(1, 1))
-  }
-
-  // TODO: this is a conflicting CAS
-  "Impossible CAS" should "work (???)" ignore {
-    val ref = Ref.mk("foo")
-    val cas1 = ref.cas("foo", "bar")
-    val cas2 = ref.cas("foo", "baz")
-    val r = cas1 >>> cas2
-    r.unsafeRun
-
-    // FIXME:
-    ref.invisibleRead.unsafeRun should === ("baz")
-  }
-
-  "Michael-Scott queue" should "work correctly" in {
-    val q = new MichaelScottQueue[String]
-    q.unsafeToList should === (Nil)
-
-    q.tryDeque.unsafeRun should === (None)
-    q.unsafeToList should === (Nil)
-
-    q.enqueue.unsafePerform("a")
-    q.unsafeToList should === (List("a"))
-
-    q.tryDeque.unsafeRun should === (Some("a"))
-    q.unsafeToList should === (Nil)
-    q.tryDeque.unsafeRun should === (None)
-    q.unsafeToList should === (Nil)
-
-    q.enqueue.unsafePerform("a")
-    q.unsafeToList should === (List("a"))
-    q.enqueue.unsafePerform("b")
-    q.unsafeToList should === (List("a", "b"))
-    q.enqueue.unsafePerform("c")
-    q.unsafeToList should === (List("a", "b", "c"))
-
-    q.tryDeque.unsafeRun should === (Some("a"))
-    q.unsafeToList should === (List("b", "c"))
-
-    q.enqueue.unsafePerform("x")
-    q.unsafeToList should === (List("b", "c", "x"))
-
-    q.tryDeque.unsafeRun should === (Some("b"))
-    q.unsafeToList should === (List("c", "x"))
-    q.tryDeque.unsafeRun should === (Some("c"))
-    q.unsafeToList should === (List("x"))
-    q.tryDeque.unsafeRun should === (Some("x"))
-    q.tryDeque.unsafeRun should === (None)
-    q.unsafeToList should === (Nil)
-  }
-
-  it should "allow multiple producers and consumers" in {
-    val max = 10000
-    val q = new MichaelScottQueue[String]
-    val produce = IO {
-      for (i <- 0 until max) {
-        q.enqueue.unsafePerform(i.toString)
-      }
-    }
-    val cs = new ConcurrentLinkedQueue[String]
-    val stop = new AtomicBoolean(false)
-    val consume = IO {
-      def go(): Unit = {
-        q.tryDeque.unsafeRun match {
-          case Some(s) =>
-            cs.offer(s)
-            go()
-          case None =>
-            if (stop.get()) () // we're done
-            else go()
+      checkLeafs = { (expLastNew: Int) =>
+        leafs.zipWithIndex.traverse { case (ref, idx) =>
+          val expContents = if (idx <= expLastNew) s"foo-${idx}-new" else s"foo-${idx}"
+          assertResultF(ref.invisibleRead.run[F], expContents)
         }
       }
-      go()
-    }
-    val tsk = for {
-      p1 <- produce.start
-      c1 <- consume.start
-      p2 <- produce.start
-      c2 <- consume.start
-      _ <- p1.join
-      _ <- p2.join
-      _ <- IO { stop.set(true) }
-      _ <- c1.join
-      _ <- c2.join
+
+      _ <- checkLeafs(-1)
+      _ <- (0 until leafs.size).toList.traverse { e =>
+        top.run[F] >> checkLeafs(e) >> reset
+      }
     } yield ()
-
-    try {
-      tsk.unsafeRunSync()
-    } finally {
-      stop.set(true)
-    }
-
-    cs.asScala.toVector.sorted should === (
-      (0 until max).toVector.flatMap(n => Vector(n.toString, n.toString)).sorted
-    )
   }
 
-  "Integration with IO" should "work" in {
-    val act: IO[String] = for {
-      ref <- React.newRef[String]("foo").run[IO]
-      _ <- ref.upd { (s, p: String) => (s + p, ()) }[IO]("bar")
-      res <- ref.getter.run[IO]
+  def mkOkCASes(n: Int, ov: String, nv: String): F[(List[Ref[String]], React[Unit, Unit])] = for {
+    ref0 <- React.newRef(ov).run[F]
+    refs <- React.newRef(ov).run[F].replicateA(n - 1)
+    r = refs.foldLeft(ref0.cas(ov, nv)) { (r, ref) =>
+      (r * ref.cas(ov, nv)).discard
+    }
+  } yield (ref0 +: refs, r)
+
+  test("Post-commit actions should be executed") {
+    for {
+      r1 <- React.newRef("x").run[F]
+      r2 <- React.newRef("").run
+      r3 <- React.newRef("").run
+      r = r1.upd[Unit, String] { case (s, _) =>
+        val r = s + "x"
+        (r, r)
+      }
+      pc1 = r.postCommit(r2.upd[String, Unit] { case (_, x) => (x, ()) })
+      pc2 = pc1.postCommit(r3.upd[String, Unit] { case (_, x) => (x, ()) })
+
+      _ <- assertResultF(pc1.run[F], "xx")
+      _ <- assertResultF(r1.invisibleRead.run[F], "xx")
+      _ <- assertResultF(r2.invisibleRead.run[F], "xx")
+      _ <- assertResultF(r3.invisibleRead.run[F], "")
+
+      _ <- assertResultF(pc2.run[F], "xxx")
+      _ <- assertResultF(r1.invisibleRead.run[F], "xxx")
+      _ <- assertResultF(r2.invisibleRead.run[F], "xxx")
+      _ <- assertResultF(r3.invisibleRead.run[F], "xxx")
+    } yield ()
+  }
+
+  test("Impossible CAS should cause a runtime error".ignore) {
+    // TODO
+  }
+
+  test("Michael-Scott queue should work correctly") {
+    for {
+      q <- F.delay { new MichaelScottQueue[String] }
+      _ <- assertResultF(q.unsafeToListF, Nil)
+
+      _ <- assertResultF(q.tryDeque.run, None)
+      _ <- assertResultF(q.unsafeToListF, Nil)
+
+      _ <- q.enqueue("a")
+      _ <- assertResultF(q.unsafeToListF, List("a"))
+
+      _ <- assertResultF(q.tryDeque.run, Some("a"))
+      _ <- assertResultF(q.unsafeToListF, Nil)
+      _ <- assertResultF(q.tryDeque.run, None)
+      _ <- assertResultF(q.unsafeToListF, Nil)
+
+      _ <- q.enqueue("a")
+      _ <- assertResultF(q.unsafeToListF, List("a"))
+      _ <- q.enqueue("b")
+      _ <- assertResultF(q.unsafeToListF, List("a", "b"))
+      _ <- q.enqueue("c")
+      _ <- assertResultF(q.unsafeToListF, List("a", "b", "c"))
+
+      _ <- assertResultF(q.tryDeque.run, Some("a"))
+      _ <- assertResultF(q.unsafeToListF, List("b", "c"))
+
+      _ <- q.enqueue("x")
+      _ <- assertResultF(q.unsafeToListF, List("b", "c", "x"))
+
+      _ <- assertResultF(q.tryDeque.run, Some("b"))
+      _ <- assertResultF(q.unsafeToListF, List("c", "x"))
+      _ <- assertResultF(q.tryDeque.run, Some("c"))
+      _ <- assertResultF(q.unsafeToListF, List("x"))
+      _ <- assertResultF(q.tryDeque.run, Some("x"))
+      _ <- assertResultF(q.tryDeque.run, None)
+      _ <- assertResultF(q.unsafeToListF, Nil)
+    } yield ()
+  }
+
+  test("Michael-Scott queue should allow multiple producers and consumers".only) {
+    val max = 10000
+    for {
+      q <- F.delay { new MichaelScottQueue[String] }
+      produce = F.delay {
+        for (i <- 0 until max) {
+          q.enqueue.unsafePerform(i.toString)
+        }
+      }
+      cs <- F.delay { new ConcurrentLinkedQueue[String] }
+      stop <- F.delay { new AtomicBoolean(false) }
+      consume = F.delay {
+        @tailrec
+        def go(): Unit = {
+          q.tryDeque.unsafeRun match {
+            case Some(s) =>
+              cs.offer(s)
+              go()
+            case None =>
+              if (stop.get()) () // we're done
+              else go()
+          }
+        }
+        go()
+      }
+      tsk = for {
+        // For some reason, the `sleep`s are necessary
+        // to actually have an async boundary.
+        p1 <- (tmF.sleep(1.millisecond) >> produce).start
+        c1 <- (tmF.sleep(1.millisecond) >> consume).start
+        p2 <- (tmF.sleep(1.millisecond) >> produce).start
+        c2 <- (tmF.sleep(1.millisecond) >> consume).start
+        _ <- p1.join
+        _ <- p2.join
+        _ <- F.delay { stop.set(true) }
+        _ <- c1.join
+        _ <- c2.join
+      } yield ()
+
+      _ <- tsk.guarantee(F.delay { stop.set(true) })
+
+      _ <- assertEqualsF(
+        cs.asScala.toVector.sorted,
+        (0 until max).toVector.flatMap(n => Vector(n.toString, n.toString)).sorted
+      )
+    } yield ()
+  }
+
+  test("Integration with IO should work") {
+    val act: F[String] = for {
+      ref <- React.newRef[String]("foo").run[F]
+      _ <- ref.upd { (s, p: String) => (s + p, ()) }[F]("bar")
+      res <- ref.getter.run[F]
     } yield res
 
-    act.unsafeRunSync() should === ("foobar")
-    act.unsafeRunSync() should === ("foobar")
+    for {
+      _ <- assertResultF(act, "foobar")
+      _ <- assertResultF(act, "foobar")
+    } yield ()
   }
 
-  "BooleanRefOps" should "provide guard/guardNot" in {
-    val trueRef = Ref.mk(true)
-    val falseRef = Ref.mk(false)
-    val ft = React.ret(42)
-    trueRef.guard(ft).unsafeRun should === (Some(42))
-    trueRef.guardNot(ft).unsafeRun should === (None)
-    falseRef.guard(ft).unsafeRun should === (None)
-    falseRef.guardNot(ft).unsafeRun should === (Some(42))
+  test("BooleanRefOps should provide guard/guardNot") {
+    for {
+      trueRef <- React.newRef(true).run[F]
+      falseRef <- React.newRef(false).run[F]
+      ft = React.ret(42)
+      _ <- assertResultF(trueRef.guard(ft).run, Some(42))
+      _ <- assertResultF(trueRef.guardNot(ft).run, None)
+      _ <- assertResultF(falseRef.guard(ft).run, None)
+      _ <- assertResultF(falseRef.guardNot(ft).run, Some(42))
+    } yield ()
   }
 }

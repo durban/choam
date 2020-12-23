@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import cats.effect.Sync
+
 import kcas._
 
 import MichaelScottQueue._
@@ -60,6 +62,10 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
           tail.cas(n, nv).?.postCommit(React.computed(_ => findAndEnqueue(node))).rmap(_ => ())
       }
     }).rmap(_ => ())
+  }
+
+  private[choam] def unsafeToListF[F[_]](implicit kcas: KCAS, F: Sync[F]): F[List[A]] = {
+    F.delay { this.unsafeToList(kcas) }
   }
 
   private[choam] def unsafeToList(implicit kcas: KCAS): List[A] = {

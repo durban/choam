@@ -19,11 +19,11 @@ package dev.tauri.choam
 package bench
 package util
 
-class ReferenceTreiberStackSpec extends BaseSpec {
+class ReferenceTreiberStackSpec extends BaseSpecA {
 
-  "length" should "be correct" in {
-    new ReferenceTreiberStack[Int].length should === (0)
-    new ReferenceTreiberStack[Int](Nil).length should === (0)
-    new ReferenceTreiberStack[Int](1 :: 2 :: 3 :: Nil).length should === (3)
+  test("length should be correct") {
+    assertEquals(new ReferenceTreiberStack[Int].length, 0)
+    assertEquals(new ReferenceTreiberStack[Int](Nil).length, 0)
+    assertEquals(new ReferenceTreiberStack[Int](1 :: 2 :: 3 :: Nil).length, 3)
   }
 }

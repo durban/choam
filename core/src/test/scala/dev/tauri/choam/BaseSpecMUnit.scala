@@ -58,6 +58,12 @@ trait BaseSpecF[F[_]]
   def assertResultF[A, B](obtained: F[A], expected: B, clue: String = "values are not the same")(
     implicit loc: Location, ev: B <:< A
   ): F[Unit]
+
+  def failF[A](clue: String = "assertion failed")(implicit loc: Location): F[A] = {
+    assertF(false, clue).flatMap { _ =>
+      F.raiseError[A](new IllegalStateException("unreachable code"))
+    }
+  }
 }
 
 trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] {

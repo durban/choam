@@ -20,6 +20,8 @@ package kcas
 
 import scala.collection.JavaConverters._
 
+import cats.syntax.all._
+
 import org.openjdk.jol.info.ClassLayout
 
 object RefSpec {
@@ -28,22 +30,17 @@ object RefSpec {
 }
 
 @deprecated("so that we can test deprecated methods", since = "we need it")
-class RefSpec extends BaseSpec {
+class RefSpec2 extends BaseSpecA {
 
   import RefSpec._
 
-  private def assumeOpenJdk(): Unit = {
+  def assumeOpenJdk(): Unit = {
     val isOpenJdk = {
       val vmName = java.lang.System.getProperty("java.vm.name")
       vmName.contains("HotSpot") || vmName.contains("OpenJDK")
     }
-    assume(isOpenJdk)
-    ()
+    assume(isOpenJdk, "this test only runs on OpenJDK")
   }
-
-  // we're not really using this:
-  implicit override def kcasImpl: kcas.KCAS =
-    kcas.KCAS.NaiveKCAS
 
   def getRightPaddedSize(obj: AnyRef, fieldName: String): Long = {
     val layout = ClassLayout.parseInstance(obj)
@@ -59,16 +56,14 @@ class RefSpec extends BaseSpec {
     end - start
   }
 
-  "Ref" should "be padded to avoid false sharing" in {
+  test("Ref should be padded to avoid false sharing") {
     assumeOpenJdk()
     val ref = Ref.mk("foo")
     val size = getRightPaddedSize(ref, fieldName)
-    size should be >= targetSize
-    info(s"size is ${size} bytes")
+    assert(clue(size) >= targetSize)
   }
 
-
-  it should "compute `bigId` correctly" in {
+  test("Ref should compute `bigId` correctly") {
     assumeOpenJdk()
     val ref = new PaddedRefImpl[String]("foo")(
       0xffffffffffffffffL,
@@ -76,7 +71,7 @@ class RefSpec extends BaseSpec {
       0xccccccccccccccccL,
       0xdbdbdbdbdbdbdbdbL
     )
-    ref.bigId should === (BigInt(
+    val exp = (BigInt(
       (
         Vector.fill(8)(0xff.toByte) ++
         Vector.fill(8)(0xaa.toByte) ++
@@ -84,13 +79,13 @@ class RefSpec extends BaseSpec {
         Vector.fill(8)(0xdb.toByte)
       ).toArray
     ))
+    assertEquals(ref.bigId, exp)
   }
 
-  "Unpadded Ref" should "not be padded (sanity check)" in {
+  test("Unpadded Ref should not be padded (sanity check)") {
     assumeOpenJdk()
     val ref = Ref.mkUnpadded("bar")
     val size = getRightPaddedSize(ref, fieldName)
-    size should be <= 48L
-    info(s"size is ${size} bytes")
+    assert(clue(size) <= 48L)
   }
 }

@@ -24,28 +24,31 @@ import java.util.concurrent.ThreadLocalRandom
 import scala.concurrent.stm._
 
 import cats.effect.IO
+import cats.syntax.all._
 
-class StmStackSpec extends BaseSpec with IOSpec {
+import munit.CatsEffectSuite
 
-  "StmStack" should "be a correct stack" in {
+class StmStackSpec extends CatsEffectSuite with BaseSpecA {
+
+  test("StmStack should be a correct stack") {
     val s = new StmStack[Int]
-    s.unsafeToList() should === (Nil)
-    s.tryPop() should === (None)
-    s.unsafeToList() should === (Nil)
+    assertEquals(s.unsafeToList(), Nil)
+    assertEquals(s.tryPop(), None)
+    assertEquals(s.unsafeToList(), Nil)
     s.push(1)
-    s.unsafeToList() should === (1 :: Nil)
+    assertEquals(s.unsafeToList(), 1 :: Nil)
     s.push(2)
     s.push(3)
-    s.unsafeToList() should === (3 :: 2 :: 1 :: Nil)
-    s.tryPop() should === (Some(3))
-    s.unsafeToList() should === (2 :: 1 :: Nil)
-    s.tryPop() should === (Some(2))
-    s.tryPop() should === (Some(1))
-    s.tryPop() should === (None)
-    s.unsafeToList() should === (Nil)
+    assertEquals(s.unsafeToList(), 3 :: 2 :: 1 :: Nil)
+    assertEquals(s.tryPop(), Some(3))
+    assertEquals(s.unsafeToList(), 2 :: 1 :: Nil)
+    assertEquals(s.tryPop(), Some(2))
+    assertEquals(s.tryPop(), Some(1))
+    assertEquals(s.tryPop(), None)
+    assertEquals(s.unsafeToList(), Nil)
   }
 
-  it should "not lose items" in {
+  test("StmStack should not lose items") {
     val s = new StmStack[Int]
     val N = 1000000
     val seed1 = ThreadLocalRandom.current().nextInt()
@@ -80,20 +83,22 @@ class StmStackSpec extends BaseSpec with IOSpec {
       cs2 <- fpo2.join
     } yield cs1 ^ cs2
 
-    val cs = tsk.unsafeRunSync()
-    val xs1 = XorShift(seed1)
-    val expCs1 = (1 to N).foldLeft(0) { (cs, _) =>
-      cs ^ xs1.nextInt()
-    }
-    val xs2 = XorShift(seed2)
-    val expCs2 = (1 to N).foldLeft(0) { (cs, _) =>
-      cs ^ xs2.nextInt()
-    }
-    cs should === (expCs1 ^ expCs2)
-    s.unsafeToList() should === (Nil)
+    for {
+      cs <- tsk
+      xs1 <- IO { XorShift(seed1) }
+      expCs1 <- IO {
+        (1 to N).foldLeft(0) { (cs, _) => cs ^ xs1.nextInt() }
+      }
+      xs2 <- IO { XorShift(seed2) }
+      expCs2 <- IO {
+        (1 to N).foldLeft(0) { (cs, _) => cs ^ xs2.nextInt() }
+      }
+      _ <- IO { assertEquals(cs, (expCs1 ^ expCs2)) }
+      _ <- IO { assertEquals(s.unsafeToList(), Nil) }
+    } yield ()
   }
 
-  it should "have composable transactions" in {
+  test("StmStack should have composable transactions") {
     val s1 = new StmStack[Int]
     val s2 = new StmStack[Int]
     val N = 1000000
@@ -113,7 +118,7 @@ class StmStackSpec extends BaseSpec with IOSpec {
           val i2 = s2.tryPop()
           (i1, i2) match {
             case (Some(v1), Some(v2)) =>
-              if (v1 !== v2) fail(s"Popped different values: ${v1} and ${v2}")
+              if (v1 =!= v2) fail(s"Popped different values: ${v1} and ${v2}")
             case (None, None) =>
               // OK, empty stacks
             case _ =>
@@ -122,7 +127,8 @@ class StmStackSpec extends BaseSpec with IOSpec {
         }
       }
     }
-    val tsk = for {
+
+    for {
       fpu1 <- IO { push(XorShift()) }.start
       fpo1 <- IO { pop() }.start
       fpu2 <- IO { push(XorShift()) }.start
@@ -132,7 +138,5 @@ class StmStackSpec extends BaseSpec with IOSpec {
       _ <- fpo1.join
       _ <- fpo2.join
     } yield ()
-
-    tsk.unsafeRunSync()
   }
 }
