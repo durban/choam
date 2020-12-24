@@ -51,19 +51,7 @@ abstract class KCAS { self =>
 
   private[choam] def start(): Desc
 
-  private[choam] def tryReadOne[A](ref: Ref[A]): A
-
-  @tailrec
-  private[choam] final def read[A](ref: Ref[A]): A = {
-    tryReadOne(ref) match {
-      case null =>
-        // TODO: Retrying on `null` is because of NaiveKCAS,
-        // TODO: and should be removed from here.
-        read(ref)
-      case a =>
-        a
-    }
-  }
+  private[choam] def read[A](ref: Ref[A]): A
 
   private[choam] def isNaive: Boolean =
     false

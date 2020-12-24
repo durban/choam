@@ -191,7 +191,7 @@ private[kcas] object EMCAS extends KCAS { self =>
 
   // Listing 3 in the paper:
 
-  private[choam] override def tryReadOne[A](ref: Ref[A]): A =
+  private[choam] final override def read[A](ref: Ref[A]): A =
     readValue(ref)
 
   /**
@@ -346,7 +346,7 @@ private[kcas] object EMCAS extends KCAS { self =>
             // descriptor have been collected, but not replaced yet;
             // this should replace it with a small probability (if
             // not, we'll retry):
-            EMCAS.tryReadOne(ref)
+            EMCAS.read(ref)
           }
         case a =>
           // descriptor have been cleaned up:

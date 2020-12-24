@@ -490,15 +490,12 @@ object React {
     protected def transform(a: A, b: B): C
 
     protected final def tryPerform(n: Int, b: B, pc: Reaction, desc: KCAS#Desc): TentativeResult[D] = {
-      desc.impl.tryReadOne(ref) match {
-        case null =>
-          desc.cancel()
-          Retry
-        case a if equ(a, ov) =>
-          maybeJump(n, transform(a, b), k, pc, desc.withCAS(ref, ov, nv))
-        case _ =>
-          desc.cancel()
-          Retry
+      val a = desc.impl.read(ref)
+      if (equ(a, ov)) {
+        maybeJump(n, transform(a, b), k, pc, desc.withCAS(ref, ov, nv))
+      } else {
+        desc.cancel()
+        Retry
       }
     }
 
@@ -541,10 +538,8 @@ object React {
     protected def transform(a: A, b: B): C
 
     protected final def tryPerform(n: Int, b: B, ops: Reaction, desc: KCAS#Desc): TentativeResult[D] = {
-      desc.impl.tryReadOne(ref) match {
-        case null => Retry // TODO: this is NaiveKCAS-specific
-        case a => maybeJump(n, transform(a, b), k, ops, desc)
-      }
+      val a = desc.impl.read(ref)
+      maybeJump(n, transform(a, b), k, ops, desc)
     }
 
     final def andThenImpl[E](that: React[D, E]): React[B, E] = {

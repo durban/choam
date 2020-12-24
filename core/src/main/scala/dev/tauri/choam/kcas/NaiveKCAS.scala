@@ -95,8 +95,15 @@ private[kcas] object NaiveKCAS extends KCAS { self =>
   override def start(): self.Desc =
     DescRepr(Nil)
 
-  override def tryReadOne[A](ref: Ref[A]): A =
-    ref.unsafeTryRead()
+  @tailrec
+  final override def read[A](ref: Ref[A]): A = {
+    ref.unsafeTryRead() match {
+      case null =>
+        read(ref)
+      case a =>
+        a
+    }
+  }
 
   private def perform(ops: List[CASD[_]]): Boolean = {
 
