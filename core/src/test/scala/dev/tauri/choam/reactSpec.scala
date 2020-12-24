@@ -419,8 +419,16 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("Impossible CAS should cause a runtime error".ignore) {
-    // TODO
+  test("Impossible CAS should cause a runtime error") {
+    for {
+      ref <- React.newRef("a").run[F]
+      r = ref.modify(_ + "b") >>> ref.modify(_ + "x").lmap(_ => ())
+      res <- r.run[F].attempt
+      _ <- res match {
+        case Left(ex) => assertF(ex.getMessage.contains("Impossible k-CAS"))
+        case Right(r) => failF(s"Unexpected success: ${r}")
+      }
+    } yield ()
   }
 
   test("Michael-Scott queue should work correctly") {
