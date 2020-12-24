@@ -69,7 +69,7 @@ class TreiberStackGlobalTest extends StressTestBase {
 
   @Actor
   def pop(r: ZZZ_Result): Unit = {
-     val (v1, v2) = tryPop.unsafeRun
+     val (v1, v2) = tryPop.unsafeRun()
      if (v1.isDefined) r.r1 = true
      if (v2.isDefined) r.r2 = true
      // pop must always see the same values:

@@ -66,6 +66,6 @@ class LiftTest extends StressTestBase {
 
   @Arbiter
   def abriter(r: LLL_Result): Unit = {
-    r.r3 = (ref.getter.unsafeRun, this.notReallyRef)
+    r.r3 = (ref.getter.unsafeRun(), this.notReallyRef)
   }
 }

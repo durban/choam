@@ -71,16 +71,16 @@ class ComputedTest extends StressTestBase {
 
   @Actor
   def computer(r: LLL_Result): Unit = {
-    r.r1 = computed.unsafeRun
+    r.r1 = computed.unsafeRun()
   }
 
   @Actor
   def reader(r: LLL_Result): Unit = {
-    r.r2 = consistentRead.unsafeRun
+    r.r2 = consistentRead.unsafeRun()
   }
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r3 = (r1.getter.unsafeRun, r2.getter.unsafeRun)
+    r.r3 = (r1.getter.unsafeRun(), r2.getter.unsafeRun())
   }
 }

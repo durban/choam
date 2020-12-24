@@ -32,14 +32,14 @@ import kcas._
 final class ReactSpecNaiveKCAS
   extends BaseSpecIO
   with SpecNaiveKCAS
-  with ReactSpec2[IO]
+  with ReactSpec[IO]
 
 final class ReactSpecEMCAS
   extends BaseSpecIO
   with SpecEMCAS
-  with ReactSpec2[IO]
+  with ReactSpec[IO]
 
-trait ReactSpec2[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   import React._
 
@@ -337,9 +337,11 @@ trait ReactSpec2[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       leafs <- (0 until 16).toList.traverse(idx => React.newRef(s"foo-${idx}").run[F])
       lr1 <- leafs.grouped(2).toList.traverse[F, (React[Unit, Unit], F[Unit])] {
         case List(refLeft, refRight) =>
-          val ol = refLeft.invisibleRead.unsafeRun
-          val or = refRight.invisibleRead.unsafeRun
-          oneChoice(refLeft.cas(ol, s"${ol}-new"), refRight.cas(or, s"${or}-new"), x, "l1")
+          refLeft.invisibleRead.run[F].flatMap { ol =>
+            refRight.invisibleRead.run[F].flatMap { or =>
+              oneChoice(refLeft.cas(ol, s"${ol}-new"), refRight.cas(or, s"${or}-new"), x, "l1")
+            }
+          }
         case _ =>
           failF()
       }.map(_.toList.unzip)
@@ -474,7 +476,7 @@ trait ReactSpec2[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       consume = F.delay {
         @tailrec
         def go(): Unit = {
-          q.tryDeque.unsafeRun match {
+          q.tryDeque.unsafeRun() match {
             case Some(s) =>
               cs.offer(s)
               go()

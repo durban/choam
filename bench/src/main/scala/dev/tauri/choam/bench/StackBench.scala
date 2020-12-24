@@ -35,7 +35,7 @@ class StackBench {
     import ct.kcasImpl
     bh.consume(s.treiberStack.push.unsafePerform(ct.nextString()))
     Blackhole.consumeCPU(waitTime)
-    if (s.treiberStack.tryPop.unsafeRun eq None) throw Errors.EmptyStack
+    if (s.treiberStack.tryPop.unsafeRun() eq None) throw Errors.EmptyStack
     Blackhole.consumeCPU(waitTime)
   }
 

@@ -65,22 +65,22 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
   }
 
   private[choam] def unsafeToListF[F[_]](implicit kcas: KCAS, F: Sync[F]): F[List[A]] = {
-    F.delay { this.unsafeToList(kcas) }
+    F.delay { this.unsafeToList()(kcas) }
   }
 
-  private[choam] def unsafeToList(implicit kcas: KCAS): List[A] = {
+  private[choam] def unsafeToList()(implicit kcas: KCAS): List[A] = {
     @tailrec
     def go(e: Elem[A], acc: List[A]): List[A] = e match {
       case Node(null, next) =>
         // sentinel
-        go(next.invisibleRead.unsafeRun, acc)
+        go(next.invisibleRead.unsafeRun(), acc)
       case Node(a, next) =>
-        go(next.invisibleRead.unsafeRun, a :: acc)
+        go(next.invisibleRead.unsafeRun(), a :: acc)
       case End() =>
         acc
     }
 
-    go(head.invisibleRead.unsafeRun, Nil).reverse
+    go(head.invisibleRead.unsafeRun(), Nil).reverse
   }
 
   els.foreach { a =>

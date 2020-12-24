@@ -58,17 +58,17 @@ class ChoiceTest extends StressTestBase {
 
   @Actor
   def write(r: LLL_Result): Unit = {
-    r.r1 = choice.unsafeRun
+    r.r1 = choice.unsafeRun()
   }
 
   @Actor
   def read(r: LLL_Result): Unit = {
-    r.r2 = read.unsafeRun
+    r.r2 = read.unsafeRun()
   }
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    require(ref1.getter.unsafeRun eq "foo")
-    r.r3 = read.unsafeRun
+    require(ref1.getter.unsafeRun() eq "foo")
+    r.r3 = read.unsafeRun()
   }
 }

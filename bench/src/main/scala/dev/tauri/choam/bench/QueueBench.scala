@@ -35,7 +35,7 @@ class QueueBench {
     import t.kcasImpl
     bh.consume(s.michaelScottQueue.enqueue.unsafePerform(t.nextString()))
     Blackhole.consumeCPU(waitTime)
-    if (s.michaelScottQueue.tryDeque.unsafeRun eq None) throw Errors.EmptyQueue
+    if (s.michaelScottQueue.tryDeque.unsafeRun() eq None) throw Errors.EmptyQueue
     Blackhole.consumeCPU(waitTime)
   }
 

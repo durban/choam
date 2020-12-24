@@ -47,16 +47,16 @@ class ConsistentReadTest extends StressTestBase {
 
   @Actor
   def update(): Unit = {
-    upd.unsafeRun
+    upd.unsafeRun()
   }
 
   @Actor
   def read(r: LL_Result): Unit = {
-    r.r1 = get.unsafeRun
+    r.r1 = get.unsafeRun()
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = (ref1.getter.unsafeRun, ref2.getter.unsafeRun)
+    r.r2 = (ref1.getter.unsafeRun(), ref2.getter.unsafeRun())
   }
 }

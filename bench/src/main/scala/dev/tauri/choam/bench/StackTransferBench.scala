@@ -34,8 +34,8 @@ class StackTransferBench {
   def treiberStack(s: TreiberSt, bh: Blackhole, ct: KCASImplState): Unit = {
     import ct.kcasImpl
     bh.consume(s.treiberStack1.push.unsafePerform(ct.nextString()))
-    bh.consume(s.transfer.unsafeRun)
-    if (s.treiberStack2.tryPop.unsafeRun eq None) throw Errors.EmptyStack
+    bh.consume(s.transfer.unsafeRun())
+    if (s.treiberStack2.tryPop.unsafeRun() eq None) throw Errors.EmptyStack
     Blackhole.consumeCPU(waitTime)
   }
 

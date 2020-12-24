@@ -266,10 +266,9 @@ object React {
   implicit final class UnitReactSyntax[A](private val self: React[Unit, A]) extends AnyVal {
 
     final def run[F[_]](implicit kcas: KCAS, F: Sync[F]): F[A] =
-      F.delay { unsafeRun(kcas) }
+      F.delay { unsafeRun()(kcas) }
 
-    // TODO: add ()
-    final def unsafeRun(implicit kcas: KCAS): A =
+    final def unsafeRun()(implicit kcas: KCAS): A =
       self.unsafePerform(())
 
     final def void: React[Unit, Unit] =
