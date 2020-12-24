@@ -52,6 +52,46 @@ private[kcas] object NaiveKCAS extends KCAS { self =>
       ()
   }
 
+  /** CAS descriptor */
+  final case class CASD[A](ref: Ref[A], ov: A, nv: A) {
+
+    private[kcas] final def unsafeTryPerformOne(): Boolean =
+      ref.unsafeTryPerformCas(ov, nv)
+
+    final override def equals(that: Any): Boolean = that match {
+      case CASD(tref, tov, tnv) =>
+        (ref eq tref) && equ(ov, tov) && equ(nv, tnv)
+      case _ =>
+        false
+    }
+
+    final override def hashCode: Int =
+      ref.## ^ System.identityHashCode(ov) ^ System.identityHashCode(nv)
+  }
+
+  final object CASD {
+
+    val refOrdering: Ordering[Ref[_]] = new Ordering[Ref[_]] {
+      override def compare(x: Ref[_], y: Ref[_]): Int = {
+        Ref.globalCompare(x, y)
+      }
+    }
+
+    def sortDescriptors(ds: List[CASD[_]]): List[CASD[_]] = {
+      val s = new scala.collection.mutable.TreeMap[Ref[_], CASD[_]]()(refOrdering)
+      for (d <- ds) {
+        s.get(d.ref) match {
+          case Some(other) =>
+            assert(d.ref eq other.ref)
+            KCAS.impossibleKCAS(d.ref, d.ov, d.nv, other.ov, other.nv)
+          case None =>
+            s.put(d.ref, d)
+        }
+      }
+      s.values.toList
+    }
+  }
+
   override def start(): self.Desc =
     DescRepr(Nil)
 

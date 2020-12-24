@@ -28,10 +28,10 @@ final class KCASSpecEMCAS
 
 abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
 
-  private final def tryPerformBatch(ops: List[CASD[_]]): Boolean = {
+  private final def tryPerformBatch(ops: List[NaiveKCAS.CASD[_]]): Boolean = {
     val desc = ops.foldLeft(kcasImpl.start()) { (d, op) =>
       op match {
-        case op: CASD[a] =>
+        case op: NaiveKCAS.CASD[a] =>
           d.withCAS[a](op.ref, op.ov, op.nv)
       }
     }
@@ -43,9 +43,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r2 = Ref.mk("r2")
     val r3 = Ref.mk("r3")
     val succ = tryPerformBatch(List(
-      CASD(r1, "r1", "x"),
-      CASD(r2, "r2", "y"),
-      CASD(r3, "r3", "z")
+      NaiveKCAS.CASD(r1, "r1", "x"),
+      NaiveKCAS.CASD(r2, "r2", "y"),
+      NaiveKCAS.CASD(r3, "r3", "z")
     ))
     assert(succ)
     assertSameInstance(kcasImpl.read(r1), "x")
@@ -60,9 +60,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
 
     def go(): Boolean = {
       tryPerformBatch(List(
-        CASD(r1, "r1", "x"),
-        CASD(r2, "r2", "y"),
-        CASD(r3, "r3", "z")
+        NaiveKCAS.CASD(r1, "r1", "x"),
+        NaiveKCAS.CASD(r2, "r2", "y"),
+        NaiveKCAS.CASD(r3, "r3", "z")
       ))
     }
 
@@ -98,9 +98,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r2 = Ref.mk("r2")
     val exc = intercept[Exception] {
       tryPerformBatch(List(
-        CASD(r1, "r1", "x"),
-        CASD(r2, "r2", "y"),
-        CASD(r1, "r1", "x") // this is a duplicate
+        NaiveKCAS.CASD(r1, "r1", "x"),
+        NaiveKCAS.CASD(r2, "r2", "y"),
+        NaiveKCAS.CASD(r1, "r1", "x") // this is a duplicate
       ))
     }
     assert(clue(exc.getMessage).contains("Impossible k-CAS"))
@@ -114,21 +114,21 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r3 = Ref.mk("r3")
 
     assert(tryPerformBatch(List(
-      CASD(r1, "r1", "x"),
-      CASD(r2, "r2", "y"),
-      CASD(r3, "r3", "z")
+      NaiveKCAS.CASD(r1, "r1", "x"),
+      NaiveKCAS.CASD(r2, "r2", "y"),
+      NaiveKCAS.CASD(r3, "r3", "z")
     )))
 
     assert(tryPerformBatch(List(
-      CASD(r1, "x", "x2"),
-      CASD(r2, "y", "y2"),
-      CASD(r3, "z", "z2")
+      NaiveKCAS.CASD(r1, "x", "x2"),
+      NaiveKCAS.CASD(r2, "y", "y2"),
+      NaiveKCAS.CASD(r3, "z", "z2")
     )))
 
     assert(!tryPerformBatch(List(
-      CASD(r1, "x2", "x3"),
-      CASD(r2, "yyy", "y3"), // this will fail
-      CASD(r3, "z2", "z3")
+      NaiveKCAS.CASD(r1, "x2", "x3"),
+      NaiveKCAS.CASD(r2, "yyy", "y3"), // this will fail
+      NaiveKCAS.CASD(r3, "z2", "z3")
     )))
 
     assertSameInstance(kcasImpl.read(r1), "x2")
