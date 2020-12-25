@@ -38,8 +38,8 @@ class ReadKCAS {
   @Benchmark
   @Group("ReadKCAS")
   def read(s: RefSt, t: ThSt, bh: Blackhole): Unit = {
-    bh.consume(t.kcasImpl.read(s.ref1))
-    bh.consume(t.kcasImpl.read(s.ref2))
+    bh.consume(t.kcasImpl.read(s.ref1, t.kcasCtx))
+    bh.consume(t.kcasImpl.read(s.ref2, t.kcasCtx))
   }
 
   @Benchmark

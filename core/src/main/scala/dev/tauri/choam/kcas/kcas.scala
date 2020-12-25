@@ -35,7 +35,7 @@ abstract class KCAS { self =>
 
   private[choam] def tryPerform(desc: EMCASDescriptor): Boolean
 
-  private[choam] def read[A](ref: Ref[A]): A
+  private[choam] def read[A](ref: Ref[A], ctx: ThreadContext): A
 }
 
 /** Provides various k-CAS implementations */

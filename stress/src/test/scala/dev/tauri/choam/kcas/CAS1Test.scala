@@ -49,12 +49,14 @@ class CAS1Test extends StressTestBase {
 
   @Actor
   def reader(r: ZZL_Result): Unit = {
-    r.r3 = impl.read(ref)
+    val ctx = impl.currentContext()
+    r.r3 = impl.read(ref, ctx)
   }
 
   @Arbiter
   def arbiter(r: ZZL_Result): Unit = {
-    val fv = impl.read(ref)
+    val ctx = impl.currentContext()
+    val fv = impl.read(ref, ctx)
     r.r3 match {
       case null =>
         throw new AssertionError(s"unexpected value: null")

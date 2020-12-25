@@ -60,10 +60,10 @@ private[kcas] final object NaiveKCAS extends KCAS { self =>
   }
 
   @tailrec
-  final override def read[A](ref: Ref[A]): A = {
+  final override def read[A](ref: Ref[A], ctx: ThreadContext): A = {
     ref.unsafeTryRead() match {
       case null =>
-        read(ref)
+        read(ref, ctx)
       case a =>
         a
     }

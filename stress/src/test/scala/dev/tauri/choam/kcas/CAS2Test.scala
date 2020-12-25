@@ -66,12 +66,13 @@ class CAS2Test extends StressTestBase {
 
   @Arbiter
   def abriter(r: ZZZZ_Result): Unit = {
+    val ctx = impl.currentContext()
     if (r.r3) {
-      if ((impl.read(ref1) == "a") && (impl.read(ref2) == "b")) {
+      if ((impl.read(ref1, ctx) == "a") && (impl.read(ref2, ctx) == "b")) {
         r.r4 = true
       }
     } else if (r.r1 && r.r2) {
-      if ((impl.read(ref1) == "x") && (impl.read(ref2) == "y")) {
+      if ((impl.read(ref1, ctx) == "x") && (impl.read(ref2, ctx) == "y")) {
         r.r4 = true
       }
     }

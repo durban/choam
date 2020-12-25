@@ -46,7 +46,7 @@ class ResourceAllocationKCAS {
       if (i >= n) {
         ()
       } else {
-        ovs(i) = impl.read(rss(i))
+        ovs(i) = impl.read(rss(i), t.kcasCtx)
         read(i + 1)
       }
     }

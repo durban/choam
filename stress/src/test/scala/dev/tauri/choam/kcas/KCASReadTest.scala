@@ -47,6 +47,7 @@ class KCASReadTest extends StressTestBase {
 
   @Actor
   def reader(r: ZL_Result): Unit = {
-    r.r2 = refs.map(impl.read(_)).toSet
+    val ctx = impl.currentContext()
+    r.r2 = refs.map(ref => impl.read(ref, ctx)).toSet
   }
 }

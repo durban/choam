@@ -34,11 +34,11 @@ class EMCASSpec extends BaseSpecA {
     val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, null, "x"), r2, "x", null)
     val snap = EMCAS.snapshot(desc)
     assert(EMCAS.tryPerform(desc))
-    assert(EMCAS.read(r1) eq "x")
-    assert(EMCAS.read(r2) eq null)
+    assert(EMCAS.read(r1, ctx) eq "x")
+    assert(EMCAS.read(r2, ctx) eq null)
     assert(!EMCAS.tryPerform(snap))
-    assert(EMCAS.read(r1) eq "x")
-    assert(EMCAS.read(r2) eq null)
+    assert(EMCAS.read(r1, ctx) eq "x")
+    assert(EMCAS.read(r2, ctx) eq null)
   }
 
   test("EMCAS should clean up finalized descriptors") {
@@ -48,8 +48,8 @@ class EMCASSpec extends BaseSpecA {
     var desc = EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a")
     var snap = EMCAS.snapshot(desc)
     assert(EMCAS.tryPerform(EMCAS.addCas(desc, r2, "y", "b")))
-    assert(EMCAS.read(r1) eq "a")
-    assert(EMCAS.read(r2) eq "b")
+    assert(EMCAS.read(r1, ctx) eq "a")
+    assert(EMCAS.read(r2, ctx) eq "b")
     desc = null
     assert(EMCAS.spinUntilCleanup(r1) eq "a")
     assert(EMCAS.spinUntilCleanup(r2) eq "b")
@@ -58,8 +58,8 @@ class EMCASSpec extends BaseSpecA {
     assert(r1.unsafeTryPerformCas("a", "x")) // reset
     var desc2 = snap
     assert(!EMCAS.tryPerform(EMCAS.addCas(desc2, r2, "y", "b"))) // this will fail
-    assert(EMCAS.read(r1) eq "x")
-    assert(EMCAS.read(r2) eq "b")
+    assert(EMCAS.read(r1, ctx) eq "x")
+    assert(EMCAS.read(r2, ctx) eq "b")
     snap = null
     desc2 = null
     assert(EMCAS.spinUntilCleanup(r1) eq "x")
@@ -124,8 +124,8 @@ class EMCASSpec extends BaseSpecA {
     val succ = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "x2"), r2, "y", "y2"))
     assert(!succ)
     System.gc()
-    assert(EMCAS.read(r1) eq "a")
-    assert(EMCAS.read(r2) eq "b")
+    assert(EMCAS.read(r1, ctx) eq "a")
+    assert(EMCAS.read(r2, ctx) eq "b")
     assert(r1.unsafeTryRead() eq "a")
     assert(r2.unsafeTryRead() eq "b")
   }
@@ -139,10 +139,10 @@ class EMCASSpec extends BaseSpecA {
     val d0 = other.words.get(0).asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
     r1.unsafeSet(d0.holder.castToData())
-    val res = EMCAS.read(r1)
+    val res = EMCAS.read(r1, ctx)
     assertEquals(res, "x")
-    assertEquals(EMCAS.read(r1), "x")
-    assertEquals(EMCAS.read(r2), "y")
+    assertEquals(EMCAS.read(r1, ctx), "x")
+    assertEquals(EMCAS.read(r2, ctx), "y")
     assert(other.getStatus() eq EMCASStatus.SUCCESSFUL)
   }
 
@@ -155,10 +155,10 @@ class EMCASSpec extends BaseSpecA {
     val d0 = other.words.get(0).asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
     r1.unsafeSet(d0.holder.castToData())
-    val res = EMCAS.read(r1)
+    val res = EMCAS.read(r1, ctx)
     assertEquals(res, "r1")
-    assertEquals(EMCAS.read(r1), "r1")
-    assertEquals(EMCAS.read(r2), "r2")
+    assertEquals(EMCAS.read(r1, ctx), "r1")
+    assertEquals(EMCAS.read(r2, ctx), "r2")
   }
 
   test("ThreadContexts should be thread-local") {

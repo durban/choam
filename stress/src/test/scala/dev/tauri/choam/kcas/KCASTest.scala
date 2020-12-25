@@ -55,7 +55,8 @@ class KCASTest extends StressTestBase {
 
   @Arbiter
   def arbiter(r: ZZL_Result): Unit = {
-    val vs = refs.map(impl.read(_))
+    val ctx = impl.currentContext()
+    val vs = refs.map(ref => impl.read(ref, ctx))
     val s = vs.toSet
     if (s.size == 1) {
       r.r3 = s.iterator.next()

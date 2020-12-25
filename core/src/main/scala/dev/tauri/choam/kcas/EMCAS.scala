@@ -88,7 +88,7 @@ private[kcas] object EMCAS extends KCAS { self =>
 
   // Listing 3 in the paper:
 
-  private[choam] final override def read[A](ref: Ref[A]): A =
+  private[choam] final override def read[A](ref: Ref[A], ctx: ThreadContext): A =
     readValue(ref)
 
   /**
@@ -244,6 +244,7 @@ private[kcas] object EMCAS extends KCAS { self =>
   /** For testing */
   @throws[InterruptedException]
   private[kcas] def spinUntilCleanup[A](ref: Ref[A]): A = {
+    val ctx = this.currentContext()
     var desc: WordDescriptor[_] = null
     var ctr: Int = 0
     while (true) {
@@ -263,7 +264,7 @@ private[kcas] object EMCAS extends KCAS { self =>
             // descriptor have been collected, but not replaced yet;
             // this should replace it with a small probability (if
             // not, we'll retry):
-            EMCAS.read(ref)
+            EMCAS.read(ref, ctx)
           }
         case a =>
           // descriptor have been cleaned up:

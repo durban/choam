@@ -50,7 +50,8 @@ class CAS2ReadTest extends StressTestBase {
 
   @Actor
   def reader(r: LLZ_Result): Unit = {
-    r.r1 = impl.read(ref1)
-    r.r2 = impl.read(ref2)
+    val ctx = impl.currentContext()
+    r.r1 = impl.read(ref1, ctx)
+    r.r2 = impl.read(ref2, ctx)
   }
 }

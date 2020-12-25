@@ -58,7 +58,7 @@ class CAS1LoopBench {
     val kcasImpl = t.kcasImpl
     @tailrec
     def go(): Unit = {
-      val ov = kcasImpl.read(ref)
+      val ov = kcasImpl.read(ref, t.kcasCtx)
       val nv = (ov.toLong + t.nextLong()).toString
       val succ = kcasImpl.tryPerform(
         kcasImpl.addCas(kcasImpl.start(t.kcasCtx), ref, ov, nv)
