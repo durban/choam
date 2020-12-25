@@ -47,8 +47,11 @@ class KCASImplState extends RandomState {
 
   private[choam] implicit var kcasImpl: KCAS = _
 
+  private[choam] var kcasCtx: ThreadContext = _
+
   @Setup
   def setupKCASImpl(): Unit = {
     this.kcasImpl = KCAS.unsafeLookup(kcasName)
+    this.kcasCtx = this.kcasImpl.currentContext()
   }
 }

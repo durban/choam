@@ -23,7 +23,8 @@ class NaiveKCASSpec extends BaseSpecA {
   test("NaiveKCAS should not create EMCASWeakData objects") {
     val r1 = Ref.mk[String]("x")
     val r2 = Ref.mk[String]("y")
-    val desc = NaiveKCAS.addCas(NaiveKCAS.addCas(NaiveKCAS.start(), r1, "x", "y"), r2, "y", "x")
+    val ctx = NaiveKCAS.currentContext()
+    val desc = NaiveKCAS.addCas(NaiveKCAS.addCas(NaiveKCAS.start(ctx), r1, "x", "y"), r2, "y", "x")
     desc.words.iterator().forEachRemaining { wd => assert(wd.holder eq null) }
     val snap = NaiveKCAS.snapshot(desc)
     assert(NaiveKCAS.tryPerform(desc))

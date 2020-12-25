@@ -25,7 +25,9 @@ package kcas
 /** Common interface for k-CAS implementations */
 abstract class KCAS { self =>
 
-  private[choam] def start(): EMCASDescriptor
+  private[choam] def currentContext(): ThreadContext
+
+  private[choam] def start(ctx: ThreadContext): EMCASDescriptor
 
   private[choam] def addCas[A](desc: EMCASDescriptor, ref: Ref[A], ov: A, nv: A): EMCASDescriptor
 

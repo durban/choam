@@ -36,7 +36,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   import KCASSpec._
 
   private final def tryPerformBatch(ops: List[CASD[_]]): Boolean = {
-    val desc = ops.foldLeft(kcasImpl.start()) { (d, op) =>
+    val desc = ops.foldLeft(kcasImpl.start(kcasImpl.currentContext())) { (d, op) =>
       op match {
         case op: CASD[a] =>
           kcasImpl.addCas(d, op.address, op.ov, op.nv)
@@ -147,7 +147,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r1 = Ref.mk("r1")
     val r2 = Ref.mk("r2")
     val r3 = Ref.mk("r3")
-    val d0 = kcasImpl.start()
+    val d0 = kcasImpl.start(kcasImpl.currentContext())
     val d1 = kcasImpl.addCas(d0, r1, "r1", "r1x")
     val snap = kcasImpl.snapshot(d1)
     val d21 = kcasImpl.addCas(d1, r2, "foo", "bar")
@@ -166,7 +166,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r1 = Ref.mk("r1")
     val r2 = Ref.mk("r2")
     val r3 = Ref.mk("r3")
-    val d0 = kcasImpl.start()
+    val d0 = kcasImpl.start(kcasImpl.currentContext())
     val d1 = kcasImpl.addCas(d0, r1, "r1", "r1x")
     val snap = kcasImpl.snapshot(d1)
     kcasImpl.addCas(d1, r2, "foo", "bar") // unused

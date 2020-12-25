@@ -36,7 +36,8 @@ class KCASTest extends StressTestBase {
     List.fill(8)(Ref.mk("ov"))
 
   private def write(nv: String): Boolean = {
-    val d = refs.foldLeft(impl.start()) { (d, ref) =>
+    val ctx = impl.currentContext()
+    val d = refs.foldLeft(impl.start(ctx)) { (d, ref) =>
       impl.addCas(d, ref, "ov", nv)
     }
     impl.tryPerform(d)

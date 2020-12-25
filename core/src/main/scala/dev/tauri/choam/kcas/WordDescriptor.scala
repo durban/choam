@@ -37,6 +37,7 @@ final class WordDescriptor[A] private (
   final def withParent(newParent: EMCASDescriptor): WordDescriptor[A] =
     WordDescriptor[A](this.address, this.ov, this.nv, newParent)
 
+  /** This is only for use by `NaiveKCAS` */
   final def withParentNoHolder(newParent: EMCASDescriptor): WordDescriptor[A] =
     WordDescriptor.withoutHolder[A](this.address, this.ov, this.nv, newParent)
 

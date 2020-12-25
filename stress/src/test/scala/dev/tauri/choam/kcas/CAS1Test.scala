@@ -37,12 +37,14 @@ class CAS1Test extends StressTestBase {
 
   @Actor
   def writer1(r: ZZL_Result): Unit = {
-    r.r1 = impl.tryPerform(impl.addCas(impl.start(), ref, "ov", "x"))
+    val ctx = impl.currentContext()
+    r.r1 = impl.tryPerform(impl.addCas(impl.start(ctx), ref, "ov", "x"))
   }
 
   @Actor
   def writer2(r: ZZL_Result): Unit = {
-    r.r2 = impl.tryPerform(impl.addCas(impl.start(), ref, "ov", "y"))
+    val ctx = impl.currentContext()
+    r.r2 = impl.tryPerform(impl.addCas(impl.start(ctx), ref, "ov", "y"))
   }
 
   @Actor

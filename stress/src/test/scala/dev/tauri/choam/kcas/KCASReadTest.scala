@@ -38,7 +38,8 @@ class KCASReadTest extends StressTestBase {
 
   @Actor
   def writer(r: ZL_Result): Unit = {
-    val d = refs.foldLeft(impl.start()) { (d, ref) =>
+    val ctx = impl.currentContext()
+    val d = refs.foldLeft(impl.start(ctx)) { (d, ref) =>
       impl.addCas(d, ref, "ov", "x")
     }
     r.r1 = impl.tryPerform(d)

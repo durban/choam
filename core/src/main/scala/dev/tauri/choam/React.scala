@@ -49,6 +49,8 @@ sealed abstract class React[-A, +B] {
 
   final def unsafePerform(a: A)(implicit kcas: KCAS): B = {
 
+    val ctx = kcas.currentContext()
+
     @tailrec
     def go[C](partialResult: C, cont: React[C, B], rea: Reaction, desc: EMCASDescriptor, alts: List[SnapJump[_, B]]): Success[B] = {
       cont.tryPerform(maxStackDepth, partialResult, rea, desc) match {
@@ -56,7 +58,7 @@ sealed abstract class React[-A, +B] {
           // TODO: implement backoff
           alts match {
             case _: Nil.type =>
-              go(partialResult, cont, Reaction.empty, kcas.start(), alts)
+              go(partialResult, cont, Reaction.empty, kcas.start(ctx), alts)
             case (h: SnapJump[x, B]) :: t =>
               go[x](h.value, h.react, h.ops, h.snap, t)
           }
@@ -69,7 +71,7 @@ sealed abstract class React[-A, +B] {
       }
     }
 
-    val res = go(a, this, Reaction.empty, kcas.start(), Nil)
+    val res = go(a, this, Reaction.empty, kcas.start(ctx), Nil)
     res.reaction.postCommit.foreach { pc =>
       pc.unsafePerform(())
     }

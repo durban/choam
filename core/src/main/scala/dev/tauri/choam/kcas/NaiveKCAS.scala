@@ -31,7 +31,13 @@ package kcas
  */
 private[kcas] final object NaiveKCAS extends KCAS { self =>
 
-  final override def start() =
+  private[this] val dummyContext =
+    new ThreadContext(null)
+
+  final override def currentContext(): ThreadContext =
+    dummyContext
+
+  final override def start(ctx: ThreadContext) =
     new EMCASDescriptor(this)
 
   final override def addCas[A](

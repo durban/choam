@@ -28,6 +28,9 @@ import scala.annotation.tailrec
  */
 private[kcas] object EMCAS extends KCAS { self =>
 
+  private[this] val global =
+    new GlobalContext
+
   // Listing 2 in the paper:
 
   /**
@@ -214,7 +217,10 @@ private[kcas] object EMCAS extends KCAS { self =>
     }
   }
 
-  private[choam] final override def start(): EMCASDescriptor = {
+  private[choam] final override def currentContext(): ThreadContext =
+    this.global.currentContext()
+
+  private[choam] final override def start(ctx: ThreadContext): EMCASDescriptor = {
     new EMCASDescriptor(this)
   }
 

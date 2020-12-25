@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package kcas
 
+import java.util.concurrent.ConcurrentLinkedQueue
+
 class EMCASSpec extends BaseSpecA {
 
   sealed trait Obj
@@ -28,7 +30,8 @@ class EMCASSpec extends BaseSpecA {
   test("EMCAS should allow null as ov or nv") {
     val r1 = Ref.mk[String](null)
     val r2 = Ref.mk[String]("x")
-    val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(), r1, null, "x"), r2, "x", null)
+    val ctx = EMCAS.currentContext()
+    val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, null, "x"), r2, "x", null)
     val snap = EMCAS.snapshot(desc)
     assert(EMCAS.tryPerform(desc))
     assert(EMCAS.read(r1) eq "x")
@@ -41,7 +44,8 @@ class EMCASSpec extends BaseSpecA {
   test("EMCAS should clean up finalized descriptors") {
     val r1 = Ref.mk[String]("x")
     val r2 = Ref.mk[String]("y")
-    var desc = EMCAS.addCas(EMCAS.start(), r1, "x", "a")
+    val ctx = EMCAS.currentContext()
+    var desc = EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a")
     var snap = EMCAS.snapshot(desc)
     assert(EMCAS.tryPerform(EMCAS.addCas(desc, r2, "y", "b")))
     assert(EMCAS.read(r1) eq "a")
@@ -69,7 +73,8 @@ class EMCASSpec extends BaseSpecA {
     val r2 = Ref.mk[String]("y")
     @volatile var ok = false
     val t = new Thread(() => {
-      ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(), r1, "x", "a"), r2, "y", "b"))
+      val ctx = EMCAS.currentContext()
+      ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a"), r2, "y", "b"))
     })
     @tailrec
     def checkCleanup(ref: Ref[String], old: String, exp: String): Boolean = {
@@ -104,7 +109,8 @@ class EMCASSpec extends BaseSpecA {
     val r1 = Ref.mkWithId[String]("x")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId[String]("y")(0L, 0L, 0L, 1L)
     val t1 = new Thread(() => {
-      val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(), r1, "x", "a"), r2, "y", "b")
+      val ctx = EMCAS.currentContext()
+      val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a"), r2, "y", "b")
       desc.sort()
       val d0 = desc.words.get(0).asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
@@ -114,7 +120,8 @@ class EMCASSpec extends BaseSpecA {
     t1.start()
     t1.join()
     System.gc()
-    val succ = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(), r1, "x", "x2"), r2, "y", "y2"))
+    val ctx = EMCAS.currentContext()
+    val succ = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "x2"), r2, "y", "y2"))
     assert(!succ)
     System.gc()
     assert(EMCAS.read(r1) eq "a")
@@ -126,7 +133,8 @@ class EMCASSpec extends BaseSpecA {
   test("EMCAS read should help the other operation") {
     val r1 = Ref.mkWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId("r2")(0L, 0L, 0L, 42L)
-    val other: EMCASDescriptor = EMCAS.addCas(EMCAS.addCas(EMCAS.start(), r1, "r1", "x"), r2, "r2", "y")
+    val ctx = EMCAS.currentContext()
+    val other: EMCASDescriptor = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "r1", "x"), r2, "r2", "y")
     other.sort()
     val d0 = other.words.get(0).asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
@@ -141,7 +149,8 @@ class EMCASSpec extends BaseSpecA {
   test("EMCAS read should roll back the other op if necessary") {
     val r1 = Ref.mkWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId("r2")(0L, 0L, 0L, 99L)
-    val other = EMCAS.addCas(EMCAS.addCas(EMCAS.start(), r1, "r1", "x"), r2, "zzz", "y")
+    val ctx = EMCAS.currentContext()
+    val other = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "r1", "x"), r2, "zzz", "y")
     other.sort()
     val d0 = other.words.get(0).asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
@@ -150,5 +159,37 @@ class EMCASSpec extends BaseSpecA {
     assertEquals(res, "r1")
     assertEquals(EMCAS.read(r1), "r1")
     assertEquals(EMCAS.read(r2), "r2")
+  }
+
+  test("ThreadContexts should be thread-local") {
+    val N = 10000
+    val tc1 = new ConcurrentLinkedQueue[ThreadContext]
+    val tc2 = new ConcurrentLinkedQueue[ThreadContext]
+    val tsk = (tc: ConcurrentLinkedQueue[ThreadContext]) => {
+      tc.offer(EMCAS.currentContext())
+      Thread.sleep(10L)
+      for (_ <- 1 to N) {
+        tc.offer(EMCAS.currentContext())
+      }
+    }
+    val t1 = new Thread(() => { tsk(tc1) })
+    val t2 = new Thread(() => { tsk(tc2) })
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+    assertEquals(tc1.size(), N + 1)
+    assertEquals(tc2.size(), N + 1)
+    val fCtx1 = tc1.poll()
+    assert(fCtx1 ne null)
+    val fCtx2 = tc2.poll()
+    assert(fCtx2 ne null)
+    for (_ <- 1 to N) {
+      val ctx1 = tc1.poll()
+      assertSameInstance(ctx1, fCtx1)
+      val ctx2 = tc2.poll()
+      assertSameInstance(ctx2, fCtx2)
+      assert(ctx1 ne ctx2)
+    }
   }
 }
