@@ -237,7 +237,7 @@ private[kcas] object EMCAS extends KCAS { self =>
   private[choam] final override def snapshot(desc: EMCASDescriptor): EMCASDescriptor =
     desc.copy(addHolder = true)
 
-  private[choam] final override def tryPerform(desc: EMCASDescriptor): Boolean = {
+  private[choam] final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
     EMCAS.MCAS(desc, helping = false)
   }
 

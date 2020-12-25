@@ -81,7 +81,14 @@ sealed abstract class React[-A, +B] {
 
   protected def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B]
 
-  protected final def maybeJump[C, Y >: B](n: Int, partialResult: C, cont: React[C, Y], ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[Y] = {
+  protected final def maybeJump[C, Y >: B](
+    n: Int,
+    partialResult: C,
+    cont: React[C, Y],
+    ops: Reaction,
+    desc: EMCASDescriptor,
+    ctx: ThreadContext
+  ): TentativeResult[Y] = {
     if (n <= 0) Jump(partialResult, cont, ops, desc, Nil)
     else cont.tryPerform(n - 1, partialResult, ops, desc, ctx)
   }
@@ -319,7 +326,7 @@ object React {
       extends React[A, A] {
 
     protected final def tryPerform(n: Int, a: A, reaction: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[A] = {
-      if (desc.impl.tryPerform(desc)) Success(a, reaction)
+      if (desc.impl.tryPerform(desc, ctx)) Success(a, reaction)
       else Retry
     }
 

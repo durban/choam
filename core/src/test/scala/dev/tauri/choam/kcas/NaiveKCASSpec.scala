@@ -27,11 +27,11 @@ class NaiveKCASSpec extends BaseSpecA {
     val desc = NaiveKCAS.addCas(NaiveKCAS.addCas(NaiveKCAS.start(ctx), r1, "x", "y"), r2, "y", "x")
     desc.words.iterator().forEachRemaining { wd => assert(wd.holder eq null) }
     val snap = NaiveKCAS.snapshot(desc)
-    assert(NaiveKCAS.tryPerform(desc))
+    assert(NaiveKCAS.tryPerform(desc, ctx))
     snap.words.iterator().forEachRemaining { wd => assert(wd.holder eq null) }
     assertEquals(r1.unsafeTryRead(), "y")
     assertEquals(r2.unsafeTryRead(), "x")
-    assert(!NaiveKCAS.tryPerform(snap))
+    assert(!NaiveKCAS.tryPerform(snap, ctx))
     desc.words.iterator().forEachRemaining { wd => assert(wd.holder eq null) }
     snap.words.iterator().forEachRemaining { wd => assert(wd.holder eq null) }
     assertEquals(r1.unsafeTryRead(), "y")

@@ -42,7 +42,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
           kcasImpl.addCas(d, op.address, op.ov, op.nv)
       }
     }
-    kcasImpl.tryPerform(desc)
+    kcasImpl.tryPerform(desc, kcasImpl.currentContext())
   }
 
   test("k-CAS should succeed if old values match, and there is no contention") {
@@ -155,13 +155,13 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val d1 = kcasImpl.addCas(d0, r1, "r1", "r1x")
     val snap = kcasImpl.snapshot(d1)
     val d21 = kcasImpl.addCas(d1, r2, "foo", "bar")
-    assert(!kcasImpl.tryPerform(d21))
     val ctx = kcasImpl.currentContext()
+    assert(!kcasImpl.tryPerform(d21, ctx))
     assertSameInstance(kcasImpl.read(r1, ctx), "r1")
     assertSameInstance(kcasImpl.read(r2, ctx), "r2")
     assertSameInstance(kcasImpl.read(r3, ctx), "r3")
     val d22 = kcasImpl.addCas(snap, r3, "r3", "r3x")
-    assert(kcasImpl.tryPerform(d22))
+    assert(kcasImpl.tryPerform(d22, ctx))
     assertSameInstance(kcasImpl.read(r1, ctx), "r1x")
     assertSameInstance(kcasImpl.read(r2, ctx), "r2")
     assertSameInstance(kcasImpl.read(r3, ctx), "r3x")
@@ -180,7 +180,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertSameInstance(kcasImpl.read(r2, ctx), "r2")
     assertSameInstance(kcasImpl.read(r3, ctx), "r3")
     val d22 = kcasImpl.addCas(snap, r3, "r3", "r3x")
-    assert(kcasImpl.tryPerform(d22))
+    assert(kcasImpl.tryPerform(d22, ctx))
     assertSameInstance(kcasImpl.read(r1, ctx), "r1x")
     assertSameInstance(kcasImpl.read(r2, ctx), "r2")
     assertSameInstance(kcasImpl.read(r3, ctx), "r3x")

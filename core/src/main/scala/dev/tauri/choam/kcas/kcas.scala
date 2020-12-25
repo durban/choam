@@ -33,7 +33,7 @@ abstract class KCAS { self =>
 
   private[choam] def snapshot(desc: EMCASDescriptor): EMCASDescriptor
 
-  private[choam] def tryPerform(desc: EMCASDescriptor): Boolean
+  private[choam] def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean
 
   private[choam] def read[A](ref: Ref[A], ctx: ThreadContext): A
 }

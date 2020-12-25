@@ -33,10 +33,10 @@ class EMCASSpec extends BaseSpecA {
     val ctx = EMCAS.currentContext()
     val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, null, "x"), r2, "x", null)
     val snap = EMCAS.snapshot(desc)
-    assert(EMCAS.tryPerform(desc))
+    assert(EMCAS.tryPerform(desc, ctx))
     assert(EMCAS.read(r1, ctx) eq "x")
     assert(EMCAS.read(r2, ctx) eq null)
-    assert(!EMCAS.tryPerform(snap))
+    assert(!EMCAS.tryPerform(snap, ctx))
     assert(EMCAS.read(r1, ctx) eq "x")
     assert(EMCAS.read(r2, ctx) eq null)
   }
@@ -47,7 +47,7 @@ class EMCASSpec extends BaseSpecA {
     val ctx = EMCAS.currentContext()
     var desc = EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a")
     var snap = EMCAS.snapshot(desc)
-    assert(EMCAS.tryPerform(EMCAS.addCas(desc, r2, "y", "b")))
+    assert(EMCAS.tryPerform(EMCAS.addCas(desc, r2, "y", "b"), ctx))
     assert(EMCAS.read(r1, ctx) eq "a")
     assert(EMCAS.read(r2, ctx) eq "b")
     desc = null
@@ -57,7 +57,7 @@ class EMCASSpec extends BaseSpecA {
     assert(r2.unsafeTryRead() eq "b")
     assert(r1.unsafeTryPerformCas("a", "x")) // reset
     var desc2 = snap
-    assert(!EMCAS.tryPerform(EMCAS.addCas(desc2, r2, "y", "b"))) // this will fail
+    assert(!EMCAS.tryPerform(EMCAS.addCas(desc2, r2, "y", "b"), ctx)) // this will fail
     assert(EMCAS.read(r1, ctx) eq "x")
     assert(EMCAS.read(r2, ctx) eq "b")
     snap = null
@@ -74,7 +74,7 @@ class EMCASSpec extends BaseSpecA {
     @volatile var ok = false
     val t = new Thread(() => {
       val ctx = EMCAS.currentContext()
-      ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a"), r2, "y", "b"))
+      ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a"), r2, "y", "b"), ctx)
     })
     @tailrec
     def checkCleanup(ref: Ref[String], old: String, exp: String): Boolean = {
@@ -121,7 +121,7 @@ class EMCASSpec extends BaseSpecA {
     t1.join()
     System.gc()
     val ctx = EMCAS.currentContext()
-    val succ = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "x2"), r2, "y", "y2"))
+    val succ = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "x2"), r2, "y", "y2"), ctx)
     assert(!succ)
     System.gc()
     assert(EMCAS.read(r1, ctx) eq "a")

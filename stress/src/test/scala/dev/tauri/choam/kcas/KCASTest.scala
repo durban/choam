@@ -40,7 +40,7 @@ class KCASTest extends StressTestBase {
     val d = refs.foldLeft(impl.start(ctx)) { (d, ref) =>
       impl.addCas(d, ref, "ov", nv)
     }
-    impl.tryPerform(d)
+    impl.tryPerform(d, ctx)
   }
 
   @Actor

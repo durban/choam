@@ -53,7 +53,7 @@ private[kcas] final object NaiveKCAS extends KCAS { self =>
   final override def snapshot(desc: EMCASDescriptor): EMCASDescriptor =
     desc.copy(addHolder = false)
 
-  final override def tryPerform(desc: EMCASDescriptor): Boolean = {
+  final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
     desc.sort()
     val ops = scala.jdk.CollectionConverters.ListHasAsScala(desc.words).asScala.toList
     perform(ops)

@@ -48,7 +48,8 @@ class ReadKCAS {
     val next1 = t.nextString()
     val next2 = t.nextString()
     val success = t.kcasImpl.tryPerform(
-      t.kcasImpl.addCas(t.kcasImpl.addCas(t.kcasImpl.start(t.kcasCtx), s.ref1, t.last1, next1), s.ref2, t.last2, next2)
+      t.kcasImpl.addCas(t.kcasImpl.addCas(t.kcasImpl.start(t.kcasCtx), s.ref1, t.last1, next1), s.ref2, t.last2, next2),
+      t.kcasCtx
     )
     if (success) {
       t.last1 = next1
