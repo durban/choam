@@ -32,7 +32,7 @@ package kcas
 private[kcas] final object NaiveKCAS extends KCAS { self =>
 
   private[this] val dummyContext =
-    new ThreadContext(null)
+    new ThreadContext(null, 0L)
 
   final override def currentContext(): ThreadContext =
     dummyContext

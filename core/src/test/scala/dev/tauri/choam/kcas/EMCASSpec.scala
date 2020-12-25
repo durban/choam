@@ -20,6 +20,8 @@ package kcas
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
+import scala.runtime.VolatileObjectRef
+
 class EMCASSpec extends BaseSpecA {
 
   sealed trait Obj
@@ -191,5 +193,24 @@ class EMCASSpec extends BaseSpecA {
       assertSameInstance(ctx2, fCtx2)
       assert(ctx1 ne ctx2)
     }
+  }
+
+  test("ThreadContexts should work even if thread IDs are reused") {
+    final class TrickyThread(ref: VolatileObjectRef[ThreadContext]) extends Thread {
+      final override def getId(): Long = 42L
+      final override def run(): Unit = {
+        ref.elem = EMCAS.currentContext()
+      }
+    }
+    val r1 = VolatileObjectRef.create(nullOf[ThreadContext])
+    val t1 = new TrickyThread(r1)
+    t1.start()
+    t1.join()
+    val r2 = VolatileObjectRef.create(nullOf[ThreadContext])
+    val t2 = new TrickyThread(r2)
+    t2.start()
+    t2.join()
+    assert(r1.elem ne r2.elem)
+    assertEquals(r1.elem.tid, r2.elem.tid)
   }
 }

@@ -32,24 +32,32 @@ final class GlobalContext {
     this.threadLocal.get() match {
       case null =>
         val tid = Thread.currentThread().getId()
-        this.threadContexts.get(tid) match {
+        val ctx = this.threadContexts.get(tid) match {
           case null =>
-            val ctx = new ThreadContext(this)
+            val ctx = new ThreadContext(this, tid)
             this.threadContexts.putIfAbsent(tid, ctx) match {
-              case null => // ok
+              case null => ctx // OK
               case _ => impossible(s"concurrent modification for thread ${tid}")
             }
-            this.threadLocal.set(ctx)
-            ctx
-          case _ =>
-            throw new NotImplementedError("TODO: reused thread ID") // TODO
+          case old =>
+            val ctx = old.copy()
+            this.threadContexts.putIfAbsent(tid, ctx) match {
+              case null => impossible(s"concurrent modification for thread ${tid}")
+              case oldCtx if (oldCtx eq old) => ctx // OK
+              case _ => impossible(s"concurrent modification for thread ${tid}")
+            }
         }
+        this.threadLocal.set(ctx)
+        ctx
       case ctx =>
         ctx
     }
   }
 }
 
-final class ThreadContext(global: GlobalContext) {
-  // TODO
+final class ThreadContext(global: GlobalContext, val tid: Long) {
+
+  /** Note: should read any data with 'acquire'. */
+  final def copy(): ThreadContext =
+    new ThreadContext(this.global, this.tid)
 }
