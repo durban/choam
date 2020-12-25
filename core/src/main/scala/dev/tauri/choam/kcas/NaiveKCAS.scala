@@ -29,71 +29,29 @@ package kcas
  *
  * Implemented as a baseline for benchmarking and correctness tests.
  */
-private[kcas] object NaiveKCAS extends KCAS { self =>
+private[kcas] final object NaiveKCAS extends KCAS { self =>
 
-  final case class DescRepr(ops: List[CASD[_]]) extends self.Desc with self.Snap {
+  final override def start() =
+    new EMCASDescriptor(this)
 
-    override def tryPerform(): Boolean =
-      perform(CASD.sortDescriptors(ops))
-
-    override def cancel(): Unit =
-      ()
-
-    override def withCAS[A](ref: Ref[A], ov: A, nv: A): self.Desc =
-      copy(ops = CASD(ref, ov, nv) :: ops)
-
-    override def snapshot(): self.Snap =
-      this
-
-    override def load(): self.Desc =
-      this
-
-    override def discard(): Unit =
-      ()
+  final override def addCas[A](
+    desc: EMCASDescriptor,
+    ref: Ref[A],
+    ov: A,
+    nv: A
+  ): EMCASDescriptor = {
+    desc.words.add(WordDescriptor.withoutHolder[A](ref, ov, nv, desc))
+    desc
   }
 
-  /** CAS descriptor */
-  final case class CASD[A](ref: Ref[A], ov: A, nv: A) {
+  final override def snapshot(desc: EMCASDescriptor): EMCASDescriptor =
+    desc.copy(addHolder = false)
 
-    private[kcas] final def unsafeTryPerformOne(): Boolean =
-      ref.unsafeTryPerformCas(ov, nv)
-
-    final override def equals(that: Any): Boolean = that match {
-      case CASD(tref, tov, tnv) =>
-        (ref eq tref) && equ(ov, tov) && equ(nv, tnv)
-      case _ =>
-        false
-    }
-
-    final override def hashCode: Int =
-      ref.## ^ System.identityHashCode(ov) ^ System.identityHashCode(nv)
+  final override def tryPerform(desc: EMCASDescriptor): Boolean = {
+    desc.sort()
+    val ops = scala.jdk.CollectionConverters.ListHasAsScala(desc.words).asScala.toList
+    perform(ops)
   }
-
-  final object CASD {
-
-    val refOrdering: Ordering[Ref[_]] = new Ordering[Ref[_]] {
-      override def compare(x: Ref[_], y: Ref[_]): Int = {
-        Ref.globalCompare(x, y)
-      }
-    }
-
-    def sortDescriptors(ds: List[CASD[_]]): List[CASD[_]] = {
-      val s = new scala.collection.mutable.TreeMap[Ref[_], CASD[_]]()(refOrdering)
-      for (d <- ds) {
-        s.get(d.ref) match {
-          case Some(other) =>
-            assert(d.ref eq other.ref)
-            KCAS.impossibleKCAS(d.ref, d.ov, d.nv, other.ov, other.nv)
-          case None =>
-            s.put(d.ref, d)
-        }
-      }
-      s.values.toList
-    }
-  }
-
-  override def start(): self.Desc =
-    DescRepr(Nil)
 
   @tailrec
   final override def read[A](ref: Ref[A]): A = {
@@ -105,35 +63,35 @@ private[kcas] object NaiveKCAS extends KCAS { self =>
     }
   }
 
-  private def perform(ops: List[CASD[_]]): Boolean = {
+  private def perform(ops: List[WordDescriptor[_]]): Boolean = {
 
     @tailrec
-    def lock(ops: List[CASD[_]]): List[CASD[_]] = ops match {
-      case Nil =>
-        Nil
-      case CASD(ref, ov, _) :: tail =>
-        if (ref.unsafeTryPerformCas(ov, null)) lock(tail)
+    def lock(ops: List[WordDescriptor[_]]): List[WordDescriptor[_]] = ops match {
+      case Nil => Nil
+      case h :: tail => h match { case head: WordDescriptor[a] =>
+        if (head.address.unsafeTryPerformCas(head.ov, nullOf[a])) lock(tail)
         else ops // rollback
+      }
     }
 
     @tailrec
-    def commit(ops: List[CASD[_]]): Unit = ops match {
-      case Nil =>
-        ()
-      case CASD(ref, _, nv) :: tail =>
-        ref.unsafeLazySet(nv)
+    def commit(ops: List[WordDescriptor[_]]): Unit = ops match {
+      case Nil => ()
+      case h :: tail => h match { case head: WordDescriptor[a] =>
+        head.address.unsafeLazySet(head.nv)
         commit(tail)
+      }
     }
 
     @tailrec
-    def rollback(from: List[CASD[_]], to: List[CASD[_]]): Unit = {
+    def rollback(from: List[WordDescriptor[_]], to: List[WordDescriptor[_]]): Unit = {
       if (from ne to) {
         from match {
-          case Nil =>
-            impossible("this is the end")
-          case CASD(ref, ov, _) :: tail =>
-            ref.unsafeLazySet(ov)
+          case Nil => impossible("this is the end")
+          case h :: tail => h match { case head: WordDescriptor[a] =>
+            head.address.unsafeLazySet(head.ov)
             rollback(tail, to)
+          }
         }
       } else {
         ()
@@ -143,8 +101,8 @@ private[kcas] object NaiveKCAS extends KCAS { self =>
     ops match {
       case Nil =>
         true
-      case h :: Nil =>
-        h.unsafeTryPerformOne()
+      case (h : WordDescriptor[a]) :: Nil =>
+        h.address.unsafeTryPerformCas(h.ov, h.nv)
       case l @ (_ :: _) =>
         lock(l) match {
           case Nil =>
@@ -156,7 +114,4 @@ private[kcas] object NaiveKCAS extends KCAS { self =>
         }
     }
   }
-
-  private[choam] final override def isNaive: Boolean =
-    true
 }

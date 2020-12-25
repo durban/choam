@@ -42,11 +42,9 @@ class CAS2ReadTest extends StressTestBase {
 
   @Actor
   def writer(r: LLZ_Result): Unit = {
-    r.r3 = impl
-      .start()
-      .withCAS(ref1, "ov1", "a")
-      .withCAS(ref2, "ov2", "b")
-      .tryPerform()
+    r.r3 = impl.tryPerform(
+      impl.addCas(impl.addCas(impl.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
+    )
   }
 
   @Actor

@@ -42,10 +42,7 @@ class EMCASCleanup1Test {
 
   @Actor
   def write(r: ILL_Result): Unit = {
-    val ok = EMCAS
-      .start()
-      .withCAS(this.ref, "a", "b")
-      .tryPerform()
+    val ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.start(), this.ref, "a", "b"))
     r.r1 = if (ok) 1 else -1
   }
 
@@ -83,7 +80,7 @@ class EMCASCleanup1Test {
   def arbiter(r: ILL_Result): Unit = {
     // WordDescriptor is not serializable:
     r.r2 match {
-      case wd: EMCAS.WordDescriptor[_] =>
+      case wd: WordDescriptor[_] =>
         r.r2 = wd.toString()
       case _ =>
         ()

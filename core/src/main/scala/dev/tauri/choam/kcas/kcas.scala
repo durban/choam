@@ -25,36 +25,15 @@ package kcas
 /** Common interface for k-CAS implementations */
 abstract class KCAS { self =>
 
-  /**
-   * Rules:
-   * - no use after `tryPerform` or `cancel`
-   * - must call `tryPerform` or `cancel` before releasing the reference
-   */
-  private[choam] trait Desc {
-    final def impl: KCAS = self
-    def withCAS[A](ref: Ref[A], ov: A, nv: A): Desc
-    def snapshot(): Snap
-    def tryPerform(): Boolean
-    def cancel(): Unit
-  }
+  private[choam] def start(): EMCASDescriptor
 
-  /**
-   * Rules:
-   * - mustn't `load` or `discard`, unless the original (which
-   *   created the snapshot) is already finished (with `tryPerform`
-   *   or `cancel`)
-   */
-  private[choam] trait Snap {
-    def load(): Desc
-    def discard(): Unit
-  }
+  private[choam] def addCas[A](desc: EMCASDescriptor, ref: Ref[A], ov: A, nv: A): EMCASDescriptor
 
-  private[choam] def start(): Desc
+  private[choam] def snapshot(desc: EMCASDescriptor): EMCASDescriptor
+
+  private[choam] def tryPerform(desc: EMCASDescriptor): Boolean
 
   private[choam] def read[A](ref: Ref[A]): A
-
-  private[choam] def isNaive: Boolean =
-    false
 }
 
 /** Provides various k-CAS implementations */

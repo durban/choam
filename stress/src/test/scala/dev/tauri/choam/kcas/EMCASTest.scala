@@ -54,11 +54,9 @@ class EMCASTest {
 
   @Actor
   def write(r: LLLLL_Result): Unit = {
-    val ok = EMCAS
-      .start()
-      .withCAS(this.ref1, "a", "b")
-      .withCAS(this.ref2, "x", "y")
-      .tryPerform()
+    val ok = EMCAS.tryPerform(
+      EMCAS.addCas(EMCAS.addCas(EMCAS.start(), this.ref1, "a", "b"), this.ref2, "x", "y")
+    )
     r.r1 = ok // true
   }
 
@@ -72,7 +70,7 @@ class EMCASTest {
           go() // retry
         case wd: EMCASWeakData[_] =>
           wd.get() match {
-            case d: EMCAS.WordDescriptor[_] =>
+            case d: WordDescriptor[_] =>
               val it = d.parent.words.iterator()
               val dFirst = it.next()
               val dSecond = it.next()

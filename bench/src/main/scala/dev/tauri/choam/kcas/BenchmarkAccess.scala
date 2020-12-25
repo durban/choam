@@ -26,7 +26,7 @@ final object BenchmarkAccess {
     b.setBirthEpochOpaque(e)
   }
 
-  def newWeakData[A](desc: EMCAS.WordDescriptor[A], value: A): AnyRef = {
+  def newWeakData[A](desc: WordDescriptor[A], value: A): AnyRef = {
     val wd = new EMCASWeakData[A](desc)
     wd.setValueVolatile(value)
     Reference.reachabilityFence(desc)

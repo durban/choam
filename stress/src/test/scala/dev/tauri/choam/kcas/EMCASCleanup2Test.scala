@@ -60,11 +60,9 @@ class EMCASCleanup2Test {
 
   @Actor
   def write(r: LLLLL_Result): Unit = {
-    r.r1 = EMCAS
-      .start()
-      .withCAS(this.ref1, "a", "b")
-      .withCAS(this.ref2, "x", "y")
-      .tryPerform()
+    r.r1 = EMCAS.tryPerform(
+      EMCAS.addCas(EMCAS.addCas(EMCAS.start(), this.ref1, "a", "b"), this.ref2, "x", "y")
+    )
   }
 
   @Actor
@@ -119,13 +117,13 @@ class EMCASCleanup2Test {
   def arbiter(r: LLLLL_Result): Unit = {
     // WordDescriptor is not serializable:
     r.r2 match {
-      case wd: EMCAS.WordDescriptor[_] =>
+      case wd: WordDescriptor[_] =>
         r.r2 = wd.toString()
       case _ =>
         ()
     }
     r.r4 match {
-      case wd: EMCAS.WordDescriptor[_] =>
+      case wd: WordDescriptor[_] =>
         r.r4 = wd.toString()
       case _ =>
         ()

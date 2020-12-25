@@ -23,7 +23,7 @@ import java.lang.invoke.MethodHandles;
 import java.io.Serializable;
 
 public final class EMCASWeakData<A>
-  extends WeakReference<EMCAS.WordDescriptor<A>> {
+  extends WeakReference<WordDescriptor<A>> {
 
   private static final class UninitializedValue
     implements Serializable {
@@ -50,7 +50,7 @@ public final class EMCASWeakData<A>
 
   private volatile A _value;
 
-  EMCASWeakData(EMCAS.WordDescriptor<A> desc) {
+  EMCASWeakData(WordDescriptor<A> desc) {
     super(desc);
     this.setValuePlain((A) UNINITIALIZED);
   }

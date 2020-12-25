@@ -26,16 +26,23 @@ final class KCASSpecEMCAS
   extends KCASSpec
   with SpecEMCAS
 
+final object KCASSpec {
+
+  final case class CASD[A](address: Ref[A], ov: A, nv: A)
+}
+
 abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
 
-  private final def tryPerformBatch(ops: List[NaiveKCAS.CASD[_]]): Boolean = {
+  import KCASSpec._
+
+  private final def tryPerformBatch(ops: List[CASD[_]]): Boolean = {
     val desc = ops.foldLeft(kcasImpl.start()) { (d, op) =>
       op match {
-        case op: NaiveKCAS.CASD[a] =>
-          d.withCAS[a](op.ref, op.ov, op.nv)
+        case op: CASD[a] =>
+          kcasImpl.addCas(d, op.address, op.ov, op.nv)
       }
     }
-    desc.tryPerform()
+    kcasImpl.tryPerform(desc)
   }
 
   test("k-CAS should succeed if old values match, and there is no contention") {
@@ -43,9 +50,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r2 = Ref.mk("r2")
     val r3 = Ref.mk("r3")
     val succ = tryPerformBatch(List(
-      NaiveKCAS.CASD(r1, "r1", "x"),
-      NaiveKCAS.CASD(r2, "r2", "y"),
-      NaiveKCAS.CASD(r3, "r3", "z")
+      CASD(r1, "r1", "x"),
+      CASD(r2, "r2", "y"),
+      CASD(r3, "r3", "z")
     ))
     assert(succ)
     assertSameInstance(kcasImpl.read(r1), "x")
@@ -60,9 +67,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
 
     def go(): Boolean = {
       tryPerformBatch(List(
-        NaiveKCAS.CASD(r1, "r1", "x"),
-        NaiveKCAS.CASD(r2, "r2", "y"),
-        NaiveKCAS.CASD(r3, "r3", "z")
+        CASD(r1, "r1", "x"),
+        CASD(r2, "r2", "y"),
+        CASD(r3, "r3", "z")
       ))
     }
 
@@ -98,9 +105,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r2 = Ref.mk("r2")
     val exc = intercept[Exception] {
       tryPerformBatch(List(
-        NaiveKCAS.CASD(r1, "r1", "x"),
-        NaiveKCAS.CASD(r2, "r2", "y"),
-        NaiveKCAS.CASD(r1, "r1", "x") // this is a duplicate
+        CASD(r1, "r1", "x"),
+        CASD(r2, "r2", "y"),
+        CASD(r1, "r1", "x") // this is a duplicate
       ))
     }
     assert(clue(exc.getMessage).contains("Impossible k-CAS"))
@@ -114,21 +121,21 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r3 = Ref.mk("r3")
 
     assert(tryPerformBatch(List(
-      NaiveKCAS.CASD(r1, "r1", "x"),
-      NaiveKCAS.CASD(r2, "r2", "y"),
-      NaiveKCAS.CASD(r3, "r3", "z")
+      CASD(r1, "r1", "x"),
+      CASD(r2, "r2", "y"),
+      CASD(r3, "r3", "z")
     )))
 
     assert(tryPerformBatch(List(
-      NaiveKCAS.CASD(r1, "x", "x2"),
-      NaiveKCAS.CASD(r2, "y", "y2"),
-      NaiveKCAS.CASD(r3, "z", "z2")
+      CASD(r1, "x", "x2"),
+      CASD(r2, "y", "y2"),
+      CASD(r3, "z", "z2")
     )))
 
     assert(!tryPerformBatch(List(
-      NaiveKCAS.CASD(r1, "x2", "x3"),
-      NaiveKCAS.CASD(r2, "yyy", "y3"), // this will fail
-      NaiveKCAS.CASD(r3, "z2", "z3")
+      CASD(r1, "x2", "x3"),
+      CASD(r2, "yyy", "y3"), // this will fail
+      CASD(r3, "z2", "z3")
     )))
 
     assertSameInstance(kcasImpl.read(r1), "x2")
@@ -141,15 +148,15 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r2 = Ref.mk("r2")
     val r3 = Ref.mk("r3")
     val d0 = kcasImpl.start()
-    val d1 = d0.withCAS(r1, "r1", "r1x")
-    val snap = d1.snapshot()
-    val d21 = d1.withCAS(r2, "foo", "bar")
-    assert(!d21.tryPerform())
+    val d1 = kcasImpl.addCas(d0, r1, "r1", "r1x")
+    val snap = kcasImpl.snapshot(d1)
+    val d21 = kcasImpl.addCas(d1, r2, "foo", "bar")
+    assert(!kcasImpl.tryPerform(d21))
     assertSameInstance(kcasImpl.read(r1), "r1")
     assertSameInstance(kcasImpl.read(r2), "r2")
     assertSameInstance(kcasImpl.read(r3), "r3")
-    val d22 = snap.load().withCAS(r3, "r3", "r3x")
-    assert(d22.tryPerform())
+    val d22 = kcasImpl.addCas(snap, r3, "r3", "r3x")
+    assert(kcasImpl.tryPerform(d22))
     assertSameInstance(kcasImpl.read(r1), "r1x")
     assertSameInstance(kcasImpl.read(r2), "r2")
     assertSameInstance(kcasImpl.read(r3), "r3x")
@@ -160,15 +167,14 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r2 = Ref.mk("r2")
     val r3 = Ref.mk("r3")
     val d0 = kcasImpl.start()
-    val d1 = d0.withCAS(r1, "r1", "r1x")
-    val snap = d1.snapshot()
-    val d21 = d1.withCAS(r2, "foo", "bar")
-    d21.cancel()
+    val d1 = kcasImpl.addCas(d0, r1, "r1", "r1x")
+    val snap = kcasImpl.snapshot(d1)
+    kcasImpl.addCas(d1, r2, "foo", "bar") // unused
     assertSameInstance(kcasImpl.read(r1), "r1")
     assertSameInstance(kcasImpl.read(r2), "r2")
     assertSameInstance(kcasImpl.read(r3), "r3")
-    val d22 = snap.load().withCAS(r3, "r3", "r3x")
-    assert(d22.tryPerform())
+    val d22 = kcasImpl.addCas(snap, r3, "r3", "r3x")
+    assert(kcasImpl.tryPerform(d22))
     assertSameInstance(kcasImpl.read(r1), "r1x")
     assertSameInstance(kcasImpl.read(r2), "r2")
     assertSameInstance(kcasImpl.read(r3), "r3x")

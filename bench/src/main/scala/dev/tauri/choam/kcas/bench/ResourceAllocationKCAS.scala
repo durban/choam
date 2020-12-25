@@ -52,11 +52,11 @@ class ResourceAllocationKCAS {
     }
 
     @tailrec
-    def prepare(i: Int, d: impl.Desc): impl.Desc = {
+    def prepare(i: Int, d: EMCASDescriptor): EMCASDescriptor = {
       if (i >= n) {
         d
       } else {
-        val nd = d.withCAS(rss(i), ovs(i), ovs((i + 1) % n))
+        val nd = impl.addCas(d, rss(i), ovs(i), ovs((i + 1) % n))
         prepare(i + 1, nd)
       }
     }
@@ -65,7 +65,7 @@ class ResourceAllocationKCAS {
     def go(): Unit = {
       read(0)
       val d = prepare(0, impl.start())
-      if (d.tryPerform()) ()
+      if (impl.tryPerform(d)) ()
       else go()
     }
 

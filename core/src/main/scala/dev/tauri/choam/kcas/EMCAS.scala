@@ -18,121 +18,15 @@
 package dev.tauri.choam
 package kcas
 
-import java.util.{ ArrayList, Comparator }
-import java.lang.invoke.VarHandle
+import java.util.concurrent.ThreadLocalRandom
 
 import scala.annotation.tailrec
-import java.util.concurrent.ThreadLocalRandom
 
 /**
  * Efficient Multi-word Compare and Swap:
  * https://arxiv.org/pdf/2008.02527.pdf
  */
 private[kcas] object EMCAS extends KCAS { self =>
-
-  // Listing 1 in the paper:
-
-  final object MCASDescriptor {
-    // TODO: should always be inlined
-    final val minArraySize = 8
-  }
-
-  final class MCASDescriptor(
-    /**
-     * Word descriptors
-     *
-     * Thread safety: we only read the list after reading the descriptor from a `Ref`;
-     * we only mutate the list before writing the descriptor to a `Ref`.
-     */
-    val words: ArrayList[WordDescriptor[_]]
-  ) extends EMCASDescriptorBase with self.Desc with self.Snap {
-
-    override def withCAS[A](ref: Ref[A], ov: A, nv: A): Desc = {
-      this.words.add(WordDescriptor[A](ref, ov, nv, this))
-      this
-    }
-
-    override def snapshot(): Snap = {
-      @tailrec
-      def copy(
-        from: ArrayList[WordDescriptor[_]],
-        to: ArrayList[WordDescriptor[_]],
-        newParent: MCASDescriptor,
-        idx: Int,
-        len: Int
-      ): Unit = {
-        if (idx < len) {
-          to.add(from.get(idx).withParent(newParent))
-          copy(from, to, newParent, idx + 1, len)
-        }
-      }
-      val newArrCapacity = Math.max(this.words.size(), MCASDescriptor.minArraySize)
-      val newArr = new ArrayList[WordDescriptor[_]](newArrCapacity)
-      val r = new MCASDescriptor(newArr)
-      copy(this.words, newArr, r, 0, this.words.size())
-      r
-    }
-
-    def sort(): Unit = {
-      this.words.sort(WordDescriptor.comparator)
-    }
-
-    override def tryPerform(): Boolean = {
-      MCAS(this, helping = false)
-    }
-
-    override def cancel(): Unit =
-      ()
-
-    override def load(): Desc =
-      this
-
-    override def discard(): Unit =
-      ()
-  }
-
-  final class WordDescriptor[A] private (
-    val address: Ref[A],
-    val ov: A,
-    val nv: A,
-    val parent: MCASDescriptor
-  ) {
-
-    private var _holder: EMCASWeakData[A] =
-      _
-
-    def holder: EMCASWeakData[A] =
-      this._holder
-
-    final def withParent(newParent: MCASDescriptor): WordDescriptor[A] =
-      WordDescriptor[A](this.address, this.ov, this.nv, newParent)
-
-    final override def toString: String =
-      s"WordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
-  }
-
-  final object WordDescriptor {
-
-    def apply[A](address: Ref[A], ov: A, nv: A, parent: MCASDescriptor): WordDescriptor[A] = {
-      val r = new WordDescriptor[A](address, ov, nv, parent)
-      r._holder = new EMCASWeakData[A](r)
-      VarHandle.releaseFence()
-      r
-    }
-
-    val comparator: Comparator[WordDescriptor[_]] = new Comparator[WordDescriptor[_]] {
-      final override def compare(x: WordDescriptor[_], y: WordDescriptor[_]): Int = {
-        // NB: `x ne y` is always true, because we create fresh descriptors in `withCAS`
-        val res = Ref.globalCompare(x.address, y.address)
-        if (res == 0) {
-          assert(x.address eq y.address)
-          KCAS.impossibleKCAS(x.address, x.ov, x.nv, y.ov, y.nv)
-        } else {
-          res
-        }
-      }
-    }
-  }
 
   // Listing 2 in the paper:
 
@@ -201,7 +95,7 @@ private[kcas] object EMCAS extends KCAS { self =>
    * @param helping: Pass `true` when helping `desc` found in a `Ref`;
    *                 `false` when `desc` is a new descriptor.
    */
-  def MCAS(desc: MCASDescriptor, helping: Boolean): Boolean = {
+  def MCAS(desc: EMCASDescriptor, helping: Boolean): Boolean = {
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): Boolean = {
       var content: A = nullOf[A]
@@ -320,8 +214,25 @@ private[kcas] object EMCAS extends KCAS { self =>
     }
   }
 
-  private[choam] override def start(): Desc = {
-    new MCASDescriptor(new ArrayList(MCASDescriptor.minArraySize))
+  private[choam] final override def start(): EMCASDescriptor = {
+    new EMCASDescriptor(this)
+  }
+
+  private[choam] final override def addCas[A](
+    desc: EMCASDescriptor,
+    ref: Ref[A],
+    ov: A,
+    nv: A
+  ): EMCASDescriptor = {
+    desc.words.add(WordDescriptor[A](ref, ov, nv, desc))
+    desc
+  }
+
+  private[choam] final override def snapshot(desc: EMCASDescriptor): EMCASDescriptor =
+    desc.copy(addHolder = true)
+
+  private[choam] final override def tryPerform(desc: EMCASDescriptor): Boolean = {
+    EMCAS.MCAS(desc, helping = false)
   }
 
   /** For testing */

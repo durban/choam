@@ -42,47 +42,34 @@ class CAS2Test extends StressTestBase {
 
   @Actor
   def writer1(r: ZZZZ_Result): Unit = {
-    r.r1 = impl
-      .start()
-      .withCAS(ref1, "ov1", "x")
-      .tryPerform()
+    r.r1 = impl.tryPerform(
+      impl.addCas(impl.start(), ref1, "ov1", "x")
+    )
   }
 
   @Actor
   def writer2(r: ZZZZ_Result): Unit = {
-    r.r2 = impl
-      .start()
-      .withCAS(ref2, "ov2", "y")
-      .tryPerform()
+    r.r2 = impl.tryPerform(
+      impl.addCas(impl.start(), ref2, "ov2", "y")
+    )
   }
 
   @Actor
   def writer3(r: ZZZZ_Result): Unit = {
-    r.r3 = impl
-      .start()
-      .withCAS(ref1, "ov1", "a")
-      .withCAS(ref2, "ov2", "b")
-      .tryPerform()
+    r.r3 = impl.tryPerform(
+      impl.addCas(impl.addCas(impl.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
+    )
   }
 
   @Arbiter
   def abriter(r: ZZZZ_Result): Unit = {
-    if (impl.isNaive) {
-      // NaiveKCAS can't pass this test, but we can't disable it,
-      // so we set the results to dummy values:
-      r.r1 = true
-      r.r2 = true
-      r.r3 = false
-      r.r4 = true
-    } else {
-      if (r.r3) {
-        if ((impl.read(ref1) == "a") && (impl.read(ref2) == "b")) {
-          r.r4 = true
-        }
-      } else if (r.r1 && r.r2) {
-        if ((impl.read(ref1) == "x") && (impl.read(ref2) == "y")) {
-          r.r4 = true
-        }
+    if (r.r3) {
+      if ((impl.read(ref1) == "a") && (impl.read(ref2) == "b")) {
+        r.r4 = true
+      }
+    } else if (r.r1 && r.r2) {
+      if ((impl.read(ref1) == "x") && (impl.read(ref2) == "y")) {
+        r.r4 = true
       }
     }
   }

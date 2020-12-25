@@ -28,15 +28,12 @@ class EMCASSpec extends BaseSpecA {
   test("EMCAS should allow null as ov or nv") {
     val r1 = Ref.mk[String](null)
     val r2 = Ref.mk[String]("x")
-    val desc = EMCAS
-      .start()
-      .withCAS(r1, null, "x")
-      .withCAS(r2, "x", null)
-    val snap = desc.snapshot()
-    assert(desc.tryPerform())
+    val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(), r1, null, "x"), r2, "x", null)
+    val snap = EMCAS.snapshot(desc)
+    assert(EMCAS.tryPerform(desc))
     assert(EMCAS.read(r1) eq "x")
     assert(EMCAS.read(r2) eq null)
-    assert(!snap.load().tryPerform())
+    assert(!EMCAS.tryPerform(snap))
     assert(EMCAS.read(r1) eq "x")
     assert(EMCAS.read(r2) eq null)
   }
@@ -44,11 +41,9 @@ class EMCASSpec extends BaseSpecA {
   test("EMCAS should clean up finalized descriptors") {
     val r1 = Ref.mk[String]("x")
     val r2 = Ref.mk[String]("y")
-    var desc = EMCAS
-      .start()
-      .withCAS(r1, "x", "a")
-    var snap = desc.snapshot()
-    assert(desc.withCAS(r2, "y", "b").tryPerform())
+    var desc = EMCAS.addCas(EMCAS.start(), r1, "x", "a")
+    var snap = EMCAS.snapshot(desc)
+    assert(EMCAS.tryPerform(EMCAS.addCas(desc, r2, "y", "b")))
     assert(EMCAS.read(r1) eq "a")
     assert(EMCAS.read(r2) eq "b")
     desc = null
@@ -57,8 +52,8 @@ class EMCASSpec extends BaseSpecA {
     assert(r1.unsafeTryRead() eq "a")
     assert(r2.unsafeTryRead() eq "b")
     assert(r1.unsafeTryPerformCas("a", "x")) // reset
-    var desc2 = snap.load()
-    assert(!desc2.withCAS(r2, "y", "b").tryPerform()) // this will fail
+    var desc2 = snap
+    assert(!EMCAS.tryPerform(EMCAS.addCas(desc2, r2, "y", "b"))) // this will fail
     assert(EMCAS.read(r1) eq "x")
     assert(EMCAS.read(r2) eq "b")
     snap = null
@@ -72,13 +67,9 @@ class EMCASSpec extends BaseSpecA {
   test("EMCAS should clean up finalized descriptors if the original thread releases them") {
     val r1 = Ref.mk[String]("x")
     val r2 = Ref.mk[String]("y")
-    var ok = false
+    @volatile var ok = false
     val t = new Thread(() => {
-      ok = EMCAS
-        .start()
-        .withCAS(r1, "x", "a")
-        .withCAS(r2, "y", "b")
-        .tryPerform()
+      ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(), r1, "x", "a"), r2, "y", "b"))
     })
     @tailrec
     def checkCleanup(ref: Ref[String], old: String, exp: String): Boolean = {
@@ -113,13 +104,9 @@ class EMCASSpec extends BaseSpecA {
     val r1 = Ref.mkWithId[String]("x")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId[String]("y")(0L, 0L, 0L, 1L)
     val t1 = new Thread(() => {
-      val desc = EMCAS
-        .start()
-        .withCAS(r1, "x", "a")
-        .withCAS(r2, "y", "b")
-        .asInstanceOf[EMCAS.MCASDescriptor]
+      val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(), r1, "x", "a"), r2, "y", "b")
       desc.sort()
-      val d0 = desc.words.get(0).asInstanceOf[EMCAS.WordDescriptor[String]]
+      val d0 = desc.words.get(0).asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
       r1.unsafeSet(d0.holder.castToData())
       // and the thread dies here, with an active CAS
@@ -127,11 +114,7 @@ class EMCASSpec extends BaseSpecA {
     t1.start()
     t1.join()
     System.gc()
-    val succ = EMCAS
-      .start()
-      .withCAS(r1, "x", "x2")
-      .withCAS(r2, "y", "y2")
-      .tryPerform()
+    val succ = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(), r1, "x", "x2"), r2, "y", "y2"))
     assert(!succ)
     System.gc()
     assert(EMCAS.read(r1) eq "a")
@@ -143,13 +126,9 @@ class EMCASSpec extends BaseSpecA {
   test("EMCAS read should help the other operation") {
     val r1 = Ref.mkWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId("r2")(0L, 0L, 0L, 42L)
-    val other: EMCAS.MCASDescriptor = EMCAS
-      .start()
-      .withCAS(r1, "r1", "x")
-      .withCAS(r2, "r2", "y")
-      .asInstanceOf[EMCAS.MCASDescriptor]
+    val other: EMCASDescriptor = EMCAS.addCas(EMCAS.addCas(EMCAS.start(), r1, "r1", "x"), r2, "r2", "y")
     other.sort()
-    val d0 = other.words.get(0).asInstanceOf[EMCAS.WordDescriptor[String]]
+    val d0 = other.words.get(0).asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
     r1.unsafeSet(d0.holder.castToData())
     val res = EMCAS.read(r1)
@@ -162,13 +141,9 @@ class EMCASSpec extends BaseSpecA {
   test("EMCAS read should roll back the other op if necessary") {
     val r1 = Ref.mkWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId("r2")(0L, 0L, 0L, 99L)
-    val other = EMCAS
-      .start()
-      .withCAS(r1, "r1", "x")
-      .withCAS(r2, "zzz", "y") // this will fail
-      .asInstanceOf[EMCAS.MCASDescriptor]
+    val other = EMCAS.addCas(EMCAS.addCas(EMCAS.start(), r1, "r1", "x"), r2, "zzz", "y")
     other.sort()
-    val d0 = other.words.get(0).asInstanceOf[EMCAS.WordDescriptor[String]]
+    val d0 = other.words.get(0).asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
     r1.unsafeSet(d0.holder.castToData())
     val res = EMCAS.read(r1)
