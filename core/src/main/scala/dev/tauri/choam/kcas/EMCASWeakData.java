@@ -25,17 +25,10 @@ import java.io.Serializable;
 public final class EMCASWeakData<A>
   extends WeakReference<WordDescriptor<A>> {
 
-  private static final class UninitializedValue
-    implements Serializable {
-
-    @Override
-    public final String toString() {
-      return "UNINITIALIZED";
-    }
-  }
+  private static enum UninitializedValue { UNINITIALIZED }
 
   public static final Object UNINITIALIZED =
-    new UninitializedValue();
+    UninitializedValue.UNINITIALIZED;
 
   private static final VarHandle VALUE;
 
