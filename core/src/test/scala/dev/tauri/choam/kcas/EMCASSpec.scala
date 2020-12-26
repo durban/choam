@@ -18,16 +18,11 @@
 package dev.tauri.choam
 package kcas
 
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.{ ConcurrentLinkedQueue, CountDownLatch }
 
 import scala.runtime.VolatileObjectRef
 
 class EMCASSpec extends BaseSpecA {
-
-  sealed trait Obj
-  final case object A extends Obj
-  final case object B extends Obj
-  final case object C extends Obj
 
   test("EMCAS should allow null as ov or nv") {
     val r1 = Ref.mk[String](null)
@@ -73,7 +68,7 @@ class EMCASSpec extends BaseSpecA {
   test("EMCAS should clean up finalized descriptors if the original thread releases them") {
     val r1 = Ref.mk[String]("x")
     val r2 = Ref.mk[String]("y")
-    @volatile var ok = false
+    var ok = false
     val t = new Thread(() => {
       val ctx = EMCAS.currentContext()
       ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a"), r2, "y", "b"), ctx)
@@ -107,7 +102,7 @@ class EMCASSpec extends BaseSpecA {
     assert(ok2)
   }
 
-  test("EMCAS should be finalizable even if a thread dies mid-op".ignore) {
+  test("EMCAS op should be finalizable even if a thread dies mid-op".ignore) {
     val r1 = Ref.mkWithId[String]("x")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId[String]("y")(0L, 0L, 0L, 1L)
     val t1 = new Thread(() => {
@@ -130,6 +125,44 @@ class EMCASSpec extends BaseSpecA {
     assert(EMCAS.read(r2, ctx) eq "b")
     assert(r1.unsafeTryRead() eq "a")
     assert(r2.unsafeTryRead() eq "b")
+  }
+
+  test("EMCAS should not replace and forget active descriptors".ignore) {
+    val r1 = Ref.mkWithId[String]("x")(0L, 0L, 0L, 0L)
+    val r2 = Ref.mkWithId[String]("y")(0L, 0L, 0L, 1L)
+    val latch1 = new CountDownLatch(1)
+    val latch2 = new CountDownLatch(1)
+    val t1 = new Thread(() => {
+      val ctx = EMCAS.currentContext()
+      val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a"), r2, "y", "b")
+      desc.sort()
+      val d0 = desc.words.get(0).asInstanceOf[WordDescriptor[String]]
+      assert(d0.address eq r1)
+      assert(d0.address.unsafeTryPerformCas(d0.ov, d0.holder.castToData()))
+      // and the thread pauses here, with an active CAS
+      latch1.countDown()
+      latch2.await()
+    })
+    t1.start()
+    latch1.await()
+
+    var ok = false
+    val t2 = new Thread(() => {
+      // the other thread changes back the values (but first finalizes the active op):
+      val ctx = EMCAS.currentContext()
+      var desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r2, "b", "y"), r1, "a", "x")
+      assert(EMCAS.tryPerform(desc, ctx))
+      desc = null
+      // wait for descriptors to be collected:
+      EMCAS.spinUntilCleanup(r2)
+      EMCAS.spinUntilCleanup(r1) // TODO: this should never finish
+      ok = false // TODO
+    })
+    t2.start()
+    t2.join()
+    assert(ok)
+    latch2.countDown()
+    t1.join()
   }
 
   test("EMCAS read should help the other operation") {

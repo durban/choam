@@ -272,7 +272,7 @@ private[kcas] object EMCAS extends KCAS { self =>
       }
       Thread.onSpinWait()
       ctr += 1
-      if ((ctr % 1024) == 0) {
+      if ((ctr % 128) == 0) {
         if (Thread.interrupted()) {
           throw new InterruptedException
         }
