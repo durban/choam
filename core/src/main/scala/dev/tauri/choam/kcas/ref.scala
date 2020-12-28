@@ -51,6 +51,8 @@ sealed trait Ref[A] {
   // TODO: this is dangerous, reading should go through the k-CAS implementation!
   private[kcas] def unsafeTryRead(): A
 
+  private[kcas] def unsafeReadPlain(): A
+
   /** For testing */
   private[kcas] def debugRead(): A
 
@@ -171,6 +173,9 @@ private class UnpaddedRefImpl[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: L
 
   private[kcas] final override def unsafeTryRead(): A =
     this.get()
+
+  private[kcas] def unsafeReadPlain(): A =
+    this.getPlain()
 
   private[kcas] final override def debugRead(): A = {
     this.unsafeTryRead() match {

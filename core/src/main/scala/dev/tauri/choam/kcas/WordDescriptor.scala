@@ -18,7 +18,6 @@
 package dev.tauri.choam
 package kcas
 
-import java.lang.invoke.VarHandle
 import java.util.Comparator
 
 final class WordDescriptor[A] private (
@@ -27,12 +26,6 @@ final class WordDescriptor[A] private (
   val nv: A,
   val parent: EMCASDescriptor
 ) {
-
-  private var _holder: EMCASWeakData[A] =
-    _
-
-  def holder: EMCASWeakData[A] =
-    this._holder
 
   final def withParent(newParent: EMCASDescriptor): WordDescriptor[A] =
     WordDescriptor[A](this.address, this.ov, this.nv, newParent)
@@ -48,10 +41,7 @@ final class WordDescriptor[A] private (
 final object WordDescriptor {
 
   def apply[A](address: Ref[A], ov: A, nv: A, parent: EMCASDescriptor): WordDescriptor[A] = {
-    val r = new WordDescriptor[A](address, ov, nv, parent)
-    r._holder = new EMCASWeakData[A](r)
-    VarHandle.releaseFence()
-    r
+    new WordDescriptor[A](address, ov, nv, parent)
   }
 
   /** This is only for use by `NaiveKCAS` */

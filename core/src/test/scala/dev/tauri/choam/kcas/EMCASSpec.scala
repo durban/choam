@@ -111,7 +111,7 @@ class EMCASSpec extends BaseSpecA {
       desc.sort()
       val d0 = desc.words.get(0).asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
-      r1.unsafeSet(d0.holder.castToData())
+      r1.unsafeSet(new EMCASWeakData(d0).castToData())
       // and the thread dies here, with an active CAS
     })
     t1.start()
@@ -127,7 +127,7 @@ class EMCASSpec extends BaseSpecA {
     assert(r2.unsafeTryRead() eq "b")
   }
 
-  test("EMCAS should not replace and forget active descriptors".ignore) {
+  test("EMCAS should not replace and forget active descriptors") {
     val r1 = Ref.mkWithId[String]("x")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId[String]("y")(0L, 0L, 0L, 1L)
     val latch1 = new CountDownLatch(1)
@@ -138,7 +138,7 @@ class EMCASSpec extends BaseSpecA {
       desc.sort()
       val d0 = desc.words.get(0).asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
-      assert(d0.address.unsafeTryPerformCas(d0.ov, d0.holder.castToData()))
+      assert(d0.address.unsafeTryPerformCas(d0.ov, new EMCASWeakData(d0).castToData()))
       // and the thread pauses here, with an active CAS
       latch1.countDown()
       latch2.await()
@@ -153,10 +153,10 @@ class EMCASSpec extends BaseSpecA {
       var desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r2, "b", "y"), r1, "a", "x")
       assert(EMCAS.tryPerform(desc, ctx))
       desc = null
-      // wait for descriptors to be collected:
-      EMCAS.spinUntilCleanup(r2)
-      EMCAS.spinUntilCleanup(r1) // TODO: this should never finish
-      ok = false // TODO
+      // wait for descriptors to be possibly collected:
+      EMCAS.spinUntilCleanup(r2, max = 0x1000000L)
+      assert(clue(EMCAS.spinUntilCleanup(r1, max = 0x1000000L)) eq null)
+      ok = true
     })
     t2.start()
     t2.join()
@@ -173,7 +173,7 @@ class EMCASSpec extends BaseSpecA {
     other.sort()
     val d0 = other.words.get(0).asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
-    r1.unsafeSet(d0.holder.castToData())
+    r1.unsafeSet(new EMCASWeakData(d0).castToData())
     val res = EMCAS.read(r1, ctx)
     assertEquals(res, "x")
     assertEquals(EMCAS.read(r1, ctx), "x")
@@ -189,7 +189,7 @@ class EMCASSpec extends BaseSpecA {
     other.sort()
     val d0 = other.words.get(0).asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
-    r1.unsafeSet(d0.holder.castToData())
+    r1.unsafeSet(new EMCASWeakData(d0).castToData())
     val res = EMCAS.read(r1, ctx)
     assertEquals(res, "r1")
     assertEquals(EMCAS.read(r1, ctx), "r1")
@@ -245,5 +245,38 @@ class EMCASSpec extends BaseSpecA {
     t2.join()
     assert(r1.elem ne r2.elem)
     assertEquals(r1.elem.tid, r2.elem.tid)
+  }
+
+  test("EMCASWeakData chaining should work") {
+    val r1 = Ref.mk[String]("x")
+    val r2 = Ref.mk[String]("y")
+    val r3 = Ref.mk[String]("z")
+    var d1 = WordDescriptor(r1, "x", "xx", null)
+    var d2 = WordDescriptor(r2, "y", "yy", null)
+    var d3 = WordDescriptor(r3, "z", "zz", null)
+    // wd1 --> wd2 --> wd3:
+    val wd3 = new EMCASWeakData(d3)
+    val wd2 = new EMCASWeakData(d2, wd3)
+    val wd1 = new EMCASWeakData(d1, wd2)
+    assert(!wd1.canBeReplaced())
+    assert(!wd2.canBeReplaced())
+    assert(!wd3.canBeReplaced())
+    // clear wd1 and wd2:
+    d1 = null
+    d2 = null
+    System.gc()
+    assert(wd1.get() eq null)
+    assert(wd2.get() eq null)
+    assert(wd3.get() ne null)
+    assert(!wd1.canBeReplaced())
+    assert(!wd2.canBeReplaced())
+    assert(!wd3.canBeReplaced())
+    // clear the last one:
+    d3 = null
+    System.gc()
+    assert(wd3.get() eq null)
+    assert(wd1.canBeReplaced())
+    assert(wd2.canBeReplaced())
+    assert(wd3.canBeReplaced())
   }
 }

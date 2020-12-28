@@ -31,11 +31,13 @@ public final class EMCASWeakData<A>
     UninitializedValue.UNINITIALIZED;
 
   private static final VarHandle VALUE;
+  private static final VarHandle NEXT;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       VALUE = l.findVarHandle(EMCASWeakData.class, "_value", Object.class);
+      NEXT = l.findVarHandle(EMCASWeakData.class, "_next", EMCASWeakData.class);
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }
@@ -43,9 +45,16 @@ public final class EMCASWeakData<A>
 
   private volatile A _value;
 
-  EMCASWeakData(WordDescriptor<A> desc) {
+  private volatile EMCASWeakData<?> _next;
+
+  EMCASWeakData(WordDescriptor<A> desc, EMCASWeakData<?> next) {
     super(desc);
     this.setValuePlain((A) UNINITIALIZED);
+    this.setNextPlain(next);
+  }
+
+  EMCASWeakData(WordDescriptor<A> desc) {
+    this(desc, null);
   }
 
   <B> EMCASWeakData<B> cast() {
@@ -66,5 +75,40 @@ public final class EMCASWeakData<A>
 
   void setValuePlain(A a) {
     VALUE.set(this, a);
+  }
+
+  EMCASWeakData<?> getNextPlain() {
+    return (EMCASWeakData<?>) NEXT.get(this);
+  }
+
+  private void setNextPlain(EMCASWeakData<?> n) {
+    NEXT.set(this, n);
+  }
+
+  boolean canBeReplacedBad() {
+    var next = this.getNextPlain();
+    if (next != null) {
+      if (next.canBeReplaced()) {
+        this.setNextPlain(null);
+        return this.get() == null;
+      } else {
+        return false;
+      }
+    } else {
+      return this.get() == null;
+    }
+  }
+
+  boolean canBeReplaced() {
+    boolean canBeReplaced = true;
+    EMCASWeakData<?> curr = this;
+    while (canBeReplaced && (curr != null)) {
+      if (curr.get() != null) {
+        canBeReplaced = false;
+      } else {
+        curr = curr.getNextPlain();
+      }
+    }
+    return canBeReplaced;
   }
 }

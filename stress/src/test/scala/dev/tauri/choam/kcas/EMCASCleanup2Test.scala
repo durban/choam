@@ -30,6 +30,7 @@ import java.util.concurrent.ThreadLocalRandom
 @State
 @Description("EMCASCleanup2Test")
 @Outcomes(Array(
+// scalastyle:off
   new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), UNINITIALIZED, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), UNINITIALIZED"), expect = ACCEPTABLE, desc = "(1) read1: has desc, no value yet; read2: has desc, no value yet"),
   new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), b, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), UNINITIALIZED"), expect = ACCEPTABLE, desc = "(2) read1: has desc, has value; read2: has desc, no value yet"),
   new Outcome(id = Array("true, null, UNINITIALIZED, WordDescriptor\\(Ref@[a-z0-9]*, x, y\\), UNINITIALIZED"), expect = FORBIDDEN, desc = "(X) read1: no desc, no value; read2: has desc, no value yet"),
@@ -49,6 +50,7 @@ import java.util.concurrent.ThreadLocalRandom
   new Outcome(id = Array("true, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), b, null, y"), expect = ACCEPTABLE, desc = "(8) read1: has desc, has value; read2: no desc, has value"),
   new Outcome(id = Array("true, null, UNINITIALIZED, null, y"), expect = FORBIDDEN, desc = "(X) read1: no desc, no value; read2: no desc, has value"),
   new Outcome(id = Array("true, null, b, null, y"), expect = ACCEPTABLE, desc = "(9) read1: no desc, has value; read2: no desc, has value")
+// scalastyle:on
 ))
 class EMCASCleanup2Test {
 

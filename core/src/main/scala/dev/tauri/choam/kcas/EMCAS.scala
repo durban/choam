@@ -75,7 +75,7 @@ private[kcas] object EMCAS extends KCAS { self =>
   private final def maybeReplaceDescriptor[A](ref: Ref[A], ov: EMCASWeakData[A], nv: A, replace: Int): Unit = {
     if (replace != 0) {
       val n = ThreadLocalRandom.current().nextInt()
-      if ((n % replace) == 0) {
+      if (((n % replace) == 0) && ov.canBeReplaced()) {
         ref.unsafeTryPerformCas(ov.asInstanceOf[A], nv)
         // If this CAS fails, someone else might've been
         // replaced the desc with the final value, or
@@ -102,6 +102,7 @@ private[kcas] object EMCAS extends KCAS { self =>
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): Boolean = {
       var content: A = nullOf[A]
+      var cwd: EMCASWeakData[_] = null
       var value: A = nullOf[A]
       var go = true
       // Read `content`, and `value` if necessary;
@@ -114,8 +115,12 @@ private[kcas] object EMCAS extends KCAS { self =>
       // the paper).
       do {
         content = wordDesc.address.unsafeTryRead()
+        cwd = null
         content match {
           case w: EMCASWeakData[_] =>
+            if (!w.canBeReplaced()) {
+              cwd = w
+            }
             w.cast[A].get() match {
               case null =>
                 value = w.cast[A].getValueVolatile()
@@ -160,8 +165,8 @@ private[kcas] object EMCAS extends KCAS { self =>
         true // TODO: we should break from `go`
         // TODO: `true` is not necessarily correct, the helping thread could've finalized us to failed too
       } else {
-        val weakData = wordDesc.holder
-        if (!wordDesc.address.unsafeTryPerformCas(content, weakData.asInstanceOf[A])) {
+        val weakData = new EMCASWeakData(wordDesc, cwd)
+        if ((!wordDesc.address.unsafeTryPerformCas(content, weakData.castToData()))) {
           tryWord(wordDesc) // retry this word
         } else {
           true
@@ -186,11 +191,20 @@ private[kcas] object EMCAS extends KCAS { self =>
       words: java.util.Iterator[WordDescriptor[_]]
     ): Unit = {
       val finalValue = if (success) curr.nv else curr.ov
-      if (words.hasNext) {
-        curr.holder.setValuePlain(finalValue)
-        writeFinalValues(success, words.next(), words)
-      } else {
-        curr.holder.setValueVolatile(finalValue) // FIXME: release?
+      curr.address.unsafeReadPlain() match {
+        case weakData: EMCASWeakData[_] =>
+          if (weakData.get() eq curr) {
+            if (words.hasNext) {
+              weakData.cast[A].setValuePlain(finalValue)
+              writeFinalValues(success, words.next(), words)
+            } else {
+              weakData.cast[A].setValueVolatile(finalValue)
+            }
+          } // else: was already replaced, nothing to do
+        case x =>
+          if (success) {
+            impossible(s"in-use EMCASWeakData was replaced by: ${x} (${x.getClass.getName})")
+          } // else: probably the old value is there
       }
     }
 
@@ -243,11 +257,11 @@ private[kcas] object EMCAS extends KCAS { self =>
 
   /** For testing */
   @throws[InterruptedException]
-  private[kcas] def spinUntilCleanup[A](ref: Ref[A]): A = {
+  private[kcas] def spinUntilCleanup[A](ref: Ref[A], max: Long = Long.MaxValue): A = {
     val ctx = this.currentContext()
     var desc: WordDescriptor[_] = null
-    var ctr: Int = 0
-    while (true) {
+    var ctr: Long = 0L
+    while (ctr < max) {
       ref.unsafeTryRead() match {
         case wd: EMCASWeakData[_] =>
           desc = wd.get()
@@ -271,14 +285,13 @@ private[kcas] object EMCAS extends KCAS { self =>
           return a // scalastyle:ignore return
       }
       Thread.onSpinWait()
-      ctr += 1
-      if ((ctr % 128) == 0) {
+      ctr += 1L
+      if ((ctr % 128L) == 0L) {
         if (Thread.interrupted()) {
           throw new InterruptedException
         }
       }
     }
-    // unreachable code:
-    return nullOf[A] // scalastyle:ignore return
+    nullOf[A] // timed out
   }
 }
