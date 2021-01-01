@@ -111,7 +111,7 @@ class EMCASSpec extends BaseSpecA {
       desc.sort()
       val d0 = desc.words.get(0).asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
-      r1.unsafeSet(d0.holder.castToData())
+      r1.unsafeSet(d0.castToData)
       // and the thread dies here, with an active CAS
     })
     t1.start()
@@ -138,7 +138,7 @@ class EMCASSpec extends BaseSpecA {
       desc.sort()
       val d0 = desc.words.get(0).asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
-      assert(d0.address.unsafeTryPerformCas(d0.ov, d0.holder.castToData()))
+      assert(d0.address.unsafeTryPerformCas(d0.ov, d0.castToData))
       // and the thread pauses here, with an active CAS
       latch1.countDown()
       latch2.await()
@@ -173,7 +173,7 @@ class EMCASSpec extends BaseSpecA {
     other.sort()
     val d0 = other.words.get(0).asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
-    r1.unsafeSet(d0.holder.castToData())
+    r1.unsafeSet(d0.castToData)
     val res = EMCAS.read(r1, ctx)
     assertEquals(res, "x")
     assertEquals(EMCAS.read(r1, ctx), "x")
@@ -189,7 +189,7 @@ class EMCASSpec extends BaseSpecA {
     other.sort()
     val d0 = other.words.get(0).asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
-    r1.unsafeSet(d0.holder.castToData())
+    r1.unsafeSet(d0.castToData)
     val res = EMCAS.read(r1, ctx)
     assertEquals(res, "r1")
     assertEquals(EMCAS.read(r1, ctx), "r1")

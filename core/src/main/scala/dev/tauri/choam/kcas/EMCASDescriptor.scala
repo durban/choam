@@ -36,7 +36,7 @@ final class EMCASDescriptor(val impl: KCAS, wds: ArrayList[WordDescriptor[_]])
     this(kcasImpl, new ArrayList(EMCASDescriptor.minArraySize))
   }
 
-  def copy(addHolder: Boolean): EMCASDescriptor = {
+  def copy(): EMCASDescriptor = {
     @tailrec
     def copy(
       from: ArrayList[WordDescriptor[_]],
@@ -47,11 +47,7 @@ final class EMCASDescriptor(val impl: KCAS, wds: ArrayList[WordDescriptor[_]])
     ): Unit = {
       if (idx < len) {
         val oldWd = from.get(idx)
-        val newWd = if (addHolder) {
-          oldWd.withParent(newParent)
-        } else {
-          oldWd.withParentNoHolder(newParent)
-        }
+        val newWd = oldWd.withParent(newParent)
         to.add(newWd)
         copy(from, to, newParent, idx + 1, len)
       }

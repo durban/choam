@@ -176,7 +176,7 @@ private class UnpaddedRefImpl[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: L
     this.unsafeTryRead() match {
       case null =>
         kcas.NaiveKCAS.read(this, kcas.NaiveKCAS.currentContext())
-      case _: kcas.EMCASWeakData[_] =>
+      case _: kcas.WordDescriptor[_] =>
         kcas.EMCAS.read(this, kcas.EMCAS.currentContext())
       case a =>
         a

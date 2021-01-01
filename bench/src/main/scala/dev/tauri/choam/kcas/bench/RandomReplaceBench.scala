@@ -61,8 +61,8 @@ final object RandomReplaceBench {
     reset()
 
     def reset(): Unit = {
-      val wd = BenchmarkAccess.newWeakData[A](null, a)
-      this.ref.unsafeSet(wd.asInstanceOf[A])
+      val wd = WordDescriptor[A](ref, a, a, null)
+      this.ref.unsafeSet(wd.castToData)
     }
   }
 

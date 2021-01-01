@@ -47,35 +47,29 @@ private[kcas] object EMCAS extends KCAS { self =>
   @tailrec
   private[choam] final def readValue[A](ref: Ref[A], replace: Int = 256): A = {
     ref.unsafeTryRead() match {
-      case w: EMCASWeakData[_] =>
-        w.cast[A].get() match {
-          case null =>
-            val a = w.cast[A].getValueVolatile()
-            if (equ(a, EMCASWeakData.UNINITIALIZED)) {
-              throw new IllegalStateException
-            }
-            this.maybeReplaceDescriptor[A](ref, w.cast[A], a, replace = replace)
-            a
-          case wd =>
-            val parentStatus = wd.parent.getStatus()
-            if (parentStatus eq EMCASStatus.ACTIVE) {
-              MCAS(wd.parent, helping = true) // help the other op
-              readValue(ref, replace) // retry
-            } else if (parentStatus eq EMCASStatus.SUCCESSFUL) {
-              wd.nv
-            } else { // FAILED
-              wd.ov
-            }
+      case wd: WordDescriptor[_] =>
+        val parentStatus = wd.parent.getStatus()
+        if (parentStatus eq EMCASStatus.ACTIVE) {
+          MCAS(wd.parent, helping = true) // help the other op
+          readValue(ref, replace) // retry
+        } else { // finalized
+          val a = if (parentStatus eq EMCASStatus.SUCCESSFUL) {
+            wd.cast[A].nv
+          } else { // FAILED
+            wd.cast[A].ov
+          }
+          this.maybeReplaceDescriptor[A](ref, wd.cast[A], a, replace = replace)
+          a
         }
       case a =>
         a
     }
   }
 
-  private final def maybeReplaceDescriptor[A](ref: Ref[A], ov: EMCASWeakData[A], nv: A, replace: Int): Unit = {
+  private final def maybeReplaceDescriptor[A](ref: Ref[A], ov: WordDescriptor[A], nv: A, replace: Int): Unit = {
     if (replace != 0) {
       val n = ThreadLocalRandom.current().nextInt()
-      if ((n % replace) == 0) {
+      if ((n % replace) == 0) { // TODO: also check if `ov` can be replaced!
         ref.unsafeTryPerformCas(ov.asInstanceOf[A], nv)
         // If this CAS fails, someone else might've been
         // replaced the desc with the final value, or
@@ -115,36 +109,27 @@ private[kcas] object EMCAS extends KCAS { self =>
       do {
         content = wordDesc.address.unsafeTryRead()
         content match {
-          case w: EMCASWeakData[_] =>
-            w.cast[A].get() match {
-              case null =>
-                value = w.cast[A].getValueVolatile()
-                if (equ(value, EMCASWeakData.UNINITIALIZED)) {
-                  throw new IllegalStateException
-                }
+          case wd: WordDescriptor[_] =>
+            if (wd eq wordDesc) {
+              // already points to the right place, early return:
+              return true // scalastyle:ignore return
+            } else {
+              // At this point, we're sure that `wd` belongs to another op
+              // (not `desc`), because otherwise it would've been equal to
+              // `wordDesc` (we're assuming that any WordDescriptor only
+              // appears at most once in an MCASDescriptor).
+              val parentStatus = wd.parent.getStatus()
+              if (parentStatus eq EMCASStatus.ACTIVE) {
+                MCAS(wd.parent, helping = true) // help the other op
+                // Note: we're not "helping" ourselves for sure, see the comment above.
+                // Here, we still don't have the value, so the loop must retry.
+              } else if (parentStatus eq EMCASStatus.SUCCESSFUL) {
+                value = wd.cast[A].nv
                 go = false
-              case wd =>
-                if (wd eq wordDesc) {
-                  // already points to the right place, early return:
-                  return true // scalastyle:ignore return
-                } else {
-                  // At this point, we're sure that `wd` belongs to another op
-                  // (not `desc`), because otherwise it would've been equal to
-                  // `wordDesc` (we're assuming that any WordDescriptor only
-                  // appears at most once in an MCASDescriptor).
-                  val parentStatus = wd.parent.getStatus()
-                  if (parentStatus eq EMCASStatus.ACTIVE) {
-                    MCAS(wd.parent, helping = true) // help the other op
-                    // Note: we're not "helping" ourselves for sure, see the comment above.
-                    // Here, we still don't have the value, so the loop must retry.
-                  } else if (parentStatus eq EMCASStatus.SUCCESSFUL) {
-                    value = wd.nv
-                    go = false
-                  } else {
-                    value = wd.ov
-                    go = false
-                  }
-                }
+              } else {
+                value = wd.cast[A].ov
+                go = false
+              }
             }
           case a =>
             value = a
@@ -160,8 +145,7 @@ private[kcas] object EMCAS extends KCAS { self =>
         true // TODO: we should break from `go`
         // TODO: `true` is not necessarily correct, the helping thread could've finalized us to failed too
       } else {
-        val weakData = wordDesc.holder
-        if (!wordDesc.address.unsafeTryPerformCas(content, weakData.asInstanceOf[A])) {
+        if (!wordDesc.address.unsafeTryPerformCas(content, wordDesc.asInstanceOf[A])) {
           tryWord(wordDesc) // retry this word
         } else {
           true
@@ -179,21 +163,6 @@ private[kcas] object EMCAS extends KCAS { self =>
       }
     }
 
-    @tailrec
-    def writeFinalValues[A](
-      success: Boolean,
-      curr: WordDescriptor[A],
-      words: java.util.Iterator[WordDescriptor[_]]
-    ): Unit = {
-      val finalValue = if (success) curr.nv else curr.ov
-      if (words.hasNext) {
-        curr.holder.setValuePlain(finalValue)
-        writeFinalValues(success, words.next(), words)
-      } else {
-        curr.holder.setValueVolatile(finalValue) // FIXME: release?
-      }
-    }
-
     if (!helping) {
       // we're not helping, so `desc` is not yet visible to other threads
       desc.sort()
@@ -203,13 +172,6 @@ private[kcas] object EMCAS extends KCAS { self =>
       EMCASStatus.ACTIVE,
       if (success) EMCASStatus.SUCCESSFUL else EMCASStatus.FAILED
     )) {
-      // we finalized the descriptor, so we record final values:
-      val it = desc.words.iterator()
-      if (it.hasNext) {
-        writeFinalValues(success, it.next(), it)
-      }
-      // make sure GC doesn't clear weakrefs before we could set the final values:
-      java.lang.ref.Reference.reachabilityFence(desc)
       success
     } else {
       // someone else finalized the descriptor, we must read its status:
@@ -235,7 +197,7 @@ private[kcas] object EMCAS extends KCAS { self =>
   }
 
   private[choam] final override def snapshot(desc: EMCASDescriptor): EMCASDescriptor =
-    desc.copy(addHolder = true)
+    desc.copy()
 
   private[choam] final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
     EMCAS.MCAS(desc, helping = false)
@@ -245,25 +207,14 @@ private[kcas] object EMCAS extends KCAS { self =>
   @throws[InterruptedException]
   private[kcas] def spinUntilCleanup[A](ref: Ref[A]): A = {
     val ctx = this.currentContext()
-    var desc: WordDescriptor[_] = null
     var ctr: Int = 0
     while (true) {
       ref.unsafeTryRead() match {
-        case wd: EMCASWeakData[_] =>
-          desc = wd.get()
-          if (desc ne null) {
-            if (desc.parent.getStatus() eq EMCASStatus.ACTIVE) {
-              // CAS in progress, retry
-              desc = null
-            } else {
-              // CAS finalized, but no cleanup yet, retry
-              desc = null
-              System.gc()
-            }
+        case wd: WordDescriptor[_] =>
+          if (wd.parent.getStatus() eq EMCASStatus.ACTIVE) {
+            // CAS in progress, retry
           } else {
-            // descriptor have been collected, but not replaced yet;
-            // this should replace it with a small probability (if
-            // not, we'll retry):
+            // CAS finalized, but no cleanup yet, read and retry
             EMCAS.read(ref, ctx)
           }
         case a =>

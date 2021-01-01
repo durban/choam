@@ -70,15 +70,14 @@ class EMCASCleanup2Test {
   @Actor
   @tailrec
   final def read1(r: LLLLL_Result): Unit = {
-    this.maybeGc()
     (this.ref1.unsafeTryRead() : Any) match {
       case s: String if s eq "a" =>
         // no CAS yet, retry:
         read1(r)
-      case wd: EMCASWeakData[_] =>
+      case wd: WordDescriptor[_] =>
         // observing the descriptor:
-        r.r2 = wd.get()
-        r.r3 = wd.getValueVolatile()
+        r.r2 = wd.toString()
+        r.r3 = null // TODO
       case x =>
         // we're late:
         r.r2 = x
@@ -88,30 +87,18 @@ class EMCASCleanup2Test {
 
   @Actor
   final def read2(r: LLLLL_Result): Unit = {
-    this.maybeGc()
     (this.ref2.unsafeTryRead() : Any) match {
       case s: String if s eq "x" =>
         // no CAS yet, retry:
         read2(r)
-      case wd: EMCASWeakData[_] =>
+      case wd: WordDescriptor[_] =>
         // observing the descriptor:
-        r.r4 = wd.get()
-        r.r5 = wd.getValueVolatile()
+        r.r4 = wd.toString()
+        r.r5 = null // TODO
       case x =>
         // we're late:
         r.r4 = x
         r.r5 = x
-    }
-  }
-
-  /**
-   * Runs the JVM GC with a low probability, so
-   * that we can occasionally observe the case
-   * when descriptors were collected.
-   */
-  private final def maybeGc(): Unit = {
-    if ((ThreadLocalRandom.current().nextInt() % 8192) == 0) {
-      System.gc()
     }
   }
 

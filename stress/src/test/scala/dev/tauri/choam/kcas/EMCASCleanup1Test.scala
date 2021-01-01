@@ -55,10 +55,10 @@ class EMCASCleanup1Test {
       case s: String if s eq "a" =>
         // no CAS yet, retry:
         read(r)
-      case wd: EMCASWeakData[_] =>
+      case wd: WordDescriptor[_] =>
         // observing the descriptor:
-        r.r2 = wd.get()
-        r.r3 = wd.getValueVolatile()
+        r.r2 = wd.toString
+        r.r3 = null // TODO
       case x =>
         // we're late:
         r.r2 = x

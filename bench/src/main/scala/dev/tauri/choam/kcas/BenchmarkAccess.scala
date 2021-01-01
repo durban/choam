@@ -18,18 +18,9 @@
 package dev.tauri.choam
 package kcas
 
-import java.lang.ref.Reference
-
 final object BenchmarkAccess {
 
   def setBirthEpochOpaque[T, M <: IBRManaged[T, M]](b: IBRManaged[T, M], e: Long): Unit = {
     b.setBirthEpochOpaque(e)
-  }
-
-  def newWeakData[A](desc: WordDescriptor[A], value: A): AnyRef = {
-    val wd = new EMCASWeakData[A](desc)
-    wd.setValueVolatile(value)
-    Reference.reachabilityFence(desc)
-    wd
   }
 }
