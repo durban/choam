@@ -31,8 +31,11 @@ package kcas
  */
 private[kcas] final object NaiveKCAS extends KCAS { self =>
 
+  private[this] val dummyGlobal =
+    new GlobalContext()
+
   private[this] val dummyContext =
-    new ThreadContext(null, 0L)
+    new ThreadContext(dummyGlobal, 0L)
 
   final override def currentContext(): ThreadContext =
     dummyContext
@@ -51,7 +54,7 @@ private[kcas] final object NaiveKCAS extends KCAS { self =>
   }
 
   final override def snapshot(desc: EMCASDescriptor): EMCASDescriptor =
-    desc.copy()
+    desc.copy(dummyContext)
 
   final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
     desc.sort()

@@ -30,19 +30,22 @@ class RandomReplaceBench {
 
   @Benchmark
   def replaceNever(s: SharedState, bh: Blackhole): Unit = {
-    bh.consume(EMCAS.readValue(s.ref, replace = 0))
+    val ctx = EMCAS.currentContext()
+    bh.consume(EMCAS.readValue(s.ref, ctx, replace = 0))
     s.reset()
   }
 
   @Benchmark
   def replaceRandom(s: SharedState, bh: Blackhole): Unit = {
-    bh.consume(EMCAS.readValue(s.ref, replace = 256))
+    val ctx = EMCAS.currentContext()
+    bh.consume(EMCAS.readValue(s.ref, ctx, replace = 256))
     s.reset()
   }
 
   @Benchmark
   def replaceAlways(s: SharedState, bh: Blackhole): Unit = {
-    bh.consume(EMCAS.readValue(s.ref, replace = 1))
+    val ctx = EMCAS.currentContext()
+    bh.consume(EMCAS.readValue(s.ref, ctx, replace = 1))
     s.reset()
   }
 

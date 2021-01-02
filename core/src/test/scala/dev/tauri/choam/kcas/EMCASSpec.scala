@@ -42,23 +42,20 @@ class EMCASSpec extends BaseSpecA {
     val r1 = Ref.mk[String]("x")
     val r2 = Ref.mk[String]("y")
     val ctx = EMCAS.currentContext()
-    var desc = EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a")
-    var snap = EMCAS.snapshot(desc)
+    val desc = EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a")
+    val snap = EMCAS.snapshot(desc)
     assert(EMCAS.tryPerform(EMCAS.addCas(desc, r2, "y", "b"), ctx))
     assert(EMCAS.read(r1, ctx) eq "a")
     assert(EMCAS.read(r2, ctx) eq "b")
-    desc = null
     assert(EMCAS.spinUntilCleanup(r1) eq "a")
     assert(EMCAS.spinUntilCleanup(r2) eq "b")
     assert(r1.unsafeTryRead() eq "a")
     assert(r2.unsafeTryRead() eq "b")
     assert(r1.unsafeTryPerformCas("a", "x")) // reset
-    var desc2 = snap
+    val desc2 = snap
     assert(!EMCAS.tryPerform(EMCAS.addCas(desc2, r2, "y", "b"), ctx)) // this will fail
     assert(EMCAS.read(r1, ctx) eq "x")
     assert(EMCAS.read(r2, ctx) eq "b")
-    snap = null
-    desc2 = null
     assert(EMCAS.spinUntilCleanup(r1) eq "x")
     assert(EMCAS.spinUntilCleanup(r2) eq "b")
     assert(r1.unsafeTryRead() eq "x")
@@ -102,7 +99,7 @@ class EMCASSpec extends BaseSpecA {
     assert(ok2)
   }
 
-  test("EMCAS op should be finalizable even if a thread dies mid-op".ignore) {
+  test("EMCAS op should be finalizable even if a thread dies mid-op") {
     val r1 = Ref.mkWithId[String]("x")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId[String]("y")(0L, 0L, 0L, 1L)
     val t1 = new Thread(() => {
@@ -116,18 +113,18 @@ class EMCASSpec extends BaseSpecA {
     })
     t1.start()
     t1.join()
-    System.gc()
     val ctx = EMCAS.currentContext()
     val succ = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "x2"), r2, "y", "y2"), ctx)
     assert(!succ)
-    System.gc()
     assert(EMCAS.read(r1, ctx) eq "a")
     assert(EMCAS.read(r2, ctx) eq "b")
-    assert(r1.unsafeTryRead() eq "a")
-    assert(r2.unsafeTryRead() eq "b")
+    EMCAS.spinUntilCleanup(r1)
+    EMCAS.spinUntilCleanup(r2)
+    assert(clue(r1.unsafeTryRead()) eq "a")
+    assert(clue(r2.unsafeTryRead()) eq "b")
   }
 
-  test("EMCAS should not replace and forget active descriptors".ignore) {
+  test("EMCAS should not replace and forget active descriptors") {
     val r1 = Ref.mkWithId[String]("x")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId[String]("y")(0L, 0L, 0L, 1L)
     val latch1 = new CountDownLatch(1)
@@ -138,10 +135,13 @@ class EMCASSpec extends BaseSpecA {
       desc.sort()
       val d0 = desc.words.get(0).asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
-      assert(d0.address.unsafeTryPerformCas(d0.ov, d0.castToData))
-      // and the thread pauses here, with an active CAS
-      latch1.countDown()
-      latch2.await()
+      ctx.startOp()
+      try {
+        assert(d0.address.unsafeTryPerformCas(d0.ov, d0.castToData))
+        // and the thread pauses here, with an active CAS
+        latch1.countDown()
+        latch2.await()
+      } finally ctx.endOp()
     })
     t1.start()
     latch1.await()
@@ -150,13 +150,12 @@ class EMCASSpec extends BaseSpecA {
     val t2 = new Thread(() => {
       // the other thread changes back the values (but first finalizes the active op):
       val ctx = EMCAS.currentContext()
-      var desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r2, "b", "y"), r1, "a", "x")
+      val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r2, "b", "y"), r1, "a", "x")
       assert(EMCAS.tryPerform(desc, ctx))
-      desc = null
       // wait for descriptors to be collected:
-      EMCAS.spinUntilCleanup(r2)
-      EMCAS.spinUntilCleanup(r1) // TODO: this should never finish
-      ok = false // TODO
+      assert(EMCAS.spinUntilCleanup(r2, max = 0x100000L) eq null)
+      assert(EMCAS.spinUntilCleanup(r1, max = 0x100000L) eq null)
+      ok = true
     })
     t2.start()
     t2.join()

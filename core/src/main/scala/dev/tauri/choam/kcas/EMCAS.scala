@@ -44,38 +44,46 @@ private[kcas] object EMCAS extends KCAS { self =>
    * an ongoing MCAS operation is inlined into `tryWord` below,
    * see the do-while loop.)
    */
-  @tailrec
-  private[choam] final def readValue[A](ref: Ref[A], replace: Int = 256): A = {
-    ref.unsafeTryRead() match {
-      case wd: WordDescriptor[_] =>
-        val parentStatus = wd.parent.getStatus()
-        if (parentStatus eq EMCASStatus.ACTIVE) {
-          MCAS(wd.parent, helping = true) // help the other op
-          readValue(ref, replace) // retry
-        } else { // finalized
-          val a = if (parentStatus eq EMCASStatus.SUCCESSFUL) {
-            wd.cast[A].nv
-          } else { // FAILED
-            wd.cast[A].ov
+  private[choam] final def readValue[A](ref: Ref[A], ctx: ThreadContext, replace: Int = 256): A = {
+    @tailrec
+    def go(): A = {
+      ctx.readVolatileRef[A](ref) match {
+        case wd: WordDescriptor[_] =>
+          val parentStatus = wd.parent.getStatus()
+          if (parentStatus eq EMCASStatus.ACTIVE) {
+            MCAS(wd.parent, helping = true, ctx = ctx) // help the other op
+            go() // retry
+          } else { // finalized
+            val a = if (parentStatus eq EMCASStatus.SUCCESSFUL) {
+              wd.cast[A].nv
+            } else { // FAILED
+              wd.cast[A].ov
+            }
+            this.maybeReplaceDescriptor[A](ref, wd.cast[A], a, ctx, replace = replace)
+            a
           }
-          this.maybeReplaceDescriptor[A](ref, wd.cast[A], a, replace = replace)
+        case a =>
           a
-        }
-      case a =>
-        a
+      }
     }
+
+    ctx.startOp()
+    try go()
+    finally ctx.endOp()
   }
 
-  private final def maybeReplaceDescriptor[A](ref: Ref[A], ov: WordDescriptor[A], nv: A, replace: Int): Unit = {
+  private final def maybeReplaceDescriptor[A](ref: Ref[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext, replace: Int): Unit = {
     if (replace != 0) {
       val n = ThreadLocalRandom.current().nextInt()
-      if ((n % replace) == 0) { // TODO: also check if `ov` can be replaced!
-        ref.unsafeTryPerformCas(ov.asInstanceOf[A], nv)
-        // If this CAS fails, someone else might've been
-        // replaced the desc with the final value, or
-        // maybe started another operation; in either case,
-        // there is nothing to do here.
-        ()
+      if (((n % replace) == 0)) {
+        if ((!ctx.isInUseByOther(ov.cast[Any]))) {
+          ref.unsafeTryPerformCas(ov.castToData, nv)
+          // If this CAS fails, someone else might've been
+          // replaced the desc with the final value, or
+          // maybe started another operation; in either case,
+          // there is nothing to do here.
+          ()
+        }
       }
     }
   }
@@ -83,7 +91,7 @@ private[kcas] object EMCAS extends KCAS { self =>
   // Listing 3 in the paper:
 
   private[choam] final override def read[A](ref: Ref[A], ctx: ThreadContext): A =
-    readValue(ref)
+    readValue(ref, ctx)
 
   /**
    * Performs an MCAS operation.
@@ -92,7 +100,7 @@ private[kcas] object EMCAS extends KCAS { self =>
    * @param helping: Pass `true` when helping `desc` found in a `Ref`;
    *                 `false` when `desc` is a new descriptor.
    */
-  def MCAS(desc: EMCASDescriptor, helping: Boolean): Boolean = {
+  def MCAS(desc: EMCASDescriptor, helping: Boolean, ctx: ThreadContext): Boolean = {
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): Boolean = {
       var content: A = nullOf[A]
@@ -107,7 +115,7 @@ private[kcas] object EMCAS extends KCAS { self =>
       // them would require allocating a tuple (like in
       // the paper).
       do {
-        content = wordDesc.address.unsafeTryRead()
+        content = ctx.readVolatileRef(wordDesc.address)
         content match {
           case wd: WordDescriptor[_] =>
             if (wd eq wordDesc) {
@@ -120,7 +128,7 @@ private[kcas] object EMCAS extends KCAS { self =>
               // appears at most once in an MCASDescriptor).
               val parentStatus = wd.parent.getStatus()
               if (parentStatus eq EMCASStatus.ACTIVE) {
-                MCAS(wd.parent, helping = true) // help the other op
+                MCAS(wd.parent, helping = true, ctx = ctx) // help the other op
                 // Note: we're not "helping" ourselves for sure, see the comment above.
                 // Here, we still don't have the value, so the loop must retry.
               } else if (parentStatus eq EMCASStatus.SUCCESSFUL) {
@@ -145,7 +153,29 @@ private[kcas] object EMCAS extends KCAS { self =>
         true // TODO: we should break from `go`
         // TODO: `true` is not necessarily correct, the helping thread could've finalized us to failed too
       } else {
-        if (!wordDesc.address.unsafeTryPerformCas(content, wordDesc.asInstanceOf[A])) {
+        // TODO: extend interval of wordDesc
+        content match {
+          case wd: WordDescriptor[_] =>
+            @tailrec
+            def adjust(): Unit = {
+              val b = wd.getBirthEpochVolatile()
+              val ok1 = if (b < wordDesc.getBirthEpochOpaque()) {
+                wordDesc.setBirthEpochOpaque(b)
+                false
+              } else true
+              val r = wd.getRetireEpochVolatile()
+              val ok2 = if (r > wordDesc.getRetireEpochOpaque()) {
+                wordDesc.setRetireEpochOpaque(r)
+                false
+              } else true
+              if (ok1 && ok2) ()
+              else adjust() // re-check
+            }
+            adjust()
+          case _ =>
+            ()
+        }
+        if (!ctx.casRef(wordDesc.address, content, wordDesc.castToData)) {
           tryWord(wordDesc) // retry this word
         } else {
           true
@@ -167,20 +197,30 @@ private[kcas] object EMCAS extends KCAS { self =>
       // we're not helping, so `desc` is not yet visible to other threads
       desc.sort()
     } // else: the thread which published `desc` already sorted it
-    val success = go(desc.words.iterator())
-    if (desc.casStatus(
-      EMCASStatus.ACTIVE,
-      if (success) EMCASStatus.SUCCESSFUL else EMCASStatus.FAILED
-    )) {
-      success
-    } else {
-      // someone else finalized the descriptor, we must read its status:
-      desc.getStatus() eq EMCASStatus.SUCCESSFUL
+
+    if (!helping) {
+      ctx.startOp()
+    }
+    try {
+      val success = go(desc.words.iterator())
+      if (desc.casStatus(
+        EMCASStatus.ACTIVE,
+        if (success) EMCASStatus.SUCCESSFUL else EMCASStatus.FAILED
+      )) {
+        success
+      } else {
+        // someone else finalized the descriptor, we must read its status:
+        desc.getStatus() eq EMCASStatus.SUCCESSFUL
+      }
+    } finally {
+      if (!helping) {
+        ctx.endOp()
+      }
     }
   }
 
   private[choam] final override def currentContext(): ThreadContext =
-    this.global.currentContext()
+    this.global.threadContext()
 
   private[choam] final override def start(ctx: ThreadContext): EMCASDescriptor = {
     new EMCASDescriptor(this)
@@ -192,23 +232,30 @@ private[kcas] object EMCAS extends KCAS { self =>
     ov: A,
     nv: A
   ): EMCASDescriptor = {
-    desc.words.add(WordDescriptor[A](ref, ov, nv, desc))
-    desc
+    val ctx = this.currentContext()
+    ctx.startOp()
+    try {
+      val wd = WordDescriptor[A](ref, ov, nv, desc)
+      EMCAS.currentContext().alloc(wd.cast[Any])
+      desc.words.add(wd)
+      desc
+    } finally ctx.endOp()
   }
 
-  private[choam] final override def snapshot(desc: EMCASDescriptor): EMCASDescriptor =
-    desc.copy()
+  private[choam] final override def snapshot(desc: EMCASDescriptor): EMCASDescriptor = {
+    desc.copy(EMCAS.currentContext())
+  }
 
   private[choam] final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
-    EMCAS.MCAS(desc, helping = false)
+    EMCAS.MCAS(desc, helping = false, ctx = ctx)
   }
 
   /** For testing */
   @throws[InterruptedException]
-  private[kcas] def spinUntilCleanup[A](ref: Ref[A]): A = {
+  private[kcas] def spinUntilCleanup[A](ref: Ref[A], max: Long = Long.MaxValue): A = {
     val ctx = this.currentContext()
-    var ctr: Int = 0
-    while (true) {
+    var ctr: Long = 0L
+    while (ctr < max) {
       ref.unsafeTryRead() match {
         case wd: WordDescriptor[_] =>
           if (wd.parent.getStatus() eq EMCASStatus.ACTIVE) {
@@ -216,20 +263,20 @@ private[kcas] object EMCAS extends KCAS { self =>
           } else {
             // CAS finalized, but no cleanup yet, read and retry
             EMCAS.read(ref, ctx)
+            ctx.forceNextEpoch() // TODO: in a real program, when does this happen?
           }
         case a =>
           // descriptor have been cleaned up:
           return a // scalastyle:ignore return
       }
       Thread.onSpinWait()
-      ctr += 1
-      if ((ctr % 128) == 0) {
+      ctr += 1L
+      if ((ctr % 128L) == 0L) {
         if (Thread.interrupted()) {
           throw new InterruptedException
         }
       }
     }
-    // unreachable code:
-    return nullOf[A] // scalastyle:ignore return
+    nullOf[A]
   }
 }

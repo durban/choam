@@ -68,12 +68,20 @@ public abstract class IBRManaged<T, M extends IBRManaged<T, M>> {
     return (long) BIRTH_EPOCH.getOpaque(this);
   }
 
+  final long getBirthEpochVolatile() {
+    return (long) BIRTH_EPOCH.getVolatile(this);
+  }
+
   final void setBirthEpochOpaque(long e) {
     BIRTH_EPOCH.setOpaque(this, e);
   }
 
   final long getRetireEpochOpaque() {
     return (long) RETIRE_EPOCH.getOpaque(this);
+  }
+
+  final long getRetireEpochVolatile() {
+    return (long) RETIRE_EPOCH.getVolatile(this);
   }
 
   final void setRetireEpochOpaque(long e) {

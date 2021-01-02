@@ -36,7 +36,7 @@ final class EMCASDescriptor(val impl: KCAS, wds: ArrayList[WordDescriptor[_]])
     this(kcasImpl, new ArrayList(EMCASDescriptor.minArraySize))
   }
 
-  def copy(): EMCASDescriptor = {
+  def copy(ctx: ThreadContext): EMCASDescriptor = {
     @tailrec
     def copy(
       from: ArrayList[WordDescriptor[_]],
@@ -48,6 +48,7 @@ final class EMCASDescriptor(val impl: KCAS, wds: ArrayList[WordDescriptor[_]])
       if (idx < len) {
         val oldWd = from.get(idx)
         val newWd = oldWd.withParent(newParent)
+        ctx.alloc(newWd.cast[Any])
         to.add(newWd)
         copy(from, to, newParent, idx + 1, len)
       }
