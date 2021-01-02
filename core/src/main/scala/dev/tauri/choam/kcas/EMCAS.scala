@@ -51,7 +51,7 @@ private[kcas] object EMCAS extends KCAS { self =>
         case wd: WordDescriptor[_] =>
           val parentStatus = wd.parent.getStatus()
           if (parentStatus eq EMCASStatus.ACTIVE) {
-            MCAS(wd.parent, helping = true, ctx = ctx) // help the other op
+            MCAS(wd.parent, helping = true, ctx = ctx, replace = replace) // help the other op
             go() // retry
           } else { // finalized
             val a = if (parentStatus eq EMCASStatus.SUCCESSFUL) {
@@ -75,16 +75,20 @@ private[kcas] object EMCAS extends KCAS { self =>
   private final def maybeReplaceDescriptor[A](ref: Ref[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext, replace: Int): Unit = {
     if (replace != 0) {
       val n = ThreadLocalRandom.current().nextInt()
-      if (((n % replace) == 0)) {
-        if ((!ctx.isInUseByOther(ov.cast[Any]))) {
-          ref.unsafeTryPerformCas(ov.castToData, nv)
-          // If this CAS fails, someone else might've been
-          // replaced the desc with the final value, or
-          // maybe started another operation; in either case,
-          // there is nothing to do here.
-          ()
-        }
+      if ((n % replace) == 0) {
+        replaceDescriptorIfFree[A](ref, ov, nv, ctx)
       }
+    }
+  }
+
+  private final def replaceDescriptorIfFree[A](ref: Ref[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext): Unit = {
+    if ((!ctx.isInUseByOther(ov.cast[Any]))) {
+      ref.unsafeTryPerformCas(ov.castToData, nv)
+      // If this CAS fails, someone else might've been
+      // replaced the desc with the final value, or
+      // maybe started another operation; in either case,
+      // there is nothing to do here.
+      ()
     }
   }
 
@@ -100,7 +104,7 @@ private[kcas] object EMCAS extends KCAS { self =>
    * @param helping: Pass `true` when helping `desc` found in a `Ref`;
    *                 `false` when `desc` is a new descriptor.
    */
-  def MCAS(desc: EMCASDescriptor, helping: Boolean, ctx: ThreadContext): Boolean = {
+  def MCAS(desc: EMCASDescriptor, helping: Boolean, ctx: ThreadContext, replace: Int = 256): Boolean = {
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): Boolean = {
       var content: A = nullOf[A]
@@ -128,7 +132,7 @@ private[kcas] object EMCAS extends KCAS { self =>
               // appears at most once in an MCASDescriptor).
               val parentStatus = wd.parent.getStatus()
               if (parentStatus eq EMCASStatus.ACTIVE) {
-                MCAS(wd.parent, helping = true, ctx = ctx) // help the other op
+                MCAS(wd.parent, helping = true, ctx = ctx, replace = replace) // help the other op
                 // Note: we're not "helping" ourselves for sure, see the comment above.
                 // Here, we still don't have the value, so the loop must retry.
               } else if (parentStatus eq EMCASStatus.SUCCESSFUL) {
@@ -207,6 +211,8 @@ private[kcas] object EMCAS extends KCAS { self =>
         EMCASStatus.ACTIVE,
         if (success) EMCASStatus.SUCCESSFUL else EMCASStatus.FAILED
       )) {
+        // TODO: Remember the finalized descriptor,
+        // TODO: and occasionally run cleanup.
         success
       } else {
         // someone else finalized the descriptor, we must read its status:

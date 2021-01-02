@@ -24,16 +24,14 @@ import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ILL_Result
-import java.util.concurrent.ThreadLocalRandom
 
 @JCStressTest
 @State
 @Description("EMCASCleanup1Test")
 @Outcomes(Array(
-  new Outcome(id = Array("1, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), UNINITIALIZED"), expect = ACCEPTABLE, desc = "(1) has desc, but no value yet"),
-  new Outcome(id = Array("1, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), b"), expect = ACCEPTABLE, desc = "(2) has desc and value too"),
-  new Outcome(id = Array("1, null, UNINITIALIZED"), expect = FORBIDDEN, desc = "(X) no desc, no value"),
-  new Outcome(id = Array("1, null, b"), expect = ACCEPTABLE_INTERESTING, desc = "(3) no desc, but has value")
+  new Outcome(id = Array("1, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), ACTIVE"), expect = ACCEPTABLE, desc = "(1) has desc, active op"),
+  new Outcome(id = Array("1, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), SUCCESSFUL"), expect = ACCEPTABLE, desc = "(2) has desc, finalized op"),
+  new Outcome(id = Array("1, b, -"), expect = ACCEPTABLE_INTERESTING, desc = "(3) final value, desc was cleaned up")
 ))
 class EMCASCleanup1Test {
 
@@ -41,7 +39,7 @@ class EMCASCleanup1Test {
     Ref.mk("a")
 
   @Actor
-  def write(r: ILL_Result): Unit = {
+  final def write(r: ILL_Result): Unit = {
     val ctx = EMCAS.currentContext()
     val ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.start(ctx), this.ref, "a", "b"), ctx)
     r.r1 = if (ok) 1 else -1
@@ -50,35 +48,23 @@ class EMCASCleanup1Test {
   @Actor
   @tailrec
   final def read(r: ILL_Result): Unit = {
-    this.maybeGc()
     (this.ref.unsafeTryRead() : Any) match {
       case s: String if s eq "a" =>
         // no CAS yet, retry:
         read(r)
       case wd: WordDescriptor[_] =>
         // observing the descriptor:
-        r.r2 = wd.toString
-        r.r3 = null // TODO
+        r.r2 = wd
+        r.r3 = wd.parent.getStatus()
       case x =>
-        // we're late:
+        // was cleaned up, observing final value:
         r.r2 = x
-        r.r3 = x
-    }
-  }
-
-  /**
-   * Runs the JVM GC with a low probability, so
-   * that we can occasionally observe the case
-   * when descriptors were collected.
-   */
-  private final def maybeGc(): Unit = {
-    if ((ThreadLocalRandom.current().nextInt() % 16384) == 0) {
-      System.gc()
+        r.r3 = "-"
     }
   }
 
   @Arbiter
-  def arbiter(r: ILL_Result): Unit = {
+  final def arbiter(r: ILL_Result): Unit = {
     // WordDescriptor is not serializable:
     r.r2 match {
       case wd: WordDescriptor[_] =>
