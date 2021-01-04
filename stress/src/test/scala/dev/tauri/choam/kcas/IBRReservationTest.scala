@@ -34,7 +34,7 @@ import org.openjdk.jcstress.infra.results._
   new Outcome(id = Array("true, null"), expect = ACCEPTABLE, desc = "ok, still holds it"),
   new Outcome(id = Array("true, begin"), expect = ACCEPTABLE, desc = "check was too quick")
 ))
-class IBR2ReservationTest {
+class IBRReservationTest {
 
   private[this] val ref =
     Ref.mk("begin")
