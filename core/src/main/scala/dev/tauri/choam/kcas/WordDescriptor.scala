@@ -27,13 +27,6 @@ final class WordDescriptor[A] private (
   val parent: EMCASDescriptor
 ) extends IBRManaged[ThreadContext, WordDescriptor[A]] {
 
-  override protected[kcas] def allocate(x$1: ThreadContext): Unit = ()
-
-  override protected[kcas] def retire(x$1: ThreadContext): Unit = ()
-
-  override protected[kcas] def free(x$1: ThreadContext): Unit = ()
-
-
   final def withParent(newParent: EMCASDescriptor, ctx: ThreadContext): WordDescriptor[A] =
     WordDescriptor[A](this.address, this.ov, this.nv, newParent, ctx)
 
