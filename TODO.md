@@ -35,9 +35,6 @@
     context.)
   - Prerequisite: a way of passing thread-local contexts (requires
     changes to `React`.)
-- EMCAS: When CAS-ing from a weak data to another, we lose the original
-  weakref. Later, the new one could be cleared, and detached; however
-  the old one could still be in use. This is unsafe.
 - EMCAS with simplified IBR:
   - More tests to verify behavior is correct (see above).
   - Try to enable cleanup after a k-CAS op is finalized.

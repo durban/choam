@@ -164,6 +164,36 @@ class EMCASSpec extends BaseSpecA {
     t1.join()
   }
 
+  test("EMCAS should extend the interval of a new descriptor if it replaces an old one".only) {
+    val r = Ref.mk("x")
+    val latch1 = new CountDownLatch(1)
+    val latch2 = new CountDownLatch(1)
+    val ctx = EMCAS.currentContext()
+    val epoch = ctx.globalContext.epochNumber
+    val t = new Thread(() => {
+      val ctx = EMCAS.currentContext()
+      ctx.startOp()
+      try {
+        latch1.countDown()
+        latch2.await()
+      } finally ctx.endOp()
+    })
+    t.start()
+    latch1.await()
+    val descOld = EMCAS.addCas(EMCAS.start(ctx), r, "x", "y")
+    assertEquals(descOld.words.get(0).getBirthEpochVolatile(), epoch)
+    assert(EMCAS.tryPerform(descOld, ctx))
+    assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeTryRead(), descOld.words.get(0))
+    ctx.forceNextEpoch()
+    val descNew = EMCAS.addCas(EMCAS.start(ctx), r, "y", "z")
+    assert(EMCAS.tryPerform(descNew, ctx))
+    assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeTryRead(), descNew.words.get(0))
+    assert(ctx.isInUseByOther(descNew.words.get(0).cast))
+    latch2.countDown()
+    t.join()
+    assert(!ctx.isInUseByOther(descNew.words.get(0).cast))
+  }
+
   test("EMCAS read should help the other operation") {
     val r1 = Ref.mkWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId("r2")(0L, 0L, 0L, 42L)
