@@ -69,6 +69,10 @@ final class IBRReservation {
     return (long) UPPER.getAcquire(this);
   }
 
+  final long getUpperPlain() {
+    return (long) UPPER.get(this);
+  }
+
   final void setUpper(long value) {
     UPPER.setVolatile(this, value);
   }

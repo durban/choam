@@ -163,11 +163,12 @@ private[kcas] final object IBR2 {
       } else {
         this.global.getEpoch()
       }
-      // TODO: what if this epoch is not reserved yet?
+      if (epoch > this.reservation.getUpperPlain()) {
+        this.reservation.setUpper(epoch)
+      }
       // opaque: will be published with release/volatile
       elem.setBirthEpochOpaque(epoch)
       elem.setRetireEpochOpaque(epoch)
-      elem.allocate(this)
     }
 
     final def startOp(): Unit = {
