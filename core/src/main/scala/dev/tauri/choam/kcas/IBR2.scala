@@ -158,13 +158,15 @@ private[kcas] final object IBR2 {
 
     final def alloc(elem: M): Unit = {
       this.counter += 1
-      if ((this.counter % epochFreq) == 0) {
+      val epoch = if ((this.counter % epochFreq) == 0) {
         this.global.incrementEpoch()
+      } else {
+        this.global.getEpoch()
       }
-      val e = this.global.getEpoch()
+      // TODO: what if this epoch is not reserved yet?
       // opaque: will be published with release/volatile
-      elem.setBirthEpochOpaque(e)
-      elem.setRetireEpochOpaque(e)
+      elem.setBirthEpochOpaque(epoch)
+      elem.setRetireEpochOpaque(epoch)
       elem.allocate(this)
     }
 

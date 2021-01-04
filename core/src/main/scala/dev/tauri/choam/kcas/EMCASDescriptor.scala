@@ -23,6 +23,10 @@ import java.util.ArrayList
 final class EMCASDescriptor(val impl: KCAS, wds: ArrayList[WordDescriptor[_]])
   extends EMCASDescriptorBase {
 
+  /** Intrusive linked list of finalized descriptors (see `ThreadContext`) */
+  private[kcas] var next: EMCASDescriptor =
+    null
+
   /**
    * Word descriptors
    *

@@ -77,18 +77,22 @@ private[kcas] object EMCAS extends KCAS { self =>
       val n = ThreadLocalRandom.current().nextInt()
       if ((n % replace) == 0) {
         replaceDescriptorIfFree[A](ref, ov, nv, ctx)
+        ()
       }
     }
   }
 
-  private final def replaceDescriptorIfFree[A](ref: Ref[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext): Unit = {
+  private[kcas] final def replaceDescriptorIfFree[A](ref: Ref[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext): Boolean = {
     if ((!ctx.isInUseByOther(ov.cast[Any]))) {
       ref.unsafeTryPerformCas(ov.castToData, nv)
       // If this CAS fails, someone else might've been
       // replaced the desc with the final value, or
       // maybe started another operation; in either case,
-      // there is nothing to do here.
-      ()
+      // there is nothing to do, so we always indicate success
+      true
+    } else {
+      // still in use, need to be replaced later
+      false
     }
   }
 
@@ -104,7 +108,7 @@ private[kcas] object EMCAS extends KCAS { self =>
    * @param helping: Pass `true` when helping `desc` found in a `Ref`;
    *                 `false` when `desc` is a new descriptor.
    */
-  def MCAS(desc: EMCASDescriptor, helping: Boolean, ctx: ThreadContext, replace: Int = 256): Boolean = {
+  def MCAS(desc: EMCASDescriptor, helping: Boolean, ctx: ThreadContext, replace: Int = 4096): Boolean = {
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): Boolean = {
       var content: A = nullOf[A]
@@ -157,7 +161,7 @@ private[kcas] object EMCAS extends KCAS { self =>
         true // TODO: we should break from `go`
         // TODO: `true` is not necessarily correct, the helping thread could've finalized us to failed too
       } else {
-        // TODO: extend interval of wordDesc
+        // TODO: clean this up:
         content match {
           case wd: WordDescriptor[_] =>
             @tailrec
@@ -199,20 +203,19 @@ private[kcas] object EMCAS extends KCAS { self =>
 
     if (!helping) {
       // we're not helping, so `desc` is not yet visible to other threads
+      // (otherwise the thread which published `desc` already sorted it)
       desc.sort()
-    } // else: the thread which published `desc` already sorted it
-
-    if (!helping) {
       ctx.startOp()
     }
+
     try {
       val success = go(desc.words.iterator())
       if (desc.casStatus(
         EMCASStatus.ACTIVE,
         if (success) EMCASStatus.SUCCESSFUL else EMCASStatus.FAILED
       )) {
-        // TODO: Remember the finalized descriptor,
-        // TODO: and occasionally run cleanup.
+        // TODO:
+        // ctx.finalized(desc, limit = replace)
         success
       } else {
         // someone else finalized the descriptor, we must read its status:

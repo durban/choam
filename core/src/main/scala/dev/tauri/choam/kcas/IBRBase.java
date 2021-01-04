@@ -53,7 +53,7 @@ abstract class IBRBase {
     return (long) VALUE.getAcquire(this);
   }
 
-  protected final void incrementEpoch() {
-    VALUE.getAndAddRelease(this, 1L);
+  protected final long incrementEpoch() {
+    return ((long) VALUE.getAndAddRelease(this, 1L)) + 1L;
   }
 }
