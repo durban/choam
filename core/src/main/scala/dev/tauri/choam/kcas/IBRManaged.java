@@ -45,28 +45,14 @@ public abstract class IBRManaged<T, M extends IBRManaged<T, M>> {
   @SuppressWarnings("unused")
   private volatile long _retireEpoch;
 
-  /** Intrusive linked list (free/retired list) */
-  private M _next;
 
   protected IBRManaged() {
-    BIRTH_EPOCH.setOpaque(this, Long.MIN_VALUE);
-    RETIRE_EPOCH.setOpaque(this, Long.MAX_VALUE);
-  }
-
-  final M getNext() {
-    return this._next;
-  }
-
-  final void setNext(M n) {
-    this._next = n;
+    this.setBirthEpochPlain(Long.MIN_VALUE);
+    this.setRetireEpochPlain(Long.MAX_VALUE);
   }
 
   final long getBirthEpochPlain() {
     return (long) BIRTH_EPOCH.get(this);
-  }
-
-  final long getBirthEpochOpaque() {
-    return (long) BIRTH_EPOCH.getOpaque(this);
   }
 
   final long getBirthEpochAcquire() {
@@ -81,20 +67,12 @@ public abstract class IBRManaged<T, M extends IBRManaged<T, M>> {
     BIRTH_EPOCH.set(this, e);
   }
 
-  final void setBirthEpochOpaque(long e) {
-    BIRTH_EPOCH.setOpaque(this, e);
-  }
-
   final void decreaseBirthEpochRelease(long by) {
     BIRTH_EPOCH.getAndAddRelease(this, -by);
   }
 
   final long getRetireEpochPlain() {
     return (long) RETIRE_EPOCH.get(this);
-  }
-
-  final long getRetireEpochOpaque() {
-    return (long) RETIRE_EPOCH.getOpaque(this);
   }
 
   final long getRetireEpochAcquire() {
@@ -107,10 +85,6 @@ public abstract class IBRManaged<T, M extends IBRManaged<T, M>> {
 
   final void setRetireEpochPlain(long e) {
     RETIRE_EPOCH.set(this, e);
-  }
-
-  final void setRetireEpochOpaque(long e) {
-    RETIRE_EPOCH.setOpaque(this, e);
   }
 
   final void increaseRetireEpochRelease(long by) {

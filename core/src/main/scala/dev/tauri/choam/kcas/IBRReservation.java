@@ -57,7 +57,7 @@ final class IBRReservation {
   // enough: only one thread (the owner) is writing
   // values, so we'll see them.
 
-  final long getLower() {
+  final long getLowerAcquire() {
     return (long) LOWER.getAcquire(this);
   }
 
@@ -65,7 +65,7 @@ final class IBRReservation {
     LOWER.setVolatile(this, value);
   }
 
-  final long getUpper() {
+  final long getUpperAcquire() {
     return (long) UPPER.getAcquire(this);
   }
 
@@ -75,17 +75,5 @@ final class IBRReservation {
 
   final void setUpper(long value) {
     UPPER.setVolatile(this, value);
-  }
-
-  // These are only for testing:
-
-  @Deprecated
-  final void setLowerRelease(long value) {
-    LOWER.setRelease(this, value);
-  }
-
-  @Deprecated
-  final void setUpperRelease(long value) {
-    UPPER.setRelease(this, value);
   }
 }

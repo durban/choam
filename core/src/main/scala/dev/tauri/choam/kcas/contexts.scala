@@ -60,7 +60,8 @@ final class ThreadContext(global: GlobalContext, val tid: Long)
             wd.ov
           }
           if (!EMCAS.replaceDescriptorIfFree(wd.address, wd, nv, this)) {
-            if (Math.abs(this.global.getEpoch() - wd.getRetireEpochOpaque()) >= giveUpAt) {
+            // TODO: 'plain' might not be enough
+            if (Math.abs(this.global.getEpoch() - wd.getRetireEpochPlain()) >= giveUpAt) {
               true
             } else {
               false

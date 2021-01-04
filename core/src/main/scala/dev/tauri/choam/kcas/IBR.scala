@@ -142,8 +142,8 @@ private[kcas] final object IBR {
     /** For testing */
     private[kcas] final def snapshotReservation: SnapshotReservation = {
       SnapshotReservation(
-        lower = this.reservation.getLower(),
-        upper = this.reservation.getUpper()
+        lower = this.reservation.getLowerAcquire(),
+        upper = this.reservation.getUpperAcquire()
       )
     }
 
@@ -198,7 +198,7 @@ private[kcas] final object IBR {
       if (a.isInstanceOf[IBRManaged[_, _]]) {
         val m: IBRManaged[_, _] = a.asInstanceOf[IBRManaged[_, _]]
         val res: IBRReservation = this.reservation
-        val currUpper = res.getUpper()
+        val currUpper = res.getUpperAcquire()
         // we read `m` (that is, `a`) with acquire, so we can read birthEpoch with plain:
         val mbe = m.getBirthEpochPlain()
         val ok1 = if (mbe > currUpper) {
@@ -212,7 +212,7 @@ private[kcas] final object IBR {
           // no need to adjust our reservation
           true
         }
-        val currLower = res.getLower()
+        val currLower = res.getLowerAcquire()
         val mre = m.getRetireEpochPlain()
         val ok2 = if (mre < currLower) {
           res.setLower(mre)
@@ -239,8 +239,8 @@ private[kcas] final object IBR {
 
     /** For testing */
     private[kcas] final def isDuringOp(): Boolean = {
-      (this.reservation.getLower() != Long.MaxValue) || (
-        this.reservation.getUpper() != Long.MaxValue
+      (this.reservation.getLowerAcquire() != Long.MaxValue) || (
+        this.reservation.getUpperAcquire() != Long.MaxValue
       )
     }
 
@@ -277,8 +277,9 @@ private[kcas] final object IBR {
                 isConflict()
               } else {
                 val conflict = (
-                  (block.getBirthEpochVolatile() <=  tc.reservation.getUpper()) &&
-                  (block.getRetireEpochVolatile() >= tc.reservation.getLower())
+                  // TODO: do we need 'volatile'?
+                  (block.getBirthEpochVolatile() <=  tc.reservation.getUpperAcquire()) &&
+                  (block.getRetireEpochVolatile() >= tc.reservation.getLowerAcquire())
                 )
                 if (conflict) true
                 else isConflict() // continue

@@ -65,7 +65,7 @@ final class IBRSpec
     val newEpoch = EMCAS.global.epochNumber
     assertEquals(newEpoch, (startEpoch + 1))
     for (desc <- descs) {
-      assertEquals(desc.getBirthEpochOpaque(), startEpoch)
+      assertEquals(desc.getBirthEpochAcquire(), startEpoch)
     }
   }
 
@@ -146,7 +146,7 @@ final class IBRSpec
     ctx.forceNextEpoch()
     val d2 = ctx.op {
       val d2 = WordDescriptor(null, "", "", null, ctx)
-      assert(d2.getBirthEpochOpaque() > firstEpoch)
+      assert(d2.getBirthEpochAcquire() > firstEpoch)
       d2
     }
     assert(ctx.isInUseByOther(d))
