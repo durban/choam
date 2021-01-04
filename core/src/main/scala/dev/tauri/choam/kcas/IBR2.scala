@@ -127,6 +127,10 @@ private[kcas] final object IBR2 {
     private[this] var counter: Int =
       startCounter
 
+    /** For testing */
+    private[kcas] def resetCounter(to: Int): Unit =
+      this.counter = to
+
     /**
      * Epoch interval reserved by the thread.
      *

@@ -28,7 +28,7 @@ import scala.annotation.tailrec
  */
 private[kcas] object EMCAS extends KCAS { self =>
 
-  private[this] val global =
+  private[kcas] val global =
     new GlobalContext
 
   // Listing 2 in the paper:
