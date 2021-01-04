@@ -253,8 +253,7 @@ private[kcas] object EMCAS extends KCAS { self =>
     val ctx = this.currentContext()
     ctx.startOp()
     try {
-      val wd = WordDescriptor[A](ref, ov, nv, desc)
-      EMCAS.currentContext().alloc(wd.cast[Any])
+      val wd = WordDescriptor[A](ref, ov, nv, desc, ctx)
       desc.words.add(wd)
       desc
     } finally ctx.endOp()

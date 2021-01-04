@@ -34,8 +34,8 @@ final class WordDescriptor[A] private (
   override protected[kcas] def free(x$1: ThreadContext): Unit = ()
 
 
-  final def withParent(newParent: EMCASDescriptor): WordDescriptor[A] =
-    WordDescriptor[A](this.address, this.ov, this.nv, newParent)
+  final def withParent(newParent: EMCASDescriptor, ctx: ThreadContext): WordDescriptor[A] =
+    WordDescriptor[A](this.address, this.ov, this.nv, newParent, ctx)
 
   final def cast[B]: WordDescriptor[B] =
     this.asInstanceOf[WordDescriptor[B]]
@@ -49,8 +49,16 @@ final class WordDescriptor[A] private (
 
 final object WordDescriptor {
 
-  def apply[A](address: Ref[A], ov: A, nv: A, parent: EMCASDescriptor): WordDescriptor[A] = {
-    new WordDescriptor[A](address, ov, nv, parent)
+  def apply[A](
+    address: Ref[A],
+    ov: A,
+    nv: A,
+    parent: EMCASDescriptor,
+    ctx: ThreadContext
+  ): WordDescriptor[A] = {
+    val wd = new WordDescriptor[A](address, ov, nv, parent)
+    ctx.alloc(wd.cast[Any])
+    wd
   }
 
   val comparator: Comparator[WordDescriptor[_]] = new Comparator[WordDescriptor[_]] {

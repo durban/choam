@@ -51,8 +51,7 @@ final class EMCASDescriptor(val impl: KCAS, wds: ArrayList[WordDescriptor[_]])
     ): Unit = {
       if (idx < len) {
         val oldWd = from.get(idx)
-        val newWd = oldWd.withParent(newParent)
-        ctx.alloc(newWd.cast[Any])
+        val newWd = oldWd.withParent(newParent, ctx)
         to.add(newWd)
         copy(from, to, newParent, idx + 1, len)
       }

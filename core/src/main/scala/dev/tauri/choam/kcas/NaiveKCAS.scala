@@ -49,7 +49,7 @@ private[kcas] final object NaiveKCAS extends KCAS { self =>
     ov: A,
     nv: A
   ): EMCASDescriptor = {
-    desc.words.add(WordDescriptor[A](ref, ov, nv, desc))
+    desc.words.add(WordDescriptor[A](ref, ov, nv, desc, dummyContext))
     desc
   }
 

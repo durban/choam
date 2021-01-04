@@ -25,9 +25,6 @@ import java.lang.invoke.MethodHandles;
  */
 public abstract class IBRManaged<T, M extends IBRManaged<T, M>> {
 
-  // TODO: (look into acq/rel modes: http://gee.cs.oswego.edu/dl/html/j9mm.html)?
-  // TODO: verify that we really don't need born_before from the paper
-
   private static final VarHandle BIRTH_EPOCH;
 
   private static final VarHandle RETIRE_EPOCH;
@@ -64,6 +61,10 @@ public abstract class IBRManaged<T, M extends IBRManaged<T, M>> {
     this._next = n;
   }
 
+  final long getBirthEpochPlain() {
+    return (long) BIRTH_EPOCH.get(this);
+  }
+
   final long getBirthEpochOpaque() {
     return (long) BIRTH_EPOCH.getOpaque(this);
   }
@@ -76,12 +77,20 @@ public abstract class IBRManaged<T, M extends IBRManaged<T, M>> {
     return (long) BIRTH_EPOCH.getVolatile(this);
   }
 
+  final void setBirthEpochPlain(long e) {
+    BIRTH_EPOCH.set(this, e);
+  }
+
   final void setBirthEpochOpaque(long e) {
     BIRTH_EPOCH.setOpaque(this, e);
   }
 
   final void decreaseBirthEpochRelease(long by) {
     BIRTH_EPOCH.getAndAddRelease(this, -by);
+  }
+
+  final long getRetireEpochPlain() {
+    return (long) RETIRE_EPOCH.get(this);
   }
 
   final long getRetireEpochOpaque() {
@@ -94,6 +103,10 @@ public abstract class IBRManaged<T, M extends IBRManaged<T, M>> {
 
   final long getRetireEpochVolatile() {
     return (long) RETIRE_EPOCH.getVolatile(this);
+  }
+
+  final void setRetireEpochPlain(long e) {
+    RETIRE_EPOCH.set(this, e);
   }
 
   final void setRetireEpochOpaque(long e) {

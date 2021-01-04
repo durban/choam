@@ -166,9 +166,9 @@ private[kcas] final object IBR2 {
       if (epoch > this.reservation.getUpperPlain()) {
         this.reservation.setUpper(epoch)
       }
-      // opaque: will be published with release/volatile
-      elem.setBirthEpochOpaque(epoch)
-      elem.setRetireEpochOpaque(epoch)
+      // plain: will be published with release/volatile
+      elem.setBirthEpochPlain(epoch)
+      elem.setRetireEpochPlain(epoch)
     }
 
     final def startOp(): Unit = {
@@ -198,10 +198,11 @@ private[kcas] final object IBR2 {
         val m: M = a.asInstanceOf[M]
         val res: IBRReservation = this.reservation
         val currUpper = res.getUpper()
-        // we read `m` (that is, `a`) with acquire, so we can read birthEpoch with opaque:
-        val mbe = m.getBirthEpochOpaque()
+        // we read `m` (that is, `a`) with acquire, so we can read birthEpoch with plain:
+        val mbe = m.getBirthEpochPlain()
         val ok1 = if (mbe > currUpper) {
           res.setUpper(mbe)
+          // TODO: check if we still need this:
           // `m` might've been retired (and reused) before we adjusted
           // our reservation, so we have to recheck the birth epoch
           // (and opaque is not enough here), so we'll re-acquire from the ref:
@@ -211,7 +212,7 @@ private[kcas] final object IBR2 {
           true
         }
         val currLower = res.getLower()
-        val mre = m.getRetireEpochOpaque()
+        val mre = m.getRetireEpochPlain()
         val ok2 = if (mre < currLower) {
           res.setLower(mre)
           false
