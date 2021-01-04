@@ -112,6 +112,7 @@ private[kcas] object EMCAS extends KCAS { self =>
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): Boolean = {
       var content: A = nullOf[A]
+      var contentWd: WordDescriptor[A] = null
       var value: A = nullOf[A]
       var go = true
       // Read `content`, and `value` if necessary;
@@ -123,6 +124,7 @@ private[kcas] object EMCAS extends KCAS { self =>
       // them would require allocating a tuple (like in
       // the paper).
       do {
+        contentWd = null
         content = ctx.readVolatileRef(wordDesc.address)
         content match {
           case wd: WordDescriptor[_] =>
@@ -130,6 +132,7 @@ private[kcas] object EMCAS extends KCAS { self =>
               // already points to the right place, early return:
               return true // scalastyle:ignore return
             } else {
+              contentWd = wd.cast[A]
               // At this point, we're sure that `wd` belongs to another op
               // (not `desc`), because otherwise it would've been equal to
               // `wordDesc` (we're assuming that any WordDescriptor only
@@ -161,33 +164,39 @@ private[kcas] object EMCAS extends KCAS { self =>
         true // TODO: we should break from `go`
         // TODO: `true` is not necessarily correct, the helping thread could've finalized us to failed too
       } else {
-        // TODO: clean this up:
-        content match {
-          case wd: WordDescriptor[_] =>
-            @tailrec
-            def adjust(): Unit = {
-              val b = wd.getBirthEpochVolatile()
-              val ok1 = if (b < wordDesc.getBirthEpochOpaque()) {
-                wordDesc.setBirthEpochOpaque(b)
-                false
-              } else true
-              val r = wd.getRetireEpochVolatile()
-              val ok2 = if (r > wordDesc.getRetireEpochOpaque()) {
-                wordDesc.setRetireEpochOpaque(r)
-                false
-              } else true
-              if (ok1 && ok2) ()
-              else adjust() // re-check
-            }
-            adjust()
-          case _ =>
-            ()
+        if (contentWd ne null) {
+          extendInterval(oldWd = contentWd, newWd = wordDesc)
         }
         if (!ctx.casRef(wordDesc.address, content, wordDesc.castToData)) {
           tryWord(wordDesc) // retry this word
         } else {
           true
         }
+      }
+    }
+
+    /**
+     * Extends the interval of `newWd` to include the interval of `oldWd`.
+     *
+     * Another thread could simultaneously try to do the same, so we have to take
+     * care to increase/decrease values atomically. If more than one thread performs
+     * the increase/decrease, the worst that could happen is to have an unnecessarily
+     * large interval. That would make IBR less effective, but still correct.
+     *
+     * Assumption: we only ever extend intervals (never narrow them).
+     */
+    def extendInterval[A](oldWd: WordDescriptor[A], newWd: WordDescriptor[A]): Unit = {
+      val newBirth = newWd.getBirthEpochAcquire()
+      val oldBirth = oldWd.getBirthEpochAcquire()
+      if (oldBirth < newBirth) {
+        // FAA atomically decreases the value:
+        newWd.decreaseBirthEpochRelease(newBirth - oldBirth)
+      }
+      val newRetire = newWd.getRetireEpochAcquire()
+      val oldRetire = oldWd.getRetireEpochAcquire()
+      if (oldRetire > newRetire) {
+        // FAA atomically increases the value:
+        newWd.increaseRetireEpochRelease(oldRetire - newRetire)
       }
     }
 

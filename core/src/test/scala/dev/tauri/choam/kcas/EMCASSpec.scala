@@ -164,7 +164,7 @@ class EMCASSpec extends BaseSpecA {
     t1.join()
   }
 
-  test("EMCAS should extend the interval of a new descriptor if it replaces an old one".only) {
+  test("EMCAS should extend the interval of a new descriptor if it replaces an old one") {
     val r = Ref.mk("x")
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
