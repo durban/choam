@@ -35,11 +35,8 @@ import scala.annotation.tailrec
  *
  * @param `zeroEpoch` is the value of the very first epoch.
 */
-private[kcas] abstract class IBR2[T, M <: IBRManaged[T, M]](zeroEpoch: Long)
+private[kcas] abstract class IBR2[T](zeroEpoch: Long)
   extends IBRBase(zeroEpoch) {
-
-  /** @return `true` iff `a` is really an `M` */
-  protected[IBR2] def dynamicTest[A](a: A): Boolean
 
   protected[IBR2] def newThreadContext(): T
 
@@ -117,8 +114,8 @@ private[kcas] final object IBR2 {
    *
    * Note: some fields can be accessed by other threads!
    */
-  abstract class ThreadContext[T <: ThreadContext[T, M], M <: IBRManaged[T, M]](
-    global: IBR2[T, M],
+  abstract class ThreadContext[T <: ThreadContext[T]](
+    global: IBR2[T],
     startCounter: Int = 0
   ) { this: T =>
 
@@ -147,7 +144,7 @@ private[kcas] final object IBR2 {
     }
 
     /** For testing */
-    private[kcas] final def globalContext: IBR2[T, M] =
+    private[kcas] final def globalContext: IBR2[T] =
       global
 
     /** For testing */
@@ -156,7 +153,7 @@ private[kcas] final object IBR2 {
       try { body } finally { this.endOp() }
     }
 
-    final def alloc(elem: M): Unit = {
+    final def alloc(elem: IBRManaged[_, _]): Unit = {
       this.counter += 1
       val epoch = if ((this.counter % epochFreq) == 0) {
         this.global.incrementEpoch()
@@ -194,8 +191,8 @@ private[kcas] final object IBR2 {
     }
 
     private[kcas] final def tryAdjustReservation[A](a: A): Boolean = {
-      if (this.global.dynamicTest(a)) {
-        val m: M = a.asInstanceOf[M]
+      if (a.isInstanceOf[IBRManaged[_, _]]) {
+        val m: IBRManaged[_, _] = a.asInstanceOf[IBRManaged[_, _]]
         val res: IBRReservation = this.reservation
         val currUpper = res.getUpper()
         // we read `m` (that is, `a`) with acquire, so we can read birthEpoch with plain:
@@ -255,11 +252,11 @@ private[kcas] final object IBR2 {
       this.reservation.setUpper(epoch)
     }
 
-    private[kcas] final def isInUseByOther(block: M): Boolean = {
+    private[kcas] final def isInUseByOther(block: IBRManaged[_, _]): Boolean = {
       this.isInUseExcept(block, this)
     }
 
-    private final def isInUseExcept(block: M, except: T): Boolean = {
+    private final def isInUseExcept(block: IBRManaged[_, _], except: T): Boolean = {
       val it = this.global.reservations.values().iterator()
 
       @tailrec

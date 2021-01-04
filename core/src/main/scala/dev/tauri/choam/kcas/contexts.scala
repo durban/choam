@@ -21,17 +21,14 @@ package kcas
 import java.util.concurrent.ThreadLocalRandom
 
 final class GlobalContext
-  extends IBR2[ThreadContext, WordDescriptor[Any]](Long.MinValue) {
-
-  override def dynamicTest[A](a: A): Boolean =
-    a.isInstanceOf[WordDescriptor[_]]
+  extends IBR2[ThreadContext](Long.MinValue) {
 
   override def newThreadContext(): ThreadContext =
     new ThreadContext(this, Thread.currentThread().getId())
 }
 
 final class ThreadContext(global: GlobalContext, val tid: Long)
-  extends IBR2.ThreadContext[ThreadContext, WordDescriptor[Any]](global, 0) {
+  extends IBR2.ThreadContext[ThreadContext](global, 0) {
 
   private[this] var finalizedDescriptors: EMCASDescriptor =
     null
