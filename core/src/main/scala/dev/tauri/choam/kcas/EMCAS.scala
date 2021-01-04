@@ -248,9 +248,9 @@ private[kcas] object EMCAS extends KCAS { self =>
     desc: EMCASDescriptor,
     ref: Ref[A],
     ov: A,
-    nv: A
+    nv: A,
+    ctx: ThreadContext
   ): EMCASDescriptor = {
-    val ctx = this.currentContext()
     ctx.startOp()
     try {
       val wd = WordDescriptor[A](ref, ov, nv, desc, ctx)
@@ -259,8 +259,8 @@ private[kcas] object EMCAS extends KCAS { self =>
     } finally ctx.endOp()
   }
 
-  private[choam] final override def snapshot(desc: EMCASDescriptor): EMCASDescriptor = {
-    desc.copy(EMCAS.currentContext())
+  private[choam] final override def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor = {
+    desc.copy(ctx)
   }
 
   private[choam] final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {

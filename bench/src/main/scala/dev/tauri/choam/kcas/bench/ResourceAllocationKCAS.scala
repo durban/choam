@@ -56,7 +56,7 @@ class ResourceAllocationKCAS {
       if (i >= n) {
         d
       } else {
-        val nd = impl.addCas(d, rss(i), ovs(i), ovs((i + 1) % n))
+        val nd = impl.addCas(d, rss(i), ovs(i), ovs((i + 1) % n), t.kcasCtx)
         prepare(i + 1, nd)
       }
     }

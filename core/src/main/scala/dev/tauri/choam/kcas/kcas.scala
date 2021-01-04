@@ -29,9 +29,9 @@ abstract class KCAS { self =>
 
   private[choam] def start(ctx: ThreadContext): EMCASDescriptor
 
-  private[choam] def addCas[A](desc: EMCASDescriptor, ref: Ref[A], ov: A, nv: A): EMCASDescriptor
+  private[choam] def addCas[A](desc: EMCASDescriptor, ref: Ref[A], ov: A, nv: A, ctx: ThreadContext): EMCASDescriptor
 
-  private[choam] def snapshot(desc: EMCASDescriptor): EMCASDescriptor
+  private[choam] def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor
 
   private[choam] def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean
 

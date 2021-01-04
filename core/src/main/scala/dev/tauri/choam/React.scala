@@ -458,7 +458,7 @@ object React {
       if (n <= 0) {
         Jump(a, this, ops, desc, Nil)
       } else {
-        val snap = desc.impl.snapshot(desc)
+        val snap = desc.impl.snapshot(desc, ctx)
         first.tryPerform(n - 1, a, ops, desc, ctx) match {
           case _: Retry.type =>
             second.tryPerform(n - 1, a, ops, snap, ctx)
@@ -493,7 +493,7 @@ object React {
     protected final def tryPerform(n: Int, b: B, pc: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
       val a = desc.impl.read(ref, ctx)
       if (equ(a, ov)) {
-        maybeJump(n, transform(a, b), k, pc, desc.impl.addCas(desc, ref, ov, nv), ctx)
+        maybeJump(n, transform(a, b), k, pc, desc.impl.addCas(desc, ref, ov, nv, ctx), ctx)
       } else {
         Retry
       }

@@ -47,14 +47,15 @@ private[kcas] final object NaiveKCAS extends KCAS { self =>
     desc: EMCASDescriptor,
     ref: Ref[A],
     ov: A,
-    nv: A
+    nv: A,
+    ctx: ThreadContext
   ): EMCASDescriptor = {
     desc.words.add(WordDescriptor[A](ref, ov, nv, desc, dummyContext))
     desc
   }
 
-  final override def snapshot(desc: EMCASDescriptor): EMCASDescriptor =
-    desc.copy(dummyContext)
+  final override def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor =
+    desc.copy(ctx)
 
   final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
     desc.sort()

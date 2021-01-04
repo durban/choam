@@ -34,7 +34,7 @@ class FailedCAS1Bench {
   @Benchmark
   def failedCAS1(r: RefState, t: KCASImplState): Unit = {
     val succ = t.kcasImpl.tryPerform(
-      t.kcasImpl.addCas(t.kcasImpl.start(t.kcasCtx), r.ref, incorrectOv, t.nextString()),
+      t.kcasImpl.addCas(t.kcasImpl.start(t.kcasCtx), r.ref, incorrectOv, t.nextString(), t.kcasCtx),
       t.kcasCtx
     )
     if (succ) throw new AssertionError("CAS should've failed")
@@ -62,7 +62,7 @@ class CAS1LoopBench {
       val ov = kcasImpl.read(ref, t.kcasCtx)
       val nv = (ov.toLong + t.nextLong()).toString
       val succ = kcasImpl.tryPerform(
-        kcasImpl.addCas(kcasImpl.start(t.kcasCtx), ref, ov, nv),
+        kcasImpl.addCas(kcasImpl.start(t.kcasCtx), ref, ov, nv, t.kcasCtx),
         t.kcasCtx
       )
       if (succ) ()

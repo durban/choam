@@ -41,7 +41,7 @@ class EMCASCleanup1Test {
   @Actor
   final def write(r: ILL_Result): Unit = {
     val ctx = EMCAS.currentContext()
-    val ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.start(ctx), this.ref, "a", "b"), ctx)
+    val ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.start(ctx), this.ref, "a", "b", ctx), ctx)
     r.r1 = if (ok) 1 else -1
   }
 
