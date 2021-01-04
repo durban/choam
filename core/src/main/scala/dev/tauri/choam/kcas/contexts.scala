@@ -82,8 +82,10 @@ final class ThreadContext(global: GlobalContext, val tid: Long)
           // delete the descriptor from the list:
           this.finalizedDescriptorsCount -= 1
           if (prev ne null) {
+            // delete an internal item:
             prev.next = curr.next
           } else {
+            // delete the head:
             this.finalizedDescriptors.next = curr.next
           }
           prev
