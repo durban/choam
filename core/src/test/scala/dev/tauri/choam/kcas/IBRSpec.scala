@@ -20,7 +20,7 @@ package kcas
 
 import java.util.concurrent.CountDownLatch
 
-final class IBR2Spec
+final class IBRSpec
   extends BaseSpecA {
 
   test("IBR should not free an object referenced from another thread") {
@@ -51,7 +51,7 @@ final class IBR2Spec
     ctx.forceNextEpoch()
     ctx.resetCounter(0)
     val startEpoch = EMCAS.global.epochNumber
-    val descs = for (_ <- 1 until IBR2.epochFreq) yield {
+    val descs = for (_ <- 1 until IBR.epochFreq) yield {
       ctx.startOp()
       try {
         WordDescriptor(null, "", "", null, ctx)

@@ -35,10 +35,10 @@ import scala.annotation.tailrec
  *
  * @param `zeroEpoch` is the value of the very first epoch.
 */
-private[kcas] abstract class IBR2[T](zeroEpoch: Long)
+private[kcas] abstract class IBR[T](zeroEpoch: Long)
   extends IBRBase(zeroEpoch) {
 
-  protected[IBR2] def newThreadContext(): T
+  protected[IBR] def newThreadContext(): T
 
   /** For testing */
   private[kcas] def epochNumber: Long =
@@ -58,7 +58,7 @@ private[kcas] abstract class IBR2[T](zeroEpoch: Long)
    * affect safety, because a dead thread will never
    * continue its current op (if any).
    */
-  private[IBR2] val reservations =
+  private[IBR] val reservations =
     new ConcurrentSkipListMap[Long, WeakRef[T]]
 
   /** For testing */
@@ -99,7 +99,7 @@ private[kcas] abstract class IBR2[T](zeroEpoch: Long)
   }
 }
 
-private[kcas] final object IBR2 {
+private[kcas] final object IBR {
 
   private[kcas] final val epochFreq = 128 // TODO
 
@@ -115,7 +115,7 @@ private[kcas] final object IBR2 {
    * Note: some fields can be accessed by other threads!
    */
   abstract class ThreadContext[T <: ThreadContext[T]](
-    global: IBR2[T],
+    global: IBR[T],
     startCounter: Int = 0
   ) { this: T =>
 
@@ -136,7 +136,7 @@ private[kcas] final object IBR2 {
      *
      * Note: read by other threads when reclaiming memory!
      */
-    private[IBR2] final val reservation: IBRReservation =
+    private[IBR] final val reservation: IBRReservation =
       new IBRReservation(Long.MaxValue)
 
     /** For testing */
@@ -148,7 +148,7 @@ private[kcas] final object IBR2 {
     }
 
     /** For testing */
-    private[kcas] final def globalContext: IBR2[T] =
+    private[kcas] final def globalContext: IBR[T] =
       global
 
     /** For testing */
