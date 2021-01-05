@@ -1,5 +1,5 @@
 CHOAM
-Copyright 2016-2020 Daniel Urban and contributors listed below
+Copyright 2016-2021 Daniel Urban and contributors listed below
 
 This product includes software developed by the following contributors:
 - Daniel Urban <urban.dani@gmail.com> (https://github.com/durban)

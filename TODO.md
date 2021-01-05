@@ -1,7 +1,7 @@
 <!--
 
    SPDX-License-Identifier: Apache-2.0
-   Copyright 2016-2020 Daniel Urban and contributors listed in NOTICE.txt
+   Copyright 2016-2021 Daniel Urban and contributors listed in NOTICE.txt
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -46,13 +46,18 @@
 - Finish Ctrie
 - Scala 3
 - ce3
+- Async:
+  - improve `Promise` API (see `Deferred` in cats-effect)
+  - `AsyncQueue` (integration with FS2?)
 - API cleanup:
   - separate unsafe/low-level API for `invisibleRead` and other dangerous
   - move `KCAS` into separate JAR, figure out proper API
+  - compare with `Ref` in cats-effect: similar things should have similar names
 
 ## Misc.
 
 - `LongRef`, `IntRef`, ... (benchmarks needed, it might not make sense)
 - `Ref` which is backed by mmapped memory(?)
 - Other data structures:
-  - `AsyncQueue`
+  - ctrie-set
+  - `SkipListMap`, `SkipListSet`
