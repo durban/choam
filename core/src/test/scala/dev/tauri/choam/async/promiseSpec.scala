@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.duration._
 
 import cats.effect.IO
+import cats.effect.std.CountDownLatch
 import cats.effect.kernel.Outcome
 
 class PromiseSpec_NaiveKCAS_IO
@@ -99,7 +100,7 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("Calling the callback should be followed by a thread shift".only) {
+  test("Calling the callback should be followed by a thread shift") {
     @volatile var stop = false
     for {
       p <- Promise[Int].run[F]
@@ -113,6 +114,25 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- F.sleep(0.1.seconds)
       _ <- F.delay { stop = true }
       _ <- f.joinWithNever
+    } yield ()
+  }
+
+  test("Promise#get should be rerunnable") {
+    for {
+      p <- Promise[Int].run[F]
+      l1 <- CountDownLatch[F](1)
+      l2 <- CountDownLatch[F](1)
+      g = p.get[F]
+      f1 <- (l1.release >> g).start
+      f2 <- (l2.release >> g).start
+      _ <- l1.await
+      ok <- p.tryComplete(42)
+      _ <- l2.await
+      _ <- assertF(ok)
+      _ <- assertResultF(g, 42)
+      _ <- assertResultF(g, 42)
+      _ <- assertResultF(f1.joinWithNever, 42)
+      _ <- assertResultF(f2.joinWithNever, 42)
     } yield ()
   }
 }

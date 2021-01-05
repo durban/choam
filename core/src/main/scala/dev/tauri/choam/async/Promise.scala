@@ -46,19 +46,21 @@ final class Promise[A] private (ref: kcas.Ref[State[A]]) {
       case Waiting(_) =>
         F.delay(new Id).flatMap { id =>
           F.async { cb =>
-            insertCallback(id, cb).run[F].flatMap {
-              case None =>
-                F.unit
-              case Some(a) =>
-                F.delay(cb(Right(a)))
-            }.map { _ =>
-              // cancel token:
-              Some(ref.modify{
-                case Waiting(cbs) =>
-                  Waiting(cbs - id)
-                case d @ Done(_) =>
-                  d
-              }.discard.run[F])
+            F.uncancelable { poll =>
+              val removeCallback = F.uncancelable { _ =>
+                ref.modify {
+                  case Waiting(cbs) => Waiting(cbs - id)
+                  case d @ Done(_) => d
+                }.discard.run[F]
+              }
+              insertCallback(id, cb).run[F].flatMap {
+                case None => F.pure(true)
+                case Some(a) => poll(F.delay { cb(Right(a)) }).as(false)
+              }.map { cbWasInserted =>
+                // cancellation token:
+                if (cbWasInserted) Some(removeCallback)
+                else None
+              }.onError { _ => removeCallback }
             }
           }
         }
