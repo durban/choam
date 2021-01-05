@@ -78,10 +78,10 @@ class StmQueueSpec extends CatsEffectSuite with BaseSpecA {
     val seed1 = ThreadLocalRandom.current().nextInt()
     val seed2 = ThreadLocalRandom.current().nextInt()
     val tsk = for {
-      fpu1 <- IO { enq(XorShift(seed1)) }.start
-      fpu2 <- IO { enq(XorShift(seed2)) }.start
-      fpo1 <- IO { deq(N) }.start
-      fpo2 <- IO { deq(N) }.start
+      fpu1 <- IO.blocking { enq(XorShift(seed1)) }.start
+      fpu2 <- IO.blocking { enq(XorShift(seed2)) }.start
+      fpo1 <- IO.blocking { deq(N) }.start
+      fpo2 <- IO.blocking { deq(N) }.start
       _ <- fpu1.joinWithNever
       _ <- fpu2.joinWithNever
       cs1 <- fpo1.joinWithNever
@@ -131,10 +131,10 @@ class StmQueueSpec extends CatsEffectSuite with BaseSpecA {
       }
     }
     val tsk = for {
-      fpu1 <- IO { enq(XorShift()) }.start
-      fpo1 <- IO { deq() }.start
-      fpu2 <- IO { enq(XorShift()) }.start
-      fpo2 <- IO { deq() }.start
+      fpu1 <- IO.blocking { enq(XorShift()) }.start
+      fpo1 <- IO.blocking { deq() }.start
+      fpu2 <- IO.blocking { enq(XorShift()) }.start
+      fpo2 <- IO.blocking { deq() }.start
       _ <- fpu1.join
       _ <- fpu2.join
       _ <- fpo1.join

@@ -20,8 +20,6 @@ package dev.tauri.choam
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
-import scala.concurrent.duration._
-
 import scala.jdk.CollectionConverters._
 
 import cats.implicits._
@@ -474,14 +472,14 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     val max = 10000
     for {
       q <- F.delay { new MichaelScottQueue[String] }
-      produce = F.delay {
+      produce = F.blocking {
         for (i <- 0 until max) {
           q.enqueue.unsafePerform(i.toString)
         }
       }
       cs <- F.delay { new ConcurrentLinkedQueue[String] }
       stop <- F.delay { new AtomicBoolean(false) }
-      consume = F.delay {
+      consume = F.blocking {
         @tailrec
         def go(): Unit = {
           q.tryDeque.unsafeRun() match {
@@ -496,12 +494,10 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         go()
       }
       tsk = for {
-        // TODO: For some reason, the `sleep`s are necessary
-        // TODO: to actually have an async boundary.
-        p1 <- (F.sleep(1.millisecond) >> produce).start
-        c1 <- (F.sleep(1.millisecond) >> consume).start
-        p2 <- (F.sleep(1.millisecond) >> produce).start
-        c2 <- (F.sleep(1.millisecond) >> consume).start
+        p1 <- produce.start
+        c1 <- consume.start
+        p2 <- produce.start
+        c2 <- consume.start
         _ <- p1.joinWithNever
         _ <- p2.joinWithNever
         _ <- F.delay { stop.set(true) }

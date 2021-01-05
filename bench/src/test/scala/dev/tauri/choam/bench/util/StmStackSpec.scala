@@ -50,7 +50,7 @@ class StmStackSpec extends CatsEffectSuite with BaseSpecA {
 
   test("StmStack should not lose items") {
     val s = new StmStack[Int]
-    val N = 100000
+    val N = 1000000
     val seed1 = ThreadLocalRandom.current().nextInt()
     val seed2 = ThreadLocalRandom.current().nextInt()
     def push(xs: XorShift): Unit = {
@@ -73,10 +73,10 @@ class StmStackSpec extends CatsEffectSuite with BaseSpecA {
     }
 
     val tsk = for {
-      fpu1 <- IO { push(XorShift(seed1)) }.start
-      fpu2 <- IO { push(XorShift(seed2)) }.start
-      fpo1 <- IO { pop(N) }.start
-      fpo2 <- IO { pop(N) }.start
+      fpu1 <- IO.blocking { push(XorShift(seed1)) }.start
+      fpu2 <- IO.blocking { push(XorShift(seed2)) }.start
+      fpo1 <- IO.blocking { pop(N) }.start
+      fpo2 <- IO.blocking { pop(N) }.start
       _ <- fpu1.joinWithNever
       _ <- fpu2.joinWithNever
       cs1 <- fpo1.joinWithNever
@@ -101,7 +101,7 @@ class StmStackSpec extends CatsEffectSuite with BaseSpecA {
   test("StmStack should have composable transactions") {
     val s1 = new StmStack[Int]
     val s2 = new StmStack[Int]
-    val N = 100000
+    val N = 1000000
     def push(xs: XorShift): Unit = {
       for (_ <- 1 to N) {
         val item = xs.nextInt()
@@ -129,10 +129,10 @@ class StmStackSpec extends CatsEffectSuite with BaseSpecA {
     }
 
     for {
-      fpu1 <- IO { push(XorShift()) }.start
-      fpo1 <- IO { pop() }.start
-      fpu2 <- IO { push(XorShift()) }.start
-      fpo2 <- IO { pop() }.start
+      fpu1 <- IO.blocking { push(XorShift()) }.start
+      fpo1 <- IO.blocking { pop() }.start
+      fpu2 <- IO.blocking { push(XorShift()) }.start
+      fpo2 <- IO.blocking { pop() }.start
       _ <- fpu1.join
       _ <- fpu2.join
       _ <- fpo1.join
