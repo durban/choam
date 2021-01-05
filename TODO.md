@@ -45,7 +45,10 @@
   - Review benchmarks, remove useless ones
 - Finish Ctrie
 - Scala 3
-- ce3
+- ce3:
+  - try to weaken constraints from Async/Sync
+  - verify thread shifting behavior
+  - could `React` implement some of the typeclasses?
 - Async:
   - improve `Promise` API (see `Deferred` in cats-effect)
   - `AsyncQueue` (integration with FS2?)

@@ -53,8 +53,8 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       pop = s.pop[F]
       f1 <- pop.start
       f2 <- pop.start
-      p1 <- f1.join
-      p2 <- f2.join
+      p1 <- f1.joinWithNever
+      p2 <- f2.joinWithNever
       _ <- assertEqualsF(Set(p1, p2), Set("foo", "bar"))
       _ <- assertResultF(pop, "xyz")
     } yield ()
@@ -64,9 +64,9 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       s <- AsyncStack[String].run[F]
       f1 <- s.pop[F].start
-      _ <- tmF.sleep(0.1.seconds)
+      _ <- F.sleep(0.1.seconds)
       _ <- s.push[F]("foo")
-      p1 <- f1.join
+      p1 <- f1.joinWithNever
       _ <- assertEqualsF(p1, "foo")
     } yield ()
   }
@@ -75,13 +75,13 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       s <- AsyncStack[String].run[F]
       f1 <- s.pop[F].start
-      _ <- tmF.sleep(0.1.seconds)
+      _ <- F.sleep(0.1.seconds)
       f2 <- s.pop[F].start
-      _ <- tmF.sleep(0.1.seconds)
+      _ <- F.sleep(0.1.seconds)
       _ <- s.push[F]("foo")
-      _ <- assertResultF(f1.join, "foo")
+      _ <- assertResultF(f1.joinWithNever, "foo")
       _ <- s.push[F]("bar")
-      _ <- assertResultF(f2.join, "bar")
+      _ <- assertResultF(f2.joinWithNever, "bar")
     } yield ()
   }
 

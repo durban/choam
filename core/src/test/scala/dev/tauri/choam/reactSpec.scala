@@ -496,17 +496,17 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         go()
       }
       tsk = for {
-        // For some reason, the `sleep`s are necessary
-        // to actually have an async boundary.
-        p1 <- (tmF.sleep(1.millisecond) >> produce).start
-        c1 <- (tmF.sleep(1.millisecond) >> consume).start
-        p2 <- (tmF.sleep(1.millisecond) >> produce).start
-        c2 <- (tmF.sleep(1.millisecond) >> consume).start
-        _ <- p1.join
-        _ <- p2.join
+        // TODO: For some reason, the `sleep`s are necessary
+        // TODO: to actually have an async boundary.
+        p1 <- (F.sleep(1.millisecond) >> produce).start
+        c1 <- (F.sleep(1.millisecond) >> consume).start
+        p2 <- (F.sleep(1.millisecond) >> produce).start
+        c2 <- (F.sleep(1.millisecond) >> consume).start
+        _ <- p1.joinWithNever
+        _ <- p2.joinWithNever
         _ <- F.delay { stop.set(true) }
-        _ <- c1.join
-        _ <- c2.join
+        _ <- c1.joinWithNever
+        _ <- c2.joinWithNever
       } yield ()
 
       _ <- tsk.guarantee(F.delay { stop.set(true) })

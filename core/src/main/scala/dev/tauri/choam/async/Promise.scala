@@ -18,8 +18,8 @@
 package dev.tauri.choam
 package async
 
-import cats.implicits._
-import cats.effect.{ ConcurrentEffect, IO, ContextShift }
+import cats.syntax.all._
+import cats.effect.Async
 
 import kcas.KCAS
 import Promise._
@@ -39,43 +39,37 @@ final class Promise[A] private (ref: kcas.Ref[State[A]]) {
 
   def get[F[_]](
     implicit
-    F: ConcurrentEffect[F],
-    cs: ContextShift[F],
+    F: Async[F],
     kcas: KCAS
   ): F[A] = {
     ref.invisibleRead.run[F].flatMap {
       case Waiting(_) =>
         F.delay(new Id).flatMap { id =>
-          val tsk = IO.cancelable[A] { cb =>
-            insertCallback(id, cb).unsafePerform(()) match {
+          F.async { cb =>
+            insertCallback(id, cb).run[F].flatMap {
               case None =>
-                  ()
+                F.unit
               case Some(a) =>
-                cb(Right(a))
+                F.delay(cb(Right(a)))
+            }.map { _ =>
+              // cancel token:
+              Some(ref.modify{
+                case Waiting(cbs) =>
+                  Waiting(cbs - id)
+                case d @ Done(_) =>
+                  d
+              }.discard.run[F])
             }
-            ref.modify {
-              case Waiting(cbs) =>
-                Waiting(cbs - id)
-              case d @ Done(_) =>
-                d
-            }.discard.run[IO]
-          }.flatTap(_ => IO.cancelBoundary)
-          F.liftIO(tsk)
+          }
         }
       case Done(a) =>
         F.pure(a)
     }
   }
 
-  private def insertCallback[F[_]](id: Id, cb: Either[Throwable, A] => Unit)(
-    implicit
-    F: ConcurrentEffect[F],
-    cs: ContextShift[F]
-  ): React[Unit, Option[A]] = {
+  private def insertCallback(id: Id, cb: Either[Throwable, A] => Unit): React[Unit, Option[A]] = {
     val kv = (id, { a: A =>
-      F.runAsync(cs.shift *> F.delay {
-        cb(Right(a))
-      }) { IO.pure(_).rethrow }.unsafeRunSync()
+      cb(Right(a)) // TODO: thread shifting?
     })
     ref.modify {
       case Waiting(cbs) => Waiting(cbs + kv)

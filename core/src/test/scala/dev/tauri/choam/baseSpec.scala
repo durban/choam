@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import cats.effect._
+import cats.effect.{ Sync, Async, IO, SyncIO }
 
 import munit.{ CatsEffectSuite, Location, FunSuite }
 
@@ -40,7 +40,7 @@ trait BaseSpecF[F[_]]
   extends FunSuite
   with MUnitUtils
   with cats.syntax.AllSyntax
-  with cats.effect.syntax.AllCatsEffectSyntax {
+  with cats.effect.syntax.AllSyntax {
 
   implicit def F: Sync[F]
 
@@ -66,25 +66,17 @@ trait BaseSpecF[F[_]]
 }
 
 trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] {
-  implicit override def F: ConcurrentEffect[F]
-  implicit def csF: ContextShift[F]
-  implicit def tmF: Timer[F]
+  implicit override def F: Async[F]
 }
 
 trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] {
-  implicit override def F: SyncEffect[F]
+  implicit override def F: Sync[F]
 }
 
 abstract class BaseSpecIO extends CatsEffectSuite with BaseSpecAsyncF[IO] {
 
-  implicit final override def F: ConcurrentEffect[IO] =
-    IO.ioConcurrentEffect(munitContextShift)
-
-  final override def csF: ContextShift[IO] =
-    munitContextShift
-
-  final override def tmF: Timer[IO] =
-    munitTimer
+  implicit final override def F: Async[IO] =
+    IO.asyncForIO
 
   final override def assertResultF[A, B](obtained: IO[A], expected: B, clue: String = "values are not the same")(
     implicit loc: Location, ev: B <:< A
@@ -95,8 +87,8 @@ abstract class BaseSpecIO extends CatsEffectSuite with BaseSpecAsyncF[IO] {
 
 abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO] {
 
-  implicit final override def F: SyncEffect[SyncIO] =
-    SyncIO.syncIOsyncEffect
+  implicit final override def F: Sync[SyncIO] =
+    SyncIO.syncForSyncIO
 
   final override def assertResultF[A, B](obtained: SyncIO[A], expected: B, clue: String)(
     implicit loc: Location, ev: B <:< A

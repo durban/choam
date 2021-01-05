@@ -19,7 +19,7 @@ package dev.tauri.choam
 package async
 
 import cats.implicits._
-import cats.effect.{ ConcurrentEffect, ContextShift }
+import cats.effect.Async
 
 import cats.data.Chain
 
@@ -51,7 +51,7 @@ final class AsyncStack[A](ref: Ref[State[A]]) {
     case Some((p, a)) => p.tryComplete.lmap[Unit](_ => a).void
   }).discard
 
-  def pop[F[_]](implicit F: ConcurrentEffect[F], cs: ContextShift[F], kcas: KCAS): F[A] = for {
+  def pop[F[_]](implicit F: Async[F], kcas: KCAS): F[A] = for {
     newP <- Promise[A].run[F]
     res <- head.modify2[Either[Promise[A], A]] {
       case Empty =>

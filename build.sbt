@@ -143,14 +143,14 @@ lazy val dependencies = new {
   val shapeless = "com.chuusai" %% "shapeless" % "2.3.3"
   val cats = "org.typelevel" %% "cats-core" % catsVersion
   val catsFree = "org.typelevel" %% "cats-free" % catsVersion
-  val catsEffect = "org.typelevel" %% "cats-effect" % "2.3.1"
+  val catsEffect = "org.typelevel" %% "cats-effect" % "3.0-65-7c98c86"
 
   val fs2 = "co.fs2" %% "fs2-core" % fs2Version
   val fs2io = "co.fs2" %% "fs2-io" % fs2Version
 
   val test = Seq(
     "org.typelevel" %% "cats-laws" % catsVersion,
-    "org.typelevel" %% "munit-cats-effect-2" % "0.11.0",
+    "org.typelevel" %% "munit-cats-effect-3" % "0.12.0",
     "org.typelevel" %% "scalacheck-effect" % "0.7.0",
     "org.typelevel" %% "scalacheck-effect-munit" % "0.7.0",
     "org.typelevel" %% "discipline-munit" % "1.0.4",

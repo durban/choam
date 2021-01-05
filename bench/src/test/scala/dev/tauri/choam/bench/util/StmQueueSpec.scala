@@ -82,10 +82,10 @@ class StmQueueSpec extends CatsEffectSuite with BaseSpecA {
       fpu2 <- IO { enq(XorShift(seed2)) }.start
       fpo1 <- IO { deq(N) }.start
       fpo2 <- IO { deq(N) }.start
-      _ <- fpu1.join
-      _ <- fpu2.join
-      cs1 <- fpo1.join
-      cs2 <- fpo2.join
+      _ <- fpu1.joinWithNever
+      _ <- fpu2.joinWithNever
+      cs1 <- fpo1.joinWithNever
+      cs2 <- fpo2.joinWithNever
     } yield cs1 ^ cs2
 
     val cs = tsk.unsafeRunSync()

@@ -42,10 +42,10 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       act = p.get[F]
       fib1 <- act.start
       fib2 <- act.start
-      _ <- tmF.sleep(0.1.seconds)
+      _ <- F.sleep(0.1.seconds)
       b <- (React.pure(42) >>> p.tryComplete).run[F]
-      res1 <- fib1.join
-      res2 <- fib2.join
+      res1 <- fib1.joinWithNever
+      res2 <- fib2.joinWithNever
       _ <- assertF(b)
       _ <- assertEqualsF(res1, 42)
       _ <- assertEqualsF(res2, 42)
