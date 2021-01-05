@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.duration._
 
 import cats.effect.IO
+import cats.effect.kernel.Outcome
 
 class PromiseSpec_NaiveKCAS_IO
   extends BaseSpecIO
@@ -77,6 +78,41 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertEqualsF(res1, 42)
       _ <- assertEqualsF(res2, 42)
       _ <- assertResultF(F.delay { cnt.get() }, 2L)
+    } yield ()
+  }
+
+  test("A cancelled callback should not be called") {
+    @volatile var flag1 = false
+    @volatile var flag2 = false
+    for {
+      p <- Promise[Int].run[F]
+      f1 <- p.get[F].flatTap(_ => F.delay { flag1 = true }).start
+      f2 <- p.get[F].flatTap(_ => F.delay { flag2 = true }).start
+      _ <- F.sleep(0.1.seconds)
+      _ <- f1.cancel
+      ok <- p.tryComplete[F](42)
+      _ <- assertF(ok)
+      _ <- assertResultF(f2.joinWithNever, 42)
+      _ <- assertResultF(f1.join, Outcome.canceled[F, Throwable, Int])
+      _ <- assertResultF(F.delay { flag1 }, false)
+      _ <- assertResultF(F.delay { flag2 }, true)
+    } yield ()
+  }
+
+  test("Calling the callback should be followed by a thread shift".only) {
+    @volatile var stop = false
+    for {
+      p <- Promise[Int].run[F]
+      f <- p.get[F].map { v =>
+        while (!stop) Thread.onSpinWait()
+        v + 1
+      }.start
+      ok <- p.tryComplete(42)
+      // now the fiber spins, hopefully on some other thread
+      _ <- assertF(ok)
+      _ <- F.sleep(0.1.seconds)
+      _ <- F.delay { stop = true }
+      _ <- f.joinWithNever
     } yield ()
   }
 }

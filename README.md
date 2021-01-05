@@ -19,7 +19,7 @@
 
 # CHOAM
 
-*Experiments with composable lock-free concurrency.*
+*Experiments with composable lock-free concurrency*
 
 The type [`React[-A, +B]`](core/src/main/scala/dev/tauri/choam/React.scala)
 is similar to an effectful function from `A` to `B`, but:
