@@ -102,18 +102,33 @@ class EMCASSpec extends BaseSpecA {
   test("EMCAS op should be finalizable even if a thread dies mid-op") {
     val r1 = Ref.mkWithId[String]("x")(0L, 0L, 0L, 0L)
     val r2 = Ref.mkWithId[String]("y")(0L, 0L, 0L, 1L)
+    val latch1 = new CountDownLatch(1)
+    val latch2 = new CountDownLatch(1)
+    var descT1: WordDescriptor[_] = null
     val t1 = new Thread(() => {
       val ctx = EMCAS.currentContext()
       val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a", ctx), r2, "y", "b", ctx)
+      ctx.startOp()
       desc.sort()
       val d0 = desc.words.get(0).asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
       r1.unsafeSet(d0.castToData)
+      descT1 = d0
+      latch1.countDown()
+      latch2.await()
       // and the thread dies here, with an active CAS
     })
     t1.start()
-    t1.join()
+    latch1.await()
     val ctx = EMCAS.currentContext()
+    assert(ctx.isInUseByOther(descT1))
+    latch2.countDown()
+    t1.join()
+    assert(!t1.isAlive())
+    while (EMCAS.global.snapshotReservations(t1.getId()).get() ne null) {
+      System.gc()
+    }
+
     val succ = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "x2", ctx), r2, "y", "y2", ctx), ctx)
     assert(!succ)
     assert(EMCAS.read(r1, ctx) eq "a")
@@ -122,6 +137,7 @@ class EMCASSpec extends BaseSpecA {
     EMCAS.spinUntilCleanup(r2)
     assert(clue(r1.unsafeTryRead()) eq "a")
     assert(clue(r2.unsafeTryRead()) eq "b")
+    assert(!ctx.isInUseByOther(descT1))
   }
 
   test("EMCAS should not replace and forget active descriptors") {

@@ -21,28 +21,19 @@
 
 ## Bugs
 
-- EMCAS: What happens when a thread dies during an op? Descriptors
-  could be freed then, but there is no final value!
-  - When starting a k-CAS op (but after sorting), store the whole
-    descriptor in a thread-local context.
-  - All these thread contexts are in a global "map".
-  - If the thread finishes (either fails or succeeds), remove the
-    descriptor from the thread context.
-  - If the thread dies before finishing, descriptors won't be
-    collected by the GC, because the context still holds them.
-  - (If another thread finalizes the op, it could clear the context,
-    however this should be done carefully, as it's another thread's
-    context.)
-  - Prerequisite: a way of passing thread-local contexts (requires
-    changes to `React`.)
-- EMCAS with simplified IBR:
-  - More tests to verify behavior is correct (see above).
-  - Try to enable cleanup after a k-CAS op is finalized.
-    - Measure performance.
-    - Measure memory requirements (make sure finalized list is not too big).
+- ???
 
 ## Other improvements
 
+- Testing:
+  - Figure out some tricky race conditions, and test them with JCStress.
+  - LawsSpec:
+    - improve generated `React`s, check if they make sense
+    - check if `testingEqReact` makes sense, maybe do structural checking
+- EMCAS with simplified IBR:
+  - Try to enable cleanup after a k-CAS op is finalized.
+    - Measure performance.
+    - Measure memory requirements, make sure finalized list is not too big.
 - Compile-time detection of impossible k-CAS operations
 - Optimization ideas:
   - Boxing
@@ -54,3 +45,14 @@
   - Review benchmarks, remove useless ones
 - Finish Ctrie
 - Scala 3
+- ce3
+- API cleanup:
+  - separate unsafe/low-level API for `invisibleRead` and other dangerous
+  - move `KCAS` into separate JAR, figure out proper API
+
+## Misc.
+
+- `LongRef`, `IntRef`, ... (benchmarks needed, it might not make sense)
+- `Ref` which is backed by mmapped memory(?)
+- Other data structures:
+  - `AsyncQueue`
