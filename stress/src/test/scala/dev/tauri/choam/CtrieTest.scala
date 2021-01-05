@@ -48,29 +48,29 @@ class CtrieTest extends StressTestBase {
 
   @Actor
   def ins1(): Unit = {
-    insert.unsafePerform(14 -> "x")
+    insert.unsafePerform(14 -> "x", this.impl)
   }
 
   @Actor
   def ins2(): Unit = {
-    insert.unsafePerform(14 -> "y")
+    insert.unsafePerform(14 -> "y", this.impl)
   }
 
   @Actor
   def get(r: LL_Result): Unit = {
-    r.r1 = lookup.unsafePerform(0)
+    r.r1 = lookup.unsafePerform(0, this.impl)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = lookup.unsafePerform(0)
-    assert(lookup.unsafePerform(1).get eq "1")
-    assert(lookup.unsafePerform(2).get eq "2")
-    assert(lookup.unsafePerform(3).get eq "3")
-    assert(lookup.unsafePerform(4).get eq "4")
-    assert(lookup.unsafePerform(7).get eq "7")
-    assert(lookup.unsafePerform(8).get eq "8")
-    assert(lookup.unsafePerform(9).get eq "9")
+    r.r2 = lookup.unsafePerform(0, this.impl)
+    assert(lookup.unsafePerform(1, this.impl).get eq "1")
+    assert(lookup.unsafePerform(2, this.impl).get eq "2")
+    assert(lookup.unsafePerform(3, this.impl).get eq "3")
+    assert(lookup.unsafePerform(4, this.impl).get eq "4")
+    assert(lookup.unsafePerform(7, this.impl).get eq "7")
+    assert(lookup.unsafePerform(8, this.impl).get eq "8")
+    assert(lookup.unsafePerform(9, this.impl).get eq "9")
   }
 }
 
@@ -78,14 +78,14 @@ object CtrieTest {
 
   def newCtrie714(): Ctrie[Int, String] = {
     val ct = new Ctrie[Int, String](_ % 7, Eq.instance(_ % 14 == _ % 14))
-    ct.insert.unsafePerform(0 -> "0")(KCAS.NaiveKCAS)
-    ct.insert.unsafePerform(1 -> "1")(KCAS.NaiveKCAS)
-    ct.insert.unsafePerform(2 -> "2")(KCAS.NaiveKCAS)
-    ct.insert.unsafePerform(3 -> "3")(KCAS.NaiveKCAS)
-    ct.insert.unsafePerform(4 -> "4")(KCAS.NaiveKCAS)
-    ct.insert.unsafePerform(7 -> "7")(KCAS.NaiveKCAS)
-    ct.insert.unsafePerform(8 -> "8")(KCAS.NaiveKCAS)
-    ct.insert.unsafePerform(9 -> "9")(KCAS.NaiveKCAS)
+    ct.insert.unsafePerform(0 -> "0", KCAS.NaiveKCAS)
+    ct.insert.unsafePerform(1 -> "1", KCAS.NaiveKCAS)
+    ct.insert.unsafePerform(2 -> "2", KCAS.NaiveKCAS)
+    ct.insert.unsafePerform(3 -> "3", KCAS.NaiveKCAS)
+    ct.insert.unsafePerform(4 -> "4", KCAS.NaiveKCAS)
+    ct.insert.unsafePerform(7 -> "7", KCAS.NaiveKCAS)
+    ct.insert.unsafePerform(8 -> "8", KCAS.NaiveKCAS)
+    ct.insert.unsafePerform(9 -> "9", KCAS.NaiveKCAS)
     ct
   }
 }

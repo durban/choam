@@ -47,16 +47,16 @@ class SwapTest extends StressTestBase {
 
   @Actor
   def swap(): Unit = {
-    sw.unsafeRun()
+    sw.unsafeRun(this.impl)
   }
 
   @Actor
   def read(r: LL_Result): Unit = {
-    r.r1 = rd.unsafeRun()
+    r.r1 = rd.unsafeRun(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = (ref1.getter.unsafeRun(), ref2.getter.unsafeRun())
+    r.r2 = (ref1.getter.unsafeRun(this.impl), ref2.getter.unsafeRun(this.impl))
   }
 }

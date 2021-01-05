@@ -41,12 +41,12 @@ class ReactCASTest extends StressTestBase {
 
   @Actor
   def writer1(r: ZZL_Result): Unit = {
-    r.r1 = cas.unsafePerform("x").isDefined
+    r.r1 = cas.unsafePerform("x", this.impl).isDefined
   }
 
   @Actor
   def writer2(r: ZZL_Result): Unit = {
-    r.r2 = cas.unsafePerform("y").isDefined
+    r.r2 = cas.unsafePerform("y", this.impl).isDefined
   }
 
   @Actor

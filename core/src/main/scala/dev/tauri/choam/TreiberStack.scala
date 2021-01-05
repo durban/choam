@@ -40,13 +40,13 @@ final class TreiberStack[A](els: Iterable[A]) {
   val length: React[Unit, Int] =
     head.upd[Unit, Int] { (l, _) => (l, l.length) }
 
-  private[choam] def unsafeToList()(implicit kcas: KCAS): List[A] = {
+  private[choam] def unsafeToList(kcas: KCAS): List[A] = {
     val r = head.upd[Unit, Lst[A]] { (l, _) => (l, l) }
-    r.unsafeRun().toList
+    r.unsafeRun(kcas).toList
   }
 
   els.foreach { a =>
-    push.unsafePerform(a)(KCAS.NaiveKCAS)
+    push.unsafePerform(a, KCAS.NaiveKCAS)
   }
 }
 

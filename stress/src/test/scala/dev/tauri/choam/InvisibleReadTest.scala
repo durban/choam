@@ -54,13 +54,13 @@ class InvisibleReadTest extends StressTestBase {
 
   @Actor
   def writer(@unused r: LLZ_Result): Unit = {
-    write.unsafeRun()
+    write.unsafeRun(this.impl)
   }
 
   @Actor
   def reader(r: LLZ_Result): Unit = {
-    r.r1 = read1.unsafeRun()
-    r.r2 = read2.unsafeRun()
+    r.r1 = read1.unsafeRun(this.impl)
+    r.r2 = read2.unsafeRun(this.impl)
   }
 
   @Arbiter

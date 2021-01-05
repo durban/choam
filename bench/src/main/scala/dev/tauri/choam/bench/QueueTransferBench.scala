@@ -32,10 +32,9 @@ class QueueTransferBench {
 
   @Benchmark
   def michaelScottQueue(s: MsSt, bh: Blackhole, ct: KCASImplState): Unit = {
-    import ct.kcasImpl
-    bh.consume(s.michaelScottQueue1.enqueue.unsafePerform(ct.nextString()))
-    bh.consume(s.transfer.unsafeRun())
-    if (s.michaelScottQueue2.tryDeque.unsafeRun() eq None) throw Errors.EmptyQueue
+    bh.consume(s.michaelScottQueue1.enqueue.unsafePerform(ct.nextString(), ct.kcasImpl))
+    bh.consume(s.transfer.unsafeRun(ct.kcasImpl))
+    if (s.michaelScottQueue2.tryDeque.unsafeRun(ct.kcasImpl) eq None) throw Errors.EmptyQueue
     Blackhole.consumeCPU(waitTime)
   }
 

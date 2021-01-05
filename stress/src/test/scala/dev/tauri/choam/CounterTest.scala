@@ -45,21 +45,21 @@ class CounterTest extends StressTestBase {
 
   @Actor
   def increment(r: JJJJ_Result): Unit = {
-    r.r1 = incr.unsafePerform(())
+    r.r1 = incr.unsafePerform((), this.impl)
   }
 
   @Actor
   def decrement(r: JJJJ_Result): Unit = {
-    r.r2 = decr.unsafePerform(())
+    r.r2 = decr.unsafePerform((), this.impl)
   }
 
   @Actor
   def value(r: JJJJ_Result): Unit = {
-    r.r3 = count.unsafePerform(())
+    r.r3 = count.unsafePerform((), this.impl)
   }
 
   @Arbiter
   def arbiter(r: JJJJ_Result): Unit = {
-    r.r4 = count.unsafePerform(())
+    r.r4 = count.unsafePerform((), this.impl)
   }
 }

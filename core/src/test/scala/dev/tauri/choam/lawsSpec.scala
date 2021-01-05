@@ -35,7 +35,7 @@ final class LawsSpecEMCAS
   extends LawsSpec
   with SpecEMCAS
 
-trait LawsSpec extends DisciplineSuite { this: KCASImplSpec =>
+trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
 
   implicit def arbReact[A, B](implicit arbA: Arbitrary[A], arbB: Arbitrary[B], arbAB: Arbitrary[A => B]): Arbitrary[React[A, B]] = Arbitrary {
     Gen.oneOf(
@@ -87,8 +87,8 @@ trait LawsSpec extends DisciplineSuite { this: KCASImplSpec =>
     def eqv(x: React[A, B], y: React[A, B]): Boolean = {
       (1 to 1000).forall { _ =>
         val a = arbA.arbitrary.sample.getOrElse(fail("no sample"))
-        val bx = x.unsafePerform(a)
-        val by = y.unsafePerform(a)
+        val bx = x.unsafePerform(a, self.kcasImpl)
+        val by = y.unsafePerform(a, self.kcasImpl)
         equB.eqv(bx, by)
       }
     }

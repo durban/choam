@@ -28,7 +28,7 @@ final class MichaelScottQueueSpecEMCAS
 trait MichaelScottQueueSpec extends BaseSpecA { this: KCASImplSpec =>
 
   test("MichaelScottQueue should include the elements passed to its constructor") {
-    assertEquals(new MichaelScottQueue[Int]().unsafeToList(), Nil)
-    assertEquals(new MichaelScottQueue[Int](1 :: 2 :: 3 :: Nil).unsafeToList(), 1 :: 2 :: 3 :: Nil)
+    assertEquals(new MichaelScottQueue[Int]().unsafeToList(this.kcasImpl), Nil)
+    assertEquals(new MichaelScottQueue[Int](1 :: 2 :: 3 :: Nil).unsafeToList(this.kcasImpl), 1 :: 2 :: 3 :: Nil)
   }
 }

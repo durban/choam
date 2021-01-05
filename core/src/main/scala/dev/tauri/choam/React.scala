@@ -47,7 +47,7 @@ sealed abstract class React[-A, +B] {
 
   import React._
 
-  final def unsafePerform(a: A)(implicit kcas: KCAS): B = {
+  final def unsafePerform(a: A, kcas: KCAS): B = {
 
     val ctx = kcas.currentContext()
 
@@ -73,7 +73,7 @@ sealed abstract class React[-A, +B] {
 
     val res = go(a, this, Reaction.empty, kcas.start(ctx), Nil)
     res.reaction.postCommit.foreach { pc =>
-      pc.unsafePerform(())
+      pc.unsafePerform((), kcas)
     }
 
     res.value
@@ -265,16 +265,16 @@ object React {
 
   implicit final class InvariantReactSyntax[A, B](private val self: React[A, B]) extends AnyVal {
     final def apply[F[_]](a: A)(implicit kcas: KCAS, F: Sync[F]): F[B] =
-      F.delay { self.unsafePerform(a)(kcas) }
+      F.delay { self.unsafePerform(a, kcas) }
   }
 
   implicit final class UnitReactSyntax[A](private val self: React[Unit, A]) extends AnyVal {
 
     final def run[F[_]](implicit kcas: KCAS, F: Sync[F]): F[A] =
-      F.delay { unsafeRun()(kcas) }
+      F.delay { unsafeRun(kcas) }
 
-    final def unsafeRun()(implicit kcas: KCAS): A =
-      self.unsafePerform(())
+    final def unsafeRun(kcas: KCAS): A =
+      self.unsafePerform((), kcas)
 
     final def void: React[Unit, Unit] =
       self.discard

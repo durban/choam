@@ -42,21 +42,21 @@ class TreiberStackTest extends StressTestBase {
 
   @Actor
   def push1(): Unit = {
-    push.unsafePerform("x")
+    push.unsafePerform("x", this.impl)
   }
 
   @Actor
   def push2(): Unit = {
-    push.unsafePerform("y")
+    push.unsafePerform("y", this.impl)
   }
 
   @Actor
   def pop(r: LL_Result): Unit = {
-    r.r1 = tryPop.unsafeRun().get
+    r.r1 = tryPop.unsafeRun(this.impl).get
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = stack.unsafeToList()
+    r.r2 = stack.unsafeToList(this.impl)
   }
 }

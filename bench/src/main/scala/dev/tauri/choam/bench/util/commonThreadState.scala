@@ -45,7 +45,7 @@ class KCASImplState extends RandomState {
   @Param(Array(KCAS.fqns.NaiveKCAS, KCAS.fqns.EMCAS))
   private[choam] var kcasName: String = _
 
-  private[choam] implicit var kcasImpl: KCAS = _
+  private[choam] var kcasImpl: KCAS = _
 
   private[choam] var kcasCtx: ThreadContext = _
 

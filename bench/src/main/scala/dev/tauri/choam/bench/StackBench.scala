@@ -32,10 +32,9 @@ class StackBench {
 
   @Benchmark
   def treiberStack(s: TreiberSt, bh: Blackhole, ct: KCASImplState): Unit = {
-    import ct.kcasImpl
-    bh.consume(s.treiberStack.push.unsafePerform(ct.nextString()))
+    bh.consume(s.treiberStack.push.unsafePerform(ct.nextString(), ct.kcasImpl))
     Blackhole.consumeCPU(waitTime)
-    if (s.treiberStack.tryPop.unsafeRun() eq None) throw Errors.EmptyStack
+    if (s.treiberStack.tryPop.unsafeRun(ct.kcasImpl) eq None) throw Errors.EmptyStack
     Blackhole.consumeCPU(waitTime)
   }
 

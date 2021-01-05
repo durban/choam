@@ -31,15 +31,13 @@ class ChoiceCombinatorBench {
 
   @Benchmark
   def choiceDummy(s: DummyChoice, k: KCASImplState): Unit = {
-    import k.kcasImpl
-    s.choice.unsafeRun()
-    s.reset.unsafeRun()
+    s.choice.unsafeRun(k.kcasImpl)
+    s.reset.unsafeRun(k.kcasImpl)
   }
 
   @Benchmark
   def choiceCAS(s: CASChoice, k: KCASImplState): Unit = {
-    import k.kcasImpl
-    s.choice.unsafeRun()
+    s.choice.unsafeRun(k.kcasImpl)
     s.reset.reset()
   }
 }

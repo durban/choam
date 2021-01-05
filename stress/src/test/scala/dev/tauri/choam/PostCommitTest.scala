@@ -48,10 +48,10 @@ class PostCommitTest extends StressTestBase {
   def upd1(r: LLLLL_Result): Unit = {
     val u1 = upd.postCommit(React.lift[(String, String), Unit] { res =>
       r.r1 = res
-      r.r2 = r1.getter.unsafeRun()
+      r.r2 = r1.getter.unsafeRun(this.impl)
       ()
     })
-    u1.unsafePerform("x")
+    u1.unsafePerform("x", this.impl)
     ()
   }
 
@@ -59,15 +59,15 @@ class PostCommitTest extends StressTestBase {
   def upd2(r: LLLLL_Result): Unit = {
     val u2 = upd.postCommit(React.lift[(String, String), Unit] { res =>
       r.r3 = res
-      r.r4 = r1.getter.unsafeRun()
+      r.r4 = r1.getter.unsafeRun(this.impl)
       ()
     })
-    u2.unsafePerform("y")
+    u2.unsafePerform("y", this.impl)
     ()
   }
 
   @Arbiter
   def arbiter(r: LLLLL_Result): Unit = {
-    r.r5 = (r1.getter.unsafeRun(), r2.getter.unsafeRun())
+    r.r5 = (r1.getter.unsafeRun(this.impl), r2.getter.unsafeRun(this.impl))
   }
 }

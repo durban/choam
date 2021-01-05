@@ -44,26 +44,26 @@ class MichaelScottQueueTest extends StressTestBase {
 
   @Actor
   def enq1(): Unit = {
-    enqueue.unsafePerform("x")
+    enqueue.unsafePerform("x", this.impl)
   }
 
   @Actor
   def enq2(): Unit = {
-    enqueue.unsafePerform("y")
+    enqueue.unsafePerform("y", this.impl)
   }
 
   @Actor
   def deq1(r: LLL_Result): Unit = {
-    r.r1 = tryDeque.unsafeRun()
+    r.r1 = tryDeque.unsafeRun(this.impl)
   }
 
   @Actor
   def deq2(r: LLL_Result): Unit = {
-    r.r2 = tryDeque.unsafeRun()
+    r.r2 = tryDeque.unsafeRun(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r3 = queue.unsafeToList()
+    r.r3 = queue.unsafeToList(this.impl)
   }
 }

@@ -56,20 +56,20 @@ class TreiberStackGlobalTest extends StressTestBase {
   @Actor
   def push1(): Unit = {
     val s = Integer.toString(ThreadLocalRandom.current().nextInt(0, 4096))
-    push.unsafePerform(s)
+    push.unsafePerform(s, this.impl)
     ()
   }
 
   @Actor
   def push2(): Unit = {
     val s = Integer.toString(ThreadLocalRandom.current().nextInt(4096, 8192))
-    push.unsafePerform(s)
+    push.unsafePerform(s, this.impl)
     ()
   }
 
   @Actor
   def pop(r: ZZZ_Result): Unit = {
-     val (v1, v2) = tryPop.unsafeRun()
+     val (v1, v2) = tryPop.unsafeRun(this.impl)
      if (v1.isDefined) r.r1 = true
      if (v2.isDefined) r.r2 = true
      // pop must always see the same values:

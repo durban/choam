@@ -45,17 +45,17 @@ class CtrieComposedTest extends StressTestBase {
 
   @Actor
   def ins(): Unit = {
-    insert.unsafePerform((14 -> "x", 1 -> "y"))
+    insert.unsafePerform((14 -> "x", 1 -> "y"), this.impl)
     ()
   }
 
   @Actor
   def get(r: LL_Result): Unit = {
-    r.r1 = lookup.unsafePerform((14, 1))
+    r.r1 = lookup.unsafePerform((14, 1), this.impl)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = lookup.unsafePerform((14, 1))
+    r.r2 = lookup.unsafePerform((14, 1), this.impl)
   }
 }

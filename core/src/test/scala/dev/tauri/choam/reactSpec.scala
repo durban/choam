@@ -432,39 +432,39 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   test("Michael-Scott queue should work correctly") {
     for {
       q <- F.delay { new MichaelScottQueue[String] }
-      _ <- assertResultF(q.unsafeToListF, Nil)
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), Nil)
 
       _ <- assertResultF(q.tryDeque.run, None)
-      _ <- assertResultF(q.unsafeToListF, Nil)
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), Nil)
 
       _ <- q.enqueue("a")
-      _ <- assertResultF(q.unsafeToListF, List("a"))
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), List("a"))
 
       _ <- assertResultF(q.tryDeque.run, Some("a"))
-      _ <- assertResultF(q.unsafeToListF, Nil)
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), Nil)
       _ <- assertResultF(q.tryDeque.run, None)
-      _ <- assertResultF(q.unsafeToListF, Nil)
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), Nil)
 
       _ <- q.enqueue("a")
-      _ <- assertResultF(q.unsafeToListF, List("a"))
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), List("a"))
       _ <- q.enqueue("b")
-      _ <- assertResultF(q.unsafeToListF, List("a", "b"))
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), List("a", "b"))
       _ <- q.enqueue("c")
-      _ <- assertResultF(q.unsafeToListF, List("a", "b", "c"))
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), List("a", "b", "c"))
 
       _ <- assertResultF(q.tryDeque.run, Some("a"))
-      _ <- assertResultF(q.unsafeToListF, List("b", "c"))
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), List("b", "c"))
 
       _ <- q.enqueue("x")
-      _ <- assertResultF(q.unsafeToListF, List("b", "c", "x"))
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), List("b", "c", "x"))
 
       _ <- assertResultF(q.tryDeque.run, Some("b"))
-      _ <- assertResultF(q.unsafeToListF, List("c", "x"))
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), List("c", "x"))
       _ <- assertResultF(q.tryDeque.run, Some("c"))
-      _ <- assertResultF(q.unsafeToListF, List("x"))
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), List("x"))
       _ <- assertResultF(q.tryDeque.run, Some("x"))
       _ <- assertResultF(q.tryDeque.run, None)
-      _ <- assertResultF(q.unsafeToListF, Nil)
+      _ <- assertResultF(q.unsafeToListF(this.kcasImpl), Nil)
     } yield ()
   }
 
@@ -474,7 +474,7 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       q <- F.delay { new MichaelScottQueue[String] }
       produce = F.blocking {
         for (i <- 0 until max) {
-          q.enqueue.unsafePerform(i.toString)
+          q.enqueue.unsafePerform(i.toString, this.kcasImpl)
         }
       }
       cs <- F.delay { new ConcurrentLinkedQueue[String] }
@@ -482,7 +482,7 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       consume = F.blocking {
         @tailrec
         def go(): Unit = {
-          q.tryDeque.unsafeRun() match {
+          q.tryDeque.unsafeRun(this.kcasImpl) match {
             case Some(s) =>
               cs.offer(s)
               go()

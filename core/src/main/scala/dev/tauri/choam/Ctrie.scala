@@ -134,8 +134,8 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
   }
 
   /** Only call in quiescent states! */
-  private[choam] def debugStr(implicit kcas: KCAS): String = {
-    debug.unsafePerform(0)
+  private[choam] def debugStr(kcas: KCAS): String = {
+    debug.unsafePerform(0, kcas)
   }
 
   private[this] def debug: React[Int, String] = React.computed { level =>

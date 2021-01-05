@@ -32,10 +32,9 @@ class QueueBench {
 
   @Benchmark
   def michaelScottQueue(s: MsSt, bh: Blackhole, t: KCASImplState): Unit = {
-    import t.kcasImpl
-    bh.consume(s.michaelScottQueue.enqueue.unsafePerform(t.nextString()))
+    bh.consume(s.michaelScottQueue.enqueue.unsafePerform(t.nextString(), t.kcasImpl))
     Blackhole.consumeCPU(waitTime)
-    if (s.michaelScottQueue.tryDeque.unsafeRun() eq None) throw Errors.EmptyQueue
+    if (s.michaelScottQueue.tryDeque.unsafeRun(t.kcasImpl) eq None) throw Errors.EmptyQueue
     Blackhole.consumeCPU(waitTime)
   }
 

@@ -44,8 +44,7 @@ class CounterBench {
 
   @Benchmark
   def react(s: ReactSt, k: KCASImplState, bh: Blackhole): Unit = {
-    import k.kcasImpl
-    bh.consume(s.reactCtr.add.unsafePerform(k.nextLong()))
+    bh.consume(s.reactCtr.add.unsafePerform(k.nextLong(), k.kcasImpl))
     Blackhole.consumeCPU(waitTime)
   }
 }
@@ -77,7 +76,7 @@ object CounterBench {
     val reactCtr = {
       val ctr = new Counter
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
-      ctr.add.unsafePerform(init)(kcas.KCAS.NaiveKCAS)
+      ctr.add.unsafePerform(init, kcas.KCAS.NaiveKCAS)
       ctr
     }
   }
@@ -98,8 +97,7 @@ class CounterBenchN {
 
   @Benchmark
   def reactN(s: ReactStN, k: KCASImplState, bh: Blackhole): Unit = {
-    import k.kcasImpl
-    bh.consume(s.r.unsafePerform(k.nextLong()))
+    bh.consume(s.r.unsafePerform(k.nextLong(), k.kcasImpl))
     Blackhole.consumeCPU(waitTime)
   }
 }
@@ -138,7 +136,7 @@ object CounterBenchN {
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
       ctrs = Array.fill(n) {
         val c = new Counter
-        c.add.unsafePerform(init)(kcas.KCAS.NaiveKCAS)
+        c.add.unsafePerform(init, kcas.KCAS.NaiveKCAS)
         c
       }
       r = ctrs.map(_.add.rmap(_ => ())).reduceLeft { (a, b) => (a * b).rmap(_ => ()) }

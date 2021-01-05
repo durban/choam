@@ -56,16 +56,16 @@ class LiftTest extends StressTestBase {
 
   @Actor
   def act1(r: LLL_Result): Unit = {
-    r.r1 = updAndWrite.unsafePerform("x")._1
+    r.r1 = updAndWrite.unsafePerform("x", this.impl)._1
   }
 
   @Actor
   def act2(r: LLL_Result): Unit = {
-    r.r2 = readAndUpd.unsafePerform("y")
+    r.r2 = readAndUpd.unsafePerform("y", this.impl)
   }
 
   @Arbiter
   def abriter(r: LLL_Result): Unit = {
-    r.r3 = (ref.getter.unsafeRun(), this.notReallyRef)
+    r.r3 = (ref.getter.unsafeRun(this.impl), this.notReallyRef)
   }
 }

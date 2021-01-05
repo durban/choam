@@ -36,7 +36,6 @@ class ResourceAllocationReact {
   @Benchmark
   def bench(s: ResAllocSt, t: ThreadSt): Unit = {
     val n = t.allocSize
-    implicit val kcas: KCAS = t.kcasImpl
     val rss = t.selectResources(s.rss)
 
     @tailrec
@@ -66,7 +65,7 @@ class ResourceAllocationReact {
 
     val r = read(0, React.ret(t.ovs))
     val w = write(0, React.unit)
-    (r >>> w).unsafeRun()
+    (r >>> w).unsafeRun(t.kcasImpl)
 
     Blackhole.consumeCPU(t.tokens)
   }
@@ -87,7 +86,7 @@ object ResourceAllocationReact {
 
     @TearDown
     def checkResults(): Unit = {
-      val currentValues = rss.map(_.invisibleRead.unsafeRun()(KCAS.NaiveKCAS)).toVector
+      val currentValues = rss.map(_.invisibleRead.unsafeRun(KCAS.NaiveKCAS)).toVector
       if (currentValues == initialValues) {
         throw new Exception(s"Unchanged results")
       }

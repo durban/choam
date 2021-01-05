@@ -166,7 +166,7 @@ trait CtrieSpec2[F[_]]
       _ <- ct.insert(5 -> "5")
       _ <- ct.insert(8 -> "8") // overwrites 0
       _ <- ct.insert(9 -> "9") // overwrites 1
-      _ <- assertResultF(F.delay { ct.debugStr }, expStr)
+      _ <- assertResultF(F.delay { ct.debugStr(this.kcasImpl) }, expStr)
     } yield ()
   }
 }
