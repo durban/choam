@@ -42,12 +42,7 @@ lazy val core = project.in(file("core"))
 lazy val bench = project.in(file("bench"))
   .settings(name := "choam-bench")
   .settings(commonSettings)
-  .settings(
-    libraryDependencies ++= Seq(
-      dependencies.scalaStm,
-      dependencies.fs2io % Test,
-    )
-  )
+  .settings(libraryDependencies += dependencies.scalaStm)
   .settings(macroSettings)
   .enablePlugins(JmhPlugin)
   .dependsOn(core % "compile->compile;compile->test")
@@ -107,10 +102,7 @@ lazy val commonSettings = Seq[Setting[_]](
   libraryDependencies ++= Seq(
     Seq(
       dependencies.cats,
-      dependencies.catsFree,
-      dependencies.catsEffect,
-      dependencies.fs2,
-      dependencies.shapeless
+      dependencies.catsEffect
     ),
     dependencies.test.map(_ % "test-internal")
   ).flatten,
