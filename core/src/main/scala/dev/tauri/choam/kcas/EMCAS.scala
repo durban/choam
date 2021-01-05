@@ -29,7 +29,7 @@ import scala.annotation.tailrec
 private[kcas] object EMCAS extends KCAS { self =>
 
   private[kcas] val global =
-    new GlobalContext
+    new GlobalContext(self)
 
   // Listing 2 in the paper:
 
@@ -240,9 +240,8 @@ private[kcas] object EMCAS extends KCAS { self =>
   private[choam] final override def currentContext(): ThreadContext =
     this.global.threadContext()
 
-  private[choam] final override def start(ctx: ThreadContext): EMCASDescriptor = {
-    new EMCASDescriptor(this)
-  }
+  private[choam] final override def start(ctx: ThreadContext): EMCASDescriptor =
+    new EMCASDescriptor()
 
   private[choam] final override def addCas[A](
     desc: EMCASDescriptor,

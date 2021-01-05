@@ -70,9 +70,7 @@ final class Promise[A] private (ref: kcas.Ref[State[A]]) {
   }
 
   private def insertCallback(id: Id, cb: Either[Throwable, A] => Unit): React[Unit, Option[A]] = {
-    val kv = (id, { a: A =>
-      cb(Right(a)) // TODO: thread shifting?
-    })
+    val kv = (id, { (a: A) => cb(Right(a)) })
     ref.modify {
       case Waiting(cbs) => Waiting(cbs + kv)
       case d @ Done(_) => d
@@ -85,6 +83,7 @@ final class Promise[A] private (ref: kcas.Ref[State[A]]) {
 
 object Promise {
 
+  // TODO: try to optimize (maybe with `LongMap`?)
   private final class Id
 
   private sealed abstract class State[A]

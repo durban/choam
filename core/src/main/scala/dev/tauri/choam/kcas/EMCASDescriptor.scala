@@ -20,7 +20,7 @@ package kcas
 
 import java.util.ArrayList
 
-final class EMCASDescriptor(val impl: KCAS, wds: ArrayList[WordDescriptor[_]])
+final class EMCASDescriptor(wds: ArrayList[WordDescriptor[_]])
   extends EMCASDescriptorBase {
 
   /** Intrusive linked list of finalized descriptors (see `ThreadContext`) */
@@ -36,9 +36,8 @@ final class EMCASDescriptor(val impl: KCAS, wds: ArrayList[WordDescriptor[_]])
   val words: ArrayList[WordDescriptor[_]] =
     wds
 
-  def this(kcasImpl: KCAS) = {
-    this(kcasImpl, new ArrayList(EMCASDescriptor.minArraySize))
-  }
+  def this() =
+    this(new ArrayList(EMCASDescriptor.minArraySize))
 
   def copy(ctx: ThreadContext): EMCASDescriptor = {
     @tailrec
@@ -58,7 +57,7 @@ final class EMCASDescriptor(val impl: KCAS, wds: ArrayList[WordDescriptor[_]])
     }
     val newArrCapacity = Math.max(this.words.size(), EMCASDescriptor.minArraySize)
     val newArr = new ArrayList[WordDescriptor[_]](newArrCapacity)
-    val r = new EMCASDescriptor(this.impl, newArr)
+    val r = new EMCASDescriptor(newArr)
     copy(this.words, newArr, r, 0, this.words.size())
     r
   }

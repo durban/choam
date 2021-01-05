@@ -20,15 +20,18 @@ package kcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-final class GlobalContext
+final class GlobalContext(impl: KCAS)
   extends IBR[ThreadContext](Long.MinValue) {
 
   override def newThreadContext(): ThreadContext =
-    new ThreadContext(this, Thread.currentThread().getId())
+    new ThreadContext(this, Thread.currentThread().getId(), impl)
 }
 
-final class ThreadContext(global: GlobalContext, val tid: Long)
-  extends IBR.ThreadContext[ThreadContext](global, 0) {
+final class ThreadContext(
+  global: GlobalContext,
+  private[kcas] val tid: Long,
+  val impl: KCAS
+) extends IBR.ThreadContext[ThreadContext](global, 0) {
 
   private[this] var finalizedDescriptors: EMCASDescriptor =
     null

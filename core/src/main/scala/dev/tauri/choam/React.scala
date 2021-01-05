@@ -326,7 +326,7 @@ object React {
       extends React[A, A] {
 
     protected final def tryPerform(n: Int, a: A, reaction: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[A] = {
-      if (desc.impl.tryPerform(desc, ctx)) Success(a, reaction)
+      if (ctx.impl.tryPerform(desc, ctx)) Success(a, reaction)
       else Retry
     }
 
@@ -458,7 +458,7 @@ object React {
       if (n <= 0) {
         Jump(a, this, ops, desc, Nil)
       } else {
-        val snap = desc.impl.snapshot(desc, ctx)
+        val snap = ctx.impl.snapshot(desc, ctx)
         first.tryPerform(n - 1, a, ops, desc, ctx) match {
           case _: Retry.type =>
             second.tryPerform(n - 1, a, ops, snap, ctx)
@@ -491,9 +491,9 @@ object React {
     protected def transform(a: A, b: B): C
 
     protected final def tryPerform(n: Int, b: B, pc: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
-      val a = desc.impl.read(ref, ctx)
+      val a = ctx.impl.read(ref, ctx)
       if (equ(a, ov)) {
-        maybeJump(n, transform(a, b), k, pc, desc.impl.addCas(desc, ref, ov, nv, ctx), ctx)
+        maybeJump(n, transform(a, b), k, pc, ctx.impl.addCas(desc, ref, ov, nv, ctx), ctx)
       } else {
         Retry
       }
@@ -538,7 +538,7 @@ object React {
     protected def transform(a: A, b: B): C
 
     protected final def tryPerform(n: Int, b: B, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
-      val a = desc.impl.read(ref, ctx)
+      val a = ctx.impl.read(ref, ctx)
       maybeJump(n, transform(a, b), k, ops, desc, ctx)
     }
 
