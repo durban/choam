@@ -64,9 +64,8 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
     }).rmap(_ => ())
   }
 
-  private[choam] def unsafeToListF[F[_]](kcas: KCAS)(implicit F: Sync[F]): F[List[A]] = {
-    F.delay { this.unsafeToList(kcas) }
-  }
+  private[choam] def unsafeToListF[F[_]](implicit rF: Reactive[F], sF: Sync[F]): F[List[A]] =
+    sF.delay { this.unsafeToList(rF.kcasImpl) }
 
   private[choam] def unsafeToList(kcas: KCAS): List[A] = {
     @tailrec

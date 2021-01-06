@@ -22,7 +22,6 @@ import scala.collection.immutable.{ Nil, :: }
 
 import cats.Monad
 import cats.arrow.Arrow
-import cats.effect.Sync
 
 import kcas._
 
@@ -264,14 +263,14 @@ object React {
   }
 
   implicit final class InvariantReactSyntax[A, B](private val self: React[A, B]) extends AnyVal {
-    final def apply[F[_]](a: A)(implicit kcas: KCAS, F: Sync[F]): F[B] =
-      F.delay { self.unsafePerform(a, kcas) }
+    final def apply[F[_]](a: A)(implicit F: Reactive[F]): F[B] =
+      F.run(self, a)
   }
 
   implicit final class UnitReactSyntax[A](private val self: React[Unit, A]) extends AnyVal {
 
-    final def run[F[_]](implicit kcas: KCAS, F: Sync[F]): F[A] =
-      F.delay { unsafeRun(kcas) }
+    final def run[F[_]](implicit F: Reactive[F]): F[A] =
+      F.run(self, ())
 
     final def unsafeRun(kcas: KCAS): A =
       self.unsafePerform((), kcas)

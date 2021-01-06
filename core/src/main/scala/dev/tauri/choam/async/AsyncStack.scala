@@ -23,7 +23,7 @@ import cats.effect.Async
 
 import cats.data.Chain
 
-import kcas.{ Ref, KCAS }
+import kcas.Ref
 
 import AsyncStack._
 
@@ -51,7 +51,7 @@ final class AsyncStack[A](ref: Ref[State[A]]) {
     case Some((p, a)) => p.tryComplete.lmap[Unit](_ => a).void
   }).discard
 
-  def pop[F[_]](implicit F: Async[F], kcas: KCAS): F[A] = for {
+  def pop[F[_]](implicit rF: Reactive[F], aF: Async[F]): F[A] = for {
     newP <- Promise[A].run[F]
     res <- head.modify2[Either[Promise[A], A]] {
       case Empty =>
@@ -65,7 +65,7 @@ final class AsyncStack[A](ref: Ref[State[A]]) {
     }.run[F]
     a <- res match {
       case Left(p) => p.get[F]
-      case Right(a) => F.pure(a)
+      case Right(a) => aF.pure(a)
     }
   } yield a
 }

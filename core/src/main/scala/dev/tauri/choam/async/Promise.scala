@@ -21,7 +21,6 @@ package async
 import cats.syntax.all._
 import cats.effect.Async
 
-import kcas.KCAS
 import Promise._
 
 final class Promise[A] private (ref: kcas.Ref[State[A]]) {
@@ -37,25 +36,21 @@ final class Promise[A] private (ref: kcas.Ref[State[A]]) {
     }
   }
 
-  def get[F[_]](
-    implicit
-    F: Async[F],
-    kcas: KCAS
-  ): F[A] = {
+  def get[F[_]](implicit rF: Reactive[F], aF: Async[F]): F[A] = {
     ref.invisibleRead.run[F].flatMap {
       case Waiting(_) =>
-        F.delay(new Id).flatMap { id =>
-          F.async { cb =>
-            F.uncancelable { poll =>
-              val removeCallback = F.uncancelable { _ =>
+        aF.delay(new Id).flatMap { id =>
+          aF.async { cb =>
+            aF.uncancelable { poll =>
+              val removeCallback = aF.uncancelable { _ =>
                 ref.modify {
                   case Waiting(cbs) => Waiting(cbs - id)
                   case d @ Done(_) => d
                 }.discard.run[F]
               }
               insertCallback(id, cb).run[F].flatMap {
-                case None => F.pure(true)
-                case Some(a) => poll(F.delay { cb(Right(a)) }).as(false)
+                case None => aF.pure(true)
+                case Some(a) => poll(aF.delay { cb(Right(a)) }).as(false)
               }.map { cbWasInserted =>
                 // cancellation token:
                 if (cbWasInserted) Some(removeCallback)
@@ -65,7 +60,7 @@ final class Promise[A] private (ref: kcas.Ref[State[A]]) {
           }
         }
       case Done(a) =>
-        F.pure(a)
+        aF.pure(a)
     }
   }
 

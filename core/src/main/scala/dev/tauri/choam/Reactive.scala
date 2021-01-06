@@ -17,20 +17,28 @@
 
 package dev.tauri.choam
 
-import cats.effect.Sync
+import cats.effect.kernel.Sync
 
-trait KCASImplSpec {
-  protected def kcasImpl: kcas.KCAS
-  implicit final def reactiveInstanceWithKcasImpl[F[_] : Sync]: Reactive[F] =
-    new Reactive.SyncReactive[F](this.kcasImpl)
+trait Reactive[F[_]] {
+  def run[A, B](r: React[A, B], a: A): F[B]
+  def kcasImpl: kcas.KCAS
 }
 
-trait SpecNaiveKCAS extends KCASImplSpec {
-  final override def kcasImpl: kcas.KCAS =
-    kcas.KCAS.NaiveKCAS
-}
+final object Reactive {
 
-trait SpecEMCAS extends KCASImplSpec {
-  final override def kcasImpl: kcas.KCAS =
+  def apply[F[_]](implicit inst: Reactive[F]): inst.type =
+    inst
+
+  def defaultKcasImpl: kcas.KCAS =
     kcas.KCAS.EMCAS
+
+  implicit def reactiveForSync[F[_]](implicit F: Sync[F]): Reactive[F] =
+    new SyncReactive[F](defaultKcasImpl)(F)
+
+  private[choam] final class SyncReactive[F[_]](
+    final override val kcasImpl: kcas.KCAS
+  )(implicit F: Sync[F]) extends Reactive[F] {
+      final override def run[A, B](r: React[A, B], a: A): F[B] =
+        F.delay { r.unsafePerform(a, this.kcasImpl) }
+    }
 }
