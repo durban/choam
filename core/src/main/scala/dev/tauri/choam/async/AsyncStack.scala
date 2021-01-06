@@ -21,47 +21,40 @@ package async
 import cats.implicits._
 import cats.effect.Async
 
-import cats.data.Chain
+import cats.data.NonEmptyChain
 
 import kcas.Ref
 
 import AsyncStack._
 
-final class AsyncStack[A](ref: Ref[State[A]]) {
+final class AsyncStack[A] private (ref: Ref[State[A]]) {
 
-  private[this] val head: Ref[State[A]] =
-    ref
-
-  val push: React[A, Unit] = head.upd[A, Option[(Promise[A], A)]] { (st, a) =>
+  val push: React[A, Unit] = ref.upd[A, Option[(Promise[A], A)]] { (st, a) =>
     st match {
       case Empty =>
-        (Lst(a, TreiberStack.End), None)
-      case Waiting(p, c) =>
-        c.uncons match {
-          case None =>
-            (Empty, Some((p, a)))
-          case Some((h, t)) =>
-            (Waiting(h, t), Some((p, a)))
-        }
-      case Lst(h, t) =>
-        (Lst(a, TreiberStack.Cons(h, t)), None)
+        (Empty.addItem(a), None)
+      case w @ Waiting(_) =>
+        val (s, p) = w.removePromise
+        (s, Some((p, a)))
+      case l @ Lst(_) =>
+        (l.addItem(a), None)
     }
   }.postCommit(React.computed {
     case None => React.unit
     case Some((p, a)) => p.tryComplete.lmap[Unit](_ => a).void
   }).discard
 
+  // TODO: what happens when the popper cancels?
   def pop[F[_]](implicit rF: Reactive[F], aF: Async[F]): F[A] = for {
     newP <- Promise[A].run[F]
-    res <- head.modify2[Either[Promise[A], A]] {
+    res <- ref.modify2[Either[Promise[A], A]] {
       case Empty =>
-        (Waiting(newP, Chain.empty), Left(newP))
-      case Waiting(p, c) =>
-        (Waiting(p, c :+ newP), Left(newP))
-      case Lst(h1, TreiberStack.Cons(h2, t)) =>
-        (Lst(h2, t), Right(h1))
-      case Lst(h, TreiberStack.End) =>
-        (Empty, Right(h))
+        (Empty.addPromise(newP), Left(newP))
+      case w @ Waiting(_) =>
+        (w.addPromise(newP), Left(newP))
+      case l @ Lst(_) =>
+        val (s, a) = l.removeItem
+        (s, Right(a))
     }.run[F]
     a <- res match {
       case Left(p) => p.get[F]
@@ -73,9 +66,41 @@ final class AsyncStack[A](ref: Ref[State[A]]) {
 object AsyncStack {
 
   private sealed abstract class State[+A]
-  private final case object Empty extends State[Nothing]
-  private final case class Waiting[A](p: Promise[A], t: Chain[Promise[A]]) extends State[A]
-  private final case class Lst[A](h: A, t: TreiberStack.Lst[A]) extends State[A]
+
+  private final case object Empty extends State[Nothing] {
+
+    def addPromise[A](p: Promise[A]): Waiting[A] =
+      Waiting(NonEmptyChain.one(p))
+
+    def addItem[A](a: A): Lst[A] =
+      Lst(NonEmptyChain.one(a))
+  }
+
+  private final case class Waiting[A](ps: NonEmptyChain[Promise[A]]) extends State[A] {
+
+    def removePromise: (State[A], Promise[A]) = ps.uncons match { case (h, t) =>
+      NonEmptyChain.fromChain(t) match {
+        case Some(ps) => (Waiting(ps), h)
+        case None => (Empty, h)
+      }
+    }
+
+    def addPromise(p: Promise[A]): Waiting[A] =
+      Waiting(this.ps :+ p)
+  }
+
+  private final case class Lst[A](as: NonEmptyChain[A]) extends State[A] {
+
+    def removeItem: (State[A], A) = as.uncons match { case (h, t) =>
+      NonEmptyChain.fromChain(t) match {
+        case Some(as) => (Lst(as), h)
+        case None => (Empty, h)
+      }
+    }
+
+    def addItem(a: A): Lst[A] =
+      Lst(a +: this.as)
+  }
 
   def apply[A]: React[Unit, AsyncStack[A]] =
     React.delay(_ => new AsyncStack(Ref.mk(Empty)))

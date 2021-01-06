@@ -85,6 +85,40 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  // TODO: it should "serve pops in a FIFO manner"
-  // TODO: it should "be cancellable"
+  test("pops should be served in a FIFO manner") {
+    for {
+      s <- AsyncStack[String].run[F]
+      f1 <- s.pop[F].start
+      _ <- F.sleep(0.1.seconds)
+      f2 <- s.pop[F].start
+      _ <- F.sleep(0.1.seconds)
+      f3 <- s.pop[F].start
+      _ <- F.sleep(0.1.seconds)
+      _ <- s.push[F]("a")
+      _ <- s.push[F]("b")
+      _ <- s.push[F]("c")
+      _ <- assertResultF(f1.joinWithNever, "a")
+      _ <- assertResultF(f2.joinWithNever, "b")
+      _ <- assertResultF(f3.joinWithNever, "c")
+    } yield ()
+  }
+
+  test("cancellation should not cause elements to be lost".ignore) {
+    for {
+      s <- AsyncStack[String].run[F]
+      f1 <- s.pop[F].start
+      _ <- F.sleep(0.1.seconds)
+      f2 <- s.pop[F].start
+      _ <- F.sleep(0.1.seconds)
+      f3 <- s.pop[F].start
+      _ <- F.sleep(0.1.seconds)
+      _ <- f2.cancel
+      _ <- s.push[F]("a")
+      _ <- s.push[F]("b")
+      _ <- s.push[F]("c")
+      _ <- assertResultF(f1.joinWithNever, "a")
+      _ <- assertResultF(f3.joinWithNever, "b")
+      _ <- assertResultF(s.pop[F], "c")
+    } yield ()
+  }
 }
