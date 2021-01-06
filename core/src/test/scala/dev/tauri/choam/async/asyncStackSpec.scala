@@ -103,7 +103,7 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("cancellation should not cause elements to be lost".ignore) {
+  test("cancellation should not cause elements to be lost") {
     for {
       s <- AsyncStack[String].run[F]
       f1 <- s.pop[F].start

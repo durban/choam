@@ -22,6 +22,7 @@ import cats.implicits._
 import cats.effect.Async
 
 import cats.data.NonEmptyChain
+import cats.data.Ior
 
 import kcas.Ref
 
@@ -44,28 +45,36 @@ final class AsyncStack[A] private (ref: Ref[State[A]]) {
     case Some((p, a)) => p.tryComplete.lmap[Unit](_ => a).void
   }).discard
 
-  // TODO: what happens when the popper cancels?
-  def pop[F[_]](implicit rF: Reactive[F], aF: Async[F]): F[A] = for {
-    newP <- Promise[A].run[F]
-    res <- ref.modify2[Either[Promise[A], A]] {
-      case Empty =>
-        (Empty.addPromise(newP), Left(newP))
-      case w @ Waiting(_) =>
-        (w.addPromise(newP), Left(newP))
-      case l @ Lst(_) =>
-        val (s, a) = l.removeItem
-        (s, Right(a))
-    }.run[F]
-    a <- res match {
-      case Left(p) => p.get[F]
-      case Right(a) => aF.pure(a)
+  def pop[F[_]](implicit rF: Reactive[F], aF: Async[F]): F[A] = {
+    Promise[A].run[F].flatMap { newP =>
+      val acq = ref.modify2[Either[Promise[A], A]] {
+        case Empty =>
+          (Empty.addPromise(newP), Left(newP))
+        case w @ Waiting(_) =>
+          (w.addPromise(newP), Left(newP))
+        case l @ Lst(_) =>
+          val (s, a) = l.removeItem
+          (s, Right(a))
+      }.run[F]
+      val rel: (Either[Promise[A], A] => F[Unit]) = {
+        case Left(p) => ref.modify { state =>
+          state.cancelPromise(p)._1
+        }.void.run[F]
+        case Right(_) => aF.unit
+      }
+      aF.bracket(acquire = acq)(use = {
+        case Left(p) => p.get[F]
+        case Right(a) => aF.pure(a)
+      })(release = rel)
     }
-  } yield a
+  }
 }
 
 object AsyncStack {
 
-  private sealed abstract class State[+A]
+  private sealed abstract class State[+A] {
+    def cancelPromise[B >: A](p: Promise[B]): (State[A], Boolean)
+  }
 
   private final case object Empty extends State[Nothing] {
 
@@ -74,6 +83,9 @@ object AsyncStack {
 
     def addItem[A](a: A): Lst[A] =
       Lst(NonEmptyChain.one(a))
+
+    def cancelPromise[B](p: Promise[B]): (State[Nothing], Boolean) =
+      (Empty, false)
   }
 
   private final case class Waiting[A](ps: NonEmptyChain[Promise[A]]) extends State[A] {
@@ -87,6 +99,17 @@ object AsyncStack {
 
     def addPromise(p: Promise[A]): Waiting[A] =
       Waiting(this.ps :+ p)
+
+    def cancelPromise[B >: A](p: Promise[B]): (State[A], Boolean) = {
+      this.ps.nonEmptyPartition { p2 =>
+        if (p2 eq p) Left(p2)
+        else Right(p2)
+      } match {
+        case Ior.Both(_, ps) => (Waiting(NonEmptyChain.fromNonEmptyList(ps)), true)
+        case Ior.Left(_) => (Empty, true)
+        case Ior.Right(ps) => (Waiting(NonEmptyChain.fromNonEmptyList(ps)), false)
+      }
+    }
   }
 
   private final case class Lst[A](as: NonEmptyChain[A]) extends State[A] {
@@ -100,6 +123,9 @@ object AsyncStack {
 
     def addItem(a: A): Lst[A] =
       Lst(a +: this.as)
+
+    def cancelPromise[B >: A](p: Promise[B]): (State[A], Boolean) =
+      (this, false)
   }
 
   def apply[A]: React[Unit, AsyncStack[A]] =
