@@ -21,7 +21,7 @@ package dev.tauri.choam
 import scala.collection.immutable.{ Nil, :: }
 
 import cats.Monad
-import cats.arrow.Arrow
+import cats.arrow.ArrowChoice
 
 import kcas._
 
@@ -133,7 +133,7 @@ sealed abstract class React[-A, +B] {
     this.rmap(_ => ()) // TODO: optimize
 
   final def flatMap[X <: A, C](f: B => React[X, C]): React[X, C] = {
-    val self: React[X, (X, B)] = arrowInstance.second[X, B, X](this).lmap[X](x => (x, x))
+    val self: React[X, (X, B)] = arrowChoiceInstance.second[X, B, X](this).lmap[X](x => (x, x))
     val comp: React[(X, B), C] = computed[(X, B), C](xb => f(xb._2).lmap[Unit](_ => xb._1))
     self >>> comp
   }
@@ -224,7 +224,7 @@ object React {
   def newRef[A](initial: A): React[Unit, Ref[A]] =
     delay[Unit, Ref[A]](_ => Ref.mk(initial))
 
-  implicit val arrowInstance: Arrow[React] = new Arrow[React] {
+  implicit val arrowChoiceInstance: ArrowChoice[React] = new ArrowChoice[React] {
 
     def lift[A, B](f: A => B): React[A, B] =
       React.lift(f)
@@ -237,6 +237,20 @@ object React {
 
     def first[A, B, C](fa: React[A, B]): React[(A, C), (B, C)] =
       fa.firstImpl
+
+    def choose[A, B, C, D](f: React[A, C])(g: React[B, D]): React[Either[A, B], Either[C, D]] = {
+      computed[Either[A, B], Either[C, D]] {
+        case Left(a) => (ret(a) >>> f).map(Left(_))
+        case Right(b) => (ret(b) >>> g).map(Right(_))
+      }
+    }
+
+    override def choice[A, B, C](f: React[A, C], g: React[B, C]): React[Either[A, B], C] = {
+      computed[Either[A, B], C] {
+        case Left(a) => ret(a) >>> f
+        case Right(b) => ret(b) >>> g
+      }
+    }
 
     override def lmap[A, B, X](fa: React[A, B])(f: X => A): React[X, B] =
       fa.lmap(f)
@@ -334,7 +348,7 @@ object React {
 
     protected final def productImpl[C, D](that: React[C, D]): React[(A, C), (A, D)] = that match {
       case _: Commit.type => Commit[(A, C)]()
-      case _ => arrowInstance.second(that) // TODO: optimize
+      case _ => arrowChoiceInstance.second(that) // TODO: optimize
     }
 
     final override def firstImpl[C]: React[(A, C), (A, C)] =

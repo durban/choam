@@ -57,6 +57,7 @@
   - integration with FS2? (`choam-stream`)
 - API cleanup:
   - separate unsafe/low-level API for `invisibleRead` and other dangerous
+    - (unsafe) thread-confined mode for running a `React` (with `NaiveKCAS` or something even more simple)
   - move `KCAS` into separate JAR, figure out proper API (`choam-kcas` or `choam-mcas`)
   - compare with `Ref` in cats-effect: similar things should have similar names
 
