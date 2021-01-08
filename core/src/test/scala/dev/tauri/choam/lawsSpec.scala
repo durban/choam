@@ -57,9 +57,7 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
         for {
           ab <- arbAB.arbitrary
           a1 <- arbA.arbitrary
-          a2 <- arbA.arbitrary
         } yield {
-          a2.## // TODO: unused
           val r = React.newRef(a1).first[A].flatMap { case (ref, _) =>
             ref.upd[(Unit, A), B] { (a1, a2) => (a2._2, ab(a1)) }
           }
@@ -75,9 +73,10 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
         for {
           r <- arbReact[A, B].arbitrary
           b <- arbB.arbitrary
+          b2 <- arbB.arbitrary
         } yield {
           val ref = Ref.mk[B](b)
-          r.postCommit(ref.upd[B, Unit] { case (_, b) => (b, ()) })
+          r.postCommit(ref.upd[B, Unit] { case (_, _) => (b2, ()) })
         }
       }
     )

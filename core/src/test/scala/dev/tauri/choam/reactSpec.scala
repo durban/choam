@@ -485,14 +485,24 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       stop <- F.delay { new AtomicBoolean(false) }
       consume = F.blocking {
         @tailrec
-        def go(): Unit = {
+        def go(last: Boolean = false): Unit = {
           q.tryDeque.unsafeRun(this.kcasImpl) match {
             case Some(s) =>
               cs.offer(s)
-              go()
+              go(last = last)
             case None =>
-              if (stop.get()) () // we're done
-              else go()
+              if (stop.get()) {
+                if (last) {
+                  // we're done:
+                  ()
+                } else {
+                  // read one last time:
+                  go(last = true)
+                }
+              } else {
+                // retry:
+                go(last = false)
+              }
           }
         }
         go()
