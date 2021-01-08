@@ -37,21 +37,21 @@ class PromiseCompleteTest {
   val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  val p: Promise[String] =
-    Promise[String].run[SyncIO].unsafeRunSync()
+  val p: Promise[IO, String] =
+    Promise[IO, String].run[SyncIO].unsafeRunSync()
 
   @Actor
   def complete1(r: ZZL_Result): Unit = {
-    r.r1 = this.p.tryComplete[IO]("1").unsafeRunSync()(this.runtime)
+    r.r1 = this.p.complete[IO]("1").unsafeRunSync()(this.runtime)
   }
 
   @Actor
   def complete2(r: ZZL_Result): Unit = {
-    r.r2 = this.p.tryComplete[IO]("2").unsafeRunSync()(this.runtime)
+    r.r2 = this.p.complete[IO]("2").unsafeRunSync()(this.runtime)
   }
 
   @Actor
   def get(r: ZZL_Result): Unit = {
-    r.r3 = this.p.get[IO].unsafeRunSync()(this.runtime)
+    r.r3 = this.p.get.unsafeRunSync()(this.runtime)
   }
 }

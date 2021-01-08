@@ -22,6 +22,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
+import cats.effect.SyncIO
+
 @JCStressTest
 @State
 @Description("Michael-Scott queue enq/deq should be atomic")
@@ -64,6 +66,6 @@ class MichaelScottQueueTest extends StressTestBase {
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r3 = queue.unsafeToList(this.impl)
+    r.r3 = queue.unsafeToList[SyncIO].unsafeRunSync()
   }
 }

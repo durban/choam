@@ -39,8 +39,8 @@ class AsyncStackPopTest {
   val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  val stack: AsyncStack[String] =
-    AsyncStack[String].run[SyncIO].unsafeRunSync()
+  val stack: AsyncStack[IO, String] =
+    AsyncStack[IO, String].run[SyncIO].unsafeRunSync()
 
   @Actor
   def push(@unused r: LL_Result): Unit = {
@@ -49,11 +49,11 @@ class AsyncStackPopTest {
 
   @Actor
   def pop1(r: LL_Result): Unit = {
-    r.r1 = this.stack.pop[IO].unsafeRunSync()(this.runtime)
+    r.r1 = this.stack.pop.unsafeRunSync()(this.runtime)
   }
 
   @Actor
   def pop2(r: LL_Result): Unit = {
-    r.r2 = this.stack.pop[IO].unsafeRunSync()(this.runtime)
+    r.r2 = this.stack.pop.unsafeRunSync()(this.runtime)
   }
 }

@@ -17,18 +17,22 @@
 
 package dev.tauri.choam
 
-final class MichaelScottQueueSpecNaiveKCAS
-  extends MichaelScottQueueSpec
+import cats.effect.SyncIO
+
+final class MichaelScottQueueSpec_NaiveKCAS_SyncIO
+  extends BaseSpecSyncIO
+  with MichaelScottQueueSpec[SyncIO]
   with SpecNaiveKCAS
 
 final class MichaelScottQueueSpecEMCAS
-  extends MichaelScottQueueSpec
+  extends BaseSpecSyncIO
+  with MichaelScottQueueSpec[SyncIO]
   with SpecEMCAS
 
-trait MichaelScottQueueSpec extends BaseSpecA { this: KCASImplSpec =>
+trait MichaelScottQueueSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
 
   test("MichaelScottQueue should include the elements passed to its constructor") {
-    assertEquals(new MichaelScottQueue[Int]().unsafeToList(this.kcasImpl), Nil)
-    assertEquals(new MichaelScottQueue[Int](1 :: 2 :: 3 :: Nil).unsafeToList(this.kcasImpl), 1 :: 2 :: 3 :: Nil)
+    assertResultF(new MichaelScottQueue[Int]().unsafeToList[F], Nil)
+    assertResultF(new MichaelScottQueue[Int](1 :: 2 :: 3 :: Nil).unsafeToList[F], 1 :: 2 :: 3 :: Nil)
   }
 }

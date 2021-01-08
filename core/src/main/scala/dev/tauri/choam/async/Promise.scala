@@ -21,62 +21,18 @@ package async
 import cats.syntax.all._
 import cats.effect.Async
 
-import Promise._
-
-final class Promise[A] private (ref: kcas.Ref[State[A]]) {
-
-  val tryComplete: React[A, Boolean] = React.computed { a =>
-    ref.invisibleRead.flatMap {
-      case w @ Waiting(cbs) =>
-        ref.cas(w, Done(a)).rmap(_ => true).postCommit(React.delay { _ =>
-          cbs.valuesIterator.foreach(_(a))
-        })
-      case Done(_) =>
-        React.ret(false)
-    }
-  }
-
-  def get[F[_]](implicit rF: Reactive[F], aF: Async[F]): F[A] = {
-    ref.invisibleRead.run[F].flatMap {
-      case Waiting(_) =>
-        aF.delay(new Id).flatMap { id =>
-          aF.async { cb =>
-            aF.uncancelable { poll =>
-              val removeCallback = aF.uncancelable { _ =>
-                ref.modify {
-                  case Waiting(cbs) => Waiting(cbs - id)
-                  case d @ Done(_) => d
-                }.discard.run[F]
-              }
-              insertCallback(id, cb).run[F].flatMap {
-                case None => aF.pure(true)
-                case Some(a) => poll(aF.delay { cb(Right(a)) }).as(false)
-              }.map { cbWasInserted =>
-                // cancellation token:
-                if (cbWasInserted) Some(removeCallback)
-                else None
-              }.onError { _ => removeCallback }
-            }
-          }
-        }
-      case Done(a) =>
-        aF.pure(a)
-    }
-  }
-
-  private def insertCallback(id: Id, cb: Either[Throwable, A] => Unit): React[Unit, Option[A]] = {
-    val kv = (id, { (a: A) => cb(Right(a)) })
-    ref.modify {
-      case Waiting(cbs) => Waiting(cbs + kv)
-      case d @ Done(_) => d
-    }.map {
-      case Waiting(_) => None
-      case Done(a) => Some(a)
-    }
-  }
+abstract class Promise[F[_], A] {
+  def complete: React[A, Boolean]
+  def get: F[A]
 }
 
 object Promise {
+
+  def apply[F[_], A](implicit F: Reactive.Async[F]): React[Unit, Promise[F, A]] =
+    F.promise[A]
+
+  def forAsync[F[_], A](implicit rF: Reactive[F], F: Async[F]): React[Unit, Promise[F, A]] =
+    React.delay(_ => new PromiseImpl[F, A](kcas.Ref.mk[State[A]](Waiting(Map.empty))))
 
   // TODO: try to optimize (maybe with `LongMap`?)
   private final class Id
@@ -85,6 +41,57 @@ object Promise {
   private final case class Waiting[A](cbs: Map[Id, A => Unit]) extends State[A]
   private final case class Done[A](a: A) extends State[A]
 
-  def apply[A]: React[Unit, Promise[A]] =
-    React.delay(_ => new Promise[A](kcas.Ref.mk(Waiting(Map.empty))))
+  private final class PromiseImpl[F[_], A](ref: kcas.Ref[State[A]])(implicit rF: Reactive[F], F: Async[F])
+    extends Promise[F, A] {
+
+    val complete: React[A, Boolean] = React.computed { a =>
+      ref.invisibleRead.flatMap {
+        case w @ Waiting(cbs) =>
+          ref.cas(w, Done(a)).rmap(_ => true).postCommit(React.delay { _ =>
+            cbs.valuesIterator.foreach(_(a))
+          })
+        case Done(_) =>
+          React.ret(false)
+      }
+    }
+
+    def get: F[A] = {
+      ref.invisibleRead.run[F].flatMap {
+        case Waiting(_) =>
+          F.delay(new Id).flatMap { id =>
+            F.async { cb =>
+              F.uncancelable { poll =>
+                val removeCallback = F.uncancelable { _ =>
+                  ref.modify {
+                    case Waiting(cbs) => Waiting(cbs - id)
+                    case d @ Done(_) => d
+                  }.discard.run[F]
+                }
+                insertCallback(id, cb).run[F].flatMap {
+                  case None => F.pure(true)
+                  case Some(a) => poll(F.delay { cb(Right(a)) }).as(false)
+                }.map { cbWasInserted =>
+                  // cancellation token:
+                  if (cbWasInserted) Some(removeCallback)
+                  else None
+                }.onError { _ => removeCallback }
+              }
+            }
+          }
+        case Done(a) =>
+          F.pure(a)
+      }
+    }
+
+    private def insertCallback(id: Id, cb: Either[Throwable, A] => Unit): React[Unit, Option[A]] = {
+      val kv = (id, { (a: A) => cb(Right(a)) })
+      ref.modify {
+        case Waiting(cbs) => Waiting(cbs + kv)
+        case d @ Done(_) => d
+      }.map {
+        case Waiting(_) => None
+        case Done(a) => Some(a)
+      }
+    }
+  }
 }

@@ -17,8 +17,6 @@
 
 package dev.tauri.choam
 
-import cats.effect.Sync
-
 import kcas._
 
 import MichaelScottQueue._
@@ -64,22 +62,19 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
     }).rmap(_ => ())
   }
 
-  private[choam] def unsafeToListF[F[_]](implicit rF: Reactive[F], sF: Sync[F]): F[List[A]] =
-    sF.delay { this.unsafeToList(rF.kcasImpl) }
+  private[choam] def unsafeToList[F[_]](implicit F: Reactive[F]): F[List[A]] = {
 
-  private[choam] def unsafeToList(kcas: KCAS): List[A] = {
-    @tailrec
-    def go(e: Elem[A], acc: List[A]): List[A] = e match {
+    def go(e: Elem[A], acc: List[A]): F[List[A]] = e match {
       case Node(null, next) =>
         // sentinel
-        go(next.invisibleRead.unsafeRun(kcas), acc)
+        F.monad.flatMap(F.run(next.invisibleRead, ())) { go(_, acc) }
       case Node(a, next) =>
-        go(next.invisibleRead.unsafeRun(kcas), a :: acc)
+        F.monad.flatMap(F.run(next.invisibleRead, ())) { go(_, a :: acc) }
       case End() =>
-        acc
+        F.monad.pure(acc)
     }
 
-    go(head.invisibleRead.unsafeRun(kcas), Nil).reverse
+    F.monad.map(F.monad.flatMap(F.run(head.invisibleRead, ())) { go(_, Nil) }) { _.reverse }
   }
 
   els.foreach { a =>

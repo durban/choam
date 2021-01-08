@@ -36,21 +36,21 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("pop on a non-empty stack should work like on Treiber stack") {
     for {
-      s <- AsyncStack[String].run[F]
+      s <- AsyncStack[F, String].run[F]
       _ <- s.push[F]("foo")
       _ <- s.push[F]("bar")
-      _ <- assertResultF(s.pop[F], "bar")
-      _ <- assertResultF(s.pop[F], "foo")
+      _ <- assertResultF(s.pop, "bar")
+      _ <- assertResultF(s.pop, "foo")
     } yield ()
   }
 
   test("pop on a non-empty stack should work for concurrent pops") {
     for {
-      s <- AsyncStack[String].run[F]
+      s <- AsyncStack[F, String].run[F]
       _ <- s.push[F]("xyz")
       _ <- s.push[F]("foo")
       _ <- s.push[F]("bar")
-      pop = s.pop[F]
+      pop = s.pop
       f1 <- pop.start
       f2 <- pop.start
       p1 <- f1.joinWithNever
@@ -62,8 +62,8 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("pop on an empty stack should complete with the correponding push") {
     for {
-      s <- AsyncStack[String].run[F]
-      f1 <- s.pop[F].start
+      s <- AsyncStack[F, String].run[F]
+      f1 <- s.pop.start
       _ <- F.sleep(0.1.seconds)
       _ <- s.push[F]("foo")
       p1 <- f1.joinWithNever
@@ -73,10 +73,10 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("pop on an empty stack should work with racing pushes") {
     for {
-      s <- AsyncStack[String].run[F]
-      f1 <- s.pop[F].start
+      s <- AsyncStack[F, String].run[F]
+      f1 <- s.pop.start
       _ <- F.sleep(0.1.seconds)
-      f2 <- s.pop[F].start
+      f2 <- s.pop.start
       _ <- F.sleep(0.1.seconds)
       _ <- s.push[F]("foo")
       _ <- assertResultF(f1.joinWithNever, "foo")
@@ -87,12 +87,12 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("pops should be served in a FIFO manner") {
     for {
-      s <- AsyncStack[String].run[F]
-      f1 <- s.pop[F].start
+      s <- AsyncStack[F, String].run[F]
+      f1 <- s.pop.start
       _ <- F.sleep(0.1.seconds)
-      f2 <- s.pop[F].start
+      f2 <- s.pop.start
       _ <- F.sleep(0.1.seconds)
-      f3 <- s.pop[F].start
+      f3 <- s.pop.start
       _ <- F.sleep(0.1.seconds)
       _ <- s.push[F]("a")
       _ <- s.push[F]("b")
@@ -105,12 +105,12 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("cancellation should not cause elements to be lost") {
     for {
-      s <- AsyncStack[String].run[F]
-      f1 <- s.pop[F].start
+      s <- AsyncStack[F, String].run[F]
+      f1 <- s.pop.start
       _ <- F.sleep(0.1.seconds)
-      f2 <- s.pop[F].start
+      f2 <- s.pop.start
       _ <- F.sleep(0.1.seconds)
-      f3 <- s.pop[F].start
+      f3 <- s.pop.start
       _ <- F.sleep(0.1.seconds)
       _ <- f2.cancel
       _ <- s.push[F]("a")
@@ -118,7 +118,7 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- s.push[F]("c")
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f3.joinWithNever, "b")
-      _ <- assertResultF(s.pop[F], "c")
+      _ <- assertResultF(s.pop, "c")
     } yield ()
   }
 }

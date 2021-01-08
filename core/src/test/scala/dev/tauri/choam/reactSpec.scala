@@ -436,39 +436,39 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   test("Michael-Scott queue should work correctly") {
     for {
       q <- F.delay { new MichaelScottQueue[String] }
-      _ <- assertResultF(q.unsafeToListF, Nil)
+      _ <- assertResultF(q.unsafeToList, Nil)
 
       _ <- assertResultF(q.tryDeque.run, None)
-      _ <- assertResultF(q.unsafeToListF, Nil)
+      _ <- assertResultF(q.unsafeToList, Nil)
 
       _ <- q.enqueue("a")
-      _ <- assertResultF(q.unsafeToListF, List("a"))
+      _ <- assertResultF(q.unsafeToList, List("a"))
 
       _ <- assertResultF(q.tryDeque.run, Some("a"))
-      _ <- assertResultF(q.unsafeToListF, Nil)
+      _ <- assertResultF(q.unsafeToList, Nil)
       _ <- assertResultF(q.tryDeque.run, None)
-      _ <- assertResultF(q.unsafeToListF, Nil)
+      _ <- assertResultF(q.unsafeToList, Nil)
 
       _ <- q.enqueue("a")
-      _ <- assertResultF(q.unsafeToListF, List("a"))
+      _ <- assertResultF(q.unsafeToList, List("a"))
       _ <- q.enqueue("b")
-      _ <- assertResultF(q.unsafeToListF, List("a", "b"))
+      _ <- assertResultF(q.unsafeToList, List("a", "b"))
       _ <- q.enqueue("c")
-      _ <- assertResultF(q.unsafeToListF, List("a", "b", "c"))
+      _ <- assertResultF(q.unsafeToList, List("a", "b", "c"))
 
       _ <- assertResultF(q.tryDeque.run, Some("a"))
-      _ <- assertResultF(q.unsafeToListF, List("b", "c"))
+      _ <- assertResultF(q.unsafeToList, List("b", "c"))
 
       _ <- q.enqueue("x")
-      _ <- assertResultF(q.unsafeToListF, List("b", "c", "x"))
+      _ <- assertResultF(q.unsafeToList, List("b", "c", "x"))
 
       _ <- assertResultF(q.tryDeque.run, Some("b"))
-      _ <- assertResultF(q.unsafeToListF, List("c", "x"))
+      _ <- assertResultF(q.unsafeToList, List("c", "x"))
       _ <- assertResultF(q.tryDeque.run, Some("c"))
-      _ <- assertResultF(q.unsafeToListF, List("x"))
+      _ <- assertResultF(q.unsafeToList, List("x"))
       _ <- assertResultF(q.tryDeque.run, Some("x"))
       _ <- assertResultF(q.tryDeque.run, None)
-      _ <- assertResultF(q.unsafeToListF, Nil)
+      _ <- assertResultF(q.unsafeToList, Nil)
     } yield ()
   }
 

@@ -17,11 +17,14 @@
 
 package dev.tauri.choam
 
-import cats.effect.kernel.Sync
+import cats.Monad
+import cats.effect.kernel.{ Sync, MonadCancel }
+import cats.effect.{ kernel => ce }
 
 trait Reactive[F[_]] {
   def run[A, B](r: React[A, B], a: A): F[B]
   def kcasImpl: kcas.KCAS
+  def monad: Monad[F]
 }
 
 final object Reactive {
@@ -35,10 +38,37 @@ final object Reactive {
   implicit def reactiveForSync[F[_]](implicit F: Sync[F]): Reactive[F] =
     new SyncReactive[F](defaultKcasImpl)(F)
 
-  private[choam] final class SyncReactive[F[_]](
+  private[choam] class SyncReactive[F[_]](
     final override val kcasImpl: kcas.KCAS
   )(implicit F: Sync[F]) extends Reactive[F] {
-      final override def run[A, B](r: React[A, B], a: A): F[B] =
-        F.delay { r.unsafePerform(a, this.kcasImpl) }
-    }
+    final override def run[A, B](r: React[A, B], a: A): F[B] =
+      F.delay { r.unsafePerform(a, this.kcasImpl) }
+    final override def monad =
+      F
+  }
+
+  trait Async[F[_]] extends Reactive[F] {
+    def promise[A]: React[Unit, async.Promise[F, A]]
+    def monadCancel: MonadCancel[F, _]
+  }
+
+  final object Async {
+
+    def apply[F[_]](implicit inst: Reactive.Async[F]): inst.type =
+      inst
+
+    implicit def reactiveAsyncForAsync[F[_]](implicit F: ce.Async[F]): Reactive.Async[F] =
+      new AsyncReactive[F](defaultKcasImpl)(F)
+  }
+
+  private[choam] class AsyncReactive[F[_]](ki: kcas.KCAS)(implicit F: ce.Async[F])
+    extends SyncReactive[F](ki)
+    with Reactive.Async[F] {
+
+    final override def promise[A] =
+      async.Promise.forAsync[F, A](this, F)
+
+    final override def monadCancel =
+      F
+  }
 }

@@ -42,8 +42,8 @@ class PromiseCancelTest {
   val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  val p: Promise[String] =
-    Promise[String].run[SyncIO].unsafeRunSync()
+  val p: Promise[IO, String] =
+    Promise[IO, String].run[SyncIO].unsafeRunSync()
 
   var result1: String =
     null
@@ -52,14 +52,14 @@ class PromiseCancelTest {
     null
 
   val getter1: Fiber[IO, Throwable, String] =
-    (p.get[IO].flatTap { s => IO { result1 = s } }).start.unsafeRunSync()(runtime)
+    (p.get.flatTap { s => IO { result1 = s } }).start.unsafeRunSync()(runtime)
 
   val getter2: Fiber[IO, Throwable, String] =
-    (p.get[IO].flatTap { s => IO { result2 = s } }).start.unsafeRunSync()(runtime)
+    (p.get.flatTap { s => IO { result2 = s } }).start.unsafeRunSync()(runtime)
 
   @Actor
   def complete(r: ZLL_Result): Unit = {
-    r.r1 = this.p.tryComplete[IO]("s").unsafeRunSync()(this.runtime)
+    r.r1 = this.p.complete[IO]("s").unsafeRunSync()(this.runtime)
   }
 
   @Actor

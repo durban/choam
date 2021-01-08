@@ -17,12 +17,8 @@
 
 package dev.tauri.choam
 
-import cats.effect.Sync
-
 trait KCASImplSpec {
   protected def kcasImpl: kcas.KCAS
-  implicit final def reactiveInstanceWithKcasImpl[F[_] : Sync]: Reactive[F] =
-    new Reactive.SyncReactive[F](this.kcasImpl)
 }
 
 trait SpecNaiveKCAS extends KCASImplSpec {

@@ -41,14 +41,14 @@ class AsyncStackCancelTest {
   val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  val stack: AsyncStack[String] =
-    AsyncStack[String].run[SyncIO].unsafeRunSync()
+  val stack: AsyncStack[IO, String] =
+    AsyncStack[IO, String].run[SyncIO].unsafeRunSync()
 
   var result: String =
     null
 
   val popper: Fiber[IO, Throwable, String] =
-    stack.pop[IO].flatTap { s => IO { this.result = s } }.start.unsafeRunSync()(runtime)
+    stack.pop.flatTap { s => IO { this.result = s } }.start.unsafeRunSync()(runtime)
 
   @Actor
   def push(@unused r: LL_Result): Unit = {
@@ -62,7 +62,7 @@ class AsyncStackCancelTest {
 
   @Actor
   def pop(r: LL_Result): Unit = {
-    (stack.pop[IO].flatMap { s => IO { r.r2 = s } }).unsafeRunSync()(runtime)
+    (stack.pop.flatMap { s => IO { r.r2 = s } }).unsafeRunSync()(runtime)
   }
 
   @Arbiter

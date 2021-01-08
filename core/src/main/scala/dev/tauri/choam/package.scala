@@ -21,6 +21,8 @@ package object choam {
 
   private[choam] type tailrec = scala.annotation.tailrec
 
+  private[choam] type unused = scala.annotation.unused
+
   // Note: using these always leaves a check for
   // the package object in the bytecode (getstatic
   // and a null check). However, microbenchmarks

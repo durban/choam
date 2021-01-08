@@ -50,15 +50,14 @@
 - Finish Ctrie
 - Scala 3
 - ce3:
-  - try to weaken constraints from Async/Sync
-  - verify thread shifting behavior
-  - could `React` implement some of the typeclasses?
-- Async:
+  - Can `React` implement `MonadCancel`?
+- Async (`choam-async`):
   - improve `Promise` API (see `Deferred` in cats-effect)
-  - `AsyncQueue` (integration with FS2?)
+  - `AsyncQueue`
+  - integration with FS2? (`choam-stream`)
 - API cleanup:
   - separate unsafe/low-level API for `invisibleRead` and other dangerous
-  - move `KCAS` into separate JAR, figure out proper API
+  - move `KCAS` into separate JAR, figure out proper API (`choam-kcas` or `choam-mcas`)
   - compare with `Ref` in cats-effect: similar things should have similar names
 
 ## Misc.

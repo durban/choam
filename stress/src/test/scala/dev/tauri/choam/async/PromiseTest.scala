@@ -39,27 +39,27 @@ class PromiseTest {
   val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  val p: Promise[String] =
-    Promise[String].run[SyncIO].unsafeRunSync()
+  val p: Promise[IO, String] =
+    Promise[IO, String].run[SyncIO].unsafeRunSync()
 
   val winner =
     new AtomicInteger(0)
 
   @Actor
   def complete(r: LLLL_Result): Unit = {
-    r.r1 = this.p.tryComplete[IO]("s").unsafeRunSync()(this.runtime)
+    r.r1 = this.p.complete[IO]("s").unsafeRunSync()(this.runtime)
   }
 
   @Actor
   def get1(r: LLLL_Result): Unit = {
-    r.r2 = this.p.get[IO].unsafeRunSync()(this.runtime)
+    r.r2 = this.p.get.unsafeRunSync()(this.runtime)
     winner.compareAndSet(0, 1)
     ()
   }
 
   @Actor
   def get2(r: LLLL_Result): Unit = {
-    r.r3 = this.p.get[IO].unsafeRunSync()(this.runtime)
+    r.r3 = this.p.get.unsafeRunSync()(this.runtime)
     winner.compareAndSet(0, 2)
     ()
   }

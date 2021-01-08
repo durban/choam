@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import cats.effect.{ Sync, Async, IO, SyncIO }
+import cats.effect.{ Sync, Async, IO, SyncIO, MonadCancel, Concurrent }
 
 import munit.{ CatsEffectSuite, Location, FunSuite }
 
@@ -40,9 +40,15 @@ trait BaseSpecF[F[_]]
   extends FunSuite
   with MUnitUtils
   with cats.syntax.AllSyntax
-  with cats.effect.syntax.AllSyntax {
+  with cats.effect.syntax.AllSyntax { this: KCASImplSpec =>
 
-  implicit def F: Sync[F]
+  implicit def rF: Reactive[F]
+
+  implicit def mcF: MonadCancel[F, Throwable] =
+    this.F
+
+  /** Not implicit, so that `rF` is used for sure */
+  def F: Sync[F]
 
   def assertF(cond: Boolean, clue: String = "assertion failed")(implicit loc: Location): F[Unit] = {
     F.delay { this.assert(cond, clue) }
@@ -59,23 +65,32 @@ trait BaseSpecF[F[_]]
   ): F[Unit]
 
   def failF[A](clue: String = "assertion failed")(implicit loc: Location): F[A] = {
-    assertF(false, clue).flatMap { _ =>
+    F.flatMap(assertF(false, clue)) { _ =>
       F.raiseError[A](new IllegalStateException("unreachable code"))
     }
   }
 }
 
-trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] {
-  implicit override def F: Async[F]
+trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] { this: KCASImplSpec =>
+  /** Not implicit, so that `rF` is used for sure */
+  override def F: Async[F]
+  override implicit def mcF: Concurrent[F] =
+    this.F
+  override implicit def rF: Reactive.Async[F] =
+    new Reactive.AsyncReactive[F](this.kcasImpl)(this.F)
 }
 
-trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] {
-  implicit override def F: Sync[F]
+trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] { this: KCASImplSpec =>
+  /** Not implicit, so that `rF` is used for sure */
+  override def F: Sync[F]
+  override implicit def rF: Reactive[F] =
+    new Reactive.SyncReactive[F](this.kcasImpl)(F)
 }
 
-abstract class BaseSpecIO extends CatsEffectSuite with BaseSpecAsyncF[IO] {
+abstract class BaseSpecIO extends CatsEffectSuite with BaseSpecAsyncF[IO] { this: KCASImplSpec =>
 
-  implicit final override def F: Async[IO] =
+  /** Not implicit, so that `rF` is used for sure */
+  final override def F: Async[IO] =
     IO.asyncForIO
 
   final override def assertResultF[A, B](obtained: IO[A], expected: B, clue: String = "values are not the same")(
@@ -85,9 +100,10 @@ abstract class BaseSpecIO extends CatsEffectSuite with BaseSpecAsyncF[IO] {
   }
 }
 
-abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO] {
+abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO] { this: KCASImplSpec =>
 
-  implicit final override def F: Sync[SyncIO] =
+  /** Not implicit, so that `rF` is used for sure */
+  final override def F: Sync[SyncIO] =
     SyncIO.syncForSyncIO
 
   final override def assertResultF[A, B](obtained: SyncIO[A], expected: B, clue: String)(
