@@ -44,6 +44,7 @@ class QueueBench {
   private def isEnq(r: RandomState): IO[Boolean] =
     IO { (r.nextInt() % 2) == 0 }
 
+  /** MS-Queue implemented with `React` */
   @Benchmark
   def michaelScottQueue(s: MsSt, t: KCASImplState): Unit = {
     val tsk = isEnq(t).flatMap { enq =>
@@ -53,6 +54,7 @@ class QueueBench {
     run(s.runtime, tsk.void, size = size)
   }
 
+  /** Simple queue protected with a reentrant lock */
   @Benchmark
   def lockedQueue(s: LockedSt, t: RandomState): Unit = {
     val tsk = isEnq(t).flatMap { enq =>
@@ -62,6 +64,7 @@ class QueueBench {
     run(s.runtime, tsk.void, size = size)
   }
 
+  /** juc.ConcurrentLinkedQueue (MS-Queue in the JDK) */
   @Benchmark
   def concurrentQueue(s: JdkSt, t: RandomState): Unit = {
     val tsk = isEnq(t).flatMap { enq =>
@@ -71,6 +74,7 @@ class QueueBench {
     run(s.runtime, tsk.void, size = size)
   }
 
+  /** MS-Queue implemented with scala-stm */
   @Benchmark
   def stmQueue(s: StmSt, t: RandomState): Unit = {
     val tsk = isEnq(t).flatMap { enq =>
@@ -80,11 +84,22 @@ class QueueBench {
     run(s.runtime, tsk.void, size = size)
   }
 
+  /** MS-Queue implemented with cats-stm */
   @Benchmark
   def stmQueueC(s: StmCSt, t: RandomState): Unit = {
     val tsk = isEnq(t).flatMap { enq =>
       if (enq) s.s.commit(s.stmQueue.enqueue(t.nextString()))
       else s.s.commit(s.stmQueue.tryDequeue)
+    }
+    run(s.runtime, tsk.void, size = size)
+  }
+
+  /** MS-Queue implemented with cats-effect `Ref` */
+  @Benchmark
+  def ceQueue(s: CeSt, t: RandomState): Unit = {
+    val tsk = isEnq(t).flatMap { enq =>
+      if (enq) s.ceQueue.enqueue(t.nextString())
+      else s.ceQueue.tryDequeue
     }
     run(s.runtime, tsk.void, size = size)
   }
@@ -122,5 +137,11 @@ object QueueBench {
     val s = STM.runtime[IO].unsafeRunSync()(runtime)
     val qu = StmQueueCLike[STM, IO](s)
     val stmQueue = s.commit(StmQueueC.make(s)(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
+  }
+
+  @State(Scope.Benchmark)
+  class CeSt {
+    val runtime = cats.effect.unsafe.IORuntime.global
+    val ceQueue = CeQueue.fromList[IO, String](Prefill.prefill().toList).unsafeRunSync()(runtime)
   }
 }
