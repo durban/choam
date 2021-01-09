@@ -22,6 +22,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 
 import io.github.timwspence.cats.stm.STM
 
@@ -33,56 +34,59 @@ class QueueBench {
   import QueueBench._
 
   final val waitTime = 128L
+  final val size = 4096
 
-  @Benchmark
-  def michaelScottQueue(s: MsSt, bh: Blackhole, t: KCASImplState): Unit = {
-    if ((t.nextInt() % 2) == 0) {
-      bh.consume(s.michaelScottQueue.enqueue.unsafePerform(t.nextString(), t.kcasImpl))
-    } else {
-      bh.consume(s.michaelScottQueue.tryDeque.unsafeRun(t.kcasImpl))
-    }
+  private def run(rt: IORuntime, task: IO[Unit], size: Int): Unit = {
+    IO.asyncForIO.replicateA(size, task).unsafeRunSync()(rt)
     Blackhole.consumeCPU(waitTime)
   }
 
+  private def isEnq(r: RandomState): IO[Boolean] =
+    IO { (r.nextInt() % 2) == 0 }
+
   @Benchmark
-  def lockedQueue(s: LockedSt, bh: Blackhole, t: RandomState): Unit = {
-    if ((t.nextInt() % 2) == 0) {
-      bh.consume(s.lockedQueue.enqueue(t.nextString()))
-    } else {
-      bh.consume(s.lockedQueue.tryDequeue())
+  def michaelScottQueue(s: MsSt, t: KCASImplState): Unit = {
+    val tsk = isEnq(t).flatMap { enq =>
+      if (enq) s.michaelScottQueue.enqueue[IO](t.nextString())(t.reactive)
+      else s.michaelScottQueue.tryDeque.run[IO](t.reactive)
     }
-    Blackhole.consumeCPU(waitTime)
+    run(s.runtime, tsk.void, size = size)
   }
 
   @Benchmark
-  def concurrentQueue(s: JdkSt, bh: Blackhole, t: RandomState): Unit = {
-    if ((t.nextInt() % 2) == 0) {
-      bh.consume(s.concurrentQueue.offer(t.nextString()))
-    } else {
-      bh.consume(s.concurrentQueue.poll())
+  def lockedQueue(s: LockedSt, t: RandomState): Unit = {
+    val tsk = isEnq(t).flatMap { enq =>
+      if (enq) IO { s.lockedQueue.enqueue(t.nextString()) }
+      else IO { s.lockedQueue.tryDequeue() }
     }
-    Blackhole.consumeCPU(waitTime)
+    run(s.runtime, tsk.void, size = size)
   }
 
   @Benchmark
-  def stmQueue(s: StmSt, bh: Blackhole, t: RandomState): Unit = {
-    if ((t.nextInt() % 2) == 0) {
-      bh.consume(s.stmQueue.enqueue(t.nextString()))
-    } else {
-      bh.consume(s.stmQueue.tryDequeue())
+  def concurrentQueue(s: JdkSt, t: RandomState): Unit = {
+    val tsk = isEnq(t).flatMap { enq =>
+      if (enq) IO { s.concurrentQueue.offer(t.nextString()) }
+      else IO { s.concurrentQueue.poll() }
     }
-    Blackhole.consumeCPU(waitTime)
+    run(s.runtime, tsk.void, size = size)
   }
 
   @Benchmark
-  def stmQueueC(s: StmCSt, bh: Blackhole, t: RandomState): Unit = {
-    val tsk = if ((t.nextInt() % 2) == 0) {
-      s.s.commit(s.stmQueue.enqueue(t.nextString()))
-    } else {
-      s.s.commit(s.stmQueue.tryDequeue)
+  def stmQueue(s: StmSt, t: RandomState): Unit = {
+    val tsk = isEnq(t).flatMap { enq =>
+      if (enq) IO { s.stmQueue.enqueue(t.nextString()) }
+      else IO { s.stmQueue.tryDequeue() }
     }
-    bh.consume(tsk.unsafeRunSync()(s.runtime))
-    Blackhole.consumeCPU(waitTime)
+    run(s.runtime, tsk.void, size = size)
+  }
+
+  @Benchmark
+  def stmQueueC(s: StmCSt, t: RandomState): Unit = {
+    val tsk = isEnq(t).flatMap { enq =>
+      if (enq) s.s.commit(s.stmQueue.enqueue(t.nextString()))
+      else s.s.commit(s.stmQueue.tryDequeue)
+    }
+    run(s.runtime, tsk.void, size = size)
   }
 }
 
@@ -90,21 +94,25 @@ object QueueBench {
 
   @State(Scope.Benchmark)
   class MsSt {
+    val runtime = cats.effect.unsafe.IORuntime.global
     val michaelScottQueue = new MichaelScottQueue[String](Prefill.prefill())
   }
 
   @State(Scope.Benchmark)
   class LockedSt {
+    val runtime = cats.effect.unsafe.IORuntime.global
     val lockedQueue = new LockedQueue[String](Prefill.prefill())
   }
 
   @State(Scope.Benchmark)
   class JdkSt {
+    val runtime = cats.effect.unsafe.IORuntime.global
     val concurrentQueue = new java.util.concurrent.ConcurrentLinkedQueue[String](Prefill.forJava())
   }
 
   @State(Scope.Benchmark)
   class StmSt {
+    val runtime = cats.effect.unsafe.IORuntime.global
     val stmQueue = new StmQueue[String](Prefill.prefill())
   }
 

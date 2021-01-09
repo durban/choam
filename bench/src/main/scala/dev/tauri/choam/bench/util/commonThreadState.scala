@@ -21,6 +21,8 @@ package util
 
 import org.openjdk.jmh.annotations.{ State, Param, Setup, Scope }
 
+import cats.effect.IO
+
 import kcas._
 
 @State(Scope.Thread)
@@ -49,9 +51,12 @@ class KCASImplState extends RandomState {
 
   private[choam] var kcasCtx: ThreadContext = _
 
+  private[choam] var reactive: Reactive[IO] = _
+
   @Setup
   def setupKCASImpl(): Unit = {
     this.kcasImpl = KCAS.unsafeLookup(kcasName)
     this.kcasCtx = this.kcasImpl.currentContext()
+    this.reactive = new Reactive.AsyncReactive(this.kcasImpl)(IO.asyncForIO)
   }
 }
