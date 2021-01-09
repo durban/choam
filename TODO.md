@@ -32,7 +32,6 @@
     - check if `testingEqReact` makes sense, maybe do structural checking
   - Test with other IO impls (when they cupport ce3)
 - Benchmarks:
-  - Add STM benchmark with https://github.com/TimWSpence/cats-stm
   - Add STM benchmark with zio STM
 - EMCAS with simplified IBR:
   - Try to enable cleanup after a k-CAS op is finalized.
