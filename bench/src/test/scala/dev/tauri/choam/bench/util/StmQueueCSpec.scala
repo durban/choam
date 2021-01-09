@@ -62,7 +62,7 @@ trait StmQueueCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with Sp
   }
 
   test("StmQueue should have composable transactions") {
-    val N = 10000
+    val N = 1000
     for {
       s <- STM.runtime[F](F)
       qs <- {
