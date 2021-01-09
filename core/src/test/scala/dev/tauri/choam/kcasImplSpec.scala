@@ -30,3 +30,8 @@ trait SpecEMCAS extends KCASImplSpec {
   final override def kcasImpl: kcas.KCAS =
     kcas.KCAS.EMCAS
 }
+
+trait SpecNoKCAS extends KCASImplSpec {
+  final override def kcasImpl: Nothing =
+    sys.error("No KCAS here")
+}

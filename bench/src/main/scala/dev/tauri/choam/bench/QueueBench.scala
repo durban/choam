@@ -21,6 +21,10 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
+import cats.effect.IO
+
+import io.github.timwspence.cats.stm.STM
+
 import util._
 
 @Fork(2)
@@ -32,33 +36,52 @@ class QueueBench {
 
   @Benchmark
   def michaelScottQueue(s: MsSt, bh: Blackhole, t: KCASImplState): Unit = {
-    bh.consume(s.michaelScottQueue.enqueue.unsafePerform(t.nextString(), t.kcasImpl))
-    Blackhole.consumeCPU(waitTime)
-    if (s.michaelScottQueue.tryDeque.unsafeRun(t.kcasImpl) eq None) throw Errors.EmptyQueue
+    if ((t.nextInt() % 2) == 0) {
+      bh.consume(s.michaelScottQueue.enqueue.unsafePerform(t.nextString(), t.kcasImpl))
+    } else {
+      bh.consume(s.michaelScottQueue.tryDeque.unsafeRun(t.kcasImpl))
+    }
     Blackhole.consumeCPU(waitTime)
   }
 
   @Benchmark
   def lockedQueue(s: LockedSt, bh: Blackhole, t: RandomState): Unit = {
-    bh.consume(s.lockedQueue.enqueue(t.nextString()))
-    Blackhole.consumeCPU(waitTime)
-    if (s.lockedQueue.tryDequeue() eq None) throw Errors.EmptyQueue
+    if ((t.nextInt() % 2) == 0) {
+      bh.consume(s.lockedQueue.enqueue(t.nextString()))
+    } else {
+      bh.consume(s.lockedQueue.tryDequeue())
+    }
     Blackhole.consumeCPU(waitTime)
   }
 
   @Benchmark
   def concurrentQueue(s: JdkSt, bh: Blackhole, t: RandomState): Unit = {
-    bh.consume(s.concurrentQueue.offer(t.nextString()))
-    Blackhole.consumeCPU(waitTime)
-    if (s.concurrentQueue.poll() eq null) throw Errors.EmptyQueue
+    if ((t.nextInt() % 2) == 0) {
+      bh.consume(s.concurrentQueue.offer(t.nextString()))
+    } else {
+      bh.consume(s.concurrentQueue.poll())
+    }
     Blackhole.consumeCPU(waitTime)
   }
 
   @Benchmark
   def stmQueue(s: StmSt, bh: Blackhole, t: RandomState): Unit = {
-    bh.consume(s.stmQueue.enqueue(t.nextString()))
+    if ((t.nextInt() % 2) == 0) {
+      bh.consume(s.stmQueue.enqueue(t.nextString()))
+    } else {
+      bh.consume(s.stmQueue.tryDequeue())
+    }
     Blackhole.consumeCPU(waitTime)
-    if (s.stmQueue.tryDequeue() eq None) throw Errors.EmptyQueue
+  }
+
+  @Benchmark
+  def stmQueueC(s: StmCSt, bh: Blackhole, t: RandomState): Unit = {
+    val tsk = if ((t.nextInt() % 2) == 0) {
+      s.s.commit(s.stmQueue.enqueue(t.nextString()))
+    } else {
+      s.s.commit(s.stmQueue.tryDequeue)
+    }
+    bh.consume(tsk.unsafeRunSync()(s.runtime))
     Blackhole.consumeCPU(waitTime)
   }
 }
@@ -83,5 +106,13 @@ object QueueBench {
   @State(Scope.Benchmark)
   class StmSt {
     val stmQueue = new StmQueue[String](Prefill.prefill())
+  }
+
+  @State(Scope.Benchmark)
+  class StmCSt {
+    val runtime = cats.effect.unsafe.IORuntime.global
+    val s = STM.runtime[IO].unsafeRunSync()(runtime)
+    val qu = StmQueueCLike[STM, IO](s)
+    val stmQueue = s.commit(StmQueueC.make(s)(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
   }
 }

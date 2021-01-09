@@ -24,7 +24,7 @@ import scala.jdk.CollectionConverters._
 object Prefill {
 
   def prefill(): Iterable[String] =
-    Iterable.fill(10000)(scala.util.Random.nextString(16))
+    Iterable.fill(1024)(scala.util.Random.nextString(16))
 
   def forJava(): java.util.Collection[String] =
     prefill().toList.asJava

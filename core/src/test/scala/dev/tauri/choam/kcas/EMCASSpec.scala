@@ -185,6 +185,7 @@ class EMCASSpec extends BaseSpecA {
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     val ctx = EMCAS.currentContext()
+    ctx.forceNextEpoch()
     val epoch = ctx.globalContext.epochNumber
     val t = new Thread(() => {
       val ctx = EMCAS.currentContext()

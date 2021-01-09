@@ -42,7 +42,10 @@ lazy val core = project.in(file("core"))
 lazy val bench = project.in(file("bench"))
   .settings(name := "choam-bench")
   .settings(commonSettings)
-  .settings(libraryDependencies += dependencies.scalaStm)
+  .settings(libraryDependencies ++= Seq(
+    dependencies.scalaStm,
+    dependencies.catsStm
+  ))
   .settings(macroSettings)
   .enablePlugins(JmhPlugin)
   .dependsOn(core % "compile->compile;compile->test")
@@ -157,6 +160,7 @@ lazy val dependencies = new {
   )
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.0"
+  val catsStm = "io.github.timwspence" %% "cats-stm" % "0.10.0-M2"
 
   val jol = "org.openjdk.jol" % "jol-core" % "0.8"
 }
