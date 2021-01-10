@@ -31,7 +31,7 @@ final class StmQueueCSpecIO
 
 trait StmQueueCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with SpecNoKCAS {
 
-  test("StmQueue should be a correct queue") {
+  test("StmQueueC should be a correct queue") {
     for {
       s <- STM.runtime[F](F)
       q <- {
@@ -61,7 +61,7 @@ trait StmQueueCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with Sp
     } yield ()
   }
 
-  test("StmQueue should have composable transactions") {
+  test("StmQueueC should have composable transactions") {
     val N = 1000
     for {
       s <- STM.runtime[F](F)

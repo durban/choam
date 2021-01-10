@@ -44,7 +44,8 @@ lazy val bench = project.in(file("bench"))
   .settings(commonSettings)
   .settings(libraryDependencies ++= Seq(
     dependencies.scalaStm,
-    dependencies.catsStm
+    dependencies.catsStm,
+    dependencies.zioStm
   ))
   .settings(macroSettings)
   .enablePlugins(JmhPlugin)
@@ -161,6 +162,7 @@ lazy val dependencies = new {
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.0"
   val catsStm = "io.github.timwspence" %% "cats-stm" % "0.10.0-M2"
+  val zioStm = "dev.zio" %% "zio" % "1.0.3"
 
   val jol = "org.openjdk.jol" % "jol-core" % "0.8"
 }
