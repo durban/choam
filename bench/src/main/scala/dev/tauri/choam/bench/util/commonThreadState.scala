@@ -58,5 +58,6 @@ class KCASImplState extends RandomState {
     this.kcasImpl = KCAS.unsafeLookup(kcasName)
     this.kcasCtx = this.kcasImpl.currentContext()
     this.reactive = new Reactive.AsyncReactive(this.kcasImpl)(IO.asyncForIO)
+    java.lang.invoke.VarHandle.releaseFence()
   }
 }

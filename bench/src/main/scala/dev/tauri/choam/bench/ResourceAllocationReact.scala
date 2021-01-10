@@ -117,6 +117,7 @@ object ResourceAllocationReact {
     def setupSelRes(): Unit = {
       selectedRss = Array.ofDim(allocSize)
       ovs = Array.ofDim(allocSize)
+      java.lang.invoke.VarHandle.releaseFence()
     }
 
     /** Select `allocSize` refs randomly */
