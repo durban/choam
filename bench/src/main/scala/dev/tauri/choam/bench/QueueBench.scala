@@ -19,42 +19,22 @@ package dev.tauri.choam
 package bench
 
 import org.openjdk.jmh.annotations._
-import org.openjdk.jmh.infra.Blackhole
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 
 import io.github.timwspence.cats.stm.STM
 
-import zio.Task
-import zio.{ Runtime => ZRuntime }
 import zio.stm.ZSTM
 
 import util._
 
 @Fork(2)
-class QueueBench {
+class QueueBench extends BenchUtils {
 
   import QueueBench._
 
   final val waitTime = 128L
   final val size = 4096
-
-  private def run(rt: IORuntime, task: IO[Unit], size: Int): Unit = {
-    IO.asyncForIO.replicateA(size, task).unsafeRunSync()(rt)
-    Blackhole.consumeCPU(waitTime)
-  }
-
-  private def runZ(rt: ZRuntime[_], task: Task[Unit], size: Int): Unit = {
-    rt.unsafeRunTask(task.repeatN(size))
-    Blackhole.consumeCPU(waitTime)
-  }
-
-  private def isEnq(r: RandomState): IO[Boolean] =
-    IO { (r.nextInt() % 2) == 0 }
-
-  private def isEnqZ(r: RandomState): Task[Boolean] =
-    Task.effect { (r.nextInt() % 2) == 0 }
 
   /** MS-Queue implemented with `React` */
   @Benchmark
