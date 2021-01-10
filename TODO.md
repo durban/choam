@@ -40,9 +40,7 @@
   - Boxing
   - React interpreter (external interpreter?)
   - Review writes/reads in EMCAS, check if we can relax them
-  - Check if weakrefs affect performance.
 - Cleanup:
-  - IBR
   - Review benchmarks, remove useless ones
 - Finish Ctrie
 - Scala 3
@@ -58,8 +56,11 @@
   - move `KCAS` into separate JAR, figure out proper API (`choam-kcas` or `choam-mcas`)
   - compare with `Ref` in cats-effect: similar things should have similar names
   - Does it make sense to have `React[A, B]` instead of `A => React[B]`?
-    - is there a performance advantage when a `React` has no `computed`?
-    - if yes, we could still make an alias, e.g., `RTask[A] = React[Unit, A]`
+    - Yes, there is a performance advantage (see `ArrowBench`).
+    - We could still make an alias, e.g., `RTask[A] = React[Unit, A]`.
+- Cancellation support
+  - `Thread.interrupt`
+  - cats-effect cancellation?
 
 ## Misc.
 
@@ -68,3 +69,7 @@
 - Other data structures:
   - ctrie-set
   - `SkipListMap`, `SkipListSet`
+- "Laws" for the `React` combinators, e.g.:
+  - choice prefers the first option
+  - `flatMap` == `>>>` and `computed`
+  - ...
