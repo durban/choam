@@ -18,12 +18,35 @@
 package dev.tauri.choam
 package async
 
+import cats.{ ~>, Functor, Invariant }
 import cats.syntax.all._
 import cats.effect.Async
 
-abstract class Promise[F[_], A] {
+abstract class Promise[F[_], A] { self =>
+
   def complete: React[A, Boolean]
+
+  def tryGet: React[Unit, Option[A]]
+
   def get: F[A]
+
+  def imap[B](f: A => B)(g: B => A)(implicit F: Functor[F]): Promise[F, B] = new Promise[F, B] {
+    final override def complete: React[B, Boolean] =
+      self.complete.lmap(g)
+    final override def tryGet: React[Unit, Option[B]] =
+      self.tryGet.map(_.map(f))
+    final override def get: F[B] =
+      self.get.map(f)
+  }
+
+  def mapK[G[_]](t: F ~> G): Promise[G, A] = new Promise[G, A] {
+    final override def complete: React[A, Boolean] =
+      self.complete
+    final override def tryGet: React[Unit, Option[A]] =
+      self.tryGet
+    final override def get: G[A] =
+      t(self.get)
+  }
 }
 
 object Promise {
@@ -33,6 +56,11 @@ object Promise {
 
   def forAsync[F[_], A](implicit rF: Reactive[F], F: Async[F]): React[Unit, Promise[F, A]] =
     React.delay(_ => new PromiseImpl[F, A](kcas.Ref.mk[State[A]](Waiting(Map.empty))))
+
+  implicit def invariantFunctorForPromise[F[_] : Functor]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
+    override def imap[A, B](fa: Promise[F, A])(f: A => B)(g: B => A): Promise[F, B] =
+      fa.imap(f)(g)
+  }
 
   // TODO: try to optimize (maybe with `LongMap`?)
   private final class Id
@@ -52,6 +80,13 @@ object Promise {
           })
         case Done(_) =>
           React.ret(false)
+      }
+    }
+
+    val tryGet: React[Unit, Option[A]] = {
+      ref.getter.map {
+        case Done(a) => Some(a)
+        case Waiting(_) => None
       }
     }
 

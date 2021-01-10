@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.concurrent.duration._
 
+import cats.Invariant
 import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.Outcome
@@ -133,6 +134,26 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(g, 42)
       _ <- assertResultF(f1.joinWithNever, 42)
       _ <- assertResultF(f2.joinWithNever, 42)
+    } yield ()
+  }
+
+  test("Promise#tryGet should work") {
+    for {
+      p <- Promise[F, Int].run[F]
+      _ <- assertResultF(p.tryGet.run[F], None)
+      _ <- assertResultF(p.complete[F](42), true)
+      _ <- assertResultF(p.tryGet.run[F], Some(42))
+      _ <- assertResultF(p.tryGet.run[F], Some(42))
+    } yield ()
+  }
+
+  test("Invariant functor instance") {
+    for {
+      p <- Promise[F, Int].run[F]
+      p2 = Invariant[Promise[F, *]].imap(p)(_ * 2)(_ / 2)
+      f <- p.get.start
+      _ <- p2.complete[F](42)
+      _ <- assertResultF(f.joinWithNever, 21)
     } yield ()
   }
 }
