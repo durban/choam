@@ -78,13 +78,12 @@ lazy val commonSettings = Seq[Setting[_]](
     "-language:higherKinds,experimental.macros",
     "-opt:l:inline",
     "-opt-inline-from:<sources>",
-    // "-Werror", TODO: reënable when possible
-    // TODO: see: https://github.com/scala/bug/issues/12072
+    "-Werror",
     "-Wconf:any:warning-verbose",
     "-Xlint:_",
-    // "-Xfatal-warnings", TODO: reënable when possible
+    "-Xfatal-warnings",
     "-Xelide-below", "INFO",
-    "-Xmigration:2.13.3",
+    "-Xmigration:2.13.4",
     "-Xsource:3.0",
     "-Xverify",
     "-Ywarn-numeric-widen",
