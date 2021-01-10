@@ -27,9 +27,12 @@ import cats.syntax.all._
 
 import io.github.timwspence.cats.stm.STM
 
+import zio.Task
+import zio.{ Runtime => ZRuntime }
+
 import util._
 
-@Fork(1)//2)
+@Fork(2)
 class QueueTransferBench {
 
   import QueueTransferBench._
@@ -40,8 +43,16 @@ class QueueTransferBench {
   private def isEnq(r: RandomState): IO[Boolean] =
     IO { (r.nextInt() % 2) == 0 }
 
+  private def isEnqZ(r: RandomState): Task[Boolean] =
+    Task.effect { (r.nextInt() % 2) == 0 }
+
   private def run(rt: IORuntime, task: IO[Unit], size: Int): Unit = {
     IO.asyncForIO.replicateA(size, task).unsafeRunSync()(rt)
+    Blackhole.consumeCPU(waitTime)
+  }
+
+  private def runZ(rt: ZRuntime[_], task: Task[Unit], size: Int): Unit = {
+    rt.unsafeRunTask(task.repeatN(size))
     Blackhole.consumeCPU(waitTime)
   }
 
@@ -88,6 +99,17 @@ class QueueTransferBench {
 
     run(s.runtime, tsk, size = size)
   }
+
+  /** MS-Queues implemented with zio STM */
+  @Benchmark
+  def stmQueueZ(s: StmZSt, t: RandomState): Unit = {
+    val tsk = isEnqZ(t).flatMap { enq =>
+      if (enq) s.enq(t.nextString())
+      else s.deq
+    }
+
+    runZ(s.runtime, tsk, size = size)
+  }
 }
 
 object QueueTransferBench {
@@ -95,7 +117,7 @@ object QueueTransferBench {
   @State(Scope.Benchmark)
   abstract class BaseSt {
 
-    @Param(Array("2", /*"4",*/ "6"))
+    @Param(Array("2", "4", "6"))
     private[this] var _txSize: Int = _
 
     def txSize: Int =
@@ -238,6 +260,41 @@ object QueueTransferBench {
     def enq(s: String): IO[Unit] = {
       qu.stm.commit {
         this.queue0.enqueue(s) >> this.queues.traverse(_.tryDequeue).void
+      }
+    }
+  }
+
+  @State(Scope.Benchmark)
+  class StmZSt extends BaseSt {
+
+    import zio.Task
+    import zio.stm.ZSTM
+
+    val runtime = zio.Runtime.default
+
+    val queue0 = runtime.unsafeRunTask(StmQueueZ[String](Prefill.prefill().toList))
+    var queues: List[StmQueueZ[String]] = _
+
+    @Setup
+    def setup(): Unit = {
+      this.queues = List.fill(this.txSize) { runtime.unsafeRunTask(StmQueueZ[String](Prefill.prefill().toList)) }
+      java.lang.invoke.VarHandle.releaseFence()
+    }
+
+    def deq: Task[Unit] = {
+      ZSTM.atomically {
+        this.queue0.tryDequeue.flatMap {
+          case Some(s) =>
+            ZSTM.foreach_(this.queues)(_.enqueue(s))
+          case None =>
+            ZSTM.unit
+        }
+      }
+    }
+
+    def enq(s: String): Task[Unit] = {
+      ZSTM.atomically {
+        this.queue0.enqueue(s) *> ZSTM.foreach_(this.queues)(_.tryDequeue)
       }
     }
   }
