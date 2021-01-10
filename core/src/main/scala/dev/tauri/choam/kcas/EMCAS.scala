@@ -20,8 +20,6 @@ package kcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-import scala.annotation.tailrec
-
 /**
  * Efficient Multi-word Compare and Swap:
  * https://arxiv.org/pdf/2008.02527.pdf
@@ -110,7 +108,7 @@ private[kcas] object EMCAS extends KCAS { self =>
    */
   def MCAS(desc: EMCASDescriptor, helping: Boolean, ctx: ThreadContext, replace: Int = 4096): Boolean = {
     @tailrec
-    def tryWord[A](wordDesc: WordDescriptor[A]): Boolean = {
+    def tryWord[A](wordDesc: WordDescriptor[A]): TryWordResult = {
       var content: A = nullOf[A]
       var contentWd: WordDescriptor[A] = null
       var value: A = nullOf[A]
@@ -130,7 +128,7 @@ private[kcas] object EMCAS extends KCAS { self =>
           case wd: WordDescriptor[_] =>
             if (wd eq wordDesc) {
               // already points to the right place, early return:
-              return true // scalastyle:ignore return
+              return TryWordResult.SUCCESS // scalastyle:ignore return
             } else {
               contentWd = wd.cast[A]
               // At this point, we're sure that `wd` belongs to another op
@@ -158,11 +156,10 @@ private[kcas] object EMCAS extends KCAS { self =>
 
       if (!equ(value, wordDesc.ov)) {
         // expected value is different
-        false
+        TryWordResult.FAILURE
       } else if (desc.getStatus() ne EMCASStatus.ACTIVE) {
         // we have been finalized (by a helping thread), no reason to continue
-        true // TODO: we should break from `go`
-        // TODO: `true` is not necessarily correct, the helping thread could've finalized us to failed too
+        TryWordResult.BREAK
       } else {
         if (contentWd ne null) {
           extendInterval(oldWd = contentWd, newWd = wordDesc)
@@ -170,7 +167,7 @@ private[kcas] object EMCAS extends KCAS { self =>
         if (!ctx.casRef(wordDesc.address, content, wordDesc.castToData)) {
           tryWord(wordDesc) // retry this word
         } else {
-          true
+          TryWordResult.SUCCESS
         }
       }
     }
@@ -201,12 +198,13 @@ private[kcas] object EMCAS extends KCAS { self =>
     }
 
     @tailrec
-    def go(words: java.util.Iterator[WordDescriptor[_]]): Boolean = {
+    def go(words: java.util.Iterator[WordDescriptor[_]]): TryWordResult = {
       if (words.hasNext) {
-        if (tryWord(words.next())) go(words)
-        else false
+        val twr = tryWord(words.next())
+        if (twr eq TryWordResult.SUCCESS) go(words)
+        else twr
       } else {
-        true
+        TryWordResult.SUCCESS
       }
     }
 
@@ -218,17 +216,24 @@ private[kcas] object EMCAS extends KCAS { self =>
     }
 
     try {
-      val success = go(desc.words.iterator())
-      if (desc.casStatus(
-        EMCASStatus.ACTIVE,
-        if (success) EMCASStatus.SUCCESSFUL else EMCASStatus.FAILED
-      )) {
-        // TODO:
-        // ctx.finalized(desc, limit = replace)
-        success
-      } else {
+      val r = go(desc.words.iterator())
+      if (r eq TryWordResult.BREAK) {
         // someone else finalized the descriptor, we must read its status:
-        desc.getStatus() eq EMCASStatus.SUCCESSFUL
+        (desc.getStatus() eq EMCASStatus.SUCCESSFUL)
+      } else {
+        val rr = if (r eq TryWordResult.SUCCESS) {
+          EMCASStatus.SUCCESSFUL
+        } else {
+          EMCASStatus.FAILED
+        }
+        if (desc.casStatus(EMCASStatus.ACTIVE, rr)) {
+          // TODO:
+          // ctx.finalized(desc, limit = replace)
+          (rr eq EMCASStatus.SUCCESSFUL)
+        } else {
+          // someone else finalized the descriptor, we must read its status:
+          (desc.getStatus() eq EMCASStatus.SUCCESSFUL)
+        }
       }
     } finally {
       if (!helping) {

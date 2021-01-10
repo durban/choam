@@ -50,3 +50,9 @@ enum EMCASStatus {
   SUCCESSFUL,
   FAILED
 }
+
+enum TryWordResult {
+  SUCCESS,
+  FAILURE,
+  BREAK
+}
