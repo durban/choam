@@ -31,8 +31,6 @@
     - improve generated `React`s, check if they make sense
     - check if `testingEqReact` makes sense, maybe do structural checking
   - Test with other IO impls (when they cupport ce3)
-- Benchmarks:
-  - Add STM benchmark with zio STM
 - EMCAS with simplified IBR:
   - Try to enable cleanup after a k-CAS op is finalized.
     - Measure performance.
@@ -59,6 +57,9 @@
     - (unsafe) thread-confined mode for running a `React` (with `NaiveKCAS` or something even more simple)
   - move `KCAS` into separate JAR, figure out proper API (`choam-kcas` or `choam-mcas`)
   - compare with `Ref` in cats-effect: similar things should have similar names
+  - Does it make sense to have `React[A, B]` instead of `A => React[B]`?
+    - is there a performance advantage when a `React` has no `computed`?
+    - if yes, we could still make an alias, e.g., `RTask[A] = React[Unit, A]`
 
 ## Misc.
 

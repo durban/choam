@@ -26,6 +26,10 @@ import cats.effect.unsafe.IORuntime
 
 import io.github.timwspence.cats.stm.STM
 
+import zio.Task
+import zio.{ Runtime => ZRuntime }
+import zio.stm.ZSTM
+
 import util._
 
 @Fork(2)
@@ -41,8 +45,16 @@ class QueueBench {
     Blackhole.consumeCPU(waitTime)
   }
 
+  private def runZ(rt: ZRuntime[_], task: Task[Unit], size: Int): Unit = {
+    rt.unsafeRunTask(task.repeatN(size))
+    Blackhole.consumeCPU(waitTime)
+  }
+
   private def isEnq(r: RandomState): IO[Boolean] =
     IO { (r.nextInt() % 2) == 0 }
+
+  private def isEnqZ(r: RandomState): Task[Boolean] =
+    Task.effect { (r.nextInt() % 2) == 0 }
 
   /** MS-Queue implemented with `React` */
   @Benchmark
@@ -94,6 +106,16 @@ class QueueBench {
     run(s.runtime, tsk.void, size = size)
   }
 
+  /** MS-Queue implemented with zio STM */
+  @Benchmark
+  def stmQueueZ(s: StmZSt, t: RandomState): Unit = {
+    val tsk = isEnqZ(t).flatMap { enq =>
+      if (enq) ZSTM.atomically(s.stmQueue.enqueue(t.nextString()))
+      else ZSTM.atomically(s.stmQueue.tryDequeue)
+    }
+    runZ(s.runtime, tsk.unit, size = size)
+  }
+
   /** MS-Queue implemented with cats-effect `Ref` */
   @Benchmark
   def ceQueue(s: CeSt, t: RandomState): Unit = {
@@ -137,6 +159,12 @@ object QueueBench {
     val s = STM.runtime[IO].unsafeRunSync()(runtime)
     val qu = StmQueueCLike[STM, IO](s)
     val stmQueue = s.commit(StmQueueC.make(s)(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
+  }
+
+  @State(Scope.Benchmark)
+  class StmZSt {
+    val runtime = zio.Runtime.default
+    val stmQueue = runtime.unsafeRunTask(StmQueueZ[String](Prefill.prefill().toList))
   }
 
   @State(Scope.Benchmark)

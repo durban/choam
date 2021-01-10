@@ -30,13 +30,13 @@ final object StmQueueZ {
   case class Node[A](data: A, next: TRef[Elem[A]]) extends Elem[A]
   case class End[A]() extends Elem[A]
 
-  def apply[A](els: List[A]): IO[Throwable, StmQueueZ[A]] = for {
+  def apply[A](els: List[A]): IO[Nothing, StmQueueZ[A]] = for {
     end <- TRef.makeCommit[Elem[A]](End[A]())
     sentinel = Node[A](nullOf[A], end)
     head <- TRef.makeCommit[Node[A]](sentinel)
     tail <- TRef.makeCommit[Node[A]](sentinel)
     q = new StmQueueZ[A](head, tail)
-    _ <- els.foldLeft[IO[Throwable, Unit]](IO.unit) { (t, a) =>
+    _ <- els.foldLeft[IO[Nothing, Unit]](IO.unit) { (t, a) =>
       t.flatMap { _ => STM.atomically(q.enqueue(a)) }
     }
   } yield q
@@ -47,7 +47,7 @@ final class StmQueueZ[A](
   tail: TRef[Node[A]]
 ) {
 
-  def enqueue(a: A): STM[Throwable, Unit] = {
+  def enqueue(a: A): STM[Nothing, Unit] = {
     for {
       end <- TRef.make[Elem[A]](End[A]())
       node = Node(a, end)
