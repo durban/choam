@@ -552,4 +552,26 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(falseRef.guardNot(ft).run, Some(42))
     } yield ()
   }
+
+  test("arrCas should be a correct CAS") {
+    for {
+      r1 <- React.newRef("s1").run[F]
+      r2 <- React.newRef("s2").run[F]
+      c1 = React.ret(("s1", "x1")) >>> React.arrCas(r1)
+      c2 = React.ret(("s2", "x2")) >>> React.arrCas(r2)
+      _ <- (c1 * c2).run[F]
+      _ <- assertResultF(r1.getter.run[F], "x1")
+      _ <- assertResultF(r2.getter.run[F], "x2")
+    } yield ()
+  }
+
+  test("arrUpd should work".only) {
+    for {
+      r1 <- React.newRef("s1").run[F]
+      r2 <- React.newRef("s2").run[F]
+      _ <- (r1.arrModify(_ + "x") × r2.arrModify(_ + "y")).lmap[Unit](_ => ((), ())).run[F]
+      _ <- assertResultF(r1.getter.run[F], "s1x")
+      _ <- assertResultF(r2.getter.run[F], "s2y")
+    } yield ()
+  }
 }
