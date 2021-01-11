@@ -574,4 +574,34 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(r2.getter.run[F], "s2y")
     } yield ()
   }
+
+  test("access should work") {
+    for {
+      r1 <- React.newRef("s1").run[F]
+      r2 <- React.newRef("s2").run[F]
+      _ <- (for {
+        vs1 <- r1.access
+        (v1, set1) = vs1
+        vs2 <- r2.access
+        (v2, set2) = vs2
+        _ <- React.ret(v1) >>> set2
+        _ <- React.ret(v2) >>> set1
+      } yield ()).run[F]
+      _ <- assertResultF(r1.getter.run[F], "s2")
+      _ <- assertResultF(r2.getter.run[F], "s1")
+    } yield ()
+  }
+
+  test("access in a different reaction".ignore) {
+    for {
+      r <- React.newRef("s").run[F]
+      vs <- r.access.run[F]
+      (v, set) = vs
+      _ <- assertEqualsF(v, "s")
+      _ <- assertResultF(r.getter.run[F], "s")
+      _ <- r.modify { _ + "x" }.run[F]
+      _ <- set[F]("x")
+      _ <- assertResultF(r.getter.run[F], "x")
+    } yield ()
+  }
 }

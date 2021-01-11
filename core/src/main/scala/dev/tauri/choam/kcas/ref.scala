@@ -54,6 +54,17 @@ sealed trait Ref[A] {
   final val getter: React[Unit, A] =
     upd[Unit, A] { (a, _) => (a, a) }
 
+  // WARNING: This is unsafe, if we run `set`
+  // WARNING: as part of another reaction.
+  final def access: React[Unit, (A, React[A, Unit])] = {
+    this.invisibleRead.map { oa =>
+      val set = React.computed[A, Unit] { (na: A) =>
+        this.cas(oa, na)
+      }
+      (oa, set)
+    }
+  }
+
   private[choam] def cas(ov: A, nv: A): React[Unit, Unit] =
     React.cas(this, ov, nv)
 
