@@ -34,7 +34,8 @@ import cats.syntax.all._
 @Outcomes(Array(
   new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "cancelled late"),
   new Outcome(id = Array("null, a"), expect = ACCEPTABLE, desc = "cancelled"),
-  new Outcome(id = Array("null, b"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled just after completing the Promise")
+  new Outcome(id = Array("null, b"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled just after completing the Promise"),
+  new Outcome(id = Array("b, a"), expect = ACCEPTABLE_INTERESTING, desc = "popper started really late")
 ))
 class AsyncStackCancelTest {
 

@@ -47,12 +47,30 @@ sealed trait Ref[A] {
 
   // WARNING: This is unsafe, if we run `set`
   // WARNING: as part of another reaction.
-  final def access: React[Unit, (A, React[A, Unit])] = {
+  final def access1: React[Unit, (A, React[A, Unit])] = {
     this.invisibleRead.map { oa =>
       val set = React.computed[A, Unit] { (na: A) =>
         this.cas(oa, na)
       }
       (oa, set)
+    }
+  }
+
+  // WARNING: This throws an exception, if we
+  // WARNING: run `set` as part of another reaction.
+  final def access2: React[Unit, (A, React[A, Unit])] = {
+    React.token.flatMap { origTok =>
+      this.invisibleRead.map { oa =>
+        val checkToken: React[Unit, Unit] = React.token.flatMap { currTok =>
+          if (currTok eq origTok) React.unit
+          else React.delay[Unit, Unit] { _ => throw new IllegalStateException("token mismatch") }
+          // TODO: throwing here is cheating
+        }
+        val set = React.computed[A, Unit] { (na: A) =>
+          checkToken.flatMap(_ => this.cas(oa, na))
+        }
+        (oa, set)
+      }
     }
   }
 

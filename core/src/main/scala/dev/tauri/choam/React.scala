@@ -57,7 +57,7 @@ sealed abstract class React[-A, +B] {
           // TODO: implement backoff
           alts match {
             case _: Nil.type =>
-              go(partialResult, cont, Reaction.empty, kcas.start(ctx), alts)
+              go(partialResult, cont, new Reaction(Nil, rea.token), kcas.start(ctx), alts)
             case (h: SnapJump[x, B]) :: t =>
               go[x](h.value, h.react, h.ops, h.snap, t)
           }
@@ -70,7 +70,7 @@ sealed abstract class React[-A, +B] {
       }
     }
 
-    val res = go(a, this, Reaction.empty, kcas.start(ctx), Nil)
+    val res = go(a, this, new Reaction(Nil, new Token), kcas.start(ctx), Nil)
     res.reaction.postCommit.foreach { pc =>
       pc.unsafePerform((), kcas)
     }
@@ -228,6 +228,9 @@ object React {
   private[choam] def retry[A, B]: React[A, B] =
     AlwaysRetry()
 
+  private[choam] def token: React[Unit, Token] =
+    new Tok[Unit, Token, Token]((_, t) => t, Commit[Token]())
+
   def newRef[A](initial: A): React[Unit, Ref[A]] =
     delay[Unit, Ref[A]](_ => Ref.mk(initial))
 
@@ -309,18 +312,16 @@ object React {
       self >>> (left × right)
   }
 
-  // TODO: rename to PostCommit (?)
+  private[choam] final class Token
+
   // TODO: optimize building
-  private final case class Reaction(
-    postCommit: List[React[Unit, Unit]]
+  private final class Reaction(
+    val postCommit: List[React[Unit, Unit]],
+    val token: Token
   ) {
 
     def :: (act: React[Unit, Unit]): Reaction =
-      this.copy(postCommit = act :: postCommit)
-  }
-
-  private final object Reaction {
-    val empty: Reaction = Reaction(Nil)
+      new Reaction(postCommit = act :: this.postCommit, token = this.token)
   }
 
   protected[React] sealed trait TentativeResult[+A]
@@ -555,6 +556,28 @@ object React {
       a
   }
 
+  private final class Tok[A, B, C](t: (A, Token) => B, k: React[B, C])
+    extends React[A, C] {
+
+    override protected def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
+      maybeJump(n, t(a, ops.token), k, ops, desc, ctx)
+
+    override protected def andThenImpl[D](that: React[C, D]): React[A, D] =
+      new Tok(t, k.andThenImpl(that))
+
+    override protected def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] =
+      new Tok(tFirst[D], k.productImpl(that))
+
+    override protected def firstImpl[D]: React[(A, D), (C, D)] =
+      new Tok[(A, D), (B, D), (C, D)](tFirst[D], k.firstImpl[D])
+
+    private def tFirst[D](ad: (A, D), tok: Token): (B, D) =
+      (t(ad._1, tok), ad._2)
+
+    final override def toString =
+      s"Tok(${k})"
+  }
+
   private final class Upd[A, B, C, X](ref: Ref[X], f: (X, A) => (X, B), k: React[B, C])
     extends React[A, C] { self =>
 
@@ -574,7 +597,7 @@ object React {
       new Upd[(A, D), (B, D), (C, D), X](ref, this.fFirst[D], k.firstImpl[D])
 
     final override def toString =
-      s"GenUpd(${ref}, <function>, ${k})"
+      s"Upd(${ref}, <function>, ${k})"
 
     private def fFirst[D](ox: X, ad: (A, D)): (X, (B, D)) = {
       val (x, b) = this.f(ox, ad._1)
