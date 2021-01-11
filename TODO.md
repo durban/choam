@@ -42,10 +42,12 @@
   - Review writes/reads in EMCAS, check if we can relax them
 - Cleanup:
   - Review benchmarks, remove useless ones
+  - Remove `ArrCas`
+  - Remove old `upd`, use `updImproved` instead
 - Finish Ctrie
 - Scala 3
 - ce3:
-  - Can `React` implement `MonadCancel`?
+  - Can `React` implement `MonadCancel`? (Would need error handling)
 - Async (`choam-async`):
   - improve `Promise` API (see `Deferred` in cats-effect)
   - `AsyncQueue`
@@ -58,6 +60,8 @@
   - Does it make sense to have `React[A, B]` instead of `A => React[B]`?
     - Yes, there is a performance advantage (see `ArrowBench`).
     - We could still make an alias, e.g., `RTask[A] = React[Unit, A]`.
+  - Create an equivalent of `cats.effect.Ref#access`
+    - This would be a safe version of an `invisibleRead` followed by `cas`.
 - Cancellation support
   - `Thread.interrupt`
   - cats-effect cancellation?

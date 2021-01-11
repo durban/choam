@@ -565,7 +565,7 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("arrUpd should work".only) {
+  test("arrUpd should work") {
     for {
       r1 <- React.newRef("s1").run[F]
       r2 <- React.newRef("s2").run[F]
