@@ -151,7 +151,8 @@ object React {
 
   private[choam] final val maxStackDepth = 1024
 
-  def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): React[B, C] = {
+  /** Old (slower) impl of `upd`, keep it for benchmarks */
+  private[choam] def updDerived[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): React[B, C] = {
     val self: React[B, (A, B)] = r.invisibleRead.firstImpl[B].lmap[B](b => ((), b))
     val comp: React[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
       val (na, c) = f(oa, b)
@@ -160,7 +161,7 @@ object React {
     self >>> comp
   }
 
-  def updImproved[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): React[B, C] =
+  def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): React[B, C] =
     new Upd(r, f, Commit[C]())
 
   def updWith[A, B, C](r: Ref[A])(f: (A, B) => React[Unit, (A, C)]): React[B, C] = {

@@ -42,8 +42,6 @@
   - Review writes/reads in EMCAS, check if we can relax them
 - Cleanup:
   - Review benchmarks, remove useless ones
-  - Remove `ArrCas`
-  - Remove old `upd`, use `updImproved` instead
 - Finish Ctrie
 - Scala 3
 - ce3:
