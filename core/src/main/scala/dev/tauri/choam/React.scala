@@ -555,50 +555,31 @@ object React {
       a
   }
 
-  private abstract class GenUpd[A, B, C, X, Y, Z](ref: Ref[X], f: (X, Y) => (X, Z), k: React[B, C])
+  private final class Upd[A, B, C, X](ref: Ref[X], f: (X, A) => (X, B), k: React[B, C])
     extends React[A, C] { self =>
-
-    protected def transform(a: A, ox: X): (X, B)
 
     override protected def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] = {
       val ox = ctx.impl.read(ref, ctx)
-      val (nx, b) = transform(a, ox)
+      val (nx, b) = f(ox, a)
       maybeJump(n, b, k, ops, ctx.impl.addCas(desc, ref, ox, nx, ctx), ctx)
     }
 
-    override protected def andThenImpl[D](that: React[C, D]): React[A, D] = {
-      new GenUpd[A, B, D, X, Y, Z](ref, f, k.andThenImpl(that)) {
-        override protected def transform(a: A, ox: X): (X, B) = self.transform(a, ox)
-      }
-    }
+    override protected def andThenImpl[D](that: React[C, D]): React[A, D] =
+      new Upd[A, B, D, X](ref, f, k.andThenImpl(that))
 
-    override protected def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] = {
-      new GenUpd[(A, D), (B, D), (C, E), X, Y, Z](ref, f, k.productImpl(that)) {
-        override protected def transform(ad: (A, D), ox: X): (X, (B, D)) = {
-          val (x, b) = self.transform(ad._1, ox)
-          (x, (b, ad._2))
-        }
-      }
-    }
+    override protected def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] =
+      new Upd[(A, D), (B, D), (C, E), X](ref, this.fFirst[D], k.productImpl(that))
 
-    override protected def firstImpl[D]: React[(A, D), (C, D)] = {
-      new GenUpd[(A, D), (B, D), (C, D), X, Y, Z](ref, f, k.firstImpl[D]) {
-        override protected def transform(ad: (A, D), ox: X): (X, (B, D)) = {
-          val (x, b) = self.transform(ad._1, ox)
-          (x, (b, ad._2))
-        }
-      }
-    }
+    override protected def firstImpl[D]: React[(A, D), (C, D)] =
+      new Upd[(A, D), (B, D), (C, D), X](ref, this.fFirst[D], k.firstImpl[D])
 
     final override def toString =
       s"GenUpd(${ref}, <function>, ${k})"
-  }
 
-  private final class Upd[X, Y, Z, Q](ref: Ref[X], f: (X, Y) => (X, Z), k: React[Z, Q])
-    extends GenUpd[Y, Z, Q, X, Y, Z](ref, f, k) {
-
-    override protected def transform(y: Y, ox: X): (X, Z) =
-      f(ox, y)
+    private def fFirst[D](ox: X, ad: (A, D)): (X, (B, D)) = {
+      val (x, b) = this.f(ox, ad._1)
+      (x, (b, ad._2))
+    }
   }
 
   private abstract class GenRead[A, B, C, D](ref: Ref[A], k: React[C, D])
