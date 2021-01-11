@@ -39,9 +39,6 @@ sealed trait Ref[A] {
   final def modifyImproved(f: A => A): React[Unit, A] =
     updImproved[Unit, A] { (a, _) => (f(a), a) }
 
-  final def arrModify(f: A => A): React[Unit, A] =
-    React.arrUpd[A, Unit, A](this) { (a, _) => (f(a), a) }
-
   final def modify2[B](f: A => (A, B)): React[Unit, B] =
     upd[Unit, B] { (a, _) => f(a) }
 

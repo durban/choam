@@ -54,12 +54,6 @@ class ArrowBench extends {
     val r = React.updImproved[Long, String, Long](s.ref) { (i, s) => (i + 1, s.length.toLong) }
     bh.consume(r.unsafePerform(k.nextString(), k.kcasImpl))
   }
-
-  @Benchmark
-  def arrUpd(s: ArrowBench.USt, bh: Blackhole, k: KCASImplState): Unit = {
-    val r = React.arrUpd[Long, String, Long](s.ref) { (i, s) => (i + 1, s.length.toLong) }
-    bh.consume(r.unsafePerform(k.nextString(), k.kcasImpl))
-  }
 }
 
 object ArrowBench {

@@ -163,18 +163,6 @@ object React {
   def updImproved[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): React[B, C] =
     new Upd(r, f, Commit[C]())
 
-  def arrUpd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): React[B, C] = {
-    val p1: React[B, ((A, B), A)] = r.invisibleRead.firstImpl[B].lmap[B] { b =>
-      ((), b)
-    }.rmap { case t @ (ov, _) => (t, ov) }
-    val p2: React[((A, B), A), ((A, C), A)] = lift(f.tupled).firstImpl[A]
-    val p3: React[((A, C), A), C] = arrCas(r).firstImpl[C].lmap[((A, C), A)] { aca =>
-      val ((nv, c), ov) = aca
-      ((ov, nv), c)
-    }.rmap(_._2)
-    p1 >>> p2 >>> p3
-  }
-
   def updWith[A, B, C](r: Ref[A])(f: (A, B) => React[Unit, (A, C)]): React[B, C] = {
     val self: React[B, (A, B)] = r.invisibleRead.firstImpl[B].lmap[B](b => ((), b))
     val comp: React[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
@@ -208,9 +196,6 @@ object React {
 
   private[choam] def cas[A](r: Ref[A], ov: A, nv: A): React[Unit, Unit] =
     new Cas[A, Unit](r, ov, nv, React.unit)
-
-  private[choam] def arrCas[A](r: Ref[A]): React[(A, A), Unit] =
-    new ArrCas(r, React.unit)
 
   private[choam] def invisibleRead[A](r: Ref[A]): React[Unit, A] =
     new Read(r, Commit[A]())
@@ -567,58 +552,6 @@ object React {
 
     def transform(a: A, b: Unit): A =
       a
-  }
-
-  private abstract class GenArrCas[A, B, C, D](ref: Ref[B], k: React[C, D])
-    extends React[A, D] { self =>
-
-    /** Must be pure */
-    protected def transform(a: A, b: B): (B, B, C)
-
-    override protected def tryPerform(n: Int, a: A, pc: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
-      val b = ctx.impl.read(ref, ctx)
-      val (ov, nv, c) = this.transform(a, b)
-      if (equ(b, ov)) {
-        maybeJump(n, c, k, pc, ctx.impl.addCas(desc, ref, ov, nv, ctx), ctx)
-      } else {
-        Retry
-      }
-    }
-
-    override protected def andThenImpl[E](that: React[D, E]): React[A, E] = {
-      new GenArrCas[A, B, C, E](ref, k >>> that) {
-        override protected def transform(a: A, b: B): (B, B, C) =
-          self.transform(a, b)
-      }
-    }
-
-    override protected def productImpl[E, F](that: React[E, F]): React[(A, E), (D, F)] = {
-      new GenArrCas[(A, E), B, (C, E), (D, F)](ref, k × that) {
-        override protected def transform(ae: (A, E), b: B): (B, B, (C, E)) = {
-          val (ov, nv, c) = self.transform(ae._1, b)
-          (ov, nv, (c, ae._2))
-        }
-      }
-    }
-
-    override protected def firstImpl[E]: React[(A, E), (D, E)] = {
-      new GenArrCas[(A, E), B, (C, E), (D, E)](ref, k.firstImpl) {
-        override protected def transform(ae: (A, E), b: B): (B, B, (C, E)) = {
-          val (ov, nv, c) = self.transform(ae._1, b)
-          (ov, nv, (c, ae._2))
-        }
-      }
-    }
-
-    final override def toString =
-      s"GenArrCas(${ref}, ${k})"
-  }
-
-  private final class ArrCas[A, B](ref: Ref[A], k: React[Unit, B])
-    extends GenArrCas[(A, A), A, Unit, B](ref, k) {
-
-    override protected def transform(a: (A, A), b: A): (A, A, Unit) =
-      (a._1, a._2, ())
   }
 
   private abstract class GenUpd[A, B, C, X, Y, Z](ref: Ref[X], f: (X, Y) => (X, Z), k: React[B, C])
