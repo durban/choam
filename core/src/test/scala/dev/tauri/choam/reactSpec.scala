@@ -614,4 +614,11 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(r.getter.run[F], "sx")
     } yield ()
   }
+
+  test("Ref.apply") {
+    for {
+      i <- (Ref(89).flatMap(_.modify(_ + 1))).run[F]
+      _ <- assertEqualsF(i, 89)
+    } yield ()
+  }
 }

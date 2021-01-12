@@ -35,7 +35,9 @@
   - Try to enable cleanup after a k-CAS op is finalized.
     - Measure performance.
     - Measure memory requirements, make sure finalized list is not too big.
-- Compile-time detection of impossible k-CAS operations
+- Compile-time detection of:
+  - impossible k-CAS operations (2 changes to the same `Ref`)
+  - leaking `set` from `access`(?)
 - Optimization ideas:
   - Boxing
   - React interpreter (external interpreter?)
@@ -71,7 +73,8 @@
 - Other data structures:
   - ctrie-set
   - `SkipListMap`, `SkipListSet`
+  - https://dl.acm.org/doi/10.1145/1989493.1989550 ?
 - "Laws" for the `React` combinators, e.g.:
   - choice prefers the first option
-  - `flatMap` == `>>>` and `computed`
-  - ...
+  - `flatMap` <-> `>>>` and `computed`
+  - `access` then `set` <-> `modify`

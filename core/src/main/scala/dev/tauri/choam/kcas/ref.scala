@@ -143,6 +143,9 @@ object Ref {
     }
   }
 
+  def apply[A](initial: A): React[Unit, Ref[A]] =
+    React.newRef(initial)
+
   private[choam] def mk[A](a: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
     new PaddedRefImpl(a)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
