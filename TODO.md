@@ -62,9 +62,18 @@
     - We could still make an alias, e.g., `RTask[A] = React[Unit, A]`.
   - Create an equivalent of `cats.effect.Ref#access`
     - This would be a safe version of an `invisibleRead` followed by `cas`.
+  - Find a better name instead of `React`
+  - Handling errors? (`MonadError`?)
+    - transient errors can already be handled with `+` (`Choice`)
+    - raising errors? (we need something better then `throw`ing)
+    - handling non-transient errors?
 - Cancellation support
   - `Thread.interrupt`
   - cats-effect cancellation?
+- Think about global / thread-local state:
+  - if we're running in IO, we might use something else
+  - however, IBR probably really needs thread-locals
+  - think about possible problems with fibers
 
 ## Misc.
 

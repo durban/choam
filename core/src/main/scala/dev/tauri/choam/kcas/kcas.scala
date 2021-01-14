@@ -48,6 +48,7 @@ private[choam] object KCAS {
     kcas.EMCAS
 
   private[kcas] def impossibleKCAS[A, B](ref: Ref[_], ova: A, nva: A, ovb: B, nvb: B): Nothing = {
+    // TODO: create a specific exception type for this:
     throw new IllegalArgumentException(
       s"Impossible k-CAS for ${ref}: ${ova} -> ${nva} and ${ovb} -> ${nvb}"
     )

@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package kcas
 
-import scala.annotation.tailrec
-
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._

@@ -22,8 +22,6 @@ import java.lang.ref.{ WeakReference => WeakRef }
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.ConcurrentSkipListMap
 
-import scala.annotation.tailrec
-
 /**
  * Interval-based memory reclamation (TagIBR-TPA), based on
  * the paper by Haosen Wen, Joseph Izraelevitz, Wentao Cai,

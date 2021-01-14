@@ -23,6 +23,8 @@ package object choam {
 
   private[choam] type unused = scala.annotation.unused
 
+  private[choam] type nowarn = scala.annotation.nowarn
+
   // Note: using these always leaves a check for
   // the package object in the bytecode (getstatic
   // and a null check). However, microbenchmarks
@@ -45,6 +47,7 @@ package object choam {
   private[choam] def nullOf[A]: A =
     null.asInstanceOf[A]
 
+  // TODO: maybe AssertionError?
   private[choam] def impossible(s: String): Nothing =
     throw new IllegalStateException(s)
 }

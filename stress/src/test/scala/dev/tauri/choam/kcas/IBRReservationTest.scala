@@ -20,8 +20,6 @@ package kcas
 
 import java.util.concurrent.CountDownLatch
 
-import scala.annotation.unused
-
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }

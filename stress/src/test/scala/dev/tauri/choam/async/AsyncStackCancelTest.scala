@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package async
 
-import scala.annotation.unused
-
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._

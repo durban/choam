@@ -17,8 +17,6 @@
 
 package dev.tauri.choam
 
-import scala.annotation.unused
-
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._

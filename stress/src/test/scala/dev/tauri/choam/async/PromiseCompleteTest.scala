@@ -25,6 +25,8 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 
 import cats.effect.{ IO, SyncIO }
 
+// TODO: add new test: completing 2 promises in 1 reaction must be atomic
+
 @JCStressTest
 @State
 @Description("Promise: racing completers should work fine")

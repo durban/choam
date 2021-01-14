@@ -64,7 +64,7 @@ sealed trait Ref[A] {
         val checkToken: React[Unit, Unit] = React.token.flatMap { currTok =>
           if (currTok eq origTok) React.unit
           else React.delay[Unit, Unit] { _ => throw new IllegalStateException("token mismatch") }
-          // TODO: throwing here is cheating
+          // TODO: create a specific exception type for this
         }
         val set = React.computed[A, Unit] { (na: A) =>
           checkToken.flatMap(_ => this.cas(oa, na))
@@ -184,6 +184,7 @@ object Ref {
             val i3 = compare(a.id3, b.id3)
             if (i3 != 0) i3
             else {
+              // TODO: maybe AssertionError? Or impossible()?
               throw new IllegalStateException(s"[globalCompare] ref collision: ${a} and ${b}")
             }
           }
