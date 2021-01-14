@@ -42,7 +42,7 @@ final object Map {
       private[this] val repr: Ref[immutable.Map[K, V]] =
         Ref.mk(immutable.Map.empty)
 
-      override val put = React.computed { kv: (K, V) =>
+      override val put = React.computed { (kv: (K, V)) =>
         for {
           m <- repr.invisibleRead
           old <- repr.cas(m, m + kv) >>> (m.get(kv._1) match {
@@ -54,7 +54,7 @@ final object Map {
         } yield old
       }
 
-      override val putIfAbsent = React.computed { kv: (K, V) =>
+      override val putIfAbsent = React.computed { (kv: (K, V)) =>
         for {
           m <- repr.invisibleRead
           old <- m.get(kv._1) match {
@@ -66,7 +66,7 @@ final object Map {
         } yield old
       }
 
-      override val replace = React.computed { kvv: (K, V, V) =>
+      override val replace = React.computed { (kvv: (K, V, V)) =>
         for {
           m <- repr.invisibleRead
           ok <- m.get(kvv._1) match {
@@ -82,11 +82,11 @@ final object Map {
         } yield ok
       }
 
-      override val get = React.computed { k: K =>
+      override val get = React.computed { (k: K) =>
         repr.getter.map(_.get(k))
       }
 
-      override val del = React.computed { k: K =>
+      override val del = React.computed { (k: K) =>
         for {
           m <- repr.invisibleRead
           ok <- m.get(k) match {
@@ -98,7 +98,7 @@ final object Map {
         } yield ok
       }
 
-      override val remove = React.computed { kv: (K, V) =>
+      override val remove = React.computed { (kv: (K, V)) =>
         for {
           m <- repr.invisibleRead
           ok <- m.get(kv._1) match {

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-scalaVersion in ThisBuild := "2.13.4"
+scalaVersion in ThisBuild := "2.13.4" // TODO: "3.0.0-M3"
 crossScalaVersions in ThisBuild := Seq((scalaVersion in ThisBuild).value)
 scalaOrganization in ThisBuild := "org.scala-lang"
 
@@ -47,14 +47,12 @@ lazy val bench = project.in(file("bench"))
     dependencies.catsStm,
     dependencies.zioStm
   ))
-  .settings(macroSettings)
   .enablePlugins(JmhPlugin)
   .dependsOn(core % "compile->compile;compile->test")
 
 lazy val stress = project.in(file("stress"))
   .settings(name := "choam-stress")
   .settings(commonSettings)
-  .settings(macroSettings)
   .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
   .enablePlugins(JCStressPlugin)
   .settings(version in Jcstress := "0.7")
@@ -80,7 +78,7 @@ lazy val commonSettings = Seq[Setting[_]](
     "-opt-inline-from:<sources>",
     "-Wconf:any:warning-verbose",
     "-Xlint:_",
-    "-Xelide-below", "INFO",
+    // TODO: "-Xelide-below", "INFO",
     "-Xmigration:2.13.4",
     "-Xsource:3.0",
     "-Xverify",
@@ -96,9 +94,15 @@ lazy val commonSettings = Seq[Setting[_]](
     // TODO: experiment with -Ydelambdafy:inline for performance
     // TODO: experiment with -Yno-predef and/or -Yno-imports
   ),
+  scalacOptions ++= (
+    if (isDotty.value) {
+      List("-Ykind-projector")
+    } else {
+      Nil
+    }
+  ),
   scalacOptions in (Compile, console) ~= { _.filterNot("-Ywarn-unused-import" == _).filterNot("-Ywarn-unused:imports" == _) },
   scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value,
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.1" cross CrossVersion.full),
   parallelExecution in Test := false,
   libraryDependencies ++= Seq(
     Seq(
@@ -107,6 +111,13 @@ lazy val commonSettings = Seq[Setting[_]](
     ),
     dependencies.test.map(_ % "test-internal")
   ).flatten,
+  libraryDependencies ++= (
+    if (!isDotty.value) {
+      List(compilerPlugin("org.typelevel" % "kind-projector" % "0.11.1" cross CrossVersion.full))
+    } else {
+      Nil
+    }
+  ),
   testFrameworks += new TestFramework("munit.Framework"),
   organization := "dev.tauri",
   publishMavenStyle := true,
@@ -129,11 +140,6 @@ lazy val commonSettings = Seq[Setting[_]](
        |limitations under the License.
        |""".stripMargin
   ))
-)
-
-lazy val macroSettings = Seq(
-  scalacOptions += "-Ymacro-annotations",
-  libraryDependencies += scalaOrganization.value % "scala-reflect" % scalaVersion.value
 )
 
 lazy val dependencies = new {

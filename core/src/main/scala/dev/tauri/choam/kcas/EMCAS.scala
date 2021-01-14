@@ -40,7 +40,7 @@ private[kcas] object EMCAS extends KCAS { self =>
    *
    * (The other version of `readInternal`, specialized for
    * an ongoing MCAS operation is inlined into `tryWord` below,
-   * see the do-while loop.)
+   * see the `while` loop.)
    */
   private[choam] final def readValue[A](ref: Ref[A], ctx: ThreadContext, replace: Int = 256): A = {
     @tailrec
@@ -116,12 +116,12 @@ private[kcas] object EMCAS extends KCAS { self =>
       // Read `content`, and `value` if necessary;
       // this is a specialized and inlined version
       // of `readInternal` from the paper. We're
-      // using a do-while loop instead of a tail-recursive
+      // using a `while` loop instead of a tail-recursive
       // function (like in the paper), because we may
       // need both `content` and `value`, and returning
       // them would require allocating a tuple (like in
       // the paper).
-      do {
+      while (go) {
         contentWd = null
         content = ctx.readVolatileRef(wordDesc.address)
         content match {
@@ -152,7 +152,7 @@ private[kcas] object EMCAS extends KCAS { self =>
             value = a
             go = false
         }
-      } while (go)
+      }
 
       if (!equ(value, wordDesc.ov)) {
         // expected value is different

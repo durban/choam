@@ -45,12 +45,12 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
     } yield res
   }
 
-  val enqueue: React[A, Unit] = React.computed { a: A =>
+  val enqueue: React[A, Unit] = React.computed { (a: A) =>
     findAndEnqueue(Node(a, Ref.mk(End[A]())))
   }
 
   private[this] def findAndEnqueue(node: Node[A]): React[Unit, Unit] = {
-    tail.invisibleRead.postCommit(React.computed { n: Node[A] =>
+    tail.invisibleRead.postCommit(React.computed { (n: Node[A]) =>
       n.next.invisibleRead.flatMap {
         case e @ End() =>
           // found true tail; CAS, and try to adjust the tail ref:

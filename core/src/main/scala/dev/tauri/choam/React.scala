@@ -315,7 +315,7 @@ object React {
   private[choam] final class Token
 
   // TODO: optimize building
-  private final class Reaction(
+  protected final class Reaction(
     val postCommit: List[React[Unit, Unit]],
     val token: Token
   ) {
