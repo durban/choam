@@ -109,7 +109,7 @@ object Promise {
                   // cancellation token:
                   if (cbWasInserted) Some(removeCallback)
                   else None
-                }.onError { _ => removeCallback }
+                }.onError { case _ => removeCallback }
               }
             }
           }

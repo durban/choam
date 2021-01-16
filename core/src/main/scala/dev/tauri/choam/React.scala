@@ -96,7 +96,7 @@ sealed abstract class React[-A, +B] {
     new Choice[X, Y](this, that)
 
   final def >>> [C](that: React[B, C]): React[A, C] = that match {
-    case _: Commit.type => this
+    case _: Commit[_] => this
     case _ => this.andThenImpl(that)
   }
 
@@ -326,7 +326,7 @@ object React {
 
   protected[React] sealed trait TentativeResult[+A]
   protected[React] final case object Retry extends TentativeResult[Nothing]
-  protected[React] final case class Success[A](value: A, reaction: Reaction) extends TentativeResult[A]
+  protected[React] final case class Success[+A](value: A, reaction: Reaction) extends TentativeResult[A]
   protected[React] final case class Jump[A, B](
     value: A,
     react: React[A, B],
@@ -340,14 +340,14 @@ object React {
     }
   }
 
-  protected[React] final case class SnapJump[A, B](
+  protected[React] final case class SnapJump[A, +B](
     value: A,
     react: React[A, B],
     ops: Reaction,
     snap: EMCASDescriptor
   )
 
-  private sealed abstract class Commit[A]()
+  private final class Commit[A]()
       extends React[A, A] {
 
     protected final def tryPerform(n: Int, a: A, reaction: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[A] = {
@@ -359,7 +359,7 @@ object React {
       that
 
     protected final def productImpl[C, D](that: React[C, D]): React[(A, C), (A, D)] = that match {
-      case _: Commit.type => Commit[(A, C)]()
+      case _: Commit[_] => Commit[(A, C)]()
       case _ => arrowChoiceInstance.second(that) // TODO: optimize
     }
 
@@ -370,12 +370,12 @@ object React {
       "Commit"
   }
 
-  private final object Commit extends Commit[Any] {
+  private val commitInstance: Commit[Any] =
+    new Commit[Any]
 
-    @inline
-    def apply[A](): Commit[A] =
-      this.asInstanceOf[Commit[A]]
-  }
+  @inline
+  private def Commit[A](): Commit[A] =
+    this.commitInstance.asInstanceOf[Commit[A]]
 
   private sealed abstract class AlwaysRetry[A, B]()
       extends React[A, B] {

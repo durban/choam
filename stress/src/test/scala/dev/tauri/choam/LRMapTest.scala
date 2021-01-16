@@ -46,9 +46,9 @@ class LRMapTest extends StressTestBase {
     }
   }
 
-  private[this] def react2(r: LLLLLL_Result): React[String, String] = React.computed { s: String =>
+  private[this] def react2(r: LLLLLL_Result): React[String, String] = React.computed { (s: String) =>
     ref2.modify(_ => s)
-  }.lmap { s: String =>
+  }.lmap { (s: String) =>
     r.r3 = ref1.invisibleRead.unsafeRun(this.impl) // this is cheating
     r.r4 = ref2.invisibleRead.unsafeRun(this.impl) // this is cheating
     s

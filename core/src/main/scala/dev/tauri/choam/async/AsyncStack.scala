@@ -71,19 +71,19 @@ final class AsyncStack[F[_], A] private (ref: Ref[State[F, A]]) {
 
 object AsyncStack {
 
-  private sealed abstract class State[F[_], +A] {
+  private sealed abstract class State[F[_], A] {
     def cancelPromise[B >: A](p: Promise[F, B]): (State[F, A], Boolean)
   }
 
-  private final case class Empty[F[_]]() extends State[F, Nothing] {
+  private final case class Empty[F[_], A]() extends State[F, A] {
 
-    def addPromise[A](p: Promise[F, A]): Waiting[F, A] =
+    def addPromise(p: Promise[F, A]): Waiting[F, A] =
       Waiting(NonEmptyChain.one(p))
 
-    def addItem[A](a: A): Lst[F, A] =
+    def addItem(a: A): Lst[F, A] =
       Lst(NonEmptyChain.one(a))
 
-    def cancelPromise[B](p: Promise[F, B]): (State[F, Nothing], Boolean) =
+    def cancelPromise[B >: A](p: Promise[F, B]): (State[F, A], Boolean) =
       (Empty(), false)
   }
 
