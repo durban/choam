@@ -370,7 +370,8 @@ object React {
       "Commit"
   }
 
-  private val commitInstance: Commit[Any] =
+  // TODO: lazy val may block
+  private[this] lazy val commitInstance: Commit[Any] =
     new Commit[Any]
 
   @inline
