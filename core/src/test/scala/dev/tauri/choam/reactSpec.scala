@@ -427,8 +427,12 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       r = ref.modify(_ + "b") >>> ref.modify(_ + "x").lmap(_ => ())
       res <- r.run[F].attempt
       _ <- res match {
-        case Left(ex) => assertF(ex.getMessage.contains("Impossible k-CAS"))
-        case Right(r) => failF(s"Unexpected success: ${r}")
+        case Left(ex) =>
+          assertF(ex.getMessage.contains("Impossible k-CAS")).flatMap { _ =>
+            assertF(ex.isInstanceOf[ImpossibleOperation])
+          }
+        case Right(r) =>
+          failF(s"Unexpected success: ${r}")
       }
     } yield ()
   }

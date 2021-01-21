@@ -20,7 +20,6 @@ package kcas
 
 // TODO: detect impossible CAS-es
 // TODO: support thread interruption in (some) retry loops
-// TODO: think about exception safety (e.g., leaving behind descriptors)
 
 /** Common interface for k-CAS implementations */
 abstract class KCAS { self =>
@@ -48,8 +47,7 @@ private[choam] object KCAS {
     kcas.EMCAS
 
   private[kcas] def impossibleKCAS[A, B](ref: Ref[_], ova: A, nva: A, ovb: B, nvb: B): Nothing = {
-    // TODO: create a specific exception type for this:
-    throw new IllegalArgumentException(
+    throw new ImpossibleOperation(
       s"Impossible k-CAS for ${ref}: ${ova} -> ${nva} and ${ovb} -> ${nvb}"
     )
   }

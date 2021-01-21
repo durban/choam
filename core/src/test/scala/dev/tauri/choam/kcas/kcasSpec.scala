@@ -114,6 +114,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
       ))
     }
     assert(clue(exc.getMessage).contains("Impossible k-CAS"))
+    assert(clue(exc).isInstanceOf[ImpossibleOperation])
     val ctx = kcasImpl.currentContext()
     assertSameInstance(kcasImpl.read(r1, ctx), "r1")
     assertSameInstance(kcasImpl.read(r2, ctx), "r2")
