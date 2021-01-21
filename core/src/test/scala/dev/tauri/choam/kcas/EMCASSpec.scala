@@ -22,6 +22,8 @@ import java.util.concurrent.{ ConcurrentLinkedQueue, CountDownLatch }
 
 import scala.runtime.VolatileObjectRef
 
+import cats.syntax.eq._
+
 class EMCASSpec extends BaseSpecA {
 
   test("EMCAS should allow null as ov or nv") {
@@ -181,6 +183,11 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS should extend the interval of a new descriptor if it replaces an old one") {
+    testExtendInterval()
+  }
+
+  @tailrec
+  private def testExtendInterval(): Unit = {
     val r = Ref.mk("x")
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
@@ -199,19 +206,26 @@ class EMCASSpec extends BaseSpecA {
     latch1.await()
     val descOld = EMCAS.addCas(EMCAS.start(ctx), r, "x", "y", ctx)
     val oldEpoch = descOld.words.get(0).getBirthEpochVolatile()
-    assert(clue(oldEpoch) >= clue(epoch))
-    assert(EMCAS.tryPerform(descOld, ctx))
-    assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeTryRead(), descOld.words.get(0))
-    ctx.forceNextEpoch()
-    val descNew = EMCAS.addCas(EMCAS.start(ctx), r, "y", "z", ctx)
-    val newEpoch = descNew.words.get(0).getBirthEpochVolatile()
-    assert(clue(newEpoch) > clue(oldEpoch))
-    assert(EMCAS.tryPerform(descNew, ctx))
-    assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeTryRead(), descNew.words.get(0))
-    assert(ctx.isInUseByOther(descNew.words.get(0).cast))
-    latch2.countDown()
-    t.join()
-    assert(!ctx.isInUseByOther(descNew.words.get(0).cast))
+    if (oldEpoch =!= epoch) {
+      // This could happen with a low probability,
+      // in which case we restart the whole test case,
+      // because it depends on `t` reserving `oldEpoch`:
+      testExtendInterval()
+    } else {
+      // Ok, we can go on with the test case:
+      assert(EMCAS.tryPerform(descOld, ctx))
+      assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeTryRead(), descOld.words.get(0))
+      ctx.forceNextEpoch()
+      val descNew = EMCAS.addCas(EMCAS.start(ctx), r, "y", "z", ctx)
+      val newEpoch = descNew.words.get(0).getBirthEpochVolatile()
+      assert(clue(newEpoch) > clue(oldEpoch))
+      assert(EMCAS.tryPerform(descNew, ctx))
+      assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeTryRead(), descNew.words.get(0))
+      assert(ctx.isInUseByOther(descNew.words.get(0).cast))
+      latch2.countDown()
+      t.join()
+      assert(!ctx.isInUseByOther(descNew.words.get(0).cast))
+    }
   }
 
   test("EMCAS read should help the other operation") {
