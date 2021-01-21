@@ -201,24 +201,29 @@ private[kcas] final object IBR {
         val mbe = m.getBirthEpochPlain()
         val ok1 = if (mbe > currUpper) {
           res.setUpper(mbe)
-          // TODO: check if we still need this:
-          // `m` might've been retired (and reused) before we adjusted
-          // our reservation, so we have to recheck the birth epoch
-          // (and opaque is not enough here), so we'll re-acquire from the ref:
+          // we'll have to re-check the birth/retire epoch,
+          // because between reading the birth/retire epoch,
+          // and writing it to our reservation, someone else
+          // might've determined that `m` is not in use
           false
         } else {
-          // no need to adjust our reservation
+          // no need to adjust our reservation, so no need to re-check
           true
         }
         val currLower = res.getLowerAcquire()
+        // as above, plain is enough here:
         val mre = m.getRetireEpochPlain()
         val ok2 = if (mre < currLower) {
           res.setLower(mre)
+          // as above, we'll have to re-check:
           false
-        } else { true }
-        ok1 && ok2
+        } else {
+          // as above, no need to re-check
+          true
+        }
+        ok1 && ok2 // no re-check needed if both were already correct
       } else {
-        // no need to adjust our reservation
+        // not a descriptor, no need to adjust our reservation or re-check
         true
       }
     }
@@ -275,9 +280,11 @@ private[kcas] final object IBR {
                 isConflict()
               } else {
                 val conflict = (
-                  // TODO: do we need 'volatile'?
-                  (block.getBirthEpochVolatile() <=  tc.reservation.getUpperAcquire()) &&
-                  (block.getRetireEpochVolatile() >= tc.reservation.getLowerAcquire())
+                  // We've read `block` from a `Ref`, thus if its birth/retire
+                  // epochs change later, that is a spurious change we don't need.
+                  // Because of this, a plain read is enough here.
+                  (block.getBirthEpochPlain() <= tc.reservation.getUpperAcquire()) &&
+                  (block.getRetireEpochPlain() >= tc.reservation.getLowerAcquire())
                 )
                 if (conflict) true
                 else isConflict() // continue

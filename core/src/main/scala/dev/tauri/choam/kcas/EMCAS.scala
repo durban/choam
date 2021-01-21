@@ -165,7 +165,10 @@ private[kcas] object EMCAS extends KCAS { self =>
           extendInterval(oldWd = contentWd, newWd = wordDesc)
         }
         if (!ctx.casRef(wordDesc.address, content, wordDesc.castToData)) {
-          tryWord(wordDesc) // retry this word
+          // CAS failed, we'll retry. This means, that we maybe
+          // unnecessarily extended the interval; but that is
+          // not a correctness problem (just makes IBR less precise).
+          tryWord(wordDesc)
         } else {
           TryWordResult.SUCCESS
         }
@@ -181,6 +184,12 @@ private[kcas] object EMCAS extends KCAS { self =>
      * large interval. That would make IBR less effective, but still correct.
      *
      * Assumption: we only ever extend intervals (never narrow them).
+     *
+     * Also note, that after a descriptor is installed into a `Ref`, its
+     * birth/retire epochs only change if another thread is still executing
+     * this method. However, in that case, the CAS after this method will
+     * fail for sure (since it was already installed). Thus, we don't need
+     * to re-check after extending the interval.
      */
     def extendInterval[A](oldWd: WordDescriptor[A], newWd: WordDescriptor[A]): Unit = {
       val newBirth = newWd.getBirthEpochAcquire()
