@@ -22,7 +22,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util.KCASImplState
-import kcas.{ Ref, KCAS }
+import kcas.Ref
 
 /**
  * A variant of `dev.tauri.choam.kcas.bench.ResourceAllocation`,
@@ -86,7 +86,7 @@ object ResourceAllocationReact {
 
     @TearDown
     def checkResults(): Unit = {
-      val currentValues = rss.map(_.invisibleRead.unsafeRun(KCAS.NaiveKCAS)).toVector
+      val currentValues = rss.map(_.debugRead()).toVector
       if (currentValues == initialValues) {
         throw new Exception(s"Unchanged results")
       }

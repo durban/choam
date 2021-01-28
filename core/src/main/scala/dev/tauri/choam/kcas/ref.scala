@@ -81,7 +81,7 @@ sealed trait Ref[A] {
   private[kcas] def unsafeTryRead(): A
 
   /** For testing */
-  private[kcas] def debugRead(): A
+  private[choam] def debugRead(): A
 
   private[kcas] def unsafeTryPerformCas(ov: A, nv: A): Boolean
 
@@ -205,7 +205,7 @@ private class UnpaddedRefImpl[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: L
   private[kcas] final override def unsafeTryRead(): A =
     this.get()
 
-  private[kcas] final override def debugRead(): A = {
+  private[choam] final override def debugRead(): A = {
     this.unsafeTryRead() match {
       case null =>
         kcas.NaiveKCAS.read(this, kcas.NaiveKCAS.currentContext())
