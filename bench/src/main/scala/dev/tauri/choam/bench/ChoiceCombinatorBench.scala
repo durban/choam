@@ -82,7 +82,7 @@ object ChoiceCombinatorBench {
       Ref.mk("foo")
 
     private[this] var refs: Array[Ref[String]] =
-      _
+      null
 
     val reset: Reset[String] =
       new Reset("foo", ref)

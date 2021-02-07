@@ -27,7 +27,7 @@ import util._
 import org.openjdk.jmh.infra.Blackhole
 
 @Fork(2)
-class ArrowBench extends {
+class ArrowBench {
 
   final val size = 4096
 
