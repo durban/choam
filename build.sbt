@@ -164,7 +164,7 @@ lazy val dependencies = new {
   )
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.0"
-  val catsStm = "io.github.timwspence" %% "cats-stm" % "0.10.0-M2"
+  val catsStm = "io.github.timwspence" %% "cats-stm" % "0.10.0-M3"
   val zioStm = "dev.zio" %% "zio" % "1.0.4"
 
   val jol = "org.openjdk.jol" % "jol-core" % "0.8"
