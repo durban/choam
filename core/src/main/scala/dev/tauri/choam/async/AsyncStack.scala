@@ -39,10 +39,10 @@ final class AsyncStack[F[_], A] private (ref: Ref[State[F, A]]) {
       case l @ Lst(_) =>
         (l.addItem(a), None)
     }
-  }.postCommit(React.computed {
-    case None => React.unit
-    case Some((p, a)) => p.complete.lmap[Unit](_ => a).void
-  }).discard
+  }.flatMap {
+    case None => React.unit[A]
+    case Some((p, a)) => p.complete.lmap[A](_ => a).void
+  }
 
   def pop(implicit F: Reactive.Async[F]): F[A] = {
     F.monadCancel.flatMap(F.promise[A].run[F]) { newP =>
