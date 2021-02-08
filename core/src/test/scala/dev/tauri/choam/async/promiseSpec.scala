@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.concurrent.duration._
 
-import cats.Invariant
+import cats.{ ~>, Functor, Invariant, Contravariant }
 import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.Outcome
@@ -154,6 +154,60 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       f <- p.get.start
       _ <- p2.complete[F](42)
       _ <- assertResultF(f.joinWithNever, 21)
+    } yield ()
+  }
+
+  test("Contravariant functor instance") {
+    for {
+      p <- Promise[F, Int].run[F]
+      pw = (p : PromiseWrite[Int])
+      p2 = Contravariant[PromiseWrite[*]].contramap[Int, Int](pw)(_ / 2)
+      f <- p.get.start
+      _ <- p2.complete[F](42)
+      _ <- assertResultF(f.joinWithNever, 21)
+    } yield ()
+  }
+
+  test("Covariant functor instance") {
+    for {
+      p <- Promise[F, Int].run[F]
+      pr = (p : PromiseRead[F, Int])
+      p2 = Functor[PromiseRead[F, *]].map(pr)(_ * 2)
+      f <- p2.get.start
+      _ <- p.complete[F](21)
+      _ <- assertResultF(f.joinWithNever, 42)
+    } yield ()
+  }
+
+  test("Promise mapK") {
+    for {
+      p <- Promise[IO, Int].run[F]
+      pp = p.mapK[F](new ~>[IO, F] {
+        final override def apply[A](fa: IO[A]): F[A] = {
+          F.async_[A] { cb =>
+            fa.unsafeRunAsync(cb)(cats.effect.unsafe.IORuntime.global)
+          }
+        }
+      })
+      f <- pp.get.start
+      _ <- p.complete[F](42)
+      _ <- assertResultF(f.joinWithNever, 42)
+    } yield ()
+  }
+
+  test("PromiseRead mapK") {
+    for {
+      p <- Promise[IO, Int].run[F]
+      pp = (p : PromiseRead[IO, Int]).mapK[F](new ~>[IO, F] {
+        final override def apply[A](fa: IO[A]): F[A] = {
+          F.async_[A] { cb =>
+            fa.unsafeRunAsync(cb)(cats.effect.unsafe.IORuntime.global)
+          }
+        }
+      })
+      f <- pp.get.start
+      _ <- p.complete[F](42)
+      _ <- assertResultF(f.joinWithNever, 42)
     } yield ()
   }
 }

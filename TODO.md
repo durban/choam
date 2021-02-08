@@ -50,7 +50,6 @@
 - ce3:
   - Can `React` implement `MonadCancel`? (Would need error handling)
 - Async (`choam-async`):
-  - improve `Promise` API (see `Deferred` in cats-effect)
   - `AsyncQueue`
   - integration with FS2? (`choam-stream`)
 - API cleanup:

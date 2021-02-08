@@ -18,17 +18,62 @@
 package dev.tauri.choam
 package async
 
-import cats.{ ~>, Functor, Invariant }
+import cats.{ ~>, Functor, Invariant, Contravariant }
 import cats.syntax.all._
 import cats.effect.Async
 
-abstract class Promise[F[_], A] { self =>
+sealed trait PromiseRead[F[_], A] { self =>
 
-  def complete: React[A, Boolean]
+  def get: F[A]
 
   def tryGet: React[Unit, Option[A]]
 
-  def get: F[A]
+  final def map[B](f: A => B)(implicit F: Functor[F]): PromiseRead[F, B] = new PromiseRead[F, B] {
+    final override def get: F[B] =
+      self.get.map(f)
+    final override def tryGet: React[Unit, Option[B]] =
+      self.tryGet.map(_.map(f))
+  }
+
+  def mapK[G[_]](t: F ~> G): PromiseRead[G, A] = new PromiseRead[G, A] {
+    final override def get: G[A] =
+      t(self.get)
+    final override def tryGet: React[Unit, Option[A]] =
+      self.tryGet
+  }
+}
+
+object PromiseRead {
+
+  implicit def covariantFunctorForPromiseRead[F[_] : Functor]: Functor[PromiseRead[F, *]] = {
+    new Functor[PromiseRead[F, *]] {
+      final override def map[A, B](p: PromiseRead[F, A])(f: A => B): PromiseRead[F, B] =
+        p.map(f)
+    }
+  }
+}
+
+sealed trait PromiseWrite[A] { self =>
+
+  def complete: React[A, Boolean]
+
+  final def contramap[B](f: B => A): PromiseWrite[B] = new PromiseWrite[B] {
+    final override def complete: React[B, Boolean] =
+      self.complete.lmap(f)
+  }
+}
+
+final object PromiseWrite {
+
+  implicit def contravariantFunctorForPromiseWrite: Contravariant[PromiseWrite] = {
+    new Contravariant[PromiseWrite] {
+      final override def contramap[A, B](p: PromiseWrite[A])(f: B => A): PromiseWrite[B] =
+        p.contramap(f)
+    }
+  }
+}
+
+sealed abstract class Promise[F[_], A] extends PromiseRead[F, A] with PromiseWrite[A] { self =>
 
   def imap[B](f: A => B)(g: B => A)(implicit F: Functor[F]): Promise[F, B] = new Promise[F, B] {
     final override def complete: React[B, Boolean] =
@@ -39,7 +84,7 @@ abstract class Promise[F[_], A] { self =>
       self.get.map(f)
   }
 
-  def mapK[G[_]](t: F ~> G): Promise[G, A] = new Promise[G, A] {
+  override def mapK[G[_]](t: F ~> G): Promise[G, A] = new Promise[G, A] {
     final override def complete: React[A, Boolean] =
       self.complete
     final override def tryGet: React[Unit, Option[A]] =
