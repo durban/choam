@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package async
 
+import scala.collection.immutable.LongMap
+
 import cats.{ ~>, Functor, Invariant, Contravariant }
 import cats.syntax.all._
 import cats.effect.Async
@@ -99,8 +101,12 @@ object Promise {
   def apply[F[_], A](implicit F: Reactive.Async[F]): React[Unit, Promise[F, A]] =
     F.promise[A]
 
-  def forAsync[F[_], A](implicit rF: Reactive[F], F: Async[F]): React[Unit, Promise[F, A]] =
+  @deprecated("old, slower implementation", since = "2021-02-08")
+  def slow[F[_], A](implicit rF: Reactive[F], F: Async[F]): React[Unit, Promise[F, A]] =
     React.delay(_ => new PromiseImpl[F, A](kcas.Ref.mk[State[A]](Waiting(Map.empty))))
+
+  def fast[F[_], A](implicit rF: Reactive[F], F: Async[F]): React[Unit, Promise[F, A]] =
+    React.delay(_ => new PromiseImpl2[F, A](kcas.Ref.mk[State2[A]](Waiting2(LongMap.empty, 0L))))
 
   implicit def invariantFunctorForPromise[F[_] : Functor]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
     override def imap[A, B](fa: Promise[F, A])(f: A => B)(g: B => A): Promise[F, B] =
@@ -171,6 +177,85 @@ object Promise {
       }.map {
         case Waiting(_) => None
         case Done(a) => Some(a)
+      }
+    }
+  }
+
+  private sealed abstract class State2[A]
+
+  /**
+   * We store the callbacks in a `LongMap`, because apparently
+   * it is faster this way. Benchmarks show that it is measurably
+   * faster if there are a lot of callbacks, and doesn't seem slower
+   * even if there are only a few callbacks.
+   *
+   * The idea is from here: https://github.com/typelevel/cats-effect/pull/1128.
+   */
+  private final case class Waiting2[A](cbs: LongMap[A => Unit], nextId: Long) extends State2[A]
+
+  private final case class Done2[A](a: A) extends State2[A]
+
+  private final class PromiseImpl2[F[_], A](ref: kcas.Ref[State2[A]])(implicit rF: Reactive[F], F: Async[F])
+    extends Promise[F, A] {
+
+    val complete: React[A, Boolean] = React.computed { a =>
+      ref.invisibleRead.flatMap {
+        case w @ Waiting2(cbs, _) =>
+          ref.cas(w, Done2(a)).rmap(_ => true).postCommit(React.delay { _ =>
+            cbs.valuesIterator.foreach(_(a))
+          })
+        case Done2(_) =>
+          React.ret(false)
+      }
+    }
+
+    val tryGet: React[Unit, Option[A]] = {
+      ref.getter.map {
+        case Done2(a) => Some(a)
+        case Waiting2(_, _) => None
+      }
+    }
+
+    def get: F[A] = {
+      ref.invisibleRead.run[F].flatMap {
+        case Waiting2(_, _) =>
+          F.async { cb =>
+            F.uncancelable[Either[Long, A]] { poll =>
+              insertCallback(cb).run[F].flatMap[Either[Long, A]] {
+                case l @ Left(_) =>
+                  F.pure(l)
+                case r @ Right(a) =>
+                  poll(F.delay { cb(Right(a)) }).as(r)
+              }
+            }.map {
+              case Left(id) =>
+                Some(removeCallback(id))
+              case Right(_) =>
+                None
+            }
+          }
+        case Done2(a) =>
+          F.pure(a)
+      }
+    }
+
+    private def insertCallback(cb: Either[Throwable, A] => Unit): React[Unit, Either[Long, A]] = {
+      val rcb = { (a: A) => cb(Right(a)) }
+      ref.modify {
+        case Waiting2(cbs, nid) => Waiting2(cbs + (nid -> rcb), nid + 1)
+        case d @ Done2(_) => d
+      }.map {
+        case Waiting2(_, nid) => Left(nid)
+        case Done2(a) => Right(a)
+      }
+    }
+
+    private def removeCallback(id: Long): F[Unit] = {
+      F.uncancelable { _ =>
+        ref.modify {
+          case Waiting2(cbs, nid) => Waiting2(cbs - id, nid)
+          case d @ Done2(_) => d
+        }.discard.run[F]
       }
     }
   }

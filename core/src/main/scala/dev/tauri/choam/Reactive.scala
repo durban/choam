@@ -66,7 +66,7 @@ final object Reactive {
     with Reactive.Async[F] {
 
     final override def promise[A] =
-      async.Promise.forAsync[F, A](this, F)
+      async.Promise.fast[F, A](this, F)
 
     final override def monadCancel =
       F
