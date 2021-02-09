@@ -20,6 +20,7 @@ package dev.tauri.choam
 import cats.Eq
 import cats.laws.discipline.{ ArrowChoiceTests, MonadTests }
 import cats.implicits._
+import cats.mtl.laws.discipline.LocalTests
 
 import org.scalacheck.{ Gen, Arbitrary }
 
@@ -95,4 +96,5 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
 
   checkAll("ArrowChoice[React]", ArrowChoiceTests[React].arrowChoice[Int, Int, Int, Int, Int, Int])
   checkAll("Monad[React]", MonadTests[React[String, *]].monad[Int, String, Int])
+  checkAll("Local[React]", LocalTests[React[String, *], String].local[Int, Float])
 }

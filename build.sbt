@@ -107,6 +107,7 @@ lazy val commonSettings = Seq[Setting[_]](
   libraryDependencies ++= Seq(
     Seq(
       dependencies.cats,
+      dependencies.catsMtl,
       dependencies.catsEffect
     ),
     dependencies.test.map(_ % "test-internal")
@@ -145,18 +146,21 @@ lazy val commonSettings = Seq[Setting[_]](
 lazy val dependencies = new {
 
   val catsVersion = "2.3.1"
+  val catsMtlVersion = "1.1.1"
   val fs2Version = "2.5.0"
 
   val shapeless = "com.chuusai" %% "shapeless" % "2.3.3"
   val cats = "org.typelevel" %% "cats-core" % catsVersion
   val catsFree = "org.typelevel" %% "cats-free" % catsVersion
   val catsEffect = "org.typelevel" %% "cats-effect" % "3.0-65-7c98c86"
+  val catsMtl = "org.typelevel" %% "cats-mtl" % catsMtlVersion
 
   val fs2 = "co.fs2" %% "fs2-core" % fs2Version
   val fs2io = "co.fs2" %% "fs2-io" % fs2Version
 
   val test = Seq(
     "org.typelevel" %% "cats-laws" % catsVersion,
+    "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion,
     "org.typelevel" %% "munit-cats-effect-3" % "0.12.0",
     "org.typelevel" %% "scalacheck-effect" % "0.7.0",
     "org.typelevel" %% "scalacheck-effect-munit" % "0.7.0",

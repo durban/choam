@@ -22,8 +22,10 @@ import scala.collection.immutable.{ Nil, :: }
 
 import cats.Monad
 import cats.arrow.ArrowChoice
+import cats.mtl.Local
 
 import kcas._
+import cats.Applicative
 
 /**
  * A *partial* implementation of reagents, described in [Reagents: Expressing and
@@ -117,7 +119,7 @@ sealed abstract class React[-A, +B] {
 
   protected def productImpl[C, D](that: React[C, D]): React[(A, C), (B, D)]
 
-  protected def firstImpl[C]: React[(A, C), (B, C)]
+  protected[choam] def firstImpl[C]: React[(A, C), (B, C)]
 
   final def lmap[X](f: X => A): React[X, B] =
     lift(f) >>> this
@@ -147,7 +149,7 @@ sealed abstract class React[-A, +B] {
   override def toString: String
 }
 
-object React {
+object React extends ReactInstances0 {
 
   private[choam] final val maxStackDepth = 1024
 
@@ -233,58 +235,6 @@ object React {
 
   def newRef[A](initial: A): React[Unit, Ref[A]] =
     delay[Unit, Ref[A]](_ => Ref.mk(initial))
-
-  implicit val arrowChoiceInstance: ArrowChoice[React] = new ArrowChoice[React] {
-
-    def lift[A, B](f: A => B): React[A, B] =
-      React.lift(f)
-
-    override def id[A]: React[A, A] =
-      React.lift(a => a)
-
-    def compose[A, B, C](f: React[B, C], g: React[A, B]): React[A, C] =
-      g >>> f
-
-    def first[A, B, C](fa: React[A, B]): React[(A, C), (B, C)] =
-      fa.firstImpl
-
-    def choose[A, B, C, D](f: React[A, C])(g: React[B, D]): React[Either[A, B], Either[C, D]] = {
-      computed[Either[A, B], Either[C, D]] {
-        case Left(a) => (ret(a) >>> f).map(Left(_))
-        case Right(b) => (ret(b) >>> g).map(Right(_))
-      }
-    }
-
-    override def choice[A, B, C](f: React[A, C], g: React[B, C]): React[Either[A, B], C] = {
-      computed[Either[A, B], C] {
-        case Left(a) => ret(a) >>> f
-        case Right(b) => ret(b) >>> g
-      }
-    }
-
-    override def lmap[A, B, X](fa: React[A, B])(f: X => A): React[X, B] =
-      fa.lmap(f)
-
-    override def rmap[A, B, C](fa: React[A, B])(f: B => C): React[A, C] =
-      fa.rmap(f)
-  }
-
-  // TODO: MonadReader (?)
-  implicit def monadInstance[X]: Monad[React[X, *]] = new Monad[React[X, *]] {
-
-    def pure[A](x: A): React[X, A] =
-      React.ret(x)
-
-    def flatMap[A, B](fa: React[X, A])(f: A => React[X, B]): React[X, B] =
-      fa.flatMap(f)
-
-    def tailRecM[A, B](a: A)(f: A => React[X, Either[A, B]]): React[X, B] = {
-      f(a).flatMap {
-        case Left(a) => tailRecM(a)(f)
-        case Right(b) => React.ret(b)
-      }
-    }
-  }
 
   implicit final class InvariantReactSyntax[A, B](private val self: React[A, B]) extends AnyVal {
     final def apply[F[_]](a: A)(implicit F: Reactive[F]): F[B] =
@@ -569,7 +519,7 @@ object React {
     override protected def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] =
       new Tok(tFirst[D], k.productImpl(that))
 
-    override protected def firstImpl[D]: React[(A, D), (C, D)] =
+    override protected[choam] def firstImpl[D]: React[(A, D), (C, D)] =
       new Tok[(A, D), (B, D), (C, D)](tFirst[D], k.firstImpl[D])
 
     private def tFirst[D](ad: (A, D), tok: Token): (B, D) =
@@ -594,7 +544,7 @@ object React {
     override protected def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] =
       new Upd[(A, D), (B, D), (C, E), X](ref, this.fFirst[D], k.productImpl(that))
 
-    override protected def firstImpl[D]: React[(A, D), (C, D)] =
+    override protected[choam] def firstImpl[D]: React[(A, D), (C, D)] =
       new Upd[(A, D), (B, D), (C, D), X](ref, this.fFirst[D], k.firstImpl[D])
 
     final override def toString =
@@ -647,5 +597,77 @@ object React {
 
     def transform(a: A, b: Unit): A =
       a
+  }
+}
+
+sealed abstract class ReactInstances0 extends ReactInstances1 { self: React.type =>
+
+  implicit val arrowChoiceInstance: ArrowChoice[React] = new ArrowChoice[React] {
+
+    def lift[A, B](f: A => B): React[A, B] =
+      React.lift(f)
+
+    override def id[A]: React[A, A] =
+      React.lift(a => a)
+
+    def compose[A, B, C](f: React[B, C], g: React[A, B]): React[A, C] =
+      g >>> f
+
+    def first[A, B, C](fa: React[A, B]): React[(A, C), (B, C)] =
+      fa.firstImpl
+
+    def choose[A, B, C, D](f: React[A, C])(g: React[B, D]): React[Either[A, B], Either[C, D]] = {
+      computed[Either[A, B], Either[C, D]] {
+        case Left(a) => (ret(a) >>> f).map(Left(_))
+        case Right(b) => (ret(b) >>> g).map(Right(_))
+      }
+    }
+
+    override def choice[A, B, C](f: React[A, C], g: React[B, C]): React[Either[A, B], C] = {
+      computed[Either[A, B], C] {
+        case Left(a) => ret(a) >>> f
+        case Right(b) => ret(b) >>> g
+      }
+    }
+
+    override def lmap[A, B, X](fa: React[A, B])(f: X => A): React[X, B] =
+      fa.lmap(f)
+
+    override def rmap[A, B, C](fa: React[A, B])(f: B => C): React[A, C] =
+      fa.rmap(f)
+  }
+}
+
+sealed abstract class ReactInstances1 extends ReactInstances2 { self: React.type =>
+
+  implicit def monadInstance[X]: Monad[React[X, *]] = new Monad[React[X, *]] {
+
+    final override def pure[A](x: A): React[X, A] =
+      React.ret(x)
+
+    final override def flatMap[A, B](fa: React[X, A])(f: A => React[X, B]): React[X, B] =
+      fa.flatMap(f)
+
+    final override def tailRecM[A, B](a: A)(f: A => React[X, Either[A, B]]): React[X, B] = {
+      f(a).flatMap {
+        case Left(a) => tailRecM(a)(f)
+        case Right(b) => React.ret(b)
+      }
+    }
+  }
+}
+
+sealed abstract class ReactInstances2 { self: React.type =>
+
+  implicit def localInstance[E]: Local[React[E, *], E] = new Local[React[E, *], E] {
+
+    final override def applicative: Applicative[React[E, *]] =
+      self.monadInstance[E]
+
+    final override def ask[E2 >: E]: React[E, E2] =
+      React.identity[E]
+
+    final override def local[A](fa: React[E, A])(f: E => E): React[E, A] =
+      fa.lmap(f)
   }
 }

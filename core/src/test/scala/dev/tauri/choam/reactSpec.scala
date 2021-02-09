@@ -22,8 +22,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.jdk.CollectionConverters._
 
+import cats.{ Applicative, Monad }
+import cats.arrow.ArrowChoice
 import cats.implicits._
 import cats.effect.IO
+import cats.mtl.Local
 
 import kcas._
 
@@ -624,5 +627,40 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       i <- (Ref(89).flatMap(_.modify(_ + 1))).run[F]
       _ <- assertEqualsF(i, 89)
     } yield ()
+  }
+
+  test("Monad instance") {
+    def foo[G[_] : Monad](ga: G[Int]): G[String] =
+      ga.flatMap(x => x.toString.pure[G])
+
+    assertResultF(foo[React[Unit, *]](React.ret(42)).run[F], "42")
+  }
+
+  test("ArrowChoice instance") {
+    def foo[G[_, _] : ArrowChoice](
+      ga: G[Int, String],
+      gb: G[Int, Int]
+    ): G[Int, (String, Int)] = ga &&& gb
+
+    assertResultF(
+      foo[React](React.lift(_.toString), React.lift(_ + 1)).apply[F](42),
+      ("42", 43)
+    )
+  }
+
+  test("Local instance") {
+    def foo[G[_] : Monad](implicit G: Local[G, Int]): G[String] = for {
+      e1 <- G.ask
+      e2 <- G.scope(G.ask)(42)
+    } yield s"${e1}, ${e2}"
+
+    assertResultF(foo[React[Int, *]].apply[F](21), "21, 42")
+  }
+
+  test("Applicative instance") {
+    def foo[G[_] : Applicative](ga: G[Int], gb: G[Int]): G[Int] =
+      ga.map2(gb)(_ + _)
+
+    assertResultF(foo(React.ret(21), React.ret(21)).run[F], 42)
   }
 }
