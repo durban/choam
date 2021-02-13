@@ -58,7 +58,7 @@ sealed abstract class React[-A, +B] {
      * can use as much as 140 cycles (https://stackoverflow.com/a/44916975),
      * this means 2240 (or 4480) cycles. That seems a sensible
      * maximum (it's unlikely we'd ever want to spin for longer
-     * than that).
+     * than that without retrying).
      *
      * `randomizeBackoff` is true by default, since it seems
      * to have a small performance advantage for certain
