@@ -20,12 +20,11 @@ package dev.tauri.choam
 // To avoid going through the aliases in scala._:
 import scala.collection.immutable.{ Nil, :: }
 
-import cats.Monad
+import cats.{ Applicative, Monad }
 import cats.arrow.ArrowChoice
 import cats.mtl.Local
 
 import kcas._
-import cats.Applicative
 
 /**
  * A *partial* implementation of reagents, described in [Reagents: Expressing and

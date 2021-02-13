@@ -24,16 +24,16 @@ final class Counter {
   private[this] val ref =
     Ref.mk(0L)
 
-  val add: React[Long, Long] = ref.upd[Long, Long] { (cnt, n) =>
+  val add: Reaction[Long, Long] = ref.upd[Long, Long] { (cnt, n) =>
     (cnt + n, cnt)
   }
 
-  val incr: React[Unit, Long] =
+  val incr: Action[Long] =
     add.lmap(_ => 1L)
 
-  val decr: React[Unit, Long] =
+  val decr: Action[Long] =
     add.lmap(_ => -1L)
 
-  val count: React[Unit, Long] =
+  val count: Action[Long] =
     add.lmap(_ => 0L)
 }

@@ -25,6 +25,54 @@ package object choam {
 
   private[choam] type nowarn = scala.annotation.nowarn
 
+  /**
+   * An effectful function from `A` to `B`. When executed,
+   * it may update any number of `Ref`s atomically. (It
+   * may also create new `Ref`s.)
+   *
+   * This type forms an `Arrow` (actually, an `ArrowChoice`).
+   * It also forms a `Monad` in `B`; however, consider using
+   * the arrow combinators (when possible) instead of `flatMap`
+   * (since a static structure of `Reaction`s may be more performant).
+   *
+   * The relation between `Reaction` and `Action` is approximately
+   * `Reaction[A, B] ≡ (A => Action[B])`; or, alternatively
+   * `Action[A] ≡ Reaction[Any, A]`.
+   */
+  final type Reaction[-A, +B] = React[A, B]
+
+  /*
+   * Implementation note: in some cases, composing
+   * `Reaction`s with `>>>` will be faster than
+   * using `flatMap`. An example (with measurements)
+   * is in `ArrowBench`.
+   *
+   * TODO: More benchmarks needed to determine exactly
+   * TODO: what it is that makes them faster. Also,
+   * TODO: maybe we could optimize `flatMap`.
+   */
+
+  final val Reaction: React.type = React
+
+  /**
+   * The description of an effect, which (when executed),
+   * results in a value of type `A`. During execution,
+   * it may update any number of `Ref`s atomically. (It
+   * may also create new `Ref`s.)
+   *
+   * This type forms a `Monad`. However, when composing
+   * these kinds of effects, also consider using `Reaction`
+   * and `>>>` instead of `flatMap`.
+   *
+   * The relation between `Action` and `Reaction` is approximately
+   * `Action[A] ≡ Reaction[Any, A]`; or, alternatively
+   * `Reaction[A, B] ≡ (A => Action[B])`.
+   */
+  final type Action[+A] = React[Any, A]
+
+  // FIXME: separate object with utilities?
+  final val Action: React.type = React
+
   // Note: using these always leaves a check for
   // the package object in the bytecode (getstatic
   // and a null check). However, microbenchmarks

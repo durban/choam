@@ -28,19 +28,19 @@ sealed trait PromiseRead[F[_], A] { self =>
 
   def get: F[A]
 
-  def tryGet: React[Unit, Option[A]]
+  def tryGet: Action[Option[A]]
 
   final def map[B](f: A => B)(implicit F: Functor[F]): PromiseRead[F, B] = new PromiseRead[F, B] {
     final override def get: F[B] =
       self.get.map(f)
-    final override def tryGet: React[Unit, Option[B]] =
+    final override def tryGet: Action[Option[B]] =
       self.tryGet.map(_.map(f))
   }
 
   def mapK[G[_]](t: F ~> G): PromiseRead[G, A] = new PromiseRead[G, A] {
     final override def get: G[A] =
       t(self.get)
-    final override def tryGet: React[Unit, Option[A]] =
+    final override def tryGet: Action[Option[A]] =
       self.tryGet
   }
 }
@@ -57,10 +57,10 @@ object PromiseRead {
 
 sealed trait PromiseWrite[A] { self =>
 
-  def complete: React[A, Boolean]
+  def complete: Reaction[A, Boolean]
 
   final def contramap[B](f: B => A): PromiseWrite[B] = new PromiseWrite[B] {
-    final override def complete: React[B, Boolean] =
+    final override def complete: Reaction[B, Boolean] =
       self.complete.lmap(f)
   }
 }
@@ -78,18 +78,18 @@ final object PromiseWrite {
 sealed abstract class Promise[F[_], A] extends PromiseRead[F, A] with PromiseWrite[A] { self =>
 
   def imap[B](f: A => B)(g: B => A)(implicit F: Functor[F]): Promise[F, B] = new Promise[F, B] {
-    final override def complete: React[B, Boolean] =
+    final override def complete: Reaction[B, Boolean] =
       self.complete.lmap(g)
-    final override def tryGet: React[Unit, Option[B]] =
+    final override def tryGet: Action[Option[B]] =
       self.tryGet.map(_.map(f))
     final override def get: F[B] =
       self.get.map(f)
   }
 
   override def mapK[G[_]](t: F ~> G): Promise[G, A] = new Promise[G, A] {
-    final override def complete: React[A, Boolean] =
+    final override def complete: Reaction[A, Boolean] =
       self.complete
-    final override def tryGet: React[Unit, Option[A]] =
+    final override def tryGet: Action[Option[A]] =
       self.tryGet
     final override def get: G[A] =
       t(self.get)
@@ -98,14 +98,14 @@ sealed abstract class Promise[F[_], A] extends PromiseRead[F, A] with PromiseWri
 
 object Promise {
 
-  def apply[F[_], A](implicit F: Reactive.Async[F]): React[Unit, Promise[F, A]] =
+  def apply[F[_], A](implicit F: Reactive.Async[F]): Action[Promise[F, A]] =
     F.promise[A]
 
   @deprecated("old, slower implementation", since = "2021-02-08")
-  def slow[F[_], A](implicit rF: Reactive[F], F: Async[F]): React[Unit, Promise[F, A]] =
+  def slow[F[_], A](implicit rF: Reactive[F], F: Async[F]): Action[Promise[F, A]] =
     React.delay(_ => new PromiseImpl[F, A](kcas.Ref.mk[State[A]](Waiting(Map.empty))))
 
-  def fast[F[_], A](implicit rF: Reactive[F], F: Async[F]): React[Unit, Promise[F, A]] =
+  def fast[F[_], A](implicit rF: Reactive[F], F: Async[F]): Action[Promise[F, A]] =
     React.delay(_ => new PromiseImpl2[F, A](kcas.Ref.mk[State2[A]](Waiting2(LongMap.empty, 0L))))
 
   implicit def invariantFunctorForPromise[F[_] : Functor]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
@@ -123,7 +123,7 @@ object Promise {
   private final class PromiseImpl[F[_], A](ref: kcas.Ref[State[A]])(implicit rF: Reactive[F], F: Async[F])
     extends Promise[F, A] {
 
-    val complete: React[A, Boolean] = React.computed { a =>
+    val complete: Reaction[A, Boolean] = React.computed { a =>
       ref.invisibleRead.flatMap {
         case w @ Waiting(cbs) =>
           ref.cas(w, Done(a)).rmap(_ => true).postCommit(React.delay { _ =>
@@ -134,7 +134,7 @@ object Promise {
       }
     }
 
-    val tryGet: React[Unit, Option[A]] = {
+    val tryGet: Action[Option[A]] = {
       ref.getter.map {
         case Done(a) => Some(a)
         case Waiting(_) => None
@@ -198,7 +198,7 @@ object Promise {
   private final class PromiseImpl2[F[_], A](ref: kcas.Ref[State2[A]])(implicit rF: Reactive[F], F: Async[F])
     extends Promise[F, A] {
 
-    val complete: React[A, Boolean] = React.computed { a =>
+    val complete: Reaction[A, Boolean] = React.computed { a =>
       ref.invisibleRead.flatMap {
         case w @ Waiting2(cbs, _) =>
           ref.cas(w, Done2(a)).rmap(_ => true).postCommit(React.delay { _ =>
@@ -209,7 +209,7 @@ object Promise {
       }
     }
 
-    val tryGet: React[Unit, Option[A]] = {
+    val tryGet: Action[Option[A]] = {
       ref.getter.map {
         case Done2(a) => Some(a)
         case Waiting2(_, _) => None
@@ -239,7 +239,7 @@ object Promise {
       }
     }
 
-    private def insertCallback(cb: Either[Throwable, A] => Unit): React[Unit, Either[Long, A]] = {
+    private def insertCallback(cb: Either[Throwable, A] => Unit): Action[Either[Long, A]] = {
       val rcb = { (a: A) => cb(Right(a)) }
       ref.modify {
         case Waiting2(cbs, nid) => Waiting2(cbs + (nid -> rcb), nid + 1)

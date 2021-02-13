@@ -48,7 +48,7 @@ final object Reactive {
   }
 
   trait Async[F[_]] extends Reactive[F] {
-    def promise[A]: React[Unit, async.Promise[F, A]]
+    def promise[A]: React[Any, async.Promise[F, A]]
     def monadCancel: MonadCancel[F, _]
   }
 

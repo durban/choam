@@ -30,8 +30,8 @@ sealed trait Ref[A] {
   final def updWith[B, C](f: (A, B) => React[Unit, (A, C)]): React[B, C] =
     React.updWith(this)(f)
 
-  final def modify(f: A => A): React[Unit, A] =
-    upd[Unit, A] { (a, _) => (f(a), a) }
+  final def modify(f: A => A): React[Any, A] =
+    upd[Any, A] { (a, _) => (f(a), a) }
 
   final def modify2[B](f: A => (A, B)): React[Unit, B] =
     upd[Unit, B] { (a, _) => f(a) }
@@ -42,8 +42,8 @@ sealed trait Ref[A] {
   private[choam] final val invisibleRead: React[Unit, A] =
     React.invisibleRead(this)
 
-  final val getter: React[Unit, A] =
-    upd[Unit, A] { (a, _) => (a, a) }
+  final val getter: React[Any, A] =
+    upd[Any, A] { (a, _) => (a, a) }
 
   // WARNING: This is unsafe, if we run `set`
   // WARNING: as part of another reaction.

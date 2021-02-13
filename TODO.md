@@ -57,12 +57,12 @@
     - (unsafe) thread-confined mode for running a `React` (with `NaiveKCAS` or something even more simple)
   - move `KCAS` into separate JAR, figure out proper API (`choam-kcas` or `choam-mcas`)
   - compare with `Ref` in cats-effect: similar things should have similar names
-  - Does it make sense to have `React[A, B]` instead of `A => React[B]`?
-    - Yes, there is a performance advantage (see `ArrowBench`).
-    - We could still make an alias, e.g., `RTask[A] = React[Unit, A]`.
   - Create an equivalent of `cats.effect.Ref#access`
     - This would be a safe version of an `invisibleRead` followed by `cas`.
   - Find a better name instead of `React`
+    - `Action[A]` (<= `React[Unit/Any, A]`)
+      - alias or sub-trait?
+    - `Reaction[A, B]` (<= `React[A, B]`)
   - Handling errors? (`MonadError`?)
     - transient errors can already be handled with `+` (`Choice`)
     - raising errors? (we need something better then `throw`ing)
