@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import java.util.concurrent.ThreadLocalRandom
+
 // To avoid going through the aliases in scala._:
 import scala.collection.immutable.{ Nil, :: }
 
@@ -48,33 +50,51 @@ sealed abstract class React[-A, +B] {
 
   import React._
 
-  final def unsafePerform(a: A, kcas: KCAS): B = {
+  final def unsafePerform(a: A, kcas: KCAS, backoffMax: Int = 1, randomizeBackoff: Boolean = false): B = {
 
     val ctx = kcas.currentContext()
 
+    def backoffRandom(retries: Int): Unit = {
+      val max = Math.min(1 << (retries + 1), backoffMax << 1)
+      var n = 1 + Math.floorMod(ThreadLocalRandom.current().nextInt(), max)
+      while (n > 0) {
+        n -= 1
+        Thread.onSpinWait()
+      }
+    }
+
+    def backoffConst(retries: Int): Unit = {
+      var n = Math.min(1 << retries, backoffMax)
+      while (n > 0) {
+        n -= 1
+        Thread.onSpinWait()
+      }
+    }
+
     @tailrec
-    def go[C](partialResult: C, cont: React[C, B], rea: Reaction, desc: EMCASDescriptor, alts: List[SnapJump[_, B]]): Success[B] = {
+    def go[C](partialResult: C, cont: React[C, B], rea: Reaction, desc: EMCASDescriptor, alts: List[SnapJump[_, B]], retries: Int): Success[B] = {
       cont.tryPerform(maxStackDepth, partialResult, rea, desc, ctx) match {
         case Retry =>
-          // TODO: implement backoff
+          if (randomizeBackoff) backoffRandom(retries)
+          else backoffConst(retries)
           alts match {
             case _: Nil.type =>
-              go(partialResult, cont, new Reaction(Nil, rea.token), kcas.start(ctx), alts)
+              go(partialResult, cont, new Reaction(Nil, rea.token), kcas.start(ctx), alts, retries = retries + 1)
             case (h: SnapJump[x, B]) :: t =>
-              go[x](h.value, h.react, h.ops, h.snap, t)
+              go[x](h.value, h.react, h.ops, h.snap, t, retries = retries + 1)
           }
 
         case s @ Success(_, _) =>
           s
         case Jump(pr, k, rea, desc, alts2) =>
-          go(pr, k, rea, desc, alts2 ++ alts)
+          go(pr, k, rea, desc, alts2 ++ alts, retries = retries)
           // TODO: optimize concat
       }
     }
 
-    val res = go(a, this, new Reaction(Nil, new Token), kcas.start(ctx), Nil)
+    val res = go(a, this, new Reaction(Nil, new Token), kcas.start(ctx), Nil, retries = 0)
     res.reaction.postCommit.foreach { pc =>
-      pc.unsafePerform((), kcas)
+      pc.unsafePerform((), kcas, backoffMax = backoffMax, randomizeBackoff = randomizeBackoff)
     }
 
     res.value
