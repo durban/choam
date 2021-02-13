@@ -17,8 +17,6 @@
 
 package dev.tauri.choam
 
-import java.util.concurrent.ThreadLocalRandom
-
 // To avoid going through the aliases in scala._:
 import scala.collection.immutable.{ Nil, :: }
 
@@ -50,40 +48,37 @@ sealed abstract class React[-A, +B] {
 
   import React._
 
-  final def unsafePerform(a: A, kcas: KCAS, backoffMax: Int = 1, randomizeBackoff: Boolean = false): B = {
+  final def unsafePerform(a: A, kcas: KCAS, maxBackoff: Int = 16, randomizeBackoff: Boolean = true): B = {
+
+    /*
+     * The default value of 16 for `maxBackoff` ensures that
+     * there is at most 16 (or 32 with randomization) calls
+     * to `onSpinWait` (see `Backoff`). Since `onSpinWait`
+     * is implemented with an x86 PAUSE instruction, which
+     * can use as much as 140 cycles (https://stackoverflow.com/a/44916975),
+     * this means 2240 (or 4480) cycles. That seems a sensible
+     * maximum (it's unlikely we'd ever want to spin for longer
+     * than that).
+     *
+     * `randomizeBackoff` is true by default, since it seems
+     * to have a small performance advantage for certain
+     * operations (and no downside for others). See `SpinBench`.
+     */
 
     val ctx = kcas.currentContext()
-
-    def backoffRandom(retries: Int): Unit = {
-      val max = Math.min(1 << (retries + 1), backoffMax << 1)
-      var n = 1 + Math.floorMod(ThreadLocalRandom.current().nextInt(), max)
-      while (n > 0) {
-        n -= 1
-        Thread.onSpinWait()
-      }
-    }
-
-    def backoffConst(retries: Int): Unit = {
-      var n = Math.min(1 << retries, backoffMax)
-      while (n > 0) {
-        n -= 1
-        Thread.onSpinWait()
-      }
-    }
 
     @tailrec
     def go[C](partialResult: C, cont: React[C, B], rea: Reaction, desc: EMCASDescriptor, alts: List[SnapJump[_, B]], retries: Int): Success[B] = {
       cont.tryPerform(maxStackDepth, partialResult, rea, desc, ctx) match {
         case Retry =>
-          if (randomizeBackoff) backoffRandom(retries)
-          else backoffConst(retries)
+          if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
+          else Backoff.backoffConst(retries, maxBackoff)
           alts match {
             case _: Nil.type =>
               go(partialResult, cont, new Reaction(Nil, rea.token), kcas.start(ctx), alts, retries = retries + 1)
             case (h: SnapJump[x, B]) :: t =>
               go[x](h.value, h.react, h.ops, h.snap, t, retries = retries + 1)
           }
-
         case s @ Success(_, _) =>
           s
         case Jump(pr, k, rea, desc, alts2) =>
@@ -94,7 +89,7 @@ sealed abstract class React[-A, +B] {
 
     val res = go(a, this, new Reaction(Nil, new Token), kcas.start(ctx), Nil, retries = 0)
     res.reaction.postCommit.foreach { pc =>
-      pc.unsafePerform((), kcas, backoffMax = backoffMax, randomizeBackoff = randomizeBackoff)
+      pc.unsafePerform((), kcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
     }
 
     res.value
