@@ -63,6 +63,8 @@
     - `Action[A]` (<= `React[Unit/Any, A]`)
       - alias or sub-trait?
     - `Reaction[A, B]` (<= `React[A, B]`)
+    - other ideas:
+      - Operation/Reaction?
   - Handling errors? (`MonadError`?)
     - transient errors can already be handled with `+` (`Choice`)
     - raising errors? (we need something better then `throw`ing)

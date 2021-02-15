@@ -46,6 +46,7 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("Sanity check") {
     assertSameInstance(Reactive[F].kcasImpl, this.kcasImpl)
+    println(s"NUM_CPU = ${Runtime.getRuntime().availableProcessors()}")
   }
 
   test("Simple CAS should work as expected") {

@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import java.util.concurrent.ThreadLocalRandom
+
 class BackoffSpec extends BaseSpecA {
 
   test("Backoff.backoffConst") {
@@ -36,7 +38,9 @@ class BackoffSpec extends BaseSpecA {
     val nSamples = 100000
     def check(retries: Int, maxBackoff: Int, expMaxTokens: Int): Unit = {
       val expAvg = Backoff.constTokens(retries, maxBackoff)
-      val samples = List.fill(nSamples) { Backoff.randomTokens(retries, maxBackoff) }
+      val samples = List.fill(nSamples) {
+        Backoff.randomTokens(retries, maxBackoff, ThreadLocalRandom.current())
+      }
       samples.foreach { sample =>
         assert(clue(sample) <= (clue(maxBackoff) * 2))
         assert(clue(sample) <= clue(expMaxTokens))
@@ -53,8 +57,8 @@ class BackoffSpec extends BaseSpecA {
     check(retries = 4, maxBackoff = 8, expMaxTokens = 16)
     check(retries = 1024*1024, maxBackoff = 8, expMaxTokens = 16)
     // illegal arguments:
-    Backoff.randomTokens(retries = -1, halfMaxBackoff = 16)
-    Backoff.randomTokens(retries = -1024*1024, halfMaxBackoff = 16)
+    Backoff.randomTokens(retries = -1, halfMaxBackoff = 16, random = ThreadLocalRandom.current())
+    Backoff.randomTokens(retries = -1024*1024, halfMaxBackoff = 16, random = ThreadLocalRandom.current())
   }
 
   test("Backoff.spin") {

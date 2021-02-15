@@ -46,6 +46,9 @@ object Backoff {
   private[choam] final def constTokens(retries: Int, maxBackoff: Int): Int =
     Math.min(1 << normalizeRetries(retries), maxBackoff)
 
+  final def backoffRandom(retries: Int, halfMaxBackoff: Int): Unit =
+    backoffRandom(retries, halfMaxBackoff, ThreadLocalRandom.current())
+
   /**
    * Randomized truncated exponential backoff.
    *
@@ -65,19 +68,24 @@ object Backoff {
    *                the backoff before the first retry).
    * @param halfMaxBackoff is the half of the maximum number of calls
    *                       to `onSpinWait` to make.
+   * @param random the thread-local rng of the current thread.
    */
-  final def backoffRandom(retries: Int, halfMaxBackoff: Int): Unit =
-    spin(randomTokens(retries, halfMaxBackoff))
+  final def backoffRandom(retries: Int, halfMaxBackoff: Int, random: ThreadLocalRandom): Unit =
+    spin(randomTokens(retries, halfMaxBackoff, random))
 
-  private[choam] final def randomTokens(retries: Int, halfMaxBackoff: Int): Int = {
+  private[choam] final def randomTokens(retries: Int, halfMaxBackoff: Int, random: ThreadLocalRandom): Int = {
     val max = Math.min(1 << normalizeRetries(retries + 1), halfMaxBackoff << 1)
-    1 + ThreadLocalRandom.current().nextInt(max)
+    1 + random.nextInt(max)
+  }
+
+  final def once(): Unit = {
+    Thread.onSpinWait()
   }
 
   @tailrec
   private[choam] final def spin(n: Int): Unit = {
     if (n > 0) {
-      Thread.onSpinWait()
+      once()
       spin(n - 1)
     }
   }
