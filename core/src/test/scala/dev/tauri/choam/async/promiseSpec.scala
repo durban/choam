@@ -180,8 +180,9 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("Promise mapK") {
+    val raForIo: Reactive.Async[IO] = new Reactive.AsyncReactive[IO](this.kcasImpl)
     for {
-      p <- Promise[IO, Int].run[F]
+      p <- Promise.apply[IO, Int](raForIo).run[F]
       pp = p.mapK[F](new ~>[IO, F] {
         final override def apply[A](fa: IO[A]): F[A] = {
           F.async_[A] { cb =>
