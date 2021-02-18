@@ -146,8 +146,8 @@ lazy val commonSettings = Seq[Setting[_]](
 lazy val dependencies = new {
 
   val catsVersion = "2.4.1"
-  val catsMtlVersion = "1.1.1"
-  val catsEffectVersion = "3.0.0-RC1"
+  val catsMtlVersion = "1.1.2"
+  val catsEffectVersion = "3.0.0-RC2"
   val fs2Version = "3.0.0-M8"
 
   val shapeless = "com.chuusai" %% "shapeless" % "2.3.3"
@@ -162,17 +162,17 @@ lazy val dependencies = new {
   val test = Seq(
     "org.typelevel" %% "cats-laws" % catsVersion,
     "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion,
-    "org.typelevel" %% "munit-cats-effect-3" % "0.13.0",
-    "org.typelevel" %% "scalacheck-effect" % "0.7.0",
-    "org.typelevel" %% "scalacheck-effect-munit" % "0.7.0",
-    "org.typelevel" %% "discipline-munit" % "1.0.4",
+    "org.typelevel" %% "munit-cats-effect-3" % "0.13.1",
+    "org.typelevel" %% "scalacheck-effect" % "0.7.1",
+    "org.typelevel" %% "scalacheck-effect-munit" % "0.7.1",
+    "org.typelevel" %% "discipline-munit" % "1.0.6",
   )
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.0"
-  val catsStm = "io.github.timwspence" %% "cats-stm" % "0.10.0-M3"
+  val catsStm = "io.github.timwspence" %% "cats-stm" % "0.10.0-RC1"
   val zioStm = "dev.zio" %% "zio" % "1.0.4-2"
 
-  val jol = "org.openjdk.jol" % "jol-core" % "0.8"
+  val jol = "org.openjdk.jol" % "jol-core" % "0.14"
 }
 
 addCommandAlias("staticAnalysis", ";headerCheckAll;test:compile;scalastyle;test:scalastyle")
