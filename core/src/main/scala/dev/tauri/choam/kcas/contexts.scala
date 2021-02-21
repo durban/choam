@@ -39,6 +39,9 @@ final class ThreadContext(
   private[this] var finalizedDescriptorsCount: Int =
     0
 
+  val random: ThreadLocalRandom =
+    ThreadLocalRandom.current()
+
   final override def toString: String = {
     s"ThreadContext(global = ${this.global}, tid = ${this.tid})"
   }
@@ -47,7 +50,7 @@ final class ThreadContext(
     desc.next = this.finalizedDescriptors
     this.finalizedDescriptors = desc
     this.finalizedDescriptorsCount += 1
-    if ((this.finalizedDescriptorsCount > limit) && ((ThreadLocalRandom.current().nextInt() % replace) == 0)) {
+    if ((this.finalizedDescriptorsCount > limit) && ((this.random.nextInt() % replace) == 0)) {
       this.runCleanup()
     }
   }

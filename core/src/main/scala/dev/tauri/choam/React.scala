@@ -252,8 +252,8 @@ object React extends ReactInstances0 {
 
   final object unsafe {
 
-    def exchanger[A, B]: Action[Exchanger[A]] =
-      Exchanger.apply[A]
+    def exchanger[A, B]: Action[Exchanger[A, B]] =
+      Exchanger.apply[A, B]
   }
 
   implicit final class InvariantReactSyntax[A, B](private val self: React[A, B]) extends AnyVal {
@@ -285,7 +285,8 @@ object React extends ReactInstances0 {
   private[choam] final class Token
 
   // TODO: optimize building
-  protected final class Reaction(
+  // TODO: rename to ReactionCtx, ReactionData, or something
+  private[choam] final class Reaction(
     val postCommit: List[React[Unit, Unit]],
     val token: Token
   ) {
@@ -619,51 +620,62 @@ object React extends ReactInstances0 {
       a
   }
 
-  private[choam] sealed abstract class Exchange[A, B, C, D](
-    exchanger: Exchanger[A],
-    k: React[C, D]
-  ) extends React[B, D] { self =>
+  private[choam] sealed abstract class Exchange[A, B, C, D, E](
+    exchanger: Exchanger[A, B],
+    k: React[D, E]
+  ) extends React[C, E] { self =>
 
-    protected def transform1(b: B): A
+    protected def transform1(c: C): A
 
-    protected def transform2(a: A, b: B): C
+    protected def transform2(b: B, c: C): D
 
-    override protected def tryPerform(n: Int, b: B, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
-      this.exchanger.tryExchange(transform1(b)) match {
-        case Some(a2) =>
-          maybeJump(n, transform2(a2, b), this.k, ops, desc, ctx)
+    override protected def tryPerform(n: Int, c: C, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[E] = {
+      val retries = 42 // TODO
+      val msg = Exchanger.Msg[A, B, E](
+        value = transform1(c),
+        cont = k.lmap[B](b => self.transform2(b, c)),
+        ops = ops,
+        desc = desc // TODO: not threadsafe
+      )
+      // TODO: An `Exchange(...) + Exchange(...)` should post the
+      // TODO: same offer to both exchangers, so that fulfillers
+      // TODO: can race there.
+      this.exchanger.tryExchange(msg, ctx, retries) match {
+        case Some(contMsg) =>
+          maybeJump(n, (), contMsg.cont, contMsg.ops, contMsg.desc, ctx)
         case None =>
+          // TODO: adjust contention management in exchanger
           Retry
       }
     }
 
-    override protected def andThenImpl[E](that: React[D, E]): React[B, E] = {
-      new Exchange[A, B, C, E](this.exchanger, this.k >>> that) {
-        protected override def transform1(b: B): A =
-          self.transform1(b)
-        protected override def transform2(a: A, b: B): C =
-          self.transform2(a, b)
+    override protected def andThenImpl[F](that: React[E, F]): React[C, F] = {
+      new Exchange[A, B, C, D, F](this.exchanger, this.k >>> that) {
+        protected override def transform1(c: C): A =
+          self.transform1(c)
+        protected override def transform2(b: B, c: C): D =
+          self.transform2(b, c)
       }
     }
 
-    override protected def productImpl[E, F](that: React[E, F]): React[(B, E), (D, F)] = {
-      new Exchange[A, (B, E), (C, E), (D, F)](exchanger, k.productImpl(that)) {
-        protected override def transform1(be: (B, E)): A =
-          self.transform1(be._1)
-        protected override def transform2(a: A, be: (B, E)): (C, E) = {
-          val c = self.transform2(a, be._1)
-          (c, be._2)
+    override protected def productImpl[F, G](that: React[F, G]): React[(C, F), (E, G)] = {
+      new Exchange[A, B, (C, F), (D, F), (E, G)](exchanger, k.productImpl(that)) {
+        protected override def transform1(cf: (C, F)): A =
+          self.transform1(cf._1)
+        protected override def transform2(b: B, cf: (C, F)): (D, F) = {
+          val d = self.transform2(b, cf._1)
+          (d, cf._2)
         }
       }
     }
 
-    override protected[choam] def firstImpl[E]: React[(B, E), (D, E)] = {
-      new Exchange[A, (B, E), (C, E), (D, E)](exchanger, k.firstImpl[E]) {
-        protected override def transform1(be: (B, E)): A =
-          self.transform1(be._1)
-        protected override def transform2(a: A, be: (B, E)): (C, E) = {
-          val c = self.transform2(a, be._1)
-          (c, be._2)
+    override protected[choam] def firstImpl[F]: React[(C, F), (E, F)] = {
+      new Exchange[A, B, (C, F), (D, F), (E, F)](exchanger, k.firstImpl[F]) {
+        protected override def transform1(cf: (C, F)): A =
+          self.transform1(cf._1)
+        protected override def transform2(b: B, cf: (C, F)): (D, F) = {
+          val d = self.transform2(b, cf._1)
+          (d, cf._2)
         }
       }
     }
@@ -672,16 +684,16 @@ object React extends ReactInstances0 {
       s"Exchange(${exchanger}, ${k})"
   }
 
-  private[choam] final class SimpleExchange[A, B](
-    exchanger: Exchanger[A],
-    k: React[A, B]
-  ) extends Exchange[A, A, A, B](exchanger, k) {
+  private[choam] final class SimpleExchange[A, B, C](
+    exchanger: Exchanger[A, B],
+    k: React[B, C]
+  ) extends Exchange[A, B, A, B, C](exchanger, k) {
 
     override protected def transform1(a: A): A =
       a
 
-    override protected def transform2(a1: A, a2: A): A =
-      a2
+    override protected def transform2(b: B, a: A): B =
+      b
   }
 }
 

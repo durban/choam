@@ -62,6 +62,11 @@ final class EMCASDescriptor(wds: ArrayList[WordDescriptor[_]])
     r
   }
 
+  private[choam] def addAll(that: EMCASDescriptor): Unit = {
+    this.words.addAll(that.words)
+    ()
+  }
+
   def sort(): Unit = {
     this.words.sort(WordDescriptor.comparator)
   }

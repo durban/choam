@@ -85,6 +85,14 @@
   - ctrie-set
   - `SkipListMap`, `SkipListSet`
   - https://dl.acm.org/doi/10.1145/1989493.1989550 ?
+  - dual data structures:
+    - e.g., stack
+    - push: like normal stack
+    - pop: if empty, spin wait for a small time, then return an async `F[A]`
+    - what API could represent this?
+      - maybe `pop: React[Unit, Either[A, F[A]]]`?
+      - or maybe simply `pop: F[A]`, which is synchronous in the first case?
+      - (i.e., this could be an impl. detail of `AsyncStack`)
 - "Laws" for the `React` combinators, e.g.:
   - choice prefers the first option
   - `flatMap` <-> `>>>` and `computed`

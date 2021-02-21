@@ -18,76 +18,119 @@
 package dev.tauri.choam
 
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.ThreadLocalRandom
+
+import kcas.{ Ref, ThreadContext, EMCASDescriptor }
 
 // TODO: lazy initialization of exchanger with something like Reaction.lzy { ... }
 
-sealed abstract class Exchanger[A] {
+final class Exchanger[A, B] {
 
-  private[this] val array: Array[AtomicReference[Node[A]]] = {
+  import Exchanger.{ Node, Msg }
+
+  private[this] val incoming: Array[AtomicReference[Node[A, B, _]]] = {
     // TODO: use padded references
-    val arr = Array.ofDim[AtomicReference[Node[A]]](Exchanger.size)
-    @tailrec
-    def go(idx: Int): Unit = {
-      if (idx < arr.length) {
-        arr(idx) = new AtomicReference[Node[A]]
-        go(idx + 1)
-      }
-    }
-    go(0)
+    val arr = Array.ofDim[AtomicReference[Node[A, B, _]]](Exchanger.size)
+    Exchanger.initArray(arr)
     arr
   }
 
-  protected def canExchange(self: A, other: A): Boolean
+  private[this] val outgoing: Array[AtomicReference[Node[B, A, _]]] = {
+    // TODO: use padded references
+    val arr = Array.ofDim[AtomicReference[Node[B, A, _]]](Exchanger.size)
+    Exchanger.initArray(arr)
+    arr
+  }
 
-  private[choam] def tryExchange(a: A): Option[A] = {
-    val random = ThreadLocalRandom.current()
-    val backoff = 0 // TODO
-    val max = 16
-    val idx = random.nextInt(backoff + 1)
+  private[choam] def tryExchange[C](msg: Msg[A, B, C], ctx: ThreadContext, retries: Int, maxBackoff: Int = 16): Option[Msg[Unit, Unit, C]] = {
+    val idx = Backoff.randomTokens(retries, Exchanger.size >> 1, ctx.random) - 1
 
-    // TODO: how to roll back? (Will need to unify the 2 reactions.)
-    @tailrec
-    def tryIdx(idx: Int, backoff: Int): Option[A] = {
-      val slot = this.array(idx)
+    def tryIdx(idx: Int): Option[Msg[Unit, Unit, C]] = {
+      // post our message:
+      val slot = this.incoming(idx)
       slot.get() match {
         case null =>
-          // no waiter, insert ourselves:
-          val self = new Node(a)
+          // empty slot, insert ourselves:
+          val self = new Node(msg)
           if (slot.compareAndSet(null, self)) {
-            // we have inserted ourselves,
-            // now wait for someone to fulfill:
-            val res = self.spinWait(backoff, max, random)
-            slot.compareAndSet(self, null) // try to clean up
-            res
-          } else {
-            // someone took the slot, retry with
-            // another one:
-            None
-          }
-        case other =>
-          if (this.canExchange(a, other.value)) {
-            // found a matching waiter, try to fulfill it:
-            val ok = other.compareAndSet(nullOf[A], a)
-            slot.compareAndSet(other, null) // try to clean up
-            if (ok) {
-              Some(other.value)
-            } else {
-              // lost the race, someone else fulfilled it, immediately
-              // retry the exact same slot (probably it is empty):
-              tryIdx(idx, backoff)
+            // we posted our msg, look at the other side:
+            val otherSlot = this.outgoing(idx)
+            otherSlot.get() match {
+              case null =>
+                // we can't fulfill, so we wait for a fulfillment:
+                val res = self.spinWait(retries, maxBackoff, ctx)
+                slot.compareAndSet(self, null) // try to clean up or rescind
+                val rres = if (res.isEmpty) {
+                  // re-read, in case it was fulfilled before rescinding
+                  // TODO: this is not enough, we still have a race condition
+                  // TODO: (we'll probably need a status which means "taken, but not yet fulfilled")
+                  ctx.impl.read(self.hole, ctx) match {
+                    case null => None
+                    case c => Some(c)
+                  }
+                } else {
+                  res
+                }
+                rres.map { c =>
+                  Msg[Unit, Unit, C](
+                    value = (),
+                    cont = React.ret(c),
+                    ops = new React.Reaction(Nil, msg.ops.token),
+                    desc = ctx.impl.start(ctx)
+                  )
+                }
+              case other: Node[_, _, d] =>
+                // try to clean up:
+                // TODO: We should be able to "claim" `other`, otherwise there
+                // TODO: is a race with possible other threads fulfilling it
+                // TODO: before we could finish fulfilling it.
+                // TODO: Similarly, some thread could start fulfilling `msg`,
+                // TODO: and that would mean using its mutable `desc`. That's bad.
+                slot.compareAndSet(self, null)
+                otherSlot.compareAndSet(other, null)
+                // we'll fulfill the matching offer:
+                val cont: React[Unit, C] = msg.cont.lmap[Unit](_ => other.msg.value)
+                val otherCont: React[Unit, Unit] = other.msg.cont.lmap[Unit](_ => msg.value).flatMap { d =>
+                  React.cas[d](other.hole, nullOf[d], d)
+                }
+                val both = (cont * otherCont).map(_._1)
+                Some(Msg[Unit, Unit, C](
+                  value = (),
+                  cont = both,
+                  ops = new React.Reaction(
+                    msg.ops.postCommit ++ other.msg.ops.postCommit,
+                    msg.ops.token // TODO: this might cause problems with `access`
+                  ),
+                  desc = {
+                    // TODO: this only works, if we're the only one using `other` (see above)
+                    // Note: we read `other` from a `Ref`, so we'll see its mutable list of descriptors
+                    msg.desc.addAll(other.msg.desc)
+                    msg.desc
+                  }
+                ))
             }
           } else {
-            // can't match with this waiter, will retry:
+            // contention, will retry
             None
           }
+        case _ =>
+          // contention, will retry
+          None
       }
     }
-    tryIdx(idx, backoff)
+
+    tryIdx(idx)
   }
 }
 
 object Exchanger {
+
+  private[choam] final case class Msg[+A, -B, +C](
+    value: A,
+    cont: React[B, C],
+    ops: React.Reaction,
+    desc: EMCASDescriptor // TODO: not threadsafe!
+    // alts: List[SnapJump[_, B]] // TODO: do we need this?
+  )
 
   private[choam] val size = Math.min(
     (Runtime.getRuntime().availableProcessors() + 1) >>> 1,
@@ -95,32 +138,40 @@ object Exchanger {
   )
 
   /** Private, because an `Exchanger` is unsafe (may block indefinitely) */
-  private[choam] def apply[A]: Action[Exchanger[A]] =
-    Action.delay { _ => new Exchanger.Simple[A] }
+  private[choam] def apply[A, B]: Action[Exchanger[A, B]] =
+    Action.delay { _ => new Exchanger[A, B] }
 
-  private final class Simple[A] extends Exchanger[A] {
-    protected override def canExchange(self: A, other: A): Boolean =
-      true // TODO
-  }
-}
-
-private final class Node[A](val value: A) extends AtomicReference[A] {
-
-  def spinWait(backoff: Int, max: Int, random: ThreadLocalRandom): Option[A] = {
+  private def initArray[X, Y](array: Array[AtomicReference[Node[X, Y, _]]]): Unit = {
     @tailrec
-    def go(n: Int): Option[A] = {
-      if (n > 0) {
-        Backoff.once()
-        val res = this.get()
-        if (isNull(res)) {
-          go(n - 1)
-        } else {
-          Some(res)
-        }
-      } else {
-        None
+    def go(idx: Int): Unit = {
+      if (idx < array.length) {
+        array(idx) = new AtomicReference[Node[X, Y, _]]
+        go(idx + 1)
       }
     }
-    go(Backoff.randomTokens(backoff, max, random))
+    go(0)
+  }
+
+  private final class Node[A, B, C](val msg: Msg[A, B, C]) {
+
+    val hole = Ref.mk[C](nullOf[C])
+
+    def spinWait(retries: Int, max: Int, ctx: ThreadContext): Option[C] = {
+      @tailrec
+      def go(n: Int): Option[C] = {
+        if (n > 0) {
+          Backoff.once()
+          val res = ctx.impl.read(this.hole, ctx)
+          if (isNull(res)) {
+            go(n - 1)
+          } else {
+            Some(res)
+          }
+        } else {
+          None
+        }
+      }
+      go(Backoff.randomTokens(retries, max, ctx.random))
+    }
   }
 }
