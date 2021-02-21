@@ -22,72 +22,80 @@ import java.lang.invoke.MethodHandles;
 
 /**
  * Base class for objects managed by IBR
+ *
+ * The min/max epochs are mostly the same as birth/retire epochs
+ * in the paper. However, there is no actual "retirement" as IBR
+ * is used by `EMCAS`. Thus, min/max is a better terminology.
+ *
+ * Reserving any epoch number in the [min epoch, max epoch] closed
+ * interval of a descriptor guarantees that that descriptor will
+ * not be finalized.
  */
 public abstract class IBRManaged<T, M extends IBRManaged<T, M>> {
 
-  private static final VarHandle BIRTH_EPOCH;
+  private static final VarHandle MIN_EPOCH;
 
-  private static final VarHandle RETIRE_EPOCH;
+  private static final VarHandle MAX_EPOCH;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      BIRTH_EPOCH = l.findVarHandle(IBRManaged.class, "_birthEpoch", long.class);
-      RETIRE_EPOCH = l.findVarHandle(IBRManaged.class, "_retireEpoch", long.class);
+      MIN_EPOCH = l.findVarHandle(IBRManaged.class, "_minEpoch", long.class);
+      MAX_EPOCH = l.findVarHandle(IBRManaged.class, "_maxEpoch", long.class);
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }
   }
 
   @SuppressWarnings("unused")
-  private volatile long _birthEpoch;
+  private volatile long _minEpoch;
 
   @SuppressWarnings("unused")
-  private volatile long _retireEpoch;
+  private volatile long _maxEpoch;
 
 
   protected IBRManaged() {
-    this.setBirthEpochPlain(Long.MIN_VALUE);
-    this.setRetireEpochPlain(Long.MAX_VALUE);
+    this.setMinEpochPlain(Long.MIN_VALUE);
+    this.setMaxEpochPlain(Long.MAX_VALUE);
   }
 
-  final long getBirthEpochPlain() {
-    return (long) BIRTH_EPOCH.get(this);
+  final long getMinEpochPlain() {
+    return (long) MIN_EPOCH.get(this);
   }
 
-  final long getBirthEpochAcquire() {
-    return (long) BIRTH_EPOCH.getAcquire(this);
+  final long getMinEpochAcquire() {
+    return (long) MIN_EPOCH.getAcquire(this);
   }
 
-  final long getBirthEpochVolatile() {
-    return (long) BIRTH_EPOCH.getVolatile(this);
+  final long getMinEpochVolatile() {
+    return (long) MIN_EPOCH.getVolatile(this);
   }
 
-  final void setBirthEpochPlain(long e) {
-    BIRTH_EPOCH.set(this, e);
+  final void setMinEpochPlain(long e) {
+    MIN_EPOCH.set(this, e);
   }
 
-  final void decreaseBirthEpochRelease(long by) {
-    BIRTH_EPOCH.getAndAddRelease(this, -by);
+  final void decreaseMinEpochRelease(long by) {
+    MIN_EPOCH.getAndAddRelease(this, -by);
   }
 
-  final long getRetireEpochPlain() {
-    return (long) RETIRE_EPOCH.get(this);
+  final long getMaxEpochPlain() {
+    return (long) MAX_EPOCH.get(this);
   }
 
-  final long getRetireEpochAcquire() {
-    return (long) RETIRE_EPOCH.getAcquire(this);
+  final long getMaxEpochAcquire() {
+    return (long) MAX_EPOCH.getAcquire(this);
   }
 
-  final long getRetireEpochVolatile() {
-    return (long) RETIRE_EPOCH.getVolatile(this);
+  final long getMaxEpochVolatile() {
+    return (long) MAX_EPOCH.getVolatile(this);
   }
 
-  final void setRetireEpochPlain(long e) {
-    RETIRE_EPOCH.set(this, e);
+  final void setMaxEpochPlain(long e) {
+    MAX_EPOCH.set(this, e);
   }
 
-  final void increaseRetireEpochRelease(long by) {
-    RETIRE_EPOCH.getAndAddRelease(this, by);
+  final void increaseMaxEpochRelease(long by) {
+    MAX_EPOCH.getAndAddRelease(this, by);
   }
 }

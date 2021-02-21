@@ -67,7 +67,7 @@ final class ThreadContext(
           }
           if (!EMCAS.replaceDescriptorIfFree(wd.address, wd, nv, this)) {
             // TODO: 'plain' might not be enough
-            if (Math.abs(this.global.getEpoch() - wd.getRetireEpochPlain()) >= giveUpAt) {
+            if (Math.abs(this.global.getEpoch() - wd.getMaxEpochPlain()) >= giveUpAt) {
               true
             } else {
               false

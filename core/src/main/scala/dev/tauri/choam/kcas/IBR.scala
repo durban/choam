@@ -166,8 +166,8 @@ private[kcas] final object IBR {
         this.reservation.setUpper(epoch)
       }
       // plain: will be published with release/volatile
-      elem.setBirthEpochPlain(epoch)
-      elem.setRetireEpochPlain(epoch)
+      elem.setMinEpochPlain(epoch)
+      elem.setMaxEpochPlain(epoch)
     }
 
     final def startOp(): Unit = {
@@ -197,12 +197,12 @@ private[kcas] final object IBR {
         val m: IBRManaged[_, _] = a.asInstanceOf[IBRManaged[_, _]]
         val res: IBRReservation = this.reservation
         val currUpper = res.getUpperAcquire()
-        // we read `m` (that is, `a`) with acquire, so we can read birthEpoch with plain:
-        val mbe = m.getBirthEpochPlain()
-        val ok1 = if (mbe > currUpper) {
-          res.setUpper(mbe)
-          // we'll have to re-check the birth/retire epoch,
-          // because between reading the birth/retire epoch,
+        // we read `m` (that is, `a`) with acquire, so we can read minEpoch with plain:
+        val min = m.getMinEpochPlain()
+        val ok1 = if (min > currUpper) {
+          res.setUpper(min)
+          // we'll have to re-check the min/max epoch,
+          // because between reading the min/max epoch,
           // and writing it to our reservation, someone else
           // might've determined that `m` is not in use
           false
@@ -212,9 +212,9 @@ private[kcas] final object IBR {
         }
         val currLower = res.getLowerAcquire()
         // as above, plain is enough here:
-        val mre = m.getRetireEpochPlain()
-        val ok2 = if (mre < currLower) {
-          res.setLower(mre)
+        val max = m.getMaxEpochPlain()
+        val ok2 = if (max < currLower) {
+          res.setLower(max)
           // as above, we'll have to re-check:
           false
         } else {
@@ -280,11 +280,11 @@ private[kcas] final object IBR {
                 isConflict()
               } else {
                 val conflict = (
-                  // We've read `block` from a `Ref`, thus if its birth/retire
+                  // We've read `block` from a `Ref`, thus if its min/max
                   // epochs change later, that is a spurious change we don't need.
                   // Because of this, a plain read is enough here.
-                  (block.getBirthEpochPlain() <= tc.reservation.getUpperAcquire()) &&
-                  (block.getRetireEpochPlain() >= tc.reservation.getLowerAcquire())
+                  (block.getMinEpochPlain() <= tc.reservation.getUpperAcquire()) &&
+                  (block.getMaxEpochPlain() >= tc.reservation.getLowerAcquire())
                 )
                 if (conflict) true
                 else isConflict() // continue

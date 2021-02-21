@@ -186,23 +186,23 @@ private[kcas] object EMCAS extends KCAS { self =>
      * Assumption: we only ever extend intervals (never narrow them).
      *
      * Also note, that after a descriptor is installed into a `Ref`, its
-     * birth/retire epochs only change if another thread is still executing
+     * min/max epochs only change if another thread is still executing
      * this method. However, in that case, the CAS after this method will
      * fail for sure (since it was already installed). Thus, we don't need
      * to re-check after extending the interval.
      */
     def extendInterval[A](oldWd: WordDescriptor[A], newWd: WordDescriptor[A]): Unit = {
-      val newBirth = newWd.getBirthEpochAcquire()
-      val oldBirth = oldWd.getBirthEpochAcquire()
-      if (oldBirth < newBirth) {
+      val newMin = newWd.getMinEpochAcquire()
+      val oldMin = oldWd.getMinEpochAcquire()
+      if (oldMin < newMin) {
         // FAA atomically decreases the value:
-        newWd.decreaseBirthEpochRelease(newBirth - oldBirth)
+        newWd.decreaseMinEpochRelease(newMin - oldMin)
       }
-      val newRetire = newWd.getRetireEpochAcquire()
-      val oldRetire = oldWd.getRetireEpochAcquire()
-      if (oldRetire > newRetire) {
+      val newMax = newWd.getMaxEpochAcquire()
+      val oldMax = oldWd.getMaxEpochAcquire()
+      if (oldMax > newMax) {
         // FAA atomically increases the value:
-        newWd.increaseRetireEpochRelease(oldRetire - newRetire)
+        newWd.increaseMaxEpochRelease(oldMax - newMax)
       }
     }
 

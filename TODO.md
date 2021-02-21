@@ -21,7 +21,7 @@
 
 ## Bugs
 
-- ???
+- `Exchanger` is not working yet
 
 ## Other improvements
 
@@ -43,7 +43,6 @@
   - React interpreter (external interpreter?)
   - Review writes/reads in EMCAS, check if we can relax them
 - Cleanup:
-  - Birth/retire epochs are not really descriptive any more; find better names
   - Review benchmarks, remove useless ones
 - Finish Ctrie
 - Scala 3

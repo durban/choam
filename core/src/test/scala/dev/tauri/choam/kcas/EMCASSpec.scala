@@ -205,7 +205,7 @@ class EMCASSpec extends BaseSpecA {
     t.start()
     latch1.await()
     val descOld = EMCAS.addCas(EMCAS.start(ctx), r, "x", "y", ctx)
-    val oldEpoch = descOld.words.get(0).getBirthEpochVolatile()
+    val oldEpoch = descOld.words.get(0).getMinEpochVolatile()
     if (oldEpoch =!= epoch) {
       // This could happen with a low probability,
       // in which case we restart the whole test case,
@@ -217,7 +217,7 @@ class EMCASSpec extends BaseSpecA {
       assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeTryRead(), descOld.words.get(0))
       ctx.forceNextEpoch()
       val descNew = EMCAS.addCas(EMCAS.start(ctx), r, "y", "z", ctx)
-      val newEpoch = descNew.words.get(0).getBirthEpochVolatile()
+      val newEpoch = descNew.words.get(0).getMinEpochVolatile()
       assert(clue(newEpoch) > clue(oldEpoch))
       assert(EMCAS.tryPerform(descNew, ctx))
       assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeTryRead(), descNew.words.get(0))
