@@ -18,19 +18,19 @@
 package dev.tauri.choam
 package async
 
-final class AsyncStack2[F[_], A] private (
+private[choam] final class AsyncStack2[F[_], A] private (
   elements: TreiberStack[A],
   waiters: TreiberStack[Promise[F, A]]
-) {
+) extends AsyncStack[F, A] {
 
-  val push: Reaction[A, Unit] = {
+  override val push: Reaction[A, Unit] = {
     this.waiters.tryPop.flatMapU {
       case None => this.elements.push
       case Some(p) => p.complete.discard
     }
   }
 
-  def pop(implicit F: Reactive.Async[F]): F[A] = {
+  override def pop(implicit F: Reactive.Async[F]): F[A] = {
     val r: Action[Either[Promise[F, A], A]] = Promise[F, A].flatMapU { p =>
       this.elements.tryPop.flatMapU {
         case Some(a) => Action.ret(Right(a))
@@ -45,9 +45,9 @@ final class AsyncStack2[F[_], A] private (
   }
 }
 
-object AsyncStack2 {
+private[choam] object AsyncStack2 {
 
-  def apply[F[_], A]: Action[AsyncStack2[F, A]] = {
+  def apply[F[_], A]: Action[AsyncStack[F, A]] = {
     TreiberStack[A].flatMap { es =>
       TreiberStack[Promise[F, A]].map { ws =>
         new AsyncStack2[F, A](es, ws)
