@@ -261,7 +261,17 @@ object React extends ReactInstances0 {
       F.run(self, a)
   }
 
+  // TODO: if `Action[A]` is `React[Any, A]`, then this should be `AnyReactSyntax`
   implicit final class UnitReactSyntax[A](private val self: React[Unit, A]) extends AnyVal {
+
+    // TODO: maybe this should be the default `flatMap`? (Not sure...)
+    final def flatMapU[X, C](f: A => React[X, C]): React[X, C] = {
+      val self2: React[X, (X, A)] =
+        React.arrowChoiceInstance.second[Unit, A, X](self).lmap[X](x => (x, ()))
+      val comp: React[(X, A), C] =
+        React.computed[(X, A), C](xb => f(xb._2).lmap[Unit](_ => xb._1))
+      self2 >>> comp
+    }
 
     final def run[F[_]](implicit F: Reactive[F]): F[A] =
       F.run(self, ())
