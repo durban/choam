@@ -20,7 +20,7 @@ package async
 
 private[choam] final class AsyncStack2[F[_], A] private (
   elements: TreiberStack[A],
-  waiters: TreiberStack[Promise[F, A]]
+  waiters: TreiberStack[Promise[F, A]] // TODO: this should be a queue (FIFO)
 ) extends AsyncStack[F, A] {
 
   override val push: Reaction[A, Unit] = {

@@ -50,6 +50,9 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
   }
 
   private[this] def findAndEnqueue(node: Node[A]): React[Unit, Unit] = {
+    // TODO: This is incorrect! The first `invisibleRead` will
+    // TODO: be the reaction, and the other operations will not
+    // TODO: compose, if that reaction is composed.
     tail.invisibleRead.postCommit(React.computed { (n: Node[A]) =>
       n.next.invisibleRead.flatMap {
         case e @ End() =>
