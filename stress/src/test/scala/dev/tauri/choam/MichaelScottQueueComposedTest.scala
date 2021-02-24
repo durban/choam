@@ -30,7 +30,7 @@ import cats.effect.SyncIO
 @State
 @Description("Michael-Scott queue enq/deq should be composable")
 @Outcomes(Array(
-  new Outcome(id = Array("List(c, d), List(a, b)"), expect = ACCEPTABLE, desc = ""),
+  new Outcome(id = Array("List(c, d), List(a, b)"), expect = ACCEPTABLE, desc = "the only valid result")
 ))
 class MichaelScottQueueComposedTest extends StressTestBase {
 
