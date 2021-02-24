@@ -24,7 +24,7 @@ final class MichaelScottQueueSpec_NaiveKCAS_SyncIO
   with MichaelScottQueueSpec[SyncIO]
   with SpecNaiveKCAS
 
-final class MichaelScottQueueSpecEMCAS
+final class MichaelScottQueueSpec_EMCAS_SyncIO
   extends BaseSpecSyncIO
   with MichaelScottQueueSpec[SyncIO]
   with SpecEMCAS
@@ -34,5 +34,17 @@ trait MichaelScottQueueSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec 
   test("MichaelScottQueue should include the elements passed to its constructor") {
     assertResultF(new MichaelScottQueue[Int]().unsafeToList[F], Nil)
     assertResultF(new MichaelScottQueue[Int](1 :: 2 :: 3 :: Nil).unsafeToList[F], 1 :: 2 :: 3 :: Nil)
+  }
+
+  test("MichaelScottQueue transfer") {
+    val q1 = new MichaelScottQueue[Int](1 :: 2 :: 3 :: Nil)
+    val q2 = new MichaelScottQueue[Int](List.empty[Int])
+    val r = q1.tryDeque.map(_.getOrElse(0)) >>> q2.enqueue
+    for {
+      _ <- r.run[F]
+      _ <- r.run[F]
+      _ <- assertResultF(q1.unsafeToList[F], List(3))
+      _ <- assertResultF(q2.unsafeToList[F], List(1, 2))
+    } yield ()
   }
 }

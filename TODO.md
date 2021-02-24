@@ -24,6 +24,8 @@
 - `Exchanger` is not working yet
 - `AsyncStack2` has failing tests (and TODOs in the code)
 - `MichaelScottQueue`: `findAndEnqueue` is incorrect (see comment there)
+  - "prepare" actions could help (similar to postCommit, but before the reaction)
+  - see also `MichaelScottQueueComposedTest`
 
 ## Other improvements
 
@@ -56,6 +58,8 @@
 - API cleanup:
   - separate unsafe/low-level API for `invisibleRead` and other dangerous
     - (unsafe) thread-confined mode for running a `React` (with `NaiveKCAS` or something even more simple)
+    - unsafe: invisibleRead, cas, alwaysRetry, ...
+    - unsafe: `delay` (but: safe `postCommitDelay`, or similar)
   - move `KCAS` into separate JAR, figure out proper API (`choam-kcas` or `choam-mcas`)
   - compare with `Ref` in cats-effect: similar things should have similar names
   - Create an equivalent of `cats.effect.Ref#access`
