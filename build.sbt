@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-scalaVersion in ThisBuild := "2.13.4" // TODO: "3.0.0-M3"
+scalaVersion in ThisBuild := "2.13.5" // TODO: "3.0.0-M3"
 crossScalaVersions in ThisBuild := Seq((scalaVersion in ThisBuild).value)
 scalaOrganization in ThisBuild := "org.scala-lang"
 
@@ -114,7 +114,7 @@ lazy val commonSettings = Seq[Setting[_]](
   ).flatten,
   libraryDependencies ++= (
     if (!isDotty.value) {
-      List(compilerPlugin("org.typelevel" % "kind-projector" % "0.11.1" cross CrossVersion.full))
+      List(compilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full))
     } else {
       Nil
     }

@@ -42,7 +42,7 @@ final object StmQueueC {
 
 final object StmQueueCLike {
 
-  def apply[S[F[_]] <: STMLike[F], F[_] : Concurrent](s: S[F]): StmQueueCLike[S, F] { val stm: s.type {} } =
+  def apply[S[F[_]] <: STMLike[F], F[_]](s: S[F]): StmQueueCLike[S, F] { val stm: s.type {} } =
     new StmQueueCLike[S, F] { val stm: s.type = s }
 }
 
