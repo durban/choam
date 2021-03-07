@@ -24,7 +24,6 @@
 - `Exchanger` is not working yet
 - `AsyncStack2` has failing tests (and TODOs in the code)
 - `MichaelScottQueue`: `findAndEnqueue` is incorrect (see comment there)
-  - "prepare" actions could help (similar to postCommit, but before the reaction)
   - see also `MichaelScottQueueComposedTest`
 
 ## Other improvements

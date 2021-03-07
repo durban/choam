@@ -46,6 +46,12 @@ final class ThreadContext(
     s"ThreadContext(global = ${this.global}, tid = ${this.tid})"
   }
 
+  private[choam] var maxBackoff: Int =
+    16
+
+  private[choam] var randomizeBackoff: Boolean =
+    true
+
   final def finalized(desc: EMCASDescriptor, limit: Int = 256, replace: Int = 256): Unit = {
     desc.next = this.finalizedDescriptors
     this.finalizedDescriptors = desc

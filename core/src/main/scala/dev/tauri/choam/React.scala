@@ -65,6 +65,8 @@ sealed abstract class React[-A, +B] {
      */
 
     val ctx = kcas.currentContext()
+    ctx.maxBackoff = maxBackoff
+    ctx.randomizeBackoff = randomizeBackoff
 
     @tailrec
     def go[C](partialResult: C, cont: React[C, B], rea: Reaction, desc: EMCASDescriptor, alts: List[SnapJump[_, B]], retries: Int): Success[B] = {
@@ -252,6 +254,10 @@ object React extends ReactInstances0 {
 
   final object unsafe {
 
+    // TODO: better name
+    def delayComputed[A, B](prepare: React[A, React[Unit, B]]): React[A, B] =
+      new DelayComputed[A, B, B](prepare, Commit[B]())
+
     def exchanger[A, B]: Action[Exchanger[A, B]] =
       Exchanger.apply[A, B]
   }
@@ -356,7 +362,7 @@ object React extends ReactInstances0 {
     new Commit[Any]
 
   @inline
-  private def Commit[A](): Commit[A] =
+  private[this] def Commit[A](): Commit[A] =
     this.commitInstance.asInstanceOf[Commit[A]]
 
   private sealed abstract class AlwaysRetry[A, B]()
@@ -458,6 +464,49 @@ object React extends ReactInstances0 {
       s"Computed(<function>, ${k})"
   }
 
+  private final class DelayComputed[A, B, C](prepare: React[A, React[Unit, B]], k: React[B, C])
+    extends React[A, C] {
+
+    override def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] = {
+      // Note: we're performing `prepare` here directly;
+      // as a consequence of this, `prepare` will not
+      // be part of the atomic reaction, but it runs here
+      // as a side-effect.
+      val r: React[Unit, B] = prepare.unsafePerform(
+        a,
+        ctx.impl,
+        maxBackoff = ctx.maxBackoff,
+        randomizeBackoff = ctx.randomizeBackoff
+      )
+      maybeJump(n, (), r >>> k, ops, desc, ctx)
+    }
+
+    override def andThenImpl[D](that: React[C, D]): React[A, D] = {
+      new DelayComputed(prepare, k >>> that)
+    }
+
+    override def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] = {
+      new DelayComputed[(A, D), (B, D), (C, E)](
+        prepare.firstImpl[D].map { case (r, d) =>
+          r.map { b => (b, d) }
+        },
+        k × that
+      )
+    }
+
+    override def firstImpl[D]: React[(A, D), (C, D)] = {
+      new DelayComputed[(A, D), (B, D), (C, D)](
+        prepare.firstImpl[D].map { case (r, d) =>
+          r.map { b => (b, d) }
+        },
+        k.firstImpl[D]
+      )
+    }
+
+    override def toString =
+      s"DelayComputed(${prepare}, ${k})"
+  }
+
   private final class Choice[A, B](first: React[A, B], second: React[A, B])
       extends React[A, B] {
 
@@ -553,7 +602,7 @@ object React extends ReactInstances0 {
     override protected[choam] def firstImpl[D]: React[(A, D), (C, D)] =
       new Tok[(A, D), (B, D), (C, D)](tFirst[D], k.firstImpl[D])
 
-    private def tFirst[D](ad: (A, D), tok: Token): (B, D) =
+    private[this] def tFirst[D](ad: (A, D), tok: Token): (B, D) =
       (t(ad._1, tok), ad._2)
 
     final override def toString =
@@ -581,7 +630,7 @@ object React extends ReactInstances0 {
     final override def toString =
       s"Upd(${ref}, <function>, ${k})"
 
-    private def fFirst[D](ox: X, ad: (A, D)): (X, (B, D)) = {
+    private[this] def fFirst[D](ox: X, ad: (A, D)): (X, (B, D)) = {
       val (x, b) = this.f(ox, ad._1)
       (x, (b, ad._2))
     }

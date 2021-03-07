@@ -403,25 +403,91 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("Post-commit actions should be executed") {
     for {
-      r1 <- React.newRef("x").run[F]
+      r1 <- React.newRef("a").run[F]
       r2 <- React.newRef("").run
       r3 <- React.newRef("").run
       r = r1.upd[Unit, String] { case (s, _) =>
-        val r = s + "x"
+        val r = s + "a"
         (r, r)
       }
       pc1 = r.postCommit(r2.upd[String, Unit] { case (_, x) => (x, ()) })
       pc2 = pc1.postCommit(r3.upd[String, Unit] { case (_, x) => (x, ()) })
 
-      _ <- assertResultF(pc1.run[F], "xx")
-      _ <- assertResultF(r1.invisibleRead.run[F], "xx")
-      _ <- assertResultF(r2.invisibleRead.run[F], "xx")
+      _ <- assertResultF(pc1.run[F], "aa")
+      _ <- assertResultF(r1.invisibleRead.run[F], "aa")
+      _ <- assertResultF(r2.invisibleRead.run[F], "aa")
       _ <- assertResultF(r3.invisibleRead.run[F], "")
 
-      _ <- assertResultF(pc2.run[F], "xxx")
-      _ <- assertResultF(r1.invisibleRead.run[F], "xxx")
-      _ <- assertResultF(r2.invisibleRead.run[F], "xxx")
-      _ <- assertResultF(r3.invisibleRead.run[F], "xxx")
+      _ <- assertResultF(pc2.run[F], "aaa")
+      _ <- assertResultF(r1.invisibleRead.run[F], "aaa")
+      _ <- assertResultF(r2.invisibleRead.run[F], "aaa")
+      _ <- assertResultF(r3.invisibleRead.run[F], "aaa")
+    } yield ()
+  }
+
+  test("delayComputed prepare is not part of the reaction") {
+
+    final case class Node(value: Ref[String], next: Ref[Node])
+
+    object Node {
+
+      def newSentinel(): Node =
+        Node(Ref.mk(null), Ref.mk(null))
+
+      def fromList(l: List[String]): Node = l match {
+        case Nil =>
+          newSentinel()
+        case h :: t =>
+          Node(value = Ref.mk(h), next = Ref.mk(fromList(t)))
+      }
+
+      def pop(head: Ref[Node]): React[Unit, String] = React.unsafe.delayComputed {
+        head.invisibleRead.flatMap { h =>
+          h.value.invisibleRead.flatMap {
+            case null =>
+              // sentinel node, discard it and retry:
+              h.next.getter.flatMap { nxt =>
+                head.cas(h, nxt)
+              }.as(React.retry)
+            case v =>
+              // found the real head, pop it:
+              React.ret(h.next.getter.flatMap { nxt =>
+                head.cas(h, nxt).flatMap { _ =>
+                  h.value.cas(v, v)
+                }
+              }.as(v))
+          }
+        }
+      }
+    }
+
+    for {
+      _ <- F.delay { this.assume(this.kcasImpl ne kcas.KCAS.NaiveKCAS) } // TODO: fix with naive k-CAS
+      // sanity check:
+      lst0 = List[String](null, "a", "b", null, "c")
+      lst1 <- F.delay { Ref.mk(Node.fromList(lst0)) }
+      lst2 <- F.tailRecM((List.empty[String], lst1)) { case (acc, ref) =>
+        ref.getter.flatMap { node =>
+          if (node eq null) {
+            // there is an extra sentinel at the end:
+            React.ret(Right[(List[String], Ref[Node]), List[String]](acc.tail.reverse))
+          } else {
+            node.value.getter.map { v =>
+              Left[(List[String], Ref[Node]), List[String]]((v :: acc, node.next))
+            }
+          }
+        }.run[F]
+      }
+      _ <- assertEqualsF(lst2, lst0)
+      // real test:
+      r1 <- F.delay { Ref.mk(Node.fromList(List[String](null, "a", "b", null, "x"))) }
+      r2 <- F.delay { Ref.mk(Node.fromList(List[String](null, "c", null, null, "d", "y"))) }
+      popBoth = (Node.pop(r1) * Node.pop(r2)).run[F]
+      _ <- assertResultF(popBoth, ("a", "c"))
+      _ <- assertResultF(popBoth, ("b", "d"))
+      _ <- assertResultF(popBoth, ("x", "y"))
+      _ <- assertResultF(r1.invisibleRead.flatMap(_.value.invisibleRead).run[F], null)
+      _ <- assertResultF(r2.invisibleRead.flatMap(_.value.invisibleRead).run[F], null)
     } yield ()
   }
 
