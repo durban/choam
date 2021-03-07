@@ -24,9 +24,7 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.SyncIO
 
-// TODO: This test is disabled, because currently
-// TODO: the `enqueue` operation is not composable.
-// @JCStressTest
+@JCStressTest
 @State
 @Description("Michael-Scott queue enq/deq should be composable")
 @Outcomes(Array(

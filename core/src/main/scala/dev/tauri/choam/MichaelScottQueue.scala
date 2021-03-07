@@ -50,19 +50,16 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
   }
 
   private[this] def findAndEnqueue(node: Node[A]): React[Unit, Unit] = {
-    // TODO: This is incorrect! The first `invisibleRead` will
-    // TODO: be the reaction, and the other operations will not
-    // TODO: compose, if that reaction is composed.
-    tail.invisibleRead.postCommit(React.computed { (n: Node[A]) =>
+    React.unsafe.delayComputed(tail.invisibleRead.flatMap { (n: Node[A]) =>
       n.next.invisibleRead.flatMap {
         case e @ End() =>
-          // found true tail; CAS, and try to adjust the tail ref:
-          n.next.cas(e, node).postCommit(tail.cas(n, node).?.rmap(_ => ()))
+          // found true tail; will CAS, and try to adjust the tail ref:
+          React.ret(n.next.cas(e, node).postCommit(tail.cas(n, node).?.void))
         case nv @ Node(_, _) =>
-          // not the true tail; try to catch up, and retry:
-          tail.cas(n, nv).?.postCommit(React.computed(_ => findAndEnqueue(node))).rmap(_ => ())
+          // not the true tail; try to catch up, and will retry:
+          tail.cas(n, nv).?.map(_ => React.retry)
       }
-    }).rmap(_ => ())
+    })
   }
 
   private[choam] def unsafeToList[F[_]](implicit F: Reactive[F]): F[List[A]] = {

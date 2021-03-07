@@ -23,8 +23,6 @@
 
 - `Exchanger` is not working yet
 - `AsyncStack2` has failing tests (and TODOs in the code)
-- `MichaelScottQueue`: `findAndEnqueue` is incorrect (see comment there)
-  - see also `MichaelScottQueueComposedTest`
 
 ## Other improvements
 
