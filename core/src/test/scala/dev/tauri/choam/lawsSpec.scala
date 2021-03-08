@@ -38,7 +38,13 @@ final class LawsSpecEMCAS
 
 trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
 
-  implicit def arbReact[A, B](implicit arbA: Arbitrary[A], arbB: Arbitrary[B], arbAB: Arbitrary[A => B]): Arbitrary[React[A, B]] = Arbitrary {
+  implicit def arbReact[A, B](
+    implicit
+    arbA: Arbitrary[A],
+    arbB: Arbitrary[B],
+    arbAB: Arbitrary[A => B],
+    arbAA: Arbitrary[A => A]
+  ): Arbitrary[React[A, B]] = Arbitrary {
     Gen.oneOf(
       arbAB.arbitrary.map(ab => React.lift[A, B](ab)),
       arbAB.arbitrary.map(ab => React.identity[A] >>> React.lift[A, B](ab)),
@@ -78,6 +84,16 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
         } yield {
           val ref = Ref.mk[B](b)
           r.postCommit(ref.upd[B, Unit] { case (_, _) => (b2, ()) })
+        }
+      },
+      Gen.lzy {
+        for {
+          a <- arbA.arbitrary
+          aa <- arbAA.arbitrary
+          r <- arbReact[A, B].arbitrary
+        } yield {
+          val ref = Ref.mk[A](a)
+          React.unsafe.delayComputed(prepare = r.map(b => ref.modify(aa).map(_ => b)))
         }
       }
     )
