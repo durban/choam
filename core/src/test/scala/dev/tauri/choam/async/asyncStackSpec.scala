@@ -98,13 +98,6 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("pop on an empty stack should work with racing pushes") {
-    this.assume(
-      this
-        .newStack[IO, String]
-        .unsafeRunSync()(cats.effect.unsafe.implicits.global)
-        .isInstanceOf[AsyncStack1[IO, String]],
-      "AsyncStack2 can't pass this test yet"
-    )
     for {
       s <- newStack[F, String]
       f1 <- s.pop.start
@@ -119,13 +112,6 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("pops should be served in a FIFO manner") {
-    this.assume(
-      this
-        .newStack[IO, String]
-        .unsafeRunSync()(cats.effect.unsafe.implicits.global)
-        .isInstanceOf[AsyncStack1[IO, String]],
-      "AsyncStack2 can't pass this test yet"
-    )
     for {
       s <- newStack[F, String]
       f1 <- s.pop.start

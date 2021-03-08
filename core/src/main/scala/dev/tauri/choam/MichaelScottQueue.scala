@@ -87,4 +87,7 @@ object MichaelScottQueue {
   private sealed trait Elem[A]
   private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
   private final case class End[A]() extends Elem[A]
+
+  def apply[A]: Action[MichaelScottQueue[A]] =
+    Action.delay { _ => new MichaelScottQueue }
 }

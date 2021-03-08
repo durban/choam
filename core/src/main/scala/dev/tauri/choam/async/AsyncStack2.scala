@@ -20,11 +20,11 @@ package async
 
 private[choam] final class AsyncStack2[F[_], A] private (
   elements: TreiberStack[A],
-  waiters: TreiberStack[Promise[F, A]] // TODO: this should be a queue (FIFO)
+  waiters: MichaelScottQueue[Promise[F, A]]
 ) extends AsyncStack[F, A] {
 
   override val push: Reaction[A, Unit] = {
-    this.waiters.tryPop.flatMapU {
+    this.waiters.tryDeque.flatMapU {
       case None => this.elements.push
       case Some(p) => p.complete.discard
     }
@@ -34,7 +34,7 @@ private[choam] final class AsyncStack2[F[_], A] private (
     val r: Action[Either[Promise[F, A], A]] = Promise[F, A].flatMapU { p =>
       this.elements.tryPop.flatMapU {
         case Some(a) => Action.ret(Right(a))
-        case None => this.waiters.push.lmap[Any] { _ => p }.map { _ => Left(p) }
+        case None => this.waiters.enqueue.lmap[Any] { _ => p }.map { _ => Left(p) }
       }
     }
 
@@ -49,7 +49,7 @@ private[choam] object AsyncStack2 {
 
   def apply[F[_], A]: Action[AsyncStack[F, A]] = {
     TreiberStack[A].flatMap { es =>
-      TreiberStack[Promise[F, A]].map { ws =>
+      MichaelScottQueue[Promise[F, A]].map { ws =>
         new AsyncStack2[F, A](es, ws)
       }
     }
