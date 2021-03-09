@@ -137,6 +137,7 @@ sealed abstract class React[-A, +B] {
 
   protected[choam] def firstImpl[C]: React[(A, C), (B, C)]
 
+  // TODO: add `contramap` alias
   final def lmap[X](f: X => A): React[X, B] =
     lift(f) >>> this
 
@@ -145,6 +146,8 @@ sealed abstract class React[-A, +B] {
 
   final def map[C](f: B => C): React[A, C] =
     rmap(f)
+
+  // TODO: add `dimap`
 
   final def map2[X <: A, C, D](that: React[X, C])(f: (B, C) => D): React[X, D] =
     (this * that).map(f.tupled)

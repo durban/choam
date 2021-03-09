@@ -27,7 +27,7 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
   private[this] val tail: Ref[Node[A]] = Ref.mk(sentinel)
 
   def this(els: Iterable[A]) =
-    this(Node(nullOf[A], Ref.mk(End[A]())), els)
+    this(Node(nullOf[Ref[A]], Ref.mk(End[A]())), els)
 
   def this() =
     this(Iterable.empty)
@@ -35,18 +35,42 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
   val tryDeque: React[Unit, Option[A]] = {
     for {
       node <- head.invisibleRead
-      next <- node.next.invisibleRead
-      res <- next match {
-        case n @ Node(a, _) =>
-          head.cas(node, n.copy(data = nullOf[A])) >>> React.ret(Some(a))
-        case End() =>
+      an <- skipTombs(from = node.next)
+      res <- an match {
+        case None =>
+          // empty queue:
           head.cas(node, node) >>> React.ret(None)
+        case Some((a, n)) =>
+          // deque first node (and drop tombs before it):
+          head.cas(node, n.copy(data = nullOf[Ref[A]])) >>> React.ret(Some(a))
       }
     } yield res
   }
 
+  private[this] def skipTombs(from: Ref[Elem[A]]): React[Unit, Option[(A, Node[A])]] = {
+    from.invisibleRead.flatMapU {
+      case n @ Node(dataRef, nextRef) =>
+        dataRef.invisibleRead.flatMapU { a =>
+          if (isNull(a)) {
+            // found a tombstone (no need to validate, since once
+            // it's tombed, it will never be resurrected)
+            skipTombs(nextRef)
+          } else {
+            // CAS data, to make sure it is not tombed concurrently:
+            dataRef.cas(a, a).lmap[Any](_ => ()).map(_ => Some((a, n)))
+          }
+        }
+      case End() =>
+        React.ret(None)
+    }
+  }
+
   val enqueue: React[A, Unit] = React.computed { (a: A) =>
-    findAndEnqueue(Node(a, Ref.mk(End[A]())))
+    Ref[Elem[A]](End[A]()).flatMap { nextRef =>
+      Ref(a).flatMap { dataRef =>
+        findAndEnqueue(Node(dataRef, nextRef))
+      }
+    }
   }
 
   private[this] def findAndEnqueue(node: Node[A]): React[Unit, Unit] = {
@@ -62,6 +86,31 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
     })
   }
 
+  /** Removes a single instance of the input */
+  val remove: React[A, Boolean] = React.computed { (a: A) =>
+    head.invisibleRead.flatMapU { h =>
+      findAndTomb(a, h.next)
+    }
+  }
+
+  private[this] def findAndTomb(item: A, from: Ref[Elem[A]]): React[Unit, Boolean] = {
+    from.invisibleRead.flatMap {
+      case Node(dataRef, nextRef) =>
+        dataRef.invisibleRead.flatMap { a =>
+          if (equ(a, item)) {
+            // found it
+            dataRef.cas(a, nullOf[A]).map(_ => true)
+          } else {
+            // continue search:
+            findAndTomb(item, nextRef)
+          }
+        }
+      case e @ End() =>
+        // TODO: do we need this CAS?
+        from.cas(e, e) >>> React.ret(false)
+    }
+  }
+
   private[choam] def unsafeToList[F[_]](implicit F: Reactive[F]): F[List[A]] = {
 
     def go(e: Elem[A], acc: List[A]): F[List[A]] = e match {
@@ -69,7 +118,12 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
         // sentinel
         F.monad.flatMap(F.run(next.invisibleRead, ())) { go(_, acc) }
       case Node(a, next) =>
-        F.monad.flatMap(F.run(next.invisibleRead, ())) { go(_, a :: acc) }
+        F.monad.flatMap(F.run(next.invisibleRead, ())) { e =>
+          F.monad.flatMap(F.run(a.invisibleRead, ())) { a =>
+            if (isNull(a)) go(e, acc) // tombstone
+            else go(e, a :: acc)
+          }
+        }
       case End() =>
         F.monad.pure(acc)
     }
@@ -85,7 +139,13 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
 object MichaelScottQueue {
 
   private sealed trait Elem[A]
-  private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
+
+  /**
+   * Sentinel node (head and tail): `data` is `null` (not a `Ref`).
+   * Deleted (tombstone) node: `data` is a `Ref` which contains `null`.
+   */
+  private final case class Node[A](data: Ref[A], next: Ref[Elem[A]]) extends Elem[A]
+
   private final case class End[A]() extends Elem[A]
 
   def apply[A]: Action[MichaelScottQueue[A]] =
