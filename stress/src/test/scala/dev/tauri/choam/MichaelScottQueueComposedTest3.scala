@@ -30,8 +30,7 @@ import kcas.Ref
 @Outcomes(Array(
   new Outcome(id = Array("(None,false), true"), expect = ACCEPTABLE, desc = "deq was first"),
   new Outcome(id = Array("(Some(a),true), false"), expect = ACCEPTABLE, desc = "enq was first"),
-  // TODO: this is not acceptable, but a bug:
-  new Outcome(id = Array("(None,true), false"), expect = ACCEPTABLE_INTERESTING, desc = "enq was first, but deq sees empty")
+  new Outcome(id = Array("(None,true), false"), expect = FORBIDDEN, desc = "enq was first, but deq sees empty")
 ))
 class MichaelScottQueueComposedTest3 extends StressTestBase {
 

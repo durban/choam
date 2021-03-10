@@ -38,9 +38,11 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
       next <- node.next.invisibleRead
       res <- next match {
         case n @ Node(a, _) =>
+          // No need to also validate `node.next`, since
+          // it is not the last node (thus it won't change).
           head.cas(node, n.copy(data = nullOf[A])) >>> React.ret(Some(a))
         case End() =>
-          head.cas(node, node) >>> React.ret(None)
+          head.cas(node, node) >>> node.next.cas(next, next) >>> React.ret(None)
       }
     } yield res
   }

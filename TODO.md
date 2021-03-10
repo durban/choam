@@ -23,7 +23,6 @@
 
 - `Exchanger` is not working yet
 - `AsyncStack2` has a failing test (and a TODO in the code)
-- `MichaelScottQueueComposedTest3`
 
 ## Other improvements
 
