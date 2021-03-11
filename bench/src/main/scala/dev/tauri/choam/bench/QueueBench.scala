@@ -112,7 +112,7 @@ object QueueBench {
   @State(Scope.Benchmark)
   class MsSt {
     val runtime = cats.effect.unsafe.IORuntime.global
-    val michaelScottQueue = new MichaelScottQueue[String](Prefill.prefill())
+    val michaelScottQueue = MichaelScottQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
   }
 
   @State(Scope.Benchmark)

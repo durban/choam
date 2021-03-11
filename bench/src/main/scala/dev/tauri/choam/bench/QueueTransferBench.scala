@@ -111,12 +111,14 @@ object QueueTransferBench {
     var deq: React[Unit, Unit] = _
     var enq: React[String, Unit] = _
 
-    val queue0 = new MichaelScottQueue[String](Prefill.prefill())
-    var queues: List[MichaelScottQueue[String]] = _
+    val queue0 = MichaelScottQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
+    var queues: List[Queue[String]] = _
 
     @Setup
     def setup(): Unit = {
-      this.queues = List.fill(this.txSize) { new MichaelScottQueue[String](Prefill.prefill()) }
+      this.queues = List.fill(this.txSize) {
+        MichaelScottQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
+      }
       this.deq = this.queue0.tryDeque.flatMap {
         case Some(s) => this.queues.map(_.enqueue).reduce { (x, y) =>
           (x * y).discard

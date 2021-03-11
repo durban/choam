@@ -17,11 +17,6 @@
 
 package dev.tauri.choam
 
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicBoolean
-
-import scala.jdk.CollectionConverters._
-
 import cats.{ Applicative, Monad }
 import cats.arrow.ArrowChoice
 import cats.implicits._
@@ -504,101 +499,6 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         case Right(r) =>
           failF(s"Unexpected success: ${r}")
       }
-    } yield ()
-  }
-
-  test("Michael-Scott queue should work correctly") {
-    for {
-      q <- F.delay { new MichaelScottQueue[String] }
-      _ <- assertResultF(q.unsafeToList, Nil)
-
-      _ <- assertResultF(q.tryDeque.run, None)
-      _ <- assertResultF(q.unsafeToList, Nil)
-
-      _ <- q.enqueue("a")
-      _ <- assertResultF(q.unsafeToList, List("a"))
-
-      _ <- assertResultF(q.tryDeque.run, Some("a"))
-      _ <- assertResultF(q.unsafeToList, Nil)
-      _ <- assertResultF(q.tryDeque.run, None)
-      _ <- assertResultF(q.unsafeToList, Nil)
-
-      _ <- q.enqueue("a")
-      _ <- assertResultF(q.unsafeToList, List("a"))
-      _ <- q.enqueue("b")
-      _ <- assertResultF(q.unsafeToList, List("a", "b"))
-      _ <- q.enqueue("c")
-      _ <- assertResultF(q.unsafeToList, List("a", "b", "c"))
-
-      _ <- assertResultF(q.tryDeque.run, Some("a"))
-      _ <- assertResultF(q.unsafeToList, List("b", "c"))
-
-      _ <- q.enqueue("x")
-      _ <- assertResultF(q.unsafeToList, List("b", "c", "x"))
-
-      _ <- assertResultF(q.tryDeque.run, Some("b"))
-      _ <- assertResultF(q.unsafeToList, List("c", "x"))
-      _ <- assertResultF(q.tryDeque.run, Some("c"))
-      _ <- assertResultF(q.unsafeToList, List("x"))
-      _ <- assertResultF(q.tryDeque.run, Some("x"))
-      _ <- assertResultF(q.tryDeque.run, None)
-      _ <- assertResultF(q.unsafeToList, Nil)
-    } yield ()
-  }
-
-  test("Michael-Scott queue should allow multiple producers and consumers") {
-    val max = 10000
-    for {
-      q <- F.delay { new MichaelScottQueue[String] }
-      produce = F.blocking {
-        for (i <- 0 until max) {
-          q.enqueue.unsafePerform(i.toString, this.kcasImpl)
-        }
-      }
-      cs <- F.delay { new ConcurrentLinkedQueue[String] }
-      stop <- F.delay { new AtomicBoolean(false) }
-      consume = F.blocking {
-        @tailrec
-        def go(last: Boolean = false): Unit = {
-          q.tryDeque.unsafeRun(this.kcasImpl) match {
-            case Some(s) =>
-              cs.offer(s)
-              go(last = last)
-            case None =>
-              if (stop.get()) {
-                if (last) {
-                  // we're done:
-                  ()
-                } else {
-                  // read one last time:
-                  go(last = true)
-                }
-              } else {
-                // retry:
-                go(last = false)
-              }
-          }
-        }
-        go()
-      }
-      tsk = for {
-        p1 <- produce.start
-        c1 <- consume.start
-        p2 <- produce.start
-        c2 <- consume.start
-        _ <- p1.joinWithNever
-        _ <- p2.joinWithNever
-        _ <- F.delay { stop.set(true) }
-        _ <- c1.joinWithNever
-        _ <- c2.joinWithNever
-      } yield ()
-
-      _ <- tsk.guarantee(F.delay { stop.set(true) })
-
-      _ <- assertEqualsF(
-        cs.asScala.toVector.sorted,
-        (0 until max).toVector.flatMap(n => Vector(n.toString, n.toString)).sorted
-      )
     } yield ()
   }
 

@@ -26,16 +26,16 @@ import kcas.Ref
 
 @JCStressTest
 @State
-@Description("Michael-Scott queue tricky enq/deq")
+@Description("MichaelScottQueue tricky enq/deq")
 @Outcomes(Array(
   new Outcome(id = Array("(None,false), true"), expect = ACCEPTABLE, desc = "deq was first"),
   new Outcome(id = Array("(Some(a),true), false"), expect = ACCEPTABLE, desc = "enq was first"),
   new Outcome(id = Array("(None,true), false"), expect = FORBIDDEN, desc = "enq was first, but deq sees empty")
 ))
-class MichaelScottQueueComposedTest3 extends StressTestBase {
+class MichaelScottQueueComposedTest3 extends MsQueueStressTestBase {
 
   private[this] val queue =
-    new MichaelScottQueue[String]()
+    this.newQueue[String]()
 
   private[this] val latch =
     Ref.mk[Boolean](false)

@@ -21,18 +21,19 @@ import kcas._
 
 import MichaelScottQueue._
 
-final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable[A]) {
+private[choam] final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable[A])
+  extends Queue[A] {
 
   private[this] val head: Ref[Node[A]] = Ref.mk(sentinel)
   private[this] val tail: Ref[Node[A]] = Ref.mk(sentinel)
 
-  def this(els: Iterable[A]) =
+  private def this(els: Iterable[A]) =
     this(Node(nullOf[A], Ref.mk(End[A]())), els)
 
-  def this() =
+  private def this() =
     this(Iterable.empty)
 
-  val tryDeque: React[Unit, Option[A]] = {
+  override val tryDeque: React[Unit, Option[A]] = {
     for {
       node <- head.invisibleRead
       next <- node.next.invisibleRead
@@ -47,7 +48,7 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
     } yield res
   }
 
-  val enqueue: React[A, Unit] = React.computed { (a: A) =>
+  override val enqueue: React[A, Unit] = React.computed { (a: A) =>
     findAndEnqueue(Node(a, Ref.mk(End[A]())))
   }
 
@@ -64,7 +65,7 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
     })
   }
 
-  private[choam] def unsafeToList[F[_]](implicit F: Reactive[F]): F[List[A]] = {
+  private[choam] override def unsafeToList[F[_]](implicit F: Reactive[F]): F[List[A]] = {
 
     def go(e: Elem[A], acc: List[A]): F[List[A]] = e match {
       case Node(null, next) =>
@@ -84,7 +85,7 @@ final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable
   }
 }
 
-object MichaelScottQueue {
+private[choam] object MichaelScottQueue {
 
   private sealed trait Elem[A]
   private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
@@ -92,4 +93,7 @@ object MichaelScottQueue {
 
   def apply[A]: Action[MichaelScottQueue[A]] =
     Action.delay { _ => new MichaelScottQueue }
+
+  def fromList[A](as: List[A]): Action[MichaelScottQueue[A]] =
+    Action.delay { _ => new MichaelScottQueue(as) }
 }

@@ -26,17 +26,17 @@ import cats.effect.SyncIO
 
 @JCStressTest
 @State
-@Description("Michael-Scott queue enq/deq should be composable")
+@Description("MichaelScottQueue enq/deq should be composable")
 @Outcomes(Array(
   new Outcome(id = Array("List(c, d), List(a, b)"), expect = ACCEPTABLE, desc = "the only valid result")
 ))
-class MichaelScottQueueComposedTest extends StressTestBase {
+class MichaelScottQueueComposedTest extends MsQueueStressTestBase {
 
   private[this] val queue1 =
-    new MichaelScottQueue[String](List("a", "b", "c", "d"))
+    this.newQueue("a", "b", "c", "d")
 
   private[this] val queue2 =
-    new MichaelScottQueue[String](List[String]())
+    this.newQueue[String]()
 
   private[this] val tfer: Reaction[Unit, Unit] =
     queue1.tryDeque.map(_.getOrElse("x")) >>> queue2.enqueue
