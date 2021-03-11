@@ -92,7 +92,13 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
     })
   }
 
-  /** Removes a single instance of the input */
+  /**
+   * Removes a single instance of the input
+   *
+   * Note: an item is only removed if it is identical
+   * (i.e., the same object) to the input. That is, items
+   * are compared by reference equality.
+   */
   override val remove: React[A, Boolean] = React.computed { (a: A) =>
     head.invisibleRead.flatMapU { h =>
       findAndTomb(a, h.next)
@@ -112,7 +118,6 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
           }
         }
       case e @ End() =>
-        // TODO: do we need this CAS?
         from.cas(e, e) >>> React.ret(false)
     }
   }
