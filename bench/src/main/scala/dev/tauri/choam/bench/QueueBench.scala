@@ -36,14 +36,22 @@ class QueueBench extends BenchUtils {
   final val waitTime = 128L
   final val size = 4096
 
-  // TODO: add RemoveQueue
-
   /** MS-Queue implemented with `React` */
   @Benchmark
   def michaelScottQueue(s: MsSt, t: KCASImplState): Unit = {
     val tsk = isEnq(t).flatMap { enq =>
       if (enq) s.michaelScottQueue.enqueue[IO](t.nextString())(t.reactive)
       else s.michaelScottQueue.tryDeque.run[IO](t.reactive)
+    }
+    run(s.runtime, tsk.void, size = size)
+  }
+
+  /** MS-Queue (+ interior deletion) implemented with `React` */
+  @Benchmark
+  def michaelScottQueueWithRemove(s: RmSt, t: KCASImplState): Unit = {
+    val tsk = isEnq(t).flatMap { enq =>
+      if (enq) s.removeQueue.enqueue[IO](t.nextString())(t.reactive)
+      else s.removeQueue.tryDeque.run[IO](t.reactive)
     }
     run(s.runtime, tsk.void, size = size)
   }
@@ -115,6 +123,12 @@ object QueueBench {
   class MsSt {
     val runtime = cats.effect.unsafe.IORuntime.global
     val michaelScottQueue = MichaelScottQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
+  }
+
+  @State(Scope.Benchmark)
+  class RmSt {
+    val runtime = cats.effect.unsafe.IORuntime.global
+    val removeQueue = RemoveQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
   }
 
   @State(Scope.Benchmark)
