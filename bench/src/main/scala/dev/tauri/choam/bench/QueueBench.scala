@@ -36,6 +36,8 @@ class QueueBench extends BenchUtils {
   final val waitTime = 128L
   final val size = 4096
 
+  // TODO: add RemoveQueue
+
   /** MS-Queue implemented with `React` */
   @Benchmark
   def michaelScottQueue(s: MsSt, t: KCASImplState): Unit = {

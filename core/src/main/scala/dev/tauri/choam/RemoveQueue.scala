@@ -21,8 +21,6 @@ import kcas._
 
 import RemoveQueue._
 
-// TODO: jcstress tests for this queue
-
 /**
  * Like `MichaelScottQueue`, but also has support
  * for interior node deletion (`remove`; based on
