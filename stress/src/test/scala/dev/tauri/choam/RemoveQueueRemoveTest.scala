@@ -30,8 +30,7 @@ import cats.effect.SyncIO
 @Outcomes(Array(
   new Outcome(id = Array("List(), Some(z), false"), expect = ACCEPTABLE, desc = "deq wins"),
   new Outcome(id = Array("List(), None, true"), expect = ACCEPTABLE, desc = "rem wins"),
-  // TODO: this is a bug:
-  new Outcome(id = Array("List(), Some(z), true"), expect = ACCEPTABLE_INTERESTING, desc = "ERROR: rem seems to win, but doesn't"),
+  new Outcome(id = Array("List(), Some(z), true"), expect = FORBIDDEN, desc = "rem seems to win, but doesn't")
 ))
 class RemoveQueueRemoveTest extends RemoveQueueStressTestBase {
 
