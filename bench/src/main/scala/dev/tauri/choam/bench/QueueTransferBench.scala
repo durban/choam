@@ -35,11 +35,20 @@ class QueueTransferBench extends BenchUtils {
   final val waitTime = 128L
   final val size = 4096
 
-  // TODO: add RemoveQueue
-
   /** MS-Queues implemented with `React` */
   @Benchmark
   def michaelScottQueue(s: MsSt, ct: KCASImplState): Unit = {
+    val tsk = isEnq(ct).flatMap { enq =>
+      if (enq) s.enq[IO](ct.nextString())(ct.reactive)
+      else s.deq.run[IO](ct.reactive)
+    }
+
+    run(s.runtime, tsk, size = size)
+  }
+
+  /** MS-Queues (+ interior deletion) implemented with `React` */
+  @Benchmark
+  def michaelScottQueueWithRemove(s: RmSt, ct: KCASImplState): Unit = {
     val tsk = isEnq(ct).flatMap { enq =>
       if (enq) s.enq[IO](ct.nextString())(ct.reactive)
       else s.deq.run[IO](ct.reactive)
@@ -105,22 +114,20 @@ object QueueTransferBench {
       this._txSize
   }
 
-  @State(Scope.Benchmark)
-  class MsSt extends BaseSt {
+  abstract class MsStBase extends BaseSt {
+
+    protected def newQueue(): Queue[String]
 
     val runtime = cats.effect.unsafe.IORuntime.global
 
     var deq: React[Unit, Unit] = _
     var enq: React[String, Unit] = _
 
-    val queue0 = MichaelScottQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
+    val queue0 = this.newQueue()
     var queues: List[Queue[String]] = _
 
-    @Setup
-    def setup(): Unit = {
-      this.queues = List.fill(this.txSize) {
-        MichaelScottQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
-      }
+    protected def internalSetup(): Unit = {
+      this.queues = List.fill(this.txSize) { this.newQueue() }
       this.deq = this.queue0.tryDeque.flatMap {
         case Some(s) => this.queues.map(_.enqueue).reduce { (x, y) =>
           (x * y).discard
@@ -133,6 +140,28 @@ object QueueTransferBench {
 
       java.lang.invoke.VarHandle.releaseFence()
     }
+  }
+
+  @State(Scope.Benchmark)
+  class MsSt extends MsStBase {
+
+    protected override def newQueue(): Queue[String] =
+      MichaelScottQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(this.runtime)
+
+    @Setup
+    def setup(): Unit =
+      internalSetup()
+  }
+
+  @State(Scope.Benchmark)
+  class RmSt extends MsStBase {
+
+    protected override def newQueue(): Queue[String] =
+      RemoveQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(this.runtime)
+
+    @Setup
+    def setup(): Unit =
+      internalSetup()
   }
 
   @State(Scope.Benchmark)
