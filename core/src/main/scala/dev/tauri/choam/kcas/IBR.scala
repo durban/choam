@@ -187,7 +187,7 @@ private[kcas] final object IBR {
 
     @tailrec
     final def readVolatileRef[A](ref: Ref[A]): A = {
-      val a: A = ref.unsafeTryRead()
+      val a: A = ref.unsafeGet()
       if (tryAdjustReservation(a)) a
       else readVolatileRef(ref) // retry
     }

@@ -286,7 +286,7 @@ private[kcas] object EMCAS extends KCAS { self =>
     val ctx = this.currentContext()
     var ctr: Long = 0L
     while (ctr < max) {
-      ref.unsafeTryRead() match {
+      ref.unsafeGet() match {
         case wd: WordDescriptor[_] =>
           if (wd.parent.getStatus() eq EMCASStatus.ACTIVE) {
             // CAS in progress, retry

@@ -46,7 +46,7 @@ class FalseSharing {
   @Benchmark
   @Group("unpadded")
   def readUnpadded(s: Unpadded, bh: Blackhole): Unit = {
-    bh.consume(s.rr.unsafeTryRead())
+    bh.consume(s.rr.unsafeGet())
   }
 
   @Benchmark
@@ -58,7 +58,7 @@ class FalseSharing {
   @Benchmark
   @Group("padded")
   def readPadded(s: Padded, bh: Blackhole): Unit = {
-    bh.consume(s.rr.unsafeTryRead())
+    bh.consume(s.rr.unsafeGet())
   }
 
   @Benchmark
@@ -83,7 +83,7 @@ object FalseSharing {
 
     @TearDown
     def checkResults(): Unit = {
-      rr.unsafeTryRead() match {
+      rr.unsafeGet() match {
         case 42 => // OK
         case x => throw new IllegalStateException(s"unexpected value in rr: '${x}'")
       }

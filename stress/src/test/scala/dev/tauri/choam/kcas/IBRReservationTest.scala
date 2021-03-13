@@ -48,7 +48,7 @@ class IBRReservationTest {
   @Actor
   def check(r: ZL_Result): Unit = {
     val ctx = EMCAS.currentContext()
-    this.ref.asInstanceOf[Ref[Any]].unsafeTryRead() match {
+    this.ref.asInstanceOf[Ref[Any]].unsafeGet() match {
       case wd: WordDescriptor[_] =>
         r.r1 = ctx.isInUseByOther(wd)
       case s: String =>

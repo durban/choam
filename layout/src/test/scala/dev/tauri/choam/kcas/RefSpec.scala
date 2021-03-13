@@ -30,7 +30,7 @@ object RefSpec {
 }
 
 @deprecated("so that we can test deprecated methods", since = "we need it")
-class RefSpec2 extends BaseSpecA {
+class RefSpec extends BaseSpecA {
 
   import RefSpec._
 
@@ -42,7 +42,7 @@ class RefSpec2 extends BaseSpecA {
     assume(isOpenJdk, "this test only runs on OpenJDK")
   }
 
-  def getRightPaddedSize(obj: AnyRef, fieldName: String): Long = {
+  def getLeftRightPaddedSize(obj: AnyRef, fieldName: String): (Long, Long) = {
     val layout = ClassLayout.parseInstance(obj)
     val fields = layout.fields.iterator.asScala.toList
     val valField = fields.filter(_.name === fieldName) match {
@@ -52,40 +52,23 @@ class RefSpec2 extends BaseSpecA {
     }
 
     val start = valField.offset
+    val leftPadded = start
     val end = layout.instanceSize
-    end - start
+    val rightPadded = end - start
+    (leftPadded, rightPadded)
   }
 
   test("Ref should be padded to avoid false sharing") {
     assumeOpenJdk()
     val ref = Ref.mk("foo")
-    val size = getRightPaddedSize(ref, fieldName)
-    assert(clue(size) >= targetSize)
-  }
-
-  test("Ref should compute `bigId` correctly") {
-    assumeOpenJdk()
-    val ref = new PaddedRefImpl[String]("foo")(
-      0xffffffffffffffffL,
-      0xaaaaaaaaaaaaaaaaL,
-      0xccccccccccccccccL,
-      0xdbdbdbdbdbdbdbdbL
-    )
-    val exp = (BigInt(
-      (
-        Vector.fill(8)(0xff.toByte) ++
-        Vector.fill(8)(0xaa.toByte) ++
-        Vector.fill(8)(0xcc.toByte) ++
-        Vector.fill(8)(0xdb.toByte)
-      ).toArray
-    ))
-    assertEquals(ref.bigId, exp)
+    val (left, right) = getLeftRightPaddedSize(ref, fieldName)
+    assert((clue(left) >= targetSize) || (clue(right) >= targetSize))
   }
 
   test("Unpadded Ref should not be padded (sanity check)") {
     assumeOpenJdk()
     val ref = Ref.mkUnpadded("bar")
-    val size = getRightPaddedSize(ref, fieldName)
-    assert(clue(size) <= 48L)
+    val (left, right) = getLeftRightPaddedSize(ref, fieldName)
+    assert((clue(left) <= 48L) && (clue(right) <= 48L))
   }
 }

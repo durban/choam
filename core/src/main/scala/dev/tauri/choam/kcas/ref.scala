@@ -18,11 +18,10 @@
 package dev.tauri.choam
 package kcas
 
-import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.ThreadLocalRandom
 
 /** k-CAS-able atomic reference */
-sealed trait Ref[A] {
+trait Ref[A] {
 
   final def upd[B, C](f: (A, B) => (A, C)): React[B, C] =
     React.upd(this)(f)
@@ -39,10 +38,10 @@ sealed trait Ref[A] {
   final def modifyWith(f: A => React[Unit, A]): React[Unit, A] =
     updWith[Unit, A] { (oa, _) => f(oa).map(na => (na, oa)) }
 
-  private[choam] final val invisibleRead: React[Unit, A] =
+  private[choam] final def invisibleRead: React[Unit, A] =
     React.invisibleRead(this)
 
-  final val getter: React[Any, A] =
+  final def getter: React[Any, A] =
     upd[Any, A] { (a, _) => (a, a) }
 
   // WARNING: This is unsafe, if we run `set`
@@ -78,16 +77,21 @@ sealed trait Ref[A] {
     React.cas(this, ov, nv)
 
   // TODO: this is dangerous, reading should go through the k-CAS implementation!
-  private[kcas] def unsafeTryRead(): A
+  private[kcas] def unsafeGet(): A
 
   /** For testing */
-  private[choam] def debugRead(): A
+  private[choam] final def debugRead(): A = {
+    this.unsafeGet() match {
+      case null =>
+        kcas.NaiveKCAS.read(this, kcas.NaiveKCAS.currentContext())
+      case _: kcas.WordDescriptor[_] =>
+        kcas.EMCAS.read(this, kcas.EMCAS.currentContext())
+      case a =>
+        a
+    }
+  }
 
   private[kcas] def unsafeTryPerformCas(ov: A, nv: A): Boolean
-
-  private[kcas] def unsafeTryPerformCmpxchg(ov: A, nv: A): A
-
-  private[kcas] def unsafeLazySet(nv: A): Unit
 
   private[kcas] def unsafeSet(nv: A): Unit
 
@@ -98,16 +102,6 @@ sealed trait Ref[A] {
   private[kcas] def id2: Long
 
   private[kcas] def id3: Long
-
-  @deprecated("don't use this, since it is terribly slow", since = "forever")
-  private[kcas] final def bigId: BigInt = {
-    val buf = java.nio.ByteBuffer.allocate(8 * 4)
-    buf.putLong(this.id0)
-    buf.putLong(this.id1)
-    buf.putLong(this.id2)
-    buf.putLong(this.id3)
-    BigInt(buf.array())
-  }
 
   private[kcas] def dummy(v: Long): Long
 
@@ -148,12 +142,12 @@ object Ref {
 
   private[choam] def mk[A](a: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
-    new PaddedRefImpl(a)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+    mkWithId(a)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
   /** Only for testing */
   private[kcas] def mkWithId[A](a: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] = {
-    new PaddedRefImpl(a)(i0, i1, i2, i3)
+    new ref.Ref1(a, i0, i1, i2, i3)
   }
 
   /**
@@ -165,7 +159,7 @@ object Ref {
    */
   private[kcas] def mkUnpadded[A](a: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
-    new UnpaddedRefImpl(a)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+    new ref.UnpaddedRef1(a, tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
   private[kcas] def globalCompare(a: Ref[_], b: Ref[_]): Int = {
@@ -191,82 +185,5 @@ object Ref {
         }
       }
     }
-  }
-}
-
-private class UnpaddedRefImpl[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long)
-    extends AtomicReference[A](initial) with Ref[A] {
-
-  private[kcas] final override val id0: Long = i0
-  private[kcas] final override val id1: Long = i1
-  private[kcas] final override val id2: Long = i2
-  private[kcas] final override val id3: Long = i3
-
-  private[kcas] final override def unsafeTryRead(): A =
-    this.get()
-
-  private[choam] final override def debugRead(): A = {
-    this.unsafeTryRead() match {
-      case null =>
-        kcas.NaiveKCAS.read(this, kcas.NaiveKCAS.currentContext())
-      case _: kcas.WordDescriptor[_] =>
-        kcas.EMCAS.read(this, kcas.EMCAS.currentContext())
-      case a =>
-        a
-    }
-  }
-
-  private[kcas] final override def unsafeSet(nv: A): Unit =
-    this.set(nv)
-
-  private[kcas] final override def unsafeLazySet(nv: A): Unit =
-    this.lazySet(nv)
-
-  private[kcas] final override def unsafeTryPerformCas(ov: A, nv: A): Boolean =
-    this.compareAndSet(ov, nv)
-
-  private[kcas] final override def unsafeTryPerformCmpxchg(ov: A, nv: A): A =
-    this.compareAndExchange(ov, nv)
-
-  private[kcas] override def dummy(v: Long): Long =
-    42L
-}
-
-private final class PaddedRefImpl[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long)
-    extends UnpaddedRefImpl[A](initial)(i0, i1, i2, i3) {
-
-  @volatile private[this] var p00: Long = 42L
-  @volatile private[this] var p01: Long = 42L
-  @volatile private[this] var p02: Long = 42L
-  @volatile private[this] var p03: Long = 42L
-  @volatile private[this] var p04: Long = 42L
-  @volatile private[this] var p05: Long = 42L
-  @volatile private[this] var p06: Long = 42L
-  @volatile private[this] var p07: Long = 42L
-  @volatile private[this] var p08: Long = 42L
-  @volatile private[this] var p09: Long = 42L
-  @volatile private[this] var p10: Long = 42L
-  @volatile private[this] var p11: Long = 42L
-  @volatile private[this] var p12: Long = 42L
-  @volatile private[this] var p13: Long = 42L
-  @volatile private[this] var p14: Long = 42L
-
-  private[kcas] final override def dummy(v: Long): Long = {
-    p00 ^= v
-    p01 ^= v
-    p02 ^= v
-    p03 ^= v
-    p04 ^= v
-    p05 ^= v
-    p06 ^= v
-    p07 ^= v
-    p08 ^= v
-    p09 ^= v
-    p10 ^= v
-    p11 ^= v
-    p12 ^= v
-    p13 ^= v
-    p14 ^= v
-    42L
   }
 }

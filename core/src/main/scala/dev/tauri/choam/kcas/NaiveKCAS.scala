@@ -65,7 +65,7 @@ private[kcas] final object NaiveKCAS extends KCAS { self =>
 
   @tailrec
   final override def read[A](ref: Ref[A], ctx: ThreadContext): A = {
-    ref.unsafeTryRead() match {
+    ref.unsafeGet() match {
       case null =>
         read(ref, ctx)
       case a =>
@@ -88,7 +88,7 @@ private[kcas] final object NaiveKCAS extends KCAS { self =>
     def commit(ops: List[WordDescriptor[_]]): Unit = ops match {
       case Nil => ()
       case h :: tail => h match { case head: WordDescriptor[a] =>
-        head.address.unsafeLazySet(head.nv)
+        head.address.unsafeSet(head.nv)
         commit(tail)
       }
     }
@@ -99,7 +99,7 @@ private[kcas] final object NaiveKCAS extends KCAS { self =>
         from match {
           case Nil => impossible("this is the end")
           case h :: tail => h match { case head: WordDescriptor[a] =>
-            head.address.unsafeLazySet(head.ov)
+            head.address.unsafeSet(head.ov)
             rollback(tail, to)
           }
         }

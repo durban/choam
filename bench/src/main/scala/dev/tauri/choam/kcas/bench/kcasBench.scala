@@ -76,7 +76,7 @@ class CAS1LoopBench {
     val ref = r.ref
     @tailrec
     def go(): Unit = {
-      val ov = ref.unsafeTryRead()
+      val ov = ref.unsafeGet()
       val nv = (ov.toLong + t.nextLong()).toString
       val succ = ref.unsafeTryPerformCas(ov, nv)
       if (succ) ()
