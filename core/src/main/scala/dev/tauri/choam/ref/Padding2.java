@@ -17,7 +17,7 @@
 
 package dev.tauri.choam.ref;
 
-abstract class Padding2<A> extends Ref2Base<A> {
+abstract class Padding2<A, B> extends Ref2Base<A, B> {
 
   byte pad000;
   byte pad001;

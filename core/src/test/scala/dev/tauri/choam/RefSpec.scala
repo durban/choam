@@ -16,22 +16,32 @@
  */
 
 package dev.tauri.choam
-package ref
 
 import kcas.Ref
+import ref.Ref2
 
-trait Ref2[A, B] {
+class RefSpec extends BaseSpecA {
 
-  def _1: Ref[A]
+  test("Ref2 equality/toString") {
+    val rr = Ref.ref2[String, Int]("a", 42)
+    val Ref2(r1, r2) = rr
+    assert((rr : AnyRef) ne r1)
+    assert((rr : Any) != r1)
+    assert((rr : AnyRef) ne r2)
+    assert((rr : Any) != r2)
+    assert(r1 ne r2)
+    assert(r1 != r2)
+    assert(r1 eq rr._1)
+    assert(r1 == rr._1)
+    assert(r2 eq rr._2)
+    assert(r2 == rr._2)
+    assert(r1.toString != r2.toString)
+  }
 
-  def _2: Ref[B]
-
-  def consistentRead: Reaction[Unit, (A, B)] =
-    React.consistentRead(this._1, this._2)
-}
-
-object Ref2 {
-
-  def unapply[A, B](r: Ref2[A, B]): Some[(Ref[A], Ref[B])] =
-    Some((r._1, r._2))
+  test("Ref2 consistentRead") {
+    val rr = Ref.ref2[String, Int]("a", 42)
+    val (s, i) = rr.consistentRead.unsafePerform((), kcas.KCAS.EMCAS)
+    assert(s eq "a")
+    assert(i == 42)
+  }
 }

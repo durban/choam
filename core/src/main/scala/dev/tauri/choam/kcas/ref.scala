@@ -155,7 +155,7 @@ object Ref {
     new ref.UnpaddedRef1(a, tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
-  private[kcas] def ref2[A, B](a: A, b: B): ref.Ref2[A, B] = {
+  private[choam] def ref2[A, B](a: A, b: B): ref.Ref2[A, B] = {
     val tlr = ThreadLocalRandom.current()
     new ref.Ref2Impl[A, B](
       a,

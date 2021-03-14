@@ -20,7 +20,7 @@ package ref
 
 import kcas.Ref
 
-private final class Ref2Ref1[A, B](self: Ref2Impl[A, B]) extends Ref[A] {
+private final class Ref2Ref1[A, B](self: Ref2Base[A, B]) extends Ref[A] {
 
   override def unsafeGet(): A =
     self.unsafeGet1()
