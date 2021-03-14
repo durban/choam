@@ -95,24 +95,17 @@ trait Ref[A] {
 
   private[kcas] def unsafeSet(nv: A): Unit
 
-  private[kcas] def id0: Long
+  // TODO: access modifier missing:
 
-  private[kcas] def id1: Long
+  def id0: Long
 
-  private[kcas] def id2: Long
+  def id1: Long
 
-  private[kcas] def id3: Long
+  def id2: Long
+
+  def id3: Long
 
   private[kcas] def dummy(v: Long): Long
-
-  final override def toString: String =
-    s"Ref@${Integer.toHexString(this.##)}"
-
-  final override def hashCode: Int =
-    System.identityHashCode(this)
-
-  final override def equals(that: Any): Boolean =
-    equ(this, that)
 }
 
 object Ref {
@@ -160,6 +153,22 @@ object Ref {
   private[kcas] def mkUnpadded[A](a: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
     new ref.UnpaddedRef1(a, tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+  }
+
+  private[kcas] def ref2[A, B](a: A, b: B): ref.Ref2[A, B] = {
+    val tlr = ThreadLocalRandom.current()
+    new ref.Ref2Impl[A, B](
+      a,
+      b,
+      tlr.nextLong(),
+      tlr.nextLong(),
+      tlr.nextLong(),
+      tlr.nextLong(),
+      tlr.nextLong(),
+      tlr.nextLong(),
+      tlr.nextLong(),
+      tlr.nextLong()
+    )
   }
 
   private[kcas] def globalCompare(a: Ref[_], b: Ref[_]): Int = {

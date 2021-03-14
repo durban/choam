@@ -22,7 +22,7 @@ import java.lang.invoke.VarHandle;
 
 import dev.tauri.choam.kcas.Ref;
 
-public class UnpaddedRef1<A> extends RefId implements Ref<A> {
+public class UnpaddedRef1<A> extends UnpaddedRefId implements Ref<A> {
 
   private static final VarHandle VALUE;
 

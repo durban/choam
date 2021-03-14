@@ -71,4 +71,12 @@ class RefSpec extends BaseSpecA {
     val (left, right) = getLeftRightPaddedSize(ref, fieldName)
     assert((clue(left) <= 48L) && (clue(right) <= 48L))
   }
+
+  test("Ref2 should be double-padded") {
+    assumeOpenJdk()
+    val ref = Ref.ref2[String, Object]("bar", new AnyRef)
+    val (left1, _) = getLeftRightPaddedSize(ref, "valueA")
+    val (left2, _) = getLeftRightPaddedSize(ref, "valueB")
+    assert(clue(left2) >= (clue(left1) + 256))
+  }
 }

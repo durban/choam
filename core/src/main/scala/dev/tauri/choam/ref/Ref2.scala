@@ -15,40 +15,17 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.ref;
+package dev.tauri.choam
+package ref
 
-abstract class RefId extends Padding {
+import kcas.Ref
 
-  private final long _id0;
-  private final long _id1;
-  private final long _id2;
-  private final long _id3;
+trait Ref2[A, B] {
 
-  RefId(long i0, long i1, long i2, long i3) {
-    this._id0 = i0;
-    this._id1 = i1;
-    this._id2 = i2;
-    this._id3 = i3;
-  }
+  def _1: Ref[A]
 
-  public final long id0() {
-    return this._id0;
-  }
+  def _2: Ref[B]
 
-  public final long id1() {
-    return this._id1;
-  }
-
-  public final long id2() {
-    return this._id2;
-  }
-
-  public final long id3() {
-    return this._id3;
-  }
-
-  @Override
-  public final String toString() {
-    return "Ref@" + Integer.toHexString(this.hashCode());
-  }
+  def consistentRead: Reaction[Unit, (A, B)] =
+    React.consistentRead(this._1, this._2)
 }
