@@ -62,7 +62,7 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       r2 <- React.newRef("x").run[F]
       r = r1.modifyWith { ov =>
         if (ov eq "foo") React.ret("bar")
-        else r2.upd[Unit, String] { (o2, _) => (ov, o2) }
+        else r2.upd[Any, String] { (o2, _) => (ov, o2) }
       }
       _ <- r.run
       _ <- assertResultF(r1.invisibleRead.run, "bar")

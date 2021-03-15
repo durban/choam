@@ -161,7 +161,7 @@ sealed abstract class React[-A, +B] {
 
   final def flatMap[X <: A, C](f: B => React[X, C]): React[X, C] = {
     val self: React[X, (X, B)] = arrowChoiceInstance.second[X, B, X](this).lmap[X](x => (x, x))
-    val comp: React[(X, B), C] = computed[(X, B), C](xb => f(xb._2).lmap[Unit](_ => xb._1))
+    val comp: React[(X, B), C] = computed[(X, B), C](xb => f(xb._2).lmap[Any](_ => xb._1))
     self >>> comp
   }
 
@@ -188,7 +188,7 @@ object React extends ReactInstances0 {
   def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): React[B, C] =
     new Upd(r, f, Commit[C]())
 
-  def updWith[A, B, C](r: Ref[A])(f: (A, B) => React[Unit, (A, C)]): React[B, C] = {
+  def updWith[A, B, C](r: Ref[A])(f: (A, B) => React[Any, (A, C)]): React[B, C] = {
     val self: React[B, (A, B)] = r.invisibleRead.firstImpl[B].lmap[B](b => ((), b))
     val comp: React[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
       f(oa, b).flatMap {
@@ -200,29 +200,29 @@ object React extends ReactInstances0 {
   }
 
   // TODO: generalize to more than 2
-  def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): React[Unit, (A, B)] = {
+  def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): React[Any, (A, B)] = {
     ra.invisibleRead >>> computed[A, (A, B)] { a =>
       rb.invisibleRead >>> computed[B, (A, B)] { b =>
-        (ra.cas(a, a) × rb.cas(b, b)).lmap[Unit] { _ => ((), ()) }.map { _ => (a, b) }
+        (ra.cas(a, a) × rb.cas(b, b)).lmap[Any] { _ => ((), ()) }.map { _ => (a, b) }
       }
     }
   }
 
-  def swap[A](r1: Ref[A], r2: Ref[A]): React[Unit, Unit] = {
-    r1.updWith[Unit, Unit] { (o1, _) =>
-      r2.upd[Unit, A] { (o2, _) =>
+  def swap[A](r1: Ref[A], r2: Ref[A]): React[Any, Unit] = {
+    r1.updWith[Any, Unit] { (o1, _) =>
+      r2.upd[Any, A] { (o2, _) =>
         (o1, o2)
       }.map { o2 => (o2, ()) }
     }
   }
 
-  def computed[A, B](f: A => React[Unit, B]): React[A, B] =
+  def computed[A, B](f: A => React[Any, B]): React[A, B] =
     new Computed[A, B, B](f, Commit[B]())
 
-  private[choam] def cas[A](r: Ref[A], ov: A, nv: A): React[Unit, Unit] =
+  private[choam] def cas[A](r: Ref[A], ov: A, nv: A): React[Any, Unit] =
     new Cas[A, Unit](r, ov, nv, React.unit)
 
-  private[choam] def invisibleRead[A](r: Ref[A]): React[Unit, A] =
+  private[choam] def invisibleRead[A](r: Ref[A]): React[Any, A] =
     new Read(r, Commit[A]())
 
   private[choam] def postCommit[A](pc: React[A, Unit]): React[A, A] =
@@ -252,11 +252,11 @@ object React extends ReactInstances0 {
   private[choam] def retry[A, B]: React[A, B] =
     AlwaysRetry()
 
-  private[choam] def token: React[Unit, Token] =
-    new Tok[Unit, Token, Token]((_, t) => t, Commit[Token]())
+  private[choam] def token: React[Any, Token] =
+    new Tok[Any, Token, Token]((_, t) => t, Commit[Token]())
 
-  def newRef[A](initial: A): React[Unit, Ref[A]] =
-    delay[Unit, Ref[A]](_ => Ref.mk(initial))
+  def newRef[A](initial: A): React[Any, Ref[A]] =
+    delay[Any, Ref[A]](_ => Ref.mk(initial))
 
   final object unsafe {
 
@@ -281,7 +281,7 @@ object React extends ReactInstances0 {
       val self2: React[X, (X, A)] =
         React.arrowChoiceInstance.second[Unit, A, X](self).lmap[X](x => (x, ()))
       val comp: React[(X, A), C] =
-        React.computed[(X, A), C](xb => f(xb._2).lmap[Unit](_ => xb._1))
+        React.computed[(X, A), C](xb => f(xb._2).lmap[Any](_ => xb._1))
       self2 >>> comp
     }
 
@@ -442,7 +442,7 @@ object React extends ReactInstances0 {
       s"Lift(<function>, ${k})"
   }
 
-  private final class Computed[A, B, C](f: A => React[Unit, B], k: React[B, C])
+  private final class Computed[A, B, C](f: A => React[Any, B], k: React[B, C])
       extends React[A, C] {
 
     def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
@@ -461,7 +461,7 @@ object React extends ReactInstances0 {
 
     def firstImpl[D]: React[(A, D), (C, D)] = {
       new Computed[(A, D), (B, D), (C, D)](
-        ad => f(ad._1).firstImpl[D].lmap[Unit](_ => ((), ad._2)),
+        ad => f(ad._1).firstImpl[D].lmap[Any](_ => ((), ad._2)),
         k.firstImpl[D]
       )
     }
@@ -587,9 +587,9 @@ object React extends ReactInstances0 {
   }
 
   private final class Cas[A, B](ref: Ref[A], ov: A, nv: A, k: React[A, B])
-      extends GenCas[A, Unit, A, B](ref, ov, nv, k) {
+      extends GenCas[A, Any, A, B](ref, ov, nv, k) {
 
-    def transform(a: A, b: Unit): A =
+    def transform(a: A, b: Any): A =
       a
   }
 
@@ -679,9 +679,9 @@ object React extends ReactInstances0 {
   }
 
   private final class Read[A, B](ref: Ref[A], k: React[A, B])
-      extends GenRead[A, Unit, A, B](ref, k) {
+      extends GenRead[A, Any, A, B](ref, k) {
 
-    def transform(a: A, b: Unit): A =
+    override def transform(a: A, b: Any): A =
       a
   }
 

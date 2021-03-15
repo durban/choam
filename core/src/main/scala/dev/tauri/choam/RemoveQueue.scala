@@ -63,7 +63,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
             skipTombs(nextRef)
           } else {
             // CAS data, to make sure it is not tombed concurrently:
-            dataRef.cas(a, a).lmap[Any](_ => ()).map(_ => Some((a, n)))
+            dataRef.cas(a, a).map(_ => Some((a, n)))
           }
         }
       case e @ End() =>
@@ -79,7 +79,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
     }
   }
 
-  private[this] def findAndEnqueue(node: Node[A]): React[Unit, Unit] = {
+  private[this] def findAndEnqueue(node: Node[A]): React[Any, Unit] = {
     React.unsafe.delayComputed(tail.invisibleRead.flatMap { (n: Node[A]) =>
       n.next.invisibleRead.flatMap {
         case e @ End() =>

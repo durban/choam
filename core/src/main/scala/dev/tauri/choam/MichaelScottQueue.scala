@@ -52,7 +52,7 @@ private[choam] final class MichaelScottQueue[A] private[this] (sentinel: Node[A]
     findAndEnqueue(Node(a, Ref.mk(End[A]())))
   }
 
-  private[this] def findAndEnqueue(node: Node[A]): React[Unit, Unit] = {
+  private[this] def findAndEnqueue(node: Node[A]): React[Any, Unit] = {
     React.unsafe.delayComputed(tail.invisibleRead.flatMap { (n: Node[A]) =>
       n.next.invisibleRead.flatMap {
         case e @ End() =>

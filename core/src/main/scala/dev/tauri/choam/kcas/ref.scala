@@ -26,7 +26,7 @@ trait Ref[A] {
   final def upd[B, C](f: (A, B) => (A, C)): React[B, C] =
     React.upd(this)(f)
 
-  final def updWith[B, C](f: (A, B) => React[Unit, (A, C)]): React[B, C] =
+  final def updWith[B, C](f: (A, B) => React[Any, (A, C)]): React[B, C] =
     React.updWith(this)(f)
 
   final def modify(f: A => A): React[Any, A] =
@@ -35,10 +35,10 @@ trait Ref[A] {
   final def modify2[B](f: A => (A, B)): React[Unit, B] =
     upd[Unit, B] { (a, _) => f(a) }
 
-  final def modifyWith(f: A => React[Unit, A]): React[Unit, A] =
+  final def modifyWith(f: A => React[Any, A]): React[Unit, A] =
     updWith[Unit, A] { (oa, _) => f(oa).map(na => (na, oa)) }
 
-  private[choam] final def invisibleRead: React[Unit, A] =
+  private[choam] final def invisibleRead: React[Any, A] =
     React.invisibleRead(this)
 
   final def getter: React[Any, A] =
@@ -57,12 +57,12 @@ trait Ref[A] {
 
   // WARNING: This throws an exception, if we
   // WARNING: run `set` as part of another reaction.
-  final def access2: React[Unit, (A, React[A, Unit])] = {
+  final def access2: React[Any, (A, React[A, Unit])] = {
     React.token.flatMap { origTok =>
       this.invisibleRead.map { oa =>
-        val checkToken: React[Unit, Unit] = React.token.flatMap { currTok =>
+        val checkToken: React[Any, Unit] = React.token.flatMap { currTok =>
           if (currTok eq origTok) React.unit
-          else React.delay[Unit, Unit] { _ => throw new IllegalStateException("token mismatch") }
+          else React.delay[Any, Unit] { _ => throw new IllegalStateException("token mismatch") }
           // TODO: create a specific exception type for this
         }
         val set = React.computed[A, Unit] { (na: A) =>
@@ -73,7 +73,7 @@ trait Ref[A] {
     }
   }
 
-  private[choam] def cas(ov: A, nv: A): React[Unit, Unit] =
+  private[choam] def cas(ov: A, nv: A): React[Any, Unit] =
     React.cas(this, ov, nv)
 
   // TODO: this is dangerous, reading should go through the k-CAS implementation!
@@ -130,7 +130,7 @@ object Ref {
     }
   }
 
-  def apply[A](initial: A): React[Unit, Ref[A]] =
+  def apply[A](initial: A): React[Any, Ref[A]] =
     React.newRef(initial)
 
   private[choam] def mk[A](a: A): Ref[A] = {

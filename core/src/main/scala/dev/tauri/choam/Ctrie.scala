@@ -43,7 +43,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
 
   val lookup: React[K, Option[V]] = {
 
-    def ilookup(i: INode[K, V], k: K, lev: Int, @deprecated("", "") parent: INode[K, V]): React[Unit, V] = {
+    def ilookup(i: INode[K, V], k: K, lev: Int, @deprecated("", "") parent: INode[K, V]): React[Any, V] = {
       for {
         im <- i.main.invisibleRead
         v <- im match {
@@ -64,7 +64,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
             // TODO: clean
             React.retry
           case ln: LNode[K, V] =>
-            ln.lookup.lmap[Unit](_ => (k, eq))
+            ln.lookup.lmap[Any](_ => (k, eq))
         }
         _ <- i.main.cas(im, im) // FIXME: this is only to be composable
       } yield v
@@ -80,7 +80,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
 
   val insert: React[(K, V), Unit] = {
 
-    def iinsert(i: INode[K, V], k: K, v: V, lev: Int, @deprecated("", "") parent: INode[K, V]): React[Unit, Unit] = {
+    def iinsert(i: INode[K, V], k: K, v: V, lev: Int, @deprecated("", "") parent: INode[K, V]): React[Any, Unit] = {
       for {
         im <- i.main.invisibleRead
         gen <- i.gen.invisibleRead
@@ -141,7 +141,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
   private[this] def debug: React[Int, String] = React.computed { level =>
     for {
       r <- root.invisibleRead
-      rs <- r.debug.lmap[Unit](_ => level)
+      rs <- r.debug.lmap[Any](_ => level)
     } yield rs
   }
 }
@@ -174,7 +174,7 @@ object Ctrie {
     private[choam] override def debug: React[Int, String] = React.computed { level =>
       for {
         m <- main.invisibleRead
-        ms <- m.debug.lmap[Unit](_ => level)
+        ms <- m.debug.lmap[Any](_ => level)
       } yield (indent * level) + s"INode -> ${ms}"
     }
   }
@@ -205,7 +205,7 @@ object Ctrie {
     }
 
     private[choam] override def debug: React[Int, String] = React.computed { level =>
-      val els = Traverse[List].traverse(arr.toList)(_.debug.lmap[Unit](_ => level + 1))
+      val els = Traverse[List].traverse(arr.toList)(_.debug.lmap[Any](_ => level + 1))
       els.map { els =>
         s"CNode ${bmp.toHexString}\n" + els.mkString("\n")
       }
@@ -239,7 +239,7 @@ object Ctrie {
   /** Tomb node */
   final class TNode[K, V](val sn: Ref[SNode[K, V]]) extends MainNode[K, V] {
     private[choam] def debug: React[Int, String] = React.computed { level =>
-      sn.invisibleRead.flatMap(_.debug.lmap[Unit](_ => 0)).map(s => (indent * level) + s"TNode(${s})")
+      sn.invisibleRead.flatMap(_.debug.lmap[Any](_ => 0)).map(s => (indent * level) + s"TNode(${s})")
     }
   }
 

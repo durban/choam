@@ -48,12 +48,12 @@ class ComputedTest extends StressTestBase {
     r1.upd[String, String] { (ov, nv) => (nv, ov) }
 
   private[this] val w1 =
-    r2.upd[Unit, String] { (ov, _) => ("x", ov) }
+    r2.upd[Any, String] { (ov, _) => ("x", ov) }
 
   private[this] val w2 =
-    r2.upd[Unit, String] { (ov, _) => ("y", ov) }
+    r2.upd[Any, String] { (ov, _) => ("y", ov) }
 
-  private[this] val computed: React[Unit, String] = {
+  private[this] val computed: React[Any, String] = {
     React.invisibleRead(r1) >>> React.computed[String, String] { a =>
       val w = if (a eq "foo") w1 else w2
       (w * React.cas(r1, a, a)).map { _ => a }
