@@ -20,7 +20,7 @@ package async
 
 private[choam] final class AsyncStack2[F[_], A] private (
   elements: TreiberStack[A],
-  waiters: MichaelScottQueue[Promise[F, A]]
+  waiters: Queue.WithRemove[Promise[F, A]]
 ) extends AsyncStack[F, A] {
 
   override val push: Reaction[A, Unit] = {
@@ -31,16 +31,19 @@ private[choam] final class AsyncStack2[F[_], A] private (
   }
 
   override def pop(implicit F: Reactive.Async[F]): F[A] = {
-    val r: Action[Either[Promise[F, A], A]] = Promise[F, A].flatMapU { p =>
-      this.elements.tryPop.flatMapU {
+    F.monadCancel.flatMap(F.promise[A].run[F]) { p =>
+      val acq = this.elements.tryPop.flatMapU {
         case Some(a) => Action.ret(Right(a))
         case None => this.waiters.enqueue.lmap[Any] { _ => p }.map { _ => Left(p) }
+      }.run[F]
+      val rel: (Either[Promise[F, A], A] => F[Unit]) = {
+        case Left(p) => this.waiters.remove.discard[F](p)
+        case Right(_) => F.monadCancel.unit
       }
-    }
-
-    F.monadCancel.flatMap(r.run[F]) {
-      case Left(p) => p.get // TODO: if this `get` is cancelled, we're in trouble
-      case Right(a) => F.monadCancel.pure(a)
+      F.monadCancel.bracket(acquire = acq)(use = {
+        case Left(p) => p.get
+        case Right(a) => F.monadCancel.pure(a)
+      })(release = rel)
     }
   }
 }
@@ -49,7 +52,7 @@ private[choam] object AsyncStack2 {
 
   def apply[F[_], A]: Action[AsyncStack[F, A]] = {
     TreiberStack[A].flatMap { es =>
-      MichaelScottQueue[Promise[F, A]].map { ws =>
+      Queue.withRemove[Promise[F, A]].map { ws =>
         new AsyncStack2[F, A](es, ws)
       }
     }

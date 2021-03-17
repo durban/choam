@@ -34,7 +34,7 @@ final class QueueSpec_EMCAS_IO
   with QueueSpec[IO]
   with SpecEMCAS
 
-// TODO: doesn't work with NaiveKCAS
+// TODO: doesn't work with NaiveKCAS (RemoveQueue uses `null` as sentinel)
 // final class QueueWithRemoveSpec_NaiveKCAS_IO
 //   extends BaseSpecIO
 //   with QueueWithRemoveSpec[IO]
