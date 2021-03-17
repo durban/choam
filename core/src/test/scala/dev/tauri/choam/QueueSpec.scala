@@ -73,7 +73,6 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
   test("Queue.WithRemove#remove with enq/deq") {
     for {
       q <- newQueueFromList(List("a", "b", "c", "d", "e"))
-
       _ <- assertResultF(q.remove[F]("a"), true)
       _ <- assertResultF(q.remove[F]("c"), true)
       _ <- assertResultF(q.remove[F]("d"), true)
@@ -84,6 +83,30 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
       _ <- assertResultF(q.tryDeque.run[F], Some("e"))
       _ <- q.enqueue[F]("x")
       _ <- assertResultF(q.tryDeque.run[F], Some("x"))
+      _ <- assertResultF(q.tryDeque.run[F], None)
+    } yield ()
+  }
+
+  test("Queue.WithRemove#remove first occurrence") {
+    for {
+      q <- newQueueFromList(List("b", "a", "c", "a"))
+      _ <- assertResultF(q.remove[F]("a"), true)
+      _ <- assertResultF(q.tryDeque.run[F], Some("b"))
+      _ <- assertResultF(q.tryDeque.run[F], Some("c"))
+      _ <- assertResultF(q.tryDeque.run[F], Some("a"))
+      _ <- assertResultF(q.tryDeque.run[F], None)
+    } yield ()
+  }
+
+  test("Queue.WithRemove enq then remove") {
+    for {
+      q <- newQueueFromList(List("a", "b", "c"))
+      _ <- assertResultF(q.remove[F]("x"), false)
+      _ <- assertResultF(q.tryDeque.run[F], Some("a"))
+      _ <- q.enqueue[F]("x")
+      _ <- assertResultF(q.tryDeque.run[F], Some("b"))
+      _ <- assertResultF(q.remove[F]("x"), true)
+      _ <- assertResultF(q.tryDeque.run[F], Some("c"))
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
   }
