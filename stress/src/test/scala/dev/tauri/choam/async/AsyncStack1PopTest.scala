@@ -27,18 +27,18 @@ import cats.effect.{ IO, SyncIO }
 
 @JCStressTest
 @State
-@Description("AsyncStack: racing pops should work fine")
+@Description("AsyncStack1: racing pops should work fine")
 @Outcomes(Array(
   new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "pop1 was faster"),
   new Outcome(id = Array("b, a"), expect = ACCEPTABLE, desc = "pop2 was faster")
 ))
-class AsyncStackPopTest {
+class AsyncStack1PopTest {
 
   val runtime =
     cats.effect.unsafe.IORuntime.global
 
   val stack: AsyncStack[IO, String] =
-    AsyncStack[IO, String].run[SyncIO].unsafeRunSync()
+    AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
 
   @Actor
   def push(@unused r: LL_Result): Unit = {

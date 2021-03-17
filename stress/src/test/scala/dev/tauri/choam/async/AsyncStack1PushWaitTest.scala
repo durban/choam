@@ -23,22 +23,25 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import cats.effect.{ IO, SyncIO }
+import cats.effect.{ IO, SyncIO, Fiber }
 
 @JCStressTest
 @State
-@Description("AsyncStack: racing pushes should work fine")
+@Description("AsyncStack1: racing pushes should work fine with waiting pop")
 @Outcomes(Array(
   new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "push1 was faster"),
   new Outcome(id = Array("b, a"), expect = ACCEPTABLE, desc = "push2 was faster")
 ))
-class AsyncStackPushTest {
+class AsyncStack1PushWaitTest {
 
   val runtime =
     cats.effect.unsafe.IORuntime.global
 
   val stack: AsyncStack[IO, String] =
-    AsyncStack[IO, String].run[SyncIO].unsafeRunSync()
+    AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
+
+  val popper: Fiber[IO, Throwable, String] =
+    stack.pop.start.unsafeRunSync()(runtime)
 
   @Actor
   def push1(@unused r: LL_Result): Unit = {
@@ -52,7 +55,7 @@ class AsyncStackPushTest {
 
   @Actor
   def pop(r: LL_Result): Unit = {
-    r.r1 = this.stack.pop.unsafeRunSync()(this.runtime)
+    r.r1 = this.popper.joinWithNever.unsafeRunSync()(this.runtime)
   }
 
   @Arbiter

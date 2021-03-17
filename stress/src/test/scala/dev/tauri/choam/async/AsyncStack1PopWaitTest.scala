@@ -24,30 +24,27 @@ import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.{ IO, SyncIO, Fiber }
-import cats.syntax.all._
 
 @JCStressTest
 @State
-@Description("AsyncStack: cancelling pop must not lose items")
+@Description("AsyncStack1: racing waiting pops should work fine")
 @Outcomes(Array(
-  new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "cancelled late"),
-  new Outcome(id = Array("null, a"), expect = ACCEPTABLE, desc = "cancelled"),
-  new Outcome(id = Array("null, b"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled just after completing the Promise"),
-  new Outcome(id = Array("b, a"), expect = ACCEPTABLE_INTERESTING, desc = "popper started really late")
+  new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "pop1 was faster"),
+  new Outcome(id = Array("b, a"), expect = ACCEPTABLE, desc = "pop2 was faster")
 ))
-class AsyncStackCancelTest {
+class AsyncStack1PopWaitTest {
 
   val runtime =
     cats.effect.unsafe.IORuntime.global
 
   val stack: AsyncStack[IO, String] =
-    AsyncStack[IO, String].run[SyncIO].unsafeRunSync()
+    AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
 
-  var result: String =
-    null
+  val popper1: Fiber[IO, Throwable, String] =
+    stack.pop.start.unsafeRunSync()(runtime)
 
-  val popper: Fiber[IO, Throwable, String] =
-    stack.pop.flatTap { s => IO { this.result = s } }.start.unsafeRunSync()(runtime)
+  val popper2: Fiber[IO, Throwable, String] =
+    stack.pop.start.unsafeRunSync()(runtime)
 
   @Actor
   def push(@unused r: LL_Result): Unit = {
@@ -55,18 +52,12 @@ class AsyncStackCancelTest {
   }
 
   @Actor
-  def cancel(@unused r: LL_Result): Unit = {
-    popper.cancel.unsafeRunSync()(runtime)
+  def pop1(r: LL_Result): Unit = {
+    r.r1 = this.popper1.joinWithNever.unsafeRunSync()(this.runtime)
   }
 
   @Actor
-  def pop(r: LL_Result): Unit = {
-    (stack.pop.flatMap { s => IO { r.r2 = s } }).unsafeRunSync()(runtime)
-  }
-
-  @Arbiter
-  def arbiter(r: LL_Result): Unit = {
-    popper.join.unsafeRunSync()(this.runtime)
-    r.r1 = this.result
+  def pop2(r: LL_Result): Unit = {
+    r.r2 = this.popper2.joinWithNever.unsafeRunSync()(this.runtime)
   }
 }
