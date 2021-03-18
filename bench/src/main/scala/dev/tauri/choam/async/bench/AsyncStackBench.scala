@@ -28,58 +28,39 @@ import dev.tauri.choam.bench.BenchUtils
 
 @Fork(2)
 @Threads(1)
-@deprecated("so that we can call old methods", since = "we need it")
-class PromiseBench extends BenchUtils {
+class AsyncStackBench extends BenchUtils {
 
-  import PromiseBench._
+  import AsyncStackBench._
 
   final override val waitTime = 0L
   final val size = 2048
-  final val waitersLess = 2
-  final val waitersMore = 128
+  final val stackSize = 4
 
   @Benchmark
-  def lessWaitersBaseline(s: PromiseSt): Unit = {
-    baseline(s, waitersLess)
-  }
-
-  @Benchmark
-  def moreWaitersBaseline(s: PromiseSt): Unit = {
-    baseline(s, waitersMore)
-  }
-
-  private[this] def baseline(s: PromiseSt, waiters: Int): Unit = {
-    val tsk = Promise.slow[IO, String].run[IO].flatMap(task(waiters))
+  def asyncStack1(s: StackSt): Unit = {
+    val tsk = AsyncStack.impl1[IO, String].run[IO].flatMap(task)
     run(s.runtime, tsk, size = size)
   }
 
   @Benchmark
-  def lessWaitersOptimized(s: PromiseSt): Unit = {
-    optimized(s, waitersLess)
-  }
-
-  @Benchmark
-  def moreWaitersOptimized(s: PromiseSt): Unit = {
-    optimized(s, waitersMore)
-  }
-
-  private[this] def optimized(s: PromiseSt, waiters: Int): Unit = {
-    val tsk = Promise.fast[IO, String].run[IO].flatMap(task(waiters))
+  def asyncStack2(s: StackSt): Unit = {
+    val tsk = AsyncStack.impl2[IO, String].run[IO].flatMap(task)
     run(s.runtime, tsk, size = size)
   }
 
-  private[this] def task(waiters: Int)(p: Promise[IO, String]): IO[Unit] = {
+  private[this] def task(s: AsyncStack[IO, String]): IO[Unit] = {
     for {
-      fibs <- p.get.start.replicateA(waiters)
-      _ <- IO.race(p.complete[IO]("left"), p.complete[IO]("right"))
-      _ <- fibs.traverse(_.joinWithNever)
+      fibs <- s.pop.start.replicateA(stackSize)
+      _ <- fibs.take(stackSize / 2).traverse(_.cancel)
+      _ <- s.push[IO]("x").replicateA(stackSize)
+      _ <- fibs.drop(stackSize / 2).traverse(_.joinWithNever)
     } yield ()
   }
 }
 
-object PromiseBench {
+object AsyncStackBench {
   @State(Scope.Benchmark)
-  class PromiseSt {
+  class StackSt {
     val runtime = cats.effect.unsafe.IORuntime.global
   }
 }
