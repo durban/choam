@@ -145,10 +145,9 @@ lazy val commonSettings = Seq[Setting[_]](
 
 lazy val dependencies = new {
 
-  val catsVersion = "2.4.1"
+  val catsVersion = "2.4.2"
   val catsMtlVersion = "1.1.2"
-  val catsEffectVersion = "3.0.0-RC2"
-  val fs2Version = "3.0.0-M8"
+  val catsEffectVersion = "3.0.0-RC3"
 
   val shapeless = "com.chuusai" %% "shapeless" % "2.3.3"
   val cats = "org.typelevel" %% "cats-core" % catsVersion
@@ -156,8 +155,6 @@ lazy val dependencies = new {
   val catsEffect = "org.typelevel" %% "cats-effect" % catsEffectVersion
   val catsMtl = "org.typelevel" %% "cats-mtl" % catsMtlVersion
 
-  val fs2 = "co.fs2" %% "fs2-core" % fs2Version
-  val fs2io = "co.fs2" %% "fs2-io" % fs2Version
 
   val test = Seq(
     "org.typelevel" %% "cats-laws" % catsVersion,
@@ -170,7 +167,7 @@ lazy val dependencies = new {
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.0"
   val catsStm = "io.github.timwspence" %% "cats-stm" % "0.10.0-RC1"
-  val zioStm = "dev.zio" %% "zio" % "1.0.4-2"
+  val zioStm = "dev.zio" %% "zio" % "1.0.5"
 
   val jol = "org.openjdk.jol" % "jol-core" % "0.14"
 }
