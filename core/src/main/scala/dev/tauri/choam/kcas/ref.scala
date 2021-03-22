@@ -110,6 +110,9 @@ trait Ref[A] {
 
 object Ref {
 
+  // TODO: `Ref.empty[A]`, for creating an uninitialized ref (it
+  // TODO: should use one barrier less than `Ref.mk[A](nullOf[A])`).
+
   implicit final class BooleanRefOps(private val self: Ref[Boolean]) extends AnyVal {
 
     def guard[A, B](guarded: React[A, B]): React[A, Option[B]] =

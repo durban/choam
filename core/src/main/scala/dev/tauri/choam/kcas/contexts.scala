@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package kcas
 
+import java.util.ArrayList
 import java.util.concurrent.ThreadLocalRandom
 
 final class GlobalContext(impl: KCAS)
@@ -51,6 +52,9 @@ final class ThreadContext(
 
   private[choam] var randomizeBackoff: Boolean =
     true
+
+  private[choam] val onRetry: ArrayList[React[Any, Unit]] =
+    new ArrayList
 
   final def finalized(desc: EMCASDescriptor, limit: Int = 256, replace: Int = 256): Unit = {
     desc.next = this.finalizedDescriptors

@@ -72,10 +72,12 @@ sealed abstract class React[-A, +B] {
     def go[C](partialResult: C, cont: React[C, B], rea: Reaction, desc: EMCASDescriptor, alts: List[SnapJump[_, B]], retries: Int): Success[B] = {
       cont.tryPerform(maxStackDepth, partialResult, rea, desc, ctx) match {
         case Retry =>
+          // TODO: don't back off if there are `alts`
           if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
           else Backoff.backoffConst(retries, maxBackoff)
           alts match {
             case _: Nil.type =>
+              doOnRetry(ctx)
               go(partialResult, cont, new Reaction(Nil, rea.token), kcas.start(ctx), alts, retries = retries + 1)
             case (h: SnapJump[x, B]) :: t =>
               go[x](h.value, h.react, h.ops, h.snap, t, retries = retries + 1)
@@ -86,6 +88,14 @@ sealed abstract class React[-A, +B] {
           go(pr, k, rea, desc, alts2 ++ alts, retries = retries)
           // TODO: optimize concat
       }
+    }
+
+    def doOnRetry(ctx: ThreadContext): Unit = {
+      val it = ctx.onRetry.iterator()
+      while (it.hasNext) {
+        it.next().unsafePerform((), kcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
+      }
+      ctx.onRetry.clear()
     }
 
     val res = go(a, this, new Reaction(Nil, new Token), kcas.start(ctx), Nil, retries = 0)
@@ -266,6 +276,34 @@ object React extends ReactInstances0 {
 
     def exchanger[A, B]: Action[Exchanger[A, B]] =
       Exchanger.apply[A, B]
+
+    def exchange[A, B](ex: Exchanger[A, B]): React[A, B] =
+      new SimpleExchange[A, B, B](ex, Commit[B]())
+
+    // FIXME:
+    def onRetry[A, B](r: React[A, B])(act: React[Any, Unit]): React[A, B] =
+      onRetryImpl(act, r)
+
+    private[this] def onRetryImpl[A, B](act: React[Any, Unit], k: React[A, B]): React[A, B] = {
+      new React[A, B] {
+
+        override protected def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] = {
+          ctx.onRetry.add(act)
+          maybeJump(n, a, k, ops, desc, ctx)
+        }
+
+        override protected def andThenImpl[C](that: React[B, C]): React[A, C] =
+          onRetryImpl(act, k >>> that)
+
+        override protected def productImpl[C, D](that: React[C, D]): React[(A, C), (B, D)] =
+          onRetryImpl(act, k × that)
+
+        override protected[choam] def firstImpl[C]: React[(A, C),(B, C)] =
+          onRetryImpl(act, k.firstImpl[C])
+
+        override def toString(): String = "???"
+      }
+    }
   }
 
   implicit final class InvariantReactSyntax[A, B](private val self: React[A, B]) extends AnyVal {
@@ -685,7 +723,7 @@ object React extends ReactInstances0 {
       a
   }
 
-  private[choam] sealed abstract class Exchange[A, B, C, D, E](
+  private sealed abstract class Exchange[A, B, C, D, E](
     exchanger: Exchanger[A, B],
     k: React[D, E]
   ) extends React[C, E] { self =>
@@ -707,6 +745,7 @@ object React extends ReactInstances0 {
       // TODO: can race there.
       this.exchanger.tryExchange(msg, ctx, retries) match {
         case Some(contMsg) =>
+          println(s"exchange happened, got ${contMsg} - thread#${Thread.currentThread().getId()}")
           maybeJump(n, (), contMsg.cont, contMsg.ops, contMsg.desc, ctx)
         case None =>
           // TODO: adjust contention management in exchanger
@@ -749,7 +788,7 @@ object React extends ReactInstances0 {
       s"Exchange(${exchanger}, ${k})"
   }
 
-  private[choam] final class SimpleExchange[A, B, C](
+  private final class SimpleExchange[A, B, C](
     exchanger: Exchanger[A, B],
     k: React[B, C]
   ) extends Exchange[A, B, A, B, C](exchanger, k) {
