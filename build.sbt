@@ -25,8 +25,8 @@ githubWorkflowBuild in ThisBuild := Seq(
 )
 githubWorkflowJavaVersions in ThisBuild := Seq(
   "adopt@1.11",
-  "adopt@1.15",
-  "adopt-openj9@1.15",
+  "adopt@1.16",
+  "adopt-openj9@1.16",
 )
 
 lazy val choam = project.in(file("."))
