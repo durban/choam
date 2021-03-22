@@ -15,18 +15,19 @@
  * limitations under the License.
  */
 
-scalaVersion in ThisBuild := "2.13.5" // TODO: "3.0.0-M3"
-crossScalaVersions in ThisBuild := Seq((scalaVersion in ThisBuild).value)
-scalaOrganization in ThisBuild := "org.scala-lang"
+ThisBuild / scalaVersion := "2.13.5" // TODO: "3.0.0-RC1"
+ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value)
+ThisBuild / scalaOrganization := "org.scala-lang"
+ThisBuild / evictionErrorLevel := Level.Warn
 
-githubWorkflowPublishTargetBranches in ThisBuild := Seq()
-githubWorkflowBuild in ThisBuild := Seq(
+ThisBuild / githubWorkflowPublishTargetBranches := Seq()
+ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci"))
 )
-githubWorkflowJavaVersions in ThisBuild := Seq(
+ThisBuild / githubWorkflowJavaVersions := Seq(
   "adopt@1.11",
-  "adopt@1.16",
-  "adopt-openj9@1.16",
+  "adopt@1.15",
+  "adopt-openj9@1.15",
 )
 
 lazy val choam = project.in(file("."))
@@ -95,7 +96,7 @@ lazy val commonSettings = Seq[Setting[_]](
     // TODO: experiment with -Yno-predef and/or -Yno-imports
   ),
   scalacOptions ++= (
-    if (isDotty.value) {
+    if (ScalaArtifacts.isScala3(scalaVersion.value)) {
       List("-Ykind-projector")
     } else {
       Nil
@@ -113,7 +114,7 @@ lazy val commonSettings = Seq[Setting[_]](
     dependencies.test.map(_ % "test-internal")
   ).flatten,
   libraryDependencies ++= (
-    if (!isDotty.value) {
+    if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
       List(compilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full))
     } else {
       Nil
