@@ -39,7 +39,7 @@ trait Ref[A] {
     updWith[Unit, A] { (oa, _) => f(oa).map(na => (na, oa)) }
 
   private[choam] final def invisibleRead: React[Any, A] =
-    React.invisibleRead(this)
+    React.unsafe.invisibleRead(this)
 
   final def getter: React[Any, A] =
     upd[Any, A] { (a, _) => (a, a) }
@@ -74,7 +74,7 @@ trait Ref[A] {
   }
 
   private[choam] def cas(ov: A, nv: A): React[Any, Unit] =
-    React.cas(this, ov, nv)
+    React.unsafe.cas(this, ov, nv)
 
   // TODO: this is dangerous, reading should go through the k-CAS implementation!
   private[kcas] def unsafeGet(): A

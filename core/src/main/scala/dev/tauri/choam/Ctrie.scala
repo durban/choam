@@ -62,7 +62,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
             }
           case _: TNode[K, V] =>
             // TODO: clean
-            React.retry
+            React.unsafe.retry
           case ln: LNode[K, V] =>
             ln.lookup.lmap[Any](_ => (k, eq))
         }
@@ -109,7 +109,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
             }
           case _: TNode[K, V] =>
             // TODO: clean
-            React.retry
+            React.unsafe.retry
           case ln: LNode[K, V] =>
             i.main.cas(ln, ln.inserted(k, v, eq))
         }

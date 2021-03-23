@@ -63,8 +63,8 @@ object ChoiceCombinatorBench {
 
     def mkChoice(n: Int): React[Unit, Unit] = {
       val successfulCas = ref.cas("foo", "bar")
-      val fails = (1 to n).foldLeft[React[Unit, Unit]](React.retry) { (r, _) =>
-        r + React.retry
+      val fails = (1 to n).foldLeft[React[Unit, Unit]](React.unsafe.retry) { (r, _) =>
+        r + React.unsafe.retry
       }
       fails + successfulCas
     }
@@ -91,7 +91,7 @@ object ChoiceCombinatorBench {
 
     def mkChoice(): React[Unit, Unit] = {
       val successfulCas = ref.cas("foo", "bar")
-      val fails = refs.foldLeft[React[Unit, Unit]](React.retry) { (r, ref) =>
+      val fails = refs.foldLeft[React[Unit, Unit]](React.unsafe.retry) { (r, ref) =>
         r + ref.cas("invalid", "dontcare")
       }
       fails + successfulCas

@@ -37,7 +37,7 @@ class ReactCASTest extends StressTestBase {
     Ref.mk("ov")
 
   private[this] val cas =
-    React.computed { (nv: String) => React.cas(ref, "ov", nv) }.?
+    React.computed { (nv: String) => React.unsafe.cas(ref, "ov", nv) }.?
 
   @Actor
   def writer1(r: ZZL_Result): Unit = {

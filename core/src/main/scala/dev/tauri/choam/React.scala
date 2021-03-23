@@ -229,12 +229,7 @@ object React extends ReactInstances0 {
   def computed[A, B](f: A => React[Any, B]): React[A, B] =
     new Computed[A, B, B](f, Commit[B]())
 
-  private[choam] def cas[A](r: Ref[A], ov: A, nv: A): React[Any, Unit] =
-    new Cas[A, Unit](r, ov, nv, React.unit)
-
-  private[choam] def invisibleRead[A](r: Ref[A]): React[Any, A] =
-    new Read(r, Commit[A]())
-
+  // TODO: why is this private?
   private[choam] def postCommit[A](pc: React[A, Unit]): React[A, A] =
     new PostCommit[A, A](pc, Commit[A]())
 
@@ -259,9 +254,7 @@ object React extends ReactInstances0 {
   def pure[A](a: A): React[Unit, A] =
     ret(a)
 
-  private[choam] def retry[A, B]: React[A, B] =
-    AlwaysRetry()
-
+  // TODO: do we really need this?
   private[choam] def token: React[Any, Token] =
     new Tok[Any, Token, Token]((_, t) => t, Commit[Token]())
 
@@ -269,6 +262,15 @@ object React extends ReactInstances0 {
     delay[Any, Ref[A]](_ => Ref.mk(initial))
 
   final object unsafe {
+
+    def cas[A](r: Ref[A], ov: A, nv: A): React[Any, Unit] =
+      new Cas[A, Unit](r, ov, nv, React.unit)
+
+    def invisibleRead[A](r: Ref[A]): React[Any, A] =
+      new Read(r, Commit[A]())
+
+    def retry[A, B]: React[A, B] =
+      AlwaysRetry()
 
     // TODO: better name
     def delayComputed[A, B](prepare: React[A, React[Unit, B]]): React[A, B] =
@@ -803,7 +805,10 @@ object React extends ReactInstances0 {
 
 sealed abstract class ReactInstances0 extends ReactInstances1 { self: React.type =>
 
-  implicit val arrowChoiceInstance: ArrowChoice[React] = new ArrowChoice[React] {
+  implicit def arrowChoiceInstance: ArrowChoice[React] =
+    _arrowChoiceInstance
+
+  private[this] val _arrowChoiceInstance: ArrowChoice[React] = new ArrowChoice[React] {
 
     def lift[A, B](f: A => B): React[A, B] =
       React.lift(f)

@@ -208,8 +208,8 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       ref <- React.newRef("foo").run[F]
       successfulCas = ref.cas("foo", "bar")
-      fails = (1 to n).foldLeft[React[Unit, Unit]](React.retry) { (r, _) =>
-        r + React.retry
+      fails = (1 to n).foldLeft[React[Unit, Unit]](React.unsafe.retry) { (r, _) =>
+        r + React.unsafe.retry
       }
       r = fails + successfulCas
       _ <- assertResultF(r.run, ())
@@ -225,7 +225,7 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       refs <- (1 to n).toList.traverse { _ =>
         React.newRef("x").run[F]
       }
-      fails = refs.foldLeft[React[Unit, Unit]](React.retry) { (r, ref) =>
+      fails = refs.foldLeft[React[Unit, Unit]](React.unsafe.retry) { (r, ref) =>
         r + ref.cas("y", "this will never happen")
       }
       r = fails + successfulCas
@@ -284,7 +284,7 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     okRef3 <- React.newRef("foo3").run
     okRef4 <- React.newRef("foo4").run
     failRef <- React.newRef("fail").run
-    left = ok1 >>> ((ok2 >>> (failRef.cas("x_fail", "y_fail") + React.retry)) + okRef3.cas("foo3", "bar3"))
+    left = ok1 >>> ((ok2 >>> (failRef.cas("x_fail", "y_fail") + React.unsafe.retry)) + okRef3.cas("foo3", "bar3"))
     right = okRef4.cas("foo4", "bar4")
     r = left + right
     _ <- assertResultF(r.run[F], ())
@@ -443,7 +443,7 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
               // sentinel node, discard it and retry:
               h.next.getter.flatMap { nxt =>
                 head.cas(h, nxt)
-              }.as(React.retry)
+              }.as(React.unsafe.retry)
             case v =>
               // found the real head, pop it:
               React.ret(h.next.getter.flatMap { nxt =>

@@ -83,8 +83,8 @@ final class Exchanger[A, B] private (
                     val cont: React[Unit, C] = msg.cont.lmap[Unit](_ => other.msg.value)
                     val otherCont: React[Unit, Unit] = other.msg.cont.lmap[Unit](_ => msg.value).flatMap { d =>
                       // TODO: we might not need `onRetry` if we wait/check in React.Exchange`
-                      React.unsafe.onRetry(React.cas[d](other.hole, nullOf[d], d)) {
-                        React.cas[d](other.hole, nullOf[d], Exchanger.claimedAndFailed[d])
+                      React.unsafe.onRetry(React.unsafe.cas[d](other.hole, nullOf[d], d)) {
+                        React.unsafe.cas[d](other.hole, nullOf[d], Exchanger.claimedAndFailed[d])
                       }
                     }
                     val both = (cont * otherCont).map(_._1)

@@ -87,7 +87,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
           React.ret(n.next.cas(e, node).postCommit(tail.cas(n, node).?.void))
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and will retry:
-          tail.cas(n, nv).?.map(_ => React.retry)
+          tail.cas(n, nv).?.map(_ => React.unsafe.retry)
       }
     })
   }

@@ -47,7 +47,7 @@ class ChoiceTest extends StressTestBase {
     val mod2 = ref0.modify { s => (s(0) - 1).toChar.toString }
     val ch1 = ref1.modifyWith {
       case "this will never match" => React.ret("x")
-      case _ => React.retry
+      case _ => React.unsafe.retry
     }
     val ch2 = ref2.modify(_.reverse)
     (mod1 * ch1) + (mod2 * ch2)
