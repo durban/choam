@@ -26,6 +26,7 @@ ThisBuild / githubWorkflowBuild := Seq(
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
   "adopt@1.11",
+  "graalvm-ce-java11@21.0",
   "adopt@1.15",
   "adopt-openj9@1.15",
 )
