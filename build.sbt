@@ -40,10 +40,16 @@ lazy val choam = project.in(file("."))
 lazy val core = project.in(file("core"))
   .settings(name := "choam-core")
   .settings(commonSettings)
+  .dependsOn(mcas)
+
+lazy val mcas = project.in(file("mcas"))
+  .settings(name := "choam-mcas")
+  .settings(commonSettings)
 
 lazy val bench = project.in(file("bench"))
   .settings(name := "choam-bench")
   .settings(commonSettings)
+  .settings(publishArtifact := false)
   .settings(libraryDependencies ++= Seq(
     dependencies.scalaStm,
     dependencies.catsStm,
@@ -55,6 +61,7 @@ lazy val bench = project.in(file("bench"))
 lazy val stress = project.in(file("stress"))
   .settings(name := "choam-stress")
   .settings(commonSettings)
+  .settings(publishArtifact := false)
   .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
   .enablePlugins(JCStressPlugin)
   .settings(version in Jcstress := "0.7")
@@ -63,6 +70,7 @@ lazy val stress = project.in(file("stress"))
 lazy val layout = project.in(file("layout"))
   .settings(name := "choam-layout")
   .settings(commonSettings)
+  .settings(publishArtifact := false)
   .settings(
     libraryDependencies += dependencies.jol % Test,
     fork in Test := true // JOL doesn't like sbt classpath
