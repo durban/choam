@@ -360,7 +360,7 @@ object React extends ReactInstances0 {
   protected[React] sealed trait TentativeResult[+A]
   protected[React] final case object Retry extends TentativeResult[Nothing]
   protected[React] final case class Success[+A](value: A, reaction: Reaction) extends TentativeResult[A]
-  protected[React] final case class Jump[A, B](
+  protected[React] final case class Jump[A, +B](
     value: A,
     react: React[A, B],
     ops: Reaction,
@@ -368,7 +368,7 @@ object React extends ReactInstances0 {
     alts: List[SnapJump[_, B]]
   ) extends TentativeResult[B] {
 
-    def withAlt[X](alt: SnapJump[X, B]): Jump[A, B] = {
+    def withAlt[X, Y >: B](alt: SnapJump[X, Y]): Jump[A, Y] = {
       this.copy(alts = alts :+ alt)
     }
   }
@@ -469,8 +469,8 @@ object React extends ReactInstances0 {
     def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] = that match {
       case _: Commit[_] =>
         new Lift[(A, D), (B, D), (C, D)](ad => (func(ad._1), ad._2), k.firstImpl)
-      case l: Lift[D, x, E] =>
-        new Lift[(A, D), (B, x), (C, E)](ad => (func(ad._1), l.func(ad._2)), k × l.k)
+      case l: Lift[_, _, _] =>
+        new Lift(ad => (func(ad._1), l.func(ad._2)), k × l.k)
       case _ =>
         new Lift(ad => (func(ad._1), ad._2), k × that)
     }
@@ -564,9 +564,9 @@ object React extends ReactInstances0 {
         first.tryPerform(n - 1, a, ops, desc, ctx) match {
           case _: Retry.type =>
             second.tryPerform(n - 1, a, ops, snap, ctx)
-          case jmp: Jump[a, B] =>
+          case jmp: Jump[_, _] =>
             // TODO: optimize building `alts`
-            jmp.withAlt(SnapJump(a, second, ops, snap))
+            (jmp : Jump[_, B]).withAlt[A, B](SnapJump[A, B](a, second, ops, snap))
           case ok =>
             ok
         }
