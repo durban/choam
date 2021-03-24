@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-ThisBuild / scalaVersion := "2.13.5" // TODO: "3.0.0-RC1"
-ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value)
+ThisBuild / scalaVersion := "3.0.0-RC1"
+ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, "2.13.5")
 ThisBuild / scalaOrganization := "org.scala-lang"
 ThisBuild / evictionErrorLevel := Level.Warn
 
@@ -174,8 +174,8 @@ lazy val dependencies = new {
   val jol = "org.openjdk.jol" % "jol-core" % "0.14"
 }
 
-addCommandAlias("staticAnalysis", ";headerCheckAll;test:compile;scalastyle;test:scalastyle")
-addCommandAlias("stressTest", "stress/jcstress:run")
+addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;scalastyle;Test/scalastyle")
+addCommandAlias("stressTest", "stress/Jcstress/run")
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
 addCommandAlias("ci", "validate")
 
