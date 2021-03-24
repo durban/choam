@@ -187,10 +187,10 @@ object React extends ReactInstances0 {
 
   /** Old (slower) impl of `upd`, keep it for benchmarks */
   private[choam] def updDerived[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): React[B, C] = {
-    val self: React[B, (A, B)] = r.invisibleRead.firstImpl[B].lmap[B](b => ((), b))
+    val self: React[B, (A, B)] = r.unsafeInvisibleRead.firstImpl[B].lmap[B](b => ((), b))
     val comp: React[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
       val (na, c) = f(oa, b)
-      r.cas(oa, na).rmap(_ => c)
+      r.unsafeCas(oa, na).rmap(_ => c)
     }
     self >>> comp
   }
@@ -199,11 +199,11 @@ object React extends ReactInstances0 {
     new Upd(r, f, Commit[C]())
 
   def updWith[A, B, C](r: Ref[A])(f: (A, B) => React[Any, (A, C)]): React[B, C] = {
-    val self: React[B, (A, B)] = r.invisibleRead.firstImpl[B].lmap[B](b => ((), b))
+    val self: React[B, (A, B)] = r.unsafeInvisibleRead.firstImpl[B].lmap[B](b => ((), b))
     val comp: React[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
       f(oa, b).flatMap {
         case (na, c) =>
-          r.cas(oa, na).rmap(_ => c)
+          r.unsafeCas(oa, na).rmap(_ => c)
       }
     }
     self >>> comp
@@ -211,9 +211,9 @@ object React extends ReactInstances0 {
 
   // TODO: generalize to more than 2
   def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): React[Any, (A, B)] = {
-    ra.invisibleRead >>> computed[A, (A, B)] { a =>
-      rb.invisibleRead >>> computed[B, (A, B)] { b =>
-        (ra.cas(a, a) × rb.cas(b, b)).lmap[Any] { _ => ((), ()) }.map { _ => (a, b) }
+    ra.unsafeInvisibleRead >>> computed[A, (A, B)] { a =>
+      rb.unsafeInvisibleRead >>> computed[B, (A, B)] { b =>
+        (ra.unsafeCas(a, a) × rb.unsafeCas(b, b)).lmap[Any] { _ => ((), ()) }.map { _ => (a, b) }
       }
     }
   }

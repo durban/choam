@@ -38,21 +38,19 @@ class AsyncStackSpec_Impl1_EMCAS_IO
 // class AsyncStackSpec_Impl2_NaiveKCAS_IO
 //   extends BaseSpecIO
 //   with SpecNaiveKCAS
-//   with AsyncStackSpec[IO]
 //   with AsyncStackImpl2[IO]
 
 class AsyncStackSpec_Impl2_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
-  with AsyncStackSpec[IO]
   with AsyncStackImpl2[IO]
 
-trait AsyncStackImpl1[F[_]] { this: AsyncStackSpec[F] =>
+trait AsyncStackImpl1[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec =>
   protected final override def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
     AsyncStack.impl1[G, A].run[G]
 }
 
-trait AsyncStackImpl2[F[_]] { this: AsyncStackSpec[F] =>
+trait AsyncStackImpl2[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec =>
   protected final override def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
     AsyncStack.impl2[G, A].run[G]
 }

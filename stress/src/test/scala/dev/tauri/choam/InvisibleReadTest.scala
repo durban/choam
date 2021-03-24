@@ -48,7 +48,7 @@ class InvisibleReadTest extends StressTestBase {
     React.unsafe.invisibleRead(ref2)
 
   private[this] val write =
-    ref1.cas("a", "b") >>> ref2.cas("x", "y")
+    ref1.unsafeCas("a", "b") >>> ref2.unsafeCas("x", "y")
 
   @Actor
   def writer(@unused r: LLZ_Result): Unit = {

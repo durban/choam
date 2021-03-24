@@ -38,7 +38,7 @@ trait Ref[A] {
   final def modifyWith(f: A => React[Any, A]): React[Unit, A] =
     updWith[Unit, A] { (oa, _) => f(oa).map(na => (na, oa)) }
 
-  private[choam] final def invisibleRead: React[Any, A] =
+  final def unsafeInvisibleRead: React[Any, A] =
     React.unsafe.invisibleRead(this)
 
   final def getter: React[Any, A] =
@@ -47,9 +47,9 @@ trait Ref[A] {
   // WARNING: This is unsafe, if we run `set`
   // WARNING: as part of another reaction.
   final def access1: React[Unit, (A, React[A, Unit])] = {
-    this.invisibleRead.map { oa =>
+    this.unsafeInvisibleRead.map { oa =>
       val set = React.computed[A, Unit] { (na: A) =>
-        this.cas(oa, na)
+        this.unsafeCas(oa, na)
       }
       (oa, set)
     }
@@ -57,23 +57,24 @@ trait Ref[A] {
 
   // WARNING: This throws an exception, if we
   // WARNING: run `set` as part of another reaction.
+  // TODO: This is non-composable iff `set` is not used.
   final def access2: React[Any, (A, React[A, Unit])] = {
     React.token.flatMap { origTok =>
-      this.invisibleRead.map { oa =>
+      this.unsafeInvisibleRead.map { oa =>
         val checkToken: React[Any, Unit] = React.token.flatMap { currTok =>
           if (currTok eq origTok) React.unit
           else React.delay[Any, Unit] { _ => throw new IllegalStateException("token mismatch") }
           // TODO: create a specific exception type for this
         }
         val set = React.computed[A, Unit] { (na: A) =>
-          checkToken.flatMap(_ => this.cas(oa, na))
+          checkToken.flatMap(_ => this.unsafeCas(oa, na))
         }
         (oa, set)
       }
     }
   }
 
-  private[choam] def cas(ov: A, nv: A): React[Any, Unit] =
+  final def unsafeCas(ov: A, nv: A): React[Any, Unit] =
     React.unsafe.cas(this, ov, nv)
 
   // TODO: this is dangerous, reading should go through the k-CAS implementation!
@@ -122,12 +123,12 @@ object Ref {
       guardImpl(guarded, negate = true)
 
     private def guardImpl[A, B](guarded: React[A, B], negate: Boolean): React[A, Option[B]] = {
-      (self.invisibleRead × React.identity[A]).flatMap {
+      (self.unsafeInvisibleRead × React.identity[A]).flatMap {
         case (guard, _) =>
           if (guard ^ negate) {
-            (self.cas(guard, guard) × guarded.rmap(Some(_))).rmap(_._2)
+            (self.unsafeCas(guard, guard) × guarded.rmap(Some(_))).rmap(_._2)
           } else {
-            self.cas(guard, guard).lmap[(Unit, A)](_ => ()).rmap(_ => None)
+            self.unsafeCas(guard, guard).lmap[(Unit, A)](_ => ()).rmap(_ => None)
           }
       }.lmap[A](a => ((), a))
     }

@@ -57,7 +57,7 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
       Gen.lzy {
         arbB.arbitrary.map { b =>
           val ref = Ref.mk(b)
-          ref.invisibleRead.lmap[A](_ => ())
+          ref.unsafeInvisibleRead.lmap[A](_ => ())
         }
       },
       Gen.lzy {
@@ -74,7 +74,7 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
       arbAB.arbitrary.map { fab =>
         val s = "x"
         val ref = Ref.mk(s)
-        (React.lift[A, B](fab) × ref.cas(s, s)).lmap[A](a => (a, ())).rmap(_._1)
+        (React.lift[A, B](fab) × ref.unsafeCas(s, s)).lmap[A](a => (a, ())).rmap(_._1)
       },
       Gen.lzy {
         for {

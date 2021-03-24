@@ -40,34 +40,34 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
 
   override val tryDeque: React[Unit, Option[A]] = {
     for {
-      node <- head.invisibleRead
+      node <- head.unsafeInvisibleRead
       an <- skipTombs(from = node.next)
       res <- an match {
         case None =>
           // empty queue:
-          head.cas(node, node) >>> React.ret(None)
+          head.unsafeCas(node, node) >>> React.ret(None)
         case Some((a, n)) =>
           // deque first node (and drop tombs before it):
-          head.cas(node, n.copy(data = nullOf[Ref[A]])) >>> React.ret(Some(a))
+          head.unsafeCas(node, n.copy(data = nullOf[Ref[A]])) >>> React.ret(Some(a))
       }
     } yield res
   }
 
   private[this] def skipTombs(from: Ref[Elem[A]]): React[Unit, Option[(A, Node[A])]] = {
-    from.invisibleRead.flatMapU {
+    from.unsafeInvisibleRead.flatMapU {
       case n @ Node(dataRef, nextRef) =>
-        dataRef.invisibleRead.flatMapU { a =>
+        dataRef.unsafeInvisibleRead.flatMapU { a =>
           if (isNull(a)) {
             // found a tombstone (no need to validate, since once
             // it's tombed, it will never be resurrected)
             skipTombs(nextRef)
           } else {
             // CAS data, to make sure it is not tombed concurrently:
-            dataRef.cas(a, a).map(_ => Some((a, n)))
+            dataRef.unsafeCas(a, a).map(_ => Some((a, n)))
           }
         }
       case e @ End() =>
-        from.cas(e, e) >>> React.ret(None)
+        from.unsafeCas(e, e) >>> React.ret(None)
     }
   }
 
@@ -80,14 +80,14 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
   }
 
   private[this] def findAndEnqueue(node: Node[A]): React[Any, Unit] = {
-    React.unsafe.delayComputed(tail.invisibleRead.flatMap { (n: Node[A]) =>
-      n.next.invisibleRead.flatMap {
+    React.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMap { (n: Node[A]) =>
+      n.next.unsafeInvisibleRead.flatMap {
         case e @ End() =>
           // found true tail; will CAS, and try to adjust the tail ref:
-          React.ret(n.next.cas(e, node).postCommit(tail.cas(n, node).?.void))
+          React.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and will retry:
-          tail.cas(n, nv).?.map(_ => React.unsafe.retry)
+          tail.unsafeCas(n, nv).?.map(_ => React.unsafe.retry)
       }
     })
   }
@@ -100,11 +100,11 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
    * are compared by reference equality.
    */
   override val remove: React[A, Boolean] = React.computed { (a: A) =>
-    head.invisibleRead.flatMapU { h =>
+    head.unsafeInvisibleRead.flatMapU { h =>
       findAndTomb(a, h.next).flatMapU { wasRemoved =>
         if (wasRemoved) {
           // validate head (in case it was dequed concurrently):
-          head.cas(h, h).map { _ => true }
+          head.unsafeCas(h, h).map { _ => true }
         } else {
           React.ret(false)
         }
@@ -113,19 +113,19 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
   }
 
   private[this] def findAndTomb(item: A, from: Ref[Elem[A]]): React[Unit, Boolean] = {
-    from.invisibleRead.flatMap {
+    from.unsafeInvisibleRead.flatMap {
       case Node(dataRef, nextRef) =>
-        dataRef.invisibleRead.flatMap { a =>
+        dataRef.unsafeInvisibleRead.flatMap { a =>
           if (equ(a, item)) {
             // found it
-            dataRef.cas(a, nullOf[A]).map(_ => true)
+            dataRef.unsafeCas(a, nullOf[A]).map(_ => true)
           } else {
             // continue search:
             findAndTomb(item, nextRef)
           }
         }
       case e @ End() =>
-        from.cas(e, e) >>> React.ret(false)
+        from.unsafeCas(e, e) >>> React.ret(false)
     }
   }
 
@@ -134,10 +134,10 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
     def go(e: Elem[A], acc: List[A]): F[List[A]] = e match {
       case Node(null, next) =>
         // sentinel
-        F.monad.flatMap(F.run(next.invisibleRead, ())) { go(_, acc) }
+        F.monad.flatMap(F.run(next.unsafeInvisibleRead, ())) { go(_, acc) }
       case Node(a, next) =>
-        F.monad.flatMap(F.run(next.invisibleRead, ())) { e =>
-          F.monad.flatMap(F.run(a.invisibleRead, ())) { a =>
+        F.monad.flatMap(F.run(next.unsafeInvisibleRead, ())) { e =>
+          F.monad.flatMap(F.run(a.unsafeInvisibleRead, ())) { a =>
             if (isNull(a)) go(e, acc) // tombstone
             else go(e, a :: acc)
           }
@@ -146,7 +146,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
         F.monad.pure(acc)
     }
 
-    F.monad.map(F.monad.flatMap(F.run(head.invisibleRead, ())) { go(_, Nil) }) { _.reverse }
+    F.monad.map(F.monad.flatMap(F.run(head.unsafeInvisibleRead, ())) { go(_, Nil) }) { _.reverse }
   }
 
   els.foreach { a =>

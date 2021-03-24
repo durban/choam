@@ -43,7 +43,7 @@ class ResourceAllocationReact {
       if (i >= n) {
         react
       } else {
-        val r = rss(i).invisibleRead
+        val r = rss(i).unsafeInvisibleRead
         read(i + 1, react.map2(r) { (arr, s) =>
           arr(i) = s
           arr
@@ -57,7 +57,7 @@ class ResourceAllocationReact {
         react
       } else {
         val r = React.computed[Array[String], Unit] { ovs =>
-          rss(i).cas(ovs(i), ovs((i + 1) % n))
+          rss(i).unsafeCas(ovs(i), ovs((i + 1) % n))
         }
         write(i + 1, (react * r).discard)
       }

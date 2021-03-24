@@ -41,14 +41,14 @@ class DelayComputedTest extends StressTestBase {
     Ref.mk("x")
 
   private[this] val composed: React[Unit, (String, String)] = {
-    val dComp = React.unsafe.delayComputed(ref1.invisibleRead.flatMap { v1 =>
-      ref1.cas(v1, v1 + "b").map { _ => // this modify runs during "prepare"
+    val dComp = React.unsafe.delayComputed(ref1.unsafeInvisibleRead.flatMap { v1 =>
+      ref1.unsafeCas(v1, v1 + "b").map { _ => // this modify runs during "prepare"
         ref1.modify(_ + "c") // this modify is part of the final reaction
       }
     })
     // this is also part of the final reaction:
     val other = {
-      ref2.cas("invalid", "q").map {_ => "q" } + // this will fail
+      ref2.unsafeCas("invalid", "q").map {_ => "q" } + // this will fail
         ref2.modify(_ + "y") // but this will succeed
     }
     (dComp * other)

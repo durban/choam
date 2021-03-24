@@ -45,7 +45,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
 
     def ilookup(i: INode[K, V], k: K, lev: Int, @deprecated("", "") parent: INode[K, V]): React[Any, V] = {
       for {
-        im <- i.main.invisibleRead
+        im <- i.main.unsafeInvisibleRead
         v <- im match {
           case cn: CNode[K, V] =>
             val (flag, pos) = flagpos(hs(k), lev, cn.bmp)
@@ -66,13 +66,13 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
           case ln: LNode[K, V] =>
             ln.lookup.lmap[Any](_ => (k, eq))
         }
-        _ <- i.main.cas(im, im) // FIXME: this is only to be composable
+        _ <- i.main.unsafeCas(im, im) // FIXME: this is only to be composable
       } yield v
     }
 
     React.computed[K, Option[V]] { k =>
       for {
-        r <- root.invisibleRead
+        r <- root.unsafeInvisibleRead
         v <- ilookup(r, k, 0, null)
       } yield if (equ(v, NOTFOUND.as[V])) None else Some(v)
     }
@@ -82,14 +82,14 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
 
     def iinsert(i: INode[K, V], k: K, v: V, lev: Int, @deprecated("", "") parent: INode[K, V]): React[Any, Unit] = {
       for {
-        im <- i.main.invisibleRead
-        gen <- i.gen.invisibleRead
+        im <- i.main.unsafeInvisibleRead
+        gen <- i.gen.unsafeInvisibleRead
         _ <- im match {
           case cn: CNode[K, V] =>
             val (flag, pos) = flagpos(hs(k), lev, cn.bmp)
             if ((cn.bmp & flag) == 0) {
               val ncn = cn.inserted(pos, flag, new SNode(k, v))
-              i.main.cas(cn, ncn)
+              i.main.unsafeCas(cn, ncn)
             } else {
               cn(pos) match {
                 case sin: INode[K, V] =>
@@ -104,14 +104,14 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
                   } else {
                     cn.updated(pos, new SNode(k, v))
                   }
-                  i.main.cas(cn, ncn)
+                  i.main.unsafeCas(cn, ncn)
               }
             }
           case _: TNode[K, V] =>
             // TODO: clean
             React.unsafe.retry
           case ln: LNode[K, V] =>
-            i.main.cas(ln, ln.inserted(k, v, eq))
+            i.main.unsafeCas(ln, ln.inserted(k, v, eq))
         }
       } yield ()
     }
@@ -119,7 +119,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
     React.computed[(K, V), Unit] {
       case (k, v) =>
         for {
-          r <- root.invisibleRead
+          r <- root.unsafeInvisibleRead
           _ <- iinsert(r, k, v, 0, null)
         } yield ()
     }
@@ -140,7 +140,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
 
   private[this] def debug: React[Int, String] = React.computed { level =>
     for {
-      r <- root.invisibleRead
+      r <- root.unsafeInvisibleRead
       rs <- r.debug.lmap[Any](_ => level)
     } yield rs
   }
@@ -173,7 +173,7 @@ object Ctrie {
 
     private[choam] override def debug: React[Int, String] = React.computed { level =>
       for {
-        m <- main.invisibleRead
+        m <- main.unsafeInvisibleRead
         ms <- m.debug.lmap[Any](_ => level)
       } yield (indent * level) + s"INode -> ${ms}"
     }
@@ -239,7 +239,7 @@ object Ctrie {
   /** Tomb node */
   final class TNode[K, V](val sn: Ref[SNode[K, V]]) extends MainNode[K, V] {
     private[choam] def debug: React[Int, String] = React.computed { level =>
-      sn.invisibleRead.flatMap(_.debug.lmap[Any](_ => 0)).map(s => (indent * level) + s"TNode(${s})")
+      sn.unsafeInvisibleRead.flatMap(_.debug.lmap[Any](_ => 0)).map(s => (indent * level) + s"TNode(${s})")
     }
   }
 

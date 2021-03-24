@@ -47,12 +47,12 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   test("Simple CAS should work as expected") {
     for {
       ref <- React.newRef("ert").run[F]
-      rea = lift((_: Int).toString) × (ref.cas("ert", "xyz") >>> lift(_ => "boo"))
+      rea = lift((_: Int).toString) × (ref.unsafeCas("ert", "xyz") >>> lift(_ => "boo"))
       s12 <- rea((5, ()))
       (s1, s2) = s12
       _ <- assertEqualsF(s1, "5")
       _ <- assertEqualsF(s2, "boo")
-      _ <- assertResultF(ref.invisibleRead.run[F], "xyz")
+      _ <- assertResultF(ref.unsafeInvisibleRead.run[F], "xyz")
     } yield ()
   }
 
@@ -65,11 +65,11 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         else r2.upd[Any, String] { (o2, _) => (ov, o2) }
       }
       _ <- r.run
-      _ <- assertResultF(r1.invisibleRead.run, "bar")
-      _ <- assertResultF(r2.invisibleRead.run, "x")
+      _ <- assertResultF(r1.unsafeInvisibleRead.run, "bar")
+      _ <- assertResultF(r2.unsafeInvisibleRead.run, "x")
       _ <- r.run
-      _ <- assertResultF(r1.invisibleRead.run, "x")
-      _ <- assertResultF(r2.invisibleRead.run, "bar")
+      _ <- assertResultF(r1.unsafeInvisibleRead.run, "x")
+      _ <- assertResultF(r2.unsafeInvisibleRead.run, "bar")
     } yield ()
   }
 
@@ -77,10 +77,10 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       r1 <- React.newRef("r1").run[F]
       r2 <- React.newRef("r2").run[F]
-      rea = r1.cas("r1", "x") + r2.cas("r2", "x")
+      rea = r1.unsafeCas("r1", "x") + r2.unsafeCas("r2", "x")
       _ <- assertResultF(rea.run, ())
-      _ <- assertResultF(r1.invisibleRead.run, "x")
-      _ <- assertResultF(r2.invisibleRead.run, "r2")
+      _ <- assertResultF(r1.unsafeInvisibleRead.run, "x")
+      _ <- assertResultF(r2.unsafeInvisibleRead.run, "r2")
     } yield ()
   }
 
@@ -88,15 +88,15 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       r1 <- React.newRef("z").run[F]
       r2 <- React.newRef("r2").run[F]
-      rea = r1.cas("r1", "x") + (r2.cas("r2", "x") * r1.cas("z", "r1"))
+      rea = r1.unsafeCas("r1", "x") + (r2.unsafeCas("r2", "x") * r1.unsafeCas("z", "r1"))
       // r2: "r2" -> "x" AND r1: "z" -> "r1"
       _ <- rea.run
-      _ <- assertResultF(r2.invisibleRead.run, "x")
-      _ <- assertResultF(r1.invisibleRead.run, "r1")
+      _ <- assertResultF(r2.unsafeInvisibleRead.run, "x")
+      _ <- assertResultF(r1.unsafeInvisibleRead.run, "r1")
       // r1: "r1" -> "x"
       _ <- rea.run
-      _ <- assertResultF(r1.invisibleRead.run, "x")
-      _ <- assertResultF(r2.invisibleRead.run, "x")
+      _ <- assertResultF(r1.unsafeInvisibleRead.run, "x")
+      _ <- assertResultF(r2.unsafeInvisibleRead.run, "x")
     } yield ()
   }
 
@@ -109,33 +109,33 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       r3a <- React.newRef("3a").run[F]
       r3b <- React.newRef("3b").run[F]
       rea = {
-        r1a.cas("1a", "xa") >>>
-        r1b.cas("1b", "xb") >>>
+        r1a.unsafeCas("1a", "xa") >>>
+        r1b.unsafeCas("1b", "xb") >>>
         (
-        (r2a.cas("2a", "ya") >>> r2b.cas("2b", "yb")) +
-        (r3a.cas("3a", "za") >>> r3b.cas("3b", "zb"))
+        (r2a.unsafeCas("2a", "ya") >>> r2b.unsafeCas("2b", "yb")) +
+        (r3a.unsafeCas("3a", "za") >>> r3b.unsafeCas("3b", "zb"))
         )
       }
       // 1st choice selected:
       _ <- rea.run
-      _ <- assertResultF(r1a.invisibleRead.run, "xa")
-      _ <- assertResultF(r1b.invisibleRead.run, "xb")
-      _ <- assertResultF(r2a.invisibleRead.run, "ya")
-      _ <- assertResultF(r2b.invisibleRead.run, "yb")
-      _ <- assertResultF(r3a.invisibleRead.run, "3a")
-      _ <- assertResultF(r3b.invisibleRead.run, "3b")
-      _ <- r1a.cas("xa", "1a").run
-      _ <- r1b.cas("xb", "1b").run
-      _ <- assertResultF(r1a.invisibleRead.run, "1a")
-      _ <- assertResultF(r1b.invisibleRead.run, "1b")
+      _ <- assertResultF(r1a.unsafeInvisibleRead.run, "xa")
+      _ <- assertResultF(r1b.unsafeInvisibleRead.run, "xb")
+      _ <- assertResultF(r2a.unsafeInvisibleRead.run, "ya")
+      _ <- assertResultF(r2b.unsafeInvisibleRead.run, "yb")
+      _ <- assertResultF(r3a.unsafeInvisibleRead.run, "3a")
+      _ <- assertResultF(r3b.unsafeInvisibleRead.run, "3b")
+      _ <- r1a.unsafeCas("xa", "1a").run
+      _ <- r1b.unsafeCas("xb", "1b").run
+      _ <- assertResultF(r1a.unsafeInvisibleRead.run, "1a")
+      _ <- assertResultF(r1b.unsafeInvisibleRead.run, "1b")
       // 2nd choice selected:
       _ <- rea.run
-      _ <- assertResultF(r1a.invisibleRead.run, "xa")
-      _ <- assertResultF(r1b.invisibleRead.run, "xb")
-      _ <- assertResultF(r2a.invisibleRead.run, "ya")
-      _ <- assertResultF(r2b.invisibleRead.run, "yb")
-      _ <- assertResultF(r3a.invisibleRead.run, "za")
-      _ <- assertResultF(r3b.invisibleRead.run, "zb")
+      _ <- assertResultF(r1a.unsafeInvisibleRead.run, "xa")
+      _ <- assertResultF(r1b.unsafeInvisibleRead.run, "xb")
+      _ <- assertResultF(r2a.unsafeInvisibleRead.run, "ya")
+      _ <- assertResultF(r2b.unsafeInvisibleRead.run, "yb")
+      _ <- assertResultF(r3a.unsafeInvisibleRead.run, "za")
+      _ <- assertResultF(r3b.unsafeInvisibleRead.run, "zb")
     } yield ()
   }
 
@@ -148,58 +148,58 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       r3a <- React.newRef("3a").run[F]
       r3b <- React.newRef("3b").run[F]
       rea = {
-        r1a.invisibleRead >>>
+        r1a.unsafeInvisibleRead >>>
         React.computed { s =>
           if (s eq "1a") {
-            r1b.cas("1b", "xb") >>> (r2a.cas("2a", "ya") + r3a.cas("3a", "za"))
+            r1b.unsafeCas("1b", "xb") >>> (r2a.unsafeCas("2a", "ya") + r3a.unsafeCas("3a", "za"))
           } else {
-            r1b.cas("1b", "xx") >>> (r2b.cas("2b", "yb") + r3b.cas("3b", "zb"))
+            r1b.unsafeCas("1b", "xx") >>> (r2b.unsafeCas("2b", "yb") + r3b.unsafeCas("3b", "zb"))
           }
         }
       }
 
       // THEN selected, 1st choice selected:
       _ <- rea.run
-      _ <- assertResultF(r1a.invisibleRead.run, "1a")
-      _ <- assertResultF(r1b.invisibleRead.run, "xb")
-      _ <- assertResultF(r2a.invisibleRead.run, "ya")
-      _ <- assertResultF(r2b.invisibleRead.run, "2b")
-      _ <- assertResultF(r3a.invisibleRead.run, "3a")
-      _ <- assertResultF(r3b.invisibleRead.run, "3b")
+      _ <- assertResultF(r1a.unsafeInvisibleRead.run, "1a")
+      _ <- assertResultF(r1b.unsafeInvisibleRead.run, "xb")
+      _ <- assertResultF(r2a.unsafeInvisibleRead.run, "ya")
+      _ <- assertResultF(r2b.unsafeInvisibleRead.run, "2b")
+      _ <- assertResultF(r3a.unsafeInvisibleRead.run, "3a")
+      _ <- assertResultF(r3b.unsafeInvisibleRead.run, "3b")
 
-      _ <- r1b.cas("xb", "1b").run
+      _ <- r1b.unsafeCas("xb", "1b").run
 
       // THEN selected, 2nd choice selected:
       _ <- rea.run
-      _ <- assertResultF(r1a.invisibleRead.run, "1a")
-      _ <- assertResultF(r1b.invisibleRead.run, "xb")
-      _ <- assertResultF(r2a.invisibleRead.run, "ya")
-      _ <- assertResultF(r2b.invisibleRead.run, "2b")
-      _ <- assertResultF(r3a.invisibleRead.run, "za")
-      _ <- assertResultF(r3b.invisibleRead.run, "3b")
+      _ <- assertResultF(r1a.unsafeInvisibleRead.run, "1a")
+      _ <- assertResultF(r1b.unsafeInvisibleRead.run, "xb")
+      _ <- assertResultF(r2a.unsafeInvisibleRead.run, "ya")
+      _ <- assertResultF(r2b.unsafeInvisibleRead.run, "2b")
+      _ <- assertResultF(r3a.unsafeInvisibleRead.run, "za")
+      _ <- assertResultF(r3b.unsafeInvisibleRead.run, "3b")
 
-      _ <- r1a.cas("1a", "xa").run
-      _ <- r1b.cas("xb", "1b").run
+      _ <- r1a.unsafeCas("1a", "xa").run
+      _ <- r1b.unsafeCas("xb", "1b").run
 
       // ELSE selected, 1st choice selected:
       _ <- rea.run
-      _ <- assertResultF(r1a.invisibleRead.run, "xa")
-      _ <- assertResultF(r1b.invisibleRead.run, "xx")
-      _ <- assertResultF(r2a.invisibleRead.run, "ya")
-      _ <- assertResultF(r2b.invisibleRead.run, "yb")
-      _ <- assertResultF(r3a.invisibleRead.run, "za")
-      _ <- assertResultF(r3b.invisibleRead.run, "3b")
+      _ <- assertResultF(r1a.unsafeInvisibleRead.run, "xa")
+      _ <- assertResultF(r1b.unsafeInvisibleRead.run, "xx")
+      _ <- assertResultF(r2a.unsafeInvisibleRead.run, "ya")
+      _ <- assertResultF(r2b.unsafeInvisibleRead.run, "yb")
+      _ <- assertResultF(r3a.unsafeInvisibleRead.run, "za")
+      _ <- assertResultF(r3b.unsafeInvisibleRead.run, "3b")
 
-      _ <- r1b.cas("xx", "1b").run
+      _ <- r1b.unsafeCas("xx", "1b").run
 
       // ELSE selected, 2nd choice selected:
       _ <- rea.run
-      _ <- assertResultF(r1a.invisibleRead.run, "xa")
-      _ <- assertResultF(r1b.invisibleRead.run, "xx")
-      _ <- assertResultF(r2a.invisibleRead.run, "ya")
-      _ <- assertResultF(r2b.invisibleRead.run, "yb")
-      _ <- assertResultF(r3a.invisibleRead.run, "za")
-      _ <- assertResultF(r3b.invisibleRead.run, "zb")
+      _ <- assertResultF(r1a.unsafeInvisibleRead.run, "xa")
+      _ <- assertResultF(r1b.unsafeInvisibleRead.run, "xx")
+      _ <- assertResultF(r2a.unsafeInvisibleRead.run, "ya")
+      _ <- assertResultF(r2b.unsafeInvisibleRead.run, "yb")
+      _ <- assertResultF(r3a.unsafeInvisibleRead.run, "za")
+      _ <- assertResultF(r3b.unsafeInvisibleRead.run, "zb")
     } yield ()
   }
 
@@ -207,7 +207,7 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     val n = 16 * React.maxStackDepth
     for {
       ref <- React.newRef("foo").run[F]
-      successfulCas = ref.cas("foo", "bar")
+      successfulCas = ref.unsafeCas("foo", "bar")
       fails = (1 to n).foldLeft[React[Unit, Unit]](React.unsafe.retry) { (r, _) =>
         r + React.unsafe.retry
       }
@@ -221,12 +221,12 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     val n = 16 * React.maxStackDepth
     for {
       ref <- React.newRef("foo").run[F]
-      successfulCas = ref.cas("foo", "bar")
+      successfulCas = ref.unsafeCas("foo", "bar")
       refs <- (1 to n).toList.traverse { _ =>
         React.newRef("x").run[F]
       }
       fails = refs.foldLeft[React[Unit, Unit]](React.unsafe.retry) { (r, ref) =>
-        r + ref.cas("y", "this will never happen")
+        r + ref.unsafeCas("y", "this will never happen")
       }
       r = fails + successfulCas
       _ <- assertResultF(r.run[F], ())
@@ -284,8 +284,8 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     okRef3 <- React.newRef("foo3").run
     okRef4 <- React.newRef("foo4").run
     failRef <- React.newRef("fail").run
-    left = ok1 >>> ((ok2 >>> (failRef.cas("x_fail", "y_fail") + React.unsafe.retry)) + okRef3.cas("foo3", "bar3"))
-    right = okRef4.cas("foo4", "bar4")
+    left = ok1 >>> ((ok2 >>> (failRef.unsafeCas("x_fail", "y_fail") + React.unsafe.retry)) + okRef3.unsafeCas("foo3", "bar3"))
+    right = okRef4.unsafeCas("foo4", "bar4")
     r = left + right
     _ <- assertResultF(r.run[F], ())
     _ <- okRefs1.traverse { ref =>
@@ -338,9 +338,9 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       leafs <- (0 until 16).toList.traverse(idx => React.newRef(s"foo-${idx}").run[F])
       lr1 <- leafs.grouped(2).toList.traverse[F, (React[Unit, Unit], F[Unit])] {
         case List(refLeft, refRight) =>
-          refLeft.invisibleRead.run[F].flatMap { ol =>
-            refRight.invisibleRead.run[F].flatMap { or =>
-              oneChoice(refLeft.cas(ol, s"${ol}-new"), refRight.cas(or, s"${or}-new"), x, "l1")
+          refLeft.unsafeInvisibleRead.run[F].flatMap { ol =>
+            refRight.unsafeInvisibleRead.run[F].flatMap { or =>
+              oneChoice(refLeft.unsafeCas(ol, s"${ol}-new"), refRight.unsafeCas(or, s"${or}-new"), x, "l1")
             }
           }
         case _ =>
@@ -377,7 +377,7 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       checkLeafs = { (expLastNew: Int) =>
         leafs.zipWithIndex.traverse { case (ref, idx) =>
           val expContents = if (idx <= expLastNew) s"foo-${idx}-new" else s"foo-${idx}"
-          assertResultF(ref.invisibleRead.run[F], expContents)
+          assertResultF(ref.unsafeInvisibleRead.run[F], expContents)
         }
       }
 
@@ -391,8 +391,8 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   def mkOkCASes(n: Int, ov: String, nv: String): F[(List[Ref[String]], React[Unit, Unit])] = for {
     ref0 <- React.newRef(ov).run[F]
     refs <- React.newRef(ov).run[F].replicateA(n - 1)
-    r = refs.foldLeft(ref0.cas(ov, nv)) { (r, ref) =>
-      (r * ref.cas(ov, nv)).discard
+    r = refs.foldLeft(ref0.unsafeCas(ov, nv)) { (r, ref) =>
+      (r * ref.unsafeCas(ov, nv)).discard
     }
   } yield (ref0 +: refs, r)
 
@@ -409,14 +409,14 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       pc2 = pc1.postCommit(r3.upd[String, Unit] { case (_, x) => (x, ()) })
 
       _ <- assertResultF(pc1.run[F], "aa")
-      _ <- assertResultF(r1.invisibleRead.run[F], "aa")
-      _ <- assertResultF(r2.invisibleRead.run[F], "aa")
-      _ <- assertResultF(r3.invisibleRead.run[F], "")
+      _ <- assertResultF(r1.unsafeInvisibleRead.run[F], "aa")
+      _ <- assertResultF(r2.unsafeInvisibleRead.run[F], "aa")
+      _ <- assertResultF(r3.unsafeInvisibleRead.run[F], "")
 
       _ <- assertResultF(pc2.run[F], "aaa")
-      _ <- assertResultF(r1.invisibleRead.run[F], "aaa")
-      _ <- assertResultF(r2.invisibleRead.run[F], "aaa")
-      _ <- assertResultF(r3.invisibleRead.run[F], "aaa")
+      _ <- assertResultF(r1.unsafeInvisibleRead.run[F], "aaa")
+      _ <- assertResultF(r2.unsafeInvisibleRead.run[F], "aaa")
+      _ <- assertResultF(r3.unsafeInvisibleRead.run[F], "aaa")
     } yield ()
   }
 
@@ -437,18 +437,18 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       }
 
       def pop(head: Ref[Node]): React[Unit, String] = React.unsafe.delayComputed {
-        head.invisibleRead.flatMap { h =>
-          h.value.invisibleRead.flatMap {
+        head.unsafeInvisibleRead.flatMap { h =>
+          h.value.unsafeInvisibleRead.flatMap {
             case null =>
               // sentinel node, discard it and retry:
               h.next.getter.flatMap { nxt =>
-                head.cas(h, nxt)
+                head.unsafeCas(h, nxt)
               }.as(React.unsafe.retry)
             case v =>
               // found the real head, pop it:
               React.ret(h.next.getter.flatMap { nxt =>
-                head.cas(h, nxt).flatMap { _ =>
-                  h.value.cas(v, v)
+                head.unsafeCas(h, nxt).flatMap { _ =>
+                  h.value.unsafeCas(v, v)
                 }
               }.as(v))
           }
@@ -481,8 +481,8 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(popBoth, ("a", "c"))
       _ <- assertResultF(popBoth, ("b", "d"))
       _ <- assertResultF(popBoth, ("x", "y"))
-      _ <- assertResultF(r1.invisibleRead.flatMap(_.value.invisibleRead).run[F], null)
-      _ <- assertResultF(r2.invisibleRead.flatMap(_.value.invisibleRead).run[F], null)
+      _ <- assertResultF(r1.unsafeInvisibleRead.flatMap(_.value.unsafeInvisibleRead).run[F], null)
+      _ <- assertResultF(r2.unsafeInvisibleRead.flatMap(_.value.unsafeInvisibleRead).run[F], null)
     } yield ()
   }
 

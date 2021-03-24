@@ -44,8 +44,8 @@ final object Map {
 
       override val put = React.computed { (kv: (K, V)) =>
         for {
-          m <- repr.invisibleRead
-          old <- repr.cas(m, m + kv) >>> (m.get(kv._1) match {
+          m <- repr.unsafeInvisibleRead
+          old <- repr.unsafeCas(m, m + kv) >>> (m.get(kv._1) match {
             case s @ Some(_) =>
                React.ret(s)
             case None =>
@@ -56,28 +56,28 @@ final object Map {
 
       override val putIfAbsent = React.computed { (kv: (K, V)) =>
         for {
-          m <- repr.invisibleRead
+          m <- repr.unsafeInvisibleRead
           old <- m.get(kv._1) match {
             case s @ Some(_) =>
-              repr.cas(m, m) >>> React.ret(s)
+              repr.unsafeCas(m, m) >>> React.ret(s)
             case None =>
-              repr.cas(m, m + kv) >>> React.ret(None)
+              repr.unsafeCas(m, m + kv) >>> React.ret(None)
           }
         } yield old
       }
 
       override val replace = React.computed { (kvv: (K, V, V)) =>
         for {
-          m <- repr.invisibleRead
+          m <- repr.unsafeInvisibleRead
           ok <- m.get(kvv._1) match {
             case Some(v) =>
               if (equ(v, kvv._2)) {
-                repr.cas(m, m + (kvv._1 -> kvv._3)) >>> React.ret(true)
+                repr.unsafeCas(m, m + (kvv._1 -> kvv._3)) >>> React.ret(true)
               } else {
-                repr.cas(m, m) >>> React.ret(false)
+                repr.unsafeCas(m, m) >>> React.ret(false)
               }
             case None =>
-              repr.cas(m, m) >>> React.ret(false)
+              repr.unsafeCas(m, m) >>> React.ret(false)
           }
         } yield ok
       }
@@ -88,28 +88,28 @@ final object Map {
 
       override val del = React.computed { (k: K) =>
         for {
-          m <- repr.invisibleRead
+          m <- repr.unsafeInvisibleRead
           ok <- m.get(k) match {
             case Some(_) =>
-              repr.cas(m, m - k) >>> React.ret(true)
+              repr.unsafeCas(m, m - k) >>> React.ret(true)
             case None =>
-              repr.cas(m, m) >>> React.ret(false)
+              repr.unsafeCas(m, m) >>> React.ret(false)
           }
         } yield ok
       }
 
       override val remove = React.computed { (kv: (K, V)) =>
         for {
-          m <- repr.invisibleRead
+          m <- repr.unsafeInvisibleRead
           ok <- m.get(kv._1) match {
             case Some(w) =>
               if (equ(w, kv._2)) {
-                repr.cas(m, m - kv._1) >>> React.ret(true)
+                repr.unsafeCas(m, m - kv._1) >>> React.ret(true)
               } else {
-                repr.cas(m, m) >>> React.ret(false)
+                repr.unsafeCas(m, m) >>> React.ret(false)
               }
             case None =>
-              repr.cas(m, m) >>> React.ret(false)
+              repr.unsafeCas(m, m) >>> React.ret(false)
           }
         } yield ok
       }

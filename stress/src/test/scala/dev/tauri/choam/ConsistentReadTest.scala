@@ -40,7 +40,7 @@ class ConsistentReadTest extends StressTestBase {
     Ref.mk("bar")
 
   private[this] var upd: React[Unit, Unit] =
-    ref1.cas("foo", "x") >>> ref2.cas("bar", "y")
+    ref1.unsafeCas("foo", "x") >>> ref2.unsafeCas("bar", "y")
 
   private[this] var get: React[Unit, (String, String)] =
     ref1.getter * ref2.getter

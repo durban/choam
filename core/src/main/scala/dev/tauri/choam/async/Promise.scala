@@ -124,9 +124,9 @@ object Promise {
     extends Promise[F, A] {
 
     val complete: Reaction[A, Boolean] = React.computed { a =>
-      ref.invisibleRead.flatMap {
+      ref.unsafeInvisibleRead.flatMap {
         case w @ Waiting(cbs) =>
-          ref.cas(w, Done(a)).rmap(_ => true).postCommit(React.delay { _ =>
+          ref.unsafeCas(w, Done(a)).rmap(_ => true).postCommit(React.delay { _ =>
             cbs.valuesIterator.foreach(_(a))
           })
         case Done(_) =>
@@ -142,7 +142,7 @@ object Promise {
     }
 
     def get: F[A] = {
-      ref.invisibleRead.run[F].flatMap {
+      ref.unsafeInvisibleRead.run[F].flatMap {
         case Waiting(_) =>
           F.delay(new Id).flatMap { id =>
             F.async { cb =>
@@ -199,9 +199,9 @@ object Promise {
     extends Promise[F, A] {
 
     val complete: Reaction[A, Boolean] = React.computed { a =>
-      ref.invisibleRead.flatMap {
+      ref.unsafeInvisibleRead.flatMap {
         case w @ Waiting2(cbs, _) =>
-          ref.cas(w, Done2(a)).rmap(_ => true).postCommit(React.delay { _ =>
+          ref.unsafeCas(w, Done2(a)).rmap(_ => true).postCommit(React.delay { _ =>
             cbs.valuesIterator.foreach(_(a))
           })
         case Done2(_) =>
@@ -217,7 +217,7 @@ object Promise {
     }
 
     def get: F[A] = {
-      ref.invisibleRead.run[F].flatMap {
+      ref.unsafeInvisibleRead.run[F].flatMap {
         case Waiting2(_, _) =>
           F.async { cb =>
             F.uncancelable[Either[Long, A]] { poll =>
