@@ -59,7 +59,7 @@ object RandomReplaceBench {
 
   abstract class SharedStateBase[A <: AnyRef](a: A) {
 
-    val ref = Ref.mk[A](nullOf[A])
+    val ref = Ref.unsafe[A](nullOf[A])
 
     reset(EMCAS.currentContext())
 

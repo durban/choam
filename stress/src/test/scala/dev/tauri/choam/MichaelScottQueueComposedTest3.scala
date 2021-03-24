@@ -38,10 +38,10 @@ class MichaelScottQueueComposedTest3 extends MsQueueStressTestBase {
     this.newQueue[String]()
 
   private[this] val latch =
-    Ref.mk[Boolean](false)
+    Ref.unsafe[Boolean](false)
 
   private[this] val dummy =
-    Ref.mk[Int](0)
+    Ref.unsafe[Int](0)
 
   private[this] val deq =
     queue.tryDeque * (dummy.modify { _ + 1 }.flatMap { _ => latch.modify(_ => true) })

@@ -29,11 +29,11 @@ import RemoveQueue._
 private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els: Iterable[A])
   extends Queue.WithRemove[A] {
 
-  private[this] val head: Ref[Node[A]] = Ref.mk(sentinel)
-  private[this] val tail: Ref[Node[A]] = Ref.mk(sentinel)
+  private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel)
 
   def this(els: Iterable[A]) =
-    this(Node(nullOf[Ref[A]], Ref.mk(End[A]())), els)
+    this(Node(nullOf[Ref[A]], Ref.unsafe(End[A]())), els)
 
   def this() =
     this(Iterable.empty)

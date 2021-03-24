@@ -56,7 +56,7 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
       },
       Gen.lzy {
         arbB.arbitrary.map { b =>
-          val ref = Ref.mk(b)
+          val ref = Ref.unsafe(b)
           ref.unsafeInvisibleRead.lmap[A](_ => ())
         }
       },
@@ -65,7 +65,7 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
           ab <- arbAB.arbitrary
           a1 <- arbA.arbitrary
         } yield {
-          val r = React.newRef(a1).first[A].flatMap { case (ref, _) =>
+          val r = Ref(a1).first[A].flatMap { case (ref, _) =>
             ref.upd[(Unit, A), B] { (a1, a2) => (a2._2, ab(a1)) }
           }
           r.lmap[A](a => ((), a))
@@ -73,7 +73,7 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
       },
       arbAB.arbitrary.map { fab =>
         val s = "x"
-        val ref = Ref.mk(s)
+        val ref = Ref.unsafe(s)
         (React.lift[A, B](fab) × ref.unsafeCas(s, s)).lmap[A](a => (a, ())).rmap(_._1)
       },
       Gen.lzy {
@@ -82,7 +82,7 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
           b <- arbB.arbitrary
           b2 <- arbB.arbitrary
         } yield {
-          val ref = Ref.mk[B](b)
+          val ref = Ref.unsafe[B](b)
           r.postCommit(ref.upd[B, Unit] { case (_, _) => (b2, ()) })
         }
       },
@@ -92,7 +92,7 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
           aa <- arbAA.arbitrary
           r <- arbReact[A, B].arbitrary
         } yield {
-          val ref = Ref.mk[A](a)
+          val ref = Ref.unsafe[A](a)
           React.unsafe.delayComputed(prepare = r.map(b => ref.modify(aa).map(_ => b)))
         }
       }

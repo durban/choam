@@ -33,10 +33,10 @@ import kcas.Ref
 class LRMapTest extends StressTestBase {
 
   private[this] val ref1: Ref[String] =
-    Ref.mk("a")
+    Ref.unsafe("a")
 
   private[this] val ref2: Ref[String] =
-    Ref.mk("x")
+    Ref.unsafe("x")
 
   private[this] def react1(r: LLLLLL_Result): React[Unit, String] = {
     ref1.modify(_ + "b").rmap { s =>

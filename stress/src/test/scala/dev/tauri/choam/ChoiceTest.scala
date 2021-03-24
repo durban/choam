@@ -34,13 +34,13 @@ import kcas.Ref
 class ChoiceTest extends StressTestBase {
 
   private[this] val ref0 =
-    Ref.mk("b")
+    Ref.unsafe("b")
 
   private[this] val ref1 =
-    Ref.mk("foo")
+    Ref.unsafe("foo")
 
   private[this] val ref2 =
-    Ref.mk("bar")
+    Ref.unsafe("bar")
 
   private[this] val choice: React[Unit, (String, String)] = {
     val mod1 = ref0.modify { s => (s(0) + 1).toChar.toString }

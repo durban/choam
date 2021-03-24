@@ -201,7 +201,7 @@ object Exchanger {
      *  +--> claimedAndFailed (fulfiller couldn't fulfill)
      *  \--> claimedAndRescinded (owner couldn't wait any more for the fulfiller)
      */
-    val hole = Ref.mk[C](nullOf[C])
+    val hole = Ref.unsafe[C](nullOf[C])
 
     def spinWait(retries: Int, max: Int, ctx: ThreadContext): Option[C] = {
       @tailrec

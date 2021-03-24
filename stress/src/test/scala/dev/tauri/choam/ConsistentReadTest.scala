@@ -34,10 +34,10 @@ import kcas._
 class ConsistentReadTest extends StressTestBase {
 
   private[this] var ref1 =
-    Ref.mk("foo")
+    Ref.unsafe("foo")
 
   private[this] var ref2 =
-    Ref.mk("bar")
+    Ref.unsafe("bar")
 
   private[this] var upd: React[Unit, Unit] =
     ref1.unsafeCas("foo", "x") >>> ref2.unsafeCas("bar", "y")

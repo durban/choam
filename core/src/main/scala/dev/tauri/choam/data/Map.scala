@@ -40,7 +40,7 @@ object Map {
     new Map[K, V] {
 
       private[this] val repr: Ref[immutable.Map[K, V]] =
-        Ref.mk(immutable.Map.empty)
+        Ref.unsafe(immutable.Map.empty)
 
       override val put = React.computed { (kv: (K, V)) =>
         for {

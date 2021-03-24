@@ -39,10 +39,10 @@ import kcas._
 class ComputedTest extends StressTestBase {
 
   private[this] val r1 =
-    Ref.mk("foo")
+    Ref.unsafe("foo")
 
   private[this] val r2 =
-    Ref.mk("bar")
+    Ref.unsafe("bar")
 
   private[this] val write =
     r1.upd[String, String] { (ov, nv) => (nv, ov) }

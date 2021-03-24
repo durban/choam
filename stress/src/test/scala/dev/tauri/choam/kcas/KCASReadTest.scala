@@ -34,7 +34,7 @@ import org.openjdk.jcstress.infra.results.ZL_Result
 class KCASReadTest extends StressTestBase {
 
   private[this] val refs: List[Ref[String]] =
-    List.fill(8)(Ref.mk("ov"))
+    List.fill(8)(Ref.unsafe("ov"))
 
   @Actor
   def writer(r: ZL_Result): Unit = {

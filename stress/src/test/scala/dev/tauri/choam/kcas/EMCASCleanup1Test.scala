@@ -34,7 +34,7 @@ import org.openjdk.jcstress.infra.results.ILL_Result
 class EMCASCleanup1Test {
 
   private[this] val ref =
-    Ref.mk("a")
+    Ref.unsafe("a")
 
   @Actor
   final def write(r: ILL_Result): Unit = {

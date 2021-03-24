@@ -135,11 +135,11 @@ object Ref {
   }
 
   def apply[A](initial: A): React[Any, Ref[A]] =
-    React.newRef(initial)
+    React.delay[Any, Ref[A]](_ => Ref.unsafe(initial))
 
-  private[choam] def mk[A](a: A): Ref[A] = {
+  def unsafe[A](initial: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
-    mkWithId(a)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+    mkWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
   /** Only for testing */
@@ -159,6 +159,7 @@ object Ref {
     new ref.UnpaddedRef1(a, tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
+  // TODO: public API(?)
   private[choam] def ref2[A, B](a: A, b: B): ref.Ref2[A, B] = {
     val tlr = ThreadLocalRandom.current()
     new ref.Ref2Impl[A, B](

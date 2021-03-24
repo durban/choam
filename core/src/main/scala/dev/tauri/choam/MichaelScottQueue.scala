@@ -24,11 +24,11 @@ import MichaelScottQueue._
 private[choam] final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable[A])
   extends Queue[A] {
 
-  private[this] val head: Ref[Node[A]] = Ref.mk(sentinel)
-  private[this] val tail: Ref[Node[A]] = Ref.mk(sentinel)
+  private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel)
 
   private def this(els: Iterable[A]) =
-    this(Node(nullOf[A], Ref.mk(End[A]())), els)
+    this(Node(nullOf[A], Ref.unsafe(End[A]())), els)
 
   private def this() =
     this(Iterable.empty)
@@ -49,7 +49,7 @@ private[choam] final class MichaelScottQueue[A] private[this] (sentinel: Node[A]
   }
 
   override val enqueue: React[A, Unit] = React.computed { (a: A) =>
-    findAndEnqueue(Node(a, Ref.mk(End[A]())))
+    findAndEnqueue(Node(a, Ref.unsafe(End[A]())))
   }
 
   private[this] def findAndEnqueue(node: Node[A]): React[Any, Unit] = {

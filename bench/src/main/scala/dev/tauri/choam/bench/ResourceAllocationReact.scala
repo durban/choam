@@ -82,7 +82,7 @@ object ResourceAllocationReact {
       Vector.fill(nRes)(scala.util.Random.nextString(10))
 
     val rss: Array[Ref[String]] =
-      initialValues.map(Ref.mk).toArray
+      initialValues.map(Ref.unsafe).toArray
 
     @TearDown
     def checkResults(): Unit = {

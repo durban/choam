@@ -60,7 +60,7 @@ class RefSpec extends BaseSpecA {
 
   test("Ref should be padded to avoid false sharing") {
     assumeOpenJdk()
-    val ref = Ref.mk("foo")
+    val ref = Ref.unsafe("foo")
     val (left, right) = getLeftRightPaddedSize(ref, fieldName)
     assert((clue(left) >= targetSize) || (clue(right) >= targetSize))
   }

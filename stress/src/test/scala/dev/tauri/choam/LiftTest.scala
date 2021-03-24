@@ -36,7 +36,7 @@ import kcas._
 class LiftTest extends StressTestBase {
 
   private[this] val ref =
-    Ref.mk("foo")
+    Ref.unsafe("foo")
 
   private[this] var notReallyRef =
     "bar"

@@ -68,8 +68,8 @@ object ReadKCAS {
 
   @State(Scope.Benchmark)
   class RefSt {
-    val ref1 = Ref.mk("1")
-    val ref2 = Ref.mk("2")
+    val ref1 = Ref.unsafe("1")
+    val ref2 = Ref.unsafe("2")
   }
 
   @State(Scope.Thread)

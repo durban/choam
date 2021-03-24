@@ -35,7 +35,7 @@ import org.openjdk.jcstress.infra.results._
 class IBRReservationTest {
 
   private[this] val ref =
-    Ref.mk("begin")
+    Ref.unsafe("begin")
 
   private[this] val latch =
     new CountDownLatch(1)

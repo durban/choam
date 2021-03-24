@@ -36,10 +36,10 @@ import kcas.Ref
 class InvisibleReadTest extends StressTestBase {
 
   private[this] val ref1: Ref[String] =
-    Ref.mk("a")
+    Ref.unsafe("a")
 
   private[this] val ref2: Ref[String] =
-    Ref.mk("x")
+    Ref.unsafe("x")
 
   private[this] val read1: React[Unit, String] =
     React.unsafe.invisibleRead(ref1)

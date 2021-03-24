@@ -34,7 +34,7 @@ import kcas.Ref
 class ReactCASTest extends StressTestBase {
 
   private[this] val ref: Ref[String] =
-    Ref.mk("ov")
+    Ref.unsafe("ov")
 
   private[this] val cas =
     React.computed { (nv: String) => React.unsafe.cas(ref, "ov", nv) }.?

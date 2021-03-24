@@ -34,10 +34,10 @@ import kcas._
 class SwapTest extends StressTestBase {
 
   private[this] val ref1 =
-    Ref.mk("x")
+    Ref.unsafe("x")
 
   private[this] val ref2 =
-    Ref.mk("y")
+    Ref.unsafe("y")
 
   private[this] val sw: React[Unit, Unit] =
     React.swap(ref1, ref2)

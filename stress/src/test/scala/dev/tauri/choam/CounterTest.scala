@@ -32,7 +32,7 @@ import org.openjdk.jcstress.infra.results.JJJJ_Result
 class CounterTest extends StressTestBase {
 
   private[this] val ctr =
-    new Counter()
+    Counter.unsafe()
 
   private[this] val incr =
     ctr.incr

@@ -19,10 +19,7 @@ package dev.tauri.choam
 
 import kcas.Ref
 
-final class Counter {
-
-  private[this] val ref =
-    Ref.mk(0L)
+final class Counter(ref: Ref[Long]) {
 
   val add: Reaction[Long, Long] = ref.upd[Long, Long] { (cnt, n) =>
     (cnt + n, cnt)
@@ -36,4 +33,13 @@ final class Counter {
 
   val count: Action[Long] =
     add.lmap(_ => 0L)
+}
+
+object Counter {
+
+  def apply: Action[Counter] =
+    Ref(0L).map(new Counter(_))
+
+  private[choam] def unsafe(): Counter =
+    new Counter(Ref.unsafe(0L))
 }

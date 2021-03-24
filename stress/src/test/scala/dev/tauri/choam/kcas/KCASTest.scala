@@ -33,7 +33,7 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 class KCASTest extends StressTestBase {
 
   private[this] val refs: List[Ref[String]] =
-    List.fill(8)(Ref.mk("ov"))
+    List.fill(8)(Ref.unsafe("ov"))
 
   private def write(nv: String): Boolean = {
     val ctx = impl.currentContext()

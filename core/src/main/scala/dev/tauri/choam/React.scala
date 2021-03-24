@@ -175,6 +175,7 @@ sealed abstract class React[-A, +B] {
     self >>> comp
   }
 
+  // TODO: public API?
   private[choam] final def postCommit(pc: React[B, Unit]): React[A, B] =
     this >>> React.postCommit(pc)
 
@@ -257,9 +258,6 @@ object React extends ReactInstances0 {
   // TODO: do we really need this?
   private[choam] def token: React[Any, Token] =
     new Tok[Any, Token, Token]((_, t) => t, Commit[Token]())
-
-  def newRef[A](initial: A): React[Any, Ref[A]] =
-    delay[Any, Ref[A]](_ => Ref.mk(initial))
 
   final object unsafe {
 

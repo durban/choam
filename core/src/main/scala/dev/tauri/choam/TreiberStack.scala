@@ -26,7 +26,7 @@ final class TreiberStack[A](els: Iterable[A]) {
   def this() =
     this(Iterable.empty)
 
-  private[this] val head = Ref.mk[Lst[A]](End)
+  private[this] val head = Ref.unsafe[Lst[A]](End)
 
   val push: React[A, Unit] = head.upd { (as, a) =>
     (Cons(a, as), ())

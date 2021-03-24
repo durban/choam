@@ -35,10 +35,10 @@ import kcas.Ref
 class DelayComputedTest extends StressTestBase {
 
   private[this] val ref1: Ref[String] =
-    Ref.mk("a")
+    Ref.unsafe("a")
 
   private[this] val ref2: Ref[String] =
-    Ref.mk("x")
+    Ref.unsafe("x")
 
   private[this] val composed: React[Unit, (String, String)] = {
     val dComp = React.unsafe.delayComputed(ref1.unsafeInvisibleRead.flatMap { v1 =>

@@ -106,11 +106,11 @@ object SpinBench {
   @State(Scope.Benchmark)
   class SpinSt extends KCASImplState {
 
-    val ref = Ref.mk("0")
+    val ref = Ref.unsafe("0")
     val single: React[Unit, String] = ref.modify(mod)
 
-    val ref1 = Ref.mk("0")
-    val ref2 = Ref.mk("0")
+    val ref1 = Ref.unsafe("0")
+    val ref2 = Ref.unsafe("0")
     val forward: React[Unit, (String, String)] = (ref1.modify(mod) * ref2.modify(mod))
     val backward: React[Unit, (String, String)] = (ref2.modify(mod) * ref1.modify(mod))
 

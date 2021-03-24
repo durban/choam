@@ -39,7 +39,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
   import Ctrie._
 
   private[this] val root: Ref[INode[K, V]] =
-    Ref.mk(new INode(Ref.mk[MainNode[K, V]](new CNode(0, Array.empty)), Ref.mk(new Gen)))
+    Ref.unsafe(new INode(Ref.unsafe[MainNode[K, V]](new CNode(0, Array.empty)), Ref.unsafe(new Gen)))
 
   val lookup: React[K, Option[V]] = {
 
@@ -98,7 +98,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
                   val ncn = if (!eq.eqv(sn.k, k)) {
                     val nsn = new SNode(k, v)
                     val nin = new INode(
-                      Ref.mk[MainNode[K, V]](CNode.doubleton(sn, nsn, hs, lev + W, gen)), Ref.mk(gen)
+                      Ref.unsafe[MainNode[K, V]](CNode.doubleton(sn, nsn, hs, lev + W, gen)), Ref.unsafe(gen)
                     )
                     cn.updated(pos, nin)
                   } else {
@@ -221,7 +221,7 @@ object Ctrie {
         val bmp = (1 << xi) | (1 << yi)
         if (xi == yi) {
           // hash collision at this level, go down:
-          new CNode(bmp, Array[Branch[K, V]](new INode(Ref.mk(doubleton(x, y, hs, lev + W, gen)), Ref.mk(gen))))
+          new CNode(bmp, Array[Branch[K, V]](new INode(Ref.unsafe(doubleton(x, y, hs, lev + W, gen)), Ref.unsafe(gen))))
         } else {
           val arr = if (xi < yi) {
             Array[Branch[K, V]](x, y)

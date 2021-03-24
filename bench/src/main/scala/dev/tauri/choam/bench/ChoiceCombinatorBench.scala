@@ -54,7 +54,7 @@ object ChoiceCombinatorBench {
   class DummyChoice extends BaseState {
 
     private[this] val ref =
-      Ref.mk("foo")
+      Ref.unsafe("foo")
 
     val reset: React[Unit, Unit] =
       ref.modify(_ => "foo").discard
@@ -79,7 +79,7 @@ object ChoiceCombinatorBench {
   class CASChoice extends BaseState {
 
     private[this] val ref =
-      Ref.mk("foo")
+      Ref.unsafe("foo")
 
     private[this] var refs: Array[Ref[String]] =
       null
@@ -99,7 +99,7 @@ object ChoiceCombinatorBench {
 
     @Setup
     def setup(): Unit = {
-      this.refs = Array.tabulate(size)(i => Ref.mk(i.toString))
+      this.refs = Array.tabulate(size)(i => Ref.unsafe(i.toString))
       this.choice = mkChoice()
     }
   }

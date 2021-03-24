@@ -74,7 +74,7 @@ object CounterBench {
   @State(Scope.Benchmark)
   class ReactSt {
     val reactCtr = {
-      val ctr = new Counter
+      val ctr = Counter.unsafe()
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
       ctr.add.unsafePerform(init, kcas.KCAS.NaiveKCAS)
       ctr
@@ -135,7 +135,7 @@ object CounterBenchN {
     def setup(): Unit = {
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
       ctrs = Array.fill(n) {
-        val c = new Counter
+        val c = Counter.unsafe()
         c.add.unsafePerform(init, kcas.KCAS.NaiveKCAS)
         c
       }

@@ -69,7 +69,7 @@ object ProductCombinatorBench {
 
     @Setup
     def setup(): Unit = {
-      this.refs = Array.fill(size)(Ref.mk("foo"))
+      this.refs = Array.fill(size)(Ref.unsafe("foo"))
       this.reset = new Reset("foo", ArraySeq.unsafeWrapArray(this.refs): _*)
       this.prod = (0 until size).foldLeft[React[Unit, Unit]](React.ret(())) { (r, idx) =>
         (r * refs(idx).unsafeCas("foo", "bar")).discard

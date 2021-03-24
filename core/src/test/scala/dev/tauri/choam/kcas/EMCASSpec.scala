@@ -27,8 +27,8 @@ import cats.syntax.eq._
 class EMCASSpec extends BaseSpecA {
 
   test("EMCAS should allow null as ov or nv") {
-    val r1 = Ref.mk[String](null)
-    val r2 = Ref.mk[String]("x")
+    val r1 = Ref.unsafe[String](null)
+    val r2 = Ref.unsafe[String]("x")
     val ctx = EMCAS.currentContext()
     val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, null, "x", ctx), r2, "x", null, ctx)
     val snap = EMCAS.snapshot(desc, ctx)
@@ -41,8 +41,8 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS should clean up finalized descriptors") {
-    val r1 = Ref.mk[String]("x")
-    val r2 = Ref.mk[String]("y")
+    val r1 = Ref.unsafe[String]("x")
+    val r2 = Ref.unsafe[String]("y")
     val ctx = EMCAS.currentContext()
     val desc = EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a", ctx)
     val snap = EMCAS.snapshot(desc, ctx)
@@ -65,8 +65,8 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS should clean up finalized descriptors if the original thread releases them") {
-    val r1 = Ref.mk[String]("x")
-    val r2 = Ref.mk[String]("y")
+    val r1 = Ref.unsafe[String]("x")
+    val r2 = Ref.unsafe[String]("y")
     var ok = false
     val t = new Thread(() => {
       val ctx = EMCAS.currentContext()
@@ -188,7 +188,7 @@ class EMCASSpec extends BaseSpecA {
 
   @tailrec
   private def testExtendInterval(): Unit = {
-    val r = Ref.mk("x")
+    val r = Ref.unsafe("x")
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     val ctx = EMCAS.currentContext()

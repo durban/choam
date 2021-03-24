@@ -64,7 +64,7 @@ object ArrowBench {
   class St {
 
     val refs = List.fill(size) {
-      Ref.mk[String](ThreadLocalRandom.current().nextInt().toString)
+      Ref.unsafe[String](ThreadLocalRandom.current().nextInt().toString)
     }
 
     def rWithoutComputed(ref: Ref[String]): React[Unit, Int] =
@@ -83,6 +83,6 @@ object ArrowBench {
 
   @State(Scope.Benchmark)
   class USt {
-    val ref = Ref.mk[Long](0L)
+    val ref = Ref.unsafe[Long](0L)
   }
 }

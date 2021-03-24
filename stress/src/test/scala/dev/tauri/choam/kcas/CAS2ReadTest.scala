@@ -35,10 +35,10 @@ import org.openjdk.jcstress.infra.results.LLZ_Result
 class CAS2ReadTest extends StressTestBase {
 
   private[this] val ref1: Ref[String] =
-    Ref.mk("ov1")
+    Ref.unsafe("ov1")
 
   private[this] val ref2: Ref[String] =
-    Ref.mk("ov2")
+    Ref.unsafe("ov2")
 
   @Actor
   def writer(r: LLZ_Result): Unit = {

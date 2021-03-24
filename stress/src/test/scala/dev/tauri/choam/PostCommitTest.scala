@@ -36,10 +36,10 @@ import kcas._
 class PostCommitTest extends StressTestBase {
 
   private[this] val r1 =
-    Ref.mk("foo")
+    Ref.unsafe("foo")
 
   private[this] val r2 =
-    Ref.mk("bar")
+    Ref.unsafe("bar")
 
   private[this] val upd: React[String, (String, String)] =
     r1.upd[String, String] { (ov, nv) => (nv, ov) } * r2.upd[String, String] { (ov, nv) => (nv, ov) }

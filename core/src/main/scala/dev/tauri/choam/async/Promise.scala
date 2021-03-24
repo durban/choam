@@ -103,10 +103,10 @@ object Promise {
 
   @deprecated("old, slower implementation", since = "2021-02-08")
   def slow[F[_], A](implicit rF: Reactive[F], F: Async[F]): Action[Promise[F, A]] =
-    React.delay(_ => new PromiseImpl[F, A](kcas.Ref.mk[State[A]](Waiting(Map.empty))))
+    React.delay(_ => new PromiseImpl[F, A](kcas.Ref.unsafe[State[A]](Waiting(Map.empty))))
 
   def fast[F[_], A](implicit rF: Reactive[F], F: Async[F]): Action[Promise[F, A]] =
-    React.delay(_ => new PromiseImpl2[F, A](kcas.Ref.mk[State2[A]](Waiting2(LongMap.empty, 0L))))
+    React.delay(_ => new PromiseImpl2[F, A](kcas.Ref.unsafe[State2[A]](Waiting2(LongMap.empty, 0L))))
 
   implicit def invariantFunctorForPromise[F[_] : Functor]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
     override def imap[A, B](fa: Promise[F, A])(f: A => B)(g: B => A): Promise[F, B] =

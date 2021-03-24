@@ -33,7 +33,7 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 class CAS1Test extends StressTestBase {
 
   private[this] val ref: Ref[String] =
-    Ref.mk("ov")
+    Ref.unsafe("ov")
 
   @Actor
   def writer1(r: ZZL_Result): Unit = {
