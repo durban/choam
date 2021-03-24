@@ -36,7 +36,7 @@ trait StmQueueCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with Sp
       s <- STM.runtime[F](F)
       q <- {
         val qu = StmQueueCLike[STM, F](s)
-        s.commit(StmQueueC.make(s)(qu)(List.empty[Int]))
+        s.commit(StmQueueC.make(qu)(List.empty[Int]))
       }
       _ <- assertResultF(s.commit(q.toList), Nil)
       _ <- assertResultF(s.commit(q.tryDequeue), None)
@@ -65,9 +65,9 @@ trait StmQueueCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with Sp
     val N = 1000
     for {
       s <- STM.runtime[F](F)
+      qu = StmQueueCLike[STM, F](s)
       qs <- {
-        val qu = StmQueueCLike[STM, F](s)
-        val tsk = s.commit(StmQueueC.make(s)(qu)(List.empty[Int]))
+        val tsk: F[qu.StmQueueC[Int]] = qu.stm.commit(StmQueueC.make[STM, F, Int](qu)(List.empty[Int]))
         F.both(tsk, tsk)
       }
       (q1, q2) = qs
@@ -75,10 +75,10 @@ trait StmQueueCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with Sp
       x2 <- F.delay(XorShift())
       enq = { (xs: XorShift) =>
         F.replicateA(N, F.delay(xs.nextInt()).flatMap { item =>
-          s.commit(q1.enqueue(item) >> q2.enqueue(item))
+          qu.stm.commit(q1.enqueue(item) >> q2.enqueue(item))
         })
       }
-      deq = F.replicateA(N, s.commit(s.Txn.monadForTxn.product(q1.tryDequeue, q2.tryDequeue)).flatMap {
+      deq = F.replicateA(N, qu.stm.commit(qu.stm.Txn.monadForTxn.product(q1.tryDequeue, q2.tryDequeue)).flatMap {
         case (None, None) =>
           F.unit // OK, empty queues
         case (Some(v1), Some(v2)) =>

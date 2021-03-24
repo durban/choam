@@ -249,12 +249,12 @@ object QueueTransferBench {
     val s = STM.runtime[IO].unsafeRunSync()(runtime)
     val qu = StmQueueCLike[STM, IO](s)
 
-    val queue0 = s.commit(StmQueueC.make(s)(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
+    val queue0 = s.commit(StmQueueC.make(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
     var queues: List[qu.StmQueueC[String]] = _
 
     @Setup
     def setup(): Unit = {
-      this.queues = List.fill(this.txSize) { s.commit(StmQueueC.make(s)(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime) }
+      this.queues = List.fill(this.txSize) { s.commit(StmQueueC.make(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime) }
       java.lang.invoke.VarHandle.releaseFence()
     }
 

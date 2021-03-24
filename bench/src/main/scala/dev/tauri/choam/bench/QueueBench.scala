@@ -154,7 +154,7 @@ object QueueBench {
     val runtime = cats.effect.unsafe.IORuntime.global
     val s = STM.runtime[IO].unsafeRunSync()(runtime)
     val qu = StmQueueCLike[STM, IO](s)
-    val stmQueue = s.commit(StmQueueC.make(s)(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
+    val stmQueue = s.commit(StmQueueC.make(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
   }
 
   @State(Scope.Benchmark)
