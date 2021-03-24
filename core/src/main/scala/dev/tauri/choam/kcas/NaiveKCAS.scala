@@ -29,7 +29,7 @@ package kcas
  *
  * Implemented as a baseline for benchmarking and correctness tests.
  */
-private[kcas] final object NaiveKCAS extends KCAS { self =>
+private[kcas] object NaiveKCAS extends KCAS { self =>
 
   private[this] val dummyGlobal =
     new GlobalContext(self)

@@ -97,7 +97,7 @@ private[kcas] abstract class IBR[T](zeroEpoch: Long)
   }
 }
 
-private[kcas] final object IBR {
+private[kcas] object IBR {
 
   private[kcas] final val epochFreq = 128 // TODO
 

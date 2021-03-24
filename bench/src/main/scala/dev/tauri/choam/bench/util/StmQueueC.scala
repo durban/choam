@@ -24,7 +24,7 @@ import cats.effect.Concurrent
 
 import io.github.timwspence.cats.stm.{ STMLike }
 
-final object StmQueueC {
+object StmQueueC {
 
   def make[S[F[_]] <: STMLike[F], F[_] : Concurrent, A](q: StmQueueCLike[S, F])(els: List[A]): q.stm.Txn[q.StmQueueC[A]] = {
     import q._
@@ -40,7 +40,7 @@ final object StmQueueC {
   }
 }
 
-final object StmQueueCLike {
+object StmQueueCLike {
 
   def apply[S[F[_]] <: STMLike[F], F[_]](s: S[F]): StmQueueCLike[S, F] { val stm: s.type {} } =
     new StmQueueCLike[S, F] { val stm: s.type = s }

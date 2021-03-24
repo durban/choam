@@ -82,7 +82,7 @@ class TreiberStackGlobalTest extends StressTestBase {
  *
  * However, each k-CAS implementation have their 2 separate stacks.
  */
-final object TreiberStackGlobalTest {
+object TreiberStackGlobalTest {
 
   private[this] val stacks =
     new TrieMap[KCAS, (TreiberStack[String], TreiberStack[String])]

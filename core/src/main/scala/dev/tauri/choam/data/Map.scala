@@ -34,7 +34,7 @@ trait Map[K, V] {
   def clear: React[Unit, immutable.Map[K, V]]
 }
 
-final object Map {
+object Map {
 
   def naive[K, V]: React[Unit, Map[K, V]] = React.delay { _ =>
     new Map[K, V] {

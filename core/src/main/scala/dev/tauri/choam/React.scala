@@ -300,7 +300,7 @@ object React extends ReactInstances0 {
         override protected def productImpl[C, D](that: React[C, D]): React[(A, C), (B, D)] =
           onRetryImpl(act, k × that)
 
-        override protected[choam] def firstImpl[C]: React[(A, C),(B, C)] =
+        override protected[choam] def firstImpl[C]: React[(A, C), (B, C)] =
           onRetryImpl(act, k.firstImpl[C])
 
         override def toString(): String = "???"

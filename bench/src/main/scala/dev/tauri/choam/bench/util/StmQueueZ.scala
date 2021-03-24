@@ -24,7 +24,7 @@ import zio.stm.{ STM, ZSTM, TRef }
 
 import StmQueueZ._
 
-final object StmQueueZ {
+object StmQueueZ {
 
   sealed trait Elem[A]
   case class Node[A](data: A, next: TRef[Elem[A]]) extends Elem[A]

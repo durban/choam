@@ -72,7 +72,7 @@ final class EMCASDescriptor(wds: ArrayList[WordDescriptor[_]])
   }
 }
 
-final object EMCASDescriptor {
+object EMCASDescriptor {
   // TODO: should always be inlined
   final val minArraySize = 8
 }

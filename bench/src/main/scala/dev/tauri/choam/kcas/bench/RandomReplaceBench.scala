@@ -55,7 +55,7 @@ class RandomReplaceBench {
   }
 }
 
-final object RandomReplaceBench {
+object RandomReplaceBench {
 
   abstract class SharedStateBase[A <: AnyRef](a: A) {
 

@@ -40,7 +40,7 @@ final class WordDescriptor[A] private (
     s"WordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
 }
 
-final object WordDescriptor {
+object WordDescriptor {
 
   def apply[A](
     address: Ref[A],

@@ -65,7 +65,7 @@ sealed trait PromiseWrite[A] { self =>
   }
 }
 
-final object PromiseWrite {
+object PromiseWrite {
 
   implicit def contravariantFunctorForPromiseWrite: Contravariant[PromiseWrite] = {
     new Contravariant[PromiseWrite] {

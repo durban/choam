@@ -27,7 +27,7 @@ trait Reactive[F[_]] {
   def monad: Monad[F]
 }
 
-final object Reactive {
+object Reactive {
 
   def apply[F[_]](implicit inst: Reactive[F]): inst.type =
     inst

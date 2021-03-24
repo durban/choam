@@ -56,7 +56,7 @@ class StaticsBench {
   }
 }
 
-final object StaticsBench {
+object StaticsBench {
 
   @State(Scope.Thread)
   class ThSt {

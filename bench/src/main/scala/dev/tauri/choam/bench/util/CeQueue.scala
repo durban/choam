@@ -24,7 +24,7 @@ import cats.effect.kernel.{ Concurrent, Ref }
 
 import CeQueue._
 
-final object CeQueue {
+object CeQueue {
 
   sealed trait Elem[F[_], A]
   case class Node[F[_], A](data: A, next: Ref[F, Elem[F, A]]) extends Elem[F, A]
