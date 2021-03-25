@@ -26,7 +26,7 @@ final class KCASSpecEMCAS
   extends KCASSpec
   with SpecEMCAS
 
-final object KCASSpec {
+object KCASSpec {
 
   final case class CASD[A](address: Ref[A], ov: A, nv: A)
 }
@@ -75,28 +75,28 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
       ))
     }
 
-    r1.unsafeSet("x")
+    r1.unsafeSetVolatile("x")
     assert(!go())
     val ctx = kcasImpl.currentContext()
     assertSameInstance(kcasImpl.read(r1, ctx), "x")
     assertSameInstance(kcasImpl.read(r2, ctx), "r2")
     assertSameInstance(kcasImpl.read(r3, ctx), "r3")
 
-    r1.unsafeSet("r1")
-    r2.unsafeSet("x")
+    r1.unsafeSetVolatile("r1")
+    r2.unsafeSetVolatile("x")
     assert(!go())
     assertSameInstance(kcasImpl.read(r1, ctx), "r1")
     assertSameInstance(kcasImpl.read(r2, ctx), "x")
     assertSameInstance(kcasImpl.read(r3, ctx), "r3")
 
-    r2.unsafeSet("r2")
-    r3.unsafeSet("x")
+    r2.unsafeSetVolatile("r2")
+    r3.unsafeSetVolatile("x")
     assert(!go())
     assertSameInstance(kcasImpl.read(r1, ctx), "r1")
     assertSameInstance(kcasImpl.read(r2, ctx), "r2")
     assertSameInstance(kcasImpl.read(r3, ctx), "x")
 
-    r3.unsafeSet("r3")
+    r3.unsafeSetVolatile("r3")
     assert(go())
     assertSameInstance(kcasImpl.read(r1, ctx), "x")
     assertSameInstance(kcasImpl.read(r2, ctx), "y")

@@ -23,18 +23,6 @@ import java.util.concurrent.ThreadLocalRandom
 /** k-CAS-able atomic reference */
 trait Ref[A] extends mcas.MemoryLocation[A] {
 
-  // TODO: remove these forwarders
-  final override def unsafeGetVolatile(): A =
-    this.unsafeGet()
-
-  // TODO: remove these forwarders
-  final override def unsafeCasVolatile(ov: A, nv: A): Boolean =
-    this.unsafeTryPerformCas(ov, nv)
-
-  // TODO: remove these forwarders
-  final override def unsafeSetVolatile(nv: A): Unit =
-    this.unsafeSet(nv)
-
   final def upd[B, C](f: (A, B) => (A, C)): React[B, C] =
     React.upd(this)(f)
 
@@ -89,12 +77,9 @@ trait Ref[A] extends mcas.MemoryLocation[A] {
   final def unsafeCas(ov: A, nv: A): React[Any, Unit] =
     React.unsafe.cas(this, ov, nv)
 
-  // TODO: this is dangerous, reading should go through the k-CAS implementation!
-  private[kcas] def unsafeGet(): A
-
   /** For testing */
   private[choam] final def debugRead(): A = {
-    this.unsafeGet() match {
+    this.unsafeGetVolatile() match {
       case null =>
         kcas.NaiveKCAS.read(this, kcas.NaiveKCAS.currentContext())
       case _: kcas.WordDescriptor[_] =>
@@ -103,10 +88,6 @@ trait Ref[A] extends mcas.MemoryLocation[A] {
         a
     }
   }
-
-  private[kcas] def unsafeTryPerformCas(ov: A, nv: A): Boolean
-
-  private[kcas] def unsafeSet(nv: A): Unit
 
   private[kcas] def dummy(v: Long): Long
 }

@@ -51,17 +51,17 @@ class EMCASSpec extends BaseSpecA {
     assert(EMCAS.read(r2, ctx) eq "b")
     assert(EMCAS.spinUntilCleanup(r1) eq "a")
     assert(EMCAS.spinUntilCleanup(r2) eq "b")
-    assert(r1.unsafeGet() eq "a")
-    assert(r2.unsafeGet() eq "b")
-    assert(r1.unsafeTryPerformCas("a", "x")) // reset
+    assert(r1.unsafeGetVolatile() eq "a")
+    assert(r2.unsafeGetVolatile() eq "b")
+    assert(r1.unsafeCasVolatile("a", "x")) // reset
     val desc2 = snap
     assert(!EMCAS.tryPerform(EMCAS.addCas(desc2, r2, "y", "b", ctx), ctx)) // this will fail
     assert(EMCAS.read(r1, ctx) eq "x")
     assert(EMCAS.read(r2, ctx) eq "b")
     assert(EMCAS.spinUntilCleanup(r1) eq "x")
     assert(EMCAS.spinUntilCleanup(r2) eq "b")
-    assert(r1.unsafeGet() eq "x")
-    assert(r2.unsafeGet() eq "b")
+    assert(r1.unsafeGetVolatile() eq "x")
+    assert(r2.unsafeGetVolatile() eq "b")
   }
 
   test("EMCAS should clean up finalized descriptors if the original thread releases them") {
@@ -114,7 +114,7 @@ class EMCASSpec extends BaseSpecA {
       desc.sort()
       val d0 = desc.words.get(0).asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
-      r1.unsafeSet(d0.castToData)
+      r1.unsafeSetVolatile(d0.castToData)
       descT1 = d0
       latch1.countDown()
       latch2.await()
@@ -137,8 +137,8 @@ class EMCASSpec extends BaseSpecA {
     assert(EMCAS.read(r2, ctx) eq "b")
     EMCAS.spinUntilCleanup(r1)
     EMCAS.spinUntilCleanup(r2)
-    assert(clue(r1.unsafeGet()) eq "a")
-    assert(clue(r2.unsafeGet()) eq "b")
+    assert(clue(r1.unsafeGetVolatile()) eq "a")
+    assert(clue(r2.unsafeGetVolatile()) eq "b")
     assert(!ctx.isInUseByOther(descT1))
   }
 
@@ -214,13 +214,13 @@ class EMCASSpec extends BaseSpecA {
     } else {
       // Ok, we can go on with the test case:
       assert(EMCAS.tryPerform(descOld, ctx))
-      assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeGet(), descOld.words.get(0))
+      assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeGetVolatile(), descOld.words.get(0))
       ctx.forceNextEpoch()
       val descNew = EMCAS.addCas(EMCAS.start(ctx), r, "y", "z", ctx)
       val newEpoch = descNew.words.get(0).getMinEpochVolatile()
       assert(clue(newEpoch) > clue(oldEpoch))
       assert(EMCAS.tryPerform(descNew, ctx))
-      assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeGet(), descNew.words.get(0))
+      assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeGetVolatile(), descNew.words.get(0))
       assert(ctx.isInUseByOther(descNew.words.get(0).cast))
       latch2.countDown()
       t.join()
@@ -236,7 +236,7 @@ class EMCASSpec extends BaseSpecA {
     other.sort()
     val d0 = other.words.get(0).asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
-    r1.unsafeSet(d0.castToData)
+    r1.unsafeSetVolatile(d0.castToData)
     val res = EMCAS.read(r1, ctx)
     assertEquals(res, "x")
     assertEquals(EMCAS.read(r1, ctx), "x")
@@ -252,7 +252,7 @@ class EMCASSpec extends BaseSpecA {
     other.sort()
     val d0 = other.words.get(0).asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
-    r1.unsafeSet(d0.castToData)
+    r1.unsafeSetVolatile(d0.castToData)
     val res = EMCAS.read(r1, ctx)
     assertEquals(res, "r1")
     assertEquals(EMCAS.read(r1, ctx), "r1")

@@ -46,7 +46,7 @@ class EMCASCleanup1Test {
   @Actor
   @tailrec
   final def read(r: ILL_Result): Unit = {
-    (this.ref.unsafeGet() : Any) match {
+    (this.ref.unsafeGetVolatile() : Any) match {
       case s: String if s eq "a" =>
         // no CAS yet, retry:
         read(r)

@@ -54,15 +54,15 @@ abstract class Ref2Base<A, B> extends RefId implements Ref2<A, B> {
     return this.refA;
   }
 
-  public final A unsafeGet1() {
+  public final A unsafeGetVolatile1() {
     return (A) VALUE_A.getVolatile(this);
   }
 
-  public final void unsafeSet1(A a) {
+  public final void unsafeSetVolatile1(A a) {
     VALUE_A.setVolatile(this, a);
   }
 
-  public final boolean unsafeTryPerformCas1(A ov, A nv) {
+  public final boolean unsafeCasVolatile1(A ov, A nv) {
     return VALUE_A.compareAndSet(this, ov, nv);
   }
 }
@@ -111,15 +111,15 @@ public class Ref2Impl<A, B> extends Padding2<A, B> {
     return this.refB;
   }
 
-  public final B unsafeGet2() {
+  public final B unsafeGetVolatile2() {
     return (B) VALUE_B.getVolatile(this);
   }
 
-  public final void unsafeSet2(B b) {
+  public final void unsafeSetVolatile2(B b) {
     VALUE_B.setVolatile(this, b);
   }
 
-  public final boolean unsafeTryPerformCas2(B ov, B nv) {
+  public final boolean unsafeCasVolatile2(B ov, B nv) {
     return VALUE_B.compareAndSet(this, ov, nv);
   }
 

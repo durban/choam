@@ -65,7 +65,7 @@ object RandomReplaceBench {
 
     def reset(ctx: ThreadContext): Unit = {
       val wd = WordDescriptor[A](ref, a, a, null, ctx)
-      this.ref.unsafeSet(wd.castToData)
+      this.ref.unsafeSetVolatile(wd.castToData)
     }
   }
 

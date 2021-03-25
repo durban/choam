@@ -22,14 +22,14 @@ import kcas.Ref
 
 private final class Ref2Ref1[A, B](self: Ref2Base[A, B]) extends Ref[A] {
 
-  override def unsafeGet(): A =
-    self.unsafeGet1()
+  override def unsafeGetVolatile(): A =
+    self.unsafeGetVolatile1()
 
-  override def unsafeTryPerformCas(ov: A, nv: A): Boolean =
-    self.unsafeTryPerformCas1(ov, nv)
+  override def unsafeCasVolatile(ov: A, nv: A): Boolean =
+    self.unsafeCasVolatile1(ov, nv)
 
-  override def unsafeSet(a: A): Unit =
-    self.unsafeSet1(a)
+  override def unsafeSetVolatile(a: A): Unit =
+    self.unsafeSetVolatile1(a)
 
   override def id0: Long =
     self.id0
@@ -49,14 +49,14 @@ private final class Ref2Ref1[A, B](self: Ref2Base[A, B]) extends Ref[A] {
 
 private final class Ref2Ref2[A, B](self: Ref2Impl[A, B]) extends Ref[B] {
 
-  override def unsafeGet(): B =
-    self.unsafeGet2()
+  override def unsafeGetVolatile(): B =
+    self.unsafeGetVolatile2()
 
-  override def unsafeTryPerformCas(ov: B, nv: B): Boolean =
-    self.unsafeTryPerformCas2(ov, nv)
+  override def unsafeCasVolatile(ov: B, nv: B): Boolean =
+    self.unsafeCasVolatile2(ov, nv)
 
-  override def unsafeSet(b: B): Unit =
-    self.unsafeSet2(b)
+  override def unsafeSetVolatile(b: B): Unit =
+    self.unsafeSetVolatile2(b)
 
   override def id0: Long =
     self.id4

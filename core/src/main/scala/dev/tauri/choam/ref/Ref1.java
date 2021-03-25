@@ -47,17 +47,17 @@ public class Ref1<A> extends RefId implements Ref<A> {
   }
 
   @Override
-  public final A unsafeGet() {
+  public final A unsafeGetVolatile() {
     return (A) VALUE.getVolatile(this);
   }
 
   @Override
-  public final void unsafeSet(A a) {
+  public final void unsafeSetVolatile(A a) {
     VALUE.setVolatile(this, a);
   }
 
   @Override
-  public final boolean unsafeTryPerformCas(A ov, A nv) {
+  public final boolean unsafeCasVolatile(A ov, A nv) {
     return VALUE.compareAndSet(this, ov, nv);
   }
 
