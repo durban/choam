@@ -64,7 +64,7 @@ lazy val stress = project.in(file("stress"))
   .settings(publishArtifact := false)
   .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
   .enablePlugins(JCStressPlugin)
-  .settings(version in Jcstress := "0.7")
+  .settings(Jcstress / version := "0.7")
   .dependsOn(core % "compile->compile;test->test")
 
 lazy val layout = project.in(file("layout"))
@@ -73,7 +73,7 @@ lazy val layout = project.in(file("layout"))
   .settings(publishArtifact := false)
   .settings(
     libraryDependencies += dependencies.jol % Test,
-    fork in Test := true // JOL doesn't like sbt classpath
+    Test / fork := true // JOL doesn't like sbt classpath
   )
   .dependsOn(core % "compile->compile;test->test")
 
@@ -84,6 +84,8 @@ lazy val commonSettings = Seq[Setting[_]](
     "-unchecked",
     "-encoding", "UTF-8",
     "-language:higherKinds,experimental.macros",
+    "-target:11",
+    "-release", "11",
     "-opt:l:inline",
     "-opt-inline-from:<sources>",
     "-Wconf:any:warning-verbose",
@@ -111,9 +113,12 @@ lazy val commonSettings = Seq[Setting[_]](
       Nil
     }
   ),
-  scalacOptions in (Compile, console) ~= { _.filterNot("-Ywarn-unused-import" == _).filterNot("-Ywarn-unused:imports" == _) },
-  scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value,
-  parallelExecution in Test := false,
+  Compile / console / scalacOptions ~= { _.filterNot("-Ywarn-unused-import" == _).filterNot("-Ywarn-unused:imports" == _) },
+  Test / console / scalacOptions := (Compile / console / scalacOptions).value,
+  javacOptions ++= Seq(
+    "--release", "11", // implies "-source 11 -target 11"
+  ),
+  Test / parallelExecution := false,
   libraryDependencies ++= Seq(
     Seq(
       dependencies.cats,
