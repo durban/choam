@@ -20,6 +20,8 @@ package kcas
 
 import java.util.concurrent.ThreadLocalRandom
 
+import mcas.MemoryLocation
+
 /**
  * Efficient Multi-word Compare and Swap:
  * https://arxiv.org/pdf/2008.02527.pdf
@@ -42,7 +44,7 @@ private[kcas] object EMCAS extends KCAS { self =>
    * an ongoing MCAS operation is inlined into `tryWord` below,
    * see the `while` loop.)
    */
-  private[choam] final def readValue[A](ref: Ref[A], ctx: ThreadContext, replace: Int = 256): A = {
+  private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: ThreadContext, replace: Int = 256): A = {
     @tailrec
     def go(): A = {
       ctx.readVolatileRef[A](ref) match {
@@ -70,7 +72,7 @@ private[kcas] object EMCAS extends KCAS { self =>
     finally ctx.endOp()
   }
 
-  private final def maybeReplaceDescriptor[A](ref: Ref[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext, replace: Int): Unit = {
+  private final def maybeReplaceDescriptor[A](ref: MemoryLocation[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext, replace: Int): Unit = {
     if (replace != 0) {
       val n = ThreadLocalRandom.current().nextInt()
       if ((n % replace) == 0) {
@@ -80,9 +82,9 @@ private[kcas] object EMCAS extends KCAS { self =>
     }
   }
 
-  private[kcas] final def replaceDescriptorIfFree[A](ref: Ref[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext): Boolean = {
+  private[kcas] final def replaceDescriptorIfFree[A](ref: MemoryLocation[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext): Boolean = {
     if ((!ctx.isInUseByOther(ov.cast[Any]))) {
-      ref.unsafeTryPerformCas(ov.castToData, nv)
+      ref.unsafeCasVolatile(ov.castToData, nv)
       // If this CAS fails, someone else might've been
       // replaced the desc with the final value, or
       // maybe started another operation; in either case,
@@ -96,7 +98,7 @@ private[kcas] object EMCAS extends KCAS { self =>
 
   // Listing 3 in the paper:
 
-  private[choam] final override def read[A](ref: Ref[A], ctx: ThreadContext): A =
+  private[choam] final override def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A =
     readValue(ref, ctx)
 
   /**
@@ -259,7 +261,7 @@ private[kcas] object EMCAS extends KCAS { self =>
 
   private[choam] final override def addCas[A](
     desc: EMCASDescriptor,
-    ref: Ref[A],
+    ref: MemoryLocation[A],
     ov: A,
     nv: A,
     ctx: ThreadContext
@@ -282,11 +284,11 @@ private[kcas] object EMCAS extends KCAS { self =>
 
   /** For testing */
   @throws[InterruptedException]
-  private[kcas] def spinUntilCleanup[A](ref: Ref[A], max: Long = Long.MaxValue): A = {
+  private[kcas] def spinUntilCleanup[A](ref: MemoryLocation[A], max: Long = Long.MaxValue): A = {
     val ctx = this.currentContext()
     var ctr: Long = 0L
     while (ctr < max) {
-      ref.unsafeGet() match {
+      ref.unsafeGetVolatile() match {
         case wd: WordDescriptor[_] =>
           if (wd.parent.getStatus() eq EMCASStatus.ACTIVE) {
             // CAS in progress, retry

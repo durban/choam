@@ -23,6 +23,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZLL_Result
 
+import mcas.MemoryLocation
+
 @JCStressTest
 @State
 @Description("EMCASHelpingTest")
@@ -40,7 +42,7 @@ class EMCASHelpingTest {
   private[this] val ref2 =
     Ref.mkWithId("x")(0L, 0L, 0L, i3 = 21L)
 
-  assert(Ref.globalCompare(ref1, ref2) > 0) // ref1 > ref2
+  assert(MemoryLocation.globalCompare(ref1, ref2) > 0) // ref1 > ref2
 
   @Actor
   def writer(r: ZLL_Result): Unit = {

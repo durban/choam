@@ -22,6 +22,8 @@ import java.lang.ref.{ WeakReference => WeakRef }
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.ConcurrentSkipListMap
 
+import mcas.MemoryLocation
+
 /**
  * Interval-based memory reclamation (TagIBR-TPA), based on
  * the paper by Haosen Wen, Joseph Izraelevitz, Wentao Cai,
@@ -186,8 +188,8 @@ private[kcas] object IBR {
     }
 
     @tailrec
-    final def readVolatileRef[A](ref: Ref[A]): A = {
-      val a: A = ref.unsafeGet()
+    final def readVolatileRef[A](ref: MemoryLocation[A]): A = {
+      val a: A = ref.unsafeGetVolatile()
       if (tryAdjustReservation(a)) a
       else readVolatileRef(ref) // retry
     }
@@ -236,8 +238,8 @@ private[kcas] object IBR {
       ref.compareAndSet(ov, nv)
     }
 
-    final def casRef[A](ref: Ref[A], ov: A, nv: A): Boolean = {
-      ref.unsafeTryPerformCas(ov, nv)
+    final def casRef[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
+      ref.unsafeCasVolatile(ov, nv)
     }
 
     /** For testing */

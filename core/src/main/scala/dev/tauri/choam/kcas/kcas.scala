@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package kcas
 
+import mcas.MemoryLocation
+
 // TODO: detect impossible CAS-es
 // TODO: support thread interruption in (some) retry loops
 
@@ -28,13 +30,13 @@ abstract class KCAS { self =>
 
   private[choam] def start(ctx: ThreadContext): EMCASDescriptor
 
-  private[choam] def addCas[A](desc: EMCASDescriptor, ref: Ref[A], ov: A, nv: A, ctx: ThreadContext): EMCASDescriptor
+  private[choam] def addCas[A](desc: EMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A, ctx: ThreadContext): EMCASDescriptor
 
   private[choam] def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor
 
   private[choam] def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean
 
-  private[choam] def read[A](ref: Ref[A], ctx: ThreadContext): A
+  private[choam] def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A
 }
 
 /** Provides various k-CAS implementations */
@@ -46,7 +48,7 @@ private[choam] object KCAS {
   private[choam] lazy val EMCAS: KCAS =
     kcas.EMCAS
 
-  private[kcas] def impossibleKCAS[A, B](ref: Ref[_], ova: A, nva: A, ovb: B, nvb: B): Nothing = {
+  private[kcas] def impossibleKCAS[A, B](ref: MemoryLocation[_], ova: A, nva: A, ovb: B, nvb: B): Nothing = {
     throw new ImpossibleOperation(
       s"Impossible k-CAS for ${ref}: ${ova} -> ${nva} and ${ovb} -> ${nvb}"
     )

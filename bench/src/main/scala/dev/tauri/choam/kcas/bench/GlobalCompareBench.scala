@@ -24,6 +24,8 @@ import java.util.concurrent.ThreadLocalRandom
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
+import mcas.MemoryLocation
+
 @Fork(6)
 class GlobalCompareBench {
 
@@ -41,7 +43,7 @@ class GlobalCompareBench {
     val r2 = Ref.unsafe("a")
     bh.consume(r1)
     bh.consume(r2)
-    bh.consume(Ref.globalCompare(r1, r2))
+    bh.consume(MemoryLocation.globalCompare(r1, r2))
   }
 
   @Benchmark
@@ -53,7 +55,7 @@ class GlobalCompareBench {
     val r2 = Ref.mkWithId("a")(i0, tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
     bh.consume(r1)
     bh.consume(r2)
-    bh.consume(Ref.globalCompare(r1, r2))
+    bh.consume(MemoryLocation.globalCompare(r1, r2))
   }
 
   @Benchmark
@@ -67,7 +69,7 @@ class GlobalCompareBench {
     val r2 = Ref.mkWithId("a")(i0, i1, tlr.nextLong(), tlr.nextLong())
     bh.consume(r1)
     bh.consume(r2)
-    bh.consume(Ref.globalCompare(r1, r2))
+    bh.consume(MemoryLocation.globalCompare(r1, r2))
   }
 
   @Benchmark
@@ -83,6 +85,6 @@ class GlobalCompareBench {
     val r2 = Ref.mkWithId("a")(i0, i1, i2, tlr.nextLong())
     bh.consume(r1)
     bh.consume(r2)
-    bh.consume(Ref.globalCompare(r1, r2))
+    bh.consume(MemoryLocation.globalCompare(r1, r2))
   }
 }

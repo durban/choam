@@ -20,8 +20,10 @@ package kcas
 
 import java.util.Comparator
 
+import mcas.MemoryLocation
+
 final class WordDescriptor[A] private (
-  val address: Ref[A],
+  val address: MemoryLocation[A],
   val ov: A,
   val nv: A,
   val parent: EMCASDescriptor
@@ -43,7 +45,7 @@ final class WordDescriptor[A] private (
 object WordDescriptor {
 
   def apply[A](
-    address: Ref[A],
+    address: MemoryLocation[A],
     ov: A,
     nv: A,
     parent: EMCASDescriptor,
@@ -57,7 +59,7 @@ object WordDescriptor {
   val comparator: Comparator[WordDescriptor[_]] = new Comparator[WordDescriptor[_]] {
     final override def compare(x: WordDescriptor[_], y: WordDescriptor[_]): Int = {
       // NB: `x ne y` is always true, because we create fresh descriptors in `withCAS`
-      val res = Ref.globalCompare(x.address, y.address)
+      val res = MemoryLocation.globalCompare(x.address, y.address)
       if (res == 0) {
         assert(x.address eq y.address)
         KCAS.impossibleKCAS(x.address, x.ov, x.nv, y.ov, y.nv)

@@ -21,7 +21,19 @@ package kcas
 import java.util.concurrent.ThreadLocalRandom
 
 /** k-CAS-able atomic reference */
-trait Ref[A] {
+trait Ref[A] extends mcas.MemoryLocation[A] {
+
+  // TODO: remove these forwarders
+  final override def unsafeGetVolatile(): A =
+    this.unsafeGet()
+
+  // TODO: remove these forwarders
+  final override def unsafeCasVolatile(ov: A, nv: A): Boolean =
+    this.unsafeTryPerformCas(ov, nv)
+
+  // TODO: remove these forwarders
+  final override def unsafeSetVolatile(nv: A): Unit =
+    this.unsafeSet(nv)
 
   final def upd[B, C](f: (A, B) => (A, C)): React[B, C] =
     React.upd(this)(f)
@@ -96,16 +108,6 @@ trait Ref[A] {
 
   private[kcas] def unsafeSet(nv: A): Unit
 
-  // TODO: access modifier missing:
-
-  def id0: Long
-
-  def id1: Long
-
-  def id2: Long
-
-  def id3: Long
-
   private[kcas] def dummy(v: Long): Long
 }
 
@@ -174,30 +176,5 @@ object Ref {
       tlr.nextLong(),
       tlr.nextLong()
     )
-  }
-
-  private[kcas] def globalCompare(a: Ref[_], b: Ref[_]): Int = {
-    import java.lang.Long.compare
-    if (a eq b) 0
-    else {
-      val i0 = compare(a.id0, b.id0)
-      if (i0 != 0) i0
-      else {
-        val i1 = compare(a.id1, b.id1)
-        if (i1 != 0) i1
-        else {
-          val i2 = compare(a.id2, b.id2)
-          if (i2 != 0) i2
-          else {
-            val i3 = compare(a.id3, b.id3)
-            if (i3 != 0) i3
-            else {
-              // TODO: maybe AssertionError? Or impossible()?
-              throw new IllegalStateException(s"[globalCompare] ref collision: ${a} and ${b}")
-            }
-          }
-        }
-      }
-    }
   }
 }

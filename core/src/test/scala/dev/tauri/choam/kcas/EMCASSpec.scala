@@ -155,7 +155,7 @@ class EMCASSpec extends BaseSpecA {
       assert(d0.address eq r1)
       ctx.startOp()
       try {
-        assert(d0.address.unsafeTryPerformCas(d0.ov, d0.castToData))
+        assert(d0.address.unsafeCasVolatile(d0.ov, d0.castToData))
         // and the thread pauses here, with an active CAS
         latch1.countDown()
         latch2.await()

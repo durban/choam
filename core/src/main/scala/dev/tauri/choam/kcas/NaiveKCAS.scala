@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package kcas
 
+import mcas.MemoryLocation
+
 /**
  * Naïve k-CAS algorithm as described in [Reagents: Expressing and Composing
  * Fine-grained Concurrency](https://people.mpi-sws.org/~turon/reagents.pdf)
@@ -45,7 +47,7 @@ private[kcas] object NaiveKCAS extends KCAS { self =>
 
   final override def addCas[A](
     desc: EMCASDescriptor,
-    ref: Ref[A],
+    ref: MemoryLocation[A],
     ov: A,
     nv: A,
     ctx: ThreadContext
@@ -64,8 +66,8 @@ private[kcas] object NaiveKCAS extends KCAS { self =>
   }
 
   @tailrec
-  final override def read[A](ref: Ref[A], ctx: ThreadContext): A = {
-    ref.unsafeGet() match {
+  final override def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A = {
+    ref.unsafeGetVolatile() match {
       case null =>
         read(ref, ctx)
       case a =>
@@ -79,7 +81,7 @@ private[kcas] object NaiveKCAS extends KCAS { self =>
     def lock(ops: List[WordDescriptor[_]]): List[WordDescriptor[_]] = ops match {
       case Nil => Nil
       case h :: tail => h match { case head: WordDescriptor[a] =>
-        if (head.address.unsafeTryPerformCas(head.ov, nullOf[a])) lock(tail)
+        if (head.address.unsafeCasVolatile(head.ov, nullOf[a])) lock(tail)
         else ops // rollback
       }
     }
@@ -88,7 +90,7 @@ private[kcas] object NaiveKCAS extends KCAS { self =>
     def commit(ops: List[WordDescriptor[_]]): Unit = ops match {
       case Nil => ()
       case h :: tail => h match { case head: WordDescriptor[a] =>
-        head.address.unsafeSet(head.nv)
+        head.address.unsafeSetVolatile(head.nv)
         commit(tail)
       }
     }
@@ -99,7 +101,7 @@ private[kcas] object NaiveKCAS extends KCAS { self =>
         from match {
           case Nil => impossible("this is the end")
           case h :: tail => h match { case head: WordDescriptor[a] =>
-            head.address.unsafeSet(head.ov)
+            head.address.unsafeSetVolatile(head.ov)
             rollback(tail, to)
           }
         }
@@ -112,7 +114,7 @@ private[kcas] object NaiveKCAS extends KCAS { self =>
       case Nil =>
         true
       case (h : WordDescriptor[a]) :: Nil =>
-        h.address.unsafeTryPerformCas(h.ov, h.nv)
+        h.address.unsafeCasVolatile(h.ov, h.nv)
       case l @ (_ :: _) =>
         lock(l) match {
           case Nil =>
