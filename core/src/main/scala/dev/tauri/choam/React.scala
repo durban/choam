@@ -210,12 +210,22 @@ object React extends ReactInstances0 {
     self >>> comp
   }
 
-  // TODO: generalize to more than 2
-  def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): React[Any, (A, B)] = {
+
+  @deprecated("old implementation with invisibleRead/cas", since = "2021-03-27")
+  private[choam] def consistentReadOld[A, B](ra: Ref[A], rb: Ref[B]): React[Any, (A, B)] = {
     ra.unsafeInvisibleRead >>> computed[A, (A, B)] { a =>
       rb.unsafeInvisibleRead >>> computed[B, (A, B)] { b =>
         (ra.unsafeCas(a, a) × rb.unsafeCas(b, b)).lmap[Any] { _ => ((), ()) }.map { _ => (a, b) }
       }
+    }
+  }
+
+  // TODO: generalize to more than 2
+  def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Action[(A, B)] = {
+    ra.updWith[Any, (A, B)] { (a, _) =>
+      rb.upd[Any, B] { (b, _) =>
+        (b, b)
+      }.map { b => (a, (a, b)) }
     }
   }
 

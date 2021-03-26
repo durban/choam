@@ -22,6 +22,7 @@
 ## Bugs
 
 - `Exchanger` is not working yet
+- Can't run benchmarks with Scala 3
 
 ## Other improvements
 
