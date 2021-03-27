@@ -210,7 +210,6 @@ object React extends ReactInstances0 {
     self >>> comp
   }
 
-
   @deprecated("old implementation with invisibleRead/cas", since = "2021-03-27")
   private[choam] def consistentReadOld[A, B](ra: Ref[A], rb: Ref[B]): React[Any, (A, B)] = {
     ra.unsafeInvisibleRead >>> computed[A, (A, B)] { a =>
@@ -226,6 +225,17 @@ object React extends ReactInstances0 {
       rb.upd[Any, B] { (b, _) =>
         (b, b)
       }.map { b => (a, (a, b)) }
+    }
+  }
+
+  def consistentReadMany[A](refs: List[Ref[A]]): Action[List[A]] = {
+    refs match {
+      case h :: t =>
+        h.updWith[Any, List[A]] { (a, _) =>
+          consistentReadMany(t).map { as => (a, a :: as) }
+        }
+      case Nil =>
+        ret(Nil)
     }
   }
 

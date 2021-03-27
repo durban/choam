@@ -589,6 +589,26 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("React.consistentRead") {
+    for {
+      r1 <- Ref("abc").run[F]
+      r2 <- Ref(42).run[F]
+      res <- React.consistentRead(r1, r2).run[F]
+      _ <- assertEqualsF(res, ("abc", 42))
+    } yield ()
+  }
+
+  test("React.consistentReadMany") {
+    for {
+      r1 <- Ref("abc").run[F]
+      r2 <- Ref("def").run[F]
+      r3 <- Ref("ghi").run[F]
+      r4 <- Ref("-").run[F]
+      res <- React.consistentReadMany[String](List(r4, r1, r2, r3)).run[F]
+      _ <- assertEqualsF(res, List("-", "abc", "def", "ghi"))
+    } yield ()
+  }
+
   test("Ref.apply") {
     for {
       i <- (Ref(89).flatMap(_.modify(_ + 1))).run[F]
