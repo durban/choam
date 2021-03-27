@@ -44,36 +44,6 @@ trait Ref[A] extends mcas.MemoryLocation[A] {
   final def getter: React[Any, A] =
     upd[Any, A] { (a, _) => (a, a) }
 
-  // WARNING: This is unsafe, if we run `set`
-  // WARNING: as part of another reaction.
-  final def access1: React[Unit, (A, React[A, Unit])] = {
-    this.unsafeInvisibleRead.map { oa =>
-      val set = React.computed[A, Unit] { (na: A) =>
-        this.unsafeCas(oa, na)
-      }
-      (oa, set)
-    }
-  }
-
-  // WARNING: This throws an exception, if we
-  // WARNING: run `set` as part of another reaction.
-  // TODO: This is non-composable iff `set` is not used.
-  final def access2: React[Any, (A, React[A, Unit])] = {
-    React.token.flatMap { origTok =>
-      this.unsafeInvisibleRead.map { oa =>
-        val checkToken: React[Any, Unit] = React.token.flatMap { currTok =>
-          if (currTok eq origTok) React.unit
-          else React.delay[Any, Unit] { _ => throw new IllegalStateException("token mismatch") }
-          // TODO: create a specific exception type for this
-        }
-        val set = React.computed[A, Unit] { (na: A) =>
-          checkToken.flatMap(_ => this.unsafeCas(oa, na))
-        }
-        (oa, set)
-      }
-    }
-  }
-
   final def unsafeCas(ov: A, nv: A): React[Any, Unit] =
     React.unsafe.cas(this, ov, nv)
 

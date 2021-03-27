@@ -527,68 +527,6 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("access1 should work") {
-    for {
-      r1 <- Ref("s1").run[F]
-      r2 <- Ref("s2").run[F]
-      _ <- (for {
-        vs1 <- r1.access1
-        (v1, set1) = vs1
-        vs2 <- r2.access1
-        (v2, set2) = vs2
-        _ <- React.ret(v1) >>> set2
-        _ <- React.ret(v2) >>> set1
-      } yield ()).run[F]
-      _ <- assertResultF(r1.getter.run[F], "s2")
-      _ <- assertResultF(r2.getter.run[F], "s1")
-    } yield ()
-  }
-
-  test("access2 should work") {
-    for {
-      r1 <- Ref("s1").run[F]
-      r2 <- Ref("s2").run[F]
-      _ <- (for {
-        vs1 <- r1.access2
-        (v1, set1) = vs1
-        vs2 <- r2.access2
-        (v2, set2) = vs2
-        _ <- React.ret(v1) >>> set2
-        _ <- React.ret(v2) >>> set1
-      } yield ()).run[F]
-      _ <- assertResultF(r1.getter.run[F], "s2")
-      _ <- assertResultF(r2.getter.run[F], "s1")
-    } yield ()
-  }
-
-  test("access1 in a different reaction".ignore) {
-    for {
-      r <- Ref("s").run[F]
-      vs <- r.access1.run[F]
-      (v, set) = vs
-      _ <- assertEqualsF(v, "s")
-      _ <- assertResultF(r.getter.run[F], "s")
-      _ <- r.modify { _ + "x" }.run[F]
-      _ <- set[F]("x") // <- infinite loop
-      _ <- assertResultF(r.getter.run[F], "x")
-    } yield ()
-  }
-
-  test("access2 in a different reaction") {
-    for {
-      r <- Ref("s").run[F]
-      vs <- r.access2.run[F]
-      (v, set) = vs
-      _ <- assertEqualsF(v, "s")
-      _ <- assertResultF(r.getter.run[F], "s")
-      _ <- r.modify { _ + "x" }.run[F]
-      e <- set[F]("x").attempt
-      ex <- F.delay { e.swap.toOption.get }
-      _ <- assertF(ex.getMessage.contains("token mismatch"))
-      _ <- assertResultF(r.getter.run[F], "sx")
-    } yield ()
-  }
-
   test("React.consistentRead") {
     for {
       r1 <- Ref("abc").run[F]

@@ -275,7 +275,7 @@ object React extends ReactInstances0 {
   def pure[A](a: A): React[Unit, A] =
     ret(a)
 
-  // TODO: do we really need this?
+  // TODO: do we really need this (we don't have `access` any more)?
   private[choam] def token: React[Any, Token] =
     new Tok[Any, Token, Token]((_, t) => t, Commit[Token]())
 
