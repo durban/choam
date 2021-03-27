@@ -182,7 +182,7 @@ sealed abstract class React[-A, +B] {
   override def toString: String
 }
 
-object React extends ReactInstances0 {
+object React extends ReactSyntax0 {
 
   private[choam] final val maxStackDepth = 1024
 
@@ -321,7 +321,7 @@ object React extends ReactInstances0 {
         override protected[choam] def firstImpl[C]: React[(A, C), (B, C)] =
           onRetryImpl(act, k.firstImpl[C])
 
-        override def toString(): String = "???"
+        override def toString(): String = s"OnRetry(${act}, ${k})"
       }
     }
   }
@@ -331,7 +331,6 @@ object React extends ReactInstances0 {
       F.run(self, a)
   }
 
-  // TODO: if `Action[A]` is `React[Any, A]`, then this should be `AnyReactSyntax`
   implicit final class UnitReactSyntax[A](private val self: React[Unit, A]) extends AnyVal {
 
     // TODO: maybe this should be the default `flatMap`? (Not sure...)
@@ -349,8 +348,8 @@ object React extends ReactInstances0 {
     final def unsafeRun(kcas: KCAS): A =
       self.unsafePerform((), kcas)
 
-    final def void: React[Unit, Unit] =
-      self.discard
+    final def void: React[Any, Unit] =
+      self.discard.lmap(_ => ())
   }
 
   implicit final class Tuple2ReactSyntax[A, B, C](private val self: React[A, (B, C)]) extends AnyVal {
@@ -819,6 +818,9 @@ object React extends ReactInstances0 {
     override protected def transform2(b: B, a: A): B =
       b
   }
+}
+
+sealed abstract class ReactSyntax0 extends ReactInstances0 { this: React.type =>
 }
 
 sealed abstract class ReactInstances0 extends ReactInstances1 { self: React.type =>

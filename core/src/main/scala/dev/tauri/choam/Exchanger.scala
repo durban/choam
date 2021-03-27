@@ -36,109 +36,139 @@ final class Exchanger[A, B] private (
   def dual: Exchanger[B, A] =
     new Exchanger[B, A](incoming = this.outgoing, outgoing = this.incoming)
 
-  private[choam] def tryExchange[C](msg: Msg[A, B, C], ctx: ThreadContext, retries: Int, maxBackoff: Int = 16): Option[Msg[Unit, Unit, C]] = {
+  private[choam] def tryExchange[C](msg: Msg[A, B, C], ctx: ThreadContext, retries: Int, maxBackoff: Int = 16): Option[(Msg[Unit, Unit, C])] = {
     val idx = Backoff.randomTokens(retries, Exchanger.size >> 1, ctx.random) - 1
+    tryIdx(idx, msg, ctx, retries, maxBackoff)
+  }
 
-    def tryIdx(idx: Int): Option[Msg[Unit, Unit, C]] = {
-      println(s"tryIdx(${idx}) - thread#${Thread.currentThread().getId()}")
-      // post our message:
-      val slot = this.incoming(idx)
-      slot.get() match {
-        case null =>
-          // empty slot, insert ourselves:
-          val self = new Node(msg)
-          if (slot.compareAndSet(null, self)) {
-            println(s"posted offer - thread#${Thread.currentThread().getId()}")
-            // we posted our msg, look at the other side:
-            val otherSlot = this.outgoing(idx)
-            otherSlot.get() match {
-              case null =>
-                println(s"not found other, will wait - thread#${Thread.currentThread().getId()}")
-                // we can't fulfill, so we wait for a fulfillment:
-                val res = self.spinWait(retries, maxBackoff, ctx)
-                println(s"after waiting: ${res} - thread#${Thread.currentThread().getId()}")
-                if (!slot.compareAndSet(self, null)) {
-                  // couldn't rescind, someone claimed our offer
-                  println(s"other claimed our offer - thread#${Thread.currentThread().getId()}")
-                  val rres = res.orElse {
-                    self.spinWait(retries, max = maxBackoff, ctx = ctx)
-                  }
-                  println(s"rres = ${rres} - thread#${Thread.currentThread().getId()}")
-                  rres.map { c =>
-                    Msg.ret[C](c, ctx, msg.ops.token)
-                  }
-                  // TODO: check for claimedAndFailed (???)
-                  // TODO: when retrying this reagent, first check `self.hole`!
-                } else {
-                  // rescinded successfully, will retry
-                  None
-                }
-              case other: Node[_, _, d] =>
-                println(s"found other - thread#${Thread.currentThread().getId()}")
-                if (slot.compareAndSet(self, null)) {
-                  // ok, we've rescinded our offer
-                  if (otherSlot.compareAndSet(other, null)) {
-                    println(s"fulfilling other - thread#${Thread.currentThread().getId()}")
-                    // ok, we've claimed the other offer, we'll fulfill it:
-                    val cont: React[Unit, C] = msg.cont.lmap[Unit](_ => other.msg.value)
-                    val otherCont: React[Unit, Unit] = other.msg.cont.lmap[Unit](_ => msg.value).flatMap { d =>
-                      // TODO: we might not need `onRetry` if we wait/check in React.Exchange`
-                      React.unsafe.onRetry(React.unsafe.cas[d](other.hole, nullOf[d], d)) {
-                        React.unsafe.cas[d](other.hole, nullOf[d], Exchanger.claimedAndFailed[d])
-                      }
-                    }
-                    val both = (cont * otherCont).map(_._1)
-                    Some(Msg[Unit, Unit, C](
-                      value = (),
-                      cont = both,
-                      ops = new React.Reaction(
-                        msg.ops.postCommit ++ other.msg.ops.postCommit,
-                        msg.ops.token // TODO: this might cause problems with `access`
-                      ),
-                      desc = {
-                        // Note: we've read `other` from a `Ref`, so we'll see its mutable list of descriptors,
-                        // and we've claimed it, so others won't try to do the same.
-                        msg.desc.addAll(other.msg.desc)
-                        msg.desc
-                      }
-                    ))
-                  } else {
-                    // the other offer was rescinded in the meantime,
-                    // so we'll have to retry:
-                    None
-                  }
-                } else {
-                  // someone else claimed our offer, we can't continue with fulfillment,
-                  // so we wait for our offer to be fulfilled (and retry if it doesn't happen):
-                  self.spinWait(retries, max = maxBackoff, ctx = ctx).map { c =>
-                    Msg.ret(c, ctx, msg.ops.token)
-                  }
-                }
-            }
-          } else {
-            // contention, will retry
-            None
-          }
-        case _ =>
-          // contention, will retry
+  /** Our offer was claimed by somebody, wait for them to fulfill it */
+  private[this] def waitForClaimedOffer[C](
+    self: Node[A, B, C],
+    msg: Msg[A, B, C],
+    maybeResult: Option[C],
+    ctx: ThreadContext,
+    retries: Int,
+    maxBackoff: Int
+  ): Option[Msg[Unit, Unit, C]] = {
+    val rres = maybeResult.orElse {
+      self.spinWait(retries, max = maxBackoff, ctx = ctx)
+    }
+    println(s"rres = ${rres} - thread#${Thread.currentThread().getId()}")
+    rres match {
+      case Some(c) =>
+        if (Exchanger.Node.IS_FAILED(c)) {
+          println(s"fulfiller FAILED 1 - thread#${Thread.currentThread().getId()}")
+          None // fulfiller failed, must retry
+        } else {
+          // it must be a result
+          Some(Msg.ret[C](c, ctx, msg.ops.token))
+        }
+      case None =>
+        if (ctx.impl.doSingleCas(self.hole, nullOf[C], Exchanger.Node.RESCINDED[C], ctx)) {
+          // OK, we rolled back, and can retry
+          println(s"rolled back - thread#${Thread.currentThread().getId()}")
           None
+        } else {
+          // couldn't roll back, re-read
+          val maybeResult = ctx.impl.read(self.hole, ctx)
+          if (Exchanger.Node.IS_FAILED(maybeResult)) {
+            // fulfiller failed, we can retry
+            println(s"fulfiller FAILED 2 - thread#${Thread.currentThread().getId()}")
+            None
+          } else {
+            // now it must be a result
+            Some(Msg.ret[C](maybeResult, ctx, msg.ops.token))
+          }
+        }
+    }
+  }
+
+  /** We claimed someone else's offer, so we'll fulfill it */
+  private[this] def fulfillClaimedOffer[C, D](
+    other: Node[B, A, D],
+    selfMsg: Msg[A, B, C]
+  ): Option[Msg[Unit, Unit, C]] = {
+    val cont: React[Unit, C] = selfMsg.cont.lmap[Unit](_ => other.msg.value)
+    val otherCont: React[Unit, Unit] = other.msg.cont.lmap[Unit](_ => selfMsg.value).flatMap { d =>
+      React.unsafe.onRetry(other.hole.unsafeCas(nullOf[D], d)) {
+        other.hole.unsafeCas(nullOf[D], Exchanger.Node.FAILED[D]).?.void
       }
     }
+    val both = (cont * otherCont).map(_._1)
+    val resMsg = Msg[Unit, Unit, C](
+      value = (),
+      cont = both,
+      ops = new React.Reaction(
+        selfMsg.ops.postCommit ++ other.msg.ops.postCommit,
+        selfMsg.ops.token // TODO: this might cause problems
+      ),
+      desc = {
+        // Note: we've read `other` from a `Ref`, so we'll see its mutable list of descriptors,
+        // and we've claimed it, so others won't try to do the same.
+        selfMsg.desc.addAll(other.msg.desc)
+        selfMsg.desc
+      }
+    )
+    Some(resMsg)
+  }
 
-    tryIdx(idx)
+  private[this] def tryIdx[C](idx: Int, msg: Msg[A, B, C], ctx: ThreadContext, retries: Int, maxBackoff: Int): Option[Msg[Unit, Unit, C]] = {
+    println(s"tryIdx(${idx}) - thread#${Thread.currentThread().getId()}")
+    // post our message:
+    val slot = this.incoming(idx)
+    slot.get() match {
+      case null =>
+        // empty slot, insert ourselves:
+        val self = new Node(msg)
+        if (slot.compareAndSet(null, self)) {
+          println(s"posted offer - thread#${Thread.currentThread().getId()}")
+          // we posted our msg, look at the other side:
+          val otherSlot = this.outgoing(idx)
+          otherSlot.get() match {
+            case null =>
+              println(s"not found other, will wait - thread#${Thread.currentThread().getId()}")
+              // we can't fulfill, so we wait for a fulfillment:
+              val res = self.spinWait(retries, maxBackoff, ctx)
+              println(s"after waiting: ${res} - thread#${Thread.currentThread().getId()}")
+              if (!slot.compareAndSet(self, null)) {
+                // couldn't rescind, someone claimed our offer
+                println(s"other claimed our offer - thread#${Thread.currentThread().getId()}")
+                waitForClaimedOffer[C](self, msg, res, ctx, retries, maxBackoff)
+              } else {
+                // rescinded successfully, will retry
+                None
+              }
+            case other: Node[_, _, d] =>
+              println(s"found other - thread#${Thread.currentThread().getId()}")
+              if (slot.compareAndSet(self, null)) {
+                // ok, we've rescinded our offer
+                if (otherSlot.compareAndSet(other, null)) {
+                  println(s"fulfilling other - thread#${Thread.currentThread().getId()}")
+                  // ok, we've claimed the other offer, we'll fulfill it:
+                  fulfillClaimedOffer(other, msg)
+                } else {
+                  // the other offer was rescinded in the meantime,
+                  // so we'll have to retry:
+                  None
+                }
+              } else {
+                // someone else claimed our offer, we can't continue with fulfillment,
+                // so we wait for our offer to be fulfilled (and retry if it doesn't happen):
+                waitForClaimedOffer(self, msg, None, ctx, retries, maxBackoff)
+              }
+          }
+        } else {
+          // contention, will retry
+          None
+        }
+      case _ =>
+        // contention, will retry
+        None
+    }
   }
 }
 
 object Exchanger {
-
-  private[this] val _claimedAndFailed =
-    new AnyRef
-
-  private[choam] def claimedAndFailed[A]: A =
-    _claimedAndFailed.asInstanceOf[A]
-
-  private[choam] def isClaimedAndFailed[A](a: A): Boolean =
-    equ(a, claimedAndFailed[A])
 
   // TODO: this is basically `React.Jump`
   private[choam] final case class Msg[+A, B, +C](
@@ -195,11 +225,9 @@ object Exchanger {
   private final class Node[A, B, C](val msg: Msg[A, B, C]) {
 
     /**
-     * TODO:
-     *
-     * null --> result : C (fulfiller successfully completed)
-     *  +--> claimedAndFailed (fulfiller couldn't fulfill)
-     *  \--> claimedAndRescinded (owner couldn't wait any more for the fulfiller)
+     * null --> result: C (fulfiller successfully completed)
+     *  +--> FAILED (fulfiller couldn't fulfill)
+     *  \--> RESCINDED (owner couldn't wait any more for the fulfiller)
      */
     val hole = Ref.unsafe[C](nullOf[C])
 
@@ -220,5 +248,26 @@ object Exchanger {
       }
       go(Backoff.randomTokens(retries, max, ctx.random))
     }
+  }
+
+  private final object Node {
+
+    private[this] val _FAILED =
+      new AnyRef
+
+    private[choam] def FAILED[A]: A =
+      _FAILED.asInstanceOf[A]
+
+    private[choam] def IS_FAILED[A](a: A): Boolean =
+      equ(a, _FAILED)
+
+    private[this] val _RESCINDED =
+      new AnyRef
+
+    private[choam] def RESCINDED[A]: A =
+      _RESCINDED.asInstanceOf[A]
+
+    private[choam] def IS_RESCINDED[A](a: A): Boolean =
+      equ(a, _RESCINDED)
   }
 }

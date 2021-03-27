@@ -28,6 +28,9 @@ private final class Ref2Ref1[A, B](self: Ref2Base[A, B]) extends Ref[A] {
   override def unsafeCasVolatile(ov: A, nv: A): Boolean =
     self.unsafeCasVolatile1(ov, nv)
 
+  override def unsafeCmpxchgVolatile(ov: A, nv: A): A =
+    self.unsafeCmpxchgVolatile1(ov, nv)
+
   override def unsafeSetVolatile(a: A): Unit =
     self.unsafeSetVolatile1(a)
 
@@ -54,6 +57,9 @@ private final class Ref2Ref2[A, B](self: Ref2Impl[A, B]) extends Ref[B] {
 
   override def unsafeCasVolatile(ov: B, nv: B): Boolean =
     self.unsafeCasVolatile2(ov, nv)
+
+  override def unsafeCmpxchgVolatile(ov: B, nv: B): B =
+    self.unsafeCmpxchgVolatile2(ov, nv)
 
   override def unsafeSetVolatile(b: B): Unit =
     self.unsafeSetVolatile2(b)

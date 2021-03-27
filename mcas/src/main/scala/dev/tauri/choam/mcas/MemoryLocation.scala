@@ -40,11 +40,13 @@ package mcas
  */
 trait MemoryLocation[A] {
 
-  def unsafeGetVolatile(): A // was: unsafeGet
+  def unsafeGetVolatile(): A
 
-  def unsafeSetVolatile(nv: A): Unit // was: unsafeSet
+  def unsafeSetVolatile(nv: A): Unit
 
-  def unsafeCasVolatile(ov: A, nv: A): Boolean // was: unsafeTryPerformCas
+  def unsafeCasVolatile(ov: A, nv: A): Boolean
+
+  def unsafeCmpxchgVolatile(ov: A, nv: A): A
 
   def id0: Long
 

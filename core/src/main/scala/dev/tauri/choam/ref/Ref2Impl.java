@@ -65,6 +65,10 @@ abstract class Ref2Base<A, B> extends RefId implements Ref2<A, B> {
   public final boolean unsafeCasVolatile1(A ov, A nv) {
     return VALUE_A.compareAndSet(this, ov, nv);
   }
+
+  public final A unsafeCmpxchgVolatile1(A ov, A nv) {
+    return (A) VALUE_A.compareAndExchange(this, ov, nv);
+  }
 }
 
 public class Ref2Impl<A, B> extends Padding2<A, B> {
@@ -121,6 +125,10 @@ public class Ref2Impl<A, B> extends Padding2<A, B> {
 
   public final boolean unsafeCasVolatile2(B ov, B nv) {
     return VALUE_B.compareAndSet(this, ov, nv);
+  }
+
+  public final B unsafeCmpxchgVolatile2(B ov, B nv) {
+    return (B) VALUE_B.compareAndExchange(this, ov, nv);
   }
 
   public final long id4() {

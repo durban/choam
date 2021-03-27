@@ -62,6 +62,11 @@ public class UnpaddedRef1<A> extends UnpaddedRefId implements Ref<A> {
   }
 
   @Override
+  public final A unsafeCmpxchgVolatile(A ov, A nv) {
+    return (A) VALUE.compareAndExchange(this, ov, nv);
+  }
+
+  @Override
   public final long dummy(long v) {
     return 42L;
   }

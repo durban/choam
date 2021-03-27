@@ -38,7 +38,6 @@
     - Measure memory requirements, make sure finalized list is not too big.
 - Compile-time detection of:
   - impossible k-CAS operations (2 changes to the same `Ref`)
-  - leaking `set` from `access`(?)
 - Optimization ideas:
   - Boxing
   - React interpreter (external interpreter?)
@@ -56,16 +55,12 @@
     - (unsafe) thread-confined mode for running a `React` (with `NaiveKCAS` or something even more simple)
     - unsafe: `delay` (but: safe `postCommitDelay`, or similar)
   - Token?
-  - Ref#access?
   - React.delay?
     - allocating (but: only `Ref` really needs it, others are built on that)
     - calling async callbacks (but: only `Promise` needs it, others don't)
     - allocating `Exchanger` arrays (this is similar to `Ref`)
-    - throwing an exception in `access` (ugh...)
   - move `KCAS` into separate JAR, figure out proper API (`choam-kcas` or `choam-mcas`)
   - compare with `Ref` in cats-effect: similar things should have similar names
-  - Create an equivalent of `cats.effect.Ref#access`
-    - This would be a safe version of an `invisibleRead` followed by `cas`.
   - Find a better name instead of `React`
     - `Action[A]` (<= `React[Unit/Any, A]`)
       - alias or sub-trait?
@@ -103,4 +98,4 @@
 - "Laws" for the `React` combinators, e.g.:
   - choice prefers the first option
   - `flatMap` <-> `>>>` and `computed`
-  - `access` then `set` <-> `modify`
+  - `updWith` then `ret` <-> `modify`

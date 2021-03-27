@@ -26,15 +26,16 @@ final class ExchangerSpecEMCAS
 
 trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
-  test("Exchanger".ignore) {
-    for {
+  final val iterations = 1000
+
+  test("Exchanger") {
+    val tsk = for {
       ex <- React.unsafe.exchanger[String, Int].run[F]
-      r1 = ex.exchange
-      r2 = ex.dual.exchange
-      f1 <- r1[F]("foo").flatTap { _ => F.delay(println("f1 done")) }.start
-      f2 <- r2[F](42).flatTap { _ => F.delay(println("f1 done")) }.start
+      f1 <- ex.exchange[F]("foo").flatTap { _ => F.delay(println("f1 done")) }.start
+      f2 <- ex.dual.exchange[F](42).flatTap { _ => F.delay(println("f2 done")) }.start
       _ <- assertResultF(f1.joinWithNever, 42)
       _ <- assertResultF(f2.joinWithNever, "foo")
     } yield ()
+    tsk.replicateA(iterations)
   }
 }

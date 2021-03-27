@@ -37,6 +37,11 @@ abstract class KCAS { self =>
   private[choam] def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean
 
   private[choam] def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A
+
+  final def doSingleCas[A](ref: MemoryLocation[A], ov: A, nv: A, ctx: ThreadContext): Boolean = {
+    val desc = this.addCas(this.start(ctx), ref, ov, nv, ctx)
+    this.tryPerform(desc, ctx)
+  }
 }
 
 /** Provides various k-CAS implementations */
