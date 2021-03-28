@@ -56,29 +56,17 @@ final class Exchanger[A, B] private (
     println(s"rres = ${rres} - thread#${Thread.currentThread().getId()}")
     rres match {
       case Some(c) =>
-        if (Exchanger.Node.IS_FAILED(c)) {
-          println(s"fulfiller FAILED 1 - thread#${Thread.currentThread().getId()}")
-          None // fulfiller failed, must retry
-        } else {
-          // it must be a result
-          Some(Msg.ret[C](c, ctx, msg.ops.token))
-        }
+        // it must be a result
+        Some(Msg.ret[C](c, ctx, msg.ops.token))
       case None =>
         if (ctx.impl.doSingleCas(self.hole, nullOf[C], Exchanger.Node.RESCINDED[C], ctx)) {
           // OK, we rolled back, and can retry
           println(s"rolled back - thread#${Thread.currentThread().getId()}")
           None
         } else {
-          // couldn't roll back, re-read
-          val maybeResult = ctx.impl.read(self.hole, ctx)
-          if (Exchanger.Node.IS_FAILED(maybeResult)) {
-            // fulfiller failed, we can retry
-            println(s"fulfiller FAILED 2 - thread#${Thread.currentThread().getId()}")
-            None
-          } else {
-            // now it must be a result
-            Some(Msg.ret[C](maybeResult, ctx, msg.ops.token))
-          }
+          // couldn't roll back, it must be a result
+          val c = ctx.impl.read(self.hole, ctx)
+          Some(Msg.ret[C](c, ctx, msg.ops.token))
         }
     }
   }
@@ -93,18 +81,7 @@ final class Exchanger[A, B] private (
     val otherCont: React[Unit, Unit] = other.msg.cont.lmap[Unit](_ => selfMsg.value).flatMap { d =>
       other.hole.unsafeCas(nullOf[D], d)
     }
-    val otherContFallback = React.unsafe.onRetry(otherCont) {
-      // TODO: it seems we don't really need FAILED/onRetry(???)
-      React.ret(())
-      // other.hole.unsafeCas(nullOf[D], Exchanger.Node.FAILED[D]).?.map {
-      //   case None =>
-      //     val contents = ctx.impl.read(other.hole, ctx)
-      //     println(s"Couldn't CAS hole to FAILED, contains '${contents}' - thread#${Thread.currentThread().getId()}")
-      //   case Some(_) =>
-      //     println(s"CAS-ed hole to FAILED - thread#${Thread.currentThread().getId()}")
-      // }.void
-    }
-    val both = (cont * otherContFallback).map(_._1)
+    val both = (cont * otherCont).map(_._1)
     val resMsg = Msg[Unit, Unit, C](
       value = (),
       cont = both,
@@ -236,9 +213,11 @@ object Exchanger {
   private final class Node[A, B, C](val msg: Msg[A, B, C]) {
 
     /**
-     * null --> result: C (fulfiller successfully completed)
-     *  +--> FAILED (fulfiller couldn't fulfill)
-     *  \--> RESCINDED (owner couldn't wait any more for the fulfiller)
+     *     .---> result: C (fulfiller successfully completed)
+     *    /
+     * null
+     *    \
+     *     ˙---> RESCINDED (owner couldn't wait any more for the fulfiller)
      */
     val hole = Ref.unsafe[C](nullOf[C])
 
@@ -263,19 +242,8 @@ object Exchanger {
 
   private final object Node {
 
-    private final class Sentinel(override val toString: String)
-
-    private[this] val _FAILED =
-      new Sentinel("_FAILED")
-
-    private[choam] def FAILED[A]: A =
-      _FAILED.asInstanceOf[A]
-
-    private[choam] def IS_FAILED[A](a: A): Boolean =
-      equ(a, _FAILED)
-
-    private[this] val _RESCINDED =
-      new Sentinel("_RESCINDED")
+    private[this] val _RESCINDED: AnyRef =
+      new AnyRef { override def toString: String = "_RESCINDED" }
 
     private[choam] def RESCINDED[A]: A =
       _RESCINDED.asInstanceOf[A]
