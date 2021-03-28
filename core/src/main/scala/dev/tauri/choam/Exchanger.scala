@@ -20,16 +20,15 @@ package dev.tauri.choam
 import java.util.concurrent.atomic.AtomicReference
 
 import kcas.{ Ref, ThreadContext, EMCASDescriptor }
-import Exchanger.{ Node, Msg }
 
 // TODO: lazy initialization of exchanger with something like Reaction.lzy { ... }
 
 final class Exchanger[A, B] private (
-  incoming: Array[AtomicReference[Node[A, B, _]]],
-  outgoing: Array[AtomicReference[Node[B, A, _]]]
+  incoming: Array[AtomicReference[Exchanger.Node[A, B, _]]],
+  outgoing: Array[AtomicReference[Exchanger.Node[B, A, _]]]
 ) {
 
-  import Exchanger.{ Node, Statistics }
+  import Exchanger.{ Msg, Node, Statistics }
 
   require(incoming.length == outgoing.length)
 
@@ -43,75 +42,15 @@ final class Exchanger[A, B] private (
   private[this] def size: Int =
     incoming.length
 
-  private[choam] def tryExchange[C](msg: Msg[A, B, C], ctx: ThreadContext, retries: Int, maxBackoff: Int = 16): Either[Exchanger.StatMap, (Msg[Unit, Unit, C])] = {
-    val stats = msg.rd.exchangerData.getOrElse(this, Exchanger.Statistics.zero)
+  private[choam] def tryExchange[C](msg: Msg[A, B, C], ctx: ThreadContext): Either[Exchanger.StatMap, (Msg[Unit, Unit, C])] = {
+    // TODO: the key shouldn't be `this` -- an exchanger and its dual should probably use the same key
+    val stats = msg.rd.exchangerData.getOrElse(this, Statistics.zero)
     println(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
-    val idx = if (stats.effectiveSize < 2) 0 else ctx.random.nextInt(stats.effectiveSize)
+    val idx = if (stats.effectiveSize < 2) 0 else ctx.random.nextInt(stats.effectiveSize.toInt)
     tryIdx(idx, msg, stats, ctx) match {
       case Left(stats) => Left(msg.rd.exchangerData.updated(this, stats))
       case Right(msg) => Right(msg)
     }
-  }
-
-  /** Our offer was claimed by somebody, wait for them to fulfill it */
-  private[this] def waitForClaimedOffer[C](
-    self: Node[A, B, C],
-    msg: Msg[A, B, C],
-    maybeResult: Option[C],
-    stats: Statistics,
-    ctx: ThreadContext
-  ): Either[Statistics, Msg[Unit, Unit, C]] = {
-    val rres = maybeResult.orElse {
-      self.spinWait(stats = stats, ctx = ctx)
-    }
-    println(s"rres = ${rres} - thread#${Thread.currentThread().getId()}")
-    rres match {
-      case Some(c) =>
-        // it must be a result
-        Right(Msg.ret[C](c, ctx, msg.rd.token, msg.rd.exchangerData.updated(this, stats.exchanged)))
-      case None =>
-        if (ctx.impl.doSingleCas(self.hole, nullOf[C], Exchanger.Node.RESCINDED[C], ctx)) {
-          // OK, we rolled back, and can retry
-          println(s"rolled back - thread#${Thread.currentThread().getId()}")
-          Left(stats.rescinded)
-        } else {
-          // couldn't roll back, it must be a result
-          val c = ctx.impl.read(self.hole, ctx)
-          Right(Msg.ret[C](c, ctx, msg.rd.token, msg.rd.exchangerData.updated(this, stats.exchanged)))
-        }
-    }
-  }
-
-  /** We claimed someone else's offer, so we'll fulfill it */
-  private[this] def fulfillClaimedOffer[C, D](
-    other: Node[B, A, D],
-    selfMsg: Msg[A, B, C],
-    stats: Statistics,
-    ctx: ThreadContext
-  ): Right[Statistics, Msg[Unit, Unit, C]] = {
-    val cont: React[Unit, C] = selfMsg.cont.lmap[Unit](_ => other.msg.value)
-    val otherCont: React[Unit, Unit] = other.msg.cont.lmap[Unit](_ => selfMsg.value).flatMap { d =>
-      other.hole.unsafeCas(nullOf[D], d)
-    }
-    val both = (cont * otherCont).map(_._1)
-    val resMsg = Msg[Unit, Unit, C](
-      value = (),
-      cont = both,
-      rd = React.ReactionData(
-        selfMsg.rd.postCommit ++ other.msg.rd.postCommit,
-        selfMsg.rd.token, // TODO: this might cause problems
-        // this thread will continue, so we use (and update) our data
-        selfMsg.rd.exchangerData.updated(this, stats.exchanged)
-      ),
-      desc = {
-        // Note: we've read `other` from a `Ref`, so we'll see its mutable list of descriptors,
-        // and we've claimed it, so others won't try to do the same.
-        selfMsg.desc.addAll(other.msg.desc)
-        selfMsg.desc
-      }
-    )
-    //ctx.onRetry.addAll(other.msg.onRetry) // TODO: thread safety?
-    Right(resMsg)
   }
 
   private[this] def tryIdx[C](idx: Int, msg: Msg[A, B, C], stats: Statistics, ctx: ThreadContext): Either[Statistics, Msg[Unit, Unit, C]] = {
@@ -147,7 +86,7 @@ final class Exchanger[A, B] private (
                 if (otherSlot.compareAndSet(other, null)) {
                   println(s"fulfilling other - thread#${Thread.currentThread().getId()}")
                   // ok, we've claimed the other offer, we'll fulfill it:
-                  fulfillClaimedOffer(other, msg, stats, ctx)
+                  fulfillClaimedOffer(other, msg, stats)
                 } else {
                   // the other offer was rescinded in the meantime,
                   // so we'll have to retry:
@@ -167,6 +106,66 @@ final class Exchanger[A, B] private (
         // contention, will retry
         Left(stats.contended(this.size))
     }
+  }
+
+  /** Our offer have been claimed by somebody, so we wait for them to fulfill it */
+  private[this] def waitForClaimedOffer[C](
+    self: Node[A, B, C],
+    msg: Msg[A, B, C],
+    maybeResult: Option[C],
+    stats: Statistics,
+    ctx: ThreadContext
+  ): Either[Statistics, Msg[Unit, Unit, C]] = {
+    val rres = maybeResult.orElse {
+      self.spinWait(stats = stats, ctx = ctx)
+    }
+    println(s"rres = ${rres} - thread#${Thread.currentThread().getId()}")
+    rres match {
+      case Some(c) =>
+        // it must be a result
+        Right(Msg.ret[C](c, ctx, msg.rd.token, msg.rd.exchangerData.updated(this, stats.exchanged)))
+      case None =>
+        if (ctx.impl.doSingleCas(self.hole, nullOf[C], Node.RESCINDED[C], ctx)) {
+          // OK, we rolled back, and can retry
+          println(s"rolled back - thread#${Thread.currentThread().getId()}")
+          Left(stats.rescinded)
+        } else {
+          // couldn't roll back, it must be a result
+          val c = ctx.impl.read(self.hole, ctx)
+          Right(Msg.ret[C](c, ctx, msg.rd.token, msg.rd.exchangerData.updated(this, stats.exchanged)))
+        }
+    }
+  }
+
+  /** We've claimed someone else's offer, so we'll fulfill it */
+  private[this] def fulfillClaimedOffer[C, D](
+    other: Node[B, A, D],
+    selfMsg: Msg[A, B, C],
+    stats: Statistics
+  ): Right[Statistics, Msg[Unit, Unit, C]] = {
+    val cont: React[Unit, C] = selfMsg.cont.lmap[Unit](_ => other.msg.value)
+    val otherCont: React[Unit, Unit] = other.msg.cont.lmap[Unit](_ => selfMsg.value).flatMap { d =>
+      other.hole.unsafeCas(nullOf[D], d)
+    }
+    val both = (cont * otherCont).map(_._1)
+    val resMsg = Msg[Unit, Unit, C](
+      value = (),
+      cont = both,
+      rd = React.ReactionData(
+        selfMsg.rd.postCommit ++ other.msg.rd.postCommit,
+        selfMsg.rd.token, // TODO: this might cause problems
+        // this thread will continue, so we use (and update) our data
+        selfMsg.rd.exchangerData.updated(this, stats.exchanged)
+      ),
+      desc = {
+        // Note: we've read `other` from a `Ref`, so we'll see its mutable list of descriptors,
+        // and we've claimed it, so others won't try to do the same.
+        selfMsg.desc.addAll(other.msg.desc)
+        selfMsg.desc
+      }
+    )
+    //ctx.onRetry.addAll(other.msg.onRetry) // TODO: thread safety?
+    Right(resMsg)
   }
 }
 
@@ -253,7 +252,7 @@ object Exchanger {
   )
 
   private[choam] object Msg {
-    def ret[C](c: C, ctx: ThreadContext, tok: React.Token, ed: Exchanger.StatMap): Msg[Unit, Unit, C] = {
+    def ret[C](c: C, ctx: ThreadContext, tok: React.Token, ed: StatMap): Msg[Unit, Unit, C] = {
       Msg[Unit, Unit, C](
         value = (),
         cont = React.ret(c),
@@ -322,7 +321,7 @@ object Exchanger {
           None
         }
       }
-      val maxSpin = Math.min(Statistics.defaultSpin << stats.spinShift, Statistics.maxSpin)
+      val maxSpin = Math.min(Statistics.defaultSpin << stats.spinShift.toInt, Statistics.maxSpin)
       println(s"spin waiting (max. ${maxSpin}) - thread#${Thread.currentThread().getId()}")
       go(ctx.random.nextInt(maxSpin))
     }

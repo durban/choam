@@ -775,7 +775,6 @@ object React extends ReactSyntax0 {
     protected def transform2(b: B, c: C): D
 
     protected final override def tryPerform(n: Int, c: C, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[E] = {
-      val retries = 42 // TODO
       val msg = Exchanger.Msg[A, B, E](
         value = transform1(c),
         cont = k.lmap[B](b => self.transform2(b, c)),
@@ -785,12 +784,12 @@ object React extends ReactSyntax0 {
       // TODO: An `Exchange(...) + Exchange(...)` should post the
       // TODO: same offer to both exchangers, so that fulfillers
       // TODO: can race there.
-      this.exchanger.tryExchange(msg, ctx, retries) match {
+      this.exchanger.tryExchange(msg, ctx) match {
         case Right(contMsg) =>
           println(s"exchange happened, got ${contMsg} - thread#${Thread.currentThread().getId()}")
           // TODO: this way we lose exchanger statistics if we start a new reaction
           maybeJump(n, (), contMsg.cont, contMsg.rd, contMsg.desc, ctx)
-        case Left(stats) =>
+        case Left(_) =>
           // TODO: pass back these stats to the main loop
           Retry
       }
