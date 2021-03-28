@@ -78,7 +78,7 @@ sealed abstract class React[-A, +B] {
           doOnRetry()
           alts match {
             case _: Nil.type =>
-              go(partialResult, cont, ReactionData(Nil, rd.token), kcas.start(ctx), alts, retries = retries + 1)
+              go(partialResult, cont, ReactionData(Nil, rd.token, rd.exchangerData), kcas.start(ctx), alts, retries = retries + 1)
             case (h: SnapJump[x, B]) :: t =>
               go[x](h.value, h.react, h.ops, h.snap, t, retries = retries + 1)
           }
@@ -103,7 +103,7 @@ sealed abstract class React[-A, +B] {
       ctx.onRetry = new java.util.ArrayList
     }
 
-    val res = go(a, this, ReactionData(Nil, new Token), kcas.start(ctx), Nil, retries = 0)
+    val res = go(a, this, ReactionData(Nil, new Token, Map.empty), kcas.start(ctx), Nil, retries = 0)
     res.reactionData.postCommit.foreach { pc =>
       pc.unsafePerform((), kcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
     }
@@ -374,16 +374,27 @@ object React extends ReactSyntax0 {
 
   private[choam] final class ReactionData private (
     val postCommit: List[React[Unit, Unit]],
-    val token: Token
+    val token: Token,
+    val exchangerData: Exchanger.StatMap
   ) {
 
-    def :: (act: React[Unit, Unit]): ReactionData =
-      ReactionData(postCommit = act :: this.postCommit, token = this.token)
+    def withPostCommit(act: React[Unit, Unit]): ReactionData = {
+      ReactionData(
+        postCommit = act :: this.postCommit,
+        token = this.token,
+        exchangerData = this.exchangerData
+      )
+    }
   }
 
   private[choam] final object ReactionData {
-    def apply(postCommit: List[React[Unit, Unit]], token: Token): ReactionData =
-      new ReactionData(postCommit, token)
+    def apply(
+      postCommit: List[React[Unit, Unit]],
+      token: Token,
+      exchangerData: Exchanger.StatMap
+    ): ReactionData = {
+      new ReactionData(postCommit, token, exchangerData)
+    }
   }
 
   protected[React] sealed trait TentativeResult[+A]
@@ -470,7 +481,7 @@ object React extends ReactSyntax0 {
       extends React[A, B] {
 
     def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] =
-      maybeJump(n, a, k, pc.lmap[Unit](_ => a) :: rd, desc, ctx)
+      maybeJump(n, a, k, rd.withPostCommit(pc.lmap[Unit](_ => a)), desc, ctx)
 
     def andThenImpl[C](that: React[B, C]): React[A, C] =
       new PostCommit[A, C](pc, k >>> that)
