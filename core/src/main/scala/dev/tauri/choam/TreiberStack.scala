@@ -32,13 +32,23 @@ final class TreiberStack[A](els: Iterable[A]) {
     (Cons(a, as), ())
   }
 
-  val tryPop: React[Unit, Option[A]] = head.upd {
-    case (Cons(h, t), ()) => (t, Some(h))
-    case (End, ()) => (End, None)
+  val tryPop: React[Any, Option[A]] = head.upd {
+    case (Cons(h, t), _) => (t, Some(h))
+    case (End, _) => (End, None)
   }
 
-  val length: React[Unit, Int] =
-    head.upd[Unit, Int] { (l, _) => (l, l.length) }
+  val unsafePop: React[Any, A] = head.unsafeInvisibleRead.flatMap {
+    case c @ Cons(h, t) =>
+      head.unsafeCas(c, t).as(h)
+    case e @ End =>
+      head.unsafeCas(e, e) >>> React.unsafe.retry
+  }
+
+  val length: React[Any, Int] =
+    head.upd[Any, Int] { (l, _) => (l, l.length) }
+
+  def toList: React[Any, List[A]] =
+    head.upd[Any, Lst[A]] { (l, _) => (l, l) }.map(_.toList)
 
   private[choam] def unsafeToList(kcas: KCAS): List[A] = {
     val r = head.upd[Unit, Lst[A]] { (l, _) => (l, l) }

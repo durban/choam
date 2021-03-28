@@ -88,4 +88,50 @@ trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
     tsk.replicateA(iterations)
   }
+
+  test("Elimination") {
+    import cats.effect.implicits.parallelForGenSpawn
+    sealed abstract class Result[A]
+    final case class FromStack[A](a: A) extends Result[A]
+    final case class Exchanged[A](a: A) extends Result[A]
+    val N = 512
+    val tsk = for {
+      ex <- React.unsafe.exchanger[String, Any].run[F]
+      st <- TreiberStack[String].run[F]
+      push = (
+        st.push.map(FromStack(_)) + ex.exchange.as(Exchanged(()))
+      ) : React[String, Result[Unit]]
+      tryPop = (
+        (
+          st.unsafePop.map[Result[String]](FromStack(_)) +
+          ex.dual.exchange.map(Exchanged(_))
+        ).?
+      ) : React[Any, Option[Result[String]]]
+      f1 <- List.fill(N)("a").parTraverse { s =>
+        push[F](s)
+      }.start
+      f2 <- List.fill(N)(tryPop.run[F]).parSequence.start
+      pushResults <- f1.joinWithNever
+      options <- f2.joinWithNever
+      successes = options.count(_.isDefined)
+      stackLen <- st.length.run[F]
+      _ <- assertEqualsF(clue(successes) + clue(stackLen), N)
+      popResults = options.collect { case Some(r) => r }
+      pushExchangeCount <- {
+        val pushExchangeCount = pushResults.count {
+          case FromStack(_) => false
+          case Exchanged(_) => true
+        }
+        val popExchangeCount = popResults.count {
+          case FromStack(_) => false
+          case Exchanged(_) => true
+        }
+        assertEqualsF(pushExchangeCount, popExchangeCount).as(pushExchangeCount)
+      }
+      _ <- F.delay { println(s"Counted ${pushExchangeCount} exchanges (out of ${N})") }
+    } yield pushExchangeCount
+    tsk.replicateA(iterations).flatMap { rss =>
+      F.delay { println(s"Exchanges: ${rss.sum} / ${N * iterations}") }
+    }
+  }
 }

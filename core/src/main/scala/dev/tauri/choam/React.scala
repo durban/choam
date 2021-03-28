@@ -161,6 +161,9 @@ sealed abstract class React[-A, +B] {
   final def map[C](f: B => C): React[A, C] =
     rmap(f)
 
+  final def as[C](c: C): React[A, C] =
+    map(_ => c) // TODO: optimize
+
   final def contramap[C](f: C => A): React[C, B] =
     lmap(f)
 
