@@ -75,7 +75,8 @@ object Backoff {
 
   private[choam] final def randomTokens(retries: Int, halfMaxBackoff: Int, random: ThreadLocalRandom): Int = {
     val max = Math.min(1 << normalizeRetries(retries + 1), halfMaxBackoff << 1)
-    1 + random.nextInt(max)
+    if (max < 2) 1
+    else 1 + random.nextInt(max)
   }
 
   final def once(): Unit = {
