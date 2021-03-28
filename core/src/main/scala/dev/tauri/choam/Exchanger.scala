@@ -86,15 +86,25 @@ final class Exchanger[A, B] private (
   /** We claimed someone else's offer, so we'll fulfill it */
   private[this] def fulfillClaimedOffer[C, D](
     other: Node[B, A, D],
-    selfMsg: Msg[A, B, C]
+    selfMsg: Msg[A, B, C],
+    ctx: ThreadContext
   ): Option[Msg[Unit, Unit, C]] = {
     val cont: React[Unit, C] = selfMsg.cont.lmap[Unit](_ => other.msg.value)
     val otherCont: React[Unit, Unit] = other.msg.cont.lmap[Unit](_ => selfMsg.value).flatMap { d =>
-      React.unsafe.onRetry(other.hole.unsafeCas(nullOf[D], d)) {
-        other.hole.unsafeCas(nullOf[D], Exchanger.Node.FAILED[D]).?.void
-      }
+      other.hole.unsafeCas(nullOf[D], d)
     }
-    val both = (cont * otherCont).map(_._1)
+    val otherContFallback = React.unsafe.onRetry(otherCont) {
+      // TODO: it seems we don't really need FAILED/onRetry(???)
+      React.ret(())
+      // other.hole.unsafeCas(nullOf[D], Exchanger.Node.FAILED[D]).?.map {
+      //   case None =>
+      //     val contents = ctx.impl.read(other.hole, ctx)
+      //     println(s"Couldn't CAS hole to FAILED, contains '${contents}' - thread#${Thread.currentThread().getId()}")
+      //   case Some(_) =>
+      //     println(s"CAS-ed hole to FAILED - thread#${Thread.currentThread().getId()}")
+      // }.void
+    }
+    val both = (cont * otherContFallback).map(_._1)
     val resMsg = Msg[Unit, Unit, C](
       value = (),
       cont = both,
@@ -109,6 +119,7 @@ final class Exchanger[A, B] private (
         selfMsg.desc
       }
     )
+    //ctx.onRetry.addAll(other.msg.onRetry) // TODO: thread safety?
     Some(resMsg)
   }
 
@@ -145,7 +156,7 @@ final class Exchanger[A, B] private (
                 if (otherSlot.compareAndSet(other, null)) {
                   println(s"fulfilling other - thread#${Thread.currentThread().getId()}")
                   // ok, we've claimed the other offer, we'll fulfill it:
-                  fulfillClaimedOffer(other, msg)
+                  fulfillClaimedOffer(other, msg, ctx)
                 } else {
                   // the other offer was rescinded in the meantime,
                   // so we'll have to retry:
@@ -252,8 +263,10 @@ object Exchanger {
 
   private final object Node {
 
+    private final class Sentinel(override val toString: String)
+
     private[this] val _FAILED =
-      new AnyRef
+      new Sentinel("_FAILED")
 
     private[choam] def FAILED[A]: A =
       _FAILED.asInstanceOf[A]
@@ -262,7 +275,7 @@ object Exchanger {
       equ(a, _FAILED)
 
     private[this] val _RESCINDED =
-      new AnyRef
+      new Sentinel("_RESCINDED")
 
     private[choam] def RESCINDED[A]: A =
       _RESCINDED.asInstanceOf[A]

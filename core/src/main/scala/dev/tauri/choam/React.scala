@@ -75,14 +75,15 @@ sealed abstract class React[-A, +B] {
           // TODO: don't back off if there are `alts`
           if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
           else Backoff.backoffConst(retries, maxBackoff)
+          doOnRetry()
           alts match {
             case _: Nil.type =>
-              doOnRetry(ctx)
               go(partialResult, cont, new Reaction(Nil, rea.token), kcas.start(ctx), alts, retries = retries + 1)
             case (h: SnapJump[x, B]) :: t =>
               go[x](h.value, h.react, h.ops, h.snap, t, retries = retries + 1)
           }
         case s @ Success(_, _) =>
+          resetOnRetry()
           s
         case Jump(pr, k, rea, desc, alts2) =>
           go(pr, k, rea, desc, alts2 ++ alts, retries = retries)
@@ -90,12 +91,16 @@ sealed abstract class React[-A, +B] {
       }
     }
 
-    def doOnRetry(ctx: ThreadContext): Unit = {
+    def doOnRetry(): Unit = {
       val it = ctx.onRetry.iterator()
       while (it.hasNext) {
         it.next().unsafePerform((), kcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
       }
-      ctx.onRetry.clear()
+      resetOnRetry()
+    }
+
+    def resetOnRetry(): Unit = {
+      ctx.onRetry = new java.util.ArrayList
     }
 
     val res = go(a, this, new Reaction(Nil, new Token), kcas.start(ctx), Nil, retries = 0)
