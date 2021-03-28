@@ -26,7 +26,7 @@ final class ExchangerSpecEMCAS
 
 trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
-  final val iterations = 1000
+  final val iterations = 10
 
   test("Exchanger") {
     val tsk = for {
