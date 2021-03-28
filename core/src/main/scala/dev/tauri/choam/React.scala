@@ -69,8 +69,8 @@ sealed abstract class React[-A, +B] {
     ctx.randomizeBackoff = randomizeBackoff
 
     @tailrec
-    def go[C](partialResult: C, cont: React[C, B], rea: Reaction, desc: EMCASDescriptor, alts: List[SnapJump[_, B]], retries: Int): Success[B] = {
-      cont.tryPerform(maxStackDepth, partialResult, rea, desc, ctx) match {
+    def go[C](partialResult: C, cont: React[C, B], rd: ReactionData, desc: EMCASDescriptor, alts: List[SnapJump[_, B]], retries: Int): Success[B] = {
+      cont.tryPerform(maxStackDepth, partialResult, rd, desc, ctx) match {
         case Retry =>
           // TODO: don't back off if there are `alts`
           if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
@@ -78,7 +78,7 @@ sealed abstract class React[-A, +B] {
           doOnRetry()
           alts match {
             case _: Nil.type =>
-              go(partialResult, cont, new Reaction(Nil, rea.token), kcas.start(ctx), alts, retries = retries + 1)
+              go(partialResult, cont, ReactionData(Nil, rd.token), kcas.start(ctx), alts, retries = retries + 1)
             case (h: SnapJump[x, B]) :: t =>
               go[x](h.value, h.react, h.ops, h.snap, t, retries = retries + 1)
           }
@@ -103,21 +103,21 @@ sealed abstract class React[-A, +B] {
       ctx.onRetry = new java.util.ArrayList
     }
 
-    val res = go(a, this, new Reaction(Nil, new Token), kcas.start(ctx), Nil, retries = 0)
-    res.reaction.postCommit.foreach { pc =>
+    val res = go(a, this, ReactionData(Nil, new Token), kcas.start(ctx), Nil, retries = 0)
+    res.reactionData.postCommit.foreach { pc =>
       pc.unsafePerform((), kcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
     }
 
     res.value
   }
 
-  protected def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B]
+  protected def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B]
 
   protected final def maybeJump[C, Y >: B](
     n: Int,
     partialResult: C,
     cont: React[C, Y],
-    ops: Reaction,
+    ops: ReactionData,
     desc: EMCASDescriptor,
     ctx: ThreadContext
   ): TentativeResult[Y] = {
@@ -306,7 +306,7 @@ object React extends ReactSyntax0 {
       Exchanger.apply[A, B]
 
     def exchange[A, B](ex: Exchanger[A, B]): React[A, B] =
-      new SimpleExchange[A, B, B](ex, Commit[B]())
+      new Exchange[A, B, B](ex, Commit[B]())
 
     // FIXME:
     def onRetry[A, B](r: React[A, B])(act: React[Any, Unit]): React[A, B] =
@@ -315,7 +315,7 @@ object React extends ReactSyntax0 {
     private[this] def onRetryImpl[A, B](act: React[Any, Unit], k: React[A, B]): React[A, B] = {
       new React[A, B] {
 
-        override protected def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] = {
+        override protected def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] = {
           ctx.onRetry.add(act)
           maybeJump(n, a, k, ops, desc, ctx)
         }
@@ -371,24 +371,28 @@ object React extends ReactSyntax0 {
 
   private[choam] final class Token
 
-  // TODO: optimize building
-  // TODO: rename to ReactionCtx, ReactionData, or something
-  private[choam] final class Reaction(
+
+  private[choam] final class ReactionData private (
     val postCommit: List[React[Unit, Unit]],
     val token: Token
   ) {
 
-    def :: (act: React[Unit, Unit]): Reaction =
-      new Reaction(postCommit = act :: this.postCommit, token = this.token)
+    def :: (act: React[Unit, Unit]): ReactionData =
+      ReactionData(postCommit = act :: this.postCommit, token = this.token)
+  }
+
+  private[choam] final object ReactionData {
+    def apply(postCommit: List[React[Unit, Unit]], token: Token): ReactionData =
+      new ReactionData(postCommit, token)
   }
 
   protected[React] sealed trait TentativeResult[+A]
   protected[React] final case object Retry extends TentativeResult[Nothing]
-  protected[React] final case class Success[+A](value: A, reaction: Reaction) extends TentativeResult[A]
+  protected[React] final case class Success[+A](value: A, reactionData: ReactionData) extends TentativeResult[A]
   protected[React] final case class Jump[A, +B](
     value: A,
     react: React[A, B],
-    ops: Reaction,
+    ops: ReactionData,
     desc: EMCASDescriptor,
     alts: List[SnapJump[_, B]]
   ) extends TentativeResult[B] {
@@ -401,14 +405,14 @@ object React extends ReactSyntax0 {
   protected[React] final case class SnapJump[A, +B](
     value: A,
     react: React[A, B],
-    ops: Reaction,
+    ops: ReactionData,
     snap: EMCASDescriptor
   )
 
   private final class Commit[A]()
       extends React[A, A] {
 
-    protected final def tryPerform(n: Int, a: A, reaction: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[A] = {
+    protected final def tryPerform(n: Int, a: A, reaction: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[A] = {
       if (ctx.impl.tryPerform(desc, ctx)) Success(a, reaction)
       else Retry
     }
@@ -439,7 +443,7 @@ object React extends ReactSyntax0 {
   private sealed abstract class AlwaysRetry[A, B]()
       extends React[A, B] {
 
-    protected final def tryPerform(n: Int, a: A, reaction: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] =
+    protected final def tryPerform(n: Int, a: A, reaction: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] =
       Retry
 
     protected final def andThenImpl[C](that: React[B, C]): React[A, C] =
@@ -465,7 +469,7 @@ object React extends ReactSyntax0 {
   private final class PostCommit[A, B](pc: React[A, Unit], k: React[A, B])
       extends React[A, B] {
 
-    def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] =
+    def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] =
       maybeJump(n, a, k, pc.lmap[Unit](_ => a) :: ops, desc, ctx)
 
     def andThenImpl[C](that: React[B, C]): React[A, C] =
@@ -484,7 +488,7 @@ object React extends ReactSyntax0 {
   private final class Lift[A, B, C](private val func: A => B, private val k: React[B, C])
       extends React[A, C] {
 
-    def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
+    def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
       maybeJump(n, func(a), k, ops, desc, ctx)
 
     def andThenImpl[D](that: React[C, D]): React[A, D] = {
@@ -510,7 +514,7 @@ object React extends ReactSyntax0 {
   private final class Computed[A, B, C](f: A => React[Any, B], k: React[B, C])
       extends React[A, C] {
 
-    def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
+    def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
       maybeJump(n, (), f(a) >>> k, ops, desc, ctx)
 
     def andThenImpl[D](that: React[C, D]): React[A, D] = {
@@ -538,7 +542,7 @@ object React extends ReactSyntax0 {
   private final class DelayComputed[A, B, C](prepare: React[A, React[Unit, B]], k: React[B, C])
     extends React[A, C] {
 
-    override def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] = {
+    override def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] = {
       // Note: we're performing `prepare` here directly;
       // as a consequence of this, `prepare` will not
       // be part of the atomic reaction, but it runs here
@@ -581,7 +585,7 @@ object React extends ReactSyntax0 {
   private final class Choice[A, B](first: React[A, B], second: React[A, B])
       extends React[A, B] {
 
-    def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] = {
+    def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] = {
       if (n <= 0) {
         Jump(a, this, ops, desc, Nil)
       } else {
@@ -617,7 +621,7 @@ object React extends ReactSyntax0 {
     /** Must be pure */
     protected def transform(a: A, b: B): C
 
-    protected final def tryPerform(n: Int, b: B, pc: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
+    protected final def tryPerform(n: Int, b: B, pc: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
       val a = ctx.impl.read(ref, ctx)
       if (equ(a, ov)) {
         maybeJump(n, transform(a, b), k, pc, ctx.impl.addCas(desc, ref, ov, nv, ctx), ctx)
@@ -661,7 +665,7 @@ object React extends ReactSyntax0 {
   private final class Tok[A, B, C](t: (A, Token) => B, k: React[B, C])
     extends React[A, C] {
 
-    override protected def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
+    override protected def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
       maybeJump(n, t(a, ops.token), k, ops, desc, ctx)
 
     override protected def andThenImpl[D](that: React[C, D]): React[A, D] =
@@ -683,19 +687,19 @@ object React extends ReactSyntax0 {
   private final class Upd[A, B, C, X](ref: Ref[X], f: (X, A) => (X, B), k: React[B, C])
     extends React[A, C] { self =>
 
-    override protected def tryPerform(n: Int, a: A, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] = {
+    protected final override def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] = {
       val ox = ctx.impl.read(ref, ctx)
       val (nx, b) = f(ox, a)
       maybeJump(n, b, k, ops, ctx.impl.addCas(desc, ref, ox, nx, ctx), ctx)
     }
 
-    override protected def andThenImpl[D](that: React[C, D]): React[A, D] =
+    protected final override def andThenImpl[D](that: React[C, D]): React[A, D] =
       new Upd[A, B, D, X](ref, f, k.andThenImpl(that))
 
-    override protected def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] =
+    protected final override def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] =
       new Upd[(A, D), (B, D), (C, E), X](ref, this.fFirst[D], k.productImpl(that))
 
-    override protected[choam] def firstImpl[D]: React[(A, D), (C, D)] =
+    protected[choam] final override def firstImpl[D]: React[(A, D), (C, D)] =
       new Upd[(A, D), (B, D), (C, D), X](ref, this.fFirst[D], k.firstImpl[D])
 
     final override def toString =
@@ -713,26 +717,26 @@ object React extends ReactSyntax0 {
     /** Must be pure */
     protected def transform(a: A, b: B): C
 
-    protected final def tryPerform(n: Int, b: B, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
+    protected final override def tryPerform(n: Int, b: B, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
       val a = ctx.impl.read(ref, ctx)
       maybeJump(n, transform(a, b), k, ops, desc, ctx)
     }
 
-    final def andThenImpl[E](that: React[D, E]): React[B, E] = {
+    final override def andThenImpl[E](that: React[D, E]): React[B, E] = {
       new GenRead[A, B, C, E](ref, k >>> that) {
         protected def transform(a: A, b: B): C =
           self.transform(a, b)
       }
     }
 
-    final def productImpl[E, F](that: React[E, F]): React[(B, E), (D, F)] = {
+    final override def productImpl[E, F](that: React[E, F]): React[(B, E), (D, F)] = {
       new GenRead[A, (B, E), (C, E), (D, F)](ref, k × that) {
         protected def transform(a: A, be: (B, E)): (C, E) =
           (self.transform(a, be._1), be._2)
       }
     }
 
-    final def firstImpl[E]: React[(B, E), (D, E)] = {
+    final override def firstImpl[E]: React[(B, E), (D, E)] = {
       new GenRead[A, (B, E), (C, E), (D, E)](ref, k.firstImpl[E]) {
         protected def transform(a: A, be: (B, E)): (C, E) =
           (self.transform(a, be._1), be._2)
@@ -746,11 +750,11 @@ object React extends ReactSyntax0 {
   private final class Read[A, B](ref: Ref[A], k: React[A, B])
       extends GenRead[A, Any, A, B](ref, k) {
 
-    override def transform(a: A, b: Any): A =
+    final override def transform(a: A, b: Any): A =
       a
   }
 
-  private sealed abstract class Exchange[A, B, C, D, E](
+  private sealed abstract class GenExchange[A, B, C, D, E](
     exchanger: Exchanger[A, B],
     k: React[D, E]
   ) extends React[C, E] { self =>
@@ -759,12 +763,12 @@ object React extends ReactSyntax0 {
 
     protected def transform2(b: B, c: C): D
 
-    override protected def tryPerform(n: Int, c: C, ops: Reaction, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[E] = {
+    protected final override def tryPerform(n: Int, c: C, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[E] = {
       val retries = 42 // TODO
       val msg = Exchanger.Msg[A, B, E](
         value = transform1(c),
         cont = k.lmap[B](b => self.transform2(b, c)),
-        ops = ops,
+        rd = rd,
         desc = desc // TODO: not threadsafe
       )
       // TODO: An `Exchange(...) + Exchange(...)` should post the
@@ -773,15 +777,15 @@ object React extends ReactSyntax0 {
       this.exchanger.tryExchange(msg, ctx, retries) match {
         case Some(contMsg) =>
           println(s"exchange happened, got ${contMsg} - thread#${Thread.currentThread().getId()}")
-          maybeJump(n, (), contMsg.cont, contMsg.ops, contMsg.desc, ctx)
+          maybeJump(n, (), contMsg.cont, contMsg.rd, contMsg.desc, ctx)
         case None =>
           // TODO: adjust contention management in exchanger
           Retry
       }
     }
 
-    override protected def andThenImpl[F](that: React[E, F]): React[C, F] = {
-      new Exchange[A, B, C, D, F](this.exchanger, this.k >>> that) {
+    protected final override def andThenImpl[F](that: React[E, F]): React[C, F] = {
+      new GenExchange[A, B, C, D, F](this.exchanger, this.k >>> that) {
         protected override def transform1(c: C): A =
           self.transform1(c)
         protected override def transform2(b: B, c: C): D =
@@ -789,8 +793,8 @@ object React extends ReactSyntax0 {
       }
     }
 
-    override protected def productImpl[F, G](that: React[F, G]): React[(C, F), (E, G)] = {
-      new Exchange[A, B, (C, F), (D, F), (E, G)](exchanger, k.productImpl(that)) {
+    protected final override def productImpl[F, G](that: React[F, G]): React[(C, F), (E, G)] = {
+      new GenExchange[A, B, (C, F), (D, F), (E, G)](exchanger, k.productImpl(that)) {
         protected override def transform1(cf: (C, F)): A =
           self.transform1(cf._1)
         protected override def transform2(b: B, cf: (C, F)): (D, F) = {
@@ -800,8 +804,8 @@ object React extends ReactSyntax0 {
       }
     }
 
-    override protected[choam] def firstImpl[F]: React[(C, F), (E, F)] = {
-      new Exchange[A, B, (C, F), (D, F), (E, F)](exchanger, k.firstImpl[F]) {
+    protected[choam] final override def firstImpl[F]: React[(C, F), (E, F)] = {
+      new GenExchange[A, B, (C, F), (D, F), (E, F)](exchanger, k.firstImpl[F]) {
         protected override def transform1(cf: (C, F)): A =
           self.transform1(cf._1)
         protected override def transform2(b: B, cf: (C, F)): (D, F) = {
@@ -812,13 +816,13 @@ object React extends ReactSyntax0 {
     }
 
     final override def toString: String =
-      s"Exchange(${exchanger}, ${k})"
+      s"GenExchange(${exchanger}, ${k})"
   }
 
-  private final class SimpleExchange[A, B, C](
+  private final class Exchange[A, B, C](
     exchanger: Exchanger[A, B],
     k: React[B, C]
-  ) extends Exchange[A, B, A, B, C](exchanger, k) {
+  ) extends GenExchange[A, B, A, B, C](exchanger, k) {
 
     override protected def transform1(a: A): A =
       a

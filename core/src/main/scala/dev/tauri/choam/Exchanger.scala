@@ -57,7 +57,7 @@ final class Exchanger[A, B] private (
     rres match {
       case Some(c) =>
         // it must be a result
-        Some(Msg.ret[C](c, ctx, msg.ops.token))
+        Some(Msg.ret[C](c, ctx, msg.rd.token))
       case None =>
         if (ctx.impl.doSingleCas(self.hole, nullOf[C], Exchanger.Node.RESCINDED[C], ctx)) {
           // OK, we rolled back, and can retry
@@ -66,7 +66,7 @@ final class Exchanger[A, B] private (
         } else {
           // couldn't roll back, it must be a result
           val c = ctx.impl.read(self.hole, ctx)
-          Some(Msg.ret[C](c, ctx, msg.ops.token))
+          Some(Msg.ret[C](c, ctx, msg.rd.token))
         }
     }
   }
@@ -85,9 +85,9 @@ final class Exchanger[A, B] private (
     val resMsg = Msg[Unit, Unit, C](
       value = (),
       cont = both,
-      ops = new React.Reaction(
-        selfMsg.ops.postCommit ++ other.msg.ops.postCommit,
-        selfMsg.ops.token // TODO: this might cause problems
+      rd = React.ReactionData(
+        selfMsg.rd.postCommit ++ other.msg.rd.postCommit,
+        selfMsg.rd.token // TODO: this might cause problems
       ),
       desc = {
         // Note: we've read `other` from a `Ref`, so we'll see its mutable list of descriptors,
@@ -162,7 +162,7 @@ object Exchanger {
   private[choam] final case class Msg[+A, B, +C](
     value: A,
     cont: React[B, C],
-    ops: React.Reaction,
+    rd: React.ReactionData,
     desc: EMCASDescriptor // TODO: not threadsafe!
   )
 
@@ -171,7 +171,7 @@ object Exchanger {
       Msg[Unit, Unit, C](
         value = (),
         cont = React.ret(c),
-        ops = new React.Reaction(Nil, tok),
+        rd = React.ReactionData(Nil, tok),
         desc = ctx.impl.start(ctx)
       )
     }
