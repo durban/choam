@@ -43,11 +43,14 @@ final class Exchanger[A, B] private (
   private[this] def size: Int =
     incoming.length
 
-  private[choam] def tryExchange[C](msg: Msg[A, B, C], ctx: ThreadContext, retries: Int, maxBackoff: Int = 16): Option[(Msg[Unit, Unit, C])] = {
+  private[choam] def tryExchange[C](msg: Msg[A, B, C], ctx: ThreadContext, retries: Int, maxBackoff: Int = 16): Either[Exchanger.StatMap, (Msg[Unit, Unit, C])] = {
     val stats = msg.rd.exchangerData.getOrElse(this, Exchanger.Statistics.zero)
-    val effectiveSize = this.size >> stats.sizeShift
-    val idx = if (effectiveSize < 2) 0 else ctx.random.nextInt(effectiveSize)
-    tryIdx(idx, msg, stats, ctx).toOption // TODO
+    println(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
+    val idx = if (stats.effectiveSize < 2) 0 else ctx.random.nextInt(stats.effectiveSize)
+    tryIdx(idx, msg, stats, ctx) match {
+      case Left(stats) => Left(msg.rd.exchangerData.updated(this, stats))
+      case Right(msg) => Right(msg)
+    }
   }
 
   /** Our offer was claimed by somebody, wait for them to fulfill it */
@@ -158,11 +161,11 @@ final class Exchanger[A, B] private (
           }
         } else {
           // contention, will retry
-          Left(stats.contended)
+          Left(stats.contended(this.size))
         }
       case _ =>
         // contention, will retry
-        Left(stats.contended)
+        Left(stats.contended(this.size))
     }
   }
 }
@@ -173,13 +176,8 @@ object Exchanger {
     Map[Exchanger[_, _], Exchanger.Statistics]
 
   private[choam] final case class Statistics(
-    /**
-     * `effectiveSize = size >> sizeShift`
-     *
-     * E.g., for using half of the full size,
-     * `sizeShift` should be `1`.
-     */
-    sizeShift: Byte,
+    /** Always <= size */
+    effectiveSize: Byte,
     /** Counts misses (++) and contention (--) */
     misses: Byte,
     /** How much to wait for an exchange */
@@ -188,14 +186,15 @@ object Exchanger {
     exchanges: Byte
   ) {
 
+    require(effectiveSize > 0)
+
     /**
-     * Couldn't collide, so we may decrease effective size
-     * (i.e., increase `sizeShift`).
+     * Couldn't collide, so we may decrease effective size.
      */
     def missed: Statistics = {
       if (misses == 64.toByte) { // TODO: magic 64
-        val newShift = Math.min(this.sizeShift + 1, Statistics.maxSizeShift)
-        this.copy(sizeShift = newShift.toByte, misses = 0.toByte)
+        val newEffSize = Math.max(this.effectiveSize >> 1, 1)
+        this.copy(effectiveSize = newEffSize.toByte, misses = 0.toByte)
       } else {
         this.copy(misses = (this.misses + 1).toByte)
       }
@@ -203,12 +202,12 @@ object Exchanger {
 
     /**
      * An exchange was lost due to 3rd party, so we may
-     * increase effective size (i.e., decrease `sizeShift`).
+     * increase effective size.
      */
-    def contended: Statistics = {
+    def contended(size: Int): Statistics = {
       if (misses == (-64).toByte) { // TODO: magic -64
-        val newShift = Math.max(this.sizeShift - 1, 0)
-        this.copy(sizeShift = newShift.toByte, misses = 0.toByte)
+        val newEffSize = Math.min(this.effectiveSize << 1, size)
+        this.copy(effectiveSize = newEffSize.toByte, misses = 0.toByte)
       } else {
         this.copy(misses = (this.misses - 1).toByte)
       }
@@ -228,7 +227,7 @@ object Exchanger {
   private[choam] final object Statistics {
 
     private[this] val _zero: Statistics =
-      Statistics(sizeShift = 0.toByte, misses = 0.toByte, spinShift = 0.toByte, exchanges = 0.toByte)
+      Statistics(effectiveSize = 1.toByte, misses = 0.toByte, spinShift = 0.toByte, exchanges = 0.toByte)
 
     def zero: Statistics =
       _zero

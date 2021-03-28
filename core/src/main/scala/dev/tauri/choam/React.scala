@@ -786,11 +786,12 @@ object React extends ReactSyntax0 {
       // TODO: same offer to both exchangers, so that fulfillers
       // TODO: can race there.
       this.exchanger.tryExchange(msg, ctx, retries) match {
-        case Some(contMsg) =>
+        case Right(contMsg) =>
           println(s"exchange happened, got ${contMsg} - thread#${Thread.currentThread().getId()}")
+          // TODO: this way we lose exchanger statistics if we start a new reaction
           maybeJump(n, (), contMsg.cont, contMsg.rd, contMsg.desc, ctx)
-        case None =>
-          // TODO: adjust contention management in exchanger
+        case Left(stats) =>
+          // TODO: pass back these stats to the main loop
           Retry
       }
     }
