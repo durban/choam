@@ -469,8 +469,8 @@ object React extends ReactSyntax0 {
   private final class PostCommit[A, B](pc: React[A, Unit], k: React[A, B])
       extends React[A, B] {
 
-    def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] =
-      maybeJump(n, a, k, pc.lmap[Unit](_ => a) :: ops, desc, ctx)
+    def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] =
+      maybeJump(n, a, k, pc.lmap[Unit](_ => a) :: rd, desc, ctx)
 
     def andThenImpl[C](that: React[B, C]): React[A, C] =
       new PostCommit[A, C](pc, k >>> that)
@@ -488,8 +488,8 @@ object React extends ReactSyntax0 {
   private final class Lift[A, B, C](private val func: A => B, private val k: React[B, C])
       extends React[A, C] {
 
-    def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
-      maybeJump(n, func(a), k, ops, desc, ctx)
+    def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
+      maybeJump(n, func(a), k, rd, desc, ctx)
 
     def andThenImpl[D](that: React[C, D]): React[A, D] = {
       new Lift[A, B, D](func, k >>> that)
@@ -514,8 +514,8 @@ object React extends ReactSyntax0 {
   private final class Computed[A, B, C](f: A => React[Any, B], k: React[B, C])
       extends React[A, C] {
 
-    def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
-      maybeJump(n, (), f(a) >>> k, ops, desc, ctx)
+    def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
+      maybeJump(n, (), f(a) >>> k, rd, desc, ctx)
 
     def andThenImpl[D](that: React[C, D]): React[A, D] = {
       new Computed(f, k >>> that)
@@ -542,7 +542,7 @@ object React extends ReactSyntax0 {
   private final class DelayComputed[A, B, C](prepare: React[A, React[Unit, B]], k: React[B, C])
     extends React[A, C] {
 
-    override def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] = {
+    override def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] = {
       // Note: we're performing `prepare` here directly;
       // as a consequence of this, `prepare` will not
       // be part of the atomic reaction, but it runs here
@@ -553,7 +553,7 @@ object React extends ReactSyntax0 {
         maxBackoff = ctx.maxBackoff,
         randomizeBackoff = ctx.randomizeBackoff
       )
-      maybeJump(n, (), r >>> k, ops, desc, ctx)
+      maybeJump(n, (), r >>> k, rd, desc, ctx)
     }
 
     override def andThenImpl[D](that: React[C, D]): React[A, D] = {
@@ -585,17 +585,17 @@ object React extends ReactSyntax0 {
   private final class Choice[A, B](first: React[A, B], second: React[A, B])
       extends React[A, B] {
 
-    def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] = {
+    def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] = {
       if (n <= 0) {
-        Jump(a, this, ops, desc, Nil)
+        Jump(a, this, rd, desc, Nil)
       } else {
         val snap = ctx.impl.snapshot(desc, ctx)
-        first.tryPerform(n - 1, a, ops, desc, ctx) match {
+        first.tryPerform(n - 1, a, rd, desc, ctx) match {
           case _: Retry.type =>
-            second.tryPerform(n - 1, a, ops, snap, ctx)
+            second.tryPerform(n - 1, a, rd, snap, ctx)
           case jmp: Jump[_, _] =>
             // TODO: optimize building `alts`
-            (jmp : Jump[_, B]).withAlt[A, B](SnapJump[A, B](a, second, ops, snap))
+            (jmp : Jump[_, B]).withAlt[A, B](SnapJump[A, B](a, second, rd, snap))
           case ok =>
             ok
         }
@@ -621,10 +621,10 @@ object React extends ReactSyntax0 {
     /** Must be pure */
     protected def transform(a: A, b: B): C
 
-    protected final def tryPerform(n: Int, b: B, pc: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
+    protected final def tryPerform(n: Int, b: B, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
       val a = ctx.impl.read(ref, ctx)
       if (equ(a, ov)) {
-        maybeJump(n, transform(a, b), k, pc, ctx.impl.addCas(desc, ref, ov, nv, ctx), ctx)
+        maybeJump(n, transform(a, b), k, rd, ctx.impl.addCas(desc, ref, ov, nv, ctx), ctx)
       } else {
         Retry
       }
@@ -665,8 +665,8 @@ object React extends ReactSyntax0 {
   private final class Tok[A, B, C](t: (A, Token) => B, k: React[B, C])
     extends React[A, C] {
 
-    override protected def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
-      maybeJump(n, t(a, ops.token), k, ops, desc, ctx)
+    override protected def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
+      maybeJump(n, t(a, rd.token), k, rd, desc, ctx)
 
     override protected def andThenImpl[D](that: React[C, D]): React[A, D] =
       new Tok(t, k.andThenImpl(that))
@@ -687,10 +687,10 @@ object React extends ReactSyntax0 {
   private final class Upd[A, B, C, X](ref: Ref[X], f: (X, A) => (X, B), k: React[B, C])
     extends React[A, C] { self =>
 
-    protected final override def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] = {
+    protected final override def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] = {
       val ox = ctx.impl.read(ref, ctx)
       val (nx, b) = f(ox, a)
-      maybeJump(n, b, k, ops, ctx.impl.addCas(desc, ref, ox, nx, ctx), ctx)
+      maybeJump(n, b, k, rd, ctx.impl.addCas(desc, ref, ox, nx, ctx), ctx)
     }
 
     protected final override def andThenImpl[D](that: React[C, D]): React[A, D] =
@@ -717,9 +717,9 @@ object React extends ReactSyntax0 {
     /** Must be pure */
     protected def transform(a: A, b: B): C
 
-    protected final override def tryPerform(n: Int, b: B, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
+    protected final override def tryPerform(n: Int, b: B, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
       val a = ctx.impl.read(ref, ctx)
-      maybeJump(n, transform(a, b), k, ops, desc, ctx)
+      maybeJump(n, transform(a, b), k, rd, desc, ctx)
     }
 
     final override def andThenImpl[E](that: React[D, E]): React[B, E] = {
