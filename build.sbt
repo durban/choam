@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-ThisBuild / scalaVersion := "3.0.0-RC1"
-ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, "2.13.5")
+ThisBuild / scalaVersion := "2.13.5"
+ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, "3.0.0-RC1")
 ThisBuild / scalaOrganization := "org.scala-lang"
 ThisBuild / evictionErrorLevel := Level.Warn
 
