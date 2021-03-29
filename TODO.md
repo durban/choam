@@ -21,13 +21,14 @@
 
 ## Bugs
 
-- `Exchanger` is not working yet
+- `Exchanger` is barely working
 - Can't run benchmarks with Scala 3
 
 ## Other improvements
 
 - Testing:
   - Figure out some tricky race conditions, and test them with JCStress.
+    - `Exchanger`
   - LawsSpec:
     - improve generated `React`s, check if they make sense
     - check if `testingEqReact` makes sense, maybe do structural checking
@@ -45,21 +46,19 @@
 - Cleanup:
   - Review benchmarks, remove useless ones
 - Finish Ctrie
-- ce3:
-  - Can `React` implement `MonadCancel`? (Would need error handling)
 - Async (`choam-async`):
   - `AsyncQueue`
   - integration with FS2? (`choam-stream`)
 - API cleanup:
+  - add `>>`, should be faster than `.flatMap { _ => ... }`
   - separate unsafe/low-level API for `invisibleRead` and other dangerous
     - (unsafe) thread-confined mode for running a `React` (with `NaiveKCAS` or something even more simple)
-    - unsafe: `delay` (but: safe `postCommitDelay`, or similar)
   - Token?
   - React.delay?
     - allocating (but: only `Ref` really needs it, others are built on that)
     - calling async callbacks (but: only `Promise` needs it, others don't)
     - allocating `Exchanger` arrays (this is similar to `Ref`)
-  - move `KCAS` into separate JAR, figure out proper API (`choam-kcas` or `choam-mcas`)
+  - move `KCAS` into separate JAR, figure out proper API (`choam-mcas`)
   - compare with `Ref` in cats-effect: similar things should have similar names
   - Find a better name instead of `React`
     - `Action[A]` (<= `React[Unit/Any, A]`)
@@ -67,13 +66,27 @@
     - `Reaction[A, B]` (<= `React[A, B]`)
     - other ideas:
       - Operation/Reaction?
-  - Handling errors? (`MonadError`?)
-    - transient errors can already be handled with `+` (`Choice`)
-    - raising errors? (we need something better then `throw`ing)
-    - handling non-transient errors?
+  - Handling errors?
+    - Generally, we shouldn't raise errors in a reaction
+      - If something can fail, return `Option` or `Either`
+    - If absolutely necessary, `throw` should be enough
+    - Need to review and document the handling of exceptions
+      - they should fall-through, but with cleanup
+    - Transient errors can sometimes be handled with `+` (`Choice`)
+      - but sometimes this can cause infinite retry
 - Cancellation support
   - `Thread.interrupt`
   - cats-effect cancellation?
+- Composition of maybe-infinitely-retrying reactions:
+  - `stack.pop`, if empty, retries forever (unsafe, because non-lock-free)
+  - `exchanger.exchange`, if no partner found, retries forever (also unsafe)
+  - each can be made safe by `.?` (will only try once)
+  - however, composing the two is also an option (elimination stack):
+    - `(stack.pop + exchanger.exchange).?` is safe, but built from unsafe parts
+    - `(pop.? + exchange.?)` is safe, built from safe parts
+  - Can we have an API for composing unsafe parts into something which is safe?
+    - e.g., `PartialReaction[A, B]`
+    - `.?` would make a (safe) `Reaction` from it
 - Think about global / thread-local state:
   - if we're running in IO, we might use something else
   - however, IBR probably really needs thread-locals
