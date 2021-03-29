@@ -50,7 +50,9 @@
   - `AsyncQueue`
   - integration with FS2? (`choam-stream`)
 - API cleanup:
-  - add `>>`, should be faster than `.flatMap { _ => ... }`
+  - check if by-name param makes sense for `>>`
+    - is it stack-safe?
+    - if yes, can we make it faster than the default implementation?
   - separate unsafe/low-level API for `invisibleRead` and other dangerous
     - (unsafe) thread-confined mode for running a `React` (with `NaiveKCAS` or something even more simple)
   - Token?
