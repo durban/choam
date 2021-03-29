@@ -371,7 +371,6 @@ object React extends ReactSyntax0 {
 
   private[choam] final class Token
 
-
   private[choam] final class ReactionData private (
     val postCommit: List[React[Unit, Unit]],
     val token: Token,
