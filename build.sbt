@@ -162,7 +162,7 @@ lazy val dependencies = new {
 
   val catsVersion = "2.4.2"
   val catsMtlVersion = "1.1.2"
-  val catsEffectVersion = "3.0.0-RC3"
+  val catsEffectVersion = "3.0.0"
 
   val shapeless = "com.chuusai" %% "shapeless" % "2.3.3"
   val cats = "org.typelevel" %% "cats-core" % catsVersion
@@ -174,10 +174,10 @@ lazy val dependencies = new {
   val test = Seq(
     "org.typelevel" %% "cats-laws" % catsVersion,
     "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion,
-    "org.typelevel" %% "munit-cats-effect-3" % "0.13.1",
+    "org.typelevel" %% "munit-cats-effect-3" % "1.0.0",
     "org.typelevel" %% "scalacheck-effect" % "0.7.1",
     "org.typelevel" %% "scalacheck-effect-munit" % "0.7.1",
-    "org.typelevel" %% "discipline-munit" % "1.0.6",
+    "org.typelevel" %% "discipline-munit" % "1.0.7",
   )
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.0"
