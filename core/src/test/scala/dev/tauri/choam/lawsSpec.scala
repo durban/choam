@@ -93,7 +93,7 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
           r <- arbReact[A, B].arbitrary
         } yield {
           val ref = Ref.unsafe[A](a)
-          React.unsafe.delayComputed(prepare = r.map(b => ref.modify(aa).map(_ => b)))
+          React.unsafe.delayComputed(prepare = r.map(b => ref.update(aa).as(b)))
         }
       }
     )

@@ -43,13 +43,13 @@ class ChoiceTest extends StressTestBase {
     Ref.unsafe("bar")
 
   private[this] val choice: React[Unit, (String, String)] = {
-    val mod1 = ref0.modify { s => (s(0) + 1).toChar.toString }
-    val mod2 = ref0.modify { s => (s(0) - 1).toChar.toString }
-    val ch1 = ref1.modifyWith {
+    val mod1 = ref0.getAndUpdate { s => (s(0) + 1).toChar.toString }
+    val mod2 = ref0.getAndUpdate { s => (s(0) - 1).toChar.toString }
+    val ch1 = ref1.getAndUpdateWith {
       case "this will never match" => React.ret("x")
       case _ => React.unsafe.retry
     }
-    val ch2 = ref2.modify(_.reverse)
+    val ch2 = ref2.getAndUpdate(_.reverse)
     (mod1 * ch1) + (mod2 * ch2)
   }
 
@@ -68,7 +68,7 @@ class ChoiceTest extends StressTestBase {
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    require(ref1.getter.unsafeRun(this.impl) eq "foo")
+    require(ref1.get.unsafeRun(this.impl) eq "foo")
     r.r3 = read.unsafeRun(this.impl)
   }
 }

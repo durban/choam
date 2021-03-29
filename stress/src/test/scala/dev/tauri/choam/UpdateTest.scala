@@ -57,6 +57,6 @@ class UpdateTest extends StressTestBase {
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = (r1.getter.unsafeRun(this.impl), r2.getter.unsafeRun(this.impl))
+    r.r2 = (r1.get.unsafeRun(this.impl), r2.get.unsafeRun(this.impl))
   }
 }

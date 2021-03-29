@@ -81,6 +81,6 @@ class ComputedTest extends StressTestBase {
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r3 = (r1.getter.unsafeRun(this.impl), r2.getter.unsafeRun(this.impl))
+    r.r3 = (r1.get.unsafeRun(this.impl), r2.get.unsafeRun(this.impl))
   }
 }

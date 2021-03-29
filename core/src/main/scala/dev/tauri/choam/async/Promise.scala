@@ -135,7 +135,7 @@ object Promise {
     }
 
     val tryGet: Action[Option[A]] = {
-      ref.getter.map {
+      ref.get.map {
         case Done(a) => Some(a)
         case Waiting(_) => None
       }
@@ -148,10 +148,10 @@ object Promise {
             F.async { cb =>
               F.uncancelable { poll =>
                 val removeCallback = F.uncancelable { _ =>
-                  ref.modify {
+                  ref.update {
                     case Waiting(cbs) => Waiting(cbs - id)
                     case d @ Done(_) => d
-                  }.discard.run[F]
+                  }.run[F]
                 }
                 insertCallback(id, cb).run[F].flatMap {
                   case None => F.pure(true)
@@ -171,7 +171,7 @@ object Promise {
 
     private def insertCallback(id: Id, cb: Either[Throwable, A] => Unit): React[Unit, Option[A]] = {
       val kv = (id, { (a: A) => cb(Right(a)) })
-      ref.modify {
+      ref.getAndUpdate {
         case Waiting(cbs) => Waiting(cbs + kv)
         case d @ Done(_) => d
       }.map {
@@ -210,7 +210,7 @@ object Promise {
     }
 
     val tryGet: Action[Option[A]] = {
-      ref.getter.map {
+      ref.get.map {
         case Done2(a) => Some(a)
         case Waiting2(_, _) => None
       }
@@ -241,7 +241,7 @@ object Promise {
 
     private def insertCallback(cb: Either[Throwable, A] => Unit): Action[Either[Long, A]] = {
       val rcb = { (a: A) => cb(Right(a)) }
-      ref.modify {
+      ref.getAndUpdate {
         case Waiting2(cbs, nid) => Waiting2(cbs + (nid -> rcb), nid + 1)
         case d @ Done2(_) => d
       }.map {
@@ -252,10 +252,10 @@ object Promise {
 
     private def removeCallback(id: Long): F[Unit] = {
       F.uncancelable { _ =>
-        ref.modify {
+        ref.update {
           case Waiting2(cbs, nid) => Waiting2(cbs - id, nid)
           case d @ Done2(_) => d
-        }.discard.run[F]
+        }.run[F]
       }
     }
   }

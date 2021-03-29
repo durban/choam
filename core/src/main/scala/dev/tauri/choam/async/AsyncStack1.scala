@@ -46,7 +46,7 @@ private[choam] final class AsyncStack1[F[_], A] private (ref: Ref[State[F, A]])
 
   override def pop(implicit F: Reactive.Async[F]): F[A] = {
     F.monadCancel.flatMap(F.promise[A].run[F]) { newP =>
-      val acq = ref.modify2[Either[Promise[F, A], A]] {
+      val acq = ref.modify[Either[Promise[F, A], A]] {
         case e @ Empty() =>
           (e.addPromise(newP), Left(newP))
         case w @ Waiting(_) =>
@@ -56,9 +56,9 @@ private[choam] final class AsyncStack1[F[_], A] private (ref: Ref[State[F, A]])
           (s, Right(a))
       }.run[F]
       val rel: (Either[Promise[F, A], A] => F[Unit]) = {
-        case Left(p) => ref.modify { state =>
+        case Left(p) => ref.update { state =>
           state.cancelPromise(p)._1
-        }.void.run[F]
+        }.run[F]
         case Right(_) => F.monadCancel.unit
       }
       F.monadCancel.bracket(acquire = acq)(use = {

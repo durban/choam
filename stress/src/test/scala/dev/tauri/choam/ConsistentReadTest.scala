@@ -26,7 +26,7 @@ import kcas._
 
 @JCStressTest
 @State
-@Description("Ref#getter should be consistent")
+@Description("Ref#get should be consistent")
 @Outcomes(Array(
   new Outcome(id = Array("(foo,bar), (x,y)"), expect = ACCEPTABLE, desc = "Read old values"),
   new Outcome(id = Array("(x,y), (x,y)"), expect = ACCEPTABLE, desc = "Read new values")
@@ -43,7 +43,7 @@ class ConsistentReadTest extends StressTestBase {
     ref1.unsafeCas("foo", "x") >>> ref2.unsafeCas("bar", "y")
 
   private[this] var get: React[Unit, (String, String)] =
-    ref1.getter * ref2.getter
+    ref1.get * ref2.get
 
   @Actor
   def update(): Unit = {
@@ -57,6 +57,6 @@ class ConsistentReadTest extends StressTestBase {
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = (ref1.getter.unsafeRun(this.impl), ref2.getter.unsafeRun(this.impl))
+    r.r2 = (ref1.get.unsafeRun(this.impl), ref2.get.unsafeRun(this.impl))
   }
 }

@@ -57,7 +57,7 @@ object ChoiceCombinatorBench {
       Ref.unsafe("foo")
 
     val reset: React[Unit, Unit] =
-      ref.modify(_ => "foo").discard
+      ref.update(_ => "foo")
 
     var choice: React[Unit, Unit] = _
 

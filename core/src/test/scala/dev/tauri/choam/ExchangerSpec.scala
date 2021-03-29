@@ -84,7 +84,7 @@ trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       f2 <- logOutcome("f2", r2[F](64)).start
       _ <- assertResultF(f1.joinWithNever, 64)
       _ <- assertResultF(f2.joinWithNever, "baz")
-      _ <- assertResultF(ref.getter.run[F], "y")
+      _ <- assertResultF(ref.get.run[F], "y")
     } yield ()
     tsk.replicateA(iterations)
   }

@@ -83,7 +83,7 @@ object Map {
       }
 
       override val get = React.computed { (k: K) =>
-        repr.getter.map(_.get(k))
+        repr.get.map(_.get(k))
       }
 
       override val del = React.computed { (k: K) =>
@@ -115,10 +115,10 @@ object Map {
       }
 
       override val snapshot =
-        repr.getter
+        repr.get
 
       override val clear =
-        repr.modify(_ => immutable.Map.empty)
+        repr.getAndUpdate(_ => immutable.Map.empty)
     }
   }
 }

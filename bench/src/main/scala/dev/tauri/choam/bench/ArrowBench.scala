@@ -68,10 +68,10 @@ object ArrowBench {
     }
 
     def rWithoutComputed(ref: Ref[String]): React[Unit, Int] =
-      ref.getter.map(_.toUpperCase).map(_.trim).map(_.length)
+      ref.get.map(_.toUpperCase).map(_.trim).map(_.length)
 
     def rOnlyComputed(ref: Ref[String]): React[Unit, Int] = {
-      ref.getter.flatMap { s =>
+      ref.get.flatMap { s =>
         React.ret(s.toUpperCase).flatMap { u =>
           React.ret(u.trim).flatMap { t =>
             React.ret(t.length)

@@ -44,10 +44,10 @@ class MichaelScottQueueComposedTest3 extends MsQueueStressTestBase {
     Ref.unsafe[Int](0)
 
   private[this] val deq =
-    queue.tryDeque * (dummy.modify { _ + 1 }.flatMap { _ => latch.modify(_ => true) })
+    queue.tryDeque * (dummy.update { _ + 1 }.flatMap { _ => latch.getAndUpdate(_ => true) })
 
   private[this] val enq =
-    (queue.enqueue * latch.modify(_ => true)).map(_._2)
+    (queue.enqueue * latch.getAndUpdate(_ => true)).map(_._2)
 
   @Actor
   def deq(r: LL_Result): Unit = {

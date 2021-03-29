@@ -17,31 +17,91 @@
 
 package dev.tauri.choam
 
-import kcas.Ref
-import ref.Ref2
+import cats.effect.IO
 
-class RefSpec extends BaseSpecA {
+import kcas._
 
-  test("Ref2 equality/toString") {
-    val rr = Ref.ref2[String, Int]("a", 42)
-    val Ref2(r1, r2) = rr
-    assert((rr : AnyRef) ne r1)
-    assert((rr : Any) != r1)
-    assert((rr : AnyRef) ne r2)
-    assert((rr : Any) != r2)
-    assert(r1 ne r2)
-    assert(r1 != r2)
-    assert(r1 eq rr._1)
-    assert(r1 == rr._1)
-    assert(r2 eq rr._2)
-    assert(r2 == rr._2)
-    assert(r1.toString != r2.toString)
+final class RefSpecNaiveKCAS
+  extends BaseSpecIO
+  with SpecNaiveKCAS
+  with RefSpec[IO]
+
+final class RefSpecEMCAS
+  extends BaseSpecIO
+  with SpecEMCAS
+  with RefSpec[IO]
+
+trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+
+  import React._
+
+  test("Simple CAS should work as expected") {
+    for {
+      ref <- Ref("ert").run[F]
+      rea = lift((_: Int).toString) × (ref.unsafeCas("ert", "xyz") >>> lift(_ => "boo"))
+      s12 <- rea((5, ()))
+      (s1, s2) = s12
+      _ <- assertEqualsF(s1, "5")
+      _ <- assertEqualsF(s2, "boo")
+      _ <- assertResultF(ref.unsafeInvisibleRead.run[F], "xyz")
+    } yield ()
   }
 
-  test("Ref2 consistentRead") {
-    val rr = Ref.ref2[String, Int]("a", 42)
-    val (s, i) = rr.consistentRead.unsafePerform((), kcas.KCAS.EMCAS)
-    assert(s eq "a")
-    assert(i == 42)
+  test("updWith should behave correctly when used through getAndUpdateWith") {
+    for {
+      r1 <- Ref("foo").run[F]
+      r2 <- Ref("x").run[F]
+      r = r1.getAndUpdateWith { ov =>
+        if (ov eq "foo") React.ret("bar")
+        else r2.upd[Any, String] { (o2, _) => (ov, o2) }
+      }
+      _ <- r.run
+      _ <- assertResultF(r1.unsafeInvisibleRead.run, "bar")
+      _ <- assertResultF(r2.unsafeInvisibleRead.run, "x")
+      _ <- r.run
+      _ <- assertResultF(r1.unsafeInvisibleRead.run, "x")
+      _ <- assertResultF(r2.unsafeInvisibleRead.run, "bar")
+    } yield ()
+  }
+
+  test("BooleanRefOps should provide guard/guardNot") {
+    for {
+      trueRef <- Ref(true).run[F]
+      falseRef <- Ref(false).run[F]
+      ft = React.ret(42)
+      _ <- assertResultF(trueRef.guard(ft).run, Some(42))
+      _ <- assertResultF(trueRef.guardNot(ft).run, None)
+      _ <- assertResultF(falseRef.guard(ft).run, None)
+      _ <- assertResultF(falseRef.guardNot(ft).run, Some(42))
+    } yield ()
+  }
+
+  test("Ref.apply") {
+    for {
+      i <- (Ref(89).flatMap(_.getAndUpdate(_ + 1))).run[F]
+      _ <- assertEqualsF(i, 89)
+    } yield ()
+  }
+
+  test("Ref#update et. al.") {
+    for {
+      r <- Ref("a").run[F]
+      _ <- assertResultF(r.update(_ + "b").run[F], ())
+      _ <- assertResultF(r.updateWith(s => React.ret(s + "c")).run[F], ())
+      _ <- assertResultF(r.tryUpdate(_ + "d").run[F], true)
+      _ <- assertResultF(r.getAndUpdate(_ + "e").run[F], "abcd")
+      _ <- assertResultF(r.getAndUpdateWith(s => React.ret(s + "f")).run[F], "abcde")
+      _ <- assertResultF(r.updateAndGet(_ + "g").run[F], "abcdefg")
+    } yield ()
+  }
+
+  test("Ref#modify et. al.") {
+    for {
+      r <- Ref("a").run[F]
+      _ <- assertResultF(r.modify(s => (s + "b", 42)).run[F], 42)
+      _ <- assertResultF(r.modifyWith(s => React.ret((s + "c", 43))).run[F], 43)
+      _ <- assertResultF(r.tryModify(s => (s + "d", 44)).run[F], Some(44))
+      _ <- assertResultF(r.get.run[F], "abcd")
+    } yield ()
   }
 }

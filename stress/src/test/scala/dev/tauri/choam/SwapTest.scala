@@ -57,6 +57,6 @@ class SwapTest extends StressTestBase {
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = (ref1.getter.unsafeRun(this.impl), ref2.getter.unsafeRun(this.impl))
+    r.r2 = (ref1.get.unsafeRun(this.impl), ref2.get.unsafeRun(this.impl))
   }
 }

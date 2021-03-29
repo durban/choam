@@ -44,35 +44,6 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     println(s"NUM_CPU = ${Runtime.getRuntime().availableProcessors()}")
   }
 
-  test("Simple CAS should work as expected") {
-    for {
-      ref <- Ref("ert").run[F]
-      rea = lift((_: Int).toString) × (ref.unsafeCas("ert", "xyz") >>> lift(_ => "boo"))
-      s12 <- rea((5, ()))
-      (s1, s2) = s12
-      _ <- assertEqualsF(s1, "5")
-      _ <- assertEqualsF(s2, "boo")
-      _ <- assertResultF(ref.unsafeInvisibleRead.run[F], "xyz")
-    } yield ()
-  }
-
-  test("updWith should behave correctly when used through modifyWith") {
-    for {
-      r1 <- Ref("foo").run[F]
-      r2 <- Ref("x").run[F]
-      r = r1.modifyWith { ov =>
-        if (ov eq "foo") React.ret("bar")
-        else r2.upd[Any, String] { (o2, _) => (ov, o2) }
-      }
-      _ <- r.run
-      _ <- assertResultF(r1.unsafeInvisibleRead.run, "bar")
-      _ <- assertResultF(r2.unsafeInvisibleRead.run, "x")
-      _ <- r.run
-      _ <- assertResultF(r1.unsafeInvisibleRead.run, "x")
-      _ <- assertResultF(r2.unsafeInvisibleRead.run, "bar")
-    } yield ()
-  }
-
   test("Choice should prefer the first option") {
     for {
       r1 <- Ref("r1").run[F]
@@ -213,7 +184,7 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       }
       r = fails + successfulCas
       _ <- assertResultF(r.run, ())
-      _ <- assertResultF(ref.getter.run, "bar")
+      _ <- assertResultF(ref.get.run, "bar")
     } yield ()
   }
 
@@ -230,9 +201,9 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       }
       r = fails + successfulCas
       _ <- assertResultF(r.run[F], ())
-      _ <- assertResultF(ref.getter.run[F], "bar")
+      _ <- assertResultF(ref.get.run[F], "bar")
       _ <- refs.traverse { ref =>
-        assertResultF(ref.getter.run[F], "x")
+        assertResultF(ref.get.run[F], "x")
       }
     } yield ()
   }
@@ -289,14 +260,14 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     r = left + right
     _ <- assertResultF(r.run[F], ())
     _ <- okRefs1.traverse { ref =>
-      assertResultF(ref.getter.run, "bar1")
+      assertResultF(ref.get.run, "bar1")
     }
     _ <- okRefs2.traverse { ref =>
-      assertResultF(ref.getter.run[F], "foo2")
+      assertResultF(ref.get.run[F], "foo2")
     }
-    _ <- assertResultF(okRef3.getter.run[F], "bar3")
-    _ <- assertResultF(okRef4.getter.run[F], "foo4")
-    _ <- assertResultF(failRef.getter.run[F], "fail")
+    _ <- assertResultF(okRef3.get.run[F], "bar3")
+    _ <- assertResultF(okRef4.get.run[F], "foo4")
+    _ <- assertResultF(failRef.get.run[F], "fail")
   } yield ()
 
   /**            +
@@ -328,8 +299,8 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       ok2 <- mkOkCASes(x, or, nr)
       (rRefs, right) = ok2
       reset = {
-        lRefs.traverse { ref => ref.modify(_ => ol).run[F] }.flatMap { _ =>
-          rRefs.traverse { ref => ref.modify(_ => or).run[F] }
+        lRefs.traverse { ref => ref.update(_ => ol).run[F] }.flatMap { _ =>
+          rRefs.traverse { ref => ref.update(_ => or).run[F] }
         }.void
       }
     } yield (((left >>> leftCont) + (right >>> rightCont)).discard, reset)
@@ -441,12 +412,12 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
           h.value.unsafeInvisibleRead.flatMap {
             case null =>
               // sentinel node, discard it and retry:
-              h.next.getter.flatMap { nxt =>
+              h.next.get.flatMap { nxt =>
                 head.unsafeCas(h, nxt)
               }.as(React.unsafe.retry)
             case v =>
               // found the real head, pop it:
-              React.ret(h.next.getter.flatMap { nxt =>
+              React.ret(h.next.get.flatMap { nxt =>
                 head.unsafeCas(h, nxt).flatMap { _ =>
                   h.value.unsafeCas(v, v)
                 }
@@ -462,12 +433,12 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       lst0 = List[String](null, "a", "b", null, "c")
       lst1 <- F.delay { Ref.unsafe(Node.fromList(lst0)) }
       lst2 <- F.tailRecM((List.empty[String], lst1)) { case (acc, ref) =>
-        ref.getter.flatMap { node =>
+        ref.get.flatMap { node =>
           if (node eq null) {
             // there is an extra sentinel at the end:
             React.ret(Right[(List[String], Ref[Node]), List[String]](acc.tail.reverse))
           } else {
-            node.value.getter.map { v =>
+            node.value.get.map { v =>
               Left[(List[String], Ref[Node]), List[String]]((v :: acc, node.next))
             }
           }
@@ -489,15 +460,15 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   test("Impossible CAS should cause a runtime error") {
     for {
       ref <- Ref("a").run[F]
-      r = ref.modify(_ + "b") >>> ref.modify(_ + "x").lmap(_ => ())
+      r = ref.update(_ + "b") >>> ref.update(_ + "x")
       res <- r.run[F].attempt
       _ <- res match {
         case Left(ex) =>
           assertF(ex.getMessage.contains("Impossible k-CAS")).flatMap { _ =>
             assertF(ex.isInstanceOf[ImpossibleOperation])
           }
-        case Right(r) =>
-          failF(s"Unexpected success: ${r}")
+        case Right(_) =>
+          failF("Unexpected success")
       }
     } yield ()
   }
@@ -506,24 +477,12 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     val act: F[String] = for {
       ref <- Ref[String]("foo").run[F]
       _ <- ref.upd { (s, p: String) => (s + p, ()) }[F]("bar")
-      res <- ref.getter.run[F]
+      res <- ref.get.run[F]
     } yield res
 
     for {
       _ <- assertResultF(act, "foobar")
       _ <- assertResultF(act, "foobar")
-    } yield ()
-  }
-
-  test("BooleanRefOps should provide guard/guardNot") {
-    for {
-      trueRef <- Ref(true).run[F]
-      falseRef <- Ref(false).run[F]
-      ft = React.ret(42)
-      _ <- assertResultF(trueRef.guard(ft).run, Some(42))
-      _ <- assertResultF(trueRef.guardNot(ft).run, None)
-      _ <- assertResultF(falseRef.guard(ft).run, None)
-      _ <- assertResultF(falseRef.guardNot(ft).run, Some(42))
     } yield ()
   }
 
@@ -544,13 +503,6 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       r4 <- Ref("-").run[F]
       res <- React.consistentReadMany[String](List(r4, r1, r2, r3)).run[F]
       _ <- assertEqualsF(res, List("-", "abc", "def", "ghi"))
-    } yield ()
-  }
-
-  test("Ref.apply") {
-    for {
-      i <- (Ref(89).flatMap(_.modify(_ + 1))).run[F]
-      _ <- assertEqualsF(i, 89)
     } yield ()
   }
 

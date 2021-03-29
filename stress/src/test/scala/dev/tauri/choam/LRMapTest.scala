@@ -39,7 +39,7 @@ class LRMapTest extends StressTestBase {
     Ref.unsafe("x")
 
   private[this] def react1(r: LLLLLL_Result): React[Unit, String] = {
-    ref1.modify(_ + "b").rmap { s =>
+    ref1.getAndUpdate(_ + "b").rmap { s =>
       r.r1 = ref1.unsafeInvisibleRead.unsafeRun(this.impl) // this is cheating
       r.r2 = ref2.unsafeInvisibleRead.unsafeRun(this.impl) // this is cheating
       s
@@ -47,7 +47,7 @@ class LRMapTest extends StressTestBase {
   }
 
   private[this] def react2(r: LLLLLL_Result): React[String, String] = React.computed { (s: String) =>
-    ref2.modify(_ => s)
+    ref2.getAndUpdate(_ => s)
   }.lmap { (s: String) =>
     r.r3 = ref1.unsafeInvisibleRead.unsafeRun(this.impl) // this is cheating
     r.r4 = ref2.unsafeInvisibleRead.unsafeRun(this.impl) // this is cheating

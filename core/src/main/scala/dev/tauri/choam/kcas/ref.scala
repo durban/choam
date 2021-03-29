@@ -20,29 +20,68 @@ package kcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-/** k-CAS-able atomic reference */
-trait Ref[A] extends mcas.MemoryLocation[A] {
+import mcas.MemoryLocation
 
+/**
+ * Atomic reference with composable lock-free operations.
+ *
+ * `Ref` is similar to [[java.util.concurrent.atomic.AtomicReference]]
+ * or [[cats.effect.kernel.Ref]], but its operations are [[Reaction]]s.
+ * Thus, operations on a `Ref` are composable with other [[Reaction]]s.
+ */
+trait Ref[A] extends MemoryLocation[A] {
+
+  // TODO: that this extends MemoryLocation should be an impl. detail
+
+  final def get: Action[A] =
+    upd[Any, A] { (a, _) => (a, a) }
+
+  final def update(f: A => A): Action[Unit] =
+    upd[Any, Unit] { (oa, _) => (f(oa), ()) }
+
+  final def updateWith(f: A => Action[A]): Action[Unit] =
+    updWith[Any, Unit] { (oa, _) => f(oa).map(na => (na, ())) }
+
+  /** Returns `false` iff the update failed */
+  final def tryUpdate(f: A => A): Action[Boolean] =
+    update(f).?.map(_.isDefined)
+
+  /** Returns previous value */
+  final def getAndUpdate(f: A => A): Action[A] =
+    upd[Any, A] { (oa, _) => (f(oa), oa) }
+
+  final def getAndUpdateWith(f: A => Action[A]): Action[A] =
+    updWith[Any, A] { (oa, _) => f(oa).map(na => (na, oa)) }
+
+  /** Returns new value */
+  final def updateAndGet(f: A => A): Action[A] = {
+    upd[Any, A] { (oa, _) =>
+      val na = f(oa)
+      (na, na)
+    }
+  }
+
+  // TODO: updateAndGetWith OR updateWithAndGet ?
+
+  final def modify[B](f: A => (A, B)): Action[B] =
+    upd[Any, B] { (a, _) => f(a) }
+
+  final def modifyWith[B](f: A => Action[(A, B)]): Action[B] =
+    updWith[Any, B] { (oa, _) => f(oa) }
+
+  final def tryModify[B](f: A => (A, B)): Action[Option[B]] =
+    modify(f).?
+
+  // TODO: how to call this? It's like `modify`...
   final def upd[B, C](f: (A, B) => (A, C)): React[B, C] =
     React.upd(this)(f)
 
-  final def updWith[B, C](f: (A, B) => React[Any, (A, C)]): React[B, C] =
+  // TODO: how to call this? It's like `modifyWith`...
+  final def updWith[B, C](f: (A, B) => Action[(A, C)]): React[B, C] =
     React.updWith(this)(f)
-
-  final def modify(f: A => A): React[Any, A] =
-    upd[Any, A] { (a, _) => (f(a), a) }
-
-  final def modify2[B](f: A => (A, B)): React[Unit, B] =
-    upd[Unit, B] { (a, _) => f(a) }
-
-  final def modifyWith(f: A => React[Any, A]): React[Unit, A] =
-    updWith[Unit, A] { (oa, _) => f(oa).map(na => (na, oa)) }
 
   final def unsafeInvisibleRead: React[Any, A] =
     React.unsafe.invisibleRead(this)
-
-  final def getter: React[Any, A] =
-    upd[Any, A] { (a, _) => (a, a) }
 
   final def unsafeCas(ov: A, nv: A): React[Any, Unit] =
     React.unsafe.cas(this, ov, nv)
@@ -64,9 +103,11 @@ trait Ref[A] extends mcas.MemoryLocation[A] {
 
 object Ref {
 
+  // FIXME:
   // TODO: `Ref.empty[A]`, for creating an uninitialized ref (it
   // TODO: should use one barrier less than `Ref.mk[A](nullOf[A])`).
 
+  // TODO: is this like `ifM`?
   implicit final class BooleanRefOps(private val self: Ref[Boolean]) extends AnyVal {
 
     def guard[A, B](guarded: React[A, B]): React[A, Option[B]] =
