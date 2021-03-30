@@ -62,15 +62,16 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("BooleanRefOps should provide guard/guardNot") {
+  test("ifM instead of guard/guardNot") {
     for {
       trueRef <- Ref(true).run[F]
       falseRef <- Ref(false).run[F]
-      ft = React.ret(42)
-      _ <- assertResultF(trueRef.guard(ft).run, Some(42))
-      _ <- assertResultF(trueRef.guardNot(ft).run, None)
-      _ <- assertResultF(falseRef.guard(ft).run, None)
-      _ <- assertResultF(falseRef.guardNot(ft).run, Some(42))
+      ft = React.ret[Any, Option[Int]](Some(42))
+      ff = React.ret[Any, Option[Int]](None)
+      _ <- assertResultF(trueRef.get.ifM(ft, ff).run, Some(42))
+      _ <- assertResultF(trueRef.get.ifM(ff, ft).run, None)
+      _ <- assertResultF(falseRef.get.ifM(ft, ff).run, None)
+      _ <- assertResultF(falseRef.get.ifM(ff, ft).run, Some(42))
     } yield ()
   }
 

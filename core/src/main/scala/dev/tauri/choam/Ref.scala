@@ -102,27 +102,6 @@ trait Ref[A] extends MemoryLocation[A] {
 
 object Ref {
 
-  // TODO: is this like `ifM`?
-  implicit final class BooleanRefOps(private val self: Ref[Boolean]) extends AnyVal {
-
-    def guard[A, B](guarded: React[A, B]): React[A, Option[B]] =
-      guardImpl(guarded, negate = false)
-
-    def guardNot[A, B](guarded: React[A, B]): React[A, Option[B]] =
-      guardImpl(guarded, negate = true)
-
-    private def guardImpl[A, B](guarded: React[A, B], negate: Boolean): React[A, Option[B]] = {
-      (self.unsafeInvisibleRead × React.identity[A]).flatMap {
-        case (guard, _) =>
-          if (guard ^ negate) {
-            (self.unsafeCas(guard, guard) × guarded.rmap(Some(_))).rmap(_._2)
-          } else {
-            self.unsafeCas(guard, guard).lmap[(Unit, A)](_ => ()).rmap(_ => None)
-          }
-      }.lmap[A](a => ((), a))
-    }
-  }
-
   def apply[A](initial: A): React[Any, Ref[A]] =
     React.delay[Any, Ref[A]](_ => Ref.unsafe(initial))
 
