@@ -42,6 +42,12 @@ public class RefP1<A> extends RefId implements Ref<A> {
     this.value = a;
   }
 
+  /** Only for benchmarks */
+  public RefP1(A a, long i0, long i1, long i2, long i3, String release) {
+    super(i0, i1, i2, i3);
+    VALUE.setRelease(this, a);
+  }
+
   public RefP1(long i0, long i1, long i2, long i3) {
     super(i0, i1, i2, i3);
   }
