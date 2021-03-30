@@ -38,7 +38,7 @@ abstract class Ref2Base<A, B> extends RefId implements Ref2<A, B> {
 
   private volatile A valueA;
 
-  private final Ref<A> refA = new Ref2Ref1(this);
+  private final Ref<A> refA = new Ref2Ref1<A, B>(this);
 
   Ref2Base(A a, long i0, long i1, long i2, long i3) {
     super(i0, i1, i2, i3);
@@ -91,7 +91,7 @@ public class Ref2Impl<A, B> extends Padding2<A, B> {
 
   private volatile B valueB;
 
-  private final Ref<B> refB = new Ref2Ref2(this);
+  private final Ref<B> refB = new Ref2Ref2<A, B>(this);
 
   public Ref2Impl(A a, B b, long i0, long i1, long i2, long i3, long i4, long i5, long i6, long i7) {
     super(a, i0, i1, i2, i3);

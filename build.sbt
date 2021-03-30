@@ -117,6 +117,7 @@ lazy val commonSettings = Seq[Setting[_]](
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   javacOptions ++= Seq(
     "--release", "11", // implies "-source 11 -target 11"
+    "-Xlint",
   ),
   Test / parallelExecution := false,
   libraryDependencies ++= Seq(

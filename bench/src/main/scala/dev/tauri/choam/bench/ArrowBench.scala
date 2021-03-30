@@ -29,8 +29,6 @@ import org.openjdk.jmh.infra.Blackhole
 @Fork(2)
 class ArrowBench {
 
-  final val size = 4096
-
   @Benchmark
   def onlyComputed(s: ArrowBench.St, bh: Blackhole, k: KCASImplState): Unit = {
     val ref = s.refs(Math.abs(k.nextInt()) % ArrowBench.size)
