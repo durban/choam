@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.ref;
+package dev.tauri.choam.refs;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -23,14 +23,14 @@ import java.lang.invoke.VarHandle;
 import dev.tauri.choam.Ref;
 import dev.tauri.choam.React;
 
-abstract class Ref2Base<A, B> extends RefId implements Ref2<A, B> {
+abstract class RefP1P1Base<A, B> extends RefId implements Ref2<A, B> {
 
   private static final VarHandle VALUE_A;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE_A = l.findVarHandle(Ref2Base.class, "valueA", Object.class);
+      VALUE_A = l.findVarHandle(RefP1P1Base.class, "valueA", Object.class);
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }
@@ -40,12 +40,12 @@ abstract class Ref2Base<A, B> extends RefId implements Ref2<A, B> {
 
   private final Ref<A> refA = new Ref2Ref1<A, B>(this);
 
-  Ref2Base(A a, long i0, long i1, long i2, long i3) {
+  RefP1P1Base(A a, long i0, long i1, long i2, long i3) {
     super(i0, i1, i2, i3);
     this.valueA = a;
   }
 
-  Ref2Base(long i0, long i1, long i2, long i3) {
+  RefP1P1Base(long i0, long i1, long i2, long i3) {
     super(i0, i1, i2, i3);
   }
 
@@ -71,14 +71,14 @@ abstract class Ref2Base<A, B> extends RefId implements Ref2<A, B> {
   }
 }
 
-public class Ref2Impl<A, B> extends Padding2<A, B> {
+public class RefP1P1<A, B> extends Padding2<A, B> {
 
   private static final VarHandle VALUE_B;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE_B = l.findVarHandle(Ref2Impl.class, "valueB", Object.class);
+      VALUE_B = l.findVarHandle(RefP1P1.class, "valueB", Object.class);
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }
@@ -93,7 +93,7 @@ public class Ref2Impl<A, B> extends Padding2<A, B> {
 
   private final Ref<B> refB = new Ref2Ref2<A, B>(this);
 
-  public Ref2Impl(A a, B b, long i0, long i1, long i2, long i3, long i4, long i5, long i6, long i7) {
+  public RefP1P1(A a, B b, long i0, long i1, long i2, long i3, long i4, long i5, long i6, long i7) {
     super(a, i0, i1, i2, i3);
     this._id4 = i4;
     this._id5 = i5;
@@ -102,7 +102,7 @@ public class Ref2Impl<A, B> extends Padding2<A, B> {
     this.valueB = b;
   }
 
-  public Ref2Impl(long i0, long i1, long i2, long i3, long i4, long i5, long i6, long i7) {
+  public RefP1P1(long i0, long i1, long i2, long i3, long i4, long i5, long i6, long i7) {
     super(i0, i1, i2, i3);
     this._id4 = i4;
     this._id5 = i5;

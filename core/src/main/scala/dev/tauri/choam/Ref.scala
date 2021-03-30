@@ -137,7 +137,7 @@ object Ref {
 
   /** Only for testing */
   private[choam] def mkWithId[A](a: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] = {
-    new ref.Ref1(a, i0, i1, i2, i3)
+    new refs.RefP1(a, i0, i1, i2, i3)
   }
 
   /**
@@ -149,13 +149,13 @@ object Ref {
    */
   private[choam] def mkUnpadded[A](a: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
-    new ref.UnpaddedRef1(a, tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+    new refs.RefU1(a, tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
   // TODO: public API(?)
-  private[choam] def ref2[A, B](a: A, b: B): ref.Ref2[A, B] = {
+  private[choam] def ref2[A, B](a: A, b: B): refs.Ref2[A, B] = {
     val tlr = ThreadLocalRandom.current()
-    new ref.Ref2Impl[A, B](
+    new refs.RefP1P1[A, B](
       a,
       b,
       tlr.nextLong(),

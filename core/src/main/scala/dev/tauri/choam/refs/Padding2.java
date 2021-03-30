@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.ref;
+package dev.tauri.choam.refs;
 
-abstract class Padding2<A, B> extends Ref2Base<A, B> {
+abstract class Padding2<A, B> extends RefP1P1Base<A, B> {
 
   byte pad000;
   byte pad001;

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.ref;
+package dev.tauri.choam.refs;
 
 abstract class Padding {
 

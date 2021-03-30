@@ -16,7 +16,7 @@
  */
 
 package dev.tauri.choam
-package ref
+package refs
 
 trait Ref2[A, B] {
 

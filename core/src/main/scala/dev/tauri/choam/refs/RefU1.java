@@ -15,21 +15,21 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.ref;
+package dev.tauri.choam.refs;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
 import dev.tauri.choam.Ref;
 
-public class UnpaddedRef1<A> extends UnpaddedRefId implements Ref<A> {
+public class RefU1<A> extends UnpaddedRefId implements Ref<A> {
 
   private static final VarHandle VALUE;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE = l.findVarHandle(UnpaddedRef1.class, "value", Object.class);
+      VALUE = l.findVarHandle(RefU1.class, "value", Object.class);
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }
@@ -37,12 +37,12 @@ public class UnpaddedRef1<A> extends UnpaddedRefId implements Ref<A> {
 
   private volatile A value;
 
-  public UnpaddedRef1(A a, long i0, long i1, long i2, long i3) {
+  public RefU1(A a, long i0, long i1, long i2, long i3) {
     super(i0, i1, i2, i3);
     this.value = a;
   }
 
-  public UnpaddedRef1(long i0, long i1, long i2, long i3) {
+  public RefU1(long i0, long i1, long i2, long i3) {
     super(i0, i1, i2, i3);
   }
 
