@@ -23,7 +23,6 @@ import org.openjdk.jmh.annotations._
 import scala.collection.immutable.ArraySeq
 
 import util._
-import kcas._
 import kcas.bench.Reset
 
 @Fork(2)

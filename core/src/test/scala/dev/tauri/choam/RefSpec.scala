@@ -19,8 +19,6 @@ package dev.tauri.choam
 
 import cats.effect.IO
 
-import kcas._
-
 final class RefSpecNaiveKCAS
   extends BaseSpecIO
   with SpecNaiveKCAS

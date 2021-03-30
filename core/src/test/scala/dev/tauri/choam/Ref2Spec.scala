@@ -17,7 +17,6 @@
 
 package dev.tauri.choam
 
-import kcas.Ref
 import ref.Ref2
 
 class Ref2Spec extends BaseSpecA {

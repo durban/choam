@@ -26,8 +26,6 @@ import org.scalacheck.{ Gen, Arbitrary }
 
 import munit.DisciplineSuite
 
-import kcas._
-
 final class LawsSpecNaiveKCAS
   extends LawsSpec
   with SpecNaiveKCAS

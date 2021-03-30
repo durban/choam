@@ -22,8 +22,6 @@ import cats.data.NonEmptyChain
 import cats.data.Ior
 import cats.implicits._
 
-import kcas.Ref
-
 import AsyncStack1._
 
 private[choam] final class AsyncStack1[F[_], A] private (ref: Ref[State[F, A]])

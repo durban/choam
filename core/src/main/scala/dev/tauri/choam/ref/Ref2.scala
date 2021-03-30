@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package ref
 
-import kcas.Ref
-
 trait Ref2[A, B] {
 
   def _1: Ref[A]

@@ -22,7 +22,6 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util.KCASImplState
-import kcas.Ref
 
 /**
  * A variant of `dev.tauri.choam.kcas.bench.ResourceAllocation`,

@@ -19,8 +19,6 @@ package dev.tauri.choam
 
 import cats.effect.{ IO, Outcome }
 
-import kcas.Ref
-
 final class ExchangerSpecEMCAS
   extends BaseSpecIO
   with SpecEMCAS

@@ -22,8 +22,6 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZL_Result
 
-import kcas.Ref
-
 @JCStressTest
 @State
 @Description("React.cas should be a simple CAS")

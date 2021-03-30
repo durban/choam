@@ -21,10 +21,9 @@ package bench
 import java.util.concurrent.ThreadLocalRandom
 
 import org.openjdk.jmh.annotations._
-
-import kcas.Ref
-import util._
 import org.openjdk.jmh.infra.Blackhole
+
+import util._
 
 /** Compares the performance of `x.flatMap { _ => y }` and `x *> y` */
 @Fork(5)

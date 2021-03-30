@@ -16,7 +16,6 @@
  */
 
 package dev.tauri.choam
-package kcas
 
 import java.util.concurrent.ThreadLocalRandom
 
@@ -98,7 +97,7 @@ trait Ref[A] extends MemoryLocation[A] {
     }
   }
 
-  private[kcas] def dummy(v: Long): Long
+  private[choam] def dummy(v: Long): Long
 }
 
 object Ref {
@@ -137,7 +136,7 @@ object Ref {
   }
 
   /** Only for testing */
-  private[kcas] def mkWithId[A](a: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] = {
+  private[choam] def mkWithId[A](a: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] = {
     new ref.Ref1(a, i0, i1, i2, i3)
   }
 
@@ -148,7 +147,7 @@ object Ref {
    * (e.g., Ref2, Ref3) which still have
    * padding at the end.
    */
-  private[kcas] def mkUnpadded[A](a: A): Ref[A] = {
+  private[choam] def mkUnpadded[A](a: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
     new ref.UnpaddedRef1(a, tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }

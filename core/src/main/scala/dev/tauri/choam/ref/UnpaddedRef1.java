@@ -20,7 +20,7 @@ package dev.tauri.choam.ref;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
-import dev.tauri.choam.kcas.Ref;
+import dev.tauri.choam.Ref;
 
 public class UnpaddedRef1<A> extends UnpaddedRefId implements Ref<A> {
 

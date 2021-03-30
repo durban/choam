@@ -20,7 +20,7 @@ package dev.tauri.choam.ref;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
-import dev.tauri.choam.kcas.Ref;
+import dev.tauri.choam.Ref;
 import dev.tauri.choam.React;
 
 abstract class Ref2Base<A, B> extends RefId implements Ref2<A, B> {

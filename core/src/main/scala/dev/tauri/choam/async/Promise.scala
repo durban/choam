@@ -103,10 +103,10 @@ object Promise {
 
   @deprecated("old, slower implementation", since = "2021-02-08")
   def slow[F[_], A](implicit rF: Reactive[F], F: Async[F]): Action[Promise[F, A]] =
-    React.delay(_ => new PromiseImpl[F, A](kcas.Ref.unsafe[State[A]](Waiting(Map.empty))))
+    React.delay(_ => new PromiseImpl[F, A](Ref.unsafe[State[A]](Waiting(Map.empty))))
 
   def fast[F[_], A](implicit rF: Reactive[F], F: Async[F]): Action[Promise[F, A]] =
-    React.delay(_ => new PromiseImpl2[F, A](kcas.Ref.unsafe[State2[A]](Waiting2(LongMap.empty, 0L))))
+    React.delay(_ => new PromiseImpl2[F, A](Ref.unsafe[State2[A]](Waiting2(LongMap.empty, 0L))))
 
   implicit def invariantFunctorForPromise[F[_] : Functor]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
     override def imap[A, B](fa: Promise[F, A])(f: A => B)(g: B => A): Promise[F, B] =
@@ -120,7 +120,7 @@ object Promise {
   private final case class Waiting[A](cbs: Map[Id, A => Unit]) extends State[A]
   private final case class Done[A](a: A) extends State[A]
 
-  private final class PromiseImpl[F[_], A](ref: kcas.Ref[State[A]])(implicit rF: Reactive[F], F: Async[F])
+  private final class PromiseImpl[F[_], A](ref: Ref[State[A]])(implicit rF: Reactive[F], F: Async[F])
     extends Promise[F, A] {
 
     val complete: Reaction[A, Boolean] = React.computed { a =>
@@ -195,7 +195,7 @@ object Promise {
 
   private final case class Done2[A](a: A) extends State2[A]
 
-  private final class PromiseImpl2[F[_], A](ref: kcas.Ref[State2[A]])(implicit rF: Reactive[F], F: Async[F])
+  private final class PromiseImpl2[F[_], A](ref: Ref[State2[A]])(implicit rF: Reactive[F], F: Async[F])
     extends Promise[F, A] {
 
     val complete: Reaction[A, Boolean] = React.computed { a =>

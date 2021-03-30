@@ -22,8 +22,6 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLLLLL_Result
 
-import kcas.Ref
-
 @JCStressTest
 @State
 @Description("lmap and rmap must run before committing")

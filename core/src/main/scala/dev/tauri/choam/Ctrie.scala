@@ -20,7 +20,7 @@ package dev.tauri.choam
 import cats.{ Eq, Traverse }
 import cats.instances.list._
 
-import kcas.{ Ref, KCAS }
+import kcas.KCAS
 
 /**
  * Concurrent hash trie, described in [Concurrent Tries with Efficient

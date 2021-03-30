@@ -22,8 +22,6 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLLLL_Result
 
-import kcas._
-
 @JCStressTest
 @State
 @Description("Changes by the reaction must be visible in post-commit actions")

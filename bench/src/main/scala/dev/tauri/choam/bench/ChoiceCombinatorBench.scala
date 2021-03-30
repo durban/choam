@@ -20,7 +20,6 @@ package bench
 
 import org.openjdk.jmh.annotations._
 
-import kcas._
 import kcas.bench.Reset
 import util._
 

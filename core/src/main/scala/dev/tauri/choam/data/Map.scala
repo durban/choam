@@ -20,8 +20,6 @@ package data
 
 import scala.collection.immutable
 
-import kcas.Ref
-
 // TODO: use Eq and Hash
 trait Map[K, V] {
   def put: React[(K, V), Option[V]]

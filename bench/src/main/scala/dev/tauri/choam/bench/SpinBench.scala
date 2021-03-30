@@ -21,7 +21,6 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import kcas.Ref
 import util.KCASImplState
 import SpinBench._
 

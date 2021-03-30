@@ -17,12 +17,10 @@
 
 package dev.tauri.choam
 
-import org.openjdk.jcstress.annotations._
+import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
-
-import kcas.Ref
 
 @JCStressTest
 @State

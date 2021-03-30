@@ -31,7 +31,7 @@ import mcas.MemoryLocation
  *
  * Implemented as a baseline for benchmarking and correctness tests.
  */
-private[kcas] object NaiveKCAS extends KCAS { self =>
+private[choam] object NaiveKCAS extends KCAS { self =>
 
   private[this] val dummyGlobal =
     new GlobalContext(self)

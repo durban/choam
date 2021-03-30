@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package ref
 
-import kcas.Ref
-
 private final class Ref2Ref1[A, B](self: Ref2Base[A, B]) extends Ref[A] {
 
   override def unsafeGetVolatile(): A =

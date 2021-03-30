@@ -17,8 +17,6 @@
 
 package dev.tauri.choam
 
-import kcas.Ref
-
 final class Counter(ref: Ref[Long]) {
 
   val add: Reaction[Long, Long] = ref.upd[Long, Long] { (cnt, n) =>

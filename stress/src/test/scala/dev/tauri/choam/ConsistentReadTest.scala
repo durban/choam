@@ -22,8 +22,6 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import kcas._
-
 @JCStressTest
 @State
 @Description("Ref#get should be consistent")

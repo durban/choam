@@ -26,7 +26,7 @@ import mcas.MemoryLocation
  * Efficient Multi-word Compare and Swap:
  * https://arxiv.org/pdf/2008.02527.pdf
  */
-private[kcas] object EMCAS extends KCAS { self =>
+private[choam] object EMCAS extends KCAS { self =>
 
   private[kcas] val global =
     new GlobalContext(self)

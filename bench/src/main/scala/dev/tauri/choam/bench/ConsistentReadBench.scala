@@ -23,7 +23,6 @@ import java.util.concurrent.ThreadLocalRandom
 import org.openjdk.jmh.annotations._
 
 import util._
-import kcas.Ref
 
 /**
  * The old implementation of `consistentRead` used

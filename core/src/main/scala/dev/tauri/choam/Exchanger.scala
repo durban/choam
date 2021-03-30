@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import java.util.concurrent.atomic.AtomicReference
 
-import kcas.{ Ref, ThreadContext, EMCASDescriptor }
+import kcas.{ ThreadContext, EMCASDescriptor }
 
 // TODO: lazy initialization of exchanger with something like Reaction.lzy { ... }
 
