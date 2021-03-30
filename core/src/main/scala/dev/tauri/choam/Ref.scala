@@ -102,10 +102,6 @@ trait Ref[A] extends MemoryLocation[A] {
 
 object Ref {
 
-  // FIXME:
-  // TODO: `Ref.empty[A]`, for creating an uninitialized ref (it
-  // TODO: should use one barrier less than `Ref.mk[A](nullOf[A])`).
-
   // TODO: is this like `ifM`?
   implicit final class BooleanRefOps(private val self: Ref[Boolean]) extends AnyVal {
 

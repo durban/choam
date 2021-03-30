@@ -21,20 +21,24 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import util.RandomState
-
 @Fork(3)
 class RefInitBench {
 
+  /** No write to `value` */
   @Benchmark
-  def releaseInit(bh: Blackhole, r: RandomState): Unit = {
-    val i = r.nextInt()
-    bh.consume(new refs.RefP1[Int](i, 0L, 0L, 0L, 0L, null : String))
+  def nullInit(bh: Blackhole): Unit = {
+    bh.consume(new refs.RefP1[String](0L, 0L, 0L, 0L))
   }
 
+  /** Write `null` to `value` in release mode */
   @Benchmark
-  def volatileInit(bh: Blackhole, r: RandomState): Unit = {
-    val i = r.nextInt()
-    bh.consume(new refs.RefP1[Int](i, 0L, 0L, 0L, 0L))
+  def releaseInit(bh: Blackhole): Unit = {
+    bh.consume(new refs.RefP1[String](null, 0L, 0L, 0L, 0L, null : String))
+  }
+
+  /** Write `null` to `value` in volatile mode */
+  @Benchmark
+  def volatileInit(bh: Blackhole): Unit = {
+    bh.consume(new refs.RefP1[String](null, 0L, 0L, 0L, 0L))
   }
 }
