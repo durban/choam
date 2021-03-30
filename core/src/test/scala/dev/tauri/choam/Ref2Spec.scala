@@ -19,10 +19,18 @@ package dev.tauri.choam
 
 import refs.Ref2
 
-class Ref2Spec extends BaseSpecA {
+final class Ref2SpecP1P1 extends Ref2Spec {
+
+  override def mkRef2[A, B](a: A, b: B): Ref2[A,B] =
+    Ref2.unsafeP1P1(a, b)
+}
+
+abstract class Ref2Spec extends BaseSpecA {
+
+  def mkRef2[A, B](a: A, b: B): Ref2[A, B]
 
   test("Ref2 equality/toString") {
-    val rr = Ref.ref2[String, Int]("a", 42)
+    val rr = mkRef2[String, Int]("a", 42)
     val Ref2(r1, r2) = rr
     assert((rr : AnyRef) ne r1)
     assert((rr : Any) != r1)
@@ -38,7 +46,7 @@ class Ref2Spec extends BaseSpecA {
   }
 
   test("Ref2 consistentRead") {
-    val rr = Ref.ref2[String, Int]("a", 42)
+    val rr = mkRef2[String, Int]("a", 42)
     val (s, i) = rr.consistentRead.unsafePerform((), kcas.KCAS.EMCAS)
     assert(s eq "a")
     assert(i == 42)

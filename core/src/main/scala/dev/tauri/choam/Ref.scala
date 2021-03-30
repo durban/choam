@@ -102,45 +102,32 @@ trait Ref[A] extends MemoryLocation[A] {
 
 object Ref {
 
-  def apply[A](initial: A): React[Any, Ref[A]] =
+  def apply[A](initial: A): Action[Ref[A]] =
     React.delay[Any, Ref[A]](_ => Ref.unsafe(initial))
+
+  def unpadded[A](initial: A): Action[Ref[A]] =
+    React.delay[Any, Ref[A]](_ => Ref.unsafeUnpadded(initial))
 
   def unsafe[A](initial: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
-    mkWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+    unsafeWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
-  /** Only for testing */
-  private[choam] def mkWithId[A](a: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] = {
+  def unsafeUnpadded[A](initial: A): Ref[A] = {
+    val tlr = ThreadLocalRandom.current()
+    new refs.RefU1(initial, tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+  }
+
+  /** Only for testing/benchmarks */
+  private[choam] def unsafeWithId[A](a: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
     new refs.RefP1(a, i0, i1, i2, i3)
-  }
 
-  /**
-   * Only for testing
-   *
-   * TODO: provide unpadded groups of refs
-   * (e.g., Ref2, Ref3) which still have
-   * padding at the end.
-   */
-  private[choam] def mkUnpadded[A](a: A): Ref[A] = {
-    val tlr = ThreadLocalRandom.current()
-    new refs.RefU1(a, tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
-  }
+  // Ref2:
 
-  // TODO: public API(?)
-  private[choam] def ref2[A, B](a: A, b: B): refs.Ref2[A, B] = {
-    val tlr = ThreadLocalRandom.current()
-    new refs.RefP1P1[A, B](
-      a,
-      b,
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong()
-    )
-  }
+  def refP1P1[A, B](a: A, b: B): Action[refs.Ref2[A, B]] =
+    refs.Ref2.p1p1(a, b)
+
+  // TODO:
+  // def refU2[A, B](a: A, b: B): Action[refs.Ref2[A, B]] =
+  //   ???
 }

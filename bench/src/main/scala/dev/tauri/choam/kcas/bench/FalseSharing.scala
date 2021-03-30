@@ -92,8 +92,8 @@ object FalseSharing {
 
   @State(Scope.Benchmark)
   class Unpadded extends Base {
-    final override val rr: Ref[Int] = Ref.mkUnpadded(42)
-    final override val rw: Ref[Int] = Ref.mkUnpadded(21)
+    final override val rr: Ref[Int] = Ref.unsafeUnpadded(42)
+    final override val rw: Ref[Int] = Ref.unsafeUnpadded(21)
   }
 
   @State(Scope.Benchmark)

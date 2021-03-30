@@ -24,6 +24,8 @@ import cats.syntax.all._
 
 import org.openjdk.jol.info.ClassLayout
 
+import refs.Ref2
+
 object RefSpec {
   final val fieldName = "value"
   final val targetSize = 160L
@@ -67,14 +69,14 @@ class RefSpec extends BaseSpecA {
 
   test("Unpadded Ref should not be padded (sanity check)") {
     assumeOpenJdk()
-    val ref = Ref.mkUnpadded("bar")
+    val ref = Ref.unsafeUnpadded("bar")
     val (left, right) = getLeftRightPaddedSize(ref, fieldName)
     assert((clue(left) <= 48L) && (clue(right) <= 48L))
   }
 
-  test("Ref2 should be double-padded") {
+  test("Ref2 P1P1 should be double-padded") {
     assumeOpenJdk()
-    val ref = Ref.ref2[String, Object]("bar", new AnyRef)
+    val ref: Ref2[_, _] = Ref2.unsafeP1P1[String, Object]("bar", new AnyRef)
     val (left1, _) = getLeftRightPaddedSize(ref, "valueA")
     val (left2, _) = getLeftRightPaddedSize(ref, "valueB")
     assert(clue(left2) >= (clue(left1) + 256))

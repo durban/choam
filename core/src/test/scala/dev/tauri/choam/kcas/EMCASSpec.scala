@@ -102,8 +102,8 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS op should be finalizable even if a thread dies mid-op") {
-    val r1 = Ref.mkWithId[String]("x")(0L, 0L, 0L, 0L)
-    val r2 = Ref.mkWithId[String]("y")(0L, 0L, 0L, 1L)
+    val r1 = Ref.unsafeWithId[String]("x")(0L, 0L, 0L, 0L)
+    val r2 = Ref.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     var descT1: WordDescriptor[_] = null
@@ -143,8 +143,8 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS should not replace and forget active descriptors") {
-    val r1 = Ref.mkWithId[String]("x")(0L, 0L, 0L, 0L)
-    val r2 = Ref.mkWithId[String]("y")(0L, 0L, 0L, 1L)
+    val r1 = Ref.unsafeWithId[String]("x")(0L, 0L, 0L, 0L)
+    val r2 = Ref.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     val t1 = new Thread(() => {
@@ -229,8 +229,8 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS read should help the other operation") {
-    val r1 = Ref.mkWithId("r1")(0L, 0L, 0L, 0L)
-    val r2 = Ref.mkWithId("r2")(0L, 0L, 0L, 42L)
+    val r1 = Ref.unsafeWithId("r1")(0L, 0L, 0L, 0L)
+    val r2 = Ref.unsafeWithId("r2")(0L, 0L, 0L, 42L)
     val ctx = EMCAS.currentContext()
     val other: EMCASDescriptor = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "r1", "x", ctx), r2, "r2", "y", ctx)
     other.sort()
@@ -245,8 +245,8 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS read should roll back the other op if necessary") {
-    val r1 = Ref.mkWithId("r1")(0L, 0L, 0L, 0L)
-    val r2 = Ref.mkWithId("r2")(0L, 0L, 0L, 99L)
+    val r1 = Ref.unsafeWithId("r1")(0L, 0L, 0L, 0L)
+    val r2 = Ref.unsafeWithId("r2")(0L, 0L, 0L, 99L)
     val ctx = EMCAS.currentContext()
     val other = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "r1", "x", ctx), r2, "zzz", "y", ctx)
     other.sort()
