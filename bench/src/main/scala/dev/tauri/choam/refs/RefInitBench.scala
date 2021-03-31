@@ -24,21 +24,43 @@ import org.openjdk.jmh.infra.Blackhole
 @Fork(3)
 class RefInitBench {
 
-  /** No write to `value` */
+  // PADDED:
+
+  /** Padded, no write to `value` */
   @Benchmark
-  def nullInit(bh: Blackhole): Unit = {
+  def nullInitPadded(bh: Blackhole): Unit = {
     bh.consume(new RefP1[String](0L, 0L, 0L, 0L))
   }
 
-  /** Write `null` to `value` in release mode */
+  /** Padded, write `null` to `value` in release mode */
   @Benchmark
-  def releaseInit(bh: Blackhole): Unit = {
-    bh.consume(new RefP1[String](null, 0L, 0L, 0L, 0L, null : String))
+  def releaseInitPadded(bh: Blackhole): Unit = {
+    bh.consume(new RefP1[String](null : String, 0L, 0L, 0L, 0L, null : String))
   }
 
-  /** Write `null` to `value` in volatile mode */
+  /** Padded, write `null` to `value` in volatile mode */
   @Benchmark
-  def volatileInit(bh: Blackhole): Unit = {
-    bh.consume(new RefP1[String](null, 0L, 0L, 0L, 0L))
+  def volatileInitPadded(bh: Blackhole): Unit = {
+    bh.consume(new RefP1[String](null : String, 0L, 0L, 0L, 0L))
+  }
+
+  // UNPADDED:
+
+  /** Unpadded, no write to `value` */
+  @Benchmark
+  def nullInitUnpadded(bh: Blackhole): Unit = {
+    bh.consume(new RefU1[String](0L, 0L, 0L, 0L))
+  }
+
+  /** Unpadded, write `null` to `value` in release mode */
+  @Benchmark
+  def releaseInitUnpadded(bh: Blackhole): Unit = {
+    bh.consume(new RefU1[String](null : String, 0L, 0L, 0L, 0L, null : String))
+  }
+
+  /** Unpadded, write `null` to `value` in volatile mode */
+  @Benchmark
+  def volatileInitUnpadded(bh: Blackhole): Unit = {
+    bh.consume(new RefU1[String](null : String, 0L, 0L, 0L, 0L))
   }
 }
