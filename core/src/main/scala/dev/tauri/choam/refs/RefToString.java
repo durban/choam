@@ -17,38 +17,12 @@
 
 package dev.tauri.choam.refs;
 
-abstract class UnpaddedRefId {
+abstract class RefToString {
 
-  private final long _id0;
-  private final long _id1;
-  private final long _id2;
-  private final long _id3;
-
-  UnpaddedRefId(long i0, long i1, long i2, long i3) {
-    this._id0 = i0;
-    this._id1 = i1;
-    this._id2 = i2;
-    this._id3 = i3;
-  }
-
-  public final long id0() {
-    return this._id0;
-  }
-
-  public final long id1() {
-    return this._id1;
-  }
-
-  public final long id2() {
-    return this._id2;
-  }
-
-  public final long id3() {
-    return this._id3;
-  }
+  protected abstract String refToString();
 
   @Override
   public final String toString() {
-    return "Ref@" + Integer.toHexString(this.hashCode());
+    return this.refToString();
   }
 }

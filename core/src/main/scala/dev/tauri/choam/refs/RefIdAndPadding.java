@@ -17,14 +17,14 @@
 
 package dev.tauri.choam.refs;
 
-abstract class RefId extends Padding {
+abstract class RefIdAndPadding extends Padding {
 
   private final long _id0;
   private final long _id1;
   private final long _id2;
   private final long _id3;
 
-  RefId(long i0, long i1, long i2, long i3) {
+  RefIdAndPadding(long i0, long i1, long i2, long i3) {
     this._id0 = i0;
     this._id1 = i1;
     this._id2 = i2;
@@ -45,10 +45,5 @@ abstract class RefId extends Padding {
 
   public final long id3() {
     return this._id3;
-  }
-
-  @Override
-  public final String toString() {
-    return "Ref@" + Integer.toHexString(this.hashCode());
   }
 }

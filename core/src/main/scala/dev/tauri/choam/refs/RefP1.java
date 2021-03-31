@@ -22,7 +22,7 @@ import java.lang.invoke.VarHandle;
 
 import dev.tauri.choam.Ref;
 
-final class RefP1<A> extends RefId implements Ref<A> {
+final class RefP1<A> extends RefIdAndPadding implements Ref<A> {
 
   private static final VarHandle VALUE;
 
@@ -50,6 +50,11 @@ final class RefP1<A> extends RefId implements Ref<A> {
 
   public RefP1(long i0, long i1, long i2, long i3) {
     super(i0, i1, i2, i3);
+  }
+
+  @Override
+  protected final String refToString() {
+    return package$.MODULE$.refStringFrom4Ids(this.id0(), this.id1(), this.id2(), this.id3());
   }
 
   @Override

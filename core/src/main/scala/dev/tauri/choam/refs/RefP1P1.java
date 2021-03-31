@@ -24,7 +24,7 @@ import dev.tauri.choam.Ref;
 import dev.tauri.choam.React;
 
 abstract class RefP1P1Base<A, B>
-  extends RefId
+  extends RefIdAndPadding
   implements Ref2<A, B>, Ref2ImplBase<A, B> {
 
   private static final VarHandle VALUE_A;
@@ -77,7 +77,7 @@ abstract class RefP1P1Base<A, B>
   }
 }
 
-final class RefP1P1<A, B> extends Padding2<A, B> implements Ref2Impl<A, B> {
+final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B> {
 
   private static final VarHandle VALUE_B;
 
@@ -114,6 +114,20 @@ final class RefP1P1<A, B> extends Padding2<A, B> implements Ref2Impl<A, B> {
     this._id5 = i5;
     this._id6 = i6;
     this._id7 = i7;
+  }
+
+  @Override
+  protected final String refToString() {
+    return package$.MODULE$.refStringFrom8Ids(
+      this.id0(),
+      this.id1(),
+      this.id2(),
+      this.id3(),
+      this.id4(),
+      this.id5(),
+      this.id6(),
+      this.id7()
+    );
   }
 
   @Override

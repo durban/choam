@@ -19,9 +19,36 @@ package dev.tauri.choam
 
 package object refs {
 
+  type Ref1[A] = Ref[A]
+  val Ref1: Ref.type = Ref
+
   def unsafeNewRefU1[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
     new RefU1(initial, i0, i1, i2, i3)
 
   def unsafeNewRefP1[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
     new RefP1(initial, i0, i1, i2, i3)
+
+  private[refs] def refStringFrom4Ids(
+    i0: Long,
+    i1: Long,
+    i2: Long,
+    i3: Long
+  ): String = {
+    // TODO: better hash
+    "Ref@" + java.lang.Long.toHexString(i0 ^ i1 ^ i2 ^ i3)
+  }
+
+  private[refs] def refStringFrom8Ids(
+    i0: Long,
+    i1: Long,
+    i2: Long,
+    i3: Long,
+    i4: Long,
+    i5: Long,
+    i6: Long,
+    i7: Long
+  ): String = {
+    // TODO: better hash
+    "Ref2@" + java.lang.Long.toHexString(i0 ^ i1 ^ i2 ^ i3 ^ i4 ^ i5 ^ i6 ^ i7)
+  }
 }

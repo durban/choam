@@ -17,7 +17,7 @@
 
 package dev.tauri.choam.refs;
 
-abstract class Padding2<A, B> extends RefP1P1Base<A, B> {
+abstract class PaddingForP1P1<A, B> extends RefP1P1Base<A, B> {
 
   byte pad000;
   byte pad001;
@@ -276,11 +276,11 @@ abstract class Padding2<A, B> extends RefP1P1Base<A, B> {
   byte pad254;
   byte pad255;
 
-  Padding2(A a, long i0, long i1, long i2, long i3) {
+  PaddingForP1P1(A a, long i0, long i1, long i2, long i3) {
     super(a, i0, i1, i2, i3);
   }
 
-  Padding2(long i0, long i1, long i2, long i3) {
+  PaddingForP1P1(long i0, long i1, long i2, long i3) {
     super(i0, i1, i2, i3);
   }
 

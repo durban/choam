@@ -23,7 +23,7 @@ import java.lang.invoke.VarHandle;
 import dev.tauri.choam.Ref;
 
 final class RefP2<A, B>
-  extends RefId
+  extends RefIdAndPadding
   implements Ref2<A, B>, Ref2ImplBase<A, B>, Ref2Impl<A, B> {
 
   private static final VarHandle VALUE_A;
@@ -57,6 +57,20 @@ final class RefP2<A, B>
     this._id6 = i6;
     this._id7 = i7;
     this.valueB = b;
+  }
+
+  @Override
+  protected final String refToString() {
+    return package$.MODULE$.refStringFrom8Ids(
+      this.id0(),
+      this.id1(),
+      this.id2(),
+      this.id3(),
+      this.id4(),
+      this.id5(),
+      this.id6(),
+      this.id7()
+    );
   }
 
   @Override

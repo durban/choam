@@ -43,6 +43,15 @@
   - Boxing
   - React interpreter (external interpreter?)
   - Review writes/reads in EMCAS, check if we can relax them
+  - Ref initialization:
+    - currently: volatile write
+    - a release write would be faster
+      - it would also mean that there is no perf. difference bw. `empty[A]` and `apply(nullOf[A])`
+    - but: doing only a release write might not be safe
+      - if another thread gets the `Ref` through an acquire read, it should be OK
+      - otherwise, it might not see the contents
+        - e.g., when calling `Ref.unsafe`, and storing it in a plain `var`
+        - could it happen without using unsafe? (or `unsafeRun*` on the IO)
 - Cleanup:
   - Review benchmarks, remove useless ones
 - Finish Ctrie
