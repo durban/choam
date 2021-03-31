@@ -115,19 +115,18 @@ object Ref {
 
   def unsafeUnpadded[A](initial: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
-    new refs.RefU1(initial, tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+    refs.unsafeNewRefU1(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
   /** Only for testing/benchmarks */
-  private[choam] def unsafeWithId[A](a: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
-    new refs.RefP1(a, i0, i1, i2, i3)
+  private[choam] def unsafeWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
+    refs.unsafeNewRefP1(initial)(i0, i1, i2, i3)
 
   // Ref2:
 
   def refP1P1[A, B](a: A, b: B): Action[refs.Ref2[A, B]] =
     refs.Ref2.p1p1(a, b)
 
-  // TODO:
-  // def refU2[A, B](a: A, b: B): Action[refs.Ref2[A, B]] =
-  //   ???
+  def refP2[A, B](a: A, b: B): Action[refs.Ref2[A, B]] =
+    refs.Ref2.p2(a, b)
 }

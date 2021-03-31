@@ -25,11 +25,17 @@ final class Ref2SpecP1P1 extends Ref2Spec {
     Ref2.unsafeP1P1(a, b)
 }
 
+final class Ref2SpecP2 extends Ref2Spec {
+
+  override def mkRef2[A, B](a: A, b: B): Ref2[A,B] =
+    Ref2.unsafeP2(a, b)
+}
+
 abstract class Ref2Spec extends BaseSpecA {
 
   def mkRef2[A, B](a: A, b: B): Ref2[A, B]
 
-  test("Ref2 equality/toString") {
+  test("equals/toString") {
     val rr = mkRef2[String, Int]("a", 42)
     val Ref2(r1, r2) = rr
     assert((rr : AnyRef) ne r1)
@@ -45,10 +51,30 @@ abstract class Ref2Spec extends BaseSpecA {
     assert(r1.toString != r2.toString)
   }
 
-  test("Ref2 consistentRead") {
+  test("consistentRead") {
     val rr = mkRef2[String, Int]("a", 42)
     val (s, i) = rr.consistentRead.unsafePerform((), kcas.KCAS.EMCAS)
     assert(s eq "a")
     assert(i == 42)
+  }
+
+  test("read/write/cas") {
+    final class Foo
+    val foo = new Foo
+    val rr = mkRef2[String, Foo]("a", foo)
+    assert(rr._1.unsafeGetVolatile() eq "a")
+    assert(rr._2.unsafeGetVolatile() eq foo)
+    rr._1.unsafeSetVolatile("b")
+    assert(rr._1.unsafeGetVolatile() eq "b")
+    assert(rr._2.unsafeGetVolatile() eq foo)
+    rr._2.unsafeSetVolatile(new Foo)
+    assert(rr._1.unsafeGetVolatile() eq "b")
+    assert(rr._2.unsafeGetVolatile() ne foo)
+    assert(rr._1.unsafeCasVolatile("b", "c"))
+    assert(rr._1.unsafeGetVolatile() eq "c")
+    assert(rr._2.unsafeGetVolatile() ne foo)
+    assert(!rr._2.unsafeCasVolatile(foo, new Foo))
+    assert(rr._1.unsafeGetVolatile() eq "c")
+    assert(rr._2.unsafeGetVolatile() ne foo)
   }
 }

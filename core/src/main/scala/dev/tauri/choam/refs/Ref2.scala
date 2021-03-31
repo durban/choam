@@ -35,12 +35,31 @@ object Ref2 {
   def p1p1[A, B](a: A, b: B): Action[refs.Ref2[A, B]] =
     React.delay { _ => unsafeP1P1(a, b) }
 
+  def p2[A, B](a: A, b: B): Action[refs.Ref2[A, B]] =
+    React.delay { _ => unsafeP2(a, b) }
+
   def unapply[A, B](r: Ref2[A, B]): Some[(Ref[A], Ref[B])] =
     Some((r._1, r._2))
 
   private[choam] def unsafeP1P1[A, B](a: A, b: B): refs.Ref2[A, B] = {
     val tlr = ThreadLocalRandom.current()
     new refs.RefP1P1[A, B](
+      a,
+      b,
+      tlr.nextLong(),
+      tlr.nextLong(),
+      tlr.nextLong(),
+      tlr.nextLong(),
+      tlr.nextLong(),
+      tlr.nextLong(),
+      tlr.nextLong(),
+      tlr.nextLong()
+    )
+  }
+
+  private[choam] def unsafeP2[A, B](a: A, b: B): refs.Ref2[A, B] = {
+    val tlr = ThreadLocalRandom.current()
+    new refs.RefP2[A, B](
       a,
       b,
       tlr.nextLong(),

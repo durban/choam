@@ -284,7 +284,7 @@ abstract class Padding2<A, B> extends RefP1P1Base<A, B> {
     super(i0, i1, i2, i3);
   }
 
-  protected final long dummyImpl2(long v) {
+  public final long dummyImpl2(long v) {
     this.pad000 ^= v;
     this.pad001 ^= v;
     this.pad002 ^= v;

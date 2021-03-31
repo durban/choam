@@ -23,7 +23,9 @@ import java.lang.invoke.VarHandle;
 import dev.tauri.choam.Ref;
 import dev.tauri.choam.React;
 
-abstract class RefP1P1Base<A, B> extends RefId implements Ref2<A, B> {
+abstract class RefP1P1Base<A, B>
+  extends RefId
+  implements Ref2<A, B>, Ref2ImplBase<A, B> {
 
   private static final VarHandle VALUE_A;
 
@@ -54,24 +56,28 @@ abstract class RefP1P1Base<A, B> extends RefId implements Ref2<A, B> {
     return this.refA;
   }
 
+  @Override
   public final A unsafeGetVolatile1() {
     return (A) VALUE_A.getVolatile(this);
   }
 
+  @Override
   public final void unsafeSetVolatile1(A a) {
     VALUE_A.setVolatile(this, a);
   }
 
+  @Override
   public final boolean unsafeCasVolatile1(A ov, A nv) {
     return VALUE_A.compareAndSet(this, ov, nv);
   }
 
+  @Override
   public final A unsafeCmpxchgVolatile1(A ov, A nv) {
     return (A) VALUE_A.compareAndExchange(this, ov, nv);
   }
 }
 
-public class RefP1P1<A, B> extends Padding2<A, B> {
+final class RefP1P1<A, B> extends Padding2<A, B> implements Ref2Impl<A, B> {
 
   private static final VarHandle VALUE_B;
 
@@ -115,35 +121,48 @@ public class RefP1P1<A, B> extends Padding2<A, B> {
     return this.refB;
   }
 
+  @Override
   public final B unsafeGetVolatile2() {
     return (B) VALUE_B.getVolatile(this);
   }
 
+  @Override
   public final void unsafeSetVolatile2(B b) {
     VALUE_B.setVolatile(this, b);
   }
 
+  @Override
   public final boolean unsafeCasVolatile2(B ov, B nv) {
     return VALUE_B.compareAndSet(this, ov, nv);
   }
 
+  @Override
   public final B unsafeCmpxchgVolatile2(B ov, B nv) {
     return (B) VALUE_B.compareAndExchange(this, ov, nv);
   }
 
+  @Override
   public final long id4() {
     return this._id4;
   }
 
+  @Override
   public final long id5() {
     return this._id5;
   }
 
+  @Override
   public final long id6() {
     return this._id6;
   }
 
+  @Override
   public final long id7() {
     return this._id7;
+  }
+
+  @Override
+  public final long dummyImpl1(long v) {
+    return this.dummyImpl(v);
   }
 }

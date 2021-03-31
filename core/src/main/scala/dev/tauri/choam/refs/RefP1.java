@@ -22,7 +22,7 @@ import java.lang.invoke.VarHandle;
 
 import dev.tauri.choam.Ref;
 
-public class RefP1<A> extends RefId implements Ref<A> {
+final class RefP1<A> extends RefId implements Ref<A> {
 
   private static final VarHandle VALUE;
 

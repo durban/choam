@@ -276,7 +276,7 @@ abstract class Padding {
   byte pad254;
   byte pad255;
 
-  protected final long dummyImpl(long v) {
+  final long dummyImpl(long v) {
     this.pad000 ^= v;
     this.pad001 ^= v;
     this.pad002 ^= v;
