@@ -22,6 +22,7 @@
 ## Bugs
 
 - `Exchanger` is barely working
+- `Ctrie` is incomplete
 - Can't run benchmarks with Scala 3
 
 ## Other improvements
@@ -43,6 +44,10 @@
   - Boxing
   - React interpreter (external interpreter?)
   - Review writes/reads in EMCAS, check if we can relax them
+  - Ref padding:
+    - allocating a padded Ref is much slower than an unpadded
+    - however, false sharing could be a problem
+    - which should be the default? padded/unpadded?
   - Ref initialization:
     - currently: volatile write
     - a release write would be faster
