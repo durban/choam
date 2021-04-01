@@ -20,6 +20,7 @@ package bench
 
 import org.openjdk.jmh.infra.Blackhole
 
+import cats.syntax.all._
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 
@@ -35,8 +36,18 @@ trait BenchUtils {
     Blackhole.consumeCPU(waitTime)
   }
 
+  protected final def runIdx(rt: IORuntime, task: Int => IO[Unit], size: Int): Unit = {
+    List.tabulate(size) { idx => task(idx) }.sequence.void.unsafeRunSync()(rt)
+    Blackhole.consumeCPU(waitTime)
+  }
+
   protected final def runZ(rt: ZRuntime[_], task: Task[Unit], size: Int): Unit = {
     rt.unsafeRunTask(task.repeatN(size))
+    Blackhole.consumeCPU(waitTime)
+  }
+
+  protected final def runIdxZ(rt: ZRuntime[_], task: Int => Task[Unit], size: Int): Unit = {
+    rt.unsafeRunTask(Task.foreach_((1 until size).toList) { idx => task(idx) })
     Blackhole.consumeCPU(waitTime)
   }
 

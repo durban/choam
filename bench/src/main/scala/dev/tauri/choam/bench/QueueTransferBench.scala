@@ -21,13 +21,13 @@ package bench
 import org.openjdk.jmh.annotations._
 
 import cats.effect.IO
-import cats.syntax.all._
 
 import io.github.timwspence.cats.stm.STM
+import zio.stm.ZSTM
 
 import util._
 
-@Fork(2)
+@Fork(1)
 class QueueTransferBench extends BenchUtils {
 
   import QueueTransferBench._
@@ -38,67 +38,37 @@ class QueueTransferBench extends BenchUtils {
   /** MS-Queues implemented with `React` */
   @Benchmark
   def michaelScottQueue(s: MsSt, ct: KCASImplState): Unit = {
-    val tsk = isEnq(ct).flatMap { enq =>
-      if (enq) s.enq[IO](ct.nextString())(ct.reactive)
-      else s.deq.run[IO](ct.reactive)
-    }
-
-    run(s.runtime, tsk, size = size)
+    runIdx(s.runtime, s.transfer(_).run[IO](ct.reactive), size = size)
   }
 
   /** MS-Queues (+ interior deletion) implemented with `React` */
   @Benchmark
   def michaelScottQueueWithRemove(s: RmSt, ct: KCASImplState): Unit = {
-    val tsk = isEnq(ct).flatMap { enq =>
-      if (enq) s.enq[IO](ct.nextString())(ct.reactive)
-      else s.deq.run[IO](ct.reactive)
-    }
-
-    run(s.runtime, tsk, size = size)
+    runIdx(s.runtime, s.transfer(_).run[IO](ct.reactive), size = size)
   }
 
   /** Simple queues protected with reentrant locks */
   @Benchmark
-  def lockedQueue(s: LockedSt, ct: RandomState): Unit = {
-    val tsk = isEnq(ct).flatMap { enq =>
-      if (enq) IO { s.enq(ct.nextString()) }
-      else IO { s.deq() }
-    }
-
-    run(s.runtime, tsk, size = size)
+  def lockedQueue(s: LockedSt): Unit = {
+    runIdx(s.runtime, idx => IO { s.transfer(idx) }, size = size)
   }
 
   /** MS-Queues implemented with scala-stm */
   @Benchmark
-  def stmQueue(s: StmSt, ct: RandomState): Unit = {
-    val tsk = isEnq(ct).flatMap { enq =>
-      if (enq) IO { s.enq(ct.nextString()) }
-      else IO { s.deq() }
-    }
-
-    run(s.runtime, tsk, size = size)
+  def stmQueue(s: StmSt): Unit = {
+    runIdx(s.runtime, idx => IO { s.transfer(idx) }, size = size)
   }
 
   /** MS-Queues implemented with cats-stm */
   @Benchmark
-  def stmQueueC(s: StmCSt, t: RandomState): Unit = {
-    val tsk = isEnq(t).flatMap { enq =>
-      if (enq) s.enq(t.nextString())
-      else s.deq
-    }
-
-    run(s.runtime, tsk, size = size)
+  def stmQueueC(s: StmCSt): Unit = {
+    runIdx(s.runtime, idx => s.s.commit(s.transfer(idx)), size = size)
   }
 
   /** MS-Queues implemented with zio STM */
   @Benchmark
-  def stmQueueZ(s: StmZSt, t: RandomState): Unit = {
-    val tsk = isEnqZ(t).flatMap { enq =>
-      if (enq) s.enq(t.nextString())
-      else s.deq
-    }
-
-    runZ(s.runtime, tsk, size = size)
+  def stmQueueZ(s: StmZSt): Unit = {
+    runIdxZ(s.runtime, idx => ZSTM.atomically(s.transfer(idx)), size = size)
   }
 }
 
@@ -107,11 +77,14 @@ object QueueTransferBench {
   @State(Scope.Benchmark)
   abstract class BaseSt {
 
-    @Param(Array("2", "4", "6"))
+    @Param(Array(/*"2",*/ "4"/*, "6"*/))
     private[this] var _txSize: Int = _
 
     def txSize: Int =
       this._txSize
+
+    def circleSize: Int =
+      4
   }
 
   abstract class MsStBase extends BaseSt {
@@ -120,24 +93,20 @@ object QueueTransferBench {
 
     val runtime = cats.effect.unsafe.IORuntime.global
 
-    var deq: React[Unit, Unit] = _
-    var enq: React[String, Unit] = _
+    def transfer(idx: Int): React[Unit, Unit] = {
+      def transferOne(circle: List[Queue[String]]): React[Unit, Unit] = {
+        circle(idx % circleSize).tryDeque.map(_.get) >>> circle((idx + 1) % circleSize).enqueue
+      }
 
-    val queue0 = this.newQueue()
-    var queues: List[Queue[String]] = _
+      this.queues.map(transferOne(_)).reduce(_ *> _)
+    }
+
+    var queues: List[List[Queue[String]]] = _
 
     protected def internalSetup(): Unit = {
-      this.queues = List.fill(this.txSize) { this.newQueue() }
-      this.deq = this.queue0.tryDeque.flatMap {
-        case Some(s) => this.queues.map(_.enqueue).reduce { (x, y) =>
-          (x * y).discard
-        }.lmap(_ => s)
-        case None => React.unit
+      this.queues = List.fill(this.txSize) {
+        List.fill(this.circleSize) { this.newQueue() }
       }
-      this.enq = this.queue0.enqueue >>> this.queues.map(_.tryDeque.discard).reduce {(x, y) =>
-        (x * y).discard
-      }.lmap(_ => ())
-
       java.lang.invoke.VarHandle.releaseFence()
     }
   }
@@ -169,40 +138,33 @@ object QueueTransferBench {
 
     val runtime = cats.effect.unsafe.IORuntime.global
 
-    val queue0 = new LockedQueue[String](Prefill.prefill())
-    var queues: List[LockedQueue[String]] = _
+    var queues: List[List[LockedQueue[String]]] = _
 
     @Setup
     def setup(): Unit = {
-      this.queues = List.fill(this.txSize) { new LockedQueue[String](Prefill.prefill()) }
+      this.queues = List.fill(this.txSize) {
+        List.fill(this.circleSize) { new LockedQueue[String](Prefill.prefill()) }
+      }
       java.lang.invoke.VarHandle.releaseFence()
     }
 
-    def deq(): Unit = {
-      this.queue0.lock.lock()
-      this.queues.foreach(_.lock.lock())
-      try {
-        this.queue0.unlockedTryDequeue() match {
-          case Some(s) =>
-            this.queues.foreach(_.unlockedEnqueue(s))
-          case None =>
-            ()
-        }
-      } finally {
-        this.queue0.lock.unlock()
-        this.queues.foreach(_.lock.unlock())
+    def transfer(idx: Int): Unit = {
+      def transferOne(circle: List[LockedQueue[String]]): Unit = {
+        val qFrom = circle(idx % circleSize)
+        val qTo = circle((idx + 1) % circleSize)
+        qTo.unlockedEnqueue(qFrom.unlockedTryDequeue().get)
       }
-    }
 
-    def enq(s: String): Unit = {
-      this.queue0.lock.lock()
-      this.queues.foreach(_.lock.lock())
-      try {
-        this.queue0.enqueue(s)
-        this.queues.foreach(_.tryDequeue())
-      } finally {
-        this.queue0.lock.unlock()
-        this.queues.foreach(_.lock.unlock())
+      for (circle <- this.queues) {
+        circle(idx % circleSize).lock.lock()
+        circle((idx + 1) % circleSize).lock.lock()
+      }
+      for (circle <- this.queues) {
+        transferOne(circle)
+      }
+      for (circle <- this.queues) {
+        circle(idx % circleSize).lock.unlock()
+        circle((idx + 1) % circleSize).lock.unlock()
       }
     }
   }
@@ -214,30 +176,27 @@ object QueueTransferBench {
 
     val runtime = cats.effect.unsafe.IORuntime.global
 
-    val queue0 = new StmQueue[String](Prefill.prefill())
-    var queues: List[StmQueue[String]] = _
+    var queues: List[List[StmQueue[String]]] = _
 
     @Setup
     def setup(): Unit = {
-      this.queues = List.fill(this.txSize) { new StmQueue[String](Prefill.prefill()) }
+      this.queues = List.fill(this.txSize) {
+        List.fill(this.circleSize) { new StmQueue[String](Prefill.prefill()) }
+      }
       java.lang.invoke.VarHandle.releaseFence()
     }
 
-    def deq(): Unit = {
+    def transfer(idx: Int): Unit = {
       atomic { implicit txn =>
-        this.queue0.tryDequeue() match {
-          case Some(s) =>
-            this.queues.foreach(_.enqueue(s))
-          case None =>
-            ()
+        def transferOne(circle: List[StmQueue[String]])(implicit txn: InTxn): Unit = {
+          val qFrom = circle(idx % circleSize)
+          val qTo = circle((idx + 1) % circleSize)
+          qTo.enqueue(qFrom.tryDequeue().get)
         }
-      }
-    }
 
-    def enq(s: String): Unit = {
-      atomic { implicit txn =>
-        this.queue0.enqueue(s)
-        this.queues.foreach(_.tryDequeue())
+        for (circle <- this.queues) {
+          transferOne(circle)(txn)
+        }
       }
     }
   }
@@ -249,65 +208,54 @@ object QueueTransferBench {
     val s = STM.runtime[IO].unsafeRunSync()(runtime)
     val qu = StmQueueCLike[STM, IO](s)
 
-    val queue0 = s.commit(StmQueueC.make(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
-    var queues: List[qu.StmQueueC[String]] = _
+    var queues: List[List[qu.StmQueueC[String]]] = _
 
     @Setup
     def setup(): Unit = {
-      this.queues = List.fill(this.txSize) { s.commit(StmQueueC.make(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime) }
+      this.queues = List.fill(this.txSize) {
+        List.fill(this.circleSize) {
+          s.commit(StmQueueC.make(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
+        }
+      }
       java.lang.invoke.VarHandle.releaseFence()
     }
 
-    def deq: IO[Unit] = {
-      qu.stm.commit {
-        this.queue0.tryDequeue.flatMap {
-          case Some(s) =>
-            this.queues.traverse(_.enqueue(s)).void
-          case None =>
-            qu.stm.Txn.monadForTxn.unit
-        }
+    def transfer(idx: Int): s.Txn[Unit] = {
+      def transferOne(circle: List[qu.StmQueueC[String]]): s.Txn[Unit] = {
+        val qFrom = circle(idx % circleSize)
+        val qTo = circle((idx + 1) % circleSize)
+        qFrom.tryDequeue.map(_.get).flatMap { s => qTo.enqueue(s) }
       }
-    }
 
-    def enq(s: String): IO[Unit] = {
-      qu.stm.commit {
-        this.queue0.enqueue(s) >> this.queues.traverse(_.tryDequeue).void
-      }
+      this.queues.map(transferOne(_)).reduce(_ *> _)
     }
   }
 
   @State(Scope.Benchmark)
   class StmZSt extends BaseSt {
 
-    import zio.Task
-    import zio.stm.ZSTM
-
     val runtime = zio.Runtime.default
 
-    val queue0 = runtime.unsafeRunTask(StmQueueZ[String](Prefill.prefill().toList))
-    var queues: List[StmQueueZ[String]] = _
+    var queues: List[List[StmQueueZ[String]]] = _
 
     @Setup
     def setup(): Unit = {
-      this.queues = List.fill(this.txSize) { runtime.unsafeRunTask(StmQueueZ[String](Prefill.prefill().toList)) }
+      this.queues = List.fill(this.txSize) {
+        List.fill(this.circleSize) {
+          runtime.unsafeRunTask(StmQueueZ[String](Prefill.prefill().toList))
+        }
+      }
       java.lang.invoke.VarHandle.releaseFence()
     }
 
-    def deq: Task[Unit] = {
-      ZSTM.atomically {
-        this.queue0.tryDequeue.flatMap {
-          case Some(s) =>
-            ZSTM.foreach_(this.queues)(_.enqueue(s))
-          case None =>
-            ZSTM.unit
-        }
+    def transfer(idx: Int): ZSTM[Any, Throwable, Unit] = {
+      def transferOne(circle: List[StmQueueZ[String]]): ZSTM[Any, Throwable, Unit] = {
+        val qFrom = circle(idx % circleSize)
+        val qTo = circle((idx + 1) % circleSize)
+        qFrom.tryDequeue.map(_.get).flatMap { s => qTo.enqueue(s) }
       }
-    }
 
-    def enq(s: String): Task[Unit] = {
-      ZSTM.atomically {
-        this.queue0.enqueue(s) *> ZSTM.foreach_(this.queues)(_.tryDequeue)
-      }
+      this.queues.map(transferOne(_)).reduce(_ *> _)
     }
   }
 }
