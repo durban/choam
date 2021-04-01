@@ -82,17 +82,22 @@ private[choam] object EMCAS extends KCAS { self =>
     }
   }
 
-  private[kcas] final def replaceDescriptorIfFree[A](ref: MemoryLocation[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext): Boolean = {
-    if ((!ctx.isInUseByOther(ov.cast[Any]))) {
-      ref.unsafeCasVolatile(ov.castToData, nv)
-      // If this CAS fails, someone else might've been
-      // replaced the desc with the final value, or
-      // maybe started another operation; in either case,
-      // there is nothing to do, so we always indicate success
-      true
-    } else {
+  private[kcas] final def replaceDescriptorIfFree[A](
+    ref: MemoryLocation[A],
+    ov: WordDescriptor[A],
+    nv: A,
+    ctx: ThreadContext
+  ): Boolean = {
+    if (ctx.isInUseByOther(ov.cast[Any])) {
       // still in use, need to be replaced later
       false
+    } else {
+      ref.unsafeCasVolatile(ov.castToData, nv)
+      // If this CAS fails, someone else might've
+      // replaced the desc with the final value, or
+      // maybe started another operation; in either case,
+      // there is nothing to do, so we indicate success.
+      true
     }
   }
 
@@ -239,7 +244,7 @@ private[choam] object EMCAS extends KCAS { self =>
         }
         if (desc.casStatus(EMCASStatus.ACTIVE, rr)) {
           // TODO:
-          // ctx.finalized(desc, limit = replace)
+          ctx.finalized(desc, limit = replace)
           (rr eq EMCASStatus.SUCCESSFUL)
         } else {
           // someone else finalized the descriptor, we must read its status:

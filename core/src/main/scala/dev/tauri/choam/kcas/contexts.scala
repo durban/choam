@@ -70,34 +70,47 @@ final class ThreadContext(
 
   private final def runCleanup(giveUpAt: Long = 256): Unit = {
     @tailrec
-    def replace(iter: java.util.Iterator[WordDescriptor[_]], acc: Boolean): Boolean = {
-      if (iter.hasNext) {
-        val done = iter.next() match { case wd: WordDescriptor[a] =>
-          val nv = if (wd.parent.getStatus() eq EMCASStatus.SUCCESSFUL) {
-            wd.nv
-          } else {
-            wd.ov
-          }
-          if (!EMCAS.replaceDescriptorIfFree(wd.address, wd, nv, this)) {
-            // TODO: 'plain' might not be enough
-            if (Math.abs(this.global.getEpoch() - wd.getMaxEpochPlain()) >= giveUpAt) {
+    def replace(idx: Int, words: ArrayList[WordDescriptor[_]], accDone: Boolean): Boolean = {
+      if (idx < words.size) {
+        val done = words.get(idx) match {
+          case null =>
+            // already replaced and cleared
+            true
+          case wd: WordDescriptor[a] =>
+            val nv = if (wd.parent.getStatus() eq EMCASStatus.SUCCESSFUL) {
+              wd.nv
+            } else {
+              wd.ov
+            }
+            if (EMCAS.replaceDescriptorIfFree(wd.address, wd, nv, this)) {
+              // OK, this `WordDescriptor` have been replaced, we can clear it:
+              words.set(idx, null)
               true
             } else {
-              false
+              // TODO: 'plain' might not be enough
+              if (Math.abs(this.global.getEpoch() - wd.getMaxEpochPlain()) >= giveUpAt) {
+                // We couldn't replace this `WordDescriptor` for
+                // a long time now, so we just give up. We'll
+                // release the reference; it might be cleared up
+                // on a subsequent `EMCAS.readValue`, in which case
+                // the JVM GC will be able to collect it.
+                words.set(idx, null)
+                true
+              } else {
+                // We'll try next time
+                false
+              }
             }
-          } else {
-            true
-          }
         }
-        replace(iter, if (done) acc else false)
+        replace(idx + 1, words, if (done) accDone else false)
       } else {
-        acc
+        accDone
       }
     }
     @tailrec
     def go(curr: EMCASDescriptor, prev: EMCASDescriptor): Unit = {
       if (curr ne null) {
-        val done = replace(curr.words.iterator(), true)
+        val done = replace(0, curr.words, true)
         val newPrev = if (done) {
           // delete the descriptor from the list:
           this.finalizedDescriptorsCount -= 1

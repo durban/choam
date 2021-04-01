@@ -35,9 +35,11 @@
     - check if `testingEqReact` makes sense, maybe do structural checking
   - Test with other IO impls (when they cupport ce3)
 - EMCAS with simplified IBR:
-  - Try to enable cleanup after a k-CAS op is finalized.
-    - Measure performance.
-    - Measure memory requirements, make sure finalized list is not too big.
+  - Cleanup after a k-CAS op is finalized:
+    - It is enabled now, since it is necessary, to avoid leaking memory.
+    - TODO:
+      - Measure performance.
+      - Measure memory requirements, make sure finalized list is not too big.
 - Compile-time detection of:
   - impossible k-CAS operations (2 changes to the same `Ref`)
 - Optimization ideas:
