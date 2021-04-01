@@ -47,12 +47,15 @@ final class ThreadContext(
     s"ThreadContext(global = ${this.global}, tid = ${this.tid})"
   }
 
+  // TODO: put this in `ReactionData`; make it a `val`
   private[choam] var maxBackoff: Int =
     16
 
+  // TODO: put this in `ReactionData`; make it a `val`
   private[choam] var randomizeBackoff: Boolean =
     true
 
+  // TODO: do we need this?
   private[choam] var onRetry: ArrayList[React[Any, Unit]] =
     new ArrayList
 

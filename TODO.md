@@ -82,6 +82,14 @@
     - `Reaction[A, B]` (<= `React[A, B]`)
     - other ideas:
       - Operation/Reaction?
+      - `Axn[A]`/`Rxn[A, B]`?
+  - Maybe rename `Ref`?
+    - Collision with `cats.effect.kernel.Ref`
+    - Although it is hard to confuse them
+    - Name ideas:
+      - `RVar` (like `TVar` for STM refs)
+      - `RRef`
+      - ???
   - Handling errors?
     - Generally, we shouldn't raise errors in a reaction
       - If something can fail, return `Option` or `Either`
@@ -124,6 +132,11 @@
       - maybe `pop: React[Unit, Either[A, F[A]]]`?
       - or maybe simply `pop: F[A]`, which is synchronous in the first case?
       - (i.e., this could be an impl. detail of `AsyncStack`)
+      - or maybe:
+        - new `AsyncRxn[A, B]` type, which could be async
+        - `pop: AsyncRxn[Unit, A]`
+        - `def unsafeRun(ar: AsyncRxn[A, B], a: A): Either[F[A], A]`
+        - `def unsafeToF(ar: AsyncRxn[A, B], a: A): F[A] = unsafeRun(...).fold(x => x, F.pure)`
 - "Laws" for the `React` combinators, e.g.:
   - choice prefers the first option
   - `flatMap` <-> `>>>` and `computed`

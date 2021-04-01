@@ -103,12 +103,18 @@ trait Ref[A] extends MemoryLocation[A] {
 object Ref {
 
   def apply[A](initial: A): Action[Ref[A]] =
+    padded(initial)
+
+  def padded[A](initial: A): Action[Ref[A]] =
     React.delay[Any, Ref[A]](_ => Ref.unsafe(initial))
 
   def unpadded[A](initial: A): Action[Ref[A]] =
     React.delay[Any, Ref[A]](_ => Ref.unsafeUnpadded(initial))
 
-  def unsafe[A](initial: A): Ref[A] = {
+  def unsafe[A](initial: A): Ref[A] =
+    unsafePadded(initial)
+
+  def unsafePadded[A](initial: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
     unsafeWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
