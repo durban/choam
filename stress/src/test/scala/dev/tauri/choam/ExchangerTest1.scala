@@ -20,42 +20,33 @@ package dev.tauri.choam
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LL_Result
+import org.openjdk.jcstress.infra.results._
 
-// TODO: this is the same as SwapTest
-@JCStressTest
+// @JCStressTest
 @State
-@Description("updateWith and consistentRead should both execute atomically")
+@Description("ExchangerTest1")
 @Outcomes(Array(
-  new Outcome(id = Array("(foo,bar), (bar,foo)"), expect = ACCEPTABLE, desc = "read before swap"),
-  new Outcome(id = Array("(bar,foo), (bar,foo)"), expect = ACCEPTABLE, desc = "read after swap")
+  new Outcome(id = Array("None, None"), expect = ACCEPTABLE, desc = "No exchange"),
+  new Outcome(id = Array("Some(a), Some(8)"), expect = FORBIDDEN, desc = "Successful exchange")
 ))
-class UpdateTest extends StressTestBase {
+class ExchangerTest1 extends StressTestBase {
 
-  private[this] val r1 =
-    Ref.unsafe("foo")
+  private[this] val ex: Exchanger[Int, String] =
+    Exchanger.unsafe[Int, String]
 
-  private[this] val r2 =
-    Ref.unsafe("bar")
+  private[this] val intToString: React[Int, Option[String]] =
+    ex.exchange.?
 
-  private[this] val sw: React[Unit, Unit] =
-    React.swap(r1, r2)
-
-  private[this] val read: React[Unit, (String, String)] =
-    React.consistentRead(r1, r2)
+  private[this] val stringToInt: React[String, Option[Int]] =
+    ex.dual.exchange.?
 
   @Actor
-  def swapper(): Unit = {
-    sw.unsafeRun(this.impl)
+  def intProvider(r: LL_Result): Unit = {
+    r.r1 = intToString.unsafePerform(8, this.impl)
   }
 
   @Actor
-  def reader(r: LL_Result): Unit = {
-    r.r1 = read.unsafeRun(this.impl)
-  }
-
-  @Arbiter
-  def arbiter(r: LL_Result): Unit = {
-    r.r2 = (r1.get.unsafeRun(this.impl), r2.get.unsafeRun(this.impl))
+  def stringProvider(r: LL_Result): Unit = {
+    r.r2 = stringToInt.unsafePerform("a", this.impl)
   }
 }

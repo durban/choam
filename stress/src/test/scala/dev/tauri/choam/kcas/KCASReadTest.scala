@@ -23,6 +23,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZL_Result
 
+// TODO: this doesn't really test that it is really atomic
 @JCStressTest
 @State
 @Description("k-CAS should be atomic to readers")
