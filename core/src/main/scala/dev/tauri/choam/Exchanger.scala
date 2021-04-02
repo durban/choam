@@ -45,7 +45,7 @@ final class Exchanger[A, B] private (
   private[choam] def tryExchange[C](msg: Msg[A, B, C], ctx: ThreadContext): Either[Exchanger.StatMap, (Msg[Unit, Unit, C])] = {
     // TODO: the key shouldn't be `this` -- an exchanger and its dual should probably use the same key
     val stats = msg.rd.exchangerData.getOrElse(this, Statistics.zero)
-    println(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
+    // println(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
     val idx = if (stats.effectiveSize < 2) 0 else ctx.random.nextInt(stats.effectiveSize.toInt)
     tryIdx(idx, msg, stats, ctx) match {
       case Left(stats) => Left(msg.rd.exchangerData.updated(this, stats))
@@ -54,7 +54,7 @@ final class Exchanger[A, B] private (
   }
 
   private[this] def tryIdx[C](idx: Int, msg: Msg[A, B, C], stats: Statistics, ctx: ThreadContext): Either[Statistics, Msg[Unit, Unit, C]] = {
-    println(s"tryIdx(${idx}) - thread#${Thread.currentThread().getId()}")
+    // println(s"tryIdx(${idx}) - thread#${Thread.currentThread().getId()}")
     // post our message:
     val slot = this.incoming(idx)
     slot.get() match {
@@ -62,29 +62,29 @@ final class Exchanger[A, B] private (
         // empty slot, insert ourselves:
         val self = new Node(msg)
         if (slot.compareAndSet(null, self)) {
-          println(s"posted offer - thread#${Thread.currentThread().getId()}")
+          // println(s"posted offer - thread#${Thread.currentThread().getId()}")
           // we posted our msg, look at the other side:
           val otherSlot = this.outgoing(idx)
           otherSlot.get() match {
             case null =>
-              println(s"not found other, will wait - thread#${Thread.currentThread().getId()}")
+              // println(s"not found other, will wait - thread#${Thread.currentThread().getId()}")
               // we can't fulfill, so we wait for a fulfillment:
               val res = self.spinWait(stats, ctx)
-              println(s"after waiting: ${res} - thread#${Thread.currentThread().getId()}")
+              // println(s"after waiting: ${res} - thread#${Thread.currentThread().getId()}")
               if (!slot.compareAndSet(self, null)) {
                 // couldn't rescind, someone claimed our offer
-                println(s"other claimed our offer - thread#${Thread.currentThread().getId()}")
+                // println(s"other claimed our offer - thread#${Thread.currentThread().getId()}")
                 waitForClaimedOffer[C](self, msg, res, stats, ctx)
               } else {
                 // rescinded successfully, will retry
                 Left(stats.missed)
               }
             case other: Node[_, _, d] =>
-              println(s"found other - thread#${Thread.currentThread().getId()}")
+              // println(s"found other - thread#${Thread.currentThread().getId()}")
               if (slot.compareAndSet(self, null)) {
                 // ok, we've rescinded our offer
                 if (otherSlot.compareAndSet(other, null)) {
-                  println(s"fulfilling other - thread#${Thread.currentThread().getId()}")
+                  // println(s"fulfilling other - thread#${Thread.currentThread().getId()}")
                   // ok, we've claimed the other offer, we'll fulfill it:
                   fulfillClaimedOffer(other, msg, stats)
                 } else {
@@ -119,7 +119,7 @@ final class Exchanger[A, B] private (
     val rres = maybeResult.orElse {
       self.spinWait(stats = stats, ctx = ctx)
     }
-    println(s"rres = ${rres} - thread#${Thread.currentThread().getId()}")
+    // println(s"rres = ${rres} - thread#${Thread.currentThread().getId()}")
     rres match {
       case Some(c) =>
         // it must be a result
@@ -127,7 +127,7 @@ final class Exchanger[A, B] private (
       case None =>
         if (ctx.impl.doSingleCas(self.hole, nullOf[C], Node.RESCINDED[C], ctx)) {
           // OK, we rolled back, and can retry
-          println(s"rolled back - thread#${Thread.currentThread().getId()}")
+          // println(s"rolled back - thread#${Thread.currentThread().getId()}")
           Left(stats.rescinded)
         } else {
           // couldn't roll back, it must be a result
@@ -268,7 +268,10 @@ object Exchanger {
   )
 
   /** Private, because an `Exchanger` is unsafe (may block indefinitely) */
-  private[choam] def apply[A, B]: Action[Exchanger[A, B]] = Action.delay { _ =>
+  private[choam] def apply[A, B]: Action[Exchanger[A, B]] =
+    Action.delay { _ => unsafe[A, B] }
+
+  private[choam] def unsafe[A, B]: Exchanger[A, B] = {
     val i: Array[AtomicReference[Node[A, B, _]]] = {
       // TODO: use padded references
       val arr = Array.ofDim[AtomicReference[Node[A, B, _]]](Exchanger.size)
@@ -322,7 +325,7 @@ object Exchanger {
         }
       }
       val maxSpin = Math.min(Statistics.defaultSpin << stats.spinShift.toInt, Statistics.maxSpin)
-      println(s"spin waiting (max. ${maxSpin}) - thread#${Thread.currentThread().getId()}")
+      // println(s"spin waiting (max. ${maxSpin}) - thread#${Thread.currentThread().getId()}")
       go(ctx.random.nextInt(maxSpin))
     }
   }

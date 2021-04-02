@@ -797,7 +797,7 @@ object React extends ReactSyntax0 {
       // TODO: can race there.
       this.exchanger.tryExchange(msg, ctx) match {
         case Right(contMsg) =>
-          println(s"exchange happened, got ${contMsg} - thread#${Thread.currentThread().getId()}")
+          // println(s"exchange happened, got ${contMsg} - thread#${Thread.currentThread().getId()}")
           // TODO: this way we lose exchanger statistics if we start a new reaction
           maybeJump(n, (), contMsg.cont, contMsg.rd, contMsg.desc, ctx)
         case Left(_) =>

@@ -43,8 +43,8 @@ package object choam {
 
   /*
    * Implementation note: in some cases, composing
-   * `Reaction`s with `>>>` will be faster than
-   * using `flatMap`. An example (with measurements)
+   * `Reaction`s with `>>>` (or `*>`) will be faster
+   * than using `flatMap`. An example (with measurements)
    * is in `ArrowBench`.
    *
    * TODO: More benchmarks needed to determine exactly
@@ -62,7 +62,7 @@ package object choam {
    *
    * This type forms a `Monad`. However, when composing
    * these kinds of effects, also consider using `Reaction`
-   * and `>>>` instead of `flatMap`.
+   * and `>>>` or `*>` instead of `flatMap`.
    *
    * The relation between `Action` and `Reaction` is approximately
    * `Action[A] ≡ Reaction[Any, A]`; or, alternatively
