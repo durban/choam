@@ -65,7 +65,7 @@ lazy val stress = project.in(file("stress"))
   .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
   .settings(libraryDependencies += dependencies.zioStm) // TODO: temporary
   .enablePlugins(JCStressPlugin)
-  .settings(Jcstress / version := "0.7") // TODO: 0.8
+  .settings(Jcstress / version := "0.8")
   .dependsOn(core % "compile->compile;test->test")
 
 lazy val layout = project.in(file("layout"))
@@ -185,7 +185,7 @@ lazy val dependencies = new {
   val catsStm = "io.github.timwspence" %% "cats-stm" % "0.10.1"
   val zioStm = "dev.zio" %% "zio" % "1.0.5"
 
-  val jol = "org.openjdk.jol" % "jol-core" % "0.14" // TODO: 0.15
+  val jol = "org.openjdk.jol" % "jol-core" % "0.15"
 }
 
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;scalastyle;Test/scalastyle")
