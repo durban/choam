@@ -32,9 +32,12 @@ import mcas.MemoryLocation
 // scalastyle:off
   new Outcome(id = Array("true, 21, 42, ACTIVE, null"), expect = ACCEPTABLE, desc = "observed descriptors in correct  order (active)"),
   new Outcome(id = Array("true, 21, 42, SUCCESSFUL, null"), expect = ACCEPTABLE, desc = "observed descriptors in correct  order (finalized)"),
+  new Outcome(id = Array("true, null, null, y, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor was already cleaned up"),
+  new Outcome(id = Array("true, 21, CL, SUCCESSFUL, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor is being cleaned up right now (1)"),
+  new Outcome(id = Array("true, CL, 21, SUCCESSFUL, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor is being cleaned up right now (2)"),
+  new Outcome(id = Array("true, CL, CL, SUCCESSFUL, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor is being cleaned up right now (3)"),
   new Outcome(id = Array("true, 21, 42, FAILED, null"), expect = FORBIDDEN, desc = "observed descriptors in correct  order, but failed status"),
-  new Outcome(id = Array("true, 42, 21, ACTIVE, null", "true, 42, 21, SUCCESSFUL, null"), expect = FORBIDDEN, desc = "observed descriptors in incorrect (unsorted) order"),
-  new Outcome(id = Array("true, -1, -1, y, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor was already cleaned up")
+  new Outcome(id = Array("true, 42, 21, ACTIVE, null", "true, 42, 21, SUCCESSFUL, null"), expect = FORBIDDEN, desc = "observed descriptors in incorrect (unsorted) order")
 // scalastyle:on
 ))
 class EMCASTest {
@@ -73,22 +76,43 @@ class EMCASTest {
         case s: String if s eq "x" =>
           go() // retry
         case d: WordDescriptor[_] =>
-          val it = d.parent.words.iterator()
-          val dFirst = it.next()
-          val dSecond = it.next()
-          r.r4 = d.parent.getStatus()
-          r.r2 = dFirst.address.id3
-          r.r3 = dSecond.address.id3
-          if (it.hasNext) {
-            // mustn't happen
-            r.r5 = s"unexpected 3rd descriptor: ${it.next().toString}"
-          }
+          checkWd(d, r)
+        case s: String if s eq "y" =>
+          // descriptor was already cleaned up
+          r.r4 = "y"
         case s =>
           // mustn't happen
           r.r5 = s"unexpected object: ${s.toString}"
       }
     }
     go()
+  }
+
+  private[this] def checkWd(d: WordDescriptor[_], r: LLLLL_Result): Unit = {
+    val it = d.parent.words.iterator()
+    val dFirst = it.next()
+    val dSecond = it.next()
+    r.r2 = if (dFirst ne null) {
+      if (dFirst.address ne ref2) {
+        // mustn't happen
+        r.r5 = s"unexpected dFirst.address: ${dFirst.address}"
+      }
+      dFirst.address.id3
+    } else {
+      // in the process of clearing
+      "CL"
+    }
+    r.r3 = if (dSecond ne null) {
+      dSecond.address.id3
+    } else {
+      // in the process of clearing
+      "CL"
+    }
+    r.r4 = d.parent.getStatus()
+    if (it.hasNext) {
+      // mustn't happen
+      r.r5 = s"unexpected 3rd descriptor: ${it.next().toString}"
+    }
   }
 
   @Arbiter
