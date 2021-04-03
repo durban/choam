@@ -191,7 +191,7 @@ lazy val dependencies = new {
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;scalastyle;Test/scalastyle")
 addCommandAlias("stressTest", "stress/Jcstress/run")
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
-addCommandAlias("ci", "validate")
+addCommandAlias("ci", ";staticAnalysis;test") // TODO: re-enable stressTest
 
 addCommandAlias("measurePerformance", "bench/jmh:run -t max -foe true -rf json -rff results.json .*")
 addCommandAlias("measureFS", "bench/jmh:run -t max -foe true -rf json -rff results_fs.json .*FalseSharing")

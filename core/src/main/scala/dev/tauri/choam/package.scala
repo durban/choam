@@ -38,6 +38,9 @@ package object choam {
    * The relation between `Reaction` and `Action` is approximately
    * `Reaction[A, B] ≡ (A => Action[B])`; or, alternatively
    * `Action[A] ≡ Reaction[Any, A]`.
+   *
+   * @see [[cats.arrow.ArrowChoice]]
+   * @see [[cats.Monad]]
    */
   final type Reaction[-A, +B] = React[A, B]
 
@@ -57,11 +60,11 @@ package object choam {
   /**
    * The description of an effect, which (when executed),
    * results in a value of type `A`. During execution,
-   * it may update any number of `Ref`s atomically. (It
+   * it may update any number of [[Ref]]s atomically. (It
    * may also create new `Ref`s.)
    *
    * This type forms a `Monad`. However, when composing
-   * these kinds of effects, also consider using `Reaction`
+   * these kinds of effects, also consider using [[Reaction]]
    * and `>>>` or `*>` instead of `flatMap`.
    *
    * The relation between `Action` and `Reaction` is approximately
