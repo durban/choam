@@ -43,13 +43,13 @@ class ComputedTest extends StressTestBase {
     Ref.unsafe("bar")
 
   private[this] val write =
-    r1.upd[String, String] { (ov, nv) => (nv, ov) }
+    r1.getAndSet
 
   private[this] val w1 =
-    r2.upd[Any, String] { (ov, _) => ("x", ov) }
+    r2.getAndUpdate { _ => "x" }
 
   private[this] val w2 =
-    r2.upd[Any, String] { (ov, _) => ("y", ov) }
+    r2.getAndUpdate { _ => "y" }
 
   private[this] val computed: React[Any, String] = {
     React.unsafe.invisibleRead(r1) >>> React.computed[String, String] { a =>

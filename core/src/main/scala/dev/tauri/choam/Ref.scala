@@ -33,7 +33,10 @@ trait Ref[A] extends MemoryLocation[A] {
   // TODO: that this extends MemoryLocation should be an impl. detail
 
   final def get: Action[A] =
-    upd[Any, A] { (a, _) => (a, a) }
+    upd[Any, A] { (oa, _) => (oa, oa) }
+
+  final def getAndSet: Reaction[A, A] =
+    upd[A, A] { (oa, na) => (na, oa) }
 
   final def update(f: A => A): Action[Unit] =
     upd[Any, Unit] { (oa, _) => (f(oa), ()) }
