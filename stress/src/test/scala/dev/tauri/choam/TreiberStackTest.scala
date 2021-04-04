@@ -26,28 +26,23 @@ import org.openjdk.jcstress.infra.results.LL_Result
 @State
 @Description("Treiber stack pop/push should be atomic")
 @Outcomes(Array(
-  new Outcome(id = Array("z, List(x, y)", "z, List(y, x)"), expect = ACCEPTABLE, desc = "Pop is the first"),
-  new Outcome(id = Array("x, List(y, z)", "y, List(x, z)"), expect = ACCEPTABLE, desc = "Pop one of the pushed values")
+  new Outcome(id = Array("z, List(x)"), expect = ACCEPTABLE, desc = "Pop is the first"),
+  new Outcome(id = Array("x, List(z)"), expect = ACCEPTABLE, desc = "Pop the pushed value")
 ))
 class TreiberStackTest extends StressTestBase {
 
   private[this] val stack =
     new TreiberStack[String](List("z"))
 
-  private[this] val push =
+  private[this] val _push =
     stack.push
 
   private[this] val tryPop =
     stack.tryPop
 
   @Actor
-  def push1(): Unit = {
-    push.unsafePerform("x", this.impl)
-  }
-
-  @Actor
-  def push2(): Unit = {
-    push.unsafePerform("y", this.impl)
+  def push(): Unit = {
+    _push.unsafePerform("x", this.impl)
   }
 
   @Actor

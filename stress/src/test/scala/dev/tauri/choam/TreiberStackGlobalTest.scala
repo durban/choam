@@ -47,23 +47,16 @@ class TreiberStackGlobalTest extends StressTestBase {
   private[this] val stack2 =
     stacks._2
 
-  private[this] val push =
+  private[this] val _push =
     stack1.push * stack2.push
 
   private[this] val tryPop =
     stack1.tryPop * stack2.tryPop
 
   @Actor
-  def push1(): Unit = {
+  def push(): Unit = {
     val s = Integer.toString(ThreadLocalRandom.current().nextInt(0, 4096))
-    push.unsafePerform(s, this.impl)
-    ()
-  }
-
-  @Actor
-  def push2(): Unit = {
-    val s = Integer.toString(ThreadLocalRandom.current().nextInt(4096, 8192))
-    push.unsafePerform(s, this.impl)
+    _push.unsafePerform(s, this.impl)
     ()
   }
 
@@ -80,7 +73,7 @@ class TreiberStackGlobalTest extends StressTestBase {
 /**
  * We're fooling jcstress: every run uses the same 2 global stacks
  *
- * However, each k-CAS implementation have their 2 separate stacks.
+ * However, each k-CAS implementation have their own set of stacks.
  */
 object TreiberStackGlobalTest {
 

@@ -32,7 +32,7 @@ import cats.effect.SyncIO
   new Outcome(id = Array("List(), None, true"), expect = ACCEPTABLE, desc = "rem wins"),
   new Outcome(id = Array("List(), Some(z), true"), expect = FORBIDDEN, desc = "rem seems to win, but doesn't")
 ))
-class RemoveQueueRemoveTest extends RemoveQueueStressTestBase {
+class RemoveQueueRemoveTest1 extends RemoveQueueStressTestBase {
 
   private[this] val queue: Queue.WithRemove[String] = {
     this.newQueue("z")

@@ -52,7 +52,7 @@ class RemoveQueueComposedTest2 extends RemoveQueueStressTestBase {
     queue1.tryDeque.map(_.getOrElse("x")) >>> queue2.enqueue
 
   @Actor
-  def transfer1(): Unit = {
+  def transfer(): Unit = {
     tfer.unsafePerform((), this.impl)
   }
 

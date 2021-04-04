@@ -26,10 +26,8 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 @State
 @Description("Treiber stack composed pop/push should be atomic")
 @Outcomes(Array(
-  new Outcome(id = Array("(Some(z1),Some(z2)), List(x, y), List(x, y)",
-                         "(Some(z1),Some(z2)), List(y, x), List(y, x)"), expect = ACCEPTABLE, desc = "Pop is the first"),
-  new Outcome(id = Array("(Some(x),Some(x)), List(y, z1), List(y, z2)",
-                         "(Some(y),Some(y)), List(x, z1), List(x, z2)"), expect = ACCEPTABLE, desc = "Pop one of the pushed values")
+  new Outcome(id = Array("(Some(z1),Some(z2)), List(x), List(x)"), expect = ACCEPTABLE, desc = "Pop is the first"),
+  new Outcome(id = Array("(Some(x),Some(x)), List(z1), List(z2)"), expect = ACCEPTABLE, desc = "Pop the pushed values")
 ))
 class TreiberStackComposedTest extends StressTestBase {
 
@@ -39,21 +37,15 @@ class TreiberStackComposedTest extends StressTestBase {
   private[this] val stack2 =
     new TreiberStack[String](List("z2"))
 
-  private[this] val push =
+  private[this] val _push =
     stack1.push * stack2.push
 
   private[this] val tryPop =
     stack1.tryPop * stack2.tryPop
 
   @Actor
-  def push1(): Unit = {
-    push.unsafePerform("x", this.impl)
-    ()
-  }
-
-  @Actor
-  def push2(): Unit = {
-    push.unsafePerform("y", this.impl)
+  def push(): Unit = {
+    _push.unsafePerform("x", this.impl)
     ()
   }
 
