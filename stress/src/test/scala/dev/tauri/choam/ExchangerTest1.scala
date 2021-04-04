@@ -22,31 +22,37 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results._
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("ExchangerTest1")
 @Outcomes(Array(
   new Outcome(id = Array("None, None"), expect = ACCEPTABLE, desc = "No exchange"),
-  new Outcome(id = Array("Some(a), Some(8)"), expect = FORBIDDEN, desc = "Successful exchange")
+  new Outcome(id = Array("Some(r), Some(l)"), expect = ACCEPTABLE_INTERESTING, desc = "Successful exchange")
 ))
 class ExchangerTest1 extends StressTestBase {
 
-  private[this] val ex: Exchanger[Int, String] =
-    Exchanger.unsafe[Int, String]
+  private[this] val ex: Exchanger[String, String] =
+    Exchanger.unsafe[String, String]
 
-  private[this] val intToString: React[Int, Option[String]] =
+  private[this] val left: React[String, Option[String]] =
     ex.exchange.?
 
-  private[this] val stringToInt: React[String, Option[Int]] =
+  private[this] val lefts: React[String, Option[String]] =
+    left + left + left + left
+
+  private[this] val right: React[String, Option[String]] =
     ex.dual.exchange.?
 
+  private[this] val rights: React[String, Option[String]] =
+    right + right + right + right
+
   @Actor
-  def intProvider(r: LL_Result): Unit = {
-    r.r1 = intToString.unsafePerform(8, this.impl)
+  def left(r: LL_Result): Unit = {
+    r.r1 = lefts.unsafePerform("l", this.impl)
   }
 
   @Actor
-  def stringProvider(r: LL_Result): Unit = {
-    r.r2 = stringToInt.unsafePerform("a", this.impl)
+  def right(r: LL_Result): Unit = {
+    r.r2 = rights.unsafePerform("r", this.impl)
   }
 }

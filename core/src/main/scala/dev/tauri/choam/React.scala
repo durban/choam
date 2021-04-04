@@ -80,7 +80,7 @@ sealed abstract class React[-A, +B] {
             case _: Nil.type =>
               go(partialResult, cont, ReactionData(Nil, rd.token, rd.exchangerData), kcas.start(ctx), alts, retries = retries + 1)
             case (h: SnapJump[x, B]) :: t =>
-              go[x](h.value, h.react, h.ops, h.snap, t, retries = retries + 1)
+              go[x](h.value, h.react, h.rd, h.snap, t, retries = retries + 1)
           }
         case s @ Success(_, _) =>
           resetOnRetry()
@@ -111,7 +111,7 @@ sealed abstract class React[-A, +B] {
     res.value
   }
 
-  protected def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B]
+  protected def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B]
 
   protected final def maybeJump[C, Y >: B](
     n: Int,
@@ -414,22 +414,27 @@ object React extends ReactSyntax0 {
   protected[React] final case class Jump[A, +B](
     value: A,
     react: React[A, B],
-    ops: ReactionData,
+    rd: ReactionData,
     desc: EMCASDescriptor,
     alts: List[SnapJump[_, B]]
   ) extends TentativeResult[B] {
 
     def withAlt[X, Y >: B](alt: SnapJump[X, Y]): Jump[A, Y] = {
-      this.copy(alts = alts :+ alt)
+      this.copy(alts = alt :: alts)
     }
   }
 
   protected[React] final case class SnapJump[A, +B](
     value: A,
     react: React[A, B],
-    ops: ReactionData,
+    rd: ReactionData,
     snap: EMCASDescriptor
-  )
+  ) {
+
+    def map[C](f: B => C): SnapJump[A, C] = {
+      SnapJump(value, react.map(f), rd, snap)
+    }
+  }
 
   private final class Commit[A]()
       extends React[A, A] {
@@ -638,7 +643,7 @@ object React extends ReactSyntax0 {
   }
 
   private abstract class GenCas[A, B, C, D](ref: Ref[A], ov: A, nv: A, k: React[C, D])
-      extends React[B, D] { self =>
+    extends React[B, D] { self =>
 
     /** Must be pure */
     protected def transform(a: A, b: B): C
@@ -917,7 +922,7 @@ sealed abstract class ReactInstances1 extends ReactInstances2 { self: React.type
   }
 }
 
-sealed abstract class ReactInstances2 { self: React.type =>
+sealed abstract class ReactInstances2 extends ReactInstances3 { self: React.type =>
 
   implicit def localInstance[E]: Local[React[E, *], E] = new Local[React[E, *], E] {
 
@@ -929,5 +934,21 @@ sealed abstract class ReactInstances2 { self: React.type =>
 
     final override def local[A](fa: React[E, A])(f: E => E): React[E, A] =
       fa.lmap(f)
+  }
+}
+
+sealed abstract class ReactInstances3 { this: React.type =>
+
+  import cats.MonoidK
+
+  implicit def monoidKInstance: MonoidK[λ[a => React[a, a]]] = {
+    new MonoidK[λ[a => React[a, a]]] {
+
+      final override def combineK[A](x: React[A, A], y: React[A, A]): React[A, A] =
+        x >>> y
+
+      final override def empty[A]: React[A, A] =
+        React.identity[A]
+    }
   }
 }

@@ -71,6 +71,19 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("Inner choice should be used first") {
+    for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("a").run[F]
+      rea1 = (r1.unsafeCas("-", "b") + r1.unsafeCas("a", "b")) + r1.unsafeCas("a", "c")
+      rea2 = r2.unsafeCas("-", "b") + (r2.unsafeCas("a", "b") + r2.unsafeCas("a", "c"))
+      _ <- rea1.run[F]
+      _ <- rea2.run[F]
+      _ <- assertResultF(r1.unsafeInvisibleRead.run, "b")
+      _ <- assertResultF(r2.unsafeInvisibleRead.run, "b")
+    } yield ()
+  }
+
   test("Choice should work if it's after some other operation") {
     for {
       r1a <- Ref("1a").run[F]
