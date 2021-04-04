@@ -66,7 +66,7 @@ class QueueTransferBench extends BenchUtils {
   }
 
   /** MS-Queues implemented with zio STM */
-  @Benchmark
+  // @Benchmark // TODO
   def stmQueueZ(s: StmZSt): Unit = {
     runIdxZ(s.runtime, idx => ZSTM.atomically(s.transfer(idx)), size = size)
   }
