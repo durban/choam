@@ -37,25 +37,25 @@ import cats.syntax.all._
 ))
 class AsyncStack1CancelTest {
 
-  val runtime =
+  private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  val stack: AsyncStack[IO, String] =
+  private[this] val stack: AsyncStack[IO, String] =
     AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
 
-  var result: String =
+  private[this] var result: String =
     null
 
-  val popper: Fiber[IO, Throwable, String] =
+  private[this] val popper: Fiber[IO, Throwable, String] =
     stack.pop.flatTap { s => IO { this.result = s } }.start.unsafeRunSync()(runtime)
 
   @Actor
-  def push(@unused r: LL_Result): Unit = {
-    (stack.push[IO]("a") >> stack.push[IO]("b")).unsafeRunSync()(this.runtime)
+  def push(): Unit = {
+    (stack.push[IO]("a") *> stack.push[IO]("b")).unsafeRunSync()(this.runtime)
   }
 
   @Actor
-  def cancel(@unused r: LL_Result): Unit = {
+  def cancel(): Unit = {
     popper.cancel.unsafeRunSync()(runtime)
   }
 

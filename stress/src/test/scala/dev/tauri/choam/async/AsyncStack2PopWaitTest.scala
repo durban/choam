@@ -34,30 +34,26 @@ import cats.effect.{ IO, SyncIO, Fiber }
 ))
 class AsyncStack2PopWaitTest {
 
-  val runtime =
+  private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  val stack: AsyncStack[IO, String] =
+  private[this] val stack: AsyncStack[IO, String] =
     AsyncStack.impl2[IO, String].run[SyncIO].unsafeRunSync()
 
-  val popper1: Fiber[IO, Throwable, String] =
+  private[this] val popper1: Fiber[IO, Throwable, String] =
     stack.pop.start.unsafeRunSync()(runtime)
 
-  val popper2: Fiber[IO, Throwable, String] =
+  private[this] val popper2: Fiber[IO, Throwable, String] =
     stack.pop.start.unsafeRunSync()(runtime)
 
   @Actor
-  def push(@unused r: LL_Result): Unit = {
+  def push(): Unit = {
     (stack.push[IO]("a") >> stack.push[IO]("b")).unsafeRunSync()(this.runtime)
   }
 
-  @Actor
-  def pop1(r: LL_Result): Unit = {
+  @Arbiter
+  def arbiter(r: LL_Result): Unit = {
     r.r1 = this.popper1.joinWithNever.unsafeRunSync()(this.runtime)
-  }
-
-  @Actor
-  def pop2(r: LL_Result): Unit = {
     r.r2 = this.popper2.joinWithNever.unsafeRunSync()(this.runtime)
   }
 }

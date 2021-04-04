@@ -34,15 +34,13 @@ import cats.effect.{ IO, SyncIO }
 ))
 class AsyncStack1PopTest {
 
-  val runtime =
+  private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  val stack: AsyncStack[IO, String] =
-    AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
-
-  @Actor
-  def push(@unused r: LL_Result): Unit = {
-    (stack.push[IO]("a") >> stack.push[IO]("b")).unsafeRunSync()(this.runtime)
+  private[this] val stack: AsyncStack[IO, String] = {
+    val s = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
+    (s.push[IO]("a") *> s.push[IO]("b")).unsafeRunSync()(this.runtime)
+    s
   }
 
   @Actor
