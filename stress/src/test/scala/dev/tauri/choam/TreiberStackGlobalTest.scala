@@ -77,13 +77,16 @@ class TreiberStackGlobalTest extends StressTestBase {
  */
 object TreiberStackGlobalTest {
 
+  private[this] final val N =
+    1024 * 128
+
   private[this] val stacks =
     new TrieMap[KCAS, (TreiberStack[String], TreiberStack[String])]
 
   private def getStacks(impl: KCAS): (TreiberStack[String], TreiberStack[String]) = {
     def mkNew() = {
-      val stack1 = new TreiberStack[String](List("z"))
-      val stack2 = new TreiberStack[String](List("z"))
+      val stack1 = new TreiberStack[String](List.fill(N)("z"))
+      val stack2 = new TreiberStack[String](List.fill(N)("z"))
       (stack1, stack2)
     }
     stacks.getOrElseUpdate(impl, mkNew())
