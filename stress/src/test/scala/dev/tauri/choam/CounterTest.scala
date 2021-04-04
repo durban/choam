@@ -20,14 +20,14 @@ package dev.tauri.choam
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.JJJJ_Result
+import org.openjdk.jcstress.infra.results.JJJ_Result
 
 @JCStressTest
 @State
 @Description("Counter incr/decr/count should be atomic")
 @Outcomes(Array(
-  new Outcome(id = Array("0, 1, 0, 0", "0, 1, 1, 0"), expect = ACCEPTABLE, desc = "incr is first"),
-  new Outcome(id = Array("-1, 0, 0, 0", "-1, 0, -1, 0"), expect = ACCEPTABLE, desc = "decr is first")
+  new Outcome(id = Array("0, 1, 0"), expect = ACCEPTABLE, desc = "incr is first"),
+  new Outcome(id = Array("-1, 0, 0"), expect = ACCEPTABLE, desc = "decr is first")
 ))
 class CounterTest extends StressTestBase {
 
@@ -44,22 +44,17 @@ class CounterTest extends StressTestBase {
     ctr.count
 
   @Actor
-  def increment(r: JJJJ_Result): Unit = {
+  def increment(r: JJJ_Result): Unit = {
     r.r1 = incr.unsafePerform((), this.impl)
   }
 
   @Actor
-  def decrement(r: JJJJ_Result): Unit = {
+  def decrement(r: JJJ_Result): Unit = {
     r.r2 = decr.unsafePerform((), this.impl)
   }
 
-  @Actor
-  def value(r: JJJJ_Result): Unit = {
-    r.r3 = count.unsafePerform((), this.impl)
-  }
-
   @Arbiter
-  def arbiter(r: JJJJ_Result): Unit = {
-    r.r4 = count.unsafePerform((), this.impl)
+  def arbiter(r: JJJ_Result): Unit = {
+    r.r3 = count.unsafePerform((), this.impl)
   }
 }

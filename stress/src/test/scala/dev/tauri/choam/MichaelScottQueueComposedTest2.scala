@@ -28,9 +28,8 @@ import cats.effect.SyncIO
 @State
 @Description("MichaelScottQueue enq/deq should be composable (concurrent enqueue)")
 @Outcomes(Array(
-  new Outcome(id = Array("List(c, d), List(y, a, b)"), expect = ACCEPTABLE, desc = "Additional enq is first"),
-  new Outcome(id = Array("List(c, d), List(a, y, b)"), expect = ACCEPTABLE, desc = "Additional enq is between"),
-  new Outcome(id = Array("List(c, d), List(a, b, y)"), expect = ACCEPTABLE, desc = "Additional enq is last")
+  new Outcome(id = Array("List(b, c, d), List(y, a)"), expect = ACCEPTABLE, desc = "Additional enq is first"),
+  new Outcome(id = Array("List(b, c, d), List(a, y)"), expect = ACCEPTABLE, desc = "Additional enq is last")
 ))
 class MichaelScottQueueComposedTest2 extends MsQueueStressTestBase {
 
@@ -44,12 +43,7 @@ class MichaelScottQueueComposedTest2 extends MsQueueStressTestBase {
     queue1.tryDeque.map(_.getOrElse("x")) >>> queue2.enqueue
 
   @Actor
-  def transfer1(): Unit = {
-    tfer.unsafePerform((), this.impl)
-  }
-
-  @Actor
-  def transfer2(): Unit = {
+  def transfer(): Unit = {
     tfer.unsafePerform((), this.impl)
   }
 

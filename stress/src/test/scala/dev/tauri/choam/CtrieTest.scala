@@ -22,7 +22,7 @@ import cats.Eq
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LL_Result
+import org.openjdk.jcstress.infra.results.LZ_Result
 
 import kcas.KCAS
 
@@ -30,10 +30,8 @@ import kcas.KCAS
 @State
 @Description("Ctrie insert/lookup should be atomic")
 @Outcomes(Array(
-  new Outcome(id = Array("Some(0), Some(x)", "Some(0), Some(y)"), expect = ACCEPTABLE, desc = "get first"),
-  new Outcome(id = Array("Some(x), Some(y)"), expect = ACCEPTABLE, desc = "ins1, get, ins2"),
-  new Outcome(id = Array("Some(y), Some(x)"), expect = ACCEPTABLE, desc = "ins2, get, ins1"),
-  new Outcome(id = Array("Some(x), Some(x)", "Some(y), Some(y)"), expect = ACCEPTABLE, desc = "get last")
+  new Outcome(id = Array("Some(x), true"), expect = ACCEPTABLE, desc = "ins2 wins"),
+  new Outcome(id = Array("Some(y), true"), expect = ACCEPTABLE, desc = "ins1 wins")
 ))
 class CtrieTest extends StressTestBase {
 
@@ -53,24 +51,21 @@ class CtrieTest extends StressTestBase {
 
   @Actor
   def ins2(): Unit = {
-    insert.unsafePerform(14 -> "y", this.impl)
-  }
-
-  @Actor
-  def get(r: LL_Result): Unit = {
-    r.r1 = lookup.unsafePerform(0, this.impl)
+    insert.unsafePerform(0 -> "y", this.impl)
   }
 
   @Arbiter
-  def arbiter(r: LL_Result): Unit = {
-    r.r2 = lookup.unsafePerform(0, this.impl)
-    assert(lookup.unsafePerform(1, this.impl).get eq "1")
-    assert(lookup.unsafePerform(2, this.impl).get eq "2")
-    assert(lookup.unsafePerform(3, this.impl).get eq "3")
-    assert(lookup.unsafePerform(4, this.impl).get eq "4")
-    assert(lookup.unsafePerform(7, this.impl).get eq "7")
-    assert(lookup.unsafePerform(8, this.impl).get eq "8")
-    assert(lookup.unsafePerform(9, this.impl).get eq "9")
+  def arbiter(r: LZ_Result): Unit = {
+    r.r1 = lookup.unsafePerform(0, this.impl)
+    r.r2 = (
+      (lookup.unsafePerform(1, this.impl).get eq "1") &&
+      (lookup.unsafePerform(2, this.impl).get eq "2") &&
+      (lookup.unsafePerform(3, this.impl).get eq "3") &&
+      (lookup.unsafePerform(4, this.impl).get eq "4") &&
+      (lookup.unsafePerform(7, this.impl).get eq "7") &&
+      (lookup.unsafePerform(8, this.impl).get eq "8") &&
+      (lookup.unsafePerform(9, this.impl).get eq "9")
+    )
   }
 }
 
