@@ -25,31 +25,30 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 
 @JCStressTest
 @State
-@Description("CAS1 should be atomic")
+@Description("CAS1 should be atomic to readers")
 @Outcomes(Array(
-  new Outcome(id = Array("true, false, x"), expect = ACCEPTABLE, desc = "writer1 succeeded"),
-  new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE, desc = "writer2 succeeded")
+  new Outcome(id = Array("true, true, ov"), expect = ACCEPTABLE, desc = "reader was faster"),
+  new Outcome(id = Array("true, true, x"), expect = ACCEPTABLE_INTERESTING, desc = "writer was faster")
 ))
-class CAS1Test extends StressTestBase {
+class CAS1ReadTest extends StressTestBase {
 
   private[this] val ref: Ref[String] =
     Ref.unsafe("ov")
 
   @Actor
-  def writer1(r: ZZL_Result): Unit = {
+  def writer(r: ZZL_Result): Unit = {
     val ctx = impl.currentContext()
     r.r1 = impl.tryPerform(impl.addCas(impl.start(ctx), ref, "ov", "x", ctx), ctx)
   }
 
   @Actor
-  def writer2(r: ZZL_Result): Unit = {
-    val ctx = impl.currentContext()
-    r.r2 = impl.tryPerform(impl.addCas(impl.start(ctx), ref, "ov", "y", ctx), ctx)
+  def reader(r: ZZL_Result): Unit = {
+    r.r3 = impl.read(ref, impl.currentContext())
   }
 
   @Arbiter
   def arbiter(r: ZZL_Result): Unit = {
-    val ctx = impl.currentContext()
-    r.r3 = impl.read(ref, ctx)
+    val fv = impl.read(ref, impl.currentContext())
+    r.r2 = (fv eq "x")
   }
 }
