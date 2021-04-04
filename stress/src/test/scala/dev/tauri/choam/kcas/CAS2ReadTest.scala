@@ -55,4 +55,14 @@ class CAS2ReadTest extends StressTestBase {
     r.r1 = impl.read(ref1, ctx)
     r.r2 = impl.read(ref2, ctx)
   }
+
+  @Arbiter
+  def arbiter(r: LLZ_Result): Unit = {
+    val ctx = impl.currentContext()
+    val ok1 = (EMCAS.read(this.ref1, ctx) eq "a")
+    val ok2 = (EMCAS.read(this.ref2, ctx) eq "b")
+    if (!(ok1 && ok2)) {
+      r.r3 = false
+    }
+  }
 }

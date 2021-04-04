@@ -29,7 +29,7 @@ import org.openjdk.jcstress.infra.results._
 @State
 @Description("IBR reservation should forbid freeing an object")
 @Outcomes(Array(
-  new Outcome(id = Array("true, null"), expect = ACCEPTABLE, desc = "ok, still holds it"),
+  new Outcome(id = Array("true, null"), expect = ACCEPTABLE_INTERESTING, desc = "ok, still holds it"),
   new Outcome(id = Array("true, begin"), expect = ACCEPTABLE, desc = "check was too quick")
 ))
 class IBRReservationTest {
