@@ -37,36 +37,36 @@ import cats.syntax.all._
 ))
 class PromiseCancelTest {
 
-  val runtime =
+  private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  val p: Promise[IO, String] =
+  private[this] val p: Promise[IO, String] =
     Promise[IO, String].run[SyncIO].unsafeRunSync()
 
-  var result1: String =
+  private[this] var result1: String =
     null
 
-  var result2: String =
+  private[this] var result2: String =
     null
 
-  val getter1: Fiber[IO, Throwable, String] =
+  private[this] val getter1: Fiber[IO, Throwable, String] =
     (p.get.flatTap { s => IO { result1 = s } }).start.unsafeRunSync()(runtime)
 
-  val getter2: Fiber[IO, Throwable, String] =
+  private[this] val getter2: Fiber[IO, Throwable, String] =
     (p.get.flatTap { s => IO { result2 = s } }).start.unsafeRunSync()(runtime)
 
   @Actor
   def complete(r: ZLL_Result): Unit = {
-    r.r1 = this.p.complete[IO]("s").unsafeRunSync()(this.runtime)
+    r.r1 = this.p.complete[SyncIO]("s").unsafeRunSync()
   }
 
   @Actor
-  def cancel1(@unused r: ZLL_Result): Unit = {
+  def cancel1(): Unit = {
     getter1.cancel.unsafeRunSync()(this.runtime)
   }
 
   @Actor
-  def cancel2(@unused r: ZLL_Result): Unit = {
+  def cancel2(): Unit = {
     getter2.cancel.unsafeRunSync()(this.runtime)
   }
 

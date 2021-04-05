@@ -36,36 +36,37 @@ import cats.effect.{ IO, SyncIO }
 ))
 class PromiseTest {
 
-  val runtime =
+  private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  val p: Promise[IO, String] =
+  private[this] val p: Promise[IO, String] =
     Promise[IO, String].run[SyncIO].unsafeRunSync()
 
-  val winner =
+  private[this] val winner =
     new AtomicInteger(0)
+
+  private[this] var result1: String =
+    null
+
+  private[this] val getter1 =
+    (this.p.get.flatMap { r => IO { result1 = r } } *> IO(winner.compareAndSet(0, 1))).start.unsafeRunSync()(this.runtime)
+
+  private[this] var result2: String =
+    null
+
+  private[this] val getter2 =
+    (this.p.get.flatMap { r => IO { result2 = r } } *> IO(winner.compareAndSet(0, 2))).start.unsafeRunSync()(this.runtime)
+
 
   @Actor
   def complete(r: LLLL_Result): Unit = {
-    r.r1 = this.p.complete[IO]("s").unsafeRunSync()(this.runtime)
-  }
-
-  @Actor
-  def get1(r: LLLL_Result): Unit = {
-    r.r2 = this.p.get.unsafeRunSync()(this.runtime)
-    winner.compareAndSet(0, 1)
-    ()
-  }
-
-  @Actor
-  def get2(r: LLLL_Result): Unit = {
-    r.r3 = this.p.get.unsafeRunSync()(this.runtime)
-    winner.compareAndSet(0, 2)
-    ()
+    r.r1 = this.p.complete[SyncIO]("s").unsafeRunSync()
   }
 
   @Arbiter
   def arbiter(r: LLLL_Result): Unit = {
+    r.r2 = getter1.join.unsafeRunSync()(runtime)
+    r.r3 = getter2.join.unsafeRunSync()(runtime)
     r.r4 = winner.get()
   }
 }

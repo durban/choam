@@ -29,23 +29,21 @@ import cats.effect.{ IO, SyncIO }
 @State
 @Description("Promise: completing 2 promises should occur atomically")
 @Outcomes(Array(
-  new Outcome(id = Array("true, (None,None), (None,None)"), expect = ACCEPTABLE, desc = ""),
-  new Outcome(id = Array("true, (None,None), (Some(x),Some(y))"), expect = ACCEPTABLE, desc = ""),
-  new Outcome(id = Array("true, (Some(x),Some(y)), (None,None)"), expect = ACCEPTABLE, desc = ""),
-  new Outcome(id = Array("true, (Some(x),Some(y)), (Some(x),Some(y))"), expect = ACCEPTABLE, desc = "")
+  new Outcome(id = Array("true, (None,None), (Some(x),Some(y))"), expect = ACCEPTABLE, desc = "get wins"),
+  new Outcome(id = Array("true, (Some(x),Some(y)), (Some(x),Some(y))"), expect = ACCEPTABLE, desc = "complete wins")
 ))
 class PromiseComplete2Test {
 
-  val p1: Promise[IO, String] =
+  private[this] val p1: Promise[IO, String] =
     Promise[IO, String].run[SyncIO].unsafeRunSync()
 
-  val p2: Promise[IO, String] =
+  private[this] val p2: Promise[IO, String] =
     Promise[IO, String].run[SyncIO].unsafeRunSync()
 
-  val completeBoth: React[(String, String), (Boolean, Boolean)] =
+  private[this] val completeBoth: React[(String, String), (Boolean, Boolean)] =
     p1.complete × p2.complete
 
-  val tryGetBoth: React[Unit, (Option[String], Option[String])] =
+  private[this] val tryGetBoth: React[Unit, (Option[String], Option[String])] =
     p1.tryGet * p2.tryGet
 
   @Actor
@@ -55,12 +53,12 @@ class PromiseComplete2Test {
   }
 
   @Actor
-  def get1(r: ZLL_Result): Unit = {
+  def get(r: ZLL_Result): Unit = {
     r.r2 = tryGetBoth.run[SyncIO].unsafeRunSync()
   }
 
-  @Actor
-  def get2(r: ZLL_Result): Unit = {
+  @Arbiter
+  def arbiter(r: ZLL_Result): Unit = {
     r.r3 = tryGetBoth.run[SyncIO].unsafeRunSync()
   }
 }

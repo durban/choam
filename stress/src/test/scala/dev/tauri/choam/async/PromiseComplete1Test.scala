@@ -23,7 +23,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZL_Result
 
-import cats.effect.{ IO, SyncIO }
+import cats.effect.{ IO, SyncIO, Fiber }
 
 @JCStressTest
 @State
@@ -32,13 +32,16 @@ import cats.effect.{ IO, SyncIO }
   new Outcome(id = Array("true, false, 1"), expect = ACCEPTABLE, desc = "complete1 was faster"),
   new Outcome(id = Array("false, true, 2"), expect = ACCEPTABLE, desc = "complete2 was faster")
 ))
-class PromiseCompleteTest {
+class PromiseComplete1Test {
 
-  val runtime =
+  private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  val p: Promise[IO, String] =
+  private[this] val p: Promise[IO, String] =
     Promise[IO, String].run[SyncIO].unsafeRunSync()
+
+  private[this] val getter: Fiber[IO, Throwable, String] =
+    this.p.get.start.unsafeRunSync()(this.runtime)
 
   @Actor
   def complete1(r: ZZL_Result): Unit = {
@@ -50,8 +53,8 @@ class PromiseCompleteTest {
     r.r2 = this.p.complete[IO]("2").unsafeRunSync()(this.runtime)
   }
 
-  @Actor
-  def get(r: ZZL_Result): Unit = {
-    r.r3 = this.p.get.unsafeRunSync()(this.runtime)
+  @Arbiter
+  def arbiter(r: ZZL_Result): Unit = {
+    r.r3 = getter.joinWithNever.unsafeRunSync()(runtime)
   }
 }
