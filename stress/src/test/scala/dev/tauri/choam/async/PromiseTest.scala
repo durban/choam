@@ -65,8 +65,10 @@ class PromiseTest {
 
   @Arbiter
   def arbiter(r: LLLL_Result): Unit = {
-    r.r2 = getter1.join.unsafeRunSync()(runtime)
-    r.r3 = getter2.join.unsafeRunSync()(runtime)
+    getter1.join.unsafeRunSync()(runtime)
+    r.r2 = result1
+    getter2.join.unsafeRunSync()(runtime)
+    r.r3 = result2
     r.r4 = winner.get()
   }
 }
