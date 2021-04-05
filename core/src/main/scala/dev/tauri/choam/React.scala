@@ -27,25 +27,42 @@ import cats.mtl.Local
 import kcas._
 
 /**
- * A *partial* implementation of reagents, described in [Reagents: Expressing and
- * Composing Fine-grained Concurrency](http://www.ccis.northeastern.edu/home/turon/reagents.pdf)
- * by Aaron Turon; originally implemented at [aturon/ChemistrySet](
- * https://github.com/aturon/ChemistrySet).
+ * An effectful function from `A` to `B`; when executed,
+ * it may update any number of `Ref`s atomically. (It
+ * may also create new `Ref`s.)
  *
- * This implementation is significantly simplified by the fact
- * that offers and permanent failure are not implemented. As a
- * consequence, these reactants are always non-blocking (provided
- * that the underlying k-CAS implementation is non-blocking).
- * However, this also means, that they are less featureful.
+ * This type forms an `Arrow` (actually, an `ArrowChoice`).
+ * It also forms a `Monad` in `B`; however, consider using
+ * the arrow combinators (when possible) instead of `flatMap`
+ * (since a static structure of `Reaction`s may be more performant).
  *
- * @see Other implementations:
+ * The relation between `Reaction` and `Action` is approximately
+ * `Reaction[A, B] ≡ (A => Action[B])`; or, alternatively
+ * `Action[A] ≡ Reaction[Any, A]`.
  *
- * - https://github.com/aturon/Caper (Racket)
- * - https://github.com/ocamllabs/reagents (OCaml)
+ * @see [[cats.arrow.ArrowChoice]]
+ * @see [[cats.Monad]]
  */
 sealed abstract class React[-A, +B] {
 
   import React._
+
+  /*
+   * A partial implementation of reagents, described in [Reagents: Expressing and
+   * Composing Fine-grained Concurrency](http://www.ccis.northeastern.edu/home/turon/reagents.pdf)
+   * by Aaron Turon; originally implemented at [aturon/ChemistrySet](
+   * https://github.com/aturon/ChemistrySet).
+   *
+   * This implementation is significantly simplified by the fact
+   * that offers and permanent failure are not implemented. As a
+   * consequence, these reactants are always non-blocking (provided
+   * that the underlying k-CAS implementation is non-blocking).
+   * However, this also means, that they are less featureful.
+   *
+   * Other implementations:
+   * - https://github.com/aturon/Caper (Racket)
+   * - https://github.com/ocamllabs/reagents (OCaml)
+   */
 
   final def unsafePerform(a: A, kcas: KCAS, maxBackoff: Int = 16, randomizeBackoff: Boolean = true): B = {
 
@@ -859,10 +876,10 @@ object React extends ReactSyntax0 {
   }
 }
 
-sealed abstract class ReactSyntax0 extends ReactInstances0 { this: React.type =>
+private[choam] sealed abstract class ReactSyntax0 extends ReactInstances0 { this: React.type =>
 }
 
-sealed abstract class ReactInstances0 extends ReactInstances1 { self: React.type =>
+private[choam] sealed abstract class ReactInstances0 extends ReactInstances1 { self: React.type =>
 
   implicit def arrowChoiceInstance: ArrowChoice[React] =
     _arrowChoiceInstance
@@ -903,7 +920,7 @@ sealed abstract class ReactInstances0 extends ReactInstances1 { self: React.type
   }
 }
 
-sealed abstract class ReactInstances1 extends ReactInstances2 { self: React.type =>
+private[choam] sealed abstract class ReactInstances1 extends ReactInstances2 { self: React.type =>
 
   implicit def monadInstance[X]: Monad[React[X, *]] = new Monad[React[X, *]] {
 
@@ -922,7 +939,7 @@ sealed abstract class ReactInstances1 extends ReactInstances2 { self: React.type
   }
 }
 
-sealed abstract class ReactInstances2 extends ReactInstances3 { self: React.type =>
+private[choam] sealed abstract class ReactInstances2 extends ReactInstances3 { self: React.type =>
 
   implicit def localInstance[E]: Local[React[E, *], E] = new Local[React[E, *], E] {
 
@@ -937,7 +954,7 @@ sealed abstract class ReactInstances2 extends ReactInstances3 { self: React.type
   }
 }
 
-sealed abstract class ReactInstances3 { this: React.type =>
+private[choam] sealed abstract class ReactInstances3 { this: React.type =>
 
   import cats.MonoidK
 

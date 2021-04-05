@@ -25,24 +25,9 @@ package object choam {
 
   private[choam] type nowarn = scala.annotation.nowarn
 
-  /**
-   * An effectful function from `A` to `B`. When executed,
-   * it may update any number of `Ref`s atomically. (It
-   * may also create new `Ref`s.)
-   *
-   * This type forms an `Arrow` (actually, an `ArrowChoice`).
-   * It also forms a `Monad` in `B`; however, consider using
-   * the arrow combinators (when possible) instead of `flatMap`
-   * (since a static structure of `Reaction`s may be more performant).
-   *
-   * The relation between `Reaction` and `Action` is approximately
-   * `Reaction[A, B] ≡ (A => Action[B])`; or, alternatively
-   * `Action[A] ≡ Reaction[Any, A]`.
-   *
-   * @see [[cats.arrow.ArrowChoice]]
-   * @see [[cats.Monad]]
-   */
   final type Reaction[-A, +B] = React[A, B]
+
+  final val Reaction: React.type = React
 
   /*
    * Implementation note: in some cases, composing
@@ -54,8 +39,6 @@ package object choam {
    * TODO: what it is that makes them faster. Also,
    * TODO: maybe we could optimize `flatMap`.
    */
-
-  final val Reaction: React.type = React
 
   /**
    * The description of an effect, which (when executed),

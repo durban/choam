@@ -182,7 +182,7 @@ private[choam] object EMCAS extends KCAS { self =>
       }
     }
 
-    /**
+    /*
      * Extends the interval of `newWd` to include the interval of `oldWd`.
      *
      * Another thread could simultaneously try to do the same, so we have to take

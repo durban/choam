@@ -175,13 +175,13 @@ object Exchanger {
     Map[Exchanger[_, _], Exchanger.Statistics]
 
   private[choam] final case class Statistics(
-    /** Always <= size */
+    /* Always <= size */
     effectiveSize: Byte,
-    /** Counts misses (++) and contention (--) */
+    /* Counts misses (++) and contention (--) */
     misses: Byte,
-    /** How much to wait for an exchange */
+    /* How much to wait for an exchange */
     spinShift: Byte,
-    /** Counts exchanges (++) and rescinds (--) */
+    /* Counts exchanges (++) and rescinds (--) */
     exchanges: Byte
   ) {
 
