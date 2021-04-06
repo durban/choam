@@ -138,7 +138,6 @@ lazy val commonSettings = Seq[Setting[_]](
   ),
   autoAPIMappings := true,
   // apiURL := ... // TODO
-  testFrameworks += new TestFramework("munit.Framework"),
   organization := "dev.tauri",
   publishMavenStyle := true,
   publishArtifact := false, // TODO,
