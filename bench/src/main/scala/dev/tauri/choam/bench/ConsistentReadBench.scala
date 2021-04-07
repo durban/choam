@@ -58,9 +58,9 @@ object ConsistentReadBench {
       Ref.unsafe(s"r1: ${ThreadLocalRandom.current().nextLong()}")
     val r2 =
       Ref.unsafe(s"r2: ${ThreadLocalRandom.current().nextLong()}")
-    val crWithInvisibleRead: Action[(String, String)] =
+    val crWithInvisibleRead: Axn[(String, String)] =
       React.consistentReadOld(r1, r2)
-    val crWithUpdWith: Action[(String, String)] =
+    val crWithUpdWith: Axn[(String, String)] =
       React.consistentRead(r1, r2)
   }
 }

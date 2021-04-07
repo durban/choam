@@ -23,7 +23,7 @@ private[choam] final class AsyncStack2[F[_], A] private (
   waiters: Queue.WithRemove[Promise[F, A]]
 ) extends AsyncStack[F, A] {
 
-  override val push: Reaction[A, Unit] = {
+  override val push: Rxn[A, Unit] = {
     this.waiters.tryDeque.flatMapU {
       case None => this.elements.push
       case Some(p) => p.complete.discard
@@ -33,7 +33,7 @@ private[choam] final class AsyncStack2[F[_], A] private (
   override def pop(implicit F: Reactive.Async[F]): F[A] = {
     F.monadCancel.flatMap(F.promise[A].run[F]) { p =>
       val acq = this.elements.tryPop.flatMapU {
-        case Some(a) => Action.ret(Right(a))
+        case Some(a) => Axn.ret(Right(a))
         case None => this.waiters.enqueue.lmap[Any] { _ => p }.map { _ => Left(p) }
       }.run[F]
       val rel: (Either[Promise[F, A], A] => F[Unit]) = {
@@ -50,7 +50,7 @@ private[choam] final class AsyncStack2[F[_], A] private (
 
 private[choam] object AsyncStack2 {
 
-  def apply[F[_], A]: Action[AsyncStack[F, A]] = {
+  def apply[F[_], A]: Axn[AsyncStack[F, A]] = {
     TreiberStack[A].flatMap { es =>
       Queue.withRemove[Promise[F, A]].map { ws =>
         new AsyncStack2[F, A](es, ws)

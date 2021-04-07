@@ -18,8 +18,8 @@
 package dev.tauri.choam
 
 abstract class Queue[A] {
-  def tryDeque: React[Unit, Option[A]]
-  def enqueue: React[A, Unit]
+  def tryDeque: Axn[Option[A]]
+  def enqueue: Rxn[A, Unit]
   private[choam] def unsafeToList[F[_]](implicit F: Reactive[F]): F[List[A]]
 }
 
@@ -29,15 +29,15 @@ object Queue {
     def remove: React[A, Boolean]
   }
 
-  def apply[A]: Action[Queue[A]] =
+  def apply[A]: Axn[Queue[A]] =
     MichaelScottQueue[A]
 
-  def fromList[A](as: List[A]): Action[Queue[A]] =
+  def fromList[A](as: List[A]): Axn[Queue[A]] =
     MichaelScottQueue.fromList[A](as)
 
-  def withRemove[A]: Action[Queue.WithRemove[A]] =
+  def withRemove[A]: Axn[Queue.WithRemove[A]] =
     RemoveQueue[A]
 
-  def withRemoveFromList[A](as: List[A]): Action[Queue.WithRemove[A]] =
+  def withRemoveFromList[A](as: List[A]): Axn[Queue.WithRemove[A]] =
     RemoveQueue.fromList(as)
 }

@@ -32,14 +32,14 @@ class FlatMapBench {
   @Benchmark
   def withFlatMap(s: FlatMapBench.St, bh: Blackhole, k: KCASImplState): Unit = {
     val idx = Math.abs(k.nextInt()) % ArrowBench.size
-    val r: Action[String] = s.rsWithFlatMap(idx)
+    val r: Axn[String] = s.rsWithFlatMap(idx)
     bh.consume(r.unsafePerform((), k.kcasImpl))
   }
 
   @Benchmark
   def withStarGreater(s: FlatMapBench.St, bh: Blackhole, k: KCASImplState): Unit = {
     val idx = Math.abs(k.nextInt()) % ArrowBench.size
-    val r: Action[String] = s.rsWithStarGreater(idx)
+    val r: Axn[String] = s.rsWithStarGreater(idx)
     bh.consume(r.unsafePerform((), k.kcasImpl))
   }
 }
@@ -59,10 +59,10 @@ object FlatMapBench {
       Ref.unsafe[String](ThreadLocalRandom.current().nextInt().toString)
     }
 
-    private[this] val addXs: List[Action[Unit]] =
+    private[this] val addXs: List[Axn[Unit]] =
       refs.map(_.update(_.substring(1) + "x"))
 
-    private[this] val addYs: List[Action[String]] =
+    private[this] val addYs: List[Axn[String]] =
       refs.map(_.updateAndGet(_.substring(1) + "y"))
 
     val rsWithFlatMap = {
@@ -79,8 +79,8 @@ object FlatMapBench {
       }
     }
 
-    private[this] def buildReaction(n: Int, first: Action[Unit], last: Action[String], isFlatMap: Boolean): Action[String] = {
-      def go(n: Int, acc: Action[Unit]): Action[Unit] = {
+    private[this] def buildReaction(n: Int, first: Axn[Unit], last: Axn[String], isFlatMap: Boolean): Axn[String] = {
+      def go(n: Int, acc: Axn[Unit]): Axn[Unit] = {
         if (n < 1) {
           acc
         } else {

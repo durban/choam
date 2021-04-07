@@ -25,9 +25,11 @@ package object choam {
 
   private[choam] type nowarn = scala.annotation.nowarn
 
-  final type Reaction[-A, +B] = React[A, B]
+  final type Rxn[-A, +B] = React[A, B] // short for 'reaction'
 
-  final val Reaction: React.type = React
+  final val Rxn: React.type = React
+
+  final type =#>[-A, +B] = Rxn[A, B]
 
   /*
    * Implementation note: in some cases, composing
@@ -54,10 +56,9 @@ package object choam {
    * `Action[A] ≡ Reaction[Any, A]`; or, alternatively
    * `Reaction[A, B] ≡ (A => Action[B])`.
    */
-  final type Action[+A] = React[Any, A]
+  final type Axn[+A] = React[Any, A] // short for 'astaxanthin'
 
-  // FIXME: separate object with utilities?
-  final val Action: React.type = React
+  final val Axn: React.type = React
 
   // Note: using these always leaves a check for
   // the package object in the bytecode (getstatic

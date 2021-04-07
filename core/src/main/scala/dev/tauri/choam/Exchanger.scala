@@ -267,8 +267,8 @@ object Exchanger {
   )
 
   /** Private, because an `Exchanger` is unsafe (may block indefinitely) */
-  private[choam] def apply[A, B]: Action[Exchanger[A, B]] =
-    Action.delay { _ => unsafe[A, B] }
+  private[choam] def apply[A, B]: Axn[Exchanger[A, B]] =
+    Axn.delay { _ => unsafe[A, B] }
 
   private[choam] def unsafe[A, B]: Exchanger[A, B] = {
     val i: Array[AtomicReference[Node[A, B, _]]] = {

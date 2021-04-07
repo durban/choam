@@ -19,23 +19,23 @@ package dev.tauri.choam
 
 final class Counter(ref: Ref[Long]) {
 
-  val add: Reaction[Long, Long] = ref.upd[Long, Long] { (cnt, n) =>
+  val add: Rxn[Long, Long] = ref.upd[Long, Long] { (cnt, n) =>
     (cnt + n, cnt)
   }
 
-  val incr: Action[Long] =
+  val incr: Axn[Long] =
     add.lmap(_ => 1L)
 
-  val decr: Action[Long] =
+  val decr: Axn[Long] =
     add.lmap(_ => -1L)
 
-  val count: Action[Long] =
+  val count: Axn[Long] =
     add.lmap(_ => 0L)
 }
 
 object Counter {
 
-  def apply: Action[Counter] =
+  def apply: Axn[Counter] =
     Ref(0L).map(new Counter(_))
 
   private[choam] def unsafe(): Counter =

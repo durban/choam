@@ -200,16 +200,16 @@ sealed abstract class React[-A, +B] {
     self >>> comp
   }
 
-  final def <* [X <: A, C](that: Reaction[X, C]): Reaction[X, B] =
+  final def <* [X <: A, C](that: Rxn[X, C]): Rxn[X, B] =
     this.productL(that)
 
-  final def productL [X <: A, C](that: Reaction[X, C]): Reaction[X, B] =
+  final def productL [X <: A, C](that: Rxn[X, C]): Rxn[X, B] =
     (this * that).map(_._1)
 
-  final def *> [X <: A, C](that: Reaction[X, C]): Reaction[X, C] =
+  final def *> [X <: A, C](that: Rxn[X, C]): Rxn[X, C] =
     this.productR(that)
 
-  final def productR[X <: A, C](that: Reaction[X, C]): Reaction[X, C] =
+  final def productR[X <: A, C](that: Rxn[X, C]): Rxn[X, C] =
     (this * that).map(_._2)
 
   // TODO: public API?
@@ -257,7 +257,7 @@ object React extends ReactSyntax0 {
   }
 
   // TODO: generalize to more than 2
-  def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Action[(A, B)] = {
+  def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
     ra.updWith[Any, (A, B)] { (a, _) =>
       rb.upd[Any, B] { (b, _) =>
         (b, b)
@@ -265,7 +265,7 @@ object React extends ReactSyntax0 {
     }
   }
 
-  def consistentReadMany[A](refs: List[Ref[A]]): Action[List[A]] = {
+  def consistentReadMany[A](refs: List[Ref[A]]): Axn[List[A]] = {
     refs match {
       case h :: t =>
         h.updWith[Any, List[A]] { (a, _) =>
@@ -331,7 +331,7 @@ object React extends ReactSyntax0 {
     def delayComputed[A, B](prepare: React[A, React[Unit, B]]): React[A, B] =
       new DelayComputed[A, B, B](prepare, Commit[B]())
 
-    def exchanger[A, B]: Action[Exchanger[A, B]] =
+    def exchanger[A, B]: Axn[Exchanger[A, B]] =
       Exchanger.apply[A, B]
 
     def exchange[A, B](ex: Exchanger[A, B]): React[A, B] =

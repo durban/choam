@@ -33,7 +33,7 @@ private[choam] final class MichaelScottQueue[A] private[this] (sentinel: Node[A]
   private def this() =
     this(Iterable.empty)
 
-  override val tryDeque: React[Unit, Option[A]] = {
+  override val tryDeque: Axn[Option[A]] = {
     for {
       node <- head.unsafeInvisibleRead
       next <- node.next.unsafeInvisibleRead
@@ -91,9 +91,9 @@ private[choam] object MichaelScottQueue {
   private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
   private final case class End[A]() extends Elem[A]
 
-  def apply[A]: Action[MichaelScottQueue[A]] =
-    Action.delay { _ => new MichaelScottQueue }
+  def apply[A]: Axn[MichaelScottQueue[A]] =
+    Axn.delay { _ => new MichaelScottQueue }
 
-  def fromList[A](as: List[A]): Action[MichaelScottQueue[A]] =
-    Action.delay { _ => new MichaelScottQueue(as) }
+  def fromList[A](as: List[A]): Axn[MichaelScottQueue[A]] =
+    Axn.delay { _ => new MichaelScottQueue(as) }
 }

@@ -38,7 +38,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
   def this() =
     this(Iterable.empty)
 
-  override val tryDeque: React[Unit, Option[A]] = {
+  override val tryDeque: Axn[Option[A]] = {
     for {
       node <- head.unsafeInvisibleRead
       an <- skipTombs(from = node.next)
@@ -53,7 +53,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
     } yield res
   }
 
-  private[this] def skipTombs(from: Ref[Elem[A]]): React[Unit, Option[(A, Node[A])]] = {
+  private[this] def skipTombs(from: Ref[Elem[A]]): Axn[Option[(A, Node[A])]] = {
     from.unsafeInvisibleRead.flatMapU {
       case n @ Node(dataRef, nextRef) =>
         dataRef.unsafeInvisibleRead.flatMapU { a =>
@@ -166,9 +166,9 @@ private[choam] object RemoveQueue {
 
   private final case class End[A]() extends Elem[A]
 
-  def apply[A]: Action[RemoveQueue[A]] =
-    Action.delay { _ => new RemoveQueue }
+  def apply[A]: Axn[RemoveQueue[A]] =
+    Axn.delay { _ => new RemoveQueue }
 
-  def fromList[A](as: List[A]): Action[RemoveQueue[A]] =
-    Action.delay { _ => new RemoveQueue(as) }
+  def fromList[A](as: List[A]): Axn[RemoveQueue[A]] =
+    Axn.delay { _ => new RemoveQueue(as) }
 }

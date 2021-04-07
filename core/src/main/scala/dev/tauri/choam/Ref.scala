@@ -32,31 +32,31 @@ trait Ref[A] extends MemoryLocation[A] {
 
   // TODO: that this extends MemoryLocation should be an impl. detail
 
-  final def get: Action[A] =
+  final def get: Axn[A] =
     upd[Any, A] { (oa, _) => (oa, oa) }
 
-  final def getAndSet: Reaction[A, A] =
+  final def getAndSet: Rxn[A, A] =
     upd[A, A] { (oa, na) => (na, oa) }
 
-  final def update(f: A => A): Action[Unit] =
+  final def update(f: A => A): Axn[Unit] =
     upd[Any, Unit] { (oa, _) => (f(oa), ()) }
 
-  final def updateWith(f: A => Action[A]): Action[Unit] =
+  final def updateWith(f: A => Axn[A]): Axn[Unit] =
     updWith[Any, Unit] { (oa, _) => f(oa).map(na => (na, ())) }
 
   /** Returns `false` iff the update failed */
-  final def tryUpdate(f: A => A): Action[Boolean] =
+  final def tryUpdate(f: A => A): Axn[Boolean] =
     update(f).?.map(_.isDefined)
 
   /** Returns previous value */
-  final def getAndUpdate(f: A => A): Action[A] =
+  final def getAndUpdate(f: A => A): Axn[A] =
     upd[Any, A] { (oa, _) => (f(oa), oa) }
 
-  final def getAndUpdateWith(f: A => Action[A]): Action[A] =
+  final def getAndUpdateWith(f: A => Axn[A]): Axn[A] =
     updWith[Any, A] { (oa, _) => f(oa).map(na => (na, oa)) }
 
   /** Returns new value */
-  final def updateAndGet(f: A => A): Action[A] = {
+  final def updateAndGet(f: A => A): Axn[A] = {
     upd[Any, A] { (oa, _) =>
       val na = f(oa)
       (na, na)
@@ -65,13 +65,13 @@ trait Ref[A] extends MemoryLocation[A] {
 
   // TODO: updateAndGetWith OR updateWithAndGet ?
 
-  final def modify[B](f: A => (A, B)): Action[B] =
+  final def modify[B](f: A => (A, B)): Axn[B] =
     upd[Any, B] { (a, _) => f(a) }
 
-  final def modifyWith[B](f: A => Action[(A, B)]): Action[B] =
+  final def modifyWith[B](f: A => Axn[(A, B)]): Axn[B] =
     updWith[Any, B] { (oa, _) => f(oa) }
 
-  final def tryModify[B](f: A => (A, B)): Action[Option[B]] =
+  final def tryModify[B](f: A => (A, B)): Axn[Option[B]] =
     modify(f).?
 
   // TODO: how to call this? It's like `modify`...
@@ -79,7 +79,7 @@ trait Ref[A] extends MemoryLocation[A] {
     React.upd(this)(f)
 
   // TODO: how to call this? It's like `modifyWith`...
-  final def updWith[B, C](f: (A, B) => Action[(A, C)]): React[B, C] =
+  final def updWith[B, C](f: (A, B) => Axn[(A, C)]): React[B, C] =
     React.updWith(this)(f)
 
   final def unsafeInvisibleRead: React[Any, A] =
@@ -105,13 +105,13 @@ trait Ref[A] extends MemoryLocation[A] {
 
 object Ref {
 
-  def apply[A](initial: A): Action[Ref[A]] =
+  def apply[A](initial: A): Axn[Ref[A]] =
     padded(initial)
 
-  def padded[A](initial: A): Action[Ref[A]] =
+  def padded[A](initial: A): Axn[Ref[A]] =
     React.delay[Any, Ref[A]](_ => Ref.unsafe(initial))
 
-  def unpadded[A](initial: A): Action[Ref[A]] =
+  def unpadded[A](initial: A): Axn[Ref[A]] =
     React.delay[Any, Ref[A]](_ => Ref.unsafeUnpadded(initial))
 
   def unsafe[A](initial: A): Ref[A] =
@@ -133,9 +133,9 @@ object Ref {
 
   // Ref2:
 
-  def refP1P1[A, B](a: A, b: B): Action[refs.Ref2[A, B]] =
+  def refP1P1[A, B](a: A, b: B): Axn[refs.Ref2[A, B]] =
     refs.Ref2.p1p1(a, b)
 
-  def refP2[A, B](a: A, b: B): Action[refs.Ref2[A, B]] =
+  def refP2[A, B](a: A, b: B): Axn[refs.Ref2[A, B]] =
     refs.Ref2.p2(a, b)
 }

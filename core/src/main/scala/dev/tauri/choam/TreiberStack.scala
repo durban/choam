@@ -62,8 +62,8 @@ final class TreiberStack[A](els: Iterable[A]) {
 
 object TreiberStack {
 
-  def apply[A]: Action[TreiberStack[A]] =
-    Action.delay { _ => new TreiberStack[A] }
+  def apply[A]: Axn[TreiberStack[A]] =
+    Axn.delay { _ => new TreiberStack[A] }
 
   private[choam] sealed trait Lst[+A] {
 

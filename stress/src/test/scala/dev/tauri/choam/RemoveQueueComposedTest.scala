@@ -47,7 +47,7 @@ class RemoveQueueComposedTest extends RemoveQueueStressTestBase {
   private[this] val queue2 =
     this.newQueue[String]()
 
-  private[this] val tfer: Reaction[Unit, Unit] =
+  private[this] val tfer: Axn[Unit] =
     queue1.tryDeque.map(_.getOrElse("x")) >>> queue2.enqueue
 
   @Actor
