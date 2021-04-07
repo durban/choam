@@ -235,12 +235,11 @@ object Exchanger {
     final val maxSizeShift =
       8 // TODO: magic
 
-    /** See comment in React#unsafePerform */
     final val maxSpin =
-      32
+      256 // TODO: magic
 
     final val defaultSpin =
-      4 // TODO: magic
+      256 // TODO: magic; too much
   }
 
   // TODO: this is basically `React.Jump`
@@ -325,8 +324,9 @@ object Exchanger {
         }
       }
       val maxSpin = Math.min(Statistics.defaultSpin << stats.spinShift.toInt, Statistics.maxSpin)
-      // println(s"spin waiting (max. ${maxSpin}) - thread#${Thread.currentThread().getId()}")
-      go(ctx.random.nextInt(maxSpin))
+      val spin = 1 + ctx.random.nextInt(maxSpin)
+      // println(s"spin waiting ${spin} (max. ${maxSpin}) - thread#${Thread.currentThread().getId()}")
+      go(spin)
     }
   }
 

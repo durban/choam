@@ -38,13 +38,13 @@ class ExchangerTest1 extends StressTestBase {
     ex.exchange.?
 
   private[this] val lefts: React[String, Option[String]] =
-    left + left + left + left
+    left + left
 
   private[this] val right: React[String, Option[String]] =
     ex.dual.exchange.?
 
   private[this] val rights: React[String, Option[String]] =
-    right + right + right + right
+    right + right
 
   @Actor
   def left(r: LL_Result): Unit = {
