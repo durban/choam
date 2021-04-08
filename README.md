@@ -25,7 +25,7 @@ The type [`Rxn[-A, +B]`](core/src/main/scala/dev/tauri/choam/React.scala)
 is similar to an effectful function from `A` to `B`, but:
 
 - The only effect it can perform is lock-free updates to
-  [`Ref`s](core/src/main/scala/dev/tauri/choam/ref.scala)
+  [`Ref`s](core/src/main/scala/dev/tauri/choam/Ref.scala)
   (mutable memory locations with a pure API).
 - Multiple `Rxn`s can be composed, by using various combinators,
   and the resulting `Rxn` will *update all affected memory locations atomically*.
