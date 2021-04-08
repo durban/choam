@@ -309,7 +309,7 @@ object React extends ReactSyntax0 {
   def ret[X, A](a: A): React[X, A] =
     lift[X, A](_ => a)
 
-  def pure[A](a: A): React[Unit, A] =
+  def pure[A](a: A): React[Any, A] =
     ret(a)
 
   // TODO: do we really need this (we don't have `access` any more)?
