@@ -22,7 +22,8 @@ import java.util.concurrent.ThreadLocalRandom
 import mcas.MemoryLocation
 
 /**
- * Atomic reference with composable lock-free operations.
+ * A mutable memory location with a pure API and
+ * composable lock-free operations.
  *
  * `Ref` is similar to [[java.util.concurrent.atomic.AtomicReference]]
  * or [[cats.effect.kernel.Ref]], but its operations are [[Reaction]]s.

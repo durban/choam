@@ -30,20 +30,22 @@ import kcas._
 
 /**
  * An effectful function from `A` to `B`; when executed,
- * it may update any number of `Ref`s atomically. (It
- * may also create new `Ref`s.)
+ * it may update any number of [[Ref]]s atomically. (It
+ * may also create new [[Ref]]s.)
  *
- * This type forms an `Arrow` (actually, an `ArrowChoice`).
- * It also forms a `Monad` in `B`; however, consider using
- * the arrow combinators (when possible) instead of `flatMap`
- * (since a static structure of `Reaction`s may be more performant).
+ * These functions are composable (see below), and composition
+ * preserves their atomicity. That is, all affected [[Ref]]s
+ * will be updated atomically.
  *
- * The relation between `Reaction` and `Action` is approximately
- * `Reaction[A, B] ≡ (A => Action[B])`; or, alternatively
- * `Action[A] ≡ Reaction[Any, A]`.
+ * A [[Rxn]] forms an [[cats.arrow.Arrow Arrow]] (more
+ * specifically, an [[cats.arrow.ArrowChoice ArrowChoice]]).
+ * It also forms a [[cats.Monad Monad]] in `B`; however, consider
+ * using the arrow combinators (when possible) instead of `flatMap`
+ * (since a static combination of `Rxn`s may be more performant).
  *
- * @see [[cats.arrow.ArrowChoice]]
- * @see [[cats.Monad]]
+ * The relation between [[Rxn]] and [[Axn]] is approximately
+ * `Rxn[A, B] ≡ (A => Axn[B])`; or, alternatively
+ * `Axn[A] ≡ Rxn[Any, A]`.
  */
 sealed abstract class React[-A, +B] {
 

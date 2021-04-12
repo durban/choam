@@ -23,6 +23,12 @@ package mcas
  * can be executed on any number of objects
  * which conform to this interface.
  *
+ * However, the methods of this interface should
+ * only ever be called by the MCAS implementation.
+ * An MCAS operation is only safe and atomic if
+ * ALL reads and writes go through the MCAS
+ * implementation.
+ *
  * These are the low-level, primitive operations
  * required by the MCAS implementation. They are
  * easily implemented by, e.g., having an
