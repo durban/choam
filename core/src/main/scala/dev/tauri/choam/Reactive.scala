@@ -41,8 +41,12 @@ object Reactive {
   private[choam] class SyncReactive[F[_]](
     final override val kcasImpl: kcas.KCAS
   )(implicit F: Sync[F]) extends Reactive[F] {
-    final override def run[A, B](r: React[A, B], a: A): F[B] =
-      F.delay { r.unsafePerform(a, this.kcasImpl) }
+    final override def run[A, B](r: React[A, B], a: A): F[B] = {
+      F.delay {
+        r.unsafePerform(a, this.kcasImpl)
+        // React.externalInterpreter(r, a, this.kcasImpl.currentContext())
+      }
+    }
     final override def monad =
       F
   }

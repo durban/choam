@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import scala.annotation.switch
+
 // To avoid going through the aliases in scala._:
 import scala.collection.immutable.{ Nil, :: }
 
@@ -127,6 +129,31 @@ sealed abstract class React[-A, +B] {
 
     res.value
   }
+
+  /**
+   * Tag for the external interpreter (see `externalInterpreter`)
+   *
+   * This attempts to be an optimization, inspired by an old optimization in
+   * the Scala compiler for matching on sealed subclasses
+   * (see https://github.com/scala/scala/commit/b98eb1d74141a4159539d373e6216e799d6b6dcd).
+   * Except we do it by hand, which is ugly, but might be worth it.
+   *
+   * In Cats Effect 3 the IO/SyncIO runloop also uses something like this
+   * (see https://github.com/typelevel/cats-effect/blob/v3.0.2/core/shared/src/main/scala/cats/effect/SyncIO.scala#L195),
+   *
+   * The ZIO runloop seems to do something similar too
+   * (see https://github.com/zio/zio/blob/v1.0.6/core/shared/src/main/scala/zio/internal/FiberContext.scala#L320).
+   *
+   * The idea is to `match` on `r.tag` instead of `r` itself. That match
+   * should be compiled to a JVM tableswitch instruction. Which is supposed
+   * to be very fast. The match arms require `.asInstanceOf`, which is unsafe
+   * and makes maintenance harder. However, if there are a lot of cases,
+   * a chain of instanceof/checkcast instructions could be slower.
+   *
+   * TODO: Check if it's indeed faster than a simple `match` (apparently "tag"
+   * TODO: was removed from the Scala compiler because it was not worth it).
+   */
+  private[choam] def tag: Byte
 
   protected def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B]
 
@@ -344,6 +371,8 @@ object React extends ReactSyntax0 {
     private[this] def onRetryImpl[A, B](act: React[Any, Unit], k: React[A, B]): React[A, B] = {
       new React[A, B] {
 
+        private[choam] def tag = -1 // TODO
+
         override protected def tryPerform(n: Int, a: A, ops: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] = {
           ctx.onRetry.add(act)
           maybeJump(n, a, k, ops, desc, ctx)
@@ -401,12 +430,12 @@ object React extends ReactSyntax0 {
   private[choam] final class Token
 
   private[choam] final class ReactionData private (
-    val postCommit: List[React[Unit, Unit]],
+    val postCommit: List[React[Any, Unit]],
     val token: Token,
     val exchangerData: Exchanger.StatMap
   ) {
 
-    def withPostCommit(act: React[Unit, Unit]): ReactionData = {
+    def withPostCommit(act: React[Any, Unit]): ReactionData = {
       ReactionData(
         postCommit = act :: this.postCommit,
         token = this.token,
@@ -417,7 +446,7 @@ object React extends ReactSyntax0 {
 
   private[choam] final object ReactionData {
     def apply(
-      postCommit: List[React[Unit, Unit]],
+      postCommit: List[React[Any, Unit]],
       token: Token,
       exchangerData: Exchanger.StatMap
     ): ReactionData = {
@@ -456,6 +485,8 @@ object React extends ReactSyntax0 {
   private final class Commit[A]()
       extends React[A, A] {
 
+    private[choam] def tag = 0
+
     protected final def tryPerform(n: Int, a: A, reaction: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[A] = {
       if (ctx.impl.tryPerform(desc, ctx)) Success(a, reaction)
       else Retry
@@ -487,6 +518,8 @@ object React extends ReactSyntax0 {
   private sealed abstract class AlwaysRetry[A, B]()
       extends React[A, B] {
 
+    private[choam] def tag = 1
+
     protected final def tryPerform(n: Int, a: A, reaction: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] =
       Retry
 
@@ -510,11 +543,13 @@ object React extends ReactSyntax0 {
       this.asInstanceOf[AlwaysRetry[A, B]]
   }
 
-  private final class PostCommit[A, B](pc: React[A, Unit], k: React[A, B])
+  private final class PostCommit[A, B](val pc: React[A, Unit], val k: React[A, B])
       extends React[A, B] {
 
+    private[choam] def tag = 2
+
     def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] =
-      maybeJump(n, a, k, rd.withPostCommit(pc.lmap[Unit](_ => a)), desc, ctx)
+      maybeJump(n, a, k, rd.withPostCommit(pc.lmap[Any](_ => a)), desc, ctx)
 
     def andThenImpl[C](that: React[B, C]): React[A, C] =
       new PostCommit[A, C](pc, k >>> that)
@@ -529,8 +564,10 @@ object React extends ReactSyntax0 {
       s"PostCommit(${pc}, ${k})"
   }
 
-  private final class Lift[A, B, C](private val func: A => B, private val k: React[B, C])
+  private final class Lift[A, B, C](val func: A => B, val k: React[B, C])
       extends React[A, C] {
+
+    private[choam] def tag = 3
 
     def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
       maybeJump(n, func(a), k, rd, desc, ctx)
@@ -555,8 +592,10 @@ object React extends ReactSyntax0 {
       s"Lift(<function>, ${k})"
   }
 
-  private final class Computed[A, B, C](f: A => React[Any, B], k: React[B, C])
+  private final class Computed[A, B, C](val f: A => React[Any, B], val k: React[B, C])
       extends React[A, C] {
+
+    private[choam] def tag = 4
 
     def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
       maybeJump(n, (), f(a) >>> k, rd, desc, ctx)
@@ -583,8 +622,10 @@ object React extends ReactSyntax0 {
       s"Computed(<function>, ${k})"
   }
 
-  private final class DelayComputed[A, B, C](prepare: React[A, React[Unit, B]], k: React[B, C])
+  private final class DelayComputed[A, B, C](val prepare: React[A, React[Unit, B]], val k: React[B, C])
     extends React[A, C] {
+
+    private[choam] def tag = 5
 
     override def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] = {
       // Note: we're performing `prepare` here directly;
@@ -626,8 +667,10 @@ object React extends ReactSyntax0 {
       s"DelayComputed(${prepare}, ${k})"
   }
 
-  private final class Choice[A, B](first: React[A, B], second: React[A, B])
+  private final class Choice[A, B](val first: React[A, B], val second: React[A, B])
       extends React[A, B] {
+
+    private[choam] def tag = 6
 
     def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] = {
       if (n <= 0) {
@@ -659,11 +702,13 @@ object React extends ReactSyntax0 {
       s"Choice(${first}, ${second})"
   }
 
-  private abstract class GenCas[A, B, C, D](ref: Ref[A], ov: A, nv: A, k: React[C, D])
+  private abstract class GenCas[A, B, C, D](val ref: Ref[A], val ov: A, val nv: A, val k: React[C, D])
     extends React[B, D] { self =>
 
+    private[choam] def tag = 7
+
     /** Must be pure */
-    protected def transform(a: A, b: B): C
+    private[choam] def transform(a: A, b: B): C
 
     protected final def tryPerform(n: Int, b: B, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
       val a = ctx.impl.read(ref, ctx)
@@ -676,21 +721,21 @@ object React extends ReactSyntax0 {
 
     final def andThenImpl[E](that: React[D, E]): React[B, E] = {
       new GenCas[A, B, C, E](ref, ov, nv, k >>> that) {
-        protected def transform(a: A, b: B): C =
+        private[choam] def transform(a: A, b: B): C =
           self.transform(a, b)
       }
     }
 
     final def productImpl[E, F](that: React[E, F]): React[(B, E), (D, F)] = {
       new GenCas[A, (B, E), (C, E), (D, F)](ref, ov, nv, k × that) {
-        protected def transform(a: A, be: (B, E)): (C, E) =
+        private[choam] def transform(a: A, be: (B, E)): (C, E) =
           (self.transform(a, be._1), be._2)
       }
     }
 
     final def firstImpl[E]: React[(B, E), (D, E)] = {
       new GenCas[A, (B, E), (C, E), (D, E)](ref, ov, nv, k.firstImpl[E]) {
-        protected def transform(a: A, be: (B, E)): (C, E) =
+        private[choam] def transform(a: A, be: (B, E)): (C, E) =
           (self.transform(a, be._1), be._2)
       }
     }
@@ -708,6 +753,8 @@ object React extends ReactSyntax0 {
 
   private final class Tok[A, B, C](t: (A, Token) => B, k: React[B, C])
     extends React[A, C] {
+
+    private[choam] def tag = -1 // TODO
 
     override protected def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
       maybeJump(n, t(a, rd.token), k, rd, desc, ctx)
@@ -728,8 +775,10 @@ object React extends ReactSyntax0 {
       s"Tok(${k})"
   }
 
-  private final class Upd[A, B, C, X](ref: Ref[X], f: (X, A) => (X, B), k: React[B, C])
+  private final class Upd[A, B, C, X](val ref: Ref[X], val f: (X, A) => (X, B), val k: React[B, C])
     extends React[A, C] { self =>
+
+    private[choam] def tag = 8
 
     protected final override def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] = {
       val ox = ctx.impl.read(ref, ctx)
@@ -755,11 +804,13 @@ object React extends ReactSyntax0 {
     }
   }
 
-  private abstract class GenRead[A, B, C, D](ref: Ref[A], k: React[C, D])
+  private abstract class GenRead[A, B, C, D](val ref: Ref[A], val k: React[C, D])
       extends React[B, D] { self =>
 
+    private[choam] def tag = 9
+
     /** Must be pure */
-    protected def transform(a: A, b: B): C
+    private[choam] def transform(a: A, b: B): C
 
     protected final override def tryPerform(n: Int, b: B, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[D] = {
       val a = ctx.impl.read(ref, ctx)
@@ -768,21 +819,21 @@ object React extends ReactSyntax0 {
 
     final override def andThenImpl[E](that: React[D, E]): React[B, E] = {
       new GenRead[A, B, C, E](ref, k >>> that) {
-        protected def transform(a: A, b: B): C =
+        private[choam] def transform(a: A, b: B): C =
           self.transform(a, b)
       }
     }
 
     final override def productImpl[E, F](that: React[E, F]): React[(B, E), (D, F)] = {
       new GenRead[A, (B, E), (C, E), (D, F)](ref, k × that) {
-        protected def transform(a: A, be: (B, E)): (C, E) =
+        private[choam] def transform(a: A, be: (B, E)): (C, E) =
           (self.transform(a, be._1), be._2)
       }
     }
 
     final override def firstImpl[E]: React[(B, E), (D, E)] = {
       new GenRead[A, (B, E), (C, E), (D, E)](ref, k.firstImpl[E]) {
-        protected def transform(a: A, be: (B, E)): (C, E) =
+        private[choam] def transform(a: A, be: (B, E)): (C, E) =
           (self.transform(a, be._1), be._2)
       }
     }
@@ -799,15 +850,29 @@ object React extends ReactSyntax0 {
   }
 
   private sealed abstract class GenExchange[A, B, C, D, E](
-    exchanger: Exchanger[A, B],
-    k: React[D, E]
+    val exchanger: Exchanger[A, B],
+    val k: React[D, E]
   ) extends React[C, E] { self =>
+
+    private[choam] def tag = 10
 
     protected def transform1(c: C): A
 
     protected def transform2(b: B, c: C): D
 
     protected final override def tryPerform(n: Int, c: C, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[E] = {
+      this.tryExchange(c, rd, desc, ctx) match {
+        case Right(contMsg) =>
+          // println(s"exchange happened, got ${contMsg} - thread#${Thread.currentThread().getId()}")
+          // TODO: this way we lose exchanger statistics if we start a new reaction
+          maybeJump(n, (), contMsg.cont, contMsg.rd, contMsg.desc, ctx)
+        case Left(_) =>
+          // TODO: pass back these stats to the main loop
+          Retry
+      }
+    }
+
+    private[React] def tryExchange(c: C, rd: ReactionData, desc:EMCASDescriptor, ctx: ThreadContext): Either[Exchanger.StatMap, Exchanger.Msg[Unit, Unit, E]] = {
       val msg = Exchanger.Msg[A, B, E](
         value = transform1(c),
         cont = k.lmap[B](b => self.transform2(b, c)),
@@ -817,15 +882,7 @@ object React extends ReactSyntax0 {
       // TODO: An `Exchange(...) + Exchange(...)` should post the
       // TODO: same offer to both exchangers, so that fulfillers
       // TODO: can race there.
-      this.exchanger.tryExchange(msg, ctx) match {
-        case Right(contMsg) =>
-          // println(s"exchange happened, got ${contMsg} - thread#${Thread.currentThread().getId()}")
-          // TODO: this way we lose exchanger statistics if we start a new reaction
-          maybeJump(n, (), contMsg.cont, contMsg.rd, contMsg.desc, ctx)
-        case Left(_) =>
-          // TODO: pass back these stats to the main loop
-          Retry
-      }
+      this.exchanger.tryExchange(msg, ctx)
     }
 
     protected final override def andThenImpl[F](that: React[E, F]): React[C, F] = {
@@ -873,6 +930,147 @@ object React extends ReactSyntax0 {
 
     override protected def transform2(b: B, a: A): B =
       b
+  }
+
+  private final object ForSome {
+    type x
+    type y
+    type z
+  }
+
+  private[choam] def externalInterpreter[X, R](rxn: React[X, R], x: X, ctx: ThreadContext): R = {
+
+    import scala.collection.mutable.Stack
+
+    val kcas = ctx.impl
+
+    // TODO: move these vars to loop(?)
+    var desc: EMCASDescriptor = kcas.start(ctx)
+    var stats: Exchanger.StatMap = Exchanger.StatMap.empty
+
+    val postCommit = Stack.empty[React[Any, Unit]]
+
+    val altA = Stack.empty[ForSome.x]
+    val altK = Stack.empty[React[ForSome.x, R]]
+    val altSnap = Stack.empty[EMCASDescriptor]
+
+    @tailrec
+    def loop[A](curr: React[A, R], a: A): R = {
+      // TODO: onSpinWait
+      (curr.tag : @switch) match {
+        case 0 => // Commit
+          if (kcas.tryPerform(desc, ctx)) {
+            a.asInstanceOf[R]
+          } else if (altA.isEmpty) {
+            desc = kcas.start(ctx)
+            postCommit.clear()
+            loop(rxn, x)
+          } else {
+            desc = altSnap.pop()
+            // TODO: postCommit alternatives missing!
+            loop(altK.pop(), altA.pop())
+          }
+        case 1 => // AlwaysRetry
+          if (altA.isEmpty) {
+            desc = kcas.start(ctx)
+            postCommit.clear()
+            loop(rxn, x)
+          } else {
+            desc = altSnap.pop()
+            // TODO: postCommit
+            loop(altK.pop(), altA.pop())
+          }
+        case 2 => // PostCommit
+          val c = curr.asInstanceOf[PostCommit[A, R]]
+          postCommit.push(c.pc.lmap[Any](_ => a))
+          loop(c.k, a)
+        case 3 => // Lift
+          val c = curr.asInstanceOf[Lift[A, ForSome.x, R]]
+          loop(c.k, c.func(a))
+        case 4 => // Computed
+          val c = curr.asInstanceOf[Computed[A, ForSome.x, R]]
+          loop(c.f(a) >>> c.k, ())
+        case 5 => // DelayComputed
+          val c = curr.asInstanceOf[DelayComputed[A, ForSome.x, R]]
+          // Note: we're performing `prepare` here directly;
+          // as a consequence of this, `prepare` will not
+          // be part of the atomic reaction, but it runs here
+          // as a side-effect.
+          val r: React[Unit, ForSome.x] = externalInterpreter(c.prepare, a, ctx)
+          loop(r >>> c.k, ())
+        case 6 => // Choice
+          val c = curr.asInstanceOf[Choice[A, R]]
+          altSnap.push(ctx.impl.snapshot(desc, ctx))
+          altA.push(a.asInstanceOf[ForSome.x])
+          altK.push(c.second.asInstanceOf[React[ForSome.x, R]])
+          loop(c.first, a)
+        case 7 => // GenCas
+          val c = curr.asInstanceOf[GenCas[ForSome.x, A, ForSome.y, R]]
+          val currVal = kcas.read(c.ref, ctx)
+          if (equ(currVal, c.ov)) {
+            desc = kcas.addCas(desc, c.ref, c.ov, c.nv, ctx)
+            loop(c.k, c.transform(currVal, a))
+          } else if (altA.isEmpty) {
+            desc = kcas.start(ctx)
+            postCommit.clear()
+            loop(rxn, x)
+          } else {
+            desc = altSnap.pop()
+            // TODO: postCommit
+            loop(altK.pop(), altA.pop())
+          }
+        case 8 => // Upd
+          val c = curr.asInstanceOf[Upd[A, ForSome.y, R, ForSome.x]]
+          val currVal = kcas.read(c.ref, ctx)
+          val nextVal = c.f(currVal, a)
+          desc = kcas.addCas(desc, c.ref, currVal, nextVal._1, ctx)
+          loop(c.k, nextVal._2)
+        case 9 => // GenRead
+          val c = curr.asInstanceOf[GenRead[ForSome.x, A, ForSome.y, R]]
+          val currVal = ctx.impl.read(c.ref, ctx)
+          loop(c.k, c.transform(currVal, a))
+        case 10 => // GenExchange
+          val c = curr.asInstanceOf[GenExchange[ForSome.x, ForSome.y, A, ForSome.z, R]]
+          val rd = ReactionData(
+            postCommit = postCommit.toList,
+            token = new Token, // TODO
+            exchangerData = stats
+          )
+          c.tryExchange(a, rd, desc, ctx) match {
+            case Left(newStats) =>
+              stats = newStats
+              if (altA.isEmpty) {
+                desc = kcas.start(ctx)
+                postCommit.clear()
+                loop(rxn, x)
+              } else {
+                desc = altSnap.pop()
+                // TODO: postCommit
+                loop(altK.pop(), altA.pop())
+              }
+            case Right(contMsg) =>
+              desc = contMsg.desc
+              postCommit.clear()
+              postCommit.pushAll(contMsg.rd.postCommit)
+              loop(contMsg.cont, ())
+          }
+        case t => // not implemented
+          throw new UnsupportedOperationException(
+            s"Not implemented tag ${t} for ${curr}"
+          )
+      }
+    }
+
+    val result: R = loop(rxn, x)
+    doPostCommit(postCommit.iterator, ctx)
+    result
+  }
+
+  private[this] def doPostCommit(it: Iterator[React[Any, Unit]], ctx: ThreadContext): Unit = {
+    while (it.hasNext) {
+      val pc = it.next()
+      externalInterpreter(pc, (), ctx)
+    }
   }
 }
 

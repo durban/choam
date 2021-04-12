@@ -174,6 +174,11 @@ object Exchanger {
   private[choam] type StatMap =
     Map[Exchanger[_, _], Exchanger.Statistics]
 
+  private[choam] final object StatMap {
+    def empty: StatMap =
+      Map.empty
+  }
+
   private[choam] final case class Statistics(
     /* Always <= size */
     effectiveSize: Byte,
