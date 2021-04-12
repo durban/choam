@@ -16,7 +16,7 @@
  */
 
 ThisBuild / scalaVersion := "2.13.5"
-ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, "3.0.0-RC1")
+ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, "3.0.0-RC2")
 ThisBuild / scalaOrganization := "org.scala-lang"
 ThisBuild / evictionErrorLevel := Level.Warn
 
@@ -163,9 +163,10 @@ lazy val commonSettings = Seq[Setting[_]](
 
 lazy val dependencies = new {
 
-  val catsVersion = "2.4.2"
-  val catsMtlVersion = "1.1.2"
-  val catsEffectVersion = "3.0.0"
+  val catsVersion = "2.5.0"
+  val catsMtlVersion = "1.1.3"
+  val catsEffectVersion = "3.0.2"
+  val scalacheckEffectVersion = "1.0.0"
 
   val cats = "org.typelevel" %% "cats-core" % catsVersion
   val catsEffect = "org.typelevel" %% "cats-effect" % catsEffectVersion
@@ -174,15 +175,15 @@ lazy val dependencies = new {
   val test = Seq(
     "org.typelevel" %% "cats-laws" % catsVersion,
     "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion,
-    "org.typelevel" %% "munit-cats-effect-3" % "1.0.0",
-    "org.typelevel" %% "scalacheck-effect" % "0.7.1",
-    "org.typelevel" %% "scalacheck-effect-munit" % "0.7.1",
+    "org.typelevel" %% "munit-cats-effect-3" % "1.0.1",
+    "org.typelevel" %% "scalacheck-effect" % scalacheckEffectVersion,
+    "org.typelevel" %% "scalacheck-effect-munit" % scalacheckEffectVersion,
     "org.typelevel" %% "discipline-munit" % "1.0.7",
   )
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.0"
   val catsStm = "io.github.timwspence" %% "cats-stm" % "0.10.1"
-  val zioStm = "dev.zio" %% "zio" % "1.0.5"
+  val zioStm = "dev.zio" %% "zio" % "1.0.6"
 
   val jol = "org.openjdk.jol" % "jol-core" % "0.15"
 }
