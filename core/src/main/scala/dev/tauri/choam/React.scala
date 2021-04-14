@@ -940,9 +940,17 @@ object React extends ReactSyntax0 {
     type z
   }
 
-  private[choam] def externalInterpreter[X, R](rxn: React[X, R], x: X, ctx: ThreadContext): R = {
+  private[this] def newStack[A](): scala.collection.mutable.Stack[A] = {
+    new scala.collection.mutable.Stack[A](initialSize = 8)
+  }
 
-    import scala.collection.mutable.Stack
+  private[choam] def externalInterpreter[X, R](
+    rxn: React[X, R],
+    x: X,
+    ctx: ThreadContext,
+    maxBackoff: Int = 16,
+    randomizeBackoff: Boolean = true
+  ): R = {
 
     val kcas = ctx.impl
 
@@ -950,15 +958,19 @@ object React extends ReactSyntax0 {
     var desc: EMCASDescriptor = kcas.start(ctx)
     var stats: Exchanger.StatMap = Exchanger.StatMap.empty
 
-    val postCommit = Stack.empty[React[Any, Unit]]
+    val postCommit = newStack[React[Any, Unit]]()
 
-    val altA = Stack.empty[ForSome.x]
-    val altK = Stack.empty[React[ForSome.x, R]]
-    val altSnap = Stack.empty[EMCASDescriptor]
+    val altA = newStack[ForSome.x]()
+    val altK = newStack[React[ForSome.x, R]]()
+    val altSnap = newStack[EMCASDescriptor]()
 
     @tailrec
-    def loop[A](curr: React[A, R], a: A): R = {
-      // TODO: onSpinWait
+    def loop[A](curr: React[A, R], a: A, retries: Int, spin: Boolean): R = {
+      if (spin) {
+        if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
+        else Backoff.backoffConst(retries, maxBackoff)
+      }
+
       (curr.tag : @switch) match {
         case 0 => // Commit
           if (kcas.tryPerform(desc, ctx)) {
@@ -966,71 +978,77 @@ object React extends ReactSyntax0 {
           } else if (altA.isEmpty) {
             desc = kcas.start(ctx)
             postCommit.clear()
-            loop(rxn, x)
+            loop(rxn, x, retries + 1, spin = true)
           } else {
             desc = altSnap.pop()
             // TODO: postCommit alternatives missing!
-            loop(altK.pop(), altA.pop())
+            loop(altK.pop(), altA.pop(), retries + 1, spin = false)
           }
         case 1 => // AlwaysRetry
           if (altA.isEmpty) {
             desc = kcas.start(ctx)
             postCommit.clear()
-            loop(rxn, x)
+            loop(rxn, x, retries + 1, spin = true)
           } else {
             desc = altSnap.pop()
             // TODO: postCommit
-            loop(altK.pop(), altA.pop())
+            loop(altK.pop(), altA.pop(), retries + 1, spin = false)
           }
         case 2 => // PostCommit
           val c = curr.asInstanceOf[PostCommit[A, R]]
           postCommit.push(c.pc.lmap[Any](_ => a))
-          loop(c.k, a)
+          loop(c.k, a, retries, spin = false)
         case 3 => // Lift
           val c = curr.asInstanceOf[Lift[A, ForSome.x, R]]
-          loop(c.k, c.func(a))
+          loop(c.k, c.func(a), retries, spin = false)
         case 4 => // Computed
           val c = curr.asInstanceOf[Computed[A, ForSome.x, R]]
-          loop(c.f(a) >>> c.k, ())
+          loop(c.f(a) >>> c.k, (), retries, spin = false)
         case 5 => // DelayComputed
           val c = curr.asInstanceOf[DelayComputed[A, ForSome.x, R]]
           // Note: we're performing `prepare` here directly;
           // as a consequence of this, `prepare` will not
           // be part of the atomic reaction, but it runs here
           // as a side-effect.
-          val r: React[Unit, ForSome.x] = externalInterpreter(c.prepare, a, ctx)
-          loop(r >>> c.k, ())
+          val r: React[Unit, ForSome.x] = externalInterpreter(
+            c.prepare,
+            a,
+            ctx,
+            maxBackoff = maxBackoff,
+            randomizeBackoff = randomizeBackoff
+          )
+          loop(r >>> c.k, (), retries, spin = false)
         case 6 => // Choice
           val c = curr.asInstanceOf[Choice[A, R]]
           altSnap.push(ctx.impl.snapshot(desc, ctx))
           altA.push(a.asInstanceOf[ForSome.x])
           altK.push(c.second.asInstanceOf[React[ForSome.x, R]])
-          loop(c.first, a)
+          loop(c.first, a, retries, spin = false)
         case 7 => // GenCas
           val c = curr.asInstanceOf[GenCas[ForSome.x, A, ForSome.y, R]]
           val currVal = kcas.read(c.ref, ctx)
           if (equ(currVal, c.ov)) {
             desc = kcas.addCas(desc, c.ref, c.ov, c.nv, ctx)
-            loop(c.k, c.transform(currVal, a))
+            loop(c.k, c.transform(currVal, a), retries, spin = false)
           } else if (altA.isEmpty) {
             desc = kcas.start(ctx)
             postCommit.clear()
-            loop(rxn, x)
+            loop(rxn, x, retries + 1, spin = true)
           } else {
             desc = altSnap.pop()
             // TODO: postCommit
-            loop(altK.pop(), altA.pop())
+            loop(altK.pop(), altA.pop(), retries + 1, spin = false)
           }
         case 8 => // Upd
           val c = curr.asInstanceOf[Upd[A, ForSome.y, R, ForSome.x]]
           val currVal = kcas.read(c.ref, ctx)
           val nextVal = c.f(currVal, a)
           desc = kcas.addCas(desc, c.ref, currVal, nextVal._1, ctx)
-          loop(c.k, nextVal._2)
+          loop(c.k, nextVal._2, retries, spin = false)
         case 9 => // GenRead
           val c = curr.asInstanceOf[GenRead[ForSome.x, A, ForSome.y, R]]
           val currVal = ctx.impl.read(c.ref, ctx)
-          loop(c.k, c.transform(currVal, a))
+          loop(c.k, c.transform(currVal, a), retries, spin = false)
         case 10 => // GenExchange
           val c = curr.asInstanceOf[GenExchange[ForSome.x, ForSome.y, A, ForSome.z, R]]
           val rd = ReactionData(
@@ -1044,17 +1062,17 @@ object React extends ReactSyntax0 {
               if (altA.isEmpty) {
                 desc = kcas.start(ctx)
                 postCommit.clear()
-                loop(rxn, x)
+                loop(rxn, x, retries + 1, spin = true)
               } else {
                 desc = altSnap.pop()
                 // TODO: postCommit
-                loop(altK.pop(), altA.pop())
+                loop(altK.pop(), altA.pop(), retries + 1, spin = false)
               }
             case Right(contMsg) =>
               desc = contMsg.desc
               postCommit.clear()
               postCommit.pushAll(contMsg.rd.postCommit)
-              loop(contMsg.cont, ())
+              loop(contMsg.cont, (), retries, spin = false)
           }
         case t => // not implemented
           throw new UnsupportedOperationException(
@@ -1063,7 +1081,7 @@ object React extends ReactSyntax0 {
       }
     }
 
-    val result: R = loop(rxn, x)
+    val result: R = loop(rxn, x, retries = 0, spin = false)
     doPostCommit(postCommit.iterator, ctx)
     result
   }
