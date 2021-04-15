@@ -31,13 +31,13 @@ class InterpreterBench {
   @Benchmark
   def internal(s: St, bh: Blackhole, k: KCASImplState): Unit = {
     val x = k.nextInt()
-    bh.consume(s.rxn1.unsafePerform(x, k.kcasImpl))
+    bh.consume(s.rxn.unsafePerform(x, k.kcasImpl))
   }
 
   @Benchmark
   def externalWithTag(s: St, bh: Blackhole, k: KCASImplState): Unit = {
     val x = k.nextInt()
-    bh.consume(React.externalInterpreter(s.rxn1, x, k.kcasImpl.currentContext()))
+    bh.consume(React.externalInterpreter(s.rxn, x, k.kcasImpl.currentContext()))
   }
 }
 
@@ -54,18 +54,30 @@ object InterpreterBench {
       Array.fill(N) { Ref.unsafePadded("2") }
 
     private[this] val ref3s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("2") }
+      Array.fill(N) { Ref.unsafePadded("3") }
+
+    private[this] val ref4s: Array[Ref[String]] =
+      Array.fill(N) { Ref.unsafePadded("4") }
+
+    private[this] val ref5s: Array[Ref[String]] =
+      Array.fill(N) { Ref.unsafePadded("5") }
 
     private[this] val cnt: Ref[Long] =
       Ref.unsafePadded(0L)
 
-    private[InterpreterBench] val rxn1: Rxn[Int, String] = {
-      (0 until N).map { idx =>
+    private[InterpreterBench] val rxn: Rxn[Int, String] = {
+      val rxn1 = (0 until N).map { idx =>
         mkRxn1(ref1s(idx), ref2s(idx), ref3s(idx))
       }.reduce { (x, y) => (x * y).map(_._2) }
+
+      val rxn2 = (0 until N).map { idx =>
+        mkRxn2(ref4s(idx), ref5s(idx))
+      }.reduce { (x, y) => (x * y).map(_._2) }
+
+      rxn1 *> rxn2
     }
 
-    private[this] def mkRxn1(ref1: Ref[String], ref2: Ref[String], ref3: Ref[String]): Rxn[Int, String] = {
+    private[this] def mkRxn1(ref1: Ref[String], ref2: Ref[String], ref3: Ref[String]): Int =#> String = {
       React.computed { (i: Int) =>
         (if ((i % 2) == 0) {
           ref1.getAndUpdate(ov => (ov.toInt + i).toString) >>> ref2.getAndSet
@@ -75,6 +87,13 @@ object InterpreterBench {
           (ref3.unsafeCas(s, (s.toInt + 1).toString) + ref3.update(_.length.toString)).as(s)
         }
       }.postCommit(cnt.update(_ + 1L))
+    }
+
+    private[this] def mkRxn2(ref4: Ref[String], ref5: Ref[String]): Int =#> String = {
+      ref4.updWith[Int, String] { (ov4, i) =>
+        if ((i % 2) == 0) ref5.getAndUpdate(_ => ov4).map(s => (s, s))
+        else React.unsafe.retry
+      } + ref4.getAndUpdate(ov4 => (ov4.toInt + 1).toString)
     }
   }
 }
