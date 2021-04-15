@@ -84,6 +84,29 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("Choice should perform the correct post-commit actions") {
+    for {
+      r0 <- Ref("").run[F]
+      r1 <- Ref("a").run[F]
+      pc1 <- Ref("").run[F]
+      pc2 <- Ref("-").run[F]
+      pc3 <- Ref("").run[F]
+      pc4 <- Ref("").run[F]
+      rea = (React.postCommit(pc1.update(_ + "pc1")) *> r0.update(_ + "b")) >>> (
+        (React.postCommit(pc2.update(_ + "pc2")).postCommit(pc4.update(_ + "-")) *> r1.unsafeCas("-", "b")) + ( // <- this will fail
+          React.postCommit(pc3.update(_ + "pc3")).postCommit(pc4.update(_ + "pc4")) *> r1.unsafeCas("a", "c")
+        )
+      )
+      _ <- rea.run
+      _ <- assertResultF(r0.get.run, "b")
+      _ <- assertResultF(r1.get.run, "c")
+      _ <- assertResultF(pc1.get.run, "pc1")
+      _ <- assertResultF(pc2.get.run, "-")
+      _ <- assertResultF(pc3.get.run, "pc3")
+      _ <- assertResultF(pc4.get.run, "pc4")
+    } yield ()
+  }
+
   test("Choice should work if it's after some other operation") {
     for {
       r1a <- Ref("1a").run[F]

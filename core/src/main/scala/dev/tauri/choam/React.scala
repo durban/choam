@@ -954,15 +954,25 @@ object React extends ReactSyntax0 {
 
     val kcas = ctx.impl
 
-    // TODO: move these vars to loop(?)
     var desc: EMCASDescriptor = kcas.start(ctx)
     var stats: Exchanger.StatMap = Exchanger.StatMap.empty
 
     val postCommit = newStack[React[Any, Unit]]()
 
+    val altSnap = newStack[EMCASDescriptor]()
     val altA = newStack[ForSome.x]()
     val altK = newStack[React[ForSome.x, R]]()
-    val altSnap = newStack[EMCASDescriptor]()
+    val altPc = newStack[Array[Rxn[Any, Unit]]]()
+
+    def reset(): Unit = {
+      desc = kcas.start(ctx)
+      postCommit.clear()
+    }
+
+    def popPc(): Unit = {
+      postCommit.clear()
+      postCommit.addAll(altPc.pop())
+    }
 
     @tailrec
     def loop[A](curr: React[A, R], a: A, retries: Int, spin: Boolean): R = {
@@ -976,22 +986,20 @@ object React extends ReactSyntax0 {
           if (kcas.tryPerform(desc, ctx)) {
             a.asInstanceOf[R]
           } else if (altA.isEmpty) {
-            desc = kcas.start(ctx)
-            postCommit.clear()
+            reset()
             loop(rxn, x, retries + 1, spin = true)
           } else {
             desc = altSnap.pop()
-            // TODO: postCommit alternatives missing!
+            popPc()
             loop(altK.pop(), altA.pop(), retries + 1, spin = false)
           }
         case 1 => // AlwaysRetry
           if (altA.isEmpty) {
-            desc = kcas.start(ctx)
-            postCommit.clear()
+            reset()
             loop(rxn, x, retries + 1, spin = true)
           } else {
             desc = altSnap.pop()
-            // TODO: postCommit
+            popPc()
             loop(altK.pop(), altA.pop(), retries + 1, spin = false)
           }
         case 2 => // PostCommit
@@ -1023,6 +1031,7 @@ object React extends ReactSyntax0 {
           altSnap.push(ctx.impl.snapshot(desc, ctx))
           altA.push(a.asInstanceOf[ForSome.x])
           altK.push(c.second.asInstanceOf[React[ForSome.x, R]])
+          altPc.push(postCommit.toArray)
           loop(c.first, a, retries, spin = false)
         case 7 => // GenCas
           val c = curr.asInstanceOf[GenCas[ForSome.x, A, ForSome.y, R]]
@@ -1031,12 +1040,11 @@ object React extends ReactSyntax0 {
             desc = kcas.addCas(desc, c.ref, c.ov, c.nv, ctx)
             loop(c.k, c.transform(currVal, a), retries, spin = false)
           } else if (altA.isEmpty) {
-            desc = kcas.start(ctx)
-            postCommit.clear()
+            reset()
             loop(rxn, x, retries + 1, spin = true)
           } else {
             desc = altSnap.pop()
-            // TODO: postCommit
+            popPc()
             loop(altK.pop(), altA.pop(), retries + 1, spin = false)
           }
         case 8 => // Upd
@@ -1060,12 +1068,11 @@ object React extends ReactSyntax0 {
             case Left(newStats) =>
               stats = newStats
               if (altA.isEmpty) {
-                desc = kcas.start(ctx)
-                postCommit.clear()
+                reset()
                 loop(rxn, x, retries + 1, spin = true)
               } else {
                 desc = altSnap.pop()
-                // TODO: postCommit
+                popPc()
                 loop(altK.pop(), altA.pop(), retries + 1, spin = false)
               }
             case Right(contMsg) =>
