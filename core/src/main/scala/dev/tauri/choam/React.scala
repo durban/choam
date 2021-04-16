@@ -969,9 +969,10 @@ object React extends ReactSyntax0 {
       postCommit.clear()
     }
 
-    def popPc(): Unit = {
+    def popPcAndSnap(): EMCASDescriptor = {
       postCommit.clear()
       postCommit.replaceWith(altPc.pop())
+      altSnap.pop()
     }
 
     @tailrec
@@ -989,8 +990,7 @@ object React extends ReactSyntax0 {
             reset()
             loop(rxn, x, retries + 1, spin = true)
           } else {
-            desc = altSnap.pop()
-            popPc()
+            desc = popPcAndSnap()
             loop(altK.pop(), altA.pop(), retries + 1, spin = false)
           }
         case 1 => // AlwaysRetry
@@ -998,8 +998,7 @@ object React extends ReactSyntax0 {
             reset()
             loop(rxn, x, retries + 1, spin = true)
           } else {
-            desc = altSnap.pop()
-            popPc()
+            desc = popPcAndSnap()
             loop(altK.pop(), altA.pop(), retries + 1, spin = false)
           }
         case 2 => // PostCommit
@@ -1043,8 +1042,7 @@ object React extends ReactSyntax0 {
             reset()
             loop(rxn, x, retries + 1, spin = true)
           } else {
-            desc = altSnap.pop()
-            popPc()
+            desc = popPcAndSnap()
             loop(altK.pop(), altA.pop(), retries + 1, spin = false)
           }
         case 8 => // Upd
@@ -1071,8 +1069,7 @@ object React extends ReactSyntax0 {
                 reset()
                 loop(rxn, x, retries + 1, spin = true)
               } else {
-                desc = altSnap.pop()
-                popPc()
+                desc = popPcAndSnap()
                 loop(altK.pop(), altA.pop(), retries + 1, spin = false)
               }
             case Right(contMsg) =>
