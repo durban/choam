@@ -27,6 +27,9 @@
 
 ## Other improvements
 
+- Write about limitations in readme:
+  - only one operation on a Ref
+  - ???
 - Testing:
   - Figure out some tricky race conditions, and test them with JCStress.
     - `Exchanger`

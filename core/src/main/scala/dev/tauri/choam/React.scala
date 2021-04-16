@@ -940,8 +940,8 @@ object React extends ReactSyntax0 {
     type z
   }
 
-  private[this] def newStack[A](): scala.collection.mutable.Stack[A] = {
-    new scala.collection.mutable.Stack[A](initialSize = 8)
+  private[this] def newStack[A]() = {
+    new ObjStack[A](initSize = 8)
   }
 
   private[choam] def externalInterpreter[X, R](
@@ -971,7 +971,7 @@ object React extends ReactSyntax0 {
 
     def popPc(): Unit = {
       postCommit.clear()
-      postCommit.addAll(altPc.pop())
+      postCommit.replaceWith(altPc.pop())
     }
 
     @tailrec
@@ -1060,7 +1060,7 @@ object React extends ReactSyntax0 {
         case 10 => // GenExchange
           val c = curr.asInstanceOf[GenExchange[ForSome.x, ForSome.y, A, ForSome.z, R]]
           val rd = ReactionData(
-            postCommit = postCommit.toList,
+            postCommit = postCommit.toArray.toList,
             token = new Token, // TODO
             exchangerData = stats
           )
@@ -1089,13 +1089,13 @@ object React extends ReactSyntax0 {
     }
 
     val result: R = loop(rxn, x, retries = 0, spin = false)
-    doPostCommit(postCommit.iterator, ctx)
+    doPostCommit(postCommit, ctx)
     result
   }
 
-  private[this] def doPostCommit(it: Iterator[React[Any, Unit]], ctx: ThreadContext): Unit = {
-    while (it.hasNext) {
-      val pc = it.next()
+  private[this] def doPostCommit(it: ObjStack[React[Any, Unit]], ctx: ThreadContext): Unit = {
+    while (it.nonEmpty) {
+      val pc = it.pop()
       externalInterpreter(pc, (), ctx)
     }
   }
