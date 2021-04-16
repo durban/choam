@@ -29,6 +29,10 @@ is similar to an effectful function from `A` to `B`, but:
   (mutable memory locations with a pure API).
 - Multiple `Rxn`s can be composed, by using various combinators,
   and the resulting `Rxn` will *update all affected memory locations atomically*.
+- However, conflicting `Rxn`s cannot be composed. That is, `Rxn`s which
+  update the same `Ref` are not allowed to be composed.
+  - Currently composing conflicting `Rxn`s causes a runtime error.
+  - Future work: detecting this error during compile time.
 
 ## Related work
 

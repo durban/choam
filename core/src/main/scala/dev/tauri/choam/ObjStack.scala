@@ -53,7 +53,7 @@ private final class ObjStack[A] private (
   }
 
   def clear(): Unit = {
-    Arrays.fill(this.arr, 0, this.size - 1, null)
+    Arrays.fill(this.arr, 0, this.size, null)
     this.size = 0
   }
 
@@ -77,6 +77,7 @@ private final class ObjStack[A] private (
   }
 
   def replaceWith(that: Array[A]): Unit = {
+    // TODO: this can make it so that arr.length is not a power of 2
     if (that.length != 0) {
       this.arr = that.asInstanceOf[Array[AnyRef]]
       this.size = that.length
