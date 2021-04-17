@@ -62,10 +62,11 @@
         - could it happen without using unsafe? (or `unsafeRun*` on the IO)
 - Cleanup:
   - Review benchmarks, remove useless ones
-- Finish Ctrie
-- Async (`choam-async`):
-  - `AsyncQueue`
-  - integration with FS2? (`choam-stream`)
+- Async:
+  - maybe move async things to `choam-async`(?)
+  - integration with FS2 (`choam-stream`):
+    - implement FS2 data structures (`Queue`, ...) with reagents
+    - optimize `AsyncQueue` stream
 - API cleanup:
   - check if by-name param makes sense for `>>`
     - is it stack-safe?

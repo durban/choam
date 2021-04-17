@@ -46,6 +46,12 @@ lazy val mcas = project.in(file("mcas"))
   .settings(name := "choam-mcas")
   .settings(commonSettings)
 
+lazy val stream = project.in(file("stream"))
+  .settings(name := "choam-stream")
+  .settings(commonSettings)
+  .dependsOn(core % "compile->compile;test->test")
+  .settings(libraryDependencies += dependencies.fs2)
+
 lazy val bench = project.in(file("bench"))
   .settings(name := "choam-bench")
   .settings(commonSettings)
@@ -164,13 +170,15 @@ lazy val commonSettings = Seq[Setting[_]](
 lazy val dependencies = new {
 
   val catsVersion = "2.5.0"
-  val catsMtlVersion = "1.1.3"
   val catsEffectVersion = "3.0.2"
+  val catsMtlVersion = "1.1.3"
+  val fs2Version = "3.0.1"
   val scalacheckEffectVersion = "1.0.0"
 
   val cats = "org.typelevel" %% "cats-core" % catsVersion
   val catsEffect = "org.typelevel" %% "cats-effect" % catsEffectVersion
   val catsMtl = "org.typelevel" %% "cats-mtl" % catsMtlVersion
+  val fs2 = "co.fs2" %% "fs2-core" % fs2Version
 
   val test = Seq(
     "org.typelevel" %% "cats-laws" % catsVersion,
