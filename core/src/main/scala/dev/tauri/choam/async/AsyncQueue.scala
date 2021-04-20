@@ -18,10 +18,29 @@
 package dev.tauri.choam
 package async
 
-abstract class AsyncQueue[F[_], A] {
+import cats.effect.std.{ Queue => CatsQueue }
+
+abstract class AsyncQueue[F[_], A] { self =>
+
   def enqueue: A =#> Unit
   def tryDeque: Axn[Option[A]]
   def deque(implicit F: Reactive.Async[F]): F[A]
+
+  def asCatsQueue(implicit F: Reactive.Async[F]): F[CatsQueue[F, A]] = {
+    val cq = new CatsQueue[F, A] {
+      final override def take: F[A] =
+        self.deque
+      final override def tryTake: F[Option[A]] =
+        self.tryDeque.run[F]
+      final override def size: F[Int] =
+        sys.error("size not implemented yet") // TODO
+      final override def offer(a: A): F[Unit] =
+        self.enqueue[F](a)
+      final override def tryOffer(a: A): F[Boolean] =
+        self.enqueue.as(true).apply[F](a)
+    }
+    F.monad.pure(cq)
+  }
 }
 
 object AsyncQueue {

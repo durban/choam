@@ -76,4 +76,22 @@ trait AsyncQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(f3.joinWithNever, "c")
     } yield ()
   }
+
+  test("AsyncQueue#asCatsQueue") {
+    for {
+      q <- newQueue[F, String]
+      cq <- q.asCatsQueue
+      f <- cq.take.start
+      _ <- F.sleep(0.1.seconds)
+      _ <- q.enqueue[F]("a")
+      _ <- assertResultF(f.joinWithNever, "a")
+      _ <- assertResultF(cq.tryTake, None)
+      f <- q.deque.start
+      _ <- cq.offer("b")
+      _ <- assertResultF(f.joinWithNever, "b")
+      _ <- assertResultF(cq.tryOffer("c"), true)
+      _ <- assertResultF(q.tryDeque.run[F], Some("c"))
+      // TODO: cq.size not implemented yet
+    } yield ()
+  }
 }
