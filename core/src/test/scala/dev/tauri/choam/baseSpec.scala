@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import cats.effect.{ Sync, Async, IO, SyncIO, MonadCancel, Concurrent }
+import cats.effect.{ Sync, Async, IO, SyncIO, MonadCancel, Temporal }
 
 import munit.{ CatsEffectSuite, Location, FunSuite }
 
@@ -74,7 +74,7 @@ trait BaseSpecF[F[_]]
 trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] { this: KCASImplSpec =>
   /** Not implicit, so that `rF` is used for sure */
   override def F: Async[F]
-  override implicit def mcF: Concurrent[F] =
+  override implicit def mcF: Temporal[F] =
     this.F
   override implicit def rF: Reactive.Async[F] =
     new Reactive.AsyncReactive[F](this.kcasImpl)(this.F)

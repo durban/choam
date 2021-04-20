@@ -18,9 +18,14 @@
 package dev.tauri.choam
 package stream
 
+import scala.concurrent.duration._
+
 import cats.effect.IO
 
+import fs2.Stream
+
 import async.AsyncQueue
+import async.Promise
 
 final class StreamSpec_Prim_EMCAS_IO
   extends BaseSpecIO
@@ -54,6 +59,27 @@ sealed trait StreamSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
       _ <- assertResultF(q.deque, "9")
       _ <- assertResultF(q.deque, "10")
+    } yield ()
+  }
+
+  test("Stream interrupter (Promise#toCats)") {
+    for {
+      p <- Promise[F, Either[Throwable, Unit]].run[F]
+      fib <- Stream
+        .awakeEvery(0.1.second)
+        .zip(Stream.iterate(0)(_ + 1))
+        .map(_._2)
+        .interruptWhen(p.toCats)
+        .compile.toVector.start
+      _ <- F.sleep(1.second)
+      _ <- p.complete[F](Right(()))
+      vec <- fib.joinWithNever
+      _ <- assertEqualsF(
+        vec,
+        (0 until vec.length).toVector
+      )
+      _ <- assertF(clue(vec.length) >= 6)
+      _ <- assertF(clue(vec.length) <= 14)
     } yield ()
   }
 }

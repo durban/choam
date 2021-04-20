@@ -23,6 +23,7 @@ import scala.collection.immutable.LongMap
 import cats.{ ~>, Functor, Invariant, Contravariant }
 import cats.syntax.all._
 import cats.effect.Async
+import cats.effect.kernel.{ Deferred, DeferredSink, DeferredSource }
 
 sealed trait PromiseRead[F[_], A] { self =>
 
@@ -43,6 +44,13 @@ sealed trait PromiseRead[F[_], A] { self =>
     final override def tryGet: Axn[Option[A]] =
       self.tryGet
   }
+
+  def toCats(implicit F: Reactive.Async[F]): DeferredSource[F, A] = new DeferredSource[F, A] {
+    final override def get: F[A] =
+      self.get
+    final override def tryGet: F[Option[A]] =
+      self.tryGet.run[F]
+  }
 }
 
 object PromiseRead {
@@ -62,6 +70,11 @@ sealed trait PromiseWrite[A] { self =>
   final def contramap[B](f: B => A): PromiseWrite[B] = new PromiseWrite[B] {
     final override def complete: Rxn[B, Boolean] =
       self.complete.lmap(f)
+  }
+
+  def toCatsIn[F[_]](implicit F: Reactive.Async[F]): DeferredSink[F, A] = new DeferredSink[F, A] {
+    final override def complete(a: A): F[Boolean] =
+      self.complete[F](a)
   }
 }
 
@@ -93,6 +106,15 @@ sealed abstract class Promise[F[_], A] extends PromiseRead[F, A] with PromiseWri
       self.tryGet
     final override def get: G[A] =
       t(self.get)
+  }
+
+  override def toCats(implicit F: Reactive.Async[F]): Deferred[F, A] = new Deferred[F, A] {
+    final override def get: F[A] =
+      self.get
+    final override def tryGet: F[Option[A]] =
+      self.tryGet.run[F]
+    final override def complete(a: A): F[Boolean] =
+      self.complete[F](a)
   }
 }
 

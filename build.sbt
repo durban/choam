@@ -35,7 +35,7 @@ lazy val choam = project.in(file("."))
   .settings(name := "choam")
   .settings(commonSettings)
   .settings(publishArtifact := false)
-  .aggregate(core, bench, stress, layout)
+  .aggregate(core, mcas, stream, bench, stress, layout)
 
 lazy val core = project.in(file("core"))
   .settings(name := "choam-core")

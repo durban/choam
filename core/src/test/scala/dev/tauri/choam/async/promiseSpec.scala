@@ -212,4 +212,19 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(f.joinWithNever, 42)
     } yield ()
   }
+
+  test("Promise#toCats") {
+    for {
+      p1 <- Promise[F, Int].run[F]
+      d1 = p1.toCats
+      fib1 <- d1.get.start
+      _ <- p1.complete[F](42)
+      _ <- assertResultF(fib1.joinWithNever, 42)
+      p2 <- Promise[F, Int].run[F]
+      d2 = p2.toCats
+      fib2 <- p2.get.start
+      _ <- d2.complete(21)
+      _ <- assertResultF(fib2.joinWithNever, 21)
+    } yield ()
+  }
 }
