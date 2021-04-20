@@ -29,6 +29,14 @@ object Queue {
     def remove: React[A, Boolean]
   }
 
+  /**
+   * Private, because `size` is hard to use correctly
+   * (it cannot be composed with the other operations).
+   */
+  private[choam] abstract class WithSize[A] extends Queue[A] {
+    def size: Axn[Int]
+  }
+
   def apply[A]: Axn[Queue[A]] =
     MichaelScottQueue[A]
 
@@ -40,4 +48,29 @@ object Queue {
 
   def withRemoveFromList[A](as: List[A]): Axn[Queue.WithRemove[A]] =
     RemoveQueue.fromList(as)
+
+  private[choam] def withSize[A]: Axn[Queue.WithSize[A]] = {
+    Queue[A].flatMap { q =>
+      Ref[Int](0).map { s =>
+        new WithSize[A] {
+
+          final override def tryDeque: Axn[Option[A]] = {
+            q.tryDeque.flatMap {
+              case r @ Some(_) => s.update(_ - 1).as(r)
+              case None => Axn.pure(None)
+            }
+          }
+
+          final override def enqueue: Rxn[A, Unit] =
+            s.update(_ + 1) *> q.enqueue
+
+          private[choam] final override  def unsafeToList[F[_]](implicit F: Reactive[F]): F[List[A]] =
+            q.unsafeToList[F]
+
+          final override def size: Axn[Int] =
+            s.get
+        }
+      }
+    }
+  }
 }

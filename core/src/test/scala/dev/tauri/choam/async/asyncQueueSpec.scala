@@ -33,19 +33,58 @@ class AsyncQueueSpec_Derived_EMCAS_IO
   with SpecEMCAS
   with AsyncQueueImplDerived[IO]
 
+class AsyncQueueSpec_WithSize_EMCAS_IO
+  extends BaseSpecIO
+  with SpecEMCAS
+  with AsyncQueueImplWithSize[IO]
+
 trait AsyncQueueImplPrim[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec =>
+  final override type Q[G[_], A] = AsyncQueue[G, A]
   protected final override def newQueue[G[_] : Reactive, A] =
     AsyncQueue.primitive[G, A].run[G]
 }
 
 trait AsyncQueueImplDerived[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec =>
+  final override type Q[G[_], A] = AsyncQueue[G, A]
   protected final override def newQueue[G[_] : Reactive, A] =
     AsyncQueue.derived[G, A].run[G]
 }
 
+trait AsyncQueueImplWithSize[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec =>
+
+  final override type Q[G[_], A] = AsyncQueue.WithSize[G, A]
+
+  protected final override def newQueue[G[_] : Reactive, A] =
+    AsyncQueue.withSize[G, A].run[G]
+
+  test("AsyncQueue#asCatsQueue") {
+    for {
+      q <- newQueue[F, String]
+      cq <- q.asCatsQueue
+      _ <- assertResultF(cq.size, 0)
+      f <- cq.take.start
+      _ <- F.sleep(0.1.seconds)
+      _ <- q.enqueue[F]("a")
+      _ <- assertResultF(f.joinWithNever, "a")
+      _ <- assertResultF(cq.size, 0)
+      _ <- assertResultF(cq.tryTake, None)
+      f <- q.deque.start
+      _ <- cq.offer("b")
+      _ <- assertResultF(f.joinWithNever, "b")
+      _ <- assertResultF(cq.size, 0)
+      _ <- assertResultF(cq.tryOffer("c"), true)
+      _ <- assertResultF(cq.size, 1)
+      _ <- assertResultF(q.tryDeque.run[F], Some("c"))
+      _ <- assertResultF(cq.size, 0)
+    } yield ()
+  }
+}
+
 trait AsyncQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
-  protected def newQueue[G[_] : Reactive, A]: G[AsyncQueue[G, A]]
+  type Q[G[_], A] <: AsyncQueue[G, A]
+
+  protected def newQueue[G[_] : Reactive, A]: G[Q[G, A]]
 
   test("AsyncQueue non-empty deque") {
     for {
@@ -74,24 +113,6 @@ trait AsyncQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f2.joinWithNever, "b")
       _ <- assertResultF(f3.joinWithNever, "c")
-    } yield ()
-  }
-
-  test("AsyncQueue#asCatsQueue") {
-    for {
-      q <- newQueue[F, String]
-      cq <- q.asCatsQueue
-      f <- cq.take.start
-      _ <- F.sleep(0.1.seconds)
-      _ <- q.enqueue[F]("a")
-      _ <- assertResultF(f.joinWithNever, "a")
-      _ <- assertResultF(cq.tryTake, None)
-      f <- q.deque.start
-      _ <- cq.offer("b")
-      _ <- assertResultF(f.joinWithNever, "b")
-      _ <- assertResultF(cq.tryOffer("c"), true)
-      _ <- assertResultF(q.tryDeque.run[F], Some("c"))
-      // TODO: cq.size not implemented yet
     } yield ()
   }
 }

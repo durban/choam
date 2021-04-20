@@ -21,29 +21,22 @@ package async
 import cats.effect.std.{ Queue => CatsQueue }
 
 abstract class AsyncQueue[F[_], A] { self =>
-
   def enqueue: A =#> Unit
   def tryDeque: Axn[Option[A]]
   def deque(implicit F: Reactive.Async[F]): F[A]
-
-  def asCatsQueue(implicit F: Reactive.Async[F]): F[CatsQueue[F, A]] = {
-    val cq = new CatsQueue[F, A] {
-      final override def take: F[A] =
-        self.deque
-      final override def tryTake: F[Option[A]] =
-        self.tryDeque.run[F]
-      final override def size: F[Int] =
-        sys.error("size not implemented yet") // TODO
-      final override def offer(a: A): F[Unit] =
-        self.enqueue[F](a)
-      final override def tryOffer(a: A): F[Boolean] =
-        self.enqueue.as(true).apply[F](a)
-    }
-    F.monad.pure(cq)
-  }
 }
 
 object AsyncQueue {
+
+  abstract class WithSize[F[_], A] extends AsyncQueue[F, A] {
+
+    def size(implicit F: Reactive.Async[F]): F[Int]
+
+    def asCatsQueue(implicit F: Reactive.Async[F]): F[CatsQueue[F, A]] = {
+      val cq = new AsyncQueue.CatsQueueAdapter[F, A](this)
+      F.monad.pure(cq)
+    }
+  }
 
   def primitive[F[_], A]: Axn[AsyncQueue[F, A]] = {
     (Queue[A] * Queue.withRemove[Promise[F, A]]) >>> (
@@ -61,6 +54,23 @@ object AsyncQueue {
             as.tryDeque
           final override def deque(implicit F: Reactive.Async[F]): F[A] =
             af.get(())
+        }
+      }
+    }
+  }
+
+  def withSize[F[_], A]: Axn[AsyncQueue.WithSize[F, A]] = {
+    Queue.withSize[A].flatMap { as =>
+      AsyncFrom[F, Any, A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
+        new WithSize[F, A] {
+          final override def enqueue: A =#> Unit =
+            af.set
+          final override def tryDeque: Axn[Option[A]] =
+            as.tryDeque
+          final override def deque(implicit F: Reactive.Async[F]): F[A] =
+            af.get(())
+          final override def size(implicit F: Reactive.Async[F]): F[Int] =
+            as.size.run[F]
         }
       }
     }
@@ -97,5 +107,20 @@ object AsyncQueue {
         case Right(a) => F.monadCancel.pure(a)
       } (release = rel)
     }
+  }
+
+  private final class CatsQueueAdapter[F[_] : Reactive.Async, A](self: WithSize[F, A])
+    extends CatsQueue[F, A] {
+
+    final override def take: F[A] =
+      self.deque
+    final override def tryTake: F[Option[A]] =
+      self.tryDeque.run[F]
+    final override def size: F[Int] =
+      self.size
+    final override def offer(a: A): F[Unit] =
+      self.enqueue[F](a)
+    final override def tryOffer(a: A): F[Boolean] =
+      self.enqueue.as(true).apply[F](a)
   }
 }
