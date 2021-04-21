@@ -22,8 +22,7 @@ import scala.collection.immutable.LongMap
 
 import cats.{ ~>, Functor, Invariant, Contravariant }
 import cats.syntax.all._
-import cats.effect.Async
-import cats.effect.kernel.{ Deferred, DeferredSink, DeferredSource }
+import cats.effect.kernel.{ Async, Deferred, DeferredSink, DeferredSource }
 
 sealed trait PromiseRead[F[_], A] { self =>
 

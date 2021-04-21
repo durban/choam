@@ -20,7 +20,7 @@ package dev.tauri.choam
 import java.util.concurrent.ThreadLocalRandom
 
 import cats.data.State
-import cats.effect.{ Ref => CatsRef }
+import cats.effect.kernel.{ Ref => CatsRef }
 
 import mcas.MemoryLocation
 
