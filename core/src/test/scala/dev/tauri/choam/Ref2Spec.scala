@@ -21,13 +21,13 @@ import refs.Ref2
 
 final class Ref2SpecP1P1 extends Ref2Spec {
 
-  override def mkRef2[A, B](a: A, b: B): Ref2[A,B] =
+  override def mkRef2[A, B](a: A, b: B): Ref2[A, B] =
     Ref2.unsafeP1P1(a, b)
 }
 
 final class Ref2SpecP2 extends Ref2Spec {
 
-  override def mkRef2[A, B](a: A, b: B): Ref2[A,B] =
+  override def mkRef2[A, B](a: A, b: B): Ref2[A, B] =
     Ref2.unsafeP2(a, b)
 }
 

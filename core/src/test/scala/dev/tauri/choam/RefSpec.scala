@@ -103,4 +103,30 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(r.get.run[F], "abcd")
     } yield ()
   }
+
+  test("Ref#toCats") {
+    for {
+      r <- Ref("a").run[F]
+      cr = r.toCats
+      _ <- assertResultF(cr.get, "a")
+      _ <- cr.set("b")
+      _ <- assertResultF(r.get.run[F], "b")
+      _ <- assertResultF(cr.get, "b")
+      vs <- cr.access
+      (v, s) = vs
+      _ <- assertEqualsF(v, "b")
+      _ <- assertResultF(s("c"), true)
+      _ <- assertResultF(r.get.run[F], "c")
+      _ <- assertResultF(cr.get, "c")
+      _ <- cr.set("b")
+      _ <- assertResultF(s("c"), false) // second call must always fail
+      vs <- cr.access
+      (v, s) = vs
+      _ <- assertEqualsF(v, "b")
+      _ <- cr.update(_ + "x")
+      _ <- assertResultF(s("c"), false) // concurrent modification
+      _ <- assertResultF(r.get.run[F], "bx")
+      _ <- assertResultF(cr.get, "bx")
+    } yield ()
+  }
 }

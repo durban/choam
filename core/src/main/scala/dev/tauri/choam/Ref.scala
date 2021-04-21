@@ -19,6 +19,9 @@ package dev.tauri.choam
 
 import java.util.concurrent.ThreadLocalRandom
 
+import cats.data.State
+import cats.effect.{ Ref => CatsRef }
+
 import mcas.MemoryLocation
 
 /**
@@ -29,7 +32,7 @@ import mcas.MemoryLocation
  * or [[cats.effect.kernel.Ref]], but its operations are [[Reaction]]s.
  * Thus, operations on a `Ref` are composable with other [[Reaction]]s.
  */
-trait Ref[A] extends MemoryLocation[A] {
+trait Ref[A] extends MemoryLocation[A] { self =>
 
   // TODO: that this extends MemoryLocation should be an impl. detail
 
@@ -74,6 +77,49 @@ trait Ref[A] extends MemoryLocation[A] {
 
   final def tryModify[B](f: A => (A, B)): Axn[Option[B]] =
     modify(f).?
+
+  final def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] = new CatsRef[F, A] {
+
+    final override def get: F[A] =
+      self.unsafeInvisibleRead.run[F]
+
+    final override def set(a: A): F[Unit] =
+      self.getAndSet.discard[F](a)
+
+    final override def access: F[(A, A => F[Boolean])] = {
+      F.monad.flatMap(this.get) { ov =>
+        // `access` as defined in cats-effect must never
+        // succeed after it was called once, so we need a flag:
+        F.monad.map(Ref[Boolean](false).run[F]) { hasBeenCalled =>
+          val setter = { (nv: A) =>
+            hasBeenCalled.unsafeCas(false, true).?.flatMap { ok =>
+              if (ok.isDefined) self.unsafeCas(ov, nv).?.map(_.isDefined)
+              else Axn.pure(false)
+            }.run[F]
+          }
+          (ov, setter)
+        }
+      }
+    }
+
+    final override def tryUpdate(f: A => A): F[Boolean] =
+      self.tryUpdate(f).run[F]
+
+    final override def tryModify[B](f: A => (A, B)): F[Option[B]] =
+      self.tryModify(f).run[F]
+
+    final override def update(f: A => A): F[Unit] =
+      self.update(f).run[F]
+
+    final override def modify[B](f: A => (A, B)): F[B] =
+      self.modify(f).run[F]
+
+    final override def tryModifyState[B](state: State[A, B]): F[Option[B]] =
+      self.tryModify(a => state.runF.value(a).value).run[F]
+
+    final override def modifyState[B](state: State[A, B]): F[B] =
+      self.modify(a => state.runF.value(a).value).run[F]
+  }
 
   // TODO: how to call this? It's like `modify`...
   final def upd[B, C](f: (A, B) => (A, C)): React[B, C] =
