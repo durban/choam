@@ -32,6 +32,7 @@ object AsyncQueue {
 
     def size(implicit F: Reactive.Async[F]): F[Int]
 
+    // TODO: could this return simply `CatsQueue[F, A]`?
     def toCats(implicit F: Reactive.Async[F]): F[CatsQueue[F, A]] = {
       val cq = new AsyncQueue.CatsQueueAdapter[F, A](this)
       F.monad.pure(cq)
