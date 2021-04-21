@@ -19,15 +19,25 @@ package dev.tauri.choam
 
 import cats.effect.IO
 
-final class RefSpecNaiveKCAS
+final class RefSpec_NaiveKCAS_IO
   extends BaseSpecIO
   with SpecNaiveKCAS
   with RefSpec[IO]
 
-final class RefSpecEMCAS
+final class RefSpec_NaiveKCAS_ZIO
+  extends BaseSpecZIO
+  with SpecNaiveKCAS
+  with RefSpec[zio.Task]
+
+final class RefSpec_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
   with RefSpec[IO]
+
+final class RefSpec_EMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecEMCAS
+  with RefSpec[zio.Task]
 
 trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 

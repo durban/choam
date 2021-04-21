@@ -100,13 +100,38 @@ abstract class BaseSpecIO extends CatsEffectSuite with BaseSpecAsyncF[IO] { this
   }
 }
 
+abstract class BaseSpecZIO extends CatsEffectSuite with BaseSpecAsyncF[zio.Task] { this: KCASImplSpec =>
+
+  final override def F: Async[zio.Task] =
+    zio.interop.catz.asyncRuntimeInstance(zio.Runtime.default)
+
+  final override def assertResultF[A, B](obtained: zio.Task[A], expected: B, clue: String = "values are not the same")(
+    implicit loc: Location, ev: B <:< A
+  ): zio.Task[Unit] = {
+    obtained.flatMap(ob => zio.Task { this.assertEquals(ob, expected, clue) })
+  }
+
+  override def munitValueTransforms = {
+    super.munitValueTransforms ++ List(
+      new this.ValueTransform(
+        "ZIO",
+        { case x: zio.ZIO[_, _, _] =>
+          val tsk = x.asInstanceOf[zio.Task[_]]
+          // TODO: this will fail if it's not really a Task
+          zio.Runtime.default.unsafeRunToFuture(tsk)
+        }
+      )
+    )
+  }
+}
+
 abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO] { this: KCASImplSpec =>
 
   /** Not implicit, so that `rF` is used for sure */
   final override def F: Sync[SyncIO] =
     SyncIO.syncForSyncIO
 
-  final override def assertResultF[A, B](obtained: SyncIO[A], expected: B, clue: String)(
+  final override def assertResultF[A, B](obtained: SyncIO[A], expected: B, clue: String = "values are not the same")(
     implicit loc: Location, ev: B <:< A
   ): SyncIO[Unit] = {
     assertSyncIO(obtained, expected, clue)

@@ -190,6 +190,7 @@ lazy val dependencies = new {
     "org.typelevel" %% "scalacheck-effect" % scalacheckEffectVersion,
     "org.typelevel" %% "scalacheck-effect-munit" % scalacheckEffectVersion,
     "org.typelevel" %% "discipline-munit" % "1.0.7",
+    "dev.zio" %% "zio-interop-cats" % "3.0.2.0",
   )
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.0"

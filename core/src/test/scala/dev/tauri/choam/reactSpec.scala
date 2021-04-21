@@ -25,15 +25,25 @@ import cats.mtl.Local
 
 import kcas._
 
-final class ReactSpecNaiveKCAS
+final class ReactSpec_NaiveKCAS_IO
   extends BaseSpecIO
   with SpecNaiveKCAS
   with ReactSpec[IO]
 
-final class ReactSpecEMCAS
+final class ReactSpec_NaiveKCAS_ZIO
+  extends BaseSpecZIO
+  with SpecNaiveKCAS
+  with ReactSpec[zio.Task]
+
+final class ReactSpec_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
   with ReactSpec[IO]
+
+final class ReactSpec_EMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecEMCAS
+  with ReactSpec[zio.Task]
 
 trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
