@@ -57,10 +57,10 @@ trait AsyncQueueImplWithSize[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpe
   protected final override def newQueue[G[_] : Reactive, A] =
     AsyncQueue.withSize[G, A].run[G]
 
-  test("AsyncQueue#asCatsQueue") {
+  test("AsyncQueue#toCats") {
     for {
       q <- newQueue[F, String]
-      cq <- q.asCatsQueue
+      cq <- q.toCats
       _ <- assertResultF(cq.size, 0)
       f <- cq.take.start
       _ <- F.sleep(0.1.seconds)
