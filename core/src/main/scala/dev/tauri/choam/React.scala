@@ -99,7 +99,7 @@ sealed abstract class React[-A, +B] {
           doOnRetry()
           alts match {
             case _: Nil.type =>
-              go(partialResult, cont, ReactionData(Nil, rd.token, rd.exchangerData), kcas.start(ctx), alts, retries = retries + 1)
+              go(partialResult, cont, ReactionData(Nil, rd.exchangerData), kcas.start(ctx), alts, retries = retries + 1)
             case (h: SnapJump[x, B]) :: t =>
               go[x](h.value, h.react, h.rd, h.snap, t, retries = retries + 1)
           }
@@ -124,7 +124,7 @@ sealed abstract class React[-A, +B] {
       ctx.onRetry = new java.util.ArrayList
     }
 
-    val res = go(a, this, ReactionData(Nil, new Token, Map.empty), kcas.start(ctx), Nil, retries = 0)
+    val res = go(a, this, ReactionData(Nil, Map.empty), kcas.start(ctx), Nil, retries = 0)
     res.reactionData.postCommit.foreach { pc =>
       pc.unsafePerform((), kcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
     }
@@ -341,10 +341,6 @@ object React extends ReactSyntax0 {
   def pure[A](a: A): React[Any, A] =
     ret(a)
 
-  // TODO: do we really need this (we don't have `access` any more)?
-  private[choam] def token: React[Any, Token] =
-    new Tok[Any, Token, Token]((_, t) => t, Commit[Token]())
-
   final object unsafe {
 
     def cas[A](r: Ref[A], ov: A, nv: A): React[Any, Unit] =
@@ -429,18 +425,14 @@ object React extends ReactSyntax0 {
       self >>> (left × right)
   }
 
-  private[choam] final class Token
-
   private[choam] final class ReactionData private (
     val postCommit: List[React[Any, Unit]],
-    val token: Token,
     val exchangerData: Exchanger.StatMap
   ) {
 
     def withPostCommit(act: React[Any, Unit]): ReactionData = {
       ReactionData(
         postCommit = act :: this.postCommit,
-        token = this.token,
         exchangerData = this.exchangerData
       )
     }
@@ -449,10 +441,9 @@ object React extends ReactSyntax0 {
   private[choam] final object ReactionData {
     def apply(
       postCommit: List[React[Any, Unit]],
-      token: Token,
       exchangerData: Exchanger.StatMap
     ): ReactionData = {
-      new ReactionData(postCommit, token, exchangerData)
+      new ReactionData(postCommit, exchangerData)
     }
   }
 
@@ -753,30 +744,6 @@ object React extends ReactSyntax0 {
       a
   }
 
-  private final class Tok[A, B, C](t: (A, Token) => B, k: React[B, C])
-    extends React[A, C] {
-
-    private[choam] def tag = -1 // TODO
-
-    override protected def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
-      maybeJump(n, t(a, rd.token), k, rd, desc, ctx)
-
-    override protected def andThenImpl[D](that: React[C, D]): React[A, D] =
-      new Tok(t, k.andThenImpl(that))
-
-    override protected def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] =
-      new Tok(tFirst[D], k.productImpl(that))
-
-    override protected[choam] def firstImpl[D]: React[(A, D), (C, D)] =
-      new Tok[(A, D), (B, D), (C, D)](tFirst[D], k.firstImpl[D])
-
-    private[this] def tFirst[D](ad: (A, D), tok: Token): (B, D) =
-      (t(ad._1, tok), ad._2)
-
-    final override def toString =
-      s"Tok(${k})"
-  }
-
   private final class Upd[A, B, C, X](val ref: Ref[X], val f: (X, A) => (X, B), val k: React[B, C])
     extends React[A, C] { self =>
 
@@ -1059,7 +1026,6 @@ object React extends ReactSyntax0 {
           val c = curr.asInstanceOf[GenExchange[ForSome.x, ForSome.y, A, ForSome.z, R]]
           val rd = ReactionData(
             postCommit = postCommit.toArray.toList,
-            token = new Token, // TODO
             exchangerData = stats
           )
           c.tryExchange(a, rd, desc, ctx) match {

@@ -52,8 +52,8 @@ object FlatMapBench {
   @State(Scope.Benchmark)
   class St {
 
-    private[this] val dummy =
-      React.token.void
+    private[this] val dummy: Axn[Unit] =
+      React.delay { _ => () }
 
     private[this] val refs = List.fill(size) {
       Ref.unsafe[String](ThreadLocalRandom.current().nextInt().toString)

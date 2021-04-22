@@ -73,7 +73,6 @@
     - if yes, can we make it faster than the default implementation?
   - separate unsafe/low-level API for `invisibleRead` and other dangerous
     - (unsafe) thread-confined mode for running a `React` (with `NaiveKCAS` or something even more simple)
-  - Token?
   - React.delay?
     - allocating (but: only `Ref` really needs it, others are built on that)
     - calling async callbacks (but: only `Promise` needs it, others don't)

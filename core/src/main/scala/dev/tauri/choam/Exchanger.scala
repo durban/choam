@@ -123,7 +123,7 @@ final class Exchanger[A, B] private (
     rres match {
       case Some(c) =>
         // it must be a result
-        Right(Msg.ret[C](c, ctx, msg.rd.token, msg.rd.exchangerData.updated(this, stats.exchanged)))
+        Right(Msg.ret[C](c, ctx, msg.rd.exchangerData.updated(this, stats.exchanged)))
       case None =>
         if (ctx.impl.doSingleCas(self.hole, nullOf[C], Node.RESCINDED[C], ctx)) {
           // OK, we rolled back, and can retry
@@ -132,7 +132,7 @@ final class Exchanger[A, B] private (
         } else {
           // couldn't roll back, it must be a result
           val c = ctx.impl.read(self.hole, ctx)
-          Right(Msg.ret[C](c, ctx, msg.rd.token, msg.rd.exchangerData.updated(this, stats.exchanged)))
+          Right(Msg.ret[C](c, ctx, msg.rd.exchangerData.updated(this, stats.exchanged)))
         }
     }
   }
@@ -153,7 +153,6 @@ final class Exchanger[A, B] private (
       cont = both,
       rd = React.ReactionData(
         selfMsg.rd.postCommit ++ other.msg.rd.postCommit,
-        selfMsg.rd.token, // TODO: this might cause problems
         // this thread will continue, so we use (and update) our data
         selfMsg.rd.exchangerData.updated(this, stats.exchanged)
       ),
@@ -256,11 +255,11 @@ object Exchanger {
   )
 
   private[choam] object Msg {
-    def ret[C](c: C, ctx: ThreadContext, tok: React.Token, ed: StatMap): Msg[Unit, Unit, C] = {
+    def ret[C](c: C, ctx: ThreadContext, ed: StatMap): Msg[Unit, Unit, C] = {
       Msg[Unit, Unit, C](
         value = (),
         cont = React.ret(c),
-        rd = React.ReactionData(Nil, tok, ed),
+        rd = React.ReactionData(Nil, ed),
         desc = ctx.impl.start(ctx)
       )
     }
