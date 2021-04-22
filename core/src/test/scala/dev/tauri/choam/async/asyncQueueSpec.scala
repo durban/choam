@@ -22,21 +22,37 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-class AsyncQueueSpec_Prim_EMCAS_IO
+final class AsyncQueueSpec_Prim_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
   with AsyncQueueSpec[IO]
   with AsyncQueueImplPrim[IO]
 
-class AsyncQueueSpec_Derived_EMCAS_IO
+final class AsyncQueueSpec_Prim_EMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecEMCAS
+  with AsyncQueueSpec[zio.Task]
+  with AsyncQueueImplPrim[zio.Task]
+
+final class AsyncQueueSpec_Derived_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
   with AsyncQueueImplDerived[IO]
 
-class AsyncQueueSpec_WithSize_EMCAS_IO
+final class AsyncQueueSpec_Derived_EMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecEMCAS
+  with AsyncQueueImplDerived[zio.Task]
+
+final class AsyncQueueSpec_WithSize_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
   with AsyncQueueImplWithSize[IO]
+
+final class AsyncQueueSpec_WithSize_EMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecEMCAS
+  with AsyncQueueImplWithSize[zio.Task]
 
 trait AsyncQueueImplPrim[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec =>
   final override type Q[G[_], A] = AsyncQueue[G, A]

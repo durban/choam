@@ -27,15 +27,25 @@ import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.Outcome
 
-class PromiseSpec_NaiveKCAS_IO
+final class PromiseSpec_NaiveKCAS_IO
   extends BaseSpecIO
   with SpecNaiveKCAS
   with PromiseSpec[IO]
 
-class PromiseSpec_EMCAS_IO
+final class PromiseSpec_NaiveKCAS_ZIO
+  extends BaseSpecZIO
+  with SpecNaiveKCAS
+  with PromiseSpec[zio.Task]
+
+final class PromiseSpec_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
   with PromiseSpec[IO]
+
+final class PromiseSpec_EMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecEMCAS
+  with PromiseSpec[zio.Task]
 
 trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 

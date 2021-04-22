@@ -22,17 +22,29 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-class AsyncStackSpec_Impl1_NaiveKCAS_IO
+final class AsyncStackSpec_Impl1_NaiveKCAS_IO
   extends BaseSpecIO
   with SpecNaiveKCAS
   with AsyncStackSpec[IO]
   with AsyncStackImpl1[IO]
 
-class AsyncStackSpec_Impl1_EMCAS_IO
+final class AsyncStackSpec_Impl1_NaiveKCAS_ZIO
+  extends BaseSpecZIO
+  with SpecNaiveKCAS
+  with AsyncStackSpec[zio.Task]
+  with AsyncStackImpl1[zio.Task]
+
+final class AsyncStackSpec_Impl1_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
   with AsyncStackSpec[IO]
   with AsyncStackImpl1[IO]
+
+final class AsyncStackSpec_Impl1_EMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecEMCAS
+  with AsyncStackSpec[zio.Task]
+  with AsyncStackImpl1[zio.Task]
 
 // TODO: doesn't work with NaiveKCAS (RemoveQueue uses `null` as sentinel)
 // class AsyncStackSpec_Impl2_NaiveKCAS_IO
@@ -40,10 +52,15 @@ class AsyncStackSpec_Impl1_EMCAS_IO
 //   with SpecNaiveKCAS
 //   with AsyncStackImpl2[IO]
 
-class AsyncStackSpec_Impl2_EMCAS_IO
+final class AsyncStackSpec_Impl2_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
   with AsyncStackImpl2[IO]
+
+final class AsyncStackSpec_Impl2_EMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecEMCAS
+  with AsyncStackImpl2[zio.Task]
 
 trait AsyncStackImpl1[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec =>
   protected final override def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =

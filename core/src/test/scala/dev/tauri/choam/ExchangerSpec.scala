@@ -19,10 +19,15 @@ package dev.tauri.choam
 
 import cats.effect.{ IO, Outcome }
 
-final class ExchangerSpecEMCAS
+final class ExchangerSpec_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
   with ExchangerSpec[IO]
+
+final class ExchangerSpec_EMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecEMCAS
+  with ExchangerSpec[zio.Task]
 
 trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 

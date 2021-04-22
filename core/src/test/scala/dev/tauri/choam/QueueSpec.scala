@@ -29,9 +29,19 @@ final class QueueSpec_NaiveKCAS_IO
   with QueueSpec[IO]
   with SpecNaiveKCAS
 
+final class QueueSpec_NaiveKCAS_ZIO
+  extends BaseSpecZIO
+  with QueueSpec[zio.Task]
+  with SpecNaiveKCAS
+
 final class QueueSpec_EMCAS_IO
   extends BaseSpecIO
   with QueueSpec[IO]
+  with SpecEMCAS
+
+final class QueueSpec_EMCAS_ZIO
+  extends BaseSpecZIO
+  with QueueSpec[zio.Task]
   with SpecEMCAS
 
 // TODO: doesn't work with NaiveKCAS (RemoveQueue uses `null` as sentinel)
@@ -43,6 +53,11 @@ final class QueueSpec_EMCAS_IO
 final class QueueWithRemoveSpec_EMCAS_IO
   extends BaseSpecIO
   with QueueWithRemoveSpec[IO]
+  with SpecEMCAS
+
+final class QueueWithRemoveSpec_EMCAS_ZIO
+  extends BaseSpecZIO
+  with QueueWithRemoveSpec[zio.Task]
   with SpecEMCAS
 
 trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
