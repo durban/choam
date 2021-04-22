@@ -68,6 +68,8 @@
     - implement FS2 data structures (`Queue`, ...) with reagents
     - optimize `AsyncQueue` stream
 - API cleanup:
+  - alias for `.lmap(_: Any => x)` (e.g., `.provide(x)`)
+    - later it could be optimized too
   - check if by-name param makes sense for `>>`
     - is it stack-safe?
     - if yes, can we make it faster than the default implementation?
@@ -96,7 +98,6 @@
   - Handling errors?
     - Generally, we shouldn't raise errors in a reaction
       - If something can fail, return `Option` or `Either`
-    - If absolutely necessary, `throw` should be enough
     - Need to review and document the handling of exceptions
       - they should fall-through, but with cleanup
     - Transient errors can sometimes be handled with `+` (`Choice`)

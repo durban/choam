@@ -563,6 +563,17 @@ trait ReactSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("React#toFunction") {
+    for {
+      r <- Ref("a").run[F]
+      rxn = r.getAndSet
+      f = rxn.toFunction
+      v <- f("b").run[F]
+      _ <- assertEqualsF(v, "a")
+      _ <- assertResultF(r.get.run[F], "b")
+    } yield ()
+  }
+
   test("Monad instance") {
     def foo[G[_] : Monad](ga: G[Int]): G[String] =
       ga.flatMap(x => x.toString.pure[G])

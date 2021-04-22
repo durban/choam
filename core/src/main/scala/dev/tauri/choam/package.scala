@@ -49,12 +49,12 @@ package object choam {
    * may also create new `Ref`s.)
    *
    * This type forms a `Monad`. However, when composing
-   * these kinds of effects, also consider using [[Reaction]]
+   * these kinds of effects, also consider using [[Rxn]]
    * and `>>>` or `*>` instead of `flatMap`.
    *
-   * The relation between `Action` and `Reaction` is approximately
-   * `Action[A] ≡ Reaction[Any, A]`; or, alternatively
-   * `Reaction[A, B] ≡ (A => Action[B])`.
+   * The relation between [[Axn]] and [[Rxn]] is approximately
+   * `Axn[A] ≡ Axn[Any, A]`; or, alternatively
+   * `Rxn[A, B] ≡ (A => Axn[B])` (see [[React#toFunction]]).
    */
   final type Axn[+A] = React[Any, A] // short for 'astaxanthin'
 

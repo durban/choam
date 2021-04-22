@@ -241,6 +241,10 @@ sealed abstract class React[-A, +B] {
   final def productR[X <: A, C](that: Rxn[X, C]): Rxn[X, C] =
     (this * that).map(_._2)
 
+  final def toFunction: A => Axn[B] = { (a: A) =>
+    this.lmap[Any](_ => a)
+  }
+
   // TODO: public API?
   private[choam] final def postCommit(pc: React[B, Unit]): React[A, B] =
     this >>> React.postCommit(pc)
