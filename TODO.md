@@ -44,6 +44,8 @@
 - Compile-time detection of:
   - impossible k-CAS operations (2 changes to the same `Ref`)
 - Optimization ideas:
+  - `React#provide`
+  - `React#as`
   - Boxing
   - React interpreter (external interpreter?)
   - Review writes/reads in EMCAS, check if we can relax them
@@ -68,13 +70,12 @@
     - implement FS2 data structures (`Queue`, ...) with reagents
     - optimize `AsyncQueue` stream
 - API cleanup:
-  - alias for `.lmap(_: Any => x)` (e.g., `.provide(x)`)
-    - later it could be optimized too
   - check if by-name param makes sense for `>>`
     - is it stack-safe?
     - if yes, can we make it faster than the default implementation?
   - separate unsafe/low-level API for `invisibleRead` and other dangerous
     - (unsafe) thread-confined mode for running a `React` (with `NaiveKCAS` or something even more simple)
+  - React.onRetry?
   - React.delay?
     - allocating (but: only `Ref` really needs it, others are built on that)
     - calling async callbacks (but: only `Promise` needs it, others don't)

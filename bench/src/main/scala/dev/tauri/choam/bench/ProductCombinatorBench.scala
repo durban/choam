@@ -52,7 +52,7 @@ object ProductCombinatorBench {
     @Setup
     def setup(): Unit = {
       this.prod = (1 to size).foldLeft[React[Unit, Unit]](React.ret(())) { (r, idx) =>
-        (r * React.lift[String, String](_ + idx.toString).lmap[Unit](_ => "foo")).discard
+        (r * React.lift[String, String](_ + idx.toString).provide("foo")).discard
       }
     }
   }

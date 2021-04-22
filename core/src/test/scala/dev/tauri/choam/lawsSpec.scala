@@ -55,7 +55,7 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
       Gen.lzy {
         arbB.arbitrary.map { b =>
           val ref = Ref.unsafe(b)
-          ref.unsafeInvisibleRead.lmap[A](_ => ())
+          ref.unsafeInvisibleRead
         }
       },
       Gen.lzy {

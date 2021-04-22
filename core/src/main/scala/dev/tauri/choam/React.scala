@@ -210,6 +210,9 @@ sealed abstract class React[-A, +B] {
   final def as[C](c: C): React[A, C] =
     map(_ => c) // TODO: optimize
 
+  final def provide(a: A): Axn[B] =
+    contramap[Any](_ => a) // TODO: optimize
+
   final def contramap[C](f: C => A): React[C, B] =
     lmap(f)
 
@@ -225,7 +228,7 @@ sealed abstract class React[-A, +B] {
 
   final def flatMap[X <: A, C](f: B => React[X, C]): React[X, C] = {
     val self: React[X, (X, B)] = arrowChoiceInstance.second[X, B, X](this).lmap[X](x => (x, x))
-    val comp: React[(X, B), C] = computed[(X, B), C](xb => f(xb._2).lmap[Any](_ => xb._1))
+    val comp: React[(X, B), C] = computed[(X, B), C](xb => f(xb._2).provide(xb._1))
     self >>> comp
   }
 
@@ -242,7 +245,7 @@ sealed abstract class React[-A, +B] {
     (this * that).map(_._2)
 
   final def toFunction: A => Axn[B] = { (a: A) =>
-    this.lmap[Any](_ => a)
+    this.provide(a)
   }
 
   // TODO: public API?
@@ -284,7 +287,7 @@ object React extends ReactSyntax0 {
   private[choam] def consistentReadOld[A, B](ra: Ref[A], rb: Ref[B]): React[Any, (A, B)] = {
     ra.unsafeInvisibleRead >>> computed[A, (A, B)] { a =>
       rb.unsafeInvisibleRead >>> computed[B, (A, B)] { b =>
-        (ra.unsafeCas(a, a) × rb.unsafeCas(b, b)).lmap[Any] { _ => ((), ()) }.map { _ => (a, b) }
+        (ra.unsafeCas(a, a) × rb.unsafeCas(b, b)).provide(((), ())).map { _ => (a, b) }
       }
     }
   }
@@ -406,7 +409,7 @@ object React extends ReactSyntax0 {
       val self2: React[X, (X, A)] =
         React.arrowChoiceInstance.second[Unit, A, X](self).lmap[X](x => (x, ()))
       val comp: React[(X, A), C] =
-        React.computed[(X, A), C](xb => f(xb._2).lmap[Any](_ => xb._1))
+        React.computed[(X, A), C](xb => f(xb._2).provide(xb._1))
       self2 >>> comp
     }
 
@@ -417,7 +420,7 @@ object React extends ReactSyntax0 {
       self.unsafePerform((), kcas)
 
     final def void: React[Any, Unit] =
-      self.discard.lmap(_ => ())
+      self.discard.provide(())
   }
 
   implicit final class Tuple2ReactSyntax[A, B, C](private val self: React[A, (B, C)]) extends AnyVal {
@@ -546,7 +549,7 @@ object React extends ReactSyntax0 {
     private[choam] def tag = 2
 
     def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] =
-      maybeJump(n, a, k, rd.withPostCommit(pc.lmap[Any](_ => a)), desc, ctx)
+      maybeJump(n, a, k, rd.withPostCommit(pc.provide(a)), desc, ctx)
 
     def andThenImpl[C](that: React[B, C]): React[A, C] =
       new PostCommit[A, C](pc, k >>> that)
@@ -610,7 +613,7 @@ object React extends ReactSyntax0 {
 
     def firstImpl[D]: React[(A, D), (C, D)] = {
       new Computed[(A, D), (B, D), (C, D)](
-        ad => f(ad._1).firstImpl[D].lmap[Any](_ => ((), ad._2)),
+        ad => f(ad._1).firstImpl[D].provide(((), ad._2)),
         k.firstImpl[D]
       )
     }
@@ -974,7 +977,7 @@ object React extends ReactSyntax0 {
           }
         case 2 => // PostCommit
           val c = curr.asInstanceOf[PostCommit[A, R]]
-          postCommit.push(c.pc.lmap[Any](_ => a))
+          postCommit.push(c.pc.provide(a))
           loop(c.k, a, retries, spin = false)
         case 3 => // Lift
           val c = curr.asInstanceOf[Lift[A, ForSome.x, R]]

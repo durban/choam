@@ -34,7 +34,7 @@ private[choam] final class AsyncStack2[F[_], A] private (
     F.monadCancel.flatMap(F.promise[A].run[F]) { p =>
       val acq = this.elements.tryPop.flatMapU {
         case Some(a) => Axn.ret(Right(a))
-        case None => this.waiters.enqueue.lmap[Any] { _ => p }.map { _ => Left(p) }
+        case None => this.waiters.enqueue.provide(p).as(Left(p))
       }.run[F]
       val rel: (Either[Promise[F, A], A] => F[Unit]) = {
         case Left(p) => this.waiters.remove.discard[F](p)

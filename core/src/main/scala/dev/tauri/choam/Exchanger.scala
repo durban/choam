@@ -143,8 +143,8 @@ final class Exchanger[A, B] private (
     selfMsg: Msg[A, B, C],
     stats: Statistics
   ): Right[Statistics, Msg[Unit, Unit, C]] = {
-    val cont: React[Unit, C] = selfMsg.cont.lmap[Unit](_ => other.msg.value)
-    val otherCont: React[Unit, Unit] = other.msg.cont.lmap[Unit](_ => selfMsg.value).flatMap { d =>
+    val cont: React[Unit, C] = selfMsg.cont.provide(other.msg.value)
+    val otherCont: React[Unit, Unit] = other.msg.cont.provide(selfMsg.value).flatMap { d =>
       other.hole.unsafeCas(nullOf[D], d)
     }
     val both = (cont * otherCont).map(_._1)

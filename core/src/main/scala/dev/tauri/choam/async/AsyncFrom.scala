@@ -33,9 +33,9 @@ final class AsyncFrom[F[_], A, B](
 
   def get(a: A)(implicit F: Reactive.Async[F]): F[B] = {
     val acq = Promise[F, B].flatMap { p =>
-      this.syncGet.lmap[Any](_ => a).flatMap {
+      this.syncGet.provide(a).flatMap {
         case Some(b) => Axn.pure(Right(b))
-        case None => this.waiters.enqueue.lmap[Any](_ => p).as(Left(p))
+        case None => this.waiters.enqueue.provide(p).as(Left(p))
       }
     }.run[F]
     val rel: (Either[Promise[F, B], B] => F[Unit]) = {

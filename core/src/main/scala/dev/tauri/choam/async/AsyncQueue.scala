@@ -96,7 +96,7 @@ object AsyncQueue {
       val acq = Promise[F, A].flatMap { p =>
         this.q.tryDeque.flatMap {
           case Some(a) => Axn.pure(Right(a))
-          case None => this.waiters.enqueue.lmap[Any](_ => p).as(Left(p))
+          case None => this.waiters.enqueue.provide(p).as(Left(p))
         }
       }.run[F]
       val rel: (Either[Promise[F, A], A] => F[Unit]) = {

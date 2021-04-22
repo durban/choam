@@ -24,13 +24,13 @@ final class Counter(ref: Ref[Long]) {
   }
 
   val incr: Axn[Long] =
-    add.lmap(_ => 1L)
+    add.provide(1L)
 
   val decr: Axn[Long] =
-    add.lmap(_ => -1L)
+    add.provide(-1L)
 
   val count: Axn[Long] =
-    add.lmap(_ => 0L)
+    add.provide(0L)
 }
 
 object Counter {

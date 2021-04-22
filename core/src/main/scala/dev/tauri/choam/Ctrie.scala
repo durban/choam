@@ -64,7 +64,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
             // TODO: clean
             React.unsafe.retry
           case ln: LNode[K, V] =>
-            ln.lookup.lmap[Any](_ => (k, eq))
+            ln.lookup.provide((k, eq))
         }
         _ <- i.main.unsafeCas(im, im) // FIXME: this is only to be composable
       } yield v
@@ -141,7 +141,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
   private[this] def debug: React[Int, String] = React.computed { level =>
     for {
       r <- root.unsafeInvisibleRead
-      rs <- r.debug.lmap[Any](_ => level)
+      rs <- r.debug.provide(level)
     } yield rs
   }
 }
@@ -174,7 +174,7 @@ object Ctrie {
     private[choam] override def debug: React[Int, String] = React.computed { level =>
       for {
         m <- main.unsafeInvisibleRead
-        ms <- m.debug.lmap[Any](_ => level)
+        ms <- m.debug.provide(level)
       } yield (indent * level) + s"INode -> ${ms}"
     }
   }
@@ -205,7 +205,7 @@ object Ctrie {
     }
 
     private[choam] override def debug: React[Int, String] = React.computed { level =>
-      val els = Traverse[List].traverse(arr.toList)(_.debug.lmap[Any](_ => level + 1))
+      val els = Traverse[List].traverse(arr.toList)(_.debug.provide(level + 1))
       els.map { els =>
         s"CNode ${bmp.toHexString}\n" + els.mkString("\n")
       }
@@ -239,7 +239,7 @@ object Ctrie {
   /** Tomb node */
   final class TNode[K, V](val sn: Ref[SNode[K, V]]) extends MainNode[K, V] {
     private[choam] def debug: React[Int, String] = React.computed { level =>
-      sn.unsafeInvisibleRead.flatMap(_.debug.lmap[Any](_ => 0)).map(s => (indent * level) + s"TNode(${s})")
+      sn.unsafeInvisibleRead.flatMap(_.debug.provide(0)).map(s => (indent * level) + s"TNode(${s})")
     }
   }
 
