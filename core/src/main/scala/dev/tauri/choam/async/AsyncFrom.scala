@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package async
 
-final class AsyncFrom[F[_], A, B](
+final class AsyncFrom[F[_], A, B] private (
   syncGet: A =#> Option[B],
   syncSet: B =#> Unit,
   waiters: Queue.WithRemove[Promise[F, B]]
