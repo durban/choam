@@ -169,11 +169,11 @@ lazy val commonSettings = Seq[Setting[_]](
 
 lazy val dependencies = new {
 
-  val catsVersion = "2.5.0"
-  val catsEffectVersion = "3.0.2"
-  val catsMtlVersion = "1.1.3"
-  val fs2Version = "3.0.1"
-  val scalacheckEffectVersion = "1.0.0"
+  val catsVersion = "2.6.0"
+  val catsEffectVersion = "3.1.0"
+  val catsMtlVersion = "1.2.0"
+  val fs2Version = "3.0.2"
+  val scalacheckEffectVersion = "1.0.1"
 
   val cats = "org.typelevel" %% "cats-core" % catsVersion
   val catsEffectKernel = "org.typelevel" %% "cats-effect-kernel" % catsEffectVersion
@@ -186,14 +186,14 @@ lazy val dependencies = new {
     catsEffectAll,
     "org.typelevel" %% "cats-laws" % catsVersion,
     "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion,
-    "org.typelevel" %% "munit-cats-effect-3" % "1.0.1",
+    "org.typelevel" %% "munit-cats-effect-3" % "1.0.2",
     "org.typelevel" %% "scalacheck-effect" % scalacheckEffectVersion,
     "org.typelevel" %% "scalacheck-effect-munit" % scalacheckEffectVersion,
-    "org.typelevel" %% "discipline-munit" % "1.0.7",
+    "org.typelevel" %% "discipline-munit" % "1.0.8",
     "dev.zio" %% "zio-interop-cats" % "3.0.2.0",
   )
 
-  val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.0"
+  val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.1"
   val catsStm = "io.github.timwspence" %% "cats-stm" % "0.10.1"
   val zioStm = "dev.zio" %% "zio" % "1.0.6"
 
