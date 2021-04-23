@@ -46,11 +46,8 @@ final class AsyncStackSpec_Impl1_EMCAS_ZIO
   with AsyncStackSpec[zio.Task]
   with AsyncStackImpl1[zio.Task]
 
-// TODO: doesn't work with NaiveKCAS (RemoveQueue uses `null` as sentinel)
-// class AsyncStackSpec_Impl2_NaiveKCAS_IO
-//   extends BaseSpecIO
-//   with SpecNaiveKCAS
-//   with AsyncStackImpl2[IO]
+// TODO: impl2 and impl3 don't work with NaiveKCAS,
+// TODO: because RemoveQueue uses `null` as sentinel
 
 final class AsyncStackSpec_Impl2_EMCAS_IO
   extends BaseSpecIO
@@ -62,6 +59,16 @@ final class AsyncStackSpec_Impl2_EMCAS_ZIO
   with SpecEMCAS
   with AsyncStackImpl2[zio.Task]
 
+final class AsyncStackSpec_Impl3_EMCAS_IO
+  extends BaseSpecIO
+  with SpecEMCAS
+  with AsyncStackImpl3[IO]
+
+final class AsyncStackSpec_Impl3_EMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecEMCAS
+  with AsyncStackImpl3[zio.Task]
+
 trait AsyncStackImpl1[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec =>
   protected final override def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
     AsyncStack.impl1[G, A].run[G]
@@ -70,6 +77,11 @@ trait AsyncStackImpl1[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec =>
 trait AsyncStackImpl2[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec =>
   protected final override def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
     AsyncStack.impl2[G, A].run[G]
+}
+
+trait AsyncStackImpl3[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec =>
+  protected final override def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
+    AsyncStack.impl3[G, A].run[G]
 }
 
 trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>

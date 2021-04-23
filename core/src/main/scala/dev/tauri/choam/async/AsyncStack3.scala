@@ -18,22 +18,22 @@
 package dev.tauri.choam
 package async
 
-abstract class AsyncStack[F[_], A] {
-  def push: React[A, Unit]
-  def pop(implicit F: Reactive.Async[F]): F[A]
-}
+// TODO: port existing stress tests to this impl too
+private[choam] object AsyncStack3 {
 
-object AsyncStack {
-
-  def apply[F[_], A]: Axn[AsyncStack[F, A]] =
-    impl1[F, A]
-
-  def impl1[F[_], A]: Axn[AsyncStack[F, A]] =
-    AsyncStack1[F, A]
-
-  def impl2[F[_], A]: Axn[AsyncStack[F, A]] =
-    AsyncStack2[F, A]
-
-  def impl3[F[_], A]: Axn[AsyncStack[F, A]] =
-    AsyncStack3[F, A]
+  def apply[F[_], A]: Axn[AsyncStack[F, A]] = {
+    TreiberStack[A].flatMap { es =>
+      AsyncFrom[F, Any, A](
+        syncGet = es.tryPop,
+        syncSet = es.push
+      ).map { af =>
+        new AsyncStack[F, A] {
+          final override def push: A =#> Unit =
+            af.set
+          final override def pop(implicit F: Reactive.Async[F]): F[A] =
+            af.get(())
+        }
+      }
+    }
+  }
 }

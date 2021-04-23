@@ -69,7 +69,7 @@ private[choam] final class AsyncStack1[F[_], A] private (ref: Ref[State[F, A]])
 
 private[choam] object AsyncStack1 {
 
-  def apply[F[_], A]: React[Unit, AsyncStack[F, A]] =
+  def apply[F[_], A]: Axn[AsyncStack[F, A]] =
     React.delay(_ => new AsyncStack1(Ref.unsafe(Empty())))
 
   private sealed abstract class State[F[_], A] {
