@@ -78,8 +78,8 @@ sealed trait StreamSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         vec,
         (0 until vec.length).toVector
       )
-      _ <- assertF(clue(vec.length) >= 6)
-      _ <- assertF(clue(vec.length) <= 14)
+      _ <- assertF(clue(vec.length) >= 5)
+      _ <- assertF(clue(vec.length) <= 20)
     } yield ()
   }
 }
