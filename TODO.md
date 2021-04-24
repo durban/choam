@@ -21,6 +21,7 @@
 
 ## Bugs
 
+- Deeply nested `Rxn`s (see RxnSpec.scala)
 - `Exchanger` is barely working
 - `Ctrie` is incomplete
 - Can't run benchmarks with Scala 3

@@ -54,6 +54,28 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     println(s"NUM_CPU = ${Runtime.getRuntime().availableProcessors()}")
   }
 
+  test("Creating and running deeply nested Rxn's should both be stack-safe") {
+    def nest(
+      n: Int,
+      combine: (Rxn[Int, Int], Rxn[Int, Int]) => Rxn[Int, Int],
+    ): Rxn[Int, Int] = {
+      (1 to n).map(_ => Rxn.lift[Int, Int](_ + 1)).reduce(combine)
+    }
+    val N = 1024 * 1024
+    // TODO: val r1: Rxn[Int, Int] = nest(N, _ >>> _)
+    // TODO: val r2: Rxn[Int, Int] = nest(N, (x, y) => (x * y).map(_._1))
+    // TODO: val r3: Rxn[Int, Int] = nest(N, (x, y) => x.flatMap { _ => y })
+    // TODO: val r4: Rxn[Int, Int] = nest(N, _ >> _)
+    val r5: Rxn[Int, Int] = nest(N, _ + _)
+    val r6: Rxn[Int, Int] = nest(N, (x, y) => Rxn.unsafe.delayComputed(x.map(Rxn.ret(_) >>> y)))
+    // r1.##//unsafePerform(42, this.kcasImpl)
+    // r2.##//unsafePerform(42, this.kcasImpl)
+    // r3.##//unsafePerform(42, this.kcasImpl)
+    // r4.##//unsafePerform(42, this.kcasImpl)
+    r5.unsafePerform(42, this.kcasImpl)
+    r6.## // TODO: r6.unsafePerform(42, this.kcasImpl)
+  }
+
   test("Choice should prefer the first option") {
     for {
       r1 <- Ref("r1").run[F]
@@ -259,7 +281,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("Choice should correctly backtrack (1) (even with jumps)") {
-    backtrackTest1(2) // TODO: Rxn.maxStackDepth + 1)
+    backtrackTest1(Rxn.maxStackDepth + 1)
   }
 
   test("Choice should correctly backtrack (2) (no jumps)") {
