@@ -45,10 +45,10 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
       res <- an match {
         case None =>
           // empty queue:
-          head.unsafeCas(node, node) >>> React.ret(None)
+          head.unsafeCas(node, node) >>> Rxn.ret(None)
         case Some((a, n)) =>
           // deque first node (and drop tombs before it):
-          head.unsafeCas(node, n.copy(data = nullOf[Ref[A]])) >>> React.ret(Some(a))
+          head.unsafeCas(node, n.copy(data = nullOf[Ref[A]])) >>> Rxn.ret(Some(a))
       }
     } yield res
   }
@@ -67,11 +67,11 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
           }
         }
       case e @ End() =>
-        from.unsafeCas(e, e) >>> React.ret(None)
+        from.unsafeCas(e, e) >>> Rxn.ret(None)
     }
   }
 
-  override val enqueue: React[A, Unit] = React.computed { (a: A) =>
+  override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
     Ref[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref(a).flatMap { dataRef =>
         findAndEnqueue(Node(dataRef, nextRef))
@@ -79,15 +79,15 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
     }
   }
 
-  private[this] def findAndEnqueue(node: Node[A]): React[Any, Unit] = {
-    React.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMap { (n: Node[A]) =>
+  private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
+    Rxn.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMap { (n: Node[A]) =>
       n.next.unsafeInvisibleRead.flatMap {
         case e @ End() =>
           // found true tail; will CAS, and try to adjust the tail ref:
-          React.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))
+          Rxn.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and will retry:
-          tail.unsafeCas(n, nv).?.map(_ => React.unsafe.retry)
+          tail.unsafeCas(n, nv).?.map(_ => Rxn.unsafe.retry)
       }
     })
   }
@@ -99,20 +99,20 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
    * (i.e., the same object as) the input. That is, items
    * are compared by reference equality.
    */
-  override val remove: React[A, Boolean] = React.computed { (a: A) =>
+  override val remove: Rxn[A, Boolean] = Rxn.computed { (a: A) =>
     head.unsafeInvisibleRead.flatMapU { h =>
       findAndTomb(a, h.next).flatMapU { wasRemoved =>
         if (wasRemoved) {
           // validate head (in case it was dequed concurrently):
           head.unsafeCas(h, h).map { _ => true }
         } else {
-          React.ret(false)
+          Rxn.ret(false)
         }
       }
     }
   }
 
-  private[this] def findAndTomb(item: A, from: Ref[Elem[A]]): React[Unit, Boolean] = {
+  private[this] def findAndTomb(item: A, from: Ref[Elem[A]]): Axn[Boolean] = {
     from.unsafeInvisibleRead.flatMap {
       case Node(dataRef, nextRef) =>
         dataRef.unsafeInvisibleRead.flatMap { a =>
@@ -125,7 +125,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
           }
         }
       case e @ End() =>
-        from.unsafeCas(e, e) >>> React.ret(false)
+        from.unsafeCas(e, e) >>> Rxn.ret(false)
     }
   }
 

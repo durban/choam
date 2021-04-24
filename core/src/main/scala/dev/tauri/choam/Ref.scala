@@ -131,18 +131,18 @@ trait Ref[A] extends MemoryLocation[A] { self =>
   }
 
   // TODO: how to call this? It's like `modify`...
-  final def upd[B, C](f: (A, B) => (A, C)): React[B, C] =
-    React.upd(this)(f)
+  final def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
+    Rxn.upd(this)(f)
 
   // TODO: how to call this? It's like `modifyWith`...
-  final def updWith[B, C](f: (A, B) => Axn[(A, C)]): React[B, C] =
-    React.updWith(this)(f)
+  final def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
+    Rxn.updWith(this)(f)
 
-  final def unsafeInvisibleRead: React[Any, A] =
-    React.unsafe.invisibleRead(this)
+  final def unsafeInvisibleRead: Axn[A] =
+    Rxn.unsafe.invisibleRead(this)
 
-  final def unsafeCas(ov: A, nv: A): React[Any, Unit] =
-    React.unsafe.cas(this, ov, nv)
+  final def unsafeCas(ov: A, nv: A): Axn[Unit] =
+    Rxn.unsafe.cas(this, ov, nv)
 
   /** For testing */
   private[choam] final def debugRead(): A = {
@@ -165,10 +165,10 @@ object Ref {
     padded(initial)
 
   def padded[A](initial: A): Axn[Ref[A]] =
-    React.delay[Any, Ref[A]](_ => Ref.unsafe(initial))
+    Rxn.delay[Any, Ref[A]](_ => Ref.unsafe(initial))
 
   def unpadded[A](initial: A): Axn[Ref[A]] =
-    React.delay[Any, Ref[A]](_ => Ref.unsafeUnpadded(initial))
+    Rxn.delay[Any, Ref[A]](_ => Ref.unsafeUnpadded(initial))
 
   def unsafe[A](initial: A): Ref[A] =
     unsafePadded(initial)

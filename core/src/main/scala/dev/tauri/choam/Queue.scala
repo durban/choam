@@ -26,7 +26,7 @@ abstract class Queue[A] {
 object Queue {
 
   abstract class WithRemove[A] extends Queue[A] {
-    def remove: React[A, Boolean]
+    def remove: Rxn[A, Boolean]
   }
 
   /**

@@ -37,7 +37,7 @@ class InterpreterBench {
   @Benchmark
   def externalWithTag(s: St, bh: Blackhole, k: KCASImplState): Unit = {
     val x = k.nextInt()
-    bh.consume(React.externalInterpreter(s.rxn, x, k.kcasImpl.currentContext()))
+    bh.consume(Rxn.externalInterpreter(s.rxn, x, k.kcasImpl.currentContext()))
   }
 }
 
@@ -78,12 +78,12 @@ object InterpreterBench {
     }
 
     private[this] def mkRxn1(ref1: Ref[String], ref2: Ref[String], ref3: Ref[String]): Int =#> String = {
-      React.computed { (i: Int) =>
+      Rxn.computed { (i: Int) =>
         (if ((i % 2) == 0) {
           ref1.getAndUpdate(ov => (ov.toInt + i).toString) >>> ref2.getAndSet
         } else {
           ref2.getAndUpdate(ov => (ov.toInt - i).toString) >>> ref1.getAndSet
-        }) >>> React.computed { (s: String) =>
+        }) >>> Rxn.computed { (s: String) =>
           (ref3.unsafeCas(s, (s.toInt + 1).toString) + ref3.update(_.length.toString)).as(s)
         }
       }.postCommit(cnt.update(_ + 1L))
@@ -92,7 +92,7 @@ object InterpreterBench {
     private[this] def mkRxn2(ref4: Ref[String], ref5: Ref[String]): Int =#> String = {
       ref4.updWith[Int, String] { (ov4, i) =>
         if ((i % 2) == 0) ref5.getAndUpdate(_ => ov4).map(s => (s, s))
-        else React.unsafe.retry
+        else Rxn.unsafe.retry
       } + ref4.getAndUpdate(ov4 => (ov4.toInt + 1).toString)
     }
   }

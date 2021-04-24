@@ -36,20 +36,20 @@ final class LawsSpecEMCAS
 
 trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
 
-  implicit def arbReact[A, B](
+  implicit def arbRxn[A, B](
     implicit
     arbA: Arbitrary[A],
     arbB: Arbitrary[B],
     arbAB: Arbitrary[A => B],
     arbAA: Arbitrary[A => A]
-  ): Arbitrary[React[A, B]] = Arbitrary {
+  ): Arbitrary[Rxn[A, B]] = Arbitrary {
     Gen.oneOf(
-      arbAB.arbitrary.map(ab => React.lift[A, B](ab)),
-      arbAB.arbitrary.map(ab => React.identity[A] >>> React.lift[A, B](ab)),
+      arbAB.arbitrary.map(ab => Rxn.lift[A, B](ab)),
+      arbAB.arbitrary.map(ab => Rxn.identity[A] >>> Rxn.lift[A, B](ab)),
       Gen.lzy {
         for {
-          one <- arbReact[A, B].arbitrary
-          two <- arbReact[A, B].arbitrary
+          one <- arbRxn[A, B].arbitrary
+          two <- arbRxn[A, B].arbitrary
         } yield one + two
       },
       Gen.lzy {
@@ -72,11 +72,11 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
       arbAB.arbitrary.map { fab =>
         val s = "x"
         val ref = Ref.unsafe(s)
-        (React.lift[A, B](fab) × ref.unsafeCas(s, s)).lmap[A](a => (a, ())).rmap(_._1)
+        (Rxn.lift[A, B](fab) × ref.unsafeCas(s, s)).lmap[A](a => (a, ())).rmap(_._1)
       },
       Gen.lzy {
         for {
-          r <- arbReact[A, B].arbitrary
+          r <- arbRxn[A, B].arbitrary
           b <- arbB.arbitrary
           b2 <- arbB.arbitrary
         } yield {
@@ -88,17 +88,17 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
         for {
           a <- arbA.arbitrary
           aa <- arbAA.arbitrary
-          r <- arbReact[A, B].arbitrary
+          r <- arbRxn[A, B].arbitrary
         } yield {
           val ref = Ref.unsafe[A](a)
-          React.unsafe.delayComputed(prepare = r.map(b => ref.update(aa).as(b)))
+          Rxn.unsafe.delayComputed(prepare = r.map(b => ref.update(aa).as(b)))
         }
       }
     )
   }
 
-  implicit def testingEqReact[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[React[A, B]] = new Eq[React[A, B]] {
-    def eqv(x: React[A, B], y: React[A, B]): Boolean = {
+  implicit def testingEqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]] = new Eq[Rxn[A, B]] {
+    def eqv(x: Rxn[A, B], y: Rxn[A, B]): Boolean = {
       (1 to 1000).forall { _ =>
         val a = arbA.arbitrary.sample.getOrElse(fail("no sample"))
         val bx = x.unsafePerform(a, self.kcasImpl)
@@ -108,7 +108,7 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
     }
   }
 
-  checkAll("ArrowChoice[React]", ArrowChoiceTests[React].arrowChoice[Int, Int, Int, Int, Int, Int])
-  checkAll("Monad[React]", MonadTests[React[String, *]].monad[Int, String, Int])
-  checkAll("Local[React]", LocalTests[React[String, *], String].local[Int, Float])
+  checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
+  checkAll("Monad[Rxn]", MonadTests[Rxn[String, *]].monad[Int, String, Int])
+  checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])
 }

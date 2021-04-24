@@ -56,7 +56,7 @@ final class ThreadContext(
     true
 
   // TODO: do we need this?
-  private[choam] var onRetry: ArrayList[React[Any, Unit]] =
+  private[choam] var onRetry: ArrayList[Axn[Unit]] =
     new ArrayList
 
   final def finalized(desc: EMCASDescriptor, limit: Int = 256, replace: Int = 256): Unit = {

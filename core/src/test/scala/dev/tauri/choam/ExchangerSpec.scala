@@ -50,7 +50,7 @@ trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("Simple exchange") {
     val tsk = for {
-      ex <- React.unsafe.exchanger[String, Int].run[F]
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       f1 <- logOutcome("f1", ex.exchange[F]("foo")).start
       f2 <- logOutcome("f2", ex.dual.exchange[F](42)).start
       _ <- assertResultF(f1.joinWithNever, 42)
@@ -61,7 +61,7 @@ trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("One side transient failure") {
     val tsk = for {
-      ex <- React.unsafe.exchanger[String, Int].run[F]
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       f1 <- logOutcome("f1", ex.exchange[F]("bar")).start
       ref <- Ref("x").run[F]
       r2 = (
@@ -77,12 +77,12 @@ trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("One side doesn't do exchange") {
     val tsk = for {
-      ex <- React.unsafe.exchanger[String, Int].run[F]
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       f1 <- logOutcome("f1", ex.exchange[F]("baz")).start
       ref <- Ref("x").run[F]
       r2 = (
         (ex.dual.exchange * ref.unsafeCas("x", "y")) + // this may succeed
-        (ref.unsafeCas("x", "z") * React.unsafe.retry) // no exchange here, but will always fail
+        (ref.unsafeCas("x", "z") * Rxn.unsafe.retry) // no exchange here, but will always fail
       ).map(_._1)
       f2 <- logOutcome("f2", r2[F](64)).start
       _ <- assertResultF(f1.joinWithNever, 64)
@@ -99,17 +99,17 @@ trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     final case class Exchanged[A](a: A) extends Result[A]
     val N = 512
     val tsk = for {
-      ex <- React.unsafe.exchanger[String, Any].run[F]
+      ex <- Rxn.unsafe.exchanger[String, Any].run[F]
       st <- TreiberStack[String].run[F]
       push = (
         st.push.map(FromStack(_)) + ex.exchange.as(Exchanged(()))
-      ) : React[String, Result[Unit]]
+      ) : Rxn[String, Result[Unit]]
       tryPop = (
         (
           st.unsafePop.map[Result[String]](FromStack(_)) +
           ex.dual.exchange.map(Exchanged(_))
         ).?
-      ) : React[Any, Option[Result[String]]]
+      ) : Axn[Option[Result[String]]]
       f1 <- List.fill(N)("a").parTraverse { s =>
         push[F](s)
       }.start

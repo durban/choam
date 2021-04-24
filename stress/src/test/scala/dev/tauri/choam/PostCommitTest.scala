@@ -39,12 +39,12 @@ class PostCommitTest extends StressTestBase {
   private[this] val r2 =
     Ref.unsafe("bar")
 
-  private[this] val upd: React[String, (String, String)] =
+  private[this] val upd: Rxn[String, (String, String)] =
     r1.upd[String, String] { (ov, nv) => (nv, ov) } * r2.upd[String, String] { (ov, nv) => (nv, ov) }
 
   @Actor
   def upd1(r: LLLLL_Result): Unit = {
-    val u1 = upd.postCommit(React.lift[(String, String), Unit] { res =>
+    val u1 = upd.postCommit(Rxn.lift[(String, String), Unit] { res =>
       r.r1 = res
       r.r2 = r1.get.unsafeRun(this.impl)
       ()
@@ -55,7 +55,7 @@ class PostCommitTest extends StressTestBase {
 
   @Actor
   def upd2(r: LLLLL_Result): Unit = {
-    val u2 = upd.postCommit(React.lift[(String, String), Unit] { res =>
+    val u2 = upd.postCommit(Rxn.lift[(String, String), Unit] { res =>
       r.r3 = res
       r.r4 = r1.get.unsafeRun(this.impl)
       ()

@@ -36,7 +36,7 @@ class QueueBench extends BenchUtils {
   final val waitTime = 128L
   final val size = 4096
 
-  /** MS-Queue implemented with `React` */
+  /** MS-Queue implemented with `Rxn` */
   @Benchmark
   def michaelScottQueue(s: MsSt, t: KCASImplState): Unit = {
     val tsk = isEnq(t).flatMap { enq =>
@@ -46,7 +46,7 @@ class QueueBench extends BenchUtils {
     run(s.runtime, tsk.void, size = size)
   }
 
-  /** MS-Queue (+ interior deletion) implemented with `React` */
+  /** MS-Queue (+ interior deletion) implemented with `Rxn` */
   @Benchmark
   def michaelScottQueueWithRemove(s: RmSt, t: KCASImplState): Unit = {
     val tsk = isEnq(t).flatMap { enq =>

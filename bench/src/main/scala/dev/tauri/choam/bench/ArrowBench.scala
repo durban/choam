@@ -42,13 +42,13 @@ class ArrowBench {
 
   @Benchmark
   def updDerived(s: ArrowBench.USt, bh: Blackhole, k: KCASImplState): Unit = {
-    val r = React.updDerived[Long, String, Long](s.ref) { (i, s) => (i + 1, s.length.toLong) }
+    val r = Rxn.updDerived[Long, String, Long](s.ref) { (i, s) => (i + 1, s.length.toLong) }
     bh.consume(r.unsafePerform(k.nextString(), k.kcasImpl))
   }
 
   @Benchmark
   def updPrimitive(s: ArrowBench.USt, bh: Blackhole, k: KCASImplState): Unit = {
-    val r = React.upd[Long, String, Long](s.ref) { (i, s) => (i + 1, s.length.toLong) }
+    val r = Rxn.upd[Long, String, Long](s.ref) { (i, s) => (i + 1, s.length.toLong) }
     bh.consume(r.unsafePerform(k.nextString(), k.kcasImpl))
   }
 }
@@ -69,9 +69,9 @@ object ArrowBench {
 
     def rOnlyComputed(ref: Ref[String]): React[Unit, Int] = {
       ref.get.flatMap { s =>
-        React.ret(s.toUpperCase).flatMap { u =>
-          React.ret(u.trim).flatMap { t =>
-            React.ret(t.length)
+        Axn.ret(s.toUpperCase).flatMap { u =>
+          Axn.ret(u.trim).flatMap { t =>
+            Axn.ret(t.length)
           }
         }
       }

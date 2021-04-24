@@ -40,11 +40,11 @@ trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
   test("Map should perform put correctly") {
     for {
       m <- mkEmptyMap[Int, Int]
-      _ <- (React.pure(42 -> 21) >>> m.put).run[F]
+      _ <- (Rxn.pure(42 -> 21) >>> m.put).run[F]
       _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21))
-      _ <- (React.pure(44 -> 22) >>> m.put).run[F]
+      _ <- (Rxn.pure(44 -> 22) >>> m.put).run[F]
       _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21, 44 -> 22))
-      _ <- (React.pure(42 -> 0) >>> m.put).run[F]
+      _ <- (Rxn.pure(42 -> 0) >>> m.put).run[F]
       _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 0, 44 -> 22))
     } yield ()
   }
@@ -52,7 +52,7 @@ trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
   test("Map should perform get correctly") {
     for {
       m <- mkEmptyMap[Int, Int]
-      _ <- (React.pure(42 -> 21) >>> m.put).run[F]
+      _ <- (Rxn.pure(42 -> 21) >>> m.put).run[F]
       _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21))
       _ <- assertResultF(m.get.apply[F](42), Some(21))
       _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21))
@@ -64,13 +64,13 @@ trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
   test("Map should perform del correctly") {
     for {
       m <- mkEmptyMap[Int, Int]
-      _ <- (React.pure(42 -> 21) >>> m.put).run[F]
+      _ <- (Rxn.pure(42 -> 21) >>> m.put).run[F]
       _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21))
-      _ <- assertResultF((React.pure(56) >>> m.del).run[F], false)
+      _ <- assertResultF((Rxn.pure(56) >>> m.del).run[F], false)
       _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> 21))
-      _ <- assertResultF((React.pure(42) >>> m.del).run[F], true)
+      _ <- assertResultF((Rxn.pure(42) >>> m.del).run[F], true)
       _ <- assertResultF(m.snapshot.run[F], immutable.Map.empty[Int, Int])
-      _ <- assertResultF((React.pure(42) >>> m.del).run[F], false)
+      _ <- assertResultF((Rxn.pure(42) >>> m.del).run[F], false)
       _ <- assertResultF(m.snapshot.run[F], immutable.Map.empty[Int, Int])
     } yield ()
   }
@@ -78,7 +78,7 @@ trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
   test("Map should perform replace correctly") {
     for {
       m <- mkEmptyMap[Int, String]
-      _ <- (React.pure(42 -> "foo") >>> m.put).run[F]
+      _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
       _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> "foo"))
       _ <- assertResultF(m.replace.apply[F]((42, "xyz", "bar")), false)
       _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> "foo"))
@@ -92,8 +92,8 @@ trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
   test("Map should perform remove correctly") {
     for {
       m <- mkEmptyMap[Int, String]
-      _ <- (React.pure(42 -> "foo") >>> m.put).run[F]
-      _ <- (React.pure(99 -> "bar") >>> m.put).run[F]
+      _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
+      _ <- (Rxn.pure(99 -> "bar") >>> m.put).run[F]
       _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> "foo", 99 -> "bar"))
       _ <- assertResultF(m.remove.apply[F](42 -> "x"), false)
       _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> "foo", 99 -> "bar"))
@@ -107,8 +107,8 @@ trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
   test("Map should perform clear correctly") {
     for {
       m <- mkEmptyMap[Int, String]
-      _ <- (React.pure(42 -> "foo") >>> m.put).run[F]
-      _ <- (React.pure(99 -> "bar") >>> m.put).run
+      _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
+      _ <- (Rxn.pure(99 -> "bar") >>> m.put).run
       _ <- assertResultF(m.snapshot.run[F], immutable.Map(42 -> "foo", 99 -> "bar"))
       _ <- assertResultF(m.clear.run[F], immutable.Map(42 -> "foo", 99 -> "bar"))
       _ <- assertResultF(m.snapshot.run[F], immutable.Map.empty[Int, String])

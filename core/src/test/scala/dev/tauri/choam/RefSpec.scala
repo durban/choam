@@ -41,7 +41,7 @@ final class RefSpec_EMCAS_ZIO
 
 trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
-  import React._
+  import Rxn._
 
   test("Simple CAS should work as expected") {
     for {
@@ -60,7 +60,7 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       r1 <- Ref("foo").run[F]
       r2 <- Ref("x").run[F]
       r = r1.getAndUpdateWith { ov =>
-        if (ov eq "foo") React.ret("bar")
+        if (ov eq "foo") Rxn.ret("bar")
         else r2.upd[Any, String] { (o2, _) => (ov, o2) }
       }
       _ <- r.run
@@ -76,8 +76,8 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       trueRef <- Ref(true).run[F]
       falseRef <- Ref(false).run[F]
-      ft = React.ret[Any, Option[Int]](Some(42))
-      ff = React.ret[Any, Option[Int]](None)
+      ft = Rxn.pure[Option[Int]](Some(42))
+      ff = Rxn.pure[Option[Int]](None)
       _ <- assertResultF(trueRef.get.ifM(ft, ff).run, Some(42))
       _ <- assertResultF(trueRef.get.ifM(ff, ft).run, None)
       _ <- assertResultF(falseRef.get.ifM(ft, ff).run, None)
@@ -96,10 +96,10 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       r <- Ref("a").run[F]
       _ <- assertResultF(r.update(_ + "b").run[F], ())
-      _ <- assertResultF(r.updateWith(s => React.ret(s + "c")).run[F], ())
+      _ <- assertResultF(r.updateWith(s => Rxn.ret(s + "c")).run[F], ())
       _ <- assertResultF(r.tryUpdate(_ + "d").run[F], true)
       _ <- assertResultF(r.getAndUpdate(_ + "e").run[F], "abcd")
-      _ <- assertResultF(r.getAndUpdateWith(s => React.ret(s + "f")).run[F], "abcde")
+      _ <- assertResultF(r.getAndUpdateWith(s => Rxn.ret(s + "f")).run[F], "abcde")
       _ <- assertResultF(r.updateAndGet(_ + "g").run[F], "abcdefg")
     } yield ()
   }
@@ -108,7 +108,7 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       r <- Ref("a").run[F]
       _ <- assertResultF(r.modify(s => (s + "b", 42)).run[F], 42)
-      _ <- assertResultF(r.modifyWith(s => React.ret((s + "c", 43))).run[F], 43)
+      _ <- assertResultF(r.modifyWith(s => Rxn.ret((s + "c", 43))).run[F], 43)
       _ <- assertResultF(r.tryModify(s => (s + "d", 44)).run[F], Some(44))
       _ <- assertResultF(r.get.run[F], "abcd")
     } yield ()

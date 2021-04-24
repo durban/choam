@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 @JCStressTest
 @State
-@Description("React.swap (updWith) should be atomic")
+@Description("Rxn.swap (updWith) should be atomic")
 @Outcomes(Array(
   new Outcome(id = Array("(x,y), (y,x)"), expect = ACCEPTABLE, desc = "Read before swap"),
   new Outcome(id = Array("(y,x), (y,x)"), expect = ACCEPTABLE, desc = "Read after swap")
@@ -37,11 +37,11 @@ class SwapTest extends StressTestBase {
   private[this] val ref2 =
     Ref.unsafe("y")
 
-  private[this] val sw: React[Unit, Unit] =
-    React.swap(ref1, ref2)
+  private[this] val sw: Axn[Unit] =
+    Rxn.swap(ref1, ref2)
 
   private[this] val rd =
-    React.consistentRead(ref1, ref2)
+    Rxn.consistentRead(ref1, ref2)
 
   @Actor
   def swap(): Unit = {

@@ -32,8 +32,8 @@ final class Exchanger[A, B] private (
 
   require(incoming.length == outgoing.length)
 
-  def exchange: React[A, B] =
-    React.unsafe.exchange(this)
+  def exchange: Rxn[A, B] =
+    Rxn.unsafe.exchange(this)
 
   // TODO: maybe cache this instance?
   def dual: Exchanger[B, A] =
@@ -143,15 +143,15 @@ final class Exchanger[A, B] private (
     selfMsg: Msg[A, B, C],
     stats: Statistics
   ): Right[Statistics, Msg[Unit, Unit, C]] = {
-    val cont: React[Unit, C] = selfMsg.cont.provide(other.msg.value)
-    val otherCont: React[Unit, Unit] = other.msg.cont.provide(selfMsg.value).flatMap { d =>
+    val cont: Axn[C] = selfMsg.cont.provide(other.msg.value)
+    val otherCont: Axn[Unit] = other.msg.cont.provide(selfMsg.value).flatMap { d =>
       other.hole.unsafeCas(nullOf[D], d)
     }
     val both = (cont * otherCont).map(_._1)
     val resMsg = Msg[Unit, Unit, C](
       value = (),
       cont = both,
-      rd = React.ReactionData(
+      rd = Rxn.ReactionData(
         selfMsg.rd.postCommit ++ other.msg.rd.postCommit,
         // this thread will continue, so we use (and update) our data
         selfMsg.rd.exchangerData.updated(this, stats.exchanged)
@@ -246,11 +246,11 @@ object Exchanger {
       256 // TODO: magic; too much
   }
 
-  // TODO: this is basically `React.Jump`
+  // TODO: this is basically `Jump`
   private[choam] final case class Msg[+A, B, +C](
     value: A,
-    cont: React[B, C],
-    rd: React.ReactionData,
+    cont: Rxn[B, C],
+    rd: Rxn.ReactionData,
     desc: EMCASDescriptor // TODO: not threadsafe!
   )
 
@@ -258,8 +258,8 @@ object Exchanger {
     def ret[C](c: C, ctx: ThreadContext, ed: StatMap): Msg[Unit, Unit, C] = {
       Msg[Unit, Unit, C](
         value = (),
-        cont = React.ret(c),
-        rd = React.ReactionData(Nil, ed),
+        cont = Rxn.ret(c),
+        rd = Rxn.ReactionData(Nil, ed),
         desc = ctx.impl.start(ctx)
       )
     }

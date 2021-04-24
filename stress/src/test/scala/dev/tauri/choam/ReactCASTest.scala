@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 
 @JCStressTest
 @State
-@Description("React.cas should be a simple CAS")
+@Description("Rxn.unsafe.cas should be a simple CAS")
 @Outcomes(Array(
   new Outcome(id = Array("true, false, x"), expect = ACCEPTABLE, desc = "T1 succeeded"),
   new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE, desc = "T2 succeeded")
@@ -35,7 +35,7 @@ class ReactCASTest extends StressTestBase {
     Ref.unsafe("ov")
 
   private[this] val cas =
-    React.computed { (nv: String) => React.unsafe.cas(ref, "ov", nv) }.?
+    Rxn.computed { (nv: String) => Rxn.unsafe.cas(ref, "ov", nv) }.?
 
   @Actor
   def writer1(r: ZZL_Result): Unit = {

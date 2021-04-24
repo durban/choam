@@ -22,92 +22,92 @@ import scala.collection.immutable
 
 // TODO: use Eq and Hash
 trait Map[K, V] {
-  def put: React[(K, V), Option[V]]
-  def putIfAbsent: React[(K, V), Option[V]]
-  def replace: React[(K, V, V), Boolean]
-  def get: React[K, Option[V]]
-  def del: React[K, Boolean]
-  def remove: React[(K, V), Boolean]
-  def snapshot: React[Unit, immutable.Map[K, V]]
-  def clear: React[Unit, immutable.Map[K, V]]
+  def put: Rxn[(K, V), Option[V]]
+  def putIfAbsent: Rxn[(K, V), Option[V]]
+  def replace: Rxn[(K, V, V), Boolean]
+  def get: Rxn[K, Option[V]]
+  def del: Rxn[K, Boolean]
+  def remove: Rxn[(K, V), Boolean]
+  def snapshot: Rxn[Unit, immutable.Map[K, V]]
+  def clear: Rxn[Unit, immutable.Map[K, V]]
 }
 
 object Map {
 
-  def naive[K, V]: React[Unit, Map[K, V]] = React.delay { _ =>
+  def naive[K, V]: Rxn[Unit, Map[K, V]] = Rxn.delay { _ =>
     new Map[K, V] {
 
       private[this] val repr: Ref[immutable.Map[K, V]] =
         Ref.unsafe(immutable.Map.empty)
 
-      override val put = React.computed { (kv: (K, V)) =>
+      override val put = Rxn.computed { (kv: (K, V)) =>
         for {
           m <- repr.unsafeInvisibleRead
           old <- repr.unsafeCas(m, m + kv) >>> (m.get(kv._1) match {
             case s @ Some(_) =>
-               React.ret(s)
+               Rxn.ret(s)
             case None =>
-              React.ret(None)
+              Rxn.ret(None)
           })
         } yield old
       }
 
-      override val putIfAbsent = React.computed { (kv: (K, V)) =>
+      override val putIfAbsent = Rxn.computed { (kv: (K, V)) =>
         for {
           m <- repr.unsafeInvisibleRead
           old <- m.get(kv._1) match {
             case s @ Some(_) =>
-              repr.unsafeCas(m, m) >>> React.ret(s)
+              repr.unsafeCas(m, m) >>> Rxn.ret(s)
             case None =>
-              repr.unsafeCas(m, m + kv) >>> React.ret(None)
+              repr.unsafeCas(m, m + kv) >>> Rxn.ret(None)
           }
         } yield old
       }
 
-      override val replace = React.computed { (kvv: (K, V, V)) =>
+      override val replace = Rxn.computed { (kvv: (K, V, V)) =>
         for {
           m <- repr.unsafeInvisibleRead
           ok <- m.get(kvv._1) match {
             case Some(v) =>
               if (equ(v, kvv._2)) {
-                repr.unsafeCas(m, m + (kvv._1 -> kvv._3)) >>> React.ret(true)
+                repr.unsafeCas(m, m + (kvv._1 -> kvv._3)) >>> Rxn.ret(true)
               } else {
-                repr.unsafeCas(m, m) >>> React.ret(false)
+                repr.unsafeCas(m, m) >>> Rxn.ret(false)
               }
             case None =>
-              repr.unsafeCas(m, m) >>> React.ret(false)
+              repr.unsafeCas(m, m) >>> Rxn.ret(false)
           }
         } yield ok
       }
 
-      override val get = React.computed { (k: K) =>
+      override val get = Rxn.computed { (k: K) =>
         repr.get.map(_.get(k))
       }
 
-      override val del = React.computed { (k: K) =>
+      override val del = Rxn.computed { (k: K) =>
         for {
           m <- repr.unsafeInvisibleRead
           ok <- m.get(k) match {
             case Some(_) =>
-              repr.unsafeCas(m, m - k) >>> React.ret(true)
+              repr.unsafeCas(m, m - k) >>> Rxn.ret(true)
             case None =>
-              repr.unsafeCas(m, m) >>> React.ret(false)
+              repr.unsafeCas(m, m) >>> Rxn.ret(false)
           }
         } yield ok
       }
 
-      override val remove = React.computed { (kv: (K, V)) =>
+      override val remove = Rxn.computed { (kv: (K, V)) =>
         for {
           m <- repr.unsafeInvisibleRead
           ok <- m.get(kv._1) match {
             case Some(w) =>
               if (equ(w, kv._2)) {
-                repr.unsafeCas(m, m - kv._1) >>> React.ret(true)
+                repr.unsafeCas(m, m - kv._1) >>> Rxn.ret(true)
               } else {
-                repr.unsafeCas(m, m) >>> React.ret(false)
+                repr.unsafeCas(m, m) >>> Rxn.ret(false)
               }
             case None =>
-              repr.unsafeCas(m, m) >>> React.ret(false)
+              repr.unsafeCas(m, m) >>> Rxn.ret(false)
           }
         } yield ok
       }

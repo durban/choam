@@ -22,7 +22,7 @@ import cats.effect.kernel.{ Sync, MonadCancel }
 import cats.effect.{ kernel => ce }
 
 trait Reactive[F[_]] {
-  def run[A, B](r: React[A, B], a: A): F[B]
+  def run[A, B](r: Rxn[A, B], a: A): F[B]
   def kcasImpl: kcas.KCAS
   def monad: Monad[F]
 }
@@ -41,10 +41,10 @@ object Reactive {
   private[choam] class SyncReactive[F[_]](
     final override val kcasImpl: kcas.KCAS
   )(implicit F: Sync[F]) extends Reactive[F] {
-    final override def run[A, B](r: React[A, B], a: A): F[B] = {
+    final override def run[A, B](r: Rxn[A, B], a: A): F[B] = {
       F.delay {
         r.unsafePerform(a, this.kcasImpl)
-        // React.externalInterpreter(r, a, this.kcasImpl.currentContext())
+        // Rxn.externalInterpreter(r, a, this.kcasImpl.currentContext())
       }
     }
     final override def monad =
@@ -52,7 +52,7 @@ object Reactive {
   }
 
   trait Async[F[_]] extends Reactive[F] {
-    def promise[A]: React[Any, async.Promise[F, A]]
+    def promise[A]: Axn[async.Promise[F, A]]
     def monadCancel: MonadCancel[F, _]
   }
 

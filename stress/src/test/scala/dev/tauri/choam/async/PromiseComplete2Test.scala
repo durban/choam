@@ -40,10 +40,10 @@ class PromiseComplete2Test {
   private[this] val p2: Promise[IO, String] =
     Promise[IO, String].run[SyncIO].unsafeRunSync()
 
-  private[this] val completeBoth: React[(String, String), (Boolean, Boolean)] =
+  private[this] val completeBoth: Rxn[(String, String), (Boolean, Boolean)] =
     p1.complete × p2.complete
 
-  private[this] val tryGetBoth: React[Unit, (Option[String], Option[String])] =
+  private[this] val tryGetBoth: Axn[(Option[String], Option[String])] =
     p1.tryGet * p2.tryGet
 
   @Actor

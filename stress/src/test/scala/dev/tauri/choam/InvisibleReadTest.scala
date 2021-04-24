@@ -39,11 +39,11 @@ class InvisibleReadTest extends StressTestBase {
   private[this] val ref2: Ref[String] =
     Ref.unsafe("x")
 
-  private[this] val read1: React[Unit, String] =
-    React.unsafe.invisibleRead(ref1)
+  private[this] val read1: Axn[String] =
+    Rxn.unsafe.invisibleRead(ref1)
 
-  private[this] val read2: React[Unit, String] =
-    React.unsafe.invisibleRead(ref2)
+  private[this] val read2: Axn[String] =
+    Rxn.unsafe.invisibleRead(ref2)
 
   private[this] val write =
     ref1.unsafeCas("a", "b") >>> ref2.unsafeCas("x", "y")

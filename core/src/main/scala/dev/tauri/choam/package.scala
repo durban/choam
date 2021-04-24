@@ -27,7 +27,8 @@ package object choam {
 
   final type Rxn[-A, +B] = React[A, B] // short for 'reaction'
 
-  final val Rxn: React.type = React
+  // TODO: remove `lazy`
+  final lazy val Rxn: React.type = React
 
   final type =#>[-A, +B] = Rxn[A, B]
 
@@ -56,9 +57,10 @@ package object choam {
    * `Axn[A] ≡ Axn[Any, A]`; or, alternatively
    * `Rxn[A, B] ≡ (A => Axn[B])` (see [[React#toFunction]]).
    */
-  final type Axn[+A] = React[Any, A] // short for 'astaxanthin'
+  final type Axn[+A] = Rxn[Any, A] // short for 'astaxanthin'
 
-  final val Axn: React.type = React
+  // TODO: remove `lazy`
+  final lazy val Axn: Rxn.type = Rxn
 
   // Note: using these always leaves a check for
   // the package object in the bytecode (getstatic

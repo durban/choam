@@ -19,7 +19,7 @@ package dev.tauri.choam
 package async
 
 abstract class AsyncStack[F[_], A] {
-  def push: React[A, Unit]
+  def push: Rxn[A, Unit]
   def pop(implicit F: Reactive.Async[F]): F[A]
 }
 

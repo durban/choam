@@ -35,13 +35,13 @@ class QueueTransferBench extends BenchUtils {
   final val waitTime = 128L
   final val size = 4096
 
-  /** MS-Queues implemented with `React` */
+  /** MS-Queues implemented with `Rxn` */
   @Benchmark
   def michaelScottQueue(s: MsSt, ct: KCASImplState): Unit = {
     runIdx(s.runtime, s.transfer(_).run[IO](ct.reactive), size = size)
   }
 
-  /** MS-Queues (+ interior deletion) implemented with `React` */
+  /** MS-Queues (+ interior deletion) implemented with `Rxn` */
   @Benchmark
   def michaelScottQueueWithRemove(s: RmSt, ct: KCASImplState): Unit = {
     runIdx(s.runtime, s.transfer(_).run[IO](ct.reactive), size = size)
@@ -93,8 +93,8 @@ object QueueTransferBench {
 
     val runtime = cats.effect.unsafe.IORuntime.global
 
-    def transfer(idx: Int): React[Unit, Unit] = {
-      def transferOne(circle: List[Queue[String]]): React[Unit, Unit] = {
+    def transfer(idx: Int): Axn[Unit] = {
+      def transferOne(circle: List[Queue[String]]): Axn[Unit] = {
         circle(idx % circleSize).tryDeque.map(_.get) >>> circle((idx + 1) % circleSize).enqueue
       }
 

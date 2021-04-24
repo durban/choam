@@ -38,8 +38,8 @@ class DelayComputedTest extends StressTestBase {
   private[this] val ref2: Ref[String] =
     Ref.unsafe("x")
 
-  private[this] val composed: React[Unit, (String, String)] = {
-    val dComp = React.unsafe.delayComputed(ref1.unsafeInvisibleRead.flatMap { v1 =>
+  private[this] val composed: Axn[(String, String)] = {
+    val dComp = Rxn.unsafe.delayComputed(ref1.unsafeInvisibleRead.flatMap { v1 =>
       ref1.unsafeCas(v1, v1 + "b").map { _ => // this modify runs during "prepare"
         ref1.getAndUpdate(_ + "c") // this modify is part of the final reaction
       }
@@ -52,8 +52,8 @@ class DelayComputedTest extends StressTestBase {
     (dComp * other)
   }
 
-  private[this] val read: React[Unit, (String, String)] =
-    React.consistentRead(ref2, ref1).map { case (r2, r1) => (r1, r2) }
+  private[this] val read: Axn[(String, String)] =
+    Rxn.consistentRead(ref2, ref1).map { case (r2, r1) => (r1, r2) }
 
   @Actor
   def writer(r: LLL_Result): Unit = {

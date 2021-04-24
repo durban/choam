@@ -129,7 +129,7 @@ object CounterBenchN {
     private[this] var ctrs: Array[Counter] = _
 
     @volatile
-    var r: React[Long, Unit] = _
+    var r: Rxn[Long, Unit] = _
 
     @Setup
     def setup(): Unit = {

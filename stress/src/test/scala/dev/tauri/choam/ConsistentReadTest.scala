@@ -37,10 +37,10 @@ class ConsistentReadTest extends StressTestBase {
   private[this] var ref2 =
     Ref.unsafe("bar")
 
-  private[this] var upd: React[Unit, Unit] =
+  private[this] var upd: Axn[Unit] =
     ref1.unsafeCas("foo", "x") >>> ref2.unsafeCas("bar", "y")
 
-  private[this] var get: React[Unit, (String, String)] =
+  private[this] var get: Axn[(String, String)] =
     ref1.get * ref2.get
 
   @Actor

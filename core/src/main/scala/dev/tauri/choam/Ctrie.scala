@@ -41,7 +41,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
   private[this] val root: Ref[INode[K, V]] =
     Ref.unsafe(new INode(Ref.unsafe[MainNode[K, V]](new CNode(0, Array.empty)), Ref.unsafe(new Gen)))
 
-  val lookup: React[K, Option[V]] = {
+  val lookup: Rxn[K, Option[V]] = {
 
     def ilookup(i: INode[K, V], k: K, lev: Int, @deprecated("", "") parent: INode[K, V]): React[Any, V] = {
       for {
@@ -50,19 +50,19 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
           case cn: CNode[K, V] =>
             val (flag, pos) = flagpos(hs(k), lev, cn.bmp)
             if ((cn.bmp & flag) == 0) {
-              React.ret(NOTFOUND.as[V])
+              Rxn.ret(NOTFOUND.as[V])
             } else {
               cn(pos) match {
                 case sin: INode[K, V] =>
                   ilookup(sin, k, lev + W, i)
                 case sn: SNode[K, V] =>
                   val r = if (eq.eqv(sn.k, k)) sn.v else NOTFOUND.as[V]
-                  React.ret(r)
+                  Rxn.ret(r)
               }
             }
           case _: TNode[K, V] =>
             // TODO: clean
-            React.unsafe.retry
+            Rxn.unsafe.retry
           case ln: LNode[K, V] =>
             ln.lookup.provide((k, eq))
         }
@@ -70,7 +70,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
       } yield v
     }
 
-    React.computed[K, Option[V]] { k =>
+    Rxn.computed[K, Option[V]] { k =>
       for {
         r <- root.unsafeInvisibleRead
         v <- ilookup(r, k, 0, null)
@@ -78,7 +78,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
     }
   }
 
-  val insert: React[(K, V), Unit] = {
+  val insert: Rxn[(K, V), Unit] = {
 
     def iinsert(i: INode[K, V], k: K, v: V, lev: Int, @deprecated("", "") parent: INode[K, V]): React[Any, Unit] = {
       for {
@@ -109,14 +109,14 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
             }
           case _: TNode[K, V] =>
             // TODO: clean
-            React.unsafe.retry
+            Rxn.unsafe.retry
           case ln: LNode[K, V] =>
             i.main.unsafeCas(ln, ln.inserted(k, v, eq))
         }
       } yield ()
     }
 
-    React.computed[(K, V), Unit] {
+    Rxn.computed[(K, V), Unit] {
       case (k, v) =>
         for {
           r <- root.unsafeInvisibleRead
@@ -138,7 +138,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
     debug.unsafePerform(0, kcas)
   }
 
-  private[this] def debug: React[Int, String] = React.computed { level =>
+  private[this] def debug: Rxn[Int, String] = Rxn.computed { level =>
     for {
       r <- root.unsafeInvisibleRead
       rs <- r.debug.provide(level)
@@ -171,7 +171,7 @@ object Ctrie {
   final class INode[K, V](val main: Ref[MainNode[K, V]], val gen: Ref[Gen])
     extends Branch[K, V] {
 
-    private[choam] override def debug: React[Int, String] = React.computed { level =>
+    private[choam] override def debug: Rxn[Int, String] = Rxn.computed { level =>
       for {
         m <- main.unsafeInvisibleRead
         ms <- m.debug.provide(level)
@@ -180,7 +180,7 @@ object Ctrie {
   }
 
   sealed abstract class MainNode[K, V] {
-    private[choam] def debug: React[Int, String]
+    private[choam] def debug: Rxn[Int, String]
   }
 
   /** Ctrie node */
@@ -204,7 +204,7 @@ object Ctrie {
       new CNode(bmp | flag, newArr)
     }
 
-    private[choam] override def debug: React[Int, String] = React.computed { level =>
+    private[choam] override def debug: Rxn[Int, String] = Rxn.computed { level =>
       val els = Traverse[List].traverse(arr.toList)(_.debug.provide(level + 1))
       els.map { els =>
         s"CNode ${bmp.toHexString}\n" + els.mkString("\n")
@@ -238,7 +238,7 @@ object Ctrie {
 
   /** Tomb node */
   final class TNode[K, V](val sn: Ref[SNode[K, V]]) extends MainNode[K, V] {
-    private[choam] def debug: React[Int, String] = React.computed { level =>
+    private[choam] def debug: Rxn[Int, String] = Rxn.computed { level =>
       sn.unsafeInvisibleRead.flatMap(_.debug.provide(0)).map(s => (indent * level) + s"TNode(${s})")
     }
   }
@@ -249,8 +249,8 @@ object Ctrie {
     def this(k1: K, v1: V, k2: K, v2: V) =
       this(k1, v1, new LNode(k2, v2, null))
 
-    val lookup: React[(K, Eq[K]), V] =
-      React.lift((get _).tupled)
+    val lookup: Rxn[(K, Eq[K]), V] =
+      Rxn.lift((get _).tupled)
 
     @tailrec
     def get(k: K, eq: Eq[K]): V = {
@@ -276,9 +276,9 @@ object Ctrie {
       }
     }
 
-    private[choam] def debug: React[Int, String] = React.computed { _ =>
+    private[choam] def debug: Rxn[Int, String] = Rxn.computed { _ =>
       val lst = this.dbg(Nil).reverse
-      React.ret(s"LNode(${lst.mkString(", ")})")
+      Rxn.ret(s"LNode(${lst.mkString(", ")})")
     }
 
     @tailrec
@@ -290,13 +290,13 @@ object Ctrie {
   }
 
   sealed abstract class Branch[K, V] {
-    private[choam] def debug: React[Int, String]
+    private[choam] def debug: Rxn[Int, String]
   }
 
   /** Single node */
   final class SNode[K, V](val k: K, val v: V) extends Branch[K, V] {
-    private[choam] override def debug: React[Int, String] = React.computed { level =>
-      React.ret((indent * level) + s"SNode(${k} -> ${v})")
+    private[choam] override def debug: Rxn[Int, String] = Rxn.computed { level =>
+      Rxn.ret((indent * level) + s"SNode(${k} -> ${v})")
     }
   }
 }

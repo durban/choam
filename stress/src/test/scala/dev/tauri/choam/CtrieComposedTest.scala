@@ -37,10 +37,10 @@ class CtrieComposedTest extends StressTestBase {
   private[this] val ct2 =
     CtrieTest.newCtrie714()
 
-  private[this] val insert: React[((Int, String), (Int, String)), (Unit, Unit)] =
+  private[this] val insert: Rxn[((Int, String), (Int, String)), (Unit, Unit)] =
     ct1.insert × ct2.insert
 
-  private[this] val lookup: React[(Int, Int), (Option[String], Option[String])] =
+  private[this] val lookup: Rxn[(Int, Int), (Option[String], Option[String])] =
     ct1.lookup × ct2.lookup
 
   @Actor

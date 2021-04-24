@@ -51,15 +51,15 @@ class ComputedTest extends StressTestBase {
   private[this] val w2 =
     r2.getAndUpdate { _ => "y" }
 
-  private[this] val computed: React[Any, String] = {
-    React.unsafe.invisibleRead(r1) >>> React.computed[String, String] { a =>
+  private[this] val computed: Axn[String] = {
+    Rxn.unsafe.invisibleRead(r1) >>> Rxn.computed[String, String] { a =>
       val w = if (a eq "foo") w1 else w2
-      (w * React.unsafe.cas(r1, a, a)).map { _ => a }
+      (w * Rxn.unsafe.cas(r1, a, a)).map { _ => a }
     }
   }
 
-  private[this] val consistentRead: React[Unit, (String, String)] =
-    React.consistentRead(r1, r2)
+  private[this] val consistentRead: Axn[(String, String)] =
+    Rxn.consistentRead(r1, r2)
 
   @Actor
   def writer(): Unit = {

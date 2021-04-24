@@ -56,7 +56,7 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       fib1 <- act.start
       fib2 <- act.start
       _ <- F.sleep(0.1.seconds)
-      b <- (React.pure(42) >>> p.complete).run[F]
+      b <- (Rxn.pure(42) >>> p.complete).run[F]
       res1 <- fib1.joinWithNever
       res2 <- fib2.joinWithNever
       _ <- assertF(b)
@@ -85,7 +85,7 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       }
       res1 <- act
       res2 <- act
-      b <- (React.pure(42) >>> p.complete).run[F]
+      b <- (Rxn.pure(42) >>> p.complete).run[F]
       _ <- assertF(!b)
       _ <- assertEqualsF(res1, 42)
       _ <- assertEqualsF(res2, 42)

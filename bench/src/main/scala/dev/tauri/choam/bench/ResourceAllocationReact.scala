@@ -38,12 +38,12 @@ class ResourceAllocationReact {
     val rss = t.selectResources(s.rss)
 
     @tailrec
-    def read(i: Int, react: React[Unit, Array[String]]): React[Unit, Array[String]] = {
+    def read(i: Int, rea: Axn[Array[String]]): Axn[Array[String]] = {
       if (i >= n) {
-        react
+        rea
       } else {
         val r = rss(i).unsafeInvisibleRead
-        read(i + 1, react.map2(r) { (arr, s) =>
+        read(i + 1, rea.map2(r) { (arr, s) =>
           arr(i) = s
           arr
         })
@@ -51,19 +51,19 @@ class ResourceAllocationReact {
     }
 
     @tailrec
-    def write(i: Int, react: React[Array[String], Unit]): React[Array[String], Unit] = {
+    def write(i: Int, rea: Rxn[Array[String], Unit]): Rxn[Array[String], Unit] = {
       if (i >= n) {
-        react
+        rea
       } else {
-        val r = React.computed[Array[String], Unit] { ovs =>
+        val r = Rxn.computed[Array[String], Unit] { ovs =>
           rss(i).unsafeCas(ovs(i), ovs((i + 1) % n))
         }
-        write(i + 1, (react * r).discard)
+        write(i + 1, (rea * r).discard)
       }
     }
 
-    val r = read(0, React.ret(t.ovs))
-    val w = write(0, React.unit)
+    val r = read(0, Axn.ret(t.ovs))
+    val w = write(0, Axn.unit)
     (r >>> w).unsafeRun(t.kcasImpl)
 
     Blackhole.consumeCPU(t.tokens)

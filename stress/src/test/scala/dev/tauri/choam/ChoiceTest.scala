@@ -40,19 +40,19 @@ class ChoiceTest extends StressTestBase {
   private[this] val ref2 =
     Ref.unsafe("bar")
 
-  private[this] val choice: React[Unit, (String, String)] = {
+  private[this] val choice: Axn[(String, String)] = {
     val mod1 = ref0.getAndUpdate { s => (s(0) + 1).toChar.toString }
     val mod2 = ref0.getAndUpdate { s => (s(0) - 1).toChar.toString }
     val ch1 = ref1.getAndUpdateWith {
-      case "this will never match" => React.ret("x")
-      case _ => React.unsafe.retry
+      case "this will never match" => Rxn.ret("x")
+      case _ => Rxn.unsafe.retry
     }
     val ch2 = ref2.getAndUpdate(_.reverse)
     (mod1 * ch1) + (mod2 * ch2)
   }
 
-  private[this] val read: React[Unit, (String, String)] =
-    React.consistentRead(ref0, ref2)
+  private[this] val read: Axn[(String, String)] =
+    Rxn.consistentRead(ref0, ref2)
 
   @Actor
   def write(r: LLL_Result): Unit = {

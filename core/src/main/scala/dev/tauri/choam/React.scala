@@ -90,7 +90,7 @@ sealed abstract class React[-A, +B] {
     ctx.randomizeBackoff = randomizeBackoff
 
     @tailrec
-    def go[C](partialResult: C, cont: React[C, B], rd: ReactionData, desc: EMCASDescriptor, alts: List[SnapJump[_, B]], retries: Int): Success[B] = {
+    def go[C](partialResult: C, cont: Rxn[C, B], rd: ReactionData, desc: EMCASDescriptor, alts: List[SnapJump[_, B]], retries: Int): Success[B] = {
       cont.tryPerform(maxStackDepth, partialResult, rd, desc, ctx) match {
         case Retry =>
           // TODO: don't back off if there are `alts`
@@ -162,7 +162,7 @@ sealed abstract class React[-A, +B] {
   protected final def maybeJump[C, Y >: B](
     n: Int,
     partialResult: C,
-    cont: React[C, Y],
+    cont: Rxn[C, Y],
     ops: ReactionData,
     desc: EMCASDescriptor,
     ctx: ThreadContext
@@ -171,64 +171,64 @@ sealed abstract class React[-A, +B] {
     else cont.tryPerform(n - 1, partialResult, ops, desc, ctx)
   }
 
-  final def + [X <: A, Y >: B](that: React[X, Y]): React[X, Y] =
+  final def + [X <: A, Y >: B](that: Rxn[X, Y]): Rxn[X, Y] =
     new Choice[X, Y](this, that)
 
-  final def >>> [C](that: React[B, C]): React[A, C] = that match {
+  final def >>> [C](that: Rxn[B, C]): Rxn[A, C] = that match {
     case _: Commit[_] => this
     case _ => this.andThenImpl(that)
   }
 
-  protected def andThenImpl[C](that: React[B, C]): React[A, C]
+  protected def andThenImpl[C](that: Rxn[B, C]): Rxn[A, C]
 
-  final def * [X <: A, C](that: React[X, C]): React[X, (B, C)] = {
+  final def * [X <: A, C](that: Rxn[X, C]): Rxn[X, (B, C)] = {
     (this × that).lmap[X](x => (x, x))
   }
 
-  final def × [C, D](that: React[C, D]): React[(A, C), (B, D)] =
+  final def × [C, D](that: Rxn[C, D]): Rxn[(A, C), (B, D)] =
     this.productImpl(that)
 
-  final def ? : React[A, Option[B]] =
+  final def ? : Rxn[A, Option[B]] =
     this.rmap(Some(_)) + ret[A, Option[B]](None)
 
-  final def dup: React[A, (B, B)] =
+  final def dup: Rxn[A, (B, B)] =
     this.map { b => (b, b) }
 
-  protected def productImpl[C, D](that: React[C, D]): React[(A, C), (B, D)]
+  protected def productImpl[C, D](that: Rxn[C, D]): Rxn[(A, C), (B, D)]
 
-  protected[choam] def firstImpl[C]: React[(A, C), (B, C)]
+  protected[choam] def firstImpl[C]: Rxn[(A, C), (B, C)]
 
-  final def lmap[C](f: C => A): React[C, B] =
+  final def lmap[C](f: C => A): Rxn[C, B] =
     lift(f) >>> this
 
-  final def rmap[C](f: B => C): React[A, C] =
+  final def rmap[C](f: B => C): Rxn[A, C] =
     this >>> lift(f)
 
-  final def map[C](f: B => C): React[A, C] =
+  final def map[C](f: B => C): Rxn[A, C] =
     rmap(f)
 
-  final def as[C](c: C): React[A, C] =
+  final def as[C](c: C): Rxn[A, C] =
     map(_ => c) // TODO: optimize
 
   final def provide(a: A): Axn[B] =
     contramap[Any](_ => a) // TODO: optimize
 
-  final def contramap[C](f: C => A): React[C, B] =
+  final def contramap[C](f: C => A): Rxn[C, B] =
     lmap(f)
 
-  final def dimap[C, D](f: C => A)(g: B => D): React[C, D] =
+  final def dimap[C, D](f: C => A)(g: B => D): Rxn[C, D] =
     this.lmap(f).rmap(g)
 
-  final def map2[X <: A, C, D](that: React[X, C])(f: (B, C) => D): React[X, D] =
+  final def map2[X <: A, C, D](that: Rxn[X, C])(f: (B, C) => D): Rxn[X, D] =
     (this * that).map(f.tupled)
 
   // TODO: maybe rename to `void`
-  final def discard: React[A, Unit] =
+  final def discard: Rxn[A, Unit] =
     this.rmap(_ => ()) // TODO: optimize
 
-  final def flatMap[X <: A, C](f: B => React[X, C]): React[X, C] = {
-    val self: React[X, (X, B)] = arrowChoiceInstance.second[X, B, X](this).lmap[X](x => (x, x))
-    val comp: React[(X, B), C] = computed[(X, B), C](xb => f(xb._2).provide(xb._1))
+  final def flatMap[X <: A, C](f: B => Rxn[X, C]): Rxn[X, C] = {
+    val self: Rxn[X, (X, B)] = arrowChoiceInstance.second[X, B, X](this).lmap[X](x => (x, x))
+    val comp: Rxn[(X, B), C] = computed[(X, B), C](xb => f(xb._2).provide(xb._1))
     self >>> comp
   }
 
@@ -249,8 +249,8 @@ sealed abstract class React[-A, +B] {
   }
 
   // TODO: public API?
-  private[choam] final def postCommit(pc: React[B, Unit]): React[A, B] =
-    this >>> React.postCommit(pc)
+  private[choam] final def postCommit(pc: Rxn[B, Unit]): Rxn[A, B] =
+    this >>> Rxn.postCommit(pc)
 
   override def toString: String
 }
@@ -260,21 +260,21 @@ object React extends ReactSyntax0 {
   private[choam] final val maxStackDepth = 1024
 
   /** Old (slower) impl of `upd`, keep it for benchmarks */
-  private[choam] def updDerived[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): React[B, C] = {
-    val self: React[B, (A, B)] = r.unsafeInvisibleRead.firstImpl[B].lmap[B](b => ((), b))
-    val comp: React[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
+  private[choam] def updDerived[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] = {
+    val self: Rxn[B, (A, B)] = r.unsafeInvisibleRead.firstImpl[B].lmap[B](b => ((), b))
+    val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
       val (na, c) = f(oa, b)
       r.unsafeCas(oa, na).rmap(_ => c)
     }
     self >>> comp
   }
 
-  def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): React[B, C] =
+  def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
     new Upd(r, f, Commit[C]())
 
-  def updWith[A, B, C](r: Ref[A])(f: (A, B) => React[Any, (A, C)]): React[B, C] = {
-    val self: React[B, (A, B)] = r.unsafeInvisibleRead.firstImpl[B].lmap[B](b => ((), b))
-    val comp: React[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
+  def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] = {
+    val self: Rxn[B, (A, B)] = r.unsafeInvisibleRead.firstImpl[B].lmap[B](b => ((), b))
+    val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
       f(oa, b).flatMap {
         case (na, c) =>
           r.unsafeCas(oa, na).rmap(_ => c)
@@ -284,7 +284,7 @@ object React extends ReactSyntax0 {
   }
 
   @deprecated("old implementation with invisibleRead/cas", since = "2021-03-27")
-  private[choam] def consistentReadOld[A, B](ra: Ref[A], rb: Ref[B]): React[Any, (A, B)] = {
+  private[choam] def consistentReadOld[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
     ra.unsafeInvisibleRead >>> computed[A, (A, B)] { a =>
       rb.unsafeInvisibleRead >>> computed[B, (A, B)] { b =>
         (ra.unsafeCas(a, a) × rb.unsafeCas(b, b)).provide(((), ())).map { _ => (a, b) }
@@ -312,7 +312,7 @@ object React extends ReactSyntax0 {
     }
   }
 
-  def swap[A](r1: Ref[A], r2: Ref[A]): React[Any, Unit] = {
+  def swap[A](r1: Ref[A], r2: Ref[A]): Axn[Unit] = {
     r1.updWith[Any, Unit] { (o1, _) =>
       r2.upd[Any, A] { (o2, _) =>
         (o1, o2)
@@ -320,60 +320,60 @@ object React extends ReactSyntax0 {
     }
   }
 
-  def computed[A, B](f: A => React[Any, B]): React[A, B] =
+  def computed[A, B](f: A => Axn[B]): Rxn[A, B] =
     new Computed[A, B, B](f, Commit[B]())
 
   // TODO: why is this private?
-  private[choam] def postCommit[A](pc: React[A, Unit]): React[A, A] =
+  private[choam] def postCommit[A](pc: Rxn[A, Unit]): Rxn[A, A] =
     new PostCommit[A, A](pc, Commit[A]())
 
-  def lift[A, B](f: A => B): React[A, B] =
+  def lift[A, B](f: A => B): Rxn[A, B] =
     new Lift(f, Commit[B]())
 
-  private[choam] def delay[A, B](uf: A => B): React[A, B] =
+  private[choam] def delay[A, B](uf: A => B): Rxn[A, B] =
     lift(uf)
 
-  def identity[A]: React[A, A] =
+  def identity[A]: Rxn[A, A] =
     Commit[A]()
 
   private[this] val _unit =
-    React.lift[Any, Unit] { _ => () }
+    Rxn.lift[Any, Unit] { _ => () }
 
-  def unit[A]: React[A, Unit] =
+  def unit[A]: Rxn[A, Unit] =
     _unit
 
-  def ret[X, A](a: A): React[X, A] =
+  def ret[X, A](a: A): Rxn[X, A] =
     lift[X, A](_ => a)
 
-  def pure[A](a: A): React[Any, A] =
+  def pure[A](a: A): Axn[A] =
     ret(a)
 
   final object unsafe {
 
-    def cas[A](r: Ref[A], ov: A, nv: A): React[Any, Unit] =
-      new Cas[A, Unit](r, ov, nv, React.unit)
+    def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
+      new Cas[A, Unit](r, ov, nv, Rxn.unit)
 
-    def invisibleRead[A](r: Ref[A]): React[Any, A] =
+    def invisibleRead[A](r: Ref[A]): Axn[A] =
       new Read(r, Commit[A]())
 
-    def retry[A, B]: React[A, B] =
+    def retry[A, B]: Rxn[A, B] =
       AlwaysRetry()
 
     // TODO: better name
-    def delayComputed[A, B](prepare: React[A, React[Unit, B]]): React[A, B] =
+    def delayComputed[A, B](prepare: Rxn[A, Axn[B]]): Rxn[A, B] =
       new DelayComputed[A, B, B](prepare, Commit[B]())
 
     def exchanger[A, B]: Axn[Exchanger[A, B]] =
       Exchanger.apply[A, B]
 
-    def exchange[A, B](ex: Exchanger[A, B]): React[A, B] =
+    def exchange[A, B](ex: Exchanger[A, B]): Rxn[A, B] =
       new Exchange[A, B, B](ex, Commit[B]())
 
     // FIXME:
-    def onRetry[A, B](r: React[A, B])(act: React[Any, Unit]): React[A, B] =
+    def onRetry[A, B](r: Rxn[A, B])(act: Axn[Unit]): Rxn[A, B] =
       onRetryImpl(act, r)
 
-    private[this] def onRetryImpl[A, B](act: React[Any, Unit], k: React[A, B]): React[A, B] = {
+    private[this] def onRetryImpl[A, B](act: Axn[Unit], k: Rxn[A, B]): Rxn[A, B] = {
       new React[A, B] {
 
         private[choam] def tag = -1 // TODO
@@ -383,13 +383,13 @@ object React extends ReactSyntax0 {
           maybeJump(n, a, k, ops, desc, ctx)
         }
 
-        override protected def andThenImpl[C](that: React[B, C]): React[A, C] =
+        override protected def andThenImpl[C](that: Rxn[B, C]): Rxn[A, C] =
           onRetryImpl(act, k >>> that)
 
-        override protected def productImpl[C, D](that: React[C, D]): React[(A, C), (B, D)] =
+        override protected def productImpl[C, D](that: Rxn[C, D]): Rxn[(A, C), (B, D)] =
           onRetryImpl(act, k × that)
 
-        override protected[choam] def firstImpl[C]: React[(A, C), (B, C)] =
+        override protected[choam] def firstImpl[C]: Rxn[(A, C), (B, C)] =
           onRetryImpl(act, k.firstImpl[C])
 
         override def toString(): String = s"OnRetry(${act}, ${k})"
@@ -397,19 +397,20 @@ object React extends ReactSyntax0 {
     }
   }
 
-  implicit final class InvariantReactSyntax[A, B](private val self: React[A, B]) extends AnyVal {
+  // TODO: can we put this directly on `Rxn`?
+  implicit final class InvariantRxnSyntax[A, B](private val self: Rxn[A, B]) extends AnyVal {
     final def apply[F[_]](a: A)(implicit F: Reactive[F]): F[B] =
       F.run(self, a)
   }
 
-  implicit final class UnitReactSyntax[A](private val self: React[Unit, A]) extends AnyVal {
+  implicit final class UnitRxnSyntax[A](private val self: Rxn[Unit, A]) extends AnyVal {
 
     // TODO: maybe this should be the default `flatMap`? (Not sure...)
-    final def flatMapU[X, C](f: A => React[X, C]): React[X, C] = {
-      val self2: React[X, (X, A)] =
-        React.arrowChoiceInstance.second[Unit, A, X](self).lmap[X](x => (x, ()))
-      val comp: React[(X, A), C] =
-        React.computed[(X, A), C](xb => f(xb._2).provide(xb._1))
+    final def flatMapU[X, C](f: A => Rxn[X, C]): Rxn[X, C] = {
+      val self2: Rxn[X, (X, A)] =
+        Rxn.arrowChoiceInstance.second[Unit, A, X](self).lmap[X](x => (x, ()))
+      val comp: Rxn[(X, A), C] =
+        Rxn.computed[(X, A), C](xb => f(xb._2).provide(xb._1))
       self2 >>> comp
     }
 
@@ -419,25 +420,25 @@ object React extends ReactSyntax0 {
     final def unsafeRun(kcas: KCAS): A =
       self.unsafePerform((), kcas)
 
-    final def void: React[Any, Unit] =
+    final def void: Axn[Unit] =
       self.discard.provide(())
   }
 
-  implicit final class Tuple2ReactSyntax[A, B, C](private val self: React[A, (B, C)]) extends AnyVal {
-    def left: React[A, B] =
+  implicit final class Tuple2RxnSyntax[A, B, C](private val self: Rxn[A, (B, C)]) extends AnyVal {
+    def left: Rxn[A, B] =
       self.rmap(_._1)
-    def right: React[A, C] =
+    def right: Rxn[A, C] =
       self.rmap(_._2)
-    def split[X, Y](left: React[B, X], right: React[C, Y]): React[A, (X, Y)] =
+    def split[X, Y](left: Rxn[B, X], right: Rxn[C, Y]): Rxn[A, (X, Y)] =
       self >>> (left × right)
   }
 
   private[choam] final class ReactionData private (
-    val postCommit: List[React[Any, Unit]],
+    val postCommit: List[Axn[Unit]],
     val exchangerData: Exchanger.StatMap
   ) {
 
-    def withPostCommit(act: React[Any, Unit]): ReactionData = {
+    def withPostCommit(act: Axn[Unit]): ReactionData = {
       ReactionData(
         postCommit = act :: this.postCommit,
         exchangerData = this.exchangerData
@@ -447,7 +448,7 @@ object React extends ReactSyntax0 {
 
   private[choam] final object ReactionData {
     def apply(
-      postCommit: List[React[Any, Unit]],
+      postCommit: List[Axn[Unit]],
       exchangerData: Exchanger.StatMap
     ): ReactionData = {
       new ReactionData(postCommit, exchangerData)
@@ -459,7 +460,7 @@ object React extends ReactSyntax0 {
   protected[React] final case class Success[+A](value: A, reactionData: ReactionData) extends TentativeResult[A]
   protected[React] final case class Jump[A, +B](
     value: A,
-    react: React[A, B],
+    react: Rxn[A, B],
     rd: ReactionData,
     desc: EMCASDescriptor,
     alts: List[SnapJump[_, B]]
@@ -472,7 +473,7 @@ object React extends ReactSyntax0 {
 
   protected[React] final case class SnapJump[A, +B](
     value: A,
-    react: React[A, B],
+    react: Rxn[A, B],
     rd: ReactionData,
     snap: EMCASDescriptor
   ) {
@@ -492,15 +493,15 @@ object React extends ReactSyntax0 {
       else Retry
     }
 
-    protected final def andThenImpl[C](that: React[A, C]): React[A, C] =
+    protected final def andThenImpl[C](that: Rxn[A, C]): Rxn[A, C] =
       that
 
-    protected final def productImpl[C, D](that: React[C, D]): React[(A, C), (A, D)] = that match {
+    protected final def productImpl[C, D](that: Rxn[C, D]): Rxn[(A, C), (A, D)] = that match {
       case _: Commit[_] => Commit[(A, C)]()
       case _ => arrowChoiceInstance.second(that) // TODO: optimize
     }
 
-    final override def firstImpl[C]: React[(A, C), (A, C)] =
+    final override def firstImpl[C]: Rxn[(A, C), (A, C)] =
       Commit[(A, C)]()
 
     final override def toString =
@@ -523,13 +524,13 @@ object React extends ReactSyntax0 {
     protected final def tryPerform(n: Int, a: A, reaction: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] =
       Retry
 
-    protected final def andThenImpl[C](that: React[B, C]): React[A, C] =
+    protected final def andThenImpl[C](that: Rxn[B, C]): Rxn[A, C] =
       AlwaysRetry()
 
-    protected final def productImpl[C, D](that: React[C, D]): React[(A, C), (B, D)] =
+    protected final def productImpl[C, D](that: Rxn[C, D]): Rxn[(A, C), (B, D)] =
       AlwaysRetry()
 
-    final def firstImpl[C]: React[(A, C), (B, C)] =
+    final def firstImpl[C]: Rxn[(A, C), (B, C)] =
       AlwaysRetry()
 
     final override def toString =
@@ -543,7 +544,7 @@ object React extends ReactSyntax0 {
       this.asInstanceOf[AlwaysRetry[A, B]]
   }
 
-  private final class PostCommit[A, B](val pc: React[A, Unit], val k: React[A, B])
+  private final class PostCommit[A, B](val pc: Rxn[A, Unit], val k: Rxn[A, B])
       extends React[A, B] {
 
     private[choam] def tag = 2
@@ -551,20 +552,20 @@ object React extends ReactSyntax0 {
     def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[B] =
       maybeJump(n, a, k, rd.withPostCommit(pc.provide(a)), desc, ctx)
 
-    def andThenImpl[C](that: React[B, C]): React[A, C] =
+    def andThenImpl[C](that: Rxn[B, C]): Rxn[A, C] =
       new PostCommit[A, C](pc, k >>> that)
 
-    def productImpl[C, D](that: React[C, D]): React[(A, C), (B, D)] =
+    def productImpl[C, D](that: Rxn[C, D]): Rxn[(A, C), (B, D)] =
       new PostCommit[(A, C), (B, D)](pc.lmap[(A, C)](_._1), k × that)
 
-    def firstImpl[C]: React[(A, C), (B, C)] =
+    def firstImpl[C]: Rxn[(A, C), (B, C)] =
       new PostCommit[(A, C), (B, C)](pc.lmap[(A, C)](_._1), k.firstImpl[C])
 
     override def toString =
       s"PostCommit(${pc}, ${k})"
   }
 
-  private final class Lift[A, B, C](val func: A => B, val k: React[B, C])
+  private final class Lift[A, B, C](val func: A => B, val k: Rxn[B, C])
       extends React[A, C] {
 
     private[choam] def tag = 3
@@ -572,11 +573,11 @@ object React extends ReactSyntax0 {
     def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
       maybeJump(n, func(a), k, rd, desc, ctx)
 
-    def andThenImpl[D](that: React[C, D]): React[A, D] = {
+    def andThenImpl[D](that: Rxn[C, D]): Rxn[A, D] = {
       new Lift[A, B, D](func, k >>> that)
     }
 
-    def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] = that match {
+    def productImpl[D, E](that: Rxn[D, E]): Rxn[(A, D), (C, E)] = that match {
       case _: Commit[_] =>
         new Lift[(A, D), (B, D), (C, D)](ad => (func(ad._1), ad._2), k.firstImpl)
       case l: Lift[_, _, _] =>
@@ -585,14 +586,14 @@ object React extends ReactSyntax0 {
         new Lift(ad => (func(ad._1), ad._2), k × that)
     }
 
-    def firstImpl[D]: React[(A, D), (C, D)] =
+    def firstImpl[D]: Rxn[(A, D), (C, D)] =
       new Lift[(A, D), (B, D), (C, D)](ad => (func(ad._1), ad._2), k.firstImpl[D])
 
     override def toString =
       s"Lift(<function>, ${k})"
   }
 
-  private final class Computed[A, B, C](val f: A => React[Any, B], val k: React[B, C])
+  private final class Computed[A, B, C](val f: A => Axn[B], val k: Rxn[B, C])
       extends React[A, C] {
 
     private[choam] def tag = 4
@@ -600,18 +601,18 @@ object React extends ReactSyntax0 {
     def tryPerform(n: Int, a: A, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[C] =
       maybeJump(n, (), f(a) >>> k, rd, desc, ctx)
 
-    def andThenImpl[D](that: React[C, D]): React[A, D] = {
+    def andThenImpl[D](that: Rxn[C, D]): Rxn[A, D] = {
       new Computed(f, k >>> that)
     }
 
-    def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] = {
+    def productImpl[D, E](that: Rxn[D, E]): Rxn[(A, D), (C, E)] = {
       new Computed[(A, D), (B, D), (C, E)](
         ad => f(ad._1).rmap(b => (b, ad._2)),
         k × that
       )
     }
 
-    def firstImpl[D]: React[(A, D), (C, D)] = {
+    def firstImpl[D]: Rxn[(A, D), (C, D)] = {
       new Computed[(A, D), (B, D), (C, D)](
         ad => f(ad._1).firstImpl[D].provide(((), ad._2)),
         k.firstImpl[D]
@@ -622,7 +623,7 @@ object React extends ReactSyntax0 {
       s"Computed(<function>, ${k})"
   }
 
-  private final class DelayComputed[A, B, C](val prepare: React[A, React[Unit, B]], val k: React[B, C])
+  private final class DelayComputed[A, B, C](val prepare: Rxn[A, Axn[B]], val k: Rxn[B, C])
     extends React[A, C] {
 
     private[choam] def tag = 5
@@ -632,7 +633,7 @@ object React extends ReactSyntax0 {
       // as a consequence of this, `prepare` will not
       // be part of the atomic reaction, but it runs here
       // as a side-effect.
-      val r: React[Unit, B] = prepare.unsafePerform(
+      val r: Axn[B] = prepare.unsafePerform(
         a,
         ctx.impl,
         maxBackoff = ctx.maxBackoff,
@@ -641,11 +642,11 @@ object React extends ReactSyntax0 {
       maybeJump(n, (), r >>> k, rd, desc, ctx)
     }
 
-    override def andThenImpl[D](that: React[C, D]): React[A, D] = {
+    override def andThenImpl[D](that: Rxn[C, D]): Rxn[A, D] = {
       new DelayComputed(prepare, k >>> that)
     }
 
-    override def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] = {
+    override def productImpl[D, E](that: Rxn[D, E]): Rxn[(A, D), (C, E)] = {
       new DelayComputed[(A, D), (B, D), (C, E)](
         prepare.firstImpl[D].map { case (r, d) =>
           r.map { b => (b, d) }
@@ -654,7 +655,7 @@ object React extends ReactSyntax0 {
       )
     }
 
-    override def firstImpl[D]: React[(A, D), (C, D)] = {
+    override def firstImpl[D]: Rxn[(A, D), (C, D)] = {
       new DelayComputed[(A, D), (B, D), (C, D)](
         prepare.firstImpl[D].map { case (r, d) =>
           r.map { b => (b, d) }
@@ -667,7 +668,7 @@ object React extends ReactSyntax0 {
       s"DelayComputed(${prepare}, ${k})"
   }
 
-  private final class Choice[A, B](val first: React[A, B], val second: React[A, B])
+  private final class Choice[A, B](val first: Rxn[A, B], val second: Rxn[A, B])
       extends React[A, B] {
 
     private[choam] def tag = 6
@@ -689,20 +690,20 @@ object React extends ReactSyntax0 {
       }
     }
 
-    def andThenImpl[C](that: React[B, C]): React[A, C] =
+    def andThenImpl[C](that: Rxn[B, C]): Rxn[A, C] =
       new Choice[A, C](first >>> that, second >>> that)
 
-    def productImpl[C, D](that: React[C, D]): React[(A, C), (B, D)] =
+    def productImpl[C, D](that: Rxn[C, D]): Rxn[(A, C), (B, D)] =
       new Choice[(A, C), (B, D)](first × that, second × that)
 
-    def firstImpl[C]: React[(A, C), (B, C)] =
+    def firstImpl[C]: Rxn[(A, C), (B, C)] =
       new Choice[(A, C), (B, C)](first.firstImpl, second.firstImpl)
 
     override def toString =
       s"Choice(${first}, ${second})"
   }
 
-  private abstract class GenCas[A, B, C, D](val ref: Ref[A], val ov: A, val nv: A, val k: React[C, D])
+  private abstract class GenCas[A, B, C, D](val ref: Ref[A], val ov: A, val nv: A, val k: Rxn[C, D])
     extends React[B, D] { self =>
 
     private[choam] def tag = 7
@@ -719,21 +720,21 @@ object React extends ReactSyntax0 {
       }
     }
 
-    final def andThenImpl[E](that: React[D, E]): React[B, E] = {
+    final def andThenImpl[E](that: Rxn[D, E]): Rxn[B, E] = {
       new GenCas[A, B, C, E](ref, ov, nv, k >>> that) {
         private[choam] def transform(a: A, b: B): C =
           self.transform(a, b)
       }
     }
 
-    final def productImpl[E, F](that: React[E, F]): React[(B, E), (D, F)] = {
+    final def productImpl[E, F](that: Rxn[E, F]): Rxn[(B, E), (D, F)] = {
       new GenCas[A, (B, E), (C, E), (D, F)](ref, ov, nv, k × that) {
         private[choam] def transform(a: A, be: (B, E)): (C, E) =
           (self.transform(a, be._1), be._2)
       }
     }
 
-    final def firstImpl[E]: React[(B, E), (D, E)] = {
+    final def firstImpl[E]: Rxn[(B, E), (D, E)] = {
       new GenCas[A, (B, E), (C, E), (D, E)](ref, ov, nv, k.firstImpl[E]) {
         private[choam] def transform(a: A, be: (B, E)): (C, E) =
           (self.transform(a, be._1), be._2)
@@ -744,14 +745,14 @@ object React extends ReactSyntax0 {
       s"GenCas(${ref}, ${ov}, ${nv}, ${k})"
   }
 
-  private final class Cas[A, B](ref: Ref[A], ov: A, nv: A, k: React[A, B])
+  private final class Cas[A, B](ref: Ref[A], ov: A, nv: A, k: Rxn[A, B])
       extends GenCas[A, Any, A, B](ref, ov, nv, k) {
 
     def transform(a: A, b: Any): A =
       a
   }
 
-  private final class Upd[A, B, C, X](val ref: Ref[X], val f: (X, A) => (X, B), val k: React[B, C])
+  private final class Upd[A, B, C, X](val ref: Ref[X], val f: (X, A) => (X, B), val k: Rxn[B, C])
     extends React[A, C] { self =>
 
     private[choam] def tag = 8
@@ -762,13 +763,13 @@ object React extends ReactSyntax0 {
       maybeJump(n, b, k, rd, ctx.impl.addCas(desc, ref, ox, nx, ctx), ctx)
     }
 
-    protected final override def andThenImpl[D](that: React[C, D]): React[A, D] =
+    protected final override def andThenImpl[D](that: Rxn[C, D]): Rxn[A, D] =
       new Upd[A, B, D, X](ref, f, k.andThenImpl(that))
 
-    protected final override def productImpl[D, E](that: React[D, E]): React[(A, D), (C, E)] =
+    protected final override def productImpl[D, E](that: Rxn[D, E]): Rxn[(A, D), (C, E)] =
       new Upd[(A, D), (B, D), (C, E), X](ref, this.fFirst[D], k.productImpl(that))
 
-    protected[choam] final override def firstImpl[D]: React[(A, D), (C, D)] =
+    protected[choam] final override def firstImpl[D]: Rxn[(A, D), (C, D)] =
       new Upd[(A, D), (B, D), (C, D), X](ref, this.fFirst[D], k.firstImpl[D])
 
     final override def toString =
@@ -780,7 +781,7 @@ object React extends ReactSyntax0 {
     }
   }
 
-  private abstract class GenRead[A, B, C, D](val ref: Ref[A], val k: React[C, D])
+  private abstract class GenRead[A, B, C, D](val ref: Ref[A], val k: Rxn[C, D])
       extends React[B, D] { self =>
 
     private[choam] def tag = 9
@@ -793,21 +794,21 @@ object React extends ReactSyntax0 {
       maybeJump(n, transform(a, b), k, rd, desc, ctx)
     }
 
-    final override def andThenImpl[E](that: React[D, E]): React[B, E] = {
+    final override def andThenImpl[E](that: Rxn[D, E]): Rxn[B, E] = {
       new GenRead[A, B, C, E](ref, k >>> that) {
         private[choam] def transform(a: A, b: B): C =
           self.transform(a, b)
       }
     }
 
-    final override def productImpl[E, F](that: React[E, F]): React[(B, E), (D, F)] = {
+    final override def productImpl[E, F](that: Rxn[E, F]): Rxn[(B, E), (D, F)] = {
       new GenRead[A, (B, E), (C, E), (D, F)](ref, k × that) {
         private[choam] def transform(a: A, be: (B, E)): (C, E) =
           (self.transform(a, be._1), be._2)
       }
     }
 
-    final override def firstImpl[E]: React[(B, E), (D, E)] = {
+    final override def firstImpl[E]: Rxn[(B, E), (D, E)] = {
       new GenRead[A, (B, E), (C, E), (D, E)](ref, k.firstImpl[E]) {
         private[choam] def transform(a: A, be: (B, E)): (C, E) =
           (self.transform(a, be._1), be._2)
@@ -818,7 +819,7 @@ object React extends ReactSyntax0 {
       s"GenRead(${ref}, ${k})"
   }
 
-  private final class Read[A, B](ref: Ref[A], k: React[A, B])
+  private final class Read[A, B](ref: Ref[A], k: Rxn[A, B])
       extends GenRead[A, Any, A, B](ref, k) {
 
     final override def transform(a: A, b: Any): A =
@@ -827,7 +828,7 @@ object React extends ReactSyntax0 {
 
   private sealed abstract class GenExchange[A, B, C, D, E](
     val exchanger: Exchanger[A, B],
-    val k: React[D, E]
+    val k: Rxn[D, E]
   ) extends React[C, E] { self =>
 
     private[choam] def tag = 10
@@ -861,7 +862,7 @@ object React extends ReactSyntax0 {
       this.exchanger.tryExchange(msg, ctx)
     }
 
-    protected final override def andThenImpl[F](that: React[E, F]): React[C, F] = {
+    protected final override def andThenImpl[F](that: Rxn[E, F]): Rxn[C, F] = {
       new GenExchange[A, B, C, D, F](this.exchanger, this.k >>> that) {
         protected override def transform1(c: C): A =
           self.transform1(c)
@@ -870,7 +871,7 @@ object React extends ReactSyntax0 {
       }
     }
 
-    protected final override def productImpl[F, G](that: React[F, G]): React[(C, F), (E, G)] = {
+    protected final override def productImpl[F, G](that: Rxn[F, G]): Rxn[(C, F), (E, G)] = {
       new GenExchange[A, B, (C, F), (D, F), (E, G)](exchanger, k.productImpl(that)) {
         protected override def transform1(cf: (C, F)): A =
           self.transform1(cf._1)
@@ -881,7 +882,7 @@ object React extends ReactSyntax0 {
       }
     }
 
-    protected[choam] final override def firstImpl[F]: React[(C, F), (E, F)] = {
+    protected[choam] final override def firstImpl[F]: Rxn[(C, F), (E, F)] = {
       new GenExchange[A, B, (C, F), (D, F), (E, F)](exchanger, k.firstImpl[F]) {
         protected override def transform1(cf: (C, F)): A =
           self.transform1(cf._1)
@@ -898,7 +899,7 @@ object React extends ReactSyntax0 {
 
   private final class Exchange[A, B, C](
     exchanger: Exchanger[A, B],
-    k: React[B, C]
+    k: Rxn[B, C]
   ) extends GenExchange[A, B, A, B, C](exchanger, k) {
 
     override protected def transform1(a: A): A =
@@ -919,7 +920,7 @@ object React extends ReactSyntax0 {
   }
 
   private[choam] def externalInterpreter[X, R](
-    rxn: React[X, R],
+    rxn: Rxn[X, R],
     x: X,
     ctx: ThreadContext,
     maxBackoff: Int = 16,
@@ -931,11 +932,11 @@ object React extends ReactSyntax0 {
     var desc: EMCASDescriptor = kcas.start(ctx)
     var stats: Exchanger.StatMap = Exchanger.StatMap.empty
 
-    val postCommit = newStack[React[Any, Unit]]()
+    val postCommit = newStack[Axn[Unit]]()
 
     val altSnap = newStack[EMCASDescriptor]()
     val altA = newStack[ForSome.x]()
-    val altK = newStack[React[ForSome.x, R]]()
+    val altK = newStack[Rxn[ForSome.x, R]]()
     val altPc = newStack[Array[Rxn[Any, Unit]]]()
 
     def reset(): Unit = {
@@ -950,7 +951,7 @@ object React extends ReactSyntax0 {
     }
 
     @tailrec
-    def loop[A](curr: React[A, R], a: A, retries: Int, spin: Boolean): R = {
+    def loop[A](curr: Rxn[A, R], a: A, retries: Int, spin: Boolean): R = {
       if (spin) {
         if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
         else Backoff.backoffConst(retries, maxBackoff)
@@ -991,7 +992,7 @@ object React extends ReactSyntax0 {
           // as a consequence of this, `prepare` will not
           // be part of the atomic reaction, but it runs here
           // as a side-effect.
-          val r: React[Unit, ForSome.x] = externalInterpreter(
+          val r: Axn[ForSome.x] = externalInterpreter(
             c.prepare,
             a,
             ctx,
@@ -1003,7 +1004,7 @@ object React extends ReactSyntax0 {
           val c = curr.asInstanceOf[Choice[A, R]]
           altSnap.push(ctx.impl.snapshot(desc, ctx))
           altA.push(a.asInstanceOf[ForSome.x])
-          altK.push(c.second.asInstanceOf[React[ForSome.x, R]])
+          altK.push(c.second.asInstanceOf[Rxn[ForSome.x, R]])
           altPc.push(postCommit.toArray)
           loop(c.first, a, retries, spin = false)
         case 7 => // GenCas
@@ -1063,7 +1064,7 @@ object React extends ReactSyntax0 {
     result
   }
 
-  private[this] def doPostCommit(it: ObjStack[React[Any, Unit]], ctx: ThreadContext): Unit = {
+  private[this] def doPostCommit(it: ObjStack[Axn[Unit]], ctx: ThreadContext): Unit = {
     while (it.nonEmpty) {
       val pc = it.pop()
       externalInterpreter(pc, (), ctx)
@@ -1076,59 +1077,59 @@ private[choam] sealed abstract class ReactSyntax0 extends ReactInstances0 { this
 
 private[choam] sealed abstract class ReactInstances0 extends ReactInstances1 { self: React.type =>
 
-  implicit def arrowChoiceInstance: ArrowChoice[React] =
+  implicit def arrowChoiceInstance: ArrowChoice[Rxn] =
     _arrowChoiceInstance
 
-  private[this] val _arrowChoiceInstance: ArrowChoice[React] = new ArrowChoice[React] {
+  private[this] val _arrowChoiceInstance: ArrowChoice[Rxn] = new ArrowChoice[Rxn] {
 
-    def lift[A, B](f: A => B): React[A, B] =
-      React.lift(f)
+    def lift[A, B](f: A => B): Rxn[A, B] =
+      Rxn.lift(f)
 
-    override def id[A]: React[A, A] =
-      React.lift(a => a)
+    override def id[A]: Rxn[A, A] =
+      Rxn.lift(a => a)
 
-    def compose[A, B, C](f: React[B, C], g: React[A, B]): React[A, C] =
+    def compose[A, B, C](f: Rxn[B, C], g: Rxn[A, B]): Rxn[A, C] =
       g >>> f
 
-    def first[A, B, C](fa: React[A, B]): React[(A, C), (B, C)] =
+    def first[A, B, C](fa: Rxn[A, B]): Rxn[(A, C), (B, C)] =
       fa.firstImpl
 
-    def choose[A, B, C, D](f: React[A, C])(g: React[B, D]): React[Either[A, B], Either[C, D]] = {
+    def choose[A, B, C, D](f: Rxn[A, C])(g: Rxn[B, D]): Rxn[Either[A, B], Either[C, D]] = {
       computed[Either[A, B], Either[C, D]] {
         case Left(a) => (ret(a) >>> f).map(Left(_))
         case Right(b) => (ret(b) >>> g).map(Right(_))
       }
     }
 
-    override def choice[A, B, C](f: React[A, C], g: React[B, C]): React[Either[A, B], C] = {
+    override def choice[A, B, C](f: Rxn[A, C], g: Rxn[B, C]): Rxn[Either[A, B], C] = {
       computed[Either[A, B], C] {
         case Left(a) => ret(a) >>> f
         case Right(b) => ret(b) >>> g
       }
     }
 
-    override def lmap[A, B, X](fa: React[A, B])(f: X => A): React[X, B] =
+    override def lmap[A, B, X](fa: Rxn[A, B])(f: X => A): Rxn[X, B] =
       fa.lmap(f)
 
-    override def rmap[A, B, C](fa: React[A, B])(f: B => C): React[A, C] =
+    override def rmap[A, B, C](fa: Rxn[A, B])(f: B => C): Rxn[A, C] =
       fa.rmap(f)
   }
 }
 
 private[choam] sealed abstract class ReactInstances1 extends ReactInstances2 { self: React.type =>
 
-  implicit def monadInstance[X]: Monad[React[X, *]] = new Monad[React[X, *]] {
+  implicit def monadInstance[X]: Monad[Rxn[X, *]] = new Monad[Rxn[X, *]] {
 
-    final override def pure[A](x: A): React[X, A] =
-      React.ret(x)
+    final override def pure[A](x: A): Rxn[X, A] =
+      Rxn.ret(x)
 
-    final override def flatMap[A, B](fa: React[X, A])(f: A => React[X, B]): React[X, B] =
+    final override def flatMap[A, B](fa: Rxn[X, A])(f: A => Rxn[X, B]): Rxn[X, B] =
       fa.flatMap(f)
 
-    final override def tailRecM[A, B](a: A)(f: A => React[X, Either[A, B]]): React[X, B] = {
+    final override def tailRecM[A, B](a: A)(f: A => Rxn[X, Either[A, B]]): Rxn[X, B] = {
       f(a).flatMap {
         case Left(a) => tailRecM(a)(f)
-        case Right(b) => React.ret(b)
+        case Right(b) => Rxn.ret(b)
       }
     }
   }
@@ -1136,15 +1137,15 @@ private[choam] sealed abstract class ReactInstances1 extends ReactInstances2 { s
 
 private[choam] sealed abstract class ReactInstances2 extends ReactInstances3 { self: React.type =>
 
-  implicit def localInstance[E]: Local[React[E, *], E] = new Local[React[E, *], E] {
+  implicit def localInstance[E]: Local[Rxn[E, *], E] = new Local[Rxn[E, *], E] {
 
-    final override def applicative: Applicative[React[E, *]] =
+    final override def applicative: Applicative[Rxn[E, *]] =
       self.monadInstance[E]
 
-    final override def ask[E2 >: E]: React[E, E2] =
-      React.identity[E]
+    final override def ask[E2 >: E]: Rxn[E, E2] =
+      Rxn.identity[E]
 
-    final override def local[A](fa: React[E, A])(f: E => E): React[E, A] =
+    final override def local[A](fa: Rxn[E, A])(f: E => E): Rxn[E, A] =
       fa.lmap(f)
   }
 }
@@ -1153,14 +1154,14 @@ private[choam] sealed abstract class ReactInstances3 { this: React.type =>
 
   import cats.MonoidK
 
-  implicit def monoidKInstance: MonoidK[λ[a => React[a, a]]] = {
-    new MonoidK[λ[a => React[a, a]]] {
+  implicit def monoidKInstance: MonoidK[λ[a => Rxn[a, a]]] = {
+    new MonoidK[λ[a => Rxn[a, a]]] {
 
-      final override def combineK[A](x: React[A, A], y: React[A, A]): React[A, A] =
+      final override def combineK[A](x: Rxn[A, A], y: Rxn[A, A]): Rxn[A, A] =
         x >>> y
 
-      final override def empty[A]: React[A, A] =
-        React.identity[A]
+      final override def empty[A]: Rxn[A, A] =
+        Rxn.identity[A]
     }
   }
 }

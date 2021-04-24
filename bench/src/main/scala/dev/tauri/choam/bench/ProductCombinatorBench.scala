@@ -51,8 +51,8 @@ object ProductCombinatorBench {
 
     @Setup
     def setup(): Unit = {
-      this.prod = (1 to size).foldLeft[React[Unit, Unit]](React.ret(())) { (r, idx) =>
-        (r * React.lift[String, String](_ + idx.toString).provide("foo")).discard
+      this.prod = (1 to size).foldLeft[Axn[Unit]](Axn.ret(())) { (r, idx) =>
+        (r * Rxn.lift[String, String](_ + idx.toString).provide("foo")).discard
       }
     }
   }
@@ -60,7 +60,7 @@ object ProductCombinatorBench {
   @State(Scope.Thread)
   class CASProduct extends ChoiceCombinatorBench.BaseState {
 
-    var prod: React[Unit, Unit] = _
+    var prod: Axn[Unit] = _
 
     private[this] var refs: Array[Ref[String]] = _
 
@@ -70,7 +70,7 @@ object ProductCombinatorBench {
     def setup(): Unit = {
       this.refs = Array.fill(size)(Ref.unsafe("foo"))
       this.reset = new Reset("foo", ArraySeq.unsafeWrapArray(this.refs): _*)
-      this.prod = (0 until size).foldLeft[React[Unit, Unit]](React.ret(())) { (r, idx) =>
+      this.prod = (0 until size).foldLeft[Axn[Unit]](Axn.ret(())) { (r, idx) =>
         (r * refs(idx).unsafeCas("foo", "bar")).discard
       }
     }

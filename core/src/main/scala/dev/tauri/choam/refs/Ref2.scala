@@ -27,16 +27,16 @@ trait Ref2[A, B] {
   def _2: Ref[B]
 
   def consistentRead: Axn[(A, B)] =
-    React.consistentRead(this._1, this._2)
+    Rxn.consistentRead(this._1, this._2)
 }
 
 object Ref2 {
 
   def p1p1[A, B](a: A, b: B): Axn[refs.Ref2[A, B]] =
-    React.delay { _ => unsafeP1P1(a, b) }
+    Rxn.delay { _ => unsafeP1P1(a, b) }
 
   def p2[A, B](a: A, b: B): Axn[refs.Ref2[A, B]] =
-    React.delay { _ => unsafeP2(a, b) }
+    Rxn.delay { _ => unsafeP2(a, b) }
 
   def unapply[A, B](r: Ref2[A, B]): Some[(Ref[A], Ref[B])] =
     Some((r._1, r._2))

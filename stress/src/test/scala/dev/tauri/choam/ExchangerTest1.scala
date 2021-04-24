@@ -34,16 +34,16 @@ class ExchangerTest1 extends StressTestBase {
   private[this] val ex: Exchanger[String, String] =
     Exchanger.unsafe[String, String]
 
-  private[this] val left: React[String, Option[String]] =
+  private[this] val left: Rxn[String, Option[String]] =
     ex.exchange.?
 
-  private[this] val lefts: React[String, Option[String]] =
+  private[this] val lefts: Rxn[String, Option[String]] =
     left + left
 
-  private[this] val right: React[String, Option[String]] =
+  private[this] val right: Rxn[String, Option[String]] =
     ex.dual.exchange.?
 
-  private[this] val rights: React[String, Option[String]] =
+  private[this] val rights: Rxn[String, Option[String]] =
     right + right
 
   @Actor

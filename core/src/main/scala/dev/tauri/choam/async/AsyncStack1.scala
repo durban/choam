@@ -27,7 +27,7 @@ import AsyncStack1._
 private[choam] final class AsyncStack1[F[_], A] private (ref: Ref[State[F, A]])
   extends AsyncStack[F, A] {
 
-  override val push: React[A, Unit] = ref.upd[A, Option[(Promise[F, A], A)]] { (st, a) =>
+  override val push: Rxn[A, Unit] = ref.upd[A, Option[(Promise[F, A], A)]] { (st, a) =>
     st match {
       case e @ Empty() =>
         (e.addItem(a), None)
@@ -38,7 +38,7 @@ private[choam] final class AsyncStack1[F[_], A] private (ref: Ref[State[F, A]])
         (l.addItem(a), None)
     }
   }.flatMap {
-    case None => React.unit[A]
+    case None => Axn.unit[A]
     case Some((p, a)) => p.complete.provide(a).void
   }
 
@@ -70,7 +70,7 @@ private[choam] final class AsyncStack1[F[_], A] private (ref: Ref[State[F, A]])
 private[choam] object AsyncStack1 {
 
   def apply[F[_], A]: Axn[AsyncStack[F, A]] =
-    React.delay(_ => new AsyncStack1(Ref.unsafe(Empty())))
+    Rxn.delay(_ => new AsyncStack1(Ref.unsafe(Empty())))
 
   private sealed abstract class State[F[_], A] {
     def cancelPromise[B >: A](p: Promise[F, B]): (State[F, A], Boolean)

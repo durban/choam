@@ -31,8 +31,8 @@
   - Figure out some tricky race conditions, and test them with JCStress.
     - `Exchanger`
   - LawsSpec:
-    - improve generated `React`s, check if they make sense
-    - check if `testingEqReact` makes sense, maybe do structural checking
+    - improve generated `Rxn`s, check if they make sense
+    - check if `testingEqRxn` makes sense, maybe do structural checking
   - Test with other IO impls (when they cupport ce3)
   - Run CI on windows
 - EMCAS with simplified IBR:
@@ -44,10 +44,10 @@
 - Compile-time detection of:
   - impossible k-CAS operations (2 changes to the same `Ref`)
 - Optimization ideas:
-  - `React#provide`
-  - `React#as`
+  - `Rxn#provide`
+  - `Rxn#as`
   - Boxing
-  - React interpreter (external interpreter?)
+  - Rxn interpreter (external interpreter)
   - Review writes/reads in EMCAS, check if we can relax them
   - Ref padding:
     - allocating a padded Ref is much slower than an unpadded
@@ -74,9 +74,9 @@
     - is it stack-safe?
     - if yes, can we make it faster than the default implementation?
   - separate unsafe/low-level API for `invisibleRead` and other dangerous
-    - (unsafe) thread-confined mode for running a `React` (with `NaiveKCAS` or something even more simple)
-  - React.onRetry?
-  - React.delay?
+    - (unsafe) thread-confined mode for running a `Rxn` (with `NaiveKCAS` or something even more simple)
+  - Rxn.onRetry?
+  - Rxn.delay?
     - allocating (but: only `Ref` really needs it, others are built on that)
     - calling async callbacks (but: only `Promise` needs it, others don't)
     - allocating `Exchanger` arrays (this is similar to `Ref`)
@@ -114,8 +114,8 @@
     - `(stack.pop + exchanger.exchange).?` is safe, but built from unsafe parts
     - `(pop.? + exchange.?)` is safe, built from safe parts
   - Can we have an API for composing unsafe parts into something which is safe?
-    - e.g., `PartialReaction[A, B]`
-    - `.?` would make a (safe) `Reaction` from it
+    - e.g., `PartialRxn[A, B]`
+    - `.?` would make a (safe) `Rxn` from it
 - Think about global / thread-local state:
   - if we're running in IO, we might use something else
   - however, IBR probably really needs thread-locals
@@ -134,7 +134,7 @@
     - push: like normal stack
     - pop: if empty, spin wait for a small time, then return an async `F[A]`
     - what API could represent this?
-      - maybe `pop: React[Unit, Either[A, F[A]]]`?
+      - maybe `pop: Axn[Either[A, F[A]]]`?
       - or maybe simply `pop: F[A]`, which is synchronous in the first case?
       - (i.e., this could be an impl. detail of `AsyncStack`)
       - or maybe:
@@ -142,7 +142,7 @@
         - `pop: AsyncRxn[Unit, A]`
         - `def unsafeRun(ar: AsyncRxn[A, B], a: A): Either[F[A], A]`
         - `def unsafeToF(ar: AsyncRxn[A, B], a: A): F[A] = unsafeRun(...).fold(x => x, F.pure)`
-- "Laws" for the `React` combinators, e.g.:
+- "Laws" for the `Rxn` combinators, e.g.:
   - choice prefers the first option
   - `flatMap` <-> `>>>` and `computed`
   - `updWith` then `ret` <-> `modify`

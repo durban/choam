@@ -36,7 +36,7 @@ class LRMapTest extends StressTestBase {
   private[this] val ref2: Ref[String] =
     Ref.unsafe("x")
 
-  private[this] def react1(r: LLLLLL_Result): React[Unit, String] = {
+  private[this] def rxn1(r: LLLLLL_Result): Axn[String] = {
     ref1.getAndUpdate(_ + "b").rmap { s =>
       r.r1 = ref1.unsafeInvisibleRead.unsafeRun(this.impl) // this is cheating
       r.r2 = ref2.unsafeInvisibleRead.unsafeRun(this.impl) // this is cheating
@@ -44,7 +44,7 @@ class LRMapTest extends StressTestBase {
     }
   }
 
-  private[this] def react2(r: LLLLLL_Result): React[String, String] = React.computed { (s: String) =>
+  private[this] def rxn2(r: LLLLLL_Result): Rxn[String, String] = Rxn.computed { (s: String) =>
     ref2.getAndUpdate(_ => s)
   }.lmap { (s: String) =>
     r.r3 = ref1.unsafeInvisibleRead.unsafeRun(this.impl) // this is cheating
@@ -52,12 +52,12 @@ class LRMapTest extends StressTestBase {
     s
   }
 
-  private[this] def react(r: LLLLLL_Result) =
-    react1(r) >>> react2(r)
+  private[this] def rxn(r: LLLLLL_Result) =
+    rxn1(r) >>> rxn2(r)
 
   @Actor
   def actor(r: LLLLLL_Result): Unit = {
-    react(r).unsafeRun(this.impl)
+    rxn(r).unsafeRun(this.impl)
     ()
   }
 

@@ -41,26 +41,26 @@ private[choam] final class MichaelScottQueue[A] private[this] (sentinel: Node[A]
         case n @ Node(a, _) =>
           // No need to also validate `node.next`, since
           // it is not the last node (thus it won't change).
-          head.unsafeCas(node, n.copy(data = nullOf[A])) >>> React.ret(Some(a))
+          head.unsafeCas(node, n.copy(data = nullOf[A])) >>> Rxn.ret(Some(a))
         case End() =>
-          head.unsafeCas(node, node) >>> node.next.unsafeCas(next, next) >>> React.ret(None)
+          head.unsafeCas(node, node) >>> node.next.unsafeCas(next, next) >>> Rxn.ret(None)
       }
     } yield res
   }
 
-  override val enqueue: React[A, Unit] = React.computed { (a: A) =>
+  override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
     findAndEnqueue(Node(a, Ref.unsafe(End[A]())))
   }
 
-  private[this] def findAndEnqueue(node: Node[A]): React[Any, Unit] = {
-    React.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMap { (n: Node[A]) =>
+  private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
+    Rxn.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMap { (n: Node[A]) =>
       n.next.unsafeInvisibleRead.flatMap {
         case e @ End() =>
           // found true tail; will CAS, and try to adjust the tail ref:
-          React.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))
+          Rxn.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and will retry:
-          tail.unsafeCas(n, nv).?.map(_ => React.unsafe.retry)
+          tail.unsafeCas(n, nv).?.map(_ => Rxn.unsafe.retry)
       }
     })
   }
