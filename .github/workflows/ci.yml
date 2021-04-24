@@ -21,7 +21,7 @@ jobs:
     name: Build and Test
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, windows-latest]
         scala: [2.13.5, 3.0.0-RC2]
         java:
           - adopt@1.11
@@ -30,6 +30,11 @@ jobs:
           - adopt-openj9@1.15
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Ignore line ending differences in git
+        if: contains(runner.os, 'windows')
+        shell: bash
+        run: git config --global core.autocrlf false
+
       - name: Checkout current branch (full)
         uses: actions/checkout@v2
         with:
@@ -53,9 +58,12 @@ jobs:
           key: ${{ runner.os }}-sbt-cache-v2-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
 
       - name: Check that workflows are up to date
+        shell: bash
         run: sbt ++${{ matrix.scala }} githubWorkflowCheck
 
-      - run: sbt ++${{ matrix.scala }} ci
+      - shell: bash
+        run: sbt ++${{ matrix.scala }} ci
 
       - if: matrix.scala != '3.0.0-RC2'
+        shell: bash
         run: sbt ++${{ matrix.scala }} checkScalafix
