@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import kcas.{ ThreadContext, EMCASDescriptor }
 
-// TODO: lazy initialization of exchanger with something like Reaction.lzy { ... }
+// TODO: lazy initialization of exchanger with something like Rxn.lzy { ... }
 
 final class Exchanger[A, B] private (
   incoming: Array[AtomicReference[Exchanger.Node[A, B, _]]],

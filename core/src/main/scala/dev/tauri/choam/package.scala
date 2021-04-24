@@ -29,7 +29,7 @@ package object choam {
 
   /*
    * Implementation note: in some cases, composing
-   * `Reaction`s with `>>>` (or `*>`) will be faster
+   * `Rxn`s with `>>>` (or `*>`) will be faster
    * than using `flatMap`. An example (with measurements)
    * is in `ArrowBench`.
    *
@@ -50,7 +50,7 @@ package object choam {
    *
    * The relation between [[Axn]] and [[Rxn]] is approximately
    * `Axn[A] ≡ Axn[Any, A]`; or, alternatively
-   * `Rxn[A, B] ≡ (A => Axn[B])` (see [[React#toFunction]]).
+   * `Rxn[A, B] ≡ (A => Axn[B])` (see [[Rxn#toFunction]]).
    */
   final type Axn[+A] = Rxn[Any, A] // short for 'astaxanthin'
 

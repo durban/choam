@@ -101,7 +101,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
             case _: Nil.type =>
               go(partialResult, cont, ReactionData(Nil, rd.exchangerData), kcas.start(ctx), alts, retries = retries + 1)
             case (h: SnapJump[x, B]) :: t =>
-              go[x](h.value, h.react, h.rd, h.snap, t, retries = retries + 1)
+              go[x](h.value, h.rxn, h.rd, h.snap, t, retries = retries + 1)
           }
         case s @ Success(_, _) =>
           resetOnRetry()
@@ -460,7 +460,7 @@ object Rxn extends RxnSyntax0 {
   protected[Rxn] final case class Success[+A](value: A, reactionData: ReactionData) extends TentativeResult[A]
   protected[Rxn] final case class Jump[A, +B](
     value: A,
-    react: Rxn[A, B],
+    rxn: Rxn[A, B],
     rd: ReactionData,
     desc: EMCASDescriptor,
     alts: List[SnapJump[_, B]]
@@ -473,13 +473,13 @@ object Rxn extends RxnSyntax0 {
 
   protected[Rxn] final case class SnapJump[A, +B](
     value: A,
-    react: Rxn[A, B],
+    rxn: Rxn[A, B],
     rd: ReactionData,
     snap: EMCASDescriptor
   ) {
 
     def map[C](f: B => C): SnapJump[A, C] = {
-      SnapJump(value, react.map(f), rd, snap)
+      SnapJump(value, rxn.map(f), rd, snap)
     }
   }
 

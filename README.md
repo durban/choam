@@ -21,7 +21,7 @@
 
 *Experiments with composable lock-free concurrency*
 
-The type [`Rxn[-A, +B]`](core/src/main/scala/dev/tauri/choam/React.scala)
+The type [`Rxn[-A, +B]`](core/src/main/scala/dev/tauri/choam/Rxn.scala)
 is similar to an effectful function from `A` to `B`, but:
 
 - The only effect it can perform is lock-free updates to

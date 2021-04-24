@@ -267,7 +267,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("Choice should correctly backtrack (2) (even with jumps)") {
-    backtrackTest2(2) // TODO: Rxn.maxStackDepth / 4)
+    backtrackTest2(Rxn.maxStackDepth / 4)
   }
 
   /**                +
