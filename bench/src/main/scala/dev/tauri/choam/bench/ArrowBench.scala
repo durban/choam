@@ -64,10 +64,10 @@ object ArrowBench {
       Ref.unsafe[String](ThreadLocalRandom.current().nextInt().toString)
     }
 
-    def rWithoutComputed(ref: Ref[String]): React[Unit, Int] =
+    def rWithoutComputed(ref: Ref[String]): Axn[Int] =
       ref.get.map(_.toUpperCase).map(_.trim).map(_.length)
 
-    def rOnlyComputed(ref: Ref[String]): React[Unit, Int] = {
+    def rOnlyComputed(ref: Ref[String]): Axn[Int] = {
       ref.get.flatMap { s =>
         Axn.ret(s.toUpperCase).flatMap { u =>
           Axn.ret(u.trim).flatMap { t =>

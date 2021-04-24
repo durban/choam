@@ -25,11 +25,6 @@ package object choam {
 
   private[choam] type nowarn = scala.annotation.nowarn
 
-  final type Rxn[-A, +B] = React[A, B] // short for 'reaction'
-
-  // TODO: remove `lazy`
-  final lazy val Rxn: React.type = React
-
   final type =#>[-A, +B] = Rxn[A, B]
 
   /*

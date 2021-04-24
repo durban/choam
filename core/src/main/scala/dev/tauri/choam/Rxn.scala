@@ -47,9 +47,9 @@ import kcas._
  * `Rxn[A, B] ≡ (A => Axn[B])`; or, alternatively
  * `Axn[A] ≡ Rxn[Any, A]`.
  */
-sealed abstract class React[-A, +B] {
+sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
-  import React._
+  import Rxn._
 
   /*
    * A partial implementation of reagents, described in [Reagents: Expressing and
@@ -255,7 +255,7 @@ sealed abstract class React[-A, +B] {
   override def toString: String
 }
 
-object React extends ReactSyntax0 {
+object Rxn extends RxnSyntax0 {
 
   private[choam] final val maxStackDepth = 1024
 
@@ -374,7 +374,7 @@ object React extends ReactSyntax0 {
       onRetryImpl(act, r)
 
     private[this] def onRetryImpl[A, B](act: Axn[Unit], k: Rxn[A, B]): Rxn[A, B] = {
-      new React[A, B] {
+      new Rxn[A, B] {
 
         private[choam] def tag = -1 // TODO
 
@@ -455,10 +455,10 @@ object React extends ReactSyntax0 {
     }
   }
 
-  protected[React] sealed trait TentativeResult[+A]
-  protected[React] final case object Retry extends TentativeResult[Nothing]
-  protected[React] final case class Success[+A](value: A, reactionData: ReactionData) extends TentativeResult[A]
-  protected[React] final case class Jump[A, +B](
+  protected[Rxn] sealed trait TentativeResult[+A]
+  protected[Rxn] final case object Retry extends TentativeResult[Nothing]
+  protected[Rxn] final case class Success[+A](value: A, reactionData: ReactionData) extends TentativeResult[A]
+  protected[Rxn] final case class Jump[A, +B](
     value: A,
     react: Rxn[A, B],
     rd: ReactionData,
@@ -471,7 +471,7 @@ object React extends ReactSyntax0 {
     }
   }
 
-  protected[React] final case class SnapJump[A, +B](
+  protected[Rxn] final case class SnapJump[A, +B](
     value: A,
     react: Rxn[A, B],
     rd: ReactionData,
@@ -484,7 +484,7 @@ object React extends ReactSyntax0 {
   }
 
   private final class Commit[A]()
-      extends React[A, A] {
+      extends Rxn[A, A] {
 
     private[choam] def tag = 0
 
@@ -517,7 +517,7 @@ object React extends ReactSyntax0 {
     this.commitInstance.asInstanceOf[Commit[A]]
 
   private sealed abstract class AlwaysRetry[A, B]()
-      extends React[A, B] {
+      extends Rxn[A, B] {
 
     private[choam] def tag = 1
 
@@ -545,7 +545,7 @@ object React extends ReactSyntax0 {
   }
 
   private final class PostCommit[A, B](val pc: Rxn[A, Unit], val k: Rxn[A, B])
-      extends React[A, B] {
+      extends Rxn[A, B] {
 
     private[choam] def tag = 2
 
@@ -566,7 +566,7 @@ object React extends ReactSyntax0 {
   }
 
   private final class Lift[A, B, C](val func: A => B, val k: Rxn[B, C])
-      extends React[A, C] {
+      extends Rxn[A, C] {
 
     private[choam] def tag = 3
 
@@ -594,7 +594,7 @@ object React extends ReactSyntax0 {
   }
 
   private final class Computed[A, B, C](val f: A => Axn[B], val k: Rxn[B, C])
-      extends React[A, C] {
+      extends Rxn[A, C] {
 
     private[choam] def tag = 4
 
@@ -624,7 +624,7 @@ object React extends ReactSyntax0 {
   }
 
   private final class DelayComputed[A, B, C](val prepare: Rxn[A, Axn[B]], val k: Rxn[B, C])
-    extends React[A, C] {
+    extends Rxn[A, C] {
 
     private[choam] def tag = 5
 
@@ -669,7 +669,7 @@ object React extends ReactSyntax0 {
   }
 
   private final class Choice[A, B](val first: Rxn[A, B], val second: Rxn[A, B])
-      extends React[A, B] {
+      extends Rxn[A, B] {
 
     private[choam] def tag = 6
 
@@ -704,7 +704,7 @@ object React extends ReactSyntax0 {
   }
 
   private abstract class GenCas[A, B, C, D](val ref: Ref[A], val ov: A, val nv: A, val k: Rxn[C, D])
-    extends React[B, D] { self =>
+    extends Rxn[B, D] { self =>
 
     private[choam] def tag = 7
 
@@ -753,7 +753,7 @@ object React extends ReactSyntax0 {
   }
 
   private final class Upd[A, B, C, X](val ref: Ref[X], val f: (X, A) => (X, B), val k: Rxn[B, C])
-    extends React[A, C] { self =>
+    extends Rxn[A, C] { self =>
 
     private[choam] def tag = 8
 
@@ -782,7 +782,7 @@ object React extends ReactSyntax0 {
   }
 
   private abstract class GenRead[A, B, C, D](val ref: Ref[A], val k: Rxn[C, D])
-      extends React[B, D] { self =>
+      extends Rxn[B, D] { self =>
 
     private[choam] def tag = 9
 
@@ -829,7 +829,7 @@ object React extends ReactSyntax0 {
   private sealed abstract class GenExchange[A, B, C, D, E](
     val exchanger: Exchanger[A, B],
     val k: Rxn[D, E]
-  ) extends React[C, E] { self =>
+  ) extends Rxn[C, E] { self =>
 
     private[choam] def tag = 10
 
@@ -849,7 +849,7 @@ object React extends ReactSyntax0 {
       }
     }
 
-    private[React] def tryExchange(c: C, rd: ReactionData, desc:EMCASDescriptor, ctx: ThreadContext): Either[Exchanger.StatMap, Exchanger.Msg[Unit, Unit, E]] = {
+    private[Rxn] def tryExchange(c: C, rd: ReactionData, desc:EMCASDescriptor, ctx: ThreadContext): Either[Exchanger.StatMap, Exchanger.Msg[Unit, Unit, E]] = {
       val msg = Exchanger.Msg[A, B, E](
         value = transform1(c),
         cont = k.lmap[B](b => self.transform2(b, c)),
@@ -1072,10 +1072,10 @@ object React extends ReactSyntax0 {
   }
 }
 
-private[choam] sealed abstract class ReactSyntax0 extends ReactInstances0 { this: React.type =>
+private[choam] sealed abstract class RxnSyntax0 extends RxnInstances0 { this: Rxn.type =>
 }
 
-private[choam] sealed abstract class ReactInstances0 extends ReactInstances1 { self: React.type =>
+private[choam] sealed abstract class RxnInstances0 extends RxnInstances1 { self: Rxn.type =>
 
   implicit def arrowChoiceInstance: ArrowChoice[Rxn] =
     _arrowChoiceInstance
@@ -1116,7 +1116,7 @@ private[choam] sealed abstract class ReactInstances0 extends ReactInstances1 { s
   }
 }
 
-private[choam] sealed abstract class ReactInstances1 extends ReactInstances2 { self: React.type =>
+private[choam] sealed abstract class RxnInstances1 extends RxnInstances2 { self: Rxn.type =>
 
   implicit def monadInstance[X]: Monad[Rxn[X, *]] = new Monad[Rxn[X, *]] {
 
@@ -1135,7 +1135,7 @@ private[choam] sealed abstract class ReactInstances1 extends ReactInstances2 { s
   }
 }
 
-private[choam] sealed abstract class ReactInstances2 extends ReactInstances3 { self: React.type =>
+private[choam] sealed abstract class RxnInstances2 extends RxnInstances3 { self: Rxn.type =>
 
   implicit def localInstance[E]: Local[Rxn[E, *], E] = new Local[Rxn[E, *], E] {
 
@@ -1150,7 +1150,7 @@ private[choam] sealed abstract class ReactInstances2 extends ReactInstances3 { s
   }
 }
 
-private[choam] sealed abstract class ReactInstances3 { this: React.type =>
+private[choam] sealed abstract class RxnInstances3 { this: Rxn.type =>
 
   import cats.MonoidK
 

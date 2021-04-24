@@ -47,7 +47,7 @@ object ProductCombinatorBench {
   @State(Scope.Thread)
   class DummyProduct extends ChoiceCombinatorBench.BaseState {
 
-    var prod: React[Unit, Unit] = _
+    var prod: Axn[Unit] = _
 
     @Setup
     def setup(): Unit = {

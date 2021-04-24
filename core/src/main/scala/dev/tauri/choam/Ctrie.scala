@@ -43,7 +43,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
 
   val lookup: Rxn[K, Option[V]] = {
 
-    def ilookup(i: INode[K, V], k: K, lev: Int, @deprecated("", "") parent: INode[K, V]): React[Any, V] = {
+    def ilookup(i: INode[K, V], k: K, lev: Int, @deprecated("", "") parent: INode[K, V]): Axn[V] = {
       for {
         im <- i.main.unsafeInvisibleRead
         v <- im match {
@@ -80,7 +80,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
 
   val insert: Rxn[(K, V), Unit] = {
 
-    def iinsert(i: INode[K, V], k: K, v: V, lev: Int, @deprecated("", "") parent: INode[K, V]): React[Any, Unit] = {
+    def iinsert(i: INode[K, V], k: K, v: V, lev: Int, @deprecated("", "") parent: INode[K, V]): Axn[Unit] = {
       for {
         im <- i.main.unsafeInvisibleRead
         gen <- i.gen.unsafeInvisibleRead

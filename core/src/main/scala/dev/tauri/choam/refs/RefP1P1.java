@@ -21,7 +21,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
 import dev.tauri.choam.Ref;
-import dev.tauri.choam.React;
 
 abstract class RefP1P1Base<A, B>
   extends RefIdAndPadding
