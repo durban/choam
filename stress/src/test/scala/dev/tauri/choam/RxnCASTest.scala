@@ -29,7 +29,7 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
   new Outcome(id = Array("true, false, x"), expect = ACCEPTABLE, desc = "T1 succeeded"),
   new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE, desc = "T2 succeeded")
 ))
-class ReactCASTest extends StressTestBase {
+class RxnCASTest extends StressTestBase {
 
   private[this] val ref: Ref[String] =
     Ref.unsafe("ov")

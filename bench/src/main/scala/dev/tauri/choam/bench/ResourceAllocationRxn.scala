@@ -28,9 +28,9 @@ import util.KCASImplState
  * implemented with reagents.
  */
 @Fork(2)
-class ResourceAllocationReact {
+class ResourceAllocationRxn {
 
-  import ResourceAllocationReact._
+  import ResourceAllocationRxn._
 
   @Benchmark
   def bench(s: ResAllocSt, t: ThreadSt): Unit = {
@@ -70,7 +70,7 @@ class ResourceAllocationReact {
   }
 }
 
-object ResourceAllocationReact {
+object ResourceAllocationRxn {
 
   private[this] final val nRes = 60
 
