@@ -15,8 +15,11 @@
  * limitations under the License.
  */
 
-ThisBuild / scalaVersion := "2.13.5"
-ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, "3.0.0-RC2")
+val scala2 = "2.13.5"
+val scala3 = "3.0.0-RC2"
+
+ThisBuild / scalaVersion := scala2
+ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, scala3)
 ThisBuild / scalaOrganization := "org.scala-lang"
 ThisBuild / evictionErrorLevel := Level.Warn
 ThisBuild / scalafixScalaBinaryVersion := scalaBinaryVersion.value
@@ -24,9 +27,9 @@ ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
-ThisBuild / githubWorkflowBuild := (
-  if (ScalaArtifacts.isScala3(scalaVersion.value)) Seq(WorkflowStep.Sbt(List("ci")))
-  else Seq(WorkflowStep.Sbt(List("ci", "checkScalafix")))
+ThisBuild / githubWorkflowBuild := Seq(
+  WorkflowStep.Sbt(List("ci")),
+  WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${scala3}'")),
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
   "adopt@1.11",
