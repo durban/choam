@@ -24,8 +24,9 @@ ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
-ThisBuild / githubWorkflowBuild := Seq(
-  WorkflowStep.Sbt(List("ci"))
+ThisBuild / githubWorkflowBuild := (
+  if (ScalaArtifacts.isScala3(scalaVersion.value)) Seq(WorkflowStep.Sbt(List("ci")))
+  else Seq(WorkflowStep.Sbt(List("ci", "checkScalafix")))
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
   "adopt@1.11",
@@ -203,10 +204,11 @@ lazy val dependencies = new {
   val jol = "org.openjdk.jol" % "jol-core" % "0.15"
 }
 
-addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;scalafixAll --check")
+addCommandAlias("checkScalafix", "scalafixAll --check")
+addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
 addCommandAlias("stressTest", "stress/Jcstress/run")
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
-addCommandAlias("ci", ";staticAnalysis;test") // TODO: re-enable stressTest
+addCommandAlias("ci", ";headerCheckAll;test") // TODO: re-enable stressTest
 
 addCommandAlias("measurePerformance", "bench/jmh:run -t 2 -foe true -rf json -rff results.json .*")
 addCommandAlias("profilePerformance", "bench/jmh:run -t 2 -foe true -prof stack:lines=3 -rf text -rff profile.txt .*")
