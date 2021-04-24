@@ -561,7 +561,7 @@ object Rxn extends RxnSyntax0 {
     def firstImpl[C]: Rxn[(A, C), (B, C)] =
       new PostCommit[(A, C), (B, C)](pc.lmap[(A, C)](_._1), k.firstImpl[C])
 
-    override def toString =
+    override def toString: String =
       s"PostCommit(${pc}, ${k})"
   }
 
@@ -589,7 +589,7 @@ object Rxn extends RxnSyntax0 {
     def firstImpl[D]: Rxn[(A, D), (C, D)] =
       new Lift[(A, D), (B, D), (C, D)](ad => (func(ad._1), ad._2), k.firstImpl[D])
 
-    override def toString =
+    override def toString: String =
       s"Lift(<function>, ${k})"
   }
 
@@ -619,7 +619,7 @@ object Rxn extends RxnSyntax0 {
       )
     }
 
-    override def toString =
+    override def toString: String =
       s"Computed(<function>, ${k})"
   }
 
@@ -664,7 +664,7 @@ object Rxn extends RxnSyntax0 {
       )
     }
 
-    override def toString =
+    override def toString: String =
       s"DelayComputed(${prepare}, ${k})"
   }
 
@@ -699,7 +699,7 @@ object Rxn extends RxnSyntax0 {
     def firstImpl[C]: Rxn[(A, C), (B, C)] =
       new Choice[(A, C), (B, C)](first.firstImpl, second.firstImpl)
 
-    override def toString =
+    override def toString: String =
       s"Choice(${first}, ${second})"
   }
 
@@ -741,7 +741,7 @@ object Rxn extends RxnSyntax0 {
       }
     }
 
-    final override def toString =
+    final override def toString: String =
       s"GenCas(${ref}, ${ov}, ${nv}, ${k})"
   }
 
@@ -772,7 +772,7 @@ object Rxn extends RxnSyntax0 {
     protected[choam] final override def firstImpl[D]: Rxn[(A, D), (C, D)] =
       new Upd[(A, D), (B, D), (C, D), X](ref, this.fFirst[D], k.firstImpl[D])
 
-    final override def toString =
+    final override def toString: String =
       s"Upd(${ref}, <function>, ${k})"
 
     private[this] def fFirst[D](ox: X, ad: (A, D)): (X, (B, D)) = {
@@ -815,7 +815,7 @@ object Rxn extends RxnSyntax0 {
       }
     }
 
-    final override def toString =
+    final override def toString: String =
       s"GenRead(${ref}, ${k})"
   }
 

@@ -60,7 +60,7 @@ object ArrowBench {
   @State(Scope.Benchmark)
   class St {
 
-    val refs = List.fill(size) {
+    val refs: List[Ref[String]] = List.fill(size) {
       Ref.unsafe[String](ThreadLocalRandom.current().nextInt().toString)
     }
 
@@ -80,6 +80,6 @@ object ArrowBench {
 
   @State(Scope.Benchmark)
   class USt {
-    val ref = Ref.unsafe[Long](0L)
+    val ref: Ref[Long] = Ref.unsafe[Long](0L)
   }
 }

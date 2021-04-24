@@ -20,6 +20,8 @@ package bench
 
 import java.util.concurrent.ThreadLocalRandom
 
+import scala.collection.mutable
+
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
@@ -76,7 +78,7 @@ private object ObjStackBench {
 
   @State(Scope.Thread)
   class ObjSt {
-    val objStack = {
+    val objStack: ObjStack[String] = {
       val s = new ObjStack[String](initSize = initSize)
       for (i <- 1 to 8) {
         if (ThreadLocalRandom.current().nextBoolean()) {
@@ -89,7 +91,7 @@ private object ObjStackBench {
 
   @State(Scope.Thread)
   class ScSt {
-    val scalaStack = {
+    val scalaStack: mutable.Stack[String] = {
       val s = new scala.collection.mutable.Stack[String](initialSize = initSize)
       for (i <- 1 to 8) {
         if (ThreadLocalRandom.current().nextBoolean()) {

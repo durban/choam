@@ -135,7 +135,7 @@ private[choam] object EMCAS extends KCAS { self =>
           case wd: WordDescriptor[_] =>
             if (wd eq wordDesc) {
               // already points to the right place, early return:
-              return TryWordResult.SUCCESS // scalastyle:ignore return
+              return TryWordResult.SUCCESS // scalafix:ok
             } else {
               contentWd = wd.cast[A]
               // At this point, we're sure that `wd` belongs to another op
@@ -304,7 +304,7 @@ private[choam] object EMCAS extends KCAS { self =>
           }
         case a =>
           // descriptor have been cleaned up:
-          return a // scalastyle:ignore return
+          return a // scalafix:ok
       }
       Thread.onSpinWait()
       ctr += 1L

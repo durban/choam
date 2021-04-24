@@ -21,6 +21,8 @@ import cats.Monad
 import cats.effect.kernel.{ Sync, MonadCancel }
 import cats.effect.{ kernel => ce }
 
+import async.Promise
+
 trait Reactive[F[_]] {
   def run[A, B](r: Rxn[A, B], a: A): F[B]
   def kcasImpl: kcas.KCAS
@@ -69,7 +71,7 @@ object Reactive {
     extends SyncReactive[F](ki)
     with Reactive.Async[F] {
 
-    final override def promise[A] =
+    final override def promise[A]: Axn[Promise[F, A]] =
       async.Promise.fast[F, A](this, F)
 
     final override def monadCancel =

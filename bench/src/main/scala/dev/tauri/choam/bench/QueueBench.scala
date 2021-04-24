@@ -122,13 +122,13 @@ object QueueBench {
   @State(Scope.Benchmark)
   class MsSt {
     val runtime = cats.effect.unsafe.IORuntime.global
-    val michaelScottQueue = MichaelScottQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
+    val michaelScottQueue: MichaelScottQueue[String] = MichaelScottQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
   }
 
   @State(Scope.Benchmark)
   class RmSt {
     val runtime = cats.effect.unsafe.IORuntime.global
-    val removeQueue = RemoveQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
+    val removeQueue: RemoveQueue[String] = RemoveQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
   }
 
   @State(Scope.Benchmark)
@@ -151,21 +151,23 @@ object QueueBench {
 
   @State(Scope.Benchmark)
   class StmCSt {
+    // scalafix:off
     val runtime = cats.effect.unsafe.IORuntime.global
     val s = STM.runtime[IO].unsafeRunSync()(runtime)
     val qu = StmQueueCLike[STM, IO](s)
     val stmQueue = s.commit(StmQueueC.make(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
+    // scalafix:on
   }
 
   @State(Scope.Benchmark)
   class StmZSt {
     val runtime = zio.Runtime.default
-    val stmQueue = runtime.unsafeRunTask(StmQueueZ[String](Prefill.prefill().toList))
+    val stmQueue: StmQueueZ[String] = runtime.unsafeRunTask(StmQueueZ[String](Prefill.prefill().toList))
   }
 
   @State(Scope.Benchmark)
   class CeSt {
     val runtime = cats.effect.unsafe.IORuntime.global
-    val ceQueue = CeQueue.fromList[IO, String](Prefill.prefill().toList).unsafeRunSync()(runtime)
+    val ceQueue: CeQueue[IO,String] = CeQueue.fromList[IO, String](Prefill.prefill().toList).unsafeRunSync()(runtime)
   }
 }

@@ -19,6 +19,9 @@ ThisBuild / scalaVersion := "2.13.5"
 ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, "3.0.0-RC2")
 ThisBuild / scalaOrganization := "org.scala-lang"
 ThisBuild / evictionErrorLevel := Level.Warn
+ThisBuild / scalafixScalaBinaryVersion := scalaBinaryVersion.value
+ThisBuild / semanticdbEnabled := true
+ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowBuild := Seq(
@@ -200,7 +203,7 @@ lazy val dependencies = new {
   val jol = "org.openjdk.jol" % "jol-core" % "0.15"
 }
 
-addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;scalastyle;Test/scalastyle")
+addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;scalafixAll --check")
 addCommandAlias("stressTest", "stress/Jcstress/run")
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
 addCommandAlias("ci", ";staticAnalysis;test") // TODO: re-enable stressTest

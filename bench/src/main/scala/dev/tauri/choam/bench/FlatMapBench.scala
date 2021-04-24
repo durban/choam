@@ -65,14 +65,14 @@ object FlatMapBench {
     private[this] val addYs: List[Axn[String]] =
       refs.map(_.updateAndGet(_.substring(1) + "y"))
 
-    val rsWithFlatMap = {
+    val rsWithFlatMap: List[Axn[String]] = {
       List.tabulate(size) { idx =>
         val idx2 = (idx + 1) % size
         buildReaction(n, first = addXs(idx), last = addYs(idx2), isFlatMap = true)
       }
     }
 
-    val rsWithStarGreater = {
+    val rsWithStarGreater: List[Axn[String]] = {
       List.tabulate(size) { idx =>
         val idx2 = (idx + 1) % size
         buildReaction(n, first = addXs(idx), last = addYs(idx2), isFlatMap = false)

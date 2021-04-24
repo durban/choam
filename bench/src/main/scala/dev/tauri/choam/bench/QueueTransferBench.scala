@@ -205,8 +205,8 @@ object QueueTransferBench {
   class StmCSt extends BaseSt {
 
     val runtime = cats.effect.unsafe.IORuntime.global
-    val s = STM.runtime[IO].unsafeRunSync()(runtime)
-    val qu = StmQueueCLike[STM, IO](s)
+    val s: STM[IO] = STM.runtime[IO].unsafeRunSync()(runtime)
+    val qu = StmQueueCLike[STM, IO](s) // scalafix:ok
 
     var queues: List[List[qu.StmQueueC[String]]] = _
 

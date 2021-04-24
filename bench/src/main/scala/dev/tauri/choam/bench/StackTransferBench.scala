@@ -78,7 +78,7 @@ object StackTransferBench {
       new TreiberStack[String](Prefill.prefill())
     val treiberStack2 =
       new TreiberStack[String](Prefill.prefill())
-    val transfer =
+    val transfer: Axn[Unit] =
       treiberStack1.tryPop.map(_.get) >>> treiberStack2.push
   }
 

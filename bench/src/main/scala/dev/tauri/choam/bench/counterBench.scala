@@ -53,7 +53,7 @@ object CounterBench {
 
   @State(Scope.Benchmark)
   class ReferenceSt {
-    val referenceCtr = {
+    val referenceCtr: ReferenceCounter = {
       val ctr = new ReferenceCounter
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
       ctr.add(init)
@@ -63,7 +63,7 @@ object CounterBench {
 
   @State(Scope.Benchmark)
   class LockedSt {
-    val lockedCtr = {
+    val lockedCtr: LockedCounter = {
       val ctr = new LockedCounter
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
       ctr.add(init)
@@ -73,7 +73,7 @@ object CounterBench {
 
   @State(Scope.Benchmark)
   class ReactSt {
-    val reactCtr = {
+    val reactCtr: Counter = {
       val ctr = Counter.unsafe()
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
       ctr.add.unsafePerform(init, kcas.KCAS.NaiveKCAS)

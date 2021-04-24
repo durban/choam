@@ -111,7 +111,7 @@ abstract class BaseSpecZIO extends CatsEffectSuite with BaseSpecAsyncF[zio.Task]
     obtained.flatMap(ob => zio.Task { this.assertEquals(ob, expected, clue) })
   }
 
-  override def munitValueTransforms = {
+  override def munitValueTransforms: List[this.ValueTransform] = {
     super.munitValueTransforms ++ List(
       new this.ValueTransform(
         "ZIO",

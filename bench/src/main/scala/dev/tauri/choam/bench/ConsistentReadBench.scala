@@ -54,9 +54,9 @@ object ConsistentReadBench {
   @State(Scope.Thread)
   @deprecated("so that we can call the old method", since = "2021-03-27")
   class St {
-    val r1 =
+    val r1: Ref[String] =
       Ref.unsafe(s"r1: ${ThreadLocalRandom.current().nextLong()}")
-    val r2 =
+    val r2: Ref[String] =
       Ref.unsafe(s"r2: ${ThreadLocalRandom.current().nextLong()}")
     val crWithInvisibleRead: Axn[(String, String)] =
       Axn.consistentReadOld(r1, r2)

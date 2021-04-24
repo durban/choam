@@ -310,7 +310,7 @@ object Exchanger {
      *    \
      *     ˙---> RESCINDED (owner couldn't wait any more for the fulfiller)
      */
-    val hole = Ref.unsafe[C](nullOf[C])
+    val hole: Ref[C] = Ref.unsafe[C](nullOf[C])
 
     def spinWait(stats: Statistics, ctx: ThreadContext): Option[C] = {
       @tailrec

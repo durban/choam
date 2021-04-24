@@ -92,6 +92,6 @@ object KCASBenchHelpers {
 
   @State(Scope.Benchmark)
   class RefState {
-    val ref = Ref.unsafe(ThreadLocalRandom.current().nextLong().toString)
+    val ref: Ref[String] = Ref.unsafe(ThreadLocalRandom.current().nextLong().toString)
   }
 }
