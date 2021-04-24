@@ -57,7 +57,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   test("Creating and running deeply nested Rxn's should both be stack-safe") {
     def nest(
       n: Int,
-      combine: (Rxn[Int, Int], Rxn[Int, Int]) => Rxn[Int, Int],
+      combine: (Rxn[Int, Int], Rxn[Int, Int]) => Rxn[Int, Int]
     ): Rxn[Int, Int] = {
       (1 to n).map(_ => Rxn.lift[Int, Int](_ + 1)).reduce(combine)
     }

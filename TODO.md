@@ -82,6 +82,9 @@
     - calling async callbacks (but: only `Promise` needs it, others don't)
     - allocating `Exchanger` arrays (this is similar to `Ref`)
   - move `KCAS` into separate JAR, figure out proper API (`choam-mcas`)
+  - move data structures into separate JAR (`choam-data`)
+  - maybe: move async stuff into separate JAR (`choam-async`)
+    - but: what to do with `Reactive.Async`? (could remain in core)
   - compare with `Ref` in cats-effect: similar things should have similar names
   - Maybe rename `Ref`?
     - Collision with `cats.effect.kernel.Ref`
