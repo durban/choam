@@ -222,7 +222,7 @@ object Promise {
     val complete: A =#> Boolean = Rxn.computed { a =>
       ref.unsafeInvisibleRead.flatMap {
         case w @ Waiting2(cbs, _) =>
-          ref.unsafeCas(w, Done2(a)).rmap(_ => true).postCommit(Rxn.delay { _ =>
+          ref.unsafeCas(w, Done2(a)).as(true).postCommit(Rxn.delay { _ =>
             cbs.valuesIterator.foreach(_(a))
           })
         case Done2(_) =>

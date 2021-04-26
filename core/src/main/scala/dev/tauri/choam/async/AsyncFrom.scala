@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package async
 
+import cats.effect.kernel.Resource
+
 final class AsyncFrom[F[_], A, B] private (
   syncGet: A =#> Option[B],
   syncSet: B =#> Unit,
@@ -31,21 +33,29 @@ final class AsyncFrom[F[_], A, B] private (
     }
   }
 
-  def get(a: A)(implicit F: Reactive.Async[F]): F[B] = {
-    val acq = Promise[F, B].flatMap { p =>
+  def get(a: A)(implicit F: Reactive.Async[F]): F[B] =
+    F.monadCancel.bracket(this.getAcq(a))(this.getUse)(this.getRel)
+
+  def getResource(a: A)(implicit F: Reactive.Async[F]): Resource[F, F[B]] =
+    Resource.make(this.getAcq(a))(this.getRel)(F.monad).map(this.getUse)
+
+  private[this] def getAcq(a: A)(implicit F: Reactive.Async[F]): F[Either[Promise[F, B], B]] = {
+    Promise[F, B].flatMap { p =>
       this.syncGet.provide(a).flatMap {
         case Some(b) => Axn.pure(Right(b))
         case None => this.waiters.enqueue.provide(p).as(Left(p))
       }
     }.run[F]
-    val rel: (Either[Promise[F, B], B] => F[Unit]) = {
-      case Left(p) => this.waiters.remove.discard[F](p)
-      case Right(_) => F.monadCancel.unit
-    }
-    F.monadCancel.bracket(acquire = acq) {
-      case Left(p) => p.get
-      case Right(a) => F.monadCancel.pure(a)
-    } (release = rel)
+  }
+
+  private[this] def getRel(r: Either[Promise[F, B], B])(implicit F: Reactive[F]): F[Unit] = r match {
+    case Left(p) => this.waiters.remove.discard[F](p)
+    case Right(_) => F.monad.unit
+  }
+
+  private[this] def getUse(r: Either[Promise[F, B], B])(implicit F: Reactive[F]): F[B] = r match {
+    case Left(p) => p.get
+    case Right(a) => F.monad.pure(a)
   }
 }
 

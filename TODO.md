@@ -35,7 +35,6 @@
     - improve generated `Rxn`s, check if they make sense
     - check if `testingEqRxn` makes sense, maybe do structural checking
   - Test with other IO impls (when they cupport ce3)
-  - Run CI on windows
 - EMCAS with simplified IBR:
   - Cleanup after a k-CAS op is finalized:
     - It is enabled now, since it is necessary, to avoid leaking memory.
