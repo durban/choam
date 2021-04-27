@@ -94,6 +94,25 @@ trait AsyncQueueImplWithSize[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpe
       _ <- assertResultF(cq.size, 0)
     } yield ()
   }
+
+  test("dequeResource") {
+    newQueue[F, String].flatMap { q =>
+      q.dequeResource.use { g1 =>
+        q.dequeResource.use { g2 =>
+          q.dequeResource.use { g3 =>
+            for {
+              _ <- q.enqueue[F]("a")
+              _ <- q.enqueue[F]("b")
+              _ <- q.enqueue[F]("c")
+              _ <- assertResultF(g1, "a")
+              _ <- assertResultF(g2, "b")
+              _ <- assertResultF(g3, "c")
+            } yield ()
+          }
+        }
+      }
+    }
+  }
 }
 
 trait AsyncQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>

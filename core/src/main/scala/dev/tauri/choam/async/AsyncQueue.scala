@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package async
 
+import cats.effect.kernel.Resource
 import cats.effect.std.{ Queue => CatsQueue }
 
 abstract class AsyncQueue[F[_], A] { self =>
@@ -37,6 +38,9 @@ object AsyncQueue {
       val cq = new AsyncQueue.CatsQueueAdapter[F, A](this)
       F.monad.pure(cq)
     }
+
+    // FIXME:
+    def dequeResource(implicit F: Reactive.Async[F]): Resource[F, F[A]]
   }
 
   def primitive[F[_], A]: Axn[AsyncQueue[F, A]] = {
@@ -70,6 +74,8 @@ object AsyncQueue {
             as.tryDeque
           final override def deque(implicit F: Reactive.Async[F]): F[A] =
             af.get(())
+          final override def dequeResource(implicit F: Reactive.Async[F]): Resource[F, F[A]] =
+            af.getResource(())
           final override def size(implicit F: Reactive.Async[F]): F[Int] =
             as.size.run[F]
         }
