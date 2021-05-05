@@ -26,8 +26,8 @@ jobs:
         java:
           - adopt@1.11
           - graalvm-ce-java11@21.0
-          - adopt@1.15
-          - adopt-openj9@1.15
+          - adopt@1.16
+          - adopt-openj9@1.16
     runs-on: ${{ matrix.os }}
     steps:
       - name: Ignore line ending differences in git
