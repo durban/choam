@@ -47,13 +47,13 @@ trait AsyncFromSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   test("AsyncFrom around a Ref") {
     for {
       ref <- Ref[Option[Int]](None).run[F]
-      af <- AsyncFrom[F, Any, Int](
+      af <- AsyncFrom[F, Int](
         ref.get,
         ref.getAndSet.contramap[Int](Some(_)).void
       ).run[F]
-      f1 <- af.get(()).start
+      f1 <- af.get.start
       _ <- F.sleep(0.1.seconds)
-      f2 <- af.get(()).start
+      f2 <- af.get.start
       _ <- af.set[F](42)
       _ <- assertResultF(f1.joinWithNever, 42)
       _ <- af.set[F](21)

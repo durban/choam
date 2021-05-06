@@ -20,40 +20,40 @@ package async
 
 import cats.effect.kernel.Resource
 
-final class AsyncFrom[F[_], A, B] private (
-  syncGet: A =#> Option[B],
-  syncSet: B =#> Unit,
-  waiters: Queue.WithRemove[Promise[F, B]]
+final class AsyncFrom[F[_], A] private (
+  syncGet: Axn[Option[A]],
+  syncSet: A =#> Unit,
+  waiters: Queue.WithRemove[Promise[F, A]]
 ) {
 
-  def set: B =#> Unit = {
+  def set: A =#> Unit = {
     this.waiters.tryDeque.flatMap {
       case None => this.syncSet
       case Some(p) => p.complete.discard
     }
   }
 
-  def get(a: A)(implicit F: Reactive.Async[F]): F[B] =
-    F.monadCancel.bracket(this.getAcq(a))(this.getUse)(this.getRel)
+  def get(implicit F: Reactive.Async[F]): F[A] =
+    F.monadCancel.bracket(this.getAcq)(this.getUse)(this.getRel)
 
-  def getResource(a: A)(implicit F: Reactive.Async[F]): Resource[F, F[B]] =
-    Resource.make(this.getAcq(a))(this.getRel)(F.monad).map(this.getUse)
+  def getResource(implicit F: Reactive.Async[F]): Resource[F, F[A]] =
+    Resource.make(this.getAcq)(this.getRel)(F.monad).map(this.getUse)
 
-  private[this] def getAcq(a: A)(implicit F: Reactive.Async[F]): F[Either[Promise[F, B], B]] = {
-    Promise[F, B].flatMap { p =>
-      this.syncGet.provide(a).flatMap {
+  private[this] def getAcq(implicit F: Reactive.Async[F]): F[Either[Promise[F, A], A]] = {
+    Promise[F, A].flatMap { p =>
+      this.syncGet.flatMap {
         case Some(b) => Axn.pure(Right(b))
         case None => this.waiters.enqueue.provide(p).as(Left(p))
       }
     }.run[F]
   }
 
-  private[this] def getRel(r: Either[Promise[F, B], B])(implicit F: Reactive[F]): F[Unit] = r match {
+  private[this] def getRel(r: Either[Promise[F, A], A])(implicit F: Reactive[F]): F[Unit] = r match {
     case Left(p) => this.waiters.remove.discard[F](p)
     case Right(_) => F.monad.unit
   }
 
-  private[this] def getUse(r: Either[Promise[F, B], B])(implicit F: Reactive[F]): F[B] = r match {
+  private[this] def getUse(r: Either[Promise[F, A], A])(implicit F: Reactive[F]): F[A] = r match {
     case Left(p) => p.get
     case Right(a) => F.monad.pure(a)
   }
@@ -61,9 +61,9 @@ final class AsyncFrom[F[_], A, B] private (
 
 object AsyncFrom {
 
-  def apply[F[_], A, B](syncGet: A =#> Option[B], syncSet: B =#> Unit): Axn[AsyncFrom[F, A, B]] = {
-    Queue.withRemove[Promise[F, B]].map { waiters =>
-      new AsyncFrom[F, A, B](syncGet, syncSet, waiters)
+  def apply[F[_], A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[AsyncFrom[F, A]] = {
+    Queue.withRemove[Promise[F, A]].map { waiters =>
+      new AsyncFrom[F, A](syncGet, syncSet, waiters)
     }
   }
 }

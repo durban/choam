@@ -51,14 +51,14 @@ object AsyncQueue {
 
   def derived[F[_], A]: Axn[AsyncQueue[F, A]] = {
     Queue[A].flatMap { as =>
-      AsyncFrom[F, Any, A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
+      AsyncFrom[F, A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
         new AsyncQueue[F, A] {
           final override def enqueue: A =#> Unit =
             af.set
           final override def tryDeque: Axn[Option[A]] =
             as.tryDeque
           final override def deque(implicit F: Reactive.Async[F]): F[A] =
-            af.get(())
+            af.get
         }
       }
     }
@@ -66,16 +66,16 @@ object AsyncQueue {
 
   def withSize[F[_], A]: Axn[AsyncQueue.WithSize[F, A]] = {
     Queue.withSize[A].flatMap { as =>
-      AsyncFrom[F, Any, A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
+      AsyncFrom[F, A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
         new WithSize[F, A] {
           final override def enqueue: A =#> Unit =
             af.set
           final override def tryDeque: Axn[Option[A]] =
             as.tryDeque
           final override def deque(implicit F: Reactive.Async[F]): F[A] =
-            af.get(())
+            af.get
           final override def dequeResource(implicit F: Reactive.Async[F]): Resource[F, F[A]] =
-            af.getResource(())
+            af.getResource
           final override def size(implicit F: Reactive.Async[F]): F[Int] =
             as.size.run[F]
         }

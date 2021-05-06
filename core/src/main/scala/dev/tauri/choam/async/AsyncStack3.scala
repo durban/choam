@@ -23,7 +23,7 @@ private[choam] object AsyncStack3 {
 
   def apply[F[_], A]: Axn[AsyncStack[F, A]] = {
     TreiberStack[A].flatMap { es =>
-      AsyncFrom[F, Any, A](
+      AsyncFrom[F, A](
         syncGet = es.tryPop,
         syncSet = es.push
       ).map { af =>
@@ -31,7 +31,7 @@ private[choam] object AsyncStack3 {
           final override def push: A =#> Unit =
             af.set
           final override def pop(implicit F: Reactive.Async[F]): F[A] =
-            af.get(())
+            af.get
         }
       }
     }
