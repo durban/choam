@@ -118,7 +118,6 @@ object RxnNew {
 
     var a: Any = x
     var retries: Int = 0
-    var spin: Boolean = false
 
     def saveAlt(k: RxnNew[ForSome.x, R]): Unit = {
       altSnap.push(ctx.impl.snapshot(desc, ctx))
@@ -132,7 +131,7 @@ object RxnNew {
     }
 
     def retry(): RxnNew[ForSome.x, R] = {
-      retries += 1 // TODO: spin
+      retries += 1
       if (altSnap.nonEmpty) {
         desc = altSnap.pop()
         a = altA.pop()
@@ -143,18 +142,18 @@ object RxnNew {
         a = x
         contK.clear()
         contK.push(commit)
+        spin()
         rxn.asInstanceOf[RxnNew[ForSome.x, R]]
       }
     }
 
+    def spin(): Unit = {
+      if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
+      else Backoff.backoffConst(retries, maxBackoff)
+    }
+
     @tailrec
     def loop[A, B](curr: RxnNew[A, B]): R = {
-      if (spin) {
-        spin = false
-        if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
-        else Backoff.backoffConst(retries, maxBackoff)
-      }
-
       (curr.tag : @switch) match {
         case 0 => // Commit
           if (kcas.tryPerform(desc, ctx)) {
