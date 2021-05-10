@@ -51,7 +51,7 @@ class ObjStackBench {
 
   @Benchmark
   def toArrayObjStack(s: ObjSt, bh: Blackhole): Unit = {
-    bh.consume(s.objStack.toArray)
+    bh.consume(s.objStack.toArray())
   }
 
   @Benchmark
