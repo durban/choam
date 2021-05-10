@@ -65,7 +65,7 @@ private final class ObjStack[A] private (
     !this.isEmpty
   }
 
-  def toArray: Array[A] = {
+  def toArray(): Array[A] = {
     Arrays.copyOfRange(this.arr, 0, this.size).asInstanceOf[Array[A]]
   }
 

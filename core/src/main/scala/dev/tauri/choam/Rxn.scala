@@ -1005,7 +1005,7 @@ object Rxn extends RxnSyntax0 {
           altSnap.push(ctx.impl.snapshot(desc, ctx))
           altA.push(a.asInstanceOf[ForSome.x])
           altK.push(c.second.asInstanceOf[Rxn[ForSome.x, R]])
-          altPc.push(postCommit.toArray)
+          altPc.push(postCommit.toArray())
           loop(c.first, a, retries, spin = false)
         case 7 => // GenCas
           val c = curr.asInstanceOf[GenCas[ForSome.x, A, ForSome.y, R]]
@@ -1033,7 +1033,7 @@ object Rxn extends RxnSyntax0 {
         case 10 => // GenExchange
           val c = curr.asInstanceOf[GenExchange[ForSome.x, ForSome.y, A, ForSome.z, R]]
           val rd = ReactionData(
-            postCommit = postCommit.toArray.toList,
+            postCommit = postCommit.toArray().toList,
             exchangerData = stats
           )
           c.tryExchange(a, rd, desc, ctx) match {

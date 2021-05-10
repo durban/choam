@@ -21,6 +21,8 @@ package object choam {
 
   private[choam] type tailrec = scala.annotation.tailrec
 
+  private[choam] type switch = scala.annotation.switch
+
   private[choam] type unused = scala.annotation.unused
 
   private[choam] type nowarn = scala.annotation.nowarn

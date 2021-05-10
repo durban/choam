@@ -76,6 +76,30 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     r6.## // TODO: r6.unsafePerform(42, this.kcasImpl)
   }
 
+  test("Choice after >>>") {
+    for {
+      a <- Ref("a").run[F]
+      b <- Ref("b").run[F]
+      y <- Ref("y").run[F]
+      p <- Ref("p").run[F]
+      q <- Ref("q").run[F]
+      rea = (
+        (
+          (a.unsafeCas("a", "aa") + (b.unsafeCas("b", "bb") >>> Rxn.delay { _ =>
+            this.kcasImpl.doSingleCas(y, "y", "-", this.kcasImpl.currentContext())
+          })) >>> y.unsafeCas("-", "yy")
+        ) +
+        (p.unsafeCas("p", "pp") >>> q.unsafeCas("q", "qq"))
+      )
+      _ <- assertResultF(rea.run, ())
+      _ <- assertResultF(a.unsafeInvisibleRead.run, "a")
+      _ <- assertResultF(b.unsafeInvisibleRead.run, "bb")
+      _ <- assertResultF(y.unsafeInvisibleRead.run, "yy")
+      _ <- assertResultF(p.unsafeInvisibleRead.run, "p")
+      _ <- assertResultF(q.unsafeInvisibleRead.run, "q")
+    } yield ()
+  }
+
   test("Choice should prefer the first option") {
     for {
       r1 <- Ref("r1").run[F]
