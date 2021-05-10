@@ -31,8 +31,17 @@ sealed abstract class RxnNew[-A, +B] {
   final def >>> [C](that: RxnNew[B, C]): RxnNew[A, C] =
     new AndThen[A, B, C](this, that)
 
+  final def × [C, D](that: RxnNew[C, D]): RxnNew[(A, C), (B, D)] =
+    new AndAlso[A, B, C, D](this, that)
+
+  final def * [X <: A, C](that: RxnNew[X, C]): RxnNew[X, (B, C)] =
+    (this × that).contramap[X](x => (x, x))
+
   final def map[C](f: B => C): RxnNew[A, C] =
     this >>> lift(f)
+
+  final def contramap[C](f: C => A): RxnNew[C, B] =
+    lift(f) >>> this
 
   final def unsafePerform(
     a: A,
@@ -68,6 +77,7 @@ object RxnNew {
 
   // Representation:
 
+  /** Only the interpreter can use this */
   private final class Commit[A]()
     extends RxnNew[A, A] { private[choam] def tag = 0 }
 
@@ -83,17 +93,26 @@ object RxnNew {
   private final class AndThen[A, B, C](val first: RxnNew[A, B], val second: RxnNew[B, C])
     extends RxnNew[A, C] { private[choam] def tag = 11 }
 
+  private final class AndAlso[A, B, C, D](val left: RxnNew[A, B], val right: RxnNew[C, D])
+    extends RxnNew[(A, C), (B, D)] { private[choam] def tag = 12 }
+
   // Interpreter:
 
   private[this] final object ForSome {
     type x
     type y
     type z
+    type p
+    type q
   }
 
   private[this] def newStack[A]() = {
     new ObjStack[A](initSize = 8)
   }
+
+  private[this] final val ContAndThen = 0.toByte
+  private[this] final val ContAndAlso = 1.toByte
+  private[this] final val ContAndAlsoJoin = 2.toByte
 
   private[choam] def interpreter[X, R](
     rxn: RxnNew[X, R],
@@ -110,10 +129,13 @@ object RxnNew {
     val altSnap = newStack[EMCASDescriptor]()
     val altA = newStack[ForSome.x]()
     val altK = newStack[RxnNew[ForSome.x, R]]()
-    val altConts = newStack[Array[RxnNew[ForSome.x, R]]]()
+    val altContT = newStack[Array[Byte]]()
+    val altContK = newStack[Array[Any]]()
 
-    val contK = newStack[RxnNew[ForSome.x, R]]()
+    val contT = newStack[Byte]() // TODO: ByteStack
+    val contK = newStack[Any]()
     val commit = new Commit[R].asInstanceOf[RxnNew[ForSome.x, R]]
+    contT.push(ContAndThen)
     contK.push(commit)
 
     var a: Any = x
@@ -123,11 +145,25 @@ object RxnNew {
       altSnap.push(ctx.impl.snapshot(desc, ctx))
       altA.push(a.asInstanceOf[ForSome.x])
       altK.push(k)
-      altConts.push(contK.toArray())
+      altContT.push(contT.toArray())
+      altContK.push(contK.toArray())
     }
 
     def next(): RxnNew[ForSome.x, R] = {
-      contK.pop()
+      (contT.pop() : @switch) match {
+        case 0 => // ContAndThen
+          contK.pop().asInstanceOf[RxnNew[ForSome.x, R]]
+        case 1 => // ContAndAlso
+          val savedA = a
+          a = contK.pop()
+          val res = contK.pop().asInstanceOf[RxnNew[ForSome.x, R]]
+          contK.push(savedA)
+          res
+        case 2 => // ContAndAlsoJoin
+          val savedA = contK.pop()
+          a = (savedA, a)
+          next()
+      }
     }
 
     def retry(): RxnNew[ForSome.x, R] = {
@@ -135,13 +171,16 @@ object RxnNew {
       if (altSnap.nonEmpty) {
         desc = altSnap.pop()
         a = altA.pop()
-        contK.replaceWith(altConts.pop())
+        contT.replaceWith(altContT.pop())
+        contK.replaceWith(altContK.pop())
         altK.pop()
       } else {
         desc = kcas.start(ctx)
         a = x
         contK.clear()
         contK.push(commit)
+        contT.clear()
+        contT.push(ContAndThen)
         spin()
         rxn.asInstanceOf[RxnNew[ForSome.x, R]]
       }
@@ -195,8 +234,21 @@ object RxnNew {
           sys.error("TODO") // TODO
         case 11 => // AndThen
           val c = curr.asInstanceOf[AndThen[A, ForSome.x, B]]
+          contT.push(ContAndThen)
           contK.push(c.second.asInstanceOf[RxnNew[ForSome.x, R]])
           loop(c.first)
+        case 12 => // AndAlso
+          val c = curr.asInstanceOf[AndAlso[ForSome.x, ForSome.y, ForSome.p, ForSome.q]]
+          val xp = a.asInstanceOf[Tuple2[ForSome.x, ForSome.p]]
+          // join:
+          contT.push(ContAndAlsoJoin)
+          // right:
+          contT.push(ContAndAlso)
+          contK.push(c.right)
+          contK.push(xp._2)
+          // left:
+          a = xp._1
+          loop(c.left)
         case t => // not implemented
           throw new UnsupportedOperationException(
             s"Not implemented tag ${t} for ${curr}"

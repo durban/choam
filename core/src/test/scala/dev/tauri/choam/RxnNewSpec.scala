@@ -50,13 +50,13 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     }
     val N = 1024 * 1024
     val r1: RxnNew[Int, Int] = nest(N, _ >>> _)
-    // TODO: val r2: Rxn[Int, Int] = nest(N, (x, y) => (x * y).map(_._1))
+    val r2: RxnNew[Int, Int] = nest(N, (x, y) => (x * y).map(_._1 + 1))
     // TODO: val r3: Rxn[Int, Int] = nest(N, (x, y) => x.flatMap { _ => y })
     // TODO: val r4: Rxn[Int, Int] = nest(N, _ >> _)
     val r5: RxnNew[Int, Int] = nest(N, _ + _)
     // TODO: val r6: RxnNew[Int, Int] = nest(N, (x, y) => RxnNew.unsafe.delayComputed(x.map(Rxn.ret(_) >>> y)))
     assertEquals(r1.unsafePerform(42, this.kcasImpl), 42 + N)
-    // r2.##//unsafePerform(42, this.kcasImpl)
+    assertEquals(r2.unsafePerform(42, this.kcasImpl), 42 + N)
     // r3.##//unsafePerform(42, this.kcasImpl)
     // r4.##//unsafePerform(42, this.kcasImpl)
     assertEquals(r5.unsafePerform(42, this.kcasImpl), 42 + 1)
