@@ -45,11 +45,21 @@ sealed abstract class RxnNew[-A, +B] {
   final def contramap[C](f: C => A): RxnNew[C, B] =
     lift(f) >>> this
 
+  final def provide(a: A): RxnNew[Any, B] =
+    contramap[Any](_ => a) // TODO: optimize
+
   final def first[C]: RxnNew[(A, C), (B, C)] =
     this × identity[C]
 
   final def second[C]: RxnNew[(C, A), (C, B)] =
     identity[C] × this
+
+  // TODO: optimize
+  final def flatMap[X <: A, C](f: B => RxnNew[X, C]): RxnNew[X, C] = {
+    val self: RxnNew[X, (X, B)] = this.second[X].contramap[X](x => (x, x))
+    val comp: RxnNew[(X, B), C] = computed[(X, B), C](xb => f(xb._2).provide(xb._1))
+    self >>> comp
+  }
 
   final def unsafePerform(
     a: A,
@@ -77,6 +87,9 @@ object RxnNew extends RxnNewInstances0 {
   def lift[A, B](f: A => B): RxnNew[A, B] =
     new Lift(f)
 
+  def computed[A, B](f: A => RxnNew[Any, B]): RxnNew[A, B] =
+    new Computed(f)
+
   final object unsafe {
 
     def cas[A](r: Ref[A], ov: A, nv: A): RxnNew[Any, Unit] =
@@ -94,6 +107,9 @@ object RxnNew extends RxnNewInstances0 {
 
   private final class Lift[A, B](val func: A => B)
     extends RxnNew[A, B] { private[choam] def tag = 3 }
+
+  private final class Computed[A, B](val f: A => RxnNew[Any, B])
+    extends RxnNew[A, B] { private[choam] def tag = 4 }
 
   private final class Choice[A, B](val left: RxnNew[A, B], val right: RxnNew[A, B])
     extends RxnNew[A, B] { private[choam] def tag = 6 }
@@ -220,7 +236,10 @@ object RxnNew extends RxnNewInstances0 {
           a = c.func(a.asInstanceOf[A])
           loop(next().asInstanceOf[RxnNew[B, ForSome.x]])
         case 4 => // Computed
-          sys.error("TODO") // TODO
+          val c = curr.asInstanceOf[Computed[A, B]]
+          val nxt = c.f(a.asInstanceOf[A])
+          a = () : Any
+          loop(nxt)
         case 5 => // DelayComputed
           sys.error("TODO") // TODO
         case 6 => // Choice
