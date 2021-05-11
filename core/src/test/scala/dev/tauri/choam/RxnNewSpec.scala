@@ -86,4 +86,14 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(q.unsafeInvisibleRead.run, "q")
     } yield ()
   }
+
+  test("first and second") {
+    for {
+      _ <- F.unit
+      rea = RxnNew.lift[Int, String](_.toString).first[Boolean]
+      _ <- assertResultF(F.delay { rea.unsafePerform((42, true), this.kcasImpl) }, ("42", true))
+      rea = RxnNew.lift[Int, String](_.toString).second[Float]
+      _ <- assertResultF(F.delay { rea.unsafePerform((1.5f, 21), this.kcasImpl) }, (1.5f, "21"))
+    } yield ()
+  }
 }

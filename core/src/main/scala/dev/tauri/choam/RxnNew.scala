@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import cats.arrow.Arrow
+
 import kcas.{ KCAS, ThreadContext, EMCASDescriptor }
 
 sealed abstract class RxnNew[-A, +B] {
@@ -43,6 +45,12 @@ sealed abstract class RxnNew[-A, +B] {
   final def contramap[C](f: C => A): RxnNew[C, B] =
     lift(f) >>> this
 
+  final def first[C]: RxnNew[(A, C), (B, C)] =
+    this × identity[C]
+
+  final def second[C]: RxnNew[(C, A), (C, B)] =
+    identity[C] × this
+
   final def unsafePerform(
     a: A,
     kcas: KCAS,
@@ -59,9 +67,12 @@ sealed abstract class RxnNew[-A, +B] {
   }
 }
 
-object RxnNew {
+object RxnNew extends RxnNewInstances0 {
 
   // API:
+
+  def identity[A]: RxnNew[A, A] =
+    lift(a => a)
 
   def lift[A, B](f: A => B): RxnNew[A, B] =
     new Lift(f)
@@ -84,13 +95,13 @@ object RxnNew {
   private final class Lift[A, B](val func: A => B)
     extends RxnNew[A, B] { private[choam] def tag = 3 }
 
-  private final class Choice[A, B](val first: RxnNew[A, B], val second: RxnNew[A, B])
+  private final class Choice[A, B](val left: RxnNew[A, B], val right: RxnNew[A, B])
     extends RxnNew[A, B] { private[choam] def tag = 6 }
 
   private final class Cas[A](val ref: Ref[A], val ov: A, val nv: A)
     extends RxnNew[Any, Unit] { private[choam] def tag = 7 }
 
-  private final class AndThen[A, B, C](val first: RxnNew[A, B], val second: RxnNew[B, C])
+  private final class AndThen[A, B, C](val left: RxnNew[A, B], val right: RxnNew[B, C])
     extends RxnNew[A, C] { private[choam] def tag = 11 }
 
   private final class AndAlso[A, B, C, D](val left: RxnNew[A, B], val right: RxnNew[C, D])
@@ -214,8 +225,8 @@ object RxnNew {
           sys.error("TODO") // TODO
         case 6 => // Choice
           val c = curr.asInstanceOf[Choice[A, B]]
-          saveAlt(c.second.asInstanceOf[RxnNew[ForSome.x, R]])
-          loop(c.first)
+          saveAlt(c.right.asInstanceOf[RxnNew[ForSome.x, R]])
+          loop(c.left)
         case 7 => // Cas
           val c = curr.asInstanceOf[Cas[ForSome.x]]
           val currVal = kcas.read(c.ref, ctx)
@@ -235,8 +246,8 @@ object RxnNew {
         case 11 => // AndThen
           val c = curr.asInstanceOf[AndThen[A, ForSome.x, B]]
           contT.push(ContAndThen)
-          contK.push(c.second.asInstanceOf[RxnNew[ForSome.x, R]])
-          loop(c.first)
+          contK.push(c.right.asInstanceOf[RxnNew[ForSome.x, R]])
+          loop(c.left)
         case 12 => // AndAlso
           val c = curr.asInstanceOf[AndAlso[ForSome.x, ForSome.y, ForSome.p, ForSome.q]]
           val xp = a.asInstanceOf[Tuple2[ForSome.x, ForSome.p]]
@@ -259,5 +270,19 @@ object RxnNew {
     val result: R = loop(rxn)
     // TODO: doPostCommit(postCommit, ctx)
     result
+  }
+}
+
+private[choam] sealed abstract class RxnNewInstances0 { this: RxnNew.type =>
+
+  implicit def arrowInstance: Arrow[RxnNew] = new Arrow[RxnNew] {
+    final override def compose[A, B, C](f: RxnNew[B, C], g: RxnNew[A, B]): RxnNew[A, C] =
+      g >>> f
+    final override def first[A, B, C](fa: RxnNew[A, B]): RxnNew[(A, C), (B, C)] =
+      fa.first[C]
+    final override def second[A, B, C](fa: RxnNew[A, B]): RxnNew[(C, A), (C, B)] =
+      fa.second[C]
+    final override def lift[A, B](f: A => B): RxnNew[A, B] =
+      RxnNew.lift(f)
   }
 }
