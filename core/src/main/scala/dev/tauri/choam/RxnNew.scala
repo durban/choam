@@ -277,8 +277,15 @@ object RxnNew extends RxnNewInstances0 {
           next()
         case 3 => // ContAfterDelayComp
           val delayCompResult = a
-          loadEverything()
-          delayCompResult.asInstanceOf[RxnNew[ForSome.x, R]]
+          // try to commit `prepare`:
+          if (!kcas.tryPerform(desc, ctx)) {
+            // retry `prepare`:
+            retry()
+          } else {
+            // ok, continue with the rest:
+            loadEverything()
+            delayCompResult.asInstanceOf[RxnNew[ForSome.x, R]]
+          }
       }
     }
 
@@ -419,4 +426,10 @@ private[choam] sealed abstract class RxnNewInstances1 extends RxnNewInstances2 {
 }
 
 private[choam] sealed abstract class RxnNewInstances2 { this: RxnNew.type =>
+
+  implicit final class UnitSyntax[A](private val self: RxnNew[Unit, A]) {
+    // TODO: this is temporary
+    def run[F[_]](implicit F: Reactive[F], sF: cats.effect.kernel.Sync[F]): F[A] =
+      sF.delay { RxnNew.interpreter(self, (), F.kcasImpl.currentContext()) }
+  }
 }

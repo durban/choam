@@ -102,4 +102,83 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(F.delay { rea.unsafePerform((1.5f, 21), this.kcasImpl) }, (1.5f, "21"))
     } yield ()
   }
+
+  test("delayComputed") {
+    for {
+      a <- Ref("a").run[F]
+      b <- Ref("b").run[F]
+      rea = RxnNew.unsafe.delayComputed[Unit, String](RxnNew.upd(a) { (oa: String, _: Unit) =>
+        ("x", oa)
+      }.map { oa => RxnNew.upd(b) { (ob: String, _: Any) => (oa, ob) } })
+      _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, "b")
+      _ <- assertResultF(a.unsafeInvisibleRead.run, "x")
+      _ <- assertResultF(b.unsafeInvisibleRead.run, "a")
+    } yield ()
+  }
+
+  test("delayComputed prepare is not part of the reaction") {
+
+    final case class Node(value: Ref[String], next: Ref[Node])
+
+    object Node {
+
+      def newSentinel(): Node =
+        Node(Ref.unsafe(null), Ref.unsafe(null))
+
+      def fromList(l: List[String]): Node = l match {
+        case Nil =>
+          newSentinel()
+        case h :: t =>
+          Node(value = Ref.unsafe(h), next = Ref.unsafe(fromList(t)))
+      }
+
+      def pop(head: Ref[Node]): RxnNew[Any, String] = RxnNew.unsafe.delayComputed {
+        RxnNew.unsafe.invisibleRead(head).flatMap { h =>
+          RxnNew.unsafe.invisibleRead(h.value).flatMap {
+            case null =>
+              // sentinel node, discard it and retry:
+              RxnNew.read(h.next).flatMap { nxt =>
+                RxnNew.unsafe.cas(head, h, nxt)
+              }.as(RxnNew.unsafe.retry)
+            case v =>
+              // found the real head, pop it:
+              RxnNew.ret(RxnNew.read(h.next).flatMap { nxt =>
+                RxnNew.unsafe.cas(head, h, nxt).flatMap { _ =>
+                  RxnNew.unsafe.cas(h.value, v, v)
+                }
+              }.as(v))
+          }
+        }
+      }
+    }
+
+    for {
+      _ <- F.delay { this.assume(this.kcasImpl ne kcas.KCAS.NaiveKCAS) } // TODO: fix with naive k-CAS
+      // sanity check:
+      lst0 = List[String](null, "a", "b", null, "c")
+      lst1 <- F.delay { Ref.unsafe(Node.fromList(lst0)) }
+      lst2 <- F.tailRecM((List.empty[String], lst1)) { case (acc, ref) =>
+        RxnNew.read(ref).flatMap { node =>
+          if (node eq null) {
+            // there is an extra sentinel at the end:
+            RxnNew.ret(Right[(List[String], Ref[Node]), List[String]](acc.tail.reverse))
+          } else {
+            RxnNew.read(node.value).map { v =>
+              Left[(List[String], Ref[Node]), List[String]]((v :: acc, node.next))
+            }
+          }
+        }.run[F](implicitly, F)
+      }
+      _ <- assertEqualsF(lst2, lst0)
+      // real test:
+      r1 <- F.delay { Ref.unsafe(Node.fromList(List[String](null, "a", "b", null, "x"))) }
+      r2 <- F.delay { Ref.unsafe(Node.fromList(List[String](null, "c", null, null, "d", "y"))) }
+      popBoth = (Node.pop(r1) * Node.pop(r2)).run[F](implicitly, F)
+      _ <- assertResultF(popBoth, ("a", "c"))
+      _ <- assertResultF(popBoth, ("b", "d"))
+      _ <- assertResultF(popBoth, ("x", "y"))
+      _ <- assertResultF(r1.unsafeInvisibleRead.flatMap(_.value.unsafeInvisibleRead).run[F], null)
+      _ <- assertResultF(r2.unsafeInvisibleRead.flatMap(_.value.unsafeInvisibleRead).run[F], null)
+    } yield ()
+  }
 }
