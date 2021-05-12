@@ -99,6 +99,9 @@ object RxnNew extends RxnNewInstances0 {
 
   final object unsafe {
 
+    def invisibleRead[A](r: Ref[A]): RxnNew[Any, A] =
+      new InvisibleRead[A](r)
+
     def cas[A](r: Ref[A], ov: A, nv: A): RxnNew[Any, Unit] =
       new Cas[A](r, ov, nv)
 
@@ -131,6 +134,9 @@ object RxnNew extends RxnNewInstances0 {
 
   private final class Cas[A](val ref: Ref[A], val ov: A, val nv: A)
     extends RxnNew[Any, Unit] { private[choam] def tag = 7 }
+
+  private final class InvisibleRead[A](val ref: Ref[A])
+    extends RxnNew[Any, A] { private[choam] def tag = 9 }
 
   private final class AndThen[A, B, C](val left: RxnNew[A, B], val right: RxnNew[B, C])
     extends RxnNew[A, C] { private[choam] def tag = 11 }
@@ -326,8 +332,10 @@ object RxnNew extends RxnNewInstances0 {
           }
         case 8 => // Upd
           sys.error("TODO") // TODO
-        case 9 => // GenRead
-          sys.error("TODO") // TODO
+        case 9 => // InvisibleRead
+          val c = curr.asInstanceOf[InvisibleRead[R]]
+          a = ctx.impl.read(c.ref, ctx)
+          loop(next())
         case 10 => // GenExchange
           sys.error("TODO") // TODO
         case 11 => // AndThen
