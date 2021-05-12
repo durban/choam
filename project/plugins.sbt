@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.0")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.1")
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 addSbtPlugin("com.codecommit" % "sbt-github-actions" % "0.10.1")
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.2")
