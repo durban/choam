@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 
+import cats.Monad
 import cats.arrow.Arrow
 
 import kcas.{ KCAS, ThreadContext, EMCASDescriptor }
@@ -80,6 +81,12 @@ sealed abstract class RxnNew[-A, +B] {
 object RxnNew extends RxnNewInstances0 {
 
   // API:
+
+  def pure[A](a: A): RxnNew[Any, A] =
+    ret(a)
+
+  def ret[X, A](a: A): RxnNew[X, A] =
+    lift[X, A](_ => a)
 
   def identity[A]: RxnNew[A, A] =
     lift(a => a)
@@ -292,7 +299,7 @@ object RxnNew extends RxnNewInstances0 {
   }
 }
 
-private[choam] sealed abstract class RxnNewInstances0 { this: RxnNew.type =>
+private[choam] sealed abstract class RxnNewInstances0 extends RxnNewInstances1 { this: RxnNew.type =>
 
   implicit def arrowInstance: Arrow[RxnNew] = new Arrow[RxnNew] {
     final override def compose[A, B, C](f: RxnNew[B, C], g: RxnNew[A, B]): RxnNew[A, C] =
@@ -304,4 +311,23 @@ private[choam] sealed abstract class RxnNewInstances0 { this: RxnNew.type =>
     final override def lift[A, B](f: A => B): RxnNew[A, B] =
       RxnNew.lift(f)
   }
+}
+
+private[choam] sealed abstract class RxnNewInstances1 extends RxnNewInstances2 { this: RxnNew.type =>
+
+  implicit def monadInstance[X]: Monad[RxnNew[X, *]] = new Monad[RxnNew[X, *]] {
+    final override def flatMap[A, B](fa: RxnNew[X, A])(f: A => RxnNew[X, B]): RxnNew[X, B] =
+      fa.flatMap(f)
+    final override def pure[A](a: A): RxnNew[X, A] =
+      RxnNew.pure(a)
+    final override def tailRecM[A, B](a: A)(f: A => RxnNew[X, Either[A, B]]): RxnNew[X, B] = {
+      f(a).flatMap {
+        case Left(a) => this.tailRecM(a)(f)
+        case Right(b) => this.pure(b)
+      }
+    }
+  }
+}
+
+private[choam] sealed abstract class RxnNewInstances2 { this: RxnNew.type =>
 }
