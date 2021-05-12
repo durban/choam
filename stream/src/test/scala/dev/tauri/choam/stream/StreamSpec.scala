@@ -63,23 +63,26 @@ sealed trait StreamSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("Stream interrupter (Promise#toCats)") {
+    val N = 20L
+    val one = 0.1.second
+    val many = one * N
     for {
       p <- Promise[F, Either[Throwable, Unit]].run[F]
       fib <- Stream
-        .awakeEvery(0.1.second)
+        .awakeEvery(one)
         .zip(Stream.iterate(0)(_ + 1))
         .map(_._2)
         .interruptWhen(p.toCats)
         .compile.toVector.start
-      _ <- F.sleep(1.second)
+      _ <- F.sleep(many)
       _ <- p.complete[F](Right(()))
       vec <- fib.joinWithNever
       _ <- assertEqualsF(
         vec,
         (0 until vec.length).toVector
       )
-      _ <- assertF(clue(vec.length) >= 5)
-      _ <- assertF(clue(vec.length) <= 20)
+      _ <- assertF(clue(vec.length) >= (N / 3))
+      _ <- assertF(clue(vec.length) <= (N * 3))
     } yield ()
   }
 }
