@@ -111,6 +111,9 @@ object RxnNew extends RxnNewInstances0 {
     def cas[A](r: Ref[A], ov: A, nv: A): RxnNew[Any, Unit] =
       new Cas[A](r, ov, nv)
 
+    def retry[A, B]: RxnNew[A, B] =
+      new AlwaysRetry[A, B]
+
     private[choam] def delay[A, B](uf: A => B): RxnNew[A, B] =
       lift(uf)
 
@@ -124,6 +127,9 @@ object RxnNew extends RxnNewInstances0 {
   /** Only the interpreter can use this */
   private final class Commit[A]()
     extends RxnNew[A, A] { private[choam] def tag = 0 }
+
+  private final class AlwaysRetry[A, B]()
+    extends RxnNew[A, B] { private[choam] def tag = 1 }
 
   private final class Lift[A, B](val func: A => B)
     extends RxnNew[A, B] { private[choam] def tag = 3 }
