@@ -97,6 +97,12 @@ object RxnNew extends RxnNewInstances0 {
   def computed[A, B](f: A => RxnNew[Any, B]): RxnNew[A, B] =
     new Computed(f)
 
+  def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): RxnNew[B, C] =
+    new Upd(r, f)
+
+  def read[A](r: Ref[A]): RxnNew[Any, A] =
+    upd[A, Any, A](r) { (oa, _) => (oa, oa) }
+
   final object unsafe {
 
     def invisibleRead[A](r: Ref[A]): RxnNew[Any, A] =
@@ -134,6 +140,9 @@ object RxnNew extends RxnNewInstances0 {
 
   private final class Cas[A](val ref: Ref[A], val ov: A, val nv: A)
     extends RxnNew[Any, Unit] { private[choam] def tag = 7 }
+
+  private final class Upd[A, B, X](val ref: Ref[X], val f: (X, A) => (X, B))
+    extends RxnNew[A, B] { private[choam] def tag = 8 }
 
   private final class InvisibleRead[A](val ref: Ref[A])
     extends RxnNew[Any, A] { private[choam] def tag = 9 }
@@ -331,10 +340,15 @@ object RxnNew extends RxnNewInstances0 {
             loop(retry())
           }
         case 8 => // Upd
-          sys.error("TODO") // TODO
+          val c = curr.asInstanceOf[Upd[A, B, ForSome.x]]
+          val ox = kcas.read(c.ref, ctx)
+          val (nx, b) = c.f(ox, a.asInstanceOf[A])
+          kcas.addCas(desc, c.ref, ox, nx, ctx)
+          a = b
+          loop(next())
         case 9 => // InvisibleRead
           val c = curr.asInstanceOf[InvisibleRead[R]]
-          a = ctx.impl.read(c.ref, ctx)
+          a = kcas.read(c.ref, ctx)
           loop(next())
         case 10 => // GenExchange
           sys.error("TODO") // TODO
