@@ -104,6 +104,10 @@ object RxnNew extends RxnNewInstances0 {
 
     private[choam] def delay[A, B](uf: A => B): RxnNew[A, B] =
       lift(uf)
+
+    // TODO: we need a better name
+    def delayComputed[A, B](prepare: RxnNew[A, RxnNew[Any, B]]): RxnNew[A, B] =
+      new DelayComputed[A, B](prepare)
   }
 
   // Representation:
@@ -117,6 +121,10 @@ object RxnNew extends RxnNewInstances0 {
 
   private final class Computed[A, B](val f: A => RxnNew[Any, B])
     extends RxnNew[A, B] { private[choam] def tag = 4 }
+
+  // TODO: we need a better name
+  private final class DelayComputed[A, B](val prepare: RxnNew[A, RxnNew[Any, B]])
+    extends RxnNew[A, B] { private[choam] def tag = 5 }
 
   private final class Choice[A, B](val left: RxnNew[A, B], val right: RxnNew[A, B])
     extends RxnNew[A, B] { private[choam] def tag = 6 }
@@ -147,6 +155,7 @@ object RxnNew extends RxnNewInstances0 {
   private[this] final val ContAndThen = 0.toByte
   private[this] final val ContAndAlso = 1.toByte
   private[this] final val ContAndAlsoJoin = 2.toByte
+  private[this] final val ContAfterDelayComp = 3.toByte
 
   private[choam] def interpreter[X, R](
     rxn: RxnNew[X, R],
@@ -157,6 +166,8 @@ object RxnNew extends RxnNewInstances0 {
   ): R = {
 
     val kcas = ctx.impl
+
+    var delayCompStorage: ObjStack[Any] = null
 
     var desc: EMCASDescriptor = kcas.start(ctx)
 
@@ -175,12 +186,58 @@ object RxnNew extends RxnNewInstances0 {
     var a: Any = x
     var retries: Int = 0
 
+    def saveEverything(): Unit = {
+      if (delayCompStorage eq null) {
+        delayCompStorage = newStack()
+      }
+      // save everything:
+      saveAlt(null)
+      delayCompStorage.push(altSnap.toArray())
+      delayCompStorage.push(altA.toArray())
+      delayCompStorage.push(altK.toArray())
+      delayCompStorage.push(altContT.toArray())
+      delayCompStorage.push(altContK.toArray())
+      delayCompStorage.push(retries)
+      // reset state:
+      desc = kcas.start(ctx)
+      altSnap.clear()
+      altA.clear()
+      altK.clear()
+      altContT.clear()
+      altContK.clear()
+      contT.clear()
+      contT.push(ContAfterDelayComp)
+      contK.clear()
+      a = () : Any
+      retries = 0
+    }
+
+    def loadEverything(): Unit = {
+      // TODO: this is a mess...
+      retries = delayCompStorage.pop().asInstanceOf[Int]
+      altContK.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
+      altContT.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
+      altK.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
+      altA.replaceWith(delayCompStorage.pop().asInstanceOf[Array[ForSome.x]])
+      altSnap.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
+      loadAlt()
+      ()
+    }
+
     def saveAlt(k: RxnNew[ForSome.x, R]): Unit = {
       altSnap.push(ctx.impl.snapshot(desc, ctx))
       altA.push(a.asInstanceOf[ForSome.x])
       altK.push(k)
       altContT.push(contT.toArray())
       altContK.push(contK.toArray())
+    }
+
+    def loadAlt(): RxnNew[ForSome.x, R] = {
+      desc = altSnap.pop()
+      a = altA.pop()
+      contT.replaceWith(altContT.pop())
+      contK.replaceWith(altContK.pop())
+      altK.pop()
     }
 
     def next(): RxnNew[ForSome.x, R] = {
@@ -197,17 +254,17 @@ object RxnNew extends RxnNewInstances0 {
           val savedA = contK.pop()
           a = (savedA, a)
           next()
+        case 3 => // ContAfterDelayComp
+          val delayCompResult = a
+          loadEverything()
+          delayCompResult.asInstanceOf[RxnNew[ForSome.x, R]]
       }
     }
 
     def retry(): RxnNew[ForSome.x, R] = {
       retries += 1
       if (altSnap.nonEmpty) {
-        desc = altSnap.pop()
-        a = altA.pop()
-        contT.replaceWith(altContT.pop())
-        contK.replaceWith(altContK.pop())
-        altK.pop()
+        loadAlt()
       } else {
         desc = kcas.start(ctx)
         a = x
@@ -248,7 +305,11 @@ object RxnNew extends RxnNewInstances0 {
           a = () : Any
           loop(nxt)
         case 5 => // DelayComputed
-          sys.error("TODO") // TODO
+          val c = curr.asInstanceOf[DelayComputed[A, B]]
+          val input = a
+          saveEverything()
+          a = input
+          loop(c.prepare)
         case 6 => // Choice
           val c = curr.asInstanceOf[Choice[A, B]]
           saveAlt(c.right.asInstanceOf[RxnNew[ForSome.x, R]])

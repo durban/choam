@@ -77,6 +77,10 @@ private final class ObjStack[A] private (
   }
 
   def replaceWith(that: Array[A]): Unit = {
+    this.replaceWithUnsafe(that.asInstanceOf[Array[Any]])
+  }
+
+  def replaceWithUnsafe(that: Array[Any]): Unit = {
     // TODO: this can make it so that arr.length is not a power of 2
     if (that.length != 0) {
       this.arr = that.asInstanceOf[Array[AnyRef]]

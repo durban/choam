@@ -55,7 +55,7 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     val r3: RxnNew[Int, Int] = nest(N, (x, y) => x.flatMap { _ => y })
     val r4: RxnNew[Int, Int] = nest(N, _ >> _)
     val r5: RxnNew[Int, Int] = nest(N, _ + _)
-    // TODO: val r6: RxnNew[Int, Int] = nest(N, (x, y) => RxnNew.unsafe.delayComputed(x.map(Rxn.ret(_) >>> y)))
+    val r6: RxnNew[Int, Int] = nest(N, (x, y) => RxnNew.unsafe.delayComputed(x.map(RxnNew.ret(_) >>> y)))
     val r7: RxnNew[Int, Int] = Monad[RxnNew[Int, *]].tailRecM(N) { n =>
       if (n > 0) RxnNew.lift[Int, Either[Int, Int]](_ => Left(n - 1))
       else RxnNew.ret(Right(99))
@@ -65,7 +65,7 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     assertEquals(r3.unsafePerform(42, this.kcasImpl), 42 + 1)
     assertEquals(r4.unsafePerform(42, this.kcasImpl), 42 + 1)
     assertEquals(r5.unsafePerform(42, this.kcasImpl), 42 + 1)
-    // r6.## // TODO: r6.unsafePerform(42, this.kcasImpl)
+    assertEquals(r6.unsafePerform(42, this.kcasImpl), 42 + N)
     assertEquals(r7.unsafePerform(42, this.kcasImpl), 99)
   }
 
