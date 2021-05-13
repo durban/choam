@@ -99,11 +99,20 @@ object RxnNew extends RxnNewInstances0 {
 
   final object ref {
 
+    def read[A](r: Ref[A]): RxnNew[Any, A] =
+      upd[A, Any, A](r) { (oa, _) => (oa, oa) }
+
     def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): RxnNew[B, C] =
       new Upd(r, f)
 
-    def read[A](r: Ref[A]): RxnNew[Any, A] =
-      upd[A, Any, A](r) { (oa, _) => (oa, oa) }
+    def update[A](r: Ref[A])(f: A => A): RxnNew[Any, Unit] =
+      upd[A, Any, Unit](r) { (oa, _) => (f(oa), ()) }
+
+    def getAndUpdate[A](r: Ref[A])(f: A => A): RxnNew[Any, A] =
+      upd[A, Any, A](r) { (oa, _) => (f(oa), oa) }
+
+    def getAndSet[A](r: Ref[A]): RxnNew[A, A] =
+      upd[A, A, A](r) { (oa, na) => (na, oa) }
   }
 
   final object unsafe {
