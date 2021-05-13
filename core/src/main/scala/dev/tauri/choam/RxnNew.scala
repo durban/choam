@@ -253,6 +253,7 @@ object RxnNew extends RxnNewInstances0 {
 
     var a: Any = x
     var retries: Int = 0
+    var isPostCommit: Boolean = false
 
     def saveEverything(): Unit = {
       if (delayCompStorage eq null) {
@@ -267,15 +268,16 @@ object RxnNew extends RxnNewInstances0 {
       delayCompStorage.push(altContK.toArray())
       delayCompStorage.push(altPc.toArray())
       delayCompStorage.push(retries)
+      delayCompStorage.push(isPostCommit)
       // reset state:
       desc = kcas.start(ctx)
       clearAlts()
       contT.clear()
       contT.push(ContAfterDelayComp)
-      // TODO: postCommit
       contK.clear()
       a = () : Any
       retries = 0
+      isPostCommit = false
     }
 
     def clearAlts(): Unit = {
@@ -289,6 +291,7 @@ object RxnNew extends RxnNewInstances0 {
 
     def loadEverything(): Unit = {
       // TODO: this is a mess...
+      isPostCommit = delayCompStorage.pop().asInstanceOf[Boolean]
       retries = delayCompStorage.pop().asInstanceOf[Int]
       altPc.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
       altContK.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
@@ -333,21 +336,16 @@ object RxnNew extends RxnNewInstances0 {
           a = (savedA, a)
           next()
         case 3 => // ContAfterDelayComp
-          val delayCompResult = a
-          // try to commit `prepare`:
-          if (!kcas.tryPerform(desc, ctx)) {
-            // retry `prepare`:
-            retry()
-          } else {
-            // ok, continue with the rest:
-            loadEverything()
-            delayCompResult.asInstanceOf[RxnNew[ForSome.x, R]]
-          }
+          val delayCompResult = contK.pop()
+          // continue with the rest:
+          loadEverything()
+          delayCompResult.asInstanceOf[RxnNew[ForSome.x, R]]
         case 4 => // ContPostCommit
           val pcAction = contK.pop().asInstanceOf[RxnNew[ForSome.x, R]]
           clearAlts()
           a = () : Any
           retries = 0
+          isPostCommit = true
           desc = kcas.start(ctx)
           pcAction
         case 5 => // ContAfterPostCommit
@@ -388,9 +386,10 @@ object RxnNew extends RxnNewInstances0 {
             val res = a.asInstanceOf[R]
             desc = kcas.start(ctx)
             a = () : Any
-            if (contT.top() == ContAfterPostCommit) {
+            if (!isPostCommit) {
               contK.push(res) // final result, Done will need it
             }
+            isPostCommit = false
             while (pc.nonEmpty) {
               contK.push(commit) // commit the post-commit action
               contT.push(ContAndThen)
@@ -420,6 +419,8 @@ object RxnNew extends RxnNewInstances0 {
           val c = curr.asInstanceOf[DelayComputed[A, B]]
           val input = a
           saveEverything()
+          contT.push(ContAndThen) // commit `prepare`
+          contK.push(commit)
           a = input
           loop(c.prepare)
         case 6 => // Choice

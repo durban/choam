@@ -122,6 +122,21 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("postCommit on delayComputed") {
+    for {
+      a <- Ref("a").run[F]
+      b <- Ref("b").run[F]
+      c <- Ref("c").run[F]
+      rea = RxnNew.unsafe.delayComputed[Unit, String](RxnNew.unsafe.cas(a, "a", "aa").as(RxnNew.ret("foo")).postCommit(
+        RxnNew.unsafe.cas(b, "b", "bb")
+      )) >>> RxnNew.unsafe.cas(c, "c", "cc")
+      _ <- assertResultF(rea.run[F](implicitly, F), ())
+      _ <- assertResultF(a.unsafeInvisibleRead.run, "aa")
+      _ <- assertResultF(b.unsafeInvisibleRead.run, "bb")
+      _ <- assertResultF(c.unsafeInvisibleRead.run, "cc")
+    } yield ()
+  }
+
   test("delayComputed") {
     for {
       a <- Ref("a").run[F]
