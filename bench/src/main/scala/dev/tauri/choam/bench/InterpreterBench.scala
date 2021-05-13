@@ -65,6 +65,18 @@ object InterpreterBench {
     private[this] val cnt: Ref[Long] =
       Ref.unsafePadded(0L)
 
+    private[InterpreterBench] val rxnNew: RxnNew[Int, String] = {
+      val rxn1 = (0 until N).map { idx =>
+        mkRxnNew1(ref1s(idx), ref2s(idx), ref3s(idx))
+      }.reduce { (x, y) => (x * y).map(_._2) }
+
+      val rxn2 = (0 until N).map { idx =>
+        mkRxnNew2(ref4s(idx), ref5s(idx))
+      }.reduce { (x, y) => (x * y).map(_._2) }
+
+      rxn1 *> rxn2
+    }
+
     private[InterpreterBench] val rxn: Rxn[Int, String] = {
       val rxn1 = (0 until N).map { idx =>
         mkRxn1(ref1s(idx), ref2s(idx), ref3s(idx))
@@ -77,6 +89,18 @@ object InterpreterBench {
       rxn1 *> rxn2
     }
 
+    private[this] def mkRxnNew1(ref1: Ref[String], ref2: Ref[String], ref3: Ref[String]): RxnNew[Int, String] = {
+      RxnNew.computed { (i: Int) =>
+        (if ((i % 2) == 0) {
+          RxnNew.ref.getAndUpdate(ref1)(ov => (ov.toInt + i).toString) >>> RxnNew.ref.getAndSet(ref2)
+        } else {
+          RxnNew.ref.getAndUpdate(ref2)(ov => (ov.toInt - i).toString) >>> RxnNew.ref.getAndSet(ref1)
+        }) >>> RxnNew.computed { (s: String) =>
+          (RxnNew.unsafe.cas(ref3, s, (s.toInt + 1).toString) + RxnNew.ref.update(ref3)(_.length.toString)).as(s)
+        }
+      }.postCommit(RxnNew.ref.update(cnt)(_ + 1L))
+    }
+
     private[this] def mkRxn1(ref1: Ref[String], ref2: Ref[String], ref3: Ref[String]): Int =#> String = {
       Rxn.computed { (i: Int) =>
         (if ((i % 2) == 0) {
@@ -87,6 +111,13 @@ object InterpreterBench {
           (ref3.unsafeCas(s, (s.toInt + 1).toString) + ref3.update(_.length.toString)).as(s)
         }
       }.postCommit(cnt.update(_ + 1L))
+    }
+
+    private[this] def mkRxnNew2(ref4: Ref[String], ref5: Ref[String]): RxnNew[Int, String] = {
+      RxnNew.ref.updWith[String, Int, String](ref4) { (ov4, i) =>
+        if ((i % 2) == 0) RxnNew.ref.getAndUpdate(ref5)(_ => ov4).map(s => (s, s))
+        else RxnNew.unsafe.retry
+      } + RxnNew.ref.getAndUpdate(ref4)(ov4 => (ov4.toInt + 1).toString)
     }
 
     private[this] def mkRxn2(ref4: Ref[String], ref5: Ref[String]): Int =#> String = {

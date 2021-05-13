@@ -114,6 +114,7 @@ private[choam] object EMCAS extends KCAS { self =>
    *                 `false` when `desc` is a new descriptor.
    */
   def MCAS(desc: EMCASDescriptor, helping: Boolean, ctx: ThreadContext, replace: Int = 4096): Boolean = {
+    // TODO: add a fast path for when `desc` is empty
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): TryWordResult = {
       var content: A = nullOf[A]

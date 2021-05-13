@@ -52,6 +52,14 @@ private final class ObjStack[A] private (
     }
   }
 
+  def top(): A = {
+    if (this.size != 0) {
+      this.arr(this.size - 1).asInstanceOf[A]
+    } else {
+      throw new NoSuchElementException(s"stack size = ${this.size}")
+    }
+  }
+
   def clear(): Unit = {
     Arrays.fill(this.arr, 0, this.size, null)
     this.size = 0
