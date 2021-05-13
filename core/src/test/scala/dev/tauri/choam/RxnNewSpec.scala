@@ -107,9 +107,9 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
-      rea = RxnNew.unsafe.delayComputed[Unit, String](RxnNew.upd(a) { (oa: String, _: Unit) =>
+      rea = RxnNew.unsafe.delayComputed[Unit, String](RxnNew.ref.upd(a) { (oa: String, _: Unit) =>
         ("x", oa)
-      }.map { oa => RxnNew.upd(b) { (ob: String, _: Any) => (oa, ob) } })
+      }.map { oa => RxnNew.ref.upd(b) { (ob: String, _: Any) => (oa, ob) } })
       _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, "b")
       _ <- assertResultF(a.unsafeInvisibleRead.run, "x")
       _ <- assertResultF(b.unsafeInvisibleRead.run, "a")
@@ -137,12 +137,12 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
           RxnNew.unsafe.invisibleRead(h.value).flatMap {
             case null =>
               // sentinel node, discard it and retry:
-              RxnNew.read(h.next).flatMap { nxt =>
+              RxnNew.ref.read(h.next).flatMap { nxt =>
                 RxnNew.unsafe.cas(head, h, nxt)
               }.as(RxnNew.unsafe.retry)
             case v =>
               // found the real head, pop it:
-              RxnNew.ret(RxnNew.read(h.next).flatMap { nxt =>
+              RxnNew.ret(RxnNew.ref.read(h.next).flatMap { nxt =>
                 RxnNew.unsafe.cas(head, h, nxt).flatMap { _ =>
                   RxnNew.unsafe.cas(h.value, v, v)
                 }
@@ -158,12 +158,12 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       lst0 = List[String](null, "a", "b", null, "c")
       lst1 <- F.delay { Ref.unsafe(Node.fromList(lst0)) }
       lst2 <- F.tailRecM((List.empty[String], lst1)) { case (acc, ref) =>
-        RxnNew.read(ref).flatMap { node =>
+        RxnNew.ref.read(ref).flatMap { node =>
           if (node eq null) {
             // there is an extra sentinel at the end:
             RxnNew.ret(Right[(List[String], Ref[Node]), List[String]](acc.tail.reverse))
           } else {
-            RxnNew.read(node.value).map { v =>
+            RxnNew.ref.read(node.value).map { v =>
               Left[(List[String], Ref[Node]), List[String]]((v :: acc, node.next))
             }
           }

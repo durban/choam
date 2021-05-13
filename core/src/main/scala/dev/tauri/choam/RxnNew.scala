@@ -97,11 +97,14 @@ object RxnNew extends RxnNewInstances0 {
   def computed[A, B](f: A => RxnNew[Any, B]): RxnNew[A, B] =
     new Computed(f)
 
-  def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): RxnNew[B, C] =
-    new Upd(r, f)
+  final object ref {
 
-  def read[A](r: Ref[A]): RxnNew[Any, A] =
-    upd[A, Any, A](r) { (oa, _) => (oa, oa) }
+    def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): RxnNew[B, C] =
+      new Upd(r, f)
+
+    def read[A](r: Ref[A]): RxnNew[Any, A] =
+      upd[A, Any, A](r) { (oa, _) => (oa, oa) }
+  }
 
   final object unsafe {
 
