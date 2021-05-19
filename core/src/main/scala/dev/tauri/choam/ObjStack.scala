@@ -20,6 +20,7 @@ package dev.tauri.choam
 import java.util.Arrays
 
 import scala.reflect.ClassTag
+import scala.collection.immutable.ArraySeq
 
 private final class ObjStack[A] private (
   private[this] var arr: Array[AnyRef],
@@ -34,6 +35,10 @@ private final class ObjStack[A] private (
   require((arr.length & (arr.length - 1)) == 0) // power of 2
   require(size >= 0)
   require(size <= arr.length)
+
+  final override def toString: String = {
+    s"ObjStack(${List(ArraySeq.unsafeWrapArray(Arrays.copyOf(this.arr, this.size)): _*).reverse.mkString(", ")})"
+  }
 
   def push(a: A): Unit = {
     this.growIfNecessary()

@@ -35,9 +35,19 @@ final class RxnNewSpec_EMCAS_IO
   with SpecEMCAS
   with RxnNewSpec[IO]
 
+final class RxnNewSpec_FlakyEMCAS_IO
+  extends BaseSpecIO
+  with SpecFlakyEMCAS
+  with RxnNewSpec[IO]
+
 final class RxnNewSpec_EMCAS_ZIO
   extends BaseSpecZIO
   with SpecEMCAS
+  with RxnNewSpec[zio.Task]
+
+final class RxnNewSpec_FlakyEMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecFlakyEMCAS
   with RxnNewSpec[zio.Task]
 
 trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
@@ -71,6 +81,7 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("Choice after >>>") {
     for {
+      _ <- F.delay { this.assume(!this.isFlaky) }
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
       y <- Ref("y").run[F]
@@ -124,6 +135,7 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("postCommit on delayComputed") {
     for {
+      _ <- F.delay { this.assume(!this.isFlaky) }
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
       c <- Ref("c").run[F]
@@ -139,6 +151,7 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("delayComputed") {
     for {
+      _ <- F.delay { this.assume(!this.isFlaky) }
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
       rea = RxnNew.unsafe.delayComputed[Unit, String](RxnNew.ref.upd(a) { (oa: String, _: Unit) =>

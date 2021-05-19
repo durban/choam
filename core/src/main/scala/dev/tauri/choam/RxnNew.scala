@@ -234,6 +234,9 @@ object RxnNew extends RxnNewInstances0 {
 
     var delayCompStorage: ObjStack[Any] = null
 
+    var startRxn: RxnNew[X, R] = rxn
+    var startA: Any = x
+
     var desc: EMCASDescriptor = kcas.start(ctx)
 
     val altSnap = newStack[EMCASDescriptor]()
@@ -250,6 +253,9 @@ object RxnNew extends RxnNewInstances0 {
     contT.push(ContAfterPostCommit)
     contT.push(ContAndThen)
     contK.push(commit)
+
+    var contTReset: Any = contT.toArray()
+    var contKReset: Any = contK.toArray()
 
     var a: Any = x
     var retries: Int = 0
@@ -269,13 +275,17 @@ object RxnNew extends RxnNewInstances0 {
       delayCompStorage.push(altPc.toArray())
       delayCompStorage.push(retries)
       delayCompStorage.push(isPostCommit)
+      delayCompStorage.push(startRxn)
+      delayCompStorage.push(startA)
+      delayCompStorage.push(contTReset)
+      delayCompStorage.push(contKReset)
       // reset state:
       desc = kcas.start(ctx)
       clearAlts()
       contT.clear()
-      contT.push(ContAfterDelayComp)
       contK.clear()
       a = () : Any
+      startA = () : Any
       retries = 0
       isPostCommit = false
     }
@@ -291,6 +301,10 @@ object RxnNew extends RxnNewInstances0 {
 
     def loadEverything(): Unit = {
       // TODO: this is a mess...
+      contKReset = delayCompStorage.pop()
+      contTReset = delayCompStorage.pop()
+      startA = delayCompStorage.pop()
+      startRxn = delayCompStorage.pop().asInstanceOf[RxnNew[X, R]]
       isPostCommit = delayCompStorage.pop().asInstanceOf[Boolean]
       retries = delayCompStorage.pop().asInstanceOf[Int]
       altPc.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
@@ -306,10 +320,10 @@ object RxnNew extends RxnNewInstances0 {
     def saveAlt(k: RxnNew[ForSome.x, R]): Unit = {
       altSnap.push(ctx.impl.snapshot(desc, ctx))
       altA.push(a.asInstanceOf[ForSome.x])
-      altK.push(k)
       altContT.push(contT.toArray())
       altContK.push(contK.toArray())
       altPc.push(pc.toArray())
+      altK.push(k)
     }
 
     def loadAlt(): RxnNew[ForSome.x, R] = {
@@ -324,7 +338,8 @@ object RxnNew extends RxnNewInstances0 {
     def next(): RxnNew[ForSome.x, R] = {
       (contT.pop() : @switch) match {
         case 0 => // ContAndThen
-          contK.pop().asInstanceOf[RxnNew[ForSome.x, R]]
+          val rrr = contK.pop()
+          rrr.asInstanceOf[RxnNew[ForSome.x, R]]
         case 1 => // ContAndAlso
           val savedA = a
           a = contK.pop()
@@ -343,7 +358,11 @@ object RxnNew extends RxnNewInstances0 {
         case 4 => // ContPostCommit
           val pcAction = contK.pop().asInstanceOf[RxnNew[ForSome.x, R]]
           clearAlts()
+          contTReset = contT.toArray()
+          contKReset = contK.toArray()
           a = () : Any
+          startA = () : Any
+          startRxn = pcAction.asInstanceOf[RxnNew[X, R]]
           retries = 0
           isPostCommit = true
           desc = kcas.start(ctx)
@@ -359,16 +378,14 @@ object RxnNew extends RxnNewInstances0 {
       if (altSnap.nonEmpty) {
         loadAlt()
       } else {
+        // really restart:
         desc = kcas.start(ctx)
-        a = x
-        contK.clear()
-        contK.push(commit)
-        contT.clear()
-        contT.push(ContAfterPostCommit)
-        contT.push(ContAndThen)
+        a = startA
+        contT.replaceWithUnsafe(contTReset.asInstanceOf[Array[Any]])
+        contK.replaceWithUnsafe(contKReset.asInstanceOf[Array[Any]])
         pc.clear()
         spin()
-        rxn.asInstanceOf[RxnNew[ForSome.x, R]]
+        startRxn.asInstanceOf[RxnNew[ForSome.x, R]]
       }
     }
 
@@ -398,6 +415,8 @@ object RxnNew extends RxnNewInstances0 {
             }
             loop(next())
           } else {
+            contK.push(commit)
+            contT.push(ContAndThen)
             loop(retry())
           }
         case 1 => // AlwaysRetry
@@ -419,9 +438,14 @@ object RxnNew extends RxnNewInstances0 {
           val c = curr.asInstanceOf[DelayComputed[A, B]]
           val input = a
           saveEverything()
+          contT.push(ContAfterDelayComp)
           contT.push(ContAndThen) // commit `prepare`
           contK.push(commit)
+          contTReset = contT.toArray()
+          contKReset = contK.toArray()
           a = input
+          startA = input
+          startRxn = c.prepare.asInstanceOf[RxnNew[X, R]]
           loop(c.prepare)
         case 6 => // Choice
           val c = curr.asInstanceOf[Choice[A, B]]
@@ -432,16 +456,18 @@ object RxnNew extends RxnNewInstances0 {
           val currVal = kcas.read(c.ref, ctx)
           if (equ(currVal, c.ov)) {
             desc = kcas.addCas(desc, c.ref, c.ov, c.nv, ctx)
-            a = ()
+            a = () : Unit
             loop(next().asInstanceOf[RxnNew[Unit, R]])
           } else {
+            contK.push(commit) // TODO: why?
+            contT.push(ContAndThen) // TODO: why?
             loop(retry())
           }
         case 8 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, ForSome.x]]
           val ox = kcas.read(c.ref, ctx)
           val (nx, b) = c.f(ox, a.asInstanceOf[A])
-          kcas.addCas(desc, c.ref, ox, nx, ctx)
+          desc = kcas.addCas(desc, c.ref, ox, nx, ctx)
           a = b
           loop(next())
         case 9 => // InvisibleRead
@@ -469,13 +495,7 @@ object RxnNew extends RxnNewInstances0 {
           loop(c.left)
         case 13 => // Done
           val c = curr.asInstanceOf[Done[R]]
-          // try to commit the last post-commit action
-          if (kcas.tryPerform(desc, ctx)) {
-            // ok, we're really done:
-            c.result
-          } else {
-            loop(retry())
-          }
+          c.result
         case t => // not implemented
           throw new UnsupportedOperationException(
             s"Not implemented tag ${t} for ${curr}"
@@ -483,7 +503,7 @@ object RxnNew extends RxnNewInstances0 {
       }
     }
 
-    loop(rxn)
+    loop(startRxn)
   }
 }
 
