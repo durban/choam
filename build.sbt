@@ -180,7 +180,7 @@ lazy val dependencies = new {
   val catsVersion = "2.6.1"
   val catsEffectVersion = "3.1.1"
   val catsMtlVersion = "1.2.1"
-  val fs2Version = "3.0.3"
+  val fs2Version = "3.0.4"
   val scalacheckEffectVersion = "1.0.2"
 
   val cats = "org.typelevel" %% "cats-core" % catsVersion
