@@ -28,6 +28,10 @@ import InterpreterBench._
 @Threads(2)
 class InterpreterBench {
 
+  // TODO: this benchmark doesn't include:
+  // - invisible read
+  // - delayComputed
+
   @Benchmark
   def internal(s: St, bh: Blackhole, k: KCASImplState): Unit = {
     val x = k.nextInt()
@@ -38,6 +42,12 @@ class InterpreterBench {
   def externalWithTag(s: St, bh: Blackhole, k: KCASImplState): Unit = {
     val x = k.nextInt()
     bh.consume(Rxn.externalInterpreter(s.rxn, x, k.kcasImpl.currentContext()))
+  }
+
+  @Benchmark
+  def rxnNew(s: St, bh: Blackhole, k: KCASImplState): Unit = {
+    val x = k.nextInt()
+    bh.consume(RxnNew.interpreter(s.rxnNew, x, k.kcasImpl.currentContext()))
   }
 }
 
