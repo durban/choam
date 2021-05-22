@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-val scala2 = "2.13.5"
+val scala2 = "2.13.6"
 val scala3 = "3.0.0"
 
 ThisBuild / scalaVersion := scala2
@@ -107,7 +107,7 @@ lazy val commonSettings = Seq[Setting[_]](
     "-Xlint:_",
     // TODO: "-Xelide-below", "INFO",
     "-Xmigration:2.13.4",
-    "-Xsource:3.0",
+    "-Xsource:3",
     "-Xverify",
     "-Ywarn-numeric-widen",
     "-Ywarn-dead-code",
@@ -145,7 +145,7 @@ lazy val commonSettings = Seq[Setting[_]](
   ).flatten,
   libraryDependencies ++= (
     if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
-      List(compilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full))
+      List(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.0" cross CrossVersion.full))
     } else {
       Nil
     }
