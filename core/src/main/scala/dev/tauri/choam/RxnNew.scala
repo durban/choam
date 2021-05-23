@@ -120,6 +120,9 @@ object RxnNew extends RxnNewInstances0 {
     def update[A](r: Ref[A])(f: A => A): RxnNew[Any, Unit] =
       upd[A, Any, Unit](r) { (oa, _) => (f(oa), ()) }
 
+    def updateWith[A](r: Ref[A])(f: A => RxnNew[Any, A]): RxnNew[Any, Unit] =
+      updWith[A, Any, Unit](r) { (oa, _) => f(oa).map(na => (na, ())) }
+
     def getAndUpdate[A](r: Ref[A])(f: A => A): RxnNew[Any, A] =
       upd[A, Any, A](r) { (oa, _) => (f(oa), oa) }
 
@@ -231,12 +234,7 @@ object RxnNew extends RxnNewInstances0 {
 
     var desc: EMCASDescriptor = kcas.start(ctx)
 
-    val altSnap = newStack[EMCASDescriptor]()
-    val altA = newStack[Any]()
-    val altK = newStack[RxnNew[Any, R]]()
-    val altContT = newStack[Array[Byte]]()
-    val altContK = newStack[Array[Any]]()
-    val altPc = newStack[Array[RxnNew[Any, Unit]]]()
+    val alts = newStack[Any]()
 
     val contT: ByteStack = new ByteStack(initSize = 8)
     val contK = newStack[Any]()
@@ -259,12 +257,7 @@ object RxnNew extends RxnNewInstances0 {
       }
       // save everything:
       saveAlt(null)
-      delayCompStorage.push(altSnap.toArray())
-      delayCompStorage.push(altA.toArray())
-      delayCompStorage.push(altK.toArray())
-      delayCompStorage.push(altContT.toArray())
-      delayCompStorage.push(altContK.toArray())
-      delayCompStorage.push(altPc.toArray())
+      delayCompStorage.push(alts.toArray())
       delayCompStorage.push(retries)
       delayCompStorage.push(isPostCommit)
       delayCompStorage.push(startRxn)
@@ -283,12 +276,7 @@ object RxnNew extends RxnNewInstances0 {
     }
 
     def clearAlts(): Unit = {
-      altSnap.clear()
-      altA.clear()
-      altK.clear()
-      altContT.clear()
-      altContK.clear()
-      altPc.clear()
+      alts.clear()
     }
 
     def loadEverything(): Unit = {
@@ -299,32 +287,28 @@ object RxnNew extends RxnNewInstances0 {
       startRxn = delayCompStorage.pop().asInstanceOf[RxnNew[Any, R]]
       isPostCommit = delayCompStorage.pop().asInstanceOf[Boolean]
       retries = delayCompStorage.pop().asInstanceOf[Int]
-      altPc.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
-      altContK.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
-      altContT.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
-      altK.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
-      altA.replaceWith(delayCompStorage.pop().asInstanceOf[Array[Any]])
-      altSnap.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
+      alts.replaceWith(delayCompStorage.pop().asInstanceOf[Array[Any]])
       loadAlt()
       ()
     }
 
     def saveAlt(k: RxnNew[Any, R]): Unit = {
-      altSnap.push(ctx.impl.snapshot(desc, ctx))
-      altA.push(a)
-      altContT.push(contT.toArray())
-      altContK.push(contK.toArray())
-      altPc.push(pc.toArray())
-      altK.push(k)
+      alts.push(ctx.impl.snapshot(desc, ctx))
+      alts.push(a)
+      alts.push(contT.toArray())
+      alts.push(contK.toArray())
+      alts.push(pc.toArray())
+      alts.push(k)
     }
 
     def loadAlt(): RxnNew[Any, R] = {
-      desc = altSnap.pop()
-      a = altA.pop()
-      contT.replaceWith(altContT.pop())
-      contK.replaceWith(altContK.pop())
-      pc.replaceWith(altPc.pop())
-      altK.pop()
+      val res = alts.pop().asInstanceOf[RxnNew[Any, R]]
+      pc.replaceWithUnsafe(alts.pop().asInstanceOf[Array[Any]])
+      contK.replaceWith(alts.pop().asInstanceOf[Array[Any]])
+      contT.replaceWith(alts.pop().asInstanceOf[Array[Byte]])
+      a = alts.pop()
+      desc = alts.pop().asInstanceOf[EMCASDescriptor]
+      res
     }
 
     def next(): RxnNew[Any, Any] = {
@@ -367,7 +351,7 @@ object RxnNew extends RxnNewInstances0 {
 
     def retry(): RxnNew[Any, Any] = {
       retries += 1
-      if (altSnap.nonEmpty) {
+      if (alts.nonEmpty) {
         loadAlt()
       } else {
         // really restart:

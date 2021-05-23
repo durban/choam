@@ -72,6 +72,15 @@ object InterpreterBench {
     private[this] val ref5s: Array[Ref[String]] =
       Array.fill(N) { Ref.unsafePadded("5") }
 
+    private[this] val ref6s: Array[Ref[String]] =
+      Array.fill(N) { Ref.unsafePadded("6") }
+
+    private[this] val ref7s: Array[Ref[String]] =
+      Array.fill(N) { Ref.unsafePadded("7") }
+
+    private[this] val ref8s: Array[Ref[String]] =
+      Array.fill(N) { Ref.unsafePadded("8") }
+
     private[this] val cnt: Ref[Long] =
       Ref.unsafePadded(0L)
 
@@ -84,7 +93,11 @@ object InterpreterBench {
         mkRxnNew2(ref4s(idx), ref5s(idx))
       }.reduce { (x, y) => (x * y).map(_._2) }
 
-      rxn1 *> rxn2
+      val rxn3 = (0 until N).map { idx =>
+        mkRxnNew3(ref6s(idx), ref7s(idx), ref8s(idx))
+      }.reduce { (x, y) => (x * y).map(_._2) }
+
+      rxn1 *> rxn3 *> rxn2
     }
 
     private[InterpreterBench] val rxn: Rxn[Int, String] = {
@@ -96,7 +109,11 @@ object InterpreterBench {
         mkRxn2(ref4s(idx), ref5s(idx))
       }.reduce { (x, y) => (x * y).map(_._2) }
 
-      rxn1 *> rxn2
+      val rxn3 = (0 until N).map { idx =>
+        mkRxn3(ref6s(idx), ref7s(idx), ref8s(idx))
+      }.reduce { (x, y) => (x * y).map(_._2) }
+
+      rxn1 *> rxn3 *> rxn2
     }
 
     private[this] def mkRxnNew1(ref1: Ref[String], ref2: Ref[String], ref3: Ref[String]): RxnNew[Int, String] = {
@@ -135,6 +152,30 @@ object InterpreterBench {
         if ((i % 2) == 0) ref5.getAndUpdate(_ => ov4).map(s => (s, s))
         else Rxn.unsafe.retry
       } + ref4.getAndUpdate(ov4 => (ov4.toInt + 1).toString)
+    }
+
+    private[this] def mkRxnNew3(ref6: Ref[String], ref7: Ref[String], ref8: Ref[String]): RxnNew[Any, Unit] = {
+      def modOrRetry(ref: Ref[String]): RxnNew[Any, Unit] = {
+        RxnNew.ref.updateWith(ref) { s =>
+          if ((s.toInt % 2) == 0) RxnNew.pure(s.##.toString)
+          else RxnNew.unsafe.retry
+        }
+      }
+      modOrRetry(ref6) + modOrRetry(ref7) + RxnNew.ref.update(ref8) { s =>
+        s.##.toString
+      }
+    }
+
+    private[this] def mkRxn3(ref6: Ref[String], ref7: Ref[String], ref8: Ref[String]): Axn[Unit] = {
+      def modOrRetry(ref: Ref[String]): Axn[Unit] = {
+        ref.updateWith { s =>
+          if ((s.toInt % 2) == 0) Rxn.pure(s.##.toString)
+          else Rxn.unsafe.retry
+        }
+      }
+      modOrRetry(ref6) + modOrRetry(ref7) + ref8.update { s =>
+        s.##.toString
+      }
     }
   }
 }
