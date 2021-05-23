@@ -203,14 +203,6 @@ object RxnNew extends RxnNewInstances0 {
 
   // Interpreter:
 
-  private[this] final object ForSome {
-    type x
-    type y
-    type z
-    type p
-    type q
-  }
-
   private[this] def newStack[A]() = {
     new ObjStack[A](initSize = 8)
   }
@@ -234,14 +226,14 @@ object RxnNew extends RxnNewInstances0 {
 
     var delayCompStorage: ObjStack[Any] = null
 
-    var startRxn: RxnNew[X, R] = rxn
+    var startRxn: RxnNew[Any, Any] = rxn.asInstanceOf[RxnNew[Any, Any]]
     var startA: Any = x
 
     var desc: EMCASDescriptor = kcas.start(ctx)
 
     val altSnap = newStack[EMCASDescriptor]()
-    val altA = newStack[ForSome.x]()
-    val altK = newStack[RxnNew[ForSome.x, R]]()
+    val altA = newStack[Any]()
+    val altK = newStack[RxnNew[Any, R]]()
     val altContT = newStack[Array[Byte]]()
     val altContK = newStack[Array[Any]]()
     val altPc = newStack[Array[RxnNew[Any, Unit]]]()
@@ -249,7 +241,7 @@ object RxnNew extends RxnNewInstances0 {
     val contT = newStack[Byte]() // TODO: ByteStack
     val contK = newStack[Any]()
     val pc = newStack[RxnNew[Any, Unit]]()
-    val commit = new Commit[R].asInstanceOf[RxnNew[ForSome.x, R]]
+    val commit = new Commit[R]
     contT.push(ContAfterPostCommit)
     contT.push(ContAndThen)
     contK.push(commit)
@@ -304,29 +296,29 @@ object RxnNew extends RxnNewInstances0 {
       contKReset = delayCompStorage.pop()
       contTReset = delayCompStorage.pop()
       startA = delayCompStorage.pop()
-      startRxn = delayCompStorage.pop().asInstanceOf[RxnNew[X, R]]
+      startRxn = delayCompStorage.pop().asInstanceOf[RxnNew[Any, R]]
       isPostCommit = delayCompStorage.pop().asInstanceOf[Boolean]
       retries = delayCompStorage.pop().asInstanceOf[Int]
       altPc.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
       altContK.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
       altContT.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
       altK.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
-      altA.replaceWith(delayCompStorage.pop().asInstanceOf[Array[ForSome.x]])
+      altA.replaceWith(delayCompStorage.pop().asInstanceOf[Array[Any]])
       altSnap.replaceWithUnsafe(delayCompStorage.pop().asInstanceOf[Array[Any]])
       loadAlt()
       ()
     }
 
-    def saveAlt(k: RxnNew[ForSome.x, R]): Unit = {
+    def saveAlt(k: RxnNew[Any, R]): Unit = {
       altSnap.push(ctx.impl.snapshot(desc, ctx))
-      altA.push(a.asInstanceOf[ForSome.x])
+      altA.push(a)
       altContT.push(contT.toArray())
       altContK.push(contK.toArray())
       altPc.push(pc.toArray())
       altK.push(k)
     }
 
-    def loadAlt(): RxnNew[ForSome.x, R] = {
+    def loadAlt(): RxnNew[Any, R] = {
       desc = altSnap.pop()
       a = altA.pop()
       contT.replaceWith(altContT.pop())
@@ -335,15 +327,15 @@ object RxnNew extends RxnNewInstances0 {
       altK.pop()
     }
 
-    def next(): RxnNew[ForSome.x, R] = {
+    def next(): RxnNew[Any, Any] = {
       (contT.pop() : @switch) match {
         case 0 => // ContAndThen
           val rrr = contK.pop()
-          rrr.asInstanceOf[RxnNew[ForSome.x, R]]
+          rrr.asInstanceOf[RxnNew[Any, Any]]
         case 1 => // ContAndAlso
           val savedA = a
           a = contK.pop()
-          val res = contK.pop().asInstanceOf[RxnNew[ForSome.x, R]]
+          val res = contK.pop().asInstanceOf[RxnNew[Any, Any]]
           contK.push(savedA)
           res
         case 2 => // ContAndAlsoJoin
@@ -351,29 +343,29 @@ object RxnNew extends RxnNewInstances0 {
           a = (savedA, a)
           next()
         case 3 => // ContAfterDelayComp
-          val delayCompResult = contK.pop()
+          val delayCompResult = contK.pop().asInstanceOf[RxnNew[Any, Any]]
           // continue with the rest:
           loadEverything()
-          delayCompResult.asInstanceOf[RxnNew[ForSome.x, R]]
+          delayCompResult
         case 4 => // ContPostCommit
-          val pcAction = contK.pop().asInstanceOf[RxnNew[ForSome.x, R]]
+          val pcAction = contK.pop().asInstanceOf[RxnNew[Any, Any]]
           clearAlts()
           contTReset = contT.toArray()
           contKReset = contK.toArray()
           a = () : Any
           startA = () : Any
-          startRxn = pcAction.asInstanceOf[RxnNew[X, R]]
+          startRxn = pcAction
           retries = 0
           isPostCommit = true
           desc = kcas.start(ctx)
           pcAction
         case 5 => // ContAfterPostCommit
-          val res = contK.pop().asInstanceOf[R]
+          val res = contK.pop()
           new Done(res)
       }
     }
 
-    def retry(): RxnNew[ForSome.x, R] = {
+    def retry(): RxnNew[Any, Any] = {
       retries += 1
       if (altSnap.nonEmpty) {
         loadAlt()
@@ -385,7 +377,7 @@ object RxnNew extends RxnNewInstances0 {
         contK.replaceWithUnsafe(contKReset.asInstanceOf[Array[Any]])
         pc.clear()
         spin()
-        startRxn.asInstanceOf[RxnNew[ForSome.x, R]]
+        startRxn
       }
     }
 
@@ -400,7 +392,7 @@ object RxnNew extends RxnNewInstances0 {
         case 0 => // Commit
           if (kcas.tryPerform(desc, ctx)) {
             // ok, commit is done, but we still need to perform post-commit actions
-            val res = a.asInstanceOf[R]
+            val res = a
             desc = kcas.start(ctx)
             a = () : Any
             if (!isPostCommit) {
@@ -428,7 +420,7 @@ object RxnNew extends RxnNewInstances0 {
         case 3 => // Lift
           val c = curr.asInstanceOf[Lift[A, B]]
           a = c.func(a.asInstanceOf[A])
-          loop(next().asInstanceOf[RxnNew[B, ForSome.x]])
+          loop(next())
         case 4 => // Computed
           val c = curr.asInstanceOf[Computed[A, B]]
           val nxt = c.f(a.asInstanceOf[A])
@@ -445,45 +437,45 @@ object RxnNew extends RxnNewInstances0 {
           contKReset = contK.toArray()
           a = input
           startA = input
-          startRxn = c.prepare.asInstanceOf[RxnNew[X, R]]
+          startRxn = c.prepare.asInstanceOf[RxnNew[Any, Any]]
           loop(c.prepare)
         case 6 => // Choice
           val c = curr.asInstanceOf[Choice[A, B]]
-          saveAlt(c.right.asInstanceOf[RxnNew[ForSome.x, R]])
+          saveAlt(c.right.asInstanceOf[RxnNew[Any, R]])
           loop(c.left)
         case 7 => // Cas
-          val c = curr.asInstanceOf[Cas[ForSome.x]]
+          val c = curr.asInstanceOf[Cas[Any]]
           val currVal = kcas.read(c.ref, ctx)
           if (equ(currVal, c.ov)) {
             desc = kcas.addCas(desc, c.ref, c.ov, c.nv, ctx)
             a = () : Unit
-            loop(next().asInstanceOf[RxnNew[Unit, R]])
+            loop(next())
           } else {
             contK.push(commit) // TODO: why?
             contT.push(ContAndThen) // TODO: why?
             loop(retry())
           }
         case 8 => // Upd
-          val c = curr.asInstanceOf[Upd[A, B, ForSome.x]]
+          val c = curr.asInstanceOf[Upd[A, B, Any]]
           val ox = kcas.read(c.ref, ctx)
           val (nx, b) = c.f(ox, a.asInstanceOf[A])
           desc = kcas.addCas(desc, c.ref, ox, nx, ctx)
           a = b
           loop(next())
         case 9 => // InvisibleRead
-          val c = curr.asInstanceOf[InvisibleRead[R]]
+          val c = curr.asInstanceOf[InvisibleRead[B]]
           a = kcas.read(c.ref, ctx)
           loop(next())
         case 10 => // GenExchange
           sys.error("TODO") // TODO
         case 11 => // AndThen
-          val c = curr.asInstanceOf[AndThen[A, ForSome.x, B]]
+          val c = curr.asInstanceOf[AndThen[A, _, B]]
           contT.push(ContAndThen)
-          contK.push(c.right.asInstanceOf[RxnNew[ForSome.x, R]])
+          contK.push(c.right)
           loop(c.left)
         case 12 => // AndAlso
-          val c = curr.asInstanceOf[AndAlso[ForSome.x, ForSome.y, ForSome.p, ForSome.q]]
-          val xp = a.asInstanceOf[Tuple2[ForSome.x, ForSome.p]]
+          val c = curr.asInstanceOf[AndAlso[_, _, _, _]]
+          val xp = a.asInstanceOf[Tuple2[_, _]]
           // join:
           contT.push(ContAndAlsoJoin)
           // right:
