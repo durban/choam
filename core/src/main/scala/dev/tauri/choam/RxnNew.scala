@@ -238,7 +238,7 @@ object RxnNew extends RxnNewInstances0 {
     val altContK = newStack[Array[Any]]()
     val altPc = newStack[Array[RxnNew[Any, Unit]]]()
 
-    val contT = newStack[Byte]() // TODO: ByteStack
+    val contT: ByteStack = new ByteStack(initSize = 8)
     val contK = newStack[Any]()
     val pc = newStack[RxnNew[Any, Unit]]()
     val commit = new Commit[R]
@@ -246,7 +246,7 @@ object RxnNew extends RxnNewInstances0 {
     contT.push(ContAndThen)
     contK.push(commit)
 
-    var contTReset: Any = contT.toArray()
+    var contTReset: Array[Byte] = contT.toArray()
     var contKReset: Any = contK.toArray()
 
     var a: Any = x
@@ -294,7 +294,7 @@ object RxnNew extends RxnNewInstances0 {
     def loadEverything(): Unit = {
       // TODO: this is a mess...
       contKReset = delayCompStorage.pop()
-      contTReset = delayCompStorage.pop()
+      contTReset = delayCompStorage.pop().asInstanceOf[Array[Byte]]
       startA = delayCompStorage.pop()
       startRxn = delayCompStorage.pop().asInstanceOf[RxnNew[Any, R]]
       isPostCommit = delayCompStorage.pop().asInstanceOf[Boolean]
@@ -373,7 +373,7 @@ object RxnNew extends RxnNewInstances0 {
         // really restart:
         desc = kcas.start(ctx)
         a = startA
-        contT.replaceWithUnsafe(contTReset.asInstanceOf[Array[Any]])
+        contT.replaceWith(contTReset)
         contK.replaceWithUnsafe(contKReset.asInstanceOf[Array[Any]])
         pc.clear()
         spin()
