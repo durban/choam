@@ -849,7 +849,7 @@ object Rxn extends RxnSyntax0 {
       }
     }
 
-    private[Rxn] def tryExchange(c: C, rd: ReactionData, desc:EMCASDescriptor, ctx: ThreadContext): Either[Exchanger.StatMap, Exchanger.Msg[Unit, Unit, E]] = {
+    private[Rxn] def tryExchange(c: C, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): Either[Exchanger.StatMap, Exchanger.Msg[Unit, Unit, E]] = {
       val msg = Exchanger.Msg[A, B, E](
         value = transform1(c),
         cont = k.lmap[B](b => self.transform2(b, c)),

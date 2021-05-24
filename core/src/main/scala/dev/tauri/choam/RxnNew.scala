@@ -158,6 +158,12 @@ object RxnNew extends RxnNewInstances0 {
     // TODO: we need a better name
     def delayComputed[A, B](prepare: RxnNew[A, RxnNew[Any, B]]): RxnNew[A, B] =
       new DelayComputed[A, B](prepare)
+
+    def exchanger[A, B]: RxnNew[Any, Exchanger[A, B]] =
+      delay { _ => Exchanger.unsafe[A, B] }
+
+    def exchange[A, B](ex: Exchanger[A, B]): RxnNew[A, B] =
+      new Exchange[A, B](ex)
   }
 
   // Representation:
@@ -193,6 +199,9 @@ object RxnNew extends RxnNewInstances0 {
 
   private final class InvisibleRead[A](val ref: Ref[A])
     extends RxnNew[Any, A] { private[choam] def tag = 9 }
+
+  private final class Exchange[A, B](val exchanger: Exchanger[A, B])
+    extends RxnNew[A, B] { private[choam] def tag = 10 }
 
   private final class AndThen[A, B, C](val left: RxnNew[A, B], val right: RxnNew[B, C])
     extends RxnNew[A, C] { private[choam] def tag = 11 }
@@ -450,7 +459,9 @@ object RxnNew extends RxnNewInstances0 {
           val c = curr.asInstanceOf[InvisibleRead[B]]
           a = kcas.read(c.ref, ctx)
           loop(next())
-        case 10 => // GenExchange
+        case 10 => // Exchange
+          val c = curr.asInstanceOf[Exchange[A, B]]
+          c.##
           sys.error("TODO") // TODO
         case 11 => // AndThen
           val c = curr.asInstanceOf[AndThen[A, _, B]]
