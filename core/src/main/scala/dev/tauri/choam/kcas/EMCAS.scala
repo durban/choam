@@ -217,9 +217,18 @@ private[choam] object EMCAS extends KCAS { self =>
     @tailrec
     def go(words: java.util.Iterator[WordDescriptor[_]]): TryWordResult = {
       if (words.hasNext) {
-        val twr = tryWord(words.next())
-        if (twr eq TryWordResult.SUCCESS) go(words)
-        else twr
+        val word = words.next()
+        if (word ne null) {
+          val twr = tryWord(word)
+          if (twr eq TryWordResult.SUCCESS) go(words)
+          else twr
+        } else {
+          // Another thread already finalized the descriptor,
+          // and cleaned up this word descriptor (hence the `null`);
+          // thus, we should not continue:
+          assert(desc.getStatus() ne EMCASStatus.ACTIVE) // sanity check
+          TryWordResult.BREAK
+        }
       } else {
         TryWordResult.SUCCESS
       }
