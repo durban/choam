@@ -38,7 +38,7 @@ class StaticsBench {
   }
 
   private def packageObject[A](a: A): Boolean = {
-    dev.tauri.choam.equ[A](a, dev.tauri.choam.nullOf[A])
+    _root_.dev.tauri.choam.equ[A](a, _root_.dev.tauri.choam.nullOf[A])
   }
 
   @Benchmark

@@ -22,7 +22,7 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import dev.tauri.choam.bench.util.KCASImplState
+import _root_.dev.tauri.choam.bench.util.KCASImplState
 
 /**
  * Benchmark for reading with different k-CAS implementations.

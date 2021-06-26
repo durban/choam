@@ -24,7 +24,7 @@ import scala.runtime.BoxesRunTime
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import dev.tauri.choam.bench.util.RandomState
+import _root_.dev.tauri.choam.bench.util.RandomState
 
 @Fork(4)
 class FalseSharing {

@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 import org.openjdk.jmh.annotations._
 
-import dev.tauri.choam.bench.util._
+import _root_.dev.tauri.choam.bench.util._
 
 @Fork(2)
 @BenchmarkMode(Array(Mode.AverageTime))

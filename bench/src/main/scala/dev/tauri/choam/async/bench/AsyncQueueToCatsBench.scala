@@ -25,7 +25,7 @@ import cats.syntax.all._
 import cats.effect.IO
 import cats.effect.std.{ Queue => CatsQueue }
 
-import dev.tauri.choam.bench.BenchUtils
+import _root_.dev.tauri.choam.bench.BenchUtils
 
 @Fork(2)
 @Threads(1)
