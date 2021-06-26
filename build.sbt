@@ -26,6 +26,7 @@ ThisBuild / scalafixScalaBinaryVersion := scalaBinaryVersion.value
 ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
+ThisBuild / githubWorkflowUseSbtThinClient := false
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci")),
