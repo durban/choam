@@ -79,7 +79,7 @@ lazy val stress = project.in(file("stress"))
   .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
   .settings(libraryDependencies += dependencies.zioStm) // TODO: temporary
   .enablePlugins(JCStressPlugin)
-  .settings(Jcstress / version := "0.11")
+  .settings(Jcstress / version := "0.14")
   .dependsOn(core % "compile->compile;test->test")
 
 lazy val layout = project.in(file("layout"))
