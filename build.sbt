@@ -194,7 +194,7 @@ lazy val dependencies = new {
     catsEffectAll,
     "org.typelevel" %% "cats-laws" % catsVersion,
     "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion,
-    "org.typelevel" %% "munit-cats-effect-3" % "1.0.3",
+    "org.typelevel" %% "munit-cats-effect-3" % "1.0.5",
     "org.typelevel" %% "scalacheck-effect" % scalacheckEffectVersion,
     "org.typelevel" %% "scalacheck-effect-munit" % scalacheckEffectVersion,
     "org.typelevel" %% "discipline-munit" % "1.0.9",
@@ -203,9 +203,9 @@ lazy val dependencies = new {
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.1"
   val catsStm = "io.github.timwspence" %% "cats-stm" % "0.10.3"
-  val zioStm = "dev.zio" %% "zio" % "1.0.8"
+  val zioStm = "dev.zio" %% "zio" % "1.0.9"
 
-  val jol = "org.openjdk.jol" % "jol-core" % "0.15"
+  val jol = "org.openjdk.jol" % "jol-core" % "0.16"
 }
 
 addCommandAlias("checkScalafix", "scalafixAll --check")
