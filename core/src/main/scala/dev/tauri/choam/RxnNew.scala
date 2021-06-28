@@ -292,7 +292,12 @@ object Rxn extends RxnInstances0 {
   private[this] final val ContAndAlsoJoin = 2.toByte
   private[this] final val ContAfterDelayComp = 3.toByte
   private[this] final val ContPostCommit = 4.toByte
-  private[this] final val ContAfterPostCommit = 5.toByte // TODO: rename
+  private[this] final val ContAfterPostCommit = 5.toByte // TODO: rename(?)
+  private[this] final val ContCommitPostCommit = 6.toByte
+
+  private[this] final class PostCommitResultMarker // TODO: make this a java enum
+  private[this] val postCommitResultMarker =
+    new PostCommitResultMarker
 
   private[choam] def interpreter[X, R](
     rxn: Rxn[X, R],
@@ -326,7 +331,6 @@ object Rxn extends RxnInstances0 {
 
     var a: Any = x
     var retries: Int = 0
-    var isPostCommit: Boolean = false
 
     def saveEverything(): Unit = {
       if (delayCompStorage eq null) {
@@ -336,7 +340,6 @@ object Rxn extends RxnInstances0 {
       saveAlt(null)
       delayCompStorage.push(alts.toArray())
       delayCompStorage.push(retries)
-      delayCompStorage.push(isPostCommit)
       delayCompStorage.push(startRxn)
       delayCompStorage.push(startA)
       delayCompStorage.push(contTReset)
@@ -349,7 +352,6 @@ object Rxn extends RxnInstances0 {
       a = () : Any
       startA = () : Any
       retries = 0
-      isPostCommit = false
     }
 
     def clearAlts(): Unit = {
@@ -362,7 +364,6 @@ object Rxn extends RxnInstances0 {
       contTReset = delayCompStorage.pop().asInstanceOf[Array[Byte]]
       startA = delayCompStorage.pop()
       startRxn = delayCompStorage.pop().asInstanceOf[Rxn[Any, R]]
-      isPostCommit = delayCompStorage.pop().asInstanceOf[Boolean]
       retries = delayCompStorage.pop().asInstanceOf[Int]
       alts.replaceWith(delayCompStorage.pop().asInstanceOf[Array[Any]])
       loadAlt()
@@ -404,7 +405,7 @@ object Rxn extends RxnInstances0 {
           a = (savedA, a)
           next()
         case 3 => // ContAfterDelayComp
-          val delayCompResult = contK.pop().asInstanceOf[Rxn[Any, Any]]
+          val delayCompResult = popFinalResult().asInstanceOf[Rxn[Any, Any]]
           // continue with the rest:
           loadEverything()
           delayCompResult
@@ -417,13 +418,23 @@ object Rxn extends RxnInstances0 {
           startA = () : Any
           startRxn = pcAction
           retries = 0
-          isPostCommit = true
           desc = kcas.start(ctx)
           pcAction
         case 5 => // ContAfterPostCommit
-          val res = contK.pop()
+          val res = popFinalResult()
+          assert(contK.isEmpty)
+          assert(contT.isEmpty)
           new Done(res)
+        case 6 => // ContCommitPostCommit
+          a = postCommitResultMarker : Any
+          commit.asInstanceOf[Rxn[Any, Any]]
       }
+    }
+
+    def popFinalResult(): Any = {
+      val r = contK.pop()
+      assert(!equ(r, postCommitResultMarker))
+      r
     }
 
     def retry(): Rxn[Any, Any] = {
@@ -456,14 +467,15 @@ object Rxn extends RxnInstances0 {
             val res = a
             desc = kcas.start(ctx)
             a = () : Any
-            if (!isPostCommit) {
-              contK.push(res) // final result, Done will need it
+            if (!equ(res, postCommitResultMarker)) {
+              // final result, Done (or ContAfterDelayComp) will need it:
+              contK.push(res)
             }
-            isPostCommit = false
             while (pc.nonEmpty) {
-              contK.push(commit) // commit the post-commit action
-              contT.push(ContAndThen)
-              contK.push(pc.pop()) // the post-commit action
+              // commits the post-commit action:
+              contT.push(ContCommitPostCommit)
+              // the post-commit action itself:
+              contK.push(pc.pop())
               contT.push(ContPostCommit)
             }
             loop(next())

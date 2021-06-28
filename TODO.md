@@ -21,6 +21,7 @@
 
 ## Bugs
 
+- `QueueSpec` failure
 - Deeply nested `Rxn`s (see RxnSpec.scala)
 - `Exchanger` doesn't work with the new `Rxn`
 - `Ctrie` is incomplete
