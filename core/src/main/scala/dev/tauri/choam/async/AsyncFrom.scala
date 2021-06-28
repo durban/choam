@@ -29,7 +29,7 @@ final class AsyncFrom[F[_], A] private (
   def set: A =#> Unit = {
     this.waiters.tryDeque.flatMap {
       case None => this.syncSet
-      case Some(p) => p.complete.discard
+      case Some(p) => p.complete.void
     }
   }
 
@@ -49,7 +49,7 @@ final class AsyncFrom[F[_], A] private (
   }
 
   private[this] def getRel(r: Either[Promise[F, A], A])(implicit F: Reactive[F]): F[Unit] = r match {
-    case Left(p) => this.waiters.remove.discard[F](p)
+    case Left(p) => this.waiters.remove.void[F](p)
     case Right(_) => F.monad.unit
   }
 

@@ -93,7 +93,7 @@ trait Ref[A] extends MemoryLocation[A] { self =>
       self.unsafeInvisibleRead.run[F]
 
     final override def set(a: A): F[Unit] =
-      self.getAndSet.discard[F](a)
+      self.getAndSet.void[F](a)
 
     final override def access: F[(A, A => F[Boolean])] = {
       F.monad.flatMap(this.get) { ov =>
@@ -132,11 +132,11 @@ trait Ref[A] extends MemoryLocation[A] { self =>
 
   // TODO: how to call this? It's like `modify`...
   final def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
-    Rxn.upd(this)(f)
+    Rxn.ref.upd(this)(f)
 
   // TODO: how to call this? It's like `modifyWith`...
   final def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
-    Rxn.updWith(this)(f)
+    Rxn.ref.updWith(this)(f)
 
   final def unsafeInvisibleRead: Axn[A] =
     Rxn.unsafe.invisibleRead(this)
@@ -165,10 +165,10 @@ object Ref {
     padded(initial)
 
   def padded[A](initial: A): Axn[Ref[A]] =
-    Rxn.delay[Any, Ref[A]](_ => Ref.unsafe(initial))
+    Rxn.unsafe.delay[Any, Ref[A]](_ => Ref.unsafe(initial))
 
   def unpadded[A](initial: A): Axn[Ref[A]] =
-    Rxn.delay[Any, Ref[A]](_ => Ref.unsafeUnpadded(initial))
+    Rxn.unsafe.delay[Any, Ref[A]](_ => Ref.unsafeUnpadded(initial))
 
   def unsafe[A](initial: A): Ref[A] =
     unsafePadded(initial)

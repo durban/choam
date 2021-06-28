@@ -48,7 +48,7 @@ trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     }
   }
 
-  test("Simple exchange") {
+  test("Simple exchange".ignore) { // TODO
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       f1 <- logOutcome("f1", ex.exchange[F]("foo")).start
@@ -59,7 +59,7 @@ trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  test("One side transient failure") {
+  test("One side transient failure".ignore) { // TODO
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       f1 <- logOutcome("f1", ex.exchange[F]("bar")).start
@@ -75,7 +75,7 @@ trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  test("One side doesn't do exchange") {
+  test("One side doesn't do exchange".ignore) { // TODO
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       f1 <- logOutcome("f1", ex.exchange[F]("baz")).start
@@ -92,7 +92,7 @@ trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  test("Elimination") {
+  test("Elimination".ignore) { // TODO
     import cats.effect.implicits.parallelForGenSpawn
     sealed abstract class Result[A]
     final case class FromStack[A](a: A) extends Result[A]

@@ -52,7 +52,7 @@ final class TreiberStack[A](els: Iterable[A]) {
 
   private[choam] def unsafeToList(kcas: KCAS): List[A] = {
     val r = head.upd[Unit, Lst[A]] { (l, _) => (l, l) }
-    r.unsafeRun(kcas).toList
+    r.unsafePerform((), kcas).toList
   }
 
   els.foreach { a =>
@@ -63,7 +63,7 @@ final class TreiberStack[A](els: Iterable[A]) {
 object TreiberStack {
 
   def apply[A]: Axn[TreiberStack[A]] =
-    Axn.delay { _ => new TreiberStack[A] }
+    Axn.unsafe.delay { _ => new TreiberStack[A] }
 
   private[choam] sealed trait Lst[+A] {
 

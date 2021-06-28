@@ -58,13 +58,13 @@ class ResourceAllocationRxn {
         val r = Rxn.computed[Array[String], Unit] { ovs =>
           rss(i).unsafeCas(ovs(i), ovs((i + 1) % n))
         }
-        write(i + 1, (rea * r).discard)
+        write(i + 1, (rea * r).void)
       }
     }
 
     val r = read(0, Axn.ret(t.ovs))
     val w = write(0, Axn.unit)
-    (r >>> w).unsafeRun(t.kcasImpl)
+    (r >>> w).unsafePerform((), t.kcasImpl)
 
     Blackhole.consumeCPU(t.tokens)
   }

@@ -55,20 +55,20 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   test("Creating and running deeply nested Rxn's should both be stack-safe") {
     def nest(
       n: Int,
-      combine: (RxnNew[Int, Int], RxnNew[Int, Int]) => RxnNew[Int, Int]
-    ): RxnNew[Int, Int] = {
-      (1 to n).map(_ => RxnNew.lift[Int, Int](_ + 1)).reduce(combine)
+      combine: (Rxn[Int, Int], Rxn[Int, Int]) => Rxn[Int, Int]
+    ): Rxn[Int, Int] = {
+      (1 to n).map(_ => Rxn.lift[Int, Int](_ + 1)).reduce(combine)
     }
     val N = 1024 * 1024
-    val r1: RxnNew[Int, Int] = nest(N, _ >>> _)
-    val r2: RxnNew[Int, Int] = nest(N, (x, y) => (x * y).map(_._1 + 1))
-    val r3: RxnNew[Int, Int] = nest(N, (x, y) => x.flatMap { _ => y })
-    val r4: RxnNew[Int, Int] = nest(N, _ >> _)
-    val r5: RxnNew[Int, Int] = nest(N, _ + _)
-    val r6: RxnNew[Int, Int] = nest(N, (x, y) => RxnNew.unsafe.delayComputed(x.map(RxnNew.ret(_) >>> y)))
-    val r7: RxnNew[Int, Int] = Monad[RxnNew[Int, *]].tailRecM(N) { n =>
-      if (n > 0) RxnNew.lift[Int, Either[Int, Int]](_ => Left(n - 1))
-      else RxnNew.ret(Right(99))
+    val r1: Rxn[Int, Int] = nest(N, _ >>> _)
+    val r2: Rxn[Int, Int] = nest(N, (x, y) => (x * y).map(_._1 + 1))
+    val r3: Rxn[Int, Int] = nest(N, (x, y) => x.flatMap { _ => y })
+    val r4: Rxn[Int, Int] = nest(N, _ >> _)
+    val r5: Rxn[Int, Int] = nest(N, _ + _)
+    val r6: Rxn[Int, Int] = nest(N, (x, y) => Rxn.unsafe.delayComputed(x.map(Rxn.ret(_) >>> y)))
+    val r7: Rxn[Int, Int] = Monad[Rxn[Int, *]].tailRecM(N) { n =>
+      if (n > 0) Rxn.lift[Int, Either[Int, Int]](_ => Left(n - 1))
+      else Rxn.ret(Right(99))
     }
     assertEquals(r1.unsafePerform(42, this.kcasImpl), 42 + N)
     assertEquals(r2.unsafePerform(42, this.kcasImpl), 42 + N)
@@ -89,11 +89,11 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       q <- Ref("q").run[F]
       rea = (
         (
-          (RxnNew.unsafe.cas(a, "a", "aa") + (RxnNew.unsafe.cas(b, "b", "bb") >>> RxnNew.unsafe.delay { _ =>
+          (Rxn.unsafe.cas(a, "a", "aa") + (Rxn.unsafe.cas(b, "b", "bb") >>> Rxn.unsafe.delay { _ =>
             this.kcasImpl.doSingleCas(y, "y", "-", this.kcasImpl.currentContext())
-          })) >>> RxnNew.unsafe.cas(y, "-", "yy")
+          })) >>> Rxn.unsafe.cas(y, "-", "yy")
         ) +
-        (RxnNew.unsafe.cas(p, "p", "pp") >>> RxnNew.unsafe.cas(q, "q", "qq"))
+        (Rxn.unsafe.cas(p, "p", "pp") >>> Rxn.unsafe.cas(q, "q", "qq"))
       )
       _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, ())
       _ <- assertResultF(a.unsafeInvisibleRead.run, "a")
@@ -107,9 +107,9 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   test("first and second") {
     for {
       _ <- F.unit
-      rea = RxnNew.lift[Int, String](_.toString).first[Boolean]
+      rea = Rxn.lift[Int, String](_.toString).first[Boolean]
       _ <- assertResultF(F.delay { rea.unsafePerform((42, true), this.kcasImpl) }, ("42", true))
-      rea = RxnNew.lift[Int, String](_.toString).second[Float]
+      rea = Rxn.lift[Int, String](_.toString).second[Float]
       _ <- assertResultF(F.delay { rea.unsafePerform((1.5f, 21), this.kcasImpl) }, (1.5f, "21"))
     } yield ()
   }
@@ -119,14 +119,14 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
       c <- Ref("c").run[F]
-      rea = RxnNew.unsafe.cas(a, "a", "aa").postCommit(
-        RxnNew.unsafe.cas(b, "b", "bb").postCommit(RxnNew.unsafe.cas(c, "c", "cc"))
+      rea = Rxn.unsafe.cas(a, "a", "aa").postCommit(
+        Rxn.unsafe.cas(b, "b", "bb").postCommit(Rxn.unsafe.cas(c, "c", "cc"))
       ).postCommit(
-        RxnNew.unsafe.cas(b, "bb", "bbb").postCommit(RxnNew.unsafe.cas(c, "cc", "ccc"))
+        Rxn.unsafe.cas(b, "bb", "bbb").postCommit(Rxn.unsafe.cas(c, "cc", "ccc"))
       ).postCommit(
-        RxnNew.unsafe.cas(b, "bbb", "bbbb").postCommit(RxnNew.unsafe.cas(c, "ccc", "cccc"))
+        Rxn.unsafe.cas(b, "bbb", "bbbb").postCommit(Rxn.unsafe.cas(c, "ccc", "cccc"))
       )
-      _ <- assertResultF(rea.run[F](implicitly, F), ())
+      _ <- assertResultF(rea.run[F], ())
       _ <- assertResultF(a.unsafeInvisibleRead.run, "aa")
       _ <- assertResultF(b.unsafeInvisibleRead.run, "bbbb")
       _ <- assertResultF(c.unsafeInvisibleRead.run, "cccc")
@@ -139,10 +139,10 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
       c <- Ref("c").run[F]
-      rea = RxnNew.unsafe.delayComputed[Unit, String](RxnNew.unsafe.cas(a, "a", "aa").as(RxnNew.ret("foo")).postCommit(
-        RxnNew.unsafe.cas(b, "b", "bb")
-      )) >>> RxnNew.unsafe.cas(c, "c", "cc")
-      _ <- assertResultF(rea.run[F](implicitly, F), ())
+      rea = Rxn.unsafe.delayComputed[Unit, String](Rxn.unsafe.cas(a, "a", "aa").as(Rxn.ret("foo")).postCommit(
+        Rxn.unsafe.cas(b, "b", "bb")
+      )) >>> Rxn.unsafe.cas(c, "c", "cc")
+      _ <- assertResultF(rea.run[F], ())
       _ <- assertResultF(a.unsafeInvisibleRead.run, "aa")
       _ <- assertResultF(b.unsafeInvisibleRead.run, "bb")
       _ <- assertResultF(c.unsafeInvisibleRead.run, "cc")
@@ -154,9 +154,9 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- F.delay { this.assume(!this.isFlaky) }
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
-      rea = RxnNew.unsafe.delayComputed[Unit, String](RxnNew.ref.upd(a) { (oa: String, _: Unit) =>
+      rea = Rxn.unsafe.delayComputed[Unit, String](Rxn.ref.upd(a) { (oa: String, _: Unit) =>
         ("x", oa)
-      }.map { oa => RxnNew.ref.upd(b) { (ob: String, _: Any) => (oa, ob) } })
+      }.map { oa => Rxn.ref.upd(b) { (ob: String, _: Any) => (oa, ob) } })
       _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, "b")
       _ <- assertResultF(a.unsafeInvisibleRead.run, "x")
       _ <- assertResultF(b.unsafeInvisibleRead.run, "a")
@@ -179,19 +179,19 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
           Node(value = Ref.unsafe(h), next = Ref.unsafe(fromList(t)))
       }
 
-      def pop(head: Ref[Node]): RxnNew[Any, String] = RxnNew.unsafe.delayComputed {
-        RxnNew.unsafe.invisibleRead(head).flatMap { h =>
-          RxnNew.unsafe.invisibleRead(h.value).flatMap {
+      def pop(head: Ref[Node]): Rxn[Any, String] = Rxn.unsafe.delayComputed {
+        Rxn.unsafe.invisibleRead(head).flatMap { h =>
+          Rxn.unsafe.invisibleRead(h.value).flatMap {
             case null =>
               // sentinel node, discard it and retry:
-              RxnNew.ref.read(h.next).flatMap { nxt =>
-                RxnNew.unsafe.cas(head, h, nxt)
-              }.as(RxnNew.unsafe.retry)
+              Rxn.ref.read(h.next).flatMap { nxt =>
+                Rxn.unsafe.cas(head, h, nxt)
+              }.as(Rxn.unsafe.retry)
             case v =>
               // found the real head, pop it:
-              RxnNew.ret(RxnNew.ref.read(h.next).flatMap { nxt =>
-                RxnNew.unsafe.cas(head, h, nxt).flatMap { _ =>
-                  RxnNew.unsafe.cas(h.value, v, v)
+              Rxn.ret(Rxn.ref.read(h.next).flatMap { nxt =>
+                Rxn.unsafe.cas(head, h, nxt).flatMap { _ =>
+                  Rxn.unsafe.cas(h.value, v, v)
                 }
               }.as(v))
           }
@@ -205,22 +205,22 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       lst0 = List[String](null, "a", "b", null, "c")
       lst1 <- F.delay { Ref.unsafe(Node.fromList(lst0)) }
       lst2 <- F.tailRecM((List.empty[String], lst1)) { case (acc, ref) =>
-        RxnNew.ref.read(ref).flatMap { node =>
+        Rxn.ref.read(ref).flatMap { node =>
           if (node eq null) {
             // there is an extra sentinel at the end:
-            RxnNew.ret(Right[(List[String], Ref[Node]), List[String]](acc.tail.reverse))
+            Rxn.ret(Right[(List[String], Ref[Node]), List[String]](acc.tail.reverse))
           } else {
-            RxnNew.ref.read(node.value).map { v =>
+            Rxn.ref.read(node.value).map { v =>
               Left[(List[String], Ref[Node]), List[String]]((v :: acc, node.next))
             }
           }
-        }.run[F](implicitly, F)
+        }.run[F]
       }
       _ <- assertEqualsF(lst2, lst0)
       // real test:
       r1 <- F.delay { Ref.unsafe(Node.fromList(List[String](null, "a", "b", null, "x"))) }
       r2 <- F.delay { Ref.unsafe(Node.fromList(List[String](null, "c", null, null, "d", "y"))) }
-      popBoth = (Node.pop(r1) * Node.pop(r2)).run[F](implicitly, F)
+      popBoth = (Node.pop(r1) * Node.pop(r2)).run[F]
       _ <- assertResultF(popBoth, ("a", "c"))
       _ <- assertResultF(popBoth, ("b", "d"))
       _ <- assertResultF(popBoth, ("x", "y"))

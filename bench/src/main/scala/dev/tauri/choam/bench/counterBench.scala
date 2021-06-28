@@ -139,7 +139,7 @@ object CounterBenchN {
         c.add.unsafePerform(init, kcas.KCAS.NaiveKCAS)
         c
       }
-      r = ctrs.map(_.add.rmap(_ => ())).reduceLeft { (a, b) => (a * b).rmap(_ => ()) }
+      r = ctrs.map(_.add.as(())).reduceLeft { (a, b) => (a * b).as(()) }
     }
   }
 }

@@ -45,7 +45,7 @@ object AsyncQueue {
 
   def primitive[F[_], A]: Axn[AsyncQueue[F, A]] = {
     (Queue[A] * Queue.withRemove[Promise[F, A]]) >>> (
-      Axn.delay { case (as, waiters) => new AsyncQueuePrim(as, waiters) }
+      Axn.unsafe.delay { case (as, waiters) => new AsyncQueuePrim(as, waiters) }
     )
   }
 
@@ -91,7 +91,7 @@ object AsyncQueue {
     final override def enqueue: A =#> Unit = {
       this.waiters.tryDeque.flatMap {
         case None => this.q.enqueue
-        case Some(p) => p.complete.discard
+        case Some(p) => p.complete.void
       }
     }
 
@@ -106,7 +106,7 @@ object AsyncQueue {
         }
       }.run[F]
       val rel: (Either[Promise[F, A], A] => F[Unit]) = {
-        case Left(p) => this.waiters.remove.discard[F](p)
+        case Left(p) => this.waiters.remove.void[F](p)
         case Right(_) => F.monadCancel.unit
       }
       F.monadCancel.bracket(acquire = acq) {

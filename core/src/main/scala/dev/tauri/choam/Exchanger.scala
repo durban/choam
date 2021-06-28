@@ -151,7 +151,7 @@ final class Exchanger[A, B] private (
     val resMsg = Msg[Unit, Unit, C](
       value = (),
       cont = both,
-      rd = Rxn.ReactionData(
+      rd = ReactionData(
         selfMsg.rd.postCommit ++ other.msg.rd.postCommit,
         // this thread will continue, so we use (and update) our data
         selfMsg.rd.exchangerData.updated(this, stats.exchanged)
@@ -250,7 +250,7 @@ object Exchanger {
   private[choam] final case class Msg[+A, B, +C](
     value: A,
     cont: Rxn[B, C],
-    rd: Rxn.ReactionData,
+    rd: ReactionData,
     desc: EMCASDescriptor // TODO: not threadsafe!
   )
 
@@ -259,7 +259,7 @@ object Exchanger {
       Msg[Unit, Unit, C](
         value = (),
         cont = Rxn.ret(c),
-        rd = Rxn.ReactionData(Nil, ed),
+        rd = ReactionData(Nil, ed),
         desc = ctx.impl.start(ctx)
       )
     }
@@ -272,7 +272,7 @@ object Exchanger {
 
   /** Private, because an `Exchanger` is unsafe (may block indefinitely) */
   private[choam] def apply[A, B]: Axn[Exchanger[A, B]] =
-    Axn.delay { _ => unsafe[A, B] }
+    Axn.unsafe.delay { _ => unsafe[A, B] }
 
   private[choam] def unsafe[A, B]: Exchanger[A, B] = {
     val i: Array[AtomicReference[Node[A, B, _]]] = {

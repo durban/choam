@@ -17,17 +17,17 @@
 
 package dev.tauri.choam
 
-import scala.annotation.switch
+// import scala.annotation.switch
 
 // To avoid going through the aliases in scala._:
-import scala.collection.immutable.{ Nil, :: }
+// import scala.collection.immutable.{ Nil, :: }
 
-import cats.{ Applicative, Monad }
-import cats.arrow.ArrowChoice
-import cats.mtl.Local
+// import cats.{ Applicative, Monad }
+// import cats.arrow.ArrowChoice
+// import cats.mtl.Local
 
-import kcas._
-
+// import kcas._
+/*
 /**
  * An effectful function from `A` to `B`; when executed,
  * it may update any number of [[Ref]]s atomically. (It
@@ -219,9 +219,6 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def dimap[C, D](f: C => A)(g: B => D): Rxn[C, D] =
     this.lmap(f).rmap(g)
 
-  final def map2[X <: A, C, D](that: Rxn[X, C])(f: (B, C) => D): Rxn[X, D] =
-    (this * that).map(f.tupled)
-
   // TODO: maybe rename to `void`
   final def discard: Rxn[A, Unit] =
     this.rmap(_ => ()) // TODO: optimize
@@ -244,10 +241,6 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def productR[X <: A, C](that: Rxn[X, C]): Rxn[X, C] =
     (this * that).map(_._2)
 
-  final def toFunction: A => Axn[B] = { (a: A) =>
-    this.provide(a)
-  }
-
   // TODO: public API?
   private[choam] final def postCommit(pc: Rxn[B, Unit]): Rxn[A, B] =
     this >>> Rxn.postCommit(pc)
@@ -257,17 +250,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
 object Rxn extends RxnSyntax0 {
 
-  private[choam] final val maxStackDepth = 1024
 
-  /** Old (slower) impl of `upd`, keep it for benchmarks */
-  private[choam] def updDerived[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] = {
-    val self: Rxn[B, (A, B)] = r.unsafeInvisibleRead.firstImpl[B].lmap[B](b => ((), b))
-    val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
-      val (na, c) = f(oa, b)
-      r.unsafeCas(oa, na).rmap(_ => c)
-    }
-    self >>> comp
-  }
 
   def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
     new Upd(r, f, Commit[C]())
@@ -283,49 +266,8 @@ object Rxn extends RxnSyntax0 {
     self >>> comp
   }
 
-  @deprecated("old implementation with invisibleRead/cas", since = "2021-03-27")
-  private[choam] def consistentReadOld[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
-    ra.unsafeInvisibleRead >>> computed[A, (A, B)] { a =>
-      rb.unsafeInvisibleRead >>> computed[B, (A, B)] { b =>
-        (ra.unsafeCas(a, a) × rb.unsafeCas(b, b)).provide(((), ())).map { _ => (a, b) }
-      }
-    }
-  }
-
-  // TODO: generalize to more than 2
-  def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
-    ra.updWith[Any, (A, B)] { (a, _) =>
-      rb.upd[Any, B] { (b, _) =>
-        (b, b)
-      }.map { b => (a, (a, b)) }
-    }
-  }
-
-  def consistentReadMany[A](refs: List[Ref[A]]): Axn[List[A]] = {
-    refs match {
-      case h :: t =>
-        h.updWith[Any, List[A]] { (a, _) =>
-          consistentReadMany(t).map { as => (a, a :: as) }
-        }
-      case Nil =>
-        ret(Nil)
-    }
-  }
-
-  def swap[A](r1: Ref[A], r2: Ref[A]): Axn[Unit] = {
-    r1.updWith[Any, Unit] { (o1, _) =>
-      r2.upd[Any, A] { (o2, _) =>
-        (o1, o2)
-      }.map { o2 => (o2, ()) }
-    }
-  }
-
   def computed[A, B](f: A => Axn[B]): Rxn[A, B] =
     new Computed[A, B, B](f, Commit[B]())
-
-  // TODO: why is this private?
-  private[choam] def postCommit[A](pc: Rxn[A, Unit]): Rxn[A, A] =
-    new PostCommit[A, A](pc, Commit[A]())
 
   def lift[A, B](f: A => B): Rxn[A, B] =
     new Lift(f, Commit[B]())
@@ -432,7 +374,7 @@ object Rxn extends RxnSyntax0 {
     def split[X, Y](left: Rxn[B, X], right: Rxn[C, Y]): Rxn[A, (X, Y)] =
       self >>> (left × right)
   }
-
+*/
   private[choam] final class ReactionData private (
     val postCommit: List[Axn[Unit]],
     val exchangerData: Exchanger.StatMap
@@ -454,7 +396,7 @@ object Rxn extends RxnSyntax0 {
       new ReactionData(postCommit, exchangerData)
     }
   }
-
+/*
   protected[Rxn] sealed trait TentativeResult[+A]
   protected[Rxn] final case object Retry extends TentativeResult[Nothing]
   protected[Rxn] final case class Success[+A](value: A, reactionData: ReactionData) extends TentativeResult[A]
@@ -1075,46 +1017,6 @@ object Rxn extends RxnSyntax0 {
 private[choam] sealed abstract class RxnSyntax0 extends RxnInstances0 { this: Rxn.type =>
 }
 
-private[choam] sealed abstract class RxnInstances0 extends RxnInstances1 { self: Rxn.type =>
-
-  implicit def arrowChoiceInstance: ArrowChoice[Rxn] =
-    _arrowChoiceInstance
-
-  private[this] val _arrowChoiceInstance: ArrowChoice[Rxn] = new ArrowChoice[Rxn] {
-
-    def lift[A, B](f: A => B): Rxn[A, B] =
-      Rxn.lift(f)
-
-    override def id[A]: Rxn[A, A] =
-      Rxn.lift(a => a)
-
-    def compose[A, B, C](f: Rxn[B, C], g: Rxn[A, B]): Rxn[A, C] =
-      g >>> f
-
-    def first[A, B, C](fa: Rxn[A, B]): Rxn[(A, C), (B, C)] =
-      fa.firstImpl
-
-    def choose[A, B, C, D](f: Rxn[A, C])(g: Rxn[B, D]): Rxn[Either[A, B], Either[C, D]] = {
-      computed[Either[A, B], Either[C, D]] {
-        case Left(a) => (ret(a) >>> f).map(Left(_))
-        case Right(b) => (ret(b) >>> g).map(Right(_))
-      }
-    }
-
-    override def choice[A, B, C](f: Rxn[A, C], g: Rxn[B, C]): Rxn[Either[A, B], C] = {
-      computed[Either[A, B], C] {
-        case Left(a) => ret(a) >>> f
-        case Right(b) => ret(b) >>> g
-      }
-    }
-
-    override def lmap[A, B, X](fa: Rxn[A, B])(f: X => A): Rxn[X, B] =
-      fa.lmap(f)
-
-    override def rmap[A, B, C](fa: Rxn[A, B])(f: B => C): Rxn[A, C] =
-      fa.rmap(f)
-  }
-}
 
 private[choam] sealed abstract class RxnInstances1 extends RxnInstances2 { self: Rxn.type =>
 
@@ -1135,33 +1037,4 @@ private[choam] sealed abstract class RxnInstances1 extends RxnInstances2 { self:
   }
 }
 
-private[choam] sealed abstract class RxnInstances2 extends RxnInstances3 { self: Rxn.type =>
-
-  implicit def localInstance[E]: Local[Rxn[E, *], E] = new Local[Rxn[E, *], E] {
-
-    final override def applicative: Applicative[Rxn[E, *]] =
-      self.monadInstance[E]
-
-    final override def ask[E2 >: E]: Rxn[E, E2] =
-      Rxn.identity[E]
-
-    final override def local[A](fa: Rxn[E, A])(f: E => E): Rxn[E, A] =
-      fa.lmap(f)
-  }
-}
-
-private[choam] sealed abstract class RxnInstances3 { this: Rxn.type =>
-
-  import cats.MonoidK
-
-  implicit def monoidKInstance: MonoidK[λ[a => Rxn[a, a]]] = {
-    new MonoidK[λ[a => Rxn[a, a]]] {
-
-      final override def combineK[A](x: Rxn[A, A], y: Rxn[A, A]): Rxn[A, A] =
-        x >>> y
-
-      final override def empty[A]: Rxn[A, A] =
-        Rxn.identity[A]
-    }
-  }
-}
+*/

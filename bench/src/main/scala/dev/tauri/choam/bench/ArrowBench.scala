@@ -31,24 +31,24 @@ class ArrowBench {
   @Benchmark
   def onlyComputed(s: ArrowBench.St, bh: Blackhole, k: KCASImplState): Unit = {
     val ref = s.refs(Math.abs(k.nextInt()) % ArrowBench.size)
-    bh.consume(s.rOnlyComputed(ref).unsafeRun(k.kcasImpl))
+    bh.consume(s.rOnlyComputed(ref).unsafePerform((), k.kcasImpl))
   }
 
   @Benchmark
   def withoutComputed(s: ArrowBench.St, bh: Blackhole, k: KCASImplState): Unit = {
     val ref = s.refs(Math.abs(k.nextInt()) % ArrowBench.size)
-    bh.consume(s.rWithoutComputed(ref).unsafeRun(k.kcasImpl))
+    bh.consume(s.rWithoutComputed(ref).unsafePerform((), k.kcasImpl))
   }
 
   @Benchmark
   def updDerived(s: ArrowBench.USt, bh: Blackhole, k: KCASImplState): Unit = {
-    val r = Rxn.updDerived[Long, String, Long](s.ref) { (i, s) => (i + 1, s.length.toLong) }
+    val r = Rxn.ref.updDerived[Long, String, Long](s.ref) { (i, s) => (i + 1, s.length.toLong) }
     bh.consume(r.unsafePerform(k.nextString(), k.kcasImpl))
   }
 
   @Benchmark
   def updPrimitive(s: ArrowBench.USt, bh: Blackhole, k: KCASImplState): Unit = {
-    val r = Rxn.upd[Long, String, Long](s.ref) { (i, s) => (i + 1, s.length.toLong) }
+    val r = Rxn.ref.upd[Long, String, Long](s.ref) { (i, s) => (i + 1, s.length.toLong) }
     bh.consume(r.unsafePerform(k.nextString(), k.kcasImpl))
   }
 }

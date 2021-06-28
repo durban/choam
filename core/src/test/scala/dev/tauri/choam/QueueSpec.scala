@@ -212,7 +212,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       consume = F.blocking {
         @tailrec
         def go(last: Boolean = false): Unit = {
-          q.tryDeque.unsafeRun(this.kcasImpl) match {
+          q.tryDeque.unsafePerform((), this.kcasImpl) match {
             case Some(s) =>
               cs.offer(s)
               go(last = last)

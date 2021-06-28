@@ -54,9 +54,9 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
   }
 
   private[this] def skipTombs(from: Ref[Elem[A]]): Axn[Option[(A, Node[A])]] = {
-    from.unsafeInvisibleRead.flatMapU {
+    from.unsafeInvisibleRead.flatMap {
       case n @ Node(dataRef, nextRef) =>
-        dataRef.unsafeInvisibleRead.flatMapU { a =>
+        dataRef.unsafeInvisibleRead.flatMap { a =>
           if (isNull(a)) {
             // found a tombstone (no need to validate, since once
             // it's tombed, it will never be resurrected)
@@ -100,8 +100,8 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
    * are compared by reference equality.
    */
   override val remove: Rxn[A, Boolean] = Rxn.computed { (a: A) =>
-    head.unsafeInvisibleRead.flatMapU { h =>
-      findAndTomb(a, h.next).flatMapU { wasRemoved =>
+    head.unsafeInvisibleRead.flatMap { h =>
+      findAndTomb(a, h.next).flatMap { wasRemoved =>
         if (wasRemoved) {
           // validate head (in case it was dequed concurrently):
           head.unsafeCas(h, h).map { _ => true }
@@ -167,8 +167,8 @@ private[choam] object RemoveQueue {
   private final case class End[A]() extends Elem[A]
 
   def apply[A]: Axn[RemoveQueue[A]] =
-    Axn.delay { _ => new RemoveQueue }
+    Axn.unsafe.delay { _ => new RemoveQueue }
 
   def fromList[A](as: List[A]): Axn[RemoveQueue[A]] =
-    Axn.delay { _ => new RemoveQueue(as) }
+    Axn.unsafe.delay { _ => new RemoveQueue(as) }
 }

@@ -85,7 +85,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       q <- Ref("q").run[F]
       rea = (
         (
-          (a.unsafeCas("a", "aa") + (b.unsafeCas("b", "bb") >>> Rxn.delay { _ =>
+          (a.unsafeCas("a", "aa") + (b.unsafeCas("b", "bb") >>> Rxn.unsafe.delay { _ =>
             this.kcasImpl.doSingleCas(y, "y", "-", this.kcasImpl.currentContext())
           })) >>> y.unsafeCas("-", "yy")
         ) +
@@ -267,7 +267,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("Choice should be stack-safe (even when deeply nested)") {
-    val n = 16 * Rxn.maxStackDepth
+    val n = 16 * 1024
     for {
       ref <- Ref("foo").run[F]
       successfulCas = ref.unsafeCas("foo", "bar")
@@ -281,7 +281,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("Choice should be stack-safe (even when deeply nested and doing actual CAS-es)") {
-    val n = 16 * Rxn.maxStackDepth
+    val n = 16 * 1024
     for {
       ref <- Ref("foo").run[F]
       successfulCas = ref.unsafeCas("foo", "bar")
@@ -305,7 +305,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("Choice should correctly backtrack (1) (even with jumps)") {
-    backtrackTest1(Rxn.maxStackDepth + 1)
+    backtrackTest1(1024 + 1)
   }
 
   test("Choice should correctly backtrack (2) (no jumps)") {
@@ -313,7 +313,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("Choice should correctly backtrack (2) (even with jumps)") {
-    backtrackTest2(Rxn.maxStackDepth / 4)
+    backtrackTest2(1024 / 4)
   }
 
   /**                +
@@ -395,7 +395,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
           rRefs.traverse { ref => ref.update(_ => or).run[F] }
         }.void
       }
-    } yield (((left >>> leftCont) + (right >>> rightCont)).discard, reset)
+    } yield (((left >>> leftCont) + (right >>> rightCont)).void, reset)
 
     for {
       leafs <- (0 until 16).toList.traverse(idx => Ref(s"foo-${idx}").run[F])
@@ -455,7 +455,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     ref0 <- Ref(ov).run[F]
     refs <- Ref(ov).run[F].replicateA(n - 1)
     r = refs.foldLeft(ref0.unsafeCas(ov, nv)) { (r, ref) =>
-      (r * ref.unsafeCas(ov, nv)).discard
+      (r * ref.unsafeCas(ov, nv)).void
     }
   } yield (ref0 +: refs, r)
 

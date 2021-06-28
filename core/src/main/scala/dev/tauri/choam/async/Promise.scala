@@ -124,10 +124,10 @@ object Promise {
 
   @deprecated("old, slower implementation", since = "2021-02-08")
   def slow[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] =
-    Rxn.delay(_ => new PromiseImpl[F, A](Ref.unsafe[State[A]](Waiting(Map.empty))))
+    Rxn.unsafe.delay(_ => new PromiseImpl[F, A](Ref.unsafe[State[A]](Waiting(Map.empty))))
 
   def fast[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] =
-    Rxn.delay(_ => new PromiseImpl2[F, A](Ref.unsafe[State2[A]](Waiting2(LongMap.empty, 0L))))
+    Rxn.unsafe.delay(_ => new PromiseImpl2[F, A](Ref.unsafe[State2[A]](Waiting2(LongMap.empty, 0L))))
 
   implicit def invariantFunctorForPromise[F[_] : Functor]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
     override def imap[A, B](fa: Promise[F, A])(f: A => B)(g: B => A): Promise[F, B] =
@@ -147,7 +147,7 @@ object Promise {
     val complete: Rxn[A, Boolean] = Rxn.computed { a =>
       ref.unsafeInvisibleRead.flatMap {
         case w @ Waiting(cbs) =>
-          ref.unsafeCas(w, Done(a)).rmap(_ => true).postCommit(Rxn.delay { _ =>
+          ref.unsafeCas(w, Done(a)).rmap(_ => true).postCommit(Rxn.unsafe.delay { _ =>
             cbs.valuesIterator.foreach(_(a))
           })
         case Done(_) =>
@@ -222,7 +222,7 @@ object Promise {
     val complete: A =#> Boolean = Rxn.computed { a =>
       ref.unsafeInvisibleRead.flatMap {
         case w @ Waiting2(cbs, _) =>
-          ref.unsafeCas(w, Done2(a)).as(true).postCommit(Rxn.delay { _ =>
+          ref.unsafeCas(w, Done2(a)).as(true).postCommit(Rxn.unsafe.delay { _ =>
             cbs.valuesIterator.foreach(_(a))
           })
         case Done2(_) =>

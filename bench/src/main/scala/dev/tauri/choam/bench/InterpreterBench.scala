@@ -32,22 +32,22 @@ class InterpreterBench {
   // - invisible read
   // - delayComputed
 
-  @Benchmark
-  def internal(s: St, bh: Blackhole, k: KCASImplState): Unit = {
-    val x = k.nextInt()
-    bh.consume(s.rxn.unsafePerform(x, k.kcasImpl))
-  }
+  // @Benchmark
+  // def internal(s: St, bh: Blackhole, k: KCASImplState): Unit = {
+  //   val x = k.nextInt()
+  //   bh.consume(s.rxn.unsafePerform(x, k.kcasImpl))
+  // }
 
-  @Benchmark
-  def externalWithTag(s: St, bh: Blackhole, k: KCASImplState): Unit = {
-    val x = k.nextInt()
-    bh.consume(Rxn.externalInterpreter(s.rxn, x, k.kcasImpl.currentContext()))
-  }
+  // @Benchmark
+  // def externalWithTag(s: St, bh: Blackhole, k: KCASImplState): Unit = {
+  //   val x = k.nextInt()
+  //   bh.consume(Rxn.externalInterpreter(s.rxn, x, k.kcasImpl.currentContext()))
+  // }
 
   @Benchmark
   def rxnNew(s: St, bh: Blackhole, k: KCASImplState): Unit = {
     val x = k.nextInt()
-    bh.consume(RxnNew.interpreter(s.rxnNew, x, k.kcasImpl.currentContext()))
+    bh.consume(Rxn.interpreter(s.rxn, x, k.kcasImpl.currentContext()))
   }
 }
 
@@ -84,22 +84,6 @@ object InterpreterBench {
     private[this] val cnt: Ref[Long] =
       Ref.unsafePadded(0L)
 
-    private[InterpreterBench] val rxnNew: RxnNew[Int, String] = {
-      val rxn1 = (0 until N).map { idx =>
-        mkRxnNew1(ref1s(idx), ref2s(idx), ref3s(idx))
-      }.reduce { (x, y) => (x * y).map(_._2) }
-
-      val rxn2 = (0 until N).map { idx =>
-        mkRxnNew2(ref4s(idx), ref5s(idx))
-      }.reduce { (x, y) => (x * y).map(_._2) }
-
-      val rxn3 = (0 until N).map { idx =>
-        mkRxnNew3(ref6s(idx), ref7s(idx), ref8s(idx))
-      }.reduce { (x, y) => (x * y).map(_._2) }
-
-      rxn1 *> rxn3 *> rxn2
-    }
-
     private[InterpreterBench] val rxn: Rxn[Int, String] = {
       val rxn1 = (0 until N).map { idx =>
         mkRxn1(ref1s(idx), ref2s(idx), ref3s(idx))
@@ -116,18 +100,6 @@ object InterpreterBench {
       rxn1 *> rxn3 *> rxn2
     }
 
-    private[this] def mkRxnNew1(ref1: Ref[String], ref2: Ref[String], ref3: Ref[String]): RxnNew[Int, String] = {
-      RxnNew.computed { (i: Int) =>
-        (if ((i % 2) == 0) {
-          RxnNew.ref.getAndUpdate(ref1)(ov => (ov.toInt + i).toString) >>> RxnNew.ref.getAndSet(ref2)
-        } else {
-          RxnNew.ref.getAndUpdate(ref2)(ov => (ov.toInt - i).toString) >>> RxnNew.ref.getAndSet(ref1)
-        }) >>> RxnNew.computed { (s: String) =>
-          (RxnNew.unsafe.cas(ref3, s, (s.toInt + 1).toString) + RxnNew.ref.update(ref3)(_.length.toString)).as(s)
-        }
-      }.postCommit(RxnNew.ref.update(cnt)(_ + 1L))
-    }
-
     private[this] def mkRxn1(ref1: Ref[String], ref2: Ref[String], ref3: Ref[String]): Int =#> String = {
       Rxn.computed { (i: Int) =>
         (if ((i % 2) == 0) {
@@ -140,30 +112,11 @@ object InterpreterBench {
       }.postCommit(cnt.update(_ + 1L))
     }
 
-    private[this] def mkRxnNew2(ref4: Ref[String], ref5: Ref[String]): RxnNew[Int, String] = {
-      RxnNew.ref.updWith[String, Int, String](ref4) { (ov4, i) =>
-        if ((i % 2) == 0) RxnNew.ref.getAndUpdate(ref5)(_ => ov4).map(s => (s, s))
-        else RxnNew.unsafe.retry
-      } + RxnNew.ref.getAndUpdate(ref4)(ov4 => (ov4.toInt + 1).toString)
-    }
-
     private[this] def mkRxn2(ref4: Ref[String], ref5: Ref[String]): Int =#> String = {
       ref4.updWith[Int, String] { (ov4, i) =>
         if ((i % 2) == 0) ref5.getAndUpdate(_ => ov4).map(s => (s, s))
         else Rxn.unsafe.retry
       } + ref4.getAndUpdate(ov4 => (ov4.toInt + 1).toString)
-    }
-
-    private[this] def mkRxnNew3(ref6: Ref[String], ref7: Ref[String], ref8: Ref[String]): RxnNew[Any, Unit] = {
-      def modOrRetry(ref: Ref[String]): RxnNew[Any, Unit] = {
-        RxnNew.ref.updateWith(ref) { s =>
-          if ((s.toInt % 2) == 0) RxnNew.pure(s.##.toString)
-          else RxnNew.unsafe.retry
-        }
-      }
-      modOrRetry(ref6) + modOrRetry(ref7) + RxnNew.ref.update(ref8) { s =>
-        s.##.toString
-      }
     }
 
     private[this] def mkRxn3(ref6: Ref[String], ref7: Ref[String], ref8: Ref[String]): Axn[Unit] = {

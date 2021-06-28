@@ -22,7 +22,7 @@
 ## Bugs
 
 - Deeply nested `Rxn`s (see RxnSpec.scala)
-- `Exchanger` is barely working
+- `Exchanger` doesn't work with the new `Rxn`
 - `Ctrie` is incomplete
 - Can't run benchmarks with Scala 3
 

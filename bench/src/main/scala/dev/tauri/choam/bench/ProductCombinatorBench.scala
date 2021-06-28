@@ -32,12 +32,12 @@ class ProductCombinatorBench {
 
   @Benchmark
   def productDummy(s: DummyProduct, k: KCASImplState): Unit = {
-    s.prod.unsafeRun(k.kcasImpl)
+    s.prod.unsafePerform((), k.kcasImpl)
   }
 
   @Benchmark
   def productCAS(s: CASProduct, k: KCASImplState): Unit = {
-    s.prod.unsafeRun(k.kcasImpl)
+    s.prod.unsafePerform((), k.kcasImpl)
     s.reset.reset()
   }
 }
@@ -52,7 +52,7 @@ object ProductCombinatorBench {
     @Setup
     def setup(): Unit = {
       this.prod = (1 to size).foldLeft[Axn[Unit]](Axn.ret(())) { (r, idx) =>
-        (r * Rxn.lift[String, String](_ + idx.toString).provide("foo")).discard
+        (r * Rxn.lift[String, String](_ + idx.toString).provide("foo")).void
       }
     }
   }
@@ -71,7 +71,7 @@ object ProductCombinatorBench {
       this.refs = Array.fill(size)(Ref.unsafe("foo"))
       this.reset = new Reset("foo", ArraySeq.unsafeWrapArray(this.refs): _*)
       this.prod = (0 until size).foldLeft[Axn[Unit]](Axn.ret(())) { (r, idx) =>
-        (r * refs(idx).unsafeCas("foo", "bar")).discard
+        (r * refs(idx).unsafeCas("foo", "bar")).void
       }
     }
   }

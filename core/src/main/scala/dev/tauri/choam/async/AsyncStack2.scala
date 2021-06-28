@@ -24,20 +24,20 @@ private[choam] final class AsyncStack2[F[_], A] private (
 ) extends AsyncStack[F, A] {
 
   override val push: Rxn[A, Unit] = {
-    this.waiters.tryDeque.flatMapU {
+    this.waiters.tryDeque.flatMap {
       case None => this.elements.push
-      case Some(p) => p.complete.discard
+      case Some(p) => p.complete.void
     }
   }
 
   override def pop(implicit F: Reactive.Async[F]): F[A] = {
     F.monadCancel.flatMap(F.promise[A].run[F]) { p =>
-      val acq = this.elements.tryPop.flatMapU {
+      val acq = this.elements.tryPop.flatMap {
         case Some(a) => Axn.ret(Right(a))
         case None => this.waiters.enqueue.provide(p).as(Left(p))
       }.run[F]
       val rel: (Either[Promise[F, A], A] => F[Unit]) = {
-        case Left(p) => this.waiters.remove.discard[F](p)
+        case Left(p) => this.waiters.remove.void[F](p)
         case Right(_) => F.monadCancel.unit
       }
       F.monadCancel.bracket(acquire = acq)(use = {
