@@ -512,8 +512,6 @@ object Rxn extends RxnInstances0 {
             a = () : Unit
             loop(next())
           } else {
-            contK.push(commit) // TODO: why?
-            contT.push(ContAndThen) // TODO: why?
             loop(retry())
           }
         case 8 => // Upd
