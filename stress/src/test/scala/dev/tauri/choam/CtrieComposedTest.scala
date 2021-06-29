@@ -17,10 +17,14 @@
 
 package dev.tauri.choam
 
+import cats.Eq
+
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
+
+import kcas.KCAS
 
 @JCStressTest
 @State
@@ -32,10 +36,10 @@ import org.openjdk.jcstress.infra.results.LL_Result
 class CtrieComposedTest extends StressTestBase {
 
   private[this] val ct1 =
-    CtrieTest.newCtrie714()
+    CtrieComposedTest.newCtrie714Small()
 
   private[this] val ct2 =
-    CtrieTest.newCtrie714()
+    CtrieComposedTest.newCtrie714Small()
 
   private[this] val insert: Rxn[((Int, String), (Int, String)), (Unit, Unit)] =
     ct1.insert × ct2.insert
@@ -57,5 +61,17 @@ class CtrieComposedTest extends StressTestBase {
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
     r.r2 = lookup.unsafePerform((14, 1), this.impl)
+  }
+}
+
+object CtrieComposedTest {
+
+  def newCtrie714Small(): Ctrie[Int, String] = {
+    val ct = new Ctrie[Int, String](_ % 7, Eq.instance(_ % 14 == _ % 14))
+    ct.insert.unsafePerform(0 -> "0", KCAS.NaiveKCAS)
+    ct.insert.unsafePerform(1 -> "1", KCAS.NaiveKCAS)
+    ct.insert.unsafePerform(7 -> "7", KCAS.NaiveKCAS)
+    ct.insert.unsafePerform(8 -> "8", KCAS.NaiveKCAS)
+    ct
   }
 }
