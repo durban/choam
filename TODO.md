@@ -26,7 +26,6 @@
 - Can't run benchmarks with Scala 3
 - JCStress:
   - `CtrieComposedTest` error: "java.lang.OutOfMemoryError: Java heap space"
-  - `EMCASTest` fails with "true, CL, 42, SUCCESSFUL, null"
   - still need to run the tests under `async`
 
 ## Other improvements

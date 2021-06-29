@@ -33,7 +33,7 @@ import mcas.MemoryLocation
   new Outcome(id = Array("true, 21, 42, SUCCESSFUL, null"), expect = ACCEPTABLE, desc = "observed descriptors in correct  order (finalized)"),
   new Outcome(id = Array("true, null, null, y, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor was already cleaned up"),
   new Outcome(id = Array("true, 21, CL, SUCCESSFUL, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor is being cleaned up right now (1)"),
-  new Outcome(id = Array("true, CL, 21, SUCCESSFUL, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor is being cleaned up right now (2)"),
+  new Outcome(id = Array("true, CL, 42, SUCCESSFUL, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor is being cleaned up right now (2)"),
   new Outcome(id = Array("true, CL, CL, SUCCESSFUL, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor is being cleaned up right now (3)"),
   new Outcome(id = Array("true, 21, 42, FAILED, null"), expect = FORBIDDEN, desc = "observed descriptors in correct  order, but failed status"),
   new Outcome(id = Array("true, 42, 21, ACTIVE, null", "true, 42, 21, SUCCESSFUL, null"), expect = FORBIDDEN, desc = "observed descriptors in incorrect (unsorted) order")
