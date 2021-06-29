@@ -27,8 +27,8 @@ import org.openjdk.jcstress.infra.results.ILL_Result
 @State
 @Description("EMCASCleanup1Test")
 @Outcomes(Array(
-  new Outcome(id = Array("1, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), ACTIVE"), expect = ACCEPTABLE, desc = "(1) has desc, active op"),
-  new Outcome(id = Array("1, WordDescriptor\\(Ref@[a-z0-9]*, a, b\\), SUCCESSFUL"), expect = ACCEPTABLE, desc = "(2) has desc, finalized op"),
+  new Outcome(id = Array("1, WordDescriptor\\(a, b\\), ACTIVE"), expect = ACCEPTABLE, desc = "(1) has desc, active op"),
+  new Outcome(id = Array("1, WordDescriptor\\(a, b\\), SUCCESSFUL"), expect = ACCEPTABLE, desc = "(2) has desc, finalized op"),
   new Outcome(id = Array("1, b, -"), expect = ACCEPTABLE_INTERESTING, desc = "(3) final value, desc was cleaned up")
 ))
 class EMCASCleanup1Test {
@@ -66,7 +66,8 @@ class EMCASCleanup1Test {
     // WordDescriptor is not serializable:
     r.r2 match {
       case wd: WordDescriptor[_] =>
-        r.r2 = wd.toString()
+        // we ignore address here, it just generates a lot of output
+        r.r2 = s"WordDescriptor(${wd.ov}, ${wd.nv})"
       case _ =>
         ()
     }
