@@ -666,9 +666,16 @@ private[choam] sealed abstract class RxnInstances4 extends RxnInstances5 { this:
 private[choam] sealed abstract class RxnInstances5 { this: Rxn.type =>
 
   implicit final class UnitSyntax[A](private val self: Rxn[Unit, A]) {
-    private[choam] final def unsafeRun(kcas: KCAS): A =
-      self.unsafePerform((), kcas)
+
     final def run[F[_]](implicit F: Reactive[F]): F[A] =
       F.run(self, ())
+
+    final def unsafeRun(
+      kcas: KCAS,
+      maxBackoff: Int = 16,
+      randomizeBackoff: Boolean = true
+    ): A = {
+      self.unsafePerform((), kcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
+    }
   }
 }
