@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import java.util.Arrays
+
 import cats.{ Monad, Applicative, MonoidK }
 import cats.arrow.ArrowChoice
 import cats.mtl.Local
@@ -327,7 +329,7 @@ object Rxn extends RxnInstances0 {
     contK.push(commit)
 
     var contTReset: Array[Byte] = contT.toArray()
-    var contKReset: Any = contK.toArray()
+    var contKReset: Array[Any] = contK.toArray()
 
     var a: Any = x
     var retries: Int = 0
@@ -342,8 +344,8 @@ object Rxn extends RxnInstances0 {
       delayCompStorage.push(retries)
       delayCompStorage.push(startRxn)
       delayCompStorage.push(startA)
-      delayCompStorage.push(contTReset)
-      delayCompStorage.push(contKReset)
+      delayCompStorage.push(Arrays.copyOf(contTReset, contTReset.length))
+      delayCompStorage.push(Arrays.copyOf(contKReset.asInstanceOf[Array[AnyRef]], contKReset.length))
       // reset state:
       desc = kcas.start(ctx)
       clearAlts()
@@ -360,7 +362,7 @@ object Rxn extends RxnInstances0 {
 
     def loadEverything(): Unit = {
       // TODO: this is a mess...
-      contKReset = delayCompStorage.pop()
+      contKReset = delayCompStorage.pop().asInstanceOf[Array[Any]]
       contTReset = delayCompStorage.pop().asInstanceOf[Array[Byte]]
       startA = delayCompStorage.pop()
       startRxn = delayCompStorage.pop().asInstanceOf[Rxn[Any, R]]
