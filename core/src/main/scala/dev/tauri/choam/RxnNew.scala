@@ -25,10 +25,72 @@ import cats.mtl.Local
 
 import kcas.{ KCAS, ThreadContext, EMCASDescriptor }
 
-sealed abstract class Rxn[-A, +B] {
+/**
+ * An effectful function from `A` to `B`; when executed,
+ * it may update any number of [[Ref]]s atomically. (It
+ * may also create new [[Ref]]s.)
+ *
+ * These functions are composable (see below), and composition
+ * preserves their atomicity. That is, all affected [[Ref]]s
+ * will be updated atomically.
+ *
+ * A [[Rxn]] forms an [[cats.arrow.Arrow Arrow]] (more
+ * specifically, an [[cats.arrow.ArrowChoice ArrowChoice]]).
+ * It also forms a [[cats.Monad Monad]] in `B`; however, consider
+ * using the arrow combinators (when possible) instead of `flatMap`
+ * (since a static combination of `Rxn`s may be more performant).
+ *
+ * The relation between [[Rxn]] and [[Axn]] is approximately
+ * `Rxn[A, B] ≡ (A => Axn[B])`; or, alternatively
+ * `Axn[A] ≡ Rxn[Any, A]`.
+ */
+sealed abstract class Rxn[-A, +B] { // short for 'reaction'
+
+  /*
+   * A partial implementation of reagents, described in [Reagents: Expressing and
+   * Composing Fine-grained Concurrency](http://www.ccis.northeastern.edu/home/turon/reagents.pdf)
+   * by Aaron Turon; originally implemented at [aturon/ChemistrySet](
+   * https://github.com/aturon/ChemistrySet).
+   *
+   * This implementation is significantly simplified by the fact
+   * that offers and permanent failure are not implemented. As a
+   * consequence, these reactants are always non-blocking (provided
+   * that the underlying k-CAS implementation is non-blocking).
+   * However, this also means, that they are less featureful.
+   *
+   * On the other hand, this implementation uses an optimized and
+   * stack-safe interpreter (see `interpreter`).
+   *
+   * Other implementations:
+   * - https://github.com/aturon/Caper (Racket)
+   * - https://github.com/ocamllabs/reagents (OCaml)
+   */
 
   import Rxn._
 
+  /**
+   * Tag for the interpreter (see `interpreter`)
+   *
+   * This attempts to be an optimization, inspired by an old optimization in
+   * the Scala compiler for matching on sealed subclasses
+   * (see https://github.com/scala/scala/commit/b98eb1d74141a4159539d373e6216e799d6b6dcd).
+   * Except we do it by hand, which is ugly, but might be worth it.
+   *
+   * In Cats Effect 3 the IO/SyncIO runloop also uses something like this
+   * (see https://github.com/typelevel/cats-effect/blob/v3.0.2/core/shared/src/main/scala/cats/effect/SyncIO.scala#L195),
+   *
+   * The ZIO runloop seems to do something similar too
+   * (see https://github.com/zio/zio/blob/v1.0.6/core/shared/src/main/scala/zio/internal/FiberContext.scala#L320).
+   *
+   * The idea is to `match` on `r.tag` instead of `r` itself. That match
+   * should be compiled to a JVM tableswitch instruction. Which is supposed
+   * to be very fast. The match arms require `.asInstanceOf`, which is unsafe
+   * and makes maintenance harder. However, if there are a lot of cases,
+   * a chain of instanceof/checkcast instructions could be slower.
+   *
+   * TODO: Check if it's indeed faster than a simple `match` (apparently "tag"
+   * TODO: was removed from the Scala compiler because it was not worth it).
+   */
   private[choam] def tag: Byte
 
   final def + [X <: A, Y >: B](that: Rxn[X, Y]): Rxn[X, Y] =
@@ -50,10 +112,14 @@ sealed abstract class Rxn[-A, +B] {
     this >>> lift(f)
 
   final def as[C](c: C): Rxn[A, C] =
-    this.map(_ => c)
+    this.map(_ => c) // TODO: optimize
 
   final def void: Rxn[A, Unit] =
     this.as(())
+
+  // FIXME: do we need this?
+  final def dup: Rxn[A, (B, B)] =
+    this.map { b => (b, b) }
 
   final def contramap[C](f: C => A): Rxn[C, B] =
     lift(f) >>> this
@@ -61,12 +127,21 @@ sealed abstract class Rxn[-A, +B] {
   final def provide(a: A): Rxn[Any, B] =
     contramap[Any](_ => a) // TODO: optimize
 
+  final def dimap[C, D](f: C => A)(g: B => D): Rxn[C, D] =
+    this.contramap(f).map(g)
+
   final def toFunction: A => Axn[B] = { (a: A) =>
     this.provide(a)
   }
 
   final def map2[X <: A, C, D](that: Rxn[X, C])(f: (B, C) => D): Rxn[X, D] =
     (this * that).map(f.tupled)
+
+  final def <* [X <: A, C](that: Rxn[X, C]): Rxn[X, B] =
+    this.productL(that)
+
+  final def productL [X <: A, C](that: Rxn[X, C]): Rxn[X, B] =
+    (this * that).map(_._1)
 
   final def *> [X <: A, C](that: Rxn[X, C]): Rxn[X, C] =
     this.productR(that)
@@ -87,6 +162,15 @@ sealed abstract class Rxn[-A, +B] {
     self >>> comp
   }
 
+  // TODO: consider this:
+  // final def flatMapU[X, C](f: A => Rxn[X, C]): Rxn[X, C] = {
+  //   val self2: Rxn[X, (X, A)] =
+  //     Rxn.arrowChoiceInstance.second[Unit, A, X](self).lmap[X](x => (x, ()))
+  //   val comp: Rxn[(X, A), C] =
+  //     Rxn.computed[(X, A), C](xb => f(xb._2).provide(xb._1))
+  //   self2 >>> comp
+  // }
+
   final def postCommit(pc: Rxn[B, Unit]): Rxn[A, B] =
     this >>> Rxn.postCommit[B](pc)
 
@@ -104,6 +188,8 @@ sealed abstract class Rxn[-A, +B] {
       randomizeBackoff = randomizeBackoff
     )
   }
+
+  override def toString: String
 }
 
 object Rxn extends RxnInstances0 {
@@ -123,7 +209,7 @@ object Rxn extends RxnInstances0 {
     new Lift(f)
 
   def unit[A]: Rxn[A, Unit] =
-    lift(_ => ())
+    lift(_ => ()) // TODO: optimize
 
   def computed[A, B](f: A => Rxn[Any, B]): Rxn[A, B] =
     new Computed(f)
@@ -238,50 +324,78 @@ object Rxn extends RxnInstances0 {
 
   // Representation:
 
-  /** Only the interpreter can use this */
-  private final class Commit[A]()
-    extends Rxn[A, A] { private[choam] def tag = 0 }
+  /** Only the interpreter can use this! */
+  private final class Commit[A]() extends Rxn[A, A] {
+    private[choam] final def tag = 0
+    final override def toString: String = "Commit()"
+  }
 
-  private final class AlwaysRetry[A, B]()
-    extends Rxn[A, B] { private[choam] def tag = 1 }
+  private final class AlwaysRetry[A, B]() extends Rxn[A, B] {
+    private[choam] final def tag = 1
+    final override def toString: String = "AlwaysRetry()"
+  }
 
-  private final class PostCommit[A](val pc: Rxn[A, Unit])
-      extends Rxn[A, A] { private[choam] def tag = 2 }
+  private final class PostCommit[A](val pc: Rxn[A, Unit]) extends Rxn[A, A] {
+    private[choam] final def tag = 2
+    final override def toString: String = s"PostCommit(${pc})"
+  }
 
-  private final class Lift[A, B](val func: A => B)
-    extends Rxn[A, B] { private[choam] def tag = 3 }
+  private final class Lift[A, B](val func: A => B) extends Rxn[A, B] {
+    private[choam] final def tag = 3
+    final override def toString: String = "Lift(<function>)"
+  }
 
-  private final class Computed[A, B](val f: A => Rxn[Any, B])
-    extends Rxn[A, B] { private[choam] def tag = 4 }
+  private final class Computed[A, B](val f: A => Rxn[Any, B]) extends Rxn[A, B] {
+    private[choam] final def tag = 4
+    final override def toString: String = "Computed(<function>)"
+  }
 
   // TODO: we need a better name
-  private final class DelayComputed[A, B](val prepare: Rxn[A, Rxn[Any, B]])
-    extends Rxn[A, B] { private[choam] def tag = 5 }
+  private final class DelayComputed[A, B](val prepare: Rxn[A, Rxn[Any, B]]) extends Rxn[A, B] {
+    private[choam] final def tag = 5
+    final override def toString: String = s"DelayComputed(${prepare})"
+  }
 
-  private final class Choice[A, B](val left: Rxn[A, B], val right: Rxn[A, B])
-    extends Rxn[A, B] { private[choam] def tag = 6 }
+  private final class Choice[A, B](val left: Rxn[A, B], val right: Rxn[A, B]) extends Rxn[A, B] {
+    private[choam] final def tag = 6
+    final override def toString: String = s"Choice(${left}, ${right})"
+  }
 
-  private final class Cas[A](val ref: Ref[A], val ov: A, val nv: A)
-    extends Rxn[Any, Unit] { private[choam] def tag = 7 }
+  private final class Cas[A](val ref: Ref[A], val ov: A, val nv: A) extends Rxn[Any, Unit] {
+    private[choam] final def tag = 7
+    final override def toString: String = s"Cas(${ref}, ${ov}, ${nv})"
+  }
 
-  private final class Upd[A, B, X](val ref: Ref[X], val f: (X, A) => (X, B))
-    extends Rxn[A, B] { private[choam] def tag = 8 }
+  private final class Upd[A, B, X](val ref: Ref[X], val f: (X, A) => (X, B)) extends Rxn[A, B] {
+    private[choam] final def tag = 8
+    final override def toString: String = s"Upd(${ref}, <function>)"
+  }
 
-  private final class InvisibleRead[A](val ref: Ref[A])
-    extends Rxn[Any, A] { private[choam] def tag = 9 }
+  private final class InvisibleRead[A](val ref: Ref[A]) extends Rxn[Any, A] {
+    private[choam] final def tag = 9
+    final override def toString: String = s"InvisibleRead(${ref})"
+  }
 
-  private final class Exchange[A, B](val exchanger: Exchanger[A, B])
-    extends Rxn[A, B] { private[choam] def tag = 10 }
+  private final class Exchange[A, B](val exchanger: Exchanger[A, B]) extends Rxn[A, B] {
+    private[choam] final def tag = 10
+    final override def toString: String = s"Exchange(${exchanger})"
+  }
 
-  private final class AndThen[A, B, C](val left: Rxn[A, B], val right: Rxn[B, C])
-    extends Rxn[A, C] { private[choam] def tag = 11 }
+  private final class AndThen[A, B, C](val left: Rxn[A, B], val right: Rxn[B, C]) extends Rxn[A, C] {
+    private[choam] final def tag = 11
+    final override def toString: String = s"AndThen(${left}, ${right})"
+  }
 
-  private final class AndAlso[A, B, C, D](val left: Rxn[A, B], val right: Rxn[C, D])
-    extends Rxn[(A, C), (B, D)] { private[choam] def tag = 12 }
+  private final class AndAlso[A, B, C, D](val left: Rxn[A, B], val right: Rxn[C, D]) extends Rxn[(A, C), (B, D)] {
+    private[choam] final def tag = 12
+    final override def toString: String = s"AndAlso(${left}, ${right})"
+  }
 
-  /** Only the interpreter can use this */
-  private final class Done[A](val result: A)
-    extends Rxn[Any, A] { private[choam] def tag = 13 }
+  /** Only the interpreter can use this! */
+  private final class Done[A](val result: A) extends Rxn[Any, A] {
+    private[choam] final def tag = 13
+    final override def toString: String = s"Done(${result})"
+  }
 
   // Interpreter:
 
@@ -308,6 +422,21 @@ object Rxn extends RxnInstances0 {
     maxBackoff: Int = 16,
     randomizeBackoff: Boolean = true
   ): R = {
+
+    /*
+     * The default value of 16 for `maxBackoff` ensures that
+     * there is at most 16 (or 32 with randomization) calls
+     * to `onSpinWait` (see `Backoff`). Since `onSpinWait`
+     * is implemented with an x86 PAUSE instruction, which
+     * can use as much as 140 cycles (https://stackoverflow.com/a/44916975),
+     * this means 2240 (or 4480) cycles. That seems a sensible
+     * maximum (it's unlikely we'd ever want to spin for longer
+     * than that without retrying).
+     *
+     * `randomizeBackoff` is true by default, since it seems
+     * to have a small performance advantage for certain
+     * operations (and no downside for others). See `SpinBench`.
+     */
 
     val kcas = ctx.impl
 
@@ -502,6 +631,10 @@ object Rxn extends RxnInstances0 {
           a = () : Any
           loop(nxt)
         case 5 => // DelayComputed
+          // Note: we'll be performing `prepare` here directly;
+          // as a consequence of this, `prepare` will not
+          // be part of the atomic reaction, but it will run here
+          // as a side-effect.
           val c = curr.asInstanceOf[DelayComputed[A, B]]
           val input = a
           saveEverything()
@@ -663,7 +796,7 @@ private[choam] sealed abstract class RxnInstances4 extends RxnInstances5 { this:
   }
 }
 
-private[choam] sealed abstract class RxnInstances5 { this: Rxn.type =>
+private[choam] sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.type =>
 
   implicit final class UnitSyntax[A](private val self: Rxn[Unit, A]) {
 
@@ -677,5 +810,18 @@ private[choam] sealed abstract class RxnInstances5 { this: Rxn.type =>
     ): A = {
       self.unsafePerform((), kcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
     }
+  }
+}
+
+private[choam] sealed abstract class RxnInstances6 { this: Rxn.type =>
+
+  // FIXME: do we need this?
+  implicit final class Tuple2RxnSyntax[A, B, C](private val self: Rxn[A, (B, C)]) {
+    def left: Rxn[A, B] =
+      self.map(_._1)
+    def right: Rxn[A, C] =
+      self.map(_._2)
+    def split[X, Y](left: Rxn[B, X], right: Rxn[C, Y]): Rxn[A, (X, Y)] =
+      self >>> (left × right)
   }
 }
