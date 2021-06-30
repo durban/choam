@@ -54,52 +54,6 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     println(s"NUM_CPU = ${Runtime.getRuntime().availableProcessors()}")
   }
 
-  test("Creating and running deeply nested Rxn's should both be stack-safe") {
-    def nest(
-      n: Int,
-      combine: (Rxn[Int, Int], Rxn[Int, Int]) => Rxn[Int, Int]
-    ): Rxn[Int, Int] = {
-      (1 to n).map(_ => Rxn.lift[Int, Int](_ + 1)).reduce(combine)
-    }
-    val N = 1024 * 1024
-    // TODO: val r1: Rxn[Int, Int] = nest(N, _ >>> _)
-    // TODO: val r2: Rxn[Int, Int] = nest(N, (x, y) => (x * y).map(_._1))
-    // TODO: val r3: Rxn[Int, Int] = nest(N, (x, y) => x.flatMap { _ => y })
-    // TODO: val r4: Rxn[Int, Int] = nest(N, _ >> _)
-    val r5: Rxn[Int, Int] = nest(N, _ + _)
-    val r6: Rxn[Int, Int] = nest(N, (x, y) => Rxn.unsafe.delayComputed(x.map(Rxn.ret(_) >>> y)))
-    // r1.##//unsafePerform(42, this.kcasImpl)
-    // r2.##//unsafePerform(42, this.kcasImpl)
-    // r3.##//unsafePerform(42, this.kcasImpl)
-    // r4.##//unsafePerform(42, this.kcasImpl)
-    r5.unsafePerform(42, this.kcasImpl)
-    r6.## // TODO: r6.unsafePerform(42, this.kcasImpl)
-  }
-
-  test("Choice after >>>") {
-    for {
-      a <- Ref("a").run[F]
-      b <- Ref("b").run[F]
-      y <- Ref("y").run[F]
-      p <- Ref("p").run[F]
-      q <- Ref("q").run[F]
-      rea = (
-        (
-          (a.unsafeCas("a", "aa") + (b.unsafeCas("b", "bb") >>> Rxn.unsafe.delay { _ =>
-            this.kcasImpl.doSingleCas(y, "y", "-", this.kcasImpl.currentContext())
-          })) >>> y.unsafeCas("-", "yy")
-        ) +
-        (p.unsafeCas("p", "pp") >>> q.unsafeCas("q", "qq"))
-      )
-      _ <- assertResultF(rea.run, ())
-      _ <- assertResultF(a.unsafeInvisibleRead.run, "a")
-      _ <- assertResultF(b.unsafeInvisibleRead.run, "bb")
-      _ <- assertResultF(y.unsafeInvisibleRead.run, "yy")
-      _ <- assertResultF(p.unsafeInvisibleRead.run, "p")
-      _ <- assertResultF(q.unsafeInvisibleRead.run, "q")
-    } yield ()
-  }
-
   test("Choice should prefer the first option") {
     for {
       r1 <- Ref("r1").run[F]
@@ -137,6 +91,30 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- rea2.run[F]
       _ <- assertResultF(r1.unsafeInvisibleRead.run, "b")
       _ <- assertResultF(r2.unsafeInvisibleRead.run, "b")
+    } yield ()
+  }
+
+  test("Choice after >>>") {
+    for {
+      a <- Ref("a").run[F]
+      b <- Ref("b").run[F]
+      y <- Ref("y").run[F]
+      p <- Ref("p").run[F]
+      q <- Ref("q").run[F]
+      rea = (
+        (
+          (Rxn.unsafe.cas(a, "a", "aa") + (Rxn.unsafe.cas(b, "b", "bb") >>> Rxn.unsafe.delay { _ =>
+            this.kcasImpl.doSingleCas(y, "y", "-", this.kcasImpl.currentContext())
+          })) >>> Rxn.unsafe.cas(y, "-", "yy")
+        ) +
+        (Rxn.unsafe.cas(p, "p", "pp") >>> Rxn.unsafe.cas(q, "q", "qq"))
+      )
+      _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, ())
+      _ <- assertResultF(a.unsafeInvisibleRead.run, "a")
+      _ <- assertResultF(b.unsafeInvisibleRead.run, "bb")
+      _ <- assertResultF(y.unsafeInvisibleRead.run, "yy")
+      _ <- assertResultF(p.unsafeInvisibleRead.run, "p")
+      _ <- assertResultF(q.unsafeInvisibleRead.run, "q")
     } yield ()
   }
 
@@ -546,6 +524,34 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(popBoth, ("x", "y"))
       _ <- assertResultF(r1.unsafeInvisibleRead.flatMap(_.value.unsafeInvisibleRead).run[F], null)
       _ <- assertResultF(r2.unsafeInvisibleRead.flatMap(_.value.unsafeInvisibleRead).run[F], null)
+    } yield ()
+  }
+
+  test("postCommit on delayComputed") {
+    for {
+      a <- Ref("a").run[F]
+      b <- Ref("b").run[F]
+      c <- Ref("c").run[F]
+      rea = Rxn.unsafe.delayComputed[Unit, String](Rxn.unsafe.cas(a, "a", "aa").as(Rxn.ret("foo")).postCommit(
+        Rxn.unsafe.cas(b, "b", "bb")
+      )) >>> Rxn.unsafe.cas(c, "c", "cc")
+      _ <- assertResultF(rea.run[F], ())
+      _ <- assertResultF(a.unsafeInvisibleRead.run, "aa")
+      _ <- assertResultF(b.unsafeInvisibleRead.run, "bb")
+      _ <- assertResultF(c.unsafeInvisibleRead.run, "cc")
+    } yield ()
+  }
+
+  test("delayComputed") {
+    for {
+      a <- Ref("a").run[F]
+      b <- Ref("b").run[F]
+      rea = Rxn.unsafe.delayComputed[Unit, String](Rxn.ref.upd(a) { (oa: String, _: Unit) =>
+        ("x", oa)
+      }.map { oa => Rxn.ref.upd(b) { (ob: String, _: Any) => (oa, ob) } })
+      _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, "b")
+      _ <- assertResultF(a.unsafeInvisibleRead.run, "x")
+      _ <- assertResultF(b.unsafeInvisibleRead.run, "a")
     } yield ()
   }
 

@@ -18,11 +18,7 @@
 package dev.tauri.choam
 
 trait KCASImplSpec {
-
   protected def kcasImpl: kcas.KCAS
-
-  protected def isFlaky: Boolean =
-    false
 }
 
 trait SpecNaiveKCAS extends KCASImplSpec {
@@ -40,9 +36,6 @@ trait SpecFlakyEMCAS extends KCASImplSpec {
   import scala.collection.concurrent.TrieMap
   import kcas._
   import mcas.MemoryLocation
-
-  final override def isFlaky: Boolean =
-    true
 
   final override def kcasImpl: KCAS = new KCAS {
 

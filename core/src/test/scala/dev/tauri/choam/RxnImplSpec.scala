@@ -20,37 +20,38 @@ package dev.tauri.choam
 import cats.Monad
 import cats.effect.IO
 
-final class RxnNewSpec_NaiveKCAS_IO
+final class RxnImplSpec_NaiveKCAS_IO
   extends BaseSpecIO
   with SpecNaiveKCAS
-  with RxnNewSpec[IO]
+  with RxnImplSpec[IO]
 
-final class RxnNewSpec_NaiveKCAS_ZIO
+final class RxnImplSpec_NaiveKCAS_ZIO
   extends BaseSpecZIO
   with SpecNaiveKCAS
-  with RxnNewSpec[zio.Task]
+  with RxnImplSpec[zio.Task]
 
-final class RxnNewSpec_EMCAS_IO
+final class RxnImplSpec_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
-  with RxnNewSpec[IO]
+  with RxnImplSpec[IO]
 
-final class RxnNewSpec_FlakyEMCAS_IO
+final class RxnImplSpec_FlakyEMCAS_IO
   extends BaseSpecIO
   with SpecFlakyEMCAS
-  with RxnNewSpec[IO]
+  with RxnImplSpec[IO]
 
-final class RxnNewSpec_EMCAS_ZIO
+final class RxnImplSpec_EMCAS_ZIO
   extends BaseSpecZIO
   with SpecEMCAS
-  with RxnNewSpec[zio.Task]
+  with RxnImplSpec[zio.Task]
 
-final class RxnNewSpec_FlakyEMCAS_ZIO
+final class RxnImplSpec_FlakyEMCAS_ZIO
   extends BaseSpecZIO
   with SpecFlakyEMCAS
-  with RxnNewSpec[zio.Task]
+  with RxnImplSpec[zio.Task]
 
-trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+/** Specific implementation tests, which should also pass with `SpecFlakyEMCAS` */
+trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("Creating and running deeply nested Rxn's should both be stack-safe") {
     def nest(
@@ -79,31 +80,6 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     assertEquals(r7.unsafePerform(42, this.kcasImpl), 99)
   }
 
-  test("Choice after >>>") {
-    for {
-      _ <- F.delay { this.assume(!this.isFlaky) }
-      a <- Ref("a").run[F]
-      b <- Ref("b").run[F]
-      y <- Ref("y").run[F]
-      p <- Ref("p").run[F]
-      q <- Ref("q").run[F]
-      rea = (
-        (
-          (Rxn.unsafe.cas(a, "a", "aa") + (Rxn.unsafe.cas(b, "b", "bb") >>> Rxn.unsafe.delay { _ =>
-            this.kcasImpl.doSingleCas(y, "y", "-", this.kcasImpl.currentContext())
-          })) >>> Rxn.unsafe.cas(y, "-", "yy")
-        ) +
-        (Rxn.unsafe.cas(p, "p", "pp") >>> Rxn.unsafe.cas(q, "q", "qq"))
-      )
-      _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, ())
-      _ <- assertResultF(a.unsafeInvisibleRead.run, "a")
-      _ <- assertResultF(b.unsafeInvisibleRead.run, "bb")
-      _ <- assertResultF(y.unsafeInvisibleRead.run, "yy")
-      _ <- assertResultF(p.unsafeInvisibleRead.run, "p")
-      _ <- assertResultF(q.unsafeInvisibleRead.run, "q")
-    } yield ()
-  }
-
   test("first and second") {
     for {
       _ <- F.unit
@@ -130,36 +106,6 @@ trait RxnNewSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(a.unsafeInvisibleRead.run, "aa")
       _ <- assertResultF(b.unsafeInvisibleRead.run, "bbbb")
       _ <- assertResultF(c.unsafeInvisibleRead.run, "cccc")
-    } yield ()
-  }
-
-  test("postCommit on delayComputed") {
-    for {
-      _ <- F.delay { this.assume(!this.isFlaky) }
-      a <- Ref("a").run[F]
-      b <- Ref("b").run[F]
-      c <- Ref("c").run[F]
-      rea = Rxn.unsafe.delayComputed[Unit, String](Rxn.unsafe.cas(a, "a", "aa").as(Rxn.ret("foo")).postCommit(
-        Rxn.unsafe.cas(b, "b", "bb")
-      )) >>> Rxn.unsafe.cas(c, "c", "cc")
-      _ <- assertResultF(rea.run[F], ())
-      _ <- assertResultF(a.unsafeInvisibleRead.run, "aa")
-      _ <- assertResultF(b.unsafeInvisibleRead.run, "bb")
-      _ <- assertResultF(c.unsafeInvisibleRead.run, "cc")
-    } yield ()
-  }
-
-  test("delayComputed") {
-    for {
-      _ <- F.delay { this.assume(!this.isFlaky) }
-      a <- Ref("a").run[F]
-      b <- Ref("b").run[F]
-      rea = Rxn.unsafe.delayComputed[Unit, String](Rxn.ref.upd(a) { (oa: String, _: Unit) =>
-        ("x", oa)
-      }.map { oa => Rxn.ref.upd(b) { (ob: String, _: Any) => (oa, ob) } })
-      _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, "b")
-      _ <- assertResultF(a.unsafeInvisibleRead.run, "x")
-      _ <- assertResultF(b.unsafeInvisibleRead.run, "a")
     } yield ()
   }
 
