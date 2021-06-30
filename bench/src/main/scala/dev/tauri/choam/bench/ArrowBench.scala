@@ -69,9 +69,9 @@ object ArrowBench {
 
     def rOnlyComputed(ref: Ref[String]): Axn[Int] = {
       ref.get.flatMap { s =>
-        Axn.ret(s.toUpperCase).flatMap { u =>
-          Axn.ret(u.trim).flatMap { t =>
-            Axn.ret(t.length)
+        Rxn.ret(s.toUpperCase).flatMap { u =>
+          Rxn.ret(u.trim).flatMap { t =>
+            Rxn.ret(t.length)
           }
         }
       }

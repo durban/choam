@@ -63,7 +63,7 @@ final class TreiberStack[A](els: Iterable[A]) {
 object TreiberStack {
 
   def apply[A]: Axn[TreiberStack[A]] =
-    Axn.unsafe.delay { _ => new TreiberStack[A] }
+    Rxn.unsafe.delay { _ => new TreiberStack[A] }
 
   private[choam] sealed trait Lst[+A] {
 

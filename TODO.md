@@ -24,8 +24,6 @@
 - `Exchanger` doesn't work with the new `Rxn`
 - `Ctrie` is incomplete
 - Can't run benchmarks with Scala 3
-- JCStress:
-  - still need to run the tests under `async`
 - AsyncQueue tests are non-deterministic, and the sleeps are not always enough
   - look into using CE TestContext
 

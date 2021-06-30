@@ -33,7 +33,7 @@ private[choam] final class AsyncStack2[F[_], A] private (
   override def pop(implicit F: Reactive.Async[F]): F[A] = {
     F.monadCancel.flatMap(F.promise[A].run[F]) { p =>
       val acq = this.elements.tryPop.flatMap {
-        case Some(a) => Axn.ret(Right(a))
+        case Some(a) => Rxn.ret(Right(a))
         case None => this.waiters.enqueue.provide(p).as(Left(p))
       }.run[F]
       val rel: (Either[Promise[F, A], A] => F[Unit]) = {

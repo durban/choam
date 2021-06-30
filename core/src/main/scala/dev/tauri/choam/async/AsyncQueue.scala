@@ -45,7 +45,7 @@ object AsyncQueue {
 
   def primitive[F[_], A]: Axn[AsyncQueue[F, A]] = {
     (Queue[A] * Queue.withRemove[Promise[F, A]]) >>> (
-      Axn.unsafe.delay { case (as, waiters) => new AsyncQueuePrim(as, waiters) }
+      Rxn.unsafe.delay { case (as, waiters) => new AsyncQueuePrim(as, waiters) }
     )
   }
 
@@ -101,7 +101,7 @@ object AsyncQueue {
     final override def deque(implicit F: Reactive.Async[F]): F[A] = {
       val acq = Promise[F, A].flatMap { p =>
         this.q.tryDeque.flatMap {
-          case Some(a) => Axn.pure(Right(a))
+          case Some(a) => Rxn.pure(Right(a))
           case None => this.waiters.enqueue.provide(p).as(Left(p))
         }
       }.run[F]

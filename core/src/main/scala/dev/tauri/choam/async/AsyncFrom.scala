@@ -42,7 +42,7 @@ final class AsyncFrom[F[_], A] private (
   private[this] def getAcq(implicit F: Reactive.Async[F]): F[Either[Promise[F, A], A]] = {
     Promise[F, A].flatMap { p =>
       this.syncGet.flatMap {
-        case Some(b) => Axn.pure(Right(b))
+        case Some(b) => Rxn.pure(Right(b))
         case None => this.waiters.enqueue.provide(p).as(Left(p))
       }
     }.run[F]

@@ -59,8 +59,8 @@ object ConsistentReadBench {
     val r2: Ref[String] =
       Ref.unsafe(s"r2: ${ThreadLocalRandom.current().nextLong()}")
     val crWithInvisibleRead: Axn[(String, String)] =
-      Axn.consistentReadOld(r1, r2)
+      Rxn.consistentReadOld(r1, r2)
     val crWithUpdWith: Axn[(String, String)] =
-      Axn.consistentRead(r1, r2)
+      Rxn.consistentRead(r1, r2)
   }
 }

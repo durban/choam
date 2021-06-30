@@ -167,8 +167,8 @@ private[choam] object RemoveQueue {
   private final case class End[A]() extends Elem[A]
 
   def apply[A]: Axn[RemoveQueue[A]] =
-    Axn.unsafe.delay { _ => new RemoveQueue }
+    Rxn.unsafe.delay { _ => new RemoveQueue }
 
   def fromList[A](as: List[A]): Axn[RemoveQueue[A]] =
-    Axn.unsafe.delay { _ => new RemoveQueue(as) }
+    Rxn.unsafe.delay { _ => new RemoveQueue(as) }
 }

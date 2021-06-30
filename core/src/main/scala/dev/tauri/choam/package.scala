@@ -56,9 +56,6 @@ package object choam {
    */
   final type Axn[+A] = Rxn[Any, A] // short for 'astaxanthin'
 
-  // TODO: remove `lazy`
-  final lazy val Axn: Rxn.type = Rxn
-
   // Note: using these always leaves a check for
   // the package object in the bytecode (getstatic
   // and a null check). However, microbenchmarks

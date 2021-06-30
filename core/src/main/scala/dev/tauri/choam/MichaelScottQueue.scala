@@ -92,8 +92,8 @@ private[choam] object MichaelScottQueue {
   private final case class End[A]() extends Elem[A]
 
   def apply[A]: Axn[MichaelScottQueue[A]] =
-    Axn.unsafe.delay { _ => new MichaelScottQueue }
+    Rxn.unsafe.delay { _ => new MichaelScottQueue }
 
   def fromList[A](as: List[A]): Axn[MichaelScottQueue[A]] =
-    Axn.unsafe.delay { _ => new MichaelScottQueue(as) }
+    Rxn.unsafe.delay { _ => new MichaelScottQueue(as) }
 }

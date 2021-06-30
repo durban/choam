@@ -57,7 +57,7 @@ object Queue {
           final override def tryDeque: Axn[Option[A]] = {
             q.tryDeque.flatMap {
               case r @ Some(_) => s.update(_ - 1).as(r)
-              case None => Axn.pure(None)
+              case None => Rxn.pure(None)
             }
           }
 

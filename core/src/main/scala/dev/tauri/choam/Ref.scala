@@ -103,7 +103,7 @@ trait Ref[A] extends MemoryLocation[A] { self =>
           val setter = { (nv: A) =>
             hasBeenCalled.unsafeCas(false, true).?.flatMap { ok =>
               if (ok.isDefined) self.unsafeCas(ov, nv).?.map(_.isDefined)
-              else Axn.pure(false)
+              else Rxn.pure(false)
             }.run[F]
           }
           (ov, setter)

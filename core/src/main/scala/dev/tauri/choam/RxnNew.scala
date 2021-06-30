@@ -124,7 +124,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def contramap[C](f: C => A): Rxn[C, B] =
     lift(f) >>> this
 
-  final def provide(a: A): Rxn[Any, B] =
+  final def provide(a: A): Axn[B] =
     contramap[Any](_ => a) // TODO: optimize
 
   final def dimap[C, D](f: C => A)(g: B => D): Rxn[C, D] =
@@ -196,7 +196,7 @@ object Rxn extends RxnInstances0 {
 
   // API:
 
-  def pure[A](a: A): Rxn[Any, A] =
+  def pure[A](a: A): Axn[A] =
     ret(a)
 
   def ret[X, A](a: A): Rxn[X, A] =
@@ -211,7 +211,7 @@ object Rxn extends RxnInstances0 {
   def unit[A]: Rxn[A, Unit] =
     lift(_ => ()) // TODO: optimize
 
-  def computed[A, B](f: A => Rxn[Any, B]): Rxn[A, B] =
+  def computed[A, B](f: A => Axn[B]): Rxn[A, B] =
     new Computed(f)
 
   final def postCommit[A](pc: Rxn[A, Unit]): Rxn[A, A] =
@@ -257,7 +257,7 @@ object Rxn extends RxnInstances0 {
 
   final object ref {
 
-    def read[A](r: Ref[A]): Rxn[Any, A] =
+    def read[A](r: Ref[A]): Axn[A] =
       upd[A, Any, A](r) { (oa, _) => (oa, oa) }
 
     def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
@@ -273,19 +273,19 @@ object Rxn extends RxnInstances0 {
       self >>> comp
     }
 
-    def update[A](r: Ref[A])(f: A => A): Rxn[Any, Unit] =
+    def update[A](r: Ref[A])(f: A => A): Axn[Unit] =
       upd[A, Any, Unit](r) { (oa, _) => (f(oa), ()) }
 
-    def updateWith[A](r: Ref[A])(f: A => Rxn[Any, A]): Rxn[Any, Unit] =
+    def updateWith[A](r: Ref[A])(f: A => Axn[A]): Axn[Unit] =
       updWith[A, Any, Unit](r) { (oa, _) => f(oa).map(na => (na, ())) }
 
-    def getAndUpdate[A](r: Ref[A])(f: A => A): Rxn[Any, A] =
+    def getAndUpdate[A](r: Ref[A])(f: A => A): Axn[A] =
       upd[A, Any, A](r) { (oa, _) => (f(oa), oa) }
 
     def getAndSet[A](r: Ref[A]): Rxn[A, A] =
       upd[A, A, A](r) { (oa, na) => (na, oa) }
 
-    def updWith[A, B, C](r: Ref[A])(f: (A, B) => Rxn[Any, (A, C)]): Rxn[B, C] = {
+    def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] = {
       val self: Rxn[B, (A, B)] = Rxn.unsafe.invisibleRead(r).first[B].contramap[B](b => ((), b))
       val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
         f(oa, b).flatMap {
@@ -299,10 +299,10 @@ object Rxn extends RxnInstances0 {
 
   final object unsafe {
 
-    def invisibleRead[A](r: Ref[A]): Rxn[Any, A] =
+    def invisibleRead[A](r: Ref[A]): Axn[A] =
       new InvisibleRead[A](r)
 
-    def cas[A](r: Ref[A], ov: A, nv: A): Rxn[Any, Unit] =
+    def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
       new Cas[A](r, ov, nv)
 
     def retry[A, B]: Rxn[A, B] =
@@ -312,10 +312,10 @@ object Rxn extends RxnInstances0 {
       lift(uf)
 
     // TODO: we need a better name
-    def delayComputed[A, B](prepare: Rxn[A, Rxn[Any, B]]): Rxn[A, B] =
+    def delayComputed[A, B](prepare: Rxn[A, Axn[B]]): Rxn[A, B] =
       new DelayComputed[A, B](prepare)
 
-    def exchanger[A, B]: Rxn[Any, Exchanger[A, B]] =
+    def exchanger[A, B]: Axn[Exchanger[A, B]] =
       delay { _ => Exchanger.unsafe[A, B] }
 
     def exchange[A, B](ex: Exchanger[A, B]): Rxn[A, B] =
@@ -345,13 +345,13 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = "Lift(<function>)"
   }
 
-  private final class Computed[A, B](val f: A => Rxn[Any, B]) extends Rxn[A, B] {
+  private final class Computed[A, B](val f: A => Axn[B]) extends Rxn[A, B] {
     private[choam] final def tag = 4
     final override def toString: String = "Computed(<function>)"
   }
 
   // TODO: we need a better name
-  private final class DelayComputed[A, B](val prepare: Rxn[A, Rxn[Any, B]]) extends Rxn[A, B] {
+  private final class DelayComputed[A, B](val prepare: Rxn[A, Axn[B]]) extends Rxn[A, B] {
     private[choam] final def tag = 5
     final override def toString: String = s"DelayComputed(${prepare})"
   }
