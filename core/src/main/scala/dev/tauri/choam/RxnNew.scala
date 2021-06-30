@@ -463,6 +463,16 @@ object Rxn extends RxnInstances0 {
     var a: Any = x
     var retries: Int = 0
 
+    def setContReset(): Unit = {
+      contTReset = contT.toArray()
+      contKReset = contK.toArray()
+    }
+
+    def resetConts(): Unit = {
+      contT.replaceWith(contTReset)
+      contK.replaceWithUnsafe(contKReset.asInstanceOf[Array[Any]])
+    }
+
     def saveEverything(): Unit = {
       if (delayCompStorage eq null) {
         delayCompStorage = newStack()
@@ -520,6 +530,12 @@ object Rxn extends RxnInstances0 {
       res
     }
 
+    def popFinalResult(): Any = {
+      val r = contK.pop()
+      assert(!equ(r, postCommitResultMarker))
+      r
+    }
+
     def next(): Rxn[Any, Any] = {
       (contT.pop() : @switch) match {
         case 0 => // ContAndThen
@@ -543,8 +559,7 @@ object Rxn extends RxnInstances0 {
         case 4 => // ContPostCommit
           val pcAction = contK.pop().asInstanceOf[Rxn[Any, Any]]
           clearAlts()
-          contTReset = contT.toArray()
-          contKReset = contK.toArray()
+          setContReset()
           a = () : Any
           startA = () : Any
           startRxn = pcAction
@@ -562,12 +577,6 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    def popFinalResult(): Any = {
-      val r = contK.pop()
-      assert(!equ(r, postCommitResultMarker))
-      r
-    }
-
     def retry(): Rxn[Any, Any] = {
       retries += 1
       if (alts.nonEmpty) {
@@ -576,8 +585,7 @@ object Rxn extends RxnInstances0 {
         // really restart:
         desc = kcas.start(ctx)
         a = startA
-        contT.replaceWith(contTReset)
-        contK.replaceWithUnsafe(contKReset.asInstanceOf[Array[Any]])
+        resetConts()
         pc.clear()
         spin()
         startRxn
@@ -641,8 +649,7 @@ object Rxn extends RxnInstances0 {
           contT.push(ContAfterDelayComp)
           contT.push(ContAndThen) // commit `prepare`
           contK.push(commit)
-          contTReset = contT.toArray()
-          contKReset = contK.toArray()
+          setContReset()
           a = input
           startA = input
           startRxn = c.prepare.asInstanceOf[Rxn[Any, Any]]
@@ -696,9 +703,9 @@ object Rxn extends RxnInstances0 {
         case 13 => // Done
           val c = curr.asInstanceOf[Done[R]]
           c.result
-        case t => // not implemented
+        case t => // mustn't happen
           throw new UnsupportedOperationException(
-            s"Not implemented tag ${t} for ${curr}"
+            s"Unknown tag ${t} for ${curr}"
           )
       }
     }
