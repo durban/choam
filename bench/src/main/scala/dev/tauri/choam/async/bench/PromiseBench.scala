@@ -35,17 +35,10 @@ class PromiseBench extends BenchUtils {
 
   final override val waitTime = 0L
   final val size = 2048
-  final val waitersLess = 2
-  final val waitersMore = 128
 
   @Benchmark
-  def lessWaitersBaseline(s: PromiseSt): Unit = {
-    baseline(s, waitersLess)
-  }
-
-  @Benchmark
-  def moreWaitersBaseline(s: PromiseSt): Unit = {
-    baseline(s, waitersMore)
+  def promiseBaseline(s: PromiseSt): Unit = {
+    baseline(s, s.numWaiters)
   }
 
   private[this] def baseline(s: PromiseSt, waiters: Int): Unit = {
@@ -54,13 +47,8 @@ class PromiseBench extends BenchUtils {
   }
 
   @Benchmark
-  def lessWaitersOptimized(s: PromiseSt): Unit = {
-    optimized(s, waitersLess)
-  }
-
-  @Benchmark
-  def moreWaitersOptimized(s: PromiseSt): Unit = {
-    optimized(s, waitersMore)
+  def promiseOptimized(s: PromiseSt): Unit = {
+    optimized(s, s.numWaiters)
   }
 
   private[this] def optimized(s: PromiseSt, waiters: Int): Unit = {
@@ -78,8 +66,16 @@ class PromiseBench extends BenchUtils {
 }
 
 object PromiseBench {
+
   @State(Scope.Benchmark)
   class PromiseSt {
+
     val runtime = cats.effect.unsafe.IORuntime.global
+
+    @Param(Array("2", "8", "64", "128"))
+    private[choam] var _numWaiters: Int = 2
+
+    def numWaiters: Int =
+      this._numWaiters
   }
 }
