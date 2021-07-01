@@ -215,5 +215,5 @@ addCommandAlias("stressTest", "stress/Jcstress/run")
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
 addCommandAlias("ci", ";headerCheckAll;test") // TODO: re-enable stressTest
 
-addCommandAlias("measurePerformance", "bench/jmh:run -t 2 -foe true -rf json -rff results.json .*")
-addCommandAlias("profilePerformance", "bench/jmh:run -t 2 -foe true -prof stack:lines=3 -rf text -rff profile.txt .*")
+// profiling: `-prof jfr`
+addCommandAlias("measurePerformance", "bench/jmh:run -foe true -rf json -rff results.json .*")
