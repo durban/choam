@@ -615,6 +615,25 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("<* and *>") {
+    for {
+      r1 <- Ref("a1").run[F]
+      r2 <- Ref("a2").run[F]
+      _ <- assertResultF((r1.getAndUpdate(_ + "b") <* r2.getAndUpdate(_ + "c")).run[F], "a1")
+      _ <- assertResultF(r1.get.run[F], "a1b")
+      _ <- assertResultF(r2.get.run[F], "a2c")
+      _ <- assertResultF((r1.getAndUpdate(_ + "b").productL(r2.getAndUpdate(_ + "c"))).run[F], "a1b")
+      _ <- assertResultF(r1.get.run[F], "a1bb")
+      _ <- assertResultF(r2.get.run[F], "a2cc")
+      _ <- assertResultF((r1.getAndUpdate(_ + "b") *> r2.getAndUpdate(_ + "c")).run[F], "a2cc")
+      _ <- assertResultF(r1.get.run[F], "a1bbb")
+      _ <- assertResultF(r2.get.run[F], "a2ccc")
+      _ <- assertResultF((r1.getAndUpdate(_ + "b").productR(r2.getAndUpdate(_ + "c"))).run[F], "a2ccc")
+      _ <- assertResultF(r1.get.run[F], "a1bbbb")
+      _ <- assertResultF(r2.get.run[F], "a2cccc")
+    } yield ()
+  }
+
   test("Rxn#toFunction") {
     for {
       r <- Ref("a").run[F]
@@ -623,6 +642,21 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       v <- f("b").run[F]
       _ <- assertEqualsF(v, "a")
       _ <- assertResultF(r.get.run[F], "b")
+    } yield ()
+  }
+
+  test("dup") {
+    for {
+      r <- Ref("a").run[F]
+      res <- r.get.dup.run[F]
+      _ <- assertEqualsF(res, ("a", "a"))
+    } yield ()
+  }
+
+  test("dimap") {
+    for {
+      res <- Rxn.identity[Int].dimap[Int, String](_ * 2)(_.toString).apply[F](4)
+      _ <- assertEqualsF(res, "8")
     } yield ()
   }
 
@@ -659,5 +693,17 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       ga.map2(gb)(_ + _)
 
     assertResultF(foo(Rxn.ret(21), Rxn.ret(21)).run[F], 42)
+  }
+
+  test("Tuple2 syntax") {
+    for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("b").run[F]
+      r = r1.get.map2(r2.get)((_, _))
+      _ <- assertResultF(r.left.run[F], "a")
+      _ <- assertResultF(r.right.run[F], "b")
+      rr = r.split(Rxn.identity, Rxn.lift[String, String](_ + "x"))
+      _ <- assertResultF(rr.run[F], ("a", "bx"))
+    } yield ()
   }
 }
