@@ -37,34 +37,18 @@ class PromiseBench extends BenchUtils {
   final val size = 2048
 
   @Benchmark
-  def promiseBaseline(s: PromiseSt): Unit = {
-    baseline(s, s.numWaiters)
-  }
-
-  private[this] def baseline(s: PromiseSt, waiters: Int): Unit = {
-    val tsk = Promise.slow[IO, String].run[IO].flatMap(task(waiters))
-    run(s.runtime, tsk, size = size)
-  }
-
-  @Benchmark
-  def promiseBaselineSingle(s: PromiseSt): Unit = {
-    val tsk = Promise.slow[IO, String].run[IO].flatMap(taskSingle)
-    run(s.runtime, tsk, size = size)
-  }
-
-  @Benchmark
   def promiseOptimized(s: PromiseSt): Unit = {
     optimized(s, s.numWaiters)
   }
 
   private[this] def optimized(s: PromiseSt, waiters: Int): Unit = {
-    val tsk = Promise.fast[IO, String].run[IO].flatMap(task(waiters))
+    val tsk = Promise[IO, String].run[IO].flatMap(task(waiters))
     run(s.runtime, tsk, size = size)
   }
 
   @Benchmark
   def promiseOptimizedSingle(s: PromiseSt): Unit = {
-    val tsk = Promise.fast[IO, String].run[IO].flatMap(taskSingle)
+    val tsk = Promise[IO, String].run[IO].flatMap(taskSingle)
     run(s.runtime, tsk, size = size)
   }
 

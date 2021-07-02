@@ -122,83 +122,12 @@ object Promise {
   def apply[F[_], A](implicit F: Reactive.Async[F]): Axn[Promise[F, A]] =
     F.promise[A]
 
-  @deprecated("old, slower implementation", since = "2021-02-08")
-  def slow[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] =
-    Rxn.unsafe.delay(_ => new PromiseImpl[F, A](Ref.unsafe[State[A]](Waiting(Map.empty))))
-
-  def fast[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] =
+  def forAsync[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] =
     Rxn.unsafe.delay(_ => new PromiseImpl2[F, A](Ref.unsafe[State2[A]](Waiting2(LongMap.empty, 0L))))
 
   implicit def invariantFunctorForPromise[F[_] : Functor]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
     override def imap[A, B](fa: Promise[F, A])(f: A => B)(g: B => A): Promise[F, B] =
       fa.imap(f)(g)
-  }
-
-  private final class Id
-
-  private sealed abstract class State[A]
-  private final case class Waiting[A](cbs: Map[Id, A => Unit]) extends State[A]
-  private final case class Done[A](a: A) extends State[A]
-
-  private final class PromiseImpl[F[_], A](ref: Ref[State[A]])(implicit rF: Reactive[F], F: Async[F])
-    extends Promise[F, A] {
-
-    val complete: Rxn[A, Boolean] = Rxn.computed { a =>
-      ref.unsafeInvisibleRead.flatMap {
-        case w @ Waiting(cbs) =>
-          ref.unsafeCas(w, Done(a)).rmap(_ => true).postCommit(Rxn.unsafe.delay { _ =>
-            cbs.valuesIterator.foreach(_(a))
-          })
-        case Done(_) =>
-          Rxn.ret(false)
-      }
-    }
-
-    val tryGet: Axn[Option[A]] = {
-      ref.get.map {
-        case Done(a) => Some(a)
-        case Waiting(_) => None
-      }
-    }
-
-    def get: F[A] = {
-      ref.unsafeInvisibleRead.run[F].flatMap {
-        case Waiting(_) =>
-          F.delay(new Id).flatMap { id =>
-            F.async { cb =>
-              F.uncancelable { poll =>
-                val removeCallback = F.uncancelable { _ =>
-                  ref.update {
-                    case Waiting(cbs) => Waiting(cbs - id)
-                    case d @ Done(_) => d
-                  }.run[F]
-                }
-                insertCallback(id, cb).run[F].flatMap {
-                  case None => F.pure(true)
-                  case Some(a) => poll(F.delay { cb(Right(a)) }).as(false)
-                }.map { cbWasInserted =>
-                  // cancellation token:
-                  if (cbWasInserted) Some(removeCallback)
-                  else None
-                }.onError { case _ => removeCallback }
-              }
-            }
-          }
-        case Done(a) =>
-          F.pure(a)
-      }
-    }
-
-    private def insertCallback(id: Id, cb: Either[Throwable, A] => Unit): Axn[Option[A]] = {
-      val kv = (id, { (a: A) => cb(Right(a)) })
-      ref.getAndUpdate {
-        case Waiting(cbs) => Waiting(cbs + kv)
-        case d @ Done(_) => d
-      }.map {
-        case Waiting(_) => None
-        case Done(a) => Some(a)
-      }
-    }
   }
 
   private sealed abstract class State2[A]
