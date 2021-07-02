@@ -71,7 +71,7 @@ sealed trait PromiseWrite[A] { self =>
       self.complete.lmap(f)
   }
 
-  def toCatsIn[F[_]](implicit F: Reactive.Async[F]): DeferredSink[F, A] = new DeferredSink[F, A] {
+  final def toCatsIn[F[_]](implicit F: Reactive.Async[F]): DeferredSink[F, A] = new DeferredSink[F, A] {
     final override def complete(a: A): F[Boolean] =
       self.complete[F](a)
   }
@@ -89,7 +89,7 @@ object PromiseWrite {
 
 sealed abstract class Promise[F[_], A] extends PromiseRead[F, A] with PromiseWrite[A] { self =>
 
-  def imap[B](f: A => B)(g: B => A)(implicit F: Functor[F]): Promise[F, B] = new Promise[F, B] {
+  final def imap[B](f: A => B)(g: B => A)(implicit F: Functor[F]): Promise[F, B] = new Promise[F, B] {
     final override def complete: Rxn[B, Boolean] =
       self.complete.lmap(g)
     final override def tryGet: Axn[Option[B]] =
@@ -98,7 +98,7 @@ sealed abstract class Promise[F[_], A] extends PromiseRead[F, A] with PromiseWri
       self.get.map(f)
   }
 
-  override def mapK[G[_]](t: F ~> G): Promise[G, A] = new Promise[G, A] {
+  final override def mapK[G[_]](t: F ~> G): Promise[G, A] = new Promise[G, A] {
     final override def complete: Rxn[A, Boolean] =
       self.complete
     final override def tryGet: Axn[Option[A]] =
@@ -107,7 +107,7 @@ sealed abstract class Promise[F[_], A] extends PromiseRead[F, A] with PromiseWri
       t(self.get)
   }
 
-  override def toCats(implicit F: Reactive.Async[F]): Deferred[F, A] = new Deferred[F, A] {
+  final override def toCats(implicit F: Reactive.Async[F]): Deferred[F, A] = new Deferred[F, A] {
     final override def get: F[A] =
       self.get
     final override def tryGet: F[Option[A]] =
@@ -126,11 +126,11 @@ object Promise {
     Rxn.unsafe.delay(_ => new PromiseImpl[F, A](Ref.unsafe[State[A]](Waiting(LongMap.empty, 0L))))
 
   implicit def invariantFunctorForPromise[F[_] : Functor]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
-    override def imap[A, B](fa: Promise[F, A])(f: A => B)(g: B => A): Promise[F, B] =
+    final override def imap[A, B](fa: Promise[F, A])(f: A => B)(g: B => A): Promise[F, B] =
       fa.imap(f)(g)
   }
 
-  private sealed abstract class State[A]
+  private sealed abstract class State[A] extends Product with Serializable
 
   /**
    * We store the callbacks in a `LongMap`, because apparently
@@ -165,7 +165,7 @@ object Promise {
       }
     }
 
-    def get: F[A] = {
+    final def get: F[A] = {
       ref.unsafeInvisibleRead.run[F].flatMap {
         case Waiting(_, _) =>
           F.async { cb =>
@@ -183,7 +183,7 @@ object Promise {
       }
     }
 
-    private def insertCallback(cb: Either[Throwable, A] => Unit): Axn[Either[Long, A]] = {
+    private[this] final def insertCallback(cb: Either[Throwable, A] => Unit): Axn[Either[Long, A]] = {
       val rcb = { (a: A) => cb(Right(a)) }
       ref.getAndUpdate {
         case Waiting(cbs, nid) => Waiting(cbs + (nid -> rcb), nid + 1)
@@ -194,7 +194,7 @@ object Promise {
       }
     }
 
-    private def removeCallback(id: Long): F[Unit] = {
+    private[this] final def removeCallback(id: Long): F[Unit] = {
       F.uncancelable { _ =>
         ref.update {
           case Waiting(cbs, nid) => Waiting(cbs - id, nid)
