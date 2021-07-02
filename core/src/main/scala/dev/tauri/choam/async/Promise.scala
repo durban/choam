@@ -207,7 +207,7 @@ object Promise {
   /**
    * We store the callbacks in a `LongMap`, because apparently
    * it is faster this way. Benchmarks show that it is measurably
-   * faster if there are a lot of callbacks, and doesn't seem slower
+   * faster if there are a lot of callbacks, and only slightly slower
    * even if there are only a few callbacks.
    *
    * The idea is from here: https://github.com/typelevel/cats-effect/pull/1128.

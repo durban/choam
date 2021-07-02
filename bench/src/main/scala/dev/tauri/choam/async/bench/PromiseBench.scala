@@ -72,7 +72,7 @@ object PromiseBench {
 
     val runtime = cats.effect.unsafe.IORuntime.global
 
-    @Param(Array("2", "8", "64", "128"))
+    @Param(Array("2", "4", "6", "8", "64", "128"))
     private[choam] var _numWaiters: Int = 2
 
     def numWaiters: Int =
