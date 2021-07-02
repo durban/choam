@@ -134,7 +134,6 @@ object Promise {
       fa.imap(f)(g)
   }
 
-  // TODO: try to optimize (maybe with `LongMap`?)
   private final class Id
 
   private sealed abstract class State[A]
@@ -207,7 +206,7 @@ object Promise {
   /**
    * We store the callbacks in a `LongMap`, because apparently
    * it is faster this way. Benchmarks show that it is measurably
-   * faster if there are a lot of callbacks, and only slightly slower
+   * faster if there are a lot of callbacks, and not slower
    * even if there are only a few callbacks.
    *
    * The idea is from here: https://github.com/typelevel/cats-effect/pull/1128.
@@ -241,18 +240,13 @@ object Promise {
       ref.unsafeInvisibleRead.run[F].flatMap {
         case Waiting2(_, _) =>
           F.async { cb =>
-            F.uncancelable[Either[Long, A]] { poll =>
-              insertCallback(cb).run[F].flatMap[Either[Long, A]] {
-                case l @ Left(_) =>
-                  F.pure(l)
-                case r @ Right(a) =>
-                  poll(F.delay { cb(Right(a)) }).as(r)
+            F.uncancelable { poll =>
+              insertCallback(cb).run[F].flatMap {
+                case Left(id) =>
+                  F.pure(Some(removeCallback(id)))
+                case Right(a) =>
+                  poll(F.delay { cb(Right(a)) }).as(None)
               }
-            }.map {
-              case Left(id) =>
-                Some(removeCallback(id))
-              case Right(_) =>
-                None
             }
           }
         case Done2(a) =>
