@@ -123,14 +123,14 @@ object Promise {
     F.promise[A]
 
   def forAsync[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] =
-    Rxn.unsafe.delay(_ => new PromiseImpl2[F, A](Ref.unsafe[State2[A]](Waiting2(LongMap.empty, 0L))))
+    Rxn.unsafe.delay(_ => new PromiseImpl[F, A](Ref.unsafe[State[A]](Waiting(LongMap.empty, 0L))))
 
   implicit def invariantFunctorForPromise[F[_] : Functor]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
     override def imap[A, B](fa: Promise[F, A])(f: A => B)(g: B => A): Promise[F, B] =
       fa.imap(f)(g)
   }
 
-  private sealed abstract class State2[A]
+  private sealed abstract class State[A]
 
   /**
    * We store the callbacks in a `LongMap`, because apparently
@@ -140,34 +140,34 @@ object Promise {
    *
    * The idea is from here: https://github.com/typelevel/cats-effect/pull/1128.
    */
-  private final case class Waiting2[A](cbs: LongMap[A => Unit], nextId: Long) extends State2[A]
+  private final case class Waiting[A](cbs: LongMap[A => Unit], nextId: Long) extends State[A]
 
-  private final case class Done2[A](a: A) extends State2[A]
+  private final case class Done[A](a: A) extends State[A]
 
-  private final class PromiseImpl2[F[_], A](ref: Ref[State2[A]])(implicit rF: Reactive[F], F: Async[F])
+  private final class PromiseImpl[F[_], A](ref: Ref[State[A]])(implicit rF: Reactive[F], F: Async[F])
     extends Promise[F, A] {
 
     val complete: A =#> Boolean = Rxn.computed { a =>
       ref.unsafeInvisibleRead.flatMap {
-        case w @ Waiting2(cbs, _) =>
-          ref.unsafeCas(w, Done2(a)).as(true).postCommit(Rxn.unsafe.delay { _ =>
+        case w @ Waiting(cbs, _) =>
+          ref.unsafeCas(w, Done(a)).as(true).postCommit(Rxn.unsafe.delay { _ =>
             cbs.valuesIterator.foreach(_(a))
           })
-        case Done2(_) =>
+        case Done(_) =>
           Rxn.ret(false)
       }
     }
 
     val tryGet: Axn[Option[A]] = {
       ref.get.map {
-        case Done2(a) => Some(a)
-        case Waiting2(_, _) => None
+        case Done(a) => Some(a)
+        case Waiting(_, _) => None
       }
     }
 
     def get: F[A] = {
       ref.unsafeInvisibleRead.run[F].flatMap {
-        case Waiting2(_, _) =>
+        case Waiting(_, _) =>
           F.async { cb =>
             F.uncancelable { poll =>
               insertCallback(cb).run[F].flatMap {
@@ -178,7 +178,7 @@ object Promise {
               }
             }
           }
-        case Done2(a) =>
+        case Done(a) =>
           F.pure(a)
       }
     }
@@ -186,19 +186,19 @@ object Promise {
     private def insertCallback(cb: Either[Throwable, A] => Unit): Axn[Either[Long, A]] = {
       val rcb = { (a: A) => cb(Right(a)) }
       ref.getAndUpdate {
-        case Waiting2(cbs, nid) => Waiting2(cbs + (nid -> rcb), nid + 1)
-        case d @ Done2(_) => d
+        case Waiting(cbs, nid) => Waiting(cbs + (nid -> rcb), nid + 1)
+        case d @ Done(_) => d
       }.map {
-        case Waiting2(_, nid) => Left(nid)
-        case Done2(a) => Right(a)
+        case Waiting(_, nid) => Left(nid)
+        case Done(a) => Right(a)
       }
     }
 
     private def removeCallback(id: Long): F[Unit] = {
       F.uncancelable { _ =>
         ref.update {
-          case Waiting2(cbs, nid) => Waiting2(cbs - id, nid)
-          case d @ Done2(_) => d
+          case Waiting(cbs, nid) => Waiting(cbs - id, nid)
+          case d @ Done(_) => d
         }.run[F]
       }
     }
