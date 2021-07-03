@@ -17,9 +17,15 @@
 
 package dev.tauri.choam
 
-import cats.effect.{ Sync, Async, IO, SyncIO, MonadCancel, Temporal }
+import scala.concurrent.Future
+import scala.concurrent.duration._
 
-import munit.{ CatsEffectSuite, Location, FunSuite }
+import cats.effect.{ Sync, Async, IO, SyncIO, MonadCancel, Temporal }
+import cats.effect.kernel.Outcome
+import cats.effect.kernel.testkit.TestContext
+import cats.effect.unsafe.{ IORuntime, IORuntimeConfig, Scheduler }
+
+import munit.{ CatsEffectSuite, Location, FunSuite, FailException }
 
 trait MUnitUtils { this: FunSuite =>
 
@@ -100,6 +106,59 @@ abstract class BaseSpecIO extends CatsEffectSuite with BaseSpecAsyncF[IO] { this
   }
 }
 
+abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { this: KCASImplSpec =>
+
+  protected override val testContext: TestContext =
+    TestContext()
+
+  override def munitValueTransforms: List[ValueTransform] = {
+    new ValueTransform(
+      "ticked IO",
+      { case task: IO[a] =>
+        @volatile
+        var res: Outcome[cats.Id, Throwable, a] = null
+        task
+          .flatMap(IO.pure)
+          .handleErrorWith(IO.raiseError)
+          .unsafeRunAsyncOutcome({ (outcome) => res = outcome })(this.ioRuntime)
+        testContext.tickAll(1.second)
+        if (res eq null) {
+          Future.failed(new FailException("ticked IO didn't complete", Location.empty))
+        } else {
+          res.fold(
+            canceled = Future.failed(new FailException("ticked IO was cancelled", Location.empty)),
+            errored = Future.failed(_),
+            completed = Future.successful(_),
+          )
+        }
+      }
+    ) +: super.munitValueTransforms
+  }
+
+  override implicit val ioRuntime: IORuntime = {
+    IORuntime(
+      compute = testContext,
+      blocking = testContext,
+      scheduler = new Scheduler {
+        override def sleep(delay: FiniteDuration, task: Runnable): Runnable = {
+          val cancel = testContext.schedule(delay, task)
+          new Runnable {
+            override def run(): Unit = cancel()
+          }
+        }
+        override def nowMillis(): Long = {
+          testContext.now().toMillis
+        }
+        override def monotonicNanos(): Long = {
+          testContext.now().toNanos
+        }
+      },
+      shutdown = () => {},
+      config = IORuntimeConfig(),
+    )
+  }
+}
+
 abstract class BaseSpecZIO extends CatsEffectSuite with BaseSpecAsyncF[zio.Task] { this: KCASImplSpec =>
 
   final override def F: Async[zio.Task] =
@@ -135,5 +194,14 @@ abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO]
     implicit loc: Location, ev: B <:< A
   ): SyncIO[Unit] = {
     assertSyncIO(obtained, expected, clue)
+  }
+}
+
+trait TestContextSpec[F[_]] { this: BaseSpecAsyncF[F] with KCASImplSpec =>
+
+  protected def testContext: TestContext
+
+  def tickAll: F[Unit] = F.delay {
+    this.testContext.tickAll()
   }
 }

@@ -194,6 +194,7 @@ lazy val dependencies = new {
   val test = Seq(
     catsEffectAll,
     "org.typelevel" %% "cats-laws" % catsVersion,
+    "org.typelevel" %% "cats-effect-kernel-testkit" % catsEffectVersion,
     "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion,
     "org.typelevel" %% "munit-cats-effect-3" % "1.0.5",
     "org.typelevel" %% "scalacheck-effect" % scalacheckEffectVersion,

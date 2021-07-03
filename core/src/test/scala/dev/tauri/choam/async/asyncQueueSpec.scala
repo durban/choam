@@ -18,55 +18,53 @@
 package dev.tauri.choam
 package async
 
-import scala.concurrent.duration._
-
 import cats.effect.IO
 
 final class AsyncQueueSpec_Prim_EMCAS_IO
-  extends BaseSpecIO
+  extends BaseSpecTickedIO
   with SpecEMCAS
   with AsyncQueueSpec[IO]
   with AsyncQueueImplPrim[IO]
 
-final class AsyncQueueSpec_Prim_EMCAS_ZIO
-  extends BaseSpecZIO
-  with SpecEMCAS
-  with AsyncQueueSpec[zio.Task]
-  with AsyncQueueImplPrim[zio.Task]
+// final class AsyncQueueSpec_Prim_EMCAS_ZIO
+//   extends BaseSpecZIO
+//   with SpecEMCAS
+//   with AsyncQueueSpec[zio.Task]
+//   with AsyncQueueImplPrim[zio.Task]
 
 final class AsyncQueueSpec_Derived_EMCAS_IO
-  extends BaseSpecIO
+  extends BaseSpecTickedIO
   with SpecEMCAS
   with AsyncQueueImplDerived[IO]
 
-final class AsyncQueueSpec_Derived_EMCAS_ZIO
-  extends BaseSpecZIO
-  with SpecEMCAS
-  with AsyncQueueImplDerived[zio.Task]
+// final class AsyncQueueSpec_Derived_EMCAS_ZIO
+//   extends BaseSpecZIO
+//   with SpecEMCAS
+//   with AsyncQueueImplDerived[zio.Task]
 
 final class AsyncQueueSpec_WithSize_EMCAS_IO
-  extends BaseSpecIO
+  extends BaseSpecTickedIO
   with SpecEMCAS
   with AsyncQueueImplWithSize[IO]
 
-final class AsyncQueueSpec_WithSize_EMCAS_ZIO
-  extends BaseSpecZIO
-  with SpecEMCAS
-  with AsyncQueueImplWithSize[zio.Task]
+// final class AsyncQueueSpec_WithSize_EMCAS_ZIO
+//   extends BaseSpecZIO
+//   with SpecEMCAS
+//   with AsyncQueueImplWithSize[zio.Task]
 
-trait AsyncQueueImplPrim[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec =>
+trait AsyncQueueImplPrim[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
   final override type Q[G[_], A] = AsyncQueue[G, A]
   protected final override def newQueue[G[_] : Reactive, A] =
     AsyncQueue.primitive[G, A].run[G]
 }
 
-trait AsyncQueueImplDerived[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec =>
+trait AsyncQueueImplDerived[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
   final override type Q[G[_], A] = AsyncQueue[G, A]
   protected final override def newQueue[G[_] : Reactive, A] =
     AsyncQueue.derived[G, A].run[G]
 }
 
-trait AsyncQueueImplWithSize[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec =>
+trait AsyncQueueImplWithSize[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
   final override type Q[G[_], A] = AsyncQueue.WithSize[G, A]
 
@@ -79,7 +77,7 @@ trait AsyncQueueImplWithSize[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpe
       cq <- q.toCats
       _ <- assertResultF(cq.size, 0)
       f <- cq.take.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       _ <- q.enqueue[F]("a")
       _ <- assertResultF(f.joinWithNever, "a")
       _ <- assertResultF(cq.size, 0)
@@ -115,7 +113,7 @@ trait AsyncQueueImplWithSize[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpe
   }
 }
 
-trait AsyncQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait AsyncQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
   type Q[G[_], A] <: AsyncQueue[G, A]
 
@@ -137,11 +135,11 @@ trait AsyncQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       s <- newQueue[F, String]
       f1 <- s.deque.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       f2 <- s.deque.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       f3 <- s.deque.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       _ <- s.enqueue[F]("a")
       _ <- s.enqueue[F]("b")
       _ <- s.enqueue[F]("c")
