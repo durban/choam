@@ -18,31 +18,29 @@
 package dev.tauri.choam
 package async
 
-import scala.concurrent.duration._
-
 import cats.effect.IO
 
 final class AsyncFromSpec_NaiveKCAS_IO
-  extends BaseSpecIO
+  extends BaseSpecTickedIO
   with SpecNaiveKCAS
   with AsyncFromSpec[IO]
 
 final class AsyncFromSpec_NaiveKCAS_ZIO
-  extends BaseSpecZIO
+  extends BaseSpecTickedZIO
   with SpecNaiveKCAS
   with AsyncFromSpec[zio.Task]
 
 final class AsyncFromSpec_EMCAS_IO
-  extends BaseSpecIO
+  extends BaseSpecTickedIO
   with SpecEMCAS
   with AsyncFromSpec[IO]
 
 final class AsyncFromSpec_EMCAS_ZIO
-  extends BaseSpecZIO
+  extends BaseSpecTickedZIO
   with SpecEMCAS
   with AsyncFromSpec[zio.Task]
 
-trait AsyncFromSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait AsyncFromSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
   test("AsyncFrom around a Ref") {
     for {
@@ -52,7 +50,7 @@ trait AsyncFromSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         ref.getAndSet.contramap[Int](Some(_)).void
       ).run[F]
       f1 <- af.get.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       f2 <- af.get.start
       _ <- af.set[F](42)
       _ <- assertResultF(f1.joinWithNever, 42)
