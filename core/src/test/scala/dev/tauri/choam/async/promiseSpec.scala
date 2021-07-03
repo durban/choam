@@ -27,27 +27,47 @@ import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.Outcome
 
-final class PromiseSpec_NaiveKCAS_IO
+final class PromiseSpec_NaiveKCAS_IO_Real
   extends BaseSpecIO
   with SpecNaiveKCAS
   with PromiseSpec[IO]
 
-final class PromiseSpec_NaiveKCAS_ZIO
+final class PromiseSpec_NaiveKCAS_IO_Ticked
+  extends BaseSpecTickedIO
+  with SpecNaiveKCAS
+  with PromiseSpecTicked[IO]
+
+final class PromiseSpec_NaiveKCAS_ZIO_Real
   extends BaseSpecZIO
   with SpecNaiveKCAS
   with PromiseSpec[zio.Task]
 
-final class PromiseSpec_EMCAS_IO
+final class PromiseSpec_NaiveKCAS_ZIO_Ticked
+  extends BaseSpecTickedZIO
+  with SpecNaiveKCAS
+  with PromiseSpecTicked[zio.Task]
+
+final class PromiseSpec_EMCAS_IO_Real
   extends BaseSpecIO
   with SpecEMCAS
   with PromiseSpec[IO]
 
-final class PromiseSpec_EMCAS_ZIO
+final class PromiseSpec_EMCAS_IO_Ticked
+  extends BaseSpecTickedIO
+  with SpecEMCAS
+  with PromiseSpecTicked[IO]
+
+final class PromiseSpec_EMCAS_ZIO_Real
   extends BaseSpecZIO
   with SpecEMCAS
   with PromiseSpec[zio.Task]
 
-trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+final class PromiseSpec_EMCAS_ZIO_Ticked
+  extends BaseSpecTickedZIO
+  with SpecEMCAS
+  with PromiseSpecTicked[zio.Task]
+
+trait PromiseSpecTicked[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
   test("Completing an empty promise should call all registered callbacks") {
     for {
@@ -55,7 +75,7 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       act = p.get
       fib1 <- act.start
       fib2 <- act.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       b <- (Rxn.pure(42) >>> p.complete).run[F]
       res1 <- fib1.joinWithNever
       res2 <- fib2.joinWithNever
@@ -64,6 +84,27 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertEqualsF(res2, 42)
     } yield ()
   }
+
+  test("A cancelled callback should not be called") {
+    @volatile var flag1 = false
+    @volatile var flag2 = false
+    for {
+      p <- Promise[F, Int].run[F]
+      f1 <- p.get.flatTap(_ => F.delay { flag1 = true }).start
+      f2 <- p.get.flatTap(_ => F.delay { flag2 = true }).start
+      _ <- this.tickAll
+      _ <- f1.cancel
+      ok <- p.complete[F](42)
+      _ <- assertF(ok)
+      _ <- assertResultF(f2.joinWithNever, 42)
+      _ <- assertResultF(f1.join, Outcome.canceled[F, Throwable, Int])
+      _ <- assertResultF(F.delay { flag1 }, false)
+      _ <- assertResultF(F.delay { flag2 }, true)
+    } yield ()
+  }
+}
+
+trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("Completing a fulfilled promise should not be possible") {
     for {
@@ -90,24 +131,6 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertEqualsF(res1, 42)
       _ <- assertEqualsF(res2, 42)
       _ <- assertResultF(F.delay { cnt.get() }, 2L)
-    } yield ()
-  }
-
-  test("A cancelled callback should not be called") {
-    @volatile var flag1 = false
-    @volatile var flag2 = false
-    for {
-      p <- Promise[F, Int].run[F]
-      f1 <- p.get.flatTap(_ => F.delay { flag1 = true }).start
-      f2 <- p.get.flatTap(_ => F.delay { flag2 = true }).start
-      _ <- F.sleep(0.1.seconds)
-      _ <- f1.cancel
-      ok <- p.complete[F](42)
-      _ <- assertF(ok)
-      _ <- assertResultF(f2.joinWithNever, 42)
-      _ <- assertResultF(f1.join, Outcome.canceled[F, Throwable, Int])
-      _ <- assertResultF(F.delay { flag1 }, false)
-      _ <- assertResultF(F.delay { flag2 }, true)
     } yield ()
   }
 
