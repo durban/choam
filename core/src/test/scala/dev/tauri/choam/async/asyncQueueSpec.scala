@@ -26,31 +26,31 @@ final class AsyncQueueSpec_Prim_EMCAS_IO
   with AsyncQueueSpec[IO]
   with AsyncQueueImplPrim[IO]
 
-// final class AsyncQueueSpec_Prim_EMCAS_ZIO
-//   extends BaseSpecZIO
-//   with SpecEMCAS
-//   with AsyncQueueSpec[zio.Task]
-//   with AsyncQueueImplPrim[zio.Task]
+final class AsyncQueueSpec_Prim_EMCAS_ZIO
+  extends BaseSpecTickedZIO
+  with SpecEMCAS
+  with AsyncQueueSpec[zio.Task]
+  with AsyncQueueImplPrim[zio.Task]
 
 final class AsyncQueueSpec_Derived_EMCAS_IO
   extends BaseSpecTickedIO
   with SpecEMCAS
   with AsyncQueueImplDerived[IO]
 
-// final class AsyncQueueSpec_Derived_EMCAS_ZIO
-//   extends BaseSpecZIO
-//   with SpecEMCAS
-//   with AsyncQueueImplDerived[zio.Task]
+final class AsyncQueueSpec_Derived_EMCAS_ZIO
+  extends BaseSpecTickedZIO
+  with SpecEMCAS
+  with AsyncQueueImplDerived[zio.Task]
 
 final class AsyncQueueSpec_WithSize_EMCAS_IO
   extends BaseSpecTickedIO
   with SpecEMCAS
   with AsyncQueueImplWithSize[IO]
 
-// final class AsyncQueueSpec_WithSize_EMCAS_ZIO
-//   extends BaseSpecZIO
-//   with SpecEMCAS
-//   with AsyncQueueImplWithSize[zio.Task]
+final class AsyncQueueSpec_WithSize_EMCAS_ZIO
+  extends BaseSpecTickedZIO
+  with SpecEMCAS
+  with AsyncQueueImplWithSize[zio.Task]
 
 trait AsyncQueueImplPrim[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
   final override type Q[G[_], A] = AsyncQueue[G, A]
