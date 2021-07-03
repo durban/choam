@@ -18,30 +18,28 @@
 package dev.tauri.choam
 package async
 
-import scala.concurrent.duration._
-
 import cats.effect.IO
 
 final class AsyncStackSpec_Impl1_NaiveKCAS_IO
-  extends BaseSpecIO
+  extends BaseSpecTickedIO
   with SpecNaiveKCAS
   with AsyncStackSpec[IO]
   with AsyncStackImpl1[IO]
 
 final class AsyncStackSpec_Impl1_NaiveKCAS_ZIO
-  extends BaseSpecZIO
+  extends BaseSpecTickedZIO
   with SpecNaiveKCAS
   with AsyncStackSpec[zio.Task]
   with AsyncStackImpl1[zio.Task]
 
 final class AsyncStackSpec_Impl1_EMCAS_IO
-  extends BaseSpecIO
+  extends BaseSpecTickedIO
   with SpecEMCAS
   with AsyncStackSpec[IO]
   with AsyncStackImpl1[IO]
 
 final class AsyncStackSpec_Impl1_EMCAS_ZIO
-  extends BaseSpecZIO
+  extends BaseSpecTickedZIO
   with SpecEMCAS
   with AsyncStackSpec[zio.Task]
   with AsyncStackImpl1[zio.Task]
@@ -50,41 +48,41 @@ final class AsyncStackSpec_Impl1_EMCAS_ZIO
 // TODO: because RemoveQueue uses `null` as sentinel
 
 final class AsyncStackSpec_Impl2_EMCAS_IO
-  extends BaseSpecIO
+  extends BaseSpecTickedIO
   with SpecEMCAS
   with AsyncStackImpl2[IO]
 
 final class AsyncStackSpec_Impl2_EMCAS_ZIO
-  extends BaseSpecZIO
+  extends BaseSpecTickedZIO
   with SpecEMCAS
   with AsyncStackImpl2[zio.Task]
 
 final class AsyncStackSpec_Impl3_EMCAS_IO
-  extends BaseSpecIO
+  extends BaseSpecTickedIO
   with SpecEMCAS
   with AsyncStackImpl3[IO]
 
 final class AsyncStackSpec_Impl3_EMCAS_ZIO
-  extends BaseSpecZIO
+  extends BaseSpecTickedZIO
   with SpecEMCAS
   with AsyncStackImpl3[zio.Task]
 
-trait AsyncStackImpl1[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec =>
+trait AsyncStackImpl1[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
   protected final override def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
     AsyncStack.impl1[G, A].run[G]
 }
 
-trait AsyncStackImpl2[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec =>
+trait AsyncStackImpl2[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
   protected final override def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
     AsyncStack.impl2[G, A].run[G]
 }
 
-trait AsyncStackImpl3[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec =>
+trait AsyncStackImpl3[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
   protected final override def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
     AsyncStack.impl3[G, A].run[G]
 }
 
-trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
   protected def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]]
 
@@ -118,7 +116,7 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       s <- newStack[F, String]
       f1 <- s.pop.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       _ <- s.push[F]("foo")
       p1 <- f1.joinWithNever
       _ <- assertEqualsF(p1, "foo")
@@ -129,9 +127,9 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       s <- newStack[F, String]
       f1 <- s.pop.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       f2 <- s.pop.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       _ <- s.push[F]("foo")
       _ <- assertResultF(f1.joinWithNever, "foo")
       _ <- s.push[F]("bar")
@@ -143,11 +141,11 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       s <- newStack[F, String]
       f1 <- s.pop.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       f2 <- s.pop.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       f3 <- s.pop.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       _ <- s.push[F]("a")
       _ <- s.push[F]("b")
       _ <- s.push[F]("c")
@@ -161,11 +159,11 @@ trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       s <- newStack[F, String]
       f1 <- s.pop.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       f2 <- s.pop.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       f3 <- s.pop.start
-      _ <- F.sleep(0.1.seconds)
+      _ <- this.tickAll
       _ <- f2.cancel
       _ <- s.push[F]("a")
       _ <- s.push[F]("b")
