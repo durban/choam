@@ -106,6 +106,9 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     (this × that).contramap[X](x => (x, x))
 
   final def ? : Rxn[A, Option[B]] =
+    this.attempt
+
+  final def attempt: Rxn[A, Option[B]] =
     this.map(Some(_)) + ret[A, Option[B]](None)
 
   final def map[C](f: B => C): Rxn[A, C] =

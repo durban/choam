@@ -35,15 +35,24 @@
   - LawsSpec:
     - improve generated `Rxn`s, check if they make sense
     - check if `testingEqRxn` makes sense, maybe do structural checking
-  - Test with other IO impls (when they cupport ce3)
+  - Test with other IO impls (when they support ce3)
 - EMCAS with simplified IBR:
   - Cleanup after a k-CAS op is finalized:
     - It is enabled now, since it is necessary, to avoid leaking memory.
     - TODO:
       - Measure performance.
       - Measure memory requirements, make sure finalized list is not too big.
-- Compile-time detection of:
-  - impossible k-CAS operations (2 changes to the same `Ref`)
+- Compile-time detection of impossible k-CAS operations (2 changes to the same `Ref`)
+    - we can't do it without alias analysis, e.g., the method
+      ```scala
+      def foo(r1: Ref[Int], r2: Ref[Int]): Axn[Unit] =
+        r1.update(_ + 1) * r2.update(_ + 2)
+      ```
+      might be called like `foo(myRef, myRef)`
+    - we probably can't do alias analysis
+    - possible directions:
+      - leave it as is (need to figure out how big a problem this is in practice)
+      - make it work somehow (almost STM? performance hit?)
 - Optimization ideas:
   - `Rxn#provide`
   - `Rxn#as`

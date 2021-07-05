@@ -59,7 +59,7 @@ trait Ref[A] extends MemoryLocation[A] { self =>
 
   /** Returns `false` iff the update failed */
   final def tryUpdate(f: A => A): Axn[Boolean] =
-    update(f).?.map(_.isDefined)
+    update(f).as(true) + Rxn.ret(false)
 
   /** Returns previous value */
   final def getAndUpdate(f: A => A): Axn[A] =
