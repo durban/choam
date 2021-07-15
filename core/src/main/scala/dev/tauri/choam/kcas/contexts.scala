@@ -59,6 +59,16 @@ final class ThreadContext(
   private[choam] var onRetry: ArrayList[Axn[Unit]] =
     new ArrayList
 
+  /**
+   * The descriptor `desc` was finalized (i.e., succeeded or failed). Put it
+   * in the list of finalized descriptors, and run GC cleanup (IBR) with a small
+   * probability.
+   *
+   * @param desc The descriptor whichh was finalized.
+   * @param limit Don't run the GC if the number of finalized decriptors is less than `limit`.
+   * @param replace The period with which to run GC (IBR); should be a power of 2; `replace = N`
+   *                makes the GC run with a probability of `1 / N`.
+   */
   final def finalized(desc: EMCASDescriptor, limit: Int = 256, replace: Int = 256): Unit = {
     desc.next = this.finalizedDescriptors
     this.finalizedDescriptors = desc

@@ -41,6 +41,12 @@ private[choam] object EMCAS extends KCAS { self =>
    * (The other version of `readInternal`, specialized for
    * an ongoing MCAS operation is inlined into `tryWord` below,
    * see the `while` loop.)
+   *
+   * @param ref: The [[MemoryLocation]] to read from.
+   * @param ctx: The [[ThreadContext]] of the current thread.
+   * @param replace: The period with which to run GC (IBR) when encountering
+   *                 a descriptor. Should be a power of 2; higher values
+   *                 make the GC run less frequently.
    */
   private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: ThreadContext, replace: Int = 256): A = {
     @tailrec
@@ -110,6 +116,10 @@ private[choam] object EMCAS extends KCAS { self =>
    * @param desc: The main descriptor.
    * @param helping: Pass `true` when helping `desc` found in a `Ref`;
    *                 `false` when `desc` is a new descriptor.
+   * @param ctx: The [[ThreadContext]] of the current thread.
+   * @param replace: The period with which to run GC (IBR) after finalizing
+   *                 an operation. Should be a power of 2; higher values
+   *                 make the GC run less frequently.
    */
   def MCAS(desc: EMCASDescriptor, helping: Boolean, ctx: ThreadContext, replace: Int = 4096): Boolean = {
     // TODO: add a fast path for when `desc` is empty
@@ -251,8 +261,9 @@ private[choam] object EMCAS extends KCAS { self =>
           EMCASStatus.FAILED
         }
         if (desc.casStatus(EMCASStatus.ACTIVE, rr)) {
-          // TODO:
-          ctx.finalized(desc, limit = replace)
+          // We pass `limit = replace`, because `limit` also
+          // causes less frequent GC runs.
+          ctx.finalized(desc, limit = replace, replace = replace)
           (rr eq EMCASStatus.SUCCESSFUL)
         } else {
           // someone else finalized the descriptor, we must read its status:
