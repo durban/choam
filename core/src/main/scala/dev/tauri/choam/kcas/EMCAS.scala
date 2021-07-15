@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package kcas
 
-import java.util.concurrent.ThreadLocalRandom
-
 import mcas.MemoryLocation
 
 /**
@@ -74,7 +72,7 @@ private[choam] object EMCAS extends KCAS { self =>
 
   private final def maybeReplaceDescriptor[A](ref: MemoryLocation[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext, replace: Int): Unit = {
     if (replace != 0) {
-      val n = ThreadLocalRandom.current().nextInt()
+      val n = ctx.random.nextInt()
       if ((n % replace) == 0) {
         replaceDescriptorIfFree[A](ref, ov, nv, ctx)
         ()
