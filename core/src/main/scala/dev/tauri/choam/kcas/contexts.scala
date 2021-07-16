@@ -69,7 +69,7 @@ final class ThreadContext(
    * @param replace The period with which to run GC (IBR); should be a power of 2; `replace = N`
    *                makes the GC run with a probability of `1 / N`.
    */
-  final def finalized(desc: EMCASDescriptor, limit: Int = 256, replace: Int = 256): Unit = {
+  final def finalized(desc: EMCASDescriptor, limit: Int, replace: Int): Unit = {
     desc.next = this.finalizedDescriptors
     this.finalizedDescriptors = desc
     this.finalizedDescriptorsCount += 1

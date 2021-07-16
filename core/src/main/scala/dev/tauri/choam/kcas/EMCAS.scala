@@ -26,6 +26,15 @@ import mcas.MemoryLocation
  */
 private[choam] object EMCAS extends KCAS { self =>
 
+  private[choam] final val replacePeriodForEMCAS =
+    4096
+
+  private[choam] final val replacePeriodForReadValue =
+    256
+
+  private[choam] final val limitForFinalizedList =
+    4096
+
   private[kcas] val global =
     new GlobalContext(self)
 
@@ -48,7 +57,7 @@ private[choam] object EMCAS extends KCAS { self =>
    *                 a descriptor. Should be a power of 2; higher values
    *                 make the GC run less frequently.
    */
-  private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: ThreadContext, replace: Int = 256): A = {
+  private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: ThreadContext, replace: Int): A = {
     @tailrec
     def go(): A = {
       ctx.readVolatileRef[A](ref) match {
@@ -108,7 +117,7 @@ private[choam] object EMCAS extends KCAS { self =>
   // Listing 3 in the paper:
 
   private[choam] final override def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A =
-    readValue(ref, ctx)
+    readValue(ref, ctx, EMCAS.replacePeriodForReadValue)
 
   /**
    * Performs an MCAS operation.
@@ -121,7 +130,7 @@ private[choam] object EMCAS extends KCAS { self =>
    *                 an operation. Should be a power of 2; higher values
    *                 make the GC run less frequently.
    */
-  def MCAS(desc: EMCASDescriptor, helping: Boolean, ctx: ThreadContext, replace: Int = 4096): Boolean = {
+  def MCAS(desc: EMCASDescriptor, helping: Boolean, ctx: ThreadContext, replace: Int): Boolean = {
     // TODO: add a fast path for when `desc` is empty
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): TryWordResult = {
@@ -261,9 +270,7 @@ private[choam] object EMCAS extends KCAS { self =>
           EMCASStatus.FAILED
         }
         if (desc.casStatus(EMCASStatus.ACTIVE, rr)) {
-          // We pass `limit = replace`, because `limit` also
-          // causes less frequent GC runs.
-          ctx.finalized(desc, limit = replace, replace = replace)
+          ctx.finalized(desc, limit = EMCAS.limitForFinalizedList, replace = replace)
           (rr eq EMCASStatus.SUCCESSFUL)
         } else {
           // someone else finalized the descriptor, we must read its status:
@@ -303,7 +310,7 @@ private[choam] object EMCAS extends KCAS { self =>
   }
 
   private[choam] final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
-    EMCAS.MCAS(desc, helping = false, ctx = ctx)
+    EMCAS.MCAS(desc, helping = false, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
   }
 
   /** For testing */
