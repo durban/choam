@@ -24,7 +24,7 @@ import org.openjdk.jmh.infra.Blackhole
 import util._
 import InterpreterBench._
 
-@Fork(3)
+@Fork(2)
 @Threads(2)
 class InterpreterBench {
 
