@@ -1,0 +1,418 @@
+[
+    {
+        "jmhVersion" : "1.32",
+        "benchmark" : "dev.tauri.choam.bench.ChoiceCombinatorBench.choiceCAS",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 3,
+        "jvm" : "/usr/lib/jvm/java-11-openjdk-amd64/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "11.0.11",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "11.0.11+9-Ubuntu-0ubuntu2.18.04",
+        "warmupIterations" : 5,
+        "warmupTime" : "10 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "10 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "kcasName" : "dev.tauri.choam.kcas.EMCAS",
+            "size" : "8"
+        },
+        "primaryMetric" : {
+            "score" : 1589563.9899849046,
+            "scoreError" : 37396.368114327626,
+            "scoreConfidence" : [
+                1552167.621870577,
+                1626960.3580992322
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1536866.5219529187,
+                "50.0" : 1600806.3934534222,
+                "90.0" : 1632199.6934692932,
+                "95.0" : 1635408.2510085686,
+                "99.0" : 1635408.2510085686,
+                "99.9" : 1635408.2510085686,
+                "99.99" : 1635408.2510085686,
+                "99.999" : 1635408.2510085686,
+                "99.9999" : 1635408.2510085686,
+                "100.0" : 1635408.2510085686
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1547275.727405612,
+                    1536866.5219529187,
+                    1544883.591758965,
+                    1542318.5042157166,
+                    1552669.2185958184
+                ],
+                [
+                    1635408.2510085686,
+                    1614379.841439564,
+                    1620213.1486930647,
+                    1630060.6551097762,
+                    1623302.5894626777
+                ],
+                [
+                    1592276.8577639041,
+                    1597892.864282985,
+                    1602197.5435303964,
+                    1600806.3934534222,
+                    1602908.1411001822
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.32",
+        "benchmark" : "dev.tauri.choam.bench.ChoiceCombinatorBench.choiceCAS",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 3,
+        "jvm" : "/usr/lib/jvm/java-11-openjdk-amd64/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "11.0.11",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "11.0.11+9-Ubuntu-0ubuntu2.18.04",
+        "warmupIterations" : 5,
+        "warmupTime" : "10 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "10 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "kcasName" : "dev.tauri.choam.kcas.EMCAS",
+            "size" : "16"
+        },
+        "primaryMetric" : {
+            "score" : 1010240.5919127032,
+            "scoreError" : 4079.1465589399227,
+            "scoreConfidence" : [
+                1006161.4453537633,
+                1014319.7384716432
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1002552.850754495,
+                "50.0" : 1011046.6520535088,
+                "90.0" : 1015675.9235212549,
+                "95.0" : 1016109.7081948835,
+                "99.0" : 1016109.7081948835,
+                "99.9" : 1016109.7081948835,
+                "99.99" : 1016109.7081948835,
+                "99.999" : 1016109.7081948835,
+                "99.9999" : 1016109.7081948835,
+                "100.0" : 1016109.7081948835
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1011207.2500667194,
+                    1011775.1985529065,
+                    1002552.850754495,
+                    1003773.1473858841,
+                    1011076.8461086117
+                ],
+                [
+                    1009381.2276343387,
+                    1009933.4075096924,
+                    1007211.3506798887,
+                    1011046.6520535088,
+                    1007263.6242230425
+                ],
+                [
+                    1010742.5554002856,
+                    1012037.7306360072,
+                    1016109.7081948835,
+                    1015386.7337388358,
+                    1014110.5957514484
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.32",
+        "benchmark" : "dev.tauri.choam.bench.ChoiceCombinatorBench.choiceCAS",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 3,
+        "jvm" : "/usr/lib/jvm/java-11-openjdk-amd64/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "11.0.11",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "11.0.11+9-Ubuntu-0ubuntu2.18.04",
+        "warmupIterations" : 5,
+        "warmupTime" : "10 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "10 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "kcasName" : "dev.tauri.choam.kcas.EMCAS",
+            "size" : "32"
+        },
+        "primaryMetric" : {
+            "score" : 575969.2600738057,
+            "scoreError" : 2775.7156155296184,
+            "scoreConfidence" : [
+                573193.5444582761,
+                578744.9756893353
+            ],
+            "scorePercentiles" : {
+                "0.0" : 569371.5056015988,
+                "50.0" : 576296.5226878471,
+                "90.0" : 578972.3930424782,
+                "95.0" : 579313.3866626967,
+                "99.0" : 579313.3866626967,
+                "99.9" : 579313.3866626967,
+                "99.99" : 579313.3866626967,
+                "99.999" : 579313.3866626967,
+                "99.9999" : 579313.3866626967,
+                "100.0" : 579313.3866626967
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    576720.0362729747,
+                    574105.3999811079,
+                    578622.021989092,
+                    577901.1206302274,
+                    574644.8486613046
+                ],
+                [
+                    578745.0639623327,
+                    579313.3866626967,
+                    577589.1802902888,
+                    574332.1602619297,
+                    573984.4615132847
+                ],
+                [
+                    574781.3491930538,
+                    576296.5226878471,
+                    577966.8267290758,
+                    569371.5056015988,
+                    575165.0166702702
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.32",
+        "benchmark" : "dev.tauri.choam.bench.ChoiceCombinatorBench.choiceDummy",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 3,
+        "jvm" : "/usr/lib/jvm/java-11-openjdk-amd64/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "11.0.11",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "11.0.11+9-Ubuntu-0ubuntu2.18.04",
+        "warmupIterations" : 5,
+        "warmupTime" : "10 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "10 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "kcasName" : "dev.tauri.choam.kcas.EMCAS",
+            "size" : "8"
+        },
+        "primaryMetric" : {
+            "score" : 1478017.4930795399,
+            "scoreError" : 9200.999617741205,
+            "scoreConfidence" : [
+                1468816.4934617986,
+                1487218.492697281
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1465257.4491386325,
+                "50.0" : 1478157.9329242648,
+                "90.0" : 1491604.561773607,
+                "95.0" : 1491733.3967129483,
+                "99.0" : 1491733.3967129483,
+                "99.9" : 1491733.3967129483,
+                "99.99" : 1491733.3967129483,
+                "99.999" : 1491733.3967129483,
+                "99.9999" : 1491733.3967129483,
+                "100.0" : 1491733.3967129483
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1467454.1515546243,
+                    1491518.6718140463,
+                    1474839.1394562104,
+                    1478549.3475936851,
+                    1468533.1490013527
+                ],
+                [
+                    1489059.8776438443,
+                    1491733.3967129483,
+                    1478798.667710136,
+                    1482078.6114221895,
+                    1484975.8712825591
+                ],
+                [
+                    1478157.9329242648,
+                    1465257.4491386325,
+                    1477073.2823497157,
+                    1469083.0042582268,
+                    1473149.8433306627
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.32",
+        "benchmark" : "dev.tauri.choam.bench.ChoiceCombinatorBench.choiceDummy",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 3,
+        "jvm" : "/usr/lib/jvm/java-11-openjdk-amd64/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "11.0.11",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "11.0.11+9-Ubuntu-0ubuntu2.18.04",
+        "warmupIterations" : 5,
+        "warmupTime" : "10 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "10 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "kcasName" : "dev.tauri.choam.kcas.EMCAS",
+            "size" : "16"
+        },
+        "primaryMetric" : {
+            "score" : 1134348.4129518033,
+            "scoreError" : 6802.106454940712,
+            "scoreConfidence" : [
+                1127546.3064968626,
+                1141150.519406744
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1122102.0384274602,
+                "50.0" : 1134659.5615671568,
+                "90.0" : 1144192.859283048,
+                "95.0" : 1146265.2333241063,
+                "99.0" : 1146265.2333241063,
+                "99.9" : 1146265.2333241063,
+                "99.99" : 1146265.2333241063,
+                "99.999" : 1146265.2333241063,
+                "99.9999" : 1146265.2333241063,
+                "100.0" : 1146265.2333241063
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1127773.6698799015,
+                    1139932.7217049333,
+                    1131386.5200088322,
+                    1122102.0384274602,
+                    1127581.3193472207
+                ],
+                [
+                    1146265.2333241063,
+                    1138460.044506508,
+                    1130223.2161884925,
+                    1135591.3607792056,
+                    1136572.6846449994
+                ],
+                [
+                    1138596.8688539858,
+                    1134659.5615671568,
+                    1130962.6563107963,
+                    1142811.2765890092,
+                    1132307.022144439
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.32",
+        "benchmark" : "dev.tauri.choam.bench.ChoiceCombinatorBench.choiceDummy",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 3,
+        "jvm" : "/usr/lib/jvm/java-11-openjdk-amd64/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "11.0.11",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "11.0.11+9-Ubuntu-0ubuntu2.18.04",
+        "warmupIterations" : 5,
+        "warmupTime" : "10 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "10 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "kcasName" : "dev.tauri.choam.kcas.EMCAS",
+            "size" : "32"
+        },
+        "primaryMetric" : {
+            "score" : 818059.2403976248,
+            "scoreError" : 11381.51966862825,
+            "scoreConfidence" : [
+                806677.7207289966,
+                829440.760066253
+            ],
+            "scorePercentiles" : {
+                "0.0" : 786635.3758435865,
+                "50.0" : 816709.1700421947,
+                "90.0" : 829548.0412423431,
+                "95.0" : 832502.7044286575,
+                "99.0" : 832502.7044286575,
+                "99.9" : 832502.7044286575,
+                "99.99" : 832502.7044286575,
+                "99.999" : 832502.7044286575,
+                "99.9999" : 832502.7044286575,
+                "100.0" : 832502.7044286575
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    827578.2657848003,
+                    827187.4407729579,
+                    823729.4334826438,
+                    832502.7044286575,
+                    826927.1324981109
+                ],
+                [
+                    816358.7841678108,
+                    810853.9978042307,
+                    786635.3758435865,
+                    813026.7738853663,
+                    816099.6934467005
+                ],
+                [
+                    821012.2367070946,
+                    816709.1700421947,
+                    820013.7501371775,
+                    816445.7927878391,
+                    815808.0541752011
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    }
+]
+
+

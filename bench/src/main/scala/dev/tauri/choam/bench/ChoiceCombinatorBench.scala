@@ -23,7 +23,7 @@ import org.openjdk.jmh.annotations._
 import kcas.bench.Reset
 import util._
 
-@Fork(2)
+@Fork(3)
 class ChoiceCombinatorBench {
 
   import ChoiceCombinatorBench._

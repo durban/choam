@@ -29,6 +29,7 @@
 
 ## Other improvements
 
+- Choice seems slow with the new interpreter (see `ChoiceCombinatorBench`).
 - Testing:
   - Figure out some tricky race conditions, and test them with JCStress.
     - `Exchanger`
@@ -36,12 +37,6 @@
     - improve generated `Rxn`s, check if they make sense
     - check if `testingEqRxn` makes sense, maybe do structural checking
   - Test with other IO impls (when they support ce3)
-- EMCAS with simplified IBR:
-  - Cleanup after a k-CAS op is finalized:
-    - It is enabled now, since it is necessary, to avoid leaking memory.
-    - TODO:
-      - Measure performance.
-      - Measure memory requirements, make sure finalized list is not too big.
 - Compile-time detection of impossible k-CAS operations (2 changes to the same `Ref`)
     - we can't do it without alias analysis, e.g., the method
       ```scala
@@ -57,7 +52,6 @@
   - `Rxn#provide`
   - `Rxn#as`
   - Boxing
-  - Rxn interpreter (external interpreter)
   - Review writes/reads in EMCAS, check if we can relax them
   - Ref padding:
     - allocating a padded Ref is much slower than an unpadded
