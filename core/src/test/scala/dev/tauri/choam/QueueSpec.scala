@@ -251,6 +251,9 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         cs.asScala.toVector.sorted,
         (0 until max).toVector.flatMap(n => Vector(n.toString, n.toString)).sorted
       )
+      _ <- F.delay {
+        this.kcasImpl.printStatistics(System.out.println(_))
+      }
     } yield ()
   }
 }

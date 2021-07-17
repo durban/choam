@@ -37,7 +37,7 @@ private[choam] object EMCAS extends KCAS { self =>
     4096
 
   private[choam] final val limitForFinalizedList =
-    4096
+    1024
 
   private[kcas] val global =
     new GlobalContext(self)
@@ -315,6 +315,12 @@ private[choam] object EMCAS extends KCAS { self =>
 
   private[choam] final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
     EMCAS.MCAS(desc, helping = false, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
+  }
+
+  private[choam] final override def printStatistics(println: String => Unit): Unit = {
+    val (fdc, mfdc) = this.global.countFinalizedDescriptors()
+    println(s"Finalized (but retained) descriptors: ${fdc}")
+    println(s"Max. retained descriptors (estimate): ${mfdc}")
   }
 
   /** For testing */

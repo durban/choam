@@ -26,6 +26,27 @@ final class GlobalContext(impl: KCAS)
 
   override def newThreadContext(): ThreadContext =
     new ThreadContext(this, Thread.currentThread().getId(), impl)
+
+  /** Only for testing/benchmarking */
+  private[choam] def countFinalizedDescriptors(): (Long, Long) = {
+    val tctxs = this.snapshotReservations
+    var countDescrs = 0L
+    var countMaxDescrs = 0L
+    tctxs.valuesIterator.foreach { weakref =>
+      weakref.get() match {
+        case null =>
+          ()
+        case tctx =>
+          // Calling `getFinalizedDescriptorsCount` is not
+          // thread-safe here, but we only need these statistics
+          // for benchmarking, so we're just hoping for the best...
+          countDescrs += tctx.getFinalizedDescriptorsCount().toLong
+          countMaxDescrs += tctx.getMaxFinalizedDescriptorsCount().toLong
+      }
+    }
+
+    (countDescrs, countMaxDescrs)
+  }
 }
 
 final class ThreadContext(
@@ -38,6 +59,9 @@ final class ThreadContext(
     null
 
   private[this] var finalizedDescriptorsCount: Int =
+    0
+
+  private[this] var maxFinalizedDescriptorsCount: Int =
     0
 
   val random: ThreadLocalRandom =
@@ -73,10 +97,19 @@ final class ThreadContext(
     desc.next = this.finalizedDescriptors
     this.finalizedDescriptors = desc
     this.finalizedDescriptorsCount += 1
+    if (this.finalizedDescriptorsCount > this.maxFinalizedDescriptorsCount) {
+      this.maxFinalizedDescriptorsCount = this.finalizedDescriptorsCount
+    }
     if ((this.finalizedDescriptorsCount > limit) && ((this.random.nextInt() % replace) == 0)) {
       this.runCleanup()
     }
   }
+
+  private[kcas] final def getFinalizedDescriptorsCount(): Int =
+    this.finalizedDescriptorsCount
+
+  private[kcas] final def getMaxFinalizedDescriptorsCount(): Int =
+    this.maxFinalizedDescriptorsCount
 
   private final def runCleanup(giveUpAt: Long = 256): Unit = {
     @tailrec

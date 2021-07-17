@@ -38,6 +38,10 @@ abstract class KCAS { self =>
 
   private[choam] def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A
 
+  /** Only for testing/benchmarking */
+  private[choam] def printStatistics(@unused println: String => Unit): Unit =
+    ()
+
   final def doSingleCas[A](ref: MemoryLocation[A], ov: A, nv: A, ctx: ThreadContext): Boolean = {
     val desc = this.addCas(this.start(ctx), ref, ov, nv, ctx)
     this.tryPerform(desc, ctx)
