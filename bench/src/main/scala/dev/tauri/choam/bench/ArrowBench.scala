@@ -25,7 +25,7 @@ import org.openjdk.jmh.infra.Blackhole
 
 import util._
 
-@Fork(2)
+@Fork(3)
 class ArrowBench {
 
   @Benchmark
