@@ -70,6 +70,16 @@ final class EMCASDescriptor(wds: ArrayList[WordDescriptor[_]])
   def sort(): Unit = {
     this.words.sort(WordDescriptor.comparator)
   }
+
+  /** Only for testing */
+  private[choam] def setStatusSuccessful(): Unit = {
+    this.setStatus(EMCASStatus.SUCCESSFUL)
+  }
+
+  /** Only for testing */
+  private[choam] def setStatusFailed(): Unit = {
+    this.setStatus(EMCASStatus.FAILED)
+  }
 }
 
 object EMCASDescriptor {

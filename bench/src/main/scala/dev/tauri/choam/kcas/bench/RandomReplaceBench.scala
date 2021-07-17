@@ -36,9 +36,16 @@ class RandomReplaceBench {
   }
 
   @Benchmark
-  def replaceRandom(s: SharedState, bh: Blackhole): Unit = {
+  def replaceRandom256(s: SharedState, bh: Blackhole): Unit = {
     val ctx = EMCAS.currentContext()
     bh.consume(EMCAS.readValue(s.ref, ctx, replace = 256))
+    s.reset(ctx)
+  }
+
+  @Benchmark
+  def replaceRandom4096(s: SharedState, bh: Blackhole): Unit = {
+    val ctx = EMCAS.currentContext()
+    bh.consume(EMCAS.readValue(s.ref, ctx, replace = 4096))
     s.reset(ctx)
   }
 
@@ -64,7 +71,10 @@ object RandomReplaceBench {
     reset(EMCAS.currentContext())
 
     def reset(ctx: ThreadContext): Unit = {
-      val wd = WordDescriptor[A](ref, a, a, null, ctx)
+      val p = new EMCASDescriptor()
+      val wd = WordDescriptor[A](ref, a, a, p, ctx)
+      p.words.add(wd)
+      p.setStatusFailed()
       this.ref.unsafeSetVolatile(wd.castToData)
     }
   }

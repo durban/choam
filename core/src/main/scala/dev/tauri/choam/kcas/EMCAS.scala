@@ -26,11 +26,15 @@ import mcas.MemoryLocation
  */
 private[choam] object EMCAS extends KCAS { self =>
 
+  // These values for the replace period and limit
+  // have been determined experimentally. See for example
+  // RandomReplaceBench and StackTransferBench.
+
   private[choam] final val replacePeriodForEMCAS =
     4096
 
   private[choam] final val replacePeriodForReadValue =
-    256
+    4096
 
   private[choam] final val limitForFinalizedList =
     4096

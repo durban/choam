@@ -43,6 +43,10 @@ abstract class EMCASDescriptorBase {
   boolean casStatus(EMCASStatus ov, EMCASStatus nv) {
     return STATUS.compareAndSet(this, ov, nv);
   }
+
+  void setStatus(EMCASStatus nv) {
+    STATUS.setVolatile(this, nv);
+  }
 }
 
 enum EMCASStatus {
