@@ -46,23 +46,23 @@ private final class ObjStack[A] private (
     this.size += 1
   }
 
-  def pop(): A = {
-    if (this.size != 0) {
-      this.size -= 1
-      val res: A = this.arr(this.size).asInstanceOf[A]
-      this.arr(this.size) = null
-      res
-    } else {
-      throw new NoSuchElementException(s"stack size = ${this.size}")
+  private[this] def assertNonEmpty(): Unit = {
+    if (this.size == 0) {
+      throw new NoSuchElementException
     }
   }
 
+  def pop(): A = {
+    assertNonEmpty()
+    this.size -= 1
+    val res: A = this.arr(this.size).asInstanceOf[A]
+    this.arr(this.size) = null
+    res
+  }
+
   def top(): A = {
-    if (this.size != 0) {
-      this.arr(this.size - 1).asInstanceOf[A]
-    } else {
-      throw new NoSuchElementException(s"stack size = ${this.size}")
-    }
+    assertNonEmpty()
+    this.arr(this.size - 1).asInstanceOf[A]
   }
 
   def clear(): Unit = {
@@ -106,7 +106,7 @@ private final class ObjStack[A] private (
 
   private[this] def growIfNecessary(): Unit = {
     if (this.size == this.arr.length) {
-      val newArr = Array.ofDim[AnyRef](this.size << 1)(ClassTag.AnyRef)
+      val newArr = new Array[AnyRef](this.size << 1)
       System.arraycopy(this.arr, 0, newArr, 0, this.size)
       this.arr = newArr
     }

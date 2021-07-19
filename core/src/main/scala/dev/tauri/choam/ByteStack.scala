@@ -46,21 +46,21 @@ private final class ByteStack private (
     this.size += 1
   }
 
-  def pop(): Byte = {
-    if (this.size != 0) {
-      this.size -= 1
-      this.arr(this.size)
-    } else {
-      throw new NoSuchElementException(s"stack size = ${this.size}")
+  private[this] def assertNonEmpty(): Unit = {
+    if (this.size == 0) {
+      throw new NoSuchElementException
     }
   }
 
+  def pop(): Byte = {
+    assertNonEmpty()
+    this.size -= 1
+    this.arr(this.size)
+  }
+
   def top(): Byte = {
-    if (this.size != 0) {
-      this.arr(this.size - 1)
-    } else {
-      throw new NoSuchElementException(s"stack size = ${this.size}")
-    }
+    assertNonEmpty()
+    this.arr(this.size - 1)
   }
 
   def clear(): Unit = {
@@ -91,7 +91,7 @@ private final class ByteStack private (
 
   private[this] def growIfNecessary(): Unit = {
     if (this.size == this.arr.length) {
-      val newArr = Array.ofDim[Byte](this.size << 1)(ClassTag.Byte)
+      val newArr = new Array[Byte](this.size << 1)
       System.arraycopy(this.arr, 0, newArr, 0, this.size)
       this.arr = newArr
     }
