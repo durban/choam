@@ -24,25 +24,13 @@ import org.openjdk.jmh.infra.Blackhole
 import util._
 import InterpreterBench._
 
-@Fork(2)
+@Fork(3)
 @Threads(2)
 class InterpreterBench {
 
   // TODO: this benchmark doesn't include:
   // - invisible read
   // - delayComputed
-
-  // @Benchmark
-  // def internal(s: St, bh: Blackhole, k: KCASImplState): Unit = {
-  //   val x = k.nextInt()
-  //   bh.consume(s.rxn.unsafePerform(x, k.kcasImpl))
-  // }
-
-  // @Benchmark
-  // def externalWithTag(s: St, bh: Blackhole, k: KCASImplState): Unit = {
-  //   val x = k.nextInt()
-  //   bh.consume(Rxn.externalInterpreter(s.rxn, x, k.kcasImpl.currentContext()))
-  // }
 
   @Benchmark
   def rxnNew(s: St, bh: Blackhole, k: KCASImplState): Unit = {

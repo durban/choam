@@ -29,12 +29,6 @@ class ChoiceCombinatorBench {
   import ChoiceCombinatorBench._
 
   @Benchmark
-  def choiceDummy(s: DummyChoice, k: KCASImplState): Unit = {
-    s.choice.unsafePerform((), k.kcasImpl)
-    s.reset.unsafePerform((), k.kcasImpl)
-  }
-
-  @Benchmark
   def choiceCAS(s: CASChoice, k: KCASImplState): Unit = {
     s.choice.unsafePerform((), k.kcasImpl)
     s.reset.reset()
@@ -47,31 +41,6 @@ object ChoiceCombinatorBench {
   abstract class BaseState {
     @Param(Array("8", "16", "32"))
     var size: Int = _
-  }
-
-  @State(Scope.Thread)
-  class DummyChoice extends BaseState {
-
-    private[this] val ref =
-      Ref.unsafe("foo")
-
-    val reset: Axn[Unit] =
-      ref.update(_ => "foo")
-
-    var choice: Axn[Unit] = _
-
-    def mkChoice(n: Int): Axn[Unit] = {
-      val successfulCas = ref.unsafeCas("foo", "bar")
-      val fails = (1 to n).foldLeft[Axn[Unit]](Rxn.unsafe.retry) { (r, _) =>
-        r + Rxn.unsafe.retry
-      }
-      fails + successfulCas
-    }
-
-    @Setup
-    def setup(): Unit = {
-      this.choice = mkChoice(size)
-    }
   }
 
   @State(Scope.Thread)
