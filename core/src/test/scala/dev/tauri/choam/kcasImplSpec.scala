@@ -62,12 +62,17 @@ trait SpecFlakyEMCAS extends KCASImplSpec {
 
     private[choam] def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
       // sanity check: try to sort (to throw an exception if impossible)
-      val copy = new java.util.ArrayList[WordDescriptor[_]]
-      copy.addAll(desc.words)
-      copy.sort(WordDescriptor.comparator) // throws if impossible
+      locally {
+        val copy = new java.util.ArrayList[WordDescriptor[_]]
+        val it = desc.wordIterator()
+        while (it.hasNext()) {
+          copy.add(it.next())
+        }
+        copy.sort(WordDescriptor.comparator) // throws if impossible
+      }
       // perform or not the operation based on whether we've already seen it
       var hash = 0x75f4d07d
-      val it = desc.words.iterator()
+      val it = desc.wordIterator()
       while (it.hasNext()) {
         hash ^= it.next().address.##
       }

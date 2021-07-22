@@ -24,8 +24,6 @@
 - `Exchanger` doesn't work with the new `Rxn`
 - `Ctrie` is incomplete
 - Can't run benchmarks with Scala 3
-- Async tests are non-deterministic, and the sleeps are not always enough
-  - should be good now, but need to monitor CI
 
 ## Other improvements
 

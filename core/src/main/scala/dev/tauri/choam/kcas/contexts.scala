@@ -113,9 +113,9 @@ final class ThreadContext(
 
   private final def runCleanup(giveUpAt: Long = 256): Unit = {
     @tailrec
-    def replace(idx: Int, words: ArrayList[WordDescriptor[_]], accDone: Boolean): Boolean = {
-      if (idx < words.size) {
-        val done = words.get(idx) match {
+    def replace(words: java.util.Iterator[WordDescriptor[_]], accDone: Boolean): Boolean = {
+      if (words.hasNext()) {
+        val done = words.next() match {
           case null =>
             // already replaced and cleared
             true
@@ -127,7 +127,7 @@ final class ThreadContext(
             }
             if (EMCAS.replaceDescriptorIfFree(wd.address, wd, nv, this)) {
               // OK, this `WordDescriptor` have been replaced, we can clear it:
-              words.set(idx, null)
+              words.remove()
               true
             } else {
               // TODO: 'plain' might not be enough
@@ -137,7 +137,7 @@ final class ThreadContext(
                 // release the reference; it might be cleared up
                 // on a subsequent `EMCAS.readValue`, in which case
                 // the JVM GC will be able to collect it.
-                words.set(idx, null)
+                words.remove()
                 true
               } else {
                 // We'll try next time
@@ -145,7 +145,7 @@ final class ThreadContext(
               }
             }
         }
-        replace(idx + 1, words, if (done) accDone else false)
+        replace(words, if (done) accDone else false)
       } else {
         accDone
       }
@@ -153,7 +153,7 @@ final class ThreadContext(
     @tailrec
     def go(curr: EMCASDescriptor, prev: EMCASDescriptor): Unit = {
       if (curr ne null) {
-        val done = replace(0, curr.words, true)
+        val done = replace(curr.wordIterator(), true)
         val newPrev = if (done) {
           // delete the descriptor from the list:
           this.finalizedDescriptorsCount -= 1

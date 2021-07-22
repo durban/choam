@@ -263,7 +263,7 @@ private[choam] object EMCAS extends KCAS { self =>
     }
 
     try {
-      val r = go(desc.words.iterator())
+      val r = go(desc.wordIterator())
       if (r eq TryWordResult.BREAK) {
         // someone else finalized the descriptor, we must read its status:
         (desc.getStatus() eq EMCASStatus.SUCCESSFUL)
@@ -304,7 +304,7 @@ private[choam] object EMCAS extends KCAS { self =>
     ctx.startOp()
     try {
       val wd = WordDescriptor[A](ref, ov, nv, desc, ctx)
-      desc.words.add(wd)
+      desc.add(wd)
       desc
     } finally ctx.endOp()
   }

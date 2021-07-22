@@ -52,7 +52,7 @@ private[choam] object NaiveKCAS extends KCAS { self =>
     nv: A,
     ctx: ThreadContext
   ): EMCASDescriptor = {
-    desc.words.add(WordDescriptor[A](ref, ov, nv, desc, dummyContext))
+    desc.add(WordDescriptor[A](ref, ov, nv, desc, dummyContext))
     desc
   }
 
@@ -61,7 +61,7 @@ private[choam] object NaiveKCAS extends KCAS { self =>
 
   final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
     desc.sort()
-    val ops = scala.jdk.CollectionConverters.ListHasAsScala(desc.words).asScala.toList
+    val ops = scala.jdk.CollectionConverters.IteratorHasAsScala(desc.wordIterator()).asScala.toList
     perform(ops)
   }
 

@@ -73,7 +73,7 @@ object RandomReplaceBench {
     def reset(ctx: ThreadContext): Unit = {
       val p = new EMCASDescriptor()
       val wd = WordDescriptor[A](ref, a, a, p, ctx)
-      p.words.add(wd)
+      p.add(wd)
       p.setStatusFailed()
       this.ref.unsafeSetVolatile(wd.castToData)
     }

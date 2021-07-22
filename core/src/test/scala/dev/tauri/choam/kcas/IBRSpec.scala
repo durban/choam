@@ -40,10 +40,10 @@ final class IBRSpec
     })
     t.start()
     latch1.await()
-    assert(ctx.isInUseByOther(desc.words.get(0)))
+    assert(ctx.isInUseByOther(desc.wordIterator().next()))
     latch2.countDown()
     t.join()
-    assert(!ctx.isInUseByOther(desc.words.get(0)))
+    assert(!ctx.isInUseByOther(desc.wordIterator().next()))
   }
 
   test("The epoch should be incremented after a few allocations") {

@@ -87,7 +87,7 @@ class EMCASTest {
   }
 
   private[this] def checkWd(d: WordDescriptor[_], r: LLLLL_Result): Unit = {
-    val it = d.parent.words.iterator()
+    val it = d.parent.wordIterator()
     val dFirst = it.next()
     val dSecond = it.next()
     r.r2 = if (dFirst ne null) {

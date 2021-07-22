@@ -20,21 +20,19 @@ package kcas
 
 import java.util.ArrayList
 
-final class EMCASDescriptor(wds: ArrayList[WordDescriptor[_]])
-  extends EMCASDescriptorBase {
-
-  /** Intrusive linked list of finalized descriptors (see `ThreadContext`) */
-  private[kcas] var next: EMCASDescriptor =
-    null
-
+final class EMCASDescriptor(
   /**
    * Word descriptors
    *
    * Thread safety: we only read the list after reading the descriptor from a `Ref`;
    * we only mutate the list before writing the descriptor to a `Ref`.
    */
-  val words: ArrayList[WordDescriptor[_]] =
-    wds
+  private val words: ArrayList[WordDescriptor[_]]
+) extends EMCASDescriptorBase { self =>
+
+  /** Intrusive linked list of finalized descriptors (see `ThreadContext`) */
+  private[kcas] var next: EMCASDescriptor =
+    null
 
   def this() =
     this(new ArrayList(EMCASDescriptor.minArraySize))
@@ -62,6 +60,11 @@ final class EMCASDescriptor(wds: ArrayList[WordDescriptor[_]])
     r
   }
 
+  private[choam] def add[A](word: WordDescriptor[A]): Unit = {
+    this.words.add(word)
+    ()
+  }
+
   private[choam] def addAll(that: EMCASDescriptor): Unit = {
     this.words.addAll(that.words)
     ()
@@ -69,6 +72,10 @@ final class EMCASDescriptor(wds: ArrayList[WordDescriptor[_]])
 
   def sort(): Unit = {
     this.words.sort(WordDescriptor.comparator)
+  }
+
+  private[choam] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
+    new EMCASDescriptor.Iterator(this)
   }
 
   /** Only for testing */
@@ -83,6 +90,39 @@ final class EMCASDescriptor(wds: ArrayList[WordDescriptor[_]])
 }
 
 object EMCASDescriptor {
+
   // TODO: should always be inlined
   final val minArraySize = 8
+
+  private final class Iterator(desc: EMCASDescriptor) extends java.util.Iterator[WordDescriptor[_]] {
+
+      private[this] var idx: Int =
+        0
+
+      private[this] var lastIdx: Int =
+        -1
+
+      final override def hasNext(): Boolean = {
+        this.idx != desc.words.size()
+      }
+
+      final override def next(): WordDescriptor[_] = {
+        if (this.hasNext()) {
+          this.lastIdx = this.idx
+          this.idx += 1
+          desc.words.get(this.lastIdx)
+        } else {
+          throw new NoSuchElementException
+        }
+      }
+
+      final override def remove(): Unit = {
+        if (this.lastIdx >= 0) {
+          desc.words.set(this.lastIdx, null)
+          this.lastIdx = -1
+        } else {
+          throw new IllegalStateException
+        }
+      }
+  }
 }
