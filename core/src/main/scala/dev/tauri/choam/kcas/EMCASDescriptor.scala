@@ -20,7 +20,7 @@ package kcas
 
 import java.util.ArrayList
 
-final class EMCASDescriptor(
+final class EMCASDescriptor private (
   /**
    * Word descriptors
    *
@@ -34,10 +34,10 @@ final class EMCASDescriptor(
   private[kcas] var next: EMCASDescriptor =
     null
 
-  def this() =
+  private[kcas] def this() =
     this(new ArrayList(EMCASDescriptor.minArraySize))
 
-  def copy(ctx: ThreadContext): EMCASDescriptor = {
+  private[kcas] def copy(ctx: ThreadContext): EMCASDescriptor = {
     @tailrec
     def copy(
       from: ArrayList[WordDescriptor[_]],
@@ -60,31 +60,32 @@ final class EMCASDescriptor(
     r
   }
 
-  private[choam] def add[A](word: WordDescriptor[A]): Unit = {
+  private[kcas] def add[A](word: WordDescriptor[A]): Unit = {
     this.words.add(word)
     ()
   }
 
+  // TODO: private[kcas]
   private[choam] def addAll(that: EMCASDescriptor): Unit = {
     this.words.addAll(that.words)
     ()
   }
 
-  def sort(): Unit = {
+  private[kcas] def sort(): Unit = {
     this.words.sort(WordDescriptor.comparator)
   }
 
-  private[choam] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
+  private[kcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
     new EMCASDescriptor.Iterator(this)
   }
 
   /** Only for testing */
-  private[choam] def setStatusSuccessful(): Unit = {
+  private[kcas] def setStatusSuccessful(): Unit = {
     this.setStatus(EMCASStatus.SUCCESSFUL)
   }
 
   /** Only for testing */
-  private[choam] def setStatusFailed(): Unit = {
+  private[kcas] def setStatusFailed(): Unit = {
     this.setStatus(EMCASStatus.FAILED)
   }
 }
@@ -92,7 +93,7 @@ final class EMCASDescriptor(
 object EMCASDescriptor {
 
   // TODO: should always be inlined
-  final val minArraySize = 8
+  private final val minArraySize = 8
 
   private final class Iterator(desc: EMCASDescriptor) extends java.util.Iterator[WordDescriptor[_]] {
 
