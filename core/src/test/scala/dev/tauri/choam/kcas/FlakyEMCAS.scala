@@ -24,51 +24,50 @@ import mcas.MemoryLocation
 
 object FlakyEMCAS extends KCAS {
 
-    private[this] val global =
-      new GlobalContext(this)
+  private[this] val global =
+    new GlobalContext(this)
 
-    private[this] val seen =
-      new TrieMap[Int, Unit]
+  private[this] val seen =
+    new TrieMap[Int, Unit]
 
-    private[choam] def currentContext(): ThreadContext =
-      this.global.threadContext()
+  private[choam] def currentContext(): ThreadContext =
+    this.global.threadContext()
 
-    private[choam] def start(ctx: ThreadContext): EMCASDescriptor =
-      EMCAS.start(ctx)
+  private[choam] def start(ctx: ThreadContext): EMCASDescriptor =
+    EMCAS.start(ctx)
 
-    private[choam] def addCas[A](desc: EMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A, ctx: ThreadContext): EMCASDescriptor =
-      EMCAS.addCas(desc, ref, ov, nv, ctx)
+  private[choam] def addCas[A](desc: EMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A, ctx: ThreadContext): EMCASDescriptor =
+    EMCAS.addCas(desc, ref, ov, nv, ctx)
 
-    private[choam] def addAll(to: EMCASDescriptor, from: EMCASDescriptor): EMCASDescriptor =
-      EMCAS.addAll(to, from)
+  private[choam] def addAll(to: EMCASDescriptor, from: EMCASDescriptor): EMCASDescriptor =
+    EMCAS.addAll(to, from)
 
-    private[choam] def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor =
-      EMCAS.snapshot(desc, ctx)
+  private[choam] def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor =
+    EMCAS.snapshot(desc, ctx)
 
-    private[choam] def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A =
-      EMCAS.read(ref, ctx)
+  private[choam] def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A =
+    EMCAS.read(ref, ctx)
 
-    private[choam] def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
-      // sanity check: try to sort (to throw an exception if impossible)
-      locally {
-        val copy = new java.util.ArrayList[WordDescriptor[_]]
-        val it = desc.wordIterator()
-        while (it.hasNext()) {
-          copy.add(it.next())
-        }
-        copy.sort(WordDescriptor.comparator) // throws if impossible
-      }
-      // perform or not the operation based on whether we've already seen it
-      var hash = 0x75f4d07d
+  private[choam] def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
+    // sanity check: try to sort (to throw an exception if impossible)
+    locally {
+      val copy = new java.util.ArrayList[WordDescriptor[_]]
       val it = desc.wordIterator()
       while (it.hasNext()) {
-        hash ^= it.next().address.##
+        copy.add(it.next())
       }
-      if (this.seen.putIfAbsent(hash, ()).isDefined) {
-        EMCAS.tryPerform(desc, ctx)
-      } else {
-        false // simulate a transient CAS failure to force a retry
-      }
+      copy.sort(WordDescriptor.comparator) // throws if impossible
+    }
+    // perform or not the operation based on whether we've already seen it
+    var hash = 0x75F4D07D
+    val it = desc.wordIterator()
+    while (it.hasNext()) {
+      hash ^= it.next().address.##
+    }
+    if (this.seen.putIfAbsent(hash, ()).isDefined) {
+      EMCAS.tryPerform(desc, ctx)
+    } else {
+      false // simulate a transient CAS failure to force a retry
     }
   }
-
+}
