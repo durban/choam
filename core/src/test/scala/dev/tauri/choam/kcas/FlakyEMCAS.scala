@@ -39,6 +39,9 @@ object FlakyEMCAS extends KCAS {
     private[choam] def addCas[A](desc: EMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A, ctx: ThreadContext): EMCASDescriptor =
       EMCAS.addCas(desc, ref, ov, nv, ctx)
 
+    private[choam] def addAll(to: EMCASDescriptor, from: EMCASDescriptor): EMCASDescriptor =
+      EMCAS.addAll(to, from)
+
     private[choam] def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor =
       EMCAS.snapshot(desc, ctx)
 

@@ -86,7 +86,7 @@ final class Exchanger[A, B] private (
                 if (otherSlot.compareAndSet(other, null)) {
                   // println(s"fulfilling other - thread#${Thread.currentThread().getId()}")
                   // ok, we've claimed the other offer, we'll fulfill it:
-                  fulfillClaimedOffer(other, msg, stats)
+                  fulfillClaimedOffer(other, msg, stats, ctx)
                 } else {
                   // the other offer was rescinded in the meantime,
                   // so we'll have to retry:
@@ -141,7 +141,8 @@ final class Exchanger[A, B] private (
   private[this] def fulfillClaimedOffer[C, D](
     other: Node[B, A, D],
     selfMsg: Msg[A, B, C],
-    stats: Statistics
+    stats: Statistics,
+    ctx: ThreadContext,
   ): Right[Statistics, Msg[Unit, Unit, C]] = {
     val cont: Axn[C] = selfMsg.cont.provide(other.msg.value)
     val otherCont: Axn[Unit] = other.msg.cont.provide(selfMsg.value).flatMap { d =>
@@ -159,11 +160,9 @@ final class Exchanger[A, B] private (
       desc = {
         // Note: we've read `other` from a `Ref`, so we'll see its mutable list of descriptors,
         // and we've claimed it, so others won't try to do the same.
-        selfMsg.desc.addAll(other.msg.desc)
-        selfMsg.desc
+        ctx.impl.addAll(selfMsg.desc, other.msg.desc)
       }
     )
-    //ctx.onRetry.addAll(other.msg.onRetry) // TODO: thread safety?
     Right(resMsg)
   }
 }

@@ -65,8 +65,7 @@ final class EMCASDescriptor private (
     ()
   }
 
-  // TODO: private[kcas]
-  private[choam] def addAll(that: EMCASDescriptor): Unit = {
+  private[kcas] def addAll(that: EMCASDescriptor): Unit = {
     this.words.addAll(that.words)
     ()
   }

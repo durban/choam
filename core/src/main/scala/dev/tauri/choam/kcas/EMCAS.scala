@@ -309,6 +309,11 @@ private[choam] object EMCAS extends KCAS { self =>
     } finally ctx.endOp()
   }
 
+  private[choam] final override def addAll(to: EMCASDescriptor, from: EMCASDescriptor): EMCASDescriptor = {
+    to.addAll(from)
+    to
+  }
+
   private[choam] final override def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor = {
     desc.copy(ctx)
   }
