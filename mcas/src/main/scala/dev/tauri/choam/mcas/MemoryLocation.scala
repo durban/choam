@@ -18,6 +18,10 @@
 package dev.tauri.choam
 package mcas
 
+import scala.math.Ordering
+
+import cats.Order
+
 /**
  * Extension point for MCAS: an MCAS operation
  * can be executed on any number of objects
@@ -63,7 +67,7 @@ trait MemoryLocation[A] {
   def id3: Long
 }
 
-object MemoryLocation {
+object MemoryLocation extends MemoryLocationInstances0 {
 
   def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
     import java.lang.Long.compare
@@ -89,4 +93,26 @@ object MemoryLocation {
       }
     }
   }
+}
+
+private[mcas] sealed abstract class MemoryLocationInstances0 extends MemoryLocationInstances1 { self: MemoryLocation.type =>
+
+  private[this] val _orderingInstance = new Ordering[MemoryLocation[Any]] {
+    final override def compare(x: MemoryLocation[Any], y: MemoryLocation[Any]): Int =
+      self.globalCompare(x, y)
+  }
+
+  implicit def orderingInstance[A]: Ordering[MemoryLocation[A]] =
+    _orderingInstance.asInstanceOf[Ordering[MemoryLocation[A]]]
+}
+
+private[mcas] sealed abstract class MemoryLocationInstances1 { self: MemoryLocation.type =>
+
+  private[this] val _orderInstance = new Order[MemoryLocation[Any]] {
+    final override def compare(x: MemoryLocation[Any], y: MemoryLocation[Any]): Int =
+      self.globalCompare(x, y)
+  }
+
+  implicit def orderInstance[A]: Order[MemoryLocation[A]] =
+    _orderInstance.asInstanceOf[Order[MemoryLocation[A]]]
 }
