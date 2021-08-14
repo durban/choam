@@ -715,6 +715,65 @@ object Rxn extends RxnInstances0 {
 
     loop(startRxn)
   }
+
+// TODO: Exchanger:
+
+/*
+  private sealed abstract class GenExchange[A, B, C, D, E](
+    val exchanger: Exchanger[A, B],
+    val k: Rxn[D, E]
+  ) extends Rxn[C, E] { self =>
+
+    protected final override def tryPerform(n: Int, c: C, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): TentativeResult[E] = {
+      this.tryExchange(c, rd, desc, ctx) match {
+        case Right(contMsg) =>
+          // println(s"exchange happened, got ${contMsg} - thread#${Thread.currentThread().getId()}")
+          // TODO: this way we lose exchanger statistics if we start a new reaction
+          maybeJump(n, (), contMsg.cont, contMsg.rd, contMsg.desc, ctx)
+        case Left(_) =>
+          // TODO: pass back these stats to the main loop
+          Retry
+      }
+    }
+
+    private[Rxn] def tryExchange(c: C, rd: ReactionData, desc: EMCASDescriptor, ctx: ThreadContext): Either[Exchanger.StatMap, Exchanger.Msg[Unit, Unit, E]] = {
+      val msg = Exchanger.Msg[A, B, E](
+        value = transform1(c),
+        cont = k.lmap[B](b => self.transform2(b, c)),
+        rd = rd,
+        desc = desc // TODO: not threadsafe
+      )
+      // TODO: An `Exchange(...) + Exchange(...)` should post the
+      // TODO: same offer to both exchangers, so that fulfillers
+      // TODO: can race there.
+      this.exchanger.tryExchange(msg, ctx)
+    }
+
+    // ...
+
+        case 10 => // GenExchange
+          val c = curr.asInstanceOf[GenExchange[ForSome.x, ForSome.y, A, ForSome.z, R]]
+          val rd = ReactionData(
+            postCommit = postCommit.toArray().toList,
+            exchangerData = stats
+          )
+          c.tryExchange(a, rd, desc, ctx) match {
+            case Left(newStats) =>
+              stats = newStats
+              if (altA.isEmpty) {
+                reset()
+                loop(rxn, x, retries + 1, spin = true)
+              } else {
+                desc = popPcAndSnap()
+                loop(altK.pop(), altA.pop(), retries + 1, spin = false)
+              }
+            case Right(contMsg) =>
+              desc = contMsg.desc
+              postCommit.clear()
+              postCommit.pushAll(contMsg.rd.postCommit)
+              loop(contMsg.cont, (), retries, spin = false)
+          }
+*/
 }
 
 private[choam] sealed abstract class RxnInstances0 extends RxnInstances1 { this: Rxn.type =>
