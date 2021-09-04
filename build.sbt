@@ -179,7 +179,7 @@ lazy val commonSettings = Seq[Setting[_]](
 lazy val dependencies = new {
 
   val catsVersion = "2.6.1"
-  val catsEffectVersion = "3.2.7"
+  val catsEffectVersion = "3.3-7-579f468"
   val catsMtlVersion = "1.2.1"
   val fs2Version = "3.1.1"
   val scalacheckEffectVersion = "1.0.2"
@@ -195,6 +195,7 @@ lazy val dependencies = new {
     catsEffectAll,
     "org.typelevel" %% "cats-laws" % catsVersion,
     "org.typelevel" %% "cats-effect-kernel-testkit" % catsEffectVersion,
+    "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
     "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion,
     "org.typelevel" %% "munit-cats-effect-3" % "1.0.5",
     "org.typelevel" %% "scalacheck-effect" % scalacheckEffectVersion,
