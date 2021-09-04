@@ -82,6 +82,31 @@ private final class ObjStack[A] private (
     Arrays.copyOfRange(this.arr, 0, this.size).asInstanceOf[Array[A]]
   }
 
+  // TODO: unused
+  def copyInto(that: ObjStack[Any]): Unit = {
+    var idx = this.size - 1
+    while (idx >= 0) {
+      that.push(this.arr(idx))
+      idx -= 1
+    }
+  }
+
+  // TODO: unused
+  def replaceWithFrom(that: ObjStack[A], sentinel: AnyRef): Unit = {
+    def go(): Unit = {
+      val nxt = that.pop()
+      if (equ(nxt, sentinel)) {
+        ()
+      } else {
+        this.push(nxt)
+        go()
+      }
+    }
+
+    this.clear()
+    go()
+  }
+
   def pushAll(as: Iterable[A]): Unit = {
     val it = as.iterator
     while (it.hasNext) {
