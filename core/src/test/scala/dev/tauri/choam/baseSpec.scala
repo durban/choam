@@ -17,7 +17,6 @@
 
 package dev.tauri.choam
 
-import java.util.concurrent.TimeUnit
 import java.time.{ DateTimeException, OffsetDateTime }
 
 import scala.concurrent.Future
@@ -25,8 +24,8 @@ import scala.concurrent.duration._
 
 import cats.effect.{ Sync, Async, IO, SyncIO, MonadCancel, Temporal }
 import cats.effect.kernel.Outcome
-import cats.effect.testkit.TestControl
-import cats.effect.unsafe.IORuntime
+import cats.effect.kernel.testkit.TestContext
+import cats.effect.unsafe.{ IORuntime, IORuntimeConfig, Scheduler }
 
 import munit.{ CatsEffectSuite, Location, FunSuite, FailException }
 
@@ -111,8 +110,8 @@ abstract class BaseSpecIO extends CatsEffectSuite with BaseSpecAsyncF[IO] { this
 
 abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { this: KCASImplSpec =>
 
-  protected override val testControl: TestControl =
-    TestControl()
+  protected override val testContext: TestContext =
+    TestContext()
 
   override def munitValueTransforms: List[ValueTransform] = {
     new ValueTransform(
@@ -124,7 +123,7 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
           .flatMap(IO.pure)
           .handleErrorWith(IO.raiseError)
           .unsafeRunAsyncOutcome({ (outcome) => res = outcome })(this.ioRuntime)
-        testControl.tickAll()
+        testContext.tickAll()
         if (res eq null) {
           Future.failed(new FailException("ticked IO didn't complete", Location.empty))
         } else {
@@ -138,8 +137,28 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
     ) +: super.munitValueTransforms
   }
 
-  override implicit val ioRuntime: IORuntime =
-    this.testControl.runtime
+  override implicit val ioRuntime: IORuntime = {
+    IORuntime(
+      compute = testContext,
+      blocking = testContext,
+      scheduler = new Scheduler {
+        override def sleep(delay: FiniteDuration, task: Runnable): Runnable = {
+          val cancel = testContext.schedule(delay, task)
+          new Runnable {
+            override def run(): Unit = cancel()
+          }
+        }
+        override def nowMillis(): Long = {
+          testContext.now().toMillis
+        }
+        override def monotonicNanos(): Long = {
+          testContext.now().toNanos
+        }
+      },
+      shutdown = () => {},
+      config = IORuntimeConfig(),
+    )
+  }
 }
 
 abstract class BaseSpecZIO extends CatsEffectSuite with BaseSpecAsyncF[zio.Task] { this: KCASImplSpec =>
@@ -179,8 +198,8 @@ abstract class BaseSpecTickedZIO extends BaseSpecZIO with TestContextSpec[zio.Ta
   import zio.blocking.Blocking
   import zio.internal.Executor
 
-  protected override val testControl: TestControl =
-    TestControl()
+  protected override val testContext: TestContext =
+    TestContext()
 
   private val testContextExecutor: zio.internal.Executor = new Executor {
     override def yieldOpCount: Int =
@@ -188,7 +207,7 @@ abstract class BaseSpecTickedZIO extends BaseSpecZIO with TestContextSpec[zio.Ta
     override def metrics =
       None
     override def submit(runnable: Runnable): Boolean = {
-      testControl.runtime.compute.execute(runnable)
+      testContext.execute(runnable)
       true
     }
   }
@@ -198,7 +217,7 @@ abstract class BaseSpecTickedZIO extends BaseSpecZIO with TestContextSpec[zio.Ta
       Has.allOf[Clock.Service, Console.Service, System.Service, Random.Service, Blocking.Service](
         new Clock.Service {
           override def currentTime(unit: TimeUnit): UIO[Long] =
-            UIO.effectTotal { unit.convert(testControl.runtime.scheduler.nowMillis(), TimeUnit.MILLISECONDS) }
+            UIO.effectTotal { testContext.now().toUnit(unit).toLong }
           override def currentDateTime: zio.IO[DateTimeException, OffsetDateTime] =
             zio.IO.effect { OffsetDateTime.now() }.catchAll { (ex: Throwable) =>
               ex match {
@@ -207,10 +226,10 @@ abstract class BaseSpecTickedZIO extends BaseSpecZIO with TestContextSpec[zio.Ta
               }
             }
           override def nanoTime: UIO[Long] =
-            this.currentTime(TimeUnit.NANOSECONDS)
+            UIO.effectTotal { testContext.now().toNanos }
           override def sleep(duration: zio.duration.Duration): UIO[Unit] = {
             UIO.effectTotal {
-              testControl.runtime.scheduler.sleep(
+              testContext.schedule(
                 FiniteDuration(duration.toNanos(), "ns"),
                 new Runnable { override def run(): Unit = () }
               )
@@ -226,7 +245,7 @@ abstract class BaseSpecTickedZIO extends BaseSpecZIO with TestContextSpec[zio.Ta
             testContextExecutor
         }
       ),
-      zio.internal.Platform.fromExecutionContext(testControl.runtime.compute),
+      zio.internal.Platform.fromExecutionContext(testContext),
     )
   }
 
@@ -237,7 +256,7 @@ abstract class BaseSpecTickedZIO extends BaseSpecZIO with TestContextSpec[zio.Ta
         val tsk = x.asInstanceOf[zio.Task[_]]
         // TODO: this will fail if it's not really a Task
         val fut = this.zioRuntime.unsafeRunToFuture(tsk)
-        testControl.tickAll()
+        testContext.tickAll()
         fut
       }
     )
@@ -259,9 +278,9 @@ abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO]
 
 trait TestContextSpec[F[_]] { this: BaseSpecAsyncF[F] with KCASImplSpec =>
 
-  protected def testControl: TestControl
+  protected def testContext: TestContext
 
   def tickAll: F[Unit] = F.delay {
-    this.testControl.tickAll()
+    this.testContext.tickAll()
   }
 }
