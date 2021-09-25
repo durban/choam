@@ -515,7 +515,7 @@ object Rxn extends RxnInstances0 {
     }
 
     def saveAlt(k: Rxn[Any, R]): Unit = {
-      alts.push(ctx.impl.snapshot(desc, ctx))
+      alts.push(kcas.snapshot(desc, ctx))
       alts.push(a)
       alts.push(contT.toArray())
       alts.push(contK.toArray())
