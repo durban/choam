@@ -18,7 +18,6 @@
 package dev.tauri.choam
 package kcas
 
-import java.util.ArrayList
 import java.util.concurrent.ThreadLocalRandom
 
 final class GlobalContext(impl: KCAS)
@@ -71,24 +70,12 @@ final class ThreadContext(
     s"ThreadContext(global = ${this.global}, tid = ${this.tid})"
   }
 
-  // TODO: put this in `ReactionData`; make it a `val`
-  private[choam] var maxBackoff: Int =
-    16
-
-  // TODO: put this in `ReactionData`; make it a `val`
-  private[choam] var randomizeBackoff: Boolean =
-    true
-
-  // TODO: do we need this?
-  private[choam] var onRetry: ArrayList[Axn[Unit]] =
-    new ArrayList
-
   /**
    * The descriptor `desc` was finalized (i.e., succeeded or failed). Put it
    * in the list of finalized descriptors, and run GC cleanup (IBR) with a small
    * probability.
    *
-   * @param desc The descriptor whichh was finalized.
+   * @param desc The descriptor which was finalized.
    * @param limit Don't run the GC if the number of finalized decriptors is less than `limit`.
    * @param replace The period with which to run GC (IBR); should be a power of 2; `replace = N`
    *                makes the GC run with a probability of `1 / N`.
