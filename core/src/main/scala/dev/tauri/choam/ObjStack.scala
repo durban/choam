@@ -131,9 +131,13 @@ private final class ObjStack[A] private (
 
   private[this] def growIfNecessary(): Unit = {
     if (this.size == this.arr.length) {
-      val newArr = new Array[AnyRef](this.size << 1)
-      System.arraycopy(this.arr, 0, newArr, 0, this.size)
-      this.arr = newArr
+      this.grow()
     }
+  }
+
+  private[this] def grow(): Unit = {
+    val newArr = new Array[AnyRef](this.size << 1)
+    System.arraycopy(this.arr, 0, newArr, 0, this.size)
+    this.arr = newArr
   }
 }
