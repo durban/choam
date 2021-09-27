@@ -425,7 +425,6 @@ object Rxn extends RxnInstances0 {
     maxBackoff: Int = 16,
     randomizeBackoff: Boolean = true
   ): R = {
-
     /*
      * The default value of 16 for `maxBackoff` ensures that
      * there is at most 16 (or 32 with randomization) calls
@@ -441,42 +440,59 @@ object Rxn extends RxnInstances0 {
      * operations (and no downside for others). See `SpinBench`.
      */
 
-    val kcas = ctx.impl
+     new InterpreterState[X, R](
+       rxn = rxn,
+       x = x,
+       ctx = ctx,
+       maxBackoff = maxBackoff,
+       randomizeBackoff = randomizeBackoff
+     ).interpret()
+  }
 
-    var delayCompStorage: ObjStack[Any] = null
+  private final class InterpreterState[X, R](
+    rxn: Rxn[X, R],
+    x: X,
+    ctx: ThreadContext,
+    maxBackoff: Int,
+    randomizeBackoff: Boolean
+  ) {
 
-    var startRxn: Rxn[Any, Any] = rxn.asInstanceOf[Rxn[Any, Any]]
-    var startA: Any = x
+    private[this] val kcas = ctx.impl
 
-    var desc: EMCASDescriptor = kcas.start(ctx)
+    private[this] var delayCompStorage: ObjStack[Any] = null
 
-    val alts = newStack[Any]()
+    private[this] var startRxn: Rxn[Any, Any] = rxn.asInstanceOf[Rxn[Any, Any]]
+    private[this] var startA: Any = x
 
-    val contT: ByteStack = new ByteStack(initSize = 8)
-    val contK = newStack[Any]()
-    val pc = newStack[Rxn[Any, Unit]]()
-    val commit = new Commit[R]
+    private[this] var desc: EMCASDescriptor = kcas.start(ctx)
+
+    private[this] val alts: ObjStack[Any] = newStack[Any]()
+
+    private[this] val contT: ByteStack = new ByteStack(initSize = 8)
+    private[this] val contK: ObjStack[Any] = newStack[Any]()
+    private[this] val pc: ObjStack[Rxn[Any,Unit]] = newStack[Rxn[Any, Unit]]()
+    private[this] val commit = new Commit[R]
     contT.push(ContAfterPostCommit)
     contT.push(ContAndThen)
     contK.push(commit)
 
-    var contTReset: Array[Byte] = contT.toArray()
-    var contKReset: Array[Any] = contK.toArray()
+    private[this] var contTReset: Array[Byte] = contT.toArray()
+    private[this] var contKReset: Array[Any] = contK.toArray()
 
-    var a: Any = x
-    var retries: Int = 0
+    private[this] var a: Any = x
+    private[this] var retries: Int = 0
 
-    def setContReset(): Unit = {
+    private[this] final def setContReset(): Unit = {
       contTReset = contT.toArray()
       contKReset = contK.toArray()
     }
 
-    def resetConts(): Unit = {
+    private[this] final def resetConts(): Unit = {
       contT.replaceWith(contTReset)
       contK.replaceWithUnsafe(contKReset.asInstanceOf[Array[Any]])
     }
 
-    def saveEverything(): Unit = {
+    private[this] final def saveEverything(): Unit = {
       if (delayCompStorage eq null) {
         delayCompStorage = newStack()
       }
@@ -498,12 +514,11 @@ object Rxn extends RxnInstances0 {
       retries = 0
     }
 
-    def clearAlts(): Unit = {
+    private[this] final def clearAlts(): Unit = {
       alts.clear()
     }
 
-    def loadEverything(): Unit = {
-      // TODO: this is a mess...
+    private[this] final def loadEverything(): Unit = {
       contKReset = delayCompStorage.pop().asInstanceOf[Array[Any]]
       contTReset = delayCompStorage.pop().asInstanceOf[Array[Byte]]
       startA = delayCompStorage.pop()
@@ -514,7 +529,7 @@ object Rxn extends RxnInstances0 {
       ()
     }
 
-    def saveAlt(k: Rxn[Any, R]): Unit = {
+    private[this] final def saveAlt(k: Rxn[Any, R]): Unit = {
       alts.push(kcas.snapshot(desc, ctx))
       alts.push(a)
       alts.push(contT.toArray())
@@ -523,7 +538,7 @@ object Rxn extends RxnInstances0 {
       alts.push(k)
     }
 
-    def loadAlt(): Rxn[Any, R] = {
+    private[this] final def loadAlt(): Rxn[Any, R] = {
       val res = alts.pop().asInstanceOf[Rxn[Any, R]]
       pc.replaceWithUnsafe(alts.pop().asInstanceOf[Array[Any]])
       contK.replaceWith(alts.pop().asInstanceOf[Array[Any]])
@@ -533,13 +548,14 @@ object Rxn extends RxnInstances0 {
       res
     }
 
-    def popFinalResult(): Any = {
+    private[this] final def popFinalResult(): Any = {
       val r = contK.pop()
       assert(!equ(r, postCommitResultMarker))
       r
     }
 
-    def next(): Rxn[Any, Any] = {
+    @tailrec
+    private[this] final def next(): Rxn[Any, Any] = {
       (contT.pop() : @switch) match {
         case 0 => // ContAndThen
           val rrr = contK.pop()
@@ -580,7 +596,7 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    def retry(): Rxn[Any, Any] = {
+    private[this] final def retry(): Rxn[Any, Any] = {
       retries += 1
       if (alts.nonEmpty) {
         loadAlt()
@@ -595,13 +611,13 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    def spin(): Unit = {
+    private[this] final def spin(): Unit = {
       if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
       else Backoff.backoffConst(retries, maxBackoff)
     }
 
     @tailrec
-    def loop[A, B](curr: Rxn[A, B]): R = {
+    private[this] final def loop[A, B](curr: Rxn[A, B]): R = {
       (curr.tag : @switch) match {
         case 0 => // Commit
           if (kcas.tryPerform(desc, ctx)) {
@@ -713,7 +729,9 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    loop(startRxn)
+    final def interpret(): R = {
+      loop(startRxn)
+    }
   }
 
 // TODO: Exchanger:
