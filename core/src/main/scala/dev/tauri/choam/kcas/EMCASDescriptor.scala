@@ -70,7 +70,12 @@ final class EMCASDescriptor private (
     ()
   }
 
-  private[kcas] def sort(): Unit = {
+  private[kcas] def prepare(@unused ctx: ThreadContext): Unit = {
+    this.sort()
+    // TODO: move alloc calls here
+  }
+
+  private[this] def sort(): Unit = {
     this.words.sort(WordDescriptor.comparator)
   }
 

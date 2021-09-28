@@ -65,7 +65,7 @@ private[choam] object NaiveKCAS extends KCAS { self =>
     desc.copy(ctx)
 
   final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
-    desc.sort()
+    desc.prepare(ctx)
     val ops = scala.jdk.CollectionConverters.IteratorHasAsScala(desc.wordIterator()).asScala.toList
     perform(ops)
   }

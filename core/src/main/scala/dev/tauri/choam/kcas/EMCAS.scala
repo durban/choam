@@ -258,8 +258,8 @@ private[choam] object EMCAS extends KCAS { self =>
     if (!helping) {
       // we're not helping, so `desc` is not yet visible to other threads
       // (otherwise the thread which published `desc` already sorted it)
-      desc.sort()
       ctx.startOp()
+      desc.prepare(ctx)
     }
 
     try {
