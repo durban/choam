@@ -561,8 +561,7 @@ object Rxn extends RxnInstances0 {
     private[this] final def next(): Rxn[Any, Any] = {
       (contT.pop() : @switch) match {
         case 0 => // ContAndThen
-          val rrr = contK.pop()
-          rrr.asInstanceOf[Rxn[Any, Any]]
+          contK.pop().asInstanceOf[Rxn[Any, Any]]
         case 1 => // ContAndAlso
           val savedA = a
           a = contK.pop()
