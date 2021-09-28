@@ -24,7 +24,6 @@ import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZLL_Result
 
 import cats.effect.{ IO, SyncIO, Fiber }
-import cats.syntax.all._
 
 @JCStressTest
 @State
