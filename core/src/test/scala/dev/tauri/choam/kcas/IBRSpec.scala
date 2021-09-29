@@ -54,13 +54,17 @@ final class IBRSpec
     val descs = for (_ <- 1 until IBR.epochFreq) yield {
       ctx.startOp()
       try {
-        WordDescriptor(null, "", "", null, ctx)
+        val wd = WordDescriptor(null, "", "", null)
+        wd.prepare(ctx)
+        wd
       } finally ctx.endOp()
     }
     // the next allocation triggers the new epoch:
     ctx.startOp()
     try {
-      WordDescriptor(null, "", "", null, ctx)
+      val wd = WordDescriptor(null, "", "", null)
+      wd.prepare(ctx)
+      wd
     } finally ctx.endOp()
     val newEpoch = EMCAS.global.epochNumber
     assertEquals(newEpoch, (startEpoch + 1))
@@ -75,7 +79,9 @@ final class IBRSpec
     ctx.resetCounter(0)
     val firstEpoch = EMCAS.global.epochNumber
     val d = ctx.op {
-      WordDescriptor(null, "", "", null, ctx)
+      val wd = WordDescriptor(null, "", "", null)
+      wd.prepare(ctx)
+      wd
     }
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
@@ -115,7 +121,9 @@ final class IBRSpec
     ctx.resetCounter(0)
     val firstEpoch = EMCAS.global.epochNumber
     val d = ctx.op {
-      WordDescriptor(null, "", "", null, ctx)
+      val wd = WordDescriptor(null, "", "", null)
+      wd.prepare(ctx)
+      wd
     }
     @volatile var error: Throwable = null
     val latch1 = new CountDownLatch(1)
@@ -145,7 +153,8 @@ final class IBRSpec
     // but newer objects should be able to free:
     ctx.forceNextEpoch()
     val d2 = ctx.op {
-      val d2 = WordDescriptor(null, "", "", null, ctx)
+      val d2 = WordDescriptor(null, "", "", null)
+      d2.prepare(ctx)
       assert(d2.getMinEpochAcquire() > firstEpoch)
       d2
     }

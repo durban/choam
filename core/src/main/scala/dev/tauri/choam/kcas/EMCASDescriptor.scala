@@ -37,7 +37,7 @@ final class EMCASDescriptor private (
   private[kcas] def this() =
     this(new ArrayList(EMCASDescriptor.minArraySize))
 
-  private[kcas] def copy(ctx: ThreadContext): EMCASDescriptor = {
+  private[kcas] def copy(): EMCASDescriptor = {
     @tailrec
     def copy(
       from: ArrayList[WordDescriptor[_]],
@@ -48,7 +48,7 @@ final class EMCASDescriptor private (
     ): Unit = {
       if (idx < len) {
         val oldWd = from.get(idx)
-        val newWd = oldWd.withParent(newParent, ctx)
+        val newWd = oldWd.withParent(newParent)
         to.add(newWd)
         copy(from, to, newParent, idx + 1, len)
       }
@@ -70,9 +70,12 @@ final class EMCASDescriptor private (
     ()
   }
 
-  private[kcas] def prepare(@unused ctx: ThreadContext): Unit = {
+  private[kcas] def prepare(ctx: ThreadContext): Unit = {
     this.sort()
-    // TODO: move alloc calls here
+    val it = this.wordIterator()
+    while (it.hasNext()) {
+      it.next().prepare(ctx)
+    }
   }
 
   private[this] def sort(): Unit = {

@@ -52,7 +52,7 @@ private[choam] object NaiveKCAS extends KCAS { self =>
     nv: A,
     ctx: ThreadContext
   ): EMCASDescriptor = {
-    desc.add(WordDescriptor[A](ref, ov, nv, desc, dummyContext))
+    desc.add(WordDescriptor[A](ref, ov, nv, desc))
     desc
   }
 
@@ -62,7 +62,7 @@ private[choam] object NaiveKCAS extends KCAS { self =>
   }
 
   final override def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor =
-    desc.copy(ctx)
+    desc.copy()
 
   final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
     desc.prepare(ctx)

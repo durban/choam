@@ -29,8 +29,12 @@ final class WordDescriptor[A] private (
   val parent: EMCASDescriptor
 ) extends IBRManaged[ThreadContext, WordDescriptor[A]] {
 
-  final def withParent(newParent: EMCASDescriptor, ctx: ThreadContext): WordDescriptor[A] =
-    WordDescriptor[A](this.address, this.ov, this.nv, newParent, ctx)
+  final def withParent(newParent: EMCASDescriptor): WordDescriptor[A] =
+    WordDescriptor[A](this.address, this.ov, this.nv, newParent)
+
+  final def prepare(ctx: ThreadContext): Unit = {
+    ctx.alloc(this)
+  }
 
   final def cast[B]: WordDescriptor[B] =
     this.asInstanceOf[WordDescriptor[B]]
@@ -49,11 +53,8 @@ object WordDescriptor {
     ov: A,
     nv: A,
     parent: EMCASDescriptor,
-    ctx: ThreadContext
   ): WordDescriptor[A] = {
-    val wd = new WordDescriptor[A](address, ov, nv, parent)
-    ctx.alloc(wd.cast[Any])
-    wd
+    new WordDescriptor[A](address, ov, nv, parent)
   }
 
   val comparator: Comparator[WordDescriptor[_]] = new Comparator[WordDescriptor[_]] {
