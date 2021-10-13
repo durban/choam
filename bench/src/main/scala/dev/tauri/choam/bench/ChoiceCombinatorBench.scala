@@ -30,8 +30,12 @@ class ChoiceCombinatorBench {
 
   @Benchmark
   def choiceCAS(s: CASChoice, k: KCASImplState): Unit = {
-    s.choice.unsafePerform((), k.kcasImpl)
+    doChoiceCAS(s, k)
     s.reset.reset()
+  }
+
+  final def doChoiceCAS(s: CASChoice, k: KCASImplState): Unit = {
+    s.choice.unsafePerform((), k.kcasImpl)
   }
 }
 
@@ -46,10 +50,10 @@ object ChoiceCombinatorBench {
   @State(Scope.Thread)
   class CASChoice extends BaseState {
 
-    private[this] val ref =
+    private[bench] val ref =
       Ref.unsafe("foo")
 
-    private[this] var refs: Array[Ref[String]] =
+    private[bench] var refs: Array[Ref[String]] =
       null
 
     val reset: Reset[String] =
@@ -59,15 +63,17 @@ object ChoiceCombinatorBench {
 
     def mkChoice(): Axn[Unit] = {
       val successfulCas = ref.unsafeCas("foo", "bar")
-      val fails = refs.foldLeft[Axn[Unit]](Rxn.unsafe.retry) { (r, ref) =>
-        r + ref.unsafeCas("invalid", "dontcare")
+      val fails: Axn[Unit] = (0 until (size / 2)).foldLeft[Axn[Unit]](Rxn.unsafe.retry) { (acc, i) =>
+        acc + (
+          refs(2 * i).unsafeCas("foo", "bar") >>> refs((2 * i) + 1).unsafeCas("x", "-")
+        )
       }
       fails + successfulCas
     }
 
     @Setup
     def setup(): Unit = {
-      this.refs = Array.tabulate(size)(i => Ref.unsafe(i.toString))
+      this.refs = Array.tabulate(size)(_ => Ref.unsafe("foo"))
       this.choice = mkChoice()
     }
   }
