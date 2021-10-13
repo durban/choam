@@ -22,19 +22,16 @@ import java.util.Arrays
 import scala.reflect.ClassTag
 import scala.collection.immutable.ArraySeq
 
-private final class ObjStack[A] private (
-  private[this] var arr: Array[AnyRef],
-  private[this] var size: Int
-) {
+private final class ObjStack[A](initSize: Int) {
 
-  def this(initSize: Int) = {
-    this(Array.ofDim[AnyRef](initSize)(ClassTag.AnyRef), 0)
-  }
+  require(initSize > 0)
+  require((initSize & (initSize - 1)) == 0) // power of 2
 
-  require(arr.length > 0)
-  require((arr.length & (arr.length - 1)) == 0) // power of 2
-  require(size >= 0)
-  require(size <= arr.length)
+  private[this] var size: Int =
+    0
+
+  private[this] var arr: Array[AnyRef] =
+    Array.ofDim[AnyRef](initSize)(ClassTag.AnyRef)
 
   final override def toString: String = {
     s"ObjStack(${List(ArraySeq.unsafeWrapArray(Arrays.copyOf(this.arr, this.size)): _*).reverse.mkString(", ")})"
@@ -79,32 +76,7 @@ private final class ObjStack[A] private (
   }
 
   def toArray(): Array[A] = {
-    Arrays.copyOfRange(this.arr, 0, this.size).asInstanceOf[Array[A]]
-  }
-
-  // TODO: unused
-  def copyInto(that: ObjStack[Any]): Unit = {
-    var idx = this.size - 1
-    while (idx >= 0) {
-      that.push(this.arr(idx))
-      idx -= 1
-    }
-  }
-
-  // TODO: unused
-  def replaceWithFrom(that: ObjStack[A], sentinel: AnyRef): Unit = {
-    def go(): Unit = {
-      val nxt = that.pop()
-      if (equ(nxt, sentinel)) {
-        ()
-      } else {
-        this.push(nxt)
-        go()
-      }
-    }
-
-    this.clear()
-    go()
+    Arrays.copyOf(this.arr, this.size).asInstanceOf[Array[A]]
   }
 
   def pushAll(as: Iterable[A]): Unit = {
@@ -118,15 +90,15 @@ private final class ObjStack[A] private (
     this.replaceWithUnsafe(that.asInstanceOf[Array[Any]])
   }
 
+  // Note: we treat `that` as if it's immutable.
   def replaceWithUnsafe(that: Array[Any]): Unit = {
-    // TODO: this can make it so that arr.length is not a power of 2
-    if (that.length != 0) {
-      this.arr = that.asInstanceOf[Array[AnyRef]]
-      this.size = that.length
-    } else {
-      Arrays.fill(this.arr, null)
-      this.size = 0
+    while (that.length > this.arr.length) {
+      this.grow()
     }
+    // that.length <= this.arr.length
+    System.arraycopy(that, 0, this.arr, 0, that.length)
+    Arrays.fill(this.arr, that.length, this.arr.length, null)
+    this.size = that.length
   }
 
   private[this] def growIfNecessary(): Unit = {
@@ -136,7 +108,7 @@ private final class ObjStack[A] private (
   }
 
   private[this] def grow(): Unit = {
-    val newArr = new Array[AnyRef](this.size << 1)
+    val newArr = new Array[AnyRef](this.arr.length << 1)
     System.arraycopy(this.arr, 0, newArr, 0, this.size)
     this.arr = newArr
   }
