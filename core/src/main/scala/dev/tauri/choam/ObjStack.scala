@@ -51,9 +51,12 @@ private final class ObjStack[A](initSize: Int) {
 
   def pop(): A = {
     assertNonEmpty()
-    this.size -= 1
-    val res: A = this.arr(this.size).asInstanceOf[A]
-    this.arr(this.size) = null
+    // introducing these 2 locals makes the method bytecode smaller:
+    val newSize = this.size - 1
+    val arr = this.arr
+    this.size = newSize
+    val res: A = arr(newSize).asInstanceOf[A]
+    arr(newSize) = null
     res
   }
 
