@@ -188,44 +188,48 @@ class EMCASSpec extends BaseSpecA {
 
   @tailrec
   private def testExtendInterval(): Unit = {
+    // we never want cleanup during this test, so
+    // we configure it with a very-very low probability:
+    val neverReplace = (1 << 31)
     val r = Ref.unsafe("x")
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     val ctx = EMCAS.currentContext()
-    ctx.forceNextEpoch()
-    val epoch = ctx.globalContext.epochNumber
+    ctx.resetCounter(to = 0)
+    var threadEpoch: Option[Long] = None
     val t = new Thread(() => {
       val ctx = EMCAS.currentContext()
+      ctx.forceNextEpoch()
       ctx.startOp()
       try {
+        threadEpoch = Some(ctx.globalContext.epochNumber)
         latch1.countDown()
         latch2.await()
       } finally ctx.endOp()
     })
     t.start()
     latch1.await()
+    val tEpoch = threadEpoch.getOrElse(fail("no threadEpoch"))
     val descOld = EMCAS.addCas(EMCAS.start(ctx), r, "x", "y", ctx)
-    ctx.op {
-      descOld.prepare(ctx)
-    }
+    assert(EMCAS.tryPerformDebug(descOld, ctx, replace = neverReplace))
     val oldEpoch = descOld.wordIterator().next().getMinEpochVolatile()
-    if (oldEpoch =!= epoch) {
-      // This could happen with a low probability,
+    if (oldEpoch =!= tEpoch) {
+      // This may happen with a low probability,
       // in which case we restart the whole test case,
       // because it depends on `t` reserving `oldEpoch`:
       testExtendInterval()
     } else {
-      // Ok, we can go on with the test case:
-      assert(EMCAS.tryPerform(descOld, ctx))
+      // Ok, we can continue the test case:
       assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeGetVolatile(), descOld.wordIterator().next())
       ctx.forceNextEpoch()
+      ctx.resetCounter(to = 0)
       val descNew = EMCAS.addCas(EMCAS.start(ctx), r, "y", "z", ctx)
       ctx.op {
         descNew.prepare(ctx)
       }
       val newEpoch = descNew.wordIterator().next().getMinEpochVolatile()
       assert(clue(newEpoch) > clue(oldEpoch))
-      assert(EMCAS.tryPerform(descNew, ctx))
+      assert(EMCAS.tryPerformDebug(descNew, ctx, replace = neverReplace))
       assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeGetVolatile(), descNew.wordIterator().next())
       assert(ctx.isInUseByOther(descNew.wordIterator().next().cast))
       latch2.countDown()

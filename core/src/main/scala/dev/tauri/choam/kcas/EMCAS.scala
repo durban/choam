@@ -316,7 +316,11 @@ private[choam] object EMCAS extends KCAS { self =>
   }
 
   private[choam] final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
-    EMCAS.MCAS(desc, helping = false, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
+    tryPerformDebug(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
+  }
+
+  private[kcas] final def tryPerformDebug(desc: EMCASDescriptor, ctx: ThreadContext, replace: Int): Boolean = {
+    EMCAS.MCAS(desc, helping = false, ctx = ctx, replace = replace)
   }
 
   private[choam] final override def printStatistics(println: String => Unit): Unit = {
