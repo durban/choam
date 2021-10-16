@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import java.time.{ DateTimeException, OffsetDateTime }
 
-import scala.concurrent.Future
+import scala.concurrent.{ Future, ExecutionContext }
 import scala.concurrent.duration._
 
 import cats.effect.{ Sync, Async, IO, SyncIO, MonadCancel, Temporal }
@@ -142,11 +142,11 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
     // `munitIoRuntime.compute` for its own things.
     // If that value is a `TestContext`, things won't
     // work. So, during initialization, we return
-    // the global pool (munit saves that in the
+    // a dummy pool (munit saves that in the
     // constructor). Later (when the tests run),
     // we cheat, and return the ticked runtime.
     if (this.isInitialized) this.realMunitIoRuntime
-    else IORuntime.global
+    else this.dummyMunitIoRuntime
   }
 
   private[this] val realMunitIoRuntime = {
@@ -169,6 +169,29 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
       },
       shutdown = () => {},
       config = IORuntimeConfig(),
+    )
+  }
+
+  private[this] lazy val dummyMunitIoRuntime = {
+    val dummyEc = new ExecutionContext {
+      final override def execute(runnable: Runnable): Unit =
+        runnable.run()
+      final override def reportFailure(cause: Throwable): Unit =
+        cause.printStackTrace()
+    }
+    IORuntime(
+      compute = dummyEc,
+      blocking = dummyEc,
+      scheduler = new Scheduler {
+        override def sleep(delay: FiniteDuration, task: Runnable): Runnable =
+          null
+        override def nowMillis(): Long =
+          0L
+        override def monotonicNanos(): Long =
+          0L
+      },
+      shutdown = () => {},
+      config = IORuntimeConfig()
     )
   }
 
