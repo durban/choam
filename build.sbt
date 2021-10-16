@@ -181,8 +181,8 @@ lazy val dependencies = new {
   val catsVersion = "2.6.1"
   val catsEffectVersion = "3.3-162-2022ef9"
   val catsMtlVersion = "1.2.1"
-  val fs2Version = "3.1.1"
-  val scalacheckEffectVersion = "1.0.2"
+  val fs2Version = "3.1.5"
+  val scalacheckEffectVersion = "1.0.3"
 
   val cats = "org.typelevel" %% "cats-core" % catsVersion
   val catsEffectKernel = "org.typelevel" %% "cats-effect-kernel" % catsEffectVersion
@@ -197,7 +197,7 @@ lazy val dependencies = new {
     "org.typelevel" %% "cats-effect-kernel-testkit" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
     "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion,
-    "org.typelevel" %% "munit-cats-effect-3" % "1.0.5",
+    "org.typelevel" %% "munit-cats-effect-3" % "1.0.6",
     "org.typelevel" %% "scalacheck-effect" % scalacheckEffectVersion,
     "org.typelevel" %% "scalacheck-effect-munit" % scalacheckEffectVersion,
     "org.typelevel" %% "discipline-munit" % "1.0.9",
@@ -205,8 +205,8 @@ lazy val dependencies = new {
   )
 
   val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.1"
-  val catsStm = "io.github.timwspence" %% "cats-stm" % "0.10.3"
-  val zioStm = "dev.zio" %% "zio" % "1.0.11"
+  val catsStm = "io.github.timwspence" %% "cats-stm" % "0.11.0"
+  val zioStm = "dev.zio" %% "zio" % "1.0.12"
 
   val jol = "org.openjdk.jol" % "jol-core" % "0.16"
 }

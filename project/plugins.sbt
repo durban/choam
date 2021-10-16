@@ -17,7 +17,7 @@
 
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.3")
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
-addSbtPlugin("com.codecommit" % "sbt-github-actions" % "0.12.0")
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.2")
+addSbtPlugin("com.codecommit" % "sbt-github-actions" % "0.13.0")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.3")
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.6.0")
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.9.29")
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.9.31")
