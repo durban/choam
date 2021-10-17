@@ -22,13 +22,18 @@ jobs:
     name: Build and Test
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         scala: [2.13.6, 3.0.2]
         java:
           - adoptium@11
           - graalvm-ce-java11@21.2
           - openj9-java11@0.27
           - adoptium@17
+        include:
+          - os: macos-latest
+            java: adoptium@17
+        exclude:
+          - os: macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - name: Ignore line ending differences in git

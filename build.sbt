@@ -17,6 +17,8 @@
 
 val scala2 = "2.13.6"
 val scala3 = "3.0.2"
+val jdkLatest = "adoptium@17"
+val macos = "macos-latest"
 
 ThisBuild / scalaVersion := scala2
 ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, scala3)
@@ -36,11 +38,18 @@ ThisBuild / githubWorkflowJavaVersions := Seq(
   "adoptium@11",
   "graalvm-ce-java11@21.2",
   "openj9-java11@0.27",
-  "adoptium@17",
+  jdkLatest,
 )
-ThisBuild / githubWorkflowOSes := Seq("ubuntu-latest", "windows-latest")
+ThisBuild / githubWorkflowOSes := Seq("ubuntu-latest", "windows-latest", macos)
 ThisBuild / githubWorkflowSbtCommand := "sbt -v"
 ThisBuild / githubWorkflowEnv += ("JABBA_INDEX" -> "https://raw.githubusercontent.com/typelevel/jdk-index/96cc7ae/index.json")
+ThisBuild / githubWorkflowBuildMatrixExclusions += MatrixExclude(
+  Map("os" -> macos)
+)
+ThisBuild / githubWorkflowBuildMatrixInclusions += MatrixInclude(
+  matching = Map("os" -> macos, "java" -> jdkLatest),
+  additions = Map.empty
+)
 
 lazy val choam = project.in(file("."))
   .settings(name := "choam")
