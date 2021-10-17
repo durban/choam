@@ -15,7 +15,6 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  SBT_OPTS: '-XX:+PrintFlagsFinal'
 
 jobs:
   build:
