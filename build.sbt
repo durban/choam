@@ -33,13 +33,14 @@ ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${scala3}'")),
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
-  "adopt@1.11",
-  "graalvm-ce-java11@21.1",
-  "adopt@1.16",
-  "adopt-openj9@1.16",
+  "adoptium@11",
+  "graalvm-ce-java11@21.2",
+  "adoptium@17",
+  // TODO: "adopt-openj9@1.16",
 )
 ThisBuild / githubWorkflowOSes := Seq("ubuntu-latest", "windows-latest")
 ThisBuild / githubWorkflowSbtCommand := "sbt -v"
+ThisBuild / githubWorkflowEnv += ("JABBA_INDEX" -> "https://raw.githubusercontent.com/typelevel/jdk-index/a369f0e/index.json")
 
 lazy val choam = project.in(file("."))
   .settings(name := "choam")

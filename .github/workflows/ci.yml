@@ -15,6 +15,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  JABBA_INDEX: 'https://raw.githubusercontent.com/typelevel/jdk-index/a369f0e/index.json'
 
 jobs:
   build:
@@ -24,10 +25,9 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         scala: [2.13.6, 3.0.2]
         java:
-          - adopt@1.11
-          - graalvm-ce-java11@21.1
-          - adopt@1.16
-          - adopt-openj9@1.16
+          - adoptium@11
+          - graalvm-ce-java11@21.2
+          - adoptium@17
     runs-on: ${{ matrix.os }}
     steps:
       - name: Ignore line ending differences in git
