@@ -32,6 +32,7 @@ jobs:
         include:
           - os: macos-latest
             java: adoptium@17
+            scala: 2.13.6
         exclude:
           - os: macos-latest
     runs-on: ${{ matrix.os }}

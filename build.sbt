@@ -47,7 +47,7 @@ ThisBuild / githubWorkflowBuildMatrixExclusions += MatrixExclude(
   Map("os" -> macos)
 )
 ThisBuild / githubWorkflowBuildMatrixInclusions += MatrixInclude(
-  matching = Map("os" -> macos, "java" -> jdkLatest),
+  matching = Map("os" -> macos, "java" -> jdkLatest, "scala" -> scala2),
   additions = Map.empty
 )
 
