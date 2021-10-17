@@ -35,12 +35,12 @@ ThisBuild / githubWorkflowBuild := Seq(
 ThisBuild / githubWorkflowJavaVersions := Seq(
   "adoptium@11",
   "graalvm-ce-java11@21.2",
+  "openj9-java11@0.27",
   "adoptium@17",
-  // TODO: "adopt-openj9@1.16",
 )
 ThisBuild / githubWorkflowOSes := Seq("ubuntu-latest", "windows-latest")
 ThisBuild / githubWorkflowSbtCommand := "sbt -v"
-ThisBuild / githubWorkflowEnv += ("JABBA_INDEX" -> "https://raw.githubusercontent.com/typelevel/jdk-index/a369f0e/index.json")
+ThisBuild / githubWorkflowEnv += ("JABBA_INDEX" -> "https://raw.githubusercontent.com/typelevel/jdk-index/96cc7ae/index.json")
 
 lazy val choam = project.in(file("."))
   .settings(name := "choam")

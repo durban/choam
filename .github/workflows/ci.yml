@@ -15,7 +15,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  JABBA_INDEX: 'https://raw.githubusercontent.com/typelevel/jdk-index/a369f0e/index.json'
+  JABBA_INDEX: 'https://raw.githubusercontent.com/typelevel/jdk-index/96cc7ae/index.json'
 
 jobs:
   build:
@@ -27,6 +27,7 @@ jobs:
         java:
           - adoptium@11
           - graalvm-ce-java11@21.2
+          - openj9-java11@0.27
           - adoptium@17
     runs-on: ${{ matrix.os }}
     steps:
