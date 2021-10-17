@@ -1,1 +1,3 @@
--Xmx4096M -Xss1M
+-Xms512M
+-Xmx4096M
+-Xss1M
