@@ -39,6 +39,7 @@ ThisBuild / githubWorkflowJavaVersions := Seq(
   "adopt-openj9@1.16",
 )
 ThisBuild / githubWorkflowOSes := Seq("ubuntu-latest", "windows-latest")
+ThisBuild / githubWorkflowSbtCommand := "sbt -v"
 
 lazy val choam = project.in(file("."))
   .settings(name := "choam")
