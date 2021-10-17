@@ -39,7 +39,7 @@ ThisBuild / githubWorkflowJavaVersions := Seq(
   "adopt-openj9@1.16",
 )
 ThisBuild / githubWorkflowOSes := Seq("ubuntu-latest", "windows-latest")
-ThisBuild / githubWorkflowEnv += ("JVM_OPTS" -> "-XX:+PrintFlagsFinal")
+ThisBuild / githubWorkflowEnv += ("SBT_OPTS" -> "-XX:+PrintFlagsFinal")
 
 lazy val choam = project.in(file("."))
   .settings(name := "choam")
