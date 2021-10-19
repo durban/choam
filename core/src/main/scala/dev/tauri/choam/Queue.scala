@@ -40,6 +40,9 @@ object Queue {
   def apply[A]: Axn[Queue[A]] =
     MichaelScottQueue[A]
 
+  def unpadded[A]: Axn[Queue[A]] =
+    MichaelScottQueueUnpadded[A]
+
   def fromList[A](as: List[A]): Axn[Queue[A]] =
     MichaelScottQueue.fromList[A](as)
 

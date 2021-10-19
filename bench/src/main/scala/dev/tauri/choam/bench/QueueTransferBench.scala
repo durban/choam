@@ -35,9 +35,15 @@ class QueueTransferBench extends BenchUtils {
   final val waitTime = 128L
   final val size = 4096
 
-  /** MS-Queues implemented with `Rxn` */
+  /** MS-Queues (padded) implemented with `Rxn` */
   @Benchmark
-  def michaelScottQueue(s: MsSt, ct: KCASImplState): Unit = {
+  def michaelScottQueuePadded(s: MsSt, ct: KCASImplState): Unit = {
+    runIdx(s.runtime, s.transfer(_).run[IO](ct.reactive), size = size)
+  }
+
+  /** MS-Queues (unpadded) implemented with `Rxn` */
+  @Benchmark
+  def michaelScottQueueUnpadded(s: MsuSt, ct: KCASImplState): Unit = {
     runIdx(s.runtime, s.transfer(_).run[IO](ct.reactive), size = size)
   }
 
@@ -116,6 +122,17 @@ object QueueTransferBench {
 
     protected override def newQueue(): Queue[String] =
       MichaelScottQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(this.runtime)
+
+    @Setup
+    def setup(): Unit =
+      internalSetup()
+  }
+
+  @State(Scope.Benchmark)
+  class MsuSt extends MsStBase {
+
+    protected override def newQueue(): Queue[String] =
+      MichaelScottQueueUnpadded.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(this.runtime)
 
     @Setup
     def setup(): Unit =
