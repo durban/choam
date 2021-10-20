@@ -145,11 +145,11 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
     // a dummy pool (munit saves that in the
     // constructor). Later (when the tests run),
     // we cheat, and return the ticked runtime.
-    if (this.isInitialized) this.realMunitIoRuntime
+    if (this.isInitialized : @unchecked) this.realMunitIoRuntime
     else this.dummyMunitIoRuntime
   }
 
-  private[this] val realMunitIoRuntime = {
+  private[this] lazy val realMunitIoRuntime = {
     IORuntime(
       compute = testContext,
       blocking = testContext,

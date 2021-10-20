@@ -135,7 +135,10 @@ lazy val commonSettings = Seq[Setting[_]](
   ),
   scalacOptions ++= (
     if (ScalaArtifacts.isScala3(scalaVersion.value)) {
-      List("-Ykind-projector")
+      List(
+        "-Ykind-projector",
+        "-Ysafe-init",
+      )
     } else {
       Nil
     }
