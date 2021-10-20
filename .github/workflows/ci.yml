@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        scala: [2.13.6, 3.0.2]
+        scala: [2.13.6, 3.1.0]
         java:
           - adoptium@11
           - graalvm-ce-java11@21.2
@@ -71,6 +71,6 @@ jobs:
       - shell: bash
         run: sbt -v ++${{ matrix.scala }} ci
 
-      - if: matrix.scala != '3.0.2'
+      - if: matrix.scala != '3.1.0'
         shell: bash
         run: sbt -v ++${{ matrix.scala }} checkScalafix
