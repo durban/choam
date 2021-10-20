@@ -16,7 +16,7 @@
  */
 
 val scala2 = "2.13.6"
-val scala3 = "3.0.2"
+val scala3 = "3.1.0"
 val jdkLatest = "adoptium@17"
 val macos = "macos-latest"
 
@@ -111,36 +111,50 @@ lazy val commonSettings = Seq[Setting[_]](
     "-unchecked",
     "-encoding", "UTF-8",
     "-language:higherKinds,experimental.macros",
-    "-target:11",
     "-release", "11",
-    "-opt:l:inline",
-    "-opt-inline-from:<sources>",
-    "-Wconf:any:warning-verbose",
-    "-Xlint:_",
+    "-Xmigration:2.13.6",
     // TODO: "-Xelide-below", "INFO",
-    "-Xmigration:2.13.4",
-    "-Xsource:3",
-    "-Xverify",
-    "-Ywarn-numeric-widen",
-    "-Ywarn-dead-code",
-    "-Ywarn-value-discard",
-    "-Ywarn-unused:implicits",
-    "-Ywarn-unused:imports",
-    "-Ywarn-unused:locals",
-    "-Ywarn-unused:patvars",
-    "-Ywarn-unused:params",
-    "-Ywarn-unused:privates",
     // TODO: experiment with -Ydelambdafy:inline for performance
     // TODO: experiment with -Yno-predef and/or -Yno-imports
   ),
   scalacOptions ++= (
-    if (ScalaArtifacts.isScala3(scalaVersion.value)) {
+    if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
+      // 2.13:
       List(
-        "-Ykind-projector",
-        "-Ysafe-init",
+        "-target:11",
+        "-Xsource:3",
+        "-Xverify",
+        "-Wconf:any:warning-verbose",
+        "-Ywarn-unused:implicits",
+        "-Ywarn-unused:imports",
+        "-Ywarn-unused:locals",
+        "-Ywarn-unused:patvars",
+        "-Ywarn-unused:params",
+        "-Ywarn-unused:privates",
+        // no equivalent:
+        "-opt:l:inline",
+        "-opt-inline-from:<sources>",
+        "-Xlint:_",
+        "-Ywarn-numeric-widen",
+        "-Ywarn-dead-code",
+        "-Ywarn-value-discard",
       )
     } else {
-      Nil
+      // 3.x:
+      List(
+        // -release implies -Xtarget
+        "-source:3.0",
+        "-Xverify-signatures",
+        "-Wconf:any:v",
+        "-Wunused:all",
+        // no equivalent:
+        "-Ykind-projector",
+        "-Ysafe-init",
+        "-Ycheck-all-patmat",
+        // TODO: "-Ycheck-reentrant",
+        // TODO: "-Yexplicit-nulls",
+        // TODO: "-Yrequire-targetName",
+      )
     }
   ),
   Compile / console / scalacOptions ~= { _.filterNot("-Ywarn-unused-import" == _).filterNot("-Ywarn-unused:imports" == _) },

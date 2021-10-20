@@ -604,6 +604,10 @@ object Rxn extends RxnInstances0 {
         case 6 => // ContCommitPostCommit
           a = postCommitResultMarker : Any
           commit.asInstanceOf[Rxn[Any, Any]]
+        case ct => // mustn't happen
+          throw new UnsupportedOperationException(
+            s"Unknown contT: ${ct}"
+          )
       }
     }
 
