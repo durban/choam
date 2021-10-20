@@ -314,6 +314,10 @@ object Rxn extends RxnInstances0 {
     private[choam] def delay[A, B](uf: A => B): Rxn[A, B] =
       lift(uf)
 
+    // TODO: does this make sense? is it faster than `ThreadLocalRandom.current()`?
+    private[choam] def context[A](uf: ThreadContext => A): Axn[A] =
+      new Ctx[A](uf)
+
     // TODO: we need a better name
     def delayComputed[A, B](prepare: Rxn[A, Axn[B]]): Rxn[A, B] =
       new DelayComputed[A, B](prepare)
@@ -398,6 +402,11 @@ object Rxn extends RxnInstances0 {
   private final class Done[A](val result: A) extends Rxn[Any, A] {
     private[choam] final def tag = 13
     final override def toString: String = s"Done(${result})"
+  }
+
+  private final class Ctx[A](val uf: ThreadContext => A) extends Rxn[Any, A] {
+    private[choam] final def tag = 14
+    final override def toString: String = s"Ctx"
   }
 
   // Interpreter:
@@ -724,6 +733,10 @@ object Rxn extends RxnInstances0 {
         case 13 => // Done
           val c = curr.asInstanceOf[Done[R]]
           c.result
+        case 14 => // Ctx
+          val c = curr.asInstanceOf[Ctx[R]]
+          a = c.uf(ctx)
+          loop(next())
         case t => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown tag ${t} for ${curr}"

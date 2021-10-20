@@ -669,6 +669,12 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("unsafe.context") {
+    Rxn.unsafe.context { (tc: ThreadContext) =>
+      tc.impl eq this.kcasImpl
+    }.run[F].flatMap(ok => assertF(ok))
+  }
+
   test("Monad instance") {
     def foo[G[_] : Monad](ga: G[Int]): G[String] =
       ga.flatMap(x => x.toString.pure[G])
