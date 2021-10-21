@@ -104,6 +104,19 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("Ref#update example") {
+    for {
+      x <- Ref[Int](1).run[F]
+      y <- Ref[Int](2).run[F]
+      _ <- assertResultF(
+        (x.update(_ + 1) >>> y.update(_ + 1)).run[F],
+        ()
+      )
+      _ <- assertResultF(x.get.run[F], 2)
+      _ <- assertResultF(y.get.run[F], 3)
+    } yield ()
+  }
+
   test("Ref#modify et. al.") {
     for {
       r <- Ref("a").run[F]

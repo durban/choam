@@ -22,13 +22,17 @@
 *Experiments with composable lock-free concurrency*
 
 The type [`Rxn[-A, +B]`](core/src/main/scala/dev/tauri/choam/Rxn.scala)
-is similar to an effectful function from `A` to `B`, but:
+is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but:
 
 - The only effect it can perform is lock-free updates to
   [`Ref`s](core/src/main/scala/dev/tauri/choam/Ref.scala)
   (mutable memory locations with a pure API).
+  - For example, if `x` is a `Ref[Int]`, then `x.update(_ + 1)` is a `Rxn` which
+    (when executed) will increment its value.
 - Multiple `Rxn`s can be composed, by using various combinators,
   and the resulting `Rxn` will *update all affected memory locations atomically*.
+  - For example, if `y` is also a `Ref[Int]`, then `x.update(_ + 1) >>> y.update(_ + 1)`
+    will increment both of them atomically.
 - However, conflicting `Rxn`s cannot be composed. That is, `Rxn`s which
   update the same `Ref` are not allowed to be composed.
   - Currently composing conflicting `Rxn`s causes a runtime error.
