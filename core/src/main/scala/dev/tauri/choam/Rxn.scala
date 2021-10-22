@@ -482,7 +482,7 @@ object Rxn extends RxnInstances0 {
 
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
     private[this] val contK: ObjStack[Any] = newStack[Any]()
-    private[this] val pc: ObjStack[Rxn[Any,Unit]] = newStack[Rxn[Any, Unit]]()
+    private[this] val pc: ObjStack[Rxn[Any, Unit]] = newStack[Rxn[Any, Unit]]()
     private[this] val commit = commitSingleton
     contT.push(ContAfterPostCommit)
     contT.push(ContAndThen)

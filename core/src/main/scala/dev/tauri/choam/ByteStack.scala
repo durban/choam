@@ -22,19 +22,16 @@ import java.util.Arrays
 import scala.reflect.ClassTag
 import scala.collection.immutable.ArraySeq
 
-private final class ByteStack private (
-  private[this] var arr: Array[Byte],
-  private[this] var size: Int
-) {
+private final class ByteStack(initSize: Int) {
 
-  def this(initSize: Int) = {
-    this(Array.ofDim[Byte](initSize)(ClassTag.Byte), 0)
-  }
+  require(initSize > 0)
+  require((initSize & (initSize - 1)) == 0) // power of 2
 
-  require(arr.length > 0)
-  require((arr.length & (arr.length - 1)) == 0) // power of 2
-  require(size >= 0)
-  require(size <= arr.length)
+  private[this] var size: Int =
+    0
+
+  private[this] var arr: Array[Byte] =
+    Array.ofDim[Byte](initSize)(ClassTag.Byte)
 
   final override def toString: String = {
     s"ByteStack(${List(ArraySeq.unsafeWrapArray(Arrays.copyOf(this.arr, this.size)): _*).reverse.mkString(", ")})"
@@ -54,8 +51,10 @@ private final class ByteStack private (
 
   def pop(): Byte = {
     assertNonEmpty()
-    this.size -= 1
-    this.arr(this.size)
+    // introducing this local makes the method bytecode smaller:
+    val newSize = this.size - 1
+    this.size = newSize
+    this.arr(newSize)
   }
 
   def top(): Byte = {
@@ -76,24 +75,28 @@ private final class ByteStack private (
   }
 
   def toArray(): Array[Byte] = {
-    Arrays.copyOfRange(this.arr, 0, this.size)
+    Arrays.copyOf(this.arr, this.size)
   }
 
+  // Note: we treat `that` as if it's immutable.
   def replaceWith(that: Array[Byte]): Unit = {
-    // TODO: this can make it so that arr.length is not a power of 2
-    if (that.length != 0) {
-      this.arr = that
-      this.size = that.length
-    } else {
-      this.size = 0
+    while (that.length > this.arr.length) {
+      this.grow()
     }
+    // that.length <= this.arr.length
+    System.arraycopy(that, 0, this.arr, 0, that.length)
+    this.size = that.length
   }
 
   private[this] def growIfNecessary(): Unit = {
     if (this.size == this.arr.length) {
-      val newArr = new Array[Byte](this.size << 1)
-      System.arraycopy(this.arr, 0, newArr, 0, this.size)
-      this.arr = newArr
+      this.grow()
     }
+  }
+
+  private[this] def grow(): Unit = {
+    val newArr = new Array[Byte](this.arr.length << 1)
+    System.arraycopy(this.arr, 0, newArr, 0, this.size)
+    this.arr = newArr
   }
 }
