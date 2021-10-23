@@ -26,7 +26,7 @@ class InternalStackBench {
 
   import InternalStackBench._
 
-  final val N = 8192
+  final val N = 512
 
   @Benchmark
   def byteStack(s: St, bh: Blackhole): Unit = {
