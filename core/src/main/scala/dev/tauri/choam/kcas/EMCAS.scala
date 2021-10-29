@@ -68,7 +68,7 @@ private[choam] object EMCAS extends KCAS { self =>
         case wd: WordDescriptor[_] =>
           val parentStatus = wd.parent.getStatus()
           if (parentStatus eq EMCASStatus.ACTIVE) {
-            MCAS(wd.parent, helping = true, ctx = ctx, replace = replace) // help the other op
+            MCAS(wd.parent, ctx = ctx, replace = replace) // help the other op
             go() // retry
           } else { // finalized
             val a = if (parentStatus eq EMCASStatus.SUCCESSFUL) {
@@ -127,14 +127,12 @@ private[choam] object EMCAS extends KCAS { self =>
    * Performs an MCAS operation.
    *
    * @param desc: The main descriptor.
-   * @param helping: Pass `true` when helping `desc` found in a `Ref`;
-   *                 `false` when `desc` is a new descriptor.
    * @param ctx: The [[ThreadContext]] of the current thread.
    * @param replace: The period with which to run GC (IBR) after finalizing
    *                 an operation. Should be a power of 2; higher values
    *                 make the GC run less frequently.
    */
-  def MCAS(desc: EMCASDescriptor, helping: Boolean, ctx: ThreadContext, replace: Int): Boolean = {
+  def MCAS(desc: EMCASDescriptor, ctx: ThreadContext, replace: Int): Boolean = {
     // TODO: add a fast path for when `desc` is empty
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): TryWordResult = {
@@ -166,7 +164,7 @@ private[choam] object EMCAS extends KCAS { self =>
               // appears at most once in an MCASDescriptor).
               val parentStatus = wd.parent.getStatus()
               if (parentStatus eq EMCASStatus.ACTIVE) {
-                MCAS(wd.parent, helping = true, ctx = ctx, replace = replace) // help the other op
+                MCAS(wd.parent, ctx = ctx, replace = replace) // help the other op
                 // Note: we're not "helping" ourselves for sure, see the comment above.
                 // Here, we still don't have the value, so the loop must retry.
               } else if (parentStatus eq EMCASStatus.SUCCESSFUL) {
@@ -255,35 +253,22 @@ private[choam] object EMCAS extends KCAS { self =>
       }
     }
 
-    if (!helping) {
-      // we're not helping, so `desc` is not yet visible to other threads
-      // (otherwise the thread which published `desc` already sorted it)
-      ctx.startOp()
-      desc.prepare(ctx)
-    }
-
-    try {
-      val r = go(desc.wordIterator())
-      if (r eq TryWordResult.BREAK) {
+    val r = go(desc.wordIterator())
+    if (r eq TryWordResult.BREAK) {
+      // someone else finalized the descriptor, we must read its status:
+      (desc.getStatus() eq EMCASStatus.SUCCESSFUL)
+    } else {
+      val rr = if (r eq TryWordResult.SUCCESS) {
+        EMCASStatus.SUCCESSFUL
+      } else {
+        EMCASStatus.FAILED
+      }
+      if (desc.casStatus(EMCASStatus.ACTIVE, rr)) {
+        ctx.finalized(desc, limit = EMCAS.limitForFinalizedList, replace = replace)
+        (rr eq EMCASStatus.SUCCESSFUL)
+      } else {
         // someone else finalized the descriptor, we must read its status:
         (desc.getStatus() eq EMCASStatus.SUCCESSFUL)
-      } else {
-        val rr = if (r eq TryWordResult.SUCCESS) {
-          EMCASStatus.SUCCESSFUL
-        } else {
-          EMCASStatus.FAILED
-        }
-        if (desc.casStatus(EMCASStatus.ACTIVE, rr)) {
-          ctx.finalized(desc, limit = EMCAS.limitForFinalizedList, replace = replace)
-          (rr eq EMCASStatus.SUCCESSFUL)
-        } else {
-          // someone else finalized the descriptor, we must read its status:
-          (desc.getStatus() eq EMCASStatus.SUCCESSFUL)
-        }
-      }
-    } finally {
-      if (!helping) {
-        ctx.endOp()
       }
     }
   }
@@ -291,36 +276,18 @@ private[choam] object EMCAS extends KCAS { self =>
   private[choam] final override def currentContext(): ThreadContext =
     this.global.threadContext()
 
-  private[choam] final override def start(ctx: ThreadContext): EMCASDescriptor =
-    new EMCASDescriptor()
-
-  private[choam] final override def addCas[A](
-    desc: EMCASDescriptor,
-    ref: MemoryLocation[A],
-    ov: A,
-    nv: A,
-    ctx: ThreadContext
-  ): EMCASDescriptor = {
-    val wd = WordDescriptor[A](ref, ov, nv, desc)
-    desc.add(wd)
-    desc
-  }
-
-  private[choam] final override def addAll(to: EMCASDescriptor, from: EMCASDescriptor): EMCASDescriptor = {
-    to.addAll(from)
-    to
-  }
-
-  private[choam] final override def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor = {
-    desc.copy()
-  }
-
-  private[choam] final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
+  private[choam] final override def tryPerform(desc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
     tryPerformDebug(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
   }
 
-  private[kcas] final def tryPerformDebug(desc: EMCASDescriptor, ctx: ThreadContext, replace: Int): Boolean = {
-    EMCAS.MCAS(desc, helping = false, ctx = ctx, replace = replace)
+  private[kcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: ThreadContext, replace: Int): Boolean = {
+    ctx.startOp()
+    try {
+      val fullDesc = desc.prepare(ctx)
+      EMCAS.MCAS(desc = fullDesc, ctx = ctx, replace = replace)
+    } finally {
+      ctx.endOp()
+    }
   }
 
   private[choam] final override def printStatistics(println: String => Unit): Unit = {

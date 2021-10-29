@@ -23,7 +23,7 @@ import cats.{ Monad, Applicative, MonoidK }
 import cats.arrow.ArrowChoice
 import cats.mtl.Local
 
-import kcas.{ KCAS, ThreadContext, EMCASDescriptor }
+import kcas.{ KCAS, ThreadContext, HalfEMCASDescriptor }
 
 /**
  * An effectful function from `A` to `B`; when executed,
@@ -476,7 +476,7 @@ object Rxn extends RxnInstances0 {
     private[this] var startRxn: Rxn[Any, Any] = rxn.asInstanceOf[Rxn[Any, Any]]
     private[this] var startA: Any = x
 
-    private[this] var desc: EMCASDescriptor = kcas.start(ctx)
+    private[this] var desc: HalfEMCASDescriptor = kcas.start(ctx)
 
     private[this] val alts: ObjStack[Any] = newStack[Any]()
 
@@ -556,7 +556,7 @@ object Rxn extends RxnInstances0 {
       contK.replaceWith(alts.pop().asInstanceOf[Array[Any]])
       contT.replaceWith(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
-      desc = alts.pop().asInstanceOf[EMCASDescriptor]
+      desc = alts.pop().asInstanceOf[HalfEMCASDescriptor]
       res
     }
 

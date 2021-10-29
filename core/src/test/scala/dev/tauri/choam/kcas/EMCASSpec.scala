@@ -109,9 +109,9 @@ class EMCASSpec extends BaseSpecA {
     var descT1: WordDescriptor[_] = null
     val t1 = new Thread(() => {
       val ctx = EMCAS.currentContext()
-      val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a", ctx), r2, "y", "b", ctx)
+      val hDesc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a", ctx), r2, "y", "b", ctx)
       ctx.startOp()
-      desc.prepare(ctx)
+      val desc = hDesc.prepare(ctx)
       val d0 = desc.wordIterator().next().asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
       r1.unsafeSetVolatile(d0.castToData)
@@ -149,10 +149,10 @@ class EMCASSpec extends BaseSpecA {
     val latch2 = new CountDownLatch(1)
     val t1 = new Thread(() => {
       val ctx = EMCAS.currentContext()
-      val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a", ctx), r2, "y", "b", ctx)
+      val hDesc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a", ctx), r2, "y", "b", ctx)
       ctx.startOp()
+      val desc = hDesc.prepare(ctx)
       try {
-        desc.prepare(ctx)
         val d0 = desc.wordIterator().next().asInstanceOf[WordDescriptor[String]]
         assert(d0.address eq r1)
         assert(d0.address.unsafeCasVolatile(d0.ov, d0.castToData))
@@ -210,8 +210,12 @@ class EMCASSpec extends BaseSpecA {
     t.start()
     latch1.await()
     val tEpoch = threadEpoch.getOrElse(fail("no threadEpoch"))
-    val descOld = EMCAS.addCas(EMCAS.start(ctx), r, "x", "y", ctx)
-    assert(EMCAS.tryPerformDebug(descOld, ctx, replace = neverReplace))
+    val hDescOld = EMCAS.addCas(EMCAS.start(ctx), r, "x", "y", ctx)
+    val descOld = ctx.op {
+      val descOld = hDescOld.prepare(ctx)
+      assert(EMCAS.MCAS(desc = descOld, ctx = ctx, replace = neverReplace))
+      descOld
+    }
     val oldEpoch = descOld.wordIterator().next().getMinEpochVolatile()
     if (oldEpoch =!= tEpoch) {
       // This may happen with a low probability,
@@ -223,13 +227,14 @@ class EMCASSpec extends BaseSpecA {
       assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeGetVolatile(), descOld.wordIterator().next())
       ctx.forceNextEpoch()
       ctx.resetCounter(to = 0)
-      val descNew = EMCAS.addCas(EMCAS.start(ctx), r, "y", "z", ctx)
-      ctx.op {
-        descNew.prepare(ctx)
+      val hDescNew = EMCAS.addCas(EMCAS.start(ctx), r, "y", "z", ctx)
+      val descNew = ctx.op {
+        val descNew = hDescNew.prepare(ctx)
+        val newEpoch = descNew.wordIterator().next().getMinEpochVolatile()
+        assert(clue(newEpoch) > clue(oldEpoch))
+        assert(EMCAS.MCAS(desc = descNew, ctx = ctx, replace = neverReplace))
+        descNew
       }
-      val newEpoch = descNew.wordIterator().next().getMinEpochVolatile()
-      assert(clue(newEpoch) > clue(oldEpoch))
-      assert(EMCAS.tryPerformDebug(descNew, ctx, replace = neverReplace))
       assertSameInstance(r.asInstanceOf[Ref[Any]].unsafeGetVolatile(), descNew.wordIterator().next())
       assert(ctx.isInUseByOther(descNew.wordIterator().next().cast))
       latch2.countDown()
@@ -242,13 +247,8 @@ class EMCASSpec extends BaseSpecA {
     val r1 = Ref.unsafeWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = Ref.unsafeWithId("r2")(0L, 0L, 0L, 42L)
     val ctx = EMCAS.currentContext()
-    val other: EMCASDescriptor = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "r1", "x", ctx), r2, "r2", "y", ctx)
-    ctx.startOp()
-    try {
-      other.prepare(ctx)
-    } finally {
-      ctx.endOp()
-    }
+    val hOther: HalfEMCASDescriptor = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "r1", "x", ctx), r2, "r2", "y", ctx)
+    val other = ctx.op { hOther.prepare(ctx) }
     val d0 = other.wordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
     r1.unsafeSetVolatile(d0.castToData)
@@ -263,13 +263,8 @@ class EMCASSpec extends BaseSpecA {
     val r1 = Ref.unsafeWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = Ref.unsafeWithId("r2")(0L, 0L, 0L, 99L)
     val ctx = EMCAS.currentContext()
-    val other = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "r1", "x", ctx), r2, "zzz", "y", ctx)
-    ctx.startOp()
-    try {
-      other.prepare(ctx)
-    } finally {
-      ctx.endOp()
-    }
+    val hOther = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "r1", "x", ctx), r2, "zzz", "y", ctx)
+    val other = ctx.op { hOther.prepare(ctx) }
     val d0 = other.wordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
     r1.unsafeSetVolatile(d0.castToData)
@@ -328,5 +323,22 @@ class EMCASSpec extends BaseSpecA {
     t2.join()
     assert(r1.elem ne r2.elem)
     assertEquals(r1.elem.tid, r2.elem.tid)
+  }
+
+  test("Descriptors should be sorted") {
+    val r1 = Ref.unsafeWithId("r1")(0L, 0L, 0L, 1L)
+    val r2 = Ref.unsafeWithId("r2")(0L, 0L, 0L, 2L)
+    val r3 = Ref.unsafeWithId("r3")(0L, 0L, 0L, 3L)
+    val ctx = EMCAS.currentContext()
+    val d0 = EMCAS.start(ctx)
+    val d1 = EMCAS.addCas(d0, r1, "r1", "A", ctx)
+    val d2 = EMCAS.addCas(d1, r3, "r3", "C", ctx)
+    val d3 = EMCAS.addCas(d2, r2, "r2", "B", ctx)
+    val d = ctx.op { d3.prepare(ctx) }
+    val it = d.wordIterator()
+    assertSameInstance(it.next().address, r1)
+    assertSameInstance(it.next().address, r2)
+    assertSameInstance(it.next().address, r3)
+    assert(!it.hasNext())
   }
 }

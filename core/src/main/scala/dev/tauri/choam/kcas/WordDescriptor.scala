@@ -22,19 +22,60 @@ import java.util.Comparator
 
 import mcas.MemoryLocation
 
-final class WordDescriptor[A] private (
+final class HalfWordDescriptor[A] private (
   val address: MemoryLocation[A],
   val ov: A,
   val nv: A,
-  val parent: EMCASDescriptor
+) {
+
+  final def withParent(parent: EMCASDescriptor): WordDescriptor[A] =
+    WordDescriptor[A](this, parent)
+
+  final def prepare(parent: EMCASDescriptor, ctx: ThreadContext): WordDescriptor[A] = {
+    val wd = this.withParent(parent)
+    ctx.alloc(wd)
+    wd
+  }
+
+  final def cast[B]: HalfWordDescriptor[B] =
+    this.asInstanceOf[HalfWordDescriptor[B]]
+
+  final override def toString: String =
+    s"HalfWordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
+}
+
+object HalfWordDescriptor {
+
+  def apply[A](address: MemoryLocation[A], ov: A, nv: A): HalfWordDescriptor[A] =
+    new HalfWordDescriptor[A](address = address, ov = ov, nv = nv)
+
+  val comparator: Comparator[HalfWordDescriptor[_]] = new Comparator[HalfWordDescriptor[_]] {
+    final override def compare(x: HalfWordDescriptor[_], y: HalfWordDescriptor[_]): Int = {
+      // NB: `x ne y` is always true, because we create fresh descriptors in `withCAS`
+      val res = MemoryLocation.globalCompare(x.address, y.address)
+      if (res == 0) {
+        assert(x.address eq y.address)
+        KCAS.impossibleKCAS(x.address, x.ov, x.nv, y.ov, y.nv)
+      } else {
+        res
+      }
+    }
+  }
+}
+
+final class WordDescriptor[A] private (
+  val half: HalfWordDescriptor[A],
+  val parent: EMCASDescriptor,
 ) extends IBRManaged[ThreadContext, WordDescriptor[A]] {
 
-  final def withParent(newParent: EMCASDescriptor): WordDescriptor[A] =
-    WordDescriptor[A](this.address, this.ov, this.nv, newParent)
+  def address: MemoryLocation[A] =
+    this.half.address
 
-  final def prepare(ctx: ThreadContext): Unit = {
-    ctx.alloc(this)
-  }
+  def ov: A =
+    this.half.ov
+
+  def nv: A =
+    this.half.nv
 
   final def cast[B]: WordDescriptor[B] =
     this.asInstanceOf[WordDescriptor[B]]
@@ -49,24 +90,9 @@ final class WordDescriptor[A] private (
 object WordDescriptor {
 
   def apply[A](
-    address: MemoryLocation[A],
-    ov: A,
-    nv: A,
+    half: HalfWordDescriptor[A],
     parent: EMCASDescriptor,
   ): WordDescriptor[A] = {
-    new WordDescriptor[A](address, ov, nv, parent)
-  }
-
-  val comparator: Comparator[WordDescriptor[_]] = new Comparator[WordDescriptor[_]] {
-    final override def compare(x: WordDescriptor[_], y: WordDescriptor[_]): Int = {
-      // NB: `x ne y` is always true, because we create fresh descriptors in `withCAS`
-      val res = MemoryLocation.globalCompare(x.address, y.address)
-      if (res == 0) {
-        assert(x.address eq y.address)
-        KCAS.impossibleKCAS(x.address, x.ov, x.nv, y.ov, y.nv)
-      } else {
-        res
-      }
-    }
+    new WordDescriptor[A](half, parent)
   }
 }

@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import java.util.concurrent.atomic.AtomicReference
 
-import kcas.{ ThreadContext, EMCASDescriptor }
+import kcas.{ ThreadContext, HalfEMCASDescriptor }
 
 // TODO: lazy initialization of exchanger with something like Rxn.lzy { ... }
 
@@ -250,7 +250,7 @@ object Exchanger {
     value: A,
     cont: Rxn[B, C],
     rd: ReactionData,
-    desc: EMCASDescriptor // TODO: not threadsafe!
+    desc: HalfEMCASDescriptor
   )
 
   private[choam] object Msg {

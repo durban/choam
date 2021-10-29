@@ -64,8 +64,7 @@ class IBRReservationTest {
   def block(@unused r: ZL_Result): Unit = {
     val ctx = EMCAS.currentContext()
     ctx.startOp()
-    val d = WordDescriptor(null, "", "", null)
-    d.prepare(ctx) // allocate
+    val d = HalfWordDescriptor(null, "", "").prepare(null, ctx) // allocate
     assert(ctx.casRef(this.ref.asInstanceOf[Ref[Any]], "begin", d)) // publish
     latch.await()
     ctx.endOp()

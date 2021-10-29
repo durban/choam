@@ -42,31 +42,8 @@ private[choam] object NaiveKCAS extends KCAS { self =>
   final override def currentContext(): ThreadContext =
     dummyContext
 
-  final override def start(ctx: ThreadContext) =
-    new EMCASDescriptor()
-
-  final override def addCas[A](
-    desc: EMCASDescriptor,
-    ref: MemoryLocation[A],
-    ov: A,
-    nv: A,
-    ctx: ThreadContext
-  ): EMCASDescriptor = {
-    desc.add(WordDescriptor[A](ref, ov, nv, desc))
-    desc
-  }
-
-  final override def addAll(to: EMCASDescriptor, from: EMCASDescriptor): EMCASDescriptor = {
-    to.addAll(from)
-    to
-  }
-
-  final override def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor =
-    desc.copy()
-
-  final override def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
-    desc.prepare(ctx)
-    val ops = scala.jdk.CollectionConverters.IteratorHasAsScala(desc.wordIterator()).asScala.toList
+  final override def tryPerform(desc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
+    val ops = desc.map.valuesIterator.toList
     perform(ops)
   }
 
@@ -80,32 +57,32 @@ private[choam] object NaiveKCAS extends KCAS { self =>
     }
   }
 
-  private def perform(ops: List[WordDescriptor[_]]): Boolean = {
+  private def perform(ops: List[HalfWordDescriptor[_]]): Boolean = {
 
     @tailrec
-    def lock(ops: List[WordDescriptor[_]]): List[WordDescriptor[_]] = ops match {
+    def lock(ops: List[HalfWordDescriptor[_]]): List[HalfWordDescriptor[_]] = ops match {
       case Nil => Nil
-      case h :: tail => h match { case head: WordDescriptor[a] =>
+      case h :: tail => h match { case head: HalfWordDescriptor[a] =>
         if (head.address.unsafeCasVolatile(head.ov, nullOf[a])) lock(tail)
         else ops // rollback
       }
     }
 
     @tailrec
-    def commit(ops: List[WordDescriptor[_]]): Unit = ops match {
+    def commit(ops: List[HalfWordDescriptor[_]]): Unit = ops match {
       case Nil => ()
-      case h :: tail => h match { case head: WordDescriptor[a] =>
+      case h :: tail => h match { case head: HalfWordDescriptor[a] =>
         head.address.unsafeSetVolatile(head.nv)
         commit(tail)
       }
     }
 
     @tailrec
-    def rollback(from: List[WordDescriptor[_]], to: List[WordDescriptor[_]]): Unit = {
+    def rollback(from: List[HalfWordDescriptor[_]], to: List[HalfWordDescriptor[_]]): Unit = {
       if (from ne to) {
         from match {
           case Nil => impossible("this is the end")
-          case h :: tail => h match { case head: WordDescriptor[a] =>
+          case h :: tail => h match { case head: HalfWordDescriptor[a] =>
             head.address.unsafeSetVolatile(head.ov)
             rollback(tail, to)
           }
@@ -118,7 +95,7 @@ private[choam] object NaiveKCAS extends KCAS { self =>
     ops match {
       case Nil =>
         true
-      case (h : WordDescriptor[a]) :: Nil =>
+      case (h : HalfWordDescriptor[a]) :: Nil =>
         h.address.unsafeCasVolatile(h.ov, h.nv)
       case l @ (_ :: _) =>
         lock(l) match {

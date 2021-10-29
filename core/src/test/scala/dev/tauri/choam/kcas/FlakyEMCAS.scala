@@ -33,41 +33,26 @@ object FlakyEMCAS extends KCAS {
   private[choam] def currentContext(): ThreadContext =
     this.global.threadContext()
 
-  private[choam] def start(ctx: ThreadContext): EMCASDescriptor =
-    EMCAS.start(ctx)
-
-  private[choam] def addCas[A](desc: EMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A, ctx: ThreadContext): EMCASDescriptor =
-    EMCAS.addCas(desc, ref, ov, nv, ctx)
-
-  private[choam] def addAll(to: EMCASDescriptor, from: EMCASDescriptor): EMCASDescriptor =
-    EMCAS.addAll(to, from)
-
-  private[choam] def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor =
-    EMCAS.snapshot(desc, ctx)
-
   private[choam] def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A =
     EMCAS.read(ref, ctx)
 
-  private[choam] def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
-    // sanity check: try to sort (to throw an exception if impossible)
-    locally {
-      val copy = new java.util.ArrayList[WordDescriptor[_]]
+  private[choam] final override def tryPerform(hDesc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
+    // perform or not the operation based on whether we've already seen it
+    ctx.startOp()
+    try {
+      val desc = hDesc.prepare(ctx)
+      var hash = 0x75F4D07D
       val it = desc.wordIterator()
       while (it.hasNext()) {
-        copy.add(it.next())
+        hash ^= it.next().address.##
       }
-      copy.sort(WordDescriptor.comparator) // throws if impossible
-    }
-    // perform or not the operation based on whether we've already seen it
-    var hash = 0x75F4D07D
-    val it = desc.wordIterator()
-    while (it.hasNext()) {
-      hash ^= it.next().address.##
-    }
-    if (this.seen.putIfAbsent(hash, ()).isDefined) {
-      EMCAS.tryPerform(desc, ctx)
-    } else {
-      false // simulate a transient CAS failure to force a retry
+      if (this.seen.putIfAbsent(hash, ()).isDefined) {
+        EMCAS.MCAS(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
+      } else {
+        false // simulate a transient CAS failure to force a retry
+      }
+    } finally {
+      ctx.endOp()
     }
   }
 }

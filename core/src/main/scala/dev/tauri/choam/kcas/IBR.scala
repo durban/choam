@@ -158,6 +158,7 @@ private[kcas] object IBR {
     }
 
     final def alloc(elem: IBRManaged[_, _]): Unit = {
+      assert(this.isDuringOp()) // TODO: remove this debug assertion
       this.counter += 1
       val epoch = if ((this.counter % epochFreq) == 0) {
         this.global.incrementEpoch()

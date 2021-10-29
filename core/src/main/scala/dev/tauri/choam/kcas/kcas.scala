@@ -28,15 +28,27 @@ abstract class KCAS { self =>
 
   private[choam] def currentContext(): ThreadContext
 
-  private[choam] def start(ctx: ThreadContext): EMCASDescriptor
+  private[choam] def start(@unused ctx: ThreadContext): HalfEMCASDescriptor =
+    HalfEMCASDescriptor.empty
 
-  private[choam] def addCas[A](desc: EMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A, ctx: ThreadContext): EMCASDescriptor
+  private[choam] def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A, @unused ctx: ThreadContext): HalfEMCASDescriptor = {
+    val wd = HalfWordDescriptor(ref, ov, nv)
+    desc.add(wd)
+  }
 
-  private[choam] def addAll(to: EMCASDescriptor, from: EMCASDescriptor): EMCASDescriptor
+  private[choam] def addAll(to: HalfEMCASDescriptor, from: HalfEMCASDescriptor): HalfEMCASDescriptor = {
+    val it = from.map.valuesIterator
+    var res = to
+    while (it.hasNext) {
+      res = res.add(it.next())
+    }
+    res
+  }
 
-  private[choam] def snapshot(desc: EMCASDescriptor, ctx: ThreadContext): EMCASDescriptor
+  private[choam] def snapshot(desc: HalfEMCASDescriptor, @unused ctx: ThreadContext): HalfEMCASDescriptor =
+    desc
 
-  private[choam] def tryPerform(desc: EMCASDescriptor, ctx: ThreadContext): Boolean
+  private[choam] def tryPerform(desc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean
 
   private[choam] def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A
 

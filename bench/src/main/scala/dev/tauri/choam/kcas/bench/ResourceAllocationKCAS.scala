@@ -52,7 +52,7 @@ class ResourceAllocationKCAS {
     }
 
     @tailrec
-    def prepare(i: Int, d: EMCASDescriptor): EMCASDescriptor = {
+    def prepare(i: Int, d: HalfEMCASDescriptor): HalfEMCASDescriptor = {
       if (i >= n) {
         d
       } else {

@@ -20,6 +20,47 @@ package kcas
 
 import java.util.ArrayList
 
+import scala.collection.immutable.TreeMap
+
+import mcas.MemoryLocation
+
+final class HalfEMCASDescriptor private (
+  val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]]
+) {
+
+  private[kcas] final def add[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
+    val d = desc.cast[Any]
+    if (this.map.contains(d.address)) {
+      val other = this.map.get(d.address).get
+      KCAS.impossibleKCAS(ref = d.address, ova = other.ov, nva = other.nv, ovb = desc.ov, nvb = desc.nv)
+    } else {
+      val newMap = this.map.updated(d.address, d)
+      new HalfEMCASDescriptor(newMap)
+    }
+  }
+
+  private[kcas] final def prepare(ctx: ThreadContext): EMCASDescriptor = {
+    val emcasDesc = new EMCASDescriptor(initialSize = this.map.size)
+    val it = this.map.valuesIterator
+    while (it.hasNext) {
+      emcasDesc.add(it.next().prepare(emcasDesc, ctx))
+    }
+    emcasDesc
+  }
+}
+
+object HalfEMCASDescriptor {
+
+  private[this] val _empty = {
+    new HalfEMCASDescriptor(TreeMap.empty(
+      MemoryLocation.orderingInstance[Any]
+    ))
+  }
+
+  def empty: HalfEMCASDescriptor =
+    _empty
+}
+
 final class EMCASDescriptor private (
   /**
    * Word descriptors
@@ -28,37 +69,15 @@ final class EMCASDescriptor private (
    * we only mutate the list before writing the descriptor to a `Ref`.
    */
   private val words: ArrayList[WordDescriptor[_]]
+  // TODO: this could be a simple `Array`
 ) extends EMCASDescriptorBase { self =>
 
   /** Intrusive linked list of finalized descriptors (see `ThreadContext`) */
   private[kcas] var next: EMCASDescriptor =
     null
 
-  private[kcas] def this() =
-    this(new ArrayList(EMCASDescriptor.minArraySize))
-
-  private[kcas] def copy(): EMCASDescriptor = {
-    @tailrec
-    def copy(
-      from: ArrayList[WordDescriptor[_]],
-      to: ArrayList[WordDescriptor[_]],
-      newParent: EMCASDescriptor,
-      idx: Int,
-      len: Int
-    ): Unit = {
-      if (idx < len) {
-        val oldWd = from.get(idx)
-        val newWd = oldWd.withParent(newParent)
-        to.add(newWd)
-        copy(from, to, newParent, idx + 1, len)
-      }
-    }
-    val newArrCapacity = Math.max(this.words.size(), EMCASDescriptor.minArraySize)
-    val newArr = new ArrayList[WordDescriptor[_]](newArrCapacity)
-    val r = new EMCASDescriptor(newArr)
-    copy(this.words, newArr, r, 0, this.words.size())
-    r
-  }
+  private[kcas] def this(initialSize: Int) =
+    this(new ArrayList[WordDescriptor[_]](initialSize))
 
   private[kcas] def add[A](word: WordDescriptor[A]): Unit = {
     this.words.add(word)
@@ -68,18 +87,6 @@ final class EMCASDescriptor private (
   private[kcas] def addAll(that: EMCASDescriptor): Unit = {
     this.words.addAll(that.words)
     ()
-  }
-
-  private[kcas] def prepare(ctx: ThreadContext): Unit = {
-    this.sort()
-    val it = this.wordIterator()
-    while (it.hasNext()) {
-      it.next().prepare(ctx)
-    }
-  }
-
-  private[this] def sort(): Unit = {
-    this.words.sort(WordDescriptor.comparator)
   }
 
   private[kcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
@@ -98,9 +105,6 @@ final class EMCASDescriptor private (
 }
 
 object EMCASDescriptor {
-
-  // TODO: should always be inlined
-  private final val minArraySize = 8
 
   private final class Iterator(desc: EMCASDescriptor) extends java.util.Iterator[WordDescriptor[_]] {
 
