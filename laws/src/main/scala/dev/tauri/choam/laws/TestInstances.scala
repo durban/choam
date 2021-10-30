@@ -16,25 +16,16 @@
  */
 
 package dev.tauri.choam
+package laws
 
 import cats.Eq
-import cats.laws.discipline.{ ArrowChoiceTests, MonadTests }
 import cats.implicits._
-import cats.mtl.laws.discipline.LocalTests
 
 import org.scalacheck.{ Gen, Arbitrary }
 
-import munit.DisciplineSuite
+trait TestInstances extends TestInstancesLowPrio0 { self =>
 
-final class LawsSpecNaiveKCAS
-  extends LawsSpec
-  with SpecNaiveKCAS
-
-final class LawsSpecEMCAS
-  extends LawsSpec
-  with SpecEMCAS
-
-trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
+  def kcasImpl: kcas.KCAS
 
   implicit def arbRxn[A, B](
     implicit
@@ -97,18 +88,27 @@ trait LawsSpec extends DisciplineSuite { self: KCASImplSpec =>
     )
   }
 
+  implicit def testingEqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]] = new Eq[Axn[A]] {
+    override def eqv(x: Axn[A], y: Axn[A]): Boolean = {
+      val ax = x.unsafePerform((), self.kcasImpl)
+      val ay = y.unsafePerform((), self.kcasImpl)
+      equA.eqv(ax, ay)
+    }
+  }
+}
+
+private[choam] sealed trait TestInstancesLowPrio0 { self: TestInstances =>
+
   implicit def testingEqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]] = new Eq[Rxn[A, B]] {
-    def eqv(x: Rxn[A, B], y: Rxn[A, B]): Boolean = {
+    override def eqv(x: Rxn[A, B], y: Rxn[A, B]): Boolean = {
       (1 to 1000).forall { _ =>
-        val a = arbA.arbitrary.sample.getOrElse(fail("no sample"))
+        val a = arbA.arbitrary.sample.getOrElse {
+          throw new IllegalStateException("no sample")
+        }
         val bx = x.unsafePerform(a, self.kcasImpl)
         val by = y.unsafePerform(a, self.kcasImpl)
         equB.eqv(bx, by)
       }
     }
   }
-
-  checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
-  checkAll("Monad[Rxn]", MonadTests[Rxn[String, *]].monad[Int, String, Int])
-  checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])
 }

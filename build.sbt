@@ -72,6 +72,12 @@ lazy val stream = project.in(file("stream"))
   .dependsOn(core % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.fs2)
 
+lazy val laws = project.in(file("laws"))
+  .settings(name := "choam-laws")
+  .settings(commonSettings)
+  .dependsOn(core % "compile->compile;test->test")
+  .settings(libraryDependencies += dependencies.catsLaws)
+
 lazy val bench = project.in(file("bench"))
   .settings(name := "choam-bench")
   .settings(commonSettings)
@@ -213,18 +219,20 @@ lazy val dependencies = new {
   val scalacheckEffectVersion = "1.0.3"
 
   val cats = "org.typelevel" %% "cats-core" % catsVersion
+  val catsLaws = "org.typelevel" %% "cats-laws" % catsVersion
   val catsEffectKernel = "org.typelevel" %% "cats-effect-kernel" % catsEffectVersion
   val catsEffectStd = "org.typelevel" %% "cats-effect-std" % catsEffectVersion
   val catsEffectAll = "org.typelevel" %% "cats-effect" % catsEffectVersion
   val catsMtl = "org.typelevel" %% "cats-mtl" % catsMtlVersion
+  val catsMtlLaws = "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion
   val fs2 = "co.fs2" %% "fs2-core" % fs2Version
 
   val test = Seq(
     catsEffectAll,
-    "org.typelevel" %% "cats-laws" % catsVersion,
+    catsLaws,
     "org.typelevel" %% "cats-effect-kernel-testkit" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion,
+    catsMtlLaws,
     "org.typelevel" %% "munit-cats-effect-3" % "1.0.6",
     "org.typelevel" %% "scalacheck-effect" % scalacheckEffectVersion,
     "org.typelevel" %% "scalacheck-effect-munit" % scalacheckEffectVersion,
