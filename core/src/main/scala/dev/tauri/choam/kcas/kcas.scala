@@ -71,9 +71,13 @@ private[choam] object KCAS {
   private[choam] lazy val EMCAS: KCAS =
     kcas.EMCAS
 
-  private[kcas] def impossibleKCAS[A, B](ref: MemoryLocation[_], ova: A, nva: A, ovb: B, nvb: B): Nothing = {
+  private[kcas] def impossibleKCAS[A, B](
+    ref: MemoryLocation[_],
+    a: HalfWordDescriptor[A],
+    b: HalfWordDescriptor[B]
+  ): Nothing = {
     throw new ImpossibleOperation(
-      s"Impossible k-CAS for ${ref}: ${ova} -> ${nva} and ${ovb} -> ${nvb}"
+      s"Impossible k-CAS for ${ref}: ${a.ov} -> ${a.nv} and ${b.ov} -> ${b.nv}"
     )
   }
 

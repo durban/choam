@@ -32,7 +32,7 @@ final class HalfEMCASDescriptor private (
     val d = desc.cast[Any]
     if (this.map.contains(d.address)) {
       val other = this.map.get(d.address).get
-      KCAS.impossibleKCAS(ref = d.address, ova = other.ov, nva = other.nv, ovb = desc.ov, nvb = desc.nv)
+      KCAS.impossibleKCAS(d.address, other, desc)
     } else {
       val newMap = this.map.updated(d.address, d)
       new HalfEMCASDescriptor(newMap)

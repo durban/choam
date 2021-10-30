@@ -42,6 +42,7 @@ final class TreiberStack[A](els: Iterable[A]) {
       head.unsafeCas(c, t).as(h)
     case e @ End =>
       head.unsafeCas(e, e) >>> Rxn.unsafe.retry
+      // TODO: \---------^-- this doesn't make sense
   }
 
   val length: Axn[Int] =

@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package kcas
 
-import java.util.Comparator
-
 import mcas.MemoryLocation
 
 final class HalfWordDescriptor[A] private (
@@ -48,19 +46,6 @@ object HalfWordDescriptor {
 
   def apply[A](address: MemoryLocation[A], ov: A, nv: A): HalfWordDescriptor[A] =
     new HalfWordDescriptor[A](address = address, ov = ov, nv = nv)
-
-  val comparator: Comparator[HalfWordDescriptor[_]] = new Comparator[HalfWordDescriptor[_]] {
-    final override def compare(x: HalfWordDescriptor[_], y: HalfWordDescriptor[_]): Int = {
-      // NB: `x ne y` is always true, because we create fresh descriptors in `withCAS`
-      val res = MemoryLocation.globalCompare(x.address, y.address)
-      if (res == 0) {
-        assert(x.address eq y.address)
-        KCAS.impossibleKCAS(x.address, x.ov, x.nv, y.ov, y.nv)
-      } else {
-        res
-      }
-    }
-  }
 }
 
 final class WordDescriptor[A] private (
