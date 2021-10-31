@@ -54,16 +54,23 @@ final class RxnImplSpec_FlakyEMCAS_ZIO
 trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("Creating and running deeply nested Rxn's should both be stack-safe") {
+    val one = Rxn.lift[Int, Int](_ + 1)
     def nest(
       n: Int,
       combine: (Rxn[Int, Int], Rxn[Int, Int]) => Rxn[Int, Int]
     ): Rxn[Int, Int] = {
-      (1 to n).map(_ => Rxn.lift[Int, Int](_ + 1)).reduce(combine)
+      (1 to n).map(_ => one).reduce(combine)
     }
     val N = 1024 * 1024
     val r1: Rxn[Int, Int] = nest(N, _ >>> _)
     val r2: Rxn[Int, Int] = nest(N, (x, y) => (x * y).map(_._1 + 1))
     val r3: Rxn[Int, Int] = nest(N, (x, y) => x.flatMap { _ => y })
+    val r3left: Rxn[Int, Int] = (1 to N).foldLeft(one) { (acc, _) =>
+      acc.flatMap { _ => one }
+    }
+    val r3right: Rxn[Int, Int] = (1 to N).foldLeft(one) { (acc, _) =>
+      one.flatMap { _ => acc }
+    }
     val r4: Rxn[Int, Int] = nest(N, _ >> _)
     val r5: Rxn[Int, Int] = nest(N, _ + _)
     val r6: Rxn[Int, Int] = nest(N, (x, y) => Rxn.unsafe.delayComputed(x.map(Rxn.ret(_) >>> y)))
@@ -74,6 +81,8 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     assertEquals(r1.unsafePerform(42, this.kcasImpl), 42 + N)
     assertEquals(r2.unsafePerform(42, this.kcasImpl), 42 + N)
     assertEquals(r3.unsafePerform(42, this.kcasImpl), 42 + 1)
+    assertEquals(r3left.unsafePerform(42, this.kcasImpl), 42 + 1)
+    assertEquals(r3right.unsafePerform(42, this.kcasImpl), 42 + 1)
     assertEquals(r4.unsafePerform(42, this.kcasImpl), 42 + 1)
     assertEquals(r5.unsafePerform(42, this.kcasImpl), 42 + 1)
     assertEquals(r6.unsafePerform(42, this.kcasImpl), 42 + N)
