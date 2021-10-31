@@ -19,9 +19,11 @@ package dev.tauri.choam
 package laws
 package discipline
 
-import cats.kernel.laws.discipline.SemigroupTests
-import cats.laws.discipline.{ ArrowChoiceTests, MonadTests, MonoidKTests }
 import cats.implicits._
+import cats.kernel.laws.discipline.SemigroupTests
+import cats.effect.kernel.testkit.TestContext
+import cats.effect.IO
+import cats.laws.discipline.{ ArrowChoiceTests, MonadTests, MonoidKTests }
 import cats.mtl.laws.discipline.LocalTests
 
 import munit.DisciplineSuite
@@ -34,9 +36,19 @@ final class LawsSpecEMCAS
   extends LawsSpec
   with SpecEMCAS
 
-trait LawsSpec extends DisciplineSuite with TestInstances { self: KCASImplSpec =>
+trait LawsSpec
+  extends DisciplineSuite
+  with TestInstances
+  with cats.effect.testkit.TestInstances { self: KCASImplSpec =>
+
+  val tc: TestContext =
+    TestContext()
+
+  implicit val ticker: Ticker =
+    Ticker(tc)
 
   checkAll("Rxn", new RxnLawTests {}.rxn[String, Int, Float])
+  checkAll("Reactive", ReactiveLawTests[IO].reactive[String, Int])
 
   checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
   checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])

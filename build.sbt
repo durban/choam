@@ -55,7 +55,7 @@ lazy val choam = project.in(file("."))
   .settings(name := "choam")
   .settings(commonSettings)
   .settings(publishArtifact := false)
-  .aggregate(core, mcas, stream, bench, stress, layout)
+  .aggregate(core, mcas, stream, laws, bench, stress, layout)
 
 lazy val core = project.in(file("core"))
   .settings(name := "choam-core")
@@ -77,6 +77,7 @@ lazy val laws = project.in(file("laws"))
   .settings(commonSettings)
   .dependsOn(core % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.catsLaws)
+  .settings(libraryDependencies += dependencies.catsEffectTestkit % Test)
 
 lazy val bench = project.in(file("bench"))
   .settings(name := "choam-bench")
@@ -223,6 +224,7 @@ lazy val dependencies = new {
   val catsEffectKernel = "org.typelevel" %% "cats-effect-kernel" % catsEffectVersion
   val catsEffectStd = "org.typelevel" %% "cats-effect-std" % catsEffectVersion
   val catsEffectAll = "org.typelevel" %% "cats-effect" % catsEffectVersion
+  val catsEffectTestkit = "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion
   val catsMtl = "org.typelevel" %% "cats-mtl" % catsMtlVersion
   val catsMtlLaws = "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion
   val fs2 = "co.fs2" %% "fs2-core" % fs2Version
