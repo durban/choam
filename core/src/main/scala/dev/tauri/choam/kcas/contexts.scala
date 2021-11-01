@@ -81,6 +81,9 @@ final class ThreadContext(
    *                makes the GC run with a probability of `1 / N`.
    */
   final def finalized(desc: EMCASDescriptor, limit: Int, replace: Int): Unit = {
+    if (this.finalizedDescriptorsCount == Int.MaxValue) {
+      throw new java.lang.ArithmeticException("finalizedDescriptorsCount overflow")
+    }
     desc.next = this.finalizedDescriptors
     this.finalizedDescriptors = desc
     this.finalizedDescriptorsCount += 1
@@ -98,7 +101,7 @@ final class ThreadContext(
   private[kcas] final def getMaxFinalizedDescriptorsCount(): Int =
     this.maxFinalizedDescriptorsCount
 
-  private final def runCleanup(giveUpAt: Long = 256): Unit = {
+  private final def runCleanup(giveUpAt: Long = 256L): Unit = {
     @tailrec
     def replace(words: java.util.Iterator[WordDescriptor[_]], accDone: Boolean): Boolean = {
       if (words.hasNext()) {
@@ -143,13 +146,15 @@ final class ThreadContext(
         val done = replace(curr.wordIterator(), true)
         val newPrev = if (done) {
           // delete the descriptor from the list:
+          assert(this.finalizedDescriptorsCount >= 1) // TODO: remove
           this.finalizedDescriptorsCount -= 1
           if (prev ne null) {
             // delete an internal item:
             prev.next = curr.next
           } else {
             // delete the head:
-            this.finalizedDescriptors.next = curr.next
+            assert(this.finalizedDescriptors eq curr) // TODO: remove
+            this.finalizedDescriptors = curr.next
           }
           prev
         } else {

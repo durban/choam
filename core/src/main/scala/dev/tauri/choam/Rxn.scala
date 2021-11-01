@@ -181,12 +181,26 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     a: A,
     kcas: KCAS,
     maxBackoff: Int = 16,
-    randomizeBackoff: Boolean = true
+    randomizeBackoff: Boolean = true,
+  ): B = {
+    unsafePerformInternal(
+      a = a,
+      ctx = kcas.currentContext(),
+      maxBackoff = maxBackoff,
+      randomizeBackoff = randomizeBackoff,
+    )
+  }
+
+  private[choam] final def unsafePerformInternal(
+    a: A,
+    ctx: ThreadContext,
+    maxBackoff: Int = 16,
+    randomizeBackoff: Boolean = true,
   ): B = {
     Rxn.interpreter(
       this,
       a,
-      ctx = kcas.currentContext(),
+      ctx = ctx,
       maxBackoff = maxBackoff,
       randomizeBackoff = randomizeBackoff
     )

@@ -52,7 +52,7 @@ private[kcas] abstract class IBR[T](zeroEpoch: Long)
    * we only need a weakref here. If a thread
    * dies, its thread locals are cleared, so
    * the context can be GC'd (by the JVM). Empty
-   * weakrefs are removed in `ThreadContext#empty`.
+   * weakrefs are removed in `ThreadContext#isInUseByOther`.
    *
    * Removing a dead thread's reservation will not
    * affect safety, because a dead thread will never
