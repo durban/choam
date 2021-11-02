@@ -34,4 +34,7 @@ trait RxnLaws {
 
   def pureIsRet[A](a: A): IsEq[Axn[A]] =
     Rxn.pure(a) <-> Rxn.ret(a)
+
+  def toFunctionIsProvide[A, B](rxn: A =#> B, a: A): IsEq[Axn[B]] =
+    rxn.toFunction(a) <-> rxn.provide(a)
 }

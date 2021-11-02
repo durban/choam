@@ -28,7 +28,17 @@ private[choam] object EMCAS extends KCAS { self =>
 
   // These values for the replace period and limit
   // have been determined experimentally. See for example
-  // RandomReplaceBench and StackTransferBench.
+  // RandomReplaceBench, StackTransferBench and GcBench.
+
+  // InterpreterBench:
+  // replace-> throughput
+  // 131072 -> ≈ 32000 ops/s
+  // 65536  -> 47054.936 ± 1533.734  ops/s
+  // 32768  -> 46914.121 ± 1109.186  ops/s
+  // 16384  -> 46358.343 ± 541.677  ops/s
+  // 8192   -> 48157.547 ± 1158.838  ops/s
+  // 4096   -> 49038.932 ± 1003.262  ops/s
+  // 2048   -> 48625.019 ± 1551.751  ops/s
 
   private[choam] final val replacePeriodForEMCAS =
     4096

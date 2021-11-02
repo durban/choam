@@ -47,5 +47,6 @@ trait RxnLawTests extends Laws {
     "void is map" -> forAll(laws.voidIsMap[A, B] _),
     "provide is contramap" -> forAll(laws.provideIsContramap[A, B] _),
     "pure is ret" -> forAll(laws.pureIsRet[A] _),
+    "toFunction is provide" -> forAll(laws.toFunctionIsProvide[A, B] _),
   )
 }

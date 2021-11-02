@@ -36,16 +36,16 @@ class RandomReplaceBench {
   }
 
   @Benchmark
-  def replaceRandom256(s: SharedState, bh: Blackhole): Unit = {
+  def replaceRandom4096(s: SharedState, bh: Blackhole): Unit = {
     val ctx = EMCAS.currentContext()
-    bh.consume(EMCAS.readValue(s.ref, ctx, replace = 256))
+    bh.consume(EMCAS.readValue(s.ref, ctx, replace = 4096))
     s.reset()
   }
 
   @Benchmark
-  def replaceRandom4096(s: SharedState, bh: Blackhole): Unit = {
+  def replaceRandom131072(s: SharedState, bh: Blackhole): Unit = {
     val ctx = EMCAS.currentContext()
-    bh.consume(EMCAS.readValue(s.ref, ctx, replace = 4096))
+    bh.consume(EMCAS.readValue(s.ref, ctx, replace = 131072))
     s.reset()
   }
 

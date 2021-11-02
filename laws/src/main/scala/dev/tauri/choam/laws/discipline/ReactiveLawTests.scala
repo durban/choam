@@ -36,7 +36,9 @@ trait ReactiveLawTests[F[_]] extends Laws {
   def reactive[A, B](
     implicit
     arbA: Arbitrary[A],
+    arbAny: Arbitrary[Any],
     arbAB: Arbitrary[A => B],
+    arbAxB: Arbitrary[A =#> B],
     equFA: Eq[F[A]],
     equFB: Eq[F[B]],
   ): RuleSet = new DefaultRuleSet(
@@ -44,6 +46,7 @@ trait ReactiveLawTests[F[_]] extends Laws {
     parent = None, // TODO: monad
     "run pure" -> forAll(laws.runPure[A] _),
     "run lift" -> forAll(laws.runLift[A, B] _),
+    "run toFunction" -> forAll(laws.runToFunction[A, B] _),
   )
 }
 
