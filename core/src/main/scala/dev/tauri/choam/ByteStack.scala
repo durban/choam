@@ -74,18 +74,18 @@ private final class ByteStack(initSize: Int) {
     !this.isEmpty
   }
 
-  def toArray(): Array[Byte] = {
+  def takeSnapshot(): Array[Byte] = {
     Arrays.copyOf(this.arr, this.size)
   }
 
-  // Note: we treat `that` as if it's immutable.
-  def replaceWith(that: Array[Byte]): Unit = {
-    while (that.length > this.arr.length) {
+  // Note: we treat `snapshot` as if it's immutable.
+  def loadSnapshot(snapshot: Array[Byte]): Unit = {
+    while (snapshot.length > this.arr.length) {
       this.grow()
     }
     // that.length <= this.arr.length
-    System.arraycopy(that, 0, this.arr, 0, that.length)
-    this.size = that.length
+    System.arraycopy(snapshot, 0, this.arr, 0, snapshot.length)
+    this.size = snapshot.length
   }
 
   private[this] def growIfNecessary(): Unit = {

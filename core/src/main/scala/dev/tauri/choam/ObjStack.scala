@@ -43,6 +43,13 @@ private final class ObjStack[A](initSize: Int) {
     this.size += 1
   }
 
+  def pushAll(as: Iterable[A]): Unit = {
+    val it = as.iterator
+    while (it.hasNext) {
+      this.push(it.next())
+    }
+  }
+
   private[this] def assertNonEmpty(): Unit = {
     if (this.size == 0) {
       throw new NoSuchElementException
@@ -78,30 +85,23 @@ private final class ObjStack[A](initSize: Int) {
     !this.isEmpty
   }
 
-  def toArray(): Array[A] = {
+  def takeSnapshot(): Array[A] = {
     Arrays.copyOf(this.arr, this.size).asInstanceOf[Array[A]]
   }
 
-  def pushAll(as: Iterable[A]): Unit = {
-    val it = as.iterator
-    while (it.hasNext) {
-      this.push(it.next())
-    }
+  def loadSnapshot(snapshot: Array[A]): Unit = {
+    this.loadSnapshotUnsafe(snapshot.asInstanceOf[Array[Any]])
   }
 
-  def replaceWith(that: Array[A]): Unit = {
-    this.replaceWithUnsafe(that.asInstanceOf[Array[Any]])
-  }
-
-  // Note: we treat `that` as if it's immutable.
-  def replaceWithUnsafe(that: Array[Any]): Unit = {
-    while (that.length > this.arr.length) {
+  // Note: we treat `snapshot` as if it's immutable.
+  def loadSnapshotUnsafe(snapshot: Array[Any]): Unit = {
+    while (snapshot.length > this.arr.length) {
       this.grow()
     }
     // that.length <= this.arr.length
-    System.arraycopy(that, 0, this.arr, 0, that.length)
-    Arrays.fill(this.arr, that.length, this.arr.length, null)
-    this.size = that.length
+    System.arraycopy(snapshot, 0, this.arr, 0, snapshot.length)
+    Arrays.fill(this.arr, snapshot.length, this.arr.length, null)
+    this.size = snapshot.length
   }
 
   private[this] def growIfNecessary(): Unit = {

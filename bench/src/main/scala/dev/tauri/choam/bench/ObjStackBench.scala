@@ -51,7 +51,7 @@ class ObjStackBench {
 
   @Benchmark
   def toArrayObjStack(s: ObjSt, bh: Blackhole): Unit = {
-    bh.consume(s.objStack.toArray())
+    bh.consume(s.objStack.takeSnapshot())
   }
 
   @Benchmark
@@ -61,7 +61,7 @@ class ObjStackBench {
 
   @Benchmark
   def addAllClearObjStack(s: ObjSt, r: RandomArray): Unit = {
-    s.objStack.replaceWith(r.randomArray)
+    s.objStack.loadSnapshot(r.randomArray)
     s.objStack.clear()
   }
 
