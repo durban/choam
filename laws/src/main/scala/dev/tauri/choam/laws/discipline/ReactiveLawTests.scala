@@ -36,7 +36,6 @@ trait ReactiveLawTests[F[_]] extends Laws {
   def reactive[A, B](
     implicit
     arbA: Arbitrary[A],
-    arbAny: Arbitrary[Any],
     arbAB: Arbitrary[A => B],
     arbAxB: Arbitrary[A =#> B],
     equFA: Eq[F[A]],

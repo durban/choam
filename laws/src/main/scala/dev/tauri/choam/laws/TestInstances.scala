@@ -114,15 +114,4 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
 }
 
 private[choam] sealed trait TestInstancesLowPrio1 { self: TestInstances =>
-
-  implicit def arbAny: Arbitrary[Any] = Arbitrary {
-    Gen.oneOf[Any](
-      Arbitrary.arbAnyVal.arbitrary.map(x => x),
-      Arbitrary.arbString.arbitrary.map(x => x),
-      Arbitrary.arbSymbol.arbitrary.map(x => x),
-      Arbitrary.arbThrowable.arbitrary.map(x => x),
-      Arbitrary.arbUuid.arbitrary.map(x => x),
-      Arbitrary.arbBigInt.arbitrary.map(x => x),
-    )
-  }
 }
