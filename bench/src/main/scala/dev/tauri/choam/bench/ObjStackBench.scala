@@ -61,7 +61,7 @@ class ObjStackBench {
 
   @Benchmark
   def addAllClearObjStack(s: ObjSt, r: RandomArray): Unit = {
-    s.objStack.loadSnapshot(r.randomArray)
+    s.objStack.loadSnapshot(r.randomList)
     s.objStack.clear()
   }
 
@@ -79,7 +79,7 @@ private object ObjStackBench {
   @State(Scope.Thread)
   class ObjSt {
     val objStack: ObjStack[String] = {
-      val s = new ObjStack[String](initSize = initSize)
+      val s = new ObjStack[String]
       for (i <- 1 to 8) {
         if (ThreadLocalRandom.current().nextBoolean()) {
           s.push(i.toString())
@@ -106,6 +106,11 @@ private object ObjStackBench {
   class RandomArray {
     val randomArray: Array[String] = {
       Array.fill(ThreadLocalRandom.current().nextInt(16)) {
+        ThreadLocalRandom.current().nextLong().toString()
+      }
+    }
+    val randomList: List[String] = {
+      List.fill(ThreadLocalRandom.current().nextInt(16)) {
         ThreadLocalRandom.current().nextLong().toString()
       }
     }

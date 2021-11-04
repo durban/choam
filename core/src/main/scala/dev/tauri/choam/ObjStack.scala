@@ -17,30 +17,17 @@
 
 package dev.tauri.choam
 
-import java.util.Arrays
+private final class ObjStack[A]() {
 
-import scala.reflect.ClassTag
-import scala.collection.immutable.ArraySeq
-
-private final class ObjStack[A](initSize: Int) {
-
-  require(initSize > 0)
-  require((initSize & (initSize - 1)) == 0) // power of 2
-
-  private[this] var size: Int =
-    0
-
-  private[this] var arr: Array[AnyRef] =
-    Array.ofDim[AnyRef](initSize)(ClassTag.AnyRef)
+  private[this] var head: List[A] =
+    Nil
 
   final override def toString: String = {
-    s"ObjStack(${List(ArraySeq.unsafeWrapArray(Arrays.copyOf(this.arr, this.size)): _*).reverse.mkString(", ")})"
+    s"ObjStack(${this.head.mkString(", ")})"
   }
 
   def push(a: A): Unit = {
-    this.growIfNecessary()
-    this.arr(this.size) = a.asInstanceOf[AnyRef]
-    this.size += 1
+    this.head = (a :: this.head)
   }
 
   def pushAll(as: Iterable[A]): Unit = {
@@ -51,68 +38,39 @@ private final class ObjStack[A](initSize: Int) {
   }
 
   private[this] def assertNonEmpty(): Unit = {
-    if (this.size == 0) {
+    if (this.isEmpty) {
       throw new NoSuchElementException
     }
   }
 
   def pop(): A = {
     assertNonEmpty()
-    // introducing these 2 locals makes the method bytecode smaller:
-    val newSize = this.size - 1
-    val arr = this.arr
-    this.size = newSize
-    val res: A = arr(newSize).asInstanceOf[A]
-    arr(newSize) = null
-    res
-  }
-
-  def top(): A = {
-    assertNonEmpty()
-    this.arr(this.size - 1).asInstanceOf[A]
+    val r = this.head.head
+    this.head = this.head.tail
+    r
   }
 
   def clear(): Unit = {
-    Arrays.fill(this.arr, 0, this.size, null)
-    this.size = 0
+    this.head = Nil
   }
 
   def isEmpty: Boolean = {
-    this.size == 0
+    this.head eq Nil
   }
 
   def nonEmpty: Boolean = {
     !this.isEmpty
   }
 
-  def takeSnapshot(): Array[A] = {
-    Arrays.copyOf(this.arr, this.size).asInstanceOf[Array[A]]
+  def takeSnapshot(): List[A] = {
+    this.head
   }
 
-  def loadSnapshot(snapshot: Array[A]): Unit = {
-    this.loadSnapshotUnsafe(snapshot.asInstanceOf[Array[Any]])
+  def loadSnapshot(snapshot: List[A]): Unit = {
+    this.head = snapshot
   }
 
-  // Note: we treat `snapshot` as if it's immutable.
-  def loadSnapshotUnsafe(snapshot: Array[Any]): Unit = {
-    while (snapshot.length > this.arr.length) {
-      this.grow()
-    }
-    // that.length <= this.arr.length
-    System.arraycopy(snapshot, 0, this.arr, 0, snapshot.length)
-    Arrays.fill(this.arr, snapshot.length, this.arr.length, null)
-    this.size = snapshot.length
-  }
-
-  private[this] def growIfNecessary(): Unit = {
-    if (this.size == this.arr.length) {
-      this.grow()
-    }
-  }
-
-  private[this] def grow(): Unit = {
-    val newArr = new Array[AnyRef](this.arr.length << 1)
-    System.arraycopy(this.arr, 0, newArr, 0, this.size)
-    this.arr = newArr
+  def loadSnapshotUnsafe(snapshot: List[Any]): Unit = {
+    this.head = snapshot.asInstanceOf[List[A]]
   }
 }

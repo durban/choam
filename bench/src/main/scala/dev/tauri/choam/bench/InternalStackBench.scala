@@ -50,7 +50,7 @@ class InternalStackBench {
 
   @Benchmark
   def objStack(s: St, bh: Blackhole): Unit = {
-    s.objStack = new ObjStack[String](initSize = 8)
+    s.objStack = new ObjStack[String]
     var i = 0
     while (i < N) {
       s.objStack.push("test")
