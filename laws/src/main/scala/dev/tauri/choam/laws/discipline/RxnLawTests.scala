@@ -22,24 +22,52 @@ package discipline
 import cats.kernel.Eq
 import cats.kernel.laws.discipline.catsLawsIsEqToProp
 
-import org.scalacheck.Arbitrary
+import org.scalacheck.{ Arbitrary, Cogen }
 import org.scalacheck.Prop.forAll
 import org.typelevel.discipline.Laws
 
+object RxnLawTests {
+
+  def apply(ti: TestInstances): RxnLawTests = new RxnLawTests {
+    override def eqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]] =
+      ti.testingEqAxn[A]
+    override def eqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]] =
+      ti.testingEqRxn[A, B]
+    override def arbRxn[A, B](implicit arbA: Arbitrary[A], arbB: Arbitrary[B], arbAB: Arbitrary[A => B], arbAA: Arbitrary[A => A]): Arbitrary[Rxn[A, B]] =
+      ti.arbRxn[A, B]
+  }
+}
+
 trait RxnLawTests extends Laws {
+
+  implicit def eqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]]
+
+  implicit def eqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]]
+
+  implicit def arbRxn[A, B](
+    implicit
+    arbA: Arbitrary[A],
+    arbB: Arbitrary[B],
+    arbAB: Arbitrary[A => B],
+    arbAA: Arbitrary[A => A]
+  ): Arbitrary[Rxn[A, B]]
 
   def laws: RxnLaws =
     new RxnLaws {}
 
-  def rxn[A, B, C](
+  def rxn[A, B, C, D](
     implicit
+    equA: Eq[A],
+    equB: Eq[B],
+    equC: Eq[C],
+    equD: Eq[D],
     arbA: Arbitrary[A],
+    arbB: Arbitrary[B],
     arbC: Arbitrary[C],
-    equAUnit: Eq[Rxn[A, Unit]],
-    equAC: Eq[Rxn[A, C]],
-    equAnyA: Eq[Rxn[Any, A]],
-    equAnyB: Eq[Rxn[Any, B]],
-    arbAB: Arbitrary[Rxn[A, B]],
+    arbD: Arbitrary[D],
+    cogA: Cogen[A],
+    cogB: Cogen[B],
+    cogC: Cogen[C],
   ): RuleSet = new DefaultRuleSet(
     name = "rxn",
     parent = None,
@@ -48,5 +76,9 @@ trait RxnLawTests extends Laws {
     "provide is contramap" -> forAll(laws.provideIsContramap[A, B] _),
     "pure is ret" -> forAll(laws.pureIsRet[A] _),
     "toFunction is provide" -> forAll(laws.toFunctionIsProvide[A, B] _),
+    "map is >>> lift" -> forAll(laws.mapIsAndThenLift[A, B, C] _),
+    "contramap is lift >>>" -> forAll(laws.contramapIsLiftAndThen[A, B, C] _),
+    "* is ×" -> forAll(laws.timesIsAndAlso[A, B, C] _),
+    "× is >>>" -> forAll(laws.andAlsoIsAndThen[A, B, C, D] _),
   )
 }

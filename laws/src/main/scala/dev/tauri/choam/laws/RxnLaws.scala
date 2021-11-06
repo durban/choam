@@ -37,4 +37,16 @@ trait RxnLaws {
 
   def toFunctionIsProvide[A, B](rxn: A =#> B, a: A): IsEq[Axn[B]] =
     rxn.toFunction(a) <-> rxn.provide(a)
+
+  def mapIsAndThenLift[A, B, C](rxn: A =#> B, f: B => C): IsEq[Rxn[A, C]] =
+    rxn.map(f) <-> (rxn >>> Rxn.lift(f))
+
+  def contramapIsLiftAndThen[A, B, C](f: A => B, rxn: B =#> C): IsEq[Rxn[A, C]] =
+    rxn.contramap(f) <-> (Rxn.lift(f) >>> rxn)
+
+  def timesIsAndAlso[A, B, C](x: A =#> B, y: A =#> C): IsEq[A =#> (B, C)] =
+    (x * y) <-> (x × y).contramap[A](a => (a, a))
+
+  def andAlsoIsAndThen[A, B, C, D](x: A =#> B, y: C =#> D): IsEq[Rxn[(A, C), (B, D)]] =
+    (x × y) <-> (x.first[C] >>> y.second[B])
 }

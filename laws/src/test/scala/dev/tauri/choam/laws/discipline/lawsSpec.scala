@@ -47,7 +47,7 @@ trait LawsSpec
   implicit val ticker: Ticker =
     Ticker(tc)
 
-  checkAll("Rxn", new RxnLawTests {}.rxn[String, Int, Float])
+  checkAll("Rxn", RxnLawTests(self).rxn[String, Int, Float, Double])
   checkAll("Reactive", ReactiveLawTests[IO].reactive[String, Int])
 
   checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
