@@ -76,8 +76,11 @@ lazy val laws = project.in(file("laws"))
   .settings(name := "choam-laws")
   .settings(commonSettings)
   .dependsOn(core % "compile->compile;test->test")
-  .settings(libraryDependencies += dependencies.catsLaws)
-  .settings(libraryDependencies += dependencies.catsEffectTestkit % Test)
+  .settings(libraryDependencies ++= Seq(
+    dependencies.catsLaws,
+    dependencies.catsEffectLaws,
+    dependencies.catsEffectTestkit % Test,
+  ))
 
 lazy val bench = project.in(file("bench"))
   .settings(name := "choam-bench")
@@ -86,7 +89,7 @@ lazy val bench = project.in(file("bench"))
   .settings(libraryDependencies ++= Seq(
     dependencies.scalaStm,
     dependencies.catsStm,
-    dependencies.zioStm
+    dependencies.zioStm,
   ))
   .enablePlugins(JmhPlugin)
   .dependsOn(core % "compile->compile;compile->test")
@@ -224,6 +227,7 @@ lazy val dependencies = new {
   val catsEffectKernel = "org.typelevel" %% "cats-effect-kernel" % catsEffectVersion
   val catsEffectStd = "org.typelevel" %% "cats-effect-std" % catsEffectVersion
   val catsEffectAll = "org.typelevel" %% "cats-effect" % catsEffectVersion
+  val catsEffectLaws = "org.typelevel" %% "cats-effect-laws" % catsEffectVersion
   val catsEffectTestkit = "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion
   val catsMtl = "org.typelevel" %% "cats-mtl" % catsMtlVersion
   val catsMtlLaws = "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion

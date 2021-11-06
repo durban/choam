@@ -22,10 +22,12 @@ package discipline
 import cats.implicits._
 import cats.kernel.laws.discipline.SemigroupTests
 import cats.effect.kernel.testkit.TestContext
+import cats.effect.laws.UniqueTests
 import cats.effect.IO
 import cats.laws.discipline.{ ArrowChoiceTests, MonadTests, MonoidKTests }
 import cats.mtl.laws.discipline.LocalTests
 
+import org.scalacheck.Prop
 import munit.DisciplineSuite
 
 final class LawsSpecNaiveKCAS
@@ -53,6 +55,9 @@ trait LawsSpec
   checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
   checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])
   checkAll("Monad[Rxn]", MonadTests[Rxn[String, *]].monad[Int, String, Int])
+  checkAll("Unique[Rxn]", UniqueTests[Rxn[Any, *]].unique { (act: Axn[Boolean]) =>
+    Prop(act.unsafeRun(self.kcasImpl))
+  })
   checkAll("MonoidK[Rxn]", MonoidKTests[λ[a => Rxn[a, a]]].monoidK[String])
   checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[String, Int]].semigroup)
 }

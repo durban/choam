@@ -90,7 +90,7 @@ trait Ref[A] extends MemoryLocation[A] { self =>
   final def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] = new CatsRef[F, A] {
 
     final override def get: F[A] =
-      self.unsafeInvisibleRead.run[F]
+      self.unsafeInvisibleRead.run[F] // TODO: is this correct?
 
     final override def set(a: A): F[Unit] =
       self.getAndSet.void[F](a)
@@ -130,11 +130,11 @@ trait Ref[A] extends MemoryLocation[A] { self =>
       self.modify(a => state.runF.value(a).value).run[F]
   }
 
-  // TODO: how to call this? It's like `modify`...
+  // TODO: needs better name (it's like `modify`)
   final def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
     Rxn.ref.upd(this)(f)
 
-  // TODO: how to call this? It's like `modifyWith`...
+  // TODO: needs better name (it's like `modifyWith`)
   final def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
     Rxn.ref.updWith(this)(f)
 

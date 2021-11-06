@@ -22,6 +22,7 @@ import java.util.Arrays
 import cats.{ Monad, Applicative, MonoidK, Semigroup }
 import cats.arrow.ArrowChoice
 import cats.mtl.Local
+import cats.effect.kernel.Unique
 
 import kcas.{ KCAS, ThreadContext, HalfEMCASDescriptor }
 
@@ -233,6 +234,9 @@ object Rxn extends RxnInstances0 {
 
   final def postCommit[A](pc: Rxn[A, Unit]): Rxn[A, A] =
     new PostCommit[A](pc)
+
+  final def unique: Axn[Unique.Token] =
+    unsafe.delay { _ => new Unique.Token() }
 
   // Utilities:
 
@@ -896,8 +900,17 @@ private[choam] sealed abstract class RxnInstances2 extends RxnInstances3 { this:
   }
 }
 
-private[choam] sealed abstract class RxnInstances3 extends RxnInstances4 { this: Rxn.type =>
+private[choam] sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.type =>
 
+  implicit final def uniqueInstance[X]: Unique[Rxn[X, *]] = new Unique[Rxn[X, *]] {
+    final override def applicative: Applicative[Rxn[X, *]] =
+      self.monadInstance[X]
+    final override def unique: Rxn[X, Unique.Token] =
+      self.unique
+  }
+}
+
+private[choam] sealed abstract class RxnInstances4 extends RxnInstances5 { this: Rxn.type =>
   implicit final def monoidKInstance: MonoidK[λ[a => Rxn[a, a]]] = {
     new MonoidK[λ[a => Rxn[a, a]]] {
       final override def combineK[A](x: Rxn[A, A], y: Rxn[A, A]): Rxn[A, A] =
@@ -908,7 +921,7 @@ private[choam] sealed abstract class RxnInstances3 extends RxnInstances4 { this:
   }
 }
 
-private[choam] sealed abstract class RxnInstances4 extends RxnInstances5 { this: Rxn.type =>
+private[choam] sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.type =>
 
   implicit final def choiceSemigroup[A, B]: Semigroup[Rxn[A, B]] = new Semigroup[Rxn[A, B]] {
     final override def combine(x: Rxn[A, B], y: Rxn[A, B]): Rxn[A, B] =
@@ -916,7 +929,7 @@ private[choam] sealed abstract class RxnInstances4 extends RxnInstances5 { this:
   }
 }
 
-private[choam] sealed abstract class RxnInstances5 extends RxnSyntax0 { this: Rxn.type =>
+private[choam] sealed abstract class RxnInstances6 extends RxnSyntax0 { this: Rxn.type =>
 }
 
 private[choam] sealed abstract class RxnSyntax0 extends RxnSyntax1 { this: Rxn.type =>
