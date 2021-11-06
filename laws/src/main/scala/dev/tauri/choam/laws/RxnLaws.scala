@@ -51,4 +51,16 @@ trait RxnLaws {
 
   def andAlsoIsAndThen[A, B, C, D](x: A =#> B, y: C =#> D): IsEq[Rxn[(A, C), (B, D)]] =
     (x × y) <-> (x.first[C] >>> y.second[B])
+
+  def distributiveAndThenChoice1[A, B, C](x: A =#> B, y: B =#> C, z: B =#> C): IsEq[Rxn[A, C]] =
+    (x >>> (y + z)) <-> ((x >>> y) + (x >>> z))
+
+  def distributiveAndThenChoice2[A, B, C](x: A =#> B, y: A =#> B, z: B =#> C): IsEq[Rxn[A, C]] =
+    ((x + y) >>> z) <-> ((x >>> z) + (y >>> z))
+
+  def distributiveAndAlsoChoice1[A, B, C, D](x: A =#> B, y: C =#> D, z: C =#> D): IsEq[Rxn[(A, C), (B, D)]] =
+    (x × (y + z)) <-> ((x × y) + (x × z))
+
+  def distributiveAndAlsoChoice2[A, B, C, D](x: A =#> B, y: A =#> B, z: C =#> D): IsEq[Rxn[(A, C), (B, D)]] =
+    ((x + y) × z) <-> ((x × z) + (y × z))
 }

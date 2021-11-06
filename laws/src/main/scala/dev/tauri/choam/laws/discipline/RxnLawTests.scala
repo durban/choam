@@ -80,5 +80,9 @@ trait RxnLawTests extends Laws {
     "contramap is lift >>>" -> forAll(laws.contramapIsLiftAndThen[A, B, C] _),
     "* is ×" -> forAll(laws.timesIsAndAlso[A, B, C] _),
     "× is >>>" -> forAll(laws.andAlsoIsAndThen[A, B, C, D] _),
+    "distributive (>>> and +) 1" -> forAll(laws.distributiveAndThenChoice1[A, B, C] _),
+    "distributive (>>> and +) 2" -> forAll(laws.distributiveAndThenChoice2[A, B, C] _),
+    "disributive (× and +) 1" -> forAll(laws.distributiveAndAlsoChoice1[A, B, C, D] _),
+    "disributive (× and +) 2" -> forAll(laws.distributiveAndAlsoChoice2[A, B, C, D] _),
   )
 }
