@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import java.util.Arrays
 
-import cats.{ Monad, Applicative, MonoidK, Semigroup }
+import cats.{ Monad, Applicative, MonoidK, Semigroup, Defer }
 import cats.arrow.ArrowChoice
 import cats.mtl.Local
 import cats.effect.kernel.Unique
@@ -929,7 +929,12 @@ private[choam] sealed abstract class RxnInstances5 extends RxnInstances6 { this:
   }
 }
 
-private[choam] sealed abstract class RxnInstances6 extends RxnSyntax0 { this: Rxn.type =>
+private[choam] sealed abstract class RxnInstances6 extends RxnSyntax0 { self: Rxn.type =>
+
+  implicit final def deferInstance[X]: Defer[Rxn[X, *]] = new Defer[Rxn[X, *]] {
+    final override def defer[A](fa: => Rxn[X, A]): Rxn[X, A] =
+      self.computed[X, A] { x => fa.provide(x) }
+  }
 }
 
 private[choam] sealed abstract class RxnSyntax0 extends RxnSyntax1 { this: Rxn.type =>

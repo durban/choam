@@ -21,6 +21,7 @@ package discipline
 
 import cats.implicits._
 import cats.kernel.laws.discipline.SemigroupTests
+import cats.laws.discipline.DeferTests
 import cats.effect.kernel.testkit.TestContext
 import cats.effect.laws.UniqueTests
 import cats.effect.IO
@@ -60,4 +61,5 @@ trait LawsSpec
   })
   checkAll("MonoidK[Rxn]", MonoidKTests[λ[a => Rxn[a, a]]].monoidK[String])
   checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[String, Int]].semigroup)
+  checkAll("Defer[Rxn]", DeferTests[Rxn[String, *]].defer[Int])
 }
