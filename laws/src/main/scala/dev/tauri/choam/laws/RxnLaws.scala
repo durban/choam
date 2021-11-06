@@ -21,6 +21,8 @@ package laws
 import cats.laws.IsEq
 import cats.laws.IsEqArrow
 
+import Rxn.{ pure, ret, lift }
+
 trait RxnLaws {
 
   def asIsMap[A, B, C](rxn: A =#> B, c: C): IsEq[A =#> C] =
@@ -33,16 +35,16 @@ trait RxnLaws {
     rxn.provide(a) <-> rxn.contramap[Any](_ => a)
 
   def pureIsRet[A](a: A): IsEq[Axn[A]] =
-    Rxn.pure(a) <-> Rxn.ret(a)
+    pure(a) <-> ret(a)
 
   def toFunctionIsProvide[A, B](rxn: A =#> B, a: A): IsEq[Axn[B]] =
     rxn.toFunction(a) <-> rxn.provide(a)
 
   def mapIsAndThenLift[A, B, C](rxn: A =#> B, f: B => C): IsEq[Rxn[A, C]] =
-    rxn.map(f) <-> (rxn >>> Rxn.lift(f))
+    rxn.map(f) <-> (rxn >>> lift(f))
 
   def contramapIsLiftAndThen[A, B, C](f: A => B, rxn: B =#> C): IsEq[Rxn[A, C]] =
-    rxn.contramap(f) <-> (Rxn.lift(f) >>> rxn)
+    rxn.contramap(f) <-> (lift(f) >>> rxn)
 
   def timesIsAndAlso[A, B, C](x: A =#> B, y: A =#> C): IsEq[A =#> (B, C)] =
     (x * y) <-> (x × y).contramap[A](a => (a, a))
