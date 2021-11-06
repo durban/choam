@@ -109,10 +109,13 @@ private object ObjStackBench {
         ThreadLocalRandom.current().nextLong().toString()
       }
     }
-    val randomList: List[String] = {
-      List.fill(ThreadLocalRandom.current().nextInt(16)) {
+    val randomList: ObjStack.Lst[String] = {
+      val l = List.fill(ThreadLocalRandom.current().nextInt(16)) {
         ThreadLocalRandom.current().nextLong().toString()
       }
+      val s = new ObjStack[String]
+      s.pushAll(l)
+      s.takeSnapshot()
     }
   }
 }

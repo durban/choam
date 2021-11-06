@@ -503,7 +503,7 @@ object Rxn extends RxnInstances0 {
     contK.push(commit)
 
     private[this] var contTReset: Array[Byte] = contT.takeSnapshot()
-    private[this] var contKReset: List[Any] = contK.takeSnapshot()
+    private[this] var contKReset: ObjStack.Lst[Any] = contK.takeSnapshot()
 
     private[this] var a: Any = x
     private[this] var retries: Int = 0
@@ -545,12 +545,12 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def loadEverything(): Unit = {
-      contKReset = delayCompStorage.pop().asInstanceOf[List[Any]]
+      contKReset = delayCompStorage.pop().asInstanceOf[ObjStack.Lst[Any]]
       contTReset = delayCompStorage.pop().asInstanceOf[Array[Byte]]
       startA = delayCompStorage.pop()
       startRxn = delayCompStorage.pop().asInstanceOf[Rxn[Any, R]]
       retries = delayCompStorage.pop().asInstanceOf[Int]
-      alts.loadSnapshot(delayCompStorage.pop().asInstanceOf[List[Any]])
+      alts.loadSnapshot(delayCompStorage.pop().asInstanceOf[ObjStack.Lst[Any]])
       loadAlt()
       ()
     }
@@ -566,8 +566,8 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def loadAlt(): Rxn[Any, R] = {
       val res = alts.pop().asInstanceOf[Rxn[Any, R]]
-      pc.loadSnapshotUnsafe(alts.pop().asInstanceOf[List[Any]])
-      contK.loadSnapshot(alts.pop().asInstanceOf[List[Any]])
+      pc.loadSnapshotUnsafe(alts.pop().asInstanceOf[ObjStack.Lst[Any]])
+      contK.loadSnapshot(alts.pop().asInstanceOf[ObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
       desc = alts.pop().asInstanceOf[HalfEMCASDescriptor]

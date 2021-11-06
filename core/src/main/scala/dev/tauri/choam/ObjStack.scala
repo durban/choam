@@ -19,58 +19,77 @@ package dev.tauri.choam
 
 private final class ObjStack[A]() {
 
-  private[this] var head: List[A] =
-    Nil
+  private[this] var lst: ObjStack.Lst[A] =
+    null
 
   final override def toString: String = {
-    s"ObjStack(${this.head.mkString(", ")})"
+    if (this.lst ne null) s"ObjStack(${this.lst.mkString(", ")})"
+    else "ObjStack()"
   }
 
-  def push(a: A): Unit = {
-    this.head = (a :: this.head)
+  final def push(a: A): Unit = {
+    this.lst = new ObjStack.Lst(a, this.lst)
   }
 
-  def pushAll(as: Iterable[A]): Unit = {
+  final def pushAll(as: Iterable[A]): Unit = {
     val it = as.iterator
     while (it.hasNext) {
       this.push(it.next())
     }
   }
 
-  private[this] def assertNonEmpty(): Unit = {
+  private[this] final  def assertNonEmpty(): Unit = {
     if (this.isEmpty) {
       throw new NoSuchElementException
     }
   }
 
-  def pop(): A = {
+  final def pop(): A = {
     assertNonEmpty()
-    val r = this.head.head
-    this.head = this.head.tail
+    val r = this.lst.head
+    this.lst = this.lst.tail
     r
   }
 
-  def clear(): Unit = {
-    this.head = Nil
+  final def clear(): Unit = {
+    this.lst = null
   }
 
-  def isEmpty: Boolean = {
-    this.head eq Nil
+  final def isEmpty: Boolean = {
+    this.lst eq null
   }
 
-  def nonEmpty: Boolean = {
-    !this.isEmpty
+  final def nonEmpty: Boolean = {
+    this.lst ne null
   }
 
-  def takeSnapshot(): List[A] = {
-    this.head
+  final def takeSnapshot(): ObjStack.Lst[A] = {
+    this.lst
   }
 
-  def loadSnapshot(snapshot: List[A]): Unit = {
-    this.head = snapshot
+  final def loadSnapshot(snapshot: ObjStack.Lst[A]): Unit = {
+    this.lst = snapshot
   }
 
-  def loadSnapshotUnsafe(snapshot: List[Any]): Unit = {
-    this.head = snapshot.asInstanceOf[List[A]]
+  final def loadSnapshotUnsafe(snapshot: ObjStack.Lst[Any]): Unit = {
+    this.lst = snapshot.asInstanceOf[ObjStack.Lst[A]]
+  }
+}
+
+private object ObjStack {
+
+  final class Lst[+A](final val head: A, final val tail: Lst[A]) {
+
+    final def mkString(sep: String): String = {
+      val sb = new StringBuilder()
+      sb.append(this.head.toString)
+      var curr = this.tail
+      while (curr ne null) {
+        sb.append(sep)
+        sb.append(curr.head.toString)
+        curr = curr.tail
+      }
+      sb.toString
+    }
   }
 }
