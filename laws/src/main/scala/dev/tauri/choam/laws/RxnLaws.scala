@@ -63,4 +63,12 @@ trait RxnLaws {
 
   def distributiveAndAlsoChoice2[A, B, C, D](x: A =#> B, y: A =#> B, z: C =#> D): IsEq[Rxn[(A, C), (B, D)]] =
     ((x + y) × z) <-> ((x × z) + (y × z))
+
+  def associativeAndAlso[A, B, C, D, E, F](x: A =#> B, y: C =#> D, z: E =#> F): IsEq[Rxn[((A, C), E), ((B, D), F)]] = {
+    ((x × y) × z) <-> (x × (y × z)).dimap[((A, C), E), ((B, D), F)](
+      ac_e => (ac_e._1._1, (ac_e._1._2, ac_e._2))
+    )(
+      b_df => ((b_df._1, b_df._2._1), b_df._2._2)
+    )
+  }
 }

@@ -27,13 +27,14 @@
 
 ## Other improvements
 
+- Refactoring: move kcas to the `mcas` module.
 - Choice seems slow with the new interpreter (see `ChoiceCombinatorBench`).
 - Testing:
   - Figure out some tricky race conditions, and test them with JCStress.
     - `Exchanger`
   - LawsSpec:
     - improve generated `Rxn`s, check if they make sense
-    - check if `testingEqRxn` makes sense, maybe do structural checking
+    - check if `testingEqRxn` makes sense
   - Test with other IO impls (when they support ce3)
 - Compile-time detection of impossible k-CAS operations (2 changes to the same `Ref`)
     - we can't do it without alias analysis, e.g., the method

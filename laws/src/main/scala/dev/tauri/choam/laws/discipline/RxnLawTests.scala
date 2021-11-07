@@ -55,19 +55,23 @@ trait RxnLawTests extends Laws {
   def laws: RxnLaws =
     new RxnLaws {}
 
-  def rxn[A, B, C, D](
+  def rxn[A, B, C, D, E, F](
     implicit
     equA: Eq[A],
     equB: Eq[B],
     equC: Eq[C],
     equD: Eq[D],
+    equF: Eq[F],
     arbA: Arbitrary[A],
     arbB: Arbitrary[B],
     arbC: Arbitrary[C],
     arbD: Arbitrary[D],
+    arbE: Arbitrary[E],
+    arbF: Arbitrary[F],
     cogA: Cogen[A],
     cogB: Cogen[B],
     cogC: Cogen[C],
+    cogE: Cogen[E],
   ): RuleSet = new DefaultRuleSet(
     name = "rxn",
     parent = None,
@@ -84,5 +88,6 @@ trait RxnLawTests extends Laws {
     "distributive (>>> and +) 2" -> forAll(laws.distributiveAndThenChoice2[A, B, C] _),
     "disributive (× and +) 1" -> forAll(laws.distributiveAndAlsoChoice1[A, B, C, D] _),
     "disributive (× and +) 2" -> forAll(laws.distributiveAndAlsoChoice2[A, B, C, D] _),
+    "associative ×" -> forAll(laws.associativeAndAlso[A, B, C, D, E, F] _),
   )
 }
