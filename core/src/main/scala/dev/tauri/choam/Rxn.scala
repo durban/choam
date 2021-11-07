@@ -712,9 +712,9 @@ object Rxn extends RxnInstances0 {
           loop(c.left)
         case 7 => // Cas
           val c = curr.asInstanceOf[Cas[Any]]
-          val currVal = kcas.read(c.ref, ctx)
+          val currVal = kcas.read(c.ref.loc, ctx)
           if (equ(currVal, c.ov)) {
-            desc = kcas.addCas(desc, c.ref, c.ov, c.nv, ctx)
+            desc = kcas.addCas(desc, c.ref.loc, c.ov, c.nv, ctx)
             a = () : Unit
             loop(next())
           } else {
@@ -722,14 +722,14 @@ object Rxn extends RxnInstances0 {
           }
         case 8 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, Any]]
-          val ox = kcas.read(c.ref, ctx)
+          val ox = kcas.read(c.ref.loc, ctx)
           val (nx, b) = c.f(ox, a.asInstanceOf[A])
-          desc = kcas.addCas(desc, c.ref, ox, nx, ctx)
+          desc = kcas.addCas(desc, c.ref.loc, ox, nx, ctx)
           a = b
           loop(next())
         case 9 => // InvisibleRead
           val c = curr.asInstanceOf[InvisibleRead[B]]
-          a = kcas.read(c.ref, ctx)
+          a = kcas.read(c.ref.loc, ctx)
           loop(next())
         case 10 => // Exchange
           val c = curr.asInstanceOf[Exchange[A, B]]

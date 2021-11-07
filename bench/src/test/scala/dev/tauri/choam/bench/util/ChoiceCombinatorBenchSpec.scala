@@ -32,15 +32,15 @@ final class ChoiceCombinatorBenchSpec extends BaseSpecA {
     b.doChoiceCAS(s, k)
     // check that the reaction happened:
     val ctx = kcas.EMCAS.currentContext()
-    assertEquals(kcas.EMCAS.read(s.ref, ctx), "bar")
+    assertEquals(kcas.EMCAS.read(s.ref.loc, ctx), "bar")
     for (r <- s.refs) {
-      val v = kcas.EMCAS.read(r, ctx)
+      val v = kcas.EMCAS.read(r.loc, ctx)
       assertEquals(v, "foo")
     }
     // re-run the reaction:
     s.reset.reset()
-    assertEquals(kcas.EMCAS.read(s.ref, ctx), "foo")
+    assertEquals(kcas.EMCAS.read(s.ref.loc, ctx), "foo")
     b.doChoiceCAS(s, k)
-    assertEquals(kcas.EMCAS.read(s.ref, ctx), "bar")
+    assertEquals(kcas.EMCAS.read(s.ref.loc, ctx), "bar")
   }
 }

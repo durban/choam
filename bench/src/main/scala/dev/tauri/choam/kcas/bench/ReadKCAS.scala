@@ -23,6 +23,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import _root_.dev.tauri.choam.bench.util.KCASImplState
+import mcas.MemoryLocation
 
 /**
  * Benchmark for reading with different k-CAS implementations.
@@ -68,8 +69,8 @@ object ReadKCAS {
 
   @State(Scope.Benchmark)
   class RefSt {
-    val ref1: Ref[String] = Ref.unsafe("1")
-    val ref2: Ref[String] = Ref.unsafe("2")
+    val ref1: MemoryLocation[String] = Ref.unsafe("1").loc
+    val ref2: MemoryLocation[String] = Ref.unsafe("2").loc
   }
 
   @State(Scope.Thread)

@@ -25,6 +25,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.infra.results._
 
+import mcas.MemoryLocation
+
 @JCStressTest
 @State
 @Description("IBR reservation should forbid freeing an object")
@@ -35,7 +37,7 @@ import org.openjdk.jcstress.infra.results._
 class IBRReservationTest {
 
   private[this] val ref =
-    Ref.unsafe("begin")
+    Ref.unsafe("begin").loc
 
   private[this] val latch =
     new CountDownLatch(1)
@@ -48,7 +50,7 @@ class IBRReservationTest {
   @Actor
   def check(r: ZL_Result): Unit = {
     val ctx = EMCAS.currentContext()
-    this.ref.asInstanceOf[Ref[Any]].unsafeGetVolatile() match {
+    this.ref.asInstanceOf[MemoryLocation[Any]].unsafeGetVolatile() match {
       case wd: WordDescriptor[_] =>
         r.r1 = ctx.isInUseByOther(wd)
       case s: String =>
@@ -65,7 +67,7 @@ class IBRReservationTest {
     val ctx = EMCAS.currentContext()
     ctx.startOp()
     val d = HalfWordDescriptor(null, "", "").prepare(null, ctx) // allocate
-    assert(ctx.casRef(this.ref.asInstanceOf[Ref[Any]], "begin", d)) // publish
+    assert(ctx.casRef(this.ref.asInstanceOf[MemoryLocation[Any]], "begin", d)) // publish
     latch.await()
     ctx.endOp()
   }

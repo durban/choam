@@ -125,13 +125,13 @@ final class Exchanger[A, B] private (
         // it must be a result
         Right(Msg.ret[C](c, ctx, msg.rd.exchangerData.updated(this, stats.exchanged)))
       case None =>
-        if (ctx.impl.doSingleCas(self.hole, nullOf[C], Node.RESCINDED[C], ctx)) {
+        if (ctx.impl.doSingleCas(self.hole.loc, nullOf[C], Node.RESCINDED[C], ctx)) {
           // OK, we rolled back, and can retry
           // println(s"rolled back - thread#${Thread.currentThread().getId()}")
           Left(stats.rescinded)
         } else {
           // couldn't roll back, it must be a result
-          val c = ctx.impl.read(self.hole, ctx)
+          val c = ctx.impl.read(self.hole.loc, ctx)
           Right(Msg.ret[C](c, ctx, msg.rd.exchangerData.updated(this, stats.exchanged)))
         }
     }
@@ -316,7 +316,7 @@ object Exchanger {
       def go(n: Int): Option[C] = {
         if (n > 0) {
           Backoff.once()
-          val res = ctx.impl.read(this.hole, ctx)
+          val res = ctx.impl.read(this.hole.loc, ctx)
           if (isNull(res)) {
             go(n - 1)
           } else {

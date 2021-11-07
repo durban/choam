@@ -21,8 +21,11 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
 import dev.tauri.choam.Ref;
+import dev.tauri.choam.mcas.MemoryLocation;
 
-final class RefP1<A> extends RefIdAndPadding implements Ref<A> {
+final class RefP1<A>
+  extends RefIdAndPadding
+  implements Ref<A>, MemoryLocation<A> {
 
   private static final VarHandle VALUE;
 

@@ -64,7 +64,7 @@ class LRMapTest extends StressTestBase {
   @Arbiter
   def arbiter(r: LLLLLL_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r5 = impl.read(ref1, ctx)
-    r.r6 = impl.read(ref2, ctx)
+    r.r5 = impl.read(ref1.loc, ctx)
+    r.r6 = impl.read(ref2.loc, ctx)
   }
 }

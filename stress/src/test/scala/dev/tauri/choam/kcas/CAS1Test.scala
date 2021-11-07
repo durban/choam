@@ -23,6 +23,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZL_Result
 
+import mcas.MemoryLocation
+
 @JCStressTest
 @State
 @Description("CAS1 should be atomic")
@@ -32,8 +34,8 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 ))
 class CAS1Test extends StressTestBase {
 
-  private[this] val ref: Ref[String] =
-    Ref.unsafe("ov")
+  private[this] val ref: MemoryLocation[String] =
+    Ref.unsafe("ov").loc
 
   @Actor
   def writer1(r: ZZL_Result): Unit = {

@@ -41,9 +41,7 @@ import mcas.MemoryLocation
  * both `43` and `41`. (Currently performing such a [[Rxn]] throws
  * a runtime exception.)
  */
-trait Ref[A] extends MemoryLocation[A] { self =>
-
-  // TODO: that this extends MemoryLocation should be an impl. detail
+trait Ref[A] { self: MemoryLocation[A] =>
 
   final def get: Axn[A] =
     upd[Any, A] { (oa, _) => (oa, oa) }
@@ -143,6 +141,9 @@ trait Ref[A] extends MemoryLocation[A] { self =>
 
   final def unsafeCas(ov: A, nv: A): Axn[Unit] =
     Rxn.unsafe.cas(this, ov, nv)
+
+  private[choam] final def loc: MemoryLocation[A] =
+    this
 
   /** For testing */
   private[choam] final def debugRead(): A = {

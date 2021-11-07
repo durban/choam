@@ -22,6 +22,8 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
+import mcas.MemoryLocation
+
 @Fork(2)
 @BenchmarkMode(Array(Mode.AverageTime))
 class RandomReplaceBench {
@@ -66,7 +68,7 @@ object RandomReplaceBench {
 
   abstract class SharedStateBase[A <: AnyRef](a: A) {
 
-    val ref: Ref[A] = Ref.unsafe[A](nullOf[A])
+    val ref: MemoryLocation[A] = Ref.unsafe[A](nullOf[A]).loc
 
     reset()
 

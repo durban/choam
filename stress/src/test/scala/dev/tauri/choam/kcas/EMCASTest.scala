@@ -41,10 +41,10 @@ import mcas.MemoryLocation
 class EMCASTest {
 
   private[this] val ref1 =
-    Ref.unsafeWithId("a")(0L, 0L, 0L, i3 = 42L)
+    Ref.unsafeWithId("a")(0L, 0L, 0L, i3 = 42L).loc
 
   private[this] val ref2 =
-    Ref.unsafeWithId("x")(0L, 0L, 0L, i3 = 21L)
+    Ref.unsafeWithId("x")(0L, 0L, 0L, i3 = 21L).loc
 
   assert(MemoryLocation.globalCompare(ref1, ref2) > 0) // ref1 > ref2
 

@@ -24,6 +24,7 @@ import java.util.concurrent.ThreadLocalRandom
 import org.openjdk.jmh.annotations._
 
 import _root_.dev.tauri.choam.bench.util._
+import mcas.MemoryLocation
 
 @Fork(2)
 @BenchmarkMode(Array(Mode.AverageTime))
@@ -92,6 +93,7 @@ object KCASBenchHelpers {
 
   @State(Scope.Benchmark)
   class RefState {
-    val ref: Ref[String] = Ref.unsafe(ThreadLocalRandom.current().nextLong().toString)
+    val ref: MemoryLocation[String] =
+      Ref.unsafe(ThreadLocalRandom.current().nextLong().toString).loc
   }
 }

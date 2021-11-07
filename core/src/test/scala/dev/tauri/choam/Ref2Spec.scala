@@ -67,19 +67,21 @@ abstract class Ref2Spec extends BaseSpecA {
     final class Foo
     val foo = new Foo
     val rr = mkRef2[String, Foo]("a", foo)
-    assert(rr._1.unsafeGetVolatile() eq "a")
-    assert(rr._2.unsafeGetVolatile() eq foo)
-    rr._1.unsafeSetVolatile("b")
-    assert(rr._1.unsafeGetVolatile() eq "b")
-    assert(rr._2.unsafeGetVolatile() eq foo)
-    rr._2.unsafeSetVolatile(new Foo)
-    assert(rr._1.unsafeGetVolatile() eq "b")
-    assert(rr._2.unsafeGetVolatile() ne foo)
-    assert(rr._1.unsafeCasVolatile("b", "c"))
-    assert(rr._1.unsafeGetVolatile() eq "c")
-    assert(rr._2.unsafeGetVolatile() ne foo)
-    assert(!rr._2.unsafeCasVolatile(foo, new Foo))
-    assert(rr._1.unsafeGetVolatile() eq "c")
-    assert(rr._2.unsafeGetVolatile() ne foo)
+    val r1 = rr._1.loc
+    val r2 = rr._2.loc
+    assert(r1.unsafeGetVolatile() eq "a")
+    assert(r2.unsafeGetVolatile() eq foo)
+    r1.unsafeSetVolatile("b")
+    assert(r1.unsafeGetVolatile() eq "b")
+    assert(r2.unsafeGetVolatile() eq foo)
+    r2.unsafeSetVolatile(new Foo)
+    assert(r1.unsafeGetVolatile() eq "b")
+    assert(r2.unsafeGetVolatile() ne foo)
+    assert(r1.unsafeCasVolatile("b", "c"))
+    assert(r1.unsafeGetVolatile() eq "c")
+    assert(r2.unsafeGetVolatile() ne foo)
+    assert(!r2.unsafeCasVolatile(foo, new Foo))
+    assert(r1.unsafeGetVolatile() eq "c")
+    assert(r2.unsafeGetVolatile() ne foo)
   }
 }

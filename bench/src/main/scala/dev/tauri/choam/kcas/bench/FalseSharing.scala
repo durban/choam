@@ -25,6 +25,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import _root_.dev.tauri.choam.bench.util.RandomState
+import mcas.MemoryLocation
 
 @Fork(4)
 class FalseSharing {
@@ -78,8 +79,8 @@ object FalseSharing {
 
   abstract class Base {
 
-    def rr: Ref[Int]
-    def rw: Ref[Int]
+    def rr: MemoryLocation[Int]
+    def rw: MemoryLocation[Int]
 
     @TearDown
     def checkResults(): Unit = {
@@ -92,13 +93,13 @@ object FalseSharing {
 
   @State(Scope.Benchmark)
   class Unpadded extends Base {
-    final override val rr: Ref[Int] = Ref.unsafeUnpadded(42)
-    final override val rw: Ref[Int] = Ref.unsafeUnpadded(21)
+    final override val rr: MemoryLocation[Int] = Ref.unsafeUnpadded(42).loc
+    final override val rw: MemoryLocation[Int] = Ref.unsafeUnpadded(21).loc
   }
 
   @State(Scope.Benchmark)
   class Padded extends Base {
-    final override val rr: Ref[Int] = Ref.unsafe(42)
-    final override val rw: Ref[Int] = Ref.unsafe(21)
+    final override val rr: MemoryLocation[Int] = Ref.unsafe(42).loc
+    final override val rw: MemoryLocation[Int] = Ref.unsafe(21).loc
   }
 }

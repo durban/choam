@@ -24,7 +24,7 @@ final class IBRSpec
   extends BaseSpecA {
 
   test("IBR should not free an object referenced from another thread") {
-    val ref = Ref.unsafe[String]("s")
+    val ref = Ref.unsafe[String]("s").loc
     val ctx = EMCAS.currentContext()
     val hDesc = EMCAS.addCas(EMCAS.start(ctx), ref, "s", "x", ctx)
     val desc = ctx.op {

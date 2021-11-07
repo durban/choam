@@ -18,7 +18,11 @@
 package dev.tauri.choam
 package refs
 
-private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B]) extends Ref[A] {
+import mcas.MemoryLocation
+
+private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
+  extends Ref[A]
+  with MemoryLocation[A] {
 
   override def unsafeGetVolatile(): A =
     self.unsafeGetVolatile1()
@@ -48,7 +52,9 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B]) extends Ref[A] {
     self.dummyImpl1(v)
 }
 
-private final class Ref2Ref2[A, B](self: Ref2Impl[A, B]) extends Ref[B] {
+private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
+  extends Ref[B]
+  with MemoryLocation[B] {
 
   override def unsafeGetVolatile(): B =
     self.unsafeGetVolatile2()

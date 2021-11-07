@@ -104,7 +104,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       rea = (
         (
           (Rxn.unsafe.cas(a, "a", "aa") + (Rxn.unsafe.cas(b, "b", "bb") >>> Rxn.unsafe.delay { _ =>
-            this.kcasImpl.doSingleCas(y, "y", "-", this.kcasImpl.currentContext())
+            this.kcasImpl.doSingleCas(y.loc, "y", "-", this.kcasImpl.currentContext())
           })) >>> Rxn.unsafe.cas(y, "-", "yy")
         ) +
         (Rxn.unsafe.cas(p, "p", "pp") >>> Rxn.unsafe.cas(q, "q", "qq"))

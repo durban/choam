@@ -23,6 +23,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import _root_.dev.tauri.choam.bench.util.KCASImplState
+import mcas.MemoryLocation
 
 /**
  * Resource allocation scenario, described in [Software transactional memory](
@@ -84,12 +85,12 @@ object ResourceAllocationKCAS {
     private[this] val initialValues =
       Vector.fill(nRes)(scala.util.Random.nextString(10))
 
-    val rss: Array[Ref[String]] =
-      initialValues.map(Ref.unsafe).toArray
+    val rss: Array[MemoryLocation[String]] =
+      initialValues.map(Ref.unsafe(_).loc).toArray
 
     @TearDown
     def checkResults(): Unit = {
-      val currentValues = rss.map(_.debugRead()).toVector
+      val currentValues = rss.map(_.asInstanceOf[Ref[String]].debugRead()).toVector
       if (currentValues == initialValues) {
         throw new Exception(s"Unchanged results")
       }
@@ -106,7 +107,7 @@ object ResourceAllocationKCAS {
 
     final val tokens = 128L
 
-    private[this] var selectedRss: Array[Ref[String]] = _
+    private[this] var selectedRss: Array[MemoryLocation[String]] = _
 
     var ovs: Array[String] = _
 
@@ -123,7 +124,7 @@ object ResourceAllocationKCAS {
     }
 
     /** Select `allocSize` refs randomly */
-    def selectResources(rss: Array[Ref[String]]): Array[Ref[String]] = {
+    def selectResources(rss: Array[MemoryLocation[String]]): Array[MemoryLocation[String]] = {
       val bucketSize = nRes / allocSize
 
       @tailrec

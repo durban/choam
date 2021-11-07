@@ -23,6 +23,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZL_Result
 
+import mcas.MemoryLocation
+
 @JCStressTest
 @State
 @Description("k-CAS should be atomic")
@@ -32,8 +34,8 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 ))
 class KCASTest extends StressTestBase {
 
-  private[this] val refs: List[Ref[String]] =
-    List.fill(8)(Ref.unsafe("ov"))
+  private[this] val refs: List[MemoryLocation[String]] =
+    List.fill(8)(Ref.unsafe("ov").loc)
 
   private def write(nv: String): Boolean = {
     val ctx = impl.currentContext()
