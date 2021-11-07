@@ -18,8 +18,18 @@
 package dev.tauri.choam
 package kcas
 
-final class ImpossibleOperation(msg: String)
-  extends IllegalArgumentException(msg) {
+import mcas.MemoryLocation
+
+final class ImpossibleOperation private[kcas] (
+  private[choam] val ref: MemoryLocation[_],
+  private[choam] val a: HalfWordDescriptor[_],
+  private[choam] val b: HalfWordDescriptor[_],
+) extends IllegalArgumentException(
+  s"Impossible k-CAS for ${ref}: ${a.ov} -> ${a.nv} and ${b.ov} -> ${b.nv}"
+) {
+
+  assert(a.address eq ref)
+  assert(b.address eq ref)
 
   final override def fillInStackTrace(): Throwable =
     this

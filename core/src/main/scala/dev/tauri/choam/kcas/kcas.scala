@@ -76,9 +76,7 @@ private[choam] object KCAS {
     a: HalfWordDescriptor[A],
     b: HalfWordDescriptor[B]
   ): Nothing = {
-    throw new ImpossibleOperation(
-      s"Impossible k-CAS for ${ref}: ${a.ov} -> ${a.nv} and ${b.ov} -> ${b.nv}"
-    )
+    throw new ImpossibleOperation(ref, a, b)
   }
 
   def unsafeLookup(fqn: String): KCAS = fqn match {

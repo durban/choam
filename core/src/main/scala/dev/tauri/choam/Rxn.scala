@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import java.util.Arrays
 
-import cats.{ Monad, Applicative, MonoidK, Semigroup, Defer }
+import cats.{ Monad, Applicative, MonoidK, Monoid, Semigroup, Defer }
 import cats.arrow.ArrowChoice
 import cats.mtl.Local
 import cats.effect.kernel.Unique
@@ -923,9 +923,18 @@ private[choam] sealed abstract class RxnInstances4 extends RxnInstances5 { this:
 
 private[choam] sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.type =>
 
-  implicit final def choiceSemigroup[A, B]: Semigroup[Rxn[A, B]] = new Semigroup[Rxn[A, B]] {
+  /** Not implicit, because it would conflict with [[monoidInstance]]. */
+  final def choiceSemigroup[A, B]: Semigroup[Rxn[A, B]] = new Semigroup[Rxn[A, B]] {
     final override def combine(x: Rxn[A, B], y: Rxn[A, B]): Rxn[A, B] =
       x + y
+  }
+
+  implicit final def monoidInstance[A, B](implicit B: Monoid[B]): Monoid[Rxn[A, B]] = new Monoid[Rxn[A, B]] {
+    override def combine(x: Rxn[A, B], y: Rxn[A, B]): Rxn[A, B] = {
+      (x * y).map { bb => B.combine(bb._1, bb._2) }
+    }
+    override def empty: Rxn[A, B] =
+      Rxn.ret(B.empty)
   }
 }
 

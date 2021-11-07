@@ -23,6 +23,8 @@ import cats.implicits._
 
 import org.scalacheck.{ Gen, Arbitrary }
 
+import kcas.ImpossibleOperation
+
 trait TestInstances extends TestInstancesLowPrio0 { self =>
 
   def kcasImpl: kcas.KCAS
@@ -90,9 +92,17 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
 
   implicit def testingEqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]] = new Eq[Axn[A]] {
     override def eqv(x: Axn[A], y: Axn[A]): Boolean = {
-      val ax = x.unsafePerform((), self.kcasImpl)
-      val ay = y.unsafePerform((), self.kcasImpl)
-      equA.eqv(ax, ay)
+      val rx = self.unsafePerformForTest(x, ())
+      val ry = self.unsafePerformForTest(y, ())
+      Eq[Either[ImpossibleOperation, A]].eqv(rx, ry)
+    }
+  }
+
+  private[choam] final def unsafePerformForTest[A, B](rxn: A =#> B, a: A): Either[ImpossibleOperation, B] = {
+    try {
+      Right(rxn.unsafePerform(a, self.kcasImpl))
+    } catch { case ex: ImpossibleOperation =>
+      Left(ex)
     }
   }
 }
@@ -105,10 +115,20 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
         val a = arbA.arbitrary.sample.getOrElse {
           throw new IllegalStateException("no sample")
         }
-        val bx = x.unsafePerform(a, self.kcasImpl)
-        val by = y.unsafePerform(a, self.kcasImpl)
-        equB.eqv(bx, by)
+        val rx = self.unsafePerformForTest(x, a)
+        val ry = self.unsafePerformForTest(y, a)
+        Eq[Either[ImpossibleOperation, B]].eqv(rx, ry)
       }
+    }
+  }
+
+  implicit def testingEqImpossibleOp: Eq[ImpossibleOperation] = new Eq[ImpossibleOperation] {
+
+    private[this] def equu[A](a1: A, a2: A): Boolean =
+      a1 == a2 // universal equals
+
+    final override def eqv(x: ImpossibleOperation, y: ImpossibleOperation): Boolean = {
+      equ(x.ref, y.ref) && equu(x.a.ov, y.a.ov) && equu(x.a.nv, y.a.nv) && equu(x.b.ov, y.b.ov) && equu(x.b.nv, y.b.nv)
     }
   }
 }
