@@ -17,8 +17,9 @@
 
 package dev.tauri.choam
 
-import cats.{ Applicative, Monad }
+import cats.{ Applicative, Monad, Align }
 import cats.arrow.ArrowChoice
+import cats.data.Ior
 import cats.implicits._
 import cats.effect.IO
 import cats.mtl.Local
@@ -708,6 +709,18 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       ga.map2(gb)(_ + _)
 
     assertResultF(foo(Rxn.ret(21), Rxn.ret(21)).run[F], 42)
+  }
+
+  test("Align instance") {
+    val inst = Align[Rxn[Int, *]]
+    for {
+      res1 <- inst.align(Rxn.unsafe.retry[Int, Int], Rxn.ret[Int, Long](42L)).apply[F](0)
+      _ <- assertEqualsF(res1, Ior.right(42L))
+      res2 <- inst.align(Rxn.ret[Int, Int](42), Rxn.unsafe.retry[Int, Long]).apply[F](0)
+      _ <- assertEqualsF(res2, Ior.left(42))
+      res3 <- inst.align(Rxn.ret[Int, Int](42), Rxn.ret[Int, Long](23L)).apply[F](0)
+      _ <- assertEqualsF(res3, Ior.both(42, 23L))
+    } yield ()
   }
 
   test("Tuple2 syntax") {

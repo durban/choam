@@ -19,9 +19,10 @@ package dev.tauri.choam
 package laws
 
 import cats.Eq
+import cats.data.Ior
 import cats.implicits._
 
-import org.scalacheck.{ Gen, Arbitrary }
+import org.scalacheck.{ Gen, Arbitrary, Cogen }
 
 import kcas.ImpossibleOperation
 
@@ -88,6 +89,27 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
         }
       }
     )
+  }
+
+  implicit def arbIor[A, B](implicit arbA: Arbitrary[A], arbB: Arbitrary[B]): Arbitrary[Ior[A, B]] = Arbitrary {
+    Gen.choose(0, 2).flatMap {
+      case 0 => // left
+        arbA.arbitrary.map(Ior.left)
+      case 1 => // right
+        arbB.arbitrary.map(Ior.right)
+      case 2 => // both
+        arbA.arbitrary.flatMap { a => arbB.arbitrary.map { b => Ior.both(a, b) } }
+    }
+  }
+
+  implicit def cogIor[A, B](implicit cogA: Cogen[A], cogB: Cogen[B]): Cogen[Ior[A, B]] = {
+    Cogen { (seed, ior) =>
+      ior.fold(
+        a => cogA.perturb(seed.next, a),
+        b => cogB.perturb(seed.next.next, b),
+        (a, b) => cogB.perturb(cogA.perturb(seed, a), b)
+      )
+    }
   }
 
   implicit def testingEqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]] = new Eq[Axn[A]] {

@@ -19,8 +19,9 @@ package dev.tauri.choam
 
 import java.util.Arrays
 
-import cats.{ Monad, Applicative, MonoidK, Monoid, Semigroup, Defer }
+import cats.{ Monad, Functor, Applicative, MonoidK, Monoid, Semigroup, Defer, Show, Align }
 import cats.arrow.ArrowChoice
+import cats.data.Ior
 import cats.mtl.Local
 import cats.effect.kernel.Unique
 
@@ -424,7 +425,7 @@ object Rxn extends RxnInstances0 {
 
   private final class Ctx[A](val uf: ThreadContext => A) extends Rxn[Any, A] {
     private[choam] final def tag = 14
-    final override def toString: String = s"Ctx"
+    final override def toString: String = s"Ctx(<block>)"
   }
 
   // Interpreter:
@@ -938,11 +939,30 @@ private[choam] sealed abstract class RxnInstances5 extends RxnInstances6 { this:
   }
 }
 
-private[choam] sealed abstract class RxnInstances6 extends RxnSyntax0 { self: Rxn.type =>
-
+private[choam] sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.type =>
   implicit final def deferInstance[X]: Defer[Rxn[X, *]] = new Defer[Rxn[X, *]] {
     final override def defer[A](fa: => Rxn[X, A]): Rxn[X, A] =
       self.computed[X, A] { x => fa.provide(x) }
+  }
+}
+
+private[choam] sealed abstract class RxnInstances7 extends RxnInstances8 { self: Rxn.type =>
+  implicit final def showInstance[A, B]: Show[Rxn[A, B]] =
+    Show.fromToString
+}
+
+private[choam] sealed abstract class RxnInstances8 extends RxnSyntax0 { self: Rxn.type =>
+  implicit final def alignInstance[X]: Align[Rxn[X, *]] = new Align[Rxn[X, *]] {
+    final override def functor: Functor[Rxn[X, *]] =
+      self.monadInstance[X]
+    final override def align[A, B](fa: Rxn[X, A], fb: Rxn[X, B]): Rxn[X, Ior[A, B]] = {
+      val leftOrBoth = (fa * fb.?).map {
+        case (a, Some(b)) => Ior.both(a, b)
+        case (a, None) => Ior.left(a)
+      }
+      val right = fb.map(Ior.right)
+      leftOrBoth + right
+    }
   }
 }
 

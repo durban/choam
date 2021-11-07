@@ -25,7 +25,7 @@ import cats.laws.discipline.DeferTests
 import cats.effect.kernel.testkit.TestContext
 import cats.effect.laws.UniqueTests
 import cats.effect.IO
-import cats.laws.discipline.{ ArrowChoiceTests, MonadTests, MonoidKTests }
+import cats.laws.discipline.{ ArrowChoiceTests, MonadTests, MonoidKTests, AlignTests }
 import cats.mtl.laws.discipline.LocalTests
 
 import org.scalacheck.Prop
@@ -63,4 +63,5 @@ trait LawsSpec
   checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[String, Int]](Rxn.choiceSemigroup).semigroup)
   checkAll("Monoid[Rxn]", MonoidTests[Rxn[String, Int]](Rxn.monoidInstance).monoid)
   checkAll("Defer[Rxn]", DeferTests[Rxn[String, *]].defer[Int])
+  checkAll("Align[Rxn]", AlignTests[Rxn[String, *]].align[Int, Float, Double, Long])
 }
