@@ -28,6 +28,9 @@ final class HalfEMCASDescriptor private (
   val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]]
 ) {
 
+  private[kcas] final def nonEmpty: Boolean =
+    this.map.nonEmpty
+
   private[kcas] final def add[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
     val d = desc.cast[Any]
     if (this.map.contains(d.address)) {

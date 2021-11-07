@@ -143,7 +143,7 @@ private[choam] object EMCAS extends KCAS { self =>
    *                 make the GC run less frequently.
    */
   def MCAS(desc: EMCASDescriptor, ctx: ThreadContext, replace: Int): Boolean = {
-    // TODO: add a fast path for when `desc` is empty
+
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): TryWordResult = {
       var content: A = nullOf[A]
@@ -291,12 +291,16 @@ private[choam] object EMCAS extends KCAS { self =>
   }
 
   private[kcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: ThreadContext, replace: Int): Boolean = {
-    ctx.startOp()
-    try {
-      val fullDesc = desc.prepare(ctx)
-      EMCAS.MCAS(desc = fullDesc, ctx = ctx, replace = replace)
-    } finally {
-      ctx.endOp()
+    if (desc.nonEmpty) {
+      ctx.startOp()
+      try {
+        val fullDesc = desc.prepare(ctx)
+        EMCAS.MCAS(desc = fullDesc, ctx = ctx, replace = replace)
+      } finally {
+        ctx.endOp()
+      }
+    } else {
+      true
     }
   }
 
