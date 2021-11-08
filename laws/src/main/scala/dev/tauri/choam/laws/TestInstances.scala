@@ -39,7 +39,10 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
   ): Arbitrary[Rxn[A, B]] = Arbitrary {
     Gen.oneOf(
       arbAB.arbitrary.map(ab => Rxn.lift[A, B](ab)),
-      arbAB.arbitrary.map(ab => Rxn.identity[A] >>> Rxn.lift[A, B](ab)),
+      arbB.arbitrary.map(b => Rxn.ret(b)),
+      Gen.lzy {
+        arbRxn[A, B].arbitrary.map(rxn => Rxn.identity[A] >>> rxn)
+      },
       Gen.lzy {
         for {
           one <- arbRxn[A, B].arbitrary
@@ -101,18 +104,11 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
           Rxn.unsafe.delayComputed(prepare = r.map(b => ref.update(aa).as(b)))
         }
       },
-      // TODO: this causes infinite retries:
-      // Gen.lzy {
-      //   arbB.arbitrary.flatMap { b =>
-      //     Gen.choose(0, 2).map { i =>
-      //       val r = Ref.unsafe[Int](i)
-      //       r.getAndUpdate(_ + 1).flatMap { i =>
-      //         if ((i % 3) === 0) Rxn.pure(b)
-      //         else Rxn.unsafe.retry
-      //       }
-      //     }
-      //   }
-      // },
+      Gen.lzy {
+        arbRxn[A, B].arbitrary.map { rxn =>
+          Rxn.unsafe.retry[A, B] + rxn
+        }
+      },
     )
   }
 
