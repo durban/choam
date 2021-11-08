@@ -217,7 +217,7 @@ lazy val commonSettings = Seq[Setting[_]](
 lazy val dependencies = new {
 
   val catsVersion = "2.6.1"
-  val catsEffectVersion = "3.3-162-2022ef9"
+  val catsEffectVersion = "3.3-393-da7c7c7"
   val catsMtlVersion = "1.2.1"
   val fs2Version = "3.1.5"
   val scalacheckEffectVersion = "1.0.3"
