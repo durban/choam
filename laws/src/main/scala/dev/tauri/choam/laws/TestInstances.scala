@@ -26,7 +26,43 @@ import org.scalacheck.{ Gen, Arbitrary, Cogen }
 
 import kcas.ImpossibleOperation
 
+object TestInstances {
+
+  private final case class ResetRxn[-A, +B](
+    rxn: Rxn[A, B],
+    refs: Set[ResetRef[_]] = Set.empty,
+  ) {
+
+    def toRxn: Rxn[A, B] =
+      rxn.postCommit(Rxn.unsafe.delay(_ => unsafeResetAll()))
+
+    def unsafeResetAll(): Unit = {
+      refs.foreach(_.unsafeReset())
+    }
+
+    def + [X <: A, Y >: B](that: ResetRxn[X, Y]): ResetRxn[X, Y] =
+      ResetRxn(this.rxn + that.rxn, this.refs union that.refs)
+
+    def >>> [C](that: ResetRxn[B, C]): ResetRxn[A, C] =
+      ResetRxn(this.rxn >>> that.rxn, this.refs union that.refs)
+
+    def * [X <: A, C](that: ResetRxn[X, C]): ResetRxn[X, (B, C)] =
+      ResetRxn(this.rxn * that.rxn, this.refs union that.refs)
+
+    def map[C](f: B => C): ResetRxn[A, C] =
+      ResetRxn(this.rxn.map(f), this.refs)
+  }
+
+  private final case class ResetRef[A](ref: Ref[A], resetTo: A) {
+    def unsafeReset(): Unit = {
+      ref.loc.unsafeSetVolatile(resetTo)
+    }
+  }
+}
+
 trait TestInstances extends TestInstancesLowPrio0 { self =>
+
+  import TestInstances._
 
   def kcasImpl: kcas.KCAS
 
@@ -37,76 +73,106 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
     arbAB: Arbitrary[A => B],
     arbAA: Arbitrary[A => A]
   ): Arbitrary[Rxn[A, B]] = Arbitrary {
+    arbResetRxn[A, B].arbitrary.map(_.toRxn)
+  }
+
+  private def arbResetRxn[A, B](
+    implicit
+    arbA: Arbitrary[A],
+    arbB: Arbitrary[B],
+    arbAB: Arbitrary[A => B],
+    arbAA: Arbitrary[A => A]
+  ): Arbitrary[ResetRxn[A, B]] = Arbitrary {
     Gen.oneOf(
-      arbAB.arbitrary.map(ab => Rxn.lift[A, B](ab)),
-      arbB.arbitrary.map(b => Rxn.ret(b)),
+      arbAB.arbitrary.map(ab => ResetRxn(Rxn.lift[A, B](ab))),
+      arbB.arbitrary.map(b => ResetRxn(Rxn.ret(b))),
       Gen.lzy {
-        arbRxn[A, B].arbitrary.map(rxn => Rxn.identity[A] >>> rxn)
+        arbResetRxn[A, B].arbitrary.map { rxn =>
+          ResetRxn(Rxn.identity[A]) >>> rxn
+        }
       },
       Gen.lzy {
         for {
-          one <- arbRxn[A, B].arbitrary
-          two <- arbRxn[A, B].arbitrary
+          one <- arbResetRxn[A, B].arbitrary
+          two <- arbResetRxn[A, B].arbitrary
         } yield one + two
       },
       Gen.lzy {
         for {
-          one <- arbRxn[A, A].arbitrary
-          two <- arbRxn[A, B].arbitrary
+          one <- arbResetRxn[A, A].arbitrary
+          two <- arbResetRxn[A, B].arbitrary
         } yield one >>> two
       },
       Gen.lzy {
         for {
           flag <- Arbitrary.arbBool.arbitrary
-          one <- arbRxn[A, B].arbitrary
-          two <- arbRxn[A, B].arbitrary
+          one <- arbResetRxn[A, B].arbitrary
+          two <- arbResetRxn[A, B].arbitrary
         } yield (one * two).map { bb => if (flag) bb._1 else bb._2 }
       },
-      Gen.lzy {
-        arbB.arbitrary.map { b =>
-          val ref = Ref.unsafe(b)
-          ref.unsafeInvisibleRead
+      arbB.arbitrary.map { b =>
+        val ref = Ref.unsafe(b)
+        ResetRxn(ref.unsafeInvisibleRead, Set(ResetRef(ref, b)))
+      },
+      for {
+        ab <- arbAB.arbitrary
+        a0 <- arbA.arbitrary
+      } yield {
+        val ref = Ref.unsafe(a0)
+        val rxn = ref.upd[A, B] { (aOld, aInput) => (aInput, ab(aOld)) }
+        ResetRxn(rxn, Set(ResetRef(ref, a0)))
+      },
+      for {
+        aa <- arbAA.arbitrary
+        ab <- arbAB.arbitrary
+        a0 <- arbA.arbitrary
+      } yield {
+        val ref = Ref.unsafe(a0)
+        val rxn = ref.unsafeInvisibleRead.flatMap { oldA =>
+          val newA = aa(oldA)
+          ref.unsafeCas(oldA, newA).as(ab(newA))
         }
+        ResetRxn(rxn, Set(ResetRef(ref, a0)))
       },
       Gen.lzy {
         for {
-          ab <- arbAB.arbitrary
-          a1 <- arbA.arbitrary
-        } yield {
-          val r = Ref(a1).first[A].flatMap { case (ref, _) =>
-            ref.upd[(Unit, A), B] { (a1, a2) => (a2._2, ab(a1)) }
-          }
-          r.lmap[A](a => ((), a))
-        }
-      },
-      arbAB.arbitrary.map { fab =>
-        val s = "x"
-        val ref = Ref.unsafe(s)
-        (Rxn.lift[A, B](fab) × ref.unsafeCas(s, s)).lmap[A](a => (a, ())).rmap(_._1)
-      },
-      Gen.lzy {
-        for {
-          r <- arbRxn[A, B].arbitrary
+          r <- arbResetRxn[A, B].arbitrary
           b <- arbB.arbitrary
           b2 <- arbB.arbitrary
         } yield {
           val ref = Ref.unsafe[B](b)
-          r.postCommit(ref.upd[B, Unit] { case (_, _) => (b2, ()) })
+          ResetRxn(
+            r.rxn.postCommit(ref.upd[B, Unit] { case (_, _) => (b2, ()) }),
+            r.refs + ResetRef(ref, b)
+          )
         }
       },
       Gen.lzy {
         for {
           a <- arbA.arbitrary
           aa <- arbAA.arbitrary
-          r <- arbRxn[A, B].arbitrary
+          r <- arbResetRxn[A, B].arbitrary
         } yield {
           val ref = Ref.unsafe[A](a)
-          Rxn.unsafe.delayComputed(prepare = r.map(b => ref.update(aa).as(b)))
+          ResetRxn(
+            Rxn.unsafe.delayComputed(prepare = r.rxn.map(b => ref.update(aa).as(b))),
+            r.refs + ResetRef(ref, a)
+          )
         }
       },
       Gen.lzy {
-        arbRxn[A, B].arbitrary.map { rxn =>
-          Rxn.unsafe.retry[A, B] + rxn
+        arbResetRxn[A, B].arbitrary.map { rxn =>
+          ResetRxn(Rxn.unsafe.retry[A, B]) + rxn
+        }
+      },
+      Gen.lzy {
+        Arbitrary.arbString.arbitrary.flatMap { s =>
+          arbResetRxn[A, B].arbitrary.map { rr =>
+            ResetRxn(
+              rr.rxn.first[String].contramap[A](a => (a, s)).map(_._1),
+              rr.refs
+            )
+          }
         }
       },
     )

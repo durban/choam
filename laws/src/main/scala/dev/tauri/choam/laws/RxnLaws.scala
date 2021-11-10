@@ -25,6 +25,12 @@ import Rxn.{ pure, ret, lift }
 
 trait RxnLaws {
 
+  // This is to make sure our `Arbitrary` instance
+  // only creates deterministic `Rxn`s.
+  def sanityCheck[A, B](rxn: Rxn[A, B]): IsEq[Rxn[A, B]] = {
+    rxn <-> rxn
+  }
+
   def asIsMap[A, B, C](rxn: A =#> B, c: C): IsEq[A =#> C] =
     rxn.as(c) <-> rxn.map[C](_ => c)
 
