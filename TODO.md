@@ -73,11 +73,7 @@
     - implement FS2 data structures (`Queue`, ...) with reagents
     - optimize `AsyncQueue` stream
 - API cleanup:
-  - check if by-name param makes sense for `>>`
-    - is it stack-safe?
-    - if yes, can we make it faster than the default implementation?
-  - separate unsafe/low-level API for `invisibleRead` and other dangerous
-    - (unsafe) thread-confined mode for running a `Rxn` (with `NaiveKCAS` or something even more simple)
+  - (unsafe) thread-confined mode for running a `Rxn` (with `NaiveKCAS` or something even more simple)
   - Rxn.onRetry?
   - Rxn.delay?
     - allocating (but: only `Ref` really needs it, others are built on that)
@@ -87,7 +83,6 @@
   - move data structures into separate JAR (`choam-data`)
   - maybe: move async stuff into separate JAR (`choam-async`)
     - but: what to do with `Reactive.Async`? (could remain in core)
-  - compare with `Ref` in cats-effect: similar things should have similar names
   - Maybe rename `Ref`?
     - Collision with `cats.effect.kernel.Ref`
     - Although it is hard to confuse them
@@ -103,7 +98,7 @@
     - Transient errors can sometimes be handled with `+` (`Choice`)
       - but sometimes this can cause infinite retry
 - Cancellation support
-  - `Thread.interrupt`
+  - `Thread.interrupt` (done)
   - cats-effect cancellation?
 - Composition of maybe-infinitely-retrying reactions:
   - `stack.pop`, if empty, retries forever (unsafe, because non-lock-free)

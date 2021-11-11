@@ -46,7 +46,6 @@ object Reactive {
     final override def run[A, B](r: Rxn[A, B], a: A): F[B] = {
       F.delay {
         r.unsafePerform(a, this.kcasImpl)
-        // Rxn.externalInterpreter(r, a, this.kcasImpl.currentContext())
       }
     }
     final override def monad =

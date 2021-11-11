@@ -176,6 +176,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   //   self2 >>> comp
   // }
 
+  // TODO: optimize
   final def >> [X <: A, C](that: => Rxn[X, C]): Rxn[X, C] =
     this.flatMap { _ => that }
 
