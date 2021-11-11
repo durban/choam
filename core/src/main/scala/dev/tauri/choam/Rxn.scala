@@ -176,6 +176,9 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   //   self2 >>> comp
   // }
 
+  final def >> [X <: A, C](that: => Rxn[X, C]): Rxn[X, C] =
+    this.flatMap { _ => that }
+
   final def postCommit(pc: Rxn[B, Unit]): Rxn[A, B] =
     this >>> Rxn.postCommit[B](pc)
 

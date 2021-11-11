@@ -618,6 +618,26 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("*> and >>") {
+    for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("x").run[F]
+      _ <- (r1.unsafeCas("a", "b") *> r2.unsafeCas("x", "y")).run[F]
+      _ <- (r1.unsafeCas("b", "c") >> r2.unsafeCas("y", "z")).run[F]
+      _ <- assertResultF(r1.get.run[F], "c")
+      _ <- assertResultF(r2.get.run[F], "z")
+    } yield ()
+  }
+
+  test("Recursive >> stack safety") {
+    def foo(i: Int, one: Rxn[Int, Int]): Rxn[Int, Int] = {
+      if (i == 0) one
+      else one >> foo(i - 1, one)
+    }
+    val rxn = foo(1024 * 1024, Rxn.lift[Int, Int](_ + 1))
+    assertResultF(rxn[F](0), 1)
+  }
+
   test("<* and *>") {
     for {
       r1 <- Ref("a1").run[F]
