@@ -213,6 +213,9 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
 object Rxn extends RxnInstances0 {
 
+  private final val interruptCheckPeriod =
+    16384
+
   // API:
 
   def pure[A](a: A): Axn[A] =
@@ -632,6 +635,7 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def retry(): Rxn[Any, Any] = {
       retries += 1
+      maybeCheckInterrupt()
       if (alts.nonEmpty) {
         loadAlt()
       } else {
@@ -648,6 +652,27 @@ object Rxn extends RxnInstances0 {
     private[this] final def spin(): Unit = {
       if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
       else Backoff.backoffConst(retries, maxBackoff)
+    }
+
+    /**
+     * Occasionally check for thread interruption
+     *
+     * As a last resort, we occasionally check the interrupt
+     * status of the current thread. This way a non-lock-free
+     * (i.e., buggy) `Rxn` in an infinite loop can still be
+     * interrupted by `Thread#interrupt` (in which case it will
+     * throw an `InterruptedException`).
+     */
+    private[this] def maybeCheckInterrupt(): Unit = {
+      if ((retries % Rxn.interruptCheckPeriod) == 0) {
+        checkInterrupt()
+      }
+    }
+
+    private[this] def checkInterrupt(): Unit = {
+      if (Thread.interrupted()) {
+        throw new InterruptedException
+      }
     }
 
     @tailrec

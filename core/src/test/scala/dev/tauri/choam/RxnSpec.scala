@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import java.util.concurrent.CountDownLatch
+
 import cats.{ Applicative, Monad, Align }
 import cats.arrow.ArrowChoice
 import cats.data.Ior
@@ -674,6 +676,55 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     Rxn.unsafe.context { (tc: ThreadContext) =>
       tc.impl eq this.kcasImpl
     }.run[F].flatMap(ok => assertF(ok))
+  }
+
+  test("Thread interruption in infinite retry") {
+    val never = Rxn.unsafe.retry[Any, Unit]
+    F.blocking {
+      val cdl = new CountDownLatch(1)
+      val t = new Thread(() => {
+        cdl.countDown()
+        never.unsafeRun(this.kcasImpl)
+      })
+      t.start()
+      assert(t.isAlive())
+      cdl.await()
+      Thread.sleep(1000L)
+      assert(t.isAlive())
+      t.interrupt()
+      var c = 0
+      while (t.isAlive() && (c < 0x40000)) {
+        c += 1
+        Thread.onSpinWait()
+      }
+      assert(!t.isAlive())
+    }
+  }
+
+  test("Thread interruption with alternatives") {
+    val ref = Ref.unsafe("a")
+    val never: Axn[Unit] = (1 to 1000).foldLeft(ref.unsafeCas("foo", "bar")) { (acc, num) =>
+      acc + ref.unsafeCas(ov = num.toString(), nv = "foo")
+    }
+    F.blocking {
+      val cdl = new CountDownLatch(1)
+      val t = new Thread(() => {
+        cdl.countDown()
+        never.unsafeRun(this.kcasImpl)
+      })
+      t.start()
+      assert(t.isAlive())
+      cdl.await()
+      Thread.sleep(1000L)
+      assert(t.isAlive())
+      t.interrupt()
+      var c = 0
+      while (t.isAlive() && (c < 0x40000)) {
+        c += 1
+        Thread.onSpinWait()
+      }
+      assert(!t.isAlive())
+    }
   }
 
   test("Monad instance") {
