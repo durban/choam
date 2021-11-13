@@ -713,9 +713,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       assert(t.isAlive())
       t.interrupt()
       var c = 0
-      while (t.isAlive() && (c < 0x800000)) {
+      while (t.isAlive() && (c < 2000)) {
         c += 1
-        Thread.onSpinWait()
+        Thread.sleep(1L)
       }
       assert(!t.isAlive())
     }
@@ -739,9 +739,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       assert(t.isAlive())
       t.interrupt()
       var c = 0
-      while (t.isAlive() && (c < 0x800000)) {
+      while (t.isAlive() && (c < 2000)) {
         c += 1
-        Thread.onSpinWait()
+        Thread.sleep(1L)
       }
       assert(!t.isAlive())
     }
