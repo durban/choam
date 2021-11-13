@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-val scala2 = "2.13.6"
+val scala2 = "2.13.7"
 val scala3 = "3.1.0"
 val jdkLatest = "adoptium@17"
 val macos = "macos-latest"
@@ -184,7 +184,7 @@ lazy val commonSettings = Seq[Setting[_]](
   ).flatten,
   libraryDependencies ++= (
     if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
-      List(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.0" cross CrossVersion.full))
+      List(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full))
     } else {
       Nil
     }
