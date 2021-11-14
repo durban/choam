@@ -36,13 +36,13 @@ ThisBuild / githubWorkflowBuild := Seq(
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
   "adoptium@11",
-  "graalvm-ce-java11@21.2",
-  "openj9-java11@0.27",
+  "graalvm-ce-java11@21.3",
+  "openj9-java11@0.29",
   jdkLatest,
 )
 ThisBuild / githubWorkflowOSes := Seq("ubuntu-latest", "windows-latest", macos)
 ThisBuild / githubWorkflowSbtCommand := "sbt -v"
-ThisBuild / githubWorkflowEnv += ("JABBA_INDEX" -> "https://raw.githubusercontent.com/typelevel/jdk-index/96cc7ae/index.json")
+ThisBuild / githubWorkflowEnv += ("JABBA_INDEX" -> "https://raw.githubusercontent.com/typelevel/jdk-index/557b6d6/index.json")
 ThisBuild / githubWorkflowBuildMatrixExclusions += MatrixExclude(
   Map("os" -> macos)
 )

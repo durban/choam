@@ -15,7 +15,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  JABBA_INDEX: 'https://raw.githubusercontent.com/typelevel/jdk-index/96cc7ae/index.json'
+  JABBA_INDEX: 'https://raw.githubusercontent.com/typelevel/jdk-index/557b6d6/index.json'
 
 jobs:
   build:
@@ -26,8 +26,8 @@ jobs:
         scala: [2.13.7, 3.1.0]
         java:
           - adoptium@11
-          - graalvm-ce-java11@21.2
-          - openj9-java11@0.27
+          - graalvm-ce-java11@21.3
+          - openj9-java11@0.29
           - adoptium@17
         include:
           - os: macos-latest
