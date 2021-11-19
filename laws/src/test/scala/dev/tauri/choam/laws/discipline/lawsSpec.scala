@@ -24,7 +24,7 @@ import cats.kernel.laws.discipline.{ SemigroupTests, MonoidTests }
 import cats.laws.discipline.DeferTests
 import cats.effect.kernel.testkit.TestContext
 import cats.effect.laws.UniqueTests
-import cats.effect.IO
+import cats.effect.{ IO, SyncIO }
 import cats.laws.discipline.{ ArrowChoiceTests, MonadTests, MonoidKTests, AlignTests }
 import cats.mtl.laws.discipline.LocalTests
 
@@ -51,7 +51,8 @@ trait LawsSpec
     Ticker(tc)
 
   checkAll("Rxn", RxnLawTests(self).rxn[String, Int, Float, Double, Boolean, Long])
-  checkAll("Reactive", ReactiveLawTests[IO].reactive[String, Int])
+  checkAll("Reactive", ReactiveLawTests[SyncIO].reactive[String, Int])
+  checkAll("Reactive.Async", ReactiveAsyncLawTests[IO].reactiveAsync[String, Int])
 
   checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
   checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])
