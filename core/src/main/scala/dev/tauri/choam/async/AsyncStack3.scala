@@ -30,7 +30,7 @@ private[choam] object AsyncStack3 {
         new AsyncStack[F, A] {
           final override def push: A =#> Unit =
             af.set
-          final override def pop(implicit F: Reactive.Async[F]): F[A] =
+          final override def pop(implicit F: AsyncReactive[F]): F[A] =
             af.get
         }
       }

@@ -129,7 +129,7 @@ sealed abstract class Promise[F[_], A] extends PromiseRead[F, A] with PromiseWri
 
 object Promise {
 
-  def apply[F[_], A](implicit F: Reactive.Async[F]): Axn[Promise[F, A]] =
+  def apply[F[_], A](implicit F: AsyncReactive[F]): Axn[Promise[F, A]] =
     F.promise[A]
 
   def forAsync[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] =

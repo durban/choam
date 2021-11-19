@@ -29,6 +29,8 @@ import cats.effect.unsafe.{ IORuntime, IORuntimeConfig, Scheduler }
 
 import munit.{ CatsEffectSuite, Location, FunSuite, FailException }
 
+import async.AsyncReactive
+
 trait MUnitUtils { this: FunSuite =>
 
   def assertSameInstance[A](
@@ -84,8 +86,8 @@ trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] { this: KCASImplSpec =>
   override def F: Async[F]
   override implicit def mcF: Temporal[F] =
     this.F
-  override implicit def rF: Reactive.Async[F] =
-    new Reactive.AsyncReactive[F](this.kcasImpl)(this.F)
+  override implicit def rF: AsyncReactive[F] =
+    new AsyncReactive.AsyncReactiveImpl[F](this.kcasImpl)(this.F)
 }
 
 trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] { this: KCASImplSpec =>

@@ -33,13 +33,13 @@ final class AsyncFrom[F[_], A] private (
     }
   }
 
-  def get(implicit F: Reactive.Async[F]): F[A] =
+  def get(implicit F: AsyncReactive[F]): F[A] =
     F.monadCancel.bracket(this.getAcq)(this.getUse)(this.getRel)
 
-  def getResource(implicit F: Reactive.Async[F]): Resource[F, F[A]] =
+  def getResource(implicit F: AsyncReactive[F]): Resource[F, F[A]] =
     Resource.make(this.getAcq)(this.getRel)(F.monad).map(this.getUse)
 
-  private[this] def getAcq(implicit F: Reactive.Async[F]): F[Either[Promise[F, A], A]] = {
+  private[this] def getAcq(implicit F: AsyncReactive[F]): F[Either[Promise[F, A], A]] = {
     Promise[F, A].flatMap { p =>
       this.syncGet.flatMap {
         case Some(b) => Rxn.pure(Right(b))

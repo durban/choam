@@ -213,7 +213,7 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("Promise mapK") {
-    val raForIo: Reactive.Async[IO] = new Reactive.AsyncReactive[IO](this.kcasImpl)
+    val raForIo: AsyncReactive[IO] = new AsyncReactive.AsyncReactiveImpl[IO](this.kcasImpl)
     for {
       p <- Promise.apply[IO, Int](raForIo).run[F]
       pp = p.mapK[F](new ~>[IO, F] {
@@ -230,7 +230,7 @@ trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("PromiseRead mapK") {
-    val raForIo: Reactive.Async[IO] = new Reactive.AsyncReactive[IO](this.kcasImpl)
+    val raForIo: AsyncReactive[IO] = new AsyncReactive.AsyncReactiveImpl[IO](this.kcasImpl)
     for {
       p <- Promise.apply[IO, Int](raForIo).run[F]
       pp = (p : PromiseRead[IO, Int]).mapK[F](new ~>[IO, F] {

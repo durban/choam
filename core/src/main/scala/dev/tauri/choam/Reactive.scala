@@ -18,10 +18,7 @@
 package dev.tauri.choam
 
 import cats.{ Monad, ~> }
-import cats.effect.kernel.{ Sync, MonadCancel }
-import cats.effect.{ kernel => ce }
-
-import async.Promise
+import cats.effect.kernel.Sync
 
 trait Reactive[F[_]] { self =>
   def run[A, B](r: Rxn[A, B], a: A): F[B]
@@ -54,7 +51,7 @@ object Reactive {
       F
   }
 
-  private class TransformedReactive[F[_], G[_]](
+  private[choam] class TransformedReactive[F[_], G[_]](
     underlying: Reactive[F],
     t: F ~> G,
   )(implicit G: Monad[G]) extends Reactive[G] {
@@ -64,38 +61,5 @@ object Reactive {
       underlying.kcasImpl
     final override def monad: Monad[G] =
       G
-  }
-
-  trait Async[F[_]] extends Reactive[F] { self =>
-    def promise[A]: Axn[async.Promise[F, A]]
-    def monadCancel: MonadCancel[F, _]
-    def mapKAsync[G[_]](t: F ~> G)(implicit G: MonadCancel[G, _]): Async[G] = {
-      new TransformedReactive[F, G](self, t) with Async[G] {
-        final override def promise[A]: Axn[async.Promise[G, A]] =
-          self.promise[A].map(_.mapK(t))
-        final override def monadCancel: MonadCancel[G, _] =
-          G
-      }
-    }
-  }
-
-  final object Async {
-
-    def apply[F[_]](implicit inst: Reactive.Async[F]): inst.type =
-      inst
-
-    implicit def reactiveAsyncForAsync[F[_]](implicit F: ce.Async[F]): Reactive.Async[F] =
-      new AsyncReactive[F](defaultKcasImpl)(F)
-  }
-
-  private[choam] class AsyncReactive[F[_]](ki: kcas.KCAS)(implicit F: ce.Async[F])
-    extends SyncReactive[F](ki)
-    with Reactive.Async[F] {
-
-    final override def promise[A]: Axn[Promise[F, A]] =
-      async.Promise.forAsync[F, A](this, F)
-
-    final override def monadCancel =
-      F
   }
 }

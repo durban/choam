@@ -19,14 +19,14 @@ package dev.tauri.choam
 
 import fs2.Stream
 
-import async.AsyncQueue
+import async.{ AsyncReactive, AsyncQueue }
 
 package object stream {
 
   implicit final class AsyncQueueSyntax[F[_], A](private val self: AsyncQueue[F, A])
     extends AnyVal {
 
-    def stream(implicit F: Reactive.Async[F]): Stream[F, A] = {
+    def stream(implicit F: AsyncReactive[F]): Stream[F, A] = {
       // TODO: optimization by dequeing all available in a chunk
       Stream.repeatEval(self.deque)
     }

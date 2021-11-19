@@ -20,7 +20,7 @@ package async
 
 abstract class AsyncStack[F[_], A] {
   def push: Rxn[A, Unit]
-  def pop(implicit F: Reactive.Async[F]): F[A]
+  def pop(implicit F: AsyncReactive[F]): F[A]
 }
 
 object AsyncStack {

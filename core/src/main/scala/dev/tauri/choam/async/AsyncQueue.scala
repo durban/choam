@@ -24,23 +24,23 @@ import cats.effect.std.{ Queue => CatsQueue }
 abstract class AsyncQueue[F[_], A] { self =>
   def enqueue: A =#> Unit
   def tryDeque: Axn[Option[A]]
-  def deque(implicit F: Reactive.Async[F]): F[A]
+  def deque(implicit F: AsyncReactive[F]): F[A]
 }
 
 object AsyncQueue {
 
   abstract class WithSize[F[_], A] extends AsyncQueue[F, A] {
 
-    def size(implicit F: Reactive.Async[F]): F[Int]
+    def size(implicit F: AsyncReactive[F]): F[Int]
 
     // TODO: could this return simply `CatsQueue[F, A]`?
-    def toCats(implicit F: Reactive.Async[F]): F[CatsQueue[F, A]] = {
+    def toCats(implicit F: AsyncReactive[F]): F[CatsQueue[F, A]] = {
       val cq = new AsyncQueue.CatsQueueAdapter[F, A](this)
       F.monad.pure(cq)
     }
 
     // FIXME:
-    def dequeResource(implicit F: Reactive.Async[F]): Resource[F, F[A]]
+    def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]]
   }
 
   def primitive[F[_], A]: Axn[AsyncQueue[F, A]] = {
@@ -57,7 +57,7 @@ object AsyncQueue {
             af.set
           final override def tryDeque: Axn[Option[A]] =
             as.tryDeque
-          final override def deque(implicit F: Reactive.Async[F]): F[A] =
+          final override def deque(implicit F: AsyncReactive[F]): F[A] =
             af.get
         }
       }
@@ -72,11 +72,11 @@ object AsyncQueue {
             af.set
           final override def tryDeque: Axn[Option[A]] =
             as.tryDeque
-          final override def deque(implicit F: Reactive.Async[F]): F[A] =
+          final override def deque(implicit F: AsyncReactive[F]): F[A] =
             af.get
-          final override def dequeResource(implicit F: Reactive.Async[F]): Resource[F, F[A]] =
+          final override def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]] =
             af.getResource
-          final override def size(implicit F: Reactive.Async[F]): F[Int] =
+          final override def size(implicit F: AsyncReactive[F]): F[Int] =
             as.size.run[F]
         }
       }
@@ -98,7 +98,7 @@ object AsyncQueue {
     final override def tryDeque: Axn[Option[A]] =
       this.q.tryDeque
 
-    final override def deque(implicit F: Reactive.Async[F]): F[A] = {
+    final override def deque(implicit F: AsyncReactive[F]): F[A] = {
       val acq = Promise[F, A].flatMap { p =>
         this.q.tryDeque.flatMap {
           case Some(a) => Rxn.pure(Right(a))
@@ -116,7 +116,7 @@ object AsyncQueue {
     }
   }
 
-  private final class CatsQueueAdapter[F[_] : Reactive.Async, A](self: WithSize[F, A])
+  private final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: WithSize[F, A])
     extends CatsQueue[F, A] {
 
     final override def take: F[A] =

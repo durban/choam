@@ -52,7 +52,7 @@ trait LawsSpec
 
   checkAll("Rxn", RxnLawTests(self).rxn[String, Int, Float, Double, Boolean, Long])
   checkAll("Reactive", ReactiveLawTests[SyncIO].reactive[String, Int])
-  checkAll("Reactive.Async", ReactiveAsyncLawTests[IO].reactiveAsync[String, Int])
+  checkAll("AsyncReactive", AsyncReactiveLawTests[IO].asyncReactive[String, Int])
 
   checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
   checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])

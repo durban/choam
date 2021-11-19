@@ -42,7 +42,7 @@ private[choam] final class AsyncStack1[F[_], A] private (ref: Ref[State[F, A]])
     case Some((p, a)) => p.complete.provide(a).void
   }
 
-  override def pop(implicit F: Reactive.Async[F]): F[A] = {
+  override def pop(implicit F: AsyncReactive[F]): F[A] = {
     F.monadCancel.flatMap(F.promise[A].run[F]) { newP =>
       val acq = ref.modify[Either[Promise[F, A], A]] {
         case e @ Empty() =>

@@ -25,14 +25,16 @@ import cats.kernel.laws.discipline.catsLawsIsEqToProp
 import org.scalacheck.Arbitrary
 import org.scalacheck.Prop.forAll
 
-trait ReactiveAsyncLawTests[F[_]] extends ReactiveLawTests[F] {
+import async.AsyncReactive
 
-  implicit override def reactiveInstance: Reactive.Async[F]
+trait AsyncReactiveLawTests[F[_]] extends ReactiveLawTests[F] {
 
-  override def laws: ReactiveAsyncLaws[F] =
-    ReactiveAsyncLaws[F]
+  implicit override def reactiveInstance: AsyncReactive[F]
 
-  def reactiveAsync[A, B](
+  override def laws: AsyncReactiveLaws[F] =
+    AsyncReactiveLaws[F]
+
+  def asyncReactive[A, B](
     implicit
     arbA: Arbitrary[A],
     arbAB: Arbitrary[A => B],
@@ -47,10 +49,10 @@ trait ReactiveAsyncLawTests[F[_]] extends ReactiveLawTests[F] {
   )
 }
 
-object ReactiveAsyncLawTests {
-  def apply[F[_]](implicit rF: Reactive.Async[F]): ReactiveAsyncLawTests[F] = {
-    new ReactiveAsyncLawTests[F] {
-      final override def reactiveInstance: Reactive.Async[F] =
+object AsyncReactiveLawTests {
+  def apply[F[_]](implicit rF: AsyncReactive[F]): AsyncReactiveLawTests[F] = {
+    new AsyncReactiveLawTests[F] {
+      final override def reactiveInstance: AsyncReactive[F] =
         rF
     }
   }

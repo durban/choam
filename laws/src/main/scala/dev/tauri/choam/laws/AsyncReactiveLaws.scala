@@ -23,9 +23,11 @@ import cats.laws.IsEq
 import cats.laws.IsEqArrow
 import cats.syntax.all._
 
-trait ReactiveAsyncLaws[F[_]] extends ReactiveLaws[F] {
+import async.AsyncReactive
 
-  implicit override def reactive: Reactive.Async[F]
+trait AsyncReactiveLaws[F[_]] extends ReactiveLaws[F] {
+
+  implicit override def reactive: AsyncReactive[F]
 
   implicit override def monad: MonadCancel[F, _] =
     reactive.monadCancel
@@ -40,8 +42,8 @@ trait ReactiveAsyncLaws[F[_]] extends ReactiveLaws[F] {
   }
 }
 
-object ReactiveAsyncLaws {
-  def apply[F[_]](implicit rF: Reactive.Async[F]): ReactiveAsyncLaws[F] = new ReactiveAsyncLaws[F] {
-    implicit override def reactive: Reactive.Async[F] = rF
+object AsyncReactiveLaws {
+  def apply[F[_]](implicit rF: AsyncReactive[F]): AsyncReactiveLaws[F] = new AsyncReactiveLaws[F] {
+    implicit override def reactive: AsyncReactive[F] = rF
   }
 }
