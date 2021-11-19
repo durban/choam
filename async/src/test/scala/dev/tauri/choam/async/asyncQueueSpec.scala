@@ -113,7 +113,9 @@ trait AsyncQueueImplWithSize[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpe
   }
 }
 
-trait AsyncQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec with TestContextSpec[F] =>
+trait AsyncQueueSpec[F[_]]
+  extends BaseSpecAsyncF[F]
+  with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
   type Q[G[_], A] <: AsyncQueue[G, A]
 

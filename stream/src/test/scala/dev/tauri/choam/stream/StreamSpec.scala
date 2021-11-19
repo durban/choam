@@ -24,8 +24,7 @@ import cats.effect.IO
 
 import fs2.Stream
 
-import async.AsyncQueue
-import async.Promise
+import async.{ AsyncQueue, Promise, AsyncReactiveSpec }
 
 final class StreamSpec_Prim_EMCAS_IO
   extends BaseSpecIO
@@ -47,7 +46,9 @@ sealed trait StreamSpecPrim[F[_]] extends StreamSpec[F] { this: KCASImplSpec =>
     AsyncQueue.primitive[F, A].run[F]
 }
 
-sealed trait StreamSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+sealed trait StreamSpec[F[_]]
+  extends BaseSpecAsyncF[F]
+  with AsyncReactiveSpec[F] { this: KCASImplSpec =>
 
   def newAsyncQueue[A]: F[AsyncQueue[F, A]]
 

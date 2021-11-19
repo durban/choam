@@ -67,7 +67,9 @@ final class PromiseSpec_EMCAS_ZIO_Ticked
   with SpecEMCAS
   with PromiseSpecTicked[zio.Task]
 
-trait PromiseSpecTicked[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec with TestContextSpec[F] =>
+trait PromiseSpecTicked[F[_]]
+  extends BaseSpecAsyncF[F]
+  with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
   test("Completing an empty promise should call all registered callbacks") {
     for {
@@ -104,7 +106,9 @@ trait PromiseSpecTicked[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec wit
   }
 }
 
-trait PromiseSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait PromiseSpec[F[_]]
+  extends BaseSpecAsyncF[F]
+  with AsyncReactiveSpec[F] { this: KCASImplSpec =>
 
   test("Completing a fulfilled promise should not be possible") {
     for {

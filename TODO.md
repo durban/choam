@@ -68,7 +68,6 @@
 - Cleanup:
   - Review benchmarks, remove useless ones
 - Async:
-  - maybe move async things to `choam-async`(?)
   - integration with FS2 (`choam-stream`):
     - implement FS2 data structures (`Queue`, ...) with reagents
     - optimize `AsyncQueue` stream

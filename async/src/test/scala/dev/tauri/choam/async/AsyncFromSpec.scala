@@ -40,7 +40,9 @@ final class AsyncFromSpec_EMCAS_ZIO
   with SpecEMCAS
   with AsyncFromSpec[zio.Task]
 
-trait AsyncFromSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec with TestContextSpec[F] =>
+trait AsyncFromSpec[F[_]]
+  extends BaseSpecAsyncF[F]
+  with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
   test("AsyncFrom around a Ref") {
     for {

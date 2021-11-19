@@ -82,7 +82,9 @@ trait AsyncStackImpl3[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec with 
     AsyncStack.impl3[G, A].run[G]
 }
 
-trait AsyncStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec with TestContextSpec[F] =>
+trait AsyncStackSpec[F[_]]
+  extends BaseSpecAsyncF[F]
+  with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
   protected def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]]
 

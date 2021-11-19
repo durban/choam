@@ -55,7 +55,7 @@ lazy val choam = project.in(file("."))
   .settings(name := "choam")
   .settings(commonSettings)
   .settings(publishArtifact := false)
-  .aggregate(core, mcas, stream, laws, bench, stress, layout)
+  .aggregate(core, mcas, async, stream, laws, bench, stress, layout)
 
 lazy val core = project.in(file("core"))
   .settings(name := "choam-core")
@@ -66,16 +66,21 @@ lazy val mcas = project.in(file("mcas"))
   .settings(name := "choam-mcas")
   .settings(commonSettings)
 
+lazy val async = project.in(file("async"))
+  .settings(name := "choam-async")
+  .settings(commonSettings)
+  .dependsOn(core % "compile->compile;test->test")
+
 lazy val stream = project.in(file("stream"))
   .settings(name := "choam-stream")
   .settings(commonSettings)
-  .dependsOn(core % "compile->compile;test->test")
+  .dependsOn(async % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.fs2)
 
 lazy val laws = project.in(file("laws"))
   .settings(name := "choam-laws")
   .settings(commonSettings)
-  .dependsOn(core % "compile->compile;test->test")
+  .dependsOn(async % "compile->compile;test->test")
   .settings(libraryDependencies ++= Seq(
     dependencies.catsLaws,
     dependencies.catsEffectLaws,
@@ -92,7 +97,7 @@ lazy val bench = project.in(file("bench"))
     dependencies.zioStm,
   ))
   .enablePlugins(JmhPlugin)
-  .dependsOn(core % "compile->compile;compile->test")
+  .dependsOn(async % "compile->compile;compile->test")
 
 lazy val stress = project.in(file("stress"))
   .settings(name := "choam-stress")
@@ -102,7 +107,7 @@ lazy val stress = project.in(file("stress"))
   .settings(libraryDependencies += dependencies.zioStm) // TODO: temporary
   .enablePlugins(JCStressPlugin)
   .settings(Jcstress / version := "0.14")
-  .dependsOn(core % "compile->compile;test->test")
+  .dependsOn(async % "compile->compile;test->test")
 
 lazy val layout = project.in(file("layout"))
   .settings(name := "choam-layout")
