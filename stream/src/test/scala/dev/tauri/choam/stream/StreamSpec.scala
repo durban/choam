@@ -58,9 +58,8 @@ sealed trait StreamSpec[F[_]]
       q <- newAsyncQueue[String]
       fibVec <- q.stream.take(8).compile.toVector.start
       _ <- (1 to 8).toList.traverse { idx => q.enqueue[F](idx.toString) }
-      _ <- F.sleep(0.1.seconds)
-      _ <- List(9, 10).traverse { idx => q.enqueue[F](idx.toString) }
       _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
+      _ <- List(9, 10).traverse { idx => q.enqueue[F](idx.toString) }
       _ <- assertResultF(q.deque, "9")
       _ <- assertResultF(q.deque, "10")
     } yield ()
