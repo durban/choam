@@ -97,7 +97,7 @@ lazy val bench = project.in(file("bench"))
     dependencies.zioStm,
   ))
   .enablePlugins(JmhPlugin)
-  .dependsOn(async % "compile->compile;compile->test")
+  .dependsOn(stream % "compile->compile;compile->test")
 
 lazy val stress = project.in(file("stress"))
   .settings(name := "choam-stress")

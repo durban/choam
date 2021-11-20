@@ -22,9 +22,10 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-import fs2.Stream
+import fs2.{ Stream, Chunk }
 
 import async.{ AsyncQueue, Promise, AsyncReactiveSpec }
+import syntax._
 
 final class StreamSpec_Prim_EMCAS_IO
   extends BaseSpecIO
@@ -56,10 +57,37 @@ sealed trait StreamSpec[F[_]]
     for {
       q <- newAsyncQueue[String]
       fibVec <- q.stream.take(8).compile.toVector.start
-      _ <- (1 to 10).toList.traverse { idx => q.enqueue[F](idx.toString) }
+      _ <- (1 to 8).toList.traverse { idx => q.enqueue[F](idx.toString) }
+      _ <- F.sleep(0.1.seconds)
+      _ <- List(9, 10).traverse { idx => q.enqueue[F](idx.toString) }
       _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
       _ <- assertResultF(q.deque, "9")
       _ <- assertResultF(q.deque, "10")
+    } yield ()
+  }
+
+  test("AsyncQueue extension methods") {
+    for {
+      // .stream:
+      q <- newAsyncQueue[String]
+      _ <- q.enqueue[F]("foo")
+      qr <- q.stream.take(1).compile.toVector
+      _ <- assertEqualsF(qr, Vector("foo"))
+      // .streamNoneTerminated:
+      qOpt <- newAsyncQueue[Option[String]]
+      _ <- qOpt.enqueue[F](Some("foo")) >> qOpt.enqueue[F](None)
+      qOptR <- qOpt.streamNoneTerminated.compile.toVector
+      _ <- assertEqualsF(qOptR, Vector("foo"))
+      // .streamFromChunks:
+      qChunk <- newAsyncQueue[Chunk[String]]
+      _ <- qChunk.enqueue[F](Chunk("foo", "bar"))
+      qChunkR <- qChunk.streamFromChunks.take(2).compile.toVector
+      _ <- assertEqualsF(qChunkR, Vector("foo", "bar"))
+      // .streamFromChunksNoneTerminated:
+      qOptChunk <- newAsyncQueue[Option[Chunk[String]]]
+      _ <- qOptChunk.enqueue[F](Some(Chunk("foo", "bar"))) >> qOptChunk.enqueue[F](None)
+      qOptChunkR <- qOptChunk.streamFromChunksNoneTerminated.compile.toVector
+      _ <- assertEqualsF(qOptChunkR, Vector("foo", "bar"))
     } yield ()
   }
 

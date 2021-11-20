@@ -17,18 +17,39 @@
 
 package dev.tauri.choam
 
-import fs2.Stream
+import cats.effect.std.{ Queue => CatsQueue }
 
-import async.{ AsyncReactive, AsyncQueue }
+import fs2.{ Stream, Chunk }
+
+import async.{ AsyncQueue, AsyncReactive }
 
 package object stream {
 
-  implicit final class AsyncQueueSyntax[F[_], A](private val self: AsyncQueue[F, A])
-    extends AnyVal {
+  def fromQueueUnterminated[F[_], A](q: AsyncQueue[F, A])(implicit F: AsyncReactive[F]): Stream[F, A] =
+    Stream.fromQueueUnterminated(new Fs2QueueWrapper(q))(F.monad)
 
-    def stream(implicit F: AsyncReactive[F]): Stream[F, A] = {
-      // TODO: optimization by dequeing all available in a chunk
-      Stream.repeatEval(self.deque)
-    }
+  def fromQueueUnterminatedChunk[F[_], A](q: AsyncQueue[F, Chunk[A]])(implicit F: AsyncReactive[F]): Stream[F, A] =
+    Stream.fromQueueUnterminatedChunk(new Fs2QueueWrapper(q))(F.monad)
+
+  def fromQueueNoneTerminated[F[_], A](q: AsyncQueue[F, Option[A]])(implicit F: AsyncReactive[F]): Stream[F, A] =
+    Stream.fromQueueNoneTerminated(new Fs2QueueWrapper(q))(F.monad)
+
+  def fromQueueNoneTerminatedChunk[F[_], A](q: AsyncQueue[F, Option[Chunk[A]]])(implicit F: AsyncReactive[F]): Stream[F, A] =
+    Stream.fromQueueNoneTerminatedChunk(new Fs2QueueWrapper(q))
+
+  @nowarn
+  private final class Fs2QueueWrapper[F[_], A](
+    self: AsyncQueue[F, A]
+  )(implicit F: AsyncReactive[F]) extends CatsQueue[F, A] {
+    final override def take: F[A] =
+      self.deque
+    final override def tryTake: F[Option[A]] =
+      self.tryDeque.run[F]
+    final override def size: F[Int] =
+      F.monad.pure(0) // FS2 doesn't really need `size`, so we cheat
+    final override def offer(a: A): F[Unit] =
+      self.enqueue[F](a)
+    final override def tryOffer(a: A): F[Boolean] =
+      self.enqueue.as(true).apply[F](a)
   }
 }
