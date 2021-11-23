@@ -19,6 +19,8 @@ package dev.tauri.choam
 
 import java.util.concurrent.CountDownLatch
 
+import scala.concurrent.duration._
+
 import cats.{ Applicative, Monad, Align }
 import cats.arrow.ArrowChoice
 import cats.data.Ior
@@ -745,6 +747,35 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       }
       assert(!t.isAlive())
     }
+  }
+
+  test("Autoboxing") {
+    // Integers between (typically) -128 and 127 are
+    // cached. Due to autoboxing other integers may
+    // seem to change their "identity".
+    val n = 9999999
+    for {
+      ref <- Ref[Int](n).run[F]
+      // `update` works fine:
+      _ <- ref.update(_ + 1).run[F]
+      _ <- assertResultF(ref.get.run[F], n + 1)
+      // `unsafeInvisibleRead` then `unsafeCas` doesn't:
+      unsafeRxn = ref.unsafeInvisibleRead.flatMap { v =>
+        Rxn.pure(42).flatMap { _ =>
+          ref.unsafeCas(ov = v, nv = v + 1)
+        }
+      }
+      fib <- F.interruptible {
+        unsafeRxn.unsafePerform((), this.kcasImpl)
+      }.start
+      _ <- F.sleep(0.5.second)
+      _ <- fib.cancel
+      _ <- assertResultF(ref.get.run[F], n + 1) // no change
+      // but it *seems* to work with small numbers:
+      _ <- ref.getAndSet[F](42)
+      _ <- unsafeRxn.run[F]
+      _ <- assertResultF(ref.get.run[F], 43)
+    } yield ()
   }
 
   test("Monad instance") {

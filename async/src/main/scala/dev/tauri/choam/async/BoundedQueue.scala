@@ -19,11 +19,14 @@ package dev.tauri.choam
 package async
 
 abstract class BoundedQueue[F[_], A] {
+
   def tryEnqueue: A =#> Boolean
   def enqueue(a: A)(implicit F: AsyncReactive[F]): F[Unit]
   def tryDeque: Axn[Option[A]]
   def deque(implicit F: AsyncReactive[F]): F[A]
   def maxSize: Int
+
+  /** Private because it is not composable with the other operations */
   private[choam] def currentSize: Axn[Int]
 }
 
