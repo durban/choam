@@ -119,6 +119,20 @@ trait BoundedQueueSpec[F[_]]
     } yield ()
   }
 
+  test("BoundedQueue big bound") {
+    val n = 99999
+    for {
+      _ <- F.delay(assertIntIsNotCached(n))
+      q <- BoundedQueue[F, String](maxSize = n).run[F]
+      _ <- F.replicateA(n, q.enqueue("foo"))
+      _ <- assertResultF(q.currentSize.run[F], n)
+      fib <- q.enqueue("bar").start
+      _ <- assertResultF(q.deque, "foo")
+      _ <- fib.joinWithNever
+      _ <- assertResultF(q.currentSize.run[F], n)
+    } yield ()
+  }
+
   test("BoundedQueue illegal bound") {
     assert(Try { BoundedQueue[F, String](0) }.isFailure)
     assert(Try { BoundedQueue[F, String](-1) }.isFailure)

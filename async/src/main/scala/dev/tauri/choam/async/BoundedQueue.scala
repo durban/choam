@@ -41,9 +41,12 @@ object BoundedQueue {
           new BoundedQueue[F, A] {
 
             override def tryEnqueue: A =#> Boolean = {
-              s.unsafeInvisibleRead.flatMap { size =>
-                if (size < maxSize) s.unsafeCas(size, size + 1) *> q.enqueue.as(true)
-                else s.unsafeCas(size, size).as(false)
+              s.updWith[A, Boolean] { (size, a) =>
+                if (size < maxSize) {
+                  q.enqueue.provide(a).as((size + 1, true))
+                } else {
+                  Rxn.pure((size, false))
+                }
               }
             }
 

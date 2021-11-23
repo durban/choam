@@ -751,10 +751,14 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("Autoboxing") {
     // Integers between (typically) -128 and 127 are
-    // cached. Due to autoboxing other integers may
+    // cached. Due to autoboxing, other integers may
     // seem to change their "identity".
     val n = 9999999
     for {
+      _ <- F.delay {
+        // sanity check:
+        assertIntIsNotCached(n)
+      }
       ref <- Ref[Int](n).run[F]
       // `update` works fine:
       _ <- ref.update(_ + 1).run[F]

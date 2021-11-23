@@ -38,6 +38,12 @@ trait MUnitUtils { this: FunSuite =>
   )(implicit loc: Location): Unit = {
     assert(equ(this.clue(obtained), this.clue(expected)), clue)
   }
+
+  def assertIntIsNotCached(i: Int): Unit = {
+    val i1: java.lang.Integer = Integer.valueOf(i)
+    val i2: java.lang.Integer = Integer.valueOf(i)
+    assert(i1 ne i2)
+  }
 }
 
 trait BaseSpecA
