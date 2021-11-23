@@ -182,4 +182,24 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(s.currentSize.run[F], 0)
     } yield ()
   }
+
+  test("BoundedQueue#toCats") {
+    for {
+      bq <- BoundedQueue[F, String](maxSize = 2).run[F]
+      q = bq.toCats
+      _ <- assertResultF(q.size, 0)
+      _ <- q.offer("a")
+      _ <- assertResultF(q.size, 1)
+      _ <- assertResultF(q.tryOffer("b"), true)
+      _ <- assertResultF(q.size, 2)
+      _ <- assertResultF(q.tryOffer("x"), false)
+      _ <- assertResultF(q.size, 2)
+      _ <- assertResultF(q.take, "a")
+      _ <- assertResultF(q.size, 1)
+      _ <- assertResultF(q.take, "b")
+      _ <- assertResultF(q.size, 0)
+      _ <- assertResultF(q.tryTake, None)
+      _ <- assertResultF(q.size, 0)
+    } yield ()
+  }
 }

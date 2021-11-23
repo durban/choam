@@ -24,7 +24,7 @@ import cats.effect.IO
 
 import fs2.{ Stream, Chunk }
 
-import async.{ AsyncQueue, Promise, AsyncReactiveSpec }
+import async.{ AsyncQueue, BoundedQueue, Promise, AsyncReactiveSpec }
 import syntax._
 
 final class StreamSpec_Prim_EMCAS_IO
@@ -62,6 +62,19 @@ sealed trait StreamSpec[F[_]]
       _ <- List(9, 10).traverse { idx => q.enqueue[F](idx.toString) }
       _ <- assertResultF(q.deque, "9")
       _ <- assertResultF(q.deque, "10")
+    } yield ()
+  }
+
+  test("BoundedQueue to stream") {
+    for {
+      q <- BoundedQueue[F, Option[String]](maxSize = 10).run[F]
+      fibVec <- Stream.fromQueueNoneTerminated(q.toCats).compile.toVector.start
+      _ <- (1 to 8).toList.traverse { idx => q.enqueue(Some(idx.toString)) }
+      _ <- q.enqueue(None)
+      _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
+      _ <- List(9, 10).traverse { idx => q.enqueue(Some(idx.toString)) }
+      _ <- assertResultF(q.deque, Some("9"))
+      _ <- assertResultF(q.deque, Some("10"))
     } yield ()
   }
 

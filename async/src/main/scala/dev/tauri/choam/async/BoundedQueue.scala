@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package async
 
+import cats.effect.std.{ Queue => CatsQueue }
+
 abstract class BoundedQueue[F[_], A] {
 
   def tryEnqueue: A =#> Boolean
@@ -25,6 +27,7 @@ abstract class BoundedQueue[F[_], A] {
   def tryDeque: Axn[Option[A]]
   def deque(implicit F: AsyncReactive[F]): F[A]
   def maxSize: Int
+  def toCats(implicit F: AsyncReactive[F]): CatsQueue[F, A]
 
   /** Private because it is not composable with the other operations */
   private[choam] def currentSize: Axn[Int]
@@ -38,7 +41,7 @@ object BoundedQueue {
     (Queue[A] * Queue.withRemove[Promise[F, A]] * Queue.withRemove[(A, Promise[F, Unit])]).flatMap {
       case ((q, getters), setters) =>
         Ref[Int](0).map { s =>
-          new BoundedQueue[F, A] {
+          new BoundedQueue[F, A] { self =>
 
             final override def maxSize: Int =
               _maxSize
@@ -127,6 +130,21 @@ object BoundedQueue {
 
             private[choam] final override def currentSize: Axn[Int] =
               s.get
+
+            final override def toCats(implicit F: AsyncReactive[F]): CatsQueue[F, A] = {
+              new CatsQueue[F, A] {
+                final override def take: F[A] =
+                  self.deque
+                final override def tryTake: F[Option[A]] =
+                  F.run(self.tryDeque, ())
+                final override def size: F[Int] =
+                  F.run(self.currentSize, ())
+                final override def offer(a: A): F[Unit] =
+                  self.enqueue(a)
+                final override def tryOffer(a: A): F[Boolean] =
+                  F.run(self.tryEnqueue, a)
+              }
+            }
           }
         }
     }
