@@ -124,4 +124,48 @@ trait BoundedQueueSpec[F[_]]
     assert(Try { BoundedQueue[F, String](-1) }.isFailure)
     assert(Try { BoundedQueue[F, String](-99) }.isFailure)
   }
+
+  test("BoundedQueue canceled getter") {
+    for {
+      s <- BoundedQueue[F, String](maxSize = 4).run[F]
+      f1 <- s.deque.start
+      _ <- this.tickAll
+      f2 <- s.deque.start
+      _ <- this.tickAll
+      f3 <- s.deque.start
+      _ <- this.tickAll
+      _ <- f1.cancel
+      _ <- s.enqueue("a")
+      _ <- s.enqueue("b")
+      _ <- s.enqueue("c")
+      _ <- assertResultF(f2.joinWithNever, "a")
+      _ <- assertResultF(f3.joinWithNever, "b")
+      _ <- assertResultF(s.deque, "c")
+    } yield ()
+  }
+
+  test("BoundedQueue canceled setter") {
+    for {
+      s <- BoundedQueue[F, String](maxSize = 1).run[F]
+      _ <- assertResultF(s.currentSize.run[F], 0)
+      _ <- s.enqueue("a")
+      _ <- assertResultF(s.currentSize.run[F], 1)
+      _ <- assertResultF(s.tryEnqueue[F]("x"), false)
+      f1 <- s.enqueue("b").start
+      _ <- this.tickAll
+      f2 <- s.enqueue("c").start
+      _ <- this.tickAll
+      f3 <- s.enqueue("d").start
+      _ <- this.tickAll
+      _ <- f1.cancel
+      _ <- this.tickAll
+      _ <- assertResultF(s.currentSize.run[F], 1)
+      _ <- assertResultF(s.deque, "a")
+      _ <- f2.joinWithNever
+      _ <- assertResultF(s.deque, "c")
+      _ <- f3.joinWithNever
+      _ <- assertResultF(s.tryDeque.run[F], Some("d"))
+      _ <- assertResultF(s.currentSize.run[F], 0)
+    } yield ()
+  }
 }

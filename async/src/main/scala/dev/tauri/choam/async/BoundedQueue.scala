@@ -45,7 +45,7 @@ object BoundedQueue {
             }
 
             override def enqueue(a: A)(implicit F: AsyncReactive[F]): F[Unit] =
-              F.monadCancel.bracket(this.setAcq(a))(this.setRel)(this.setUse)
+              F.monadCancel.bracket(this.setAcq(a))(this.setUse)(this.setRel)
 
             override def tryDeque: Axn[Option[A]] = {
               q.tryDeque.flatMap {
@@ -102,7 +102,8 @@ object BoundedQueue {
                       case true =>
                         Rxn.pure(Right(()))
                       case false =>
-                        setters.enqueue.contramap[A] { a => (a, p) }.as(Left((a, p)))
+                        val ap = (a, p)
+                        setters.enqueue.provide(ap).as(Left(ap))
                     }
                 }
               }.apply[F](a)

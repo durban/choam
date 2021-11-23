@@ -63,7 +63,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
             skipTombs(nextRef)
           } else {
             // CAS data, to make sure it is not tombed concurrently:
-            dataRef.unsafeCas(a, a).map(_ => Some((a, n)))
+            dataRef.unsafeCas(a, a).as(Some((a, n)))
           }
         }
       case e @ End() =>
@@ -87,7 +87,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
           Rxn.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and will retry:
-          tail.unsafeCas(n, nv).?.map(_ => Rxn.unsafe.retry)
+          tail.unsafeCas(n, nv).?.as(Rxn.unsafe.retry)
       }
     })
   }
@@ -104,7 +104,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
       findAndTomb(a, h.next).flatMap { wasRemoved =>
         if (wasRemoved) {
           // validate head (in case it was dequed concurrently):
-          head.unsafeCas(h, h).map { _ => true }
+          head.unsafeCas(h, h).as(true)
         } else {
           Rxn.ret(false)
         }
@@ -118,7 +118,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
         dataRef.unsafeInvisibleRead.flatMap { a =>
           if (equ(a, item)) {
             // found it
-            dataRef.unsafeCas(a, nullOf[A]).map(_ => true)
+            dataRef.unsafeCas(a, nullOf[A]).as(true)
           } else {
             // continue search:
             findAndTomb(item, nextRef)
