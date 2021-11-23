@@ -40,7 +40,10 @@ object BoundedQueue {
         Ref[Int](0).map { s =>
           new BoundedQueue[F, A] {
 
-            override def tryEnqueue: A =#> Boolean = {
+            final override def maxSize: Int =
+              _maxSize
+
+            final override def tryEnqueue: A =#> Boolean = {
               s.updWith[A, Boolean] { (size, a) =>
                 if (size < maxSize) {
                   q.enqueue.provide(a).as((size + 1, true))
@@ -50,23 +53,47 @@ object BoundedQueue {
               }
             }
 
-            override def enqueue(a: A)(implicit F: AsyncReactive[F]): F[Unit] =
-              F.monadCancel.bracket(this.setAcq(a))(this.setUse)(this.setRel)
-
-            override def tryDeque: Axn[Option[A]] = {
+            final override def tryDeque: Axn[Option[A]] = {
               q.tryDeque.flatMap {
                 case r @ Some(_) => s.update(_ - 1).as(r)
                 case None => Rxn.pure(None)
               }
             }
 
-            override def deque(implicit F: AsyncReactive[F]): F[A] =
-              F.monadCancel.bracket(this.getAcq)(this.getUse)(this.getRel)
+            final override def enqueue(a: A)(implicit F: AsyncReactive[F]): F[Unit] =
+              F.monadCancel.bracket(acquire = this.enqueueAcq(a))(use = this.enqueueUse)(release = this.enqueueRel)
 
-            override def maxSize: Int =
-              _maxSize
+            private[this] def enqueueAcq(a: A)(implicit F: AsyncReactive[F]): F[Either[(A, Promise[F, Unit]), Unit]] = {
+              Promise[F, Unit].flatMap { p =>
+                getters.tryDeque.flatMap {
+                  case Some(getterPromise) =>
+                    getterPromise.complete.as(Right(()))
+                  case None =>
+                    this.tryEnqueue.flatMap {
+                      case true =>
+                        Rxn.pure(Right(()))
+                      case false =>
+                        val ap = (a, p)
+                        setters.enqueue.provide(ap).as(Left(ap))
+                    }
+                }
+              }.apply[F](a)
+            }
 
-            private[this] def getAcq(implicit F: AsyncReactive[F]): F[Either[Promise[F, A], A]] = {
+            private[this] def enqueueRel(r: Either[(A, Promise[F, Unit]), Unit])(implicit F: Reactive[F]): F[Unit] = r match {
+              case Left(ap) => setters.remove.void[F](ap)
+              case Right(_) => F.monad.unit
+            }
+
+            private[this] def enqueueUse(r: Either[(A, Promise[F, Unit]), Unit])(implicit F: Reactive[F]): F[Unit] = r match {
+              case Left(ap) => ap._2.get
+              case Right(_) => F.monad.unit
+            }
+
+            final override def deque(implicit F: AsyncReactive[F]): F[A] =
+              F.monadCancel.bracket(acquire = this.dequeAcq)(use = this.dequeUse)(release = this.dequeRel)
+
+            private[this] def dequeAcq(implicit F: AsyncReactive[F]): F[Either[Promise[F, A], A]] = {
               Promise[F, A].flatMap { p =>
                 q.tryDeque.flatMap {
                   case Some(b) =>
@@ -88,44 +115,17 @@ object BoundedQueue {
               }.run[F]
             }
 
-            private[this] def getRel(r: Either[Promise[F, A], A])(implicit F: Reactive[F]): F[Unit] = r match {
+            private[this] def dequeRel(r: Either[Promise[F, A], A])(implicit F: Reactive[F]): F[Unit] = r match {
               case Left(p) => getters.remove.void[F](p)
               case Right(_) => F.monad.unit
             }
 
-            private[this] def getUse(r: Either[Promise[F, A], A])(implicit F: Reactive[F]): F[A] = r match {
+            private[this] def dequeUse(r: Either[Promise[F, A], A])(implicit F: Reactive[F]): F[A] = r match {
               case Left(p) => p.get
               case Right(a) => F.monad.pure(a)
             }
 
-            private[this] def setAcq(a: A)(implicit F: AsyncReactive[F]): F[Either[(A, Promise[F, Unit]), Unit]] = {
-              Promise[F, Unit].flatMap { p =>
-                getters.tryDeque.flatMap {
-                  case Some(getterPromise) =>
-                    getterPromise.complete.as(Right(()))
-                  case None =>
-                    this.tryEnqueue.flatMap {
-                      case true =>
-                        Rxn.pure(Right(()))
-                      case false =>
-                        val ap = (a, p)
-                        setters.enqueue.provide(ap).as(Left(ap))
-                    }
-                }
-              }.apply[F](a)
-            }
-
-            private[this] def setRel(r: Either[(A, Promise[F, Unit]), Unit])(implicit F: Reactive[F]): F[Unit] = r match {
-              case Left(ap) => setters.remove.void[F](ap)
-              case Right(_) => F.monad.unit
-            }
-
-            private[this] def setUse(r: Either[(A, Promise[F, Unit]), Unit])(implicit F: Reactive[F]): F[Unit] = r match {
-              case Left(ap) => ap._2.get
-              case Right(_) => F.monad.unit
-            }
-
-            private[choam] override def currentSize: Axn[Int] =
+            private[choam] final override def currentSize: Axn[Int] =
               s.get
           }
         }
