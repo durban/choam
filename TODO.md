@@ -23,6 +23,8 @@
 
 - `Exchanger` doesn't work with the new `Rxn`
 - `Ctrie` is incomplete
+  - no `remove` (+ tombstone handling)
+  - ???
 - Can't run benchmarks with Scala 3
 
 ## Other improvements

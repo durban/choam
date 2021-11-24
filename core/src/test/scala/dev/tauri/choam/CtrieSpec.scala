@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import cats.Eq
+import cats.Hash
 
 import cats.effect.SyncIO
 import org.scalacheck.effect.PropF
@@ -26,14 +26,14 @@ import munit.ScalaCheckEffectSuite
 final class CtrieSpecNaiveKCAS
   extends BaseSpecSyncIO
   with SpecNaiveKCAS
-  with CtrieSpec2[SyncIO]
+  with CtrieSpec[SyncIO]
 
 final class CtrieSpecEMCAS
   extends BaseSpecSyncIO
   with SpecEMCAS
-  with CtrieSpec2[SyncIO]
+  with CtrieSpec[SyncIO]
 
-trait CtrieSpec2[F[_]]
+trait CtrieSpec[F[_]]
   extends BaseSpecSyncF[F]
   with ScalaCheckEffectSuite { this: KCASImplSpec =>
 
@@ -42,8 +42,14 @@ trait CtrieSpec2[F[_]]
   def newEmpty(
     hashFunc: Int => Int = hs,
     eqFunc: (Int, Int) => Boolean = _ == _
-  ): F[Ctrie[Int, String]] = F.delay {
-    new Ctrie[Int, String](hashFunc, Eq.instance(eqFunc))
+  ): F[Ctrie[Int, String]] = {
+    val hashInst = new Hash[Int] {
+      override def eqv(x: Int, y: Int): Boolean =
+        eqFunc(x, y)
+      override def hash(x: Int): Int =
+        hashFunc(x)
+    }
+    this.rF.run(Ctrie[Int, String](hashInst), ())
   }
 
   test("Ctrie#lookup should not find anything in an empty trie") {
@@ -159,7 +165,7 @@ trait CtrieSpec2[F[_]]
     |            INode -> CNode 1
     |              INode -> LNode(9 -> 9, 5 -> 5)""".stripMargin
     for {
-      ct <- F.delay { new Ctrie[Int, String](_ % 4, Eq.instance(_ % 8 == _ % 8)) }
+      ct <- newEmpty(_ % 4, _ % 8 == _ % 8)
       _ <- ct.insert(0 -> "0")
       _ <- ct.insert(1 -> "1")
       _ <- ct.insert(4 -> "4")

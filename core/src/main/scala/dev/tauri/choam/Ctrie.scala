@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import cats.{ Eq, Traverse }
+import cats.{ Eq, Hash, Traverse }
 import cats.instances.list._
 
 import kcas.KCAS
@@ -27,13 +27,12 @@ import kcas.KCAS
  * Non-Blocking Snapshots](http://lampwww.epfl.ch/~prokopec/ctries-snapshot.pdf)
  * by Aleksandar Prokopec, Nathan G. Bronson, Phil Bagwell and Martin Odersky.
  */
-final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
+final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
 
   // TODO: Cache-trie:
   // TODO: http://aleksandar-prokopec.com/resources/docs/p137-prokopec.pdf
   // TODO: http://aleksandar-prokopec.com/resources/docs/cachetrie-remove.pdf
 
-  // TODO: use Hash
   // TODO: optimize (only compute hash code once, store hash code in trie)
 
   import Ctrie._
@@ -43,12 +42,12 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
 
   val lookup: Rxn[K, Option[V]] = {
 
-    def ilookup(i: INode[K, V], k: K, lev: Int, @deprecated("", "") parent: INode[K, V]): Axn[V] = {
+    def ilookup(i: INode[K, V], k: K, lev: Int, @unused parent: INode[K, V]): Axn[V] = {
       for {
         im <- i.main.unsafeInvisibleRead
         v <- im match {
           case cn: CNode[K, V] =>
-            val (flag, pos) = flagpos(hs(k), lev, cn.bmp)
+            val (flag, pos) = flagpos(hs.hash(k), lev, cn.bmp)
             if ((cn.bmp & flag) == 0) {
               Rxn.ret(NOTFOUND.as[V])
             } else {
@@ -56,7 +55,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
                 case sin: INode[K, V] =>
                   ilookup(sin, k, lev + W, i)
                 case sn: SNode[K, V] =>
-                  val r = if (eq.eqv(sn.k, k)) sn.v else NOTFOUND.as[V]
+                  val r = if (hs.eqv(sn.k, k)) sn.v else NOTFOUND.as[V]
                   Rxn.ret(r)
               }
             }
@@ -64,7 +63,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
             // TODO: clean
             Rxn.unsafe.retry
           case ln: LNode[K, V] =>
-            ln.lookup.provide((k, eq))
+            ln.lookup.provide((k, hs))
         }
         _ <- i.main.unsafeCas(im, im) // FIXME: this is only to be composable
       } yield v
@@ -80,13 +79,13 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
 
   val insert: Rxn[(K, V), Unit] = {
 
-    def iinsert(i: INode[K, V], k: K, v: V, lev: Int, @deprecated("", "") parent: INode[K, V]): Axn[Unit] = {
+    def iinsert(i: INode[K, V], k: K, v: V, lev: Int, @unused parent: INode[K, V]): Axn[Unit] = {
       for {
         im <- i.main.unsafeInvisibleRead
         gen <- i.gen.unsafeInvisibleRead
         _ <- im match {
           case cn: CNode[K, V] =>
-            val (flag, pos) = flagpos(hs(k), lev, cn.bmp)
+            val (flag, pos) = flagpos(hs.hash(k), lev, cn.bmp)
             if ((cn.bmp & flag) == 0) {
               val ncn = cn.inserted(pos, flag, new SNode(k, v))
               i.main.unsafeCas(cn, ncn)
@@ -95,10 +94,10 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
                 case sin: INode[K, V] =>
                   iinsert(sin, k, v, lev + W, i)
                 case sn: SNode[K, V] =>
-                  val ncn = if (!eq.eqv(sn.k, k)) {
+                  val ncn = if (!hs.eqv(sn.k, k)) {
                     val nsn = new SNode(k, v)
                     val nin = new INode(
-                      Ref.unsafe[MainNode[K, V]](CNode.doubleton(sn, nsn, hs, lev + W, gen)), Ref.unsafe(gen)
+                      Ref.unsafe[MainNode[K, V]](CNode.doubleton(sn, nsn, lev + W, gen)), Ref.unsafe(gen)
                     )
                     cn.updated(pos, nin)
                   } else {
@@ -111,7 +110,7 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
             // TODO: clean
             Rxn.unsafe.retry
           case ln: LNode[K, V] =>
-            i.main.unsafeCas(ln, ln.inserted(k, v, eq))
+            i.main.unsafeCas(ln, ln.inserted(k, v))
         }
       } yield ()
     }
@@ -148,6 +147,13 @@ final class Ctrie[K, V](hs: K => Int, eq: Eq[K]) {
 
 object Ctrie {
 
+  def apply[K : Hash, V]: Axn[Ctrie[K, V]] = {
+    Rxn.unsafe.delay { _ => Ctrie.unsafe[K, V] }
+  }
+
+  def unsafe[K : Hash, V]: Ctrie[K, V] =
+    new Ctrie[K, V]
+
   private final val W = 5
   private final val wMask = 0x1f // 0b11111
   private final val maxLevel = 30
@@ -163,12 +169,12 @@ object Ctrie {
     ((wMask << sh) & hash) >>> sh
   }
 
-  final class Gen {
+  private final class Gen {
     override def toString: String =
       s"Gen(${this.##.toHexString})"
   }
 
-  final class INode[K, V](val main: Ref[MainNode[K, V]], val gen: Ref[Gen])
+  private final class INode[K, V](val main: Ref[MainNode[K, V]], val gen: Ref[Gen])
     extends Branch[K, V] {
 
     private[choam] override def debug: Rxn[Int, String] = Rxn.computed { level =>
@@ -179,12 +185,12 @@ object Ctrie {
     }
   }
 
-  sealed abstract class MainNode[K, V] {
+  private sealed abstract class MainNode[K, V] {
     private[choam] def debug: Rxn[Int, String]
   }
 
   /** Ctrie node */
-  final class CNode[K, V](val bmp: Int, arr: Array[Branch[K, V]]) extends MainNode[K, V] {
+  private final class CNode[K, V](val bmp: Int, arr: Array[Branch[K, V]]) extends MainNode[K, V] {
 
     def apply(idx: Int): Branch[K, V] =
       arr(idx)
@@ -212,16 +218,16 @@ object Ctrie {
     }
   }
 
-  object CNode {
+  private final object CNode {
 
-    def doubleton[K, V](x: SNode[K, V], y: SNode[K, V], hs: K => Int, lev: Int, gen: Gen): MainNode[K, V] = {
+    def doubleton[K, V](x: SNode[K, V], y: SNode[K, V], lev: Int, gen: Gen)(implicit hs: Hash[K]): MainNode[K, V] = {
       if (lev <= maxLevel) {
-        val xi = idx(hs(x.k), lev)
-        val yi = idx(hs(y.k), lev)
+        val xi = idx(hs.hash(x.k), lev)
+        val yi = idx(hs.hash(y.k), lev)
         val bmp = (1 << xi) | (1 << yi)
         if (xi == yi) {
           // hash collision at this level, go down:
-          new CNode(bmp, Array[Branch[K, V]](new INode(Ref.unsafe(doubleton(x, y, hs, lev + W, gen)), Ref.unsafe(gen))))
+          new CNode(bmp, Array[Branch[K, V]](new INode(Ref.unsafe(doubleton(x, y, lev + W, gen)), Ref.unsafe(gen))))
         } else {
           val arr = if (xi < yi) {
             Array[Branch[K, V]](x, y)
@@ -237,14 +243,14 @@ object Ctrie {
   }
 
   /** Tomb node */
-  final class TNode[K, V](val sn: Ref[SNode[K, V]]) extends MainNode[K, V] {
+  private final class TNode[K, V](val sn: Ref[SNode[K, V]]) extends MainNode[K, V] {
     private[choam] def debug: Rxn[Int, String] = Rxn.computed { level =>
       sn.unsafeInvisibleRead.flatMap(_.debug.provide(0)).map(s => (indent * level) + s"TNode(${s})")
     }
   }
 
   /** List node */
-  final class LNode[K, V](key: K, value: V, next: LNode[K, V]) extends MainNode[K, V] {
+  private final class LNode[K, V](key: K, value: V, next: LNode[K, V]) extends MainNode[K, V] {
 
     def this(k1: K, v1: V, k2: K, v2: V) =
       this(k1, v1, new LNode(k2, v2, null))
@@ -259,18 +265,18 @@ object Ctrie {
       else next.get(k, eq)
     }
 
-    def inserted(k: K, v: V, eq: Eq[K]): LNode[K, V] = {
-      new LNode(k, v, this.removed(k, eq))
+    def inserted(k: K, v: V)(implicit eq: Eq[K]): LNode[K, V] = {
+      new LNode(k, v, this.removed(k))
     }
 
     // TODO: @tailrec
-    def removed(k: K, eq: Eq[K]): LNode[K, V] = {
+    def removed(k: K)(implicit eq: Eq[K]): LNode[K, V] = {
       if (eq.eqv(k, key)) {
         next
       } else if (next eq null) {
         this
       } else {
-        val nn = next.removed(k, eq)
+        val nn = next.removed(k)
         if (nn eq next) this
         else new LNode(key, value, nn)
       }
@@ -289,12 +295,12 @@ object Ctrie {
     }
   }
 
-  sealed abstract class Branch[K, V] {
+  private sealed abstract class Branch[K, V] {
     private[choam] def debug: Rxn[Int, String]
   }
 
   /** Single node */
-  final class SNode[K, V](val k: K, val v: V) extends Branch[K, V] {
+  private final class SNode[K, V](val k: K, val v: V) extends Branch[K, V] {
     private[choam] override def debug: Rxn[Int, String] = Rxn.computed { level =>
       Rxn.ret((indent * level) + s"SNode(${k} -> ${v})")
     }

@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import cats.Eq
+import cats.Hash
 
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
@@ -67,7 +67,13 @@ class CtrieComposedTest extends StressTestBase {
 object CtrieComposedTest {
 
   def newCtrie714Small(): Ctrie[Int, String] = {
-    val ct = new Ctrie[Int, String](_ % 7, Eq.instance(_ % 14 == _ % 14))
+    val h = new Hash[Int] {
+      override def eqv(x: Int, y: Int): Boolean =
+        x % 14 == y % 14
+      override def hash(x: Int): Int =
+        x % 7
+    }
+    val ct = Ctrie.unsafe[Int, String](h)
     ct.insert.unsafePerform(0 -> "0", KCAS.NaiveKCAS)
     ct.insert.unsafePerform(1 -> "1", KCAS.NaiveKCAS)
     ct.insert.unsafePerform(7 -> "7", KCAS.NaiveKCAS)
