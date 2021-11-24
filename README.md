@@ -38,6 +38,26 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   - Currently composing conflicting `Rxn`s causes a runtime error.
   - Future work: detecting this error during compile time.
 
+## Modules
+
+- [`choam-core`](core/src/main/scala/dev/tauri/choam/):
+  - core types like
+    [`Rxn`](core/src/main/scala/dev/tauri/choam/Rxn.scala) and
+    [`Ref`](core/src/main/scala/dev/tauri/choam/Ref.scala)
+  - integration with synchronous effect types in
+    [Cats Effect](https://github.com/typelevel/cats-effect)
+- [`choam-async`](async/src/main/scala/dev/tauri/choam/async/):
+  - async data structures
+  - integration with asynchronous effect types in
+    [Cats Effect](https://github.com/typelevel/cats-effect)
+- [`choam-stream`](stream/src/main/scala/dev/tauri/choam/stream/):
+  integration with [FS2](https://github.com/typelevel/fs2) `Stream`s
+- [`choam-laws`](laws/src/main/scala/dev/tauri/choam/laws/):
+  properties fulfilled by the various `Rxn` combinators
+- [`choam-mcas`](mcas/src/main/scala/dev/tauri/choam/mcas/):
+  low-level multi-word compare-and-swap (*k*-CAS) implementation
+  (*in progress*)
+
 ## Related work
 
 - Our `Rxn` is a lock-free version of *reagents*, described in [Reagents:
