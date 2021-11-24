@@ -180,6 +180,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def >> [X <: A, C](that: => Rxn[X, C]): Rxn[X, C] =
     this.flatMap { _ => that }
 
+  // TODO: reconsider this (see also flatMapU above)
   final def flatTap(rxn: Rxn[B, Unit]): Rxn[A, B] =
     this.flatMap { b => rxn.provide(b).as(b) }
 
