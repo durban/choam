@@ -63,7 +63,7 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
             // TODO: clean
             Rxn.unsafe.retry
           case ln: LNode[K, V] =>
-            ln.lookup.provide((k, hs))
+            ln.lookup.provide(k)
         }
         _ <- i.main.unsafeCas(im, im) // FIXME: this is only to be composable
       } yield v
@@ -160,8 +160,8 @@ object Ctrie {
 
   private final val indent = "  "
 
-  private object NOTFOUND {
-    def as[A]: A = this.asInstanceOf[A]
+  private final object NOTFOUND {
+    final def as[A]: A = this.asInstanceOf[A]
   }
 
   private def idx(hash: Int, l: Int): Int = {
@@ -185,7 +185,7 @@ object Ctrie {
     }
   }
 
-  private sealed abstract class MainNode[K, V] {
+  private[choam] sealed abstract class MainNode[K, V] {
     private[choam] def debug: Rxn[Int, String]
   }
 
@@ -249,37 +249,92 @@ object Ctrie {
     }
   }
 
+  /** Immutable list */
+  private sealed abstract class Lst[+A] {
+
+    def :: [B >: A](item: B): Lst[B] =
+      new Lst.Cons[B](item, this)
+
+    def asCons[B >: A]: Lst.Cons[B]
+
+    @tailrec
+    final def foldLeft[B](z: B)(op: (B, A) => B): B = {
+      this.asCons match {
+        case null => z
+        case c => c.t.foldLeft(op(z, c.h))(op)
+      }
+    }
+  }
+
+  private final object Lst {
+
+    final class Cons[+A](
+      final val h: A,
+      final val t: Lst[A]
+    ) extends Lst[A] {
+
+      final override def asCons[B >: A]: Cons[B] =
+        this
+    }
+
+    final object Nil
+      extends Lst[Nothing] {
+
+      final override def asCons[B >: Nothing]: Cons[B] =
+        null
+    }
+  }
+
   /** List node */
-  private final class LNode[K, V](key: K, value: V, next: LNode[K, V]) extends MainNode[K, V] {
+  private[choam] final class LNode[K, V](
+    private[choam] val key: K,
+    private[choam] val value: V,
+    private[choam] val next: LNode[K, V]
+  ) extends MainNode[K, V] {
 
     def this(k1: K, v1: V, k2: K, v2: V) =
       this(k1, v1, new LNode(k2, v2, null))
 
-    val lookup: Rxn[(K, Eq[K]), V] =
-      Rxn.lift((get _).tupled)
+    def length: Int = {
+      @tailrec
+      def go(curr: LNode[K, V], acc: Int): Int = {
+        if (curr eq null) acc
+        else go(curr.next, acc = acc + 1)
+      }
+      go(this, 0)
+    }
+
+    def lookup(implicit eq: Eq[K]): Rxn[K, V] =
+      Rxn.lift(get)
 
     @tailrec
-    def get(k: K, eq: Eq[K]): V = {
+    def get(k: K)(implicit eq: Eq[K]): V = {
       if (eq.eqv(k, key)) value
       else if (next eq null) NOTFOUND.as[V]
-      else next.get(k, eq)
+      else next.get(k)
     }
 
     def inserted(k: K, v: V)(implicit eq: Eq[K]): LNode[K, V] = {
       new LNode(k, v, this.removed(k))
     }
 
-    // TODO: @tailrec
     def removed(k: K)(implicit eq: Eq[K]): LNode[K, V] = {
-      if (eq.eqv(k, key)) {
-        next
-      } else if (next eq null) {
-        this
-      } else {
-        val nn = next.removed(k)
-        if (nn eq next) this
-        else new LNode(key, value, nn)
+
+      @tailrec
+      def go(curr: LNode[K, V], acc: Lst[LNode[K, V]]): LNode[K, V] = {
+        if (eq.eqv(k, curr.key)) {
+          // found the node to remove
+          acc.foldLeft(curr.next) { (t, h) => new LNode(h.key, h.value, t) }
+        } else if (curr.next eq null) {
+          // end, nothing to remove
+          this
+        } else {
+          // continue
+          go(curr.next, curr :: acc)
+        }
       }
+
+      go(this, Lst.Nil)
     }
 
     private[choam] def debug: Rxn[Int, String] = Rxn.computed { _ =>

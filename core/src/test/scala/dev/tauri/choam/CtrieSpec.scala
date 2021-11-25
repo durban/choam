@@ -148,6 +148,32 @@ trait CtrieSpec[F[_]]
     }
   }
 
+  test("LNode#removed") {
+    val l1 = new Ctrie.LNode[Int, String](1, "a", next = null)
+    assertEquals(l1.length, 1)
+    assertSameInstance(l1.removed(9), l1)
+    assertSameInstance(l1.removed(1), null)
+    val l2 = l1.inserted(2, "b")
+    assertEquals(l2.length, 2)
+    assertSameInstance(l2.removed(9), l2)
+    assertSameInstance(l2.removed(2), l1)
+    val l2r = l2.removed(1)
+    assertEquals(l2r.length, 1)
+    assertEquals(l2r.get(2), "b")
+    assertSameInstance(l2r.next, null)
+    val l3 = l2.inserted(3, "c")
+    assertEquals(l3.length, 3)
+    assertEquals(l3.key, 3)
+    assertSameInstance(l3.removed(9), l3)
+    assertSameInstance(l3.removed(3), l2)
+    val l3r = l3.removed(2)
+    assertEquals(l3r.length, 2)
+    assertEquals(l3r.get(1), "a")
+    assertEquals(l3r.get(3), "c")
+    assertEquals(l3r.key, 3)
+    assertEquals(l3r.next.key, 1)
+  }
+
   test("Ctrie#debugStr should pretty print the trie structure") {
     val expStr = """INode -> CNode 3
     |  INode -> CNode 1
