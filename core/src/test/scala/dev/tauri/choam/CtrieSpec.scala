@@ -113,6 +113,30 @@ trait CtrieSpec[F[_]]
     } yield ()
   }
 
+  test("Ctrie#remove sanity check") {
+    for {
+      ct <- newEmpty()
+      _ <- ct.insert(0 -> "0")
+      _ <- assertResultF(ct.lookup(0), Some("0"))
+      _ <- assertResultF(ct.remove[F](0), Some("0"))
+      _ <- assertResultF(ct.remove[F](0), None)
+      _ <- ct.insert(1 -> "1")
+      _ <- ct.insert(2 -> "2")
+      _ <- ct.insert(3 -> "3")
+      _ <- ct.insert(4 -> "4")
+      _ <- ct.insert(5 -> "5")
+      _ <- ct.insert(6 -> "6")
+      _ <- ct.insert(7 -> "7")
+      _ <- ct.insert(8 -> "8")
+      _ <- assertResultF(ct.lookup(1), Some("1"))
+      _ <- assertResultF(ct.remove[F](1), Some("1"))
+      _ <- assertResultF(ct.remove[F](1), None)
+      _ <- assertResultF(ct.lookup(8), Some("8"))
+      _ <- assertResultF(ct.remove[F](8), Some("8"))
+      _ <- assertResultF(ct.remove[F](8), None)
+    } yield ()
+  }
+
   test("Ctrie#insert should handle hash collisions correctly") {
     PropF.forAllF { (ks: Set[Int], x: Int) =>
       for {

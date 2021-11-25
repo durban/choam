@@ -73,7 +73,7 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
       for {
         r <- root.unsafeInvisibleRead
         v <- ilookup(r, k, 0, null)
-      } yield if (equ(v, NOTFOUND.as[V])) None else Some(v)
+      } yield if (NOTFOUND.isNotFound(v)) None else Some(v)
     }
   }
 
@@ -124,12 +124,59 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
     }
   }
 
-  @inline
-  private def flagpos(hash: Int, l: Int, bmp: Int): (Int, Int) = {
-    val i = idx(hash, l)
-    val flag = 1 << i
-    val pos = Integer.bitCount((flag - 1) & bmp)
-    (flag, pos)
+  // TODO: this is almost certainly not correct
+  def remove: Rxn[K, Option[V]] = {
+
+    def iremove(i: INode[K, V], k: K, lev: Int, parent: INode[K, V]): Axn[V] = {
+      for {
+        im <- i.main.unsafeInvisibleRead
+        v <- im match {
+          case cn: CNode[_, _] =>
+            val (flag, pos) = flagpos(hs.hash(k), lev, cn.bmp)
+            if ((cn.bmp & flag) == 0) {
+              Rxn.pure(NOTFOUND.as[V])
+            } else {
+              val axn: Axn[V] = cn(pos) match {
+                case sin: INode[_, _] =>
+                  iremove(sin, k, lev + W, i)
+                case sn: SNode[_, _] =>
+                  if (!hs.eqv(sn.k, k)) {
+                    Rxn.pure(NOTFOUND.as[V])
+                  } else {
+                    val ncn = cn.removed(pos, flag)
+                    val cntr = ncn.toContracted(lev)
+                    i.main.unsafeCas(im, cntr).as(sn.v)
+                  }
+              }
+              axn.flatMap { v =>
+                if (NOTFOUND.isNotFound(v)) {
+                  // nothing to do
+                  Rxn.pure(v)
+                } else {
+                  i.main.unsafeInvisibleRead.flatMap { (reRead: MainNode[K, V]) =>
+                    if (reRead.isTomb) parent.cleanParent(i, k, lev - W).as(v)
+                    else Rxn.pure(v)
+                  }
+                }
+              }
+            }
+          case _: TNode[_, _] =>
+            Rxn.unsafe.delayComputed(parent.clean(lev - W).as(Rxn.unsafe.retry))
+          case ln: LNode[_, _] =>
+            val nln = ln.removed(k)
+            val nln2 = if (nln.isSingleton) nln.asSNode.entomb else nln
+            i.main.unsafeCas(im, nln2).as(ln.get(k))
+        }
+      } yield v
+    }
+
+    Rxn.computed[K, Option[V]] { k =>
+      root.unsafeInvisibleRead.flatMap { r =>
+        iremove(r, k, lev = 0, parent = null).map { v =>
+          if (NOTFOUND.isNotFound(v)) None else Some(v)
+        }
+      }
+    }
   }
 
   /** Only call in quiescent states! */
@@ -161,12 +208,22 @@ object Ctrie {
   private final val indent = "  "
 
   private final object NOTFOUND {
-    final def as[A]: A = this.asInstanceOf[A]
+    final def as[A]: A =
+      this.asInstanceOf[A]
+    final def isNotFound[A](a: A): Boolean =
+      equ(a, this.as[A])
   }
 
   private def idx(hash: Int, l: Int): Int = {
     val sh = W * l
     ((wMask << sh) & hash) >>> sh
+  }
+
+  private def flagpos(hash: Int, l: Int, bmp: Int): (Int, Int) = {
+    val i = idx(hash, l)
+    val flag = 1 << i
+    val pos = Integer.bitCount((flag - 1) & bmp)
+    (flag, pos)
   }
 
   private final class Gen {
@@ -177,6 +234,51 @@ object Ctrie {
   private final class INode[K, V](val main: Ref[MainNode[K, V]], val gen: Ref[Gen])
     extends Branch[K, V] {
 
+    def clean(lev: Int): Axn[Unit] = {
+      this.main.unsafeInvisibleRead.flatMap {
+        case m: CNode[K, V] =>
+          m.toCompressed(lev).flatMap { nm =>
+            this.main.unsafeCas(m, nm)
+          }
+        case _ =>
+          Rxn.unit
+      }
+    }
+
+    def cleanParent(i: INode[K, V], k: K, lev: Int)(implicit hs: Hash[K]): Axn[Unit] = {
+      i.main.unsafeInvisibleRead.flatMap { m =>
+        this.main.unsafeInvisibleRead.flatMap { pm =>
+          pm match {
+            case cn: CNode[_, _] =>
+              val (flag, pos) = flagpos(hs.hash(k), lev, cn.bmp)
+              if ((cn.bmp & flag) == 0) {
+                Rxn.unit
+              } else {
+                val sub = cn(pos)
+                if (sub ne i) {
+                  Rxn.unit
+                } else {
+                  m match {
+                    case m: TNode[_, _] =>
+                      val ncn = cn.updated(pos, m.untombed)
+                      this.main.unsafeCas(cn, ncn.toContracted(lev))
+                    case _ =>
+                      Rxn.unit
+                  }
+                }
+              }
+            case _ =>
+              Rxn.unit
+          }
+        }
+      }
+    }
+
+    def resurrect: Axn[Branch[K, V]] = this.main.unsafeInvisibleRead.map {
+      case tn: TNode[_, _] => tn.untombed
+      case _ => this
+    }
+
     private[choam] override def debug: Rxn[Int, String] = Rxn.computed { level =>
       for {
         m <- main.unsafeInvisibleRead
@@ -186,6 +288,7 @@ object Ctrie {
   }
 
   private[choam] sealed abstract class MainNode[K, V] {
+    def isTomb: Boolean = false // override in TNode
     private[choam] def debug: Rxn[Int, String]
   }
 
@@ -208,6 +311,41 @@ object Ctrie {
       newArr(pos) = value
       Array.copy(arr, pos, newArr, pos + 1, arr.length - pos)
       new CNode(bmp | flag, newArr)
+    }
+
+    def removed(pos: Int, flag: Int): CNode[K, V] = {
+      val newArr = Array.ofDim[Branch[K, V]](arr.length - 1)
+      Array.copy(arr, 0, newArr, 0, pos)
+      Array.copy(arr, pos + 1, newArr, pos, arr.length - pos - 1)
+      new CNode(bmp ^ flag, newArr)
+    }
+
+    def mapped(f: Branch[K, V] => Axn[Branch[K, V]]): Axn[CNode[K, V]] = {
+      Traverse[List].traverse(arr.toList)(f).map { lst =>
+        new CNode[K, V](bmp = this.bmp, arr = lst.toArray)
+      }
+    }
+
+    def toCompressed(lev: Int): Axn[MainNode[K, V]] = {
+      this.mapped {
+        case in: INode[_, _] => in.resurrect
+        case sn: SNode[_, _] => Rxn.pure(sn)
+      }.map { ncn =>
+        ncn.toContracted(lev)
+      }
+    }
+
+    def toContracted(lev: Int): MainNode[K, V] = {
+      if ((lev > 0) && (this.arr.length == 1)) {
+        this(0) match {
+          case sn: SNode[_, _] =>
+            sn.entomb
+          case _ =>
+            this
+        }
+      } else {
+        this
+      }
     }
 
     private[choam] override def debug: Rxn[Int, String] = Rxn.computed { level =>
@@ -243,9 +381,15 @@ object Ctrie {
   }
 
   /** Tomb node */
-  private final class TNode[K, V](val sn: Ref[SNode[K, V]]) extends MainNode[K, V] {
-    private[choam] def debug: Rxn[Int, String] = Rxn.computed { level =>
-      sn.unsafeInvisibleRead.flatMap(_.debug.provide(0)).map(s => (indent * level) + s"TNode(${s})")
+  private[choam] final class TNode[K, V](val k: K, val v: V) extends MainNode[K, V] {
+    final override def isTomb: Boolean =
+      true
+
+    final def untombed: SNode[K, V] =
+      new SNode[K, V](this.k, this.v)
+
+    private[choam] def debug: Rxn[Int, String] = Rxn.lift { level =>
+      (indent * level) + s"SNode(${k} -> ${v})"
     }
   }
 
@@ -294,6 +438,15 @@ object Ctrie {
 
     def this(k1: K, v1: V, k2: K, v2: V) =
       this(k1, v1, new LNode(k2, v2, null))
+
+    final def isSingleton: Boolean = {
+      this.next eq null
+    }
+
+    final def asSNode: SNode[K, V] = {
+      assert(this.isSingleton)
+      new SNode[K, V](this.key, this.value)
+    }
 
     def length: Int = {
       @tailrec
@@ -350,12 +503,16 @@ object Ctrie {
     }
   }
 
-  private sealed abstract class Branch[K, V] {
+  private[choam] sealed abstract class Branch[K, V] {
     private[choam] def debug: Rxn[Int, String]
   }
 
   /** Single node */
-  private final class SNode[K, V](val k: K, val v: V) extends Branch[K, V] {
+  private[choam] final class SNode[K, V](val k: K, val v: V) extends Branch[K, V] {
+
+    def entomb: TNode[K, V] =
+      new TNode[K, V](this.k, this.v)
+
     private[choam] override def debug: Rxn[Int, String] = Rxn.computed { level =>
       Rxn.ret((indent * level) + s"SNode(${k} -> ${v})")
     }
