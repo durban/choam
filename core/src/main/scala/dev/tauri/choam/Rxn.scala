@@ -184,6 +184,9 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def flatTap(rxn: Rxn[B, Unit]): Rxn[A, B] =
     this.flatMap { b => rxn.provide(b).as(b) }
 
+  final def flatten[C](implicit ev: B <:< Axn[C]): Rxn[A, C] =
+    this.flatMap(ev)
+
   final def postCommit(pc: Rxn[B, Unit]): Rxn[A, B] =
     this >>> Rxn.postCommit[B](pc)
 
@@ -301,7 +304,7 @@ object Rxn extends RxnInstances0 {
       val self: Rxn[B, (A, B)] = r.unsafeInvisibleRead.first[B].contramap[B](b => ((), b))
       val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
         val (na, c) = f(oa, b)
-        r.unsafeCas(oa, na).map(_ => c)
+        r.unsafeCas(oa, na).as(c)
       }
       self >>> comp
     }
@@ -348,7 +351,13 @@ object Rxn extends RxnInstances0 {
     private[choam] def context[A](uf: ThreadContext => A): Axn[A] =
       new Ctx[A](uf)
 
+    // TODO: idea:
+    def immediately[A, B](@unused invisibleRxn: Rxn[A, B]): Rxn[A, B] =
+      sys.error("TODO: not implemented yet")
+
     // TODO: we need a better name
+    // TODO: when we have `immediately`, this could be:
+    // TODO: `immediately(prepare).flatten` (but benchmark!)
     def delayComputed[A, B](prepare: Rxn[A, Axn[B]]): Rxn[A, B] =
       new DelayComputed[A, B](prepare)
 

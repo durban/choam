@@ -125,6 +125,14 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
   }
+
+  test("Illegal null element") {
+    for {
+      q <- newQueueFromList(List("a", "b", "c"))
+      r <- q.enqueue[F](null : String).attempt
+      _ <- assertF(r.isLeft)
+    } yield ()
+  }
 }
 
 trait QueueSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>

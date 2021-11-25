@@ -25,6 +25,9 @@ import RemoveQueue._
  * Like `MichaelScottQueue`, but also has support
  * for interior node deletion (`remove`; based on
  * `java.util.concurrent.ConcurrentLinkedQueue`).
+ *
+ * Since this queue uses `null` as a marker for
+ * deleted nodes, it does not support `null` elements.
  */
 private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els: Iterable[A])
   extends Queue.WithRemove[A] {
@@ -72,6 +75,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
   }
 
   override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
+    requireNonNull(a)
     Ref[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref(a).flatMap { dataRef =>
         findAndEnqueue(Node(dataRef, nextRef))

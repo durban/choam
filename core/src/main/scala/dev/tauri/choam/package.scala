@@ -81,4 +81,7 @@ package object choam {
   // TODO: maybe AssertionError?
   private[choam] def impossible(s: String): Nothing =
     throw new IllegalStateException(s)
+
+  private[choam] def requireNonNull[A](a: A): Unit =
+    require(!isNull(a))
 }

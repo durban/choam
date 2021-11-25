@@ -88,7 +88,7 @@ trait Ref[A] { self: MemoryLocation[A] =>
   final def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] = new CatsRef[F, A] {
 
     final override def get: F[A] =
-      self.unsafeInvisibleRead.run[F] // TODO: is this correct?
+      self.unsafeInvisibleRead.run[F]
 
     final override def set(a: A): F[Unit] =
       self.getAndSet.void[F](a)

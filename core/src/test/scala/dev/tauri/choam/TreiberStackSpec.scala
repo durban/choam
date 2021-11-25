@@ -31,4 +31,12 @@ abstract class TreiberStackSpec extends BaseSpecA { this: KCASImplSpec =>
     assertEquals(new TreiberStack[Int]().unsafeToList(this.kcasImpl), Nil)
     assertEquals(new TreiberStack[Int](1 :: 2 :: 3 :: Nil).unsafeToList(this.kcasImpl), 3 :: 2 :: 1 :: Nil)
   }
+
+  test("TreiberStack#unsafePop") {
+    val s = new TreiberStack[Int](1 :: 2 :: 3 :: Nil)
+    assertEquals(s.unsafePop.unsafeRun(this.kcasImpl), 3)
+    assertEquals(s.unsafePop.unsafeRun(this.kcasImpl), 2)
+    assertEquals(s.unsafePop.unsafeRun(this.kcasImpl), 1)
+    assertEquals(s.unsafePop.?.unsafeRun(this.kcasImpl), None)
+  }
 }

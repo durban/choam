@@ -60,7 +60,7 @@ private[choam] final class MichaelScottQueue[A] private[this] (sentinel: Node[A]
           Rxn.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and will retry:
-          tail.unsafeCas(n, nv).?.map(_ => Rxn.unsafe.retry)
+          tail.unsafeCas(n, nv).?.as(Rxn.unsafe.retry)
       }
     })
   }
