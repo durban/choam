@@ -35,7 +35,7 @@ class MapSpec_EMCAS_SyncIO
 trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
 
   def mkEmptyMap[K, V]: F[Map[K, V]] =
-    Map.naive[K, V].run[F]
+    Map.simple[K, V].run[F]
 
   test("Map should perform put correctly") {
     for {

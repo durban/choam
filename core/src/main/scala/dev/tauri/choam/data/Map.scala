@@ -34,7 +34,7 @@ trait Map[K, V] {
 
 object Map {
 
-  def naive[K, V]: Rxn[Unit, Map[K, V]] = Rxn.unsafe.delay { _ =>
+  def simple[K, V]: Rxn[Unit, Map[K, V]] = Rxn.unsafe.delay { _ =>
     new Map[K, V] {
 
       private[this] val repr: Ref[immutable.Map[K, V]] =
