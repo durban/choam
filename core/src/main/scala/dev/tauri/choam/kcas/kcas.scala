@@ -21,7 +21,6 @@ package kcas
 import mcas.MemoryLocation
 
 // TODO: detect impossible CAS-es
-// TODO: support thread interruption in (some) retry loops
 
 /** Common interface for k-CAS implementations */
 abstract class KCAS { self =>
