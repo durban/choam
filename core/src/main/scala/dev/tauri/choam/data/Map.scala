@@ -40,16 +40,10 @@ object Map {
       private[this] val repr: Ref[immutable.Map[K, V]] =
         Ref.unsafe(immutable.Map.empty)
 
-      override val put = Rxn.computed { (kv: (K, V)) =>
-        for {
-          m <- repr.unsafeInvisibleRead
-          old <- repr.unsafeCas(m, m + kv) >>> (m.get(kv._1) match {
-            case s @ Some(_) =>
-               Rxn.ret(s)
-            case None =>
-              Rxn.ret(None)
-          })
-        } yield old
+      override val put: Rxn[(K, V), Option[V]] = {
+        repr.upd[(K, V), Option[V]] { (m, kv) =>
+          (m + kv, m.get(kv._1))
+        }
       }
 
       override val putIfAbsent = Rxn.computed { (kv: (K, V)) =>
@@ -80,20 +74,17 @@ object Map {
         } yield ok
       }
 
-      override val get = Rxn.computed { (k: K) =>
-        repr.get.map(_.get(k))
+      override val get: Rxn[K, Option[V]] = {
+        repr.upd[K, Option[V]] { (m, k) =>
+          (m, m.get(k))
+        }
       }
 
-      override val del = Rxn.computed { (k: K) =>
-        for {
-          m <- repr.unsafeInvisibleRead
-          ok <- m.get(k) match {
-            case Some(_) =>
-              repr.unsafeCas(m, m - k) >>> Rxn.ret(true)
-            case None =>
-              repr.unsafeCas(m, m) >>> Rxn.ret(false)
-          }
-        } yield ok
+      override val del: Rxn[K, Boolean] = {
+        repr.upd[K, Boolean] { (m, k) =>
+          val newM = m - k
+          (newM, newM.size != m.size)
+        }
       }
 
       override val remove = Rxn.computed { (kv: (K, V)) =>
