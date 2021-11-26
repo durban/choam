@@ -28,13 +28,13 @@ trait Map[K, V] {
   def get: Rxn[K, Option[V]]
   def del: Rxn[K, Boolean]
   def remove: Rxn[(K, V), Boolean]
-  def snapshot: Rxn[Unit, immutable.Map[K, V]]
-  def clear: Rxn[Unit, immutable.Map[K, V]]
+  def snapshot: Axn[immutable.Map[K, V]]
+  def clear: Axn[immutable.Map[K, V]]
 }
 
 object Map {
 
-  def simple[K, V]: Rxn[Unit, Map[K, V]] = Rxn.unsafe.delay { _ =>
+  def simple[K, V]: Axn[Map[K, V]] = Rxn.unsafe.delay { _ =>
     new Map[K, V] {
 
       private[this] val repr: Ref[immutable.Map[K, V]] =
@@ -46,32 +46,26 @@ object Map {
         }
       }
 
-      override val putIfAbsent = Rxn.computed { (kv: (K, V)) =>
-        for {
-          m <- repr.unsafeInvisibleRead
-          old <- m.get(kv._1) match {
+      override val putIfAbsent: Rxn[(K, V), Option[V]] = {
+        repr.upd[(K, V), Option[V]] { (m, kv) =>
+          m.get(kv._1) match {
             case s @ Some(_) =>
-              repr.unsafeCas(m, m) >>> Rxn.ret(s)
+              (m, s)
             case None =>
-              repr.unsafeCas(m, m + kv) >>> Rxn.ret(None)
+              (m + kv, None)
           }
-        } yield old
+        }
       }
 
-      override val replace = Rxn.computed { (kvv: (K, V, V)) =>
-        for {
-          m <- repr.unsafeInvisibleRead
-          ok <- m.get(kvv._1) match {
-            case Some(v) =>
-              if (equ(v, kvv._2)) {
-                repr.unsafeCas(m, m + (kvv._1 -> kvv._3)) >>> Rxn.ret(true)
-              } else {
-                repr.unsafeCas(m, m) >>> Rxn.ret(false)
-              }
-            case None =>
-              repr.unsafeCas(m, m) >>> Rxn.ret(false)
+      override val replace: Rxn[(K, V, V), Boolean] = {
+        repr.upd[(K, V, V), Boolean] { (m, kvv) =>
+          m.get(kvv._1) match {
+            case Some(v) if equ(v, kvv._2) =>
+              (m + (kvv._1 -> kvv._3), true)
+            case _ =>
+              (m, false)
           }
-        } yield ok
+        }
       }
 
       override val get: Rxn[K, Option[V]] = {
@@ -87,20 +81,15 @@ object Map {
         }
       }
 
-      override val remove = Rxn.computed { (kv: (K, V)) =>
-        for {
-          m <- repr.unsafeInvisibleRead
-          ok <- m.get(kv._1) match {
-            case Some(w) =>
-              if (equ(w, kv._2)) {
-                repr.unsafeCas(m, m - kv._1) >>> Rxn.ret(true)
-              } else {
-                repr.unsafeCas(m, m) >>> Rxn.ret(false)
-              }
-            case None =>
-              repr.unsafeCas(m, m) >>> Rxn.ret(false)
+      override val remove: Rxn[(K, V), Boolean] = {
+        repr.upd[(K, V), Boolean] { (m, kv) =>
+          m.get(kv._1) match {
+            case Some(v) if equ(v, kv._2) =>
+              (m - kv._1, true)
+            case _ =>
+              (m, false)
           }
-        } yield ok
+        }
       }
 
       override val snapshot =
