@@ -696,7 +696,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("updWith".only) {
+  test("updWith") {
     for {
       r <- Ref[String]("x").run[F]
       c <- Ref[Int](0).run[F]
