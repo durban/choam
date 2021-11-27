@@ -696,6 +696,25 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("updWith".only) {
+    for {
+      r <- Ref[String]("x").run[F]
+      c <- Ref[Int](0).run[F]
+      rxn = r.updWith[Int, Boolean] { (s: String, i: Int) =>
+        c.modify(x => (x + 1, i > 0)).map { b =>
+          (s.toUpperCase(java.util.Locale.ENGLISH), b)
+        }
+      }
+      _ <- assertResultF(rxn[F](42), true)
+      _ <- assertResultF(r.get.run[F], "X")
+      _ <- assertResultF(c.get.run[F], 1)
+      _ <- r.getAndSet[F]("a")
+      _ <- assertResultF(rxn[F](0), false)
+      _ <- assertResultF(r.get.run[F], "A")
+      _ <- assertResultF(c.get.run[F], 2)
+    } yield ()
+  }
+
   test("attempt") {
     for {
       r1 <- Ref("a").run[F]

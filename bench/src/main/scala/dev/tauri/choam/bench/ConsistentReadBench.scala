@@ -29,8 +29,8 @@ import util._
  * `invisibleRead` and `cas`. The new one uses `updWith`.
  * They're essentially the same, the new one is just "nicer".
  *
- * This benchmark is to show that there is no real
- * performance difference between them.
+ * The old `updWith` was itself derived from `invisibleRead`
+ * and `cas`. The new one is a primitive.
  */
 @Fork(2)
 @deprecated("so that we can call the old method", since = "2021-03-27")
@@ -39,13 +39,18 @@ class ConsistentReadBench {
   import ConsistentReadBench._
 
   @Benchmark
-  def withInvisibleRead(s: St, k: KCASImplState): (String, String) = {
+  def crWithInvisibleRead(s: St, k: KCASImplState): (String, String) = {
     s.crWithInvisibleRead.unsafePerform((), k.kcasImpl)
   }
 
   @Benchmark
-  def withUpdWith(s: St, k: KCASImplState): (String, String) = {
-    s.crWithUpdWith.unsafePerform((), k.kcasImpl)
+  def crWithOldUpdWith(s: St, k: KCASImplState): (String, String) = {
+    s.crWithOldUpdWith.unsafePerform((), k.kcasImpl)
+  }
+
+  @Benchmark
+  def crWithNewUpdWith(s: St, k: KCASImplState): (String, String) = {
+    s.crWithNewUpdWith.unsafePerform((), k.kcasImpl)
   }
 }
 
@@ -60,7 +65,9 @@ object ConsistentReadBench {
       Ref.unsafe(s"r2: ${ThreadLocalRandom.current().nextLong()}")
     val crWithInvisibleRead: Axn[(String, String)] =
       Rxn.consistentReadOld(r1, r2)
-    val crWithUpdWith: Axn[(String, String)] =
+    val crWithOldUpdWith: Axn[(String, String)] =
+      Rxn.consistentReadWithOldUpdWith(r1, r2)
+    val crWithNewUpdWith: Axn[(String, String)] =
       Rxn.consistentRead(r1, r2)
   }
 }

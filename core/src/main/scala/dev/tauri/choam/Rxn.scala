@@ -276,6 +276,15 @@ object Rxn extends RxnInstances0 {
     }
   }
 
+  @deprecated("old implementation with old updWith", since = "2021-11-27")
+  def consistentReadWithOldUpdWith[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
+    Rxn.ref.updWithOld[A, Any, (A, B)](ra) { (a, _) =>
+      rb.upd[Any, B] { (b, _) =>
+        (b, b)
+      }.map { b => (a, (a, b)) }
+    }
+  }
+
   def consistentReadMany[A](refs: List[Ref[A]]): Axn[List[A]] = {
     refs match {
       case h :: t =>
@@ -325,7 +334,11 @@ object Rxn extends RxnInstances0 {
     def getAndSet[A](r: Ref[A]): Rxn[A, A] =
       upd[A, A, A](r) { (oa, na) => (na, oa) }
 
-    def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] = {
+    def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
+      new UpdWith[A, B, C](r, f)
+
+    // old, derived implementation:
+    private[choam] def updWithOld[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] = {
       val self: Rxn[B, (A, B)] = Rxn.unsafe.invisibleRead(r).first[B].contramap[B](b => ((), b))
       val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
         f(oa, b).flatMap {
@@ -457,6 +470,11 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Provide(${rxn}, ${a})"
   }
 
+  private final class UpdWith[A, B, C](val ref: Ref[A], val f: (A, B) => Axn[(A, C)]) extends Rxn[B, C] {
+    private[choam] final override def tag = 16
+    final override def toString: String = s"UpdWith(${ref}, <function>)"
+  }
+
   // Interpreter:
 
   private[this] def newStack[A]() = {
@@ -470,6 +488,7 @@ object Rxn extends RxnInstances0 {
   private[this] final val ContPostCommit = 4.toByte
   private[this] final val ContAfterPostCommit = 5.toByte // TODO: rename(?)
   private[this] final val ContCommitPostCommit = 6.toByte
+  private[this] final val ContUpdWith = 7.toByte
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum
   private[this] val postCommitResultMarker =
@@ -652,6 +671,13 @@ object Rxn extends RxnInstances0 {
         case 6 => // ContCommitPostCommit
           a = postCommitResultMarker : Any
           commit.asInstanceOf[Rxn[Any, Any]]
+        case 7 => // ContUpdWith
+          val ox = contK.pop()
+          val ref = contK.pop().asInstanceOf[Ref[Any]]
+          val (nx, res) = a.asInstanceOf[Tuple2[_, _]]
+          desc = kcas.addCas(desc, ref.loc, ox, nx, ctx)
+          a = res
+          next()
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -815,6 +841,14 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[Provide[A, B]]
           a = c.a
           loop(c.rxn)
+        case 16 => // UpdWith
+          val c = curr.asInstanceOf[UpdWith[Any, Any, _]]
+          val ox = kcas.read(c.ref.loc, ctx)
+          val axn = c.f(ox, a)
+          contT.push(ContUpdWith)
+          contK.push(c.ref)
+          contK.push(ox)
+          loop(axn)
         case t => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown tag ${t} for ${curr}"
