@@ -19,7 +19,6 @@ package dev.tauri.choam
 
 import java.util.Arrays
 
-import scala.reflect.ClassTag
 import scala.collection.immutable.ArraySeq
 
 private final class ByteStack(initSize: Int) {
@@ -31,7 +30,7 @@ private final class ByteStack(initSize: Int) {
     0
 
   private[this] var arr: Array[Byte] =
-    Array.ofDim[Byte](initSize)(ClassTag.Byte)
+    new Array[Byte](initSize)
 
   final override def toString: String = {
     s"ByteStack(${List(ArraySeq.unsafeWrapArray(Arrays.copyOf(this.arr, this.size)): _*).reverse.mkString(", ")})"

@@ -276,13 +276,13 @@ object Exchanger {
   private[choam] def unsafe[A, B]: Exchanger[A, B] = {
     val i: Array[AtomicReference[Node[A, B, _]]] = {
       // TODO: use padded references
-      val arr = Array.ofDim[AtomicReference[Node[A, B, _]]](Exchanger.size)
+      val arr = new Array[AtomicReference[Node[A, B, _]]](Exchanger.size)
       initArray(arr)
       arr
     }
     val o: Array[AtomicReference[Node[B, A, _]]] = {
       // TODO: use padded references
-      val arr = Array.ofDim[AtomicReference[Node[B, A, _]]](Exchanger.size)
+      val arr = new Array[AtomicReference[Node[B, A, _]]](Exchanger.size)
       initArray(arr)
       arr
     }

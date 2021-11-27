@@ -299,14 +299,14 @@ object Ctrie {
       arr(idx)
 
     def updated(idx: Int, value: Branch[K, V]): CNode[K, V] = {
-      val newArr = Array.ofDim[Branch[K, V]](arr.length)
+      val newArr = new Array[Branch[K, V]](arr.length)
       Array.copy(arr, 0, newArr, 0, arr.length)
       newArr(idx) = value
       new CNode(bmp, newArr)
     }
 
     def inserted(pos: Int, flag: Int, value: Branch[K, V]): CNode[K, V] = {
-      val newArr = Array.ofDim[Branch[K, V]](arr.length + 1)
+      val newArr = new Array[Branch[K, V]](arr.length + 1)
       Array.copy(arr, 0, newArr, 0, pos)
       newArr(pos) = value
       Array.copy(arr, pos, newArr, pos + 1, arr.length - pos)
@@ -314,7 +314,7 @@ object Ctrie {
     }
 
     def removed(pos: Int, flag: Int): CNode[K, V] = {
-      val newArr = Array.ofDim[Branch[K, V]](arr.length - 1)
+      val newArr = new Array[Branch[K, V]](arr.length - 1)
       Array.copy(arr, 0, newArr, 0, pos)
       Array.copy(arr, pos + 1, newArr, pos, arr.length - pos - 1)
       new CNode(bmp ^ flag, newArr)
