@@ -68,7 +68,7 @@ sealed trait StreamSpec[F[_]]
   test("BoundedQueue to stream") {
     for {
       q <- BoundedQueue[F, Option[String]](maxSize = 10).run[F]
-      fibVec <- Stream.fromQueueNoneTerminated(q.toCats).compile.toVector.start
+      fibVec <- Stream.fromQueueNoneTerminated(q.toCats, limit = 4).compile.toVector.start
       _ <- (1 to 8).toList.traverse { idx => q.enqueue(Some(idx.toString)) }
       _ <- q.enqueue(None)
       _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
