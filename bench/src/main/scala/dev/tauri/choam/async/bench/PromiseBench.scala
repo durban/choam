@@ -28,7 +28,6 @@ import _root_.dev.tauri.choam.bench.BenchUtils
 
 @Fork(2)
 @Threads(1) // because it runs on the IO compute pool
-@deprecated("so that we can call old methods", since = "we need it")
 class PromiseBench extends BenchUtils {
 
   import PromiseBench._

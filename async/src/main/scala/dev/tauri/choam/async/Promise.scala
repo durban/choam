@@ -160,18 +160,20 @@ object Promise {
     final override def rF =
       _rF
 
-    val complete: A =#> Boolean = Rxn.computed { a =>
-      ref.unsafeInvisibleRead.flatMap {
-        case w @ Waiting(cbs, _) =>
-          ref.unsafeCas(w, Done(a)).as(true).postCommit(Rxn.unsafe.delay { _ =>
-            cbs.valuesIterator.foreach(_(a))
-          })
-        case Done(_) =>
-          Rxn.ret(false)
+    def complete: A =#> Boolean = {
+      ref.updWith[A, Boolean] { (state, a) =>
+        state match {
+          case Waiting(cbs, _) =>
+            Rxn.postCommit[Any](Rxn.unsafe.delay { _ =>
+              cbs.valuesIterator.foreach(_(a))
+            }).as((Done(a), true))
+          case d @ Done(_) =>
+            Rxn.pure((d, false))
+        }
       }
     }
 
-    val tryGet: Axn[Option[A]] = {
+    def tryGet: Axn[Option[A]] = {
       ref.get.map {
         case Done(a) => Some(a)
         case Waiting(_, _) => None
