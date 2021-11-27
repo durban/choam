@@ -117,7 +117,11 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     this >>> lift(f)
 
   final def as[C](c: C): Rxn[A, C] =
-    this.map(_ => c) // TODO: optimize
+    new As(this, c)
+
+  // old implementation with map:
+  private[choam] final def asOld[C](c: C): Rxn[A, C] =
+    this.map(_ => c)
 
   final def void: Rxn[A, Unit] =
     this.as(())
@@ -475,6 +479,11 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"UpdWith(${ref}, <function>)"
   }
 
+  private final class As[A, B, C](val rxn: Rxn[A, B], val c: C) extends Rxn[A, C] {
+    private[choam] final override def tag = 17
+    final override def toString: String = s"As(${rxn}, ${c})"
+  }
+
   // Interpreter:
 
   private[this] def newStack[A]() = {
@@ -489,6 +498,7 @@ object Rxn extends RxnInstances0 {
   private[this] final val ContAfterPostCommit = 5.toByte // TODO: rename(?)
   private[this] final val ContCommitPostCommit = 6.toByte
   private[this] final val ContUpdWith = 7.toByte
+  private[this] final val ContAs = 8.toByte
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum
   private[this] val postCommitResultMarker =
@@ -678,6 +688,9 @@ object Rxn extends RxnInstances0 {
           desc = kcas.addCas(desc, ref.loc, ox, nx, ctx)
           a = res
           next()
+        case 8 => // ContAs
+          a = contK.pop()
+          next()
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -849,6 +862,11 @@ object Rxn extends RxnInstances0 {
           contK.push(c.ref)
           contK.push(ox)
           loop(axn)
+        case 17 => // As
+          val c = curr.asInstanceOf[As[_, _, _]]
+          contT.push(ContAs)
+          contK.push(c.c)
+          loop(c.rxn)
         case t => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown tag ${t} for ${curr}"

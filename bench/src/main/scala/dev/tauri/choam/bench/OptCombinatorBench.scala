@@ -23,30 +23,47 @@ import org.openjdk.jmh.infra.Blackhole
 
 import util._
 
-/** Compares the performance of `x.provide(a)` and `x.contramap(_ => a)` */
+/** Compares the performance of derived and primitive combinators */
 @Fork(3)
-class ProvideBench {
+class OptCombinatorBench {
 
   @Benchmark
-  def provide(s: ProvideBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-    bh.consume(s.provide.unsafePerformInternal((), k.kcasCtx))
+  def providePrimitive(s: OptCombinatorBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+    bh.consume(s.provide.unsafePerformInternal(null, k.kcasCtx))
   }
 
   @Benchmark
-  def contramap(s: ProvideBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-    bh.consume(s.contramap.unsafePerformInternal((), k.kcasCtx))
+  def provideWithContramap(s: OptCombinatorBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+    bh.consume(s.contramap.unsafePerformInternal(null, k.kcasCtx))
+  }
+
+  @Benchmark
+  def asPrimitive(s: OptCombinatorBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+    bh.consume(s.as.unsafePerformInternal(null, k.kcasCtx))
+  }
+
+  @Benchmark
+  def asWithMap(s: OptCombinatorBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+    bh.consume(s.map.unsafePerformInternal(null, k.kcasCtx))
   }
 }
 
-object ProvideBench {
+object OptCombinatorBench {
 
   @State(Scope.Benchmark)
   class St {
+
     val ref: Ref[String] =
       Ref.unsafe("a")
+
     val provide: Axn[String] =
       ref.getAndSet.provide("x")
     val contramap: Axn[String] =
       ref.getAndSet.provideOld("x")
+
+    val as: Axn[String] =
+      ref.get.as("x")
+    val map: Axn[String] =
+      ref.get.asOld("x")
   }
 }
