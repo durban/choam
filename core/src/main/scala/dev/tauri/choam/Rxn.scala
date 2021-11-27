@@ -130,7 +130,11 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     lift(f) >>> this
 
   final def provide(a: A): Axn[B] =
-    contramap[Any](_ => a) // TODO: optimize
+    new Provide[A, B](this, a)
+
+  // old implementation with contramap:
+  private[choam] final def provideOld(a: A): Axn[B] =
+    contramap[Any](_ => a)
 
   final def dimap[C, D](f: C => A)(g: B => D): Rxn[C, D] =
     this.contramap(f).map(g)
@@ -446,6 +450,11 @@ object Rxn extends RxnInstances0 {
   private final class Ctx[A](val uf: ThreadContext => A) extends Rxn[Any, A] {
     private[choam] final def tag = 14
     final override def toString: String = s"Ctx(<block>)"
+  }
+
+  private final class Provide[A, B](val rxn: Rxn[A, B], val a: A) extends Rxn[Any, B] {
+    private[choam] final override def tag = 15
+    final override def toString: String = s"Provide(${rxn}, ${a})"
   }
 
   // Interpreter:
@@ -802,6 +811,10 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[Ctx[R]]
           a = c.uf(ctx)
           loop(next())
+        case 15 => // Provide
+          val c = curr.asInstanceOf[Provide[A, B]]
+          a = c.a
+          loop(c.rxn)
         case t => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown tag ${t} for ${curr}"

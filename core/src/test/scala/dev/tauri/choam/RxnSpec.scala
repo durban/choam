@@ -685,6 +685,17 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("provide and contramap") {
+    for {
+      r <- Ref("x").run[F]
+      rxn1 = r.getAndSet.provide("a")
+      rxn2 = r.getAndSet.contramap[Any](_ => "b")
+      _ <- assertResultF(rxn1.run[F], "x")
+      _ <- assertResultF(rxn2.run[F], "a")
+      _ <- assertResultF(r.unsafeInvisibleRead.run[F], "b")
+    } yield ()
+  }
+
   test("attempt") {
     for {
       r1 <- Ref("a").run[F]

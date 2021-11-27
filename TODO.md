@@ -50,7 +50,6 @@
       - leave it as is (need to figure out how big a problem this is in practice)
       - make it work somehow (almost STM? performance hit?)
 - Optimization ideas:
-  - `Rxn#provide`
   - `Rxn#as`
   - Boxing
   - Review writes/reads in EMCAS, check if we can relax them
