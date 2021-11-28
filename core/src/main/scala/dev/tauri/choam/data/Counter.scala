@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package data
 
 final class Counter(ref: Ref[Long]) {
 

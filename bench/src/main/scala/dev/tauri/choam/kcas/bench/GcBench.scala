@@ -22,6 +22,7 @@ package bench
 import org.openjdk.jmh.annotations._
 
 import dev.tauri.choam.bench.util.Prefill
+import data.{ Queue, MichaelScottQueue }
 
 @Fork(value = 2, jvmArgsAppend = Array("-Xmx2048M"))
 @Threads(2)

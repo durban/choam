@@ -41,9 +41,10 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
 ## Modules
 
 - [`choam-core`](core/src/main/scala/dev/tauri/choam/):
-  - core types like
+  - core types, like
     [`Rxn`](core/src/main/scala/dev/tauri/choam/Rxn.scala) and
     [`Ref`](core/src/main/scala/dev/tauri/choam/Ref.scala)
+  - data structures, like queues and stacks
   - integration with synchronous effect types in
     [Cats Effect](https://github.com/typelevel/cats-effect)
 - [`choam-async`](async/src/main/scala/dev/tauri/choam/async/):

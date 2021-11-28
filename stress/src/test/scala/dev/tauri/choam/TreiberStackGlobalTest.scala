@@ -27,6 +27,7 @@ import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZZ_Result
 
 import kcas._
+import data.TreiberStack
 
 @JCStressTest
 @State

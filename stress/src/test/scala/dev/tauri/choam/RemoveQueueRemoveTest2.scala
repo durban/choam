@@ -24,6 +24,8 @@ import org.openjdk.jcstress.infra.results.LZ_Result
 
 import cats.effect.SyncIO
 
+import data.Queue
+
 @JCStressTest
 @State
 @Description("RemoveQueue concurrent enq and remove")

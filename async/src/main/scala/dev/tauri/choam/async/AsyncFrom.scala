@@ -20,6 +20,8 @@ package async
 
 import cats.effect.kernel.Resource
 
+import data.Queue
+
 final class AsyncFrom[F[_], A] private (
   syncGet: Axn[Option[A]],
   syncSet: A =#> Unit,

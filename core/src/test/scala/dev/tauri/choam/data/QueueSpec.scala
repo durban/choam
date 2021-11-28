@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package data
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean

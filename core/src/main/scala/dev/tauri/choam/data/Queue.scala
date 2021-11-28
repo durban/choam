@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package data
 
 abstract class Queue[A] {
   def tryDeque: Axn[Option[A]]

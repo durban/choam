@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package data
 
 import cats.Hash
 

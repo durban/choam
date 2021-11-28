@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package async
 
+import data.{ TreiberStack, Queue }
+
 private[choam] final class AsyncStack2[F[_], A] private (
   elements: TreiberStack[A],
   waiters: Queue.WithRemove[Promise[F, A]]

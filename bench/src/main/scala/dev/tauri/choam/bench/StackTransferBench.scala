@@ -22,6 +22,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util._
+import data.TreiberStack
 
 @Fork(3)
 class StackTransferBench {

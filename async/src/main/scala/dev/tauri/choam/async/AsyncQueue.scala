@@ -21,6 +21,8 @@ package async
 import cats.effect.kernel.Resource
 import cats.effect.std.{ Queue => CatsQueue }
 
+import data.Queue
+
 abstract class AsyncQueue[F[_], A] { self =>
   def enqueue: A =#> Unit
   def tryDeque: Axn[Option[A]]

@@ -26,6 +26,7 @@ import io.github.timwspence.cats.stm.STM
 import zio.stm.ZSTM
 
 import util._
+import data.{ Queue, MichaelScottQueue, MichaelScottQueueUnpadded, RemoveQueue }
 
 @Fork(1)
 class QueueTransferBench extends BenchUtils {

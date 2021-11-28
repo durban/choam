@@ -22,6 +22,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.JJJ_Result
 
+import data.Counter
+
 @JCStressTest
 @State
 @Description("Counter incr/decr/count should be atomic")

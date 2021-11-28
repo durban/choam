@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package async
 
+import data.TreiberStack
+
 // TODO: port existing stress tests to this impl too
 private[choam] object AsyncStack3 {
 

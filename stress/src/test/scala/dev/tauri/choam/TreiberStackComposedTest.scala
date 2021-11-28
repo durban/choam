@@ -22,6 +22,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
+import data.TreiberStack
+
 @JCStressTest
 @State
 @Description("Treiber stack composed pop/push should be atomic")

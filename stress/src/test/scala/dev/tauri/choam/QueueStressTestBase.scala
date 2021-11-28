@@ -19,6 +19,8 @@ package dev.tauri.choam
 
 import cats.effect.SyncIO
 
+import data.{ Queue, MichaelScottQueue, RemoveQueue }
+
 abstract class QueueStressTestBase extends StressTestBase {
   protected def newQueue[A](as: A*): Queue[A]
 }

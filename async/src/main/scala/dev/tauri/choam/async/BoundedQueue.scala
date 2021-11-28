@@ -20,6 +20,8 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
+import data.Queue
+
 abstract class BoundedQueue[F[_], A] {
 
   def tryEnqueue: A =#> Boolean

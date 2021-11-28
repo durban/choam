@@ -19,6 +19,8 @@ package dev.tauri.choam
 
 import cats.effect.{ IO, Outcome }
 
+import data.TreiberStack
+
 final class ExchangerSpec_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
