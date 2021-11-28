@@ -76,7 +76,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     ): Rxn[Int, Int] = {
       (1 to n).map(_ => one).reduce(combine)
     }
-    val N = computeStackLimit() * 4
+    val N = computeStackLimit() * 8
     val r1: Rxn[Int, Int] = nest(N, _ >>> _)
     val r2: Rxn[Int, Int] = nest(N, (x, y) => (x * y).map(_._1 + 1))
     val r3: Rxn[Int, Int] = nest(N, (x, y) => x.flatMap { _ => y })
