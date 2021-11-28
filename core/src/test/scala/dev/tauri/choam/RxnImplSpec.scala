@@ -20,16 +20,6 @@ package dev.tauri.choam
 import cats.Monad
 import cats.effect.IO
 
-final class RxnImplSpec_NaiveKCAS_IO
-  extends BaseSpecIO
-  with SpecNaiveKCAS
-  with RxnImplSpec[IO]
-
-final class RxnImplSpec_NaiveKCAS_ZIO
-  extends BaseSpecZIO
-  with SpecNaiveKCAS
-  with RxnImplSpec[zio.Task]
-
 final class RxnImplSpec_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
@@ -86,7 +76,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     ): Rxn[Int, Int] = {
       (1 to n).map(_ => one).reduce(combine)
     }
-    val N = computeStackLimit() * 2
+    val N = computeStackLimit() * 4
     val r1: Rxn[Int, Int] = nest(N, _ >>> _)
     val r2: Rxn[Int, Int] = nest(N, (x, y) => (x * y).map(_._1 + 1))
     val r3: Rxn[Int, Int] = nest(N, (x, y) => x.flatMap { _ => y })

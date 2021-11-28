@@ -31,10 +31,6 @@ import cats.mtl.laws.discipline.LocalTests
 import org.scalacheck.Prop
 import munit.DisciplineSuite
 
-final class LawsSpecNaiveKCAS
-  extends LawsSpec
-  with SpecNaiveKCAS
-
 final class LawsSpecEMCAS
   extends LawsSpec
   with SpecEMCAS
