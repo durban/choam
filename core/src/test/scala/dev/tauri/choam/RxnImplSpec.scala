@@ -76,7 +76,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     ): Rxn[Int, Int] = {
       (1 to n).map(_ => one).reduce(combine)
     }
-    val N = 1024 * 1024 // computeStackLimit() * 8
+    val N = computeStackLimit() * 4
     val r1: Rxn[Int, Int] = nest(N, _ >>> _)
     val r2: Rxn[Int, Int] = nest(N, (x, y) => (x * y).map(_._1 + 1))
     val r3: Rxn[Int, Int] = nest(N, (x, y) => x.flatMap { _ => y })
@@ -109,7 +109,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         if (n < 1) one
         else one *> go(n - 1) // *> is strict
       }
-      go(N)
+      go(N * 4)
     }
     try {
       rNegativeTest.unsafePerform(42, this.kcasImpl)
@@ -125,7 +125,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         if (n < 1) one
         else one >> go(n - 1) // >> is lazy
       }
-      go(N)
+      go(N * 4)
     }
     assertEquals(rPositiveTest.unsafePerform(42, this.kcasImpl), 42 + 1)
   }
