@@ -50,7 +50,7 @@ object AsyncQueue {
   }
 
   def derived[F[_], A]: Axn[AsyncQueue[F, A]] = {
-    Queue[A].flatMap { as =>
+    Queue[A].flatMapF { as =>
       AsyncFrom[F, A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
         new AsyncQueue[F, A] {
           final override def enqueue: A =#> Unit =
@@ -65,7 +65,7 @@ object AsyncQueue {
   }
 
   def withSize[F[_], A]: Axn[AsyncQueue.WithSize[F, A]] = {
-    Queue.withSize[A].flatMap { as =>
+    Queue.withSize[A].flatMapF { as =>
       AsyncFrom[F, A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
         new WithSize[F, A] {
           final override def enqueue: A =#> Unit =
@@ -99,8 +99,8 @@ object AsyncQueue {
       this.q.tryDeque
 
     final override def deque(implicit F: AsyncReactive[F]): F[A] = {
-      val acq = Promise[F, A].flatMap { p =>
-        this.q.tryDeque.flatMap {
+      val acq = Promise[F, A].flatMapF { p =>
+        this.q.tryDeque.flatMapF {
           case Some(a) => Rxn.pure(Right(a))
           case None => this.waiters.enqueue.provide(p).as(Left(p))
         }

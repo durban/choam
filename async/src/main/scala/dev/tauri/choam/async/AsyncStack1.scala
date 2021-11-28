@@ -37,8 +37,8 @@ private[choam] final class AsyncStack1[F[_], A] private (ref: Ref[State[F, A]])
       case l @ Lst(_) =>
         (l.addItem(a), None)
     }
-  }.flatMap {
-    case None => Rxn.unit[A]
+  }.flatMapF {
+    case None => Rxn.unit
     case Some((p, a)) => p.complete.provide(a).void
   }
 

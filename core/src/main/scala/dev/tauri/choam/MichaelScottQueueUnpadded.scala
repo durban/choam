@@ -53,8 +53,8 @@ private[choam] final class MichaelScottQueueUnpadded[A] private[this] (sentinel:
   }
 
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    Rxn.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMap { (n: Node[A]) =>
-      n.next.unsafeInvisibleRead.flatMap {
+    Rxn.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMapF { (n: Node[A]) =>
+      n.next.unsafeInvisibleRead.flatMapF {
         case e @ End() =>
           // found true tail; will CAS, and try to adjust the tail ref:
           Rxn.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))

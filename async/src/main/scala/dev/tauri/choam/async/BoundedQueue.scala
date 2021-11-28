@@ -57,7 +57,7 @@ object BoundedQueue {
             }
 
             final override def tryDeque: Axn[Option[A]] = {
-              q.tryDeque.flatMap {
+              q.tryDeque.flatMapF {
                 case r @ Some(_) => s.update(_ - 1).as(r)
                 case None => Rxn.pure(None)
               }
@@ -67,12 +67,12 @@ object BoundedQueue {
               F.monadCancel.bracket(acquire = this.enqueueAcq(a))(use = this.enqueueUse)(release = this.enqueueRel)
 
             private[this] def enqueueAcq(a: A)(implicit F: AsyncReactive[F]): F[Either[(A, Promise[F, Unit]), Unit]] = {
-              Promise[F, Unit].flatMap { p =>
-                getters.tryDeque.flatMap {
+              (Promise[F, Unit] * getters.tryDeque).flatMap { case (p, dq) =>
+                dq match {
                   case Some(getterPromise) =>
                     getterPromise.complete.as(Right(()))
                   case None =>
-                    this.tryEnqueue.flatMap {
+                    this.tryEnqueue.flatMapF {
                       case true =>
                         Rxn.pure(Right(()))
                       case false =>
@@ -97,11 +97,11 @@ object BoundedQueue {
               F.monadCancel.bracket(acquire = this.dequeAcq)(use = this.dequeUse)(release = this.dequeRel)
 
             private[this] def dequeAcq(implicit F: AsyncReactive[F]): F[Either[Promise[F, A], A]] = {
-              Promise[F, A].flatMap { p =>
-                q.tryDeque.flatMap {
+              (Promise[F, A] * q.tryDeque).flatMapF { case (p, dq) =>
+                dq match {
                   case Some(b) =>
                     // size was decremented...
-                    setters.tryDeque.flatMap {
+                    setters.tryDeque.flatMapF {
                       case Some((setterA, setterPromise)) =>
                         // ...then incremented
                         s.get *> q.enqueue.provide(setterA).flatTap(

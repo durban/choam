@@ -99,7 +99,7 @@ trait Ref[A] { self: MemoryLocation[A] =>
         // succeed after it was called once, so we need a flag:
         F.monad.map(Ref[Boolean](false).run[F]) { hasBeenCalled =>
           val setter = { (nv: A) =>
-            hasBeenCalled.unsafeCas(false, true).?.flatMap { ok =>
+            hasBeenCalled.unsafeCas(false, true).?.flatMapF { ok =>
               if (ok.isDefined) self.unsafeCas(ov, nv).?.map(_.isDefined)
               else Rxn.pure(false)
             }.run[F]

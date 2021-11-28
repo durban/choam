@@ -175,6 +175,10 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     self >>> comp
   }
 
+  // TODO: optimize
+  final def flatMapF[C](f: B => Axn[C]): Rxn[A, C] =
+    this >>> computed(f)
+
   // TODO: consider this:
   // final def flatMapU[X, C](f: A => Rxn[X, C]): Rxn[X, C] = {
   //   val self2: Rxn[X, (X, A)] =

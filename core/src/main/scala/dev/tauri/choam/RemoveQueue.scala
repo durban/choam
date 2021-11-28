@@ -57,9 +57,9 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
   }
 
   private[this] def skipTombs(from: Ref[Elem[A]]): Axn[Option[(A, Node[A])]] = {
-    from.unsafeInvisibleRead.flatMap {
+    from.unsafeInvisibleRead.flatMapF {
       case n @ Node(dataRef, nextRef) =>
-        dataRef.unsafeInvisibleRead.flatMap { a =>
+        dataRef.unsafeInvisibleRead.flatMapF { a =>
           if (isNull(a)) {
             // found a tombstone (no need to validate, since once
             // it's tombed, it will never be resurrected)
@@ -70,7 +70,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
           }
         }
       case e @ End() =>
-        from.unsafeCas(e, e) >>> Rxn.ret(None)
+        from.unsafeCas(e, e).as(None)
     }
   }
 
@@ -84,8 +84,8 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
   }
 
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    Rxn.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMap { (n: Node[A]) =>
-      n.next.unsafeInvisibleRead.flatMap {
+    Rxn.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMapF { (n: Node[A]) =>
+      n.next.unsafeInvisibleRead.flatMapF {
         case e @ End() =>
           // found true tail; will CAS, and try to adjust the tail ref:
           Rxn.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))
@@ -104,8 +104,8 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
    * are compared by reference equality.
    */
   override val remove: Rxn[A, Boolean] = Rxn.computed { (a: A) =>
-    head.unsafeInvisibleRead.flatMap { h =>
-      findAndTomb(a, h.next).flatMap { wasRemoved =>
+    head.unsafeInvisibleRead.flatMapF { h =>
+      findAndTomb(a, h.next).flatMapF { wasRemoved =>
         if (wasRemoved) {
           // validate head (in case it was dequed concurrently):
           head.unsafeCas(h, h).as(true)
@@ -117,9 +117,9 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
   }
 
   private[this] def findAndTomb(item: A, from: Ref[Elem[A]]): Axn[Boolean] = {
-    from.unsafeInvisibleRead.flatMap {
+    from.unsafeInvisibleRead.flatMapF {
       case Node(dataRef, nextRef) =>
-        dataRef.unsafeInvisibleRead.flatMap { a =>
+        dataRef.unsafeInvisibleRead.flatMapF { a =>
           if (equ(a, item)) {
             // found it
             dataRef.unsafeCas(a, nullOf[A]).as(true)

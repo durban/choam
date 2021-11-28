@@ -22,7 +22,7 @@ package async
 private[choam] object AsyncStack3 {
 
   def apply[F[_], A]: Axn[AsyncStack[F, A]] = {
-    TreiberStack[A].flatMap { es =>
+    TreiberStack[A].flatMapF { es =>
       AsyncFrom[F, A](
         syncGet = es.tryPop,
         syncSet = es.push

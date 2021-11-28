@@ -53,12 +53,12 @@ object Queue {
     RemoveQueue.fromList(as)
 
   private[choam] def withSize[A]: Axn[Queue.WithSize[A]] = {
-    Queue[A].flatMap { q =>
+    Queue[A].flatMapF { q =>
       Ref[Int](0).map { s =>
         new WithSize[A] {
 
           final override def tryDeque: Axn[Option[A]] = {
-            q.tryDeque.flatMap {
+            q.tryDeque.flatMapF {
               case r @ Some(_) => s.update(_ - 1).as(r)
               case None => Rxn.pure(None)
             }

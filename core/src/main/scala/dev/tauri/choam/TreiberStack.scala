@@ -32,7 +32,7 @@ final class TreiberStack[A](els: Iterable[A]) {
     (Cons(a, as), ())
   }
 
-  val tryPop: Rxn[Any, Option[A]] = head.upd {
+  val tryPop: Axn[Option[A]] = head.upd {
     case (Cons(h, t), _) => (t, Some(h))
     case (End, _) => (End, None)
   }

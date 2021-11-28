@@ -32,7 +32,7 @@ private[choam] final class AsyncStack2[F[_], A] private (
 
   override def pop(implicit F: AsyncReactive[F]): F[A] = {
     F.monadCancel.flatMap(F.promise[A].run[F]) { p =>
-      val acq = this.elements.tryPop.flatMap {
+      val acq = this.elements.tryPop.flatMapF {
         case Some(a) => Rxn.ret(Right(a))
         case None => this.waiters.enqueue.provide(p).as(Left(p))
       }.run[F]
@@ -51,7 +51,7 @@ private[choam] final class AsyncStack2[F[_], A] private (
 private[choam] object AsyncStack2 {
 
   def apply[F[_], A]: Axn[AsyncStack[F, A]] = {
-    TreiberStack[A].flatMap { es =>
+    TreiberStack[A].flatMapF { es =>
       Queue.withRemove[Promise[F, A]].map { ws =>
         new AsyncStack2[F, A](es, ws)
       }

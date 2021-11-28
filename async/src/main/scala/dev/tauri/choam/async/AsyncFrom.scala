@@ -40,8 +40,8 @@ final class AsyncFrom[F[_], A] private (
     Resource.make(this.getAcq)(this.getRel)(F.monad).map(this.getUse)
 
   private[this] def getAcq(implicit F: AsyncReactive[F]): F[Either[Promise[F, A], A]] = {
-    Promise[F, A].flatMap { p =>
-      this.syncGet.flatMap {
+    Promise[F, A].flatMapF { p =>
+      this.syncGet.flatMapF {
         case Some(b) => Rxn.pure(Right(b))
         case None => this.waiters.enqueue.provide(p).as(Left(p))
       }

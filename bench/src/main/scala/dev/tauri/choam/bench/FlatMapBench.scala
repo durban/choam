@@ -25,14 +25,22 @@ import org.openjdk.jmh.infra.Blackhole
 
 import util._
 
-/** Compares the performance of `x.flatMap { _ => y }` and `x *> y` */
-@Fork(5)
+/** Compares the performance of `flatMap`, `flatMapF`, and `*>` */
+@Fork(3)
+@Threads(2)
 class FlatMapBench {
 
   @Benchmark
   def withFlatMap(s: FlatMapBench.St, bh: Blackhole, k: KCASImplState): Unit = {
     val idx = Math.abs(k.nextInt()) % ArrowBench.size
     val r: Axn[String] = s.rsWithFlatMap(idx)
+    bh.consume(r.unsafePerform((), k.kcasImpl))
+  }
+
+  @Benchmark
+  def withFlatMapF(s: FlatMapBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+    val idx = Math.abs(k.nextInt()) % ArrowBench.size
+    val r: Axn[String] = s.rsWithFlatMapF(idx)
     bh.consume(r.unsafePerform((), k.kcasImpl))
   }
 
@@ -48,6 +56,11 @@ object FlatMapBench {
 
   final val size = 8
   final val n = 16
+
+  sealed abstract class OpType extends Product with Serializable
+  final case object FlatMap extends OpType
+  final case object FlatMapF extends OpType
+  final case object StarGreater extends OpType
 
   @State(Scope.Benchmark)
   class St {
@@ -68,30 +81,42 @@ object FlatMapBench {
     val rsWithFlatMap: List[Axn[String]] = {
       List.tabulate(size) { idx =>
         val idx2 = (idx + 1) % size
-        buildReaction(n, first = addXs(idx), last = addYs(idx2), isFlatMap = true)
+        buildReaction(n, first = addXs(idx), last = addYs(idx2), opType = FlatMap)
+      }
+    }
+
+    val rsWithFlatMapF: List[Axn[String]] = {
+      List.tabulate(size) { idx =>
+        val idx2 = (idx + 1) % size
+        buildReaction(n, first = addXs(idx), last = addYs(idx2), opType = FlatMapF)
       }
     }
 
     val rsWithStarGreater: List[Axn[String]] = {
       List.tabulate(size) { idx =>
         val idx2 = (idx + 1) % size
-        buildReaction(n, first = addXs(idx), last = addYs(idx2), isFlatMap = false)
+        buildReaction(n, first = addXs(idx), last = addYs(idx2), opType = StarGreater)
       }
     }
 
-    private[this] def buildReaction(n: Int, first: Axn[Unit], last: Axn[String], isFlatMap: Boolean): Axn[String] = {
+    private[this] def buildReaction(n: Int, first: Axn[Unit], last: Axn[String], opType: OpType): Axn[String] = {
       def go(n: Int, acc: Axn[Unit]): Axn[Unit] = {
         if (n < 1) {
           acc
         } else {
-          val newAcc = if (isFlatMap) acc.flatMap { _ => dummy } else acc *> dummy
+          val newAcc = opType match {
+            case FlatMap => acc.flatMap { _ => dummy }
+            case FlatMapF => acc.flatMapF { _ => dummy }
+            case StarGreater => acc *> dummy
+          }
           go(n - 1, newAcc)
         }
       }
-      if (isFlatMap) {
-        go(n, first).flatMap { _ => last }
-      } else {
-        go(n, first) *> last
+
+      opType match {
+        case FlatMap => go(n, first).flatMap { _ => last }
+        case FlatMapF => go(n, first).flatMapF { _ => last }
+        case StarGreater => go(n, first) *> last
       }
     }
   }
