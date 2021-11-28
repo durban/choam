@@ -186,6 +186,8 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
         arbB.arbitrary.map(Ior.right)
       case 2 => // both
         arbA.arbitrary.flatMap { a => arbB.arbitrary.map { b => Ior.both(a, b) } }
+      case x =>
+        impossible(x.toString)
     }
   }
 

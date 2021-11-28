@@ -53,6 +53,8 @@ class DataMapBench {
           case None =>
             bh.consume(m.del.unsafePerformInternal(k.nextString(), k.kcasCtx))
         }
+      case x =>
+        impossible(x.toString)
     }
   }
 }
