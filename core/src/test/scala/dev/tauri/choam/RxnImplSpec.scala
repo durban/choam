@@ -53,6 +53,31 @@ final class RxnImplSpec_FlakyEMCAS_ZIO
 /** Specific implementation tests, which should also pass with `SpecFlakyEMCAS` */
 trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
+  private def computeStackLimit(): Int = {
+    // NOT @tailrec
+    def factorial(n: Long): Long = {
+      if (n == 0L) 1L
+      else n * factorial(n - 1L)
+    }
+
+    def tryOnce(n: Int): Boolean = {
+      assert(n > 0)
+      try { factorial(n.toLong); true } catch {
+        case _: StackOverflowError =>
+          false
+      }
+    }
+
+    def compute(n: Int = 32): Int = {
+      if (tryOnce(n)) compute(n * 2)
+      else n
+    }
+
+    val res = compute()
+    println(s"STACK_LIMIT <= ${res}")
+    res
+  }
+
   test("Creating and running deeply nested Rxn's should both be stack-safe") {
     val one = Rxn.lift[Int, Int](_ + 1)
     def nest(
@@ -61,7 +86,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     ): Rxn[Int, Int] = {
       (1 to n).map(_ => one).reduce(combine)
     }
-    val N = 1024 * 1024
+    val N = computeStackLimit() * 2
     val r1: Rxn[Int, Int] = nest(N, _ >>> _)
     val r2: Rxn[Int, Int] = nest(N, (x, y) => (x * y).map(_._1 + 1))
     val r3: Rxn[Int, Int] = nest(N, (x, y) => x.flatMap { _ => y })
@@ -87,6 +112,32 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     assertEquals(r5.unsafePerform(42, this.kcasImpl), 42 + 1)
     assertEquals(r6.unsafePerform(42, this.kcasImpl), 42 + N)
     assertEquals(r7.unsafePerform(42, this.kcasImpl), 99)
+
+    def rNegativeTest: Rxn[Int, Int] = {
+      // NOT @tailrec
+      def go(n: Int): Rxn[Int, Int] = {
+        if (n < 1) one
+        else one *> go(n - 1) // *> is strict
+      }
+      go(N)
+    }
+    try {
+      rNegativeTest.unsafePerform(42, this.kcasImpl)
+      this.fail("unexpected success")
+    } catch {
+      case _: StackOverflowError =>
+        () // OK
+    }
+
+    def rPositiveTest: Rxn[Int, Int] = {
+      // NOT @tailrec
+      def go(n: Int): Rxn[Int, Int] = {
+        if (n < 1) one
+        else one >> go(n - 1) // >> is lazy
+      }
+      go(N)
+    }
+    assertEquals(rPositiveTest.unsafePerform(42, this.kcasImpl), 42 + 1)
   }
 
   test("first and second") {

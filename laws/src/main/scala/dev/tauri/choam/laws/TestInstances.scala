@@ -222,7 +222,7 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
 
   implicit def testingEqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]] = new Eq[Rxn[A, B]] {
     override def eqv(x: Rxn[A, B], y: Rxn[A, B]): Boolean = {
-      (1 to 1000).forall { _ =>
+      (1 to 32).forall { _ =>
         val a = arbA.arbitrary.sample.getOrElse {
           throw new IllegalStateException("no sample")
         }
