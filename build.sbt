@@ -66,10 +66,16 @@ lazy val mcas = project.in(file("mcas"))
   .settings(name := "choam-mcas")
   .settings(commonSettings)
 
+lazy val data = project.in(file("data"))
+  .settings(name := "choam-data")
+  .settings(commonSettings)
+  .dependsOn(core % "compile->compile;test->test")
+  .settings(libraryDependencies += dependencies.paguro)
+
 lazy val async = project.in(file("async"))
   .settings(name := "choam-async")
   .settings(commonSettings)
-  .dependsOn(core % "compile->compile;test->test")
+  .dependsOn(data % "compile->compile;test->test")
 
 lazy val stream = project.in(file("stream"))
   .settings(name := "choam-stream")
@@ -237,6 +243,9 @@ lazy val dependencies = new {
   val catsMtl = "org.typelevel" %% "cats-mtl" % catsMtlVersion
   val catsMtlLaws = "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion
   val fs2 = "co.fs2" %% "fs2-core" % fs2Version
+
+  // Java:
+  val paguro = "org.organicdesign" % "Paguro" % "3.6.0"
 
   val test = Seq(
     catsEffectAll,

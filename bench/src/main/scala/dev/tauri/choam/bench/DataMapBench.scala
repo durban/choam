@@ -46,12 +46,9 @@ class DataMapBench {
             ()
         }
       case 2 =>
-        val ss = m.snapshot.unsafePerformInternal((), k.kcasCtx)
-        ss.keysIterator.nextOption() match {
-          case Some(key) =>
-            bh.consume(m.del.unsafePerformInternal(key, k.kcasCtx))
-          case None =>
-            bh.consume(m.del.unsafePerformInternal(k.nextString(), k.kcasCtx))
+        val ok = m.del.unsafePerformInternal(DataMapBench.knownKey, k.kcasCtx)
+        if (!ok) {
+          bh.consume(m.put.unsafePerformInternal((DataMapBench.knownKey, "x"), k.kcasCtx))
         }
       case x =>
         impossible(x.toString)
@@ -63,6 +60,8 @@ object DataMapBench {
 
   final val size = 8
 
+  final val knownKey = "abcdef"
+
   @State(Scope.Benchmark)
   class St {
     val simple: Map[String, String] = {
@@ -70,6 +69,7 @@ object DataMapBench {
       Prefill.prefill().foreach { k =>
         m.put.unsafePerform((k, "foo"), kcas.KCAS.EMCAS)
       }
+      m.put.unsafePerform((knownKey, "bar"), kcas.KCAS.EMCAS)
       m
     }
   }

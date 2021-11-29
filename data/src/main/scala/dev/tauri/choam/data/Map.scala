@@ -18,9 +18,11 @@
 package dev.tauri.choam
 package data
 
-import scala.collection.immutable
+import cats.kernel.Hash
 
-// TODO: use Eq and Hash
+// TODO: This is Java, so we'll need something else for scalajs
+import org.organicdesign.fp.collections.{ PersistentHashMap, Equator }
+
 trait Map[K, V] {
   def put: Rxn[(K, V), Option[V]]
   def putIfAbsent: Rxn[(K, V), Option[V]]
@@ -28,31 +30,43 @@ trait Map[K, V] {
   def get: Rxn[K, Option[V]]
   def del: Rxn[K, Boolean]
   def remove: Rxn[(K, V), Boolean]
-  def snapshot: Axn[immutable.Map[K, V]]
-  def clear: Axn[immutable.Map[K, V]]
+  def clear: Axn[Unit]
 }
 
 object Map {
 
-  def simple[K, V]: Axn[Map[K, V]] = Rxn.unsafe.delay { _ =>
-    new Map[K, V] {
+  private[this] def equatorFromHash[A](implicit A: Hash[A]): Equator[A] = {
+    new Equator[A] {
+      final override def eq(x: A, y: A): Boolean =
+        A.eqv(x, y)
+      final override def hash(x: A): Int =
+        A.hash(x)
+    }
+  }
 
-      private[this] val repr: Ref[immutable.Map[K, V]] =
-        Ref.unsafe(immutable.Map.empty)
+  private[this] def emptyPhm[K: Hash, V]: PersistentHashMap[K, V] =
+    PersistentHashMap.empty[K, V](equatorFromHash[K])
+
+  def simple[K: Hash, V]: Axn[Map[K, V]] = Ref[PersistentHashMap[K, V]](
+    emptyPhm[K, V]
+  ).map { (repr: Ref[PersistentHashMap[K, V]]) =>
+
+    new Map[K, V] {
 
       override val put: Rxn[(K, V), Option[V]] = {
         repr.upd[(K, V), Option[V]] { (m, kv) =>
-          (m + kv, m.get(kv._1))
+          // `m.get` can return `null`
+          (m.assoc(kv._1, kv._2), Option(m.get(kv._1)))
         }
       }
 
       override val putIfAbsent: Rxn[(K, V), Option[V]] = {
         repr.upd[(K, V), Option[V]] { (m, kv) =>
           m.get(kv._1) match {
-            case s @ Some(_) =>
-              (m, s)
-            case None =>
-              (m + kv, None)
+            case null =>
+              (m.assoc(kv._1, kv._2), None)
+            case v =>
+              (m, Some(v))
           }
         }
       }
@@ -60,8 +74,10 @@ object Map {
       override val replace: Rxn[(K, V, V), Boolean] = {
         repr.upd[(K, V, V), Boolean] { (m, kvv) =>
           m.get(kvv._1) match {
-            case Some(v) if equ(v, kvv._2) =>
-              (m + (kvv._1 -> kvv._3), true)
+            case null =>
+              (m, false)
+            case v if equ(v, kvv._2) =>
+              (m.assoc(kvv._1, kvv._3), true)
             case _ =>
               (m, false)
           }
@@ -70,13 +86,14 @@ object Map {
 
       override val get: Rxn[K, Option[V]] = {
         repr.upd[K, Option[V]] { (m, k) =>
-          (m, m.get(k))
+          // `m.get` can return `null`
+          (m, Option(m.get(k)))
         }
       }
 
       override val del: Rxn[K, Boolean] = {
         repr.upd[K, Boolean] { (m, k) =>
-          val newM = m - k
+          val newM = m.without(k)
           (newM, newM.size != m.size)
         }
       }
@@ -84,19 +101,18 @@ object Map {
       override val remove: Rxn[(K, V), Boolean] = {
         repr.upd[(K, V), Boolean] { (m, kv) =>
           m.get(kv._1) match {
-            case Some(v) if equ(v, kv._2) =>
-              (m - kv._1, true)
+            case null =>
+              (m, false)
+            case v if equ(v, kv._2) =>
+              (m.without(kv._1), true)
             case _ =>
               (m, false)
           }
         }
       }
 
-      override val snapshot =
-        repr.get
-
-      override val clear =
-        repr.getAndUpdate(_ => immutable.Map.empty)
+      override val clear: Axn[Unit] =
+        repr.update(_ => emptyPhm[K, V])
     }
   }
 }
