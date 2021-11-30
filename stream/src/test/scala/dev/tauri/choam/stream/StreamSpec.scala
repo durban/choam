@@ -145,8 +145,8 @@ sealed trait StreamSpec[F[_]]
             go(t, prev = h)
           )
       }
-      // we assume that at least a quarter of the updates are not lost:
-      assertF(clue(l.length) >= (max / 4)) *> go(l, -1)
+      // we assume that at least a fifth of the updates are not lost:
+      assertF(clue(l.length) >= (max / 5)) *> go(l, -1)
     }
     def checkListeners(ref: RxnSignallingRef[F, Int], min: Int, max: Int): F[Unit] = {
       F.defer {
@@ -158,6 +158,7 @@ sealed trait StreamSpec[F[_]]
       ref <- signallingRef[F, Int](initial = 0).run[F]
       listener = ref
         .discrete
+        .evalTap(_ => F.cede)
         .takeThrough(_ < N)
         .compile
         .toList
@@ -169,7 +170,7 @@ sealed trait StreamSpec[F[_]]
       } ++ Stream.exec(checkListeners(ref, min = 0, max = 2))).compile.toList.start
       fw <- writer(ref, 1).start
       _ <- fw.joinWithNever
-      _ <- f3.joinWithNever // raises error is not cleaned up properly
+      _ <- f3.joinWithNever // raises error if not cleaned up properly
       l1 <- f1.joinWithNever
       _ <- checkList(l1, max = N)
       l2 <- f2.joinWithNever
