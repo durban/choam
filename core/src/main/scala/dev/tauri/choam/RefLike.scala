@@ -17,6 +17,9 @@
 
 package dev.tauri.choam
 
+import cats.data.State
+import cats.effect.kernel.{ Ref => CatsRef }
+
 trait RefLike[A] {
 
   // abstract:
@@ -24,6 +27,10 @@ trait RefLike[A] {
   def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C]
 
   def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C]
+
+  private[choam] def unsafeInvisibleRead: Axn[A]
+
+  private[choam] def unsafeCas(ov: A, nv: A): Axn[Unit]
 
   // derived implementations:
 
@@ -68,4 +75,42 @@ trait RefLike[A] {
 
   final def tryModify[B](f: A => (A, B)): Axn[Option[B]] =
     modify(f).?
+}
+
+object RefLike {
+
+  abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
+    extends CatsRef[F, A] {
+    def get: F[A] =
+      self.unsafeInvisibleRead.run[F]
+    override def set(a: A): F[Unit] =
+      self.getAndSet.void[F](a)
+    override def access: F[(A, A => F[Boolean])] = {
+      F.monad.flatMap(this.get) { ov =>
+        // `access` as defined in cats-effect must never
+        // succeed after it was called once, so we need a flag:
+        F.monad.map(Ref[Boolean](false).run[F]) { hasBeenCalled =>
+          val setter = { (nv: A) =>
+            hasBeenCalled.unsafeCas(false, true).?.flatMapF { ok =>
+              if (ok.isDefined) self.unsafeCas(ov, nv).?.map(_.isDefined)
+              else Rxn.pure(false)
+            }.run[F]
+          }
+          (ov, setter)
+        }
+      }
+    }
+    override def tryUpdate(f: A => A): F[Boolean] =
+      self.tryUpdate(f).run[F]
+    override def tryModify[B](f: A => (A, B)): F[Option[B]] =
+      self.tryModify(f).run[F]
+    override def update(f: A => A): F[Unit] =
+      self.update(f).run[F]
+    override def modify[B](f: A => (A, B)): F[B] =
+      self.modify(f).run[F]
+    override def tryModifyState[B](state: State[A, B]): F[Option[B]] =
+      self.tryModify(a => state.runF.value(a).value).run[F]
+    override def modifyState[B](state: State[A,B]): F[B] =
+      self.modify(a => state.runF.value(a).value).run[F]
+  }
 }

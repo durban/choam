@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package stream
 
-import cats.effect.Unique
+import cats.effect.kernel.{ Unique, Ref => CatsRef }
 import cats.data.State
 import cats.syntax.traverse._
 
@@ -41,6 +41,12 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
     _refLike
 
   private[this] val _refLike: RefLike[A] = new RefLike[A] {
+
+    private[choam] final override def unsafeInvisibleRead: Axn[A] =
+      underlying.unsafeInvisibleRead
+
+    private[choam] final override def unsafeCas(ov: A, nv: A): Axn[Unit] =
+      underlying.unsafeCas(ov, nv) >>> notifyListeners(nv)
 
     final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] = {
       underlying.updWith[B, C] { (oldVal, b) =>
@@ -71,7 +77,10 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
     }
   }
 
-  // F[_] API:
+  private[this] val _refLikeAsCats: CatsRef[F, A] =
+    new RefLike.CatsRefFromRefLike[F, A](_refLike) {}
+
+  // Streams:
 
   final override def continuous: Stream[F, A] =
     Stream.repeatEval(this.get)
@@ -112,32 +121,34 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
     }
   }
 
+  // CatsRef:
+
   final override def get: F[A] =
-    underlying.unsafeInvisibleRead.run[F]
+    _refLikeAsCats.get
 
   final override def set(a: A): F[Unit] =
-    this.refLike.getAndSet.void[F](a)
+    _refLikeAsCats.set(a)
 
   override def access: F[(A, A => F[Boolean])] =
-    sys.error("TODO")
+    _refLikeAsCats.access
 
   override def tryUpdate(f: A => A): F[Boolean] =
-    sys.error("TODO")
+    _refLikeAsCats.tryUpdate(f)
 
   override def tryModify[B](f: A => (A, B)): F[Option[B]] =
-    sys.error("TODO")
+    _refLikeAsCats.tryModify(f)
 
   override def update(f: A => A): F[Unit] =
-    sys.error("TODO")
+    _refLikeAsCats.update(f)
 
   override def modify[B](f: A => (A, B)): F[B] =
-    sys.error("TODO")
+    _refLikeAsCats.modify(f)
 
   override def tryModifyState[B](state: State[A, B]): F[Option[B]] =
-    sys.error("TODO")
+    _refLikeAsCats.tryModifyState(state)
 
   override def modifyState[B](state: State[A, B]): F[B] =
-    sys.error("TODO")
+    _refLikeAsCats.modifyState(state)
 }
 
 private[stream] object Fs2SignallingRefWrapper {

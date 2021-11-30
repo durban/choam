@@ -19,7 +19,6 @@ package dev.tauri.choam
 
 import java.util.concurrent.ThreadLocalRandom
 
-import cats.data.State
 import cats.effect.kernel.{ Ref => CatsRef }
 
 import mcas.MemoryLocation
@@ -60,48 +59,8 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
   private[choam] final def loc: MemoryLocation[A] =
     this
 
-  final def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] = new CatsRef[F, A] {
-
-    final override def get: F[A] =
-      self.unsafeInvisibleRead.run[F]
-
-    final override def set(a: A): F[Unit] =
-      self.getAndSet.void[F](a)
-
-    final override def access: F[(A, A => F[Boolean])] = {
-      F.monad.flatMap(this.get) { ov =>
-        // `access` as defined in cats-effect must never
-        // succeed after it was called once, so we need a flag:
-        F.monad.map(Ref[Boolean](false).run[F]) { hasBeenCalled =>
-          val setter = { (nv: A) =>
-            hasBeenCalled.unsafeCas(false, true).?.flatMapF { ok =>
-              if (ok.isDefined) self.unsafeCas(ov, nv).?.map(_.isDefined)
-              else Rxn.pure(false)
-            }.run[F]
-          }
-          (ov, setter)
-        }
-      }
-    }
-
-    final override def tryUpdate(f: A => A): F[Boolean] =
-      self.tryUpdate(f).run[F]
-
-    final override def tryModify[B](f: A => (A, B)): F[Option[B]] =
-      self.tryModify(f).run[F]
-
-    final override def update(f: A => A): F[Unit] =
-      self.update(f).run[F]
-
-    final override def modify[B](f: A => (A, B)): F[B] =
-      self.modify(f).run[F]
-
-    final override def tryModifyState[B](state: State[A, B]): F[Option[B]] =
-      self.tryModify(a => state.runF.value(a).value).run[F]
-
-    final override def modifyState[B](state: State[A, B]): F[B] =
-      self.modify(a => state.runF.value(a).value).run[F]
-  }
+  final def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] =
+    new RefLike.CatsRefFromRefLike[F, A](this) {}
 
   /** For testing */
   private[choam] final def debugRead(): A = {
