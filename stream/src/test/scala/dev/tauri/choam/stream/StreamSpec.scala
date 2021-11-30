@@ -145,8 +145,8 @@ sealed trait StreamSpec[F[_]]
             go(t, prev = h)
           )
       }
-      // we assume that at least a fifth of the updates are not lost:
-      assertF(clue(l.length) >= (max / 5)) *> go(l, -1)
+      // we assume that at least *some* updates are not lost:
+      assertF(clue(l.length).toDouble >= (max.toDouble / 40.0)) *> go(l, -1)
     }
     def checkListeners(ref: RxnSignallingRef[F, Int], min: Int, max: Int): F[Unit] = {
       F.defer {
