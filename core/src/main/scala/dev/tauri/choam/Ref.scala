@@ -41,49 +41,24 @@ import mcas.MemoryLocation
  * both `43` and `41`. (Currently performing such a [[Rxn]] throws
  * a runtime exception.)
  */
-trait Ref[A] { self: MemoryLocation[A] =>
+trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
 
-  final def get: Axn[A] =
-    upd[Any, A] { (oa, _) => (oa, oa) }
+  // TODO: needs better name (it's like `modify`)
+  final def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
+    Rxn.ref.upd(this)(f)
 
-  final def getAndSet: Rxn[A, A] =
-    upd[A, A] { (oa, na) => (na, oa) }
+  // TODO: needs better name (it's like `modifyWith`)
+  final def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
+    Rxn.ref.updWith(this)(f)
 
-  final def update(f: A => A): Axn[Unit] =
-    upd[Any, Unit] { (oa, _) => (f(oa), ()) }
+  final def unsafeInvisibleRead: Axn[A] =
+    Rxn.unsafe.invisibleRead(this)
 
-  final def updateWith(f: A => Axn[A]): Axn[Unit] =
-    updWith[Any, Unit] { (oa, _) => f(oa).map(na => (na, ())) }
+  final def unsafeCas(ov: A, nv: A): Axn[Unit] =
+    Rxn.unsafe.cas(this, ov, nv)
 
-  /** Returns `false` iff the update failed */
-  final def tryUpdate(f: A => A): Axn[Boolean] =
-    update(f).as(true) + Rxn.ret(false)
-
-  /** Returns previous value */
-  final def getAndUpdate(f: A => A): Axn[A] =
-    upd[Any, A] { (oa, _) => (f(oa), oa) }
-
-  final def getAndUpdateWith(f: A => Axn[A]): Axn[A] =
-    updWith[Any, A] { (oa, _) => f(oa).map(na => (na, oa)) }
-
-  /** Returns new value */
-  final def updateAndGet(f: A => A): Axn[A] = {
-    upd[Any, A] { (oa, _) =>
-      val na = f(oa)
-      (na, na)
-    }
-  }
-
-  // TODO: updateAndGetWith OR updateWithAndGet ?
-
-  final def modify[B](f: A => (A, B)): Axn[B] =
-    upd[Any, B] { (a, _) => f(a) }
-
-  final def modifyWith[B](f: A => Axn[(A, B)]): Axn[B] =
-    updWith[Any, B] { (oa, _) => f(oa) }
-
-  final def tryModify[B](f: A => (A, B)): Axn[Option[B]] =
-    modify(f).?
+  private[choam] final def loc: MemoryLocation[A] =
+    this
 
   final def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] = new CatsRef[F, A] {
 
@@ -127,23 +102,6 @@ trait Ref[A] { self: MemoryLocation[A] =>
     final override def modifyState[B](state: State[A, B]): F[B] =
       self.modify(a => state.runF.value(a).value).run[F]
   }
-
-  // TODO: needs better name (it's like `modify`)
-  final def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
-    Rxn.ref.upd(this)(f)
-
-  // TODO: needs better name (it's like `modifyWith`)
-  final def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
-    Rxn.ref.updWith(this)(f)
-
-  final def unsafeInvisibleRead: Axn[A] =
-    Rxn.unsafe.invisibleRead(this)
-
-  final def unsafeCas(ov: A, nv: A): Axn[Unit] =
-    Rxn.unsafe.cas(this, ov, nv)
-
-  private[choam] final def loc: MemoryLocation[A] =
-    this
 
   /** For testing */
   private[choam] final def debugRead(): A = {

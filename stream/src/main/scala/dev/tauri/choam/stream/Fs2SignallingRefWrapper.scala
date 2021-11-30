@@ -23,50 +23,11 @@ import cats.data.State
 import cats.syntax.traverse._
 
 import fs2.Stream
-import fs2.concurrent.SignallingRef
 
 import data.Map
 import async.{ AsyncReactive, Promise }
 
 import Fs2SignallingRefWrapper._
-
-// TODO: this needs cleanup
-abstract class RxnSignallingRef[F[_], A]
-  extends SignallingRef[F, A] {
-
-  def rxn: RxnApi[A]
-}
-
-// TODO: this needs cleanup
-trait RxnApi[A] {
-  def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C]
-  // TODO: stuff derived from upd...
-}
-
-private[stream] object Fs2SignallingRefWrapper {
-
-  def apply[F[_] : AsyncReactive, A](initial: A): Axn[Fs2SignallingRefWrapper[F, A]] = {
-    (Ref[A](initial) * Map.simple[Unique.Token, Ref[Listener[F, A]]]).map {
-      case (underlying, listeners) =>
-        new Fs2SignallingRefWrapper[F, A](underlying, listeners)
-    }
-  }
-
-  /** Internal state of the `Ref` of each listener */
-  sealed abstract class Listener[F[_], A]
-
-  /** The listener is waiting for an item with this `Promise` */
-  final case class Waiting[F[_], A](next: Promise[F, A])
-    extends Listener[F, A]
-
-  /** An item is ready to be taken by the listener */
-  final case class Full[F[_], A](value: A)
-    extends Listener[F, A]
-
-  /** An item was taken by the listener, but it's not (yet) waiting for the next */
-  final case class Empty[F[_], A]()
-    extends Listener[F, A]
-}
 
 // TODO: also consider fs2.concurrent.Channel
 private[stream] final class Fs2SignallingRefWrapper[F[_], A](
@@ -76,12 +37,23 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
 
   // Rxn API:
 
-  def rxn: RxnApi[A] = new RxnApi[A] {
+  def refLike: RefLike[A] =
+    _refLike
+
+  private[this] val _refLike: RefLike[A] = new RefLike[A] {
 
     final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] = {
       underlying.updWith[B, C] { (oldVal, b) =>
-        val (newVal, c) = f(oldVal, b)
-        notifyListeners(newVal).as((newVal, c))
+        val ac = f(oldVal, b)
+        notifyListeners(ac._1).as(ac)
+      }
+    }
+
+    final override def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] = {
+      underlying.updWith[B, C] { (oldVal, b) =>
+        f(oldVal, b).flatMapF { ac =>
+          notifyListeners(ac._1).as(ac)
+        }
       }
     }
 
@@ -144,7 +116,7 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
     underlying.unsafeInvisibleRead.run[F]
 
   final override def set(a: A): F[Unit] =
-    this.rxn.upd[Any, Unit] { (_, _) => (a, ()) }.run[F]
+    this.refLike.getAndSet.void[F](a)
 
   override def access: F[(A, A => F[Boolean])] =
     sys.error("TODO")
@@ -166,4 +138,29 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
 
   override def modifyState[B](state: State[A, B]): F[B] =
     sys.error("TODO")
+}
+
+private[stream] object Fs2SignallingRefWrapper {
+
+  def apply[F[_] : AsyncReactive, A](initial: A): Axn[Fs2SignallingRefWrapper[F, A]] = {
+    (Ref[A](initial) * Map.simple[Unique.Token, Ref[Listener[F, A]]]).map {
+      case (underlying, listeners) =>
+        new Fs2SignallingRefWrapper[F, A](underlying, listeners)
+    }
+  }
+
+  /** Internal state of the `Ref` of each listener */
+  sealed abstract class Listener[F[_], A]
+
+  /** The listener is waiting for an item with this `Promise` */
+  final case class Waiting[F[_], A](next: Promise[F, A])
+    extends Listener[F, A]
+
+  /** An item is ready to be taken by the listener */
+  final case class Full[F[_], A](value: A)
+    extends Listener[F, A]
+
+  /** An item was taken by the listener, but it's not (yet) waiting for the next */
+  final case class Empty[F[_], A]()
+    extends Listener[F, A]
 }
