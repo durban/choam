@@ -151,7 +151,7 @@ sealed trait StreamSpec[F[_]]
     def checkListeners(ref: RxnSignallingRef[F, Int], min: Int, max: Int): F[Unit] = {
       F.defer {
         val listeners = ref.asInstanceOf[Fs2SignallingRefWrapper[F, Int]].listeners.values.run[F]
-        listeners.flatMap(n => assertF(n.size <= max) *> assertF(n.size >= min))
+        listeners.flatMap(n => assertF(clue(n.size) <= clue(max)) *> assertF(clue(n.size) >= clue(min)))
       }
     }
     for {
