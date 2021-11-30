@@ -21,6 +21,7 @@ import cats.{ Monad, ~> }
 import cats.effect.kernel.Sync
 
 trait Reactive[F[_]] { self =>
+  // TODO: rename `run` to `apply`, and make `def run[A](a: Axn[A]): F[A]`
   def run[A, B](r: Rxn[A, B], a: A): F[B]
   def kcasImpl: kcas.KCAS
   def monad: Monad[F]

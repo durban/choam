@@ -125,4 +125,56 @@ sealed trait StreamSpec[F[_]]
       _ <- assertF(clue(vec.length) <= (N * 3))
     } yield ()
   }
+
+  test("RxnSignallingRef") {
+    val N = 1000
+    def writer(ref: RxnSignallingRef[F, Int], next: Int): F[Unit] = {
+      if (next > N) {
+        F.unit
+      } else {
+        (ref.set(next) *> F.cede) >> writer(ref, next + 1)
+      }
+    }
+    def checkList(l: List[Int], max: Int): F[Unit] = {
+      def go(l: List[Int], prev: Int): F[Unit] = l match {
+        case Nil =>
+          F.unit
+        case h :: t =>
+          // list should be increasing:
+          (assertF(clue(prev) < clue(h)) *> assertF(h <= max)) >> (
+            go(t, prev = h)
+          )
+      }
+      // we assume that at least a quarter of the updates are not lost:
+      assertF(clue(l.length) >= (max / 4)) *> go(l, -1)
+    }
+    def checkListeners(ref: RxnSignallingRef[F, Int], min: Int, max: Int): F[Unit] = {
+      F.defer {
+        val listeners = ref.asInstanceOf[Fs2SignallingRefWrapper[F, Int]].listeners.values.run[F]
+        listeners.flatMap(n => assertF(n.size <= max) *> assertF(n.size >= min))
+      }
+    }
+    for {
+      ref <- signallingRef[F, Int](initial = 0).run[F]
+      listener = ref
+        .discrete
+        .takeThrough(_ < N)
+        .compile
+        .toList
+      f1 <- listener.start
+      f2 <- listener.start
+      f3 <- (ref.discrete.take(10).evalTap { _ =>
+        // we check the number of listeners during and after the stream
+        checkListeners(ref, min = 3, max = 3)
+      } ++ Stream.exec(checkListeners(ref, min = 2, max = 2))).compile.toList.start
+      fw <- writer(ref, 1).start
+      _ <- fw.joinWithNever
+      _ <- f3.joinWithNever // raises error is not cleaned up properly
+      l1 <- f1.joinWithNever
+      _ <- checkList(l1, max = N)
+      l2 <- f2.joinWithNever
+      _ <- checkList(l2, max = N)
+      _ <- checkListeners(ref, min = 0, max = 0)
+    } yield ()
+  }
 }

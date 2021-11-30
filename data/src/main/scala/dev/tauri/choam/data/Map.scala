@@ -31,6 +31,7 @@ trait Map[K, V] {
   def del: Rxn[K, Boolean]
   def remove: Rxn[(K, V), Boolean]
   def clear: Axn[Unit]
+  def values: Axn[Vector[V]]
 }
 
 object Map {
@@ -113,6 +114,18 @@ object Map {
 
       override val clear: Axn[Unit] =
         repr.update(_ => emptyPhm[K, V])
+
+      final override def values: Axn[Vector[V]] = {
+        repr.get.map { phm =>
+          val b = Vector.newBuilder[V]
+          b.sizeHint(phm.size())
+          val it = phm.valIterator()
+          while (it.hasNext()) {
+            b += it.next()
+          }
+          b.result()
+        }
+      }
     }
   }
 }

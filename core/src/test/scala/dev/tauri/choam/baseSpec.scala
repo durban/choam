@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 
+import java.util.concurrent.TimeoutException
 import java.time.{ DateTimeException, OffsetDateTime }
 
 import scala.concurrent.{ Future, ExecutionContext }
@@ -64,7 +65,7 @@ trait BaseSpecF[F[_]]
   /** Not implicit, so that `rF` is used for sure */
   def F: Sync[F]
 
-  def assertF(cond: Boolean, clue: String = "assertion failed")(implicit loc: Location): F[Unit] = {
+  def assertF(cond: => Boolean, clue: String = "assertion failed")(implicit loc: Location): F[Unit] = {
     F.delay { this.assert(cond, clue) }
   }
 
@@ -111,6 +112,47 @@ abstract class BaseSpecIO extends CatsEffectSuite with BaseSpecAsyncF[IO] { this
     implicit loc: Location, ev: B <:< A
   ): IO[Unit] = {
     assertIO(obtained, expected, clue)
+  }
+
+  override def munitValueTransforms: List[ValueTransform] = {
+    new ValueTransform(
+      "IO",
+      {
+        case task: IO[a] =>
+          // If we're close to `munitTimeout`, we'll
+          // be killed soon anyway; so we're printing
+          // a fiber dump, which may help diagnosing a
+          // deadlock; after that, we're cancelling the
+          // task:
+          val dumpTimeout = this.munitTimeout match {
+            case fd: FiniteDuration =>
+              fd - 1.second // 1 second before the deadline
+            case _: Duration.Infinite =>
+              1.hour // whatever
+          }
+          task.timeoutTo(
+            dumpTimeout,
+            dumpFibers *> IO.raiseError(new TimeoutException(dumpTimeout.toString))
+          ).unsafeToFuture()
+      }
+    ) +: super.munitValueTransforms
+  }
+
+  private[this] def dumpFibers: IO[Unit] = {
+    import scala.language.reflectiveCalls
+    type FiberMonitor = {
+      def liveFiberSnapshot(print: String => Unit): Unit
+    }
+    type FmHolder = {
+      val fiberMonitor: FiberMonitor
+    }
+    IO {
+      this
+        .munitIoRuntime
+        .asInstanceOf[FmHolder]
+        .fiberMonitor
+        .liveFiberSnapshot(System.err.print(_))
+    }
   }
 }
 

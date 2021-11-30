@@ -25,6 +25,9 @@ import async.{ AsyncQueue, AsyncReactive }
 
 package object stream {
 
+  def signallingRef[F[_] : AsyncReactive, A](initial: A): Axn[RxnSignallingRef[F, A]] =
+    Fs2SignallingRefWrapper[F, A](initial)
+
   def fromQueueUnterminated[F[_], A](q: AsyncQueue[F, A], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueUnterminated(new Fs2QueueWrapper(q), limit = limit)(F.monad)
 
