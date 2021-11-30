@@ -165,8 +165,8 @@ sealed trait StreamSpec[F[_]]
       f2 <- listener.start
       f3 <- (ref.discrete.take(10).evalTap { _ =>
         // we check the number of listeners during and after the stream
-        checkListeners(ref, min = 3, max = 3)
-      } ++ Stream.exec(checkListeners(ref, min = 2, max = 2))).compile.toList.start
+        checkListeners(ref, min = 1, max = 3)
+      } ++ Stream.exec(checkListeners(ref, min = 0, max = 2))).compile.toList.start
       fw <- writer(ref, 1).start
       _ <- fw.joinWithNever
       _ <- f3.joinWithNever // raises error is not cleaned up properly
