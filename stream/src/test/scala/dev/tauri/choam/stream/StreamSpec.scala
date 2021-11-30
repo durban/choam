@@ -127,7 +127,7 @@ sealed trait StreamSpec[F[_]]
   }
 
   test("RxnSignallingRef") {
-    val N = 1000
+    val N = 500
     def writer(ref: RxnSignallingRef[F, Int], next: Int): F[Unit] = {
       if (next > N) {
         F.unit
@@ -146,7 +146,7 @@ sealed trait StreamSpec[F[_]]
           )
       }
       // we assume that at least *some* updates are not lost:
-      assertF(clue(l.length).toDouble >= (max.toDouble / 40.0)) *> go(l, -1)
+      assertF(clue(l.length).toDouble >= (max.toDouble / 50.0)) *> go(l, -1)
     }
     def checkListeners(ref: RxnSignallingRef[F, Int], min: Int, max: Int): F[Unit] = {
       F.defer {
