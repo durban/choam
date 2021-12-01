@@ -740,6 +740,8 @@ object Rxn extends RxnInstances0 {
       (curr.tag : @switch) match {
         case 0 => // Commit
           if (kcas.tryPerform(desc, ctx)) {
+            // save retry statistics:
+            ctx.addRetries(retries.toLong)
             // ok, commit is done, but we still need to perform post-commit actions
             val res = a
             desc = kcas.start(ctx)

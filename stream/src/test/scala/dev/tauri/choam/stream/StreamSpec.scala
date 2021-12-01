@@ -126,6 +126,7 @@ sealed trait StreamSpec[F[_]]
     } yield ()
   }
 
+  // TODO: this needs TestContext, because it's unstable (in CI)
   test("RxnSignallingRef") {
     val N = 500
     def writer(ref: RxnSignallingRef[F, Int], next: Int): F[Unit] = {

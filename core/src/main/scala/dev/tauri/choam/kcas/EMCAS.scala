@@ -49,7 +49,7 @@ private[choam] object EMCAS extends KCAS { self =>
   private[choam] final val limitForFinalizedList =
     1024
 
-  private[kcas] val global =
+  private[choam] val global =
     new GlobalContext(self)
 
   // Listing 2 in the paper:

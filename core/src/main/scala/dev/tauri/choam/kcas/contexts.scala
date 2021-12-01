@@ -27,24 +27,41 @@ final class GlobalContext(impl: KCAS)
     new ThreadContext(this, Thread.currentThread().getId(), impl)
 
   /** Only for testing/benchmarking */
-  private[choam] def countFinalizedDescriptors(): (Long, Long) = {
-    val tctxs = this.snapshotReservations
+  private[choam] final def countFinalizedDescriptors(): (Long, Long) = {
     var countDescrs = 0L
     var countMaxDescrs = 0L
-    tctxs.valuesIterator.foreach { weakref =>
-      weakref.get() match {
-        case null =>
-          ()
-        case tctx =>
-          // Calling `getFinalizedDescriptorsCount` is not
-          // thread-safe here, but we only need these statistics
-          // for benchmarking, so we're just hoping for the best...
-          countDescrs += tctx.getFinalizedDescriptorsCount().toLong
-          countMaxDescrs += tctx.getMaxFinalizedDescriptorsCount().toLong
-      }
+    threadContexts().foreach { tctx =>
+      // Calling `getFinalizedDescriptorsCount` is not
+      // thread-safe here, but we only need these statistics
+      // for benchmarking, so we're just hoping for the best...
+      countDescrs += tctx.getFinalizedDescriptorsCount().toLong
+      countMaxDescrs += tctx.getMaxFinalizedDescriptorsCount().toLong
     }
 
     (countDescrs, countMaxDescrs)
+  }
+
+  private[choam] final def countRetries(): Long = {
+    var retries = 0L
+    threadContexts().foreach { tctx =>
+      // Calling `getRetries` is not
+      // thread-safe here, but we only need these statistics
+      // for benchmarking, so we're just hoping for the best...
+      retries += tctx.getRetries()
+    }
+    retries
+  }
+
+  private[this] final def threadContexts(): Iterator[ThreadContext] = {
+    val iterWeak = this.snapshotReservations.valuesIterator
+    iterWeak.flatMap { weakref =>
+      weakref.get() match {
+        case null =>
+          Iterator.empty
+        case tctx =>
+          Iterator.single(tctx)
+      }
+    }
   }
 }
 
@@ -62,6 +79,9 @@ final class ThreadContext(
 
   private[this] var maxFinalizedDescriptorsCount: Int =
     0
+
+  private[this] var retries: Long =
+    0L
 
   val random: ThreadLocalRandom =
     ThreadLocalRandom.current()
@@ -95,10 +115,10 @@ final class ThreadContext(
     }
   }
 
-  private[kcas] final def getFinalizedDescriptorsCount(): Int =
+  private[choam] final def getFinalizedDescriptorsCount(): Int =
     this.finalizedDescriptorsCount
 
-  private[kcas] final def getMaxFinalizedDescriptorsCount(): Int =
+  private[choam] final def getMaxFinalizedDescriptorsCount(): Int =
     this.maxFinalizedDescriptorsCount
 
   private final def runCleanup(giveUpAt: Long = 256L): Unit = {
@@ -164,5 +184,13 @@ final class ThreadContext(
       }
     }
     go(this.finalizedDescriptors, prev = null)
+  }
+
+  private[choam] def addRetries(retries: Long): Unit = {
+    this.retries += retries
+  }
+
+  private[choam] def getRetries(): Long = {
+    this.retries
   }
 }
