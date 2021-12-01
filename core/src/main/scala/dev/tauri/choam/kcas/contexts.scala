@@ -41,15 +41,19 @@ final class GlobalContext(impl: KCAS)
     (countDescrs, countMaxDescrs)
   }
 
-  private[choam] final def countRetries(): Long = {
+  /** Only for testing/benchmarking */
+  private[choam] final def countCommitsAndRetries(): (Long, Long) = {
+    var commits = 0L
     var retries = 0L
     threadContexts().foreach { tctx =>
-      // Calling `getRetries` is not
+      // Calling `getCommitsAndRetries` is not
       // thread-safe here, but we only need these statistics
       // for benchmarking, so we're just hoping for the best...
-      retries += tctx.getRetries()
+      val (c, r) = tctx.getCommitsAndRetries()
+      commits += c.toLong
+      retries += r.toLong
     }
-    retries
+    (commits, retries)
   }
 
   private[this] final def threadContexts(): Iterator[ThreadContext] = {
@@ -80,8 +84,11 @@ final class ThreadContext(
   private[this] var maxFinalizedDescriptorsCount: Int =
     0
 
-  private[this] var retries: Long =
-    0L
+  private[this] var commits: Int =
+    0
+
+  private[this] var retries: Int =
+    0
 
   val random: ThreadLocalRandom =
     ThreadLocalRandom.current()
@@ -186,11 +193,12 @@ final class ThreadContext(
     go(this.finalizedDescriptors, prev = null)
   }
 
-  private[choam] def addRetries(retries: Long): Unit = {
+  private[choam] def recordCommit(retries: Int): Unit = {
+    this.commits += 1
     this.retries += retries
   }
 
-  private[choam] def getRetries(): Long = {
-    this.retries
+  private[choam] def getCommitsAndRetries(): (Int, Int) = {
+    (this.commits, this.retries)
   }
 }

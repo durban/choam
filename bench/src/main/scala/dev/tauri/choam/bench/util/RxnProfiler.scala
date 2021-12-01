@@ -35,9 +35,13 @@ import kcas.EMCAS
  * Configuration: currently none.
  *
  * Measurements:
- * - rxn.retries: number of retries (not including alternatives)
+ * - rxn.retriesPerCommit:
+ *   average number of retries (not including alternatives) per commit
  */
 final class RxnProfiler extends InternalProfiler {
+
+  private[this] var commitsBefore: Long =
+    0L
 
   private[this] var retriesBefore: Long =
     0L
@@ -49,7 +53,9 @@ final class RxnProfiler extends InternalProfiler {
     bp: BenchmarkParams,
     ip: IterationParams
   ): Unit = {
-    this.retriesBefore = EMCAS.global.countRetries()
+    val cr = EMCAS.global.countCommitsAndRetries()
+    this.commitsBefore = cr._1
+    this.retriesBefore = cr._2
   }
 
   final override def afterIteration(
@@ -57,20 +63,25 @@ final class RxnProfiler extends InternalProfiler {
     ip: IterationParams,
     ir: IterationResult
   ): Collection[_ <: Result[_]] = {
-    val retriesAfter = EMCAS.global.countRetries()
-    val retriesResult = retriesAfter - this.retriesBefore
+    val cr = EMCAS.global.countCommitsAndRetries()
+    val commitsAfter = cr._1
+    val retriesAfter = cr._2
+    val allCommits = commitsAfter - this.commitsBefore
+    val allRetries = retriesAfter - this.retriesBefore
+    val retriesPerCommit = allRetries.toDouble / allCommits.toDouble
     List.of[ScalarResult](
       new ScalarResult(
-        RxnProfiler.Retries,
-        retriesResult.toDouble,
-        RxnProfiler.CountUnit,
-        AggregationPolicy.SUM,
+        RxnProfiler.RetriesPerCommit,
+        retriesPerCommit,
+        RxnProfiler.UnitRetriesPerCommit,
+        AggregationPolicy.AVG,
       ),
     )
   }
 }
 
 object RxnProfiler {
-  final val Retries = "rxn.retries"
-  final val CountUnit = "counts"
+  final val RetriesPerCommit = "rxn.retriesPerCommit"
+  final val UnitRetriesPerCommit = "retries/commit"
+  final val UnitCount = "counts"
 }
