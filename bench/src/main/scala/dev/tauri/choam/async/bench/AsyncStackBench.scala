@@ -23,6 +23,7 @@ import org.openjdk.jmh.annotations._
 
 import cats.syntax.all._
 import cats.effect.{ IO, SyncIO }
+import cats.effect.unsafe.IORuntime
 
 import _root_.dev.tauri.choam.bench.BenchUtils
 
@@ -35,6 +36,69 @@ class AsyncStackBench extends BenchUtils {
   final override val waitTime = 0L
   final val size = 2048
   final val stackSize = 4
+  final val multiplier = 16
+
+  // simple push/pop:
+
+  @Benchmark
+  @Group("stack1pp")
+  def stack1push(s: StackSt): Unit = {
+    val tsk = push(s.stack1)
+    run(s.runtime, tsk, size = size)
+  }
+
+  @Benchmark
+  @Group("stack1pp")
+  def stack1pop(s: StackSt): Unit = {
+    val tsk = pop(s.stack1)
+    run(s.runtime, tsk, size = size)
+  }
+
+  @Benchmark
+  @Group("stack2pp")
+  def stack2push(s: StackSt): Unit = {
+    val tsk = push(s.stack2)
+    run(s.runtime, tsk, size = size)
+  }
+
+  @Benchmark
+  @Group("stack2pp")
+  def stack2pop(s: StackSt): Unit = {
+    val tsk = pop(s.stack2)
+    run(s.runtime, tsk, size = size)
+  }
+
+  @Benchmark
+  @Group("stack3pp")
+  def stack3push(s: StackSt): Unit = {
+    val tsk = push(s.stack3)
+    run(s.runtime, tsk, size = size)
+  }
+
+  @Benchmark
+  @Group("stack3pp")
+  def stack3pop(s: StackSt): Unit = {
+    val tsk = pop(s.stack3)
+    run(s.runtime, tsk, size = size)
+  }
+
+  private[this] def push(s: AsyncStack[IO, String]): IO[Unit] = {
+    def go(left: Int): IO[Unit] = {
+      if (left > 0) s.push[IO]("foo") >> go(left - 1)
+      else IO.unit
+    }
+    go(stackSize * multiplier)
+  }
+
+  private[this] def pop(s: AsyncStack[IO, String]): IO[Unit] = {
+    def go(left: Int): IO[Unit] = {
+      if (left > 0) s.pop >> go(left - 1)
+      else IO.unit
+    }
+    go(stackSize * multiplier)
+  }
+
+  // async features:
 
   @Benchmark
   def asyncStack1(s: StackSt): Unit = {
@@ -67,9 +131,9 @@ class AsyncStackBench extends BenchUtils {
 object AsyncStackBench {
   @State(Scope.Benchmark)
   class StackSt {
-    val runtime = cats.effect.unsafe.IORuntime.global
-    val stack1 = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
-    val stack2 = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
-    val stack3 = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
+    val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
+    val stack1: AsyncStack[IO, String] = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
+    val stack2: AsyncStack[IO, String] = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
+    val stack3: AsyncStack[IO, String] = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
   }
 }
