@@ -17,13 +17,14 @@
 
 package dev.tauri.choam
 
-import java.util.Arrays
+import java.util.{ Arrays, UUID }
 
 import cats.{ Monad, Functor, Applicative, MonoidK, Monoid, Semigroup, Defer, Show, Align }
 import cats.arrow.ArrowChoice
 import cats.data.Ior
 import cats.mtl.Local
 import cats.effect.kernel.Unique
+import cats.effect.std.UUIDGen
 
 import kcas.{ KCAS, ThreadContext, HalfEMCASDescriptor }
 
@@ -1055,7 +1056,7 @@ private[choam] sealed abstract class RxnInstances7 extends RxnInstances8 { self:
     Show.fromToString
 }
 
-private[choam] sealed abstract class RxnInstances8 extends RxnSyntax0 { self: Rxn.type =>
+private[choam] sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.type =>
   implicit final def alignInstance[X]: Align[Rxn[X, *]] = new Align[Rxn[X, *]] {
     final override def functor: Functor[Rxn[X, *]] =
       self.monadInstance[X]
@@ -1067,6 +1068,13 @@ private[choam] sealed abstract class RxnInstances8 extends RxnSyntax0 { self: Rx
       val right = fb.map(Ior.right)
       leftOrBoth + right
     }
+  }
+}
+
+private[choam] sealed abstract class RxnInstances9 extends RxnSyntax0 { self: Rxn.type =>
+  implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {
+    final override def randomUUID: Rxn[X, UUID] =
+      Rxn.unsafe.delay { _ => UUID.randomUUID() }
   }
 }
 

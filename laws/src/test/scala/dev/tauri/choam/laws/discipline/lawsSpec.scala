@@ -20,7 +20,7 @@ package laws
 package discipline
 
 import cats.implicits._
-import cats.kernel.laws.discipline.{ SemigroupTests, MonoidTests }
+import cats.kernel.laws.discipline.{ SemigroupTests, MonoidTests, OrderTests, HashTests }
 import cats.laws.discipline.DeferTests
 import cats.effect.kernel.testkit.TestContext
 import cats.effect.laws.UniqueTests
@@ -61,4 +61,7 @@ trait LawsSpec
   checkAll("Monoid[Rxn]", MonoidTests[Rxn[String, Int]](Rxn.monoidInstance).monoid)
   checkAll("Defer[Rxn]", DeferTests[Rxn[String, *]].defer[Int])
   checkAll("Align[Rxn]", AlignTests[Rxn[String, *]].align[Int, Float, Double, Long])
+
+  checkAll("Order[Ref[Int]]", OrderTests[Ref[Int]].order)
+  checkAll("Hash[Ref[Int]]", HashTests[Ref[Int]].hash)
 }

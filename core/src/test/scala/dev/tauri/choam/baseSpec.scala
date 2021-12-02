@@ -75,6 +75,12 @@ trait BaseSpecF[F[_]]
     F.delay { this.assertEquals[A, B](obtained, expected, clue) }
   }
 
+  def assertNotEqualsF[A, B](obtained: A, expected: B, clue: String = "values are the same")(
+    implicit loc: Location, ev: A =:= B
+  ): F[Unit] = {
+    F.delay { this.assertNotEquals[A, B](obtained, expected, clue) }
+  }
+
   def assertResultF[A, B](obtained: F[A], expected: B, clue: String = "values are not the same")(
     implicit loc: Location, ev: B <:< A
   ): F[Unit]

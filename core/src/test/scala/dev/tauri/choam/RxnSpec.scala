@@ -883,6 +883,15 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("UUIDGen instance") {
+    val inst = cats.effect.std.UUIDGen[Rxn[Any, *]]
+    for {
+      u1 <- inst.randomUUID.run[F]
+      u2 <- inst.randomUUID.run[F]
+      _ <- assertNotEqualsF(u1, u2)
+    } yield ()
+  }
+
   test("Tuple2 syntax") {
     for {
       r1 <- Ref("a").run[F]

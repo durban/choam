@@ -66,6 +66,22 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
 
   def kcasImpl: kcas.KCAS
 
+  implicit def arbRef[A](implicit arbA: Arbitrary[A]): Arbitrary[Ref[A]] = Arbitrary {
+    arbA.arbitrary.flatMap { a =>
+      Gen.choose(0, 1).map {
+        case 0 => Ref.unsafeUnpadded(a)
+        case 1 => Ref.unsafePadded(a)
+        case x => impossible(x.toString)
+      }
+    }
+  }
+
+  implicit def cogenRef[A]: Cogen[Ref[A]] = {
+    Cogen.cogenList[Long].contramap[Ref[A]] { ref =>
+      List(ref.loc.id0, ref.loc.id1, ref.loc.id2, ref.loc.id3)
+    }
+  }
+
   implicit def arbRxn[A, B](
     implicit
     arbA: Arbitrary[A],
