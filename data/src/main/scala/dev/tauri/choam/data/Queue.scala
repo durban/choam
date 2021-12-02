@@ -18,15 +18,30 @@
 package dev.tauri.choam
 package data
 
-abstract class Queue[A] {
+trait QueueSource[+A] {
   def tryDeque: Axn[Option[A]]
+}
+
+trait QueueSink[-A] {
+  def tryEnqueue: Rxn[A, Boolean]
+}
+
+trait UnboundedQueueSink[-A] extends QueueSink[A] {
   def enqueue: Rxn[A, Unit]
+  final override def tryEnqueue: Rxn[A, Boolean] =
+    this.enqueue.as(true)
+}
+
+abstract class Queue[A]
+  extends QueueSource[A]
+  with UnboundedQueueSink[A] {
+
   private[choam] def unsafeToList[F[_]](implicit F: Reactive[F]): F[List[A]]
 }
 
 object Queue {
 
-  abstract class WithRemove[A] extends Queue[A] {
+  private[choam] abstract class WithRemove[A] extends Queue[A] {
     def remove: Rxn[A, Boolean]
   }
 
@@ -38,23 +53,29 @@ object Queue {
     def size: Axn[Int]
   }
 
-  def apply[A]: Axn[Queue[A]] =
+  def unbounded[A]: Axn[Queue[A]] =
     MichaelScottQueue[A]
 
-  def unpadded[A]: Axn[Queue[A]] =
+  def dropping[A](@unused capacity: Int): Axn[Queue[A]] =
+    sys.error("TODO")
+
+  def circularBuffer[A](@unused capacity: Int): Axn[Queue[A]] =
+    sys.error("TODO")
+
+  private[choam] def unpadded[A]: Axn[Queue[A]] =
     MichaelScottQueueUnpadded[A]
 
-  def fromList[A](as: List[A]): Axn[Queue[A]] =
+  private[choam] def fromList[A](as: List[A]): Axn[Queue[A]] =
     MichaelScottQueue.fromList[A](as)
 
-  def withRemove[A]: Axn[Queue.WithRemove[A]] =
+  private[choam] def withRemove[A]: Axn[Queue.WithRemove[A]] =
     RemoveQueue[A]
 
-  def withRemoveFromList[A](as: List[A]): Axn[Queue.WithRemove[A]] =
+  private[choam] def withRemoveFromList[A](as: List[A]): Axn[Queue.WithRemove[A]] =
     RemoveQueue.fromList(as)
 
   private[choam] def withSize[A]: Axn[Queue.WithSize[A]] = {
-    Queue[A].flatMapF { q =>
+    Queue.unbounded[A].flatMapF { q =>
       Ref[Int](0).map { s =>
         new WithSize[A] {
 

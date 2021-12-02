@@ -20,15 +20,12 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import data.Queue
+abstract class BoundedQueue[F[_], A]
+  extends AsyncQueueSource[F, A]
+  with BoundedQueueSink[F, A] {
 
-abstract class BoundedQueue[F[_], A] {
+  def bound: Int
 
-  def tryEnqueue: A =#> Boolean
-  def enqueue(a: A)(implicit F: AsyncReactive[F]): F[Unit]
-  def tryDeque: Axn[Option[A]]
-  def deque(implicit F: AsyncReactive[F]): F[A]
-  def maxSize: Int
   def toCats(implicit F: AsyncReactive[F]): CatsQueue[F, A]
 
   /** Private because it is not composable with the other operations */
@@ -37,16 +34,16 @@ abstract class BoundedQueue[F[_], A] {
 
 object BoundedQueue {
 
-  def apply[F[_], A](maxSize: Int): Axn[BoundedQueue[F, A]] = {
-    require(maxSize > 0)
-    val _maxSize = maxSize
-    (Queue[A] * Queue.withRemove[Promise[F, A]] * Queue.withRemove[(A, Promise[F, Unit])]).flatMap {
+  def apply[F[_], A](bound: Int): Axn[BoundedQueue[F, A]] = {
+    require(bound > 0)
+    val maxSize = bound
+    (data.Queue.unbounded[A] * data.Queue.withRemove[Promise[F, A]] * data.Queue.withRemove[(A, Promise[F, Unit])]).flatMap {
       case ((q, getters), setters) =>
         Ref[Int](0).map { s =>
           new BoundedQueue[F, A] { self =>
 
-            final override def maxSize: Int =
-              _maxSize
+            final override def bound: Int =
+              maxSize
 
             final override def tryEnqueue: A =#> Boolean = {
               s.updWith[A, Boolean] { (size, a) =>
@@ -95,8 +92,11 @@ object BoundedQueue {
               case Right(_) => F.monad.unit
             }
 
-            final override def deque(implicit F: AsyncReactive[F]): F[A] =
-              F.monadCancel.bracket(acquire = this.dequeAcq)(use = this.dequeUse)(release = this.dequeRel)
+            final override def deque[AA >: A](implicit F: AsyncReactive[F]): F[AA] = {
+              F.monad.widen(
+                F.monadCancel.bracket(acquire = this.dequeAcq)(use = this.dequeUse)(release = this.dequeRel)
+              )
+            }
 
             private[this] def dequeAcq(implicit F: AsyncReactive[F]): F[Either[Promise[F, A], A]] = {
               (Promise[F, A] * q.tryDeque).flatMapF { case (p, dq) =>

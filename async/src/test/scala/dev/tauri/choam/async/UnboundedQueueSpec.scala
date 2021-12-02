@@ -20,40 +20,40 @@ package async
 
 import cats.effect.IO
 
-final class AsyncQueueSpec_Simple_EMCAS_IO
+final class UnboundedQueueSpec_Simple_EMCAS_IO
   extends BaseSpecTickedIO
   with SpecEMCAS
-  with AsyncQueueImplSimple[IO]
+  with UnboundedQueueImplSimple[IO]
 
-final class AsyncQueueSpec_Simple_EMCAS_ZIO
+final class UnboundedQueueSpec_Simple_EMCAS_ZIO
   extends BaseSpecTickedZIO
   with SpecEMCAS
-  with AsyncQueueImplSimple[zio.Task]
+  with UnboundedQueueImplSimple[zio.Task]
 
-final class AsyncQueueSpec_WithSize_EMCAS_IO
+final class UnboundedQueueSpec_WithSize_EMCAS_IO
   extends BaseSpecTickedIO
   with SpecEMCAS
-  with AsyncQueueImplWithSize[IO]
+  with UnboundedQueueImplWithSize[IO]
 
-final class AsyncQueueSpec_WithSize_EMCAS_ZIO
+final class UnboundedQueueSpec_WithSize_EMCAS_ZIO
   extends BaseSpecTickedZIO
   with SpecEMCAS
-  with AsyncQueueImplWithSize[zio.Task]
+  with UnboundedQueueImplWithSize[zio.Task]
 
-trait AsyncQueueImplSimple[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
-  final override type Q[G[_], A] = AsyncQueue[G, A]
+trait UnboundedQueueImplSimple[F[_]] extends UnboundedQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+  final override type Q[G[_], A] = UnboundedQueue[G, A]
   protected final override def newQueue[G[_] : Reactive, A] =
-    AsyncQueue[G, A].run[G]
+    UnboundedQueue[G, A].run[G]
 }
 
-trait AsyncQueueImplWithSize[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
-  final override type Q[G[_], A] = AsyncQueue.WithSize[G, A]
+  final override type Q[G[_], A] = UnboundedQueue.WithSize[G, A]
 
   protected final override def newQueue[G[_] : Reactive, A] =
-    AsyncQueue.withSize[G, A].run[G]
+    UnboundedQueue.withSize[G, A].run[G]
 
-  test("AsyncQueue#toCats") {
+  test("UnboundedQueue.WithSize#toCats") {
     for {
       q <- newQueue[F, String]
       cq <- q.toCats
@@ -95,15 +95,15 @@ trait AsyncQueueImplWithSize[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpe
   }
 }
 
-trait AsyncQueueSpec[F[_]]
+trait UnboundedQueueSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
-  type Q[G[_], A] <: AsyncQueue[G, A]
+  type Q[G[_], A] <: UnboundedQueue[G, A]
 
   protected def newQueue[G[_] : Reactive, A]: G[Q[G, A]]
 
-  test("AsyncQueue non-empty deque") {
+  test("UnboundedQueue non-empty deque") {
     for {
       s <- newQueue[F, String]
       _ <- s.enqueue[F]("a")
@@ -115,7 +115,7 @@ trait AsyncQueueSpec[F[_]]
     } yield ()
   }
 
-  test("AsyncQueue empty deque") {
+  test("UnboundedQueue empty deque") {
     for {
       s <- newQueue[F, String]
       f1 <- s.deque.start

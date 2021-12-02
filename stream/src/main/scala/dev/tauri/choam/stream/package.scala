@@ -21,28 +21,29 @@ import cats.effect.std.{ Queue => CatsQueue }
 
 import fs2.{ Stream, Chunk }
 
-import async.{ AsyncQueue, AsyncReactive }
+import async.{ UnboundedQueue, AsyncReactive }
 
 package object stream {
 
   def signallingRef[F[_] : AsyncReactive, A](initial: A): Axn[RxnSignallingRef[F, A]] =
     RxnSignallingRef[F, A](initial)
 
-  def fromQueueUnterminated[F[_], A](q: AsyncQueue[F, A], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
+  def fromQueueUnterminated[F[_], A](q: UnboundedQueue[F, A], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueUnterminated(new Fs2QueueWrapper(q), limit = limit)(F.monad)
 
-  def fromQueueUnterminatedChunk[F[_], A](q: AsyncQueue[F, Chunk[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
+  def fromQueueUnterminatedChunk[F[_], A](q: UnboundedQueue[F, Chunk[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueUnterminatedChunk(new Fs2QueueWrapper(q), limit = limit)(F.monad)
 
-  def fromQueueNoneTerminated[F[_], A](q: AsyncQueue[F, Option[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
+  def fromQueueNoneTerminated[F[_], A](q: UnboundedQueue[F, Option[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueNoneTerminated(new Fs2QueueWrapper(q), limit = limit)(F.monad)
 
-  def fromQueueNoneTerminatedChunk[F[_], A](q: AsyncQueue[F, Option[Chunk[A]]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
+  def fromQueueNoneTerminatedChunk[F[_], A](q: UnboundedQueue[F, Option[Chunk[A]]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueNoneTerminatedChunk(new Fs2QueueWrapper(q), limit = limit)
 
+  // TODO: this could work with BoundedQueue too
   @nowarn
   private final class Fs2QueueWrapper[F[_], A](
-    self: AsyncQueue[F, A]
+    self: UnboundedQueue[F, A]
   )(implicit F: AsyncReactive[F]) extends CatsQueue[F, A] {
     final override def take: F[A] =
       self.deque

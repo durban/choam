@@ -38,7 +38,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue non-empty deque") {
     for {
-      s <- BoundedQueue[F, String](maxSize = 4).run[F]
+      s <- BoundedQueue[F, String](bound = 4).run[F]
       _ <- s.enqueue("a")
       _ <- s.enqueue("b")
       _ <- s.enqueue("c")
@@ -50,7 +50,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue empty deque") {
     for {
-      s <- BoundedQueue[F, String](maxSize = 4).run[F]
+      s <- BoundedQueue[F, String](bound = 4).run[F]
       f1 <- s.deque.start
       _ <- this.tickAll
       f2 <- s.deque.start
@@ -68,7 +68,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue full enqueue") {
     for {
-      s <- BoundedQueue[F, String](maxSize = 4).run[F]
+      s <- BoundedQueue[F, String](bound = 4).run[F]
       _ <- assertResultF(s.currentSize.run[F], 0)
       _ <- s.enqueue("a")
       _ <- assertResultF(s.currentSize.run[F], 1)
@@ -108,7 +108,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue small bound") {
     for {
-      s <- BoundedQueue[F, String](maxSize = 1).run[F]
+      s <- BoundedQueue[F, String](bound = 1).run[F]
       _ <- s.enqueue("a")
       _ <- assertResultF(s.tryEnqueue[F]("x"), false)
       fib <- s.enqueue("b").start
@@ -123,7 +123,7 @@ trait BoundedQueueSpec[F[_]]
     val n = 9999
     for {
       _ <- F.delay(assertIntIsNotCached(n))
-      q <- BoundedQueue[F, String](maxSize = n).run[F]
+      q <- BoundedQueue[F, String](bound = n).run[F]
       _ <- F.replicateA(n, q.enqueue("foo"))
       _ <- assertResultF(q.currentSize.run[F], n)
       fib <- q.enqueue("bar").start
@@ -141,7 +141,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue canceled getter") {
     for {
-      s <- BoundedQueue[F, String](maxSize = 4).run[F]
+      s <- BoundedQueue[F, String](bound = 4).run[F]
       f1 <- s.deque.start
       _ <- this.tickAll
       f2 <- s.deque.start
@@ -160,7 +160,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue canceled setter") {
     for {
-      s <- BoundedQueue[F, String](maxSize = 1).run[F]
+      s <- BoundedQueue[F, String](bound = 1).run[F]
       _ <- assertResultF(s.currentSize.run[F], 0)
       _ <- s.enqueue("a")
       _ <- assertResultF(s.currentSize.run[F], 1)
@@ -185,7 +185,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue#toCats") {
     for {
-      bq <- BoundedQueue[F, String](maxSize = 2).run[F]
+      bq <- BoundedQueue[F, String](bound = 2).run[F]
       q = bq.toCats
       _ <- assertResultF(q.size, 0)
       _ <- q.offer("a")

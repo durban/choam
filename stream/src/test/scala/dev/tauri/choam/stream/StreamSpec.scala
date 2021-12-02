@@ -24,7 +24,7 @@ import cats.effect.IO
 
 import fs2.{ Stream, Chunk }
 
-import async.{ AsyncQueue, BoundedQueue, Promise, AsyncReactiveSpec }
+import async.{ UnboundedQueue, BoundedQueue, Promise, AsyncReactiveSpec }
 import syntax._
 
 final class StreamSpec_EMCAS_IO
@@ -36,10 +36,10 @@ sealed trait StreamSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: KCASImplSpec =>
 
-  final def newAsyncQueue[A]: F[AsyncQueue[F, A]] =
-    AsyncQueue[F, A].run[F]
+  final def newAsyncQueue[A]: F[UnboundedQueue[F, A]] =
+    UnboundedQueue[F, A].run[F]
 
-  test("AsyncQueue to stream") {
+  test("UnboundedQueue to stream") {
     for {
       q <- newAsyncQueue[String]
       fibVec <- q.stream.take(8).compile.toVector.start
@@ -53,7 +53,7 @@ sealed trait StreamSpec[F[_]]
 
   test("BoundedQueue to stream") {
     for {
-      q <- BoundedQueue[F, Option[String]](maxSize = 10).run[F]
+      q <- BoundedQueue[F, Option[String]](bound = 10).run[F]
       fibVec <- Stream.fromQueueNoneTerminated(q.toCats, limit = 4).compile.toVector.start
       _ <- (1 to 8).toList.traverse { idx => q.enqueue(Some(idx.toString)) }
       _ <- q.enqueue(None)

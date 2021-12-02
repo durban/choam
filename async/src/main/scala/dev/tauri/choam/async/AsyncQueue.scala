@@ -18,68 +18,34 @@
 package dev.tauri.choam
 package async
 
-import cats.effect.kernel.Resource
 import cats.effect.std.{ Queue => CatsQueue }
 
-import data.Queue
+trait AsyncQueueSource[F[_], +A] extends data.QueueSource[A] {
+  def deque[AA >: A](implicit F: AsyncReactive[F]): F[AA]
+}
 
-abstract class AsyncQueue[F[_], A] { self =>
-  def enqueue: A =#> Unit
-  def tryDeque: Axn[Option[A]]
-  def deque(implicit F: AsyncReactive[F]): F[A]
+trait BoundedQueueSink[F[_], -A] extends data.QueueSink[A] {
+  def enqueue(a: A)(implicit F: AsyncReactive[F]): F[Unit]
 }
 
 object AsyncQueue {
 
-  abstract class WithSize[F[_], A] extends AsyncQueue[F, A] {
+  def unbounded[F[_], A]: Axn[UnboundedQueue[F, A]] =
+    UnboundedQueue[F, A]
 
-    def size(implicit F: AsyncReactive[F]): F[Int]
+  def bounded[F[_], A](bound: Int): Axn[BoundedQueue[F, A]] =
+    BoundedQueue[F, A](bound)
 
-    // TODO: could this return simply `CatsQueue[F, A]`?
-    def toCats(implicit F: AsyncReactive[F]): F[CatsQueue[F, A]] = {
-      val cq = new AsyncQueue.CatsQueueAdapter[F, A](this)
-      F.monad.pure(cq)
-    }
+  def dropping[F[_], A](@unused capacity: Int): Axn[OverflowQueue[F, A]] =
+    sys.error("TODO")
 
-    // FIXME:
-    def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]]
-  }
+  def circularBuffer[F[_], A](@unused capacity: Int): Axn[OverflowQueue[F, A]] =
+    sys.error("TODO")
 
-  def apply[F[_], A]: Axn[AsyncQueue[F, A]] = {
-    Queue[A].flatMapF { as =>
-      AsyncFrom[F, A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
-        new AsyncQueue[F, A] {
-          final override def enqueue: A =#> Unit =
-            af.set
-          final override def tryDeque: Axn[Option[A]] =
-            as.tryDeque
-          final override def deque(implicit F: AsyncReactive[F]): F[A] =
-            af.get
-        }
-      }
-    }
-  }
+  def unboundedWithSize[F[_], A]: Axn[UnboundedQueue.WithSize[F, A]] =
+    UnboundedQueue.withSize[F, A]
 
-  def withSize[F[_], A]: Axn[AsyncQueue.WithSize[F, A]] = {
-    Queue.withSize[A].flatMapF { as =>
-      AsyncFrom[F, A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
-        new WithSize[F, A] {
-          final override def enqueue: A =#> Unit =
-            af.set
-          final override def tryDeque: Axn[Option[A]] =
-            as.tryDeque
-          final override def deque(implicit F: AsyncReactive[F]): F[A] =
-            af.get
-          final override def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]] =
-            af.getResource
-          final override def size(implicit F: AsyncReactive[F]): F[Int] =
-            as.size.run[F]
-        }
-      }
-    }
-  }
-
-  private final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: WithSize[F, A])
+  private[choam] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: UnboundedQueue.WithSize[F, A])
     extends CatsQueue[F, A] {
 
     final override def take: F[A] =

@@ -23,42 +23,43 @@ import org.openjdk.jmh.annotations._
 
 import cats.syntax.all._
 import cats.effect.IO
+import cats.effect.std.{ Queue => CatsQueue }
 
 import _root_.dev.tauri.choam.bench.BenchUtils
 
 @Fork(2)
 @Threads(1)
-class AsyncQueueBench extends BenchUtils {
+class UnboundedQueueToCatsBench extends BenchUtils {
 
-  import AsyncQueueBench._
+  import UnboundedQueueToCatsBench._
 
   final override val waitTime = 0L
-  final val size = 2048
-  final val queueSize = 4
+  final val size = 1024
+  final val queueSize = 8
 
   @Benchmark
-  def asyncQueueSimple(s: St): Unit = {
-    val tsk = AsyncQueue[IO, String].run[IO].flatMap(task)
+  def unboundedQueueToCats(s: St): Unit = {
+    val tsk = UnboundedQueue.withSize[IO, String].run[IO].flatMap(_.toCats).flatMap(task)
     run(s.runtime, tsk, size = size)
   }
 
   @Benchmark
-  def asyncQueueWithSize(s: St): Unit = {
-    val tsk = AsyncQueue.withSize[IO, String].run[IO].flatMap(task)
+  def catsQueue(s: St): Unit = {
+    val tsk = CatsQueue.unbounded[IO, String].flatMap(task)
     run(s.runtime, tsk, size = size)
   }
 
-  private[this] def task(q: AsyncQueue[IO, String]): IO[Unit] = {
+  private[this] def task(q: CatsQueue[IO, String]): IO[Unit] = {
     for {
-      fibs <- q.deque.start.replicateA(queueSize)
+      fibs <- q.take.start.replicateA(queueSize)
       _ <- fibs.take(queueSize / 2).traverse(_.cancel)
-      _ <- q.enqueue[IO]("x").replicateA(queueSize)
+      _ <- q.offer("x").replicateA(queueSize)
       _ <- fibs.drop(queueSize / 2).traverse(_.joinWithNever)
     } yield ()
   }
 }
 
-object AsyncQueueBench {
+object UnboundedQueueToCatsBench {
   @State(Scope.Benchmark)
   class St {
     val runtime = cats.effect.unsafe.IORuntime.global
