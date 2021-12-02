@@ -34,6 +34,8 @@ jobs:
             java: adoptium@17
             scala: 2.13.7
         exclude:
+          - os: windows-latest
+            java: openj9-java11@0.29
           - os: macos-latest
     runs-on: ${{ matrix.os }}
     steps:
