@@ -23,49 +23,36 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import cats.effect.{ IO, SyncIO, Fiber }
+import cats.effect.{ IO, SyncIO }
 
 @JCStressTest
 @State
-@Description("AsyncStack1: cancelling pop must not lose items")
+@Description("AsyncStack: racing pushes should work fine")
 @Outcomes(Array(
-  new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "cancelled late"),
-  new Outcome(id = Array("null, a"), expect = ACCEPTABLE, desc = "cancelled"),
-  new Outcome(id = Array("null, b"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled just after completing the Promise"),
-  new Outcome(id = Array("b, a"), expect = ACCEPTABLE_INTERESTING, desc = "popper started really late")
+  new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "push1 was faster"),
+  new Outcome(id = Array("b, a"), expect = ACCEPTABLE, desc = "push2 was faster")
 ))
-class AsyncStack1CancelTest {
+class AsyncStackPushTest {
 
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
   private[this] val stack: AsyncStack[IO, String] =
-    AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
-
-  private[this] var result: String =
-    null
-
-  private[this] val popper: Fiber[IO, Throwable, String] =
-    stack.pop.flatTap { s => IO { this.result = s } }.start.unsafeRunSync()(runtime)
+    AsyncStack[IO, String].run[SyncIO].unsafeRunSync()
 
   @Actor
-  def push(): Unit = {
-    (stack.push[IO]("a") *> stack.push[IO]("b")).unsafeRunSync()(this.runtime)
+  def push1(): Unit = {
+    stack.push[IO]("a").unsafeRunSync()(this.runtime)
   }
 
   @Actor
-  def cancel(): Unit = {
-    popper.cancel.unsafeRunSync()(runtime)
-  }
-
-  @Actor
-  def pop(r: LL_Result): Unit = {
-    (stack.pop.flatMap { s => IO { r.r2 = s } }).unsafeRunSync()(runtime)
+  def push2(): Unit = {
+    stack.push[IO]("b").unsafeRunSync()(this.runtime)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    popper.join.unsafeRunSync()(this.runtime)
-    r.r1 = this.result
+    r.r1 = this.stack.pop.unsafeRunSync()(this.runtime)
+    r.r2 = this.stack.pop.unsafeRunSync()(this.runtime)
   }
 }

@@ -27,18 +27,18 @@ import cats.effect.{ IO, SyncIO, Fiber }
 
 @JCStressTest
 @State
-@Description("AsyncStack1: racing pushes should work fine with waiting pop")
+@Description("AsyncStack: racing pushes should work fine with waiting pop")
 @Outcomes(Array(
   new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "push1 was faster"),
   new Outcome(id = Array("b, a"), expect = ACCEPTABLE, desc = "push2 was faster")
 ))
-class AsyncStack1PushWaitTest {
+class AsyncStackPushWaitTest {
 
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
   private[this] val stack: AsyncStack[IO, String] =
-    AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
+    AsyncStack[IO, String].run[SyncIO].unsafeRunSync()
 
   private[this] val popper: Fiber[IO, Throwable, String] =
     stack.pop.start.unsafeRunSync()(runtime)

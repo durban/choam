@@ -23,33 +23,37 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import cats.effect.{ IO, SyncIO }
+import cats.effect.{ IO, SyncIO, Fiber }
 
 @JCStressTest
 @State
-@Description("AsyncStack2: racing pops should work fine")
+@Description("AsyncStack: racing waiting pops should work fine")
 @Outcomes(Array(
   new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "pop1 was faster"),
   new Outcome(id = Array("b, a"), expect = ACCEPTABLE, desc = "pop2 was faster")
 ))
-class AsyncStack2PopTest {
+class AsyncStackPopWaitTest {
 
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  private[this] val stack: AsyncStack[IO, String] = {
-    val s = AsyncStack.impl2[IO, String].run[SyncIO].unsafeRunSync()
-    (s.push[IO]("a") *> s.push[IO]("b")).unsafeRunSync()(this.runtime)
-    s
-  }
+  private[this] val stack: AsyncStack[IO, String] =
+    AsyncStack[IO, String].run[SyncIO].unsafeRunSync()
+
+  private[this] val popper1: Fiber[IO, Throwable, String] =
+    stack.pop.start.unsafeRunSync()(runtime)
+
+  private[this] val popper2: Fiber[IO, Throwable, String] =
+    stack.pop.start.unsafeRunSync()(runtime)
 
   @Actor
-  def pop1(r: LL_Result): Unit = {
-    r.r1 = this.stack.pop.unsafeRunSync()(this.runtime)
+  def push(): Unit = {
+    (stack.push[IO]("a") >> stack.push[IO]("b")).unsafeRunSync()(this.runtime)
   }
 
-  @Actor
-  def pop2(r: LL_Result): Unit = {
-    r.r2 = this.stack.pop.unsafeRunSync()(this.runtime)
+  @Arbiter
+  def arbiter(r: LL_Result): Unit = {
+    r.r1 = this.popper1.joinWithNever.unsafeRunSync()(this.runtime)
+    r.r2 = this.popper2.joinWithNever.unsafeRunSync()(this.runtime)
   }
 }

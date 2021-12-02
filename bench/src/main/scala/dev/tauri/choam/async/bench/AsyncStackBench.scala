@@ -41,34 +41,6 @@ class AsyncStackBench extends BenchUtils {
   // simple push/pop:
 
   @Benchmark
-  @Group("stack1pp")
-  def stack1push(s: StackSt): Unit = {
-    val tsk = push(s.stack1)
-    run(s.runtime, tsk, size = size)
-  }
-
-  @Benchmark
-  @Group("stack1pp")
-  def stack1pop(s: StackSt): Unit = {
-    val tsk = pop(s.stack1)
-    run(s.runtime, tsk, size = size)
-  }
-
-  @Benchmark
-  @Group("stack2pp")
-  def stack2push(s: StackSt): Unit = {
-    val tsk = push(s.stack2)
-    run(s.runtime, tsk, size = size)
-  }
-
-  @Benchmark
-  @Group("stack2pp")
-  def stack2pop(s: StackSt): Unit = {
-    val tsk = pop(s.stack2)
-    run(s.runtime, tsk, size = size)
-  }
-
-  @Benchmark
   @Group("stack3pp")
   def stack3push(s: StackSt): Unit = {
     val tsk = push(s.stack3)
@@ -101,18 +73,6 @@ class AsyncStackBench extends BenchUtils {
   // async features:
 
   @Benchmark
-  def asyncStack1(s: StackSt): Unit = {
-    val tsk = task(s.stack1)
-    run(s.runtime, tsk, size = size)
-  }
-
-  @Benchmark
-  def asyncStack2(s: StackSt): Unit = {
-    val tsk = task(s.stack2)
-    run(s.runtime, tsk, size = size)
-  }
-
-  @Benchmark
   def asyncStack3(s: StackSt): Unit = {
     val tsk = task(s.stack3)
     run(s.runtime, tsk, size = size)
@@ -132,8 +92,6 @@ object AsyncStackBench {
   @State(Scope.Benchmark)
   class StackSt {
     val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
-    val stack1: AsyncStack[IO, String] = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
-    val stack2: AsyncStack[IO, String] = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
-    val stack3: AsyncStack[IO, String] = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
+    val stack3: AsyncStack[IO, String] = AsyncStack.apply[IO, String].run[SyncIO].unsafeRunSync()
   }
 }

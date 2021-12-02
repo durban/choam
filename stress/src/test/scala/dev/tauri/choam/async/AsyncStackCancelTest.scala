@@ -27,35 +27,45 @@ import cats.effect.{ IO, SyncIO, Fiber }
 
 @JCStressTest
 @State
-@Description("AsyncStack2: racing pushes should work fine with waiting pop")
+@Description("AsyncStack: cancelling pop must not lose items")
 @Outcomes(Array(
-  new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "push1 was faster"),
-  new Outcome(id = Array("b, a"), expect = ACCEPTABLE, desc = "push2 was faster")
+  new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "cancelled late"),
+  new Outcome(id = Array("null, a"), expect = ACCEPTABLE, desc = "cancelled"),
+  new Outcome(id = Array("null, b"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled just after completing the Promise"),
+  new Outcome(id = Array("b, a"), expect = ACCEPTABLE_INTERESTING, desc = "popper started really late")
 ))
-class AsyncStack2PushWaitTest {
+class AsyncStackCancelTest {
 
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
   private[this] val stack: AsyncStack[IO, String] =
-    AsyncStack.impl2[IO, String].run[SyncIO].unsafeRunSync()
+    AsyncStack[IO, String].run[SyncIO].unsafeRunSync()
+
+  private[this] var result: String =
+    null
 
   private[this] val popper: Fiber[IO, Throwable, String] =
-    stack.pop.start.unsafeRunSync()(runtime)
+    stack.pop.flatTap { s => IO { this.result = s } }.start.unsafeRunSync()(runtime)
 
   @Actor
-  def push1(): Unit = {
-    stack.push[IO]("a").unsafeRunSync()(this.runtime)
+  def push(): Unit = {
+    (stack.push[IO]("a") *> stack.push[IO]("b")).unsafeRunSync()(this.runtime)
   }
 
   @Actor
-  def push2(): Unit = {
-    stack.push[IO]("b").unsafeRunSync()(this.runtime)
+  def cancel(): Unit = {
+    popper.cancel.unsafeRunSync()(runtime)
+  }
+
+  @Actor
+  def pop(r: LL_Result): Unit = {
+    (stack.pop.flatMap { s => IO { r.r2 = s } }).unsafeRunSync()(runtime)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r1 = this.popper.joinWithNever.unsafeRunSync()(this.runtime)
-    r.r2 = this.stack.pop.unsafeRunSync()(this.runtime)
+    popper.join.unsafeRunSync()(this.runtime)
+    r.r1 = this.result
   }
 }

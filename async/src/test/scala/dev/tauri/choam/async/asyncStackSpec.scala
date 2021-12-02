@@ -20,73 +20,25 @@ package async
 
 import cats.effect.IO
 
-final class AsyncStackSpec_Impl1_NaiveKCAS_IO
-  extends BaseSpecTickedIO
-  with SpecNaiveKCAS
-  with AsyncStackSpec[IO]
-  with AsyncStackImpl1[IO]
-
-final class AsyncStackSpec_Impl1_NaiveKCAS_ZIO
-  extends BaseSpecTickedZIO
-  with SpecNaiveKCAS
-  with AsyncStackSpec[zio.Task]
-  with AsyncStackImpl1[zio.Task]
-
-final class AsyncStackSpec_Impl1_EMCAS_IO
-  extends BaseSpecTickedIO
-  with SpecEMCAS
-  with AsyncStackSpec[IO]
-  with AsyncStackImpl1[IO]
-
-final class AsyncStackSpec_Impl1_EMCAS_ZIO
-  extends BaseSpecTickedZIO
-  with SpecEMCAS
-  with AsyncStackSpec[zio.Task]
-  with AsyncStackImpl1[zio.Task]
-
 // TODO: impl2 and impl3 don't work with NaiveKCAS,
 // TODO: because RemoveQueue uses `null` as sentinel
 
-final class AsyncStackSpec_Impl2_EMCAS_IO
+final class AsyncStackSpec_EMCAS_IO
   extends BaseSpecTickedIO
   with SpecEMCAS
-  with AsyncStackImpl2[IO]
+  with AsyncStackSpec[IO]
 
-final class AsyncStackSpec_Impl2_EMCAS_ZIO
+final class AsyncStackSpec_EMCAS_ZIO
   extends BaseSpecTickedZIO
   with SpecEMCAS
-  with AsyncStackImpl2[zio.Task]
-
-final class AsyncStackSpec_Impl3_EMCAS_IO
-  extends BaseSpecTickedIO
-  with SpecEMCAS
-  with AsyncStackImpl3[IO]
-
-final class AsyncStackSpec_Impl3_EMCAS_ZIO
-  extends BaseSpecTickedZIO
-  with SpecEMCAS
-  with AsyncStackImpl3[zio.Task]
-
-trait AsyncStackImpl1[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
-  protected final override def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
-    AsyncStack.impl1[G, A].run[G]
-}
-
-trait AsyncStackImpl2[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
-  protected final override def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
-    AsyncStack.impl2[G, A].run[G]
-}
-
-trait AsyncStackImpl3[F[_]] extends AsyncStackSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
-  protected final override def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
-    AsyncStack.impl3[G, A].run[G]
-}
+  with AsyncStackSpec[zio.Task]
 
 trait AsyncStackSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
-  protected def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]]
+  protected def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
+    AsyncStack.apply[G, A].run[G]
 
   test("pop on a non-empty stack should work like on Treiber stack") {
     for {
