@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import scala.math.Ordering
 
-import cats.kernel.Order
+import cats.kernel.{ Order, Hash }
 import cats.effect.IO
 
 final class RefSpec_NaiveKCAS_IO
@@ -156,11 +156,12 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("Order/Ordering instances") {
+  test("Order/Ordering/Hash instances") {
     Order[Ref[Int]]
     Ordering[Ref[Int]]
+    Hash[Ref[Int]]
     def parametric[A]: Int = {
-      (Order[Ref[A]].## ^ Ordering[Ref[A]].##).abs
+      (Order[Ref[A]].## ^ Ordering[Ref[A]].## ^ Hash[Ref[A]].##).abs
     }
     assert(parametric[String] >= 0)
   }

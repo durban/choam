@@ -21,7 +21,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 import scala.math.Ordering
 
-import cats.kernel.Order
+import cats.kernel.{ Order, Hash }
 import cats.effect.kernel.{ Ref => CatsRef }
 
 import mcas.MemoryLocation
@@ -119,22 +119,31 @@ object Ref extends RefInstances0 {
 
 private[choam] sealed abstract class RefInstances0 extends RefInstances1 { this: Ref.type =>
 
-  private[this] val _orderingInstance = new Ordering[Ref[Any]] {
+  private[this] val _orderingInstance: Ordering[Ref[Any]] = new Ordering[Ref[Any]] {
     final override def compare(x: Ref[Any], y: Ref[Any]): Int =
       MemoryLocation.globalCompare(x.loc, y.loc)
   }
 
-  implicit def orderingInstance[A]: Ordering[Ref[A]] =
+  implicit final def orderingInstance[A]: Ordering[Ref[A]] =
     _orderingInstance.asInstanceOf[Ordering[Ref[A]]]
 }
 
-private[choam] sealed abstract class RefInstances1 { this: Ref.type =>
+private[choam] sealed abstract class RefInstances1 extends RefInstances2 { this: Ref.type =>
 
-  private[this] val _orderInstance = new Order[Ref[Any]] {
+  private[this] val _orderInstance: Order[Ref[Any]] = new Order[Ref[Any]] {
     final override def compare(x: Ref[Any], y: Ref[Any]): Int =
       MemoryLocation.globalCompare(x.loc, y.loc)
   }
 
-  implicit def orderInstance[A]: Order[Ref[A]] =
+  implicit final def orderInstance[A]: Order[Ref[A]] =
     _orderInstance.asInstanceOf[Order[Ref[A]]]
+}
+
+private[choam] sealed abstract class RefInstances2 { this: Ref.type =>
+
+  private[this] val _hashInstance: Hash[Ref[Any]] =
+    Hash.fromUniversalHashCode[Ref[Any]]
+
+  implicit final def hashInstance[A]: Hash[Ref[A]] =
+    _hashInstance.asInstanceOf[Hash[Ref[A]]]
 }
