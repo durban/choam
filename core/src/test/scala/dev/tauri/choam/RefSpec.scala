@@ -17,6 +17,9 @@
 
 package dev.tauri.choam
 
+import scala.math.Ordering
+
+import cats.kernel.Order
 import cats.effect.IO
 
 final class RefSpec_NaiveKCAS_IO
@@ -151,5 +154,14 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(r.get.run[F], "bx")
       _ <- assertResultF(cr.get, "bx")
     } yield ()
+  }
+
+  test("Order/Ordering instances") {
+    Order[Ref[Int]]
+    Ordering[Ref[Int]]
+    def parametric[A]: Int = {
+      (Order[Ref[A]].## ^ Ordering[Ref[A]].##).abs
+    }
+    assert(parametric[String] >= 0)
   }
 }

@@ -20,7 +20,7 @@ package mcas
 
 import scala.math.Ordering
 
-import cats.Order
+import cats.kernel.Order
 
 /**
  * Extension point for MCAS: an MCAS operation

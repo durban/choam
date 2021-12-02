@@ -19,6 +19,9 @@ package dev.tauri.choam
 
 import java.util.concurrent.ThreadLocalRandom
 
+import scala.math.Ordering
+
+import cats.kernel.Order
 import cats.effect.kernel.{ Ref => CatsRef }
 
 import mcas.MemoryLocation
@@ -77,7 +80,7 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
   private[choam] def dummy(v: Long): Long
 }
 
-object Ref {
+object Ref extends RefInstances0 {
 
   def apply[A](initial: A): Axn[Ref[A]] =
     padded(initial)
@@ -112,4 +115,26 @@ object Ref {
 
   def refP2[A, B](a: A, b: B): Axn[refs.Ref2[A, B]] =
     refs.Ref2.p2(a, b)
+}
+
+private[choam] sealed abstract class RefInstances0 extends RefInstances1 { this: Ref.type =>
+
+  private[this] val _orderingInstance = new Ordering[Ref[Any]] {
+    final override def compare(x: Ref[Any], y: Ref[Any]): Int =
+      MemoryLocation.globalCompare(x.loc, y.loc)
+  }
+
+  implicit def orderingInstance[A]: Ordering[Ref[A]] =
+    _orderingInstance.asInstanceOf[Ordering[Ref[A]]]
+}
+
+private[choam] sealed abstract class RefInstances1 { this: Ref.type =>
+
+  private[this] val _orderInstance = new Order[Ref[Any]] {
+    final override def compare(x: Ref[Any], y: Ref[Any]): Int =
+      MemoryLocation.globalCompare(x.loc, y.loc)
+  }
+
+  implicit def orderInstance[A]: Order[Ref[A]] =
+    _orderInstance.asInstanceOf[Order[Ref[A]]]
 }
