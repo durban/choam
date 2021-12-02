@@ -120,7 +120,7 @@ trait BoundedQueueSpec[F[_]]
   }
 
   test("BoundedQueue big bound") {
-    val n = 99999
+    val n = 9999
     for {
       _ <- F.delay(assertIntIsNotCached(n))
       q <- BoundedQueue[F, String](maxSize = n).run[F]
