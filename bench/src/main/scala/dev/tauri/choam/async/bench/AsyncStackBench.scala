@@ -22,7 +22,7 @@ package bench
 import org.openjdk.jmh.annotations._
 
 import cats.syntax.all._
-import cats.effect.IO
+import cats.effect.{ IO, SyncIO }
 
 import _root_.dev.tauri.choam.bench.BenchUtils
 
@@ -38,13 +38,19 @@ class AsyncStackBench extends BenchUtils {
 
   @Benchmark
   def asyncStack1(s: StackSt): Unit = {
-    val tsk = AsyncStack.impl1[IO, String].run[IO].flatMap(task)
+    val tsk = task(s.stack1)
     run(s.runtime, tsk, size = size)
   }
 
   @Benchmark
   def asyncStack2(s: StackSt): Unit = {
-    val tsk = AsyncStack.impl2[IO, String].run[IO].flatMap(task)
+    val tsk = task(s.stack2)
+    run(s.runtime, tsk, size = size)
+  }
+
+  @Benchmark
+  def asyncStack3(s: StackSt): Unit = {
+    val tsk = task(s.stack3)
     run(s.runtime, tsk, size = size)
   }
 
@@ -62,5 +68,8 @@ object AsyncStackBench {
   @State(Scope.Benchmark)
   class StackSt {
     val runtime = cats.effect.unsafe.IORuntime.global
+    val stack1 = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
+    val stack2 = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
+    val stack3 = AsyncStack.impl1[IO, String].run[SyncIO].unsafeRunSync()
   }
 }
