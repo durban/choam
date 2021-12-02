@@ -208,7 +208,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("Michael-Scott queue should allow multiple producers and consumers") {
-    val max = 10000
+    val max = 5000
     for {
       q <- newQueueFromList(List.empty[String])
       produce = F.blocking {

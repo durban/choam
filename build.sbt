@@ -112,7 +112,7 @@ lazy val stress = project.in(file("stress"))
   .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
   .settings(libraryDependencies += dependencies.zioStm) // TODO: temporary
   .enablePlugins(JCStressPlugin)
-  .settings(Jcstress / version := "0.14")
+  .settings(Jcstress / version := dependencies.jcstressVersion)
   .dependsOn(async % "compile->compile;test->test")
 
 lazy val layout = project.in(file("layout"))
@@ -195,7 +195,7 @@ lazy val commonSettings = Seq[Setting[_]](
   ).flatten,
   libraryDependencies ++= (
     if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
-      List(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full))
+      List(compilerPlugin("org.typelevel" % "kind-projector" % dependencies.kindProjectorVersion cross CrossVersion.full))
     } else {
       Nil
     }
@@ -232,6 +232,8 @@ lazy val dependencies = new {
   val catsMtlVersion = "1.2.1"
   val fs2Version = "3.2.2"
   val scalacheckEffectVersion = "1.0.3"
+  val kindProjectorVersion = "0.13.2"
+  val jcstressVersion = "0.15"
 
   val cats = "org.typelevel" %% "cats-core" % catsVersion
   val catsLaws = "org.typelevel" %% "cats-laws" % catsVersion
