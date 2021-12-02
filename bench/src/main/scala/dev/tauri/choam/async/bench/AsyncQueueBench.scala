@@ -37,14 +37,8 @@ class AsyncQueueBench extends BenchUtils {
   final val queueSize = 4
 
   @Benchmark
-  def asyncQueuePrimitive(s: St): Unit = {
-    val tsk = AsyncQueue.primitive[IO, String].run[IO].flatMap(task)
-    run(s.runtime, tsk, size = size)
-  }
-
-  @Benchmark
-  def asyncQueueDerived(s: St): Unit = {
-    val tsk = AsyncQueue.derived[IO, String].run[IO].flatMap(task)
+  def asyncQueueSimple(s: St): Unit = {
+    val tsk = AsyncQueue[IO, String].run[IO].flatMap(task)
     run(s.runtime, tsk, size = size)
   }
 

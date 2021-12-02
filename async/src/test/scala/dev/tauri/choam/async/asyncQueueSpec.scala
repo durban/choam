@@ -20,27 +20,15 @@ package async
 
 import cats.effect.IO
 
-final class AsyncQueueSpec_Prim_EMCAS_IO
+final class AsyncQueueSpec_Simple_EMCAS_IO
   extends BaseSpecTickedIO
   with SpecEMCAS
-  with AsyncQueueSpec[IO]
-  with AsyncQueueImplPrim[IO]
+  with AsyncQueueImplSimple[IO]
 
-final class AsyncQueueSpec_Prim_EMCAS_ZIO
+final class AsyncQueueSpec_Simple_EMCAS_ZIO
   extends BaseSpecTickedZIO
   with SpecEMCAS
-  with AsyncQueueSpec[zio.Task]
-  with AsyncQueueImplPrim[zio.Task]
-
-final class AsyncQueueSpec_Derived_EMCAS_IO
-  extends BaseSpecTickedIO
-  with SpecEMCAS
-  with AsyncQueueImplDerived[IO]
-
-final class AsyncQueueSpec_Derived_EMCAS_ZIO
-  extends BaseSpecTickedZIO
-  with SpecEMCAS
-  with AsyncQueueImplDerived[zio.Task]
+  with AsyncQueueImplSimple[zio.Task]
 
 final class AsyncQueueSpec_WithSize_EMCAS_IO
   extends BaseSpecTickedIO
@@ -52,16 +40,10 @@ final class AsyncQueueSpec_WithSize_EMCAS_ZIO
   with SpecEMCAS
   with AsyncQueueImplWithSize[zio.Task]
 
-trait AsyncQueueImplPrim[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+trait AsyncQueueImplSimple[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
   final override type Q[G[_], A] = AsyncQueue[G, A]
   protected final override def newQueue[G[_] : Reactive, A] =
-    AsyncQueue.primitive[G, A].run[G]
-}
-
-trait AsyncQueueImplDerived[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
-  final override type Q[G[_], A] = AsyncQueue[G, A]
-  protected final override def newQueue[G[_] : Reactive, A] =
-    AsyncQueue.derived[G, A].run[G]
+    AsyncQueue[G, A].run[G]
 }
 
 trait AsyncQueueImplWithSize[F[_]] extends AsyncQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>

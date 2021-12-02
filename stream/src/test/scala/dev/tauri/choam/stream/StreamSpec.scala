@@ -27,31 +27,17 @@ import fs2.{ Stream, Chunk }
 import async.{ AsyncQueue, BoundedQueue, Promise, AsyncReactiveSpec }
 import syntax._
 
-final class StreamSpec_Prim_EMCAS_IO
+final class StreamSpec_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
-  with StreamSpecPrim[IO]
-
-final class StreamSpec_Derived_EMCAS_IO
-  extends BaseSpecIO
-  with SpecEMCAS
-  with StreamSpecDerived[IO]
-
-sealed trait StreamSpecDerived[F[_]] extends StreamSpec[F] { this: KCASImplSpec =>
-  final override def newAsyncQueue[A]: F[AsyncQueue[F, A]] =
-    AsyncQueue.derived[F, A].run[F]
-}
-
-sealed trait StreamSpecPrim[F[_]] extends StreamSpec[F] { this: KCASImplSpec =>
-  final override def newAsyncQueue[A]: F[AsyncQueue[F, A]] =
-    AsyncQueue.primitive[F, A].run[F]
-}
+  with StreamSpec[IO]
 
 sealed trait StreamSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: KCASImplSpec =>
 
-  def newAsyncQueue[A]: F[AsyncQueue[F, A]]
+  final def newAsyncQueue[A]: F[AsyncQueue[F, A]] =
+    AsyncQueue[F, A].run[F]
 
   test("AsyncQueue to stream") {
     for {

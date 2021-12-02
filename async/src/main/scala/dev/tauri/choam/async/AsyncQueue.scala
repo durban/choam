@@ -45,13 +45,7 @@ object AsyncQueue {
     def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]]
   }
 
-  def primitive[F[_], A]: Axn[AsyncQueue[F, A]] = {
-    (Queue[A] * Queue.withRemove[Promise[F, A]]) >>> (
-      Rxn.unsafe.delay { case (as, waiters) => new AsyncQueuePrim(as, waiters) }
-    )
-  }
-
-  def derived[F[_], A]: Axn[AsyncQueue[F, A]] = {
+  def apply[F[_], A]: Axn[AsyncQueue[F, A]] = {
     Queue[A].flatMapF { as =>
       AsyncFrom[F, A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
         new AsyncQueue[F, A] {
@@ -82,39 +76,6 @@ object AsyncQueue {
             as.size.run[F]
         }
       }
-    }
-  }
-
-  private final class AsyncQueuePrim[F[_], A](
-    q: Queue[A],
-    waiters: Queue.WithRemove[Promise[F, A]]
-  ) extends AsyncQueue[F, A] {
-
-    final override def enqueue: A =#> Unit = {
-      this.waiters.tryDeque.flatMap {
-        case None => this.q.enqueue
-        case Some(p) => p.complete.void
-      }
-    }
-
-    final override def tryDeque: Axn[Option[A]] =
-      this.q.tryDeque
-
-    final override def deque(implicit F: AsyncReactive[F]): F[A] = {
-      val acq = Promise[F, A].flatMapF { p =>
-        this.q.tryDeque.flatMapF {
-          case Some(a) => Rxn.pure(Right(a))
-          case None => this.waiters.enqueue.provide(p).as(Left(p))
-        }
-      }.run[F]
-      val rel: (Either[Promise[F, A], A] => F[Unit]) = {
-        case Left(p) => this.waiters.remove.void[F](p)
-        case Right(_) => F.monadCancel.unit
-      }
-      F.monadCancel.bracket(acquire = acq) {
-        case Left(p) => p.get
-        case Right(a) => F.monadCancel.pure(a)
-      } (release = rel)
     }
   }
 
