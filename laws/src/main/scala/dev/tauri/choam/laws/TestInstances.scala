@@ -67,12 +67,30 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
   def kcasImpl: kcas.KCAS
 
   implicit def arbRef[A](implicit arbA: Arbitrary[A]): Arbitrary[Ref[A]] = Arbitrary {
+    import refs.Ref2
     arbA.arbitrary.flatMap { a =>
-      Gen.choose(0, 1).map {
-        case 0 => Ref.unsafeUnpadded(a)
-        case 1 => Ref.unsafePadded(a)
-        case x => impossible(x.toString)
-      }
+      Gen.oneOf(
+        Gen.oneOf(
+          Gen.delay(Ref.unsafeUnpadded(a)),
+          Gen.delay(Ref.unsafePadded(a)),
+        ),
+        Gen.oneOf(
+          Gen.delay(Ref2.unsafeP1P1[A, String](a, "foo")._1),
+          Gen.delay(Ref2.unsafeP1P1[String, A]("foo", a)._2),
+          Gen.delay(Ref2.unsafeP2[A, String](a, "foo")._1),
+          Gen.delay(Ref2.unsafeP2[String, A]("foo", a)._2),
+        ),
+        Gen.oneOf(
+          Gen.choose(1, 8).flatMap { s =>
+            Gen.delay(Ref.unsafeArray[A](size = s, initial = a).apply(0))
+          },
+          Gen.choose(1, 8).flatMap { s =>
+            Gen.choose(0, s - 1).flatMap { i =>
+              Gen.delay(Ref.unsafeArray[A](size = s, initial = a).apply(i))
+            }
+          },
+        ),
+      )
     }
   }
 
@@ -126,15 +144,17 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
           two <- arbResetRxn[A, B].arbitrary
         } yield (one * two).map { bb => if (flag) bb._1 else bb._2 }
       },
-      arbB.arbitrary.map { b =>
-        val ref = Ref.unsafe(b)
-        ResetRxn(ref.unsafeInvisibleRead, Set(ResetRef(ref, b)))
+      arbB.arbitrary.flatMap { b =>
+        Gen.delay {
+          val ref = Ref.unsafe(b)
+          ResetRxn(ref.unsafeInvisibleRead, Set(ResetRef(ref, b)))
+        }
       },
       for {
         ab <- arbAB.arbitrary
         a0 <- arbA.arbitrary
+        ref <- Gen.delay { Ref.unsafe(a0) }
       } yield {
-        val ref = Ref.unsafe(a0)
         val rxn = ref.upd[A, B] { (aOld, aInput) => (aInput, ab(aOld)) }
         ResetRxn(rxn, Set(ResetRef(ref, a0)))
       },
@@ -142,8 +162,8 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
         aa <- arbAA.arbitrary
         ab <- arbAB.arbitrary
         a0 <- arbA.arbitrary
+        ref <- Gen.delay { Ref.unsafe(a0) }
       } yield {
-        val ref = Ref.unsafe(a0)
         val rxn = ref.unsafeInvisibleRead.flatMap { oldA =>
           val newA = aa(oldA)
           ref.unsafeCas(oldA, newA).as(ab(newA))
@@ -155,8 +175,8 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
           r <- arbResetRxn[A, B].arbitrary
           b <- arbB.arbitrary
           b2 <- arbB.arbitrary
+          ref <- Gen.delay { Ref.unsafe[B](b) }
         } yield {
-          val ref = Ref.unsafe[B](b)
           ResetRxn(
             r.rxn.postCommit(ref.upd[B, Unit] { case (_, _) => (b2, ()) }),
             r.refs + ResetRef(ref, b)
@@ -168,8 +188,8 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
           a <- arbA.arbitrary
           aa <- arbAA.arbitrary
           r <- arbResetRxn[A, B].arbitrary
+          ref <- Gen.delay { Ref.unsafe[A](a) }
         } yield {
-          val ref = Ref.unsafe[A](a)
           ResetRxn(
             Rxn.unsafe.delayComputed(prepare = r.rxn.map(b => ref.update(aa).as(b))),
             r.refs + ResetRef(ref, a)
@@ -195,16 +215,11 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
   }
 
   implicit def arbIor[A, B](implicit arbA: Arbitrary[A], arbB: Arbitrary[B]): Arbitrary[Ior[A, B]] = Arbitrary {
-    Gen.choose(0, 2).flatMap {
-      case 0 => // left
-        arbA.arbitrary.map(Ior.left)
-      case 1 => // right
-        arbB.arbitrary.map(Ior.right)
-      case 2 => // both
-        arbA.arbitrary.flatMap { a => arbB.arbitrary.map { b => Ior.both(a, b) } }
-      case x =>
-        impossible(x.toString)
-    }
+    Gen.oneOf(
+      arbA.arbitrary.map(Ior.left),
+      arbB.arbitrary.map(Ior.right),
+      arbA.arbitrary.flatMap { a => arbB.arbitrary.map { b => Ior.both(a, b) } },
+    )
   }
 
   implicit def cogIor[A, B](implicit cogA: Cogen[A], cogB: Cogen[B]): Cogen[Ior[A, B]] = {

@@ -28,6 +28,12 @@ package object refs {
   def unsafeNewRefP1[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
     new RefP1(initial, i0, i1, i2, i3)
 
+  def unsafeNewRefArray[A](size: Int, initial: A)(i0: Long, i1: Long, i2: Long, i3: Int): Ref.Array[A] = {
+    val a = new RefArray[A](size = size, i0 = i0, i1 = i1, i2 = i2, i3 = i3)
+    a.unsafeSetAll(initial)
+    a
+  }
+
   private[refs] def refStringFrom4Ids(
     i0: Long,
     i1: Long,
@@ -50,5 +56,18 @@ package object refs {
   ): String = {
     // TODO: better hash
     "Ref2@" + java.lang.Long.toHexString(i0 ^ i1 ^ i2 ^ i3 ^ i4 ^ i5 ^ i6 ^ i7)
+  }
+
+  private[refs] def refStringFromIdsAndIdx(
+    i0: Long,
+    i1: Long,
+    i2: Long,
+    i3: Long,
+    idx: Int,
+  ): String = {
+    // TODO: better hash
+    val l: Long = (i0 ^ i1 ^ i2 ^ i3) & (~0xffff)
+    val s: Int = (idx & 0xffff)
+    "ARef@" + java.lang.Long.toHexString(l | s)
   }
 }

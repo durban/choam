@@ -27,6 +27,7 @@ import cats.effect.kernel.Unique
 import cats.effect.std.UUIDGen
 
 import kcas.{ KCAS, ThreadContext, HalfEMCASDescriptor }
+import mcas.MemoryLocation
 
 /**
  * An effectful function from `A` to `B`; when executed,
@@ -310,7 +311,7 @@ object Rxn extends RxnInstances0 {
       upd[A, Any, A](r) { (oa, _) => (oa, oa) }
 
     def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
-      new Upd(r, f)
+      new Upd(r.loc, f)
 
     /** Old (slower) impl of `upd`, keep it for benchmarks */
     private[choam] def updDerived[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] = {
@@ -335,7 +336,7 @@ object Rxn extends RxnInstances0 {
       upd[A, A, A](r) { (oa, na) => (na, oa) }
 
     def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
-      new UpdWith[A, B, C](r, f)
+      new UpdWith[A, B, C](r.loc, f)
 
     // old, derived implementation:
     private[choam] def updWithOld[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] = {
@@ -353,10 +354,10 @@ object Rxn extends RxnInstances0 {
   final object unsafe {
 
     def invisibleRead[A](r: Ref[A]): Axn[A] =
-      new InvisibleRead[A](r)
+      new InvisibleRead[A](r.loc)
 
     def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
-      new Cas[A](r, ov, nv)
+      new Cas[A](r.loc, ov, nv)
 
     def retry[A, B]: Rxn[A, B] =
       new AlwaysRetry[A, B]
@@ -424,17 +425,17 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Choice(${left}, ${right})"
   }
 
-  private final class Cas[A](val ref: Ref[A], val ov: A, val nv: A) extends Rxn[Any, Unit] {
+  private final class Cas[A](val ref: MemoryLocation[A], val ov: A, val nv: A) extends Rxn[Any, Unit] {
     private[choam] final def tag = 7
     final override def toString: String = s"Cas(${ref}, ${ov}, ${nv})"
   }
 
-  private final class Upd[A, B, X](val ref: Ref[X], val f: (X, A) => (X, B)) extends Rxn[A, B] {
+  private final class Upd[A, B, X](val ref: MemoryLocation[X], val f: (X, A) => (X, B)) extends Rxn[A, B] {
     private[choam] final def tag = 8
     final override def toString: String = s"Upd(${ref}, <function>)"
   }
 
-  private final class InvisibleRead[A](val ref: Ref[A]) extends Rxn[Any, A] {
+  private final class InvisibleRead[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
     private[choam] final def tag = 9
     final override def toString: String = s"InvisibleRead(${ref})"
   }
@@ -470,7 +471,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Provide(${rxn}, ${a})"
   }
 
-  private final class UpdWith[A, B, C](val ref: Ref[A], val f: (A, B) => Axn[(A, C)]) extends Rxn[B, C] {
+  private final class UpdWith[A, B, C](val ref: MemoryLocation[A], val f: (A, B) => Axn[(A, C)]) extends Rxn[B, C] {
     private[choam] final override def tag = 16
     final override def toString: String = s"UpdWith(${ref}, <function>)"
   }
@@ -801,9 +802,9 @@ object Rxn extends RxnInstances0 {
           loop(c.left)
         case 7 => // Cas
           val c = curr.asInstanceOf[Cas[Any]]
-          val currVal = kcas.read(c.ref.loc, ctx)
+          val currVal = kcas.read(c.ref, ctx)
           if (equ(currVal, c.ov)) {
-            desc = kcas.addCas(desc, c.ref.loc, c.ov, c.nv, ctx)
+            desc = kcas.addCas(desc, c.ref, c.ov, c.nv, ctx)
             a = () : Unit
             loop(next())
           } else {
@@ -811,14 +812,14 @@ object Rxn extends RxnInstances0 {
           }
         case 8 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, Any]]
-          val ox = kcas.read(c.ref.loc, ctx)
+          val ox = kcas.read(c.ref, ctx)
           val (nx, b) = c.f(ox, a.asInstanceOf[A])
-          desc = kcas.addCas(desc, c.ref.loc, ox, nx, ctx)
+          desc = kcas.addCas(desc, c.ref, ox, nx, ctx)
           a = b
           loop(next())
         case 9 => // InvisibleRead
           val c = curr.asInstanceOf[InvisibleRead[B]]
-          a = kcas.read(c.ref.loc, ctx)
+          a = kcas.read(c.ref, ctx)
           loop(next())
         case 10 => // Exchange
           val c = curr.asInstanceOf[Exchange[A, B]]
@@ -854,7 +855,7 @@ object Rxn extends RxnInstances0 {
           loop(c.rxn)
         case 16 => // UpdWith
           val c = curr.asInstanceOf[UpdWith[Any, Any, _]]
-          val ox = kcas.read(c.ref.loc, ctx)
+          val ox = kcas.read(c.ref, ctx)
           val axn = c.f(ox, a)
           contT.push(ContUpdWith)
           contK.push(c.ref)

@@ -82,8 +82,21 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
 
 object Ref extends RefInstances0 {
 
+  trait Array[A] {
+    def size: Int
+    def apply(idx: Int): Ref[A] // TODO: throws if `idx` is bad
+  }
+
   def apply[A](initial: A): Axn[Ref[A]] =
     padded(initial)
+
+  def array[A](size: Int, initial: A): Axn[Ref.Array[A]] =
+    Rxn.unsafe.delay(_ => unsafeArray(size, initial))
+
+  def unsafeArray[A](size: Int, initial: A): Ref.Array[A] = {
+    val tlr = ThreadLocalRandom.current()
+    refs.unsafeNewRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
+  }
 
   def padded[A](initial: A): Axn[Ref[A]] =
     Rxn.unsafe.delay[Any, Ref[A]](_ => Ref.unsafe(initial))
