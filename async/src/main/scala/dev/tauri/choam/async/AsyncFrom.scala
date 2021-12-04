@@ -22,6 +22,7 @@ import cats.effect.kernel.Resource
 
 import data.Queue
 
+// TODO: rename to (maybe) WaitList; write docs
 final class AsyncFrom[F[_], A] private (
   val syncGet: Axn[Option[A]],
   val syncSet: A =#> Unit,

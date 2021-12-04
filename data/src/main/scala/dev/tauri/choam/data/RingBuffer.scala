@@ -66,9 +66,9 @@ private[choam] final class RingBuffer[A](
         } else if (h > t) {
           Rxn.pure(t - h + capacity)
         } else { // h == t
-          arr(t).get.flatMapF { a =>
-            if (isEmpty(a)) Rxn.pure(0) // empty
-            else Rxn.pure(capacity) // full
+          arr(t).get.map { a =>
+            if (isEmpty(a)) 0 // empty
+            else capacity // full
           }
         }
     }
