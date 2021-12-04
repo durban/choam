@@ -71,13 +71,9 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
   test("Queue.WithRemove#remove") {
     for {
       q <- newQueueFromList(List("a", "b", "c", "d", "e"))
-      _ <- assertResultF(q.unsafeToList[F], List("a", "b", "c", "d", "e"))
       _ <- assertResultF(q.remove[F]("a"), true)
-      _ <- assertResultF(q.unsafeToList[F], List("b", "c", "d", "e"))
       _ <- assertResultF(q.remove[F]("a"), false)
-      _ <- assertResultF(q.unsafeToList[F], List("b", "c", "d", "e"))
       _ <- assertResultF(q.tryDeque.run[F], Some("b"))
-      _ <- assertResultF(q.unsafeToList[F], List("c", "d", "e"))
       _ <- assertResultF(q.remove[F]("c"), true)
       _ <- assertResultF(q.remove[F]("d"), true)
       _ <- assertResultF(q.remove[F]("d"), false)
@@ -151,9 +147,13 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   protected def newQueueFromList[A](as: List[A]): F[this.QueueType[A]]
 
   test("MichaelScottQueue should include the elements passed to its constructor") {
-    assertResultF(newQueueFromList[Int](Nil).flatMap(_.unsafeToList[F]), Nil).flatMap { _ =>
-      assertResultF(newQueueFromList[Int](1 :: 2 :: 3 :: Nil).flatMap(_.unsafeToList[F]), 1 :: 2 :: 3 :: Nil)
-    }
+    for {
+      q1 <- newQueueFromList[Int](Nil)
+      _ <- assertResultF(q1.tryDeque.run[F], None)
+      q2 <- newQueueFromList[Int](1 :: 2 :: 3 :: Nil)
+      _ <- assertResultF(q2.drainOnce, List(1, 2, 3))
+      _ <- assertResultF(q2.tryDeque.run[F], None)
+    } yield ()
   }
 
   test("MichaelScottQueue transfer") {
@@ -163,47 +163,33 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       r = q1.tryDeque.map(_.getOrElse(0)) >>> q2.enqueue
       _ <- r.run[F]
       _ <- r.run[F]
-      _ <- assertResultF(q1.unsafeToList[F], List(3))
-      _ <- assertResultF(q2.unsafeToList[F], List(1, 2))
+      _ <- assertResultF(q1.drainOnce, List(3))
+      _ <- assertResultF(q1.tryDeque.run[F], None)
+      _ <- assertResultF(q2.drainOnce, List(1, 2))
+      _ <- assertResultF(q2.tryDeque.run[F], None)
     } yield ()
   }
 
   test("Michael-Scott queue should work correctly") {
     for {
       q <- newQueueFromList(List.empty[String])
-      _ <- assertResultF(q.unsafeToList, Nil)
+      _ <- assertResultF(q.tryDeque.run[F], None)
 
       _ <- assertResultF(q.tryDeque.run, None)
-      _ <- assertResultF(q.unsafeToList, Nil)
+      _ <- assertResultF(q.tryDeque.run[F], None)
 
       _ <- q.enqueue("a")
-      _ <- assertResultF(q.unsafeToList, List("a"))
-
       _ <- assertResultF(q.tryDeque.run, Some("a"))
-      _ <- assertResultF(q.unsafeToList, Nil)
       _ <- assertResultF(q.tryDeque.run, None)
-      _ <- assertResultF(q.unsafeToList, Nil)
 
       _ <- q.enqueue("a")
-      _ <- assertResultF(q.unsafeToList, List("a"))
       _ <- q.enqueue("b")
-      _ <- assertResultF(q.unsafeToList, List("a", "b"))
       _ <- q.enqueue("c")
-      _ <- assertResultF(q.unsafeToList, List("a", "b", "c"))
-
       _ <- assertResultF(q.tryDeque.run, Some("a"))
-      _ <- assertResultF(q.unsafeToList, List("b", "c"))
 
       _ <- q.enqueue("x")
-      _ <- assertResultF(q.unsafeToList, List("b", "c", "x"))
-
-      _ <- assertResultF(q.tryDeque.run, Some("b"))
-      _ <- assertResultF(q.unsafeToList, List("c", "x"))
-      _ <- assertResultF(q.tryDeque.run, Some("c"))
-      _ <- assertResultF(q.unsafeToList, List("x"))
-      _ <- assertResultF(q.tryDeque.run, Some("x"))
+      _ <- assertResultF(q.drainOnce, List("b", "c", "x"))
       _ <- assertResultF(q.tryDeque.run, None)
-      _ <- assertResultF(q.unsafeToList, Nil)
     } yield ()
   }
 

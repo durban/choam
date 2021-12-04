@@ -52,9 +52,6 @@ object UnboundedQueue {
             as.tryDeque
           final override def deque[AA >: A](implicit F: AsyncReactive[F]): F[AA] =
             F.monad.widen(af.get)
-
-          private[choam] final override def unsafeToList[G[_]](implicit F: Reactive[G]): G[List[A]] =
-            sys.error("TODO")
         }
       }
     }
@@ -74,8 +71,6 @@ object UnboundedQueue {
             af.getResource
           final override def size(implicit F: AsyncReactive[F]): F[Int] =
             as.size.run[F]
-          private[choam] final override def unsafeToList[G[_]](implicit F: Reactive[G]): G[List[A]] =
-            sys.error("TODO")
         }
       }
     }

@@ -19,7 +19,17 @@ package dev.tauri.choam
 package data
 
 trait QueueSource[+A] {
+
   def tryDeque: Axn[Option[A]]
+
+  private[choam] final def drainOnce[F[_], AA >: A](implicit F: Reactive[F]): F[List[AA]] = {
+    F.monad.tailRecM(List.empty[AA]) { acc =>
+      F.monad.map(F.run(this.tryDeque, ())) {
+        case Some(a) => Left(a :: acc)
+        case None => Right(acc.reverse)
+      }
+    }
+  }
 }
 
 trait QueueSink[-A] {
@@ -34,10 +44,7 @@ trait UnboundedQueueSink[-A] extends QueueSink[A] {
 
 abstract class Queue[A]
   extends QueueSource[A]
-  with UnboundedQueueSink[A] {
-
-  private[choam] def unsafeToList[F[_]](implicit F: Reactive[F]): F[List[A]]
-}
+  with UnboundedQueueSink[A]
 
 object Queue {
 
@@ -88,9 +95,6 @@ object Queue {
 
           final override def enqueue: Rxn[A, Unit] =
             s.update(_ + 1) *> q.enqueue
-
-          private[choam] final override  def unsafeToList[F[_]](implicit F: Reactive[F]): F[List[A]] =
-            q.unsafeToList[F]
 
           final override def size: Axn[Int] =
             s.get

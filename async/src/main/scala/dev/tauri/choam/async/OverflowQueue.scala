@@ -60,8 +60,5 @@ object OverflowQueue {
 
     override def deque[AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(af.get)
-
-    override private[choam] def unsafeToList[G[_]](implicit F: Reactive[G]): G[List[A]] =
-      sys.error("TODO")
   }
 }

@@ -35,13 +35,11 @@ class RemoveQueueComposedTest2 extends RemoveQueueStressTestBase {
 
   private[this] val queue1 = {
     val q = this.newQueue("-", "a", "-", "-", "b", "c", "d")
-    val lst = (for {
+    (for {
       _ <- q.remove[SyncIO]("-")
       _ <- q.remove[SyncIO]("-")
       _ <- q.remove[SyncIO]("-")
-      lst <- q.unsafeToList[SyncIO]
-    } yield lst).unsafeRunSync()
-    assert(lst == List("a", "b", "c", "d"))
+    } yield ()).unsafeRunSync()
     q
   }
 
@@ -63,7 +61,7 @@ class RemoveQueueComposedTest2 extends RemoveQueueStressTestBase {
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r1 = queue1.unsafeToList[SyncIO].unsafeRunSync()
-    r.r2 = queue2.unsafeToList[SyncIO].unsafeRunSync()
+    r.r1 = queue1.drainOnce[SyncIO, String].unsafeRunSync()
+    r.r2 = queue2.drainOnce[SyncIO, String].unsafeRunSync()
   }
 }

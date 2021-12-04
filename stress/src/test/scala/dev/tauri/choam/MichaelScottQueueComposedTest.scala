@@ -53,7 +53,7 @@ class MichaelScottQueueComposedTest extends MsQueueStressTestBase {
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r1 = queue1.unsafeToList[SyncIO].unsafeRunSync()
-    r.r2 = queue2.unsafeToList[SyncIO].unsafeRunSync()
+    r.r1 = queue1.drainOnce[SyncIO, String].unsafeRunSync()
+    r.r2 = queue2.drainOnce[SyncIO, String].unsafeRunSync()
   }
 }

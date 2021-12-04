@@ -58,6 +58,6 @@ class RemoveQueueRemoveTest1 extends RemoveQueueStressTestBase {
 
   @Arbiter
   def arbiter(r: LLZ_Result): Unit = {
-    r.r1 = queue.unsafeToList[SyncIO].unsafeRunSync()
+    r.r1 = queue.drainOnce[SyncIO, String].unsafeRunSync()
   }
 }

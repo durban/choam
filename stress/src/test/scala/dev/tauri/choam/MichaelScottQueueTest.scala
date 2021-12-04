@@ -66,6 +66,6 @@ class MichaelScottQueueTest extends MsQueueStressTestBase {
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r3 = queue.unsafeToList[SyncIO].unsafeRunSync()
+    r.r3 = queue.drainOnce[SyncIO, String].unsafeRunSync()
   }
 }

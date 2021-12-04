@@ -39,12 +39,10 @@ class RemoveQueueTest extends RemoveQueueStressTestBase {
 
   private[this] val queue: Queue.WithRemove[String] = {
     val q = this.newQueue("-", "-", "z")
-    val lst = (for {
+    (for {
       _ <- q.remove[SyncIO]("-")
       _ <- q.remove[SyncIO]("-")
-      lst <- q.unsafeToList[SyncIO]
-    } yield lst).unsafeRunSync()
-    assert(lst == List("z"))
+    } yield ()).unsafeRunSync()
     q
   }
 
@@ -76,6 +74,6 @@ class RemoveQueueTest extends RemoveQueueStressTestBase {
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r3 = queue.unsafeToList[SyncIO].unsafeRunSync()
+    r.r3 = queue.drainOnce[SyncIO, String].unsafeRunSync()
   }
 }

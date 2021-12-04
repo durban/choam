@@ -101,7 +101,4 @@ private[choam] final class RingBuffer[A](
       }
     }
   }
-
-  override private[choam] def unsafeToList[F[_]](implicit F: Reactive[F]): F[List[A]] =
-    sys.error("TODO")
 }

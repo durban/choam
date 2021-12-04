@@ -66,21 +66,6 @@ private[choam] final class MichaelScottQueueUnpadded[A] private[this] (sentinel:
     })
   }
 
-  private[choam] override def unsafeToList[F[_]](implicit F: Reactive[F]): F[List[A]] = {
-
-    def go(e: Elem[A], acc: List[A]): F[List[A]] = e match {
-      case Node(null, next) =>
-        // sentinel
-        F.monad.flatMap(F.run(next.unsafeInvisibleRead, ())) { go(_, acc) }
-      case Node(a, next) =>
-        F.monad.flatMap(F.run(next.unsafeInvisibleRead, ())) { go(_, a :: acc) }
-      case End() =>
-        F.monad.pure(acc)
-    }
-
-    F.monad.map(F.monad.flatMap(F.run(head.unsafeInvisibleRead, ())) { go(_, Nil) }) { _.reverse }
-  }
-
   els.foreach { a =>
     enqueue.unsafePerform(a, KCAS.NaiveKCAS)
   }
