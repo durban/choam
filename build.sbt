@@ -17,8 +17,8 @@
 
 val scala2 = "2.13.7"
 val scala3 = "3.1.0"
-val jdkLatest = "adoptium@17"
-val openj9 = "openj9-java11@0.29"
+val jdkLatest = JavaSpec.temurin("17")
+val openj9 = JavaSpec(JavaSpec.Distribution.OpenJ9, "11") // 0.29?
 val windows = "windows-latest"
 val macos = "macos-latest"
 
@@ -37,8 +37,8 @@ ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${scala3}'")),
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
-  "adoptium@11",
-  "graalvm-ce-java11@21.3",
+  JavaSpec.temurin("11"),
+  JavaSpec.graalvm("21.3", "11"),
   openj9,
   jdkLatest,
 )
@@ -46,11 +46,11 @@ ThisBuild / githubWorkflowOSes := Seq("ubuntu-latest", windows, macos)
 ThisBuild / githubWorkflowSbtCommand := "sbt -v"
 ThisBuild / githubWorkflowEnv += ("JABBA_INDEX" -> "https://raw.githubusercontent.com/typelevel/jdk-index/557b6d6/index.json")
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
-  MatrixExclude(Map("os" -> windows, "java" -> openj9)),
+  MatrixExclude(Map("os" -> windows, "java" -> openj9.render)),
   MatrixExclude(Map("os" -> macos)),
 )
 ThisBuild / githubWorkflowBuildMatrixInclusions += MatrixInclude(
-  matching = Map("os" -> macos, "java" -> jdkLatest, "scala" -> scala2),
+  matching = Map("os" -> macos, "java" -> jdkLatest.render, "scala" -> scala2),
   additions = Map.empty
 )
 

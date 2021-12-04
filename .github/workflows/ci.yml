@@ -25,17 +25,17 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         scala: [2.13.7, 3.1.0]
         java:
-          - adoptium@11
-          - graalvm-ce-java11@21.3
-          - openj9-java11@0.29
-          - adoptium@17
+          - temurin@11
+          - graal_21.3@11
+          - adopt-openj9@11
+          - temurin@17
         include:
           - os: macos-latest
-            java: adoptium@17
+            java: temurin@17
             scala: 2.13.7
         exclude:
           - os: windows-latest
-            java: openj9-java11@0.29
+            java: adopt-openj9@11
           - os: macos-latest
     runs-on: ${{ matrix.os }}
     steps:
@@ -49,10 +49,33 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Java and Scala
-        uses: olafurpg/setup-scala@v13
+      - name: Setup Java (temurin@11)
+        if: matrix.java == 'temurin@11'
+        uses: actions/setup-java@v2
         with:
-          java-version: ${{ matrix.java }}
+          distribution: temurin
+          java-version: 11
+
+      - name: Setup GraalVM (graal_21.3@11)
+        if: matrix.java == 'graal_21.3@11'
+        uses: DeLaGuardo/setup-graalvm@5.0
+        with:
+          graalvm: 21.3
+          java: java11
+
+      - name: Setup Java (adopt-openj9@11)
+        if: matrix.java == 'adopt-openj9@11'
+        uses: actions/setup-java@v2
+        with:
+          distribution: adopt-openj9
+          java-version: 11
+
+      - name: Setup Java (temurin@17)
+        if: matrix.java == 'temurin@17'
+        uses: actions/setup-java@v2
+        with:
+          distribution: temurin
+          java-version: 17
 
       - name: Cache sbt
         uses: actions/cache@v2
