@@ -254,7 +254,7 @@ trait OverflowQueueSpec[F[_]]
   test("RingBuffer#toCats") {
     for {
       q <- OverflowQueue.ringBuffer[F, Int](capacity = 3).run[F]
-      cq <- q.toCats
+      cq = q.toCats
       f <- cq.take.start
       _ <- this.tickAll
       _ <- cq.offer(1)

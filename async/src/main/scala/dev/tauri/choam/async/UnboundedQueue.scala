@@ -32,11 +32,8 @@ object UnboundedQueue {
 
     def size(implicit F: AsyncReactive[F]): F[Int]
 
-    // TODO: could this return simply `CatsQueue[F, A]`?
-    def toCats(implicit F: AsyncReactive[F]): F[CatsQueue[F, A]] = {
-      val cq = new AsyncQueue.CatsQueueAdapter[F, A](this)
-      F.monad.pure(cq)
-    }
+    def toCats(implicit F: AsyncReactive[F]): CatsQueue[F, A] =
+      new AsyncQueue.CatsQueueAdapter[F, A](this)
 
     // FIXME:
     def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]]

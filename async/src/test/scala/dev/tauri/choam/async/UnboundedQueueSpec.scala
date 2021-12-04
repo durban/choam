@@ -56,7 +56,7 @@ trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: KCA
   test("UnboundedQueue.WithSize#toCats") {
     for {
       q <- newQueue[F, String]
-      cq <- q.toCats
+      cq = q.toCats
       _ <- assertResultF(cq.size, 0)
       f <- cq.take.start
       _ <- this.tickAll
