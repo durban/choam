@@ -18,9 +18,9 @@
 package dev.tauri.choam
 package data
 
-private object RingBuffer {
+private[choam] object RingBuffer {
 
-  def apply[A](capacity: Int): Axn[Queue[A]] = {
+  private[choam] def apply[A](capacity: Int): Axn[RingBuffer[A]] = {
     require(capacity > 0)
     Ref.array[A](size = capacity, initial = empty[A]).flatMapF { arr =>
       (Ref(0) * Ref(0)).map {
@@ -47,8 +47,8 @@ private object RingBuffer {
     equ[A](a, empty[A])
 }
 
-private final class RingBuffer[A](
-  capacity: Int,
+private[choam] final class RingBuffer[A](
+  val capacity: Int,
   arr: Ref.Array[A],
   head: Ref[Int], // index for next element to deque
   tail: Ref[Int], // index for next element to enqueue
@@ -56,7 +56,23 @@ private final class RingBuffer[A](
 
   import RingBuffer.{ empty, isEmpty }
 
-  assert(capacity == arr.size)
+  require(capacity == arr.size)
+
+  private[choam] def size: Axn[Int] = {
+    (head.get * tail.get).flatMapF {
+      case (h, t) =>
+        if (h < t) {
+          Rxn.pure(t - h)
+        } else if (h > t) {
+          Rxn.pure(t - h + capacity)
+        } else { // h == t
+          arr(t).get.flatMapF { a =>
+            if (isEmpty(a)) Rxn.pure(0) // empty
+            else Rxn.pure(capacity) // full
+          }
+        }
+    }
+  }
 
   override def enqueue: Rxn[A, Unit] = Rxn.computed[A, Unit] { newVal =>
     tail.getAndUpdate(i => (i + 1) % capacity).flatMapF { idx =>

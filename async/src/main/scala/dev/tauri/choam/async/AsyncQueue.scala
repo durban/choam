@@ -39,8 +39,8 @@ object AsyncQueue {
   def dropping[F[_], A](@unused capacity: Int): Axn[OverflowQueue[F, A]] =
     sys.error("TODO")
 
-  def circularBuffer[F[_], A](@unused capacity: Int): Axn[OverflowQueue[F, A]] =
-    sys.error("TODO")
+  def ringBuffer[F[_], A](capacity: Int): Axn[OverflowQueue[F, A]] =
+    OverflowQueue.ringBuffer[F, A](capacity)
 
   def unboundedWithSize[F[_], A]: Axn[UnboundedQueue.WithSize[F, A]] =
     UnboundedQueue.withSize[F, A]

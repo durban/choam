@@ -23,8 +23,8 @@ import cats.effect.kernel.Resource
 import data.Queue
 
 final class AsyncFrom[F[_], A] private (
-  syncGet: Axn[Option[A]],
-  syncSet: A =#> Unit,
+  val syncGet: Axn[Option[A]],
+  val syncSet: A =#> Unit,
   waiters: Queue.WithRemove[Promise[F, A]]
 ) {
 

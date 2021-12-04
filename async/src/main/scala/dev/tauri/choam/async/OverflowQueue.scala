@@ -18,10 +18,50 @@
 package dev.tauri.choam
 package async
 
+import cats.effect.kernel.Resource
+
 abstract class OverflowQueue[F[_], A]
-  extends UnboundedQueue[F, A] {
+  extends UnboundedQueue.WithSize[F, A] {
 
   def capacity: Int
 }
 
-// TODO: CircularBuffer, DroppingQueue
+object OverflowQueue {
+
+  def ringBuffer[F[_], A](capacity: Int): Axn[OverflowQueue[F, A]] = {
+    data.RingBuffer[A](capacity).flatMapF { rb =>
+      AsyncFrom[F, A](syncGet = rb.tryDeque, syncSet = rb.enqueue).map { af =>
+        new RingBuffer(rb, af)
+      }
+    }
+  }
+
+  // TODO: def droppingQueue ...
+
+  private final class RingBuffer[F[_], A](
+    buff: data.RingBuffer[A],
+    af: AsyncFrom[F, A],
+  ) extends OverflowQueue[F, A] {
+
+    final override def size(implicit F: AsyncReactive[F]): F[Int] =
+      F.run(buff.size, ())
+
+    override def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]] =
+      af.getResource
+
+    final override def capacity =
+      buff.capacity
+
+    override def enqueue: Rxn[A, Unit] =
+      af.set
+
+    override def tryDeque: Axn[Option[A]] =
+      af.syncGet
+
+    override def deque[AA >: A](implicit F: AsyncReactive[F]): F[AA] =
+      F.monad.widen(af.get)
+
+    override private[choam] def unsafeToList[G[_]](implicit F: Reactive[G]): G[List[A]] =
+      sys.error("TODO")
+  }
+}
