@@ -70,7 +70,7 @@ private final class RefArray[A](
   }
 }
 
-object RefArray {
+private object RefArray {
 
   private final class RefArrayRef[A](
     array: RefArray[A],

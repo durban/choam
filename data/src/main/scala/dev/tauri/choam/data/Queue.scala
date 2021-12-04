@@ -59,8 +59,8 @@ object Queue {
   def dropping[A](@unused capacity: Int): Axn[Queue[A]] =
     sys.error("TODO")
 
-  def circularBuffer[A](@unused capacity: Int): Axn[Queue[A]] =
-    sys.error("TODO")
+  def ringBuffer[A](capacity: Int): Axn[Queue[A]] =
+    RingBuffer.apply[A](capacity)
 
   private[choam] def unpadded[A]: Axn[Queue[A]] =
     MichaelScottQueueUnpadded[A]
