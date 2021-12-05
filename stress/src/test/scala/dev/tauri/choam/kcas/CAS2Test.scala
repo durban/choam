@@ -25,7 +25,7 @@ import org.openjdk.jcstress.infra.results.ZZZZ_Result
 
 import mcas.MemoryLocation
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("CAS2 should be atomic")
 @Outcomes(Array(

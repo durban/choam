@@ -27,7 +27,7 @@ import org.openjdk.jcstress.infra.results.LLLL_Result
 
 import cats.effect.{ IO, SyncIO }
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("Promise: both getters should be unblocked")
 @Outcomes(Array(

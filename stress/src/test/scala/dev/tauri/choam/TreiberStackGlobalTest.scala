@@ -29,7 +29,7 @@ import org.openjdk.jcstress.infra.results.ZZZ_Result
 import kcas._
 import data.TreiberStack
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("Treiber stack global pop/push should be atomic")
 @Outcomes(Array(

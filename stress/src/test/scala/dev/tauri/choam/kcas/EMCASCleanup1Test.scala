@@ -23,7 +23,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ILL_Result
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("EMCASCleanup1Test")
 @Outcomes(Array(

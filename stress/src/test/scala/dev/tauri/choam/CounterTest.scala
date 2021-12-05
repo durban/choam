@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.JJJ_Result
 
 import data.Counter
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("Counter incr/decr/count should be atomic")
 @Outcomes(Array(

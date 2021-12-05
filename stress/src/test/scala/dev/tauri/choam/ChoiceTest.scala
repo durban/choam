@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("Only one side of a `+` should be visible")
 @Outcomes(Array(

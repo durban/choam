@@ -27,7 +27,7 @@ import org.openjdk.jcstress.infra.results.LL_Result
 import kcas.KCAS
 import data.Ctrie
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("Composed Ctrie insert/lookup should be atomic")
 @Outcomes(Array(

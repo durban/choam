@@ -26,7 +26,7 @@ import cats.effect.SyncIO
 
 import data.Queue
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("RemoveQueue enq/deq should be atomic")
 @Outcomes(Array(

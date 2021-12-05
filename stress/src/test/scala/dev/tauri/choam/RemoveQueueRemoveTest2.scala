@@ -26,7 +26,7 @@ import cats.effect.SyncIO
 
 import data.Queue
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("RemoveQueue concurrent enq and remove")
 @Outcomes(Array(

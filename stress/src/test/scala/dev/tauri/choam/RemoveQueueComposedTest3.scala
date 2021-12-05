@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import data.Queue
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("RemoveQueue tricky enq/deq")
 @Outcomes(Array(

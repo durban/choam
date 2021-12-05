@@ -25,7 +25,7 @@ import org.openjdk.jcstress.infra.results.LLLLL_Result
 
 import mcas.MemoryLocation
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("EMCASTest")
 @Outcomes(Array(

@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 
 import cats.effect.SyncIO
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("MichaelScottQueue enq/deq should be atomic")
 @Outcomes(Array(
