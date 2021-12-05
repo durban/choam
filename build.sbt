@@ -35,6 +35,7 @@ ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci")),
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${scala3}'")),
+  WorkflowStep.Sbt(List("ciStress"), cond = Some(s"matrix.os == '${macos}'"))
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
   JavaSpec.temurin("11"),
@@ -276,7 +277,8 @@ addCommandAlias("checkScalafix", "scalafixAll --check")
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
 addCommandAlias("stressTest", "stress/Jcstress/run")
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
-addCommandAlias("ci", ";headerCheckAll;test") // TODO: re-enable stressTest
+addCommandAlias("ci", ";headerCheckAll;test")
+addCommandAlias("ciStress", "stressTest")
 
 // profiling: `-prof jfr`
 addCommandAlias("measurePerformance", "bench/jmh:run -foe true -rf json -rff results.json .*")

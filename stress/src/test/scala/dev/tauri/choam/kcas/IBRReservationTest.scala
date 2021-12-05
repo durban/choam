@@ -27,7 +27,7 @@ import org.openjdk.jcstress.infra.results._
 
 import mcas.MemoryLocation
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("IBR reservation should forbid freeing an object")
 @Outcomes(Array(

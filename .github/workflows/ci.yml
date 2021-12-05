@@ -99,3 +99,7 @@ jobs:
       - if: matrix.scala != '3.1.0'
         shell: bash
         run: sbt -v ++${{ matrix.scala }} checkScalafix
+
+      - if: matrix.os == 'macos-latest'
+        shell: bash
+        run: sbt -v ++${{ matrix.scala }} ciStress
