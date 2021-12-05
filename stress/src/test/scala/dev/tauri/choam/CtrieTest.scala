@@ -24,7 +24,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LZ_Result
 
-import kcas.KCAS
+import mcas.KCAS
 import data.Ctrie
 
 // @JCStressTest

@@ -24,7 +24,7 @@ import cats.implicits._
 
 import org.scalacheck.{ Gen, Arbitrary, Cogen }
 
-import kcas.ImpossibleOperation
+import mcas.ImpossibleOperation
 
 object TestInstances {
 
@@ -64,7 +64,7 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
 
   import TestInstances._
 
-  def kcasImpl: kcas.KCAS
+  def kcasImpl: mcas.KCAS
 
   implicit def arbRef[A](implicit arbA: Arbitrary[A]): Arbitrary[Ref[A]] = Arbitrary {
     import refs.Ref2
@@ -264,14 +264,8 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
     }
   }
 
-  implicit def testingEqImpossibleOp: Eq[ImpossibleOperation] = new Eq[ImpossibleOperation] {
-
-    private[this] def equu[A](a1: A, a2: A): Boolean =
-      a1 == a2 // universal equals
-
-    final override def eqv(x: ImpossibleOperation, y: ImpossibleOperation): Boolean = {
-      equ(x.ref, y.ref) && equu(x.a.ov, y.a.ov) && equu(x.a.nv, y.a.nv) && equu(x.b.ov, y.b.ov) && equu(x.b.nv, y.b.nv)
-    }
+  implicit def testingEqImpossibleOp: Eq[ImpossibleOperation] = { (x, y) =>
+    x.equiv(y)
   }
 }
 

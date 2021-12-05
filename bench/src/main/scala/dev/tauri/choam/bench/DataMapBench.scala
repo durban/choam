@@ -65,11 +65,11 @@ object DataMapBench {
   @State(Scope.Benchmark)
   class St {
     val simple: Map[String, String] = {
-      val m = Map.simple[String, String].unsafeRun(kcas.KCAS.EMCAS)
+      val m = Map.simple[String, String].unsafeRun(mcas.KCAS.EMCAS)
       Prefill.prefill().foreach { k =>
-        m.put.unsafePerform((k, "foo"), kcas.KCAS.EMCAS)
+        m.put.unsafePerform((k, "foo"), mcas.KCAS.EMCAS)
       }
-      m.put.unsafePerform((knownKey, "bar"), kcas.KCAS.EMCAS)
+      m.put.unsafePerform((knownKey, "bar"), mcas.KCAS.EMCAS)
       m
     }
   }

@@ -26,7 +26,6 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZZ_Result
 
-import kcas._
 import data.TreiberStack
 
 // @JCStressTest
@@ -82,9 +81,9 @@ object TreiberStackGlobalTest {
     1024 * 128
 
   private[this] val stacks =
-    new TrieMap[KCAS, (TreiberStack[String], TreiberStack[String])]
+    new TrieMap[mcas.KCAS, (TreiberStack[String], TreiberStack[String])]
 
-  private def getStacks(impl: KCAS): (TreiberStack[String], TreiberStack[String]) = {
+  private def getStacks(impl: mcas.KCAS): (TreiberStack[String], TreiberStack[String]) = {
     def mkNew() = {
       val stack1 = new TreiberStack[String](List.fill(N)("z"))
       val stack2 = new TreiberStack[String](List.fill(N)("z"))

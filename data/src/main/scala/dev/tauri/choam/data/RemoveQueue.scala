@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package data
 
-import kcas._
-
 import RemoveQueue._
 
 /**
@@ -135,7 +133,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
   }
 
   els.foreach { a =>
-    enqueue.unsafePerform(a, KCAS.NaiveKCAS)
+    enqueue.unsafePerform(a, mcas.KCAS.NaiveKCAS)
   }
 }
 

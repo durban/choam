@@ -25,7 +25,7 @@ import org.openjdk.jmh.profile.InternalProfiler
 import org.openjdk.jmh.infra.{ BenchmarkParams, IterationParams }
 import org.openjdk.jmh.results.{ IterationResult, Result, ScalarResult, AggregationPolicy }
 
-import kcas.EMCAS
+import mcas.EMCAS
 
 /**
  * JMH profiler "plugin" for `Rxn` statistics/measurements.

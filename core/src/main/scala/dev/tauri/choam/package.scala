@@ -64,18 +64,18 @@ package object choam {
 
   @inline
   private[choam] final def equ[A](x: A, y: A): Boolean =
-    kcas.equ(x, y)
+    mcas.equ(x, y)
 
   @inline
   private[choam] final def isNull[A](a: A): Boolean =
-    kcas.isNull(a)
+    mcas.isNull(a)
 
   @inline
   private[choam] final def nullOf[A]: A =
-    kcas.nullOf[A]
+    mcas.nullOf[A]
 
   private[choam] final def impossible(s: String): Nothing =
-    kcas.impossible(s)
+    mcas.impossible(s)
 
   private[choam] final def requireNonNull[A](a: A): Unit =
     require(!isNull(a))

@@ -23,7 +23,7 @@ import cats.effect.kernel.Sync
 trait Reactive[F[_]] { self =>
   // TODO: rename `run` to `apply`, and make `def run[A](a: Axn[A]): F[A]`
   def run[A, B](r: Rxn[A, B], a: A): F[B]
-  def kcasImpl: kcas.KCAS
+  def kcasImpl: mcas.KCAS
   def monad: Monad[F]
   def mapK[G[_]](t: F ~> G)(implicit G: Monad[G]): Reactive[G] =
     new Reactive.TransformedReactive[F, G](self, t)
@@ -34,14 +34,14 @@ object Reactive {
   def apply[F[_]](implicit inst: Reactive[F]): inst.type =
     inst
 
-  def defaultKcasImpl: kcas.KCAS =
-    kcas.KCAS.EMCAS
+  def defaultKcasImpl: mcas.KCAS =
+    mcas.KCAS.EMCAS
 
   implicit def reactiveForSync[F[_]](implicit F: Sync[F]): Reactive[F] =
     new SyncReactive[F](defaultKcasImpl)(F)
 
   private[choam] class SyncReactive[F[_]](
-    final override val kcasImpl: kcas.KCAS
+    final override val kcasImpl: mcas.KCAS
   )(implicit F: Sync[F]) extends Reactive[F] {
     final override def run[A, B](r: Rxn[A, B], a: A): F[B] = {
       F.delay {
@@ -58,7 +58,7 @@ object Reactive {
   )(implicit G: Monad[G]) extends Reactive[G] {
     final override def run[A, B](r: Rxn[A, B], a: A): G[B] =
       t(underlying.run(r, a))
-    final override def kcasImpl: kcas.KCAS =
+    final override def kcasImpl: mcas.KCAS =
       underlying.kcasImpl
     final override def monad: Monad[G] =
       G

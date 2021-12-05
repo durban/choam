@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package data
 
-import kcas._
-
 import MichaelScottQueue._
 
 private[choam] final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable[A])
@@ -67,7 +65,7 @@ private[choam] final class MichaelScottQueue[A] private[this] (sentinel: Node[A]
   }
 
   els.foreach { a =>
-    enqueue.unsafePerform(a, KCAS.NaiveKCAS)
+    enqueue.unsafePerform(a, mcas.KCAS.NaiveKCAS)
   }
 }
 

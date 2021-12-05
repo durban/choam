@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package data
 
-import kcas._
-
 final class TreiberStack[A](els: Iterable[A]) {
 
   import TreiberStack._
@@ -51,13 +49,13 @@ final class TreiberStack[A](els: Iterable[A]) {
   def toList: Axn[List[A]] =
     head.upd[Any, Lst[A]] { (l, _) => (l, l) }.map(_.toList)
 
-  private[choam] def unsafeToList(kcas: KCAS): List[A] = {
+  private[choam] def unsafeToList(kcas: mcas.KCAS): List[A] = {
     val r = head.upd[Unit, Lst[A]] { (l, _) => (l, l) }
     r.unsafePerform((), kcas).toList
   }
 
   els.foreach { a =>
-    push.unsafePerform(a, KCAS.NaiveKCAS)
+    push.unsafePerform(a, mcas.KCAS.NaiveKCAS)
   }
 }
 

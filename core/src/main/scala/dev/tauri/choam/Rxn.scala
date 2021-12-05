@@ -26,8 +26,7 @@ import cats.mtl.Local
 import cats.effect.kernel.Unique
 import cats.effect.std.UUIDGen
 
-import kcas.{ KCAS, ThreadContext, HalfEMCASDescriptor }
-import mcas.MemoryLocation
+import mcas.{ MemoryLocation, KCAS, ThreadContext, HalfEMCASDescriptor }
 
 /**
  * An effectful function from `A` to `B`; when executed,

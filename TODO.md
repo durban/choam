@@ -29,7 +29,6 @@
 
 ## Other improvements
 
-- Refactoring: move kcas to the `mcas` module.
 - Choice seems slow with the new interpreter (see `ChoiceCombinatorBench`).
 - Testing:
   - Figure out some tricky race conditions, and test them with JCStress.

@@ -21,7 +21,7 @@ package data
 import cats.{ Eq, Hash, Traverse }
 import cats.instances.list._
 
-import kcas.KCAS
+import mcas.KCAS
 
 /**
  * Concurrent hash trie, described in [Concurrent Tries with Efficient

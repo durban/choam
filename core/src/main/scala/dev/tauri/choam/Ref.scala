@@ -67,7 +67,7 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
 
   /** For testing */
   private[choam] final def debugRead(): A = {
-    kcas.KCAS.debugRead(this)
+    mcas.KCAS.debugRead(this)
   }
 
   private[choam] def dummy(v: Long): Long

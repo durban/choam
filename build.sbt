@@ -66,7 +66,18 @@ lazy val choam = project.in(file("."))
   .settings(name := "choam")
   .settings(commonSettings)
   .settings(publishArtifact := false)
-  .aggregate(core, mcas, data, async, stream, laws, bench, stress, layout)
+  .aggregate(
+    mcas,
+    mcasStress,
+    core,
+    data,
+    async,
+    stream,
+    laws,
+    bench,
+    stress,
+    layout,
+  )
 
 lazy val core = project.in(file("core"))
   .settings(name := "choam-core")
@@ -81,6 +92,13 @@ lazy val core = project.in(file("core"))
 lazy val mcas = project.in(file("mcas"))
   .settings(name := "choam-mcas")
   .settings(commonSettings)
+
+lazy val mcasStress = project.in(file("mcas-stress"))
+  .settings(name := "choam-mcas-stress")
+  .settings(commonSettings)
+  .settings(stressSettings)
+  .enablePlugins(JCStressPlugin)
+  .dependsOn(mcas % "compile->compile;test->test")
 
 lazy val data = project.in(file("data"))
   .settings(name := "choam-data")
@@ -124,12 +142,12 @@ lazy val bench = project.in(file("bench"))
 lazy val stress = project.in(file("stress"))
   .settings(name := "choam-stress")
   .settings(commonSettings)
-  .settings(publishArtifact := false)
+  .settings(stressSettings)
   .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
   .settings(libraryDependencies += dependencies.zioStm) // TODO: temporary
   .enablePlugins(JCStressPlugin)
-  .settings(Jcstress / version := dependencies.jcstressVersion)
   .dependsOn(async % "compile->compile;test->test")
+  .dependsOn(mcasStress % "compile->compile;test->test")
 
 lazy val layout = project.in(file("layout"))
   .settings(name := "choam-layout")
@@ -239,6 +257,11 @@ lazy val commonSettings = Seq[Setting[_]](
   ))
 )
 
+lazy val stressSettings = Seq[Setting[_]](
+  publishArtifact := false,
+  Jcstress / version := dependencies.jcstressVersion,
+)
+
 lazy val dependencies = new {
 
   val catsVersion = "2.7.0"
@@ -286,7 +309,7 @@ lazy val dependencies = new {
 
 addCommandAlias("checkScalafix", "scalafixAll --check")
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
-addCommandAlias("stressTest", "stress/Jcstress/run")
+addCommandAlias("stressTest", ";mcasStress/Jcstress/run;stress/Jcstress/run")
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
 addCommandAlias("ci", ";headerCheckAll;test")
 addCommandAlias("ciStress", "stressTest")

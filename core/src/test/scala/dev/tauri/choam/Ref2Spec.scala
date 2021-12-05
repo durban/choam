@@ -58,7 +58,7 @@ abstract class Ref2Spec extends BaseSpecA {
 
   test("consistentRead") {
     val rr = mkRef2[String, Int]("a", 42)
-    val (s, i) = rr.consistentRead.unsafePerform((), kcas.KCAS.EMCAS)
+    val (s, i) = rr.consistentRead.unsafePerform((), mcas.KCAS.EMCAS)
     assert(s eq "a")
     assert(i == 42)
   }

@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import kcas.equ
+import mcas.equ
 
 import munit.{ Location, FunSuite }
 

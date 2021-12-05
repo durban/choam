@@ -18,22 +18,22 @@
 package dev.tauri.choam
 
 trait KCASImplSpec {
-  protected def kcasImpl: kcas.KCAS
+  protected def kcasImpl: mcas.KCAS
 }
 
 trait SpecNaiveKCAS extends KCASImplSpec {
-  final override def kcasImpl: kcas.KCAS =
-    kcas.KCAS.NaiveKCAS
+  final override def kcasImpl: mcas.KCAS =
+    mcas.KCAS.NaiveKCAS
 }
 
 trait SpecEMCAS extends KCASImplSpec {
-  final override def kcasImpl: kcas.KCAS =
-    kcas.KCAS.EMCAS
+  final override def kcasImpl: mcas.KCAS =
+    mcas.KCAS.EMCAS
 }
 
 trait SpecFlakyEMCAS extends KCASImplSpec {
-  final override def kcasImpl: kcas.KCAS =
-    kcas.FlakyEMCAS
+  final override def kcasImpl: mcas.KCAS =
+    mcas.FlakyEMCAS
 }
 
 trait SpecNoKCAS extends KCASImplSpec {

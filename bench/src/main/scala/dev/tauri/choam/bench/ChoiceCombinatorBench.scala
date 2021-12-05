@@ -20,7 +20,7 @@ package bench
 
 import org.openjdk.jmh.annotations._
 
-import kcas.bench.Reset
+import mcas.bench.Reset
 import util._
 
 @Fork(3)
