@@ -15,10 +15,18 @@
  * limitations under the License.
  */
 
+ // Scala versions:
 val scala2 = "2.13.7"
 val scala3 = "3.1.0"
-val jdkLatest = JavaSpec.temurin("17")
-val openj9 = JavaSpec(JavaSpec.Distribution.OpenJ9, "11")
+
+// CI JVM versions:
+val jvmLatest = JavaSpec.temurin("17")
+val jvmOldest = JavaSpec.temurin("11")
+val jvmGraal = JavaSpec.graalvm("21.3.0", "11")
+val jvmOpenj9 = JavaSpec(JavaSpec.Distribution.OpenJ9, "11")
+
+// CI OS versions:
+val linux = "ubuntu-latest"
 val windows = "windows-latest"
 val macos = "macos-latest"
 
@@ -38,20 +46,19 @@ ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ciStress"), cond = Some(s"matrix.os == '${macos}'"))
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
-  JavaSpec.temurin("11"),
-  JavaSpec.graalvm("21.3.0", "11"),
-  openj9,
-  jdkLatest,
+  jvmOldest,
+  jvmGraal,
+  jvmOpenj9,
+  jvmLatest,
 )
-ThisBuild / githubWorkflowOSes := Seq("ubuntu-latest", windows, macos)
+ThisBuild / githubWorkflowOSes := Seq(linux, windows, macos)
 ThisBuild / githubWorkflowSbtCommand := "sbt -v"
-ThisBuild / githubWorkflowEnv += ("JABBA_INDEX" -> "https://raw.githubusercontent.com/typelevel/jdk-index/557b6d6/index.json")
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
-  MatrixExclude(Map("os" -> windows, "java" -> openj9.render)),
-  MatrixExclude(Map("os" -> macos)),
+  MatrixExclude(Map("os" -> windows, "java" -> jvmOpenj9.render)), // win+openJ9 seems unstable
+  MatrixExclude(Map("os" -> macos)), // don't run everything on macos, but see below
 )
 ThisBuild / githubWorkflowBuildMatrixInclusions += MatrixInclude(
-  matching = Map("os" -> macos, "java" -> jdkLatest.render, "scala" -> scala2),
+  matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> scala2),
   additions = Map.empty
 )
 
