@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package mcas
 
+import java.util.concurrent.ThreadLocalRandom
+
 import scala.math.Ordering
 
 import cats.kernel.Order
@@ -68,6 +70,15 @@ trait MemoryLocation[A] {
 }
 
 object MemoryLocation extends MemoryLocationInstances0 {
+
+  def unsafe[A](initial: A): MemoryLocation[A] = {
+    val tlr = ThreadLocalRandom.current()
+    unsafeWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+  }
+
+  private[choam] def unsafeWithId[A](initial: A)(id0: Long, id1: Long, id2: Long, id3: Long): MemoryLocation[A] = {
+    new SimpleMemoryLocation[A](initial)(id0, id1, id2, id3)
+  }
 
   def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
     import java.lang.Long.compare

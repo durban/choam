@@ -63,25 +63,20 @@ package object choam {
   // and Java static method equivalents (see StaticsBench).
 
   @inline
-  private[this] def box[A](a: A): AnyRef =
-    a.asInstanceOf[AnyRef]
+  private[choam] final def equ[A](x: A, y: A): Boolean =
+    kcas.equ(x, y)
 
   @inline
-  private[choam] def equ[A](x: A, y: A): Boolean =
-    box(x) eq box(y)
+  private[choam] final def isNull[A](a: A): Boolean =
+    kcas.isNull(a)
 
   @inline
-  private[choam] def isNull[A](a: A): Boolean =
-    box(a) eq null
+  private[choam] final def nullOf[A]: A =
+    kcas.nullOf[A]
 
-  @inline
-  private[choam] def nullOf[A]: A =
-    null.asInstanceOf[A]
+  private[choam] final def impossible(s: String): Nothing =
+    kcas.impossible(s)
 
-  // TODO: maybe AssertionError?
-  private[choam] def impossible(s: String): Nothing =
-    throw new IllegalStateException(s)
-
-  private[choam] def requireNonNull[A](a: A): Unit =
+  private[choam] final def requireNonNull[A](a: A): Unit =
     require(!isNull(a))
 }

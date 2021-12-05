@@ -30,27 +30,6 @@ import cats.effect.unsafe.{ IORuntime, IORuntimeConfig, Scheduler }
 
 import munit.{ CatsEffectSuite, Location, FunSuite, FailException }
 
-trait MUnitUtils { this: FunSuite =>
-
-  def assertSameInstance[A](
-    obtained: A,
-    expected: A,
-    clue: String = "objects are not the same instance"
-  )(implicit loc: Location): Unit = {
-    assert(equ(this.clue(obtained), this.clue(expected)), clue)
-  }
-
-  def assertIntIsNotCached(i: Int): Unit = {
-    val i1: java.lang.Integer = Integer.valueOf(i)
-    val i2: java.lang.Integer = Integer.valueOf(i)
-    assert(i1 ne i2)
-  }
-}
-
-trait BaseSpecA
-  extends FunSuite
-  with MUnitUtils
-
 trait BaseSpecF[F[_]]
   extends FunSuite
   with MUnitUtils

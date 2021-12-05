@@ -20,11 +20,13 @@ package kcas
 
 import java.util.concurrent.CountDownLatch
 
+import mcas.MemoryLocation
+
 final class IBRSpec
   extends BaseSpecA {
 
   test("IBR should not free an object referenced from another thread") {
-    val ref = Ref.unsafe[String]("s").loc
+    val ref = MemoryLocation.unsafe[String]("s")
     val ctx = EMCAS.currentContext()
     val hDesc = EMCAS.addCas(EMCAS.start(ctx), ref, "s", "x", ctx)
     val desc = ctx.op {

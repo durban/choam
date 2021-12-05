@@ -71,7 +71,12 @@ lazy val choam = project.in(file("."))
 lazy val core = project.in(file("core"))
   .settings(name := "choam-core")
   .settings(commonSettings)
-  .dependsOn(mcas)
+  .dependsOn(mcas % "compile->compile;test->test")
+  .settings(libraryDependencies ++= Seq(
+    dependencies.catsCore,
+    dependencies.catsMtl,
+    dependencies.catsEffectStd,
+  ))
 
 lazy val mcas = project.in(file("mcas"))
   .settings(name := "choam-mcas")
@@ -198,9 +203,7 @@ lazy val commonSettings = Seq[Setting[_]](
   Test / parallelExecution := false,
   libraryDependencies ++= Seq(
     Seq(
-      dependencies.cats,
-      dependencies.catsMtl,
-      dependencies.catsEffectStd
+      dependencies.catsKernel, // TODO: mcas only needs this due to `Order`
     ),
     dependencies.test.map(_ % "test-internal")
   ).flatten,
@@ -246,7 +249,8 @@ lazy val dependencies = new {
   val kindProjectorVersion = "0.13.2"
   val jcstressVersion = "0.15"
 
-  val cats = "org.typelevel" %% "cats-core" % catsVersion
+  val catsKernel = "org.typelevel" %% "cats-kernel" % catsVersion
+  val catsCore = "org.typelevel" %% "cats-core" % catsVersion
   val catsLaws = "org.typelevel" %% "cats-laws" % catsVersion
   val catsEffectKernel = "org.typelevel" %% "cats-effect-kernel" % catsEffectVersion
   val catsEffectStd = "org.typelevel" %% "cats-effect-std" % catsEffectVersion

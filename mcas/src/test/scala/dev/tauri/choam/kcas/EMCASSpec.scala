@@ -28,8 +28,8 @@ import dev.tauri.choam.mcas.MemoryLocation
 class EMCASSpec extends BaseSpecA {
 
   test("EMCAS should allow null as ov or nv") {
-    val r1 = Ref.unsafe[String](null).loc
-    val r2 = Ref.unsafe[String]("x").loc
+    val r1 = MemoryLocation.unsafe[String](null)
+    val r2 = MemoryLocation.unsafe[String]("x")
     val ctx = EMCAS.currentContext()
     val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, null, "x", ctx), r2, "x", null, ctx)
     val snap = EMCAS.snapshot(desc, ctx)
@@ -42,8 +42,8 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS should clean up finalized descriptors") {
-    val r1 = Ref.unsafe[String]("x").loc
-    val r2 = Ref.unsafe[String]("y").loc
+    val r1 = MemoryLocation.unsafe[String]("x")
+    val r2 = MemoryLocation.unsafe[String]("y")
     val ctx = EMCAS.currentContext()
     val desc = EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a", ctx)
     val snap = EMCAS.snapshot(desc, ctx)
@@ -66,16 +66,16 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS should clean up finalized descriptors if the original thread releases them") {
-    val r1 = Ref.unsafe[String]("x")
-    val r2 = Ref.unsafe[String]("y")
+    val r1 = MemoryLocation.unsafe[String]("x")
+    val r2 = MemoryLocation.unsafe[String]("y")
     var ok = false
     val t = new Thread(() => {
       val ctx = EMCAS.currentContext()
-      ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1.loc, "x", "a", ctx), r2.loc, "y", "b", ctx), ctx)
+      ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a", ctx), r2, "y", "b", ctx), ctx)
     })
     @tailrec
-    def checkCleanup(ref: Ref[String], old: String, exp: String): Boolean = {
-      EMCAS.spinUntilCleanup(ref.loc) match {
+    def checkCleanup(ref: MemoryLocation[String], old: String, exp: String): Boolean = {
+      EMCAS.spinUntilCleanup(ref) match {
         case s if s == old =>
           // CAS not started yet, retry
           checkCleanup(ref, old, exp)
@@ -103,8 +103,8 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS op should be finalizable even if a thread dies mid-op") {
-    val r1 = Ref.unsafeWithId[String]("x")(0L, 0L, 0L, 0L).loc
-    val r2 = Ref.unsafeWithId[String]("y")(0L, 0L, 0L, 1L).loc
+    val r1 = MemoryLocation.unsafeWithId[String]("x")(0L, 0L, 0L, 0L)
+    val r2 = MemoryLocation.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     var descT1: WordDescriptor[_] = null
@@ -144,8 +144,8 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS should not replace and forget active descriptors") {
-    val r1 = Ref.unsafeWithId[String]("x")(0L, 0L, 0L, 0L).loc
-    val r2 = Ref.unsafeWithId[String]("y")(0L, 0L, 0L, 1L).loc
+    val r1 = MemoryLocation.unsafeWithId[String]("x")(0L, 0L, 0L, 0L)
+    val r2 = MemoryLocation.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     val t1 = new Thread(() => {
@@ -192,7 +192,7 @@ class EMCASSpec extends BaseSpecA {
     // we never want cleanup during this test, so
     // we configure it with a very-very low probability:
     val neverReplace = (1 << 31)
-    val r = Ref.unsafe("x").loc
+    val r = MemoryLocation.unsafe("x")
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     val ctx = EMCAS.currentContext()
@@ -245,8 +245,8 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS read should help the other operation") {
-    val r1 = Ref.unsafeWithId("r1")(0L, 0L, 0L, 0L).loc
-    val r2 = Ref.unsafeWithId("r2")(0L, 0L, 0L, 42L).loc
+    val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
+    val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 42L)
     val ctx = EMCAS.currentContext()
     val hOther: HalfEMCASDescriptor = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "r1", "x", ctx), r2, "r2", "y", ctx)
     val other = ctx.op { hOther.prepare(ctx) }
@@ -261,8 +261,8 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("EMCAS read should roll back the other op if necessary") {
-    val r1 = Ref.unsafeWithId("r1")(0L, 0L, 0L, 0L).loc
-    val r2 = Ref.unsafeWithId("r2")(0L, 0L, 0L, 99L).loc
+    val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
+    val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 99L)
     val ctx = EMCAS.currentContext()
     val hOther = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "r1", "x", ctx), r2, "zzz", "y", ctx)
     val other = ctx.op { hOther.prepare(ctx) }
@@ -327,9 +327,9 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("Descriptors should be sorted") {
-    val r1 = Ref.unsafeWithId("r1")(0L, 0L, 0L, 1L).loc
-    val r2 = Ref.unsafeWithId("r2")(0L, 0L, 0L, 2L).loc
-    val r3 = Ref.unsafeWithId("r3")(0L, 0L, 0L, 3L).loc
+    val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 1L)
+    val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 2L)
+    val r3 = MemoryLocation.unsafeWithId("r3")(0L, 0L, 0L, 3L)
     val ctx = EMCAS.currentContext()
     val d0 = EMCAS.start(ctx)
     val d1 = EMCAS.addCas(d0, r1, "r1", "A", ctx)

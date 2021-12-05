@@ -49,9 +49,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("k-CAS should succeed if old values match, and there is no contention") {
-    val r1 = Ref.unsafe("r1").loc
-    val r2 = Ref.unsafe("r2").loc
-    val r3 = Ref.unsafe("r3").loc
+    val r1 = MemoryLocation.unsafe("r1")
+    val r2 = MemoryLocation.unsafe("r2")
+    val r3 = MemoryLocation.unsafe("r3")
     val succ = tryPerformBatch(List(
       CASD(r1, "r1", "x"),
       CASD(r2, "r2", "y"),
@@ -65,9 +65,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("k-CAS should fail if any of the old values doesn't match") {
-    val r1 = Ref.unsafe("r1").loc
-    val r2 = Ref.unsafe("r2").loc
-    val r3 = Ref.unsafe("r3").loc
+    val r1 = MemoryLocation.unsafe("r1")
+    val r2 = MemoryLocation.unsafe("r2")
+    val r3 = MemoryLocation.unsafe("r3")
 
     def go(): Boolean = {
       tryPerformBatch(List(
@@ -106,8 +106,8 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("k-CAS should not accept more than one CAS for the same ref") {
-    val r1 = Ref.unsafe("r1").loc
-    val r2 = Ref.unsafe("r2").loc
+    val r1 = MemoryLocation.unsafe("r1")
+    val r2 = MemoryLocation.unsafe("r2")
     val exc = intercept[Exception] {
       tryPerformBatch(List(
         CASD(r1, "r1", "x"),
@@ -123,9 +123,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("k-CAS should be able to succeed after one successful operation") {
-    val r1 = Ref.unsafe("r1").loc
-    val r2 = Ref.unsafe("r2").loc
-    val r3 = Ref.unsafe("r3").loc
+    val r1 = MemoryLocation.unsafe("r1")
+    val r2 = MemoryLocation.unsafe("r2")
+    val r3 = MemoryLocation.unsafe("r3")
 
     assert(tryPerformBatch(List(
       CASD(r1, "r1", "x"),
@@ -152,9 +152,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("Snapshotting should work") {
-    val r1 = Ref.unsafe("r1").loc
-    val r2 = Ref.unsafe("r2").loc
-    val r3 = Ref.unsafe("r3").loc
+    val r1 = MemoryLocation.unsafe("r1")
+    val r2 = MemoryLocation.unsafe("r2")
+    val r3 = MemoryLocation.unsafe("r3")
     val ctx = kcasImpl.currentContext()
     val d0 = kcasImpl.start(ctx)
     val d1 = kcasImpl.addCas(d0, r1, "r1", "r1x", ctx)
@@ -173,9 +173,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("Snapshotting should work when cancelling") {
-    val r1 = Ref.unsafe("r1").loc
-    val r2 = Ref.unsafe("r2").loc
-    val r3 = Ref.unsafe("r3").loc
+    val r1 = MemoryLocation.unsafe("r1")
+    val r2 = MemoryLocation.unsafe("r2")
+    val r3 = MemoryLocation.unsafe("r3")
     val ctx = kcasImpl.currentContext()
     val d0 = kcasImpl.start(ctx)
     val d1 = kcasImpl.addCas(d0, r1, "r1", "r1x", ctx)
