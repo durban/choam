@@ -18,7 +18,7 @@
 val scala2 = "2.13.7"
 val scala3 = "3.1.0"
 val jdkLatest = JavaSpec.temurin("17")
-val openj9 = JavaSpec(JavaSpec.Distribution.OpenJ9, "11") // 0.29?
+val openj9 = JavaSpec(JavaSpec.Distribution.OpenJ9, "11")
 val windows = "windows-latest"
 val macos = "macos-latest"
 
