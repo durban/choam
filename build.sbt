@@ -38,7 +38,7 @@ ThisBuild / githubWorkflowBuild := Seq(
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
   JavaSpec.temurin("11"),
-  JavaSpec.graalvm("21.3", "11"),
+  JavaSpec.graalvm("21.3.0", "11"),
   openj9,
   jdkLatest,
 )

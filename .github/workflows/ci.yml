@@ -26,7 +26,7 @@ jobs:
         scala: [2.13.7, 3.1.0]
         java:
           - temurin@11
-          - graal_21.3@11
+          - graal_21.3.0@11
           - adopt-openj9@11
           - temurin@17
         include:
@@ -56,11 +56,11 @@ jobs:
           distribution: temurin
           java-version: 11
 
-      - name: Setup GraalVM (graal_21.3@11)
-        if: matrix.java == 'graal_21.3@11'
+      - name: Setup GraalVM (graal_21.3.0@11)
+        if: matrix.java == 'graal_21.3.0@11'
         uses: DeLaGuardo/setup-graalvm@5.0
         with:
-          graalvm: 21.3
+          graalvm: 21.3.0
           java: java11
 
       - name: Setup Java (adopt-openj9@11)
