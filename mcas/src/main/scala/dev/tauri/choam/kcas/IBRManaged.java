@@ -31,7 +31,7 @@ import java.lang.invoke.MethodHandles;
  * interval of a descriptor guarantees that that descriptor will
  * not be finalized.
  */
-public abstract class IBRManaged<T, M extends IBRManaged<T, M>> {
+abstract class IBRManaged<T, M extends IBRManaged<T, M>> {
 
   private static final VarHandle MIN_EPOCH;
 
@@ -52,7 +52,6 @@ public abstract class IBRManaged<T, M extends IBRManaged<T, M>> {
 
   @SuppressWarnings("unused")
   private volatile long _maxEpoch;
-
 
   protected IBRManaged() {
     this.setMinEpochPlain(Long.MIN_VALUE);

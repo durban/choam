@@ -20,7 +20,7 @@ package kcas
 
 import mcas.MemoryLocation
 
-final class HalfWordDescriptor[A] private (
+private final class HalfWordDescriptor[A] private (
   val address: MemoryLocation[A],
   val ov: A,
   val nv: A,
@@ -42,13 +42,13 @@ final class HalfWordDescriptor[A] private (
     s"HalfWordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
 }
 
-object HalfWordDescriptor {
+private object HalfWordDescriptor {
 
   def apply[A](address: MemoryLocation[A], ov: A, nv: A): HalfWordDescriptor[A] =
     new HalfWordDescriptor[A](address = address, ov = ov, nv = nv)
 }
 
-final class WordDescriptor[A] private (
+private final class WordDescriptor[A] private (
   val half: HalfWordDescriptor[A],
   val parent: EMCASDescriptor,
 ) extends IBRManaged[ThreadContext, WordDescriptor[A]] {
@@ -72,7 +72,7 @@ final class WordDescriptor[A] private (
     s"WordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
 }
 
-object WordDescriptor {
+private object WordDescriptor {
 
   def apply[A](
     half: HalfWordDescriptor[A],

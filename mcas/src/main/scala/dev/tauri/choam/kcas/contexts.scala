@@ -20,7 +20,7 @@ package kcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-final class GlobalContext(impl: KCAS)
+private[choam] final class GlobalContext(impl: KCAS)
   extends IBR[ThreadContext](Long.MinValue) {
 
   override def newThreadContext(): ThreadContext =
@@ -69,7 +69,7 @@ final class GlobalContext(impl: KCAS)
   }
 }
 
-final class ThreadContext(
+private[choam] final class ThreadContext(
   global: GlobalContext,
   private[kcas] val tid: Long,
   val impl: KCAS

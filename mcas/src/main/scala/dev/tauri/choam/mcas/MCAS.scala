@@ -18,6 +18,5 @@
 package dev.tauri.choam
 package mcas
 
-/** Placeholder... */
 object MCAS {
 }

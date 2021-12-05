@@ -20,8 +20,6 @@ package kcas
 
 import mcas.MemoryLocation
 
-// TODO: detect impossible CAS-es
-
 /** Common interface for k-CAS implementations */
 abstract class KCAS { self =>
 
@@ -85,6 +83,18 @@ private[choam] object KCAS {
       EMCAS
     case _ =>
       throw new IllegalArgumentException(fqn)
+  }
+
+  /** For testing */
+  private[choam] final def debugRead[A](loc: MemoryLocation[A]): A = {
+    loc.unsafeGetVolatile() match {
+      case null =>
+        kcas.NaiveKCAS.read(loc, kcas.NaiveKCAS.currentContext())
+      case _: kcas.WordDescriptor[_] =>
+        kcas.EMCAS.read(loc, kcas.EMCAS.currentContext())
+      case a =>
+        a
+    }
   }
 
   object fqns {

@@ -67,14 +67,7 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
 
   /** For testing */
   private[choam] final def debugRead(): A = {
-    this.unsafeGetVolatile() match {
-      case null =>
-        kcas.NaiveKCAS.read(this, kcas.NaiveKCAS.currentContext())
-      case _: kcas.WordDescriptor[_] =>
-        kcas.EMCAS.read(this, kcas.EMCAS.currentContext())
-      case a =>
-        a
-    }
+    kcas.KCAS.debugRead(this)
   }
 
   private[choam] def dummy(v: Long): Long

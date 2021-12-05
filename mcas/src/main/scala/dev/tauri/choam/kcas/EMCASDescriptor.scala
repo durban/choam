@@ -25,7 +25,7 @@ import scala.collection.immutable.TreeMap
 import mcas.MemoryLocation
 
 final class HalfEMCASDescriptor private (
-  val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]]
+  private[kcas] val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]]
 ) {
 
   private[kcas] final def nonEmpty: Boolean =
@@ -64,7 +64,7 @@ object HalfEMCASDescriptor {
     _empty
 }
 
-final class EMCASDescriptor private (
+private final class EMCASDescriptor private (
   /**
    * Word descriptors
    *
@@ -107,7 +107,7 @@ final class EMCASDescriptor private (
   }
 }
 
-object EMCASDescriptor {
+private object EMCASDescriptor {
 
   private final class Iterator(desc: EMCASDescriptor) extends java.util.Iterator[WordDescriptor[_]] {
 
