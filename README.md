@@ -36,7 +36,8 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
 - However, conflicting `Rxn`s cannot be composed. That is, `Rxn`s which
   update the same `Ref` are not allowed to be composed.
   - Currently composing conflicting `Rxn`s causes a runtime error.
-  - Future work: detecting this error during compile time.
+  - Future work: either detecting this error during compile time,
+    or somehow allowing conflicting updates.
 
 ## Modules
 
@@ -57,8 +58,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
 - [`choam-laws`](laws/src/main/scala/dev/tauri/choam/laws/):
   properties fulfilled by the various `Rxn` combinators
 - [`choam-mcas`](mcas/src/main/scala/dev/tauri/choam/mcas/):
-  low-level multi-word compare-and-swap (*k*-CAS) implementation
-  (*in progress*)
+  low-level multi-word compare-and-swap (MCAS/*k*-CAS) implementation
 
 ## Related work
 
