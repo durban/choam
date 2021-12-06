@@ -77,6 +77,8 @@ lazy val choam = project.in(file("."))
     bench,
     stress,
     layout,
+    dummy.jvm,
+    dummy.js,
   )
 
 lazy val core = project.in(file("core"))
@@ -84,14 +86,28 @@ lazy val core = project.in(file("core"))
   .settings(commonSettings)
   .dependsOn(mcas % "compile->compile;test->test")
   .settings(libraryDependencies ++= Seq(
-    dependencies.catsCore,
-    dependencies.catsMtl,
-    dependencies.catsEffectStd,
+    dependencies.catsCore.value,
+    dependencies.catsMtl.value,
+    dependencies.catsEffectStd.value,
   ))
+
+lazy val dummy = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("dummy"))
+  .settings(name := "choam-dummy")
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies += dependencies.catsCore.value
+  )
+  .jsSettings(
+    scalaJSUseMainModuleInitializer := true,
+  )
 
 lazy val mcas = project.in(file("mcas"))
   .settings(name := "choam-mcas")
   .settings(commonSettings)
+  .dependsOn(dummy.jvm)
 
 lazy val mcasStress = project.in(file("mcas-stress"))
   .settings(name := "choam-mcas-stress")
@@ -104,7 +120,7 @@ lazy val data = project.in(file("data"))
   .settings(name := "choam-data")
   .settings(commonSettings)
   .dependsOn(core % "compile->compile;test->test")
-  .settings(libraryDependencies += dependencies.paguro)
+  .settings(libraryDependencies += dependencies.paguro.value)
 
 lazy val async = project.in(file("async"))
   .settings(name := "choam-async")
@@ -115,16 +131,16 @@ lazy val stream = project.in(file("stream"))
   .settings(name := "choam-stream")
   .settings(commonSettings)
   .dependsOn(async % "compile->compile;test->test")
-  .settings(libraryDependencies += dependencies.fs2)
+  .settings(libraryDependencies += dependencies.fs2.value)
 
 lazy val laws = project.in(file("laws"))
   .settings(name := "choam-laws")
   .settings(commonSettings)
   .dependsOn(async % "compile->compile;test->test")
   .settings(libraryDependencies ++= Seq(
-    dependencies.catsLaws,
-    dependencies.catsEffectLaws,
-    dependencies.catsEffectTestkit % Test,
+    dependencies.catsLaws.value,
+    dependencies.catsEffectLaws.value,
+    dependencies.catsEffectTestkit.value % Test,
   ))
 
 lazy val bench = project.in(file("bench"))
@@ -132,9 +148,9 @@ lazy val bench = project.in(file("bench"))
   .settings(commonSettings)
   .settings(publishArtifact := false)
   .settings(libraryDependencies ++= Seq(
-    dependencies.scalaStm,
-    dependencies.catsStm,
-    dependencies.zioStm,
+    dependencies.scalaStm.value,
+    dependencies.catsStm.value,
+    dependencies.zioStm.value,
   ))
   .enablePlugins(JmhPlugin)
   .dependsOn(stream % "compile->compile;compile->test")
@@ -144,7 +160,7 @@ lazy val stress = project.in(file("stress"))
   .settings(commonSettings)
   .settings(stressSettings)
   .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
-  .settings(libraryDependencies += dependencies.zioStm) // TODO: temporary
+  .settings(libraryDependencies += dependencies.zioStm.value) // TODO: temporary
   .enablePlugins(JCStressPlugin)
   .dependsOn(async % "compile->compile;test->test")
   .dependsOn(mcasStress % "compile->compile;test->test")
@@ -154,7 +170,7 @@ lazy val layout = project.in(file("layout"))
   .settings(commonSettings)
   .settings(publishArtifact := false)
   .settings(
-    libraryDependencies += dependencies.jol % Test,
+    libraryDependencies += dependencies.jol.value % Test,
     Test / fork := true // JOL doesn't like sbt classpath
   )
   .dependsOn(core % "compile->compile;test->test")
@@ -221,9 +237,9 @@ lazy val commonSettings = Seq[Setting[_]](
   Test / parallelExecution := false,
   libraryDependencies ++= Seq(
     Seq(
-      dependencies.catsKernel, // TODO: mcas only needs this due to `Order`
+      dependencies.catsKernel.value, // TODO: mcas only needs this due to `Order`
     ),
-    dependencies.test.map(_ % "test-internal")
+    dependencies.test.value.map(_ % "test-internal")
   ).flatten,
   libraryDependencies ++= (
     if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
@@ -272,39 +288,41 @@ lazy val dependencies = new {
   val kindProjectorVersion = "0.13.2"
   val jcstressVersion = "0.15"
 
-  val catsKernel = "org.typelevel" %% "cats-kernel" % catsVersion
-  val catsCore = "org.typelevel" %% "cats-core" % catsVersion
-  val catsLaws = "org.typelevel" %% "cats-laws" % catsVersion
-  val catsEffectKernel = "org.typelevel" %% "cats-effect-kernel" % catsEffectVersion
-  val catsEffectStd = "org.typelevel" %% "cats-effect-std" % catsEffectVersion
-  val catsEffectAll = "org.typelevel" %% "cats-effect" % catsEffectVersion
-  val catsEffectLaws = "org.typelevel" %% "cats-effect-laws" % catsEffectVersion
-  val catsEffectTestkit = "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion
-  val catsMtl = "org.typelevel" %% "cats-mtl" % catsMtlVersion
-  val catsMtlLaws = "org.typelevel" %% "cats-mtl-laws" % catsMtlVersion
-  val fs2 = "co.fs2" %% "fs2-core" % fs2Version
+  val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
+  val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
+  val catsLaws = Def.setting("org.typelevel" %%% "cats-laws" % catsVersion)
+  val catsEffectKernel = Def.setting("org.typelevel" %%% "cats-effect-kernel" % catsEffectVersion)
+  val catsEffectStd = Def.setting("org.typelevel" %%% "cats-effect-std" % catsEffectVersion)
+  val catsEffectAll = Def.setting("org.typelevel" %%% "cats-effect" % catsEffectVersion)
+  val catsEffectLaws = Def.setting("org.typelevel" %%% "cats-effect-laws" % catsEffectVersion)
+  val catsEffectTestkit = Def.setting("org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion)
+  val catsMtl = Def.setting("org.typelevel" %%% "cats-mtl" % catsMtlVersion)
+  val catsMtlLaws = Def.setting("org.typelevel" %%% "cats-mtl-laws" % catsMtlVersion)
+  val fs2 = Def.setting("co.fs2" %%% "fs2-core" % fs2Version)
 
   // Java:
-  val paguro = "org.organicdesign" % "Paguro" % "3.6.0"
+  val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.6.0")
 
-  val test = Seq(
-    catsEffectAll,
-    catsLaws,
-    "org.typelevel" %% "cats-effect-kernel-testkit" % catsEffectVersion,
-    "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    catsMtlLaws,
-    "org.typelevel" %% "munit-cats-effect-3" % "1.0.7",
-    "org.typelevel" %% "scalacheck-effect" % scalacheckEffectVersion,
-    "org.typelevel" %% "scalacheck-effect-munit" % scalacheckEffectVersion,
-    "org.typelevel" %% "discipline-munit" % "1.0.9",
-    "dev.zio" %% "zio-interop-cats" % "3.2.9.0",
-  )
+  val test = Def.setting[Seq[ModuleID]] {
+    Seq(
+      catsEffectAll.value,
+      catsLaws.value,
+      "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
+      "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
+      catsMtlLaws.value,
+      "org.typelevel" %%% "munit-cats-effect-3" % "1.0.7",
+      "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
+      "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
+      "org.typelevel" %%% "discipline-munit" % "1.0.9",
+      "dev.zio" %%% "zio-interop-cats" % "3.2.9.0",
+    )
+  }
 
-  val scalaStm = "org.scala-stm" %% "scala-stm" % "0.11.1"
-  val catsStm = "io.github.timwspence" %% "cats-stm" % "0.11.0"
-  val zioStm = "dev.zio" %% "zio" % "1.0.12"
+  val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
+  val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.11.0")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "1.0.12")
 
-  val jol = "org.openjdk.jol" % "jol-core" % "0.16"
+  val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.16")
 }
 
 addCommandAlias("checkScalafix", "scalafixAll --check")
