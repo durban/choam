@@ -17,9 +17,11 @@
 
 package foo
 
-import cats.kernel.Monoid
+import munit.FunSuite
 
-abstract class FooPlatform {
-  protected def bar: Int =
-    Monoid[Int].combine(Monoid[Int].empty, 42)
+final class FooSpec extends FunSuite {
+
+  test("Foo (shared)") {
+    assertEquals(Foo.foo, 42)
+  }
 }
