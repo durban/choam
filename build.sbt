@@ -89,6 +89,7 @@ lazy val core = project.in(file("core"))
     dependencies.catsCore.value,
     dependencies.catsMtl.value,
     dependencies.catsEffectStd.value,
+    dependencies.zioCats.value % Test, // https://github.com/zio/interop-cats/issues/471
   ))
 
 lazy val dummy = crossProject(JSPlatform, JVMPlatform)
@@ -314,12 +315,12 @@ lazy val dependencies = new {
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
       "org.typelevel" %%% "discipline-munit" % "1.0.9",
-      "dev.zio" %%% "zio-interop-cats" % "3.2.9.0",
     )
   }
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.11.0")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "3.2.9.0")
   val zioStm = Def.setting("dev.zio" %%% "zio" % "1.0.12")
 
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.16")
