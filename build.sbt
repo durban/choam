@@ -67,7 +67,7 @@ lazy val choam = project.in(file("."))
   .settings(commonSettings)
   .settings(publishArtifact := false)
   .aggregate(
-    mcas,
+    mcas.jvm, mcas.js,
     mcasStress,
     core,
     data,
@@ -77,14 +77,13 @@ lazy val choam = project.in(file("."))
     bench,
     stress,
     layout,
-    dummy.jvm,
-    dummy.js,
+    dummy.jvm, dummy.js,
   )
 
 lazy val core = project.in(file("core"))
   .settings(name := "choam-core")
   .settings(commonSettings)
-  .dependsOn(mcas % "compile->compile;test->test")
+  .dependsOn(mcas.jvm % "compile->compile;test->test")
   .settings(libraryDependencies ++= Seq(
     dependencies.catsCore.value,
     dependencies.catsMtl.value,
@@ -92,7 +91,7 @@ lazy val core = project.in(file("core"))
     dependencies.zioCats.value % Test, // https://github.com/zio/interop-cats/issues/471
   ))
 
-lazy val dummy = crossProject(JSPlatform, JVMPlatform)
+lazy val dummy = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
   .in(file("dummy"))
@@ -105,17 +104,20 @@ lazy val dummy = crossProject(JSPlatform, JVMPlatform)
     scalaJSUseMainModuleInitializer := true,
   )
 
-lazy val mcas = project.in(file("mcas"))
+lazy val mcas = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("mcas"))
   .settings(name := "choam-mcas")
   .settings(commonSettings)
-  .dependsOn(dummy.jvm)
+  .dependsOn(dummy)
 
 lazy val mcasStress = project.in(file("mcas-stress"))
   .settings(name := "choam-mcas-stress")
   .settings(commonSettings)
   .settings(stressSettings)
   .enablePlugins(JCStressPlugin)
-  .dependsOn(mcas % "compile->compile;test->test")
+  .dependsOn(mcas.jvm % "compile->compile;test->test")
 
 lazy val data = project.in(file("data"))
   .settings(name := "choam-data")
