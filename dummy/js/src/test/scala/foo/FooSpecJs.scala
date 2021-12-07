@@ -17,11 +17,25 @@
 
 package foo
 
+import java.lang.Runtime
+
+import scala.scalajs.js.isUndefined
+import scala.scalajs.LinkingInfo.esVersion
+import scala.scalajs.js
+
+
 import munit.FunSuite
 
 final class FooSpecJs extends FunSuite {
 
   test("Foo (JS)") {
     assertEquals(Foo.foo, 42)
+    assert(isUndefined(()))
+    assert(!isUndefined(42))
+    println(s"ES version: ${esVersion}")
+    println("NUM_CPU: " + Runtime.getRuntime().availableProcessors().toString())
+    println(s"Process: ${js.Dynamic.global.process.title} ${js.Dynamic.global.process.version}")
+    val bi = js.BigInt(42)
+    assert(bi + js.BigInt(1) > bi)
   }
 }
