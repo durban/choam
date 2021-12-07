@@ -20,11 +20,13 @@ package mcas
 
 private[mcas] abstract class AbstractMCASPlatform {
 
-  def ThreadConfinedMCAS: MCAS =
+  def DefaultMCAS: MCAS
+
+  final def ThreadConfinedMCAS: MCAS =
     mcas.ThreadConfinedMCAS
 
   // TODO: rename to SpinLockMCAS
-  def NaiveKCAS: MCAS =
+  final def NaiveKCAS: MCAS =
     mcas.NaiveKCAS
 
   /** For testing */

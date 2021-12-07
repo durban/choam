@@ -36,7 +36,7 @@ object Reactive {
     inst
 
   def defaultKcasImpl: mcas.MCAS =
-    mcas.MCAS.EMCAS
+    mcas.MCAS.DefaultMCAS
 
   implicit def reactiveForSync[F[_]](implicit F: Sync[F]): Reactive[F] =
     new SyncReactive[F](defaultKcasImpl)(F)

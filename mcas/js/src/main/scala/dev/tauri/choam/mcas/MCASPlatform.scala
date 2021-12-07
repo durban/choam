@@ -18,7 +18,10 @@
 package dev.tauri.choam
 package mcas
 
-private[mcas] class MCASPlatform extends AbstractMCASPlatform {
+private[mcas] abstract class MCASPlatform extends AbstractMCASPlatform {
+
+  final override def DefaultMCAS: MCAS =
+    this.ThreadConfinedMCAS
 
   private[choam] final override def debugRead[A](loc: MemoryLocation[A]): A = {
     loc.unsafeGetVolatile() match {

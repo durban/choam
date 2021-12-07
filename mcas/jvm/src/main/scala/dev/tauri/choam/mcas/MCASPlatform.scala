@@ -20,7 +20,10 @@ package mcas
 
 private[mcas] abstract class MCASPlatform extends AbstractMCASPlatform {
 
-  def EMCAS: MCAS =
+  final override def DefaultMCAS: MCAS =
+    this.EMCAS
+
+  final def EMCAS: MCAS =
     mcas.EMCAS
 
   /** For testing */
