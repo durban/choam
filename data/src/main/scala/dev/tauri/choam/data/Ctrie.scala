@@ -21,7 +21,7 @@ package data
 import cats.{ Eq, Hash, Traverse }
 import cats.instances.list._
 
-import mcas.KCAS
+import mcas.MCAS
 
 /**
  * Concurrent hash trie, described in [Concurrent Tries with Efficient
@@ -181,7 +181,7 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
   }
 
   /** Only call in quiescent states! */
-  private[choam] def debugStr(kcas: KCAS): String = {
+  private[choam] def debugStr(kcas: MCAS): String = {
     debug.unsafePerform(0, kcas)
   }
 

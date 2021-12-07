@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentSkipListMap
  *
  * @param `zeroEpoch` is the value of the very first epoch.
 */
-private[mcas] abstract class IBR[T](zeroEpoch: Long)
+private abstract class IBR[T](zeroEpoch: Long)
   extends IBRBase(zeroEpoch) {
 
   protected[IBR] def newThreadContext(): T
@@ -97,7 +97,7 @@ private[mcas] abstract class IBR[T](zeroEpoch: Long)
   }
 }
 
-private[mcas] object IBR {
+private object IBR {
 
   private[mcas] final val epochFreq = 128 // TODO
 

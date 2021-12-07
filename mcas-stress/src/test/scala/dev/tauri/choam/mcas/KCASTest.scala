@@ -37,10 +37,10 @@ class KCASTest extends StressTestBase {
 
   private def write(nv: String): Boolean = {
     val ctx = impl.currentContext()
-    val d = refs.foldLeft(impl.start(ctx)) { (d, ref) =>
-      impl.addCas(d, ref, "ov", nv, ctx)
+    val d = refs.foldLeft(ctx.start()) { (d, ref) =>
+      ctx.addCas(d, ref, "ov", nv)
     }
-    impl.tryPerform(d, ctx)
+    ctx.tryPerform(d)
   }
 
   @Actor
@@ -56,7 +56,7 @@ class KCASTest extends StressTestBase {
   @Arbiter
   def arbiter(r: ZZL_Result): Unit = {
     val ctx = impl.currentContext()
-    val vs = refs.map(ref => impl.read(ref, ctx))
+    val vs = refs.map(ref => ctx.read(ref))
     val s = vs.toSet
     if (s.size == 1) {
       r.r3 = s.iterator.next()

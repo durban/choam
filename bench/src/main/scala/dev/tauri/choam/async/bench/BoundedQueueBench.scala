@@ -73,6 +73,6 @@ object BoundedQueueBench {
     val catsQ: CatsQueue[IO, String] =
       CatsQueue.bounded[IO, String](Bound).unsafeRunSync()(runtime)
     val rxnQ: CatsQueue[IO, String] =
-      BoundedQueue[IO, String](Bound).unsafeRun(mcas.KCAS.EMCAS).toCats
+      BoundedQueue[IO, String](Bound).unsafeRun(mcas.MCAS.EMCAS).toCats
   }
 }

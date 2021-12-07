@@ -18,25 +18,33 @@
 package dev.tauri.choam
 package mcas
 
+import java.util.concurrent.ThreadLocalRandom
+
 import scala.collection.concurrent.TrieMap
 
 import mcas.MemoryLocation
 
-object FlakyEMCAS extends KCAS {
-
-  private[this] val global =
-    new GlobalContext(this)
+object FlakyEMCAS extends MCAS { self =>
 
   private[this] val seen =
     new TrieMap[Int, Unit]
 
-  private[choam] def currentContext(): ThreadContext =
-    this.global.threadContext()
+  def currentContext(): MCAS.ThreadContext = new MCAS.ThreadContext {
 
-  private[choam] def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A =
-    EMCAS.read(ref, ctx)
+    private[this] val emcasCtx =
+      EMCAS.currentContext()
 
-  private[choam] final override def tryPerform(hDesc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
+    private[choam] final override def random: ThreadLocalRandom =
+      emcasCtx.random
+
+    final override def read[A](ref: MemoryLocation[A]): A =
+      emcasCtx.read(ref)
+
+    final override def tryPerform(desc: HalfEMCASDescriptor): Boolean =
+      self.tryPerform(desc, emcasCtx)
+  }
+
+  private final def tryPerform(hDesc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
     // perform or not the operation based on whether we've already seen it
     ctx.startOp()
     try {

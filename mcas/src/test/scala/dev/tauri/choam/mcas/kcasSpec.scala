@@ -37,13 +37,13 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
 
   private final def tryPerformBatch(ops: List[CASD[_]]): Boolean = {
     val ctx = kcasImpl.currentContext()
-    val desc = ops.foldLeft(kcasImpl.start(ctx)) { (d, op) =>
+    val desc = ops.foldLeft(ctx.start()) { (d, op) =>
       op match {
         case op: CASD[a] =>
-          kcasImpl.addCas(d, op.address, op.ov, op.nv, ctx)
+          ctx.addCas(d, op.address, op.ov, op.nv)
       }
     }
-    kcasImpl.tryPerform(desc, kcasImpl.currentContext())
+    ctx.tryPerform(desc)
   }
 
   test("k-CAS should succeed if old values match, and there is no contention") {
@@ -57,9 +57,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     ))
     assert(succ)
     val ctx = kcasImpl.currentContext()
-    assertSameInstance(kcasImpl.read(r1, ctx), "x")
-    assertSameInstance(kcasImpl.read(r2, ctx), "y")
-    assertSameInstance(kcasImpl.read(r3, ctx), "z")
+    assertSameInstance(ctx.read(r1), "x")
+    assertSameInstance(ctx.read(r2), "y")
+    assertSameInstance(ctx.read(r3), "z")
   }
 
   test("k-CAS should fail if any of the old values doesn't match") {
@@ -78,29 +78,29 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     r1.unsafeSetVolatile("x")
     assert(!go())
     val ctx = kcasImpl.currentContext()
-    assertSameInstance(kcasImpl.read(r1, ctx), "x")
-    assertSameInstance(kcasImpl.read(r2, ctx), "r2")
-    assertSameInstance(kcasImpl.read(r3, ctx), "r3")
+    assertSameInstance(ctx.read(r1), "x")
+    assertSameInstance(ctx.read(r2), "r2")
+    assertSameInstance(ctx.read(r3), "r3")
 
     r1.unsafeSetVolatile("r1")
     r2.unsafeSetVolatile("x")
     assert(!go())
-    assertSameInstance(kcasImpl.read(r1, ctx), "r1")
-    assertSameInstance(kcasImpl.read(r2, ctx), "x")
-    assertSameInstance(kcasImpl.read(r3, ctx), "r3")
+    assertSameInstance(ctx.read(r1), "r1")
+    assertSameInstance(ctx.read(r2), "x")
+    assertSameInstance(ctx.read(r3), "r3")
 
     r2.unsafeSetVolatile("r2")
     r3.unsafeSetVolatile("x")
     assert(!go())
-    assertSameInstance(kcasImpl.read(r1, ctx), "r1")
-    assertSameInstance(kcasImpl.read(r2, ctx), "r2")
-    assertSameInstance(kcasImpl.read(r3, ctx), "x")
+    assertSameInstance(ctx.read(r1), "r1")
+    assertSameInstance(ctx.read(r2), "r2")
+    assertSameInstance(ctx.read(r3), "x")
 
     r3.unsafeSetVolatile("r3")
     assert(go())
-    assertSameInstance(kcasImpl.read(r1, ctx), "x")
-    assertSameInstance(kcasImpl.read(r2, ctx), "y")
-    assertSameInstance(kcasImpl.read(r3, ctx), "z")
+    assertSameInstance(ctx.read(r1), "x")
+    assertSameInstance(ctx.read(r2), "y")
+    assertSameInstance(ctx.read(r3), "z")
   }
 
   test("k-CAS should not accept more than one CAS for the same ref") {
@@ -116,8 +116,8 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(clue(exc.getMessage).contains("Impossible k-CAS"))
     assert(clue(exc).isInstanceOf[ImpossibleOperation])
     val ctx = kcasImpl.currentContext()
-    assertSameInstance(kcasImpl.read(r1, ctx), "r1")
-    assertSameInstance(kcasImpl.read(r2, ctx), "r2")
+    assertSameInstance(ctx.read(r1), "r1")
+    assertSameInstance(ctx.read(r2), "r2")
   }
 
   test("k-CAS should be able to succeed after one successful operation") {
@@ -144,9 +144,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     )))
 
     val ctx = kcasImpl.currentContext()
-    assertSameInstance(kcasImpl.read(r1, ctx), "x2")
-    assertSameInstance(kcasImpl.read(r2, ctx), "y2")
-    assertSameInstance(kcasImpl.read(r3, ctx), "z2")
+    assertSameInstance(ctx.read(r1), "x2")
+    assertSameInstance(ctx.read(r2), "y2")
+    assertSameInstance(ctx.read(r3), "z2")
   }
 
   test("Snapshotting should work") {
@@ -154,20 +154,20 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r2 = MemoryLocation.unsafe("r2")
     val r3 = MemoryLocation.unsafe("r3")
     val ctx = kcasImpl.currentContext()
-    val d0 = kcasImpl.start(ctx)
-    val d1 = kcasImpl.addCas(d0, r1, "r1", "r1x", ctx)
+    val d0 = ctx.start()
+    val d1 = ctx.addCas(d0, r1, "r1", "r1x")
 
-    val snap = kcasImpl.snapshot(d1, ctx)
-    val d21 = kcasImpl.addCas(d1, r2, "foo", "bar", ctx)
-    assert(!kcasImpl.tryPerform(d21, ctx))
-    assertSameInstance(kcasImpl.read(r1, ctx), "r1")
-    assertSameInstance(kcasImpl.read(r2, ctx), "r2")
-    assertSameInstance(kcasImpl.read(r3, ctx), "r3")
-    val d22 = kcasImpl.addCas(snap, r3, "r3", "r3x", ctx)
-    assert(kcasImpl.tryPerform(d22, ctx))
-    assertSameInstance(kcasImpl.read(r1, ctx), "r1x")
-    assertSameInstance(kcasImpl.read(r2, ctx), "r2")
-    assertSameInstance(kcasImpl.read(r3, ctx), "r3x")
+    val snap = ctx.snapshot(d1)
+    val d21 = ctx.addCas(d1, r2, "foo", "bar")
+    assert(!ctx.tryPerform(d21))
+    assertSameInstance(ctx.read(r1), "r1")
+    assertSameInstance(ctx.read(r2), "r2")
+    assertSameInstance(ctx.read(r3), "r3")
+    val d22 = ctx.addCas(snap, r3, "r3", "r3x")
+    assert(ctx.tryPerform(d22))
+    assertSameInstance(ctx.read(r1), "r1x")
+    assertSameInstance(ctx.read(r2), "r2")
+    assertSameInstance(ctx.read(r3), "r3x")
   }
 
   test("Snapshotting should work when cancelling") {
@@ -175,17 +175,17 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r2 = MemoryLocation.unsafe("r2")
     val r3 = MemoryLocation.unsafe("r3")
     val ctx = kcasImpl.currentContext()
-    val d0 = kcasImpl.start(ctx)
-    val d1 = kcasImpl.addCas(d0, r1, "r1", "r1x", ctx)
-    val snap = kcasImpl.snapshot(d1, ctx)
-    kcasImpl.addCas(d1, r2, "foo", "bar", ctx) // unused
-    assertSameInstance(kcasImpl.read(r1, ctx), "r1")
-    assertSameInstance(kcasImpl.read(r2, ctx), "r2")
-    assertSameInstance(kcasImpl.read(r3, ctx), "r3")
-    val d22 = kcasImpl.addCas(snap, r3, "r3", "r3x", ctx)
-    assert(kcasImpl.tryPerform(d22, ctx))
-    assertSameInstance(kcasImpl.read(r1, ctx), "r1x")
-    assertSameInstance(kcasImpl.read(r2, ctx), "r2")
-    assertSameInstance(kcasImpl.read(r3, ctx), "r3x")
+    val d0 = ctx.start()
+    val d1 = ctx.addCas(d0, r1, "r1", "r1x")
+    val snap = ctx.snapshot(d1)
+    ctx.addCas(d1, r2, "foo", "bar") // unused
+    assertSameInstance(ctx.read(r1), "r1")
+    assertSameInstance(ctx.read(r2), "r2")
+    assertSameInstance(ctx.read(r3), "r3")
+    val d22 = ctx.addCas(snap, r3, "r3", "r3x")
+    assert(ctx.tryPerform(d22))
+    assertSameInstance(ctx.read(r1), "r1x")
+    assertSameInstance(ctx.read(r2), "r2")
+    assertSameInstance(ctx.read(r3), "r3x")
   }
 }

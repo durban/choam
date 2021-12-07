@@ -28,7 +28,7 @@ final class IBRSpec
   test("IBR should not free an object referenced from another thread") {
     val ref = MemoryLocation.unsafe[String]("s")
     val ctx = EMCAS.currentContext()
-    val hDesc = EMCAS.addCas(EMCAS.start(ctx), ref, "s", "x", ctx)
+    val hDesc = ctx.addCas(ctx.start(), ref, "s", "x")
     val desc = ctx.op {
       val desc = hDesc.prepare(ctx)
       assert(EMCAS.MCAS(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS))

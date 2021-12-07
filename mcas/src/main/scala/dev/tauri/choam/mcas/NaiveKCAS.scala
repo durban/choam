@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package mcas
 
+import java.util.concurrent.ThreadLocalRandom
+
 /**
  * Naïve k-CAS algorithm as described in [Reagents: Expressing and Composing
  * Fine-grained Concurrency](https://people.mpi-sws.org/~turon/reagents.pdf)
@@ -29,81 +31,81 @@ package mcas
  *
  * Implemented as a baseline for benchmarking and correctness tests.
  */
-private[choam] object NaiveKCAS extends KCAS { self =>
+private object NaiveKCAS extends MCAS { self =>
 
-  private[this] val dummyGlobal =
-    new GlobalContext(self)
-
-  private[this] val dummyContext =
-    new ThreadContext(dummyGlobal, 0L, self)
-
-  final override def currentContext(): ThreadContext =
+  final override def currentContext(): MCAS.ThreadContext =
     dummyContext
 
-  final override def tryPerform(desc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
-    val ops = desc.map.valuesIterator.toList
-    perform(ops)
-  }
+  private[this] val dummyContext = new MCAS.ThreadContext {
 
-  @tailrec
-  final override def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A = {
-    ref.unsafeGetVolatile() match {
-      case null =>
-        read(ref, ctx)
-      case a =>
-        a
+    final override def random =
+      ThreadLocalRandom.current()
+
+    final override def tryPerform(desc: HalfEMCASDescriptor): Boolean = {
+      val ops = desc.map.valuesIterator.toList
+      perform(ops)
     }
-  }
-
-  private def perform(ops: List[HalfWordDescriptor[_]]): Boolean = {
 
     @tailrec
-    def lock(ops: List[HalfWordDescriptor[_]]): List[HalfWordDescriptor[_]] = ops match {
-      case Nil => Nil
-      case h :: tail => h match { case head: HalfWordDescriptor[a] =>
-        if (head.address.unsafeCasVolatile(head.ov, nullOf[a])) lock(tail)
-        else ops // rollback
+    final override def read[A](ref: MemoryLocation[A]): A = {
+      ref.unsafeGetVolatile() match {
+        case null =>
+          read(ref)
+        case a =>
+          a
       }
     }
 
-    @tailrec
-    def commit(ops: List[HalfWordDescriptor[_]]): Unit = ops match {
-      case Nil => ()
-      case h :: tail => h match { case head: HalfWordDescriptor[a] =>
-        head.address.unsafeSetVolatile(head.nv)
-        commit(tail)
-      }
-    }
+    private def perform(ops: List[HalfWordDescriptor[_]]): Boolean = {
 
-    @tailrec
-    def rollback(from: List[HalfWordDescriptor[_]], to: List[HalfWordDescriptor[_]]): Unit = {
-      if (from ne to) {
-        from match {
-          case Nil => impossible("this is the end")
-          case h :: tail => h match { case head: HalfWordDescriptor[a] =>
-            head.address.unsafeSetVolatile(head.ov)
-            rollback(tail, to)
+      @tailrec
+      def lock(ops: List[HalfWordDescriptor[_]]): List[HalfWordDescriptor[_]] = ops match {
+        case Nil => Nil
+        case h :: tail => h match { case head: HalfWordDescriptor[a] =>
+          if (head.address.unsafeCasVolatile(head.ov, nullOf[a])) lock(tail)
+          else ops // rollback
+        }
+      }
+
+      @tailrec
+      def commit(ops: List[HalfWordDescriptor[_]]): Unit = ops match {
+        case Nil => ()
+        case h :: tail => h match { case head: HalfWordDescriptor[a] =>
+          head.address.unsafeSetVolatile(head.nv)
+          commit(tail)
+        }
+      }
+
+      @tailrec
+      def rollback(from: List[HalfWordDescriptor[_]], to: List[HalfWordDescriptor[_]]): Unit = {
+        if (from ne to) {
+          from match {
+            case Nil => impossible("this is the end")
+            case h :: tail => h match { case head: HalfWordDescriptor[a] =>
+              head.address.unsafeSetVolatile(head.ov)
+              rollback(tail, to)
+            }
           }
+        } else {
+          ()
         }
-      } else {
-        ()
       }
-    }
 
-    ops match {
-      case Nil =>
-        true
-      case (h : HalfWordDescriptor[a]) :: Nil =>
-        h.address.unsafeCasVolatile(h.ov, h.nv)
-      case l @ (_ :: _) =>
-        lock(l) match {
-          case Nil =>
-            commit(l)
-            true
-          case to @ (_ :: _) =>
-            rollback(l, to)
-            false
-        }
+      ops match {
+        case Nil =>
+          true
+        case (h : HalfWordDescriptor[a]) :: Nil =>
+          h.address.unsafeCasVolatile(h.ov, h.nv)
+        case l @ (_ :: _) =>
+          lock(l) match {
+            case Nil =>
+              commit(l)
+              true
+            case to @ (_ :: _) =>
+              rollback(l, to)
+              false
+          }
+      }
     }
   }
 }

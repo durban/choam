@@ -49,6 +49,6 @@ class RxnCASTest extends StressTestBase {
 
   @Arbiter
   def arbiter(r: ZZL_Result): Unit = {
-    r.r3 = impl.read(ref.loc, impl.currentContext())
+    r.r3 = impl.currentContext().read(ref.loc)
   }
 }

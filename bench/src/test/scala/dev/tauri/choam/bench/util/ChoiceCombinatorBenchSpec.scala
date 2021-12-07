@@ -21,26 +21,26 @@ package util
 
 final class ChoiceCombinatorBenchSpec extends BaseSpecA {
 
-  test("sanity check") {
+  test("ChoiceCombinatorBench") {
     val b = new ChoiceCombinatorBench
     val s = new ChoiceCombinatorBench.CASChoice
     s.size = 8
     s.setup()
     val k = new KCASImplState
-    k.kcasName = mcas.KCAS.fqns.EMCAS
+    k.kcasName = mcas.MCAS.fqns.EMCAS
     k.setupKCASImpl()
     b.doChoiceCAS(s, k)
     // check that the reaction happened:
-    val ctx = mcas.EMCAS.currentContext()
-    assertEquals(mcas.EMCAS.read(s.ref.loc, ctx), "bar")
+    val ctx = mcas.MCAS.EMCAS.currentContext()
+    assertEquals(ctx.read(s.ref.loc), "bar")
     for (r <- s.refs) {
-      val v = mcas.EMCAS.read(r.loc, ctx)
+      val v = ctx.read(r.loc)
       assertEquals(v, "foo")
     }
     // re-run the reaction:
     s.reset.reset()
-    assertEquals(mcas.EMCAS.read(s.ref.loc, ctx), "foo")
+    assertEquals(ctx.read(s.ref.loc), "foo")
     b.doChoiceCAS(s, k)
-    assertEquals(mcas.EMCAS.read(s.ref.loc, ctx), "bar")
+    assertEquals(ctx.read(s.ref.loc), "bar")
   }
 }

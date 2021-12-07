@@ -18,5 +18,107 @@
 package dev.tauri.choam
 package mcas
 
-object MCAS {
+import java.util.concurrent.ThreadLocalRandom
+
+/** Common interface for MCAS/k-CAS implementations */
+abstract class MCAS {
+
+  def currentContext(): MCAS.ThreadContext
+
+  /** Only for testing/benchmarking */
+  private[choam] def printStatistics(@unused println: String => Unit): Unit = {
+    ()
+  }
+
+  /** Only for testing/benchmarking */
+  private[choam] def countCommitsAndRetries(): (Long, Long) = {
+    (0L, 0L)
+  }
+}
+
+object MCAS { self =>
+
+  // TODO: rename to SpinLockMCAS
+  def NaiveKCAS: MCAS =
+    mcas.NaiveKCAS
+
+  def EMCAS: MCAS =
+    mcas.EMCAS
+
+  trait ThreadContext {
+
+    def tryPerform(desc: HalfEMCASDescriptor): Boolean
+
+    def read[A](ref: MemoryLocation[A]): A
+
+    def start(): HalfEMCASDescriptor =
+      HalfEMCASDescriptor.empty
+
+    def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =  {
+      val wd = HalfWordDescriptor(ref, ov, nv)
+      desc.add(wd)
+    }
+
+    def snapshot(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+      desc
+
+    def addAll(to: HalfEMCASDescriptor, from: HalfEMCASDescriptor): HalfEMCASDescriptor = {
+      val it = from.map.valuesIterator
+      var res = to
+      while (it.hasNext) {
+        res = res.add(it.next())
+      }
+      res
+    }
+
+    final def doSingleCas[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
+      val desc = this.addCas(this.start(), ref, ov, nv)
+      this.tryPerform(desc)
+    }
+
+    private[choam] def random: ThreadLocalRandom
+
+    /** Only for testing/benchmarking */
+    private[choam] def recordCommit(@unused retries: Int): Unit = {
+      ()
+    }
+  }
+
+  private[mcas] def impossibleOp[A, B](
+    ref: MemoryLocation[_],
+    a: HalfWordDescriptor[A],
+    b: HalfWordDescriptor[B]
+  ): Nothing = {
+    throw new ImpossibleOperation(ref, a, b)
+  }
+
+  /** For testing */
+  private[choam] final def debugRead[A](loc: MemoryLocation[A]): A = {
+    loc.unsafeGetVolatile() match {
+      case null =>
+        NaiveKCAS.currentContext().read(loc)
+      case _: WordDescriptor[_] =>
+        EMCAS.currentContext().read(loc)
+      case a =>
+        a
+    }
+  }
+
+  /** Benchmark infra */
+  private[choam] def unsafeLookup(fqn: String): MCAS = fqn match {
+    case fqns.NaiveKCAS =>
+      this.NaiveKCAS
+    case fqns.EMCAS =>
+      this.EMCAS
+    case _ =>
+      throw new IllegalArgumentException(fqn)
+  }
+
+  /** Benchmark infra */
+  private[choam] object fqns {
+    final val NaiveKCAS =
+      "dev.tauri.choam.mcas.NaiveKCAS"
+    final val EMCAS =
+      "dev.tauri.choam.mcas.EMCAS"
+  }
 }

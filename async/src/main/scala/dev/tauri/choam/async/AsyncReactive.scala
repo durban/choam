@@ -42,7 +42,7 @@ object AsyncReactive {
   implicit def asyncReactiveForAsync[F[_]](implicit F: Async[F]): AsyncReactive[F] =
     new AsyncReactiveImpl[F](Reactive.defaultKcasImpl)(F)
 
-  private[choam] class AsyncReactiveImpl[F[_]](ki: mcas.KCAS)(implicit F: Async[F])
+  private[choam] class AsyncReactiveImpl[F[_]](ki: mcas.MCAS)(implicit F: Async[F])
     extends Reactive.SyncReactive[F](ki)
     with AsyncReactive[F] {
 

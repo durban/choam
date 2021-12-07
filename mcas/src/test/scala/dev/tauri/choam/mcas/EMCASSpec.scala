@@ -31,8 +31,8 @@ class EMCASSpec extends BaseSpecA {
     val r1 = MemoryLocation.unsafe[String](null)
     val r2 = MemoryLocation.unsafe[String]("x")
     val ctx = EMCAS.currentContext()
-    val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, null, "x", ctx), r2, "x", null, ctx)
-    val snap = EMCAS.snapshot(desc, ctx)
+    val desc = ctx.addCas(ctx.addCas(ctx.start(), r1, null, "x"), r2, "x", null)
+    val snap = ctx.snapshot(desc)
     assert(EMCAS.tryPerform(desc, ctx))
     assert(EMCAS.read(r1, ctx) eq "x")
     assert(EMCAS.read(r2, ctx) eq null)
@@ -45,9 +45,9 @@ class EMCASSpec extends BaseSpecA {
     val r1 = MemoryLocation.unsafe[String]("x")
     val r2 = MemoryLocation.unsafe[String]("y")
     val ctx = EMCAS.currentContext()
-    val desc = EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a", ctx)
-    val snap = EMCAS.snapshot(desc, ctx)
-    assert(EMCAS.tryPerform(EMCAS.addCas(desc, r2, "y", "b", ctx), ctx))
+    val desc = ctx.addCas(ctx.start(), r1, "x", "a")
+    val snap = ctx.snapshot(desc)
+    assert(ctx.tryPerform(ctx.addCas(desc, r2, "y", "b")))
     assert(EMCAS.read(r1, ctx) eq "a")
     assert(EMCAS.read(r2, ctx) eq "b")
     assert(EMCAS.spinUntilCleanup(r1) eq "a")
@@ -56,7 +56,7 @@ class EMCASSpec extends BaseSpecA {
     assert(r2.unsafeGetVolatile() eq "b")
     assert(r1.unsafeCasVolatile("a", "x")) // reset
     val desc2 = snap
-    assert(!EMCAS.tryPerform(EMCAS.addCas(desc2, r2, "y", "b", ctx), ctx)) // this will fail
+    assert(!ctx.tryPerform(ctx.addCas(desc2, r2, "y", "b"))) // this will fail
     assert(EMCAS.read(r1, ctx) eq "x")
     assert(EMCAS.read(r2, ctx) eq "b")
     assert(EMCAS.spinUntilCleanup(r1) eq "x")
@@ -71,7 +71,7 @@ class EMCASSpec extends BaseSpecA {
     var ok = false
     val t = new Thread(() => {
       val ctx = EMCAS.currentContext()
-      ok = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a", ctx), r2, "y", "b", ctx), ctx)
+      ok = ctx.tryPerform(ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "a"), r2, "y", "b"))
     })
     @tailrec
     def checkCleanup(ref: MemoryLocation[String], old: String, exp: String): Boolean = {
@@ -110,7 +110,7 @@ class EMCASSpec extends BaseSpecA {
     var descT1: WordDescriptor[_] = null
     val t1 = new Thread(() => {
       val ctx = EMCAS.currentContext()
-      val hDesc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a", ctx), r2, "y", "b", ctx)
+      val hDesc = ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "a"), r2, "y", "b")
       ctx.startOp()
       val desc = hDesc.prepare(ctx)
       val d0 = desc.wordIterator().next().asInstanceOf[WordDescriptor[String]]
@@ -132,7 +132,7 @@ class EMCASSpec extends BaseSpecA {
       System.gc()
     }
 
-    val succ = EMCAS.tryPerform(EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "x2", ctx), r2, "y", "y2", ctx), ctx)
+    val succ = ctx.tryPerform(ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "x2"), r2, "y", "y2"))
     assert(!succ)
     assert(EMCAS.read(r1, ctx) eq "a")
     assert(EMCAS.read(r2, ctx) eq "b")
@@ -150,7 +150,7 @@ class EMCASSpec extends BaseSpecA {
     val latch2 = new CountDownLatch(1)
     val t1 = new Thread(() => {
       val ctx = EMCAS.currentContext()
-      val hDesc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "x", "a", ctx), r2, "y", "b", ctx)
+      val hDesc = ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "a"), r2, "y", "b")
       ctx.startOp()
       val desc = hDesc.prepare(ctx)
       try {
@@ -169,7 +169,7 @@ class EMCASSpec extends BaseSpecA {
     val t2 = new Thread(() => {
       // the other thread changes back the values (but first finalizes the active op):
       val ctx = EMCAS.currentContext()
-      val desc = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r2, "b", "y", ctx), r1, "a", "x", ctx)
+      val desc = ctx.addCas(ctx.addCas(ctx.start(), r2, "b", "y"), r1, "a", "x")
       assert(EMCAS.tryPerform(desc, ctx))
       // wait for descriptors to be collected:
       assert(EMCAS.spinUntilCleanup(r2, max = 0x100000L) eq null)
@@ -211,7 +211,7 @@ class EMCASSpec extends BaseSpecA {
     t.start()
     latch1.await()
     val tEpoch = threadEpoch.getOrElse(fail("no threadEpoch"))
-    val hDescOld = EMCAS.addCas(EMCAS.start(ctx), r, "x", "y", ctx)
+    val hDescOld = ctx.addCas(ctx.start(), r, "x", "y")
     val descOld = ctx.op {
       val descOld = hDescOld.prepare(ctx)
       assert(EMCAS.MCAS(desc = descOld, ctx = ctx, replace = neverReplace))
@@ -228,7 +228,7 @@ class EMCASSpec extends BaseSpecA {
       assertSameInstance(r.asInstanceOf[MemoryLocation[Any]].unsafeGetVolatile(), descOld.wordIterator().next())
       ctx.forceNextEpoch()
       ctx.resetCounter(to = 0)
-      val hDescNew = EMCAS.addCas(EMCAS.start(ctx), r, "y", "z", ctx)
+      val hDescNew = ctx.addCas(ctx.start(), r, "y", "z")
       val descNew = ctx.op {
         val descNew = hDescNew.prepare(ctx)
         val newEpoch = descNew.wordIterator().next().getMinEpochVolatile()
@@ -248,7 +248,7 @@ class EMCASSpec extends BaseSpecA {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 42L)
     val ctx = EMCAS.currentContext()
-    val hOther: HalfEMCASDescriptor = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "r1", "x", ctx), r2, "r2", "y", ctx)
+    val hOther: HalfEMCASDescriptor = ctx.addCas(ctx.addCas(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
     val other = ctx.op { hOther.prepare(ctx) }
     val d0 = other.wordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
@@ -264,7 +264,7 @@ class EMCASSpec extends BaseSpecA {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 99L)
     val ctx = EMCAS.currentContext()
-    val hOther = EMCAS.addCas(EMCAS.addCas(EMCAS.start(ctx), r1, "r1", "x", ctx), r2, "zzz", "y", ctx)
+    val hOther = ctx.addCas(ctx.addCas(ctx.start(), r1, "r1", "x"), r2, "zzz", "y")
     val other = ctx.op { hOther.prepare(ctx) }
     val d0 = other.wordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
@@ -331,10 +331,10 @@ class EMCASSpec extends BaseSpecA {
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 2L)
     val r3 = MemoryLocation.unsafeWithId("r3")(0L, 0L, 0L, 3L)
     val ctx = EMCAS.currentContext()
-    val d0 = EMCAS.start(ctx)
-    val d1 = EMCAS.addCas(d0, r1, "r1", "A", ctx)
-    val d2 = EMCAS.addCas(d1, r3, "r3", "C", ctx)
-    val d3 = EMCAS.addCas(d2, r2, "r2", "B", ctx)
+    val d0 = ctx.start()
+    val d1 = ctx.addCas(d0, r1, "r1", "A")
+    val d2 = ctx.addCas(d1, r3, "r3", "C")
+    val d3 = ctx.addCas(d2, r2, "r2", "B")
     val d = ctx.op { d3.prepare(ctx) }
     val it = d.wordIterator()
     assertSameInstance(it.next().address, r1)

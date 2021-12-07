@@ -49,13 +49,14 @@ final class TreiberStack[A](els: Iterable[A]) {
   def toList: Axn[List[A]] =
     head.upd[Any, Lst[A]] { (l, _) => (l, l) }.map(_.toList)
 
-  private[choam] def unsafeToList(kcas: mcas.KCAS): List[A] = {
+  private[choam] def unsafeToList(kcas: mcas.MCAS): List[A] = {
     val r = head.upd[Unit, Lst[A]] { (l, _) => (l, l) }
     r.unsafePerform((), kcas).toList
   }
 
+  // TODO: remove this
   els.foreach { a =>
-    push.unsafePerform(a, mcas.KCAS.NaiveKCAS)
+    push.unsafePerform(a, mcas.MCAS.NaiveKCAS)
   }
 }
 

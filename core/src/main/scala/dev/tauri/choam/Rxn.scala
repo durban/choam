@@ -26,7 +26,7 @@ import cats.mtl.Local
 import cats.effect.kernel.Unique
 import cats.effect.std.UUIDGen
 
-import mcas.{ MemoryLocation, KCAS, ThreadContext, HalfEMCASDescriptor }
+import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor }
 
 /**
  * An effectful function from `A` to `B`; when executed,
@@ -196,7 +196,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
   final def unsafePerform(
     a: A,
-    kcas: KCAS,
+    kcas: MCAS,
     maxBackoff: Int = 16,
     randomizeBackoff: Boolean = true,
   ): B = {
@@ -210,7 +210,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
   private[choam] final def unsafePerformInternal(
     a: A,
-    ctx: ThreadContext,
+    ctx: MCAS.ThreadContext,
     maxBackoff: Int = 16,
     randomizeBackoff: Boolean = true,
   ): B = {
@@ -365,7 +365,7 @@ object Rxn extends RxnInstances0 {
       lift(uf)
 
     // TODO: does this make sense? is it faster than `ThreadLocalRandom.current()`?
-    private[choam] def context[A](uf: ThreadContext => A): Axn[A] =
+    private[choam] def context[A](uf: MCAS.ThreadContext => A): Axn[A] =
       new Ctx[A](uf)
 
     // TODO: idea:
@@ -460,7 +460,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Done(${result})"
   }
 
-  private final class Ctx[A](val uf: ThreadContext => A) extends Rxn[Any, A] {
+  private final class Ctx[A](val uf: MCAS.ThreadContext => A) extends Rxn[Any, A] {
     private[choam] final def tag = 14
     final override def toString: String = s"Ctx(<block>)"
   }
@@ -506,7 +506,7 @@ object Rxn extends RxnInstances0 {
   private[choam] def interpreter[X, R](
     rxn: Rxn[X, R],
     x: X,
-    ctx: ThreadContext,
+    ctx: MCAS.ThreadContext,
     maxBackoff: Int = 16,
     randomizeBackoff: Boolean = true
   ): R = {
@@ -537,19 +537,19 @@ object Rxn extends RxnInstances0 {
   private final class InterpreterState[X, R](
     rxn: Rxn[X, R],
     x: X,
-    ctx: ThreadContext,
+    ctx: MCAS.ThreadContext,
     maxBackoff: Int,
     randomizeBackoff: Boolean
   ) {
 
-    private[this] val kcas = ctx.impl
+    //private[this] val kcas = ctx.impl
 
     private[this] var delayCompStorage: ObjStack[Any] = null
 
     private[this] var startRxn: Rxn[Any, Any] = rxn.asInstanceOf[Rxn[Any, Any]]
     private[this] var startA: Any = x
 
-    private[this] var desc: HalfEMCASDescriptor = kcas.start(ctx)
+    private[this] var desc: HalfEMCASDescriptor = ctx.start()
 
     private[this] val alts: ObjStack[Any] = newStack[Any]()
 
@@ -590,7 +590,7 @@ object Rxn extends RxnInstances0 {
       delayCompStorage.push(Arrays.copyOf(contTReset, contTReset.length))
       delayCompStorage.push(contKReset)
       // reset state:
-      desc = kcas.start(ctx)
+      desc = ctx.start()
       clearAlts()
       contT.clear()
       contK.clear()
@@ -615,7 +615,7 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def saveAlt(k: Rxn[Any, R]): Unit = {
-      alts.push(kcas.snapshot(desc, ctx))
+      alts.push(ctx.snapshot(desc))
       alts.push(a)
       alts.push(contT.takeSnapshot())
       alts.push(contK.takeSnapshot())
@@ -667,7 +667,7 @@ object Rxn extends RxnInstances0 {
           startA = () : Any
           startRxn = pcAction
           retries = 0
-          desc = kcas.start(ctx)
+          desc = ctx.start()
           pcAction
         case 5 => // ContAfterPostCommit
           val res = popFinalResult()
@@ -681,7 +681,7 @@ object Rxn extends RxnInstances0 {
           val ox = contK.pop()
           val ref = contK.pop().asInstanceOf[Ref[Any]]
           val (nx, res) = a.asInstanceOf[Tuple2[_, _]]
-          desc = kcas.addCas(desc, ref.loc, ox, nx, ctx)
+          desc = ctx.addCas(desc, ref.loc, ox, nx)
           a = res
           next()
         case 8 => // ContAs
@@ -701,7 +701,7 @@ object Rxn extends RxnInstances0 {
         loadAlt()
       } else {
         // really restart:
-        desc = kcas.start(ctx)
+        desc = ctx.start()
         a = startA
         resetConts()
         pc.clear()
@@ -740,12 +740,12 @@ object Rxn extends RxnInstances0 {
     private[this] final def loop[A, B](curr: Rxn[A, B]): R = {
       (curr.tag : @switch) match {
         case 0 => // Commit
-          if (kcas.tryPerform(desc, ctx)) {
+          if (ctx.tryPerform(desc)) {
             // save retry statistics:
             ctx.recordCommit(retries)
             // ok, commit is done, but we still need to perform post-commit actions
             val res = a
-            desc = kcas.start(ctx)
+            desc = ctx.start()
             a = () : Any
             if (!equ(res, postCommitResultMarker)) {
               // final result, Done (or ContAfterDelayComp) will need it:
@@ -801,9 +801,9 @@ object Rxn extends RxnInstances0 {
           loop(c.left)
         case 7 => // Cas
           val c = curr.asInstanceOf[Cas[Any]]
-          val currVal = kcas.read(c.ref, ctx)
+          val currVal = ctx.read(c.ref)
           if (equ(currVal, c.ov)) {
-            desc = kcas.addCas(desc, c.ref, c.ov, c.nv, ctx)
+            desc = ctx.addCas(desc, c.ref, c.ov, c.nv)
             a = () : Unit
             loop(next())
           } else {
@@ -811,14 +811,14 @@ object Rxn extends RxnInstances0 {
           }
         case 8 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, Any]]
-          val ox = kcas.read(c.ref, ctx)
+          val ox = ctx.read(c.ref)
           val (nx, b) = c.f(ox, a.asInstanceOf[A])
-          desc = kcas.addCas(desc, c.ref, ox, nx, ctx)
+          desc = ctx.addCas(desc, c.ref, ox, nx)
           a = b
           loop(next())
         case 9 => // InvisibleRead
           val c = curr.asInstanceOf[InvisibleRead[B]]
-          a = kcas.read(c.ref, ctx)
+          a = ctx.read(c.ref)
           loop(next())
         case 10 => // Exchange
           val c = curr.asInstanceOf[Exchange[A, B]]
@@ -854,7 +854,7 @@ object Rxn extends RxnInstances0 {
           loop(c.rxn)
         case 16 => // UpdWith
           val c = curr.asInstanceOf[UpdWith[Any, Any, _]]
-          val ox = kcas.read(c.ref, ctx)
+          val ox = ctx.read(c.ref)
           val axn = c.f(ox, a)
           contT.push(ContUpdWith)
           contK.push(c.ref)
@@ -1093,7 +1093,7 @@ private[choam] sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.t
       F.run(self, ())
 
     final def unsafeRun(
-      kcas: KCAS,
+      kcas: MCAS,
       maxBackoff: Int = 16,
       randomizeBackoff: Boolean = true
     ): A = {

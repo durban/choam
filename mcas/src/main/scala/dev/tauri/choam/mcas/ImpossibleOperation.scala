@@ -19,9 +19,9 @@ package dev.tauri.choam
 package mcas
 
 final class ImpossibleOperation private[mcas] (
-  private[mcas] val ref: MemoryLocation[_],
-  private[mcas] val a: HalfWordDescriptor[_],
-  private[mcas] val b: HalfWordDescriptor[_],
+  private val ref: MemoryLocation[_],
+  private val a: HalfWordDescriptor[_],
+  private val b: HalfWordDescriptor[_],
 ) extends IllegalArgumentException(
   s"Impossible k-CAS for ${ref}: ${a.ov} -> ${a.nv} and ${b.ov} -> ${b.nv}"
 ) {

@@ -25,7 +25,7 @@ import org.openjdk.jmh.profile.InternalProfiler
 import org.openjdk.jmh.infra.{ BenchmarkParams, IterationParams }
 import org.openjdk.jmh.results.{ IterationResult, Result, ScalarResult, AggregationPolicy }
 
-import mcas.EMCAS
+import mcas.MCAS.EMCAS
 
 /**
  * JMH profiler "plugin" for `Rxn` statistics/measurements.
@@ -53,7 +53,7 @@ final class RxnProfiler extends InternalProfiler {
     bp: BenchmarkParams,
     ip: IterationParams
   ): Unit = {
-    val cr = EMCAS.global.countCommitsAndRetries()
+    val cr = EMCAS.countCommitsAndRetries()
     this.commitsBefore = cr._1
     this.retriesBefore = cr._2
   }
@@ -63,7 +63,7 @@ final class RxnProfiler extends InternalProfiler {
     ip: IterationParams,
     ir: IterationResult
   ): Collection[_ <: Result[_]] = {
-    val cr = EMCAS.global.countCommitsAndRetries()
+    val cr = EMCAS.countCommitsAndRetries()
     val commitsAfter = cr._1
     val retriesAfter = cr._2
     val allCommits = commitsAfter - this.commitsBefore

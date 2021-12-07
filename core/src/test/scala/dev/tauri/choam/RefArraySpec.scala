@@ -58,8 +58,8 @@ final class RefArraySpec extends BaseSpecA {
 
   test("consistentRead") {
     val a = mkRefArray[Int](42)
-    a(0).update(_ + 1).unsafeRun(mcas.KCAS.EMCAS)
-    val (x, y) = Rxn.consistentRead(a(0), a(2)).unsafeRun(mcas.KCAS.EMCAS)
+    a(0).update(_ + 1).unsafeRun(mcas.MCAS.EMCAS)
+    val (x, y) = Rxn.consistentRead(a(0), a(2)).unsafeRun(mcas.MCAS.EMCAS)
     assert(x == 43)
     assert(y == 42)
   }

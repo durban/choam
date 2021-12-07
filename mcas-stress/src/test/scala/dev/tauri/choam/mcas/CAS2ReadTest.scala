@@ -43,24 +43,23 @@ class CAS2ReadTest extends StressTestBase {
   @Actor
   def writer(r: LLZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r3 = impl.tryPerform(
-      impl.addCas(impl.addCas(impl.start(ctx), ref1, "ov1", "a", ctx), ref2, "ov2", "b", ctx),
-      ctx
+    r.r3 = ctx.tryPerform(
+      ctx.addCas(ctx.addCas(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
     )
   }
 
   @Actor
   def reader(r: LLZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r1 = impl.read(ref1, ctx)
-    r.r2 = impl.read(ref2, ctx)
+    r.r1 = ctx.read(ref1)
+    r.r2 = ctx.read(ref2)
   }
 
   @Arbiter
   def arbiter(r: LLZ_Result): Unit = {
     val ctx = impl.currentContext()
-    val ok1 = (EMCAS.read(this.ref1, ctx) eq "a")
-    val ok2 = (EMCAS.read(this.ref2, ctx) eq "b")
+    val ok1 = (ctx.read(this.ref1) eq "a")
+    val ok2 = (ctx.read(this.ref2) eq "b")
     if (!(ok1 && ok2)) {
       r.r3 = false
     }

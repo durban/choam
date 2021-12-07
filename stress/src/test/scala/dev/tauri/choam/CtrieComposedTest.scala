@@ -24,7 +24,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import mcas.KCAS
+import mcas.MCAS
 import data.Ctrie
 
 // @JCStressTest
@@ -75,10 +75,10 @@ object CtrieComposedTest {
         x % 7
     }
     val ct = Ctrie.unsafe[Int, String](h)
-    ct.insert.unsafePerform(0 -> "0", KCAS.NaiveKCAS)
-    ct.insert.unsafePerform(1 -> "1", KCAS.NaiveKCAS)
-    ct.insert.unsafePerform(7 -> "7", KCAS.NaiveKCAS)
-    ct.insert.unsafePerform(8 -> "8", KCAS.NaiveKCAS)
+    ct.insert.unsafePerform(0 -> "0", MCAS.NaiveKCAS)
+    ct.insert.unsafePerform(1 -> "1", MCAS.NaiveKCAS)
+    ct.insert.unsafePerform(7 -> "7", MCAS.NaiveKCAS)
+    ct.insert.unsafePerform(8 -> "8", MCAS.NaiveKCAS)
     ct
   }
 }

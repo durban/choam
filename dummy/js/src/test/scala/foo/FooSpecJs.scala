@@ -23,7 +23,6 @@ import scala.scalajs.js.isUndefined
 import scala.scalajs.LinkingInfo.esVersion
 import scala.scalajs.js
 
-
 import munit.FunSuite
 
 final class FooSpecJs extends FunSuite {
@@ -35,7 +34,5 @@ final class FooSpecJs extends FunSuite {
     println(s"ES version: ${esVersion}")
     println("NUM_CPU: " + Runtime.getRuntime().availableProcessors().toString())
     println(s"Process: ${js.Dynamic.global.process.title} ${js.Dynamic.global.process.version}")
-    val bi = js.BigInt(42)
-    assert(bi + js.BigInt(1) > bi)
   }
 }

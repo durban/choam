@@ -43,27 +43,24 @@ class CAS2Test extends StressTestBase {
   @Actor
   def writer1(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r1 = impl.tryPerform(
-      impl.addCas(impl.start(ctx), ref1, "ov1", "x", ctx),
-      ctx
+    r.r1 = ctx.tryPerform(
+      ctx.addCas(ctx.start(), ref1, "ov1", "x")
     )
   }
 
   @Actor
   def writer2(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r2 = impl.tryPerform(
-      impl.addCas(impl.start(ctx), ref2, "ov2", "y", ctx),
-      ctx
+    r.r2 = ctx.tryPerform(
+      ctx.addCas(ctx.start(), ref2, "ov2", "y")
     )
   }
 
   @Actor
   def writer3(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r3 = impl.tryPerform(
-      impl.addCas(impl.addCas(impl.start(ctx), ref1, "ov1", "a", ctx), ref2, "ov2", "b", ctx),
-      ctx
+    r.r3 = ctx.tryPerform(
+      ctx.addCas(ctx.addCas(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
     )
   }
 
@@ -71,11 +68,11 @@ class CAS2Test extends StressTestBase {
   def abriter(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
     if (r.r3) {
-      if ((impl.read(ref1, ctx) == "a") && (impl.read(ref2, ctx) == "b")) {
+      if ((ctx.read(ref1) == "a") && (ctx.read(ref2) == "b")) {
         r.r4 = true
       }
     } else if (r.r1 && r.r2) {
-      if ((impl.read(ref1, ctx) == "x") && (impl.read(ref2, ctx) == "y")) {
+      if ((ctx.read(ref1) == "x") && (ctx.read(ref2) == "y")) {
         r.r4 = true
       }
     }

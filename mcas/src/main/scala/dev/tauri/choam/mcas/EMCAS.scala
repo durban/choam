@@ -22,7 +22,7 @@ package mcas
  * Efficient Multi-word Compare and Swap:
  * https://arxiv.org/pdf/2008.02527.pdf
  */
-private[choam] object EMCAS extends KCAS { self =>
+private object EMCAS extends MCAS { self =>
 
   // These values for the replace period and limit
   // have been determined experimentally. See for example
@@ -128,7 +128,7 @@ private[choam] object EMCAS extends KCAS { self =>
 
   // Listing 3 in the paper:
 
-  private[choam] final override def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A =
+  private[mcas] final def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A =
     readValue(ref, ctx, EMCAS.replacePeriodForReadValue)
 
   /**
@@ -281,10 +281,10 @@ private[choam] object EMCAS extends KCAS { self =>
     }
   }
 
-  private[choam] final override def currentContext(): ThreadContext =
+  final override def currentContext(): ThreadContext =
     this.global.threadContext()
 
-  private[choam] final override def tryPerform(desc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
+  private[mcas] final def tryPerform(desc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
     tryPerformDebug(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
   }
 
@@ -306,6 +306,10 @@ private[choam] object EMCAS extends KCAS { self =>
     val (fdc, mfdc) = this.global.countFinalizedDescriptors()
     println(s"Finalized (but retained) descriptors: ${fdc}")
     println(s"Max. retained descriptors (estimate): ${mfdc}")
+  }
+
+  private[choam] final override def countCommitsAndRetries(): (Long, Long) = {
+    this.global.countCommitsAndRetries()
   }
 
   /** For testing */

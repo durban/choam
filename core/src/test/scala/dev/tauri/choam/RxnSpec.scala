@@ -28,7 +28,7 @@ import cats.implicits._
 import cats.effect.IO
 import cats.mtl.Local
 
-import mcas.{ ImpossibleOperation, ThreadContext }
+import mcas.ImpossibleOperation
 
 final class RxnSpec_NaiveKCAS_IO
   extends BaseSpecIO
@@ -109,7 +109,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       rea = (
         (
           (Rxn.unsafe.cas(a, "a", "aa") + (Rxn.unsafe.cas(b, "b", "bb") >>> Rxn.unsafe.delay { _ =>
-            this.kcasImpl.doSingleCas(y.loc, "y", "-", this.kcasImpl.currentContext())
+            this.kcasImpl.currentContext().doSingleCas(y.loc, "y", "-")
           })) >>> Rxn.unsafe.cas(y, "-", "yy")
         ) +
         (Rxn.unsafe.cas(p, "p", "pp") >>> Rxn.unsafe.cas(q, "q", "qq"))
@@ -503,7 +503,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     }
 
     for {
-      _ <- F.delay { this.assume(this.kcasImpl ne mcas.KCAS.NaiveKCAS) } // TODO: fix with naive k-CAS
+      _ <- F.delay { this.assume(this.kcasImpl ne mcas.MCAS.NaiveKCAS) } // TODO: fix with naive k-CAS
       // sanity check:
       lst0 = List[String](null, "a", "b", null, "c")
       lst1 <- F.delay { Ref.unsafe(Node.fromList(lst0)) }
@@ -749,8 +749,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("unsafe.context") {
-    Rxn.unsafe.context { (tc: ThreadContext) =>
-      tc.impl eq this.kcasImpl
+    Rxn.unsafe.context { (tc: mcas.MCAS.ThreadContext) =>
+      tc eq this.kcasImpl.currentContext()
     }.run[F].flatMap(ok => assertF(ok))
   }
 

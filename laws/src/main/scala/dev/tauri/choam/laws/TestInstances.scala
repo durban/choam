@@ -64,7 +64,7 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
 
   import TestInstances._
 
-  def kcasImpl: mcas.KCAS
+  def kcasImpl: mcas.MCAS
 
   implicit def arbRef[A](implicit arbA: Arbitrary[A]): Arbitrary[Ref[A]] = Arbitrary {
     import refs.Ref2

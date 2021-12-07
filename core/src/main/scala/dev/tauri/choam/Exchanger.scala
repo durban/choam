@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import java.util.concurrent.atomic.AtomicReference
 
-import mcas.{ ThreadContext, HalfEMCASDescriptor }
+import mcas.{ MCAS, HalfEMCASDescriptor }
 
 // TODO: lazy initialization of exchanger with something like Rxn.lzy { ... }
 
@@ -42,7 +42,7 @@ final class Exchanger[A, B] private (
   private[this] def size: Int =
     incoming.length
 
-  private[choam] def tryExchange[C](msg: Msg[A, B, C], ctx: ThreadContext): Either[Exchanger.StatMap, (Msg[Unit, Unit, C])] = {
+  private[choam] def tryExchange[C](msg: Msg[A, B, C], ctx: MCAS.ThreadContext): Either[Exchanger.StatMap, (Msg[Unit, Unit, C])] = {
     // TODO: the key shouldn't be `this` -- an exchanger and its dual should probably use the same key
     val stats = msg.rd.exchangerData.getOrElse(this, Statistics.zero)
     // println(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
@@ -53,7 +53,7 @@ final class Exchanger[A, B] private (
     }
   }
 
-  private[this] def tryIdx[C](idx: Int, msg: Msg[A, B, C], stats: Statistics, ctx: ThreadContext): Either[Statistics, Msg[Unit, Unit, C]] = {
+  private[this] def tryIdx[C](idx: Int, msg: Msg[A, B, C], stats: Statistics, ctx: MCAS.ThreadContext): Either[Statistics, Msg[Unit, Unit, C]] = {
     // println(s"tryIdx(${idx}) - thread#${Thread.currentThread().getId()}")
     // post our message:
     val slot = this.incoming(idx)
@@ -114,7 +114,7 @@ final class Exchanger[A, B] private (
     msg: Msg[A, B, C],
     maybeResult: Option[C],
     stats: Statistics,
-    ctx: ThreadContext
+    ctx: MCAS.ThreadContext
   ): Either[Statistics, Msg[Unit, Unit, C]] = {
     val rres = maybeResult.orElse {
       self.spinWait(stats = stats, ctx = ctx)
@@ -125,13 +125,13 @@ final class Exchanger[A, B] private (
         // it must be a result
         Right(Msg.ret[C](c, ctx, msg.rd.exchangerData.updated(this, stats.exchanged)))
       case None =>
-        if (ctx.impl.doSingleCas(self.hole.loc, nullOf[C], Node.RESCINDED[C], ctx)) {
+        if (ctx.doSingleCas(self.hole.loc, nullOf[C], Node.RESCINDED[C])) {
           // OK, we rolled back, and can retry
           // println(s"rolled back - thread#${Thread.currentThread().getId()}")
           Left(stats.rescinded)
         } else {
           // couldn't roll back, it must be a result
-          val c = ctx.impl.read(self.hole.loc, ctx)
+          val c = ctx.read(self.hole.loc)
           Right(Msg.ret[C](c, ctx, msg.rd.exchangerData.updated(this, stats.exchanged)))
         }
     }
@@ -142,7 +142,7 @@ final class Exchanger[A, B] private (
     other: Node[B, A, D],
     selfMsg: Msg[A, B, C],
     stats: Statistics,
-    ctx: ThreadContext,
+    ctx: MCAS.ThreadContext,
   ): Right[Statistics, Msg[Unit, Unit, C]] = {
     val cont: Axn[C] = selfMsg.cont.provide(other.msg.value)
     val otherCont: Axn[Unit] = other.msg.cont.provide(selfMsg.value).flatMap { d =>
@@ -160,7 +160,7 @@ final class Exchanger[A, B] private (
       desc = {
         // Note: we've read `other` from a `Ref`, so we'll see its mutable list of descriptors,
         // and we've claimed it, so others won't try to do the same.
-        ctx.impl.addAll(selfMsg.desc, other.msg.desc)
+        ctx.addAll(selfMsg.desc, other.msg.desc)
       }
     )
     Right(resMsg)
@@ -254,12 +254,12 @@ object Exchanger {
   )
 
   private[choam] object Msg {
-    def ret[C](c: C, ctx: ThreadContext, ed: StatMap): Msg[Unit, Unit, C] = {
+    def ret[C](c: C, ctx: MCAS.ThreadContext, ed: StatMap): Msg[Unit, Unit, C] = {
       Msg[Unit, Unit, C](
         value = (),
         cont = Rxn.ret(c),
         rd = ReactionData(Nil, ed),
-        desc = ctx.impl.start(ctx)
+        desc = ctx.start()
       )
     }
   }
@@ -311,12 +311,12 @@ object Exchanger {
      */
     val hole: Ref[C] = Ref.unsafe[C](nullOf[C])
 
-    def spinWait(stats: Statistics, ctx: ThreadContext): Option[C] = {
+    def spinWait(stats: Statistics, ctx: MCAS.ThreadContext): Option[C] = {
       @tailrec
       def go(n: Int): Option[C] = {
         if (n > 0) {
           Backoff.once()
-          val res = ctx.impl.read(this.hole.loc, ctx)
+          val res = ctx.read(this.hole.loc)
           if (isNull(res)) {
             go(n - 1)
           } else {

@@ -37,7 +37,7 @@ class ResourceAllocationKCAS {
   @Benchmark
   def bench(s: RaSt, t: ThSt): Unit = {
     val n = t.allocSize
-    val impl = t.kcasImpl
+    val ctx = t.kcasCtx
     val rss = t.selectResources(s.rss)
     val ovs = t.ovs
 
@@ -46,7 +46,7 @@ class ResourceAllocationKCAS {
       if (i >= n) {
         ()
       } else {
-        ovs(i) = impl.read(rss(i), t.kcasCtx)
+        ovs(i) = ctx.read(rss(i))
         read(i + 1)
       }
     }
@@ -56,7 +56,7 @@ class ResourceAllocationKCAS {
       if (i >= n) {
         d
       } else {
-        val nd = impl.addCas(d, rss(i), ovs(i), ovs((i + 1) % n), t.kcasCtx)
+        val nd = ctx.addCas(d, rss(i), ovs(i), ovs((i + 1) % n))
         prepare(i + 1, nd)
       }
     }
@@ -64,8 +64,8 @@ class ResourceAllocationKCAS {
     @tailrec
     def go(): Unit = {
       read(0)
-      val d = prepare(0, impl.start(t.kcasCtx))
-      if (impl.tryPerform(d, t.kcasCtx)) ()
+      val d = prepare(0, ctx.start())
+      if (ctx.tryPerform(d)) ()
       else go()
     }
 

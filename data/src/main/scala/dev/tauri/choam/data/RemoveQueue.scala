@@ -132,8 +132,9 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
     }
   }
 
+  // TODO: remove this
   els.foreach { a =>
-    enqueue.unsafePerform(a, mcas.KCAS.NaiveKCAS)
+    enqueue.unsafePerform(a, mcas.MCAS.NaiveKCAS)
   }
 }
 

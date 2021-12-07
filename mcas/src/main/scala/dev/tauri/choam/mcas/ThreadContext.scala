@@ -20,60 +20,13 @@ package mcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-private[choam] final class GlobalContext(impl: KCAS)
-  extends IBR[ThreadContext](Long.MinValue) {
-
-  override def newThreadContext(): ThreadContext =
-    new ThreadContext(this, Thread.currentThread().getId(), impl)
-
-  /** Only for testing/benchmarking */
-  private[choam] final def countFinalizedDescriptors(): (Long, Long) = {
-    var countDescrs = 0L
-    var countMaxDescrs = 0L
-    threadContexts().foreach { tctx =>
-      // Calling `getFinalizedDescriptorsCount` is not
-      // thread-safe here, but we only need these statistics
-      // for benchmarking, so we're just hoping for the best...
-      countDescrs += tctx.getFinalizedDescriptorsCount().toLong
-      countMaxDescrs += tctx.getMaxFinalizedDescriptorsCount().toLong
-    }
-
-    (countDescrs, countMaxDescrs)
-  }
-
-  /** Only for testing/benchmarking */
-  private[choam] final def countCommitsAndRetries(): (Long, Long) = {
-    var commits = 0L
-    var retries = 0L
-    threadContexts().foreach { tctx =>
-      // Calling `getCommitsAndRetries` is not
-      // thread-safe here, but we only need these statistics
-      // for benchmarking, so we're just hoping for the best...
-      val (c, r) = tctx.getCommitsAndRetries()
-      commits += c.toLong
-      retries += r.toLong
-    }
-    (commits, retries)
-  }
-
-  private[this] final def threadContexts(): Iterator[ThreadContext] = {
-    val iterWeak = this.snapshotReservations.valuesIterator
-    iterWeak.flatMap { weakref =>
-      weakref.get() match {
-        case null =>
-          Iterator.empty
-        case tctx =>
-          Iterator.single(tctx)
-      }
-    }
-  }
-}
-
-private[choam] final class ThreadContext(
+// TODO: rename to EMCASThreadContext
+private final class ThreadContext(
   global: GlobalContext,
   private[mcas] val tid: Long,
-  val impl: KCAS
-) extends IBR.ThreadContext[ThreadContext](global, 0) {
+  val impl: EMCAS.type
+) extends IBR.ThreadContext[ThreadContext](global, 0)
+  with MCAS.ThreadContext {
 
   private[this] var finalizedDescriptors: EMCASDescriptor =
     null
@@ -90,8 +43,14 @@ private[choam] final class ThreadContext(
   private[this] var retries: Int =
     0
 
-  val random: ThreadLocalRandom =
+  private[choam] final override val random: ThreadLocalRandom =
     ThreadLocalRandom.current()
+
+  final override def tryPerform(desc: HalfEMCASDescriptor): Boolean =
+    impl.tryPerform(desc, this)
+
+  final override def read[A](loc: MemoryLocation[A]): A =
+    impl.read(loc, this)
 
   final override def toString: String = {
     s"ThreadContext(global = ${this.global}, tid = ${this.tid})"
@@ -193,7 +152,7 @@ private[choam] final class ThreadContext(
     go(this.finalizedDescriptors, prev = null)
   }
 
-  private[choam] def recordCommit(retries: Int): Unit = {
+  private[choam] final override def recordCommit(retries: Int): Unit = {
     this.commits += 1
     this.retries += retries
   }

@@ -19,6 +19,6 @@ package dev.tauri.choam
 
 abstract class StressTestBase {
 
-  protected val impl: mcas.KCAS =
-    mcas.KCAS.EMCAS
+  protected val impl: mcas.MCAS =
+    mcas.MCAS.EMCAS
 }

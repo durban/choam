@@ -38,8 +38,8 @@ class ReadKCAS {
   @Benchmark
   @Group("ReadKCAS")
   def read(s: RefSt, t: ThSt, bh: Blackhole): Unit = {
-    bh.consume(t.kcasImpl.read(s.ref1, t.kcasCtx))
-    bh.consume(t.kcasImpl.read(s.ref2, t.kcasCtx))
+    bh.consume(t.kcasCtx.read(s.ref1))
+    bh.consume(t.kcasCtx.read(s.ref2))
   }
 
   @Benchmark
@@ -47,9 +47,8 @@ class ReadKCAS {
   def change(s: RefSt, t: ThSt): Unit = {
     val next1 = t.nextString()
     val next2 = t.nextString()
-    val success = t.kcasImpl.tryPerform(
-      t.kcasImpl.addCas(t.kcasImpl.addCas(t.kcasImpl.start(t.kcasCtx), s.ref1, t.last1, next1, t.kcasCtx), s.ref2, t.last2, next2, t.kcasCtx),
-      t.kcasCtx
+    val success = t.kcasCtx.tryPerform(
+      t.kcasCtx.addCas(t.kcasCtx.addCas(t.kcasCtx.start(), s.ref1, t.last1, next1), s.ref2, t.last2, next2)
     )
     if (success) {
       t.last1 = next1

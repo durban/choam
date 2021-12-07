@@ -64,8 +64,9 @@ private[choam] final class MichaelScottQueueUnpadded[A] private[this] (sentinel:
     })
   }
 
+  // TODO: remove this
   els.foreach { a =>
-    enqueue.unsafePerform(a, mcas.KCAS.NaiveKCAS)
+    enqueue.unsafePerform(a, mcas.MCAS.NaiveKCAS)
   }
 }
 
