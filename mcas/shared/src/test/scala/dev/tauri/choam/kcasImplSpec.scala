@@ -21,6 +21,11 @@ trait KCASImplSpec {
   protected def kcasImpl: mcas.MCAS
 }
 
+trait SpecThreadConfinedMCAS extends KCASImplSpec {
+  final override def kcasImpl: mcas.MCAS =
+    mcas.MCAS.ThreadConfinedMCAS
+}
+
 trait SpecNaiveKCAS extends KCASImplSpec {
   final override def kcasImpl: mcas.MCAS =
     mcas.MCAS.NaiveKCAS

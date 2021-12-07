@@ -18,6 +18,10 @@
 package dev.tauri.choam
 package mcas
 
+final class KCASSpecThreadConfinedMCAS
+  extends KCASSpec
+  with SpecThreadConfinedMCAS
+
 final class KCASSpecNaiveKCAS
   extends KCASSpec
   with SpecNaiveKCAS

@@ -18,7 +18,10 @@
 package dev.tauri.choam
 package mcas
 
-abstract class AbstractMCASPlatform {
+private[mcas] abstract class AbstractMCASPlatform {
+
+  def ThreadConfinedMCAS: MCAS =
+    mcas.ThreadConfinedMCAS
 
   // TODO: rename to SpinLockMCAS
   def NaiveKCAS: MCAS =
@@ -29,6 +32,7 @@ abstract class AbstractMCASPlatform {
 
   /** Benchmark infra */
   private[choam] def unsafeLookup(fqn: String): MCAS = fqn match {
+    case "dev.tauri.choam.mcas.ThreadConfinedMCAS" => this.ThreadConfinedMCAS
     case "dev.tauri.choam.mcas.NaiveKCAS" => this.NaiveKCAS
     case x => throw new IllegalArgumentException(x)
   }
