@@ -57,7 +57,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   integration with [FS2](https://github.com/typelevel/fs2) `Stream`s
 - [`choam-laws`](laws/src/main/scala/dev/tauri/choam/laws/):
   properties fulfilled by the various `Rxn` combinators
-- [`choam-mcas`](mcas/src/main/scala/dev/tauri/choam/mcas/):
+- [`choam-mcas`](mcas/shared/src/main/scala/dev/tauri/choam/mcas/):
   low-level multi-word compare-and-swap (MCAS/*k*-CAS) implementation
 
 ## Related work
