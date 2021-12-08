@@ -156,6 +156,7 @@ lazy val bench = project.in(file("bench"))
     dependencies.zioStm.value,
   ))
   .enablePlugins(JmhPlugin)
+  .settings(jmhSettings)
   .dependsOn(stream % "compile->compile;compile->test")
 
 lazy val stress = project.in(file("stress"))
@@ -281,6 +282,11 @@ lazy val stressSettings = Seq[Setting[_]](
   Jcstress / version := dependencies.jcstressVersion,
 )
 
+lazy val jmhSettings = Seq[Setting[_]](
+  Jmh / version := dependencies.jmhVersion,
+  Jmh / bspEnabled := false, // https://github.com/sbt/sbt-jmh/issues/193
+)
+
 lazy val dependencies = new {
 
   val catsVersion = "2.7.0"
@@ -290,6 +296,7 @@ lazy val dependencies = new {
   val scalacheckEffectVersion = "1.0.3"
   val kindProjectorVersion = "0.13.2"
   val jcstressVersion = "0.15"
+  val jmhVersion = "1.33"
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
   val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
