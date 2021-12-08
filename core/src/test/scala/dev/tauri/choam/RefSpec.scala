@@ -22,14 +22,14 @@ import scala.math.Ordering
 import cats.kernel.{ Order, Hash }
 import cats.effect.IO
 
-final class RefSpec_NaiveKCAS_IO
+final class RefSpec_SpinLockMCAS_IO
   extends BaseSpecIO
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
   with RefSpec[IO]
 
-final class RefSpec_NaiveKCAS_ZIO
+final class RefSpec_SpinLockMCAS_ZIO
   extends BaseSpecZIO
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
   with RefSpec[zio.Task]
 
 final class RefSpec_EMCAS_IO

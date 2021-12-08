@@ -75,10 +75,10 @@ object CtrieComposedTest {
         x % 7
     }
     val ct = Ctrie.unsafe[Int, String](h)
-    ct.insert.unsafePerform(0 -> "0", MCAS.NaiveKCAS)
-    ct.insert.unsafePerform(1 -> "1", MCAS.NaiveKCAS)
-    ct.insert.unsafePerform(7 -> "7", MCAS.NaiveKCAS)
-    ct.insert.unsafePerform(8 -> "8", MCAS.NaiveKCAS)
+    ct.insert.unsafePerform(0 -> "0", MCAS.ThreadConfinedMCAS)
+    ct.insert.unsafePerform(1 -> "1", MCAS.ThreadConfinedMCAS)
+    ct.insert.unsafePerform(7 -> "7", MCAS.ThreadConfinedMCAS)
+    ct.insert.unsafePerform(8 -> "8", MCAS.ThreadConfinedMCAS)
     ct
   }
 }

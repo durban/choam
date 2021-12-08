@@ -27,24 +27,24 @@ import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.Outcome
 
-final class PromiseSpec_NaiveKCAS_IO_Real
+final class PromiseSpec_SpinLockMCAS_IO_Real
   extends BaseSpecIO
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
   with PromiseSpec[IO]
 
-final class PromiseSpec_NaiveKCAS_IO_Ticked
+final class PromiseSpec_SpinLockMCAS_IO_Ticked
   extends BaseSpecTickedIO
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
   with PromiseSpecTicked[IO]
 
-final class PromiseSpec_NaiveKCAS_ZIO_Real
+final class PromiseSpec_SpinLockMCAS_ZIO_Real
   extends BaseSpecZIO
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
   with PromiseSpec[zio.Task]
 
-final class PromiseSpec_NaiveKCAS_ZIO_Ticked
+final class PromiseSpec_SpinLockMCAS_ZIO_Ticked
   extends BaseSpecTickedZIO
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
   with PromiseSpecTicked[zio.Task]
 
 final class PromiseSpec_EMCAS_IO_Real

@@ -25,15 +25,15 @@ import scala.jdk.CollectionConverters._
 
 import cats.effect.IO
 
-final class QueueSpec_NaiveKCAS_IO
+final class QueueSpec_SpinLockMCAS_IO
   extends BaseSpecIO
   with QueueSpec[IO]
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
 
-final class QueueSpec_NaiveKCAS_ZIO
+final class QueueSpec_SpinLockMCAS_ZIO
   extends BaseSpecZIO
   with QueueSpec[zio.Task]
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
 
 final class QueueSpec_EMCAS_IO
   extends BaseSpecIO

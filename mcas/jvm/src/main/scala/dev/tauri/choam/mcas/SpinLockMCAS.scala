@@ -20,8 +20,6 @@ package mcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-// TODO: move this to JVM
-
 /**
  * Naïve k-CAS algorithm as described in [Reagents: Expressing and Composing
  * Fine-grained Concurrency](https://people.mpi-sws.org/~turon/reagents.pdf)
@@ -33,7 +31,7 @@ import java.util.concurrent.ThreadLocalRandom
  *
  * Implemented as a baseline for benchmarking and correctness tests.
  */
-private object NaiveKCAS extends MCAS { self =>
+private object SpinLockMCAS extends MCAS { self =>
 
   final override def currentContext(): MCAS.ThreadContext =
     dummyContext

@@ -26,11 +26,6 @@ trait SpecThreadConfinedMCAS extends KCASImplSpec {
     mcas.MCAS.ThreadConfinedMCAS
 }
 
-trait SpecNaiveKCAS extends KCASImplSpec {
-  final override def kcasImpl: mcas.MCAS =
-    mcas.MCAS.NaiveKCAS
-}
-
 trait SpecNoKCAS extends KCASImplSpec {
   final override def kcasImpl: Nothing =
     sys.error("No KCAS here")

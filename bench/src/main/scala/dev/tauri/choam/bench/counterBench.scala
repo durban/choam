@@ -77,7 +77,7 @@ object CounterBench {
     val reactCtr: Counter = {
       val ctr = Counter.unsafe()
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
-      ctr.add.unsafePerform(init, mcas.MCAS.NaiveKCAS)
+      ctr.add.unsafePerform(init, mcas.MCAS.ThreadConfinedMCAS)
       ctr
     }
   }
@@ -137,7 +137,7 @@ object CounterBenchN {
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
       ctrs = Array.fill(n) {
         val c = Counter.unsafe()
-        c.add.unsafePerform(init, mcas.MCAS.NaiveKCAS)
+        c.add.unsafePerform(init, mcas.MCAS.SpinLockMCAS)
         c
       }
       r = ctrs.map(_.add.as(())).reduceLeft { (a, b) => (a * b).as(()) }

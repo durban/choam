@@ -24,9 +24,9 @@ import cats.effect.SyncIO
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
-final class CtrieSpecNaiveKCAS
+final class CtrieSpecSpinLockMCAS
   extends BaseSpecSyncIO
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
   with CtrieSpec[SyncIO]
 
 final class CtrieSpecEMCAS

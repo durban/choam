@@ -21,9 +21,9 @@ package data
 import cats.kernel.Hash
 import cats.effect.SyncIO
 
-class MapSpec_NaiveKCAS_SyncIO
+class MapSpec_SpinLockMCAS_SyncIO
   extends BaseSpecSyncIO
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
   with MapSpec[SyncIO]
 
 class MapSpec_EMCAS_SyncIO

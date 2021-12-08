@@ -25,17 +25,12 @@ private[mcas] abstract class AbstractMCASPlatform {
   final def ThreadConfinedMCAS: MCAS =
     mcas.ThreadConfinedMCAS
 
-  // TODO: rename to SpinLockMCAS
-  final def NaiveKCAS: MCAS =
-    mcas.NaiveKCAS
-
   /** For testing */
   private[choam] def debugRead[A](loc: MemoryLocation[A]): A
 
   /** Benchmark infra */
   private[choam] def unsafeLookup(fqn: String): MCAS = fqn match {
     case "dev.tauri.choam.mcas.ThreadConfinedMCAS" => this.ThreadConfinedMCAS
-    case "dev.tauri.choam.mcas.NaiveKCAS" => this.NaiveKCAS
     case x => throw new IllegalArgumentException(x)
   }
 }

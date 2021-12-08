@@ -30,14 +30,14 @@ import cats.mtl.Local
 
 import mcas.ImpossibleOperation
 
-final class RxnSpec_NaiveKCAS_IO
+final class RxnSpec_SpinLockMCAS_IO
   extends BaseSpecIO
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
   with RxnSpec[IO]
 
-final class RxnSpec_NaiveKCAS_ZIO
+final class RxnSpec_SpinLockMCAS_ZIO
   extends BaseSpecZIO
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
   with RxnSpec[zio.Task]
 
 final class RxnSpec_EMCAS_IO
@@ -503,7 +503,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     }
 
     for {
-      _ <- F.delay { this.assume(this.kcasImpl ne mcas.MCAS.NaiveKCAS) } // TODO: fix with naive k-CAS
+      _ <- F.delay { this.assume(this.kcasImpl ne mcas.MCAS.SpinLockMCAS) } // TODO: fix with naive k-CAS
       // sanity check:
       lst0 = List[String](null, "a", "b", null, "c")
       lst1 <- F.delay { Ref.unsafe(Node.fromList(lst0)) }

@@ -16,16 +16,8 @@
  */
 
 package dev.tauri.choam
-package mcas
 
-private[mcas] abstract class MCASPlatform extends AbstractMCASPlatform {
-
-  final override def DefaultMCAS: MCAS =
-    this.ThreadConfinedMCAS
-
-  private[choam] final override def debugRead[A](loc: MemoryLocation[A]): A =
-    loc.unsafeGetVolatile()
-
-  private[choam] final override def unsafeLookup(fqn: String): MCAS =
-    super.unsafeLookup(fqn)
+trait SpecSpinLockMCAS extends KCASImplSpec {
+  final override def kcasImpl: mcas.MCAS =
+    mcas.MCAS.SpinLockMCAS
 }

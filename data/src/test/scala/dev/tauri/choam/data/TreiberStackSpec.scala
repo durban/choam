@@ -18,9 +18,9 @@
 package dev.tauri.choam
 package data
 
-final class TreiberStackSpecNaiveKCAS
+final class TreiberStackSpecSpinLockMCAS
   extends TreiberStackSpec
-  with SpecNaiveKCAS
+  with SpecSpinLockMCAS
 
 final class TreiberStackSpecEMCAS
   extends TreiberStackSpec

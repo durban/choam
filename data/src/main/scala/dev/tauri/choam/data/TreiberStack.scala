@@ -56,7 +56,7 @@ final class TreiberStack[A](els: Iterable[A]) {
 
   // TODO: remove this
   els.foreach { a =>
-    push.unsafePerform(a, mcas.MCAS.NaiveKCAS)
+    push.unsafePerform(a, mcas.MCAS.ThreadConfinedMCAS)
   }
 }
 

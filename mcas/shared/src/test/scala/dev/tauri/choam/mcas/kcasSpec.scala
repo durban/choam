@@ -22,10 +22,6 @@ final class KCASSpecThreadConfinedMCAS
   extends KCASSpec
   with SpecThreadConfinedMCAS
 
-final class KCASSpecNaiveKCAS
-  extends KCASSpec
-  with SpecNaiveKCAS
-
 object KCASSpec {
 
   final case class CASD[A](address: MemoryLocation[A], ov: A, nv: A)
