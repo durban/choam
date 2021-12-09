@@ -22,7 +22,7 @@ import java.util.concurrent.ThreadLocalRandom
 /**
  * Utilities for exponential backoff.
  */
-object Backoff {
+object Backoff extends BackoffPlatform {
 
   /**
    * Truncated exponential backoff.
@@ -77,10 +77,6 @@ object Backoff {
     val max = Math.min(1 << normalizeRetries(retries + 1), halfMaxBackoff << 1)
     if (max < 2) 1
     else 1 + random.nextInt(max)
-  }
-
-  final def once(): Unit = {
-    Thread.onSpinWait()
   }
 
   @tailrec

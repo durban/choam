@@ -30,6 +30,8 @@ val linux = "ubuntu-latest"
 val windows = "windows-latest"
 val macos = "macos-latest"
 
+val TestInternal = "test-internal"
+
 ThisBuild / scalaVersion := scala2
 ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, scala3)
 ThisBuild / scalaOrganization := "org.scala-lang"
@@ -69,7 +71,7 @@ lazy val choam = project.in(file("."))
   .aggregate(
     mcas.jvm, mcas.js,
     mcasStress,
-    core,
+    core.jvm, core.js,
     data,
     async,
     stream,
@@ -80,16 +82,24 @@ lazy val choam = project.in(file("."))
     dummy.jvm, dummy.js,
   )
 
-lazy val core = project.in(file("core"))
+lazy val core = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("core"))
   .settings(name := "choam-core")
   .settings(commonSettings)
-  .dependsOn(mcas.jvm % "compile->compile;test->test")
+  .dependsOn(mcas % "compile->compile;test->test")
   .settings(libraryDependencies ++= Seq(
     dependencies.catsCore.value,
     dependencies.catsMtl.value,
     dependencies.catsEffectStd.value,
-    dependencies.zioCats.value % Test, // https://github.com/zio/interop-cats/issues/471
   ))
+  .jvmSettings(
+    libraryDependencies += dependencies.zioCats.value % Test, // https://github.com/zio/interop-cats/issues/471
+  )
+  .jsSettings(
+    libraryDependencies ++= dependencies.scalaJsLocale.value.map(_ % TestInternal)
+  )
 
 lazy val dummy = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -122,7 +132,7 @@ lazy val mcasStress = project.in(file("mcas-stress"))
 lazy val data = project.in(file("data"))
   .settings(name := "choam-data")
   .settings(commonSettings)
-  .dependsOn(core % "compile->compile;test->test")
+  .dependsOn(core.jvm % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.paguro.value)
 
 lazy val async = project.in(file("async"))
@@ -143,7 +153,7 @@ lazy val laws = project.in(file("laws"))
   .settings(libraryDependencies ++= Seq(
     dependencies.catsLaws.value,
     dependencies.catsEffectLaws.value,
-    dependencies.catsEffectTestkit.value % Test,
+    dependencies.catsEffectTestkit.value % TestInternal,
   ))
 
 lazy val bench = project.in(file("bench"))
@@ -177,7 +187,7 @@ lazy val layout = project.in(file("layout"))
     libraryDependencies += dependencies.jol.value % Test,
     Test / fork := true // JOL doesn't like sbt classpath
   )
-  .dependsOn(core % "compile->compile;test->test")
+  .dependsOn(core.jvm % "compile->compile;test->test")
 
 lazy val commonSettings = Seq[Setting[_]](
   scalacOptions ++= Seq(
@@ -243,7 +253,7 @@ lazy val commonSettings = Seq[Setting[_]](
     Seq(
       dependencies.catsKernel.value, // TODO: mcas only needs this due to `Order`
     ),
-    dependencies.test.value.map(_ % "test-internal")
+    dependencies.test.value.map(_ % TestInternal)
   ).flatten,
   libraryDependencies ++= (
     if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
@@ -297,6 +307,7 @@ lazy val dependencies = new {
   val kindProjectorVersion = "0.13.2"
   val jcstressVersion = "0.15"
   val jmhVersion = "1.33"
+  val scalaJsLocaleVersion = "1.2.1"
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
   val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
@@ -310,8 +321,14 @@ lazy val dependencies = new {
   val catsMtlLaws = Def.setting("org.typelevel" %%% "cats-mtl-laws" % catsMtlVersion)
   val fs2 = Def.setting("co.fs2" %%% "fs2-core" % fs2Version)
 
-  // Java:
+  // JVM:
   val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.6.0")
+
+  // JS:
+  val scalaJsLocale = Def.setting[Seq[ModuleID]](Seq(
+    "io.github.cquiroz" %%% "scala-java-locales" % scalaJsLocaleVersion,
+    "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
+  ))
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(

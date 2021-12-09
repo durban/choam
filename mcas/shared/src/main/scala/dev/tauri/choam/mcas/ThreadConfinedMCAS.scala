@@ -20,6 +20,8 @@ package mcas
 
 import java.util.concurrent.ThreadLocalRandom
 
+// TODO: this still uses volatile; could be
+// TODO: optimized to avoid barriers
 private object ThreadConfinedMCAS extends MCAS {
 
   final override def currentContext(): MCAS.ThreadContext =

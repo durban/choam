@@ -22,25 +22,10 @@ import scala.math.Ordering
 import cats.kernel.{ Order, Hash }
 import cats.effect.IO
 
-final class RefSpec_SpinLockMCAS_IO
+final class RefSpec_ThreadConfinedMCAS_IO
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecThreadConfinedMCAS
   with RefSpec[IO]
-
-final class RefSpec_SpinLockMCAS_ZIO
-  extends BaseSpecZIO
-  with SpecSpinLockMCAS
-  with RefSpec[zio.Task]
-
-final class RefSpec_EMCAS_IO
-  extends BaseSpecIO
-  with SpecEMCAS
-  with RefSpec[IO]
-
-final class RefSpec_EMCAS_ZIO
-  extends BaseSpecZIO
-  with SpecEMCAS
-  with RefSpec[zio.Task]
 
 trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 

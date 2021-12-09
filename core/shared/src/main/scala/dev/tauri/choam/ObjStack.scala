@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 
+// TODO: move to .internal
 private final class ObjStack[A]() {
 
   private[this] var lst: ObjStack.Lst[A] =

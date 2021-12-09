@@ -21,6 +21,7 @@ import java.util.Arrays
 
 import scala.collection.immutable.ArraySeq
 
+// TODO: move to .internal
 private final class ByteStack(initSize: Int) {
 
   require(initSize > 0)

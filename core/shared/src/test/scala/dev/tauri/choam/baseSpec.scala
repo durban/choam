@@ -18,7 +18,6 @@
 package dev.tauri.choam
 
 import java.util.concurrent.TimeoutException
-import java.time.{ DateTimeException, OffsetDateTime }
 
 import scala.concurrent.{ Future, ExecutionContext }
 import scala.concurrent.duration._
@@ -230,108 +229,6 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
 
   private[this] var isInitialized: Boolean =
     true
-}
-
-abstract class BaseSpecZIO extends CatsEffectSuite with BaseSpecAsyncF[zio.Task] { this: KCASImplSpec =>
-
-  final override def F: Async[zio.Task] =
-    zio.interop.catz.asyncRuntimeInstance(zio.Runtime.default)
-
-  final override def assertResultF[A, B](obtained: zio.Task[A], expected: B, clue: String = "values are not the same")(
-    implicit loc: Location, ev: B <:< A
-  ): zio.Task[Unit] = {
-    obtained.flatMap(ob => zio.Task { this.assertEquals(ob, expected, clue) })
-  }
-
-  protected def transformZIO: ValueTransform = {
-    new this.ValueTransform(
-      "ZIO",
-      { case x: zio.ZIO[_, _, _] =>
-        val tsk = x.asInstanceOf[zio.Task[_]]
-        // TODO: this will fail if it's not really a Task
-        zio.Runtime.default.unsafeRunToFuture(tsk)
-      }
-    )
-  }
-
-  override def munitValueTransforms: List[this.ValueTransform] = {
-    super.munitValueTransforms :+ this.transformZIO
-  }
-}
-
-abstract class BaseSpecTickedZIO extends BaseSpecZIO with TestContextSpec[zio.Task] { this: KCASImplSpec =>
-
-  import zio._
-  import zio.clock.Clock
-  import zio.console.Console
-  import zio.system.System
-  import zio.random.Random
-  import zio.blocking.Blocking
-  import zio.internal.Executor
-
-  protected override val testContext: TestContext =
-    TestContext()
-
-  private val testContextExecutor: zio.internal.Executor = new Executor {
-    override def yieldOpCount: Int =
-      Int.MaxValue
-    override def metrics =
-      None
-    override def submit(runnable: Runnable): Boolean = {
-      testContext.execute(runnable)
-      true
-    }
-  }
-
-  private val zioRuntime: zio.Runtime[zio.ZEnv] = {
-    zio.Runtime(
-      Has.allOf[Clock.Service, Console.Service, System.Service, Random.Service, Blocking.Service](
-        new Clock.Service {
-          override def currentTime(unit: TimeUnit): UIO[Long] =
-            UIO.effectTotal { testContext.now().toUnit(unit).toLong }
-          override def currentDateTime: zio.IO[DateTimeException, OffsetDateTime] =
-            zio.IO.effect { OffsetDateTime.now() }.catchAll { (ex: Throwable) =>
-              ex match {
-                case dte: DateTimeException => zio.IO.fail(dte)
-                case _ => zio.IO.die(ex)
-              }
-            }
-          override def nanoTime: UIO[Long] =
-            UIO.effectTotal { testContext.now().toNanos }
-          override def sleep(duration: zio.duration.Duration): UIO[Unit] = {
-            UIO.effectTotal {
-              testContext.schedule(
-                FiniteDuration(duration.toNanos(), "ns"),
-                new Runnable { override def run(): Unit = () }
-              )
-              ()
-            }
-          }
-        },
-        Console.Service.live,
-        System.Service.live,
-        Random.Service.live,
-        new Blocking.Service {
-          override def blockingExecutor: Executor =
-            testContextExecutor
-        }
-      ),
-      zio.internal.Platform.fromExecutionContext(testContext),
-    )
-  }
-
-  protected override def transformZIO: ValueTransform = {
-    new this.ValueTransform(
-      "Ticked ZIO",
-      { case x: zio.ZIO[_, _, _] =>
-        val tsk = x.asInstanceOf[zio.Task[_]]
-        // TODO: this will fail if it's not really a Task
-        val fut = this.zioRuntime.unsafeRunToFuture(tsk)
-        testContext.tickAll()
-        fut
-      }
-    )
-  }
 }
 
 abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO] { this: KCASImplSpec =>

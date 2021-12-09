@@ -17,10 +17,6 @@
 
 package dev.tauri.choam
 
-import java.util.concurrent.CountDownLatch
-
-import scala.concurrent.duration._
-
 import cats.{ Applicative, Monad, Align }
 import cats.arrow.ArrowChoice
 import cats.data.Ior
@@ -30,25 +26,10 @@ import cats.mtl.Local
 
 import mcas.ImpossibleOperation
 
-final class RxnSpec_SpinLockMCAS_IO
+final class RxnSpec_ThreadConfinedMCAS_IO
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecThreadConfinedMCAS
   with RxnSpec[IO]
-
-final class RxnSpec_SpinLockMCAS_ZIO
-  extends BaseSpecZIO
-  with SpecSpinLockMCAS
-  with RxnSpec[zio.Task]
-
-final class RxnSpec_EMCAS_IO
-  extends BaseSpecIO
-  with SpecEMCAS
-  with RxnSpec[IO]
-
-final class RxnSpec_EMCAS_ZIO
-  extends BaseSpecZIO
-  with SpecEMCAS
-  with RxnSpec[zio.Task]
 
 trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
@@ -503,8 +484,10 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     }
 
     for {
-      _ <- F.delay { this.assume(this.kcasImpl ne mcas.MCAS.SpinLockMCAS) } // TODO: fix with naive k-CAS
-      // sanity check:
+      // TODO: fix with naive k-CAS
+      _ <- F.delay { this.assume(!this.kcasImpl.toString.startsWith("dev.tauri.choam.mcas.SpinLockMCAS")) }
+      // check list structure:
+      _ <- F.unit
       lst0 = List[String](null, "a", "b", null, "c")
       lst1 <- F.delay { Ref.unsafe(Node.fromList(lst0)) }
       lst2 <- F.tailRecM((List.empty[String], lst1)) { case (acc, ref) =>
@@ -726,7 +709,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       c <- Ref[Int](0).run[F]
       rxn = r.updWith[Int, Boolean] { (s: String, i: Int) =>
         c.modify(x => (x + 1, i > 0)).map { b =>
-          (s.toUpperCase(java.util.Locale.ENGLISH), b)
+          (s.toUpperCase(java.util.Locale.ROOT), b)
         }
       }
       _ <- assertResultF(rxn[F](42), true)
@@ -752,88 +735,6 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     Rxn.unsafe.context { (tc: mcas.MCAS.ThreadContext) =>
       tc eq this.kcasImpl.currentContext()
     }.run[F].flatMap(ok => assertF(ok))
-  }
-
-  test("Thread interruption in infinite retry") {
-    val never = Rxn.unsafe.retry[Any, Unit]
-    F.blocking {
-      val cdl = new CountDownLatch(1)
-      val t = new Thread(() => {
-        cdl.countDown()
-        never.unsafeRun(this.kcasImpl)
-      })
-      t.start()
-      assert(t.isAlive())
-      cdl.await()
-      Thread.sleep(1000L)
-      assert(t.isAlive())
-      t.interrupt()
-      var c = 0
-      while (t.isAlive() && (c < 2000)) {
-        c += 1
-        Thread.sleep(1L)
-      }
-      assert(!t.isAlive())
-    }
-  }
-
-  test("Thread interruption with alternatives") {
-    val ref = Ref.unsafe("a")
-    val never: Axn[Unit] = (1 to 1000).foldLeft(ref.unsafeCas("foo", "bar")) { (acc, num) =>
-      acc + ref.unsafeCas(ov = num.toString(), nv = "foo")
-    }
-    F.blocking {
-      val cdl = new CountDownLatch(1)
-      val t = new Thread(() => {
-        cdl.countDown()
-        never.unsafeRun(this.kcasImpl)
-      })
-      t.start()
-      assert(t.isAlive())
-      cdl.await()
-      Thread.sleep(1000L)
-      assert(t.isAlive())
-      t.interrupt()
-      var c = 0
-      while (t.isAlive() && (c < 2000)) {
-        c += 1
-        Thread.sleep(1L)
-      }
-      assert(!t.isAlive())
-    }
-  }
-
-  test("Autoboxing") {
-    // Integers between (typically) -128 and 127 are
-    // cached. Due to autoboxing, other integers may
-    // seem to change their "identity".
-    val n = 9999999
-    for {
-      _ <- F.delay {
-        // sanity check:
-        assertIntIsNotCached(n)
-      }
-      ref <- Ref[Int](n).run[F]
-      // `update` works fine:
-      _ <- ref.update(_ + 1).run[F]
-      _ <- assertResultF(ref.get.run[F], n + 1)
-      // `unsafeInvisibleRead` then `unsafeCas` doesn't:
-      unsafeRxn = ref.unsafeInvisibleRead.flatMap { v =>
-        Rxn.pure(42).flatMap { _ =>
-          ref.unsafeCas(ov = v, nv = v + 1)
-        }
-      }
-      fib <- F.interruptible {
-        unsafeRxn.unsafePerform((), this.kcasImpl)
-      }.start
-      _ <- F.sleep(0.5.second)
-      _ <- fib.cancel
-      _ <- assertResultF(ref.get.run[F], n + 1) // no change
-      // but it *seems* to work with small numbers:
-      _ <- ref.getAndSet[F](42)
-      _ <- unsafeRxn.run[F]
-      _ <- assertResultF(ref.get.run[F], 43)
-    } yield ()
   }
 
   test("Monad instance") {

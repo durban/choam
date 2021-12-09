@@ -23,10 +23,10 @@ package object refs {
   val Ref1: Ref.type = Ref
 
   def unsafeNewRefU1[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
-    new RefU1(initial, i0, i1, i2, i3)
+    RefsPlatform.unsafeNewRefU1[A](initial, i0, i1, i2, i3)
 
   def unsafeNewRefP1[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
-    new RefP1(initial, i0, i1, i2, i3)
+    RefsPlatform.unsafeNewRefP1[A](initial, i0, i1, i2, i3)
 
   def unsafeNewRefArray[A](size: Int, initial: A)(i0: Long, i1: Long, i2: Long, i3: Int): Ref.Array[A] = {
     val a = new RefArray[A](size = size, i0 = i0, i1 = i1, i2 = i2, i3 = i3)
