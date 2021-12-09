@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import mcas.MemoryLocation
 
-final class ThreadConfinedRefImpl[A](initial: A)(
+private final class SingleThreadedRefImpl[A](initial: A)(
   final override val id0: Long,
   final override val id1: Long,
   final override val id2: Long,

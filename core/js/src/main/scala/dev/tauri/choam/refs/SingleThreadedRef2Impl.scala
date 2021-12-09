@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package refs
 
-private final class ThreadConfinedRef2Impl[A, B](a: A, b: B)(
+private final class SingleThreadedRef2Impl[A, B](a: A, b: B)(
   i0: Long,
   i1: Long,
   i2: Long,
@@ -30,10 +30,10 @@ private final class ThreadConfinedRef2Impl[A, B](a: A, b: B)(
 ) extends Ref2[A, B] {
 
   final override val _1: Ref[A] =
-    new ThreadConfinedRefImpl(a)(i0, i1, i2, i3)
+    new SingleThreadedRefImpl(a)(i0, i1, i2, i3)
 
   final override val _2: Ref[B] =
-    new ThreadConfinedRefImpl(b)(i4, i5, i6, i7)
+    new SingleThreadedRefImpl(b)(i4, i5, i6, i7)
 
   final override def toString: String =
     refStringFrom8Ids(i0, i1, i2, i3, i4, i5, i6, i7)

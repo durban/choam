@@ -21,8 +21,8 @@ package refs
 private object RefsPlatform {
 
   def unsafeNewRefU1[A](initial: A, i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
-    new ThreadConfinedRefImpl[A](initial)(i0, i1, i2, i3)
+    new SingleThreadedRefImpl[A](initial)(i0, i1, i2, i3)
 
   def unsafeNewRefP1[A](initial: A, i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
-    new ThreadConfinedRefImpl[A](initial)(i0, i1, i2, i3)
+    new SingleThreadedRefImpl[A](initial)(i0, i1, i2, i3)
 }

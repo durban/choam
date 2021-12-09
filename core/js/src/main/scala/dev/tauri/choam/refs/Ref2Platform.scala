@@ -30,7 +30,7 @@ abstract class Ref2Platform {
 
   private[this] def unsafeRef2[A, B](a: A, b: B): refs.Ref2[A, B] = {
     val tlr = ThreadLocalRandom.current()
-    new ThreadConfinedRef2Impl[A, B](a, b)(
+    new SingleThreadedRef2Impl[A, B](a, b)(
       tlr.nextLong(),
       tlr.nextLong(),
       tlr.nextLong(),
