@@ -35,9 +35,13 @@ trait MUnitUtils { this: FunSuite =>
     assert(equ(this.clue(obtained), this.clue(expected)), clue)
   }
 
-  def assertIntIsNotCached(i: Int): Unit = {
+  def isIntCached(i: Int): Boolean = {
     val i1: java.lang.Integer = Integer.valueOf(i)
     val i2: java.lang.Integer = Integer.valueOf(i)
-    assert(i1 ne i2)
+    i1 eq i2
+  }
+
+  def assertIntIsNotCached(i: Int): Unit = {
+    assert(!isIntCached(i))
   }
 }

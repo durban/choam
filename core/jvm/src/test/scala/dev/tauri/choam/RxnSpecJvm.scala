@@ -94,7 +94,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
     }
   }
 
-  test("Autoboxing") {
+  test("Autoboxing (JVM)") {
     // Integers between (typically) -128 and 127 are
     // cached. Due to autoboxing, other integers may
     // seem to change their "identity".

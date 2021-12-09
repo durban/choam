@@ -35,7 +35,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   import Rxn._
 
-  test("Sanity check") {
+  test("Check environment") {
     assertSameInstance(Reactive[F].kcasImpl, this.kcasImpl)
     println(s"NUM_CPU = ${Runtime.getRuntime().availableProcessors()}")
   }
@@ -735,6 +735,48 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     Rxn.unsafe.context { (tc: mcas.MCAS.ThreadContext) =>
       tc eq this.kcasImpl.currentContext()
     }.run[F].flatMap(ok => assertF(ok))
+  }
+
+  test("Autoboxing") {
+    // On the JVM integers between (typically) -128 and
+    // 127 are cached. Due to autoboxing, other integers
+    // may seem to change their "identity". In JS they
+    // doesn't seem to change their identity.
+    val n = 9999999
+    for {
+      _ <- if (isIntCached(n)) {
+        F.delay(println(s"${n} has stable identity"))
+      } else {
+        F.delay(println(s"${n} has no stable identity"))
+      }
+      ref <- Ref[Int](n).run[F]
+      // `update` should work fine:
+      _ <- ref.update(_ + 1).run[F]
+      _ <- assertResultF(ref.get.run[F], n + 1)
+      // `unsafeInvisibleRead` then `unsafeCas` maybe doesn't:
+      unsafeRxn = ref.unsafeInvisibleRead.flatMap { v =>
+        Rxn.pure(42).flatMap { _ =>
+          ref.unsafeCas(ov = v, nv = v + 1)
+        }
+      }
+      res <- F.delay {
+        unsafeRxn.?.unsafePerform((), this.kcasImpl)
+      }
+      _ <- res match {
+        case Some(_) =>
+          F.delay(println("unsafeInvisibleRead / unsafeCas works")) *> (
+            assertResultF(ref.get.run[F], n + 2) // worked
+          )
+        case None =>
+          F.delay(println("unsafeInvisibleRead / unsafeCas doesn't work")) *> (
+            assertResultF(ref.get.run[F], n + 1) // no change
+          )
+      }
+      // but it should always work with small numbers:
+      _ <- ref.getAndSet[F](42)
+      _ <- unsafeRxn.run[F]
+      _ <- assertResultF(ref.get.run[F], 43)
+    } yield ()
   }
 
   test("Monad instance") {
