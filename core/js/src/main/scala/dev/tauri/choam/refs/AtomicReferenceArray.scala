@@ -15,16 +15,16 @@
  * limitations under the License.
  */
 
-package java.util.concurrent.atomic
+package dev.tauri.choam
+package refs
 
 /**
- * This is called like this, and is in this package
- * because when compiled with Scala.js, we need an
- * `AtomicReferenceArray` for `RefArray` (the one in
- * the Scala.js stdlib is not enough). This contains
+ * When compiled with Scala.js (see `CompatPlatform`), we
+ * need an `AtomicReferenceArray` for `RefArray` (the one
+ * in the Scala.js stdlib is not enough). This contains
  * exactly the methods we need.
  */
-final class AtomicReferenceArray[A](size: Int) {
+private[choam] final class AtomicReferenceArray[A](size: Int) {
 
   require(size >= 0)
 

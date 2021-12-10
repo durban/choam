@@ -18,11 +18,10 @@
 package dev.tauri.choam
 package refs
 
-import java.util.concurrent.atomic.AtomicReferenceArray
-
 import cats.syntax.all._
 
 import mcas.MemoryLocation
+import CompatPlatform.AtomicReferenceArray
 
 import RefArray.RefArrayRef
 
