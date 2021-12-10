@@ -79,7 +79,6 @@ lazy val choam = project.in(file("."))
     bench,
     stress,
     layout,
-    dummy.jvm, dummy.js,
   )
 
 lazy val core = crossProject(JVMPlatform, JSPlatform)
@@ -101,26 +100,12 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies ++= dependencies.scalaJsLocale.value.map(_ % TestInternal)
   )
 
-lazy val dummy = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
-  .withoutSuffixFor(JVMPlatform)
-  .in(file("dummy"))
-  .settings(name := "choam-dummy")
-  .settings(commonSettings)
-  .settings(
-    libraryDependencies += dependencies.catsCore.value
-  )
-  .jsSettings(
-    scalaJSUseMainModuleInitializer := true,
-  )
-
 lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
   .in(file("mcas"))
   .settings(name := "choam-mcas")
   .settings(commonSettings)
-  .dependsOn(dummy)
 
 lazy val mcasStress = project.in(file("mcas-stress"))
   .settings(name := "choam-mcas-stress")
