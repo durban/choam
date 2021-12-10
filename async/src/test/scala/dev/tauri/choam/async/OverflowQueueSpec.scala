@@ -26,20 +26,46 @@ import cats.effect.std.{ Queue => CatsQueue }
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
-final class OverflowQueueSpec_EMCAS_IO
+final class OverflowQueueSpec_Strict_EMCAS_IO
   extends BaseSpecTickedIO
   with SpecEMCAS
-  with OverflowQueueSpec[IO]
+  with StrictOverflowQueueSpec[IO]
 
-final class OverflowQueueSpec_EMCAS_ZIO
+final class OverflowQueueSpec_Strict_EMCAS_ZIO
   extends BaseSpecTickedZIO
   with SpecEMCAS
-  with OverflowQueueSpec[zio.Task]
+  with StrictOverflowQueueSpec[zio.Task]
+
+final class OverflowQueueSpec_Lazy_EMCAS_IO
+  extends BaseSpecTickedIO
+  with SpecEMCAS
+  with LazyOverflowQueueSpec[IO]
+
+final class OverflowQueueSpec_Lazy_EMCAS_ZIO
+  extends BaseSpecTickedZIO
+  with SpecEMCAS
+  with LazyOverflowQueueSpec[zio.Task]
+
+trait StrictOverflowQueueSpec[F[_]]
+  extends OverflowQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+
+  final override def newRingBuffer[A](capacity: Int): F[OverflowQueue[F, A]] =
+    OverflowQueue.ringBuffer[F, A](capacity).run[F]
+}
+
+trait LazyOverflowQueueSpec[F[_]]
+  extends OverflowQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+
+  final override def newRingBuffer[A](capacity: Int): F[OverflowQueue[F, A]] =
+    OverflowQueue.lazyRingBuffer[F, A](capacity).run[F]
+}
 
 trait OverflowQueueSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F]
   with ScalaCheckEffectSuite { this: KCASImplSpec with TestContextSpec[F] =>
+
+  def newRingBuffer[A](capacity: Int): F[OverflowQueue[F, A]]
 
   test("RingBuffer property") {
     def checkSize[A](q: OverflowQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
@@ -52,7 +78,7 @@ trait OverflowQueueSpec[F[_]]
     PropF.forAllF { (cap: Int, ints: List[Int]) =>
       val c = min(max(cap.abs, 1), 0xffff)
       for {
-        q <- OverflowQueue.ringBuffer[F, Int](capacity = c).run[F]
+        q <- newRingBuffer[Int](capacity = c)
         s <- CatsQueue.circularBuffer[F, Int](capacity = c)
         _ <- checkSize(q, s)
         _ <- ints.traverse_ { i =>
@@ -181,7 +207,7 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
     for {
-      q <- OverflowQueue.ringBuffer[F, Int](capacity = 4).run[F]
+      q <- newRingBuffer[Int](capacity = 4)
       _ <- part1(q)
       _ <- part2(q)
       _ <- part3(q)
@@ -192,9 +218,9 @@ trait OverflowQueueSpec[F[_]]
 
   test("RingBuffer small") {
     for {
-      r <- F.delay { OverflowQueue.ringBuffer[F, Int](capacity = 0) }.attempt
+      r <- F.delay { newRingBuffer[Int](capacity = 0) }.attempt
       _ <- assertF(r.isLeft)
-      q <- OverflowQueue.ringBuffer[F, Int](capacity = 1).run[F]
+      q <- newRingBuffer[Int](capacity = 1)
       _ <- assertResultF(q.size, 0)
       _ <- assertResultF(q.tryDeque.run[F], None)
       f1 <- q.deque.start
@@ -232,7 +258,7 @@ trait OverflowQueueSpec[F[_]]
 
   test("RingBuffer cancellation") {
     for {
-      q <- OverflowQueue.ringBuffer[F, Int](capacity = 3).run[F]
+      q <- newRingBuffer[Int](capacity = 3)
       f1 <- q.deque.start
       _ <- this.tickAll
       f2 <- q.deque.start
@@ -253,7 +279,7 @@ trait OverflowQueueSpec[F[_]]
 
   test("RingBuffer#toCats") {
     for {
-      q <- OverflowQueue.ringBuffer[F, Int](capacity = 3).run[F]
+      q <- newRingBuffer[Int](capacity = 3)
       cq = q.toCats
       f <- cq.take.start
       _ <- this.tickAll

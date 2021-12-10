@@ -26,14 +26,31 @@ import cats.effect.std.{ Queue => CatsQueue }
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
-final class RingBufferSpec_EMCAS
+final class RingBufferSpec_Strict_EMCAS
   extends BaseSpecIO
   with SpecEMCAS
-  with RingBufferSpec[IO]
+  with StrictRingBufferSpec[IO]
+
+final class RingBufferSpec_Lazy_EMCAS
+  extends BaseSpecIO
+  with SpecEMCAS
+  with LazyRingBufferSpec[IO]
+
+trait StrictRingBufferSpec[F[_]] extends RingBufferSpec[F] { this: KCASImplSpec =>
+  final override def newRingBuffer[A](capacity: Int): F[RingBuffer[A]] =
+    RingBuffer.apply[A](capacity).run[F]
+}
+
+trait LazyRingBufferSpec[F[_]] extends RingBufferSpec[F] { this: KCASImplSpec =>
+  final override def newRingBuffer[A](capacity: Int): F[RingBuffer[A]] =
+    RingBuffer.lazyRingBuffer[A](capacity).run[F]
+}
 
 trait RingBufferSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with ScalaCheckEffectSuite { this: KCASImplSpec =>
+
+  def newRingBuffer[A](capacity: Int): F[RingBuffer[A]]
 
   test("RingBuffer property") {
     def checkSize[A](q: RingBuffer[A], s: CatsQueue[F, A]): F[Unit] = {
@@ -46,7 +63,7 @@ trait RingBufferSpec[F[_]]
     PropF.forAllF { (cap: Int, ints: List[Int]) =>
       val c = min(max(cap.abs, 1), 0xffff)
       for {
-        q <- RingBuffer[Int](capacity = c).run[F]
+        q <- newRingBuffer[Int](c)
         s <- CatsQueue.circularBuffer[F, Int](capacity = c)
         _ <- checkSize(q, s)
         _ <- ints.traverse_ { i =>
@@ -172,7 +189,7 @@ trait RingBufferSpec[F[_]]
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
     for {
-      q <- RingBuffer[Int](capacity = 4).run[F]
+      q <- newRingBuffer[Int](4)
       _ <- part1(q)
       _ <- part2(q)
       _ <- part3(q)
@@ -183,9 +200,9 @@ trait RingBufferSpec[F[_]]
 
   test("RingBuffer small") {
     for {
-      r <- F.delay { RingBuffer[Int](capacity = 0) }.attempt
+      r <- F.delay { newRingBuffer[Int](capacity = 0) }.attempt
       _ <- assertF(r.isLeft)
-      q <- RingBuffer[Int](capacity = 1).run[F]
+      q <- newRingBuffer[Int](1)
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.tryDeque.run[F], None)

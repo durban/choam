@@ -29,7 +29,6 @@ private[choam] object RingBuffer {
     }
   }
 
-  // TODO: test
   private[choam] def lazyRingBuffer[A](capacity: Int): Axn[RingBuffer[A]] = {
     require(capacity > 0)
     Ref.lazyArray[A](size = capacity, initial = empty[A]).flatMapF { arr =>

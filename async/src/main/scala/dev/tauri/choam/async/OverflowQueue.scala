@@ -34,7 +34,6 @@ object OverflowQueue {
     }
   }
 
-  // TODO: test
   private[choam] def lazyRingBuffer[F[_], A](capacity: Int): Axn[OverflowQueue[F, A]] = {
     data.RingBuffer.lazyRingBuffer[A](capacity).flatMapF { rb =>
       makeRingBuffer(rb)
