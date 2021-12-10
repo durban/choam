@@ -46,10 +46,8 @@ trait LawsSpec
   implicit val ticker: Ticker =
     Ticker(tc)
 
-  // TODO: tests for Ref:
-  // TODO: - 2 generated Refs have different IDs
-
   checkAll("Rxn", RxnLawTests(self).rxn[String, Int, Float, Double, Boolean, Long])
+  checkAll("Ref", RefLawTests(self).ref[String, Int])
   checkAll("Reactive", ReactiveLawTests[SyncIO].reactive[String, Int])
   checkAll("AsyncReactive", AsyncReactiveLawTests[IO].asyncReactive[String, Int])
 

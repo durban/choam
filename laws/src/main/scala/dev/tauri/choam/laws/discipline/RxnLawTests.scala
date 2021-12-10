@@ -75,7 +75,7 @@ trait RxnLawTests extends Laws {
   ): RuleSet = new DefaultRuleSet(
     name = "rxn",
     parent = None,
-    "sanity check" -> forAll(laws.sanityCheck[A, B] _),
+    "equals itself" -> forAll(laws.equalsItself[A, B] _),
     "as is map" -> forAll(laws.asIsMap[A, B, C] _),
     "void is map" -> forAll(laws.voidIsMap[A, B] _),
     "provide is contramap" -> forAll(laws.provideIsContramap[A, B] _),

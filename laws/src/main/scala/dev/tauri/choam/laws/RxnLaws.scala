@@ -27,7 +27,7 @@ trait RxnLaws {
 
   // This is to make sure our `Arbitrary` instance
   // only creates deterministic `Rxn`s.
-  def sanityCheck[A, B](rxn: Rxn[A, B]): IsEq[Rxn[A, B]] = {
+  def equalsItself[A, B](rxn: Rxn[A, B]): IsEq[Rxn[A, B]] = {
     rxn <-> rxn
   }
 
