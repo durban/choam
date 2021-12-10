@@ -20,9 +20,13 @@ package refs
 
 import java.util.concurrent.atomic.AtomicReferenceArray
 
+import cats.syntax.all._
+
 import mcas.MemoryLocation
 
-private final class RefArray[A](
+import RefArray.RefArrayRef
+
+private abstract class RefArray[A](
   val size: Int,
   i0: Long,
   i1: Long,
@@ -31,16 +35,45 @@ private final class RefArray[A](
 ) extends RefIdOnly(i0, i1, i2, i3.toLong << 32)
   with Ref.Array[A] {
 
-  import RefArray.RefArrayRef
+  def apply(idx: Int): Ref[A]
 
-  require(size >= 0)
+  protected val items: AtomicReferenceArray[AnyRef]
 
-  private val items: AtomicReferenceArray[AnyRef] = {
+  protected[refs] final override def refToString(): String = {
+    val h = (id0 ^ id1 ^ id2 ^ id3) & (~0xffff)
+    s"RefArray[${size}]@${java.lang.Long.toHexString(h >> 16)}"
+  }
+}
+
+private final class StrictRefArray[A](
+  size: Int,
+  private[this] var initial: A,
+  i0: Long,
+  i1: Long,
+  i2: Long,
+  i3: Int,
+) extends RefArray[A](size, i0, i1, i2, i3) {
+
+  require(size > 0)
+
+  protected final override val items: AtomicReferenceArray[AnyRef] = {
     // TODO: padding
-    new AtomicReferenceArray[AnyRef](size)
+    val ara = new AtomicReferenceArray[AnyRef](size)
+    val value = this.initial.asInstanceOf[AnyRef]
+    this.initial = nullOf[A]
+    var i = 0
+    while (i < size) {
+      ara.setPlain(i, value)
+      // we're storing `ara` into a final field,
+      // so `setPlain` is enough here, these
+      // writes will be visible to any reader
+      // of `this`
+      i += 1
+    }
+    ara
   }
 
-  private val refs: Array[RefArrayRef[A]] = {
+  private[this] val refs: Array[RefArrayRef[A]] = {
     val a = new Array[RefArrayRef[A]](size)
     var i = 0
     while (i < size) {
@@ -50,44 +83,95 @@ private final class RefArray[A](
     a
   }
 
-  private[choam] def unsafeSetAll(to: A): Unit = {
-    val value = to.asInstanceOf[AnyRef]
+  final override def apply(idx: Int): Ref[A] = {
+    require((idx >= 0) && (idx < size))
+    refs(idx)
+  }
+}
+
+private final class LazyRefArray[A](
+  size: Int,
+  private[this] var initial: A,
+  i0: Long,
+  i1: Long,
+  i2: Long,
+  i3: Int,
+) extends RefArray[A](size, i0, i1, i2, i3) {
+
+  require(size > 0)
+  require(((size - 1) * 2 + 1) > (size - 1)) // avoid overflow
+
+  protected final override val items: AtomicReferenceArray[AnyRef] = {
+    // TODO: padding
+    val ara = new AtomicReferenceArray[AnyRef](2 * size)
+    val value = this.initial.asInstanceOf[AnyRef]
+    this.initial = nullOf[A]
     var i = 0
     while (i < size) {
-      items.set(i, value)
+      ara.setPlain(2 * i, value)
+      // we're storing `ara` into a final field,
+      // so `setPlain` is enough here, these
+      // writes will be visible to any reader
+      // of `this`
       i += 1
     }
+    ara
   }
 
   def apply(idx: Int): Ref[A] = {
     require((idx >= 0) && (idx < size))
-    refs(idx)
+    this.getOrCreateRef(idx)
   }
 
-  protected[refs] final override def refToString(): String = {
-    val h = (id0 ^ id1 ^ id2 ^ id3) & (~0xffff)
-    s"RefArray[${size}]@${java.lang.Long.toHexString(h >> 16)}"
+  private[this] def getOrCreateRef(i: Int): Ref[A] = {
+    val itemIdx = 2 * i
+    val refIdx = itemIdx + 1
+    val existing = this.items.getOpaque(refIdx)
+    if (existing ne null) {
+      // `RefArrayRef` has only final fields,
+      // so its "safely initialized", so if
+      // we've read something here with `getOpaque`,
+      // then we also can see its fields:
+      existing.asInstanceOf[Ref[A]]
+    } else {
+      val nv = new RefArrayRef[A](this, itemIdx)
+      this.items.compareAndExchange(refIdx, null, nv) match {
+        case null => nv // we're the first
+        case other => other.asInstanceOf[Ref[A]]
+      }
+    }
   }
+}
+
+private final class EmptyRefArray[A](size: Int) extends RefArray[A](0, 0L, 0L, 0L, 0) {
+
+  require(size === 0)
+
+  final override def apply(idx: Int): Ref[A] =
+    throw new IllegalArgumentException("EmptyRefArray")
+
+  protected final override val items: AtomicReferenceArray[AnyRef] =
+    null
 }
 
 private object RefArray {
 
-  private final class RefArrayRef[A](
+  private[refs] final class RefArrayRef[A](
     array: RefArray[A],
-    idx: Int
+    physicalIdx: Int,
   ) extends Ref[A] with MemoryLocation[A] {
 
     final override def unsafeGetVolatile(): A =
-      array.items.get(idx).asInstanceOf[A]
+      array.items.get(physicalIdx).asInstanceOf[A]
 
     final override def unsafeSetVolatile(nv: A): Unit =
-      array.items.set(idx, nv.asInstanceOf[AnyRef])
+      array.items.set(physicalIdx, nv.asInstanceOf[AnyRef])
 
     final override def unsafeCasVolatile(ov: A, nv: A): Boolean =
-      array.items.compareAndSet(idx, ov.asInstanceOf[AnyRef], nv.asInstanceOf[AnyRef])
+      array.items.compareAndSet(physicalIdx, ov.asInstanceOf[AnyRef], nv.asInstanceOf[AnyRef])
 
     final override def unsafeCmpxchgVolatile(ov: A, nv: A): A =
-      array.items.compareAndExchange(idx, ov.asInstanceOf[AnyRef], nv.asInstanceOf[AnyRef]).asInstanceOf[A]
+      array.items.compareAndExchange(physicalIdx, ov.asInstanceOf[AnyRef], nv.asInstanceOf[AnyRef]).asInstanceOf[A]
 
     final override def id0: Long =
       array.id0
@@ -99,10 +183,17 @@ private object RefArray {
       array.id2
 
     final override def id3: Long =
-      array.id3 | idx.toLong
+      array.id3 | this.logicalIdx.toLong
 
-    final override def toString: String =
-      refs.refStringFromIdsAndIdx(id0, id1, id2, id3, idx)
+    final override def toString: String = {
+      refs.refStringFromIdsAndIdx(id0, id1, id2, id3, this.logicalIdx)
+    }
+
+    private[this] final def logicalIdx: Int = this.array match {
+      case _: StrictRefArray[_] => this.physicalIdx
+      case _: LazyRefArray[_] => this.physicalIdx / 2
+      case x => impossible(x.toString)
+    }
 
     private[choam] final override def dummy(v: Long): Long =
       v ^ id2

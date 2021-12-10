@@ -17,12 +17,32 @@
 
 package dev.tauri.choam
 
-final class RefArraySpec extends BaseSpecA {
+import scala.util.Try
+
+final class StrictRefArraySpec extends RefArraySpec {
+
+  final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
+    Ref.unsafeStrictArray(size = size, initial = a)
+}
+
+final class LazyRefArraySpec extends RefArraySpec {
+
+  final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
+    Ref.unsafeLazyArray(size = size, initial = a)
+}
+
+trait RefArraySpec extends BaseSpecA {
 
   final val N = 4
 
-  def mkRefArray[A](a: A): Ref.Array[A] =
-    Ref.unsafeArray(size = N, initial = a)
+  def mkRefArray[A](a: A, size: Int = N): Ref.Array[A]
+
+  test("empty array") {
+    val arr = mkRefArray("foo", 0)
+    val pat = "RefArray\\[0\\]\\@[\\da-f]+".r
+    assert(pat.matches(clue(arr.toString)))
+    assert(Try { arr(0) }.isFailure)
+  }
 
   test("toString format") {
     val arr = mkRefArray("a")
@@ -30,9 +50,9 @@ final class RefArraySpec extends BaseSpecA {
     assert(pat.matches(clue(arr.toString)))
     val subPat = "ARef\\@[\\da-f]+".r
     assert(subPat.matches(clue(arr(0).toString)))
-    assert(arr(0).toString.endsWith("0000"))
-    assert(arr(1).toString.endsWith("0001"))
-    assert(arr(2).toString.endsWith("0002"))
+    assert(clue(arr(0).toString).endsWith("0000"))
+    assert(clue(arr(1).toString).endsWith("0001"))
+    assert(clue(arr(2).toString).endsWith("0002"))
   }
 
   test("equals/toString") {

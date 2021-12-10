@@ -28,10 +28,16 @@ package object refs {
   def unsafeNewRefP1[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
     RefsPlatform.unsafeNewRefP1[A](initial, i0, i1, i2, i3)
 
-  def unsafeNewRefArray[A](size: Int, initial: A)(i0: Long, i1: Long, i2: Long, i3: Int): Ref.Array[A] = {
-    val a = new RefArray[A](size = size, i0 = i0, i1 = i1, i2 = i2, i3 = i3)
-    a.unsafeSetAll(initial)
-    a
+  private[choam] def unsafeNewStrictRefArray[A](size: Int, initial: A)(i0: Long, i1: Long, i2: Long, i3: Int): Ref.Array[A] = {
+    new StrictRefArray[A](size = size, initial = initial, i0 = i0, i1 = i1, i2 = i2, i3 = i3)
+  }
+
+  private[choam] def unsafeNewLazyRefArray[A](size: Int, initial: A)(i0: Long, i1: Long, i2: Long, i3: Int): Ref.Array[A] = {
+    new LazyRefArray[A](size = size, initial = initial, i0 = i0, i1 = i1, i2 = i2, i3 = i3)
+  }
+
+  private[choam] def unsafeNewEmptyRefArray[A](size: Int): Ref.Array[A] = {
+    new EmptyRefArray[A](size = size)
   }
 
   private[refs] def refStringFrom4Ids(

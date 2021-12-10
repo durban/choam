@@ -83,11 +83,27 @@ object Ref extends RefInstances0 {
     padded(initial)
 
   def array[A](size: Int, initial: A): Axn[Ref.Array[A]] =
-    Rxn.unsafe.delay(_ => unsafeArray(size, initial))
+    Rxn.unsafe.delay(_ => unsafeStrictArray(size, initial))
 
-  def unsafeArray[A](size: Int, initial: A): Ref.Array[A] = {
-    val tlr = ThreadLocalRandom.current()
-    refs.unsafeNewRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
+  def lazyArray[A](size: Int, initial: A): Axn[Ref.Array[A]] =
+    Rxn.unsafe.delay(_ => unsafeLazyArray(size, initial))
+
+  def unsafeStrictArray[A](size: Int, initial: A): Ref.Array[A] = {
+    if (size > 0) {
+      val tlr = ThreadLocalRandom.current()
+      refs.unsafeNewStrictRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
+    } else {
+      refs.unsafeNewEmptyRefArray[A](size)
+    }
+  }
+
+  def unsafeLazyArray[A](size: Int, initial: A): Ref.Array[A] = {
+    if (size > 0) {
+      val tlr = ThreadLocalRandom.current()
+      refs.unsafeNewLazyRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
+    } else {
+      refs.unsafeNewEmptyRefArray[A](size)
+    }
   }
 
   def padded[A](initial: A): Axn[Ref[A]] =
