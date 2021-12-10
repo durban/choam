@@ -37,8 +37,13 @@ class RingBufferBench extends BenchUtils {
     0L
 
   @Benchmark
-  def ringBuffer(s: RingBufferBench.St, bh: Blackhole): Unit = {
-    this.run(s.runtime, tsk(s.rxnQ, bh, N), 1)
+  def ringBufferStrict(s: RingBufferBench.St, bh: Blackhole): Unit = {
+    this.run(s.runtime, tsk(s.rxnQStrict, bh, N), 1)
+  }
+
+  @Benchmark
+  def ringBufferLazy(s: RingBufferBench.St, bh: Blackhole): Unit = {
+    this.run(s.runtime, tsk(s.rxnQLazy, bh, N), 1)
   }
 
   @Benchmark
@@ -70,7 +75,9 @@ object RingBufferBench {
       cats.effect.unsafe.IORuntime.global
     val catsQ: CatsQueue[IO, String] =
       CatsQueue.circularBuffer[IO, String](Capacity).unsafeRunSync()(runtime)
-    val rxnQ: CatsQueue[IO, String] =
-      AsyncQueue.ringBuffer[IO, String](Capacity).unsafeRun(mcas.MCAS.EMCAS).toCats
+    val rxnQStrict: CatsQueue[IO, String] =
+      OverflowQueue.ringBuffer[IO, String](Capacity).unsafeRun(mcas.MCAS.EMCAS).toCats
+    val rxnQLazy: CatsQueue[IO, String] =
+      OverflowQueue.lazyRingBuffer[IO, String](Capacity).unsafeRun(mcas.MCAS.EMCAS).toCats
   }
 }

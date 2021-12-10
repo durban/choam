@@ -18,20 +18,36 @@
 package dev.tauri.choam
 package data
 
+import cats.syntax.all._
+
 private[choam] object RingBuffer {
 
   private[choam] def apply[A](capacity: Int): Axn[RingBuffer[A]] = {
     require(capacity > 0)
     Ref.array[A](size = capacity, initial = empty[A]).flatMapF { arr =>
-      (Ref(0) * Ref(0)).map {
-        case (h, t) =>
-          new RingBuffer[A](
-            capacity = capacity,
-            arr = arr,
-            head = h,
-            tail = t,
-          )
-      }
+      makeRingBuffer(capacity, arr)
+    }
+  }
+
+  // TODO: test
+  private[choam] def lazyRingBuffer[A](capacity: Int): Axn[RingBuffer[A]] = {
+    require(capacity > 0)
+    Ref.lazyArray[A](size = capacity, initial = empty[A]).flatMapF { arr =>
+      makeRingBuffer(capacity, arr)
+    }
+  }
+
+  private[this] def makeRingBuffer[A](capacity: Int, underlying: Ref.Array[A]): Axn[RingBuffer[A]] = {
+    require(capacity > 0)
+    require(underlying.size === capacity)
+    (Ref(0) * Ref(0)).map {
+      case (h, t) =>
+        new RingBuffer[A](
+          capacity = capacity,
+          arr = underlying,
+          head = h,
+          tail = t,
+        )
     }
   }
 
@@ -56,7 +72,7 @@ private[choam] final class RingBuffer[A](
 
   import RingBuffer.{ empty, isEmpty }
 
-  require(capacity == arr.size)
+  require(capacity === arr.size)
 
   private[choam] def size: Axn[Int] = {
     (head.get * tail.get).flatMapF {

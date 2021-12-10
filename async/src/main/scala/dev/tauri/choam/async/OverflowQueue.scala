@@ -30,9 +30,20 @@ object OverflowQueue {
 
   def ringBuffer[F[_], A](capacity: Int): Axn[OverflowQueue[F, A]] = {
     data.RingBuffer[A](capacity).flatMapF { rb =>
-      AsyncFrom[F, A](syncGet = rb.tryDeque, syncSet = rb.enqueue).map { af =>
-        new RingBuffer(rb, af)
-      }
+      makeRingBuffer(rb)
+    }
+  }
+
+  // TODO: test
+  private[choam] def lazyRingBuffer[F[_], A](capacity: Int): Axn[OverflowQueue[F, A]] = {
+    data.RingBuffer.lazyRingBuffer[A](capacity).flatMapF { rb =>
+      makeRingBuffer(rb)
+    }
+  }
+
+  private[this] def makeRingBuffer[F[_], A](underlying: data.RingBuffer[A]): Axn[OverflowQueue[F, A]] = {
+    AsyncFrom[F, A](syncGet = underlying.tryDeque, syncSet = underlying.enqueue).map { af =>
+      new RingBuffer(underlying, af)
     }
   }
 
