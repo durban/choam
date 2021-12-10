@@ -19,13 +19,15 @@ package dev.tauri.choam
 
 import scala.util.Try
 
-final class StrictRefArraySpec extends RefArraySpec {
+import munit.Location
+
+final class RefArraySpec_Strict extends RefArraySpec {
 
   final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
     Ref.unsafeStrictArray(size = size, initial = a)
 }
 
-final class LazyRefArraySpec extends RefArraySpec {
+final class RefArraySpec_Lazy extends RefArraySpec {
 
   final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
     Ref.unsafeLazyArray(size = size, initial = a)
@@ -42,6 +44,25 @@ trait RefArraySpec extends BaseSpecA {
     val pat = "RefArray\\[0\\]\\@[\\da-f]+".r
     assert(pat.matches(clue(arr.toString)))
     assert(Try { arr(0) }.isFailure)
+  }
+
+  test("indexing error") {
+    def checkError(op: => Ref[String])(implicit loc: Location): Unit = {
+      val ok = Try(op).failed.get.isInstanceOf[IllegalArgumentException]
+      assert(ok)(loc)
+    }
+    val arr1 = mkRefArray("foo", 4) // even
+    checkError { arr1(4) }
+    checkError { arr1(5) }
+    checkError { arr1(-1) }
+    checkError { arr1(Int.MinValue) }
+    checkError { arr1(Int.MaxValue) }
+    val arr2 = mkRefArray("foo", 5) // odd
+    checkError { arr2(5) }
+    checkError { arr2(6) }
+    checkError { arr2(-1) }
+    checkError { arr2(Int.MinValue) }
+    checkError { arr2(Int.MaxValue) }
   }
 
   test("toString format") {

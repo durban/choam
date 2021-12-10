@@ -46,51 +46,7 @@ private abstract class RefArray[A](
 
 private final class StrictRefArray[A](
   size: Int,
-  private[this] var initial: A,
-  i0: Long,
-  i1: Long,
-  i2: Long,
-  i3: Int,
-) extends RefArray[A](size, i0, i1, i2, i3) {
-
-  require(size > 0)
-
-  protected final override val items: AtomicReferenceArray[AnyRef] = {
-    // TODO: padding
-    val ara = new AtomicReferenceArray[AnyRef](size)
-    val value = this.initial.asInstanceOf[AnyRef]
-    this.initial = nullOf[A]
-    var i = 0
-    while (i < size) {
-      ara.setPlain(i, value)
-      // we're storing `ara` into a final field,
-      // so `setPlain` is enough here, these
-      // writes will be visible to any reader
-      // of `this`
-      i += 1
-    }
-    ara
-  }
-
-  private[this] val refs: Array[RefArrayRef[A]] = {
-    val a = new Array[RefArrayRef[A]](size)
-    var i = 0
-    while (i < size) {
-      a(i) = new RefArrayRef[A](this, i)
-      i += 1
-    }
-    a
-  }
-
-  final override def apply(idx: Int): Ref[A] = {
-    require((idx >= 0) && (idx < size))
-    refs(idx)
-  }
-}
-
-private final class LazyRefArray[A](
-  size: Int,
-  private[this] var initial: A,
+  initial: A,
   i0: Long,
   i1: Long,
   i2: Long,
@@ -104,7 +60,47 @@ private final class LazyRefArray[A](
     // TODO: padding
     val ara = new AtomicReferenceArray[AnyRef](2 * size)
     val value = this.initial.asInstanceOf[AnyRef]
-    this.initial = nullOf[A]
+    var i = 0
+    while (i < size) {
+      val itemIdx = 2 * i
+      val refIdx = itemIdx + 1
+      ara.setPlain(itemIdx, value)
+      ara.setPlain(refIdx, new RefArrayRef[A](this, itemIdx))
+      // we're storing `ara` into a final field,
+      // so `setPlain` is enough here, these
+      // writes will be visible to any reader
+      // of `this`
+      i += 1
+    }
+    ara
+  }
+
+  final override def apply(idx: Int): Ref[A] = {
+    require((idx >= 0) && (idx < size))
+    val refIdx = (2 * idx) + 1
+    // `RefArrayRef`s were initialized into
+    // a final field (`items`), and they
+    // never change, so we can read with plain:
+    this.items.getPlain(refIdx).asInstanceOf[Ref[A]]
+  }
+}
+
+private final class LazyRefArray[A](
+  size: Int,
+  initial: A,
+  i0: Long,
+  i1: Long,
+  i2: Long,
+  i3: Int,
+) extends RefArray[A](size, i0, i1, i2, i3) {
+
+  require(size > 0)
+  require(((size - 1) * 2 + 1) > (size - 1)) // avoid overflow
+
+  protected final override val items: AtomicReferenceArray[AnyRef] = {
+    // TODO: padding
+    val ara = new AtomicReferenceArray[AnyRef](2 * size)
+    val value = this.initial.asInstanceOf[AnyRef]
     var i = 0
     while (i < size) {
       ara.setPlain(2 * i, value)
@@ -188,11 +184,8 @@ private object RefArray {
       refs.refStringFromIdsAndIdx(id0, id1, id2, id3, this.logicalIdx)
     }
 
-    private[this] final def logicalIdx: Int = this.array match {
-      case _: StrictRefArray[_] => this.physicalIdx
-      case _: LazyRefArray[_] => this.physicalIdx / 2
-      case x => impossible(x.toString)
-    }
+    private[this] final def logicalIdx: Int =
+      this.physicalIdx / 2
 
     private[choam] final override def dummy(v: Long): Long =
       v ^ id2

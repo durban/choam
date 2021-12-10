@@ -40,6 +40,9 @@ private[choam] final class AtomicReferenceArray[A](size: Int) {
   final def getOpaque(i: Int): A =
     this.get(i)
 
+  final def getPlain(i: Int): A =
+    this.get(i)
+
   final def set(i: Int, newValue: A): Unit =
     this.arr(i) = box(newValue)
 
