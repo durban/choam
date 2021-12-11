@@ -97,11 +97,28 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("Illegal null element") {
+  test("Null element") {
     for {
+      // TODO: SpinLockMCAS uses null as a sentinel
+      _ <- F.delay { this.assume(!this.kcasImpl.toString.startsWith("dev.tauri.choam.mcas.SpinLockMCAS")) }
       q <- newQueueFromList(List("a", "b", "c"))
-      r <- q.enqueue[F](null : String).attempt
-      _ <- assertF(r.isLeft)
+      _ <- q.enqueue[F](null : String)
+      _ <- assertResultF(q.drainOnce, List("a", "b", "c", null))
+      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- q.enqueue[F](null : String)
+      _ <- q.enqueue[F]("a")
+      _ <- q.enqueue[F](null : String)
+      _ <- q.enqueue[F]("b")
+      _ <- q.enqueue[F]("a")
+      // null, a, null, b, a
+      _ <- q.remove[F]("a")
+      // null, null, b, a
+      _ <- assertResultF(q.tryDeque.run[F], Some(null))
+      // null, b, a
+      _ <- q.remove[F](null)
+      // b, a
+      _ <- assertResultF(q.tryDeque.run[F], Some("b"))
+      _ <- assertResultF(q.tryDeque.run[F], Some("a"))
     } yield ()
   }
 }

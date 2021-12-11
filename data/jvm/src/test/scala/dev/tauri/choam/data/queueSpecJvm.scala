@@ -40,11 +40,15 @@ final class QueueSpec_EMCAS_ZIO
   with QueueSpec[zio.Task]
   with SpecEMCAS
 
-// TODO: doesn't work with NaiveKCAS (RemoveQueue uses `null` as sentinel)
-// final class QueueWithRemoveSpec_NaiveKCAS_IO
-//   extends BaseSpecIO
-//   with QueueWithRemoveSpec[IO]
-//   with SpecNaiveKCAS
+final class QueueWithRemoveSpec_SpinLockMCAS_IO
+  extends BaseSpecIO
+  with QueueWithRemoveSpec[IO]
+  with SpecSpinLockMCAS
+
+final class QueueWithRemoveSpec_SpinLockMCAS_ZIO
+  extends BaseSpecZIO
+  with QueueWithRemoveSpec[zio.Task]
+  with SpecSpinLockMCAS
 
 final class QueueWithRemoveSpec_EMCAS_IO
   extends BaseSpecIO

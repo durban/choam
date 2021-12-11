@@ -20,9 +20,6 @@ package async
 
 import cats.effect.IO
 
-// TODO: doesn't work with NaiveKCAS,
-// TODO: because RemoveQueue uses `null` as sentinel
-
 final class AsyncStackSpec_EMCAS_IO
   extends BaseSpecTickedIO
   with SpecEMCAS
@@ -31,4 +28,14 @@ final class AsyncStackSpec_EMCAS_IO
 final class AsyncStackSpec_EMCAS_ZIO
   extends BaseSpecTickedZIO
   with SpecEMCAS
+  with AsyncStackSpec[zio.Task]
+
+final class AsyncStackSpec_SpinLockMCAS_IO
+  extends BaseSpecTickedIO
+  with SpecSpinLockMCAS
+  with AsyncStackSpec[IO]
+
+final class AsyncStackSpec_SpinLockMCAS_ZIO
+  extends BaseSpecTickedZIO
+  with SpecSpinLockMCAS
   with AsyncStackSpec[zio.Task]

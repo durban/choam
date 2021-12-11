@@ -24,9 +24,6 @@ import RemoveQueue._
  * Like `MichaelScottQueue`, but also has support
  * for interior node deletion (`remove`; based on
  * `java.util.concurrent.ConcurrentLinkedQueue`).
- *
- * Since this queue uses `null` as a marker for
- * deleted nodes, it does not support `null` elements.
  */
 private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els: Iterable[A])
   extends Queue.WithRemove[A] {
@@ -59,7 +56,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
     from.unsafeInvisibleRead.flatMapF {
       case n @ Node(dataRef, nextRef) =>
         dataRef.unsafeInvisibleRead.flatMapF { a =>
-          if (isNull(a)) {
+          if (isTombstone(a)) {
             // found a tombstone (no need to validate, since once
             // it's tombed, it will never be resurrected)
             skipTombs(nextRef)
@@ -74,7 +71,6 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
   }
 
   override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
-    requireNonNull(a)
     Ref[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref(a).flatMap { dataRef =>
         findAndEnqueue(Node(dataRef, nextRef))
@@ -121,7 +117,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
         dataRef.unsafeInvisibleRead.flatMapF { a =>
           if (equ(a, item)) {
             // found it
-            dataRef.unsafeCas(a, nullOf[A]).as(true)
+            dataRef.unsafeCas(a, tombstone[A]).as(true)
           } else {
             // continue search:
             findAndTomb(item, nextRef)
@@ -140,6 +136,12 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
 
 private[choam] object RemoveQueue {
 
+  def apply[A]: Axn[RemoveQueue[A]] =
+    Rxn.unsafe.delay { _ => new RemoveQueue }
+
+  def fromList[A](as: List[A]): Axn[RemoveQueue[A]] =
+    Rxn.unsafe.delay { _ => new RemoveQueue(as) }
+
   private sealed trait Elem[A]
 
   /**
@@ -150,9 +152,14 @@ private[choam] object RemoveQueue {
 
   private final case class End[A]() extends Elem[A]
 
-  def apply[A]: Axn[RemoveQueue[A]] =
-    Rxn.unsafe.delay { _ => new RemoveQueue }
+  private[this] final object Tombstone {
+    final def as[A]: A =
+      this.asInstanceOf[A]
+  }
 
-  def fromList[A](as: List[A]): Axn[RemoveQueue[A]] =
-    Rxn.unsafe.delay { _ => new RemoveQueue(as) }
+  private def tombstone[A]: A =
+    Tombstone.as[A]
+
+  private def isTombstone[A](a: A): Boolean =
+    equ(a, tombstone[A])
 }

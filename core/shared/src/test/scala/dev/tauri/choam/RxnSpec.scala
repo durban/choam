@@ -485,7 +485,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     }
 
     for {
-      // TODO: fix with naive k-CAS
+      // TODO: we're using `null`s (see above), so this doesn't work with SpinLockMCAS
       _ <- F.delay { this.assume(!this.kcasImpl.toString.startsWith("dev.tauri.choam.mcas.SpinLockMCAS")) }
       // check list structure:
       _ <- F.unit
