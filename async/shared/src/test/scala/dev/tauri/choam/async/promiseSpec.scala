@@ -27,45 +27,15 @@ import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.Outcome
 
-final class PromiseSpec_SpinLockMCAS_IO_Real
+final class PromiseSpec_ThreadConfinedMCAS_IO_Real
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecThreadConfinedMCAS
   with PromiseSpec[IO]
 
-final class PromiseSpec_SpinLockMCAS_IO_Ticked
+final class PromiseSpec_ThreadConfinedMCAS_IO_Ticked
   extends BaseSpecTickedIO
-  with SpecSpinLockMCAS
+  with SpecThreadConfinedMCAS
   with PromiseSpecTicked[IO]
-
-final class PromiseSpec_SpinLockMCAS_ZIO_Real
-  extends BaseSpecZIO
-  with SpecSpinLockMCAS
-  with PromiseSpec[zio.Task]
-
-final class PromiseSpec_SpinLockMCAS_ZIO_Ticked
-  extends BaseSpecTickedZIO
-  with SpecSpinLockMCAS
-  with PromiseSpecTicked[zio.Task]
-
-final class PromiseSpec_EMCAS_IO_Real
-  extends BaseSpecIO
-  with SpecEMCAS
-  with PromiseSpec[IO]
-
-final class PromiseSpec_EMCAS_IO_Ticked
-  extends BaseSpecTickedIO
-  with SpecEMCAS
-  with PromiseSpecTicked[IO]
-
-final class PromiseSpec_EMCAS_ZIO_Real
-  extends BaseSpecZIO
-  with SpecEMCAS
-  with PromiseSpec[zio.Task]
-
-final class PromiseSpec_EMCAS_ZIO_Ticked
-  extends BaseSpecTickedZIO
-  with SpecEMCAS
-  with PromiseSpecTicked[zio.Task]
 
 trait PromiseSpecTicked[F[_]]
   extends BaseSpecAsyncF[F]
@@ -141,9 +111,10 @@ trait PromiseSpec[F[_]]
   test("Calling the callback should be followed by a thread shift") {
     @volatile var stop = false
     for {
+      _ <- assumeF(this.kcasImpl.isAtomic)
       p <- Promise[F, Int].run[F]
       f <- p.get.map { v =>
-        while (!stop) Thread.onSpinWait()
+        while (!stop) CompatPlatform.threadOnSpinWait()
         v + 1
       }.start
       ok <- p.complete(42)
@@ -157,6 +128,7 @@ trait PromiseSpec[F[_]]
 
   test("Promise#get should be rerunnable") {
     for {
+      _ <- assumeF(this.kcasImpl.isAtomic)
       p <- Promise[F, Int].run[F]
       l1 <- CountDownLatch[F](1)
       l2 <- CountDownLatch[F](1)

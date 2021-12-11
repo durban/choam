@@ -20,25 +20,15 @@ package async
 
 import cats.effect.IO
 
-final class UnboundedQueueSpec_Simple_EMCAS_IO
+final class UnboundedQueueSpec_Simple_ThreadConfinedMCAS_IO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecThreadConfinedMCAS
   with UnboundedQueueImplSimple[IO]
 
-final class UnboundedQueueSpec_Simple_EMCAS_ZIO
-  extends BaseSpecTickedZIO
-  with SpecEMCAS
-  with UnboundedQueueImplSimple[zio.Task]
-
-final class UnboundedQueueSpec_WithSize_EMCAS_IO
+final class UnboundedQueueSpec_WithSize_ThreadConfinedMCAS_IO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecThreadConfinedMCAS
   with UnboundedQueueImplWithSize[IO]
-
-final class UnboundedQueueSpec_WithSize_EMCAS_ZIO
-  extends BaseSpecTickedZIO
-  with SpecEMCAS
-  with UnboundedQueueImplWithSize[zio.Task]
 
 trait UnboundedQueueImplSimple[F[_]] extends UnboundedQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
   final override type Q[G[_], A] = UnboundedQueue[G, A]

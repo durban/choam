@@ -22,15 +22,10 @@ import scala.util.Try
 
 import cats.effect.IO
 
-final class BoundedQueueSpec_EMCAS_IO
+final class BoundedQueueSpec_ThreadConfinedMCAS_IO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecThreadConfinedMCAS
   with BoundedQueueSpec[IO]
-
-final class BoundedQueueSpec_EMCAS_ZIO
-  extends BaseSpecTickedZIO
-  with SpecEMCAS
-  with BoundedQueueSpec[zio.Task]
 
 trait BoundedQueueSpec[F[_]]
   extends BaseSpecAsyncF[F]
@@ -116,20 +111,6 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(s.deque, "a")
       _ <- fib.joinWithNever
       _ <- assertResultF(s.deque, "b")
-    } yield ()
-  }
-
-  test("BoundedQueue big bound") {
-    val n = 9999
-    for {
-      _ <- F.delay(assertIntIsNotCached(n))
-      q <- BoundedQueue[F, String](bound = n).run[F]
-      _ <- F.replicateA(n, q.enqueue("foo"))
-      _ <- assertResultF(q.currentSize.run[F], n)
-      fib <- q.enqueue("bar").start
-      _ <- assertResultF(q.deque, "foo")
-      _ <- fib.joinWithNever
-      _ <- assertResultF(q.currentSize.run[F], n)
     } yield ()
   }
 

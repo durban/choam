@@ -16,13 +16,26 @@
  */
 
 package dev.tauri.choam
+package async
 
-private[choam] object CompatPlatform {
+import cats.effect.IO
 
-  type AtomicReferenceArray[A] =
-    _root_.java.util.concurrent.atomic.AtomicReferenceArray[A]
+final class AsyncFromSpec_SpinLockMCAS_IO
+  extends BaseSpecTickedIO
+  with SpecSpinLockMCAS
+  with AsyncFromSpec[IO]
 
-  final def threadOnSpinWait(): Unit = {
-    Thread.onSpinWait()
-  }
-}
+final class AsyncFromSpec_SpinLockMCAS_ZIO
+  extends BaseSpecTickedZIO
+  with SpecSpinLockMCAS
+  with AsyncFromSpec[zio.Task]
+
+final class AsyncFromSpec_EMCAS_IO
+  extends BaseSpecTickedIO
+  with SpecEMCAS
+  with AsyncFromSpec[IO]
+
+final class AsyncFromSpec_EMCAS_ZIO
+  extends BaseSpecTickedZIO
+  with SpecEMCAS
+  with AsyncFromSpec[zio.Task]

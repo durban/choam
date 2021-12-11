@@ -20,25 +20,10 @@ package async
 
 import cats.effect.IO
 
-final class AsyncFromSpec_SpinLockMCAS_IO
+final class AsyncFromSpec_ThreadConfinedMCAS_IO
   extends BaseSpecTickedIO
-  with SpecSpinLockMCAS
+  with SpecThreadConfinedMCAS
   with AsyncFromSpec[IO]
-
-final class AsyncFromSpec_SpinLockMCAS_ZIO
-  extends BaseSpecTickedZIO
-  with SpecSpinLockMCAS
-  with AsyncFromSpec[zio.Task]
-
-final class AsyncFromSpec_EMCAS_IO
-  extends BaseSpecTickedIO
-  with SpecEMCAS
-  with AsyncFromSpec[IO]
-
-final class AsyncFromSpec_EMCAS_ZIO
-  extends BaseSpecTickedZIO
-  with SpecEMCAS
-  with AsyncFromSpec[zio.Task]
 
 trait AsyncFromSpec[F[_]]
   extends BaseSpecAsyncF[F]

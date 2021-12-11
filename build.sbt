@@ -73,7 +73,7 @@ lazy val choam = project.in(file("."))
     mcasStress,
     core.jvm, core.js,
     data.jvm, data.js,
-    async,
+    async.jvm, async.js,
     stream,
     laws,
     bench,
@@ -126,21 +126,26 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
   .dependsOn(core % "compile->compile;test->test")
   .jvmSettings(libraryDependencies += dependencies.paguro.value)
 
-lazy val async = project.in(file("async"))
+lazy val async = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("async"))
   .settings(name := "choam-async")
   .settings(commonSettings)
-  .dependsOn(data.jvm % "compile->compile;test->test")
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
+  .dependsOn(data % "compile->compile;test->test")
 
 lazy val stream = project.in(file("stream"))
   .settings(name := "choam-stream")
   .settings(commonSettings)
-  .dependsOn(async % "compile->compile;test->test")
+  .dependsOn(async.jvm % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.fs2.value)
 
 lazy val laws = project.in(file("laws"))
   .settings(name := "choam-laws")
   .settings(commonSettings)
-  .dependsOn(async % "compile->compile;test->test")
+  .dependsOn(async.jvm % "compile->compile;test->test")
   .settings(libraryDependencies ++= Seq(
     dependencies.catsLaws.value,
     dependencies.catsEffectLaws.value,
@@ -167,7 +172,7 @@ lazy val stress = project.in(file("stress"))
   .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
   .settings(libraryDependencies += dependencies.zioStm.value) // TODO: temporary
   .enablePlugins(JCStressPlugin)
-  .dependsOn(async % "compile->compile;test->test")
+  .dependsOn(async.jvm % "compile->compile;test->test")
   .dependsOn(mcasStress % "compile->compile;test->test")
 
 lazy val layout = project.in(file("layout"))

@@ -16,13 +16,19 @@
  */
 
 package dev.tauri.choam
+package async
 
-private[choam] object CompatPlatform {
+import cats.effect.IO
 
-  type AtomicReferenceArray[A] =
-    _root_.java.util.concurrent.atomic.AtomicReferenceArray[A]
+// TODO: doesn't work with NaiveKCAS,
+// TODO: because RemoveQueue uses `null` as sentinel
 
-  final def threadOnSpinWait(): Unit = {
-    Thread.onSpinWait()
-  }
-}
+final class AsyncStackSpec_EMCAS_IO
+  extends BaseSpecTickedIO
+  with SpecEMCAS
+  with AsyncStackSpec[IO]
+
+final class AsyncStackSpec_EMCAS_ZIO
+  extends BaseSpecTickedZIO
+  with SpecEMCAS
+  with AsyncStackSpec[zio.Task]
