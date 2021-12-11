@@ -43,6 +43,9 @@ trait BaseSpecF[F[_]]
   /** Not implicit, so that `rF` is used for sure */
   def F: Sync[F]
 
+  def assumeF(cond: => Boolean, clue: String = "assumption failed")(implicit loc: Location): F[Unit] =
+    F.delay { this.assume(cond, clue)(loc) }
+
   def assertF(cond: => Boolean, clue: String = "assertion failed")(implicit loc: Location): F[Unit] = {
     F.delay { this.assert(cond, clue) }
   }

@@ -72,7 +72,7 @@ lazy val choam = project.in(file("."))
     mcas.jvm, mcas.js,
     mcasStress,
     core.jvm, core.js,
-    data,
+    data.jvm, data.js,
     async,
     stream,
     laws,
@@ -87,6 +87,8 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .in(file("core"))
   .settings(name := "choam-core")
   .settings(commonSettings)
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
   .dependsOn(mcas % "compile->compile;test->test")
   .settings(libraryDependencies ++= Seq(
     dependencies.catsCore.value,
@@ -96,9 +98,6 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(
     libraryDependencies += dependencies.zioCats.value % Test, // https://github.com/zio/interop-cats/issues/471
   )
-  .jsSettings(
-    libraryDependencies ++= dependencies.scalaJsLocale.value.map(_ % TestInternal)
-  )
 
 lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -106,6 +105,8 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .in(file("mcas"))
   .settings(name := "choam-mcas")
   .settings(commonSettings)
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
 
 lazy val mcasStress = project.in(file("mcas-stress"))
   .settings(name := "choam-mcas-stress")
@@ -114,16 +115,21 @@ lazy val mcasStress = project.in(file("mcas-stress"))
   .enablePlugins(JCStressPlugin)
   .dependsOn(mcas.jvm % "compile->compile;test->test")
 
-lazy val data = project.in(file("data"))
+lazy val data = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("data"))
   .settings(name := "choam-data")
   .settings(commonSettings)
-  .dependsOn(core.jvm % "compile->compile;test->test")
-  .settings(libraryDependencies += dependencies.paguro.value)
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
+  .dependsOn(core % "compile->compile;test->test")
+  .jvmSettings(libraryDependencies += dependencies.paguro.value)
 
 lazy val async = project.in(file("async"))
   .settings(name := "choam-async")
   .settings(commonSettings)
-  .dependsOn(data % "compile->compile;test->test")
+  .dependsOn(data.jvm % "compile->compile;test->test")
 
 lazy val stream = project.in(file("stream"))
   .settings(name := "choam-stream")
@@ -173,6 +179,13 @@ lazy val layout = project.in(file("layout"))
     Test / fork := true // JOL doesn't like sbt classpath
   )
   .dependsOn(core.jvm % "compile->compile;test->test")
+
+lazy val commonSettingsJvm = Seq[Setting[_]](
+)
+
+lazy val commonSettingsJs = Seq[Setting[_]](
+  libraryDependencies ++= dependencies.scalaJsLocale.value.map(_ % TestInternal),
+)
 
 lazy val commonSettings = Seq[Setting[_]](
   scalacOptions ++= Seq(

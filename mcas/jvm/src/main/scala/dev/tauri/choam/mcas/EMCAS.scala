@@ -284,6 +284,9 @@ private object EMCAS extends MCAS { self =>
   final override def currentContext(): ThreadContext =
     this.global.threadContext()
 
+  private[choam] final override def isAtomic =
+    true
+
   private[mcas] final def tryPerform(desc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
     tryPerformDebug(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
   }

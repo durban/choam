@@ -44,6 +44,9 @@ object FlakyEMCAS extends MCAS { self =>
       self.tryPerform(desc, emcasCtx)
   }
 
+  private[choam] final override def isAtomic =
+    true
+
   private final def tryPerform(hDesc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
     // perform or not the operation based on whether we've already seen it
     ctx.startOp()

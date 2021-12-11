@@ -36,6 +36,9 @@ private object SpinLockMCAS extends MCAS { self =>
   final override def currentContext(): MCAS.ThreadContext =
     dummyContext
 
+  private[choam] final override def isAtomic =
+    true
+
   private[this] val dummyContext = new MCAS.ThreadContext {
 
     final override def random =

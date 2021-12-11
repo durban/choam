@@ -27,6 +27,9 @@ private object ThreadConfinedMCAS extends MCAS {
   final override def currentContext(): MCAS.ThreadContext =
     _ctx
 
+  private[choam] final override def isAtomic =
+    false
+
   private[this] val _ctx = new MCAS.ThreadContext {
 
     final override def read[A](ref: MemoryLocation[A]): A =
