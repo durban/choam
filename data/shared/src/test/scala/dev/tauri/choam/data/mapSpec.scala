@@ -111,6 +111,23 @@ trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("Map should perform putIfAbsent correctly") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
+      _ <- (Rxn.pure(99 -> "bar") >>> m.put).run[F]
+      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
+      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
+      _ <- assertResultF(m.putIfAbsent[F]((42, "xyz")), Some("foo"))
+      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
+      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
+      _ <- assertResultF(m.putIfAbsent[F]((84, "xyz")), None)
+      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
+      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
+      _ <- assertResultF(m.get.apply[F](84), Some("xyz"))
+    } yield ()
+  }
+
   test("Map should perform clear correctly") {
     for {
       m <- mkEmptyMap[Int, String]
