@@ -38,6 +38,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   test("Check environment") {
     assertSameInstance(Reactive[F].kcasImpl, this.kcasImpl)
     println(s"NUM_CPU = ${Runtime.getRuntime().availableProcessors()}")
+    println(s"OS_ARCH = ${System.getProperty("os.arch")}")
   }
 
   test("Choice should prefer the first option") {
