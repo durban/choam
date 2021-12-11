@@ -70,15 +70,15 @@ lazy val choam = project.in(file("."))
   .settings(publishArtifact := false)
   .aggregate(
     mcas.jvm, mcas.js,
-    mcasStress,
+    mcasStress, // JVM
     core.jvm, core.js,
     data.jvm, data.js,
     async.jvm, async.js,
     stream,
-    laws,
-    bench,
-    stress,
-    layout,
+    laws.jvm, laws.js,
+    bench, // JVM
+    stress, // JVM
+    layout, // JVM
   )
 
 lazy val core = crossProject(JVMPlatform, JSPlatform)
@@ -142,10 +142,15 @@ lazy val stream = project.in(file("stream"))
   .dependsOn(async.jvm % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.fs2.value)
 
-lazy val laws = project.in(file("laws"))
+lazy val laws = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("laws"))
   .settings(name := "choam-laws")
   .settings(commonSettings)
-  .dependsOn(async.jvm % "compile->compile;test->test")
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
+  .dependsOn(async % "compile->compile;test->test")
   .settings(libraryDependencies ++= Seq(
     dependencies.catsLaws.value,
     dependencies.catsEffectLaws.value,

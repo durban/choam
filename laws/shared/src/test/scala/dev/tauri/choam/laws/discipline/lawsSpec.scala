@@ -31,9 +31,9 @@ import cats.mtl.laws.discipline.LocalTests
 import org.scalacheck.Prop
 import munit.DisciplineSuite
 
-final class LawsSpecEMCAS
+final class LawsSpecThreadConfinedMCAS
   extends LawsSpec
-  with SpecEMCAS
+  with SpecThreadConfinedMCAS
 
 trait LawsSpec
   extends DisciplineSuite
