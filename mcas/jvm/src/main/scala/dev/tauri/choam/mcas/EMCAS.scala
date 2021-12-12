@@ -113,7 +113,7 @@ private object EMCAS extends MCAS { self =>
     nv: A,
     ctx: ThreadContext
   ): Boolean = {
-    if (ctx.isInUseByOther(ov.cast[Any])) {
+    if (ctx.isInUseByOther(ov)) {
       // still in use, need to be replaced later
       false
     } else {

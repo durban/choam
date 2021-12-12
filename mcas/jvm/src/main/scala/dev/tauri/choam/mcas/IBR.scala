@@ -255,7 +255,7 @@ private object IBR {
       ()
     }
 
-    private final def reserveEpoch(epoch: Long): Unit = {
+    private[this] final def reserveEpoch(epoch: Long): Unit = {
       this.reservation.setLower(epoch)
       this.reservation.setUpper(epoch)
     }
@@ -264,7 +264,7 @@ private object IBR {
       this.isInUseExcept(block, this)
     }
 
-    private final def isInUseExcept(block: IBRManaged[_, _], except: T): Boolean = {
+    private[this] final def isInUseExcept(block: IBRManaged[_, _], except: T): Boolean = {
       val it = this.global.reservations.values().iterator()
 
       @tailrec
