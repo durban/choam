@@ -49,13 +49,25 @@ private object SpinLockMCAS extends MCAS { self =>
       perform(ops)
     }
 
+    private[this] final object Locked {
+      def as[A]: A =
+        this.asInstanceOf[A]
+    }
+
+    private[this] def locked[A]: A =
+      Locked.as[A]
+
+    private[this] def isLocked[A](a: A): Boolean =
+      equ(a, locked[A])
+
     @tailrec
     final override def read[A](ref: MemoryLocation[A]): A = {
-      ref.unsafeGetVolatile() match {
-        case null =>
-          read(ref)
-        case a =>
-          a
+      val a = ref.unsafeGetVolatile()
+      if (isLocked(a)) {
+        Thread.onSpinWait()
+        read(ref) // retry
+      } else {
+        a
       }
     }
 
@@ -65,7 +77,7 @@ private object SpinLockMCAS extends MCAS { self =>
       def lock(ops: List[HalfWordDescriptor[_]]): List[HalfWordDescriptor[_]] = ops match {
         case Nil => Nil
         case h :: tail => h match { case head: HalfWordDescriptor[a] =>
-          if (head.address.unsafeCasVolatile(head.ov, nullOf[a])) lock(tail)
+          if (head.address.unsafeCasVolatile(head.ov, locked[a])) lock(tail)
           else ops // rollback
         }
       }

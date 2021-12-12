@@ -32,6 +32,11 @@ final class RxnImplSpec_FlakyEMCAS_IO
   with SpecFlakyEMCAS
   with RxnImplSpec[IO]
 
+final class RxnImplSpec_SpinLockMCAS_IO
+  extends BaseSpecIO
+  with SpecSpinLockMCAS
+  with RxnImplSpec[IO]
+
 final class RxnImplSpec_EMCAS_ZIO
   extends BaseSpecZIO
   with SpecEMCAS
@@ -40,6 +45,11 @@ final class RxnImplSpec_EMCAS_ZIO
 final class RxnImplSpec_FlakyEMCAS_ZIO
   extends BaseSpecZIO
   with SpecFlakyEMCAS
+  with RxnImplSpec[zio.Task]
+
+final class RxnImplSpec_SpinLockMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecSpinLockMCAS
   with RxnImplSpec[zio.Task]
 
 /** Specific implementation tests, which should also pass with `SpecFlakyEMCAS` */
@@ -198,8 +208,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     }
 
     for {
-      // TODO: we're using `null`s (see above), so this doesn't work with SpinLockMCAS
-      _ <- F.delay { this.assume(this.kcasImpl ne mcas.MCAS.SpinLockMCAS) }
+      _ <- F.unit
       // check list structure:
       lst0 = List[String](null, "a", "b", null, "c")
       lst1 <- F.delay { Ref.unsafe(Node.fromList(lst0)) }

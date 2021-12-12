@@ -485,10 +485,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     }
 
     for {
-      // TODO: we're using `null`s (see above), so this doesn't work with SpinLockMCAS
-      _ <- F.delay { this.assume(!this.kcasImpl.toString.startsWith("dev.tauri.choam.mcas.SpinLockMCAS")) }
-      // check list structure:
       _ <- F.unit
+      // check list structure:
       lst0 = List[String](null, "a", "b", null, "c")
       lst1 <- F.delay { Ref.unsafe(Node.fromList(lst0)) }
       lst2 <- F.tailRecM((List.empty[String], lst1)) { case (acc, ref) =>
