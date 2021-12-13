@@ -65,11 +65,11 @@ private final class EMCASDescriptor private (
 
 private object EMCASDescriptor {
 
-  def prepare(half: HalfEMCASDescriptor, ctx: ThreadContext): EMCASDescriptor = {
+  def prepare(half: HalfEMCASDescriptor): EMCASDescriptor = {
     val emcasDesc = new EMCASDescriptor(initialSize = half.map.size)
     val it = half.map.valuesIterator
     while (it.hasNext) {
-      val wd = WordDescriptor.prepare(it.next(), emcasDesc, ctx)
+      val wd = WordDescriptor.prepare(it.next(), emcasDesc)
       emcasDesc.add(wd)
     }
     emcasDesc

@@ -21,7 +21,7 @@ package mcas
 private final class WordDescriptor[A] private (
   val half: HalfWordDescriptor[A],
   val parent: EMCASDescriptor,
-) extends IBRManaged[ThreadContext, WordDescriptor[A]] {
+) extends WordDescriptorBase {
 
   def address: MemoryLocation[A] =
     this.half.address
@@ -40,6 +40,34 @@ private final class WordDescriptor[A] private (
 
   final override def toString: String =
     s"WordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
+
+  final def finalizeWd(): Unit = {
+    // TODO: maybe `release`?
+    this.setStrongRefOpaque(null)
+  }
+
+  private[this] def assertInvariants(wm: AnyRef): Unit = {
+    this.getStrongRefPlain() match {
+      case null => ()
+      case sm => assert(sm eq wm)
+    }
+  }
+
+  private[this] def getWeakMarker(): AnyRef = {
+    this.get()
+  }
+
+  final def isInUse(): Boolean = {
+    val wm = this.getWeakMarker()
+    this.assertInvariants(wm)
+    wm ne null
+  }
+
+  final def tryHold(): AnyRef = {
+    val wm = this.getWeakMarker()
+    this.assertInvariants(wm)
+    wm
+  }
 }
 
 private object WordDescriptor {
@@ -47,17 +75,10 @@ private object WordDescriptor {
   private[mcas] def apply[A](
     half: HalfWordDescriptor[A],
     parent: EMCASDescriptor,
-  ): WordDescriptor[A] = {
-    new WordDescriptor[A](half, parent)
-  }
+  ): WordDescriptor[A] = new WordDescriptor[A](half, parent)
 
   def prepare[A](
     half: HalfWordDescriptor[A],
     parent: EMCASDescriptor,
-    ctx: ThreadContext,
-  ): WordDescriptor[A] = {
-    val wd = WordDescriptor(half, parent)
-    ctx.alloc(wd)
-    wd
-  }
+  ): WordDescriptor[A] = WordDescriptor(half, parent)
 }

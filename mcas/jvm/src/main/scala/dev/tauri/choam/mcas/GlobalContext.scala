@@ -18,25 +18,51 @@
 package dev.tauri.choam
 package mcas
 
-private final class GlobalContext(impl: EMCAS.type)
-  extends IBR[ThreadContext](Long.MinValue) {
+import java.lang.ref.WeakReference
+import java.util.concurrent.ConcurrentSkipListMap
 
-  override def newThreadContext(): ThreadContext =
+import scala.jdk.javaapi.CollectionConverters
+
+private final class GlobalContext(impl: EMCAS.type) {
+
+  /**
+   * `ThreadContext`s of all the (active) threads
+   *
+   * Threads hold a strong reference to their
+   * `ThreadContext` in a thread local. Thus,
+   * we only need a weakref here. If a thread
+   * dies, its thread locals are cleared, so
+   * the context can be GC'd (by the JVM).
+   *
+   * Removing a dead thread's context will not
+   * affect safety, because a dead thread will never
+   * continue its current op (if any).
+   */
+  private[this] val threadContexts =
+    new ConcurrentSkipListMap[Long, WeakReference[ThreadContext]]
+    // TODO: we need to remove empty weakrefs somewhere
+
+  /** Holds the context for each (active) thread */
+  private[this] val threadContextKey =
+    new ThreadLocal[ThreadContext]()
+
+  private[this] def newThreadContext(): ThreadContext =
     new ThreadContext(this, Thread.currentThread().getId(), impl)
 
-  /** Only for testing/benchmarking */
-  private[choam] final def countFinalizedDescriptors(): (Long, Long) = {
-    var countDescrs = 0L
-    var countMaxDescrs = 0L
-    threadContexts().foreach { tctx =>
-      // Calling `getFinalizedDescriptorsCount` is not
-      // thread-safe here, but we only need these statistics
-      // for benchmarking, so we're just hoping for the best...
-      countDescrs += tctx.getFinalizedDescriptorsCount().toLong
-      countMaxDescrs += tctx.getMaxFinalizedDescriptorsCount().toLong
+  /** Gets of creates the context for the current thread */
+  private[mcas] def threadContext(): ThreadContext = {
+    threadContextKey.get() match {
+      case null =>
+        val tc = this.newThreadContext()
+        threadContextKey.set(tc)
+        this.threadContexts.put(
+          Thread.currentThread().getId(),
+          new WeakReference(tc)
+        )
+        tc
+      case tc =>
+        tc
     }
-
-    (countDescrs, countMaxDescrs)
   }
 
   /** Only for testing/benchmarking */
@@ -55,8 +81,8 @@ private final class GlobalContext(impl: EMCAS.type)
   }
 
   private[this] final def threadContexts(): Iterator[ThreadContext] = {
-    val iterWeak = this.snapshotReservations.valuesIterator
-    iterWeak.flatMap { weakref =>
+    val iterWeak = this.threadContexts.values().iterator()
+    CollectionConverters.asScala(iterWeak).flatMap { weakref =>
       weakref.get() match {
         case null =>
           Iterator.empty

@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package mcas
 
+import java.lang.ref.Reference
+
 /**
  * Efficient Multi-word Compare and Swap:
  * https://arxiv.org/pdf/2008.02527.pdf
@@ -72,11 +74,13 @@ private object EMCAS extends MCAS { self =>
   private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: ThreadContext, replace: Int): A = {
     @tailrec
     def go(): A = {
-      ctx.readVolatileRef[A](ref) match {
+      ref.unsafeGetVolatile() match {
         case wd: WordDescriptor[_] =>
+          val mark = wd.tryHold()
           val parentStatus = wd.parent.getStatus()
           if (parentStatus eq EMCASStatus.ACTIVE) {
             MCAS(wd.parent, ctx = ctx, replace = replace) // help the other op
+            Reference.reachabilityFence(mark)
             go() // retry
           } else { // finalized
             val a = if (parentStatus eq EMCASStatus.SUCCESSFUL) {
@@ -92,16 +96,14 @@ private object EMCAS extends MCAS { self =>
       }
     }
 
-    ctx.startOp()
-    try go()
-    finally ctx.endOp()
+    go()
   }
 
   private final def maybeReplaceDescriptor[A](ref: MemoryLocation[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext, replace: Int): Unit = {
     if (replace != 0) {
       val n = ctx.random.nextInt()
       if ((n % replace) == 0) {
-        replaceDescriptorIfFree[A](ref, ov, nv, ctx)
+        replaceDescriptorIfFree[A](ref, ov, nv)
         ()
       }
     }
@@ -111,9 +113,8 @@ private object EMCAS extends MCAS { self =>
     ref: MemoryLocation[A],
     ov: WordDescriptor[A],
     nv: A,
-    ctx: ThreadContext
   ): Boolean = {
-    if (ctx.isInUseByOther(ov)) {
+    if (ov.isInUse()) {
       // still in use, need to be replaced later
       false
     } else {
@@ -158,9 +159,10 @@ private object EMCAS extends MCAS { self =>
       // the paper).
       while (go) {
         contentWd = null
-        content = ctx.readVolatileRef(wordDesc.address)
+        content = wordDesc.address.unsafeGetVolatile()
         content match {
           case wd: WordDescriptor[_] =>
+            val mark = wd.tryHold()
             if (wd eq wordDesc) {
               // already points to the right place, early return:
               return TryWordResult.SUCCESS // scalafix:ok
@@ -183,6 +185,7 @@ private object EMCAS extends MCAS { self =>
                 go = false
               }
             }
+            Reference.reachabilityFence(mark)
           case a =>
             value = a
             go = false
@@ -197,9 +200,9 @@ private object EMCAS extends MCAS { self =>
         TryWordResult.BREAK
       } else {
         if (contentWd ne null) {
-          extendInterval(oldWd = contentWd, newWd = wordDesc)
+          // TODO: extendInterval(oldWd = contentWd, newWd = wordDesc)
         }
-        if (!ctx.casRef(wordDesc.address, content, wordDesc.castToData)) {
+        if (!wordDesc.address.unsafeCasVolatile(content, wordDesc.castToData)) {
           // CAS failed, we'll retry. This means, that we maybe
           // unnecessarily extended the interval; but that is
           // not a correctness problem (just makes IBR less precise).
@@ -210,50 +213,26 @@ private object EMCAS extends MCAS { self =>
       }
     }
 
-    /*
-     * Extends the interval of `newWd` to include the interval of `oldWd`.
-     *
-     * Another thread could simultaneously try to do the same, so we have to take
-     * care to increase/decrease values atomically. If more than one thread performs
-     * the increase/decrease, the worst that could happen is to have an unnecessarily
-     * large interval. That would make IBR less effective, but still correct.
-     *
-     * Assumption: we only ever extend intervals (never narrow them).
-     *
-     * Also note, that after a descriptor is installed into a `Ref`, its
-     * min/max epochs only change if another thread is still executing
-     * this method. However, in that case, the CAS after this method will
-     * fail for sure (since it was already installed). Thus, we don't need
-     * to re-check after extending the interval.
-     */
-    def extendInterval[A](oldWd: WordDescriptor[A], newWd: WordDescriptor[A]): Unit = {
-      val newMin = newWd.getMinEpochAcquire()
-      val oldMin = oldWd.getMinEpochAcquire()
-      if (oldMin < newMin) {
-        // FAA atomically decreases the value:
-        newWd.decreaseMinEpochRelease(newMin - oldMin)
-      }
-      val newMax = newWd.getMaxEpochAcquire()
-      val oldMax = oldWd.getMaxEpochAcquire()
-      if (oldMax > newMax) {
-        // FAA atomically increases the value:
-        newWd.increaseMaxEpochRelease(oldMax - newMax)
-      }
-    }
-
     @tailrec
     def go(words: java.util.Iterator[WordDescriptor[_]]): TryWordResult = {
       if (words.hasNext) {
         val word = words.next()
         if (word ne null) {
-          val twr = tryWord(word)
-          if (twr eq TryWordResult.SUCCESS) go(words)
-          else twr
+          val mark = word.tryHold()
+          if (mark ne null) {
+            val twr = tryWord(word)
+            Reference.reachabilityFence(mark)
+            if (twr eq TryWordResult.SUCCESS) go(words)
+            else twr
+          } else {
+            assert(desc.getStatus() ne EMCASStatus.ACTIVE)
+            TryWordResult.BREAK
+          }
         } else {
           // Another thread already finalized the descriptor,
           // and cleaned up this word descriptor (hence the `null`);
           // thus, we should not continue:
-          assert(desc.getStatus() ne EMCASStatus.ACTIVE) // sanity check
+          assert(desc.getStatus() ne EMCASStatus.ACTIVE)
           TryWordResult.BREAK
         }
       } else {
@@ -272,7 +251,13 @@ private object EMCAS extends MCAS { self =>
         EMCASStatus.FAILED
       }
       if (desc.casStatus(EMCASStatus.ACTIVE, rr)) {
-        ctx.finalized(desc, limit = EMCAS.limitForFinalizedList, replace = replace)
+        // TODO: If we crash exactly here, no thread will clear the markers;
+        // TODO: this is not a correctness issue, but a performance one.
+        desc.wordIterator().forEachRemaining(_.finalizeWd())
+        // TODO: clearing the strong ref is not enough,
+        // TODO: occasionally we should run over finalized
+        // TODO: descriptors, look at their weakrefs, and
+        // TODO: if cleared, we should replace them (with the final value).
         (rr eq EMCASStatus.SUCCESSFUL)
       } else {
         // someone else finalized the descriptor, we must read its status:
@@ -293,22 +278,15 @@ private object EMCAS extends MCAS { self =>
 
   private[mcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: ThreadContext, replace: Int): Boolean = {
     if (desc.nonEmpty) {
-      ctx.startOp()
-      try {
-        val fullDesc = EMCASDescriptor.prepare(desc, ctx)
-        EMCAS.MCAS(desc = fullDesc, ctx = ctx, replace = replace)
-      } finally {
-        ctx.endOp()
-      }
+      val fullDesc = EMCASDescriptor.prepare(desc)
+      EMCAS.MCAS(desc = fullDesc, ctx = ctx, replace = replace)
     } else {
       true
     }
   }
 
   private[choam] final override def printStatistics(println: String => Unit): Unit = {
-    val (fdc, mfdc) = this.global.countFinalizedDescriptors()
-    println(s"Finalized (but retained) descriptors: ${fdc}")
-    println(s"Max. retained descriptors (estimate): ${mfdc}")
+    ???
   }
 
   private[choam] final override def countCommitsAndRetries(): (Long, Long) = {
@@ -328,13 +306,13 @@ private object EMCAS extends MCAS { self =>
           } else {
             // CAS finalized, but no cleanup yet, read and retry
             EMCAS.read(ref, ctx)
-            ctx.forceNextEpoch() // TODO: in a real program, when does this happen?
           }
         case a =>
           // descriptor have been cleaned up:
           return a // scalafix:ok
       }
       Thread.onSpinWait()
+      // TODO: System.gc()
       ctr += 1L
       if ((ctr % 128L) == 0L) {
         if (Thread.interrupted()) {

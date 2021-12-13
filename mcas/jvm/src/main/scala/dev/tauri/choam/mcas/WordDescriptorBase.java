@@ -17,43 +17,40 @@
 
 package dev.tauri.choam.mcas;
 
+import java.lang.ref.WeakReference;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
-/** Base class for IBR, containing the global epoch number */
-abstract class IBRBase {
+abstract class WordDescriptorBase extends WeakReference<Object> {
 
-  private static final VarHandle VALUE;
+  private static final VarHandle STRONG;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE = l.findVarHandle(IBRBase.class, "_epoch", long.class);
+      STRONG = l.findVarHandle(WordDescriptorBase.class, "_strong", Object.class);
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }
   }
 
-  // TODO: check if 64 bits is enough (overflow)
   @SuppressWarnings("unused")
-  private long _epoch;
+  private Object _strong;
 
-  IBRBase(long zeroEpoch) {
-    VALUE.setRelease(this, zeroEpoch);
+  WordDescriptorBase() {
+    this(new Object());
   }
 
-  // We're incrementing the global epoch with
-  // `getAndAddRelease`, which is atomic, so
-  // concurrent increments will not be lost.
-  // We're reading it with `getAcquire`, so
-  // we'll write correct values into blocks
-  // when retiring.
-
-  protected final long getEpoch() {
-    return (long) VALUE.getAcquire(this);
+  private WordDescriptorBase(Object marker) {
+    super(marker);
+    STRONG.set(this, marker);
   }
 
-  protected final long incrementEpoch() {
-    return ((long) VALUE.getAndAddRelease(this, 1L)) + 1L;
+  protected final Object getStrongRefPlain() {
+    return STRONG.get(this);
+  }
+
+  protected final void setStrongRefOpaque(Object to ) {
+    STRONG.setOpaque(this, to);
   }
 }
