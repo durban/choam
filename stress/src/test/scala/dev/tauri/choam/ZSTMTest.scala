@@ -29,7 +29,7 @@ import org.openjdk.jcstress.infra.results.LL_Result
 @State
 @Description("ZSTM")
 @Outcomes(Array(
-  new Outcome(id = Array("Success(A), Success(A)"), expect = ACCEPTABLE, desc = "OK")
+  new Outcome(id = Array("Success(()), Success(())"), expect = ACCEPTABLE, desc = "OK")
 ))
 class ZSTMTest {
 
@@ -41,14 +41,19 @@ class ZSTMTest {
   private[this] val q: Something =
     rt.unsafeRunTask(Something.apply)
 
+  private[this] val task: IO[Throwable, Unit] = {
+    val txns = (0 until ZSTMTest.N).map(_ => q.write)
+    IO.foreachPar_(txns)(ZSTM.atomically)
+  }
+
   @Actor
   def write1(r: LL_Result): Unit = {
-    r.r1 = rt.unsafeRunSync(ZSTM.atomically(q.write))
+    r.r1 = rt.unsafeRunSync(task)
   }
 
   @Actor
   def write2(r: LL_Result): Unit = {
-    r.r2 = rt.unsafeRunSync(ZSTM.atomically(q.write))
+    r.r2 = rt.unsafeRunSync(task)
   }
 }
 
@@ -62,22 +67,23 @@ object ZSTMTest {
     } yield new Something(outer)
   }
 
+  final val N = 10
+
   final class Something(outer: TRef[TRef[String]]) {
 
-    def write: STM[Nothing, String] = {
+    def write: STM[Throwable, String] = {
       // new ref also contains "A":
       TRef.make("A").flatMap { fresh =>
         outer.get.flatMap { inner =>
           inner.get.flatMap { s =>
             if (s != "A") {
               // we should never read anything other than "A":
-              ZSTM.die(new IllegalStateException("impossible: " + s))
+              ZSTM.fail(new IllegalStateException("impossible: " + s))
             } else {
               // we write "X", but we never commit it
               // (because we replace the inner ref):
               inner.set("X") *> outer.set(fresh).as(s)
             }
-            // inner.set("X") *> outer.set(fresh).as(s)
           }
         }
       }

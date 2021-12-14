@@ -25,7 +25,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.infra.results._
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("IBR reservation should forbid freeing an object")
 @Outcomes(Array(

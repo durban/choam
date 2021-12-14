@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLLL_Result
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("LazyRefArray Refs should be safely created")
 @Outcomes(Array(
