@@ -18,44 +18,67 @@
 package dev.tauri.choam
 package async
 
+import scala.concurrent.duration._
+
 import cats.effect.IO
 
-final class PromiseSpec_SpinLockMCAS_IO_Real
+final class PromiseSpecJvm_SpinLockMCAS_IO_Real
   extends BaseSpecIO
   with SpecSpinLockMCAS
-  with PromiseSpec[IO]
+  with PromiseSpecJvm[IO]
 
 final class PromiseSpec_SpinLockMCAS_IO_Ticked
   extends BaseSpecTickedIO
   with SpecSpinLockMCAS
   with PromiseSpecTicked[IO]
 
-final class PromiseSpec_SpinLockMCAS_ZIO_Real
+final class PromiseSpecJvm_SpinLockMCAS_ZIO_Real
   extends BaseSpecZIO
   with SpecSpinLockMCAS
-  with PromiseSpec[zio.Task]
+  with PromiseSpecJvm[zio.Task]
 
 final class PromiseSpec_SpinLockMCAS_ZIO_Ticked
   extends BaseSpecTickedZIO
   with SpecSpinLockMCAS
   with PromiseSpecTicked[zio.Task]
 
-final class PromiseSpec_EMCAS_IO_Real
+final class PromiseSpecJvm_EMCAS_IO_Real
   extends BaseSpecIO
   with SpecEMCAS
-  with PromiseSpec[IO]
+  with PromiseSpecJvm[IO]
 
 final class PromiseSpec_EMCAS_IO_Ticked
   extends BaseSpecTickedIO
   with SpecEMCAS
   with PromiseSpecTicked[IO]
 
-final class PromiseSpec_EMCAS_ZIO_Real
+final class PromiseSpecJvm_EMCAS_ZIO_Real
   extends BaseSpecZIO
   with SpecEMCAS
-  with PromiseSpec[zio.Task]
+  with PromiseSpecJvm[zio.Task]
 
 final class PromiseSpec_EMCAS_ZIO_Ticked
   extends BaseSpecTickedZIO
   with SpecEMCAS
   with PromiseSpecTicked[zio.Task]
+
+trait PromiseSpecJvm[F[_]] extends PromiseSpec[F] { this: KCASImplSpec =>
+
+  test("Calling the callback should be followed by a thread shift") {
+    @volatile var stop = false
+    for {
+      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      p <- Promise[F, Int].run[F]
+      f <- p.get.map { v =>
+        while (!stop) CompatPlatform.threadOnSpinWait()
+        v + 1
+      }.start
+      ok <- p.complete(42)
+      // now the fiber spins, hopefully on some other thread
+      _ <- assertF(ok)
+      _ <- F.sleep(0.1.seconds)
+      _ <- F.delay { stop = true }
+      _ <- f.joinWithNever
+    } yield ()
+  }
+}

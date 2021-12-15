@@ -18,11 +18,6 @@
 package dev.tauri.choam
 package data
 
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicBoolean
-
-import scala.jdk.CollectionConverters._
-
 import cats.effect.IO
 
 final class QueueSpec_ThreadConfinedMCAS_IO
@@ -179,66 +174,6 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- q.enqueue("x")
       _ <- assertResultF(q.drainOnce, List("b", "c", "x"))
       _ <- assertResultF(q.tryDeque.run, None)
-    } yield ()
-  }
-
-  test("Michael-Scott queue should allow multiple producers and consumers") {
-    val max = 5000
-    for {
-      _ <- assumeF(this.kcasImpl.isAtomic)
-      q <- newQueueFromList(List.empty[String])
-      produce = F.blocking {
-        for (i <- 0 until max) {
-          q.enqueue.unsafePerform(i.toString, this.kcasImpl)
-        }
-      }
-      cs <- F.delay { new ConcurrentLinkedQueue[String] }
-      stop <- F.delay { new AtomicBoolean(false) }
-      consume = F.blocking {
-        @tailrec
-        def go(last: Boolean = false): Unit = {
-          q.tryDeque.unsafePerform((), this.kcasImpl) match {
-            case Some(s) =>
-              cs.offer(s)
-              go(last = last)
-            case None =>
-              if (stop.get()) {
-                if (last) {
-                  // we're done:
-                  ()
-                } else {
-                  // read one last time:
-                  go(last = true)
-                }
-              } else {
-                // retry:
-                go(last = false)
-              }
-          }
-        }
-        go()
-      }
-      tsk = for {
-        p1 <- produce.start
-        c1 <- consume.start
-        p2 <- produce.start
-        c2 <- consume.start
-        _ <- p1.joinWithNever
-        _ <- p2.joinWithNever
-        _ <- F.delay { stop.set(true) }
-        _ <- c1.joinWithNever
-        _ <- c2.joinWithNever
-      } yield ()
-
-      _ <- tsk.guarantee(F.delay { stop.set(true) })
-
-      _ <- assertEqualsF(
-        cs.asScala.toVector.sorted,
-        (0 until max).toVector.flatMap(n => Vector(n.toString, n.toString)).sorted
-      )
-      _ <- F.delay {
-        this.kcasImpl.printStatistics(System.out.println(_))
-      }
     } yield ()
   }
 }

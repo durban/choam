@@ -25,7 +25,7 @@ abstract class MCAS {
 
   def currentContext(): MCAS.ThreadContext
 
-  private[choam] def isAtomic: Boolean
+  private[choam] def isThreadSafe: Boolean
 
   /** Only for testing/benchmarking */
   private[choam] def printStatistics(@unused println: String => Unit): Unit = {

@@ -20,8 +20,6 @@ package async
 
 import java.util.concurrent.atomic.AtomicLong
 
-import scala.concurrent.duration._
-
 import cats.{ ~>, Functor, Invariant, Contravariant }
 import cats.effect.IO
 import cats.effect.std.CountDownLatch
@@ -108,27 +106,9 @@ trait PromiseSpec[F[_]]
     } yield ()
   }
 
-  test("Calling the callback should be followed by a thread shift") {
-    @volatile var stop = false
-    for {
-      _ <- assumeF(this.kcasImpl.isAtomic)
-      p <- Promise[F, Int].run[F]
-      f <- p.get.map { v =>
-        while (!stop) CompatPlatform.threadOnSpinWait()
-        v + 1
-      }.start
-      ok <- p.complete(42)
-      // now the fiber spins, hopefully on some other thread
-      _ <- assertF(ok)
-      _ <- F.sleep(0.1.seconds)
-      _ <- F.delay { stop = true }
-      _ <- f.joinWithNever
-    } yield ()
-  }
-
   test("Promise#get should be rerunnable") {
     for {
-      _ <- assumeF(this.kcasImpl.isAtomic)
+      _ <- assumeF(this.kcasImpl.isThreadSafe)
       p <- Promise[F, Int].run[F]
       l1 <- CountDownLatch[F](1)
       l2 <- CountDownLatch[F](1)

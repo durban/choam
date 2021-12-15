@@ -44,7 +44,7 @@ object FlakyEMCAS extends MCAS { self =>
       self.tryPerform(desc, emcasCtx)
   }
 
-  private[choam] final override def isAtomic =
+  private[choam] final override def isThreadSafe =
     true
 
   private final def tryPerform(hDesc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
