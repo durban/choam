@@ -21,11 +21,11 @@
 
 *Experiments with composable lock-free concurrency*
 
-The type [`Rxn[-A, +B]`](core/src/main/scala/dev/tauri/choam/Rxn.scala)
+The type [`Rxn[-A, +B]`](core/shared/src/main/scala/dev/tauri/choam/Rxn.scala)
 is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but:
 
 - The only effect it can perform is lock-free updates to
-  [`Ref`s](core/src/main/scala/dev/tauri/choam/Ref.scala)
+  [`Ref`s](core/shared/src/main/scala/dev/tauri/choam/Ref.scala)
   (mutable memory locations with a pure API).
   - For example, if `x` is a `Ref[Int]`, then `x.update(_ + 1)` is a `Rxn` which
     (when executed) will increment its value.
@@ -41,21 +41,21 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
 
 ## Modules
 
-- [`choam-core`](core/src/main/scala/dev/tauri/choam/):
+- [`choam-core`](core/shared/src/main/scala/dev/tauri/choam/):
   - core types, like
-    [`Rxn`](core/src/main/scala/dev/tauri/choam/Rxn.scala) and
-    [`Ref`](core/src/main/scala/dev/tauri/choam/Ref.scala)
+    [`Rxn`](core/shared/src/main/scala/dev/tauri/choam/Rxn.scala) and
+    [`Ref`](core/shared/src/main/scala/dev/tauri/choam/Ref.scala)
   - integration with synchronous effect types in
     [Cats Effect](https://github.com/typelevel/cats-effect)
-- [`choam-data`](data/src/main/scala/dev/tauri/choam/data/):
+- [`choam-data`](data/shared/src/main/scala/dev/tauri/choam/data/):
   data structures, like queues and stacks
-- [`choam-async`](async/src/main/scala/dev/tauri/choam/async/):
+- [`choam-async`](async/shared/src/main/scala/dev/tauri/choam/async/):
   - async data structures
   - integration with asynchronous effect types in
     [Cats Effect](https://github.com/typelevel/cats-effect)
-- [`choam-stream`](stream/src/main/scala/dev/tauri/choam/stream/):
+- [`choam-stream`](stream/shared/src/main/scala/dev/tauri/choam/stream/):
   integration with [FS2](https://github.com/typelevel/fs2) `Stream`s
-- [`choam-laws`](laws/src/main/scala/dev/tauri/choam/laws/):
+- [`choam-laws`](laws/shared/src/main/scala/dev/tauri/choam/laws/):
   properties fulfilled by the various `Rxn` combinators
 - [`choam-mcas`](mcas/shared/src/main/scala/dev/tauri/choam/mcas/):
   low-level multi-word compare-and-swap (MCAS/*k*-CAS) implementation
