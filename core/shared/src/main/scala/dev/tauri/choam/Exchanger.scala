@@ -42,13 +42,13 @@ final class Exchanger[A, B] private (
   private[this] def size: Int =
     incoming.length
 
-  private[choam] def tryExchange[C](msg: Msg[A, B, C], ctx: MCAS.ThreadContext): Either[Exchanger.StatMap, (Msg[Unit, Unit, C])] = {
+  private[choam] def tryExchange[C](msg: Msg[A, B, C], ctx: MCAS.ThreadContext): Either[Exchanger.StatMap, Msg[Unit, Unit, C]] = {
     // TODO: the key shouldn't be `this` -- an exchanger and its dual should probably use the same key
-    val stats = msg.rd.exchangerData.getOrElse(this, Statistics.zero)
+    val stats = msg.exchangerData.getOrElse(this, Statistics.zero)
     // println(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
     val idx = if (stats.effectiveSize < 2) 0 else ctx.random.nextInt(stats.effectiveSize.toInt)
     tryIdx(idx, msg, stats, ctx) match {
-      case Left(stats) => Left(msg.rd.exchangerData.updated(this, stats))
+      case Left(stats) => Left(msg.exchangerData.updated(this, stats))
       case Right(msg) => Right(msg)
     }
   }
@@ -123,7 +123,7 @@ final class Exchanger[A, B] private (
     rres match {
       case Some(c) =>
         // it must be a result
-        Right(Msg.ret[C](c, ctx, msg.rd.exchangerData.updated(this, stats.exchanged)))
+        Right(Msg.ret[C](c, ctx, msg.exchangerData.updated(this, stats.exchanged)))
       case None =>
         if (ctx.doSingleCas(self.hole.loc, nullOf[C], Node.RESCINDED[C])) {
           // OK, we rolled back, and can retry
@@ -132,7 +132,7 @@ final class Exchanger[A, B] private (
         } else {
           // couldn't roll back, it must be a result
           val c = ctx.read(self.hole.loc)
-          Right(Msg.ret[C](c, ctx, msg.rd.exchangerData.updated(this, stats.exchanged)))
+          Right(Msg.ret[C](c, ctx, msg.exchangerData.updated(this, stats.exchanged)))
         }
     }
   }
@@ -145,23 +145,21 @@ final class Exchanger[A, B] private (
     ctx: MCAS.ThreadContext,
   ): Right[Statistics, Msg[Unit, Unit, C]] = {
     val cont: Axn[C] = selfMsg.cont.provide(other.msg.value)
-    val otherCont: Axn[Unit] = other.msg.cont.provide(selfMsg.value).flatMap { d =>
+    val otherCont: Axn[Unit] = other.msg.cont.provide(selfMsg.value).flatMapF { d =>
       other.hole.unsafeCas(nullOf[D], d)
     }
-    val both = (cont * otherCont).map(_._1)
+    val both: Axn[C] = (cont * otherCont).map(_._1)
     val resMsg = Msg[Unit, Unit, C](
       value = (),
       cont = both,
-      rd = ReactionData(
-        selfMsg.rd.postCommit ++ other.msg.rd.postCommit,
-        // this thread will continue, so we use (and update) our data
-        selfMsg.rd.exchangerData.updated(this, stats.exchanged)
-      ),
       desc = {
         // Note: we've read `other` from a `Ref`, so we'll see its mutable list of descriptors,
         // and we've claimed it, so others won't try to do the same.
         ctx.addAll(selfMsg.desc, other.msg.desc)
-      }
+      },
+      postCommit = selfMsg.postCommit ++ other.msg.postCommit,
+      // this thread will continue, so we use (and update) our data
+      exchangerData = selfMsg.exchangerData.updated(this, stats.exchanged)
     )
     Right(resMsg)
   }
@@ -245,12 +243,12 @@ object Exchanger {
       256 // TODO: magic; too much
   }
 
-  // TODO: this is basically `Jump`
   private[choam] final case class Msg[+A, B, +C](
     value: A,
     cont: Rxn[B, C],
-    rd: ReactionData,
-    desc: HalfEMCASDescriptor
+    desc: HalfEMCASDescriptor,
+    postCommit: List[Axn[Unit]],
+    exchangerData: StatMap,
   )
 
   private[choam] object Msg {
@@ -258,8 +256,9 @@ object Exchanger {
       Msg[Unit, Unit, C](
         value = (),
         cont = Rxn.ret(c),
-        rd = ReactionData(Nil, ed),
-        desc = ctx.start()
+        desc = ctx.start(),
+        postCommit = Nil,
+        exchangerData = ed
       )
     }
   }
