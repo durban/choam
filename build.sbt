@@ -79,7 +79,7 @@ lazy val choam = project.in(file("."))
     core.jvm, core.js,
     data.jvm, data.js,
     async.jvm, async.js,
-    stream,
+    stream.jvm, stream.js,
     laws.jvm, laws.js,
     bench, // JVM
     stress, // JVM
@@ -141,10 +141,15 @@ lazy val async = crossProject(JVMPlatform, JSPlatform)
   .jsSettings(commonSettingsJs)
   .dependsOn(data % "compile->compile;test->test")
 
-lazy val stream = project.in(file("stream"))
+lazy val stream = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("stream"))
   .settings(name := "choam-stream")
   .settings(commonSettings)
-  .dependsOn(async.jvm % "compile->compile;test->test")
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
+  .dependsOn(async % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.fs2.value)
 
 lazy val laws = crossProject(JVMPlatform, JSPlatform)
@@ -173,7 +178,7 @@ lazy val bench = project.in(file("bench"))
   ))
   .enablePlugins(JmhPlugin)
   .settings(jmhSettings)
-  .dependsOn(stream % "compile->compile;compile->test")
+  .dependsOn(stream.jvm % "compile->compile;compile->test")
 
 lazy val stress = project.in(file("stress"))
   .settings(name := "choam-stress")

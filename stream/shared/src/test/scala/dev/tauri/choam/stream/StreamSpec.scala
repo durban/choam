@@ -27,12 +27,12 @@ import fs2.{ Stream, Chunk }
 import async.{ UnboundedQueue, BoundedQueue, Promise, AsyncReactiveSpec }
 import syntax._
 
-final class StreamSpec_EMCAS_IO
+final class StreamSpec_ThreadConfinedMCAS_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecThreadConfinedMCAS
   with StreamSpec[IO]
 
-sealed trait StreamSpec[F[_]]
+trait StreamSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: KCASImplSpec =>
 

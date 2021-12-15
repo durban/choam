@@ -23,12 +23,12 @@ import fs2.Stream
 
 import async.AsyncReactiveSpec
 
-final class SignallingRefSpec_EMCAS_TickedIO
+final class SignallingRefSpec_ThreadConfinedMCAS_TickedIO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecThreadConfinedMCAS
   with SignallingRefSpec[IO]
 
-sealed trait SignallingRefSpec[F[_]]
+trait SignallingRefSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
