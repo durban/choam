@@ -379,7 +379,7 @@ object Rxn extends RxnInstances0 {
       new DelayComputed[A, B](prepare)
 
     def exchanger[A, B]: Axn[Exchanger[A, B]] =
-      delay { _ => Exchanger.unsafe[A, B] }
+      Exchanger.apply[A, B]
 
     def exchange[A, B](ex: Exchanger[A, B]): Rxn[A, B] =
       new Exchange[A, B](ex)
