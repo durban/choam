@@ -22,48 +22,83 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
+import cats.Parallel
 import cats.effect.IO
 import cats.effect.std.{ Queue => CatsQueue }
 
 import _root_.dev.tauri.choam.bench.BenchUtils
 
 @Fork(2)
-@Threads(1)
+@Threads(1) // because it runs on the CE threadpool
 class BoundedQueueBench extends BenchUtils {
 
-  final val N = 1024 * 1024
+  import BoundedQueueBench._
+
+  // must be divisible by `producers`
+  final val N = 1024 * 32 * 12
 
   protected override def waitTime: Long =
     0L
 
   @Benchmark
-  def boundedQueue(s: BoundedQueueBench.St, bh: Blackhole): Unit = {
-    this.run(s.runtime, tsk(s.rxnQ, bh, N), 1)
+  def boundedQueue(s: St, ps: ParamSt, bh: Blackhole): Unit = {
+    this.run(s.runtime, tsk(s.rxnQ, bh, N, producers = ps.producers, consumers = ps.consumers), 1)
   }
 
   @Benchmark
-  def catsQueue(s: BoundedQueueBench.St, bh: Blackhole): Unit = {
-    this.run(s.runtime, tsk(s.catsQ, bh, N), 1)
+  def catsQueue(s: St, ps: ParamSt, bh: Blackhole): Unit = {
+    this.run(s.runtime, tsk(s.catsQ, bh, N, producers = ps.producers, consumers = ps.consumers), 1)
   }
 
-  def tsk(q: CatsQueue[IO, String], bh: Blackhole, size: Int): IO[Unit] = {
-    val halfSize = size / 2
+  def tsk(
+    q: CatsQueue[IO, String],
+    bh: Blackhole,
+    size: Int,
+    producers: Int,
+    consumers: Int,
+  ): IO[Unit] = {
+    val sizePerProducer = size / producers
+    assert((sizePerProducer * producers) == size)
+    val sizePerConsumer = size / consumers
+    assert((sizePerConsumer * consumers) == size)
     def produce(size: Int): IO[Unit] = {
       if (size > 0) q.offer("foo") >> produce(size - 1)
       else IO.unit
     }
-    def consume(count: Int): IO[Unit] = {
-      if (count < size) q.take.flatMap(x => IO(bh.consume(x))) >> consume(count + 1)
+    def consume(size: Int, count: Int = 0): IO[Unit] = {
+      if (count < size) q.take.flatMap(x => IO(bh.consume(x))) >> consume(size, count + 1)
       else IO.unit
     }
     IO.both(
-      IO.both(produce(halfSize), produce(halfSize)),
-      consume(0)
-    ).void
+      Parallel.parReplicateA(producers, produce(sizePerProducer)),
+      Parallel.parReplicateA(consumers, consume(sizePerConsumer)),
+    ).flatMap {
+      case (ps, cs) if (ps.length == producers) && (cs.length == consumers) =>
+        IO.unit
+      case (ps, cs) =>
+        IO.raiseError(new AssertionError(s"producers = ${ps.length}; consumers = ${cs.length}"))
+    }
   }
 }
 
 object BoundedQueueBench {
+
+  @State(Scope.Thread)
+  class ParamSt {
+
+    // must be divisible by 2 (see below)
+    @Param(Array("2", "4", "6"))
+    var producers: Int = _
+
+    var consumers: Int = _
+
+    @Setup
+    def setup(): Unit = {
+      this.consumers = this.producers / 2
+      assert((this.consumers * 2) == this.producers)
+    }
+  }
+
   @State(Scope.Benchmark)
   class St {
     final val Bound =
