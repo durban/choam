@@ -382,7 +382,16 @@ object Rxn extends RxnInstances0 {
       Exchanger.apply[A, B]
 
     def exchange[A, B](ex: Exchanger[A, B]): Rxn[A, B] =
-      new Exchange[A, B](ex)
+      new Exchange[A, B](ex.asImpl)
+  }
+
+  private[choam] final object internal {
+
+    def finishExchange[D](
+      hole: Ref[ExchangerImpl.NodeResult[D]],
+      restOtherContK: ObjStack.Lst[Any],
+      lenSelfContT: Int,
+    ): Rxn[D, Unit] = new FinishExchange(hole, restOtherContK, lenSelfContT)
   }
 
   // Representation:
@@ -439,7 +448,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"InvisibleRead(${ref})"
   }
 
-  private final class Exchange[A, B](val exchanger: Exchanger[A, B]) extends Rxn[A, B] {
+  private final class Exchange[A, B](val exchanger: ExchangerImpl[A, B]) extends Rxn[A, B] {
     private[choam] final def tag = 10
     final override def toString: String = s"Exchange(${exchanger})"
   }
@@ -480,6 +489,19 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"As(${rxn}, ${c})"
   }
 
+  /** Only the interpreter/exchanger can use this! */
+  private final class FinishExchange[D](
+    val hole: Ref[ExchangerImpl.NodeResult[D]],
+    val restOtherContK: ObjStack.Lst[Any],
+    val lenSelfContT: Int,
+  ) extends Rxn[D, Unit] {
+    private[choam] final override def tag = 18
+    final override def toString: String = {
+      val rockLen = ObjStack.Lst.length(this.restOtherContK)
+      s"FinishExchange(${hole}, <ObjStack.Lst of length ${rockLen}>, ${lenSelfContT})"
+    }
+  }
+
   // Interpreter:
 
   private[this] def newStack[A]() = {
@@ -505,7 +527,7 @@ object Rxn extends RxnInstances0 {
   private[choam] val exchangerSeparator: Any =
     new ExchangerSeparator
 
-  private[this] val commitSingleton: Rxn[Any, Any] =
+  private[choam] val commitSingleton: Rxn[Any, Any] = // TODO: make this a java enum?
     new Commit[Any]
 
   private[choam] def interpreter[X, R](
@@ -572,6 +594,9 @@ object Rxn extends RxnInstances0 {
     private[this] var a: Any = x
     private[this] var retries: Int = 0
 
+    // TODO: this should be in the ThreadContext:
+    private[this] var stats: ExchangerImpl.StatMap = Map.empty
+
     private[this] final def setContReset(): Unit = {
       contTReset = contT.takeSnapshot()
       contKReset = contK.takeSnapshot()
@@ -636,6 +661,15 @@ object Rxn extends RxnInstances0 {
       a = alts.pop()
       desc = alts.pop().asInstanceOf[HalfEMCASDescriptor]
       res
+    }
+
+    private[this] final def loadAltFrom(msg: ExchangerImpl.Msg): Rxn[Any, R] = {
+      pc.loadSnapshot(msg.postCommit)
+      contK.loadSnapshot(msg.contK)
+      contT.loadSnapshot(msg.contT)
+      a = msg.value
+      desc = msg.desc
+      next().asInstanceOf[Rxn[Any, R]]
     }
 
     private[this] final def popFinalResult(): Any = {
@@ -830,8 +864,22 @@ object Rxn extends RxnInstances0 {
           loop(next())
         case 10 => // Exchange
           val c = curr.asInstanceOf[Exchange[A, B]]
-          c.##
-          sys.error("TODO") // TODO
+          val msg = ExchangerImpl.Msg(
+            value = a,
+            contK = contK.takeSnapshot(),
+            contT = contT.takeSnapshot(),
+            desc = desc,
+            postCommit = pc.takeSnapshot(),
+            exchangerData = stats,
+          )
+          c.exchanger.tryExchange(msg = msg, ctx = ctx) match {
+            case Left(newStats) =>
+              stats = newStats
+              loop(retry())
+            case Right(contMsg) =>
+              stats = contMsg.exchangerData
+              loop(loadAltFrom(contMsg))
+          }
         case 11 => // AndThen
           val c = curr.asInstanceOf[AndThen[A, _, B]]
           contT.push(ContAndThen)
@@ -873,10 +921,20 @@ object Rxn extends RxnInstances0 {
           contT.push(ContAs)
           contK.push(c.c)
           loop(c.rxn)
-        case t => // mustn't happen
-          throw new UnsupportedOperationException(
-            s"Unknown tag ${t} for ${curr}"
+        case 18 => // FinishExchange
+          val c = curr.asInstanceOf[FinishExchange[Any]]
+          val currentContT = contT.takeSnapshot()
+          val (newContT, otherContT) = ByteStack.splitAt(currentContT, idx = c.lenSelfContT)
+          contT.loadSnapshot(newContT)
+          val fx = new ExchangerImpl.FinishedEx[Any](
+            result = a,
+            contK = c.restOtherContK,
+            contT = otherContT,
           )
+          desc = ctx.addCas(desc, c.hole.loc, null, fx)
+          loop(next())
+        case t => // mustn't happen
+          impossible(s"Unknown tag ${t} for ${curr}")
       }
     }
 

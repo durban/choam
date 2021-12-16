@@ -95,3 +95,14 @@ private final class ByteStack(initSize: Int) {
     this.arr = newArr
   }
 }
+
+private final object ByteStack {
+
+  def splitAt(arr: Array[Byte], idx: Int): (Array[Byte], Array[Byte]) = {
+    require(idx >= 0)
+    require(idx <= arr.length)
+    val a = Arrays.copyOfRange(arr, 0, idx)
+    val b = Arrays.copyOfRange(arr, idx, arr.length)
+    (a, b)
+  }
+}

@@ -23,13 +23,14 @@ import mcas.{ MCAS, HalfEMCASDescriptor }
 
 // TODO: lazy initialization of exchanger with
 // TODO: something like `Rxn.allocateLazily { ... }`
+// TODO: (or it could be built-in to the Exchanger)
 
 private final class ExchangerImpl[A, B] private (
-  incoming: Array[AtomicReference[ExchangerImpl.Node[A, B, _]]],
-  outgoing: Array[AtomicReference[ExchangerImpl.Node[B, A, _]]]
+  incoming: Array[AtomicReference[ExchangerImpl.Node[_]]],
+  outgoing: Array[AtomicReference[ExchangerImpl.Node[_]]]
  ) extends Exchanger.UnsealedExchanger[A, B] {
 
-  import ExchangerImpl.{ Msg, Node, Statistics, StatMap }
+  import ExchangerImpl.{ size => _, unsafe => _, _ }
 
   require(incoming.length == outgoing.length)
 
@@ -39,6 +40,9 @@ private final class ExchangerImpl[A, B] private (
   // TODO: maybe cache this instance?
   final override def dual: ExchangerImpl[B, A] =
     new ExchangerImpl[B, A](incoming = this.outgoing, outgoing = this.incoming)
+
+  private[choam] final override def asImpl: ExchangerImpl[A, B] =
+    this
 
   private[this] def size: Int =
     incoming.length
@@ -61,7 +65,7 @@ private final class ExchangerImpl[A, B] private (
     slot.get() match {
       case null =>
         // empty slot, insert ourselves:
-        val self = new Node[A, B, C](msg)
+        val self = new Node[C](msg)
         if (slot.compareAndSet(null, self)) {
           // println(s"posted offer - thread#${Thread.currentThread().getId()}")
           // we posted our msg, look at the other side:
@@ -70,7 +74,7 @@ private final class ExchangerImpl[A, B] private (
             case null =>
               // println(s"not found other, will wait - thread#${Thread.currentThread().getId()}")
               // we can't fulfill, so we wait for a fulfillment:
-              val res = self.spinWait(stats, ctx)
+              val res: Option[NodeResult[C]] = self.spinWait(stats, ctx)
               // println(s"after waiting: ${res} - thread#${Thread.currentThread().getId()}")
               if (!slot.compareAndSet(self, null)) {
                 // couldn't rescind, someone claimed our offer
@@ -80,7 +84,7 @@ private final class ExchangerImpl[A, B] private (
                 // rescinded successfully, will retry
                 Left(stats.missed)
               }
-            case other: Node[_, _, d] =>
+            case other: Node[d] =>
               // println(s"found other - thread#${Thread.currentThread().getId()}")
               if (slot.compareAndSet(self, null)) {
                 // ok, we've rescinded our offer
@@ -111,9 +115,9 @@ private final class ExchangerImpl[A, B] private (
 
   /** Our offer have been claimed by somebody, so we wait for them to fulfill it */
   private[this] def waitForClaimedOffer[C](
-    self: Node[A, B, C],
+    self: Node[C],
     msg: Msg,
-    maybeResult: Option[C],
+    maybeResult: Option[NodeResult[C]],
     stats: Statistics,
     ctx: MCAS.ThreadContext
   ): Either[Statistics, Msg] = {
@@ -123,79 +127,106 @@ private final class ExchangerImpl[A, B] private (
     // println(s"rres = ${rres} - thread#${Thread.currentThread().getId()}")
     rres match {
       case Some(c) =>
-        // it must be a result
-        Right(Msg.ret[C](c, msg, ctx, msg.exchangerData.updated(this, stats.exchanged)))
+        // it must be the result
+        c match {
+          case fx: FinishedEx[_] =>
+            val newStats = msg.exchangerData.updated(this, stats.exchanged)
+            Right(Msg.fromFinishedEx(fx, newStats, ctx))
+          case _: Rescinded[_] =>
+            // we're the only one who can rescind this
+            impossible("Someone rescinded our Node!")
+        }
       case None =>
-        if (ctx.doSingleCas(self.hole.loc, nullOf[C], Node.RESCINDED[C])) {
+        if (ctx.doSingleCas(self.hole.loc, null, Rescinded[C])) {
           // OK, we rolled back, and can retry
           // println(s"rolled back - thread#${Thread.currentThread().getId()}")
           Left(stats.rescinded)
         } else {
           // couldn't roll back, it must be a result
-          val c = ctx.read(self.hole.loc)
-          Right(Msg.ret[C](c, msg, ctx, msg.exchangerData.updated(this, stats.exchanged)))
+          ctx.read(self.hole.loc) match {
+            case fx: FinishedEx[_] =>
+              val newStats = msg.exchangerData.updated(this, stats.exchanged)
+              Right(Msg.fromFinishedEx(fx, newStats, ctx))
+            case _: Rescinded[_] =>
+              // we're the only one who can rescind this
+              impossible("Someone rescinded our Node!")
+          }
         }
     }
   }
 
   /** We've claimed someone else's offer, so we'll fulfill it */
   private[this] def fulfillClaimedOffer[D](
-    other: Node[B, A, D],
+    other: Node[D],
     selfMsg: Msg,
     stats: Statistics,
     ctx: MCAS.ThreadContext,
   ): Right[Statistics, Msg] = {
     val a: A = selfMsg.value.asInstanceOf[A]
     val b: B = other.msg.value.asInstanceOf[B]
+    val (newContT, newContK) = mergeConts[D](
+      selfContT = selfMsg.contT,
+      selfContK = ObjStack.Lst[Any](b, selfMsg.contK),
+      otherContT = other.msg.contT,
+      otherContK = other.msg.contK,
+      hole = other.hole,
+    )
     val resMsg = Msg(
       value = a,
-      contK = mergeContK(
-        selfContK = ObjStack.Lst[Any](b, selfMsg.contK),
-        otherContK = other.msg.contK,
-        // TODO: after otherContK: other.hole.unsafeCas(nullOf[D], d)
-      ),
-      contT = mergeContT(
-        selfContT = selfMsg.contT,
-        otherContT = other.msg.contT,
-      ),
+      contK = newContK,
+      contT = newContT,
       // TODO: this must not allow common `Ref`s:
       desc = ctx.addAll(selfMsg.desc, other.msg.desc),
-      postCommit = selfMsg.postCommit ++ other.msg.postCommit,
+      postCommit = ObjStack.Lst.concat(selfMsg.postCommit, other.msg.postCommit),
       // this thread will continue, so we use (and update) our data:
       exchangerData = selfMsg.exchangerData.updated(this, stats.exchanged)
     )
     Right(resMsg)
   }
 
-  private[this] def mergeContK(
+  private[this] def mergeConts[D](
+    selfContT: Array[Byte],
     selfContK: ObjStack.Lst[Any],
+    otherContT: Array[Byte],
     otherContK: ObjStack.Lst[Any],
-  ): ObjStack.Lst[Any] = {
-    // |---otherContK---|SEP|---selfContK---|
-    // \---> we start with the other reaction, and
-    //       go until it wants to commit (or rollback);
-    //       -> commit: instead of committing, we add
-    //          an extra CAS to `desc` (to fill `other.hole`
-    //          with the result and also the remaining part
-    //          of otherContK and otherContT) and continue
-    //          with `selfContK`
-    //       -> rollback: ... TODO ...
-    //                  \---> SEP is so that we know where it ends
-    // TODO: what if there are multiple separators?
-    ObjStack.Lst.concat(
-      otherContK,
-      ObjStack.Lst(Rxn.exchangerSeparator, selfContK),
-    )
+    hole: Ref[NodeResult[D]],
+  ): (Array[Byte], ObjStack.Lst[Any]) = {
+    // otherContK: |-|-|-|-...-|COMMIT|-|-...-|
+    //             \-----------/
+    // we'll need this first part (until the first commit)
+    // and also need an extra op (see below)
+    // after this, we'll continue with selfContK
+    // (extra op: to fill `other.hole` with the result
+    // and also the remaining part of otherContK and otherContT)
+    ObjStack.Lst.splitBefore[Any](lst = otherContK, item = Rxn.commitSingleton) match {
+      case (prefix, rest) =>
+        val extraOp = Rxn.internal.finishExchange[D](
+          hole = hole,
+          restOtherContK = rest,
+          lenSelfContT = selfContT.length,
+        )
+        val newContK = ObjStack.Lst.concat(
+          prefix,
+          ObjStack.Lst(extraOp, selfContK),
+        )
+        val newContT = mergeContTs(selfContT = selfContT, otherContT = otherContT)
+        (newContT, newContK)
+      case null =>
+        val len = ObjStack.Lst.length(otherContK)
+        if (len == 0) impossible("empty otherContK")
+        else impossible(s"no commit in otherContK: ${otherContK.mkString()}")
+    }
   }
 
-  private[this] def mergeContT(
+  private[this] def mergeContTs(
     selfContT: Array[Byte],
     otherContT: Array[Byte],
   ): Array[Byte] = {
+    // The top of the stack has the _highest_ index (see `ByteStack`)
     val res = new Array[Byte](selfContT.length + otherContT.length + 1)
-    System.arraycopy(otherContT, 0, res, 0, otherContT.length)
-    res(otherContT.length) = Rxn.ContExchangerSep
-    System.arraycopy(selfContT, 0, res, otherContT.length + 1, selfContT.length)
+    System.arraycopy(selfContT, 0, res, 0, selfContT.length)
+    res(selfContT.length) = Rxn.ContAndThen // this is for the extraOp
+    System.arraycopy(otherContT, 0, res, selfContT.length + 1, otherContT.length)
     res
   }
 }
@@ -267,7 +298,6 @@ private object ExchangerImpl {
     def zero: Statistics =
       _zero
 
-
     final val maxSizeShift =
       8 // TODO: magic
 
@@ -283,28 +313,21 @@ private object ExchangerImpl {
     contK: ObjStack.Lst[Any],
     contT: Array[Byte],
     desc: HalfEMCASDescriptor,
-    postCommit: List[Axn[Unit]],
+    postCommit: ObjStack.Lst[Axn[Unit]],
     exchangerData: StatMap,
   )
 
   private[choam] object Msg {
 
-    def ret[C](c: C, origMsg: Msg, ctx: MCAS.ThreadContext, ed: StatMap): Msg = {
+    def fromFinishedEx(fx: FinishedEx[_], newStats: StatMap, ctx: MCAS.ThreadContext): Msg = {
       Msg(
-        value = (),
-        contK = ObjStack.Lst(Rxn.ret(c), origMsg.contK), // XXX
-        contT = prependContT(Rxn.ContAndThen, origMsg.contT), // XXX
+        value = fx.result,
+        contK = fx.contK,
+        contT = fx.contT,
         desc = ctx.start(),
-        postCommit = Nil,
-        exchangerData = ed
+        postCommit = null : ObjStack.Lst[Axn[Unit]],
+        exchangerData = newStats,
       )
-    }
-
-    private[this] def prependContT(op: Byte, contT: Array[Byte]): Array[Byte] = {
-      val res = new Array[Byte](contT.length + 1)
-      res(0) = op
-      System.arraycopy(contT, 0, res, 1, contT.length)
-      res
     }
   }
 
@@ -314,46 +337,65 @@ private object ExchangerImpl {
   )
 
   private[choam] def unsafe[A, B]: ExchangerImpl[A, B] = {
-    val i: Array[AtomicReference[Node[A, B, _]]] = {
+    val i: Array[AtomicReference[Node[_]]] = {
       // TODO: use padded references
-      val arr = new Array[AtomicReference[Node[A, B, _]]](ExchangerImpl.size)
+      val arr = new Array[AtomicReference[Node[_]]](ExchangerImpl.size)
       initArray(arr)
       arr
     }
-    val o: Array[AtomicReference[Node[B, A, _]]] = {
+    val o: Array[AtomicReference[Node[_]]] = {
       // TODO: use padded references
-      val arr = new Array[AtomicReference[Node[B, A, _]]](ExchangerImpl.size)
+      val arr = new Array[AtomicReference[Node[_]]](ExchangerImpl.size)
       initArray(arr)
       arr
     }
     new ExchangerImpl[A, B](i, o)
   }
 
-  private[this] def initArray[X, Y](array: Array[AtomicReference[Node[X, Y, _]]]): Unit = {
+  private[this] def initArray(array: Array[AtomicReference[Node[_]]]): Unit = {
     @tailrec
     def go(idx: Int): Unit = {
       if (idx < array.length) {
-        array(idx) = new AtomicReference[Node[X, Y, _]]
+        array(idx) = new AtomicReference[Node[_]]
         go(idx + 1)
       }
     }
     go(0)
   }
 
-  private final class Node[A, B, C](val msg: Msg) {
+  private[choam] sealed abstract class NodeResult[C]
+
+  private[choam] final class FinishedEx[C](
+    val result: C,
+    val contK: ObjStack.Lst[Any],
+    val contT: Array[Byte],
+  ) extends NodeResult[C]
+
+  private[choam] final class Rescinded[C]
+    extends NodeResult[C]
+
+  private[choam] final object Rescinded {
+    def apply[C]: Rescinded[C] =
+      _singleton.asInstanceOf[Rescinded[C]]
+    private[this] val _singleton =
+      new Rescinded[Any]
+  }
+
+  private final class Node[C](val msg: Msg) {
 
     /**
-     *     .---> result: C (fulfiller successfully completed)
+     *     .---> result: FinishedEx[C] (fulfiller successfully completed)
      *    /
      * null (TODO: use a sentinel)
      *    \
-     *     ˙---> RESCINDED (owner couldn't wait any more for the fulfiller)
+     *     ˙---> Rescinded[C] (owner couldn't wait any more for the fulfiller)
      */
-    val hole: Ref[C] = Ref.unsafe[C](nullOf[C])
+    val hole: Ref[NodeResult[C]] =
+      Ref.unsafe(null)
 
-    def spinWait(stats: Statistics, ctx: MCAS.ThreadContext): Option[C] = {
+    def spinWait(stats: Statistics, ctx: MCAS.ThreadContext): Option[NodeResult[C]] = {
       @tailrec
-      def go(n: Int): Option[C] = {
+      def go(n: Int): Option[NodeResult[C]] = {
         if (n > 0) {
           Backoff.once()
           val res = ctx.read(this.hole.loc)
@@ -371,17 +413,5 @@ private object ExchangerImpl {
       // println(s"spin waiting ${spin} (max. ${maxSpin}) - thread#${Thread.currentThread().getId()}")
       go(spin)
     }
-  }
-
-  private final object Node {
-
-    private[this] val _RESCINDED: AnyRef =
-      new AnyRef { override def toString: String = "_RESCINDED" }
-
-    private[choam] def RESCINDED[A]: A =
-      _RESCINDED.asInstanceOf[A]
-
-    private[choam] def IS_RESCINDED[A](a: A): Boolean =
-      equ(a, _RESCINDED)
   }
 }

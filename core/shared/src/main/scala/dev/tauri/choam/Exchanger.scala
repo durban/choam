@@ -22,6 +22,8 @@ sealed trait Exchanger[A, B] {
   def exchange: Rxn[A, B]
 
   def dual: Exchanger[B, A]
+
+  private[choam] def asImpl: ExchangerImpl[A, B]
 }
 
 /** Private, because an `Exchanger` is unsafe (may block indefinitely) */

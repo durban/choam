@@ -102,6 +102,14 @@ private object ObjStack {
     def singleton[A](a: A): Lst[A] =
       new Lst(a, null)
 
+    def length[A](lst: Lst[A]): Int = {
+      def go(lst: Lst[A], acc: Int): Int = {
+        if (lst eq null) acc
+        else go(lst.tail, acc + 1)
+      }
+      go(lst, acc = 0)
+    }
+
     def reversed[A](lst: Lst[A]): Lst[A] = {
       go(lst, null)
     }
@@ -109,6 +117,25 @@ private object ObjStack {
     def concat[A](x: Lst[A], y: Lst[A]): Lst[A] = {
       val revX = reversed(x)
       go(revX, y)
+    }
+
+    def splitBefore[A](lst: Lst[A], item: A): (Lst[A], Lst[A]) = {
+      @tailrec
+      def go(rest: Lst[A], acc: Lst[A]): (Lst[A], Lst[A]) = {
+        if (rest eq null) {
+          null // TODO: this is an error
+        } else if (equ(rest.head, item)) {
+          (acc, rest)
+        } else {
+          go(rest.tail, Lst(rest.head, acc))
+        }
+      }
+      go(lst, null) match {
+        case null =>
+          null
+        case (init, rest) =>
+          (reversed(init), rest)
+      }
     }
 
     @tailrec

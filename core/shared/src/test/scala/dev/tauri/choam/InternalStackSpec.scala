@@ -76,6 +76,15 @@ final class InternalStackSpec extends BaseSpecA {
     assert(Try { s.pop() }.isFailure)
   }
 
+  test("ObjStack.Lst.length") {
+    import ObjStack.Lst
+    assertEquals(Lst.length(null), 0)
+    assertEquals(Lst.length(Lst(1, null)), 1)
+    assertEquals(Lst.length(Lst(1, Lst(2, null))), 2)
+    assertEquals(Lst.length(Lst(1, Lst(2, Lst(3, null)))), 3)
+    assertEquals(Lst.length(Lst(1, Lst(2, Lst(3, Lst(4, null))))), 4)
+  }
+
   test("ObjStack.Lst.reversed") {
     import ObjStack.Lst
     assertEquals(Lst.reversed(null), null)
@@ -96,5 +105,53 @@ final class InternalStackSpec extends BaseSpecA {
     assertEquals(Lst.concat(Lst(1, Lst(2, null)), Lst(3, Lst(4, null))).mkString(), "1, 2, 3, 4")
     assertEquals(Lst.concat(Lst(1, Lst(2, null)), null).mkString(), "1, 2")
     assertEquals(Lst.concat(null, Lst(3, Lst(4, null))).mkString(), "3, 4")
+  }
+
+  test("ObjStack.Lst.splitBefore") {
+    import ObjStack.Lst
+    assertEquals(Lst.splitBefore[String](null, "a"), null)
+    assertEquals(Lst.splitBefore[String](Lst("x", null), "a"), null)
+    assertEquals(Lst.splitBefore[String](Lst("x", Lst("y", null)), "a"), null)
+    val (a0, b0) = Lst.splitBefore[String](Lst("a", null), "a")
+    assertEquals(a0, null)
+    assertEquals(b0.mkString(), "a")
+    val (a1, b1) = Lst.splitBefore[String](Lst("a", Lst("b", null)), "a")
+    assertEquals(a1, null)
+    assertEquals(b1.mkString(), "a, b")
+    val (a2, b2) = Lst.splitBefore[String](Lst("a", Lst("b", null)), "b")
+    assertEquals(a2.mkString(), "a")
+    assertEquals(b2.mkString(), "b")
+    val (a3, b3) = Lst.splitBefore[String](Lst("a", Lst("b", Lst("c", null))), "b")
+    assertEquals(a3.mkString(), "a")
+    assertEquals(b3.mkString(), "b, c")
+    val (a4, b4) = Lst.splitBefore[String](Lst("a", Lst("b", Lst("c", null))), "a")
+    assertEquals(a4, null)
+    assertEquals(b4.mkString(), "a, b, c")
+    val (a5, b5) = Lst.splitBefore[String](Lst("a", Lst("b", Lst("c", null))), "c")
+    assertEquals(a5.mkString(), "a, b")
+    assertEquals(b5.mkString(), "c")
+    assertEquals(Lst.splitBefore[String](Lst("a", Lst("b", Lst("c", null))), "x"), null)
+    val (a6, b6) = Lst.splitBefore[String](Lst("a", Lst("b", Lst("c", Lst("d", Lst("e", Lst("f", null)))))), "d")
+    assertEquals(a6.mkString(), "a, b, c")
+    assertEquals(b6.mkString(), "d, e, f")
+  }
+
+  test("ByteStack.splitAt") {
+    val bs: Array[Byte] = List[Byte](1, 2, 3, 4).toArray[Byte]
+    assert(Try { ByteStack.splitAt(bs, -1) }.isFailure)
+    val (a0, b0) = ByteStack.splitAt(bs, 0)
+    assertEquals(a0.toList, List[Byte]())
+    assertEquals(b0.toList, List[Byte](1, 2, 3, 4))
+    val (a1, b1) = ByteStack.splitAt(bs, 1)
+    assertEquals(a1.toList, List[Byte](1))
+    assertEquals(b1.toList, List[Byte](2, 3, 4))
+    val (a3, b3) = ByteStack.splitAt(bs, 3)
+    assertEquals(a3.toList, List[Byte](1, 2, 3))
+    assertEquals(b3.toList, List[Byte](4))
+    val (a4, b4) = ByteStack.splitAt(bs, 4)
+    assertEquals(a4.toList, List[Byte](1, 2, 3, 4))
+    assertEquals(b4.toList, List[Byte]())
+    assert(Try { ByteStack.splitAt(bs, 5) }.isFailure)
+    assert(Try { ByteStack.splitAt(bs, 6) }.isFailure)
   }
 }
