@@ -81,7 +81,7 @@ private object ObjStack {
 
   final class Lst[+A](final val head: A, final val tail: Lst[A]) {
 
-    final def mkString(sep: String): String = {
+    final def mkString(sep: String = ", "): String = {
       val sb = new StringBuilder()
       sb.append(this.head.toString)
       var curr = this.tail
@@ -91,6 +91,33 @@ private object ObjStack {
         curr = curr.tail
       }
       sb.toString
+    }
+  }
+
+  final object Lst {
+
+    def apply[A](head: A, tail: Lst[A]): Lst[A] =
+      new Lst(head, tail)
+
+    def singleton[A](a: A): Lst[A] =
+      new Lst(a, null)
+
+    def reversed[A](lst: Lst[A]): Lst[A] = {
+      go(lst, null)
+    }
+
+    def concat[A](x: Lst[A], y: Lst[A]): Lst[A] = {
+      val revX = reversed(x)
+      go(revX, y)
+    }
+
+    @tailrec
+    private[this] def go[A](lst: Lst[A], acc: Lst[A]): Lst[A] = {
+      if (lst eq null) {
+        acc
+      } else {
+        go(lst.tail, new Lst(lst.head, acc))
+      }
     }
   }
 }

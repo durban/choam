@@ -486,7 +486,7 @@ object Rxn extends RxnInstances0 {
     new ObjStack[A]
   }
 
-  private[this] final val ContAndThen = 0.toByte
+  private[choam] final val ContAndThen = 0.toByte
   private[this] final val ContAndAlso = 1.toByte
   private[this] final val ContAndAlsoJoin = 2.toByte
   private[this] final val ContAfterDelayComp = 3.toByte
@@ -495,10 +495,15 @@ object Rxn extends RxnInstances0 {
   private[this] final val ContCommitPostCommit = 6.toByte
   private[this] final val ContUpdWith = 7.toByte
   private[this] final val ContAs = 8.toByte
+  private[choam] final val ContExchangerSep = 9.toByte
 
-  private[this] final class PostCommitResultMarker // TODO: make this a java enum
+  private[this] final class PostCommitResultMarker // TODO: make this a java enum?
   private[this] val postCommitResultMarker =
     new PostCommitResultMarker
+
+  private[this] final class ExchangerSeparator // TODO: make this a java enum?
+  private[choam] val exchangerSeparator: Any =
+    new ExchangerSeparator
 
   private[this] val commitSingleton: Rxn[Any, Any] =
     new Commit[Any]
@@ -687,6 +692,8 @@ object Rxn extends RxnInstances0 {
         case 8 => // ContAs
           a = contK.pop()
           next()
+        case 9 => // ContExchangerSep
+          sys.error("TODO: ContExchangerSep in contT")
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -719,7 +726,7 @@ object Rxn extends RxnInstances0 {
      * Occasionally check for thread interruption
      *
      * As a last resort, we occasionally check the interrupt
-     * status of the current thread. This way a non-lock-free
+     * status of the current thread. This way, a non-lock-free
      * (i.e., buggy) `Rxn` in an infinite loop can still be
      * interrupted by `Thread#interrupt` (in which case it will
      * throw an `InterruptedException`).
@@ -757,6 +764,7 @@ object Rxn extends RxnInstances0 {
               // the post-commit action itself:
               contK.push(pc.pop())
               contT.push(ContPostCommit)
+              // TODO: write a test for the order of multiple post-commit results
             }
             loop(next())
           } else {

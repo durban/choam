@@ -75,4 +75,26 @@ final class InternalStackSpec extends BaseSpecA {
     assert(s.isEmpty)
     assert(Try { s.pop() }.isFailure)
   }
+
+  test("ObjStack.Lst.reversed") {
+    import ObjStack.Lst
+    assertEquals(Lst.reversed(null), null)
+    assertEquals(Lst.reversed(Lst(1, null)).mkString(), "1")
+    assertEquals(Lst.reversed(Lst(1, Lst(2, null))).mkString(), "2, 1")
+    assertEquals(Lst.reversed(Lst(1, Lst(2, Lst(3, null)))).mkString(), "3, 2, 1")
+    assertEquals(Lst.reversed(Lst(1, Lst(2, Lst(3, Lst(4, null))))).mkString(), "4, 3, 2, 1")
+  }
+
+  test("ObjStack.Lst.concat") {
+    import ObjStack.Lst
+    assertEquals(Lst.concat(null, null), null)
+    assertEquals(Lst.concat(Lst(1, null), null).mkString(), "1")
+    assertEquals(Lst.concat(null, Lst(1, null)).mkString(), "1")
+    assertEquals(Lst.concat(Lst(1, null), Lst(2, null)).mkString(), "1, 2")
+    assertEquals(Lst.concat(Lst(1, null), Lst(2, Lst(3, null))).mkString(), "1, 2, 3")
+    assertEquals(Lst.concat(Lst(1, Lst(2, null)), Lst(3, null)).mkString(), "1, 2, 3")
+    assertEquals(Lst.concat(Lst(1, Lst(2, null)), Lst(3, Lst(4, null))).mkString(), "1, 2, 3, 4")
+    assertEquals(Lst.concat(Lst(1, Lst(2, null)), null).mkString(), "1, 2")
+    assertEquals(Lst.concat(null, Lst(3, Lst(4, null))).mkString(), "3, 4")
+  }
 }
