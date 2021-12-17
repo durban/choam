@@ -711,7 +711,7 @@ object Rxn extends RxnInstances0 {
         case 5 => // ContAfterPostCommit
           val res = popFinalResult()
           assert(contK.isEmpty)
-          assert(contT.isEmpty)
+          assert(contT.isEmpty, s"contT is not empty: ${contT.toString}") // TODO: remove logging
           new Done(res)
         case 6 => // ContCommitPostCommit
           a = postCommitResultMarker : Any
@@ -924,14 +924,25 @@ object Rxn extends RxnInstances0 {
         case 18 => // FinishExchange
           val c = curr.asInstanceOf[FinishExchange[Any]]
           val currentContT = contT.takeSnapshot()
-          val (newContT, otherContT) = ByteStack.splitAt(currentContT, idx = c.lenSelfContT)
+          println(s"FinishExchange: currentContT = '${java.util.Arrays.toString(currentContT)}' - thread#${Thread.currentThread().getId()}")
+          val (newContT, _otherContT) = ByteStack.splitAt(currentContT, idx = c.lenSelfContT)
           contT.loadSnapshot(newContT)
+          // Ugh...
+          // the exchanger (correctly) leaves the Commit() in otherContK;
+          // however, the extraOp (this FinishExchange) already "ate"
+          // the ContAndThen from otherContT which belongs to that Commit();
+          // so we push back that ContAndThen here:
+          val otherContT = ByteStack.push(_otherContT, ContAndThen)
+          println(s"FinishExchange: passing back result '${a}' - thread#${Thread.currentThread().getId()}")
+          println(s"FinishExchange: passing back contT ${java.util.Arrays.toString(otherContT)} - thread#${Thread.currentThread().getId()}")
           val fx = new ExchangerImpl.FinishedEx[Any](
             result = a,
             contK = c.restOtherContK,
             contT = otherContT,
           )
           desc = ctx.addCas(desc, c.hole.loc, null, fx)
+          a = contK.pop() // the exchanged value we've got from the other thread
+          println(s"FinishExchange: our result is '${a}' - thread#${Thread.currentThread().getId()}")
           loop(next())
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")

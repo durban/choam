@@ -50,7 +50,7 @@ trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     }
   }
 
-  test("Simple exchange".ignore) { // TODO
+  test("Simple exchange") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       f1 <- logOutcome("f1", ex.exchange[F]("foo")).start

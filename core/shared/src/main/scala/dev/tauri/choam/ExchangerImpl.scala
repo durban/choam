@@ -37,7 +37,7 @@ private final class ExchangerImpl[A, B] private (
   final override def exchange: Rxn[A, B] =
     Rxn.unsafe.exchange(this)
 
-  // TODO: maybe cache this instance?
+  // TODO: cache this instance
   final override def dual: ExchangerImpl[B, A] =
     new ExchangerImpl[B, A](incoming = this.outgoing, outgoing = this.incoming)
 
@@ -50,7 +50,7 @@ private final class ExchangerImpl[A, B] private (
   private[choam] def tryExchange[C](msg: Msg, ctx: MCAS.ThreadContext): Either[StatMap, Msg] = {
     // TODO: the key shouldn't be `this` -- an exchanger and its dual should probably use the same key
     val stats = msg.exchangerData.getOrElse(this, Statistics.zero)
-    // println(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
+    println(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
     val idx = if (stats.effectiveSize < 2) 0 else ctx.random.nextInt(stats.effectiveSize.toInt)
     tryIdx(idx, msg, stats, ctx) match {
       case Left(stats) => Left(msg.exchangerData.updated(this, stats))
@@ -59,7 +59,7 @@ private final class ExchangerImpl[A, B] private (
   }
 
   private[this] def tryIdx[C](idx: Int, msg: Msg, stats: Statistics, ctx: MCAS.ThreadContext): Either[Statistics, Msg] = {
-    // println(s"tryIdx(${idx}) - thread#${Thread.currentThread().getId()}")
+    println(s"tryIdx(${idx}) - thread#${Thread.currentThread().getId()}")
     // post our message:
     val slot = this.incoming(idx)
     slot.get() match {
@@ -67,15 +67,15 @@ private final class ExchangerImpl[A, B] private (
         // empty slot, insert ourselves:
         val self = new Node[C](msg)
         if (slot.compareAndSet(null, self)) {
-          // println(s"posted offer - thread#${Thread.currentThread().getId()}")
+          println(s"posted offer (contT: ${java.util.Arrays.toString(msg.contT)}) - thread#${Thread.currentThread().getId()}")
           // we posted our msg, look at the other side:
           val otherSlot = this.outgoing(idx)
           otherSlot.get() match {
             case null =>
-              // println(s"not found other, will wait - thread#${Thread.currentThread().getId()}")
+              println(s"not found other, will wait - thread#${Thread.currentThread().getId()}")
               // we can't fulfill, so we wait for a fulfillment:
               val res: Option[NodeResult[C]] = self.spinWait(stats, ctx)
-              // println(s"after waiting: ${res} - thread#${Thread.currentThread().getId()}")
+              println(s"after waiting: ${res} - thread#${Thread.currentThread().getId()}")
               if (!slot.compareAndSet(self, null)) {
                 // couldn't rescind, someone claimed our offer
                 // println(s"other claimed our offer - thread#${Thread.currentThread().getId()}")
@@ -85,7 +85,7 @@ private final class ExchangerImpl[A, B] private (
                 Left(stats.missed)
               }
             case other: Node[d] =>
-              // println(s"found other - thread#${Thread.currentThread().getId()}")
+              println(s"found other - thread#${Thread.currentThread().getId()}")
               if (slot.compareAndSet(self, null)) {
                 // ok, we've rescinded our offer
                 if (otherSlot.compareAndSet(other, null)) {
@@ -124,7 +124,7 @@ private final class ExchangerImpl[A, B] private (
     val rres = maybeResult.orElse {
       self.spinWait(stats = stats, ctx = ctx)
     }
-    // println(s"rres = ${rres} - thread#${Thread.currentThread().getId()}")
+    println(s"waitForClaimedOffer: rres = ${rres} - thread#${Thread.currentThread().getId()}")
     rres match {
       case Some(c) =>
         // it must be the result
@@ -139,7 +139,7 @@ private final class ExchangerImpl[A, B] private (
       case None =>
         if (ctx.doSingleCas(self.hole.loc, null, Rescinded[C])) {
           // OK, we rolled back, and can retry
-          // println(s"rolled back - thread#${Thread.currentThread().getId()}")
+          println(s"waitForClaimedOffer: rolled back - thread#${Thread.currentThread().getId()}")
           Left(stats.rescinded)
         } else {
           // couldn't roll back, it must be a result
@@ -164,8 +164,10 @@ private final class ExchangerImpl[A, B] private (
   ): Right[Statistics, Msg] = {
     val a: A = selfMsg.value.asInstanceOf[A]
     val b: B = other.msg.value.asInstanceOf[B]
+    println(s"fulfillClaimedOffer: selfMsg.value = ${a}; other.msg.value = ${b} - thread#${Thread.currentThread().getId()}")
     val (newContT, newContK) = mergeConts[D](
       selfContT = selfMsg.contT,
+      // we put `b` on top of contK; `FinishExchange` will pop it:
       selfContK = ObjStack.Lst[Any](b, selfMsg.contK),
       otherContT = other.msg.contT,
       otherContK = other.msg.contK,
@@ -223,10 +225,9 @@ private final class ExchangerImpl[A, B] private (
     otherContT: Array[Byte],
   ): Array[Byte] = {
     // The top of the stack has the _highest_ index (see `ByteStack`)
-    val res = new Array[Byte](selfContT.length + otherContT.length + 1)
+    val res = new Array[Byte](selfContT.length + otherContT.length)
     System.arraycopy(selfContT, 0, res, 0, selfContT.length)
-    res(selfContT.length) = Rxn.ContAndThen // this is for the extraOp
-    System.arraycopy(otherContT, 0, res, selfContT.length + 1, otherContT.length)
+    System.arraycopy(otherContT, 0, res, selfContT.length, otherContT.length)
     res
   }
 }

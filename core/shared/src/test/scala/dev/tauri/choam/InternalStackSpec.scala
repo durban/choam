@@ -154,4 +154,9 @@ final class InternalStackSpec extends BaseSpecA {
     assert(Try { ByteStack.splitAt(bs, 5) }.isFailure)
     assert(Try { ByteStack.splitAt(bs, 6) }.isFailure)
   }
+
+  test("ByteStack.push") {
+    val bs: Array[Byte] = List[Byte](1, 2, 3, 4).toArray[Byte]
+    assertEquals(ByteStack.push(bs, 9.toByte).toList, List[Byte](1, 2, 3, 4, 9))
+  }
 }

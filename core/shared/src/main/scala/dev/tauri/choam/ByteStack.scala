@@ -105,4 +105,11 @@ private final object ByteStack {
     val b = Arrays.copyOfRange(arr, idx, arr.length)
     (a, b)
   }
+
+  def push(arr: Array[Byte], item: Byte): Array[Byte] = {
+    val res = new Array[Byte](arr.length + 1)
+    System.arraycopy(arr, 0, res, 0, arr.length)
+    res(arr.length) = item
+    res
+  }
 }
