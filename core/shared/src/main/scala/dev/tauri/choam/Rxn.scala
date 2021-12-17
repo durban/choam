@@ -924,7 +924,7 @@ object Rxn extends RxnInstances0 {
         case 18 => // FinishExchange
           val c = curr.asInstanceOf[FinishExchange[Any]]
           val currentContT = contT.takeSnapshot()
-          println(s"FinishExchange: currentContT = '${java.util.Arrays.toString(currentContT)}' - thread#${Thread.currentThread().getId()}")
+          //println(s"FinishExchange: currentContT = '${java.util.Arrays.toString(currentContT)}' - thread#${Thread.currentThread().getId()}")
           val (newContT, _otherContT) = ByteStack.splitAt(currentContT, idx = c.lenSelfContT)
           contT.loadSnapshot(newContT)
           // Ugh...
@@ -933,8 +933,8 @@ object Rxn extends RxnInstances0 {
           // the ContAndThen from otherContT which belongs to that Commit();
           // so we push back that ContAndThen here:
           val otherContT = ByteStack.push(_otherContT, ContAndThen)
-          println(s"FinishExchange: passing back result '${a}' - thread#${Thread.currentThread().getId()}")
-          println(s"FinishExchange: passing back contT ${java.util.Arrays.toString(otherContT)} - thread#${Thread.currentThread().getId()}")
+          //println(s"FinishExchange: passing back result '${a}' - thread#${Thread.currentThread().getId()}")
+          //println(s"FinishExchange: passing back contT ${java.util.Arrays.toString(otherContT)} - thread#${Thread.currentThread().getId()}")
           val fx = new ExchangerImpl.FinishedEx[Any](
             result = a,
             contK = c.restOtherContK,
@@ -942,7 +942,7 @@ object Rxn extends RxnInstances0 {
           )
           desc = ctx.addCas(desc, c.hole.loc, null, fx)
           a = contK.pop() // the exchanged value we've got from the other thread
-          println(s"FinishExchange: our result is '${a}' - thread#${Thread.currentThread().getId()}")
+          //println(s"FinishExchange: our result is '${a}' - thread#${Thread.currentThread().getId()}")
           loop(next())
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
