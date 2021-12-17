@@ -35,4 +35,36 @@ trait ExchangerSpecCommon[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =
     } yield ()
     tsk.replicateA(iterations)
   }
+
+  test("Different runs produce distinct exchanger objects") {
+    for {
+      _ <- F.unit
+      alloc = Rxn.unsafe.exchanger[String, Int]
+      tsk = alloc.run[F]
+      f1 <- tsk.start // these may run on
+      f2 <- tsk.start // different threads
+      ex1 <- f1.joinWithNever
+      ex2 <- f2.joinWithNever
+      _ <- assertF(ex1 ne ex2)
+    } yield ()
+  }
+
+  test("The dual is always the same object") {
+    for {
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      f1 <- F.delay(ex.dual).start // these may run on
+      f2 <- F.delay(ex.dual).start // different threads
+      d1 <- f1.joinWithNever
+      d2 <- f2.joinWithNever
+      _ <- assertSameInstanceF(d1, d2)
+    } yield ()
+  }
+
+  test("The dual of an exchanger's dual is itself (object identity)") {
+    for {
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      dex = ex.dual
+      _ <- assertSameInstanceF(dex.dual, ex)
+    } yield ()
+  }
 }

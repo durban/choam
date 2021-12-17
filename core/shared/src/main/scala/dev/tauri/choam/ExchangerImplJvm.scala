@@ -33,13 +33,20 @@ import mcas.{ MCAS, HalfEMCASDescriptor }
  * and hopefully will be eliminated by the Scala.js linker.
  */
 private final class ExchangerImplJvm[A, B] private (
-  incoming: Array[AtomicReference[ExchangerImplJvm.Node[_]]],
-  outgoing: Array[AtomicReference[ExchangerImplJvm.Node[_]]]
- ) extends Exchanger.UnsealedExchanger[A, B] {
+  d: ExchangerImplJvm[B, A],
+) extends Exchanger.UnsealedExchanger[A, B] {
 
   import ExchangerImplJvm.{ size => _, unsafe => _, _ }
 
-  require(incoming.length == outgoing.length)
+  private val incoming: Array[AtomicReference[ExchangerImplJvm.Node[_]]] = {
+    if (d ne null) d.outgoing
+    else mkArray()
+  }
+
+  private val outgoing: Array[AtomicReference[ExchangerImplJvm.Node[_]]] = {
+    if (d ne null) d.incoming
+    else mkArray()
+  }
 
   private[this] final val isDebug =
     false
@@ -53,9 +60,10 @@ private final class ExchangerImplJvm[A, B] private (
   final override def exchange: Rxn[A, B] =
     Rxn.internal.exchange[A, B](this)
 
-  // TODO: cache this instance
-  final override def dual: ExchangerImplJvm[B, A] =
-    new ExchangerImplJvm[B, A](incoming = this.outgoing, outgoing = this.incoming)
+  final override val dual: ExchangerImplJvm[B, A] = {
+    if (d ne null) d
+    else new ExchangerImplJvm[B, A](d = this)
+  }
 
   private[this] def size: Int =
     incoming.length
@@ -351,19 +359,15 @@ private object ExchangerImplJvm {
   )
 
   private[choam] def unsafe[A, B]: ExchangerImplJvm[A, B] = {
-    val i: Array[AtomicReference[Node[_]]] = {
-      // TODO: use padded references
-      val arr = new Array[AtomicReference[Node[_]]](ExchangerImplJvm.size)
-      initArray(arr)
-      arr
-    }
-    val o: Array[AtomicReference[Node[_]]] = {
-      // TODO: use padded references
-      val arr = new Array[AtomicReference[Node[_]]](ExchangerImplJvm.size)
-      initArray(arr)
-      arr
-    }
-    new ExchangerImplJvm[A, B](i, o)
+    new ExchangerImplJvm[A, B](d = null)
+  }
+
+  private def mkArray(): Array[AtomicReference[Node[_]]] = {
+    // TODO: use padded references
+    // TODO: this really should be an AtomicReferenceArray
+    val arr = new Array[AtomicReference[Node[_]]](ExchangerImplJvm.size)
+    initArray(arr)
+    arr
   }
 
   private[this] def initArray(array: Array[AtomicReference[Node[_]]]): Unit = {
