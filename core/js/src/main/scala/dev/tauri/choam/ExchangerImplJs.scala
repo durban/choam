@@ -17,17 +17,14 @@
 
 package dev.tauri.choam
 
-sealed trait Exchanger[A, B] {
-  def exchange: Rxn[A, B]
-  def dual: Exchanger[B, A]
-}
+private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
+  extends Exchanger.UnsealedExchanger[A, B] {
 
-/** Private, because an `Exchanger` is unsafe (may block indefinitely) */
-private object Exchanger extends ExchangerCompanionPlatform {
+    final override def exchange: Rxn[A, B] =
+      Rxn.unsafe.retry[A, B]
 
-  private[choam] def apply[A, B]: Axn[Exchanger[A, B]] =
-    Rxn.unsafe.delay { _ => this.unsafe[A, B] }
-
-  private[choam] abstract class UnsealedExchanger[A, B]
-    extends Exchanger[A, B]
+    final override val dual: Exchanger[B, A] = {
+      if (d ne null) d
+      else new ExchangerImplJs[B, A](this)
+    }
 }

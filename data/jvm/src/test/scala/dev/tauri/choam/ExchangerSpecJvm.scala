@@ -21,17 +21,27 @@ import cats.effect.{ IO, Outcome }
 
 import data.TreiberStack
 
-final class ExchangerSpec_EMCAS_IO
+final class ExchangerSpecCommon_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
-  with ExchangerSpec[IO]
+  with ExchangerSpecCommon[IO]
 
-final class ExchangerSpec_EMCAS_ZIO
+final class ExchangerSpecCommon_EMCAS_ZIO
   extends BaseSpecZIO
   with SpecEMCAS
-  with ExchangerSpec[zio.Task]
+  with ExchangerSpecCommon[zio.Task]
 
-trait ExchangerSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+final class ExchangerSpecJvm_EMCAS_IO
+  extends BaseSpecIO
+  with SpecEMCAS
+  with ExchangerSpecJvm[IO]
+
+final class ExchangerSpecJvm_EMCAS_ZIO
+  extends BaseSpecZIO
+  with SpecEMCAS
+  with ExchangerSpecJvm[zio.Task]
+
+trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   final val iterations = 10
 

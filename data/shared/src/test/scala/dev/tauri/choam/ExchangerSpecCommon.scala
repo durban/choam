@@ -17,17 +17,22 @@
 
 package dev.tauri.choam
 
-sealed trait Exchanger[A, B] {
-  def exchange: Rxn[A, B]
-  def dual: Exchanger[B, A]
-}
+import cats.effect.IO
 
-/** Private, because an `Exchanger` is unsafe (may block indefinitely) */
-private object Exchanger extends ExchangerCompanionPlatform {
+final class ExchangerSpecCommon_ThreadConfinedMCAS_IO
+  extends BaseSpecIO
+  with SpecThreadConfinedMCAS
+  with ExchangerSpecCommon[IO]
 
-  private[choam] def apply[A, B]: Axn[Exchanger[A, B]] =
-    Rxn.unsafe.delay { _ => this.unsafe[A, B] }
+trait ExchangerSpecCommon[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
-  private[choam] abstract class UnsealedExchanger[A, B]
-    extends Exchanger[A, B]
+  final val iterations = 10
+
+  test("A single party never succeeds with an exchange") {
+    val tsk = for {
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      _ <- assertResultF(ex.exchange.?.apply[F]("foo"), None)
+    } yield ()
+    tsk.replicateA(iterations)
+  }
 }

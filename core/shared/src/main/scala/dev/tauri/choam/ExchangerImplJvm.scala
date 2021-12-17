@@ -25,12 +25,19 @@ import mcas.{ MCAS, HalfEMCASDescriptor }
 // TODO: something like `Rxn.allocateLazily { ... }`
 // TODO: (or it could be built-in to the Exchanger)
 
-private final class ExchangerImpl[A, B] private (
-  incoming: Array[AtomicReference[ExchangerImpl.Node[_]]],
-  outgoing: Array[AtomicReference[ExchangerImpl.Node[_]]]
+/**
+ * This is in the `shared` folder intentionally: `Rxn`
+ * references this class directly (see `Rxn.Exchange`),
+ * so it must be present during Scala.js compilation. However,
+ * this is dead code on JS (see `ExchangerCompanionPlatform`),
+ * and hopefully will be eliminated by the Scala.js linker.
+ */
+private final class ExchangerImplJvm[A, B] private (
+  incoming: Array[AtomicReference[ExchangerImplJvm.Node[_]]],
+  outgoing: Array[AtomicReference[ExchangerImplJvm.Node[_]]]
  ) extends Exchanger.UnsealedExchanger[A, B] {
 
-  import ExchangerImpl.{ size => _, unsafe => _, _ }
+  import ExchangerImplJvm.{ size => _, unsafe => _, _ }
 
   require(incoming.length == outgoing.length)
 
@@ -44,14 +51,11 @@ private final class ExchangerImpl[A, B] private (
   }
 
   final override def exchange: Rxn[A, B] =
-    Rxn.unsafe.exchange(this)
+    Rxn.internal.exchange[A, B](this)
 
   // TODO: cache this instance
-  final override def dual: ExchangerImpl[B, A] =
-    new ExchangerImpl[B, A](incoming = this.outgoing, outgoing = this.incoming)
-
-  private[choam] final override def asImpl: ExchangerImpl[A, B] =
-    this
+  final override def dual: ExchangerImplJvm[B, A] =
+    new ExchangerImplJvm[B, A](incoming = this.outgoing, outgoing = this.incoming)
 
   private[this] def size: Int =
     incoming.length
@@ -241,10 +245,10 @@ private final class ExchangerImpl[A, B] private (
   }
 }
 
-private object ExchangerImpl {
+private object ExchangerImplJvm {
 
   private[choam] type StatMap =
-    Map[ExchangerImpl[_, _], ExchangerImpl.Statistics]
+    Map[ExchangerImplJvm[_, _], ExchangerImplJvm.Statistics]
 
   private[choam] final object StatMap {
     def empty: StatMap =
@@ -346,20 +350,20 @@ private object ExchangerImpl {
     0xFF
   )
 
-  private[choam] def unsafe[A, B]: ExchangerImpl[A, B] = {
+  private[choam] def unsafe[A, B]: ExchangerImplJvm[A, B] = {
     val i: Array[AtomicReference[Node[_]]] = {
       // TODO: use padded references
-      val arr = new Array[AtomicReference[Node[_]]](ExchangerImpl.size)
+      val arr = new Array[AtomicReference[Node[_]]](ExchangerImplJvm.size)
       initArray(arr)
       arr
     }
     val o: Array[AtomicReference[Node[_]]] = {
       // TODO: use padded references
-      val arr = new Array[AtomicReference[Node[_]]](ExchangerImpl.size)
+      val arr = new Array[AtomicReference[Node[_]]](ExchangerImplJvm.size)
       initArray(arr)
       arr
     }
-    new ExchangerImpl[A, B](i, o)
+    new ExchangerImplJvm[A, B](i, o)
   }
 
   private[this] def initArray(array: Array[AtomicReference[Node[_]]]): Unit = {
