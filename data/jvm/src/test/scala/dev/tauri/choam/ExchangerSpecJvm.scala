@@ -106,14 +106,15 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
+  private[this] def countRetry(@unused label: String, rc: AtomicInteger): Rxn[Any, Unit] = {
+    Rxn.unsafe.delay { (_: Any) =>
+      val nv = rc.incrementAndGet()
+      // println(s"${label} retry count: ${nv}")
+      nv
+    } >>> Rxn.unsafe.retry[Any, Unit]
+  }
+
   test("delayComputed after exchange") {
-    def countRetry(@unused label: String, rc: AtomicInteger): Rxn[Any, Unit] = {
-      Rxn.unsafe.delay { (_: Any) =>
-        val nv = rc.incrementAndGet()
-        // println(s"${label} retry count: ${nv}")
-        nv
-      } >>> Rxn.unsafe.retry[Any, Unit]
-    }
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       r1a <- Ref(0).run[F]
@@ -223,12 +224,51 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  test("postCommit + after delayComputed".ignore) {
-    val tsk = F.unit // TODO
+  test("delayComputed after exchange + postCommit actions on one side") {
+    val tsk = for {
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      r1a <- Ref(0).run[F]
+      r1ap <- Ref(0).run[F]
+      r1p <- Ref(0).run[F]
+      r1b <- Ref(0).run[F]
+      r1bp <- Ref(0).run[F]
+      r1c <- Ref(0).run[F]
+      r1cp <- Ref(0).run[F]
+      retryCount1 <- F.delay(new AtomicInteger(0))
+      r2a <- Ref(0).run[F]
+      r2b <- Ref(0).run[F]
+      r2c <- Ref(0).run[F]
+      retryCount2 <- F.delay(new AtomicInteger(0))
+      rxn1 = r1a.update(_ + 1).postCommit(r1ap.update(_ + 1)) *> ex.exchange.provide("bar").postCommit(r1p.getAndSet.void) >>> Rxn.unsafe.delayComputed(Rxn.computed { (i: Int) =>
+        r1b.update(_ + 1).postCommit(r1bp.update(_ + 1)).as(r1c.update(_ + i).postCommit(r1cp.update(_ + 1)))
+      }) + countRetry("rxn1", retryCount1)
+      rxn2 = r2a.update(_ + 1) *> ex.dual.exchange.provide(42) >>> Rxn.unsafe.delayComputed(Rxn.computed { (s: String) =>
+        r2b.update(_ + 1).as(r2c.update(_ + s.length))
+      }) + countRetry("rxn2", retryCount2)
+      f1 <- logOutcome("f1", rxn1.run[F]).start
+      f2 <- logOutcome("f2", rxn2.run[F]).start
+      _ <- f1.joinWithNever
+      _ <- f2.joinWithNever
+      // rxn1:
+      _ <- assertResultF(r1a.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1ap.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1p.get.run[F], 42) // value from exchange
+      rc1 <- F.delay(retryCount1.get())
+      _ <- assertF(rc1 >= 0)
+      _ <- assertResultF(r1b.get.run[F], rc1 + 1) // at least once (delayComputed may be re-run)
+      _ <- assertResultF(r1bp.get.run[F], rc1 + 1) // at least once (delayComputed may be re-run)
+      _ <- assertResultF(r1c.get.run[F], 42) // value from exchange
+      _ <- assertResultF(r1cp.get.run[F], 1) // exactly once
+      // rxn2:
+      _ <- assertResultF(r2a.get.run[F], 1) // exactly once
+      rc2 <- F.delay(retryCount2.get())
+      _ <- assertResultF(r2b.get.run[F], rc2 + 1) // at least once (delayComputed may be re-run)
+      _ <- assertResultF(r2c.get.run[F], 3) // "bar".length
+    } yield ()
     tsk.replicateA(iterations)
   }
 
-  test("Exchange during delayComputed + postCommit actions") {
+  test("Exchange during delayComputed + postCommit actions on both sides") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       r1a <- Ref(0).run[F]

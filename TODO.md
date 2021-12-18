@@ -54,6 +54,7 @@
       - leave it as is (need to figure out how big a problem this is in practice)
       - make it work somehow (almost STM? performance hit?)
 - Optimization ideas:
+  - Exchanger: there is a lot of `Array[Byte]` copying
   - Boxing
   - Review writes/reads in EMCAS, check if we can relax them
   - Ref padding:
