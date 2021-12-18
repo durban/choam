@@ -354,6 +354,8 @@ private object ExchangerImplJvm {
   }
 
   private[choam] val size = Math.min(
+    // `availableProcessors` is guaranteed to return >= 1,
+    // so this is always at least (1 + 1) / 2 = 1
     (Runtime.getRuntime().availableProcessors() + 1) >>> 1,
     0xFF
   )

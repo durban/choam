@@ -49,8 +49,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   private[this] def logOutcome[A](name: String, fa: F[A]): F[A] = {
     fa.guaranteeCase {
-      case Outcome.Succeeded(res) => F.delay {
-        println(s"${name} done: ${res}")
+      case Outcome.Succeeded(_) => F.delay {
+        // println(s"${name} done: ${res}")
       }
       case Outcome.Errored(ex) => F.delay {
         println(s"${name} error: ${ex.getMessage} (${ex.getClass.getName})")
@@ -107,10 +107,11 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("delayComputed after exchange") {
-    def logRetry(label: String, rc: AtomicInteger): Rxn[Any, Unit] = {
-      Rxn.unsafe.delay[Any, Unit] { _ =>
+    def countRetry(@unused label: String, rc: AtomicInteger): Rxn[Any, Unit] = {
+      Rxn.unsafe.delay { (_: Any) =>
         val nv = rc.incrementAndGet()
-        println(s"${label} retry count: ${nv}")
+        // println(s"${label} retry count: ${nv}")
+        nv
       } >>> Rxn.unsafe.retry[Any, Unit]
     }
     for {
@@ -125,10 +126,10 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       retryCount2 <- F.delay(new AtomicInteger(0))
       rxn1 = r1a.update(_ + 1) *> ex.exchange.provide("bar") >>> Rxn.unsafe.delayComputed(Rxn.computed { (i: Int) =>
         r1b.update(_ + 1).as(r1c.update(_ + i))
-      }) + logRetry("rxn1", retryCount1)
+      }) + countRetry("rxn1", retryCount1)
       rxn2 = r2a.update(_ + 1) *> ex.dual.exchange.provide(42) >>> Rxn.unsafe.delayComputed(Rxn.computed { (s: String) =>
         r2b.update(_ + 1).as(r2c.update(_ + s.length))
-      }) + logRetry("rxn2", retryCount2)
+      }) + countRetry("rxn2", retryCount2)
       f1 <- logOutcome("f1", rxn1.run[F]).start
       f2 <- logOutcome("f2", rxn2.run[F]).start
       _ <- f1.joinWithNever
@@ -146,6 +147,88 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(r2c.get.run[F], 3) // "bar".length
     } yield ()
   }
+
+  test("Exchange during delayComputed") {
+    for {
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      r1a <- Ref(0).run[F]
+      r1b <- Ref(0).run[F]
+      r1c <- Ref(0).run[F]
+      r2a <- Ref(0).run[F]
+      r2b <- Ref(0).run[F]
+      r2c <- Ref(0).run[F]
+      rxn1 = r1a.update(_ + 1) >>> Rxn.unsafe.delayComputed(
+        r1b.update(_ + 1) *> (
+          ex.exchange.provide("foo").map { (i: Int) => r1c.update(_ + i) }
+        )
+      )
+      rxn2 = r2a.update(_ + 1) >>> Rxn.unsafe.delayComputed(
+        r2b.update(_ + 1) *> (
+          ex.dual.exchange.provide(9).map { (s: String) => r2c.update(_ + s.length) }
+        )
+      )
+      f1 <- rxn1.run[F].start
+      f2 <- rxn2.run[F].start
+      _ <- f1.joinWithNever
+      _ <- f2.joinWithNever
+      _ <- assertResultF(r1a.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1b.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1c.get.run[F], 9) // value from exchange
+      _ <- assertResultF(r2a.get.run[F], 1) // exactly once
+      _ <- assertResultF(r2b.get.run[F], 1) // exactly once
+      _ <- assertResultF(r2c.get.run[F], 3) // "bar".length
+    } yield ()
+  }
+
+  test("Exchange with postCommits on both sides") {
+    for {
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      r1a <- Ref(0).run[F]
+      r1b <- Ref(0).run[F]
+      r1c <- Ref(0).run[F]
+      r1d <- Ref(0).run[F]
+      r1e <- Ref(0).run[F]
+      r2a <- Ref(0).run[F]
+      r2b <- Ref(0).run[F]
+      r2c <- Ref(0).run[F]
+      r2d <- Ref(0).run[F]
+      r2e <- Ref(0).run[F]
+      rxn1 = r1a.update(_ + 1).postCommit(r1b.update(_ + 1)) >>> (
+        ex.exchange.postCommit(r1c.getAndSet.void).provide("str").flatMapF { (i: Int) =>
+          r1d.update(_ + i).postCommit(r1e.update(_ + 1))
+        }
+      )
+      rxn2 = r2a.update(_ + 1).postCommit(r2b.update(_ + 1)) >>> (
+        ex.dual.exchange.map(_.length).postCommit(r2c.getAndSet.void).provide(9).flatMapF { (i: Int) =>
+          r2d.update(_ + i).postCommit(r2e.update(_ + 1))
+        }
+      )
+      f1 <- rxn1.run[F].start
+      f2 <- rxn2.run[F].start
+      _ <- f1.joinWithNever
+      _ <- f2.joinWithNever
+      _ <- assertResultF(r1a.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1b.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1c.get.run[F], 9) // value from exchange
+      _ <- assertResultF(r1d.get.run[F], 9) // value from exchange
+      _ <- assertResultF(r1e.get.run[F], 1) // exactly once
+      _ <- assertResultF(r2a.get.run[F], 1) // exactly once
+      _ <- assertResultF(r2b.get.run[F], 1) // exactly once
+      _ <- assertResultF(r2c.get.run[F], 3) // "str".length
+      _ <- assertResultF(r2d.get.run[F], 3) // "str".length
+      _ <- assertResultF(r2e.get.run[F], 1) // exactly once
+    } yield ()
+  }
+
+  test("postCommit + during delayComputed".ignore) {
+    F.unit // TODO
+  }
+
+  test("postCommit + after delayComputed".ignore) {
+    F.unit // TODO
+  }
+
+  // TODO: write a test for Statistics updating
 
   test("Elimination") {
     import cats.effect.implicits.parallelForGenSpawn
