@@ -19,19 +19,13 @@ package dev.tauri.choam
 
 import java.util.concurrent.atomic.AtomicReference
 
-import mcas.{ MCAS, HalfEMCASDescriptor }
+import mcas.MCAS
+import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx }
 
 // TODO: lazy initialization of exchanger with
 // TODO: something like `Rxn.allocateLazily { ... }`
 // TODO: (or it could be built-in to the Exchanger)
 
-/**
- * This is in the `shared` folder intentionally: `Rxn`
- * references this class directly (see `Rxn.Exchange`),
- * so it must be present during Scala.js compilation. However,
- * this is dead code on JS (see `ExchangerCompanionPlatform`),
- * and hopefully will be eliminated by the Scala.js linker.
- */
 private final class ExchangerImplJvm[A, B] private (
   d: ExchangerImplJvm[B, A],
 ) extends Exchanger.UnsealedExchanger[A, B] {
@@ -333,29 +327,6 @@ private object ExchangerImplJvm {
       256 // TODO: magic; too much
   }
 
-  private[choam] final case class Msg(
-    value: Any,
-    contK: ObjStack.Lst[Any],
-    contT: Array[Byte],
-    desc: HalfEMCASDescriptor,
-    postCommit: ObjStack.Lst[Axn[Unit]],
-    exchangerData: StatMap,
-  )
-
-  private[choam] object Msg {
-
-    def fromFinishedEx(fx: FinishedEx[_], newStats: StatMap, ctx: MCAS.ThreadContext): Msg = {
-      Msg(
-        value = fx.result,
-        contK = fx.contK,
-        contT = fx.contT,
-        desc = ctx.start(),
-        postCommit = null : ObjStack.Lst[Axn[Unit]],
-        exchangerData = newStats,
-      )
-    }
-  }
-
   private[choam] val size = Math.min(
     // `availableProcessors` is guaranteed to return >= 1,
     // so this is always at least (1 + 1) / 2 = 1
@@ -384,24 +355,6 @@ private object ExchangerImplJvm {
       }
     }
     go(0)
-  }
-
-  private[choam] sealed abstract class NodeResult[C]
-
-  private[choam] final class FinishedEx[C](
-    val result: C,
-    val contK: ObjStack.Lst[Any],
-    val contT: Array[Byte],
-  ) extends NodeResult[C]
-
-  private[choam] final class Rescinded[C]
-    extends NodeResult[C]
-
-  private[choam] final object Rescinded {
-    def apply[C]: Rescinded[C] =
-      _singleton.asInstanceOf[Rescinded[C]]
-    private[this] val _singleton =
-      new Rescinded[Any]
   }
 
   private final class Node[C](val msg: Msg) {

@@ -385,13 +385,13 @@ object Rxn extends RxnInstances0 {
       ex.exchange
   }
 
-  private[choam] final object internal {
+  private[choam] final object internal extends RxnCompanionInternalPlatform {
 
-    def exchange[A, B](ex: ExchangerImplJvm[A, B]): Rxn[A, B] =
+    final def exchange[A, B](ex: this.ExchangerImpl[A, B]): Rxn[A, B] =
       new Exchange[A, B](ex)
 
-    def finishExchange[D](
-      hole: Ref[ExchangerImplJvm.NodeResult[D]],
+    final def finishExchange[D](
+      hole: Ref[Exchanger.NodeResult[D]],
       restOtherContK: ObjStack.Lst[Any],
       lenSelfContT: Int,
     ): Rxn[D, Unit] = new FinishExchange(hole, restOtherContK, lenSelfContT)
@@ -451,7 +451,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"InvisibleRead(${ref})"
   }
 
-  private final class Exchange[A, B](val exchanger: ExchangerImplJvm[A, B]) extends Rxn[A, B] {
+  private final class Exchange[A, B](val exchanger: internal.ExchangerImpl[A, B]) extends Rxn[A, B] {
     private[choam] final def tag = 10
     final override def toString: String = s"Exchange(${exchanger})"
   }
@@ -494,7 +494,7 @@ object Rxn extends RxnInstances0 {
 
   /** Only the interpreter/exchanger can use this! */
   private final class FinishExchange[D](
-    val hole: Ref[ExchangerImplJvm.NodeResult[D]],
+    val hole: Ref[Exchanger.NodeResult[D]],
     val restOtherContK: ObjStack.Lst[Any],
     val lenSelfContT: Int,
   ) extends Rxn[D, Unit] {
@@ -598,7 +598,7 @@ object Rxn extends RxnInstances0 {
     private[this] var retries: Int = 0
 
     // TODO: this should be in the ThreadContext:
-    private[this] var stats: ExchangerImplJvm.StatMap = Map.empty
+    private[this] var stats: internal.ExStatMap = Map.empty
 
     private[this] final def setContReset(): Unit = {
       contTReset = contT.takeSnapshot()
@@ -667,7 +667,7 @@ object Rxn extends RxnInstances0 {
       res
     }
 
-    private[this] final def loadAltFrom(msg: ExchangerImplJvm.Msg): Rxn[Any, R] = {
+    private[this] final def loadAltFrom(msg: Exchanger.Msg): Rxn[Any, R] = {
       pc.loadSnapshot(msg.postCommit)
       contK.loadSnapshot(msg.contK)
       contT.loadSnapshot(msg.contT)
@@ -868,7 +868,7 @@ object Rxn extends RxnInstances0 {
           loop(next())
         case 10 => // Exchange
           val c = curr.asInstanceOf[Exchange[A, B]]
-          val msg = ExchangerImplJvm.Msg(
+          val msg = Exchanger.Msg(
             value = a,
             contK = contK.takeSnapshot(),
             contT = contT.takeSnapshot(),
@@ -940,7 +940,7 @@ object Rxn extends RxnInstances0 {
           //println(s"FinishExchange: passing back result '${a}' - thread#${Thread.currentThread().getId()}")
           //println(s"FinishExchange: passing back contT ${java.util.Arrays.toString(otherContT)} - thread#${Thread.currentThread().getId()}")
           //println(s"FinishExchange: passing back contK ${c.restOtherContK.mkString()} - thread#${Thread.currentThread().getId()}")
-          val fx = new ExchangerImplJvm.FinishedEx[Any](
+          val fx = new Exchanger.FinishedEx[Any](
             result = a,
             contK = c.restOtherContK,
             contT = otherContT,

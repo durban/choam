@@ -17,23 +17,9 @@
 
 package dev.tauri.choam
 
-import mcas.MCAS
+private abstract class RxnCompanionInternalPlatform {
 
-private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
-  extends Exchanger.UnsealedExchanger[A, B] {
+  final type ExchangerImpl[A, B] = ExchangerImplJvm[A, B]
 
-    final override def exchange: Rxn[A, B] =
-      Rxn.unsafe.retry[A, B]
-
-    final override val dual: Exchanger[B, A] = {
-      if (d ne null) d
-      else new ExchangerImplJs[B, A](this)
-    }
-
-    private[choam] final def tryExchange[C](
-      @unused msg: Exchanger.Msg,
-      @unused ctx: MCAS.ThreadContext
-    ): Either[Rxn.internal.ExStatMap, Exchanger.Msg] = {
-      impossible("ExchangerImplJs.tryExchange")
-    }
+  final type ExStatMap = ExchangerImplJvm.StatMap
 }

@@ -325,7 +325,23 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  // TODO: write a test for Statistics updating
+  test("An Exchanger and its dual must use the same key in a StatMap".ignore) { // TODO
+    for {
+      _ <- F.unit
+    } yield ()
+  }
+
+  test("A StatMap must persist between different unsafePerform runs".ignore) { // TODO
+    for {
+      _ <- F.unit
+    } yield ()
+  }
+
+  test("A StatMap must not prevent an Exchanger from being garbage collected".ignore) { // TODO
+    for {
+      _ <- F.unit
+    } yield ()
+  }
 
   test("Elimination") {
     import cats.effect.implicits.parallelForGenSpawn

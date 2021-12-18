@@ -30,4 +30,49 @@ private object Exchanger extends ExchangerCompanionPlatform {
 
   private[choam] abstract class UnsealedExchanger[A, B]
     extends Exchanger[A, B]
+
+  // TODO: these are JVM-only:
+
+  import mcas.{ MCAS, HalfEMCASDescriptor }
+
+  private[choam] final case class Msg(
+    value: Any,
+    contK: ObjStack.Lst[Any],
+    contT: Array[Byte],
+    desc: HalfEMCASDescriptor,
+    postCommit: ObjStack.Lst[Axn[Unit]],
+    exchangerData: Rxn.internal.ExStatMap,
+  )
+
+  private[choam] object Msg {
+
+    def fromFinishedEx(fx: FinishedEx[_], newStats: Rxn.internal.ExStatMap, ctx: MCAS.ThreadContext): Msg = {
+      Msg(
+        value = fx.result,
+        contK = fx.contK,
+        contT = fx.contT,
+        desc = ctx.start(),
+        postCommit = null : ObjStack.Lst[Axn[Unit]],
+        exchangerData = newStats,
+      )
+    }
+  }
+
+  private[choam] sealed abstract class NodeResult[C]
+
+  private[choam] final class FinishedEx[C](
+    val result: C,
+    val contK: ObjStack.Lst[Any],
+    val contT: Array[Byte],
+  ) extends NodeResult[C]
+
+  private[choam] final class Rescinded[C]
+    extends NodeResult[C]
+
+  private[choam] final object Rescinded {
+    def apply[C]: Rescinded[C] =
+      _singleton.asInstanceOf[Rescinded[C]]
+    private[this] val _singleton =
+      new Rescinded[Any]
+  }
 }
