@@ -26,43 +26,7 @@ import org.scalacheck.{ Gen, Arbitrary, Cogen }
 
 import mcas.ImpossibleOperation
 
-object TestInstances {
-
-  private final case class ResetRxn[-A, +B](
-    rxn: Rxn[A, B],
-    refs: Set[ResetRef[_]] = Set.empty,
-  ) {
-
-    def toRxn: Rxn[A, B] =
-      rxn.postCommit(Rxn.unsafe.delay(_ => unsafeResetAll()))
-
-    def unsafeResetAll(): Unit = {
-      refs.foreach(_.unsafeReset())
-    }
-
-    def + [X <: A, Y >: B](that: ResetRxn[X, Y]): ResetRxn[X, Y] =
-      ResetRxn(this.rxn + that.rxn, this.refs union that.refs)
-
-    def >>> [C](that: ResetRxn[B, C]): ResetRxn[A, C] =
-      ResetRxn(this.rxn >>> that.rxn, this.refs union that.refs)
-
-    def * [X <: A, C](that: ResetRxn[X, C]): ResetRxn[X, (B, C)] =
-      ResetRxn(this.rxn * that.rxn, this.refs union that.refs)
-
-    def map[C](f: B => C): ResetRxn[A, C] =
-      ResetRxn(this.rxn.map(f), this.refs)
-  }
-
-  private final case class ResetRef[A](ref: Ref[A], resetTo: A) {
-    def unsafeReset(): Unit = {
-      ref.loc.unsafeSetVolatile(resetTo)
-    }
-  }
-}
-
 trait TestInstances extends TestInstancesLowPrio0 { self =>
-
-  import TestInstances._
 
   def kcasImpl: mcas.MCAS
 
@@ -107,6 +71,58 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
       List(ref.loc.id0, ref.loc.id1, ref.loc.id2, ref.loc.id3)
     }
   }
+
+  implicit def arbAxn[B](
+    implicit
+    arbB: Arbitrary[B],
+  ): Arbitrary[Axn[B]] = {
+    implicit val arbAny: Arbitrary[Any] = Arbitrary(
+      Gen.oneOf(
+        Gen.const(()),
+        Gen.const(null),
+        Gen.alphaNumStr,
+      )
+    )
+    implicit val cogAny: Cogen[Any] = Cogen.cogenInt.contramap[Any](_.##)
+    Arbitrary { self.arbRxn[Any, B].arbitrary }
+  }
+
+  implicit def arbIor[A, B](implicit arbA: Arbitrary[A], arbB: Arbitrary[B]): Arbitrary[Ior[A, B]] = Arbitrary {
+    Gen.oneOf(
+      arbA.arbitrary.map(Ior.left),
+      arbB.arbitrary.map(Ior.right),
+      arbA.arbitrary.flatMap { a => arbB.arbitrary.map { b => Ior.both(a, b) } },
+    )
+  }
+
+  implicit def cogIor[A, B](implicit cogA: Cogen[A], cogB: Cogen[B]): Cogen[Ior[A, B]] = {
+    Cogen { (seed, ior) =>
+      ior.fold(
+        a => cogA.perturb(seed.next, a),
+        b => cogB.perturb(seed.next.next, b),
+        (a, b) => cogB.perturb(cogA.perturb(seed, a), b)
+      )
+    }
+  }
+
+  implicit def testingEqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]] = new Eq[Axn[A]] {
+    override def eqv(x: Axn[A], y: Axn[A]): Boolean = {
+      val rx = self.unsafePerformForTest(x, ())
+      val ry = self.unsafePerformForTest(y, ())
+      Eq[Either[ImpossibleOperation, A]].eqv(rx, ry)
+    }
+  }
+
+  private[choam] final def unsafePerformForTest[A, B](rxn: A =#> B, a: A): Either[ImpossibleOperation, B] = {
+    try {
+      Right(rxn.unsafePerform(a, self.kcasImpl))
+    } catch { case ex: ImpossibleOperation =>
+      Left(ex)
+    }
+  }
+}
+
+private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 { self: TestInstances =>
 
   implicit def arbRxn[A, B](
     implicit
@@ -221,43 +237,6 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
       },
     )
   }
-
-  implicit def arbIor[A, B](implicit arbA: Arbitrary[A], arbB: Arbitrary[B]): Arbitrary[Ior[A, B]] = Arbitrary {
-    Gen.oneOf(
-      arbA.arbitrary.map(Ior.left),
-      arbB.arbitrary.map(Ior.right),
-      arbA.arbitrary.flatMap { a => arbB.arbitrary.map { b => Ior.both(a, b) } },
-    )
-  }
-
-  implicit def cogIor[A, B](implicit cogA: Cogen[A], cogB: Cogen[B]): Cogen[Ior[A, B]] = {
-    Cogen { (seed, ior) =>
-      ior.fold(
-        a => cogA.perturb(seed.next, a),
-        b => cogB.perturb(seed.next.next, b),
-        (a, b) => cogB.perturb(cogA.perturb(seed, a), b)
-      )
-    }
-  }
-
-  implicit def testingEqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]] = new Eq[Axn[A]] {
-    override def eqv(x: Axn[A], y: Axn[A]): Boolean = {
-      val rx = self.unsafePerformForTest(x, ())
-      val ry = self.unsafePerformForTest(y, ())
-      Eq[Either[ImpossibleOperation, A]].eqv(rx, ry)
-    }
-  }
-
-  private[choam] final def unsafePerformForTest[A, B](rxn: A =#> B, a: A): Either[ImpossibleOperation, B] = {
-    try {
-      Right(rxn.unsafePerform(a, self.kcasImpl))
-    } catch { case ex: ImpossibleOperation =>
-      Left(ex)
-    }
-  }
-}
-
-private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 { self: TestInstances =>
 
   implicit def testingEqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]] = new Eq[Rxn[A, B]] {
     override def eqv(x: Rxn[A, B], y: Rxn[A, B]): Boolean = {

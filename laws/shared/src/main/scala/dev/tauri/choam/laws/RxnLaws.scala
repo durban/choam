@@ -21,7 +21,8 @@ package laws
 import cats.laws.IsEq
 import cats.laws.IsEqArrow
 
-import Rxn.{ pure, ret, lift }
+import Rxn.{ pure, ret, lift, computed }
+import Rxn.unsafe.retry
 
 trait RxnLaws {
 
@@ -77,4 +78,18 @@ trait RxnLaws {
       b_df => ((b_df._1, b_df._2._1), b_df._2._2)
     )
   }
+
+  // TODO: similar for `flatMap`
+  def flatMapFIsAndThenComputed[A, B, C](x: A =#> B, f: B => Axn[C]): IsEq[Rxn[A, C]] =
+    x.flatMapF(f) <-> (x >>> computed(f))
+
+  // TODO: does this always hold?
+  def choiceRetryNeutralRight[A, B](x: A =#> B) =
+    (x + retry[A, B]) <-> x
+
+  // TODO: does this always hold?
+  def choiceRetryNeutralLeft[A, B](x: A =#> B) =
+    (retry[A, B] + x) <-> x
+
+  // TODO: do these make a monoid with `+`?
 }

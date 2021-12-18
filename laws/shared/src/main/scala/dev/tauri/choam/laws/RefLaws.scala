@@ -48,4 +48,10 @@ trait RefLaws {
 
   def orderConsistentWithIdentity[A](x: Ref[A], y: Ref[A]): IsEq[Boolean] =
     Order[Ref[A]].eqv(x, y) <-> (x eq y)
+
+  def updWithRetIsUpd[A, B, C](x: Ref[A], f: A => A, g: B => C): IsEq[Rxn[B, C]] = {
+    val uw = x.updWith[B, C] { (a, b) => Rxn.ret((f(a), g(b))) }
+    val u = x.upd[B, C] { (a, b) => (f(a), g(b)) }
+    uw <-> u
+  }
 }

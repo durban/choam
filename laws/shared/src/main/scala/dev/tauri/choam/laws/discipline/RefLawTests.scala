@@ -19,9 +19,10 @@ package dev.tauri.choam
 package laws
 package discipline
 
+import cats.kernel.Eq
 import cats.kernel.laws.discipline.catsLawsIsEqToProp
 
-import org.scalacheck.Arbitrary
+import org.scalacheck.{ Arbitrary, Cogen }
 import org.scalacheck.Prop.forAll
 import org.typelevel.discipline.Laws
 
@@ -30,6 +31,10 @@ object RefLawTests {
   def apply(ti: TestInstances): RefLawTests = new RefLawTests {
     final override def arbRef[A : Arbitrary] =
       ti.arbRef
+    override implicit def eqAxn[A](implicit equA: Eq[A]) =
+      ti.testingEqAxn[A]
+    override implicit def eqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]) =
+      ti.testingEqRxn[A, B]
   }
 }
 
@@ -37,13 +42,21 @@ trait RefLawTests extends Laws {
 
   implicit def arbRef[A : Arbitrary]: Arbitrary[Ref[A]]
 
+  implicit def eqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]]
+
+  implicit def eqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]]
+
   def laws: RefLaws =
     new RefLaws {}
 
-  def ref[A, B](
+  def ref[A, B, C](
     implicit
+    equC: Eq[C],
     arbA: Arbitrary[A],
     arbB: Arbitrary[B],
+    arbC: Arbitrary[C],
+    cogA: Cogen[A],
+    cogB: Cogen[B],
   ): RuleSet = new DefaultRuleSet(
     name = "ref",
     parent = None,
@@ -51,5 +64,6 @@ trait RefLawTests extends Laws {
     "unique IDs (same type)" -> forAll(laws.uniqueIdsSameType[A] _),
     "unique IDs (different type)" -> forAll(laws.uniqueIdsDifferentType[A, B] _),
     "Order consistent with identity" -> forAll(laws.orderConsistentWithIdentity[A] _),
+    "updWith and ret is upd" -> forAll(laws.updWithRetIsUpd[A, B, C] _),
   )
 }

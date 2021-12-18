@@ -21,18 +21,23 @@
 
 ## Bugs
 
-- `Exchanger` doesn't work with the new `Rxn`
 - `Ctrie` is incomplete
   - no `remove` (+ tombstone handling)
-  - ???
+  - even if completed, it would not be very good
+    - to have composability, the root will always have to be validated
+    - this would make it not scalable (the root ref is very contended)
 - Can't run benchmarks with Scala 3
 
 ## Other improvements
 
 - Choice seems slow with the new interpreter (see `ChoiceCombinatorBench`).
 - Testing:
-  - Figure out some tricky race conditions, and test them with JCStress.
+  - JCStress:
     - `Exchanger`
+    - replacing descriptors (weakref?)
+    - Other things (Promise? delayComputed?)
+    - Separate tests to `quick` and `slow`
+    - Run `quick` tests in CI
   - LawsSpec:
     - improve generated `Rxn`s, check if they make sense
     - check if `testingEqRxn` makes sense
@@ -49,7 +54,6 @@
       - leave it as is (need to figure out how big a problem this is in practice)
       - make it work somehow (almost STM? performance hit?)
 - Optimization ideas:
-  - `Rxn#as`
   - Boxing
   - Review writes/reads in EMCAS, check if we can relax them
   - Ref padding:
@@ -69,19 +73,17 @@
   - Review benchmarks, remove useless ones
 - Async:
   - integration with FS2 (`choam-stream`):
-    - implement FS2 data structures (`Queue`, ...) with reagents
-    - optimize `AsyncQueue` stream
+    - Channel?
+    - Optimize SignallingRef
 - API cleanup:
-  - (unsafe) thread-confined mode for running a `Rxn` (with `NaiveKCAS` or something even more simple)
-  - Rxn.onRetry?
+  - MCAS API review
+  - (unsafe) thread-confined mode for running a `Rxn`:
+    - ThreadConfinedMCAS (but should be faster, with no fences)
+    - convenience API?
   - Rxn.delay?
     - allocating (but: only `Ref` really needs it, others are built on that)
     - calling async callbacks (but: only `Promise` needs it, others don't)
     - allocating `Exchanger` arrays (this is similar to `Ref`)
-  - move `KCAS` into separate JAR, figure out proper API (`choam-mcas`)
-  - move data structures into separate JAR (`choam-data`)
-  - maybe: move async stuff into separate JAR (`choam-async`)
-    - but: what to do with `Reactive.Async`? (could remain in core)
   - Maybe rename `Ref`?
     - Collision with `cats.effect.kernel.Ref`
     - Although it is hard to confuse them
@@ -93,7 +95,7 @@
     - Generally, we shouldn't raise errors in a reaction
       - If something can fail, return `Option` or `Either`
     - Need to review and document the handling of exceptions
-      - they should fall-through, but with cleanup
+      - they should fall-through, but with cleanup (if needed)
     - Transient errors can sometimes be handled with `+` (`Choice`)
       - but sometimes this can cause infinite retry
 - Cancellation support
@@ -109,6 +111,7 @@
   - Can we have an API for composing unsafe parts into something which is safe?
     - e.g., `PartialRxn[A, B]`
     - `.?` would make a (safe) `Rxn` from it
+    - `.+(<something safe here>)` would also make it safe
 - Think about global / thread-local state:
   - if we're running in IO, we might use something else
   - however, IBR probably really needs thread-locals
@@ -118,8 +121,11 @@
 
 - `LongRef`, `IntRef`, ... (benchmarks needed, it might not make sense)
 - `Ref` which is backed by mmapped memory(?)
+  - similar: mmapped from _persistent_ memory
+  - similar: JS shared array
+    - this would break assumptions the default JS MCAS relies on (single threaded)
 - Other data structures:
-  - ctrie-set
+  - ctrie-set (but see problems with Ctrie)
   - `SkipListMap`, `SkipListSet`
   - https://dl.acm.org/doi/10.1145/1989493.1989550 ?
   - dual data structures:
@@ -135,8 +141,3 @@
         - `pop: AsyncRxn[Unit, A]`
         - `def unsafeRun(ar: AsyncRxn[A, B], a: A): Either[F[A], A]`
         - `def unsafeToF(ar: AsyncRxn[A, B], a: A): F[A] = unsafeRun(...).fold(x => x, F.pure)`
-- "Laws" for the `Rxn` combinators, e.g.:
-  - choice prefers the first option
-  - `flatMap` <-> `>>>` and `computed`
-  - `updWith` then `ret` <-> `modify`
-- scalajs

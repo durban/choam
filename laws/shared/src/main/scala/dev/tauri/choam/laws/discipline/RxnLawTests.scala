@@ -26,31 +26,26 @@ import org.scalacheck.{ Arbitrary, Cogen }
 import org.scalacheck.Prop.forAll
 import org.typelevel.discipline.Laws
 
-object RxnLawTests {
+trait RxnLawTests extends Laws { this: TestInstances =>
 
-  def apply(ti: TestInstances): RxnLawTests = new RxnLawTests {
-    override def eqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]] =
-      ti.testingEqAxn[A]
-    override def eqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]] =
-      ti.testingEqRxn[A, B]
-    override def arbRxn[A, B](implicit arbA: Arbitrary[A], arbB: Arbitrary[B], arbAB: Arbitrary[A => B], arbAA: Arbitrary[A => A]): Arbitrary[Rxn[A, B]] =
-      ti.arbRxn[A, B]
-  }
-}
+  // TODO: I gave up:
 
-trait RxnLawTests extends Laws {
+  // implicit def eqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]]
 
-  implicit def eqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]]
+  // implicit def eqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]]
 
-  implicit def eqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]]
+  // implicit def arbAxn[B](
+  //   implicit
+  //   arbB: Arbitrary[B],
+  // ): Arbitrary[Axn[B]]
 
-  implicit def arbRxn[A, B](
-    implicit
-    arbA: Arbitrary[A],
-    arbB: Arbitrary[B],
-    arbAB: Arbitrary[A => B],
-    arbAA: Arbitrary[A => A]
-  ): Arbitrary[Rxn[A, B]]
+  // implicit def arbRxn[A, B](
+  //   implicit
+  //   arbA: Arbitrary[A],
+  //   arbB: Arbitrary[B],
+  //   arbAB: Arbitrary[A => B],
+  //   arbAA: Arbitrary[A => A]
+  // ): Arbitrary[Rxn[A, B]]
 
   def laws: RxnLaws =
     new RxnLaws {}
@@ -90,5 +85,8 @@ trait RxnLawTests extends Laws {
     "disributive (× and +) 1" -> forAll(laws.distributiveAndAlsoChoice1[A, B, C, D] _),
     "disributive (× and +) 2" -> forAll(laws.distributiveAndAlsoChoice2[A, B, C, D] _),
     "associative ×" -> forAll(laws.associativeAndAlso[A, B, C, D, E, F] _),
+    "flatMapF is >>> and computed" -> forAll(laws.flatMapFIsAndThenComputed[A, B, C] _),
+    "retry is neutral for choice (left)" -> forAll(laws.choiceRetryNeutralLeft[A, B] _),
+    "retry is neutral for choice (right)" -> forAll(laws.choiceRetryNeutralRight[A, B] _),
   )
 }
