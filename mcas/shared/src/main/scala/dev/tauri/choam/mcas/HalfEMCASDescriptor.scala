@@ -37,6 +37,9 @@ final class HalfEMCASDescriptor private (
       new HalfEMCASDescriptor(newMap)
     }
   }
+
+  final override def toString: String =
+    s"HalfEMCASDescriptor(${map.valuesIterator.mkString(", ")})"
 }
 
 object HalfEMCASDescriptor {

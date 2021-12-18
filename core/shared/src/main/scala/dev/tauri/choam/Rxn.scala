@@ -627,6 +627,7 @@ object Rxn extends RxnInstances0 {
       clearAlts()
       contT.clear()
       contK.clear()
+      pc.clear()
       a = () : Any
       startA = () : Any
       retries = 0
@@ -938,6 +939,7 @@ object Rxn extends RxnInstances0 {
           val otherContT = ByteStack.push(_otherContT, ContAndThen)
           //println(s"FinishExchange: passing back result '${a}' - thread#${Thread.currentThread().getId()}")
           //println(s"FinishExchange: passing back contT ${java.util.Arrays.toString(otherContT)} - thread#${Thread.currentThread().getId()}")
+          //println(s"FinishExchange: passing back contK ${c.restOtherContK.mkString()} - thread#${Thread.currentThread().getId()}")
           val fx = new ExchangerImplJvm.FinishedEx[Any](
             result = a,
             contK = c.restOtherContK,

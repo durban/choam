@@ -114,7 +114,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         nv
       } >>> Rxn.unsafe.retry[Any, Unit]
     }
-    for {
+    val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       r1a <- Ref(0).run[F]
       r1b <- Ref(0).run[F]
@@ -146,10 +146,11 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(r2b.get.run[F], rc2 + 1) // at least once (delayComputed may be re-run)
       _ <- assertResultF(r2c.get.run[F], 3) // "bar".length
     } yield ()
+    tsk.replicateA(iterations)
   }
 
   test("Exchange during delayComputed") {
-    for {
+    val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       r1a <- Ref(0).run[F]
       r1b <- Ref(0).run[F]
@@ -178,10 +179,11 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(r2b.get.run[F], 1) // exactly once
       _ <- assertResultF(r2c.get.run[F], 3) // "bar".length
     } yield ()
+    tsk.replicateA(iterations)
   }
 
   test("Exchange with postCommits on both sides") {
-    for {
+    val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       r1a <- Ref(0).run[F]
       r1b <- Ref(0).run[F]
@@ -218,14 +220,69 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(r2d.get.run[F], 3) // "str".length
       _ <- assertResultF(r2e.get.run[F], 1) // exactly once
     } yield ()
-  }
-
-  test("postCommit + during delayComputed".ignore) {
-    F.unit // TODO
+    tsk.replicateA(iterations)
   }
 
   test("postCommit + after delayComputed".ignore) {
-    F.unit // TODO
+    val tsk = F.unit // TODO
+    tsk.replicateA(iterations)
+  }
+
+  test("Exchange during delayComputed + postCommit actions") {
+    val tsk = for {
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      r1a <- Ref(0).run[F]
+      r1ap <- Ref(0).run[F]
+      r1b <- Ref(0).run[F]
+      r1bp1 <- Ref(0).run[F]
+      r1bp2 <- Ref(0).run[F]
+      r1p <- Ref(0).run[F]
+      r1c <- Ref(0).run[F]
+      r1cp <- Ref(0).run[F]
+      r2a <- Ref(0).run[F]
+      r2ap <- Ref(0).run[F]
+      r2b <- Ref(0).run[F]
+      r2bp1 <- Ref(0).run[F]
+      r2bp2 <- Ref(0).run[F]
+      r2p <- Ref(0).run[F]
+      r2c <- Ref(0).run[F]
+      r2cp <- Ref(0).run[F]
+      rxn1 = r1a.update(_ + 1).postCommit(r1ap.update(_ + 1)) >>> Rxn.unsafe.delayComputed(
+        r1b.update(_ + 1).postCommit(r1bp1.update(_ + 1)).postCommit(r1bp2.update(_ + 1)) *> (
+          ex.exchange.postCommit(r1p.getAndSet.void).provide("foo").map { (i: Int) =>
+            r1c.update(_ + i).postCommit(r1cp.update(_ + 1))
+          }
+        )
+      )
+      rxn2 = r2a.update(_ + 1).postCommit(r2ap.update(_ + 1)) >>> Rxn.unsafe.delayComputed(
+        r2b.update(_ + 1).postCommit(r2bp1.update(_ + 1)).postCommit(r2bp2.update(_ + 1)) *> (
+          ex.dual.exchange.map(_.length).postCommit(r2p.getAndSet.void).provide(9).map { (i: Int) =>
+            r2c.update(_ + i).postCommit(r2cp.update(_ + 1))
+          }
+        )
+      )
+      f1 <- rxn1.run[F].start
+      f2 <- rxn2.run[F].start
+      _ <- f1.joinWithNever
+      _ <- f2.joinWithNever
+      _ <- assertResultF(r1a.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1ap.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1b.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1bp1.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1bp1.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1p.get.run[F], 9) // value from exchange
+      _ <- assertResultF(r1c.get.run[F], 9) // value from exchange
+      _ <- assertResultF(r1cp.get.run[F], 1) // exactly once
+      _ <- assertResultF(r2a.get.run[F], 1) // exactly once
+      _ <- assertResultF(r2ap.get.run[F], 1) // exactly once
+      _ <- assertResultF(r2b.get.run[F], 1) // exactly once
+      _ <- assertResultF(r2bp1.get.run[F], 1) // exactly once
+      _ <- assertResultF(r2bp2.get.run[F], 1) // exactly once
+      _ <- assertResultF(r2p.get.run[F], 3) // "bar".length
+      _ <- assertResultF(r2c.get.run[F], 3) // "bar".length
+      _ <- assertResultF(r2cp.get.run[F], 1) // exactly once
+    } yield ()
+    tsk.replicateA(iterations)
   }
 
   // TODO: write a test for Statistics updating

@@ -529,6 +529,35 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("postCommit before delayComputed") {
+    for {
+      r1a <- Ref(0).run[F]
+      r1ap <- Ref(0).run[F]
+      r1b <- Ref(0).run[F]
+      r1bp1 <- Ref(0).run[F]
+      r1bp2 <- Ref(0).run[F]
+      r1p <- Ref(0).run[F]
+      r1c <- Ref(0).run[F]
+      r1cp <- Ref(0).run[F]
+      rxn1 = r1a.update(_ + 1).postCommit(r1ap.update(_ + 1)) >>> Rxn.unsafe.delayComputed(
+        r1b.update(_ + 1).postCommit(r1bp1.update(_ + 1)).postCommit(r1bp2.update(_ + 1)) *> (
+          Rxn.pure(9).postCommit(r1p.getAndSet.void).map { (i: Int) =>
+            r1c.update(_ + i).postCommit(r1cp.update(_ + 1))
+          }
+        )
+      )
+      _ <- rxn1.run[F]
+      _ <- assertResultF(r1a.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1ap.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1b.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1bp1.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1bp1.get.run[F], 1) // exactly once
+      _ <- assertResultF(r1p.get.run[F], 9) // value from `pure`
+      _ <- assertResultF(r1c.get.run[F], 9) // value from `pure`
+      _ <- assertResultF(r1cp.get.run[F], 1) // exactly once
+    } yield ()
+  }
+
   test("delayComputed") {
     for {
       a <- Ref("a").run[F]

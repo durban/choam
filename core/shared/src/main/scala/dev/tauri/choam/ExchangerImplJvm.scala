@@ -151,6 +151,7 @@ private final class ExchangerImplJvm[A, B] private (
         // it must be the result
         c match {
           case fx: FinishedEx[_] =>
+            debugLog(s"waitForClaimedOffer: found result - thread#${Thread.currentThread().getId()}")
             val newStats = msg.exchangerData.updated(this, stats.exchanged)
             Right(Msg.fromFinishedEx(fx, newStats, ctx))
           case _: Rescinded[_] =>
@@ -166,6 +167,7 @@ private final class ExchangerImplJvm[A, B] private (
           // couldn't roll back, it must be a result
           ctx.read(self.hole.loc) match {
             case fx: FinishedEx[_] =>
+              debugLog(s"waitForClaimedOffer: found result - thread#${Thread.currentThread().getId()}")
               val newStats = msg.exchangerData.updated(this, stats.exchanged)
               Right(Msg.fromFinishedEx(fx, newStats, ctx))
             case _: Rescinded[_] =>
@@ -200,10 +202,11 @@ private final class ExchangerImplJvm[A, B] private (
       contT = newContT,
       // TODO: this must not allow common `Ref`s:
       desc = ctx.addAll(selfMsg.desc, other.msg.desc),
-      postCommit = ObjStack.Lst.concat(selfMsg.postCommit, other.msg.postCommit),
+      postCommit = ObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit),
       // this thread will continue, so we use (and update) our data:
       exchangerData = selfMsg.exchangerData.updated(this, stats.exchanged)
     )
+    debugLog(s"merged postCommit: ${resMsg.postCommit.mkString()} - thread#${Thread.currentThread().getId()}")
     Right(resMsg)
   }
 
