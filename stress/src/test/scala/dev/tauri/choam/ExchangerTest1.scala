@@ -23,7 +23,6 @@ import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results._
 
 // TODO: More Exchanger stress tests:
-// TODO: - test the atomicity/visibility of the 2 joined reactions
 // TODO: - postCommit actions on both sides
 // TODO:   - the 2 sides must be atomic
 // TODO:   - the pc actions must not
