@@ -17,7 +17,10 @@
 
 package dev.tauri.choam
 
+import java.util.IdentityHashMap
+
 import cats.effect.SyncIO
+import cats.effect.kernel.Unique
 import cats.effect.std.UUIDGen
 
 final class RandomSpec_ThreadConfinedMCAS_SyncIO
@@ -39,6 +42,17 @@ trait RandomSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
           )
         case x =>
           failF[Unit](s"unexpected: ${x.toString}")
+      }
+    }
+  }
+
+  test("Unique") {
+    val gen = Unique[Axn]
+    (1 to N).toList.traverse(_ => gen.unique.run[F]).flatMap { tokenList =>
+      F.defer {
+        val s = new IdentityHashMap[Unique.Token, Unit]
+        tokenList.foreach { tok => s.put(tok, ()) }
+        assertEqualsF(s.size, N)
       }
     }
   }
