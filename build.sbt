@@ -103,6 +103,9 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(
     libraryDependencies += dependencies.zioCats.value % Test, // https://github.com/zio/interop-cats/issues/471
   )
+  .jsSettings(
+    libraryDependencies += dependencies.bobcats.value
+  )
 
 lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -347,6 +350,7 @@ lazy val dependencies = new {
     "io.github.cquiroz" %%% "scala-java-locales" % scalaJsLocaleVersion,
     "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
   ))
+  val bobcats = Def.setting("com.armanbilge" %%% "bobcats" % "0.1-7e1fa4a")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(

@@ -15,11 +15,16 @@
  * limitations under the License.
  */
 
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.3")
-addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
-addSbtPlugin("com.codecommit" % "sbt-github-actions" % "0.14.2")
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.5")
-addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.6.0")
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.9.33")
-addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.1.0")
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.8.0")
+package dev.tauri.choam
+
+import bobcats.unsafe.SecureRandom
+
+final class RandomSpecJs extends BaseSpecA {
+
+  test("Default SecureRandom") {
+    val s = new SecureRandom()
+    s.nextBytes(new Array[Byte](20)) // force seed
+    println("Default SecureRandom: " + s.toString)
+    println("Random Int: " + s.nextInt(0xffff).toString)
+  }
+}
