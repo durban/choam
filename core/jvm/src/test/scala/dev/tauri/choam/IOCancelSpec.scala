@@ -26,7 +26,7 @@ import cats.implicits._
 import cats.effect.kernel.{ Outcome, Spawn, Sync }
 import cats.effect.{ IO }
 
-final class IOSpec extends BaseSpecIO with IOSpecBase[IO]
+final class IOCancelSpec extends BaseSpecIO with IOCancelSpecBase[IO]
 
 object Utils {
 
@@ -50,7 +50,8 @@ object Utils {
   }
 }
 
-sealed trait IOSpecBase[F[_]]
+// TODO: these tests deadlock on Scala.js, need other tests there
+sealed trait IOCancelSpecBase[F[_]]
   extends BaseSpecAsyncF[F]
   with SpecThreadConfinedMCAS {
 
