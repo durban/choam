@@ -87,11 +87,17 @@ sealed trait IOCancelSpecBase[F[_]]
   }
 
   test("ignores the stop signal, but finishes after some time") {
-    val t = stoppable { _ =>
+    val t = stoppable { stop =>
       @tailrec
       def go(n: Long): Long = {
-        if (n >= Int.MaxValue.toLong) 0L
-        else go(n + 1L)
+        if (stop.get()) {
+          // not stopping
+          if (n >= Int.MaxValue.toLong) 1L
+          else go(n + 1L)
+        } else {
+          if (n >= Int.MaxValue.toLong) 0L
+          else go(n + 1L)
+        }
       }
       F.delay { go(0L) }
     } (F, F)
