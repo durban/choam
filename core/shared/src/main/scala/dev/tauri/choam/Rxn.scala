@@ -385,9 +385,9 @@ object Rxn extends RxnInstances0 {
       ex.exchange
   }
 
-  private[choam] final object internal extends RxnCompanionInternalPlatform {
+  private[choam] final object internal {
 
-    final def exchange[A, B](ex: this.ExchangerImpl[A, B]): Rxn[A, B] =
+    final def exchange[A, B](ex: ExchangerImpl[A, B]): Rxn[A, B] =
       new Exchange[A, B](ex)
 
     final def finishExchange[D](
@@ -451,7 +451,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"InvisibleRead(${ref})"
   }
 
-  private final class Exchange[A, B](val exchanger: internal.ExchangerImpl[A, B]) extends Rxn[A, B] {
+  private final class Exchange[A, B](val exchanger: ExchangerImpl[A, B]) extends Rxn[A, B] {
     private[choam] final def tag = 10
     final override def toString: String = s"Exchange(${exchanger})"
   }
@@ -598,7 +598,7 @@ object Rxn extends RxnInstances0 {
     private[this] var retries: Int = 0
 
     // TODO: this should be in the ThreadContext:
-    private[this] var stats: internal.ExStatMap = Map.empty
+    private[this] var stats: ExStatMap = Map.empty
 
     private[this] final def setContReset(): Unit = {
       contTReset = contT.takeSnapshot()
@@ -1156,7 +1156,7 @@ private[choam] sealed abstract class RxnInstances8 extends RxnInstances9 { self:
 private[choam] sealed abstract class RxnInstances9 extends RxnSyntax0 { self: Rxn.type =>
   implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {
     final override def randomUUID: Rxn[X, UUID] =
-      Rxn.unsafe.delay { _ => UUID.randomUUID() }
+      self.rxnRandomUUID[X]
   }
 }
 
@@ -1184,7 +1184,7 @@ private[choam] sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.t
   }
 }
 
-private[choam] sealed abstract class RxnSyntax2 { this: Rxn.type =>
+private[choam] sealed abstract class RxnSyntax2 extends RxnCompanionPlatform { this: Rxn.type =>
 
   // FIXME: do we need this?
   implicit final class Tuple2RxnSyntax[A, B, C](private val self: Rxn[A, (B, C)]) {

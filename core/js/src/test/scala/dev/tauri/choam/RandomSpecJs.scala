@@ -17,14 +17,22 @@
 
 package dev.tauri.choam
 
+import cats.effect.SyncIO
+
 import bobcats.unsafe.SecureRandom
 
-final class RandomSpecJs extends BaseSpecA {
+final class RandomSpecJs_ThreadConfinedMCAS_SyncIO
+  extends BaseSpecSyncIO
+  with SpecThreadConfinedMCAS
+  with RandomSpecJs[SyncIO]
 
-  test("Default SecureRandom") {
+trait RandomSpecJs[F[_]] extends RandomSpec[F] { this: KCASImplSpec =>
+
+  test("SecureRandom (JS/bobcats)") {
+    val bt = System.nanoTime()
     val s = new SecureRandom()
     s.nextBytes(new Array[Byte](20)) // force seed
-    println("Default SecureRandom: " + s.toString)
-    println("Random Int: " + s.nextInt(0xffff).toString)
+    val at = System.nanoTime()
+    println(s"Default SecureRandom: ${s.toString} (in ${at - bt}ns)")
   }
 }

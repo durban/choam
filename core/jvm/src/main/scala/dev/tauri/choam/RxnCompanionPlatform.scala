@@ -17,9 +17,14 @@
 
 package dev.tauri.choam
 
-private abstract class RxnCompanionInternalPlatform {
+import java.util.UUID
 
-  final type ExchangerImpl[A, B] = ExchangerImplJvm[A, B]
+private abstract class RxnCompanionPlatform { this: Rxn.type =>
 
-  final type ExStatMap = ExchangerImplJvm.StatMap
+  private[choam] final type ExchangerImpl[A, B] = ExchangerImplJvm[A, B]
+
+  private[choam] final type ExStatMap = ExchangerImplJvm.StatMap
+
+  private[choam] final def rxnRandomUUID[X]: Rxn[X, UUID] =
+    this.unsafe.delay { _ => UUID.randomUUID() }
 }

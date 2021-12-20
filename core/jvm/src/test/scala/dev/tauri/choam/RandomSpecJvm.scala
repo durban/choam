@@ -17,34 +17,27 @@
 
 package dev.tauri.choam
 
-import java.security.{ SecureRandom, Provider }
+import java.security.SecureRandom
 
-final class RandomSpecJvm extends BaseSpecA {
+import cats.effect.SyncIO
 
-  test("UUID SecureRandom") {
-    val f = Class.forName("java.util.UUID$Holder").getDeclaredField("numberGenerator")
-    f.setAccessible(true)
-    val s = f.get(null).asInstanceOf[SecureRandom]
-    println("UUID SecureRandom: " + s.toString)
-    val ff = classOf[SecureRandom].getDeclaredField("threadSafe")
-    ff.setAccessible(true)
-    println("UUID SecureRandom is thread safe: " + ff.get(s).asInstanceOf[Boolean].toString)
-    val fp = classOf[SecureRandom].getDeclaredField("provider")
-    fp.setAccessible(true)
-    val provider = fp.get(s).asInstanceOf[Provider]
-    println("UUID SecureRandom provider: " + provider.toString)
-  }
+final class RandomSpecJvm_EMCAS_SyncIO
+  extends BaseSpecSyncIO
+  with SpecEMCAS
+  with RandomSpecJvm[SyncIO]
 
-  test("Default SecureRandom") {
+final class RandomSpecJvm_ThreadConfinedMCAS_SyncIO
+  extends BaseSpecSyncIO
+  with SpecThreadConfinedMCAS
+  with RandomSpecJvm[SyncIO]
+
+trait RandomSpecJvm[F[_]] extends RandomSpec[F] { this: KCASImplSpec =>
+
+  test("SecureRandom (JVM)") {
+    val bt = System.nanoTime()
     val s = new SecureRandom()
     s.nextBytes(new Array[Byte](20)) // force seed
-    println("Default SecureRandom: " + s.toString)
-    val ff = classOf[SecureRandom].getDeclaredField("threadSafe")
-    ff.setAccessible(true)
-    println("Default SecureRandom is thread safe: " + ff.get(s).asInstanceOf[Boolean].toString)
-    val fp = classOf[SecureRandom].getDeclaredField("provider")
-    fp.setAccessible(true)
-    val provider = fp.get(s).asInstanceOf[Provider]
-    println("Default SecureRandom provider: " + provider.toString)
+    val at = System.nanoTime()
+    println(s"Default SecureRandom: ${s.toString} (in ${at - bt}ns)")
   }
 }

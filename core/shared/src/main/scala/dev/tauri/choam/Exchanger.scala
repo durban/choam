@@ -41,12 +41,12 @@ private object Exchanger extends ExchangerCompanionPlatform {
     contT: Array[Byte],
     desc: HalfEMCASDescriptor,
     postCommit: ObjStack.Lst[Axn[Unit]],
-    exchangerData: Rxn.internal.ExStatMap,
+    exchangerData: Rxn.ExStatMap,
   )
 
   private[choam] object Msg {
 
-    def fromFinishedEx(fx: FinishedEx[_], newStats: Rxn.internal.ExStatMap, ctx: MCAS.ThreadContext): Msg = {
+    def fromFinishedEx(fx: FinishedEx[_], newStats: Rxn.ExStatMap, ctx: MCAS.ThreadContext): Msg = {
       Msg(
         value = fx.result,
         contK = fx.contK,

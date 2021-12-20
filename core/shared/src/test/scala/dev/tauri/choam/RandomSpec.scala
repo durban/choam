@@ -17,9 +17,29 @@
 
 package dev.tauri.choam
 
-private abstract class RxnCompanionInternalPlatform {
+import cats.effect.SyncIO
+import cats.effect.std.UUIDGen
 
-  final type ExchangerImpl[A, B] = ExchangerImplJs[A, B]
+final class RandomSpec_ThreadConfinedMCAS_SyncIO
+  extends BaseSpecSyncIO
+  with SpecThreadConfinedMCAS
+  with RandomSpec[SyncIO]
 
-  final type ExStatMap = AnyRef
+trait RandomSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
+
+  final val N = 128
+
+  test("UUIDGen") {
+    val gen = UUIDGen[Axn]
+    (1 to N).toList.traverse(_ => gen.randomUUID.run[F]).flatMap { uuidList =>
+      uuidList.sliding(2).toList.traverse {
+        case prev :: curr :: Nil =>
+          assertNotEqualsF(curr, prev) *> (
+            assertEqualsF(curr.version, 4) *> assertEqualsF(curr.variant, 2)
+          )
+        case x =>
+          failF[Unit](s"unexpected: ${x.toString}")
+      }
+    }
+  }
 }
