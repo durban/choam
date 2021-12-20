@@ -90,7 +90,7 @@ sealed trait IOCancelSpecBase[F[_]]
     val t = stoppable { _ =>
       @tailrec
       def go(n: Long): Long = {
-        if (n >= Int.MaxValue.toLong / 4L) 0L
+        if (n >= Int.MaxValue.toLong) 0L
         else go(n + 1L)
       }
       F.delay { go(0L) }
