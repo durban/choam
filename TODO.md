@@ -85,6 +85,12 @@
     - allocating (but: only `Ref` really needs it, others are built on that)
     - calling async callbacks (but: only `Promise` needs it, others don't)
     - allocating `Exchanger` arrays (this is similar to `Ref`)
+    - other special cases:
+      - `UUIDGen`
+      - `Unique`
+      - there should be a random generator too
+        - implement `cats.effect.std.Random`
+        - it should be nonblocking (`java.util.Random` blocks)
   - Maybe rename `Ref`?
     - Collision with `cats.effect.kernel.Ref`
     - Although it is hard to confuse them
