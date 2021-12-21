@@ -29,18 +29,24 @@ import cats.effect.kernel.testkit.TestContext
 
 import munit.{ CatsEffectSuite, Location }
 
-abstract class BaseSpecZIO extends CatsEffectSuite with BaseSpecAsyncF[zio.Task] { this: KCASImplSpec =>
-
-  final override def F: Async[zio.Task] =
-    zio.interop.catz.asyncRuntimeInstance(zio.Runtime.default)
+trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] =>
 
   final override def assertResultF[A, B](obtained: zio.Task[A], expected: B, clue: String = "values are not the same")(
     implicit loc: Location, ev: B <:< A
   ): zio.Task[Unit] = {
     obtained.flatMap(ob => zio.Task { this.assertEquals(ob, expected, clue) })
   }
+}
 
-  protected def transformZIO: ValueTransform = {
+abstract class BaseSpecZIO
+  extends CatsEffectSuite
+  with BaseSpecAsyncF[zio.Task]
+  with UtilsForZIO { this: KCASImplSpec =>
+
+  final override def F: Async[zio.Task] =
+    zio.interop.catz.asyncRuntimeInstance(zio.Runtime.default)
+
+  private def transformZIO: ValueTransform = {
     new this.ValueTransform(
       "ZIO",
       { case x: zio.ZIO[_, _, _] =>
@@ -56,9 +62,33 @@ abstract class BaseSpecZIO extends CatsEffectSuite with BaseSpecAsyncF[zio.Task]
   }
 }
 
-abstract class BaseSpecTickedZIO extends BaseSpecZIO with TestContextSpec[zio.Task] { this: KCASImplSpec =>
+abstract class BaseSpecTickedZIO
+  extends CatsEffectSuite
+  with TestContextSpec[zio.Task]
+  with BaseSpecAsyncF[zio.Task]
+  with UtilsForZIO { this: KCASImplSpec =>
 
   import zio._
+
+  final override def F: Async[zio.Task] =
+    zio.interop.catz.asyncRuntimeInstance(this.zioRuntime)
+
+  override def munitValueTransforms: List[this.ValueTransform] = {
+    super.munitValueTransforms :+ this.transformZIO
+  }
+
+  private def transformZIO: ValueTransform = {
+    new this.ValueTransform(
+      "Ticked ZIO",
+      { case x: zio.ZIO[_, _, _] =>
+        val tsk = x.asInstanceOf[zio.Task[_]]
+        // TODO: this will fail if it's not really a Task
+        val fut = this.zioRuntime.unsafeRunToFuture(tsk)
+        testContext.tickAll()
+        fut
+      }
+    )
+  }
 
   protected override val testContext: TestContext =
     TestContext()
@@ -178,18 +208,5 @@ abstract class BaseSpecTickedZIO extends BaseSpecZIO with TestContextSpec[zio.Ta
       .withExecutor(testContextExecutor)
       .withBlockingExecutor(testContextBlockingExecutor)
       .map { env => env.update[Clock](_ => myClock) }
-  }
-
-  protected override def transformZIO: ValueTransform = {
-    new this.ValueTransform(
-      "Ticked ZIO",
-      { case x: zio.ZIO[_, _, _] =>
-        val tsk = x.asInstanceOf[zio.Task[_]]
-        // TODO: this will fail if it's not really a Task
-        val fut = this.zioRuntime.unsafeRunToFuture(tsk)
-        testContext.tickAll()
-        fut
-      }
-    )
   }
 }

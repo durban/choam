@@ -49,19 +49,12 @@ trait BoundedQueueSpecJvm[F[_]]
     } yield ()
   }
 
-  // TODO: deadlocks on zio for some reason
-  test("Sleeping".ignore) {
+  test("Sleeping") {
     for {
-      _ <- F.delay(println("BEGIN"))
       q <- BoundedQueue[F, String](bound = 42).run[F]
       fib <- q.deque.start
-      _ <- F.delay(println("started"))
-      _ <- this.tickAll
-      _ <- F.delay(println("will sleep"))
       _ <- F.sleep(2.seconds)
-      _ <- this.tickAll
       _ <- q.enqueue("foo")
-      _ <- this.tickAll
       _ <- assertResultF(fib.joinWithNever, "foo")
     } yield ()
   }
