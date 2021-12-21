@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package async
 
+import scala.concurrent.duration._
+
 import cats.effect.IO
 
 final class BoundedQueueSpec_EMCAS_IO
@@ -44,6 +46,23 @@ trait BoundedQueueSpecJvm[F[_]]
       _ <- assertResultF(q.deque, "foo")
       _ <- fib.joinWithNever
       _ <- assertResultF(q.currentSize.run[F], n)
+    } yield ()
+  }
+
+  // TODO: deadlocks on zio for some reason
+  test("Sleeping".ignore) {
+    for {
+      _ <- F.delay(println("BEGIN"))
+      q <- BoundedQueue[F, String](bound = 42).run[F]
+      fib <- q.deque.start
+      _ <- F.delay(println("started"))
+      _ <- this.tickAll
+      _ <- F.delay(println("will sleep"))
+      _ <- F.sleep(2.seconds)
+      _ <- this.tickAll
+      _ <- q.enqueue("foo")
+      _ <- this.tickAll
+      _ <- assertResultF(fib.joinWithNever, "foo")
     } yield ()
   }
 }

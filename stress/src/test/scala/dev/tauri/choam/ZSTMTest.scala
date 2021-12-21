@@ -43,7 +43,7 @@ class ZSTMTest {
 
   private[this] val task: IO[Throwable, Unit] = {
     val txns = (0 until ZSTMTest.N).map(_ => q.write)
-    IO.foreachPar_(txns)(ZSTM.atomically)
+    IO.foreachParDiscard(txns)(ZSTM.atomically)
   }
 
   @Actor

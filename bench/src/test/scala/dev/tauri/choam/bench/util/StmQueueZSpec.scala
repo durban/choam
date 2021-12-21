@@ -25,14 +25,14 @@ import zio.stm.STM
 class StmQueueZSpec extends BaseSpecA {
 
   def assertF(cond: Boolean): IO[Throwable, Unit] =
-    IO.effect { assert(cond) }
+    IO.attempt { assert(cond) }
 
   def assertEqualsF[A](x: A, y: A): IO[Throwable, Unit] =
-    IO.effect { assertEquals(x, y) }
+    IO.attempt { assertEquals(x, y) }
 
   def assertResultF[A](tsk: IO[Throwable, A], expected: A): IO[Throwable, Unit] = {
     tsk.flatMap { a =>
-      IO.effect { assertEquals(a, expected) }
+      IO.attempt { assertEquals(a, expected) }
     }
   }
 
@@ -72,10 +72,10 @@ class StmQueueZSpec extends BaseSpecA {
     val tsk = for {
       q1 <- StmQueueZ[Int](Nil)
       q2 <- StmQueueZ[Int](Nil)
-      x1 <- IO.effect(XorShift())
-      x2 <- IO.effect(XorShift())
+      x1 <- IO.attempt(XorShift())
+      x2 <- IO.attempt(XorShift())
       enq = { (xs: XorShift) =>
-        IO.effect(xs.nextInt()).flatMap { item =>
+        IO.attempt(xs.nextInt()).flatMap { item =>
           STM.atomically(q1.enqueue(item).flatMap { _ => q2.enqueue(item) })
         }.repeatN(N)
       }

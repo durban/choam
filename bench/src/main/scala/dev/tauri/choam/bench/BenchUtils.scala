@@ -47,7 +47,7 @@ trait BenchUtils {
   }
 
   protected final def runIdxZ(rt: ZRuntime[_], task: Int => Task[Unit], size: Int): Unit = {
-    rt.unsafeRunTask(Task.foreach_((0 until size).toList) { idx => task(idx) })
+    rt.unsafeRunTask(Task.foreachDiscard((0 until size).toList) { idx => task(idx) })
     Blackhole.consumeCPU(waitTime)
   }
 
@@ -55,5 +55,5 @@ trait BenchUtils {
     IO { (r.nextInt() % 2) == 0 }
 
   protected final def isEnqZ(r: util.RandomState): Task[Boolean] =
-    Task.effect { (r.nextInt() % 2) == 0 }
+    Task.attempt { (r.nextInt() % 2) == 0 }
 }

@@ -17,8 +17,10 @@
 
 package dev.tauri.choam
 
-import java.util.concurrent.TimeUnit
-import java.time.{ DateTimeException, OffsetDateTime }
+import java.{ util => ju }
+import java.util.Collection
+import java.util.concurrent.{ TimeUnit, Callable, Future, ScheduledFuture, ScheduledExecutorService }
+import java.time.{ OffsetDateTime, Instant, LocalDateTime, ZoneId }
 
 import scala.concurrent.duration._
 
@@ -57,62 +59,125 @@ abstract class BaseSpecZIO extends CatsEffectSuite with BaseSpecAsyncF[zio.Task]
 abstract class BaseSpecTickedZIO extends BaseSpecZIO with TestContextSpec[zio.Task] { this: KCASImplSpec =>
 
   import zio._
-  import zio.clock.Clock
-  import zio.console.Console
-  import zio.system.System
-  import zio.random.Random
-  import zio.blocking.Blocking
-  import zio.internal.Executor
 
   protected override val testContext: TestContext =
     TestContext()
 
-  private val testContextExecutor: zio.internal.Executor = new Executor {
-    override def yieldOpCount: Int =
-      Int.MaxValue
-    override def metrics =
-      None
-    override def submit(runnable: Runnable): Boolean = {
-      testContext.execute(runnable)
-      true
-    }
-  }
+  private lazy val zioRuntime: Runtime[ZEnv] = {
 
-  private val zioRuntime: zio.Runtime[zio.ZEnv] = {
-    zio.Runtime(
-      Has.allOf[Clock.Service, Console.Service, System.Service, Random.Service, Blocking.Service](
-        new Clock.Service {
-          override def currentTime(unit: TimeUnit): UIO[Long] =
-            UIO.effectTotal { testContext.now().toUnit(unit).toLong }
-          override def currentDateTime: zio.IO[DateTimeException, OffsetDateTime] =
-            zio.IO.effect { OffsetDateTime.now() }.catchAll { (ex: Throwable) =>
-              ex match {
-                case dte: DateTimeException => zio.IO.fail(dte)
-                case _ => zio.IO.die(ex)
-              }
-            }
-          override def nanoTime: UIO[Long] =
-            UIO.effectTotal { testContext.now().toNanos }
-          override def sleep(duration: zio.duration.Duration): UIO[Unit] = {
-            UIO.effectTotal {
-              testContext.schedule(
-                FiniteDuration(duration.toNanos(), "ns"),
-                new Runnable { override def run(): Unit = () }
-              )
-              ()
-            }
-          }
-        },
-        Console.Service.live,
-        System.Service.live,
-        Random.Service.live,
-        new Blocking.Service {
-          override def blockingExecutor: Executor =
-            testContextExecutor
+    val testContextExecutor: zio.Executor =
+      zio.Executor.fromExecutionContext(32)(testContext.derive())
+
+    val testContextBlockingExecutor: zio.Executor =
+      zio.Executor.fromExecutionContext(32)(testContext.deriveBlocking())
+
+    val myScheduler = Scheduler.fromScheduledExecutorService(new ScheduledExecutorService {
+
+      override def execute(x: Runnable): Unit =
+        testContextExecutor.asExecutionContextExecutorService.execute(x)
+
+      override def shutdown(): Unit =
+        ()
+
+      override def shutdownNow(): ju.List[Runnable] =
+        ju.List.of()
+
+      override def isShutdown(): Boolean =
+        false
+
+      override def isTerminated(): Boolean =
+        false
+
+      override def awaitTermination(x: Long, y: TimeUnit): Boolean =
+        false
+
+      override def submit[T <: Object](x: Callable[T]): Future[T] =
+        testContextExecutor.asExecutionContextExecutorService.submit(x)
+
+      override def submit[T <: Object](x: Runnable, y: T): Future[T] =
+        testContextExecutor.asExecutionContextExecutorService.submit(x, y)
+
+      override def submit(x: Runnable): Future[_ <: Object] =
+        testContextExecutor.asExecutionContextExecutorService.submit(x)
+
+      override def invokeAll[T <: Object](x: Collection[_ <: Callable[T]]): ju.List[Future[T]] =
+        testContextExecutor.asExecutionContextExecutorService.invokeAll(x)
+
+      override def invokeAll[T <: Object](x: Collection[_ <: Callable[T]], y: Long, z: TimeUnit): ju.List[Future[T]] =
+        testContextExecutor.asExecutionContextExecutorService.invokeAll(x, y, z)
+
+      override def invokeAny[T <: Object](x: Collection[_ <: Callable[T]]): T =
+        testContextExecutor.asExecutionContextExecutorService.invokeAny(x)
+
+      override def invokeAny[T <: Object](x: Collection[_ <: Callable[T]], y: Long, z: TimeUnit): T =
+        testContextExecutor.asExecutionContextExecutorService.invokeAny(x, y, z)
+
+      override def schedule(x: Runnable, y: Long, z: TimeUnit): ScheduledFuture[_ <: Object] =
+        throw new NotImplementedError("schedule(Runnable, Long, TimeUnit)")
+
+      override def schedule[V <: Object](x: Callable[V], y: Long, z: TimeUnit): ScheduledFuture[V] =
+        throw new NotImplementedError("schedule(Callable, Long, TimeUnit)")
+
+      override def scheduleAtFixedRate(x: Runnable, y: Long, z: Long, zz: TimeUnit): ScheduledFuture[_ <: Object] =
+        throw new NotImplementedError("scheduleAtFixedRate(Runnable, Long, Long, TimeUnit)")
+
+      override def scheduleWithFixedDelay(x: Runnable, y: Long, z: Long, zz: TimeUnit): ScheduledFuture[_ <: Object] =
+        throw new NotImplementedError("scheduleWithFixedDelay(Runnable, Long, Long, TimeUnit)")
+    })
+
+    val myClock = new Clock {
+
+      private[this] final val zone =
+        ZoneId.of("UTC")
+
+      override def currentTime(unit: => TimeUnit)(implicit trace: ZTraceElement): UIO[Long] = {
+        this.instant.map { inst =>
+          unit.convert(inst.toEpochMilli, TimeUnit.MILLISECONDS)
         }
-      ),
-      zio.internal.Platform.fromExecutionContext(testContext),
-    )
+      }
+
+      override def currentDateTime(implicit trace: ZTraceElement): UIO[OffsetDateTime] = {
+        this.instant.map { inst =>
+          OffsetDateTime.ofInstant(inst, zone)
+        }
+      }
+
+      override def instant(implicit trace: ZTraceElement): UIO[Instant] = UIO.succeed {
+        val now = testContext.now()
+        Instant.ofEpochMilli(now.toMillis)
+      }
+
+      override def localDateTime(implicit trace: ZTraceElement): UIO[LocalDateTime] = {
+        this.instant.map { inst =>
+          LocalDateTime.ofInstant(inst, zone)
+        }
+      }
+
+      override def nanoTime(implicit trace: ZTraceElement): UIO[Long] = UIO.succeed {
+        testContext.now().toNanos
+      }
+
+      override def scheduler(implicit trace: ZTraceElement): UIO[Scheduler] =
+        UIO.succeed(myScheduler)
+
+      override def sleep(duration: => Duration)(implicit trace: ZTraceElement): UIO[Unit] = {
+        val finDur = FiniteDuration(duration.toNanos(), "ns")
+        // println(s"sleep(${finDur})")
+        UIO.asyncInterrupt[Unit] { cb =>
+          val cancel = testContext.schedule(
+            finDur,
+            () => { cb(UIO.succeed(())) }
+          )
+          Left(UIO.succeed(cancel()))
+        }
+      }
+    }
+
+    Runtime
+      .default
+      .withExecutor(testContextExecutor)
+      .withBlockingExecutor(testContextBlockingExecutor)
+      .map { env => env.update[Clock](_ => myClock) }
   }
 
   protected override def transformZIO: ValueTransform = {
