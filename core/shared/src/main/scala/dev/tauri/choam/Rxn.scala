@@ -24,7 +24,7 @@ import cats.arrow.ArrowChoice
 import cats.data.Ior
 import cats.mtl.Local
 import cats.effect.kernel.Unique
-import cats.effect.std.UUIDGen
+import cats.effect.std.{ UUIDGen, Random }
 
 import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor }
 
@@ -254,12 +254,19 @@ object Rxn extends RxnInstances0 {
   final def postCommit[A](pc: Rxn[A, Unit]): Rxn[A, A] =
     new PostCommit[A](pc)
 
+  // Utilities:
+
   final def unique: Axn[Unique.Token] =
     unsafe.delay { _ => new Unique.Token() }
 
-  // Utilities:
+  // TODO: check with JMH if it's really fast
+  final def fastRandom: Axn[Random[Axn]] =
+    unsafe.delay { _ => RxnRandomImpl.makeNewThreadLocalRandom() }
 
-  def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
+  final def secureRandom: Axn[Random[Axn]] =
+    unsafe.delay { _ => RxnRandomImpl.makeNewSecureRandom() }
+
+  final def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
     ra.updWith[Any, (A, B)] { (a, _) =>
       rb.upd[Any, B] { (b, _) =>
         (b, b)

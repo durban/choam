@@ -19,8 +19,11 @@ package dev.tauri.choam
 
 private[choam] object CompatPlatform {
 
-  type AtomicReferenceArray[A] =
+  final type AtomicReferenceArray[A] =
     _root_.java.util.concurrent.atomic.AtomicReferenceArray[A]
+
+  final type SecureRandom =
+    _root_.java.security.SecureRandom
 
   final def threadOnSpinWait(): Unit = {
     Thread.onSpinWait()

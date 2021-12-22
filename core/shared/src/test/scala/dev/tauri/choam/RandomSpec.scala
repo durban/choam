@@ -23,12 +23,18 @@ import cats.effect.SyncIO
 import cats.effect.kernel.Unique
 import cats.effect.std.UUIDGen
 
+import munit.ScalaCheckEffectSuite
+import org.scalacheck.effect.PropF
+import cats.effect.std.Random
+
 final class RandomSpec_ThreadConfinedMCAS_SyncIO
   extends BaseSpecSyncIO
   with SpecThreadConfinedMCAS
   with RandomSpec[SyncIO]
 
-trait RandomSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
+trait RandomSpec[F[_]]
+  extends BaseSpecSyncF[F]
+  with ScalaCheckEffectSuite { this: KCASImplSpec =>
 
   final val N = 128
 
@@ -53,6 +59,44 @@ trait RandomSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
         val s = new IdentityHashMap[Unique.Token, Unit]
         tokenList.foreach { tok => s.put(tok, ()) }
         assertEqualsF(s.size, N)
+      }
+    }
+  }
+
+  // TODO: more tests for Rxn.*Random
+
+  test("Rxn.fastRandom betweenDouble") {
+    Rxn.fastRandom.run[F].map(checkBetweenDouble)
+  }
+
+  test("Rxn.fastRandom nextLong") {
+    Rxn.fastRandom.run[F].map(checkNextLong)
+  }
+
+  test("Rxn.secureRandom betweenDouble") {
+    Rxn.secureRandom.run[F].map(checkBetweenDouble)
+  }
+
+  test("Rxn.secureRandom nextLong") {
+    Rxn.secureRandom.run[F].map(checkNextLong)
+  }
+
+  def checkBetweenDouble(rnd: Random[Axn]) = {
+    PropF.forAllF { (d1: Double, d2: Double) =>
+      if ((d1 + d2) > d1) {
+        rnd.betweenDouble(d1, d1 + d2).run[F].flatMap { d =>
+          assertF((d >= d1) && (d < (d1 + d2)))
+        }
+      } else {
+        F.unit
+      }
+    }
+  }
+
+  def checkNextLong(rnd: Random[Axn]) = {
+    PropF.forAllF { (_: Long) =>
+      (rnd.nextLong * rnd.nextLong).run[F].flatMap { nn =>
+        assertNotEqualsF(nn._1, nn._2)
       }
     }
   }
