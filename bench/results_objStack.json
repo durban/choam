@@ -10,7 +10,7 @@
         ],
         "jdkVersion" : "11.0.11",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.11+9-Ubuntu-0ubuntu2.18.04",
+        "vmVersion" : "11.0.11",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -48,6 +48,7 @@
             ]
         },
         "secondaryMetrics" : {
+            
         }
     },
     {
@@ -61,7 +62,7 @@
         ],
         "jdkVersion" : "11.0.11",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.11+9-Ubuntu-0ubuntu2.18.04",
+        "vmVersion" : "11.0.11",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -99,6 +100,7 @@
             ]
         },
         "secondaryMetrics" : {
+            
         }
     },
     {
@@ -112,7 +114,7 @@
         ],
         "jdkVersion" : "11.0.11",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.11+9-Ubuntu-0ubuntu2.18.04",
+        "vmVersion" : "11.0.11",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -150,6 +152,7 @@
             ]
         },
         "secondaryMetrics" : {
+            
         }
     },
     {
@@ -163,7 +166,7 @@
         ],
         "jdkVersion" : "11.0.11",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.11+9-Ubuntu-0ubuntu2.18.04",
+        "vmVersion" : "11.0.11",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -201,6 +204,7 @@
             ]
         },
         "secondaryMetrics" : {
+            
         }
     },
     {
@@ -214,7 +218,7 @@
         ],
         "jdkVersion" : "11.0.11",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.11+9-Ubuntu-0ubuntu2.18.04",
+        "vmVersion" : "11.0.11",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -252,6 +256,7 @@
             ]
         },
         "secondaryMetrics" : {
+            
         }
     },
     {
@@ -265,7 +270,7 @@
         ],
         "jdkVersion" : "11.0.11",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.11+9-Ubuntu-0ubuntu2.18.04",
+        "vmVersion" : "11.0.11",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -303,6 +308,7 @@
             ]
         },
         "secondaryMetrics" : {
+            
         }
     }
 ]

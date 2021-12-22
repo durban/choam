@@ -10,7 +10,7 @@
         ],
         "jdkVersion" : "11.0.10",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.10+9-Ubuntu-0ubuntu1.18.04",
+        "vmVersion" : "11.0.10",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -58,6 +58,7 @@
             ]
         },
         "secondaryMetrics" : {
+            
         }
     },
     {
@@ -71,7 +72,7 @@
         ],
         "jdkVersion" : "11.0.10",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.10+9-Ubuntu-0ubuntu1.18.04",
+        "vmVersion" : "11.0.10",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -206,7 +207,7 @@
         ],
         "jdkVersion" : "11.0.10",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.10+9-Ubuntu-0ubuntu1.18.04",
+        "vmVersion" : "11.0.10",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -254,6 +255,7 @@
             ]
         },
         "secondaryMetrics" : {
+            
         }
     },
     {
@@ -267,7 +269,7 @@
         ],
         "jdkVersion" : "11.0.10",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.10+9-Ubuntu-0ubuntu1.18.04",
+        "vmVersion" : "11.0.10",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -315,6 +317,7 @@
             ]
         },
         "secondaryMetrics" : {
+            
         }
     },
     {
@@ -328,7 +331,7 @@
         ],
         "jdkVersion" : "11.0.10",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.10+9-Ubuntu-0ubuntu1.18.04",
+        "vmVersion" : "11.0.10",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -463,7 +466,7 @@
         ],
         "jdkVersion" : "11.0.10",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.10+9-Ubuntu-0ubuntu1.18.04",
+        "vmVersion" : "11.0.10",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -598,7 +601,7 @@
         ],
         "jdkVersion" : "11.0.10",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.10+9-Ubuntu-0ubuntu1.18.04",
+        "vmVersion" : "11.0.10",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -646,6 +649,7 @@
             ]
         },
         "secondaryMetrics" : {
+            
         }
     },
     {
@@ -659,7 +663,7 @@
         ],
         "jdkVersion" : "11.0.10",
         "vmName" : "OpenJDK 64-Bit Server VM",
-        "vmVersion" : "11.0.10+9-Ubuntu-0ubuntu1.18.04",
+        "vmVersion" : "11.0.10",
         "warmupIterations" : 5,
         "warmupTime" : "10 s",
         "warmupBatchSize" : 1,
@@ -784,5 +788,3 @@
         }
     }
 ]
-
-

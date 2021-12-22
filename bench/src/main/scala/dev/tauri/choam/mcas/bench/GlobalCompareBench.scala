@@ -29,8 +29,8 @@ class GlobalCompareBench {
 
   @Benchmark
   def baseline(bh: Blackhole): Unit = {
-    val r1 = Ref.unsafe("a")
-    val r2 = Ref.unsafe("a")
+    val r1 = Ref.unsafe("a").loc
+    val r2 = Ref.unsafe("a").loc
     bh.consume(r1)
     bh.consume(r2)
   }
