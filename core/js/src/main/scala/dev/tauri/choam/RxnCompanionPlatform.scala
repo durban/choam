@@ -30,7 +30,7 @@ private abstract class RxnCompanionPlatform { this: Rxn.type =>
   // UUID generation:
   // (because https://github.com/scala-js/scala-js/blob/v1.8.0/javalib/src/main/scala/java/util/UUID.scala#L139)
 
-  private[this] final lazy val secureRandom: SecureRandom =
+  private[this] final lazy val _secureRandom: SecureRandom =
     new SecureRandom
 
   // 4 bits; version 4, i.e., random
@@ -43,7 +43,7 @@ private abstract class RxnCompanionPlatform { this: Rxn.type =>
 
   private[choam] final def rxnRandomUUID[X]: Rxn[X, UUID] = {
     this.unsafe.delay { _ =>
-      val sr = this.secureRandom
+      val sr = this._secureRandom
       val msb = (sr.nextLong() & VERSION_MASK) | VERSION
       val lsb = (sr.nextLong() & VARIANT_MASK) | VARIANT
       new UUID(msb, lsb)
