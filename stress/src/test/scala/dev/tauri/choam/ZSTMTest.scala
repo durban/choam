@@ -17,19 +17,21 @@
 
 package dev.tauri.choam
 
+import java.util.concurrent.atomic.LongAdder
+
 import zio.IO
 import zio.stm.{ STM, ZSTM, TRef }
 
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LL_Result
+import org.openjdk.jcstress.infra.results.LLL_Result
 
 // @JCStressTest
 @State
 @Description("ZSTM")
 @Outcomes(Array(
-  new Outcome(id = Array("Success(()), Success(())"), expect = ACCEPTABLE, desc = "OK")
+  new Outcome(id = Array("Success(()), Success(()), 0"), expect = ACCEPTABLE, desc = "OK")
 ))
 class ZSTMTest {
 
@@ -41,19 +43,27 @@ class ZSTMTest {
   private[this] val q: Something =
     rt.unsafeRunTask(Something.apply)
 
-  private[this] val task: IO[Throwable, Unit] = {
-    val txns = (0 until ZSTMTest.N).map(_ => q.write)
+  private[this] val ctr: LongAdder =
+    new LongAdder
+
+  private[this] def task(ctr: LongAdder): IO[Throwable, Unit] = {
+    val txns = (0 until ZSTMTest.N).map(_ => q.write(ctr))
     IO.foreachParDiscard(txns)(ZSTM.atomically)
   }
 
   @Actor
-  def write1(r: LL_Result): Unit = {
-    r.r1 = rt.unsafeRunSync(task)
+  def write1(r: LLL_Result): Unit = {
+    r.r1 = rt.unsafeRunSync(task(ctr))
   }
 
   @Actor
-  def write2(r: LL_Result): Unit = {
-    r.r2 = rt.unsafeRunSync(task)
+  def write2(r: LLL_Result): Unit = {
+    r.r2 = rt.unsafeRunSync(task(ctr))
+  }
+
+  @Arbiter
+  def arbiter(r: LLL_Result): Unit = {
+    r.r3 = ctr.sum()
   }
 }
 
@@ -71,14 +81,15 @@ object ZSTMTest {
 
   final class Something(outer: TRef[TRef[String]]) {
 
-    def write: STM[Throwable, String] = {
+    def write(ctr: LongAdder): STM[Throwable, String] = {
       // new ref also contains "A":
       TRef.make("A").flatMap { fresh =>
         outer.get.flatMap { inner =>
           inner.get.flatMap { s =>
             if (s != "A") {
               // we should never read anything other than "A":
-              ZSTM.fail(new IllegalStateException("impossible: " + s))
+              ctr.increment()
+              ZSTM.retry
             } else {
               // we write "X", but we never commit it
               // (because we replace the inner ref):
