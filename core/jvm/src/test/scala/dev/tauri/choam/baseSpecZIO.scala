@@ -29,7 +29,7 @@ import cats.effect.kernel.testkit.TestContext
 
 import munit.{ CatsEffectSuite, Location }
 
-trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] =>
+trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with KCASImplSpec =>
 
   final override def assertResultF[A, B](obtained: zio.Task[A], expected: B, clue: String = "values are not the same")(
     implicit loc: Location, ev: B <:< A
