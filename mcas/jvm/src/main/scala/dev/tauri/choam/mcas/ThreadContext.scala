@@ -43,6 +43,7 @@ private final class ThreadContext(
   private[this] var retries: Int =
     0
 
+  // NB: it is a `val`, not a `def`
   private[choam] final override val random: ThreadLocalRandom =
     ThreadLocalRandom.current()
 

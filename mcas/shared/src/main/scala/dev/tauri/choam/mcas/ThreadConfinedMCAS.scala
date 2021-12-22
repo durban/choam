@@ -69,6 +69,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
       }
     }
 
+    // NB: it is a `def`, not a `val`
     final override private[choam] def random: ThreadLocalRandom =
       ThreadLocalRandom.current()
   }

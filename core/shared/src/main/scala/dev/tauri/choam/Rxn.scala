@@ -261,7 +261,13 @@ object Rxn extends RxnInstances0 {
 
   // TODO: check with JMH if it's really fast
   final def fastRandom: Axn[Random[Axn]] =
+    this.rxnRandomSimpleThreadLocal
+
+  private[choam] final def rxnRandomSimpleThreadLocal: Axn[Random[Axn]] =
     unsafe.delay { _ => RxnRandomImpl.makeNewThreadLocalRandom() }
+
+  private[choam] final def rxnRandomContextThreadLocal: Axn[Random[Axn]] =
+    unsafe.delay { _ => RxnRandomImpl.makeNewThreadLocalRandomWithContext() }
 
   final def secureRandom: Axn[Random[Axn]] =
     unsafe.delay { _ => RxnRandomImpl.makeNewSecureRandom() }
@@ -370,6 +376,9 @@ object Rxn extends RxnInstances0 {
 
     private[choam] def delay[A, B](uf: A => B): Rxn[A, B] =
       lift(uf)
+
+    private[choam] def delayContext[A](uf: MCAS.ThreadContext => A): Axn[A] =
+      context(uf)
 
     // TODO: does this make sense? is it faster than `ThreadLocalRandom.current()`?
     private[choam] def context[A](uf: MCAS.ThreadContext => A): Axn[A] =
