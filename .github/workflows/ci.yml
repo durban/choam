@@ -110,8 +110,16 @@ jobs:
         shell: bash
         run: sbt -v ++${{ matrix.scala }} githubWorkflowCheck
 
-      - shell: bash
+      - if: (matrix.java != 'adopt-openj9@11') && (matrix.java != 'adopt-openj9@17')
+        shell: bash
         run: sbt -v ++${{ matrix.scala }} ci
+
+      - if: (matrix.java == 'adopt-openj9@11') || (matrix.java == 'adopt-openj9@17')
+        shell: bash
+        run: |
+          sbt
+          -v
+          -Xgcpolicy:balanced
 
       - if: matrix.scala != '3.1.0'
         shell: bash

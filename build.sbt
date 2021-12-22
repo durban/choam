@@ -45,8 +45,19 @@ ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 ThisBuild / githubWorkflowUseSbtThinClient := false
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowBuild := Seq(
-  WorkflowStep.Sbt(List("ci")),
+  // Tests on non-OpenJ9:
+  WorkflowStep.Sbt(
+    List("ci"),
+    cond = Some(s"(matrix.java != '${jvmOpenj9_11.render}') && (matrix.java != '${jvmOpenj9_17.render}')"),
+  ),
+  // Tests on OpenJ9 only:
+  WorkflowStep.Run(
+    githubWorkflowSbtCommand.value.split(" ").toList ++ List("-Xgcpolicy:balanced"),
+    cond = Some(s"(matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}')"),
+  ),
+  // Static analysis (not working on Scala 3):
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${scala3}'")),
+  // JCStress tests (only usable on macos):
   WorkflowStep.Sbt(List("ciStress"), cond = Some(s"matrix.os == '${macos}'"))
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
