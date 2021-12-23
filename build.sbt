@@ -33,6 +33,7 @@ val windows = "windows-latest"
 val macos = "macos-latest"
 
 val TestInternal = "test-internal"
+val ciCommand = "ci"
 
 ThisBuild / scalaVersion := scala2
 ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, scala3)
@@ -47,12 +48,12 @@ ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowBuild := Seq(
   // Tests on non-OpenJ9:
   WorkflowStep.Sbt(
-    List("ci"),
+    List(ciCommand),
     cond = Some(s"(matrix.java != '${jvmOpenj9_11.render}') && (matrix.java != '${jvmOpenj9_17.render}')"),
   ),
   // Tests on OpenJ9 only:
   WorkflowStep.Run(
-    List(githubWorkflowSbtCommand.value + " -J-Xgcpolicy:balanced"),
+    List(s"${githubWorkflowSbtCommand.value} -J-Xgcpolicy:balanced ++$${{ matrix.scala }} ${ciCommand}"),
     cond = Some(s"(matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}')"),
   ),
   // Static analysis (not working on Scala 3):
