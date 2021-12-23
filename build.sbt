@@ -52,7 +52,7 @@ ThisBuild / githubWorkflowBuild := Seq(
   ),
   // Tests on OpenJ9 only:
   WorkflowStep.Run(
-    githubWorkflowSbtCommand.value.split(" ").toList ++ List("-Xgcpolicy:balanced"),
+    List(githubWorkflowSbtCommand.value + " -J-Xgcpolicy:balanced"),
     cond = Some(s"(matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}')"),
   ),
   // Static analysis (not working on Scala 3):

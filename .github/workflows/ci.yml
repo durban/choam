@@ -116,10 +116,7 @@ jobs:
 
       - if: (matrix.java == 'adopt-openj9@11') || (matrix.java == 'adopt-openj9@17')
         shell: bash
-        run: |
-          sbt
-          -v
-          -Xgcpolicy:balanced
+        run: 'sbt -v -J-Xgcpolicy:balanced'
 
       - if: matrix.scala != '3.1.0'
         shell: bash
