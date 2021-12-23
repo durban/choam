@@ -81,19 +81,22 @@ trait RandomSpec[F[_]]
     Rxn.secureRandom.run[F].map(checkNextLong)
   }
 
-  def checkBetweenDouble(rnd: Random[Axn]) = {
+  def checkBetweenDouble(rnd: Random[Axn]): PropF[F] = {
     PropF.forAllF { (d1: Double, d2: Double) =>
-      if ((d1 + d2) > d1) {
-        rnd.betweenDouble(d1, d1 + d2).run[F].flatMap { d =>
-          assertF((d >= d1) && (d < (d1 + d2)))
+      for {
+        _ <- rnd.betweenDouble(d1, d1).run[F].attempt.flatMap { x =>
+          assertF(x.isLeft)
         }
-      } else {
-        F.unit
-      }
+        _ <- if ((d1 + d2) > d1) {
+          rnd.betweenDouble(d1, d1 + d2).run[F].flatMap { d =>
+            assertF((d >= d1) && (d < (d1 + d2)))
+          }
+        } else F.unit
+      } yield ()
     }
   }
 
-  def checkNextLong(rnd: Random[Axn]) = {
+  def checkNextLong(rnd: Random[Axn]): PropF[F] = {
     PropF.forAllF { (_: Long) =>
       (rnd.nextLong * rnd.nextLong).run[F].flatMap { nn =>
         assertNotEqualsF(nn._1, nn._2)
