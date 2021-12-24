@@ -116,7 +116,7 @@ jobs:
 
       - if: (matrix.java == 'adopt-openj9@11') || (matrix.java == 'adopt-openj9@17')
         shell: bash
-        run: 'sbt -v -J-Xgcpolicy:metronome ++${{ matrix.scala }} ci'
+        run: 'sbt -v -J-Xgcpolicy:optthruput ++${{ matrix.scala }} ci'
 
       - if: matrix.scala != '3.1.0'
         shell: bash
