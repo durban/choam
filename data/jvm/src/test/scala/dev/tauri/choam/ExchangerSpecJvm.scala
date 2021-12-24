@@ -183,6 +183,27 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
+  test("Post-commit action can touch the same Refs") {
+    val tsk = for {
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      r1 <- Ref(0).run[F]
+      r2 <- Ref(0).run[F]
+      rxn1 = (r1.update(_ + 1) *> ex.exchange.provide("str")).postCommit(
+        r1.update(_ + 1)
+      )
+      rxn2 = (r2.update(_ + 1) *> ex.dual.exchange.provide(9)).postCommit(
+        r2.update(_ + 1)
+      )
+      f1 <- rxn1.run[F].start
+      f2 <- rxn2.run[F].start
+      _ <- assertResultF(f1.joinWithNever, 9)
+      _ <- assertResultF(f2.joinWithNever, "str")
+      _ <- assertResultF(r1.get.run[F], 2)
+      _ <- assertResultF(r2.get.run[F], 2)
+    } yield ()
+    tsk.replicateA(iterations)
+  }
+
   test("Exchange with postCommits on both sides") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]

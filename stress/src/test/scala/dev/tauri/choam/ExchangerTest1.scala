@@ -23,13 +23,12 @@ import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results._
 
 // TODO: More Exchanger stress tests:
-// TODO: - postCommit actions on both sides
-// TODO:   - the 2 sides must be atomic
-// TODO:   - the pc actions must not
+// TODO: - exchange with delayComputed
+// TODO: - elimination stack
 
 @JCStressTest
 @State
-@Description("ExchangerTest1")
+@Description("Simple exchange")
 @Outcomes(Array(
   new Outcome(id = Array("None, None"), expect = ACCEPTABLE, desc = "No exchange"),
   new Outcome(id = Array("Some(r), Some(l)"), expect = ACCEPTABLE_INTERESTING, desc = "Successful exchange")
