@@ -18,14 +18,14 @@
 package dev.tauri.choam
 package data
 
-abstract class Stack[A] {
-  def push: Rxn[A, Unit]
-  def tryPop: Axn[Option[A]]
-  private[choam] def length: Axn[Int]
-}
+import cats.effect.IO
 
-object Stack {
+final class EliminationStackSpecSpinLockMCAS
+  extends BaseSpecIO
+  with EliminationStackSpec[IO]
+  with SpecSpinLockMCAS
 
-  def treiberStack[A]: Axn[Stack[A]] =
-    TreiberStack[A]
-}
+final class EliminationStackSpecEMCAS
+  extends BaseSpecIO
+  with EliminationStackSpec[IO]
+  with SpecEMCAS

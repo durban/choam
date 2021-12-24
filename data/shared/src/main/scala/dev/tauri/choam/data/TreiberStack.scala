@@ -28,11 +28,11 @@ final class TreiberStack[A](els: Iterable[A])
 
   private[this] val head = Ref.unsafe[Lst[A]](End)
 
-  override val push: Rxn[A, Unit] = head.upd { (as, a) =>
+  final override val push: Rxn[A, Unit] = head.upd { (as, a) =>
     (Cons(a, as), ())
   }
 
-  override val tryPop: Axn[Option[A]] = head.upd {
+  final override val tryPop: Axn[Option[A]] = head.upd {
     case (Cons(h, t), _) => (t, Some(h))
     case (End, _) => (End, None)
   }
@@ -44,7 +44,7 @@ final class TreiberStack[A](els: Iterable[A])
       Rxn.unsafe.retry
   }
 
-  private[choam] val length: Axn[Int] =
+  private[choam] final override val length: Axn[Int] =
     head.upd[Any, Int] { (l, _) => (l, l.length) }
 
   private[choam] def toList: Axn[List[A]] =

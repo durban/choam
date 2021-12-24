@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import cats.effect.{ IO, Outcome }
 
-import data.TreiberStack
+import data.EliminationStack
 
 final class ExchangerSpecCommon_EMCAS_IO
   extends BaseSpecIO
@@ -366,30 +366,18 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("Elimination") {
     import cats.effect.implicits.parallelForGenSpawn
-    sealed abstract class Result[A]
-    final case class FromStack[A](a: A) extends Result[A]
-    final case class Exchanged[A](a: A) extends Result[A]
+    import EliminationStack.{ FromStack, Exchanged }
     val N = 512
     val tsk = for {
-      ex <- Rxn.unsafe.exchanger[String, Any].run[F]
-      st <- TreiberStack[String].run[F]
-      push = (
-        st.push.map(FromStack(_)) + ex.exchange.as(Exchanged(()))
-      ) : Rxn[String, Result[Unit]]
-      tryPop = (
-        (
-          st.unsafePop.map[Result[String]](FromStack(_)) +
-          ex.dual.exchange.map(Exchanged(_))
-        ).?
-      ) : Axn[Option[Result[String]]]
+      elst <- EliminationStack.debug[String].run[F]
       f1 <- List.fill(N)("a").parTraverse { s =>
-        push[F](s)
+        elst.pushDebug[F](s)
       }.start
-      f2 <- List.fill(N)(tryPop.run[F]).parSequence.start
+      f2 <- List.fill(N)(elst.tryPopDebug.run[F]).parSequence.start
       pushResults <- f1.joinWithNever
       options <- f2.joinWithNever
       successes = options.count(_.isDefined)
-      stackLen <- st.length.run[F]
+      stackLen <- elst.length.run[F]
       _ <- assertEqualsF(clue(successes) + clue(stackLen), N)
       popResults = options.collect { case Some(r) => r }
       pushExchangeCount <- {
