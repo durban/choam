@@ -29,6 +29,8 @@ import org.openjdk.jcstress.infra.results._
   new Outcome(id = Array("None, None, (0,0), (2,2)"), expect = ACCEPTABLE, desc = "No exchange, reader first"),
   new Outcome(id = Array("None, None, (0,1), (2,2)"), expect = ACCEPTABLE_INTERESTING, desc = "No exchange (separate reactions), reader during"),
   new Outcome(id = Array("None, None, (1,0), (2,2)"), expect = ACCEPTABLE_INTERESTING, desc = "No exchange (separate reactions), reader during"),
+  new Outcome(id = Array("None, None, (0,2), (2,2)"), expect = ACCEPTABLE_INTERESTING, desc = "No exchange (separate reactions), reader during"),
+  new Outcome(id = Array("None, None, (2,0), (2,2)"), expect = ACCEPTABLE_INTERESTING, desc = "No exchange (separate reactions), reader during"),
   new Outcome(id = Array("None, None, (1,1), (2,2)"), expect = ACCEPTABLE, desc = "No exchange, reader after commit"),
   new Outcome(id = Array("None, None, (2,1), (2,2)"), expect = ACCEPTABLE, desc = "No exchange, reader after one postCommit"),
   new Outcome(id = Array("None, None, (1,2), (2,2)"), expect = ACCEPTABLE, desc = "No exchange, reader after other postCommit"),
