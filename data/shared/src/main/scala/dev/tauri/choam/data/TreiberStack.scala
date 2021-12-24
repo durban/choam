@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-final class TreiberStack[A](els: Iterable[A])
+private[choam] final class TreiberStack[A](els: Iterable[A])
   extends Stack[A] {
 
   import TreiberStack._
@@ -35,13 +35,6 @@ final class TreiberStack[A](els: Iterable[A])
   final override val tryPop: Axn[Option[A]] = head.upd {
     case (Cons(h, t), _) => (t, Some(h))
     case (End, _) => (End, None)
-  }
-
-  val unsafePop: Rxn[Any, A] = head.unsafeInvisibleRead.flatMap {
-    case c @ Cons(h, t) =>
-      head.unsafeCas(c, t).as(h)
-    case End =>
-      Rxn.unsafe.retry
   }
 
   private[choam] final override val length: Axn[Int] =
@@ -61,7 +54,7 @@ final class TreiberStack[A](els: Iterable[A])
   }
 }
 
-object TreiberStack {
+private[choam] object TreiberStack {
 
   def apply[A]: Axn[TreiberStack[A]] =
     Rxn.unsafe.delay { _ => new TreiberStack[A] }
