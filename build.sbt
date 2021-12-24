@@ -35,6 +35,11 @@ val macos = "macos-latest"
 val TestInternal = "test-internal"
 val ciCommand = "ci"
 
+def openJ9Options: String = {
+  val opts = List("-Xgcpolicy:balanced")
+  opts.map(opt => s"-J${opt}").mkString(" ")
+}
+
 ThisBuild / scalaVersion := scala2
 ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, scala3)
 ThisBuild / scalaOrganization := "org.scala-lang"
@@ -53,7 +58,7 @@ ThisBuild / githubWorkflowBuild := Seq(
   ),
   // Tests on OpenJ9 only:
   WorkflowStep.Run(
-    List(s"${githubWorkflowSbtCommand.value} -J-Xgcpolicy:balanced ++$${{ matrix.scala }} ${ciCommand}"),
+    List(s"${githubWorkflowSbtCommand.value} ${openJ9Options} ++$${{ matrix.scala }} ${ciCommand}"),
     cond = Some(s"(matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}')"),
   ),
   // Static analysis (not working on Scala 3):

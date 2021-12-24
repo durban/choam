@@ -27,6 +27,8 @@
     - to have composability, the root will always have to be validated
     - this would make it not scalable (the root ref is very contended)
 - Can't run benchmarks with Scala 3
+- Tests sometimes time out on OpenJ9
+  - probably due to GC pauses
 
 ## Other improvements
 
