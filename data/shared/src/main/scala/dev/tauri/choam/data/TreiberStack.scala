@@ -18,7 +18,8 @@
 package dev.tauri.choam
 package data
 
-final class TreiberStack[A](els: Iterable[A]) {
+final class TreiberStack[A](els: Iterable[A])
+  extends Stack[A] {
 
   import TreiberStack._
 
@@ -27,11 +28,11 @@ final class TreiberStack[A](els: Iterable[A]) {
 
   private[this] val head = Ref.unsafe[Lst[A]](End)
 
-  val push: Rxn[A, Unit] = head.upd { (as, a) =>
+  override val push: Rxn[A, Unit] = head.upd { (as, a) =>
     (Cons(a, as), ())
   }
 
-  val tryPop: Axn[Option[A]] = head.upd {
+  override val tryPop: Axn[Option[A]] = head.upd {
     case (Cons(h, t), _) => (t, Some(h))
     case (End, _) => (End, None)
   }
@@ -43,10 +44,10 @@ final class TreiberStack[A](els: Iterable[A]) {
       Rxn.unsafe.retry
   }
 
-  val length: Axn[Int] =
+  private[choam] val length: Axn[Int] =
     head.upd[Any, Int] { (l, _) => (l, l.length) }
 
-  def toList: Axn[List[A]] =
+  private[choam] def toList: Axn[List[A]] =
     head.upd[Any, Lst[A]] { (l, _) => (l, l) }.map(_.toList)
 
   private[choam] def unsafeToList(kcas: mcas.MCAS): List[A] = {
