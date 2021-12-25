@@ -47,11 +47,18 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
 
   test("Thread interruption in infinite retry") {
     val never = Rxn.unsafe.retry[Any, Unit]
+    @volatile var exception = Option.empty[Throwable]
     F.blocking {
       val cdl = new CountDownLatch(1)
       val t = new Thread(() => {
         cdl.countDown()
         never.unsafeRun(this.kcasImpl)
+      })
+      t.setUncaughtExceptionHandler((_, ex) => {
+        if (!ex.isInstanceOf[InterruptedException]) {
+          // ignore interrupt, otherwise fail the test
+          exception = Some(ex)
+        }
       })
       t.start()
       assert(t.isAlive())
@@ -65,6 +72,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
         Thread.sleep(1L)
       }
       assert(!t.isAlive())
+      exception.foreach(throw _)
     }
   }
 
@@ -73,11 +81,18 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
     val never: Axn[Unit] = (1 to 1000).foldLeft(ref.unsafeCas("foo", "bar")) { (acc, num) =>
       acc + ref.unsafeCas(ov = num.toString(), nv = "foo")
     }
+    @volatile var exception = Option.empty[Throwable]
     F.blocking {
       val cdl = new CountDownLatch(1)
       val t = new Thread(() => {
         cdl.countDown()
         never.unsafeRun(this.kcasImpl)
+      })
+      t.setUncaughtExceptionHandler((_, ex) => {
+        if (!ex.isInstanceOf[InterruptedException]) {
+          // ignore interrupt, otherwise fail the test
+          exception = Some(ex)
+        }
       })
       t.start()
       assert(t.isAlive())
@@ -91,6 +106,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
         Thread.sleep(1L)
       }
       assert(!t.isAlive())
+      exception.foreach(throw _)
     }
   }
 
