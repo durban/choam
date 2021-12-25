@@ -19,12 +19,13 @@ package dev.tauri.choam
 package bench
 
 import cats.effect.IO
+import cats.syntax.all._
 import io.github.timwspence.cats.stm._
 
 import org.openjdk.jmh.annotations._
 
 import util._
-import data.TreiberStack
+import data.{ Stack, TreiberStack, EliminationStack }
 
 @Fork(2)
 @Threads(1) // because it runs on a threadpool
@@ -52,6 +53,18 @@ class SyncStackBench extends BenchUtils {
     val tsk = for {
       _ <- ct.reactive.run(s.treiberStack.push, "foo")
       pr <- ct.reactive.run(s.treiberStack.tryPop, null)
+      _ <- if (pr eq None) {
+        IO.raiseError(Errors.EmptyStack)
+      } else IO.unit
+    } yield ()
+    runPar(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
+  }
+
+  @Benchmark
+  def rxnEliminationStack(s: EliminationSt, ct: KCASImplState): Unit = {
+    val tsk = for {
+      _ <- ct.reactive.run(s.eliminationStack.push, "foo")
+      pr <- ct.reactive.run(s.eliminationStack.tryPop, null)
       _ <- if (pr eq None) {
         IO.raiseError(Errors.EmptyStack)
       } else IO.unit
@@ -131,7 +144,17 @@ object SyncStackBench {
   @State(Scope.Benchmark)
   class TreiberSt extends BaseSt {
     val runtime = cats.effect.unsafe.IORuntime.global
-    val treiberStack = new TreiberStack[String](Prefill.prefill())
+    val treiberStack: Stack[String] = new TreiberStack[String](Prefill.prefill())
+  }
+
+  @State(Scope.Benchmark)
+  class EliminationSt extends BaseSt {
+    val runtime = cats.effect.unsafe.IORuntime.global
+    val eliminationStack: Stack[String] = EliminationStack.apply[String].run[IO].flatMap { s =>
+      Prefill.prefill().toList.traverse_ { item =>
+        s.push[IO](item)
+      }.as(s)
+    }.unsafeRunSync()(runtime)
   }
 
   @State(Scope.Benchmark)
