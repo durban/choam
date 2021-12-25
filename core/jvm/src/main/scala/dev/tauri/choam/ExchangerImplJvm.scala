@@ -32,6 +32,7 @@ private final class ExchangerImplJvm[A, B] private (
 
   import ExchangerImplJvm.{ size => _, unsafe => _, _ }
 
+  // TODO: could we use a single elimination array?
   private val incoming: Array[AtomicReference[ExchangerImplJvm.Node[_]]] = {
     if (d ne null) d.outgoing
     else mkArray()

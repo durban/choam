@@ -22,10 +22,41 @@ import cats.effect.IO
 
 final class EliminationStackSpecSpinLockMCAS
   extends BaseSpecIO
-  with EliminationStackSpec[IO]
+  with EliminationStackSpecJvm[IO]
   with SpecSpinLockMCAS
 
 final class EliminationStackSpecEMCAS
   extends BaseSpecIO
-  with EliminationStackSpec[IO]
+  with EliminationStackSpecJvm[IO]
   with SpecEMCAS
+
+trait EliminationStackSpecJvm[F[_]] extends EliminationStackSpec[F] { this: KCASImplSpec =>
+
+  test("Multiple producers/consumers") {
+    val N = 4
+    for {
+      s <- this.newStack[String]
+      _ <- s.push[F]("a")
+      _ <- s.push[F]("b")
+      _ <- s.push[F]("c")
+      _ <- s.push[F]("d")
+      poppers <- F.parReplicateAN(Int.MaxValue)(replicas = N, ma = s.tryPop.run[F]).start
+      pushers <- F.parReplicateAN(Int.MaxValue)(replicas = N, ma = s.push[F]("x")).start
+      popRes <- poppers.joinWithNever
+      _ <- pushers.joinWithNever
+      remaining <- {
+        def drain(acc: List[String]): F[List[String]] = {
+          s.tryPop.run[F].flatMap {
+            case Some(v) => drain(v :: acc)
+            case None => F.pure(acc)
+          }
+        }
+        drain(Nil)
+      }
+      _ <- assertEqualsF(
+        (popRes.collect { case Some(v) => v } ++ remaining).toSet,
+        (List("a", "b", "c", "d") ++ List.fill(N)("x")).toSet,
+      )
+    } yield ()
+  }
+}
