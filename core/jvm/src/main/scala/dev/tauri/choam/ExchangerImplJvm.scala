@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicReferenceArray
 
 import mcas.MCAS
 import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx }
@@ -33,12 +33,12 @@ private final class ExchangerImplJvm[A, B] private (
   import ExchangerImplJvm.{ size => _, unsafe => _, _ }
 
   // TODO: could we use a single elimination array?
-  private val incoming: Array[AtomicReference[ExchangerImplJvm.Node[_]]] = {
+  private val incoming: AtomicReferenceArray[ExchangerImplJvm.Node[_]] = {
     if (d ne null) d.outgoing
     else mkArray()
   }
 
-  private val outgoing: Array[AtomicReference[ExchangerImplJvm.Node[_]]] = {
+  private val outgoing: AtomicReferenceArray[ExchangerImplJvm.Node[_]] = {
     if (d ne null) d.incoming
     else mkArray()
   }
@@ -77,22 +77,20 @@ private final class ExchangerImplJvm[A, B] private (
   private[this] def tryIdx[C](idx: Int, msg: Msg, stats: Statistics, ctx: MCAS.ThreadContext): Either[Statistics, Msg] = {
     debugLog(s"tryIdx(${idx}) - thread#${Thread.currentThread().getId()}")
     // post our message:
-    val slot = this.incoming(idx)
-    slot.get() match {
+    incoming.get(idx) match {
       case null =>
         // empty slot, insert ourselves:
         val self = new Node[C](msg)
-        if (slot.compareAndSet(null, self)) {
+        if (incoming.compareAndSet(idx, null, self)) {
           debugLog(s"posted offer (contT: ${java.util.Arrays.toString(msg.contT)}) - thread#${Thread.currentThread().getId()}")
           // we posted our msg, look at the other side:
-          val otherSlot = this.outgoing(idx)
-          otherSlot.get() match {
+          outgoing.get(idx) match {
             case null =>
               debugLog(s"not found other, will wait - thread#${Thread.currentThread().getId()}")
               // we can't fulfill, so we wait for a fulfillment:
               val res: Option[NodeResult[C]] = self.spinWait(stats, ctx)
               debugLog(s"after waiting: ${res} - thread#${Thread.currentThread().getId()}")
-              if (!slot.compareAndSet(self, null)) {
+              if (!incoming.compareAndSet(idx, self, null)) {
                 // couldn't rescind, someone claimed our offer
                 debugLog(s"other claimed our offer - thread#${Thread.currentThread().getId()}")
                 waitForClaimedOffer[C](self, msg, res, stats, ctx)
@@ -102,9 +100,9 @@ private final class ExchangerImplJvm[A, B] private (
               }
             case other: Node[d] =>
               debugLog(s"found other - thread#${Thread.currentThread().getId()}")
-              if (slot.compareAndSet(self, null)) {
+              if (incoming.compareAndSet(idx, self, null)) {
                 // ok, we've rescinded our offer
-                if (otherSlot.compareAndSet(other, null)) {
+                if (outgoing.compareAndSet(idx, other, null)) {
                   debugLog(s"fulfilling other - thread#${Thread.currentThread().getId()}")
                   // ok, we've claimed the other offer, we'll fulfill it:
                   fulfillClaimedOffer(other, msg, stats, ctx)
@@ -339,23 +337,9 @@ private object ExchangerImplJvm {
     new ExchangerImplJvm[A, B](d = null)
   }
 
-  private def mkArray(): Array[AtomicReference[Node[_]]] = {
+  private def mkArray(): AtomicReferenceArray[Node[_]] = {
     // TODO: use padded references
-    // TODO: this really should be an AtomicReferenceArray
-    val arr = new Array[AtomicReference[Node[_]]](ExchangerImplJvm.size)
-    initArray(arr)
-    arr
-  }
-
-  private[this] def initArray(array: Array[AtomicReference[Node[_]]]): Unit = {
-    @tailrec
-    def go(idx: Int): Unit = {
-      if (idx < array.length) {
-        array(idx) = new AtomicReference[Node[_]]
-        go(idx + 1)
-      }
-    }
-    go(0)
+    new AtomicReferenceArray[Node[_]](ExchangerImplJvm.size)
   }
 
   private final class Node[C](val msg: Msg) {
