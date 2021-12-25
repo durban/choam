@@ -60,6 +60,10 @@ abstract class BaseSpecZIO
   override def munitValueTransforms: List[this.ValueTransform] = {
     super.munitValueTransforms :+ this.transformZIO
   }
+
+  override def munitIgnore: Boolean = {
+    super.munitIgnore || this.isOpenJ9()
+  }
 }
 
 abstract class BaseSpecTickedZIO

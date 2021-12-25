@@ -44,4 +44,22 @@ trait MUnitUtils { this: FunSuite =>
   def assertIntIsNotCached(i: Int): Unit = {
     assert(!isIntCached(i))
   }
+
+  def assumeOpenJdk(): Unit = {
+    assume(isOpenJdk(), "this test only runs on OpenJDK")
+  }
+
+  def assumeNotOpenJ9(): Unit = {
+    assume(!isOpenJ9(), "this test doesn't run on OpenJ9")
+  }
+
+  def isOpenJdk(): Boolean = {
+    val vmName = java.lang.System.getProperty("java.vm.name")
+    vmName.contains("HotSpot") || vmName.contains("OpenJDK")
+  }
+
+  def isOpenJ9(): Boolean = {
+    val vmName = java.lang.System.getProperty("java.vm.name")
+    vmName.contains("OpenJ9")
+  }
 }

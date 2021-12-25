@@ -36,14 +36,6 @@ class RefSpec extends BaseSpecA {
 
   import RefSpec._
 
-  def assumeOpenJdk(): Unit = {
-    val isOpenJdk = {
-      val vmName = java.lang.System.getProperty("java.vm.name")
-      vmName.contains("HotSpot") || vmName.contains("OpenJDK")
-    }
-    assume(isOpenJdk, "this test only runs on OpenJDK")
-  }
-
   def getLeftRightPaddedSize(obj: AnyRef, fieldName: String): (Long, Long) = {
     val layout = ClassLayout.parseInstance(obj)
     val fields = layout.fields.iterator.asScala.toList
