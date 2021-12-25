@@ -69,7 +69,7 @@ sealed trait IOCancelSpecBase[F[_]]
     _ <- assertEqualsF(actual, expect)
   } yield ()
 
-  test("infinite, but observes the stop signal") {
+  test("infinite, but observes the stop signal".ignore) {
     val t = stoppable { stop =>
       @tailrec
       def go(n: Long): Long = {
@@ -86,7 +86,7 @@ sealed trait IOCancelSpecBase[F[_]]
     cancelExpect(t, cancelAfter = 1.second, expect = Outcome.canceled[F, Throwable, Long])
   }
 
-  test("ignores the stop signal, but finishes after some time") {
+  test("ignores the stop signal, but finishes after some time".ignore) {
     val t = stoppable { stop =>
       @tailrec
       def go(n: Long): Long = {
@@ -105,7 +105,7 @@ sealed trait IOCancelSpecBase[F[_]]
     cancelExpect(t, cancelAfter = 1.millisecond, expect = Outcome.canceled[F, Throwable, Long])
   }
 
-  test("finishes before it could be cancelled") {
+  test("finishes before it could be cancelled".ignore) {
     val t = stoppable { _ =>
       F.delay { 0L }
     } (F, F)

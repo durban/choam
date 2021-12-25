@@ -26,9 +26,7 @@ import org.openjdk.jmh.annotations._
 import util._
 import data.TreiberStack
 
-// TODO: run more concurrent operations
-
-@Fork(3)
+@Fork(2)
 @Threads(1) // because it runs on a threadpool
 @BenchmarkMode(Array(Mode.AverageTime))
 class SyncStackBench extends BenchUtils {
@@ -40,8 +38,13 @@ class SyncStackBench extends BenchUtils {
   final val N = 512
 
   @Benchmark
+  def baselineSingleThreaded(@unused s: BaselineSt): Unit = {
+    run(cats.effect.unsafe.IORuntime.global, IO.unit, size = N)
+  }
+
+  @Benchmark
   def baseline(s: BaselineSt): Unit = {
-    run(s.runtime, IO.unit, size = N)
+    runPar(s.runtime, IO.unit, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -53,7 +56,7 @@ class SyncStackBench extends BenchUtils {
         IO.raiseError(Errors.EmptyStack)
       } else IO.unit
     } yield ()
-    run(s.runtime, tsk, size = N)
+    runPar(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -62,7 +65,7 @@ class SyncStackBench extends BenchUtils {
       s.referenceStack.push("foo")
       if (s.referenceStack.tryPop() eq None) throw Errors.EmptyStack
     }
-    run(s.runtime, tsk, size = N)
+    runPar(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -71,7 +74,7 @@ class SyncStackBench extends BenchUtils {
       s.lockedStack.push("foo")
       if (s.lockedStack.tryPop() eq None) throw Errors.EmptyStack
     }
-    run(s.runtime, tsk, size = N)
+    runPar(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -80,7 +83,7 @@ class SyncStackBench extends BenchUtils {
       s.stmStack.push("foo")
       if (s.stmStack.tryPop() eq None) throw Errors.EmptyStack
     }
-    run(s.runtime, tsk, size = N)
+    runPar(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -92,7 +95,7 @@ class SyncStackBench extends BenchUtils {
         IO.raiseError(Errors.EmptyStack)
       } else IO.unit
     } yield ()
-    run(s.runtime, tsk, size = N)
+    runPar(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -104,43 +107,53 @@ class SyncStackBench extends BenchUtils {
         zio.ZIO.fail(Errors.EmptyStack)
       } else zio.ZIO.unit
     } yield ()
-    runZ(s.runtime, tsk, size = N)
+    runParZ(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 }
 
 object SyncStackBench {
 
   @State(Scope.Benchmark)
-  class BaselineSt {
+  abstract class BaseSt {
+
+    @Param(Array("2", "4", "6", "8", "10"))
+    private[this] var _concurrentOps: Int = _
+
+    def concurrentOps: Int =
+      this._concurrentOps
+  }
+
+  @State(Scope.Benchmark)
+  class BaselineSt extends BaseSt {
     val runtime = cats.effect.unsafe.IORuntime.global
   }
 
   @State(Scope.Benchmark)
-  class TreiberSt {
+  class TreiberSt extends BaseSt {
     val runtime = cats.effect.unsafe.IORuntime.global
     val treiberStack = new TreiberStack[String](Prefill.prefill())
   }
 
   @State(Scope.Benchmark)
-  class ReferenceSt {
+  class ReferenceSt extends BaseSt {
     val runtime = cats.effect.unsafe.IORuntime.global
     val referenceStack = new ReferenceTreiberStack[String](Prefill.prefill())
   }
 
   @State(Scope.Benchmark)
-  class LockedSt {
+  class LockedSt extends BaseSt {
     val runtime = cats.effect.unsafe.IORuntime.global
     val lockedStack = new LockedStack[String](Prefill.prefill())
   }
 
   @State(Scope.Benchmark)
-  class StmSt {
+  class StmSt extends BaseSt {
     val runtime = cats.effect.unsafe.IORuntime.global
     val stmStack = new StmStack[String](Prefill.prefill())
   }
 
   @State(Scope.Benchmark)
-  class StmCSt {
+  class StmCSt extends BaseSt {
 
     val runtime = cats.effect.unsafe.IORuntime.global
     val s: STM[IO] = STM.runtime[IO](128L).unsafeRunSync()(runtime)
@@ -151,7 +164,7 @@ object SyncStackBench {
   }
 
   @State(Scope.Benchmark)
-  class StmZSt {
+  class StmZSt extends BaseSt {
 
     val runtime = zio.Runtime.default
 
