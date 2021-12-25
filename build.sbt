@@ -36,7 +36,7 @@ val TestInternal = "test-internal"
 val ciCommand = "ci"
 
 def openJ9Options: String = {
-  val opts = List("-Xgcpolicy:optthruput")
+  val opts = List("-Xgcpolicy:balanced")
   opts.map(opt => s"-J${opt}").mkString(" ")
 }
 

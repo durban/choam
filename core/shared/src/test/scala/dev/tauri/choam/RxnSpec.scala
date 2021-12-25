@@ -39,6 +39,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     assertSameInstance(Reactive[F].kcasImpl, this.kcasImpl)
     println(s"NUM_CPU = ${Runtime.getRuntime().availableProcessors()}")
     println(s"OS_ARCH = ${System.getProperty("os.arch")}")
+    println(s"VM_NAME = ${System.getProperty("java.vm.name")}")
   }
 
   test("Choice should prefer the first option") {
