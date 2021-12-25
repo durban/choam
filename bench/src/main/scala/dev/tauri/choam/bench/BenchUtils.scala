@@ -42,7 +42,7 @@ trait BenchUtils {
   }
 
   protected final def runZ(rt: ZRuntime[_], task: Task[Unit], size: Int): Unit = {
-    rt.unsafeRunTask(task.repeatN(size))
+    rt.unsafeRunTask(task.repeatN(size - 1))
     Blackhole.consumeCPU(waitTime)
   }
 
