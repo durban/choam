@@ -120,7 +120,7 @@ class IOCancelBenchState {
   val ref =
     new AtomicReference[String]("x")
 
-  final val length =
+  final val length: FiniteDuration =
     100.microseconds
 
   final val checkInterval =
