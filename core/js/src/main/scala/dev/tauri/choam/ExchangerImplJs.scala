@@ -30,6 +30,9 @@ private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
       else new ExchangerImplJs[B, A](this)
     }
 
+    private[choam] final override val key: AnyRef =
+      new AnyRef
+
     private[choam] final def tryExchange[C](
       @unused msg: Exchanger.Msg,
       @unused ctx: MCAS.ThreadContext

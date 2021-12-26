@@ -32,7 +32,7 @@ private sealed trait ExchangerImplJvm[A, B]
 
   protected def outgoing: AtomicReferenceArray[ExchangerNode[_]]
 
-  protected def key: AnyRef
+  private[choam] def key: AnyRef
 
   protected def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]]
 
@@ -257,7 +257,7 @@ private final class DualExchangerImplJvm[A, B](
   protected final override def outgoing =
     dual.incoming
 
-  protected final override def key: AnyRef =
+  private[choam] final override def key: AnyRef =
     dual.key
 
   protected final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]] =
