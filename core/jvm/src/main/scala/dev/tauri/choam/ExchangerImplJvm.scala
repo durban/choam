@@ -34,7 +34,7 @@ private sealed trait ExchangerImplJvm[A, B]
 
   protected def key: AnyRef
 
-  protected def initializeIfNeeded(): Unit
+  protected def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]]
 
   final override def exchange: Rxn[A, B] =
     Rxn.internal.exchange[A, B](this)
@@ -49,7 +49,6 @@ private sealed trait ExchangerImplJvm[A, B]
   }
 
   private[choam] final def tryExchange[C](msg: Msg, ctx: MCAS.ThreadContext): Either[StatMap, Msg] = {
-    this.initializeIfNeeded()
     // TODO: exchangerData grows forever
     val stats = msg.exchangerData.getOrElse(this.key, Statistics.zero)
     debugLog(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
@@ -62,8 +61,14 @@ private sealed trait ExchangerImplJvm[A, B]
 
   private[this] final def tryIdx[C](idx: Int, msg: Msg, stats: Statistics, ctx: MCAS.ThreadContext): Either[Statistics, Msg] = {
     debugLog(s"tryIdx(${idx}) - thread#${Thread.currentThread().getId()}")
+    val incoming = this.incoming match {
+      case null =>
+        this.initializeIfNeeded(retInc = true)
+      case array =>
+        array
+    }
+    assert(incoming ne null)
     // post our message:
-    val incoming = this.incoming
     incoming.get(idx) match {
       case null =>
         // empty slot, insert ourselves:
@@ -71,7 +76,12 @@ private sealed trait ExchangerImplJvm[A, B]
         if (incoming.compareAndSet(idx, null, self)) {
           debugLog(s"posted offer (contT: ${java.util.Arrays.toString(msg.contT)}) - thread#${Thread.currentThread().getId()}")
           // we posted our msg, look at the other side:
-          val outgoing = this.outgoing
+          val outgoing = this.outgoing match {
+            case null =>
+              this.initializeIfNeeded(retInc = false)
+            case array =>
+              array
+          }
           outgoing.get(idx) match {
             case null =>
               debugLog(s"not found other, will wait - thread#${Thread.currentThread().getId()}")
@@ -250,8 +260,8 @@ private final class DualExchangerImplJvm[A, B](
   protected final override def key: AnyRef =
     dual.key
 
-  protected final override def initializeIfNeeded(): Unit =
-    dual.initializeIfNeeded()
+  protected final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]] =
+    dual.initializeIfNeeded(!retInc)
 }
 
 private final class PrimaryExchangerImplJvm[A, B] private[choam] (
@@ -264,14 +274,28 @@ private final class PrimaryExchangerImplJvm[A, B] private[choam] (
   protected[choam] final override val key: AnyRef =
     new AnyRef
 
-  protected[choam] final override def initializeIfNeeded(): Unit = {
-    if (this.incoming eq null) {
-      this.casIncoming(null, ExchangerImplJvm.mkArray())
+  protected[choam] final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]] = {
+    val inc = this.incoming match {
+      case null =>
+        val newInc = ExchangerImplJvm.mkArray()
+        this.cmpxchgIncoming(null, newInc) match {
+          case null => newInc
+          case other => other
+        }
+      case inc =>
+        inc
     }
-    if (this.outgoing eq null) {
-      this.casOutgoing(null, ExchangerImplJvm.mkArray())
+    val out = this.outgoing match {
+      case null =>
+        val newOut = ExchangerImplJvm.mkArray()
+        this.cmpxchgOutgoing(null, newOut) match {
+          case null => newOut
+          case other => other
+        }
+      case out =>
+        out
     }
-    ()
+    if (retInc) inc else out
   }
 
   protected[choam] final override def incoming: AtomicReferenceArray[ExchangerNode[_]] =

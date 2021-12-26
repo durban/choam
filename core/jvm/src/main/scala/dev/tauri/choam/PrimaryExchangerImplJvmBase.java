@@ -40,11 +40,11 @@ abstract class PrimaryExchangerImplJvmBase {
 
   protected volatile AtomicReferenceArray<ExchangerNode<?>> _outgoing;
 
-  protected boolean casIncoming(AtomicReferenceArray<ExchangerNode<?>> ov, AtomicReferenceArray<ExchangerNode<?>> nv) {
-    return (boolean) _INCOMING.compareAndSet(this, ov, nv);
+  protected AtomicReferenceArray<ExchangerNode<?>> cmpxchgIncoming(AtomicReferenceArray<ExchangerNode<?>> ov, AtomicReferenceArray<ExchangerNode<?>> nv) {
+    return (AtomicReferenceArray<ExchangerNode<?>>) _INCOMING.compareAndExchange(this, ov, nv);
   }
 
-  protected boolean casOutgoing(AtomicReferenceArray<ExchangerNode<?>> ov, AtomicReferenceArray<ExchangerNode<?>> nv) {
-    return (boolean) _OUTGOING.compareAndSet(this, ov, nv);
+  protected AtomicReferenceArray<ExchangerNode<?>> cmpxchgOutgoing(AtomicReferenceArray<ExchangerNode<?>> ov, AtomicReferenceArray<ExchangerNode<?>> nv) {
+    return (AtomicReferenceArray<ExchangerNode<?>>) _OUTGOING.compareAndExchange(this, ov, nv);
   }
 }
