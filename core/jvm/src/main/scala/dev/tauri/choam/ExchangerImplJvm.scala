@@ -22,26 +22,22 @@ import java.util.concurrent.atomic.AtomicReferenceArray
 import mcas.MCAS
 import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx }
 
-// TODO: lazy initialization of exchanger with
-// TODO: something like `Rxn.allocateLazily { ... }`
-// TODO: (or it could be built-in to the Exchanger)
+private sealed trait ExchangerImplJvm[A, B]
+  extends Exchanger.UnsealedExchanger[A, B] {
 
-private final class ExchangerImplJvm[A, B] private (
-  d: ExchangerImplJvm[B, A],
-) extends Exchanger.UnsealedExchanger[A, B] {
-
-  import ExchangerImplJvm.{ size => _, unsafe => _, _ }
+  import ExchangerImplJvm.{ size => _, _ }
 
   // TODO: could we use a single elimination array?
-  private val incoming: AtomicReferenceArray[ExchangerImplJvm.Node[_]] = {
-    if (d ne null) d.outgoing
-    else mkArray()
-  }
+  protected def incoming: AtomicReferenceArray[ExchangerNode[_]]
 
-  private val outgoing: AtomicReferenceArray[ExchangerImplJvm.Node[_]] = {
-    if (d ne null) d.incoming
-    else mkArray()
-  }
+  protected def outgoing: AtomicReferenceArray[ExchangerNode[_]]
+
+  protected def key: AnyRef
+
+  protected def initializeIfNeeded(): Unit
+
+  final override def exchange: Rxn[A, B] =
+    Rxn.internal.exchange[A, B](this)
 
   private[this] final val isDebug =
     false
@@ -52,20 +48,10 @@ private final class ExchangerImplJvm[A, B] private (
     }
   }
 
-  final override def exchange: Rxn[A, B] =
-    Rxn.internal.exchange[A, B](this)
-
-  final override val dual: ExchangerImplJvm[B, A] = {
-    if (d ne null) d
-    else new ExchangerImplJvm[B, A](d = this)
-  }
-
-  private[this] def size: Int =
-    incoming.length
-
-  private[choam] def tryExchange[C](msg: Msg, ctx: MCAS.ThreadContext): Either[StatMap, Msg] = {
-    // TODO: the key shouldn't be `this` -- an exchanger and its dual should probably use the same key
-    val stats = msg.exchangerData.getOrElse(this, Statistics.zero)
+  private[choam] final def tryExchange[C](msg: Msg, ctx: MCAS.ThreadContext): Either[StatMap, Msg] = {
+    this.initializeIfNeeded()
+    // TODO: exchangerData grows forever
+    val stats = msg.exchangerData.getOrElse(this.key, Statistics.zero)
     debugLog(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
     val idx = if (stats.effectiveSize < 2) 0 else ctx.random.nextInt(stats.effectiveSize.toInt)
     tryIdx(idx, msg, stats, ctx) match {
@@ -74,16 +60,18 @@ private final class ExchangerImplJvm[A, B] private (
     }
   }
 
-  private[this] def tryIdx[C](idx: Int, msg: Msg, stats: Statistics, ctx: MCAS.ThreadContext): Either[Statistics, Msg] = {
+  private[this] final def tryIdx[C](idx: Int, msg: Msg, stats: Statistics, ctx: MCAS.ThreadContext): Either[Statistics, Msg] = {
     debugLog(s"tryIdx(${idx}) - thread#${Thread.currentThread().getId()}")
     // post our message:
+    val incoming = this.incoming
     incoming.get(idx) match {
       case null =>
         // empty slot, insert ourselves:
-        val self = new Node[C](msg)
+        val self = new ExchangerNode[C](msg)
         if (incoming.compareAndSet(idx, null, self)) {
           debugLog(s"posted offer (contT: ${java.util.Arrays.toString(msg.contT)}) - thread#${Thread.currentThread().getId()}")
           // we posted our msg, look at the other side:
+          val outgoing = this.outgoing
           outgoing.get(idx) match {
             case null =>
               debugLog(s"not found other, will wait - thread#${Thread.currentThread().getId()}")
@@ -98,7 +86,7 @@ private final class ExchangerImplJvm[A, B] private (
                 // rescinded successfully, will retry
                 Left(stats.missed)
               }
-            case other: Node[d] =>
+            case other: ExchangerNode[d] =>
               debugLog(s"found other - thread#${Thread.currentThread().getId()}")
               if (incoming.compareAndSet(idx, self, null)) {
                 // ok, we've rescinded our offer
@@ -119,17 +107,17 @@ private final class ExchangerImplJvm[A, B] private (
           }
         } else {
           // contention, will retry
-          Left(stats.contended(this.size))
+          Left(stats.contended(incoming.length()))
         }
       case _ =>
         // contention, will retry
-        Left(stats.contended(this.size))
+        Left(stats.contended(incoming.length()))
     }
   }
 
   /** Our offer have been claimed by somebody, so we wait for them to fulfill it */
-  private[this] def waitForClaimedOffer[C](
-    self: Node[C],
+  private[this] final def waitForClaimedOffer[C](
+    self: ExchangerNode[C],
     msg: Msg,
     maybeResult: Option[NodeResult[C]],
     stats: Statistics,
@@ -172,8 +160,8 @@ private final class ExchangerImplJvm[A, B] private (
   }
 
   /** We've claimed someone else's offer, so we'll fulfill it */
-  private[this] def fulfillClaimedOffer[D](
-    other: Node[D],
+  private[this] final def fulfillClaimedOffer[D](
+    other: ExchangerNode[D],
     selfMsg: Msg,
     stats: Statistics,
     ctx: MCAS.ThreadContext,
@@ -203,7 +191,7 @@ private final class ExchangerImplJvm[A, B] private (
     Right(resMsg)
   }
 
-  private[this] def mergeConts[D](
+  private[this] final def mergeConts[D](
     selfContT: Array[Byte],
     selfContK: ObjStack.Lst[Any],
     otherContT: Array[Byte],
@@ -237,7 +225,7 @@ private final class ExchangerImplJvm[A, B] private (
     }
   }
 
-  private[this] def mergeContTs(
+  private[this] final def mergeContTs(
     selfContT: Array[Byte],
     otherContT: Array[Byte],
   ): Array[Byte] = {
@@ -249,10 +237,58 @@ private final class ExchangerImplJvm[A, B] private (
   }
 }
 
+private final class DualExchangerImplJvm[A, B](
+  final override val dual: PrimaryExchangerImplJvm[B, A],
+) extends ExchangerImplJvm[A, B] {
+
+  protected final override def incoming =
+    dual.outgoing
+
+  protected final override def outgoing =
+    dual.incoming
+
+  protected final override def key: AnyRef =
+    dual.key
+
+  protected final override def initializeIfNeeded(): Unit =
+    dual.initializeIfNeeded()
+}
+
+private final class PrimaryExchangerImplJvm[A, B] private[choam] (
+) extends PrimaryExchangerImplJvmBase
+  with ExchangerImplJvm[A, B] {
+
+  final override val dual: Exchanger[B, A] =
+    new DualExchangerImplJvm[B, A](this)
+
+  protected[choam] final override val key: AnyRef =
+    new AnyRef
+
+  protected[choam] final override def initializeIfNeeded(): Unit = {
+    if (this.incoming eq null) {
+      this.casIncoming(null, ExchangerImplJvm.mkArray())
+    }
+    if (this.outgoing eq null) {
+      this.casOutgoing(null, ExchangerImplJvm.mkArray())
+    }
+    ()
+  }
+
+  protected[choam] final override def incoming: AtomicReferenceArray[ExchangerNode[_]] =
+    this._incoming
+
+  protected[choam] final override def outgoing: AtomicReferenceArray[ExchangerNode[_]] =
+    this._outgoing
+}
+
 private object ExchangerImplJvm {
 
+  private[choam] def unsafe[A, B]: Exchanger[A, B] = {
+    new PrimaryExchangerImplJvm[A, B]()
+  }
+
   private[choam] type StatMap =
-    Map[ExchangerImplJvm[_, _], ExchangerImplJvm.Statistics]
+    Map[AnyRef, ExchangerImplJvm.Statistics]
 
   private[choam] final object StatMap {
     def empty: StatMap =
@@ -333,46 +369,8 @@ private object ExchangerImplJvm {
     0xFF
   )
 
-  private[choam] def unsafe[A, B]: ExchangerImplJvm[A, B] = {
-    new ExchangerImplJvm[A, B](d = null)
-  }
-
-  private def mkArray(): AtomicReferenceArray[Node[_]] = {
+  private[choam] def mkArray(): AtomicReferenceArray[ExchangerNode[_]] = {
     // TODO: use padded references
-    new AtomicReferenceArray[Node[_]](ExchangerImplJvm.size)
-  }
-
-  private final class Node[C](val msg: Msg) {
-
-    /**
-     *     .---> result: FinishedEx[C] (fulfiller successfully completed)
-     *    /
-     * null (TODO: use a sentinel)
-     *    \
-     *     ˙---> Rescinded[C] (owner couldn't wait any more for the fulfiller)
-     */
-    val hole: Ref[NodeResult[C]] =
-      Ref.unsafe(null)
-
-    def spinWait(stats: Statistics, ctx: MCAS.ThreadContext): Option[NodeResult[C]] = {
-      @tailrec
-      def go(n: Int): Option[NodeResult[C]] = {
-        if (n > 0) {
-          Backoff.once()
-          val res = ctx.read(this.hole.loc)
-          if (isNull(res)) {
-            go(n - 1)
-          } else {
-            Some(res)
-          }
-        } else {
-          None
-        }
-      }
-      val maxSpin = Math.min(Statistics.defaultSpin << stats.spinShift.toInt, Statistics.maxSpin)
-      val spin = 1 + ctx.random.nextInt(maxSpin)
-      // println(s"spin waiting ${spin} (max. ${maxSpin}) - thread#${Thread.currentThread().getId()}")
-      go(spin)
-    }
+    new AtomicReferenceArray[ExchangerNode[_]](this.size)
   }
 }

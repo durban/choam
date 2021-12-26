@@ -28,7 +28,7 @@ private object Exchanger extends ExchangerCompanionPlatform {
   private[choam] def apply[A, B]: Axn[Exchanger[A, B]] =
     Rxn.unsafe.delay { _ => this.unsafe[A, B] }
 
-  private[choam] abstract class UnsealedExchanger[A, B]
+  private[choam] trait UnsealedExchanger[A, B]
     extends Exchanger[A, B]
 
   // TODO: these are JVM-only:
