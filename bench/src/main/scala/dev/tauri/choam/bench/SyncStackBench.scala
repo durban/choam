@@ -19,6 +19,7 @@ package dev.tauri.choam
 package bench
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.all._
 import io.github.timwspence.cats.stm._
 
@@ -28,7 +29,7 @@ import util._
 import data.{ Stack, TreiberStack, EliminationStack }
 
 @Fork(2)
-@Threads(1) // because it runs on a threadpool
+@Threads(1) // set it to _concurrentOps!
 @BenchmarkMode(Array(Mode.AverageTime))
 class SyncStackBench extends BenchUtils {
 
@@ -36,16 +37,28 @@ class SyncStackBench extends BenchUtils {
 
   final override val waitTime = 0L
 
-  final val N = 512
+  final val N = 480 // divisible by _concurrentOps
 
-  @Benchmark
-  def baselineSingleThreaded(@unused s: BaselineSt): Unit = {
-    run(cats.effect.unsafe.IORuntime.global, IO.unit, size = N)
+  private[this] final def runRepl(rt: IORuntime, task: IO[Unit], size: Int, parallelism: Int): Unit = {
+    val n = size / parallelism
+    task.replicateA(n).unsafeRunSync()(rt) : List[Unit]
+    ()
   }
+
+  private[this] final def runReplZ(rt: zio.Runtime[_], task: zio.Task[Unit], size: Int, parallelism: Int): Unit = {
+    val n = size / parallelism
+    rt.unsafeRunTask(task.replicateZIO(n)) : Iterable[Unit]
+    ()
+  }
+
+  // @Benchmark
+  // def baselineSingleThreaded(@unused s: BaselineSt): Unit = {
+  //   run(cats.effect.unsafe.IORuntime.global, IO.unit, size = N)
+  // }
 
   @Benchmark
   def baseline(s: BaselineSt): Unit = {
-    runPar(s.runtime, IO.unit, size = N, parallelism = s.concurrentOps)
+    runRepl(s.runtime, IO.unit, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -57,7 +70,7 @@ class SyncStackBench extends BenchUtils {
         IO.raiseError(Errors.EmptyStack)
       } else IO.unit
     } yield ()
-    runPar(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
+    runRepl(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -69,7 +82,7 @@ class SyncStackBench extends BenchUtils {
         IO.raiseError(Errors.EmptyStack)
       } else IO.unit
     } yield ()
-    runPar(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
+    runRepl(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -78,7 +91,7 @@ class SyncStackBench extends BenchUtils {
       s.referenceStack.push("foo")
       if (s.referenceStack.tryPop() eq None) throw Errors.EmptyStack
     }
-    runPar(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
+    runRepl(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -87,7 +100,7 @@ class SyncStackBench extends BenchUtils {
       s.lockedStack.push("foo")
       if (s.lockedStack.tryPop() eq None) throw Errors.EmptyStack
     }
-    runPar(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
+    runRepl(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -96,7 +109,7 @@ class SyncStackBench extends BenchUtils {
       s.stmStack.push("foo")
       if (s.stmStack.tryPop() eq None) throw Errors.EmptyStack
     }
-    runPar(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
+    runRepl(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -108,7 +121,7 @@ class SyncStackBench extends BenchUtils {
         IO.raiseError(Errors.EmptyStack)
       } else IO.unit
     } yield ()
-    runPar(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
+    runRepl(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -120,7 +133,7 @@ class SyncStackBench extends BenchUtils {
         zio.ZIO.fail(Errors.EmptyStack)
       } else zio.ZIO.unit
     } yield ()
-    runParZ(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
+    runReplZ(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
   }
 }
 
