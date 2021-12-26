@@ -107,6 +107,12 @@ class IOCancelBench {
     val tsk = s.interruptible(s.ref)
     s.runAndCancelTask(tsk, replicas = N)
   }
+
+  @Benchmark
+  def baselineFinish(s: IOCancelBenchState): Unit = {
+    val tsk = IO.delay { s.goInterruptible(count = 1, s.ref).toString }
+    s.runAndFinishTask(tsk, replicas = N)
+  }
 }
 
 @State(Scope.Thread)
@@ -210,7 +216,7 @@ class IOCancelBenchState {
   }
 
   @tailrec
-  private[this] def goInterruptible(count: Int, ref: AtomicReference[String]): Int = {
+  private[choam] final def goInterruptible(count: Int, ref: AtomicReference[String]): Int = {
     if (ref.compareAndSet("foo", "bar")) {
       count
     } else {
