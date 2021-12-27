@@ -46,7 +46,43 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     }: _*)
   }
 
-  test("RxnProfiler.profiledExchanger") {
+  def simulateRun[A](use: RxnProfiler => F[A])(
+    check: Map[String, ScalarResult] => F[Unit]
+  ): F[A] = {
+    F.bracket(acquire = simulateStart)(use = use)(release = { p =>
+      simulateEnd(p).flatMap { results => check(results) }
+    })
+  }
+
+  def runInFiber[A](tsk: Axn[A]): F[A] = {
+    tsk.run[F].start.flatMap { fib => fib.joinWithNever }
+  }
+
+  test("baseline") {
+    simulateRun { _ => F.unit } { r =>
+      for {
+        _ <- assertEqualsF(r.size, 3)
+        _ <- assertF(r(RxnProfiler.RetriesPerCommit).getScore.isNaN)
+        _ <- assertEqualsF(r(RxnProfiler.Exchanges).getScore, 0.0)
+        _ <- assertF(r(RxnProfiler.ExchangesPerSecond).getScore.isNaN)
+      } yield ()
+    }
+  }
+
+  test("rxn.retriesPerCommit") {
+    for {
+      // no retry:
+      _ <- simulateRun { _ => runInFiber(Rxn.pure(42)) } { r =>
+        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 0.0)
+      }
+      // alts also count:
+      _ <- simulateRun { _ => runInFiber(Rxn.unsafe.retry + Rxn.pure(42)) } { r =>
+        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 1.0)
+      }
+    } yield ()
+  }
+
+  test("rxn.exchanges") {
     for {
       e <- RxnProfiler.profiledExchanger[String, Int].run[F]
       p <- simulateStart

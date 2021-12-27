@@ -38,7 +38,7 @@ import mcas.MCAS.EMCAS
  *
  * Measurements:
  * - rxn.retriesPerCommit:
- *   average number of retries (not including alternatives) per commit
+ *   average number of retries (including alternatives) per commit
  * - rxn.exchangesPerSec:
  *   average number of successful exchanges per second (note: this data
  *   is not collected for every exchanger, only for ones created by
