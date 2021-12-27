@@ -159,8 +159,14 @@ private object RefArray {
     final override def unsafeGetVolatile(): A =
       array.items.get(physicalIdx).asInstanceOf[A]
 
+    final override def unsafeGetPlain(): A =
+      array.items.getPlain(physicalIdx).asInstanceOf[A]
+
     final override def unsafeSetVolatile(nv: A): Unit =
       array.items.set(physicalIdx, nv.asInstanceOf[AnyRef])
+
+    final override def unsafeSetPlain(nv: A): Unit =
+      array.items.setPlain(physicalIdx, nv.asInstanceOf[AnyRef])
 
     final override def unsafeCasVolatile(ov: A, nv: A): Boolean =
       array.items.compareAndSet(physicalIdx, ov.asInstanceOf[AnyRef], nv.asInstanceOf[AnyRef])

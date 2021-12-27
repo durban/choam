@@ -61,8 +61,18 @@ abstract class RefP1P1Base<A, B>
   }
 
   @Override
+  public final A unsafeGetPlain1() {
+    return (A) VALUE_A.get(this);
+  }
+
+  @Override
   public final void unsafeSetVolatile1(A a) {
     VALUE_A.setVolatile(this, a);
+  }
+
+  @Override
+  public final void unsafeSetPlain1(A a) {
+    VALUE_A.set(this, a);
   }
 
   @Override
@@ -140,8 +150,18 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
   }
 
   @Override
+  public final B unsafeGetPlain2() {
+    return (B) VALUE_B.get(this);
+  }
+
+  @Override
   public final void unsafeSetVolatile2(B b) {
     VALUE_B.setVolatile(this, b);
+  }
+
+  @Override
+  public final void unsafeSetPlain2(B b) {
+    VALUE_B.set(this, b);
   }
 
   @Override

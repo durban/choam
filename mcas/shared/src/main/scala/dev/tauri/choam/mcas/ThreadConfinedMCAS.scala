@@ -20,8 +20,6 @@ package mcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-// TODO: this still uses volatile; could be
-// TODO: optimized to avoid barriers
 private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
 
   final override def currentContext(): MCAS.ThreadContext =
@@ -30,7 +28,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
   private[this] val _ctx = new MCAS.ThreadContext {
 
     final override def read[A](ref: MemoryLocation[A]): A =
-      ref.unsafeGetVolatile()
+      ref.unsafeGetPlain()
 
     final override def tryPerform(desc: HalfEMCASDescriptor): Boolean = {
       @tailrec
@@ -38,7 +36,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
         if (it.hasNext) {
           it.next() match {
             case wd: HalfWordDescriptor[a] =>
-              if (equ[a](wd.address.unsafeGetVolatile(), wd.ov)) {
+              if (equ[a](wd.address.unsafeGetPlain(), wd.ov)) {
                 prepare(it)
               } else {
                 false
@@ -54,8 +52,9 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
         if (it.hasNext) {
           it.next() match {
             case wd: HalfWordDescriptor[a] =>
-              val ok = wd.address.unsafeCasVolatile(wd.ov, wd.nv)
-              assert(ok)
+              val old = wd.address.unsafeGetPlain()
+              assert(equ(old, wd.ov))
+              wd.address.unsafeSetPlain(wd.nv)
               execute(it)
           }
         }

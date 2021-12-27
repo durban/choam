@@ -18,32 +18,15 @@
 package dev.tauri.choam
 package refs
 
-import java.util.concurrent.atomic.AtomicReference
-
-import mcas.MemoryLocation
+import mcas.SimpleMemoryLocation
 
 private final class SingleThreadedRefImpl[A](initial: A)(
-  final override val id0: Long,
-  final override val id1: Long,
-  final override val id2: Long,
-  final override val id3: Long,
-) extends Ref[A]
-  with MemoryLocation[A] {
-
-  private[this] val repr =
-    new AtomicReference[A](initial)
-
-  final override def unsafeGetVolatile(): A =
-    repr.get()
-
-  final override def unsafeSetVolatile(nv: A): Unit =
-    repr.set(nv)
-
-  final override def unsafeCasVolatile(ov: A, nv: A): Boolean =
-    repr.compareAndSet(ov, nv)
-
-  final override def unsafeCmpxchgVolatile(ov: A, nv: A): A =
-    repr.compareAndExchange(ov, nv)
+  i0: Long,
+  i1: Long,
+  i2: Long,
+  i3: Long,
+) extends SimpleMemoryLocation[A](initial)(i0, i1, i2, i3)
+  with Ref[A] {
 
   final override def toString: String =
     refStringFrom4Ids(id0, id1, id2, id3)

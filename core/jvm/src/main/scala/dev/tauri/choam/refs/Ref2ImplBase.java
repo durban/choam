@@ -19,9 +19,11 @@ package dev.tauri.choam.refs;
 
 interface Ref2ImplBase<A, B> {
   A unsafeGetVolatile1();
+  A unsafeGetPlain1();
   boolean unsafeCasVolatile1(A ov, A nv);
   A unsafeCmpxchgVolatile1(A ov, A nv);
   void unsafeSetVolatile1(A nv);
+  void unsafeSetPlain1(A nv);
   long id0();
   long id1();
   long id2();

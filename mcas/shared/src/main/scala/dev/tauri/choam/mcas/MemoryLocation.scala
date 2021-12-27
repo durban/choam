@@ -54,7 +54,11 @@ trait MemoryLocation[A] {
 
   def unsafeGetVolatile(): A
 
+  def unsafeGetPlain(): A
+
   def unsafeSetVolatile(nv: A): Unit
+
+  def unsafeSetPlain(nv: A): Unit
 
   def unsafeCasVolatile(ov: A, nv: A): Boolean
 
@@ -77,7 +81,7 @@ object MemoryLocation extends MemoryLocationInstances0 {
   }
 
   private[choam] def unsafeWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
-    new SimpleMemoryLocation[A](initial)(i0, i1, i2, i3)
+    new SimpleMemoryLocation[A](initial)(i0, i1, i2, i3) {}
   }
 
   def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {

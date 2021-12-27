@@ -66,8 +66,18 @@ final class RefP1<A>
   }
 
   @Override
+  public final A unsafeGetPlain() {
+    return (A) VALUE.get(this);
+  }
+
+  @Override
   public final void unsafeSetVolatile(A a) {
     VALUE.setVolatile(this, a);
+  }
+
+  @Override
+  public final void unsafeSetPlain(A a) {
+    VALUE.set(this, a);
   }
 
   @Override

@@ -81,7 +81,7 @@
 - API cleanup:
   - MCAS API review
   - (unsafe) thread-confined mode for running a `Rxn`:
-    - ThreadConfinedMCAS (but should be faster, with no fences)
+    - `ThreadConfinedMCAS`
     - convenience API?
   - Rxn.delay?
     - allocating (but: only `Ref` really needs it, others are built on that)

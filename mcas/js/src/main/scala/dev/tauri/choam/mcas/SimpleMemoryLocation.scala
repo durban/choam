@@ -18,25 +18,40 @@
 package dev.tauri.choam
 package mcas
 
-import java.util.concurrent.atomic.AtomicReference
-
-private final class SimpleMemoryLocation[A](initial: A)(
+// This is JS:
+private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A)(
   override val id0: Long,
   override val id1: Long,
   override val id2: Long,
   override val id3: Long,
-) extends AtomicReference[A](initial)
-  with MemoryLocation[A] {
+) extends MemoryLocation[A] {
 
   final override def unsafeGetVolatile(): A =
-    this.get()
+    this.value
+
+  final override def unsafeGetPlain(): A =
+    this.value
 
   final override def unsafeSetVolatile(nv: A): Unit =
-    this.set(nv)
+    this.value = nv
 
-  final override def unsafeCasVolatile(ov: A, nv: A): Boolean =
-    this.compareAndSet(ov, nv)
+  final override def unsafeSetPlain(nv: A): Unit =
+    this.value = nv
 
-  final override def unsafeCmpxchgVolatile(ov: A, nv: A): A =
-    this.compareAndExchange(ov, nv)
+  final override def unsafeCasVolatile(ov: A, nv: A): Boolean = {
+    if (equ(this.value, ov)) {
+      this.value = nv
+      true
+    } else {
+      false
+    }
+  }
+
+  final override def unsafeCmpxchgVolatile(ov: A, nv: A): A = {
+    val witness = this.value
+    if (equ(witness, ov)) {
+      this.value = nv
+    }
+    witness
+  }
 }
