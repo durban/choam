@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import java.util.concurrent.atomic.LongAdder
+
 sealed trait Exchanger[A, B] {
   def exchange: Rxn[A, B]
   def dual: Exchanger[B, A]
@@ -29,8 +31,50 @@ private object Exchanger extends ExchangerCompanionPlatform {
   private[choam] def apply[A, B]: Axn[Exchanger[A, B]] =
     Rxn.unsafe.delay { _ => this.unsafe[A, B] }
 
+  private[choam] def profiled[A, B](counter: LongAdder): Axn[Exchanger[A, B]] = {
+    this.apply[A, B].flatMapF { underlying =>
+      Rxn.unsafe.delay { _ =>
+        new ProfiledExchanger[A, B](
+          d = null,
+          underlying = underlying,
+          counter = counter,
+        )
+      }
+    }
+  }
+
   private[choam] trait UnsealedExchanger[A, B]
     extends Exchanger[A, B]
+
+  private[this] final class ProfiledExchanger[A, B](
+    d: ProfiledExchanger[B, A],
+    underlying: Exchanger[A, B],
+    counter: LongAdder,
+  ) extends UnsealedExchanger[A, B] {
+
+    private[this] val isPrimary: Boolean =
+      d eq null
+
+    final override def exchange: Rxn[A, B] = {
+      // Every exchange has 2 sides, so only
+      // the primary side increments the counter:
+      if (this.isPrimary) {
+        underlying.exchange.postCommit(Rxn.unsafe.delay { _ =>
+          counter.increment()
+        })
+      } else {
+        underlying.exchange
+      }
+    }
+
+    final override val dual: Exchanger[B, A] = {
+      if (d ne null) d
+      else new ProfiledExchanger[B, A](this, underlying.dual, counter)
+    }
+
+    private[choam] final override val key: AnyRef =
+      underlying.key
+  }
 
   // TODO: these are JVM-only:
 

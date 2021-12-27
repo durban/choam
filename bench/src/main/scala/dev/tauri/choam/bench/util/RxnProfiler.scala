@@ -39,6 +39,10 @@ import mcas.MCAS.EMCAS
  * Measurements:
  * - rxn.retriesPerCommit:
  *   average number of retries (not including alternatives) per commit
+ * - rxn.exchangesPerSec:
+ *   average number of successful exchanges per second (note: this data
+ *   is not collected for every exchanger, only for ones created by
+ *   `RxnProfiler.profiledExchanger`)
  */
 final class RxnProfiler extends InternalProfiler {
 
@@ -77,13 +81,13 @@ final class RxnProfiler extends InternalProfiler {
     ir: IterationResult
   ): ju.Collection[_ <: Result[_]] = {
     this.afterTime = System.nanoTime()
-    ju.List.of[ScalarResult](
-      countRetriesPerCommit(),
-      countExchanges(),
-    )
+    val res = new ju.ArrayList[ScalarResult]
+    res.addAll(countRetriesPerCommit())
+    res.addAll(countExchanges())
+    res
   }
 
-  private[this] def countRetriesPerCommit(): ScalarResult = {
+  private[this] def countRetriesPerCommit(): ju.List[ScalarResult] = {
     val cr = EMCAS.countCommitsAndRetries()
     val commitsAfter = cr._1
     val retriesAfter = cr._2
@@ -94,29 +98,40 @@ final class RxnProfiler extends InternalProfiler {
     } else {
       allRetries.toDouble / allCommits.toDouble
     }
-    new ScalarResult(
-      RxnProfiler.RetriesPerCommit,
-      retriesPerCommit,
-      RxnProfiler.UnitRetriesPerCommit,
-      AggregationPolicy.AVG,
+    ju.List.of(
+      new ScalarResult(
+        RxnProfiler.RetriesPerCommit,
+        retriesPerCommit,
+        RxnProfiler.UnitRetriesPerCommit,
+        AggregationPolicy.AVG,
+      )
     )
   }
 
-  private[this] def countExchanges(): ScalarResult = {
+  private[this] def countExchanges(): ju.List[ScalarResult] = {
     val exchangesAfter = RxnProfiler.exchangeCounter.sum()
+    val exchanges = (exchangesAfter - exchangesBefore).toDouble
     val elapsedTime = this.afterTime - this.beforeTime
     val exchangesPerSecond = if (elapsedTime == 0L) {
       Double.NaN
     } else {
       val elapsedSeconds =
         TimeUnit.SECONDS.convert(elapsedTime, TimeUnit.NANOSECONDS)
-      (exchangesAfter - exchangesBefore).toDouble / elapsedSeconds.toDouble
+      exchanges / elapsedSeconds.toDouble
     }
-    new ScalarResult(
-      RxnProfiler.ExchangesPerSecond,
-      exchangesPerSecond,
-      RxnProfiler.UnitExchangesPerSecond,
-      AggregationPolicy.AVG,
+    ju.List.of(
+      new ScalarResult(
+        RxnProfiler.ExchangesPerSecond,
+        exchangesPerSecond,
+        RxnProfiler.UnitExchangesPerSecond,
+        AggregationPolicy.AVG,
+      ),
+      new ScalarResult(
+        RxnProfiler.Exchanges,
+        exchanges,
+        RxnProfiler.UnitCount,
+        AggregationPolicy.SUM,
+      )
     )
   }
 }
@@ -127,7 +142,11 @@ object RxnProfiler {
   final val UnitRetriesPerCommit = "retries/commit"
   final val ExchangesPerSecond = "rxn.exchangesPerSec"
   final val UnitExchangesPerSecond = "xchg/s"
+  final val Exchanges = "rxn.exchanges"
   final val UnitCount = "counts"
+
+  final def profiledExchanger[A, B]: Axn[Exchanger[A, B]] =
+    Exchanger.profiled[A, B](this.exchangeCounter)
 
   private[choam] final val exchangeCounter: LongAdder =
     new LongAdder

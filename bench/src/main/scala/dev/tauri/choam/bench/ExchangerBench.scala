@@ -54,19 +54,12 @@ object ExchangerBench {
   class St {
 
     private[this] val exchanger: Exchanger[String, String] =
-      Rxn.unsafe.exchanger[String, String].unsafePerform((), mcas.MCAS.EMCAS)
+      RxnProfiler.profiledExchanger[String, String].unsafePerform((), mcas.MCAS.EMCAS)
 
-    // Every exchange has 2 sides, so only
-    // the left side increments the counter:
-    val left: Rxn[String, Option[String]] = {
-      (exchanger.exchange >>> Rxn.unsafe.delay { r =>
-        RxnProfiler.exchangeCounter.increment()
-        r
-      }).?
-    }
+    val left: Rxn[String, Option[String]] =
+      exchanger.exchange.?
 
-    val right: Rxn[String, Option[String]] = {
+    val right: Rxn[String, Option[String]] =
       exchanger.dual.exchange.?
-    }
   }
 }
