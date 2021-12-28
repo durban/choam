@@ -42,13 +42,13 @@ class ArrowBench {
 
   @Benchmark
   def updDerived(s: ArrowBench.USt, bh: Blackhole, k: KCASImplState): Unit = {
-    val r = Rxn.ref.updDerived[Long, String, Long](s.ref) { (i, s) => (i + 1, s.length.toLong) }
+    val r = s.updDerived(s.refs(Math.abs(k.nextInt()) % ArrowBench.size))
     bh.consume(r.unsafePerform(k.nextString(), k.kcasImpl))
   }
 
   @Benchmark
   def updPrimitive(s: ArrowBench.USt, bh: Blackhole, k: KCASImplState): Unit = {
-    val r = Rxn.ref.upd[Long, String, Long](s.ref) { (i, s) => (i + 1, s.length.toLong) }
+    val r = s.updPrimitive(s.refs(Math.abs(k.nextInt()) % ArrowBench.size))
     bh.consume(r.unsafePerform(k.nextString(), k.kcasImpl))
   }
 }
@@ -80,7 +80,17 @@ object ArrowBench {
 
   @State(Scope.Benchmark)
   class USt {
-    // TODO: there is contention on this one ref when run with more threads
-    val ref: Ref[Long] = Ref.unsafe[Long](0L)
+
+    val refs: List[Ref[Long]] = List.fill(size) {
+      Ref.unsafe[Long](ThreadLocalRandom.current().nextLong())
+    }
+
+    def updDerived(ref: Ref[Long]): Rxn[String, Long] = {
+      Rxn.ref.updDerived[Long, String, Long](ref) { (i, s) => (i + 1, s.length.toLong) }
+    }
+
+    def updPrimitive(ref: Ref[Long]): Rxn[String, Long] = {
+      Rxn.ref.upd[Long, String, Long](ref) { (i, s) => (i + 1, s.length.toLong) }
+    }
   }
 }
