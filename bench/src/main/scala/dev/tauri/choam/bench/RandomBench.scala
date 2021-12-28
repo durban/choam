@@ -31,13 +31,6 @@ import util._
 class RandomBench {
 
   @Benchmark
-  def threadLocalSimple(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-    bh.consume(
-      s.rndThreadLocalSimple.nextInt.unsafePerformInternal(null, k.kcasCtx)
-    )
-  }
-
-  @Benchmark
   def threadLocalContext(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
     bh.consume(
       s.rndThreadLocalContext.nextInt.unsafePerformInternal(null, k.kcasCtx)
@@ -67,10 +60,8 @@ object RandomBench {
   class St {
     val baseline: Axn[Int] =
       Rxn.pure(42)
-    val rndThreadLocalSimple: Random[Axn] =
-      Rxn.rxnRandomSimpleThreadLocal.unsafeRun(mcas.MCAS.EMCAS)
     val rndThreadLocalContext: Random[Axn] =
-      Rxn.rxnRandomContextThreadLocal.unsafeRun(mcas.MCAS.EMCAS)
+      Rxn.fastRandom.unsafeRun(mcas.MCAS.EMCAS)
     val rndSecure: Random[Axn] =
       Rxn.secureRandom.unsafeRun(mcas.MCAS.EMCAS)
   }

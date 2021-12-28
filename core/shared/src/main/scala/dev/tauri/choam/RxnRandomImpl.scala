@@ -18,50 +18,41 @@
 package dev.tauri.choam
 
 import java.util.{ Random => JRandom }
-import java.util.concurrent.ThreadLocalRandom
 
 import scala.util.{ Random => SRandom }
 
 import cats.effect.std.Random
 
-private object RxnRandomImpl {
+import CompatPlatform.SecureRandom
 
-  def makeNewThreadLocalRandom[X](): Random[Rxn[X, *]] = {
-    new RxnRandomImpl[X] {
-      protected final override def jRnd: JRandom =
-        ThreadLocalRandom.current() // TODO: try using `Rxn.unsafe.context` and benchmark!
-    }
+// TODO: Maybe create a deterministic random generator, which has
+// TODO: its state in a `Ref`, and thus updated transactionally.
+
+private object RxnRandomImplSecure {
+
+  def unsafe[X](): Random[Rxn[X, *]] = {
+    val sr = new SecureRandom
+    // force seeding the generator here:
+    val dummy = new Array[Byte](4)
+    sr.nextBytes(dummy)
+    new RxnRandomImplSecure[X](sr)
   }
-
-  def makeNewThreadLocalRandomWithContext[X](): Random[Rxn[X, *]] = {
-    new RxnRandomImplWithContext[X]
-  }
-
-  def makeNewSecureRandom[X](): Random[Rxn[X, *]] = {
-    new RxnRandomImpl[X] {
-      protected final override val jRnd: JRandom = {
-        val sr = new CompatPlatform.SecureRandom
-        // force seeding the generator here:
-        val dummy = new Array[Byte](4)
-        sr.nextBytes(dummy)
-        sr
-      }
-    }
-  }
-
-  // TODO: Maybe create a deterministic random generator, which has
-  // TODO: its state in a `Ref`, and thus updated transactionally.
 }
 
-private sealed abstract class RxnRandomImpl[X] private ()
- extends Random[Rxn[X, *]] {
+private object RxnRandomImplThreadLocal {
+
+  def unsafe[X](): Random[Rxn[X, *]] = {
+    new RxnRandomImplThreadLocal[X]
+  }
+}
+
+private final class RxnRandomImplSecure[X] private (private[this] val jRnd: SecureRandom)
+  extends Random[Rxn[X, *]] {
 
   import Rxn.unsafe.delay
 
-  protected def jRnd: JRandom
-
-  protected def sRnd: SRandom =
-    new SRandom(jRnd) // TODO: can't cache due to ThreadLocalRandom
+  private[this] val sRnd: SRandom =
+    new SRandom(jRnd)
 
   final override def betweenDouble(minInclusive: Double, maxExclusive: Double): Rxn[X, Double] =
     delay { _ => sRnd.between(minInclusive, maxExclusive) }
@@ -120,13 +111,18 @@ private sealed abstract class RxnRandomImpl[X] private ()
     delay { _ => sRnd.shuffle[A, Vector[A]](v) }
 }
 
-private final class RxnRandomImplWithContext[X]
- extends Random[Rxn[X, *]] {
+private final class RxnRandomImplThreadLocal[X] private ()
+  extends Random[Rxn[X, *]] {
 
   import Rxn.unsafe.delayContext
 
-  protected def sRnd(jRnd: JRandom): SRandom =
-    new SRandom(jRnd) // TODO: can't cache due to ThreadLocalRandom
+  protected def sRnd(jRnd: JRandom): SRandom = {
+    // TODO: Can't cache because ThreadLocalRandom.current()
+    // TODO: is not guaranteed to always return the same object.
+    // TODO: (On OpenJDK 11+ it seems to always do, but the
+    // TODO: documentation doesn't gaurantee this behavior.)
+    new SRandom(jRnd)
+  }
 
   final override def betweenDouble(minInclusive: Double, maxExclusive: Double): Rxn[X, Double] =
     delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }

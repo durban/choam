@@ -155,7 +155,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     res
   }
 
-  private[this] def countRetriesPerCommit(): ju.List[ScalarResult] = {
+  private[this] final def countRetriesPerCommit(): ju.List[ScalarResult] = {
     val cr = EMCAS.countCommitsAndRetries()
     val commitsAfter = cr._1
     val retriesAfter = cr._2
@@ -176,7 +176,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     )
   }
 
-  private[this] def countExchanges(): ju.List[ScalarResult] = {
+  private[this] final def countExchanges(): ju.List[ScalarResult] = {
     val exchangesAfter = RxnProfiler.exchangeCounter.sum()
     val exchangeCount = (exchangesAfter - exchangesBefore).toDouble
     val elapsedTime = this.afterTime - this.beforeTime

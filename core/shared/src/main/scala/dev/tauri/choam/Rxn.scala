@@ -259,18 +259,11 @@ object Rxn extends RxnInstances0 {
   final def unique: Axn[Unique.Token] =
     unsafe.delay { _ => new Unique.Token() }
 
-  // TODO: use rxnRandomContextThreadLocal, because it's faster
   final def fastRandom: Axn[Random[Axn]] =
-    this.rxnRandomSimpleThreadLocal
-
-  private[choam] final def rxnRandomSimpleThreadLocal: Axn[Random[Axn]] =
-    unsafe.delay { _ => RxnRandomImpl.makeNewThreadLocalRandom() }
-
-  private[choam] final def rxnRandomContextThreadLocal: Axn[Random[Axn]] =
-    unsafe.delay { _ => RxnRandomImpl.makeNewThreadLocalRandomWithContext() }
+    unsafe.delay { _ => RxnRandomImplThreadLocal.unsafe() }
 
   final def secureRandom: Axn[Random[Axn]] =
-    unsafe.delay { _ => RxnRandomImpl.makeNewSecureRandom() }
+    unsafe.delay { _ => RxnRandomImplSecure.unsafe() }
 
   final def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
     ra.updWith[Any, (A, B)] { (a, _) =>
