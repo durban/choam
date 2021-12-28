@@ -195,6 +195,7 @@ lazy val bench = project.in(file("bench"))
     dependencies.scalaStm.value,
     dependencies.catsStm.value,
     dependencies.zioStm.value,
+    dependencies.decline.value,
   ))
   .enablePlugins(JmhPlugin)
   .settings(jmhSettings)
@@ -358,9 +359,11 @@ lazy val dependencies = new {
   val catsMtl = Def.setting("org.typelevel" %%% "cats-mtl" % catsMtlVersion)
   val catsMtlLaws = Def.setting("org.typelevel" %%% "cats-mtl-laws" % catsMtlVersion)
   val fs2 = Def.setting("co.fs2" %%% "fs2-core" % fs2Version)
+  val decline = Def.setting("com.monovore" %%% "decline" % "2.2.0")
 
   // JVM:
   val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.7.0")
+  val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.16")
 
   // JS:
   val scalaJsLocale = Def.setting[Seq[ModuleID]](Seq(
@@ -387,8 +390,6 @@ lazy val dependencies = new {
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.11.0")
   val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "3.3.0-RC1")
   val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.0-RC1")
-
-  val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.16")
 }
 
 addCommandAlias("checkScalafix", "scalafixAll --check")

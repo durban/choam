@@ -32,8 +32,8 @@ final class RxnProfilerSpecIO
 
 trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
-  def simulateStart: F[RxnProfiler] = F.delay {
-    val p = new RxnProfiler
+  def simulateStart(config: String = "debug"): F[RxnProfiler] = F.delay {
+    val p = new RxnProfiler(config)
     p.beforeIteration(null, null) // TODO: nulls
     p
   }
@@ -49,7 +49,13 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
   def simulateRun[A](use: RxnProfiler => F[A])(
     check: Map[String, ScalarResult] => F[Unit]
   ): F[A] = {
-    F.bracket(acquire = simulateStart)(use = use)(release = { p =>
+    simulateRunConfig(config = "debug")(use = use)(check = check)
+  }
+
+  def simulateRunConfig[A](config: String)(use: RxnProfiler => F[A])(
+    check: Map[String, ScalarResult] => F[Unit]
+  ): F[A] = {
+    F.bracket(acquire = simulateStart(config))(use = use)(release = { p =>
       simulateEnd(p).flatMap { results => check(results) }
     })
   }
@@ -63,10 +69,40 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
       for {
         _ <- assertEqualsF(r.size, 3)
         _ <- assertF(r(RxnProfiler.RetriesPerCommit).getScore.isNaN)
-        _ <- assertEqualsF(r(RxnProfiler.Exchanges).getScore, 0.0)
+        _ <- assertEqualsF(r(RxnProfiler.ExchangeCount).getScore, 0.0)
         _ <- assertF(r(RxnProfiler.ExchangesPerSecond).getScore.isNaN)
       } yield ()
     }
+  }
+
+  test("config") {
+    for {
+      _ <- simulateRunConfig("") { _ => F.unit } { r => F.delay {
+        assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
+        assert(r.get(RxnProfiler.ExchangesPerSecond).isDefined)
+        assert(r.get(RxnProfiler.ExchangeCount).isEmpty)
+      }}
+      _ <- simulateRunConfig("debug") { _ => F.unit } { r => F.delay {
+        assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
+        assert(r.get(RxnProfiler.ExchangesPerSecond).isDefined)
+        assert(r.get(RxnProfiler.ExchangeCount).isDefined)
+      }}
+      _ <- simulateRunConfig("retries") { _ => F.unit } { r => F.delay {
+        assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
+        assert(r.get(RxnProfiler.ExchangesPerSecond).isEmpty)
+        assert(r.get(RxnProfiler.ExchangeCount).isEmpty)
+      }}
+      _ <- simulateRunConfig("retries;exchanges") { _ => F.unit } { r => F.delay {
+        assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
+        assert(r.get(RxnProfiler.ExchangesPerSecond).isDefined)
+        assert(r.get(RxnProfiler.ExchangeCount).isEmpty)
+      }}
+      _ <- simulateRunConfig("retries;exchangeCount") { _ => F.unit } { r => F.delay {
+        assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
+        assert(r.get(RxnProfiler.ExchangesPerSecond).isEmpty)
+        assert(r.get(RxnProfiler.ExchangeCount).isDefined)
+      }}
+    } yield ()
   }
 
   test("rxn.retriesPerCommit") {
@@ -85,12 +121,12 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
   test("rxn.exchanges") {
     for {
       e <- RxnProfiler.profiledExchanger[String, Int].run[F]
-      p <- simulateStart
+      p <- simulateStart()
       fib <- e.exchange[F]("foo").start
       _ <- assertResultF(e.dual.exchange[F](42), "foo")
       _ <- assertResultF(fib.joinWithNever, 42)
       r <- simulateEnd(p)
-      _ <- assertEqualsF(r(RxnProfiler.Exchanges).getScore, 1.0)
+      _ <- assertEqualsF(r(RxnProfiler.ExchangeCount).getScore, 1.0)
     } yield ()
   }
 }

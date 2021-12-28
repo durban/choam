@@ -80,6 +80,7 @@ object ArrowBench {
 
   @State(Scope.Benchmark)
   class USt {
+    // TODO: there is contention on this one ref when run with more threads
     val ref: Ref[Long] = Ref.unsafe[Long](0L)
   }
 }
