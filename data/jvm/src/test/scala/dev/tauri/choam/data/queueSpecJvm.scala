@@ -30,7 +30,7 @@ final class QueueSpecJvm_SpinLockMCAS_IO
   with QueueSpecJvm[IO]
   with SpecSpinLockMCAS
 
-final class QueueSpecJvm_SpinLockMCAS_ZIO
+final class QueueSpecJvm_SpinLockMCAS_AIO
   extends BaseSpecZIO
   with QueueSpecJvm[zio.Task]
   with SpecSpinLockMCAS
@@ -40,7 +40,7 @@ final class QueueSpecJvm_EMCAS_IO
   with QueueSpecJvm[IO]
   with SpecEMCAS
 
-final class QueueSpecJvm_EMCAS_ZIO
+final class QueueSpecJvm_EMCAS_AIO
   extends BaseSpecZIO
   with QueueSpecJvm[zio.Task]
   with SpecEMCAS
@@ -50,7 +50,7 @@ final class QueueWithRemoveSpecJvm_SpinLockMCAS_IO
   with QueueWithRemoveSpecJvm[IO]
   with SpecSpinLockMCAS
 
-final class QueueWithRemoveSpecJvm_SpinLockMCAS_ZIO
+final class QueueWithRemoveSpecJvm_SpinLockMCAS_AIO
   extends BaseSpecZIO
   with QueueWithRemoveSpecJvm[zio.Task]
   with SpecSpinLockMCAS
@@ -60,7 +60,7 @@ final class QueueWithRemoveSpecJvm_EMCAS_IO
   with QueueWithRemoveSpecJvm[IO]
   with SpecEMCAS
 
-final class QueueWithRemoveSpecJvm_EMCAS_ZIO
+final class QueueWithRemoveSpecJvm_EMCAS_AIO
   extends BaseSpecZIO
   with QueueWithRemoveSpecJvm[zio.Task]
   with SpecEMCAS

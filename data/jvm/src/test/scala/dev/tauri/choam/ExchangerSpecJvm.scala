@@ -28,7 +28,7 @@ final class ExchangerSpecCommon_EMCAS_IO
   with SpecEMCAS
   with ExchangerSpecCommon[IO]
 
-final class ExchangerSpecCommon_EMCAS_ZIO
+final class ExchangerSpecCommon_EMCAS_AIO
   extends BaseSpecZIO
   with SpecEMCAS
   with ExchangerSpecCommon[zio.Task]
@@ -38,7 +38,7 @@ final class ExchangerSpecJvm_EMCAS_IO
   with SpecEMCAS
   with ExchangerSpecJvm[IO]
 
-final class ExchangerSpecJvm_EMCAS_ZIO
+final class ExchangerSpecJvm_EMCAS_AIO
   extends BaseSpecZIO
   with SpecEMCAS
   with ExchangerSpecJvm[zio.Task]
