@@ -132,8 +132,12 @@ trait RandomSpec[F[_]]
           !Character.isHighSurrogate(alnum) &&
           !Character.isLowSurrogate(alnum)
         ) *> assertF {
-          val scr = Character.UnicodeScript.of(alnum.toInt)
-          (scr eq Character.UnicodeScript.LATIN) || (scr eq Character.UnicodeScript.COMMON)
+          val chr = alnum.toInt
+          (
+            (chr >= 'a'.toInt) && (chr <= 'z'.toInt) ||
+            (chr >= 'A'.toInt) && (chr <= 'Z'.toInt) ||
+            (chr >= '0'.toInt) && (chr <= '9'.toInt)
+          )
         }
       } *> (
         rnd.nextAlphaNumeric.replicateA(32).run[F].flatMap { alnums =>
