@@ -30,7 +30,7 @@ import data.{ Stack, TreiberStack, EliminationStack }
 
 @Fork(2)
 @Threads(1) // set it to _concurrentOps!
-@BenchmarkMode(Array(Mode.AverageTime))
+@BenchmarkMode(Array(Mode.AverageTime)) // TODO: maybe should be throughput
 class SyncStackBench extends BenchUtils {
 
   import SyncStackBench._

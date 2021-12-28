@@ -25,6 +25,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 @Fork(6)
+// TODO: @BenchmarkMode(Mode.AverageTime)
 class GlobalCompareBench {
 
   @Benchmark

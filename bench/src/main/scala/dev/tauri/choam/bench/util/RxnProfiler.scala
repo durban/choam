@@ -35,6 +35,7 @@ import mcas.MCAS.EMCAS
  * How to use: `-prof dev.tauri.choam.bench.util.RxnProfiler`
  *
  * Configuration: currently none.
+ * TODO: make it configurable which results to measure/include.
  *
  * Measurements:
  * - rxn.retriesPerCommit:

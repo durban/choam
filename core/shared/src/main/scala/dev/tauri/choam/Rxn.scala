@@ -259,7 +259,7 @@ object Rxn extends RxnInstances0 {
   final def unique: Axn[Unique.Token] =
     unsafe.delay { _ => new Unique.Token() }
 
-  // TODO: check with JMH if it's really fast
+  // TODO: use rxnRandomContextThreadLocal, because it's faster
   final def fastRandom: Axn[Random[Axn]] =
     this.rxnRandomSimpleThreadLocal
 
