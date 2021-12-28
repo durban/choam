@@ -25,44 +25,44 @@ import scala.jdk.CollectionConverters._
 
 import cats.effect.IO
 
-final class QueueSpecJvm_SpinLockMCAS_IO
-  extends BaseSpecIO
-  with QueueSpecJvm[IO]
-  with SpecSpinLockMCAS
-
 final class QueueSpecJvm_SpinLockMCAS_AIO
   extends BaseSpecZIO
   with QueueSpecJvm[zio.Task]
   with SpecSpinLockMCAS
 
-final class QueueSpecJvm_EMCAS_IO
+final class QueueSpecJvm_SpinLockMCAS_BIO
   extends BaseSpecIO
   with QueueSpecJvm[IO]
-  with SpecEMCAS
+  with SpecSpinLockMCAS
 
 final class QueueSpecJvm_EMCAS_AIO
   extends BaseSpecZIO
   with QueueSpecJvm[zio.Task]
   with SpecEMCAS
 
-final class QueueWithRemoveSpecJvm_SpinLockMCAS_IO
+final class QueueSpecJvm_EMCAS_BIO
   extends BaseSpecIO
-  with QueueWithRemoveSpecJvm[IO]
-  with SpecSpinLockMCAS
+  with QueueSpecJvm[IO]
+  with SpecEMCAS
 
 final class QueueWithRemoveSpecJvm_SpinLockMCAS_AIO
   extends BaseSpecZIO
   with QueueWithRemoveSpecJvm[zio.Task]
   with SpecSpinLockMCAS
 
-final class QueueWithRemoveSpecJvm_EMCAS_IO
+final class QueueWithRemoveSpecJvm_SpinLockMCAS_BIO
   extends BaseSpecIO
   with QueueWithRemoveSpecJvm[IO]
-  with SpecEMCAS
+  with SpecSpinLockMCAS
 
 final class QueueWithRemoveSpecJvm_EMCAS_AIO
   extends BaseSpecZIO
   with QueueWithRemoveSpecJvm[zio.Task]
+  with SpecEMCAS
+
+final class QueueWithRemoveSpecJvm_EMCAS_BIO
+  extends BaseSpecIO
+  with QueueWithRemoveSpecJvm[IO]
   with SpecEMCAS
 
 trait QueueWithRemoveSpecJvm[F[_]]
