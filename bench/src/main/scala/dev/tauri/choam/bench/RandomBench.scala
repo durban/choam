@@ -37,12 +37,24 @@ class RandomBench {
     )
   }
 
-  @Benchmark
-  def secureRandom(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+  def threadLocalContextBetweenInt(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
     bh.consume(
-      s.rndSecure.nextInt.unsafePerformInternal(null, k.kcasCtx)
+      s.rndThreadLocalContext.betweenInt(0, 8388608).unsafePerformInternal(null, k.kcasCtx)
     )
   }
+
+  def threadLocalContextBetweenIntCached(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+    bh.consume(
+      s.rndThreadLocalContextCached.betweenInt(0, 8388608).unsafePerformInternal(null, k.kcasCtx)
+    )
+  }
+
+  // @Benchmark
+  // def secureRandom(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+  //   bh.consume(
+  //     s.rndSecure.nextInt.unsafePerformInternal(null, k.kcasCtx)
+  //   )
+  // }
 
   @Benchmark
   def baseline(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
@@ -62,6 +74,8 @@ object RandomBench {
       Rxn.pure(42)
     val rndThreadLocalContext: Random[Axn] =
       Rxn.fastRandom.unsafeRun(mcas.MCAS.EMCAS)
+    val rndThreadLocalContextCached: Random[Axn] =
+      Rxn.fastRandomCached.unsafeRun(mcas.MCAS.EMCAS)
     val rndSecure: Random[Axn] =
       Rxn.secureRandom.unsafeRun(mcas.MCAS.EMCAS)
   }

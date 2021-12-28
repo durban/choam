@@ -73,12 +73,32 @@ trait RandomSpec[F[_]]
     Rxn.fastRandom.run[F].map(checkNextLong)
   }
 
+  test("Rxn.fastRandom nextAlphaNumeric") {
+    Rxn.fastRandom.run[F].map(checkNextAlphaNumeric)
+  }
+
+  test("Rxn.fastRandomCached betweenDouble") {
+    Rxn.fastRandomCached.run[F].map(checkBetweenDouble)
+  }
+
+  test("Rxn.fastRandomCached nextLong") {
+    Rxn.fastRandomCached.run[F].map(checkNextLong)
+  }
+
+  test("Rxn.fastRandomCached nextAlphaNumeric") {
+    Rxn.fastRandomCached.run[F].map(checkNextAlphaNumeric)
+  }
+
   test("Rxn.secureRandom betweenDouble") {
     Rxn.secureRandom.run[F].map(checkBetweenDouble)
   }
 
   test("Rxn.secureRandom nextLong") {
     Rxn.secureRandom.run[F].map(checkNextLong)
+  }
+
+  test("Rxn.secureRandom nextAlphaNumeric") {
+    Rxn.secureRandom.run[F].map(checkNextAlphaNumeric)
   }
 
   def checkBetweenDouble(rnd: Random[Axn]): PropF[F] = {
@@ -101,6 +121,25 @@ trait RandomSpec[F[_]]
       (rnd.nextLong * rnd.nextLong).run[F].flatMap { nn =>
         assertNotEqualsF(nn._1, nn._2)
       }
+    }
+  }
+
+  def checkNextAlphaNumeric(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (_: Long) =>
+      rnd.nextAlphaNumeric.run[F].flatMap { alnum =>
+        assertF(
+          Character.isBmpCodePoint(clue(alnum).toInt) &&
+          !Character.isHighSurrogate(alnum) &&
+          !Character.isLowSurrogate(alnum)
+        ) *> assertF {
+          val scr = Character.UnicodeScript.of(alnum.toInt)
+          (scr eq Character.UnicodeScript.LATIN) || (scr eq Character.UnicodeScript.COMMON)
+        }
+      } *> (
+        rnd.nextAlphaNumeric.replicateA(32).run[F].flatMap { alnums =>
+          assertF(clue(alnums.toSet.size) >= 16)
+        }
+      )
     }
   }
 }

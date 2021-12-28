@@ -262,6 +262,9 @@ object Rxn extends RxnInstances0 {
   final def fastRandom: Axn[Random[Axn]] =
     unsafe.delay { _ => RxnRandomImplThreadLocal.unsafe() }
 
+  private[choam] final def fastRandomCached: Axn[Random[Axn]] =
+    unsafe.delay { _ => RxnRandomImplThreadLocalCached.unsafe() }
+
   final def secureRandom: Axn[Random[Axn]] =
     unsafe.delay { _ => RxnRandomImplSecure.unsafe() }
 

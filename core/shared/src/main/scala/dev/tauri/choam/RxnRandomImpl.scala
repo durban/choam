@@ -17,7 +17,8 @@
 
 package dev.tauri.choam
 
-import java.util.{ Random => JRandom }
+import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.atomic.AtomicReference
 
 import scala.util.{ Random => SRandom }
 
@@ -116,12 +117,96 @@ private final class RxnRandomImplThreadLocal[X] private ()
 
   import Rxn.unsafe.delayContext
 
-  protected def sRnd(jRnd: JRandom): SRandom = {
+  private[this] final def sRnd(jRnd: ThreadLocalRandom): SRandom = {
     // TODO: Can't cache because ThreadLocalRandom.current()
     // TODO: is not guaranteed to always return the same object.
     // TODO: (On OpenJDK 11+ it seems to always do, but the
     // TODO: documentation doesn't gaurantee this behavior.)
     new SRandom(jRnd)
+  }
+
+  final override def betweenDouble(minInclusive: Double, maxExclusive: Double): Rxn[X, Double] =
+    delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }
+
+  final override def betweenFloat(minInclusive: Float, maxExclusive: Float): Rxn[X, Float] =
+    delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }
+
+  final override def betweenInt(minInclusive: Int, maxExclusive: Int): Rxn[X, Int] =
+    delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }
+
+  final override def betweenLong(minInclusive: Long, maxExclusive: Long): Rxn[X, Long] =
+    delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }
+
+  final override def nextAlphaNumeric: Rxn[X, Char] =
+    delayContext { ctx => sRnd(ctx.random).alphanumeric.head } // TODO: optimize
+
+  final override def nextBoolean: Rxn[X, Boolean] =
+    delayContext { ctx => ctx.random.nextBoolean() }
+
+  final override def nextBytes(n: Int): Rxn[X, Array[Byte]] = {
+    require(n >= 0)
+    delayContext { ctx => sRnd(ctx.random).nextBytes(n) }
+  }
+
+  final override def nextDouble: Rxn[X, Double] =
+    delayContext { ctx => ctx.random.nextDouble() }
+
+  final override def nextFloat: Rxn[X, Float] =
+    delayContext { ctx => ctx.random.nextFloat() }
+
+  final override def nextGaussian: Rxn[X, Double] =
+    delayContext { ctx => ctx.random.nextGaussian() }
+
+  final override def nextInt: Rxn[X, Int] =
+    delayContext { ctx => ctx.random.nextInt() }
+
+  final override def nextIntBounded(n: Int): Rxn[X, Int] =
+    delayContext { ctx => ctx.random.nextInt(n) }
+
+  final override def nextLong: Rxn[X, Long] =
+    delayContext { ctx => ctx.random.nextLong() }
+
+  final override def nextLongBounded(n: Long): Rxn[X, Long] =
+    delayContext { ctx => sRnd(ctx.random).nextLong(n) }
+
+  final override def nextPrintableChar: Rxn[X, Char] =
+    delayContext { ctx => sRnd(ctx.random).nextPrintableChar() }
+
+  final override def nextString(length: Int): Rxn[X, String] =
+    delayContext { ctx => sRnd(ctx.random).nextString(length) }
+
+  final override def shuffleList[A](l: List[A]): Rxn[X, List[A]] =
+    delayContext { ctx => sRnd(ctx.random).shuffle[A, List[A]](l) }
+
+  final override def shuffleVector[A](v: Vector[A]): Rxn[X, Vector[A]] =
+    delayContext { ctx => sRnd(ctx.random).shuffle[A, Vector[A]](v) }
+}
+
+private object RxnRandomImplThreadLocalCached {
+
+  def unsafe[X](): Random[Rxn[X, *]] = {
+    new RxnRandomImplThreadLocalCached[X]
+  }
+}
+
+private final class RxnRandomImplThreadLocalCached[X] private ()
+  extends AtomicReference[SRandom] // (null)
+  with Random[Rxn[X, *]] { sRndHolder =>
+
+  import Rxn.unsafe.delayContext
+
+  private[this] final def sRnd(jRnd: ThreadLocalRandom): SRandom = {
+    val cached = sRndHolder.get()
+    if ((cached ne null) && (cached.self eq jRnd)) {
+      cached
+    } else {
+      val newWrapper = new SRandom(jRnd)
+      sRndHolder.compareAndSet(cached, newWrapper)
+      // we ignore a failed CAS, as we can use
+      // the newly created wrapper, it just will
+      // not be cached
+      newWrapper
+    }
   }
 
   final override def betweenDouble(minInclusive: Double, maxExclusive: Double): Rxn[X, Double] =
