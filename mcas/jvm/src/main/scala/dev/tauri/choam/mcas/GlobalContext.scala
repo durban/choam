@@ -80,7 +80,7 @@ private final class GlobalContext(impl: EMCAS.type) {
     (commits, retries)
   }
 
-  private[this] final def threadContexts(): Iterator[ThreadContext] = {
+  private[choam] final def threadContexts(): Iterator[ThreadContext] = {
     val iterWeak = this.threadContexts.values().iterator()
     CollectionConverters.asScala(iterWeak).flatMap { weakref =>
       weakref.get() match {

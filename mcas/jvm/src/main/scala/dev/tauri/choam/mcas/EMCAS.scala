@@ -79,6 +79,7 @@ private object EMCAS extends MCAS { self =>
           val mark = wd.tryHold()
           val parentStatus = wd.parent.getStatus()
           if (parentStatus eq EMCASStatus.ACTIVE) {
+            assert(mark ne null)
             MCAS(wd.parent, ctx = ctx, replace = replace) // help the other op
             Reference.reachabilityFence(mark)
             go() // retry
@@ -200,7 +201,12 @@ private object EMCAS extends MCAS { self =>
         TryWordResult.BREAK
       } else {
         if (contentWd ne null) {
-          // TODO: extendInterval(oldWd = contentWd, newWd = wordDesc)
+          // TODO: We probably need some kind of chaining here,
+          // TODO: because if we simply replace the old one,
+          // TODO: we can't detect if it's still in use,
+          // TODO: and later we can be replaced by a value, and
+          // TODO: that's bad. This was the old code here:
+          // TODO: `extendInterval(oldWd = contentWd, newWd = wordDesc)`
         }
         if (!wordDesc.address.unsafeCasVolatile(content, wordDesc.castToData)) {
           // CAS failed, we'll retry. This means, that we maybe
@@ -312,11 +318,12 @@ private object EMCAS extends MCAS { self =>
           return a // scalafix:ok
       }
       Thread.onSpinWait()
-      // TODO: System.gc()
       ctr += 1L
       if ((ctr % 128L) == 0L) {
         if (Thread.interrupted()) {
           throw new InterruptedException
+        } else {
+          System.gc()
         }
       }
     }

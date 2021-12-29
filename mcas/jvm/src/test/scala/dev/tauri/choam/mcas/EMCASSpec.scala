@@ -18,11 +18,11 @@
 package dev.tauri.choam
 package mcas
 
+import java.lang.ref.Reference
 import java.util.concurrent.{ ConcurrentLinkedQueue, CountDownLatch }
 
 import scala.runtime.VolatileObjectRef
 
-import cats.syntax.eq._
 import dev.tauri.choam.mcas.MemoryLocation
 
 class EMCASSpec extends BaseSpecA {
@@ -111,24 +111,26 @@ class EMCASSpec extends BaseSpecA {
     val t1 = new Thread(() => {
       val ctx = EMCAS.currentContext()
       val hDesc = ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "a"), r2, "y", "b")
-      ctx.startOp()
-      val desc = EMCASDescriptor.prepare(hDesc, ctx)
+      val desc = EMCASDescriptor.prepare(hDesc)
       val d0 = desc.wordIterator().next().asInstanceOf[WordDescriptor[String]]
+      val mark = d0.tryHold()
+      assert(mark ne null)
       assert(d0.address eq r1)
       r1.unsafeSetVolatile(d0.castToData)
       descT1 = d0
       latch1.countDown()
       latch2.await()
       // and the thread dies here, with an active CAS
+      Reference.reachabilityFence(mark)
     })
     t1.start()
     latch1.await()
     val ctx = EMCAS.currentContext()
-    assert(ctx.isInUseByOther(descT1))
+    assert(descT1.tryHold() ne null)
     latch2.countDown()
     t1.join()
     assert(!t1.isAlive())
-    while (EMCAS.global.snapshotReservations(t1.getId()).get() ne null) {
+    while (descT1.tryHold() ne null) {
       System.gc()
     }
 
@@ -140,7 +142,6 @@ class EMCASSpec extends BaseSpecA {
     EMCAS.spinUntilCleanup(r2)
     assert(clue(r1.unsafeGetVolatile()) eq "a")
     assert(clue(r2.unsafeGetVolatile()) eq "b")
-    assert(!ctx.isInUseByOther(descT1))
   }
 
   test("EMCAS should not replace and forget active descriptors") {
@@ -148,19 +149,21 @@ class EMCASSpec extends BaseSpecA {
     val r2 = MemoryLocation.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
+    var ok0 = false
     val t1 = new Thread(() => {
       val ctx = EMCAS.currentContext()
       val hDesc = ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "a"), r2, "y", "b")
-      ctx.startOp()
-      val desc = EMCASDescriptor.prepare(hDesc, ctx)
-      try {
-        val d0 = desc.wordIterator().next().asInstanceOf[WordDescriptor[String]]
-        assert(d0.address eq r1)
-        assert(d0.address.unsafeCasVolatile(d0.ov, d0.castToData))
-        // and the thread pauses here, with an active CAS
-        latch1.countDown()
-        latch2.await()
-      } finally ctx.endOp()
+      val desc = EMCASDescriptor.prepare(hDesc)
+      val d0 = desc.wordIterator().next().asInstanceOf[WordDescriptor[String]]
+      assert(d0.address eq r1)
+      assert(d0.address.unsafeCasVolatile(d0.ov, d0.castToData))
+      val mark = d0.tryHold()
+      assert(mark ne null)
+      // and the thread pauses here, with an active CAS
+      latch1.countDown()
+      latch2.await()
+      Reference.reachabilityFence(mark)
+      ok0 = true
     })
     t1.start()
     latch1.await()
@@ -181,67 +184,15 @@ class EMCASSpec extends BaseSpecA {
     assert(ok)
     latch2.countDown()
     t1.join()
+    assert(ok0)
   }
 
   test("EMCAS should extend the interval of a new descriptor if it replaces an old one") {
     testExtendInterval()
   }
 
-  @tailrec
   private def testExtendInterval(): Unit = {
-    // we never want cleanup during this test, so
-    // we configure it with a very-very low probability:
-    val neverReplace = (1 << 31)
-    val r = MemoryLocation.unsafe("x")
-    val latch1 = new CountDownLatch(1)
-    val latch2 = new CountDownLatch(1)
-    val ctx = EMCAS.currentContext()
-    ctx.resetCounter(to = 0)
-    var threadEpoch: Option[Long] = None
-    val t = new Thread(() => {
-      val ctx = EMCAS.currentContext()
-      ctx.forceNextEpoch()
-      ctx.startOp()
-      try {
-        threadEpoch = Some(ctx.globalContext.epochNumber)
-        latch1.countDown()
-        latch2.await()
-      } finally ctx.endOp()
-    })
-    t.start()
-    latch1.await()
-    val tEpoch = threadEpoch.getOrElse(fail("no threadEpoch"))
-    val hDescOld = ctx.addCas(ctx.start(), r, "x", "y")
-    val descOld = ctx.op {
-      val descOld = EMCASDescriptor.prepare(hDescOld, ctx)
-      assert(EMCAS.MCAS(desc = descOld, ctx = ctx, replace = neverReplace))
-      descOld
-    }
-    val oldEpoch = descOld.wordIterator().next().getMinEpochVolatile()
-    if (oldEpoch =!= tEpoch) {
-      // This may happen with a low probability,
-      // in which case we restart the whole test case,
-      // because it depends on `t` reserving `oldEpoch`:
-      testExtendInterval()
-    } else {
-      // Ok, we can continue the test case:
-      assertSameInstance(r.asInstanceOf[MemoryLocation[Any]].unsafeGetVolatile(), descOld.wordIterator().next())
-      ctx.forceNextEpoch()
-      ctx.resetCounter(to = 0)
-      val hDescNew = ctx.addCas(ctx.start(), r, "y", "z")
-      val descNew = ctx.op {
-        val descNew = EMCASDescriptor.prepare(hDescNew, ctx)
-        val newEpoch = descNew.wordIterator().next().getMinEpochVolatile()
-        assert(clue(newEpoch) > clue(oldEpoch))
-        assert(EMCAS.MCAS(desc = descNew, ctx = ctx, replace = neverReplace))
-        descNew
-      }
-      assertSameInstance(r.asInstanceOf[MemoryLocation[Any]].unsafeGetVolatile(), descNew.wordIterator().next())
-      assert(ctx.isInUseByOther(descNew.wordIterator().next().cast))
-      latch2.countDown()
-      t.join()
-      assert(!ctx.isInUseByOther(descNew.wordIterator().next().cast))
-    }
+    // TODO: write a test about descriptor chaining!
   }
 
   test("EMCAS read should help the other operation") {
@@ -249,7 +200,7 @@ class EMCASSpec extends BaseSpecA {
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 42L)
     val ctx = EMCAS.currentContext()
     val hOther: HalfEMCASDescriptor = ctx.addCas(ctx.addCas(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
-    val other = ctx.op { EMCASDescriptor.prepare(hOther, ctx) }
+    val other = EMCASDescriptor.prepare(hOther)
     val d0 = other.wordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
     r1.unsafeSetVolatile(d0.castToData)
@@ -265,7 +216,7 @@ class EMCASSpec extends BaseSpecA {
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 99L)
     val ctx = EMCAS.currentContext()
     val hOther = ctx.addCas(ctx.addCas(ctx.start(), r1, "r1", "x"), r2, "zzz", "y")
-    val other = ctx.op { EMCASDescriptor.prepare(hOther, ctx) }
+    val other = EMCASDescriptor.prepare(hOther)
     val d0 = other.wordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
     r1.unsafeSetVolatile(d0.castToData)
@@ -335,7 +286,7 @@ class EMCASSpec extends BaseSpecA {
     val d1 = ctx.addCas(d0, r1, "r1", "A")
     val d2 = ctx.addCas(d1, r3, "r3", "C")
     val d3 = ctx.addCas(d2, r2, "r2", "B")
-    val d = ctx.op { EMCASDescriptor.prepare(d3, ctx) }
+    val d = EMCASDescriptor.prepare(d3)
     val it = d.wordIterator()
     assertSameInstance(it.next().address, r1)
     assertSameInstance(it.next().address, r2)

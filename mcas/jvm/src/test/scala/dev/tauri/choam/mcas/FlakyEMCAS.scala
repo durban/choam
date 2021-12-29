@@ -49,21 +49,16 @@ object FlakyEMCAS extends MCAS { self =>
 
   private final def tryPerform(hDesc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
     // perform or not the operation based on whether we've already seen it
-    ctx.startOp()
-    try {
-      val desc = EMCASDescriptor.prepare(hDesc, ctx)
-      var hash = 0x75F4D07D
-      val it = desc.wordIterator()
-      while (it.hasNext()) {
-        hash ^= it.next().address.##
-      }
-      if (this.seen.putIfAbsent(hash, ()).isDefined) {
-        EMCAS.MCAS(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
-      } else {
-        false // simulate a transient CAS failure to force a retry
-      }
-    } finally {
-      ctx.endOp()
+    val desc = EMCASDescriptor.prepare(hDesc)
+    var hash = 0x75F4D07D
+    val it = desc.wordIterator()
+    while (it.hasNext()) {
+      hash ^= it.next().address.##
+    }
+    if (this.seen.putIfAbsent(hash, ()).isDefined) {
+      EMCAS.MCAS(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
+    } else {
+      false // simulate a transient CAS failure to force a retry
     }
   }
 }

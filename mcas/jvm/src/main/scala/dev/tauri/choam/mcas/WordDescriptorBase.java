@@ -21,6 +21,14 @@ import java.lang.ref.WeakReference;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
+/**
+ * TODO: This is temporary, should be
+ * removed when weakrefs are working.
+ * A simple Object should be used instead.
+ */
+final class McasMarker {
+}
+
 abstract class WordDescriptorBase extends WeakReference<Object> {
 
   private static final VarHandle STRONG;
@@ -38,7 +46,7 @@ abstract class WordDescriptorBase extends WeakReference<Object> {
   private Object _strong;
 
   WordDescriptorBase() {
-    this(new Object());
+    this(new McasMarker());
   }
 
   private WordDescriptorBase(Object marker) {
