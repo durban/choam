@@ -65,6 +65,8 @@ trait RandomSpec[F[_]]
 
   // TODO: more tests for Rxn.*Random
 
+  // fastRandom:
+
   test("Rxn.fastRandom betweenDouble") {
     Rxn.fastRandom.run[F].map(checkBetweenDouble)
   }
@@ -76,6 +78,16 @@ trait RandomSpec[F[_]]
   test("Rxn.fastRandom nextAlphaNumeric") {
     Rxn.fastRandom.run[F].map(checkNextAlphaNumeric)
   }
+
+  test("Rxn.fastRandom shuffleList/Vector") {
+    Rxn.fastRandom.run[F].map(checkShuffle)
+  }
+
+  test("Rxn.fastRandom nextGaussian") {
+    Rxn.fastRandom.run[F].map(checkGaussian)
+  }
+
+  // fastRandomCached:
 
   test("Rxn.fastRandomCached betweenDouble") {
     Rxn.fastRandomCached.run[F].map(checkBetweenDouble)
@@ -89,6 +101,16 @@ trait RandomSpec[F[_]]
     Rxn.fastRandomCached.run[F].map(checkNextAlphaNumeric)
   }
 
+  test("Rxn.fastRandomCached shuffleList/Vector") {
+    Rxn.fastRandomCached.run[F].map(checkShuffle)
+  }
+
+  test("Rxn.fastRandomCached nextGaussian") {
+    Rxn.fastRandomCached.run[F].map(checkGaussian)
+  }
+
+  // secureRandom:
+
   test("Rxn.secureRandom betweenDouble") {
     Rxn.secureRandom.run[F].map(checkBetweenDouble)
   }
@@ -99,6 +121,14 @@ trait RandomSpec[F[_]]
 
   test("Rxn.secureRandom nextAlphaNumeric") {
     Rxn.secureRandom.run[F].map(checkNextAlphaNumeric)
+  }
+
+  test("Rxn.secureRandom shuffleList/Vector") {
+    Rxn.secureRandom.run[F].map(checkShuffle)
+  }
+
+  test("Rxn.secureRandom nextGaussian") {
+    Rxn.secureRandom.run[F].map(checkGaussian)
   }
 
   def checkBetweenDouble(rnd: Random[Axn]): PropF[F] = {
@@ -144,6 +174,33 @@ trait RandomSpec[F[_]]
           assertF(clue(alnums.toSet.size) >= 16)
         }
       )
+    }
+  }
+
+  def checkShuffle(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (lst: List[Int]) =>
+      (rnd.shuffleList(lst), rnd.shuffleVector(lst.toVector)).mapN(Tuple2(_, _)).run[F].flatMap { lv =>
+        val (sl, sv) = lv
+        for {
+          _ <- assertEqualsF(sl.sorted, lst.sorted)
+          _ <- assertEqualsF(sv.sorted, lst.sorted.toVector)
+        } yield ()
+      }
+    }
+  }
+
+  def checkGaussian(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (_: Long) =>
+      (rnd.nextGaussian * rnd.nextGaussian).run[F].flatMap {
+        case (x, y) =>
+          for {
+            _ <- assertNotEqualsF(clue(x), clue(y))
+            _ <- assertF(x >= -1000.0)
+            _ <- assertF(x <= +1000.0)
+            _ <- assertF(y >= -1000.0)
+            _ <- assertF(y <= +1000.0)
+          } yield ()
+      }
     }
   }
 }
