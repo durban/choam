@@ -59,8 +59,12 @@ abstract class WordDescriptorBase extends WeakReference<Object> {
     return STRONG.get(this);
   }
 
-  protected final void setStrongRefOpaque(Object to ) {
+  protected final void setStrongRefOpaque(Object to) {
     STRONG.setOpaque(this, to);
+  }
+
+  protected final void clearStrongRef() {
+    STRONG.setRelease(this, null);
   }
 
   protected final WordDescriptorBase getPredecessorVolatile() {
@@ -69,5 +73,9 @@ abstract class WordDescriptorBase extends WeakReference<Object> {
 
   protected final boolean casPredecessorVolatile(WordDescriptorBase ov, WordDescriptorBase nv) {
     return PREDECESSOR.compareAndSet(this, ov, nv);
+  }
+
+  protected final void clearPredecessor() {
+    PREDECESSOR.setRelease(this, null);
   }
 }

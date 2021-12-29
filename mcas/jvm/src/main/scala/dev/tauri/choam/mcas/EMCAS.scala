@@ -219,7 +219,7 @@ private object EMCAS extends MCAS { self =>
         if (mark ne null) {
           val res = newWd.casPredecessor(null, oldWd)
           res
-        } else{
+        } else {
           true // already can be replaced without issue, nothing to do
         }
       } else {

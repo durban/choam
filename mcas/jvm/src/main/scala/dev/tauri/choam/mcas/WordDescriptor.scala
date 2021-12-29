@@ -53,8 +53,7 @@ private final class WordDescriptor[A] private (
     s"WordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
 
   final def finalizeWd(): Unit = {
-    // TODO: maybe `release`?
-    this.setStrongRefOpaque(null)
+    this.clearStrongRef()
   }
 
   // TODO: remove this
@@ -69,15 +68,38 @@ private final class WordDescriptor[A] private (
     this.get()
   }
 
-  @tailrec
+  private final def isInUseDirectly(): Boolean = {
+    this.getWeakMarker() ne null
+  }
+
   final def isInUse(): Boolean = {
-    val wm = this.getWeakMarker()
-    this.assertInvariants(wm)
-    (wm ne null) || {
-      // TODO: maybe cut links here if we can?
-      val pred = this.predecessor
-      if (pred ne null) pred.cast[A].isInUse()
-      else false
+    if (this.isInUseDirectly()) {
+      // we're in use, but we may still
+      // be able to cut some predecessors:
+      isInUseRecursive(curr = this.predecessor, lastUsed = this)
+    } else {
+      // we're not in use, but some
+      // predecessors may be:
+      isInUseRecursive(curr = this.predecessor, lastUsed = null)
+    }
+  }
+
+  @tailrec
+  private[this] final def isInUseRecursive(
+    curr: WordDescriptor[_], // null if this is the end
+    lastUsed: WordDescriptor[_], // null if no used was found so far
+  ): Boolean = {
+    if (curr eq null) { // end of the line
+      if (lastUsed ne null) {
+        lastUsed.clearPredecessor()
+        true // there was at least one used
+      } else {
+        false // there was no used
+      }
+    } else if (curr.isInUseDirectly()) {
+      isInUseRecursive(curr = curr.predecessor, lastUsed = curr)
+    } else {
+      isInUseRecursive(curr = curr.predecessor, lastUsed = lastUsed)
     }
   }
 
