@@ -180,7 +180,7 @@ class EMCASSpec extends BaseSpecA {
       val desc = ctx.addCas(ctx.addCas(ctx.start(), r2, "b", "y"), r1, "a", "x")
       assert(EMCAS.tryPerform(desc, ctx))
       // wait for descriptors to be collected:
-      assertEquals(clue(EMCAS.spinUntilCleanup(r2)), "y")
+      assertEquals(clue(EMCAS.spinUntilCleanup[String](r2)), "y")
       // but this one shouldn't be collected, as the other thread holds the mark of `d0`:
       assert(EMCAS.spinUntilCleanup(r1, max = 0x2000L) eq null)
       assert(r1.unsafeGetVolatile().asInstanceOf[WordDescriptor[_]].isInUse())
@@ -194,7 +194,7 @@ class EMCASSpec extends BaseSpecA {
     assert(ok0)
 
     // t1 released the mark, now it should be replaced:
-    assertEquals(clue(EMCAS.spinUntilCleanup(r1)), "x")
+    assertEquals(clue(EMCAS.spinUntilCleanup[String](r1)), "x")
   }
 
   // OK:

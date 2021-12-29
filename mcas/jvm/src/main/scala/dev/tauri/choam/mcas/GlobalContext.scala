@@ -38,7 +38,7 @@ private final class GlobalContext(impl: EMCAS.type) {
    * affect safety, because a dead thread will never
    * continue its current op (if any).
    */
-  private[this] val threadContexts =
+  private[this] val _threadContexts =
     new ConcurrentSkipListMap[Long, WeakReference[ThreadContext]]
     // TODO: we need to remove empty weakrefs somewhere
 
@@ -55,7 +55,7 @@ private final class GlobalContext(impl: EMCAS.type) {
       case null =>
         val tc = this.newThreadContext()
         threadContextKey.set(tc)
-        this.threadContexts.put(
+        this._threadContexts.put(
           Thread.currentThread().getId(),
           new WeakReference(tc)
         )
@@ -81,7 +81,7 @@ private final class GlobalContext(impl: EMCAS.type) {
   }
 
   private[choam] final def threadContexts(): Iterator[ThreadContext] = {
-    val iterWeak = this.threadContexts.values().iterator()
+    val iterWeak = this._threadContexts.values().iterator()
     CollectionConverters.asScala(iterWeak).flatMap { weakref =>
       weakref.get() match {
         case null =>
