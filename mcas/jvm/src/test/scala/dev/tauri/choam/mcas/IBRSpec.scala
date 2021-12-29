@@ -30,27 +30,34 @@ final class IBRSpec
     val ref = MemoryLocation.unsafe[String]("s")
     val ctx = EMCAS.currentContext()
     val hDesc = ctx.addCas(ctx.start(), ref, "s", "x")
+    var mark: AnyRef = null
     val desc = {
       val desc = EMCASDescriptor.prepare(hDesc)
+      mark = desc.wordIterator().next().tryHold()
+      assert(mark ne null)
       assert(EMCAS.MCAS(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS))
       desc
     }
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
+    var ok = false
     val t = new Thread(() => {
       val mark = desc.wordIterator().next().tryHold()
+      assert(mark ne null)
       latch1.countDown()
       latch2.await()
       Reference.reachabilityFence(mark)
+      ok = true
     })
     t.start()
     latch1.await()
+    mark = null
     val wd = desc.wordIterator().next()
     System.gc()
-    assert(wd.tryHold() ne null)
+    assert(wd.isInUse())
     latch2.countDown()
     t.join()
-    while (wd.tryHold() ne null) {
+    while (wd.isInUse()) {
       System.gc()
     }
   }
