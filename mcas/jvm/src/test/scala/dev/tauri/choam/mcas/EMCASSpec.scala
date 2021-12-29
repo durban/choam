@@ -27,6 +27,7 @@ import dev.tauri.choam.mcas.MemoryLocation
 
 class EMCASSpec extends BaseSpecA {
 
+  // OK:
   test("EMCAS should allow null as ov or nv") {
     val r1 = MemoryLocation.unsafe[String](null)
     val r2 = MemoryLocation.unsafe[String]("x")
@@ -41,6 +42,7 @@ class EMCASSpec extends BaseSpecA {
     assert(EMCAS.read(r2, ctx) eq null)
   }
 
+  // OK, but slow:
   test("EMCAS should clean up finalized descriptors") {
     val r1 = MemoryLocation.unsafe[String]("x")
     val r2 = MemoryLocation.unsafe[String]("y")
@@ -65,6 +67,7 @@ class EMCASSpec extends BaseSpecA {
     assert(r2.unsafeGetVolatile() eq "b")
   }
 
+  // OK, but slow:
   test("EMCAS should clean up finalized descriptors if the original thread releases them") {
     val r1 = MemoryLocation.unsafe[String]("x")
     val r2 = MemoryLocation.unsafe[String]("y")
@@ -102,6 +105,7 @@ class EMCASSpec extends BaseSpecA {
     assert(ok2)
   }
 
+  // OK, but slow:
   test("EMCAS op should be finalizable even if a thread dies mid-op") {
     val r1 = MemoryLocation.unsafeWithId[String]("x")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
@@ -126,14 +130,13 @@ class EMCASSpec extends BaseSpecA {
     t1.start()
     latch1.await()
     val ctx = EMCAS.currentContext()
-    assert(descT1.tryHold() ne null)
+    assert(descT1.isInUse()) // op is not finalized yet
     latch2.countDown()
     t1.join()
     assert(!t1.isAlive())
-    while (descT1.tryHold() ne null) {
-      System.gc()
-    }
 
+    // run another op; this should
+    // finalize the previous one:
     val succ = ctx.tryPerform(ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "x2"), r2, "y", "y2"))
     assert(!succ)
     assert(EMCAS.read(r1, ctx) eq "a")
@@ -142,9 +145,11 @@ class EMCASSpec extends BaseSpecA {
     EMCAS.spinUntilCleanup(r2)
     assert(clue(r1.unsafeGetVolatile()) eq "a")
     assert(clue(r2.unsafeGetVolatile()) eq "b")
+    assert(!descT1.isInUse())
   }
 
-  test("EMCAS should not replace and forget active descriptors") {
+  // OK, but slow:
+  test("EMCAS should not simply replace  active descriptors (they should be chained)") {
     val r1 = MemoryLocation.unsafeWithId[String]("x")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
     val latch1 = new CountDownLatch(1)
@@ -175,8 +180,10 @@ class EMCASSpec extends BaseSpecA {
       val desc = ctx.addCas(ctx.addCas(ctx.start(), r2, "b", "y"), r1, "a", "x")
       assert(EMCAS.tryPerform(desc, ctx))
       // wait for descriptors to be collected:
-      assert(EMCAS.spinUntilCleanup(r2, max = 0x100000L) eq null)
-      assert(EMCAS.spinUntilCleanup(r1, max = 0x100000L) eq null)
+      assertEquals(clue(EMCAS.spinUntilCleanup(r2)), "y")
+      // but this one shouldn't be collected, as the other thread holds the mark of `d0`:
+      assert(EMCAS.spinUntilCleanup(r1, max = 0x2000L) eq null)
+      assert(r1.unsafeGetVolatile().asInstanceOf[WordDescriptor[_]].isInUse())
       ok = true
     })
     t2.start()
@@ -185,16 +192,12 @@ class EMCASSpec extends BaseSpecA {
     latch2.countDown()
     t1.join()
     assert(ok0)
+
+    // t1 released the mark, now it should be replaced:
+    assertEquals(clue(EMCAS.spinUntilCleanup(r1)), "x")
   }
 
-  test("EMCAS should extend the interval of a new descriptor if it replaces an old one") {
-    testExtendInterval()
-  }
-
-  private def testExtendInterval(): Unit = {
-    // TODO: write a test about descriptor chaining!
-  }
-
+  // OK:
   test("EMCAS read should help the other operation") {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 42L)
@@ -211,6 +214,7 @@ class EMCASSpec extends BaseSpecA {
     assert(other.getStatus() eq EMCASStatus.SUCCESSFUL)
   }
 
+  // OK:
   test("EMCAS read should roll back the other op if necessary") {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 99L)
@@ -224,8 +228,10 @@ class EMCASSpec extends BaseSpecA {
     assertEquals(res, "r1")
     assertEquals(EMCAS.read(r1, ctx), "r1")
     assertEquals(EMCAS.read(r2, ctx), "r2")
+    assert(other.getStatus() eq EMCASStatus.FAILED)
   }
 
+  // OK:
   test("ThreadContexts should be thread-local") {
     val N = 10000
     val tc1 = new ConcurrentLinkedQueue[ThreadContext]
@@ -258,6 +264,7 @@ class EMCASSpec extends BaseSpecA {
     }
   }
 
+  // OK:
   test("ThreadContexts should work even if thread IDs are reused") {
     final class TrickyThread(ref: VolatileObjectRef[ThreadContext]) extends Thread {
       final override def getId(): Long = 42L
@@ -277,6 +284,7 @@ class EMCASSpec extends BaseSpecA {
     assertEquals(r1.elem.tid, r2.elem.tid)
   }
 
+  // OK:
   test("Descriptors should be sorted") {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 1L)
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 2L)

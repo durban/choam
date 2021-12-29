@@ -23,6 +23,17 @@ private final class WordDescriptor[A] private (
   val parent: EMCASDescriptor,
 ) extends WordDescriptorBase {
 
+  /**
+   * The descriptor which was replaced by this
+   * descriptor (because, at that time, it was
+   * still in use).
+   */
+  def predecessor: WordDescriptor[_] =
+    this.getPredecessorVolatile().asInstanceOf[WordDescriptor[_]]
+
+  def casPredecessor(ov: WordDescriptor[_], nv: WordDescriptor[_]): Boolean =
+    this.casPredecessorVolatile(ov, nv)
+
   def address: MemoryLocation[A] =
     this.half.address
 
@@ -46,6 +57,7 @@ private final class WordDescriptor[A] private (
     this.setStrongRefOpaque(null)
   }
 
+  // TODO: remove this
   private[this] def assertInvariants(wm: AnyRef): Unit = {
     this.getStrongRefPlain() match {
       case null => ()
@@ -57,10 +69,16 @@ private final class WordDescriptor[A] private (
     this.get()
   }
 
+  @tailrec
   final def isInUse(): Boolean = {
     val wm = this.getWeakMarker()
     this.assertInvariants(wm)
-    wm ne null
+    (wm ne null) || {
+      // TODO: maybe cut links here if we can?
+      val pred = this.predecessor
+      if (pred ne null) pred.cast[A].isInUse()
+      else false
+    }
   }
 
   final def tryHold(): AnyRef = {

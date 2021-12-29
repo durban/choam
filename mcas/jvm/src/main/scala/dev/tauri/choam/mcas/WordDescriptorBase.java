@@ -21,29 +21,28 @@ import java.lang.ref.WeakReference;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
-/**
- * TODO: This is temporary, should be
- * removed when weakrefs are working.
- * A simple Object should be used instead.
- */
-final class McasMarker {
-}
+// TODO: remove this
+final class McasMarker {}
 
 abstract class WordDescriptorBase extends WeakReference<Object> {
 
   private static final VarHandle STRONG;
+  private static final VarHandle PREDECESSOR;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       STRONG = l.findVarHandle(WordDescriptorBase.class, "_strong", Object.class);
+      PREDECESSOR = l.findVarHandle(WordDescriptorBase.class, "_predecessor", WordDescriptorBase.class);
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }
   }
 
   @SuppressWarnings("unused")
-  private Object _strong;
+  private volatile Object _strong;
+
+  private volatile WordDescriptorBase _predecessor;
 
   WordDescriptorBase() {
     this(new McasMarker());
@@ -52,6 +51,8 @@ abstract class WordDescriptorBase extends WeakReference<Object> {
   private WordDescriptorBase(Object marker) {
     super(marker);
     STRONG.set(this, marker);
+    // plain write is enough, as descriptors
+    // are only exchanged through `Ref`s
   }
 
   protected final Object getStrongRefPlain() {
@@ -60,5 +61,13 @@ abstract class WordDescriptorBase extends WeakReference<Object> {
 
   protected final void setStrongRefOpaque(Object to ) {
     STRONG.setOpaque(this, to);
+  }
+
+  protected final WordDescriptorBase getPredecessorVolatile() {
+    return this._predecessor;
+  }
+
+  protected final boolean casPredecessorVolatile(WordDescriptorBase ov, WordDescriptorBase nv) {
+    return PREDECESSOR.compareAndSet(this, ov, nv);
   }
 }

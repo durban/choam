@@ -200,22 +200,30 @@ private object EMCAS extends MCAS { self =>
         // we have been finalized (by a helping thread), no reason to continue
         TryWordResult.BREAK
       } else {
-        if (contentWd ne null) {
-          // TODO: We probably need some kind of chaining here,
-          // TODO: because if we simply replace the old one,
-          // TODO: we can't detect if it's still in use,
-          // TODO: and later we can be replaced by a value, and
-          // TODO: that's bad. This was the old code here:
-          // TODO: `extendInterval(oldWd = contentWd, newWd = wordDesc)`
-        }
-        if (!wordDesc.address.unsafeCasVolatile(content, wordDesc.castToData)) {
-          // CAS failed, we'll retry. This means, that we maybe
-          // unnecessarily extended the interval; but that is
-          // not a correctness problem (just makes IBR less precise).
-          tryWord(wordDesc)
-        } else {
+        val weakRefOk = extendInterval(oldWd = contentWd, newWd = wordDesc)
+        if (weakRefOk && wordDesc.address.unsafeCasVolatile(content, wordDesc.castToData)) {
           TryWordResult.SUCCESS
+        } else {
+          // either we couldn't chain the descriptors, or
+          // the CAS on the `Ref` failed; in either case,
+          // we'll retry:
+          tryWord(wordDesc)
         }
+      }
+    }
+
+    // TODO: better name (there are no "intervals" any more)
+    def extendInterval[A](oldWd: WordDescriptor[A], newWd: WordDescriptor[A]): Boolean = {
+      if (oldWd ne null) {
+        val mark = oldWd.tryHold()
+        if (mark ne null) {
+          val res = newWd.casPredecessor(null, oldWd)
+          res
+        } else{
+          true // already can be replaced without issue, nothing to do
+        }
+      } else {
+        true // there was no old descriptor
       }
     }
 
@@ -292,7 +300,7 @@ private object EMCAS extends MCAS { self =>
   }
 
   private[choam] final override def printStatistics(println: String => Unit): Unit = {
-    ???
+    ()
   }
 
   private[choam] final override def countCommitsAndRetries(): (Long, Long) = {
