@@ -23,8 +23,10 @@ import sbt.internal.util.ManagedLogger
 
 import cats.syntax.all._
 
-import io.circe.{ Json, JsonObject }
+import io.circe.{ Json, JsonObject, Decoder, Encoder }
 import io.circe.parser
+import io.circe.generic.JsonCodec
+import io.circe.generic.extras.{ ConfiguredJsonCodec, Configuration }
 
 object Tools extends AutoPlugin {
 
@@ -37,11 +39,13 @@ object Tools extends AutoPlugin {
   final override def projectSettings: Seq[Setting[_]] = Seq(
     autoImport.cleanBenchResults := cleanBenchResultsImpl.value,
     autoImport.cleanBenchResultsFilePattern := "results_*.json",
+    autoImport.mergeBenchResults := mergeBenchResultsImpl.evaluated,
   )
 
   final object autoImport {
     lazy val cleanBenchResults = taskKey[Unit]("cleanBenchResults")
     lazy val cleanBenchResultsFilePattern = settingKey[String]("cleanBenchResultsFilePattern")
+    lazy val mergeBenchResults = inputKey[Unit]("mergeBenchResults")
   }
 
   private lazy val cleanBenchResultsImpl = Def.task[Unit] {
@@ -51,6 +55,110 @@ object Tools extends AutoPlugin {
       streams.value.log,
     )
   }
+
+  private lazy val mergeBenchResultsImpl = Def.inputTask[Unit] {
+
+    import complete.DefaultParsers._
+
+    val args: Seq[String] = spaceDelimited("<arg>").parsed
+    args.toList match {
+      case h :: t =>
+        MergeBenchResults.mergeBenchResults(h, t: _*)
+      case Nil =>
+        throw new IllegalArgumentException("no args")
+    }
+  }
+}
+
+private object MergeBenchResults {
+
+  import Model._
+
+  final def mergeBenchResults(output: String, inputs: String*): Unit = {
+    println(output)
+    println(inputs)
+    // inputs match {
+    //   case from :: to :: _ =>
+    //     val one = parse(from)
+    //     dump(one, to = to)
+    // }
+  }
+
+  private[this] final def parse(file: String): ResultFile = {
+    val f = Path(file).asFile
+    val contents = sbt.io.IO.read(f)
+    val j: Json = io.circe.parser.parse(contents).getOrElse {
+      throw new IllegalArgumentException(s"not a JSON file: ${f.absolutePath}")
+    }
+    j.as[ResultFile].fold(
+      err => throw new IllegalArgumentException(err.toString),
+      ok => ok
+    )
+  }
+
+  private[this] final def dump(r: ResultFile, to: String): Unit = {
+    val f = Path(to).asFile
+    val str = Encoder[ResultFile].apply(r).spaces4
+    sbt.io.IO.write(f, str)
+  }
+}
+
+private object Model {
+
+  final type ResultFile = List[BenchmarkResult]
+
+  private[this] final val nanString =
+    "NaN"
+
+  private[this] implicit final val doubleOrNanDecoder: Decoder[Double] = {
+    Decoder.decodeDouble.or(Decoder.decodeString.emap { s =>
+      if (s == nanString) Right(Double.NaN)
+      else Left(s"not a Double or Nan: '${s}'")
+    })
+  }
+
+  private[this] implicit final val doubleOrNanEncoder: Encoder[Double] = {
+    Encoder.instance { d =>
+      if (d.isNaN()) Json.fromString(nanString)
+      else Encoder.encodeDouble(d)
+    }
+  }
+
+  private[this] implicit val jsonCodecConfig: Configuration =
+    Configuration.default.withDefaults
+
+  @ConfiguredJsonCodec
+  final case class BenchmarkResult(
+    jmhVersion: String,
+    benchmark: String,
+    mode: String,
+    threads: Int,
+    forks: Int,
+    jvm: String,
+    jvmArgs: List[String],
+    jdkVersion: String,
+    vmName: String,
+    vmVersion: String,
+    warmupIterations: Int,
+    warmupTime: String,
+    warmupBatchSize: Int,
+    measurementIterations: Int,
+    measurementTime: String,
+    measurementBatchSize: Int,
+    params: JsonObject = JsonObject.empty,
+    primaryMetric: Metric,
+    secondaryMetrics: JsonObject = JsonObject.empty,
+  )
+
+  @JsonCodec
+  final case class Metric(
+    score: Double,
+    scoreError: Double,
+    scoreConfidence: (Double, Double),
+    scorePercentiles: JsonObject,
+    scoreUnit: String,
+    rawData:  List[List[Double]],
+  )
 }
 
 private object CleanBenchResults {
