@@ -262,6 +262,7 @@ lazy val commonSettings = Seq[Setting[_]](
         "-Ywarn-numeric-widen",
         "-Ywarn-dead-code",
         "-Ywarn-value-discard",
+        s"-P:semanticdb:sourceroot:${(ThisBuild / baseDirectory).value.absolutePath}", // metals needs this
       )
     } else {
       // 3.x:

@@ -23,7 +23,7 @@ import java.util.concurrent.{ ConcurrentLinkedQueue, CountDownLatch }
 
 import scala.runtime.VolatileObjectRef
 
-import dev.tauri.choam.mcas.MemoryLocation
+import mcas.MemoryLocation
 
 class EMCASSpec extends BaseSpecA {
 
@@ -127,7 +127,7 @@ class EMCASSpec extends BaseSpecA {
       val mark = new McasMarker
       assert(d0.address eq r1)
       r1.unsafeSetVolatile(d0.castToData)
-      r1.unsafeWeakMarker.set(new WeakReference(mark))
+      assert(r1.unsafeCasMarkerVolatile(null, new WeakReference(mark)))
       descT1 = d0
       latch1.countDown()
       latch2.await()
@@ -142,7 +142,7 @@ class EMCASSpec extends BaseSpecA {
 
     if (runGcBetween) {
       // make sure the marker is collected:
-      while (descT1.address.unsafeWeakMarker.get().get() ne null) {
+      while (descT1.address.unsafeGetMarkerVolatile().get() ne null) {
         System.gc()
       }
     }
@@ -164,7 +164,7 @@ class EMCASSpec extends BaseSpecA {
     EMCAS.spinUntilCleanup(r2)
     assert(clue(r1.unsafeGetVolatile()) eq "a")
     assert(clue(r2.unsafeGetVolatile()) eq "b")
-    assert(descT1.address.unsafeWeakMarker.get().get() eq null)
+    assert(descT1.address.unsafeGetMarkerVolatile().get() eq null)
   }
 
   // OK, but slow:
@@ -182,7 +182,7 @@ class EMCASSpec extends BaseSpecA {
       assert(d0.address eq r1)
       assert(d0.address.unsafeCasVolatile(d0.ov, d0.castToData))
       val mark = new McasMarker
-      d0.address.unsafeWeakMarker.set(new WeakReference(mark))
+      assert(d0.address.unsafeCasMarkerVolatile(null, new WeakReference(mark)))
       // and the thread pauses here, with an active CAS
       latch1.countDown()
       latch2.await()
@@ -202,7 +202,7 @@ class EMCASSpec extends BaseSpecA {
       assertEquals(clue(EMCAS.spinUntilCleanup[String](r2)), "y")
       // but this one shouldn't be collected, as the other thread holds the mark of `d0`:
       assert(EMCAS.spinUntilCleanup(r1, max = 0x2000L) eq null)
-      assert(r1.unsafeWeakMarker.get().get() ne null)
+      assert(r1.unsafeGetMarkerVolatile().get() ne null)
       ok = true
     })
     t2.start()
@@ -227,7 +227,7 @@ class EMCASSpec extends BaseSpecA {
     assert(d0.address eq r1)
     r1.unsafeSetVolatile(d0.castToData)
     val mark = new McasMarker
-    r1.unsafeWeakMarker.set(new WeakReference(mark))
+    assert(r1.unsafeCasMarkerVolatile(null, new WeakReference(mark)))
     val res = EMCAS.read(r1, ctx)
     assertEquals(res, "x")
     assertEquals(EMCAS.read(r1, ctx), "x")
@@ -248,7 +248,7 @@ class EMCASSpec extends BaseSpecA {
     assert(d0.address eq r1)
     r1.unsafeSetVolatile(d0.castToData)
     val mark = new McasMarker
-    r1.unsafeWeakMarker.set(new WeakReference(mark))
+    assert(r1.unsafeCasMarkerVolatile(null, new WeakReference(mark)))
     val res = EMCAS.read(r1, ctx)
     assertEquals(res, "r1")
     assertEquals(EMCAS.read(r1, ctx), "r1")

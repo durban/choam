@@ -19,6 +19,7 @@ package dev.tauri.choam.refs;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.lang.ref.WeakReference;
 
 import dev.tauri.choam.Ref;
 
@@ -27,17 +28,21 @@ abstract class RefP1P1Base<A, B>
   implements Ref2<A, B>, Ref2ImplBase<A, B> {
 
   private static final VarHandle VALUE_A;
+  private static final VarHandle MARKER_A;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       VALUE_A = l.findVarHandle(RefP1P1Base.class, "valueA", Object.class);
+      MARKER_A = l.findVarHandle(RefP1P1Base.class, "markerA", WeakReference.class);
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }
   }
 
   private volatile A valueA;
+
+  private volatile WeakReference<Object> markerA; // = null
 
   private final Ref<A> refA = new Ref2Ref1<A, B>(this);
 
@@ -84,16 +89,28 @@ abstract class RefP1P1Base<A, B>
   public final A unsafeCmpxchgVolatile1(A ov, A nv) {
     return (A) VALUE_A.compareAndExchange(this, ov, nv);
   }
+
+  @Override
+  public final WeakReference<Object> unsafeGetMarkerVolatile1() {
+    return this.markerA;
+  }
+
+  @Override
+  public final boolean unsafeCasMarkerVolatile1(WeakReference<Object> ov, WeakReference<Object> nv) {
+    return MARKER_A.compareAndSet(this, ov, nv);
+  }
 }
 
 final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B> {
 
   private static final VarHandle VALUE_B;
+  private static final VarHandle MARKER_B;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       VALUE_B = l.findVarHandle(RefP1P1.class, "valueB", Object.class);
+      MARKER_B = l.findVarHandle(RefP1P1.class, "markerB", WeakReference.class);
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }
@@ -105,6 +122,8 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
   private final long _id7;
 
   private volatile B valueB;
+
+  private volatile WeakReference<Object> markerB; // = null
 
   private final Ref<B> refB = new Ref2Ref2<A, B>(this);
 
@@ -172,6 +191,16 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
   @Override
   public final B unsafeCmpxchgVolatile2(B ov, B nv) {
     return (B) VALUE_B.compareAndExchange(this, ov, nv);
+  }
+
+  @Override
+  public final WeakReference<Object> unsafeGetMarkerVolatile2() {
+    return this.markerB;
+  }
+
+  @Override
+  public final boolean unsafeCasMarkerVolatile2(WeakReference<Object> ov, WeakReference<Object> nv) {
+    return MARKER_B.compareAndSet(this, ov, nv);
   }
 
   @Override

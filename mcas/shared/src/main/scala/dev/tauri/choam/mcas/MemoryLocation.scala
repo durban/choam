@@ -20,7 +20,6 @@ package mcas
 
 import java.lang.ref.WeakReference
 import java.util.concurrent.ThreadLocalRandom
-import java.util.concurrent.atomic.AtomicReference
 
 import scala.math.Ordering
 
@@ -66,7 +65,11 @@ trait MemoryLocation[A] {
 
   def unsafeCmpxchgVolatile(ov: A, nv: A): A
 
-  def unsafeWeakMarker: AtomicReference[WeakReference[AnyRef]]
+  // TODO: this is JVM-only
+  def unsafeGetMarkerVolatile(): WeakReference[AnyRef]
+
+  // TODO: this is JVM-only
+  def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean
 
   def id0: Long
 

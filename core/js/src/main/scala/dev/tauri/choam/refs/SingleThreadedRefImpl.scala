@@ -19,8 +19,6 @@ package dev.tauri.choam
 package refs
 
 import mcas.SimpleMemoryLocation
-import java.util.concurrent.atomic.AtomicReference
-import java.lang.ref.WeakReference
 
 private final class SingleThreadedRefImpl[A](initial: A)(
   i0: Long,
@@ -35,7 +33,4 @@ private final class SingleThreadedRefImpl[A](initial: A)(
 
   private[choam] final override def dummy(v: Long): Long =
     id0 ^ id1 ^ id2 ^ id3 ^ v
-
-  final override val unsafeWeakMarker: AtomicReference[WeakReference[AnyRef]] =
-    null
 }

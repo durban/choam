@@ -18,8 +18,7 @@
 package dev.tauri.choam
 package mcas
 
-import java.lang.ref.Reference
-import java.lang.ref.WeakReference
+import java.lang.ref.{ Reference, WeakReference }
 
 /**
  * Efficient Multi-word Compare and Swap:
@@ -79,7 +78,7 @@ private object EMCAS extends MCAS { self =>
         case wd: WordDescriptor[_] =>
           if (mark eq null) {
             // not holding it yet
-            val m = ref.unsafeWeakMarker.get().get()
+            val m = ref.unsafeGetMarkerVolatile().get()
             if (m ne null) {
               // we're holding it, re-read the descriptor:
               go(mark = m)
@@ -192,7 +191,7 @@ private object EMCAS extends MCAS { self =>
           case wd: WordDescriptor[_] =>
             if (mark eq null) {
               // not holding it yet
-              weakref = wordDesc.address.unsafeWeakMarker.get()
+              weakref = wordDesc.address.unsafeGetMarkerVolatile()
               mark = weakref.get()
               if (mark ne null) {
                 // continue with another iteration, and re-read the
@@ -249,7 +248,7 @@ private object EMCAS extends MCAS { self =>
           case a =>
             value = a
             go = false
-            weakref = wordDesc.address.unsafeWeakMarker.get()
+            weakref = wordDesc.address.unsafeGetMarkerVolatile()
             // we found a value (i.e., not a descriptor)
             if (weakref ne null) {
               // in rare cases, `mark` could be non-null here
@@ -283,7 +282,7 @@ private object EMCAS extends MCAS { self =>
           // we need a new mark:
           assert((weakref eq null) || (weakref.get() eq null))
           mark = new McasMarker
-          wordDesc.address.unsafeWeakMarker.compareAndSet(weakref, new WeakReference(mark))
+          wordDesc.address.unsafeCasMarkerVolatile(weakref, new WeakReference(mark))
           // if this fails, we'll retry, see below
         } else {
           // we have a valid mark from reading

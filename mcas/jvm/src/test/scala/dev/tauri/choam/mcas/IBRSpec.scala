@@ -18,10 +18,10 @@
 package dev.tauri.choam
 package mcas
 
+import java.lang.ref.Reference
 import java.util.concurrent.CountDownLatch
 
 import mcas.MemoryLocation
-import java.lang.ref.Reference
 
 final class IBRSpec
   extends BaseSpecA {
@@ -36,7 +36,7 @@ final class IBRSpec
       val desc = EMCASDescriptor.prepare(hDesc)
       val ok = EMCAS.MCAS(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
       // TODO: if *right now* the GC clears the mark, the assertion below will fail
-      mark = desc.wordIterator().next().address.unsafeWeakMarker.get().get()
+      mark = desc.wordIterator().next().address.unsafeGetMarkerVolatile().get()
       assert(mark ne null)
       assert(ok)
       desc
@@ -45,7 +45,7 @@ final class IBRSpec
     val latch2 = new CountDownLatch(1)
     var ok = false
     val t = new Thread(() => {
-      val mark = desc.wordIterator().next().address.unsafeWeakMarker.get().get()
+      val mark = desc.wordIterator().next().address.unsafeGetMarkerVolatile().get()
       assert(mark ne null)
       latch1.countDown()
       latch2.await()
@@ -57,10 +57,10 @@ final class IBRSpec
     mark = null
     val wd = desc.wordIterator().next()
     System.gc()
-    assert(wd.address.unsafeWeakMarker.get().get() ne null)
+    assert(wd.address.unsafeGetMarkerVolatile().get() ne null)
     latch2.countDown()
     t.join()
-    while (wd.address.unsafeWeakMarker.get().get() ne null) {
+    while (wd.address.unsafeGetMarkerVolatile().get() ne null) {
       System.gc()
     }
   }

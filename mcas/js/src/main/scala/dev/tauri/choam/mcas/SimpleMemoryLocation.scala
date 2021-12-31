@@ -18,7 +18,6 @@
 package dev.tauri.choam
 package mcas
 
-import java.util.concurrent.atomic.AtomicReference
 import java.lang.ref.WeakReference
 
 // This is JS:
@@ -58,6 +57,9 @@ private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A
     witness
   }
 
-  override val unsafeWeakMarker: AtomicReference[WeakReference[AnyRef]] =
-    null // unused on JS
+  final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
+    impossible("SimpleMemoryLocation.unsafeGetMarkerVolatile called on JS")
+
+  final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
+    impossible("SimpleMemoryLocation.unsafeCasMarkerVolatile called on JS")
 }

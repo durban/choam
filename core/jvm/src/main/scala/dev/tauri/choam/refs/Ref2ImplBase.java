@@ -17,6 +17,8 @@
 
 package dev.tauri.choam.refs;
 
+import java.lang.ref.WeakReference;
+
 interface Ref2ImplBase<A, B> {
   A unsafeGetVolatile1();
   A unsafeGetPlain1();
@@ -24,6 +26,8 @@ interface Ref2ImplBase<A, B> {
   A unsafeCmpxchgVolatile1(A ov, A nv);
   void unsafeSetVolatile1(A nv);
   void unsafeSetPlain1(A nv);
+  WeakReference<Object> unsafeGetMarkerVolatile1();
+  boolean unsafeCasMarkerVolatile1(WeakReference<Object> ov, WeakReference<Object> nv);
   long id0();
   long id1();
   long id2();

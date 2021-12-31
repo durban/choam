@@ -20,7 +20,6 @@ package dev.tauri.choam.refs;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
-import java.util.concurrent.atomic.AtomicReference;
 
 import dev.tauri.choam.Ref;
 import dev.tauri.choam.mcas.MemoryLocation;
@@ -28,17 +27,21 @@ import dev.tauri.choam.mcas.MemoryLocation;
 final class RefU1<A> extends RefIdOnly implements Ref<A>, MemoryLocation<A> {
 
   private static final VarHandle VALUE;
+  private static final VarHandle MARKER;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       VALUE = l.findVarHandle(RefU1.class, "value", Object.class);
+      MARKER = l.findVarHandle(RefU1.class, "marker", WeakReference.class);
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }
   }
 
   private volatile A value;
+
+  private volatile WeakReference<Object> marker; // = null
 
   public RefU1(A a, long i0, long i1, long i2, long i3) {
     super(i0, i1, i2, i3);
@@ -91,15 +94,17 @@ final class RefU1<A> extends RefIdOnly implements Ref<A>, MemoryLocation<A> {
   }
 
   @Override
-  public final long dummy(long v) {
-    return 42L;
+  public final WeakReference<Object> unsafeGetMarkerVolatile() {
+    return this.marker;
   }
 
   @Override
-  public final AtomicReference<WeakReference<Object>> unsafeWeakMarker() {
-    return this._unsafeWeakMarker;
+  public final boolean unsafeCasMarkerVolatile(WeakReference<Object> ov, WeakReference<Object> nv) {
+    return MARKER.compareAndSet(this, ov, nv);
   }
 
-  private AtomicReference<WeakReference<Object>> _unsafeWeakMarker =
-    new AtomicReference<>(null);
+  @Override
+  public final long dummy(long v) {
+    return 42L;
+  }
 }
