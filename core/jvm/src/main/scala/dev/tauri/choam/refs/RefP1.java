@@ -19,6 +19,8 @@ package dev.tauri.choam.refs;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.lang.ref.WeakReference;
+import java.util.concurrent.atomic.AtomicReference;
 
 import dev.tauri.choam.Ref;
 import dev.tauri.choam.mcas.MemoryLocation;
@@ -94,4 +96,12 @@ final class RefP1<A>
   public final long dummy(long v) {
     return this.dummyImpl(v);
   }
+
+  @Override
+  public final AtomicReference<WeakReference<Object>> unsafeWeakMarker() {
+    return this._unsafeWeakMarker;
+  }
+
+  private AtomicReference<WeakReference<Object>> _unsafeWeakMarker =
+    new AtomicReference<>(null);
 }

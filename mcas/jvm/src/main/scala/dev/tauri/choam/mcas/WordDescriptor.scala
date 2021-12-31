@@ -23,17 +23,6 @@ private final class WordDescriptor[A] private (
   val parent: EMCASDescriptor,
 ) extends WordDescriptorBase {
 
-  /**
-   * The descriptor which was replaced by this
-   * descriptor (because, at that time, it was
-   * still in use).
-   */
-  def predecessor: WordDescriptor[_] =
-    this.getPredecessorVolatile().asInstanceOf[WordDescriptor[_]]
-
-  def casPredecessor(ov: WordDescriptor[_], nv: WordDescriptor[_]): Boolean =
-    this.casPredecessorVolatile(ov, nv)
-
   def address: MemoryLocation[A] =
     this.half.address
 
@@ -51,63 +40,6 @@ private final class WordDescriptor[A] private (
 
   final override def toString: String =
     s"WordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
-
-  final def finalizeWd(): Unit = {
-    this.clearStrongRef()
-  }
-
-  // TODO: remove this
-  private[this] def assertInvariants(wm: AnyRef): Unit = {
-    this.getStrongRefPlain() match {
-      case null => ()
-      case sm => assert(sm eq wm)
-    }
-  }
-
-  private[this] def getWeakMarker(): AnyRef = {
-    this.get()
-  }
-
-  private final def isInUseDirectly(): Boolean = {
-    this.getWeakMarker() ne null
-  }
-
-  final def isInUse(): Boolean = {
-    if (this.isInUseDirectly()) {
-      // we're in use, but we may still
-      // be able to cut some predecessors:
-      isInUseRecursive(curr = this.predecessor, lastUsed = this)
-    } else {
-      // we're not in use, but some
-      // predecessors may be:
-      isInUseRecursive(curr = this.predecessor, lastUsed = null)
-    }
-  }
-
-  @tailrec
-  private[this] final def isInUseRecursive(
-    curr: WordDescriptor[_], // null if this is the end
-    lastUsed: WordDescriptor[_], // null if no used was found so far
-  ): Boolean = {
-    if (curr eq null) { // end of the line
-      if (lastUsed ne null) {
-        lastUsed.clearPredecessor()
-        true // there was at least one used
-      } else {
-        false // there was no used
-      }
-    } else if (curr.isInUseDirectly()) {
-      isInUseRecursive(curr = curr.predecessor, lastUsed = curr)
-    } else {
-      isInUseRecursive(curr = curr.predecessor, lastUsed = lastUsed)
-    }
-  }
-
-  final def tryHold(): AnyRef = {
-    val wm = this.getWeakMarker()
-    this.assertInvariants(wm)
-    wm
-  }
 }
 
 private object WordDescriptor {

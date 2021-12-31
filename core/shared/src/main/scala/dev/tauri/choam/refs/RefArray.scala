@@ -24,6 +24,8 @@ import mcas.MemoryLocation
 import CompatPlatform.AtomicReferenceArray
 
 import RefArray.RefArrayRef
+import java.util.concurrent.atomic.AtomicReference
+import java.lang.ref.WeakReference
 
 private abstract class RefArray[A](
   val size: Int,
@@ -189,6 +191,9 @@ private object RefArray {
     final override def toString: String = {
       refs.refStringFromIdsAndIdx(id0, id1, id2, id3, this.logicalIdx)
     }
+
+    final override val unsafeWeakMarker: AtomicReference[WeakReference[AnyRef]] =
+      new AtomicReference(null)
 
     private[this] final def logicalIdx: Int =
       this.physicalIdx / 2

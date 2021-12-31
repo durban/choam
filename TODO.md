@@ -127,11 +127,15 @@
 
 ## Misc.
 
+- Try building a native image with Graal, to see if it works
 - `LongRef`, `IntRef`, ... (benchmarks needed, it might not make sense)
+  - especially since we can't store a descriptor in, e.g., a real `AtomicLong`
 - `Ref` which is backed by mmapped memory(?)
   - similar: mmapped from _persistent_ memory
   - similar: JS shared array
     - this would break assumptions the default JS MCAS relies on (single threaded)
+  - but, a problem with all these: we can't write a descriptor into them!
+  - see also: JEP 412 (https://openjdk.java.net/jeps/412)
 - Other data structures:
   - ctrie-set (but see problems with Ctrie)
   - `SkipListMap`, `SkipListSet`

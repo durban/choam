@@ -18,7 +18,9 @@
 package dev.tauri.choam
 package mcas
 
+import java.lang.ref.WeakReference
 import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.atomic.AtomicReference
 
 import scala.math.Ordering
 
@@ -63,6 +65,8 @@ trait MemoryLocation[A] {
   def unsafeCasVolatile(ov: A, nv: A): Boolean
 
   def unsafeCmpxchgVolatile(ov: A, nv: A): A
+
+  def unsafeWeakMarker: AtomicReference[WeakReference[AnyRef]]
 
   def id0: Long
 

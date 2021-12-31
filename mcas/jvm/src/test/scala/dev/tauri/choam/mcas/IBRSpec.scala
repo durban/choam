@@ -26,6 +26,7 @@ import java.lang.ref.Reference
 final class IBRSpec
   extends BaseSpecA {
 
+  // OK:
   test("IBR should not free an object referenced from another thread") {
     val ref = MemoryLocation.unsafe[String]("s")
     val ctx = EMCAS.currentContext()
@@ -33,16 +34,18 @@ final class IBRSpec
     var mark: AnyRef = null
     val desc = {
       val desc = EMCASDescriptor.prepare(hDesc)
-      mark = desc.wordIterator().next().tryHold()
+      val ok = EMCAS.MCAS(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
+      // TODO: if *right now* the GC clears the mark, the assertion below will fail
+      mark = desc.wordIterator().next().address.unsafeWeakMarker.get().get()
       assert(mark ne null)
-      assert(EMCAS.MCAS(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS))
+      assert(ok)
       desc
     }
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     var ok = false
     val t = new Thread(() => {
-      val mark = desc.wordIterator().next().tryHold()
+      val mark = desc.wordIterator().next().address.unsafeWeakMarker.get().get()
       assert(mark ne null)
       latch1.countDown()
       latch2.await()
@@ -54,14 +57,15 @@ final class IBRSpec
     mark = null
     val wd = desc.wordIterator().next()
     System.gc()
-    assert(wd.isInUse())
+    assert(wd.address.unsafeWeakMarker.get().get() ne null)
     latch2.countDown()
     t.join()
-    while (wd.isInUse()) {
+    while (wd.address.unsafeWeakMarker.get().get() ne null) {
       System.gc()
     }
   }
 
+  // OK:
   test("ThreadContext should be collected by the JVM GC if a thread terminates") {
     EMCAS.currentContext()
     val latch1 = new CountDownLatch(1)

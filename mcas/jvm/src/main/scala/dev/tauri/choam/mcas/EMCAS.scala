@@ -19,6 +19,7 @@ package dev.tauri.choam
 package mcas
 
 import java.lang.ref.Reference
+import java.lang.ref.WeakReference
 
 /**
  * Efficient Multi-word Compare and Swap:
@@ -73,31 +74,55 @@ private object EMCAS extends MCAS { self =>
    */
   private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: ThreadContext, replace: Int): A = {
     @tailrec
-    def go(): A = {
+    def go(mark: AnyRef): A = {
       ref.unsafeGetVolatile() match {
         case wd: WordDescriptor[_] =>
-          val mark = wd.tryHold()
-          val parentStatus = wd.parent.getStatus()
-          if (parentStatus eq EMCASStatus.ACTIVE) {
-            assert(mark ne null)
-            MCAS(wd.parent, ctx = ctx, replace = replace) // help the other op
-            Reference.reachabilityFence(mark)
-            go() // retry
-          } else { // finalized
-            val a = if (parentStatus eq EMCASStatus.SUCCESSFUL) {
-              wd.cast[A].nv
-            } else { // FAILED
-              wd.cast[A].ov
+          if (mark eq null) {
+            // not holding it yet
+            val m = ref.unsafeWeakMarker.get().get()
+            if (m ne null) {
+              // we're holding it, re-read the descriptor:
+              go(mark = m)
+            } else { // m eq null
+              // descriptor can be detached
+              val parentStatus = wd.parent.getStatus()
+              if (parentStatus eq EMCASStatus.ACTIVE) {
+                // active op without a mark: this can
+                // happen if a thread died during an op;
+                // we help the active op, then retry ours:
+                MCAS(wd.parent, ctx = ctx, replace = replace)
+                go(mark = null)
+              } else { // finalized op
+                val a = if (parentStatus eq EMCASStatus.SUCCESSFUL) {
+                  wd.cast[A].nv
+                } else { // FAILED
+                  wd.cast[A].ov
+                }
+                this.maybeReplaceDescriptor[A](ref, wd.cast[A], a, ctx, replace = replace)
+                a
+              }
             }
-            this.maybeReplaceDescriptor[A](ref, wd.cast[A], a, ctx, replace = replace)
-            a
+          } else { // mark ne null
+            // OK, we're already holding the descriptor
+            val parentStatus = wd.parent.getStatus()
+            if (parentStatus eq EMCASStatus.ACTIVE) {
+              MCAS(wd.parent, ctx = ctx, replace = replace) // help the other op
+              go(mark = mark) // retry
+            } else { // finalized
+              val a = if (parentStatus eq EMCASStatus.SUCCESSFUL) {
+                wd.cast[A].nv
+              } else { // FAILED
+                wd.cast[A].ov
+              }
+              a
+            }
           }
         case a =>
           a
       }
     }
 
-    go()
+    go(mark = null)
   }
 
   private final def maybeReplaceDescriptor[A](ref: MemoryLocation[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext, replace: Int): Unit = {
@@ -115,17 +140,17 @@ private object EMCAS extends MCAS { self =>
     ov: WordDescriptor[A],
     nv: A,
   ): Boolean = {
-    if (ov.isInUse()) {
-      // still in use, need to be replaced later
-      false
-    } else {
+    // if (ov.isInUse()) {
+    //   // still in use, need to be replaced later
+    //   false
+    // } else {
       ref.unsafeCasVolatile(ov.castToData, nv)
       // If this CAS fails, someone else might've
       // replaced the desc with the final value, or
       // maybe started another operation; in either case,
       // there is nothing to do, so we indicate success.
       true
-    }
+    // }
   }
 
   // Listing 3 in the paper:
@@ -149,6 +174,8 @@ private object EMCAS extends MCAS { self =>
       var content: A = nullOf[A]
       var contentWd: WordDescriptor[A] = null
       var value: A = nullOf[A]
+      var weakref: WeakReference[AnyRef] = null
+      var mark: AnyRef = null
       var go = true
       // Read `content`, and `value` if necessary;
       // this is a specialized and inlined version
@@ -163,35 +190,80 @@ private object EMCAS extends MCAS { self =>
         content = wordDesc.address.unsafeGetVolatile()
         content match {
           case wd: WordDescriptor[_] =>
-            val mark = wd.tryHold()
-            if (wd eq wordDesc) {
-              // already points to the right place, early return:
-              return TryWordResult.SUCCESS // scalafix:ok
-            } else {
-              contentWd = wd.cast[A]
-              // At this point, we're sure that `wd` belongs to another op
-              // (not `desc`), because otherwise it would've been equal to
-              // `wordDesc` (we're assuming that any WordDescriptor only
-              // appears at most once in an MCASDescriptor).
-              val parentStatus = wd.parent.getStatus()
-              if (parentStatus eq EMCASStatus.ACTIVE) {
-                MCAS(wd.parent, ctx = ctx, replace = replace) // help the other op
-                // Note: we're not "helping" ourselves for sure, see the comment above.
-                // Here, we still don't have the value, so the loop must retry.
-              } else if (parentStatus eq EMCASStatus.SUCCESSFUL) {
-                value = wd.cast[A].nv
-                go = false
+            if (mark eq null) {
+              // not holding it yet
+              weakref = wordDesc.address.unsafeWeakMarker.get()
+              mark = weakref.get()
+              if (mark ne null) {
+                // continue with another iteration, and re-read the
+                // descriptor, while holding the mark
+              } else { // mark eq null
+                // the old descriptor is unused, could be detached
+                val parentStatus = wd.parent.getStatus()
+                if (parentStatus eq EMCASStatus.ACTIVE) {
+                  // active op without a mark: this can
+                  // happen if a thread died during an op
+                  if (wd eq wordDesc) {
+                    // this is us!
+                    // already points to the right place, early return:
+                    return TryWordResult.SUCCESS // scalafix:ok
+                  } else {
+                    // we help the active op (who is not us),
+                    // then continue with another iteration:
+                    MCAS(wd.parent, ctx = ctx, replace = replace)
+                  }
+                } else { // finalized op
+                  if (parentStatus eq EMCASStatus.SUCCESSFUL) {
+                    value = wd.cast[A].nv
+                    go = false
+                  } else { // FAILED
+                    value = wd.cast[A].ov
+                    go = false
+                  }
+                }
+              }
+            } else { // mark ne null
+              if (wd eq wordDesc) {
+                // already points to the right place, early return:
+                return TryWordResult.SUCCESS // scalafix:ok
               } else {
-                value = wd.cast[A].ov
-                go = false
+                contentWd = wd.cast[A]
+                // At this point, we're sure that `wd` belongs to another op
+                // (not `desc`), because otherwise it would've been equal to
+                // `wordDesc` (we're assuming that any WordDescriptor only
+                // appears at most once in an MCASDescriptor).
+                val parentStatus = wd.parent.getStatus()
+                if (parentStatus eq EMCASStatus.ACTIVE) {
+                  MCAS(wd.parent, ctx = ctx, replace = replace) // help the other op
+                  // Note: we're not "helping" ourselves for sure, see the comment above.
+                  // Here, we still don't have the value, so the loop must retry.
+                } else if (parentStatus eq EMCASStatus.SUCCESSFUL) {
+                  value = wd.cast[A].nv
+                  go = false
+                } else {
+                  value = wd.cast[A].ov
+                  go = false
+                }
               }
             }
-            Reference.reachabilityFence(mark)
           case a =>
             value = a
             go = false
+            weakref = wordDesc.address.unsafeWeakMarker.get()
+            // we found a value (i.e., not a descriptor), so
+            // the weakref either must be null, or it must be cleared:
+            assert( // TODO: this assertion can fail; see below
+              (weakref eq null) || (weakref.get() eq null),
+              s"value = ${value}; weakref = ${weakref}; marker = ${weakref.get()}; ref = ${wordDesc.address}"
+            )
+            // thus, setting `mark` to null is correct here
+            // (we need to clear a possible non-null mark from
+            // a previous iteration when we found a descriptor)
+            mark = null
         }
       }
+
+      Reference.reachabilityFence(mark) // TODO: this is probably unnecessary
 
       if (!equ(value, wordDesc.ov)) {
         // expected value is different
@@ -200,48 +272,60 @@ private object EMCAS extends MCAS { self =>
         // we have been finalized (by a helping thread), no reason to continue
         TryWordResult.BREAK
       } else {
-        val weakRefOk = extendInterval(oldWd = contentWd, newWd = wordDesc)
+        // before installing our descriptor, make sure a valid mark exists:
+        val weakRefOk = if (mark eq null) {
+          // there was no old descriptor, or it was already unused;
+          // we need a new mark:
+          assert(weakref.get() eq null)
+          mark = new McasMarker
+          wordDesc.address.unsafeWeakMarker.compareAndSet(weakref, new WeakReference(mark))
+          // if this fails, we'll retry, see below
+        } else {
+          true
+        }
+        // If *right now*, another thread, which started reading
+        // before we installed a new weakref above, finishes its
+        // read, and detaches the *previous* descriptor (since we
+        // haven't installed ours yet, and that one was unused);
+        // then the following CAS will fail (not a problem), and
+        // on our next retry, we may see a ref with a value *and*
+        // a non-empty weakref (this may be a problem, see above).
         if (weakRefOk && wordDesc.address.unsafeCasVolatile(content, wordDesc.castToData)) {
+          Reference.reachabilityFence(mark)
           TryWordResult.SUCCESS
         } else {
-          // either we couldn't chain the descriptors, or
+          // either we couldn't install the new mark, or
           // the CAS on the `Ref` failed; in either case,
           // we'll retry:
+          Reference.reachabilityFence(mark) // TODO: do we need this? Probably yes.
           tryWord(wordDesc)
         }
       }
-    }
+    } // tryWord
 
     // TODO: better name (there are no "intervals" any more)
-    def extendInterval[A](oldWd: WordDescriptor[A], newWd: WordDescriptor[A]): Boolean = {
-      if (oldWd ne null) {
-        val mark = oldWd.tryHold()
-        if (mark ne null) {
-          val res = newWd.casPredecessor(null, oldWd)
-          res
-        } else {
-          true // already can be replaced without issue, nothing to do
-        }
-      } else {
-        true // there was no old descriptor
-      }
-    }
+    // def extendInterval[A](oldWd: WordDescriptor[A], newWd: WordDescriptor[A]): Boolean = {
+    //   if (oldWd ne null) {
+    //     val mark = oldWd.tryHold()
+    //     if (mark ne null) {
+    //       val res = newWd.casPredecessor(null, oldWd)
+    //       res
+    //     } else {
+    //       true // already can be replaced without issue, nothing to do
+    //     }
+    //   } else {
+    //     true // there was no old descriptor
+    //   }
+    // }
 
     @tailrec
     def go(words: java.util.Iterator[WordDescriptor[_]]): TryWordResult = {
       if (words.hasNext) {
         val word = words.next()
         if (word ne null) {
-          val mark = word.tryHold()
-          if (mark ne null) {
-            val twr = tryWord(word)
-            Reference.reachabilityFence(mark)
-            if (twr eq TryWordResult.SUCCESS) go(words)
-            else twr
-          } else {
-            assert(desc.getStatus() ne EMCASStatus.ACTIVE)
-            TryWordResult.BREAK
-          }
+          val twr = tryWord(word)
+          if (twr eq TryWordResult.SUCCESS) go(words)
+          else twr
         } else {
           // Another thread already finalized the descriptor,
           // and cleaned up this word descriptor (hence the `null`);
@@ -265,17 +349,11 @@ private object EMCAS extends MCAS { self =>
         EMCASStatus.FAILED
       }
       if (desc.casStatus(EMCASStatus.ACTIVE, rr)) {
-        // TODO: If we crash exactly here, no thread will clear the markers;
-        // TODO: this is not a correctness issue, but a performance one.
-        desc.wordIterator().forEachRemaining(_.finalizeWd())
-        // TODO: clearing the strong ref is not enough,
-        // TODO: occasionally we should run over finalized
-        // TODO: descriptors, look at their weakrefs, and
-        // TODO: if cleared, we should replace them (with the final value).
         (rr eq EMCASStatus.SUCCESSFUL)
       } else {
         // someone else finalized the descriptor, we must read its status:
         (desc.getStatus() eq EMCASStatus.SUCCESSFUL)
+        // TODO: instead of this, we should cmpxchg the status (and not `casStatus`)
       }
     }
   }

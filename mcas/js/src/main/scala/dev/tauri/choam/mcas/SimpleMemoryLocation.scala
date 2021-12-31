@@ -18,6 +18,9 @@
 package dev.tauri.choam
 package mcas
 
+import java.util.concurrent.atomic.AtomicReference
+import java.lang.ref.WeakReference
+
 // This is JS:
 private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A)(
   override val id0: Long,
@@ -54,4 +57,7 @@ private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A
     }
     witness
   }
+
+  override val unsafeWeakMarker: AtomicReference[WeakReference[AnyRef]] =
+    null // unused on JS
 }

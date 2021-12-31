@@ -19,6 +19,8 @@ package dev.tauri.choam
 package refs
 
 import mcas.MemoryLocation
+import java.util.concurrent.atomic.AtomicReference
+import java.lang.ref.WeakReference
 
 private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
   extends Ref[A]
@@ -41,6 +43,9 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
 
   override def unsafeSetPlain(a: A): Unit =
     self.unsafeSetPlain1(a)
+
+  final override val unsafeWeakMarker: AtomicReference[WeakReference[AnyRef]] =
+    new AtomicReference(null)
 
   override def id0: Long =
     self.id0
@@ -79,6 +84,9 @@ private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
 
   override def unsafeSetPlain(b: B): Unit =
     self.unsafeSetPlain2(b)
+
+  final override val unsafeWeakMarker: AtomicReference[WeakReference[AnyRef]] =
+    new AtomicReference(null)
 
   override def id0: Long =
     self.id4
