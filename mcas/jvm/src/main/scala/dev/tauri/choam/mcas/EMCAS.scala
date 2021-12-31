@@ -125,13 +125,13 @@ private object EMCAS extends MCAS { self =>
     go(mark = null)
   }
 
-  private final def maybeReplaceDescriptor[A](ref: MemoryLocation[A], ov: WordDescriptor[A], nv: A, ctx: ThreadContext, replace: Int): Unit = {
+  private final def maybeReplaceDescriptor[A](ref: MemoryLocation[A], ov: WordDescriptor[A], nv: A, @unused ctx: ThreadContext, replace: Int): Unit = {
     if (replace != 0) {
-      val n = ctx.random.nextInt()
-      if ((n % replace) == 0) {
+      // val n = ctx.random.nextInt()
+      // if ((n % replace) == 0) {
         replaceDescriptorIfFree[A](ref, ov, nv)
         ()
-      }
+      // }
     }
   }
 
