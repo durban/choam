@@ -276,7 +276,7 @@ private object EMCAS extends MCAS { self =>
         val weakRefOk = if (mark eq null) {
           // there was no old descriptor, or it was already unused;
           // we need a new mark:
-          assert(weakref.get() eq null)
+          assert((weakref eq null) || (weakref.get() eq null))
           mark = new McasMarker
           wordDesc.address.unsafeWeakMarker.compareAndSet(weakref, new WeakReference(mark))
           // if this fails, we'll retry, see below
