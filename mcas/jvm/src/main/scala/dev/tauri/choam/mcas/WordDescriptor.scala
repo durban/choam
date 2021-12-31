@@ -21,7 +21,7 @@ package mcas
 private final class WordDescriptor[A] private (
   val half: HalfWordDescriptor[A],
   val parent: EMCASDescriptor,
-) extends WordDescriptorBase {
+) {
 
   def address: MemoryLocation[A] =
     this.half.address
