@@ -250,16 +250,21 @@ private object EMCAS extends MCAS { self =>
             value = a
             go = false
             weakref = wordDesc.address.unsafeWeakMarker.get()
-            // we found a value (i.e., not a descriptor), so
-            // the weakref either must be null, or it must be cleared:
-            assert( // TODO: this assertion can fail; see below
-              (weakref eq null) || (weakref.get() eq null),
-              s"value = ${value}; weakref = ${weakref}; marker = ${weakref.get()}; ref = ${wordDesc.address}"
-            )
-            // thus, setting `mark` to null is correct here
-            // (we need to clear a possible non-null mark from
-            // a previous iteration when we found a descriptor)
-            mark = null
+            // we found a value (i.e., not a descriptor)
+            if (weakref ne null) {
+              // in rare cases, `mark` could be non-null here
+              // (see below); but that is not a problem, we
+              // hold it here, and use it for our descriptor
+              mark = weakref.get()
+            } else {
+              // we need to clear a possible non-null mark from
+              // a previous iteration when we found a descriptor:
+              mark = null
+            }
+            // assert( // TODO: this assertion can fail
+            //   (weakref eq null) || (weakref.get() eq null),
+            //   s"value = ${value}; weakref = ${weakref}; marker = ${weakref.get()}; ref = ${wordDesc.address}"
+            // )
         }
       }
 
@@ -281,15 +286,16 @@ private object EMCAS extends MCAS { self =>
           wordDesc.address.unsafeWeakMarker.compareAndSet(weakref, new WeakReference(mark))
           // if this fails, we'll retry, see below
         } else {
+          // we have a valid mark from reading
           true
         }
-        // If *right now*, another thread, which started reading
-        // before we installed a new weakref above, finishes its
+        // If *right now* (after the CAS), another thread, which started
+        // reading before we installed a new weakref above, finishes its
         // read, and detaches the *previous* descriptor (since we
         // haven't installed ours yet, and that one was unused);
         // then the following CAS will fail (not a problem), and
         // on our next retry, we may see a ref with a value *and*
-        // a non-empty weakref (this may be a problem, see above).
+        // a non-empty weakref (but this case is also handled, see above).
         if (weakRefOk && wordDesc.address.unsafeCasVolatile(content, wordDesc.castToData)) {
           Reference.reachabilityFence(mark)
           TryWordResult.SUCCESS
