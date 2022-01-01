@@ -104,7 +104,7 @@ private object Exchanger extends ExchangerCompanionPlatform {
         contK = fx.contK,
         contT = fx.contT,
         desc = ctx.start(),
-        postCommit = null : ObjStack.Lst[Axn[Unit]],
+        postCommit = ObjStack.Lst.empty[Axn[Unit]],
         exchangerData = newStats,
       )
     }

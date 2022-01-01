@@ -94,7 +94,7 @@ private sealed trait ExchangerImplJvm[A, B]
                 waitForClaimedOffer[C](self, msg, res, stats, ctx)
               } else {
                 // rescinded successfully, will retry
-                Left(stats.missed)
+                Left(stats.missed.rescinded)
               }
             case other: ExchangerNode[d] =>
               debugLog(s"found other - thread#${Thread.currentThread().getId()}")
@@ -319,25 +319,27 @@ private object ExchangerImplJvm {
       Map.empty
   }
 
-  // TODO: this could be packed in an Int
+  // TODO: this could be packed into an Int
   private[choam] final case class Statistics(
     /* Always <= size */
-    effectiveSize: Byte,
-    /* Counts misses (++) and contention (--) */
-    misses: Byte,
+    effectiveSize: Byte, // ---------------------------\
+    /* Counts misses (++) and contention (--) */ //     ⊢--> missed/contended
+    misses: Byte, // ----------------------------------/
     /* How much to wait for an exchange */
-    spinShift: Byte,
-    /* Counts exchanges (++) and rescinds (--) */
-    exchanges: Byte
+    spinShift: Byte, // -------------------------------\
+    /* Counts exchanges (++) and rescinds (--) */ //    ⊢--> exchanged/rescinded
+    exchanges: Byte // --------------------------------/
   ) {
+
+    import Statistics._
 
     require(effectiveSize > 0)
 
     /**
-     * Couldn't collide, so we may decrease effective size.
+     * Couldn't exchange, so we may decrease effective size.
      */
     def missed: Statistics = {
-      if (misses == 64.toByte) { // TODO: magic 64
+      if (this.misses == maxMisses) {
         val newEffSize = Math.max(this.effectiveSize >> 1, 1)
         this.copy(effectiveSize = newEffSize.toByte, misses = 0.toByte)
       } else {
@@ -350,7 +352,7 @@ private object ExchangerImplJvm {
      * increase effective size.
      */
     def contended(size: Int): Statistics = {
-      if (misses == (-64).toByte) { // TODO: magic -64
+      if (this.misses == minMisses) {
         val newEffSize = Math.min(this.effectiveSize << 1, size)
         this.copy(effectiveSize = newEffSize.toByte, misses = 0.toByte)
       } else {
@@ -359,13 +361,21 @@ private object ExchangerImplJvm {
     }
 
     def exchanged: Statistics = {
-      // TODO: no wait time adaptation implemented for now
-      this
+      if (this.exchanges == maxExchanges) {
+        val newSpinShift = Math.min(this.spinShift + 1, maxSpinShift)
+        this.copy(spinShift = newSpinShift.toByte, exchanges = 0.toByte)
+      } else {
+        this.copy(exchanges = (this.exchanges + 1).toByte)
+      }
     }
 
     def rescinded: Statistics = {
-      // TODO: no wait time adaptation implemented for now
-      this
+      if (this.exchanges == minExchanges) {
+        val newSpinShift = Math.max(this.spinShift - 1, 0)
+        this.copy(spinShift = newSpinShift.toByte, exchanges = 0.toByte)
+      } else {
+        this.copy(exchanges = (this.exchanges - 1).toByte)
+      }
     }
   }
 
@@ -377,14 +387,31 @@ private object ExchangerImplJvm {
     def zero: Statistics =
       _zero
 
+    // TODO: these magic constants should be tuned with experiments
+
+    private final val maxMisses =
+      64.toByte // TODO: magic
+
+    private final val minMisses =
+      -64.toByte // TODO: magic
+
+    private final val maxExchanges =
+      4.toByte // TODO: magic
+
+    private final val minExchanges =
+      -4.toByte // TODO: magic
+
     final val maxSizeShift =
       8 // TODO: magic
 
     final val maxSpin =
-      256 // TODO: magic
+      1024 // TODO: magic
 
-    final val defaultSpin =
-      256 // TODO: magic; too much
+    final val defaultSpin = // ------\
+      128 // TODO: magic              \
+                             //        ----> these two are interdependent!
+    final val maxSpinShift = // -----/
+      16 // TODO: magic
   }
 
   private[choam] val size = Math.min(

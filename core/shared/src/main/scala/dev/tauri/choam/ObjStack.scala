@@ -102,6 +102,9 @@ private object ObjStack {
     def singleton[A](a: A): Lst[A] =
       new Lst(a, null)
 
+    def empty[A]: Lst[A] =
+      null
+
     def length[A](lst: Lst[A]): Int = {
       def go(lst: Lst[A], acc: Int): Int = {
         if (lst eq null) acc

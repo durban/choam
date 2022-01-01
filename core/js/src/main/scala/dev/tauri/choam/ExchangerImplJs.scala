@@ -27,7 +27,7 @@ private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
 
     // NB: this MUST be initialized before `dual`,
     // otherwise it could remain uninitialized (null).
-    private[choam] final override val key = {
+    private[choam] final override val key: Exchanger.Key = {
       if (d ne null) d.key
       else new Exchanger.Key
     }
