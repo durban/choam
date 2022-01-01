@@ -23,7 +23,7 @@ import cats.effect.IO
 
 import munit.CatsEffectSuite
 
-import org.openjdk.jmh.results.ScalarResult
+import org.openjdk.jmh.results.Result
 
 final class RxnProfilerSpecIO
   extends BaseSpecIO
@@ -38,22 +38,22 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     p
   }
 
-  def simulateEnd(p: RxnProfiler): F[Map[String, ScalarResult]] = F.delay {
+  def simulateEnd(p: RxnProfiler): F[Map[String, Result[_]]] = F.delay {
     import scala.jdk.CollectionConverters._
     val rss = p.afterIteration(null, null, null) // TODO: nulls
     Map(rss.asScala.toList.map { r =>
-      (r.getLabel -> r.asInstanceOf[ScalarResult])
+      (r.getLabel -> r)
     }: _*)
   }
 
   def simulateRun[A](use: RxnProfiler => F[A])(
-    check: Map[String, ScalarResult] => F[Unit]
+    check: Map[String, Result[_]] => F[Unit]
   ): F[A] = {
     simulateRunConfig(config = "debug")(use = use)(check = check)
   }
 
   def simulateRunConfig[A](config: String)(use: RxnProfiler => F[A])(
-    check: Map[String, ScalarResult] => F[Unit]
+    check: Map[String, Result[_]] => F[Unit]
   ): F[A] = {
     F.bracket(acquire = simulateStart(config))(use = use)(release = { p =>
       simulateEnd(p).flatMap { results => check(results) }
