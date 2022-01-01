@@ -223,7 +223,11 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
       )
     }
     if (config.exchangerStats) {
-      val stats = EMCAS.collectExchangerStats()
+      val stats = EMCAS
+        .collectExchangerStats()
+        .view
+        .mapValues { m => m.filter(kv => kv._1 ne Exchanger.paramsKey) }
+        .toMap
       res.add(
         new StatsResult(stats :: Nil)
       )

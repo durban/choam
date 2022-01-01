@@ -87,6 +87,34 @@ private object Exchanger extends ExchangerCompanionPlatform {
 
   import mcas.{ MCAS, HalfEMCASDescriptor }
 
+  private[choam] val paramsKey =
+    new Exchanger.Key
+
+  // TODO: these are temporarily mutable for benchmarking
+  @volatile
+  private[choam] var params: Params =
+    Params()
+
+  private[choam] final case class Params(
+    final val maxMisses: Byte =
+      64,
+    final val minMisses: Byte =
+      -64,
+    final val maxExchanges: Byte =
+      4,
+    final val minExchanges: Byte =
+      -4,
+    final val maxSizeShift: Byte =
+      8,
+    final val maxSpin: Int =
+      1024,
+    // these two are interdependent:
+    final val defaultSpin: Int =
+      128,
+    final val maxSpinShift: Byte =
+      16,
+  )
+
   private[choam] final case class Msg(
     value: Any,
     contK: ObjStack.Lst[Any],

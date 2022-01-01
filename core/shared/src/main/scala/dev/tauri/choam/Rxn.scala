@@ -610,6 +610,20 @@ object Rxn extends RxnInstances0 {
     private[this] var stats: ExStatMap =
       ctx.getStatistics().asInstanceOf[ExStatMap]
 
+    // TODO: this is a hack
+    private[this] var exParams: Exchanger.Params = {
+      (stats.getOrElse(Exchanger.paramsKey, null): AnyRef) match {
+        case null =>
+          val p = Exchanger.params // volatile read
+          stats = (stats.asInstanceOf[Map[AnyRef, AnyRef]] + (Exchanger.paramsKey -> p)).asInstanceOf[ExStatMap]
+          p
+        case p: Exchanger.Params =>
+          p
+        case x =>
+          impossible(s"found ${x.getClass.getName} instead of Exchanger.Params")
+      }
+    }
+
     private[this] final def setContReset(): Unit = {
       contTReset = contT.takeSnapshot()
       contKReset = contK.takeSnapshot()
@@ -886,7 +900,7 @@ object Rxn extends RxnInstances0 {
             postCommit = pc.takeSnapshot(),
             exchangerData = stats,
           )
-          c.exchanger.tryExchange(msg = msg, ctx = ctx) match {
+          c.exchanger.tryExchange(msg = msg, params = exParams, ctx = ctx) match {
             case Left(newStats) =>
               stats = newStats
               loop(retry())
