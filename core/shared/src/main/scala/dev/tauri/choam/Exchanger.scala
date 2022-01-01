@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.LongAdder
 sealed trait Exchanger[A, B] {
   def exchange: Rxn[A, B]
   def dual: Exchanger[B, A]
-  private[choam] def key: AnyRef
+  private[choam] def key: Exchanger.Key
 }
 
 /** Private, because an `Exchanger` is unsafe (may block indefinitely) */
@@ -41,6 +41,13 @@ private object Exchanger extends ExchangerCompanionPlatform {
         )
       }
     }
+  }
+
+  private[choam] final class Key
+    extends Serializable {
+
+    final override def toString: String =
+      s"Key@${this.hashCode.toHexString}"
   }
 
   private[choam] trait UnsealedExchanger[A, B]
@@ -72,7 +79,7 @@ private object Exchanger extends ExchangerCompanionPlatform {
       else new ProfiledExchanger[B, A](this, underlying.dual, counter)
     }
 
-    private[choam] final override val key: AnyRef =
+    private[choam] final override val key =
       underlying.key
   }
 

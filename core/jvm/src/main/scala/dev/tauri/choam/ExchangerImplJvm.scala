@@ -32,7 +32,7 @@ private sealed trait ExchangerImplJvm[A, B]
 
   protected def outgoing: AtomicReferenceArray[ExchangerNode[_]]
 
-  private[choam] def key: AnyRef
+  private[choam] def key: Exchanger.Key
 
   protected def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]]
 
@@ -54,7 +54,7 @@ private sealed trait ExchangerImplJvm[A, B]
     debugLog(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
     val idx = if (stats.effectiveSize < 2) 0 else ctx.random.nextInt(stats.effectiveSize.toInt)
     tryIdx(idx, msg, stats, ctx) match {
-      case Left(stats) => Left(msg.exchangerData.updated(this, stats))
+      case Left(stats) => Left(msg.exchangerData.updated(this.key, stats))
       case Right(msg) => Right(msg)
     }
   }
@@ -143,7 +143,7 @@ private sealed trait ExchangerImplJvm[A, B]
         c match {
           case fx: FinishedEx[_] =>
             debugLog(s"waitForClaimedOffer: found result - thread#${Thread.currentThread().getId()}")
-            val newStats = msg.exchangerData.updated(this, stats.exchanged)
+            val newStats = msg.exchangerData.updated(this.key, stats.exchanged)
             Right(Msg.fromFinishedEx(fx, newStats, ctx))
           case _: Rescinded[_] =>
             // we're the only one who can rescind this
@@ -159,7 +159,7 @@ private sealed trait ExchangerImplJvm[A, B]
           ctx.read(self.hole.loc) match {
             case fx: FinishedEx[_] =>
               debugLog(s"waitForClaimedOffer: found result - thread#${Thread.currentThread().getId()}")
-              val newStats = msg.exchangerData.updated(this, stats.exchanged)
+              val newStats = msg.exchangerData.updated(this.key, stats.exchanged)
               Right(Msg.fromFinishedEx(fx, newStats, ctx))
             case _: Rescinded[_] =>
               // we're the only one who can rescind this
@@ -195,7 +195,7 @@ private sealed trait ExchangerImplJvm[A, B]
       desc = ctx.addAll(selfMsg.desc, other.msg.desc),
       postCommit = ObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit),
       // this thread will continue, so we use (and update) our data:
-      exchangerData = selfMsg.exchangerData.updated(this, stats.exchanged)
+      exchangerData = selfMsg.exchangerData.updated(this.key, stats.exchanged)
     )
     debugLog(s"merged postCommit: ${resMsg.postCommit.mkString()} - thread#${Thread.currentThread().getId()}")
     Right(resMsg)
@@ -257,7 +257,7 @@ private final class DualExchangerImplJvm[A, B](
   protected final override def outgoing =
     dual.incoming
 
-  private[choam] final override def key: AnyRef =
+  private[choam] final override def key =
     dual.key
 
   protected final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]] =
@@ -271,8 +271,8 @@ private final class PrimaryExchangerImplJvm[A, B] private[choam] (
   final override val dual: Exchanger[B, A] =
     new DualExchangerImplJvm[B, A](this)
 
-  protected[choam] final override val key: AnyRef =
-    new AnyRef
+  protected[choam] final override val key =
+    new Exchanger.Key
 
   protected[choam] final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]] = {
     val inc = this.incoming match {
@@ -312,13 +312,14 @@ private object ExchangerImplJvm {
   }
 
   private[choam] type StatMap =
-    Map[AnyRef, ExchangerImplJvm.Statistics]
+    Map[Exchanger.Key, ExchangerImplJvm.Statistics]
 
   private[choam] final object StatMap {
     def empty: StatMap =
       Map.empty
   }
 
+  // TODO: this could be packed in an Int
   private[choam] final case class Statistics(
     /* Always <= size */
     effectiveSize: Byte,

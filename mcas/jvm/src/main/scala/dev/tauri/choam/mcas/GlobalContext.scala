@@ -54,6 +54,13 @@ private final class GlobalContext(impl: EMCAS.type)
     (commits, retries)
   }
 
+  /** Only for testing/benchmarking */
+  private[choam] def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
+    threadContexts().foldLeft(Map.empty[Long, Map[AnyRef, AnyRef]]) { (acc, tc) =>
+      acc + (tc.tid -> tc.getStatistics())
+    }
+  }
+
   private[this] final def threadContexts(): Iterator[ThreadContext] = {
     val iterWeak = this.snapshotReservations.valuesIterator
     iterWeak.flatMap { weakref =>

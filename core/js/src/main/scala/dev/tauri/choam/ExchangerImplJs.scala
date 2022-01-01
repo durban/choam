@@ -25,13 +25,17 @@ private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
     final override def exchange: Rxn[A, B] =
       Rxn.unsafe.retry[A, B]
 
+    // NB: this MUST be initialized before `dual`,
+    // otherwise it could remain uninitialized (null).
+    private[choam] final override val key = {
+      if (d ne null) d.key
+      else new Exchanger.Key
+    }
+
     final override val dual: Exchanger[B, A] = {
       if (d ne null) d
       else new ExchangerImplJs[B, A](this)
     }
-
-    private[choam] final override val key: AnyRef =
-      new AnyRef
 
     private[choam] final def tryExchange[C](
       @unused msg: Exchanger.Msg,

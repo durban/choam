@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 
+import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicInteger
 
 import cats.effect.{ IO, Outcome }
@@ -346,22 +347,107 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  test("An Exchanger and its dual must use the same key in a StatMap".ignore) { // TODO
+  // TODO: test with 2 different Exchangers in 1 reaction
+
+  test("An Exchanger and its dual must use the same key in a StatMap") {
     for {
-      _ <- F.unit
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      _ <- assertSameInstanceF(ex.key, ex.dual.key)
+      f1 <- ex.exchange.flatMapF { i =>
+        Rxn.unsafe.context { ctx =>
+          (i, ctx)
+        }
+      }.apply[F]("foo").start
+      f2 <- ex.dual.exchange.flatMapF { i =>
+        Rxn.unsafe.context { ctx =>
+          (i, ctx)
+        }
+      }.apply[F](42).start
+      r1 <- f1.joinWithNever
+      (res1, ctx1) = r1
+      _ <- assertEqualsF(res1, 42)
+      _ <- F.delay {
+        if (ctx1.supportsStatistics) {
+          assert(ctx1.getStatistics().contains(ex.key))
+        } else {
+          // impl. is not collecting stats
+        }
+      }
+      r2 <- f2.joinWithNever
+      (res2, ctx2) = r2
+      _ <- assertEqualsF(res2, "foo")
+      _ <- F.delay {
+        if (ctx2.supportsStatistics) {
+          assert(ctx2.getStatistics().contains(ex.key))
+        } else {
+          // impl. is not collecting stats
+        }
+      }
     } yield ()
   }
 
-  test("A StatMap must persist between different unsafePerform runs".ignore) { // TODO
+  test("A StatMap must persist between different unsafePerform runs") {
     for {
-      _ <- F.unit
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      ex2 <- Rxn.unsafe.exchanger[String, Int].run[F]
+      task1 = ex.exchange.flatMapF { i =>
+        Rxn.unsafe.context { ctx =>
+          (i, ctx)
+        }
+      }.apply[F]("foo")
+      task2 = ex2.exchange.apply[F]("bar")
+      f1 <- (task1, task2).mapN(_ -> _).start
+      f2 <- (ex.dual.exchange[F](42), ex2.dual.exchange[F](23)).mapN(_ -> _).start
+      r1 <- f1.joinWithNever
+      (res11, res12) = r1
+      _ <- assertEqualsF(res11._1, 42)
+      _ <- assertEqualsF(res12, 23)
+      _ <- F.delay {
+        val ctx1 = res11._2
+        if (ctx1.supportsStatistics) {
+          assert(ctx1.getStatistics().contains(ex.key))
+          assert(ctx1.getStatistics().contains(ex2.key))
+        } else {
+          // impl. is not collecting stats
+        }
+      }
+      _ <- assertResultF(f2.joinWithNever, ("foo", "bar"))
     } yield ()
   }
 
-  test("A StatMap must not prevent an Exchanger from being garbage collected".ignore) { // TODO
-    for {
-      _ <- F.unit
-    } yield ()
+  test("A StatMap must not prevent an Exchanger from being garbage collected") {
+    val tsk = for {
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      f1 <- ex.exchange.flatMapF { i =>
+        Rxn.unsafe.context { ctx =>
+          (i, ctx)
+        }
+      }.apply[F]("foo").start
+      f2 <- ex.dual.exchange.apply[F](42).start
+      r1 <- f1.joinWithNever
+      _ <- assertEqualsF(r1._1, 42)
+      _ <- assertResultF(f2.joinWithNever, "foo")
+    } yield (new WeakReference(ex), r1._2)
+
+    tsk.flatMap { wc =>
+      val (weakref, ctx) = wc
+      if (ctx.supportsStatistics) {
+        val statMap = ctx.getStatistics()
+        F.interruptible {
+          var ex = weakref.get()
+          if (ex ne null) {
+            assert(statMap.contains(ex.key))
+          } // else: ok, already collected
+          ex = null
+          while (weakref.get() ne null) {
+            System.gc()
+            Thread.sleep(1L)
+          }
+        }
+      } else {
+        F.unit
+      }
+    }
   }
 
   test("Elimination") {

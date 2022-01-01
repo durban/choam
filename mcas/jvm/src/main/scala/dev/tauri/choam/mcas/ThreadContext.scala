@@ -43,6 +43,10 @@ private final class ThreadContext(
   private[this] var retries: Int =
     0
 
+  // TODO: this is a hack
+  private[this] var statistics: Map[AnyRef, AnyRef] =
+    Map.empty
+
   // NB: it is a `val`, not a `def`
   private[choam] final override val random: ThreadLocalRandom =
     ThreadLocalRandom.current()
@@ -153,12 +157,29 @@ private final class ThreadContext(
     go(this.finalizedDescriptors, prev = null)
   }
 
+  /** Only for testing/benchmarking */
   private[choam] final override def recordCommit(retries: Int): Unit = {
     this.commits += 1
     this.retries += retries
   }
 
+  /** Only for testing/benchmarking */
   private[choam] def getCommitsAndRetries(): (Int, Int) = {
     (this.commits, this.retries)
+  }
+
+  /** Only for testing/benchmarking */
+  private[choam] final override def supportsStatistics: Boolean = {
+    true
+  }
+
+  /** Only for testing/benchmarking */
+  private[choam] final override def getStatistics(): Map[AnyRef, AnyRef] = {
+    this.statistics
+  }
+
+  /** Only for testing/benchmarking */
+  private[choam] final override def setStatistics(stats: Map[AnyRef, AnyRef]): Unit = {
+    this.statistics = stats
   }
 }

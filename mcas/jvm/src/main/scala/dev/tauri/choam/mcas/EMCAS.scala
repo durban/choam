@@ -315,6 +315,10 @@ private object EMCAS extends MCAS { self =>
     this.global.countCommitsAndRetries()
   }
 
+  private[choam] final override def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
+    this.global.collectExchangerStats()
+  }
+
   /** For testing */
   @throws[InterruptedException]
   private[mcas] def spinUntilCleanup[A](ref: MemoryLocation[A], max: Long = Long.MaxValue): A = {
