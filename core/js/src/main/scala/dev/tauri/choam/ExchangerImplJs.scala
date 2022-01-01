@@ -39,7 +39,8 @@ private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
 
     private[choam] final def tryExchange[C](
       @unused msg: Exchanger.Msg,
-      @unused ctx: MCAS.ThreadContext
+      @unused params: Exchanger.Params,
+      @unused ctx: MCAS.ThreadContext,
     ): Either[Rxn.ExStatMap, Exchanger.Msg] = {
       impossible("ExchangerImplJs.tryExchange")
     }
