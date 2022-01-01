@@ -80,7 +80,14 @@ private final class GlobalContext(impl: EMCAS.type) {
     (commits, retries)
   }
 
-  private[choam] final def threadContexts(): Iterator[ThreadContext] = {
+  /** Only for testing/benchmarking */
+  private[choam] def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
+    threadContexts().foldLeft(Map.empty[Long, Map[AnyRef, AnyRef]]) { (acc, tc) =>
+      acc + (tc.tid -> tc.getStatistics())
+    }
+  }
+
+  private[mcas] final def threadContexts(): Iterator[ThreadContext] = {
     val iterWeak = this._threadContexts.values().iterator()
     CollectionConverters.asScala(iterWeak).flatMap { weakref =>
       weakref.get() match {

@@ -36,6 +36,11 @@ abstract class MCAS {
   private[choam] def countCommitsAndRetries(): (Long, Long) = {
     (0L, 0L)
   }
+
+  /** Only for testing/benchmarking */
+  private[choam] def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
+    Map.empty
+  }
 }
 
 object MCAS extends MCASPlatform { self =>
@@ -75,7 +80,29 @@ object MCAS extends MCASPlatform { self =>
 
     /** Only for testing/benchmarking */
     private[choam] def recordCommit(@unused retries: Int): Unit = {
+      // we ignore stats by default; implementations
+      // can override if it matters
       ()
+    }
+
+    /** Only for testing/benchmarking */
+    private[choam] def supportsStatistics: Boolean = {
+      // we ignore stats by default; implementations
+      // can override if it matters
+      false
+    }
+
+    /** Only for testing/benchmarking */
+    private[choam] def getStatistics(): Map[AnyRef, AnyRef] = {
+      // we ignore stats by default; implementations
+      // can override if it matters
+      Map.empty
+    }
+
+    /** Only for testing/benchmarking */
+    private[choam] def setStatistics(@unused stats: Map[AnyRef, AnyRef]): Unit = {
+      // we ignore stats by default; implementations
+      // can override if it matters
     }
   }
 

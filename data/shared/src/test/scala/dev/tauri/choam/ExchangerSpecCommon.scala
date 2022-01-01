@@ -67,4 +67,11 @@ trait ExchangerSpecCommon[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =
       _ <- assertSameInstanceF(dex.dual, ex)
     } yield ()
   }
+
+  test("The dual must have the same key") {
+    for {
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      _ <- assertSameInstanceF(ex.dual.key, ex.key)
+    } yield ()
+  }
 }

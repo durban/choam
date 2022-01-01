@@ -37,12 +37,14 @@ class RandomBench {
     )
   }
 
+  @Benchmark
   def threadLocalContextBetweenInt(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
     bh.consume(
       s.rndThreadLocalContext.betweenInt(0, 8388608).unsafePerformInternal(null, k.kcasCtx)
     )
   }
 
+  @Benchmark
   def threadLocalContextBetweenIntCached(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
     bh.consume(
       s.rndThreadLocalContextCached.betweenInt(0, 8388608).unsafePerformInternal(null, k.kcasCtx)

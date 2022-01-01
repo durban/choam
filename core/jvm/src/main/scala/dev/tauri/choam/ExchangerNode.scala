@@ -33,7 +33,11 @@ private final class ExchangerNode[C](val msg: Msg) {
   val hole: Ref[NodeResult[C]] =
     Ref.unsafe(null)
 
-  def spinWait(stats: ExchangerImplJvm.Statistics, ctx: MCAS.ThreadContext): Option[NodeResult[C]] = {
+  def spinWait(
+    stats: ExchangerImplJvm.Statistics,
+    params: Exchanger.Params,
+    ctx: MCAS.ThreadContext,
+  ): Option[NodeResult[C]] = {
     @tailrec
     def go(n: Int): Option[NodeResult[C]] = {
       if (n > 0) {
@@ -49,8 +53,8 @@ private final class ExchangerNode[C](val msg: Msg) {
       }
     }
     val maxSpin = Math.min(
-      ExchangerImplJvm.Statistics.defaultSpin << stats.spinShift.toInt,
-      ExchangerImplJvm.Statistics.maxSpin
+      params.defaultSpin << stats.spinShift.toInt,
+      params.maxSpin
     )
     val spin = 1 + ctx.random.nextInt(maxSpin)
     // println(s"spin waiting ${spin} (max. ${maxSpin}) - thread#${Thread.currentThread().getId()}")

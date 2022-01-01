@@ -20,8 +20,9 @@ package dev.tauri.choam
 import java.util.concurrent.atomic.AtomicReferenceArray
 
 import mcas.MCAS
-import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx }
+import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx, Params }
 
+// TODO: move all exchanger stuff into dev.tauri.choam.exchanger
 private sealed trait ExchangerImplJvm[A, B]
   extends Exchanger.UnsealedExchanger[A, B] {
 
@@ -32,7 +33,7 @@ private sealed trait ExchangerImplJvm[A, B]
 
   protected def outgoing: AtomicReferenceArray[ExchangerNode[_]]
 
-  private[choam] def key: AnyRef
+  private[choam] def key: Exchanger.Key
 
   protected def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]]
 
@@ -48,18 +49,22 @@ private sealed trait ExchangerImplJvm[A, B]
     }
   }
 
-  private[choam] final def tryExchange[C](msg: Msg, ctx: MCAS.ThreadContext): Either[StatMap, Msg] = {
+  private[choam] final def tryExchange[C](
+    msg: Msg,
+    params: Params,
+    ctx: MCAS.ThreadContext,
+  ): Either[StatMap, Msg] = {
     // TODO: exchangerData grows forever
     val stats = msg.exchangerData.getOrElse(this.key, Statistics.zero)
     debugLog(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
     val idx = if (stats.effectiveSize < 2) 0 else ctx.random.nextInt(stats.effectiveSize.toInt)
-    tryIdx(idx, msg, stats, ctx) match {
-      case Left(stats) => Left(msg.exchangerData.updated(this, stats))
+    tryIdx(idx, msg, stats, params, ctx) match {
+      case Left(stats) => Left(msg.exchangerData.updated(this.key, stats))
       case Right(msg) => Right(msg)
     }
   }
 
-  private[this] final def tryIdx[C](idx: Int, msg: Msg, stats: Statistics, ctx: MCAS.ThreadContext): Either[Statistics, Msg] = {
+  private[this] final def tryIdx[C](idx: Int, msg: Msg, stats: Statistics, params: Params, ctx: MCAS.ThreadContext): Either[Statistics, Msg] = {
     debugLog(s"tryIdx(${idx}) - thread#${Thread.currentThread().getId()}")
     val incoming = this.incoming match {
       case null =>
@@ -86,15 +91,15 @@ private sealed trait ExchangerImplJvm[A, B]
             case null =>
               debugLog(s"not found other, will wait - thread#${Thread.currentThread().getId()}")
               // we can't fulfill, so we wait for a fulfillment:
-              val res: Option[NodeResult[C]] = self.spinWait(stats, ctx)
+              val res: Option[NodeResult[C]] = self.spinWait(stats, params, ctx)
               debugLog(s"after waiting: ${res} - thread#${Thread.currentThread().getId()}")
               if (!incoming.compareAndSet(idx, self, null)) {
                 // couldn't rescind, someone claimed our offer
                 debugLog(s"other claimed our offer - thread#${Thread.currentThread().getId()}")
-                waitForClaimedOffer[C](self, msg, res, stats, ctx)
+                waitForClaimedOffer[C](self, msg, res, stats, params, ctx)
               } else {
                 // rescinded successfully, will retry
-                Left(stats.missed)
+                Left(stats.missed(params).rescinded(params))
               }
             case other: ExchangerNode[d] =>
               debugLog(s"found other - thread#${Thread.currentThread().getId()}")
@@ -103,25 +108,25 @@ private sealed trait ExchangerImplJvm[A, B]
                 if (outgoing.compareAndSet(idx, other, null)) {
                   debugLog(s"fulfilling other - thread#${Thread.currentThread().getId()}")
                   // ok, we've claimed the other offer, we'll fulfill it:
-                  fulfillClaimedOffer(other, msg, stats, ctx)
+                  fulfillClaimedOffer(other, msg, stats, params, ctx)
                 } else {
                   // the other offer was rescinded in the meantime,
                   // so we'll have to retry:
-                  Left(stats.rescinded)
+                  Left(stats.rescinded(params))
                 }
               } else {
                 // someone else claimed our offer, we can't continue with fulfillment,
                 // so we wait for our offer to be fulfilled (and retry if it doesn't happen):
-                waitForClaimedOffer(self, msg, None, stats, ctx)
+                waitForClaimedOffer(self, msg, None, stats, params, ctx)
               }
           }
         } else {
           // contention, will retry
-          Left(stats.contended(incoming.length()))
+          Left(stats.contended(incoming.length(), params))
         }
       case _ =>
         // contention, will retry
-        Left(stats.contended(incoming.length()))
+        Left(stats.contended(incoming.length(), params))
     }
   }
 
@@ -131,10 +136,11 @@ private sealed trait ExchangerImplJvm[A, B]
     msg: Msg,
     maybeResult: Option[NodeResult[C]],
     stats: Statistics,
-    ctx: MCAS.ThreadContext
+    params: Params,
+    ctx: MCAS.ThreadContext,
   ): Either[Statistics, Msg] = {
     val rres = maybeResult.orElse {
-      self.spinWait(stats = stats, ctx = ctx)
+      self.spinWait(stats = stats, params = params, ctx = ctx)
     }
     debugLog(s"waitForClaimedOffer: rres = ${rres} - thread#${Thread.currentThread().getId()}")
     rres match {
@@ -143,7 +149,7 @@ private sealed trait ExchangerImplJvm[A, B]
         c match {
           case fx: FinishedEx[_] =>
             debugLog(s"waitForClaimedOffer: found result - thread#${Thread.currentThread().getId()}")
-            val newStats = msg.exchangerData.updated(this, stats.exchanged)
+            val newStats = msg.exchangerData.updated(this.key, stats.exchanged(params))
             Right(Msg.fromFinishedEx(fx, newStats, ctx))
           case _: Rescinded[_] =>
             // we're the only one who can rescind this
@@ -153,13 +159,13 @@ private sealed trait ExchangerImplJvm[A, B]
         if (ctx.doSingleCas(self.hole.loc, null, Rescinded[C])) {
           // OK, we rolled back, and can retry
           debugLog(s"waitForClaimedOffer: rolled back - thread#${Thread.currentThread().getId()}")
-          Left(stats.rescinded)
+          Left(stats.rescinded(params))
         } else {
           // couldn't roll back, it must be a result
           ctx.read(self.hole.loc) match {
             case fx: FinishedEx[_] =>
               debugLog(s"waitForClaimedOffer: found result - thread#${Thread.currentThread().getId()}")
-              val newStats = msg.exchangerData.updated(this, stats.exchanged)
+              val newStats = msg.exchangerData.updated(this.key, stats.exchanged(params))
               Right(Msg.fromFinishedEx(fx, newStats, ctx))
             case _: Rescinded[_] =>
               // we're the only one who can rescind this
@@ -174,6 +180,7 @@ private sealed trait ExchangerImplJvm[A, B]
     other: ExchangerNode[D],
     selfMsg: Msg,
     stats: Statistics,
+    params: Params,
     ctx: MCAS.ThreadContext,
   ): Right[Statistics, Msg] = {
     val a: A = selfMsg.value.asInstanceOf[A]
@@ -195,7 +202,7 @@ private sealed trait ExchangerImplJvm[A, B]
       desc = ctx.addAll(selfMsg.desc, other.msg.desc),
       postCommit = ObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit),
       // this thread will continue, so we use (and update) our data:
-      exchangerData = selfMsg.exchangerData.updated(this, stats.exchanged)
+      exchangerData = selfMsg.exchangerData.updated(this.key, stats.exchanged(params))
     )
     debugLog(s"merged postCommit: ${resMsg.postCommit.mkString()} - thread#${Thread.currentThread().getId()}")
     Right(resMsg)
@@ -257,7 +264,7 @@ private final class DualExchangerImplJvm[A, B](
   protected final override def outgoing =
     dual.incoming
 
-  private[choam] final override def key: AnyRef =
+  private[choam] final override def key =
     dual.key
 
   protected final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]] =
@@ -271,8 +278,8 @@ private final class PrimaryExchangerImplJvm[A, B] private[choam] (
   final override val dual: Exchanger[B, A] =
     new DualExchangerImplJvm[B, A](this)
 
-  protected[choam] final override val key: AnyRef =
-    new AnyRef
+  protected[choam] final override val key =
+    new Exchanger.Key
 
   protected[choam] final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]] = {
     val inc = this.incoming match {
@@ -312,31 +319,34 @@ private object ExchangerImplJvm {
   }
 
   private[choam] type StatMap =
-    Map[AnyRef, ExchangerImplJvm.Statistics]
+    Map[Exchanger.Key, ExchangerImplJvm.Statistics]
 
   private[choam] final object StatMap {
     def empty: StatMap =
       Map.empty
   }
 
+  // TODO: this could be packed into an Int
   private[choam] final case class Statistics(
     /* Always <= size */
-    effectiveSize: Byte,
-    /* Counts misses (++) and contention (--) */
-    misses: Byte,
+    effectiveSize: Byte, // ---------------------------\
+    /* Counts misses (++) and contention (--) */ //     ⊢--> missed/contended
+    misses: Byte, // ----------------------------------/
     /* How much to wait for an exchange */
-    spinShift: Byte,
-    /* Counts exchanges (++) and rescinds (--) */
-    exchanges: Byte
+    spinShift: Byte, // -------------------------------\
+    /* Counts exchanges (++) and rescinds (--) */ //    ⊢--> exchanged/rescinded
+    exchanges: Byte // --------------------------------/
   ) {
+
+    import Exchanger.Params
 
     require(effectiveSize > 0)
 
     /**
-     * Couldn't collide, so we may decrease effective size.
+     * Couldn't exchange, so we may decrease effective size.
      */
-    def missed: Statistics = {
-      if (misses == 64.toByte) { // TODO: magic 64
+    def missed(p: Params): Statistics = {
+      if (this.misses == p.maxMisses) {
         val newEffSize = Math.max(this.effectiveSize >> 1, 1)
         this.copy(effectiveSize = newEffSize.toByte, misses = 0.toByte)
       } else {
@@ -348,8 +358,8 @@ private object ExchangerImplJvm {
      * An exchange was lost due to 3rd party, so we may
      * increase effective size.
      */
-    def contended(size: Int): Statistics = {
-      if (misses == (-64).toByte) { // TODO: magic -64
+    def contended(size: Int, p: Params): Statistics = {
+      if (this.misses == p.minMisses) {
         val newEffSize = Math.min(this.effectiveSize << 1, size)
         this.copy(effectiveSize = newEffSize.toByte, misses = 0.toByte)
       } else {
@@ -357,14 +367,22 @@ private object ExchangerImplJvm {
       }
     }
 
-    def exchanged: Statistics = {
-      // TODO: no wait time adaptation implemented for now
-      this
+    def exchanged(p: Params): Statistics = {
+      if (this.exchanges == p.maxExchanges) {
+        val newSpinShift = Math.min(this.spinShift + 1, p.maxSpinShift.toInt)
+        this.copy(spinShift = newSpinShift.toByte, exchanges = 0.toByte)
+      } else {
+        this.copy(exchanges = (this.exchanges + 1).toByte)
+      }
     }
 
-    def rescinded: Statistics = {
-      // TODO: no wait time adaptation implemented for now
-      this
+    def rescinded(p: Params): Statistics = {
+      if (this.exchanges == p.minExchanges) {
+        val newSpinShift = Math.max(this.spinShift - 1, 0)
+        this.copy(spinShift = newSpinShift.toByte, exchanges = 0.toByte)
+      } else {
+        this.copy(exchanges = (this.exchanges - 1).toByte)
+      }
     }
   }
 
@@ -376,14 +394,9 @@ private object ExchangerImplJvm {
     def zero: Statistics =
       _zero
 
-    final val maxSizeShift =
-      8 // TODO: magic
+    // TODO: these magic constants should be tuned with experiments
 
-    final val maxSpin =
-      256 // TODO: magic
 
-    final val defaultSpin =
-      256 // TODO: magic; too much
   }
 
   private[choam] val size = Math.min(

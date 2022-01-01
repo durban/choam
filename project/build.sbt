@@ -17,10 +17,13 @@
 
 val circeVersion = "0.14.1"
 val kindProjectorVersion = "0.13.2"
+val macroParadiseVersion = "2.1.1"
 
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core" % circeVersion,
   "io.circe" %% "circe-generic" % circeVersion,
+  "io.circe" %% "circe-generic-extras" % circeVersion,
   "io.circe" %% "circe-parser" % circeVersion,
   compilerPlugin("org.typelevel" % "kind-projector" % kindProjectorVersion cross CrossVersion.full),
+  compilerPlugin("org.scalamacros" % "paradise" % macroParadiseVersion cross CrossVersion.full),
 )

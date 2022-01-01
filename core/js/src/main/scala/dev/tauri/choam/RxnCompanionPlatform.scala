@@ -25,7 +25,7 @@ private abstract class RxnCompanionPlatform { this: Rxn.type =>
 
   private[choam] final type ExchangerImpl[A, B] = ExchangerImplJs[A, B]
 
-  private[choam] final type ExStatMap = AnyRef
+  private[choam] final type ExStatMap = Map[Exchanger.Key, AnyRef]
 
   // UUID generation:
   // (because https://github.com/scala-js/scala-js/blob/v1.8.0/javalib/src/main/scala/java/util/UUID.scala#L139)

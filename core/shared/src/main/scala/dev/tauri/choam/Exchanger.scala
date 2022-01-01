@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.LongAdder
 sealed trait Exchanger[A, B] {
   def exchange: Rxn[A, B]
   def dual: Exchanger[B, A]
-  private[choam] def key: AnyRef
+  private[choam] def key: Exchanger.Key
 }
 
 /** Private, because an `Exchanger` is unsafe (may block indefinitely) */
@@ -41,6 +41,13 @@ private object Exchanger extends ExchangerCompanionPlatform {
         )
       }
     }
+  }
+
+  private[choam] final class Key
+    extends Serializable {
+
+    final override def toString: String =
+      s"Key@${this.hashCode.toHexString}"
   }
 
   private[choam] trait UnsealedExchanger[A, B]
@@ -72,13 +79,41 @@ private object Exchanger extends ExchangerCompanionPlatform {
       else new ProfiledExchanger[B, A](this, underlying.dual, counter)
     }
 
-    private[choam] final override val key: AnyRef =
+    private[choam] final override val key =
       underlying.key
   }
 
   // TODO: these are JVM-only:
 
   import mcas.{ MCAS, HalfEMCASDescriptor }
+
+  private[choam] val paramsKey =
+    new Exchanger.Key
+
+  // TODO: these are temporarily mutable for benchmarking
+  @volatile
+  private[choam] var params: Params =
+    Params()
+
+  private[choam] final case class Params(
+    final val maxMisses: Byte =
+      64,
+    final val minMisses: Byte =
+      -64,
+    final val maxExchanges: Byte =
+      4,
+    final val minExchanges: Byte =
+      -4,
+    final val maxSizeShift: Byte =
+      8,
+    final val maxSpin: Int =
+      1024,
+    // these two are interdependent:
+    final val defaultSpin: Int =
+      128,
+    final val maxSpinShift: Byte =
+      16,
+  )
 
   private[choam] final case class Msg(
     value: Any,
@@ -97,7 +132,7 @@ private object Exchanger extends ExchangerCompanionPlatform {
         contK = fx.contK,
         contT = fx.contT,
         desc = ctx.start(),
-        postCommit = null : ObjStack.Lst[Axn[Unit]],
+        postCommit = ObjStack.Lst.empty[Axn[Unit]],
         exchangerData = newStats,
       )
     }

@@ -62,6 +62,7 @@ final class IBRSpec
     t.join()
     while (wd.address.unsafeGetMarkerVolatile().get() ne null) {
       System.gc()
+      Thread.sleep(1L)
     }
   }
 
@@ -92,6 +93,7 @@ final class IBRSpec
     assert(error eq null, s"error: ${error}")
     while (EMCAS.global.threadContexts().exists(_.tid == t.getId())) {
       System.gc()
+      Thread.sleep(1L)
     }
     // now the `ThreadContext` have been collected by the JVM GC
   }

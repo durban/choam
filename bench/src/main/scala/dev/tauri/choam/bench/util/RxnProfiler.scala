@@ -27,7 +27,8 @@ import cats.syntax.all._
 
 import org.openjdk.jmh.profile.InternalProfiler
 import org.openjdk.jmh.infra.{ BenchmarkParams, IterationParams }
-import org.openjdk.jmh.results.{ IterationResult, Result, ScalarResult, AggregationPolicy }
+import org.openjdk.jmh.results.{ IterationResult, Result, ResultRole, ScalarResult, AggregationPolicy, Aggregator }
+import org.openjdk.jmh.util.SingletonStatistics
 
 import com.monovore.decline.{ Opts, Command }
 
@@ -45,6 +46,7 @@ import mcas.MCAS.EMCAS
  * - retries (-> rxn.retriesPerCommit)
  * - exchanges (-> rxn.exchangesPerSec)
  * - exchangeCount (-> rxn.exchangeCount)
+ * - exchangerStats (-> rxn.exchangerStats)
  *
  * Measurements:
  * - rxn.retriesPerCommit:
@@ -56,6 +58,7 @@ import mcas.MCAS.EMCAS
  * - rxn.exchangeCount:
  *   like `rxn.exchangesPerSec`, but reports the count of successful
  *   exchanges
+ * - rxn.exchangerStats: TODO
  */
 final class RxnProfiler(configLine: String) extends InternalProfiler {
 
@@ -74,6 +77,10 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
   private[this] var exchangesBefore: Long =
     0L
 
+  // TODO: this is unused
+  private[this] var exchangerStatsBefore: Map[Long, Map[AnyRef, AnyRef]] =
+    null
+
   private[this] var beforeTime: Long =
     0L
 
@@ -86,8 +93,14 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
       val retries = Opts.flag("retries", help = "retries / commit").orFalse
       val exchangesPs = Opts.flag("exchanges", help = "exchanges / sec").orFalse
       val exchangeCount = Opts.flag("exchangeCount", help = "exchange count").orFalse
-      val cfg = (retries, exchangesPs, exchangeCount).mapN { (r, eps, ec) =>
-        Config(retriesPerCommit = r, exchangesPerSecond = eps, exchangeCount = ec)
+      val exchangerStats = Opts.flag("exchangerStats", help = "exchanger stats").orFalse
+      val cfg = (retries, exchangesPs, exchangeCount, exchangerStats).mapN { (r, eps, ec, es) =>
+        Config(
+          retriesPerCommit = r,
+          exchangesPerSecond = eps,
+          exchangeCount = ec,
+          exchangerStats = es,
+        )
       }
       (debug, cfg).mapN { (debug, cfg) =>
         if (debug) {
@@ -133,6 +146,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     }
     if (config.measureExchanges) {
       this.exchangesBefore = RxnProfiler.exchangeCounter.sum()
+      this.exchangerStatsBefore = EMCAS.collectExchangerStats()
       this.beforeTime = System.nanoTime()
     }
   }
@@ -145,7 +159,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     if (config.measureExchanges) {
       this.afterTime = System.nanoTime()
     }
-    val res = new ju.ArrayList[ScalarResult]
+    val res = new ju.ArrayList[Result[_]]
     if (config.retriesPerCommit) {
       res.addAll(countRetriesPerCommit())
     }
@@ -176,7 +190,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     )
   }
 
-  private[this] final def countExchanges(): ju.List[ScalarResult] = {
+  private[this] final def countExchanges(): ju.List[Result[_ <: Result[_]]] = {
     val exchangesAfter = RxnProfiler.exchangeCounter.sum()
     val exchangeCount = (exchangesAfter - exchangesBefore).toDouble
     val elapsedTime = this.afterTime - this.beforeTime
@@ -187,7 +201,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
         TimeUnit.SECONDS.convert(elapsedTime, TimeUnit.NANOSECONDS)
       exchangeCount / elapsedSeconds.toDouble
     }
-    val res = new ju.ArrayList[ScalarResult]
+    val res = new ju.ArrayList[Result[_]]
     if (config.exchangesPerSecond) {
       res.add(
         new ScalarResult(
@@ -208,7 +222,54 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
         )
       )
     }
+    if (config.exchangerStats) {
+      val stats = EMCAS
+        .collectExchangerStats()
+        .view
+        .mapValues { m => m.filter(kv => kv._1 ne Exchanger.paramsKey) }
+        .toMap
+      res.add(
+        new StatsResult(stats :: Nil)
+      )
+    }
     res
+  }
+}
+
+// TODO: move to separate file
+private final class StatsResult(
+  val stats: List[Map[Long, Map[AnyRef, AnyRef]]],
+) extends Result[StatsResult](
+    ResultRole.SECONDARY,
+    RxnProfiler.ExchangerStats,
+    new SingletonStatistics(Double.NaN),
+    "---",
+    AggregationPolicy.SUM,
+  ) {
+
+  def this(threadId: Long, s: Map[AnyRef, AnyRef]) =
+    this(List(Map(threadId -> s)))
+
+  override def getThreadAggregator(): Aggregator[StatsResult] = { coll =>
+    val lb = List.newBuilder[Map[Long, Map[AnyRef, AnyRef]]]
+    coll.iterator().forEachRemaining { sr =>
+      lb ++= sr.stats
+    }
+    new StatsResult(lb.result())
+  }
+
+  override def getIterationAggregator(): Aggregator[StatsResult] = {
+    this.getThreadAggregator()
+  }
+
+  override def extendedInfo(): String = {
+    val sb = new StringBuilder
+    sb ++= "StatsResult(\n"
+    this.stats.foreach { s =>
+      sb ++= s"  ${s},\n"
+    }
+    sb ++= s")"
+    sb.result()
   }
 }
 
@@ -218,6 +279,7 @@ object RxnProfiler {
     retriesPerCommit: Boolean,
     exchangesPerSecond: Boolean,
     exchangeCount: Boolean,
+    exchangerStats: Boolean,
   ) {
 
     def || (that: Config): Config = {
@@ -225,11 +287,12 @@ object RxnProfiler {
         retriesPerCommit = this.retriesPerCommit || that.retriesPerCommit,
         exchangesPerSecond = this.exchangesPerSecond || that.exchangesPerSecond,
         exchangeCount = this.exchangeCount || that.exchangeCount,
+        exchangerStats = this.exchangerStats || that.exchangerStats,
       )
     }
 
     def measureExchanges: Boolean =
-      exchangesPerSecond || exchangeCount
+      exchangesPerSecond || exchangeCount || exchangerStats
   }
 
   final object Config {
@@ -238,12 +301,14 @@ object RxnProfiler {
       retriesPerCommit = true,
       exchangesPerSecond = true,
       exchangeCount = true,
+      exchangerStats = false,
     )
 
     def default: Config = Config(
       retriesPerCommit = true,
       exchangesPerSecond = true,
       exchangeCount = false,
+      exchangerStats = true, // TODO
     )
   }
 
@@ -252,6 +317,7 @@ object RxnProfiler {
   final val ExchangesPerSecond = "rxn.exchangesPerSec"
   final val UnitExchangesPerSecond = "xchg/s"
   final val ExchangeCount = "rxn.exchangeCount"
+  final val ExchangerStats = "rxn.exchangerStats"
   final val UnitCount = "counts"
 
   final def profiledExchanger[A, B]: Axn[Exchanger[A, B]] =

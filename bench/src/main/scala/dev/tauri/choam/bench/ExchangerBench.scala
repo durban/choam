@@ -41,11 +41,11 @@ class ExchangerBench {
     bh.consume(s.right.unsafePerformInternal("bar", ctx = k.kcasCtx))
   }
 
-  @Benchmark
-  @Group("baseline")
-  def baseline(bh: Blackhole): Unit = {
-    bh.consume(RxnProfiler.exchangeCounter.increment())
-  }
+  // @Benchmark
+  // @Group("baseline")
+  // def baseline(bh: Blackhole): Unit = {
+  //   bh.consume(RxnProfiler.exchangeCounter.increment())
+  // }
 }
 
 object ExchangerBench {
@@ -61,5 +61,40 @@ object ExchangerBench {
 
     val right: Rxn[String, Option[String]] =
       exchanger.dual.exchange.?
+
+    // Exchanger params:
+
+    @Param(Array("64"))
+    var minMaxMisses: Byte = _
+
+    @Param(Array("4"))
+    var minMaxExchanges: Byte = _
+
+    @Param(Array("8"))
+    var maxSizeShift: Byte = _
+
+    @Param(Array("1024"))
+    var maxSpin: Int = _
+
+    @Param(Array("128"))
+    var defaultSpin: Int = _
+
+    @Param(Array("16"))
+    var maxSpinShift: Byte = _
+
+    @Setup
+    def setup(): Unit = {
+      val p = Exchanger.Params(
+        maxMisses = this.minMaxMisses,
+        minMisses = (-this.minMaxMisses).toByte,
+        maxExchanges = this.minMaxExchanges,
+        minExchanges = (-this.minMaxExchanges).toByte,
+        maxSizeShift = this.maxSizeShift,
+        maxSpin = this.maxSpin,
+        defaultSpin = this.defaultSpin,
+        maxSpinShift = this.maxSpinShift,
+      )
+      Exchanger.params = p // volatile write
+    }
   }
 }

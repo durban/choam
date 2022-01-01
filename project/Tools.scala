@@ -20,11 +20,16 @@ import scala.util.Try
 import sbt.{ io => _, _ }
 import sbt.Keys._
 import sbt.internal.util.ManagedLogger
+import sbt.io.{ IO => SbtIO }
 
+import cats.kernel.Order
+import cats.data.Chain
 import cats.syntax.all._
 
-import io.circe.{ Json, JsonObject }
+import io.circe.{ Json, JsonObject, Decoder, Encoder }
 import io.circe.parser
+import io.circe.generic.JsonCodec
+import io.circe.generic.extras.{ ConfiguredJsonCodec, Configuration }
 
 object Tools extends AutoPlugin {
 
@@ -37,11 +42,13 @@ object Tools extends AutoPlugin {
   final override def projectSettings: Seq[Setting[_]] = Seq(
     autoImport.cleanBenchResults := cleanBenchResultsImpl.value,
     autoImport.cleanBenchResultsFilePattern := "results_*.json",
+    autoImport.mergeBenchResults := mergeBenchResultsImpl.evaluated,
   )
 
   final object autoImport {
     lazy val cleanBenchResults = taskKey[Unit]("cleanBenchResults")
     lazy val cleanBenchResultsFilePattern = settingKey[String]("cleanBenchResultsFilePattern")
+    lazy val mergeBenchResults = inputKey[Unit]("mergeBenchResults")
   }
 
   private lazy val cleanBenchResultsImpl = Def.task[Unit] {
@@ -51,13 +58,211 @@ object Tools extends AutoPlugin {
       streams.value.log,
     )
   }
+
+  private lazy val mergeBenchResultsImpl = Def.inputTask[Unit] {
+
+    import complete.DefaultParsers._
+
+    val args: Seq[String] = spaceDelimited("<arg>").parsed
+    args.toList match {
+      case h :: t =>
+        MergeBenchResults.mergeBenchResults(
+          baseDirectory.value,
+          streams.value.log,
+          h,
+          t: _*
+        )
+      case Nil =>
+        throw new IllegalArgumentException("no args")
+    }
+  }
+}
+
+private object MergeBenchResults {
+
+  import Model._
+
+  final def mergeBenchResults(
+    baseDir: File,
+    log: ManagedLogger,
+    output: String,
+    inputs: String*
+  ): Unit = {
+    val outFile: File = baseDir / output
+    require(!outFile.exists(), s"${outFile.absolutePath} already exists")
+    println(outFile.absolutePath)
+    val inputFiles: List[File] = inputs.map { pattern =>
+      val files = SbtIO.listFiles(baseDir, FileFilter.globFilter(pattern))
+      files.toList
+    }.foldLeft(Set.empty[File]) { (acc, files) =>
+      val fileSet = files.toSet
+      val intersection = acc intersect fileSet
+      require(intersection.isEmpty, s"duplicate input files: ${intersection}")
+      acc union fileSet
+    }.toList.sortBy(_.absolutePath)
+    log.info(s"Merging ${inputFiles.size} files into '${outFile.absolutePath}'")
+    inputFiles.foreach { f =>
+      log.info(s" <- ${f.absolutePath}")
+    }
+    val result = mergeFiles(outFile, inputFiles)
+    dump(result, outFile)
+  }
+
+  private[this] final def mergeFiles(output: File, inputs: List[File]): ResultFile = {
+    val result = inputs.foldLeft(ResultFile.empty) { (acc, input) =>
+      val rf = parse(input).map(_.withThreadsInParams)
+      acc ++ rf
+    }
+    result.sorted(Order.from[BenchmarkResult] { (x, y) =>
+      Order[String].compare(x.name, y.name) match {
+        case 0 =>
+          // same name, order based on threads
+          Order[Int].compare(x.threads, y.threads) match {
+            case 0 =>
+              // same threads too, we return an arbitrary
+              // result (but only 0 if x == y)
+              if (x == y) {
+                0
+              } else {
+                (x.## - y.##) match {
+                  case 0 => -1 // hash collision
+                  case n => n
+                }
+              }
+            case n => n
+          }
+        case n =>
+          // different name, use that:
+          n
+      }
+    })
+  }
+
+  private[this] final def parse(file: File): ResultFile = {
+    val contents = SbtIO.read(file)
+    val j: Json = io.circe.parser.parse(contents).getOrElse {
+      throw new IllegalArgumentException(s"not a JSON file: ${file.absolutePath}")
+    }
+    j.as[ResultFile].fold(
+      err => throw new IllegalArgumentException(err.toString),
+      ok => ok
+    )
+  }
+
+  private[this] final def dump(r: ResultFile, to: File): Unit = {
+    val str = Encoder[ResultFile].apply(r).spaces4
+    SbtIO.write(to, str)
+  }
+}
+
+private object Model {
+
+  final type ResultFile = Chain[BenchmarkResult]
+
+  final object ResultFile {
+    def empty: ResultFile =
+      Chain.empty
+  }
+
+  private[this] final val nanString =
+    "NaN"
+
+  private[this] implicit final val doubleOrNanDecoder: Decoder[Double] = {
+    Decoder.decodeDouble.or(Decoder.decodeString.emap { s =>
+      if (s == nanString) Right(Double.NaN)
+      else Left(s"not a Double or Nan: '${s}'")
+    })
+  }
+
+  private[this] implicit final val doubleOrNanEncoder: Encoder[Double] = {
+    Encoder.instance { d =>
+      if (d.isNaN()) Json.fromString(nanString)
+      else Encoder.encodeDouble(d)
+    }
+  }
+
+  private[this] implicit val jsonCodecConfig: Configuration =
+    Configuration.default.withDefaults
+
+  @ConfiguredJsonCodec
+  final case class BenchmarkResult(
+    jmhVersion: String,
+    benchmark: String,
+    mode: String,
+    threads: Int,
+    forks: Int,
+    jvm: String,
+    jvmArgs: List[String],
+    jdkVersion: JdkVersion,
+    vmName: String,
+    vmVersion: JdkVersion,
+    warmupIterations: Int,
+    warmupTime: String,
+    warmupBatchSize: Int,
+    measurementIterations: Int,
+    measurementTime: String,
+    measurementBatchSize: Int,
+    params: JsonObject = JsonObject.empty,
+    primaryMetric: Metric,
+    secondaryMetrics: JsonObject = JsonObject.empty,
+  ) {
+
+    def name: String =
+      this.benchmark
+
+    def withThreadsInParams: BenchmarkResult = {
+      import BenchmarkResult.threadsKey
+      require(!this.params.contains(threadsKey))
+      val newParams = (threadsKey -> Json.fromString(this.threads.toString)) +: this.params
+      this.copy(params = newParams)
+    }
+  }
+
+  final object BenchmarkResult {
+    private final val threadsKey =
+      "_jmh_threads"
+  }
+
+  @JsonCodec
+  final case class Metric(
+    score: Double,
+    scoreError: Double,
+    scoreConfidence: (Double, Double),
+    scorePercentiles: JsonObject,
+    scoreUnit: String,
+    rawData:  List[List[Double]],
+  )
+
+  final case class JdkVersion(version: String) {
+    final override def toString: String =
+      version
+  }
+
+  final object JdkVersion {
+
+    private[this] final val versionPattern =
+      raw"^(\d+\.)*(\d+)".r
+
+    implicit val jdkVersionDecoder: Decoder[JdkVersion] = {
+      Decoder.decodeString.emap { ver =>
+        versionPattern.findFirstIn(ver) match {
+          case Some(v) => Right(JdkVersion(v))
+          case None => Left(s"invalid version: '${ver}'")
+        }
+      }
+    }
+
+    implicit val jdkVersionEncoder: Encoder[JdkVersion] = {
+      Encoder.encodeString.contramap(_.version)
+    }
+  }
 }
 
 private object CleanBenchResults {
 
   final def cleanBenchResults(dir: File, pat: String, log: ManagedLogger): Unit = {
     println(dir.absolutePath)
-    val files = sbt.io.IO.listFiles(dir, FileFilter.globFilter(pat)).toList
+    val files = SbtIO.listFiles(dir, FileFilter.globFilter(pat)).toList
     val results = files.map { f =>
       log.info(s"Cleaning '${f.absolutePath}'...")
       val r = Try { cleanJsonFile(f) }
@@ -122,7 +327,7 @@ private object CleanBenchResults {
     } yield Json.obj(newFields: _*)
   }
 
-  private[this] final def cleanJdkAndVmVersion(jdkVersion: String, vmVersion: String): Either[String, (String, String)] = {
+  final def cleanJdkAndVmVersion(jdkVersion: String, vmVersion: String): Either[String, (String, String)] = {
     val jdkvComps = jdkVersion.split('.')
     if (jdkvComps.forall(c => Try(c.toInt).isSuccess)) {
       // OK, jdkVersion is integers separated by dots
