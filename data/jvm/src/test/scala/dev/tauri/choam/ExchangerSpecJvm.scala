@@ -390,25 +390,34 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       ex2 <- Rxn.unsafe.exchanger[String, Int].run[F]
+      // Note: getting the context is in the same reaction
+      // as the exchange; thus, it is necessarily the context
+      // of the same thread.
       task1 = ex.exchange.flatMapF { i =>
         Rxn.unsafe.context { ctx =>
           (i, ctx)
         }
       }.apply[F]("foo")
-      task2 = ex2.exchange.apply[F]("bar")
+      task2 = ex2.exchange.flatMapF { i =>
+        Rxn.unsafe.context { ctx =>
+          (i, ctx)
+        }
+      }.apply[F]("bar")
       f1 <- (task1, task2).mapN(_ -> _).start
       f2 <- (ex.dual.exchange[F](42), ex2.dual.exchange[F](23)).mapN(_ -> _).start
       r1 <- f1.joinWithNever
       (res11, res12) = r1
       _ <- assertEqualsF(res11._1, 42)
-      _ <- assertEqualsF(res12, 23)
+      _ <- assertEqualsF(res12._1, 23)
       _ <- F.delay {
         val ctx1 = res11._2
+        val ctx2 = res12._2
         if (ctx1.supportsStatistics) {
           assert(ctx1.getStatistics().contains(ex.key))
-          assert(ctx1.getStatistics().contains(ex2.key))
+          assert(ctx2.supportsStatistics)
+          assert(ctx2.getStatistics().contains(ex2.key))
         } else {
-          // impl. is not collecting stats
+          assert(!ctx2.supportsStatistics)
         }
       }
       _ <- assertResultF(f2.joinWithNever, ("foo", "bar"))
