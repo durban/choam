@@ -198,7 +198,7 @@ private object EMCAS extends MCAS { self =>
             if (mark eq null) {
               // not holding it yet
               weakref = wordDesc.address.unsafeGetMarkerVolatile()
-              mark = weakref.get()
+              mark = if (weakref ne null) weakref.get() else null
               if (mark ne null) {
                 // continue with another iteration, and re-read the
                 // descriptor, while holding the mark
