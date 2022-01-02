@@ -56,7 +56,7 @@ object FlakyEMCAS extends MCAS { self =>
       hash ^= it.next().address.##
     }
     if (this.seen.putIfAbsent(hash, ()).isDefined) {
-      EMCAS.MCAS(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
+      EMCAS.MCAS(desc = desc, ctx = ctx)
     } else {
       false // simulate a transient CAS failure to force a retry
     }

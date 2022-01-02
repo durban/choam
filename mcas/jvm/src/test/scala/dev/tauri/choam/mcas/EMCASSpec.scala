@@ -118,7 +118,7 @@ class EMCASSpec extends BaseSpecA {
     val r2 = MemoryLocation.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
-    var descT1: WordDescriptor[_] = null
+    var weakMark: WeakReference[AnyRef] = null
     val t1 = new Thread(() => {
       val ctx = EMCAS.currentContext()
       val hDesc = ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "a"), r2, "y", "b")
@@ -128,7 +128,7 @@ class EMCASSpec extends BaseSpecA {
       assert(d0.address eq r1)
       r1.unsafeSetVolatile(d0.castToData)
       assert(r1.unsafeCasMarkerVolatile(null, new WeakReference(mark)))
-      descT1 = d0
+      weakMark = new WeakReference(mark)
       latch1.countDown()
       latch2.await()
       // and the thread dies here, with an active CAS
@@ -139,10 +139,11 @@ class EMCASSpec extends BaseSpecA {
     latch2.countDown()
     t1.join()
     assert(!t1.isAlive())
+    assert(weakMark ne null)
 
     if (runGcBetween) {
       // make sure the marker is collected:
-      while (descT1.address.unsafeGetMarkerVolatile().get() ne null) {
+      while (weakMark.get() ne null) {
         System.gc()
       }
     }
@@ -164,7 +165,7 @@ class EMCASSpec extends BaseSpecA {
     EMCAS.spinUntilCleanup(r2)
     assert(clue(r1.unsafeGetVolatile()) eq "a")
     assert(clue(r2.unsafeGetVolatile()) eq "b")
-    assert(descT1.address.unsafeGetMarkerVolatile().get() eq null)
+    assert(weakMark.get() eq null)
   }
 
   // OK, but slow:

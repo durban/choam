@@ -34,7 +34,7 @@ final class IBRSpec
     var mark: AnyRef = null
     val desc = {
       val desc = EMCASDescriptor.prepare(hDesc)
-      val ok = EMCAS.MCAS(desc = desc, ctx = ctx, replace = EMCAS.replacePeriodForEMCAS)
+      val ok = EMCAS.MCAS(desc = desc, ctx = ctx)
       // TODO: if *right now* the GC clears the mark, the assertion below will fail
       mark = desc.wordIterator().next().address.unsafeGetMarkerVolatile().get()
       assert(mark ne null)
