@@ -280,11 +280,13 @@ private object EMCAS extends MCAS { self =>
       } else {
         // before installing our descriptor, make sure a valid mark exists:
         val weakRefOk = if (mark eq null) {
-          // there was no old descriptor, or it was already unused;
-          // we need a new mark:
           assert((weakref eq null) || (weakref.get() eq null))
-          mark = new McasMarker
-          wordDesc.address.unsafeCasMarkerVolatile(weakref, new WeakReference(mark))
+          // there was no old descriptor, or it was already unused;
+          // we'll need a new mark:
+          mark = ctx.getReusableMarker()
+          val weakref2 = ctx.getReusableWeakRef()
+          assert(weakref2.get() eq mark)
+          wordDesc.address.unsafeCasMarkerVolatile(weakref, weakref2)
           // if this fails, we'll retry, see below
         } else {
           // we have a valid mark from reading

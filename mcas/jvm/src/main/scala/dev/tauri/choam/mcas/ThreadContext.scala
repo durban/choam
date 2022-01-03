@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package mcas
 
+import java.lang.ref.WeakReference
 import java.util.concurrent.ThreadLocalRandom
 
 // TODO: rename to EMCASThreadContext
@@ -32,6 +33,55 @@ private final class ThreadContext(
 
   private[this] var retries: Int =
     0
+
+  private[this] var markerUsedCount: Int =
+    0
+
+  private[this] final val maxMarkerUsedCount =
+    32768 // TODO
+
+  private[this] var markerWeakRef: WeakReference[AnyRef] =
+    null
+
+  // This is ugly: `getReusableWeakRef` MUST be called
+  // immediately after `getReusableMarker`, and the caller
+  // MUST hold a strong ref to the return value of
+  // `getReusableMarker`. But this way we can avoid allocating
+  // a 2-tuple to hold both the marker and weakref.
+
+  private[mcas] final def getReusableMarker(): AnyRef = {
+    if (this.markerWeakRef eq null) {
+      // nothing to reuse, create new:
+      this.createReusableMarker()
+    } else {
+      val mark = this.markerWeakRef.get()
+      if (mark eq null) {
+        // nothing to reuse, create new:
+        this.createReusableMarker()
+      } else {
+        // maybe we can reuse it:
+        this.markerUsedCount += 1
+        if (this.markerUsedCount == maxMarkerUsedCount) {
+          // we used it too much, create new:
+          this.createReusableMarker()
+        } else {
+          // OK, reuse it:
+          mark
+        }
+      }
+    }
+  }
+
+  private[mcas] final def getReusableWeakRef(): WeakReference[AnyRef] = {
+    this.markerWeakRef
+  }
+
+  private[this] final def createReusableMarker(): AnyRef = {
+    val mark = new McasMarker
+    this.markerWeakRef = new WeakReference(mark)
+    this.markerUsedCount = 0
+    mark // caller MUST hold a strong ref
+  }
 
   // TODO: this is a hack
   private[this] var statistics: Map[AnyRef, AnyRef] =
