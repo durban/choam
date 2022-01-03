@@ -30,6 +30,7 @@ import io.circe.{ Json, JsonObject, Decoder, Encoder }
 import io.circe.parser
 import io.circe.generic.JsonCodec
 import io.circe.generic.extras.{ ConfiguredJsonCodec, Configuration }
+import org.openjdk.jmh.results
 
 object Tools extends AutoPlugin {
 
@@ -44,6 +45,7 @@ object Tools extends AutoPlugin {
     autoImport.cleanBenchResultsFilePattern := "results_*.json",
     autoImport.mergeBenchResults := mergeBenchResultsImpl.evaluated,
     autoImport.addBenchParam := addBenchParamImpl.evaluated,
+    autoImport.removeBenchParam := removeBenchParamImpl.evaluated,
   )
 
   final object autoImport {
@@ -51,6 +53,7 @@ object Tools extends AutoPlugin {
     lazy val cleanBenchResultsFilePattern = settingKey[String]("cleanBenchResultsFilePattern")
     lazy val mergeBenchResults = inputKey[Unit]("mergeBenchResults")
     lazy val addBenchParam = inputKey[Unit]("addBenchParam")
+    lazy val removeBenchParam = inputKey[Unit]("removeBenchParam")
   }
 
   private lazy val cleanBenchResultsImpl = Def.task[Unit] {
@@ -79,19 +82,34 @@ object Tools extends AutoPlugin {
     }
   }
 
-  private lazy val addBenchParamImpl = Def.inputTask[Unit] {
+  private lazy val addBenchParamImpl =
+    transformFilesTask(
+      (p, v) => s"Adding param '${p}=${v}' to files:",
+      MergeBenchResults.addParam,
+    )
+
+  private lazy val removeBenchParamImpl =
+    transformFilesTask(
+      (p, v) => s"Removing param '${p}=${v}' from files:",
+      MergeBenchResults.removeParam,
+    )
+
+  private def transformFilesTask(
+    label: (String, String) => String,
+    transformation: (Model.BenchmarkResult, String, String) => Model.BenchmarkResult,
+  ): Def.Initialize[InputTask[Unit]] = Def.inputTask[Unit] {
 
     import complete.DefaultParsers._
 
     val args: Seq[String] = spaceDelimited("<arg>").parsed
     args.toList match {
       case p :: v :: patterns =>
-        MergeBenchResults.addBenchParam(
+        MergeBenchResults.transformFiles(
           baseDirectory.value,
           streams.value.log,
-          param = p,
-          value = v,
           inputPatterns = patterns,
+          transformation = transformation(_, p, v),
+          label = label(p, v),
         )
       case _ =>
         throw new IllegalArgumentException("not enough args")
@@ -103,38 +121,65 @@ private object MergeBenchResults {
 
   import Model._
 
-  final def addBenchParam(
+  final def transformFiles(
     baseDir: File,
     log: ManagedLogger,
-    param: String,
-    value: String,
     inputPatterns: List[String],
+    transformation: BenchmarkResult => BenchmarkResult,
+    label: String,
   ): Unit = {
     val inputFiles: List[File] = inputPatterns.flatMap { pattern =>
       val files = SbtIO.listFiles(baseDir, FileFilter.globFilter(pattern))
       files.toList
     }.toSet.toList.sortBy((f: File) => f.absolutePath)
-    log.info(s"Adding '${param}=${value}' to files:")
+    log.info(label)
     inputFiles.foreach { f =>
       log.info(s" * ${f.absolutePath}")
-      addParamToFile(f, param, value)
+      transformFile(f, transformation)
     }
   }
 
-  private[this] final def addParamToFile(
+  private[this] final def transformFile(
     file: File,
-    param: String,
-    value: String,
+    transformation: BenchmarkResult => BenchmarkResult,
   ): Unit = {
     val r = parse(file)
-    val rr = r.map { br =>
-      if (br.params.contains(param)) {
-        throw new IllegalArgumentException(s"Benchmark '${br.name}' in file '${file.absolutePath}' already contains param '${}'")
-      } else {
-        br.copy(params = (param -> Json.fromString(value)) +: br.params)
-      }
-    }
+    val rr = r.map(transformation)
     dump(rr, file)
+  }
+
+  final def addParam(
+    br: BenchmarkResult,
+    param: String,
+    value: String
+  ): BenchmarkResult = {
+    if (br.params.contains(param)) {
+      throw new IllegalArgumentException(s"Benchmark '${br.name}' already contains param '${}'")
+    } else {
+      br.copy(params = (param -> Json.fromString(value)) +: br.params)
+    }
+  }
+
+  final def removeParam(
+    br: BenchmarkResult,
+    param: String,
+    value: String, // if null, value is "don't care"
+  ): BenchmarkResult = {
+    val newParams = if (br.params.contains(param)) {
+      value match {
+        case null =>
+          br.params.filterKeys(_ =!= param)
+        case value =>
+          val valueJson = Json.fromString(value)
+          br.params.filter { case (k, v) =>
+            if (k =!= param) true
+            else (v =!= valueJson)
+          }
+      }
+    } else {
+      br.params
+    }
+    br.copy(params = newParams)
   }
 
   final def mergeBenchResults(
