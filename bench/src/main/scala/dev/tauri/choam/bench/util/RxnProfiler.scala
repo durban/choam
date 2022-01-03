@@ -44,6 +44,7 @@ import mcas.MCAS.EMCAS
  *
  * Available options are:
  * - retries (-> rxn.retriesPerCommit)
+ * - reusedWeakRefs (-> rxn.reusedWeakRefs)
  * - exchanges (-> rxn.exchangesPerSec)
  * - exchangeCount (-> rxn.exchangeCount)
  * - exchangerStats (-> rxn.exchangerStats)
@@ -51,6 +52,7 @@ import mcas.MCAS.EMCAS
  * Measurements:
  * - rxn.retriesPerCommit:
  *   average number of retries (including alternatives) per commit
+ * - rxn.reusedWeakRefs: TODO
  * - rxn.exchangesPerSec:
  *   average number of successful exchanges per second (note: this data
  *   is not collected for every exchanger, only for ones created by
@@ -91,12 +93,14 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     val p = Command("rxn", "RxnProfiler") {
       val debug = Opts.flag("debug", short = "d", help = "debug mode").orFalse
       val retries = Opts.flag("retries", help = "retries / commit").orFalse
+      val reusedWr = Opts.flag("reusedWeakRefs", help = "max. number of Refs sharing a weak marker").orFalse
       val exchangesPs = Opts.flag("exchanges", help = "exchanges / sec").orFalse
       val exchangeCount = Opts.flag("exchangeCount", help = "exchange count").orFalse
       val exchangerStats = Opts.flag("exchangerStats", help = "exchanger stats").orFalse
-      val cfg = (retries, exchangesPs, exchangeCount, exchangerStats).mapN { (r, eps, ec, es) =>
+      val cfg = (retries, reusedWr, exchangesPs, exchangeCount, exchangerStats).mapN { (r, rwr, eps, ec, es) =>
         Config(
           retriesPerCommit = r,
+          reusedWeakRefs = rwr,
           exchangesPerSecond = eps,
           exchangeCount = ec,
           exchangerStats = es,
@@ -166,13 +170,14 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     if (config.measureExchanges) {
       res.addAll(countExchanges())
     }
-    // TODO: make this configurable
-    res.add(new ScalarResult(
-      "rxn.reusedWeakRefs",
-      EMCAS.maxReusedWeakRefs().toDouble,
-      RxnProfiler.UnitCount,
-      AggregationPolicy.MAX,
-    ))
+    if (config.reusedWeakRefs) {
+      res.add(new ScalarResult(
+        RxnProfiler.ReusedWeakRefs,
+        EMCAS.maxReusedWeakRefs().toDouble,
+        RxnProfiler.UnitCount,
+        AggregationPolicy.MAX,
+      ))
+    }
     res
   }
 
@@ -284,6 +289,7 @@ object RxnProfiler {
 
   final case class Config(
     retriesPerCommit: Boolean,
+    reusedWeakRefs: Boolean,
     exchangesPerSecond: Boolean,
     exchangeCount: Boolean,
     exchangerStats: Boolean,
@@ -292,6 +298,7 @@ object RxnProfiler {
     def || (that: Config): Config = {
       Config(
         retriesPerCommit = this.retriesPerCommit || that.retriesPerCommit,
+        reusedWeakRefs = this.reusedWeakRefs || that.reusedWeakRefs,
         exchangesPerSecond = this.exchangesPerSecond || that.exchangesPerSecond,
         exchangeCount = this.exchangeCount || that.exchangeCount,
         exchangerStats = this.exchangerStats || that.exchangerStats,
@@ -306,6 +313,7 @@ object RxnProfiler {
 
     def debug: Config = Config(
       retriesPerCommit = true,
+      reusedWeakRefs = true,
       exchangesPerSecond = true,
       exchangeCount = true,
       exchangerStats = false,
@@ -313,6 +321,7 @@ object RxnProfiler {
 
     def default: Config = Config(
       retriesPerCommit = true,
+      reusedWeakRefs = true,
       exchangesPerSecond = true,
       exchangeCount = false,
       exchangerStats = true, // TODO
@@ -325,6 +334,7 @@ object RxnProfiler {
   final val UnitExchangesPerSecond = "xchg/s"
   final val ExchangeCount = "rxn.exchangeCount"
   final val ExchangerStats = "rxn.exchangerStats"
+  final val ReusedWeakRefs = "rxn.reusedWeakRefs"
   final val UnitCount = "counts"
 
   final def profiledExchanger[A, B]: Axn[Exchanger[A, B]] =
