@@ -383,6 +383,11 @@ private object EMCAS extends MCAS { self =>
     this.global.collectExchangerStats()
   }
 
+  /** Only for testing/benchmarking */
+  private[choam] final override def maxReusedWeakRefs(): Int = {
+    this.global.maxReusedWeakRefs()
+  }
+
   /** For testing */
   @throws[InterruptedException]
   private[mcas] def spinUntilCleanup[A](ref: MemoryLocation[A], max: Long = Long.MaxValue): A = {

@@ -41,6 +41,11 @@ abstract class MCAS {
   private[choam] def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
     Map.empty
   }
+
+  /** Only for testing/benchmarking */
+  private[choam] def maxReusedWeakRefs(): Int = {
+    0
+  }
 }
 
 object MCAS extends MCASPlatform { self =>
@@ -103,6 +108,11 @@ object MCAS extends MCASPlatform { self =>
     private[choam] def setStatistics(@unused stats: Map[AnyRef, AnyRef]): Unit = {
       // we ignore stats by default; implementations
       // can override if it matters
+    }
+
+    /** Only for testing/benchmarking */
+    private[choam] def maxReusedWeakRefs(): Int = {
+      0
     }
   }
 

@@ -87,6 +87,14 @@ private final class GlobalContext(impl: EMCAS.type) {
     }
   }
 
+  /** Only for testing/benchmarking */
+  private[choam] final def maxReusedWeakRefs(): Int = {
+    threadContexts().foldLeft(0) { (max, tc) =>
+      val n = tc.maxReusedWeakRefs()
+      if (n > max) n else max
+    }
+  }
+
   private[mcas] final def threadContexts(): Iterator[ThreadContext] = {
     val iterWeak = this._threadContexts.values().iterator()
     CollectionConverters.asScala(iterWeak).flatMap { weakref =>

@@ -37,6 +37,9 @@ private final class ThreadContext(
   private[this] var markerUsedCount: Int =
     0
 
+  private[this] var maxReuseEver: Int =
+    0
+
   private[this] final val maxMarkerUsedCount =
     32768 // TODO
 
@@ -79,6 +82,13 @@ private final class ThreadContext(
   private[this] final def createReusableMarker(): AnyRef = {
     val mark = new McasMarker
     this.markerWeakRef = new WeakReference(mark)
+    if (this.markerUsedCount > this.maxReuseEver) {
+      // TODO: this is not exactly correct, because
+      // TODO: even if we `getReusableWeakRef` from
+      // TODO: this thread context, we do not necessarily
+      // TODO: use it (the CAS to install it may fail)
+      this.maxReuseEver = this.markerUsedCount
+    }
     this.markerUsedCount = 0
     mark // caller MUST hold a strong ref
   }
@@ -111,6 +121,12 @@ private final class ThreadContext(
   private[choam] def getCommitsAndRetries(): (Int, Int) = {
     // TODO: opaque
     (this.commits, this.retries)
+  }
+
+  /** Only for testing/benchmarking */
+  private[choam] final override def maxReusedWeakRefs(): Int = {
+    // TODO: opaque
+    this.maxReuseEver
   }
 
   /** Only for testing/benchmarking */

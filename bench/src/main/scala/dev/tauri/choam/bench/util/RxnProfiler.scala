@@ -166,6 +166,13 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     if (config.measureExchanges) {
       res.addAll(countExchanges())
     }
+    // TODO: make this configurable
+    res.add(new ScalarResult(
+      "rxn.reusedWeakRefs",
+      EMCAS.maxReusedWeakRefs().toDouble,
+      RxnProfiler.UnitCount,
+      AggregationPolicy.MAX,
+    ))
     res
   }
 
