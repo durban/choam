@@ -188,7 +188,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertSameInstance(ctx.read(r3), "r3x")
   }
 
-  test("read should be able to read from a fresh ref".only) {
+  test("read should be able to read from a fresh ref") {
     val r = MemoryLocation.unsafe[String]("x")
     assertEquals(kcasImpl.currentContext().read(r), "x")
   }
