@@ -27,3 +27,7 @@ libraryDependencies ++= Seq(
   compilerPlugin("org.typelevel" % "kind-projector" % kindProjectorVersion cross CrossVersion.full),
   compilerPlugin("org.scalamacros" % "paradise" % macroParadiseVersion cross CrossVersion.full),
 )
+
+scalacOptions ++= Seq(
+  s"-P:semanticdb:sourceroot:${(ThisBuild / baseDirectory).value.absolutePath}", // metals needs this
+)

@@ -43,12 +43,14 @@ object Tools extends AutoPlugin {
     autoImport.cleanBenchResults := cleanBenchResultsImpl.value,
     autoImport.cleanBenchResultsFilePattern := "results_*.json",
     autoImport.mergeBenchResults := mergeBenchResultsImpl.evaluated,
+    autoImport.addBenchParam := addBenchParamImpl.evaluated,
   )
 
   final object autoImport {
     lazy val cleanBenchResults = taskKey[Unit]("cleanBenchResults")
     lazy val cleanBenchResultsFilePattern = settingKey[String]("cleanBenchResultsFilePattern")
     lazy val mergeBenchResults = inputKey[Unit]("mergeBenchResults")
+    lazy val addBenchParam = inputKey[Unit]("addBenchParam")
   }
 
   private lazy val cleanBenchResultsImpl = Def.task[Unit] {
@@ -76,11 +78,64 @@ object Tools extends AutoPlugin {
         throw new IllegalArgumentException("no args")
     }
   }
+
+  private lazy val addBenchParamImpl = Def.inputTask[Unit] {
+
+    import complete.DefaultParsers._
+
+    val args: Seq[String] = spaceDelimited("<arg>").parsed
+    args.toList match {
+      case p :: v :: patterns =>
+        MergeBenchResults.addBenchParam(
+          baseDirectory.value,
+          streams.value.log,
+          param = p,
+          value = v,
+          inputPatterns = patterns,
+        )
+      case _ =>
+        throw new IllegalArgumentException("not enough args")
+    }
+  }
 }
 
 private object MergeBenchResults {
 
   import Model._
+
+  final def addBenchParam(
+    baseDir: File,
+    log: ManagedLogger,
+    param: String,
+    value: String,
+    inputPatterns: List[String],
+  ): Unit = {
+    val inputFiles: List[File] = inputPatterns.flatMap { pattern =>
+      val files = SbtIO.listFiles(baseDir, FileFilter.globFilter(pattern))
+      files.toList
+    }.toSet.toList.sortBy((f: File) => f.absolutePath)
+    log.info(s"Adding '${param}=${value}' to files:")
+    inputFiles.foreach { f =>
+      log.info(s" * ${f.absolutePath}")
+      addParamToFile(f, param, value)
+    }
+  }
+
+  private[this] final def addParamToFile(
+    file: File,
+    param: String,
+    value: String,
+  ): Unit = {
+    val r = parse(file)
+    val rr = r.map { br =>
+      if (br.params.contains(param)) {
+        throw new IllegalArgumentException(s"Benchmark '${br.name}' in file '${file.absolutePath}' already contains param '${}'")
+      } else {
+        br.copy(params = (param -> Json.fromString(value)) +: br.params)
+      }
+    }
+    dump(rr, file)
+  }
 
   final def mergeBenchResults(
     baseDir: File,
@@ -90,7 +145,6 @@ private object MergeBenchResults {
   ): Unit = {
     val outFile: File = baseDir / output
     require(!outFile.exists(), s"${outFile.absolutePath} already exists")
-    println(outFile.absolutePath)
     val inputFiles: List[File] = inputs.map { pattern =>
       val files = SbtIO.listFiles(baseDir, FileFilter.globFilter(pattern))
       files.toList
