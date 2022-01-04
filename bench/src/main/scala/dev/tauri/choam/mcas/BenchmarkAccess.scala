@@ -23,4 +23,8 @@ object BenchmarkAccess {
   def wordDescriptor[A](half: HalfWordDescriptor[A], parent: EMCASDescriptor): AnyRef = {
     WordDescriptor(half, parent)
   }
+
+  def casStatusFromActiveToFailed(desc: EMCASDescriptor): Boolean = {
+    desc.casStatus(EMCASStatus.ACTIVE, EMCASStatus.FAILED)
+  }
 }

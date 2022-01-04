@@ -23,6 +23,7 @@ import java.util.concurrent.CountDownLatch
 
 import mcas.MemoryLocation
 
+// TODO: rename/move (there is no IBR any more)
 final class IBRSpec
   extends BaseSpecA {
 

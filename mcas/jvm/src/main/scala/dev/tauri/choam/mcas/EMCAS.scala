@@ -269,8 +269,6 @@ private object EMCAS extends MCAS { self =>
         }
       }
 
-      Reference.reachabilityFence(mark) // TODO: this is probably unnecessary
-
       if (!equ(value, wordDesc.ov)) {
         // expected value is different
         TryWordResult.FAILURE
@@ -306,7 +304,7 @@ private object EMCAS extends MCAS { self =>
           // either we couldn't install the new mark, or
           // the CAS on the `Ref` failed; in either case,
           // we'll retry:
-          Reference.reachabilityFence(mark) // TODO: do we need this? Probably yes.
+          Reference.reachabilityFence(mark)
           tryWord(wordDesc)
         }
       }
@@ -343,6 +341,9 @@ private object EMCAS extends MCAS { self =>
         EMCASStatus.FAILED
       }
       if (desc.casStatus(EMCASStatus.ACTIVE, rr)) {
+        // we finalized the descriptor
+        // TODO: we should consider emptying the
+        // TODO: array of WDs in `desc` now, to help GC
         (rr eq EMCASStatus.SUCCESSFUL)
       } else {
         // someone else finalized the descriptor, we must read its status:

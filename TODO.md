@@ -80,6 +80,10 @@
     - Optimize SignallingRef
 - API cleanup:
   - MCAS API review
+    - KCAS is still mentioned a lot
+  - Rename `flatMapF`
+    - maybe `semiFlatMap` (or `semiflatMap`?)
+    - or `subflatMap`?
   - (unsafe) thread-confined mode for running a `Rxn`:
     - `ThreadConfinedMCAS`
     - convenience API?
