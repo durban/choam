@@ -26,21 +26,96 @@ import java.lang.ref.{ Reference, WeakReference }
  */
 private object EMCAS extends MCAS { self =>
 
-  // These values for the replace period and limit
-  // have been determined experimentally. See for example
-  // RandomReplaceBench, StackTransferBench and GcBench.
+  /*
+   * The paper which describes EMCAS omits detailed
+   * description of the memory management technique.
+   * However, as mentioned in the paper, memory management
+   * is important not just for the performance, but the
+   * correctness of the algorithm.
+   *
+   * A finished EMCAS operation leaves `WordDescriptor`s
+   * in the `MemoryLocation`s it touches. These can only
+   * be removed (i.e., detached, replaced by the final value
+   * or a new descriptor) if no other thread (helpers, or the
+   * original thread, in case a helper completes the op) uses
+   * the `WordDescriptor`. If they are removed while still
+   * in use, that can cause ABA-problems. (Also, if existing
+   * descriptor objects would be reused, it would cause other
+   * problems too. However, currently only fresh descriptors
+   * are used.)
+   *
+   * To guarantee that in-use descriptors are never replaced,
+   * every thread (the original and any helpers) must always
+   * hold a strong reference to the "mark(er)" associated with
+   * the descriptor. This way, if the marker is collected by
+   * the JVM GC, we can be sure, that the corresponding descriptor
+   * can be replaced.
+   *
+   * Markers are manipulated with the `unsafeGetMarkerVolatile` and
+   * `unsafeCasMarkerVolatile` methods of `MemoryLocation`. The
+   * marker of a `MemoryLocation` can be in the following states:
+   *
+   *   null - `unsafeGetMarkerVolatile` returns null, i.e.,
+   *   not even a `WeakReference` object exists.
+   *
+   *   empty - `unsafeGetMarkerVolatile` returns an empty,
+   *   i.e., cleared `WeakReference` object.
+   *
+   *   full - `unsafeGetMarkerVolatile` returns a full, i.e.,
+   *   not cleared `WeakReference` object.
+   *
+   * The other methods (e.g., `unsafeGetVolatile`) manipulate the "content"
+   * of the `MemoryLocation`. If the content is a "value", that can be
+   * freely replaced by a descriptor during an operation. (But the
+   * new descriptor must have a mark.) The content have the following
+   * possible states:
 
-  // InterpreterBench:
-  // replace-> throughput
-  // 131072 -> ≈ 32000 ops/s
-  // 65536  -> 47054.936 ± 1533.734  ops/s
-  // 32768  -> 46914.121 ± 1109.186  ops/s
-  // 16384  -> 46358.343 ± 541.677  ops/s
-  // 8192   -> 48157.547 ± 1158.838  ops/s
-  // 4096   -> 49038.932 ± 1003.262  ops/s
-  // 2048   -> 48625.019 ± 1551.751  ops/s
+   *   value - a user-supplied value, possibly including `null`;
+   *   this state includes anything that is not a `WordDescriptor`.
+   *
+   *   descriptor - a (non-null) `WordDescriptor` object.
+   *
+   * Thus, the possible states (and their meaning) of a
+   * `MemoryLocation` are as follows: // TODO: describe states
+   *
+   *   content = value
+   *   marker = null
+   *   Meaning: this is the initial state, or the one
+   *   after full cleanup. A new descriptor can be freely
+   *   stored, but before that, a new mark also needs to be
+   *   installed.
+   *
+   *   content = value
+   *   marker = empty
+   *   Meaning: a descriptor previously was in the location,
+   *   but it was already replaced. The empty marker can be
+   *   freely deleted or replaced by a new one.
+   *
+   *   content = value
+   *   marker = full
+   *   Meaning: TODO (rare case, see comments below)
+   *
+   *   content = descriptor
+   *   marker = null
+   *   Meaning: the descriptors is not in use any more, and
+   *   the `WeakReference` object was also cleared up; otherwise
+   *   see below.
+   *
+   *   content = descriptor
+   *   marker = empty
+   *   Meaning: the descriptors is not in use any more, and
+   *   can be replaced by the final value, or another descriptor
+   *   (but before placing a new descriptor, a new marker must
+   *   be installed).
+   *
+   *   content = descriptor
+   *   marker = full
+   *   Meaning: the descriptor is (possibly) in use, and cannot be
+   *   replaced, except by another descriptor with the
+   *   same mark.
+   */
 
-  // TODO: this is unused
+  // TODO: this is unused (only 0 or non-0 matters)
   private[choam] final val replacePeriodForReadValue =
     4096
 

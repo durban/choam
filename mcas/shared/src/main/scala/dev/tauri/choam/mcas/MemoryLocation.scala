@@ -65,10 +65,10 @@ trait MemoryLocation[A] {
 
   def unsafeCmpxchgVolatile(ov: A, nv: A): A
 
-  // TODO: this is JVM-only
+  /** Used by EMCAS */ // TODO: this is JVM-only
   def unsafeGetMarkerVolatile(): WeakReference[AnyRef]
 
-  // TODO: this is JVM-only
+  /** Used by EMCAS */ // TODO: this is JVM-only
   def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean
 
   def id0: Long

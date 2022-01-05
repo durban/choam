@@ -41,7 +41,7 @@ private final class ThreadContext(
     0
 
   private[this] final val maxMarkerUsedCount =
-    32768 // TODO
+    32768 // TODO: try to use a smaller constant (benchmark!)
 
   private[this] var markerWeakRef: WeakReference[AnyRef] =
     null
