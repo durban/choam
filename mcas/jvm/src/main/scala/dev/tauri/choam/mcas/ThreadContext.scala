@@ -41,7 +41,7 @@ private final class ThreadContext(
     0
 
   private[this] final val maxMarkerUsedCount =
-    32768 // TODO: try to use a smaller constant (benchmark!)
+    4096
 
   /**
    * When storing a `WordDescriptor` into a ref, `EMCAS` first
