@@ -23,6 +23,7 @@ import org.openjdk.jmh.infra.Blackhole
 
 @Fork(3)
 @Threads(2)
+@BenchmarkMode(Array(Mode.AverageTime))
 class McasMarkerBench {
 
   @Benchmark
@@ -33,5 +34,10 @@ class McasMarkerBench {
   @Benchmark
   def mcasMarker(bh: Blackhole): Unit = {
     bh.consume(new McasMarker)
+  }
+
+  @Benchmark
+  def xBaseline(bh: Blackhole): Unit = {
+    bh.consume(bh)
   }
 }
