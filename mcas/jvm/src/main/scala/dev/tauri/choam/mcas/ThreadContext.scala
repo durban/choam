@@ -43,7 +43,28 @@ private final class ThreadContext(
   private[this] final val maxMarkerUsedCount =
     32768 // TODO: try to use a smaller constant (benchmark!)
 
-  // TODO: write about why is this reused
+  /**
+   * When storing a `WordDescriptor` into a ref, `EMCAS` first
+   * tries to reuse an existing weakref and marker in the ref
+   * (see there). If that is not possible, we need another
+   * (full) weakref and mark.
+   *
+   * We could create a fresh one each time, but that could cause
+   * a lot of `WeakReference`s to exist simultaneously in
+   * some scenarios (e.g., when creating a lot of refs, which
+   * are only used once or twice). A lot of `WeakReference`s
+   * seem to force the GC to work much harder, which causes
+   * bad performance.
+   *
+   * So, instead of creating a fresh weakref and mark, we ask
+   * the `ThreadContext`, to give us a (possibly) reused one.
+   * Here we cache a weakref, and reuse it for a while. We don't
+   * want to reuse it forever (even if it's not cleared), since
+   * each ref which uses the same marker is "bound" together
+   * regarding their descriptor cleanup. So, occasionally we create
+   * a fresh one (see `markerUsedCount`). (Using the same marker
+   * for a limited number of refs is probably not a big deal.)
+   */
   private[this] var markerWeakRef: WeakReference[AnyRef] =
     null
 

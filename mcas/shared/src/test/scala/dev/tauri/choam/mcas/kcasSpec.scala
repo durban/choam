@@ -192,4 +192,8 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r = MemoryLocation.unsafe[String]("x")
     assertEquals(kcasImpl.currentContext().read(r), "x")
   }
+
+  test("Platform default must be thread-safe") {
+    assert(MCAS.DefaultMCAS.isThreadSafe)
+  }
 }

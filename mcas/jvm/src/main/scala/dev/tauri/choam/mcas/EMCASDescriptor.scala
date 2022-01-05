@@ -21,7 +21,7 @@ package mcas
 import java.util.ArrayList
 
 private final class EMCASDescriptor private (
-  /**
+  /*
    * Word descriptors
    *
    * Thread safety: we only read the list after reading the descriptor from a `Ref`;

@@ -16,6 +16,7 @@
  */
 
 import scala.util.Try
+import scala.annotation.tailrec
 
 import sbt.{ io => _, _ }
 import sbt.Keys._
@@ -212,23 +213,73 @@ private object MergeBenchResults {
       val rf = parse(input).map(_.withThreadsInParams)
       acc ++ rf
     }
+    @tailrec
+    def compareByCommonKeys(keys: List[String], x: JsonObject, y: JsonObject): Int = {
+      keys match {
+        case h :: t =>
+          val xv = x(h).flatMap(_.asString).getOrElse("")
+          val yv = y(h).flatMap(_.asString).getOrElse("")
+          Order[String].compare(xv, yv) match {
+            case 0 => compareByCommonKeys(t, x, y)
+            case n => n
+          }
+        case Nil => // all common keys are equal
+          0
+      }
+    }
+    val orderParams: Order[JsonObject] = { (x, y) =>
+      val xSet = x.keys.toSet
+      val ySet = y.keys.toSet
+      if (xSet === ySet) { // same keys, compare values
+        compareByCommonKeys(xSet.toList.sorted, x, y)
+      } else if (xSet subsetOf ySet) { // x < y
+        -1
+      } else if (ySet subsetOf xSet) { // x > y
+        +1
+      } else { // key sets incomparable
+        val common = xSet intersect ySet
+        if (common.isEmpty) {
+          // we give up:
+          (xSet.## - ySet.##) match {
+            case 0 => -1 // hash collision
+            case n => n
+          }
+        } else {
+          compareByCommonKeys(common.toList.sorted, x, y) match {
+            case 0 =>
+              // we give up:
+              (xSet.## - ySet.##) match {
+                case 0 => -1 // hash collision
+                case n => n
+              }
+            case n =>
+              n
+          }
+        }
+      }
+    }
     result.sorted(Order.from[BenchmarkResult] { (x, y) =>
       Order[String].compare(x.name, y.name) match {
         case 0 =>
-          // same name, order based on threads
+          // same name, order based on threads:
           Order[Int].compare(x.threads, y.threads) match {
             case 0 =>
-              // same threads too, we return an arbitrary
-              // result (but only 0 if x == y)
-              if (x == y) {
-                0
-              } else {
-                (x.## - y.##) match {
-                  case 0 => -1 // hash collision
-                  case n => n
-                }
+              // same threads, order based on params:
+              orderParams.compare(x.params, y.params) match {
+                case 0 =>
+                  if (x == y) {
+                    0
+                  } else {
+                    (x.## - y.##) match {
+                      case 0 => -1 // hash collision
+                      case n => n
+                    }
+                  }
+                case n =>
+                  n
               }
-            case n => n
+            case n =>
+              n
           }
         case n =>
           // different name, use that:

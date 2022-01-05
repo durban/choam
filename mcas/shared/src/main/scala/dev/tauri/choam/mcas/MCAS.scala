@@ -20,11 +20,13 @@ package mcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-/** Common interface for MCAS/k-CAS implementations */
+/** Common interface for MCAS (i.e., k-CAS) implementations */
 abstract class MCAS {
 
+  /** Returns the context associated with the current thread */
   def currentContext(): MCAS.ThreadContext
 
+  /** True iff `this` can be used to perform ops on arbitrary refs */
   private[choam] def isThreadSafe: Boolean
 
   /** Only for testing/benchmarking */
