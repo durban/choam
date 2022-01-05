@@ -25,6 +25,10 @@ import scala.runtime.VolatileObjectRef
 
 import mcas.MemoryLocation
 
+// TODO: all tests in `choam-mcas` are executed with
+// TODO: `SimpleMemoryLocation`; we should run them
+// TODO: with actual `Ref`s too (or instead?)
+
 class EMCASSpec extends BaseSpecA {
 
   // OK:

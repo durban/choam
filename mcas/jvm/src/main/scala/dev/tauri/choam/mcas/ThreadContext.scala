@@ -43,14 +43,17 @@ private final class ThreadContext(
   private[this] final val maxMarkerUsedCount =
     32768 // TODO: try to use a smaller constant (benchmark!)
 
+  // TODO: write about why is this reused
   private[this] var markerWeakRef: WeakReference[AnyRef] =
     null
 
   // This is ugly: `getReusableWeakRef` MUST be called
   // immediately after `getReusableMarker`, and the caller
   // MUST hold a strong ref to the return value of
-  // `getReusableMarker`. But this way we can avoid allocating
-  // a 2-tuple to hold both the marker and weakref.
+  // `getReusableMarker`. (Otherwise there would be a race
+  // with the GC; if the GC wins, we get an empty WeakRef.)
+  // But this way we can avoid allocating a 2-tuple to
+  // hold both the marker and weakref.
 
   private[mcas] final def getReusableMarker(): AnyRef = {
     if (this.markerWeakRef eq null) {

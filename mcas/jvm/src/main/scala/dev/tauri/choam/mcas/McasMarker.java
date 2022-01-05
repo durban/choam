@@ -17,6 +17,14 @@
 
 package dev.tauri.choam.mcas;
 
-// TODO: remove this
-final class McasMarker {
+/**
+ * This is not strictly necessary, we could
+ * use a simple `new AnyRef` as a marker.
+ * However, a separate class makes debugging
+ * easier (e.g., analyzing heap dumps).
+ *
+ * TODO: determine if a simple `AnyRef` is
+ * TODO: faster; remove this if yes.
+ */
+final class McasMarker { // TODO: remove this
 }
