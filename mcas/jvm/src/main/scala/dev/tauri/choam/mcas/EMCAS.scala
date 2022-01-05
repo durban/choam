@@ -76,7 +76,7 @@ private object EMCAS extends MCAS { self =>
    *   descriptor - a (non-null) `WordDescriptor` object.
    *
    * Thus, the possible states (and their meaning) of a
-   * `MemoryLocation` are as follows: // TODO: describe states
+   * `MemoryLocation` are as follows:
    *
    *   content = value
    *   marker = null
@@ -93,7 +93,9 @@ private object EMCAS extends MCAS { self =>
    *
    *   content = value
    *   marker = full
-   *   Meaning: TODO (rare case, see comments below)
+   *   Meaning: a new marker was installed, but then the
+   *   descriptor wasn't (due to a race; see comment at the
+   *   end of `tryWord`); the marker can be reused next time.
    *
    *   content = descriptor
    *   marker = null

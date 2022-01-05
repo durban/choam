@@ -31,7 +31,6 @@ import mcas.MemoryLocation
 
 class EMCASSpec extends BaseSpecA {
 
-  // OK:
   test("EMCAS should allow null as ov or nv") {
     val r1 = MemoryLocation.unsafe[String](null)
     val r2 = MemoryLocation.unsafe[String]("x")
@@ -46,7 +45,6 @@ class EMCASSpec extends BaseSpecA {
     assert(EMCAS.read(r2, ctx) eq null)
   }
 
-  // OK, but slow:
   test("EMCAS should clean up finalized descriptors") {
     val r1 = MemoryLocation.unsafe[String]("x")
     val r2 = MemoryLocation.unsafe[String]("y")
@@ -71,7 +69,45 @@ class EMCASSpec extends BaseSpecA {
     assert(r2.unsafeGetVolatile() eq "b")
   }
 
-  // OK, but slow:
+  test("EMCAS should not clean up an object referenced from another thread") {
+    val ref = MemoryLocation.unsafe[String]("s")
+    val ctx = EMCAS.currentContext()
+    val hDesc = ctx.addCas(ctx.start(), ref, "s", "x")
+    var mark: AnyRef = null
+    val desc = {
+      val desc = EMCASDescriptor.prepare(hDesc)
+      val ok = EMCAS.MCAS(desc = desc, ctx = ctx)
+      // TODO: if *right now* the GC clears the mark, the assertion below will fail
+      mark = desc.wordIterator().next().address.unsafeGetMarkerVolatile().get()
+      assert(mark ne null)
+      assert(ok)
+      desc
+    }
+    val latch1 = new CountDownLatch(1)
+    val latch2 = new CountDownLatch(1)
+    var ok = false
+    val t = new Thread(() => {
+      val mark = desc.wordIterator().next().address.unsafeGetMarkerVolatile().get()
+      assert(mark ne null)
+      latch1.countDown()
+      latch2.await()
+      Reference.reachabilityFence(mark)
+      ok = true
+    })
+    t.start()
+    latch1.await()
+    mark = null
+    val wd = desc.wordIterator().next()
+    System.gc()
+    assert(wd.address.unsafeGetMarkerVolatile().get() ne null)
+    latch2.countDown()
+    t.join()
+    while (wd.address.unsafeGetMarkerVolatile().get() ne null) {
+      System.gc()
+      Thread.sleep(1L)
+    }
+  }
+
   test("EMCAS should clean up finalized descriptors if the original thread releases them") {
     val r1 = MemoryLocation.unsafe[String]("x")
     val r2 = MemoryLocation.unsafe[String]("y")
@@ -109,7 +145,6 @@ class EMCASSpec extends BaseSpecA {
     assert(ok2)
   }
 
-  // OK, but very slow:
   test("EMCAS op should be finalizable even if a thread dies mid-op") {
     threadDeathTest(runGcBetween = false, finishWithAnotherOp = true)
     threadDeathTest(runGcBetween = false, finishWithAnotherOp = false)
@@ -149,6 +184,7 @@ class EMCASSpec extends BaseSpecA {
       // make sure the marker is collected:
       while (weakMark.get() ne null) {
         System.gc()
+        Thread.sleep(1L)
       }
     }
 
@@ -172,7 +208,37 @@ class EMCASSpec extends BaseSpecA {
     assert(weakMark.get() eq null)
   }
 
-  // OK, but slow:
+  test("ThreadContext should be collected by the JVM GC if a thread terminates") {
+    EMCAS.currentContext()
+    val latch1 = new CountDownLatch(1)
+    val latch2 = new CountDownLatch(1)
+    @volatile var error: Throwable = null
+    val t = new Thread(() => {
+      try {
+        EMCAS.currentContext()
+        // now the thread exits, but the
+        // thread context already exists
+        latch1.countDown()
+        latch2.await()
+      } catch {
+        case ex: Throwable =>
+         error = ex
+         throw ex
+      }
+    })
+    t.start()
+    latch1.await()
+    latch2.countDown()
+    t.join()
+    assert(!t.isAlive())
+    assert(error eq null, s"error: ${error}")
+    while (EMCAS.global.threadContexts().exists(_.tid == t.getId())) {
+      System.gc()
+      Thread.sleep(1L)
+    }
+    // now the `ThreadContext` have been collected by the JVM GC
+  }
+
   test("EMCAS should not simply replace  active descriptors (mark should be handled)") {
     val r1 = MemoryLocation.unsafeWithId[String]("x")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
@@ -221,7 +287,6 @@ class EMCASSpec extends BaseSpecA {
     assertEquals(clue(EMCAS.spinUntilCleanup[String](r1)), "x")
   }
 
-  // OK:
   test("EMCAS read should help the other operation") {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 42L)
@@ -242,7 +307,6 @@ class EMCASSpec extends BaseSpecA {
     Reference.reachabilityFence(mark)
   }
 
-  // OK:
   test("EMCAS read should roll back the other op if necessary") {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 99L)
@@ -263,7 +327,6 @@ class EMCASSpec extends BaseSpecA {
     Reference.reachabilityFence(mark)
   }
 
-  // OK:
   test("ThreadContexts should be thread-local") {
     val N = 10000
     val tc1 = new ConcurrentLinkedQueue[ThreadContext]
@@ -296,7 +359,6 @@ class EMCASSpec extends BaseSpecA {
     }
   }
 
-  // OK:
   test("ThreadContexts should work even if thread IDs are reused") {
     final class TrickyThread(ref: VolatileObjectRef[ThreadContext]) extends Thread {
       final override def getId(): Long = 42L
@@ -316,7 +378,6 @@ class EMCASSpec extends BaseSpecA {
     assertEquals(r1.elem.tid, r2.elem.tid)
   }
 
-  // OK:
   test("Descriptors should be sorted") {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 1L)
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 2L)

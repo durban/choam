@@ -23,8 +23,9 @@ package dev.tauri.choam.mcas;
  * However, a separate class makes debugging
  * easier (e.g., analyzing heap dumps).
  *
- * TODO: determine if a simple `AnyRef` is
- * TODO: faster; remove this if yes.
+ * TODO: according to McasMarkerBench, creating
+ * TODO: an `AnyRef` is faster; so we'll need
+ * TODO: to remove this.
  */
-final class McasMarker { // TODO: remove this
+final class McasMarker {
 }
