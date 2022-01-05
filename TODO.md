@@ -65,7 +65,11 @@
       - make it work somehow (almost STM? performance hit?)
 - Optimization ideas:
   - Exchanger: there is a lot of `Array[Byte]` copying
-  - Boxing
+  - Reducing allocations (we're allocating _a lot_)
+    - EMCAS (maybe reusing descriptors?)
+    - Rxn
+      - lots of `Rxn` instances
+      - `ObjStack.Lst`
   - Review writes/reads in EMCAS, check if we can relax them
   - Ref padding:
     - allocating a padded Ref is much slower than an unpadded
