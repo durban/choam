@@ -41,7 +41,10 @@ def openJ9Options: String = {
 }
 
 ThisBuild / scalaVersion := scala2
-ThisBuild / crossScalaVersions := Seq((ThisBuild / scalaVersion).value, scala3)
+ThisBuild / crossScalaVersions := Seq(
+  (ThisBuild / scalaVersion).value,
+  // scala3, // TODO: https://github.com/lampepfl/dotty/issues/14198
+)
 ThisBuild / scalaOrganization := "org.scala-lang"
 ThisBuild / evictionErrorLevel := Level.Warn
 ThisBuild / scalafixScalaBinaryVersion := scalaBinaryVersion.value
