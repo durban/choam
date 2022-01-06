@@ -27,6 +27,7 @@ import org.openjdk.jmh.annotations._
 
 import util._
 import data.{ Stack, TreiberStack, EliminationStack }
+import mcas.MCAS
 
 @Fork(2)
 @Threads(1) // set it to _concurrentOps!
@@ -156,8 +157,10 @@ object SyncStackBench {
 
   @State(Scope.Benchmark)
   class TreiberSt extends BaseSt {
-    val runtime = cats.effect.unsafe.IORuntime.global
-    val treiberStack: Stack[String] = new TreiberStack[String](Prefill.prefill())
+    val runtime =
+      cats.effect.unsafe.IORuntime.global
+    val treiberStack: Stack[String] =
+      TreiberStack.fromList[String](Prefill.prefill()).unsafePerform(null, MCAS.EMCAS)
   }
 
   @State(Scope.Benchmark)

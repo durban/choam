@@ -34,10 +34,10 @@ import data.TreiberStack
 class TreiberStackComposedTest extends StressTestBase {
 
   private[this] val stack1 =
-    new TreiberStack[String](List("z1"))
+    TreiberStack.fromList[String](List("z1")).unsafePerform(null, this.impl)
 
   private[this] val stack2 =
-    new TreiberStack[String](List("z2"))
+    TreiberStack.fromList[String](List("z2")).unsafePerform(null, this.impl)
 
   private[this] val _push =
     stack1.push * stack2.push

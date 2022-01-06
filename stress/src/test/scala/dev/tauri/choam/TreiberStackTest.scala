@@ -34,7 +34,7 @@ import data.TreiberStack
 class TreiberStackTest extends StressTestBase {
 
   private[this] val stack =
-    new TreiberStack[String](List("z"))
+    TreiberStack.fromList[String](List("z")).unsafePerform(null, this.impl)
 
   private[this] val _push =
     stack.push

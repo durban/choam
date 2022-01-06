@@ -23,6 +23,7 @@ import org.openjdk.jmh.infra.Blackhole
 
 import util._
 import data.TreiberStack
+import mcas.MCAS
 
 @Fork(3)
 class StackTransferBench {
@@ -75,10 +76,10 @@ object StackTransferBench {
 
   @State(Scope.Benchmark)
   class TreiberSt {
-    val treiberStack1 =
-      new TreiberStack[String](Prefill.prefill())
-    val treiberStack2 =
-      new TreiberStack[String](Prefill.prefill())
+    val treiberStack1: TreiberStack[String] =
+      TreiberStack.fromList[String](Prefill.prefill()).unsafePerform(null, MCAS.EMCAS)
+    val treiberStack2: TreiberStack[String] =
+      TreiberStack.fromList[String](Prefill.prefill()).unsafePerform(null, MCAS.EMCAS)
     val transfer: Axn[Unit] =
       treiberStack1.tryPop.map(_.get) >>> treiberStack2.push
   }

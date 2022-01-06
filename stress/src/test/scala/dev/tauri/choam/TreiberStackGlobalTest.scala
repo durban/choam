@@ -85,8 +85,8 @@ object TreiberStackGlobalTest {
 
   private def getStacks(impl: mcas.MCAS): (TreiberStack[String], TreiberStack[String]) = {
     def mkNew() = {
-      val stack1 = new TreiberStack[String](List.fill(N)("z"))
-      val stack2 = new TreiberStack[String](List.fill(N)("z"))
+      val stack1 = TreiberStack.fromList[String](List.fill(N)("z")).unsafePerform(null, impl)
+      val stack2 = TreiberStack.fromList[String](List.fill(N)("z")).unsafePerform(null, impl)
       (stack1, stack2)
     }
     stacks.getOrElseUpdate(impl, mkNew())
