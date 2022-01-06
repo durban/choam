@@ -167,22 +167,29 @@ object QueueTransferBench {
     }
 
     def transfer(idx: Int): Unit = {
-      def transferOne(circle: List[LockedQueue[String]]): Unit = {
-        val qFrom = circle(idx % circleSize)
-        val qTo = circle((idx + 1) % circleSize)
+      def transferOne(
+        circle: List[LockedQueue[String]],
+        fromIdx: Int,
+        toIdx: Int,
+      ): Unit = {
+        val qFrom = circle(fromIdx)
+        val qTo = circle(toIdx)
         qTo.unlockedEnqueue(qFrom.unlockedTryDequeue().get)
       }
 
+      val i1 = idx % circleSize
+      val i2 = (idx + 1) % circleSize
+      val (iFirst, iSecond) = if (i1 < i2) i1 -> i2 else i2 -> i1
       for (circle <- this.queues) {
-        circle(idx % circleSize).lock.lock()
-        circle((idx + 1) % circleSize).lock.lock()
+        circle(iFirst).lock.lock()
+        circle(iSecond).lock.lock()
       }
       for (circle <- this.queues) {
-        transferOne(circle)
+        transferOne(circle, fromIdx = i1, toIdx = i2)
       }
       for (circle <- this.queues) {
-        circle(idx % circleSize).lock.unlock()
-        circle((idx + 1) % circleSize).lock.unlock()
+        circle(iSecond).lock.unlock()
+        circle(iFirst).lock.unlock()
       }
     }
   }
