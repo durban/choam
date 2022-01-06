@@ -26,7 +26,7 @@ import io.github.timwspence.cats.stm.STM
 import zio.stm.ZSTM
 
 import util._
-import data.{ Queue, MichaelScottQueue, MichaelScottQueueUnpadded, RemoveQueue }
+import data.{ Queue, MichaelScottQueue, RemoveQueue }
 
 @Fork(1)
 class QueueTransferBench extends BenchUtils {
@@ -133,7 +133,7 @@ object QueueTransferBench {
   class MsuSt extends MsStBase {
 
     protected override def newQueue(): Queue[String] =
-      MichaelScottQueueUnpadded.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(this.runtime)
+      MichaelScottQueue.fromListUnpadded(Prefill.prefill().toList).run[IO].unsafeRunSync()(this.runtime)
 
     @Setup
     def setup(): Unit =

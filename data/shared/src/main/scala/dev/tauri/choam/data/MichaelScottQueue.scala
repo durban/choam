@@ -20,17 +20,16 @@ package data
 
 import MichaelScottQueue._
 
-private[choam] final class MichaelScottQueue[A] private[this] (sentinel: Node[A], els: Iterable[A])
-  extends Queue[A] {
+private[choam] final class MichaelScottQueue[A] private[this] (
+  sentinel: Node[A],
+  padded: Boolean,
+) extends Queue[A] {
 
-  private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel)
-  private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel)
+  private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel)
 
-  private def this(els: Iterable[A]) =
-    this(Node(nullOf[A], Ref.unsafe(End[A]())), els)
-
-  private def this() =
-    this(Iterable.empty)
+  private def this(padded: Boolean) =
+    this(Node(nullOf[A], Ref.unsafePadded(End[A]())), padded = padded)
 
   override val tryDeque: Axn[Option[A]] = {
     for {
@@ -48,7 +47,16 @@ private[choam] final class MichaelScottQueue[A] private[this] (sentinel: Node[A]
   }
 
   override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
-    findAndEnqueue(Node(a, Ref.unsafe(End[A]())))
+    findAndEnqueue(newNode(a))
+  }
+
+  private[this] def newNode(a: A): Node[A] = {
+    val newRef: Ref[Elem[A]] = if (this.padded) {
+      Ref.unsafePadded(End[A]())
+    } else {
+      Ref.unsafeUnpadded(End[A]())
+    }
+    Node(a, newRef)
   }
 
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
@@ -63,11 +71,6 @@ private[choam] final class MichaelScottQueue[A] private[this] (sentinel: Node[A]
       }
     })
   }
-
-  // TODO: remove this
-  els.foreach { a =>
-    enqueue.unsafePerform(a, mcas.MCAS.ThreadConfinedMCAS)
-  }
 }
 
 private[choam] object MichaelScottQueue {
@@ -77,8 +80,27 @@ private[choam] object MichaelScottQueue {
   private final case class End[A]() extends Elem[A]
 
   def apply[A]: Axn[MichaelScottQueue[A]] =
-    Rxn.unsafe.delay { _ => new MichaelScottQueue }
+    applyInternal(padded = true)
+
+  def unpadded[A]: Axn[MichaelScottQueue[A]] =
+    applyInternal(padded = false)
+
+  def applyInternal[A](padded: Boolean): Axn[MichaelScottQueue[A]] =
+    Rxn.unsafe.delay { _ => new MichaelScottQueue(padded = padded) }
 
   def fromList[A](as: List[A]): Axn[MichaelScottQueue[A]] =
-    Rxn.unsafe.delay { _ => new MichaelScottQueue(as) }
+    fromListInternal(as, padded = true)
+
+  def fromListUnpadded[A](as: List[A]): Axn[MichaelScottQueue[A]] =
+    fromListInternal(as, padded = false)
+
+  private def fromListInternal[A](as: List[A], padded: Boolean): Axn[MichaelScottQueue[A]] = {
+    Rxn.unsafe.context { ctx =>
+      val q = new MichaelScottQueue[A](padded = padded)
+      as.foreach { a =>
+        q.enqueue.unsafePerformInternal(a, ctx = ctx)
+      }
+      q
+    }
+  }
 }

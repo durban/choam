@@ -70,7 +70,7 @@ object Queue {
     RingBuffer.apply[A](capacity)
 
   private[choam] def unpadded[A]: Axn[Queue[A]] =
-    MichaelScottQueueUnpadded[A]
+    MichaelScottQueue.unpadded[A]
 
   private[choam] def fromList[A](as: List[A]): Axn[Queue[A]] =
     MichaelScottQueue.fromList[A](as)
