@@ -1,7 +1,7 @@
 <!--
 
    SPDX-License-Identifier: Apache-2.0
-   Copyright 2016-2021 Daniel Urban and contributors listed in NOTICE.txt
+   Copyright 2016-2022 Daniel Urban and contributors listed in NOTICE.txt
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -74,7 +74,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf)
   - [Efficient Multi-word Compare and Swap](
     https://arxiv.org/pdf/2008.02527.pdf)
-- Software transactional memory STM
+- Software transactional memory (STM)
   - `Rxn` is somewhat similar to a memory transaction, but there are
     important differences:
     - A `Rxn` can only touch one `Ref` at most once (see above); an STM
