@@ -20,6 +20,11 @@ package mcas
 
 private[mcas] abstract class MCASPlatform extends AbstractMCASPlatform {
 
+  /**
+   * The default MCAS implementation of the platform
+   *
+   * Guaranteed to exist (and be thread-safe) on every platform.
+   */
   final override def DefaultMCAS: MCAS =
     this.EMCAS
 

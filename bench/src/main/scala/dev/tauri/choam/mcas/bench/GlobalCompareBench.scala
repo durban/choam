@@ -25,7 +25,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 @Fork(6)
-// TODO: @BenchmarkMode(Mode.AverageTime)
+@BenchmarkMode(Array(Mode.AverageTime))
 class GlobalCompareBench {
 
   @Benchmark
@@ -34,6 +34,24 @@ class GlobalCompareBench {
     val r2 = Ref.unsafe("a").loc
     bh.consume(r1)
     bh.consume(r2)
+  }
+
+  @Benchmark
+  def benchIdHash(bh: Blackhole): Unit = {
+    val r1 = Ref.unsafe("a").loc
+    val r2 = Ref.unsafe("a").loc
+    bh.consume(r1)
+    bh.consume(r2)
+    bh.consume(System.identityHashCode(r1) - System.identityHashCode(r2))
+  }
+
+  @Benchmark
+  def benchHash(bh: Blackhole): Unit = {
+    val r1 = Ref.unsafe("a").loc
+    val r2 = Ref.unsafe("a").loc
+    bh.consume(r1)
+    bh.consume(r2)
+    bh.consume(r1.## - r2.##)
   }
 
   @Benchmark

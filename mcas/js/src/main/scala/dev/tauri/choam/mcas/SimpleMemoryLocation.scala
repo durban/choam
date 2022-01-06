@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package mcas
 
+import java.lang.ref.WeakReference
+
 // This is JS:
 private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A)(
   override val id0: Long,
@@ -54,4 +56,10 @@ private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A
     }
     witness
   }
+
+  final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
+    impossible("SimpleMemoryLocation.unsafeGetMarkerVolatile called on JS")
+
+  final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
+    impossible("SimpleMemoryLocation.unsafeCasMarkerVolatile called on JS")
 }

@@ -40,12 +40,8 @@ abstract class EMCASDescriptorBase {
     return this._status; // volatile
   }
 
-  boolean casStatus(EMCASStatus ov, EMCASStatus nv) {
+  protected boolean casStatusInternal(EMCASStatus ov, EMCASStatus nv) {
     return STATUS.compareAndSet(this, ov, nv);
-  }
-
-  void setStatus(EMCASStatus nv) {
-    STATUS.setVolatile(this, nv);
   }
 }
 

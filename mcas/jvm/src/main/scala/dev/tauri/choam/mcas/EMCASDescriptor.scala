@@ -21,7 +21,7 @@ package mcas
 import java.util.ArrayList
 
 private final class EMCASDescriptor private (
-  /**
+  /*
    * Word descriptors
    *
    * Thread safety: we only read the list after reading the descriptor from a `Ref`;
@@ -43,38 +43,29 @@ private final class EMCASDescriptor private (
     ()
   }
 
-  private[mcas] def addAll(that: EMCASDescriptor): Unit = {
-    this.words.addAll(that.words)
-    ()
-  }
-
   private[mcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
     new EMCASDescriptor.Iterator(this)
   }
 
   /** Only for testing */
-  private[mcas] def setStatusSuccessful(): Unit = {
-    this.setStatus(EMCASStatus.SUCCESSFUL)
-  }
-
-  /** Only for testing */
-  private[mcas] def setStatusFailed(): Unit = {
-    this.setStatus(EMCASStatus.FAILED)
+  private[mcas] final def casStatus(ov: EMCASStatus, nv: EMCASStatus): Boolean = {
+    this.casStatusInternal(ov, nv)
   }
 }
 
 private object EMCASDescriptor {
 
-  def prepare(half: HalfEMCASDescriptor, ctx: ThreadContext): EMCASDescriptor = {
+  def prepare(half: HalfEMCASDescriptor): EMCASDescriptor = {
     val emcasDesc = new EMCASDescriptor(initialSize = half.map.size)
     val it = half.map.valuesIterator
     while (it.hasNext) {
-      val wd = WordDescriptor.prepare(it.next(), emcasDesc, ctx)
+      val wd = WordDescriptor.prepare(it.next(), emcasDesc)
       emcasDesc.add(wd)
     }
     emcasDesc
   }
 
+  // TODO: reformat (extra indent)
   private final class Iterator(desc: EMCASDescriptor) extends java.util.Iterator[WordDescriptor[_]] {
 
       private[this] var idx: Int =
@@ -98,12 +89,7 @@ private object EMCASDescriptor {
       }
 
       final override def remove(): Unit = {
-        if (this.lastIdx >= 0) {
-          desc.words.set(this.lastIdx, null)
-          this.lastIdx = -1
-        } else {
-          throw new IllegalStateException
-        }
+        throw new UnsupportedOperationException
       }
   }
 }

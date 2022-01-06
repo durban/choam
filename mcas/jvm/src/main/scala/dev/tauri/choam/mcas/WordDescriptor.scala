@@ -21,7 +21,7 @@ package mcas
 private final class WordDescriptor[A] private (
   val half: HalfWordDescriptor[A],
   val parent: EMCASDescriptor,
-) extends IBRManaged[ThreadContext, WordDescriptor[A]] {
+) {
 
   def address: MemoryLocation[A] =
     this.half.address
@@ -47,17 +47,10 @@ private object WordDescriptor {
   private[mcas] def apply[A](
     half: HalfWordDescriptor[A],
     parent: EMCASDescriptor,
-  ): WordDescriptor[A] = {
-    new WordDescriptor[A](half, parent)
-  }
+  ): WordDescriptor[A] = new WordDescriptor[A](half, parent)
 
   def prepare[A](
     half: HalfWordDescriptor[A],
     parent: EMCASDescriptor,
-    ctx: ThreadContext,
-  ): WordDescriptor[A] = {
-    val wd = WordDescriptor(half, parent)
-    ctx.alloc(wd)
-    wd
-  }
+  ): WordDescriptor[A] = WordDescriptor(half, parent)
 }

@@ -107,7 +107,7 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
           case Empty() =>
             (Waiting(p), p.get)
           case Waiting(_) =>
-            impossible("before the Promise is completed, Waiting is removed")
+            impossible("got Waiting, but shouldn't, because before the Promise is completed, Waiting is removed")
             // (see `notifyListeners`)
         }
       }

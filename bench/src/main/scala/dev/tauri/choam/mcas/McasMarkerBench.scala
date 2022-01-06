@@ -18,13 +18,26 @@
 package dev.tauri.choam
 package mcas
 
-object BenchmarkAccess {
+import org.openjdk.jmh.annotations._
+import org.openjdk.jmh.infra.Blackhole
 
-  def wordDescriptor[A](half: HalfWordDescriptor[A], parent: EMCASDescriptor): AnyRef = {
-    WordDescriptor(half, parent)
+@Fork(3)
+@Threads(2)
+@BenchmarkMode(Array(Mode.AverageTime))
+class McasMarkerBench {
+
+  @Benchmark
+  def anyRef(bh: Blackhole): Unit = {
+    bh.consume(new AnyRef)
   }
 
-  def casStatusFromActiveToFailed(desc: EMCASDescriptor): Boolean = {
-    desc.casStatus(EMCASStatus.ACTIVE, EMCASStatus.FAILED)
+  @Benchmark
+  def mcasMarker(bh: Blackhole): Unit = {
+    bh.consume(new McasMarker)
+  }
+
+  @Benchmark
+  def xBaseline(bh: Blackhole): Unit = {
+    bh.consume(bh)
   }
 }

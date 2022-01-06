@@ -71,28 +71,31 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
       ))
     }
 
-    r1.unsafeSetVolatile("x")
-    assert(!go())
     val ctx = kcasImpl.currentContext()
+
+    assert(ctx.doSingleCas(r1, "r1", "x"))
+    assert(!go())
     assertSameInstance(ctx.read(r1), "x")
     assertSameInstance(ctx.read(r2), "r2")
     assertSameInstance(ctx.read(r3), "r3")
 
-    r1.unsafeSetVolatile("r1")
-    r2.unsafeSetVolatile("x")
-    assert(!go())
+    assert(ctx.doSingleCas(r1, "x", "r1"))
+    assert(ctx.doSingleCas(r2, "r2", "x"))
+    val ok = !go()
+    assert(ok)
     assertSameInstance(ctx.read(r1), "r1")
     assertSameInstance(ctx.read(r2), "x")
     assertSameInstance(ctx.read(r3), "r3")
 
-    r2.unsafeSetVolatile("r2")
-    r3.unsafeSetVolatile("x")
-    assert(!go())
+    assert(ctx.doSingleCas(r2, "x", "r2"))
+    assert(ctx.doSingleCas(r3, "r3", "x"))
+    val ok2 = !go()
+    assert(ok2)
     assertSameInstance(ctx.read(r1), "r1")
     assertSameInstance(ctx.read(r2), "r2")
     assertSameInstance(ctx.read(r3), "x")
 
-    r3.unsafeSetVolatile("r3")
+    assert(ctx.doSingleCas(r3, "x", "r3"))
     assert(go())
     assertSameInstance(ctx.read(r1), "x")
     assertSameInstance(ctx.read(r2), "y")
@@ -183,5 +186,14 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertSameInstance(ctx.read(r1), "r1x")
     assertSameInstance(ctx.read(r2), "r2")
     assertSameInstance(ctx.read(r3), "r3x")
+  }
+
+  test("read should be able to read from a fresh ref") {
+    val r = MemoryLocation.unsafe[String]("x")
+    assertEquals(kcasImpl.currentContext().read(r), "x")
+  }
+
+  test("Platform default must be thread-safe") {
+    assert(MCAS.DefaultMCAS.isThreadSafe)
   }
 }

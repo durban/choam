@@ -29,8 +29,9 @@ import InterpreterBench._
 class InterpreterBench {
 
   // TODO: this benchmark doesn't include:
-  // - invisible read
-  // - delayComputed
+  // TODO: - invisible read
+  // TODO: - delayComputed
+  // TODO: - creating new Refs
 
   @Benchmark
   def rxnNew(s: St, bh: Blackhole, k: KCASImplState): Unit = {

@@ -20,11 +20,13 @@ package mcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-/** Common interface for MCAS/k-CAS implementations */
+/** Common interface for MCAS (i.e., k-CAS) implementations */
 abstract class MCAS {
 
+  /** Returns the context associated with the current thread */
   def currentContext(): MCAS.ThreadContext
 
+  /** True iff `this` can be used to perform ops on arbitrary refs */
   private[choam] def isThreadSafe: Boolean
 
   /** Only for testing/benchmarking */
@@ -40,6 +42,11 @@ abstract class MCAS {
   /** Only for testing/benchmarking */
   private[choam] def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
     Map.empty
+  }
+
+  /** Only for testing/benchmarking */
+  private[choam] def maxReusedWeakRefs(): Int = {
+    0
   }
 }
 
@@ -103,6 +110,11 @@ object MCAS extends MCASPlatform { self =>
     private[choam] def setStatistics(@unused stats: Map[AnyRef, AnyRef]): Unit = {
       // we ignore stats by default; implementations
       // can override if it matters
+    }
+
+    /** Only for testing/benchmarking */
+    private[choam] def maxReusedWeakRefs(): Int = {
+      0
     }
   }
 

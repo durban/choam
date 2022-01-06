@@ -24,8 +24,7 @@ private final class HalfWordDescriptor[A] private (
   val nv: A,
 ) {
 
-  // TODO: remove
-  final def cast[B]: HalfWordDescriptor[B] =
+  private[mcas] final def cast[B]: HalfWordDescriptor[B] =
     this.asInstanceOf[HalfWordDescriptor[B]]
 
   final override def toString: String =
@@ -34,6 +33,6 @@ private final class HalfWordDescriptor[A] private (
 
 private object HalfWordDescriptor {
 
-  def apply[A](address: MemoryLocation[A], ov: A, nv: A): HalfWordDescriptor[A] =
+  private[mcas] def apply[A](address: MemoryLocation[A], ov: A, nv: A): HalfWordDescriptor[A] =
     new HalfWordDescriptor[A](address = address, ov = ov, nv = nv)
 }

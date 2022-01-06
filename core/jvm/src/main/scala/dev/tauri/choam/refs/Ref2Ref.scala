@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package refs
 
+import java.lang.ref.WeakReference
+
 import mcas.MemoryLocation
 
 private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
@@ -41,6 +43,12 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
 
   override def unsafeSetPlain(a: A): Unit =
     self.unsafeSetPlain1(a)
+
+  final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
+    self.unsafeGetMarkerVolatile1()
+
+  final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
+    self.unsafeCasMarkerVolatile1(ov, nv)
 
   override def id0: Long =
     self.id0
@@ -79,6 +87,12 @@ private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
 
   override def unsafeSetPlain(b: B): Unit =
     self.unsafeSetPlain2(b)
+
+  final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
+    self.unsafeGetMarkerVolatile2()
+
+  final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
+    self.unsafeCasMarkerVolatile2(ov, nv)
 
   override def id0: Long =
     self.id4

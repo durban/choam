@@ -27,8 +27,16 @@
     - to have composability, the root will always have to be validated
     - this would make it not scalable (the root ref is very contended)
 - Can't run benchmarks with Scala 3
-- Tests sometimes time out on OpenJ9
+- CI: Tests sometimes time out on OpenJ9
   - probably due to GC pauses
+- CI: ExchangerSpec often times out with ZIO
+- CI failure (ubuntu, graal, scala 2.13):
+  ```
+  ==> X dev.tauri.choam.ExchangerSpecJvm_EMCAS_BIO.A StatMap must persist between different unsafePerform runs  0.22s munit.FailException: /home/runner/work/choam/choam/data/jvm/src/test/scala/dev/tauri/choam/ExchangerSpecJvm.scala:418 assertion failed
+  417:          assert(ctx2.supportsStatistics)
+  418:          assert(ctx2.getStatistics().contains(ex2.key))
+  419:        } else {
+  ```
 
 ## Other improvements
 
@@ -57,7 +65,11 @@
       - make it work somehow (almost STM? performance hit?)
 - Optimization ideas:
   - Exchanger: there is a lot of `Array[Byte]` copying
-  - Boxing
+  - Reducing allocations (we're allocating _a lot_)
+    - EMCAS (maybe reusing descriptors?)
+    - Rxn
+      - lots of `Rxn` instances
+      - `ObjStack.Lst`
   - Review writes/reads in EMCAS, check if we can relax them
   - Ref padding:
     - allocating a padded Ref is much slower than an unpadded
@@ -80,6 +92,10 @@
     - Optimize SignallingRef
 - API cleanup:
   - MCAS API review
+    - KCAS is still mentioned a lot
+  - Rename `flatMapF`
+    - maybe `semiFlatMap` (or `semiflatMap`?)
+    - or `subflatMap`?
   - (unsafe) thread-confined mode for running a `Rxn`:
     - `ThreadConfinedMCAS`
     - convenience API?
@@ -127,11 +143,15 @@
 
 ## Misc.
 
+- Try building a native image with Graal, to see if it works
 - `LongRef`, `IntRef`, ... (benchmarks needed, it might not make sense)
+  - especially since we can't store a descriptor in, e.g., a real `AtomicLong`
 - `Ref` which is backed by mmapped memory(?)
   - similar: mmapped from _persistent_ memory
   - similar: JS shared array
     - this would break assumptions the default JS MCAS relies on (single threaded)
+  - but, a problem with all these: we can't write a descriptor into them!
+  - see also: JEP 412 (https://openjdk.java.net/jeps/412)
 - Other data structures:
   - ctrie-set (but see problems with Ctrie)
   - `SkipListMap`, `SkipListSet`

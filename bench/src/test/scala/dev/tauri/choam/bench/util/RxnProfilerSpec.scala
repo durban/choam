@@ -67,8 +67,9 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
   test("baseline") {
     simulateRun { _ => F.unit } { r =>
       for {
-        _ <- assertEqualsF(r.size, 3)
+        _ <- assertEqualsF(r.size, 4)
         _ <- assertF(r(RxnProfiler.RetriesPerCommit).getScore.isNaN)
+        _ <- assertEqualsF(r(RxnProfiler.ReusedWeakRefs).getScore, 0.0)
         _ <- assertEqualsF(r(RxnProfiler.ExchangeCount).getScore, 0.0)
         _ <- assertF(r(RxnProfiler.ExchangesPerSecond).getScore.isNaN)
       } yield ()
@@ -84,6 +85,7 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
       }}
       _ <- simulateRunConfig("debug") { _ => F.unit } { r => F.delay {
         assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
+        assert(r.get(RxnProfiler.ReusedWeakRefs).isDefined)
         assert(r.get(RxnProfiler.ExchangesPerSecond).isDefined)
         assert(r.get(RxnProfiler.ExchangeCount).isDefined)
       }}
@@ -92,13 +94,21 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
         assert(r.get(RxnProfiler.ExchangesPerSecond).isEmpty)
         assert(r.get(RxnProfiler.ExchangeCount).isEmpty)
       }}
+      _ <- simulateRunConfig("retries;reusedWeakRefs") { _ => F.unit } { r => F.delay {
+        assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
+        assert(r.get(RxnProfiler.ReusedWeakRefs).isDefined)
+        assert(r.get(RxnProfiler.ExchangesPerSecond).isEmpty)
+        assert(r.get(RxnProfiler.ExchangeCount).isEmpty)
+      }}
       _ <- simulateRunConfig("retries;exchanges") { _ => F.unit } { r => F.delay {
         assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
+        assert(r.get(RxnProfiler.ReusedWeakRefs).isEmpty)
         assert(r.get(RxnProfiler.ExchangesPerSecond).isDefined)
         assert(r.get(RxnProfiler.ExchangeCount).isEmpty)
       }}
       _ <- simulateRunConfig("retries;exchangeCount") { _ => F.unit } { r => F.delay {
         assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
+        assert(r.get(RxnProfiler.ReusedWeakRefs).isEmpty)
         assert(r.get(RxnProfiler.ExchangesPerSecond).isEmpty)
         assert(r.get(RxnProfiler.ExchangeCount).isDefined)
       }}

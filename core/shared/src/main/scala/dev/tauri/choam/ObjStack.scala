@@ -126,7 +126,7 @@ private object ObjStack {
       @tailrec
       def go(rest: Lst[A], acc: Lst[A]): (Lst[A], Lst[A]) = {
         if (rest eq null) {
-          null // TODO: this is an error
+          null // NB: this is an error the caller must handle
         } else if (equ(rest.head, item)) {
           (acc, rest)
         } else {

@@ -57,12 +57,21 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    *
    * This implementation is significantly simplified by the fact
    * that offers and permanent failure are not implemented. As a
-   * consequence, these reactants are always non-blocking (provided
-   * that the underlying k-CAS implementation is non-blocking).
-   * However, this also means, that they are less featureful.
+   * consequence, these reactants are always lock-free (provided
+   * that the underlying k-CAS implementation is lock-free, and
+   * that `unsafe*` operations are not used). However, this also
+   * means, that they are less featureful.
    *
    * On the other hand, this implementation uses an optimized and
-   * stack-safe interpreter (see `interpreter`).
+   * stack-safe interpreter (see `interpreter`). A limited version
+   * of an `Exchanger` is also implemented, which can be used to
+   * implement elimination arrays. (The `Exchanger` by itself could
+   * cause indefininte retries, so it must always be combined with
+   * a lock-free operation.)
+   *
+   * Another difference is the referentially transparent ("pure
+   * functional") API. All side-effecting APIs are prefixed by
+   * `unsafe`.
    *
    * Other implementations:
    * - https://github.com/aturon/Caper (Racket)

@@ -15,16 +15,17 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam
-package mcas
+package dev.tauri.choam.mcas;
 
-object BenchmarkAccess {
-
-  def wordDescriptor[A](half: HalfWordDescriptor[A], parent: EMCASDescriptor): AnyRef = {
-    WordDescriptor(half, parent)
-  }
-
-  def casStatusFromActiveToFailed(desc: EMCASDescriptor): Boolean = {
-    desc.casStatus(EMCASStatus.ACTIVE, EMCASStatus.FAILED)
-  }
+/**
+ * This is not strictly necessary, we could
+ * use a simple `new AnyRef` as a marker.
+ * However, a separate class makes debugging
+ * easier (e.g., analyzing heap dumps).
+ *
+ * TODO: according to McasMarkerBench, creating
+ * TODO: an `AnyRef` is faster; so we'll need
+ * TODO: to remove this.
+ */
+final class McasMarker {
 }

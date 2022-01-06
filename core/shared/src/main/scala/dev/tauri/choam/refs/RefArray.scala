@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package refs
 
+import java.lang.ref.WeakReference
+
 import cats.syntax.all._
 
 import mcas.MemoryLocation
@@ -25,6 +27,13 @@ import CompatPlatform.AtomicReferenceArray
 
 import RefArray.RefArrayRef
 
+/**
+ * `items` continously stores 3 things
+ * for each index:
+ * - a `RefArrayRef` (at i)
+ * - the value itself (at i + 1)
+ * - a weak marker (at i + 2)
+ */
 private abstract class RefArray[A](
   val size: Int,
   i0: Long,
@@ -54,18 +63,19 @@ private final class StrictRefArray[A](
 ) extends RefArray[A](size, i0, i1, i2, i3) {
 
   require(size > 0)
-  require(((size - 1) * 2 + 1) > (size - 1)) // avoid overflow
+  require(((size - 1) * 3 + 2) > (size - 1)) // avoid overflow
 
   protected final override val items: AtomicReferenceArray[AnyRef] = {
     // TODO: padding
-    val ara = new AtomicReferenceArray[AnyRef](2 * size)
+    val ara = new AtomicReferenceArray[AnyRef](3 * size)
     val value = this.initial.asInstanceOf[AnyRef]
     var i = 0
     while (i < size) {
-      val itemIdx = 2 * i
-      val refIdx = itemIdx + 1
-      ara.setPlain(itemIdx, value)
+      val refIdx = 3 * i
+      val itemIdx = refIdx + 1
+      // val markerIdx = refIdx + 2
       ara.setPlain(refIdx, new RefArrayRef[A](this, itemIdx))
+      ara.setPlain(itemIdx, value)
       // we're storing `ara` into a final field,
       // so `setPlain` is enough here, these
       // writes will be visible to any reader
@@ -77,7 +87,7 @@ private final class StrictRefArray[A](
 
   final override def apply(idx: Int): Ref[A] = {
     require((idx >= 0) && (idx < size))
-    val refIdx = (2 * idx) + 1
+    val refIdx = 3 * idx
     // `RefArrayRef`s were initialized into
     // a final field (`items`), and they
     // never change, so we can read with plain:
@@ -95,15 +105,15 @@ private final class LazyRefArray[A](
 ) extends RefArray[A](size, i0, i1, i2, i3) {
 
   require(size > 0)
-  require(((size - 1) * 2 + 1) > (size - 1)) // avoid overflow
+  require(((size - 1) * 3 + 2) > (size - 1)) // avoid overflow
 
   protected final override val items: AtomicReferenceArray[AnyRef] = {
     // TODO: padding
-    val ara = new AtomicReferenceArray[AnyRef](2 * size)
+    val ara = new AtomicReferenceArray[AnyRef](3 * size)
     val value = this.initial.asInstanceOf[AnyRef]
     var i = 0
     while (i < size) {
-      ara.setPlain(2 * i, value)
+      ara.setPlain((3 * i) + 1, value)
       // we're storing `ara` into a final field,
       // so `setPlain` is enough here, these
       // writes will be visible to any reader
@@ -119,8 +129,7 @@ private final class LazyRefArray[A](
   }
 
   private[this] def getOrCreateRef(i: Int): Ref[A] = {
-    val itemIdx = 2 * i
-    val refIdx = itemIdx + 1
+    val refIdx = 3 * i
     val existing = this.items.getOpaque(refIdx)
     if (existing ne null) {
       // `RefArrayRef` has only final fields,
@@ -129,6 +138,7 @@ private final class LazyRefArray[A](
       // then we also can see its fields:
       existing.asInstanceOf[Ref[A]]
     } else {
+      val itemIdx = refIdx + 1
       val nv = new RefArrayRef[A](this, itemIdx)
       this.items.compareAndExchange(refIdx, null, nv) match {
         case null => nv // we're the first
@@ -146,7 +156,7 @@ private final class EmptyRefArray[A](size: Int) extends RefArray[A](0, 0L, 0L, 0
     throw new IllegalArgumentException("EmptyRefArray")
 
   protected final override val items: AtomicReferenceArray[AnyRef] =
-    null
+    null // unused
 }
 
 private object RefArray {
@@ -174,6 +184,12 @@ private object RefArray {
     final override def unsafeCmpxchgVolatile(ov: A, nv: A): A =
       array.items.compareAndExchange(physicalIdx, ov.asInstanceOf[AnyRef], nv.asInstanceOf[AnyRef]).asInstanceOf[A]
 
+    final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
+      array.items.get(physicalIdx + 1).asInstanceOf[WeakReference[AnyRef]]
+
+    final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
+      array.items.compareAndSet(physicalIdx + 1, ov, nv)
+
     final override def id0: Long =
       array.id0
 
@@ -191,7 +207,7 @@ private object RefArray {
     }
 
     private[this] final def logicalIdx: Int =
-      this.physicalIdx / 2
+      this.physicalIdx / 3
 
     private[choam] final override def dummy(v: Long): Long =
       v ^ id2

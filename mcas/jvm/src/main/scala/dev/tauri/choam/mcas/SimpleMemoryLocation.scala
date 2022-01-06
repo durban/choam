@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package mcas
 
+import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicReference
 
 private[choam] abstract class SimpleMemoryLocation[A](initial: A)(
@@ -27,6 +28,9 @@ private[choam] abstract class SimpleMemoryLocation[A](initial: A)(
   override val id3: Long,
 ) extends AtomicReference[A](initial)
   with MemoryLocation[A] {
+
+  private[this] val weakMarker: AtomicReference[WeakReference[AnyRef]] =
+    new AtomicReference // (null)
 
   final override def unsafeGetVolatile(): A =
     this.get()
@@ -45,4 +49,10 @@ private[choam] abstract class SimpleMemoryLocation[A](initial: A)(
 
   final override def unsafeCmpxchgVolatile(ov: A, nv: A): A =
     this.compareAndExchange(ov, nv)
+
+  final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
+    this.weakMarker.get()
+
+  final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
+    this.weakMarker.compareAndSet(ov, nv)
 }
