@@ -21,6 +21,8 @@
 
 *Experiments with composable lock-free concurrency*
 
+## Overview
+
 The type [`Rxn[-A, +B]`](core/shared/src/main/scala/dev/tauri/choam/Rxn.scala)
 is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but:
 
@@ -67,8 +69,25 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   [Scala](https://github.com/aturon/ChemistrySet),
   [OCaml](https://github.com/ocamllabs/reagents),
   [Racket](https://github.com/aturon/Caper).
-- Multi-word compare-and-swap (*k*-CAS) implementations:
+- Multi-word compare-and-swap (MCAS/*k*-CAS) implementations:
   - [A Practical Multi-Word Compare-and-Swap Operation](
     https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf)
   - [Efficient Multi-word Compare and Swap](
     https://arxiv.org/pdf/2008.02527.pdf)
+- Software transactional memory STM
+  - `Rxn` is somewhat similar to a memory transaction, but there are
+    important differences:
+    - A `Rxn` can only touch one `Ref` at most once (see above); an STM
+      transaction can usually read/write multiple times.
+    - A `Rxn` is lock-free by construction (unless an `unsafe` combinator
+      was used); STM transactions are not necessarily (e.g., STM "retry").
+    - STM transactions usually have a way of raising/handling errors
+      (e.g., `MonadError`); `Rxn` has no such feature (of course return
+      values can encode errors with `Option`, `Either`, or similar).
+  - Similarities include the following:
+    - atomicity
+    - consistency
+    - isolation
+  - Some STM implementations:
+    - Haskell
+    - Scala: `scala-stm`, `cats-stm`, `ZSTM`
