@@ -25,7 +25,9 @@ final class TreiberStackSpecThreadConfinedMCAS
 abstract class TreiberStackSpec extends BaseSpecA { this: KCASImplSpec =>
 
   test("TreiberStack should include the elements passed to its constructor") {
-    assertEquals(new TreiberStack[Int]().unsafeToList(this.kcasImpl), Nil)
-    assertEquals(new TreiberStack[Int](1 :: 2 :: 3 :: Nil).unsafeToList(this.kcasImpl), 3 :: 2 :: 1 :: Nil)
+    val s1 = TreiberStack.fromList[Int](Nil).unsafePerform(null, this.kcasImpl)
+    assertEquals(s1.unsafeToList(this.kcasImpl), Nil)
+    val s2 = TreiberStack.fromList[Int](List(1, 2, 3)).unsafePerform(null, this.kcasImpl)
+    assertEquals(s2.unsafeToList(this.kcasImpl), List(3, 2, 1))
   }
 }

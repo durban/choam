@@ -18,13 +18,9 @@
 package dev.tauri.choam
 package data
 
-private[choam] final class TreiberStack[A](els: Iterable[A])
-  extends Stack[A] {
+private[choam] final class TreiberStack[A] private () extends Stack[A] {
 
   import TreiberStack._
-
-  def this() =
-    this(Iterable.empty)
 
   private[this] val head = Ref.unsafe[Lst[A]](End)
 
@@ -47,17 +43,22 @@ private[choam] final class TreiberStack[A](els: Iterable[A])
     val r = head.upd[Unit, Lst[A]] { (l, _) => (l, l) }
     r.unsafePerform((), kcas).toList
   }
-
-  // TODO: remove this
-  els.foreach { a =>
-    push.unsafePerform(a, mcas.MCAS.ThreadConfinedMCAS)
-  }
 }
 
 private[choam] object TreiberStack {
 
   def apply[A]: Axn[TreiberStack[A]] =
     Rxn.unsafe.delay { _ => new TreiberStack[A] }
+
+  def fromList[A](as: List[A]): Axn[TreiberStack[A]] = {
+    Rxn.unsafe.context { ctx =>
+      val s = new TreiberStack[A]
+      as.foreach { a =>
+        s.push.unsafePerformInternal(a, ctx = ctx)
+      }
+      s
+    }
+  }
 
   private[choam] sealed trait Lst[+A] {
 
