@@ -21,8 +21,8 @@ package bench
 
 import org.openjdk.jmh.annotations._
 
-import dev.tauri.choam.bench.util.Prefill
-import data.{ Queue, MichaelScottQueue }
+import data.GcHostileMsQueue
+import dev.tauri.choam.bench.util.{ Prefill, KCASImplState }
 
 @Fork(value = 6, jvmArgsAppend = Array("-Xmx2048M"))
 @Threads(2)
@@ -31,11 +31,11 @@ class GcBench {
   import GcBench._
 
   @Benchmark
-  def qTransfer(s: SharedState): Unit = {
-    val ctx = EMCAS.currentContext()
+  def qTransfer(s: SharedState, m: KCASImplState): Unit = {
+    val ctx = m.kcasCtx
     var idx = 0
     while (idx < s.size) {
-      s.transferOne(idx).unsafePerformInternal(a = s : Any, ctx = ctx)
+      s.transferOne(idx).unsafePerformInternal(a = null : Any, ctx = ctx)
       idx += 1
     }
   }
@@ -50,8 +50,8 @@ object GcBench {
 
     final val size = 4096
 
-    val circle: List[Queue[String]] = List.fill(circleSize) {
-      MichaelScottQueue.fromList(Prefill.prefill().toList).unsafeRun(EMCAS)
+    val circle: List[GcHostileMsQueue[String]] = List.fill(circleSize) {
+      GcHostileMsQueue.fromList(Prefill.prefill().toList).unsafeRun(EMCAS)
     }
 
     def transferOne(idx: Int): Axn[Unit] = {
