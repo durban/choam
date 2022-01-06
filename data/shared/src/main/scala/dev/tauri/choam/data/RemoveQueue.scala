@@ -25,17 +25,14 @@ import RemoveQueue._
  * for interior node deletion (`remove`; based on
  * `java.util.concurrent.ConcurrentLinkedQueue`).
  */
-private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els: Iterable[A])
+private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A])
   extends Queue.WithRemove[A] {
 
   private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel)
   private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel)
 
-  def this(els: Iterable[A]) =
-    this(Node(nullOf[Ref[A]], Ref.unsafe(End[A]())), els)
-
   def this() =
-    this(Iterable.empty)
+    this(Node(nullOf[Ref[A]], Ref.unsafe(End[A]())))
 
   override val tryDeque: Axn[Option[A]] = {
     for {
@@ -127,11 +124,6 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], els:
         from.unsafeCas(e, e) >>> Rxn.ret(false)
     }
   }
-
-  // TODO: remove this
-  els.foreach { a =>
-    enqueue.unsafePerform(a, mcas.MCAS.ThreadConfinedMCAS)
-  }
 }
 
 private[choam] object RemoveQueue {
@@ -139,8 +131,15 @@ private[choam] object RemoveQueue {
   def apply[A]: Axn[RemoveQueue[A]] =
     Rxn.unsafe.delay { _ => new RemoveQueue }
 
-  def fromList[A](as: List[A]): Axn[RemoveQueue[A]] =
-    Rxn.unsafe.delay { _ => new RemoveQueue(as) }
+  def fromList[A](as: List[A]): Axn[RemoveQueue[A]] = {
+    Rxn.unsafe.context { ctx =>
+      val q = new RemoveQueue[A]
+      as.foreach { a =>
+        q.enqueue.unsafePerformInternal(a, ctx = ctx)
+      }
+      q
+    }
+  }
 
   private sealed trait Elem[A]
 
