@@ -33,24 +33,30 @@ import util._
  * and `cas`. The new one is a primitive.
  */
 @Fork(2)
-@deprecated("so that we can call the old method", since = "2021-03-27")
+@Threads(2)
+@deprecated("so that we can call the old methods", since = "2021-03-27")
 class ConsistentReadBench {
 
   import ConsistentReadBench._
 
   @Benchmark
   def crWithInvisibleRead(s: St, k: KCASImplState): (String, String) = {
-    s.crWithInvisibleRead.unsafePerform((), k.kcasImpl)
+    s.crWithInvisibleRead.unsafePerformInternal(null, k.kcasCtx)
   }
 
   @Benchmark
   def crWithOldUpdWith(s: St, k: KCASImplState): (String, String) = {
-    s.crWithOldUpdWith.unsafePerform((), k.kcasImpl)
+    s.crWithOldUpdWith.unsafePerformInternal(null, k.kcasCtx)
   }
 
   @Benchmark
   def crWithNewUpdWith(s: St, k: KCASImplState): (String, String) = {
-    s.crWithNewUpdWith.unsafePerform((), k.kcasImpl)
+    s.crWithNewUpdWith.unsafePerformInternal(null, k.kcasCtx)
+  }
+
+  @Benchmark
+  def crWithGet(s: St, k: KCASImplState): (String, String) = {
+    s.crWithGet.unsafePerformInternal(null, k.kcasCtx)
   }
 }
 
@@ -68,6 +74,8 @@ object ConsistentReadBench {
     val crWithOldUpdWith: Axn[(String, String)] =
       Rxn.consistentReadWithOldUpdWith(r1, r2)
     val crWithNewUpdWith: Axn[(String, String)] =
+      Rxn.consistentReadWithUpdWith(r1, r2)
+    val crWithGet: Axn[(String, String)] =
       Rxn.consistentRead(r1, r2)
   }
 }

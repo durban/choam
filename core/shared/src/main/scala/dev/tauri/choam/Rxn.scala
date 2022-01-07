@@ -278,6 +278,11 @@ object Rxn extends RxnInstances0 {
     unsafe.delay { _ => RxnRandomImplSecure.unsafe() }
 
   final def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
+    ra.get * rb.get
+  }
+
+  @deprecated("old implementation with new updWith", since = "2022-01-07")
+  final def consistentReadWithUpdWith[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
     ra.updWith[Any, (A, B)] { (a, _) =>
       rb.upd[Any, B] { (b, _) =>
         (b, b)

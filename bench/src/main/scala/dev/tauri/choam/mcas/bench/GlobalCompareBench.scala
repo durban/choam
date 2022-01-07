@@ -36,6 +36,11 @@ class GlobalCompareBench {
     bh.consume(r2)
   }
 
+  // TODO: this is probably incorrect, results
+  // TODO: show IdHash and Hash to be slower,
+  // TODO: which is strange; we should do the
+  // TODO: measurement on already existing Refs
+
   @Benchmark
   def benchIdHash(bh: Blackhole): Unit = {
     val r1 = Ref.unsafe("a").loc
