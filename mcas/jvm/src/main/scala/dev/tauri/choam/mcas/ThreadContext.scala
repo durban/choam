@@ -21,8 +21,7 @@ package mcas
 import java.lang.ref.WeakReference
 import java.util.concurrent.ThreadLocalRandom
 
-// TODO: rename to EMCASThreadContext
-private final class ThreadContext(
+private final class EMCASThreadContext(
   global: GlobalContext,
   private[mcas] val tid: Long,
   val impl: EMCAS.type

@@ -141,7 +141,7 @@ private object EMCAS extends MCAS { self =>
    * @param ctx: The [[ThreadContext]] of the current thread.
    * @param replace: Pass 0 to not do any replacing/clearing.
    */
-  private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: ThreadContext, replace: Int): A = {
+  private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: EMCASThreadContext, replace: Int): A = {
     @tailrec
     def go(mark: AnyRef): A = {
       ref.unsafeGetVolatile() match {
@@ -239,17 +239,17 @@ private object EMCAS extends MCAS { self =>
 
   // Listing 3 in the paper:
 
-  private[mcas] final def read[A](ref: MemoryLocation[A], ctx: ThreadContext): A =
+  private[mcas] final def read[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): A =
     readValue(ref, ctx, EMCAS.replacePeriodForReadValue)
 
   /**
    * Performs an MCAS operation.
    *
    * @param desc: The main descriptor.
-   * @param ctx: The [[ThreadContext]] of the current thread.
+   * @param ctx: The [[EMCASThreadContext]] of the current thread.
    * @param replace:
    */
-  def MCAS(desc: EMCASDescriptor, ctx: ThreadContext): Boolean = {
+  def MCAS(desc: EMCASDescriptor, ctx: EMCASThreadContext): Boolean = {
 
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): TryWordResult = {
@@ -430,17 +430,17 @@ private object EMCAS extends MCAS { self =>
     }
   }
 
-  final override def currentContext(): ThreadContext =
-    this.global.threadContext()
+  final override def currentContext(): EMCASThreadContext =
+    this.global.currentContext()
 
   private[choam] final override def isThreadSafe =
     true
 
-  private[mcas] final def tryPerform(desc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
+  private[mcas] final def tryPerform(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Boolean = {
     tryPerformDebug(desc = desc, ctx = ctx)
   }
 
-  private[mcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
+  private[mcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Boolean = {
     if (desc.nonEmpty) {
       val fullDesc = EMCASDescriptor.prepare(desc)
       EMCAS.MCAS(desc = fullDesc, ctx = ctx)

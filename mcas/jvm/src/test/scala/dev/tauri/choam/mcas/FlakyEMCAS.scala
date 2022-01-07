@@ -47,7 +47,7 @@ object FlakyEMCAS extends MCAS { self =>
   private[choam] final override def isThreadSafe =
     true
 
-  private final def tryPerform(hDesc: HalfEMCASDescriptor, ctx: ThreadContext): Boolean = {
+  private final def tryPerform(hDesc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Boolean = {
     // perform or not the operation based on whether we've already seen it
     val desc = EMCASDescriptor.prepare(hDesc)
     var hash = 0x75F4D07D
