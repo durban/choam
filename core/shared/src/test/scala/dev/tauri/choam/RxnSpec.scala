@@ -430,7 +430,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       r1 <- Ref("a").run[F]
       r2 <- Ref("").run
       r3 <- Ref("").run
-      r = r1.upd[Unit, String] { case (s, _) =>
+      r = r1.upd[Any, String] { case (s, _) =>
         val r = s + "a"
         (r, r)
       }
@@ -520,7 +520,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
       c <- Ref("c").run[F]
-      rea = Rxn.unsafe.delayComputed[Unit, String](Rxn.unsafe.cas(a, "a", "aa").as(Rxn.ret("foo")).postCommit(
+      rea = Rxn.unsafe.delayComputed[Any, String](Rxn.unsafe.cas(a, "a", "aa").as(Rxn.ret("foo")).postCommit(
         Rxn.unsafe.cas(b, "b", "bb")
       )) >>> Rxn.unsafe.cas(c, "c", "cc")
       _ <- assertResultF(rea.run[F], ())

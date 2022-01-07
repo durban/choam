@@ -1135,17 +1135,17 @@ private[choam] sealed abstract class RxnSyntax0 extends RxnSyntax1 { this: Rxn.t
 
 private[choam] sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.type =>
 
-  implicit final class UnitSyntax[A](private val self: Rxn[Unit, A]) {
+  implicit final class AxnSyntax[A](private val self: Axn[A]) {
 
     final def run[F[_]](implicit F: Reactive[F]): F[A] =
-      F.run(self, ())
+      F.run(self, null : Any)
 
     final def unsafeRun(
       kcas: MCAS,
       maxBackoff: Int = 16,
       randomizeBackoff: Boolean = true
     ): A = {
-      self.unsafePerform((), kcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
+      self.unsafePerform(null : Any, kcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
     }
   }
 }
