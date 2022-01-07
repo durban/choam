@@ -326,14 +326,11 @@ object Rxn extends RxnInstances0 {
 
   final object ref {
 
-    def read[A](r: Ref[A]): Axn[A] =
-      upd[A, Any, A](r) { (oa, _) => (oa, oa) }
-
-    def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
+    final def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
       new Upd(r.loc, f)
 
     /** Old (slower) impl of `upd`, keep it for benchmarks */
-    private[choam] def updDerived[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] = {
+    private[choam] final def updDerived[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] = {
       val self: Rxn[B, (A, B)] = r.unsafeInvisibleRead.first[B].contramap[B](b => ((), b))
       val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
         val (na, c) = f(oa, b)
@@ -342,23 +339,11 @@ object Rxn extends RxnInstances0 {
       self >>> comp
     }
 
-    def update[A](r: Ref[A])(f: A => A): Axn[Unit] =
-      upd[A, Any, Unit](r) { (oa, _) => (f(oa), ()) }
-
-    def updateWith[A](r: Ref[A])(f: A => Axn[A]): Axn[Unit] =
-      updWith[A, Any, Unit](r) { (oa, _) => f(oa).map(na => (na, ())) }
-
-    def getAndUpdate[A](r: Ref[A])(f: A => A): Axn[A] =
-      upd[A, Any, A](r) { (oa, _) => (f(oa), oa) }
-
-    def getAndSet[A](r: Ref[A]): Rxn[A, A] =
-      upd[A, A, A](r) { (oa, na) => (na, oa) }
-
-    def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
+    final def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
       new UpdWith[A, B, C](r.loc, f)
 
     // old, derived implementation:
-    private[choam] def updWithOld[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] = {
+    private[choam] final def updWithOld[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] = {
       val self: Rxn[B, (A, B)] = Rxn.unsafe.invisibleRead(r).first[B].contramap[B](b => ((), b))
       val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
         f(oa, b).flatMap {

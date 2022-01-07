@@ -192,12 +192,12 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
           Rxn.unsafe.invisibleRead(h.value).flatMap {
             case null =>
               // sentinel node, discard it and retry:
-              Rxn.ref.read(h.next).flatMap { nxt =>
+              h.next.get.flatMap { nxt =>
                 Rxn.unsafe.cas(head, h, nxt)
               }.as(Rxn.unsafe.retry)
             case v =>
               // found the real head, pop it:
-              Rxn.ret(Rxn.ref.read(h.next).flatMap { nxt =>
+              Rxn.ret(h.next.get.flatMap { nxt =>
                 Rxn.unsafe.cas(head, h, nxt).flatMap { _ =>
                   Rxn.unsafe.cas(h.value, v, v)
                 }
@@ -213,12 +213,12 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       lst0 = List[String](null, "a", "b", null, "c")
       lst1 <- F.delay { Ref.unsafe(Node.fromList(lst0)) }
       lst2 <- F.tailRecM((List.empty[String], lst1)) { case (acc, ref) =>
-        Rxn.ref.read(ref).flatMap { node =>
+        ref.get.flatMap { node =>
           if (node eq null) {
             // there is an extra sentinel at the end:
             Rxn.ret(Right[(List[String], Ref[Node]), List[String]](acc.tail.reverse))
           } else {
-            Rxn.ref.read(node.value).map { v =>
+            node.value.get.map { v =>
               Left[(List[String], Ref[Node]), List[String]]((v :: acc, node.next))
             }
           }
