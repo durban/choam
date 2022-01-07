@@ -28,11 +28,11 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 @Outcomes(Array(
   new Outcome(id = Array("(a,a), (b,b), -"), expect = ACCEPTABLE, desc = "Read commits old values"),
   new Outcome(id = Array("(b,b), (b,b), -"), expect = ACCEPTABLE, desc = "Read commits new values"),
-  // TODO: these four should be FORBIDDEN:
-  new Outcome(id = Array("(a,a), (b,b), (a,b)"), expect = ACCEPTABLE_INTERESTING, desc = "Read cs. old values, but a zombie sees inconsistent"),
-  new Outcome(id = Array("(a,a), (b,b), (b,a)"), expect = ACCEPTABLE_INTERESTING, desc = "Read cs. old values, but a zombie sees inconsistent"),
+  new Outcome(id = Array("(a,a), (b,b), (a,b)"), expect = FORBIDDEN, desc = "Read cs. old values, but a zombie sees inconsistent"),
+  new Outcome(id = Array("(a,a), (b,b), (b,a)"), expect = FORBIDDEN, desc = "Read cs. old values, but a zombie sees inconsistent"),
+  new Outcome(id = Array("(b,b), (b,b), (b,a)"), expect = FORBIDDEN, desc = "Read cs. new values, but a zombie sees inconsistent"),
+  // TODO: this should be also FORBIDDEN:
   new Outcome(id = Array("(b,b), (b,b), (a,b)"), expect = ACCEPTABLE_INTERESTING, desc = "Read cs. new values, but a zombie sees inconsistent"),
-  new Outcome(id = Array("(b,b), (b,b), (b,a)"), expect = ACCEPTABLE_INTERESTING, desc = "Read cs. new values, but a zombie sees inconsistent"),
 ))
 class ZombieTest extends StressTestBase {
 
