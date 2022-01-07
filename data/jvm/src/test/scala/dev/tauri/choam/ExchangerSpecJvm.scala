@@ -368,7 +368,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertEqualsF(res1, 42)
       _ <- F.delay {
         if (ctx1.supportsStatistics) {
-          assert(ctx1.getStatistics().contains(ex.key))
+          assert(ctx1.getStatisticsPlain().contains(ex.key))
         } else {
           // impl. is not collecting stats
         }
@@ -378,7 +378,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertEqualsF(res2, "foo")
       _ <- F.delay {
         if (ctx2.supportsStatistics) {
-          assert(ctx2.getStatistics().contains(ex.key))
+          assert(ctx2.getStatisticsPlain().contains(ex.key))
         } else {
           // impl. is not collecting stats
         }
@@ -413,9 +413,9 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         val ctx1 = res11._2
         val ctx2 = res12._2
         if (ctx1.supportsStatistics) {
-          assert(ctx1.getStatistics().contains(ex.key))
+          assert(ctx1.getStatisticsPlain().contains(ex.key))
           assert(ctx2.supportsStatistics)
-          assert(ctx2.getStatistics().contains(ex2.key))
+          assert(ctx2.getStatisticsPlain().contains(ex2.key))
         } else {
           assert(!ctx2.supportsStatistics)
         }
@@ -441,7 +441,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.flatMap { wc =>
       val (weakref, ctx) = wc
       if (ctx.supportsStatistics) {
-        val statMap = ctx.getStatistics()
+        val statMap = ctx.getStatisticsPlain()
         F.interruptible {
           var ex = weakref.get()
           if (ex ne null) {

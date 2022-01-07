@@ -100,14 +100,21 @@ object MCAS extends MCASPlatform { self =>
     }
 
     /** Only for testing/benchmarking */
-    private[choam] def getStatistics(): Map[AnyRef, AnyRef] = {
+    private[choam] def getStatisticsPlain(): Map[AnyRef, AnyRef] = {
       // we ignore stats by default; implementations
       // can override if it matters
       Map.empty
     }
 
     /** Only for testing/benchmarking */
-    private[choam] def setStatistics(@unused stats: Map[AnyRef, AnyRef]): Unit = {
+    private[choam] def getStatisticsOpaque(): Map[AnyRef, AnyRef] = {
+      // we ignore stats by default; implementations
+      // can override if it matters
+      Map.empty
+    }
+
+    /** Only for testing/benchmarking */
+    private[choam] def setStatisticsPlain(@unused stats: Map[AnyRef, AnyRef]): Unit = {
       // we ignore stats by default; implementations
       // can override if it matters
     }

@@ -25,18 +25,14 @@ private final class EMCASThreadContext(
   global: GlobalContext,
   private[mcas] val tid: Long,
   val impl: EMCAS.type
-) extends MCAS.ThreadContext {
+) extends EMCASThreadContextBase
+  with MCAS.ThreadContext {
 
-  private[this] var commits: Int =
-    0
-
-  private[this] var retries: Int =
-    0
+  // NB: it is a `val`, not a `def`
+  private[choam] final override val random: ThreadLocalRandom =
+    ThreadLocalRandom.current()
 
   private[this] var markerUsedCount: Int =
-    0
-
-  private[this] var maxReuseEver: Int =
     0
 
   private[this] final val maxMarkerUsedCount =
@@ -105,24 +101,16 @@ private final class EMCASThreadContext(
   private[this] final def createReusableMarker(): AnyRef = {
     val mark = new McasMarker
     this.markerWeakRef = new WeakReference(mark)
-    if (this.markerUsedCount > this.maxReuseEver) {
+    if (this.markerUsedCount > this.getMaxReuseEverPlain()) {
       // TODO: this is not exactly correct, because
       // TODO: even if we `getReusableWeakRef` from
       // TODO: this thread context, we do not necessarily
       // TODO: use it (the CAS to install it may fail)
-      this.maxReuseEver = this.markerUsedCount
+      this.setMaxReuseEverPlain(this.markerUsedCount)
     }
     this.markerUsedCount = 0
     mark // caller MUST hold a strong ref
   }
-
-  // TODO: this is a hack
-  private[this] var statistics: Map[AnyRef, AnyRef] =
-    Map.empty
-
-  // NB: it is a `val`, not a `def`
-  private[choam] final override val random: ThreadLocalRandom =
-    ThreadLocalRandom.current()
 
   final override def tryPerform(desc: HalfEMCASDescriptor): Boolean =
     impl.tryPerform(desc, this)
@@ -135,21 +123,17 @@ private final class EMCASThreadContext(
   }
 
   private[choam] final override def recordCommit(retries: Int): Unit = {
-    // TODO: opaque
-    this.commits += 1
-    this.retries += retries
+    this.recordCommitPlain(retries)
   }
 
   /** Only for testing/benchmarking */
   private[choam] def getCommitsAndRetries(): (Int, Int) = {
-    // TODO: opaque
-    (this.commits, this.retries)
+    (this.getCommitsOpaque(), this.getRetriesOpaque())
   }
 
   /** Only for testing/benchmarking */
   private[choam] final override def maxReusedWeakRefs(): Int = {
-    // TODO: opaque
-    this.maxReuseEver
+    this.getMaxReuseEverOpaque()
   }
 
   /** Only for testing/benchmarking */
@@ -158,12 +142,17 @@ private final class EMCASThreadContext(
   }
 
   /** Only for testing/benchmarking */
-  private[choam] final override def getStatistics(): Map[AnyRef, AnyRef] = {
-    this.statistics
+  private[choam] final override def getStatisticsPlain(): Map[AnyRef, AnyRef] = {
+    this._getStatisticsPlain()
   }
 
   /** Only for testing/benchmarking */
-  private[choam] final override def setStatistics(stats: Map[AnyRef, AnyRef]): Unit = {
-    this.statistics = stats
+  private[choam] final override def getStatisticsOpaque(): Map[AnyRef, AnyRef] = {
+    this._getStatisticsOpaque()
+  }
+
+  /** Only for testing/benchmarking */
+  private[choam] final override def setStatisticsPlain(stats: Map[AnyRef, AnyRef]): Unit = {
+    this._setStatisticsPlain(stats)
   }
 }

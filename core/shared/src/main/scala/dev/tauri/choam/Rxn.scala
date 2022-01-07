@@ -607,7 +607,7 @@ object Rxn extends RxnInstances0 {
     private[this] var retries: Int = 0
 
     private[this] var stats: ExStatMap =
-      ctx.getStatistics().asInstanceOf[ExStatMap]
+      ctx.getStatisticsPlain().asInstanceOf[ExStatMap]
 
     // TODO: this is a hack
     private[this] var exParams: Exchanger.Params = {
@@ -979,7 +979,7 @@ object Rxn extends RxnInstances0 {
 
     final def interpret(): R = {
       val r = loop(startRxn)
-      this.ctx.setStatistics(this.stats.asInstanceOf[Map[AnyRef, AnyRef]])
+      this.ctx.setStatisticsPlain(this.stats.asInstanceOf[Map[AnyRef, AnyRef]])
       r
     }
   }
