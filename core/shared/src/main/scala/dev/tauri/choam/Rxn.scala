@@ -385,7 +385,10 @@ object Rxn extends RxnInstances0 {
     private[choam] def delayContext[A](uf: MCAS.ThreadContext => A): Axn[A] =
       context(uf)
 
-    // TODO: this is also like `delay`
+    // TODO: NB: this is also like `delay`
+    // TODO: Calling `unsafePerform` (or similar) inside
+    // TODO: `uf` is dangerous; currently is only messes
+    // TODO: up exchanger statistics; in the future, who knows...
     private[choam] def context[A](uf: MCAS.ThreadContext => A): Axn[A] =
       new Ctx[A](uf)
 
