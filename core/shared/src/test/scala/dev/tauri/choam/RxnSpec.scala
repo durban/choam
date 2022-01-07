@@ -621,6 +621,16 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("swap") {
+    for {
+      r1 <- Ref("abc").run[F]
+      r2 <- Ref("def").run[F]
+      _ <- Rxn.swap(r1, r2).run[F]
+      _ <- assertResultF(r1.unsafeInvisibleRead.run[F], "def")
+      _ <- assertResultF(r2.unsafeInvisibleRead.run[F], "abc")
+    } yield ()
+  }
+
   test("flatMap and *>") {
     for {
       r1 <- Ref("a").run[F]

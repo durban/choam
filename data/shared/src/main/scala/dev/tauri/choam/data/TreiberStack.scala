@@ -28,20 +28,19 @@ private[choam] final class TreiberStack[A] private () extends Stack[A] {
     (Cons(a, as), ())
   }
 
-  final override val tryPop: Axn[Option[A]] = head.upd {
-    case (Cons(h, t), _) => (t, Some(h))
-    case (End, _) => (End, None)
+  final override val tryPop: Axn[Option[A]] = head.modify[Option[A]] {
+    case Cons(h, t) => (t, Some(h))
+    case End => (End, None)
   }
 
   private[choam] final override val length: Axn[Int] =
-    head.upd[Any, Int] { (l, _) => (l, l.length) }
+    head.get.map(_.length)
 
   private[choam] def toList: Axn[List[A]] =
-    head.upd[Any, Lst[A]] { (l, _) => (l, l) }.map(_.toList)
+    head.get.map(_.toList)
 
   private[choam] def unsafeToList(kcas: mcas.MCAS): List[A] = {
-    val r = head.upd[Unit, Lst[A]] { (l, _) => (l, l) }
-    r.unsafePerform((), kcas).toList
+    this.toList.unsafePerform((), kcas).toList
   }
 }
 

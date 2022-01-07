@@ -309,21 +309,18 @@ object Rxn extends RxnInstances0 {
   }
 
   def consistentReadMany[A](refs: List[Ref[A]]): Axn[List[A]] = {
-    refs match {
-      case h :: t =>
-        h.updWith[Any, List[A]] { (a, _) =>
-          consistentReadMany(t).map { as => (a, a :: as) }
-        }
-      case Nil =>
-        ret(Nil)
+    refs.foldRight(ret(List.empty[A])) { (ref, acc) =>
+      (ref.get * acc).map {
+        case (h, t) => h :: t
+      }
     }
   }
 
   def swap[A](r1: Ref[A], r2: Ref[A]): Axn[Unit] = {
-    r1.updWith[Any, Unit] { (o1, _) =>
-      r2.upd[Any, A] { (o2, _) =>
+    r1.updateWith { o1 =>
+      r2.modify[A] { o2 =>
         (o1, o2)
-      }.map { o2 => (o2, ()) }
+      }
     }
   }
 
