@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import cats.effect.{ IO, Outcome }
 
+import mcas.MCAS
 import data.EliminationStack
 
 final class ExchangerSpecCommon_EMCAS_AIO
@@ -349,38 +350,46 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   // TODO: test with 2 different Exchangers in 1 reaction
 
+  private[this] def getStats(ctx: MCAS.ThreadContext): Option[Map[AnyRef, AnyRef]] = {
+    if (ctx.supportsStatistics) Some(ctx.getStatisticsPlain())
+    else None
+  }
+
   test("An Exchanger and its dual must use the same key in a StatMap") {
+
     for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       _ <- assertSameInstanceF(ex.key, ex.dual.key)
-      f1 <- ex.exchange.flatMapF { i =>
+      f1 <- F.uncancelable(_ => ex.exchange.flatMapF { i =>
         Rxn.unsafe.context { ctx =>
           (i, ctx)
         }
-      }.apply[F]("foo").start
-      f2 <- ex.dual.exchange.flatMapF { i =>
+      }.apply[F]("foo").map { case (i, ctx) => (i, getStats(ctx)) }).start
+      f2 <- F.uncancelable(_ => ex.dual.exchange.flatMapF { i =>
         Rxn.unsafe.context { ctx =>
           (i, ctx)
         }
-      }.apply[F](42).start
+      }.apply[F](42).map { case (i, ctx) => (i, getStats(ctx)) }).start
       r1 <- f1.joinWithNever
-      (res1, ctx1) = r1
+      (res1, stats1) = r1
       _ <- assertEqualsF(res1, 42)
       _ <- F.delay {
-        if (ctx1.supportsStatistics) {
-          assert(ctx1.getStatisticsPlain().contains(ex.key))
-        } else {
-          // impl. is not collecting stats
+        stats1 match {
+          case Some(stats) =>
+            assert(stats.contains(ex.key))
+          case None =>
+            ()
         }
       }
       r2 <- f2.joinWithNever
-      (res2, ctx2) = r2
+      (res2, stats2) = r2
       _ <- assertEqualsF(res2, "foo")
       _ <- F.delay {
-        if (ctx2.supportsStatistics) {
-          assert(ctx2.getStatisticsPlain().contains(ex.key))
-        } else {
-          // impl. is not collecting stats
+        stats2 match {
+          case Some(stats) =>
+            assert(stats.contains(ex.key))
+          case None =>
+            ()
         }
       }
     } yield ()
@@ -393,16 +402,16 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       // Note: getting the context is in the same reaction
       // as the exchange; thus, it is necessarily the context
       // of the same thread.
-      task1 = ex.exchange.flatMapF { i =>
+      task1 = F.uncancelable(_ => ex.exchange.flatMapF { i =>
         Rxn.unsafe.context { ctx =>
           (i, ctx)
         }
-      }.apply[F]("foo")
-      task2 = ex2.exchange.flatMapF { i =>
+      }.apply[F]("foo").map { case (i, ctx) => (i, getStats(ctx)) })
+      task2 = F.uncancelable(_ => ex2.exchange.flatMapF { i =>
         Rxn.unsafe.context { ctx =>
           (i, ctx)
         }
-      }.apply[F]("bar")
+      }.apply[F]("bar").map { case (i, ctx) => (i, getStats(ctx)) })
       f1 <- (task1, task2).mapN(_ -> _).start
       f2 <- (ex.dual.exchange[F](42), ex2.dual.exchange[F](23)).mapN(_ -> _).start
       r1 <- f1.joinWithNever
@@ -410,14 +419,15 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertEqualsF(res11._1, 42)
       _ <- assertEqualsF(res12._1, 23)
       _ <- F.delay {
-        val ctx1 = res11._2
-        val ctx2 = res12._2
-        if (ctx1.supportsStatistics) {
-          assert(ctx1.getStatisticsPlain().contains(ex.key))
-          assert(ctx2.supportsStatistics)
-          assert(ctx2.getStatisticsPlain().contains(ex2.key))
-        } else {
-          assert(!ctx2.supportsStatistics)
+        val stats1 = res11._2
+        val stats2 = res12._2
+        stats1 match {
+          case Some(s1) =>
+            assert(s1.contains(ex.key))
+            assert(stats2.isDefined)
+            assert(stats2.get.contains(ex2.key))
+          case None =>
+            assert(stats2.isEmpty)
         }
       }
       _ <- assertResultF(f2.joinWithNever, ("foo", "bar"))
@@ -427,11 +437,11 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   test("A StatMap must not prevent an Exchanger from being garbage collected") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      f1 <- ex.exchange.flatMapF { i =>
+      f1 <- F.uncancelable(_ => ex.exchange.flatMapF { i =>
         Rxn.unsafe.context { ctx =>
           (i, ctx)
         }
-      }.apply[F]("foo").start
+      }.apply[F]("foo").map { case (i, ctx) => (i, getStats(ctx)) }).start
       f2 <- ex.dual.exchange.apply[F](42).start
       r1 <- f1.joinWithNever
       _ <- assertEqualsF(r1._1, 42)
@@ -439,22 +449,22 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield (new WeakReference(ex), r1._2)
 
     tsk.flatMap { wc =>
-      val (weakref, ctx) = wc
-      if (ctx.supportsStatistics) {
-        val statMap = ctx.getStatisticsPlain()
-        F.interruptible {
-          var ex = weakref.get()
-          if (ex ne null) {
-            assert(statMap.contains(ex.key))
-          } // else: ok, already collected
-          ex = null
-          while (weakref.get() ne null) {
-            System.gc()
-            Thread.sleep(1L)
+      val (weakref, stats) = wc
+      stats match {
+        case Some(statMap) =>
+          F.interruptible {
+            var ex = weakref.get()
+            if (ex ne null) {
+              assert(statMap.contains(ex.key))
+            } // else: ok, already collected
+            ex = null
+            while (weakref.get() ne null) {
+              System.gc()
+              Thread.sleep(1L)
+            }
           }
-        }
-      } else {
-        F.unit
+        case None =>
+          F.unit
       }
     }
   }
