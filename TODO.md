@@ -138,7 +138,7 @@
     - `.+(<something safe here>)` would also make it safe
 - Think about global / thread-local state:
   - if we're running in IO, we might use something else
-  - however, IBR probably really needs thread-locals
+  - however, `EMCASThreadContext` probably really needs to be thread-local
   - think about possible problems with fibers
 
 ## Misc.
