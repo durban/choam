@@ -277,6 +277,7 @@ object Rxn extends RxnInstances0 {
   final def secureRandom: Axn[Random[Axn]] =
     unsafe.delay { _ => RxnRandomImplSecure.unsafe() }
 
+  // TODO: maybe move this to `Ref`?
   final def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
     ra.get * rb.get
   }
@@ -308,6 +309,7 @@ object Rxn extends RxnInstances0 {
     }
   }
 
+  // TODO: maybe move this to `Ref`?
   def consistentReadMany[A](refs: List[Ref[A]]): Axn[List[A]] = {
     refs.foldRight(ret(List.empty[A])) { (ref, acc) =>
       (ref.get * acc).map {
@@ -316,6 +318,7 @@ object Rxn extends RxnInstances0 {
     }
   }
 
+  // TODO: maybe move this to `Ref`?
   def swap[A](r1: Ref[A], r2: Ref[A]): Axn[Unit] = {
     r1.updateWith { o1 =>
       r2.modify[A] { o2 =>

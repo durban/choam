@@ -100,3 +100,4 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   - Some STM implementations:
     - Haskell `Control.Concurrent.STM`
     - Scala: `scala-stm`, `cats-stm`, `ZSTM`
+    - TODO: TL2, SwissTM

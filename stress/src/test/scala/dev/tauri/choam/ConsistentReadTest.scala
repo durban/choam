@@ -31,16 +31,16 @@ import org.openjdk.jcstress.infra.results.LL_Result
 ))
 class ConsistentReadTest extends StressTestBase {
 
-  private[this] var ref1 =
+  private[this] val ref1 =
     Ref.unsafe("foo")
 
-  private[this] var ref2 =
+  private[this] val ref2 =
     Ref.unsafe("bar")
 
-  private[this] var upd: Axn[Unit] =
+  private[this] val upd: Axn[Unit] =
     ref1.unsafeCas("foo", "x") >>> ref2.unsafeCas("bar", "y")
 
-  private[this] var get: Axn[(String, String)] =
+  private[this] val get: Axn[(String, String)] =
     ref1.get * ref2.get
 
   @Actor

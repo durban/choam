@@ -42,9 +42,11 @@ class ZombieTest extends StressTestBase {
   private[this] val ref2 =
     Ref.unsafe("a")
 
+  // a 2-CAS, setting both atomically "a" -> "b":
   private[this] val upd: Axn[Unit] =
     ref1.unsafeCas("a", "b") >>> ref2.unsafeCas("a", "b")
 
+  // a consistent read of both:
   private[this] val _get: Axn[(String, String)] =
     ref1.get * ref2.get
 
@@ -52,6 +54,8 @@ class ZombieTest extends StressTestBase {
     this._get.map { result =>
       if (result._1 ne result._2) {
         // we've observed an inconsistent state
+        // (we'll be retried, but we observed
+        // an inconsistency nevertheless):
         r.r3 = result
       }
       result
@@ -72,6 +76,7 @@ class ZombieTest extends StressTestBase {
   def arbiter(r: LLL_Result): Unit = {
     r.r2 = (ref1.get.unsafeRun(this.impl), ref2.get.unsafeRun(this.impl))
     if (r.r3 eq null) {
+      // no inconsistency was observed
       r.r3 = "-"
     }
   }
