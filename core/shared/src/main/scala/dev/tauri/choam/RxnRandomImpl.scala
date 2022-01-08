@@ -121,7 +121,7 @@ private final class RxnRandomImplThreadLocal[X] private ()
     // TODO: Can't cache because ThreadLocalRandom.current()
     // TODO: is not guaranteed to always return the same object.
     // TODO: (On OpenJDK 11+ it seems to always do, but the
-    // TODO: documentation doesn't gaurantee this behavior.)
+    // TODO: documentation doesn't guarantee this behavior.)
     new SRandom(jRnd)
   }
 
