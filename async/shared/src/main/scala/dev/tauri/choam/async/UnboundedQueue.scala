@@ -24,7 +24,6 @@ import cats.effect.std.{ Queue => CatsQueue }
 abstract class UnboundedQueue[F[_], A]
   extends data.Queue[A]
   with AsyncQueueSource[F, A]
-  with data.UnboundedQueueSink[A]
 
 object UnboundedQueue {
 
