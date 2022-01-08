@@ -343,6 +343,9 @@ private object EMCAS extends MCAS { self =>
         }
       }
 
+      // just to be safe:
+      assert((mark eq null) || (mark eq weakref.get()))
+
       if (!equ(value, wordDesc.ov)) {
         // expected value is different
         TryWordResult.FAILURE
