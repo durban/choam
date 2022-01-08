@@ -18,33 +18,29 @@
 package dev.tauri.choam
 package mcas
 
-import java.util.ArrayList
-
 private final class EMCASDescriptor private (
-  /*
-   * Word descriptors
-   *
-   * Thread safety: we only read the list after reading the descriptor from a `Ref`;
-   * we only mutate the list before writing the descriptor to a `Ref`.
-   */
-  private val words: ArrayList[WordDescriptor[_]]
-  // TODO: this could be a simple `Array`
+  half: HalfEMCASDescriptor,
 ) extends EMCASDescriptorBase { self =>
+
+  // effectively immutable array:
+  private[this] val words: Array[WordDescriptor[_]] = {
+    val arr = new Array[WordDescriptor[_]](half.map.size)
+    val it = half.map.valuesIterator
+    var idx = 0
+    while (it.hasNext) {
+      val wd = WordDescriptor.prepare(it.next(), this)
+      arr(idx) = wd
+      idx += 1
+    }
+    arr
+  }
 
   /** Intrusive linked list of finalized descriptors (see `ThreadContext`) */
   private[mcas] var next: EMCASDescriptor =
     null
 
-  private[mcas] def this(initialSize: Int) =
-    this(new ArrayList[WordDescriptor[_]](initialSize))
-
-  private[mcas] def add[A](word: WordDescriptor[A]): Unit = {
-    this.words.add(word)
-    ()
-  }
-
   private[mcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
-    new EMCASDescriptor.Iterator(this)
+    new EMCASDescriptor.Iterator(this.words)
   }
 
   /** Only for testing */
@@ -56,40 +52,34 @@ private final class EMCASDescriptor private (
 private object EMCASDescriptor {
 
   def prepare(half: HalfEMCASDescriptor): EMCASDescriptor = {
-    val emcasDesc = new EMCASDescriptor(initialSize = half.map.size)
-    val it = half.map.valuesIterator
-    while (it.hasNext) {
-      val wd = WordDescriptor.prepare(it.next(), emcasDesc)
-      emcasDesc.add(wd)
-    }
-    emcasDesc
+    new EMCASDescriptor(half)
   }
 
-  // TODO: reformat (extra indent)
-  private final class Iterator(desc: EMCASDescriptor) extends java.util.Iterator[WordDescriptor[_]] {
+  private final class Iterator(words: Array[WordDescriptor[_]])
+    extends java.util.Iterator[WordDescriptor[_]] {
 
-      private[this] var idx: Int =
-        0
+    private[this] var idx: Int =
+      0
 
-      private[this] var lastIdx: Int =
-        -1
+    private[this] var lastIdx: Int =
+      -1
 
-      final override def hasNext(): Boolean = {
-        this.idx != desc.words.size()
+    final override def hasNext(): Boolean = {
+      this.idx != this.words.length
+    }
+
+    final override def next(): WordDescriptor[_] = {
+      if (this.hasNext()) {
+        this.lastIdx = this.idx
+        this.idx += 1
+        this.words(this.lastIdx)
+      } else {
+        throw new NoSuchElementException
       }
+    }
 
-      final override def next(): WordDescriptor[_] = {
-        if (this.hasNext()) {
-          this.lastIdx = this.idx
-          this.idx += 1
-          desc.words.get(this.lastIdx)
-        } else {
-          throw new NoSuchElementException
-        }
-      }
-
-      final override def remove(): Unit = {
-        throw new UnsupportedOperationException
-      }
+    final override def remove(): Unit = {
+      throw new UnsupportedOperationException("EMCASDescriptor.Iterator#remove")
+    }
   }
 }

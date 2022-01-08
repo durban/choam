@@ -44,6 +44,7 @@ class RandomReplaceBench {
 
   @Benchmark
   def reset(s: SharedState): Unit = {
+    val _ = EMCAS.currentContext()
     s.reset()
   }
 }
@@ -52,18 +53,19 @@ object RandomReplaceBench {
 
   abstract class SharedStateBase[A <: AnyRef](a: A) {
 
-    val ref: MemoryLocation[A] = Ref.unsafe[A](nullOf[A]).loc
+    val ref: MemoryLocation[A] =
+      Ref.unsafe[A](nullOf[A]).loc
 
     reset()
 
     def reset(): Unit = {
-      val p = new EMCASDescriptor(initialSize = 1)
-      val wd = BenchmarkAccess.wordDescriptor(
-        HalfWordDescriptor[A](ref, a, a),
-        p
+      val h = HalfEMCASDescriptor.empty.add(
+        HalfWordDescriptor[A](ref, a, a)
       )
+      val p = EMCASDescriptor.prepare(h)
+      val wd = p.wordIterator().next()
       assert(BenchmarkAccess.casStatusFromActiveToFailed(p))
-      this.ref.unsafeSetVolatile(wd.asInstanceOf[A])
+      this.ref.unsafeSetVolatile(wd.cast[A].castToData)
     }
   }
 
