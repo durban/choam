@@ -43,6 +43,8 @@ trait BaseSpecF[F[_]]
   /** Not implicit, so that `rF` is used for sure */
   def F: Sync[F]
 
+  protected def absolutelyUnsafeRunSync[A](fa: F[A]): A
+
   def assumeF(cond: => Boolean, clue: String = "assumption failed")(implicit loc: Location): F[Unit] =
     F.delay { this.assume(cond, clue)(loc) }
 
@@ -97,7 +99,10 @@ trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] { this: KCASImplSpec =>
     new Reactive.SyncReactive[F](this.kcasImpl)(F)
 }
 
-abstract class BaseSpecIO extends CatsEffectSuite with BaseSpecAsyncF[IO] { this: KCASImplSpec =>
+abstract class BaseSpecIO
+  extends CatsEffectSuite
+  with BaseSpecAsyncF[IO]
+  with BaseSpecIOPlatform { this: KCASImplSpec =>
 
   /** Not implicit, so that `rF` is used for sure */
   final override def F: Async[IO] =
@@ -247,6 +252,9 @@ abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO]
   /** Not implicit, so that `rF` is used for sure */
   final override def F: Sync[SyncIO] =
     SyncIO.syncForSyncIO
+
+  protected final override def absolutelyUnsafeRunSync[A](fa: SyncIO[A]): A =
+    fa.unsafeRunSync()
 
   final override def assertResultF[A, B](obtained: SyncIO[A], expected: B, clue: String = "values are not the same")(
     implicit loc: Location, ev: B <:< A

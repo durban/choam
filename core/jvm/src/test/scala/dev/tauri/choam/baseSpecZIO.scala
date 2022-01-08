@@ -43,8 +43,14 @@ abstract class BaseSpecZIO
   with BaseSpecAsyncF[zio.Task]
   with UtilsForZIO { this: KCASImplSpec =>
 
+  private[this] val runtime =
+    zio.Runtime.default
+
   final override def F: Async[zio.Task] =
-    zio.interop.catz.asyncRuntimeInstance(zio.Runtime.default)
+    zio.interop.catz.asyncRuntimeInstance(this.runtime)
+
+  protected final override def absolutelyUnsafeRunSync[A](fa: zio.Task[A]): A =
+    this.runtime.unsafeRunTask(fa)
 
   private def transformZIO: ValueTransform = {
     new this.ValueTransform(
@@ -76,6 +82,9 @@ abstract class BaseSpecTickedZIO
 
   final override def F: Async[zio.Task] =
     zio.interop.catz.asyncRuntimeInstance(this.zioRuntime)
+
+  protected final override def absolutelyUnsafeRunSync[A](fa: zio.Task[A]): A =
+    this.zioRuntime.unsafeRunTask(fa)
 
   override def munitValueTransforms: List[this.ValueTransform] = {
     super.munitValueTransforms :+ this.transformZIO

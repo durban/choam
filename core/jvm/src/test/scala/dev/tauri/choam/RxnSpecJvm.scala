@@ -18,6 +18,7 @@
 package dev.tauri.choam
 
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicReference
 
 import scala.concurrent.duration._
 
@@ -140,6 +141,42 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
       _ <- ref.getAndSet[F](42)
       _ <- unsafeRxn.run[F]
       _ <- assertResultF(ref.get.run[F], 43)
+    } yield ()
+  }
+
+  test("Zombie") {
+    for {
+      ref1 <- Ref("a").run[F]
+      ref2 <- Ref("b").run[F]
+      ref <- F.delay(new AtomicReference[(String, String)])
+      writer = (ref1.update { v1 => v1 + "a" } *> ref2.update(_ + "b")).run[F]
+      reader = ref1.get.flatMapF { v1 =>
+        // we already read `ref1`; now we start
+        // `writer`, and hard block until it's
+        // committed
+        if (ref.get() eq null) {
+          this.absolutelyUnsafeRunSync(
+            writer.start.flatMap(_.joinWithNever)
+          ) : Unit
+        }
+        // then we continue with reading (the now
+        // changed) `ref2`:
+        ref2.get.map { v2 =>
+          val tup = (v1, v2)
+          if (v2.length > v1.length) {
+            ref.compareAndSet(null, tup)
+          } else {
+            ref.compareAndSet(null, ("OK", "OK"))
+          }
+          tup
+        }
+      }
+      rRes <- reader.run[F]
+      _ <- assertEqualsF(rRes, ("aa", "bb"))
+      _ <- assertResultF(
+        F.delay(ref.get()),
+        ("a", "bb") // TODO: this should be ("OK", "OK")
+      )
     } yield ()
   }
 }
