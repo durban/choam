@@ -64,7 +64,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
 
 ## Related work
 
-- Our `Rxn` is a lock-free, referentially transparent and extended version of
+- Our `Rxn` is a lock-free, referentially transparent, and extended version of
   *reagents*, described in [Reagents: Expressing and Composing Fine-grained Concurrency
   ](https://people.mpi-sws.org/~turon/reagents.pdf). (Other implementations or reagents:
   [Scala](https://github.com/aturon/ChemistrySet),
@@ -83,8 +83,8 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     important differences:
     - A `Rxn` can only touch one `Ref` at most once (see above); an STM
       transaction can usually read/write multiple times.
-    - A `Rxn` is lock-free by construction (unless an `unsafe` combinator
-      was used); STM transactions are not necessarily (e.g., STM "retry").
+    - A `Rxn` is lock-free by construction (unless an `unsafe` method was
+      used to create it); STM transactions are not necessarily (e.g., STM "retry").
     - As a consequence of the previous point, `Rxn` cannot be used to implement
       "inherently not lock-free" logic (e.g., asynchronously waiting on a
       condition set by another thread/fiber/similar). However, `Rxn` is

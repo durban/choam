@@ -254,7 +254,6 @@ private object EMCAS extends MCAS { self =>
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): TryWordResult = {
       var content: A = nullOf[A]
-      var contentWd: WordDescriptor[A] = null
       var value: A = nullOf[A]
       var weakref: WeakReference[AnyRef] = null
       var mark: AnyRef = null
@@ -268,7 +267,6 @@ private object EMCAS extends MCAS { self =>
       // them would require allocating a tuple (like in
       // the paper).
       while (go) {
-        contentWd = null
         content = wordDesc.address.unsafeGetVolatile()
         content match {
           case wd: WordDescriptor[_] =>
@@ -309,7 +307,6 @@ private object EMCAS extends MCAS { self =>
                 // already points to the right place, early return:
                 return TryWordResult.SUCCESS // scalafix:ok
               } else {
-                contentWd = wd.cast[A]
                 // At this point, we're sure that `wd` belongs to another op
                 // (not `desc`), because otherwise it would've been equal to
                 // `wordDesc` (we're assuming that any WordDescriptor only
