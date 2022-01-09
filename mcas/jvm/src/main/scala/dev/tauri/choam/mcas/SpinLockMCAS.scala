@@ -39,6 +39,9 @@ private object SpinLockMCAS extends MCAS { self =>
   private[choam] final override def isThreadSafe =
     true
 
+  private[this] val commitTs: MemoryLocation[Long] =
+    MemoryLocation.unsafe(Long.MinValue)
+
   private[this] val dummyContext = new MCAS.ThreadContext {
 
     // NB: it is a `def`, not a `val`
@@ -71,6 +74,9 @@ private object SpinLockMCAS extends MCAS { self =>
         a
       }
     }
+
+    final override def readCommitTs(): Long =
+      commitTs.unsafeGetVolatile()
 
     private def perform(ops: List[HalfWordDescriptor[_]]): Boolean = {
 

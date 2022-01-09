@@ -118,6 +118,9 @@ private final class EMCASThreadContext(
   final override def read[A](loc: MemoryLocation[A]): A =
     impl.read(loc, this)
 
+  final override def readCommitTs(): Long =
+    this.global.commitTs.unsafeGetVolatile()
+
   final override def toString: String = {
     s"ThreadContext(global = ${this.global}, tid = ${this.tid})"
   }

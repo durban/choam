@@ -61,6 +61,8 @@ object MCAS extends MCASPlatform { self =>
     def start(): HalfEMCASDescriptor =
       HalfEMCASDescriptor.empty
 
+    def readCommitTs(): Long
+
     def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =  {
       val wd = HalfWordDescriptor(ref, ov, nv)
       desc.add(wd)

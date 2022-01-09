@@ -25,6 +25,9 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
   final override def currentContext(): MCAS.ThreadContext =
     _ctx
 
+  private[this] val _commitTs: MemoryLocation[Long] =
+    MemoryLocation.unsafe(Long.MinValue)
+
   private[this] val _ctx = new MCAS.ThreadContext {
 
     final override def read[A](ref: MemoryLocation[A]): A =
@@ -67,6 +70,9 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
         false
       }
     }
+
+    final override def readCommitTs(): Long =
+      _commitTs.unsafeGetPlain()
 
     // NB: it is a `def`, not a `val`
     final override private[choam] def random: ThreadLocalRandom =
