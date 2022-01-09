@@ -95,6 +95,10 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     - STM transactions usually have a way of raising/handling errors
       (e.g., `MonadError`); `Rxn` has no such feature (of course return
       values can encode errors with `Option`, `Either`, or similar).
+    - Some STM systems allow access to transactional memory from
+      non-transactional code; `Rxn` doesn't support this, the contents of an
+      `r: Ref[A]` can only be accessed from inside a `Rxn` (although there is a
+      read-only escape hatch: `r.unsafeInvisibleRead`).
   - Similarities between `Rxn`s and STM transactions include the following:
     - atomicity, consistency, isolation (TODO: explain that there are some differences)
   - Some STM implementations:
