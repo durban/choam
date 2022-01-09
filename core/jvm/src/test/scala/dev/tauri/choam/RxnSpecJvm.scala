@@ -18,28 +18,28 @@
 package dev.tauri.choam
 
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.{ AtomicReference, AtomicInteger }
 
 import scala.concurrent.duration._
 
 import cats.effect.IO
 
-final class RxnSpec_SpinLockMCAS_IO
+final class RxnSpecJvm_SpinLockMCAS_IO
   extends BaseSpecIO
   with SpecSpinLockMCAS
   with RxnSpecJvm[IO]
 
-final class RxnSpec_SpinLockMCAS_ZIO
+final class RxnSpecJvm_SpinLockMCAS_ZIO
   extends BaseSpecZIO
   with SpecSpinLockMCAS
   with RxnSpecJvm[zio.Task]
 
-final class RxnSpec_EMCAS_IO
+final class RxnSpecJvm_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
   with RxnSpecJvm[IO]
 
-final class RxnSpec_EMCAS_ZIO
+final class RxnSpecJvm_EMCAS_ZIO
   extends BaseSpecZIO
   with SpecEMCAS
   with RxnSpecJvm[zio.Task]
@@ -178,5 +178,40 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
         ("a", "bb") // TODO: this should be ("OK", "OK")
       )
     } yield ()
+  }
+
+  test("Zombie infinite loop") {
+    val c = new AtomicInteger(0)
+    @tailrec
+    def infiniteLoop(@unused n: Int = 0): Int = {
+      if (Thread.interrupted()) {
+        throw new InterruptedException
+      } else {
+        infiniteLoop(c.incrementAndGet())
+      }
+    }
+    val tsk = for {
+      ref1 <- Ref("a").run[F]
+      ref2 <- Ref("b").run[F]
+      writer = (ref1.update(_ + "a") *> ref2.update(_ + "b")).run[F]
+      reader = F.interruptible {
+        Rxn.consistentRead(ref1, ref2).map { v12 =>
+          if (v12._1.length != v12._2.length) {
+            infiniteLoop().toString() -> "x"
+          } else {
+            v12
+          }
+        }.unsafeRun(this.kcasImpl)
+      }
+      _ <- F.both(writer, reader)
+      _ <- F.delay(println("OK"))
+    } yield ()
+    // we hard block here, because we don't want the munit timeout:
+    this.absolutelyUnsafeRunSync(
+      F.replicateA(1024, tsk).void.timeoutTo(
+        1.minute,
+        F.delay(println("Expected failure")) // TODO: this.failF("infinite loop")
+      )
+    )
   }
 }
