@@ -28,12 +28,14 @@ abstract class RefP1P1Base<A, B>
   implements Ref2<A, B>, Ref2ImplBase<A, B> {
 
   private static final VarHandle VALUE_A;
+  private static final VarHandle VERSION_A;
   private static final VarHandle MARKER_A;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       VALUE_A = l.findVarHandle(RefP1P1Base.class, "valueA", Object.class);
+      VERSION_A = l.findVarHandle(RefP1P1Base.class, "versionA", long.class);
       MARKER_A = l.findVarHandle(RefP1P1Base.class, "markerA", WeakReference.class);
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
@@ -41,6 +43,8 @@ abstract class RefP1P1Base<A, B>
   }
 
   private volatile A valueA;
+
+  private volatile long versionA = Long.MIN_VALUE;
 
   private volatile WeakReference<Object> markerA; // = null
 
@@ -62,7 +66,7 @@ abstract class RefP1P1Base<A, B>
 
   @Override
   public final A unsafeGetVolatile1() {
-    return (A) VALUE_A.getVolatile(this);
+    return this.valueA;
   }
 
   @Override
@@ -72,7 +76,7 @@ abstract class RefP1P1Base<A, B>
 
   @Override
   public final void unsafeSetVolatile1(A a) {
-    VALUE_A.setVolatile(this, a);
+    this.valueA = a;
   }
 
   @Override
@@ -91,6 +95,16 @@ abstract class RefP1P1Base<A, B>
   }
 
   @Override
+  public final long unsafeGetVersionVolatile1() {
+    return this.versionA;
+  }
+
+  @Override
+  public final boolean unsafeCasVersionVolatile1(long ov, long nv) {
+    return VERSION_A.compareAndSet(this, ov, nv);
+  }
+
+  @Override
   public final WeakReference<Object> unsafeGetMarkerVolatile1() {
     return this.markerA;
   }
@@ -104,12 +118,14 @@ abstract class RefP1P1Base<A, B>
 final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B> {
 
   private static final VarHandle VALUE_B;
+  private static final VarHandle VERSION_B;
   private static final VarHandle MARKER_B;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       VALUE_B = l.findVarHandle(RefP1P1.class, "valueB", Object.class);
+      VERSION_B = l.findVarHandle(RefP1P1.class, "versionB", long.class);
       MARKER_B = l.findVarHandle(RefP1P1.class, "markerB", WeakReference.class);
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
@@ -122,6 +138,8 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
   private final long _id7;
 
   private volatile B valueB;
+
+  private volatile long versionB = Long.MIN_VALUE;
 
   private volatile WeakReference<Object> markerB; // = null
 
@@ -165,7 +183,7 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
 
   @Override
   public final B unsafeGetVolatile2() {
-    return (B) VALUE_B.getVolatile(this);
+    return this.valueB;
   }
 
   @Override
@@ -175,7 +193,7 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
 
   @Override
   public final void unsafeSetVolatile2(B b) {
-    VALUE_B.setVolatile(this, b);
+    this.valueB = b;
   }
 
   @Override
@@ -191,6 +209,16 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
   @Override
   public final B unsafeCmpxchgVolatile2(B ov, B nv) {
     return (B) VALUE_B.compareAndExchange(this, ov, nv);
+  }
+
+  @Override
+  public final long unsafeGetVersionVolatile2() {
+    return this.versionB;
+  }
+
+  @Override
+  public final boolean unsafeCasVersionVolatile2(long ov, long nv) {
+    return VERSION_B.compareAndSet(this, ov, nv);
   }
 
   @Override

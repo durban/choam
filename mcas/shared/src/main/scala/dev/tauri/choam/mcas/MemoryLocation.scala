@@ -40,7 +40,8 @@ import cats.kernel.Order
  * required by the MCAS implementation. They are
  * easily implemented by, e.g., having an
  * `AtomicReference` or similar. (For implementations
- * of this interface, see the `choam-core` module.)
+ * of this interface, see `SimpleMemoryLocation` or
+ * the various `Ref`s in the `choam-core` module.)
  *
  * Some method names are prefixed by `unsafe` because
  * these are necessarily side-effecting methods,
@@ -52,6 +53,8 @@ import cats.kernel.Order
  * level abstraction.
  */
 trait MemoryLocation[A] {
+
+  // contents:
 
   def unsafeGetVolatile(): A
 
@@ -65,11 +68,21 @@ trait MemoryLocation[A] {
 
   def unsafeCmpxchgVolatile(ov: A, nv: A): A
 
+  // version:
+
+  def unsafeGetVersionVolatile(): Long
+
+  def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean
+
+  // marker:
+
   /** Used by EMCAS */ // TODO: this is JVM-only
   def unsafeGetMarkerVolatile(): WeakReference[AnyRef]
 
   /** Used by EMCAS */ // TODO: this is JVM-only
   def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean
+
+  // ID:
 
   def id0: Long
 

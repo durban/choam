@@ -27,12 +27,14 @@ import dev.tauri.choam.mcas.MemoryLocation;
 final class RefU1<A> extends RefIdOnly implements Ref<A>, MemoryLocation<A> {
 
   private static final VarHandle VALUE;
+  private static final VarHandle VERSION;
   private static final VarHandle MARKER;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       VALUE = l.findVarHandle(RefU1.class, "value", Object.class);
+      VERSION = l.findVarHandle(RefU1.class, "version", long.class);
       MARKER = l.findVarHandle(RefU1.class, "marker", WeakReference.class);
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
@@ -40,6 +42,8 @@ final class RefU1<A> extends RefIdOnly implements Ref<A>, MemoryLocation<A> {
   }
 
   private volatile A value;
+
+  private volatile long version = Long.MIN_VALUE;
 
   private volatile WeakReference<Object> marker; // = null
 
@@ -65,7 +69,7 @@ final class RefU1<A> extends RefIdOnly implements Ref<A>, MemoryLocation<A> {
 
   @Override
   public final A unsafeGetVolatile() {
-    return (A) VALUE.getVolatile(this);
+    return this.value;
   }
 
   @Override
@@ -75,7 +79,7 @@ final class RefU1<A> extends RefIdOnly implements Ref<A>, MemoryLocation<A> {
 
   @Override
   public final void unsafeSetVolatile(A a) {
-    VALUE.setVolatile(this, a);
+    this.value = a;
   }
 
   @Override
@@ -91,6 +95,16 @@ final class RefU1<A> extends RefIdOnly implements Ref<A>, MemoryLocation<A> {
   @Override
   public final A unsafeCmpxchgVolatile(A ov, A nv) {
     return (A) VALUE.compareAndExchange(this, ov, nv);
+  }
+
+  @Override
+  public final long unsafeGetVersionVolatile() {
+    return this.version;
+  }
+
+  @Override
+  public final boolean unsafeCasVersionVolatile(long ov, long nv) {
+    return VERSION.compareAndSet(this, ov, nv);
   }
 
   @Override

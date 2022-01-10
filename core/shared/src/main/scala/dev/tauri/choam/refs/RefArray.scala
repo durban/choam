@@ -28,11 +28,12 @@ import CompatPlatform.AtomicReferenceArray
 import RefArray.RefArrayRef
 
 /**
- * `items` continously stores 3 things
+ * `items` continously stores 4 things
  * for each index:
  * - a `RefArrayRef` (at i)
- * - the value itself (at i + 1)
- * - a weak marker (at i + 2)
+ * - the value/item itself (at i + 1)
+ * - the version (a Long; at i + 2)
+ * - a weak marker (at i + 3)
  */
 private abstract class RefArray[A](
   val size: Int,
@@ -63,19 +64,21 @@ private final class StrictRefArray[A](
 ) extends RefArray[A](size, i0, i1, i2, i3) {
 
   require(size > 0)
-  require(((size - 1) * 3 + 2) > (size - 1)) // avoid overflow
+  require(((size - 1) * 4 + 3) > (size - 1)) // avoid overflow
 
   protected final override val items: AtomicReferenceArray[AnyRef] = {
     // TODO: padding
-    val ara = new AtomicReferenceArray[AnyRef](3 * size)
+    val ara = new AtomicReferenceArray[AnyRef](4 * size)
     val value = this.initial.asInstanceOf[AnyRef]
     var i = 0
     while (i < size) {
-      val refIdx = 3 * i
+      val refIdx = 4 * i
       val itemIdx = refIdx + 1
-      // val markerIdx = refIdx + 2
+      val versionIdx = refIdx + 2
+      // val markerIdx = refIdx + 3
       ara.setPlain(refIdx, new RefArrayRef[A](this, itemIdx))
       ara.setPlain(itemIdx, value)
+      ara.setPlain(versionIdx, Long.MinValue.asInstanceOf[AnyRef])
       // we're storing `ara` into a final field,
       // so `setPlain` is enough here, these
       // writes will be visible to any reader
@@ -87,7 +90,7 @@ private final class StrictRefArray[A](
 
   final override def apply(idx: Int): Ref[A] = {
     require((idx >= 0) && (idx < size))
-    val refIdx = 3 * idx
+    val refIdx = 4 * idx
     // `RefArrayRef`s were initialized into
     // a final field (`items`), and they
     // never change, so we can read with plain:
@@ -105,15 +108,15 @@ private final class LazyRefArray[A](
 ) extends RefArray[A](size, i0, i1, i2, i3) {
 
   require(size > 0)
-  require(((size - 1) * 3 + 2) > (size - 1)) // avoid overflow
+  require(((size - 1) * 4 + 3) > (size - 1)) // avoid overflow
 
   protected final override val items: AtomicReferenceArray[AnyRef] = {
     // TODO: padding
-    val ara = new AtomicReferenceArray[AnyRef](3 * size)
+    val ara = new AtomicReferenceArray[AnyRef](4 * size)
     val value = this.initial.asInstanceOf[AnyRef]
     var i = 0
     while (i < size) {
-      ara.setPlain((3 * i) + 1, value)
+      ara.setPlain((4 * i) + 1, value)
       // we're storing `ara` into a final field,
       // so `setPlain` is enough here, these
       // writes will be visible to any reader
@@ -129,15 +132,21 @@ private final class LazyRefArray[A](
   }
 
   private[this] def getOrCreateRef(i: Int): Ref[A] = {
-    val refIdx = 3 * i
+    val refIdx = 4 * i
     val existing = this.items.getOpaque(refIdx)
     if (existing ne null) {
       // `RefArrayRef` has only final fields,
       // so its "safely initialized", so if
       // we've read something here with `getOpaque`,
-      // then we also can see its fields:
+      // then we also can see its fields; also, the
+      // version is initialized with a volatile-CAS
+      // before the `RefArrayRef`, so we also can see
+      // the version now:
       existing.asInstanceOf[Ref[A]]
     } else {
+      val versionIdx = refIdx + 2
+      this.items.compareAndSet(versionIdx, null, Long.MinValue.asInstanceOf[AnyRef])
+      // we ignore failure to initialize version, since it means someone else did it
       val itemIdx = refIdx + 1
       val nv = new RefArrayRef[A](this, itemIdx)
       this.items.compareAndExchange(refIdx, null, nv) match {
@@ -184,11 +193,26 @@ private object RefArray {
     final override def unsafeCmpxchgVolatile(ov: A, nv: A): A =
       array.items.compareAndExchange(physicalIdx, ov.asInstanceOf[AnyRef], nv.asInstanceOf[AnyRef]).asInstanceOf[A]
 
+    final override def unsafeGetVersionVolatile(): Long =
+      array.items.get(physicalIdx + 1).asInstanceOf[Long]
+
+    final override def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean = {
+      val idx = physicalIdx + 1
+      // unfortunately we have to be careful with object identity:
+      val current: AnyRef = array.items.get(idx)
+      val currentValue: Long = current.asInstanceOf[Long]
+      if (currentValue == ov) {
+        array.items.compareAndSet(idx, current, nv.asInstanceOf[AnyRef])
+      } else {
+        false
+      }
+    }
+
     final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
-      array.items.get(physicalIdx + 1).asInstanceOf[WeakReference[AnyRef]]
+      array.items.get(physicalIdx + 2).asInstanceOf[WeakReference[AnyRef]]
 
     final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
-      array.items.compareAndSet(physicalIdx + 1, ov, nv)
+      array.items.compareAndSet(physicalIdx + 2, ov, nv)
 
     final override def id0: Long =
       array.id0
@@ -207,7 +231,7 @@ private object RefArray {
     }
 
     private[this] final def logicalIdx: Int =
-      this.physicalIdx / 3
+      this.physicalIdx / 4 // truncated division is OK here
 
     private[choam] final override def dummy(v: Long): Long =
       v ^ id2

@@ -57,9 +57,15 @@ private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A
     witness
   }
 
+  final override def unsafeGetVersionVolatile(): Long =
+    impossible("SimpleMemoryLocation#unsafeGetVersionVolatile called on JS")
+
+  final override def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean =
+    impossible("SimpleMemoryLocation#unsafeCasVersionVolatile called on JS")
+
   final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
-    impossible("SimpleMemoryLocation.unsafeGetMarkerVolatile called on JS")
+    impossible("SimpleMemoryLocation#unsafeGetMarkerVolatile called on JS")
 
   final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
-    impossible("SimpleMemoryLocation.unsafeCasMarkerVolatile called on JS")
+    impossible("SimpleMemoryLocation#unsafeCasMarkerVolatile called on JS")
 }
