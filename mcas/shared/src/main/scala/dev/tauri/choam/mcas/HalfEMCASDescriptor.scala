@@ -20,8 +20,10 @@ package mcas
 
 import scala.collection.immutable.TreeMap
 
+// TODO: this really should have a better name
 final class HalfEMCASDescriptor private (
-  private[mcas] val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]]
+  private[mcas] val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
+  private[mcas] val validTs: Long,
 ) {
 
   private[mcas] final def nonEmpty: Boolean =
@@ -34,7 +36,7 @@ final class HalfEMCASDescriptor private (
       MCAS.impossibleOp(d.address, other, desc)
     } else {
       val newMap = this.map.updated(d.address, d)
-      new HalfEMCASDescriptor(newMap)
+      new HalfEMCASDescriptor(newMap, this.validTs)
     }
   }
 
@@ -44,12 +46,10 @@ final class HalfEMCASDescriptor private (
 
 object HalfEMCASDescriptor {
 
-  private[this] val _empty = {
-    new HalfEMCASDescriptor(TreeMap.empty(
-      MemoryLocation.orderingInstance[Any]
-    ))
+  def empty(ts: Long): HalfEMCASDescriptor = {
+    new HalfEMCASDescriptor(
+      TreeMap.empty(MemoryLocation.orderingInstance[Any]),
+      ts,
+    )
   }
-
-  def empty: HalfEMCASDescriptor =
-    _empty
 }

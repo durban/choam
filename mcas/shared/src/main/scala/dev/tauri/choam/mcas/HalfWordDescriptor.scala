@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package mcas
 
+// TODO: this really should have a better name
 private final class HalfWordDescriptor[A] private (
   val address: MemoryLocation[A],
   val ov: A,

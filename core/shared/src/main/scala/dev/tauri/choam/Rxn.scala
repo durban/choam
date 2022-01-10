@@ -591,6 +591,9 @@ object Rxn extends RxnInstances0 {
     private[this] var startRxn: Rxn[Any, Any] = rxn.asInstanceOf[Rxn[Any, Any]]
     private[this] var startA: Any = x
 
+    // TODO: as an optimization, only `start()` when
+    // TODO: we first need a descriptor (i.e., pure
+    // TODO: `Rxn`s will never create one)
     private[this] var desc: HalfEMCASDescriptor = ctx.start()
 
     private[this] val alts: ObjStack[Any] = newStack[Any]()

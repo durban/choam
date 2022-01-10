@@ -59,8 +59,9 @@ object MCAS extends MCASPlatform { self =>
     def read[A](ref: MemoryLocation[A]): A
 
     def start(): HalfEMCASDescriptor =
-      HalfEMCASDescriptor.empty
+      HalfEMCASDescriptor.empty(ts = this.readCommitTs())
 
+    // TODO: should be protected[mcas]
     def readCommitTs(): Long
 
     def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =  {
