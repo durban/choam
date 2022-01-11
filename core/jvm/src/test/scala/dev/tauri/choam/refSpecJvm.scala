@@ -18,7 +18,7 @@
 package dev.tauri.choam
 
 import cats.effect.IO
-import dev.tauri.choam.mcas.MemoryLocation
+import dev.tauri.choam.mcas.{ MemoryLocation, Version }
 
 final class RefSpecJvm_SpinLockMCAS_IO
   extends BaseSpecIO
@@ -64,8 +64,8 @@ trait RefSpecJvm[F[_]] extends RefSpec[F] { this: KCASImplSpec =>
     )
     refs.traverse { ref =>
       F.delay {
-        assertEquals(ref.unsafeGetVersionVolatile(), Long.MinValue)
-        assert(ref.unsafeCasVersionVolatile(Long.MinValue, 42L))
+        assertEquals(ref.unsafeGetVersionVolatile(), Version.Start)
+        assert(ref.unsafeCasVersionVolatile(Version.Start, 42L))
         assertEquals(ref.unsafeGetVersionVolatile(), 42L)
       }
     }

@@ -115,8 +115,8 @@ private final class EMCASThreadContext(
   final override def tryPerform(desc: HalfEMCASDescriptor): Boolean =
     impl.tryPerform(desc, this)
 
-  final override def read[A](loc: MemoryLocation[A]): A =
-    impl.read(loc, this)
+  final override def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A =
+    impl.readIfValid(ref, validTs, this)
 
   final override def readCommitTs(): Long =
     this.global.commitTs.unsafeGetVolatile()

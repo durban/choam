@@ -21,6 +21,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
+import dev.tauri.choam.mcas.Version;
 import dev.tauri.choam.Ref;
 
 abstract class RefP1P1Base<A, B>
@@ -44,7 +45,7 @@ abstract class RefP1P1Base<A, B>
 
   private volatile A valueA;
 
-  private volatile long versionA = Long.MIN_VALUE;
+  private volatile long versionA = Version.Start;
 
   private volatile WeakReference<Object> markerA; // = null
 
@@ -139,7 +140,7 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
 
   private volatile B valueB;
 
-  private volatile long versionB = Long.MIN_VALUE;
+  private volatile long versionB = Version.Start;
 
   private volatile WeakReference<Object> markerB; // = null
 

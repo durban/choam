@@ -52,11 +52,23 @@ abstract class MCAS {
 
 object MCAS extends MCASPlatform { self =>
 
+  final object INVALID {
+    def of[A]: A =
+      this.asInstanceOf[A]
+  }
+
+  final def isInvalid[A](a: A): Boolean =
+    equ(a, INVALID.of[A])
+
   trait ThreadContext {
 
     def tryPerform(desc: HalfEMCASDescriptor): Boolean
 
-    def read[A](ref: MemoryLocation[A]): A
+    final def read[A](ref: MemoryLocation[A]): A =
+      this.readIfValid(ref, Version.Invalid)
+
+    /** Returns `INVALID` if version is newer than `validTs` */
+    def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A
 
     def start(): HalfEMCASDescriptor =
       HalfEMCASDescriptor.empty(ts = this.readCommitTs())

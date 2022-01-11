@@ -21,6 +21,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
+import dev.tauri.choam.mcas.Version;
 import dev.tauri.choam.Ref;
 
 final class RefP2<A, B>
@@ -49,7 +50,7 @@ final class RefP2<A, B>
   }
 
   private volatile A valueA;
-  private volatile long versionA = Long.MIN_VALUE;
+  private volatile long versionA = Version.Start;
   private volatile WeakReference<Object> markerA; // = null
   private final Ref<A> refA = new Ref2Ref1<A, B>(this);
 
@@ -58,7 +59,7 @@ final class RefP2<A, B>
   private final long _id6;
   private final long _id7;
   private volatile B valueB;
-  private volatile long versionB = Long.MIN_VALUE;
+  private volatile long versionB = Version.Start;
   private volatile WeakReference<Object> markerB; // = null
   private final Ref<B> refB = new Ref2Ref2<A, B>(this);
 

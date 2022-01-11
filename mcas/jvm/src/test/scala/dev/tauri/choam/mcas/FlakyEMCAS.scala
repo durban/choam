@@ -37,8 +37,8 @@ object FlakyEMCAS extends MCAS { self =>
     private[choam] final override def random: ThreadLocalRandom =
       emcasCtx.random
 
-    final override def read[A](ref: MemoryLocation[A]): A =
-      emcasCtx.read(ref)
+    final override def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A =
+      emcasCtx.readIfValid(ref, validTs)
 
     final override def tryPerform(desc: HalfEMCASDescriptor): Boolean =
       self.tryPerform(desc, emcasCtx)

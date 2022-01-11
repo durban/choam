@@ -237,10 +237,14 @@ private object EMCAS extends MCAS { self =>
     }
   }
 
-  // Listing 3 in the paper:
-
   private[mcas] final def read[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): A =
+    this.readIfValid(ref, Version.Invalid, ctx)
+
+  // TODO: check `validTs`
+  private[mcas] final def readIfValid[A](ref: MemoryLocation[A], validTs: Long, ctx: EMCASThreadContext): A =
     readValue(ref, ctx, EMCAS.replacePeriodForReadValue)
+
+  // Listing 3 in the paper:
 
   /**
    * Performs an MCAS operation.
@@ -478,7 +482,7 @@ private object EMCAS extends MCAS { self =>
             // CAS in progress, retry
           } else {
             // CAS finalized, but no cleanup yet, read and retry
-            EMCAS.read(ref, ctx)
+            EMCAS.readIfValid(ref, validTs = Version.Invalid, ctx = ctx)
           }
         case a =>
           // descriptor have been cleaned up:

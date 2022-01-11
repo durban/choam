@@ -22,7 +22,7 @@ import java.lang.ref.WeakReference
 
 import cats.syntax.all._
 
-import mcas.MemoryLocation
+import mcas.{ MemoryLocation, Version }
 import CompatPlatform.AtomicReferenceArray
 
 import RefArray.RefArrayRef
@@ -78,7 +78,7 @@ private final class StrictRefArray[A](
       // val markerIdx = refIdx + 3
       ara.setPlain(refIdx, new RefArrayRef[A](this, itemIdx))
       ara.setPlain(itemIdx, value)
-      ara.setPlain(versionIdx, Long.MinValue.asInstanceOf[AnyRef])
+      ara.setPlain(versionIdx, Version.Start.asInstanceOf[AnyRef])
       // we're storing `ara` into a final field,
       // so `setPlain` is enough here, these
       // writes will be visible to any reader
@@ -145,7 +145,7 @@ private final class LazyRefArray[A](
       existing.asInstanceOf[Ref[A]]
     } else {
       val versionIdx = refIdx + 2
-      this.items.compareAndSet(versionIdx, null, Long.MinValue.asInstanceOf[AnyRef])
+      this.items.compareAndSet(versionIdx, null, Version.Start.asInstanceOf[AnyRef])
       // we ignore failure to initialize version, since it means someone else did it
       val itemIdx = refIdx + 1
       val nv = new RefArrayRef[A](this, itemIdx)

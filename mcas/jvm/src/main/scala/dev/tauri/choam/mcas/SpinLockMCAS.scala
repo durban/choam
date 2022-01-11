@@ -40,7 +40,7 @@ private object SpinLockMCAS extends MCAS { self =>
     true
 
   private[this] val commitTs: MemoryLocation[Long] =
-    MemoryLocation.unsafe(Long.MinValue)
+    MemoryLocation.unsafe(Version.Start)
 
   private[this] val dummyContext = new MCAS.ThreadContext {
 
@@ -64,8 +64,7 @@ private object SpinLockMCAS extends MCAS { self =>
     private[this] def isLocked[A](a: A): Boolean =
       equ(a, locked[A])
 
-    @tailrec
-    final override def read[A](ref: MemoryLocation[A]): A = {
+    private[this] final def _read[A](ref: MemoryLocation[A]): A = {
       val a = ref.unsafeGetVolatile()
       if (isLocked(a)) {
         Thread.onSpinWait()
@@ -73,6 +72,25 @@ private object SpinLockMCAS extends MCAS { self =>
       } else {
         a
       }
+    }
+
+    final override def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A = {
+      @tailrec
+      def go(lastVer: Long): A = {
+        val a = this._read(ref)
+        val ver2 = ref.unsafeGetVersionVolatile()
+        if (lastVer == ver2) {
+          if (lastVer > validTs) {
+            MCAS.INVALID.of[A]
+          } else {
+            a
+          }
+        } else {
+          go(ver2)
+        }
+      }
+
+      go(ref.unsafeGetVersionVolatile())
     }
 
     final override def readCommitTs(): Long =

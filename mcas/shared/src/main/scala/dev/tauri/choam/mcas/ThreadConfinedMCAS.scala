@@ -26,11 +26,11 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
     _ctx
 
   private[this] val _commitTs: MemoryLocation[Long] =
-    MemoryLocation.unsafe(Long.MinValue)
+    MemoryLocation.unsafe(Version.Start)
 
   private[this] val _ctx = new MCAS.ThreadContext {
 
-    final override def read[A](ref: MemoryLocation[A]): A =
+    final override def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A =
       ref.unsafeGetPlain()
 
     final override def tryPerform(desc: HalfEMCASDescriptor): Boolean = {

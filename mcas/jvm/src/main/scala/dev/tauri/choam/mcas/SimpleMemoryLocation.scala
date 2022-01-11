@@ -30,7 +30,7 @@ private[choam] abstract class SimpleMemoryLocation[A](initial: A)(
   with MemoryLocation[A] {
 
   private[this] val version: AtomicLong =
-    new AtomicLong(Long.MinValue)
+    new AtomicLong(Version.Start)
 
   private[this] val weakMarker: AtomicReference[WeakReference[AnyRef]] =
     new AtomicReference // (null)

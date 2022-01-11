@@ -23,6 +23,7 @@ import java.lang.ref.WeakReference;
 
 import dev.tauri.choam.Ref;
 import dev.tauri.choam.mcas.MemoryLocation;
+import dev.tauri.choam.mcas.Version;
 
 final class RefP1<A>
   extends RefIdAndPadding
@@ -45,7 +46,7 @@ final class RefP1<A>
 
   private volatile A value;
 
-  private volatile long version = Long.MIN_VALUE;
+  private volatile long version = Version.Start;
 
   private volatile WeakReference<Object> marker; // = null
 

@@ -27,7 +27,7 @@ private final class GlobalContext(impl: EMCAS.type) {
 
   // TODO: should be `private[emcas]`
   private[mcas] val commitTs: MemoryLocation[Long] =
-    MemoryLocation.unsafe(Long.MinValue)
+    MemoryLocation.unsafe(Version.Start)
 
   /**
    * `ThreadContext`s of all the (active) threads
