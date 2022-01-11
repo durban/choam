@@ -24,7 +24,7 @@ import org.openjdk.jol.info.{ ClassLayout, FieldLayout }
 
 import refs.Ref2
 
-object RefSpec {
+object JolSpec {
 
   final val targetSize = 128L
 
@@ -53,13 +53,13 @@ object RefSpec {
 }
 
 @deprecated("so that we can test deprecated methods", since = "we need it")
-class RefSpec extends BaseSpecA {
+class JolSpec extends BaseSpecA {
 
-  import RefSpec.targetSize
+  import JolSpec.targetSize
 
   def getLeftRightPaddedSize(
     obj: AnyRef,
-    fieldNames: Set[String] = RefSpec.fieldNames,
+    fieldNames: Set[String] = JolSpec.fieldNames,
   ): (Long, Long) = {
     val layout = ClassLayout.parseInstance(obj)
     println(layout.toPrintable(obj))
@@ -101,8 +101,8 @@ class RefSpec extends BaseSpecA {
   test("Ref2 P1P1 should be double-padded") {
     assumeOpenJdk()
     val ref: Ref2[_, _] = Ref2.unsafeP1P1[String, Object]("bar", new AnyRef)
-    val (left1, _) = getLeftRightPaddedSize(ref, RefSpec.fieldNamesA)
-    val (left2, _) = getLeftRightPaddedSize(ref, RefSpec.fieldNamesB)
+    val (left1, _) = getLeftRightPaddedSize(ref, JolSpec.fieldNamesA)
+    val (left2, _) = getLeftRightPaddedSize(ref, JolSpec.fieldNamesB)
     assert(clue(left2) >= (clue(left1) + 256))
   }
 }
