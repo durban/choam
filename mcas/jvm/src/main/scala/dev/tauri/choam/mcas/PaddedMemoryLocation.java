@@ -15,19 +15,15 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.refs;
+package dev.tauri.choam.mcas;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
-import dev.tauri.choam.Ref;
-import dev.tauri.choam.mcas.MemoryLocation;
-import dev.tauri.choam.mcas.Version;
-
-final class RefP1<A>
-  extends RefIdAndPadding
-  implements Ref<A>, MemoryLocation<A> {
+final class PaddedMemoryLocation<A>
+  extends PaddedMemoryLocationPadding
+  implements MemoryLocation<A> {
 
   private static final VarHandle VALUE;
   private static final VarHandle VERSION;
@@ -36,13 +32,18 @@ final class RefP1<A>
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE = l.findVarHandle(RefP1.class, "value", Object.class);
-      VERSION = l.findVarHandle(RefP1.class, "version", long.class);
-      MARKER = l.findVarHandle(RefP1.class, "marker", WeakReference.class);
+      VALUE = l.findVarHandle(PaddedMemoryLocation.class, "value", Object.class);
+      VERSION = l.findVarHandle(PaddedMemoryLocation.class, "version", long.class);
+      MARKER = l.findVarHandle(PaddedMemoryLocation.class, "marker", WeakReference.class);
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }
   }
+
+  private final long _id0;
+  private final long _id1;
+  private final long _id2;
+  private final long _id3;
 
   private volatile A value;
 
@@ -50,24 +51,32 @@ final class RefP1<A>
 
   private volatile WeakReference<Object> marker; // = null
 
-  public RefP1(A a, long i0, long i1, long i2, long i3) {
-    super(i0, i1, i2, i3);
+  PaddedMemoryLocation(A a, long i0, long i1, long i2, long i3) {
     this.value = a;
-  }
-
-  /** Only for benchmarks */
-  public RefP1(A a, long i0, long i1, long i2, long i3, String release) {
-    super(i0, i1, i2, i3);
-    VALUE.setRelease(this, a);
-  }
-
-  public RefP1(long i0, long i1, long i2, long i3) {
-    super(i0, i1, i2, i3);
+    this._id0 = i0;
+    this._id1 = i1;
+    this._id2 = i2;
+    this._id3 = i3;
   }
 
   @Override
-  protected final String refToString() {
-    return package$.MODULE$.refStringFrom4Ids(this.id0(), this.id1(), this.id2(), this.id3());
+  public final long id0() {
+    return this._id0;
+  }
+
+  @Override
+  public final long id1() {
+    return this._id1;
+  }
+
+  @Override
+  public final long id2() {
+    return this._id2;
+  }
+
+  @Override
+  public final long id3() {
+    return this._id3;
   }
 
   @Override
@@ -120,8 +129,7 @@ final class RefP1<A>
     return MARKER.compareAndSet(this, ov, nv);
   }
 
-  @Override
-  public final long dummy(long v) {
-    return this.dummyImpl(v);
+  public final long dummy() {
+    return this.dummyImpl(42L);
   }
 }

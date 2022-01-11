@@ -40,7 +40,7 @@ private object SpinLockMCAS extends MCAS { self =>
     true
 
   private[this] val commitTs: MemoryLocation[Long] =
-    MemoryLocation.unsafe(Version.Start)
+    MemoryLocation.unsafePadded(Version.Start)
 
   private[this] val dummyContext = new MCAS.ThreadContext {
 

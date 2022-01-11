@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package mcas
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 import org.openjdk.jol.info.{ ClassLayout, FieldLayout }
 
@@ -52,7 +52,6 @@ object JolSpec {
   ).union(id47)
 }
 
-@deprecated("so that we can test deprecated methods", since = "we need it")
 class JolSpec extends BaseSpecA {
 
   import JolSpec.targetSize
@@ -62,7 +61,7 @@ class JolSpec extends BaseSpecA {
     fieldNames: Set[String] = JolSpec.fieldNames,
   ): (Long, Long) = {
     val layout = ClassLayout.parseInstance(obj)
-    println(layout.toPrintable(obj))
+    // println(layout.toPrintable(obj))
     val (firstField, lastField) = getFirstAndLastField(layout, fieldNames)
     val start = firstField.offset
     val leftPadded = start
@@ -87,15 +86,25 @@ class JolSpec extends BaseSpecA {
 
   test("Ref should be padded to avoid false sharing") {
     assumeOpenJdk()
-    val ref = Ref.unsafe("foo")
-    val (left, right) = getLeftRightPaddedSize(ref)
-    assert((clue(left) >= targetSize) || (clue(right) >= targetSize))
+    val refs = List[MemoryLocation[String]](
+      Ref.unsafe("foo").loc,
+      MemoryLocation.unsafePadded("foo"),
+    )
+    for (ref <- refs) {
+      val (left, right) = getLeftRightPaddedSize(ref)
+      assert((clue(left) >= targetSize) || (clue(right) >= targetSize))
+    }
   }
 
   test("Unpadded Ref should not be padded") {
     assumeOpenJdk()
-    val ref = Ref.unsafeUnpadded("bar")
-    assert(clue(ClassLayout.parseInstance(ref).instanceSize()) < targetSize)
+    val refs = List[MemoryLocation[String]](
+      Ref.unsafeUnpadded("bar").loc,
+      MemoryLocation.unsafeUnpadded("bar"),
+    )
+    for (ref <- refs) {
+      assert(clue(ClassLayout.parseInstance(ref).instanceSize()) < targetSize)
+    }
   }
 
   test("Ref2 P1P1 should be double-padded") {

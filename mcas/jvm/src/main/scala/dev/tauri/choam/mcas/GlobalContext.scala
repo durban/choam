@@ -26,9 +26,8 @@ import scala.jdk.javaapi.CollectionConverters
 private final class GlobalContext(impl: EMCAS.type) {
 
   // TODO: should be `private[emcas]`
-  // TODO: should be padded!!!
   private[mcas] val commitTs: MemoryLocation[Long] =
-    MemoryLocation.unsafe(Version.Start)
+    MemoryLocation.unsafePadded(Version.Start)
 
   /**
    * `ThreadContext`s of all the (active) threads

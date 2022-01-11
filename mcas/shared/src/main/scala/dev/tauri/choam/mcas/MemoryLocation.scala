@@ -95,13 +95,28 @@ trait MemoryLocation[A] {
 
 object MemoryLocation extends MemoryLocationInstances0 {
 
-  def unsafe[A](initial: A): MemoryLocation[A] = {
+  def unsafe[A](initial: A): MemoryLocation[A] =
+    unsafeUnpadded[A](initial)
+
+  def unsafeUnpadded[A](initial: A): MemoryLocation[A] = {
     val tlr = ThreadLocalRandom.current()
-    unsafeWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+    unsafeUnpaddedWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
-  private[choam] def unsafeWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
+  def unsafePadded[A](initial: A): MemoryLocation[A] = {
+    val tlr = ThreadLocalRandom.current()
+    unsafePaddedWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+  }
+
+  private[choam] def unsafeWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] =
+    unsafeUnpaddedWithId(initial)(i0, i1, i2, i3)
+
+  private[choam] def unsafeUnpaddedWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
     new SimpleMemoryLocation[A](initial)(i0, i1, i2, i3) {}
+  }
+
+  private[choam] def unsafePaddedWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
+    new PaddedMemoryLocation[A](initial, i0, i1, i2, i3)
   }
 
   def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
