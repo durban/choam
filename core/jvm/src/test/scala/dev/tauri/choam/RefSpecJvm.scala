@@ -52,6 +52,8 @@ trait RefSpecJvm[F[_]] extends RefSpec[F] { this: KCASImplSpec =>
     val p2 = Ref.refP2("a", "a").unsafeRun(this.kcasImpl)
     val arr = Ref.array(size = 3, initial = "a").unsafeRun(this.kcasImpl)
     val refs = List[MemoryLocation[String]](
+      MemoryLocation.unsafePadded("a"),
+      MemoryLocation.unsafeUnpadded("a"),
       Ref.unsafePadded("a").loc,
       Ref.unsafeUnpadded("a").loc,
       p1p1._1.loc,
