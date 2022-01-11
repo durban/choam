@@ -62,29 +62,35 @@ object MCAS extends MCASPlatform { self =>
 
   trait ThreadContext {
 
-    def tryPerform(desc: HalfEMCASDescriptor): Boolean
-
-    final def read[A](ref: MemoryLocation[A]): A =
-      this.readIfValid(ref, Version.Invalid)
-
-    /** Returns `INVALID` if version is newer than `validTs` */
-    def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A
-
-    def start(): HalfEMCASDescriptor =
-      HalfEMCASDescriptor.empty(ts = this.readCommitTs())
+    // abstract:
 
     // TODO: should be protected[mcas]
     def readCommitTs(): Long
 
-    def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =  {
+    /** Returns `INVALID` if version is newer than `validTs` */
+    def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A
+
+    def tryPerform(desc: HalfEMCASDescriptor): Boolean
+
+    private[choam] def random: ThreadLocalRandom
+
+    // concrete:
+
+    final def read[A](ref: MemoryLocation[A]): A =
+      this.readIfValid(ref, Version.Invalid)
+
+    final def start(): HalfEMCASDescriptor =
+      HalfEMCASDescriptor.empty(ts = this.readCommitTs())
+
+    final def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =  {
       val wd = HalfWordDescriptor(ref, ov, nv)
       desc.add(wd)
     }
 
-    def snapshot(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+    final def snapshot(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       desc
 
-    def addAll(to: HalfEMCASDescriptor, from: HalfEMCASDescriptor): HalfEMCASDescriptor = {
+    final def addAll(to: HalfEMCASDescriptor, from: HalfEMCASDescriptor): HalfEMCASDescriptor = {
       val it = from.map.valuesIterator
       var res = to
       while (it.hasNext) {
@@ -98,7 +104,7 @@ object MCAS extends MCASPlatform { self =>
       this.tryPerform(desc)
     }
 
-    private[choam] def random: ThreadLocalRandom
+    // statistics/testing/benchmarking:
 
     /** Only for testing/benchmarking */
     private[choam] def recordCommit(@unused retries: Int): Unit = {
