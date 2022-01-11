@@ -64,11 +64,12 @@ private object SpinLockMCAS extends MCAS { self =>
     private[this] def isLocked[A](a: A): Boolean =
       equ(a, locked[A])
 
+    @tailrec
     private[this] final def _read[A](ref: MemoryLocation[A]): A = {
       val a = ref.unsafeGetVolatile()
       if (isLocked(a)) {
         Thread.onSpinWait()
-        read(ref) // retry
+        _read(ref) // retry
       } else {
         a
       }
