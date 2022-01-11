@@ -19,6 +19,7 @@ package dev.tauri.choam
 package mcas
 
 object Version {
-  final val Invalid = Long.MinValue
-  final val Start = Long.MinValue + 1L
+  // Note: these constants are duplicated for JVM
+  final val Invalid = Long.MaxValue
+  final val Start = Long.MinValue
 }

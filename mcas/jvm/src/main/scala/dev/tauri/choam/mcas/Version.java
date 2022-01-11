@@ -19,8 +19,9 @@ package dev.tauri.choam.mcas;
 
 public final class Version {
 
-  public static final long Invalid = Long.MIN_VALUE;
-  public static final long Start = Long.MIN_VALUE + 1L;
+  // Note: these constants are duplicated for JS
+  public static final long Invalid = Long.MAX_VALUE;
+  public static final long Start = Long.MIN_VALUE;
 
   private Version() {
     throw new UnsupportedOperationException();
