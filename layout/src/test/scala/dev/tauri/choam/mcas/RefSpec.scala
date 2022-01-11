@@ -20,57 +20,89 @@ package mcas
 
 import scala.collection.JavaConverters._
 
-import cats.syntax.all._
-
-import org.openjdk.jol.info.ClassLayout
+import org.openjdk.jol.info.{ ClassLayout, FieldLayout }
 
 import refs.Ref2
 
 object RefSpec {
-  final val fieldName = "value"
-  final val targetSize = 160L
+
+  final val targetSize = 128L
+
+  private[this] final val id03 = Set("_id0", "_id1", "_id2", "_id3")
+  private[this] final val id47 = Set("_id4", "_id5", "_id6", "_id7")
+
+  final val fieldNames: Set[String] = Set(
+    "version",
+    "value",
+    "marker",
+  ).union(id03)
+
+  final val fieldNamesA: Set[String] = Set(
+    "versionA",
+    "valueA",
+    "markerA",
+    "refA",
+  ).union(id03)
+
+  final val fieldNamesB: Set[String] = Set(
+    "versionB",
+    "valueB",
+    "markerB",
+    "refB",
+  ).union(id47)
 }
 
 @deprecated("so that we can test deprecated methods", since = "we need it")
 class RefSpec extends BaseSpecA {
 
-  import RefSpec._
+  import RefSpec.targetSize
 
-  def getLeftRightPaddedSize(obj: AnyRef, fieldName: String): (Long, Long) = {
+  def getLeftRightPaddedSize(
+    obj: AnyRef,
+    fieldNames: Set[String] = RefSpec.fieldNames,
+  ): (Long, Long) = {
     val layout = ClassLayout.parseInstance(obj)
-    val fields = layout.fields.iterator.asScala.toList
-    val valField = fields.filter(_.name === fieldName) match {
-      case Nil => fail(s"no '${fieldName}' field found in ${obj} (of class ${obj.getClass})")
-      case h :: Nil => h
-      case more => fail(s"more than one '${fieldName}' field found: ${more}")
-    }
-
-    val start = valField.offset
+    println(layout.toPrintable(obj))
+    val (firstField, lastField) = getFirstAndLastField(layout, fieldNames)
+    val start = firstField.offset
     val leftPadded = start
     val end = layout.instanceSize
-    val rightPadded = end - start
+    val rightPadded = end - (lastField.offset + lastField.size)
     (leftPadded, rightPadded)
+  }
+
+  private[this] def getFirstAndLastField(
+    layout: ClassLayout,
+    fieldNames: Set[String],
+  ): (FieldLayout, FieldLayout) = {
+    val fields = layout.fields.iterator.asScala.toList
+    val ff = fields.find(f => fieldNames.contains(f.name)).getOrElse {
+      fail("no matching field found")
+    }
+    val lf = fields.findLast(f => fieldNames.contains(f.name)).getOrElse {
+      fail("no matching field found")
+    }
+    (ff, lf)
   }
 
   test("Ref should be padded to avoid false sharing") {
     assumeOpenJdk()
     val ref = Ref.unsafe("foo")
-    val (left, right) = getLeftRightPaddedSize(ref, fieldName)
+    val (left, right) = getLeftRightPaddedSize(ref)
     assert((clue(left) >= targetSize) || (clue(right) >= targetSize))
   }
 
-  test("Unpadded Ref should not be padded (sanity check)") {
+  test("Unpadded Ref should not be padded") {
     assumeOpenJdk()
     val ref = Ref.unsafeUnpadded("bar")
-    val (left, right) = getLeftRightPaddedSize(ref, fieldName)
-    assert((clue(left) <= 48L) && (clue(right) <= 48L))
+    assert(clue(ClassLayout.parseInstance(ref).instanceSize()) < targetSize)
   }
 
   test("Ref2 P1P1 should be double-padded") {
     assumeOpenJdk()
     val ref: Ref2[_, _] = Ref2.unsafeP1P1[String, Object]("bar", new AnyRef)
-    val (left1, _) = getLeftRightPaddedSize(ref, "valueA")
-    val (left2, _) = getLeftRightPaddedSize(ref, "valueB")
+    val (left1, _) = getLeftRightPaddedSize(ref, RefSpec.fieldNamesA)
+    val (left2, _) = getLeftRightPaddedSize(ref, RefSpec.fieldNamesB)
     assert(clue(left2) >= (clue(left1) + 256))
   }
 }
