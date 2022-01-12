@@ -20,6 +20,7 @@ package mcas
 
 private final class EMCASDescriptor private (
   half: HalfEMCASDescriptor,
+  final val newVersion: Long,
 ) extends EMCASDescriptorBase { self =>
 
   // effectively immutable array:
@@ -52,7 +53,7 @@ private final class EMCASDescriptor private (
 private object EMCASDescriptor {
 
   def prepare(half: HalfEMCASDescriptor): EMCASDescriptor = {
-    new EMCASDescriptor(half)
+    new EMCASDescriptor(half, newVersion = half.validTs + Version.Incr)
   }
 
   private final class Iterator(words: Array[WordDescriptor[_]])

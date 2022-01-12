@@ -235,6 +235,7 @@ private object EMCAS extends MCAS { self =>
       ref.unsafeCasMarkerVolatile(weakref, null)
       ()
     }
+    // TODO: we must also store the version!
   }
 
   private[mcas] final def read[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): A =
@@ -244,8 +245,28 @@ private object EMCAS extends MCAS { self =>
   private[mcas] final def readIfValid[A](ref: MemoryLocation[A], validTs: Long, ctx: EMCASThreadContext): A =
     readValue(ref, ctx, EMCAS.replacePeriodForReadValue)
 
-  private[mcas] final def readVersion[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): Long =
-    0L // TODO: implement this
+  @tailrec
+  private[mcas] final def readVersion[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): Long = {
+    ref.unsafeGetVolatile() match {
+      case wd: WordDescriptor[_] =>
+        val p = wd.parent
+        val s = p.getStatus()
+        if (s eq EMCASStatus.ACTIVE) {
+          // help and retry:
+          MCAS(p, ctx = ctx)
+          readVersion(ref, ctx)
+        } else if (s eq EMCASStatus.SUCCESSFUL) {
+          wd.newVersion
+        } else { // FAILED
+          wd.oldVersion
+        }
+      case a =>
+        val ver = ref.unsafeGetVersionVolatile()
+        // TODO: do we need to re-read? (probably yes)
+        if (equ(ref.unsafeGetVolatile(), a)) ver
+        else readVersion(ref, ctx) // retry
+    }
+  }
 
   // Listing 3 in the paper:
 

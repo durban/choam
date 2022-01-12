@@ -22,6 +22,7 @@ public final class Version {
   // Note: these constants are duplicated for JS
   public static final long Invalid = Long.MAX_VALUE;
   public static final long Start = Long.MIN_VALUE;
+  public static final long Incr = 1L;
 
   private Version() {
     throw new UnsupportedOperationException();

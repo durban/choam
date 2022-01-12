@@ -31,6 +31,8 @@ import mcas.MemoryLocation
 
 class EMCASSpec extends BaseSpecA {
 
+  // TODO: test that after cleanup, the version is correct
+
   test("EMCAS should allow null as ov or nv") {
     val r1 = MemoryLocation.unsafe[String](null)
     val r2 = MemoryLocation.unsafe[String]("x")

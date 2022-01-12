@@ -50,7 +50,7 @@ private object SpinLockMCAS extends MCAS { self =>
 
     final override def tryPerform(desc: HalfEMCASDescriptor): Boolean = {
       val ops = desc.map.valuesIterator.toList
-      perform(ops)
+      perform(ops, newVersion = desc.validTs + Version.Incr)
     }
 
     private[this] final object Locked {
@@ -112,7 +112,7 @@ private object SpinLockMCAS extends MCAS { self =>
     final override def readCommitTs(): Long =
       commitTs.unsafeGetVolatile()
 
-    private def perform(ops: List[HalfWordDescriptor[_]]): Boolean = {
+    private def perform(ops: List[HalfWordDescriptor[_]], newVersion: Long): Boolean = {
 
       @tailrec
       def lock(ops: List[HalfWordDescriptor[_]]): List[HalfWordDescriptor[_]] = ops match {
@@ -124,11 +124,15 @@ private object SpinLockMCAS extends MCAS { self =>
       }
 
       @tailrec
-      def commit(ops: List[HalfWordDescriptor[_]]): Unit = ops match {
+      def commit(ops: List[HalfWordDescriptor[_]], newVersion: Long): Unit = ops match {
         case Nil => ()
         case h :: tail => h match { case head: HalfWordDescriptor[a] =>
+          assert(head.address.unsafeCasVersionVolatile(
+            head.address.unsafeGetVersionVolatile(),
+            newVersion,
+          ))
           head.address.unsafeSetVolatile(head.nv)
-          commit(tail)
+          commit(tail, newVersion)
         }
       }
 
@@ -155,7 +159,7 @@ private object SpinLockMCAS extends MCAS { self =>
         case l @ (_ :: _) =>
           lock(l) match {
             case Nil =>
-              commit(l)
+              commit(l, newVersion)
               true
             case to @ (_ :: _) =>
               rollback(l, to)

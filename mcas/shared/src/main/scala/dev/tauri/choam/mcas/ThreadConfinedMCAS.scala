@@ -54,20 +54,24 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
       }
 
       @tailrec
-      def execute(it: Iterator[HalfWordDescriptor[_]]): Unit = {
+      def execute(it: Iterator[HalfWordDescriptor[_]], newVersion: Long): Unit = {
         if (it.hasNext) {
           it.next() match {
             case wd: HalfWordDescriptor[a] =>
               val old = wd.address.unsafeGetPlain()
               assert(equ(old, wd.ov))
               wd.address.unsafeSetPlain(wd.nv)
-              execute(it)
+              assert(wd.address.unsafeCasVersionVolatile(
+                wd.address.unsafeGetVersionVolatile(),
+                newVersion,
+              ))
+              execute(it, newVersion)
           }
         }
       }
 
       if (prepare(desc.map.valuesIterator)) {
-        execute(desc.map.valuesIterator)
+        execute(desc.map.valuesIterator, desc.validTs + Version.Incr)
         true
       } else {
         false

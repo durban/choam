@@ -22,4 +22,5 @@ object Version {
   // Note: these constants are duplicated for JVM
   final val Invalid = Long.MaxValue
   final val Start = Long.MinValue
+  final val Incr = 1L
 }

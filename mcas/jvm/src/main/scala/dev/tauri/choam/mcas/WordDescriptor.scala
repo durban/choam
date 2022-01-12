@@ -19,18 +19,24 @@ package dev.tauri.choam
 package mcas
 
 private final class WordDescriptor[A] private (
-  val half: HalfWordDescriptor[A],
-  val parent: EMCASDescriptor,
+  final val half: HalfWordDescriptor[A],
+  final val parent: EMCASDescriptor,
 ) {
 
-  def address: MemoryLocation[A] =
+  final def address: MemoryLocation[A] =
     this.half.address
 
-  def ov: A =
+  final def ov: A =
     this.half.ov
 
-  def nv: A =
+  final def nv: A =
     this.half.nv
+
+  final def oldVersion: Long =
+    this.half.version
+
+  final def newVersion: Long =
+    this.parent.newVersion
 
   final def cast[B]: WordDescriptor[B] =
     this.asInstanceOf[WordDescriptor[B]]
