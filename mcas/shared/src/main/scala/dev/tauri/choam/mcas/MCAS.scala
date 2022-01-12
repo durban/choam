@@ -70,21 +70,51 @@ object MCAS extends MCASPlatform { self =>
     /** Returns `INVALID` if version is newer than `validTs` */
     def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A
 
+    def readVersion[A](ref: MemoryLocation[A]): Long
+
     def tryPerform(desc: HalfEMCASDescriptor): Boolean
 
     private[choam] def random: ThreadLocalRandom
 
     // concrete:
 
-    final def read[A](ref: MemoryLocation[A]): A =
-      this.readIfValid(ref, Version.Invalid)
-
     final def start(): HalfEMCASDescriptor =
       HalfEMCASDescriptor.empty(ts = this.readCommitTs())
 
-    final def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =  {
-      val wd = HalfWordDescriptor(ref, ov, nv)
+    final def read[A](ref: MemoryLocation[A]): A =
+      this.readIfValid(ref, Version.Invalid)
+
+    final def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
+      this.addCasWithVersion(desc, ref, ov = ov, nv = nv, version = Version.Invalid)
+
+    final def addCasWithVersion[A](
+      desc: HalfEMCASDescriptor,
+      ref: MemoryLocation[A],
+      ov: A,
+      nv: A,
+      version: Long
+    ): HalfEMCASDescriptor = {
+      val wd = HalfWordDescriptor(ref, ov, nv, version)
       desc.add(wd)
+    }
+
+    final def validate(desc: HalfEMCASDescriptor): Boolean = {
+      @tailrec
+      def go(it: Iterator[HalfWordDescriptor[_]]): Boolean = {
+        if (it.hasNext) {
+          val wd = it.next()
+          val currVer: Long = this.readVersion(wd.address)
+          if (currVer == wd.version) {
+            go(it)
+          } else {
+            false
+          }
+        } else {
+          true
+        }
+      }
+
+      go(desc.map.valuesIterator)
     }
 
     final def snapshot(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =

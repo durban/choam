@@ -65,11 +65,11 @@ private object SpinLockMCAS extends MCAS { self =>
       equ(a, locked[A])
 
     @tailrec
-    private[this] final def _read[A](ref: MemoryLocation[A]): A = {
+    private[this] final def readOne[A](ref: MemoryLocation[A]): A = {
       val a = ref.unsafeGetVolatile()
       if (isLocked(a)) {
         Thread.onSpinWait()
-        _read(ref) // retry
+        readOne(ref) // retry
       } else {
         a
       }
@@ -77,15 +77,30 @@ private object SpinLockMCAS extends MCAS { self =>
 
     final override def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A = {
       @tailrec
-      def go(lastVer: Long): A = {
-        val a = this._read(ref)
+      def go(ver1: Long): A = {
+        val a = readOne(ref)
         val ver2 = ref.unsafeGetVersionVolatile()
-        if (lastVer == ver2) {
-          if (lastVer > validTs) {
+        if (ver1 == ver2) {
+          if (ver1 > validTs) {
             MCAS.INVALID.of[A]
           } else {
             a
           }
+        } else {
+          go(ver2)
+        }
+      }
+
+      go(ref.unsafeGetVersionVolatile())
+    }
+
+    final override def readVersion[A](ref: MemoryLocation[A]): Long = {
+      @tailrec
+      def go(ver1: Long): Long = {
+        val _ = readOne(ref)
+        val ver2 = ref.unsafeGetVersionVolatile()
+        if (ver1 == ver2) {
+          ver1
         } else {
           go(ver2)
         }

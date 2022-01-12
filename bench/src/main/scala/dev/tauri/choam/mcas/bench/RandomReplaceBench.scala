@@ -60,7 +60,7 @@ object RandomReplaceBench {
 
     def reset(): Unit = {
       val h = HalfEMCASDescriptor.empty(ts = 0L).add(
-        HalfWordDescriptor[A](ref, a, a)
+        HalfWordDescriptor[A](ref, a, a, Version.Invalid)
       )
       val p = EMCASDescriptor.prepare(h)
       val wd = p.wordIterator().next()

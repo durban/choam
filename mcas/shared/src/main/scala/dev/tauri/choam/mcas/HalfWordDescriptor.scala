@@ -23,10 +23,14 @@ private final class HalfWordDescriptor[A] private (
   val address: MemoryLocation[A],
   val ov: A,
   val nv: A,
+  val version: Long,
 ) {
 
   private[mcas] final def cast[B]: HalfWordDescriptor[B] =
     this.asInstanceOf[HalfWordDescriptor[B]]
+
+  final def withNv(a: A): HalfWordDescriptor[A] =
+    new HalfWordDescriptor[A](address = this.address, ov = this.ov, nv = a, version = this.version)
 
   final override def toString: String =
     s"HalfWordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
@@ -34,6 +38,12 @@ private final class HalfWordDescriptor[A] private (
 
 private object HalfWordDescriptor {
 
-  private[mcas] def apply[A](address: MemoryLocation[A], ov: A, nv: A): HalfWordDescriptor[A] =
-    new HalfWordDescriptor[A](address = address, ov = ov, nv = nv)
+  private[mcas] def apply[A](
+    address: MemoryLocation[A],
+    ov: A,
+    nv: A,
+    version: Long,
+  ): HalfWordDescriptor[A] = {
+    new HalfWordDescriptor[A](address = address, ov = ov, nv = nv, version = version)
+  }
 }

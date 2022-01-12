@@ -244,6 +244,9 @@ private object EMCAS extends MCAS { self =>
   private[mcas] final def readIfValid[A](ref: MemoryLocation[A], validTs: Long, ctx: EMCASThreadContext): A =
     readValue(ref, ctx, EMCAS.replacePeriodForReadValue)
 
+  private[mcas] final def readVersion[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): Long =
+    0L // TODO: implement this
+
   // Listing 3 in the paper:
 
   /**
