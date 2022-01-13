@@ -67,8 +67,12 @@ object MCAS extends MCASPlatform { self =>
     // TODO: should be protected[mcas]
     def readCommitTs(): Long
 
+    // TODO: do we need this? (for read-only Rxn's?)
     /** Returns `INVALID` if version is newer than `validTs` */
     def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A
+
+    def readIntoHwd[A](ref: MemoryLocation[A], validTs: Long): HalfWordDescriptor[A] =
+      null // TODO: this should be abstract
 
     def readVersion[A](ref: MemoryLocation[A]): Long
 

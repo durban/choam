@@ -94,6 +94,25 @@ private object SpinLockMCAS extends MCAS { self =>
       go(ref.unsafeGetVersionVolatile())
     }
 
+    final override def readIntoHwd[A](ref: MemoryLocation[A], validTs: Long): HalfWordDescriptor[A] = {
+      @tailrec
+      def go(ver1: Long): HalfWordDescriptor[A] = {
+        val a = readOne(ref)
+        val ver2 = ref.unsafeGetVersionVolatile()
+        if (ver1 == ver2) {
+          if (ver1 > validTs) {
+            null // invalid
+          } else {
+            HalfWordDescriptor[A](ref, ov = a, nv = a, version = ver1)
+          }
+        } else {
+          go(ver2)
+        }
+      }
+
+      go(ref.unsafeGetVersionVolatile())
+    }
+
     final override def readVersion[A](ref: MemoryLocation[A]): Long = {
       @tailrec
       def go(ver1: Long): Long = {
