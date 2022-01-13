@@ -28,6 +28,9 @@ private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A
   override val id3: Long,
 ) extends MemoryLocation[A] {
 
+  private[this] var version: Long =
+    Version.Start
+
   final override def unsafeGetVolatile(): A =
     this.value
 
@@ -58,10 +61,16 @@ private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A
   }
 
   final override def unsafeGetVersionVolatile(): Long =
-    impossible("SimpleMemoryLocation#unsafeGetVersionVolatile called on JS")
+    this.version
 
-  final override def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean =
-    impossible("SimpleMemoryLocation#unsafeCasVersionVolatile called on JS")
+  final override def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean = {
+    if (this.version == ov) {
+      this.version = nv
+      true
+    } else {
+      false
+    }
+  }
 
   final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
     impossible("SimpleMemoryLocation#unsafeGetMarkerVolatile called on JS")
