@@ -81,6 +81,9 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
     final override def readCommitTs(): Long =
       _commitTs.unsafeGetPlain()
 
+    protected[mcas] def setCommitTs(v: Long): Unit =
+      _commitTs.unsafeSetPlain(v)
+
     // NB: it is a `def`, not a `val`
     final override private[choam] def random: ThreadLocalRandom =
       ThreadLocalRandom.current()

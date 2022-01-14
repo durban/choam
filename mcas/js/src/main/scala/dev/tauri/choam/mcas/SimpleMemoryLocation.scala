@@ -72,6 +72,8 @@ private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A
     }
   }
 
+  // These are used only by EMCAS, which is JVM-only:
+
   final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
     impossible("SimpleMemoryLocation#unsafeGetMarkerVolatile called on JS")
 

@@ -48,6 +48,9 @@ object FlakyEMCAS extends MCAS { self =>
 
     final override def readCommitTs(): Long =
       emcasCtx.readCommitTs()
+
+    protected[mcas] final override def setCommitTs(v: Long): Unit =
+      emcasCtx.setCommitTs(v)
   }
 
   private[choam] final override def isThreadSafe =

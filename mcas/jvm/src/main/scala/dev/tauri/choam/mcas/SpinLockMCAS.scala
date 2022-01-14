@@ -131,6 +131,9 @@ private object SpinLockMCAS extends MCAS { self =>
     final override def readCommitTs(): Long =
       commitTs.unsafeGetVolatile()
 
+    protected[mcas] def setCommitTs(v: Long): Unit =
+      commitTs.unsafeSetVolatile(v)
+
     private def perform(ops: List[HalfWordDescriptor[_]], newVersion: Long): Boolean = {
 
       @tailrec

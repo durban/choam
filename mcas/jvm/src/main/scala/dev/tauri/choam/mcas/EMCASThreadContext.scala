@@ -124,6 +124,9 @@ private final class EMCASThreadContext(
   final override def readCommitTs(): Long =
     this.global.commitTs.unsafeGetVolatile()
 
+  protected[mcas] def setCommitTs(v: Long): Unit =
+      this.global.commitTs.unsafeSetVolatile(v)
+
   final override def toString: String = {
     s"ThreadContext(global = ${this.global}, tid = ${this.tid})"
   }

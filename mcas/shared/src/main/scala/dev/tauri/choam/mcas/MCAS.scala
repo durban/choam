@@ -67,6 +67,9 @@ object MCAS extends MCASPlatform { self =>
     // TODO: should be protected[mcas]
     def readCommitTs(): Long
 
+    // TODO: remove this
+    protected[mcas] def setCommitTs(v: Long): Unit
+
     // TODO: do we need this? (for read-only Rxn's?)
     /** Returns `INVALID` if version is newer than `validTs` */
     def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A

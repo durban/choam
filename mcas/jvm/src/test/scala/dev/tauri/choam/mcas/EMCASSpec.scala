@@ -31,8 +31,6 @@ import mcas.MemoryLocation
 
 class EMCASSpec extends BaseSpecA {
 
-  // TODO: test that after cleanup, the version is correct
-
   test("EMCAS should allow null as ov or nv") {
     val r1 = MemoryLocation.unsafe[String](null)
     val r2 = MemoryLocation.unsafe[String]("x")
@@ -51,24 +49,114 @@ class EMCASSpec extends BaseSpecA {
     val r1 = MemoryLocation.unsafe[String]("x")
     val r2 = MemoryLocation.unsafe[String]("y")
     val ctx = EMCAS.currentContext()
-    val desc = ctx.addCas(ctx.start(), r1, "x", "a")
+    val v11 = ctx.readVersion(r1)
+    assertNotEquals(v11, Version.Invalid)
+    val v21 = ctx.readVersion(r2)
+    assertNotEquals(v21, Version.Invalid)
+    val desc = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
     val snap = ctx.snapshot(desc)
-    assert(ctx.tryPerform(ctx.addCas(desc, r2, "y", "b")))
+    assert(ctx.tryPerform(ctx.addCasWithVersion(desc, r2, "y", "b", version = v21)))
     assert(EMCAS.read(r1, ctx) eq "a")
     assert(EMCAS.read(r2, ctx) eq "b")
+    val v12 = ctx.readVersion(r1)
+    assertEquals(v12, desc.validTs + Version.Incr)
+    assert(v12 > v11)
+    val v22 = ctx.readVersion(r2)
+    assertEquals(v22, desc.validTs + Version.Incr)
+    assert(v22 > v21)
     assert(EMCAS.spinUntilCleanup(r1) eq "a")
     assert(EMCAS.spinUntilCleanup(r2) eq "b")
     assert(r1.unsafeGetVolatile() eq "a")
     assert(r2.unsafeGetVolatile() eq "b")
-    assert(r1.unsafeCasVolatile("a", "x")) // reset
+    assertEquals(ctx.readVersion(r1), v12)
+    assertEquals(ctx.readVersion(r2), v22)
+
     val desc2 = snap
-    assert(!ctx.tryPerform(ctx.addCas(desc2, r2, "y", "b"))) // this will fail
-    assert(EMCAS.read(r1, ctx) eq "x")
+    assert(!ctx.tryPerform(ctx.addCasWithVersion(desc2, r2, "b", "z", version = v22))) // this will fail
+    assert(EMCAS.read(r1, ctx) eq "a")
     assert(EMCAS.read(r2, ctx) eq "b")
-    assert(EMCAS.spinUntilCleanup(r1) eq "x")
+    assertEquals(ctx.readVersion(r1), v12)
+    assertEquals(ctx.readVersion(r2), v22)
+    assert(EMCAS.spinUntilCleanup(r1) eq "a")
     assert(EMCAS.spinUntilCleanup(r2) eq "b")
-    assert(r1.unsafeGetVolatile() eq "x")
+    assertEquals(ctx.readVersion(r1), v12)
+    assertEquals(ctx.readVersion(r2), v22)
+    assert(r1.unsafeGetVolatile() eq "a")
     assert(r2.unsafeGetVolatile() eq "b")
+  }
+
+  test("EMCAS should handle versions correctly on cleanup (after success)") {
+    val r1 = MemoryLocation.unsafe[String]("x")
+    val r2 = MemoryLocation.unsafe[String]("y")
+    val ctx = EMCAS.currentContext()
+    val v11 = ctx.readVersion(r1)
+    assertNotEquals(v11, Version.Invalid)
+    val v21 = ctx.readVersion(r2)
+    assertNotEquals(v21, Version.Invalid)
+    val desc = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
+    assert(ctx.tryPerform(ctx.addCasWithVersion(desc, r2, "y", "b", version = v21)))
+    ctx.setCommitTs(desc.validTs + Version.Incr)
+    assert(EMCAS.read(r1, ctx) eq "a")
+    assert(EMCAS.read(r2, ctx) eq "b")
+    val v12 = ctx.readVersion(r1)
+    assertEquals(v12, desc.validTs + Version.Incr)
+    assert(v12 > v11)
+    val v22 = ctx.readVersion(r2)
+    assertEquals(v22, desc.validTs + Version.Incr)
+    assert(v22 > v21)
+    // no GC here (probably)
+    // now we run another op:
+    val desc2 = ctx.addCasWithVersion(ctx.start(), r1, "a", "aa", version = v12)
+    assert(ctx.tryPerform(ctx.addCasWithVersion(desc2, r2, "b", "bb", version = v22)))
+    ctx.setCommitTs(desc2.validTs + Version.Incr)
+    assert(EMCAS.read(r1, ctx) eq "aa")
+    assert(EMCAS.read(r2, ctx) eq "bb")
+    val v13 = ctx.readVersion(r1)
+    assertEquals(v13, v12 + Version.Incr)
+    val v23 = ctx.readVersion(r2)
+    assertEquals(v23, v22 + Version.Incr)
+    // cleanup:
+    assert(EMCAS.spinUntilCleanup(r1) eq "aa")
+    assert(EMCAS.spinUntilCleanup(r2) eq "bb")
+    assertEquals(ctx.readVersion(r1), v13)
+    assertEquals(ctx.readVersion(r2), v23)
+  }
+
+  test("EMCAS should handle versions correctly on cleanup (after failure)") {
+    val r1 = MemoryLocation.unsafe[String]("x")
+    val r2 = MemoryLocation.unsafe[String]("y")
+    val ctx = EMCAS.currentContext()
+    val v11 = ctx.readVersion(r1)
+    assertNotEquals(v11, Version.Invalid)
+    val v21 = ctx.readVersion(r2)
+    assertNotEquals(v21, Version.Invalid)
+    val desc = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
+    assert(ctx.tryPerform(ctx.addCasWithVersion(desc, r2, "y", "b", version = v21)))
+    ctx.setCommitTs(desc.validTs + Version.Incr)
+    assert(EMCAS.read(r1, ctx) eq "a")
+    assert(EMCAS.read(r2, ctx) eq "b")
+    val v12 = ctx.readVersion(r1)
+    assertEquals(v12, desc.validTs + Version.Incr)
+    assert(v12 > v11)
+    val v22 = ctx.readVersion(r2)
+    assertEquals(v22, desc.validTs + Version.Incr)
+    assert(v22 > v21)
+    // no GC here (probably)
+    // now we run another op:
+    val desc2 = ctx.addCasWithVersion(ctx.start(), r1, "a", "aa", version = v12)
+    assert(!ctx.tryPerform(ctx.addCasWithVersion(desc2, r2, "x", "bb", version = v22)))
+    // don't change commitTs, since we failed
+    assert(EMCAS.read(r1, ctx) eq "a")
+    assert(EMCAS.read(r2, ctx) eq "b")
+    val v13 = ctx.readVersion(r1)
+    assertEquals(v13, v12)
+    val v23 = ctx.readVersion(r2)
+    assertEquals(v23, v22)
+    // cleanup:
+    assert(EMCAS.spinUntilCleanup(r1) eq "a")
+    assert(EMCAS.spinUntilCleanup(r2) eq "b")
+    assertEquals(ctx.readVersion(r1), v13)
+    assertEquals(ctx.readVersion(r2), v23)
   }
 
   test("EMCAS should not clean up an object referenced from another thread") {

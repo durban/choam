@@ -163,11 +163,9 @@ private object EMCAS extends MCAS { self =>
                 MCAS(wd.parent, ctx = ctx)
                 go(mark = null)
               } else { // finalized op
-                val a = if (parentStatus eq EMCASStatus.SUCCESSFUL) {
-                  wd.cast[A].nv
-                } else { // FAILED
-                  wd.cast[A].ov
-                }
+                val successful = (parentStatus eq EMCASStatus.SUCCESSFUL)
+                val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
+                val currVer = if (successful) wd.newVersion else wd.oldVersion
                 // marker is null, so we can replace the descriptor:
                 this.maybeReplaceDescriptor[A](
                   ref,
@@ -175,6 +173,7 @@ private object EMCAS extends MCAS { self =>
                   a,
                   weakref = weakref,
                   replace = replace,
+                  currentVersion = currVer,
                 )
                 a
               }
@@ -208,9 +207,10 @@ private object EMCAS extends MCAS { self =>
     nv: A,
     weakref: WeakReference[AnyRef],
     replace: Int,
+    currentVersion: Long,
   ): Unit = {
     if (replace != 0) {
-      replaceDescriptor[A](ref, ov, nv, weakref)
+      replaceDescriptor[A](ref, ov, nv, weakref, currentVersion)
     }
   }
 
@@ -219,13 +219,33 @@ private object EMCAS extends MCAS { self =>
     ov: WordDescriptor[A],
     nv: A,
     weakref: WeakReference[AnyRef],
+    currentVersion: Long,
   ): Unit = {
+    if (ov.oldVersion != Version.Invalid) {
+      // *Before* replacing a finalized descriptor, we
+      // must write back the current version into the
+      // ref. (If we'd just replace the descriptor
+      // then we'd have an invalid (possibly really old)
+      // version.) We use CAS to write the version; this way
+      // if another thread starts and finishes another op,
+      // we don't overwrite the newer version. (Versions
+      // are always monotonically increasing.)
+      assert(currentVersion >= ov.oldVersion)
+      val currentInRef = ref.unsafeGetVersionVolatile()
+      if (currentInRef < currentVersion) {
+        if (!ref.unsafeCasVersionVolatile(currentInRef, currentVersion)) {
+          // concurrent write, but re-check to be sure:
+          assert(ref.unsafeGetVersionVolatile() >= currentVersion)
+        } // else: successfully updated version
+      } // else: either a concurrent write to newer version, or is already correct
+    }
     // We replace the descriptor with the final value.
     // If this CAS fails, someone else might've
     // replaced the desc with the final value, or
     // maybe started another operation; in either case,
     // there is nothing to do here.
     ref.unsafeCasVolatile(ov.castToData, nv)
+    // Possibly also clean up the weakref:
     if (weakref ne null) {
       assert(weakref.get() eq null)
       // We also delete the (now empty) `WeakReference`
@@ -235,7 +255,6 @@ private object EMCAS extends MCAS { self =>
       ref.unsafeCasMarkerVolatile(weakref, null)
       ()
     }
-    // TODO: we must also store the version!
   }
 
   private[mcas] final def read[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): A =
@@ -262,7 +281,6 @@ private object EMCAS extends MCAS { self =>
         }
       case a =>
         val ver = ref.unsafeGetVersionVolatile()
-        // TODO: do we need to re-read? (probably yes)
         if (equ(ref.unsafeGetVolatile(), a)) ver
         else readVersion(ref, ctx) // retry
     }
