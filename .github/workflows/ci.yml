@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        scala: [2.13.7]
+        scala: [2.13.8]
         java:
           - temurin@11
           - graal_21.3.0@11
@@ -33,7 +33,7 @@ jobs:
         include:
           - os: macos-latest
             java: temurin@17
-            scala: 2.13.7
+            scala: 2.13.8
         exclude:
           - os: windows-latest
             java: adopt-openj9@11
