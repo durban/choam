@@ -125,6 +125,15 @@ object MCAS extends MCASPlatform { self =>
       go(desc.map.valuesIterator)
     }
 
+    final def extend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor = {
+      val ts = readCommitTs()
+      if (validate(desc)) {
+        desc.extendValidTs(ts)
+      } else {
+        null
+      }
+    }
+
     final def snapshot(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       desc
 

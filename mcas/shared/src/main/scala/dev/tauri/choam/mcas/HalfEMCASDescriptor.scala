@@ -23,7 +23,7 @@ import scala.collection.immutable.TreeMap
 // TODO: this really should have a better name
 final class HalfEMCASDescriptor private (
   private[mcas] val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
-  private[mcas] val validTs: Long,
+  val validTs: Long,
 ) {
 
   private[mcas] final def nonEmpty: Boolean =
@@ -38,6 +38,11 @@ final class HalfEMCASDescriptor private (
       val newMap = this.map.updated(d.address, d)
       new HalfEMCASDescriptor(newMap, this.validTs)
     }
+  }
+
+  private[mcas] final def extendValidTs(newValidTs: Long): HalfEMCASDescriptor = {
+    require(newValidTs >= this.validTs)
+    new HalfEMCASDescriptor(map = this.map, validTs = newValidTs)
   }
 
   final override def toString: String =
