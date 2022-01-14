@@ -64,7 +64,19 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     assertEquals(v22, v21)
   }
 
-  test("Version.Invalid must not be stored".ignore) {
-    // TODO: write test
+  test("Version.Invalid must not be stored") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("r1")
+    val r2 = MemoryLocation.unsafe("r2")
+    val v11 = ctx.readVersion(r1)
+    val v21 = ctx.readVersion(r2)
+    val d0 = ctx.start()
+    val d1 = ctx.addCasWithVersion(d0, r1, "r1", "x", Version.Invalid)
+    val d2 = ctx.addCasWithVersion(d1, r2, "-", "y", v21)
+    assert(!ctx.tryPerform(d2))
+    val v12 = ctx.readVersion(r1)
+    assertEquals(v12, v11)
+    val v22 = ctx.readVersion(r2)
+    assertEquals(v22, v21)
   }
 }
