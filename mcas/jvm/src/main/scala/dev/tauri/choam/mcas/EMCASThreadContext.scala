@@ -21,6 +21,8 @@ package mcas
 import java.lang.ref.WeakReference
 import java.util.concurrent.ThreadLocalRandom
 
+import scala.util.{ Random => SRandom }
+
 private final class EMCASThreadContext(
   global: GlobalContext,
   private[mcas] val tid: Long,
@@ -155,4 +157,8 @@ private final class EMCASThreadContext(
   private[choam] final override def setStatisticsPlain(stats: Map[AnyRef, AnyRef]): Unit = {
     this._setStatisticsPlain(stats)
   }
+
+  // NB: it is a `val`, not a `def`
+  private[choam] final override val randomWrapper: SRandom =
+    new SRandom(this.random)
 }

@@ -25,17 +25,17 @@ import org.openjdk.jmh.infra.Blackhole
 
 import util._
 
-@Fork(2)
+@Fork(3)
 @Threads(2)
 @BenchmarkMode(Array(Mode.AverageTime))
 class RandomBench {
 
-  @Benchmark
-  def threadLocalContext(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-    bh.consume(
-      s.rndThreadLocalContext.nextInt.unsafePerformInternal(null, k.kcasCtx)
-    )
-  }
+  // @Benchmark
+  // def threadLocalContext(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+  //   bh.consume(
+  //     s.rndThreadLocalContext.nextInt.unsafePerformInternal(null, k.kcasCtx)
+  //   )
+  // }
 
   @Benchmark
   def threadLocalContextBetweenInt(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
@@ -51,6 +51,13 @@ class RandomBench {
     )
   }
 
+  @Benchmark
+  def threadLocalContextBetweenIntCtxSupp(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+    bh.consume(
+      s.rndThreadLocalContextCtxSupp.betweenInt(0, 8388608).unsafePerformInternal(null, k.kcasCtx)
+    )
+  }
+
   // @Benchmark
   // def secureRandom(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
   //   bh.consume(
@@ -58,12 +65,12 @@ class RandomBench {
   //   )
   // }
 
-  @Benchmark
-  def baseline(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-    bh.consume(
-      s.baseline.unsafePerformInternal(null, k.kcasCtx)
-    )
-  }
+  // @Benchmark
+  // def baseline(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+  //   bh.consume(
+  //     s.baseline.unsafePerformInternal(null, k.kcasCtx)
+  //   )
+  // }
 }
 
 object RandomBench {
@@ -78,6 +85,8 @@ object RandomBench {
       Rxn.fastRandom.unsafeRun(mcas.MCAS.EMCAS)
     val rndThreadLocalContextCached: Random[Axn] =
       Rxn.fastRandomCached.unsafeRun(mcas.MCAS.EMCAS)
+    val rndThreadLocalContextCtxSupp: Random[Axn] =
+      Rxn.fastRandomCtxSupp.unsafeRun(mcas.MCAS.EMCAS)
     val rndSecure: Random[Axn] =
       Rxn.secureRandom.unsafeRun(mcas.MCAS.EMCAS)
   }

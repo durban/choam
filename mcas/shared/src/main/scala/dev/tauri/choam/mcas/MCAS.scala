@@ -20,6 +20,8 @@ package mcas
 
 import java.util.concurrent.ThreadLocalRandom
 
+import scala.util.{ Random => SRandom }
+
 /** Common interface for MCAS (i.e., k-CAS) implementations */
 abstract class MCAS {
 
@@ -122,6 +124,10 @@ object MCAS extends MCASPlatform { self =>
     /** Only for testing/benchmarking */
     private[choam] def maxReusedWeakRefs(): Int = {
       0
+    }
+
+    private[choam] def randomWrapper: SRandom = {
+      new SRandom(this.random)
     }
   }
 
