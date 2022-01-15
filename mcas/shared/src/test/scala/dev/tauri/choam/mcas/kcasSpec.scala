@@ -196,4 +196,52 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   test("Platform default must be thread-safe") {
     assert(MCAS.DefaultMCAS.isThreadSafe)
   }
+
+  test("A successful k-CAS should increase the version of the refs") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("r1")
+    val r2 = MemoryLocation.unsafe("r2")
+    val v11 = ctx.readVersion(r1)
+    val v21 = ctx.readVersion(r2)
+    val d0 = ctx.start()
+    val d1 = ctx.addCasWithVersion(d0, r1, "r1", "x", v11)
+    val d2 = ctx.addCasWithVersion(d1, r2, "r2", "y", v21)
+    assert(ctx.tryPerform(d2))
+    val v12 = ctx.readVersion(r1)
+    assertEquals(v12, v11 + 1L)
+    val v22 = ctx.readVersion(r2)
+    assertEquals(v22, v21 + 1L)
+  }
+
+  test("A failed k-CAS should not increase the version of the refs") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("r1")
+    val r2 = MemoryLocation.unsafe("r2")
+    val v11 = ctx.readVersion(r1)
+    val v21 = ctx.readVersion(r2)
+    val d0 = ctx.start()
+    val d1 = ctx.addCasWithVersion(d0, r1, "r1", "x", v11)
+    val d2 = ctx.addCasWithVersion(d1, r2, "-", "y", v21)
+    assert(!ctx.tryPerform(d2))
+    val v12 = ctx.readVersion(r1)
+    assertEquals(v12, v11)
+    val v22 = ctx.readVersion(r2)
+    assertEquals(v22, v21)
+  }
+
+  test("Version.None must not be stored") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("r1")
+    val r2 = MemoryLocation.unsafe("r2")
+    val v11 = ctx.readVersion(r1)
+    val v21 = ctx.readVersion(r2)
+    val d0 = ctx.start()
+    val d1 = ctx.addCas(d0, r1, "r1", "x")
+    val d2 = ctx.addCasWithVersion(d1, r2, "-", "y", v21)
+    assert(!ctx.tryPerform(d2))
+    val v12 = ctx.readVersion(r1)
+    assertEquals(v12, v11)
+    val v22 = ctx.readVersion(r2)
+    assertEquals(v22, v21)
+  }
 }

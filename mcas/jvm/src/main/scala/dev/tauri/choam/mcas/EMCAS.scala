@@ -221,24 +221,23 @@ private object EMCAS extends MCAS { self =>
     weakref: WeakReference[AnyRef],
     currentVersion: Long,
   ): Unit = {
-    if (ov.oldVersion != Version.Invalid) {
-      // *Before* replacing a finalized descriptor, we
-      // must write back the current version into the
-      // ref. (If we'd just replace the descriptor
-      // then we'd have an invalid (possibly really old)
-      // version.) We use CAS to write the version; this way
-      // if another thread starts and finishes another op,
-      // we don't overwrite the newer version. (Versions
-      // are always monotonically increasing.)
-      assert(currentVersion >= ov.oldVersion)
-      val currentInRef = ref.unsafeGetVersionVolatile()
-      if (currentInRef < currentVersion) {
-        if (!ref.unsafeCasVersionVolatile(currentInRef, currentVersion)) {
-          // concurrent write, but re-check to be sure:
-          assert(ref.unsafeGetVersionVolatile() >= currentVersion)
-        } // else: successfully updated version
-      } // else: either a concurrent write to newer version, or is already correct
-    }
+    // *Before* replacing a finalized descriptor, we
+    // must write back the current version into the
+    // ref. (If we'd just replace the descriptor
+    // then we'd have an invalid (possibly really old)
+    // version.) We use CAS to write the version; this way
+    // if another thread starts and finishes another op,
+    // we don't overwrite the newer version. (Versions
+    // are always monotonically increasing.)
+    assert(currentVersion >= ov.oldVersion)
+    val currentInRef = ref.unsafeGetVersionVolatile()
+    if (currentInRef < currentVersion) {
+      if (!ref.unsafeCasVersionVolatile(currentInRef, currentVersion)) {
+        // concurrent write, but re-check to be sure:
+        assert(ref.unsafeGetVersionVolatile() >= currentVersion)
+      } // else: successfully updated version
+    } // else: either a concurrent write to newer version, or is already correct
+
     // We replace the descriptor with the final value.
     // If this CAS fails, someone else might've
     // replaced the desc with the final value, or
@@ -258,7 +257,7 @@ private object EMCAS extends MCAS { self =>
   }
 
   private[mcas] final def read[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): A =
-    this.readIfValid(ref, Version.Invalid, ctx)
+    this.readIfValid(ref, Version.Start, ctx)
 
   // TODO: check `validTs`
   private[mcas] final def readIfValid[A](ref: MemoryLocation[A], validTs: Long, ctx: EMCASThreadContext): A =
@@ -524,7 +523,7 @@ private object EMCAS extends MCAS { self =>
             // CAS in progress, retry
           } else {
             // CAS finalized, but no cleanup yet, read and retry
-            EMCAS.readIfValid(ref, validTs = Version.Invalid, ctx = ctx)
+            EMCAS.readIfValid(ref, validTs = Version.Start, ctx = ctx)
           }
         case a =>
           // descriptor have been cleaned up:

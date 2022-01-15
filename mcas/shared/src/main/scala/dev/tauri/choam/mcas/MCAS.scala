@@ -89,11 +89,10 @@ object MCAS extends MCASPlatform { self =>
       HalfEMCASDescriptor.empty(ts = this.readCommitTs())
 
     final def read[A](ref: MemoryLocation[A]): A =
-      this.readIfValid(ref, Version.Invalid)
+      this.readIfValid(ref, Version.None)
 
     final def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
-      // TODO: this Version.Invalid is going to be a problem!
-      this.addCasWithVersion(desc, ref, ov = ov, nv = nv, version = Version.Invalid)
+      this.addCasWithVersion(desc, ref, ov = ov, nv = nv, version = Version.Start)
 
     final def addCasWithVersion[A](
       desc: HalfEMCASDescriptor,
