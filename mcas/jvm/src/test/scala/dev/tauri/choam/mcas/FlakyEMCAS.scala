@@ -40,6 +40,9 @@ object FlakyEMCAS extends MCAS { self =>
     final override def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A =
       emcasCtx.readIfValid(ref, validTs)
 
+    final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] =
+      emcasCtx.readIntoHwd(ref)
+
     final override def readVersion[A](ref: MemoryLocation[A]): Long =
       emcasCtx.readVersion(ref)
 

@@ -141,9 +141,9 @@ private object EMCAS extends MCAS { self =>
    * @param ctx: The [[ThreadContext]] of the current thread.
    * @param replace: Pass 0 to not do any replacing/clearing.
    */
-  private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: EMCASThreadContext, replace: Int): A = {
+  private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: EMCASThreadContext, replace: Int): HalfWordDescriptor[A] = {
     @tailrec
-    def go(mark: AnyRef): A = {
+    def go(mark: AnyRef, ver1: Long): HalfWordDescriptor[A] = {
       ref.unsafeGetVolatile() match {
         case wd: WordDescriptor[_] =>
           if (mark eq null) {
@@ -152,7 +152,7 @@ private object EMCAS extends MCAS { self =>
             val m = if (weakref ne null) weakref.get() else null
             if (m ne null) {
               // we're holding it, re-read the descriptor:
-              go(mark = m)
+              go(mark = m, ver1 = ver1)
             } else { // m eq null (from either a cleared or a removed weakref)
               // descriptor can be detached
               val parentStatus = wd.parent.getStatus()
@@ -161,7 +161,7 @@ private object EMCAS extends MCAS { self =>
                 // happen if a thread died during an op;
                 // we help the active op, then retry ours:
                 MCAS(wd.parent, ctx = ctx)
-                go(mark = null)
+                go(mark = null, ver1 = ver1)
               } else { // finalized op
                 val successful = (parentStatus eq EMCASStatus.SUCCESSFUL)
                 val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
@@ -175,7 +175,7 @@ private object EMCAS extends MCAS { self =>
                   replace = replace,
                   currentVersion = currVer,
                 )
-                a
+                HalfWordDescriptor(ref, ov = a, nv = a, version = currVer)
               }
             }
           } else { // mark ne null
@@ -183,22 +183,25 @@ private object EMCAS extends MCAS { self =>
             val parentStatus = wd.parent.getStatus()
             if (parentStatus eq EMCASStatus.ACTIVE) {
               MCAS(wd.parent, ctx = ctx) // help the other op
-              go(mark = mark) // retry
+              go(mark = mark, ver1 = ver1) // retry
             } else { // finalized
-              val a = if (parentStatus eq EMCASStatus.SUCCESSFUL) {
-                wd.cast[A].nv
-              } else { // FAILED
-                wd.cast[A].ov
-              }
-              a
+              val successful = (parentStatus eq EMCASStatus.SUCCESSFUL)
+              val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
+              val currVer = if (successful) wd.newVersion else wd.oldVersion
+              HalfWordDescriptor(ref, ov = a, nv = a, version = currVer)
             }
           }
         case a =>
-          a
+          val ver2 = ref.unsafeGetVersionVolatile()
+          if (ver1 == ver2) {
+            HalfWordDescriptor(ref, ov = a, nv = a, version = ver1)
+          } else {
+            go(mark = null, ver1 = ver2)
+          }
       }
     }
 
-    go(mark = null)
+    go(mark = null, ver1 = ref.unsafeGetVersionVolatile())
   }
 
   private[this] final def maybeReplaceDescriptor[A](
@@ -259,9 +262,15 @@ private object EMCAS extends MCAS { self =>
   private[mcas] final def read[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): A =
     this.readIfValid(ref, Version.Start, ctx)
 
-  // TODO: check `validTs`
-  private[mcas] final def readIfValid[A](ref: MemoryLocation[A], validTs: Long, ctx: EMCASThreadContext): A =
+  private[mcas] final def readIfValid[A](ref: MemoryLocation[A], validTs: Long, ctx: EMCASThreadContext): A = {
+    val hwd = readIntoHwd(ref, ctx)
+    // TODO: check validity
+    hwd.ov
+  }
+
+  private[mcas] final def readIntoHwd[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): HalfWordDescriptor[A] = {
     readValue(ref, ctx, EMCAS.replacePeriodForReadValue)
+  }
 
   @tailrec
   private[mcas] final def readVersion[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): Long = {

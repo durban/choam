@@ -74,8 +74,7 @@ object MCAS extends MCASPlatform { self =>
     /** Returns `INVALID` if version is newer than `validTs` */
     def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A
 
-    def readIntoHwd[A](ref: MemoryLocation[A], validTs: Long): HalfWordDescriptor[A] =
-      null // TODO: this should be abstract
+    def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A]
 
     def readVersion[A](ref: MemoryLocation[A]): Long
 
