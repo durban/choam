@@ -32,6 +32,9 @@ final class HalfWordDescriptor[A] private (
   final def withNv(a: A): HalfWordDescriptor[A] =
     new HalfWordDescriptor[A](address = this.address, ov = this.ov, nv = a, version = this.version)
 
+  final def readOnly: Boolean =
+    equ(this.ov, this.nv)
+
   final override def toString: String =
     s"HalfWordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
 }

@@ -90,6 +90,40 @@ object MCAS extends MCASPlatform { self =>
     final def read[A](ref: MemoryLocation[A]): A =
       this.readIfValid(ref, Version.None)
 
+    // TODO: there should be a non-option, non-tuple version of this
+    final def readMaybeFromLog[A](ref: MemoryLocation[A], log: HalfEMCASDescriptor): Option[(A, HalfEMCASDescriptor)] = {
+      val refKey = ref.asInstanceOf[MemoryLocation[Any]]
+      log.map.getOrElse(refKey, null) match {
+        case null =>
+          // not in log
+          this.readIntoLog(ref, log) match {
+            case null =>
+              None // None means rollback needed
+            case newLog =>
+              val a: A = newLog.map.apply(refKey).cast[A].ov
+              Some((a, newLog))
+          }
+        case hwd =>
+          // found in log
+          Some((hwd.cast[A].nv, log))
+          // TODO: if hwd.readOnly, we may need to re-validate here
+      }
+    }
+
+    final def readIntoLog[A](ref: MemoryLocation[A], log: HalfEMCASDescriptor): HalfEMCASDescriptor = {
+      val refKey = ref.asInstanceOf[MemoryLocation[Any]]
+      assert(!log.map.contains(refKey))
+      val hwd = this.readIntoHwd(ref)
+      val newLog = log.add(hwd)
+      if (hwd.version > newLog.validTs) {
+        // this returns null if we need to roll back
+        // (and we pass on the null to our caller):
+        this.extend(newLog)
+      } else {
+        newLog
+      }
+    }
+
     final def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
       this.addCasWithVersion(desc, ref, ov = ov, nv = nv, version = Version.Start)
 

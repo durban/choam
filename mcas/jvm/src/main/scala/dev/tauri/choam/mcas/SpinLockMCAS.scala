@@ -172,8 +172,6 @@ private object SpinLockMCAS extends MCAS { self =>
       ops match {
         case Nil =>
           true
-        case (h : HalfWordDescriptor[a]) :: Nil =>
-          h.address.unsafeCasVolatile(h.ov, h.nv)
         case l @ (_ :: _) =>
           lock(l) match {
             case Nil =>

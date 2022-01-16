@@ -21,7 +21,7 @@ package mcas
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.{ AtomicReference, AtomicLong }
 
-private[choam] abstract class SimpleMemoryLocation[A](initial: A)(
+private[choam] class SimpleMemoryLocation[A](initial: A)(
   override val id0: Long,
   override val id1: Long,
   override val id2: Long,
@@ -34,6 +34,9 @@ private[choam] abstract class SimpleMemoryLocation[A](initial: A)(
 
   private[this] val weakMarker: AtomicReference[WeakReference[AnyRef]] =
     new AtomicReference // (null)
+
+  final override def toString: String =
+    "SMemLoc@" + refHashString(id0, id1, id2, id3)
 
   final override def unsafeGetVolatile(): A =
     this.get()

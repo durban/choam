@@ -478,4 +478,22 @@ class EMCASSpec extends BaseSpecA {
     assertSameInstance(it.next().address, r3)
     assert(!it.hasNext())
   }
+
+  test("Descriptor toString") {
+    for (r1 <- List(MemoryLocation.unsafe("r1"), MemoryLocation.unsafePadded("r1"))) {
+      val ctx = EMCAS.currentContext()
+      val d0 = ctx.start()
+      val d1 = ctx.addCas(d0, r1, "r1", "A")
+      val ed = EMCASDescriptor.prepare(d1)
+      val wd = ed.wordIterator().next()
+      assert(wd.toString().startsWith("WordDescriptor("))
+      assert(EMCAS.tryPerform(d1, ctx))
+      (r1.unsafeGetVolatile() : Any) match {
+        case wd: WordDescriptor[_] =>
+          assert(wd.toString().startsWith("WordDescriptor("))
+        case x =>
+          fail(s"unexpected contents: ${x}")
+      }
+    }
+  }
 }

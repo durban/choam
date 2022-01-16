@@ -24,6 +24,7 @@ import scala.collection.immutable.TreeMap
 final class HalfEMCASDescriptor private (
   private[mcas] val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
   val validTs: Long,
+  val readOnly: Boolean,
 ) {
 
   private[mcas] final def nonEmpty: Boolean =
@@ -36,13 +37,42 @@ final class HalfEMCASDescriptor private (
       MCAS.impossibleOp(d.address, other, desc)
     } else {
       val newMap = this.map.updated(d.address, d)
-      new HalfEMCASDescriptor(newMap, this.validTs)
+      new HalfEMCASDescriptor(
+        newMap,
+        this.validTs,
+        this.readOnly && desc.readOnly,
+      )
+    }
+  }
+
+  private[mcas] final def overwrite[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
+    val d = desc.cast[Any]
+    require(this.map.contains(d.address))
+    val newMap = this.map.updated(d.address, d)
+    new HalfEMCASDescriptor(
+      newMap,
+      this.validTs,
+      this.readOnly && desc.readOnly, // this is a simplification:
+      // we don't want to rescan here the whole log, so we only pass
+      // true if it's DEFINITELY read-only
+    )
+  }
+
+  private[mcas] final def getOrElseNull[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
+    val r = ref.asInstanceOf[MemoryLocation[Any]]
+    this.map.getOrElse(r, null) match {
+      case null => null
+      case hwd => hwd.cast[A]
     }
   }
 
   private[mcas] final def extendValidTs(newValidTs: Long): HalfEMCASDescriptor = {
     require(newValidTs >= this.validTs)
-    new HalfEMCASDescriptor(map = this.map, validTs = newValidTs)
+    new HalfEMCASDescriptor(
+      map = this.map,
+      validTs = newValidTs,
+      readOnly = this.readOnly,
+    )
   }
 
   final override def toString: String =
@@ -54,7 +84,8 @@ object HalfEMCASDescriptor {
   def empty(ts: Long): HalfEMCASDescriptor = {
     new HalfEMCASDescriptor(
       TreeMap.empty(MemoryLocation.orderingInstance[Any]),
-      ts,
+      validTs = ts,
+      readOnly = true,
     )
   }
 }

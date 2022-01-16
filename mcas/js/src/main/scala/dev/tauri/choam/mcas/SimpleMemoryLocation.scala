@@ -21,7 +21,7 @@ package mcas
 import java.lang.ref.WeakReference
 
 // This is JS:
-private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A)(
+private[choam] class SimpleMemoryLocation[A](private[this] var value: A)(
   override val id0: Long,
   override val id1: Long,
   override val id2: Long,
@@ -30,6 +30,9 @@ private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A
 
   private[this] var version: Long =
     Version.Start
+
+  override def toString: String =
+    "SMemLoc@" + refHashString(id0, id1, id2, id3)
 
   final override def unsafeGetVolatile(): A =
     this.value

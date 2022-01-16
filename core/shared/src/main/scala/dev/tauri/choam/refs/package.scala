@@ -46,8 +46,7 @@ package object refs {
     i2: Long,
     i3: Long
   ): String = {
-    // TODO: better hash
-    "Ref@" + java.lang.Long.toHexString(i0 ^ i1 ^ i2 ^ i3)
+    "Ref@" + mcas.refHashString(i0, i1, i2, i3)
   }
 
   private[refs] def refStringFrom8Ids(

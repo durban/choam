@@ -46,4 +46,15 @@ package object mcas {
   // TODO: maybe AssertionError?
   private[choam] final def impossible(s: String): Nothing =
     throw new IllegalStateException(s)
+
+  private[choam] final def refHashString(
+    i0: Long,
+    i1: Long,
+    i2: Long,
+    i3: Long
+  ): String = {
+    // TODO: better hash
+    // TODO: left pad with '0' if necessary
+    java.lang.Long.toHexString(i0 ^ i1 ^ i2 ^ i3)
+  }
 }

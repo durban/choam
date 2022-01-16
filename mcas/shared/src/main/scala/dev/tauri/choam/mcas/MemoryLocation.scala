@@ -112,7 +112,7 @@ object MemoryLocation extends MemoryLocationInstances0 {
     unsafeUnpaddedWithId(initial)(i0, i1, i2, i3)
 
   private[choam] def unsafeUnpaddedWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
-    new SimpleMemoryLocation[A](initial)(i0, i1, i2, i3) {}
+    new SimpleMemoryLocation[A](initial)(i0, i1, i2, i3)
   }
 
   private[choam] def unsafePaddedWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
