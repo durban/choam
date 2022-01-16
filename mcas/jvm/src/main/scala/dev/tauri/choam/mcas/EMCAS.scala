@@ -264,8 +264,8 @@ private object EMCAS extends MCAS { self =>
 
   private[mcas] final def readIfValid[A](ref: MemoryLocation[A], validTs: Long, ctx: EMCASThreadContext): A = {
     val hwd = readIntoHwd(ref, ctx)
-    // TODO: check validity
-    hwd.ov
+    if (hwd.version > validTs) mcas.MCAS.INVALID.of[A]
+    else hwd.ov
   }
 
   private[mcas] final def readIntoHwd[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): HalfWordDescriptor[A] = {

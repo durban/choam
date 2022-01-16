@@ -131,5 +131,6 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     // continue with reading from r2 (conflict with r1 must be detected):
     val res = ctx.readMaybeFromLog(r2, d2)
     assertSameInstance(res, None) // will need to roll back
+    assertSameInstance(ctx.readIfValid(r2, d2.validTs), MCAS.INVALID)
   }
 }

@@ -30,8 +30,11 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
 
   private[this] val _ctx = new MCAS.ThreadContext {
 
-    final override def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A =
-      ref.unsafeGetPlain()
+    final override def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A = {
+      val ver = ref.unsafeGetVersionVolatile()
+      if (ver > validTs) MCAS.INVALID.of[A]
+      else ref.unsafeGetPlain()
+    }
 
     final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
       val v = ref.unsafeGetPlain()
