@@ -50,7 +50,7 @@ private object SpinLockMCAS extends MCAS { self =>
 
     final override def tryPerform(desc: HalfEMCASDescriptor): Boolean = {
       val ops = desc.map.valuesIterator.toList
-      perform(ops, newVersion = desc.validTs + Version.Incr)
+      perform(ops, newVersion = desc.newVersion)
     }
 
     private[this] final object Locked {

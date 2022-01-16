@@ -27,6 +27,9 @@ final class HalfEMCASDescriptor private (
   val readOnly: Boolean,
 ) {
 
+  private[mcas] final def newVersion: Long =
+    this.validTs + Version.Incr
+
   private[mcas] final def nonEmpty: Boolean =
     this.map.nonEmpty
 

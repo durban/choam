@@ -79,7 +79,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
       }
 
       if (prepare(desc.map.valuesIterator)) {
-        execute(desc.map.valuesIterator, desc.validTs + Version.Incr)
+        execute(desc.map.valuesIterator, desc.newVersion)
         true
       } else {
         false
