@@ -259,9 +259,6 @@ private object EMCAS extends MCAS { self =>
     }
   }
 
-  private[mcas] final def read[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): A =
-    this.readIfValid(ref, Version.Start, ctx)
-
   private[mcas] final def readIfValid[A](ref: MemoryLocation[A], validTs: Long, ctx: EMCASThreadContext): A = {
     val hwd = readIntoHwd(ref, ctx)
     if (hwd.version > validTs) mcas.MCAS.INVALID.of[A]

@@ -113,7 +113,7 @@ class EMCASTest {
   @Arbiter
   def arbiter(): Unit = {
     val ctx = EMCAS.currentContext()
-    assert(EMCAS.read(this.ref1, ctx) eq "b")
-    assert(EMCAS.read(this.ref2, ctx) eq "y")
+    assert(ctx.read(this.ref1) eq "b")
+    assert(ctx.read(this.ref2) eq "y")
   }
 }
