@@ -92,15 +92,14 @@ object MCAS extends MCASPlatform { self =>
 
     // TODO: there should be a non-option, non-tuple version of this
     final def readMaybeFromLog[A](ref: MemoryLocation[A], log: HalfEMCASDescriptor): Option[(A, HalfEMCASDescriptor)] = {
-      val refKey = ref.asInstanceOf[MemoryLocation[Any]]
-      log.map.getOrElse(refKey, null) match {
+      log.getOrElseNull(ref) match {
         case null =>
           // not in log
           this.readIntoLog(ref, log) match {
             case null =>
               None // None means rollback needed
             case newLog =>
-              val a: A = newLog.map.apply(refKey).cast[A].ov
+              val a: A = newLog.getOrElseNull(ref).cast[A].ov
               Some((a, newLog))
           }
         case hwd =>
@@ -111,8 +110,7 @@ object MCAS extends MCASPlatform { self =>
     }
 
     final def readIntoLog[A](ref: MemoryLocation[A], log: HalfEMCASDescriptor): HalfEMCASDescriptor = {
-      val refKey = ref.asInstanceOf[MemoryLocation[Any]]
-      assert(!log.map.contains(refKey))
+      require(log.getOrElseNull(ref) eq null)
       val hwd = this.readIntoHwd(ref)
       val newLog = log.add(hwd)
       if (hwd.version > newLog.validTs) {
