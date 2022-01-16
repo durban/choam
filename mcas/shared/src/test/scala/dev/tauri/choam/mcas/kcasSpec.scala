@@ -204,13 +204,15 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val v11 = ctx.readVersion(r1)
     val v21 = ctx.readVersion(r2)
     val d0 = ctx.start()
+    assert(d0.validTs >= v11)
+    assert(d0.validTs >= v21)
     val d1 = ctx.addCasWithVersion(d0, r1, "r1", "x", v11)
     val d2 = ctx.addCasWithVersion(d1, r2, "r2", "y", v21)
     assert(ctx.tryPerform(d2))
     val v12 = ctx.readVersion(r1)
-    assertEquals(v12, v11 + 1L)
+    assertEquals(v12, d0.validTs + 1L)
     val v22 = ctx.readVersion(r2)
-    assertEquals(v22, v21 + 1L)
+    assertEquals(v22, d0.validTs + 1L)
   }
 
   test("A failed k-CAS should not increase the version of the refs") {
@@ -243,5 +245,50 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertEquals(v12, v11)
     val v22 = ctx.readVersion(r2)
     assertEquals(v22, v21)
+  }
+
+  test("readIntoLog should work (no conflict)") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("a")
+    val r2 = MemoryLocation.unsafe("b")
+    val d0 = ctx.start()
+    // read from r1 (not in the log):
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    assertSameInstance(ov1, "a")
+    assert(d1 ne d0)
+    assert(d1 ne null)
+    assert(d1.readOnly)
+    // read from r1 (already in the log):
+    val Some((ov1b, d2)) = ctx.readMaybeFromLog(r1, d1) : @unchecked
+    assertSameInstance(ov1b, "a")
+    assertSameInstance(d2, d1)
+    assert(d2.readOnly)
+    // read from r2 (not in the log, but consistent):
+    val  Some((ov2, d3)) = ctx.readMaybeFromLog(r2, d2) : @unchecked
+    assertSameInstance(ov2, "b")
+    assert(d3 ne d2)
+    assert(d3 ne null)
+    assert(d3.readOnly)
+    // read from r2 (now in the log):
+    val Some((ov2b, d4)) = ctx.readMaybeFromLog(r2, d3) : @unchecked
+    assertSameInstance(ov2b, "b")
+    assertSameInstance(d4, d3)
+    assert(d4.readOnly)
+    // writes:
+    val d5 = d4.overwrite(d4.getOrElseNull(r1).withNv("aa"))
+    assert(!d5.readOnly)
+    assert(d5 ne d4)
+    val d6 = d5.overwrite(d5.getOrElseNull(r2).withNv("bb"))
+    assert(!d6.readOnly)
+    val d7 = d6.overwrite(d6.getOrElseNull(r2).withNv("bbb"))
+    assert(!d7.readOnly)
+    // perform:
+    assert(ctx.tryPerform(d7))
+    val newVer = d7.validTs + 1
+    ctx.setCommitTs(newVer)
+    assertEquals(ctx.readVersion(r1), newVer)
+    assertEquals(ctx.readVersion(r2), newVer)
+    assertSameInstance(ctx.readIfValid(r1, newVer), "aa")
+    assertSameInstance(ctx.readIfValid(r2, newVer), "bbb")
   }
 }
