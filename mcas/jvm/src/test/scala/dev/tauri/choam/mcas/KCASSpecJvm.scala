@@ -219,4 +219,38 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     assertSameInstance(ctx.readDirect(r3), "cc")
     assertEquals(ctx.readVersion(r3), endTs)
   }
+
+  test("Merging must detect if the logs are inconsistent") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("a")
+    val r2 = MemoryLocation.unsafe("b")
+    val d0 = ctx.start()
+    val startTs = d0.validTs
+    // one side:
+    val Some((ov1, d1a)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    assertSameInstance(ov1, "a")
+    val d2a = d1a.overwrite(d1a.getOrElseNull(r1).withNv("aa"))
+    // concurrent:
+    var ok = false
+    val t = new Thread(() => {
+      val ctx = kcasImpl.currentContext()
+      val d0 = ctx.start()
+      val Some((_, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+      val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("x"))
+      assert(ctx.tryPerform2(d2))
+      assertSameInstance(ctx.readDirect(r1), "x")
+      ok = true
+    })
+    t.start()
+    t.join()
+    assert(ok)
+    assert(ctx.readVersion(r1) > startTs)
+    // other side:
+    val Some((ov2, d1b)) = ctx.readMaybeFromLog(r2, ctx.start()) : @unchecked
+    assertSameInstance(ov2, "b")
+    val d2b = d1b.overwrite(d1b.getOrElseNull(r2).withNv("bb"))
+    // try to merge; the logs are disjoint, but inconsistent:
+    // `d2a` cannot be extended; will need to rollback/retry
+    assert(ctx.addAll(d2a, d2b) eq null)
+  }
 }

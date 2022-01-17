@@ -194,12 +194,13 @@ private sealed trait ExchangerImplJvm[A, B]
       otherContK = other.msg.contK,
       hole = other.hole,
     )
+    val mergedDesc = ctx.addAll(selfMsg.desc, other.msg.desc)
+    assert(mergedDesc ne null, "Couldn't merge logs") // TODO: maybe retry?
     val resMsg = Msg(
       value = a,
       contK = newContK,
       contT = newContT,
-      // TODO: this must not allow common `Ref`s:
-      desc = ctx.addAll(selfMsg.desc, other.msg.desc),
+      desc = mergedDesc,
       postCommit = ObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit),
       // this thread will continue, so we use (and update) our data:
       exchangerData = selfMsg.exchangerData.updated(this.key, stats.exchanged(params))

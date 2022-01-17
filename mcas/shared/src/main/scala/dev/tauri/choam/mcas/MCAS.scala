@@ -177,14 +177,10 @@ object MCAS extends MCASPlatform { self =>
       desc
 
     final def addAll(to: HalfEMCASDescriptor, from: HalfEMCASDescriptor): HalfEMCASDescriptor = {
-      val it = from.map.valuesIterator
-      var res = to
-      while (it.hasNext) {
-        res = res.add(it.next())
-      }
-      res
+      HalfEMCASDescriptor.merge(to, from, this)
     }
 
+    // TODO: do we need this? is this correct with versions?
     final def doSingleCas[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
       val desc = this.addCas(this.start(), ref, ov, nv)
       this.tryPerform(desc)
@@ -232,7 +228,7 @@ object MCAS extends MCASPlatform { self =>
     }
   }
 
-  private[mcas] def impossibleOp[A, B](
+  private[mcas] final def impossibleOp[A, B](
     ref: MemoryLocation[_],
     a: HalfWordDescriptor[A],
     b: HalfWordDescriptor[B]

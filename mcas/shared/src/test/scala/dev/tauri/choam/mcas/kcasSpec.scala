@@ -342,6 +342,59 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertEquals(ctx.readVersion(r2), endTs)
   }
 
+  test("Merging disjoint descriptors should work") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("a")
+    val r2 = MemoryLocation.unsafe("b")
+    val d0 = ctx.start()
+    val startTs = d0.validTs
+    // one side:
+    val Some((ov1, d1a)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    assertSameInstance(ov1, "a")
+    val d2a = d1a.overwrite(d1a.getOrElseNull(r1).withNv("aa"))
+    // concurrent commit changes global version:
+    ctx.setCommitTs(startTs + Version.Incr)
+    // other side:
+    val Some((ov2, d1b)) = ctx.readMaybeFromLog(r2, ctx.start()) : @unchecked
+    assertSameInstance(ov2, "b")
+    val d2b = d1b.overwrite(d1b.getOrElseNull(r2).withNv("bb"))
+    // merge:
+    val d3 = ctx.addAll(d2a, d2b)
+    assert(!d3.readOnly)
+    assertEquals(d3.validTs, startTs + Version.Incr)
+    // commit:
+    assert(ctx.tryPerform2(d3))
+    val endTs = ctx.start().validTs
+    assertEquals(endTs, startTs + (2 * Version.Incr))
+    assertSameInstance(ctx.readDirect(r1), "aa")
+    assertEquals(ctx.readVersion(r1), endTs)
+    assertSameInstance(ctx.readDirect(r2), "bb")
+    assertEquals(ctx.readVersion(r2), endTs)
+  }
+
+  test("Merging overlapping descriptors does not work") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("a")
+    val r2 = MemoryLocation.unsafe("b")
+    val d0 = ctx.start()
+    // one side:
+    val Some((ov1, d1a)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    assertSameInstance(ov1, "a")
+    val d2a = d1a.overwrite(d1a.getOrElseNull(r1).withNv("aa"))
+    // other side:
+    val Some((ov2, d1b)) = ctx.readMaybeFromLog(r2, ctx.start()) : @unchecked
+    assertSameInstance(ov2, "b")
+    // touches the same ref:
+    val Some((_, d2b)) = ctx.readMaybeFromLog(r1, d1b) : @unchecked
+    // merge:
+    try {
+      ctx.addAll(d2a, d2b)
+      fail("expected ImpossibleOperation")
+    } catch {
+      case _: ImpossibleOperation => // OK
+    }
+  }
+
   test("equals/hashCode/toString for descriptors") {
     val ctx = this.kcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("foo")

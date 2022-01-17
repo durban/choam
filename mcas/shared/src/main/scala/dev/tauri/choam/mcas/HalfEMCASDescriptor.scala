@@ -31,6 +31,14 @@ final class HalfEMCASDescriptor private (
   final def validTs: Long =
     this.validTsBoxed // unboxing happens
 
+  private final def withValidTsBoxed(newBoxed: java.lang.Long): HalfEMCASDescriptor =  {
+    new HalfEMCASDescriptor(
+      map = this.map,
+      validTsBoxed = newBoxed,
+      readOnly = this.readOnly,
+    )
+  }
+
   private[mcas] final def newVersion: Long =
     this.validTs + Version.Incr
 
@@ -87,6 +95,7 @@ final class HalfEMCASDescriptor private (
     commitTsRef: MemoryLocation[Long],
     ctx: MCAS.ThreadContext,
   ): HalfEMCASDescriptor = {
+    // NB: we must read the commitTs *before* the `ctx.validate(this)`
     val newValidTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
     require(newValidTsBoxed >= this.validTs)
@@ -137,5 +146,40 @@ object HalfEMCASDescriptor {
       validTsBoxed = validTsBoxed,
       readOnly = true,
     )
+  }
+
+  private[mcas] final def merge(
+    a: HalfEMCASDescriptor,
+    b: HalfEMCASDescriptor,
+    ctx: MCAS.ThreadContext,
+  ): HalfEMCASDescriptor = {
+    // TODO: it is unclear, how should an exchange work when
+    // TODO: both sides already touched the same refs;
+    // TODO: for now, we only allow disjoint logs
+    val it = b.map.valuesIterator
+    var merged: HalfEMCASDescriptor = a
+    while (it.hasNext) {
+      // this also takes care of `readOnly`:
+      merged = merged.add(it.next()) // throws in case of conflict
+    }
+
+    // we temporarily choose the older `validTs`,
+    // but will extend if they're not equal:
+    val needToExtend = if (a.validTs < b.validTs) {
+      merged = merged.withValidTsBoxed(a.validTsBoxed)
+      true
+    } else if (a.validTs > b.validTs) {
+      merged = merged.withValidTsBoxed(b.validTsBoxed)
+      true
+    } else {
+      // they're equal, no need to extend:
+      false
+    }
+    if (needToExtend) {
+      // this will be null, if we cannot extend,
+      // in which case we return null:
+      merged = ctx.validateAndTryExtend(merged)
+    }
+    merged
   }
 }
