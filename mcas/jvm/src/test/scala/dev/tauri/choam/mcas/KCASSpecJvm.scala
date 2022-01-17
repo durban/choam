@@ -133,4 +133,90 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     assertSameInstance(res, None) // will need to roll back
     assertSameInstance(ctx.readIfValid(r2, d2.validTs), MCAS.INVALID)
   }
+
+  test("tryPerform2 should work (read-only, concurrent commit)") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("a")
+    val r2 = MemoryLocation.unsafe("b")
+    val d0 = ctx.start()
+    val startTs = d0.validTs
+    // read both:
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    assertSameInstance(ov1, "a")
+    assert(d1.readOnly)
+    val Some((ov2, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
+    assertSameInstance(ov2, "b")
+    assert(d2.readOnly)
+    // concurrent commit:
+    var ok = false
+    val t = new Thread(() => {
+      val ctx = kcasImpl.currentContext()
+      val d0 = ctx.start()
+      val Some((_, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+      val Some((_, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
+      val d3 = d2.overwrite(d2.getOrElseNull(r1).withNv("aa"))
+      val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("bb"))
+      assert(ctx.tryPerform2(d4))
+      ok = true
+    })
+    t.start()
+    t.join()
+    assert(ok)
+    // commit:
+    assert(ctx.tryPerform2(d2)) // read-only should still succeed
+    assertEquals(ctx.start().validTs, startTs + Version.Incr) //concurrent commit increased
+    assertSameInstance(ctx.readDirect(r1), "aa")
+    assertEquals(ctx.readVersion(r1), startTs + Version.Incr)
+    assertSameInstance(ctx.readDirect(r2), "bb")
+    assertEquals(ctx.readVersion(r2), startTs + Version.Incr)
+  }
+
+  test("tryPerform2 should work (read-write, concurrent commit)") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("a")
+    val r2 = MemoryLocation.unsafe("b")
+    val r3 = MemoryLocation.unsafe("c")
+    val d0 = ctx.start()
+    val startTs = d0.validTs
+    val v1 = ctx.readVersion(r1)
+    val v2 = ctx.readVersion(r2)
+    // swap contents:
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    assertSameInstance(ov1, "a")
+    assert(d1.readOnly)
+    val Some((ov2, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
+    assertSameInstance(ov2, "b")
+    assert(d2.readOnly)
+    val d3 = d2.overwrite(d2.getOrElseNull(r1).withNv(ov2))
+    assert(!d3.readOnly)
+    val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv(ov1))
+    assert(!d4.readOnly)
+    // concurrent commit changes an unrelated ref:
+    var ok = false
+    val t = new Thread(() => {
+      val ctx = kcasImpl.currentContext()
+      val d0 = ctx.start()
+      val Some((_, d1)) = ctx.readMaybeFromLog(r3, d0) : @unchecked
+      val d2 = d1.overwrite(d1.getOrElseNull(r3).withNv("cc"))
+      assert(ctx.tryPerform2(d2))
+      ok = true
+    })
+    t.start()
+    t.join()
+    assert(ok)
+    // try to finish the swap:
+    assert(!ctx.tryPerform2(d4)) // should fail due to version-CAS failing
+    // TODO: A completely disjoint commit caused
+    // TODO: our commit to fail. We should have
+    // TODO: an optimization to reuse commit versions
+    // TODO: for disjoint ops (if possible).
+    val endTs = ctx.start().validTs
+    assertEquals(endTs, startTs + Version.Incr)
+    assertSameInstance(ctx.readDirect(r1), "a")
+    assertEquals(ctx.readVersion(r1), v1)
+    assertSameInstance(ctx.readDirect(r2), "b")
+    assertEquals(ctx.readVersion(r2), v2)
+    assertSameInstance(ctx.readDirect(r3), "cc")
+    assertEquals(ctx.readVersion(r3), endTs)
+  }
 }

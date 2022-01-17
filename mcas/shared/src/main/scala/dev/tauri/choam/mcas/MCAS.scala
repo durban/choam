@@ -64,11 +64,12 @@ object MCAS extends MCASPlatform { self =>
 
     // abstract:
 
-    // TODO: should be protected[mcas]
-    def readCommitTs(): Long
+    def start(): HalfEMCASDescriptor
 
     // TODO: remove this
     protected[mcas] def setCommitTs(v: Long): Unit
+
+    protected[mcas] def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
 
     // TODO: do we need this? (for read-only Rxn's?)
     /** Returns `INVALID` if version is newer than `validTs` */
@@ -76,7 +77,9 @@ object MCAS extends MCASPlatform { self =>
 
     def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A]
 
-    def readVersion[A](ref: MemoryLocation[A]): Long
+    protected[mcas] def readVersion[A](ref: MemoryLocation[A]): Long
+
+    protected[mcas] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
 
     def tryPerform(desc: HalfEMCASDescriptor): Boolean
 
@@ -84,10 +87,11 @@ object MCAS extends MCASPlatform { self =>
 
     // concrete:
 
-    final def start(): HalfEMCASDescriptor =
-      HalfEMCASDescriptor.empty(ts = this.readCommitTs())
-
+    // TODO: remove (use readDirect instead)
     final def read[A](ref: MemoryLocation[A]): A =
+      this.readIfValid(ref, Version.None)
+
+    final def readDirect[A](ref: MemoryLocation[A]): A =
       this.readIfValid(ref, Version.None)
 
     // TODO: there should be a non-option, non-tuple version of this
@@ -116,9 +120,23 @@ object MCAS extends MCASPlatform { self =>
       if (hwd.version > newLog.validTs) {
         // this returns null if we need to roll back
         // (and we pass on the null to our caller):
-        this.extend(newLog)
+        this.validateAndTryExtend(newLog)
       } else {
         newLog
+      }
+    }
+
+    final def tryPerform2(desc: HalfEMCASDescriptor): Boolean = {
+      if (desc.readOnly) {
+        // we've validated each read,
+        // so nothing to do here
+        true
+        // TODO: unconditional CAS-es and
+        // TODO: direct reads may cuase problems!
+      } else {
+        val finalDesc = this.addVersionCas(desc)
+        assert(finalDesc.map.size == (desc.map.size + 1))
+        this.tryPerform(finalDesc)
       }
     }
 
@@ -136,7 +154,7 @@ object MCAS extends MCASPlatform { self =>
       desc.add(wd)
     }
 
-    final def validate(desc: HalfEMCASDescriptor): Boolean = {
+    private[mcas] final def validate(desc: HalfEMCASDescriptor): Boolean = {
       @tailrec
       def go(it: Iterator[HalfWordDescriptor[_]]): Boolean = {
         if (it.hasNext) {
@@ -153,15 +171,6 @@ object MCAS extends MCASPlatform { self =>
       }
 
       go(desc.map.valuesIterator)
-    }
-
-    final def extend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor = {
-      val ts = readCommitTs()
-      if (validate(desc)) {
-        desc.extendValidTs(ts)
-      } else {
-        null
-      }
     }
 
     final def snapshot(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =

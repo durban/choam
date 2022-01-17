@@ -291,4 +291,54 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertSameInstance(ctx.readIfValid(r1, newVer), "aa")
     assertSameInstance(ctx.readIfValid(r2, newVer), "bbb")
   }
+
+  test("tryPerform2 should work (read-only)") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("a")
+    val r2 = MemoryLocation.unsafe("b")
+    val d0 = ctx.start()
+    val v1 = ctx.readVersion(r1)
+    val v2 = ctx.readVersion(r2)
+    val startTs = d0.validTs
+    // read both:
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    assertSameInstance(ov1, "a")
+    assert(d1.readOnly)
+    val Some((ov2, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
+    assertSameInstance(ov2, "b")
+    assert(d2.readOnly)
+    // commit:
+    assert(ctx.tryPerform2(d2))
+    assertEquals(ctx.start().validTs, startTs) // it's read-only, no need to incr version
+    assertSameInstance(ctx.readDirect(r1), "a")
+    assertEquals(ctx.readVersion(r1), v1)
+    assertSameInstance(ctx.readDirect(r2), "b")
+    assertEquals(ctx.readVersion(r2), v2)
+  }
+
+  test("tryPerform2 should work (read-write)") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("a")
+    val r2 = MemoryLocation.unsafe("b")
+    val d0 = ctx.start()
+    val startTs = d0.validTs
+    // swap contents:
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    assertSameInstance(ov1, "a")
+    assert(d1.readOnly)
+    val Some((ov2, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
+    assertSameInstance(ov2, "b")
+    assert(d2.readOnly)
+    val d3 = d2.overwrite(d2.getOrElseNull(r1).withNv(ov2))
+    assert(!d3.readOnly)
+    val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv(ov1))
+    assert(!d4.readOnly)
+    assert(ctx.tryPerform2(d4))
+    val endTs = ctx.start().validTs
+    assertEquals(endTs, startTs + Version.Incr)
+    assertSameInstance(ctx.readDirect(r1), "b")
+    assertEquals(ctx.readVersion(r1), endTs)
+    assertSameInstance(ctx.readDirect(r2), "a")
+    assertEquals(ctx.readVersion(r2), endTs)
+  }
 }

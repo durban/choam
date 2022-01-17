@@ -86,11 +86,17 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
       }
     }
 
-    final override def readCommitTs(): Long =
-      _commitTs.unsafeGetPlain()
+    final override def start(): HalfEMCASDescriptor =
+      HalfEMCASDescriptor.empty(_commitTs, this)
 
     protected[mcas] def setCommitTs(v: Long): Unit =
       _commitTs.unsafeSetPlain(v)
+
+    protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+      desc.addVersionCas(_commitTs)
+
+    protected[mcas] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+      desc.validateAndTryExtend(_commitTs, this)
 
     // NB: it is a `def`, not a `val`
     final override private[choam] def random: ThreadLocalRandom =

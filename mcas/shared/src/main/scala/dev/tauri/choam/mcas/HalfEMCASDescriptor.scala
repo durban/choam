@@ -23,9 +23,12 @@ import scala.collection.immutable.TreeMap
 // TODO: this really should have a better name
 final class HalfEMCASDescriptor private (
   private[mcas] val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
-  val validTs: Long,
+  validTsBoxed: java.lang.Long,
   val readOnly: Boolean,
 ) {
+
+  final def validTs: Long =
+    this.validTsBoxed // unboxing happens
 
   private[mcas] final def newVersion: Long =
     this.validTs + Version.Incr
@@ -42,7 +45,7 @@ final class HalfEMCASDescriptor private (
       val newMap = this.map.updated(d.address, d)
       new HalfEMCASDescriptor(
         newMap,
-        this.validTs,
+        this.validTsBoxed,
         this.readOnly && desc.readOnly,
       )
     }
@@ -54,11 +57,21 @@ final class HalfEMCASDescriptor private (
     val newMap = this.map.updated(d.address, d)
     new HalfEMCASDescriptor(
       newMap,
-      this.validTs,
+      this.validTsBoxed,
       this.readOnly && desc.readOnly, // this is a simplification:
       // we don't want to rescan here the whole log, so we only pass
       // true if it's DEFINITELY read-only
     )
+  }
+
+  private[mcas] final def addVersionCas(commitTsRef: MemoryLocation[Long]): HalfEMCASDescriptor = {
+    val hwd = HalfWordDescriptor[java.lang.Long](
+      commitTsRef.asInstanceOf[MemoryLocation[java.lang.Long]],
+      ov = this.validTsBoxed, // no boxing
+      nv = this.newVersion, // boxing happens
+      version = Version.Start, // the version's version is unused/arbitrary
+    )
+    this.add(hwd)
   }
 
   private[mcas] final def getOrElseNull[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
@@ -69,13 +82,22 @@ final class HalfEMCASDescriptor private (
     }
   }
 
-  private[mcas] final def extendValidTs(newValidTs: Long): HalfEMCASDescriptor = {
-    require(newValidTs >= this.validTs)
-    new HalfEMCASDescriptor(
-      map = this.map,
-      validTs = newValidTs,
-      readOnly = this.readOnly,
-    )
+  private[mcas] final def validateAndTryExtend(
+    commitTsRef: MemoryLocation[Long],
+    ctx: MCAS.ThreadContext,
+  ): HalfEMCASDescriptor = {
+    val newValidTsBoxed: java.lang.Long =
+      (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
+    require(newValidTsBoxed >= this.validTs)
+    if (ctx.validate(this)) {
+      new HalfEMCASDescriptor(
+        map = this.map,
+        validTsBoxed = newValidTsBoxed,
+        readOnly = this.readOnly,
+      )
+    } else {
+      null
+    }
   }
 
   final override def toString: String =
@@ -84,10 +106,12 @@ final class HalfEMCASDescriptor private (
 
 object HalfEMCASDescriptor {
 
-  def empty(ts: Long): HalfEMCASDescriptor = {
+  def empty(commitTsRef: MemoryLocation[Long], ctx: MCAS.ThreadContext): HalfEMCASDescriptor = {
+    val validTsBoxed: java.lang.Long =
+      (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
     new HalfEMCASDescriptor(
       TreeMap.empty(MemoryLocation.orderingInstance[Any]),
-      validTs = ts,
+      validTsBoxed = validTsBoxed,
       readOnly = true,
     )
   }

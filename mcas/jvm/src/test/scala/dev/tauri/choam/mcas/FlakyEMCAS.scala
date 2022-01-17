@@ -49,11 +49,17 @@ object FlakyEMCAS extends MCAS { self =>
     final override def tryPerform(desc: HalfEMCASDescriptor): Boolean =
       self.tryPerform(desc, emcasCtx)
 
-    final override def readCommitTs(): Long =
-      emcasCtx.readCommitTs()
+    final override def start(): HalfEMCASDescriptor =
+      emcasCtx.start()
 
     protected[mcas] final override def setCommitTs(v: Long): Unit =
       emcasCtx.setCommitTs(v)
+
+    protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+      emcasCtx.addVersionCas(desc)
+
+    protected[mcas] final override def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+      emcasCtx.validateAndTryExtend(desc)
   }
 
   private[choam] final override def isThreadSafe =

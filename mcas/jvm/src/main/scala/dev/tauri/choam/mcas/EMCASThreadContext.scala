@@ -124,15 +124,20 @@ private final class EMCASThreadContext(
   final override def readVersion[A](ref: MemoryLocation[A]): Long =
     impl.readVersion(ref, this)
 
-  final override def readCommitTs(): Long =
-    this.global.commitTs.unsafeGetVolatile()
+  final override def start(): HalfEMCASDescriptor =
+    HalfEMCASDescriptor.empty(this.global.commitTs, this)
 
   protected[mcas] def setCommitTs(v: Long): Unit =
-      this.global.commitTs.unsafeSetVolatile(v)
+    this.global.commitTs.unsafeSetVolatile(v)
 
-  final override def toString: String = {
+  protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+    desc.addVersionCas(this.global.commitTs)
+
+  protected[mcas] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+    desc.validateAndTryExtend(this.global.commitTs, this)
+
+  final override def toString: String =
     s"ThreadContext(global = ${this.global}, tid = ${this.tid})"
-  }
 
   private[choam] final override def recordCommit(retries: Int): Unit = {
     this.recordCommitPlain(retries)
