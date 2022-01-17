@@ -132,7 +132,7 @@ object MCAS extends MCASPlatform { self =>
         // so nothing to do here
         true
         // TODO: unconditional CAS-es and
-        // TODO: direct reads may cuase problems!
+        // TODO: direct reads may cause problems!
       } else {
         val finalDesc = this.addVersionCas(desc)
         assert(finalDesc.map.size == (desc.map.size + 1))

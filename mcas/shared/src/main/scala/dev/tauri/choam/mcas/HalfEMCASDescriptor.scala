@@ -19,11 +19,12 @@ package dev.tauri.choam
 package mcas
 
 import scala.collection.immutable.TreeMap
+import scala.util.hashing.MurmurHash3
 
 // TODO: this really should have a better name
 final class HalfEMCASDescriptor private (
   private[mcas] val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
-  validTsBoxed: java.lang.Long,
+  private val validTsBoxed: java.lang.Long,
   val readOnly: Boolean,
 ) {
 
@@ -100,13 +101,35 @@ final class HalfEMCASDescriptor private (
     }
   }
 
-  final override def toString: String =
-    s"HalfEMCASDescriptor(${map.valuesIterator.mkString(", ")})"
+  final override def toString: String = {
+    val m = map.valuesIterator.mkString("[", ", ", "]")
+    s"HalfEMCASDescriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly})"
+  }
+
+  final override def equals(that: Any): Boolean = {
+    that match {
+      case that: HalfEMCASDescriptor =>
+        (this eq that) || (
+          (this.readOnly == that.readOnly) &&
+          (this.validTsBoxed eq that.validTsBoxed) &&
+          (this.map == that.map)
+        )
+      case _ =>
+        false
+    }
+  }
+
+  final override def hashCode: Int = {
+    val h1 = MurmurHash3.mix(0xefebde66, System.identityHashCode(this.validTsBoxed))
+    val h2 = MurmurHash3.mix(h1, this.readOnly.##)
+    val h3 = MurmurHash3.mix(h2, this.map.##)
+    MurmurHash3.finalizeHash(h3, this.map.size)
+  }
 }
 
 object HalfEMCASDescriptor {
 
-  def empty(commitTsRef: MemoryLocation[Long], ctx: MCAS.ThreadContext): HalfEMCASDescriptor = {
+  private[mcas] def empty(commitTsRef: MemoryLocation[Long], ctx: MCAS.ThreadContext): HalfEMCASDescriptor = {
     val validTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
     new HalfEMCASDescriptor(

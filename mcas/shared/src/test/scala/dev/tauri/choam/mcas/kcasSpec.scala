@@ -341,4 +341,38 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertSameInstance(ctx.readDirect(r2), "a")
     assertEquals(ctx.readVersion(r2), endTs)
   }
+
+  test("equals/hashCode/toString for descriptors") {
+    val ctx = this.kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("foo")
+    val r2 = MemoryLocation.unsafe("foo")
+    // hwd:
+    val hwd1 = HalfWordDescriptor[String](r1, "foo", "bar", 42L)
+    assertEquals(hwd1, hwd1)
+    assertEquals(hwd1.##, hwd1.##)
+    val hwd2 = HalfWordDescriptor[String](r1, "foo", "bar", 42L)
+    assertEquals(hwd1, hwd2)
+    assertEquals(hwd1.##, hwd2.##)
+    assertEquals(hwd1.toString, hwd2.toString)
+    val hwd3 = HalfWordDescriptor[String](r2, "foo", "bar", 42L)
+    assertNotEquals(hwd1, hwd3)
+    assertNotEquals(hwd1.##, hwd3.##)
+    assertNotEquals(hwd1.toString, hwd3.toString)
+    // hed:
+    val d1 = ctx.start()
+    assertEquals(d1, d1)
+    assertEquals(d1.##, d1.##)
+    val d2 = ctx.start()
+    assertEquals(d1, d2)
+    assertEquals(d1.##, d2.##)
+    assertEquals(d1.toString, d2.toString)
+    val d3 = d2.add(hwd3)
+    assertNotEquals(d1, d3)
+    assertNotEquals(d1.##, d3.##)
+    assertNotEquals(d1.toString, d3.toString)
+    val d4 = d2.add(hwd3)
+    assertEquals(d4, d3)
+    assertEquals(d4.##, d3.##)
+    assertEquals(d4.toString, d3.toString)
+  }
 }

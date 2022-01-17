@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package mcas
 
+import scala.util.hashing.MurmurHash3
+
 // TODO: this really should have a better name
 final class HalfWordDescriptor[A] private (
   val address: MemoryLocation[A],
@@ -36,7 +38,30 @@ final class HalfWordDescriptor[A] private (
     equ(this.ov, this.nv)
 
   final override def toString: String =
-    s"HalfWordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
+    s"HalfWordDescriptor(${this.address}, ${this.ov}, ${this.nv}, version = ${version})"
+
+  final override def equals(that: Any): Boolean = {
+    that match {
+      case that: HalfWordDescriptor[_] =>
+        (this eq that) || (
+          (this.address == that.address) &&
+          equ(this.ov, that.ov) &&
+          equ(this.nv, that.nv) &&
+          (this.version == that.version)
+        )
+      case _ =>
+        false
+    }
+  }
+
+  final override def hashCode: Int = {
+    val h1 = MurmurHash3.mix(0x4beb8a16, this.address.##)
+    val h2 = MurmurHash3.mix(h1, System.identityHashCode(this.ov))
+    val h3 = MurmurHash3.mix(h2, System.identityHashCode(this.nv))
+    val h4 = MurmurHash3.mix(h3, this.version.toInt)
+    val h5 = MurmurHash3.mixLast(h4, (this.version >>> 32).toInt)
+    MurmurHash3.finalizeHash(h5, 5)
+  }
 }
 
 private object HalfWordDescriptor {
