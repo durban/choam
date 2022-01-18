@@ -280,6 +280,9 @@ object Rxn extends RxnInstances0 {
   final def secureRandom: Axn[Random[Axn]] =
     unsafe.delay { _ => RxnRandomImplSecure.unsafe() }
 
+  final def deterministicRandom(initialSeed: Long): Axn[Random[Axn]] =
+    DeterministicRandom.apply(initialSeed)
+
   // TODO: maybe move this to `Ref`?
   final def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
     ra.get * rb.get

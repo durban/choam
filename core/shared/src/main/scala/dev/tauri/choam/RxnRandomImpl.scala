@@ -26,9 +26,6 @@ import cats.effect.std.Random
 
 import CompatPlatform.SecureRandom
 
-// TODO: Maybe create a deterministic random generator, which has
-// TODO: its state in a `Ref`, and thus updated transactionally.
-
 private object RxnRandomImplSecure {
 
   def unsafe[X](): Random[Rxn[X, *]] = {

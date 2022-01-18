@@ -26,6 +26,7 @@ import cats.effect.std.UUIDGen
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.effect.PropF
 import cats.effect.std.Random
+import java.util.concurrent.ThreadLocalRandom
 
 final class RandomSpec_ThreadConfinedMCAS_SyncIO
   extends BaseSpecSyncIO
@@ -65,70 +66,51 @@ trait RandomSpec[F[_]]
 
   // TODO: more tests for Rxn.*Random
 
-  // fastRandom:
+  checkRandom("Rxn.fastRandom", Rxn.fastRandom.run[F])
+  checkRandom("Rxn.fastRandomCached", Rxn.fastRandomCached.run[F])
+  checkRandom("Rxn.fastRandomCtxSupp", Rxn.fastRandomCtxSupp.run[F])
+  checkRandom("Rxn.secureRandom", Rxn.secureRandom.run[F])
 
-  test("Rxn.fastRandom betweenDouble") {
-    Rxn.fastRandom.run[F].map(checkBetweenDouble)
+  test("Rxn.deterministicRandom nextLong") {
+    val mk = F.delay(ThreadLocalRandom.current().nextLong()).flatMap { initSeed =>
+      Rxn.deterministicRandom(initSeed).run[F]
+    }
+    mk.map(checkNextLong)
   }
 
-  test("Rxn.fastRandom nextLong") {
-    Rxn.fastRandom.run[F].map(checkNextLong)
+  test("Rxn.deterministicRandom nextLongBounded") {
+    val mk = F.delay(ThreadLocalRandom.current().nextLong()).flatMap { initSeed =>
+      Rxn.deterministicRandom(initSeed).run[F]
+    }
+    mk.map(checkNextLongBounded)
   }
 
-  test("Rxn.fastRandom nextAlphaNumeric") {
-    Rxn.fastRandom.run[F].map(checkNextAlphaNumeric)
+  test(s"Rxn.deterministicRandom nextGaussian") {
+    val mk = F.delay(ThreadLocalRandom.current().nextLong()).flatMap { initSeed =>
+      Rxn.deterministicRandom(initSeed).run[F]
+    }
+    mk.map(checkGaussian)
   }
 
-  test("Rxn.fastRandom shuffleList/Vector") {
-    Rxn.fastRandom.run[F].map(checkShuffle)
-  }
-
-  test("Rxn.fastRandom nextGaussian") {
-    Rxn.fastRandom.run[F].map(checkGaussian)
-  }
-
-  // fastRandomCached:
-
-  test("Rxn.fastRandomCached betweenDouble") {
-    Rxn.fastRandomCached.run[F].map(checkBetweenDouble)
-  }
-
-  test("Rxn.fastRandomCached nextLong") {
-    Rxn.fastRandomCached.run[F].map(checkNextLong)
-  }
-
-  test("Rxn.fastRandomCached nextAlphaNumeric") {
-    Rxn.fastRandomCached.run[F].map(checkNextAlphaNumeric)
-  }
-
-  test("Rxn.fastRandomCached shuffleList/Vector") {
-    Rxn.fastRandomCached.run[F].map(checkShuffle)
-  }
-
-  test("Rxn.fastRandomCached nextGaussian") {
-    Rxn.fastRandomCached.run[F].map(checkGaussian)
-  }
-
-  // secureRandom:
-
-  test("Rxn.secureRandom betweenDouble") {
-    Rxn.secureRandom.run[F].map(checkBetweenDouble)
-  }
-
-  test("Rxn.secureRandom nextLong") {
-    Rxn.secureRandom.run[F].map(checkNextLong)
-  }
-
-  test("Rxn.secureRandom nextAlphaNumeric") {
-    Rxn.secureRandom.run[F].map(checkNextAlphaNumeric)
-  }
-
-  test("Rxn.secureRandom shuffleList/Vector") {
-    Rxn.secureRandom.run[F].map(checkShuffle)
-  }
-
-  test("Rxn.secureRandom nextGaussian") {
-    Rxn.secureRandom.run[F].map(checkGaussian)
+  def checkRandom(name: String, mk: F[Random[Axn]]): Unit = {
+    test(s"${name} betweenDouble") {
+      mk.map(checkBetweenDouble)
+    }
+    test(s"${name} nextLong") {
+      mk.map(checkNextLong)
+    }
+    test(s"${name} nextLongBounded") {
+      mk.map(checkNextLongBounded)
+    }
+    test(s"${name} nextAlphaNumeric") {
+      mk.map(checkNextAlphaNumeric)
+    }
+    test(s"${name} shuffleList/Vector") {
+      mk.map(checkShuffle)
+    }
+    test(s"${name} nextGaussian") {
+      mk.map(checkGaussian)
+    }
   }
 
   def checkBetweenDouble(rnd: Random[Axn]): PropF[F] = {
@@ -148,8 +130,25 @@ trait RandomSpec[F[_]]
 
   def checkNextLong(rnd: Random[Axn]): PropF[F] = {
     PropF.forAllF { (_: Long) =>
-      (rnd.nextLong * rnd.nextLong).run[F].flatMap { nn =>
+      (rnd.nextLong.run[F], rnd.nextLong.run[F]).tupled.flatMap { nn =>
         assertNotEqualsF(nn._1, nn._2)
+      }
+    }
+  }
+
+  def checkNextLongBounded(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (n: Long) =>
+      val bound = if (n > 0L) {
+        n
+      } else if (n < 0L) {
+        val b = Math.abs(n)
+        if (b < 0L) Long.MaxValue // was Long.MinValue
+        else b
+      } else { // was 0
+        0xffffL
+      }
+      rnd.nextLongBounded(bound).run[F].flatMap { n =>
+        assertF(clue(n) < bound) *> assertF(clue(n) >= 0L)
       }
     }
   }
@@ -191,7 +190,7 @@ trait RandomSpec[F[_]]
 
   def checkGaussian(rnd: Random[Axn]): PropF[F] = {
     PropF.forAllF { (_: Long) =>
-      (rnd.nextGaussian * rnd.nextGaussian).run[F].flatMap {
+      (rnd.nextGaussian.run[F], rnd.nextGaussian.run[F]).tupled.flatMap {
         case (x, y) =>
           for {
             _ <- assertNotEqualsF(clue(x), clue(y))
