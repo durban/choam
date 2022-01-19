@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import java.nio.{ ByteBuffer, ByteOrder }
+
 import cats.effect.std.Random
 
 // TODO: finish implementing the derived methods
@@ -102,12 +104,6 @@ private final class DeterministicRandom(
   final override def betweenFloat(minInclusive: Float, maxExclusive: Float): Axn[Float] =
     sys.error("TODO")
 
-  final override def betweenInt(minInclusive: Int, maxExclusive: Int): Axn[Int] =
-    sys.error("TODO")
-
-  final override def betweenLong(minInclusive: Long, maxExclusive: Long): Axn[Long] =
-    sys.error("TODO")
-
   final override def nextAlphaNumeric: Axn[Char] =
     sys.error("TODO")
 
@@ -116,7 +112,37 @@ private final class DeterministicRandom(
 
   final override def nextBytes(n: Int): Axn[Array[Byte]] = {
     require(n >= 0)
-    sys.error("TODO")
+    seed.modify[Array[Byte]] { (sd: Long) =>
+      val arr = new Array[Byte](n)
+      val buf = ByteBuffer.wrap(arr)
+      buf.order(ByteOrder.LITTLE_ENDIAN)
+      var s: Long = sd
+
+      /** Put the last (at most 7) bytes into buf */
+      def putLastBytes(nBytes: Int, r: Long): Unit = {
+        if (nBytes > 0) {
+          buf.put(r.toByte)
+          putLastBytes(nBytes - 1, r >>> 8)
+        }
+      }
+
+      while ({
+        val rem = buf.remaining
+        if (rem > 0) {
+          s += gamma
+          if (rem >= 8) {
+            buf.putLong(mix64(s))
+            true
+          } else {
+            putLastBytes(nBytes = rem, r = mix64(s))
+            false
+          }
+        } else {
+          false
+        }
+      }) {}
+      (s, arr)
+    }
   }
 
   final override def nextDouble: Axn[Double] =
@@ -179,6 +205,36 @@ private final class DeterministicRandom(
     }
   }
 
+  final override def betweenInt(minInclusive: Int, maxExclusive: Int): Axn[Int] = {
+    require(minInclusive < maxExclusive)
+    val n: Int = maxExclusive - minInclusive
+    val m: Int = n - 1
+    seed.modify[Int] { (sd: Long) =>
+      if ((n & m) == 0) { // power of 2
+        val s: Long = sd + gamma
+        (s, (mix32(s) & m) + minInclusive)
+      } else if (n > 0) {
+        var s: Long = sd
+        var r: Int = -1 // unused value
+        while ({
+          s += gamma
+          val u: Int = mix32(s) >>> 1
+          r = u % n
+          (u + m - r) < 0
+        }) {}
+        (s, r + minInclusive)
+      } else { // range not representable as Int
+        var s: Long = sd + gamma
+        var r: Int = mix32(s)
+        while ((r < minInclusive) || (r >= maxExclusive)) {
+          s += gamma
+          r = mix32(s)
+        }
+        (s, r)
+      }
+    }
+  }
+
   final override def nextLong: Axn[Long] =
     nextSeed.map(mix64)
 
@@ -198,6 +254,36 @@ private final class DeterministicRandom(
           (u + m - r) < 0L
         }) {}
 
+        (s, r)
+      }
+    }
+  }
+
+  final override def betweenLong(minInclusive: Long, maxExclusive: Long): Axn[Long] = {
+    require(minInclusive < maxExclusive)
+    val n: Long = maxExclusive - minInclusive
+    val m: Long = n - 1
+    seed.modify[Long] { (sd: Long) =>
+      if ((n & m) == 0L) { // power of 2
+        val s: Long = sd + gamma
+        (s, (mix64(s) & m) + minInclusive)
+      } else if (n > 0L) {
+        var s: Long = sd
+        var r: Long = -1L // unused value
+        while ({
+          s += gamma
+          val u: Long = mix64(s) >>> 1
+          r = u % n
+          (u + m - r) < 0L
+        }) {}
+        (s, r + minInclusive)
+      } else { // range not representable as Long
+        var s: Long = sd + gamma
+        var r: Long = mix64(s)
+        while ((r < minInclusive) || (r >= maxExclusive)) {
+          s += gamma
+          r = mix64(s)
+        }
         (s, r)
       }
     }

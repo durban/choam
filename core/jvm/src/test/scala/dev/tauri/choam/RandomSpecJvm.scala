@@ -44,23 +44,63 @@ trait RandomSpecJvm[F[_]] extends RandomSpec[F] { this: KCASImplSpec =>
     println(s"Default SecureRandom: ${s.toString} (in ${at - bt}ns)")
   }
 
-  test("Rxn.deterministicRandom should use the same algo as SplittableRandom") {
+  test("Rxn.deterministicRandom should use the same algo as SplittableRandom".only) {
     PropF.forAllF { (seed: Long) =>
       for {
         // the basic algorithm is the same as SplittableRandom:
         sr <- F.delay(new SplittableRandom(seed))
         dr <- Rxn.deterministicRandom(seed).run[F]
+        // nextLong/Bounded/Between:
         n1 <- F.delay(sr.nextLong())
         _ <- assertResultF(dr.nextLong.run[F], n1)
         n2 <- F.delay(sr.nextLong())
         _ <- assertResultF(dr.nextLong.run[F], n2)
         n3 <- F.delay(sr.nextLong(42L))
         _ <- assertResultF(dr.nextLongBounded(42L).run[F], n3)
+        n4 <- F.delay(sr.nextLong(128L))
+        _ <- assertResultF(dr.nextLongBounded(128L).run[F], n4)
+        n5 <- F.delay(sr.nextLong(23L, 1936L))
+        _ <- assertResultF(dr.betweenLong(23L, 1936L).run[F], n5)
+        n6 <- F.delay(sr.nextLong(Long.MinValue + 5L, Long.MaxValue - 32L))
+        _ <- assertResultF(dr.betweenLong(Long.MinValue + 5L, Long.MaxValue - 32L).run[F], n6)
+        // nextInt/Bounded/Between:
+        i1 <- F.delay(sr.nextInt())
+        _ <- assertResultF(dr.nextInt.run[F], i1)
+        i2 <- F.delay(sr.nextInt(32))
+        _ <- assertResultF(dr.nextIntBounded(32).run[F], i2)
+        i3 <- F.delay(sr.nextInt(42))
+        _ <- assertResultF(dr.nextIntBounded(42).run[F], i3)
+        i4 <- F.delay(sr.nextInt(128, 145))
+        _ <- assertResultF(dr.betweenInt(128, 145).run[F], i4)
+        i5 <- F.delay(sr.nextInt(Int.MinValue, 988595849))
+        _ <- assertResultF(dr.betweenInt(Int.MinValue, 988595849).run[F], i5)
+        // nextDouble:
         d1 <- F.delay(sr.nextDouble())
         _ <- assertResultF(dr.nextDouble.run[F], d1)
+        d2 <- F.delay(sr.nextDouble())
+        _ <- assertResultF(dr.nextDouble.run[F], d2)
+        // nextBoolean:
         b1 <- F.delay(sr.nextBoolean())
         _ <- assertResultF(dr.nextBoolean.run[F], b1)
-        // make the seeds shift:
+        b2 <- F.delay(sr.nextBoolean())
+        _ <- assertResultF(dr.nextBoolean.run[F], b2)
+        // nextBytes:
+        a1 <- F.delay(new Array[Byte](16))
+        _ <- F.delay(sr.nextBytes(a1))
+        a1Actual <- dr.nextBytes(16).run[F]
+        _ <- assertEqualsF(a1Actual.toList, a1.toList)
+        a2 <- F.delay(new Array[Byte](42))
+        _ <- F.delay(sr.nextBytes(a2))
+        a2Actual <- dr.nextBytes(42).run[F]
+        _ <- assertEqualsF(a2Actual.toList, a2.toList)
+        a3 <- F.delay(new Array[Byte](3))
+        _ <- F.delay(sr.nextBytes(a3))
+        a3Actual <- dr.nextBytes(3).run[F]
+        _ <- assertEqualsF(a3Actual.toList, a3.toList)
+        // last check:
+        nLast <- F.delay(sr.nextLong())
+        _ <- assertResultF(dr.nextLong.run[F], nLast)
+        // negative test, make the seeds shift:
         _ <- F.delay(sr.nextLong())
         nx <- F.delay(sr.nextLong())
         ny <- dr.nextLong.run[F]
