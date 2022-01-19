@@ -178,6 +178,8 @@ private final class DeterministicRandom(
       // (the other one is `v2 * multiplier`), but
       // we don't bother saving the other one for
       // next time (it probably doesn't worth it).
+      // TODO: Because of this, nextGaussian doesn't
+      // TODO: generate the same values as SplittableRandom!
     }
   }
 

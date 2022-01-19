@@ -134,6 +134,40 @@ trait RandomSpec[F[_]]
     }
   }
 
+  test("Rxn.deterministicRandom must generate the same values on JS as on JVM") {
+    val seed = 0xcb3cd24fdc6b4d2eL
+    val expected = List[Any](
+      0xa72188f2612329aeL, 0x48d95371bf5ec4f1L,
+      0xd30cb828, 0x5db0cf4a,
+      0.014245625397914075d, 0.4724122890885252d,
+      0.98776937f, 0.3258993f,
+      -1.82254464632059d, 0.9106167032393551d,
+    )
+    for {
+      dr <- Rxn.deterministicRandom(seed).run[F]
+      n1 <- dr.nextLong.run[F]
+      n2 <- dr.nextLong.run[F]
+      i1 <- dr.nextInt.run[F]
+      i2 <- dr.nextInt.run[F]
+      d1 <- dr.nextDouble.run[F]
+      d2 <- dr.nextDouble.run[F]
+      f1 <- dr.nextFloat.run[F]
+      f2 <- dr.nextFloat.run[F]
+      g1 <- dr.nextGaussian.run[F]
+      g2 <- dr.nextGaussian.run[F]
+      _ <- assertEqualsF(
+        List[Any](
+          n1, n2,
+          i1, i2,
+          d1, d2,
+          f1, f2,
+          g1, g2,
+        ),
+        expected
+      )
+    } yield ()
+  }
+
   def checkRandom(name: String, mk: F[Random[Axn]]): Unit = {
     test(s"${name} betweenDouble") {
       mk.map(checkBetweenDouble)
