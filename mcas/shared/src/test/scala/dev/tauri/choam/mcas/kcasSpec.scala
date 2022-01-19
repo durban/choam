@@ -284,7 +284,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(!d7.readOnly)
     // perform:
     assert(ctx.tryPerform(d7))
-    val newVer = d7.validTs + 1
+    val newVer = d7.newVersion
     ctx.setCommitTs(newVer)
     assertEquals(ctx.readVersion(r1), newVer)
     assertEquals(ctx.readVersion(r2), newVer)
@@ -352,7 +352,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val Some((ov1, d1a)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
     assertSameInstance(ov1, "a")
     val d2a = d1a.overwrite(d1a.getOrElseNull(r1).withNv("aa"))
-    // concurrent commit changes global version:
+    // simulate a concurrent commit which changes global version:
     ctx.setCommitTs(startTs + Version.Incr)
     // other side:
     val Some((ov2, d1b)) = ctx.readMaybeFromLog(r2, ctx.start()) : @unchecked

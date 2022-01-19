@@ -57,7 +57,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       val newHwd = hwd.withNv("bb")
       val dx2 = dx.overwrite(newHwd)
       assert(ctx.tryPerform(dx2))
-      val newVer = dx2.validTs + 1
+      val newVer = dx2.newVersion
       ctx.setCommitTs(newVer)
       assertEquals(ctx.readVersion(r2), newVer)
       assert(newVer > d2.validTs)
@@ -85,7 +85,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     assert(!d6.readOnly)
     // perform:
     assert(ctx.tryPerform(d6))
-    val newVer = d6.validTs + 1
+    val newVer = d6.newVersion
     ctx.setCommitTs(newVer)
     assertEquals(ctx.readVersion(r1), newVer)
     assertEquals(ctx.readVersion(r2), newVer)
@@ -117,9 +117,8 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       val Some((ov2, dx3)) = ctx.readMaybeFromLog(r2, dx2) : @unchecked
       assertSameInstance(ov2, "b")
       val dx4 = dx3.overwrite(dx3.getOrElseNull(r2).withNv("y"))
-      assert(ctx.tryPerform(dx4))
-      val newVer = dx4.validTs + 1
-      ctx.setCommitTs(newVer)
+      assert(ctx.tryPerform2(dx4))
+      val newVer = dx4.newVersion
       assertEquals(ctx.readVersion(r1), newVer)
       assertEquals(ctx.readVersion(r2), newVer)
       assert(newVer > dx4.validTs)

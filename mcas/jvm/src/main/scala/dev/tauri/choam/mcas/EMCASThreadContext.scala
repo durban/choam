@@ -127,7 +127,7 @@ private final class EMCASThreadContext(
   final override def start(): HalfEMCASDescriptor =
     HalfEMCASDescriptor.empty(this.global.commitTs, this)
 
-  protected[mcas] def setCommitTs(v: Long): Unit =
+  protected[mcas] final override def setCommitTs(v: Long): Unit =
     this.global.commitTs.unsafeSetVolatile(v)
 
   protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
