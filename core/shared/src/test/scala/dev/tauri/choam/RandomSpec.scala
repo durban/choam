@@ -18,15 +18,15 @@
 package dev.tauri.choam
 
 import java.util.IdentityHashMap
+import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.atomic.AtomicLong
 
 import cats.effect.SyncIO
 import cats.effect.kernel.Unique
-import cats.effect.std.UUIDGen
+import cats.effect.std.{ UUIDGen, Random }
 
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.effect.PropF
-import cats.effect.std.Random
-import java.util.concurrent.ThreadLocalRandom
 
 final class RandomSpec_ThreadConfinedMCAS_SyncIO
   extends BaseSpecSyncIO
@@ -85,11 +85,53 @@ trait RandomSpec[F[_]]
     mk.map(checkNextLongBounded)
   }
 
-  test(s"Rxn.deterministicRandom nextGaussian") {
+  test("Rxn.deterministicRandom nextGaussian") {
     val mk = F.delay(ThreadLocalRandom.current().nextLong()).flatMap { initSeed =>
       Rxn.deterministicRandom(initSeed).run[F]
     }
     mk.map(checkGaussian)
+  }
+
+  test("Rxn.deterministicRandom must be deterministic") {
+    PropF.forAllF { (seed: Long) =>
+      for {
+        dr1 <- Rxn.deterministicRandom(seed).run[F]
+        dr2 <- Rxn.deterministicRandom(seed).run[F]
+        n1 <- dr1.nextLong.run[F]
+        _ <- assertResultF(dr2.nextLong.run[F], n1)
+        n2 <- dr1.nextLong.run[F]
+        _ <- assertResultF(dr2.nextLong.run[F], n2)
+        n3 <- dr1.nextLongBounded(42L).run[F]
+        _ <- assertResultF(dr2.nextLongBounded(42L).run[F], n3)
+        d1 <- dr1.nextDouble.run[F]
+        _ <- assertResultF(dr2.nextDouble.run[F], d1)
+        b1 <- dr1.nextBoolean.run[F]
+        _ <- assertResultF(dr2.nextBoolean.run[F], b1)
+        // make the seeds shift:
+        _ <- dr1.nextLong.run[F]
+        nx <- dr1.nextLong.run[F]
+        ny <- dr2.nextLong.run[F]
+        _ <- assertNotEqualsF(ny, nx)
+      } yield ()
+    }
+  }
+
+  test("Rxn.deterministicRandom must be able to roll back the seed") {
+    PropF.forAllF { (seed: Long) =>
+      for {
+        dr1 <- Rxn.deterministicRandom(seed).run[F]
+        dr2 <- Rxn.deterministicRandom(seed).run[F]
+        ref <- F.delay(new AtomicLong)
+        rxn = dr1.nextLong.flatMapF { n =>
+          ref.set(n)
+          Rxn.unsafe.retry[Any, Int]
+        }.?
+        _ <- assertResultF(rxn.run[F], None)
+        n <- dr1.nextLong.run[F]
+        _ <- assertResultF(dr2.nextLong.run[F], n)
+        _ <- assertResultF(F.delay(ref.get()), n)
+      } yield ()
+    }
   }
 
   def checkRandom(name: String, mk: F[Random[Axn]]): Unit = {

@@ -17,9 +17,12 @@
 
 package dev.tauri.choam
 
+import java.util.SplittableRandom
 import java.security.SecureRandom
 
 import cats.effect.SyncIO
+
+import org.scalacheck.effect.PropF
 
 final class RandomSpecJvm_EMCAS_SyncIO
   extends BaseSpecSyncIO
@@ -39,5 +42,30 @@ trait RandomSpecJvm[F[_]] extends RandomSpec[F] { this: KCASImplSpec =>
     s.nextBytes(new Array[Byte](20)) // force seed
     val at = System.nanoTime()
     println(s"Default SecureRandom: ${s.toString} (in ${at - bt}ns)")
+  }
+
+  test("Rxn.deterministicRandom should use the same algo as SplittableRandom") {
+    PropF.forAllF { (seed: Long) =>
+      for {
+        // the basic algorithm is the same as SplittableRandom:
+        sr <- F.delay(new SplittableRandom(seed))
+        dr <- Rxn.deterministicRandom(seed).run[F]
+        n1 <- F.delay(sr.nextLong())
+        _ <- assertResultF(dr.nextLong.run[F], n1)
+        n2 <- F.delay(sr.nextLong())
+        _ <- assertResultF(dr.nextLong.run[F], n2)
+        n3 <- F.delay(sr.nextLong(42L))
+        _ <- assertResultF(dr.nextLongBounded(42L).run[F], n3)
+        d1 <- F.delay(sr.nextDouble())
+        _ <- assertResultF(dr.nextDouble.run[F], d1)
+        b1 <- F.delay(sr.nextBoolean())
+        _ <- assertResultF(dr.nextBoolean.run[F], b1)
+        // make the seeds shift:
+        _ <- F.delay(sr.nextLong())
+        nx <- F.delay(sr.nextLong())
+        ny <- dr.nextLong.run[F]
+        _ <- assertNotEqualsF(ny, nx)
+      } yield ()
+    }
   }
 }
