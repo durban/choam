@@ -136,6 +136,7 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
 
+// TODO: rename to stess-mcas
 lazy val mcasStress = project.in(file("mcas-stress"))
   .settings(name := "choam-mcas-stress")
   .settings(commonSettings)
