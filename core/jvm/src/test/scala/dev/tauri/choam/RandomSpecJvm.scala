@@ -44,7 +44,7 @@ trait RandomSpecJvm[F[_]] extends RandomSpec[F] { this: KCASImplSpec =>
     println(s"Default SecureRandom: ${s.toString} (in ${at - bt}ns)")
   }
 
-  test("Rxn.deterministicRandom should use the same algo as SplittableRandom".only) {
+  test("Rxn.deterministicRandom should use the same algo as SplittableRandom") {
     PropF.forAllF { (seed: Long) =>
       for {
         // the basic algorithm is the same as SplittableRandom:
