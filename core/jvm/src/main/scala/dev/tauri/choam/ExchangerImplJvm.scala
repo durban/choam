@@ -156,7 +156,7 @@ private sealed trait ExchangerImplJvm[A, B]
             impossible("Someone rescinded our Node!")
         }
       case None =>
-        if (ctx.doSingleCas(self.hole.loc, null, Rescinded[C])) {
+        if (ctx.tryPerformSingleCas(self.hole.loc, null, Rescinded[C])) {
           // OK, we rolled back, and can retry
           debugLog(s"waitForClaimedOffer: rolled back - thread#${Thread.currentThread().getId()}")
           Left(stats.rescinded(params))

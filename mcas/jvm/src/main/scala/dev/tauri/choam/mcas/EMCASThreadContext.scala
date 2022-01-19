@@ -121,7 +121,7 @@ private final class EMCASThreadContext(
   final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] =
     impl.readIntoHwd(ref, this)
 
-  final override def readVersion[A](ref: MemoryLocation[A]): Long =
+  protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
     impl.readVersion(ref, this)
 
   final override def start(): HalfEMCASDescriptor =

@@ -66,7 +66,7 @@ object MCAS extends MCASPlatform { self =>
 
     def start(): HalfEMCASDescriptor
 
-    // TODO: remove this
+    /** Only for testing! */
     protected[mcas] def setCommitTs(v: Long): Unit
 
     protected[mcas] def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
@@ -140,6 +140,7 @@ object MCAS extends MCASPlatform { self =>
       }
     }
 
+    // TODO: rename (maybe `addCasFromInitial`?)
     final def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
       this.addCasWithVersion(desc, ref, ov = ov, nv = nv, version = Version.Start)
 
@@ -176,14 +177,22 @@ object MCAS extends MCASPlatform { self =>
     final def snapshot(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       desc
 
-    final def addAll(to: HalfEMCASDescriptor, from: HalfEMCASDescriptor): HalfEMCASDescriptor = {
+    private[choam] final def addAll(to: HalfEMCASDescriptor, from: HalfEMCASDescriptor): HalfEMCASDescriptor = {
       HalfEMCASDescriptor.merge(to, from, this)
     }
 
-    // TODO: do we need this? is this correct with versions?
-    final def doSingleCas[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
-      val desc = this.addCas(this.start(), ref, ov, nv)
-      this.tryPerform(desc)
+    final def tryPerformSingleCas[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
+      val d0 = this.start()
+      val d1 = this.readIntoLog(ref, d0)
+      assert(d1 ne null)
+      val hwd = d1.getOrElseNull(ref)
+      assert(hwd ne null)
+      if (equ(hwd.ov, ov)) {
+        val d2 = d1.overwrite(hwd.withNv(nv))
+        this.tryPerform2(d2)
+      } else {
+        false
+      }
     }
 
     // statistics/testing/benchmarking:

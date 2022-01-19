@@ -30,7 +30,7 @@ private object EMCAS extends MCAS { self =>
    * The paper which describes EMCAS omits detailed
    * description of the memory management technique.
    * However, as mentioned in the paper, memory management
-   * is important not just for the performance, but the
+   * is important not just for the performance, but for the
    * correctness of the algorithm.
    *
    * A finished EMCAS operation leaves `WordDescriptor`s
@@ -67,10 +67,10 @@ private object EMCAS extends MCAS { self =>
    * The other methods (e.g., `unsafeGetVolatile`) manipulate the "content"
    * of the `MemoryLocation`. If the content is a "value", that can be
    * freely replaced by a descriptor during an operation. (But the
-   * new descriptor must have a mark.) The content have the following
+   * new descriptor must have a mark.) The content can have the following
    * possible states:
-
-   *   value - a user-supplied value, possibly including `null`;
+   *
+   *   value - a user-supplied value (possibly including `null`);
    *   this state includes anything that is not a `WordDescriptor`.
    *
    *   descriptor - a (non-null) `WordDescriptor` object.
@@ -93,28 +93,30 @@ private object EMCAS extends MCAS { self =>
    *
    *   content = value
    *   marker = full
-   *   Meaning: a new marker was installed, but then the
-   *   descriptor wasn't (due to a race; see comment at the
-   *   end of `tryWord`); the marker can be reused next time.
+   *   Meaning: a new marker have been installed, but then the
+   *   descriptor wasn't installed (due to a race; see comment at
+   *   the end of `tryWord`); the marker can be reused next time.
    *
    *   content = descriptor
    *   marker = null
-   *   Meaning: the descriptors is not in use any more, and
-   *   the `WeakReference` object was also cleared up; otherwise
+   *   Meaning: the descriptor is not in use any more, and the
+   *   `WeakReference` object was also cleared up; otherwise
    *   see below.
    *
    *   content = descriptor
    *   marker = empty
-   *   Meaning: the descriptors is not in use any more, and
-   *   can be replaced by the final value, or another descriptor
-   *   (but before placing a new descriptor, a new marker must
-   *   be installed).
+   *   Meaning: the descriptor is not in use any more, and can
+   *   be replaced by the final value, or another descriptor
+   *   (but before installing a new descriptor, a new marker must
+   *   be also installed).
    *
    *   content = descriptor
    *   marker = full
    *   Meaning: the descriptor is (possibly) in use, and cannot be
    *   replaced, except by another descriptor with the
    *   same mark.
+   *
+   * TODO: write about versions.
    */
 
   // TODO: this is unused (only 0 or non-0 matters)
