@@ -66,7 +66,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
 
 - Our `Rxn` is a lock-free, referentially transparent, and extended version of
   *reagents*, described in [Reagents: Expressing and Composing Fine-grained Concurrency
-  ](https://people.mpi-sws.org/~turon/reagents.pdf). (Other implementations or reagents:
+  ](http://www.ccis.northeastern.edu/home/turon/reagents.pdf). (Other implementations or reagents:
   [Scala](https://github.com/aturon/ChemistrySet),
   [OCaml](https://github.com/ocamllabs/reagents),
   [Racket](https://github.com/aturon/Caper).)
