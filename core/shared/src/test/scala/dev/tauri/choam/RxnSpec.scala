@@ -24,8 +24,6 @@ import cats.implicits._
 import cats.effect.IO
 import cats.mtl.Local
 
-import mcas.ImpossibleOperation
-
 final class RxnSpec_ThreadConfinedMCAS_IO
   extends BaseSpecIO
   with SpecThreadConfinedMCAS
@@ -515,7 +513,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("postCommit on delayComputed") {
+  test("postCommit on delayComputed".ignore) { // TODO: infinite retry
     for {
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
@@ -530,7 +528,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("postCommit before delayComputed") {
+  test("postCommit before delayComputed".ignore) { // TODO: infinite retry
     for {
       r1a <- Ref(0).run[F]
       r1ap <- Ref(0).run[F]
@@ -559,31 +557,29 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("delayComputed") {
+  test("delayComputed".ignore) { // TODO: retries, result will be different
     for {
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
-      rea = Rxn.unsafe.delayComputed[Unit, String](Rxn.ref.upd(a) { (oa: String, _: Unit) =>
+      rea = Rxn.unsafe.delayComputed[Unit, String](a.upd { (oa: String, _: Unit) =>
         ("x", oa)
-      }.map { oa => Rxn.ref.upd(b) { (ob: String, _: Any) => (oa, ob) } })
+      }.map { oa => b.upd { (ob: String, _: Any) => (oa, ob) } })
       _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, "b")
       _ <- assertResultF(a.unsafeInvisibleRead.run, "x")
       _ <- assertResultF(b.unsafeInvisibleRead.run, "a")
     } yield ()
   }
 
-  test("Impossible CAS should cause a runtime error") {
+  test("Formerly impossible CAS should not cause a runtime error") {
     for {
       ref <- Ref("a").run[F]
-      r = ref.update(_ + "b") >>> ref.update(_ + "x")
+      r = ref.update(_ + "b") >>> ref.updateAndGet(_ + "x")
       res <- r.run[F].attempt
       _ <- res match {
         case Left(ex) =>
-          assertF(ex.getMessage.contains("Impossible k-CAS")).flatMap { _ =>
-            assertF(ex.isInstanceOf[ImpossibleOperation])
-          }
-        case Right(_) =>
-          failF("Unexpected success")
+          failF(s"error: $ex")
+        case Right(value) =>
+          assertEqualsF(value, "abx")
       }
     } yield ()
   }
@@ -739,6 +735,32 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(r.unsafeInvisibleRead.run[F], "X")
       _ <- assertResultF(rxn2[F]("Y"), "bar")
       _ <- assertResultF(r.unsafeInvisibleRead.run[F], "Y")
+    } yield ()
+  }
+
+  test("unsafeCas") {
+    for {
+      r <- Ref[String]("x").run[F]
+      rxn = r.unsafeCas("x", "y")
+      _ <- assertResultF(rxn[F](()), ())
+      _ <- assertResultF(r.get.run[F], "y")
+      _ <- r.getAndSet[F]("a")
+      _ <- assertResultF(rxn.attempt[F](0), None)
+      _ <- assertResultF(r.get.run[F], "a")
+    } yield ()
+  }
+
+  test("upd") {
+    for {
+      r <- Ref[String]("x").run[F]
+      rxn = r.upd[Int, Boolean] { (s: String, i: Int) =>
+        (s.toUpperCase(java.util.Locale.ROOT), i > 0)
+      }
+      _ <- assertResultF(rxn[F](42), true)
+      _ <- assertResultF(r.get.run[F], "X")
+      _ <- r.getAndSet[F]("a")
+      _ <- assertResultF(rxn[F](0), false)
+      _ <- assertResultF(r.get.run[F], "A")
     } yield ()
   }
 

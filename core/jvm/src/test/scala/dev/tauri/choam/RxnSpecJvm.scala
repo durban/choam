@@ -18,7 +18,7 @@
 package dev.tauri.choam
 
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.atomic.{ AtomicReference, AtomicInteger }
+import java.util.concurrent.atomic.{ AtomicReference, AtomicInteger, AtomicBoolean }
 
 import scala.concurrent.duration._
 
@@ -149,33 +149,45 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
       ref1 <- Ref("a").run[F]
       ref2 <- Ref("b").run[F]
       ref <- F.delay(new AtomicReference[(String, String)])
+      writerDone <- F.delay(new AtomicBoolean(false))
+      unsafeLog <- F.delay(new AtomicReference[List[(String, String)]](Nil))
       writer = (ref1.update { v1 => v1 + "a" } *> ref2.update(_ + "b")).run[F]
       reader = ref1.get.flatMapF { v1 =>
         // we already read `ref1`; now we start
         // `writer`, and hard block until it's
         // committed
-        if (ref.get() eq null) {
+        if ((ref.get() eq null) && (!writerDone.get())) {
           this.absolutelyUnsafeRunSync(
-            writer.start.flatMap(_.joinWithNever)
+            writer.start.flatMap(_.joinWithNever) >> F.delay {
+              writerDone.set(true)
+            }
           ) : Unit
         }
-        // then we continue with reading (the now
-        // changed) `ref2`:
-        ref2.get.map { v2 =>
-          val tup = (v1, v2)
-          if (v2.length > v1.length) {
-            ref.compareAndSet(null, tup)
-          } else {
-            ref.compareAndSet(null, ("OK", "OK"))
+        // read value unsafely:
+        ref2.unsafeInvisibleRead.flatMap { unsafeValue =>
+          unsafeLog.accumulateAndGet(List((v1, unsafeValue)), (l1, l2) => l1 ++ l2)
+          // then we continue with reading (the now
+          // changed) `ref2`:
+          ref2.get.map { v2 =>
+            val tup = (v1, v2)
+            if (v2.length > v1.length) {
+              ref.compareAndSet(null, tup)
+            } else {
+              ref.compareAndSet(null, ("OK", "OK"))
+            }
+            tup
           }
-          tup
         }
       }
       rRes <- reader.run[F]
       _ <- assertEqualsF(rRes, ("aa", "bb"))
       _ <- assertResultF(
         F.delay(ref.get()),
-        ("a", "bb") // TODO: this should be ("OK", "OK")
+        ("OK", "OK"),
+      )
+      _ <- assertResultF(
+        F.delay(unsafeLog.get()),
+        List(("a", "bb"), ("aa", "bb")),
       )
     } yield ()
   }
@@ -203,14 +215,13 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
           }
         }.unsafeRun(this.kcasImpl)
       }
-      _ <- F.both(writer, reader)
-      _ <- F.delay(println("OK"))
+      _ <- F.both(F.cede *> writer, F.cede *> reader)
     } yield ()
     // we hard block here, because we don't want the munit timeout:
     this.absolutelyUnsafeRunSync(
       F.replicateA(1024, tsk).void.timeoutTo(
         1.minute,
-        F.delay(println("Expected failure")) // TODO: this.failF("infinite loop")
+        this.failF("infinite loop")
       )
     )
   }

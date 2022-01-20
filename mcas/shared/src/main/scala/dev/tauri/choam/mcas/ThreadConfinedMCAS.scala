@@ -95,7 +95,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
     protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       desc.addVersionCas(_commitTs)
 
-    protected[mcas] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+    protected[choam] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       desc.validateAndTryExtend(_commitTs, this)
 
     // NB: it is a `def`, not a `val`

@@ -58,7 +58,7 @@ object FlakyEMCAS extends MCAS { self =>
     protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       emcasCtx.addVersionCas(desc)
 
-    protected[mcas] final override def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+    protected[choam] final override def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       emcasCtx.validateAndTryExtend(desc)
   }
 

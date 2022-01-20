@@ -26,7 +26,7 @@ import cats.mtl.Local
 import cats.effect.kernel.Unique
 import cats.effect.std.{ UUIDGen, Random }
 
-import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor }
+import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor, HalfWordDescriptor }
 
 /**
  * An effectful function from `A` to `B`; when executed,
@@ -534,15 +534,10 @@ object Rxn extends RxnInstances0 {
   private[this] final val ContCommitPostCommit = 6.toByte
   private[this] final val ContUpdWith = 7.toByte
   private[this] final val ContAs = 8.toByte
-  private[choam] final val ContExchangerSep = 9.toByte
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
   private[this] val postCommitResultMarker =
     new PostCommitResultMarker
-
-  private[this] final class ExchangerSeparator // TODO: make this a java enum?
-  private[choam] val exchangerSeparator: Any =
-    new ExchangerSeparator
 
   private[choam] val commitSingleton: Rxn[Any, Any] = // TODO: make this a java enum?
     new Commit[Any]
@@ -751,16 +746,22 @@ object Rxn extends RxnInstances0 {
           commit.asInstanceOf[Rxn[Any, Any]]
         case 7 => // ContUpdWith
           val ox = contK.pop()
-          val ref = contK.pop().asInstanceOf[Ref[Any]]
+          val ref = contK.pop().asInstanceOf[MemoryLocation[Any]]
           val (nx, res) = a.asInstanceOf[Tuple2[_, _]]
-          desc = ctx.addCas(desc, ref.loc, ox, nx)
-          a = res
+          val hwd = desc.getOrElseNull(ref)
+          assert(hwd ne null)
+          if (equ(hwd.nv, ox)) {
+            desc = desc.overwrite(hwd.withNv(nx))
+            a = res
+          } else {
+            // TODO: "during" the updWith, we wrote to
+            // TODO: the same ref; what to do?
+            throw new UnsupportedOperationException("wrote during updWith")
+          }
           next()
         case 8 => // ContAs
           a = contK.pop()
           next()
-        case 9 => // ContExchangerSep
-          sys.error("TODO: ContExchangerSep in contT")
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -798,15 +799,48 @@ object Rxn extends RxnInstances0 {
      * interrupted by `Thread#interrupt` (in which case it will
      * throw an `InterruptedException`).
      */
-    private[this] def maybeCheckInterrupt(): Unit = {
+    private[this] final def maybeCheckInterrupt(): Unit = {
       if ((retries % Rxn.interruptCheckPeriod) == 0) {
         checkInterrupt()
       }
     }
 
-    private[this] def checkInterrupt(): Unit = {
+    private[this] final def checkInterrupt(): Unit = {
       if (Thread.interrupted()) {
         throw new InterruptedException
+      }
+    }
+
+    /**
+     * Note: doesn't put a fresh HWD into the log!
+     * Note: returns `null` if a rollback is required!
+     * Note: may update `desc` (revalidate/extend).
+     */
+    private[this] final def readMaybeFromLog[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
+      desc.getOrElseNull(ref) match {
+        case null =>
+          // not in log
+          val hwd = ctx.readIntoHwd(ref)
+          if (hwd.version > desc.validTs) {
+            desc = desc.add(hwd)
+            ctx.validateAndTryExtend(desc) match {
+              case null =>
+                // will rollback
+                desc = null // it's invalid, not to be used
+                null
+              case newDesc =>
+                // OK, it was extended
+                desc = newDesc
+                // lookup again (version might've changed):
+                val newHwd = desc.getOrElseNull(ref)
+                assert(newHwd ne null)
+                newHwd
+            }
+          } else {
+            hwd
+          }
+        case hwd =>
+          hwd
       }
     }
 
@@ -814,7 +848,7 @@ object Rxn extends RxnInstances0 {
     private[this] final def loop[A, B](curr: Rxn[A, B]): R = {
       (curr.tag : @switch) match {
         case 0 => // Commit
-          if (ctx.tryPerform(desc)) {
+          if (ctx.tryPerform2(desc)) {
             // save retry statistics:
             ctx.recordCommit(retries)
             // ok, commit is done, but we still need to perform post-commit actions
@@ -876,24 +910,35 @@ object Rxn extends RxnInstances0 {
           loop(c.left)
         case 7 => // Cas
           val c = curr.asInstanceOf[Cas[Any]]
-          val currVal = ctx.read(c.ref)
-          if (equ(currVal, c.ov)) {
-            desc = ctx.addCas(desc, c.ref, c.ov, c.nv)
-            a = () : Unit
-            loop(next())
+          val hwd = readMaybeFromLog(c.ref)
+          if (hwd eq null) {
+            loop(retry()) // TODO: optimize rollback based on version(?)
           } else {
-            loop(retry())
+            val currVal = hwd.nv
+            if (equ(currVal, c.ov)) {
+              desc = desc.addOrOverwrite(hwd.withNv(c.nv))
+              a = () : Unit
+              loop(next())
+            }
+            else {
+              loop(retry())
+            }
           }
         case 8 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, Any]]
-          val ox = ctx.read(c.ref)
-          val (nx, b) = c.f(ox, a.asInstanceOf[A])
-          desc = ctx.addCas(desc, c.ref, ox, nx)
-          a = b
-          loop(next())
+          val hwd = readMaybeFromLog(c.ref)
+          if (hwd eq null) {
+            loop(retry()) // TODO: optimize rollback based on version(?)
+          } else {
+            val ox = hwd.nv
+            val (nx, b) = c.f(ox, a.asInstanceOf[A])
+            desc = desc.addOrOverwrite(hwd.withNv(nx))
+            a = b
+            loop(next())
+          }
         case 9 => // InvisibleRead
           val c = curr.asInstanceOf[InvisibleRead[B]]
-          a = ctx.read(c.ref)
+          a = ctx.readDirect(c.ref)
           loop(next())
         case 10 => // Exchange
           val c = curr.asInstanceOf[Exchange[A, B]]
@@ -905,6 +950,7 @@ object Rxn extends RxnInstances0 {
             postCommit = pc.takeSnapshot(),
             exchangerData = stats,
           )
+          // TODO:
           c.exchanger.tryExchange(msg = msg, params = exParams, ctx = ctx) match {
             case Left(newStats) =>
               stats = newStats
@@ -943,12 +989,19 @@ object Rxn extends RxnInstances0 {
           loop(c.rxn)
         case 16 => // UpdWith
           val c = curr.asInstanceOf[UpdWith[Any, Any, _]]
-          val ox = ctx.read(c.ref)
-          val axn = c.f(ox, a)
-          contT.push(ContUpdWith)
-          contK.push(c.ref)
-          contK.push(ox)
-          loop(axn)
+          val hwd = readMaybeFromLog(c.ref)
+          if (hwd eq null) {
+            loop(retry()) // TODO: optimize rollback based on version(?)
+          } else {
+            val ox = hwd.nv
+            val axn = c.f(ox, a)
+            desc = desc.addOrOverwrite(hwd)
+            contT.push(ContUpdWith)
+            contK.push(c.ref)
+            contK.push(ox)
+            // TODO: if `axn` writes to the same ref, we'll throw (see above)
+            loop(axn)
+          }
         case 17 => // As
           val c = curr.asInstanceOf[As[_, _, _]]
           contT.push(ContAs)
@@ -974,7 +1027,7 @@ object Rxn extends RxnInstances0 {
             contK = c.restOtherContK,
             contT = otherContT,
           )
-          desc = ctx.addCas(desc, c.hole.loc, null, fx)
+          desc = ctx.addCas(desc, c.hole.loc, null, fx) // TODO
           a = contK.pop() // the exchanged value we've got from the other thread
           //println(s"FinishExchange: our result is '${a}' - thread#${Thread.currentThread().getId()}")
           loop(next())

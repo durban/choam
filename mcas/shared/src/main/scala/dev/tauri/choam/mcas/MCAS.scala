@@ -79,7 +79,7 @@ object MCAS extends MCASPlatform { self =>
 
     protected[mcas] def readVersion[A](ref: MemoryLocation[A]): Long
 
-    protected[mcas] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
+    protected[choam] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
 
     def tryPerform(desc: HalfEMCASDescriptor): Boolean
 
@@ -103,7 +103,7 @@ object MCAS extends MCASPlatform { self =>
             case null =>
               None // None means rollback needed
             case newLog =>
-              val a: A = newLog.getOrElseNull(ref).cast[A].ov
+              val a: A = newLog.getOrElseNull(ref).nv
               Some((a, newLog))
           }
         case hwd =>

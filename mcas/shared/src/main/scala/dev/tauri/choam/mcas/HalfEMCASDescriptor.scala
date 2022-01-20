@@ -45,7 +45,7 @@ final class HalfEMCASDescriptor private (
   private[mcas] final def nonEmpty: Boolean =
     this.map.nonEmpty
 
-  private[mcas] final def add[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
+  private[choam] final def add[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
     val d = desc.cast[Any]
     if (this.map.contains(d.address)) {
       val other = this.map.get(d.address).get
@@ -60,9 +60,21 @@ final class HalfEMCASDescriptor private (
     }
   }
 
-  private[mcas] final def overwrite[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
+  private[choam] final def overwrite[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
     val d = desc.cast[Any]
     require(this.map.contains(d.address))
+    val newMap = this.map.updated(d.address, d)
+    new HalfEMCASDescriptor(
+      newMap,
+      this.validTsBoxed,
+      this.readOnly && desc.readOnly, // this is a simplification:
+      // we don't want to rescan here the whole log, so we only pass
+      // true if it's DEFINITELY read-only
+    )
+  }
+
+  private[choam] final def addOrOverwrite[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
+    val d = desc.cast[Any]
     val newMap = this.map.updated(d.address, d)
     new HalfEMCASDescriptor(
       newMap,
@@ -83,7 +95,7 @@ final class HalfEMCASDescriptor private (
     this.add(hwd)
   }
 
-  private[mcas] final def getOrElseNull[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
+  private[choam] final def getOrElseNull[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
     val r = ref.asInstanceOf[MemoryLocation[Any]]
     this.map.getOrElse(r, null) match {
       case null => null
