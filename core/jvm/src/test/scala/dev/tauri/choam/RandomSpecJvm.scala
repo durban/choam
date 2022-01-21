@@ -74,11 +74,13 @@ trait RandomSpecJvm[F[_]] extends RandomSpec[F] { this: KCASImplSpec =>
         _ <- assertResultF(dr.betweenInt(128, 145).run[F], i4)
         i5 <- F.delay(sr.nextInt(Int.MinValue, 988595849))
         _ <- assertResultF(dr.betweenInt(Int.MinValue, 988595849).run[F], i5)
-        // nextDouble:
+        // nextDouble/Between:
         d1 <- F.delay(sr.nextDouble())
         _ <- assertResultF(dr.nextDouble.run[F], d1)
         d2 <- F.delay(sr.nextDouble())
         _ <- assertResultF(dr.nextDouble.run[F], d2)
+        d3 <- F.delay(sr.nextDouble(-6534.987, 9853.678))
+        _ <- assertResultF(dr.betweenDouble(-6534.987, 9853.678).run[F], d3)
         // nextBoolean:
         b1 <- F.delay(sr.nextBoolean())
         _ <- assertResultF(dr.nextBoolean.run[F], b1)

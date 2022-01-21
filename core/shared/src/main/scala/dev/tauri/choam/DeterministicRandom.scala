@@ -20,6 +20,7 @@ package dev.tauri.choam
 import java.nio.{ ByteBuffer, ByteOrder }
 
 import cats.effect.std.Random
+import scala.collection.mutable.ArrayBuffer
 
 // TODO: finish implementing the derived methods
 // TODO: write tests for reproducibility
@@ -41,6 +42,12 @@ private object DeterministicRandom {
 
   private final val FloatUlp =
     1.0f / (1L << 24)
+
+  private final val Alphanumeric =
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+  private final val LenAlphanumeric =
+    62
 }
 
 /**
@@ -98,15 +105,6 @@ private final class DeterministicRandom(
     n
   }
 
-  final override def betweenDouble(minInclusive: Double, maxExclusive: Double): Axn[Double] =
-    sys.error("TODO")
-
-  final override def betweenFloat(minInclusive: Float, maxExclusive: Float): Axn[Float] =
-    sys.error("TODO")
-
-  final override def nextAlphaNumeric: Axn[Char] =
-    sys.error("TODO")
-
   final override def nextBoolean: Axn[Boolean] =
     nextInt.map { r => r < 0 }
 
@@ -151,10 +149,38 @@ private final class DeterministicRandom(
   private[this] final def doubleFromLong(n: Long): Double =
     (n >>> 11) * DoubleUlp
 
+  final override def betweenDouble(minInclusive: Double, maxExclusive: Double): Axn[Double] = {
+    import java.lang.Double.{ doubleToLongBits, longBitsToDouble }
+    require(minInclusive < maxExclusive)
+    nextDouble.map { (d: Double) =>
+      val r: Double = (d * (maxExclusive - minInclusive)) + minInclusive
+      if (r >= maxExclusive) { // this can happen due to rounding
+        val correction = if (maxExclusive < 0.0) 1L else -1L
+        longBitsToDouble(doubleToLongBits(maxExclusive) + correction)
+      } else {
+        r
+      }
+    }
+  }
+
   final override def nextFloat: Axn[Float] =
     nextInt.map { n => (n >>> 8) * FloatUlp }
 
-  /** Box–Muller transform / Marsaglia polar method */
+  final override def betweenFloat(minInclusive: Float, maxExclusive: Float): Axn[Float] = {
+    import java.lang.Float.{ floatToIntBits, intBitsToFloat }
+    require(minInclusive < maxExclusive)
+    nextFloat.map { (f: Float) =>
+      val r: Float = (f * (maxExclusive - minInclusive)) + minInclusive
+      if (r >= maxExclusive) { // this can happen due to rounding
+        val correction = if (maxExclusive < 0.0f) 1 else -1
+        intBitsToFloat(floatToIntBits(maxExclusive) + correction)
+      } else {
+        r
+      }
+    }
+  }
+
+  /** Box-Muller transform / Marsaglia polar method */
   final override def nextGaussian: Axn[Double] = {
     seed.modify[Double] { (sd: Long) =>
       var n: Long = sd
@@ -291,15 +317,78 @@ private final class DeterministicRandom(
     }
   }
 
+  final override def nextAlphaNumeric: Axn[Char] = {
+    nextIntBounded(LenAlphanumeric).map { (i: Int) =>
+      Alphanumeric.charAt(i)
+    }
+  }
+
   final override def nextPrintableChar: Axn[Char] =
     sys.error("TODO")
 
   final override def nextString(length: Int): Axn[String] =
     sys.error("TODO")
 
-  final override def shuffleList[A](l: List[A]): Axn[List[A]] =
-    sys.error("TODO")
+  final override def shuffleList[A](l: List[A]): Axn[List[A]] = {
+    if (l.length > 1) {
+      seed.modify[List[A]] { (sd: Long) =>
+        val arr = ArrayBuffer.from(l)
+        val newSeed = shuffleArray(arr, sd)
+        (newSeed, arr.toList)
+      }
+    } else {
+      Rxn.pure(l)
+    }
+  }
 
-  final override def shuffleVector[A](v: Vector[A]): Axn[Vector[A]] =
-    sys.error("TODO")
+  final override def shuffleVector[A](v: Vector[A]): Axn[Vector[A]] = {
+    if (v.length > 1) {
+      seed.modify[Vector[A]] { (sd: Long) =>
+        val arr = ArrayBuffer.from(v)
+        val newSeed = shuffleArray(arr, sd)
+        (newSeed, arr.toVector)
+      }
+    } else {
+      Rxn.pure(v)
+    }
+  }
+
+  /** Fisher-Yates / Knuth shuffle */
+  private[this] final def shuffleArray[A](
+    arr: ArrayBuffer[A],
+    sd: Long,
+  ): Long = {
+    def swap(j: Int, i: Int): Unit = {
+      val tmp = arr(j)
+      arr(j) = arr(i)
+      arr(i) = tmp
+    }
+    var s: Long = sd
+    var i: Int = arr.length - 1
+    while (i > 0) {
+      val bound = i + 1
+      val m: Int = bound - 1
+      var j: Int = -1 // unused value
+      if ((bound & m) == 0L) { // power of 2
+        s += gamma
+        j = mix32(s) & m
+      } else {
+        while (j == -1) {
+          s += gamma
+          j = tryNextIntBoundedNotPowerOf2(bound = bound, seed = s)
+        }
+      }
+      swap(j, i)
+      i -= 1
+    }
+    s
+  }
+
+  private[this] final def tryNextIntBoundedNotPowerOf2(bound: Int, seed: Long): Int = {
+    val m: Int = bound - 1
+    val u: Int = mix32(seed) >>> 1
+    val r: Int = u % bound
+    if ((u + m - r) < 0) -1 // retry
+    else r
+  }
 }
