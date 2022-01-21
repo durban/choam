@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 
+import java.lang.Character.{ isHighSurrogate, isLowSurrogate }
 import java.util.IdentityHashMap
 import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.atomic.AtomicLong
@@ -172,17 +173,20 @@ trait RandomSpec[F[_]]
     test(s"${name} nextLongBounded") {
       mk.map(checkNextLongBounded)
     }
-    test(s"${name} nextAlphaNumeric") {
-      mk.map(checkNextAlphaNumeric)
-    }
     test(s"${name} shuffleList/Vector") {
       mk.map(checkShuffle)
     }
     test(s"${name} nextGaussian") {
       mk.map(checkGaussian)
     }
+    test(s"${name} nextAlphaNumeric") {
+      mk.map(checkNextAlphaNumeric)
+    }
     test(s"${name} nextPrintableChar") {
       mk.map(checkPrintableChar)
+    }
+    test(s"${name} nextString") {
+      mk.map(checkNextString)
     }
   }
 
@@ -267,29 +271,6 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def checkNextAlphaNumeric(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (_: Long) =>
-      rnd.nextAlphaNumeric.run[F].flatMap { alnum =>
-        assertF(
-          Character.isBmpCodePoint(clue(alnum).toInt) &&
-          !Character.isHighSurrogate(alnum) &&
-          !Character.isLowSurrogate(alnum)
-        ) *> assertF {
-          val chr = alnum.toInt
-          (
-            (chr >= 'a'.toInt) && (chr <= 'z'.toInt) ||
-            (chr >= 'A'.toInt) && (chr <= 'Z'.toInt) ||
-            (chr >= '0'.toInt) && (chr <= '9'.toInt)
-          )
-        }
-      } *> (
-        rnd.nextAlphaNumeric.run[F].replicateA(32).flatMap { alnums =>
-          assertF(clue(alnums.toSet.size) >= 16)
-        }
-      )
-    }
-  }
-
   def checkShuffle(rnd: Random[Axn]): PropF[F] = {
     PropF.forAllF { (lst: List[Int]) =>
       (rnd.shuffleList(lst).run[F], rnd.shuffleVector(lst.toVector).run[F]).mapN(Tuple2(_, _)).flatMap { lv =>
@@ -322,6 +303,56 @@ trait RandomSpec[F[_]]
       rnd.nextPrintableChar.run[F].flatMap { chr =>
         assertF((chr >= '!') && (chr <= '~'))
       }
+    }
+  }
+
+  def checkNextAlphaNumeric(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (_: Long) =>
+      rnd.nextAlphaNumeric.run[F].flatMap { alnum =>
+        assertF(
+          Character.isBmpCodePoint(clue(alnum).toInt) &&
+          !Character.isHighSurrogate(alnum) &&
+          !Character.isLowSurrogate(alnum)
+        ) *> assertF {
+          val chr = alnum.toInt
+          (
+            (chr >= 'a'.toInt) && (chr <= 'z'.toInt) ||
+            (chr >= 'A'.toInt) && (chr <= 'Z'.toInt) ||
+            (chr >= '0'.toInt) && (chr <= '9'.toInt)
+          )
+        }
+      } *> (
+        rnd.nextAlphaNumeric.run[F].replicateA(32).flatMap { alnums =>
+          assertF(clue(alnums.toSet.size) >= 16)
+        }
+      )
+    }
+  }
+
+  def checkNextString(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (length: Int, _: Long) =>
+      if ((length >= 0) && (length <= (1024*1024))) {
+        rnd.nextString(length).run[F].flatMap { str =>
+          assertEqualsF(str.length, length) *> (
+            F.delay(checkSurrogates(str))
+          )
+        }
+      } else {
+        F.unit
+      }
+    }
+  }
+
+  private def checkSurrogates(str: String): Unit = {
+    var idx = 0
+    while (idx < str.length) {
+      val c = str.charAt(idx)
+      if (isLowSurrogate(c)) {
+        assert(isHighSurrogate(str.charAt(idx - 1)))
+      } else if (isHighSurrogate(c)) {
+        assert(isLowSurrogate(str.charAt(idx + 1)))
+      }
+      idx += 1
     }
   }
 }
