@@ -181,6 +181,9 @@ trait RandomSpec[F[_]]
     test(s"${name} nextGaussian") {
       mk.map(checkGaussian)
     }
+    test(s"${name} nextPrintableChar") {
+      mk.map(checkPrintableChar)
+    }
   }
 
   def checkNextDouble(rnd: Random[Axn]): PropF[F] = {
@@ -310,6 +313,14 @@ trait RandomSpec[F[_]]
             _ <- assertF(y >= -1000.0)
             _ <- assertF(y <= +1000.0)
           } yield ()
+      }
+    }
+  }
+
+  def checkPrintableChar(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (_: Long) =>
+      rnd.nextPrintableChar.run[F].flatMap { chr =>
+        assertF((chr >= '!') && (chr <= '~'))
       }
     }
   }

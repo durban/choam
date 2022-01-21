@@ -48,6 +48,21 @@ private object DeterministicRandom {
 
   private final val LenAlphanumeric =
     62
+
+  /**
+   * '!'; technically 0x20 (space) is also printable, but
+   * `scala.util.Random#nextPrintableChar` and
+   * `cats.effect.std.Random#nextPrintableChar` exclude it,
+   * so we have to exclude it too.
+   */
+  private final val MinPrintableIncl =
+    0x21 // '!'
+
+  /**
+   * '~' + 1
+   */
+  private final val MaxPrintableExcl =
+    0x7f
 }
 
 /**
@@ -323,8 +338,11 @@ private final class DeterministicRandom(
     }
   }
 
-  final override def nextPrintableChar: Axn[Char] =
-    sys.error("TODO")
+  final override def nextPrintableChar: Axn[Char] = {
+    betweenInt(MinPrintableIncl, MaxPrintableExcl).map { (i: Int) =>
+      i.toChar
+    }
+  }
 
   final override def nextString(length: Int): Axn[String] =
     sys.error("TODO")
