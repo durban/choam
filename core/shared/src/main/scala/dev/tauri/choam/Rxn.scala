@@ -848,7 +848,17 @@ object Rxn extends RxnInstances0 {
     private[this] final def loop[A, B](curr: Rxn[A, B]): R = {
       (curr.tag : @switch) match {
         case 0 => // Commit
-          if (ctx.tryPerform2(desc)) {
+          var commitSuccess = ctx.tryPerform2(desc)
+          if (!commitSuccess) {
+            // try to extend ONCE:
+            // TODO: Do this properly, and only retry here,
+            // TODO: if the failure is due to the commitTs.
+            desc = ctx.validateAndTryExtend(desc)
+            if (desc ne null) {
+              commitSuccess = ctx.tryPerform2(desc)
+            }
+          }
+          if (commitSuccess) {
             // save retry statistics:
             ctx.recordCommit(retries)
             // ok, commit is done, but we still need to perform post-commit actions

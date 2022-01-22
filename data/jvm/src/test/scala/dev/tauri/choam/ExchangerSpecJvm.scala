@@ -35,11 +35,13 @@ final class ExchangerSpecCommon_EMCAS_BIO
   with SpecEMCAS
   with ExchangerSpecCommon[IO]
 
+@munit.IgnoreSuite
 final class ExchangerSpecJvm_EMCAS_AIO
   extends BaseSpecZIO
   with SpecEMCAS
   with ExchangerSpecJvm[zio.Task]
 
+@munit.IgnoreSuite
 final class ExchangerSpecJvm_EMCAS_BIO
   extends BaseSpecIO
   with SpecEMCAS

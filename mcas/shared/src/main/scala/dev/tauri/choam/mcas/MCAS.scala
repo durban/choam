@@ -52,6 +52,9 @@ abstract class MCAS {
 
 object MCAS extends MCASPlatform { self =>
 
+  final val CommitSuccess =
+    Version.None
+
   final object INVALID {
     def of[A]: A =
       this.asInstanceOf[A]

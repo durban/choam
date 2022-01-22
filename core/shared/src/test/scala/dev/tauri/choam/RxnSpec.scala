@@ -513,7 +513,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("postCommit on delayComputed".ignore) { // TODO: infinite retry
+  test("postCommit on delayComputed") {
     for {
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
@@ -528,7 +528,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("postCommit before delayComputed".ignore) { // TODO: infinite retry
+  test("postCommit before delayComputed") {
     for {
       r1a <- Ref(0).run[F]
       r1ap <- Ref(0).run[F]
@@ -557,7 +557,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("delayComputed".ignore) { // TODO: retries, result will be different
+  test("delayComputed") {
     for {
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
