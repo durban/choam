@@ -182,18 +182,19 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
         val rxn = ref.upd[A, B] { (aOld, aInput) => (aInput, ab(aOld)) }
         ResetRxn(rxn, Set(ResetRef(ref, a0)))
       },
-      for {
-        aa <- arbAA.arbitrary
-        ab <- arbAB.arbitrary
-        a0 <- arbA.arbitrary
-        ref <- Gen.delay { Ref.unsafe(a0) }
-      } yield {
-        val rxn = ref.unsafeInvisibleRead.flatMap { oldA =>
-          val newA = aa(oldA)
-          ref.unsafeCas(oldA, newA).as(ab(newA))
-        }
-        ResetRxn(rxn, Set(ResetRef(ref, a0)))
-      },
+      // TODO: this generates `r: Rxn[A, B]` so that `r * r` can never commit
+      // for {
+      //   aa <- arbAA.arbitrary
+      //   ab <- arbAB.arbitrary
+      //   a0 <- arbA.arbitrary
+      //   ref <- Gen.delay { Ref.unsafe(a0) }
+      // } yield {
+      //   val rxn = ref.unsafeInvisibleRead.flatMap { oldA =>
+      //     val newA = aa(oldA)
+      //     ref.unsafeCas(oldA, newA).as(ab(newA))
+      //   }
+      //   ResetRxn(rxn, Set(ResetRef(ref, a0)))
+      // },
       Gen.lzy {
         for {
           r <- arbResetRxn[A, B].arbitrary

@@ -94,8 +94,11 @@ object MCAS extends MCASPlatform { self =>
     final def read[A](ref: MemoryLocation[A]): A =
       this.readIfValid(ref, Version.None)
 
-    final def readDirect[A](ref: MemoryLocation[A]): A =
-      this.readIfValid(ref, Version.None)
+    final def readDirect[A](ref: MemoryLocation[A]): A = {
+      val a = this.readIfValid(ref, Version.None)
+      assert(!isInvalid[A](a))
+      a
+    }
 
     // TODO: there should be a non-option, non-tuple version of this
     final def readMaybeFromLog[A](ref: MemoryLocation[A], log: HalfEMCASDescriptor): Option[(A, HalfEMCASDescriptor)] = {
