@@ -34,6 +34,7 @@ trait RefLike[A] {
 
   // derived implementations:
 
+  // TODO: due to commitTs validation, we could have a "real" read
   final def get: Axn[A] =
     upd[Any, A] { (oa, _) => (oa, oa) }
 
@@ -79,7 +80,7 @@ trait RefLike[A] {
 
 object RefLike {
 
-  abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
+  private[choam] abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
     extends CatsRef[F, A] {
     def get: F[A] =
       self.unsafeInvisibleRead.run[F]

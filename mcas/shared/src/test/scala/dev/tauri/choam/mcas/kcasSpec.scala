@@ -342,6 +342,22 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertEquals(ctx.readVersion(r2), endTs)
   }
 
+  test("singleCasDirect should work without changing the global commitTs") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("a")
+    val startTs = ctx.start().validTs
+    // successful:
+    assert(ctx.singleCasDirect(r1, "a", "b"))
+    assertEquals(ctx.start().validTs, startTs)
+    assertEquals(ctx.readVersion(r1), startTs)
+    assertSameInstance(ctx.readDirect(r1), "b")
+    // failed:
+    assert(!ctx.singleCasDirect(r1, "a", "b"))
+    assertEquals(ctx.start().validTs, startTs)
+    assertEquals(ctx.readVersion(r1), startTs)
+    assertSameInstance(ctx.readDirect(r1), "b")
+  }
+
   test("Merging disjoint descriptors should work") {
     val ctx = kcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
@@ -427,5 +443,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertEquals(d4, d3)
     assertEquals(d4.##, d3.##)
     assertEquals(d4.toString, d3.toString)
+    val d5 = d4.withNoNewVersion
+    assertNotEquals(d5, d4)
+    assertNotEquals(d5.##, d4.##)
+    assertNotEquals(d5.toString, d4.toString)
   }
 }

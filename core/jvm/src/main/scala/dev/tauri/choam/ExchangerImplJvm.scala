@@ -156,13 +156,13 @@ private sealed trait ExchangerImplJvm[A, B]
             impossible("Someone rescinded our Node!")
         }
       case None =>
-        if (ctx.tryPerformSingleCas(self.hole.loc, null, Rescinded[C])) {
+        if (ctx.singleCasDirect(self.hole.loc, null, Rescinded[C])) {
           // OK, we rolled back, and can retry
           debugLog(s"waitForClaimedOffer: rolled back - thread#${Thread.currentThread().getId()}")
           Left(stats.rescinded(params))
         } else {
           // couldn't roll back, it must be a result
-          ctx.read(self.hole.loc) match {
+          ctx.readDirect(self.hole.loc) match {
             case fx: FinishedEx[_] =>
               debugLog(s"waitForClaimedOffer: found result - thread#${Thread.currentThread().getId()}")
               val newStats = msg.exchangerData.updated(this.key, stats.exchanged(params))
@@ -194,8 +194,18 @@ private sealed trait ExchangerImplJvm[A, B]
       otherContK = other.msg.contK,
       hole = other.hole,
     )
-    val mergedDesc = ctx.addAll(selfMsg.desc, other.msg.desc)
-    assert(mergedDesc ne null, "Couldn't merge logs") // TODO: maybe retry?
+    debugLog(s"merged conts: newContT = ${java.util.Arrays.toString(newContT)}; newContK = [${ObjStack.Lst.mkString(newContK)}] - thread#${Thread.currentThread().getId()}")
+    val mergedDesc = try {
+      ctx.addAll(selfMsg.desc, other.msg.desc)
+    } catch {
+      case ex: mcas.ImpossibleOperation =>
+        debugLog(s"ERROR: ${ex}")
+        throw ex
+    }
+    val ok = mergedDesc ne null
+    if (ok) debugLog(s"merged logs - thread#${Thread.currentThread().getId()}")
+    else debugLog(s"ERROR: Couldn't merge logs - thread#${Thread.currentThread().getId()}")
+    assert(ok, "Couldn't merge logs") // TODO: maybe retry?
     val resMsg = Msg(
       value = a,
       contK = newContK,
@@ -205,7 +215,7 @@ private sealed trait ExchangerImplJvm[A, B]
       // this thread will continue, so we use (and update) our data:
       exchangerData = selfMsg.exchangerData.updated(this.key, stats.exchanged(params))
     )
-    debugLog(s"merged postCommit: ${resMsg.postCommit.mkString()} - thread#${Thread.currentThread().getId()}")
+    debugLog(s"merged postCommit: ${ObjStack.Lst.mkString(resMsg.postCommit)} - thread#${Thread.currentThread().getId()}")
     Right(resMsg)
   }
 

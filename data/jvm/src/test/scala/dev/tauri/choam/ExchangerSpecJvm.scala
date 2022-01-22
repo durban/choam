@@ -25,24 +25,22 @@ import cats.effect.{ IO, Outcome }
 import mcas.MCAS
 import data.EliminationStack
 
-final class ExchangerSpecCommon_EMCAS_AIO
+final class ExchangerSpecCommon_EMCAS_ZIO
   extends BaseSpecZIO
   with SpecEMCAS
   with ExchangerSpecCommon[zio.Task]
 
-final class ExchangerSpecCommon_EMCAS_BIO
+final class ExchangerSpecCommon_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
   with ExchangerSpecCommon[IO]
 
-@munit.IgnoreSuite
-final class ExchangerSpecJvm_EMCAS_AIO
+final class ExchangerSpecJvm_EMCAS_ZIO
   extends BaseSpecZIO
   with SpecEMCAS
   with ExchangerSpecJvm[zio.Task]
 
-@munit.IgnoreSuite
-final class ExchangerSpecJvm_EMCAS_BIO
+final class ExchangerSpecJvm_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
   with ExchangerSpecJvm[IO]
@@ -154,7 +152,12 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  test("Exchange during delayComputed") {
+  // TODO: Occasionally only one of the outer Rxn's
+  // TODO: can't commit, and retries everything,
+  // TODO: including the delayComputed and exchange;
+  // TODO: that will get in an infinite loop, since the
+  // TODO: other one is already done.
+  test("Exchange during delayComputed".ignore) {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       r1a <- Ref(0).run[F]
@@ -173,8 +176,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
           ex.dual.exchange.provide(9).map { (s: String) => r2c.update(_ + s.length) }
         )
       )
-      f1 <- rxn1.run[F].start
-      f2 <- rxn2.run[F].start
+      f1 <- rxn1.run[F].flatTap(_ => F.delay(println(s"rxn1 done - thread#${Thread.currentThread().getId()}"))).start
+      f2 <- rxn2.run[F].flatTap(_ => F.delay(println(s"rxn2 done - thread#${Thread.currentThread().getId()}"))).start
       _ <- f1.joinWithNever
       _ <- f2.joinWithNever
       _ <- assertResultF(r1a.get.run[F], 1) // exactly once
@@ -293,7 +296,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  test("Exchange during delayComputed + postCommit actions on both sides") {
+  // TODO: See above for the explanation of `.ignore`
+  test("Exchange during delayComputed + postCommit actions on both sides".ignore) {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       r1a <- Ref(0).run[F]

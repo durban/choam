@@ -146,7 +146,10 @@ object MCAS extends MCASPlatform { self =>
       }
     }
 
-    // TODO: rename (maybe `addCasFromInitial`?)
+    final def addCasFromInitial[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
+      this.addCasWithVersion(desc, ref, ov = ov, nv = nv, version = Version.Start)
+
+    // TODO: remove this:
     final def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
       this.addCasWithVersion(desc, ref, ov = ov, nv = nv, version = Version.Start)
 
@@ -187,7 +190,33 @@ object MCAS extends MCASPlatform { self =>
       HalfEMCASDescriptor.merge(to, from, this)
     }
 
+    /**
+     * Do a real 1-CAS, without commitTs.
+     * This breaks opacitiy guarantees!
+     * It may change the value of a ref
+     * without changing the version!
+     */
+    final def singleCasDirect[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
+      assert(!equ(ov, nv))
+      val hwd = this.readIntoHwd(ref)
+      val d0 = this.start() // do this after reading, so version is deemed valid
+      assert(hwd.version <= d0.validTs)
+      if (equ(hwd.ov, ov)) {
+        // creating a (dangerous) descriptor, which will set
+        // the new version to `validTs` (which may equal the
+        // old version):
+        val d1 = d0.add(hwd.withNv(nv)).withNoNewVersion
+        assert(d1.newVersion == d1.validTs)
+        // we're intentionally NOT calling tryPerform2:
+        this.tryPerform(d1)
+      } else {
+        false
+      }
+    }
+
+    // TODO: do we even need this?
     final def tryPerformSingleCas[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
+      // TODO: this could be optimized (probably)
       val d0 = this.start()
       val d1 = this.readIntoLog(ref, d0)
       assert(d1 ne null)

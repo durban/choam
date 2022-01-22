@@ -382,6 +382,11 @@ object Rxn extends RxnInstances0 {
     private[choam] def context[A](uf: MCAS.ThreadContext => A): Axn[A] =
       new Ctx[A](uf)
 
+    // TODO: Do we even need `immediately` and
+    // TODO: `delayComputed` now that we can touch
+    // TODO: a ref more than once in a Rxn? (Check
+    // TODO: if, e.g., MS-queue can work that way.)
+
     // TODO: idea:
     def immediately[A, B](@unused invisibleRxn: Rxn[A, B]): Rxn[A, B] =
       sys.error("TODO: not implemented yet")
@@ -960,7 +965,6 @@ object Rxn extends RxnInstances0 {
             postCommit = pc.takeSnapshot(),
             exchangerData = stats,
           )
-          // TODO:
           c.exchanger.tryExchange(msg = msg, params = exParams, ctx = ctx) match {
             case Left(newStats) =>
               stats = newStats
@@ -1037,7 +1041,7 @@ object Rxn extends RxnInstances0 {
             contK = c.restOtherContK,
             contT = otherContT,
           )
-          desc = ctx.addCas(desc, c.hole.loc, null, fx) // TODO
+          desc = ctx.addCasFromInitial(desc, c.hole.loc, null, fx)
           a = contK.pop() // the exchanged value we've got from the other thread
           //println(s"FinishExchange: our result is '${a}' - thread#${Thread.currentThread().getId()}")
           loop(next())

@@ -26,6 +26,7 @@ final class HalfEMCASDescriptor private (
   private[mcas] val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
   private val validTsBoxed: java.lang.Long,
   val readOnly: Boolean,
+  private val versionIncr: Long,
 ) {
 
   final def validTs: Long =
@@ -36,11 +37,21 @@ final class HalfEMCASDescriptor private (
       map = this.map,
       validTsBoxed = newBoxed,
       readOnly = this.readOnly,
+      versionIncr = this.versionIncr,
+    )
+  }
+
+  private[mcas] final def withNoNewVersion: HalfEMCASDescriptor = {
+    new HalfEMCASDescriptor(
+      map = this.map,
+      validTsBoxed = this.validTsBoxed,
+      readOnly = this.readOnly,
+      versionIncr = 0L,
     )
   }
 
   private[mcas] final def newVersion: Long =
-    this.validTs + Version.Incr
+    this.validTs + this.versionIncr
 
   private[mcas] final def nonEmpty: Boolean =
     this.map.nonEmpty
@@ -56,11 +67,13 @@ final class HalfEMCASDescriptor private (
         newMap,
         this.validTsBoxed,
         this.readOnly && desc.readOnly,
+        versionIncr = this.versionIncr,
       )
     }
   }
 
   private[choam] final def overwrite[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
+    require(desc.version <= this.validTs)
     val d = desc.cast[Any]
     require(this.map.contains(d.address))
     val newMap = this.map.updated(d.address, d)
@@ -70,10 +83,12 @@ final class HalfEMCASDescriptor private (
       this.readOnly && desc.readOnly, // this is a simplification:
       // we don't want to rescan here the whole log, so we only pass
       // true if it's DEFINITELY read-only
+      versionIncr = this.versionIncr,
     )
   }
 
   private[choam] final def addOrOverwrite[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
+    require(desc.version <= this.validTs)
     val d = desc.cast[Any]
     val newMap = this.map.updated(d.address, d)
     new HalfEMCASDescriptor(
@@ -82,10 +97,12 @@ final class HalfEMCASDescriptor private (
       this.readOnly && desc.readOnly, // this is a simplification:
       // we don't want to rescan here the whole log, so we only pass
       // true if it's DEFINITELY read-only
+      versionIncr = this.versionIncr,
     )
   }
 
   private[mcas] final def addVersionCas(commitTsRef: MemoryLocation[Long]): HalfEMCASDescriptor = {
+    require(this.versionIncr > 0L)
     val hwd = HalfWordDescriptor[java.lang.Long](
       commitTsRef.asInstanceOf[MemoryLocation[java.lang.Long]],
       ov = this.validTsBoxed, // no boxing
@@ -116,6 +133,7 @@ final class HalfEMCASDescriptor private (
         map = this.map,
         validTsBoxed = newValidTsBoxed,
         readOnly = this.readOnly,
+        versionIncr = this.versionIncr,
       )
     } else {
       null
@@ -124,7 +142,12 @@ final class HalfEMCASDescriptor private (
 
   final override def toString: String = {
     val m = map.valuesIterator.mkString("[", ", ", "]")
-    s"HalfEMCASDescriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly})"
+    val vi = if (versionIncr == HalfEMCASDescriptor.DefaultVersionIncr) {
+      ""
+    } else {
+      s", versionIncr = ${versionIncr}"
+    }
+    s"HalfEMCASDescriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly}${vi})"
   }
 
   final override def equals(that: Any): Boolean = {
@@ -133,6 +156,7 @@ final class HalfEMCASDescriptor private (
         (this eq that) || (
           (this.readOnly == that.readOnly) &&
           (this.validTsBoxed eq that.validTsBoxed) &&
+          (this.versionIncr == that.versionIncr) &&
           (this.map == that.map)
         )
       case _ =>
@@ -143,12 +167,16 @@ final class HalfEMCASDescriptor private (
   final override def hashCode: Int = {
     val h1 = MurmurHash3.mix(0xefebde66, System.identityHashCode(this.validTsBoxed))
     val h2 = MurmurHash3.mix(h1, this.readOnly.##)
-    val h3 = MurmurHash3.mix(h2, this.map.##)
-    MurmurHash3.finalizeHash(h3, this.map.size)
+    val h3 = MurmurHash3.mix(h2, this.versionIncr.##)
+    val h4 = MurmurHash3.mix(h3, this.map.##)
+    MurmurHash3.finalizeHash(h4, this.map.size)
   }
 }
 
 object HalfEMCASDescriptor {
+
+  private final val DefaultVersionIncr =
+    Version.Incr
 
   private[mcas] def empty(commitTsRef: MemoryLocation[Long], ctx: MCAS.ThreadContext): HalfEMCASDescriptor = {
     val validTsBoxed: java.lang.Long =
@@ -157,6 +185,7 @@ object HalfEMCASDescriptor {
       TreeMap.empty(MemoryLocation.orderingInstance[Any]),
       validTsBoxed = validTsBoxed,
       readOnly = true,
+      versionIncr = DefaultVersionIncr,
     )
   }
 
@@ -165,6 +194,7 @@ object HalfEMCASDescriptor {
     b: HalfEMCASDescriptor,
     ctx: MCAS.ThreadContext,
   ): HalfEMCASDescriptor = {
+    require(a.versionIncr == b.versionIncr)
     // TODO: it is unclear, how should an exchange work when
     // TODO: both sides already touched the same refs;
     // TODO: for now, we only allow disjoint logs
