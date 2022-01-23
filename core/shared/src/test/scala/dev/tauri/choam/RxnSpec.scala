@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import java.util.concurrent.atomic.AtomicReference
+
 import cats.{ Applicative, Monad, Align }
 import cats.arrow.ArrowChoice
 import cats.data.Ior
@@ -101,6 +103,20 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(y.unsafeInvisibleRead.run, "yy")
       _ <- assertResultF(p.unsafeInvisibleRead.run, "p")
       _ <- assertResultF(q.unsafeInvisibleRead.run, "q")
+    } yield ()
+  }
+
+  test("Multiple writes (also in choice)") {
+    for {
+      a <- Ref("a").run[F]
+      p <- Ref("p").run[F]
+      rea = a.update(_ => "b") >>> (
+        (a.getAndUpdate(_ => "c") >>> p.getAndSet >>> Rxn.unsafe.retry) +
+        (a.getAndUpdate(_ => "x") >>> p.getAndSet)
+      )
+      _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, "p")
+      _ <- assertResultF(a.unsafeInvisibleRead.run, "x")
+      _ <- assertResultF(p.unsafeInvisibleRead.run, "b")
     } yield ()
   }
 
@@ -584,6 +600,30 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("Read-write-read-write") {
+    for {
+      ref <- Ref("a").run[F]
+      log <- F.delay(new AtomicReference[List[String]](Nil))
+      r = ref.get.flatMapF { v0 =>
+        log.accumulateAndGet(List(v0), (l1, l2) => l1 ++ l2)
+        ref.update { v1 =>
+          log.accumulateAndGet(List(v1), (l1, l2) => l1 ++ l2)
+          v1 + "a"
+        }.flatMapF { _ =>
+          ref.get.flatMapF { v2 =>
+            log.accumulateAndGet(List(v2), (l1, l2) => l1 ++ l2)
+            Rxn.pure(v2 + "a") >>> ref.getAndSet
+          }
+        }
+      }
+      res <- r.run[F]
+      _ <- assertEqualsF(res, "aa")
+      l <- F.delay(log.get())
+      _ <- assertEqualsF(l, List("a", "a", "aa"))
+      _ <- assertResultF(ref.get.run[F], "aaa")
+    } yield ()
+  }
+
   test("Integration with IO should work") {
     val act: F[String] = for {
       ref <- Ref[String]("foo").run[F]
@@ -750,6 +790,34 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("unsafeCas after read") {
+    for {
+      r <- Ref[String]("x").run[F]
+      rxn = r.get.flatMapF { ov =>
+        r.unsafeCas(ov, "y")
+      }
+      _ <- assertResultF(rxn.run[F], ())
+      _ <- assertResultF(r.get.run[F], "y")
+      _ <- r.getAndSet[F]("a")
+      _ <- assertResultF(rxn.run[F], ())
+      _ <- assertResultF(r.get.run[F], "y")
+    } yield ()
+  }
+
+  test("unsafeCas after write") {
+    for {
+      r <- Ref[String]("x").run[F]
+      rxn = r.getAndSet.provide("y").flatMapF { _ =>
+        r.unsafeCas("y", "z")
+      }
+      _ <- assertResultF(rxn.run[F], ())
+      _ <- assertResultF(r.get.run[F], "z")
+      _ <- r.getAndSet[F]("a")
+      _ <- assertResultF(rxn.run[F], ())
+      _ <- assertResultF(r.get.run[F], "z")
+    } yield ()
+  }
+
   test("upd") {
     for {
       r <- Ref[String]("x").run[F]
@@ -761,6 +829,38 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- r.getAndSet[F]("a")
       _ <- assertResultF(rxn[F](0), false)
       _ <- assertResultF(r.get.run[F], "A")
+    } yield ()
+  }
+
+  test("upd after read") {
+    for {
+      r <- Ref[String]("x").run[F]
+      rxn = r.get.flatMap { ov =>
+        r.upd[Int, Boolean] { (s: String, i: Int) =>
+          (s.toUpperCase(java.util.Locale.ROOT), (i > 0) && (ov eq "x"))
+        }
+      }
+      _ <- assertResultF(rxn[F](42), true)
+      _ <- assertResultF(r.get.run[F], "X")
+      _ <- r.getAndSet[F]("a")
+      _ <- assertResultF(rxn[F](42), false)
+      _ <- assertResultF(r.get.run[F], "A")
+    } yield ()
+  }
+
+  test("upd after write") {
+    for {
+      r <- Ref[String]("x").run[F]
+      rxn = r.updateAndGet(_ => "y").flatMap { ov =>
+        r.upd[Int, Boolean] { (s: String, i: Int) =>
+          (s.toUpperCase(java.util.Locale.ROOT), (i > 0) && (ov eq "x"))
+        }
+      }
+      _ <- assertResultF(rxn[F](42), false)
+      _ <- assertResultF(r.get.run[F], "Y")
+      _ <- r.getAndSet[F]("a")
+      _ <- assertResultF(rxn[F](42), false)
+      _ <- assertResultF(r.get.run[F], "Y")
     } yield ()
   }
 
