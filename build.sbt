@@ -103,6 +103,7 @@ lazy val choam = project.in(file("."))
     laws.jvm, laws.js,
     bench, // JVM
     stress, // JVM
+    stressCore, // JVM
     layout, // JVM
   )
 
@@ -204,6 +205,15 @@ lazy val bench = project.in(file("bench"))
   .enablePlugins(JmhPlugin)
   .settings(jmhSettings)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
+
+lazy val stressCore = project.in(file("stress-core"))
+  .settings(name := "choam-stress-core")
+  .settings(commonSettings)
+  .settings(commonSettingsJvm)
+  .settings(stressSettings)
+  .enablePlugins(JCStressPlugin)
+  .dependsOn(core.jvm % "compile->compile;test->test")
+  .dependsOn(mcasStress % "compile->compile;test->test")
 
 lazy val stress = project.in(file("stress"))
   .settings(name := "choam-stress")
