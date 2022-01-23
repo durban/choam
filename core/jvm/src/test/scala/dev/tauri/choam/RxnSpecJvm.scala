@@ -225,4 +225,28 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
       )
     )
   }
+
+  test("Read-write-read-write") {
+    for {
+      ref <- Ref("a").run[F]
+      log <- F.delay(new AtomicReference[List[String]](Nil))
+      r = ref.get.flatMapF { v0 =>
+        log.accumulateAndGet(List(v0), (l1, l2) => l1 ++ l2)
+        ref.update { v1 =>
+          log.accumulateAndGet(List(v1), (l1, l2) => l1 ++ l2)
+          v1 + "a"
+        }.flatMapF { _ =>
+          ref.get.flatMapF { v2 =>
+            log.accumulateAndGet(List(v2), (l1, l2) => l1 ++ l2)
+            Rxn.pure(v2 + "a") >>> ref.getAndSet
+          }
+        }
+      }
+      res <- r.run[F]
+      _ <- assertEqualsF(res, "aa")
+      l <- F.delay(log.get())
+      _ <- assertEqualsF(l, List("a", "a", "aa"))
+      _ <- assertResultF(ref.get.run[F], "aaa")
+    } yield ()
+  }
 }

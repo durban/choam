@@ -38,6 +38,9 @@ trait RefLike[A] {
   final def get: Axn[A] =
     upd[Any, A] { (oa, _) => (oa, oa) }
 
+  final def set: Rxn[A, Unit] =
+    getAndSet.void
+
   final def getAndSet: Rxn[A, A] =
     upd[A, A] { (oa, na) => (na, oa) }
 
@@ -85,7 +88,7 @@ object RefLike {
     def get: F[A] =
       self.unsafeInvisibleRead.run[F]
     override def set(a: A): F[Unit] =
-      self.getAndSet.void[F](a)
+      self.set[F](a)
     override def access: F[(A, A => F[Boolean])] = {
       F.monad.flatMap(this.get) { ov =>
         // `access` as defined in cats-effect must never
