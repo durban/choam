@@ -206,6 +206,7 @@ lazy val bench = project.in(file("bench"))
   .settings(jmhSettings)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
 
+// TODO: move all stress test projects under a common `/stress` folder
 lazy val stressCore = project.in(file("stress-core"))
   .settings(name := "choam-stress-core")
   .settings(commonSettings)
@@ -409,7 +410,7 @@ lazy val dependencies = new {
 
 addCommandAlias("checkScalafix", "scalafixAll --check")
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
-addCommandAlias("stressTest", ";mcasStress/Jcstress/run;stress/Jcstress/run")
+addCommandAlias("stressTest", ";mcasStress/Jcstress/run;stress/Jcstress/run;stressCore/Jcstress/run")
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
 addCommandAlias("ci", ";headerCheckAll;test")
 addCommandAlias("ciStress", "stressTest")
