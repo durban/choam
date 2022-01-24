@@ -75,7 +75,7 @@ trait RandomSpec[F[_]]
     "Rxn.deterministicRandom",
     // TODO: this makes the property test non-reproducible
     F.delay(ThreadLocalRandom.current().nextLong()).flatMap { initSeed =>
-      Rxn.deterministicRandom(initSeed).run[F]
+      Rxn.deterministicRandom(initSeed).run[F].map[Random[Axn]](x => x)
     },
     isBuggy = false,
   )
@@ -130,6 +130,7 @@ trait RandomSpec[F[_]]
       0.014245625397914075d, 0.4724122890885252d,
       0.98776937f, 0.3258993f,
       -1.82254464632059d, 0.9106167032393551d,
+      0xac10a878c4eebc82L, 0x61521ba8e6e3d855L,
     )
     for {
       dr <- Rxn.deterministicRandom(seed).run[F]
@@ -144,6 +145,8 @@ trait RandomSpec[F[_]]
         dr.nextFloat.run[F].map[Any](x => x),
         dr.nextGaussian.run.map[Any](x => x),
         dr.nextGaussian.run[F].map[Any](x => x),
+        dr.split.run[F].flatMap(_.nextLong.run[F]).map[Any](x => x),
+        dr.nextLong.run[F].map[Any](x => x),
       )
       results <- tasks.sequence
       _ <- assertEqualsF(
@@ -151,6 +154,22 @@ trait RandomSpec[F[_]]
         expected
       )
     } yield ()
+  }
+
+  test("Rxn.deterministicRandom must be splittable") {
+    PropF.forAllF { (seed: Long) =>
+      for {
+        dr <- Rxn.deterministicRandom(seed).run[F]
+        dr1 <- dr.split.run[F]
+        n <- dr.nextLong.run[F]
+        dr2 <- dr.split.run[F]
+        n1 <- dr1.nextLong.run[F]
+        n2 <- dr2.nextLong.run[F]
+        _ <- assertNotEqualsF(n, n1)
+        _ <- assertNotEqualsF(n, n2)
+        _ <- assertNotEqualsF(n1, n2)
+      } yield ()
+    }
   }
 
   def checkRandom(

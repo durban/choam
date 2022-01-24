@@ -280,7 +280,7 @@ object Rxn extends RxnInstances0 {
   final def secureRandom: Axn[Random[Axn]] =
     unsafe.delay { _ => RxnRandomImplSecure.unsafe() }
 
-  final def deterministicRandom(initialSeed: Long): Axn[Random[Axn]] =
+  final def deterministicRandom(initialSeed: Long): Axn[SplittableRandom[Axn]] =
     DeterministicRandom.apply(initialSeed)
 
   // TODO: maybe move this to `Ref`?

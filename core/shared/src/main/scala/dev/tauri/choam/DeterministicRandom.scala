@@ -20,7 +20,6 @@ package dev.tauri.choam
 import java.lang.Character.{ isHighSurrogate, isLowSurrogate }
 import java.nio.{ ByteBuffer, ByteOrder }
 
-import cats.effect.std.Random
 import scala.collection.mutable.ArrayBuffer
 
 // TODO: more tests for reproducibility
@@ -29,7 +28,7 @@ import scala.collection.mutable.ArrayBuffer
 
 private object DeterministicRandom {
 
-  def apply(initialSeed: Long): Axn[Random[Axn]] = {
+  def apply(initialSeed: Long): Axn[SplittableRandom[Axn]] = {
     Ref(initialSeed).map { (seed: Ref[Long]) =>
       new DeterministicRandom(seed, GoldenGamma)
     }
@@ -109,7 +108,7 @@ private final class DeterministicRandom(
   seed: Ref[Long],
   gamma: Long,
 ) extends DeterministicRandomPlatform
-  with Random[Axn] {
+  with SplittableRandom[Axn] {
 
   import DeterministicRandom._
 
@@ -121,6 +120,32 @@ private final class DeterministicRandom(
 
   private[this] final def mix32(s: Long): Int =
     (staffordMix04(s) >>> 32).toInt
+
+  private[this] final def mixGamma(s: Long): Long = {
+    // The paper uses `staffordMix13`, but the
+    // OpenJDK impl uses MurmurHash3's mix; it
+    // probably doesn't matter much, so we choose
+    // to be compatible with OpenJDK.
+    val z: Long = murmurHash3Mix(s) | 1L // <- makes sure it's odd
+    val n: Int = java.lang.Long.bitCount(z ^ (z >>> 1))
+    // The `mixGamma` pseudocode in the paper
+    // "Fast Splittable Pseudorandom Number Generators"
+    // contains (1) `if (n >= 24)`, however the text writes
+    // (2) "we require that the number of such pairs ...
+    // exceed 24; if it does not ..." (then XOR with the
+    // constant). The `SplittableRandom` class in OpenJDK
+    // uses (3) `if (n < 24)`. That's 3 different versions;
+    // we go with (3) here, because (1) doesn't make sense,
+    // and there is little difference between (2) and (3),
+    // and this way we're compatible with the OpenJDK impl.
+    val res: Long = if (n < 24) {
+      z ^ 0xaaaaaaaaaaaaaaaaL
+    } else {
+      z
+    }
+    assert((res & 1L) == 1L)
+    res
+  }
 
   private[this] final def staffordMix13(s: Long): Long = {
     var n: Long = s
@@ -140,6 +165,28 @@ private final class DeterministicRandom(
     n *= 0xcb24d0a5c88c35b3L
     n ^= (n >>> 32)
     n
+  }
+
+  private[this] final def murmurHash3Mix(s: Long): Long = {
+    var n: Long = s
+    n ^= (n >>> 33)
+    n *= 0xff51afd7ed558ccdL
+    n ^= (n >>> 33)
+    n *= 0xc4ceb9fe1a85ec53L
+    n ^= (n >>> 33)
+    n
+  }
+
+  final override def split: Axn[SplittableRandom[Axn]] = {
+    seed.modifyWith { (sd: Long) =>
+      val s1: Long = sd + gamma
+      val otherSeed: Long = mix64(s1)
+      val s2 = s1 + gamma
+      val otherGamma: Long = mixGamma(s2)
+      Ref[Long](otherSeed).map { otherSeed =>
+        (s2, new DeterministicRandom(otherSeed, otherGamma))
+      }
+    }
   }
 
   final override def nextBoolean: Axn[Boolean] =
