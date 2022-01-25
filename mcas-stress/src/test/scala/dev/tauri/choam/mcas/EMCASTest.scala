@@ -50,7 +50,7 @@ class EMCASTest {
   // r1: k-CAS result (Boolean)
   // r2: `id3` of first observed descriptor (Long)
   // r3: `id3` of second observed descriptor (Long)
-  // r4: `status` of observed parent (StatusType) OR final object
+  // r4: `status` of observed parent OR final object
   // r5: any unexpected object (for debugging)
 
   @Actor
@@ -111,9 +111,19 @@ class EMCASTest {
   }
 
   @Arbiter
-  def arbiter(): Unit = {
+  def arbiter(r: LLLLL_Result): Unit = {
     val ctx = EMCAS.currentContext()
     assert(ctx.read(this.ref1) eq "b")
     assert(ctx.read(this.ref2) eq "y")
+    r.r4 match {
+      case v: Long =>
+        r.r4 = v match {
+          case Version.Active => "ACTIVE"
+          case Version.Successful => "SUCCESSFUL"
+          case Version.FailedVal => "FAILED"
+          case Version.None => "error"
+          case _ => "FAILED"
+        }
+    }
   }
 }

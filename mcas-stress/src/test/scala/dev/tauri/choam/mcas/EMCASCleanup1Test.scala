@@ -23,7 +23,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ILL_Result
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("EMCASCleanup1Test")
 @Outcomes(Array(
@@ -70,6 +70,16 @@ class EMCASCleanup1Test {
         r.r2 = s"WordDescriptor(${wd.ov}, ${wd.nv})"
       case _ =>
         ()
+    }
+    r.r3 match {
+      case v: Long =>
+        r.r3 = v match {
+          case Version.Active => "ACTIVE"
+          case Version.Successful => "SUCCESSFUL"
+          case Version.FailedVal => "FAILED"
+          case Version.None => "error"
+          case _ => "FAILED"
+        }
     }
   }
 }
