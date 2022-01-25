@@ -252,4 +252,26 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     // `d2a` cannot be extended; will need to rollback/retry
     assert(ctx.addAll(d2a, d2b) eq null)
   }
+
+  test("CommitTs ref must be the last (JVM)") {
+    val r1 = MemoryLocation.unsafe[String]("foo")
+    val r2 = MemoryLocation.unsafe[String]("bar")
+    val ctx = this.kcasImpl.currentContext()
+    val d0 = ctx.start()
+    val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")
+    val d2 = ctx.addCasFromInitial(d1, r2, "bar", "foo")
+    val d3 = ctx.addVersionCas(d2)
+    val d = EMCASDescriptor.prepare(d3)
+    val lb = List.newBuilder[MemoryLocation[_]]
+    val it = d.wordIterator()
+    while (it.hasNext()) {
+      lb += it.next().address
+    }
+    val lst: List[MemoryLocation[_]] = lb.result()
+    assertEquals(lst.length, 3)
+    assert((lst(0) eq r1) || (lst(0) eq r2))
+    assert((lst(1) eq r1) || (lst(1) eq r2))
+    assert(lst(2) ne r1)
+    assert(lst(2) ne r2)
+  }
 }

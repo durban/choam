@@ -405,7 +405,6 @@ private object EMCAS extends MCAS { self =>
         if (wordDesc.address eq this.global.commitTs) {
           // this is the version-CAS:
           value.asInstanceOf[Long]
-          // TODO: commitTs ref must be the last
         } else {
           EmcasStatus.FailedVal
         }

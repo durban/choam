@@ -119,6 +119,14 @@ object MemoryLocation extends MemoryLocationInstances0 {
     new PaddedMemoryLocation[A](initial, i0, i1, i2, i3)
   }
 
+  private[mcas] def unsafeCommitTsRef(padded: Boolean): MemoryLocation[Long] = {
+    if (padded) {
+      unsafePaddedWithId(Version.Start)(Long.MaxValue, Long.MaxValue, Long.MaxValue, Long.MaxValue)
+    } else {
+      unsafeUnpaddedWithId(Version.Start)(Long.MaxValue, Long.MaxValue, Long.MaxValue, Long.MaxValue)
+    }
+  }
+
   def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
     import java.lang.Long.compare
     if (a eq b) 0
