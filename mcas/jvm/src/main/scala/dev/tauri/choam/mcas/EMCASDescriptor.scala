@@ -40,8 +40,7 @@ private final class EMCASDescriptor private (
     new EMCASDescriptor.Iterator(this.words)
   }
 
-  /** Only for testing */
-  private[mcas] final def casStatus(ov: EMCASStatus, nv: EMCASStatus): Boolean = {
+  private[mcas] final def casStatus(ov: Long, nv: Long): Boolean = {
     this.casStatusInternal(ov, nv)
   }
 }

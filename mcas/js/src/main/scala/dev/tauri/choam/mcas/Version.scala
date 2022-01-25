@@ -18,9 +18,19 @@
 package dev.tauri.choam
 package mcas
 
+// Note: this class/object is duplicated for JVM/JS
 object Version {
-  // Note: these constants are duplicated for JVM
-  final val None = Long.MaxValue
+
   final val Start = Long.MinValue
   final val Incr = 1L
+  final val None = Long.MaxValue
+
+  final val Active = None - 1L
+  final val Successful = None - 2L
+  final val FailedVal = None - 3L
+  // FailedVer = any valid version
+
+  final def isValid(ver: Long): Boolean = {
+    (ver >= Start) && (ver < FailedVal)
+  }
 }

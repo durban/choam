@@ -386,7 +386,7 @@ class EMCASSpec extends BaseSpecA {
     assertEquals(res, "x")
     assertEquals(ctx.read(r1), "x")
     assertEquals(ctx.read(r2), "y")
-    assert(other.getStatus() eq EMCASStatus.SUCCESSFUL)
+    assert(other.getStatus() == EmcasStatus.Successful)
     // we hold a strong ref, since we're pretending we're another op
     Reference.reachabilityFence(mark)
   }
@@ -406,7 +406,7 @@ class EMCASSpec extends BaseSpecA {
     assertEquals(res, "r1")
     assertEquals(ctx.read(r1), "r1")
     assertEquals(ctx.read(r2), "r2")
-    assert(other.getStatus() eq EMCASStatus.FAILED)
+    assert(other.getStatus() == EmcasStatus.FailedVal)
     // we hold a strong ref, since we're pretending we're another op
     Reference.reachabilityFence(mark)
   }

@@ -27,32 +27,24 @@ abstract class EMCASDescriptorBase {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      STATUS = l.findVarHandle(EMCASDescriptorBase.class, "_status", EMCASStatus.class);
+      STATUS = l.findVarHandle(EMCASDescriptorBase.class, "_status", long.class);
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }
   }
 
-  private volatile EMCASStatus _status =
-    EMCASStatus.ACTIVE;
+  private volatile long _status =
+    EmcasStatus.Active;
 
-  EMCASStatus getStatus() {
+  long getStatus() {
     return this._status; // volatile
   }
 
-  protected boolean casStatusInternal(EMCASStatus ov, EMCASStatus nv) {
+  protected boolean casStatusInternal(long ov, long nv) {
     return STATUS.compareAndSet(this, ov, nv);
   }
-}
 
-enum EMCASStatus {
-  ACTIVE,
-  SUCCESSFUL,
-  FAILED
-}
-
-enum TryWordResult {
-  SUCCESS,
-  FAILURE,
-  BREAK
+  long cmpxchgStatus(long ov, long nv) {
+    return (long) STATUS.compareAndExchange(this, ov, nv);
+  }
 }

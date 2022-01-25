@@ -17,12 +17,21 @@
 
 package dev.tauri.choam.mcas;
 
+// Note: this class/object is duplicated for JVM/JS
 public final class Version {
 
-  // Note: these constants are duplicated for JS
-  public static final long None = Long.MAX_VALUE;
   public static final long Start = Long.MIN_VALUE;
   public static final long Incr = 1L;
+  public static final long None = Long.MAX_VALUE;
+
+  static final long Active = None - 1L;
+  static final long Successful = None - 2L;
+  static final long FailedVal = None - 3L;
+  // FailedVer = any valid version
+
+  public static final boolean isValid(long ver) {
+    return (ver >= Start) && (ver < FailedVal);
+  }
 
   private Version() {
     throw new UnsupportedOperationException();

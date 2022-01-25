@@ -15,16 +15,19 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam
-package mcas
+package dev.tauri.choam.mcas;
 
-object BenchmarkAccess {
+// Note: this class/object is duplicated for JVM/JS
+final class EmcasStatus {
 
-  def wordDescriptor[A](half: HalfWordDescriptor[A], parent: EMCASDescriptor): AnyRef = {
-    WordDescriptor(half, parent)
-  }
+  static final long Active = Version.Active;
+  static final long Successful = Version.Successful;
+  static final long FailedVal = Version.FailedVal;
 
-  def casStatusFromActiveToFailedVal(desc: EMCASDescriptor): Boolean = {
-    desc.casStatus(Version.Active, Version.FailedVal)
+  /** Not really a status, used to break from `tryWord` */
+  static final long Break = Version.None;
+
+  private EmcasStatus() {
+    throw new UnsupportedOperationException();
   }
 }

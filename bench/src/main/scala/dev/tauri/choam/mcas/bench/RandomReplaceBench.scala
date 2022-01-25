@@ -64,7 +64,7 @@ object RandomReplaceBench {
       )
       val p = EMCASDescriptor.prepare(h)
       val wd = p.wordIterator().next()
-      assert(BenchmarkAccess.casStatusFromActiveToFailed(p))
+      assert(BenchmarkAccess.casStatusFromActiveToFailedVal(p))
       this.ref.unsafeSetVolatile(wd.cast[A].castToData)
     }
   }

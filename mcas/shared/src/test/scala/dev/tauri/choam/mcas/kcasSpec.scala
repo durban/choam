@@ -448,4 +448,24 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertNotEquals(d5.##, d4.##)
     assertNotEquals(d5.toString, d4.toString)
   }
+
+  test("Version numbers must be unique") {
+    assertEquals(Version.None, Long.MaxValue)
+    val set = Set[Long](
+      Version.Start,
+      Version.None,
+      Version.Active,
+      Version.Successful,
+      Version.FailedVal,
+    )
+    assertEquals(clue(set).size, 5)
+    assert(Version.isValid(Version.Start))
+    assert(Version.isValid(Version.Start + Version.Incr))
+    assert(Version.isValid(Version.Start + (2 * Version.Incr)))
+    assert(Version.isValid(Version.Start + (3 * Version.Incr)))
+    assert(!Version.isValid(Version.None))
+    assert(!Version.isValid(Version.Active))
+    assert(!Version.isValid(Version.Successful))
+    assert(!Version.isValid(Version.FailedVal))
+  }
 }
