@@ -36,10 +36,6 @@ private final class EMCASDescriptor private (
     arr
   }
 
-  /** Intrusive linked list of finalized descriptors (see `ThreadContext`) */
-  private[mcas] var next: EMCASDescriptor =
-    null
-
   private[mcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
     new EMCASDescriptor.Iterator(this.words)
   }
