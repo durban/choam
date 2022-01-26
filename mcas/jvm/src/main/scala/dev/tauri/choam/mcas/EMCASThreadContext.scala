@@ -112,7 +112,7 @@ private final class EMCASThreadContext(
     mark // caller MUST hold a strong ref
   }
 
-  final override def tryPerform(desc: HalfEMCASDescriptor): Boolean =
+  final override def tryPerform(desc: HalfEMCASDescriptor): Long =
     impl.tryPerform(desc, this)
 
   final override def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A =

@@ -41,7 +41,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
           ctx.addCas(d, op.address, op.ov, op.nv)
       }
     }
-    ctx.tryPerform(desc)
+    ctx.tryPerformBool(desc)
   }
 
   test("k-CAS should succeed if old values match, and there is no contention") {
@@ -160,12 +160,12 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
 
     val snap = ctx.snapshot(d1)
     val d21 = ctx.addCas(d1, r2, "foo", "bar")
-    assert(!ctx.tryPerform(d21))
+    assert(!ctx.tryPerformBool(d21))
     assertSameInstance(ctx.read(r1), "r1")
     assertSameInstance(ctx.read(r2), "r2")
     assertSameInstance(ctx.read(r3), "r3")
     val d22 = ctx.addCas(snap, r3, "r3", "r3x")
-    assert(ctx.tryPerform(d22))
+    assert(ctx.tryPerformBool(d22))
     assertSameInstance(ctx.read(r1), "r1x")
     assertSameInstance(ctx.read(r2), "r2")
     assertSameInstance(ctx.read(r3), "r3x")
@@ -184,7 +184,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertSameInstance(ctx.read(r2), "r2")
     assertSameInstance(ctx.read(r3), "r3")
     val d22 = ctx.addCas(snap, r3, "r3", "r3x")
-    assert(ctx.tryPerform(d22))
+    assert(ctx.tryPerformBool(d22))
     assertSameInstance(ctx.read(r1), "r1x")
     assertSameInstance(ctx.read(r2), "r2")
     assertSameInstance(ctx.read(r3), "r3x")
@@ -210,7 +210,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(d0.validTs >= v21)
     val d1 = ctx.addCasWithVersion(d0, r1, "r1", "x", v11)
     val d2 = ctx.addCasWithVersion(d1, r2, "r2", "y", v21)
-    assert(ctx.tryPerform(d2))
+    assert(ctx.tryPerformBool(d2))
     val v12 = ctx.readVersion(r1)
     assertEquals(v12, d0.validTs + 1L)
     val v22 = ctx.readVersion(r2)
@@ -226,7 +226,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val d0 = ctx.start()
     val d1 = ctx.addCasWithVersion(d0, r1, "r1", "x", v11)
     val d2 = ctx.addCasWithVersion(d1, r2, "-", "y", v21)
-    assert(!ctx.tryPerform(d2))
+    assert(!ctx.tryPerformBool(d2))
     val v12 = ctx.readVersion(r1)
     assertEquals(v12, v11)
     val v22 = ctx.readVersion(r2)
@@ -242,7 +242,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val d0 = ctx.start()
     val d1 = ctx.addCas(d0, r1, "r1", "x")
     val d2 = ctx.addCasWithVersion(d1, r2, "-", "y", v21)
-    assert(!ctx.tryPerform(d2))
+    assert(!ctx.tryPerformBool(d2))
     val v12 = ctx.readVersion(r1)
     assertEquals(v12, v11)
     val v22 = ctx.readVersion(r2)
@@ -285,7 +285,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val d7 = d6.overwrite(d6.getOrElseNull(r2).withNv("bbb"))
     assert(!d7.readOnly)
     // perform:
-    assert(ctx.tryPerform(d7))
+    assert(ctx.tryPerformBool(d7))
     val newVer = d7.newVersion
     ctx.setCommitTs(newVer)
     assertEquals(ctx.readVersion(r1), newVer)
@@ -310,7 +310,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertSameInstance(ov2, "b")
     assert(d2.readOnly)
     // commit:
-    assert(ctx.tryPerform2(d2))
+    assert(ctx.tryPerform2(d2) == EmcasStatus.Successful)
     assertEquals(ctx.start().validTs, startTs) // it's read-only, no need to incr version
     assertSameInstance(ctx.readDirect(r1), "a")
     assertEquals(ctx.readVersion(r1), v1)
@@ -335,7 +335,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(!d3.readOnly)
     val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv(ov1))
     assert(!d4.readOnly)
-    assert(ctx.tryPerform2(d4))
+    assert(ctx.tryPerform2(d4) == EmcasStatus.Successful)
     val endTs = ctx.start().validTs
     assertEquals(endTs, startTs + Version.Incr)
     assertSameInstance(ctx.readDirect(r1), "b")
@@ -381,7 +381,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(!d3.readOnly)
     assertEquals(d3.validTs, startTs + Version.Incr)
     // commit:
-    assert(ctx.tryPerform2(d3))
+    assert(ctx.tryPerform2(d3) == EmcasStatus.Successful)
     val endTs = ctx.start().validTs
     assertEquals(endTs, startTs + (2 * Version.Incr))
     assertSameInstance(ctx.readDirect(r1), "aa")

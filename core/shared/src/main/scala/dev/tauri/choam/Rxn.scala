@@ -26,7 +26,7 @@ import cats.mtl.Local
 import cats.effect.kernel.Unique
 import cats.effect.std.{ UUIDGen, Random }
 
-import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor, HalfWordDescriptor }
+import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor, HalfWordDescriptor, EmcasStatus }
 
 /**
  * An effectful function from `A` to `B`; when executed,
@@ -853,16 +853,19 @@ object Rxn extends RxnInstances0 {
     private[this] final def loop[A, B](curr: Rxn[A, B]): R = {
       (curr.tag : @switch) match {
         case 0 => // Commit
-          var commitSuccess = ctx.tryPerform2(desc)
+          var commitStatus = ctx.tryPerform2(desc)
+          var commitSuccess: Boolean = (commitStatus == EmcasStatus.Successful)
           if (!commitSuccess) {
-            // try to extend ONCE:
-            // TODO: Do this properly, and only retry here,
-            // TODO: if the failure is due to the commitTs.
-            desc = ctx.validateAndTryExtend(desc)
-            if (desc ne null) {
-              commitSuccess = ctx.tryPerform2(desc)
-            }
-          }
+            if (commitStatus != EmcasStatus.FailedVal) {
+              // TODO: does it make sense to extend here more than once?
+              // try to extend ONCE:
+              desc = ctx.validateAndTryExtend(desc)
+              if (desc ne null) {
+                commitStatus = ctx.tryPerform2(desc)
+                commitSuccess = (commitStatus == EmcasStatus.Successful)
+              } // else: failed to extend
+            } // else: failed due to bad old value
+          } // else: OK
           if (commitSuccess) {
             // save retry statistics:
             ctx.recordCommit(retries)

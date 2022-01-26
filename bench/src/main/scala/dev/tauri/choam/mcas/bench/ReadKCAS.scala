@@ -47,7 +47,7 @@ class ReadKCAS {
   def change(s: RefSt, t: ThSt): Unit = {
     val next1 = t.nextString()
     val next2 = t.nextString()
-    val success = t.kcasCtx.tryPerform(
+    val success = t.kcasCtx.tryPerformBool(
       t.kcasCtx.addCas(t.kcasCtx.addCas(t.kcasCtx.start(), s.ref1, t.last1, next1), s.ref2, t.last2, next2)
     )
     if (success) {

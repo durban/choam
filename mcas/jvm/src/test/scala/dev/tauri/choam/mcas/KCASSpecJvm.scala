@@ -56,7 +56,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       assert(hwd ne null)
       val newHwd = hwd.withNv("bb")
       val dx2 = dx.overwrite(newHwd)
-      assert(ctx.tryPerform(dx2))
+      assert(ctx.tryPerformBool(dx2))
       val newVer = dx2.newVersion
       ctx.setCommitTs(newVer)
       assertEquals(ctx.readVersion(r2), newVer)
@@ -84,7 +84,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     val d6 = d5.overwrite(d5.getOrElseNull(r2).withNv("bbb"))
     assert(!d6.readOnly)
     // perform:
-    assert(ctx.tryPerform(d6))
+    assert(ctx.tryPerformBool(d6))
     val newVer = d6.newVersion
     ctx.setCommitTs(newVer)
     assertEquals(ctx.readVersion(r1), newVer)
@@ -117,7 +117,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       val Some((ov2, dx3)) = ctx.readMaybeFromLog(r2, dx2) : @unchecked
       assertSameInstance(ov2, "b")
       val dx4 = dx3.overwrite(dx3.getOrElseNull(r2).withNv("y"))
-      assert(ctx.tryPerform2(dx4))
+      assertEquals(ctx.tryPerform2(dx4), EmcasStatus.Successful)
       val newVer = dx4.newVersion
       assertEquals(ctx.readVersion(r1), newVer)
       assertEquals(ctx.readVersion(r2), newVer)
@@ -155,14 +155,14 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       val Some((_, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
       val d3 = d2.overwrite(d2.getOrElseNull(r1).withNv("aa"))
       val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("bb"))
-      assert(ctx.tryPerform2(d4))
+      assertEquals(ctx.tryPerform2(d4), EmcasStatus.Successful)
       ok = true
     })
     t.start()
     t.join()
     assert(ok)
     // commit:
-    assert(ctx.tryPerform2(d2)) // read-only should still succeed
+    assertEquals(ctx.tryPerform2(d2), EmcasStatus.Successful) // read-only should still succeed
     assertEquals(ctx.start().validTs, startTs + Version.Incr) //concurrent commit increased
     assertSameInstance(ctx.readDirect(r1), "aa")
     assertEquals(ctx.readVersion(r1), startTs + Version.Incr)
@@ -192,19 +192,22 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     assert(!d4.readOnly)
     // concurrent commit changes an unrelated ref:
     var ok = false
+    var newVer: Long = Version.None
     val t = new Thread(() => {
       val ctx = kcasImpl.currentContext()
       val d0 = ctx.start()
       val Some((_, d1)) = ctx.readMaybeFromLog(r3, d0) : @unchecked
       val d2 = d1.overwrite(d1.getOrElseNull(r3).withNv("cc"))
-      assert(ctx.tryPerform2(d2))
+      assertEquals(ctx.tryPerform2(d2), EmcasStatus.Successful)
+      newVer = ctx.start().validTs
       ok = true
     })
     t.start()
     t.join()
     assert(ok)
     // try to finish the swap:
-    assert(!ctx.tryPerform2(d4)) // should fail due to version-CAS failing
+    val badVer = ctx.tryPerform2(d4) // should fail due to version-CAS failing
+    assertEquals(badVer, newVer)
     // TODO: A completely disjoint commit caused
     // TODO: our commit to fail. We should have
     // TODO: an optimization to reuse commit versions
@@ -236,7 +239,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       val d0 = ctx.start()
       val Some((_, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
       val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("x"))
-      assert(ctx.tryPerform2(d2))
+      assertEquals(ctx.tryPerform2(d2), EmcasStatus.Successful)
       assertSameInstance(ctx.readDirect(r1), "x")
       ok = true
     })

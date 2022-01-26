@@ -48,7 +48,7 @@ private object SpinLockMCAS extends MCAS { self =>
     final override def random =
       ThreadLocalRandom.current()
 
-    final override def tryPerform(desc: HalfEMCASDescriptor): Boolean = {
+    final override def tryPerform(desc: HalfEMCASDescriptor): Long = {
       val ops = desc.map.valuesIterator.toList
       perform(ops, newVersion = desc.newVersion)
     }
@@ -136,14 +136,29 @@ private object SpinLockMCAS extends MCAS { self =>
     protected[choam] final override def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       desc.validateAndTryExtend(commitTs, this)
 
-    private def perform(ops: List[HalfWordDescriptor[_]], newVersion: Long): Boolean = {
+    private def perform(ops: List[HalfWordDescriptor[_]], newVersion: Long): Long = {
 
       @tailrec
-      def lock(ops: List[HalfWordDescriptor[_]]): List[HalfWordDescriptor[_]] = ops match {
-        case Nil => Nil
-        case h :: tail => h match { case head: HalfWordDescriptor[a] =>
-          if (head.address.unsafeCasVolatile(head.ov, locked[a])) lock(tail)
-          else ops // rollback
+      def lock(ops: List[HalfWordDescriptor[_]]): (List[HalfWordDescriptor[_]], Option[Long]) = ops match {
+        case Nil => (Nil, None)
+        case h :: tail => h match {
+          case head: HalfWordDescriptor[a] =>
+            val witness: a = head.address.unsafeCmpxchgVolatile(head.ov, locked[a])
+            if (equ(witness, head.ov)) {
+              lock(tail)
+            } else {
+              val badVersion = if (head.address eq commitTs) {
+                if (isLocked(witness)) {
+                  None // TODO: this is probably not correct
+                } else {
+                  val ver = witness.asInstanceOf[Long]
+                  Some(ver)
+                }
+              } else {
+                None
+              }
+              (ops, badVersion) // rollback
+            }
         }
       }
 
@@ -177,15 +192,19 @@ private object SpinLockMCAS extends MCAS { self =>
 
       ops match {
         case Nil =>
-          true
+          EmcasStatus.Successful
         case l @ (_ :: _) =>
           lock(l) match {
-            case Nil =>
+            case (Nil, bv) =>
+              assert(bv.isEmpty)
               commit(l, newVersion)
-              true
-            case to @ (_ :: _) =>
+              EmcasStatus.Successful
+            case (to @ (_ :: _), bv) =>
               rollback(l, to)
-              false
+              bv match {
+                case Some(ver) => ver
+                case None => EmcasStatus.FailedVal
+              }
           }
       }
     }

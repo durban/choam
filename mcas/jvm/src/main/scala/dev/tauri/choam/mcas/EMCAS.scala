@@ -303,7 +303,7 @@ private object EMCAS extends MCAS { self =>
    * @param ctx: The [[EMCASThreadContext]] of the current thread.
    * @param replace:
    */
-  def MCAS(desc: EMCASDescriptor, ctx: EMCASThreadContext): Boolean = {
+  def MCAS(desc: EMCASDescriptor, ctx: EMCASThreadContext): Long = {
 
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): Long = {
@@ -469,17 +469,17 @@ private object EMCAS extends MCAS { self =>
     val r = go(desc.wordIterator())
     if (r == EmcasStatus.Break) {
       // someone else finalized the descriptor, we must read its status:
-      (desc.getStatus() == EmcasStatus.Successful)
+      desc.getStatus()
     } else {
       assert(r != EmcasStatus.Active)
       if (desc.casStatus(EmcasStatus.Active, r)) {
         // we finalized the descriptor
         // TODO: we should consider emptying the
         // TODO: array of WDs in `desc` now, to help GC
-        (r == EmcasStatus.Successful)
+        r
       } else {
         // someone else finalized the descriptor, we must read its status:
-        (desc.getStatus() == EmcasStatus.Successful)
+        desc.getStatus()
         // TODO: instead of this, we should cmpxchg the status (and not `casStatus`)
       }
     }
@@ -491,17 +491,23 @@ private object EMCAS extends MCAS { self =>
   private[choam] final override def isThreadSafe =
     true
 
-  private[mcas] final def tryPerform(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Boolean = {
+  private[mcas] final def tryPerform(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Long = {
     tryPerformDebug(desc = desc, ctx = ctx)
   }
 
-  private[mcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Boolean = {
+  private[mcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Long = {
     if (desc.nonEmpty) {
       val fullDesc = EMCASDescriptor.prepare(desc)
-      EMCAS.MCAS(desc = fullDesc, ctx = ctx)
+      val res = EMCAS.MCAS(desc = fullDesc, ctx = ctx)
+      assert((res == EmcasStatus.Successful) || (res == EmcasStatus.FailedVal) || Version.isValid(res))
+      res
     } else {
-      true
+      EmcasStatus.Successful
     }
+  }
+
+  private[mcas] final def tryPerformBool(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Boolean = {
+    tryPerformDebug(desc = desc, ctx = ctx) == EmcasStatus.Successful
   }
 
   private[choam] final override def printStatistics(println: String => Unit): Unit = {

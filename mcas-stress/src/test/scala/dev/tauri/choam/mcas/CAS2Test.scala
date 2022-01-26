@@ -43,7 +43,7 @@ class CAS2Test extends StressTestBase {
   @Actor
   def writer1(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r1 = ctx.tryPerform(
+    r.r1 = ctx.tryPerformBool(
       ctx.addCas(ctx.start(), ref1, "ov1", "x")
     )
   }
@@ -51,7 +51,7 @@ class CAS2Test extends StressTestBase {
   @Actor
   def writer2(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r2 = ctx.tryPerform(
+    r.r2 = ctx.tryPerformBool(
       ctx.addCas(ctx.start(), ref2, "ov2", "y")
     )
   }
@@ -59,7 +59,7 @@ class CAS2Test extends StressTestBase {
   @Actor
   def writer3(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r3 = ctx.tryPerform(
+    r.r3 = ctx.tryPerformBool(
       ctx.addCas(ctx.addCas(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
     )
   }

@@ -84,7 +84,7 @@ object MCAS extends MCASPlatform { self =>
 
     protected[choam] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
 
-    def tryPerform(desc: HalfEMCASDescriptor): Boolean
+    def tryPerform(desc: HalfEMCASDescriptor): Long
 
     private[choam] def random: ThreadLocalRandom
 
@@ -132,18 +132,25 @@ object MCAS extends MCASPlatform { self =>
       }
     }
 
-    final def tryPerform2(desc: HalfEMCASDescriptor): Boolean = {
+    final def tryPerform2(desc: HalfEMCASDescriptor): Long = {
       if (desc.readOnly) {
         // we've validated each read,
         // so nothing to do here
-        true
+        EmcasStatus.Successful
         // TODO: unconditional CAS-es and
         // TODO: direct reads may cause problems!
       } else {
         val finalDesc = this.addVersionCas(desc)
         assert(finalDesc.map.size == (desc.map.size + 1))
-        this.tryPerform(finalDesc)
+        val res = this.tryPerform(finalDesc)
+        assert(res != EmcasStatus.Active)
+        assert(res != Version.None)
+        res
       }
+    }
+
+    final def tryPerformBool(desc: HalfEMCASDescriptor): Boolean = {
+      tryPerform(desc) == EmcasStatus.Successful
     }
 
     final def addCasFromInitial[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
@@ -208,7 +215,7 @@ object MCAS extends MCASPlatform { self =>
         val d1 = d0.add(hwd.withNv(nv)).withNoNewVersion
         assert(d1.newVersion == d1.validTs)
         // we're intentionally NOT calling tryPerform2:
-        this.tryPerform(d1)
+        this.tryPerform(d1) == EmcasStatus.Successful
       } else {
         false
       }
@@ -224,7 +231,7 @@ object MCAS extends MCASPlatform { self =>
       assert(hwd ne null)
       if (equ(hwd.ov, ov)) {
         val d2 = d1.overwrite(hwd.withNv(nv))
-        this.tryPerform2(d2)
+        this.tryPerform2(d2) == EmcasStatus.Successful
       } else {
         false
       }

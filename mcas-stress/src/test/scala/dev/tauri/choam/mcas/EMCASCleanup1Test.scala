@@ -39,7 +39,7 @@ class EMCASCleanup1Test {
   @Actor
   final def write(r: ILL_Result): Unit = {
     val ctx = EMCAS.currentContext()
-    val ok = ctx.tryPerform(ctx.addCas(ctx.start(), this.ref, "a", "b"))
+    val ok = ctx.tryPerformBool(ctx.addCas(ctx.start(), this.ref, "a", "b"))
     r.r1 = if (ok) 1 else -1
   }
 
@@ -80,6 +80,8 @@ class EMCASCleanup1Test {
           case Version.None => "error"
           case _ => "FAILED"
         }
+      case _ =>
+        ()
     }
   }
 }

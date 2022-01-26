@@ -44,20 +44,25 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
     protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       ref.unsafeGetVersionVolatile()
 
-    final override def tryPerform(desc: HalfEMCASDescriptor): Boolean = {
+    final override def tryPerform(desc: HalfEMCASDescriptor): Long = {
       @tailrec
-      def prepare(it: Iterator[HalfWordDescriptor[_]]): Boolean = {
+      def prepare(it: Iterator[HalfWordDescriptor[_]]): Long = {
         if (it.hasNext) {
           it.next() match {
             case wd: HalfWordDescriptor[a] =>
-              if (equ[a](wd.address.unsafeGetPlain(), wd.ov)) {
+              val witness = wd.address.unsafeGetPlain()
+              if (equ[a](witness, wd.ov)) {
                 prepare(it)
               } else {
-                false
+                if (wd.address eq _commitTs) {
+                  witness.asInstanceOf[Long]
+                } else {
+                  EmcasStatus.FailedVal
+                }
               }
           }
         } else {
-          true
+          EmcasStatus.Successful
         }
       }
 
@@ -78,11 +83,12 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
         }
       }
 
-      if (prepare(desc.map.valuesIterator)) {
+      val prepResult = prepare(desc.map.valuesIterator)
+      if (prepResult == EmcasStatus.Successful) {
         execute(desc.map.valuesIterator, desc.newVersion)
-        true
+        EmcasStatus.Successful
       } else {
-        false
+        prepResult
       }
     }
 

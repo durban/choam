@@ -43,7 +43,7 @@ class CAS2ReadTest extends StressTestBase {
   @Actor
   def writer(r: LLZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r3 = ctx.tryPerform(
+    r.r3 = ctx.tryPerformBool(
       ctx.addCas(ctx.addCas(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
     )
   }

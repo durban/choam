@@ -18,11 +18,11 @@
 package dev.tauri.choam.mcas;
 
 // Note: this class/object is duplicated for JVM/JS
-final class EmcasStatus {
+public final class EmcasStatus {
 
   static final long Active = Version.Active;
-  static final long Successful = Version.Successful;
-  static final long FailedVal = Version.FailedVal;
+  public static final long Successful = Version.Successful;
+  public static final long FailedVal = Version.FailedVal;
 
   /** Not really a status, used to break from `tryWord` */
   static final long Break = Version.None;

@@ -56,7 +56,7 @@ class EMCASTest {
   @Actor
   def write(r: LLLLL_Result): Unit = {
     val ctx = EMCAS.currentContext()
-    val ok = ctx.tryPerform(
+    val ok = ctx.tryPerformBool(
       ctx.addCas(ctx.addCas(ctx.start(), this.ref1, "a", "b"), this.ref2, "x", "y")
     )
     r.r1 = ok // true
@@ -124,6 +124,8 @@ class EMCASTest {
           case Version.None => "error"
           case _ => "FAILED"
         }
+      case _ =>
+        ()
     }
   }
 }

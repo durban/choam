@@ -65,7 +65,7 @@ class ResourceAllocationKCAS {
     def go(): Unit = {
       read(0)
       val d = prepare(0, ctx.start())
-      if (ctx.tryPerform(d)) ()
+      if (ctx.tryPerformBool(d)) ()
       else go()
     }
 
