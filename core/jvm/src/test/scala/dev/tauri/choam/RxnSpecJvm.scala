@@ -249,4 +249,29 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
       _ <- assertResultF(ref.get.run[F], "aaa")
     } yield ()
   }
+
+  test("Commit retry due to version") {
+    for {
+      ref1 <- Ref("a").run[F]
+      ref2 <- Ref("x").run[F]
+      ctr <- F.delay(new AtomicInteger(0))
+      latch1 <- F.delay(new CountDownLatch(1))
+      latch2 <- F.delay(new CountDownLatch(1))
+      rxn1 = ref1.get.flatMapF { a =>
+        ctr.incrementAndGet()
+        latch1.countDown()
+        // another commit changes the global version here
+        latch2.await()
+        ref1.set.provide(a + "a")
+      }
+      tsk1 = rxn1.run[F]
+      rxn2 = ref2.set.provide("y")
+      tsk2 = F.delay(latch1.await()) *> rxn2.run[F] *> F.delay(latch2.countDown())
+      _ <- F.both(tsk1, tsk2)
+      _ <- assertResultF(ref1.get.run[F], "aa")
+      _ <- assertResultF(ref2.get.run[F], "y")
+      // only the actual MCAS should've been retried, not the whole Rxn:
+      _ <- assertResultF(F.delay(ctr.get()), 1)
+    } yield ()
+  }
 }

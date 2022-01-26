@@ -208,6 +208,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     // try to finish the swap:
     val badVer = ctx.tryPerform2(d4) // should fail due to version-CAS failing
     assertEquals(badVer, newVer)
+    assert(Version.isValid(badVer))
     // TODO: A completely disjoint commit caused
     // TODO: our commit to fail. We should have
     // TODO: an optimization to reuse commit versions

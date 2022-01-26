@@ -143,8 +143,7 @@ object MCAS extends MCASPlatform { self =>
         val finalDesc = this.addVersionCas(desc)
         assert(finalDesc.map.size == (desc.map.size + 1))
         val res = this.tryPerform(finalDesc)
-        assert(res != EmcasStatus.Active)
-        assert(res != Version.None)
+        assert((res == EmcasStatus.Successful) || (res == EmcasStatus.FailedVal) || Version.isValid(res))
         res
       }
     }

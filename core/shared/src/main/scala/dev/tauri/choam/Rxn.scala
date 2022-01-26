@@ -850,23 +850,26 @@ object Rxn extends RxnInstances0 {
     }
 
     @tailrec
+    private[this] final def casLoop(): Boolean = {
+      ctx.tryPerform2(desc) match {
+        case EmcasStatus.Successful =>
+          true
+        case EmcasStatus.FailedVal =>
+          false
+        case _ => // failed due to version
+          desc = ctx.validateAndTryExtend(desc)
+          if (desc eq null) false // can't extend
+          else casLoop() // retry
+          // TODO: Maybe we should collect statistics
+          // TODO: about these retries too?
+      }
+    }
+
+    @tailrec
     private[this] final def loop[A, B](curr: Rxn[A, B]): R = {
       (curr.tag : @switch) match {
         case 0 => // Commit
-          var commitStatus = ctx.tryPerform2(desc)
-          var commitSuccess: Boolean = (commitStatus == EmcasStatus.Successful)
-          if (!commitSuccess) {
-            if (commitStatus != EmcasStatus.FailedVal) {
-              // TODO: does it make sense to extend here more than once?
-              // try to extend ONCE:
-              desc = ctx.validateAndTryExtend(desc)
-              if (desc ne null) {
-                commitStatus = ctx.tryPerform2(desc)
-                commitSuccess = (commitStatus == EmcasStatus.Successful)
-              } // else: failed to extend
-            } // else: failed due to bad old value
-          } // else: OK
-          if (commitSuccess) {
+          if (casLoop()) {
             // save retry statistics:
             ctx.recordCommit(retries)
             // ok, commit is done, but we still need to perform post-commit actions

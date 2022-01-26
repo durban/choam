@@ -344,6 +344,30 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertEquals(ctx.readVersion(r2), endTs)
   }
 
+  test("tryPerform2 should work (FailedVal)") {
+    val ctx = kcasImpl.currentContext()
+    val r1 = MemoryLocation.unsafe("a")
+    val r2 = MemoryLocation.unsafe("b")
+    val d0 = ctx.start()
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    assertSameInstance(ov1, "a")
+    assert(d1.readOnly)
+    val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("aa"))
+    assert(!d2.readOnly)
+    val Some((ov2, d3)) = ctx.readMaybeFromLog(r2, d2) : @unchecked
+    assertSameInstance(ov2, "b")
+    assert(!d3.readOnly)
+    val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("bb"))
+    assert(!d3.readOnly)
+    // simulate concurrent change to r2:
+    assert(ctx.tryPerformSingleCas(r2, "b", "x"))
+    // the ongoing op should fail:
+    val res = ctx.tryPerform2(d4)
+    assertEquals(res, EmcasStatus.FailedVal)
+    assertSameInstance(ctx.readDirect(r1), "a")
+    assertSameInstance(ctx.readDirect(r2), "x")
+  }
+
   test("singleCasDirect should work without changing the global commitTs") {
     val ctx = kcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")

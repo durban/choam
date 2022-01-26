@@ -70,6 +70,16 @@
     - Rxn
       - lots of `Rxn` instances
       - `ObjStack.Lst`
+  - `null` checking:
+    - in theory, the following are all the same (`x : AnyRef`):
+      - `if (x eq null) ... else ...`
+      - `if (x == null) ... else ...`
+      - `x match { case null => ...; case _ => ... }`
+      - (and similarly for `ne` and `!=`)
+    - refs:
+      - both Scala 2.13 and 3.1 generates code with `ifnull`/`ifnonnull`
+      - https://github.com/scala/bug/issues/570#issuecomment-292349095
+      - https://github.com/scala/bug/issues/3195
   - Review writes/reads in EMCAS, check if we can relax them
   - Ref padding:
     - allocating a padded Ref is much slower than an unpadded
