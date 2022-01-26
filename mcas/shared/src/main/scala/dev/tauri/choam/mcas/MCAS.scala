@@ -30,11 +30,6 @@ abstract class MCAS {
   private[choam] def isThreadSafe: Boolean
 
   /** Only for testing/benchmarking */
-  private[choam] def printStatistics(@unused println: String => Unit): Unit = {
-    ()
-  }
-
-  /** Only for testing/benchmarking */
   private[choam] def countCommitsAndRetries(): (Long, Long) = {
     (0L, 0L)
   }

@@ -510,10 +510,6 @@ private object EMCAS extends MCAS { self =>
     tryPerformDebug(desc = desc, ctx = ctx) == EmcasStatus.Successful
   }
 
-  private[choam] final override def printStatistics(println: String => Unit): Unit = {
-    ()
-  }
-
   private[choam] final override def countCommitsAndRetries(): (Long, Long) = {
     this.global.countCommitsAndRetries()
   }
