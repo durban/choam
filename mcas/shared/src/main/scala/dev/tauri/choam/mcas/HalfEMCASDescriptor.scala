@@ -32,6 +32,10 @@ final class HalfEMCASDescriptor private (
   final def validTs: Long =
     this.validTsBoxed // unboxing happens
 
+  final def isValidHwd[A](hwd: HalfWordDescriptor[A]): Boolean = {
+    hwd.version <= this.validTs
+  }
+
   private final def withValidTsBoxed(newBoxed: java.lang.Long): HalfEMCASDescriptor =  {
     new HalfEMCASDescriptor(
       map = this.map,

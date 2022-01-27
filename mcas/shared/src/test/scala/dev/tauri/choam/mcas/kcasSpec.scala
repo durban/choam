@@ -289,8 +289,8 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val newVer = d7.newVersion
     assertEquals(ctx.readVersion(r1), newVer)
     assertEquals(ctx.readVersion(r2), newVer)
-    assertSameInstance(ctx.readIfValid(r1, newVer), "aa")
-    assertSameInstance(ctx.readIfValid(r2, newVer), "bbb")
+    assertSameInstance(ctx.readDirect(r1), "aa")
+    assertSameInstance(ctx.readDirect(r2), "bbb")
   }
 
   test("tryPerform2 should work (read-only)") {

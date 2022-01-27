@@ -63,9 +63,7 @@ object MCAS extends MCASPlatform { self =>
 
     protected[mcas] def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
 
-    // TODO: do we need this? (for read-only Rxn's?)
-    /** Returns `INVALID` if version is newer than `validTs` */
-    def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A
+    def readDirect[A](ref: MemoryLocation[A]): A
 
     def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A]
 
@@ -73,6 +71,7 @@ object MCAS extends MCASPlatform { self =>
 
     protected[choam] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
 
+    // TODO: -> tryPerformInternal
     def tryPerform(desc: HalfEMCASDescriptor): Long
 
     private[choam] def random: ThreadLocalRandom
@@ -81,13 +80,7 @@ object MCAS extends MCASPlatform { self =>
 
     // TODO: remove (use readDirect instead)
     final def read[A](ref: MemoryLocation[A]): A =
-      this.readIfValid(ref, Version.None)
-
-    final def readDirect[A](ref: MemoryLocation[A]): A = {
-      val a = this.readIfValid(ref, Version.None)
-      assert(!isInvalid[A](a))
-      a
-    }
+      this.readDirect(ref)
 
     // TODO: there should be a non-option, non-tuple version of this
     final def readMaybeFromLog[A](ref: MemoryLocation[A], log: HalfEMCASDescriptor): Option[(A, HalfEMCASDescriptor)] = {
@@ -112,7 +105,7 @@ object MCAS extends MCASPlatform { self =>
       require(log.getOrElseNull(ref) eq null)
       val hwd = this.readIntoHwd(ref)
       val newLog = log.add(hwd)
-      if (hwd.version > newLog.validTs) {
+      if (!newLog.isValidHwd(hwd)) {
         // this returns null if we need to roll back
         // (and we pass on the null to our caller):
         this.validateAndTryExtend(newLog)
@@ -121,6 +114,7 @@ object MCAS extends MCASPlatform { self =>
       }
     }
 
+    // TODO: -> tryPerform
     final def tryPerform2(desc: HalfEMCASDescriptor): Long = {
       if (desc.readOnly) {
         // we've validated each read,
@@ -195,7 +189,7 @@ object MCAS extends MCASPlatform { self =>
       assert(!equ(ov, nv))
       val hwd = this.readIntoHwd(ref)
       val d0 = this.start() // do this after reading, so version is deemed valid
-      assert(hwd.version <= d0.validTs)
+      assert(d0.isValidHwd(hwd))
       if (equ(hwd.ov, ov)) {
         // creating a (dangerous) descriptor, which will set
         // the new version to `validTs` (which may equal the

@@ -115,8 +115,8 @@ private final class EMCASThreadContext(
   final override def tryPerform(desc: HalfEMCASDescriptor): Long =
     impl.tryPerform(desc, this)
 
-  final override def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A =
-    impl.readIfValid(ref, validTs, this)
+  final override def readDirect[A](ref: MemoryLocation[A]): A =
+    impl.readDirect(ref, this)
 
   final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] =
     impl.readIntoHwd(ref, this)

@@ -826,7 +826,7 @@ object Rxn extends RxnInstances0 {
         case null =>
           // not in log
           val hwd = ctx.readIntoHwd(ref)
-          if (hwd.version > desc.validTs) {
+          if (!desc.isValidHwd(hwd)) {
             desc = desc.add(hwd)
             ctx.validateAndTryExtend(desc) match {
               case null =>

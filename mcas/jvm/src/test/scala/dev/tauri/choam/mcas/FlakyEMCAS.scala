@@ -37,8 +37,8 @@ object FlakyEMCAS extends MCAS { self =>
     private[choam] final override def random: ThreadLocalRandom =
       emcasCtx.random
 
-    final override def readIfValid[A](ref: MemoryLocation[A], validTs: Long): A =
-      emcasCtx.readIfValid(ref, validTs)
+    final override def readDirect[A](ref: MemoryLocation[A]): A =
+      emcasCtx.readDirect(ref)
 
     final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] =
       emcasCtx.readIntoHwd(ref)

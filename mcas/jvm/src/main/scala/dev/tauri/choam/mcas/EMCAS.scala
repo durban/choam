@@ -262,10 +262,9 @@ private object EMCAS extends MCAS { self =>
   }
 
   // TODO: this could have an optimized version, without creating a hwd
-  private[mcas] final def readIfValid[A](ref: MemoryLocation[A], validTs: Long, ctx: EMCASThreadContext): A = {
+  private[mcas] final def readDirect[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): A = {
     val hwd = readIntoHwd(ref, ctx)
-    if (hwd.version > validTs) mcas.MCAS.INVALID.of[A]
-    else hwd.ov
+    hwd.nv
   }
 
   private[mcas] final def readIntoHwd[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): HalfWordDescriptor[A] = {
@@ -535,7 +534,7 @@ private object EMCAS extends MCAS { self =>
             // CAS in progress, retry
           } else {
             // CAS finalized, but no cleanup yet, read and retry
-            EMCAS.readIfValid(ref, validTs = Version.Start, ctx = ctx)
+            EMCAS.readDirect(ref, ctx = ctx)
           }
         case a =>
           // descriptor have been cleaned up:

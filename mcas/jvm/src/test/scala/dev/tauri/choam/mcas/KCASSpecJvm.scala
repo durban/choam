@@ -87,8 +87,8 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     val newVer = d6.newVersion
     assertEquals(ctx.readVersion(r1), newVer)
     assertEquals(ctx.readVersion(r2), newVer)
-    assertSameInstance(ctx.readIfValid(r1, newVer), "aa")
-    assertSameInstance(ctx.readIfValid(r2, newVer), "bbb")
+    assertSameInstance(ctx.readDirect(r1), "aa")
+    assertSameInstance(ctx.readDirect(r2), "bbb")
   }
 
   test("readIntoLog should work (real conflict)") {
@@ -128,7 +128,8 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     // continue with reading from r2 (conflict with r1 must be detected):
     val res = ctx.readMaybeFromLog(r2, d2)
     assertSameInstance(res, None) // will need to roll back
-    assertSameInstance(ctx.readIfValid(r2, d2.validTs), MCAS.INVALID)
+    val hwd = ctx.readIntoHwd(r2)
+    assert(!d2.isValidHwd(hwd))
   }
 
   test("tryPerform2 should work (read-only, concurrent commit)") {
