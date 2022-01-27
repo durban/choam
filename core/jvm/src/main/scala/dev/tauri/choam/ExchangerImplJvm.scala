@@ -198,7 +198,7 @@ private sealed trait ExchangerImplJvm[A, B]
     val mergedDesc = try {
       ctx.addAll(selfMsg.desc, other.msg.desc)
     } catch {
-      case ex: mcas.ImpossibleOperation =>
+      case ex: Exception =>
         debugLog(s"ERROR: ${ex}")
         throw ex
     }

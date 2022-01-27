@@ -415,9 +415,9 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     // merge:
     try {
       ctx.addAll(d2a, d2b)
-      fail("expected ImpossibleOperation")
+      fail("expected exception thrown")
     } catch {
-      case _: ImpossibleOperation => // OK
+      case _: IllegalArgumentException => // OK
     }
   }
 

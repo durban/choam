@@ -20,11 +20,8 @@ package laws
 
 import cats.Eq
 import cats.data.Ior
-import cats.implicits._
 
 import org.scalacheck.{ Gen, Arbitrary, Cogen }
-
-import mcas.ImpossibleOperation
 
 trait TestInstances extends TestInstancesLowPrio0 { self =>
 
@@ -109,16 +106,12 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
     override def eqv(x: Axn[A], y: Axn[A]): Boolean = {
       val rx = self.unsafePerformForTest(x, ())
       val ry = self.unsafePerformForTest(y, ())
-      Eq[Either[ImpossibleOperation, A]].eqv(rx, ry)
+      equA.eqv(rx, ry)
     }
   }
 
-  private[choam] final def unsafePerformForTest[A, B](rxn: A =#> B, a: A): Either[ImpossibleOperation, B] = {
-    try {
-      Right(rxn.unsafePerform(a, self.kcasImpl))
-    } catch { case ex: ImpossibleOperation =>
-      Left(ex)
-    }
+  private[choam] final def unsafePerformForTest[A, B](rxn: A =#> B, a: A): B = {
+    rxn.unsafePerform(a, self.kcasImpl)
   }
 }
 
@@ -247,13 +240,9 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
         }
         val rx = self.unsafePerformForTest(x, a)
         val ry = self.unsafePerformForTest(y, a)
-        Eq[Either[ImpossibleOperation, B]].eqv(rx, ry)
+        equB.eqv(rx, ry)
       }
     }
-  }
-
-  implicit def testingEqImpossibleOp: Eq[ImpossibleOperation] = { (x, y) =>
-    x.equiv(y)
   }
 }
 

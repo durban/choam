@@ -257,14 +257,6 @@ object MCAS extends MCASPlatform { self =>
     }
   }
 
-  private[mcas] final def impossibleOp[A, B](
-    ref: MemoryLocation[_],
-    a: HalfWordDescriptor[A],
-    b: HalfWordDescriptor[B]
-  ): Nothing = {
-    throw new ImpossibleOperation(ref, a, b)
-  }
-
   private[choam] final class Builder(
     private[this] val ctx: ThreadContext,
     private[this] val desc: HalfEMCASDescriptor,
