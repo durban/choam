@@ -133,10 +133,6 @@ object MCAS extends MCASPlatform { self =>
     final def addCasFromInitial[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
       this.addCasWithVersion(desc, ref, ov = ov, nv = nv, version = Version.Start)
 
-    // TODO: remove this:
-    final def addCas[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
-      this.addCasWithVersion(desc, ref, ov = ov, nv = nv, version = Version.Start)
-
     final def addCasWithVersion[A](
       desc: HalfEMCASDescriptor,
       ref: MemoryLocation[A],

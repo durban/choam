@@ -164,7 +164,7 @@ class EMCASSpec extends BaseSpecA {
   test("EMCAS should not clean up an object referenced from another thread") {
     val ref = MemoryLocation.unsafe[String]("s")
     val ctx = EMCAS.currentContext()
-    val hDesc = ctx.addCas(ctx.start(), ref, "s", "x")
+    val hDesc = ctx.addCasFromInitial(ctx.start(), ref, "s", "x")
     var mark: AnyRef = null
     val desc = {
       val desc = EMCASDescriptor.prepare(hDesc)
@@ -257,7 +257,7 @@ class EMCASSpec extends BaseSpecA {
     val t1 = new Thread(() => {
       val ctx = EMCAS.currentContext()
       val hDesc = ctx.addVersionCas(
-        ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "a"), r2, "y", "b")
+        ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
       )
       val desc = EMCASDescriptor.prepare(hDesc)
       val d0 = desc.wordIterator().next().asInstanceOf[WordDescriptor[String]]
@@ -349,7 +349,7 @@ class EMCASSpec extends BaseSpecA {
     var ok0 = false
     val t1 = new Thread(() => {
       val ctx = EMCAS.currentContext()
-      val hDesc = ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "a"), r2, "y", "b")
+      val hDesc = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
       val desc = EMCASDescriptor.prepare(hDesc)
       val d0 = desc.wordIterator().next().asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
@@ -369,8 +369,7 @@ class EMCASSpec extends BaseSpecA {
     val t2 = new Thread(() => {
       // the other thread changes back the values (but first finalizes the active op):
       val ctx = EMCAS.currentContext()
-      val desc = ctx.addCas(ctx.addCas(ctx.start(), r2, "b", "y"), r1, "a", "x")
-      assertEquals(EMCAS.tryPerform(desc, ctx), EmcasStatus.Successful)
+      assert(ctx.builder().casRef(r2, "b", "y").casRef(r1, "a", "x").tryPerformOk())
       // wait for descriptors to be collected:
       assertEquals(clue(EMCAS.spinUntilCleanup[String](r2)), "y")
       // but this one shouldn't be collected, as the other thread holds the mark of `d0`:
@@ -393,7 +392,7 @@ class EMCASSpec extends BaseSpecA {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 42L)
     val ctx = EMCAS.currentContext()
-    val hOther: HalfEMCASDescriptor = ctx.addCas(ctx.addCas(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
+    val hOther: HalfEMCASDescriptor = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
     val other = EMCASDescriptor.prepare(hOther)
     val d0 = other.wordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
@@ -413,7 +412,7 @@ class EMCASSpec extends BaseSpecA {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 99L)
     val ctx = EMCAS.currentContext()
-    val hOther = ctx.addCas(ctx.addCas(ctx.start(), r1, "r1", "x"), r2, "zzz", "y")
+    val hOther = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "zzz", "y")
     val other = EMCASDescriptor.prepare(hOther)
     val d0 = other.wordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
@@ -486,9 +485,9 @@ class EMCASSpec extends BaseSpecA {
     val r3 = MemoryLocation.unsafeWithId("r3")(0L, 0L, 0L, 3L)
     val ctx = EMCAS.currentContext()
     val d0 = ctx.start()
-    val d1 = ctx.addCas(d0, r1, "r1", "A")
-    val d2 = ctx.addCas(d1, r3, "r3", "C")
-    val d3 = ctx.addCas(d2, r2, "r2", "B")
+    val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")
+    val d2 = ctx.addCasFromInitial(d1, r3, "r3", "C")
+    val d3 = ctx.addCasFromInitial(d2, r2, "r2", "B")
     val d = EMCASDescriptor.prepare(d3)
     val it = d.wordIterator()
     assertSameInstance(it.next().address, r1)
