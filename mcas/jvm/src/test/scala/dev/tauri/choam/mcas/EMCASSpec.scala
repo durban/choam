@@ -349,7 +349,9 @@ class EMCASSpec extends BaseSpecA {
     var ok0 = false
     val t1 = new Thread(() => {
       val ctx = EMCAS.currentContext()
-      val hDesc = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
+      val hDesc = ctx.addVersionCas(
+        ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
+      )
       val desc = EMCASDescriptor.prepare(hDesc)
       val d0 = desc.wordIterator().next().asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
@@ -369,7 +371,16 @@ class EMCASSpec extends BaseSpecA {
     val t2 = new Thread(() => {
       // the other thread changes back the values (but first finalizes the active op):
       val ctx = EMCAS.currentContext()
-      assert(ctx.builder().casRef(r2, "b", "y").casRef(r1, "a", "x").tryPerformOk())
+      val b = {
+        ctx.builder().casRef(r2, "b", "y").tryCasRef(r1, "a", "x") match {
+          case None =>
+            // expected, retry:
+            ctx.builder().casRef(r2, "b", "y").casRef(r1, "a", "x")
+          case Some(x) =>
+            fail(s"unexpected: ${x}")
+        }
+      }
+      assert(b.tryPerformOk())
       // wait for descriptors to be collected:
       assertEquals(clue(EMCAS.spinUntilCleanup[String](r2)), "y")
       // but this one shouldn't be collected, as the other thread holds the mark of `d0`:

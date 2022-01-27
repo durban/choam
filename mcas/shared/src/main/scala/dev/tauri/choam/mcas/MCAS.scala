@@ -284,8 +284,14 @@ object MCAS extends MCASPlatform { self =>
     }
 
     final def casRef[A](ref: MemoryLocation[A], from: A, to: A): Builder = {
-      this.ctx.readMaybeFromLog(ref, this.desc) match {
-        case Some((ov, newDesc)) =>
+      this.tryCasRef(ref, from, to).getOrElse(
+        throw new IllegalStateException("couldn't extend, rollback is necessary")
+      )
+    }
+
+    final def tryCasRef[A](ref: MemoryLocation[A], from: A, to: A): Option[Builder] = {
+      this.ctx.readMaybeFromLog(ref, this.desc).map {
+        case (ov, newDesc) =>
           val newestDesc = if (equ(ov, from)) {
             newDesc.overwrite(newDesc.getOrElseNull(ref).withNv(to))
           } else {
@@ -294,8 +300,6 @@ object MCAS extends MCASPlatform { self =>
             newDesc.overwrite(newHwd)
           }
           new Builder(this.ctx, newestDesc)
-        case None =>
-          throw new IllegalStateException("couldn't extend, rollback is necessary")
       }
     }
 
