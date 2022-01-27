@@ -35,13 +35,13 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
 
   private final def tryPerformBatch(ops: List[CASD[_]]): Boolean = {
     val ctx = kcasImpl.currentContext()
-    val desc = ops.foldLeft(ctx.start()) { (d, op) =>
+    val builder = ops.foldLeft(ctx.builder()) { (b, op) =>
       op match {
         case op: CASD[a] =>
-          ctx.addCas(d, op.address, op.ov, op.nv)
+          b.casRef(op.address, op.ov, op.nv)
       }
     }
-    ctx.tryPerformBool(desc)
+    builder.tryPerformOk()
   }
 
   test("k-CAS should succeed if old values match, and there is no contention") {
@@ -104,23 +104,6 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertSameInstance(ctx.read(r3), "z")
   }
 
-  test("k-CAS should not accept more than one CAS for the same ref") {
-    val r1 = MemoryLocation.unsafe("r1")
-    val r2 = MemoryLocation.unsafe("r2")
-    val exc = intercept[Exception] {
-      tryPerformBatch(List(
-        CASD(r1, "r1", "x"),
-        CASD(r2, "r2", "y"),
-        CASD(r1, "r1", "x") // this is a duplicate
-      ))
-    }
-    assert(clue(exc.getMessage).contains("Impossible k-CAS"))
-    assert(clue(exc).isInstanceOf[ImpossibleOperation])
-    val ctx = kcasImpl.currentContext()
-    assertSameInstance(ctx.read(r1), "r1")
-    assertSameInstance(ctx.read(r2), "r2")
-  }
-
   test("k-CAS should be able to succeed after one successful operation") {
     val r1 = MemoryLocation.unsafe("r1")
     val r2 = MemoryLocation.unsafe("r2")
@@ -160,15 +143,15 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
 
     val snap = ctx.snapshot(d1)
     val d21 = ctx.addCas(d1, r2, "foo", "bar")
-    assert(!ctx.tryPerformBool(d21))
-    assertSameInstance(ctx.read(r1), "r1")
-    assertSameInstance(ctx.read(r2), "r2")
-    assertSameInstance(ctx.read(r3), "r3")
+    assert(!ctx.tryPerformOk(d21))
+    assertSameInstance(ctx.readDirect(r1), "r1")
+    assertSameInstance(ctx.readDirect(r2), "r2")
+    assertSameInstance(ctx.readDirect(r3), "r3")
     val d22 = ctx.addCas(snap, r3, "r3", "r3x")
-    assert(ctx.tryPerformBool(d22))
-    assertSameInstance(ctx.read(r1), "r1x")
-    assertSameInstance(ctx.read(r2), "r2")
-    assertSameInstance(ctx.read(r3), "r3x")
+    assert(ctx.tryPerformOk(d22))
+    assertSameInstance(ctx.readDirect(r1), "r1x")
+    assertSameInstance(ctx.readDirect(r2), "r2")
+    assertSameInstance(ctx.readDirect(r3), "r3x")
   }
 
   test("Snapshotting should work when cancelling") {
@@ -184,7 +167,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertSameInstance(ctx.read(r2), "r2")
     assertSameInstance(ctx.read(r3), "r3")
     val d22 = ctx.addCas(snap, r3, "r3", "r3x")
-    assert(ctx.tryPerformBool(d22))
+    assert(ctx.tryPerformOk(d22))
     assertSameInstance(ctx.read(r1), "r1x")
     assertSameInstance(ctx.read(r2), "r2")
     assertSameInstance(ctx.read(r3), "r3x")
@@ -210,7 +193,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(d0.validTs >= v21)
     val d1 = ctx.addCasWithVersion(d0, r1, "r1", "x", v11)
     val d2 = ctx.addCasWithVersion(d1, r2, "r2", "y", v21)
-    assert(ctx.tryPerformBool(d2))
+    assert(ctx.tryPerformOk(d2))
     val v12 = ctx.readVersion(r1)
     assertEquals(v12, d0.validTs + 1L)
     val v22 = ctx.readVersion(r2)
@@ -226,7 +209,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val d0 = ctx.start()
     val d1 = ctx.addCasWithVersion(d0, r1, "r1", "x", v11)
     val d2 = ctx.addCasWithVersion(d1, r2, "-", "y", v21)
-    assert(!ctx.tryPerformBool(d2))
+    assert(!ctx.tryPerformOk(d2))
     val v12 = ctx.readVersion(r1)
     assertEquals(v12, v11)
     val v22 = ctx.readVersion(r2)
@@ -242,7 +225,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val d0 = ctx.start()
     val d1 = ctx.addCas(d0, r1, "r1", "x")
     val d2 = ctx.addCasWithVersion(d1, r2, "-", "y", v21)
-    assert(!ctx.tryPerformBool(d2))
+    assert(!ctx.tryPerformOk(d2))
     val v12 = ctx.readVersion(r1)
     assertEquals(v12, v11)
     val v22 = ctx.readVersion(r2)

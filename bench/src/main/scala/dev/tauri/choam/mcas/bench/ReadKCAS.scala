@@ -38,8 +38,8 @@ class ReadKCAS {
   @Benchmark
   @Group("ReadKCAS")
   def read(s: RefSt, t: ThSt, bh: Blackhole): Unit = {
-    bh.consume(t.kcasCtx.read(s.ref1))
-    bh.consume(t.kcasCtx.read(s.ref2))
+    bh.consume(t.kcasCtx.readDirect(s.ref1))
+    bh.consume(t.kcasCtx.readDirect(s.ref2))
   }
 
   @Benchmark
@@ -47,12 +47,15 @@ class ReadKCAS {
   def change(s: RefSt, t: ThSt): Unit = {
     val next1 = t.nextString()
     val next2 = t.nextString()
-    val success = t.kcasCtx.tryPerformBool(
-      t.kcasCtx.addCas(t.kcasCtx.addCas(t.kcasCtx.start(), s.ref1, t.last1, next1), s.ref2, t.last2, next2)
-    )
+    val success = {
+      val d0 = t.kcasCtx.start()
+      val Some((_, d1)) = t.kcasCtx.readMaybeFromLog(s.ref1, d0) : @unchecked
+      val d2 = d1.overwrite(d1.getOrElseNull(s.ref1).withNv(next1))
+      val Some((_, d3)) = t.kcasCtx.readMaybeFromLog(s.ref2, d2) : @unchecked
+      val d4 = d3.overwrite(d3.getOrElseNull(s.ref2).withNv(next2))
+      t.kcasCtx.tryPerformOk(d4)
+    }
     if (success) {
-      t.last1 = next1
-      t.last2 = next2
       // we only occasionally want to change values, so wait a bit:
       Blackhole.consumeCPU(ReadKCAS.tokens)
     } else {
@@ -72,8 +75,5 @@ object ReadKCAS {
   }
 
   @State(Scope.Thread)
-  class ThSt extends KCASImplState {
-    var last1 = "1"
-    var last2 = "2"
-  }
+  class ThSt extends KCASImplState
 }

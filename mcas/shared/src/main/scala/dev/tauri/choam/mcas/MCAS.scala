@@ -74,6 +74,9 @@ object MCAS extends MCASPlatform { self =>
     // TODO: -> tryPerformInternal
     def tryPerform(desc: HalfEMCASDescriptor): Long
 
+    def tryPerformInternal(desc: HalfEMCASDescriptor): Long =
+      tryPerform(desc)
+
     private[choam] def random: ThreadLocalRandom
 
     // concrete:
@@ -82,7 +85,7 @@ object MCAS extends MCASPlatform { self =>
     final def read[A](ref: MemoryLocation[A]): A =
       this.readDirect(ref)
 
-    // TODO: there should be a non-option, non-tuple version of this
+    /** Utility to first try to read from the log, and only from the ref if not found */
     final def readMaybeFromLog[A](ref: MemoryLocation[A], log: HalfEMCASDescriptor): Option[(A, HalfEMCASDescriptor)] = {
       log.getOrElseNull(ref) match {
         case null =>
@@ -101,14 +104,18 @@ object MCAS extends MCASPlatform { self =>
       }
     }
 
-    final def readIntoLog[A](ref: MemoryLocation[A], log: HalfEMCASDescriptor): HalfEMCASDescriptor = {
+    private[this] final def readIntoLog[A](ref: MemoryLocation[A], log: HalfEMCASDescriptor): HalfEMCASDescriptor = {
       require(log.getOrElseNull(ref) eq null)
       val hwd = this.readIntoHwd(ref)
       val newLog = log.add(hwd)
       if (!newLog.isValidHwd(hwd)) {
         // this returns null if we need to roll back
         // (and we pass on the null to our caller):
-        this.validateAndTryExtend(newLog)
+        val res = this.validateAndTryExtend(newLog)
+        if (res ne null) {
+          assert(res.isValidHwd(hwd))
+        }
+        res
       } else {
         newLog
       }
@@ -131,8 +138,8 @@ object MCAS extends MCASPlatform { self =>
       }
     }
 
-    final def tryPerformBool(desc: HalfEMCASDescriptor): Boolean = {
-      tryPerform(desc) == EmcasStatus.Successful
+    final def tryPerformOk(desc: HalfEMCASDescriptor): Boolean = {
+      tryPerform2(desc) == EmcasStatus.Successful
     }
 
     final def addCasFromInitial[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
@@ -181,7 +188,7 @@ object MCAS extends MCASPlatform { self =>
 
     /**
      * Do a real 1-CAS, without commitTs.
-     * This breaks opacitiy guarantees!
+     * This breaks opacity guarantees!
      * It may change the value of a ref
      * without changing the version!
      */
@@ -196,8 +203,8 @@ object MCAS extends MCASPlatform { self =>
         // old version):
         val d1 = d0.add(hwd.withNv(nv)).withNoNewVersion
         assert(d1.newVersion == d1.validTs)
-        // we're intentionally NOT calling tryPerform2:
-        this.tryPerform(d1) == EmcasStatus.Successful
+        // we're intentionally NOT having a version-CAS:
+        this.tryPerformInternal(d1) == EmcasStatus.Successful
       } else {
         false
       }
@@ -220,6 +227,11 @@ object MCAS extends MCASPlatform { self =>
     }
 
     // statistics/testing/benchmarking:
+
+    /** Only for testing */
+    private[choam] def builder(): Builder = {
+      new Builder(this, this.start())
+    }
 
     /** Only for testing/benchmarking */
     private[choam] def recordCommit(@unused retries: Int): Unit = {
@@ -267,5 +279,44 @@ object MCAS extends MCASPlatform { self =>
     b: HalfWordDescriptor[B]
   ): Nothing = {
     throw new ImpossibleOperation(ref, a, b)
+  }
+
+  private[choam] final class Builder(
+    private[this] val ctx: ThreadContext,
+    private[this] val desc: HalfEMCASDescriptor,
+  ) {
+
+    final def updateRef[A](ref: MemoryLocation[A], f: A => A): Builder = {
+      this.ctx.readMaybeFromLog(ref, this.desc) match {
+        case Some((ov, newDesc)) =>
+          val nv = f(ov)
+          val newestDesc = newDesc.overwrite(
+            newDesc.getOrElseNull(ref).withNv(nv)
+          )
+          new Builder(this.ctx, newestDesc)
+        case None =>
+          throw new IllegalStateException("couldn't extend, rollback is necessary")
+      }
+    }
+
+    final def casRef[A](ref: MemoryLocation[A], from: A, to: A): Builder = {
+      this.ctx.readMaybeFromLog(ref, this.desc) match {
+        case Some((ov, newDesc)) =>
+          val newestDesc = if (equ(ov, from)) {
+            newDesc.overwrite(newDesc.getOrElseNull(ref).withNv(to))
+          } else {
+            val oldHwd = newDesc.getOrElseNull(ref)
+            val newHwd = HalfWordDescriptor(ref, from, to, oldHwd.version)
+            newDesc.overwrite(newHwd)
+          }
+          new Builder(this.ctx, newestDesc)
+        case None =>
+          throw new IllegalStateException("couldn't extend, rollback is necessary")
+      }
+    }
+
+    final def tryPerformOk(): Boolean = {
+      this.ctx.tryPerformOk(this.desc)
+    }
   }
 }

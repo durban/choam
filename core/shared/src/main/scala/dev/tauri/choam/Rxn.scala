@@ -817,9 +817,10 @@ object Rxn extends RxnInstances0 {
     }
 
     /**
-     * Note: doesn't put a fresh HWD into the log!
-     * Note: returns `null` if a rollback is required!
-     * Note: may update `desc` (revalidate/extend).
+     * Specialized variant of `MCAS.ThreadContext#readMaybeFromLog`.
+     * Note: doesn't put a fresh HWD into the log! Note: returns `null`
+     * if a rollback is required! Note: may update `desc`
+     * (revalidate/extend).
      */
     private[this] final def readMaybeFromLog[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
       desc.getOrElseNull(ref) match {

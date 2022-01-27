@@ -56,10 +56,10 @@ class EMCASTest {
   @Actor
   def write(r: LLLLL_Result): Unit = {
     val ctx = EMCAS.currentContext()
-    val ok = ctx.tryPerformBool(
-      ctx.addCas(ctx.addCas(ctx.start(), this.ref1, "a", "b"), this.ref2, "x", "y")
+    val res = ctx.tryPerformInternal(
+      ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), this.ref1, "a", "b"), this.ref2, "x", "y")
     )
-    r.r1 = ok // true
+    r.r1 = (res == EmcasStatus.Successful) // true
   }
 
   @Actor
@@ -113,8 +113,8 @@ class EMCASTest {
   @Arbiter
   def arbiter(r: LLLLL_Result): Unit = {
     val ctx = EMCAS.currentContext()
-    assert(ctx.read(this.ref1) eq "b")
-    assert(ctx.read(this.ref2) eq "y")
+    assert(ctx.readDirect(this.ref1) eq "b")
+    assert(ctx.readDirect(this.ref2) eq "y")
     r.r4 match {
       case v: Long =>
         r.r4 = v match {

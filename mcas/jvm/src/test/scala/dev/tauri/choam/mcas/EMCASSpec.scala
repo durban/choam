@@ -35,12 +35,12 @@ class EMCASSpec extends BaseSpecA {
     val r1 = MemoryLocation.unsafe[String](null)
     val r2 = MemoryLocation.unsafe[String]("x")
     val ctx = EMCAS.currentContext()
-    val desc = ctx.addCas(ctx.addCas(ctx.start(), r1, null, "x"), r2, "x", null)
+    val desc = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, null, "x"), r2, "x", null)
     val snap = ctx.snapshot(desc)
-    assert(EMCAS.tryPerformBool(desc, ctx))
+    assertEquals(EMCAS.tryPerform(desc, ctx), EmcasStatus.Successful)
     assert(clue(ctx.read(r1)) eq "x")
     assert(ctx.read(r2) eq null)
-    assert(!EMCAS.tryPerformBool(snap, ctx))
+    assertEquals(EMCAS.tryPerform(snap, ctx), EmcasStatus.FailedVal)
     assert(ctx.read(r1) eq "x")
     assert(ctx.read(r2) eq null)
   }
@@ -53,14 +53,16 @@ class EMCASSpec extends BaseSpecA {
     val v21 = ctx.readVersion(r2)
     val desc = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
     val snap = ctx.snapshot(desc)
-    assert(ctx.tryPerformBool(ctx.addCasWithVersion(desc, r2, "y", "b", version = v21)))
+    assert(ctx.tryPerformOk(ctx.addCasWithVersion(desc, r2, "y", "b", version = v21)))
+    val newVer = ctx.start().validTs
+    assertEquals(newVer, desc.validTs + Version.Incr)
     assert(ctx.read(r1) eq "a")
     assert(ctx.read(r2) eq "b")
     val v12 = ctx.readVersion(r1)
-    assertEquals(v12, desc.validTs + Version.Incr)
+    assertEquals(v12, newVer)
     assert(v12 > v11)
     val v22 = ctx.readVersion(r2)
-    assertEquals(v22, desc.validTs + Version.Incr)
+    assertEquals(v22, newVer)
     assert(v22 > v21)
     assert(EMCAS.spinUntilCleanup(r1) eq "a")
     assert(EMCAS.spinUntilCleanup(r2) eq "b")
@@ -70,7 +72,8 @@ class EMCASSpec extends BaseSpecA {
     assertEquals(ctx.readVersion(r2), v22)
 
     val desc2 = snap
-    assert(!ctx.tryPerformBool(ctx.addCasWithVersion(desc2, r2, "b", "z", version = v22))) // this will fail
+    assert(!ctx.tryPerformOk(ctx.addCasWithVersion(desc2, r2, "b", "z", version = v22))) // this will fail
+    assertEquals(ctx.start().validTs, newVer)
     assert(ctx.read(r1) eq "a")
     assert(ctx.read(r2) eq "b")
     assertEquals(ctx.readVersion(r1), v12)
@@ -203,7 +206,11 @@ class EMCASSpec extends BaseSpecA {
     var ok = false
     val t = new Thread(() => {
       val ctx = EMCAS.currentContext()
-      ok = ctx.tryPerformBool(ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "a"), r2, "y", "b"))
+      ok = ctx
+        .builder()
+        .casRef(r1, "x", "a")
+        .casRef(r2,"y", "b")
+        .tryPerformOk()
     })
     @tailrec
     def checkCleanup(ref: MemoryLocation[String], old: String, exp: String): Boolean = {
@@ -249,7 +256,9 @@ class EMCASSpec extends BaseSpecA {
     var weakMark: WeakReference[AnyRef] = null
     val t1 = new Thread(() => {
       val ctx = EMCAS.currentContext()
-      val hDesc = ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "a"), r2, "y", "b")
+      val hDesc = ctx.addVersionCas(
+        ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "a"), r2, "y", "b")
+      )
       val desc = EMCASDescriptor.prepare(hDesc)
       val d0 = desc.wordIterator().next().asInstanceOf[WordDescriptor[String]]
       val mark = new McasMarker
@@ -281,7 +290,11 @@ class EMCASSpec extends BaseSpecA {
     if (finishWithAnotherOp) {
       // run another op; this should
       // finalize the previous one:
-      val succ = ctx.tryPerformBool(ctx.addCas(ctx.addCas(ctx.start(), r1, "x", "x2"), r2, "y", "y2"))
+      val succ = ctx
+        .builder()
+        .casRef(r1, "x", "x2")
+        .casRef(r2, "y", "y2")
+        .tryPerformOk()
       assert(!succ)
     }
     // else: only run readValue; this should
@@ -357,7 +370,7 @@ class EMCASSpec extends BaseSpecA {
       // the other thread changes back the values (but first finalizes the active op):
       val ctx = EMCAS.currentContext()
       val desc = ctx.addCas(ctx.addCas(ctx.start(), r2, "b", "y"), r1, "a", "x")
-      assert(EMCAS.tryPerformBool(desc, ctx))
+      assertEquals(EMCAS.tryPerform(desc, ctx), EmcasStatus.Successful)
       // wait for descriptors to be collected:
       assertEquals(clue(EMCAS.spinUntilCleanup[String](r2)), "y")
       // but this one shouldn't be collected, as the other thread holds the mark of `d0`:
@@ -488,11 +501,11 @@ class EMCASSpec extends BaseSpecA {
     for (r1 <- List(MemoryLocation.unsafe("r1"), MemoryLocation.unsafePadded("r1"))) {
       val ctx = EMCAS.currentContext()
       val d0 = ctx.start()
-      val d1 = ctx.addCas(d0, r1, "r1", "A")
+      val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")
       val ed = EMCASDescriptor.prepare(d1)
       val wd = ed.wordIterator().next()
       assert(wd.toString().startsWith("WordDescriptor("))
-      assert(EMCAS.tryPerformBool(d1, ctx))
+      assert(ctx.tryPerformOk(d1))
       (r1.unsafeGetVolatile() : Any) match {
         case wd: WordDescriptor[_] =>
           assert(wd.toString().startsWith("WordDescriptor("))

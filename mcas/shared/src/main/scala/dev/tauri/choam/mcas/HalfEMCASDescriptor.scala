@@ -131,7 +131,7 @@ final class HalfEMCASDescriptor private (
     // NB: we must read the commitTs *before* the `ctx.validate(this)`
     val newValidTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
-    require(newValidTsBoxed >= this.validTs)
+    require(newValidTsBoxed.longValue > this.validTs)
     if (ctx.validate(this)) {
       new HalfEMCASDescriptor(
         map = this.map,

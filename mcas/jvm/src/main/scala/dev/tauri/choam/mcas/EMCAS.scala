@@ -505,10 +505,6 @@ private object EMCAS extends MCAS { self =>
     }
   }
 
-  private[mcas] final def tryPerformBool(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Boolean = {
-    tryPerformDebug(desc = desc, ctx = ctx) == EmcasStatus.Successful
-  }
-
   private[choam] final override def countCommitsAndRetries(): (Long, Long) = {
     this.global.countCommitsAndRetries()
   }
