@@ -95,9 +95,6 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
     final override def start(): HalfEMCASDescriptor =
       HalfEMCASDescriptor.empty(_commitTs, this)
 
-    protected[mcas] final override def setCommitTs(v: Long): Unit =
-      _commitTs.unsafeSetPlain(v)
-
     protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       desc.addVersionCas(_commitTs)
 

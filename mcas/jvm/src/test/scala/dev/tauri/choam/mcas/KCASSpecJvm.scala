@@ -56,9 +56,8 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       assert(hwd ne null)
       val newHwd = hwd.withNv("bb")
       val dx2 = dx.overwrite(newHwd)
-      assert(ctx.tryPerformBool(dx2))
+      assertEquals(ctx.tryPerform2(dx2), EmcasStatus.Successful)
       val newVer = dx2.newVersion
-      ctx.setCommitTs(newVer)
       assertEquals(ctx.readVersion(r2), newVer)
       assert(newVer > d2.validTs)
       assert(newVer > ctx.readVersion(r1))
@@ -84,9 +83,8 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     val d6 = d5.overwrite(d5.getOrElseNull(r2).withNv("bbb"))
     assert(!d6.readOnly)
     // perform:
-    assert(ctx.tryPerformBool(d6))
+    assertEquals(ctx.tryPerform2(d6), EmcasStatus.Successful)
     val newVer = d6.newVersion
-    ctx.setCommitTs(newVer)
     assertEquals(ctx.readVersion(r1), newVer)
     assertEquals(ctx.readVersion(r2), newVer)
     assertSameInstance(ctx.readIfValid(r1, newVer), "aa")

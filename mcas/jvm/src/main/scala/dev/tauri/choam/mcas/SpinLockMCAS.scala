@@ -127,9 +127,6 @@ private object SpinLockMCAS extends MCAS { self =>
     final override def start(): HalfEMCASDescriptor =
       HalfEMCASDescriptor.empty(commitTs, this)
 
-    protected[mcas] final override def setCommitTs(v: Long): Unit =
-      commitTs.unsafeSetVolatile(v)
-
     protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       desc.addVersionCas(commitTs)
 

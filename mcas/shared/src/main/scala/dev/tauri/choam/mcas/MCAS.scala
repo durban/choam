@@ -64,9 +64,6 @@ object MCAS extends MCASPlatform { self =>
 
     def start(): HalfEMCASDescriptor
 
-    /** Only for testing! */
-    protected[mcas] def setCommitTs(v: Long): Unit
-
     protected[mcas] def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
 
     // TODO: do we need this? (for read-only Rxn's?)

@@ -52,9 +52,6 @@ object FlakyEMCAS extends MCAS { self =>
     final override def start(): HalfEMCASDescriptor =
       emcasCtx.start()
 
-    protected[mcas] final override def setCommitTs(v: Long): Unit =
-      emcasCtx.setCommitTs(v)
-
     protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       emcasCtx.addVersionCas(desc)
 

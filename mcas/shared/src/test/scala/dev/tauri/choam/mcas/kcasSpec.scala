@@ -285,9 +285,8 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val d7 = d6.overwrite(d6.getOrElseNull(r2).withNv("bbb"))
     assert(!d7.readOnly)
     // perform:
-    assert(ctx.tryPerformBool(d7))
+    assertEquals(ctx.tryPerform2(d7), EmcasStatus.Successful)
     val newVer = d7.newVersion
-    ctx.setCommitTs(newVer)
     assertEquals(ctx.readVersion(r1), newVer)
     assertEquals(ctx.readVersion(r2), newVer)
     assertSameInstance(ctx.readIfValid(r1, newVer), "aa")
@@ -388,6 +387,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val ctx = kcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val r2 = MemoryLocation.unsafe("b")
+    val r3 = MemoryLocation.unsafe("x")
     val d0 = ctx.start()
     val startTs = d0.validTs
     // one side:
@@ -395,7 +395,8 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertSameInstance(ov1, "a")
     val d2a = d1a.overwrite(d1a.getOrElseNull(r1).withNv("aa"))
     // simulate a concurrent commit which changes global version:
-    ctx.setCommitTs(startTs + Version.Incr)
+    assert(ctx.tryPerformSingleCas(r3, "x", "y"))
+    assertEquals(ctx.start().validTs, startTs + Version.Incr)
     // other side:
     val Some((ov2, d1b)) = ctx.readMaybeFromLog(r2, ctx.start()) : @unchecked
     assertSameInstance(ov2, "b")
