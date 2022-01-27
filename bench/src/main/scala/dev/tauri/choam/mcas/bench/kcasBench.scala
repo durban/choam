@@ -56,7 +56,7 @@ class CAS1LoopBench {
     val kcasCtx = t.kcasCtx
     @tailrec
     def go(): Unit = {
-      val ov = kcasCtx.read(ref)
+      val ov = kcasCtx.readDirect(ref)
       val nv = (ov.toLong + t.nextLong()).toString
       val succ = kcasCtx.tryPerformSingleCas(ref, ov, nv)
       if (succ) ()

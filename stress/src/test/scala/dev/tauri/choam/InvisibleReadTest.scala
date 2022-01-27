@@ -62,8 +62,8 @@ class InvisibleReadTest extends StressTestBase {
   @Arbiter
   def arbiter(r: LLZ_Result): Unit = {
     val ctx = impl.currentContext()
-    val fv1 = ctx.read(ref1.loc)
-    val fv2 = ctx.read(ref2.loc)
+    val fv1 = ctx.readDirect(ref1.loc)
+    val fv2 = ctx.readDirect(ref2.loc)
     if ((fv1 eq "b") && (fv2 eq "y")) {
       r.r3 = true
     }

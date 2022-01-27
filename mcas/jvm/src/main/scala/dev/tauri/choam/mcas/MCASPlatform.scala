@@ -38,9 +38,9 @@ private[mcas] abstract class MCASPlatform extends AbstractMCASPlatform {
   private[choam] final override def debugRead[A](loc: MemoryLocation[A]): A = {
     loc.unsafeGetVolatile() match {
       case null =>
-        SpinLockMCAS.currentContext().read(loc)
+        SpinLockMCAS.currentContext().readDirect(loc)
       case _: WordDescriptor[_] =>
-        EMCAS.currentContext().read(loc)
+        EMCAS.currentContext().readDirect(loc)
       case a =>
         a
     }

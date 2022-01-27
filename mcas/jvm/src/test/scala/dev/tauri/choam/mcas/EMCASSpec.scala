@@ -38,11 +38,11 @@ class EMCASSpec extends BaseSpecA {
     val desc = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, null, "x"), r2, "x", null)
     val snap = ctx.snapshot(desc)
     assertEquals(EMCAS.tryPerform(desc, ctx), EmcasStatus.Successful)
-    assert(clue(ctx.read(r1)) eq "x")
-    assert(ctx.read(r2) eq null)
+    assert(clue(ctx.readDirect(r1)) eq "x")
+    assert(ctx.readDirect(r2) eq null)
     assertEquals(EMCAS.tryPerform(snap, ctx), EmcasStatus.FailedVal)
-    assert(ctx.read(r1) eq "x")
-    assert(ctx.read(r2) eq null)
+    assert(ctx.readDirect(r1) eq "x")
+    assert(ctx.readDirect(r2) eq null)
   }
 
   test("EMCAS should clean up finalized descriptors") {
@@ -56,8 +56,8 @@ class EMCASSpec extends BaseSpecA {
     assert(ctx.tryPerformOk(ctx.addCasWithVersion(desc, r2, "y", "b", version = v21)))
     val newVer = ctx.start().validTs
     assertEquals(newVer, desc.validTs + Version.Incr)
-    assert(ctx.read(r1) eq "a")
-    assert(ctx.read(r2) eq "b")
+    assert(ctx.readDirect(r1) eq "a")
+    assert(ctx.readDirect(r2) eq "b")
     val v12 = ctx.readVersion(r1)
     assertEquals(v12, newVer)
     assert(v12 > v11)
@@ -74,8 +74,8 @@ class EMCASSpec extends BaseSpecA {
     val desc2 = snap
     assert(!ctx.tryPerformOk(ctx.addCasWithVersion(desc2, r2, "b", "z", version = v22))) // this will fail
     assertEquals(ctx.start().validTs, newVer)
-    assert(ctx.read(r1) eq "a")
-    assert(ctx.read(r2) eq "b")
+    assert(ctx.readDirect(r1) eq "a")
+    assert(ctx.readDirect(r2) eq "b")
     assertEquals(ctx.readVersion(r1), v12)
     assertEquals(ctx.readVersion(r2), v22)
     assert(EMCAS.spinUntilCleanup(r1) eq "a")
@@ -96,8 +96,8 @@ class EMCASSpec extends BaseSpecA {
     val desc = ctx.addCasWithVersion(d0, r2, "y", "b", version = v21)
     assertEquals(ctx.tryPerform2(desc), EmcasStatus.Successful)
     assertEquals(desc.newVersion, desc.validTs + Version.Incr)
-    assert(ctx.read(r1) eq "a")
-    assert(ctx.read(r2) eq "b")
+    assert(ctx.readDirect(r1) eq "a")
+    assert(ctx.readDirect(r2) eq "b")
     val v12 = ctx.readVersion(r1)
     assertEquals(v12, desc.validTs + Version.Incr)
     assert(v12 > v11)
@@ -110,8 +110,8 @@ class EMCASSpec extends BaseSpecA {
     val desc2 = ctx.addCasWithVersion(desc1, r2, "b", "bb", version = v22)
     assertEquals(ctx.tryPerform2(desc2), EmcasStatus.Successful)
     assertEquals(desc2.newVersion, v12 + Version.Incr)
-    assert(ctx.read(r1) eq "aa")
-    assert(ctx.read(r2) eq "bb")
+    assert(ctx.readDirect(r1) eq "aa")
+    assert(ctx.readDirect(r2) eq "bb")
     val v13 = ctx.readVersion(r1)
     assertEquals(v13, v12 + Version.Incr)
     val v23 = ctx.readVersion(r2)
@@ -132,8 +132,8 @@ class EMCASSpec extends BaseSpecA {
     val d0 = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
     val desc = ctx.addCasWithVersion(d0, r2, "y", "b", version = v21)
     assertEquals(ctx.tryPerform2(desc), EmcasStatus.Successful)
-    assert(ctx.read(r1) eq "a")
-    assert(ctx.read(r2) eq "b")
+    assert(ctx.readDirect(r1) eq "a")
+    assert(ctx.readDirect(r2) eq "b")
     val v12 = ctx.readVersion(r1)
     assertEquals(v12, desc.validTs + Version.Incr)
     assert(v12 > v11)
@@ -148,8 +148,8 @@ class EMCASSpec extends BaseSpecA {
     assertEquals(ctx.tryPerform2(desc2), EmcasStatus.FailedVal)
     // commitTs didn't change, since we failed:
     assertEquals(ctx.start().validTs, ts0)
-    assert(ctx.read(r1) eq "a")
-    assert(ctx.read(r2) eq "b")
+    assert(ctx.readDirect(r1) eq "a")
+    assert(ctx.readDirect(r2) eq "b")
     val v13 = ctx.readVersion(r1)
     assertEquals(v13, v12)
     val v23 = ctx.readVersion(r2)
@@ -300,9 +300,9 @@ class EMCASSpec extends BaseSpecA {
     // else: only run readValue; this should
     // also finalize the previous op:
 
-    val read1 = ctx.read(r1)
+    val read1 = ctx.readDirect(r1)
     assert(read1 eq "a")
-    assert(ctx.read(r2) eq "b")
+    assert(ctx.readDirect(r2) eq "b")
     EMCAS.spinUntilCleanup(r1)
     EMCAS.spinUntilCleanup(r2)
     assert(clue(r1.unsafeGetVolatile()) eq "a")
@@ -400,10 +400,10 @@ class EMCASSpec extends BaseSpecA {
     r1.unsafeSetVolatile(d0.castToData)
     val mark = new McasMarker
     assert(r1.unsafeCasMarkerVolatile(null, new WeakReference(mark)))
-    val res = ctx.read(r1)
+    val res = ctx.readDirect(r1)
     assertEquals(res, "x")
-    assertEquals(ctx.read(r1), "x")
-    assertEquals(ctx.read(r2), "y")
+    assertEquals(ctx.readDirect(r1), "x")
+    assertEquals(ctx.readDirect(r2), "y")
     assert(other.getStatus() == EmcasStatus.Successful)
     // we hold a strong ref, since we're pretending we're another op
     Reference.reachabilityFence(mark)
@@ -420,10 +420,10 @@ class EMCASSpec extends BaseSpecA {
     r1.unsafeSetVolatile(d0.castToData)
     val mark = new McasMarker
     assert(r1.unsafeCasMarkerVolatile(null, new WeakReference(mark)))
-    val res = ctx.read(r1)
+    val res = ctx.readDirect(r1)
     assertEquals(res, "r1")
-    assertEquals(ctx.read(r1), "r1")
-    assertEquals(ctx.read(r2), "r2")
+    assertEquals(ctx.readDirect(r1), "r1")
+    assertEquals(ctx.readDirect(r2), "r2")
     assert(other.getStatus() == EmcasStatus.FailedVal)
     // we hold a strong ref, since we're pretending we're another op
     Reference.reachabilityFence(mark)

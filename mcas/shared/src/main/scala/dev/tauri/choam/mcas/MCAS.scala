@@ -81,10 +81,6 @@ object MCAS extends MCASPlatform { self =>
 
     // concrete:
 
-    // TODO: remove (use readDirect instead)
-    final def read[A](ref: MemoryLocation[A]): A =
-      this.readDirect(ref)
-
     /** Utility to first try to read from the log, and only from the ref if not found */
     final def readMaybeFromLog[A](ref: MemoryLocation[A], log: HalfEMCASDescriptor): Option[(A, HalfEMCASDescriptor)] = {
       log.getOrElseNull(ref) match {
