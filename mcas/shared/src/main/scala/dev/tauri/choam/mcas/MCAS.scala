@@ -47,14 +47,6 @@ abstract class MCAS {
 
 object MCAS extends MCASPlatform { self =>
 
-  final object INVALID {
-    def of[A]: A =
-      this.asInstanceOf[A]
-  }
-
-  final def isInvalid[A](a: A): Boolean =
-    equ(a, INVALID.of[A])
-
   trait ThreadContext {
 
     // abstract:
