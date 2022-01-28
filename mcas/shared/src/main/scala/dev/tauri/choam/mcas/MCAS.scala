@@ -105,8 +105,7 @@ object MCAS extends MCASPlatform { self =>
       }
     }
 
-    // TODO: -> tryPerform
-    final def tryPerform2(desc: HalfEMCASDescriptor): Long = {
+    final def tryPerform(desc: HalfEMCASDescriptor): Long = {
       if (desc.readOnly) {
         // we've validated each read,
         // so nothing to do here
@@ -123,7 +122,7 @@ object MCAS extends MCASPlatform { self =>
     }
 
     final def tryPerformOk(desc: HalfEMCASDescriptor): Boolean = {
-      tryPerform2(desc) == EmcasStatus.Successful
+      tryPerform(desc) == EmcasStatus.Successful
     }
 
     final def addCasFromInitial[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
@@ -190,7 +189,6 @@ object MCAS extends MCASPlatform { self =>
       }
     }
 
-    // TODO: do we even need this?
     final def tryPerformSingleCas[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
       // TODO: this could be optimized (probably)
       val d0 = this.start()
@@ -200,7 +198,7 @@ object MCAS extends MCASPlatform { self =>
       assert(hwd ne null)
       if (equ(hwd.ov, ov)) {
         val d2 = d1.overwrite(hwd.withNv(nv))
-        this.tryPerform2(d2) == EmcasStatus.Successful
+        this.tryPerform(d2) == EmcasStatus.Successful
       } else {
         false
       }

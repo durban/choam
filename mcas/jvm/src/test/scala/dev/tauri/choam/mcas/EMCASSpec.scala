@@ -94,7 +94,7 @@ class EMCASSpec extends BaseSpecA {
     val v21 = ctx.readVersion(r2)
     val d0 = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
     val desc = ctx.addCasWithVersion(d0, r2, "y", "b", version = v21)
-    assertEquals(ctx.tryPerform2(desc), EmcasStatus.Successful)
+    assertEquals(ctx.tryPerform(desc), EmcasStatus.Successful)
     assertEquals(desc.newVersion, desc.validTs + Version.Incr)
     assert(ctx.readDirect(r1) eq "a")
     assert(ctx.readDirect(r2) eq "b")
@@ -108,7 +108,7 @@ class EMCASSpec extends BaseSpecA {
     // now we run another op:
     val desc1 = ctx.addCasWithVersion(ctx.start(), r1, "a", "aa", version = v12)
     val desc2 = ctx.addCasWithVersion(desc1, r2, "b", "bb", version = v22)
-    assertEquals(ctx.tryPerform2(desc2), EmcasStatus.Successful)
+    assertEquals(ctx.tryPerform(desc2), EmcasStatus.Successful)
     assertEquals(desc2.newVersion, v12 + Version.Incr)
     assert(ctx.readDirect(r1) eq "aa")
     assert(ctx.readDirect(r2) eq "bb")
@@ -131,7 +131,7 @@ class EMCASSpec extends BaseSpecA {
     val v21 = ctx.readVersion(r2)
     val d0 = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
     val desc = ctx.addCasWithVersion(d0, r2, "y", "b", version = v21)
-    assertEquals(ctx.tryPerform2(desc), EmcasStatus.Successful)
+    assertEquals(ctx.tryPerform(desc), EmcasStatus.Successful)
     assert(ctx.readDirect(r1) eq "a")
     assert(ctx.readDirect(r2) eq "b")
     val v12 = ctx.readVersion(r1)
@@ -145,7 +145,7 @@ class EMCASSpec extends BaseSpecA {
     val ts0 = ctx.start().validTs
     val desc1 = ctx.addCasWithVersion(ctx.start(), r1, "a", "aa", version = v12)
     val desc2 = ctx.addCasWithVersion(desc1, r2, "x", "bb", version = v22)
-    assertEquals(ctx.tryPerform2(desc2), EmcasStatus.FailedVal)
+    assertEquals(ctx.tryPerform(desc2), EmcasStatus.FailedVal)
     // commitTs didn't change, since we failed:
     assertEquals(ctx.start().validTs, ts0)
     assert(ctx.readDirect(r1) eq "a")

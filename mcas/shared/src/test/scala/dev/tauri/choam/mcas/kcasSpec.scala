@@ -268,7 +268,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val d7 = d6.overwrite(d6.getOrElseNull(r2).withNv("bbb"))
     assert(!d7.readOnly)
     // perform:
-    assertEquals(ctx.tryPerform2(d7), EmcasStatus.Successful)
+    assertEquals(ctx.tryPerform(d7), EmcasStatus.Successful)
     val newVer = d7.newVersion
     assertEquals(ctx.readVersion(r1), newVer)
     assertEquals(ctx.readVersion(r2), newVer)
@@ -292,7 +292,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertSameInstance(ov2, "b")
     assert(d2.readOnly)
     // commit:
-    assert(ctx.tryPerform2(d2) == EmcasStatus.Successful)
+    assert(ctx.tryPerform(d2) == EmcasStatus.Successful)
     assertEquals(ctx.start().validTs, startTs) // it's read-only, no need to incr version
     assertSameInstance(ctx.readDirect(r1), "a")
     assertEquals(ctx.readVersion(r1), v1)
@@ -317,7 +317,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(!d3.readOnly)
     val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv(ov1))
     assert(!d4.readOnly)
-    assert(ctx.tryPerform2(d4) == EmcasStatus.Successful)
+    assert(ctx.tryPerform(d4) == EmcasStatus.Successful)
     val endTs = ctx.start().validTs
     assertEquals(endTs, startTs + Version.Incr)
     assertSameInstance(ctx.readDirect(r1), "b")
@@ -344,7 +344,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     // simulate concurrent change to r2:
     assert(ctx.tryPerformSingleCas(r2, "b", "x"))
     // the ongoing op should fail:
-    val res = ctx.tryPerform2(d4)
+    val res = ctx.tryPerform(d4)
     assertEquals(res, EmcasStatus.FailedVal)
     assertSameInstance(ctx.readDirect(r1), "a")
     assertSameInstance(ctx.readDirect(r2), "x")
@@ -389,7 +389,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(!d3.readOnly)
     assertEquals(d3.validTs, startTs + Version.Incr)
     // commit:
-    assert(ctx.tryPerform2(d3) == EmcasStatus.Successful)
+    assert(ctx.tryPerform(d3) == EmcasStatus.Successful)
     val endTs = ctx.start().validTs
     assertEquals(endTs, startTs + (2 * Version.Incr))
     assertSameInstance(ctx.readDirect(r1), "aa")

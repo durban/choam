@@ -852,7 +852,7 @@ object Rxn extends RxnInstances0 {
 
     @tailrec
     private[this] final def casLoop(): Boolean = {
-      ctx.tryPerform2(desc) match {
+      ctx.tryPerform(desc) match {
         case EmcasStatus.Successful =>
           true
         case EmcasStatus.FailedVal =>

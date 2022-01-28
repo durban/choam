@@ -47,7 +47,7 @@ class EmcasZombieTest {
     val d2 = d1.overwrite(d1.getOrElseNull(ref1).withNv("x"))
     val Some((_, d3)) = ctx.readMaybeFromLog(ref2, d2) : @unchecked
     val d4 = d3.overwrite(d3.getOrElseNull(ref2).withNv("y"))
-    val ok = (ctx.tryPerform2(d4) == EmcasStatus.Successful)
+    val ok = (ctx.tryPerform(d4) == EmcasStatus.Successful)
     r.r4 = ok // must be true
   }
 
@@ -67,7 +67,7 @@ class EmcasZombieTest {
             r.r2 = None
           case Some((ov2, d2)) =>
             r.r2 = Some(ov2)
-            val ok = (ctx.tryPerform2(d2) == EmcasStatus.Successful)
+            val ok = (ctx.tryPerform(d2) == EmcasStatus.Successful)
             r.r3 = ok // must be true
         }
     }
