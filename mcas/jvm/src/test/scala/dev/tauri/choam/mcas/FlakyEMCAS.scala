@@ -46,8 +46,8 @@ object FlakyEMCAS extends MCAS { self =>
     protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       emcasCtx.readVersion(ref)
 
-    final override def tryPerform(desc: HalfEMCASDescriptor): Long =
-      self.tryPerform(desc, emcasCtx)
+    final override def tryPerformInternal(desc: HalfEMCASDescriptor): Long =
+      self.tryPerformInternal(desc, emcasCtx)
 
     final override def start(): HalfEMCASDescriptor =
       emcasCtx.start()
@@ -62,7 +62,7 @@ object FlakyEMCAS extends MCAS { self =>
   private[choam] final override def isThreadSafe =
     true
 
-  private final def tryPerform(hDesc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Long = {
+  private final def tryPerformInternal(hDesc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Long = {
     // perform or not the operation based on whether we've already seen it
     val desc = EMCASDescriptor.prepare(hDesc)
     var hash = 0x75F4D07D

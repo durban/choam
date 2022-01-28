@@ -48,7 +48,7 @@ private object SpinLockMCAS extends MCAS { self =>
     final override def random =
       ThreadLocalRandom.current()
 
-    final override def tryPerform(desc: HalfEMCASDescriptor): Long = {
+    final override def tryPerformInternal(desc: HalfEMCASDescriptor): Long = {
       val ops = desc.map.valuesIterator.toList
       perform(ops, newVersion = desc.newVersion)
     }

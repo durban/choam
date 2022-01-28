@@ -63,11 +63,7 @@ object MCAS extends MCASPlatform { self =>
 
     protected[choam] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
 
-    // TODO: -> tryPerformInternal
-    def tryPerform(desc: HalfEMCASDescriptor): Long
-
-    def tryPerformInternal(desc: HalfEMCASDescriptor): Long =
-      tryPerform(desc)
+    protected[mcas] def tryPerformInternal(desc: HalfEMCASDescriptor): Long
 
     private[choam] def random: ThreadLocalRandom
 
@@ -120,7 +116,7 @@ object MCAS extends MCASPlatform { self =>
       } else {
         val finalDesc = this.addVersionCas(desc)
         assert(finalDesc.map.size == (desc.map.size + 1))
-        val res = this.tryPerform(finalDesc)
+        val res = this.tryPerformInternal(finalDesc)
         assert((res == EmcasStatus.Successful) || (res == EmcasStatus.FailedVal) || Version.isValid(res))
         res
       }

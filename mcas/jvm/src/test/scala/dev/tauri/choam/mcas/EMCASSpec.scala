@@ -37,10 +37,10 @@ class EMCASSpec extends BaseSpecA {
     val ctx = EMCAS.currentContext()
     val desc = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, null, "x"), r2, "x", null)
     val snap = ctx.snapshot(desc)
-    assertEquals(EMCAS.tryPerform(desc, ctx), EmcasStatus.Successful)
+    assertEquals(EMCAS.tryPerformInternal(desc, ctx), EmcasStatus.Successful)
     assert(clue(ctx.readDirect(r1)) eq "x")
     assert(ctx.readDirect(r2) eq null)
-    assertEquals(EMCAS.tryPerform(snap, ctx), EmcasStatus.FailedVal)
+    assertEquals(EMCAS.tryPerformInternal(snap, ctx), EmcasStatus.FailedVal)
     assert(ctx.readDirect(r1) eq "x")
     assert(ctx.readDirect(r2) eq null)
   }

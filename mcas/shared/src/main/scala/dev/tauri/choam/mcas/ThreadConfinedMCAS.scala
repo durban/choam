@@ -42,7 +42,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
     protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       ref.unsafeGetVersionVolatile()
 
-    final override def tryPerform(desc: HalfEMCASDescriptor): Long = {
+    final override def tryPerformInternal(desc: HalfEMCASDescriptor): Long = {
       @tailrec
       def prepare(it: Iterator[HalfWordDescriptor[_]]): Long = {
         if (it.hasNext) {

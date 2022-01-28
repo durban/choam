@@ -490,7 +490,7 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
   private[choam] final override def isThreadSafe =
     true
 
-  private[mcas] final def tryPerform(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Long = {
+  private[mcas] final def tryPerformInternal(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Long = {
     tryPerformDebug(desc = desc, ctx = ctx)
   }
 
