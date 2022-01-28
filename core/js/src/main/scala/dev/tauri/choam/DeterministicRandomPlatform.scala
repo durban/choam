@@ -15,11 +15,14 @@
  * limitations under the License.
  */
 
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.3")
-addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
-addSbtPlugin("com.codecommit" % "sbt-github-actions" % "0.14.2")
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.5")
-addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.6.0")
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.9.34")
-addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.1.0")
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.8.0")
+package dev.tauri.choam
+
+/** Beause Scala.js doesn't have StrictMath */
+private abstract class DeterministicRandomPlatform {
+
+  protected final def strictMathSqrt(a: Double): Double =
+    Math.sqrt(a) // ¯\_(ツ)_/¯
+
+  protected final def strictMathLog(a: Double): Double =
+    Math.log(a) // ¯\_(ツ)_/¯
+}

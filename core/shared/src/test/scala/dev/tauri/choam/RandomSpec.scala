@@ -17,15 +17,17 @@
 
 package dev.tauri.choam
 
+import java.lang.Character.{ isHighSurrogate, isLowSurrogate }
 import java.util.IdentityHashMap
+import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.atomic.AtomicLong
 
 import cats.effect.SyncIO
 import cats.effect.kernel.Unique
-import cats.effect.std.UUIDGen
+import cats.effect.std.{ UUIDGen, Random }
 
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.effect.PropF
-import cats.effect.std.Random
 
 final class RandomSpec_ThreadConfinedMCAS_SyncIO
   extends BaseSpecSyncIO
@@ -65,81 +67,198 @@ trait RandomSpec[F[_]]
 
   // TODO: more tests for Rxn.*Random
 
-  // fastRandom:
+  checkRandom("Rxn.fastRandom", Rxn.fastRandom.run[F], isBuggy = false)
+  checkRandom("Rxn.fastRandomCached", Rxn.fastRandomCached.run[F], isBuggy = false)
+  checkRandom("Rxn.fastRandomCtxSupp", Rxn.fastRandomCtxSupp.run[F], isBuggy = false)
+  checkRandom("Rxn.secureRandom", Rxn.secureRandom.run[F], isBuggy = false)
+  checkRandom(
+    "Rxn.deterministicRandom",
+    // TODO: this makes the property test non-reproducible
+    F.delay(ThreadLocalRandom.current().nextLong()).flatMap { initSeed =>
+      Rxn.deterministicRandom(initSeed).run[F].map[Random[Axn]](x => x)
+    },
+    isBuggy = false,
+  )
 
-  test("Rxn.fastRandom betweenDouble") {
-    Rxn.fastRandom.run[F].map(checkBetweenDouble)
+  test("Rxn.deterministicRandom must be deterministic") {
+    PropF.forAllF { (seed: Long) =>
+      for {
+        dr1 <- Rxn.deterministicRandom(seed).run[F]
+        dr2 <- Rxn.deterministicRandom(seed).run[F]
+        n1 <- dr1.nextLong.run[F]
+        _ <- assertResultF(dr2.nextLong.run[F], n1)
+        n2 <- dr1.nextLong.run[F]
+        _ <- assertResultF(dr2.nextLong.run[F], n2)
+        n3 <- dr1.nextLongBounded(42L).run[F]
+        _ <- assertResultF(dr2.nextLongBounded(42L).run[F], n3)
+        d1 <- dr1.nextDouble.run[F]
+        _ <- assertResultF(dr2.nextDouble.run[F], d1)
+        b1 <- dr1.nextBoolean.run[F]
+        _ <- assertResultF(dr2.nextBoolean.run[F], b1)
+        // make the seeds shift:
+        _ <- dr1.nextLong.run[F]
+        nx <- dr1.nextLong.run[F]
+        ny <- dr2.nextLong.run[F]
+        _ <- assertNotEqualsF(ny, nx)
+      } yield ()
+    }
   }
 
-  test("Rxn.fastRandom nextLong") {
-    Rxn.fastRandom.run[F].map(checkNextLong)
+  test("Rxn.deterministicRandom must be able to roll back the seed") {
+    PropF.forAllF { (seed: Long) =>
+      for {
+        dr1 <- Rxn.deterministicRandom(seed).run[F]
+        dr2 <- Rxn.deterministicRandom(seed).run[F]
+        ref <- F.delay(new AtomicLong)
+        rxn = dr1.nextLong.flatMapF { n =>
+          ref.set(n)
+          Rxn.unsafe.retry[Any, Int]
+        }.?
+        _ <- assertResultF(rxn.run[F], None)
+        n <- dr1.nextLong.run[F]
+        _ <- assertResultF(dr2.nextLong.run[F], n)
+        _ <- assertResultF(F.delay(ref.get()), n)
+      } yield ()
+    }
   }
 
-  test("Rxn.fastRandom nextAlphaNumeric") {
-    Rxn.fastRandom.run[F].map(checkNextAlphaNumeric)
+  test("Rxn.deterministicRandom must generate the same values on JS as on JVM") {
+    val seed = 0xcb3cd24fdc6b4d2eL
+    val expected = List[Any](
+      0xa72188f2612329aeL, 0x48d95371bf5ec4f1L,
+      0xd30cb828, 0x5db0cf4a,
+      0.014245625397914075d, 0.4724122890885252d,
+      0.98776937f, 0.3258993f,
+      -1.82254464632059d, 0.9106167032393551d,
+      0xac10a878c4eebc82L, 0x61521ba8e6e3d855L,
+    )
+    for {
+      dr <- Rxn.deterministicRandom(seed).run[F]
+      tasks = List[F[Any]](
+        dr.nextLong.run[F].map[Any](x => x),
+        dr.nextLong.run[F].map[Any](x => x),
+        dr.nextInt.run[F].map[Any](x => x),
+        dr.nextInt.run[F].map[Any](x => x),
+        dr.nextDouble.run.map[Any](x => x),
+        dr.nextDouble.run[F].map[Any](x => x),
+        dr.nextFloat.run[F].map[Any](x => x),
+        dr.nextFloat.run[F].map[Any](x => x),
+        dr.nextGaussian.run.map[Any](x => x),
+        dr.nextGaussian.run[F].map[Any](x => x),
+        dr.split.run[F].flatMap(_.nextLong.run[F]).map[Any](x => x),
+        dr.nextLong.run[F].map[Any](x => x),
+      )
+      results <- tasks.sequence
+      _ <- assertEqualsF(
+        results,
+        expected
+      )
+    } yield ()
   }
 
-  test("Rxn.fastRandom shuffleList/Vector") {
-    Rxn.fastRandom.run[F].map(checkShuffle)
+  test("Rxn.deterministicRandom must be splittable") {
+    PropF.forAllF { (seed: Long) =>
+      for {
+        dr <- Rxn.deterministicRandom(seed).run[F]
+        dr1 <- dr.split.run[F]
+        n <- dr.nextLong.run[F]
+        dr2 <- dr.split.run[F]
+        n1 <- dr1.nextLong.run[F]
+        n2 <- dr2.nextLong.run[F]
+        _ <- assertNotEqualsF(n, n1)
+        _ <- assertNotEqualsF(n, n2)
+        _ <- assertNotEqualsF(n1, n2)
+      } yield ()
+    }
   }
 
-  test("Rxn.fastRandom nextGaussian") {
-    Rxn.fastRandom.run[F].map(checkGaussian)
+  def checkRandom(
+    name: String,
+    mk: F[Random[Axn]],
+    isBuggy: Boolean,
+  ): Unit = {
+    test(s"${name} nextDouble") {
+      mk.map(checkNextDouble)
+    }
+    test(s"${name} betweenDouble") {
+      mk.map(checkBetweenDouble(isBuggy))
+    }
+    test(s"${name} betweenFloat") {
+      mk.map(checkBetweenFloat(isBuggy))
+    }
+    test(s"${name} nextLong") {
+      mk.map(checkNextLong)
+    }
+    test(s"${name} nextLongBounded") {
+      mk.map(checkNextLongBounded)
+    }
+    test(s"${name} shuffleList/Vector") {
+      mk.map(checkShuffle)
+    }
+    test(s"${name} nextGaussian") {
+      mk.map(checkGaussian)
+    }
+    test(s"${name} nextAlphaNumeric") {
+      mk.map(checkNextAlphaNumeric)
+    }
+    test(s"${name} nextPrintableChar") {
+      mk.map(checkPrintableChar)
+    }
+    test(s"${name} nextString") {
+      mk.map(checkNextString)
+    }
   }
 
-  // fastRandomCached:
-
-  test("Rxn.fastRandomCached betweenDouble") {
-    Rxn.fastRandomCached.run[F].map(checkBetweenDouble)
+  def checkNextDouble(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (_: Long) =>
+      (rnd.nextDouble.run[F], rnd.nextDouble.run[F]).tupled.flatMap { dd =>
+        assertNotEqualsF(dd._1, dd._2) *> (
+          assertF((clue(dd._1) >= 0.0d) && (dd._1 < 1.0d)) *> (
+            assertF((clue(dd._2) >= 0.0d) && (dd._2 < 1.0d))
+          )
+        )
+      }
+    }
   }
 
-  test("Rxn.fastRandomCached nextLong") {
-    Rxn.fastRandomCached.run[F].map(checkNextLong)
-  }
-
-  test("Rxn.fastRandomCached nextAlphaNumeric") {
-    Rxn.fastRandomCached.run[F].map(checkNextAlphaNumeric)
-  }
-
-  test("Rxn.fastRandomCached shuffleList/Vector") {
-    Rxn.fastRandomCached.run[F].map(checkShuffle)
-  }
-
-  test("Rxn.fastRandomCached nextGaussian") {
-    Rxn.fastRandomCached.run[F].map(checkGaussian)
-  }
-
-  // secureRandom:
-
-  test("Rxn.secureRandom betweenDouble") {
-    Rxn.secureRandom.run[F].map(checkBetweenDouble)
-  }
-
-  test("Rxn.secureRandom nextLong") {
-    Rxn.secureRandom.run[F].map(checkNextLong)
-  }
-
-  test("Rxn.secureRandom nextAlphaNumeric") {
-    Rxn.secureRandom.run[F].map(checkNextAlphaNumeric)
-  }
-
-  test("Rxn.secureRandom shuffleList/Vector") {
-    Rxn.secureRandom.run[F].map(checkShuffle)
-  }
-
-  test("Rxn.secureRandom nextGaussian") {
-    Rxn.secureRandom.run[F].map(checkGaussian)
-  }
-
-  def checkBetweenDouble(rnd: Random[Axn]): PropF[F] = {
+  def checkBetweenDouble(isBuggy: Boolean)(rnd: Random[Axn]): PropF[F] = {
     PropF.forAllF { (d1: Double, d2: Double) =>
       for {
-        _ <- rnd.betweenDouble(d1, d1).run[F].attempt.flatMap { x =>
+        _ <- F.delay(rnd.betweenDouble(d1, d1)).flatMap(_.run[F]).attempt.flatMap { x =>
           assertF(x.isLeft)
         }
         _ <- if ((d1 + d2) > d1) {
           rnd.betweenDouble(d1, d1 + d2).run[F].flatMap { d =>
-            assertF((d >= d1) && (d < (d1 + d2)))
+            assertF((clue(d) >= clue(d1)) && (d < (clue(d1 + d2))))
+          }
+        } else F.unit
+        _ <- if (!isBuggy) {
+          val origin: Double = -1.0000000000000002 // -0x1.0000000000001p0
+          val bound: Double = -1.0 // -0x1.0p0
+          rnd.betweenDouble(origin, bound).run[F].flatMap { d =>
+            assertF((clue(d) >= clue(origin)) && (d < (clue(bound))))
+          }
+        } else F.unit
+      } yield ()
+    }
+  }
+
+  def checkBetweenFloat(isBuggy: Boolean)(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (f1: Float, f2: Float) =>
+      for {
+        _ <- F.delay(rnd.betweenFloat(f1, f1)).flatMap(_.run[F]).attempt.flatMap { x =>
+          assertF(x.isLeft)
+        }
+        _ <- if ((f1 + f2) > f1) {
+          rnd.betweenFloat(f1, f1 + f2).run[F].flatMap { f =>
+            assertF((clue(f) >= clue(f1)) && (f < (clue(f1 + f2))))
+          }
+        } else F.unit
+        _ <- if (!isBuggy) {
+          val origin: Float = -1.000001f // -0x1.00001p0
+          val bound: Float = -1.0f // -0x1.0p0
+          rnd.betweenFloat(origin, bound).run[F].flatMap { f =>
+            assertF((clue(f) >= clue(origin)) && (f < (clue(bound))))
           }
         } else F.unit
       } yield ()
@@ -148,8 +267,60 @@ trait RandomSpec[F[_]]
 
   def checkNextLong(rnd: Random[Axn]): PropF[F] = {
     PropF.forAllF { (_: Long) =>
-      (rnd.nextLong * rnd.nextLong).run[F].flatMap { nn =>
+      (rnd.nextLong.run[F], rnd.nextLong.run[F]).tupled.flatMap { nn =>
         assertNotEqualsF(nn._1, nn._2)
+      }
+    }
+  }
+
+  def checkNextLongBounded(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (n: Long) =>
+      val bound = if (n > 0L) {
+        n
+      } else if (n < 0L) {
+        val b = Math.abs(n)
+        if (b < 0L) Long.MaxValue // was Long.MinValue
+        else b
+      } else { // was 0
+        0xffffL
+      }
+      rnd.nextLongBounded(bound).run[F].flatMap { n =>
+        assertF(clue(n) < bound) *> assertF(clue(n) >= 0L)
+      }
+    }
+  }
+
+  def checkShuffle(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (lst: List[Int]) =>
+      (rnd.shuffleList(lst).run[F], rnd.shuffleVector(lst.toVector).run[F]).mapN(Tuple2(_, _)).flatMap { lv =>
+        val (sl, sv) = lv
+        for {
+          _ <- assertEqualsF(sl.sorted, lst.sorted)
+          _ <- assertEqualsF(sv.sorted, lst.sorted.toVector)
+        } yield ()
+      }
+    }
+  }
+
+  def checkGaussian(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (_: Long) =>
+      (rnd.nextGaussian.run[F], rnd.nextGaussian.run[F]).tupled.flatMap {
+        case (x, y) =>
+          for {
+            _ <- assertNotEqualsF(clue(x), clue(y))
+            _ <- assertF(x >= -1000.0)
+            _ <- assertF(x <= +1000.0)
+            _ <- assertF(y >= -1000.0)
+            _ <- assertF(y <= +1000.0)
+          } yield ()
+      }
+    }
+  }
+
+  def checkPrintableChar(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (_: Long) =>
+      rnd.nextPrintableChar.run[F].flatMap { chr =>
+        assertF((chr >= '!') && (chr <= '~'))
       }
     }
   }
@@ -170,37 +341,37 @@ trait RandomSpec[F[_]]
           )
         }
       } *> (
-        rnd.nextAlphaNumeric.replicateA(32).run[F].flatMap { alnums =>
+        rnd.nextAlphaNumeric.run[F].replicateA(32).flatMap { alnums =>
           assertF(clue(alnums.toSet.size) >= 16)
         }
       )
     }
   }
 
-  def checkShuffle(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (lst: List[Int]) =>
-      (rnd.shuffleList(lst), rnd.shuffleVector(lst.toVector)).mapN(Tuple2(_, _)).run[F].flatMap { lv =>
-        val (sl, sv) = lv
-        for {
-          _ <- assertEqualsF(sl.sorted, lst.sorted)
-          _ <- assertEqualsF(sv.sorted, lst.sorted.toVector)
-        } yield ()
+  def checkNextString(rnd: Random[Axn]): PropF[F] = {
+    PropF.forAllF { (length: Int, _: Long) =>
+      if ((length >= 0) && (length <= (1024*1024))) {
+        rnd.nextString(length).run[F].flatMap { str =>
+          assertEqualsF(str.length, length) *> (
+            F.delay(checkSurrogates(str))
+          )
+        }
+      } else {
+        F.unit
       }
     }
   }
 
-  def checkGaussian(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (_: Long) =>
-      (rnd.nextGaussian * rnd.nextGaussian).run[F].flatMap {
-        case (x, y) =>
-          for {
-            _ <- assertNotEqualsF(clue(x), clue(y))
-            _ <- assertF(x >= -1000.0)
-            _ <- assertF(x <= +1000.0)
-            _ <- assertF(y >= -1000.0)
-            _ <- assertF(y <= +1000.0)
-          } yield ()
+  private def checkSurrogates(str: String): Unit = {
+    var idx = 0
+    while (idx < str.length) {
+      val c = str.charAt(idx)
+      if (isLowSurrogate(c)) {
+        assert(isHighSurrogate(str.charAt(idx - 1)))
+      } else if (isHighSurrogate(c)) {
+        assert(isLowSurrogate(str.charAt(idx + 1)))
       }
+      idx += 1
     }
   }
 }

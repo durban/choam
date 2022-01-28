@@ -354,7 +354,39 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  // TODO: test with 2 different Exchangers in 1 reaction
+  test("2 Exchangers in 1 Rxn (second never succeeds)") {
+    val tsk = for {
+      ex1 <- Rxn.unsafe.exchanger[String, Int].run[F]
+      ex2 <- Rxn.unsafe.exchanger[String, Int].run[F]
+      tsk1 = (ex1.exchange.provide("foo") * ex2.dual.exchange.provide(23).?).run[F]
+      tsk2 = (ex1.dual.exchange.provide(42) * ex2.exchange.provide("bar").?).run[F]
+      f1 <- logOutcome("f1", F.cede *> tsk1).start
+      f2 <- logOutcome("f2", F.cede *> tsk2).start
+      // The second exchange will never succeed, since
+      // by then the `Rxn`s are joined, and only 1 thread
+      // performs them:
+      _ <- assertResultF(f1.joinWithNever, (42, None))
+      _ <- assertResultF(f2.joinWithNever, ("foo", None))
+    } yield ()
+    tsk.replicateA(iterations)
+  }
+
+  test("2 Exchangers in 1 Rxn (second must succeed)") {
+    val tsk = for {
+      ex1 <- Rxn.unsafe.exchanger[String, Int].run[F]
+      ex2 <- Rxn.unsafe.exchanger[String, Int].run[F]
+      tsk1 = (ex1.exchange.provide("foo").? * ex2.dual.exchange.provide(23)).run[F]
+      tsk2 = (ex1.dual.exchange.provide(42).? * ex2.exchange.provide("bar")).run[F]
+      f1 <- logOutcome("f1", F.cede *> tsk1).start
+      f2 <- logOutcome("f2", F.cede *> tsk2).start
+      // The second exchange must always succeed,
+      // so the first never can (if it tentatively
+      // did, it will be forced to retry):
+      _ <- assertResultF(f1.joinWithNever, (None, "bar"))
+      _ <- assertResultF(f2.joinWithNever, (None, 23))
+    } yield ()
+    tsk.replicateA(iterations)
+  }
 
   private[this] def getStats(ctx: MCAS.ThreadContext): Option[Map[AnyRef, AnyRef]] = {
     if (ctx.supportsStatistics) Some(ctx.getStatisticsPlain())

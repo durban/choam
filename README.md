@@ -66,7 +66,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
 
 - Our `Rxn` is a lock-free, referentially transparent, and extended version of
   *reagents*, described in [Reagents: Expressing and Composing Fine-grained Concurrency
-  ](https://people.mpi-sws.org/~turon/reagents.pdf). (Other implementations or reagents:
+  ](http://www.ccis.northeastern.edu/home/turon/reagents.pdf). (Other implementations or reagents:
   [Scala](https://github.com/aturon/ChemistrySet),
   [OCaml](https://github.com/ocamllabs/reagents),
   [Racket](https://github.com/aturon/Caper).)
@@ -83,8 +83,9 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     important differences:
     - A `Rxn` can only touch one `Ref` at most once (see above); an STM
       transaction can usually read/write multiple times.
-    - A `Rxn` is lock-free by construction (unless an `unsafe` method was
-      used to create it); STM transactions are not necessarily (e.g., STM "retry").
+    - A `Rxn` is lock-free by construction (unless it's infinitely recursive, or an
+      `unsafe` method was used to create it); STM transactions are not necessarily
+      lock-free (e.g., STM "retry").
     - As a consequence of the previous point, `Rxn` cannot be used to implement
       "inherently not lock-free" logic (e.g., asynchronously waiting on a
       condition set by another thread/fiber/similar). However, `Rxn` is
@@ -95,6 +96,10 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     - STM transactions usually have a way of raising/handling errors
       (e.g., `MonadError`); `Rxn` has no such feature (of course return
       values can encode errors with `Option`, `Either`, or similar).
+    - Some STM systems allow access to transactional memory from
+      non-transactional code; `Rxn` doesn't support this, the contents of an
+      `r: Ref[A]` can only be accessed from inside a `Rxn` (although there is a
+      read-only escape hatch: `r.unsafeInvisibleRead`).
   - Similarities between `Rxn`s and STM transactions include the following:
     - atomicity, consistency, isolation (TODO: explain that there are some differences)
   - Some STM implementations:
