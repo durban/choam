@@ -863,6 +863,8 @@ object Rxn extends RxnInstances0 {
           else casLoop() // retry
           // TODO: Maybe we should collect statistics
           // TODO: about these retries too?
+          // TODO: We should have exponential
+          // TODO: backoff for these retries too!
       }
     }
 

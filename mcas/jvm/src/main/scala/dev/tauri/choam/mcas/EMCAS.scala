@@ -24,7 +24,7 @@ import java.lang.ref.{ Reference, WeakReference }
  * Efficient Multi-word Compare and Swap:
  * https://arxiv.org/pdf/2008.02527.pdf
  */
-private object EMCAS extends MCAS { self =>
+private object EMCAS extends MCAS { self => // TODO: make this a class
 
   /*
    * The paper which describes EMCAS omits detailed
@@ -471,15 +471,15 @@ private object EMCAS extends MCAS { self =>
       desc.getStatus()
     } else {
       assert(r != EmcasStatus.Active)
-      if (desc.casStatus(EmcasStatus.Active, r)) {
+      val witness: Long = desc.cmpxchgStatus(EmcasStatus.Active, r)
+      if (witness == EmcasStatus.Active) {
         // we finalized the descriptor
         // TODO: we should consider emptying the
         // TODO: array of WDs in `desc` now, to help GC
         r
       } else {
-        // someone else finalized the descriptor, we must read its status:
-        desc.getStatus()
-        // TODO: instead of this, we should cmpxchg the status (and not `casStatus`)
+        // someone else already finalized the descriptor, we return its status:
+        witness
       }
     }
   }
