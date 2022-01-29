@@ -273,6 +273,7 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
 
   @tailrec
   private[mcas] final def readVersion[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): Long = {
+    val ver1 = ref.unsafeGetVersionVolatile()
     ref.unsafeGetVolatile() match {
       case wd: WordDescriptor[_] =>
         val p = wd.parent
@@ -286,9 +287,9 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
         } else { // Failed
           wd.oldVersion
         }
-      case a =>
-        val ver = ref.unsafeGetVersionVolatile()
-        if (equ(ref.unsafeGetVolatile(), a)) ver
+      case _ => // value
+        val ver2 = ref.unsafeGetVersionVolatile()
+        if (ver1 == ver2) ver1
         else readVersion(ref, ctx) // retry
     }
   }

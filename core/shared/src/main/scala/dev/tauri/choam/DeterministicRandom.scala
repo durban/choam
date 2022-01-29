@@ -200,7 +200,7 @@ private final class DeterministicRandom(
       buf.order(ByteOrder.LITTLE_ENDIAN)
       var s: Long = sd
 
-      /** Put the last (at most 7) bytes into buf */
+      /* Puts the last (at most 7) bytes into buf */
       def putLastBytes(nBytes: Int, r: Long): Unit = {
         if (nBytes > 0) {
           buf.put(r.toByte)

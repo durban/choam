@@ -53,20 +53,50 @@ object MCAS extends MCASPlatform { self =>
 
     // abstract:
 
+    /**
+     * Starts building a descriptor
+     * (its `.validTs` will be the
+     * current global sersion).
+     */
     def start(): HalfEMCASDescriptor
 
     protected[mcas] def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
 
+    /**
+     * @return the current value of `ref`, as
+     *         if read by `readIntoHwd(ref).nv`.
+     */
     def readDirect[A](ref: MemoryLocation[A]): A
 
+    /**
+     * @return the current value and version of `ref`
+     *         in a word descriptor object. The
+     *         value and version are guaranteed to be
+     *         consistent with each other. The descriptor's
+     *         `.ov` and `.nv` are guaranteed to be the same.
+     */
     def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A]
 
+    /**
+     * @return the current version of `ref`, as if
+     *         read by `readIntoHwd(ref).version`.
+     */
     protected[mcas] def readVersion[A](ref: MemoryLocation[A]): Long
 
     protected[choam] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
 
+    /**
+     * Directly tries to perform the k-CAS described by `desc`
+     *
+     * @return either `EmcasStatus.Successful` (if successful);
+     *         `EmcasStatus.FailedVal` (if failed due to an
+     *         expected value not matching); or the current
+     *         global version (if failed due to the version
+     *         being newer than `desc.validTs`).
+     */
     protected[mcas] def tryPerformInternal(desc: HalfEMCASDescriptor): Long
 
+    /** @return a `ThreadLocalRandom` valid for the current thread */
     private[choam] def random: ThreadLocalRandom
 
     // concrete:
@@ -107,6 +137,16 @@ object MCAS extends MCASPlatform { self =>
       }
     }
 
+    /**
+     * Tries to perform the ops in `desc`, with adding a
+     * version-CAS (if not read-only).
+     *
+     * @return either `EmcasStatus.Successful` (if successful);
+     *         `EmcasStatus.FailedVal` (if failed due to an
+     *         expected value not matching); or the current
+     *         global version (if failed due to the version
+     *         being newer than `desc.validTs`).
+     */
     final def tryPerform(desc: HalfEMCASDescriptor): Long = {
       if (desc.readOnly) {
         // we've validated each read,
@@ -123,6 +163,7 @@ object MCAS extends MCASPlatform { self =>
       }
     }
 
+    /** Like `tryPerform`, but returns whether it was successful */
     final def tryPerformOk(desc: HalfEMCASDescriptor): Boolean = {
       tryPerform(desc) == EmcasStatus.Successful
     }
@@ -141,6 +182,12 @@ object MCAS extends MCASPlatform { self =>
       desc.add(wd)
     }
 
+    /**
+     * Tries to (re)validate `desc` based on the current
+     * versions of the refs it contains.
+     *
+     * @return true, iff `desc` is still valid.
+     */
     private[mcas] final def validate(desc: HalfEMCASDescriptor): Boolean = {
       @tailrec
       def go(it: Iterator[HalfWordDescriptor[_]]): Boolean = {
@@ -160,18 +207,27 @@ object MCAS extends MCASPlatform { self =>
       go(desc.map.valuesIterator)
     }
 
+    /**
+     * @return a snapshot of `desc`.
+     */
     final def snapshot(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       desc
 
+    /**
+     * Merges disjoint descriptors `to` and `from`.
+     *
+     * @return The merged descriptor, which contains
+     *         all the ops either in `to` or `from`.
+     */
     private[choam] final def addAll(to: HalfEMCASDescriptor, from: HalfEMCASDescriptor): HalfEMCASDescriptor = {
       HalfEMCASDescriptor.merge(to, from, this)
     }
 
     /**
-     * Do a real 1-CAS, without commitTs.
-     * This breaks opacity guarantees!
-     * It may change the value of a ref
-     * without changing the version!
+     * Tries to perform a "bare" 1-CAS, without
+     * changing the global version. This breaks
+     * opacity guarantees! It may change the value
+     * of a ref without changing its version!
      */
     final def singleCasDirect[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
       assert(!equ(ov, nv))
@@ -179,7 +235,7 @@ object MCAS extends MCASPlatform { self =>
       val d0 = this.start() // do this after reading, so version is deemed valid
       assert(d0.isValidHwd(hwd))
       if (equ(hwd.ov, ov)) {
-        // creating a (dangerous) descriptor, which will set
+        // create a (dangerous) descriptor, which will set
         // the new version to `validTs` (which may equal the
         // old version):
         val d1 = d0.add(hwd.withNv(nv)).withNoNewVersion
@@ -191,6 +247,13 @@ object MCAS extends MCASPlatform { self =>
       }
     }
 
+    /**
+     * Tries to perform a 1-CAS, but
+     * also handles versions. Equivalent
+     * to creating a descriptor containing a
+     * single op, and calling `tryPerformOk`
+     * on it (but may be more efficient).
+     */
     final def tryPerformSingleCas[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
       // TODO: this could be optimized (probably)
       val d0 = this.start()
@@ -263,6 +326,7 @@ object MCAS extends MCASPlatform { self =>
     mcasRetries: Long,
   )
 
+  /** Only for testing */
   private[choam] final class Builder(
     private[this] val ctx: ThreadContext,
     private[this] val desc: HalfEMCASDescriptor,

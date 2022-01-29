@@ -120,8 +120,11 @@ private final class EMCASThreadContext(
   final override def readDirect[A](ref: MemoryLocation[A]): A =
     impl.readDirect(ref, this)
 
-  final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] =
-    impl.readIntoHwd(ref, this)
+  final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
+    val hwd = impl.readIntoHwd(ref, this)
+    assert(hwd.readOnly)
+    hwd
+  }
 
   protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
     impl.readVersion(ref, this)

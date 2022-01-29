@@ -620,20 +620,24 @@ object Rxn extends RxnInstances0 {
     /** 2 `Int`s: fullRetries and mcasRetries */
     private[this] var retries: Long = 0L
 
+    @inline
     private[this] final def getFullRetries(): Int = {
       (this.retries >>> 32).toInt
     }
 
+    @inline
     private[this] final def incrFullRetries(): Unit = {
       this.retries += (1L << 32)
     }
 
-    private[this] final def incrMcasRetries(): Unit = {
-      this.retries += 1L
-    }
-
+    @inline
     private[this] final def getMcasRetries(): Int = {
       this.retries.toInt
+    }
+
+    @inline
+    private[this] final def incrMcasRetries(): Unit = {
+      this.retries += 1L
     }
 
     private[this] var stats: ExStatMap =
