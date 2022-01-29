@@ -60,7 +60,7 @@ object MCAS extends MCASPlatform { self =>
      */
     def start(): HalfEMCASDescriptor
 
-    protected[mcas] def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
+    private[mcas] def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
 
     /**
      * @return the current value of `ref`, as
@@ -81,9 +81,9 @@ object MCAS extends MCASPlatform { self =>
      * @return the current version of `ref`, as if
      *         read by `readIntoHwd(ref).version`.
      */
-    protected[mcas] def readVersion[A](ref: MemoryLocation[A]): Long
+    private[mcas] def readVersion[A](ref: MemoryLocation[A]): Long
 
-    protected[choam] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
+    private[choam] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
 
     /**
      * Directly tries to perform the k-CAS described by `desc`
@@ -94,7 +94,7 @@ object MCAS extends MCASPlatform { self =>
      *         global version (if failed due to the version
      *         being newer than `desc.validTs`).
      */
-    protected[mcas] def tryPerformInternal(desc: HalfEMCASDescriptor): Long
+    private[mcas] def tryPerformInternal(desc: HalfEMCASDescriptor): Long
 
     /** @return a `ThreadLocalRandom` valid for the current thread */
     private[choam] def random: ThreadLocalRandom
