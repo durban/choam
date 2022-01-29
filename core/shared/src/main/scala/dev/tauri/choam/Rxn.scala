@@ -616,7 +616,25 @@ object Rxn extends RxnInstances0 {
     private[this] var contKReset: ObjStack.Lst[Any] = contK.takeSnapshot()
 
     private[this] var a: Any = x
-    private[this] var retries: Int = 0
+
+    /** 2 `Int`s: fullRetries and mcasRetries */
+    private[this] var retries: Long = 0L
+
+    private[this] final def getFullRetries(): Int = {
+      (this.retries >>> 32).toInt
+    }
+
+    private[this] final def incrFullRetries(): Unit = {
+      this.retries += (1L << 32)
+    }
+
+    private[this] final def incrMcasRetries(): Unit = {
+      this.retries += 1L
+    }
+
+    private[this] final def getMcasRetries(): Int = {
+      this.retries.toInt
+    }
 
     private[this] var stats: ExStatMap =
       ctx.getStatisticsPlain().asInstanceOf[ExStatMap]
@@ -665,7 +683,7 @@ object Rxn extends RxnInstances0 {
       pc.clear()
       a = () : Any
       startA = () : Any
-      retries = 0
+      retries = 0L
     }
 
     private[this] final def clearAlts(): Unit = {
@@ -677,7 +695,7 @@ object Rxn extends RxnInstances0 {
       contTReset = delayCompStorage.pop().asInstanceOf[Array[Byte]]
       startA = delayCompStorage.pop()
       startRxn = delayCompStorage.pop().asInstanceOf[Rxn[Any, R]]
-      retries = delayCompStorage.pop().asInstanceOf[Int]
+      retries = delayCompStorage.pop().asInstanceOf[Long]
       alts.loadSnapshot(delayCompStorage.pop().asInstanceOf[ObjStack.Lst[Any]])
       loadAlt()
       ()
@@ -744,7 +762,7 @@ object Rxn extends RxnInstances0 {
           a = () : Any
           startA = () : Any
           startRxn = pcAction
-          retries = 0
+          retries = 0L
           desc = ctx.start()
           pcAction
         case 5 => // ContAfterPostCommit
@@ -781,7 +799,7 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def retry(): Rxn[Any, Any] = {
-      retries += 1
+      incrFullRetries()
       maybeCheckInterrupt()
       if (alts.nonEmpty) {
         loadAlt()
@@ -791,12 +809,12 @@ object Rxn extends RxnInstances0 {
         a = startA
         resetConts()
         pc.clear()
-        spin()
+        spin(getFullRetries())
         startRxn
       }
     }
 
-    private[this] final def spin(): Unit = {
+    private[this] final def spin(retries: Int): Unit = {
       if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
       else Backoff.backoffConst(retries, maxBackoff)
     }
@@ -811,7 +829,7 @@ object Rxn extends RxnInstances0 {
      * throw an `InterruptedException`).
      */
     private[this] final def maybeCheckInterrupt(): Unit = {
-      if ((retries % Rxn.interruptCheckPeriod) == 0) {
+      if ((getFullRetries() % Rxn.interruptCheckPeriod) == 0) {
         checkInterrupt()
       }
     }
@@ -865,12 +883,13 @@ object Rxn extends RxnInstances0 {
           false
         case _ => // failed due to version
           desc = ctx.validateAndTryExtend(desc)
-          if (desc eq null) false // can't extend
-          else casLoop() // retry
-          // TODO: Maybe we should collect statistics
-          // TODO: about these retries too?
-          // TODO: We should have exponential
-          // TODO: backoff for these retries too!
+          if (desc eq null) {
+            false // can't extend
+          } else {
+            incrMcasRetries()
+            spin(getMcasRetries())
+            casLoop() // retry
+          }
       }
     }
 
@@ -880,7 +899,10 @@ object Rxn extends RxnInstances0 {
         case 0 => // Commit
           if (casLoop()) {
             // save retry statistics:
-            ctx.recordCommit(retries)
+            ctx.recordCommit(
+              fullRetries = getFullRetries(),
+              mcasRetries = getMcasRetries(),
+            )
             // ok, commit is done, but we still need to perform post-commit actions
             val res = a
             desc = ctx.start()

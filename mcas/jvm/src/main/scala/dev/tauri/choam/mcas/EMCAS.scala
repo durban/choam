@@ -505,8 +505,8 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
     }
   }
 
-  private[choam] final override def countCommitsAndRetries(): (Long, Long) = {
-    this.global.countCommitsAndRetries()
+  private[choam] final override def getRetryStats(): mcas.MCAS.RetryStats = {
+    this.global.getRetryStats()
   }
 
   private[choam] final override def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {

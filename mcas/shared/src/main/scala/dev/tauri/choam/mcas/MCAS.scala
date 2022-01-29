@@ -32,8 +32,8 @@ abstract class MCAS {
   private[choam] def isThreadSafe: Boolean
 
   /** Only for testing/benchmarking */
-  private[choam] def countCommitsAndRetries(): (Long, Long) = {
-    (0L, 0L)
+  private[choam] def getRetryStats(): MCAS.RetryStats = {
+    MCAS.RetryStats(0L, 0L, 0L)
   }
 
   /** Only for testing/benchmarking */
@@ -214,7 +214,7 @@ object MCAS extends MCASPlatform { self =>
     }
 
     /** Only for testing/benchmarking */
-    private[choam] def recordCommit(@unused retries: Int): Unit = {
+    private[choam] def recordCommit(@unused fullRetries: Int, @unused mcasRetries: Int): Unit = {
       // we ignore stats by default; implementations
       // can override if it matters
       ()
@@ -256,6 +256,12 @@ object MCAS extends MCASPlatform { self =>
       new SRandom(this.random)
     }
   }
+
+  private[choam] final case class RetryStats(
+    commits: Long,
+    fullRetries: Long,
+    mcasRetries: Long,
+  )
 
   private[choam] final class Builder(
     private[this] val ctx: ThreadContext,

@@ -67,8 +67,10 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
   test("baseline") {
     simulateRun { _ => F.unit } { r =>
       for {
-        _ <- assertEqualsF(r.size, 4)
+        _ <- assertEqualsF(r.size, 6)
         _ <- assertF(r(RxnProfiler.RetriesPerCommit).getScore.isNaN)
+        _ <- assertF(r(RxnProfiler.RetriesPerCommitFull).getScore.isNaN)
+        _ <- assertF(r(RxnProfiler.RetriesPerCommitMcas).getScore.isNaN)
         _ <- assertEqualsF(r(RxnProfiler.ReusedWeakRefs).getScore, 0.0)
         _ <- assertEqualsF(r(RxnProfiler.ExchangeCount).getScore, 0.0)
         _ <- assertF(r(RxnProfiler.ExchangesPerSecond).getScore.isNaN)
@@ -119,11 +121,28 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     for {
       // no retry:
       _ <- simulateRun { _ => runInFiber(Rxn.pure(42)) } { r =>
-        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 0.0)
+        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 0.0) *> (
+          assertEqualsF(r(RxnProfiler.RetriesPerCommitFull).getScore, 0.0) *> (
+            assertEqualsF(r(RxnProfiler.RetriesPerCommitMcas).getScore, 0.0)
+          )
+        )
       }
       // alts also count:
       _ <- simulateRun { _ => runInFiber(Rxn.unsafe.retry + Rxn.pure(42)) } { r =>
-        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 1.0)
+        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 1.0) *> (
+          assertEqualsF(r(RxnProfiler.RetriesPerCommitFull).getScore, 1.0) *> (
+            assertEqualsF(r(RxnProfiler.RetriesPerCommitMcas).getScore, 0.0)
+          )
+        )
+      }
+      _ <- simulateRun { _ =>
+        runInFiber(Rxn.unsafe.retry + (Rxn.unsafe.retry + Rxn.pure(42)))
+      } { r =>
+        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 2.0) *> (
+          assertEqualsF(r(RxnProfiler.RetriesPerCommitFull).getScore, 2.0) *> (
+            assertEqualsF(r(RxnProfiler.RetriesPerCommitMcas).getScore, 0.0)
+          )
+        )
       }
     } yield ()
   }

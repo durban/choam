@@ -38,14 +38,20 @@ class InterpreterBench {
     val x = k.nextInt()
     bh.consume(Rxn.interpreter(s.rxn, x, k.kcasImpl.currentContext()))
   }
+
+  // @Benchmark
+  def rxnNewDisjoint(s: DisjointSt, bh: Blackhole, k: KCASImplState): Unit = {
+    val x = k.nextInt()
+    bh.consume(Rxn.interpreter(s.rxn, x, k.kcasImpl.currentContext()))
+  }
 }
 
 object InterpreterBench {
 
   final val N = 4
 
-  @State(Scope.Benchmark)
-  class St {
+  abstract class BaseSt {
+
     private[this] val ref1s: Array[Ref[String]] =
       Array.fill(N) { Ref.unsafePadded("1") }
 
@@ -120,4 +126,10 @@ object InterpreterBench {
       }
     }
   }
+
+  @State(Scope.Benchmark)
+  class St extends BaseSt
+
+  @State(Scope.Thread)
+  class DisjointSt extends BaseSt
 }

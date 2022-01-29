@@ -26,15 +26,17 @@ import scala.collection.immutable.Map$;
 abstract class EMCASThreadContextBase {
 
   private static final VarHandle COMMITS;
-  private static final VarHandle RETRIES;
+  private static final VarHandle FULL_RETRIES;
+  private static final VarHandle MCAS_RETRIES;
   private static final VarHandle MAX_REUSE_EVER;
   private static final VarHandle STATISTICS;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      COMMITS = l.findVarHandle(EMCASThreadContextBase.class, "_commits", int.class);
-      RETRIES = l.findVarHandle(EMCASThreadContextBase.class, "_retries", int.class);
+      COMMITS = l.findVarHandle(EMCASThreadContextBase.class, "_commits", long.class);
+      FULL_RETRIES = l.findVarHandle(EMCASThreadContextBase.class, "_fullRetries", long.class);
+      MCAS_RETRIES = l.findVarHandle(EMCASThreadContextBase.class, "_mcasRetries", long.class);
       MAX_REUSE_EVER = l.findVarHandle(EMCASThreadContextBase.class, "_maxReuseEver", int.class);
       STATISTICS = l.findVarHandle(EMCASThreadContextBase.class, "_statistics", Map.class);
     } catch (ReflectiveOperationException ex) {
@@ -43,22 +45,28 @@ abstract class EMCASThreadContextBase {
   }
 
   // intentionally non-volatile, see below
-  private int _commits; // = 0
-  private int _retries; // = 0
+  private long _commits; // = 0L
+  private long _fullRetries; // = 0L
+  private long _mcasRetries; // = 0L
   private int _maxReuseEver; // = 0
   private Map<Object, Object> _statistics = Map$.MODULE$.empty();
 
-  protected int getCommitsOpaque() {
-    return (int) COMMITS.getOpaque(this);
+  protected long getCommitsOpaque() {
+    return (long) COMMITS.getOpaque(this);
   }
 
-  protected int getRetriesOpaque() {
-    return (int) RETRIES.getOpaque(this);
+  protected long getFullRetriesOpaque() {
+    return (long) FULL_RETRIES.getOpaque(this);
   }
 
-  protected void recordCommitPlain(int retries) {
-    this._commits += 1;
-    this._retries += retries; // TODO: overflow
+  protected long getMcasRetriesOpaque() {
+    return (long) MCAS_RETRIES.getOpaque(this);
+  }
+
+  protected void recordCommitPlain(int fullRetries, int mcasRetries) {
+    this._commits += 1L;
+    this._fullRetries += (long) fullRetries;
+    this._mcasRetries += (long) mcasRetries;
   }
 
   protected int getMaxReuseEverPlain() {

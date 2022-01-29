@@ -138,13 +138,17 @@ private final class EMCASThreadContext(
   final override def toString: String =
     s"ThreadContext(global = ${this.global}, tid = ${this.tid})"
 
-  private[choam] final override def recordCommit(retries: Int): Unit = {
-    this.recordCommitPlain(retries)
+  private[choam] final override def recordCommit(fullRetries: Int, mcasRetries: Int): Unit = {
+    this.recordCommitPlain(fullRetries, mcasRetries)
   }
 
   /** Only for testing/benchmarking */
-  private[choam] def getCommitsAndRetries(): (Int, Int) = {
-    (this.getCommitsOpaque(), this.getRetriesOpaque())
+  private[choam] def getRetryStats(): MCAS.RetryStats = {
+    MCAS.RetryStats(
+      commits = this.getCommitsOpaque(),
+      fullRetries = this.getFullRetriesOpaque(),
+      mcasRetries = this.getMcasRetriesOpaque(),
+    )
   }
 
   /** Only for testing/benchmarking */
