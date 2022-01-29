@@ -20,15 +20,21 @@ package dev.tauri.choam.mcas;
 // Note: this class/object is duplicated for JVM/JS
 public final class Version {
 
+  /** The initial version of every ref */
   public static final long Start = Long.MIN_VALUE;
-  public static final long Incr = 1L;
-  public static final long None = Long.MAX_VALUE;
+
+  static final long Incr = 1L;
+  static final long None = Long.MAX_VALUE;
 
   static final long Active = None - 1L;
   static final long Successful = None - 2L;
   static final long FailedVal = None - 3L;
   // FailedVer = any valid version
 
+  /**
+   * @return true, iff `ver` is a "real" version, and
+   *         not a constant with a special meaning.
+   */
   public static final boolean isValid(long ver) {
     return (ver >= Start) && (ver < FailedVal);
   }

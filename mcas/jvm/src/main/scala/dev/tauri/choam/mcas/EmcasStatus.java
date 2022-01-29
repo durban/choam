@@ -20,8 +20,22 @@ package dev.tauri.choam.mcas;
 // Note: this class/object is duplicated for JVM/JS
 public final class EmcasStatus {
 
+  /**
+   * Marker for an op, which already started,
+   * but haven't finished yet.
+   */
   static final long Active = Version.Active;
+
+  /**
+   * The MCAS operation finished successfully.
+   */
   public static final long Successful = Version.Successful;
+
+  /**
+   * The MCAS operation failed, because one
+   * of the expected values was not equal
+   * to the witness value.
+   */
   public static final long FailedVal = Version.FailedVal;
 
   /** Not really a status, used to break from `tryWord` */

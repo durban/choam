@@ -301,7 +301,6 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
    *
    * @param desc: The main descriptor.
    * @param ctx: The [[EMCASThreadContext]] of the current thread.
-   * @param replace:
    */
   def MCAS(desc: EMCASDescriptor, ctx: EMCASThreadContext): Long = {
 
