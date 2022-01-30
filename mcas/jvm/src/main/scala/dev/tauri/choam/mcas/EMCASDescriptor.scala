@@ -25,8 +25,8 @@ private final class EMCASDescriptor private (
 
   // effectively immutable array:
   private[this] val words: Array[WordDescriptor[_]] = {
-    val arr = new Array[WordDescriptor[_]](half.map.size)
-    val it = half.map.valuesIterator
+    val arr = new Array[WordDescriptor[_]](half.size)
+    val it = half.iterator()
     var idx = 0
     while (it.hasNext) {
       val wd = WordDescriptor.prepare(it.next(), this)

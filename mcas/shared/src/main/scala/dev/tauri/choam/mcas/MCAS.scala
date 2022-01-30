@@ -156,7 +156,7 @@ object MCAS extends MCASPlatform { self =>
         // TODO: direct reads may cause problems!
       } else {
         val finalDesc = this.addVersionCas(desc)
-        assert(finalDesc.map.size == (desc.map.size + 1))
+        assert(finalDesc.size == (desc.size + 1))
         val res = this.tryPerformInternal(finalDesc)
         assert((res == EmcasStatus.Successful) || (res == EmcasStatus.FailedVal) || Version.isValid(res))
         res
@@ -204,7 +204,7 @@ object MCAS extends MCASPlatform { self =>
         }
       }
 
-      go(desc.map.valuesIterator)
+      go(desc.iterator())
     }
 
     /**

@@ -19,18 +19,48 @@ package dev.tauri.choam
 package mcas
 
 import scala.collection.immutable.TreeMap
+import scala.collection.AbstractIterator
 import scala.util.hashing.MurmurHash3
 
 // TODO: this really should have a better name
 final class HalfEMCASDescriptor private (
-  private[mcas] val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
+  private val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
   private val validTsBoxed: java.lang.Long,
   val readOnly: Boolean,
   private val versionIncr: Long,
+  private val versionCas: HalfWordDescriptor[java.lang.Long], // can be null
 ) {
 
   final def validTs: Long =
     this.validTsBoxed // unboxing happens
+
+  final def size: Int =
+    this.map.size + (if (this.versionCas ne null) 1 else 0)
+
+  final def iterator(): Iterator[HalfWordDescriptor[_]] = {
+    if (this.versionCas eq null) {
+      this.map.valuesIterator
+    } else {
+      val underlying = this.map.valuesIterator
+      val vc = this.versionCas
+      new AbstractIterator[HalfWordDescriptor[_]] {
+        private[this] var done: Boolean = false
+        final override def hasNext: Boolean = {
+          underlying.hasNext || (!done)
+        }
+        final override def next(): HalfWordDescriptor[_] = {
+          if (underlying.hasNext) {
+            underlying.next()
+          } else if (!done) {
+            done = true
+            vc
+          } else {
+            throw new NoSuchElementException
+          }
+        }
+      }
+    }
+  }
 
   final def isValidHwd[A](hwd: HalfWordDescriptor[A]): Boolean = {
     hwd.version <= this.validTs
@@ -42,15 +72,18 @@ final class HalfEMCASDescriptor private (
       validTsBoxed = newBoxed,
       readOnly = this.readOnly,
       versionIncr = this.versionIncr,
+      versionCas = this.versionCas,
     )
   }
 
   private[mcas] final def withNoNewVersion: HalfEMCASDescriptor = {
+    require(this.versionCas eq null)
     new HalfEMCASDescriptor(
       map = this.map,
       validTsBoxed = this.validTsBoxed,
       readOnly = this.readOnly,
       versionIncr = 0L,
+      versionCas = null,
     )
   }
 
@@ -72,6 +105,7 @@ final class HalfEMCASDescriptor private (
       this.validTsBoxed,
       this.readOnly && desc.readOnly,
       versionIncr = this.versionIncr,
+      versionCas = this.versionCas,
     )
   }
 
@@ -87,6 +121,7 @@ final class HalfEMCASDescriptor private (
       // we don't want to rescan here the whole log, so we only pass
       // true if it's DEFINITELY read-only
       versionIncr = this.versionIncr,
+      versionCas = this.versionCas,
     )
   }
 
@@ -101,18 +136,27 @@ final class HalfEMCASDescriptor private (
       // we don't want to rescan here the whole log, so we only pass
       // true if it's DEFINITELY read-only
       versionIncr = this.versionIncr,
+      versionCas = this.versionCas,
     )
   }
 
   private[mcas] final def addVersionCas(commitTsRef: MemoryLocation[Long]): HalfEMCASDescriptor = {
+    require(this.versionCas eq null)
+    require(!this.readOnly)
     require(this.versionIncr > 0L)
     val hwd = HalfWordDescriptor[java.lang.Long](
       commitTsRef.asInstanceOf[MemoryLocation[java.lang.Long]],
-      ov = this.validTsBoxed, // no boxing
-      nv = this.newVersion, // boxing happens
+      ov = this.validTsBoxed, // no boxing here
+      nv = this.newVersion, // boxing happens here
       version = Version.Start, // the version's version is unused/arbitrary
     )
-    this.add(hwd)
+    new HalfEMCASDescriptor(
+      map = this.map,
+      validTsBoxed = this.validTsBoxed,
+      readOnly = false,
+      versionIncr = this.versionIncr,
+      versionCas = hwd,
+    )
   }
 
   private[choam] final def getOrElseNull[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
@@ -137,6 +181,7 @@ final class HalfEMCASDescriptor private (
         validTsBoxed = newValidTsBoxed,
         readOnly = this.readOnly,
         versionIncr = this.versionIncr,
+        versionCas = this.versionCas,
       )
     } else {
       null
@@ -150,7 +195,12 @@ final class HalfEMCASDescriptor private (
     } else {
       s", versionIncr = ${versionIncr}"
     }
-    s"HalfEMCASDescriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly}${vi})"
+    val vc = if (versionCas eq null) {
+      ""
+    } else {
+      s", versionCas = ${versionCas}"
+    }
+    s"HalfEMCASDescriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly}${vi}${vc})"
   }
 
   final override def equals(that: Any): Boolean = {
@@ -160,6 +210,7 @@ final class HalfEMCASDescriptor private (
           (this.readOnly == that.readOnly) &&
           (this.validTsBoxed eq that.validTsBoxed) &&
           (this.versionIncr == that.versionIncr) &&
+          (this.versionCas == that.versionCas) &&
           (this.map == that.map)
         )
       case _ =>
@@ -171,8 +222,9 @@ final class HalfEMCASDescriptor private (
     val h1 = MurmurHash3.mix(0xefebde66, System.identityHashCode(this.validTsBoxed))
     val h2 = MurmurHash3.mix(h1, this.readOnly.##)
     val h3 = MurmurHash3.mix(h2, this.versionIncr.##)
-    val h4 = MurmurHash3.mix(h3, this.map.##)
-    MurmurHash3.finalizeHash(h4, this.map.size)
+    val h4 = MurmurHash3.mix(h3, this.versionCas.##)
+    val h5 = MurmurHash3.mix(h4, this.map.##)
+    MurmurHash3.finalizeHash(h5, this.map.size)
   }
 }
 
@@ -189,6 +241,7 @@ object HalfEMCASDescriptor {
       validTsBoxed = validTsBoxed,
       readOnly = true,
       versionIncr = DefaultVersionIncr,
+      versionCas = null,
     )
   }
 
