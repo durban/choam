@@ -26,7 +26,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
     _ctx
 
   private[this] val _commitTs: MemoryLocation[Long] =
-    MemoryLocation.unsafeCommitTsRef(padded = false)
+    MemoryLocation.unsafeUnpadded(Version.Start)
 
   private[this] val _ctx = new MCAS.ThreadContext {
 

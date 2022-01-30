@@ -108,23 +108,15 @@ object MemoryLocation extends MemoryLocationInstances0 {
     unsafePaddedWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
-  private[choam] def unsafeWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] =
+  private[mcas] def unsafeWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] =
     unsafeUnpaddedWithId(initial)(i0, i1, i2, i3)
 
-  private[choam] def unsafeUnpaddedWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
+  private[this] def unsafeUnpaddedWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
     new SimpleMemoryLocation[A](initial)(i0, i1, i2, i3)
   }
 
-  private[choam] def unsafePaddedWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
+  private[this] def unsafePaddedWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
     new PaddedMemoryLocation[A](initial, i0, i1, i2, i3)
-  }
-
-  private[mcas] def unsafeCommitTsRef(padded: Boolean): MemoryLocation[Long] = {
-    if (padded) {
-      unsafePaddedWithId(Version.Start)(Long.MaxValue, Long.MaxValue, Long.MaxValue, Long.MaxValue)
-    } else {
-      unsafeUnpaddedWithId(Version.Start)(Long.MaxValue, Long.MaxValue, Long.MaxValue, Long.MaxValue)
-    }
   }
 
   def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {

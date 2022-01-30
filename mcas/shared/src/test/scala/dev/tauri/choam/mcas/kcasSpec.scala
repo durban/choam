@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package mcas
 
-import scala.util.Try
-
 final class KCASSpecThreadConfinedMCAS
   extends KCASSpec
   with SpecThreadConfinedMCAS
@@ -513,14 +511,5 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(!Version.isValid(Version.Active))
     assert(!Version.isValid(Version.Successful))
     assert(!Version.isValid(Version.FailedVal))
-  }
-
-  test("CommitTs ref must be the last (common)") {
-    val cts1 = MemoryLocation.unsafeCommitTsRef(padded = true)
-    val cts2 = MemoryLocation.unsafeCommitTsRef(padded = false)
-    val random = MemoryLocation.unsafe[Long](42L)
-    assert(MemoryLocation.orderingInstance.compare(cts1, random) > 0)
-    assert(MemoryLocation.orderingInstance.compare(cts2, random) > 0)
-    assert(Try(MemoryLocation.orderingInstance.compare(cts1, cts2)).isFailure)
   }
 }
