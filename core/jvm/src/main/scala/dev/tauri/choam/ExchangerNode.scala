@@ -25,7 +25,7 @@ private final class ExchangerNode[C](val msg: Msg) {
   /**
    *     .---> result: FinishedEx[C] (fulfiller successfully completed)
    *    /
-   * null (TODO: use a sentinel)
+   * null
    *    \
    *     ˙---> Rescinded[C] (owner couldn't wait any more for the fulfiller)
    */

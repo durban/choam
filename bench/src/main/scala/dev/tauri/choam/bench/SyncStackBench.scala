@@ -31,7 +31,7 @@ import mcas.MCAS
 
 @Fork(2)
 @Threads(1) // set it to _concurrentOps!
-@BenchmarkMode(Array(Mode.AverageTime)) // TODO: maybe should be throughput
+@BenchmarkMode(Array(Mode.AverageTime))
 class SyncStackBench extends BenchUtils {
 
   import SyncStackBench._

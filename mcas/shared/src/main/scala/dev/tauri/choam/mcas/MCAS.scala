@@ -116,7 +116,6 @@ object MCAS extends MCASPlatform { self =>
         case hwd =>
           // found in log
           Some((hwd.cast[A].nv, log))
-          // TODO: if hwd.readOnly, we may need to re-validate here
       }
     }
 
@@ -152,8 +151,6 @@ object MCAS extends MCASPlatform { self =>
         // we've validated each read,
         // so nothing to do here
         EmcasStatus.Successful
-        // TODO: unconditional CAS-es and
-        // TODO: direct reads may cause problems!
       } else {
         val finalDesc = this.addVersionCas(desc)
         assert(finalDesc.size == (desc.size + 1))
