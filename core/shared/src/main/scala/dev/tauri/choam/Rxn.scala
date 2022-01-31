@@ -597,10 +597,28 @@ object Rxn extends RxnInstances0 {
     private[this] var startRxn: Rxn[Any, Any] = rxn.asInstanceOf[Rxn[Any, Any]]
     private[this] var startA: Any = x
 
-    // TODO: as an optimization, only `start()` when
-    // TODO: we first need a descriptor (i.e., pure
-    // TODO: `Rxn`s will never create one)
-    private[this] var desc: HalfEMCASDescriptor = ctx.start()
+    private[this] var _desc: HalfEMCASDescriptor =
+      null
+
+    private[this] final def desc: HalfEMCASDescriptor = {
+      if (_desc ne null) {
+        _desc
+      } else {
+        _desc = ctx.start()
+        _desc
+      }
+    }
+
+    @inline
+    private[this] final def desc_=(d: HalfEMCASDescriptor): Unit = {
+      require(d ne null)
+      _desc = d
+    }
+
+    @inline
+    private[this] final def clearDesc(): Unit = {
+      _desc = null
+    }
 
     private[this] val alts: ObjStack[Any] = newStack[Any]()
 
@@ -680,7 +698,7 @@ object Rxn extends RxnInstances0 {
       delayCompStorage.push(Arrays.copyOf(contTReset, contTReset.length))
       delayCompStorage.push(contKReset)
       // reset state:
-      desc = ctx.start()
+      clearDesc()
       clearAlts()
       contT.clear()
       contK.clear()
@@ -706,7 +724,7 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def saveAlt(k: Rxn[Any, R]): Unit = {
-      alts.push(ctx.snapshot(desc))
+      alts.push(ctx.snapshot(_desc))
       alts.push(a)
       alts.push(contT.takeSnapshot())
       alts.push(contK.takeSnapshot())
@@ -720,7 +738,7 @@ object Rxn extends RxnInstances0 {
       contK.loadSnapshot(alts.pop().asInstanceOf[ObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
-      desc = alts.pop().asInstanceOf[HalfEMCASDescriptor]
+      _desc = alts.pop().asInstanceOf[HalfEMCASDescriptor]
       res
     }
 
@@ -767,7 +785,7 @@ object Rxn extends RxnInstances0 {
           startA = () : Any
           startRxn = pcAction
           retries = 0L
-          desc = ctx.start()
+          clearDesc()
           pcAction
         case 5 => // ContAfterPostCommit
           val res = popFinalResult()
@@ -809,7 +827,7 @@ object Rxn extends RxnInstances0 {
         loadAlt()
       } else {
         // really restart:
-        desc = ctx.start()
+        clearDesc()
         a = startA
         resetConts()
         pc.clear()
@@ -860,7 +878,7 @@ object Rxn extends RxnInstances0 {
             ctx.validateAndTryExtend(desc) match {
               case null =>
                 // will rollback
-                desc = null // it's invalid, not to be used
+                clearDesc()
                 null
               case newDesc =>
                 // OK, it was extended
@@ -886,13 +904,17 @@ object Rxn extends RxnInstances0 {
         case EmcasStatus.FailedVal =>
           false
         case _ => // failed due to version
-          desc = ctx.validateAndTryExtend(desc)
-          if (desc eq null) {
-            false // can't extend
-          } else {
-            incrMcasRetries()
-            spin(getMcasRetries())
-            casLoop() // retry
+          ctx.validateAndTryExtend(desc) match {
+            case null =>
+              // can't extend:
+              clearDesc()
+              false
+            case d =>
+              // ok, was extended:
+              desc = d
+              incrMcasRetries()
+              spin(getMcasRetries())
+              casLoop() // retry
           }
       }
     }
@@ -909,7 +931,7 @@ object Rxn extends RxnInstances0 {
             )
             // ok, commit is done, but we still need to perform post-commit actions
             val res = a
-            desc = ctx.start()
+            clearDesc()
             a = () : Any
             if (!equ(res, postCommitResultMarker)) {
               // final result, Done (or ContAfterDelayComp) will need it:
