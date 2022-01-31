@@ -56,8 +56,9 @@ private final class ExchangerNode[C](val msg: Msg) {
         None
       }
     }
+    val spinShift = ExchangerImplJvm.Statistics.spinShift(stats).toInt
     val maxSpin = Math.min(
-      params.defaultSpin << stats.spinShift.toInt,
+      params.defaultSpin << spinShift,
       params.maxSpin
     )
     val spin = 1 + ctx.random.nextInt(maxSpin)

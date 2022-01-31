@@ -560,4 +560,56 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       F.delay { println(s"Exchanges: ${rss.sum} / ${N * iterations}") }
     }
   }
+
+  test("Statistics") {
+    import ExchangerImplJvm.Statistics
+    import Exchanger.Params
+    val s = Statistics(
+      effectiveSize = 32,
+      misses = 127,
+      spinShift = 21,
+      exchanges = 122,
+    )
+    assertEquals(Statistics.effectiveSize(s), 32.toByte)
+    assertEquals(Statistics.misses(s), 127.toByte)
+    assertEquals(Statistics.spinShift(s), 21.toByte)
+    assertEquals(Statistics.exchanges(s), 122.toByte)
+    val s1 = Statistics.withExchanges(s, exchanges = -23)
+    assertEquals(Statistics.effectiveSize(s1), 32.toByte)
+    assertEquals(Statistics.misses(s1), 127.toByte)
+    assertEquals(Statistics.spinShift(s1), 21.toByte)
+    assertEquals(Statistics.exchanges(s1), -23.toByte)
+    val s2 = Statistics.withMisses(s1, misses = 0)
+    assertEquals(Statistics.effectiveSize(s2), 32.toByte)
+    assertEquals(Statistics.misses(s2), 0.toByte)
+    assertEquals(Statistics.spinShift(s2), 21.toByte)
+    assertEquals(Statistics.exchanges(s2), -23.toByte)
+    val s3 = Statistics.missed(s2, Params())
+    assertEquals(Statistics.effectiveSize(s3), 32.toByte)
+    assertEquals(Statistics.misses(s3), 1.toByte)
+    assertEquals(Statistics.spinShift(s3), 21.toByte)
+    assertEquals(Statistics.exchanges(s3), -23.toByte)
+    val s4 = Statistics.missed(
+      Statistics.withMisses(s3, misses = Params().maxMisses),
+      Params(),
+    )
+    assertEquals(Statistics.effectiveSize(s4), 16.toByte)
+    assertEquals(Statistics.misses(s4), 0.toByte)
+    assertEquals(Statistics.spinShift(s4), 21.toByte)
+    assertEquals(Statistics.exchanges(s4), -23.toByte)
+    val s5 = Statistics.contended(s4, size = ExchangerImplJvm.size, p = Params())
+    assertEquals(Statistics.effectiveSize(s5), 16.toByte)
+    assertEquals(Statistics.misses(s5), -1.toByte)
+    assertEquals(Statistics.spinShift(s5), 21.toByte)
+    assertEquals(Statistics.exchanges(s5), -23.toByte)
+    val s6 = Statistics.contended(
+      Statistics.withMisses(s5, misses = Params().minMisses),
+      size = 128,
+      p = Params(),
+    )
+    assertEquals(Statistics.effectiveSize(s6), 32.toByte)
+    assertEquals(Statistics.misses(s6), 0.toByte)
+    assertEquals(Statistics.spinShift(s6), 21.toByte)
+    assertEquals(Statistics.exchanges(s6), -23.toByte)
+  }
 }

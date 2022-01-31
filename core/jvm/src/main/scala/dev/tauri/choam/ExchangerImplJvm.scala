@@ -55,9 +55,10 @@ private sealed trait ExchangerImplJvm[A, B]
     ctx: MCAS.ThreadContext,
   ): Either[StatMap, Msg] = {
     // TODO: exchangerData grows forever
-    val stats = msg.exchangerData.getOrElse(this.key, Statistics.zero)
-    debugLog(s"tryExchange (effectiveSize = ${stats.effectiveSize}) - thread#${Thread.currentThread().getId()}")
-    val idx = if (stats.effectiveSize < 2) 0 else ctx.random.nextInt(stats.effectiveSize.toInt)
+    val stats = msg.exchangerData.getOrElse(this.key, Statistics.zero).asInstanceOf[Int]
+    val effSize = Statistics.effectiveSize(stats)
+    debugLog(s"tryExchange (effectiveSize = ${effSize}) - thread#${Thread.currentThread().getId()}")
+    val idx = if (effSize < 2) 0 else ctx.random.nextInt(effSize.toInt)
     tryIdx(idx, msg, stats, params, ctx) match {
       case Left(stats) => Left(msg.exchangerData.updated(this.key, stats))
       case Right(msg) => Right(msg)
@@ -99,7 +100,12 @@ private sealed trait ExchangerImplJvm[A, B]
                 waitForClaimedOffer[C](self, msg, res, stats, params, ctx)
               } else {
                 // rescinded successfully, will retry
-                Left(stats.missed(params).rescinded(params))
+                Left(
+                  Statistics.rescinded(
+                    Statistics.missed(stats, params),
+                    params,
+                  )
+                )
               }
             case other: ExchangerNode[d] =>
               debugLog(s"found other - thread#${Thread.currentThread().getId()}")
@@ -112,7 +118,7 @@ private sealed trait ExchangerImplJvm[A, B]
                 } else {
                   // the other offer was rescinded in the meantime,
                   // so we'll have to retry:
-                  Left(stats.rescinded(params))
+                  Left(Statistics.rescinded(stats, params))
                 }
               } else {
                 // someone else claimed our offer, we can't continue with fulfillment,
@@ -122,11 +128,11 @@ private sealed trait ExchangerImplJvm[A, B]
           }
         } else {
           // contention, will retry
-          Left(stats.contended(incoming.length(), params))
+          Left(Statistics.contended(stats, incoming.length(), params))
         }
       case _ =>
         // contention, will retry
-        Left(stats.contended(incoming.length(), params))
+        Left(Statistics.contended(stats, incoming.length(), params))
     }
   }
 
@@ -149,7 +155,7 @@ private sealed trait ExchangerImplJvm[A, B]
         c match {
           case fx: FinishedEx[_] =>
             debugLog(s"waitForClaimedOffer: found result - thread#${Thread.currentThread().getId()}")
-            val newStats = msg.exchangerData.updated(this.key, stats.exchanged(params))
+            val newStats = msg.exchangerData.updated(this.key, Statistics.exchanged(stats, params))
             Right(Msg.fromFinishedEx(fx, newStats, ctx))
           case _: Rescinded[_] =>
             // we're the only one who can rescind this
@@ -159,13 +165,13 @@ private sealed trait ExchangerImplJvm[A, B]
         if (ctx.singleCasDirect(self.hole.loc, null, Rescinded[C])) {
           // OK, we rolled back, and can retry
           debugLog(s"waitForClaimedOffer: rolled back - thread#${Thread.currentThread().getId()}")
-          Left(stats.rescinded(params))
+          Left(Statistics.rescinded(stats, params))
         } else {
           // couldn't roll back, it must be a result
           ctx.readDirect(self.hole.loc) match {
             case fx: FinishedEx[_] =>
               debugLog(s"waitForClaimedOffer: found result - thread#${Thread.currentThread().getId()}")
-              val newStats = msg.exchangerData.updated(this.key, stats.exchanged(params))
+              val newStats = msg.exchangerData.updated(this.key, Statistics.exchanged(stats, params))
               Right(Msg.fromFinishedEx(fx, newStats, ctx))
             case _: Rescinded[_] =>
               // we're the only one who can rescind this
@@ -213,7 +219,7 @@ private sealed trait ExchangerImplJvm[A, B]
       desc = mergedDesc,
       postCommit = ObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit),
       // this thread will continue, so we use (and update) our data:
-      exchangerData = selfMsg.exchangerData.updated(this.key, stats.exchanged(params))
+      exchangerData = selfMsg.exchangerData.updated(this.key, Statistics.exchanged(stats, params))
     )
     debugLog(s"merged postCommit: ${ObjStack.Lst.mkString(resMsg.postCommit)} - thread#${Thread.currentThread().getId()}")
     Right(resMsg)
@@ -330,38 +336,89 @@ private object ExchangerImplJvm {
   }
 
   private[choam] type StatMap =
-    Map[Exchanger.Key, ExchangerImplJvm.Statistics]
+    Map[Exchanger.Key, Any]
 
   private[choam] final object StatMap {
     def empty: StatMap =
       Map.empty
   }
 
-  // TODO: this could be packed into an Int
-  private[choam] final case class Statistics(
-    /* Always <= size */
-    effectiveSize: Byte, // ---------------------------\
-    /* Counts misses (++) and contention (--) */ //     ⊢--> missed/contended
-    misses: Byte, // ----------------------------------/
-    /* How much to wait for an exchange */
-    spinShift: Byte, // -------------------------------\
-    /* Counts exchanges (++) and rescinds (--) */ //    ⊢--> exchanged/rescinded
-    exchanges: Byte // --------------------------------/
-  ) {
+  final type Statistics =
+    Int
 
+  final object Statistics {
+
+    import java.lang.Byte.toUnsignedInt
     import Exchanger.Params
 
-    require(effectiveSize > 0)
+    final def apply(
+      /* Always <= size */
+      effectiveSize: Byte, // ---------------------------\
+      /* Counts misses (++) and contention (--) */ //     ⊢--> missed/contended
+      misses: Byte, // ----------------------------------/
+      /* How much to wait for an exchange */
+      spinShift: Byte, // -------------------------------\
+      /* Counts exchanges (++) and rescinds (--) */ //    ⊢--> exchanged/rescinded
+      exchanges: Byte, // --------------------------------/
+    ): Int = pack(
+      effectiveSize = effectiveSize,
+      misses = misses,
+      spinShift = spinShift,
+      exchanges = exchanges,
+    )
+
+    private[this] final def pack(
+      effectiveSize: Byte,
+      misses: Byte,
+      spinShift: Byte,
+      exchanges: Byte,
+    ): Int ={
+
+      var result: Int = toUnsignedInt(exchanges)
+      result |= (toUnsignedInt(spinShift) << 8)
+      result |= (toUnsignedInt(misses) << 16)
+      result |= (toUnsignedInt(effectiveSize) << 24)
+      result
+    }
+
+    final def withMisses(stats: Int, misses: Byte): Int = {
+      (stats & 0xff00ffff) | (toUnsignedInt(misses) << 16)
+    }
+
+    final def withExchanges(stats: Int, exchanges: Byte): Int = {
+      (stats & 0xffffff00) | toUnsignedInt(exchanges)
+    }
+
+    final def effectiveSize(stats: Int): Byte = {
+      (stats >>> 24).toByte
+    }
+
+    final def misses(stats: Int): Byte = {
+      (stats >>> 16).toByte
+    }
+
+    final def spinShift(stats: Int): Byte = {
+      (stats >>> 8).toByte
+    }
+
+    final def exchanges(stats: Int): Byte = {
+      stats.toByte
+    }
 
     /**
      * Couldn't exchange, so we may decrease effective size.
      */
-    def missed(p: Params): Statistics = {
-      if (this.misses == p.maxMisses) {
-        val newEffSize = Math.max(this.effectiveSize >> 1, 1)
-        this.copy(effectiveSize = newEffSize.toByte, misses = 0.toByte)
+    final def missed(stats: Int, p: Params): Int = {
+      if (misses(stats) == p.maxMisses) {
+        val newEffSize = Math.max(effectiveSize(stats) >> 1, 1)
+        pack(
+          effectiveSize = newEffSize.toByte,
+          misses = 0.toByte,
+          spinShift = spinShift(stats),
+          exchanges = exchanges(stats),
+        )
       } else {
-        this.copy(misses = (this.misses + 1).toByte)
+        withMisses(stats, misses = (misses(stats) + 1).toByte)
       }
     }
 
@@ -369,45 +426,50 @@ private object ExchangerImplJvm {
      * An exchange was lost due to 3rd party, so we may
      * increase effective size.
      */
-    def contended(size: Int, p: Params): Statistics = {
-      if (this.misses == p.minMisses) {
-        val newEffSize = Math.min(this.effectiveSize << 1, size)
-        this.copy(effectiveSize = newEffSize.toByte, misses = 0.toByte)
+    final def contended(stats: Int, size: Int, p: Params): Int = {
+      if (misses(stats) == p.minMisses) {
+        val newEffSize = Math.min(effectiveSize(stats).toInt << 1, size)
+        pack(
+          effectiveSize = newEffSize.toByte,
+          misses = 0.toByte,
+          spinShift = spinShift(stats),
+          exchanges = exchanges(stats),
+        )
       } else {
-        this.copy(misses = (this.misses - 1).toByte)
+        withMisses(stats, misses = (misses(stats) - 1).toByte)
       }
     }
 
-    def exchanged(p: Params): Statistics = {
-      if (this.exchanges == p.maxExchanges) {
-        val newSpinShift = Math.min(this.spinShift + 1, p.maxSpinShift.toInt)
-        this.copy(spinShift = newSpinShift.toByte, exchanges = 0.toByte)
+    final def exchanged(stats: Int, p: Params): Int = {
+      if (exchanges(stats) == p.maxExchanges) {
+        val newSpinShift = Math.min(spinShift(stats) + 1, p.maxSpinShift.toInt)
+        pack(
+          effectiveSize = effectiveSize(stats),
+          misses = misses(stats),
+          spinShift = newSpinShift.toByte,
+          exchanges = 0.toByte,
+        )
       } else {
-        this.copy(exchanges = (this.exchanges + 1).toByte)
+        withExchanges(stats, exchanges = (exchanges(stats) + 1).toByte)
       }
     }
 
-    def rescinded(p: Params): Statistics = {
-      if (this.exchanges == p.minExchanges) {
-        val newSpinShift = Math.max(this.spinShift - 1, 0)
-        this.copy(spinShift = newSpinShift.toByte, exchanges = 0.toByte)
+    final def rescinded(stats: Int, p: Params): Statistics = {
+      if (exchanges(stats) == p.minExchanges) {
+        val newSpinShift = Math.max(spinShift(stats) - 1, 0)
+        pack(
+          effectiveSize = effectiveSize(stats),
+          misses = misses(stats),
+          spinShift = newSpinShift.toByte,
+          exchanges = 0.toByte,
+        )
       } else {
-        this.copy(exchanges = (this.exchanges - 1).toByte)
+        withExchanges(stats, exchanges = (exchanges(stats) - 1).toByte)
       }
     }
-  }
 
-  private[choam] final object Statistics {
-
-    private[this] val _zero: Statistics =
-      Statistics(effectiveSize = 1.toByte, misses = 0.toByte, spinShift = 0.toByte, exchanges = 0.toByte)
-
-    def zero: Statistics =
-      _zero
-
-    // TODO: these magic constants should be tuned with experiments
-
-
+    final def zero: Statistics =
+      0
   }
 
   private[choam] val size = Math.min(

@@ -663,7 +663,7 @@ object Rxn extends RxnInstances0 {
 
     // TODO: this is a hack
     private[this] var exParams: Exchanger.Params = {
-      (stats.getOrElse(Exchanger.paramsKey, null): AnyRef) match {
+      (stats.getOrElse(Exchanger.paramsKey, null): Any) match {
         case null =>
           val p = Exchanger.params // volatile read
           stats = (stats.asInstanceOf[Map[AnyRef, AnyRef]] + (Exchanger.paramsKey -> p)).asInstanceOf[ExStatMap]
