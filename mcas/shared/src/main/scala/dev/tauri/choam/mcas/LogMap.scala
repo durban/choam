@@ -265,7 +265,7 @@ private object LogMap {
       new LogMapTree(treeMap.updated(k.cast[Any], v.cast[Any]))
 
     final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
-      treeMap.getOrElse(k.cast[Any], default).cast[A]
+      treeMap.getOrElse(k.cast[Any], default).asInstanceOf[HalfWordDescriptor[A]]
 
     final override def equals(that: Any): Boolean = that match {
       case that: LogMapTree =>
