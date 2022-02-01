@@ -22,9 +22,99 @@ import scala.collection.immutable.TreeMap
 import scala.collection.AbstractIterator
 import scala.util.hashing.MurmurHash3
 
+private abstract class LogMap {
+  def size: Int
+  def valuesIterator: Iterator[HalfWordDescriptor[_]]
+  def nonEmpty: Boolean
+  def contains[A](ref: MemoryLocation[A]): Boolean
+  def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
+  def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]): HalfWordDescriptor[A]
+  override def equals(that: Any): Boolean
+  override def hashCode: Int
+}
+
+private object LogMap {
+
+  final def empty: LogMap =
+    Empty
+
+  private final object Empty extends LogMap {
+    final override def size =
+      0
+    final override def valuesIterator =
+      Iterator.empty
+    final override def nonEmpty =
+      false
+    final override def contains[A](ref: MemoryLocation[A]) =
+      false
+    final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap =
+      new LogMap1(v)
+    final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
+      default
+    final override def equals(that: Any): Boolean =
+      equ[Any](that, this)
+    final override def hashCode: Int =
+      0x8de3a9b3
+  }
+
+  private final class LogMap1(private val v1: HalfWordDescriptor[_]) extends LogMap {
+    final override def size =
+      1
+    final override def valuesIterator: Iterator[HalfWordDescriptor[_]] =
+      Iterator.single(v1)
+    final override def nonEmpty =
+      true
+    final override def contains[A](ref: MemoryLocation[A]) =
+      (ref eq v1.address)
+    final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
+      if (k eq v1.address) {
+        new LogMap1(v)
+      } else {
+        val b = TreeMap.newBuilder[MemoryLocation[Any], HalfWordDescriptor[Any]](
+          MemoryLocation.orderingInstance[Any]
+        )
+        b += ((v1.address.asInstanceOf[MemoryLocation[Any]], v1.cast[Any]))
+        b += ((k.asInstanceOf[MemoryLocation[Any]], v.cast[Any]))
+        new LogMapTree(b.result())
+      }
+    }
+    final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
+      if (k eq v1.address) v1.cast[A] else default
+    final override def equals(that: Any): Boolean = that match {
+      case that: LogMap1 => this.v1 eq that.v1
+      case _ => false
+    }
+    final override def hashCode: Int =
+      MurmurHash3.finalizeHash(v1.##, 1)
+  }
+
+  /** Invariant: `treeMap` has more items than the greatest `N` in the `LogMapN`s */
+  private final class LogMapTree(private val treeMap: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]]) extends LogMap {
+    require(treeMap.size > 1) // checks invariant
+    final override def size =
+      treeMap.size
+    final override def valuesIterator: Iterator[HalfWordDescriptor[_]] =
+      treeMap.valuesIterator
+    final override def nonEmpty =
+      true
+    final override def contains[A](ref: MemoryLocation[A]) =
+      treeMap.contains(ref.asInstanceOf[MemoryLocation[Any]])
+    final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap =
+      new LogMapTree(treeMap.updated(k.asInstanceOf[MemoryLocation[Any]], v.cast[Any]))
+    final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
+      treeMap.getOrElse(k.asInstanceOf[MemoryLocation[Any]], default).asInstanceOf[HalfWordDescriptor[A]]
+    final override def equals(that: Any): Boolean = that match {
+      case that: LogMapTree => this.treeMap == that.treeMap
+      case _ => false
+    }
+    final override def hashCode: Int =
+      treeMap.##
+  }
+}
+
 // TODO: this really should have a better name
 final class HalfEMCASDescriptor private (
-  private val map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
+  private val map: LogMap, // TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
   private val validTsBoxed: java.lang.Long,
   val readOnly: Boolean,
   private val versionIncr: Long,
@@ -237,7 +327,7 @@ object HalfEMCASDescriptor {
     val validTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
     new HalfEMCASDescriptor(
-      TreeMap.empty(MemoryLocation.orderingInstance[Any]),
+      LogMap.empty, // TreeMap.empty(MemoryLocation.orderingInstance[Any]),
       validTsBoxed = validTsBoxed,
       readOnly = true,
       versionIncr = DefaultVersionIncr,
