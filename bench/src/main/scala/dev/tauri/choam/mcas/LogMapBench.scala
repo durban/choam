@@ -32,6 +32,27 @@ private[mcas] class LogMapBench {
   import LogMapBench._
 
   @Benchmark
+  def insertBaseline(bh: Blackhole): Unit = {
+    val newRef = MemoryLocation.unsafe("foo")
+    val newHwd = HalfWordDescriptor(newRef, "x", "y", version = 0L)
+    bh.consume(newHwd)
+  }
+
+  @Benchmark
+  def insertLog(s: LogMapState, bh: Blackhole): Unit = {
+    val newRef = MemoryLocation.unsafe("foo")
+    val newHwd = HalfWordDescriptor(newRef, "x", "y", version = 0L)
+    bh.consume(s.map.updated(newRef, newHwd))
+  }
+
+  @Benchmark
+  def insertTree(s: TreeMapState, bh: Blackhole): Unit = {
+    val newRef = MemoryLocation.unsafe("foo")
+    val newHwd = HalfWordDescriptor(newRef, "x", "y", version = 0L)
+    bh.consume(s.map.updated(newRef.cast[Any], newHwd))
+  }
+
+  @Benchmark
   def lookupBaseline(s: BaselineState, rnd: RandomState, bh: Blackhole): Unit = {
     val isDummy = (s.size == 0) || ((rnd.nextInt() % 2) == 0)
     val key = if (!isDummy) {
@@ -67,28 +88,46 @@ private[mcas] class LogMapBench {
       val idx = rnd.nextIntBounded(DummySize)
       s.dummyKeys(idx)
     }
-    bh.consume(s.map.getOrElse(key.asInstanceOf[MemoryLocation[Any]], null))
+    bh.consume(s.map.getOrElse(key.cast[Any], null))
   }
 
   @Benchmark
-  def insertBaseline(@unused s: LogMapState, bh: Blackhole): Unit = {
-    val newRef = MemoryLocation.unsafe("foo")
-    val newHwd = HalfWordDescriptor(newRef, "x", "y", version = 0L)
-    bh.consume(newHwd)
+  def overwriteBaseline(s: BaselineState, rnd: RandomState, bh: Blackhole): Unit = {
+    if (s.size == 0) {
+      bh.consume(0)
+    } else {
+      val idx = rnd.nextIntBounded(s.size)
+      val key = s.keys(idx)
+      bh.consume(key)
+      val newHwd = s.newHwds(idx)
+      bh.consume(newHwd)
+    }
   }
 
   @Benchmark
-  def insertLog(s: LogMapState, bh: Blackhole): Unit = {
-    val newRef = MemoryLocation.unsafe("foo")
-    val newHwd = HalfWordDescriptor(newRef, "x", "y", version = 0L)
-    bh.consume(s.map.updated(newRef, newHwd))
+  def overwriteLog(s: LogMapState, rnd: RandomState, bh: Blackhole): Unit = {
+    if (s.size == 0) {
+      bh.consume(0)
+    } else {
+      val idx = rnd.nextIntBounded(s.size)
+      val key = s.keys(idx)
+      bh.consume(key)
+      val newHwd = s.newHwds(idx)
+      bh.consume(s.map.updated(key, newHwd))
+    }
   }
 
   @Benchmark
-  def insertTree(s: LogMapState, bh: Blackhole): Unit = {
-    val newRef = MemoryLocation.unsafe("foo")
-    val newHwd = HalfWordDescriptor(newRef, "x", "y", version = 0L)
-    bh.consume(s.map.updated(newRef, newHwd))
+  def overwriteTree(s: TreeMapState, rnd: RandomState, bh: Blackhole): Unit = {
+    if (s.size == 0) {
+      bh.consume(0)
+    } else {
+      val idx = rnd.nextIntBounded(s.size)
+      val key = s.keys(idx)
+      bh.consume(key)
+      val newHwd = s.newHwds(idx)
+      bh.consume(s.map.updated(key.cast[Any], newHwd))
+    }
   }
 }
 
@@ -106,13 +145,19 @@ object LogMapBench {
     var keys: Array[MemoryLocation[String]] =
       _
 
+    var newHwds: Array[HalfWordDescriptor[String]] =
+      _
+
     var dummyKeys: Array[MemoryLocation[String]] =
       _
 
     def baseSetup(): Unit = {
       this.keys = new Array(this.size)
+      this.newHwds = new Array(this.size)
       for (idx <- 0 until this.size) {
-        this.keys(idx) = MemoryLocation.unsafe("a")
+        val ref = MemoryLocation.unsafe("a")
+        this.keys(idx) = ref
+        this.newHwds(idx) = HalfWordDescriptor(ref, "a", "c", version = 0L)
       }
       this.dummyKeys = new Array(DummySize)
       for (idx <- 0 until DummySize) {
@@ -158,7 +203,7 @@ object LogMapBench {
       this.baseSetup()
       for (ref <- this.keys) {
         this.map = this.map.updated(
-          ref.asInstanceOf[MemoryLocation[Any]],
+          ref.cast[Any],
           HalfWordDescriptor(ref, "a", "b", version = Version.Start).cast[Any],
         )
       }
