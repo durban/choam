@@ -110,27 +110,31 @@ private object LogMap {
   /** Invariant: has more than 1, and at most `MaxArraySize` items */
   private final class LogMapArray(
     private val array: Array[HalfWordDescriptor[Any]],
-    //private[this] val ordering: Ordering[HalfWordDescriptor[Any]],
+    private[this] val ord: MemoryLocationOrdering[Any],
   ) extends LogMap {
 
     require((array.length > 1) && (array.length <= MaxArraySize))
 
     def this(v1: HalfWordDescriptor[_], v2: HalfWordDescriptor[_]) = {
-      this({
-        require(v1.address ne v2.address)
-        val v1Any = v1.asInstanceOf[HalfWordDescriptor[Any]]
-        val v2Any = v2.asInstanceOf[HalfWordDescriptor[Any]]
-        val arr = new Array[HalfWordDescriptor[Any]](2)
-        if (MemoryLocation.orderingInstance.lt(v1Any.address, v2Any.address)) { // v1 < v2
-          arr(0) = v1Any
-          arr(1) = v2Any
-        } else { // v1 > v2
-          assert(MemoryLocation.orderingInstance.gt(v1Any.address, v2Any.address))
-          arr(0) = v2Any
-          arr(1) = v1Any
-        }
-        arr
-      })
+      this(
+        {
+          require(v1.address ne v2.address)
+          val ord = MemoryLocation.memoryLocationOrdering
+          val v1Any = v1.asInstanceOf[HalfWordDescriptor[Any]]
+          val v2Any = v2.asInstanceOf[HalfWordDescriptor[Any]]
+          val arr = new Array[HalfWordDescriptor[Any]](2)
+          if (ord.lt(v1Any.address, v2Any.address)) { // v1 < v2
+            arr(0) = v1Any
+            arr(1) = v2Any
+          } else { // v1 > v2
+            assert(ord.gt(v1Any.address, v2Any.address))
+            arr(0) = v2Any
+            arr(1) = v1Any
+          }
+          arr
+        },
+        MemoryLocation.memoryLocationOrdering,
+      )
     }
 
     final override def size =
@@ -152,7 +156,7 @@ private object LogMap {
         // overwrite
         val newArr = Arrays.copyOf(this.array, this.array.length)
         newArr(idx) = v.cast[Any]
-        new LogMapArray(newArr)
+        new LogMapArray(newArr, ord)
       } else {
         // insert
         val newLength = this.array.length + 1
@@ -165,7 +169,7 @@ private object LogMap {
           if (remaining > 0) {
             System.arraycopy(this.array, insertIdx, newArr, insertIdx + 1, remaining)
           }
-          new LogMapArray(newArr)
+          new LogMapArray(newArr, ord)
         } else {
           new LogMapTree(this.array, extra = v.cast[Any])
         }
@@ -203,7 +207,6 @@ private object LogMap {
 
     private[this] final def binSearch[A](loc: MemoryLocation[A]): Int = {
       val ref = loc.cast[Any]
-      val ord = MemoryLocation.orderingInstance[Any]
       def go(l: Int, r: Int): Int = {
         if (l <= r) {
           val m = (l + r) >>> 1
@@ -233,7 +236,7 @@ private object LogMap {
     def this(arr: Array[HalfWordDescriptor[Any]], extra: HalfWordDescriptor[Any]) = {
       this({
         val b = TreeMap.newBuilder[MemoryLocation[Any], HalfWordDescriptor[Any]](
-          MemoryLocation.orderingInstance[Any]
+          MemoryLocation.memoryLocationOrdering
         )
         var idx = 0
         while (idx < arr.length) {

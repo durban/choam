@@ -124,41 +124,18 @@ object MemoryLocation extends MemoryLocationInstances0 {
     new PaddedMemoryLocation[A](initial, i0, i1, i2, i3)
   }
 
-  def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
-    import java.lang.Long.compare
-    if (a eq b) 0
-    else {
-      val i0 = compare(a.id0, b.id0)
-      if (i0 != 0) i0
-      else {
-        val i1 = compare(a.id1, b.id1)
-        if (i1 != 0) i1
-        else {
-          val i2 = compare(a.id2, b.id2)
-          if (i2 != 0) i2
-          else {
-            val i3 = compare(a.id3, b.id3)
-            if (i3 != 0) i3
-            else {
-              // TODO: maybe AssertionError? Or impossible()?
-              throw new IllegalStateException(s"[globalCompare] ref collision: ${a} and ${b}")
-            }
-          }
-        }
-      }
-    }
+  final def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
+    this.orderingInstance.compare(a.cast[Any], b.cast[Any])
   }
 }
 
 private[mcas] sealed abstract class MemoryLocationInstances0 extends MemoryLocationInstances1 { self: MemoryLocation.type =>
 
-  private[this] val _orderingInstance = new Ordering[MemoryLocation[Any]] {
-    final override def compare(x: MemoryLocation[Any], y: MemoryLocation[Any]): Int =
-      self.globalCompare(x, y)
-  }
+  private[mcas] val memoryLocationOrdering =
+    new MemoryLocationOrdering[Any]
 
   implicit def orderingInstance[A]: Ordering[MemoryLocation[A]] =
-    _orderingInstance.asInstanceOf[Ordering[MemoryLocation[A]]]
+    memoryLocationOrdering.asInstanceOf[Ordering[MemoryLocation[A]]]
 }
 
 private[mcas] sealed abstract class MemoryLocationInstances1 { self: MemoryLocation.type =>
