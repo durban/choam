@@ -32,24 +32,30 @@ private[mcas] class LogMapBench {
   import LogMapBench._
 
   @Benchmark
-  def insertBaseline(bh: Blackhole): Unit = {
-    val newRef = MemoryLocation.unsafe("foo")
-    val newHwd = HalfWordDescriptor(newRef, "x", "y", version = 0L)
+  def insertBaseline(s: BaselineState, rnd: RandomState, bh: Blackhole): Unit = {
+    val idx = rnd.nextIntBounded(DummySize)
+    val newKey = s.dummyKeys(idx)
+    bh.consume(newKey)
+    val newHwd = s.dummyHwds(idx)
     bh.consume(newHwd)
   }
 
   @Benchmark
-  def insertLog(s: LogMapState, bh: Blackhole): Unit = {
-    val newRef = MemoryLocation.unsafe("foo")
-    val newHwd = HalfWordDescriptor(newRef, "x", "y", version = 0L)
-    bh.consume(s.map.updated(newRef, newHwd))
+  def insertLog(s: LogMapState, rnd: RandomState, bh: Blackhole): Unit = {
+    val idx = rnd.nextIntBounded(DummySize)
+    val newKey = s.dummyKeys(idx)
+    bh.consume(newKey)
+    val newHwd = s.dummyHwds(idx)
+    bh.consume(s.map.updated(newKey, newHwd))
   }
 
   @Benchmark
-  def insertTree(s: TreeMapState, bh: Blackhole): Unit = {
-    val newRef = MemoryLocation.unsafe("foo")
-    val newHwd = HalfWordDescriptor(newRef, "x", "y", version = 0L)
-    bh.consume(s.map.updated(newRef.cast[Any], newHwd))
+  def insertTree(s: TreeMapState, rnd: RandomState, bh: Blackhole): Unit = {
+    val idx = rnd.nextIntBounded(DummySize)
+    val newKey = s.dummyKeys(idx)
+    bh.consume(newKey)
+    val newHwd = s.dummyHwds(idx)
+    bh.consume(s.map.updated(newKey.cast[Any], newHwd))
   }
 
   @Benchmark
@@ -151,6 +157,9 @@ object LogMapBench {
     var dummyKeys: Array[MemoryLocation[String]] =
       _
 
+    var dummyHwds: Array[HalfWordDescriptor[String]] =
+      _
+
     def baseSetup(): Unit = {
       this.keys = new Array(this.size)
       this.newHwds = new Array(this.size)
@@ -160,8 +169,11 @@ object LogMapBench {
         this.newHwds(idx) = HalfWordDescriptor(ref, "a", "c", version = 0L)
       }
       this.dummyKeys = new Array(DummySize)
+      this.dummyHwds = new Array(DummySize)
       for (idx <- 0 until DummySize) {
-        this.dummyKeys(idx) = MemoryLocation.unsafe("x")
+        val ref = MemoryLocation.unsafe("x")
+        this.dummyKeys(idx) = ref
+        this.dummyHwds(idx) = HalfWordDescriptor(ref, "x", "y", version = 0L)
       }
     }
   }
