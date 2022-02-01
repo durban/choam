@@ -91,6 +91,11 @@ trait MemoryLocation[A] {
   def id2: Long
 
   def id3: Long
+
+  // private utilities:
+
+  private[mcas] final def cast[B]: MemoryLocation[B] =
+    this.asInstanceOf[MemoryLocation[B]]
 }
 
 object MemoryLocation extends MemoryLocationInstances0 {

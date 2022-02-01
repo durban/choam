@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package mcas
 
+import java.util.Arrays
+
 import scala.collection.immutable.TreeMap
 import scala.collection.AbstractIterator
 import scala.util.hashing.MurmurHash3
@@ -70,12 +72,7 @@ private object LogMap {
       if (k eq v1.address) {
         new LogMap1(v)
       } else {
-        val b = TreeMap.newBuilder[MemoryLocation[Any], HalfWordDescriptor[Any]](
-          MemoryLocation.orderingInstance[Any]
-        )
-        b += ((v1.address.asInstanceOf[MemoryLocation[Any]], v1.cast[Any]))
-        b += ((k.asInstanceOf[MemoryLocation[Any]], v.cast[Any]))
-        new LogMapTree(b.result())
+        new LogMapArray(v1, v)
       }
     }
     final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
@@ -88,9 +85,132 @@ private object LogMap {
       MurmurHash3.finalizeHash(v1.##, 1)
   }
 
-  /** Invariant: `treeMap` has more items than the greatest `N` in the `LogMapN`s */
+  private[this] final val MaxArraySize =
+    1024 // TODO: this is almost certainly too big
+
+  /** Invariant: has more than 1, and at most `MaxArraySize` items */
+  private final class LogMapArray(
+    private val array: Array[HalfWordDescriptor[Any]],
+    //private[this] val ordering: Ordering[HalfWordDescriptor[Any]],
+  ) extends LogMap {
+    require((array.length > 1) && (array.length <= MaxArraySize))
+    def this(v1: HalfWordDescriptor[_], v2: HalfWordDescriptor[_]) = {
+      this({
+        require(v1.address ne v2.address)
+        val v1Any = v1.asInstanceOf[HalfWordDescriptor[Any]]
+        val v2Any = v2.asInstanceOf[HalfWordDescriptor[Any]]
+        val arr = new Array[HalfWordDescriptor[Any]](2)
+        if (MemoryLocation.orderingInstance.lt(v1Any.address, v2Any.address)) { // v1 < v2
+          arr(0) = v1Any
+          arr(1) = v2Any
+        } else { // v1 > v2
+          assert(MemoryLocation.orderingInstance.gt(v1Any.address, v2Any.address))
+          arr(0) = v2Any
+          arr(1) = v1Any
+        }
+        arr
+      })
+    }
+    final override def size =
+      array.length
+    final override def valuesIterator: Iterator[HalfWordDescriptor[_]] =
+      array.iterator
+    final override def nonEmpty =
+      true
+    final override def contains[A](ref: MemoryLocation[A]) =
+      binSearch(ref) >= 0
+    final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
+      require(v.address eq k)
+      val idx = binSearch(k)
+      if (idx >= 0) {
+        // overwrite
+        val newArr = Arrays.copyOf(this.array, this.array.length)
+        newArr(idx) = v.cast[Any]
+        new LogMapArray(newArr)
+      } else {
+        // insert
+        val newLength = this.array.length + 1
+        if (newLength <= MaxArraySize) {
+          val insertIdx = -(idx + 1)
+          val newArr = new Array[HalfWordDescriptor[Any]](this.array.length + 1)
+          System.arraycopy(this.array, 0, newArr, 0, insertIdx)
+          newArr(insertIdx) = v.cast[Any]
+          val remaining = (newArr.length - 1) - insertIdx
+          if (remaining > 0) {
+            System.arraycopy(this.array, insertIdx, newArr, insertIdx + 1, remaining)
+          }
+          new LogMapArray(newArr)
+        } else {
+          new LogMapTree(this.array, extra = v.cast[Any])
+        }
+      }
+    }
+    final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) = {
+      val idx = binSearch(k)
+      if (idx >= 0) array(idx).cast[A]
+      else default
+    }
+    final override def equals(that: Any): Boolean = that match {
+      case that: LogMapArray =>
+        (this eq that) || {
+          (this.array.length == that.array.length) && {
+            def go(idx: Int): Boolean = {
+              if (idx == this.array.length) {
+                true
+              } else if (this.array(idx) == that.array(idx)) {
+                go(idx + 1)
+              } else {
+                false
+              }
+            }
+            go(0)
+          }
+        }
+      case _ =>
+        false
+    }
+    final override def hashCode: Int =
+      MurmurHash3.arrayHash(this.array)
+    private[this] final def binSearch[A](loc: MemoryLocation[A]): Int = {
+      val ref = loc.asInstanceOf[MemoryLocation[Any]]
+      val ord = MemoryLocation.orderingInstance[Any]
+      def go(l: Int, r: Int): Int = {
+        if (l <= r) {
+          val m = (l + r) >>> 1
+          ord.compare(array(m).address, ref) match {
+            case o if o < 0 => // <
+              go(l = m + 1, r = r)
+            case o if o > 0 => // >
+              go(l = l, r = m - 1)
+            case _ => // =
+              m
+          }
+        } else {
+          -(l + 1)
+        }
+      }
+      go(l = 0, r = array.length - 1)
+    }
+  }
+
+  /** Invariant: `treeMap` has more items than `MaxArraySize` */
   private final class LogMapTree(private val treeMap: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]]) extends LogMap {
-    require(treeMap.size > 1) // checks invariant
+    require(treeMap.size > MaxArraySize)
+    def this(arr: Array[HalfWordDescriptor[Any]], extra: HalfWordDescriptor[Any]) = {
+      this({
+        val b = TreeMap.newBuilder[MemoryLocation[Any], HalfWordDescriptor[Any]](
+          MemoryLocation.orderingInstance[Any]
+        )
+        var idx = 0
+        while (idx < arr.length) {
+          val hwd = arr(idx)
+          b += ((hwd.address, hwd))
+          idx += 1
+        }
+        b += ((extra.address, extra))
+        b.result()
+      })
+    }
     final override def size =
       treeMap.size
     final override def valuesIterator: Iterator[HalfWordDescriptor[_]] =
