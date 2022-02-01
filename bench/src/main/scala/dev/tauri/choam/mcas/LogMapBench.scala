@@ -69,6 +69,27 @@ private[mcas] class LogMapBench {
     }
     bh.consume(s.map.getOrElse(key.asInstanceOf[MemoryLocation[Any]], null))
   }
+
+  @Benchmark
+  def insertBaseline(@unused s: LogMapState, bh: Blackhole): Unit = {
+    val newRef = MemoryLocation.unsafe("foo")
+    val newHwd = HalfWordDescriptor(newRef, "x", "y", version = 0L)
+    bh.consume(newHwd)
+  }
+
+  @Benchmark
+  def insertLog(s: LogMapState, bh: Blackhole): Unit = {
+    val newRef = MemoryLocation.unsafe("foo")
+    val newHwd = HalfWordDescriptor(newRef, "x", "y", version = 0L)
+    bh.consume(s.map.updated(newRef, newHwd))
+  }
+
+  @Benchmark
+  def insertTree(s: LogMapState, bh: Blackhole): Unit = {
+    val newRef = MemoryLocation.unsafe("foo")
+    val newHwd = HalfWordDescriptor(newRef, "x", "y", version = 0L)
+    bh.consume(s.map.updated(newRef, newHwd))
+  }
 }
 
 object LogMapBench {
