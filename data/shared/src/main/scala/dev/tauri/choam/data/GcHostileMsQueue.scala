@@ -18,6 +18,9 @@
 package dev.tauri.choam
 package data
 
+import cats.Monad
+import cats.syntax.all._
+
 import GcHostileMsQueue._
 
 /**
@@ -27,14 +30,14 @@ import GcHostileMsQueue._
  * objects, including `Ref`s, which are only used once
  * (see `GcBench`).
  */
-private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], els: Iterable[A])
+private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
   extends Queue[A] {
 
   private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel)
   private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel)
 
-  private def this(els: Iterable[A]) =
-    this(Node(nullOf[A], Ref.unsafe(End[A]())), els)
+  private def this() =
+    this(Node(nullOf[A], Ref.unsafe(End[A]())))
 
   override val tryDeque: Axn[Option[A]] = {
     for {
@@ -67,10 +70,6 @@ private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A],
       }
     })
   }
-
-  els.foreach { a =>
-    enqueue.unsafePerform(a, mcas.MCAS.ThreadConfinedMCAS)
-  }
 }
 
 private[choam] object GcHostileMsQueue {
@@ -79,6 +78,12 @@ private[choam] object GcHostileMsQueue {
   private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
   private final case class End[A]() extends Elem[A]
 
-  def fromList[A](as: List[A]): Axn[GcHostileMsQueue[A]] =
-    Rxn.unsafe.delay { _ => new GcHostileMsQueue(as) }
+  def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[GcHostileMsQueue[A]] = {
+    implicit val monadF: Monad[F] = F.monad
+    Rxn.unsafe.delay { (_: Any) => new GcHostileMsQueue[A] }.run[F].flatMap { q =>
+      as.traverse { a =>
+        q.enqueue[F](a)
+      }.as(q)
+    }
+  }
 }

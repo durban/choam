@@ -51,7 +51,9 @@ object GcBench {
     final val size = 4096
 
     val circle: List[GcHostileMsQueue[String]] = List.fill(circleSize) {
-      GcHostileMsQueue.fromList(Prefill.prefill().toList).unsafeRun(EMCAS)
+      GcHostileMsQueue.fromList[cats.effect.SyncIO, String](
+        Prefill.prefill().toList
+      ).unsafeRunSync()
     }
 
     def transferOne(idx: Int): Axn[Unit] = {
