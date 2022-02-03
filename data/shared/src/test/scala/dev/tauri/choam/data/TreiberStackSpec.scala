@@ -18,17 +18,22 @@
 package dev.tauri.choam
 package data
 
+import cats.effect.IO
+
 final class TreiberStackSpecThreadConfinedMCAS
-  extends TreiberStackSpec
+  extends BaseSpecIO
+  with TreiberStackSpec[IO]
   with SpecThreadConfinedMCAS
 
-abstract class TreiberStackSpec extends BaseSpecA { this: KCASImplSpec =>
+trait TreiberStackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("TreiberStack should include the elements passed to its constructor") {
-    val s1 = TreiberStack.fromList[Int](Nil).unsafePerform(null, this.kcasImpl)
-    assertEquals(s1.unsafeToList(this.kcasImpl), Nil)
-    val s2 = TreiberStack.fromList[Int](List(1, 2, 3)).unsafePerform(null, this.kcasImpl)
-    assertEquals(s2.unsafeToList(this.kcasImpl), List(3, 2, 1))
+    for {
+      s1 <- TreiberStack.fromList[F, Int](Nil)
+      _ <- assertResultF(F.delay(s1.unsafeToList(this.kcasImpl)), Nil)
+      s2 <- TreiberStack.fromList[F, Int](List(1, 2, 3))
+      _ <- assertResultF(F.delay(s2.unsafeToList(this.kcasImpl)), List(3, 2, 1))
+    } yield ()
   }
 
   test("TreiberStack should be a stack") {

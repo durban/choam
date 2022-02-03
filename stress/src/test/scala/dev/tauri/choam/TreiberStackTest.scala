@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import cats.effect.SyncIO
+
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
@@ -34,7 +36,7 @@ import data.TreiberStack
 class TreiberStackTest extends StressTestBase {
 
   private[this] val stack =
-    TreiberStack.fromList[String](List("z")).unsafePerform(null, this.impl)
+    TreiberStack.fromList[SyncIO, String](List("z")).unsafeRunSync()
 
   private[this] val _push =
     stack.push

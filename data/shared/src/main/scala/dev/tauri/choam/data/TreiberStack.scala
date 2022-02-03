@@ -18,6 +18,9 @@
 package dev.tauri.choam
 package data
 
+import cats.Monad
+import cats.syntax.all._
+
 private[choam] final class TreiberStack[A] private () extends Stack[A] {
 
   import TreiberStack._
@@ -49,13 +52,12 @@ private[choam] object TreiberStack {
   def apply[A]: Axn[TreiberStack[A]] =
     Rxn.unsafe.delay { _ => new TreiberStack[A] }
 
-  def fromList[A](as: List[A]): Axn[TreiberStack[A]] = {
-    Rxn.unsafe.context { ctx =>
-      val s = new TreiberStack[A]
-      as.foreach { a =>
-        s.push.unsafePerformInternal(a, ctx = ctx)
-      }
-      s
+  def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[TreiberStack[A]] = {
+    implicit val monadF: Monad[F] = F.monad
+    apply[A].run[F].flatMap { stack =>
+      as.traverse { a =>
+        stack.push[F](a)
+      }.as(stack)
     }
   }
 

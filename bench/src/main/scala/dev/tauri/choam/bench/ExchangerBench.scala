@@ -54,7 +54,7 @@ object ExchangerBench {
   class St {
 
     private[this] val exchanger: Exchanger[String, String] =
-      RxnProfiler.profiledExchanger[String, String].unsafePerform((), mcas.MCAS.EMCAS)
+      RxnProfiler.profiledExchanger[String, String].unsafePerform((), mcas.MCAS.NullMcas)
 
     val left: Rxn[String, Option[String]] =
       exchanger.exchange.?

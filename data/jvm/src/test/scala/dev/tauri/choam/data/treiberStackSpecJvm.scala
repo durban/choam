@@ -18,10 +18,14 @@
 package dev.tauri.choam
 package data
 
+import cats.effect.IO
+
 final class TreiberStackSpecSpinLockMCAS
-  extends TreiberStackSpec
+  extends BaseSpecIO
+  with TreiberStackSpec[IO]
   with SpecSpinLockMCAS
 
 final class TreiberStackSpecEMCAS
-  extends TreiberStackSpec
+  extends BaseSpecIO
+  with TreiberStackSpec[IO]
   with SpecEMCAS

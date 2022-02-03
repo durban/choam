@@ -82,12 +82,12 @@ object RandomBench {
     val baseline: Axn[Int] =
       Rxn.pure(42)
     val rndThreadLocalContext: Random[Axn] =
-      Rxn.fastRandom.unsafeRun(mcas.MCAS.EMCAS)
+      Rxn.fastRandom.unsafeRun(mcas.MCAS.NullMcas)
     val rndThreadLocalContextCached: Random[Axn] =
-      Rxn.fastRandomCached.unsafeRun(mcas.MCAS.EMCAS)
+      Rxn.fastRandomCached.unsafeRun(mcas.MCAS.NullMcas)
     val rndThreadLocalContextCtxSupp: Random[Axn] =
-      Rxn.fastRandomCtxSupp.unsafeRun(mcas.MCAS.EMCAS)
+      Rxn.fastRandomCtxSupp.unsafeRun(mcas.MCAS.NullMcas)
     val rndSecure: Random[Axn] =
-      Rxn.secureRandom.unsafeRun(mcas.MCAS.EMCAS)
+      Rxn.secureRandom.unsafeRun(mcas.MCAS.NullMcas)
   }
 }

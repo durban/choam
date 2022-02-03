@@ -39,6 +39,6 @@ object Counter {
   def apply: Axn[Counter] =
     Ref(0L).map(new Counter(_))
 
-  private[choam] def unsafe(): Counter =
-    new Counter(Ref.unsafe(0L))
+  private[choam] def unsafe(initial: Long = 0L): Counter =
+    new Counter(Ref.unsafe(initial))
 }
