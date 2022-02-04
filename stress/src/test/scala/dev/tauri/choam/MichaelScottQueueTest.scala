@@ -30,7 +30,7 @@ import cats.effect.SyncIO
 @Outcomes(Array(
   new Outcome(id = Array("Some(z), Some(x), List(y)", "Some(z), None, List(x, y)"), expect = ACCEPTABLE, desc = "enq1 first; deq1 first"),
   new Outcome(id = Array("Some(x), Some(z), List(y)", "None, Some(z), List(x, y)"), expect = ACCEPTABLE, desc = "enq1 first; deq2 first"),
-  new Outcome(id = Array("Some(z), Some(y), List(x)", "Some(z), None, List(y, x)"), expect = ACCEPTABLE, desc = "enq2 first; deq1 first"),
+  new Outcome(id = Array("Some(z), Some(y), List(x)", "Some(z), None, List(y, x)"), expect = ACCEPTABLE_INTERESTING, desc = "enq2 first; deq1 first"),
   new Outcome(id = Array("Some(y), Some(z), List(x)", "None, Some(z), List(y, x)"), expect = ACCEPTABLE, desc = "enq2 first; deq2 first")
 ))
 class MichaelScottQueueTest extends MsQueueStressTestBase {
