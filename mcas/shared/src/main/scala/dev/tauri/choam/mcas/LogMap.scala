@@ -105,7 +105,7 @@ private object LogMap {
   }
 
   private[this] final val MaxArraySize =
-    1024 // TODO: this is almost certainly too big
+    4 // TODO: determine size
 
   /** Invariant: has more than 1, and at most `MaxArraySize` items */
   private final class LogMapArray(
