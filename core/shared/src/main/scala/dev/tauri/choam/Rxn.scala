@@ -366,6 +366,7 @@ object Rxn extends RxnInstances0 {
 
   final object unsafe {
 
+    // TODO: rename to `directRead`
     def invisibleRead[A](r: Ref[A]): Axn[A] =
       new InvisibleRead[A](r.loc)
 

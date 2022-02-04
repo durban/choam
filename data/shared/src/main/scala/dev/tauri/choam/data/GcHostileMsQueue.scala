@@ -40,35 +40,37 @@ private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
     this(Node(nullOf[A], Ref.unsafe(End[A]())))
 
   override val tryDeque: Axn[Option[A]] = {
-    for {
-      node <- head.unsafeInvisibleRead
-      next <- node.next.unsafeInvisibleRead
-      res <- next match {
-        case n @ Node(a, _) =>
-          // No need to also validate `node.next`, since
-          // it is not the last node (thus it won't change).
-          head.unsafeCas(node, n.copy(data = nullOf[A])) >>> Rxn.ret(Some(a))
-        case End() =>
-          head.unsafeCas(node, node) >>> node.next.unsafeCas(next, next) >>> Rxn.ret(None)
+    head.modifyWith { node =>
+      node.next.get.flatMapF { next =>
+        next match {
+          case n @ Node(a, _) =>
+            Rxn.pure((n.copy(data = nullOf[A]), Some(a)))
+          case End() =>
+            Rxn.pure((node, None))
+        }
       }
-    } yield res
+    }
   }
 
   override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
+    // TODO: This is cheating: we're using
+    // TODO: `computed` as `delay` (`newNode`
+    // TODO: has a side-effect).
     findAndEnqueue(Node(a, Ref.unsafe(End[A]())))
   }
 
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    Rxn.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMapF { (n: Node[A]) =>
-      n.next.unsafeInvisibleRead.flatMapF {
-        case e @ End() =>
-          // found true tail; will CAS, and try to adjust the tail ref:
-          Rxn.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))
+    def go(n: Node[A], originalTail: Node[A]): Axn[Unit] = {
+      n.next.get.flatMapF {
+        case End() =>
+          // found true tail; will update, and try to adjust the tail ref:
+          n.next.set.provide(node).postCommit(tail.unsafeCas(originalTail, node).?.void)
         case nv @ Node(_, _) =>
-          // not the true tail; try to catch up, and will retry:
-          tail.unsafeCas(n, nv).?.as(Rxn.unsafe.retry)
+          // not the true tail; try to catch up, and continue:
+          go(n = nv, originalTail = originalTail)
       }
-    })
+    }
+    tail.get.flatMapF { t => go(t, t) }
   }
 }
 

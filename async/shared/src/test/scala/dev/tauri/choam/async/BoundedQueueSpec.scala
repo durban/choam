@@ -61,6 +61,23 @@ trait BoundedQueueSpec[F[_]]
     } yield ()
   }
 
+  test("BoundedQueue multiple enq in a Rxn") {
+    for {
+      s <- BoundedQueue[F, String](bound = 4).run[F]
+      f1 <- s.deque.start
+      _ <- this.tickAll
+      f2 <- s.deque.start
+      _ <- this.tickAll
+      f3 <- s.deque.start
+      _ <- this.tickAll
+      rxn = s.tryEnqueue.provide("a") * s.tryEnqueue.provide("b") * s.tryEnqueue.provide("c")
+      _ <- rxn.run[F]
+      _ <- assertResultF(f1.joinWithNever, "a")
+      _ <- assertResultF(f2.joinWithNever, "b")
+      _ <- assertResultF(f3.joinWithNever, "c")
+    } yield ()
+  }
+
   test("BoundedQueue full enqueue") {
     for {
       s <- BoundedQueue[F, String](bound = 4).run[F]

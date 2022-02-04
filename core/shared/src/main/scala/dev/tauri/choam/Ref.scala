@@ -53,7 +53,10 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
   final def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
     Rxn.ref.updWith(this)(f)
 
-  // TODO: rename to `unsafeDirectRead`
+  final def unsafeDirectRead: Axn[A] =
+    Rxn.unsafe.invisibleRead(this)
+
+  // TODO: remove this (use `unsafeDirectRead`)
   final def unsafeInvisibleRead: Axn[A] =
     Rxn.unsafe.invisibleRead(this)
 

@@ -46,16 +46,24 @@ object BoundedQueue {
               maxSize
 
             final override def tryEnqueue: A =#> Boolean = {
-              s.updWith[A, Boolean] { (size, a) =>
+              val waitingEnq = {
+                getters.tryDeque.flatMap {
+                  case None => Rxn.unsafe.retry
+                  case Some(p) => p.complete
+                }
+              }
+              val realEnq = s.updWith[A, Boolean] { (size, a) =>
                 if (size < maxSize) {
                   q.enqueue.provide(a).as((size + 1, true))
                 } else {
                   Rxn.pure((size, false))
                 }
               }
+              waitingEnq + realEnq
             }
 
             final override def tryDeque: Axn[Option[A]] = {
+              // TODO: also consider setters
               q.tryDeque.flatMapF {
                 case r @ Some(_) => s.update(_ - 1).as(r)
                 case None => Rxn.pure(None)
