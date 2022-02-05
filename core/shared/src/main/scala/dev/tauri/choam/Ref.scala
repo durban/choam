@@ -45,6 +45,9 @@ import mcas.MemoryLocation
  */
 trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
 
+  final override def get: Axn[A] =
+    Rxn.ref.get(this)
+
   // TODO: needs better name (it's like `modify`)
   final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
     Rxn.ref.upd(this)(f)

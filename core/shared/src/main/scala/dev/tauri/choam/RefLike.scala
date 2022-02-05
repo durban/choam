@@ -24,6 +24,8 @@ trait RefLike[A] {
 
   // abstract:
 
+  def get: Axn[A]
+
   def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C]
 
   def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C]
@@ -33,10 +35,6 @@ trait RefLike[A] {
   private[choam] def unsafeCas(ov: A, nv: A): Axn[Unit]
 
   // derived implementations:
-
-  // TODO: due to commitTs validation, we could have a "real" read
-  final def get: Axn[A] =
-    upd[Any, A] { (oa, _) => (oa, oa) }
 
   final def set: Rxn[A, Unit] =
     getAndSet.void

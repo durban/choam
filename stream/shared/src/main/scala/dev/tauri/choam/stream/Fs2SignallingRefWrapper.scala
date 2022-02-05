@@ -42,6 +42,9 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
 
   private[this] val _refLike: RefLike[A] = new RefLike[A] {
 
+    final override def get: Axn[A] =
+      underlying.get
+
     private[choam] final override def unsafeDirectRead: Axn[A] =
       underlying.unsafeDirectRead
 

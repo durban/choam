@@ -335,6 +335,9 @@ object Rxn extends RxnInstances0 {
 
   final object ref {
 
+    private[choam] final def get[A](r: Ref[A]): Axn[A] =
+      new Read(r.loc)
+
     final def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
       new Upd(r.loc, f)
 
@@ -426,22 +429,22 @@ object Rxn extends RxnInstances0 {
 
   /** Only the interpreter can use this! */
   private final class Commit[A]() extends Rxn[A, A] {
-    private[choam] final def tag = 0
+    private[choam] final override def tag = 0
     final override def toString: String = "Commit()"
   }
 
   private final class AlwaysRetry[A, B]() extends Rxn[A, B] {
-    private[choam] final def tag = 1
+    private[choam] final override def tag = 1
     final override def toString: String = "AlwaysRetry()"
   }
 
   private final class PostCommit[A](val pc: Rxn[A, Unit]) extends Rxn[A, A] {
-    private[choam] final def tag = 2
+    private[choam] final override def tag = 2
     final override def toString: String = s"PostCommit(${pc})"
   }
 
   private final class Lift[A, B](val func: A => B) extends Rxn[A, B] {
-    private[choam] final def tag = 3
+    private[choam] final override def tag = 3
     final override def toString: String = "Lift(<function>)"
   }
 
@@ -452,53 +455,53 @@ object Rxn extends RxnInstances0 {
 
   // TODO: we need a better name
   private final class DelayComputed[A, B](val prepare: Rxn[A, Axn[B]]) extends Rxn[A, B] {
-    private[choam] final def tag = 5
+    private[choam] final override def tag = 5
     final override def toString: String = s"DelayComputed(${prepare})"
   }
 
   private final class Choice[A, B](val left: Rxn[A, B], val right: Rxn[A, B]) extends Rxn[A, B] {
-    private[choam] final def tag = 6
+    private[choam] final override def tag = 6
     final override def toString: String = s"Choice(${left}, ${right})"
   }
 
   private final class Cas[A](val ref: MemoryLocation[A], val ov: A, val nv: A) extends Rxn[Any, Unit] {
-    private[choam] final def tag = 7
+    private[choam] final override def tag = 7
     final override def toString: String = s"Cas(${ref}, ${ov}, ${nv})"
   }
 
   private final class Upd[A, B, X](val ref: MemoryLocation[X], val f: (X, A) => (X, B)) extends Rxn[A, B] {
-    private[choam] final def tag = 8
+    private[choam] final override def tag = 8
     final override def toString: String = s"Upd(${ref}, <function>)"
   }
 
   private final class DirectRead[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
-    private[choam] final def tag = 9
+    private[choam] final override def tag = 9
     final override def toString: String = s"DirectRead(${ref})"
   }
 
   private final class Exchange[A, B](val exchanger: ExchangerImpl[A, B]) extends Rxn[A, B] {
-    private[choam] final def tag = 10
+    private[choam] final override def tag = 10
     final override def toString: String = s"Exchange(${exchanger})"
   }
 
   private final class AndThen[A, B, C](val left: Rxn[A, B], val right: Rxn[B, C]) extends Rxn[A, C] {
-    private[choam] final def tag = 11
+    private[choam] final override def tag = 11
     final override def toString: String = s"AndThen(${left}, ${right})"
   }
 
   private final class AndAlso[A, B, C, D](val left: Rxn[A, B], val right: Rxn[C, D]) extends Rxn[(A, C), (B, D)] {
-    private[choam] final def tag = 12
+    private[choam] final override def tag = 12
     final override def toString: String = s"AndAlso(${left}, ${right})"
   }
 
   /** Only the interpreter can use this! */
   private final class Done[A](val result: A) extends Rxn[Any, A] {
-    private[choam] final def tag = 13
+    private[choam] final override def tag = 13
     final override def toString: String = s"Done(${result})"
   }
 
   private final class Ctx[A](val uf: MCAS.ThreadContext => A) extends Rxn[Any, A] {
-    private[choam] final def tag = 14
+    private[choam] final override def tag = 14
     final override def toString: String = s"Ctx(<block>)"
   }
 
@@ -528,6 +531,11 @@ object Rxn extends RxnInstances0 {
       val rockLen = ObjStack.Lst.length(this.restOtherContK)
       s"FinishExchange(${hole}, <ObjStack.Lst of length ${rockLen}>, ${lenSelfContT})"
     }
+  }
+
+  private final class Read[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
+    private[choam] final override def tag = 19
+    final override def toString: String = s"Read(${ref})"
   }
 
   // Interpreter:
@@ -1108,6 +1116,16 @@ object Rxn extends RxnInstances0 {
           a = contK.pop() // the exchanged value we've got from the other thread
           //println(s"FinishExchange: our result is '${a}' - thread#${Thread.currentThread().getId()}")
           loop(next())
+        case 19 => // Read
+          val c = curr.asInstanceOf[Read[Any]]
+          val hwd = readMaybeFromLog(c.ref)
+          if (hwd eq null) {
+            loop(retry()) // TODO: optimize rollback based on version(?)
+          } else {
+            a = hwd.nv
+            desc = desc.addOrOverwrite(hwd)
+            loop(next())
+          }
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }
