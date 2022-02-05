@@ -131,7 +131,7 @@ private object SpinLockMCAS extends MCAS { self =>
             } else {
               val badVersion = if (head.address eq commitTs) {
                 if (isLocked(witness)) {
-                  None // TODO: this is probably not correct
+                  None
                 } else {
                   val ver = witness.asInstanceOf[Long]
                   Some(ver)

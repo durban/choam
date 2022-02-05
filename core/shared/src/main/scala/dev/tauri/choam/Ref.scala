@@ -33,15 +33,6 @@ import mcas.MemoryLocation
  * `Ref` is similar to [[java.util.concurrent.atomic.AtomicReference]]
  * or [[cats.effect.kernel.Ref]], but its operations are [[Rxn]]s.
  * Thus, operations on a `Ref` are composable with other [[Rxn]]s.
- *
- * However, operations which operate on the same [[Ref]] cannot
- * be composed. The reason for this is that it is not possible to
- * perform conflicting updates atomically. For example, if `r: Ref[Int]`
- * currently contains `42`, and the two operations to update it are
- * `a` to `43`, and `b` to `41`, then performing, e.g., `a * b` is not
- * possible since it would have to simultaneously change `r`'s value to
- * both `43` and `41`. (Currently performing such a [[Rxn]] throws
- * a runtime exception.)
  */
 trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
 

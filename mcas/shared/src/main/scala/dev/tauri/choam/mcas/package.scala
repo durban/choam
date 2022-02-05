@@ -43,9 +43,8 @@ package object mcas {
   private[choam] final def equ[A](x: A, y: A): Boolean =
     box(x) eq box(y)
 
-  // TODO: maybe AssertionError?
   private[choam] final def impossible(s: String): Nothing =
-    throw new IllegalStateException(s)
+    throw new AssertionError(s)
 
   private[choam] final def refHashString(
     i0: Long,

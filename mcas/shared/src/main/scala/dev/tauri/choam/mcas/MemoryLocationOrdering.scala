@@ -43,8 +43,7 @@ private final class MemoryLocationOrdering[A]
             val i3 = lcompare(a.id3, b.id3)
             if (i3 != 0) i3
             else {
-              // TODO: maybe AssertionError? Or impossible()?
-              throw new IllegalStateException(s"[globalCompare] ref collision: ${a} and ${b}")
+              impossible(s"[globalCompare] ref collision: ${a} and ${b}")
             }
           }
         }

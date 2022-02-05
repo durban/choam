@@ -27,6 +27,12 @@ import java.lang.ref.{ Reference, WeakReference }
 private object EMCAS extends MCAS { self => // TODO: make this a class
 
   /*
+   * This implementation has a few important
+   * differences from the one described in the paper.
+   *
+   *
+   * ### Markers ###
+   *
    * The paper which describes EMCAS omits detailed
    * description of the memory management technique.
    * However, as mentioned in the paper, memory management
@@ -116,7 +122,45 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
    *   replaced, except by another descriptor with the
    *   same mark.
    *
-   * TODO: write about versions.
+   *
+   * ### Versions ###
+   *
+   * To be able to detect inconsistent reads (and thus support
+   * opacity), refs also store their version. The EMCAS impl.
+   * has a global commit counter (commit-ts, commit version),
+   * which is a `Long` (a few values have special meaning,
+   * see `Version.isValid`). The version of a ref is the commit
+   * version which last changed the ref (or `Version.Start` if it
+   * was never changed).
+   *
+   * Versions (both of a ref and the global one) are always
+   * monotonically increasing.
+   *
+   * To support reading/writing of versions, a ref has the
+   * `unsafeGetVersionVolatile` and `unsafeCasVersionVolatile`
+   * methods. However, the version accessible by these is
+   * only correct, if the ref currently stores a value (and not
+   * a descriptor, see above). If it stores a descriptor, the
+   * current (logical) version is the one in the descriptor
+   * (the old or new version, depending on the state of the op).
+   * Thus, refs can have the following states:
+   *
+   *   content = value
+   *   version = any valid version
+   *   Meaning: the currently physically stored version is
+   *   the same as the logical version.
+   *
+   *   content = descriptor with parent status `EmcasStatus.Active`
+   *   version = (don't care)
+   *   Meaning: the logical version is the OLD version in the desc
+   *
+   *   content = descriptor with parent status `EmcasStatus.Successful`
+   *   version = (don't care)
+   *   Meaning: the logical version is the NEW version in the desc
+   *
+   *   content = descriptor with any other parent status
+   *   version = (don't care)
+   *   Meaning: the logical version is the OLD version in the desc
    */
 
   // TODO: this is unused (only 0 or non-0 matters)
