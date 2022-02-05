@@ -522,7 +522,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         case Left(oc) => assertF(oc.isError)
         case Right(oc) => assertF(oc.isError)
       }
-      _ <- assertResultF(ref.unsafeInvisibleRead.run[F], "abc")
+      _ <- assertResultF(ref.unsafeDirectRead.run[F], "abc")
     } yield ()
     tsk.replicateA(iterations)
   }

@@ -99,7 +99,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     - Some STM systems allow access to transactional memory from
       non-transactional code; `Rxn` doesn't support this, the contents of an
       `r: Ref[A]` can only be accessed from inside a `Rxn` (although there is a
-      read-only escape hatch: `r.unsafeInvisibleRead`).
+      read-only escape hatch: `r.unsafeDirectRead`).
   - Similarities between `Rxn`s and STM transactions include the following:
     - atomicity, consistency, isolation (TODO: explain that there are some differences)
   - Some STM implementations:

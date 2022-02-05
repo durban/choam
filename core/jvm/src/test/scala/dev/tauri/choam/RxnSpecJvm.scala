@@ -125,8 +125,8 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
       // `update` works fine:
       _ <- ref.update(_ + 1).run[F]
       _ <- assertResultF(ref.get.run[F], n + 1)
-      // `unsafeInvisibleRead` then `unsafeCas` doesn't:
-      unsafeRxn = ref.unsafeInvisibleRead.flatMap { v =>
+      // `unsafeDirectRead` then `unsafeCas` doesn't:
+      unsafeRxn = ref.unsafeDirectRead.flatMap { v =>
         Rxn.pure(42).flatMap { _ =>
           ref.unsafeCas(ov = v, nv = v + 1)
         }
@@ -164,7 +164,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
           ) : Unit
         }
         // read value unsafely:
-        ref2.unsafeInvisibleRead.flatMap { unsafeValue =>
+        ref2.unsafeDirectRead.flatMap { unsafeValue =>
           unsafeLog.accumulateAndGet(List((v1, unsafeValue)), (l1, l2) => l1 ++ l2)
           // then we continue with reading (the now
           // changed) `ref2`:

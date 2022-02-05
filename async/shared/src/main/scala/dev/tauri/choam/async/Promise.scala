@@ -181,7 +181,7 @@ object Promise {
     }
 
     final def get: F[A] = {
-      ref.unsafeInvisibleRead.run[F].flatMap {
+      ref.unsafeDirectRead.run[F].flatMap {
         case Waiting(_, _) =>
           F.async { cb =>
             F.uncancelable { poll =>

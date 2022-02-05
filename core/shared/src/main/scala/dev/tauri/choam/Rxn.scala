@@ -299,8 +299,8 @@ object Rxn extends RxnInstances0 {
 
   @deprecated("old implementation with invisibleRead/cas", since = "2021-03-27")
   private[choam] def consistentReadOld[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
-    ra.unsafeInvisibleRead >>> computed[A, (A, B)] { a =>
-      rb.unsafeInvisibleRead >>> computed[B, (A, B)] { b =>
+    ra.unsafeDirectRead >>> computed[A, (A, B)] { a =>
+      rb.unsafeDirectRead >>> computed[B, (A, B)] { b =>
         (ra.unsafeCas(a, a) × rb.unsafeCas(b, b)).provide(((), ())).map { _ => (a, b) }
       }
     }
@@ -340,7 +340,7 @@ object Rxn extends RxnInstances0 {
 
     /** Old (slower) impl of `upd`, keep it for benchmarks */
     private[choam] final def updDerived[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] = {
-      val self: Rxn[B, (A, B)] = r.unsafeInvisibleRead.first[B].contramap[B](b => ((), b))
+      val self: Rxn[B, (A, B)] = r.unsafeDirectRead.first[B].contramap[B](b => ((), b))
       val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
         val (na, c) = f(oa, b)
         r.unsafeCas(oa, na).as(c)

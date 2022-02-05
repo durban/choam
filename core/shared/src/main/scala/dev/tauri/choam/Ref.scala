@@ -46,21 +46,17 @@ import mcas.MemoryLocation
 trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
 
   // TODO: needs better name (it's like `modify`)
-  final def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
+  final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
     Rxn.ref.upd(this)(f)
 
   // TODO: needs better name (it's like `modifyWith`)
-  final def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
+  final override def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
     Rxn.ref.updWith(this)(f)
 
-  final def unsafeDirectRead: Axn[A] =
+  final override def unsafeDirectRead: Axn[A] =
     Rxn.unsafe.invisibleRead(this)
 
-  // TODO: remove this (use `unsafeDirectRead`)
-  final def unsafeInvisibleRead: Axn[A] =
-    Rxn.unsafe.invisibleRead(this)
-
-  final def unsafeCas(ov: A, nv: A): Axn[Unit] =
+  final override def unsafeCas(ov: A, nv: A): Axn[Unit] =
     Rxn.unsafe.cas(this, ov, nv)
 
   private[choam] final def loc: MemoryLocation[A] =

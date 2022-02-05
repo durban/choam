@@ -165,9 +165,9 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         Rxn.unsafe.cas(b, "bbb", "bbbb").postCommit(Rxn.unsafe.cas(c, "ccc", "cccc"))
       )
       _ <- assertResultF(rea.run[F], ())
-      _ <- assertResultF(a.unsafeInvisibleRead.run, "aa")
-      _ <- assertResultF(b.unsafeInvisibleRead.run, "bbbb")
-      _ <- assertResultF(c.unsafeInvisibleRead.run, "cccc")
+      _ <- assertResultF(a.unsafeDirectRead.run, "aa")
+      _ <- assertResultF(b.unsafeDirectRead.run, "bbbb")
+      _ <- assertResultF(c.unsafeDirectRead.run, "cccc")
     } yield ()
   }
 
@@ -232,8 +232,8 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(popBoth, ("a", "c"))
       _ <- assertResultF(popBoth, ("b", "d"))
       _ <- assertResultF(popBoth, ("x", "y"))
-      _ <- assertResultF(r1.unsafeInvisibleRead.flatMap(_.value.unsafeInvisibleRead).run[F], null)
-      _ <- assertResultF(r2.unsafeInvisibleRead.flatMap(_.value.unsafeInvisibleRead).run[F], null)
+      _ <- assertResultF(r1.unsafeDirectRead.flatMap(_.value.unsafeDirectRead).run[F], null)
+      _ <- assertResultF(r2.unsafeDirectRead.flatMap(_.value.unsafeDirectRead).run[F], null)
     } yield ()
   }
 }

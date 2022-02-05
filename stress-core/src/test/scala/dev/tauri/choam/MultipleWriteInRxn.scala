@@ -38,7 +38,7 @@ class MultipleWriteInRxn extends StressTestBase {
     ref.update(_ => "b") >>> ref.modify(b => ("c", b))
 
   private[this] val read: Axn[String] =
-    ref.unsafeInvisibleRead
+    ref.unsafeDirectRead
 
   @Actor
   def writer(r: LLL_Result): Unit = {

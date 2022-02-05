@@ -164,7 +164,7 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
       arbB.arbitrary.flatMap { b =>
         Gen.delay {
           val ref = Ref.unsafe(b)
-          ResetRxn(ref.unsafeInvisibleRead, Set(ResetRef(ref, b)))
+          ResetRxn(ref.unsafeDirectRead, Set(ResetRef(ref, b)))
         }
       },
       for {
@@ -182,7 +182,7 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
       //   a0 <- arbA.arbitrary
       //   ref <- Gen.delay { Ref.unsafe(a0) }
       // } yield {
-      //   val rxn = ref.unsafeInvisibleRead.flatMap { oldA =>
+      //   val rxn = ref.unsafeDirectRead.flatMap { oldA =>
       //     val newA = aa(oldA)
       //     ref.unsafeCas(oldA, newA).as(ab(newA))
       //   }
