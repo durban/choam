@@ -53,10 +53,9 @@ private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
   }
 
   override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
-    // TODO: This is cheating: we're using
-    // TODO: `computed` as `delay` (`newNode`
-    // TODO: has a side-effect).
-    findAndEnqueue(Node(a, Ref.unsafe(End[A]())))
+    Ref[Elem[A]](End()).flatMapF { newRef =>
+      findAndEnqueue(Node(a, newRef))
+    }
   }
 
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
