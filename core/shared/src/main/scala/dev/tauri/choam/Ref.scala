@@ -54,7 +54,7 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
     Rxn.ref.updWith(this)(f)
 
   final override def unsafeDirectRead: Axn[A] =
-    Rxn.unsafe.invisibleRead(this)
+    Rxn.unsafe.directRead(this)
 
   final override def unsafeCas(ov: A, nv: A): Axn[Unit] =
     Rxn.unsafe.cas(this, ov, nv)

@@ -353,7 +353,7 @@ object Rxn extends RxnInstances0 {
 
     // old, derived implementation:
     private[choam] final def updWithOld[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] = {
-      val self: Rxn[B, (A, B)] = Rxn.unsafe.invisibleRead(r).first[B].contramap[B](b => ((), b))
+      val self: Rxn[B, (A, B)] = Rxn.unsafe.directRead(r).first[B].contramap[B](b => ((), b))
       val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
         f(oa, b).flatMap {
           case (na, c) =>
@@ -366,9 +366,8 @@ object Rxn extends RxnInstances0 {
 
   final object unsafe {
 
-    // TODO: rename to `directRead`
-    def invisibleRead[A](r: Ref[A]): Axn[A] =
-      new InvisibleRead[A](r.loc)
+    def directRead[A](r: Ref[A]): Axn[A] =
+      new DirectRead[A](r.loc)
 
     def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
       new Cas[A](r.loc, ov, nv)
@@ -472,9 +471,9 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Upd(${ref}, <function>)"
   }
 
-  private final class InvisibleRead[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
+  private final class DirectRead[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
     private[choam] final def tag = 9
-    final override def toString: String = s"InvisibleRead(${ref})"
+    final override def toString: String = s"DirectRead(${ref})"
   }
 
   private final class Exchange[A, B](val exchanger: ExchangerImpl[A, B]) extends Rxn[A, B] {
@@ -1016,7 +1015,7 @@ object Rxn extends RxnInstances0 {
             loop(next())
           }
         case 9 => // InvisibleRead
-          val c = curr.asInstanceOf[InvisibleRead[B]]
+          val c = curr.asInstanceOf[DirectRead[B]]
           a = ctx.readDirect(c.ref)
           loop(next())
         case 10 => // Exchange

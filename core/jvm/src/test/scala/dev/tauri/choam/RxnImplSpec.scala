@@ -188,8 +188,8 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       }
 
       def pop(head: Ref[Node]): Rxn[Any, String] = Rxn.unsafe.delayComputed {
-        Rxn.unsafe.invisibleRead(head).flatMap { h =>
-          Rxn.unsafe.invisibleRead(h.value).flatMap {
+        head.unsafeDirectRead.flatMap { h =>
+          h.value.unsafeDirectRead.flatMap {
             case null =>
               // sentinel node, discard it and retry:
               h.next.get.flatMap { nxt =>
