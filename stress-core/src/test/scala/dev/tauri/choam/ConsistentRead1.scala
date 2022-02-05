@@ -20,38 +20,41 @@ package dev.tauri.choam
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LLL_Result
+import org.openjdk.jcstress.infra.results.LL_Result
 
-// @JCStressTest
+@JCStressTest
 @State
-@Description("Multiple writes should not be visible during a Rxn")
+@Description("Ref#get should be consistent (from initial)")
 @Outcomes(Array(
-  new Outcome(id = Array("b, a, c"), expect = ACCEPTABLE, desc = "Reader first"),
-  new Outcome(id = Array("b, c, c"), expect = ACCEPTABLE_INTERESTING, desc = "Writer first"),
+  new Outcome(id = Array("(x,y), (x1,y1)"), expect = ACCEPTABLE, desc = "Read old values"),
+  new Outcome(id = Array("(x1,y1), (x1,y1)"), expect = ACCEPTABLE_INTERESTING, desc = "Read new values")
 ))
-class MultipleWriteInRxn extends StressTestBase {
+class ConsistentRead1 extends StressTestBase {
 
-  private[this] val ref: Ref[String] =
-    Ref.unsafe("a")
+  private[this] val ref1 =
+    Ref.unsafe("x")
 
-  private[this] val write: Axn[String] =
-    ref.update(_ => "b") >>> ref.modify(b => ("c", b))
+  private[this] val ref2 =
+    Ref.unsafe("y")
 
-  private[this] val read: Axn[String] =
-    ref.unsafeDirectRead
+  private[this] val upd: Axn[Unit] =
+    ref1.update(_ + "1") >>> ref2.update(_ + "1")
+
+  private[this] val get: Axn[(String, String)] =
+    ref1.get * ref2.get
 
   @Actor
-  def writer(r: LLL_Result): Unit = {
-    r.r1 = this.write.unsafePerform(null, this.impl)
+  def update(): Unit = {
+    upd.unsafeRun(this.impl)
   }
 
   @Actor
-  def reader(r: LLL_Result): Unit = {
-    r.r2 = this.read.unsafePerform(null, this.impl)
+  def read(r: LL_Result): Unit = {
+    r.r1 = get.unsafeRun(this.impl)
   }
 
   @Arbiter
-  def arbiter(r: LLL_Result): Unit = {
-    r.r3 = this.impl.currentContext().readDirect(this.ref.loc)
+  def arbiter(r: LL_Result): Unit = {
+    r.r2 = (ref1.get.unsafeRun(this.impl), ref2.get.unsafeRun(this.impl))
   }
 }
