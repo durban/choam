@@ -27,7 +27,7 @@
     - to have composability, the root will always have to be validated
     - this would make it not scalable (the root ref is very contended)
 - Can't run benchmarks with Scala 3
-- CI: Tests sometimes time out on OpenJ9
+- CI: Tests sometimes time out
   - probably due to GC pauses
 - CI: ExchangerSpec often times out with ZIO
 - CI failure (ubuntu, graal, scala 2.13):
@@ -40,7 +40,6 @@
 
 ## Other improvements
 
-- Choice seems slow with the new interpreter (see `ChoiceCombinatorBench`).
 - Testing:
   - JCStress:
     - `Exchanger`
@@ -52,17 +51,6 @@
     - improve generated `Rxn`s, check if they make sense
     - check if `testingEqRxn` makes sense
   - Test with other IO impls (when they support ce3)
-- Compile-time detection of impossible k-CAS operations (2 changes to the same `Ref`)
-    - we can't do it without alias analysis, e.g., the method
-      ```scala
-      def foo(r1: Ref[Int], r2: Ref[Int]): Axn[Unit] =
-        r1.update(_ + 1) * r2.update(_ + 2)
-      ```
-      might be called like `foo(myRef, myRef)`
-    - we probably can't do alias analysis
-    - possible directions:
-      - leave it as is (need to figure out how big a problem this is in practice)
-      - make it work somehow (almost STM? performance hit?)
 - Optimization ideas:
   - Exchanger: there is a lot of `Array[Byte]` copying
   - Reducing allocations (we're allocating _a lot_)
@@ -102,13 +90,11 @@
     - Optimize SignallingRef
 - API cleanup:
   - MCAS API review
-    - KCAS is still mentioned a lot
+    - e.g., KCAS is still mentioned a lot
+    - is it usable outside of `choam`?
   - Rename `flatMapF`
     - maybe `semiFlatMap` (or `semiflatMap`?)
     - or `subflatMap`?
-  - (unsafe) thread-confined mode for running a `Rxn`:
-    - `ThreadConfinedMCAS`
-    - convenience API?
   - Rxn.delay?
     - allocating (but: only `Ref` really needs it, others are built on that)
     - calling async callbacks (but: only `Promise` needs it, others don't)
@@ -147,9 +133,8 @@
     - `.?` would make a (safe) `Rxn` from it
     - `.+(<something safe here>)` would also make it safe
 - Think about global / thread-local state:
-  - if we're running in IO, we might use something else
-  - however, `EMCASThreadContext` probably really needs to be thread-local
-  - think about possible problems with fibers
+  - cleanup of unused contexts
+  - cleanup of unused exchanger stats
 
 ## Misc.
 
@@ -165,7 +150,7 @@
 - Other data structures:
   - ctrie-set (but see problems with Ctrie)
   - `SkipListMap`, `SkipListSet`
-  - https://dl.acm.org/doi/10.1145/1989493.1989550 ?
+  - concurrent bag (e.g., https://dl.acm.org/doi/10.1145/1989493.1989550)
   - dual data structures:
     - e.g., stack
     - push: like normal stack
@@ -176,6 +161,6 @@
       - (i.e., this could be an impl. detail of `AsyncStack`)
       - or maybe:
         - new `AsyncRxn[A, B]` type, which could be async
-        - `pop: AsyncRxn[Unit, A]`
+        - `pop: AsyncRxn[Any, A]`
         - `def unsafeRun(ar: AsyncRxn[A, B], a: A): Either[F[A], A]`
         - `def unsafeToF(ar: AsyncRxn[A, B], a: A): F[A] = unsafeRun(...).fold(x => x, F.pure)`

@@ -131,7 +131,9 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
    * which is a `Long` (a few values have special meaning,
    * see `Version.isValid`). The version of a ref is the commit
    * version which last changed the ref (or `Version.Start` if it
-   * was never changed).
+   * was never changed). This system is based on the one in
+   * SwissTM (https://infoscience.epfl.ch/record/136702/files/pldi127-dragojevic.pdf),
+   * although this implementation is lock-free.
    *
    * Versions (both of a ref and the global one) are always
    * monotonically increasing.

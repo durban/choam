@@ -50,17 +50,17 @@ import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor, HalfWordDescriptor, Emc
 sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
   /*
-   * A partial implementation of reagents, described in [Reagents: Expressing and
+   * An implementation similar to reagents, described in [Reagents: Expressing and
    * Composing Fine-grained Concurrency](http://www.ccis.northeastern.edu/home/turon/reagents.pdf)
    * by Aaron Turon; originally implemented at [aturon/ChemistrySet](
    * https://github.com/aturon/ChemistrySet).
    *
    * This implementation is significantly simplified by the fact
    * that offers and permanent failure are not implemented. As a
-   * consequence, these reactants are always lock-free (provided
+   * consequence, these `Rxn`s are always lock-free (provided
    * that the underlying k-CAS implementation is lock-free, and
-   * that `unsafe*` operations are not used). However, this also
-   * means, that they are less featureful.
+   * that `unsafe*` operations are not used, and there is no
+   * infinite recursion).
    *
    * On the other hand, this implementation uses an optimized and
    * stack-safe interpreter (see `interpreter`). A limited version
@@ -73,7 +73,15 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * functional") API. All side-effecting APIs are prefixed by
    * `unsafe`.
    *
-   * Other implementations:
+   * We also offer [*opacity*](https://nbronson.github.io/scala-stm/semantics.html#opacity),
+   * a correctness guarantee of the read values visible inside a `Rxn`.
+   *
+   * Finally (unlike with reagents), two `Rxn`s which touch the same
+   * `Ref`s are composable with each other. This allows multiple
+   * reads and writes to the same `Ref` in one `Rxn`. (`Exchanger` is
+   * an exception, this is part of the reason it is `unsafe`).
+   *
+   * Existing reagent implementations:
    * - https://github.com/aturon/Caper (Racket)
    * - https://github.com/ocamllabs/reagents (OCaml)
    */
