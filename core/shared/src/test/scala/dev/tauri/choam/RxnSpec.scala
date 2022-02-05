@@ -461,6 +461,25 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("Order of post-commit actions") {
+    for {
+      log <- Ref(List.empty[String]).run[F]
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("b").run[F]
+      rxn = (
+        (r1.update(_ + "a").postCommit(log.update("a" :: _)) >>> Rxn.unsafe.retry) + (
+          r1.update(_ + "b").postCommit(log.update("b" :: _)).postCommit(log.update("b2" :: _))
+        ) >>> Rxn.postCommit(log.update("x" :: _)).postCommit(log.update("y" :: _))
+      ) * (
+        r2.update(_ + "c").postCommit(log.update("z" :: _))
+      )
+      _ <- rxn.run[F]
+      _ <- assertResultF(r1.get.run[F], "ab")
+      _ <- assertResultF(r2.get.run[F], "bc")
+      _ <- assertResultF(log.get.map(_.reverse).run[F], List("b", "b2", "x", "y", "z"))
+    } yield ()
+  }
+
   test("delayComputed prepare is not part of the reaction") {
 
     final case class Node(value: Ref[String], next: Ref[Node])

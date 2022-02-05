@@ -951,7 +951,6 @@ object Rxn extends RxnInstances0 {
               // the post-commit action itself:
               contK.push(pc.pop())
               contT.push(ContPostCommit)
-              // TODO: write a test for the order of multiple post-commit results
             }
             loop(next())
           } else {

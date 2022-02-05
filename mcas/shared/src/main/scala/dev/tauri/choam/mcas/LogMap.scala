@@ -81,6 +81,7 @@ private object LogMap {
       (ref eq v1.address)
 
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
+      require(k eq v.address)
       if (k eq v1.address) {
         new LogMap1(v)
       } else {
@@ -102,7 +103,7 @@ private object LogMap {
       MurmurHash3.finalizeHash(v1.##, 1)
   }
 
-  /** Invariant: `treeMap` has more items than `MaxArraySize` */
+  /** Invariant: `treeMap` has more than 1 items */
   private final class LogMapTree(private val treeMap: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]])
     extends LogMap {
 
