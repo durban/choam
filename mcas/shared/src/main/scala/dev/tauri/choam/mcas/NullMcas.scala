@@ -20,6 +20,16 @@ package mcas
 
 import java.util.concurrent.ThreadLocalRandom
 
+/**
+ * This is a very limited MCAS implementation,
+ * which can only perform *empty* MCAS operations
+ * (i.e., not even reading is implemented). All
+ * other operations throw an `UnsupportedOperationException`.
+ *
+ * It can be useful in special cases (for low-level optimization),
+ * when it is necessary to immediately execute a `Rxn` which
+ * is known not to actually do any k-CASes.
+ */
 object NullMcas extends MCAS {
 
   private[this] val ctx =

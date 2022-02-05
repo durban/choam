@@ -20,6 +20,8 @@ package data
 
 import MichaelScottQueue._
 
+// TODO: This is really bad for the GC; consider using
+// TODO: optimizations like in `juc.ConcurrentLinkedQueue`.
 private[choam] final class MichaelScottQueue[A] private[this] (
   sentinel: Node[A],
   padded: Boolean,

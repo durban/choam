@@ -21,6 +21,9 @@ package mcas
 import scala.collection.immutable.TreeMap
 import scala.util.hashing.MurmurHash3
 
+// TODO: We could do fancy things with Bloom filters;
+// TODO: it's unclear if it's worth it.
+
 private abstract class LogMap {
   def size: Int
   def valuesIterator: Iterator[HalfWordDescriptor[_]]
