@@ -20,20 +20,35 @@ package data
 
 import cats.effect.IO
 
-final class EliminationStackSpec_ThreadConfinedMCAS
+final class StackSpec_Treiber_ThreadConfinedMCAS_IO
   extends BaseSpecIO
   with SpecThreadConfinedMCAS
-  with EliminationStackSpec[IO]
+  with StackSpecTreiber[IO]
 
-trait EliminationStackSpec[F[_]]
-  extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+final class StackSpec_Elimination_ThreadConfinedMCAS_IO
+  extends BaseSpecIO
+  with SpecThreadConfinedMCAS
+  with StackSpecElimination[IO]
 
-  def newStack[A]: F[Stack[A]] =
-    EliminationStack.apply[A].run[F]
+trait StackSpecTreiber[F[_]] extends StackSpec[F] { this: KCASImplSpec =>
+  final override def newStack[A](as: A*): F[Stack[A]] = {
+    TreiberStack.fromList(as.toList)
+  }
+}
 
-  test("EliminationStack") {
+trait StackSpecElimination[F[_]] extends StackSpec[F] { this: KCASImplSpec =>
+  final override def newStack[A](as: A*): F[Stack[A]] = {
+    EliminationStack.fromList(as.toList)
+  }
+}
+
+trait StackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+
+  def newStack[A](as: A*): F[Stack[A]]
+
+  test("Stack push/pop") {
     for {
-      s <- newStack[String]
+      s <- newStack[String]()
       _ <- s.push[F]("a")
       _ <- s.push[F]("b")
       _ <- s.push[F]("c")
@@ -44,15 +59,24 @@ trait EliminationStackSpec[F[_]]
     } yield ()
   }
 
-  test("EliminationStack multiple ops in one Rxn") {
+  test("Stack multiple ops in one Rxn") {
     for {
-      s <- newStack[String]
+      s <- newStack[String]()
       rxn = (s.push.provide("a") * s.push.provide("b")) *> (
         s.tryPop
       )
       _ <- assertResultF(rxn.run[F], Some("b"))
       _ <- assertResultF(s.tryPop.run[F], Some("a"))
       _ <- assertResultF(s.tryPop.run[F], None)
+    } yield ()
+  }
+
+  test("Stack should include the elements passed to its constructor") {
+    for {
+      s1 <- newStack[Int]()
+      _ <- assertResultF(s1.popAll[F], Nil)
+      s2 <- newStack(1, 2, 3)
+      _ <- assertResultF(s2.popAll[F], List(3, 2, 1))
     } yield ()
   }
 }

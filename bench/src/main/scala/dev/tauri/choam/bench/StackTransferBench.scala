@@ -24,7 +24,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util._
-import data.TreiberStack
+import data.{ Stack, TreiberStack }
 
 @Fork(3)
 class StackTransferBench {
@@ -77,9 +77,9 @@ object StackTransferBench {
 
   @State(Scope.Benchmark)
   class TreiberSt {
-    val treiberStack1: TreiberStack[String] =
+    val treiberStack1: Stack[String] =
       TreiberStack.fromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
-    val treiberStack2: TreiberStack[String] =
+    val treiberStack2: Stack[String] =
       TreiberStack.fromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
     val transfer: Axn[Unit] =
       treiberStack1.tryPop.map(_.get) >>> treiberStack2.push

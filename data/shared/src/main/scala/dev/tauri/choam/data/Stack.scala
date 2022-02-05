@@ -18,14 +18,37 @@
 package dev.tauri.choam
 package data
 
+import cats.Monad
+import cats.syntax.all._
+
 abstract class Stack[A] {
   def push: Rxn[A, Unit]
   def tryPop: Axn[Option[A]]
   private[choam] def length: Axn[Int]
+  private[choam] def popAll[F[_]](implicit F: Reactive[F]): F[List[A]] = {
+    F.monad.tailRecM(List.empty[A]) { lst =>
+      F.monad.map(this.tryPop.run[F]) {
+        case None => Right(lst.reverse)
+        case Some(a) => Left(a :: lst)
+      }
+    }
+  }
 }
 
 object Stack {
 
   def treiberStack[A]: Axn[Stack[A]] =
     TreiberStack[A]
+
+  def eliminationStack[A]: Axn[Stack[A]] =
+    EliminationStack[A]
+
+  def fromList[F[_], A](mkEmpty: Axn[Stack[A]])(as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
+    implicit val monadF: Monad[F] = F.monad
+    mkEmpty.run[F].flatMap { stack =>
+      as.traverse { a =>
+        stack.push[F](a)
+      }.as(stack)
+    }
+  }
 }

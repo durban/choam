@@ -56,6 +56,6 @@ class TreiberStackTest extends StressTestBase {
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = stack.unsafeToList(this.impl)
+    r.r2 = stack.popAll[SyncIO].unsafeRunSync()
   }
 }
