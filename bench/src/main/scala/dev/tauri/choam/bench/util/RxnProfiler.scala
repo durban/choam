@@ -82,10 +82,6 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
   private[this] var exchangesBefore: Long =
     0L
 
-  // TODO: this is unused
-  private[this] var exchangerStatsBefore: Map[Long, Map[AnyRef, AnyRef]] =
-    null
-
   private[this] var beforeTime: Long =
     0L
 
@@ -154,7 +150,6 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     }
     if (config.measureExchanges) {
       this.exchangesBefore = RxnProfiler.exchangeCounter.sum()
-      this.exchangerStatsBefore = EMCAS.collectExchangerStats()
       this.beforeTime = System.nanoTime()
     }
   }
