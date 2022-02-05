@@ -30,10 +30,10 @@ import data.Queue
 @State
 @Description("RemoveQueue enq/deq should be atomic")
 @Outcomes(Array(
-  new Outcome(id = Array("None, List(x, y)"), expect = ACCEPTABLE, desc = "deq, enq1, enq2"),
-  new Outcome(id = Array("None, List(y, x)"), expect = ACCEPTABLE, desc = "deq, enq2, enq1"),
-  new Outcome(id = Array("Some(x), List(y)"), expect = ACCEPTABLE_INTERESTING, desc = "enq1, (deq | enq2)"),
-  new Outcome(id = Array("Some(y), List(x)"), expect = ACCEPTABLE_INTERESTING, desc = "enq2, (deq | enq1)"),
+  new Outcome(id = Array("None, List(x, y)"), expect = ACCEPTABLE_INTERESTING, desc = "deq, enq1, enq2"),
+  new Outcome(id = Array("None, List(y, x)"), expect = ACCEPTABLE_INTERESTING, desc = "deq, enq2, enq1"),
+  new Outcome(id = Array("Some(x), List(y)"), expect = ACCEPTABLE, desc = "enq1, (deq | enq2)"),
+  new Outcome(id = Array("Some(y), List(x)"), expect = ACCEPTABLE, desc = "enq2, (deq | enq1)"),
 ))
 class RemoveQueueTest extends RemoveQueueStressTestBase {
 
