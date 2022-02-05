@@ -57,7 +57,6 @@ abstract class BaseSpecZIO
       "ZIO",
       { case x: zio.ZIO[_, _, _] =>
         val tsk = x.asInstanceOf[zio.Task[_]]
-        // TODO: this will fail if it's not really a Task
         zio.Runtime.default.unsafeRunToFuture(tsk)
       }
     )
@@ -95,7 +94,6 @@ abstract class BaseSpecTickedZIO
       "Ticked ZIO",
       { case x: zio.ZIO[_, _, _] =>
         val tsk = x.asInstanceOf[zio.Task[_]]
-        // TODO: this will fail if it's not really a Task
         val fut = this.zioRuntime.unsafeRunToFuture(tsk)
         testContext.tickAll()
         fut
@@ -205,7 +203,6 @@ abstract class BaseSpecTickedZIO
 
       override def sleep(duration: => Duration)(implicit trace: ZTraceElement): UIO[Unit] = {
         val finDur = FiniteDuration(duration.toNanos(), "ns")
-        // println(s"sleep(${finDur})")
         UIO.asyncInterrupt[Unit] { cb =>
           val cancel = testContext.schedule(
             finDur,

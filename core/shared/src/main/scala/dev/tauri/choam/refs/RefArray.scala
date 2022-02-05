@@ -49,7 +49,7 @@ private abstract class RefArray[A](
   protected val items: AtomicReferenceArray[AnyRef]
 
   protected[refs] final override def refToString(): String = {
-    val h = (id0 ^ id1 ^ id2 ^ id3) & (~0xffff)
+    val h = (id0 ^ id1 ^ id2 ^ id3) & (~0xffffL)
     s"RefArray[${size}]@${java.lang.Long.toHexString(h >> 16)}"
   }
 }

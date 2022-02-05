@@ -21,8 +21,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.concurrent.duration._
 
-import cats.implicits._
-
 import cats.effect.kernel.{ Outcome }
 import cats.effect.{ IO }
 
