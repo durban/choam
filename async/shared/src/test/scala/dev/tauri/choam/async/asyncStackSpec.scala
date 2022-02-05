@@ -119,4 +119,20 @@ trait AsyncStackSpec[F[_]]
       _ <- assertResultF(s.pop, "c")
     } yield ()
   }
+
+  test("Multiple ops in one Rxn") {
+    for {
+      s <- newStack[F, String]
+      f1 <- s.pop.start
+      _ <- this.tickAll
+      f2 <- s.pop.start
+      _ <- this.tickAll
+      rxn = (s.push.provide("a") * s.push.provide("b") * s.push.provide("c")) *> (
+        s.tryPop
+      )
+      _ <- assertResultF(rxn.run[F], Some("c"))
+      _ <- assertResultF(f1.joinWithNever, "a")
+      _ <- assertResultF(f2.joinWithNever, "b")
+    } yield ()
+  }
 }

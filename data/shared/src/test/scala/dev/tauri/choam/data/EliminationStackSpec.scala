@@ -43,4 +43,16 @@ trait EliminationStackSpec[F[_]]
       _ <- assertResultF(s.tryPop.run[F], None)
     } yield ()
   }
+
+  test("EliminationStack multiple ops in one Rxn") {
+    for {
+      s <- newStack[String]
+      rxn = (s.push.provide("a") * s.push.provide("b")) *> (
+        s.tryPop
+      )
+      _ <- assertResultF(rxn.run[F], Some("b"))
+      _ <- assertResultF(s.tryPop.run[F], Some("a"))
+      _ <- assertResultF(s.tryPop.run[F], None)
+    } yield ()
+  }
 }

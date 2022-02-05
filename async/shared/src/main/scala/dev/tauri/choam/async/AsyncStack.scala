@@ -23,6 +23,7 @@ import data.TreiberStack
 abstract class AsyncStack[F[_], A] {
   def push: Rxn[A, Unit]
   def pop(implicit F: AsyncReactive[F]): F[A]
+  def tryPop: Axn[Option[A]]
 }
 
 object AsyncStack {
@@ -38,6 +39,8 @@ object AsyncStack {
             af.set
           final override def pop(implicit F: AsyncReactive[F]): F[A] =
             af.get
+          final override def tryPop: Axn[Option[A]] =
+            es.tryPop
         }
       }
     }
