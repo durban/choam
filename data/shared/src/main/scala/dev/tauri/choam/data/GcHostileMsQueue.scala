@@ -18,9 +18,6 @@
 package dev.tauri.choam
 package data
 
-import cats.Monad
-import cats.syntax.all._
-
 import GcHostileMsQueue._
 
 /**
@@ -79,12 +76,10 @@ private[choam] object GcHostileMsQueue {
   private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
   private final case class End[A]() extends Elem[A]
 
+  def apply[A]: Axn[GcHostileMsQueue[A]] =
+    Rxn.unsafe.delay { _ => new GcHostileMsQueue[A] }
+
   def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[GcHostileMsQueue[A]] = {
-    implicit val monadF: Monad[F] = F.monad
-    Rxn.unsafe.delay { (_: Any) => new GcHostileMsQueue[A] }.run[F].flatMap { q =>
-      as.traverse { a =>
-        q.enqueue[F](a)
-      }.as(q)
-    }
+    Queue.fromList[F, GcHostileMsQueue, A](this.apply[A])(as)
   }
 }

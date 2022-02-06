@@ -55,10 +55,6 @@ object Queue {
     def remove: Rxn[A, Boolean]
   }
 
-  /**
-   * Private, because `size` is hard to use correctly
-   * (it cannot be composed with the other operations).
-   */
   private[choam] abstract class WithSize[A] extends Queue[A] {
     def size: Axn[Int]
   }
