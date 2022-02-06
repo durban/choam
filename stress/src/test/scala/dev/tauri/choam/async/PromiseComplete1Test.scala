@@ -29,8 +29,8 @@ import cats.effect.{ IO, SyncIO, Fiber }
 @State
 @Description("Promise: racing completers should work fine")
 @Outcomes(Array(
-  new Outcome(id = Array("true, false, 1"), expect = ACCEPTABLE, desc = "complete1 was faster"),
-  new Outcome(id = Array("false, true, 2"), expect = ACCEPTABLE, desc = "complete2 was faster")
+  new Outcome(id = Array("true, false, 1"), expect = ACCEPTABLE_INTERESTING, desc = "complete1 was faster"),
+  new Outcome(id = Array("false, true, 2"), expect = ACCEPTABLE_INTERESTING, desc = "complete2 was faster"),
 ))
 class PromiseComplete1Test {
 
