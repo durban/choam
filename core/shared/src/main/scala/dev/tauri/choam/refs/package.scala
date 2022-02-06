@@ -46,8 +46,7 @@ package object refs {
     i2: Long,
     i3: Long
   ): String = {
-    // TODO: better hash
-    "Ref@" + java.lang.Long.toHexString(i0 ^ i1 ^ i2 ^ i3)
+    "Ref@" + mcas.refHashString(i0, i1, i2, i3)
   }
 
   private[refs] def refStringFrom8Ids(
@@ -60,8 +59,7 @@ package object refs {
     i6: Long,
     i7: Long
   ): String = {
-    // TODO: better hash
-    "Ref2@" + java.lang.Long.toHexString(i0 ^ i1 ^ i2 ^ i3 ^ i4 ^ i5 ^ i6 ^ i7)
+    "Ref2@" + mcas.refHashString(i0 ^ i1, i2 ^ i3, i4 ^ i5, i6 ^ i7)
   }
 
   private[refs] def refStringFromIdsAndIdx(
@@ -71,9 +69,8 @@ package object refs {
     i3: Long,
     idx: Int,
   ): String = {
-    // TODO: better hash
-    val l: Long = (i0 ^ i1 ^ i2 ^ i3) & (~0xffff)
+    val l: Long = mcas.refShortHash(i0, i1, i2, i3) & (~0xffffL)
     val s: Int = (idx & 0xffff)
-    "ARef@" + java.lang.Long.toHexString(l | s)
+    "ARef@" + mcas.toHexPadded(l | s.toLong)
   }
 }

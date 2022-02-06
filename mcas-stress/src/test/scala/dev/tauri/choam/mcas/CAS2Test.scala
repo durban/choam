@@ -23,14 +23,14 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZZZ_Result
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("CAS2 should be atomic")
 @Outcomes(Array(
   new Outcome(id = Array("true, true, false, true"), expect = ACCEPTABLE, desc = "The two 1-CAS succeeded"),
   new Outcome(id = Array("true, false, false, .*"), expect = FORBIDDEN, desc = "writer2 failed and 2-CAS too"),
   new Outcome(id = Array("false, true, false, .*"), expect = FORBIDDEN, desc = "writer1 failed and 2-CAS too"),
-  new Outcome(id = Array("false, false, true, true"), expect = ACCEPTABLE, desc = "The 2-CAS succeeded")
+  new Outcome(id = Array("false, false, true, true"), expect = ACCEPTABLE_INTERESTING, desc = "The 2-CAS succeeded")
 ))
 class CAS2Test extends StressTestBase {
 
@@ -43,36 +43,36 @@ class CAS2Test extends StressTestBase {
   @Actor
   def writer1(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r1 = ctx.tryPerform(
-      ctx.addCas(ctx.start(), ref1, "ov1", "x")
-    )
+    r.r1 = (ctx.tryPerformInternal(
+      ctx.addCasFromInitial(ctx.start(), ref1, "ov1", "x")
+    ) == EmcasStatus.Successful)
   }
 
   @Actor
   def writer2(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r2 = ctx.tryPerform(
-      ctx.addCas(ctx.start(), ref2, "ov2", "y")
-    )
+    r.r2 = (ctx.tryPerformInternal(
+      ctx.addCasFromInitial(ctx.start(), ref2, "ov2", "y")
+    ) == EmcasStatus.Successful)
   }
 
   @Actor
   def writer3(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r3 = ctx.tryPerform(
-      ctx.addCas(ctx.addCas(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
-    )
+    r.r3 = (ctx.tryPerformInternal(
+      ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
+    ) == EmcasStatus.Successful)
   }
 
   @Arbiter
   def abriter(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
     if (r.r3) {
-      if ((ctx.read(ref1) == "a") && (ctx.read(ref2) == "b")) {
+      if ((ctx.readDirect(ref1) == "a") && (ctx.readDirect(ref2) == "b")) {
         r.r4 = true
       }
     } else if (r.r1 && r.r2) {
-      if ((ctx.read(ref1) == "x") && (ctx.read(ref2) == "y")) {
+      if ((ctx.readDirect(ref1) == "x") && (ctx.readDirect(ref2) == "y")) {
         r.r4 = true
       }
     }

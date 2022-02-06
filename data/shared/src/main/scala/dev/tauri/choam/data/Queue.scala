@@ -18,6 +18,9 @@
 package dev.tauri.choam
 package data
 
+import cats.Monad
+import cats.syntax.all._
+
 trait QueueSource[+A] {
 
   def tryDeque: Axn[Option[A]]
@@ -36,14 +39,18 @@ trait QueueSink[-A] {
   def tryEnqueue: Rxn[A, Boolean]
 }
 
+trait QueueSourceSink[A]
+  extends QueueSource[A]
+  with  QueueSink[A]
+
 trait UnboundedQueueSink[-A] extends QueueSink[A] {
   def enqueue: Rxn[A, Unit]
-  final override def tryEnqueue: Rxn[A, Boolean] =
+  override def tryEnqueue: Rxn[A, Boolean] =
     this.enqueue.as(true)
 }
 
-abstract class Queue[A]
-  extends QueueSource[A]
+trait Queue[A]
+  extends QueueSourceSink[A]
   with UnboundedQueueSink[A]
 
 object Queue {
@@ -52,16 +59,15 @@ object Queue {
     def remove: Rxn[A, Boolean]
   }
 
-  /**
-   * Private, because `size` is hard to use correctly
-   * (it cannot be composed with the other operations).
-   */
   private[choam] abstract class WithSize[A] extends Queue[A] {
     def size: Axn[Int]
   }
 
   def unbounded[A]: Axn[Queue[A]] =
     MichaelScottQueue[A]
+
+  def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
+    ArrayQueueSourceSink[A](bound = bound)
 
   def dropping[A](@unused capacity: Int): Axn[Queue[A]] =
     sys.error("TODO")
@@ -72,14 +78,15 @@ object Queue {
   private[choam] def unpadded[A]: Axn[Queue[A]] =
     MichaelScottQueue.unpadded[A]
 
-  private[choam] def fromList[A](as: List[A]): Axn[Queue[A]] =
-    MichaelScottQueue.fromList[A](as)
+  private[choam] def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
+    implicit val m: Monad[F] = Reactive[F].monad
+    mkEmpty.run[F].flatMap { q =>
+      as.traverse(a => q.enqueue[F](a)).as(q)
+    }
+  }
 
   private[choam] def withRemove[A]: Axn[Queue.WithRemove[A]] =
     RemoveQueue[A]
-
-  private[choam] def withRemoveFromList[A](as: List[A]): Axn[Queue.WithRemove[A]] =
-    RemoveQueue.fromList(as)
 
   private[choam] def withSize[A]: Axn[Queue.WithSize[A]] = {
     Queue.unbounded[A].flatMapF { q =>
@@ -98,6 +105,28 @@ object Queue {
 
           final override def size: Axn[Int] =
             s.get
+        }
+      }
+    }
+  }
+
+  /** Bounded array-based queue */
+  private[choam] final class ArrayQueueSourceSink[A](
+    capacity: Int,
+    arr: Ref.Array[A],
+    head: Ref[Int], // index for next element to deque
+    tail: Ref[Int], // index for next element to enqueue
+  ) extends ArrayQueue[A](capacity, arr, head, tail)
+    with QueueSourceSink[A] {
+  }
+
+  private[choam] final object ArrayQueueSourceSink {
+    def apply[A](bound: Int): Axn[ArrayQueueSourceSink[A]] = {
+      require(bound > 0)
+      Ref.array(size = bound, initial = ArrayQueue.empty[A]).flatMapF { arr =>
+        (Ref(0) * Ref(0)).map {
+          case (h, t) =>
+            new ArrayQueueSourceSink(bound, arr, h, t)
         }
       }
     }

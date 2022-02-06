@@ -28,7 +28,7 @@ import mcas.MCAS
  * Non-Blocking Snapshots](http://lampwww.epfl.ch/~prokopec/ctries-snapshot.pdf)
  * by Aleksandar Prokopec, Nathan G. Bronson, Phil Bagwell and Martin Odersky.
  */
-final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
+private[choam] final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
 
   // TODO: Cache-trie:
   // TODO: http://aleksandar-prokopec.com/resources/docs/p137-prokopec.pdf
@@ -45,7 +45,7 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
 
     def ilookup(i: INode[K, V], k: K, lev: Int, @unused parent: INode[K, V]): Axn[V] = {
       for {
-        im <- i.main.unsafeInvisibleRead
+        im <- i.main.unsafeDirectRead
         v <- im match {
           case cn: CNode[K, V] =>
             val (flag, pos) = flagpos(hs.hash(k), lev, cn.bmp)
@@ -72,7 +72,7 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
 
     Rxn.computed[K, Option[V]] { k =>
       for {
-        r <- root.unsafeInvisibleRead
+        r <- root.unsafeDirectRead
         v <- ilookup(r, k, 0, null)
       } yield if (NOTFOUND.isNotFound(v)) None else Some(v)
     }
@@ -82,8 +82,8 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
 
     def iinsert(i: INode[K, V], k: K, v: V, lev: Int, @unused parent: INode[K, V]): Axn[Unit] = {
       for {
-        im <- i.main.unsafeInvisibleRead
-        gen <- i.gen.unsafeInvisibleRead
+        im <- i.main.unsafeDirectRead
+        gen <- i.gen.unsafeDirectRead
         _ <- im match {
           case cn: CNode[K, V] =>
             val (flag, pos) = flagpos(hs.hash(k), lev, cn.bmp)
@@ -119,7 +119,7 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
     Rxn.computed[(K, V), Unit] {
       case (k, v) =>
         for {
-          r <- root.unsafeInvisibleRead
+          r <- root.unsafeDirectRead
           _ <- iinsert(r, k, v, 0, null)
         } yield ()
     }
@@ -130,7 +130,7 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
 
     def iremove(i: INode[K, V], k: K, lev: Int, parent: INode[K, V]): Axn[V] = {
       for {
-        im <- i.main.unsafeInvisibleRead
+        im <- i.main.unsafeDirectRead
         v <- im match {
           case cn: CNode[_, _] =>
             val (flag, pos) = flagpos(hs.hash(k), lev, cn.bmp)
@@ -154,7 +154,7 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
                   // nothing to do
                   Rxn.pure(v)
                 } else {
-                  i.main.unsafeInvisibleRead.flatMap { (reRead: MainNode[K, V]) =>
+                  i.main.unsafeDirectRead.flatMap { (reRead: MainNode[K, V]) =>
                     if (reRead.isTomb) parent.cleanParent(i, k, lev - W).as(v)
                     else Rxn.pure(v)
                   }
@@ -172,7 +172,7 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
     }
 
     Rxn.computed[K, Option[V]] { k =>
-      root.unsafeInvisibleRead.flatMap { r =>
+      root.unsafeDirectRead.flatMap { r =>
         iremove(r, k, lev = 0, parent = null).map { v =>
           if (NOTFOUND.isNotFound(v)) None else Some(v)
         }
@@ -187,13 +187,13 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
 
   private[this] def debug: Rxn[Int, String] = Rxn.computed { level =>
     for {
-      r <- root.unsafeInvisibleRead
+      r <- root.unsafeDirectRead
       rs <- r.debug.provide(level)
     } yield rs
   }
 }
 
-object Ctrie {
+private[choam] object Ctrie {
 
   def apply[K : Hash, V]: Axn[Ctrie[K, V]] = {
     Rxn.unsafe.delay { _ => Ctrie.unsafe[K, V] }
@@ -236,7 +236,7 @@ object Ctrie {
     extends Branch[K, V] {
 
     def clean(lev: Int): Axn[Unit] = {
-      this.main.unsafeInvisibleRead.flatMap {
+      this.main.unsafeDirectRead.flatMap {
         case m: CNode[K, V] =>
           m.toCompressed(lev).flatMap { nm =>
             this.main.unsafeCas(m, nm)
@@ -247,8 +247,8 @@ object Ctrie {
     }
 
     def cleanParent(i: INode[K, V], k: K, lev: Int)(implicit hs: Hash[K]): Axn[Unit] = {
-      i.main.unsafeInvisibleRead.flatMap { m =>
-        this.main.unsafeInvisibleRead.flatMap { pm =>
+      i.main.unsafeDirectRead.flatMap { m =>
+        this.main.unsafeDirectRead.flatMap { pm =>
           pm match {
             case cn: CNode[_, _] =>
               val (flag, pos) = flagpos(hs.hash(k), lev, cn.bmp)
@@ -275,14 +275,14 @@ object Ctrie {
       }
     }
 
-    def resurrect: Axn[Branch[K, V]] = this.main.unsafeInvisibleRead.map {
+    def resurrect: Axn[Branch[K, V]] = this.main.unsafeDirectRead.map {
       case tn: TNode[_, _] => tn.untombed
       case _ => this
     }
 
     private[choam] override def debug: Rxn[Int, String] = Rxn.computed { level =>
       for {
-        m <- main.unsafeInvisibleRead
+        m <- main.unsafeDirectRead
         ms <- m.debug.provide(level)
       } yield (indent * level) + s"INode -> ${ms}"
     }

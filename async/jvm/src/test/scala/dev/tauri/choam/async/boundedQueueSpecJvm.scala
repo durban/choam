@@ -22,24 +22,37 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-final class BoundedQueueSpec_EMCAS_IO
+final class BoundedQueueSpecLinked_EMCAS_IO
   extends BaseSpecTickedIO
   with SpecEMCAS
+  with BoundedQueueSpecLinked[IO]
   with BoundedQueueSpecJvm[IO]
 
-final class BoundedQueueSpec_EMCAS_ZIO
+final class BoundedQueueSpecLinked_EMCAS_ZIO
   extends BaseSpecTickedZIO
   with SpecEMCAS
+  with BoundedQueueSpecLinked[zio.Task]
   with BoundedQueueSpecJvm[zio.Task]
 
-trait BoundedQueueSpecJvm[F[_]]
-  extends BoundedQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+final class BoundedQueueSpecArray_EMCAS_IO
+  extends BaseSpecTickedIO
+  with SpecEMCAS
+  with BoundedQueueSpecArray[IO]
+  with BoundedQueueSpecJvm[IO]
+
+final class BoundedQueueSpecArray_EMCAS_ZIO
+  extends BaseSpecTickedZIO
+  with SpecEMCAS
+  with BoundedQueueSpecArray[zio.Task]
+  with BoundedQueueSpecJvm[zio.Task]
+
+trait BoundedQueueSpecJvm[F[_]] { this: BoundedQueueSpec[F] with KCASImplSpec with TestContextSpec[F] =>
 
   test("BoundedQueue big bound") {
     val n = 9999
     for {
       _ <- F.delay(assertIntIsNotCached(n))
-      q <- BoundedQueue[F, String](bound = n).run[F]
+      q <- newQueue[String](bound = n)
       _ <- F.replicateA(n, q.enqueue("foo"))
       _ <- assertResultF(q.currentSize.run[F], n)
       fib <- q.enqueue("bar").start
@@ -51,7 +64,7 @@ trait BoundedQueueSpecJvm[F[_]]
 
   test("Sleeping") {
     for {
-      q <- BoundedQueue[F, String](bound = 42).run[F]
+      q <- newQueue[String](bound = 42)
       fib <- q.deque.start
       _ <- F.sleep(2.seconds)
       _ <- q.enqueue("foo")

@@ -105,7 +105,15 @@ private object ObjStack {
     def empty[A]: Lst[A] =
       null
 
+    def mkString[A](lst: Lst[A], sep: String = ", "): String = {
+      lst match {
+        case null => ""
+        case lst => lst.mkString(sep = sep)
+      }
+    }
+
     def length[A](lst: Lst[A]): Int = {
+      @tailrec
       def go(lst: Lst[A], acc: Int): Int = {
         if (lst eq null) acc
         else go(lst.tail, acc + 1)

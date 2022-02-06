@@ -49,14 +49,8 @@ private[choam] object TreiberStack {
   def apply[A]: Axn[TreiberStack[A]] =
     Rxn.unsafe.delay { _ => new TreiberStack[A] }
 
-  def fromList[A](as: List[A]): Axn[TreiberStack[A]] = {
-    Rxn.unsafe.context { ctx =>
-      val s = new TreiberStack[A]
-      as.foreach { a =>
-        s.push.unsafePerformInternal(a, ctx = ctx)
-      }
-      s
-    }
+  def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
+    Stack.fromList(this.apply[A])(as)
   }
 
   private[choam] sealed trait Lst[+A] {

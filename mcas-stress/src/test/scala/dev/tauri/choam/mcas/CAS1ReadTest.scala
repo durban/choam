@@ -23,7 +23,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZL_Result
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("CAS1 should be atomic to readers")
 @Outcomes(Array(
@@ -38,17 +38,17 @@ class CAS1ReadTest extends StressTestBase {
   @Actor
   def writer(r: ZZL_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r1 = ctx.tryPerform(ctx.addCas(ctx.start(), ref, "ov", "x"))
+    r.r1 = (ctx.tryPerformInternal(ctx.addCasFromInitial(ctx.start(), ref, "ov", "x")) == EmcasStatus.Successful)
   }
 
   @Actor
   def reader(r: ZZL_Result): Unit = {
-    r.r3 = impl.currentContext().read(ref)
+    r.r3 = impl.currentContext().readDirect(ref)
   }
 
   @Arbiter
   def arbiter(r: ZZL_Result): Unit = {
-    val fv = impl.currentContext().read(ref)
+    val fv = impl.currentContext().readDirect(ref)
     r.r2 = (fv eq "x")
   }
 }

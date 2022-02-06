@@ -80,14 +80,14 @@ object CtrieTest {
         x % 7
     }
     val ct = Ctrie.unsafe[Int, String](h)
-    ct.insert.unsafePerform(0 -> "0", MCAS.ThreadConfinedMCAS)
-    ct.insert.unsafePerform(1 -> "1", MCAS.ThreadConfinedMCAS)
-    ct.insert.unsafePerform(2 -> "2", MCAS.ThreadConfinedMCAS)
-    ct.insert.unsafePerform(3 -> "3", MCAS.ThreadConfinedMCAS)
-    ct.insert.unsafePerform(4 -> "4", MCAS.ThreadConfinedMCAS)
-    ct.insert.unsafePerform(7 -> "7", MCAS.ThreadConfinedMCAS)
-    ct.insert.unsafePerform(8 -> "8", MCAS.ThreadConfinedMCAS)
-    ct.insert.unsafePerform(9 -> "9", MCAS.ThreadConfinedMCAS)
+    ct.insert.unsafePerform(0 -> "0", MCAS.EMCAS)
+    ct.insert.unsafePerform(1 -> "1", MCAS.EMCAS)
+    ct.insert.unsafePerform(2 -> "2", MCAS.EMCAS)
+    ct.insert.unsafePerform(3 -> "3", MCAS.EMCAS)
+    ct.insert.unsafePerform(4 -> "4", MCAS.EMCAS)
+    ct.insert.unsafePerform(7 -> "7", MCAS.EMCAS)
+    ct.insert.unsafePerform(8 -> "8", MCAS.EMCAS)
+    ct.insert.unsafePerform(9 -> "9", MCAS.EMCAS)
     ct
   }
 }

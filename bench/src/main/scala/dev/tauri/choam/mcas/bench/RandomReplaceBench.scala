@@ -59,12 +59,12 @@ object RandomReplaceBench {
     reset()
 
     def reset(): Unit = {
-      val h = HalfEMCASDescriptor.empty.add(
-        HalfWordDescriptor[A](ref, a, a)
+      val h = EMCAS.currentContext().start().add(
+        HalfWordDescriptor[A](ref, a, a, Version.Start)
       )
       val p = EMCASDescriptor.prepare(h)
       val wd = p.wordIterator().next()
-      assert(BenchmarkAccess.casStatusFromActiveToFailed(p))
+      assert(BenchmarkAccess.casStatusFromActiveToFailedVal(p))
       this.ref.unsafeSetVolatile(wd.cast[A].castToData)
     }
   }

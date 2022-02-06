@@ -43,12 +43,6 @@ private object DeterministicRandom {
   private final val FloatUlp =
     1.0f / (1L << 24)
 
-  private final val Alphanumeric =
-    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-
-  private final val LenAlphanumeric =
-    62
-
   /**
    * '!'; technically 0x20 (space) is also printable, but
    * `scala.util.Random#nextPrintableChar` and
@@ -108,7 +102,8 @@ private final class DeterministicRandom(
   seed: Ref[Long],
   gamma: Long,
 ) extends DeterministicRandomPlatform
-  with SplittableRandom[Axn] {
+  with SplittableRandom[Axn]
+  with RandomBase {
 
   import DeterministicRandom._
 
@@ -189,9 +184,6 @@ private final class DeterministicRandom(
     }
   }
 
-  final override def nextBoolean: Axn[Boolean] =
-    nextInt.map { r => r < 0 }
-
   final override def nextBytes(n: Int): Axn[Array[Byte]] = {
     require(n >= 0)
     seed.modify[Array[Byte]] { (sd: Long) =>
@@ -200,7 +192,7 @@ private final class DeterministicRandom(
       buf.order(ByteOrder.LITTLE_ENDIAN)
       var s: Long = sd
 
-      /** Put the last (at most 7) bytes into buf */
+      /* Puts the last (at most 7) bytes into buf */
       def putLastBytes(nBytes: Int, r: Long): Unit = {
         if (nBytes > 0) {
           buf.put(r.toByte)
@@ -462,12 +454,6 @@ private final class DeterministicRandom(
     val r: Int = u % bound
     if ((u + m - r) < 0) -1 // retry
     else r
-  }
-
-  final override def nextAlphaNumeric: Axn[Char] = {
-    nextIntBounded(LenAlphanumeric).map { (i: Int) =>
-      Alphanumeric.charAt(i)
-    }
   }
 
   final override def nextPrintableChar: Axn[Char] = {

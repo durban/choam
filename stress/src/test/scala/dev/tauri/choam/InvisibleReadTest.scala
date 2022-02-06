@@ -40,10 +40,10 @@ class InvisibleReadTest extends StressTestBase {
     Ref.unsafe("x")
 
   private[this] val read1: Axn[String] =
-    Rxn.unsafe.invisibleRead(ref1)
+    ref1.unsafeDirectRead
 
   private[this] val read2: Axn[String] =
-    Rxn.unsafe.invisibleRead(ref2)
+    ref2.unsafeDirectRead
 
   private[this] val write =
     ref1.unsafeCas("a", "b") >>> ref2.unsafeCas("x", "y")
@@ -62,8 +62,8 @@ class InvisibleReadTest extends StressTestBase {
   @Arbiter
   def arbiter(r: LLZ_Result): Unit = {
     val ctx = impl.currentContext()
-    val fv1 = ctx.read(ref1.loc)
-    val fv2 = ctx.read(ref2.loc)
+    val fv1 = ctx.readDirect(ref1.loc)
+    val fv2 = ctx.readDirect(ref2.loc)
     if ((fv1 eq "b") && (fv2 eq "y")) {
       r.r3 = true
     }

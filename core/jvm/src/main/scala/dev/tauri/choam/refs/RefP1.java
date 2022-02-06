@@ -23,18 +23,21 @@ import java.lang.ref.WeakReference;
 
 import dev.tauri.choam.Ref;
 import dev.tauri.choam.mcas.MemoryLocation;
+import dev.tauri.choam.mcas.Version;
 
 final class RefP1<A>
   extends RefIdAndPadding
   implements Ref<A>, MemoryLocation<A> {
 
   private static final VarHandle VALUE;
+  private static final VarHandle VERSION;
   private static final VarHandle MARKER;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       VALUE = l.findVarHandle(RefP1.class, "value", Object.class);
+      VERSION = l.findVarHandle(RefP1.class, "version", long.class);
       MARKER = l.findVarHandle(RefP1.class, "marker", WeakReference.class);
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
@@ -42,6 +45,8 @@ final class RefP1<A>
   }
 
   private volatile A value;
+
+  private volatile long version = Version.Start;
 
   private volatile WeakReference<Object> marker; // = null
 
@@ -67,7 +72,7 @@ final class RefP1<A>
 
   @Override
   public final A unsafeGetVolatile() {
-    return (A) VALUE.getVolatile(this);
+    return this.value;
   }
 
   @Override
@@ -77,7 +82,7 @@ final class RefP1<A>
 
   @Override
   public final void unsafeSetVolatile(A a) {
-    VALUE.setVolatile(this, a);
+    this.value = a;
   }
 
   @Override
@@ -93,6 +98,16 @@ final class RefP1<A>
   @Override
   public final A unsafeCmpxchgVolatile(A ov, A nv) {
     return (A) VALUE.compareAndExchange(this, ov, nv);
+  }
+
+  @Override
+  public final long unsafeGetVersionVolatile() {
+    return this.version;
+  }
+
+  @Override
+  public final boolean unsafeCasVersionVolatile(long ov, long nv) {
+    return VERSION.compareAndSet(this, ov, nv);
   }
 
   @Override

@@ -25,6 +25,10 @@ import scala.jdk.javaapi.CollectionConverters
 
 private final class GlobalContext(impl: EMCAS.type) {
 
+  // TODO: should be `private[emcas]`
+  private[mcas] val commitTs: MemoryLocation[Long] =
+    MemoryLocation.unsafePadded(Version.Start)
+
   /**
    * `ThreadContext`s of all the (active) threads
    *
@@ -66,18 +70,24 @@ private final class GlobalContext(impl: EMCAS.type) {
   }
 
   /** Only for testing/benchmarking */
-  private[choam] final def countCommitsAndRetries(): (Long, Long) = {
+  private[choam] final def getRetryStats(): MCAS.RetryStats = {
     var commits = 0L
-    var retries = 0L
+    var fullRetries = 0L
+    var mcasRetries = 0L
     threadContexts().foreach { tctx =>
       // Calling `getCommitsAndRetries` is not
       // thread-safe here, but we only need these statistics
       // for benchmarking, so we're just hoping for the best...
-      val (c, r) = tctx.getCommitsAndRetries()
-      commits += c.toLong
-      retries += r.toLong
+      val stats = tctx.getRetryStats()
+      commits += stats.commits
+      fullRetries += stats.fullRetries
+      mcasRetries += stats.mcasRetries
     }
-    (commits, retries)
+    MCAS.RetryStats(
+      commits = commits,
+      fullRetries = fullRetries,
+      mcasRetries = mcasRetries
+    )
   }
 
   /** Only for testing/benchmarking */

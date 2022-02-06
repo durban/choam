@@ -39,7 +39,7 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       (s1, s2) = s12
       _ <- assertEqualsF(s1, "5")
       _ <- assertEqualsF(s2, "boo")
-      _ <- assertResultF(ref.unsafeInvisibleRead.run[F], "xyz")
+      _ <- assertResultF(ref.unsafeDirectRead.run[F], "xyz")
     } yield ()
   }
 
@@ -52,11 +52,11 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         else r2.upd[Any, String] { (o2, _) => (ov, o2) }
       }
       _ <- r.run
-      _ <- assertResultF(r1.unsafeInvisibleRead.run, "bar")
-      _ <- assertResultF(r2.unsafeInvisibleRead.run, "x")
+      _ <- assertResultF(r1.unsafeDirectRead.run, "bar")
+      _ <- assertResultF(r2.unsafeDirectRead.run, "x")
       _ <- r.run
-      _ <- assertResultF(r1.unsafeInvisibleRead.run, "x")
-      _ <- assertResultF(r2.unsafeInvisibleRead.run, "bar")
+      _ <- assertResultF(r1.unsafeDirectRead.run, "x")
+      _ <- assertResultF(r2.unsafeDirectRead.run, "bar")
     } yield ()
   }
 
@@ -77,6 +77,18 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       i <- (Ref(89).flatMap(_.getAndUpdate(_ + 1))).run[F]
       _ <- assertEqualsF(i, 89)
+    } yield ()
+  }
+
+  test("Ref#get") {
+    for {
+      a <- Ref("foo").run[F]
+      b <- Ref(42).run[F]
+      _ <- assertResultF((a.get * b.get).run[F], ("foo", 42))
+      rxn = (a.get * b.get).flatMapF { ab =>
+        a.update(_ + "bar") *> a.get.map(a2 => (ab, a2))
+      }
+      _ <- assertResultF(rxn.run[F], (("foo", 42), "foobar"))
     } yield ()
   }
 

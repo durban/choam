@@ -55,7 +55,7 @@ trait StreamSpec[F[_]]
   test("BoundedQueue to stream") {
     for {
       _ <- assumeF(this.kcasImpl.isThreadSafe)
-      q <- BoundedQueue[F, Option[String]](bound = 10).run[F]
+      q <- BoundedQueue.array[F, Option[String]](bound = 10).run[F]
       fibVec <- Stream.fromQueueNoneTerminated(q.toCats, limit = 4).compile.toVector.start
       _ <- (1 to 8).toList.traverse { idx => q.enqueue(Some(idx.toString)) }
       _ <- q.enqueue(None)

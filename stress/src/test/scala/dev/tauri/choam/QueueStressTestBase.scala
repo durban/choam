@@ -27,10 +27,10 @@ abstract class QueueStressTestBase extends StressTestBase {
 
 abstract class MsQueueStressTestBase extends QueueStressTestBase {
   protected final override def newQueue[A](as: A*): Queue[A] =
-    MichaelScottQueue.fromList(as.toList).run[SyncIO].unsafeRunSync()
+    Queue.fromList[SyncIO, Queue, A](MichaelScottQueue.apply[A])(as.toList).unsafeRunSync()
 }
 
 abstract class RemoveQueueStressTestBase extends QueueStressTestBase {
   protected final override def newQueue[A](as: A*): Queue.WithRemove[A] =
-    RemoveQueue.fromList(as.toList).run[SyncIO].unsafeRunSync()
+    Queue.fromList[SyncIO, Queue.WithRemove, A](RemoveQueue.apply[A])(as.toList).unsafeRunSync()
 }

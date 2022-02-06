@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package bench
 
-import cats.effect.IO
+import cats.effect.{ IO, SyncIO }
 import cats.effect.unsafe.IORuntime
 import cats.syntax.all._
 import io.github.timwspence.cats.stm._
@@ -27,11 +27,10 @@ import org.openjdk.jmh.annotations._
 
 import util._
 import data.{ Stack, TreiberStack, EliminationStack }
-import mcas.MCAS
 
 @Fork(2)
 @Threads(1) // set it to _concurrentOps!
-@BenchmarkMode(Array(Mode.AverageTime)) // TODO: maybe should be throughput
+@BenchmarkMode(Array(Mode.AverageTime))
 class SyncStackBench extends BenchUtils {
 
   import SyncStackBench._
@@ -160,7 +159,7 @@ object SyncStackBench {
     val runtime =
       cats.effect.unsafe.IORuntime.global
     val treiberStack: Stack[String] =
-      TreiberStack.fromList[String](Prefill.prefill()).unsafePerform(null, MCAS.EMCAS)
+      TreiberStack.fromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
   }
 
   @State(Scope.Benchmark)

@@ -22,26 +22,33 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-// @JCStressTest
+@JCStressTest
 @State
-@Description("Ref#get should be consistent")
+@Description("Ref#get should be consistent (after another op)")
 @Outcomes(Array(
-  new Outcome(id = Array("(foo,bar), (x,y)"), expect = ACCEPTABLE, desc = "Read old values"),
-  new Outcome(id = Array("(x,y), (x,y)"), expect = ACCEPTABLE, desc = "Read new values")
+  new Outcome(id = Array("(x,y), (x1,y1)"), expect = ACCEPTABLE, desc = "Read old values"),
+  new Outcome(id = Array("(x1,y1), (x1,y1)"), expect = ACCEPTABLE_INTERESTING, desc = "Read new values")
 ))
-class ConsistentReadTest extends StressTestBase {
+class ConsistentRead2 extends StressTestBase {
 
   private[this] val ref1 =
-    Ref.unsafe("foo")
+    Ref.unsafe("-")
 
   private[this] val ref2 =
-    Ref.unsafe("bar")
+    Ref.unsafe("-")
 
   private[this] val upd: Axn[Unit] =
-    ref1.unsafeCas("foo", "x") >>> ref2.unsafeCas("bar", "y")
+    ref1.update(_ + "1") >>> ref2.update(_ + "1")
 
   private[this] val get: Axn[(String, String)] =
     ref1.get * ref2.get
+
+  this.init()
+
+  private[this] def init(): Unit = {
+    val initRxn = ref1.update(_ => "x") >>> ref2.update(_ => "y")
+    initRxn.unsafeRun(this.impl)
+  }
 
   @Actor
   def update(): Unit = {

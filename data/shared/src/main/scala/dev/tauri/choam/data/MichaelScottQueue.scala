@@ -20,6 +20,8 @@ package data
 
 import MichaelScottQueue._
 
+// TODO: This is really bad for the GC; consider using
+// TODO: optimizations like in `juc.ConcurrentLinkedQueue`.
 private[choam] final class MichaelScottQueue[A] private[this] (
   sentinel: Node[A],
   padded: Boolean,
@@ -32,21 +34,22 @@ private[choam] final class MichaelScottQueue[A] private[this] (
     this(Node(nullOf[A], Ref.unsafePadded(End[A]())), padded = padded)
 
   override val tryDeque: Axn[Option[A]] = {
-    for {
-      node <- head.unsafeInvisibleRead
-      next <- node.next.unsafeInvisibleRead
-      res <- next match {
-        case n @ Node(a, _) =>
-          // No need to also validate `node.next`, since
-          // it is not the last node (thus it won't change).
-          head.unsafeCas(node, n.copy(data = nullOf[A])) >>> Rxn.ret(Some(a))
-        case End() =>
-          head.unsafeCas(node, node) >>> node.next.unsafeCas(next, next) >>> Rxn.ret(None)
+    head.modifyWith { node =>
+      node.next.get.flatMapF { next =>
+        next match {
+          case n @ Node(a, _) =>
+            Rxn.pure((n.copy(data = nullOf[A]), Some(a)))
+          case End() =>
+            Rxn.pure((node, None))
+        }
       }
-    } yield res
+    }
   }
 
   override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
+    // TODO: This is cheating: we're using
+    // TODO: `computed` as `delay` (`newNode`
+    // TODO: has a side-effect).
     findAndEnqueue(newNode(a))
   }
 
@@ -60,16 +63,17 @@ private[choam] final class MichaelScottQueue[A] private[this] (
   }
 
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    Rxn.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMapF { (n: Node[A]) =>
-      n.next.unsafeInvisibleRead.flatMapF {
-        case e @ End() =>
-          // found true tail; will CAS, and try to adjust the tail ref:
-          Rxn.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))
+    def go(n: Node[A], originalTail: Node[A]): Axn[Unit] = {
+      n.next.get.flatMapF {
+        case End() =>
+          // found true tail; will update, and try to adjust the tail ref:
+          n.next.set.provide(node).postCommit(tail.unsafeCas(originalTail, node).?.void)
         case nv @ Node(_, _) =>
-          // not the true tail; try to catch up, and will retry:
-          tail.unsafeCas(n, nv).?.as(Rxn.unsafe.retry)
+          // not the true tail; try to catch up, and continue:
+          go(n = nv, originalTail = originalTail)
       }
-    })
+    }
+    tail.get.flatMapF { t => go(t, t) }
   }
 }
 
@@ -80,27 +84,14 @@ private[choam] object MichaelScottQueue {
   private final case class End[A]() extends Elem[A]
 
   def apply[A]: Axn[MichaelScottQueue[A]] =
+    padded[A]
+
+  def padded[A]: Axn[MichaelScottQueue[A]] =
     applyInternal(padded = true)
 
   def unpadded[A]: Axn[MichaelScottQueue[A]] =
     applyInternal(padded = false)
 
-  def applyInternal[A](padded: Boolean): Axn[MichaelScottQueue[A]] =
+  private[this] def applyInternal[A](padded: Boolean): Axn[MichaelScottQueue[A]] =
     Rxn.unsafe.delay { _ => new MichaelScottQueue(padded = padded) }
-
-  def fromList[A](as: List[A]): Axn[MichaelScottQueue[A]] =
-    fromListInternal(as, padded = true)
-
-  def fromListUnpadded[A](as: List[A]): Axn[MichaelScottQueue[A]] =
-    fromListInternal(as, padded = false)
-
-  private def fromListInternal[A](as: List[A], padded: Boolean): Axn[MichaelScottQueue[A]] = {
-    Rxn.unsafe.context { ctx =>
-      val q = new MichaelScottQueue[A](padded = padded)
-      as.foreach { a =>
-        q.enqueue.unsafePerformInternal(a, ctx = ctx)
-      }
-      q
-    }
-  }
 }

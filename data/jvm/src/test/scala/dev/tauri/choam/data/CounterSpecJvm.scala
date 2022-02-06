@@ -16,30 +16,15 @@
  */
 
 package dev.tauri.choam
+package data
 
 import cats.effect.IO
 
-final class RefSpec_SpinLockMCAS_IO
-  extends BaseSpecIO
-  with SpecSpinLockMCAS
-  with RefSpec[IO]
-
-final class RefSpec_SpinLockMCAS_ZIO
-  extends BaseSpecZIO
-  with SpecSpinLockMCAS
-  with RefSpec[zio.Task]
-
-final class RefSpec_EMCAS_IO
+final class CounterSpecSimple_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
-  with RefSpec[IO]
+  with CounterSpecSimple[IO]
+  with CounterSpecJvm[IO]
 
-final class RefSpec_EMCAS_ZIO
-  extends BaseSpecZIO
-  with SpecEMCAS
-  with RefSpec[zio.Task]
-
-final class RefSpec_ThreadConfinedMCAS_ZIO
-  extends BaseSpecZIO
-  with SpecThreadConfinedMCAS
-  with RefSpec[zio.Task]
+trait CounterSpecJvm[F[_]] { this: CounterSpec[F] with KCASImplSpec =>
+}

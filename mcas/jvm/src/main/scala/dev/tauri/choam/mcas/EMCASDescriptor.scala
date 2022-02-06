@@ -20,12 +20,13 @@ package mcas
 
 private final class EMCASDescriptor private (
   half: HalfEMCASDescriptor,
+  final val newVersion: Long,
 ) extends EMCASDescriptorBase { self =>
 
   // effectively immutable array:
   private[this] val words: Array[WordDescriptor[_]] = {
-    val arr = new Array[WordDescriptor[_]](half.map.size)
-    val it = half.map.valuesIterator
+    val arr = new Array[WordDescriptor[_]](half.size)
+    val it = half.iterator()
     var idx = 0
     while (it.hasNext) {
       val wd = WordDescriptor.prepare(it.next(), this)
@@ -35,16 +36,11 @@ private final class EMCASDescriptor private (
     arr
   }
 
-  /** Intrusive linked list of finalized descriptors (see `ThreadContext`) */
-  private[mcas] var next: EMCASDescriptor =
-    null
-
   private[mcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
     new EMCASDescriptor.Iterator(this.words)
   }
 
-  /** Only for testing */
-  private[mcas] final def casStatus(ov: EMCASStatus, nv: EMCASStatus): Boolean = {
+  private[mcas] final def casStatus(ov: Long, nv: Long): Boolean = {
     this.casStatusInternal(ov, nv)
   }
 }
@@ -52,7 +48,7 @@ private final class EMCASDescriptor private (
 private object EMCASDescriptor {
 
   def prepare(half: HalfEMCASDescriptor): EMCASDescriptor = {
-    new EMCASDescriptor(half)
+    new EMCASDescriptor(half, newVersion = half.newVersion)
   }
 
   private final class Iterator(words: Array[WordDescriptor[_]])

@@ -26,7 +26,7 @@ import cats.mtl.Local
 import cats.effect.kernel.Unique
 import cats.effect.std.{ UUIDGen, Random }
 
-import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor }
+import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor, HalfWordDescriptor, EmcasStatus }
 
 /**
  * An effectful function from `A` to `B`; when executed,
@@ -50,17 +50,17 @@ import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor }
 sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
   /*
-   * A partial implementation of reagents, described in [Reagents: Expressing and
+   * An implementation similar to reagents, described in [Reagents: Expressing and
    * Composing Fine-grained Concurrency](http://www.ccis.northeastern.edu/home/turon/reagents.pdf)
    * by Aaron Turon; originally implemented at [aturon/ChemistrySet](
    * https://github.com/aturon/ChemistrySet).
    *
    * This implementation is significantly simplified by the fact
    * that offers and permanent failure are not implemented. As a
-   * consequence, these reactants are always lock-free (provided
+   * consequence, these `Rxn`s are always lock-free (provided
    * that the underlying k-CAS implementation is lock-free, and
-   * that `unsafe*` operations are not used). However, this also
-   * means, that they are less featureful.
+   * that `unsafe*` operations are not used, and there is no
+   * infinite recursion).
    *
    * On the other hand, this implementation uses an optimized and
    * stack-safe interpreter (see `interpreter`). A limited version
@@ -73,7 +73,15 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * functional") API. All side-effecting APIs are prefixed by
    * `unsafe`.
    *
-   * Other implementations:
+   * We also offer [*opacity*](https://nbronson.github.io/scala-stm/semantics.html#opacity),
+   * a correctness guarantee of the read values visible inside a `Rxn`.
+   *
+   * Finally (unlike with reagents), two `Rxn`s which touch the same
+   * `Ref`s are composable with each other. This allows multiple
+   * reads and writes to the same `Ref` in one `Rxn`. (`Exchanger` is
+   * an exception, this is part of the reason it is `unsafe`).
+   *
+   * Existing reagent implementations:
    * - https://github.com/aturon/Caper (Racket)
    * - https://github.com/ocamllabs/reagents (OCaml)
    */
@@ -299,8 +307,8 @@ object Rxn extends RxnInstances0 {
 
   @deprecated("old implementation with invisibleRead/cas", since = "2021-03-27")
   private[choam] def consistentReadOld[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
-    ra.unsafeInvisibleRead >>> computed[A, (A, B)] { a =>
-      rb.unsafeInvisibleRead >>> computed[B, (A, B)] { b =>
+    ra.unsafeDirectRead >>> computed[A, (A, B)] { a =>
+      rb.unsafeDirectRead >>> computed[B, (A, B)] { b =>
         (ra.unsafeCas(a, a) × rb.unsafeCas(b, b)).provide(((), ())).map { _ => (a, b) }
       }
     }
@@ -335,12 +343,15 @@ object Rxn extends RxnInstances0 {
 
   final object ref {
 
+    private[choam] final def get[A](r: Ref[A]): Axn[A] =
+      new Read(r.loc)
+
     final def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
       new Upd(r.loc, f)
 
     /** Old (slower) impl of `upd`, keep it for benchmarks */
     private[choam] final def updDerived[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] = {
-      val self: Rxn[B, (A, B)] = r.unsafeInvisibleRead.first[B].contramap[B](b => ((), b))
+      val self: Rxn[B, (A, B)] = r.unsafeDirectRead.first[B].contramap[B](b => ((), b))
       val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
         val (na, c) = f(oa, b)
         r.unsafeCas(oa, na).as(c)
@@ -353,7 +364,7 @@ object Rxn extends RxnInstances0 {
 
     // old, derived implementation:
     private[choam] final def updWithOld[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] = {
-      val self: Rxn[B, (A, B)] = Rxn.unsafe.invisibleRead(r).first[B].contramap[B](b => ((), b))
+      val self: Rxn[B, (A, B)] = Rxn.unsafe.directRead(r).first[B].contramap[B](b => ((), b))
       val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
         f(oa, b).flatMap {
           case (na, c) =>
@@ -366,8 +377,8 @@ object Rxn extends RxnInstances0 {
 
   final object unsafe {
 
-    def invisibleRead[A](r: Ref[A]): Axn[A] =
-      new InvisibleRead[A](r.loc)
+    def directRead[A](r: Ref[A]): Axn[A] =
+      new DirectRead[A](r.loc)
 
     def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
       new Cas[A](r.loc, ov, nv)
@@ -387,6 +398,11 @@ object Rxn extends RxnInstances0 {
     // TODO: up exchanger statistics; in the future, who knows...
     private[choam] def context[A](uf: MCAS.ThreadContext => A): Axn[A] =
       new Ctx[A](uf)
+
+    // TODO: Do we even need `immediately` and
+    // TODO: `delayComputed` now that we can touch
+    // TODO: a ref more than once in a Rxn? (Check
+    // TODO: if, e.g., MS-queue can work that way.)
 
     // TODO: idea:
     def immediately[A, B](@unused invisibleRxn: Rxn[A, B]): Rxn[A, B] =
@@ -421,22 +437,22 @@ object Rxn extends RxnInstances0 {
 
   /** Only the interpreter can use this! */
   private final class Commit[A]() extends Rxn[A, A] {
-    private[choam] final def tag = 0
+    private[choam] final override def tag = 0
     final override def toString: String = "Commit()"
   }
 
   private final class AlwaysRetry[A, B]() extends Rxn[A, B] {
-    private[choam] final def tag = 1
+    private[choam] final override def tag = 1
     final override def toString: String = "AlwaysRetry()"
   }
 
   private final class PostCommit[A](val pc: Rxn[A, Unit]) extends Rxn[A, A] {
-    private[choam] final def tag = 2
+    private[choam] final override def tag = 2
     final override def toString: String = s"PostCommit(${pc})"
   }
 
   private final class Lift[A, B](val func: A => B) extends Rxn[A, B] {
-    private[choam] final def tag = 3
+    private[choam] final override def tag = 3
     final override def toString: String = "Lift(<function>)"
   }
 
@@ -447,53 +463,53 @@ object Rxn extends RxnInstances0 {
 
   // TODO: we need a better name
   private final class DelayComputed[A, B](val prepare: Rxn[A, Axn[B]]) extends Rxn[A, B] {
-    private[choam] final def tag = 5
+    private[choam] final override def tag = 5
     final override def toString: String = s"DelayComputed(${prepare})"
   }
 
   private final class Choice[A, B](val left: Rxn[A, B], val right: Rxn[A, B]) extends Rxn[A, B] {
-    private[choam] final def tag = 6
+    private[choam] final override def tag = 6
     final override def toString: String = s"Choice(${left}, ${right})"
   }
 
   private final class Cas[A](val ref: MemoryLocation[A], val ov: A, val nv: A) extends Rxn[Any, Unit] {
-    private[choam] final def tag = 7
+    private[choam] final override def tag = 7
     final override def toString: String = s"Cas(${ref}, ${ov}, ${nv})"
   }
 
   private final class Upd[A, B, X](val ref: MemoryLocation[X], val f: (X, A) => (X, B)) extends Rxn[A, B] {
-    private[choam] final def tag = 8
+    private[choam] final override def tag = 8
     final override def toString: String = s"Upd(${ref}, <function>)"
   }
 
-  private final class InvisibleRead[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
-    private[choam] final def tag = 9
-    final override def toString: String = s"InvisibleRead(${ref})"
+  private final class DirectRead[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
+    private[choam] final override def tag = 9
+    final override def toString: String = s"DirectRead(${ref})"
   }
 
   private final class Exchange[A, B](val exchanger: ExchangerImpl[A, B]) extends Rxn[A, B] {
-    private[choam] final def tag = 10
+    private[choam] final override def tag = 10
     final override def toString: String = s"Exchange(${exchanger})"
   }
 
   private final class AndThen[A, B, C](val left: Rxn[A, B], val right: Rxn[B, C]) extends Rxn[A, C] {
-    private[choam] final def tag = 11
+    private[choam] final override def tag = 11
     final override def toString: String = s"AndThen(${left}, ${right})"
   }
 
   private final class AndAlso[A, B, C, D](val left: Rxn[A, B], val right: Rxn[C, D]) extends Rxn[(A, C), (B, D)] {
-    private[choam] final def tag = 12
+    private[choam] final override def tag = 12
     final override def toString: String = s"AndAlso(${left}, ${right})"
   }
 
   /** Only the interpreter can use this! */
   private final class Done[A](val result: A) extends Rxn[Any, A] {
-    private[choam] final def tag = 13
+    private[choam] final override def tag = 13
     final override def toString: String = s"Done(${result})"
   }
 
   private final class Ctx[A](val uf: MCAS.ThreadContext => A) extends Rxn[Any, A] {
-    private[choam] final def tag = 14
+    private[choam] final override def tag = 14
     final override def toString: String = s"Ctx(<block>)"
   }
 
@@ -525,6 +541,11 @@ object Rxn extends RxnInstances0 {
     }
   }
 
+  private final class Read[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
+    private[choam] final override def tag = 19
+    final override def toString: String = s"Read(${ref})"
+  }
+
   // Interpreter:
 
   private[this] def newStack[A]() = {
@@ -540,15 +561,10 @@ object Rxn extends RxnInstances0 {
   private[this] final val ContCommitPostCommit = 6.toByte
   private[this] final val ContUpdWith = 7.toByte
   private[this] final val ContAs = 8.toByte
-  private[choam] final val ContExchangerSep = 9.toByte
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
   private[this] val postCommitResultMarker =
     new PostCommitResultMarker
-
-  private[this] final class ExchangerSeparator // TODO: make this a java enum?
-  private[choam] val exchangerSeparator: Any =
-    new ExchangerSeparator
 
   private[choam] val commitSingleton: Rxn[Any, Any] = // TODO: make this a java enum?
     new Commit[Any]
@@ -597,7 +613,28 @@ object Rxn extends RxnInstances0 {
     private[this] var startRxn: Rxn[Any, Any] = rxn.asInstanceOf[Rxn[Any, Any]]
     private[this] var startA: Any = x
 
-    private[this] var desc: HalfEMCASDescriptor = ctx.start()
+    private[this] var _desc: HalfEMCASDescriptor =
+      null
+
+    private[this] final def desc: HalfEMCASDescriptor = {
+      if (_desc ne null) {
+        _desc
+      } else {
+        _desc = ctx.start()
+        _desc
+      }
+    }
+
+    @inline
+    private[this] final def desc_=(d: HalfEMCASDescriptor): Unit = {
+      require(d ne null)
+      _desc = d
+    }
+
+    @inline
+    private[this] final def clearDesc(): Unit = {
+      _desc = null
+    }
 
     private[this] val alts: ObjStack[Any] = newStack[Any]()
 
@@ -613,14 +650,36 @@ object Rxn extends RxnInstances0 {
     private[this] var contKReset: ObjStack.Lst[Any] = contK.takeSnapshot()
 
     private[this] var a: Any = x
-    private[this] var retries: Int = 0
+
+    /** 2 `Int`s: fullRetries and mcasRetries */
+    private[this] var retries: Long = 0L
+
+    @inline
+    private[this] final def getFullRetries(): Int = {
+      (this.retries >>> 32).toInt
+    }
+
+    @inline
+    private[this] final def incrFullRetries(): Unit = {
+      this.retries += (1L << 32)
+    }
+
+    @inline
+    private[this] final def getMcasRetries(): Int = {
+      this.retries.toInt
+    }
+
+    @inline
+    private[this] final def incrMcasRetries(): Unit = {
+      this.retries += 1L
+    }
 
     private[this] var stats: ExStatMap =
       ctx.getStatisticsPlain().asInstanceOf[ExStatMap]
 
     // TODO: this is a hack
     private[this] var exParams: Exchanger.Params = {
-      (stats.getOrElse(Exchanger.paramsKey, null): AnyRef) match {
+      (stats.getOrElse(Exchanger.paramsKey, null): Any) match {
         case null =>
           val p = Exchanger.params // volatile read
           stats = (stats.asInstanceOf[Map[AnyRef, AnyRef]] + (Exchanger.paramsKey -> p)).asInstanceOf[ExStatMap]
@@ -655,14 +714,14 @@ object Rxn extends RxnInstances0 {
       delayCompStorage.push(Arrays.copyOf(contTReset, contTReset.length))
       delayCompStorage.push(contKReset)
       // reset state:
-      desc = ctx.start()
+      clearDesc()
       clearAlts()
       contT.clear()
       contK.clear()
       pc.clear()
       a = () : Any
       startA = () : Any
-      retries = 0
+      retries = 0L
     }
 
     private[this] final def clearAlts(): Unit = {
@@ -674,14 +733,14 @@ object Rxn extends RxnInstances0 {
       contTReset = delayCompStorage.pop().asInstanceOf[Array[Byte]]
       startA = delayCompStorage.pop()
       startRxn = delayCompStorage.pop().asInstanceOf[Rxn[Any, R]]
-      retries = delayCompStorage.pop().asInstanceOf[Int]
+      retries = delayCompStorage.pop().asInstanceOf[Long]
       alts.loadSnapshot(delayCompStorage.pop().asInstanceOf[ObjStack.Lst[Any]])
       loadAlt()
       ()
     }
 
     private[this] final def saveAlt(k: Rxn[Any, R]): Unit = {
-      alts.push(ctx.snapshot(desc))
+      alts.push(ctx.snapshot(_desc))
       alts.push(a)
       alts.push(contT.takeSnapshot())
       alts.push(contK.takeSnapshot())
@@ -695,7 +754,7 @@ object Rxn extends RxnInstances0 {
       contK.loadSnapshot(alts.pop().asInstanceOf[ObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
-      desc = alts.pop().asInstanceOf[HalfEMCASDescriptor]
+      _desc = alts.pop().asInstanceOf[HalfEMCASDescriptor]
       res
     }
 
@@ -741,8 +800,8 @@ object Rxn extends RxnInstances0 {
           a = () : Any
           startA = () : Any
           startRxn = pcAction
-          retries = 0
-          desc = ctx.start()
+          retries = 0L
+          clearDesc()
           pcAction
         case 5 => // ContAfterPostCommit
           val res = popFinalResult()
@@ -754,16 +813,22 @@ object Rxn extends RxnInstances0 {
           commit.asInstanceOf[Rxn[Any, Any]]
         case 7 => // ContUpdWith
           val ox = contK.pop()
-          val ref = contK.pop().asInstanceOf[Ref[Any]]
+          val ref = contK.pop().asInstanceOf[MemoryLocation[Any]]
           val (nx, res) = a.asInstanceOf[Tuple2[_, _]]
-          desc = ctx.addCas(desc, ref.loc, ox, nx)
-          a = res
+          val hwd = desc.getOrElseNull(ref)
+          assert(hwd ne null)
+          if (equ(hwd.nv, ox)) {
+            desc = desc.overwrite(hwd.withNv(nx))
+            a = res
+          } else {
+            // TODO: "during" the updWith, we wrote to
+            // TODO: the same ref; what to do?
+            throw new UnsupportedOperationException("wrote during updWith")
+          }
           next()
         case 8 => // ContAs
           a = contK.pop()
           next()
-        case 9 => // ContExchangerSep
-          sys.error("TODO: ContExchangerSep in contT")
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -772,22 +837,22 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def retry(): Rxn[Any, Any] = {
-      retries += 1
+      incrFullRetries()
       maybeCheckInterrupt()
       if (alts.nonEmpty) {
         loadAlt()
       } else {
         // really restart:
-        desc = ctx.start()
+        clearDesc()
         a = startA
         resetConts()
         pc.clear()
-        spin()
+        spin(getFullRetries())
         startRxn
       }
     }
 
-    private[this] final def spin(): Unit = {
+    private[this] final def spin(retries: Int): Unit = {
       if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
       else Backoff.backoffConst(retries, maxBackoff)
     }
@@ -801,15 +866,72 @@ object Rxn extends RxnInstances0 {
      * interrupted by `Thread#interrupt` (in which case it will
      * throw an `InterruptedException`).
      */
-    private[this] def maybeCheckInterrupt(): Unit = {
-      if ((retries % Rxn.interruptCheckPeriod) == 0) {
+    private[this] final def maybeCheckInterrupt(): Unit = {
+      if ((getFullRetries() % Rxn.interruptCheckPeriod) == 0) {
         checkInterrupt()
       }
     }
 
-    private[this] def checkInterrupt(): Unit = {
+    private[this] final def checkInterrupt(): Unit = {
       if (Thread.interrupted()) {
         throw new InterruptedException
+      }
+    }
+
+    /**
+     * Specialized variant of `MCAS.ThreadContext#readMaybeFromLog`.
+     * Note: doesn't put a fresh HWD into the log! Note: returns `null`
+     * if a rollback is required! Note: may update `desc`
+     * (revalidate/extend).
+     */
+    private[this] final def readMaybeFromLog[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
+      desc.getOrElseNull(ref) match {
+        case null =>
+          // not in log
+          val hwd = ctx.readIntoHwd(ref)
+          if (!desc.isValidHwd(hwd)) {
+            desc = desc.add(hwd)
+            ctx.validateAndTryExtend(desc) match {
+              case null =>
+                // will rollback
+                clearDesc()
+                null
+              case newDesc =>
+                // OK, it was extended
+                desc = newDesc
+                // lookup again (version might've changed):
+                val newHwd = desc.getOrElseNull(ref)
+                assert(newHwd ne null)
+                newHwd
+            }
+          } else {
+            hwd
+          }
+        case hwd =>
+          hwd
+      }
+    }
+
+    @tailrec
+    private[this] final def casLoop(): Boolean = {
+      ctx.tryPerform(desc) match {
+        case EmcasStatus.Successful =>
+          true
+        case EmcasStatus.FailedVal =>
+          false
+        case _ => // failed due to version
+          ctx.validateAndTryExtend(desc) match {
+            case null =>
+              // can't extend:
+              clearDesc()
+              false
+            case d =>
+              // ok, was extended:
+              desc = d
+              incrMcasRetries()
+              spin(getMcasRetries())
+              casLoop() // retry
+          }
       }
     }
 
@@ -817,12 +939,15 @@ object Rxn extends RxnInstances0 {
     private[this] final def loop[A, B](curr: Rxn[A, B]): R = {
       (curr.tag : @switch) match {
         case 0 => // Commit
-          if (ctx.tryPerform(desc)) {
+          if (casLoop()) {
             // save retry statistics:
-            ctx.recordCommit(retries)
+            ctx.recordCommit(
+              fullRetries = getFullRetries(),
+              mcasRetries = getMcasRetries(),
+            )
             // ok, commit is done, but we still need to perform post-commit actions
             val res = a
-            desc = ctx.start()
+            clearDesc()
             a = () : Any
             if (!equ(res, postCommitResultMarker)) {
               // final result, Done (or ContAfterDelayComp) will need it:
@@ -834,7 +959,6 @@ object Rxn extends RxnInstances0 {
               // the post-commit action itself:
               contK.push(pc.pop())
               contT.push(ContPostCommit)
-              // TODO: write a test for the order of multiple post-commit results
             }
             loop(next())
           } else {
@@ -879,24 +1003,35 @@ object Rxn extends RxnInstances0 {
           loop(c.left)
         case 7 => // Cas
           val c = curr.asInstanceOf[Cas[Any]]
-          val currVal = ctx.read(c.ref)
-          if (equ(currVal, c.ov)) {
-            desc = ctx.addCas(desc, c.ref, c.ov, c.nv)
-            a = () : Unit
-            loop(next())
+          val hwd = readMaybeFromLog(c.ref)
+          if (hwd eq null) {
+            loop(retry()) // TODO: optimize rollback based on version(?)
           } else {
-            loop(retry())
+            val currVal = hwd.nv
+            if (equ(currVal, c.ov)) {
+              desc = desc.addOrOverwrite(hwd.withNv(c.nv))
+              a = () : Unit
+              loop(next())
+            }
+            else {
+              loop(retry())
+            }
           }
         case 8 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, Any]]
-          val ox = ctx.read(c.ref)
-          val (nx, b) = c.f(ox, a.asInstanceOf[A])
-          desc = ctx.addCas(desc, c.ref, ox, nx)
-          a = b
-          loop(next())
+          val hwd = readMaybeFromLog(c.ref)
+          if (hwd eq null) {
+            loop(retry()) // TODO: optimize rollback based on version(?)
+          } else {
+            val ox = hwd.nv
+            val (nx, b) = c.f(ox, a.asInstanceOf[A])
+            desc = desc.addOrOverwrite(hwd.withNv(nx))
+            a = b
+            loop(next())
+          }
         case 9 => // InvisibleRead
-          val c = curr.asInstanceOf[InvisibleRead[B]]
-          a = ctx.read(c.ref)
+          val c = curr.asInstanceOf[DirectRead[B]]
+          a = ctx.readDirect(c.ref)
           loop(next())
         case 10 => // Exchange
           val c = curr.asInstanceOf[Exchange[A, B]]
@@ -946,12 +1081,19 @@ object Rxn extends RxnInstances0 {
           loop(c.rxn)
         case 16 => // UpdWith
           val c = curr.asInstanceOf[UpdWith[Any, Any, _]]
-          val ox = ctx.read(c.ref)
-          val axn = c.f(ox, a)
-          contT.push(ContUpdWith)
-          contK.push(c.ref)
-          contK.push(ox)
-          loop(axn)
+          val hwd = readMaybeFromLog(c.ref)
+          if (hwd eq null) {
+            loop(retry()) // TODO: optimize rollback based on version(?)
+          } else {
+            val ox = hwd.nv
+            val axn = c.f(ox, a)
+            desc = desc.addOrOverwrite(hwd)
+            contT.push(ContUpdWith)
+            contK.push(c.ref)
+            contK.push(ox)
+            // TODO: if `axn` writes to the same ref, we'll throw (see above)
+            loop(axn)
+          }
         case 17 => // As
           val c = curr.asInstanceOf[As[_, _, _]]
           contT.push(ContAs)
@@ -977,10 +1119,20 @@ object Rxn extends RxnInstances0 {
             contK = c.restOtherContK,
             contT = otherContT,
           )
-          desc = ctx.addCas(desc, c.hole.loc, null, fx)
+          desc = ctx.addCasFromInitial(desc, c.hole.loc, null, fx)
           a = contK.pop() // the exchanged value we've got from the other thread
           //println(s"FinishExchange: our result is '${a}' - thread#${Thread.currentThread().getId()}")
           loop(next())
+        case 19 => // Read
+          val c = curr.asInstanceOf[Read[Any]]
+          val hwd = readMaybeFromLog(c.ref)
+          if (hwd eq null) {
+            loop(retry()) // TODO: optimize rollback based on version(?)
+          } else {
+            a = hwd.nv
+            desc = desc.addOrOverwrite(hwd)
+            loop(next())
+          }
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }

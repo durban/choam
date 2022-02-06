@@ -39,15 +39,18 @@ private object SpinLockMCAS extends MCAS { self =>
   private[choam] final override def isThreadSafe =
     true
 
+  private[this] val commitTs: MemoryLocation[Long] =
+    MemoryLocation.unsafePadded(Version.Start)
+
   private[this] val dummyContext = new MCAS.ThreadContext {
 
     // NB: it is a `def`, not a `val`
     final override def random =
       ThreadLocalRandom.current()
 
-    final override def tryPerform(desc: HalfEMCASDescriptor): Boolean = {
-      val ops = desc.map.valuesIterator.toList
-      perform(ops)
+    final override def tryPerformInternal(desc: HalfEMCASDescriptor): Long = {
+      val ops = desc.iterator().toList
+      perform(ops, newVersion = desc.newVersion)
     }
 
     private[this] final object Locked {
@@ -62,33 +65,95 @@ private object SpinLockMCAS extends MCAS { self =>
       equ(a, locked[A])
 
     @tailrec
-    final override def read[A](ref: MemoryLocation[A]): A = {
+    private[this] final def readOne[A](ref: MemoryLocation[A]): A = {
       val a = ref.unsafeGetVolatile()
       if (isLocked(a)) {
         Thread.onSpinWait()
-        read(ref) // retry
+        readOne(ref) // retry
       } else {
         a
       }
     }
 
-    private def perform(ops: List[HalfWordDescriptor[_]]): Boolean = {
+    final override def readDirect[A](ref: MemoryLocation[A]): A = {
+      readOne(ref)
+    }
+
+    final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
+      @tailrec
+      def go(ver1: Long): HalfWordDescriptor[A] = {
+        val a = readOne(ref)
+        val ver2 = ref.unsafeGetVersionVolatile()
+        if (ver1 == ver2) {
+          HalfWordDescriptor[A](ref, ov = a, nv = a, version = ver1)
+        } else {
+          go(ver2)
+        }
+      }
+
+      go(ref.unsafeGetVersionVolatile())
+    }
+
+    protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long = {
+      @tailrec
+      def go(ver1: Long): Long = {
+        val _ = readOne(ref)
+        val ver2 = ref.unsafeGetVersionVolatile()
+        if (ver1 == ver2) {
+          ver1
+        } else {
+          go(ver2)
+        }
+      }
+
+      go(ref.unsafeGetVersionVolatile())
+    }
+
+    final override def start(): HalfEMCASDescriptor =
+      HalfEMCASDescriptor.empty(commitTs, this)
+
+    protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+      desc.addVersionCas(commitTs)
+
+    protected[choam] final override def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+      desc.validateAndTryExtend(commitTs, this)
+
+    private def perform(ops: List[HalfWordDescriptor[_]], newVersion: Long): Long = {
 
       @tailrec
-      def lock(ops: List[HalfWordDescriptor[_]]): List[HalfWordDescriptor[_]] = ops match {
-        case Nil => Nil
-        case h :: tail => h match { case head: HalfWordDescriptor[a] =>
-          if (head.address.unsafeCasVolatile(head.ov, locked[a])) lock(tail)
-          else ops // rollback
+      def lock(ops: List[HalfWordDescriptor[_]]): (List[HalfWordDescriptor[_]], Option[Long]) = ops match {
+        case Nil => (Nil, None)
+        case h :: tail => h match {
+          case head: HalfWordDescriptor[a] =>
+            val witness: a = head.address.unsafeCmpxchgVolatile(head.ov, locked[a])
+            if (equ(witness, head.ov)) {
+              lock(tail)
+            } else {
+              val badVersion = if (head.address eq commitTs) {
+                if (isLocked(witness)) {
+                  None
+                } else {
+                  val ver = witness.asInstanceOf[Long]
+                  Some(ver)
+                }
+              } else {
+                None
+              }
+              (ops, badVersion) // rollback
+            }
         }
       }
 
       @tailrec
-      def commit(ops: List[HalfWordDescriptor[_]]): Unit = ops match {
+      def commit(ops: List[HalfWordDescriptor[_]], newVersion: Long): Unit = ops match {
         case Nil => ()
         case h :: tail => h match { case head: HalfWordDescriptor[a] =>
+          assert(head.address.unsafeCasVersionVolatile(
+            head.address.unsafeGetVersionVolatile(),
+            newVersion,
+          ))
           head.address.unsafeSetVolatile(head.nv)
-          commit(tail)
+          commit(tail, newVersion)
         }
       }
 
@@ -109,17 +174,19 @@ private object SpinLockMCAS extends MCAS { self =>
 
       ops match {
         case Nil =>
-          true
-        case (h : HalfWordDescriptor[a]) :: Nil =>
-          h.address.unsafeCasVolatile(h.ov, h.nv)
+          EmcasStatus.Successful
         case l @ (_ :: _) =>
           lock(l) match {
-            case Nil =>
-              commit(l)
-              true
-            case to @ (_ :: _) =>
+            case (Nil, bv) =>
+              assert(bv.isEmpty)
+              commit(l, newVersion)
+              EmcasStatus.Successful
+            case (to @ (_ :: _), bv) =>
               rollback(l, to)
-              false
+              bv match {
+                case Some(ver) => ver
+                case None => EmcasStatus.FailedVal
+              }
           }
       }
     }

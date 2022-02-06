@@ -18,21 +18,60 @@
 package dev.tauri.choam
 package mcas
 
-private final class HalfWordDescriptor[A] private (
+import scala.util.hashing.MurmurHash3
+
+// TODO: this really should have a better name
+final class HalfWordDescriptor[A] private (
   val address: MemoryLocation[A],
   val ov: A,
   val nv: A,
+  val version: Long,
 ) {
 
   private[mcas] final def cast[B]: HalfWordDescriptor[B] =
     this.asInstanceOf[HalfWordDescriptor[B]]
 
+  final def withNv(a: A): HalfWordDescriptor[A] =
+    new HalfWordDescriptor[A](address = this.address, ov = this.ov, nv = a, version = this.version)
+
+  final def readOnly: Boolean =
+    equ(this.ov, this.nv)
+
   final override def toString: String =
-    s"HalfWordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
+    s"HalfWordDescriptor(${this.address}, ${this.ov}, ${this.nv}, version = ${version})"
+
+  final override def equals(that: Any): Boolean = {
+    that match {
+      case that: HalfWordDescriptor[_] =>
+        (this eq that) || (
+          (this.address == that.address) &&
+          equ(this.ov, that.ov) &&
+          equ(this.nv, that.nv) &&
+          (this.version == that.version)
+        )
+      case _ =>
+        false
+    }
+  }
+
+  final override def hashCode: Int = {
+    val h1 = MurmurHash3.mix(0x4beb8a16, this.address.##)
+    val h2 = MurmurHash3.mix(h1, System.identityHashCode(this.ov))
+    val h3 = MurmurHash3.mix(h2, System.identityHashCode(this.nv))
+    val h4 = MurmurHash3.mix(h3, this.version.toInt)
+    val h5 = MurmurHash3.mixLast(h4, (this.version >>> 32).toInt)
+    MurmurHash3.finalizeHash(h5, 5)
+  }
 }
 
 private object HalfWordDescriptor {
 
-  private[mcas] def apply[A](address: MemoryLocation[A], ov: A, nv: A): HalfWordDescriptor[A] =
-    new HalfWordDescriptor[A](address = address, ov = ov, nv = nv)
+  private[mcas] def apply[A](
+    address: MemoryLocation[A],
+    ov: A,
+    nv: A,
+    version: Long,
+  ): HalfWordDescriptor[A] = {
+    new HalfWordDescriptor[A](address = address, ov = ov, nv = nv, version = version)
+  }
 }

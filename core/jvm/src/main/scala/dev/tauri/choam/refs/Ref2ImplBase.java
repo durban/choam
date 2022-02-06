@@ -26,6 +26,8 @@ interface Ref2ImplBase<A, B> {
   A unsafeCmpxchgVolatile1(A ov, A nv);
   void unsafeSetVolatile1(A nv);
   void unsafeSetPlain1(A nv);
+  long unsafeGetVersionVolatile1();
+  boolean unsafeCasVersionVolatile1(long ov, long nv);
   WeakReference<Object> unsafeGetMarkerVolatile1();
   boolean unsafeCasMarkerVolatile1(WeakReference<Object> ov, WeakReference<Object> nv);
   long id0();

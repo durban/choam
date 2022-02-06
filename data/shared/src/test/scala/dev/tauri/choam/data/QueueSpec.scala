@@ -30,12 +30,53 @@ final class QueueWithRemoveSpec_ThreadConfinedMCAS_IO
   with QueueWithRemoveSpec[IO]
   with SpecThreadConfinedMCAS
 
+final class QueueWithSizeSpec_ThreadConfinedMCAS_IO
+  extends BaseSpecIO
+  with QueueWithSizeSpec[IO]
+  with SpecThreadConfinedMCAS
+
+final class QueueGcHostileSpec_ThreadConfinedMCAS_IO
+  extends BaseSpecIO
+  with QueueGcHostileSpec[IO]
+  with SpecThreadConfinedMCAS
+
+trait QueueWithSizeSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
+
+  override type QueueType[A] = Queue.WithSize[A]
+
+  protected override def newQueueFromList[A](as: List[A]): F[this.QueueType[A]] = {
+    Queue.fromList(Queue.withSize[A])(as)
+  }
+
+  test("Queue size composed with other ops") {
+    for {
+      q <- newQueueFromList(List.empty[String])
+      _ <- assertResultF(q.size.run[F], 0)
+      rxn = for {
+        s0 <- q.size
+        _ <- q.enqueue.provide("a")
+        _ <- q.enqueue.provide("b")
+        s1 <- q.size
+        _ <- q.enqueue.provide("c")
+        _ <- q.tryDeque
+        s2 <- q.size
+        _ <- q.tryDeque
+        s3 <- q.size
+      } yield (s0, s1, s2, s3)
+      _ <- assertResultF(rxn.run[F], (0, 2, 2, 1))
+      _ <- assertResultF(q.size.run[F], 1)
+      _ <- assertResultF(q.tryDeque.run[F], Some("c"))
+      _ <- assertResultF(q.size.run[F], 0)
+    } yield ()
+  }
+}
+
 trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
 
   override type QueueType[A] = Queue.WithRemove[A]
 
   protected override def newQueueFromList[A](as: List[A]): F[this.QueueType[A]] =
-    Queue.withRemoveFromList(as).run[F]
+    Queue.fromList(Queue.withRemove[A])(as)
 
   test("Queue.WithRemove#remove") {
     for {
@@ -121,7 +162,15 @@ trait QueueSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
   override type QueueType[A] = Queue[A]
 
   protected override def newQueueFromList[A](as: List[A]): F[this.QueueType[A]] =
-    Queue.fromList(as).run[F]
+    Queue.fromList(Queue.unpadded[A])(as)
+}
+
+trait QueueGcHostileSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
+
+  override type QueueType[A] = GcHostileMsQueue[A]
+
+  protected override def newQueueFromList[A](as: List[A]): F[this.QueueType[A]] =
+    GcHostileMsQueue.fromList(as)
 }
 
 trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
@@ -174,6 +223,26 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- q.enqueue("x")
       _ <- assertResultF(q.drainOnce, List("b", "c", "x"))
       _ <- assertResultF(q.tryDeque.run, None)
+    } yield ()
+  }
+
+  test("Queue multiple enq/deq in one Rxn") {
+    for {
+      q <- newQueueFromList(List.empty[String])
+      _ <- assertResultF(q.tryDeque.run[F], None)
+      rxn = for {
+        _ <- q.enqueue.provide("a")
+        _ <- q.enqueue.provide("b")
+        _ <- q.enqueue.provide("c")
+        a <- q.tryDeque
+        b <- q.tryDeque
+        _ <- q.enqueue.provide("d")
+        c <- q.tryDeque
+        d <- q.tryDeque
+      } yield (a, b, c, d)
+      abcd <- rxn.run[F]
+      _ <- assertEqualsF(abcd, (Some("a"), Some("b"), Some("c"), Some("d")))
+      _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
   }
 }

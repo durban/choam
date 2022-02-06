@@ -122,4 +122,38 @@ trait UnboundedQueueSpec[F[_]]
       _ <- assertResultF(f3.joinWithNever, "c")
     } yield ()
   }
+
+  test("UnboundedQueue more enq in one Rxn") {
+    for {
+      s <- newQueue[F, String]
+      f1 <- s.deque.start
+      _ <- this.tickAll
+      f2 <- s.deque.start
+      _ <- this.tickAll
+      f3 <- s.deque.start
+      _ <- this.tickAll
+      rxn = s.enqueue.provide("a") * s.enqueue.provide("b") * s.enqueue.provide("c")
+      _ <- rxn.run[F]
+      _ <- assertResultF(f1.joinWithNever, "a")
+      _ <- assertResultF(f2.joinWithNever, "b")
+      _ <- assertResultF(f3.joinWithNever, "c")
+    } yield ()
+  }
+
+  test("UnboundedQueue enq and deq in one Rxn") {
+    for {
+      s <- newQueue[F, String]
+      f1 <- s.deque.start
+      _ <- this.tickAll
+      f2 <- s.deque.start
+      _ <- this.tickAll
+      rxn = (s.enqueue.provide("a") * s.enqueue.provide("b") * s.enqueue.provide("c")) *> (
+        s.tryDeque
+      )
+      deqRes <- rxn.run[F]
+      _ <- assertEqualsF(deqRes, Some("c"))
+      _ <- assertResultF(f1.joinWithNever, "a")
+      _ <- assertResultF(f2.joinWithNever, "b")
+    } yield ()
+  }
 }

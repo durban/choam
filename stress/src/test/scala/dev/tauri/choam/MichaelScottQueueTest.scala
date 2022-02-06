@@ -20,7 +20,7 @@ package dev.tauri.choam
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LLL_Result
+import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.SyncIO
 
@@ -28,15 +28,15 @@ import cats.effect.SyncIO
 @State
 @Description("MichaelScottQueue enq/deq should be atomic")
 @Outcomes(Array(
-  new Outcome(id = Array("Some(z), Some(x), List(y)", "Some(z), None, List(x, y)"), expect = ACCEPTABLE, desc = "enq1 first; deq1 first"),
-  new Outcome(id = Array("Some(x), Some(z), List(y)", "None, Some(z), List(x, y)"), expect = ACCEPTABLE, desc = "enq1 first; deq2 first"),
-  new Outcome(id = Array("Some(z), Some(y), List(x)", "Some(z), None, List(y, x)"), expect = ACCEPTABLE, desc = "enq2 first; deq1 first"),
-  new Outcome(id = Array("Some(y), Some(z), List(x)", "None, Some(z), List(y, x)"), expect = ACCEPTABLE, desc = "enq2 first; deq2 first")
+  new Outcome(id = Array("None, List(x, y)"), expect = ACCEPTABLE, desc = "deq, enq1, enq2"),
+  new Outcome(id = Array("None, List(y, x)"), expect = ACCEPTABLE, desc = "deq, enq2, enq1"),
+  new Outcome(id = Array("Some(x), List(y)"), expect = ACCEPTABLE_INTERESTING, desc = "enq1, (deq | enq2)"),
+  new Outcome(id = Array("Some(y), List(x)"), expect = ACCEPTABLE_INTERESTING, desc = "enq2, (deq | enq1)"),
 ))
 class MichaelScottQueueTest extends MsQueueStressTestBase {
 
   private[this] val queue =
-    this.newQueue("z")
+    this.newQueue[String]()
 
   private[this] val enqueue =
     queue.enqueue
@@ -55,17 +55,12 @@ class MichaelScottQueueTest extends MsQueueStressTestBase {
   }
 
   @Actor
-  def deq1(r: LLL_Result): Unit = {
+  def deq(r: LL_Result): Unit = {
     r.r1 = tryDeque.unsafeRun(this.impl)
   }
 
-  @Actor
-  def deq2(r: LLL_Result): Unit = {
-    r.r2 = tryDeque.unsafeRun(this.impl)
-  }
-
   @Arbiter
-  def arbiter(r: LLL_Result): Unit = {
-    r.r3 = queue.drainOnce[SyncIO, String].unsafeRunSync()
+  def arbiter(r: LL_Result): Unit = {
+    r.r2 = queue.drainOnce[SyncIO, String].unsafeRunSync()
   }
 }

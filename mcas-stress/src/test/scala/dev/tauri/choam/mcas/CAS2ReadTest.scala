@@ -23,7 +23,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLZ_Result
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("CAS2 should be atomic to readers")
 @Outcomes(Array(
@@ -43,23 +43,23 @@ class CAS2ReadTest extends StressTestBase {
   @Actor
   def writer(r: LLZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r3 = ctx.tryPerform(
-      ctx.addCas(ctx.addCas(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
-    )
+    r.r3 = (ctx.tryPerformInternal(
+      ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
+    ) == EmcasStatus.Successful)
   }
 
   @Actor
   def reader(r: LLZ_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r1 = ctx.read(ref1)
-    r.r2 = ctx.read(ref2)
+    r.r1 = ctx.readDirect(ref1)
+    r.r2 = ctx.readDirect(ref2)
   }
 
   @Arbiter
   def arbiter(r: LLZ_Result): Unit = {
     val ctx = impl.currentContext()
-    val ok1 = (ctx.read(this.ref1) eq "a")
-    val ok2 = (ctx.read(this.ref2) eq "b")
+    val ok1 = (ctx.readDirect(this.ref1) eq "a")
+    val ok2 = (ctx.readDirect(this.ref2) eq "b")
     if (!(ok1 && ok2)) {
       r.r3 = false
     }

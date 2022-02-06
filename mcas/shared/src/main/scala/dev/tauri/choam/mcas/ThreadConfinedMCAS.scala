@@ -25,48 +25,79 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
   final override def currentContext(): MCAS.ThreadContext =
     _ctx
 
+  private[this] val _commitTs: MemoryLocation[Long] =
+    MemoryLocation.unsafeUnpadded(Version.Start)
+
   private[this] val _ctx = new MCAS.ThreadContext {
 
-    final override def read[A](ref: MemoryLocation[A]): A =
+    final override def readDirect[A](ref: MemoryLocation[A]): A = {
       ref.unsafeGetPlain()
+    }
 
-    final override def tryPerform(desc: HalfEMCASDescriptor): Boolean = {
+    final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
+      val v = ref.unsafeGetPlain()
+      HalfWordDescriptor(ref, ov = v, nv = v, version = ref.unsafeGetVersionVolatile())
+    }
+
+    protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
+      ref.unsafeGetVersionVolatile()
+
+    final override def tryPerformInternal(desc: HalfEMCASDescriptor): Long = {
       @tailrec
-      def prepare(it: Iterator[HalfWordDescriptor[_]]): Boolean = {
+      def prepare(it: Iterator[HalfWordDescriptor[_]]): Long = {
         if (it.hasNext) {
           it.next() match {
             case wd: HalfWordDescriptor[a] =>
-              if (equ[a](wd.address.unsafeGetPlain(), wd.ov)) {
+              val witness = wd.address.unsafeGetPlain()
+              if (equ[a](witness, wd.ov)) {
                 prepare(it)
               } else {
-                false
+                if (wd.address eq _commitTs) {
+                  witness.asInstanceOf[Long]
+                } else {
+                  EmcasStatus.FailedVal
+                }
               }
           }
         } else {
-          true
+          EmcasStatus.Successful
         }
       }
 
       @tailrec
-      def execute(it: Iterator[HalfWordDescriptor[_]]): Unit = {
+      def execute(it: Iterator[HalfWordDescriptor[_]], newVersion: Long): Unit = {
         if (it.hasNext) {
           it.next() match {
             case wd: HalfWordDescriptor[a] =>
               val old = wd.address.unsafeGetPlain()
               assert(equ(old, wd.ov))
               wd.address.unsafeSetPlain(wd.nv)
-              execute(it)
+              assert(wd.address.unsafeCasVersionVolatile(
+                wd.address.unsafeGetVersionVolatile(),
+                newVersion,
+              ))
+              execute(it, newVersion)
           }
         }
       }
 
-      if (prepare(desc.map.valuesIterator)) {
-        execute(desc.map.valuesIterator)
-        true
+      val prepResult = prepare(desc.iterator())
+      if (prepResult == EmcasStatus.Successful) {
+        execute(desc.iterator(), desc.newVersion)
+        EmcasStatus.Successful
       } else {
-        false
+        prepResult
       }
     }
+
+    final override def start(): HalfEMCASDescriptor =
+      HalfEMCASDescriptor.empty(_commitTs, this)
+
+    protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+      desc.addVersionCas(_commitTs)
+
+    protected[choam] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+      desc.validateAndTryExtend(_commitTs, this)
 
     // NB: it is a `def`, not a `val`
     final override private[choam] def random: ThreadLocalRandom =

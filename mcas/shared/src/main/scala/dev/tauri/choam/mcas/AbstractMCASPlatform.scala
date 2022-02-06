@@ -25,6 +25,9 @@ private[mcas] abstract class AbstractMCASPlatform {
   final def ThreadConfinedMCAS: MCAS =
     mcas.ThreadConfinedMCAS
 
+  final def NullMcas: MCAS =
+    mcas.NullMcas
+
   /** For testing */
   private[choam] def debugRead[A](loc: MemoryLocation[A]): A
 

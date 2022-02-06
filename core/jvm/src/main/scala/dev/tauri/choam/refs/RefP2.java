@@ -21,6 +21,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
+import dev.tauri.choam.mcas.Version;
 import dev.tauri.choam.Ref;
 
 final class RefP2<A, B>
@@ -28,16 +29,20 @@ final class RefP2<A, B>
   implements Ref2<A, B>, Ref2ImplBase<A, B>, Ref2Impl<A, B> {
 
   private static final VarHandle VALUE_A;
+  private static final VarHandle VERSION_A;
   private static final VarHandle MARKER_A;
   private static final VarHandle VALUE_B;
+  private static final VarHandle VERSION_B;
   private static final VarHandle MARKER_B;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       VALUE_A = l.findVarHandle(RefP2.class, "valueA", Object.class);
+      VERSION_A = l.findVarHandle(RefP2.class, "versionA", long.class);
       MARKER_A = l.findVarHandle(RefP2.class, "markerA", WeakReference.class);
       VALUE_B = l.findVarHandle(RefP2.class, "valueB", Object.class);
+      VERSION_B = l.findVarHandle(RefP2.class, "versionB", long.class);
       MARKER_B = l.findVarHandle(RefP2.class, "markerB", WeakReference.class);
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
@@ -45,6 +50,7 @@ final class RefP2<A, B>
   }
 
   private volatile A valueA;
+  private volatile long versionA = Version.Start;
   private volatile WeakReference<Object> markerA; // = null
   private final Ref<A> refA = new Ref2Ref1<A, B>(this);
 
@@ -53,6 +59,7 @@ final class RefP2<A, B>
   private final long _id6;
   private final long _id7;
   private volatile B valueB;
+  private volatile long versionB = Version.Start;
   private volatile WeakReference<Object> markerB; // = null
   private final Ref<B> refB = new Ref2Ref2<A, B>(this);
 
@@ -112,7 +119,7 @@ final class RefP2<A, B>
 
   @Override
   public final A unsafeGetVolatile1() {
-    return (A) VALUE_A.getVolatile(this);
+    return this.valueA;
   }
 
   @Override
@@ -122,7 +129,7 @@ final class RefP2<A, B>
 
   @Override
   public final void unsafeSetVolatile1(A a) {
-    VALUE_A.setVolatile(this, a);
+    this.valueA = a;
   }
 
   @Override
@@ -141,6 +148,16 @@ final class RefP2<A, B>
   }
 
   @Override
+  public final long unsafeGetVersionVolatile1() {
+    return this.versionA;
+  }
+
+  @Override
+  public final boolean unsafeCasVersionVolatile1(long ov, long nv) {
+    return VERSION_A.compareAndSet(this, ov, nv);
+  }
+
+  @Override
   public final WeakReference<Object> unsafeGetMarkerVolatile1() {
     return this.markerA;
   }
@@ -152,7 +169,7 @@ final class RefP2<A, B>
 
   @Override
   public final B unsafeGetVolatile2() {
-    return (B) VALUE_B.getVolatile(this);
+    return this.valueB;
   }
 
   @Override
@@ -162,7 +179,7 @@ final class RefP2<A, B>
 
   @Override
   public final void unsafeSetVolatile2(B b) {
-    VALUE_B.setVolatile(this, b);
+    this.valueB = b;
   }
 
   @Override
@@ -178,6 +195,16 @@ final class RefP2<A, B>
   @Override
   public final B unsafeCmpxchgVolatile2(B ov, B nv) {
     return (B) VALUE_B.compareAndExchange(this, ov, nv);
+  }
+
+  @Override
+  public final long unsafeGetVersionVolatile2() {
+    return this.versionB;
+  }
+
+  @Override
+  public final boolean unsafeCasVersionVolatile2(long ov, long nv) {
+    return VERSION_B.compareAndSet(this, ov, nv);
   }
 
   @Override

@@ -18,7 +18,7 @@
 package dev.tauri.choam
 
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.atomic.{ AtomicReference, AtomicInteger }
+import java.util.concurrent.atomic.{ AtomicReference, AtomicInteger, AtomicBoolean }
 
 import scala.concurrent.duration._
 
@@ -125,8 +125,8 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
       // `update` works fine:
       _ <- ref.update(_ + 1).run[F]
       _ <- assertResultF(ref.get.run[F], n + 1)
-      // `unsafeInvisibleRead` then `unsafeCas` doesn't:
-      unsafeRxn = ref.unsafeInvisibleRead.flatMap { v =>
+      // `unsafeDirectRead` then `unsafeCas` doesn't:
+      unsafeRxn = ref.unsafeDirectRead.flatMap { v =>
         Rxn.pure(42).flatMap { _ =>
           ref.unsafeCas(ov = v, nv = v + 1)
         }
@@ -149,33 +149,45 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
       ref1 <- Ref("a").run[F]
       ref2 <- Ref("b").run[F]
       ref <- F.delay(new AtomicReference[(String, String)])
+      writerDone <- F.delay(new AtomicBoolean(false))
+      unsafeLog <- F.delay(new AtomicReference[List[(String, String)]](Nil))
       writer = (ref1.update { v1 => v1 + "a" } *> ref2.update(_ + "b")).run[F]
       reader = ref1.get.flatMapF { v1 =>
         // we already read `ref1`; now we start
         // `writer`, and hard block until it's
         // committed
-        if (ref.get() eq null) {
+        if ((ref.get() eq null) && (!writerDone.get())) {
           this.absolutelyUnsafeRunSync(
-            writer.start.flatMap(_.joinWithNever)
+            writer.start.flatMap(_.joinWithNever) >> F.delay {
+              writerDone.set(true)
+            }
           ) : Unit
         }
-        // then we continue with reading (the now
-        // changed) `ref2`:
-        ref2.get.map { v2 =>
-          val tup = (v1, v2)
-          if (v2.length > v1.length) {
-            ref.compareAndSet(null, tup)
-          } else {
-            ref.compareAndSet(null, ("OK", "OK"))
+        // read value unsafely:
+        ref2.unsafeDirectRead.flatMap { unsafeValue =>
+          unsafeLog.accumulateAndGet(List((v1, unsafeValue)), (l1, l2) => l1 ++ l2)
+          // then we continue with reading (the now
+          // changed) `ref2`:
+          ref2.get.map { v2 =>
+            val tup = (v1, v2)
+            if (v2.length > v1.length) {
+              ref.compareAndSet(null, tup)
+            } else {
+              ref.compareAndSet(null, ("OK", "OK"))
+            }
+            tup
           }
-          tup
         }
       }
       rRes <- reader.run[F]
       _ <- assertEqualsF(rRes, ("aa", "bb"))
       _ <- assertResultF(
         F.delay(ref.get()),
-        ("a", "bb") // TODO: this should be ("OK", "OK")
+        ("OK", "OK"),
+      )
+      _ <- assertResultF(
+        F.delay(unsafeLog.get()),
+        List(("a", "bb"), ("aa", "bb")),
       )
     } yield ()
   }
@@ -203,15 +215,63 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
           }
         }.unsafeRun(this.kcasImpl)
       }
-      _ <- F.both(writer, reader)
-      _ <- F.delay(println("OK"))
+      _ <- F.both(F.cede *> writer, F.cede *> reader)
     } yield ()
     // we hard block here, because we don't want the munit timeout:
     this.absolutelyUnsafeRunSync(
       F.replicateA(1024, tsk).void.timeoutTo(
         1.minute,
-        F.delay(println("Expected failure")) // TODO: this.failF("infinite loop")
+        this.failF("infinite loop")
       )
     )
+  }
+
+  test("Read-write-read-write") {
+    for {
+      ref <- Ref("a").run[F]
+      log <- F.delay(new AtomicReference[List[String]](Nil))
+      r = ref.get.flatMapF { v0 =>
+        log.accumulateAndGet(List(v0), (l1, l2) => l1 ++ l2)
+        ref.update { v1 =>
+          log.accumulateAndGet(List(v1), (l1, l2) => l1 ++ l2)
+          v1 + "a"
+        }.flatMapF { _ =>
+          ref.get.flatMapF { v2 =>
+            log.accumulateAndGet(List(v2), (l1, l2) => l1 ++ l2)
+            Rxn.pure(v2 + "a") >>> ref.getAndSet
+          }
+        }
+      }
+      res <- r.run[F]
+      _ <- assertEqualsF(res, "aa")
+      l <- F.delay(log.get())
+      _ <- assertEqualsF(l, List("a", "a", "aa"))
+      _ <- assertResultF(ref.get.run[F], "aaa")
+    } yield ()
+  }
+
+  test("Commit retry due to version") {
+    for {
+      ref1 <- Ref("a").run[F]
+      ref2 <- Ref("x").run[F]
+      ctr <- F.delay(new AtomicInteger(0))
+      latch1 <- F.delay(new CountDownLatch(1))
+      latch2 <- F.delay(new CountDownLatch(1))
+      rxn1 = ref1.get.flatMapF { a =>
+        ctr.incrementAndGet()
+        latch1.countDown()
+        // another commit changes the global version here
+        latch2.await()
+        ref1.set.provide(a + "a")
+      }
+      tsk1 = rxn1.run[F]
+      rxn2 = ref2.set.provide("y")
+      tsk2 = F.delay(latch1.await()) *> rxn2.run[F] *> F.delay(latch2.countDown())
+      _ <- F.both(tsk1, tsk2)
+      _ <- assertResultF(ref1.get.run[F], "aa")
+      _ <- assertResultF(ref2.get.run[F], "y")
+      // only the actual MCAS should've been retried, not the whole Rxn:
+      _ <- assertResultF(F.delay(ctr.get()), 1)
+    } yield ()
   }
 }

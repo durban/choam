@@ -42,6 +42,6 @@ private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
       @unused params: Exchanger.Params,
       @unused ctx: MCAS.ThreadContext,
     ): Either[Rxn.ExStatMap, Exchanger.Msg] = {
-      impossible("ExchangerImplJs.tryExchange")
+      impossible("ExchangerImplJs#tryExchange")
     }
 }

@@ -18,6 +18,10 @@
 package dev.tauri.choam
 package data
 
+// TODO: elimination counter (what do with different add values?)
+// TODO: something like LongAdder (no atomic `get`, but fast)
+// TODO: do some benchmarks (`val`s may not worth it)
+
 final class Counter(ref: Ref[Long]) {
 
   val add: Rxn[Long, Long] = ref.upd[Long, Long] { (cnt, n) =>
@@ -31,7 +35,7 @@ final class Counter(ref: Ref[Long]) {
     add.provide(-1L)
 
   val count: Axn[Long] =
-    add.provide(0L)
+    ref.get
 }
 
 object Counter {
@@ -39,6 +43,6 @@ object Counter {
   def apply: Axn[Counter] =
     Ref(0L).map(new Counter(_))
 
-  private[choam] def unsafe(): Counter =
-    new Counter(Ref.unsafe(0L))
+  private[choam] def unsafe(initial: Long = 0L): Counter =
+    new Counter(Ref.unsafe(initial))
 }

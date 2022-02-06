@@ -26,7 +26,7 @@ import org.openjdk.jcstress.infra.results._
 // TODO: - exchange with delayComputed
 // TODO: - elimination stack
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("Simple exchange")
 @Outcomes(Array(

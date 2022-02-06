@@ -20,11 +20,8 @@ package laws
 
 import cats.Eq
 import cats.data.Ior
-import cats.implicits._
 
 import org.scalacheck.{ Gen, Arbitrary, Cogen }
-
-import mcas.ImpossibleOperation
 
 trait TestInstances extends TestInstancesLowPrio0 { self =>
 
@@ -109,16 +106,12 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
     override def eqv(x: Axn[A], y: Axn[A]): Boolean = {
       val rx = self.unsafePerformForTest(x, ())
       val ry = self.unsafePerformForTest(y, ())
-      Eq[Either[ImpossibleOperation, A]].eqv(rx, ry)
+      equA.eqv(rx, ry)
     }
   }
 
-  private[choam] final def unsafePerformForTest[A, B](rxn: A =#> B, a: A): Either[ImpossibleOperation, B] = {
-    try {
-      Right(rxn.unsafePerform(a, self.kcasImpl))
-    } catch { case ex: ImpossibleOperation =>
-      Left(ex)
-    }
+  private[choam] final def unsafePerformForTest[A, B](rxn: A =#> B, a: A): B = {
+    rxn.unsafePerform(a, self.kcasImpl)
   }
 }
 
@@ -171,7 +164,7 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
       arbB.arbitrary.flatMap { b =>
         Gen.delay {
           val ref = Ref.unsafe(b)
-          ResetRxn(ref.unsafeInvisibleRead, Set(ResetRef(ref, b)))
+          ResetRxn(ref.unsafeDirectRead, Set(ResetRef(ref, b)))
         }
       },
       for {
@@ -182,18 +175,19 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
         val rxn = ref.upd[A, B] { (aOld, aInput) => (aInput, ab(aOld)) }
         ResetRxn(rxn, Set(ResetRef(ref, a0)))
       },
-      for {
-        aa <- arbAA.arbitrary
-        ab <- arbAB.arbitrary
-        a0 <- arbA.arbitrary
-        ref <- Gen.delay { Ref.unsafe(a0) }
-      } yield {
-        val rxn = ref.unsafeInvisibleRead.flatMap { oldA =>
-          val newA = aa(oldA)
-          ref.unsafeCas(oldA, newA).as(ab(newA))
-        }
-        ResetRxn(rxn, Set(ResetRef(ref, a0)))
-      },
+      // TODO: this generates `r: Rxn[A, B]` so that `r * r` can never commit
+      // for {
+      //   aa <- arbAA.arbitrary
+      //   ab <- arbAB.arbitrary
+      //   a0 <- arbA.arbitrary
+      //   ref <- Gen.delay { Ref.unsafe(a0) }
+      // } yield {
+      //   val rxn = ref.unsafeDirectRead.flatMap { oldA =>
+      //     val newA = aa(oldA)
+      //     ref.unsafeCas(oldA, newA).as(ab(newA))
+      //   }
+      //   ResetRxn(rxn, Set(ResetRef(ref, a0)))
+      // },
       Gen.lzy {
         for {
           r <- arbResetRxn[A, B].arbitrary
@@ -246,13 +240,9 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
         }
         val rx = self.unsafePerformForTest(x, a)
         val ry = self.unsafePerformForTest(y, a)
-        Eq[Either[ImpossibleOperation, B]].eqv(rx, ry)
+        equB.eqv(rx, ry)
       }
     }
-  }
-
-  implicit def testingEqImpossibleOp: Eq[ImpossibleOperation] = { (x, y) =>
-    x.equiv(y)
   }
 }
 

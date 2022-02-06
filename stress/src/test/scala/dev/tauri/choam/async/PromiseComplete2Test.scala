@@ -25,12 +25,12 @@ import org.openjdk.jcstress.infra.results.ZLL_Result
 
 import cats.effect.{ IO, SyncIO }
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("Promise: completing 2 promises should occur atomically")
 @Outcomes(Array(
   new Outcome(id = Array("true, (None,None), (Some(x),Some(y))"), expect = ACCEPTABLE, desc = "get wins"),
-  new Outcome(id = Array("true, (Some(x),Some(y)), (Some(x),Some(y))"), expect = ACCEPTABLE, desc = "complete wins")
+  new Outcome(id = Array("true, (Some(x),Some(y)), (Some(x),Some(y))"), expect = ACCEPTABLE_INTERESTING, desc = "complete wins"),
 ))
 class PromiseComplete2Test {
 

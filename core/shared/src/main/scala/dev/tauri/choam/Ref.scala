@@ -33,30 +33,24 @@ import mcas.MemoryLocation
  * `Ref` is similar to [[java.util.concurrent.atomic.AtomicReference]]
  * or [[cats.effect.kernel.Ref]], but its operations are [[Rxn]]s.
  * Thus, operations on a `Ref` are composable with other [[Rxn]]s.
- *
- * However, operations which operate on the same [[Ref]] cannot
- * be composed. The reason for this is that it is not possible to
- * perform conflicting updates atomically. For example, if `r: Ref[Int]`
- * currently contains `42`, and the two operations to update it are
- * `a` to `43`, and `b` to `41`, then performing, e.g., `a * b` is not
- * possible since it would have to simultaneously change `r`'s value to
- * both `43` and `41`. (Currently performing such a [[Rxn]] throws
- * a runtime exception.)
  */
 trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
 
+  final override def get: Axn[A] =
+    Rxn.ref.get(this)
+
   // TODO: needs better name (it's like `modify`)
-  final def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
+  final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
     Rxn.ref.upd(this)(f)
 
   // TODO: needs better name (it's like `modifyWith`)
-  final def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
+  final override def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
     Rxn.ref.updWith(this)(f)
 
-  final def unsafeInvisibleRead: Axn[A] =
-    Rxn.unsafe.invisibleRead(this)
+  final override def unsafeDirectRead: Axn[A] =
+    Rxn.unsafe.directRead(this)
 
-  final def unsafeCas(ov: A, nv: A): Axn[Unit] =
+  final override def unsafeCas(ov: A, nv: A): Axn[Unit] =
     Rxn.unsafe.cas(this, ov, nv)
 
   private[choam] final def loc: MemoryLocation[A] =

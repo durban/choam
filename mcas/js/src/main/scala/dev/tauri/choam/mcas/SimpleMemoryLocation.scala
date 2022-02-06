@@ -21,12 +21,18 @@ package mcas
 import java.lang.ref.WeakReference
 
 // This is JS:
-private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A)(
+private[choam] class SimpleMemoryLocation[A](private[this] var value: A)(
   override val id0: Long,
   override val id1: Long,
   override val id2: Long,
   override val id3: Long,
 ) extends MemoryLocation[A] {
+
+  private[this] var version: Long =
+    Version.Start
+
+  override def toString: String =
+    "SMemLoc@" + refHashString(id0, id1, id2, id3)
 
   final override def unsafeGetVolatile(): A =
     this.value
@@ -57,9 +63,23 @@ private[choam] abstract class SimpleMemoryLocation[A](private[this] var value: A
     witness
   }
 
+  final override def unsafeGetVersionVolatile(): Long =
+    this.version
+
+  final override def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean = {
+    if (this.version == ov) {
+      this.version = nv
+      true
+    } else {
+      false
+    }
+  }
+
+  // These are used only by EMCAS, which is JVM-only:
+
   final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
-    impossible("SimpleMemoryLocation.unsafeGetMarkerVolatile called on JS")
+    impossible("SimpleMemoryLocation#unsafeGetMarkerVolatile called on JS")
 
   final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
-    impossible("SimpleMemoryLocation.unsafeCasMarkerVolatile called on JS")
+    impossible("SimpleMemoryLocation#unsafeCasMarkerVolatile called on JS")
 }

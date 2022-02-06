@@ -39,7 +39,7 @@ class DelayComputedTest extends StressTestBase {
     Ref.unsafe("x")
 
   private[this] val composed: Axn[(String, String)] = {
-    val dComp = Rxn.unsafe.delayComputed(ref1.unsafeInvisibleRead.flatMap { v1 =>
+    val dComp = Rxn.unsafe.delayComputed(ref1.unsafeDirectRead.flatMap { v1 =>
       ref1.unsafeCas(v1, v1 + "b").map { _ => // this modify runs during "prepare"
         ref1.getAndUpdate(_ + "c") // this modify is part of the final reaction
       }

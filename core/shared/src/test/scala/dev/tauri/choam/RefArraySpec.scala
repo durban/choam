@@ -69,7 +69,7 @@ trait RefArraySpec extends BaseSpecA {
     val arr = mkRefArray("a")
     val pat = "RefArray\\[\\d+\\]\\@[\\da-f]+".r
     assert(pat.matches(clue(arr.toString)))
-    val subPat = "ARef\\@[\\da-f]+".r
+    val subPat = "ARef\\@[\\da-f]{16}".r
     assert(subPat.matches(clue(arr(0).toString)))
     assert(clue(arr(0).toString).endsWith("0000"))
     assert(clue(arr(1).toString).endsWith("0001"))

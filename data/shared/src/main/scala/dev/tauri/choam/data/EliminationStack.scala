@@ -43,6 +43,10 @@ private[choam] object EliminationStack {
     }
   }
 
+  def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
+    Stack.fromList(this.apply[A])(as)
+  }
+
   private[choam] def debug[A]: Axn[DebugStack[A]] = {
     (TreiberStack[A] * Rxn.unsafe.exchanger[Unit, A]).map {
       case (tStack, exc) =>

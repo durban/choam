@@ -43,7 +43,45 @@ package object mcas {
   private[choam] final def equ[A](x: A, y: A): Boolean =
     box(x) eq box(y)
 
-  // TODO: maybe AssertionError?
   private[choam] final def impossible(s: String): Nothing =
-    throw new IllegalStateException(s)
+    throw new AssertionError(s)
+
+  private[choam] final def refHashString(
+    i0: Long,
+    i1: Long,
+    i2: Long,
+    i3: Long,
+  ): String = {
+    toHexPadded(refShortHash(i0, i1, i2, i3))
+  }
+
+  private[choam] final def toHexPadded(n: Long): String = {
+    val hex = java.lang.Long.toHexString(n)
+    if (hex.length < 16) {
+      val padding = "0".repeat(16 - hex.length)
+      padding + hex
+    } else {
+      hex
+    }
+  }
+
+  private[choam] final def refShortHash(
+    i0: Long,
+    i1: Long,
+    i2: Long,
+    i3: Long,
+  ): Long = {
+    mix64_13(i0 ^ i1 ^ i2 ^ i3)
+  }
+
+  /** https://zimbry.blogspot.com/2011/09/better-bit-mixing-improving-on.html */
+  private[this] final def mix64_13(s: Long): Long = {
+    var n: Long = s
+    n ^= (n >>> 30)
+    n *= 0xbf58476d1ce4e5b9L
+    n ^= (n >>> 27)
+    n *= 0x94d049bb133111ebL
+    n ^= (n >>> 31)
+    n
+  }
 }

@@ -18,12 +18,13 @@
 package dev.tauri.choam
 package bench
 
+import cats.effect.SyncIO
+
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util._
-import data.TreiberStack
-import mcas.MCAS
+import data.{ Stack, TreiberStack }
 
 @Fork(3)
 class StackTransferBench {
@@ -76,10 +77,10 @@ object StackTransferBench {
 
   @State(Scope.Benchmark)
   class TreiberSt {
-    val treiberStack1: TreiberStack[String] =
-      TreiberStack.fromList[String](Prefill.prefill()).unsafePerform(null, MCAS.EMCAS)
-    val treiberStack2: TreiberStack[String] =
-      TreiberStack.fromList[String](Prefill.prefill()).unsafePerform(null, MCAS.EMCAS)
+    val treiberStack1: Stack[String] =
+      TreiberStack.fromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
+    val treiberStack2: Stack[String] =
+      TreiberStack.fromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
     val transfer: Axn[Unit] =
       treiberStack1.tryPop.map(_.get) >>> treiberStack2.push
   }

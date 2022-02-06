@@ -29,10 +29,16 @@ import async.AsyncReactive
 class RandomState {
 
   private[this] val rnd =
+    this.mkXorShift()
+
+  protected def mkXorShift(): XorShift =
     XorShift()
 
   def nextInt(): Int =
     rnd.nextInt()
+
+  def nextIntBounded(bound: Int): Int =
+    (rnd.nextInt() % bound).abs
 
   def nextLong(): Long =
     rnd.nextLong()

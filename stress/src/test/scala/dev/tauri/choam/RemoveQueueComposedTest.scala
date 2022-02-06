@@ -28,7 +28,7 @@ import cats.effect.SyncIO
 @State
 @Description("RemoveQueue enq/deq should be composable")
 @Outcomes(Array(
-  new Outcome(id = Array("List(c, d), List(a, b)"), expect = ACCEPTABLE, desc = "the only valid result")
+  new Outcome(id = Array("List(c, d), List(a, b)"), expect = ACCEPTABLE_INTERESTING, desc = "the only valid result")
 ))
 class RemoveQueueComposedTest extends RemoveQueueStressTestBase {
 

@@ -42,7 +42,7 @@ class ResourceAllocationRxn {
       if (i >= n) {
         rea
       } else {
-        val r = rss(i).unsafeInvisibleRead
+        val r = rss(i).unsafeDirectRead
         read(i + 1, rea.map2(r) { (arr, s) =>
           arr(i) = s
           arr

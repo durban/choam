@@ -39,8 +39,8 @@ class EMCASCleanup1Test {
   @Actor
   final def write(r: ILL_Result): Unit = {
     val ctx = EMCAS.currentContext()
-    val ok = ctx.tryPerform(ctx.addCas(ctx.start(), this.ref, "a", "b"))
-    r.r1 = if (ok) 1 else -1
+    val res = ctx.tryPerformInternal(ctx.addCasFromInitial(ctx.start(), this.ref, "a", "b"))
+    r.r1 = if (res == EmcasStatus.Successful) 1 else -1
   }
 
   @Actor
@@ -68,6 +68,18 @@ class EMCASCleanup1Test {
       case wd: WordDescriptor[_] =>
         // we ignore address here, it just generates a lot of output
         r.r2 = s"WordDescriptor(${wd.ov}, ${wd.nv})"
+      case _ =>
+        ()
+    }
+    r.r3 match {
+      case v: Long =>
+        r.r3 = v match {
+          case Version.Active => "ACTIVE"
+          case Version.Successful => "SUCCESSFUL"
+          case Version.FailedVal => "FAILED"
+          case Version.None => "error"
+          case _ => "FAILED"
+        }
       case _ =>
         ()
     }

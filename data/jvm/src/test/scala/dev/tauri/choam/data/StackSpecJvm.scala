@@ -20,22 +20,42 @@ package data
 
 import cats.effect.IO
 
-final class EliminationStackSpecSpinLockMCAS
+final class StackSpec_Treiber_EMCAS_IO
   extends BaseSpecIO
-  with EliminationStackSpecJvm[IO]
-  with SpecSpinLockMCAS
-
-final class EliminationStackSpecEMCAS
-  extends BaseSpecIO
-  with EliminationStackSpecJvm[IO]
   with SpecEMCAS
+  with StackSpecTreiberJvm[IO]
 
-trait EliminationStackSpecJvm[F[_]] extends EliminationStackSpec[F] { this: KCASImplSpec =>
+final class StackSpec_Treiber_SpinLockMCAS_IO
+  extends BaseSpecIO
+  with SpecSpinLockMCAS
+  with StackSpecTreiberJvm[IO]
+
+final class StackSpec_Elimination_EMCAS_IO
+  extends BaseSpecIO
+  with SpecEMCAS
+  with StackSpecEliminationJvm[IO]
+
+final class StackSpec_Elimination_SpinLockMCAS_IO
+  extends BaseSpecIO
+  with SpecSpinLockMCAS
+  with StackSpecEliminationJvm[IO]
+
+trait StackSpecTreiberJvm[F[_]]
+  extends StackSpecTreiber[F]
+  with  StackSpecJvm[F] { this: KCASImplSpec =>
+}
+
+trait StackSpecEliminationJvm[F[_]]
+  extends StackSpecElimination[F]
+  with  StackSpecJvm[F] { this: KCASImplSpec =>
+}
+
+trait StackSpecJvm[F[_]] { this: StackSpec[F] =>
 
   test("Multiple producers/consumers") {
     val N = 4
-    for {
-      s <- this.newStack[String]
+    val tsk = for {
+      s <- this.newStack[String]()
       _ <- s.push[F]("a")
       _ <- s.push[F]("b")
       _ <- s.push[F]("c")
@@ -58,5 +78,6 @@ trait EliminationStackSpecJvm[F[_]] extends EliminationStackSpec[F] { this: KCAS
         (List("a", "b", "c", "d") ++ List.fill(N)("x")).toSet,
       )
     } yield ()
+    tsk.replicateA(64).void
   }
 }

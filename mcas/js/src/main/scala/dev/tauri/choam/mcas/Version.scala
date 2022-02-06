@@ -18,6 +18,19 @@
 package dev.tauri.choam
 package mcas
 
-final class KCASSpecEMCAS
-  extends KCASSpec
-  with SpecEMCAS
+// Note: this class/object is duplicated for JVM/JS
+object Version {
+
+  final val Start = Long.MinValue
+  final val Incr = 1L
+  final val None = Long.MaxValue
+
+  final val Active = None - 1L
+  final val Successful = None - 2L
+  final val FailedVal = None - 3L
+  // FailedVer = any valid version
+
+  final def isValid(ver: Long): Boolean = {
+    (ver >= Start) && (ver < FailedVal)
+  }
+}

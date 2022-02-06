@@ -24,18 +24,20 @@ trait RefLike[A] {
 
   // abstract:
 
+  def get: Axn[A]
+
   def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C]
 
   def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C]
 
-  private[choam] def unsafeInvisibleRead: Axn[A]
+  private[choam] def unsafeDirectRead: Axn[A]
 
   private[choam] def unsafeCas(ov: A, nv: A): Axn[Unit]
 
   // derived implementations:
 
-  final def get: Axn[A] =
-    upd[Any, A] { (oa, _) => (oa, oa) }
+  final def set: Rxn[A, Unit] =
+    getAndSet.void
 
   final def getAndSet: Rxn[A, A] =
     upd[A, A] { (oa, na) => (na, oa) }
@@ -79,12 +81,12 @@ trait RefLike[A] {
 
 object RefLike {
 
-  abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
+  private[choam] abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
     extends CatsRef[F, A] {
     def get: F[A] =
-      self.unsafeInvisibleRead.run[F]
+      self.unsafeDirectRead.run[F]
     override def set(a: A): F[Unit] =
-      self.getAndSet.void[F](a)
+      self.set[F](a)
     override def access: F[(A, A => F[Boolean])] = {
       F.monad.flatMap(this.get) { ov =>
         // `access` as defined in cats-effect must never

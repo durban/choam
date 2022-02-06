@@ -24,7 +24,7 @@ object BenchmarkAccess {
     WordDescriptor(half, parent)
   }
 
-  def casStatusFromActiveToFailed(desc: EMCASDescriptor): Boolean = {
-    desc.casStatus(EMCASStatus.ACTIVE, EMCASStatus.FAILED)
+  def casStatusFromActiveToFailedVal(desc: EMCASDescriptor): Boolean = {
+    desc.casStatus(Version.Active, Version.FailedVal)
   }
 }

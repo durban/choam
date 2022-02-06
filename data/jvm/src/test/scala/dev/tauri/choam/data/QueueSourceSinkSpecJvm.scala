@@ -20,27 +20,10 @@ package data
 
 import cats.effect.IO
 
-final class EliminationStackSpec_ThreadConfinedMCAS
+final class QueueSourceSinkSpecJvm_EMCAS_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
-  with EliminationStackSpec[IO]
+  with SpecEMCAS
+  with QueueSourceSinkSpecJvm[IO]
 
-trait EliminationStackSpec[F[_]]
-  extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
-
-  def newStack[A]: F[Stack[A]] =
-    EliminationStack.apply[A].run[F]
-
-  test("EliminationStack") {
-    for {
-      s <- newStack[String]
-      _ <- s.push[F]("a")
-      _ <- s.push[F]("b")
-      _ <- s.push[F]("c")
-      _ <- assertResultF(s.tryPop.run[F], Some("c"))
-      _ <- assertResultF(s.tryPop.run[F], Some("b"))
-      _ <- assertResultF(s.tryPop.run[F], Some("a"))
-      _ <- assertResultF(s.tryPop.run[F], None)
-    } yield ()
-  }
+trait QueueSourceSinkSpecJvm[F[_]] extends QueueSourceSinkSpec[F] { this: KCASImplSpec =>
 }

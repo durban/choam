@@ -20,11 +20,12 @@ package dev.tauri.choam
 import cats.{ Monad, ~> }
 import cats.effect.kernel.Sync
 
+import mcas.MCAS
+
 trait Reactive[F[_]] { self =>
   // TODO: rename `run` to `apply`, and make `def run[A](a: Axn[A]): F[A]`
   def run[A, B](r: Rxn[A, B], a: A): F[B]
-  // TODO: rename to `mcasImpl`
-  def kcasImpl: mcas.MCAS
+  def mcasImpl: MCAS
   def monad: Monad[F]
   def mapK[G[_]](t: F ~> G)(implicit G: Monad[G]): Reactive[G] =
     new Reactive.TransformedReactive[F, G](self, t)
@@ -35,18 +36,18 @@ object Reactive {
   def apply[F[_]](implicit inst: Reactive[F]): inst.type =
     inst
 
-  def defaultKcasImpl: mcas.MCAS =
-    mcas.MCAS.DefaultMCAS
+  private[choam] def defaultMcasImpl: MCAS =
+    MCAS.DefaultMCAS
 
   implicit def reactiveForSync[F[_]](implicit F: Sync[F]): Reactive[F] =
-    new SyncReactive[F](defaultKcasImpl)(F)
+    new SyncReactive[F](defaultMcasImpl)(F)
 
   private[choam] class SyncReactive[F[_]](
-    final override val kcasImpl: mcas.MCAS
+    final override val mcasImpl: MCAS
   )(implicit F: Sync[F]) extends Reactive[F] {
     final override def run[A, B](r: Rxn[A, B], a: A): F[B] = {
       F.delay {
-        r.unsafePerform(a, this.kcasImpl)
+        r.unsafePerform(a, this.mcasImpl)
       }
     }
     final override def monad =
@@ -59,8 +60,8 @@ object Reactive {
   )(implicit G: Monad[G]) extends Reactive[G] {
     final override def run[A, B](r: Rxn[A, B], a: A): G[B] =
       t(underlying.run(r, a))
-    final override def kcasImpl: mcas.MCAS =
-      underlying.kcasImpl
+    final override def mcasImpl: MCAS =
+      underlying.mcasImpl
     final override def monad: Monad[G] =
       G
   }

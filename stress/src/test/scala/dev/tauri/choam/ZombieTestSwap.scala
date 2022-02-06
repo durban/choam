@@ -22,13 +22,12 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("Can a running zombie Rxn see inconsistent values?")
 @Outcomes(Array(
   new Outcome(id = Array("a, b, -"), expect = ACCEPTABLE, desc = "No inconsistency observed"),
-  // TODO: this should be FORBIDDEN:
-  new Outcome(id = Array("a, b, a"), expect = ACCEPTABLE_INTERESTING, desc = "Inconsistency observed"),
+  new Outcome(id = Array("a, b, a"), expect = FORBIDDEN, desc = "Inconsistency observed"),
 ))
 class ZombieTestSwap extends StressTestBase {
 

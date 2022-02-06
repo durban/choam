@@ -40,7 +40,8 @@ import cats.kernel.Order
  * required by the MCAS implementation. They are
  * easily implemented by, e.g., having an
  * `AtomicReference` or similar. (For implementations
- * of this interface, see the `choam-core` module.)
+ * of this interface, see `SimpleMemoryLocation` or
+ * the various `Ref`s in the `choam-core` module.)
  *
  * Some method names are prefixed by `unsafe` because
  * these are necessarily side-effecting methods,
@@ -52,6 +53,8 @@ import cats.kernel.Order
  * level abstraction.
  */
 trait MemoryLocation[A] {
+
+  // contents:
 
   def unsafeGetVolatile(): A
 
@@ -65,11 +68,21 @@ trait MemoryLocation[A] {
 
   def unsafeCmpxchgVolatile(ov: A, nv: A): A
 
+  // version:
+
+  def unsafeGetVersionVolatile(): Long
+
+  def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean
+
+  // marker:
+
   /** Used by EMCAS */ // TODO: this is JVM-only
   def unsafeGetMarkerVolatile(): WeakReference[AnyRef]
 
   /** Used by EMCAS */ // TODO: this is JVM-only
   def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean
+
+  // ID:
 
   def id0: Long
 
@@ -78,54 +91,51 @@ trait MemoryLocation[A] {
   def id2: Long
 
   def id3: Long
+
+  // private utilities:
+
+  private[mcas] final def cast[B]: MemoryLocation[B] =
+    this.asInstanceOf[MemoryLocation[B]]
 }
 
 object MemoryLocation extends MemoryLocationInstances0 {
 
-  def unsafe[A](initial: A): MemoryLocation[A] = {
+  def unsafe[A](initial: A): MemoryLocation[A] =
+    unsafeUnpadded[A](initial)
+
+  def unsafeUnpadded[A](initial: A): MemoryLocation[A] = {
     val tlr = ThreadLocalRandom.current()
-    unsafeWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+    unsafeUnpaddedWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
-  private[choam] def unsafeWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
-    new SimpleMemoryLocation[A](initial)(i0, i1, i2, i3) {}
+  def unsafePadded[A](initial: A): MemoryLocation[A] = {
+    val tlr = ThreadLocalRandom.current()
+    unsafePaddedWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
-  def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
-    import java.lang.Long.compare
-    if (a eq b) 0
-    else {
-      val i0 = compare(a.id0, b.id0)
-      if (i0 != 0) i0
-      else {
-        val i1 = compare(a.id1, b.id1)
-        if (i1 != 0) i1
-        else {
-          val i2 = compare(a.id2, b.id2)
-          if (i2 != 0) i2
-          else {
-            val i3 = compare(a.id3, b.id3)
-            if (i3 != 0) i3
-            else {
-              // TODO: maybe AssertionError? Or impossible()?
-              throw new IllegalStateException(s"[globalCompare] ref collision: ${a} and ${b}")
-            }
-          }
-        }
-      }
-    }
+  private[mcas] def unsafeWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] =
+    unsafeUnpaddedWithId(initial)(i0, i1, i2, i3)
+
+  private[this] def unsafeUnpaddedWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
+    new SimpleMemoryLocation[A](initial)(i0, i1, i2, i3)
+  }
+
+  private[this] def unsafePaddedWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): MemoryLocation[A] = {
+    new PaddedMemoryLocation[A](initial, i0, i1, i2, i3)
+  }
+
+  final def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
+    this.orderingInstance.compare(a.cast[Any], b.cast[Any])
   }
 }
 
 private[mcas] sealed abstract class MemoryLocationInstances0 extends MemoryLocationInstances1 { self: MemoryLocation.type =>
 
-  private[this] val _orderingInstance = new Ordering[MemoryLocation[Any]] {
-    final override def compare(x: MemoryLocation[Any], y: MemoryLocation[Any]): Int =
-      self.globalCompare(x, y)
-  }
+  private[mcas] val memoryLocationOrdering =
+    new MemoryLocationOrdering[Any]
 
   implicit def orderingInstance[A]: Ordering[MemoryLocation[A]] =
-    _orderingInstance.asInstanceOf[Ordering[MemoryLocation[A]]]
+    memoryLocationOrdering.asInstanceOf[Ordering[MemoryLocation[A]]]
 }
 
 private[mcas] sealed abstract class MemoryLocationInstances1 { self: MemoryLocation.type =>

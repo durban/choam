@@ -34,7 +34,7 @@ object AsyncQueue {
     UnboundedQueue[F, A]
 
   def bounded[F[_], A](bound: Int): Axn[BoundedQueue[F, A]] =
-    BoundedQueue[F, A](bound)
+    BoundedQueue.linked[F, A](bound)
 
   def dropping[F[_], A](@unused capacity: Int): Axn[OverflowQueue[F, A]] =
     sys.error("TODO")

@@ -37,17 +37,32 @@ object FlakyEMCAS extends MCAS { self =>
     private[choam] final override def random: ThreadLocalRandom =
       emcasCtx.random
 
-    final override def read[A](ref: MemoryLocation[A]): A =
-      emcasCtx.read(ref)
+    final override def readDirect[A](ref: MemoryLocation[A]): A =
+      emcasCtx.readDirect(ref)
 
-    final override def tryPerform(desc: HalfEMCASDescriptor): Boolean =
-      self.tryPerform(desc, emcasCtx)
+    final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] =
+      emcasCtx.readIntoHwd(ref)
+
+    protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
+      emcasCtx.readVersion(ref)
+
+    final override def tryPerformInternal(desc: HalfEMCASDescriptor): Long =
+      self.tryPerformInternal(desc, emcasCtx)
+
+    final override def start(): HalfEMCASDescriptor =
+      emcasCtx.start()
+
+    protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+      emcasCtx.addVersionCas(desc)
+
+    protected[choam] final override def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+      emcasCtx.validateAndTryExtend(desc)
   }
 
   private[choam] final override def isThreadSafe =
     true
 
-  private final def tryPerform(hDesc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Boolean = {
+  private final def tryPerformInternal(hDesc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Long = {
     // perform or not the operation based on whether we've already seen it
     val desc = EMCASDescriptor.prepare(hDesc)
     var hash = 0x75F4D07D
@@ -58,7 +73,7 @@ object FlakyEMCAS extends MCAS { self =>
     if (this.seen.putIfAbsent(hash, ()).isDefined) {
       EMCAS.MCAS(desc = desc, ctx = ctx)
     } else {
-      false // simulate a transient CAS failure to force a retry
+      EmcasStatus.FailedVal // simulate a transient CAS failure to force a retry
     }
   }
 }

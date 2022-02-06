@@ -41,8 +41,13 @@ class BoundedQueueBench extends BenchUtils {
     0L
 
   @Benchmark
-  def boundedQueue(s: St, ps: ParamSt, bh: Blackhole): Unit = {
-    this.run(s.runtime, tsk(s.rxnQ, bh, N, producers = ps.producers, consumers = ps.consumers), 1)
+  def boundedLinkedQueue(s: St, ps: ParamSt, bh: Blackhole): Unit = {
+    this.run(s.runtime, tsk(s.rxnLinkedQ, bh, N, producers = ps.producers, consumers = ps.consumers), 1)
+  }
+
+  @Benchmark
+  def boundedArrayQueue(s: St, ps: ParamSt, bh: Blackhole): Unit = {
+    this.run(s.runtime, tsk(s.rxnArrayQ, bh, N, producers = ps.producers, consumers = ps.consumers), 1)
   }
 
   @Benchmark
@@ -107,7 +112,9 @@ object BoundedQueueBench {
       cats.effect.unsafe.IORuntime.global
     val catsQ: CatsQueue[IO, String] =
       CatsQueue.bounded[IO, String](Bound).unsafeRunSync()(runtime)
-    val rxnQ: CatsQueue[IO, String] =
-      BoundedQueue[IO, String](Bound).unsafeRun(mcas.MCAS.EMCAS).toCats
+    val rxnLinkedQ: CatsQueue[IO, String] =
+      BoundedQueue.linked[IO, String](Bound).unsafeRun(mcas.MCAS.EMCAS).toCats
+    val rxnArrayQ: CatsQueue[IO, String] =
+      BoundedQueue.array[IO, String](Bound).unsafeRun(mcas.MCAS.EMCAS).toCats
   }
 }

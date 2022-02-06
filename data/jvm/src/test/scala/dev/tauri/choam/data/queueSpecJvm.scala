@@ -25,56 +25,74 @@ import scala.jdk.CollectionConverters._
 
 import cats.effect.IO
 
-final class QueueSpecJvm_SpinLockMCAS_AIO
+final class QueueSpecJvm_SpinLockMCAS_ZIO
   extends BaseSpecZIO
   with QueueSpecJvm[zio.Task]
   with SpecSpinLockMCAS
 
-final class QueueSpecJvm_SpinLockMCAS_BIO
+final class QueueSpecJvm_SpinLockMCAS_IO
   extends BaseSpecIO
   with QueueSpecJvm[IO]
   with SpecSpinLockMCAS
 
-final class QueueSpecJvm_EMCAS_AIO
+final class QueueSpecJvm_EMCAS_ZIO
   extends BaseSpecZIO
   with QueueSpecJvm[zio.Task]
   with SpecEMCAS
 
-final class QueueSpecJvm_EMCAS_BIO
+final class QueueSpecJvm_EMCAS_IO
   extends BaseSpecIO
   with QueueSpecJvm[IO]
   with SpecEMCAS
 
-final class QueueWithRemoveSpecJvm_SpinLockMCAS_AIO
+final class QueueWithRemoveSpecJvm_SpinLockMCAS_ZIO
   extends BaseSpecZIO
   with QueueWithRemoveSpecJvm[zio.Task]
   with SpecSpinLockMCAS
 
-final class QueueWithRemoveSpecJvm_SpinLockMCAS_BIO
+final class QueueWithRemoveSpecJvm_SpinLockMCAS_IO
   extends BaseSpecIO
   with QueueWithRemoveSpecJvm[IO]
   with SpecSpinLockMCAS
 
-final class QueueWithRemoveSpecJvm_EMCAS_AIO
+final class QueueWithRemoveSpecJvm_EMCAS_ZIO
   extends BaseSpecZIO
   with QueueWithRemoveSpecJvm[zio.Task]
   with SpecEMCAS
 
-final class QueueWithRemoveSpecJvm_EMCAS_BIO
+final class QueueWithRemoveSpecJvm_EMCAS_IO
   extends BaseSpecIO
   with QueueWithRemoveSpecJvm[IO]
+  with SpecEMCAS
+
+final class QueueWithSizeSpecJvm_EMCAS_IO
+  extends BaseSpecIO
+  with QueueWithSizeSpecJvm[IO]
+  with SpecEMCAS
+
+final class QueueGcHostileSpecJvm_EMCAS_IO
+  extends BaseSpecIO
+  with QueueGcHostileSpecJvm[IO]
   with SpecEMCAS
 
 trait QueueWithRemoveSpecJvm[F[_]]
   extends QueueWithRemoveSpec[F]
   with QueueJvmTests[F] { this: KCASImplSpec =>
+}
 
+trait QueueWithSizeSpecJvm[F[_]]
+  extends QueueWithSizeSpec[F]
+  with QueueJvmTests[F] { this: KCASImplSpec =>
+}
+
+trait QueueGcHostileSpecJvm[F[_]]
+  extends QueueGcHostileSpec[F]
+  with QueueJvmTests[F] { this: KCASImplSpec =>
 }
 
 trait QueueSpecJvm[F[_]]
   extends QueueSpec[F]
   with QueueJvmTests[F] { this: KCASImplSpec =>
-
 }
 
 trait QueueJvmTests[F[_]] { this: KCASImplSpec with BaseQueueSpec[F] =>
@@ -133,9 +151,6 @@ trait QueueJvmTests[F[_]] { this: KCASImplSpec with BaseQueueSpec[F] =>
         cs.asScala.toVector.sorted,
         (0 until max).toVector.flatMap(n => Vector(n.toString, n.toString)).sorted
       )
-      _ <- F.delay {
-        this.kcasImpl.printStatistics(System.out.println(_))
-      }
     } yield ()
   }
 }

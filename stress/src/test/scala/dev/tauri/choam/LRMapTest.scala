@@ -38,8 +38,8 @@ class LRMapTest extends StressTestBase {
 
   private[this] def rxn1(r: LLLLLL_Result): Axn[String] = {
     ref1.getAndUpdate(_ + "b").map { s =>
-      r.r1 = ref1.unsafeInvisibleRead.unsafeRun(this.impl) // this is cheating
-      r.r2 = ref2.unsafeInvisibleRead.unsafeRun(this.impl) // this is cheating
+      r.r1 = ref1.unsafeDirectRead.unsafeRun(this.impl) // this is cheating
+      r.r2 = ref2.unsafeDirectRead.unsafeRun(this.impl) // this is cheating
       s
     }
   }
@@ -47,8 +47,8 @@ class LRMapTest extends StressTestBase {
   private[this] def rxn2(r: LLLLLL_Result): Rxn[String, String] = Rxn.computed { (s: String) =>
     ref2.getAndUpdate(_ => s)
   }.contramap { (s: String) =>
-    r.r3 = ref1.unsafeInvisibleRead.unsafeRun(this.impl) // this is cheating
-    r.r4 = ref2.unsafeInvisibleRead.unsafeRun(this.impl) // this is cheating
+    r.r3 = ref1.unsafeDirectRead.unsafeRun(this.impl) // this is cheating
+    r.r4 = ref2.unsafeDirectRead.unsafeRun(this.impl) // this is cheating
     s
   }
 
@@ -64,7 +64,7 @@ class LRMapTest extends StressTestBase {
   @Arbiter
   def arbiter(r: LLLLLL_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r5 = ctx.read(ref1.loc)
-    r.r6 = ctx.read(ref2.loc)
+    r.r5 = ctx.readDirect(ref1.loc)
+    r.r6 = ctx.readDirect(ref2.loc)
   }
 }

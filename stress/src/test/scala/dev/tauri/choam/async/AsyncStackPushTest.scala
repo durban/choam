@@ -25,12 +25,12 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.{ IO, SyncIO }
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("AsyncStack: racing pushes should work fine")
 @Outcomes(Array(
-  new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "push1 was faster"),
-  new Outcome(id = Array("b, a"), expect = ACCEPTABLE, desc = "push2 was faster")
+  new Outcome(id = Array("a, b"), expect = ACCEPTABLE_INTERESTING, desc = "push1 was faster"),
+  new Outcome(id = Array("b, a"), expect = ACCEPTABLE_INTERESTING, desc = "push2 was faster"),
 ))
 class AsyncStackPushTest {
 

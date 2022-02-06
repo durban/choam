@@ -234,4 +234,18 @@ trait RingBufferSpec[F[_]]
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
   }
+
+  test("RingBuffer multiple ops in one Rxn") {
+    for {
+      q <- newRingBuffer[Int](3)
+      _ <- assertResultF(q.size.run[F], 0)
+      rxn = (q.enqueue.provide(1) * q.enqueue.provide(2)) *> (
+        q.tryDeque
+      )
+      deqRes <- rxn.run[F]
+      _ <- assertEqualsF(deqRes, Some(1))
+      _ <- assertResultF(q.tryDeque.run[F], Some(2))
+      _ <- assertResultF(q.tryDeque.run[F], None)
+    } yield ()
+  }
 }

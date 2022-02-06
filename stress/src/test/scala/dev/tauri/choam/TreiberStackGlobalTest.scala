@@ -21,12 +21,14 @@ import java.util.concurrent.ThreadLocalRandom
 
 import scala.collection.concurrent.TrieMap
 
+import cats.effect.SyncIO
+
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZZ_Result
 
-import data.TreiberStack
+import data.{ Stack, TreiberStack }
 
 // @JCStressTest
 @State
@@ -81,12 +83,12 @@ object TreiberStackGlobalTest {
     1024 * 128
 
   private[this] val stacks =
-    new TrieMap[mcas.MCAS, (TreiberStack[String], TreiberStack[String])]
+    new TrieMap[mcas.MCAS, (Stack[String], Stack[String])]
 
-  private def getStacks(impl: mcas.MCAS): (TreiberStack[String], TreiberStack[String]) = {
+  private def getStacks(impl: mcas.MCAS): (Stack[String], Stack[String]) = {
     def mkNew() = {
-      val stack1 = TreiberStack.fromList[String](List.fill(N)("z")).unsafePerform(null, impl)
-      val stack2 = TreiberStack.fromList[String](List.fill(N)("z")).unsafePerform(null, impl)
+      val stack1 = TreiberStack.fromList[SyncIO, String](List.fill(N)("z")).unsafeRunSync()
+      val stack2 = TreiberStack.fromList[SyncIO, String](List.fill(N)("z")).unsafeRunSync()
       (stack1, stack2)
     }
     stacks.getOrElseUpdate(impl, mkNew())

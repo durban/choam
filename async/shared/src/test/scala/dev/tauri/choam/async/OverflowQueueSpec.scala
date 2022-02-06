@@ -267,6 +267,24 @@ trait OverflowQueueSpec[F[_]]
     } yield ()
   }
 
+  test("RingBuffer multiple ops in one Rxn") {
+    for {
+      q <- newRingBuffer[Int](capacity = 3)
+      f1 <- q.deque.start
+      _ <- this.tickAll
+      f2 <- q.deque.start
+      _ <- this.tickAll
+      rxn = (q.enqueue.provide(1) * q.enqueue.provide(2) * q.enqueue.provide(3)) *> (
+        q.tryDeque
+      )
+      deqRes <- rxn.run[F]
+      _ <- assertEqualsF(deqRes, Some(3))
+      _ <- assertResultF(f1.joinWithNever, 1)
+      _ <- assertResultF(f2.joinWithNever, 2)
+      _ <- assertResultF(q.size, 0)
+    } yield ()
+  }
+
   test("RingBuffer#toCats") {
     for {
       q <- newRingBuffer[Int](capacity = 3)

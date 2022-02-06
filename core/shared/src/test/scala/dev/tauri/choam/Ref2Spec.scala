@@ -36,7 +36,7 @@ abstract class Ref2Spec extends BaseSpecA {
   def mkRef2[A, B](a: A, b: B): Ref2[A, B]
 
   test("toString format") {
-    val pat = "Ref2\\@[\\da-f]+".r
+    val pat = "Ref2\\@[\\da-f]{16}".r
     assert(pat.matches(clue(mkRef2("a", "b").toString)))
   }
 

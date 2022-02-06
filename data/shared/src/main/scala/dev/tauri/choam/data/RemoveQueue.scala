@@ -35,35 +35,30 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A])
     this(Node(nullOf[Ref[A]], Ref.unsafe(End[A]())))
 
   override val tryDeque: Axn[Option[A]] = {
-    for {
-      node <- head.unsafeInvisibleRead
-      an <- skipTombs(from = node.next)
-      res <- an match {
+    head.modifyWith { node =>
+      skipTombs(from = node.next).flatMap {
         case None =>
           // empty queue:
-          head.unsafeCas(node, node) >>> Rxn.ret(None)
+          Rxn.ret((node, None))
         case Some((a, n)) =>
           // deque first node (and drop tombs before it):
-          head.unsafeCas(node, n.copy(data = nullOf[Ref[A]])) >>> Rxn.ret(Some(a))
+          Rxn.ret((n.copy(data = nullOf[Ref[A]]), Some(a)))
       }
-    } yield res
+    }
   }
 
   private[this] def skipTombs(from: Ref[Elem[A]]): Axn[Option[(A, Node[A])]] = {
-    from.unsafeInvisibleRead.flatMapF {
+    from.get.flatMapF {
       case n @ Node(dataRef, nextRef) =>
-        dataRef.unsafeInvisibleRead.flatMapF { a =>
+        dataRef.get.flatMapF { a =>
           if (isTombstone(a)) {
-            // found a tombstone (no need to validate, since once
-            // it's tombed, it will never be resurrected)
             skipTombs(nextRef)
           } else {
-            // CAS data, to make sure it is not tombed concurrently:
-            dataRef.unsafeCas(a, a).as(Some((a, n)))
+            Rxn.pure(Some((a, n)))
           }
         }
-      case e @ End() =>
-        from.unsafeCas(e, e).as(None)
+      case End() =>
+        Rxn.pure(None)
     }
   }
 
@@ -76,16 +71,17 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A])
   }
 
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    Rxn.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMapF { (n: Node[A]) =>
-      n.next.unsafeInvisibleRead.flatMapF {
-        case e @ End() =>
-          // found true tail; will CAS, and try to adjust the tail ref:
-          Rxn.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))
+    def go(n: Node[A], originalTail: Node[A]): Axn[Unit] = {
+      n.next.get.flatMapF {
+        case End() =>
+          // found true tail; will update, and try to adjust the tail ref:
+          n.next.set.provide(node).postCommit(tail.unsafeCas(originalTail, node).?.void)
         case nv @ Node(_, _) =>
-          // not the true tail; try to catch up, and will retry:
-          tail.unsafeCas(n, nv).?.as(Rxn.unsafe.retry)
+          // not the true tail; try to catch up, and continue:
+          go(n = nv, originalTail = originalTail)
       }
-    })
+    }
+    tail.get.flatMapF { t => go(t, t) }
   }
 
   /**
@@ -96,32 +92,25 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A])
    * are compared by reference equality.
    */
   override val remove: Rxn[A, Boolean] = Rxn.computed { (a: A) =>
-    head.unsafeInvisibleRead.flatMapF { h =>
-      findAndTomb(a, h.next).flatMapF { wasRemoved =>
-        if (wasRemoved) {
-          // validate head (in case it was dequed concurrently):
-          head.unsafeCas(h, h).as(true)
-        } else {
-          Rxn.ret(false)
-        }
-      }
+    head.get.flatMapF { h =>
+      findAndTomb(a, h.next)
     }
   }
 
   private[this] def findAndTomb(item: A, from: Ref[Elem[A]]): Axn[Boolean] = {
-    from.unsafeInvisibleRead.flatMapF {
+    from.get.flatMapF {
       case Node(dataRef, nextRef) =>
-        dataRef.unsafeInvisibleRead.flatMapF { a =>
+        dataRef.get.flatMapF { a =>
           if (equ(a, item)) {
             // found it
-            dataRef.unsafeCas(a, tombstone[A]).as(true)
+            dataRef.set.provide(tombstone[A]).as(true)
           } else {
             // continue search:
             findAndTomb(item, nextRef)
           }
         }
-      case e @ End() =>
-        from.unsafeCas(e, e) >>> Rxn.ret(false)
+      case End() =>
+        Rxn.pure(false)
     }
   }
 }
@@ -130,16 +119,6 @@ private[choam] object RemoveQueue {
 
   def apply[A]: Axn[RemoveQueue[A]] =
     Rxn.unsafe.delay { _ => new RemoveQueue }
-
-  def fromList[A](as: List[A]): Axn[RemoveQueue[A]] = {
-    Rxn.unsafe.context { ctx =>
-      val q = new RemoveQueue[A]
-      as.foreach { a =>
-        q.enqueue.unsafePerformInternal(a, ctx = ctx)
-      }
-      q
-    }
-  }
 
   private sealed trait Elem[A]
 

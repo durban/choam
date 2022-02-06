@@ -39,33 +39,36 @@ class ResourceAllocationKCAS {
     val n = t.allocSize
     val ctx = t.kcasCtx
     val rss = t.selectResources(s.rss)
-    val ovs = t.ovs
+    t.desc = ctx.start()
 
     @tailrec
     def read(i: Int): Unit = {
       if (i >= n) {
         ()
       } else {
-        ovs(i) = ctx.read(rss(i))
+        val Some((_, newDesc)) = ctx.readMaybeFromLog(rss(i), t.desc) : @unchecked
+        t.desc = newDesc
         read(i + 1)
       }
     }
 
     @tailrec
-    def prepare(i: Int, d: HalfEMCASDescriptor): HalfEMCASDescriptor = {
+    def prepare(i: Int): Unit = {
       if (i >= n) {
-        d
+        ()
       } else {
-        val nd = ctx.addCas(d, rss(i), ovs(i), ovs((i + 1) % n))
-        prepare(i + 1, nd)
+        val nv = t.desc.getOrElseNull(rss((i + 1) % n)).ov
+        val newDesc = t.desc.overwrite(t.desc.getOrElseNull(rss(i)).withNv(nv))
+        t.desc = newDesc
+        prepare(i + 1)
       }
     }
 
     @tailrec
     def go(): Unit = {
       read(0)
-      val d = prepare(0, ctx.start())
-      if (ctx.tryPerform(d)) ()
+      prepare(0)
+      if (ctx.tryPerformOk(t.desc)) ()
       else go()
     }
 
@@ -108,7 +111,7 @@ object ResourceAllocationKCAS {
 
     private[this] var selectedRss: Array[MemoryLocation[String]] = _
 
-    var ovs: Array[String] = _
+    var desc: HalfEMCASDescriptor = _
 
     @Param(Array("2", "4", "6"))
     private[this] var dAllocSize: Int = _
@@ -119,7 +122,6 @@ object ResourceAllocationKCAS {
     @Setup
     def setupSelRes(): Unit = {
       selectedRss = Array.ofDim(allocSize)
-      ovs = Array.ofDim(allocSize)
     }
 
     /** Select `allocSize` refs randomly */

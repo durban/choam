@@ -27,49 +27,46 @@ import GcHostileMsQueue._
  * objects, including `Ref`s, which are only used once
  * (see `GcBench`).
  */
-private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], els: Iterable[A])
+private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
   extends Queue[A] {
 
   private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel)
   private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel)
 
-  private def this(els: Iterable[A]) =
-    this(Node(nullOf[A], Ref.unsafe(End[A]())), els)
+  private def this() =
+    this(Node(nullOf[A], Ref.unsafe(End[A]())))
 
   override val tryDeque: Axn[Option[A]] = {
-    for {
-      node <- head.unsafeInvisibleRead
-      next <- node.next.unsafeInvisibleRead
-      res <- next match {
-        case n @ Node(a, _) =>
-          // No need to also validate `node.next`, since
-          // it is not the last node (thus it won't change).
-          head.unsafeCas(node, n.copy(data = nullOf[A])) >>> Rxn.ret(Some(a))
-        case End() =>
-          head.unsafeCas(node, node) >>> node.next.unsafeCas(next, next) >>> Rxn.ret(None)
+    head.modifyWith { node =>
+      node.next.get.flatMapF { next =>
+        next match {
+          case n @ Node(a, _) =>
+            Rxn.pure((n.copy(data = nullOf[A]), Some(a)))
+          case End() =>
+            Rxn.pure((node, None))
+        }
       }
-    } yield res
+    }
   }
 
   override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
-    findAndEnqueue(Node(a, Ref.unsafe(End[A]())))
+    Ref[Elem[A]](End()).flatMapF { newRef =>
+      findAndEnqueue(Node(a, newRef))
+    }
   }
 
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    Rxn.unsafe.delayComputed(tail.unsafeInvisibleRead.flatMapF { (n: Node[A]) =>
-      n.next.unsafeInvisibleRead.flatMapF {
-        case e @ End() =>
-          // found true tail; will CAS, and try to adjust the tail ref:
-          Rxn.ret(n.next.unsafeCas(e, node).postCommit(tail.unsafeCas(n, node).?.void))
+    def go(n: Node[A], originalTail: Node[A]): Axn[Unit] = {
+      n.next.get.flatMapF {
+        case End() =>
+          // found true tail; will update, and try to adjust the tail ref:
+          n.next.set.provide(node).postCommit(tail.unsafeCas(originalTail, node).?.void)
         case nv @ Node(_, _) =>
-          // not the true tail; try to catch up, and will retry:
-          tail.unsafeCas(n, nv).?.as(Rxn.unsafe.retry)
+          // not the true tail; try to catch up, and continue:
+          go(n = nv, originalTail = originalTail)
       }
-    })
-  }
-
-  els.foreach { a =>
-    enqueue.unsafePerform(a, mcas.MCAS.ThreadConfinedMCAS)
+    }
+    tail.get.flatMapF { t => go(t, t) }
   }
 }
 
@@ -79,6 +76,10 @@ private[choam] object GcHostileMsQueue {
   private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
   private final case class End[A]() extends Elem[A]
 
-  def fromList[A](as: List[A]): Axn[GcHostileMsQueue[A]] =
-    Rxn.unsafe.delay { _ => new GcHostileMsQueue(as) }
+  def apply[A]: Axn[GcHostileMsQueue[A]] =
+    Rxn.unsafe.delay { _ => new GcHostileMsQueue[A] }
+
+  def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[GcHostileMsQueue[A]] = {
+    Queue.fromList[F, GcHostileMsQueue, A](this.apply[A])(as)
+  }
 }

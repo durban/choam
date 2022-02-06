@@ -18,19 +18,31 @@
 package dev.tauri.choam
 package mcas
 
-private final class WordDescriptor[A] private (
-  val half: HalfWordDescriptor[A],
-  val parent: EMCASDescriptor,
+// NB: It is important, that this is private;
+// we're writing `WordDescriptor[A]`s into
+// `Ref[A]`s, and we need to be able to distinguish
+// them from user data. If the user data could
+// be an instance of `WordDescriptor`, we could
+// not do that.
+private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDescriptor
+  final val half: HalfWordDescriptor[A],
+  final val parent: EMCASDescriptor,
 ) {
 
-  def address: MemoryLocation[A] =
+  final def address: MemoryLocation[A] =
     this.half.address
 
-  def ov: A =
+  final def ov: A =
     this.half.ov
 
-  def nv: A =
+  final def nv: A =
     this.half.nv
+
+  final def oldVersion: Long =
+    this.half.version
+
+  final def newVersion: Long =
+    this.parent.newVersion
 
   final def cast[B]: WordDescriptor[B] =
     this.asInstanceOf[WordDescriptor[B]]
@@ -49,7 +61,7 @@ private object WordDescriptor {
     parent: EMCASDescriptor,
   ): WordDescriptor[A] = new WordDescriptor[A](half, parent)
 
-  def prepare[A](
+  private[mcas] def prepare[A](
     half: HalfWordDescriptor[A],
     parent: EMCASDescriptor,
   ): WordDescriptor[A] = WordDescriptor(half, parent)

@@ -23,12 +23,12 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZL_Result
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("k-CAS should be atomic")
 @Outcomes(Array(
-  new Outcome(id = Array("true, false, x"), expect = ACCEPTABLE, desc = "writer1 succeeded"),
-  new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE, desc = "writer2 succeeded")
+  new Outcome(id = Array("true, false, x"), expect = ACCEPTABLE_INTERESTING, desc = "writer1 succeeded"),
+  new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE_INTERESTING, desc = "writer2 succeeded")
 ))
 class KCASTest extends StressTestBase {
 
@@ -38,9 +38,9 @@ class KCASTest extends StressTestBase {
   private def write(nv: String): Boolean = {
     val ctx = impl.currentContext()
     val d = refs.foldLeft(ctx.start()) { (d, ref) =>
-      ctx.addCas(d, ref, "ov", nv)
+      ctx.addCasFromInitial(d, ref, "ov", nv)
     }
-    ctx.tryPerform(d)
+    ctx.tryPerformInternal(d) == EmcasStatus.Successful
   }
 
   @Actor
@@ -56,7 +56,7 @@ class KCASTest extends StressTestBase {
   @Arbiter
   def arbiter(r: ZZL_Result): Unit = {
     val ctx = impl.currentContext()
-    val vs = refs.map(ref => ctx.read(ref))
+    val vs = refs.map(ref => ctx.readDirect(ref))
     val s = vs.toSet
     if (s.size == 1) {
       r.r3 = s.iterator.next()

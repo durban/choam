@@ -20,13 +20,13 @@ package bench
 
 import org.openjdk.jmh.annotations._
 
-import cats.effect.IO
+import cats.effect.{ IO, SyncIO }
 
 import io.github.timwspence.cats.stm.STM
 import zio.stm.ZSTM
 
 import util._
-import data.{ Queue, MichaelScottQueue, RemoveQueue }
+import data.{ Queue, MichaelScottQueue }
 
 @Fork(1)
 class QueueTransferBench extends BenchUtils {
@@ -122,7 +122,7 @@ object QueueTransferBench {
   class MsSt extends MsStBase {
 
     protected override def newQueue(): Queue[String] =
-      MichaelScottQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(this.runtime)
+      Queue.fromList[SyncIO, Queue, String](MichaelScottQueue.padded[String])(Prefill.prefill().toList).unsafeRunSync()
 
     @Setup
     def setup(): Unit =
@@ -133,7 +133,7 @@ object QueueTransferBench {
   class MsuSt extends MsStBase {
 
     protected override def newQueue(): Queue[String] =
-      MichaelScottQueue.fromListUnpadded(Prefill.prefill().toList).run[IO].unsafeRunSync()(this.runtime)
+      Queue.fromList[SyncIO, Queue, String](MichaelScottQueue.unpadded[String])(Prefill.prefill().toList).unsafeRunSync()
 
     @Setup
     def setup(): Unit =
@@ -144,7 +144,7 @@ object QueueTransferBench {
   class RmSt extends MsStBase {
 
     protected override def newQueue(): Queue[String] =
-      RemoveQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(this.runtime)
+      Queue.fromList[SyncIO, Queue, String](Queue.withRemove[String])(Prefill.prefill().toList).unsafeRunSync()
 
     @Setup
     def setup(): Unit =

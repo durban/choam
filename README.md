@@ -35,11 +35,6 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   and the resulting `Rxn` will *update all affected memory locations atomically*.
   - For example, if `y` is also a `Ref[Int]`, then `x.update(_ + 1) >>> y.update(_ + 1)`
     will increment both of them atomically.
-- However, conflicting `Rxn`s cannot be composed. That is, `Rxn`s which
-  update the same `Ref` are not allowed to be composed.
-  - Currently composing conflicting `Rxn`s causes a runtime error.
-  - *Future work:* either detecting this error during compile time,
-    or somehow allowing conflicting updates.
 
 ## Modules
 
@@ -64,12 +59,19 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
 
 ## Related work
 
-- Our `Rxn` is a lock-free, referentially transparent, and extended version of
-  *reagents*, described in [Reagents: Expressing and Composing Fine-grained Concurrency
+- Our `Rxn` is an extended version of *reagents*, described in
+  [Reagents: Expressing and Composing Fine-grained Concurrency
   ](http://www.ccis.northeastern.edu/home/turon/reagents.pdf). (Other implementations or reagents:
   [Scala](https://github.com/aturon/ChemistrySet),
   [OCaml](https://github.com/ocamllabs/reagents),
   [Racket](https://github.com/aturon/Caper).)
+  The main diferences from the paper are:
+  - Only lock-free features (and a few low-level ones) are implemented.
+  - `Rxn` has a referentially transparent ("pure functional") API.
+  - The interpreter is stack-safe.
+  - We also support composing `Rxn`s which modify the same `Ref`
+    (thus, an `Rxn` is closer to an STM transaction than a *reagent*;
+    see below).
 - Multi-word compare-and-swap (MCAS/*k*-CAS) implementations:
   - [A Practical Multi-Word Compare-and-Swap Operation](
     https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf) (an earlier version used this
@@ -81,8 +83,6 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
 - Software transactional memory (STM)
   - A `Rxn` is somewhat similar to a memory transaction, but there are
     important differences:
-    - A `Rxn` can only touch one `Ref` at most once (see above); an STM
-      transaction can usually read/write multiple times.
     - A `Rxn` is lock-free by construction (unless it's infinitely recursive, or an
       `unsafe` method was used to create it); STM transactions are not necessarily
       lock-free (e.g., STM "retry").
@@ -93,16 +93,26 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
       [Cats Effect](https://github.com/typelevel/cats-effect) typeclasses.
       This feature can be used to provide such "waiting" functionality
       (e.g., `AsyncQueue.ringBuffer` is a queue with `enqueue` in `Rxn` and `deque` in `IO`).
+    - The implementation (the `Rxn` interpreter) is also lock-free; STM implementations
+      are usually not (although there are exceptions).
     - STM transactions usually have a way of raising/handling errors
       (e.g., `MonadError`); `Rxn` has no such feature (of course return
       values can encode errors with `Option`, `Either`, or similar).
     - Some STM systems allow access to transactional memory from
       non-transactional code; `Rxn` doesn't support this, the contents of an
       `r: Ref[A]` can only be accessed from inside a `Rxn` (although there is a
-      read-only escape hatch: `r.unsafeInvisibleRead`).
+      read-only escape hatch: `r.unsafeDirectRead`).
   - Similarities between `Rxn`s and STM transactions include the following:
-    - atomicity, consistency, isolation (TODO: explain that there are some differences)
+    - atomicity
+    - consistency
+    - isolation
+    - `Rxn` also provides a correctness property called
+      [*opacity*](https://nbronson.github.io/scala-stm/semantics.html#opacity); not all
+      STM implementations provide this, but some do (e.g., `scala-stm`).
   - Some STM implementations:
-    - Haskell `Control.Concurrent.STM`
-    - Scala: `scala-stm`, `cats-stm`, `ZSTM`
-    - TODO: TL2, SwissTM
+    - Haskell: `Control.Concurrent.STM`.
+    - Scala: `scala-stm`, `cats-stm`, `ZSTM`.
+    - [TL2](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.90.811&rep=rep1&type=pdf)
+      and [SwissTM](https://infoscience.epfl.ch/record/136702/files/pldi127-dragojevic.pdf):
+      the system which guarantees *opacity* (see above) for `Rxn`s is based on
+      the one in SwissTM (which is itself based on the one in TL2).

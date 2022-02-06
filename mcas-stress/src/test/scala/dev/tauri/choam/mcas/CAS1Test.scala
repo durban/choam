@@ -23,12 +23,12 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZL_Result
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("CAS1 should be atomic")
 @Outcomes(Array(
-  new Outcome(id = Array("true, false, x"), expect = ACCEPTABLE, desc = "writer1 succeeded"),
-  new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE, desc = "writer2 succeeded")
+  new Outcome(id = Array("true, false, x"), expect = ACCEPTABLE_INTERESTING, desc = "writer1 succeeded"),
+  new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE_INTERESTING, desc = "writer2 succeeded")
 ))
 class CAS1Test extends StressTestBase {
 
@@ -38,17 +38,17 @@ class CAS1Test extends StressTestBase {
   @Actor
   def writer1(r: ZZL_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r1 = ctx.tryPerform(ctx.addCas(ctx.start(), ref, "ov", "x"))
+    r.r1 = (ctx.tryPerformInternal(ctx.addCasFromInitial(ctx.start(), ref, "ov", "x")) == EmcasStatus.Successful)
   }
 
   @Actor
   def writer2(r: ZZL_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r2 = ctx.tryPerform(ctx.addCas(ctx.start(), ref, "ov", "y"))
+    r.r2 = (ctx.tryPerformInternal(ctx.addCasFromInitial(ctx.start(), ref, "ov", "y")) == EmcasStatus.Successful)
   }
 
   @Arbiter
   def arbiter(r: ZZL_Result): Unit = {
-    r.r3 = impl.currentContext().read(ref)
+    r.r3 = impl.currentContext().readDirect(ref)
   }
 }

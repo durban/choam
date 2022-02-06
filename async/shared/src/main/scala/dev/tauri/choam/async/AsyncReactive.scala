@@ -40,10 +40,10 @@ object AsyncReactive {
     inst
 
   implicit def asyncReactiveForAsync[F[_]](implicit F: Async[F]): AsyncReactive[F] =
-    new AsyncReactiveImpl[F](Reactive.defaultKcasImpl)(F)
+    new AsyncReactiveImpl[F](Reactive.defaultMcasImpl)(F)
 
-  private[choam] class AsyncReactiveImpl[F[_]](ki: mcas.MCAS)(implicit F: Async[F])
-    extends Reactive.SyncReactive[F](ki)
+  private[choam] class AsyncReactiveImpl[F[_]](mi: mcas.MCAS)(implicit F: Async[F])
+    extends Reactive.SyncReactive[F](mi)
     with AsyncReactive[F] {
 
     final override def promise[A]: Axn[Promise[F, A]] =

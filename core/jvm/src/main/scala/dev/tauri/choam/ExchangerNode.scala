@@ -25,13 +25,17 @@ private final class ExchangerNode[C](val msg: Msg) {
   /**
    *     .---> result: FinishedEx[C] (fulfiller successfully completed)
    *    /
-   * null (TODO: use a sentinel)
+   * null
    *    \
    *     ˙---> Rescinded[C] (owner couldn't wait any more for the fulfiller)
    */
 
   val hole: Ref[NodeResult[C]] =
     Ref.unsafe(null)
+
+  // TODO: Also consider using `Thread.yield` and then
+  // TODO: `LockSupport.parkNanos` after spinning (see
+  // TODO: `java.util.concurrent.Exchanger`).
 
   def spinWait(
     stats: ExchangerImplJvm.Statistics,
@@ -42,7 +46,7 @@ private final class ExchangerNode[C](val msg: Msg) {
     def go(n: Int): Option[NodeResult[C]] = {
       if (n > 0) {
         Backoff.once()
-        val res = ctx.read(this.hole.loc)
+        val res = ctx.readDirect(this.hole.loc)
         if (isNull(res)) {
           go(n - 1)
         } else {
@@ -52,8 +56,9 @@ private final class ExchangerNode[C](val msg: Msg) {
         None
       }
     }
+    val spinShift = ExchangerImplJvm.Statistics.spinShift(stats).toInt
     val maxSpin = Math.min(
-      params.defaultSpin << stats.spinShift.toInt,
+      params.defaultSpin << spinShift,
       params.maxSpin
     )
     val spin = 1 + ctx.random.nextInt(maxSpin)
