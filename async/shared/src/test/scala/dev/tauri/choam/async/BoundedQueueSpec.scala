@@ -22,18 +22,39 @@ import scala.util.Try
 
 import cats.effect.IO
 
-final class BoundedQueueSpec_ThreadConfinedMCAS_IO
+final class BoundedQueueSpecLinked_ThreadConfinedMCAS_IO
   extends BaseSpecTickedIO
   with SpecThreadConfinedMCAS
-  with BoundedQueueSpec[IO]
+  with BoundedQueueSpecLinked[IO]
+
+final class BoundedQueueSpecArray_ThreadConfinedMCAS_IO
+  extends BaseSpecTickedIO
+  with SpecThreadConfinedMCAS
+  with BoundedQueueSpecArray[IO]
+
+trait BoundedQueueSpecLinked[F[_]]
+  extends BoundedQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+
+  def newQueue[A](bound: Int): F[BoundedQueue[F, A]] =
+    BoundedQueue.linked[F, A](bound).run[F]
+}
+
+trait BoundedQueueSpecArray[F[_]]
+  extends BoundedQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+
+  def newQueue[A](bound: Int): F[BoundedQueue[F, A]] =
+    BoundedQueue.array[F, A](bound).run[F]
+}
 
 trait BoundedQueueSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
+  def newQueue[A](bound: Int): F[BoundedQueue[F, A]]
+
   test("BoundedQueue non-empty deque") {
     for {
-      s <- BoundedQueue[F, String](bound = 4).run[F]
+      s <- newQueue[String](bound = 4)
       _ <- s.enqueue("a")
       _ <- s.enqueue("b")
       _ <- s.enqueue("c")
@@ -45,7 +66,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue empty deque") {
     for {
-      s <- BoundedQueue[F, String](bound = 4).run[F]
+      s <- newQueue[String](bound = 4)
       f1 <- s.deque.start
       _ <- this.tickAll
       f2 <- s.deque.start
@@ -63,7 +84,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue multiple enq in a Rxn") {
     for {
-      s <- BoundedQueue[F, String](bound = 4).run[F]
+      s <- newQueue[String](bound = 4)
       f1 <- s.deque.start
       _ <- this.tickAll
       f2 <- s.deque.start
@@ -80,7 +101,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue full enqueue") {
     for {
-      s <- BoundedQueue[F, String](bound = 4).run[F]
+      s <- newQueue[String](bound = 4)
       _ <- assertResultF(s.currentSize.run[F], 0)
       _ <- s.enqueue("a")
       _ <- assertResultF(s.currentSize.run[F], 1)
@@ -120,7 +141,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue small bound") {
     for {
-      s <- BoundedQueue[F, String](bound = 1).run[F]
+      s <- newQueue[String](bound = 1)
       _ <- s.enqueue("a")
       _ <- assertResultF(s.tryEnqueue[F]("x"), false)
       fib <- s.enqueue("b").start
@@ -132,14 +153,14 @@ trait BoundedQueueSpec[F[_]]
   }
 
   test("BoundedQueue illegal bound") {
-    assert(Try { BoundedQueue[F, String](0) }.isFailure)
-    assert(Try { BoundedQueue[F, String](-1) }.isFailure)
-    assert(Try { BoundedQueue[F, String](-99) }.isFailure)
+    assert(Try { newQueue[String](0) }.isFailure)
+    assert(Try { newQueue[String](-1) }.isFailure)
+    assert(Try { newQueue[String](-99) }.isFailure)
   }
 
   test("BoundedQueue canceled getter") {
     for {
-      s <- BoundedQueue[F, String](bound = 4).run[F]
+      s <- newQueue[String](bound = 4)
       f1 <- s.deque.start
       _ <- this.tickAll
       f2 <- s.deque.start
@@ -158,7 +179,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue canceled setter") {
     for {
-      s <- BoundedQueue[F, String](bound = 1).run[F]
+      s <- newQueue[String](bound = 1)
       _ <- assertResultF(s.currentSize.run[F], 0)
       _ <- s.enqueue("a")
       _ <- assertResultF(s.currentSize.run[F], 1)
@@ -183,7 +204,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue#toCats") {
     for {
-      bq <- BoundedQueue[F, String](bound = 2).run[F]
+      bq <- newQueue[String](bound = 2)
       q = bq.toCats
       _ <- assertResultF(q.size, 0)
       _ <- q.offer("a")

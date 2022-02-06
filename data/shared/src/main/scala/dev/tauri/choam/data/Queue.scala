@@ -39,14 +39,18 @@ trait QueueSink[-A] {
   def tryEnqueue: Rxn[A, Boolean]
 }
 
+trait QueueSourceSink[A]
+  extends QueueSource[A]
+  with  QueueSink[A]
+
 trait UnboundedQueueSink[-A] extends QueueSink[A] {
   def enqueue: Rxn[A, Unit]
-  final override def tryEnqueue: Rxn[A, Boolean] =
+  override def tryEnqueue: Rxn[A, Boolean] =
     this.enqueue.as(true)
 }
 
-abstract class Queue[A]
-  extends QueueSource[A]
+trait Queue[A]
+  extends QueueSourceSink[A]
   with UnboundedQueueSink[A]
 
 object Queue {
@@ -61,6 +65,9 @@ object Queue {
 
   def unbounded[A]: Axn[Queue[A]] =
     MichaelScottQueue[A]
+
+  def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
+    ArrayQueueSourceSink[A](bound = bound)
 
   def dropping[A](@unused capacity: Int): Axn[Queue[A]] =
     sys.error("TODO")
@@ -98,6 +105,28 @@ object Queue {
 
           final override def size: Axn[Int] =
             s.get
+        }
+      }
+    }
+  }
+
+  /** Bounded array-based queue */
+  private[choam] final class ArrayQueueSourceSink[A](
+    capacity: Int,
+    arr: Ref.Array[A],
+    head: Ref[Int], // index for next element to deque
+    tail: Ref[Int], // index for next element to enqueue
+  ) extends ArrayQueue[A](capacity, arr, head, tail)
+    with QueueSourceSink[A] {
+  }
+
+  private[choam] final object ArrayQueueSourceSink {
+    def apply[A](bound: Int): Axn[ArrayQueueSourceSink[A]] = {
+      require(bound > 0)
+      Ref.array(size = bound, initial = ArrayQueue.empty[A]).flatMapF { arr =>
+        (Ref(0) * Ref(0)).map {
+          case (h, t) =>
+            new ArrayQueueSourceSink(bound, arr, h, t)
         }
       }
     }

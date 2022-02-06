@@ -20,6 +20,36 @@ package data
 
 import cats.syntax.all._
 
+import ArrayQueue.{ empty, isEmpty }
+
+/** Array-based circular buffer */
+private[choam] final class RingBuffer[A](
+  capacity: Int,
+  arr: Ref.Array[A],
+  head: Ref[Int], // index for next element to deque
+  tail: Ref[Int], // index for next element to enqueue
+) extends ArrayQueue[A](capacity, arr, head, tail) with Queue[A] {
+
+  require(capacity === arr.size)
+
+  final override def tryEnqueue: A =#> Boolean =
+    super[Queue].tryEnqueue
+
+  final override def enqueue: Rxn[A, Unit] = Rxn.computed[A, Unit] { newVal =>
+    tail.getAndUpdate(i => (i + 1) % capacity).flatMapF { idx =>
+      arr(idx).updateWith { oldVal =>
+        if (isEmpty(oldVal)) {
+          Rxn.pure(newVal)
+        } else {
+          // we're overwriting the oldest value;
+          // we also have to increment the deque index:
+          head.update(i => (i + 1) % capacity).as(newVal)
+        }
+      }
+    }
+  }
+}
+
 private[choam] object RingBuffer {
 
   private[choam] def apply[A](capacity: Int): Axn[RingBuffer[A]] = {
@@ -47,73 +77,6 @@ private[choam] object RingBuffer {
           head = h,
           tail = t,
         )
-    }
-  }
-
-  private object EMPTY {
-    def as[A]: A =
-      this.asInstanceOf[A]
-  }
-
-  private def empty[A]: A =
-    EMPTY.as[A]
-
-  private def isEmpty[A](a: A): Boolean =
-    equ[A](a, empty[A])
-}
-
-private[choam] final class RingBuffer[A](
-  val capacity: Int,
-  arr: Ref.Array[A],
-  head: Ref[Int], // index for next element to deque
-  tail: Ref[Int], // index for next element to enqueue
-) extends Queue[A] {
-
-  import RingBuffer.{ empty, isEmpty }
-
-  require(capacity === arr.size)
-
-  private[choam] def size: Axn[Int] = {
-    (head.get * tail.get).flatMapF {
-      case (h, t) =>
-        if (h < t) {
-          Rxn.pure(t - h)
-        } else if (h > t) {
-          Rxn.pure(t - h + capacity)
-        } else { // h == t
-          arr(t).get.map { a =>
-            if (isEmpty(a)) 0 // empty
-            else capacity // full
-          }
-        }
-    }
-  }
-
-  override def enqueue: Rxn[A, Unit] = Rxn.computed[A, Unit] { newVal =>
-    tail.getAndUpdate(i => (i + 1) % capacity).flatMapF { idx =>
-      arr(idx).updateWith { oldVal =>
-        if (isEmpty(oldVal)) {
-          Rxn.pure(newVal)
-        } else {
-          // we're overwriting the oldest value;
-          // we also have to increment the deque index:
-          head.update(i => (i + 1) % capacity).as(newVal)
-        }
-      }
-    }
-  }
-
-  override def tryDeque: Axn[Option[A]] = {
-    head.modifyWith { idx =>
-      arr(idx).modify { a =>
-        if (isEmpty(a)) {
-          // empty buffer
-          (a, (idx, None))
-        } else {
-          // successful deque
-          (empty[A], ((idx + 1) % capacity, Some(a)))
-        }
-      }
     }
   }
 }
