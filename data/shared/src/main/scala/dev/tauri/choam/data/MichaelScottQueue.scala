@@ -92,6 +92,6 @@ private[choam] object MichaelScottQueue {
   def unpadded[A]: Axn[MichaelScottQueue[A]] =
     applyInternal(padded = false)
 
-  def applyInternal[A](padded: Boolean): Axn[MichaelScottQueue[A]] =
+  private[this] def applyInternal[A](padded: Boolean): Axn[MichaelScottQueue[A]] =
     Rxn.unsafe.delay { _ => new MichaelScottQueue(padded = padded) }
 }
