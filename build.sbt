@@ -355,14 +355,14 @@ lazy val jmhSettings = Seq[Setting[_]](
 lazy val dependencies = new {
 
   val catsVersion = "2.7.0"
-  val catsEffectVersion = "3.3.4"
+  val catsEffectVersion = "3.3.5"
   val catsMtlVersion = "1.2.1"
   val fs2Version = "3.2.4"
   val scalacheckEffectVersion = "1.0.3"
   val kindProjectorVersion = "0.13.2"
   val jcstressVersion = "0.15"
   val jmhVersion = "1.33"
-  val scalaJsLocaleVersion = "1.2.1"
+  val scalaJsLocaleVersion = "1.3.0"
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
   val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
@@ -378,7 +378,7 @@ lazy val dependencies = new {
   val decline = Def.setting("com.monovore" %%% "decline" % "2.2.0")
 
   // JVM:
-  val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.7.0")
+  val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.10.0")
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.16")
 
   // JS:
@@ -386,7 +386,7 @@ lazy val dependencies = new {
     "io.github.cquiroz" %%% "scala-java-locales" % scalaJsLocaleVersion,
     "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
   ))
-  val bobcats = Def.setting("com.armanbilge" %%% "bobcats" % "0.1-592aebf")
+  val bobcats = Def.setting("com.armanbilge" %%% "bobcats" % "0.1-840c885")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
@@ -404,8 +404,8 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.11.0")
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "3.3.0-RC1")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.0-RC1")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "3.3.0-RC2")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.0-RC2")
 }
 
 addCommandAlias("checkScalafix", "scalafixAll --check")
