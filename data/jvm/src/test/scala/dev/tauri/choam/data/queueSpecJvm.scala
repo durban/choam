@@ -65,6 +65,11 @@ final class QueueWithRemoveSpecJvm_EMCAS_IO
   with QueueWithRemoveSpecJvm[IO]
   with SpecEMCAS
 
+final class QueueWithSizeSpecJvm_EMCAS_IO
+  extends BaseSpecIO
+  with QueueWithSizeSpecJvm[IO]
+  with SpecEMCAS
+
 final class QueueGcHostileSpecJvm_EMCAS_IO
   extends BaseSpecIO
   with QueueGcHostileSpecJvm[IO]
@@ -72,6 +77,11 @@ final class QueueGcHostileSpecJvm_EMCAS_IO
 
 trait QueueWithRemoveSpecJvm[F[_]]
   extends QueueWithRemoveSpec[F]
+  with QueueJvmTests[F] { this: KCASImplSpec =>
+}
+
+trait QueueWithSizeSpecJvm[F[_]]
+  extends QueueWithSizeSpec[F]
   with QueueJvmTests[F] { this: KCASImplSpec =>
 }
 

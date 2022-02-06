@@ -28,7 +28,7 @@ import mcas.MCAS
  * Non-Blocking Snapshots](http://lampwww.epfl.ch/~prokopec/ctries-snapshot.pdf)
  * by Aleksandar Prokopec, Nathan G. Bronson, Phil Bagwell and Martin Odersky.
  */
-final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
+private[choam] final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
 
   // TODO: Cache-trie:
   // TODO: http://aleksandar-prokopec.com/resources/docs/p137-prokopec.pdf
@@ -193,7 +193,7 @@ final class Ctrie[K, V] private ()(implicit hs: Hash[K]) {
   }
 }
 
-object Ctrie {
+private[choam] object Ctrie {
 
   def apply[K : Hash, V]: Axn[Ctrie[K, V]] = {
     Rxn.unsafe.delay { _ => Ctrie.unsafe[K, V] }

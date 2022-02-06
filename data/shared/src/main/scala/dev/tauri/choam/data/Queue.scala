@@ -18,6 +18,9 @@
 package dev.tauri.choam
 package data
 
+import cats.Monad
+import cats.syntax.all._
+
 trait QueueSource[+A] {
 
   def tryDeque: Axn[Option[A]]
@@ -72,14 +75,15 @@ object Queue {
   private[choam] def unpadded[A]: Axn[Queue[A]] =
     MichaelScottQueue.unpadded[A]
 
-  private[choam] def fromList[A](as: List[A]): Axn[Queue[A]] =
-    MichaelScottQueue.fromList[A](as)
+  private[choam] def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
+    implicit val m: Monad[F] = Reactive[F].monad
+    mkEmpty.run[F].flatMap { q =>
+      as.traverse(a => q.enqueue[F](a)).as(q)
+    }
+  }
 
   private[choam] def withRemove[A]: Axn[Queue.WithRemove[A]] =
     RemoveQueue[A]
-
-  private[choam] def withRemoveFromList[A](as: List[A]): Axn[Queue.WithRemove[A]] =
-    RemoveQueue.fromList(as)
 
   private[choam] def withSize[A]: Axn[Queue.WithSize[A]] = {
     Queue.unbounded[A].flatMapF { q =>

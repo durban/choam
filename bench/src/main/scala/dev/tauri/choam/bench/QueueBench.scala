@@ -20,14 +20,14 @@ package bench
 
 import org.openjdk.jmh.annotations._
 
-import cats.effect.IO
+import cats.effect.{ IO, SyncIO }
 
 import io.github.timwspence.cats.stm.STM
 
 import zio.stm.ZSTM
 
 import util._
-import data.{ RemoveQueue, MichaelScottQueue }
+import data.{ Queue, MichaelScottQueue }
 
 @Fork(2)
 class QueueBench extends BenchUtils {
@@ -122,14 +122,18 @@ object QueueBench {
 
   @State(Scope.Benchmark)
   class MsSt {
-    val runtime = cats.effect.unsafe.IORuntime.global
-    val michaelScottQueue: MichaelScottQueue[String] = MichaelScottQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
+    val runtime =
+      cats.effect.unsafe.IORuntime.global
+    val michaelScottQueue: MichaelScottQueue[String] =
+      Queue.fromList[SyncIO, MichaelScottQueue, String](MichaelScottQueue.padded[String])(Prefill.prefill().toList).unsafeRunSync()
   }
 
   @State(Scope.Benchmark)
   class RmSt {
-    val runtime = cats.effect.unsafe.IORuntime.global
-    val removeQueue: RemoveQueue[String] = RemoveQueue.fromList(Prefill.prefill().toList).run[IO].unsafeRunSync()(runtime)
+    val runtime =
+      cats.effect.unsafe.IORuntime.global
+    val removeQueue: Queue.WithRemove[String] =
+      Queue.fromList[SyncIO, Queue.WithRemove, String](Queue.withRemove[String])(Prefill.prefill().toList).unsafeRunSync()
   }
 
   @State(Scope.Benchmark)

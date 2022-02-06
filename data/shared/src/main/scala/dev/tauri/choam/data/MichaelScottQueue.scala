@@ -84,6 +84,9 @@ private[choam] object MichaelScottQueue {
   private final case class End[A]() extends Elem[A]
 
   def apply[A]: Axn[MichaelScottQueue[A]] =
+    padded[A]
+
+  def padded[A]: Axn[MichaelScottQueue[A]] =
     applyInternal(padded = true)
 
   def unpadded[A]: Axn[MichaelScottQueue[A]] =
@@ -91,20 +94,4 @@ private[choam] object MichaelScottQueue {
 
   def applyInternal[A](padded: Boolean): Axn[MichaelScottQueue[A]] =
     Rxn.unsafe.delay { _ => new MichaelScottQueue(padded = padded) }
-
-  def fromList[A](as: List[A]): Axn[MichaelScottQueue[A]] =
-    fromListInternal(as, padded = true)
-
-  def fromListUnpadded[A](as: List[A]): Axn[MichaelScottQueue[A]] =
-    fromListInternal(as, padded = false)
-
-  private def fromListInternal[A](as: List[A], padded: Boolean): Axn[MichaelScottQueue[A]] = {
-    Rxn.unsafe.context { ctx =>
-      val q = new MichaelScottQueue[A](padded = padded)
-      as.foreach { a =>
-        q.enqueue.unsafePerformInternal(a, ctx = ctx)
-      }
-      q
-    }
-  }
 }

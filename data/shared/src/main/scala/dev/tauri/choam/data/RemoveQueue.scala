@@ -120,16 +120,6 @@ private[choam] object RemoveQueue {
   def apply[A]: Axn[RemoveQueue[A]] =
     Rxn.unsafe.delay { _ => new RemoveQueue }
 
-  def fromList[A](as: List[A]): Axn[RemoveQueue[A]] = {
-    Rxn.unsafe.context { ctx =>
-      val q = new RemoveQueue[A]
-      as.foreach { a =>
-        q.enqueue.unsafePerformInternal(a, ctx = ctx)
-      }
-      q
-    }
-  }
-
   private sealed trait Elem[A]
 
   /**
