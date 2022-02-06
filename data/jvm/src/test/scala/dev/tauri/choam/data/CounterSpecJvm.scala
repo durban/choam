@@ -18,31 +18,13 @@
 package dev.tauri.choam
 package data
 
-// TODO: elimination counter (what do with different add values?)
-// TODO: something like LongAdder (no atomic `get`, but fast)
-// TODO: do some benchmarks (`val`s may not worth it)
+import cats.effect.IO
 
-final class Counter(ref: Ref[Long]) {
+final class CounterSpecSimple_EMCAS_IO
+  extends BaseSpecIO
+  with SpecEMCAS
+  with CounterSpecSimple[IO]
+  with CounterSpecJvm[IO]
 
-  val add: Rxn[Long, Long] = ref.upd[Long, Long] { (cnt, n) =>
-    (cnt + n, cnt)
-  }
-
-  val incr: Axn[Long] =
-    add.provide(1L)
-
-  val decr: Axn[Long] =
-    add.provide(-1L)
-
-  val count: Axn[Long] =
-    ref.get
-}
-
-object Counter {
-
-  def apply: Axn[Counter] =
-    Ref(0L).map(new Counter(_))
-
-  private[choam] def unsafe(initial: Long = 0L): Counter =
-    new Counter(Ref.unsafe(initial))
+trait CounterSpecJvm[F[_]] { this: CounterSpec[F] with KCASImplSpec =>
 }

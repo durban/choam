@@ -22,7 +22,10 @@ import scala.collection.immutable.TreeMap
 import scala.util.hashing.MurmurHash3
 
 // TODO: We could do fancy things with Bloom filters;
-// TODO: it's unclear if it's worth it.
+// TODO: it's unclear if it's worth it. (There may be
+// TODO: also a clever way of doing fast detection of
+// TODO: read-only status, which would help with
+// TODO: `Rxn`s which "become" read-only.)
 
 private abstract class LogMap {
   def size: Int
