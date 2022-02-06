@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("Write after a .get")
 @Outcomes(Array(
