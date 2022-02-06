@@ -17,7 +17,7 @@
 
  // Scala versions:
 val scala2 = "2.13.8"
-val scala3 = "3.1.0"
+val scala3 = "3.1.2-RC1"
 
 // CI JVM versions:
 val jvmLatest = JavaSpec.temurin("17")
@@ -43,7 +43,7 @@ def openJ9Options: String = {
 ThisBuild / scalaVersion := scala2
 ThisBuild / crossScalaVersions := Seq(
   (ThisBuild / scalaVersion).value,
-  // scala3, // TODO: https://github.com/lampepfl/dotty/issues/14198
+  scala3,
 )
 ThisBuild / scalaOrganization := "org.scala-lang"
 ThisBuild / evictionErrorLevel := Level.Warn

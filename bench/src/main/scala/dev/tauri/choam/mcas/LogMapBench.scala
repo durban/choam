@@ -146,19 +146,19 @@ object LogMapBench {
 
     @Param(Array("0")) // , "1", "2", "4", "8", "16"))
     var size: Int =
-      _
+      0
 
     var keys: Array[MemoryLocation[String]] =
-      _
+      null
 
     var newHwds: Array[HalfWordDescriptor[String]] =
-      _
+      null
 
     var dummyKeys: Array[MemoryLocation[String]] =
-      _
+      null
 
     var dummyHwds: Array[HalfWordDescriptor[String]] =
-      _
+      null
 
     def baseSetup(): Unit = {
       this.keys = new Array(this.size)

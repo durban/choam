@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        scala: [2.13.8]
+        scala: [2.13.8, 3.1.2-RC1]
         java:
           - temurin@11
           - graal_21.3.0@11
@@ -118,7 +118,7 @@ jobs:
         shell: bash
         run: 'sbt -v -J-Xgcpolicy:balanced ++${{ matrix.scala }} ci'
 
-      - if: matrix.scala != '3.1.0'
+      - if: matrix.scala != '3.1.2-RC1'
         shell: bash
         run: sbt -v ++${{ matrix.scala }} checkScalafix
 

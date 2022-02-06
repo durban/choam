@@ -50,7 +50,7 @@ trait StackSpecEliminationJvm[F[_]]
   with  StackSpecJvm[F] { this: KCASImplSpec =>
 }
 
-trait StackSpecJvm[F[_]] { this: StackSpec[F] =>
+trait StackSpecJvm[F[_]] { this: StackSpec[F] with KCASImplSpec =>
 
   test("Multiple producers/consumers") {
     val N = 4
