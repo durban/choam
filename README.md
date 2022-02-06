@@ -45,11 +45,21 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   - integration with synchronous effect types in
     [Cats Effect](https://github.com/typelevel/cats-effect)
 - [`choam-data`](data/shared/src/main/scala/dev/tauri/choam/data/):
-  data structures, like queues and stacks
+  concurrent data structures:
+  - queues
+  - stacks
+  - maps (*in progress*)
+  - counter
 - [`choam-async`](async/shared/src/main/scala/dev/tauri/choam/async/):
-  - async data structures
   - integration with asynchronous effect types in
-    [Cats Effect](https://github.com/typelevel/cats-effect)
+    [Cats Effect](https://github.com/typelevel/cats-effect):
+    - the main integration point is a `Promise`, which can be
+      completed as a `Rxn`, and can be waited on as an async `F[_]`
+    - async (dual) data structures can be built on this primitive
+  - async data structures (some of their operations are *semantically*
+    blocking, and so are in an async `F[_]`):
+    - queues
+    - stack
 - [`choam-stream`](stream/shared/src/main/scala/dev/tauri/choam/stream/):
   integration with [FS2](https://github.com/typelevel/fs2) `Stream`s
 - [`choam-laws`](laws/shared/src/main/scala/dev/tauri/choam/laws/):
@@ -77,7 +87,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf) (an earlier version used this
     algorithm)
   - [Efficient Multi-word Compare and Swap](
-    https://arxiv.org/pdf/2008.02527.pdf) (`MCAS.EMCAS` implements a variant of this algorithm)
+    https://arxiv.org/pdf/2008.02527.pdf) (`MCAS.EMCAS` implements a variant of this algorithm; this is the default algorithm on the JVM)
   - A simple, non-lock-free algorithm from the Reagents paper (see above) is implemented as
     `MCAS.SpinLockMCAS`
 - Software transactional memory (STM)
@@ -90,9 +100,10 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
       "inherently not lock-free" logic (e.g., asynchronously waiting on a
       condition set by another thread/fiber/similar). However, `Rxn` is
       interoperable with async data types which implement
-      [Cats Effect](https://github.com/typelevel/cats-effect) typeclasses.
-      This feature can be used to provide such "waiting" functionality
-      (e.g., `AsyncQueue.ringBuffer` is a queue with `enqueue` in `Rxn` and `deque` in `IO`).
+      [Cats Effect](https://github.com/typelevel/cats-effect) typeclasses
+      (see the ``choam-async`` module). This feature can be used to provide such
+      "waiting" functionality (e.g., `AsyncQueue.ringBuffer` is a queue with
+      `enqueue` in `Rxn` and `deque` in `IO`).
     - The implementation (the `Rxn` interpreter) is also lock-free; STM implementations
       are usually not (although there are exceptions).
     - STM transactions usually have a way of raising/handling errors
@@ -107,12 +118,14 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     - consistency
     - isolation
     - `Rxn` also provides a correctness property called
-      [*opacity*](https://nbronson.github.io/scala-stm/semantics.html#opacity); not all
-      STM implementations provide this, but some do (e.g., `scala-stm`).
+      [*opacity*](https://nbronson.github.io/scala-stm/semantics.html#opacity);
+      a lot of STM implementations also guarantee this property (e.g., `scala-stm`),
+      but not all of them.
   - Some STM implementations:
     - Haskell: `Control.Concurrent.STM`.
     - Scala: `scala-stm`, `cats-stm`, `ZSTM`.
     - [TL2](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.90.811&rep=rep1&type=pdf)
       and [SwissTM](https://infoscience.epfl.ch/record/136702/files/pldi127-dragojevic.pdf):
       the system which guarantees *opacity* (see above) for `Rxn`s is based on
-      the one in SwissTM (which is itself based on the one in TL2).
+      the one in SwissTM (which is itself based on the one in TL2). However, TL2 and SwissTM
+      are lock-based STM implementations; our implementation is lock-free.
