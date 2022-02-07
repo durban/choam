@@ -28,6 +28,8 @@ final class HalfWordDescriptor[A] private (
   val version: Long,
 ) {
 
+  require(Version.isValid(version))
+
   private[mcas] final def cast[B]: HalfWordDescriptor[B] =
     this.asInstanceOf[HalfWordDescriptor[B]]
 

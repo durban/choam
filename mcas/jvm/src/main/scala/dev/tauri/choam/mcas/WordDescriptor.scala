@@ -51,7 +51,7 @@ private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDesc
     this.asInstanceOf[A]
 
   final override def toString: String =
-    s"WordDescriptor(${this.address}, ${this.ov}, ${this.nv})"
+    s"WordDescriptor(${this.address}, ${this.ov} -> ${this.nv}, ${this.oldVersion} -> ${this.newVersion})"
 }
 
 private object WordDescriptor {

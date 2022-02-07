@@ -283,9 +283,12 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
     assert(currentVersion >= ov.oldVersion)
     val currentInRef = ref.unsafeGetVersionVolatile()
     if (currentInRef < currentVersion) {
+      // TODO: we could use an `unsafeCmpxchgVersionVolatile` here:
       if (!ref.unsafeCasVersionVolatile(currentInRef, currentVersion)) {
         // concurrent write, but re-check to be sure:
         assert(ref.unsafeGetVersionVolatile() >= currentVersion)
+        // TODO: ^--- This assertion failed once (in BoundedQueueBench);
+        // TODO: figure out, why that could've happened.
       } // else: successfully updated version
     } // else: either a concurrent write to newer version, or is already correct
 
@@ -444,6 +447,26 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
 
       // just to be safe:
       assert((mark eq null) || (mark eq weakref.get()))
+
+      // TODO: Because we're only comparing the value here,
+      // TODO: and not the version, it could happen, that we
+      // TODO: are decreasing the version. This is very bad!
+      // TODO: value = A, version = 1 (no descriptor)
+      // TODO: T1 reads (A, 1) -> descriptor(ov=1, nv=2)
+      // TODO: T2 performs an op: CAS from A to B
+      // TODO: value = B, version = 2 (has descriptor)
+      // TODO: T3 performs an op: CAS from B to A
+      // TODO: value = A, version = 3 (has descriptor)
+      // TODO: GC runs, cleanup runs, descriptor is replaced by A
+      // TODO: value = A, version = 3 (no descriptor)
+      // TODO: T1 continues with CAS from A to C
+      // TODO: T1 installs its descriptor(ov=1, nv=2) into the ref
+      // TODO: (it can do that, because the value (A) equals)
+      // TODO: T1's op will fail (due to the version-CAS failing)
+      // TODO: but now the logical version will be 1 (from the descriptor)
+      // TODO: value = A, version = 1
+      // TODO: thus, the version changed from 3 to 1
+      // TODO: this is very bad!
 
       if (!equ(value, wordDesc.ov)) {
         // expected value is different

@@ -23,6 +23,8 @@ private final class EMCASDescriptor private (
   final val newVersion: Long,
 ) extends EMCASDescriptorBase { self =>
 
+  require(Version.isValid(newVersion))
+
   // effectively immutable array:
   private[this] val words: Array[WordDescriptor[_]] = {
     val arr = new Array[WordDescriptor[_]](half.size)

@@ -524,4 +524,65 @@ class EMCASSpec extends BaseSpecA {
       }
     }
   }
+
+  private[this] final def runInNewThread[A](block: => A): A = {
+    var err: Throwable = null
+    var result: A = nullOf[A]
+    val t = new Thread(() => {
+      result = block
+    })
+    t.setUncaughtExceptionHandler((_, ex) => {
+      err = ex
+      ex.printStackTrace()
+    })
+    t.start()
+    t.join()
+    if (err ne null) {
+      throw err
+    }
+    result
+  }
+
+  test("Version mismatch, but expected value is the same".ignore) {
+    val ref = MemoryLocation.unsafe("A")
+    val ctx = EMCAS.currentContext()
+    // T1:
+    val d0 = ctx.start()
+    val Some((ov, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
+    assertSameInstance(ov, "A")
+    assertEquals(d1.getOrElseNull(ref).version, Version.Start)
+    // T2:
+    runInNewThread {
+      val ctx = EMCAS.currentContext()
+      val oldVer = ctx.start().validTs
+      assert(ctx.tryPerformSingleCas(ref, "A", "B"))
+      assert(ctx.readVersion(ref) > oldVer)
+      assertSameInstance(ctx.readDirect(ref), "B")
+    }
+    // T3:
+    runInNewThread {
+      val ctx = EMCAS.currentContext()
+      val oldVer = ctx.start().validTs
+      assert(ctx.tryPerformSingleCas(ref, "B", "A"))
+      assert(ctx.readVersion(ref) > oldVer)
+      assertSameInstance(ctx.readDirect(ref), "A")
+    }
+    // GC, cleanup:
+    assertSameInstance(EMCAS.spinUntilCleanup(ref), "A")
+    val ver = ctx.readVersion(ref)
+    assert(Version.isValid(ver))
+    assert(ver > Version.Start)
+    assertSameInstance(ref.unsafeGetVolatile(), "A")
+    // T1 continues:
+    println("T1 continues:")
+    val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv("C"))
+    val result = ctx.tryPerform(d2)
+    assertEquals(result, ver)
+    val ver2 = ctx.readVersion(ref)
+    // version mustn't decrease:
+    assert(ver2 >= ver, s"${ver2} < ${ver}")
+    assertSameInstance(EMCAS.spinUntilCleanup(ref), "A")
+    val ver3 = ctx.readVersion(ref)
+    assert(ver3 >= ver2, s"${ver3} < ${ver2}")
+  }
 }
