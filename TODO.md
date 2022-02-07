@@ -29,14 +29,6 @@
 - Can't run benchmarks with Scala 3
 - CI: Tests sometimes time out
   - probably due to GC pauses
-- CI: ExchangerSpec often times out with ZIO
-- CI failure (ubuntu, graal, scala 2.13):
-  ```
-  ==> X dev.tauri.choam.ExchangerSpecJvm_EMCAS_BIO.A StatMap must persist between different unsafePerform runs  0.22s munit.FailException: /home/runner/work/choam/choam/data/jvm/src/test/scala/dev/tauri/choam/ExchangerSpecJvm.scala:418 assertion failed
-  417:          assert(ctx2.supportsStatistics)
-  418:          assert(ctx2.getStatistics().contains(ex2.key))
-  419:        } else {
-  ```
 
 ## Other improvements
 

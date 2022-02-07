@@ -20,6 +20,7 @@ package dev.tauri.choam
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicInteger
 
+import cats.effect.kernel.Fiber
 import cats.effect.{ IO, Outcome }
 
 import mcas.MCAS
@@ -388,26 +389,25 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  private[this] def getStats(ctx: MCAS.ThreadContext): Option[Map[AnyRef, AnyRef]] = {
+  private[this] final def getStats(ctx: MCAS.ThreadContext): Option[Map[AnyRef, AnyRef]] = {
     if (ctx.supportsStatistics) Some(ctx.getStatisticsPlain())
     else None
   }
 
-  test("An Exchanger and its dual must use the same key in a StatMap") {
+  private[this] final def startExchange[A, B](ex: Exchanger[A, B], a: A): F[Fiber[F, Throwable, (B, Option[Map[AnyRef, AnyRef]])]] = {
+    F.interruptible {
+      val b: B = ex.exchange.unsafePerform(a, this.kcasImpl)
+      val ctx = Rxn.unsafe.context(ctx => ctx).unsafeRun(this.kcasImpl)
+      (b, getStats(ctx))
+    }.start
+  }
 
+  test("An Exchanger and its dual must use the same key in a StatMap") {
     for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       _ <- assertSameInstanceF(ex.key, ex.dual.key)
-      f1 <- F.uncancelable(_ => ex.exchange.flatMapF { i =>
-        Rxn.unsafe.context { ctx =>
-          (i, ctx)
-        }
-      }.apply[F]("foo").map { case (i, ctx) => (i, getStats(ctx)) }).start
-      f2 <- F.uncancelable(_ => ex.dual.exchange.flatMapF { i =>
-        Rxn.unsafe.context { ctx =>
-          (i, ctx)
-        }
-      }.apply[F](42).map { case (i, ctx) => (i, getStats(ctx)) }).start
+      f1 <- startExchange(ex, "foo")
+      f2 <- startExchange(ex.dual, 42)
       r1 <- f1.joinWithNever
       (res1, stats1) = r1
       _ <- assertEqualsF(res1, 42)
@@ -437,20 +437,9 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       ex2 <- Rxn.unsafe.exchanger[String, Int].run[F]
-      // Note: getting the context is in the same reaction
-      // as the exchange; thus, it is necessarily the context
-      // of the same thread.
-      task1 = F.uncancelable(_ => ex.exchange.flatMapF { i =>
-        Rxn.unsafe.context { ctx =>
-          (i, ctx)
-        }
-      }.apply[F]("foo").map { case (i, ctx) => (i, getStats(ctx)) })
-      task2 = F.uncancelable(_ => ex2.exchange.flatMapF { i =>
-        Rxn.unsafe.context { ctx =>
-          (i, ctx)
-        }
-      }.apply[F]("bar").map { case (i, ctx) => (i, getStats(ctx)) })
-      f1 <- (task1, task2).mapN(_ -> _).start
+      task1 = startExchange(ex, "foo")
+      task2 = startExchange(ex2, "bar")
+      f1 <- (task1.flatMap(_.joinWithNever), task2.flatMap(_.joinWithNever)).mapN(_ -> _).start
       f2 <- (ex.dual.exchange[F](42), ex2.dual.exchange[F](23)).mapN(_ -> _).start
       r1 <- f1.joinWithNever
       (res11, res12) = r1
@@ -475,11 +464,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   test("A StatMap must not prevent an Exchanger from being garbage collected") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      f1 <- F.uncancelable(_ => ex.exchange.flatMapF { i =>
-        Rxn.unsafe.context { ctx =>
-          (i, ctx)
-        }
-      }.apply[F]("foo").map { case (i, ctx) => (i, getStats(ctx)) }).start
+      f1 <- startExchange(ex, "foo")
       f2 <- ex.dual.exchange.apply[F](42).start
       r1 <- f1.joinWithNever
       _ <- assertEqualsF(r1._1, 42)
