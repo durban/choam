@@ -21,6 +21,7 @@ import mcas.equ
 
 import munit.{ Location, FunSuite }
 
+// TODO: rename to `BaseSpec`
 trait BaseSpecA
   extends FunSuite
   with MUnitUtils

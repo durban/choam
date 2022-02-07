@@ -49,14 +49,13 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
           it.next() match {
             case wd: HalfWordDescriptor[a] =>
               val witness = wd.address.unsafeGetPlain()
-              if (equ[a](witness, wd.ov)) {
+              val witnessVer = wd.address.unsafeGetVersionVolatile()
+              val isGlobalVerCas = (wd.address eq _commitTs)
+              if ((equ[a](witness, wd.ov)) && (isGlobalVerCas || (witnessVer == wd.version))) {
                 prepare(it)
               } else {
-                if (wd.address eq _commitTs) {
-                  witness.asInstanceOf[Long]
-                } else {
-                  EmcasStatus.FailedVal
-                }
+                if (isGlobalVerCas) witness.asInstanceOf[Long]
+                else EmcasStatus.FailedVal
               }
           }
         } else {

@@ -512,4 +512,22 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(!Version.isValid(Version.Successful))
     assert(!Version.isValid(Version.FailedVal))
   }
+
+  test("Expected version must also be checked".only) {
+    val ctx = this.kcasImpl.currentContext()
+    val ref = MemoryLocation.unsafe("A")
+    assert(ctx.tryPerformSingleCas(ref, "A", "B"))
+    val d0 = ctx.start()
+    val Some((ov, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
+    assertSameInstance(ov, "B")
+    // concurrent changes:
+    assert(ctx.tryPerformSingleCas(ref, "B", "C"))
+    assert(ctx.tryPerformSingleCas(ref, "C", "B"))
+    val ver = ctx.readVersion(ref)
+    // now the value is the same, but version isn't:
+    assertSameInstance(ctx.readDirect(ref), "B")
+    val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv(("X")))
+    assertEquals(ctx.tryPerform(d2), EmcasStatus.FailedVal)
+    assertEquals(ctx.readVersion(ref), ver)
+  }
 }

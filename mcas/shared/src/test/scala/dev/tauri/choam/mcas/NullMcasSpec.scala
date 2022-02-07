@@ -16,22 +16,15 @@
  */
 
 package dev.tauri.choam
+package mcas
 
-trait KCASImplSpec {
-  protected def kcasImpl: mcas.MCAS
-}
+final class NullMcasSpec extends BaseSpecA {
 
-trait SpecThreadConfinedMCAS extends KCASImplSpec {
-  final override def kcasImpl: mcas.MCAS =
-    mcas.MCAS.ThreadConfinedMCAS
-}
-
-trait SpecNullKCAS extends KCASImplSpec {
-  final override def kcasImpl: mcas.MCAS =
-    mcas.MCAS.NullMcas
-}
-
-trait SpecNoKCAS extends KCASImplSpec {
-  final override def kcasImpl: Nothing =
-    sys.error("No KCAS here")
+  test("NullMcas must be able to perform an empty k-CAS") {
+    val ctx = MCAS.NullMcas.currentContext()
+    val d0 = ctx.start()
+    assertEquals(d0.validTs, Version.Start)
+    assert(ctx.tryPerformOk(d0))
+    assertEquals(ctx.start().validTs, Version.Start)
+  }
 }

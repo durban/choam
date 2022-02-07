@@ -126,10 +126,16 @@ private object SpinLockMCAS extends MCAS { self =>
         case h :: tail => h match {
           case head: HalfWordDescriptor[a] =>
             val witness: a = head.address.unsafeCmpxchgVolatile(head.ov, locked[a])
+            val isGlobalVerCas = (head.address eq commitTs)
             if (equ(witness, head.ov)) {
-              lock(tail)
+              val witnessVer = head.address.unsafeGetVersionVolatile()
+              if (isGlobalVerCas || (witnessVer == head.version)) {
+                lock(tail)
+              } else {
+                (tail, None) // was locked, need to rollback
+              }
             } else {
-              val badVersion = if (head.address eq commitTs) {
+              val badVersion = if (isGlobalVerCas) {
                 if (isLocked(witness)) {
                   None
                 } else {
