@@ -359,6 +359,7 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
       var value: A = nullOf[A]
       var weakref: WeakReference[AnyRef] = null
       var mark: AnyRef = null
+      var version: Long = wordDesc.address.unsafeGetVersionVolatile()
       var go = true
       // Read `content`, and `value` if necessary;
       // this is a specialized and inlined version
@@ -397,9 +398,11 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
                 } else { // finalized op
                   if (parentStatus == EmcasStatus.Successful) {
                     value = wd.cast[A].nv
+                    version = wd.newVersion
                     go = false
                   } else { // Failed
                     value = wd.cast[A].ov
+                    version = wd.oldVersion
                     go = false
                   }
                 }
@@ -420,62 +423,79 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
                   // Here, we still don't have the value, so the loop must retry.
                 } else if (parentStatus == EmcasStatus.Successful) {
                   value = wd.cast[A].nv
+                  version = wd.newVersion
                   go = false
                 } else { // Failed
                   value = wd.cast[A].ov
+                  version = wd.oldVersion
                   go = false
                 }
               }
             }
           case a =>
             value = a
-            go = false
-            weakref = wordDesc.address.unsafeGetMarkerVolatile()
-            // we found a value (i.e., not a descriptor)
-            if (weakref ne null) {
-              // in rare cases, `mark` could be non-null here
-              // (see below); but that is not a problem, we
-              // hold it here, and will use it for our descriptor
-              mark = weakref.get()
+            val version2 = wordDesc.address.unsafeGetVersionVolatile()
+            if (version == version2) {
+              // ok, we have a version that belongs to `value`
+              go = false
+              weakref = wordDesc.address.unsafeGetMarkerVolatile()
+              // we found a value (i.e., not a descriptor)
+              if (weakref ne null) {
+                // in rare cases, `mark` could be non-null here
+                // (see below); but that is not a problem, we
+                // hold it here, and will use it for our descriptor
+                mark = weakref.get()
+              } else {
+                // we need to clear a possible non-null mark from
+                // a previous iteration when we found a descriptor:
+                mark = null
+              }
             } else {
-              // we need to clear a possible non-null mark from
-              // a previous iteration when we found a descriptor:
-              mark = null
+              // couldn't read consistent versions for
+              // the value, will try again; start from
+              // the latest version we've read:
+              version = version2
             }
         }
       }
 
       // just to be safe:
       assert((mark eq null) || (mark eq weakref.get()))
+      assert(Version.isValid(version))
 
-      // TODO: Because we're only comparing the value here,
-      // TODO: and not the version, it could happen, that we
-      // TODO: are decreasing the version. This is very bad!
-      // TODO: value = A, version = 1 (no descriptor)
-      // TODO: T1 reads (A, 1) -> descriptor(ov=1, nv=2)
-      // TODO: T2 performs an op: CAS from A to B
-      // TODO: value = B, version = 2 (has descriptor)
-      // TODO: T3 performs an op: CAS from B to A
-      // TODO: value = A, version = 3 (has descriptor)
-      // TODO: GC runs, cleanup runs, descriptor is replaced by A
-      // TODO: value = A, version = 3 (no descriptor)
-      // TODO: T1 continues with CAS from A to C
-      // TODO: T1 installs its descriptor(ov=1, nv=2) into the ref
-      // TODO: (it can do that, because the value (A) equals)
-      // TODO: T1's op will fail (due to the version-CAS failing)
-      // TODO: but now the logical version will be 1 (from the descriptor)
-      // TODO: value = A, version = 1
-      // TODO: thus, the version changed from 3 to 1
-      // TODO: this is very bad!
-
-      if (!equ(value, wordDesc.ov)) {
-        // expected value is different
-        if (wordDesc.address eq this.global.commitTs) {
-          // this is the version-CAS:
-          value.asInstanceOf[Long]
+      def expectedValueOrVersionDiff(
+        value: A,
+        isGlobalVersionCas: Boolean,
+      ): Long = {
+        if (isGlobalVersionCas) {
+          // this is a global version-CAS, and it failed,
+          // so we return the actual current version:
+          val globalVersion = value.asInstanceOf[Long]
+          assert(Version.isValid(globalVersion))
+          globalVersion
         } else {
+          // this is an ordinary CAS, and it failed,
+          // so we return the error code (we return
+          // this even if failed due to an unexpected
+          // version of the ref, since returning the
+          // version is specifically for the global
+          // version CAS):
           EmcasStatus.FailedVal
         }
+      }
+
+      val isGlobalVersionCas = (wordDesc.address eq this.global.commitTs)
+      if (!equ(value, wordDesc.ov)) {
+        // Expected value is different:
+        expectedValueOrVersionDiff(value, isGlobalVersionCas)
+      } else if ((!isGlobalVersionCas) && (version != wordDesc.oldVersion)) {
+        // NB: We only check the expected
+        // version, if this is not a global
+        // version CAS (the version's version
+        // is arbitrary/unused).
+        // The expected value is the same,
+        // but the expected version isn't:
+        expectedValueOrVersionDiff(value, isGlobalVersionCas)
       } else if (desc.getStatus() != EmcasStatus.Active) {
         // we have been finalized (by a helping thread), no reason to continue
         EmcasStatus.Break

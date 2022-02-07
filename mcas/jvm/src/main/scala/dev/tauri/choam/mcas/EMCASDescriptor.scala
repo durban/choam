@@ -45,6 +45,10 @@ private final class EMCASDescriptor private (
   private[mcas] final def casStatus(ov: Long, nv: Long): Boolean = {
     this.casStatusInternal(ov, nv)
   }
+
+  final override def toString: String = {
+    s"EMCASDescriptor(${half}, newVersion = ${newVersion})"
+  }
 }
 
 private object EMCASDescriptor {

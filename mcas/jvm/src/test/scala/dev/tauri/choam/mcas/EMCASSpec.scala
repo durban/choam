@@ -543,7 +543,7 @@ class EMCASSpec extends BaseSpecA {
     result
   }
 
-  test("Version mismatch, but expected value is the same".ignore) {
+  test("Version mismatch, but expected value is the same") {
     val ref = MemoryLocation.unsafe("A")
     val ctx = EMCAS.currentContext()
     // T1:
@@ -574,10 +574,9 @@ class EMCASSpec extends BaseSpecA {
     assert(ver > Version.Start)
     assertSameInstance(ref.unsafeGetVolatile(), "A")
     // T1 continues:
-    println("T1 continues:")
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv("C"))
     val result = ctx.tryPerform(d2)
-    assertEquals(result, ver)
+    assertEquals(result, EmcasStatus.FailedVal)
     val ver2 = ctx.readVersion(ref)
     // version mustn't decrease:
     assert(ver2 >= ver, s"${ver2} < ${ver}")
