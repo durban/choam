@@ -36,14 +36,14 @@ private[choam] final class RingBuffer[A](
     super[Queue].tryEnqueue
 
   final override def enqueue: Rxn[A, Unit] = Rxn.computed[A, Unit] { newVal =>
-    tail.getAndUpdate(i => (i + 1) % capacity).flatMapF { idx =>
+    tail.getAndUpdate(incrIdx).flatMapF { idx =>
       arr(idx).updateWith { oldVal =>
         if (isEmpty(oldVal)) {
           Rxn.pure(newVal)
         } else {
           // we're overwriting the oldest value;
           // we also have to increment the deque index:
-          head.update(i => (i + 1) % capacity).as(newVal)
+          head.update(incrIdx).as(newVal)
         }
       }
     }

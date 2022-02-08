@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package data
 
+import java.lang.Integer.remainderUnsigned
+
 import cats.syntax.all._
 
 import ArrayQueue.{ empty, isEmpty }
@@ -32,6 +34,10 @@ private[choam] abstract class ArrayQueue[A](
 
   require(capacity === arr.size)
 
+  protected[this] final def incrIdx(idx: Int): Int = {
+    remainderUnsigned(idx + 1, capacity)
+  }
+
   def tryDeque: Axn[Option[A]] = {
     head.modifyWith { idx =>
       arr(idx).modify { a =>
@@ -40,7 +46,7 @@ private[choam] abstract class ArrayQueue[A](
           (a, (idx, None))
         } else {
           // successful deque
-          (empty[A], ((idx + 1) % capacity, Some(a)))
+          (empty[A], (incrIdx(idx), Some(a)))
         }
       }
     }
@@ -52,7 +58,7 @@ private[choam] abstract class ArrayQueue[A](
       ref.get.flatMapF { oldVal =>
         if (isEmpty(oldVal)) {
           // ok, we can enqueue:
-          ref.set.provide(newVal) *> tail.set.provide((idx + 1) % capacity).as(true)
+          ref.set.provide(newVal) *> tail.set.provide(incrIdx(idx)).as(true)
         } else {
           // queue is full:
           Rxn.pure(false)
