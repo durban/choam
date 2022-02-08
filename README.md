@@ -82,6 +82,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   - We also support composing `Rxn`s which modify the same `Ref`
     (thus, an `Rxn` is closer to an STM transaction than a *reagent*;
     see below).
+  - Reads are guaranteed to be consistent (this is called *opacity*, see below).
 - Multi-word compare-and-swap (MCAS/*k*-CAS) implementations:
   - [A Practical Multi-Word Compare-and-Swap Operation](
     https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf) (an earlier version used this
@@ -120,7 +121,9 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     - `Rxn` also provides a correctness property called
       [*opacity*](https://nbronson.github.io/scala-stm/semantics.html#opacity);
       a lot of STM implementations also guarantee this property (e.g., `scala-stm`),
-      but not all of them.
+      but not all of them. Opacity basically guarantees that all observed values
+      are consistent with each other, even in running `Rxn`s (some STM systems only
+      guarantee such consistency for transactions which actually commit).
   - Some STM implementations:
     - Haskell: `Control.Concurrent.STM`.
     - Scala: `scala-stm`, `cats-stm`, `ZSTM`.
