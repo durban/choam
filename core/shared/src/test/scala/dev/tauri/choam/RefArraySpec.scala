@@ -65,6 +65,21 @@ trait RefArraySpec extends BaseSpecA {
     checkError { arr2.unsafeGet(Int.MaxValue) }
   }
 
+  test("safe indexing") {
+    val arr = mkRefArray("foo", 4)
+    assert(arr.apply(Int.MinValue).isEmpty)
+    assert(arr.apply(-1).isEmpty)
+    assert(arr.apply(0).isDefined)
+    assert(arr.apply(1).isDefined)
+    assert(arr.apply(2).isDefined)
+    assert(arr.apply(3).isDefined)
+    assert(arr.apply(4).isEmpty)
+    assert(arr.apply(5).isEmpty)
+    assert(arr.apply(6).isEmpty)
+    assert(arr.apply(1024).isEmpty)
+    assert(arr.apply(Int.MaxValue).isEmpty)
+  }
+
   test("toString format") {
     val arr = mkRefArray("a")
     val pat = "RefArray\\[\\d+\\]\\@[\\da-f]+".r

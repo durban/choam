@@ -71,6 +71,9 @@ object Ref extends RefInstances0 {
   trait Array[A] {
     def size: Int
     def unsafeGet(idx: Int): Ref[A]
+    def apply(idx: Int): Option[Ref[A]]
+    final def length: Int =
+      this.size
   }
 
   def apply[A](initial: A): Axn[Ref[A]] =

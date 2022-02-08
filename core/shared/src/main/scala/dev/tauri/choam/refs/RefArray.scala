@@ -84,13 +84,24 @@ private final class StrictRefArray[A](
     ara
   }
 
+  final override def apply(idx: Int): Option[Ref[A]] =
+    Option(this.getOrNull(idx))
+
   final override def unsafeGet(idx: Int): Ref[A] = {
     require((idx >= 0) && (idx < size))
-    val refIdx = 4 * idx
-    // `RefArrayRef`s were initialized into
-    // a final field (`items`), and they
-    // never change, so we can read with plain:
-    this.items.getPlain(refIdx).asInstanceOf[Ref[A]]
+    this.getOrNull(idx)
+  }
+
+  private[this] final def getOrNull(idx: Int): Ref[A] = {
+    if ((idx >= 0) && (idx < size)) {
+      val refIdx = 4 * idx
+      // `RefArrayRef`s were initialized into
+      // a final field (`items`), and they
+      // never change, so we can read with plain:
+      this.items.getPlain(refIdx).asInstanceOf[Ref[A]]
+    } else {
+      null
+    }
   }
 }
 
@@ -122,12 +133,23 @@ private final class LazyRefArray[A](
     ara
   }
 
+  final override def apply(idx: Int): Option[Ref[A]] =
+    Option(this.getOrNull(idx))
+
   def unsafeGet(idx: Int): Ref[A] = {
     require((idx >= 0) && (idx < size))
-    this.getOrCreateRef(idx)
+    this.getOrNull(idx)
   }
 
-  private[this] def getOrCreateRef(i: Int): Ref[A] = {
+  private[this] final def getOrNull(idx: Int): Ref[A] = {
+    if ((idx >= 0) && (idx < size)) {
+      this.getOrCreateRef(idx)
+    } else {
+      null
+    }
+  }
+
+  private[this] final def getOrCreateRef(i: Int): Ref[A] = {
     val refIdx = 4 * i
     val existing = this.items.getOpaque(refIdx)
     if (existing ne null) {
@@ -154,6 +176,9 @@ private final class LazyRefArray[A](
 }
 
 private final class EmptyRefArray[A] extends RefArray[A](0, 0L, 0L, 0L, 0) {
+
+  final override def apply(idx: Int): Option[Ref[A]] =
+    None
 
   final override def unsafeGet(idx: Int): Ref[A] =
     throw new IllegalArgumentException("EmptyRefArray")
