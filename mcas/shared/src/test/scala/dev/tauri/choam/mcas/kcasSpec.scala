@@ -513,7 +513,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(!Version.isValid(Version.FailedVal))
   }
 
-  test("Expected version must also be checked".only) {
+  test("Expected version must also be checked") {
     val ctx = this.kcasImpl.currentContext()
     val ref = MemoryLocation.unsafe("A")
     assert(ctx.tryPerformSingleCas(ref, "A", "B"))
