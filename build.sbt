@@ -95,7 +95,6 @@ lazy val choam = project.in(file("."))
   .settings(publishArtifact := false)
   .aggregate(
     mcas.jvm, mcas.js,
-    mcasStress, // JVM
     core.jvm, core.js,
     data.jvm, data.js,
     async.jvm, async.js,
@@ -103,6 +102,7 @@ lazy val choam = project.in(file("."))
     laws.jvm, laws.js,
     bench, // JVM
     stress, // JVM
+    stressMcas, // JVM
     stressCore, // JVM
     layout, // JVM
   )
@@ -136,14 +136,6 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
-
-// TODO: rename to stess-mcas
-lazy val mcasStress = project.in(file("mcas-stress"))
-  .settings(name := "choam-mcas-stress")
-  .settings(commonSettings)
-  .settings(stressSettings)
-  .enablePlugins(JCStressPlugin)
-  .dependsOn(mcas.jvm % "compile->compile;test->test")
 
 lazy val data = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -206,6 +198,13 @@ lazy val bench = project.in(file("bench"))
   .settings(jmhSettings)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
 
+lazy val stressMcas = project.in(file("stress-mcas"))
+  .settings(name := "choam-stress-mcas")
+  .settings(commonSettings)
+  .settings(stressSettings)
+  .enablePlugins(JCStressPlugin)
+  .dependsOn(mcas.jvm % "compile->compile;test->test")
+
 // TODO: move all stress test projects under a common `/stress` folder
 lazy val stressCore = project.in(file("stress-core"))
   .settings(name := "choam-stress-core")
@@ -214,7 +213,7 @@ lazy val stressCore = project.in(file("stress-core"))
   .settings(stressSettings)
   .enablePlugins(JCStressPlugin)
   .dependsOn(core.jvm % "compile->compile;test->test")
-  .dependsOn(mcasStress % "compile->compile;test->test")
+  .dependsOn(stressMcas % "compile->compile;test->test")
 
 lazy val stress = project.in(file("stress"))
   .settings(name := "choam-stress")
@@ -224,7 +223,7 @@ lazy val stress = project.in(file("stress"))
   .settings(libraryDependencies += dependencies.zioStm.value) // TODO: temporary
   .enablePlugins(JCStressPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
-  .dependsOn(mcasStress % "compile->compile;test->test")
+  .dependsOn(stressMcas % "compile->compile;test->test")
 
 lazy val layout = project.in(file("layout"))
   .settings(name := "choam-layout")
