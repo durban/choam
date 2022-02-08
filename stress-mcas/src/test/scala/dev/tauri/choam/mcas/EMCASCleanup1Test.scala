@@ -23,6 +23,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ILL_Result
 
+// TODO: Cleanup never seems to happen,
+// TODO: we should force GC somehow.
 // @JCStressTest
 @State
 @Description("EMCASCleanup1Test")

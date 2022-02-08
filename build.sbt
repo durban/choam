@@ -103,6 +103,7 @@ lazy val choam = project.in(file("."))
     bench, // JVM
     stress, // JVM
     stressMcas, // JVM
+    stressMcasSlow, // JVM
     stressCore, // JVM
     layout, // JVM
   )
@@ -201,9 +202,18 @@ lazy val bench = project.in(file("bench"))
 lazy val stressMcas = project.in(file("stress-mcas"))
   .settings(name := "choam-stress-mcas")
   .settings(commonSettings)
+  .settings(commonSettingsJvm)
   .settings(stressSettings)
   .enablePlugins(JCStressPlugin)
   .dependsOn(mcas.jvm % "compile->compile;test->test")
+
+lazy val stressMcasSlow = project.in(file("stress-mcas-slow"))
+  .settings(name := "choam-stress-mcas-slow")
+  .settings(commonSettings)
+  .settings(commonSettingsJvm)
+  .settings(stressSettings)
+  .enablePlugins(JCStressPlugin)
+  .dependsOn(stressMcas % "compile->compile;test->test")
 
 // TODO: move all stress test projects under a common `/stress` folder
 lazy val stressCore = project.in(file("stress-core"))
@@ -409,7 +419,7 @@ lazy val dependencies = new {
 
 addCommandAlias("checkScalafix", "scalafixAll --check")
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
-addCommandAlias("stressTest", ";mcasStress/Jcstress/run;stress/Jcstress/run;stressCore/Jcstress/run")
+addCommandAlias("stressTest", ";stressMcas/Jcstress/run;stressCore/Jcstress/run")
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
 addCommandAlias("ci", ";headerCheckAll;test")
 addCommandAlias("ciStress", "stressTest")

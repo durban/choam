@@ -22,16 +22,16 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLZ_Result
 
-// @JCStressTest
+@JCStressTest
 @State
-@Description("Invisible read may see intermediate values, but not descriptors")
+@Description("Direct read may see intermediate values, but not descriptors")
 @Outcomes(Array(
   new Outcome(id = Array("a, x, true"), expect = ACCEPTABLE, desc = "Sees old values"),
   new Outcome(id = Array("b, x, true"), expect = ACCEPTABLE_INTERESTING, desc = "Sees new ref1"),
   new Outcome(id = Array("a, y, true"), expect = ACCEPTABLE_INTERESTING, desc = "Sees new ref2"),
   new Outcome(id = Array("b, y, true"), expect = ACCEPTABLE, desc = "Sees new values")
 ))
-class InvisibleReadTest extends StressTestBase {
+class DirectReadTest extends StressTestBase {
 
   private[this] val ref1: Ref[String] =
     Ref.unsafe("a")
@@ -46,7 +46,7 @@ class InvisibleReadTest extends StressTestBase {
     ref2.unsafeDirectRead
 
   private[this] val write =
-    ref1.unsafeCas("a", "b") >>> ref2.unsafeCas("x", "y")
+    ref1.update(_ => "b") >>> ref2.update(_ => "y")
 
   @Actor
   def writer(@unused r: LLZ_Result): Unit = {
