@@ -37,7 +37,7 @@ private[choam] final class RingBuffer[A](
 
   final override def enqueue: Rxn[A, Unit] = Rxn.computed[A, Unit] { newVal =>
     tail.getAndUpdate(incrIdx).flatMapF { idx =>
-      arr(idx).updateWith { oldVal =>
+      arr.unsafeGet(idx).updateWith { oldVal =>
         if (isEmpty(oldVal)) {
           Rxn.pure(newVal)
         } else {

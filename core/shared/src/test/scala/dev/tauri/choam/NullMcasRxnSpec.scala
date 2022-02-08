@@ -36,7 +36,7 @@ trait NullMcasRxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: SpecNullKCAS =>
       _ = (ref: Ref[String])
       refArr <- Ref.array(42, "init").run[F]
       _ = (refArr: Ref.Array[String])
-      _ = (refArr(0): Ref[String])
+      _ = (refArr.unsafeGet(0): Ref[String])
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       _ = (ex: Exchanger[String, Int])
     } yield ()

@@ -50,7 +50,7 @@ class RefArrayLazyInitTest extends StressTestBase {
       case a =>
         // we found something, so it should
         // be properly initialized
-        r.r2 = a(2).loc.unsafeGetVolatile()
+        r.r2 = a.unsafeGet(2).loc.unsafeGetVolatile()
         r.r1 = "1"
     }
   }

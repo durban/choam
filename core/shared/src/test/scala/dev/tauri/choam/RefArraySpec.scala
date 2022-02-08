@@ -43,7 +43,7 @@ trait RefArraySpec extends BaseSpecA {
     val arr = mkRefArray("foo", 0)
     val pat = "RefArray\\[0\\]\\@[\\da-f]+".r
     assert(pat.matches(clue(arr.toString)))
-    assert(Try { arr(0) }.isFailure)
+    assert(Try { arr.unsafeGet(0) }.isFailure)
   }
 
   test("indexing error") {
@@ -52,17 +52,17 @@ trait RefArraySpec extends BaseSpecA {
       assert(ok)(loc)
     }
     val arr1 = mkRefArray("foo", 4) // even
-    checkError { arr1(4) }
-    checkError { arr1(5) }
-    checkError { arr1(-1) }
-    checkError { arr1(Int.MinValue) }
-    checkError { arr1(Int.MaxValue) }
+    checkError { arr1.unsafeGet(4) }
+    checkError { arr1.unsafeGet(5) }
+    checkError { arr1.unsafeGet(-1) }
+    checkError { arr1.unsafeGet(Int.MinValue) }
+    checkError { arr1.unsafeGet(Int.MaxValue) }
     val arr2 = mkRefArray("foo", 5) // odd
-    checkError { arr2(5) }
-    checkError { arr2(6) }
-    checkError { arr2(-1) }
-    checkError { arr2(Int.MinValue) }
-    checkError { arr2(Int.MaxValue) }
+    checkError { arr2.unsafeGet(5) }
+    checkError { arr2.unsafeGet(6) }
+    checkError { arr2.unsafeGet(-1) }
+    checkError { arr2.unsafeGet(Int.MinValue) }
+    checkError { arr2.unsafeGet(Int.MaxValue) }
   }
 
   test("toString format") {
@@ -70,26 +70,26 @@ trait RefArraySpec extends BaseSpecA {
     val pat = "RefArray\\[\\d+\\]\\@[\\da-f]+".r
     assert(pat.matches(clue(arr.toString)))
     val subPat = "ARef\\@[\\da-f]{16}".r
-    assert(subPat.matches(clue(arr(0).toString)))
-    assert(clue(arr(0).toString).endsWith("0000"))
-    assert(clue(arr(1).toString).endsWith("0001"))
-    assert(clue(arr(2).toString).endsWith("0002"))
+    assert(subPat.matches(clue(arr.unsafeGet(0).toString)))
+    assert(clue(arr.unsafeGet(0).toString).endsWith("0000"))
+    assert(clue(arr.unsafeGet(1).toString).endsWith("0001"))
+    assert(clue(arr.unsafeGet(2).toString).endsWith("0002"))
   }
 
   test("equals/toString") {
     val a: Ref.Array[String] = mkRefArray[String]("a")
-    val r1: Ref[String] = a(0)
-    val r2: Ref[String] = a(1)
+    val r1: Ref[String] = a.unsafeGet(0)
+    val r2: Ref[String] = a.unsafeGet(1)
     assert((a : AnyRef) ne r1)
     assert((a : Any) != r1)
     assert((a : AnyRef) ne r2)
     assert((a : Any) != r2)
     assert(r1 ne r2)
     assert(r1 != r2)
-    assert(r1 eq a(0))
-    assert(r1 == a(0))
-    assert(r2 eq a(1))
-    assert(r2 == a(1))
+    assert(r1 eq a.unsafeGet(0))
+    assert(r1 == a.unsafeGet(0))
+    assert(r2 eq a.unsafeGet(1))
+    assert(r2 == a.unsafeGet(1))
     assert(r1.toString != r2.toString)
     assertEquals(r1.loc.id0, r2.loc.id0)
     assertEquals(r1.loc.id1, r2.loc.id1)
@@ -99,16 +99,16 @@ trait RefArraySpec extends BaseSpecA {
 
   test("consistentRead") {
     val a = mkRefArray[Int](42)
-    a(0).update(_ + 1).unsafeRun(mcas.MCAS.DefaultMCAS)
-    val (x, y) = Rxn.consistentRead(a(0), a(2)).unsafeRun(mcas.MCAS.DefaultMCAS)
+    a.unsafeGet(0).update(_ + 1).unsafeRun(mcas.MCAS.DefaultMCAS)
+    val (x, y) = Rxn.consistentRead(a.unsafeGet(0), a.unsafeGet(2)).unsafeRun(mcas.MCAS.DefaultMCAS)
     assert(x == 43)
     assert(y == 42)
   }
 
   test("read/write/cas") {
     val a = mkRefArray[String]("a")
-    val r1 = a(1).loc
-    val r2 = a(2).loc
+    val r1 = a.unsafeGet(1).loc
+    val r2 = a.unsafeGet(2).loc
     assert(r1.unsafeGetVolatile() eq "a")
     assert(r2.unsafeGetVolatile() eq "a")
     r1.unsafeSetVolatile("b")

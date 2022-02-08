@@ -43,19 +43,19 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
         ),
         Gen.oneOf(
           Gen.choose(1, 8).flatMap { s =>
-            Gen.delay(Ref.unsafeStrictArray[A](size = s, initial = a).apply(0))
+            Gen.delay(Ref.unsafeStrictArray[A](size = s, initial = a).unsafeGet(0))
           },
           Gen.choose(1, 8).flatMap { s =>
             Gen.choose(0, s - 1).flatMap { i =>
-              Gen.delay(Ref.unsafeStrictArray[A](size = s, initial = a).apply(i))
+              Gen.delay(Ref.unsafeStrictArray[A](size = s, initial = a).unsafeGet(i))
             }
           },
           Gen.choose(1, 8).flatMap { s =>
-            Gen.delay(Ref.unsafeLazyArray[A](size = s, initial = a).apply(0))
+            Gen.delay(Ref.unsafeLazyArray[A](size = s, initial = a).unsafeGet(0))
           },
           Gen.choose(1, 8).flatMap { s =>
             Gen.choose(0, s - 1).flatMap { i =>
-              Gen.delay(Ref.unsafeLazyArray[A](size = s, initial = a).apply(i))
+              Gen.delay(Ref.unsafeLazyArray[A](size = s, initial = a).unsafeGet(i))
             }
           },
         ),

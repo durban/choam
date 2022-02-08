@@ -156,17 +156,17 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   test("Ref.array") {
     for {
       a <- Ref.array[String](size = 4, initial = "x").run[F]
-      _ <- a(0).getAndSet("a")
-      _ <- a(1).getAndSet("b")
-      _ <- a(2).getAndSet("c")
-      _ <- a(3).getAndSet("d")
-      sw02 = Rxn.swap(a(0), a(2))
-      sw13 = Rxn.swap(a(1), a(3))
+      _ <- a.unsafeGet(0).getAndSet("a")
+      _ <- a.unsafeGet(1).getAndSet("b")
+      _ <- a.unsafeGet(2).getAndSet("c")
+      _ <- a.unsafeGet(3).getAndSet("d")
+      sw02 = Rxn.swap(a.unsafeGet(0), a.unsafeGet(2))
+      sw13 = Rxn.swap(a.unsafeGet(1), a.unsafeGet(3))
       _ <- (sw02 * sw13).run[F]
-      _ <- assertResultF(a(0).get.run[F], "c")
-      _ <- assertResultF(a(1).get.run[F], "d")
-      _ <- assertResultF(a(2).get.run[F], "a")
-      _ <- assertResultF(a(3).get.run[F], "b")
+      _ <- assertResultF(a.unsafeGet(0).get.run[F], "c")
+      _ <- assertResultF(a.unsafeGet(1).get.run[F], "d")
+      _ <- assertResultF(a.unsafeGet(2).get.run[F], "a")
+      _ <- assertResultF(a.unsafeGet(3).get.run[F], "b")
     } yield ()
   }
 
@@ -174,20 +174,20 @@ trait RefSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     val N = 0xffff
     for {
       a <- Ref.array[String](size = N, initial = "x").run[F]
-      _ <- assertResultF(a(0).get.run[F], "x")
-      _ <- assertResultF(a(1).get.run[F], "x")
-      _ <- assertResultF(a(2).get.run[F], "x")
-      _ <- assertResultF(a(3).get.run[F], "x")
-      _ <- assertResultF(a(N - 1).get.run[F], "x")
+      _ <- assertResultF(a.unsafeGet(0).get.run[F], "x")
+      _ <- assertResultF(a.unsafeGet(1).get.run[F], "x")
+      _ <- assertResultF(a.unsafeGet(2).get.run[F], "x")
+      _ <- assertResultF(a.unsafeGet(3).get.run[F], "x")
+      _ <- assertResultF(a.unsafeGet(N - 1).get.run[F], "x")
       idx <- F.delay {
         val tlr = java.util.concurrent.ThreadLocalRandom.current()
         tlr.nextInt().abs % N
       }
-      _ <- assertResultF(a(idx).get.run[F], "x")
-      _ <- a(idx).getAndSet("foo")
-      _ <- assertResultF(a(0).get.run[F], "x")
-      _ <- assertResultF(a(idx).get.run[F], "foo")
-      _ <- assertResultF(a(N - 1).get.run[F], "x")
+      _ <- assertResultF(a.unsafeGet(idx).get.run[F], "x")
+      _ <- a.unsafeGet(idx).getAndSet("foo")
+      _ <- assertResultF(a.unsafeGet(0).get.run[F], "x")
+      _ <- assertResultF(a.unsafeGet(idx).get.run[F], "foo")
+      _ <- assertResultF(a.unsafeGet(N - 1).get.run[F], "x")
     } yield ()
   }
 

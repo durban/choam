@@ -40,7 +40,7 @@ private[choam] abstract class ArrayQueue[A](
 
   def tryDeque: Axn[Option[A]] = {
     head.modifyWith { idx =>
-      arr(idx).modify { a =>
+      arr.unsafeGet(idx).modify { a =>
         if (isEmpty(a)) {
           // empty queue
           (a, (idx, None))
@@ -54,7 +54,7 @@ private[choam] abstract class ArrayQueue[A](
 
   def tryEnqueue: Rxn[A, Boolean] = Rxn.computed[A, Boolean] { newVal =>
     tail.get.flatMapF { idx =>
-      val ref = arr(idx)
+      val ref = arr.unsafeGet(idx)
       ref.get.flatMapF { oldVal =>
         if (isEmpty(oldVal)) {
           // ok, we can enqueue:
@@ -75,7 +75,7 @@ private[choam] abstract class ArrayQueue[A](
         } else if (h > t) {
           Rxn.pure(t - h + capacity)
         } else { // h == t
-          arr(t).get.map { a =>
+          arr.unsafeGet(t).get.map { a =>
             if (isEmpty(a)) 0 // empty
             else capacity // full
           }

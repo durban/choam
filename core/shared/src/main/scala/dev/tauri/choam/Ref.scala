@@ -70,7 +70,7 @@ object Ref extends RefInstances0 {
 
   trait Array[A] {
     def size: Int
-    def apply(idx: Int): Ref[A] // TODO: throws if `idx` is bad
+    def unsafeGet(idx: Int): Ref[A]
   }
 
   def apply[A](initial: A): Axn[Ref[A]] =
@@ -87,7 +87,7 @@ object Ref extends RefInstances0 {
       val tlr = ThreadLocalRandom.current()
       refs.unsafeNewStrictRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
     } else {
-      refs.unsafeNewEmptyRefArray[A](size)
+      refs.unsafeNewEmptyRefArray[A]()
     }
   }
 
@@ -96,7 +96,7 @@ object Ref extends RefInstances0 {
       val tlr = ThreadLocalRandom.current()
       refs.unsafeNewLazyRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
     } else {
-      refs.unsafeNewEmptyRefArray[A](size)
+      refs.unsafeNewEmptyRefArray[A]()
     }
   }
 

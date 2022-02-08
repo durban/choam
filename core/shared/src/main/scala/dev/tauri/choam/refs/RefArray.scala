@@ -20,8 +20,6 @@ package refs
 
 import java.lang.ref.WeakReference
 
-import cats.syntax.all._
-
 import mcas.{ MemoryLocation, Version }
 import CompatPlatform.AtomicReferenceArray
 
@@ -44,9 +42,7 @@ private abstract class RefArray[A](
 ) extends RefIdOnly(i0, i1, i2, i3.toLong << 32)
   with Ref.Array[A] {
 
-  def apply(idx: Int): Ref[A]
-
-  protected val items: AtomicReferenceArray[AnyRef]
+  protected def items: AtomicReferenceArray[AnyRef]
 
   protected[refs] final override def refToString(): String = {
     val h = (id0 ^ id1 ^ id2 ^ id3) & (~0xffffL)
@@ -88,7 +84,7 @@ private final class StrictRefArray[A](
     ara
   }
 
-  final override def apply(idx: Int): Ref[A] = {
+  final override def unsafeGet(idx: Int): Ref[A] = {
     require((idx >= 0) && (idx < size))
     val refIdx = 4 * idx
     // `RefArrayRef`s were initialized into
@@ -126,7 +122,7 @@ private final class LazyRefArray[A](
     ara
   }
 
-  def apply(idx: Int): Ref[A] = {
+  def unsafeGet(idx: Int): Ref[A] = {
     require((idx >= 0) && (idx < size))
     this.getOrCreateRef(idx)
   }
@@ -157,15 +153,13 @@ private final class LazyRefArray[A](
   }
 }
 
-private final class EmptyRefArray[A](size: Int) extends RefArray[A](0, 0L, 0L, 0L, 0) {
+private final class EmptyRefArray[A] extends RefArray[A](0, 0L, 0L, 0L, 0) {
 
-  require(size === 0)
-
-  final override def apply(idx: Int): Ref[A] =
+  final override def unsafeGet(idx: Int): Ref[A] =
     throw new IllegalArgumentException("EmptyRefArray")
 
-  protected final override val items: AtomicReferenceArray[AnyRef] =
-    null // unused
+  protected final override def items: AtomicReferenceArray[AnyRef] =
+    throw new UnsupportedOperationException("EmptyRefArray")
 }
 
 private object RefArray {

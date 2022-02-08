@@ -60,9 +60,9 @@ trait RefSpecJvm[F[_]] extends RefSpec[F] { this: KCASImplSpec =>
       p1p1._2.loc,
       p2._1.loc,
       p2._2.loc,
-      arr(0).loc,
-      arr(1).loc,
-      arr(2).loc,
+      arr.unsafeGet(0).loc,
+      arr.unsafeGet(1).loc,
+      arr.unsafeGet(2).loc,
     )
     refs.traverse { ref =>
       F.delay {

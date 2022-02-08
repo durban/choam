@@ -36,8 +36,8 @@ package object refs {
     new LazyRefArray[A](size = size, initial = initial, i0 = i0, i1 = i1, i2 = i2, i3 = i3)
   }
 
-  private[choam] def unsafeNewEmptyRefArray[A](size: Int): Ref.Array[A] = {
-    new EmptyRefArray[A](size = size)
+  private[choam] def unsafeNewEmptyRefArray[A](): Ref.Array[A] = {
+    new EmptyRefArray[A]
   }
 
   private[refs] def refStringFrom4Ids(

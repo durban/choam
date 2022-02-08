@@ -32,16 +32,16 @@ class RefArrayLazyRaceTest extends StressTestBase {
 
   private[this] final val arr: Ref.Array[String] = {
     val a = Ref.unsafeLazyArray[String](4, "x")
-    a(0).loc.unsafeSetVolatile("-")
-    a(1).loc.unsafeSetVolatile("-")
+    a.unsafeGet(0).loc.unsafeSetVolatile("-")
+    a.unsafeGet(1).loc.unsafeSetVolatile("-")
     // we don't change/initialize `a(2)`
-    a(3).loc.unsafeSetVolatile("-")
+    a.unsafeGet(3).loc.unsafeSetVolatile("-")
     a
   }
 
   @Actor
   def one(r: LLLL_Result): Unit = {
-    val ref = this.arr(2)
+    val ref = this.arr.unsafeGet(2)
     val value = ref.loc.unsafeGetVolatile()
     r.r1 = ref
     r.r3 = value
@@ -49,7 +49,7 @@ class RefArrayLazyRaceTest extends StressTestBase {
 
   @Actor
   def two(r: LLLL_Result): Unit = {
-    val ref = this.arr(2)
+    val ref = this.arr.unsafeGet(2)
     val value = ref.loc.unsafeGetVolatile()
     r.r2 = ref
     r.r4 = value
