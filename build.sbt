@@ -421,7 +421,7 @@ addCommandAlias("checkScalafix", "scalafixAll --check")
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
 addCommandAlias("stressTest", ";stressMcas/Jcstress/run;stressCore/Jcstress/run")
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
-addCommandAlias("ci", ";headerCheckAll;test")
+addCommandAlias("ci", ";headerCheckAll;Test/compile;Test/fastLinkJS;test")
 addCommandAlias("ciStress", "stressTest")
 
 // profiling: `-prof jfr`
