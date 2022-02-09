@@ -56,6 +56,17 @@ package object choam {
    */
   final type Axn[+A] = Rxn[Any, A] // short for 'astaxanthin'
 
+  /**
+   * Pseudo-companion object for the type alias `Axn`.
+   */
+  final object Axn {
+
+    final object unsafe {
+      def delay[A](da: => A): Axn[A] =
+        Rxn.unsafe.delay[Any, A](_ => da)
+    }
+  }
+
   // Note: using these always leaves a check for
   // the package object in the bytecode (getstatic
   // and a null check). However, microbenchmarks

@@ -68,7 +68,6 @@ trait RandomSpec[F[_]]
   // TODO: more tests for Rxn.*Random
 
   checkRandom("Rxn.fastRandom", Rxn.fastRandom.run[F], isBuggy = false)
-  checkRandom("Rxn.fastRandomCached", Rxn.fastRandomCached.run[F], isBuggy = false)
   checkRandom("Rxn.fastRandomCtxSupp", Rxn.fastRandomCtxSupp.run[F], isBuggy = false)
   checkRandom("Rxn.secureRandom", Rxn.secureRandom.run[F], isBuggy = false)
   checkRandom(

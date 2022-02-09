@@ -18,7 +18,6 @@
 package dev.tauri.choam
 
 import java.util.concurrent.ThreadLocalRandom
-import java.util.concurrent.atomic.AtomicReference
 
 import scala.util.{ Random => SRandom }
 
@@ -45,30 +44,12 @@ private object RxnRandomImplThreadLocal {
 }
 
 private final class RxnRandomImplSecure private (private[this] val jRnd: SecureRandom)
-  extends Random[Axn]
-  with RandomBase {
+  extends RandomBase {
 
   import Rxn.unsafe.delay
 
   private[this] val sRnd: SRandom =
     new SRandom(jRnd)
-
-  final override def betweenDouble(minInclusive: Double, maxExclusive: Double): Axn[Double] =
-    delay { _ => sRnd.between(minInclusive, maxExclusive) }
-
-  final override def betweenFloat(minInclusive: Float, maxExclusive: Float): Axn[Float] =
-    delay { _ => sRnd.between(minInclusive, maxExclusive) }
-
-  final override def betweenInt(minInclusive: Int, maxExclusive: Int): Axn[Int] =
-    delay { _ => sRnd.between(minInclusive, maxExclusive) }
-
-  final override def betweenLong(minInclusive: Long, maxExclusive: Long): Axn[Long] =
-    delay { _ => sRnd.between(minInclusive, maxExclusive) }
-
-  final override def nextBytes(n: Int): Axn[Array[Byte]] = {
-    require(n >= 0)
-    delay { _ => sRnd.nextBytes(n) }
-  }
 
   final override def nextDouble: Axn[Double] =
     delay { _ => jRnd.nextDouble() }
@@ -76,37 +57,33 @@ private final class RxnRandomImplSecure private (private[this] val jRnd: SecureR
   final override def nextFloat: Axn[Float] =
     delay { _ => jRnd.nextFloat() }
 
-  final override def nextGaussian: Axn[Double] =
+  final def nextGaussian: Axn[Double] =
     delay { _ => jRnd.nextGaussian() }
 
-  final override def nextInt: Axn[Int] =
+  final def nextInt: Axn[Int] =
     delay { _ => jRnd.nextInt() }
 
   final override def nextIntBounded(n: Int): Axn[Int] =
     delay { _ => jRnd.nextInt(n) }
 
-  final override def nextLong: Axn[Long] =
+  final def nextLong: Axn[Long] =
     delay { _ => jRnd.nextLong() }
 
-  final override def nextLongBounded(n: Long): Axn[Long] =
-    delay { _ => sRnd.nextLong(n) }
+  final override def nextBoolean: Axn[Boolean] =
+    delay { _ => jRnd.nextBoolean() }
 
-  final override def nextPrintableChar: Axn[Char] =
-    delay { _ => sRnd.nextPrintableChar() }
-
-  final override def nextString(length: Int): Axn[String] =
+  final def nextString(length: Int): Axn[String] =
     delay { _ => sRnd.nextString(length) }
 
-  final override def shuffleList[A](l: List[A]): Axn[List[A]] =
+  final def shuffleList[A](l: List[A]): Axn[List[A]] =
     delay { _ => sRnd.shuffle[A, List[A]](l) }
 
-  final override def shuffleVector[A](v: Vector[A]): Axn[Vector[A]] =
+  final def shuffleVector[A](v: Vector[A]): Axn[Vector[A]] =
     delay { _ => sRnd.shuffle[A, Vector[A]](v) }
 }
 
 private final class RxnRandomImplThreadLocal private ()
-  extends Random[Axn]
-  with RandomBase {
+  extends RandomBase {
 
   import Rxn.unsafe.delayContext
 
@@ -118,133 +95,31 @@ private final class RxnRandomImplThreadLocal private ()
     new SRandom(jRnd)
   }
 
-  final override def betweenDouble(minInclusive: Double, maxExclusive: Double): Axn[Double] =
-    delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }
-
-  final override def betweenFloat(minInclusive: Float, maxExclusive: Float): Axn[Float] =
-    delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }
-
-  final override def betweenInt(minInclusive: Int, maxExclusive: Int): Axn[Int] =
-    delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }
-
-  final override def betweenLong(minInclusive: Long, maxExclusive: Long): Axn[Long] =
-    delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }
-
-  final override def nextBytes(n: Int): Axn[Array[Byte]] = {
-    require(n >= 0)
-    delayContext { ctx => sRnd(ctx.random).nextBytes(n) }
-  }
-
-  final override def nextDouble: Axn[Double] =
-    delayContext { ctx => ctx.random.nextDouble() }
-
   final override def nextFloat: Axn[Float] =
     delayContext { ctx => ctx.random.nextFloat() }
 
-  final override def nextGaussian: Axn[Double] =
+  final def nextGaussian: Axn[Double] =
     delayContext { ctx => ctx.random.nextGaussian() }
 
-  final override def nextInt: Axn[Int] =
+  final def nextInt: Axn[Int] =
     delayContext { ctx => ctx.random.nextInt() }
 
   final override def nextIntBounded(n: Int): Axn[Int] =
     delayContext { ctx => ctx.random.nextInt(n) }
 
-  final override def nextLong: Axn[Long] =
+  final def nextLong: Axn[Long] =
     delayContext { ctx => ctx.random.nextLong() }
 
   final override def nextLongBounded(n: Long): Axn[Long] =
     delayContext { ctx => ctx.random.nextLong(n) }
 
-  final override def nextPrintableChar: Axn[Char] =
-    delayContext { ctx => sRnd(ctx.random).nextPrintableChar() }
-
-  final override def nextString(length: Int): Axn[String] =
+  final def nextString(length: Int): Axn[String] =
     delayContext { ctx => sRnd(ctx.random).nextString(length) }
 
-  final override def shuffleList[A](l: List[A]): Axn[List[A]] =
+  final def shuffleList[A](l: List[A]): Axn[List[A]] =
     delayContext { ctx => sRnd(ctx.random).shuffle[A, List[A]](l) }
 
-  final override def shuffleVector[A](v: Vector[A]): Axn[Vector[A]] =
-    delayContext { ctx => sRnd(ctx.random).shuffle[A, Vector[A]](v) }
-}
-
-private object RxnRandomImplThreadLocalCached {
-
-  def unsafe[X](): Random[Axn] = {
-    new RxnRandomImplThreadLocalCached
-  }
-}
-
-private final class RxnRandomImplThreadLocalCached private ()
-  extends AtomicReference[SRandom] // (null)
-  with Random[Axn]
-  with RandomBase { sRndHolder =>
-
-  import Rxn.unsafe.delayContext
-
-  private[this] final def sRnd(jRnd: ThreadLocalRandom): SRandom = {
-    val cached = sRndHolder.get()
-    if ((cached ne null) && (cached.self eq jRnd)) {
-      cached
-    } else {
-      val newWrapper = new SRandom(jRnd)
-      sRndHolder.compareAndSet(cached, newWrapper)
-      // we ignore a failed CAS, as we can use
-      // the newly created wrapper, it just will
-      // not be cached
-      newWrapper
-    }
-  }
-
-  final override def betweenDouble(minInclusive: Double, maxExclusive: Double): Axn[Double] =
-    delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }
-
-  final override def betweenFloat(minInclusive: Float, maxExclusive: Float): Axn[Float] =
-    delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }
-
-  final override def betweenInt(minInclusive: Int, maxExclusive: Int): Axn[Int] =
-    delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }
-
-  final override def betweenLong(minInclusive: Long, maxExclusive: Long): Axn[Long] =
-    delayContext { ctx => sRnd(ctx.random).between(minInclusive, maxExclusive) }
-
-  final override def nextBytes(n: Int): Axn[Array[Byte]] = {
-    require(n >= 0)
-    delayContext { ctx => sRnd(ctx.random).nextBytes(n) }
-  }
-
-  final override def nextDouble: Axn[Double] =
-    delayContext { ctx => ctx.random.nextDouble() }
-
-  final override def nextFloat: Axn[Float] =
-    delayContext { ctx => ctx.random.nextFloat() }
-
-  final override def nextGaussian: Axn[Double] =
-    delayContext { ctx => ctx.random.nextGaussian() }
-
-  final override def nextInt: Axn[Int] =
-    delayContext { ctx => ctx.random.nextInt() }
-
-  final override def nextIntBounded(n: Int): Axn[Int] =
-    delayContext { ctx => ctx.random.nextInt(n) }
-
-  final override def nextLong: Axn[Long] =
-    delayContext { ctx => ctx.random.nextLong() }
-
-  final override def nextLongBounded(n: Long): Axn[Long] =
-    delayContext { ctx => ctx.random.nextLong(n) }
-
-  final override def nextPrintableChar: Axn[Char] =
-    delayContext { ctx => sRnd(ctx.random).nextPrintableChar() }
-
-  final override def nextString(length: Int): Axn[String] =
-    delayContext { ctx => sRnd(ctx.random).nextString(length) }
-
-  final override def shuffleList[A](l: List[A]): Axn[List[A]] =
-    delayContext { ctx => sRnd(ctx.random).shuffle[A, List[A]](l) }
-
-  final override def shuffleVector[A](v: Vector[A]): Axn[Vector[A]] =
+  final def shuffleVector[A](v: Vector[A]): Axn[Vector[A]] =
     delayContext { ctx => sRnd(ctx.random).shuffle[A, Vector[A]](v) }
 }
 
@@ -256,27 +131,9 @@ private object RxnRandomImplCtxSupport {
 }
 
 private final class RxnRandomImplCtxSupport private ()
-  extends Random[Axn]
-  with RandomBase {
+  extends RandomBase {
 
   import Rxn.unsafe.delayContext
-
-  final override def betweenDouble(minInclusive: Double, maxExclusive: Double): Axn[Double] =
-    delayContext { ctx => ctx.randomWrapper.between(minInclusive, maxExclusive) }
-
-  final override def betweenFloat(minInclusive: Float, maxExclusive: Float): Axn[Float] =
-    delayContext { ctx => ctx.randomWrapper.between(minInclusive, maxExclusive) }
-
-  final override def betweenInt(minInclusive: Int, maxExclusive: Int): Axn[Int] =
-    delayContext { ctx => ctx.randomWrapper.between(minInclusive, maxExclusive) }
-
-  final override def betweenLong(minInclusive: Long, maxExclusive: Long): Axn[Long] =
-    delayContext { ctx => ctx.randomWrapper.between(minInclusive, maxExclusive) }
-
-  final override def nextBytes(n: Int): Axn[Array[Byte]] = {
-    require(n >= 0)
-    delayContext { ctx => ctx.randomWrapper.nextBytes(n) }
-  }
 
   final override def nextDouble: Axn[Double] =
     delayContext { ctx => ctx.random.nextDouble() }
@@ -299,8 +156,8 @@ private final class RxnRandomImplCtxSupport private ()
   final override def nextLongBounded(n: Long): Axn[Long] =
     delayContext { ctx => ctx.random.nextLong(n) }
 
-  final override def nextPrintableChar: Axn[Char] =
-    delayContext { ctx => ctx.randomWrapper.nextPrintableChar() }
+  final override def nextBoolean: Axn[Boolean] =
+    delayContext { ctx => ctx.random.nextBoolean() }
 
   final override def nextString(length: Int): Axn[String] =
     delayContext { ctx => ctx.randomWrapper.nextString(length) }

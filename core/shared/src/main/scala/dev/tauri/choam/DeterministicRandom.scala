@@ -37,27 +37,6 @@ private object DeterministicRandom {
   private final val GoldenGamma =
     0x9e3779b97f4a7c15L
 
-  private final val DoubleUlp =
-    1.0d / (1L << 53)
-
-  private final val FloatUlp =
-    1.0f / (1L << 24)
-
-  /**
-   * '!'; technically 0x20 (space) is also printable, but
-   * `scala.util.Random#nextPrintableChar` and
-   * `cats.effect.std.Random#nextPrintableChar` exclude it,
-   * so we have to exclude it too.
-   */
-  private final val MinPrintableIncl =
-    0x21 // '!'
-
-  /**
-   * '~' + 1
-   */
-  private final val MaxPrintableExcl =
-    0x7f
-
   private final val MinLowSurrogate =
     0xdc00.toChar
 
@@ -172,7 +151,7 @@ private final class DeterministicRandom(
     n
   }
 
-  final override def split: Axn[SplittableRandom[Axn]] = {
+  final def split: Axn[SplittableRandom[Axn]] = {
     seed.modifyWith { (sd: Long) =>
       val s1: Long = sd + gamma
       val otherSeed: Long = mix64(s1)
@@ -184,15 +163,19 @@ private final class DeterministicRandom(
     }
   }
 
+  // This should be faster than the one in `RandomBase`
   final override def nextBytes(n: Int): Axn[Array[Byte]] = {
     require(n >= 0)
     seed.modify[Array[Byte]] { (sd: Long) =>
+      // TODO: We're cheating here, and allocating
+      // TODO: the array in a "pure" function.
       val arr = new Array[Byte](n)
       val buf = ByteBuffer.wrap(arr)
       buf.order(ByteOrder.LITTLE_ENDIAN)
       var s: Long = sd
 
       /* Puts the last (at most 7) bytes into buf */
+      @tailrec
       def putLastBytes(nBytes: Int, r: Long): Unit = {
         if (nBytes > 0) {
           buf.put(r.toByte)
@@ -219,45 +202,8 @@ private final class DeterministicRandom(
     }
   }
 
-  final override def nextDouble: Axn[Double] =
-    nextLong.map(doubleFromLong)
-
-  private[this] final def doubleFromLong(n: Long): Double =
-    (n >>> 11) * DoubleUlp
-
-  final override def betweenDouble(minInclusive: Double, maxExclusive: Double): Axn[Double] = {
-    import java.lang.Double.{ doubleToLongBits, longBitsToDouble }
-    require(minInclusive < maxExclusive)
-    nextDouble.map { (d: Double) =>
-      val r: Double = (d * (maxExclusive - minInclusive)) + minInclusive
-      if (r >= maxExclusive) { // this can happen due to rounding
-        val correction = if (maxExclusive < 0.0) 1L else -1L
-        longBitsToDouble(doubleToLongBits(maxExclusive) + correction)
-      } else {
-        r
-      }
-    }
-  }
-
-  final override def nextFloat: Axn[Float] =
-    nextInt.map { n => (n >>> 8) * FloatUlp }
-
-  final override def betweenFloat(minInclusive: Float, maxExclusive: Float): Axn[Float] = {
-    import java.lang.Float.{ floatToIntBits, intBitsToFloat }
-    require(minInclusive < maxExclusive)
-    nextFloat.map { (f: Float) =>
-      val r: Float = (f * (maxExclusive - minInclusive)) + minInclusive
-      if (r >= maxExclusive) { // this can happen due to rounding
-        val correction = if (maxExclusive < 0.0f) 1 else -1
-        intBitsToFloat(floatToIntBits(maxExclusive) + correction)
-      } else {
-        r
-      }
-    }
-  }
-
   /** Box-Muller transform / Marsaglia polar method */
-  final override def nextGaussian: Axn[Double] = {
+  final def nextGaussian: Axn[Double] = {
     seed.modify[Double] { (sd: Long) =>
       var n: Long = sd
       var v1: Double = Double.NaN // unused value
@@ -285,9 +231,10 @@ private final class DeterministicRandom(
     }
   }
 
-  final override def nextInt: Axn[Int] =
+  final def nextInt: Axn[Int] =
     nextSeed.map(mix32)
 
+  // This should be faster than the one in `RandomBase`
   final override def nextIntBounded(bound: Int): Axn[Int] = {
     require(bound > 0)
     val m: Int = bound - 1
@@ -309,6 +256,7 @@ private final class DeterministicRandom(
     }
   }
 
+  // This should be faster than the one in `RandomBase`
   final override def betweenInt(minInclusive: Int, maxExclusive: Int): Axn[Int] = {
     require(minInclusive < maxExclusive)
     val n: Int = maxExclusive - minInclusive
@@ -339,9 +287,10 @@ private final class DeterministicRandom(
     }
   }
 
-  final override def nextLong: Axn[Long] =
+  final def nextLong: Axn[Long] =
     nextSeed.map(mix64)
 
+  // This should be faster than the one in `RandomBase`
   final override def nextLongBounded(bound: Long): Axn[Long] = {
     require(bound > 0L)
     val m: Long = bound - 1
@@ -363,6 +312,7 @@ private final class DeterministicRandom(
     }
   }
 
+  // This should be faster than the one in `RandomBase`
   final override def betweenLong(minInclusive: Long, maxExclusive: Long): Axn[Long] = {
     require(minInclusive < maxExclusive)
     val n: Long = maxExclusive - minInclusive
@@ -454,12 +404,6 @@ private final class DeterministicRandom(
     val r: Int = u % bound
     if ((u + m - r) < 0) -1 // retry
     else r
-  }
-
-  final override def nextPrintableChar: Axn[Char] = {
-    betweenInt(MinPrintableIncl, MaxPrintableExcl).map { (i: Int) =>
-      i.toChar
-    }
   }
 
   /**
