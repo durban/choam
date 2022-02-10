@@ -31,6 +31,16 @@ import mcas.MemoryLocation
 
 class EMCASSpec extends BaseSpecA {
 
+  final override def test(name: String)(body: => Any)(implicit loc: munit.Location): Unit = {
+    def wrappedBody(): Any = {
+      println(s"Starting '${name}'")
+      val res: Any = body
+      println(s"Finished '${name}'")
+      res
+    }
+    super.test(name)(wrappedBody())(loc)
+  }
+
   test("EMCAS should allow null as ov or nv") {
     val r1 = MemoryLocation.unsafe[String](null)
     val r2 = MemoryLocation.unsafe[String]("x")
