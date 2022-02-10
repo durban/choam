@@ -22,6 +22,8 @@ import java.nio.{ ByteBuffer, ByteOrder }
 
 import scala.collection.mutable.ArrayBuffer
 
+import RandomBase._
+
 // TODO: more tests for reproducibility
 // TODO: everything could be optimized to a single `seed.modify { ... }`
 // TODO: remove asserts after a while
@@ -36,27 +38,6 @@ private object DeterministicRandom {
 
   private final val GoldenGamma =
     0x9e3779b97f4a7c15L
-
-  private final val MinLowSurrogate =
-    0xdc00.toChar
-
-  private final val MinSurrogate =
-    0xd800.toChar
-
-  private final val NumChars =
-    65536
-
-  private final val NumHighSurrogates =
-    1024
-
-  private final val NumLowSurrogates =
-    1024
-
-  private final val NumSurrogates =
-    NumHighSurrogates + NumLowSurrogates
-
-  private final val NumNonSurrogates =
-    NumChars - NumSurrogates
 }
 
 /**
@@ -83,8 +64,6 @@ private final class DeterministicRandom(
 ) extends DeterministicRandomPlatform
   with SplittableRandom[Axn]
   with RandomBase {
-
-  import DeterministicRandom._
 
   private[this] val nextSeed: Axn[Long] =
     seed.updateAndGet(_ + gamma)
@@ -444,7 +423,7 @@ private final class DeterministicRandom(
     }
   }
 
-  private final def nextNormalOrHighSurrogate(seed: Long): Char = {
+  private[this] final def nextNormalOrHighSurrogate(seed: Long): Char = {
     val m: Int = (NumChars - NumLowSurrogates) - 1
     var r: Int = mix32(seed) & m
     if (r >= MinLowSurrogate) {

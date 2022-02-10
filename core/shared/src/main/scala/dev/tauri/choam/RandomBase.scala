@@ -17,7 +17,10 @@
 
 package dev.tauri.choam
 
+import java.lang.Character.{ isHighSurrogate, isLowSurrogate }
 import java.nio.{ ByteBuffer, ByteOrder }
+
+import scala.collection.mutable.ArrayBuffer
 
 import cats.effect.std.Random
 
@@ -35,15 +38,6 @@ private final class MinimalRandom extends RandomBase {
     sys.error("TODO")
 
   def nextLong: Axn[Long] =
-    sys.error("TODO")
-
-  def nextString(length: Int): Axn[String] =
-    sys.error("TODO")
-
-  def shuffleList[A](l: List[A]): Axn[List[A]] =
-    sys.error("TODO")
-
-  def shuffleVector[A](v: Vector[A]): Axn[Vector[A]] =
     sys.error("TODO")
 }
 
@@ -207,6 +201,128 @@ private trait RandomBase extends Random[Axn] {
       i.toChar
     }
   }
+
+  /**
+   * We also generate surrogates, unless they
+   * would be illegal at that position.
+   */
+  def nextString(length: Int): Axn[String] = {
+    require(length >= 0)
+    if (length == 0) {
+      Rxn.pure("")
+    } else {
+      Axn.unsafe.delay {
+        val arr = new Array[Char](length)
+        def write(idx: Int, value: Char): Axn[Unit] =
+          Axn.unsafe.delay { arr(idx) = value }
+        def go(idx: Int): Axn[Unit] = {
+          if (idx < length) {
+            if ((idx + 1) == length) {
+              // last char, can't generate surrogates:
+              this.nextNonSurrogate.flatMapF(write(idx, _))
+            } else {
+              // inside char, but can't generate a
+              // low surrogate, because a surrogate
+              // pair starts with a high surrogate:
+              this.nextNormalOrHighSurrogate.flatMapF { (r: Char) =>
+                write(idx, r) *> (
+                  if (isHighSurrogate(r)) {
+                    // we also generate its pair:
+                    this.nextLowSurrogate.flatMapF(write(idx + 1, _)) *> go(idx + 2)
+                  } else {
+                    go(idx + 1)
+                  }
+                )
+              }
+            }
+          } else {
+            Rxn.unit
+          }
+        }
+        go(0).as(new String(arr))
+      }.flatten
+    }
+  }
+
+  private[this] final def nextNormalOrHighSurrogate: Axn[Char] = {
+    val bound: Int = (NumChars - NumLowSurrogates)
+    this.nextIntBounded(bound).map { (r: Int) =>
+      val res: Int = if (r >= MinLowSurrogate) {
+        (r + NumLowSurrogates)
+      } else {
+        r
+      }
+      val c: Char = res.toChar
+      assert(c.toInt == r)
+      assert(!isLowSurrogate(c))
+      c
+    }
+  }
+
+  private[this] final def nextLowSurrogate: Axn[Char] = {
+    this.nextIntBounded(NumLowSurrogates).map { (r: Int) =>
+      val c = (r + MinLowSurrogate).toChar
+      assert(isLowSurrogate(c))
+      c
+    }
+  }
+
+  private[this] final def nextNonSurrogate: Axn[Char] = {
+    this.nextIntBounded(NumNonSurrogates).map { (r: Int) =>
+      val res = if (r >= MinSurrogate) {
+        r + NumSurrogates
+      } else {
+        r
+      }
+      val c = res.toChar
+      assert(c.toInt == res)
+      assert(!isHighSurrogate(c))
+      assert(!isLowSurrogate(c))
+      c
+    }
+  }
+
+  def shuffleList[A](l: List[A]): Axn[List[A]] = {
+    if (l.length > 1) {
+      Axn.unsafe.delay {
+        val arr = ArrayBuffer.from(l)
+        shuffleArray(arr).as(arr.toList)
+      }.flatten
+    } else {
+      Rxn.pure(l)
+    }
+  }
+
+  def shuffleVector[A](v: Vector[A]): Axn[Vector[A]] = {
+    if (v.length > 1) {
+      Axn.unsafe.delay {
+        val arr = ArrayBuffer.from(v)
+        shuffleArray(arr).as(arr.toVector)
+      }.flatten
+    } else {
+      Rxn.pure(v)
+    }
+  }
+
+  /** Fisher-Yates / Knuth shuffle */
+  private[this] final def shuffleArray[A](arr: ArrayBuffer[A]): Axn[Unit] = {
+    def swap(j: Int, i: Int): Unit = {
+      val tmp = arr(j)
+      arr(j) = arr(i)
+      arr(i) = tmp
+    }
+    def go(i: Int): Axn[Unit] = {
+      if (i > 0) {
+        val bound: Int = i + 1
+        this.nextIntBounded(bound).flatMapF { (j: Int) =>
+          Axn.unsafe.delay(swap(j, i)) *> go(i - 1)
+        }
+      } else {
+        Rxn.unit
+      }
+    }
+    go(arr.length - 1)
+  }
 }
 
 private object RandomBase {
@@ -243,4 +359,25 @@ private object RandomBase {
    */
   private final val MaxPrintableExcl =
     0x7f
+
+  private[choam] final val MinLowSurrogate =
+    0xdc00.toChar
+
+  private[choam] final val MinSurrogate =
+    0xd800.toChar
+
+  private[choam] final val NumChars =
+    65536
+
+  private[choam] final val NumHighSurrogates =
+    1024
+
+  private[choam] final val NumLowSurrogates =
+    1024
+
+  private[choam] final val NumSurrogates =
+    NumHighSurrogates + NumLowSurrogates
+
+  private[choam] final val NumNonSurrogates =
+    NumChars - NumSurrogates
 }

@@ -277,9 +277,6 @@ object Rxn extends RxnInstances0 {
     unsafe.delay { _ => new Unique.Token() }
 
   final def fastRandom: Axn[Random[Axn]] =
-    unsafe.delay { _ => RxnRandomImplThreadLocal.unsafe() }
-
-  private[choam] final def fastRandomCtxSupp: Axn[Random[Axn]] =
     unsafe.delay { _ => RxnRandomImplCtxSupport.unsafe() }
 
   final def secureRandom: Axn[Random[Axn]] =
