@@ -61,9 +61,8 @@ private object DeterministicRandom {
 private final class DeterministicRandom(
   seed: Ref[Long],
   gamma: Long,
-) extends DeterministicRandomPlatform
-  with SplittableRandom[Axn]
-  with RandomBase {
+) extends RandomBase
+  with SplittableRandom[Axn] {
 
   private[this] val nextSeed: Axn[Long] =
     seed.updateAndGet(_ + gamma)
@@ -182,7 +181,7 @@ private final class DeterministicRandom(
   }
 
   /** Box-Muller transform / Marsaglia polar method */
-  final def nextGaussian: Axn[Double] = {
+  final override def nextGaussian: Axn[Double] = {
     seed.modify[Double] { (sd: Long) =>
       var n: Long = sd
       var v1: Double = Double.NaN // unused value

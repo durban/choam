@@ -31,9 +31,6 @@ import cats.effect.std.Random
  */
 private final class MinimalRandom extends RandomBase {
 
-  def nextGaussian: Axn[Double] =
-    sys.error("TODO")
-
   def nextInt: Axn[Int] =
     sys.error("TODO")
 
@@ -48,7 +45,9 @@ private final class MinimalRandom extends RandomBase {
  * in the public domain JSR-166 ThreadLocalRandom
  * (http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
  */
-private trait RandomBase extends Random[Axn] {
+private abstract class RandomBase
+  extends DeterministicRandomPlatform
+  with Random[Axn] {
 
   import RandomBase._
 
@@ -168,6 +167,28 @@ private trait RandomBase extends Random[Axn] {
         longBitsToDouble(doubleToLongBits(maxExclusive) + correction)
       } else {
         r
+      }
+    }
+  }
+
+  /** Box-Muller transform / Marsaglia polar method */
+  def nextGaussian: Axn[Double] = {
+    (this.nextDouble * this.nextDouble).flatMapF { dd =>
+      val (d1, d2) = dd
+      val v1: Double = (2 * d1) - 1
+      val v2: Double = (2 * d2) - 1
+      val s: Double = (v1 * v1) + (v2 * v2)
+      if ((s >= 1) || (s == 0)) {
+        // retry:
+        this.nextGaussian
+      } else {
+        val multiplier: Double =
+          strictMathSqrt(-2 * strictMathLog(s) / s)
+        Rxn.pure(v1 * multiplier)
+        // NB: we actually generated 2 random Doubles,
+        // (the other one is `v2 * multiplier`), but
+        // we don't bother saving the other one for
+        // next time (it probably doesn't worth it).
       }
     }
   }

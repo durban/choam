@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 
+// TODO: rename
 /** We need this on the JVM too (because Scala.js doesn't have StrictMath) */
 private abstract class DeterministicRandomPlatform {
 

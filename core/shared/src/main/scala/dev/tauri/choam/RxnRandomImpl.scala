@@ -22,7 +22,6 @@ import cats.effect.std.Random
 import CompatPlatform.SecureRandom
 
 private object RxnRandomImplSecure {
-
   def unsafe(): Random[Axn] = {
     val sr = new SecureRandom
     // force seeding the generator here:
@@ -35,32 +34,34 @@ private object RxnRandomImplSecure {
 private final class RxnRandomImplSecure private (private[this] val jRnd: SecureRandom)
   extends RandomBase {
 
-  import Rxn.unsafe.delay
-
-  final override def nextDouble: Axn[Double] =
-    delay { _ => jRnd.nextDouble() }
-
-  final override def nextFloat: Axn[Float] =
-    delay { _ => jRnd.nextFloat() }
-
-  final def nextGaussian: Axn[Double] =
-    delay { _ => jRnd.nextGaussian() }
+  import Axn.unsafe.delay
 
   final def nextInt: Axn[Int] =
-    delay { _ => jRnd.nextInt() }
-
-  final override def nextIntBounded(n: Int): Axn[Int] =
-    delay { _ => jRnd.nextInt(n) }
+    delay { jRnd.nextInt() }
 
   final def nextLong: Axn[Long] =
-    delay { _ => jRnd.nextLong() }
+    delay { jRnd.nextLong() }
+
+  // Override these, to use the secure impl:
+
+  final override def nextIntBounded(n: Int): Axn[Int] =
+    delay { jRnd.nextInt(n) }
+
+  final override def nextDouble: Axn[Double] =
+    delay { jRnd.nextDouble() }
+
+  final override def nextGaussian: Axn[Double] =
+    delay { jRnd.nextGaussian() }
+
+  final override def nextFloat: Axn[Float] =
+    delay { jRnd.nextFloat() }
 
   final override def nextBoolean: Axn[Boolean] =
-    delay { _ => jRnd.nextBoolean() }
+    delay { jRnd.nextBoolean() }
 }
 
+// TODO: rename
 private object RxnRandomImplCtxSupport {
-
   def unsafe(): Random[Axn] = {
     new RxnRandomImplCtxSupport
   }
@@ -71,26 +72,28 @@ private final class RxnRandomImplCtxSupport private ()
 
   import Rxn.unsafe.delayContext
 
-  final override def nextDouble: Axn[Double] =
-    delayContext { ctx => ctx.random.nextDouble() }
-
-  final override def nextFloat: Axn[Float] =
-    delayContext { ctx => ctx.random.nextFloat() }
-
-  final def nextGaussian: Axn[Double] =
-    delayContext { ctx => ctx.random.nextGaussian() }
+  final def nextLong: Axn[Long] =
+    delayContext { ctx => ctx.random.nextLong() }
 
   final def nextInt: Axn[Int] =
     delayContext { ctx => ctx.random.nextInt() }
 
-  final override def nextIntBounded(n: Int): Axn[Int] =
-    delayContext { ctx => ctx.random.nextInt(n) }
-
-  final def nextLong: Axn[Long] =
-    delayContext { ctx => ctx.random.nextLong() }
+  // override these, because TLR is faster:
 
   final override def nextLongBounded(n: Long): Axn[Long] =
     delayContext { ctx => ctx.random.nextLong(n) }
+
+  final override def nextIntBounded(n: Int): Axn[Int] =
+    delayContext { ctx => ctx.random.nextInt(n) }
+
+  final override def nextDouble: Axn[Double] =
+    delayContext { ctx => ctx.random.nextDouble() }
+
+  final override def nextGaussian: Axn[Double] =
+    delayContext { ctx => ctx.random.nextGaussian() }
+
+  final override def nextFloat: Axn[Float] =
+    delayContext { ctx => ctx.random.nextFloat() }
 
   final override def nextBoolean: Axn[Boolean] =
     delayContext { ctx => ctx.random.nextBoolean() }
