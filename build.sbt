@@ -312,7 +312,15 @@ lazy val commonSettings = Seq[Setting[_]](
     "--release", "11", // implies "-source 11 -target 11"
     "-Xlint",
   ),
-  Test / parallelExecution := false,
+  // Somewhat counter-intuitively, to really run
+  // tests sequentially, we need to set this to true:
+  Test / parallelExecution := true,
+  // And then add this restriction:
+  concurrentRestrictions += Tags.limit(Tags.Test, 1),
+  // (Otherwise when running `test`, the different
+  // subprojects' tests still run concurrently; see
+  // https://github.com/sbt/sbt/issues/2516 and
+  // https://github.com/sbt/sbt/issues/2425.)
   libraryDependencies ++= Seq(
     Seq(
       dependencies.catsKernel.value, // TODO: mcas only needs this due to `Order`
