@@ -17,9 +17,9 @@
 
 package dev.tauri.choam
 
+import java.lang.Integer.remainderUnsigned
 import java.lang.Character.{ isHighSurrogate, isLowSurrogate }
 import java.util.IdentityHashMap
-import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.atomic.AtomicLong
 
 import cats.effect.SyncIO
@@ -67,26 +67,18 @@ trait RandomSpec[F[_]]
 
   // TODO: more tests for Rxn.*Random
 
-  checkRandom("Rxn.fastRandom", Rxn.fastRandom.run[F], isBuggy = false)
-  checkRandom("Rxn.secureRandom", Rxn.secureRandom.run[F], isBuggy = false)
+  checkRandom("Rxn.fastRandom", _ => Rxn.fastRandom.run[F])
+  checkRandom("Rxn.secureRandom", _ => Rxn.secureRandom.run[F])
   checkRandom(
     "Rxn.deterministicRandom",
-    // TODO: this makes the property test non-reproducible
-    F.delay(ThreadLocalRandom.current().nextLong()).flatMap { initSeed =>
-      Rxn.deterministicRandom(initSeed).run[F].map[Random[Axn]](x => x)
-    },
-    isBuggy = false,
+    seed => Rxn.deterministicRandom(seed).run[F].widen[Random[Axn]],
   )
   checkRandom(
     "MinimalRandom",
-    // TODO: this makes the property test non-reproducible
-    F.delay(ThreadLocalRandom.current().nextLong()).flatMap { initSeed =>
-      F.delay(MinimalRandom.unsafe(initSeed))
-    },
-    isBuggy = false,
+    seed => F.delay(MinimalRandom.unsafe(seed)),
   )
 
-  test("Rxn.deterministicRandom must be deterministic") {
+  test("Rxn.deterministicRandom must be deterministic (1)") {
     PropF.forAllF { (seed: Long) =>
       for {
         dr1 <- Rxn.deterministicRandom(seed).run[F]
@@ -108,6 +100,13 @@ trait RandomSpec[F[_]]
         _ <- assertNotEqualsF(ny, nx)
       } yield ()
     }
+  }
+
+  test("Rxn.deterministicRandom must be deterministic (2)") {
+    checkSame(
+      seed => Rxn.deterministicRandom(seed),
+      seed => Rxn.deterministicRandom(seed),
+    )
   }
 
   test("Rxn.deterministicRandom must be able to roll back the seed") {
@@ -187,38 +186,38 @@ trait RandomSpec[F[_]]
 
   def checkRandom(
     name: String,
-    mk: F[Random[Axn]],
-    isBuggy: Boolean,
+    mk: Long => F[Random[Axn]],
+    isBuggy: Boolean = false,
   ): Unit = {
     test(s"${name} nextDouble") {
-      mk.map(checkNextDouble)
+      checkNextDouble(mk)
     }
     test(s"${name} betweenDouble") {
-      mk.map(checkBetweenDouble(isBuggy))
+      checkBetweenDouble(isBuggy)(mk)
     }
     test(s"${name} betweenFloat") {
-      mk.map(checkBetweenFloat(isBuggy))
+      checkBetweenFloat(isBuggy)(mk)
     }
     test(s"${name} nextLong") {
-      mk.map(checkNextLong)
+      checkNextLong(mk)
     }
     test(s"${name} nextLongBounded") {
-      mk.map(checkNextLongBounded)
+      checkNextLongBounded(mk)
     }
     test(s"${name} shuffleList/Vector") {
-      mk.map(checkShuffle)
+      checkShuffle(mk)
     }
     test(s"${name} nextGaussian") {
-      mk.map(checkGaussian)
+      checkGaussian(mk)
     }
     test(s"${name} nextAlphaNumeric") {
-      mk.map(checkNextAlphaNumeric)
+      checkNextAlphaNumeric(mk)
     }
     test(s"${name} nextPrintableChar") {
-      mk.map(checkPrintableChar)
+      checkPrintableChar(mk)
     }
     test(s"${name} nextString") {
-      mk.map(checkNextString)
+      checkNextString(mk)
     }
   }
 
@@ -245,7 +244,7 @@ trait RandomSpec[F[_]]
 
   /** Checks that `rnd1` and `rnd2` generates the same numbers */
   def checkSame(mkRnd1: Long => Axn[Random[Axn]], mkRnd2: Long => Axn[Random[Axn]]): PropF[F] = {
-    PropF.forAllF { (seed: Long, lst: List[Int]) =>
+    PropF.forAllF { (seed: Long, lst: List[Int], bound: Int) =>
       (mkRnd1(seed) * mkRnd2(seed)).run[F].flatMap {
         case (rnd1, rnd2) =>
           def checkBoth[A](f: Random[Axn] => Axn[A]): F[Unit] =
@@ -253,11 +252,11 @@ trait RandomSpec[F[_]]
           for {
             _ <- checkBoth(_.nextLong)
             _ <- checkBoth(_.nextInt)
-            _ <- checkBoth(_.nextBytes(15).map(_.toVector))
-            _ <- checkBoth(_.nextLongBounded(42L))
+            _ <- checkBoth(_.nextBytes(remainderUnsigned(bound, 64)).map(_.toVector))
+            _ <- checkBoth(_.nextLongBounded(remainderUnsigned(bound, 1024) + 1L))
             _ <- checkBoth(_.betweenLong(-4L, 45L))
             _ <- checkBoth(_.betweenLong(Long.MinValue, Long.MaxValue - 42L))
-            _ <- checkBoth(_.nextIntBounded(99))
+            _ <- checkBoth(_.nextIntBounded(remainderUnsigned(bound, 1024) + 1))
             _ <- checkBoth(_.betweenInt(-4, 45))
             _ <- checkBoth(_.betweenInt(Int.MinValue, Int.MaxValue - 42))
             _ <- checkBoth(_.nextDouble)
@@ -270,7 +269,7 @@ trait RandomSpec[F[_]]
             _ <- checkBoth(_.nextAlphaNumeric)
             _ <- checkBoth(_.nextPrintableChar)
             _ <- checkBoth(_.nextString(0))
-            _ <- checkBoth(_.nextString(42))
+            _ <- checkBoth(_.nextString(remainderUnsigned(bound, 64)))
             _ <- checkBoth(_.shuffleList(lst))
             _ <- checkBoth(_.shuffleVector(lst.toVector))
           } yield ()
@@ -278,21 +277,24 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def checkNextDouble(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (_: Long) =>
-      (rnd.nextDouble.run[F], rnd.nextDouble.run[F]).tupled.flatMap { dd =>
-        assertNotEqualsF(dd._1, dd._2) *> (
-          assertF((clue(dd._1) >= 0.0d) && (dd._1 < 1.0d)) *> (
-            assertF((clue(dd._2) >= 0.0d) && (dd._2 < 1.0d))
+  def checkNextDouble(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+    PropF.forAllF { (seed: Long) =>
+      mkRnd(seed).flatMap { rnd =>
+        (rnd.nextDouble.run[F], rnd.nextDouble.run[F]).tupled.flatMap { dd =>
+          assertNotEqualsF(dd._1, dd._2) *> (
+            assertF((clue(dd._1) >= 0.0d) && (dd._1 < 1.0d)) *> (
+              assertF((clue(dd._2) >= 0.0d) && (dd._2 < 1.0d))
+            )
           )
-        )
+        }
       }
     }
   }
 
-  def checkBetweenDouble(isBuggy: Boolean)(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (d1: Double, d2: Double) =>
+  def checkBetweenDouble(isBuggy: Boolean)(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+    PropF.forAllF { (seed: Long, d1: Double, d2: Double) =>
       for {
+        rnd <- mkRnd(seed)
         _ <- F.delay(rnd.betweenDouble(d1, d1)).flatMap(_.run[F]).attempt.flatMap { x =>
           assertF(x.isLeft)
         }
@@ -312,9 +314,10 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def checkBetweenFloat(isBuggy: Boolean)(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (f1: Float, f2: Float) =>
+  def checkBetweenFloat(isBuggy: Boolean)(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+    PropF.forAllF { (seed: Long, f1: Float, f2: Float) =>
       for {
+        rnd <- mkRnd(seed)
         _ <- F.delay(rnd.betweenFloat(f1, f1)).flatMap(_.run[F]).attempt.flatMap { x =>
           assertF(x.isLeft)
         }
@@ -334,16 +337,18 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def checkNextLong(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (_: Long) =>
-      (rnd.nextLong.run[F], rnd.nextLong.run[F]).tupled.flatMap { nn =>
-        assertNotEqualsF(nn._1, nn._2)
+  def checkNextLong(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+    PropF.forAllF { (seed: Long) =>
+      mkRnd(seed).flatMap { rnd =>
+        (rnd.nextLong.run[F], rnd.nextLong.run[F]).tupled.flatMap { nn =>
+          assertNotEqualsF(nn._1, nn._2)
+        }
       }
     }
   }
 
-  def checkNextLongBounded(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (n: Long) =>
+  def checkNextLongBounded(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+    PropF.forAllF { (seed: Long, n: Long) =>
       val bound = if (n > 0L) {
         n
       } else if (n < 0L) {
@@ -353,77 +358,89 @@ trait RandomSpec[F[_]]
       } else { // was 0
         0xffffL
       }
-      rnd.nextLongBounded(bound).run[F].flatMap { n =>
-        assertF(clue(n) < bound) *> assertF(clue(n) >= 0L)
+      mkRnd(seed).flatMap { rnd =>
+        rnd.nextLongBounded(bound).run[F].flatMap { n =>
+          assertF(clue(n) < bound) *> assertF(clue(n) >= 0L)
+        }
       }
     }
   }
 
-  def checkShuffle(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (lst: List[Int]) =>
-      (rnd.shuffleList(lst).run[F], rnd.shuffleVector(lst.toVector).run[F]).mapN(Tuple2(_, _)).flatMap { lv =>
-        val (sl, sv) = lv
-        for {
-          _ <- assertEqualsF(sl.sorted, lst.sorted)
-          _ <- assertEqualsF(sv.sorted, lst.sorted.toVector)
-        } yield ()
-      }
-    }
-  }
-
-  def checkGaussian(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (_: Long) =>
-      (rnd.nextGaussian.run[F], rnd.nextGaussian.run[F]).tupled.flatMap {
-        case (x, y) =>
+  def checkShuffle(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+    PropF.forAllF { (seed: Long, lst: List[Int]) =>
+      mkRnd(seed).flatMap { rnd =>
+        (rnd.shuffleList(lst).run[F], rnd.shuffleVector(lst.toVector).run[F]).mapN(Tuple2(_, _)).flatMap { lv =>
+          val (sl, sv) = lv
           for {
-            _ <- assertNotEqualsF(clue(x), clue(y))
-            _ <- assertF(x >= -1000.0)
-            _ <- assertF(x <= +1000.0)
-            _ <- assertF(y >= -1000.0)
-            _ <- assertF(y <= +1000.0)
+            _ <- assertEqualsF(sl.sorted, lst.sorted)
+            _ <- assertEqualsF(sv.sorted, lst.sorted.toVector)
           } yield ()
+        }
       }
     }
   }
 
-  def checkPrintableChar(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (_: Long) =>
-      rnd.nextPrintableChar.run[F].flatMap { chr =>
-        assertF((chr >= '!') && (chr <= '~'))
+  def checkGaussian(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+    PropF.forAllF { (seed: Long) =>
+      mkRnd(seed).flatMap { rnd =>
+        (rnd.nextGaussian.run[F], rnd.nextGaussian.run[F]).tupled.flatMap {
+          case (x, y) =>
+            for {
+              _ <- assertNotEqualsF(clue(x), clue(y))
+              _ <- assertF(x >= -1000.0)
+              _ <- assertF(x <= +1000.0)
+              _ <- assertF(y >= -1000.0)
+              _ <- assertF(y <= +1000.0)
+            } yield ()
+        }
       }
     }
   }
 
-  def checkNextAlphaNumeric(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (_: Long) =>
-      rnd.nextAlphaNumeric.run[F].flatMap { alnum =>
-        assertF(
-          Character.isBmpCodePoint(clue(alnum).toInt) &&
-          !Character.isHighSurrogate(alnum) &&
-          !Character.isLowSurrogate(alnum)
-        ) *> assertF {
-          val chr = alnum.toInt
-          (
-            (chr >= 'a'.toInt) && (chr <= 'z'.toInt) ||
-            (chr >= 'A'.toInt) && (chr <= 'Z'.toInt) ||
-            (chr >= '0'.toInt) && (chr <= '9'.toInt)
-          )
+  def checkPrintableChar(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+    PropF.forAllF { (seed: Long) =>
+      mkRnd(seed).flatMap { rnd =>
+        rnd.nextPrintableChar.run[F].flatMap { chr =>
+          assertF((chr >= '!') && (chr <= '~'))
         }
-      } *> (
-        rnd.nextAlphaNumeric.run[F].replicateA(32).flatMap { alnums =>
-          assertF(clue(alnums.toSet.size) >= 16)
-        }
-      )
+      }
     }
   }
 
-  def checkNextString(rnd: Random[Axn]): PropF[F] = {
-    PropF.forAllF { (length: Int, _: Long) =>
+  def checkNextAlphaNumeric(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+    PropF.forAllF { (seed: Long) =>
+      mkRnd(seed).flatMap { rnd =>
+        rnd.nextAlphaNumeric.run[F].flatMap { alnum =>
+          assertF(
+            Character.isBmpCodePoint(clue(alnum).toInt) &&
+            !Character.isHighSurrogate(alnum) &&
+            !Character.isLowSurrogate(alnum)
+          ) *> assertF {
+            val chr = alnum.toInt
+            (
+              (chr >= 'a'.toInt) && (chr <= 'z'.toInt) ||
+              (chr >= 'A'.toInt) && (chr <= 'Z'.toInt) ||
+              (chr >= '0'.toInt) && (chr <= '9'.toInt)
+            )
+          }
+        } *> (
+          rnd.nextAlphaNumeric.run[F].replicateA(32).flatMap { alnums =>
+            assertF(clue(alnums.toSet.size) >= 16)
+          }
+        )
+      }
+    }
+  }
+
+  def checkNextString(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+    PropF.forAllF { (length: Int, seed: Long) =>
       if ((length >= 0) && (length <= (1024*1024))) {
-        rnd.nextString(length).run[F].flatMap { str =>
-          assertEqualsF(str.length, length) *> (
-            F.delay(checkSurrogates(str))
-          )
+        mkRnd(seed).flatMap { rnd =>
+          rnd.nextString(length).run[F].flatMap { str =>
+            assertEqualsF(str.length, length) *> (
+              F.delay(checkSurrogates(str))
+            )
+          }
         }
       } else {
         F.unit
