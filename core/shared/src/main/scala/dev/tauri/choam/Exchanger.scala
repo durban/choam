@@ -19,6 +19,8 @@ package dev.tauri.choam
 
 import java.util.concurrent.atomic.LongAdder
 
+import internal.ObjStack
+
 sealed trait Exchanger[A, B] {
   def exchange: Rxn[A, B]
   def dual: Exchanger[B, A]

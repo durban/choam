@@ -21,6 +21,8 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
+import internal.{ ByteStack, ObjStack }
+
 @Fork(2)
 class InternalStackBench {
 

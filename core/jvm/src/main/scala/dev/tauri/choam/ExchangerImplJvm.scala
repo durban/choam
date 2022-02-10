@@ -20,6 +20,7 @@ package dev.tauri.choam
 import java.util.concurrent.atomic.AtomicReferenceArray
 
 import mcas.MCAS
+import internal.ObjStack
 import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx, Params }
 
 // TODO: move all exchanger stuff into dev.tauri.choam.exchanger

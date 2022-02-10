@@ -25,6 +25,8 @@ import scala.collection.mutable
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
+import internal.ObjStack
+
 @Fork(1)
 @Threads(2)
 class ObjStackBench {

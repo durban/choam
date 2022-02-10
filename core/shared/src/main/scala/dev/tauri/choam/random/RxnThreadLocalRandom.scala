@@ -22,7 +22,6 @@ import java.util.concurrent.ThreadLocalRandom
 
 import cats.effect.std.Random
 
-// TODO: rename
 private[choam] object RxnThreadLocalRandom {
   def unsafe(): Random[Axn] = {
     new RxnThreadLocalRandom
