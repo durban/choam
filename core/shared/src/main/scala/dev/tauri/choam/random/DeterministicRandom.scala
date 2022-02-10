@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package random
 
 import java.nio.{ ByteBuffer, ByteOrder }
 
@@ -23,12 +24,10 @@ import scala.collection.mutable.ArrayBuffer
 
 import RandomBase._
 
-// TODO: more tests for reproducibility
 // TODO: everything could be optimized to a single `seed.modify { ... }`
 // TODO: remove asserts after a while
 
-private object DeterministicRandom {
-
+private[choam] object DeterministicRandom {
   def apply(initialSeed: Long): Axn[SplittableRandom[Axn]] = {
     Ref(initialSeed).map { (seed: Ref[Long]) =>
       new DeterministicRandom(seed, GoldenGamma)

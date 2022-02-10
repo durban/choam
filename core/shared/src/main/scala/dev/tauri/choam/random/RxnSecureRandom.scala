@@ -16,22 +16,23 @@
  */
 
 package dev.tauri.choam
+package random
 
 import cats.effect.std.Random
 
 import CompatPlatform.SecureRandom
 
-private object RxnRandomImplSecure {
+private[choam] object RxnSecureRandom {
   def unsafe(): Random[Axn] = {
     val sr = new SecureRandom
     // force seeding the generator here:
     val dummy = new Array[Byte](4)
     sr.nextBytes(dummy)
-    new RxnRandomImplSecure(sr)
+    new RxnSecureRandom(sr)
   }
 }
 
-private final class RxnRandomImplSecure private (private[this] val jRnd: SecureRandom)
+private final class RxnSecureRandom private (private[this] val jRnd: SecureRandom)
   extends RandomBase {
 
   import Axn.unsafe.delay
@@ -58,43 +59,4 @@ private final class RxnRandomImplSecure private (private[this] val jRnd: SecureR
 
   final override def nextBoolean: Axn[Boolean] =
     delay { jRnd.nextBoolean() }
-}
-
-// TODO: rename
-private object RxnRandomImplCtxSupport {
-  def unsafe(): Random[Axn] = {
-    new RxnRandomImplCtxSupport
-  }
-}
-
-private final class RxnRandomImplCtxSupport private ()
-  extends RandomBase {
-
-  import Rxn.unsafe.delayContext
-
-  final def nextLong: Axn[Long] =
-    delayContext { ctx => ctx.random.nextLong() }
-
-  final def nextInt: Axn[Int] =
-    delayContext { ctx => ctx.random.nextInt() }
-
-  // override these, because TLR is faster:
-
-  final override def nextLongBounded(n: Long): Axn[Long] =
-    delayContext { ctx => ctx.random.nextLong(n) }
-
-  final override def nextIntBounded(n: Int): Axn[Int] =
-    delayContext { ctx => ctx.random.nextInt(n) }
-
-  final override def nextDouble: Axn[Double] =
-    delayContext { ctx => ctx.random.nextDouble() }
-
-  final override def nextGaussian: Axn[Double] =
-    delayContext { ctx => ctx.random.nextGaussian() }
-
-  final override def nextFloat: Axn[Float] =
-    delayContext { ctx => ctx.random.nextFloat() }
-
-  final override def nextBoolean: Axn[Boolean] =
-    delayContext { ctx => ctx.random.nextBoolean() }
 }

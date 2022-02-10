@@ -277,13 +277,13 @@ object Rxn extends RxnInstances0 {
     unsafe.delay { _ => new Unique.Token() }
 
   final def fastRandom: Axn[Random[Axn]] =
-    unsafe.delay { _ => RxnRandomImplCtxSupport.unsafe() }
+    unsafe.delay { _ => random.RxnThreadLocalRandom.unsafe() }
 
   final def secureRandom: Axn[Random[Axn]] =
-    unsafe.delay { _ => RxnRandomImplSecure.unsafe() }
+    unsafe.delay { _ => random.RxnSecureRandom.unsafe() }
 
-  final def deterministicRandom(initialSeed: Long): Axn[SplittableRandom[Axn]] =
-    DeterministicRandom.apply(initialSeed)
+  final def deterministicRandom(initialSeed: Long): Axn[random.SplittableRandom[Axn]] =
+    random.DeterministicRandom.apply(initialSeed)
 
   // TODO: maybe move this to `Ref`?
   final def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {

@@ -25,6 +25,8 @@ import cats.effect.std.Random
 
 import org.scalacheck.effect.PropF
 
+import random.SplittableRandom
+
 final class RandomSpecJvm_EMCAS_SyncIO
   extends BaseSpecSyncIO
   with SpecEMCAS

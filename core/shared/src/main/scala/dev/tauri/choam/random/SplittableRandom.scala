@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package random
 
 import cats.effect.std.Random
 

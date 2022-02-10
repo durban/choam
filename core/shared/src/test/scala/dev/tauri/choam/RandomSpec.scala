@@ -75,7 +75,7 @@ trait RandomSpec[F[_]]
   )
   checkRandom(
     "MinimalRandom",
-    seed => F.delay(MinimalRandom.unsafe(seed)),
+    seed => F.delay(random.MinimalRandom.unsafe(seed)),
   )
 
   test("Rxn.deterministicRandom must be deterministic (1)") {
@@ -180,7 +180,7 @@ trait RandomSpec[F[_]]
   test("Rxn.deterministicRandom must generate the same values as MinimalRandom") {
     checkSame(
       seed => Rxn.deterministicRandom(seed),
-      seed => Axn.unsafe.delay { MinimalRandom.unsafe(seed) },
+      seed => Axn.unsafe.delay { random.MinimalRandom.unsafe(seed) },
     )
   }
 
