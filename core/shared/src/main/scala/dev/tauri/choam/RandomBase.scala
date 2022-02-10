@@ -312,7 +312,7 @@ private abstract class RandomBase
         r
       }
       val c: Char = res.toChar
-      assert(c.toInt == r)
+      assert(c.toInt == res)
       assert(!isLowSurrogate(c))
       c
     }
