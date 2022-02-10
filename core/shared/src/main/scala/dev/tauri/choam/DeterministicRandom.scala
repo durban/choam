@@ -17,7 +17,6 @@
 
 package dev.tauri.choam
 
-import java.lang.Character.{ isHighSurrogate, isLowSurrogate }
 import java.nio.{ ByteBuffer, ByteOrder }
 
 import scala.collection.mutable.ArrayBuffer
@@ -379,77 +378,5 @@ private final class DeterministicRandom(
     val r: Int = u % bound
     if ((u + m - r) < 0) -1 // retry
     else r
-  }
-
-  /**
-   * We also generate surrogates, unless they
-   * would be illegal at that position.
-   */
-  final override def nextString(length: Int): Axn[String] = {
-    require(length >= 0)
-    if (length == 0) {
-      Rxn.pure("")
-    } else {
-      seed.modify[String] { (sd: Long) =>
-        val arr = new Array[Char](length)
-        var s: Long = sd
-        var idx: Int = 0
-        while (idx < length) {
-          s += gamma
-          if ((idx + 1) == length) {
-            // last char, can't generate surrogates:
-            arr(idx) = nextNonSurrogate(s)
-          } else {
-            // inside char, but can't generate a
-            // low surrogate, because a surrogate
-            // pair starts with a high surrogate:
-            val r = nextNormalOrHighSurrogate(s)
-            arr(idx) = r
-            if (isHighSurrogate(r)) {
-              // we also generate its pair:
-              s += gamma
-              idx += 1
-              arr(idx) = nextLowSurrogate(s)
-            }
-          }
-          idx += 1
-        }
-        (s, new String(arr))
-      }
-    }
-  }
-
-  private[this] final def nextNormalOrHighSurrogate(seed: Long): Char = {
-    val m: Int = (NumChars - NumLowSurrogates) - 1
-    var r: Int = mix32(seed) & m
-    if (r >= MinLowSurrogate) {
-      r += NumLowSurrogates
-    }
-    val c: Char = r.toChar
-    assert(c.toInt == r)
-    assert(!isLowSurrogate(c))
-    c
-  }
-
-  private[this] final def nextLowSurrogate(seed: Long): Char = {
-    val m = NumLowSurrogates - 1
-    val r = ((mix32(seed) & m) + MinLowSurrogate)
-    val c = r.toChar
-    assert(c.toInt == r)
-    assert(isLowSurrogate(c))
-    c
-  }
-
-  private[this] final def nextNonSurrogate(seed: Long): Char = {
-    val m = NumNonSurrogates - 1
-    var r = mix32(seed) & m
-    if (r >= MinSurrogate) {
-      r += NumSurrogates
-    }
-    val c = r.toChar
-    assert(c.toInt == r)
-    assert(!isHighSurrogate(c))
-    assert(!isLowSurrogate(c))
-    c
   }
 }

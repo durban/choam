@@ -101,17 +101,19 @@ private abstract class RandomBase
       }
     }
 
-    def go(buf: ByteBuffer, rem: Int): Axn[Unit] = {
-      if (rem > 0) {
-        this.nextLong.flatMapF { (r: Long) =>
-          if (rem >= 8) {
-            Axn.unsafe.delay(buf.putLong(r)) *> go(buf, rem = buf.remaining)
-          } else {
-            Axn.unsafe.delay(putLastBytes(buf = buf, nBytes = rem, r = r))
+    def go(buf: ByteBuffer): Axn[Unit] = {
+      Axn.unsafe.delay(buf.remaining()).flatMap { (rem: Int) =>
+        if (rem > 0) {
+          this.nextLong.flatMapF { (r: Long) =>
+            if (rem >= 8) {
+              Axn.unsafe.delay(buf.putLong(r)) *> go(buf)
+            } else {
+              Axn.unsafe.delay(putLastBytes(buf = buf, nBytes = rem, r = r))
+            }
           }
+        } else {
+          Rxn.unit
         }
-      } else {
-        Rxn.unit
       }
     }
 
@@ -119,7 +121,7 @@ private abstract class RandomBase
       val arr = new Array[Byte](n)
       val buf = ByteBuffer.wrap(arr)
       buf.order(ByteOrder.LITTLE_ENDIAN)
-      go(buf, rem = buf.remaining).as(arr)
+      go(buf).as(arr)
     }.flatten
   }
 
@@ -298,7 +300,7 @@ private abstract class RandomBase
             Rxn.unit
           }
         }
-        go(0).as(new String(arr))
+        go(0).flatMapF(_ => Axn.unsafe.delay(new String(arr)))
       }.flatten
     }
   }
@@ -345,7 +347,7 @@ private abstract class RandomBase
     if (l.length > 1) {
       Axn.unsafe.delay {
         val arr = ArrayBuffer.from(l)
-        shuffleArray(arr).as(arr.toList)
+        shuffleArray(arr) *> Axn.unsafe.delay(arr.toList)
       }.flatten
     } else {
       Rxn.pure(l)
@@ -356,7 +358,7 @@ private abstract class RandomBase
     if (v.length > 1) {
       Axn.unsafe.delay {
         val arr = ArrayBuffer.from(v)
-        shuffleArray(arr).as(arr.toVector)
+        shuffleArray(arr) *> Axn.unsafe.delay(arr.toVector)
       }.flatten
     } else {
       Rxn.pure(v)

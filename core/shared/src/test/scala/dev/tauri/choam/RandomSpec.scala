@@ -178,6 +178,13 @@ trait RandomSpec[F[_]]
     }
   }
 
+  test("Rxn.deterministicRandom must generate the same values as MinimalRandom") {
+    checkSame(
+      seed => Rxn.deterministicRandom(seed),
+      seed => Axn.unsafe.delay { MinimalRandom.unsafe(seed) },
+    )
+  }
+
   def checkRandom(
     name: String,
     mk: F[Random[Axn]],
@@ -212,6 +219,62 @@ trait RandomSpec[F[_]]
     }
     test(s"${name} nextString") {
       mk.map(checkNextString)
+    }
+  }
+
+  def assertSameResult[A](fa1: F[A], fa2: F[A], clue: String = "values are not the same"): F[Unit] = {
+    fa1.flatMap { r1 =>
+      fa2.flatMap { r2 =>
+        (r1, r2) match {
+          case (s1: String, s2: String) =>
+            assertEqualsF(s1.length(), s2.length(), "String length mismatch") *> (
+              assertEqualsF(s1, s2, clue = clue)
+            )
+          case _ =>
+            assertEqualsF(r1, r2, clue = clue)
+        }
+      }
+    }
+  }
+
+  def assertSameRng[A](rng1: Random[Axn], rng2: Random[Axn], f: Random[Axn] => Axn[A]): F[Unit] = {
+    val fa1 = f(rng1).run[F]
+    val fa2 = f(rng2).run[F]
+    assertSameResult(fa1, fa2)
+  }
+
+  /** Checks that `rnd1` and `rnd2` generates the same numbers */
+  def checkSame(mkRnd1: Long => Axn[Random[Axn]], mkRnd2: Long => Axn[Random[Axn]]): PropF[F] = {
+    PropF.forAllF { (seed: Long, lst: List[Int]) =>
+      (mkRnd1(seed) * mkRnd2(seed)).run[F].flatMap {
+        case (rnd1, rnd2) =>
+          def checkBoth[A](f: Random[Axn] => Axn[A]): F[Unit] =
+            assertSameRng(rnd1, rnd2, f)
+          for {
+            _ <- checkBoth(_.nextLong)
+            _ <- checkBoth(_.nextInt)
+            _ <- checkBoth(_.nextBytes(15).map(_.toVector))
+            _ <- checkBoth(_.nextLongBounded(42L))
+            _ <- checkBoth(_.betweenLong(-4L, 45L))
+            _ <- checkBoth(_.betweenLong(Long.MinValue, Long.MaxValue - 42L))
+            _ <- checkBoth(_.nextIntBounded(99))
+            _ <- checkBoth(_.betweenInt(-4, 45))
+            _ <- checkBoth(_.betweenInt(Int.MinValue, Int.MaxValue - 42))
+            _ <- checkBoth(_.nextDouble)
+            _ <- checkBoth(_.betweenDouble(-123.456, 6789.4563))
+            _ <- checkBoth(_.nextGaussian)
+            _ <- checkBoth(_.nextFloat)
+            _ <- checkBoth(_.betweenFloat(-123.456f, 6789.4563f))
+            _ <- checkBoth(_.nextBoolean)
+            _ <- checkBoth(_.nextBoolean)
+            _ <- checkBoth(_.nextAlphaNumeric)
+            _ <- checkBoth(_.nextPrintableChar)
+            _ <- checkBoth(_.nextString(0))
+            _ <- checkBoth(_.nextString(42))
+            _ <- checkBoth(_.shuffleList(lst))
+            _ <- checkBoth(_.shuffleVector(lst.toVector))
+          } yield ()
+      }
     }
   }
 
