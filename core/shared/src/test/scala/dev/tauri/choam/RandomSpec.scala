@@ -77,6 +77,14 @@ trait RandomSpec[F[_]]
     },
     isBuggy = false,
   )
+  checkRandom(
+    "MinimalRandom",
+    // TODO: this makes the property test non-reproducible
+    F.delay(ThreadLocalRandom.current().nextLong()).flatMap { initSeed =>
+      F.delay(MinimalRandom.unsafe(initSeed))
+    },
+    isBuggy = false,
+  )
 
   test("Rxn.deterministicRandom must be deterministic") {
     PropF.forAllF { (seed: Long) =>

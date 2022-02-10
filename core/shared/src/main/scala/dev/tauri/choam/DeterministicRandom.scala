@@ -35,9 +35,6 @@ private object DeterministicRandom {
       new DeterministicRandom(seed, GoldenGamma)
     }
   }
-
-  private final val GoldenGamma =
-    0x9e3779b97f4a7c15L
 }
 
 /**
