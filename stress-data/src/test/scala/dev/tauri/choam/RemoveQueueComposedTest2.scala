@@ -28,8 +28,8 @@ import cats.effect.SyncIO
 @State
 @Description("RemoveQueue enq/deq should be composable (concurrent enqueue)")
 @Outcomes(Array(
-  new Outcome(id = Array("List(b, c, d), List(y, a)"), expect = ACCEPTABLE_INTERESTING, desc = "Additional enq is first"),
-  new Outcome(id = Array("List(b, c, d), List(a, y)"), expect = ACCEPTABLE, desc = "Additional enq is last")
+  new Outcome(id = Array("List(b, c, d), List(y, a)"), expect = ACCEPTABLE, desc = "Additional enq is first"),
+  new Outcome(id = Array("List(b, c, d), List(a, y)"), expect = ACCEPTABLE_INTERESTING, desc = "Additional enq is last")
 ))
 class RemoveQueueComposedTest2 extends RemoveQueueStressTestBase {
 
