@@ -105,6 +105,8 @@ lazy val choam = project.in(file("."))
     stressMcas, // JVM
     stressMcasSlow, // JVM
     stressCore, // JVM
+    stressData, // JVM
+    stressDataSlow, // JVM
     layout, // JVM
   )
 
@@ -199,6 +201,9 @@ lazy val bench = project.in(file("bench"))
   .settings(jmhSettings)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
 
+// Stress tests (with JCStress):
+// TODO: move all stress test projects under a common `/stress` folder
+
 lazy val stressMcas = project.in(file("stress-mcas"))
   .settings(name := "choam-stress-mcas")
   .settings(commonSettings)
@@ -215,7 +220,6 @@ lazy val stressMcasSlow = project.in(file("stress-mcas-slow"))
   .enablePlugins(JCStressPlugin)
   .dependsOn(stressMcas % "compile->compile;test->test")
 
-// TODO: move all stress test projects under a common `/stress` folder
 lazy val stressCore = project.in(file("stress-core"))
   .settings(name := "choam-stress-core")
   .settings(commonSettings)
@@ -224,6 +228,24 @@ lazy val stressCore = project.in(file("stress-core"))
   .enablePlugins(JCStressPlugin)
   .dependsOn(core.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
+
+lazy val stressData = project.in(file("stress-data"))
+  .settings(name := "choam-stress-data")
+  .settings(commonSettings)
+  .settings(commonSettingsJvm)
+  .settings(stressSettings)
+  .enablePlugins(JCStressPlugin)
+  .dependsOn(data.jvm % "compile->compile;test->test")
+  .dependsOn(stressMcas % "compile->compile;test->test")
+
+lazy val stressDataSlow = project.in(file("stress-data-slow"))
+  .settings(name := "choam-stress-data-slow")
+  .settings(commonSettings)
+  .settings(commonSettingsJvm)
+  .settings(stressSettings)
+  .enablePlugins(JCStressPlugin)
+  .dependsOn(data.jvm % "compile->compile;test->test")
+  .dependsOn(stressData % "compile->compile;test->test")
 
 lazy val stress = project.in(file("stress"))
   .settings(name := "choam-stress")
@@ -425,9 +447,23 @@ lazy val dependencies = new {
   val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.0-RC2")
 }
 
+val stressTestNames = List[String](
+  "stressMcas",
+  // "stressCore",
+  "stressData",
+)
+
+val stressTestNamesSlow = List[String](
+  "stressMcasSlow",
+  "stressDataSlow",
+)
+
+val stressTestCommand =
+  stressTestNames.map(p => s"${p}/Jcstress/run").mkString(";", ";", "")
+
 addCommandAlias("checkScalafix", "scalafixAll --check")
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
-addCommandAlias("stressTest", ";stressMcas/Jcstress/run;stressCore/Jcstress/run")
+addCommandAlias("stressTest", stressTestCommand)
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
 addCommandAlias("ci", ";headerCheckAll;Test/compile;Test/fastLinkJS;test")
 addCommandAlias("ciStress", "stressTest")

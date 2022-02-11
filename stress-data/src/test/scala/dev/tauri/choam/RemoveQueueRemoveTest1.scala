@@ -26,11 +26,11 @@ import cats.effect.SyncIO
 
 import data.Queue
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("RemoveQueue concurrent deq and remove")
 @Outcomes(Array(
-  new Outcome(id = Array("List(), Some(z), false"), expect = ACCEPTABLE, desc = "deq wins"),
+  new Outcome(id = Array("List(), Some(z), false"), expect = ACCEPTABLE_INTERESTING, desc = "deq wins"),
   new Outcome(id = Array("List(), None, true"), expect = ACCEPTABLE, desc = "rem wins"),
   new Outcome(id = Array("List(), Some(z), true"), expect = FORBIDDEN, desc = "rem seems to win, but doesn't")
 ))

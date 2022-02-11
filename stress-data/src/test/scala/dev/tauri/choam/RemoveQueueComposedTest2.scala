@@ -24,17 +24,24 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.SyncIO
 
-// @JCStressTest
+@JCStressTest
 @State
-@Description("MichaelScottQueue enq/deq should be composable (concurrent enqueue)")
+@Description("RemoveQueue enq/deq should be composable (concurrent enqueue)")
 @Outcomes(Array(
-  new Outcome(id = Array("List(b, c, d), List(y, a)"), expect = ACCEPTABLE, desc = "Additional enq is first"),
-  new Outcome(id = Array("List(b, c, d), List(a, y)"), expect = ACCEPTABLE_INTERESTING, desc = "Additional enq is last")
+  new Outcome(id = Array("List(b, c, d), List(y, a)"), expect = ACCEPTABLE_INTERESTING, desc = "Additional enq is first"),
+  new Outcome(id = Array("List(b, c, d), List(a, y)"), expect = ACCEPTABLE, desc = "Additional enq is last")
 ))
-class MichaelScottQueueComposedTest2 extends MsQueueStressTestBase {
+class RemoveQueueComposedTest2 extends RemoveQueueStressTestBase {
 
-  private[this] val queue1 =
-    this.newQueue("a", "b", "c", "d")
+  private[this] val queue1 = {
+    val q = this.newQueue("-", "a", "-", "-", "b", "c", "d")
+    (for {
+      _ <- q.remove[SyncIO]("-")
+      _ <- q.remove[SyncIO]("-")
+      _ <- q.remove[SyncIO]("-")
+    } yield ()).unsafeRunSync()
+    q
+  }
 
   private[this] val queue2 =
     this.newQueue[String]()

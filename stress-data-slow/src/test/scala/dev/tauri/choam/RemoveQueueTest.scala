@@ -24,43 +24,51 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.SyncIO
 
-// @JCStressTest
-@State
-@Description("RemoveQueue enq/deq should be composable")
-@Outcomes(Array(
-  new Outcome(id = Array("List(c, d), List(a, b)"), expect = ACCEPTABLE_INTERESTING, desc = "the only valid result")
-))
-class RemoveQueueComposedTest extends RemoveQueueStressTestBase {
+import data.Queue
 
-  private[this] val queue1 = {
-    val q = this.newQueue("-", "a", "-", "-", "b", "c", "d")
+@JCStressTest
+@State
+@Description("RemoveQueue enq/deq should be atomic")
+@Outcomes(Array(
+  new Outcome(id = Array("None, List(x, y)"), expect = ACCEPTABLE_INTERESTING, desc = "deq, enq1, enq2"),
+  new Outcome(id = Array("None, List(y, x)"), expect = ACCEPTABLE_INTERESTING, desc = "deq, enq2, enq1"),
+  new Outcome(id = Array("Some(x), List(y)"), expect = ACCEPTABLE, desc = "enq1, (deq | enq2)"),
+  new Outcome(id = Array("Some(y), List(x)"), expect = ACCEPTABLE, desc = "enq2, (deq | enq1)"),
+))
+class RemoveQueueTest extends RemoveQueueStressTestBase {
+
+  private[this] val queue: Queue.WithRemove[String] = {
+    val q = this.newQueue("-", "-")
     (for {
-      _ <- q.remove[SyncIO]("-")
       _ <- q.remove[SyncIO]("-")
       _ <- q.remove[SyncIO]("-")
     } yield ()).unsafeRunSync()
     q
   }
 
-  private[this] val queue2 =
-    this.newQueue[String]()
+  private[this] val enqueue =
+    queue.enqueue
 
-  private[this] val tfer: Axn[Unit] =
-    queue1.tryDeque.map(_.getOrElse("x")) >>> queue2.enqueue
+  private[this] val tryDeque =
+    queue.tryDeque
 
   @Actor
-  def transfer1(): Unit = {
-    tfer.unsafePerform((), this.impl)
+  def enq1(): Unit = {
+    enqueue.unsafePerform("x", this.impl)
   }
 
   @Actor
-  def transfer2(): Unit = {
-    tfer.unsafePerform((), this.impl)
+  def enq2(): Unit = {
+    enqueue.unsafePerform("y", this.impl)
+  }
+
+  @Actor
+  def deq(r: LL_Result): Unit = {
+    r.r1 = tryDeque.unsafeRun(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r1 = queue1.drainOnce[SyncIO, String].unsafeRunSync()
-    r.r2 = queue2.drainOnce[SyncIO, String].unsafeRunSync()
+    r.r2 = queue.drainOnce[SyncIO, String].unsafeRunSync()
   }
 }

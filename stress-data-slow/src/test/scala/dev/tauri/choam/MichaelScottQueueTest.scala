@@ -20,43 +20,47 @@ package dev.tauri.choam
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LZ_Result
+import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.SyncIO
 
-import data.Queue
-
-// @JCStressTest
+@JCStressTest
 @State
-@Description("RemoveQueue concurrent enq and remove")
+@Description("MichaelScottQueue enq/deq should be atomic")
 @Outcomes(Array(
-  new Outcome(id = Array("List(), true"), expect = ACCEPTABLE, desc = "enq wins"),
-  new Outcome(id = Array("List(x), false"), expect = ACCEPTABLE, desc = "rem wins")
+  new Outcome(id = Array("None, List(x, y)"), expect = ACCEPTABLE, desc = "deq, enq1, enq2"),
+  new Outcome(id = Array("None, List(y, x)"), expect = ACCEPTABLE, desc = "deq, enq2, enq1"),
+  new Outcome(id = Array("Some(x), List(y)"), expect = ACCEPTABLE_INTERESTING, desc = "enq1, (deq | enq2)"),
+  new Outcome(id = Array("Some(y), List(x)"), expect = ACCEPTABLE_INTERESTING, desc = "enq2, (deq | enq1)"),
 ))
-class RemoveQueueRemoveTest2 extends RemoveQueueStressTestBase {
+class MichaelScottQueueTest extends MsQueueStressTestBase {
 
-  private[this] val queue: Queue.WithRemove[String] = {
-    this.newQueue()
-  }
+  private[this] val queue =
+    this.newQueue[String]()
 
   private[this] val enqueue =
     queue.enqueue
 
-  private[this] val remove =
-    queue.remove
+  private[this] val tryDeque =
+    queue.tryDeque
 
   @Actor
-  def enq(): Unit = {
+  def enq1(): Unit = {
     enqueue.unsafePerform("x", this.impl)
   }
 
   @Actor
-  def rem(r: LZ_Result): Unit = {
-    r.r2 = remove.unsafePerform("x", this.impl)
+  def enq2(): Unit = {
+    enqueue.unsafePerform("y", this.impl)
+  }
+
+  @Actor
+  def deq(r: LL_Result): Unit = {
+    r.r1 = tryDeque.unsafeRun(this.impl)
   }
 
   @Arbiter
-  def arbiter(r: LZ_Result): Unit = {
-    r.r1 = queue.drainOnce[SyncIO, String].unsafeRunSync()
+  def arbiter(r: LL_Result): Unit = {
+    r.r2 = queue.drainOnce[SyncIO, String].unsafeRunSync()
   }
 }
