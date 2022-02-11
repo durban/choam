@@ -36,6 +36,10 @@ jobs:
             scala: 2.13.8
         exclude:
           - os: windows-latest
+            java: graal_21.3.0@11
+          - os: windows-latest
+            java: graal_21.3.0@17
+          - os: windows-latest
             java: adopt-openj9@11
           - os: windows-latest
             java: adopt-openj9@17
