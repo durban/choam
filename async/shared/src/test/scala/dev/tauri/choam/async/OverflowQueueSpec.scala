@@ -57,6 +57,9 @@ trait OverflowQueueSpec[F[_]]
 
   def newRingBuffer[A](capacity: Int): F[OverflowQueue[F, A]]
 
+  def newDroppingQueue[A](capacity: Int): F[OverflowQueue[F, A]] =
+    OverflowQueue.droppingQueue(capacity).run[F]
+
   test("RingBuffer property") {
     def checkSize[A](q: OverflowQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
       q.size.flatMap { qs =>
@@ -84,6 +87,41 @@ trait OverflowQueueSpec[F[_]]
             q.enqueue[F](i) *> s.offer(i) *> (
               checkSize(q, s)
             )
+          }
+        }
+      } yield ()
+    }
+  }
+
+  test("Dropping property") {
+    def checkSize[A](q: OverflowQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
+      q.size.flatMap { qs =>
+        s.size.flatMap { ss =>
+          assertEqualsF(qs, ss)
+        }
+      }
+    }
+    PropF.forAllF { (cap: Int, ints: List[Int]) =>
+      val c = min(max(cap.abs, 1), 0xffff)
+      for {
+        q <- newDroppingQueue[Int](capacity = c)
+        s <- CatsQueue.dropping[F, Int](capacity = c)
+        _ <- checkSize(q, s)
+        _ <- ints.traverse_ { i =>
+          if ((i % 4) == 0) {
+            // deq:
+            q.tryDeque.run[F].flatMap { qr =>
+              s.tryTake.flatMap { sr =>
+                assertEqualsF(qr, sr) *> checkSize(q, s)
+              }
+            }
+          } else {
+            // enq:
+            q.tryEnqueue[F](i).flatMap { qr =>
+              s.tryOffer(i).flatMap { sr =>
+                assertEqualsF(qr, sr) *> checkSize(q, s)
+              }
+            }
           }
         }
       } yield ()
@@ -302,6 +340,45 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(cq.take, 4)
       _ <- assertResultF(cq.take, 5)
       _ <- assertResultF(cq.size, 0)
+    } yield ()
+  }
+
+  test("DroppingQueue simple") {
+    for {
+      q <- newDroppingQueue[Int](4)
+      _ <- assertResultF(q.size, 0)
+      _ <- q.enqueue[F](1)
+      _ <- assertResultF(q.size, 1)
+      _ <- (q.enqueue × q.enqueue)[F]((2, 3))
+      _ <- assertResultF(q.size, 3)
+      _ <- assertResultF(q.tryEnqueue[F](4), true)
+      _ <- assertResultF(q.size, 4)
+      _ <- q.enqueue[F](5)
+      _ <- assertResultF(q.size, 4)
+      _ <- assertResultF(q.tryEnqueue[F](5), false)
+      _ <- assertResultF(q.tryDeque.run[F], Some(1))
+      _ <- assertResultF(q.size, 3)
+      _ <- assertResultF(q.tryEnqueue[F](5), true)
+      _ <- assertResultF(q.size, 4)
+      _ <- assertResultF(q.deque, 2)
+      _ <- assertResultF(q.deque, 3)
+      _ <- assertResultF(q.deque, 4)
+      _ <- assertResultF(q.tryDeque.run[F], Some(5))
+      _ <- assertResultF(q.size, 0)
+    } yield ()
+  }
+
+  test("DroppingQueue multiple ops in one Rxn") {
+    for {
+      q <- newDroppingQueue[Int](3)
+      _ <- assertResultF(q.size, 0)
+      rxn = (q.enqueue.provide(1) * q.enqueue.provide(2)) *> (
+        q.tryDeque
+      )
+      deqRes <- rxn.run[F]
+      _ <- assertEqualsF(deqRes, Some(1))
+      _ <- assertResultF(q.deque, 2)
+      _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
   }
 }

@@ -29,6 +29,14 @@ final class AsyncFrom[F[_], A] private (
   waiters: Queue.WithRemove[Promise[F, A]]
 ) {
 
+  /** Partial, retries if no waiters */
+  private[choam] def trySetWaiters: A =#> Unit = {
+    this.waiters.tryDeque.flatMap {
+      case None => Rxn.unsafe.retry
+      case Some(p) => p.complete.void
+    }
+  }
+
   def set: A =#> Unit = {
     this.waiters.tryDeque.flatMap {
       case None => this.syncSet

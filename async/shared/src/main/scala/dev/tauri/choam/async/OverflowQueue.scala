@@ -19,6 +19,7 @@ package dev.tauri.choam
 package async
 
 import cats.effect.kernel.Resource
+import dev.tauri.choam.Axn
 
 abstract class OverflowQueue[F[_], A]
   extends UnboundedQueue.WithSize[F, A] {
@@ -34,6 +35,14 @@ object OverflowQueue {
     }
   }
 
+  def droppingQueue[F[_], A](capacity: Int): Axn[OverflowQueue[F, A]] = {
+    data.DroppingQueue[A](capacity).flatMapF { dq =>
+      AsyncFrom[F, A](syncGet = dq.tryDeque, syncSet = dq.enqueue).map { af =>
+        new DroppingQueue[F, A](dq, af)
+      }
+    }
+  }
+
   private[choam] def lazyRingBuffer[F[_], A](capacity: Int): Axn[OverflowQueue[F, A]] = {
     data.RingBuffer.lazyRingBuffer[A](capacity).flatMapF { rb =>
       makeRingBuffer(rb)
@@ -46,15 +55,13 @@ object OverflowQueue {
     }
   }
 
-  // TODO: def droppingQueue ...
-
   private final class RingBuffer[F[_], A](
     buff: data.RingBuffer[A],
     af: AsyncFrom[F, A],
   ) extends OverflowQueue[F, A] {
 
     final override def size(implicit F: AsyncReactive[F]): F[Int] =
-      F.run(buff.size, ())
+      F.run(buff.size, null : Any)
 
     override def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]] =
       af.getResource
@@ -69,6 +76,33 @@ object OverflowQueue {
       af.syncGet
 
     override def deque[AA >: A](implicit F: AsyncReactive[F]): F[AA] =
+      F.monad.widen(af.get)
+  }
+
+  private final class DroppingQueue[F[_], A](
+    q: data.DroppingQueue[A],
+    af: AsyncFrom[F, A],
+  ) extends OverflowQueue[F, A] {
+
+    final def size(implicit F: AsyncReactive[F]): F[Int] =
+      F.run(q.size, null : Any)
+
+    final def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]] =
+      af.getResource
+
+    final def capacity: Int =
+      q.capacity
+
+    final override def tryEnqueue: Rxn[A, Boolean] =
+      af.trySetWaiters.as(true) + q.tryEnqueue
+
+    final def enqueue: Rxn[A, Unit] =
+      af.set
+
+    final def tryDeque: Axn[Option[A]] =
+      af.syncGet
+
+    final def deque[AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(af.get)
   }
 }
