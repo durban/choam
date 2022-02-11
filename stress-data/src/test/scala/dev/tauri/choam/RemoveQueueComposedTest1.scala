@@ -30,7 +30,7 @@ import cats.effect.SyncIO
 @Outcomes(Array(
   new Outcome(id = Array("List(c, d), List(a, b)"), expect = ACCEPTABLE_INTERESTING, desc = "the only valid result")
 ))
-class RemoveQueueComposedTest extends RemoveQueueStressTestBase {
+class RemoveQueueComposedTest1 extends RemoveQueueStressTestBase {
 
   private[this] val queue1 = {
     val q = this.newQueue("-", "a", "-", "-", "b", "c", "d")

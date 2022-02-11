@@ -30,7 +30,7 @@ import cats.effect.SyncIO
 @Outcomes(Array(
   new Outcome(id = Array("List(c, d), List(a, b)"), expect = ACCEPTABLE_INTERESTING, desc = "the only valid result")
 ))
-class MichaelScottQueueComposedTest extends MsQueueStressTestBase {
+class MichaelScottQueueComposedTest1 extends MsQueueStressTestBase {
 
   private[this] val queue1 =
     this.newQueue("a", "b", "c", "d")
