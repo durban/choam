@@ -462,7 +462,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("A StatMap must not prevent an Exchanger from being garbage collected") {
-    val tsk = for {
+    val tsk0 = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       f1 <- startExchange(ex, "foo")
       f2 <- ex.dual.exchange.apply[F](42).start
@@ -471,7 +471,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(f2.joinWithNever, "foo")
     } yield (new WeakReference(ex), r1._2)
 
-    tsk.flatMap { wc =>
+    val tsk1: F[Unit] = tsk0.flatMap { wc =>
       val (weakref, stats) = wc
       stats match {
         case Some(statMap) =>
@@ -490,6 +490,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
           F.unit
       }
     }
+
+    this.absolutelyUnsafeRunSync(tsk1)
   }
 
   test("Merging of non-disjoint logs must be detected") {
