@@ -16,13 +16,14 @@
  */
 
 package dev.tauri.choam
+package internal
 
 import java.util.concurrent.ThreadLocalRandom
 
 /**
  * Utilities for exponential backoff.
  */
-object Backoff extends BackoffPlatform {
+private[choam] object Backoff extends BackoffPlatform {
 
   /**
    * Truncated exponential backoff.

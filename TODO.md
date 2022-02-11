@@ -37,8 +37,6 @@
     - `Exchanger`
     - replacing descriptors (weakref?)
     - Other things (Promise? delayComputed?)
-    - Separate tests to `quick` and `slow`
-    - Run `quick` tests in CI
   - LawsSpec:
     - improve generated `Rxn`s, check if they make sense
     - check if `testingEqRxn` makes sense

@@ -27,7 +27,7 @@ import cats.effect.kernel.Unique
 import cats.effect.std.{ UUIDGen, Random }
 
 import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor, HalfWordDescriptor, EmcasStatus }
-import internal.{ ByteStack, ObjStack }
+import internal.{ ByteStack, ObjStack, Backoff }
 
 /**
  * An effectful function from `A` to `B`; when executed,

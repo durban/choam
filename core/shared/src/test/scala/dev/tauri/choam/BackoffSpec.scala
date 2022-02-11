@@ -19,6 +19,8 @@ package dev.tauri.choam
 
 import java.util.concurrent.ThreadLocalRandom
 
+import internal.Backoff
+
 class BackoffSpec extends BaseSpecA {
 
   test("Backoff.backoffConst") {
