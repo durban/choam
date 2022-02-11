@@ -22,13 +22,20 @@ import cats.syntax.all._
 
 import ArrayQueue.{ empty, isEmpty }
 
-/** Array-based circular buffer */
+/**
+ * Array-based circular buffer
+ *
+ * If it's full, the oldest item
+ * will be overwritten by the new
+ * incoming item.
+ */
 private[choam] final class RingBuffer[A](
   capacity: Int,
   arr: Ref.Array[A],
   head: Ref[Int], // index for next element to deque
   tail: Ref[Int], // index for next element to enqueue
-) extends ArrayQueue[A](capacity, arr, head, tail) with Queue[A] {
+) extends ArrayQueue[A](capacity, arr, head, tail)
+  with Queue[A] {
 
   require(capacity === arr.size)
 

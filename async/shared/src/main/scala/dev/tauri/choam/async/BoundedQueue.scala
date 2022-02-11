@@ -20,8 +20,7 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import data.Queue
-import Queue.ArrayQueueSourceSink
+import data.{ Queue, QueueSourceSink, ArrayQueue }
 
 abstract class BoundedQueue[F[_], A]
   extends AsyncQueueSource[F, A]
@@ -49,7 +48,7 @@ object BoundedQueue {
 
   def array[F[_], A](bound: Int): Axn[BoundedQueue[F, A]] = {
     require(bound > 0)
-    ArrayQueueSourceSink[A](bound).flatMapF { q =>
+    Queue.boundedArray[A](bound).flatMapF { q =>
       (Queue.withRemove[Promise[F, A]] * data.Queue.withRemove[(A, Promise[F, Unit])]).map {
         case (getters, setters) =>
           new ArrayBoundedQueue[F, A](bound, q, getters, setters)
@@ -112,7 +111,7 @@ object BoundedQueue {
 
   private final class ArrayBoundedQueue[F[_], A](
     bound: Int,
-    q: ArrayQueueSourceSink[A],
+    q: ArrayQueue[A] with QueueSourceSink[A],
     getters: Queue.WithRemove[Promise[F, A]],
     setters: Queue.WithRemove[(A, Promise[F, Unit])],
   ) extends BoundedQueueCommon[F, A](bound, getters, setters) {

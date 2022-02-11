@@ -67,10 +67,14 @@ object Queue {
     MichaelScottQueue[A]
 
   def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
-    ArrayQueueSourceSink[A](bound = bound)
+    boundedArray[A](bound)
 
-  def dropping[A](@unused capacity: Int): Axn[Queue[A]] =
-    sys.error("TODO")
+  // TODO: this return type is not very good:
+  private[choam] def boundedArray[A](bound: Int): Axn[ArrayQueue[A] with QueueSourceSink[A]] =
+    DroppingQueue.apply[A](bound)
+
+  def dropping[A](capacity: Int): Axn[Queue[A]] =
+    DroppingQueue.apply[A](capacity)
 
   def ringBuffer[A](capacity: Int): Axn[Queue[A]] =
     RingBuffer.apply[A](capacity)
@@ -105,28 +109,6 @@ object Queue {
 
           final override def size: Axn[Int] =
             s.get
-        }
-      }
-    }
-  }
-
-  /** Bounded array-based queue */
-  private[choam] final class ArrayQueueSourceSink[A](
-    capacity: Int,
-    arr: Ref.Array[A],
-    head: Ref[Int], // index for next element to deque
-    tail: Ref[Int], // index for next element to enqueue
-  ) extends ArrayQueue[A](capacity, arr, head, tail)
-    with QueueSourceSink[A] {
-  }
-
-  private[choam] final object ArrayQueueSourceSink {
-    def apply[A](bound: Int): Axn[ArrayQueueSourceSink[A]] = {
-      require(bound > 0)
-      Ref.array(size = bound, initial = ArrayQueue.empty[A]).flatMapF { arr =>
-        (Ref(0) * Ref(0)).map {
-          case (h, t) =>
-            new ArrayQueueSourceSink(bound, arr, h, t)
         }
       }
     }
