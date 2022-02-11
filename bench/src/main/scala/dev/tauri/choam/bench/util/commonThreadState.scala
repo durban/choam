@@ -19,6 +19,8 @@ package dev.tauri.choam
 package bench
 package util
 
+import java.lang.Integer.remainderUnsigned
+
 import org.openjdk.jmh.annotations.{ State, Param, Setup, Scope }
 
 import cats.effect.IO
@@ -38,7 +40,7 @@ class RandomState {
     rnd.nextInt()
 
   def nextIntBounded(bound: Int): Int =
-    (rnd.nextInt() % bound).abs
+    remainderUnsigned(rnd.nextInt(), bound)
 
   def nextLong(): Long =
     rnd.nextLong()

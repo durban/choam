@@ -18,10 +18,11 @@
 package dev.tauri.choam
 package bench
 
+import java.util.concurrent.ThreadLocalRandom
+
 import cats.effect.std.Random
 
 import org.openjdk.jmh.annotations._
-import org.openjdk.jmh.infra.Blackhole
 
 import util._
 
@@ -30,33 +31,30 @@ import util._
 @BenchmarkMode(Array(Mode.AverageTime))
 class RandomBench {
 
-  // @Benchmark
-  // def threadLocalContext(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-  //   bh.consume(
-  //     s.rndThreadLocalContext.nextInt.unsafePerformInternal(null, k.kcasCtx)
-  //   )
-  // }
-
   @Benchmark
-  def threadLocalContextBetweenInt(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-    bh.consume(
-      s.rndThreadLocalContext.betweenInt(0, 8388608).unsafePerformInternal(null, k.kcasCtx)
-    )
+  def baseline(s: RandomBench.St, k: KCASImplState): Int = {
+    s.baseline(s.bound(k)).unsafePerformInternal(null, k.kcasCtx)
   }
 
-  // @Benchmark
-  // def secureRandom(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-  //   bh.consume(
-  //     s.rndSecure.nextInt.unsafePerformInternal(null, k.kcasCtx)
-  //   )
-  // }
+  @Benchmark
+  def betweenIntThreadLocal(s: RandomBench.St, k: KCASImplState): Int = {
+    s.rndThreadLocal.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.kcasCtx)
+  }
 
-  // @Benchmark
-  // def baseline(s: RandomBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-  //   bh.consume(
-  //     s.baseline.unsafePerformInternal(null, k.kcasCtx)
-  //   )
-  // }
+  @Benchmark
+  def betweenIntDeterministic(s: RandomBench.St, k: KCASImplState): Int = {
+    s.rndDeterministic.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.kcasCtx)
+  }
+
+  @Benchmark
+  def betweenIntMinimal(s: RandomBench.St, k: KCASImplState): Int = {
+    s.rndMinimal.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.kcasCtx)
+  }
+
+  @Benchmark
+  def betweenIntSecure(s: RandomBench.St, k: KCASImplState): Int = {
+    s.rndSecure.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.kcasCtx)
+  }
 }
 
 object RandomBench {
@@ -65,10 +63,16 @@ object RandomBench {
 
   @State(Scope.Benchmark)
   class St {
-    val baseline: Axn[Int] =
-      Rxn.pure(42)
-    val rndThreadLocalContext: Random[Axn] =
+    def bound(k: RandomState): Int =
+      k.nextIntBounded(1024*1024) + 1
+    def baseline(i: Int): Axn[Int] =
+      Rxn.pure(i)
+    val rndThreadLocal: Random[Axn] =
       Rxn.fastRandom.unsafeRun(mcas.MCAS.NullMcas)
+    val rndDeterministic: Random[Axn] =
+      Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.MCAS.NullMcas)
+    val rndMinimal: Random[Axn] =
+      Rxn.minimalRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.MCAS.NullMcas)
     val rndSecure: Random[Axn] =
       Rxn.secureRandom.unsafeRun(mcas.MCAS.NullMcas)
   }

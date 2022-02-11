@@ -286,6 +286,9 @@ object Rxn extends RxnInstances0 {
   final def deterministicRandom(initialSeed: Long): Axn[random.SplittableRandom[Axn]] =
     random.DeterministicRandom.apply(initialSeed)
 
+  private[choam] def minimalRandom(initialSeed: Long): Axn[Random[Axn]] =
+    unsafe.delay { _ => random.MinimalRandom.unsafe(initialSeed) }
+
   // TODO: maybe move this to `Ref`?
   final def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
     ra.get * rb.get
