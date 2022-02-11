@@ -21,11 +21,11 @@ package discipline
 
 import cats.implicits._
 import cats.kernel.laws.discipline.{ SemigroupTests, MonoidTests, OrderTests, HashTests }
-import cats.laws.discipline.DeferTests
+import cats.laws.discipline.{ ArrowChoiceTests, DeferTests, MonadTests, MonoidKTests, AlignTests }
 import cats.effect.kernel.testkit.TestContext
-import cats.effect.laws.UniqueTests
+import cats.effect.laws.{ UniqueTests, ClockTests }
 import cats.effect.{ IO, SyncIO }
-import cats.laws.discipline.{ ArrowChoiceTests, MonadTests, MonoidKTests, AlignTests }
+
 import cats.mtl.laws.discipline.LocalTests
 
 import org.scalacheck.Prop
@@ -67,6 +67,9 @@ trait LawsSpec
   checkAll("Monoid[Rxn]", MonoidTests[Rxn[String, Int]](Rxn.monoidInstance).monoid)
   checkAll("Defer[Rxn]", DeferTests[Rxn[String, *]].defer[Int])
   checkAll("Align[Rxn]", AlignTests[Rxn[String, *]].align[Int, Float, Double, Long])
+  checkAll("Clock[Rxn]", ClockTests[Rxn[String, *]].clock { (act: Rxn[String, Boolean]) =>
+    Prop(act.unsafePerform(null : String, self.kcasImpl))
+  })
 
   checkAll("Order[Ref[Int]]", OrderTests[Ref[Int]].order)
   checkAll("Hash[Ref[Int]]", HashTests[Ref[Int]].hash)

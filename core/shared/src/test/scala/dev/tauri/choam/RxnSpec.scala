@@ -989,6 +989,14 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("Clock instance") {
+    val inst = cats.effect.kernel.Clock[Axn]
+    for {
+      t1t2 <- (inst.monotonic * inst.monotonic).run[F]
+      _ <- assertF(t1t2._1 <= t1t2._2)
+    } yield ()
+  }
+
   test("Tuple2 syntax") {
     for {
       r1 <- Ref("a").run[F]

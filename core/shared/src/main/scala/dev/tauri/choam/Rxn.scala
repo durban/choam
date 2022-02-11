@@ -19,11 +19,13 @@ package dev.tauri.choam
 
 import java.util.{ Arrays, UUID }
 
+import scala.concurrent.duration._
+
 import cats.{ Monad, Functor, Applicative, MonoidK, Monoid, Semigroup, Defer, Show, Align }
 import cats.arrow.ArrowChoice
 import cats.data.Ior
 import cats.mtl.Local
-import cats.effect.kernel.Unique
+import cats.effect.kernel.{ Unique, Clock }
 import cats.effect.std.{ UUIDGen, Random }
 
 import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor, HalfWordDescriptor, EmcasStatus }
@@ -1278,10 +1280,21 @@ private[choam] sealed abstract class RxnInstances8 extends RxnInstances9 { self:
   }
 }
 
-private[choam] sealed abstract class RxnInstances9 extends RxnSyntax0 { self: Rxn.type =>
+private[choam] sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
   implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {
     final override def randomUUID: Rxn[X, UUID] =
       self.rxnRandomUUID[X]
+  }
+}
+
+private[choam] sealed abstract class RxnInstances10 extends RxnSyntax0 { self: Rxn.type =>
+  implicit final def clockInstance[X]: Clock[Rxn[X, *]] = new Clock[Rxn[X, *]] {
+    final override def applicative: Applicative[Rxn[X, *]] =
+      self.monadInstance[X]
+    final override def monotonic: Rxn[X, FiniteDuration] =
+      self.unsafe.delay { _ => System.nanoTime().nanoseconds }
+    final override def realTime: Rxn[X, FiniteDuration] =
+      self.unsafe.delay { _ => System.currentTimeMillis().milliseconds }
   }
 }
 
