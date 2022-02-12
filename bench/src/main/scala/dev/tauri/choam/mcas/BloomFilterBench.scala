@@ -53,7 +53,7 @@ private[mcas] class BloomFilterBench {
       val idx = rnd.nextIntBounded(DummySize)
       s.dummyKeys(idx)
     }
-    bh.consume(s.map.contains(key))
+    bh.consume(s.map.containsUnopt(key))
   }
 
   @Benchmark

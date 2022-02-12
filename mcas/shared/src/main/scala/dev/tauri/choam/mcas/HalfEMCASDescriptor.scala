@@ -97,7 +97,7 @@ final class HalfEMCASDescriptor private (
     // Note, that it is important, that we don't allow
     // adding an already included ref; the Exchanger
     // depends on this behavior:
-    require(!this.map.contains(d.address))
+    require(!this.map.containsOpt(d.address))
     val newMap = this.map.updated(d.address, d)
     new HalfEMCASDescriptor(
       newMap,
@@ -111,7 +111,7 @@ final class HalfEMCASDescriptor private (
   private[choam] final def overwrite[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
     require(desc.version <= this.validTs)
     val d = desc.cast[Any]
-    require(this.map.contains(d.address))
+    require(this.map.containsOpt(d.address))
     val newMap = this.map.updated(d.address, d)
     new HalfEMCASDescriptor(
       newMap,

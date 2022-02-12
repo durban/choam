@@ -21,19 +21,17 @@ package mcas
 import scala.collection.immutable.TreeMap
 import scala.util.hashing.MurmurHash3
 
-// TODO: We could do fancy things with Bloom filters;
-// TODO: it's unclear if it's worth it. (There may be
-// TODO: also a clever way of doing fast detection of
-// TODO: read-only status, which would help with
-// TODO: `Rxn`s which "become" read-only.)
+// TODO: Could we use a Bloom filter for fast detection
+// TODO: of read-only status (which could help with
+// TODO: `Rxn`s which "become" read-only)?
 
 private abstract class LogMap {
   def size: Int
   def valuesIterator: Iterator[HalfWordDescriptor[_]]
   def nonEmpty: Boolean
-  def contains[A](ref: MemoryLocation[A]): Boolean
-  def containsOpt[A](ref: MemoryLocation[A]): Boolean =
-    this.contains(ref)
+  // def contains[A](ref: MemoryLocation[A]): Boolean
+  def containsUnopt[A](ref: MemoryLocation[A]): Boolean
+  def containsOpt[A](ref: MemoryLocation[A]): Boolean
   def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
   def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]): HalfWordDescriptor[A]
   override def equals(that: Any): Boolean
@@ -57,8 +55,11 @@ private object LogMap {
     final override def nonEmpty =
       false
 
-    final override def contains[A](ref: MemoryLocation[A]) =
+    final override def containsOpt[A](ref: MemoryLocation[A]) =
       false
+
+    final override def containsUnopt[A](ref: MemoryLocation[A]) =
+      containsOpt(ref)
 
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap =
       new LogMap1(v)
@@ -85,8 +86,11 @@ private object LogMap {
     final override def nonEmpty =
       true
 
-    final override def contains[A](ref: MemoryLocation[A]) =
+    final override def containsOpt[A](ref: MemoryLocation[A]) =
       (ref eq v1.address)
+
+    final override def containsUnopt[A](ref: MemoryLocation[A]) =
+      containsOpt(ref)
 
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
       require(k eq v.address)
@@ -144,14 +148,14 @@ private object LogMap {
     final override def nonEmpty =
       true
 
-    final override def contains[A](ref: MemoryLocation[A]) =
+    final override def containsUnopt[A](ref: MemoryLocation[A]) =
       treeMap.contains(ref.cast[Any])
 
     final override def containsOpt[A](ref: MemoryLocation[A]) = {
       if (BloomFilter.definitelyNotContains(bloomFilterLeft, bloomFilterRight, ref)) {
         false
       } else {
-        this.contains(ref)
+        this.containsUnopt(ref)
       }
     }
 
@@ -163,9 +167,13 @@ private object LogMap {
       )
     }
 
-    // TODO: could use bloom filter
-    final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
-      treeMap.getOrElse(k.cast[Any], default).asInstanceOf[HalfWordDescriptor[A]]
+    final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) = {
+      if (BloomFilter.definitelyNotContains(bloomFilterLeft, bloomFilterRight, k)) {
+        default
+      } else {
+        treeMap.getOrElse(k.cast[Any], default).asInstanceOf[HalfWordDescriptor[A]]
+      }
+    }
 
     final override def equals(that: Any): Boolean = that match {
       case that: LogMapTree =>
