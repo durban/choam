@@ -26,7 +26,7 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 @State
 @Description("Can a running zombie Rxn see inconsistent values?")
 @Outcomes(Array(
-  new Outcome(id = Array("a, b, -"), expect = ACCEPTABLE, desc = "No inconsistency observed"),
+  new Outcome(id = Array("a, b, -"), expect = ACCEPTABLE_INTERESTING, desc = "No inconsistency observed"),
   new Outcome(id = Array("a, b, a"), expect = FORBIDDEN, desc = "Inconsistency observed"),
 ))
 class ZombieTestSwap extends StressTestBase {

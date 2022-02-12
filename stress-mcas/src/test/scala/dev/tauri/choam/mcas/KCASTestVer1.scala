@@ -28,7 +28,7 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 @Description("k-CAS should be atomic (with versions, from initial)")
 @Outcomes(Array(
   new Outcome(id = Array("true, false, x"), expect = ACCEPTABLE_INTERESTING, desc = "writer1 succeeded"),
-  new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE_INTERESTING, desc = "writer2 succeeded")
+  new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE_INTERESTING, desc = "writer2 succeeded"),
 ))
 class KCASTestVer1 extends StressTestBase {
 

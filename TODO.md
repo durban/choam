@@ -93,6 +93,7 @@
     - other special cases:
       - `UUIDGen`
       - `Unique`
+      - `Clock`
       - `cats.effect.std.Random`
   - Maybe rename `Ref`?
     - Collision with `cats.effect.kernel.Ref`
@@ -115,9 +116,7 @@
   - `stack.pop`, if empty, retries forever (unsafe, because non-lock-free)
   - `exchanger.exchange`, if no partner found, retries forever (also unsafe)
   - each can be made safe by `.?` (will only try once)
-  - however, composing the two is also an option (elimination stack):
-    - `(stack.pop + exchanger.exchange).?` is safe, but built from unsafe parts
-    - `(pop.? + exchange.?)` is safe, built from safe parts
+  - however, composing the two is also an option (elimination stack)
   - Can we have an API for composing unsafe parts into something which is safe?
     - e.g., `PartialRxn[A, B]`
     - `.?` would make a (safe) `Rxn` from it

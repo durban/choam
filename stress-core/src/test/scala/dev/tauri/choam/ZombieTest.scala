@@ -27,7 +27,7 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 @Description("Can a running zombie Rxn see inconsistent values?")
 @Outcomes(Array(
   new Outcome(id = Array("(a,a), (b,b), -"), expect = ACCEPTABLE, desc = "Read commits old values"),
-  new Outcome(id = Array("(b,b), (b,b), -"), expect = ACCEPTABLE, desc = "Read commits new values"),
+  new Outcome(id = Array("(b,b), (b,b), -"), expect = ACCEPTABLE_INTERESTING, desc = "Read commits new values"),
   new Outcome(id = Array("(a,a), (b,b), (a,b)"), expect = FORBIDDEN, desc = "Read cs. old values, but a zombie sees inconsistent"),
   new Outcome(id = Array("(a,a), (b,b), (b,a)"), expect = FORBIDDEN, desc = "Read cs. old values, but a zombie sees inconsistent"),
   new Outcome(id = Array("(b,b), (b,b), (b,a)"), expect = FORBIDDEN, desc = "Read cs. new values, but a zombie sees inconsistent"),
