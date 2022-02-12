@@ -43,12 +43,14 @@ final class LogMapSpec extends ScalaCheckSuite {
       for (ref <- refs) {
         val hwd = HalfWordDescriptor(ref, "x", "y", 0L)
         assert(!lm.contains(ref))
+        assert(!lm.containsOpt(ref))
         assertEquals(lm.getOrElse(ref, null), null)
         lm = lm.updated(ref, hwd)
         tm = tm.updated(ref, hwd)
         assertEquals(lm.size, tm.size)
         for (h <- tm.valuesIterator) {
           assert(lm.contains(h.address))
+          assert(lm.containsOpt(h.address))
           assertEquals(lm.getOrElse(h.address, null), h)
         }
       }
@@ -73,6 +75,8 @@ final class LogMapSpec extends ScalaCheckSuite {
       val shuffled = rng.shuffle(refs)
       for (ref <- shuffled) {
         val newHwd = HalfWordDescriptor(ref, "p", "q", Version.Start)
+        assert(lm.contains(ref))
+        assert(lm.containsOpt(ref))
         val oldHwd = lm.getOrElse(ref, null)
         assert(oldHwd ne null)
         assertNotEquals(oldHwd, newHwd)
@@ -83,6 +87,7 @@ final class LogMapSpec extends ScalaCheckSuite {
         assertEquals(lm.size, tm.size)
         for (h <- tm.valuesIterator) {
           assert(lm.contains(h.address))
+          assert(lm.containsOpt(h.address))
           assertEquals(lm.getOrElse(h.address, null), h)
         }
       }

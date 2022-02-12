@@ -32,6 +32,8 @@ private abstract class LogMap {
   def valuesIterator: Iterator[HalfWordDescriptor[_]]
   def nonEmpty: Boolean
   def contains[A](ref: MemoryLocation[A]): Boolean
+  def containsOpt[A](ref: MemoryLocation[A]): Boolean =
+    this.contains(ref)
   def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
   def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]): HalfWordDescriptor[A]
   override def equals(that: Any): Boolean
@@ -110,20 +112,27 @@ private object LogMap {
   }
 
   /** Invariant: `treeMap` has more than 1 items */
-  private final class LogMapTree(private val treeMap: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]])
-    extends LogMap {
+  private final class LogMapTree(
+    private val treeMap: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
+    private[this] val bloomFilterLeft: Long,
+    private[this] val bloomFilterRight: Long,
+  ) extends LogMap {
 
     require(treeMap.size > 1)
 
     def this(v1: HalfWordDescriptor[Any], v2: HalfWordDescriptor[Any]) = {
-      this({
-        val b = TreeMap.newBuilder[MemoryLocation[Any], HalfWordDescriptor[Any]](
-          MemoryLocation.memoryLocationOrdering
-        )
-        b += ((v1.address, v1))
-        b += ((v2.address, v2))
-        b.result()
-      })
+      this(
+        {
+          val b = TreeMap.newBuilder[MemoryLocation[Any], HalfWordDescriptor[Any]](
+            MemoryLocation.memoryLocationOrdering
+          )
+          b += ((v1.address, v1))
+          b += ((v2.address, v2))
+          b.result()
+        },
+        BloomFilter.insertLeft(BloomFilter.insertLeft(0L, v1.address), v2.address),
+        BloomFilter.insertRight(BloomFilter.insertRight(0L, v1.address), v2.address),
+      )
     }
 
     final override def size =
@@ -138,20 +147,39 @@ private object LogMap {
     final override def contains[A](ref: MemoryLocation[A]) =
       treeMap.contains(ref.cast[Any])
 
-    final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap =
-      new LogMapTree(treeMap.updated(k.cast[Any], v.cast[Any]))
+    final override def containsOpt[A](ref: MemoryLocation[A]) = {
+      if (BloomFilter.definitelyNotContains(bloomFilterLeft, bloomFilterRight, ref)) {
+        false
+      } else {
+        this.contains(ref)
+      }
+    }
 
+    final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
+      new LogMapTree(
+        treeMap.updated(k.cast[Any], v.cast[Any]),
+        BloomFilter.insertLeft(bloomFilterLeft, k),
+        BloomFilter.insertRight(bloomFilterRight, k)
+      )
+    }
+
+    // TODO: could use bloom filter
     final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
       treeMap.getOrElse(k.cast[Any], default).asInstanceOf[HalfWordDescriptor[A]]
 
     final override def equals(that: Any): Boolean = that match {
       case that: LogMapTree =>
+        // Note: no need to compare the Bloom filter,
+        // as it is a function of `treeMap`.
         this.treeMap.equals(that.treeMap)
       case _ =>
         false
     }
 
-    final override def hashCode: Int =
+    final override def hashCode: Int = {
+      // Note: no need to hash the Bloom filter,
+      // as it is a function of `treeMap`.
       treeMap.##
+    }
   }
 }
