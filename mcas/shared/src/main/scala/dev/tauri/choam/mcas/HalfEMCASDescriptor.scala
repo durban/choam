@@ -43,13 +43,13 @@ final class HalfEMCASDescriptor private (
       val underlying = this.map.valuesIterator
       val vc = this.versionCas
       new AbstractIterator[HalfWordDescriptor[_]] {
-        private[this] var done: Boolean = false
+        private[this] var vcDone: Boolean = false
         final override def hasNext: Boolean = {
-          underlying.hasNext || (!done)
+          (!vcDone) || underlying.hasNext
         }
         final override def next(): HalfWordDescriptor[_] = {
-          if (!done) {
-            done = true
+          if (!vcDone) {
+            vcDone = true
             vc
           } else if (underlying.hasNext) {
             underlying.next()

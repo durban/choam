@@ -344,7 +344,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val ver = ctx.readVersion(r2)
     // the ongoing op should fail:
     val res = ctx.tryPerform(d4)
-    assertEquals(res, ver)//EmcasStatus.FailedVal)
+    assertEquals(res, ver)
     assertSameInstance(ctx.readDirect(r1), "a")
     assertSameInstance(ctx.readDirect(r2), "x")
   }
@@ -528,7 +528,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     // now the value is the same, but version isn't:
     assertSameInstance(ctx.readDirect(ref), "B")
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv(("X")))
-    assertEquals(ctx.tryPerform(d2), ver)//EmcasStatus.FailedVal)
+    assertEquals(ctx.tryPerform(d2), ver)
     assertEquals(ctx.readVersion(ref), ver)
   }
 }

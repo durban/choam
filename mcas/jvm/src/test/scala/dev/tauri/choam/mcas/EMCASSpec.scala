@@ -590,7 +590,7 @@ class EMCASSpec extends BaseSpecA {
     // T1 continues:
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv("C"))
     val result = ctx.tryPerform(d2)
-    assertEquals(result, ver)//EmcasStatus.FailedVal)
+    assertEquals(result, ver)
     val ver2 = ctx.readVersion(ref)
     // version mustn't decrease:
     assert(ver2 >= ver, s"${ver2} < ${ver}")
