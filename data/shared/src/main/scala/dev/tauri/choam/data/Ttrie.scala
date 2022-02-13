@@ -27,6 +27,8 @@ import cats.kernel.Hash
 // TODO: This can use a lot of memory,
 // TODO: and possibly can be used to do
 // TODO: some kind of DoS attack (section 3.3).
+// TODO: Even `remove` and `del` can create
+// TODO: new refs in the tree!
 
 // TODO: There is no "real" remove operation;
 // TODO: any removal currently leaves a tombstone
@@ -85,8 +87,18 @@ private final class Ttrie[K, V](
     }
   }
 
-  final def replace: Rxn[(K, V, V), Boolean] =
-    sys.error("Ttrie#replace") // TODO
+  final def replace: Rxn[(K, V, V), Boolean] = {
+    getRef.first[(V, V)].flatMapF {
+      case (ref, (expVal, newVal)) =>
+        ref.modify {
+          case None =>
+            (None, false)
+          case s @ Some(currVal) =>
+            if (equ(currVal, expVal)) (Some(newVal), true)
+            else (s, false)
+        }
+    }.contramap(kvv => (kvv._1, (kvv._2, kvv._3)))
+  }
 
   final def get: K =#> Option[V] =
     getRef.flatMapF(_.get)
@@ -94,8 +106,17 @@ private final class Ttrie[K, V](
   final def del: Rxn[K, Boolean] =
     getRef.flatMapF(_.modify(ov => (None, ov.isDefined)))
 
-  final def remove: Rxn[(K, V), Boolean] =
-    sys.error("Ttrie#remove") // TODO
+  final def remove: Rxn[(K, V), Boolean] = {
+    getRef.first[V].flatMapF {
+      case (ref, v) =>
+        ref.modify {
+          case None => (None, false)
+          case s @ Some(currVal) =>
+            if (equ(currVal, v)) (None, true)
+            else (s, false)
+        }
+    }
+  }
 
   final def values: Axn[Vector[V]] = {
     Axn.unsafe.delay {

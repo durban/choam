@@ -29,3 +29,13 @@ final class MapSpec_Simple_EMCAS_SyncIO
   extends BaseSpecSyncIO
   with SpecEMCAS
   with MapSpecSimple[SyncIO]
+
+final class MapSpec_Ttrie_SpinLockMCAS_SyncIO
+  extends BaseSpecSyncIO
+  with SpecSpinLockMCAS
+  with MapSpecTtrie[SyncIO]
+
+final class MapSpec_Ttrie_EMCAS_SyncIO
+  extends BaseSpecSyncIO
+  with SpecEMCAS
+  with MapSpecTtrie[SyncIO]
