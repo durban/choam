@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package data
 
+import cats.kernel.Hash
 import cats.effect.SyncIO
 
 final class MapSpec_Simple_SpinLockMCAS_SyncIO
@@ -39,3 +40,16 @@ final class MapSpec_Ttrie_EMCAS_SyncIO
   extends BaseSpecSyncIO
   with SpecEMCAS
   with MapSpecTtrie[SyncIO]
+
+final class MapSpec_Ttrie_ThreadConfinedMCAS_SyncIO
+  extends BaseSpecSyncIO
+  with SpecThreadConfinedMCAS
+  with MapSpecTtrie[SyncIO]
+
+trait MapSpecTtrie[F[_]] extends MapSpec[F] { this: KCASImplSpec =>
+
+  override type MyMap[K, V] = Map[K, V]
+
+  def mkEmptyMap[K: Hash, V]: F[Map[K, V]] =
+    Map.ttrie[K, V].run[F]
+}

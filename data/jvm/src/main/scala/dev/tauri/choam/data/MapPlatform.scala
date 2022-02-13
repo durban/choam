@@ -24,6 +24,9 @@ import org.organicdesign.fp.collections.{ PersistentHashMap, Equator }
 
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
+  private[choam] final def ttrie[K: Hash, V]: Axn[Map[K, V]] =
+    Ttrie[K, V]
+
   final override def simple[K: Hash, V]: Axn[Extra[K, V]] = Ref[PersistentHashMap[K, V]](
     emptyPhm[K, V]
   ).map { (repr: Ref[PersistentHashMap[K, V]]) =>

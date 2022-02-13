@@ -26,19 +26,6 @@ final class MapSpec_Simple_ThreadConfinedMCAS_SyncIO
   with SpecThreadConfinedMCAS
   with MapSpecSimple[SyncIO]
 
-final class MapSpec_Ttrie_ThreadConfinedMCAS_SyncIO
-  extends BaseSpecSyncIO
-  with SpecThreadConfinedMCAS
-  with MapSpecTtrie[SyncIO]
-
-trait MapSpecTtrie[F[_]] extends MapSpec[F] { this: KCASImplSpec =>
-
-  override type MyMap[K, V] = Map[K, V]
-
-  def mkEmptyMap[K: Hash, V]: F[Map[K, V]] =
-    Map.ttrie[K, V].run[F]
-}
-
 trait MapSpecSimple[F[_]] extends MapSpec[F] { this: KCASImplSpec =>
 
   override type MyMap[K, V] = Map.Extra[K, V]
