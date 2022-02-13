@@ -377,8 +377,17 @@ object Rxn extends RxnInstances0 {
 
   final object unsafe {
 
+    // TODO: is this useful?
+    sealed trait Ticket[A] {
+      def peek: A
+      def set(nv: A): Axn[Unit]
+    }
+
     def directRead[A](r: Ref[A]): Axn[A] =
       new DirectRead[A](r.loc)
+
+    def ticketRead[A](r: Ref[A]): Axn[unsafe.Ticket[A]] =
+      sys.error("TODO")
 
     def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
       new Cas[A](r.loc, ov, nv)
