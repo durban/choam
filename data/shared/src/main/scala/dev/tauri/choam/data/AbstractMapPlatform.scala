@@ -23,4 +23,7 @@ import cats.kernel.Hash
 private[choam] abstract class AbstractMapPlatform {
 
   def simple[K: Hash, V]: Axn[Map[K, V]]
+
+  private[choam] final def ttrie[K: Hash, V]: Axn[Map[K, V]] =
+    Ttrie[K, V]
 }
