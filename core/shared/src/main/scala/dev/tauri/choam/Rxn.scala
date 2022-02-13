@@ -377,17 +377,23 @@ object Rxn extends RxnInstances0 {
 
   final object unsafe {
 
-    // TODO: is this useful?
-    sealed trait Ticket[A] {
-      def peek: A
-      def set(nv: A): Axn[Unit]
+    sealed abstract class Ticket[A] {
+      def unsafePeek: A
+      def unsafeSet(nv: A): Axn[Unit]
+    }
+
+    private[Rxn] final class TicketImpl[A](hwd: HalfWordDescriptor[A]) extends Ticket[A] {
+      final def unsafePeek: A =
+        hwd.nv
+      final def unsafeSet(nv: A): Axn[Unit] =
+        new TicketWrite(hwd.withNv(nv))
     }
 
     def directRead[A](r: Ref[A]): Axn[A] =
       new DirectRead[A](r.loc)
 
     def ticketRead[A](r: Ref[A]): Axn[unsafe.Ticket[A]] =
-      sys.error("TODO")
+      new TicketRead[A](r.loc)
 
     def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
       new Cas[A](r.loc, ov, nv)
@@ -553,6 +559,16 @@ object Rxn extends RxnInstances0 {
   private final class Read[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
     private[choam] final override def tag = 19
     final override def toString: String = s"Read(${ref})"
+  }
+
+  private final class TicketRead[A](val ref: MemoryLocation[A]) extends Rxn[Any, unsafe.Ticket[A]] {
+    private[choam] final override def tag = 20
+    final override def toString: String = s"TicketRead(${ref})"
+  }
+
+  private final class TicketWrite[A](val hwd: HalfWordDescriptor[A]) extends Rxn[Any, Unit] {
+    private[choam] final override def tag = 21
+    final override def toString: String = s"TicketWrite(${hwd})"
   }
 
   // Interpreter:
@@ -1142,6 +1158,20 @@ object Rxn extends RxnInstances0 {
             desc = desc.addOrOverwrite(hwd)
             loop(next())
           }
+        case 20 => // TicketRead
+          val c = curr.asInstanceOf[TicketRead[Any]]
+          val hwd = ctx.readIntoHwd(c.ref)
+          val ticket = new unsafe.TicketImpl[Any](hwd)
+          a = ticket
+          loop(next())
+        case 21 => // TicketWrite
+          val c = curr.asInstanceOf[TicketWrite[Any]]
+          // very unsafe:
+          // 1. no validation, we just add it
+          // 2. `add` throws if ref is already present
+          desc = desc.add(c.hwd)
+          a = () : Any
+          loop(next())
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }

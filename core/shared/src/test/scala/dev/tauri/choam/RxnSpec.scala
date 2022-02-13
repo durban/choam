@@ -891,6 +891,31 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     }.run[F].flatMap(ok => assertF(ok))
   }
 
+  test("unsafe.ticketRead") {
+    for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("a").run[F]
+      r = r2.unsafeTicketRead.flatMapF { ticket =>
+        r1.getAndUpdate(_ + ticket.unsafePeek).flatMapF { ov =>
+          if (ov === "aa") {
+            Rxn.unit
+          } else {
+            ticket.unsafeSet(ticket.unsafePeek + "x")
+          }
+        }
+      }
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(r1.get.run[F], "aa")
+      _ <- assertResultF(r2.get.run[F], "ax")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(r1.get.run[F], "aaax")
+      _ <- assertResultF(r2.get.run[F], "ax")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(r1.get.run[F], "aaaxax")
+      _ <- assertResultF(r2.get.run[F], "axx")
+    } yield ()
+  }
+
   test("Autoboxing") {
     // On the JVM integers between (typically) -128 and
     // 127 are cached. Due to autoboxing, other integers
