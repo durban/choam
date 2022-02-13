@@ -48,11 +48,11 @@ final class HalfEMCASDescriptor private (
           underlying.hasNext || (!done)
         }
         final override def next(): HalfWordDescriptor[_] = {
-          if (underlying.hasNext) {
-            underlying.next()
-          } else if (!done) {
+          if (!done) {
             done = true
             vc
+          } else if (underlying.hasNext) {
+            underlying.next()
           } else {
             throw new NoSuchElementException
           }
@@ -170,6 +170,7 @@ final class HalfEMCASDescriptor private (
     commitTsRef: MemoryLocation[Long],
     ctx: MCAS.ThreadContext,
   ): HalfEMCASDescriptor = {
+    require(this.versionCas eq null)
     // NB: we must read the commitTs *before* the `ctx.validate(this)`
     val newValidTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
@@ -249,6 +250,8 @@ object HalfEMCASDescriptor {
     b: HalfEMCASDescriptor,
     ctx: MCAS.ThreadContext,
   ): HalfEMCASDescriptor = {
+    require(a.versionCas eq null)
+    require(b.versionCas eq null)
     require(a.versionIncr == b.versionIncr)
     // TODO: it is unclear, how should an exchange work when
     // TODO: both sides already touched the same refs;

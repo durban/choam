@@ -272,9 +272,9 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     }
     val lst: List[MemoryLocation[_]] = lb.result()
     assertEquals(lst.length, 3)
-    assert((lst(0) eq r1) || (lst(0) eq r2))
     assert((lst(1) eq r1) || (lst(1) eq r2))
-    assert(lst(2) ne r1)
-    assert(lst(2) ne r2)
+    assert((lst(2) eq r1) || (lst(2) eq r2))
+    assert(lst(0) ne r1)
+    assert(lst(0) ne r2)
   }
 }

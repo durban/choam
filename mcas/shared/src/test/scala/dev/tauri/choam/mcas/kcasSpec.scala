@@ -341,9 +341,10 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(!d3.readOnly)
     // simulate concurrent change to r2:
     assert(ctx.tryPerformSingleCas(r2, "b", "x"))
+    val ver = ctx.readVersion(r2)
     // the ongoing op should fail:
     val res = ctx.tryPerform(d4)
-    assertEquals(res, EmcasStatus.FailedVal)
+    assertEquals(res, ver)//EmcasStatus.FailedVal)
     assertSameInstance(ctx.readDirect(r1), "a")
     assertSameInstance(ctx.readDirect(r2), "x")
   }
@@ -447,11 +448,11 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val l3 = d3.iterator().toList
     assertEquals(l3.length, 3)
     if (MemoryLocation.orderingInstance[String].lt(r1, r2)) {
-      assertSameInstance(l3(0).address, r1)
-      assertSameInstance(l3(1).address, r2)
-    } else {
-      assertSameInstance(l3(0).address, r2)
       assertSameInstance(l3(1).address, r1)
+      assertSameInstance(l3(2).address, r2)
+    } else {
+      assertSameInstance(l3(1).address, r2)
+      assertSameInstance(l3(2).address, r1)
     }
   }
 
@@ -527,7 +528,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     // now the value is the same, but version isn't:
     assertSameInstance(ctx.readDirect(ref), "B")
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv(("X")))
-    assertEquals(ctx.tryPerform(d2), EmcasStatus.FailedVal)
+    assertEquals(ctx.tryPerform(d2), ver)//EmcasStatus.FailedVal)
     assertEquals(ctx.readVersion(ref), ver)
   }
 }
