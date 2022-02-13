@@ -20,12 +20,12 @@ package data
 
 import cats.effect.SyncIO
 
-class MapSpec_SpinLockMCAS_SyncIO
+final class MapSpec_Simple_SpinLockMCAS_SyncIO
   extends BaseSpecSyncIO
   with SpecSpinLockMCAS
-  with MapSpec[SyncIO]
+  with MapSpecSimple[SyncIO]
 
-class MapSpec_EMCAS_SyncIO
+final class MapSpec_Simple_EMCAS_SyncIO
   extends BaseSpecSyncIO
   with SpecEMCAS
-  with MapSpec[SyncIO]
+  with MapSpecSimple[SyncIO]

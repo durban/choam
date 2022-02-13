@@ -27,12 +27,12 @@ private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
   import MapPlatform.Wrapper
 
-  final override def simple[K: Hash, V]: Axn[Map[K, V]] =
+  final override def simple[K: Hash, V]: Axn[Extra[K, V]] =
     newSimpleMap[K, V]
 
-  private[this] def newSimpleMap[K, V](implicit K: Hash[K]): Axn[Map[K, V]] = {
+  private[this] def newSimpleMap[K, V](implicit K: Hash[K]): Axn[Extra[K, V]] = {
     Ref[SMap[Wrapper[K], V]](SMap.empty).map { repr =>
-      new Map[K, V] {
+      new Extra[K, V] {
 
         override def put: Rxn[(K, V), Option[V]] = {
           repr.upd[(K, V), Option[V]] { (m, kv) =>

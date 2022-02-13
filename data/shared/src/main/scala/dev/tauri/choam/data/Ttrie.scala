@@ -97,9 +97,6 @@ private final class Ttrie[K, V](
   final def remove: Rxn[(K, V), Boolean] =
     sys.error("Ttrie#remove") // TODO
 
-  final def clear: Axn[Unit] =
-    sys.error("Ttrie#clear") // TODO: this is gonna be a problem...
-
   final def values: Axn[Vector[V]] = {
     Axn.unsafe.delay {
       // TODO: Is this safe? TrieMap makes

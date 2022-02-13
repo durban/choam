@@ -22,7 +22,11 @@ import cats.kernel.Hash
 
 private[choam] abstract class AbstractMapPlatform {
 
-  def simple[K: Hash, V]: Axn[Map[K, V]]
+  trait Extra[K, V] extends Map[K, V] {
+    def clear: Axn[Unit]
+  }
+
+  def simple[K: Hash, V]: Axn[Extra[K, V]]
 
   private[choam] final def ttrie[K: Hash, V]: Axn[Map[K, V]] =
     Ttrie[K, V]

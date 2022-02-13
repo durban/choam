@@ -21,15 +21,40 @@ package data
 import cats.kernel.Hash
 import cats.effect.SyncIO
 
-final class MapSpec_ThreadConfinedMCAS_SyncIO
+final class MapSpec_Simple_ThreadConfinedMCAS_SyncIO
   extends BaseSpecSyncIO
   with SpecThreadConfinedMCAS
-  with MapSpec[SyncIO]
+  with MapSpecSimple[SyncIO]
+
+trait MapSpecSimple[F[_]] extends MapSpec[F] { this: KCASImplSpec =>
+
+  override type MyMap[K, V] = Map.Extra[K, V]
+
+  def mkEmptyMap[K: Hash, V]: F[Map.Extra[K, V]] =
+    Map.simple[K, V].run[F]
+
+  test("Map.Extra should perform clear correctly") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
+      _ <- (Rxn.pure(99 -> "bar") >>> m.put).run[F]
+      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
+      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
+      _ <- assertResultF(m.clear.run[F], ())
+      _ <- assertResultF(m.get.apply[F](42), None)
+      _ <- assertResultF(m.get.apply[F](99), None)
+      _ <- assertResultF(m.clear.run[F], ())
+      _ <- assertResultF(m.get.apply[F](42), None)
+      _ <- assertResultF(m.get.apply[F](99), None)
+    } yield ()
+  }
+}
 
 trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
 
-  def mkEmptyMap[K: Hash, V]: F[Map[K, V]] =
-    Map.simple[K, V].run[F]
+  type MyMap[K, V] <: Map[K, V]
+
+  def mkEmptyMap[K: Hash, V]: F[MyMap[K, V]]
 
   test("Map should perform put correctly") {
     for {
@@ -125,22 +150,6 @@ trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(m.get.apply[F](42), Some("foo"))
       _ <- assertResultF(m.get.apply[F](99), Some("bar"))
       _ <- assertResultF(m.get.apply[F](84), Some("xyz"))
-    } yield ()
-  }
-
-  test("Map should perform clear correctly") {
-    for {
-      m <- mkEmptyMap[Int, String]
-      _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
-      _ <- (Rxn.pure(99 -> "bar") >>> m.put).run[F]
-      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
-      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
-      _ <- assertResultF(m.clear.run[F], ())
-      _ <- assertResultF(m.get.apply[F](42), None)
-      _ <- assertResultF(m.get.apply[F](99), None)
-      _ <- assertResultF(m.clear.run[F], ())
-      _ <- assertResultF(m.get.apply[F](42), None)
-      _ <- assertResultF(m.get.apply[F](99), None)
     } yield ()
   }
 

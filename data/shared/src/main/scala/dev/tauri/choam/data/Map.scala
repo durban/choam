@@ -25,7 +25,6 @@ trait Map[K, V] {
   def get: Rxn[K, Option[V]]
   def del: Rxn[K, Boolean]
   def remove: Rxn[(K, V), Boolean]
-  def clear: Axn[Unit]
   def values: Axn[Vector[V]]
 }
 

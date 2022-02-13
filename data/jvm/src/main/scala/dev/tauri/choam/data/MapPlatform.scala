@@ -24,11 +24,11 @@ import org.organicdesign.fp.collections.{ PersistentHashMap, Equator }
 
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
-  final override def simple[K: Hash, V]: Axn[Map[K, V]] = Ref[PersistentHashMap[K, V]](
+  final override def simple[K: Hash, V]: Axn[Extra[K, V]] = Ref[PersistentHashMap[K, V]](
     emptyPhm[K, V]
   ).map { (repr: Ref[PersistentHashMap[K, V]]) =>
 
-    new Map[K, V] {
+    new Extra[K, V] {
 
       override val put: Rxn[(K, V), Option[V]] = {
         repr.upd[(K, V), Option[V]] { (m, kv) =>
