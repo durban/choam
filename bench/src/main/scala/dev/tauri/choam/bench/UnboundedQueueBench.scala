@@ -38,22 +38,12 @@ class UnboundedQueueBench extends BenchUtils {
   final val waitTime = 128L
   final val size = 4096
 
-  /** MS-Queue implemented with `Rxn` */
-  @Benchmark
-  def michaelScottQueue(s: MsSt, t: KCASImplState): Unit = {
-    val tsk = isEnq(t).flatMap { enq =>
-      if (enq) s.michaelScottQueue.enqueue[IO](t.nextString())(t.reactive)
-      else s.michaelScottQueue.tryDeque.run[IO](t.reactive)
-    }
-    run(s.runtime, tsk.void, size = size)
-  }
-
   /** MS-Queue implemented with `Rxn` (with tickets) */
   @Benchmark
   def michaelScottQueue2(s: MsSt, t: KCASImplState): Unit = {
     val tsk = isEnq(t).flatMap { enq =>
-      if (enq) s.michaelScottQueue.enqueue2[IO](t.nextString())(t.reactive)
-      else s.michaelScottQueue.tryDeque2.run[IO](t.reactive)
+      if (enq) s.michaelScottQueue.enqueue[IO](t.nextString())(t.reactive)
+      else s.michaelScottQueue.tryDeque.run[IO](t.reactive)
     }
     run(s.runtime, tsk.void, size = size)
   }

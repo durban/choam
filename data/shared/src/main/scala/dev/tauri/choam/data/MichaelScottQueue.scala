@@ -33,7 +33,7 @@ private[choam] final class MichaelScottQueue[A] private[this] (
   private def this(padded: Boolean) =
     this(Node(nullOf[A], Ref.unsafePadded(End[A]())), padded = padded)
 
-  val tryDeque2: Axn[Option[A]] = {
+  override val tryDeque: Axn[Option[A]] = {
     head.modifyWith { node =>
       node.next.unsafeTicketRead.flatMapF { ticket =>
         ticket.unsafePeek match {
@@ -46,26 +46,6 @@ private[choam] final class MichaelScottQueue[A] private[this] (
         }
       }
     }
-  }
-
-  override val tryDeque: Axn[Option[A]] = {
-    head.modifyWith { node =>
-      node.next.get.flatMapF { next =>
-        next match {
-          case n @ Node(a, _) =>
-            Rxn.pure((n.copy(data = nullOf[A]), Some(a)))
-          case End() =>
-            Rxn.pure((node, None))
-        }
-      }
-    }
-  }
-
-  val enqueue2: Rxn[A, Unit] = Rxn.computed { (a: A) =>
-    // TODO: This is cheating: we're using
-    // TODO: `computed` as `delay` (`newNode`
-    // TODO: has a side-effect).
-    findAndEnqueue2(newNode(a))
   }
 
   override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
@@ -84,7 +64,7 @@ private[choam] final class MichaelScottQueue[A] private[this] (
     Node(a, newRef)
   }
 
-  private[this] def findAndEnqueue2(node: Node[A]): Axn[Unit] = {
+  private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
     def go(n: Node[A], originalTail: Node[A]): Axn[Unit] = {
       n.next.unsafeTicketRead.flatMapF { ticket =>
         ticket.unsafePeek match {
@@ -97,20 +77,6 @@ private[choam] final class MichaelScottQueue[A] private[this] (
             // (it is not the last node, thus it won't change)
             go(n = nv, originalTail = originalTail)
         }
-      }
-    }
-    tail.get.flatMapF { t => go(t, t) }
-  }
-
-  private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    def go(n: Node[A], originalTail: Node[A]): Axn[Unit] = {
-      n.next.get.flatMapF {
-        case End() =>
-          // found true tail; will update, and try to adjust the tail ref:
-          n.next.set.provide(node).postCommit(tail.unsafeCas(originalTail, node).?.void)
-        case nv @ Node(_, _) =>
-          // not the true tail; try to catch up, and continue:
-          go(n = nv, originalTail = originalTail)
       }
     }
     tail.get.flatMapF { t => go(t, t) }
