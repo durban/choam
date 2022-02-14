@@ -20,103 +20,11 @@ package data
 
 import cats.kernel.Hash
 
-import org.organicdesign.fp.collections.{ PersistentHashMap, Equator }
-
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
   private[choam] final def ttrie[K: Hash, V]: Axn[Map[K, V]] =
     Ttrie[K, V]
 
-  final override def simple[K: Hash, V]: Axn[Extra[K, V]] = Ref[PersistentHashMap[K, V]](
-    emptyPhm[K, V]
-  ).map { (repr: Ref[PersistentHashMap[K, V]]) =>
-
-    new Extra[K, V] {
-
-      override val put: Rxn[(K, V), Option[V]] = {
-        repr.upd[(K, V), Option[V]] { (m, kv) =>
-          // `m.get` can return `null`
-          (m.assoc(kv._1, kv._2), Option(m.get(kv._1)))
-        }
-      }
-
-      override val putIfAbsent: Rxn[(K, V), Option[V]] = {
-        repr.upd[(K, V), Option[V]] { (m, kv) =>
-          m.get(kv._1) match {
-            case null =>
-              (m.assoc(kv._1, kv._2), None)
-            case v =>
-              (m, Some(v))
-          }
-        }
-      }
-
-      override val replace: Rxn[(K, V, V), Boolean] = {
-        repr.upd[(K, V, V), Boolean] { (m, kvv) =>
-          m.get(kvv._1) match {
-            case null =>
-              (m, false)
-            case v if equ(v, kvv._2) =>
-              (m.assoc(kvv._1, kvv._3), true)
-            case _ =>
-              (m, false)
-          }
-        }
-      }
-
-      override val get: Rxn[K, Option[V]] = {
-        repr.upd[K, Option[V]] { (m, k) =>
-          // `m.get` can return `null`
-          (m, Option(m.get(k)))
-        }
-      }
-
-      override val del: Rxn[K, Boolean] = {
-        repr.upd[K, Boolean] { (m, k) =>
-          val newM = m.without(k)
-          (newM, newM.size != m.size)
-        }
-      }
-
-      override val remove: Rxn[(K, V), Boolean] = {
-        repr.upd[(K, V), Boolean] { (m, kv) =>
-          m.get(kv._1) match {
-            case null =>
-              (m, false)
-            case v if equ(v, kv._2) =>
-              (m.without(kv._1), true)
-            case _ =>
-              (m, false)
-          }
-        }
-      }
-
-      override val clear: Axn[Unit] =
-        repr.update(_ => emptyPhm[K, V])
-
-      final override def values: Axn[Vector[V]] = {
-        repr.get.map { phm =>
-          val b = Vector.newBuilder[V]
-          b.sizeHint(phm.size())
-          val it = phm.valIterator()
-          while (it.hasNext()) {
-            b += it.next()
-          }
-          b.result()
-        }
-      }
-    }
-  }
-
-  private[this] def equatorFromHash[A](implicit A: Hash[A]): Equator[A] = {
-    new Equator[A] {
-      final override def eq(x: A, y: A): Boolean =
-        A.eqv(x, y)
-      final override def hash(x: A): Int =
-        A.hash(x)
-    }
-  }
-
-  private[this] def emptyPhm[K: Hash, V]: PersistentHashMap[K, V] =
-    PersistentHashMap.empty[K, V](equatorFromHash[K])
+  final override def simple[K: Hash, V]: Axn[Map.Extra[K, V]] =
+    SimpleMap[K, V]
 }

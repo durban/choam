@@ -18,113 +18,11 @@
 package dev.tauri.choam
 package data
 
-import scala.collection.immutable.{ Map => SMap }
-
 import cats.kernel.Hash
 import dev.tauri.choam.Axn
 
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
-  import MapPlatform.Wrapper
-
-  final override def simple[K: Hash, V]: Axn[Extra[K, V]] =
-    newSimpleMap[K, V]
-
-  private[this] def newSimpleMap[K, V](implicit K: Hash[K]): Axn[Extra[K, V]] = {
-    Ref[SMap[Wrapper[K], V]](SMap.empty).map { repr =>
-      new Extra[K, V] {
-
-        override def put: Rxn[(K, V), Option[V]] = {
-          repr.upd[(K, V), Option[V]] { (m, kv) =>
-            val kw = Wrapper(kv._1)
-            (m + (kw -> kv._2), m.get(kw))
-          }
-        }
-
-        override def putIfAbsent: Rxn[(K, V), Option[V]] = {
-          repr.upd[(K, V), Option[V]] { (m, kv) =>
-            val kw = Wrapper(kv._1)
-            m.get(kw) match {
-              case None =>
-                (m + (kw -> kv._2), None)
-              case Some(v) =>
-                (m, Some(v))
-            }
-          }
-        }
-
-        override def replace: Rxn[(K, V, V), Boolean] = {
-          repr.upd[(K, V, V), Boolean] { (m, kvv) =>
-            val kw = Wrapper(kvv._1)
-            m.get(kw) match {
-              case None =>
-                (m, false)
-              case Some(v) if equ(v, kvv._2) =>
-                (m + (kw -> kvv._3), true)
-              case _ =>
-                (m, false)
-            }
-          }
-        }
-
-        override def get: Rxn[K, Option[V]] = {
-          repr.upd[K, Option[V]] { (m, k) =>
-            (m, m.get(Wrapper(k)))
-          }
-        }
-
-        override def del: Rxn[K, Boolean] = {
-          repr.upd[K, Boolean] { (m, k) =>
-            val newM = m - Wrapper(k)
-            (newM, newM.size != m.size)
-          }
-        }
-
-        override def remove: Rxn[(K, V), Boolean] = {
-          repr.upd[(K, V), Boolean] { (m, kv) =>
-            val kw = Wrapper(kv._1)
-            m.get(kw) match {
-              case None =>
-                (m, false)
-              case Some(v) if equ(v, kv._2) =>
-                (m - kw, true)
-              case _ =>
-                (m, false)
-            }
-          }
-        }
-
-        override def clear: Axn[Unit] =
-          repr.update(_ => SMap.empty)
-
-        override def values: Axn[Vector[V]] = {
-          repr.get.map { m =>
-            m.valuesIterator.toVector
-          }
-        }
-      }
-    }
-  }
-}
-
-private object MapPlatform {
-
-  // Yeah, we're unfortunately wrapping each key...
-  private final class Wrapper[K](val k: K)(implicit K: Hash[K]) {
-    final override def hashCode: Int =
-      K.hash(k)
-    final override def equals(that: Any): Boolean = that match {
-      case that: Wrapper[_] =>
-        // TODO: probably safe, as `Map` is invariant in `K`,
-        // TODO: and users have no access to `Wrapper`
-        K.eqv(k, that.k.asInstanceOf[K])
-      case _ =>
-        false
-    }
-  }
-
-  private final object Wrapper {
-    def apply[K : Hash](k: K): Wrapper[K] =
-      new Wrapper(k)
-  }
+  final override def simple[K: Hash, V]: Axn[Map.Extra[K, V]] =
+    SimpleMap[K, V]
 }

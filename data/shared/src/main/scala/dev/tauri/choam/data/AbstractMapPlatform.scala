@@ -26,5 +26,5 @@ private[choam] abstract class AbstractMapPlatform {
     def clear: Axn[Unit]
   }
 
-  def simple[K: Hash, V]: Axn[Extra[K, V]]
+  def simple[K: Hash, V]: Axn[Map.Extra[K, V]]
 }
