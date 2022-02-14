@@ -28,9 +28,16 @@ import util._
 @Threads(2)
 class DataMapBench {
 
+  import DataMapBench.{ SimpleSt, TtrieSt }
+
   @Benchmark
-  def simple(s: DataMapBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+  def simple(s: SimpleSt, bh: Blackhole, k: KCASImplState): Unit = {
     task(s.simple, bh, k)
+  }
+
+  @Benchmark
+  def ttrie(s: TtrieSt, bh: Blackhole, k: KCASImplState): Unit = {
+    task(s.ttrie, bh, k)
   }
 
   def task(m: Map[String, String], bh: Blackhole, k: KCASImplState): Unit = {
@@ -62,14 +69,31 @@ object DataMapBench {
 
   final val knownKey = "abcdef"
 
+  private[this] final def initMcas: mcas.MCAS =
+    mcas.MCAS.EMCAS
+
+  private[this] final def initMap(m: Map[String, String]): Unit = {
+    Prefill.prefill().foreach { k =>
+      m.put.unsafePerform((k, "foo"), initMcas)
+    }
+    m.put.unsafePerform((knownKey, "bar"), initMcas)
+    ()
+  }
+
   @State(Scope.Benchmark)
-  class St {
+  class SimpleSt {
     val simple: Map[String, String] = {
-      val m = Map.simple[String, String].unsafeRun(mcas.MCAS.EMCAS)
-      Prefill.prefill().foreach { k =>
-        m.put.unsafePerform((k, "foo"), mcas.MCAS.EMCAS)
-      }
-      m.put.unsafePerform((knownKey, "bar"), mcas.MCAS.EMCAS)
+      val m = Map.simple[String, String].unsafeRun(initMcas)
+      initMap(m)
+      m
+    }
+  }
+
+  @State(Scope.Benchmark)
+  class TtrieSt {
+    val ttrie: Map[String, String] = {
+      val m = Map.ttrie[String, String].unsafeRun(initMcas)
+      initMap(m)
       m
     }
   }
