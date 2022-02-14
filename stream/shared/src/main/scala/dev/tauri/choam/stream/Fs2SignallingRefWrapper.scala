@@ -45,9 +45,6 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
     final override def get: Axn[A] =
       underlying.get
 
-    private[choam] final override def unsafeDirectRead: Axn[A] =
-      underlying.unsafeDirectRead
-
     final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] = {
       underlying.updWith[B, C] { (oldVal, b) =>
         val ac = f(oldVal, b)

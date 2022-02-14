@@ -47,7 +47,7 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
   final override def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
     Rxn.ref.updWith(this)(f)
 
-  final override def unsafeDirectRead: Axn[A] =
+  final def unsafeDirectRead: Axn[A] =
     Rxn.unsafe.directRead(this)
 
   final def unsafeTicketRead: Axn[Rxn.unsafe.Ticket[A]] =

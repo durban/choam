@@ -30,8 +30,6 @@ trait RefLike[A] {
 
   def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C]
 
-  private[choam] def unsafeDirectRead: Axn[A]
-
   // derived implementations:
 
   final def set: Rxn[A, Unit] =
@@ -82,7 +80,7 @@ object RefLike {
   private[choam] abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
     extends CatsRef[F, A] {
     def get: F[A] =
-      self.unsafeDirectRead.run[F]
+      self.get.run[F] // TODO: actual `Ref`s could optimize this with unsafeDirectRead
     override def set(a: A): F[Unit] =
       self.set[F](a)
     override def access: F[(A, A => F[Boolean])] = {
