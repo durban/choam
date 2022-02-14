@@ -53,7 +53,7 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
   final def unsafeTicketRead: Axn[Rxn.unsafe.Ticket[A]] =
     Rxn.unsafe.ticketRead(this)
 
-  final override def unsafeCas(ov: A, nv: A): Axn[Unit] =
+  final def unsafeCas(ov: A, nv: A): Axn[Unit] =
     Rxn.unsafe.cas(this, ov, nv)
 
   private[choam] final def loc: MemoryLocation[A] =

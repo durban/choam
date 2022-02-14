@@ -32,8 +32,6 @@ trait RefLike[A] {
 
   private[choam] def unsafeDirectRead: Axn[A]
 
-  private[choam] def unsafeCas(ov: A, nv: A): Axn[Unit]
-
   // derived implementations:
 
   final def set: Rxn[A, Unit] =
@@ -88,14 +86,21 @@ object RefLike {
     override def set(a: A): F[Unit] =
       self.set[F](a)
     override def access: F[(A, A => F[Boolean])] = {
+      // TODO: we could have an optimized impl. with tickets (for actual `Ref`s)
       F.monad.flatMap(this.get) { ov =>
         // `access` as defined in cats-effect must never
         // succeed after it was called once, so we need a flag:
         F.monad.map(Ref[Boolean](false).run[F]) { hasBeenCalled =>
           val setter = { (nv: A) =>
-            hasBeenCalled.unsafeCas(false, true).?.flatMapF { ok =>
-              if (ok.isDefined) self.unsafeCas(ov, nv).?.map(_.isDefined)
-              else Rxn.pure(false)
+            hasBeenCalled.getAndSet.provide(true).flatMapF { wasAlreadyCalled =>
+              if (!wasAlreadyCalled) {
+                self.modify { currVal =>
+                  if (equ(currVal, ov)) (nv, true)
+                  else (currVal, false)
+                }
+              } else {
+                Rxn.pure(false)
+              }
             }.run[F]
           }
           (ov, setter)
