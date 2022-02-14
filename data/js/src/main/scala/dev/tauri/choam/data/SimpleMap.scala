@@ -24,7 +24,7 @@ import cats.kernel.Hash
 
 import SimpleMap.Wrapper
 
-private final class SimpleMap[K, V](
+private final class SimpleMap[K, V] private (
   repr: Ref[SMap[Wrapper[K], V]],
 )(implicit K: Hash[K]) extends Map.Extra[K, V] {
 
