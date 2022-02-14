@@ -150,6 +150,10 @@ object MCAS extends MCASPlatform { self =>
         // so nothing to do here
         EmcasStatus.Successful
       } else {
+        // TODO: Could we ignore read-only HWDs
+        // TODO: in the log? They're validated,
+        // TODO: and the version CAS _should_
+        // TODO: catch any concurrent changes(?)
         val finalDesc = this.addVersionCas(desc)
         assert(finalDesc.size == (desc.size + 1))
         val res = this.tryPerformInternal(finalDesc)

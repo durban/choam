@@ -30,9 +30,10 @@ import util._
 import data.{ Queue, MichaelScottQueue }
 
 @Fork(2)
-class QueueBench extends BenchUtils {
+@Threads(1) // because it runs on the CE threadpool
+class UnboundedQueueBench extends BenchUtils {
 
-  import QueueBench._
+  import UnboundedQueueBench._
 
   final val waitTime = 128L
   final val size = 4096
@@ -43,6 +44,16 @@ class QueueBench extends BenchUtils {
     val tsk = isEnq(t).flatMap { enq =>
       if (enq) s.michaelScottQueue.enqueue[IO](t.nextString())(t.reactive)
       else s.michaelScottQueue.tryDeque.run[IO](t.reactive)
+    }
+    run(s.runtime, tsk.void, size = size)
+  }
+
+  /** MS-Queue implemented with `Rxn` (with tickets) */
+  @Benchmark
+  def michaelScottQueue2(s: MsSt, t: KCASImplState): Unit = {
+    val tsk = isEnq(t).flatMap { enq =>
+      if (enq) s.michaelScottQueue.enqueue2[IO](t.nextString())(t.reactive)
+      else s.michaelScottQueue.tryDeque2.run[IO](t.reactive)
     }
     run(s.runtime, tsk.void, size = size)
   }
@@ -118,7 +129,7 @@ class QueueBench extends BenchUtils {
   }
 }
 
-object QueueBench {
+object UnboundedQueueBench {
 
   @State(Scope.Benchmark)
   class MsSt {

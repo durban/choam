@@ -33,8 +33,22 @@ final class HalfWordDescriptor[A] private (
   private[mcas] final def cast[B]: HalfWordDescriptor[B] =
     this.asInstanceOf[HalfWordDescriptor[B]]
 
-  final def withNv(a: A): HalfWordDescriptor[A] =
-    new HalfWordDescriptor[A](address = this.address, ov = this.ov, nv = a, version = this.version)
+  final def withNv(a: A): HalfWordDescriptor[A] = {
+    if (equ(this.nv, a)) this
+    else new HalfWordDescriptor[A](address = this.address, ov = this.ov, nv = a, version = this.version)
+  }
+
+  final def tryMergeTicket(ticket: HalfWordDescriptor[A]): HalfWordDescriptor[A] = {
+    if (
+      (this.address eq ticket.address) &&
+      equ(this.nv, ticket.ov) && // ok, `ticket` "continues" this hwd
+      (this.version == ticket.version)
+    ) {
+      this.withNv(ticket.nv)
+    } else {
+      throw new IllegalArgumentException // TODO
+    }
+  }
 
   final def readOnly: Boolean =
     equ(this.ov, this.nv)

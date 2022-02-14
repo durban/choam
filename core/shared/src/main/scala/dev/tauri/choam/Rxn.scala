@@ -380,6 +380,8 @@ object Rxn extends RxnInstances0 {
     sealed abstract class Ticket[A] {
       def unsafePeek: A
       def unsafeSet(nv: A): Axn[Unit]
+      final def unsafeValidate: Axn[Unit] =
+        this.unsafeSet(this.unsafePeek)
     }
 
     private[Rxn] final class TicketImpl[A](hwd: HalfWordDescriptor[A]) extends Ticket[A] {
@@ -905,35 +907,40 @@ object Rxn extends RxnInstances0 {
 
     /**
      * Specialized variant of `MCAS.ThreadContext#readMaybeFromLog`.
-     * Note: doesn't put a fresh HWD into the log! Note: returns `null`
-     * if a rollback is required! Note: may update `desc`
-     * (revalidate/extend).
+     * Note: doesn't (always) put a fresh HWD into the log!
+     * Note: returns `null` if a rollback is required! Note: may
+     * update `desc` (revalidate/extend).
      */
     private[this] final def readMaybeFromLog[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
       desc.getOrElseNull(ref) match {
         case null =>
           // not in log
           val hwd = ctx.readIntoHwd(ref)
-          if (!desc.isValidHwd(hwd)) {
-            desc = desc.add(hwd)
-            ctx.validateAndTryExtend(desc) match {
-              case null =>
-                // will rollback
-                clearDesc()
-                null
-              case newDesc =>
-                // OK, it was extended
-                desc = newDesc
-                // lookup again (version might've changed):
-                val newHwd = desc.getOrElseNull(ref)
-                assert(newHwd ne null)
-                newHwd
-            }
-          } else {
-            hwd
-          }
+          revalidateIfNeeded(hwd)
         case hwd =>
           hwd
+      }
+    }
+
+    private[this] final def revalidateIfNeeded[A](hwd: HalfWordDescriptor[A]): HalfWordDescriptor[A] = {
+      if (!desc.isValidHwd(hwd)) {
+        desc = desc.add(hwd)
+        ctx.validateAndTryExtend(desc) match {
+          case null =>
+            // need to roll back
+            clearDesc()
+            null
+          case newDesc =>
+            // OK, it was extended
+            desc = newDesc
+            // TODO: do we really need to lookup again?
+            // lookup again (version might've changed):
+            val newHwd = desc.getOrElseNull(hwd.address)
+            assert(newHwd ne null)
+            newHwd
+        }
+      } else {
+        hwd
       }
     }
 
@@ -1160,18 +1167,32 @@ object Rxn extends RxnInstances0 {
           }
         case 20 => // TicketRead
           val c = curr.asInstanceOf[TicketRead[Any]]
-          val hwd = ctx.readIntoHwd(c.ref)
-          val ticket = new unsafe.TicketImpl[Any](hwd)
-          a = ticket
-          loop(next())
+          val hwd = readMaybeFromLog(c.ref) // ctx.readIntoHwd(c.ref)
+          if (hwd eq null) {
+            loop(retry()) // TODO: optimize rollback based on version(?)
+          } else {
+            val ticket = new unsafe.TicketImpl[Any](hwd)
+            a = ticket
+            loop(next())
+          }
         case 21 => // TicketWrite
           val c = curr.asInstanceOf[TicketWrite[Any]]
-          // very unsafe:
-          // 1. no validation, we just add it
-          // 2. `add` throws if ref is already present
-          desc = desc.add(c.hwd)
           a = () : Any
-          loop(next())
+          desc.getOrElseNull(c.hwd.address) match {
+            case null =>
+              // not in log yet, we try to insert it:
+              revalidateIfNeeded(c.hwd) match {
+                case null =>
+                  loop(retry()) // TODO: optimize rollback based on version(?)
+                case hwd =>
+                  desc = desc.addOrOverwrite(hwd)
+                  loop(next())
+              }
+            case existingHwd =>
+              // TODO: throws if it was modified in the meantime
+              desc = desc.overwrite(existingHwd.tryMergeTicket(c.hwd))
+              loop(next())
+          }
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }

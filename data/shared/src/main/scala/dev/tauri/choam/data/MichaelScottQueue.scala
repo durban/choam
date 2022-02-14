@@ -33,6 +33,21 @@ private[choam] final class MichaelScottQueue[A] private[this] (
   private def this(padded: Boolean) =
     this(Node(nullOf[A], Ref.unsafePadded(End[A]())), padded = padded)
 
+  val tryDeque2: Axn[Option[A]] = {
+    head.modifyWith { node =>
+      node.next.unsafeTicketRead.flatMapF { ticket =>
+        ticket.unsafePeek match {
+          case n @ Node(a, _) =>
+            // No need to validate `node.next`, since
+            // it is not the last node (thus it won't change).
+            Rxn.pure((n.copy(data = nullOf[A]), Some(a)))
+          case End() =>
+            ticket.unsafeValidate.as((node, None))
+        }
+      }
+    }
+  }
+
   override val tryDeque: Axn[Option[A]] = {
     head.modifyWith { node =>
       node.next.get.flatMapF { next =>
@@ -44,6 +59,13 @@ private[choam] final class MichaelScottQueue[A] private[this] (
         }
       }
     }
+  }
+
+  val enqueue2: Rxn[A, Unit] = Rxn.computed { (a: A) =>
+    // TODO: This is cheating: we're using
+    // TODO: `computed` as `delay` (`newNode`
+    // TODO: has a side-effect).
+    findAndEnqueue2(newNode(a))
   }
 
   override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
@@ -60,6 +82,24 @@ private[choam] final class MichaelScottQueue[A] private[this] (
       Ref.unsafeUnpadded(End[A]())
     }
     Node(a, newRef)
+  }
+
+  private[this] def findAndEnqueue2(node: Node[A]): Axn[Unit] = {
+    def go(n: Node[A], originalTail: Node[A]): Axn[Unit] = {
+      n.next.unsafeTicketRead.flatMapF { ticket =>
+        ticket.unsafePeek match {
+          case End() =>
+            // found true tail; will update, and try to adjust the tail ref:
+            ticket.unsafeSet(node).postCommit(tail.unsafeCas(originalTail, node).?.void)
+          case nv @ Node(_, _) =>
+            // not the true tail, continue;
+            // no need to validate `n.next`
+            // (it is not the last node, thus it won't change)
+            go(n = nv, originalTail = originalTail)
+        }
+      }
+    }
+    tail.get.flatMapF { t => go(t, t) }
   }
 
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
