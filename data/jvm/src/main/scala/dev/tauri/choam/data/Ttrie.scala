@@ -39,8 +39,9 @@ import cats.kernel.Hash
 /**
  * Based on `ttrie` in "Durability and Contention in Software
  * Transactional Memory" by Michael Schröder, which is itself
- * based on the concurrent trie of Prokopec, Bagwell, and Odersky
- * (`scala.collection.concurrent.TrieMap`).
+ * based on the concurrent trie of Prokopec, et al.
+ * (`scala.collection.concurrent.TrieMap` and
+ * https://lampwww.epfl.ch/~prokopec/ctries-snapshot.pdf).
  *
  * We're using a `TrieMap` directly (instead of reimplementing),
  * since we get it for free from the stdlib.
@@ -48,6 +49,10 @@ import cats.kernel.Hash
 private final class Ttrie[K, V](
   m: TrieMap[K, Ref[Option[V]]],
 ) extends Map[K, V] { self =>
+
+  // TODO: See if these could be useful:
+  // TODO: http://aleksandar-prokopec.com/resources/docs/p137-prokopec.pdf
+  // TODO: http://aleksandar-prokopec.com/resources/docs/cachetrie-remove.pdf
 
   /**
    * Based on `getTVar` in the paper
@@ -159,6 +164,7 @@ private final class Ttrie[K, V](
 
 private final object Ttrie {
 
+  // TODO: use improved hashing
   def apply[K, V](implicit K: Hash[K]): Axn[Ttrie[K, V]] = {
     Axn.unsafe.delay {
       val m = new TrieMap[K, Ref[Option[V]]](

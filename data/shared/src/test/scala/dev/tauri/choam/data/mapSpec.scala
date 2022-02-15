@@ -21,6 +21,9 @@ package data
 import cats.kernel.Hash
 import cats.effect.SyncIO
 
+import org.scalacheck.effect.PropF
+import munit.ScalaCheckEffectSuite
+
 final class MapSpec_Simple_ThreadConfinedMCAS_SyncIO
   extends BaseSpecSyncIO
   with SpecThreadConfinedMCAS
@@ -50,7 +53,9 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: KCASImplSpec =>
   }
 }
 
-trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
+trait MapSpec[F[_]]
+  extends BaseSpecSyncF[F]
+  with ScalaCheckEffectSuite { this: KCASImplSpec =>
 
   type MyMap[K, V] <: Map[K, V]
 
@@ -180,5 +185,135 @@ trait MapSpec[F[_]] extends BaseSpecSyncF[F] { this: KCASImplSpec =>
       _ <- assertResultF(m.get[F](4), Some("4"))
       _ <- assertResultF(m.get[F](8), None)
     } yield ()
+  }
+
+  test("Map get should not find anything in an empty map") {
+    PropF.forAllF { (i: Int) =>
+      mkEmptyMap[Int, Int].flatMap { m =>
+        assertResultF(m.get.apply[F](i), None)
+      }
+    }
+  }
+
+  test("Map get should find a previously inserted single key") {
+    PropF.forAllF { (k: Int, i: Int) =>
+      for {
+        m <- mkEmptyMap[Int, String]
+        _ <- m.put.apply[F](k -> k.toString)
+        _ <- assertResultF(m.get.apply[F](k), Some(k.toString))
+        _ <- if (i =!= k) {
+          assertResultF(m.get.apply[F](i), None)
+        } else {
+          F.unit
+        }
+      } yield ()
+    }
+  }
+
+  test("Map get should find all previously inserted keys") {
+    PropF.forAllF { (ks: Set[Int], x: Int) =>
+      for {
+        m <- mkEmptyMap[Int, String]
+        shadow <- F.delay { new scala.collection.mutable.HashSet[Int] }
+        _ <- ks.toList.traverse { k =>
+          for {
+            _ <- m.put.apply[F](k -> k.toString)
+            _ <- F.delay { shadow += k }
+            _ <- shadow.toList.traverse { i =>
+              assertResultF(m.get.apply[F](i), Some(i.toString))
+            }
+            cont <- F.delay { shadow.contains(x) }
+            _ <- if (!cont) {
+              assertResultF(m.get.apply[F](x), None)
+            } else {
+              F.unit
+            }
+          } yield ()
+        }
+      } yield ()
+    }
+  }
+
+  test("Map get should find an equal key which is not equal according to universal equality") {
+    for {
+      m <- mkEmptyMap[Int, String](new Hash[Int] {
+        final def eqv(x: Int, y: Int) =
+          (x % 8) == (y % 8)
+        final def hash(x: Int) =
+          x % 4
+      })
+      _ <- m.put[F](0 -> "0")
+      _ <- assertResultF(m.get(0), Some("0"))
+      _ <- assertResultF(m.get(8), Some("0"))
+      _ <- m.put(4 -> "4")
+      _ <- assertResultF(m.get(0), Some("0"))
+      _ <- assertResultF(m.get(8), Some("0"))
+      _ <- assertResultF(m.get(4), Some("4"))
+      _ <- assertResultF(m.get(12), Some("4"))
+    } yield ()
+  }
+
+  test("Map del should remove the kv pair") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      _ <- m.put[F](0 -> "0")
+      _ <- assertResultF(m.get(0), Some("0"))
+      _ <- assertResultF(m.del[F](0), true)
+      _ <- assertResultF(m.del[F](0), false)
+      _ <- m.put(1 -> "1")
+      _ <- m.put(2 -> "2")
+      _ <- m.put(3 -> "3")
+      _ <- m.put(4 -> "4")
+      _ <- m.put(5 -> "5")
+      _ <- m.put(6 -> "6")
+      _ <- m.put(7 -> "7")
+      _ <- m.put(8 -> "8")
+      _ <- assertResultF(m.get(1), Some("1"))
+      _ <- assertResultF(m.del[F](1), true)
+      _ <- assertResultF(m.del[F](1), false)
+      _ <- assertResultF(m.get(8), Some("8"))
+      _ <- assertResultF(m.del[F](8), true)
+      _ <- assertResultF(m.del[F](8), false)
+    } yield ()
+  }
+
+  test("Map insertion should handle hash collisions correctly") {
+    PropF.forAllF { (ks: Set[Int], x: Int) =>
+      for {
+        m <- mkEmptyMap[Int, String](new Hash[Int] {
+          final def eqv(x: Int, y: Int) =
+            x == y
+          final def hash(x: Int) =
+            x % 8
+        })
+        _ <- m.put[F](x -> x.toString)
+        _ <- assertResultF(m.get(x), Some(x.toString))
+        _ <- m.put(x + 8 -> (x + 8).toString)
+        _ <- assertResultF(m.get(x), Some(x.toString))
+        _ <- assertResultF(m.get(x + 8), Some((x + 8).toString))
+        _ <- m.put(x + 16 -> (x + 16).toString)
+        _ <- assertResultF(m.get(x), Some(x.toString))
+        _ <- assertResultF(m.get(x + 8), Some((x + 8).toString))
+        _ <- assertResultF(m.get(x + 16), Some((x + 16).toString))
+        _ <- m.put(x + 1 -> (x + 1).toString)
+        _ <- assertResultF(m.get(x), Some(x.toString))
+        _ <- assertResultF(m.get(x + 8), Some((x + 8).toString))
+        _ <- assertResultF(m.get(x + 16), Some((x + 16).toString))
+        _ <- assertResultF(m.get(x + 1), Some((x + 1).toString))
+        _ <- m.put(x + 9 -> (x + 9).toString)
+        _ <- assertResultF(m.get(x), Some(x.toString))
+        _ <- assertResultF(m.get(x + 8), Some((x + 8).toString))
+        _ <- assertResultF(m.get(x + 16), Some((x + 16).toString))
+        _ <- assertResultF(m.get(x + 1), Some((x + 1).toString))
+        _ <- assertResultF(m.get(x + 9), Some((x + 9).toString))
+        _ <- ks.toList.traverse { k =>
+          m.put(k -> k.toString).flatMap { _ =>
+            assertResultF(m.get(k), Some(k.toString))
+          }
+        }
+        _ <- m.put(x + 17 -> (x + 17).toString)
+        _ <- assertResultF(m.get(x + 17), Some((x + 17).toString))
+      } yield ()
+    }
   }
 }

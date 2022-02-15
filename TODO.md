@@ -21,11 +21,7 @@
 
 ## Bugs
 
-- `Ctrie` is incomplete
-  - no `remove` (+ tombstone handling)
-  - even if completed, it would not be very good
-    - to have composability, the root will always have to be validated
-    - this would make it not scalable (the root ref is very contended)
+- `ttrie` limitations (see comments there)
 - Can't run benchmarks with Scala 3
 - CI: Tests sometimes time out
   - probably due to GC pauses
@@ -137,7 +133,7 @@
   - but, a problem with all these: we can't write a descriptor into them!
   - see also: JEP 412 (https://openjdk.java.net/jeps/412)
 - Other data structures:
-  - ctrie-set (but see problems with Ctrie)
+  - ttrie-set
   - `SkipListMap`, `SkipListSet`
   - concurrent bag (e.g., https://dl.acm.org/doi/10.1145/1989493.1989550)
   - dual data structures:

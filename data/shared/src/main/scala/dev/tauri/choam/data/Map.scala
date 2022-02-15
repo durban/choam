@@ -24,6 +24,7 @@ trait Map[K, V] {
   def replace: Rxn[(K, V, V), Boolean]
   def get: Rxn[K, Option[V]]
   def del: Rxn[K, Boolean]
+  // TODO: a variant of `del` could return the old value (if any)
   def remove: Rxn[(K, V), Boolean]
   def values: Axn[Vector[V]]
   def refLike(key: K, default: V): RefLike[V]
