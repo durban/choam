@@ -29,6 +29,10 @@ final class AsyncFrom[F[_], A] private (
   waiters: Queue.WithRemove[Promise[F, A]]
 ) {
 
+  // TODO: Instead of storing promises, could
+  // TODO: we store async callbacks directly?
+  // TODO: Would it be faster?
+
   /** Partial, retries if no waiters */
   private[choam] def trySetWaiters: A =#> Unit = {
     this.waiters.tryDeque.flatMap {

@@ -35,6 +35,10 @@ abstract class BoundedQueue[F[_], A]
 
 object BoundedQueue {
 
+  // TODO: Instead of storing promises, could
+  // TODO: we store async callbacks directly?
+  // TODO: Would it be faster?
+
   def linked[F[_], A](bound: Int): Axn[BoundedQueue[F, A]] = {
     require(bound > 0)
     val maxSize = bound
