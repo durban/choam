@@ -26,6 +26,7 @@ trait Map[K, V] {
   def del: Rxn[K, Boolean]
   def remove: Rxn[(K, V), Boolean]
   def values: Axn[Vector[V]]
+  def refLike(key: K, default: V): RefLike[V]
 }
 
 object Map extends MapPlatform

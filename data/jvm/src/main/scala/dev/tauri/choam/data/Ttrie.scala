@@ -47,7 +47,7 @@ import cats.kernel.Hash
  */
 private final class Ttrie[K, V](
   m: TrieMap[K, Ref[Option[V]]],
-) extends Map[K, V] {
+) extends Map[K, V] { self =>
 
   /**
    * Based on `getTVar` in the paper
@@ -120,16 +120,39 @@ private final class Ttrie[K, V](
 
   final def values: Axn[Vector[V]] = {
     Axn.unsafe.delay {
-      // TODO: Is this safe? TrieMap makes
-      // TODO: a snapshot for the iterator,
-      // TODO: so it is atomic; but what happens
-      // TODO: if before commit, a new ref is
-      // TODO: added?
+      // TODO: This is not safe!
+      // TODO: If we run this twice in one
+      // TODO: Rxn, the second one can return
+      // TODO: a different result. Newly added
+      // TODO: refs will be included the second
+      // TODO: time, which breaks opacity.
       m.valuesIterator.toList
     }.flatMapF { (lst: List[Ref[Option[V]]]) =>
       Rxn.consistentReadMany(lst).map { (lst: List[Option[V]]) =>
         lst.collect { case Some(v) => v }.toVector
       }
+    }
+  }
+
+  final override def refLike(key: K, default: V): RefLike[V] = new RefLike[V] {
+
+    final def get: Axn[V] =
+      self.get.provide(key).map(_.getOrElse(default))
+
+    final def upd[B, C](f: (V, B) => (V, C)): B =#> C = {
+      getRef.provide(key).flatMap(_.upd[B, C] { (oldVal, b) =>
+        val (newVal, c) = f(oldVal.getOrElse(default), b)
+        (Some(newVal), c)
+      })
+    }
+
+    final def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
+      getRef.provide(key).flatMap(_.updWith[B, C] { (oldVal, b) =>
+        f(oldVal.getOrElse(default), b).map {
+          case (newVal, c) =>
+            (Some(newVal), c)
+        }
+      })
     }
   }
 }

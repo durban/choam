@@ -26,7 +26,7 @@ import SimpleMap.Wrapper
 
 private final class SimpleMap[K, V] private (
   repr: Ref[SMap[Wrapper[K], V]],
-)(implicit K: Hash[K]) extends Map.Extra[K, V] {
+)(implicit K: Hash[K]) extends Map.Extra[K, V] { self =>
 
   override def put: Rxn[(K, V), Option[V]] = {
     repr.upd[(K, V), Option[V]] { (m, kv) =>
@@ -94,6 +94,38 @@ private final class SimpleMap[K, V] private (
   override def values: Axn[Vector[V]] = {
     repr.get.map { m =>
       m.valuesIterator.toVector
+    }
+  }
+
+  final override def refLike(key: K, default: V): RefLike[V] = new RefLike[V] {
+
+    val wk = Wrapper(key)
+
+    final def get: Axn[V] =
+      self.get.provide(key).map(_.getOrElse(default))
+
+    final def upd[B, C](f: (V, B) => (V, C)): B =#> C = {
+      Rxn.computed[B, C] { (b: B) =>
+        repr.modify { phm =>
+          val currVal = phm.getOrElse(wk, default)
+          val (newVal, c) = f(currVal, b)
+          if (equ(newVal, default)) (phm - wk, c)
+          else (phm.updated(wk, newVal), c)
+        }
+      }
+    }
+
+    final def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
+      Rxn.computed[B, C] { (b: B) =>
+        repr.modifyWith { phm =>
+          val currVal = phm.getOrElse(wk, default)
+          f(currVal, b).map {
+            case (newVal, c) =>
+              if (equ(newVal, default)) (phm - wk, c)
+              else (phm.updated(wk, newVal), c)
+          }
+        }
+      }
     }
   }
 }

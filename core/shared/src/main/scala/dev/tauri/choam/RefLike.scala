@@ -73,6 +73,9 @@ trait RefLike[A] {
 
   final def tryModify[B](f: A => (A, B)): Axn[Option[B]] =
     modify(f).?
+
+  final def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] =
+    new RefLike.CatsRefFromRefLike[F, A](this) {}
 }
 
 object RefLike {

@@ -20,32 +20,51 @@ package dev.tauri.choam
 import cats.effect.IO
 import dev.tauri.choam.mcas.{ MemoryLocation, Version }
 
-final class RefSpecJvm_SpinLockMCAS_IO
+final class RefSpecJvm_Real_SpinLockMCAS_IO
   extends BaseSpecIO
   with SpecSpinLockMCAS
-  with RefSpecJvm[IO]
+  with RefSpecJvm_Real[IO]
 
-final class RefSpecJvm_SpinLockMCAS_ZIO
+final class RefSpecJvm_Real_SpinLockMCAS_ZIO
   extends BaseSpecZIO
   with SpecSpinLockMCAS
-  with RefSpecJvm[zio.Task]
+  with RefSpecJvm_Real[zio.Task]
 
-final class RefSpecJvm_EMCAS_IO
+final class RefSpecJvm_Real_EMCAS_IO
   extends BaseSpecIO
   with SpecEMCAS
-  with RefSpecJvm[IO]
+  with RefSpecJvm_Real[IO]
 
-final class RefSpecJvm_EMCAS_ZIO
+final class RefSpecJvm_Real_EMCAS_ZIO
   extends BaseSpecZIO
   with SpecEMCAS
-  with RefSpecJvm[zio.Task]
+  with RefSpecJvm_Real[zio.Task]
 
-final class RefSpecJvm_ThreadConfinedMCAS_ZIO
+final class RefSpecJvm_Real_ThreadConfinedMCAS_ZIO
   extends BaseSpecZIO
   with SpecThreadConfinedMCAS
-  with RefSpecJvm[zio.Task]
+  with RefSpecJvm_Real[zio.Task]
 
-trait RefSpecJvm[F[_]] extends RefSpec[F] { this: KCASImplSpec =>
+final class RefSpecJvm_Arr_EMCAS_IO
+  extends BaseSpecIO
+  with SpecEMCAS
+  with RefSpecJvm_Arr[IO]
+
+final class RefSpecJvm_Ref2_EMCAS_IO
+  extends BaseSpecIO
+  with SpecEMCAS
+  with RefSpecJvm_Ref2[IO]
+
+trait RefSpecJvm_Arr[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Arr[F] { this: KCASImplSpec =>
+}
+
+trait RefSpecJvm_Ref2[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Ref2[F] { this: KCASImplSpec =>
+}
+
+trait RefSpecJvm_Real[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Real[F] { this: KCASImplSpec =>
+}
+
+trait RefLikeSpecJvm[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
 
   test("version") {
     val p1p1 = Ref.refP1P1("a", "a").unsafeRun(this.kcasImpl)

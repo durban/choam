@@ -21,10 +21,11 @@ package data
 import cats.kernel.Hash
 
 import org.organicdesign.fp.collections.{ PersistentHashMap, Equator }
+import dev.tauri.choam.Axn
 
 private final class SimpleMap[K, V](
   repr: Ref[PersistentHashMap[K, V]],
-)(implicit K: Hash[K]) extends Map.Extra[K, V] {
+)(implicit K: Hash[K]) extends Map.Extra[K, V] { self =>
 
   override val put: Rxn[(K, V), Option[V]] = {
     repr.upd[(K, V), Option[V]] { (m, kv) =>
@@ -96,6 +97,36 @@ private final class SimpleMap[K, V](
         b += it.next()
       }
       b.result()
+    }
+  }
+
+  final override def refLike(key: K, default: V): RefLike[V] = new RefLike[V] {
+
+    final def get: Axn[V] =
+      self.get.provide(key).map(_.getOrElse(default))
+
+    final def upd[B, C](f: (V, B) => (V, C)): B =#> C = {
+      Rxn.computed[B, C] { (b: B) =>
+        repr.modify { phm =>
+          val currVal = phm.getOrElse(key, default)
+          val (newVal, c) = f(currVal, b)
+          if (equ(newVal, default)) (phm.without(key), c)
+          else (phm.assoc(key, newVal), c)
+        }
+      }
+    }
+
+    final def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
+      Rxn.computed[B, C] { (b: B) =>
+        repr.modifyWith { phm =>
+          val currVal = phm.getOrElse(key, default)
+          f(currVal, b).map {
+            case (newVal, c) =>
+              if (equ(newVal, default)) (phm.without(key), c)
+              else (phm.assoc(key, newVal), c)
+          }
+        }
+      }
     }
   }
 }
