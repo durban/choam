@@ -54,7 +54,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
   /*
    * An implementation similar to reagents, described in [Reagents: Expressing and
-   * Composing Fine-grained Concurrency](http://www.ccis.northeastern.edu/home/turon/reagents.pdf)
+   * Composing Fine-grained Concurrency](https://web.archive.org/web/20220214132428/https://www.ccis.northeastern.edu/home/turon/reagents.pdf)
    * by Aaron Turon; originally implemented at [aturon/ChemistrySet](
    * https://github.com/aturon/ChemistrySet).
    *

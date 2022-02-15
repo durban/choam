@@ -71,7 +71,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
 
 - Our `Rxn` is an extended version of *reagents*, described in
   [Reagents: Expressing and Composing Fine-grained Concurrency
-  ](http://www.ccis.northeastern.edu/home/turon/reagents.pdf). (Other implementations or reagents:
+  ](https://web.archive.org/web/20220214132428/https://www.ccis.northeastern.edu/home/turon/reagents.pdf). (Other implementations or reagents:
   [Scala](https://github.com/aturon/ChemistrySet),
   [OCaml](https://github.com/ocamllabs/reagents),
   [Racket](https://github.com/aturon/Caper).)
@@ -84,11 +84,10 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     see below).
   - Reads are guaranteed to be consistent (this is called *opacity*, see below).
 - Multi-word compare-and-swap (MCAS/*k*-CAS) implementations:
-  - [A Practical Multi-Word Compare-and-Swap Operation](
-    https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf) (an earlier version used this
-    algorithm)
-  - [Efficient Multi-word Compare and Swap](
-    https://arxiv.org/pdf/2008.02527.pdf) (`MCAS.EMCAS` implements a variant of this algorithm; this is the default algorithm on the JVM)
+  - [A Practical Multi-Word Compare-and-Swap Operation](https://web.archive.org/web/20220121034605/https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf)
+    (an earlier version used this algorithm)
+  - [Efficient Multi-word Compare and Swap](https://web.archive.org/web/20220215225848/https://arxiv.org/pdf/2008.02527.pdf)
+    (`MCAS.EMCAS` implements a variant of this algorithm; this is the default algorithm on the JVM)
   - A simple, non-lock-free algorithm from the Reagents paper (see above) is implemented as
     `MCAS.SpinLockMCAS`
 - Software transactional memory (STM)
@@ -119,7 +118,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     - consistency
     - isolation
     - `Rxn` also provides a correctness property called
-      [*opacity*](https://nbronson.github.io/scala-stm/semantics.html#opacity);
+      [*opacity*](https://web.archive.org/web/20200918092715/https://nbronson.github.io/scala-stm/semantics.html#opacity);
       a lot of STM implementations also guarantee this property (e.g., `scala-stm`),
       but not all of them. Opacity basically guarantees that all observed values
       are consistent with each other, even in running `Rxn`s (some STM systems only
@@ -127,8 +126,8 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   - Some STM implementations:
     - Haskell: `Control.Concurrent.STM`.
     - Scala: `scala-stm`, `cats-stm`, `ZSTM`.
-    - [TL2](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.90.811&rep=rep1&type=pdf)
-      and [SwissTM](https://infoscience.epfl.ch/record/136702/files/pldi127-dragojevic.pdf):
+    - [TL2](https://web.archive.org/web/20220205171142/https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.90.811&rep=rep1&type=pdf)
+      and [SwissTM](https://web.archive.org/web/20220215230304/https://www.researchgate.net/profile/Aleksandar-Dragojevic/publication/37470225_Stretching_Transactional_Memory/links/0912f50d430e2cf991000000/Stretching-Transactional-Memory.pdf):
       the system which guarantees *opacity* (see above) for `Rxn`s is based on
       the one in SwissTM (which is itself based on the one in TL2). However, TL2 and SwissTM
       are lock-based STM implementations; our implementation is lock-free.

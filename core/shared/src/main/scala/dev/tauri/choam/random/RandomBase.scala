@@ -30,7 +30,7 @@ import cats.effect.std.Random
  *
  * Some of these derived methods were adapted from the algorithms
  * in the public domain JSR-166 ThreadLocalRandom
- * (http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
+ * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
  */
 private abstract class RandomBase
   extends DeterministicRandomPlatform

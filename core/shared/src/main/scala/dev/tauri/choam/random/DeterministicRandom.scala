@@ -38,14 +38,14 @@ private[choam] object DeterministicRandom {
 /**
  * Based on "Fast Splittable Pseudorandom Number Generators"
  * by Guy L. Steele Jr., Doug Lea, and Christine H. Flood
- * (http://gee.cs.oswego.edu/dl/papers/oopsla14.pdf).
+ * (https://web.archive.org/web/20220123235700/http://gee.cs.oswego.edu/dl/papers/oopsla14.pdf).
  *
  * Some of the derived methods were adapted from the algorithms
  * in the public domain JSR-166 ThreadLocalRandom
- * (http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
+ * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
  *
  * The 2 finalizers (`staffordMix13` and `staffordMix04`) are from
- * https://zimbry.blogspot.com/2011/09/better-bit-mixing-improving-on.html.
+ * https://web.archive.org/web/20211218125810/https://zimbry.blogspot.com/2011/09/better-bit-mixing-improving-on.html.
  *
  * The mutable state of the RNG is held by a `Ref[Long]`,
  * so rollbacks also affect the state. Thus, the RNG can

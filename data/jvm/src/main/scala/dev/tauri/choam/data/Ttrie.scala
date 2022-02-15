@@ -41,7 +41,7 @@ import cats.kernel.Hash
  * Transactional Memory" by Michael Schröder, which is itself
  * based on the concurrent trie of Prokopec, et al.
  * (`scala.collection.concurrent.TrieMap` and
- * https://lampwww.epfl.ch/~prokopec/ctries-snapshot.pdf).
+ * https://web.archive.org/web/20210506144154/https://lampwww.epfl.ch/~prokopec/ctries-snapshot.pdf).
  *
  * We're using a `TrieMap` directly (instead of reimplementing),
  * since we get it for free from the stdlib.
