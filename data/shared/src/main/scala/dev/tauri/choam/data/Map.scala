@@ -26,8 +26,13 @@ trait Map[K, V] {
   def del: Rxn[K, Boolean]
   // TODO: a variant of `del` could return the old value (if any)
   def remove: Rxn[(K, V), Boolean]
-  def values: Axn[Vector[V]]
   def refLike(key: K, default: V): RefLike[V]
 }
 
-object Map extends MapPlatform
+object Map extends MapPlatform {
+
+  trait Extra[K, V] extends Map[K, V] {
+    def clear: Axn[Unit]
+    def values: Axn[Vector[V]] // TODO: this should take an `Order[V]`
+  }
+}

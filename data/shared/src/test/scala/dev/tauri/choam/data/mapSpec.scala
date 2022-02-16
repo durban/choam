@@ -51,6 +51,24 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: KCASImplSpec =>
       _ <- assertResultF(m.get.apply[F](99), None)
     } yield ()
   }
+
+  test("Map.Extra should perform values correctly") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      _ <- assertResultF(m.values.run[F], Vector.empty)
+      _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
+      _ <- (Rxn.pure(99 -> "bar") >>> m.put).run[F]
+      v1 <- m.values.run[F]
+      _ <- assertEqualsF(v1.size, 2)
+      _ <- assertEqualsF(v1.toSet, Set("foo", "bar"))
+      _ <- (Rxn.pure(99 -> "xyz") >>> m.put).run[F]
+      _ <- (Rxn.pure(128 -> "abc") >>> m.put).run[F]
+      _ <- m.del[F](42)
+      v2 <- m.values.run[F]
+      _ <- assertEqualsF(v2.size, 2)
+      _ <- assertEqualsF(v2.toSet, Set("xyz", "abc"))
+    } yield ()
+  }
 }
 
 trait MapSpec[F[_]]

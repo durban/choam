@@ -21,10 +21,5 @@ package data
 import cats.kernel.Hash
 
 private[choam] abstract class AbstractMapPlatform {
-
-  trait Extra[K, V] extends Map[K, V] {
-    def clear: Axn[Unit]
-  }
-
   def simple[K: Hash, V]: Axn[Map.Extra[K, V]]
 }

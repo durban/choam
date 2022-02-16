@@ -32,7 +32,7 @@ import Fs2SignallingRefWrapper._
 // TODO: also consider fs2.concurrent.Channel
 private[stream] final class Fs2SignallingRefWrapper[F[_], A](
   underlying: Ref[A],
-  val listeners: Map[Unique.Token, Ref[Listener[F, A]]],
+  val listeners: Map.Extra[Unique.Token, Ref[Listener[F, A]]],
 )(implicit F: AsyncReactive[F]) extends RxnSignallingRef[F, A] {
 
   // Rxn API:

@@ -110,10 +110,13 @@ object TtrieTest {
     val tlr = ThreadLocalRandom.current()
     // save memory by using a single value:
     val value = "e52262dfbfdf08fb"
-    while (m.values.unsafeRun(initMcas).size < size) {
+    var currSize = 0
+    while (currSize < size) {
       val key = tlr.nextInt(0x40000000)
       if (key != avoid) {
-        m.put.unsafePerform(key -> value, initMcas)
+        if (m.put.unsafePerform(key -> value, initMcas).isEmpty) {
+          currSize += 1
+        } // else: we just overwrote an existing value
       }
     }
     m

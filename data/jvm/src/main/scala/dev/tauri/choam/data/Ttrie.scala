@@ -123,22 +123,6 @@ private final class Ttrie[K, V](
     }
   }
 
-  final def values: Axn[Vector[V]] = {
-    Axn.unsafe.delay {
-      // TODO: This is not safe!
-      // TODO: If we run this twice in one
-      // TODO: Rxn, the second one can return
-      // TODO: a different result. Newly added
-      // TODO: refs will be included the second
-      // TODO: time, which breaks opacity.
-      m.valuesIterator.toList
-    }.flatMapF { (lst: List[Ref[Option[V]]]) =>
-      Rxn.consistentReadMany(lst).map { (lst: List[Option[V]]) =>
-        lst.collect { case Some(v) => v }.toVector
-      }
-    }
-  }
-
   final override def refLike(key: K, default: V): RefLike[V] = new RefLike[V] {
 
     final def get: Axn[V] =
