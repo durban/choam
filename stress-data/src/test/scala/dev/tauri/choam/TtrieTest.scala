@@ -108,12 +108,11 @@ object TtrieTest {
     val tlr = ThreadLocalRandom.current()
     // save memory by using a single value:
     val value = "e52262dfbfdf08fb"
-    for (_ <- 0 until size) {
-      val key = tlr.nextInt(0x40000000) match {
-        case i if i == avoid => i + 1
-        case i => i
+    while (m.values.unsafeRun(initMcas).size < size) {
+      val key = tlr.nextInt(0x40000000)
+      if (key != avoid) {
+        m.put.unsafePerform(key -> value, initMcas)
       }
-      m.put.unsafePerform(key -> value, initMcas)
     }
     m
   }
