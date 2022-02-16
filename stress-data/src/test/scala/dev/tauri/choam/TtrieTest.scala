@@ -102,4 +102,19 @@ object TtrieTest {
     }
     m
   }
+
+  final def newRandomTtrie(size: Int, avoid: Int): Map[Int, String] = {
+    val m = Map.ttrie[Int, String].unsafeRun(initMcas)
+    val tlr = ThreadLocalRandom.current()
+    // save memory by using a single value:
+    val value = "e52262dfbfdf08fb"
+    for (_ <- 0 until size) {
+      val key = tlr.nextInt(0x40000000) match {
+        case i if i == avoid => i + 1
+        case i => i
+      }
+      m.put.unsafePerform(key -> value, initMcas)
+    }
+    m
+  }
 }
