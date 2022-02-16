@@ -20,14 +20,14 @@ package dev.tauri.choam
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LLL_Result
+import org.openjdk.jcstress.infra.results.LLLL_Result
 
 @JCStressTest
 @State
 @Description("Ttrie lookup should be opaque (concurrent insertion)")
 @Outcomes(Array(
-  new Outcome(id = Array("None, (Some(a),Some(a)), (Some(a),Some(a))"), expect = ACCEPTABLE_INTERESTING, desc = "ins wins"),
-  new Outcome(id = Array("None, (None,None), (Some(a),Some(a))"), expect = ACCEPTABLE, desc = "get wins")
+  new Outcome(id = Array("None, (Some(a),Some(a)), (Some(a),Some(a)), null"), expect = ACCEPTABLE, desc = "ins wins"),
+  new Outcome(id = Array("None, (None,None), (Some(a),Some(a)), null"), expect = ACCEPTABLE_INTERESTING, desc = "get wins")
 ))
 class TtrieOpacityTest1 extends StressTestBase {
 
@@ -40,24 +40,32 @@ class TtrieOpacityTest1 extends StressTestBase {
   private[this] val insert: (Int, String) =#> Option[String] =
     ttrie.put
 
-  private[this] val lookup: Int =#> (Option[String], Option[String]) =
-    ttrie.get * ttrie.get
+  private[this] final def lookup(r: LLLL_Result): Int =#> (Option[String], Option[String]) = {
+    (ttrie.get * ttrie.get).map { optopt =>
+      if (optopt._1 != optopt._2) {
+        if (r ne null) {
+          r.r4 = optopt
+        }
+      }
+      optopt
+    }
+  }
 
   private[this] val kv =
     key -> "a"
 
   @Actor
-  def ins(r: LLL_Result): Unit = {
+  def ins(r: LLLL_Result): Unit = {
     r.r1 = insert.unsafePerform(kv, this.impl)
   }
 
   @Actor
-  def get(r: LLL_Result): Unit = {
-    r.r2 = lookup.unsafePerform(key, this.impl)
+  def get(r: LLLL_Result): Unit = {
+    r.r2 = lookup(r).unsafePerform(key, this.impl)
   }
 
   @Arbiter
-  def arbiter(r: LLL_Result): Unit = {
-    r.r3 = lookup.unsafePerform(key, this.impl)
+  def arbiter(r: LLLL_Result): Unit = {
+    r.r3 = lookup(null).unsafePerform(key, this.impl)
   }
 }
