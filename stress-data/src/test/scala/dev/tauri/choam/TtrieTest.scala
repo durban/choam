@@ -104,6 +104,7 @@ object TtrieTest {
   }
 
   final def newRandomTtrie(size: Int, avoid: Int): Map[Int, String] = {
+    require(size < 0x10000000)
     val m = Map.ttrie[Int, String].unsafeRun(initMcas)
     val tlr = ThreadLocalRandom.current()
     // save memory by using a single value:
