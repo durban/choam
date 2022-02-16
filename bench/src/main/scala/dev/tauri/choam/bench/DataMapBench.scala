@@ -30,7 +30,7 @@ import util._
 @Threads(2)
 class DataMapBench {
 
-  import DataMapBench.{ AbstractSt, BaselineSt, SimpleSt, TtrieSt }
+  import DataMapBench._
 
   @Benchmark
   def baseline(s: BaselineSt, bh: Blackhole, k: KCASImplState): Unit = {
@@ -38,16 +38,21 @@ class DataMapBench {
   }
 
   @Benchmark
-  def simple(s: SimpleSt, bh: Blackhole, k: KCASImplState): Unit = {
-    task(s, bh, k)
+  def rxnSimple(s: SimpleSt, bh: Blackhole, k: KCASImplState): Unit = {
+    rxnTask(s, bh, k)
   }
 
   @Benchmark
-  def ttrie(s: TtrieSt, bh: Blackhole, k: KCASImplState): Unit = {
-    task(s, bh, k)
+  def rxnTtrie(s: TtrieSt, bh: Blackhole, k: KCASImplState): Unit = {
+    rxnTask(s, bh, k)
   }
 
-  private[this] final def task(s: AbstractSt, bh: Blackhole, k: KCASImplState): Unit = {
+  @Benchmark
+  def scalaStm(s: ScalaStmSt, bh: Blackhole, k: KCASImplState): Unit = {
+    scalaStmTask(s, bh, k)
+  }
+
+  private[this] final def rxnTask(s: RxnMapSt, bh: Blackhole, k: KCASImplState): Unit = {
     k.nextIntBounded(4) match {
       case 0 | 1 =>
         // lookup:
@@ -63,6 +68,36 @@ class DataMapBench {
         } else {
           // remove:
           val res: Boolean = s.map.del.unsafePerformInternal(key, k.kcasCtx)
+          bh.consume(res)
+        }
+      case x =>
+        impossible(x.toString)
+    }
+  }
+
+  private[this] final def scalaStmTask(s: ScalaStmSt, bh: Blackhole, k: KCASImplState): Unit = {
+    import scala.concurrent.stm.atomic
+    k.nextIntBounded(4) match {
+      case 0 | 1 =>
+        // lookup:
+        val key = s.keys(k.nextIntBounded(s.keys.length))
+        val res: String = atomic { implicit txn =>
+          s.tmap.get(key)
+        }.get
+        bh.consume(res)
+      case n @ (2 | 3) =>
+        val key = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
+        if (n == 2) {
+          // insert:
+          val res: Option[String] = atomic { implicit txn =>
+            s.tmap.put(key, s.constValue)
+          }
+          bh.consume(res)
+        } else {
+          // remove:
+          val res: Boolean = atomic { implicit txn =>
+            s.tmap.remove(key)
+          }.isDefined
           bh.consume(res)
         }
       case x =>
@@ -107,13 +142,13 @@ object DataMapBench {
 
     @Param(Array("1048576"))
     private[this] var _mapSize: Int =
-      _
+      -1
 
     private[this] var _keys: Array[String] =
-      _
+      null
 
     private[this] var _delInsKeys: Array[String] =
-      _
+      null
 
     def mapSize: Int =
       _mapSize
@@ -124,27 +159,12 @@ object DataMapBench {
     def delInsKeys: Array[String] =
       _delInsKeys
 
-    def map: Map[String, String]
-
-    protected def initializeMap(): Unit = {
-      var idx = 0
-      while (idx < _delInsKeys.length) {
-        val key = _delInsKeys(idx)
-        assert(key ne null)
-        assert(this.map.put.unsafePerform(key -> constValue, initMcas).isEmpty)
-        idx += 1
-      }
-      idx = 0
-      while (idx < _keys.length) {
-        val key = _keys(idx)
-        assert(key ne null)
-        assert(this.map.put.unsafePerform(key -> constValue, initMcas).isEmpty)
-        idx += 1
-      }
+    @Setup
+    final def setup(): Unit = {
+      this.setupImpl()
     }
 
-    @Setup
-    def setup(): Unit = {
+    protected def setupImpl(): Unit = {
       val delInsSize = mapSize >>> 4
       assert(delInsSize > 0)
       _delInsKeys = new Array[String](delInsSize)
@@ -169,23 +189,43 @@ object DataMapBench {
         _keys(idx) = vec(idx + offset)
         idx += 1
       }
+    }
+  }
+
+  @State(Scope.Benchmark)
+  abstract class RxnMapSt extends AbstractSt {
+
+    def map: Map[String, String]
+
+    protected override def setupImpl(): Unit = {
+      super.setupImpl()
       this.initializeMap()
+    }
+
+    private def initializeMap(): Unit = {
+      var idx = 0
+      while (idx < delInsKeys.length) {
+        val key = delInsKeys(idx)
+        assert(key ne null)
+        assert(this.map.put.unsafePerform(key -> constValue, initMcas).isEmpty)
+        idx += 1
+      }
+      idx = 0
+      while (idx < keys.length) {
+        val key = keys(idx)
+        assert(key ne null)
+        assert(this.map.put.unsafePerform(key -> constValue, initMcas).isEmpty)
+        idx += 1
+      }
     }
   }
 
   @State(Scope.Benchmark)
   class BaselineSt extends AbstractSt {
-
-    final def map: Map[String, String] =
-      throw new Exception("BaselineSt#map")
-
-    protected final override def initializeMap(): Unit = {
-      // do nothing, there is no map
-    }
   }
 
   @State(Scope.Benchmark)
-  class SimpleSt extends AbstractSt {
+  class SimpleSt extends RxnMapSt {
 
     val simple: Map[String, String] =
       Map.simple[String, String].unsafeRun(initMcas)
@@ -195,12 +235,45 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  class TtrieSt extends AbstractSt {
+  class TtrieSt extends RxnMapSt {
 
     val ttrie: Map[String, String] =
       Map.ttrie[String, String].unsafeRun(initMcas)
 
     final def map: Map[String, String] =
       ttrie
+  }
+
+  @State(Scope.Benchmark)
+  class ScalaStmSt extends AbstractSt {
+
+    import scala.concurrent.stm.atomic
+    import scala.concurrent.stm.TMap
+
+    val tmap: TMap[String, String] =
+      TMap.empty[String, String]
+
+    protected override def setupImpl(): Unit = {
+      super.setupImpl()
+      this.initializeMap()
+    }
+
+    private def initializeMap(): Unit = {
+      var idx = 0
+      while (idx < delInsKeys.length) {
+        val key = delInsKeys(idx)
+        assert(key ne null)
+        assert(atomic { implicit txn => this.tmap.put(key, constValue) }.isEmpty)
+        idx += 1
+      }
+      idx = 0
+      while (idx < keys.length) {
+        val key = keys(idx)
+        assert(key ne null)
+        assert(atomic { implicit txn => this.tmap.put(key, constValue) }.isEmpty)
+        idx += 1
+      }
+      assert(atomic { implicit txn => this.tmap.size } == this.mapSize)
+    }
   }
 }
