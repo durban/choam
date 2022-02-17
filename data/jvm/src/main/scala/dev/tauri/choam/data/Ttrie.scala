@@ -171,6 +171,10 @@ private final class Ttrie[K, V](
       }
     }
   }
+
+  private[choam] final def unsafeTrieMapSize: Axn[Int] = {
+    Axn.unsafe.delay { m.size }
+  }
 }
 
 private final object Ttrie {

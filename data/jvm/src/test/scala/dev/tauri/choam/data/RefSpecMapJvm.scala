@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package data
 
+import java.util.concurrent.ThreadLocalRandom
+
 import cats.kernel.Hash
 import cats.effect.IO
 
@@ -48,8 +50,44 @@ final class RefSpec_Map_Simple_SpinLockMCAS_IO
 
 trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
 
-  final override type MapType[K, V] = Map[K, V]
+  private[data] final override type MapType[K, V] = Ttrie[K, V]
 
   final override def newMap[K: Hash, V]: F[MapType[K, V]] =
-    Map.ttrie[K, V].run[F]
+    Ttrie[K, V].run[F]
+
+  test("Ttrie insert/remove should not leak memory") {
+    val constValue = "foo"
+    val ncpu = Runtime.getRuntime().availableProcessors()
+    val S = 4096
+    val N = 8
+    def task(m: Map[String, String], size: Int): F[Unit] = {
+      F.delay {
+        require(size > 0)
+        val rng = new scala.util.Random(ThreadLocalRandom.current())
+        val set = scala.collection.mutable.Set.empty[String]
+        while (set.size < size) {
+          set += rng.nextString(length = 32)
+        }
+        rng.shuffle(set.toVector)
+      }.flatMap { (keys: Vector[String]) =>
+        keys.parTraverseN(ncpu) { key =>
+          m.put[F](key -> constValue) *> assertResultF(m.get[F](key), Some(constValue))
+        } >> (
+          keys.parTraverseN(ncpu) { key =>
+            assertResultF(m.del[F](key), true)
+          }
+        ) >> (
+          assertResultF(m.unsafeSnapshot.run[F].map(_.size), 0)
+        )
+      }
+    }
+
+    for {
+      m <- newMap[String, String]
+      _ <- cats.Applicative[F].replicateA(
+        N,
+        task(m, size = S) // TODO: this fails: >> assertResultF(m.unsafeTrieMapSize.run[F], 0),
+      )
+    } yield ()
+  }
 }

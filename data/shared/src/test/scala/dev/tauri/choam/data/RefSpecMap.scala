@@ -38,7 +38,7 @@ trait RefSpec_Map_Simple[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
 
 trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
 
-  type MapType[K, V] <: Map[K, V]
+  private[data] type MapType[K, V] <: Map[K, V]
 
   final override type RefType[A] = RefLike[A]
 
