@@ -163,6 +163,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
         genV = F.pure("value"),
         size = S,
       )
+      _ <- assertResultF(m.unsafeSnapshot.run[F].map(_.size), S)
       doubleGet = (key: String) => (m.get.provide(key) * m.get.provide(key)).run[F]
       insert = (key: String) => m.put[F](key -> "x")
       both = (key: String) => F.both(
@@ -179,10 +180,8 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
       _ <- assertF(clue(results).forall(r => r._1 == r._2))
       // if found it, the value must be "x":
       _ <- assertF(clue(results).forall(r => r._1.getOrElse("x") == "x"))
-      // at least one get must've found it:
-      _ <- assertF(clue(results).exists(r => r._1.isDefined))
-      // at least one get mustn't have found it:
-      _ <- assertF(clue(results).exists(r => r._1.isEmpty))
+      // map must have changed size:
+      _ <- assertResultF(m.unsafeSnapshot.run[F].map(_.size), S + N)
     } yield ()
   }
 
@@ -197,6 +196,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
         genV = F.pure("x"),
         size = S,
       )
+      _ <- assertResultF(m.unsafeSnapshot.run[F].map(_.size), S)
       doubleGet = (key: String) => (m.get.provide(key) * m.get.provide(key)).run[F]
       delete = (key: String) => m.del[F](key)
       both = (key: String) => F.both(
@@ -221,14 +221,12 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
       delResults = allResults.map(_._2)
       // get results must be consistent:
       _ <- assertF(clue(results).forall(r => r._1 == r._2))
-      // at least one get must've found it:
-      _ <- assertF(clue(results).exists(r => r._1.isDefined))
       // if found it, the value must be "x":
       _ <- assertF(clue(results).forall(r => r._1.getOrElse("x") == "x"))
-      // at least one get mustn't have found it:
-      _ <- assertF(clue(results).exists(r => r._1.isEmpty))
       // del results must be successful:
       _ <- assertF(clue(delResults).forall(r => r))
+      // map must've halved in size:
+      _ <- assertResultF(m.unsafeSnapshot.run[F].map(_.size), S / 2)
     } yield ()
   }
 }
