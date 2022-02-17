@@ -83,6 +83,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
     }
 
     for {
+      _ <- assumeF(this.kcasImpl.isThreadSafe)
       m <- newMap[String, String]
       _ <- cats.Applicative[F].replicateA(
         N,
