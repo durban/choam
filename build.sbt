@@ -427,7 +427,7 @@ lazy val dependencies = new {
     "io.github.cquiroz" %%% "scala-java-locales" % scalaJsLocaleVersion,
     "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
   ))
-  val bobcats = Def.setting("com.armanbilge" %%% "bobcats" % "0.1-840c885")
+  val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-f4ce4ca")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
