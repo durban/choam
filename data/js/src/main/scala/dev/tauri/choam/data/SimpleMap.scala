@@ -128,6 +128,19 @@ private final class SimpleMap[K, V] private (
       }
     }
   }
+
+  private[choam] final def unsafeSnapshot: Axn[SMap[K, V]] = {
+    repr.get.map { m =>
+      // NB: SMap won't use a custom
+      // Hash; this is one reason why
+      // this method is `unsafe`.
+      val b = SMap.newBuilder[K, V]
+      m.iterator.foreach { wkv =>
+        b += ((wkv._1.k, wkv._2))
+      }
+      b.result()
+    }
+  }
 }
 
 private object SimpleMap {

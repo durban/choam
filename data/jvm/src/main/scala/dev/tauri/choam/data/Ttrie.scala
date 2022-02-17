@@ -19,8 +19,10 @@ package dev.tauri.choam
 package data
 
 import scala.collection.concurrent.TrieMap
+import scala.collection.immutable.{ Map => ScalaMap }
 
 import cats.kernel.Hash
+import cats.syntax.all._
 
 // TODO: Even failed lookups create a new
 // TODO: ref, and put it into the tree.
@@ -142,6 +144,31 @@ private final class Ttrie[K, V](
             (Some(newVal), c)
         }
       })
+    }
+  }
+
+  private[choam] final def unsafeSnapshot: Axn[ScalaMap[K, V]] = {
+    // NB: this is not composable,
+    // as running it twice in one Rxn
+    // may return a different set of
+    // refs; this is one reason why
+    // this method is `unsafe`.
+    Axn.unsafe.delay { m.iterator.toList }.flatMapF { kvs =>
+      kvs.traverse { kv =>
+        kv._2.get.map { v => (kv._1, v) }
+      }.map { kvs =>
+        // NB: ScalaMap won't use a custom
+        // Hash; this is another reason why
+        // this method is `unsafe`.
+        val b = ScalaMap.newBuilder[K, V]
+        kvs.foreach { kv =>
+          kv._2 match {
+            case None => ()
+            case Some(v) => b += (kv._1 -> v)
+          }
+        }
+        b.result()
+      }
     }
   }
 }

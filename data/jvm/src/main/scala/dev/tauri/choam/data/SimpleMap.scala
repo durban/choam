@@ -18,10 +18,11 @@
 package dev.tauri.choam
 package data
 
+import scala.collection.immutable.{ Map => ScalaMap }
+
 import cats.kernel.Hash
 
 import org.organicdesign.fp.collections.{ PersistentHashMap, Equator }
-import dev.tauri.choam.Axn
 
 private final class SimpleMap[K, V](
   repr: Ref[PersistentHashMap[K, V]],
@@ -127,6 +128,19 @@ private final class SimpleMap[K, V](
           }
         }
       }
+    }
+  }
+
+  private[choam] final def unsafeSnapshot: Axn[ScalaMap[K, V]] = {
+    repr.get.map { phm =>
+      // NB: ScalaMap won't use a custom
+      // Hash; this is one reason why
+      // this method is `unsafe`.
+      val b = ScalaMap.newBuilder[K, V]
+      phm.iterator().forEachRemaining { entry =>
+        b += ((entry.getKey(), entry.getValue()))
+      }
+      b.result()
     }
   }
 }
