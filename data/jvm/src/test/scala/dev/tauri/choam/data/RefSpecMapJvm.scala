@@ -68,7 +68,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
     }
   }
 
-  private[this] val NCPU =
+  private def NCPU =
     Runtime.getRuntime().availableProcessors()
 
   test("Ttrie insert/remove should not leak memory") {
