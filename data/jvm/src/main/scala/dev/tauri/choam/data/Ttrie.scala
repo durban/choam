@@ -163,13 +163,6 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  private[this] final def cleanupLaterIf(key: K, ref: TrieRef[V]): Rxn[Boolean, Unit] = {
-    Rxn.computed { wasDeleted =>
-      if (wasDeleted) cleanupLater(key, ref)
-      else Rxn.unit
-    }
-  }
-
   final def get: K =#> Option[V] =
     getRef.flatMapF(_.get.map(_.toOption))
 
@@ -210,9 +203,9 @@ private final class Ttrie[K, V] private (
     Rxn.computed { (key: K) =>
       getRefWithKey(key).flatMapF { ref =>
         ref.modify {
-          case ov @ (Init | End) => (ov, false)
+          case Init | End => (End, false)
           case Value(_) => (End, true)
-        }.postCommit(cleanupLaterIf(key, ref))
+        }.postCommit(cleanupLater(key, ref))
       }
     }
   }
@@ -221,12 +214,12 @@ private final class Ttrie[K, V] private (
     Rxn.computed { (kv: (K, V)) =>
       getRefWithKey(kv._1).flatMapF { ref =>
         ref.modify {
-          case ov @ (Init | End) =>
-            (ov, false)
+          case Init | End =>
+            (End, false)
           case value @ Value(currVal) =>
             if (equ(currVal, kv._2)) (End, true)
             else (value, false)
-        }.postCommit(cleanupLaterIf(kv._1, ref))
+        }.postCommit(cleanupLater(kv._1, ref))
       }
     }
   }

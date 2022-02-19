@@ -93,7 +93,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
     runMemoryReclamationTest(S, N, task, expectedSizeAtEnd = 0)
   }
 
-  test("Ttrie removing not included keys should not leak memory".ignore) { // TODO
+  test("Ttrie removing not included keys should not leak memory") {
     val S = 4096
     val N = 8
     def task(m: Map[String, String], size: Int): F[Unit] = {
