@@ -54,10 +54,15 @@ class DataMapBench {
 
   private[this] final def rxnTask(s: RxnMapSt, bh: Blackhole, k: KCASImplState): Unit = {
     k.nextIntBounded(4) match {
-      case 0 | 1 =>
-        // lookup:
-        val key = s.keys(k.nextIntBounded(s.keys.length))
-        val res: String = s.map.get.unsafePerformInternal(key, k.kcasCtx).get
+      case n @ (0 | 1) =>
+        val key = if (n == 0) {
+          // successful lookup:
+          s.keys(k.nextIntBounded(s.keys.length))
+        } else {
+          // unsuccessful lookup:
+          s.dummyKeys(k.nextIntBounded(s.dummyKeys.length))
+        }
+        val res: Option[String] = s.map.get.unsafePerformInternal(key, k.kcasCtx)
         bh.consume(res)
       case n @ (2 | 3) =>
         val key = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
@@ -78,12 +83,17 @@ class DataMapBench {
   private[this] final def scalaStmTask(s: ScalaStmSt, bh: Blackhole, k: KCASImplState): Unit = {
     import scala.concurrent.stm.atomic
     k.nextIntBounded(4) match {
-      case 0 | 1 =>
-        // lookup:
-        val key = s.keys(k.nextIntBounded(s.keys.length))
-        val res: String = atomic { implicit txn =>
+      case n @ (0 | 1) =>
+        val key = if (n == 0) {
+          // successful lookup:
+          s.keys(k.nextIntBounded(s.keys.length))
+        } else {
+          // unsuccessful lookup:
+          s.dummyKeys(k.nextIntBounded(s.dummyKeys.length))
+        }
+        val res: Option[String] = atomic { implicit txn =>
           s.tmap.get(key)
-        }.get
+        }
         bh.consume(res)
       case n @ (2 | 3) =>
         val key = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
@@ -107,9 +117,14 @@ class DataMapBench {
 
   private[this] final def baselineTask(s: AbstractSt, bh: Blackhole, k: KCASImplState): Unit = {
     k.nextIntBounded(4) match {
-      case 0 | 1 =>
-        // lookup:
-        val key: String = s.keys(k.nextIntBounded(s.keys.length))
+      case n @ (0 | 1) =>
+        val key: String = if (n == 0) {
+          // successful lookup:
+          s.keys(k.nextIntBounded(s.keys.length))
+        } else {
+          // unsuccessful lookup:
+          s.dummyKeys(k.nextIntBounded(s.dummyKeys.length))
+        }
         bh.consume(key)
       case n @ (2 | 3) =>
         val key: String = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
@@ -150,14 +165,23 @@ object DataMapBench {
     private[this] var _delInsKeys: Array[String] =
       null
 
+    private[this] var _dummyKeys: Array[String] =
+      null
+
     def mapSize: Int =
       _mapSize
 
+    /** Keys, which are initially included in the map, and never removed */
     def keys: Array[String] =
       _keys
 
+    /** Keys, which are initially included in the map, and repeately removed/inserted */
     def delInsKeys: Array[String] =
       _delInsKeys
+
+    /** Keys, which are not included in the map, and used for unsuccessful lookups */
+    def dummyKeys: Array[String] =
+      _dummyKeys
 
     @Setup
     final def setup(): Unit = {
@@ -166,24 +190,33 @@ object DataMapBench {
 
     protected def setupImpl(): Unit = {
       val delInsSize = mapSize >>> 4
+      val dummySize = delInsSize
       assert(delInsSize > 0)
       _delInsKeys = new Array[String](delInsSize)
+      _dummyKeys = new Array[String](dummySize)
       _keys = new Array[String](mapSize - delInsSize)
       assert((_keys.length + delInsSize) == mapSize)
+      val fullSize = mapSize + dummySize
       val rng = new scala.util.Random(ThreadLocalRandom.current())
       val set = scala.collection.mutable.Set.empty[String]
-      while (set.size < mapSize) {
+      while (set.size < fullSize) {
         val k = rng.nextString(32)
         set += k
       }
       val vec = rng.shuffle(set.toVector)
-      assert(vec.length == mapSize)
+      assert(vec.length == fullSize)
       var idx = 0
       while (idx < _delInsKeys.length) {
         _delInsKeys(idx) = vec(idx)
         idx += 1
       }
-      val offset = _delInsKeys.length
+      var offset = _delInsKeys.length
+      idx = 0
+      while (idx < _dummyKeys.length) {
+        _dummyKeys(idx) = vec(idx + offset)
+        idx += 1
+      }
+      offset += _dummyKeys.length
       idx = 0
       while (idx < _keys.length) {
         _keys(idx) = vec(idx + offset)
