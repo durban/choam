@@ -56,21 +56,6 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
   final override def newMap[K: Hash, V]: F[MapType[K, V]] =
     Ttrie[K, V].run[F]
 
-  private[this] final def randomStrings(size: Int): F[Vector[String]] = {
-    F.delay {
-      require(size > 0)
-      val rng = new scala.util.Random(ThreadLocalRandom.current())
-      val set = scala.collection.mutable.Set.empty[String]
-      while (set.size < size) {
-        set += rng.nextString(length = 32)
-      }
-      rng.shuffle(set.toVector)
-    }
-  }
-
-  private def NCPU =
-    Runtime.getRuntime().availableProcessors()
-
   test("Ttrie insert/remove should not leak memory") {
     val constValue = "foo"
     val S = 4096
@@ -89,14 +74,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
       }
     }
 
-    for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
-      m <- newMap[String, String]
-      _ <- Applicative[F].replicateA(
-        N,
-        task(m, size = S) >> assertResultF(m.unsafeTrieMapSize.run[F], 0),
-      )
-    } yield ()
+    runMemoryReclamationTest(S, N, task, expectedSizeAtEnd = 0)
   }
 
   test("Ttrie failed lookups should not leak memory".ignore) { // TODO
@@ -112,14 +90,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
       }
     }
 
-    for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
-      m <- newMap[String, String]
-      _ <- Applicative[F].replicateA(
-        N,
-        task(m, size = S) >> assertResultF(m.unsafeTrieMapSize.run[F], 0),
-      )
-    } yield ()
+    runMemoryReclamationTest(S, N, task, expectedSizeAtEnd = 0)
   }
 
   test("Ttrie removing not included keys should not leak memory".ignore) { // TODO
@@ -135,12 +106,36 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
       }
     }
 
+    runMemoryReclamationTest(S, N, task, expectedSizeAtEnd = 0)
+  }
+
+  private[this] def NCPU =
+    Runtime.getRuntime().availableProcessors()
+
+  private[this] final def randomStrings(size: Int): F[Vector[String]] = {
+    F.delay {
+      require(size > 0)
+      val rng = new scala.util.Random(ThreadLocalRandom.current())
+      val set = scala.collection.mutable.Set.empty[String]
+      while (set.size < size) {
+        set += rng.nextString(length = 32)
+      }
+      rng.shuffle(set.toVector)
+    }
+  }
+
+  private[this] final def runMemoryReclamationTest[K: Hash, V](
+    S: Int,
+    N: Int,
+    task: (Map[K, V], Int) => F[Unit],
+    expectedSizeAtEnd: Int,
+  ): F[Unit] = {
     for {
       _ <- assumeF(this.kcasImpl.isThreadSafe)
-      m <- newMap[String, String]
+      m <- newMap[K, V]
       _ <- Applicative[F].replicateA(
         N,
-        task(m, size = S) >> assertResultF(m.unsafeTrieMapSize.run[F], 0),
+        task(m, S) >> assertResultF(m.unsafeTrieMapSize.run[F], expectedSizeAtEnd),
       )
     } yield ()
   }
