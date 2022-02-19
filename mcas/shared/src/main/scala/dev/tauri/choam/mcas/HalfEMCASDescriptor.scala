@@ -169,22 +169,31 @@ final class HalfEMCASDescriptor private (
   private[mcas] final def validateAndTryExtend(
     commitTsRef: MemoryLocation[Long],
     ctx: MCAS.ThreadContext,
+    additionalHwd: HalfWordDescriptor[_], // can be null
   ): HalfEMCASDescriptor = {
     require(this.versionCas eq null)
-    // NB: we must read the commitTs *before* the `ctx.validate(this)`
+    // NB: we must read the commitTs *before* the `ctx.validate...`
     val newValidTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
-    require(newValidTsBoxed.longValue > this.validTs)
-    if (ctx.validate(this)) {
-      new HalfEMCASDescriptor(
-        map = this.map,
-        validTsBoxed = newValidTsBoxed,
-        readOnly = this.readOnly,
-        versionIncr = this.versionIncr,
-        versionCas = this.versionCas,
-      )
+    if (newValidTsBoxed.longValue > this.validTs) {
+      if (
+        ctx.validate(this) &&
+        ((additionalHwd eq null) || ctx.validateHwd(additionalHwd))
+      ) {
+        assert((additionalHwd eq null) || (additionalHwd.version <= newValidTsBoxed.longValue))
+        new HalfEMCASDescriptor(
+          map = this.map,
+          validTsBoxed = newValidTsBoxed,
+          readOnly = this.readOnly,
+          versionIncr = this.versionIncr,
+          versionCas = this.versionCas,
+        )
+      } else {
+        null
+      }
     } else {
-      null
+      // no need to validate:
+      this
     }
   }
 
@@ -278,7 +287,7 @@ object HalfEMCASDescriptor {
     if (needToExtend) {
       // this will be null, if we cannot extend,
       // in which case we return null:
-      merged = ctx.validateAndTryExtend(merged)
+      merged = ctx.validateAndTryExtend(merged, hwd = null)
     }
     merged
   }

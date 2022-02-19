@@ -21,6 +21,7 @@ package data
 import java.util.concurrent.ThreadLocalRandom
 
 import cats.kernel.Hash
+import cats.Applicative
 import cats.effect.IO
 
 final class RefSpec_Map_Ttrie_ThreadConfinedMCAS_IO
@@ -55,25 +56,31 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
   final override def newMap[K: Hash, V]: F[MapType[K, V]] =
     Ttrie[K, V].run[F]
 
+  private[this] final def randomStrings(size: Int): F[Vector[String]] = {
+    F.delay {
+      require(size > 0)
+      val rng = new scala.util.Random(ThreadLocalRandom.current())
+      val set = scala.collection.mutable.Set.empty[String]
+      while (set.size < size) {
+        set += rng.nextString(length = 32)
+      }
+      rng.shuffle(set.toVector)
+    }
+  }
+
+  private[this] val NCPU =
+    Runtime.getRuntime().availableProcessors()
+
   test("Ttrie insert/remove should not leak memory") {
     val constValue = "foo"
-    val ncpu = Runtime.getRuntime().availableProcessors()
     val S = 4096
     val N = 8
     def task(m: Map[String, String], size: Int): F[Unit] = {
-      F.delay {
-        require(size > 0)
-        val rng = new scala.util.Random(ThreadLocalRandom.current())
-        val set = scala.collection.mutable.Set.empty[String]
-        while (set.size < size) {
-          set += rng.nextString(length = 32)
-        }
-        rng.shuffle(set.toVector)
-      }.flatMap { (keys: Vector[String]) =>
-        keys.parTraverseN(ncpu) { key =>
+      randomStrings(size).flatMap { (keys: Vector[String]) =>
+        keys.parTraverseN(NCPU) { key =>
           m.put[F](key -> constValue) *> assertResultF(m.get[F](key), Some(constValue))
         } >> (
-          keys.parTraverseN(ncpu) { key =>
+          keys.parTraverseN(NCPU) { key =>
             assertResultF(m.del[F](key), true)
           }
         ) >> (
@@ -85,9 +92,55 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
     for {
       _ <- assumeF(this.kcasImpl.isThreadSafe)
       m <- newMap[String, String]
-      _ <- cats.Applicative[F].replicateA(
+      _ <- Applicative[F].replicateA(
         N,
-        task(m, size = S) // TODO: this fails: >> assertResultF(m.unsafeTrieMapSize.run[F], 0),
+        task(m, size = S) >> assertResultF(m.unsafeTrieMapSize.run[F], 0),
+      )
+    } yield ()
+  }
+
+  test("Ttrie failed lookups should not leak memory".ignore) { // TODO
+    val S = 4096
+    val N = 8
+    def task(m: Map[String, String], size: Int): F[Unit] = {
+      randomStrings(size).flatMap { (keys: Vector[String]) =>
+        keys.parTraverseN(NCPU) { key =>
+          assertResultF(m.get[F](key), None)
+        } >> (
+          assertResultF(m.unsafeSnapshot.run[F].map(_.size), 0)
+        )
+      }
+    }
+
+    for {
+      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      m <- newMap[String, String]
+      _ <- Applicative[F].replicateA(
+        N,
+        task(m, size = S) >> assertResultF(m.unsafeTrieMapSize.run[F], 0),
+      )
+    } yield ()
+  }
+
+  test("Ttrie removing not included keys should not leak memory".ignore) { // TODO
+    val S = 4096
+    val N = 8
+    def task(m: Map[String, String], size: Int): F[Unit] = {
+      randomStrings(size).flatMap { (keys: Vector[String]) =>
+        keys.parTraverseN(NCPU) { key =>
+          assertResultF(m.del[F](key), false)
+        } >> (
+          assertResultF(m.unsafeSnapshot.run[F].map(_.size), 0)
+        )
+      }
+    }
+
+    for {
+      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      m <- newMap[String, String]
+      _ <- Applicative[F].replicateA(
+        N,
+        task(m, size = S) >> assertResultF(m.unsafeTrieMapSize.run[F], 0),
       )
     } yield ()
   }

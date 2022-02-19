@@ -916,6 +916,19 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
+  test("unsafe.forceValidate (dummy)") {
+    for {
+      r1 <- Ref("a").run[F]
+      _ <- r1.update { _ => "x" }.run[F]
+      rxn = r1.get.flatMapF { v1 =>
+        Rxn.unsafe.forceValidate.flatMapF { _ =>
+          r1.get.map { v2 => (v1, v2) }
+        }
+      }
+      _ <- assertResultF(rxn.run[F], ("x", "x"))
+    } yield ()
+  }
+
   test("Autoboxing") {
     // On the JVM integers between (typically) -128 and
     // 127 are cached. Due to autoboxing, other integers

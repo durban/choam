@@ -115,8 +115,12 @@ private object SpinLockMCAS extends MCAS { self =>
     protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       desc.addVersionCas(commitTs)
 
-    protected[choam] final override def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
-      desc.validateAndTryExtend(commitTs, this)
+    protected[choam] final override def validateAndTryExtend(
+      desc: HalfEMCASDescriptor,
+      hwd: HalfWordDescriptor[_],
+    ): HalfEMCASDescriptor = {
+      desc.validateAndTryExtend(commitTs, this, hwd)
+    }
 
     private def perform(ops: List[HalfWordDescriptor[_]], newVersion: Long): Long = {
 

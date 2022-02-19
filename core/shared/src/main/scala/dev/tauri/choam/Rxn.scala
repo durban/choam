@@ -380,15 +380,22 @@ object Rxn extends RxnInstances0 {
     sealed abstract class Ticket[A] {
       def unsafePeek: A
       def unsafeSet(nv: A): Axn[Unit]
+      def unsafeIsReadOnly: Boolean
       final def unsafeValidate: Axn[Unit] =
         this.unsafeSet(this.unsafePeek)
     }
 
-    private[Rxn] final class TicketImpl[A](hwd: HalfWordDescriptor[A]) extends Ticket[A] {
+    private[Rxn] final class TicketImpl[A](hwd: HalfWordDescriptor[A])
+      extends Ticket[A] {
+
       final def unsafePeek: A =
         hwd.nv
+
       final def unsafeSet(nv: A): Axn[Unit] =
-        new TicketWrite(hwd.withNv(nv))
+        new TicketWrite(hwd, nv)
+
+      final def unsafeIsReadOnly: Boolean =
+        hwd.readOnly
     }
 
     def directRead[A](r: Ref[A]): Axn[A] =
@@ -416,6 +423,9 @@ object Rxn extends RxnInstances0 {
     private[choam] def context[A](uf: MCAS.ThreadContext => A): Axn[A] =
       new Ctx[A](uf)
 
+    private[choam] def suspendContext[A](uf: MCAS.ThreadContext => Axn[A]): Axn[A] =
+      this.context(uf).flatten // TODO: optimize
+
     // TODO: Do we even need `immediately` and
     // TODO: `delayComputed` now that we can touch
     // TODO: a ref more than once in a Rxn? (Check
@@ -436,6 +446,15 @@ object Rxn extends RxnInstances0 {
 
     def exchange[A, B](ex: Exchanger[A, B]): Rxn[A, B] =
       ex.exchange
+
+    /**
+     * This is not unsafe by itself, but it is only useful
+     * if there are other unsafe things going on (validation
+     * is handled automatically otherwise). This is why it
+     * is part of the `unsafe` API.
+     */
+    def forceValidate: Axn[Unit] =
+      new ForceValidate
   }
 
   private[choam] final object internal {
@@ -568,9 +587,14 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"TicketRead(${ref})"
   }
 
-  private final class TicketWrite[A](val hwd: HalfWordDescriptor[A]) extends Rxn[Any, Unit] {
+  private final class TicketWrite[A](val hwd: HalfWordDescriptor[A], val newest: A) extends Rxn[Any, Unit] {
     private[choam] final override def tag = 21
-    final override def toString: String = s"TicketWrite(${hwd})"
+    final override def toString: String = s"TicketWrite(${hwd}, ${newest})"
+  }
+
+  private final class ForceValidate() extends Rxn[Any, Unit] {
+    private[choam] final override def tag = 22
+    final override def toString: String = s"ForceValidate()"
   }
 
   // Interpreter:
@@ -907,9 +931,9 @@ object Rxn extends RxnInstances0 {
 
     /**
      * Specialized variant of `MCAS.ThreadContext#readMaybeFromLog`.
-     * Note: doesn't (always) put a fresh HWD into the log!
-     * Note: returns `null` if a rollback is required! Note: may
-     * update `desc` (revalidate/extend).
+     * Note: doesn't put a fresh HWD into the log!
+     * Note: returns `null` if a rollback is required!
+     * Note: may update `desc` (revalidate/extend).
      */
     private[this] final def readMaybeFromLog[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
       desc.getOrElseNull(ref) match {
@@ -923,24 +947,30 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def revalidateIfNeeded[A](hwd: HalfWordDescriptor[A]): HalfWordDescriptor[A] = {
+      require(hwd ne null)
       if (!desc.isValidHwd(hwd)) {
-        desc = desc.add(hwd)
-        ctx.validateAndTryExtend(desc) match {
-          case null =>
-            // need to roll back
-            clearDesc()
-            null
-          case newDesc =>
-            // OK, it was extended
-            desc = newDesc
-            // TODO: do we really need to lookup again?
-            // lookup again (version might've changed):
-            val newHwd = desc.getOrElseNull(hwd.address)
-            assert(newHwd ne null)
-            newHwd
+        if (forceValidate(hwd)) {
+          // OK, `desc` was extended
+          hwd
+        } else {
+          // need to roll back
+          null
         }
       } else {
         hwd
+      }
+    }
+
+    private[this] final def forceValidate(optHwd: HalfWordDescriptor[_]): Boolean = {
+      ctx.validateAndTryExtend(desc, hwd = optHwd) match {
+        case null =>
+          // need to roll back
+          clearDesc()
+          false
+        case newDesc =>
+          // OK, it was extended
+          desc = newDesc
+          true
       }
     }
 
@@ -952,7 +982,7 @@ object Rxn extends RxnInstances0 {
         case EmcasStatus.FailedVal =>
           false
         case _ => // failed due to version
-          ctx.validateAndTryExtend(desc) match {
+          ctx.validateAndTryExtend(desc, hwd = null) match {
             case null =>
               // can't extend:
               clearDesc()
@@ -1167,7 +1197,7 @@ object Rxn extends RxnInstances0 {
           }
         case 20 => // TicketRead
           val c = curr.asInstanceOf[TicketRead[Any]]
-          val hwd = readMaybeFromLog(c.ref) // ctx.readIntoHwd(c.ref)
+          val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
             loop(retry()) // TODO: optimize rollback based on version(?)
           } else {
@@ -1185,13 +1215,21 @@ object Rxn extends RxnInstances0 {
                 case null =>
                   loop(retry()) // TODO: optimize rollback based on version(?)
                 case hwd =>
-                  desc = desc.addOrOverwrite(hwd)
+                  desc = desc.add(hwd.withNv(c.newest))
                   loop(next())
               }
             case existingHwd =>
-              // TODO: throws if it was modified in the meantime
-              desc = desc.overwrite(existingHwd.tryMergeTicket(c.hwd))
+              // NB: throws if it was modified in the meantime.
+              // NB: this does no validation! (TODO: is this a problem?)
+              desc = desc.overwrite(existingHwd.tryMergeTicket(c.hwd, c.newest))
               loop(next())
+          }
+        case 22 => // ForceValidate
+          if (forceValidate(optHwd = null)) {
+            a = () : Any
+            loop(next())
+          } else {
+            loop(retry())
           }
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")

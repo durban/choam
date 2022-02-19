@@ -68,8 +68,12 @@ object NullMcas extends MCAS {
     private[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       throw new UnsupportedOperationException
 
-    private[choam] final override def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+    private[choam] final override def validateAndTryExtend(
+      desc: HalfEMCASDescriptor,
+      hwd: HalfWordDescriptor[_]
+    ): HalfEMCASDescriptor = {
       throw new UnsupportedOperationException
+    }
 
     private[mcas] final override def tryPerformInternal(desc: HalfEMCASDescriptor): Long = {
       if (desc.nonEmpty) {

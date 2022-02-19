@@ -274,4 +274,54 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
       _ <- assertResultF(F.delay(ctr.get()), 1)
     } yield ()
   }
+
+  test("unsafe.forceValidate (concurrent unrelated change)") {
+    for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("x").run[F]
+      ctr <- F.delay(new AtomicInteger(0))
+      latch1 <- F.delay(new CountDownLatch(1))
+      latch2 <- F.delay(new CountDownLatch(1))
+      _ <- r1.update { _ => "b" }.run[F]
+      rxn1 = r1.get.flatMapF { v1 =>
+        ctr.incrementAndGet()
+        latch1.countDown()
+        // concurrent unrelated change to r2
+        latch2.await()
+        Rxn.unsafe.forceValidate.as(v1)
+      }
+      tsk1 = rxn1.run[F]
+      rxn2 = r2.set.provide("y")
+      tsk2 = F.delay(latch1.await()) *> rxn2.run[F] *> F.delay(latch2.countDown())
+      v1 <- F.both(tsk1, tsk2).map(_._1)
+      _ <- assertEqualsF(v1, "b")
+      _ <- assertResultF(r1.get.run[F], "b")
+      _ <- assertResultF(r2.get.run[F], "y")
+      _ <- assertResultF(F.delay(ctr.get()), 1)
+    } yield ()
+  }
+
+  test("unsafe.forceValidate (concurrent conflicting change)") {
+    for {
+      r1 <- Ref("a").run[F]
+      ctr <- F.delay(new AtomicInteger(0))
+      latch1 <- F.delay(new CountDownLatch(1))
+      latch2 <- F.delay(new CountDownLatch(1))
+      _ <- r1.update { _ => "b" }.run[F]
+      rxn1 = r1.get.flatMapF { v1 =>
+        ctr.incrementAndGet()
+        latch1.countDown()
+        // concurrent conflicting change to r1
+        latch2.await()
+        Rxn.unsafe.forceValidate.as(v1)
+      }
+      tsk1 = rxn1.run[F]
+      rxn2 = r1.set.provide("c")
+      tsk2 = F.delay(latch1.await()) *> rxn2.run[F] *> F.delay(latch2.countDown())
+      v1 <- F.both(tsk1, tsk2).map(_._1)
+      _ <- assertEqualsF(v1, "c")
+      _ <- assertResultF(r1.get.run[F], "c")
+      _ <- assertResultF(F.delay(ctr.get()), 2)
+    } yield ()
+  }
 }

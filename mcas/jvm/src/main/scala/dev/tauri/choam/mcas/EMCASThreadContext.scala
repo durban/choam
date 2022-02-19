@@ -133,8 +133,12 @@ private final class EMCASThreadContext(
   protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
     desc.addVersionCas(this.global.commitTs)
 
-  protected[choam] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
-    desc.validateAndTryExtend(this.global.commitTs, this)
+  protected[choam] def validateAndTryExtend(
+    desc: HalfEMCASDescriptor,
+    hwd: HalfWordDescriptor[_],
+  ): HalfEMCASDescriptor = {
+    desc.validateAndTryExtend(this.global.commitTs, this, hwd)
+  }
 
   final override def toString: String =
     s"ThreadContext(global = ${this.global}, tid = ${this.tid})"

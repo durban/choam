@@ -64,6 +64,8 @@ package object choam {
     final object unsafe {
       def delay[A](da: => A): Axn[A] =
         Rxn.unsafe.delay[Any, A](_ => da)
+      def suspend[A](daa: => Axn[A]): Axn[A] = // TODO: optimize
+        this.delay(daa).flatten
     }
   }
 

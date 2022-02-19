@@ -334,4 +334,21 @@ trait MapSpec[F[_]]
       } yield ()
     }
   }
+
+  test("Resurrecting a tombed but uncommitted ref") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      ctr <- Ref(0).run[F]
+      _ <- m.put[F](0 -> "x")
+      _ <- m.put(0 -> "0")
+      _ <- m.put(1 -> "1")
+      _ <- m.put(2 -> "2")
+      _ <- m.put(3 -> "3")
+      _ <- m.put(4 -> "4")
+      ref = m.del.provide(0) >>> ctr.update(_ + 1) >>> m.put.provide(0 -> "y")
+      _ <- ref.run[F]
+      _ <- assertResultF(ctr.get.run[F], 1)
+      _ <- assertResultF(m.get[F](0), Some("y"))
+    } yield ()
+  }
 }

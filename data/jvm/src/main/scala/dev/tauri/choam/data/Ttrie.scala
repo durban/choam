@@ -24,63 +24,162 @@ import scala.collection.immutable.{ Map => ScalaMap }
 import cats.kernel.Hash
 import cats.syntax.all._
 
+import mcas.MCAS
+import Ttrie._
+
 // TODO: Even failed lookups create a new
 // TODO: ref, and put it into the tree.
 // TODO: This can use a lot of memory,
 // TODO: and possibly can be used to do
 // TODO: some kind of DoS attack (section 3.3).
-// TODO: Even `remove` and `del` can create
-// TODO: new refs in the tree!
-
-// TODO: There is no "real" remove operation;
-// TODO: any removal currently leaves a tombstone
-// TODO: in the tree (a ref which contains `None`).
-// TODO: This means memory usage can grow
-// TODO: indefinitely (also in section 3.3).
+// TODO: Could we avoid this? Or at least clean up?
 
 /**
  * Based on `ttrie` in "Durability and Contention in Software
- * Transactional Memory" by Michael Schröder, which is itself
- * based on the concurrent trie of Prokopec, et al.
- * (`scala.collection.concurrent.TrieMap` and
+ * Transactional Memory" by Michael Schröder
+ * (https://web.archive.org/web/20211203183825/https://mcschroeder.github.io/files/stmio_thesis.pdf),
+ * which is itself based on the concurrent trie of
+ * Prokopec, et al. (`scala.collection.concurrent.TrieMap` and
  * https://web.archive.org/web/20210506144154/https://lampwww.epfl.ch/~prokopec/ctries-snapshot.pdf).
  *
  * We're using a `TrieMap` directly (instead of reimplementing),
  * since we get it for free from the stdlib.
  */
-private final class Ttrie[K, V](
-  m: TrieMap[K, Ref[Option[V]]],
+private final class Ttrie[K, V] private (
+  m: TrieMap[K, TrieRef[V]],
 ) extends Map[K, V] { self =>
+
+  /*
+   * We store refs in a `TrieMap`; the management
+   * of this `TrieMap` is *outside* of the `Rxn` log.
+   * (It is performed by `unsafe.delay` and similar.)
+   * This means, that conflicts are resolved by the
+   * `TrieMap` itself, and `Rxn` conflicts only arise
+   * if there are `Rxn`s actually working with the
+   * same refs (in which case they're unavoidable).
+   * But it also means, that we have to be *extremely*
+   * careful with modifying the `TrieMap`, since these
+   * modifications are (1) immediately visible to other
+   * running `Rxn`s, and (2) will not be rolled back
+   * on retries.
+   */
 
   // TODO: See if these could be useful:
   // TODO: http://aleksandar-prokopec.com/resources/docs/p137-prokopec.pdf
   // TODO: http://aleksandar-prokopec.com/resources/docs/cachetrie-remove.pdf
 
   /**
-   * Based on `getTVar` in the paper
+   * Based on `getTVar` in the paper, but
+   * different because of deletion.
    *
-   * Invariants:
+   * The 2 invariants are also different
+   * from the ones in the paper:
+   * 1. For all k: K, r1 := getRef(k) and r2 := getRef(k);
+   *    either r1 ≡ r2, or at least one of r1 and r2 have
+   *    been already tombed (i.e., contains `End`).
+   * 2. The only ref read by `getRef` is the result ref,
+   *    and `getRef` doesn't write to any refs.
    *
-   * 1. `getRef(k1)` ≡ `getRef(k2)`  <=>  `k1` ≡ `k2`
+   * Also guarantees the following:
+   * - The result `ref` is a ref associated with the key.
+   * - The result is already part of the current log.
+   * - If the result is in the write-log (i.e., modified),
+   *   then the current value (nv) may be `End`.
+   * - Otherwise, the current value (in the read-log) is
+   *   guaranteed not to be `End`.
+   * - (The previous 2 points mean, that if after `getRef`
+   *   the Rxn reads `End`, it can still safely replace it,
+   *   because it is not yet committed.)
    *
-   * 2. `getRef` itself doesn't read/write any `Ref`s.
+   * Since we're switching out tombed refs, we lose automatic
+   * conflict detection on reads. So we need to do it manually
+   * (see below). An undetected conflict can arise, if, e.g.,
+   * Rxn1 reads a ref, Rxn2 tombs and changes it, then Rxn1
+   * reads it again with `getRef`, but now it will be a
+   * *different* ref.
    */
-  private[this] final def getRef: K =#> Ref[Option[V]] = {
-    Rxn.unsafe.delay { (k: K) =>
-      val newRef = Ref.unsafe[Option[V]](None)
-      m.putIfAbsent(k, newRef) match {
+  private[this] final def getRef: K =#> TrieRef[V] = {
+    Rxn.computed(getRefWithKey)
+  }
+
+  private[this] final def getRefWithKey(k: K): Axn[TrieRef[V]] = {
+    Axn.unsafe.suspend {
+      val newRef = Ref.unsafe[State[V]](Init)
+      val ref = m.putIfAbsent(k, newRef) match {
         case Some(existingRef) =>
           existingRef
         case None =>
           newRef
       }
+      // Note: we need to read here even if
+      // we created the ref, because it's
+      // already visible to others.
+      ref.unsafeTicketRead.flatMapF { ticket =>
+        ticket.unsafePeek match {
+          case End if ticket.unsafeIsReadOnly =>
+            // ticket `nv eq End` AND `nv eq ov`
+            // => ticket `ov` is also `End`
+            // => the `End` was read directly from the ref
+            // => it will never change, so ref can be removed:
+            // (NB: in this case, `ref` won't be inserted into the log)
+            Rxn.unsafe.context(unsafeDelRef(k, ref, _)) *> getRefWithKey(k)
+          case _ =>
+            // Make sure `ref` is in the log, then force re-validation:
+            ticket.unsafeValidate >>> Rxn.unsafe.forceValidate.as(ref)
+            // Re-validation is necessary, because otherwise
+            // there would be no conflict detected between
+            // a new ref and the previous (tombed and removed)
+            // one.
+            // TODO: What's the performance hit of revalidation?
+            // TODO: Could we do a *partial* revalidation?
+        }
+      }
     }
   }
+
+  /** Only call if `ref` really contains `End`! */
+  private[this] final def unsafeDelRef(k: K, ref: TrieRef[V], ctx: MCAS.ThreadContext): Unit = {
+    // just to be sure:
+    assert(ctx.readDirect(ref.loc) eq End)
+    // NB: `TrieMap#remove(K, V)` checks V with
+    // universal equality; fortunately, for a
+    // ref, reference and univ. eq. are the same.
+    // (We'd actually like `removeRefEq`, but that
+    // one is private.)
+    m.remove(k, ref)
+    ()
+  }
+
+  private[this] final def cleanupLater(key: K, ref: TrieRef[V]): Axn[Unit] = {
+    // First we need to check, if `End` was actually
+    // committed (into `ref`), since the Rxn
+    // which added us as a post-commit action
+    // might've chaged it back later (in its log):
+    ref.unsafeDirectRead.flatMapF {
+      case End => // OK, we can delete it:
+        Rxn.unsafe.context(unsafeDelRef(key, ref, _))
+      case _ => // oops, don't delete it:
+        Rxn.unit
+    }
+  }
+
+  private[this] final def cleanupLaterIf(key: K, ref: TrieRef[V]): Rxn[Boolean, Unit] = {
+    Rxn.computed { wasDeleted =>
+      if (wasDeleted) cleanupLater(key, ref)
+      else Rxn.unit
+    }
+  }
+
+  final def get: K =#> Option[V] =
+    getRef.flatMapF(_.get.map(_.toOption))
 
   final def put: (K, V) =#> Option[V] = {
     getRef.first[V].flatMapF {
       case (ref, v) =>
-        ref.getAndSet.provide(Some(v))
+        ref.modify {
+          case Init | End => (Value(v), None)
+          case Value(oldVal) => (Value(v), Some(oldVal))
+        }
     }
   }
 
@@ -88,8 +187,8 @@ private final class Ttrie[K, V](
     getRef.first[V].flatMapF {
       case (ref, v) =>
         ref.modify {
-          case None => (Some(v), None)
-          case s @ Some(_) => (s, s)
+          case Init | End => (Value(v), None)
+          case v @ Value(w) => (v, Some(w))
         }
     }
   }
@@ -98,50 +197,73 @@ private final class Ttrie[K, V](
     getRef.first[(V, V)].flatMapF {
       case (ref, (expVal, newVal)) =>
         ref.modify {
-          case None =>
-            (None, false)
-          case s @ Some(currVal) =>
-            if (equ(currVal, expVal)) (Some(newVal), true)
-            else (s, false)
+          case ov @ (Init | End) =>
+            (ov, false)
+          case ov @ Value(currVal) =>
+            if (equ(currVal, expVal)) (Value(newVal), true)
+            else (ov, false)
         }
     }.contramap(kvv => (kvv._1, (kvv._2, kvv._3)))
   }
 
-  final def get: K =#> Option[V] =
-    getRef.flatMapF(_.get)
-
-  final def del: Rxn[K, Boolean] =
-    getRef.flatMapF(_.modify(ov => (None, ov.isDefined)))
+  final def del: Rxn[K, Boolean] = {
+    Rxn.computed { (key: K) =>
+      getRefWithKey(key).flatMapF { ref =>
+        ref.modify {
+          case ov @ (Init | End) => (ov, false)
+          case Value(_) => (End, true)
+        }.postCommit(cleanupLaterIf(key, ref))
+      }
+    }
+  }
 
   final def remove: Rxn[(K, V), Boolean] = {
-    getRef.first[V].flatMapF {
-      case (ref, v) =>
+    Rxn.computed { (kv: (K, V)) =>
+      getRefWithKey(kv._1).flatMapF { ref =>
         ref.modify {
-          case None => (None, false)
-          case s @ Some(currVal) =>
-            if (equ(currVal, v)) (None, true)
-            else (s, false)
-        }
+          case ov @ (Init | End) =>
+            (ov, false)
+          case value @ Value(currVal) =>
+            if (equ(currVal, kv._2)) (End, true)
+            else (value, false)
+        }.postCommit(cleanupLaterIf(kv._1, ref))
+      }
     }
   }
 
   final override def refLike(key: K, default: V): RefLike[V] = new RefLike[V] {
+
+    // TODO: We could do some optimization with `default`
+    // TODO: (like in Map.simple), but due to revalidation
+    // TODO: it might not actually be an optimization.
 
     final def get: Axn[V] =
       self.get.provide(key).map(_.getOrElse(default))
 
     final def upd[B, C](f: (V, B) => (V, C)): B =#> C = {
       getRef.provide(key).flatMap(_.upd[B, C] { (oldVal, b) =>
-        val (newVal, c) = f(oldVal.getOrElse(default), b)
-        (Some(newVal), c)
+        oldVal match {
+          case Init | End =>
+            val (newVal, c) = f(default, b)
+            (Value(newVal), c)
+          case Value(currVal) =>
+            val (newVal, c) = f(currVal, b)
+            (Value(newVal), c)
+        }
       })
     }
 
     final def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
       getRef.provide(key).flatMap(_.updWith[B, C] { (oldVal, b) =>
-        f(oldVal.getOrElse(default), b).map {
+        val axn = oldVal match {
+          case Init | End =>
+            f(default, b)
+          case Value(currVal) =>
+            f(currVal, b)
+        }
+        axn.map {
           case (newVal, c) =>
-            (Some(newVal), c)
+            (Value(newVal), c)
         }
       })
     }
@@ -162,7 +284,7 @@ private final class Ttrie[K, V](
         // this method is `unsafe`.
         val b = ScalaMap.newBuilder[K, V]
         kvs.foreach { kv =>
-          kv._2 match {
+          kv._2.toOption match {
             case None => ()
             case Some(v) => b += (kv._1 -> v)
           }
@@ -179,10 +301,41 @@ private final class Ttrie[K, V](
 
 private final object Ttrie {
 
+  private type TrieRef[V] = Ref[State[V]]
+
+  /**
+   * The value of a ref in the trie can
+   * go through these states (it starts
+   * from `Init`):
+   *
+   *         ---> Value(...) ---
+   *        /        ↕          \
+   *   Init ----> Value(...) ----+--> End
+   *        \        ↕          /
+   *         ---> Value(...) ---
+   *                 ↕
+   *                ...
+   *
+   * After `End` is committed, it can
+   * never change. (A tentative `End` in
+   * the write-log can still change though.)
+   */
+  private sealed abstract class State[+V] {
+    final def toOption: Option[V] = this match {
+      case Init | End => None
+      case Value(v) => Some(v)
+    }
+  }
+
+  // TODO: could we optimize these to Init, End, and simply V?
+  private final case object Init extends State[Nothing]
+  private final case class Value[+V](v: V) extends State[V]
+  private final case object End extends State[Nothing]
+
   // TODO: use improved hashing
   def apply[K, V](implicit K: Hash[K]): Axn[Ttrie[K, V]] = {
     Axn.unsafe.delay {
-      val m = new TrieMap[K, Ref[Option[V]]](
+      val m = new TrieMap[K, TrieRef[V]](
         hashf = K.hash(_),
         ef = K.eqv(_, _),
       )

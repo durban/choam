@@ -38,13 +38,10 @@ final class HalfWordDescriptor[A] private (
     else new HalfWordDescriptor[A](address = this.address, ov = this.ov, nv = a, version = this.version)
   }
 
-  final def tryMergeTicket(ticket: HalfWordDescriptor[A]): HalfWordDescriptor[A] = {
-    if (
-      (this.address eq ticket.address) &&
-      equ(this.nv, ticket.ov) && // ok, `ticket` "continues" this hwd
-      (this.version == ticket.version)
-    ) {
-      this.withNv(ticket.nv)
+  final def tryMergeTicket(ticket: HalfWordDescriptor[A], newest: A): HalfWordDescriptor[A] = {
+    if (this == ticket) {
+      // OK, was not modified since reading the ticket:
+      this.withNv(newest)
     } else {
       throw new IllegalArgumentException // TODO
     }

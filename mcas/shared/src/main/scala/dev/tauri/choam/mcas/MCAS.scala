@@ -81,7 +81,10 @@ object MCAS extends MCASPlatform { self =>
      */
     private[mcas] def readVersion[A](ref: MemoryLocation[A]): Long
 
-    private[choam] def validateAndTryExtend(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
+    private[choam] def validateAndTryExtend(
+      desc: HalfEMCASDescriptor,
+      hwd: HalfWordDescriptor[_], // may be null
+    ): HalfEMCASDescriptor
 
     /**
      * Directly tries to perform the k-CAS described by `desc`
@@ -124,7 +127,7 @@ object MCAS extends MCASPlatform { self =>
       if (!newLog.isValidHwd(hwd)) {
         // this returns null if we need to roll back
         // (and we pass on the null to our caller):
-        val res = this.validateAndTryExtend(newLog)
+        val res = this.validateAndTryExtend(newLog, hwd = null)
         if (res ne null) {
           assert(res.isValidHwd(hwd))
         }
@@ -191,19 +194,19 @@ object MCAS extends MCASPlatform { self =>
       @tailrec
       def go(it: Iterator[HalfWordDescriptor[_]]): Boolean = {
         if (it.hasNext) {
-          val wd = it.next()
-          val currVer: Long = this.readVersion(wd.address)
-          if (currVer == wd.version) {
-            go(it)
-          } else {
-            false
-          }
+          if (this.validateHwd(it.next())) go(it)
+          else false
         } else {
           true
         }
       }
 
       go(desc.iterator())
+    }
+
+    private[mcas] final def validateHwd[A](hwd: HalfWordDescriptor[A]): Boolean = {
+      val currVer: Long = this.readVersion(hwd.address)
+      currVer == hwd.version
     }
 
     /**
