@@ -21,7 +21,7 @@ package bench
 
 import org.openjdk.jmh.annotations._
 
-import data.GcHostileMsQueue
+import data.{ Queue, GcHostileMsQueue }
 import dev.tauri.choam.bench.util.{ Prefill, KCASImplState }
 
 @Fork(value = 6, jvmArgsAppend = Array("-Xmx2048M"))
@@ -31,7 +31,7 @@ class GcBench {
   import GcBench._
 
   @Benchmark
-  def qTransfer(s: SharedState, m: KCASImplState): Unit = {
+  def gcHostile(s: GcHostile, m: KCASImplState): Unit = {
     val ctx = m.kcasCtx
     var idx = 0
     while (idx < s.size) {
@@ -44,20 +44,29 @@ class GcBench {
 object GcBench {
 
   @State(Scope.Benchmark)
-  class SharedState {
+  abstract class BaseState {
 
     final val circleSize = 4
 
     final val size = 4096
 
-    val circle: List[GcHostileMsQueue[String]] = List.fill(circleSize) {
+    def circle: List[Queue[String]]
+
+    final def transferOne(idx: Int): Axn[Unit] = {
+      circle(idx % circleSize).tryDeque.map(_.get) >>> circle((idx + 1) % circleSize).enqueue
+    }
+  }
+
+  @State(Scope.Benchmark)
+  class GcHostile extends BaseState {
+
+    private[this] val _circle: List[GcHostileMsQueue[String]] = List.fill(circleSize) {
       GcHostileMsQueue.fromList[cats.effect.SyncIO, String](
         Prefill.prefill().toList
       ).unsafeRunSync()
     }
 
-    def transferOne(idx: Int): Axn[Unit] = {
-      circle(idx % circleSize).tryDeque.map(_.get) >>> circle((idx + 1) % circleSize).enqueue
-    }
+    final override def circle: List[Queue[String]] =
+      _circle
   }
 }
