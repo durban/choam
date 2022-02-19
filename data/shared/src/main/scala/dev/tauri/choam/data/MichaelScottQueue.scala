@@ -48,10 +48,7 @@ private[choam] final class MichaelScottQueue[A] private[this] (
     }
   }
 
-  override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
-    // TODO: This is cheating: we're using
-    // TODO: `computed` as `delay` (`newNode`
-    // TODO: has a side-effect).
+  override val enqueue: Rxn[A, Unit] = Rxn.unsafe.suspend { (a: A) =>
     findAndEnqueue(newNode(a))
   }
 

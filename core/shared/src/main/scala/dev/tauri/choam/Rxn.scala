@@ -413,6 +413,9 @@ object Rxn extends RxnInstances0 {
     private[choam] def delay[A, B](uf: A => B): Rxn[A, B] =
       lift(uf)
 
+    private[choam] def suspend[A, B](uf: A => Axn[B]): Rxn[A, B] =
+      delay(uf).flatten // TODO: optimize
+
     private[choam] def delayContext[A](uf: MCAS.ThreadContext => A): Axn[A] =
       context(uf)
 
