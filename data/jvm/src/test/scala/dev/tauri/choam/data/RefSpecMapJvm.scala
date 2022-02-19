@@ -77,7 +77,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
     runMemoryReclamationTest(S, N, task, expectedSizeAtEnd = 0)
   }
 
-  test("Ttrie failed lookups should not leak memory".ignore) { // TODO
+  test("Ttrie failed lookups should not leak memory") {
     val S = 4096
     val N = 8
     def task(m: Map[String, String], size: Int): F[Unit] = {

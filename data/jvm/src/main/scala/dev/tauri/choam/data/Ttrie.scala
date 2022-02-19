@@ -27,13 +27,6 @@ import cats.syntax.all._
 import mcas.MCAS
 import Ttrie._
 
-// TODO: Even failed lookups create a new
-// TODO: ref, and put it into the tree.
-// TODO: This can use a lot of memory,
-// TODO: and possibly can be used to do
-// TODO: some kind of DoS attack (section 3.3).
-// TODO: Could we avoid this? Or at least clean up?
-
 /**
  * Based on `ttrie` in "Durability and Contention in Software
  * Transactional Memory" by Michael Schröder
@@ -163,8 +156,35 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  final def get: K =#> Option[V] =
-    getRef.flatMapF(_.get.map(_.toOption))
+  private[this] final def cleanupLaterIfNone[A](key: K, ref: TrieRef[V]): Rxn[Option[A], Unit] = {
+    Rxn.computed { option =>
+      if (option.isEmpty) cleanupLater(key, ref)
+      else Rxn.unit
+    }
+  }
+
+  private[this] final def cleanupLaterIfOdd[A](key: K, ref: TrieRef[V]): Rxn[Int, Unit] = {
+    Rxn.computed { n =>
+      if ((n & 1) == 1) cleanupLater(key, ref)
+      else Rxn.unit
+    }
+  }
+
+  final def get: K =#> Option[V] = {
+    Rxn.computed { (key: K) =>
+      getRefWithKey(key).flatMapF { ref =>
+        ref.modify {
+          case Init | End =>
+            // it is possible, that we created
+            // the ref with `Init`, so we have
+            // to write `End`, to not leak memory:
+            (End, None)
+          case v @ Value(w) =>
+            (v, Some(w))
+        }.postCommit(cleanupLaterIfNone(key, ref))
+      }
+    }
+  }
 
   final def put: (K, V) =#> Option[V] = {
     getRef.first[V].flatMapF {
@@ -187,16 +207,19 @@ private final class Ttrie[K, V] private (
   }
 
   final def replace: Rxn[(K, V, V), Boolean] = {
-    getRef.first[(V, V)].flatMapF {
-      case (ref, (expVal, newVal)) =>
+    Rxn.computed { (kvv: (K, V, V)) =>
+      getRefWithKey(kvv._1).flatMapF { ref =>
         ref.modify {
-          case ov @ (Init | End) =>
-            (ov, false)
+          case Init | End =>
+            (End, 1) // 0b01 -> false, cleanup
           case ov @ Value(currVal) =>
-            if (equ(currVal, expVal)) (Value(newVal), true)
-            else (ov, false)
+            if (equ(currVal, kvv._2)) (Value(kvv._3), 2) // 0b10 -> true, no cleanup
+            else (ov, 0) // 0b00 -> false, no cleanup
+        }.postCommit(cleanupLaterIfOdd(kvv._1, ref)).map { n =>
+          (n & 2) == 2
         }
-    }.contramap(kvv => (kvv._1, (kvv._2, kvv._3)))
+      }
+    }
   }
 
   final def del: Rxn[K, Boolean] = {
@@ -226,39 +249,32 @@ private final class Ttrie[K, V] private (
 
   final override def refLike(key: K, default: V): RefLike[V] = new RefLike[V] {
 
-    // TODO: We could do some optimization with `default`
-    // TODO: (like in Map.simple), but due to revalidation
-    // TODO: it might not actually be an optimization.
-
     final def get: Axn[V] =
       self.get.provide(key).map(_.getOrElse(default))
 
-    final def upd[B, C](f: (V, B) => (V, C)): B =#> C = {
-      getRef.provide(key).flatMap(_.upd[B, C] { (oldVal, b) =>
-        oldVal match {
-          case Init | End =>
-            val (newVal, c) = f(default, b)
-            (Value(newVal), c)
-          case Value(currVal) =>
-            val (newVal, c) = f(currVal, b)
-            (Value(newVal), c)
-        }
-      })
-    }
+    final def upd[B, C](f: (V, B) => (V, C)): B =#> C =
+      this.updWith { (v, b) => Rxn.pure(f(v, b)) }
 
     final def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
-      getRef.provide(key).flatMap(_.updWith[B, C] { (oldVal, b) =>
-        val axn = oldVal match {
-          case Init | End =>
-            f(default, b)
-          case Value(currVal) =>
-            f(currVal, b)
+      getRef.provide(key).flatMap { ref =>
+        ref.updWith[B, C] { (oldVal, b) =>
+          val currVal = oldVal match {
+            case Init | End => default
+            case Value(currVal) => currVal
+          }
+          f(currVal, b).flatMapF {
+            case (newVal, c) =>
+              if (equ(newVal, default)) {
+                // it is possible, that we created
+                // the ref with `Init`, so we have
+                // to write `End`, to not leak memory:
+                Rxn.postCommit(cleanupLater(key, ref)).as((End, c))
+              } else {
+                Rxn.pure((Value(newVal), c))
+              }
+          }
         }
-        axn.map {
-          case (newVal, c) =>
-            (Value(newVal), c)
-        }
-      })
+      }
     }
   }
 
