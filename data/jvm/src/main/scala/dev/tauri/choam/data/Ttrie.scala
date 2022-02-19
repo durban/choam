@@ -20,6 +20,7 @@ package data
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.immutable.{ Map => ScalaMap }
+import scala.util.hashing.byteswap32
 
 import cats.kernel.Hash
 import cats.syntax.all._
@@ -341,11 +342,10 @@ private final object Ttrie {
   private final case class Value[+V](v: V) extends State[V]
   private final case object End extends State[Nothing]
 
-  // TODO: use improved hashing
   def apply[K, V](implicit K: Hash[K]): Axn[Ttrie[K, V]] = {
     Axn.unsafe.delay {
       val m = new TrieMap[K, TrieRef[V]](
-        hashf = K.hash(_),
+        hashf = { k => byteswap32(K.hash(k)) },
         ef = K.eqv(_, _),
       )
       new Ttrie[K, V](m)
