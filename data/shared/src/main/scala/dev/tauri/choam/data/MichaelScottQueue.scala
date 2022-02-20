@@ -20,8 +20,15 @@ package data
 
 import MichaelScottQueue._
 
-// TODO: This is really bad for the GC; consider using
-// TODO: optimizations like in `juc.ConcurrentLinkedQueue`.
+/**
+ * Unbounded MPMC queue, based on the lock-free Michael-Scott queue described in
+ * https://web.archive.org/web/20220123224641/https://www.cs.rochester.edu/~scott/papers/1996_PODC_queues.pdf.
+ *
+ * Some optimizations are based on the public domain JSR-166 ConcurrentLinkedQueue
+ * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html),
+ * or on the implementation in the Reagents paper
+ * (https://web.archive.org/web/20220214132428/https://www.ccis.northeastern.edu/home/turon/reagents.pdf).
+ */
 private[choam] final class MichaelScottQueue[A] private[this] (
   sentinel: Node[A],
   padded: Boolean,
@@ -38,9 +45,22 @@ private[choam] final class MichaelScottQueue[A] private[this] (
       node.next.unsafeTicketRead.flatMapF { ticket =>
         ticket.unsafePeek match {
           case n @ Node(a, _) =>
-            // No need to validate `node.next`, since
+            // No need to validate `node.next` here, since
             // it is not the last node (thus it won't change).
-            Rxn.pure((n.copy(data = nullOf[A]), Some(a)))
+            Rxn.postCommit(
+              // This is to help the GC; a link from old
+              // nodes (e.g., the one we're removing now)
+              // to newer nodes (e.g., the new head) can
+              // put pressure on the GC. So we set the next
+              // pointer to `null` after we're done. (This is
+              // the same optimization as in ConcurrentLinkedQueue,
+              // except we can use `null` instead of a self-link,
+              // because we have a sentinel for the `End`.)
+              node.next.update { ov =>
+                if (ov eq n) null
+                else ov
+              }
+            ).as((n.copy(data = nullOf[A]), Some(a)))
           case End() =>
             ticket.unsafeValidate.as((node, None))
         }
@@ -62,21 +82,42 @@ private[choam] final class MichaelScottQueue[A] private[this] (
   }
 
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    def go(n: Node[A], originalTail: Node[A]): Axn[Unit] = {
+    def go(n: Node[A]): Axn[Unit] = {
       n.next.unsafeTicketRead.flatMapF { ticket =>
         ticket.unsafePeek match {
+          // TODO: if we allow the tail to lag:
+          // case null =>
+          //   head.get.flatMapF { h => go(h) }
           case End() =>
-            // found true tail; will update, and try to adjust the tail ref:
-            ticket.unsafeSet(node).postCommit(tail.unsafeCas(originalTail, node).?.void)
+            // found true tail; will update, and adjust the tail ref:
+            // TODO: we could allow tail to lag by a constant
+            ticket.unsafeSet(node) >>> tail.set.provide(node)
           case nv @ Node(_, _) =>
             // not the true tail, continue;
             // no need to validate `n.next`
             // (it is not the last node, thus it won't change)
-            go(n = nv, originalTail = originalTail)
+            go(n = nv)
         }
       }
     }
-    tail.get.flatMapF { t => go(t, t) }
+    tail.get.flatMapF(go)
+  }
+
+  /** For testing */
+  private[data] def tailLag: Axn[Int] = {
+    def go(n: Node[A], acc: Int): Axn[Int] = {
+      n.next.unsafeTicketRead.flatMapF { ticket =>
+        ticket.unsafePeek match {
+          case null =>
+            Rxn.pure(-1)
+          case End() =>
+            Rxn.pure(acc)
+          case nv @ Node(_, _) =>
+            go(n = nv, acc = acc + 1)
+        }
+      }
+    }
+    tail.get.flatMapF { t => go(t, 0) }
   }
 }
 

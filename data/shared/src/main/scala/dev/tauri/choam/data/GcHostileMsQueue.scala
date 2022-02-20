@@ -25,7 +25,12 @@ import GcHostileMsQueue._
  *
  * It is GC-hostile, because it allocates a lot of
  * objects, including `Ref`s, which are only used once
- * (see `GcBench`).
+ * (see `GcBench`), and also doesn't clear the next
+ * link of dequed nodes (which can become cross-generational,
+ * which is harder for the GC to deal with).
+ *
+ * It also lacks other optimizations present in
+ * `MichaelScottQueue` (see there).
  */
 private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
   extends Queue[A] {
@@ -56,17 +61,17 @@ private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
   }
 
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    def go(n: Node[A], originalTail: Node[A]): Axn[Unit] = {
+    def go(n: Node[A]): Axn[Unit] = {
       n.next.get.flatMapF {
         case End() =>
-          // found true tail; will update, and try to adjust the tail ref:
-          n.next.set.provide(node).postCommit(tail.unsafeCas(originalTail, node).?.void)
+          // found true tail; will update, and adjust the tail ref:
+          n.next.set.provide(node) >>> tail.set.provide(node)
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and continue:
-          go(n = nv, originalTail = originalTail)
+          go(n = nv)
       }
     }
-    tail.get.flatMapF { t => go(t, t) }
+    tail.get.flatMapF(go)
   }
 }
 

@@ -20,9 +20,9 @@ package data
 
 import cats.effect.IO
 
-final class QueueSpec_ThreadConfinedMCAS_IO
+final class QueueMsSpec_ThreadConfinedMCAS_IO
   extends BaseSpecIO
-  with QueueSpec[IO]
+  with QueueMsSpec[IO]
   with SpecThreadConfinedMCAS
 
 final class QueueWithRemoveSpec_ThreadConfinedMCAS_IO
@@ -157,12 +157,39 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
   }
 }
 
-trait QueueSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
+trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
 
-  override type QueueType[A] = Queue[A]
+  override type QueueType[A] = MichaelScottQueue[A]
 
   protected override def newQueueFromList[A](as: List[A]): F[this.QueueType[A]] =
-    Queue.fromList(Queue.unpadded[A])(as)
+    Queue.fromList(MichaelScottQueue.unpadded[A])(as)
+
+  test("MS-queue lagging tail") {
+    for {
+      q <- newQueueFromList[Int](Nil)
+      _ <- assertResultF(q.tailLag.run[F], 0)
+      _ <- q.enqueue[F](1)
+      _ <- assertResultF(q.tailLag.run[F], 0)
+      _ <- q.enqueue[F](2)
+      _ <- assertResultF(q.tailLag.run[F], 0)
+      _ <- q.enqueue[F](3)
+      _ <- assertResultF(q.tailLag.run[F], 0)
+      _ <- assertResultF(q.tryDeque.run[F], Some(1))
+      _ <- assertResultF(q.tailLag.run[F], 0)
+      _ <- assertResultF(q.tryDeque.run[F], Some(2))
+      _ <- assertResultF(q.tailLag.run[F], 0)
+      _ <- assertResultF(q.tryDeque.run[F], Some(3))
+      _ <- assertResultF(q.tailLag.run[F], 0)
+      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- assertResultF(q.tailLag.run[F], 0)
+      _ <- (q.enqueue.provide(1) *> q.enqueue.provide(2) *> q.enqueue.provide(3) *> q.enqueue.provide(4)).run[F]
+      _ <- assertResultF(q.tailLag.run[F], 0)
+      _ <- assertResultF(
+        (q.tryDeque * q.tryDeque * q.tryDeque * q.tryDeque).run[F],
+        (((Some(1), Some(2)), Some(3)), Some(4)),
+      )
+    } yield ()
+  }
 }
 
 trait QueueGcHostileSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
@@ -243,6 +270,48 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       abcd <- rxn.run[F]
       _ <- assertEqualsF(abcd, (Some("a"), Some("b"), Some("c"), Some("d")))
       _ <- assertResultF(q.tryDeque.run[F], None)
+    } yield ()
+  }
+
+  test("Queue parallel multiple enq/deq") {
+    val TaskSize = 1024
+    val RxnSize = 16
+    val Parallelism = 256
+    def enqTask(q: QueueType[Int], idx: Int): F[Unit] = {
+      val shifted = idx << 8
+      require(shifted >= idx) // ensure no overflow
+      val items = (1 to RxnSize).toList.map(_ | shifted)
+      val rxn: Axn[Unit] = items.traverse_ { item => q.enqueue.provide(item) }
+      rxn.run[F]
+    }
+    def deqTask(q: QueueType[Int]): F[Int] = {
+      def go(acc: List[Int]): Axn[List[Int]] = {
+        if (acc.length == RxnSize) {
+          Rxn.pure(acc.reverse)
+        } else {
+          q.tryDeque.flatMapF {
+            case None =>
+              // spin-wait:
+              Axn.unsafe.delay(assert(acc.isEmpty)) *> Rxn.unsafe.retry
+            case Some(item) =>
+              go(item :: acc)
+          }
+        }
+      }
+      go(Nil).run[F].flatMap { block =>
+        assertEqualsF(block.length, RxnSize) >> (
+          assertEqualsF(block.map(_ >>> 8).toSet.size, 1)
+        ) >> F.pure(block.head >>> 8)
+      }
+    }
+    for {
+      _ <- this.assumeF(this.kcasImpl.isThreadSafe)
+      q <- newQueueFromList[Int](Nil)
+      indices = (0 until TaskSize).toList
+      results <- indices.parTraverseN(Parallelism) { idx =>
+        F.both(F.cede *> enqTask(q, idx), F.cede *> deqTask(q)).map(_._2)
+      }
+      _ <- assertEqualsF(results.sorted, indices)
     } yield ()
   }
 }

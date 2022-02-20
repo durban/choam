@@ -25,24 +25,24 @@ import scala.jdk.CollectionConverters._
 
 import cats.effect.IO
 
-final class QueueSpecJvm_SpinLockMCAS_ZIO
+final class QueueMsSpecJvm_SpinLockMCAS_ZIO
   extends BaseSpecZIO
-  with QueueSpecJvm[zio.Task]
+  with QueueMsSpecJvm[zio.Task]
   with SpecSpinLockMCAS
 
-final class QueueSpecJvm_SpinLockMCAS_IO
+final class QueueMsSpecJvm_SpinLockMCAS_IO
   extends BaseSpecIO
-  with QueueSpecJvm[IO]
+  with QueueMsSpecJvm[IO]
   with SpecSpinLockMCAS
 
-final class QueueSpecJvm_EMCAS_ZIO
+final class QueueMsSpecJvm_EMCAS_ZIO
   extends BaseSpecZIO
-  with QueueSpecJvm[zio.Task]
+  with QueueMsSpecJvm[zio.Task]
   with SpecEMCAS
 
-final class QueueSpecJvm_EMCAS_IO
+final class QueueMsSpecJvm_EMCAS_IO
   extends BaseSpecIO
-  with QueueSpecJvm[IO]
+  with QueueMsSpecJvm[IO]
   with SpecEMCAS
 
 final class QueueWithRemoveSpecJvm_SpinLockMCAS_ZIO
@@ -90,8 +90,8 @@ trait QueueGcHostileSpecJvm[F[_]]
   with QueueJvmTests[F] { this: KCASImplSpec =>
 }
 
-trait QueueSpecJvm[F[_]]
-  extends QueueSpec[F]
+trait QueueMsSpecJvm[F[_]]
+  extends QueueMsSpec[F]
   with QueueJvmTests[F] { this: KCASImplSpec =>
 }
 

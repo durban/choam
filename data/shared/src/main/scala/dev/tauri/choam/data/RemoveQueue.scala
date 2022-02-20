@@ -21,12 +21,14 @@ package data
 import RemoveQueue._
 
 /**
- * Like `MichaelScottQueue`, but also has support
- * for interior node deletion (`remove`; based on
- * `java.util.concurrent.ConcurrentLinkedQueue`).
+ * Like `MichaelScottQueue`, but also has support for interior node deletion
+ * (`remove`), based on the public domain JSR-166 ConcurrentLinkedQueue
+ * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
  */
 private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A])
   extends Queue.WithRemove[A] {
+
+  // TODO: do the optimization with ticketRead (like in `MichaelScottQueue`)
 
   private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel)
   private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel)
@@ -70,18 +72,19 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A])
     }
   }
 
+  // TODO: we could allow tail to lag by a constant
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    def go(n: Node[A], originalTail: Node[A]): Axn[Unit] = {
+    def go(n: Node[A]): Axn[Unit] = {
       n.next.get.flatMapF {
         case End() =>
-          // found true tail; will update, and try to adjust the tail ref:
-          n.next.set.provide(node).postCommit(tail.unsafeCas(originalTail, node).?.void)
+          // found true tail; will update, and adjust the tail ref:
+          n.next.set.provide(node) >>> tail.set.provide(node)
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and continue:
-          go(n = nv, originalTail = originalTail)
+          go(n = nv)
       }
     }
-    tail.get.flatMapF { t => go(t, t) }
+    tail.get.flatMapF(go)
   }
 
   /**
