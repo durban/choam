@@ -21,7 +21,7 @@ package bench
 
 import org.openjdk.jmh.annotations._
 
-import data.{ Queue, GcHostileMsQueue }
+import data.{ Queue, GcHostileMsQueue, MichaelScottQueue }
 import dev.tauri.choam.bench.util.{ Prefill, KCASImplState }
 
 @Fork(value = 6, jvmArgsAppend = Array("-Xmx2048M"))
@@ -32,6 +32,16 @@ class GcBench {
 
   @Benchmark
   def gcHostile(s: GcHostile, m: KCASImplState): Unit = {
+    val ctx = m.kcasCtx
+    var idx = 0
+    while (idx < s.size) {
+      s.transferOne(idx).unsafePerformInternal(a = null : Any, ctx = ctx)
+      idx += 1
+    }
+  }
+
+  @Benchmark
+  def msQueue(s: MsQueue, m: KCASImplState): Unit = {
     val ctx = m.kcasCtx
     var idx = 0
     while (idx < s.size) {
@@ -62,6 +72,19 @@ object GcBench {
 
     private[this] val _circle: List[GcHostileMsQueue[String]] = List.fill(circleSize) {
       GcHostileMsQueue.fromList[cats.effect.SyncIO, String](
+        Prefill.prefill().toList
+      ).unsafeRunSync()
+    }
+
+    final override def circle: List[Queue[String]] =
+      _circle
+  }
+
+  @State(Scope.Benchmark)
+  class MsQueue extends BaseState {
+
+    private[this] val _circle: List[MichaelScottQueue[String]] = List.fill(circleSize) {
+      MichaelScottQueue.fromList[cats.effect.SyncIO, String](
         Prefill.prefill().toList
       ).unsafeRunSync()
     }

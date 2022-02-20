@@ -95,6 +95,10 @@ private[choam] object MichaelScottQueue {
   def unpadded[A]: Axn[MichaelScottQueue[A]] =
     applyInternal(padded = false)
 
+  private[choam] def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[MichaelScottQueue[A]] = {
+    Queue.fromList[F, MichaelScottQueue, A](this.apply[A])(as)
+  }
+
   private[this] def applyInternal[A](padded: Boolean): Axn[MichaelScottQueue[A]] =
     Rxn.unsafe.delay { _ => new MichaelScottQueue(padded = padded) }
 }
