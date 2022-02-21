@@ -31,9 +31,9 @@ import data.{ Queue, MsQueue }
 
 @Fork(2)
 @Threads(1) // because it runs on the CE threadpool
-class UnboundedQueueBench extends BenchUtils {
+class SyncUnboundedQueueBench extends BenchUtils {
 
-  import UnboundedQueueBench._
+  import SyncUnboundedQueueBench._
 
   final val waitTime = 128L
   final val size = 4096
@@ -119,7 +119,7 @@ class UnboundedQueueBench extends BenchUtils {
   }
 }
 
-object UnboundedQueueBench {
+object SyncUnboundedQueueBench {
 
   @State(Scope.Benchmark)
   class MsSt {
