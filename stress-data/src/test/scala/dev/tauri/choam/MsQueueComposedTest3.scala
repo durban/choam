@@ -24,13 +24,13 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 @JCStressTest
 @State
-@Description("MichaelScottQueue tricky enq/deq")
+@Description("MsQueue tricky enq/deq")
 @Outcomes(Array(
   new Outcome(id = Array("(None,false), true"), expect = ACCEPTABLE_INTERESTING, desc = "deq was first"),
   new Outcome(id = Array("(Some(a),true), false"), expect = ACCEPTABLE, desc = "enq was first"),
   new Outcome(id = Array("(None,true), false"), expect = FORBIDDEN, desc = "enq was first, but deq sees empty")
 ))
-class MichaelScottQueueComposedTest3 extends MsQueueStressTestBase {
+class MsQueueComposedTest3 extends MsQueueStressTestBase {
 
   private[this] val queue =
     this.newQueue[String]()

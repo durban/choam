@@ -159,10 +159,10 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
 
 trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
 
-  override type QueueType[A] = MichaelScottQueue[A]
+  override type QueueType[A] = MsQueue[A]
 
   protected override def newQueueFromList[A](as: List[A]): F[this.QueueType[A]] =
-    Queue.fromList(MichaelScottQueue.unpadded[A])(as)
+    Queue.fromList(MsQueue.unpadded[A])(as)
 
   test("MS-queue lagging tail") {
     for {
@@ -206,7 +206,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   protected def newQueueFromList[A](as: List[A]): F[this.QueueType[A]]
 
-  test("MichaelScottQueue should include the elements passed to its constructor") {
+  test("Queue should include the elements passed to its constructor") {
     for {
       q1 <- newQueueFromList[Int](Nil)
       _ <- assertResultF(q1.tryDeque.run[F], None)
@@ -216,7 +216,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("MichaelScottQueue transfer") {
+  test("Queue transfer") {
     for {
       q1 <- newQueueFromList(1 :: 2 :: 3 :: Nil)
       q2 <- newQueueFromList(List.empty[Int])
@@ -230,7 +230,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("Michael-Scott queue should work correctly") {
+  test("Queue should work correctly") {
     for {
       q <- newQueueFromList(List.empty[String])
       _ <- assertResultF(q.tryDeque.run[F], None)

@@ -26,41 +26,35 @@ import cats.effect.SyncIO
 
 @JCStressTest
 @State
-@Description("MichaelScottQueue enq/deq should be atomic")
+@Description("MsQueue enq/deq should be composable (concurrent enqueue)")
 @Outcomes(Array(
-  new Outcome(id = Array("None, List(x, y)"), expect = ACCEPTABLE, desc = "deq, enq1, enq2"),
-  new Outcome(id = Array("None, List(y, x)"), expect = ACCEPTABLE, desc = "deq, enq2, enq1"),
-  new Outcome(id = Array("Some(x), List(y)"), expect = ACCEPTABLE_INTERESTING, desc = "enq1, (deq | enq2)"),
-  new Outcome(id = Array("Some(y), List(x)"), expect = ACCEPTABLE_INTERESTING, desc = "enq2, (deq | enq1)"),
+  new Outcome(id = Array("List(b, c, d), List(y, a)"), expect = ACCEPTABLE, desc = "Additional enq is first"),
+  new Outcome(id = Array("List(b, c, d), List(a, y)"), expect = ACCEPTABLE_INTERESTING, desc = "Additional enq is last")
 ))
-class MichaelScottQueueTest extends MsQueueStressTestBase {
+class MsQueueComposedTest2 extends MsQueueStressTestBase {
 
-  private[this] val queue =
+  private[this] val queue1 =
+    this.newQueue("a", "b", "c", "d")
+
+  private[this] val queue2 =
     this.newQueue[String]()
 
-  private[this] val enqueue =
-    queue.enqueue
-
-  private[this] val tryDeque =
-    queue.tryDeque
+  private[this] val tfer: Axn[Unit] =
+    queue1.tryDeque.map(_.getOrElse("x")) >>> queue2.enqueue
 
   @Actor
-  def enq1(): Unit = {
-    enqueue.unsafePerform("x", this.impl)
+  def transfer(): Unit = {
+    tfer.unsafePerform((), this.impl)
   }
 
   @Actor
-  def enq2(): Unit = {
-    enqueue.unsafePerform("y", this.impl)
-  }
-
-  @Actor
-  def deq(r: LL_Result): Unit = {
-    r.r1 = tryDeque.unsafeRun(this.impl)
+  def concurrentEnqueue(): Unit = {
+    queue2.enqueue.unsafePerform("y", this.impl)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = queue.drainOnce[SyncIO, String].unsafeRunSync()
+    r.r1 = queue1.drainOnce[SyncIO, String].unsafeRunSync()
+    r.r2 = queue2.drainOnce[SyncIO, String].unsafeRunSync()
   }
 }

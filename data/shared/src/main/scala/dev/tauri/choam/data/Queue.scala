@@ -67,7 +67,7 @@ object Queue {
   }
 
   def unbounded[A]: Axn[Queue[A]] =
-    MichaelScottQueue[A]
+    MsQueue[A]
 
   def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
     boundedArray[A](bound)
@@ -83,7 +83,7 @@ object Queue {
     RingBuffer.apply[A](capacity)
 
   private[choam] def unpadded[A]: Axn[Queue[A]] =
-    MichaelScottQueue.unpadded[A]
+    MsQueue.unpadded[A]
 
   private[choam] def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
     implicit val m: Monad[F] = Reactive[F].monad

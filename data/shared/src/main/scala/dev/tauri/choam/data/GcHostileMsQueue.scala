@@ -30,7 +30,7 @@ import GcHostileMsQueue._
  * which is harder for the GC to deal with).
  *
  * It also lacks other optimizations present in
- * `MichaelScottQueue` (see there).
+ * `MsQueue` (see there).
  */
 private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
   extends Queue[A] {

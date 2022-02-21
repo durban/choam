@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import MichaelScottQueue._
+import MsQueue._
 
 /**
  * Unbounded MPMC queue, based on the lock-free Michael-Scott queue described in
@@ -29,7 +29,7 @@ import MichaelScottQueue._
  * or on the implementation in the Reagents paper
  * (https://web.archive.org/web/20220214132428/https://www.ccis.northeastern.edu/home/turon/reagents.pdf).
  */
-private[choam] final class MichaelScottQueue[A] private[this] (
+private[choam] final class MsQueue[A] private[this] (
   sentinel: Node[A],
   padded: Boolean,
 ) extends Queue[A] {
@@ -121,25 +121,25 @@ private[choam] final class MichaelScottQueue[A] private[this] (
   }
 }
 
-private[choam] object MichaelScottQueue {
+private[choam] object MsQueue {
 
   private sealed trait Elem[A]
   private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
   private final case class End[A]() extends Elem[A]
 
-  def apply[A]: Axn[MichaelScottQueue[A]] =
+  def apply[A]: Axn[MsQueue[A]] =
     padded[A]
 
-  def padded[A]: Axn[MichaelScottQueue[A]] =
+  def padded[A]: Axn[MsQueue[A]] =
     applyInternal(padded = true)
 
-  def unpadded[A]: Axn[MichaelScottQueue[A]] =
+  def unpadded[A]: Axn[MsQueue[A]] =
     applyInternal(padded = false)
 
-  private[choam] def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[MichaelScottQueue[A]] = {
-    Queue.fromList[F, MichaelScottQueue, A](this.apply[A])(as)
+  private[choam] def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[MsQueue[A]] = {
+    Queue.fromList[F, MsQueue, A](this.apply[A])(as)
   }
 
-  private[this] def applyInternal[A](padded: Boolean): Axn[MichaelScottQueue[A]] =
-    Rxn.unsafe.delay { _ => new MichaelScottQueue(padded = padded) }
+  private[this] def applyInternal[A](padded: Boolean): Axn[MsQueue[A]] =
+    Rxn.unsafe.delay { _ => new MsQueue(padded = padded) }
 }

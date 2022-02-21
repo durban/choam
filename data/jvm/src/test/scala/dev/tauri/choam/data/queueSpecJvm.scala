@@ -97,7 +97,7 @@ trait QueueMsSpecJvm[F[_]]
 
 trait QueueJvmTests[F[_]] { this: KCASImplSpec with BaseQueueSpec[F] =>
 
-  test("Michael-Scott queue should allow multiple producers and consumers") {
+  test("Queue should allow multiple producers and consumers") {
     val max = 5000
     for {
       _ <- assumeF(this.kcasImpl.isThreadSafe)

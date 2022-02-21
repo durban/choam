@@ -21,14 +21,14 @@ package data
 import RemoveQueue._
 
 /**
- * Like `MichaelScottQueue`, but also has support for interior node deletion
+ * Like `MsQueue`, but also has support for interior node deletion
  * (`remove`), based on the public domain JSR-166 ConcurrentLinkedQueue
  * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
  */
 private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A])
   extends Queue.WithRemove[A] {
 
-  // TODO: do the optimization with ticketRead (like in `MichaelScottQueue`)
+  // TODO: do the optimization with ticketRead (like in `MsQueue`)
 
   private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel)
   private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel)

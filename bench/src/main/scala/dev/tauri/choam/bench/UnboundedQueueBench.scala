@@ -27,7 +27,7 @@ import io.github.timwspence.cats.stm.STM
 import zio.stm.ZSTM
 
 import util._
-import data.{ Queue, MichaelScottQueue }
+import data.{ Queue, MsQueue }
 
 @Fork(2)
 @Threads(1) // because it runs on the CE threadpool
@@ -125,8 +125,8 @@ object UnboundedQueueBench {
   class MsSt {
     val runtime =
       cats.effect.unsafe.IORuntime.global
-    val michaelScottQueue: MichaelScottQueue[String] =
-      Queue.fromList[SyncIO, MichaelScottQueue, String](MichaelScottQueue.padded[String])(Prefill.prefill().toList).unsafeRunSync()
+    val michaelScottQueue: MsQueue[String] =
+      Queue.fromList[SyncIO, MsQueue, String](MsQueue.padded[String])(Prefill.prefill().toList).unsafeRunSync()
   }
 
   @State(Scope.Benchmark)

@@ -26,11 +26,11 @@ import cats.effect.SyncIO
 
 @JCStressTest
 @State
-@Description("MichaelScottQueue enq/deq should be composable")
+@Description("MsQueue enq/deq should be composable")
 @Outcomes(Array(
   new Outcome(id = Array("List(c, d), List(a, b)"), expect = ACCEPTABLE_INTERESTING, desc = "the only valid result")
 ))
-class MichaelScottQueueComposedTest1 extends MsQueueStressTestBase {
+class MsQueueComposedTest1 extends MsQueueStressTestBase {
 
   private[this] val queue1 =
     this.newQueue("a", "b", "c", "d")
