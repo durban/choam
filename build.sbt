@@ -198,6 +198,7 @@ lazy val bench = project.in(file("bench"))
     dependencies.catsStm.value,
     dependencies.zioStm.value,
     dependencies.decline.value,
+    dependencies.jcTools.value,
   ))
   .enablePlugins(JmhPlugin)
   .settings(jmhSettings)
@@ -421,6 +422,7 @@ lazy val dependencies = new {
   // JVM:
   val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.10.0")
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.16")
+  val jcTools = Def.setting("org.jctools" % "jctools-core" % "3.3.0")
 
   // JS:
   val scalaJsLocale = Def.setting[Seq[ModuleID]](Seq(

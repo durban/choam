@@ -117,6 +117,15 @@ class SyncUnboundedQueueBench extends BenchUtils {
     }
     run(s.runtime, tsk.void, size = size)
   }
+
+  @Benchmark
+  def jcToolsQueue(s: JctSt, t: RandomState): Unit = {
+    val tsk = isEnq(t).flatMap { enq =>
+      if (enq) IO { s.jctQueue.offer(t.nextString()) }
+      else IO { Option(s.jctQueue.poll()) }
+    }
+    run(s.runtime, tsk.void, size = size)
+  }
 }
 
 object SyncUnboundedQueueBench {
@@ -174,6 +183,23 @@ object SyncUnboundedQueueBench {
   @State(Scope.Benchmark)
   class CeSt {
     val runtime = cats.effect.unsafe.IORuntime.global
-    val ceQueue: CeQueue[IO,String] = CeQueue.fromList[IO, String](Prefill.prefill().toList).unsafeRunSync()(runtime)
+    val ceQueue: CeQueue[IO, String] = CeQueue.fromList[IO, String](Prefill.prefill().toList).unsafeRunSync()(runtime)
+  }
+
+  @State(Scope.Benchmark)
+  class JctSt {
+
+    import org.jctools.queues.MpmcUnboundedXaddArrayQueue
+
+    val runtime =
+      cats.effect.unsafe.IORuntime.global
+
+    val jctQueue: MpmcUnboundedXaddArrayQueue[String] = {
+      val q = new MpmcUnboundedXaddArrayQueue[String](16)
+      Prefill.prefill().foreach { item =>
+        q.offer(item)
+      }
+      q
+    }
   }
 }
