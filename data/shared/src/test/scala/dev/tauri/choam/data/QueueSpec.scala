@@ -155,6 +155,59 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
       _ <- assertResultF(q.tryDeque.run[F], Some("a"))
     } yield ()
   }
+
+  test("enqueueWithRemover") {
+    for {
+      q <- newQueueFromList(List.empty[Int])
+      r1 <- q.enqueueWithRemover[F](1)
+      r2 <- q.enqueueWithRemover[F](2)
+      r3 <- q.enqueueWithRemover[F](3)
+      _ <- assertResultF(q.tryDeque.run[F], Some(1))
+      _ <- r1.run[F] // does nothing
+      _ <- r2.run[F] // removes 2
+      _ <- r2.run[F] // does nothing
+      _ <- assertResultF(q.tryDeque.run[F], Some(3))
+      _ <- r3.run[F] // does nothing
+      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- r3.run[F] // does nothing
+      _ <- assertResultF(q.tryDeque.run[F], None)
+      r42 <- q.enqueueWithRemover[F](42)
+      _ <- r42.run[F] // removes 42
+      _ <- q.enqueue[F](33)
+      _ <- assertResultF(q.tryDeque.run[F], Some(33))
+      _ <- assertResultF(q.tryDeque.run[F], None)
+    } yield ()
+  }
+
+  test("Concurrent removals") {
+    val N = 1024
+    val P = 128
+    val S = List("a", "b", "c", "d", "e", "f", "g", "h")
+    for {
+      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      q <- newQueueFromList(S)
+      finderRemovers = S.map { item =>
+        q.remove.provide(item).void
+      }
+      directRemovers <- (1 to N).toList.parTraverseN(P) { idx =>
+        q.enqueueWithRemover[F](idx.toString).map { remover =>
+          // we only want to remove even indices:
+          if ((idx % 2) == 0) remover
+          else Rxn.unit
+        }
+      }
+      _ <- F.both(
+        finderRemovers.parTraverseN(P >>> 1) { r => r.run[F] },
+        directRemovers.parTraverseN(P >>> 1) { r => r.run[F] },
+      )
+      contents <- q.drainOnce
+      _ <- assertResultF(q.tryDeque.run[F], None)
+      // the odd indices should've remained:
+      expected = (1 to N).collect { case i if (i % 2) != 0 => i.toString }.toList
+      _ <- assertEqualsF(contents.toSet, expected.toSet)
+      _ <- assertEqualsF(contents.length, expected.length)
+    } yield ()
+  }
 }
 
 trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>

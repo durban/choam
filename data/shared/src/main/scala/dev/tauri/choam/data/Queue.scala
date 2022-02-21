@@ -55,11 +55,9 @@ trait Queue[A]
 
 object Queue {
 
-  // TODO: `enqueue` could return an `Axn[Unit]`,
-  // TODO: which (when run), would remove the
-  // TODO: inserted item (without linear searching).
   private[choam] abstract class WithRemove[A] extends Queue[A] {
     def remove: Rxn[A, Boolean]
+    def enqueueWithRemover: Rxn[A, Axn[Unit]]
   }
 
   private[choam] abstract class WithSize[A] extends Queue[A] {

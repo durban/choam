@@ -72,6 +72,15 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A])
     }
   }
 
+  override val enqueueWithRemover: Rxn[A, Axn[Unit]] = Rxn.computed { (a: A) =>
+    Ref[Elem[A]](End[A]()).flatMap { nextRef =>
+      Ref(a).flatMap { dataRef =>
+        val newNode = Node(dataRef, nextRef)
+        findAndEnqueue(newNode).as(newNode.remover)
+      }
+    }
+  }
+
   // TODO: we could allow tail to lag by a constant
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
     def go(n: Node[A]): Axn[Unit] = {
@@ -127,12 +136,28 @@ private[choam] object RemoveQueue {
 
   /**
    * Sentinel node (head and tail): `data` is `null` (not a `Ref`).
-   * Deleted (tombstone) node: `data` is a `Ref` which contains `null`.
+   * Deleted (tombstone) node: `data` is a `Ref` which contains `Tombstone`.
    */
-  private final case class Node[A](data: Ref[A], next: Ref[Elem[A]]) extends Elem[A]
+  private final case class Node[A](data: Ref[A], next: Ref[Elem[A]])
+    extends Elem[A] {
+
+    // We don't return a `Boolean` from
+    // the `remover`, because since we're
+    // deleting directly from the `Node`,
+    // we can't be sure that the queue
+    // even contains the thing we're removing.
+    final def remover: Axn[Unit] = {
+      this.data.set.provide(tombstone[A])
+    }
+  }
 
   private final case class End[A]() extends Elem[A]
 
+  // Note: it's important, that user code
+  // can never access a `Tombstone`, as we
+  // need to be able to reliably distinguish
+  // user data from a tombstone (this is why
+  // we can't simply use `null`).
   private[this] final object Tombstone {
     final def as[A]: A =
       this.asInstanceOf[A]

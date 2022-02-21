@@ -34,7 +34,7 @@ import data.Queue
   new Outcome(id = Array("List(), None, true"), expect = ACCEPTABLE, desc = "rem wins"),
   new Outcome(id = Array("List(), Some(z), true"), expect = FORBIDDEN, desc = "rem seems to win, but doesn't")
 ))
-class RemoveQueueRemoveTest1 extends RemoveQueueStressTestBase {
+class RemoveQueueRemoveTest1A extends RemoveQueueStressTestBase {
 
   private[this] val queue: Queue.WithRemove[String] = {
     this.newQueue("z")
