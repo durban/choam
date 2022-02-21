@@ -33,7 +33,7 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 class KCASTestVer1 extends StressTestBase {
 
   private[this] val refs: Array[MemoryLocation[String]] = {
-    Array.fill(8)(MemoryLocation.unsafe("ov"))
+    Array.fill(7)(MemoryLocation.unsafe("ov"))
   }
 
   private[this] def write(ov: String, nv: String): Boolean = {
