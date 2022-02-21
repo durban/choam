@@ -36,8 +36,8 @@ object AsyncQueue {
   def bounded[F[_], A](bound: Int): Axn[BoundedQueue[F, A]] =
     BoundedQueue.linked[F, A](bound)
 
-  def dropping[F[_], A](@unused capacity: Int): Axn[OverflowQueue[F, A]] =
-    sys.error("TODO")
+  def dropping[F[_], A](capacity: Int): Axn[OverflowQueue[F, A]] =
+    OverflowQueue.droppingQueue[F, A](capacity)
 
   def ringBuffer[F[_], A](capacity: Int): Axn[OverflowQueue[F, A]] =
     OverflowQueue.ringBuffer[F, A](capacity)
