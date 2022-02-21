@@ -38,9 +38,9 @@ class SyncUnboundedQueueBench extends BenchUtils {
   final override val waitTime = 128L
   final val size = 4096
 
-  /** MS-Queue implemented with `Rxn` (with tickets) */
+  /** MS-Queue implemented with `Rxn` */
   @Benchmark
-  def michaelScottQueue2(s: MsSt, t: KCASImplState): Unit = {
+  def msQueue(s: MsSt, t: KCASImplState): Unit = {
     val tsk = t.nextBooleanIO.flatMap { enq =>
       if (enq) s.michaelScottQueue.enqueue[IO](t.nextString())(t.reactive)
       else s.michaelScottQueue.tryDeque.run[IO](t.reactive)
@@ -50,7 +50,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
 
   /** MS-Queue (+ interior deletion) implemented with `Rxn` */
   @Benchmark
-  def michaelScottQueueWithRemove(s: RmSt, t: KCASImplState): Unit = {
+  def msQueueWithRemove(s: RmSt, t: KCASImplState): Unit = {
     val tsk = t.nextBooleanIO.flatMap { enq =>
       if (enq) s.removeQueue.enqueue[IO](t.nextString())(t.reactive)
       else s.removeQueue.tryDeque.run[IO](t.reactive)
@@ -70,7 +70,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
 
   /** juc.ConcurrentLinkedQueue (MS-Queue in the JDK) */
   @Benchmark
-  def concurrentQueue(s: JdkSt, t: RandomState): Unit = {
+  def jdkQueue(s: JdkSt, t: RandomState): Unit = {
     val tsk = t.nextBooleanIO.flatMap { enq =>
       if (enq) IO { s.concurrentQueue.offer(t.nextString()) }
       else IO { s.concurrentQueue.poll() }
@@ -80,7 +80,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
 
   /** MS-Queue implemented with scala-stm */
   @Benchmark
-  def stmQueue(s: StmSt, t: RandomState): Unit = {
+  def stmQueueS(s: StmSSt, t: RandomState): Unit = {
     val tsk = t.nextBooleanIO.flatMap { enq =>
       if (enq) IO { s.stmQueue.enqueue(t.nextString()) }
       else IO { s.stmQueue.tryDequeue() }
@@ -98,7 +98,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
     run(s.runtime, tsk.void, size = size)
   }
 
-  /** MS-Queue implemented with zio STM */
+  /** MS-Queue implemented with ZSTM */
   @Benchmark
   def stmQueueZ(s: StmZSt, t: RandomState): Unit = {
     val tsk = t.nextBooleanZIO.flatMap { enq =>
@@ -110,7 +110,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
 
   /** MS-Queue implemented with cats-effect `Ref` */
   @Benchmark
-  def ceQueue(s: CeSt, t: RandomState): Unit = {
+  def ceRefMsQueue(s: CeRefSt, t: RandomState): Unit = {
     val tsk = t.nextBooleanIO.flatMap { enq =>
       if (enq) s.ceQueue.enqueue(t.nextString())
       else s.ceQueue.tryDequeue
@@ -159,7 +159,7 @@ object SyncUnboundedQueueBench {
   }
 
   @State(Scope.Benchmark)
-  class StmSt {
+  class StmSSt {
     val runtime = cats.effect.unsafe.IORuntime.global
     val stmQueue = new StmQueue[String](Prefill.prefill())
   }
@@ -181,7 +181,7 @@ object SyncUnboundedQueueBench {
   }
 
   @State(Scope.Benchmark)
-  class CeSt {
+  class CeRefSt {
     val runtime = cats.effect.unsafe.IORuntime.global
     val ceQueue: CeQueue[IO, String] = CeQueue.fromList[IO, String](Prefill.prefill().toList).unsafeRunSync()(runtime)
   }
