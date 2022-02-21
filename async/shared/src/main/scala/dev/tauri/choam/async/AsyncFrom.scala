@@ -54,22 +54,24 @@ final class AsyncFrom[F[_], A] private (
   def getResource(implicit F: AsyncReactive[F]): Resource[F, F[A]] =
     Resource.make(this.getAcq)(this.getRel)(F.monad).map(this.getUse)
 
-  private[this] def getAcq(implicit F: AsyncReactive[F]): F[Either[Promise[F, A], A]] = {
+  private[this] def getAcq(implicit F: AsyncReactive[F]): F[Either[(Promise[F, A], Axn[Unit]), A]] = {
     Promise[F, A].flatMapF { p =>
       this.syncGet.flatMapF {
         case Some(b) => Rxn.pure(Right(b))
-        case None => this.waiters.enqueue.provide(p).as(Left(p))
+        case None => this.waiters.enqueueWithRemover.provide(p).map { remover =>
+          Left((p, remover))
+        }
       }
     }.run[F]
   }
 
-  private[this] def getRel(r: Either[Promise[F, A], A])(implicit F: Reactive[F]): F[Unit] = r match {
-    case Left(p) => this.waiters.remove.void[F](p)
+  private[this] def getRel(r: Either[(Promise[F, A], Axn[Unit]), A])(implicit F: Reactive[F]): F[Unit] = r match {
+    case Left((_, remover)) => remover.run[F]
     case Right(_) => F.monad.unit
   }
 
-  private[this] def getUse(r: Either[Promise[F, A], A])(implicit F: Reactive[F]): F[A] = r match {
-    case Left(p) => p.get
+  private[this] def getUse(r: Either[(Promise[F, A], Axn[Unit]), A])(implicit F: Reactive[F]): F[A] = r match {
+    case Left((p, _)) => p.get
     case Right(a) => F.monad.pure(a)
   }
 }

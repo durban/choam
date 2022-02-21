@@ -90,7 +90,7 @@ object BoundedQueue {
       }
     }
 
-    override def dequeAcq(implicit F: AsyncReactive[F]): F[Either[Promise[F, A], A]] = {
+    override def dequeAcq(implicit F: AsyncReactive[F]): F[Either[(Promise[F, A], Axn[Unit]), A]] = {
       (Promise[F, A] * q.tryDeque).flatMapF { case (p, dq) =>
         dq match {
           case Some(b) =>
@@ -107,7 +107,9 @@ object BoundedQueue {
             }
           case None =>
             // size didn't change
-            getters.enqueue.provide(p).as(Left(p))
+            getters.enqueueWithRemover.provide(p).map { remover =>
+              Left((p, remover))
+            }
         }
       }.run[F]
     }
@@ -120,7 +122,7 @@ object BoundedQueue {
     setters: Queue.WithRemove[(A, Promise[F, Unit])],
   ) extends BoundedQueueCommon[F, A](bound, getters, setters) {
 
-    protected final override def dequeAcq(implicit F: AsyncReactive[F]): F[Either[Promise[F, A], A]] = {
+    protected final override def dequeAcq(implicit F: AsyncReactive[F]): F[Either[(Promise[F, A], Axn[Unit]), A]] = {
       (Promise[F, A] * q.tryDeque).flatMapF { case (p, dq) =>
         dq match {
           case Some(a) =>
@@ -133,7 +135,9 @@ object BoundedQueue {
                 Rxn.pure(Right(a))
             }
           case None =>
-            getters.enqueue.provide(p).as(Left(p)) : Axn[Left[Promise[F, A], A]]
+            getters.enqueueWithRemover.provide(p).map { remover =>
+              Left((p, remover))
+            }
         }
       }.run[F]
     }
@@ -154,7 +158,7 @@ object BoundedQueue {
     protected val setters: Queue.WithRemove[(A, Promise[F, Unit])],
   ) extends BoundedQueue[F, A] { self =>
 
-    protected def dequeAcq(implicit F: AsyncReactive[F]): F[Either[Promise[F, A], A]]
+    protected def dequeAcq(implicit F: AsyncReactive[F]): F[Either[(Promise[F, A], Axn[Unit]), A]]
 
     /** Partial, retries if no waiting getter! */
     protected def tryWaitingEnq: A =#> true = {
@@ -175,7 +179,7 @@ object BoundedQueue {
     final override def enqueue(a: A)(implicit F: AsyncReactive[F]): F[Unit] =
       F.monadCancel.bracket(acquire = this.enqueueAcq(a))(use = this.enqueueUse)(release = this.enqueueRel)
 
-    private[this] def enqueueAcq(a: A)(implicit F: AsyncReactive[F]): F[Either[(A, Promise[F, Unit]), Unit]] = {
+    private[this] def enqueueAcq(a: A)(implicit F: AsyncReactive[F]): F[Either[(A, Promise[F, Unit], Axn[Unit]), Unit]] = {
       (Promise[F, Unit] * getters.tryDeque).flatMap { case (p, dq) =>
         dq match {
           case Some(getterPromise) =>
@@ -185,19 +189,20 @@ object BoundedQueue {
               case true =>
                 Rxn.pure(Right(()))
               case false =>
-                val ap = (a, p)
-                setters.enqueue.provide(ap).as(Left(ap))
+                setters.enqueueWithRemover.provide((a, p)).map { remover =>
+                  Left((a, p, remover))
+                }
             }
         }
       }.apply[F](a)
     }
 
-    private[this] def enqueueRel(r: Either[(A, Promise[F, Unit]), Unit])(implicit F: Reactive[F]): F[Unit] = r match {
-      case Left(ap) => setters.remove.void[F](ap)
+    private[this] def enqueueRel(r: Either[(A, Promise[F, Unit], Axn[Unit]), Unit])(implicit F: Reactive[F]): F[Unit] = r match {
+      case Left((_, _, remover)) => remover.run[F]
       case Right(_) => F.monad.unit
     }
 
-    private[this] def enqueueUse(r: Either[(A, Promise[F, Unit]), Unit])(implicit F: Reactive[F]): F[Unit] = r match {
+    private[this] def enqueueUse(r: Either[(A, Promise[F, Unit], Axn[Unit]), Unit])(implicit F: Reactive[F]): F[Unit] = r match {
       case Left(ap) => ap._2.get
       case Right(_) => F.monad.unit
     }
@@ -208,13 +213,13 @@ object BoundedQueue {
       )
     }
 
-    private[this] def dequeRel(r: Either[Promise[F, A], A])(implicit F: Reactive[F]): F[Unit] = r match {
-      case Left(p) => getters.remove.void[F](p)
+    private[this] def dequeRel(r: Either[(Promise[F, A], Axn[Unit]), A])(implicit F: Reactive[F]): F[Unit] = r match {
+      case Left((_, remover)) => remover.run[F]
       case Right(_) => F.monad.unit
     }
 
-    private[this] def dequeUse(r: Either[Promise[F, A], A])(implicit F: Reactive[F]): F[A] = r match {
-      case Left(p) => p.get
+    private[this] def dequeUse(r: Either[(Promise[F, A], Axn[Unit]), A])(implicit F: Reactive[F]): F[A] = r match {
+      case Left((p, _)) => p.get
       case Right(a) => F.monad.pure(a)
     }
 

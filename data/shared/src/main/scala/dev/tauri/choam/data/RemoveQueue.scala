@@ -25,7 +25,7 @@ import RemoveQueue._
  * (`remove`), based on the public domain JSR-166 ConcurrentLinkedQueue
  * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
  */
-private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A])
+private[data] final class RemoveQueue[A] private[this] (sentinel: Node[A])
   extends Queue.WithRemove[A] {
 
   // TODO: do the optimization with ticketRead (like in `MsQueue`)
@@ -127,7 +127,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A])
   }
 }
 
-private[choam] object RemoveQueue {
+private[data] object RemoveQueue {
 
   def apply[A]: Axn[RemoveQueue[A]] =
     Rxn.unsafe.delay { _ => new RemoveQueue }
