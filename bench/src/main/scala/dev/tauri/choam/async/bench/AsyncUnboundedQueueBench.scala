@@ -28,9 +28,9 @@ import _root_.dev.tauri.choam.bench.BenchUtils
 
 @Fork(2)
 @Threads(1)
-class UnboundedQueueBench extends BenchUtils {
+class AsyncUnboundedQueueBench extends BenchUtils {
 
-  import UnboundedQueueBench._
+  import AsyncUnboundedQueueBench._
 
   final override val waitTime = 0L
   final val size = 2048
@@ -58,7 +58,7 @@ class UnboundedQueueBench extends BenchUtils {
   }
 }
 
-object UnboundedQueueBench {
+object AsyncUnboundedQueueBench {
   @State(Scope.Benchmark)
   class St {
     val runtime = cats.effect.unsafe.IORuntime.global
