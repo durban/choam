@@ -34,14 +34,7 @@ class SyncStackBench extends BenchUtils {
 
   import SyncStackBench._
 
-  final override val waitTime = 0L
-
   final val N = 480 // divisible by _concurrentOps
-
-  // @Benchmark
-  // def baselineSingleThreaded(@unused s: BaselineSt): Unit = {
-  //   run(cats.effect.unsafe.IORuntime.global, IO.unit, size = N)
-  // }
 
   @Benchmark
   def baseline(s: BaselineSt): Unit = {

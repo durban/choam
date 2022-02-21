@@ -33,9 +33,6 @@ class RingBufferBench extends BenchUtils {
 
   final val N = 1024 * 1024
 
-  protected override def waitTime: Long =
-    0L
-
   @Benchmark
   def ringBufferStrict(s: RingBufferBench.St, bh: Blackhole): Unit = {
     this.run(s.runtime, tsk(s.rxnQStrict, bh, N), 1)

@@ -32,7 +32,6 @@ class PromiseBench extends BenchUtils {
 
   import PromiseBench._
 
-  final override val waitTime = 0L
   final val size = 2048
 
   @Benchmark

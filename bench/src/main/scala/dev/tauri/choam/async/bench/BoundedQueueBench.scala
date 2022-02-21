@@ -37,9 +37,6 @@ class BoundedQueueBench extends BenchUtils {
   // must be divisible by `producers`
   final val N = 1024 * 32 * 12
 
-  protected override def waitTime: Long =
-    0L
-
   @Benchmark
   def boundedLinkedQueue(s: St, ps: ParamSt, bh: Blackhole): Unit = {
     this.run(s.runtime, tsk(s.rxnLinkedQ, bh, N, producers = ps.producers, consumers = ps.consumers), 1)

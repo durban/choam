@@ -33,7 +33,6 @@ class AsyncUnboundedQueueToCatsBench extends BenchUtils {
 
   import AsyncUnboundedQueueToCatsBench._
 
-  final override val waitTime = 0L
   final val size = 1024
   final val queueSize = 8
 

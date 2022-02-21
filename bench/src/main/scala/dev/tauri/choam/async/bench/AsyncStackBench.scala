@@ -33,7 +33,6 @@ class AsyncStackBench extends BenchUtils {
 
   import AsyncStackBench._
 
-  final override val waitTime = 0L
   final val size = 2048
   final val stackSize = 4
   final val multiplier = 16

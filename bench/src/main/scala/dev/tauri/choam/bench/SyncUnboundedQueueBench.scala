@@ -30,13 +30,12 @@ import util._
 import data.{ Queue, MsQueue }
 
 @Fork(2)
-@Threads(1) // because it runs on the CE threadpool
+@Threads(1) // set it to _concurrentOps!
 class SyncUnboundedQueueBench extends BenchUtils {
 
   import SyncUnboundedQueueBench._
 
-  final override val waitTime = 128L
-  final val size = 4096
+  final val N = 3840 // divisible by _concurrentOps
 
   /** MS-Queue implemented with `Rxn` */
   @Benchmark
@@ -45,7 +44,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
       if (enq) s.michaelScottQueue.enqueue[IO](t.nextString())(t.reactive)
       else s.michaelScottQueue.tryDeque.run[IO](t.reactive)
     }
-    run(s.runtime, tsk.void, size = size)
+    runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
   }
 
   /** MS-Queue (+ interior deletion) implemented with `Rxn` */
@@ -55,7 +54,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
       if (enq) s.removeQueue.enqueue[IO](t.nextString())(t.reactive)
       else s.removeQueue.tryDeque.run[IO](t.reactive)
     }
-    run(s.runtime, tsk.void, size = size)
+    runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
   }
 
   /** Simple queue protected with a reentrant lock */
@@ -65,7 +64,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
       if (enq) IO { s.lockedQueue.enqueue(t.nextString()) }
       else IO { s.lockedQueue.tryDequeue() }
     }
-    run(s.runtime, tsk.void, size = size)
+    runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
   }
 
   /** juc.ConcurrentLinkedQueue (MS-Queue in the JDK) */
@@ -75,7 +74,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
       if (enq) IO { s.concurrentQueue.offer(t.nextString()) }
       else IO { s.concurrentQueue.poll() }
     }
-    run(s.runtime, tsk.void, size = size)
+    runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
   }
 
   /** MS-Queue implemented with scala-stm */
@@ -85,7 +84,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
       if (enq) IO { s.stmQueue.enqueue(t.nextString()) }
       else IO { s.stmQueue.tryDequeue() }
     }
-    run(s.runtime, tsk.void, size = size)
+    runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
   }
 
   /** MS-Queue implemented with cats-stm */
@@ -95,7 +94,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
       if (enq) s.s.commit(s.stmQueue.enqueue(t.nextString()))
       else s.s.commit(s.stmQueue.tryDequeue)
     }
-    run(s.runtime, tsk.void, size = size)
+    runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
   }
 
   /** MS-Queue implemented with ZSTM */
@@ -105,7 +104,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
       if (enq) ZSTM.atomically(s.stmQueue.enqueue(t.nextString()))
       else ZSTM.atomically(s.stmQueue.tryDequeue)
     }
-    runZ(s.runtime, tsk.unit, size = size)
+    runReplZ(s.runtime, tsk.unit, size = N, parallelism = s.concurrentOps)
   }
 
   /** MS-Queue implemented with cats-effect `Ref` */
@@ -115,7 +114,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
       if (enq) s.ceQueue.enqueue(t.nextString())
       else s.ceQueue.tryDequeue
     }
-    run(s.runtime, tsk.void, size = size)
+    runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
   }
 
   @Benchmark
@@ -124,14 +123,24 @@ class SyncUnboundedQueueBench extends BenchUtils {
       if (enq) IO { s.jctQueue.offer(t.nextString()) }
       else IO { Option(s.jctQueue.poll()) }
     }
-    run(s.runtime, tsk.void, size = size)
+    runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
   }
 }
 
 object SyncUnboundedQueueBench {
 
   @State(Scope.Benchmark)
-  class MsSt {
+  abstract class BaseSt {
+
+    @Param(Array("2", "4", "6", "8", "10"))
+    private[this] var _concurrentOps: Int = _
+
+    def concurrentOps: Int =
+      this._concurrentOps
+  }
+
+  @State(Scope.Benchmark)
+  class MsSt extends BaseSt {
     val runtime =
       cats.effect.unsafe.IORuntime.global
     val michaelScottQueue: MsQueue[String] =
@@ -139,7 +148,7 @@ object SyncUnboundedQueueBench {
   }
 
   @State(Scope.Benchmark)
-  class RmSt {
+  class RmSt extends BaseSt {
     val runtime =
       cats.effect.unsafe.IORuntime.global
     val removeQueue: Queue.WithRemove[String] =
@@ -147,25 +156,25 @@ object SyncUnboundedQueueBench {
   }
 
   @State(Scope.Benchmark)
-  class LockedSt {
+  class LockedSt extends BaseSt {
     val runtime = cats.effect.unsafe.IORuntime.global
     val lockedQueue = new LockedQueue[String](Prefill.prefill())
   }
 
   @State(Scope.Benchmark)
-  class JdkSt {
+  class JdkSt extends BaseSt {
     val runtime = cats.effect.unsafe.IORuntime.global
     val concurrentQueue = new java.util.concurrent.ConcurrentLinkedQueue[String](Prefill.forJava())
   }
 
   @State(Scope.Benchmark)
-  class StmSSt {
+  class StmSSt extends BaseSt {
     val runtime = cats.effect.unsafe.IORuntime.global
     val stmQueue = new StmQueue[String](Prefill.prefill())
   }
 
   @State(Scope.Benchmark)
-  class StmCSt {
+  class StmCSt extends BaseSt {
     // scalafix:off
     val runtime = cats.effect.unsafe.IORuntime.global
     val s = STM.runtime[IO].unsafeRunSync()(runtime)
@@ -175,19 +184,19 @@ object SyncUnboundedQueueBench {
   }
 
   @State(Scope.Benchmark)
-  class StmZSt {
+  class StmZSt extends BaseSt {
     val runtime = zio.Runtime.default
     val stmQueue: StmQueueZ[String] = runtime.unsafeRunTask(StmQueueZ[String](Prefill.prefill().toList))
   }
 
   @State(Scope.Benchmark)
-  class CeRefSt {
+  class CeRefSt extends BaseSt {
     val runtime = cats.effect.unsafe.IORuntime.global
     val ceQueue: CeQueue[IO, String] = CeQueue.fromList[IO, String](Prefill.prefill().toList).unsafeRunSync()(runtime)
   }
 
   @State(Scope.Benchmark)
-  class JctSt {
+  class JctSt extends BaseSt {
 
     import org.jctools.queues.MpmcUnboundedXaddArrayQueue
 
