@@ -51,4 +51,18 @@ trait BenchUtils {
     rt.unsafeRunTask(Task.foreachDiscard((0 until size).toList) { idx => task(idx) })
     Blackhole.consumeCPU(waitTime)
   }
+
+  protected final def runRepl(rt: IORuntime, task: IO[Unit], size: Int, parallelism: Int): Unit = {
+    val n = size / parallelism
+    assert((n * parallelism) == size) // avoid rounding error
+    task.replicateA(n).unsafeRunSync()(rt) : List[Unit]
+    ()
+  }
+
+  protected final def runReplZ(rt: ZRuntime[_], task: Task[Unit], size: Int, parallelism: Int): Unit = {
+    val n = size / parallelism
+    assert((n * parallelism) == size) // avoid rounding error
+    rt.unsafeRunTask(task.replicateZIO(n)) : Iterable[Unit]
+    ()
+  }
 }

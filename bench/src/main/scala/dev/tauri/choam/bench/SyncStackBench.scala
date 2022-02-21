@@ -19,7 +19,6 @@ package dev.tauri.choam
 package bench
 
 import cats.effect.{ IO, SyncIO }
-import cats.effect.unsafe.IORuntime
 import cats.syntax.all._
 import io.github.timwspence.cats.stm._
 
@@ -38,18 +37,6 @@ class SyncStackBench extends BenchUtils {
   final override val waitTime = 0L
 
   final val N = 480 // divisible by _concurrentOps
-
-  private[this] final def runRepl(rt: IORuntime, task: IO[Unit], size: Int, parallelism: Int): Unit = {
-    val n = size / parallelism
-    task.replicateA(n).unsafeRunSync()(rt) : List[Unit]
-    ()
-  }
-
-  private[this] final def runReplZ(rt: zio.Runtime[_], task: zio.Task[Unit], size: Int, parallelism: Int): Unit = {
-    val n = size / parallelism
-    rt.unsafeRunTask(task.replicateZIO(n)) : Iterable[Unit]
-    ()
-  }
 
   // @Benchmark
   // def baselineSingleThreaded(@unused s: BaselineSt): Unit = {
