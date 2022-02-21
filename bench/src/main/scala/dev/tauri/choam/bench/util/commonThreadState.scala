@@ -47,6 +47,12 @@ class RandomState {
 
   def nextString(): String =
     rnd.nextLong().abs.toString
+
+  final def nextBooleanIO: IO[Boolean] =
+    IO { (this.nextInt() % 2) == 0 }
+
+  final def nextBooleanZIO: zio.Task[Boolean] =
+    zio.Task.attempt { (this.nextInt() % 2) == 0 }
 }
 
 @State(Scope.Thread)

@@ -33,7 +33,7 @@ class QueueTransferBench extends BenchUtils {
 
   import QueueTransferBench._
 
-  final val waitTime = 128L
+  final override val waitTime = 128L
   final val size = 4096
 
   /** MS-Queues (padded) implemented with `Rxn` */
