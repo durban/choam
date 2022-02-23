@@ -19,7 +19,7 @@ package dev.tauri.choam
 package mcas
 
 private final class EMCASDescriptor private (
-  half: HalfEMCASDescriptor,
+  private val half: HalfEMCASDescriptor,
   final val newVersion: Long,
 ) extends EMCASDescriptorBase { self =>
 
@@ -37,6 +37,9 @@ private final class EMCASDescriptor private (
     }
     arr
   }
+
+  final def size: Int =
+    this.words.length
 
   private[mcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
     new EMCASDescriptor.Iterator(this.words)

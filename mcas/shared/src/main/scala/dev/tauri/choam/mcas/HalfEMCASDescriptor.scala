@@ -30,6 +30,8 @@ final class HalfEMCASDescriptor private (
   private val versionCas: HalfWordDescriptor[java.lang.Long], // can be null
 ) {
 
+  require((versionCas eq null) || (versionIncr > 0L))
+
   final def validTs: Long =
     this.validTsBoxed // unboxing happens
 
@@ -63,6 +65,20 @@ final class HalfEMCASDescriptor private (
 
   final def isValidHwd[A](hwd: HalfWordDescriptor[A]): Boolean = {
     hwd.version <= this.validTs
+  }
+
+  /** True iff `this` can (theoretically) commit with the same version as `that` */
+  private[mcas] final def canShareVersionWith(that: HalfEMCASDescriptor): Boolean = {
+    if (this.versionCas ne null) {
+      assert(this.map.nonEmpty)
+      (!this.readOnly) &&
+      (!that.readOnly) &&
+      (this.validTsBoxed eq that.validTsBoxed) &&
+      (this.versionIncr == that.versionIncr) &&
+      this.map.isDisjoint(that.map)
+    } else {
+      false
+    }
   }
 
   private final def withValidTsBoxed(newBoxed: java.lang.Long): HalfEMCASDescriptor =  {
