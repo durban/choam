@@ -60,21 +60,11 @@ final class LogMapSpec extends ScalaCheckSuite {
   property("overwrite") {
     forAll { (seed: Long, _refs: Set[MemoryLocation[String]]) =>
       val rng = new Random(seed)
-      val refs = rng.shuffle(_refs.toList)
-      var lm = LogMap.empty
-      var tm = TreeMap.empty[MemoryLocation[String], HalfWordDescriptor[String]](
-        MemoryLocation.orderingInstance
-      )
-      // insert everything:
-      for (ref <- refs) {
-        val hwd = HalfWordDescriptor(ref, "x", "y", 0L)
-        lm = lm.updated(ref, hwd)
-        tm = tm.updated(ref, hwd)
-      }
+      var (lm, tm) = lmTmFromRefs(rng, () => rng.nextString(32), _refs)
       // overwrite everything:
-      val shuffled = rng.shuffle(refs)
+      val shuffled = rng.shuffle(tm.keySet.toList)
       for (ref <- shuffled) {
-        val newHwd = HalfWordDescriptor(ref, "p", "q", Version.Start)
+        val newHwd = HalfWordDescriptor(ref, rng.nextString(32), "q", rng.nextLong())
         assert(lm.containsUnopt(ref))
         assert(lm.containsOpt(ref))
         val oldHwd = lm.getOrElse(ref, null)
@@ -92,5 +82,41 @@ final class LogMapSpec extends ScalaCheckSuite {
         }
       }
     }
+  }
+
+  property("isDisjoint") {
+    forAll { (seed: Long, _refs1: Set[MemoryLocation[String]], _refs2: Set[MemoryLocation[String]]) =>
+      val rng = new Random(seed)
+      val (lm1, tm1) = lmTmFromRefs(rng, () => rng.nextString(32), _refs1)
+      val (lm2, tm2) = lmTmFromRefs(rng, () => rng.nextString(32), _refs2)
+      val exp = tm1.keySet.intersect(tm2.keySet).isEmpty
+      assertEquals(
+        lm1.isDisjoint(lm2),
+        exp,
+      )
+      assertEquals(
+        lm2.isDisjoint(lm1),
+        exp,
+      )
+    }
+  }
+
+  private[this] def lmTmFromRefs[A](
+    rng: Random,
+    randomA: () => A,
+    _refs: Set[MemoryLocation[A]],
+  ): (LogMap, TreeMap[MemoryLocation[A], HalfWordDescriptor[A]]) = {
+    val refs = rng.shuffle(_refs.toList)
+    var lm = LogMap.empty
+    var tm = TreeMap.empty[MemoryLocation[A], HalfWordDescriptor[A]](
+      MemoryLocation.orderingInstance
+    )
+    // insert everything:
+    for (ref <- refs) {
+      val hwd = HalfWordDescriptor(ref, randomA(), randomA(), rng.nextLong())
+      lm = lm.updated(ref, hwd)
+      tm = tm.updated(ref, hwd)
+    }
+    (lm, tm)
   }
 }

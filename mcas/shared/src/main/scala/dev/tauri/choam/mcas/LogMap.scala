@@ -25,7 +25,7 @@ import scala.util.hashing.MurmurHash3
 // TODO: of read-only status (which could help with
 // TODO: `Rxn`s which "become" read-only)?
 
-private abstract class LogMap {
+private sealed abstract class LogMap {
   def size: Int
   def valuesIterator: Iterator[HalfWordDescriptor[_]]
   def nonEmpty: Boolean
@@ -34,6 +34,7 @@ private abstract class LogMap {
   def containsOpt[A](ref: MemoryLocation[A]): Boolean
   def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
   def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]): HalfWordDescriptor[A]
+  def isDisjoint(that: LogMap): Boolean
   override def equals(that: Any): Boolean
   override def hashCode: Int
 }
@@ -66,6 +67,9 @@ private object LogMap {
 
     final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
       default
+
+    final def isDisjoint(that: LogMap): Boolean =
+      true
 
     final override def equals(that: Any): Boolean =
       equ[Any](that, this)
@@ -104,6 +108,9 @@ private object LogMap {
     final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
       if (k eq v1.address) v1.cast[A] else default
 
+    final def isDisjoint(that: LogMap): Boolean =
+      !that.containsOpt(this.v1.address)
+
     final override def equals(that: Any): Boolean = that match {
       case that: LogMap1 =>
         this.v1 == that.v1
@@ -118,8 +125,8 @@ private object LogMap {
   /** Invariant: `treeMap` has more than 1 items */
   private final class LogMapTree(
     private val treeMap: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
-    private[this] val bloomFilterLeft: Long,
-    private[this] val bloomFilterRight: Long,
+    private val bloomFilterLeft: Long,
+    private val bloomFilterRight: Long,
   ) extends LogMap {
 
     require(treeMap.size > 1)
@@ -172,6 +179,30 @@ private object LogMap {
         default
       } else {
         treeMap.getOrElse(k.cast[Any], default).asInstanceOf[HalfWordDescriptor[A]]
+      }
+    }
+
+    final def isDisjoint(that: LogMap): Boolean = {
+      that match {
+        case Empty =>
+          true
+        case that: LogMap1 =>
+          that.isDisjoint(this)
+        case that: LogMapTree =>
+          this.isDisjointTree(that)
+      }
+    }
+
+    private[this] final def isDisjointTree(that: LogMapTree): Boolean = {
+      if ((this.bloomFilterLeft & that.bloomFilterLeft) != 0) {
+        if ((this.bloomFilterRight & that.bloomFilterRight) != 0) {
+          val common = this.treeMap.keySet.intersect(that.treeMap.keySet)
+          common.isEmpty
+        } else {
+          true
+        }
+      } else {
+        true
       }
     }
 
