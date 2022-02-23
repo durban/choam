@@ -264,7 +264,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")
     val d2 = ctx.addCasFromInitial(d1, r2, "bar", "foo")
     val d3 = ctx.addVersionCas(d2)
-    val d = EMCASDescriptor.prepare(d3)
+    val d = EmcasDescriptor.prepare(d3)
     val lb = List.newBuilder[MemoryLocation[_]]
     val it = d.wordIterator()
     while (it.hasNext()) {

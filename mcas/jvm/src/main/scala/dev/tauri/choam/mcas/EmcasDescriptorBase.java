@@ -20,14 +20,14 @@ package dev.tauri.choam.mcas;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
-abstract class EMCASDescriptorBase {
+abstract class EmcasDescriptorBase {
 
   private static final VarHandle STATUS;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      STATUS = l.findVarHandle(EMCASDescriptorBase.class, "_status", long.class);
+      STATUS = l.findVarHandle(EmcasDescriptorBase.class, "_status", long.class);
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }

@@ -177,7 +177,7 @@ class EMCASSpec extends BaseSpecA {
     val hDesc = ctx.addCasFromInitial(ctx.start(), ref, "s", "x")
     var mark: AnyRef = null
     val desc = {
-      val desc = EMCASDescriptor.prepare(hDesc)
+      val desc = EmcasDescriptor.prepare(hDesc)
       val ok = EMCAS.MCAS(desc = desc, ctx = ctx) == EmcasStatus.Successful
       // TODO: if *right now* the GC clears the mark, the assertion below will fail
       mark = desc.wordIterator().next().address.unsafeGetMarkerVolatile().get()
@@ -269,7 +269,7 @@ class EMCASSpec extends BaseSpecA {
       val hDesc = ctx.addVersionCas(
         ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
       )
-      val desc = EMCASDescriptor.prepare(hDesc)
+      val desc = EmcasDescriptor.prepare(hDesc)
       val it = desc.wordIterator()
       it.next() // global version CAS
       val d0 = it.next().asInstanceOf[WordDescriptor[String]]
@@ -364,7 +364,7 @@ class EMCASSpec extends BaseSpecA {
       val hDesc = ctx.addVersionCas(
         ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
       )
-      val desc = EMCASDescriptor.prepare(hDesc)
+      val desc = EmcasDescriptor.prepare(hDesc)
       val it = desc.wordIterator()
       it.next() // global version CAS
       val d0 = it.next().asInstanceOf[WordDescriptor[String]]
@@ -418,7 +418,7 @@ class EMCASSpec extends BaseSpecA {
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 42L)
     val ctx = EMCAS.currentContext()
     val hOther: HalfEMCASDescriptor = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
-    val other = EMCASDescriptor.prepare(hOther)
+    val other = EmcasDescriptor.prepare(hOther)
     val d0 = other.wordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
     r1.unsafeSetVolatile(d0.castToData)
@@ -438,7 +438,7 @@ class EMCASSpec extends BaseSpecA {
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 99L)
     val ctx = EMCAS.currentContext()
     val hOther = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "zzz", "y")
-    val other = EMCASDescriptor.prepare(hOther)
+    val other = EmcasDescriptor.prepare(hOther)
     val d0 = other.wordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
     r1.unsafeSetVolatile(d0.castToData)
@@ -513,7 +513,7 @@ class EMCASSpec extends BaseSpecA {
     val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")
     val d2 = ctx.addCasFromInitial(d1, r3, "r3", "C")
     val d3 = ctx.addCasFromInitial(d2, r2, "r2", "B")
-    val d = EMCASDescriptor.prepare(d3)
+    val d = EmcasDescriptor.prepare(d3)
     val it = d.wordIterator()
     assertSameInstance(it.next().address, r1)
     assertSameInstance(it.next().address, r2)
@@ -526,7 +526,7 @@ class EMCASSpec extends BaseSpecA {
       val ctx = EMCAS.currentContext()
       val d0 = ctx.start()
       val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")
-      val ed = EMCASDescriptor.prepare(d1)
+      val ed = EmcasDescriptor.prepare(d1)
       val wd = ed.wordIterator().next()
       assert(wd.toString().startsWith("WordDescriptor("))
       assert(ctx.tryPerformOk(d1))

@@ -68,7 +68,7 @@ object FlakyEMCAS extends MCAS { self =>
 
   private final def tryPerformInternal(hDesc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Long = {
     // perform or not the operation based on whether we've already seen it
-    val desc = EMCASDescriptor.prepare(hDesc)
+    val desc = EmcasDescriptor.prepare(hDesc)
     var hash = 0x75F4D07D
     val it = desc.wordIterator()
     while (it.hasNext()) {

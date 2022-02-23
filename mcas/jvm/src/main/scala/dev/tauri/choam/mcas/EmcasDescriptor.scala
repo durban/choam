@@ -18,10 +18,10 @@
 package dev.tauri.choam
 package mcas
 
-private final class EMCASDescriptor private (
+private final class EmcasDescriptor private (
   private val half: HalfEMCASDescriptor,
   final val newVersion: Long,
-) extends EMCASDescriptorBase { self =>
+) extends EmcasDescriptorBase { self =>
 
   require(Version.isValid(newVersion))
 
@@ -42,7 +42,7 @@ private final class EMCASDescriptor private (
     this.words.length
 
   private[mcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
-    new EMCASDescriptor.Iterator(this.words)
+    new EmcasDescriptor.Iterator(this.words)
   }
 
   private[mcas] final def casStatus(ov: Long, nv: Long): Boolean = {
@@ -54,10 +54,10 @@ private final class EMCASDescriptor private (
   }
 }
 
-private object EMCASDescriptor {
+private object EmcasDescriptor {
 
-  def prepare(half: HalfEMCASDescriptor): EMCASDescriptor = {
-    new EMCASDescriptor(half, newVersion = half.newVersion)
+  def prepare(half: HalfEMCASDescriptor): EmcasDescriptor = {
+    new EmcasDescriptor(half, newVersion = half.newVersion)
   }
 
   private final class Iterator(words: Array[WordDescriptor[_]])

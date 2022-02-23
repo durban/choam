@@ -20,11 +20,11 @@ package mcas
 
 object BenchmarkAccess {
 
-  def wordDescriptor[A](half: HalfWordDescriptor[A], parent: EMCASDescriptor): AnyRef = {
+  def wordDescriptor[A](half: HalfWordDescriptor[A], parent: EmcasDescriptor): AnyRef = {
     WordDescriptor(half, parent)
   }
 
-  def casStatusFromActiveToFailedVal(desc: EMCASDescriptor): Boolean = {
+  def casStatusFromActiveToFailedVal(desc: EmcasDescriptor): Boolean = {
     desc.casStatus(Version.Active, Version.FailedVal)
   }
 }

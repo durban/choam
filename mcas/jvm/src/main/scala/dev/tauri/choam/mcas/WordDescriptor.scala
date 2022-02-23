@@ -26,7 +26,7 @@ package mcas
 // not do that.
 private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDescriptor
   final val half: HalfWordDescriptor[A],
-  final val parent: EMCASDescriptor,
+  final val parent: EmcasDescriptor,
 ) {
 
   final def address: MemoryLocation[A] =
@@ -58,11 +58,11 @@ private object WordDescriptor {
 
   private[mcas] def apply[A](
     half: HalfWordDescriptor[A],
-    parent: EMCASDescriptor,
+    parent: EmcasDescriptor,
   ): WordDescriptor[A] = new WordDescriptor[A](half, parent)
 
   private[mcas] def prepare[A](
     half: HalfWordDescriptor[A],
-    parent: EMCASDescriptor,
+    parent: EmcasDescriptor,
   ): WordDescriptor[A] = WordDescriptor(half, parent)
 }

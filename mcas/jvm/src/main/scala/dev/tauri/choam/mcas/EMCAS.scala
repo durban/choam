@@ -351,7 +351,7 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
    * @param desc: The main descriptor.
    * @param ctx: The [[EMCASThreadContext]] of the current thread.
    */
-  def MCAS(desc: EMCASDescriptor, ctx: EMCASThreadContext): Long = {
+  def MCAS(desc: EmcasDescriptor, ctx: EMCASThreadContext): Long = {
 
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): Long = {
@@ -585,7 +585,7 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
 
   private[mcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Long = {
     if (desc.nonEmpty) {
-      val fullDesc = EMCASDescriptor.prepare(desc)
+      val fullDesc = EmcasDescriptor.prepare(desc)
       val res = EMCAS.MCAS(desc = fullDesc, ctx = ctx)
       assert((res == EmcasStatus.Successful) || (res == EmcasStatus.FailedVal) || Version.isValid(res))
       res
