@@ -189,7 +189,7 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
    * @param ctx: The [[ThreadContext]] of the current thread.
    * @param replace: Pass 0 to not do any replacing/clearing.
    */
-  private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: EMCASThreadContext, replace: Int): HalfWordDescriptor[A] = {
+  private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: EmcasThreadContext, replace: Int): HalfWordDescriptor[A] = {
     @tailrec
     def go(mark: AnyRef, ver1: Long): HalfWordDescriptor[A] = {
       ref.unsafeGetVolatile() match {
@@ -311,17 +311,17 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
   }
 
   // TODO: this could have an optimized version, without creating a hwd
-  private[mcas] final def readDirect[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): A = {
+  private[mcas] final def readDirect[A](ref: MemoryLocation[A], ctx: EmcasThreadContext): A = {
     val hwd = readIntoHwd(ref, ctx)
     hwd.nv
   }
 
-  private[mcas] final def readIntoHwd[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): HalfWordDescriptor[A] = {
+  private[mcas] final def readIntoHwd[A](ref: MemoryLocation[A], ctx: EmcasThreadContext): HalfWordDescriptor[A] = {
     readValue(ref, ctx, EMCAS.replacePeriodForReadValue)
   }
 
   @tailrec
-  private[mcas] final def readVersion[A](ref: MemoryLocation[A], ctx: EMCASThreadContext): Long = {
+  private[mcas] final def readVersion[A](ref: MemoryLocation[A], ctx: EmcasThreadContext): Long = {
     val ver1 = ref.unsafeGetVersionVolatile()
     ref.unsafeGetVolatile() match {
       case wd: WordDescriptor[_] =>
@@ -351,7 +351,7 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
    * @param desc: The main descriptor.
    * @param ctx: The [[EMCASThreadContext]] of the current thread.
    */
-  def MCAS(desc: EmcasDescriptor, ctx: EMCASThreadContext): Long = {
+  def MCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext): Long = {
 
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): Long = {
@@ -573,17 +573,17 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
     }
   }
 
-  final override def currentContext(): EMCASThreadContext =
+  final override def currentContext(): EmcasThreadContext =
     this.global.currentContext()
 
   private[choam] final override def isThreadSafe =
     true
 
-  private[mcas] final def tryPerformInternal(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Long = {
+  private[mcas] final def tryPerformInternal(desc: HalfEMCASDescriptor, ctx: EmcasThreadContext): Long = {
     tryPerformDebug(desc = desc, ctx = ctx)
   }
 
-  private[mcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: EMCASThreadContext): Long = {
+  private[mcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: EmcasThreadContext): Long = {
     if (desc.nonEmpty) {
       val fullDesc = EmcasDescriptor.prepare(desc)
       val res = EMCAS.MCAS(desc = fullDesc, ctx = ctx)

@@ -23,7 +23,7 @@ import java.lang.invoke.MethodHandles;
 import scala.collection.immutable.Map;
 import scala.collection.immutable.Map$;
 
-abstract class EMCASThreadContextBase {
+abstract class EmcasThreadContextBase {
 
   private static final VarHandle COMMITS;
   private static final VarHandle FULL_RETRIES;
@@ -34,11 +34,11 @@ abstract class EMCASThreadContextBase {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      COMMITS = l.findVarHandle(EMCASThreadContextBase.class, "_commits", long.class);
-      FULL_RETRIES = l.findVarHandle(EMCASThreadContextBase.class, "_fullRetries", long.class);
-      MCAS_RETRIES = l.findVarHandle(EMCASThreadContextBase.class, "_mcasRetries", long.class);
-      MAX_REUSE_EVER = l.findVarHandle(EMCASThreadContextBase.class, "_maxReuseEver", int.class);
-      STATISTICS = l.findVarHandle(EMCASThreadContextBase.class, "_statistics", Map.class);
+      COMMITS = l.findVarHandle(EmcasThreadContextBase.class, "_commits", long.class);
+      FULL_RETRIES = l.findVarHandle(EmcasThreadContextBase.class, "_fullRetries", long.class);
+      MCAS_RETRIES = l.findVarHandle(EmcasThreadContextBase.class, "_mcasRetries", long.class);
+      MAX_REUSE_EVER = l.findVarHandle(EmcasThreadContextBase.class, "_maxReuseEver", int.class);
+      STATISTICS = l.findVarHandle(EmcasThreadContextBase.class, "_statistics", Map.class);
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }

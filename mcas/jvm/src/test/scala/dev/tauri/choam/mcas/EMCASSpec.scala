@@ -455,9 +455,9 @@ class EMCASSpec extends BaseSpecA {
 
   test("ThreadContexts should be thread-local") {
     val N = 10000
-    val tc1 = new ConcurrentLinkedQueue[EMCASThreadContext]
-    val tc2 = new ConcurrentLinkedQueue[EMCASThreadContext]
-    val tsk = (tc: ConcurrentLinkedQueue[EMCASThreadContext]) => {
+    val tc1 = new ConcurrentLinkedQueue[EmcasThreadContext]
+    val tc2 = new ConcurrentLinkedQueue[EmcasThreadContext]
+    val tsk = (tc: ConcurrentLinkedQueue[EmcasThreadContext]) => {
       tc.offer(EMCAS.currentContext())
       Thread.sleep(10L)
       for (_ <- 1 to N) {
@@ -486,17 +486,17 @@ class EMCASSpec extends BaseSpecA {
   }
 
   test("ThreadContexts should work even if thread IDs are reused") {
-    final class TrickyThread(ref: VolatileObjectRef[EMCASThreadContext]) extends Thread {
+    final class TrickyThread(ref: VolatileObjectRef[EmcasThreadContext]) extends Thread {
       final override def getId(): Long = 42L
       final override def run(): Unit = {
         ref.elem = EMCAS.currentContext()
       }
     }
-    val r1 = VolatileObjectRef.create(nullOf[EMCASThreadContext])
+    val r1 = VolatileObjectRef.create(nullOf[EmcasThreadContext])
     val t1 = new TrickyThread(r1)
     t1.start()
     t1.join()
-    val r2 = VolatileObjectRef.create(nullOf[EMCASThreadContext])
+    val r2 = VolatileObjectRef.create(nullOf[EmcasThreadContext])
     val t2 = new TrickyThread(r2)
     t2.start()
     t2.join()

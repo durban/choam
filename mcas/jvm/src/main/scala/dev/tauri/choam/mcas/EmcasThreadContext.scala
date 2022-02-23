@@ -21,11 +21,11 @@ package mcas
 import java.lang.ref.WeakReference
 import java.util.concurrent.ThreadLocalRandom
 
-private final class EMCASThreadContext(
+private final class EmcasThreadContext(
   global: GlobalContext,
   private[mcas] val tid: Long,
   val impl: EMCAS.type
-) extends EMCASThreadContextBase
+) extends EmcasThreadContextBase
   with MCAS.ThreadContext {
 
   // NB: it is a `val`, not a `def`

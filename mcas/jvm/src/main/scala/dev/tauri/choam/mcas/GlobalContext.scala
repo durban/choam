@@ -43,18 +43,18 @@ private final class GlobalContext(impl: EMCAS.type) {
    * continue its current op (if any).
    */
   private[this] val _threadContexts =
-    new ConcurrentSkipListMap[Long, WeakReference[EMCASThreadContext]]
+    new ConcurrentSkipListMap[Long, WeakReference[EmcasThreadContext]]
     // TODO: we need to remove empty weakrefs somewhere
 
   /** Holds the context for each (active) thread */
   private[this] val threadContextKey =
-    new ThreadLocal[EMCASThreadContext]()
+    new ThreadLocal[EmcasThreadContext]()
 
-  private[this] def newThreadContext(): EMCASThreadContext =
-    new EMCASThreadContext(this, Thread.currentThread().getId(), impl)
+  private[this] def newThreadContext(): EmcasThreadContext =
+    new EmcasThreadContext(this, Thread.currentThread().getId(), impl)
 
   /** Gets of creates the context for the current thread */
-  private[mcas] def currentContext(): EMCASThreadContext = {
+  private[mcas] def currentContext(): EmcasThreadContext = {
     threadContextKey.get() match {
       case null =>
         val tc = this.newThreadContext()
@@ -105,7 +105,7 @@ private final class GlobalContext(impl: EMCAS.type) {
     }
   }
 
-  private[mcas] final def threadContexts(): Iterator[EMCASThreadContext] = {
+  private[mcas] final def threadContexts(): Iterator[EmcasThreadContext] = {
     val iterWeak = this._threadContexts.values().iterator()
     CollectionConverters.asScala(iterWeak).flatMap { weakref =>
       weakref.get() match {
