@@ -20,9 +20,9 @@ package data
 
 import cats.effect.IO
 
-final class CounterSpecSimple_EMCAS_IO
+final class CounterSpecSimple_Emcas_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with CounterSpecSimple[IO]
   with CounterSpecJvm[IO]
 

@@ -29,9 +29,9 @@ final class RefSpec_Map_Ttrie_ThreadConfinedMCAS_IO
   with SpecThreadConfinedMCAS
   with RefSpec_Map_Ttrie[IO]
 
-final class RefSpec_Map_Ttrie_EMCAS_IO
+final class RefSpec_Map_Ttrie_Emcas_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with RefSpec_Map_Ttrie[IO]
 
 final class RefSpec_Map_Ttrie_SpinLockMCAS_IO
@@ -39,9 +39,9 @@ final class RefSpec_Map_Ttrie_SpinLockMCAS_IO
   with SpecSpinLockMCAS
   with RefSpec_Map_Ttrie[IO]
 
-final class RefSpec_Map_Simple_EMCAS_IO
+final class RefSpec_Map_Simple_Emcas_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with RefSpec_Map_Simple[IO]
 
 final class RefSpec_Map_Simple_SpinLockMCAS_IO

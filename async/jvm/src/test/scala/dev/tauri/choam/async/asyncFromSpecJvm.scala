@@ -32,10 +32,10 @@ final class AsyncFromSpec_SpinLockMCAS_ZIO
 
 final class AsyncFromSpec_EMCAS_IO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecEmcas
   with AsyncFromSpec[IO]
 
 final class AsyncFromSpec_EMCAS_ZIO
   extends BaseSpecTickedZIO
-  with SpecEMCAS
+  with SpecEmcas
   with AsyncFromSpec[zio.Task]

@@ -35,15 +35,15 @@ final class QueueMsSpecJvm_SpinLockMCAS_IO
   with QueueMsSpecJvm[IO]
   with SpecSpinLockMCAS
 
-final class QueueMsSpecJvm_EMCAS_ZIO
+final class QueueMsSpecJvm_Emcas_ZIO
   extends BaseSpecZIO
   with QueueMsSpecJvm[zio.Task]
-  with SpecEMCAS
+  with SpecEmcas
 
-final class QueueMsSpecJvm_EMCAS_IO
+final class QueueMsSpecJvm_Emcas_IO
   extends BaseSpecIO
   with QueueMsSpecJvm[IO]
-  with SpecEMCAS
+  with SpecEmcas
 
 final class QueueWithRemoveSpecJvm_SpinLockMCAS_ZIO
   extends BaseSpecZIO
@@ -55,25 +55,25 @@ final class QueueWithRemoveSpecJvm_SpinLockMCAS_IO
   with QueueWithRemoveSpecJvm[IO]
   with SpecSpinLockMCAS
 
-final class QueueWithRemoveSpecJvm_EMCAS_ZIO
+final class QueueWithRemoveSpecJvm_Emcas_ZIO
   extends BaseSpecZIO
   with QueueWithRemoveSpecJvm[zio.Task]
-  with SpecEMCAS
+  with SpecEmcas
 
-final class QueueWithRemoveSpecJvm_EMCAS_IO
+final class QueueWithRemoveSpecJvm_Emcas_IO
   extends BaseSpecIO
   with QueueWithRemoveSpecJvm[IO]
-  with SpecEMCAS
+  with SpecEmcas
 
-final class QueueWithSizeSpecJvm_EMCAS_IO
+final class QueueWithSizeSpecJvm_Emcas_IO
   extends BaseSpecIO
   with QueueWithSizeSpecJvm[IO]
-  with SpecEMCAS
+  with SpecEmcas
 
-final class QueueGcHostileSpecJvm_EMCAS_IO
+final class QueueGcHostileSpecJvm_Emcas_IO
   extends BaseSpecIO
   with QueueGcHostileSpecJvm[IO]
-  with SpecEMCAS
+  with SpecEmcas
 
 trait QueueWithRemoveSpecJvm[F[_]]
   extends QueueWithRemoveSpec[F]

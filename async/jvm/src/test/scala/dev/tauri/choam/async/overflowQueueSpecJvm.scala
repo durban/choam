@@ -22,20 +22,20 @@ import cats.effect.IO
 
 final class OverflowQueueSpec_Strict_EMCAS_IO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecEmcas
   with StrictOverflowQueueSpec[IO]
 
 final class OverflowQueueSpec_Strict_EMCAS_ZIO
   extends BaseSpecTickedZIO
-  with SpecEMCAS
+  with SpecEmcas
   with StrictOverflowQueueSpec[zio.Task]
 
 final class OverflowQueueSpec_Lazy_EMCAS_IO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecEmcas
   with LazyOverflowQueueSpec[IO]
 
 final class OverflowQueueSpec_Lazy_EMCAS_ZIO
   extends BaseSpecTickedZIO
-  with SpecEMCAS
+  with SpecEmcas
   with LazyOverflowQueueSpec[zio.Task]

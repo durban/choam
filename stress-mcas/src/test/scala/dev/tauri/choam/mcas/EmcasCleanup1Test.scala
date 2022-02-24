@@ -27,13 +27,13 @@ import org.openjdk.jcstress.infra.results.ILL_Result
 // TODO: we should force GC somehow.
 // @JCStressTest
 @State
-@Description("EMCASCleanup1Test")
+@Description("EmcasCleanup1Test")
 @Outcomes(Array(
   new Outcome(id = Array("1, WordDescriptor\\(a, b\\), ACTIVE"), expect = ACCEPTABLE, desc = "(1) has desc, active op"),
   new Outcome(id = Array("1, WordDescriptor\\(a, b\\), SUCCESSFUL"), expect = ACCEPTABLE, desc = "(2) has desc, finalized op"),
   new Outcome(id = Array("1, b, -"), expect = ACCEPTABLE_INTERESTING, desc = "(3) final value, desc was cleaned up")
 ))
-class EMCASCleanup1Test {
+class EmcasCleanup1Test {
 
   private[this] val ref =
     MemoryLocation.unsafe("a")

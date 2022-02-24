@@ -34,14 +34,14 @@ final class RxnSpecJvm_SpinLockMCAS_ZIO
   with SpecSpinLockMCAS
   with RxnSpecJvm[zio.Task]
 
-final class RxnSpecJvm_EMCAS_IO
+final class RxnSpecJvm_Emcas_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with RxnSpecJvm[IO]
 
-final class RxnSpecJvm_EMCAS_ZIO
+final class RxnSpecJvm_Emcas_ZIO
   extends BaseSpecZIO
-  with SpecEMCAS
+  with SpecEmcas
   with RxnSpecJvm[zio.Task]
 
 trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>

@@ -25,7 +25,7 @@ import org.openjdk.jcstress.infra.results.LLLLL_Result
 
 @JCStressTest
 @State
-@Description("EMCASTest")
+@Description("EmcasTest")
 @Outcomes(Array(
   new Outcome(id = Array("true, 21, 42, ACTIVE, null"), expect = ACCEPTABLE, desc = "observed descriptors in correct  order (active)"),
   new Outcome(id = Array("true, 21, 42, SUCCESSFUL, null"), expect = ACCEPTABLE, desc = "observed descriptors in correct  order (finalized)"),
@@ -36,7 +36,7 @@ import org.openjdk.jcstress.infra.results.LLLLL_Result
   new Outcome(id = Array("true, 21, 42, FAILED, null"), expect = FORBIDDEN, desc = "observed descriptors in correct  order, but failed status"),
   new Outcome(id = Array("true, 42, 21, ACTIVE, null", "true, 42, 21, SUCCESSFUL, null"), expect = FORBIDDEN, desc = "observed descriptors in incorrect (unsorted) order")
 ))
-class EMCASTest {
+class EmcasTest {
 
   private[this] val ref1 =
     MemoryLocation.unsafeWithId("a")(0L, 0L, 0L, i3 = 42L)

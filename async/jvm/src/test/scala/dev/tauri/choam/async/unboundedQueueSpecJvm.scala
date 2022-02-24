@@ -22,20 +22,20 @@ import cats.effect.IO
 
 final class UnboundedQueueSpec_Simple_EMCAS_IO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecEmcas
   with UnboundedQueueImplSimple[IO]
 
 final class UnboundedQueueSpec_Simple_EMCAS_ZIO
   extends BaseSpecTickedZIO
-  with SpecEMCAS
+  with SpecEmcas
   with UnboundedQueueImplSimple[zio.Task]
 
 final class UnboundedQueueSpec_WithSize_EMCAS_IO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecEmcas
   with UnboundedQueueImplWithSize[IO]
 
 final class UnboundedQueueSpec_WithSize_EMCAS_ZIO
   extends BaseSpecTickedZIO
-  with SpecEMCAS
+  with SpecEmcas
   with UnboundedQueueImplWithSize[zio.Task]

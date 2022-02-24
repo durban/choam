@@ -26,9 +26,9 @@ final class MapSpec_Simple_SpinLockMCAS_SyncIO
   with SpecSpinLockMCAS
   with MapSpecSimple[SyncIO]
 
-final class MapSpec_Simple_EMCAS_SyncIO
+final class MapSpec_Simple_Emcas_SyncIO
   extends BaseSpecSyncIO
-  with SpecEMCAS
+  with SpecEmcas
   with MapSpecSimple[SyncIO]
 
 final class MapSpec_Ttrie_SpinLockMCAS_SyncIO
@@ -36,9 +36,9 @@ final class MapSpec_Ttrie_SpinLockMCAS_SyncIO
   with SpecSpinLockMCAS
   with MapSpecTtrie[SyncIO]
 
-final class MapSpec_Ttrie_EMCAS_SyncIO
+final class MapSpec_Ttrie_Emcas_SyncIO
   extends BaseSpecSyncIO
-  with SpecEMCAS
+  with SpecEmcas
   with MapSpecTtrie[SyncIO]
 
 final class MapSpec_Ttrie_ThreadConfinedMCAS_SyncIO

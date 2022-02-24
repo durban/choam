@@ -20,7 +20,7 @@ package mcas
 
 final class KCASSpecJvmEMCAS
   extends KCASSpecJvm
-  with SpecEMCAS
+  with SpecEmcas
 
 final class KCASSpecJvmSpinLockMCAS
   extends KCASSpecJvm

@@ -22,7 +22,7 @@ import cats.effect.IO
 
 final class StreamSpec_EMCAS_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with StreamSpec[IO]
 
 final class StreamSpec_SpinLockMCAS_IO

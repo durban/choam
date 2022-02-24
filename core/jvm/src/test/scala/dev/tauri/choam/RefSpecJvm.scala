@@ -30,14 +30,14 @@ final class RefSpecJvm_Real_SpinLockMCAS_ZIO
   with SpecSpinLockMCAS
   with RefSpecJvm_Real[zio.Task]
 
-final class RefSpecJvm_Real_EMCAS_IO
+final class RefSpecJvm_Real_Emcas_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with RefSpecJvm_Real[IO]
 
-final class RefSpecJvm_Real_EMCAS_ZIO
+final class RefSpecJvm_Real_Emcas_ZIO
   extends BaseSpecZIO
-  with SpecEMCAS
+  with SpecEmcas
   with RefSpecJvm_Real[zio.Task]
 
 final class RefSpecJvm_Real_ThreadConfinedMCAS_ZIO
@@ -45,14 +45,14 @@ final class RefSpecJvm_Real_ThreadConfinedMCAS_ZIO
   with SpecThreadConfinedMCAS
   with RefSpecJvm_Real[zio.Task]
 
-final class RefSpecJvm_Arr_EMCAS_IO
+final class RefSpecJvm_Arr_Emcas_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with RefSpecJvm_Arr[IO]
 
 final class RefSpecJvm_Ref2_EMCAS_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with RefSpecJvm_Ref2[IO]
 
 trait RefSpecJvm_Arr[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Arr[F] { this: KCASImplSpec =>

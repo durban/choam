@@ -20,9 +20,9 @@ package data
 
 import cats.effect.IO
 
-final class QueueSourceSinkSpecJvm_EMCAS_IO
+final class QueueSourceSinkSpecJvm_Emcas_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with QueueSourceSinkSpecJvm[IO]
 
 trait QueueSourceSinkSpecJvm[F[_]] extends QueueSourceSinkSpec[F] { this: KCASImplSpec =>

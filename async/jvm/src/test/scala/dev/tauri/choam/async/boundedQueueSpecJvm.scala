@@ -24,25 +24,25 @@ import cats.effect.IO
 
 final class BoundedQueueSpecLinked_EMCAS_IO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecEmcas
   with BoundedQueueSpecLinked[IO]
   with BoundedQueueSpecJvm[IO]
 
 final class BoundedQueueSpecLinked_EMCAS_ZIO
   extends BaseSpecTickedZIO
-  with SpecEMCAS
+  with SpecEmcas
   with BoundedQueueSpecLinked[zio.Task]
   with BoundedQueueSpecJvm[zio.Task]
 
 final class BoundedQueueSpecArray_EMCAS_IO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecEmcas
   with BoundedQueueSpecArray[IO]
   with BoundedQueueSpecJvm[IO]
 
 final class BoundedQueueSpecArray_EMCAS_ZIO
   extends BaseSpecTickedZIO
-  with SpecEMCAS
+  with SpecEmcas
   with BoundedQueueSpecArray[zio.Task]
   with BoundedQueueSpecJvm[zio.Task]
 

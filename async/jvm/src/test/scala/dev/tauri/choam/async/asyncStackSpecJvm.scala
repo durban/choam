@@ -22,12 +22,12 @@ import cats.effect.IO
 
 final class AsyncStackSpec_EMCAS_IO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecEmcas
   with AsyncStackSpec[IO]
 
 final class AsyncStackSpec_EMCAS_ZIO
   extends BaseSpecTickedZIO
-  with SpecEMCAS
+  with SpecEmcas
   with AsyncStackSpec[zio.Task]
 
 final class AsyncStackSpec_SpinLockMCAS_IO

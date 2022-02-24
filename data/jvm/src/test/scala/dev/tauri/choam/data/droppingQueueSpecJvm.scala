@@ -20,9 +20,9 @@ package data
 
 import cats.effect.IO
 
-final class DroppingQueueSpec_EMCAS
+final class DroppingQueueSpec_Emcas
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with DroppingQueueSpec[IO]
 
 final class DroppingQueueSpec_SpinLockMCAS

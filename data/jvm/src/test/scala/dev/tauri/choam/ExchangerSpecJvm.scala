@@ -26,24 +26,24 @@ import cats.effect.{ IO, Outcome }
 import mcas.MCAS
 import data.EliminationStack
 
-final class ExchangerSpecCommon_EMCAS_ZIO
+final class ExchangerSpecCommon_Emcas_ZIO
   extends BaseSpecZIO
-  with SpecEMCAS
+  with SpecEmcas
   with ExchangerSpecCommon[zio.Task]
 
-final class ExchangerSpecCommon_EMCAS_IO
+final class ExchangerSpecCommon_Emcas_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with ExchangerSpecCommon[IO]
 
-final class ExchangerSpecJvm_EMCAS_ZIO
+final class ExchangerSpecJvm_Emcas_ZIO
   extends BaseSpecZIO
-  with SpecEMCAS
+  with SpecEmcas
   with ExchangerSpecJvm[zio.Task]
 
-final class ExchangerSpecJvm_EMCAS_IO
+final class ExchangerSpecJvm_Emcas_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with ExchangerSpecJvm[IO]
 
 trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>

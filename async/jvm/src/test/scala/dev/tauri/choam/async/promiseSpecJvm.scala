@@ -44,22 +44,22 @@ final class PromiseSpec_SpinLockMCAS_ZIO_Ticked
 
 final class PromiseSpecJvm_EMCAS_IO_Real
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with PromiseSpecJvm[IO]
 
 final class PromiseSpec_EMCAS_IO_Ticked
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecEmcas
   with PromiseSpecTicked[IO]
 
 final class PromiseSpecJvm_EMCAS_ZIO_Real
   extends BaseSpecZIO
-  with SpecEMCAS
+  with SpecEmcas
   with PromiseSpecJvm[zio.Task]
 
 final class PromiseSpec_EMCAS_ZIO_Ticked
   extends BaseSpecTickedZIO
-  with SpecEMCAS
+  with SpecEmcas
   with PromiseSpecTicked[zio.Task]
 
 trait PromiseSpecJvm[F[_]] extends PromiseSpec[F] { this: KCASImplSpec =>

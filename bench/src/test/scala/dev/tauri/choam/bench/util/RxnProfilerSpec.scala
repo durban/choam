@@ -27,7 +27,7 @@ import org.openjdk.jmh.results.Result
 
 final class RxnProfilerSpecIO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with RxnProfilerSpec[IO]
 
 trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { this: KCASImplSpec =>

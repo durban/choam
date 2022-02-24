@@ -20,9 +20,9 @@ package data
 
 import cats.effect.IO
 
-final class StackSpec_Treiber_EMCAS_IO
+final class StackSpec_Treiber_Emcas_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with StackSpecTreiberJvm[IO]
 
 final class StackSpec_Treiber_SpinLockMCAS_IO
@@ -30,9 +30,9 @@ final class StackSpec_Treiber_SpinLockMCAS_IO
   with SpecSpinLockMCAS
   with StackSpecTreiberJvm[IO]
 
-final class StackSpec_Elimination_EMCAS_IO
+final class StackSpec_Elimination_Emcas_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with StackSpecEliminationJvm[IO]
 
 final class StackSpec_Elimination_SpinLockMCAS_IO

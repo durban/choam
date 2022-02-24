@@ -22,9 +22,9 @@ import cats.effect.IO
 
 // TODO: figure out if this can run on Scala.js
 
-final class RxnImplSpec_EMCAS_IO
+final class RxnImplSpec_Emcas_IO
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with RxnImplSpec[IO]
 
 final class RxnImplSpec_FlakyEMCAS_IO
@@ -37,9 +37,9 @@ final class RxnImplSpec_SpinLockMCAS_IO
   with SpecSpinLockMCAS
   with RxnImplSpec[IO]
 
-final class RxnImplSpec_EMCAS_ZIO
+final class RxnImplSpec_Emcas_ZIO
   extends BaseSpecZIO
-  with SpecEMCAS
+  with SpecEmcas
   with RxnImplSpec[zio.Task]
 
 final class RxnImplSpec_FlakyEMCAS_ZIO

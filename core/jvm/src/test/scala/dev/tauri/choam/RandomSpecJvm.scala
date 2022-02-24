@@ -27,9 +27,9 @@ import org.scalacheck.effect.PropF
 
 import random.SplittableRandom
 
-final class RandomSpecJvm_EMCAS_SyncIO
+final class RandomSpecJvm_Emcas_SyncIO
   extends BaseSpecSyncIO
-  with SpecEMCAS
+  with SpecEmcas
   with RandomSpecJvm[SyncIO]
 
 final class RandomSpecJvm_ThreadConfinedMCAS_SyncIO

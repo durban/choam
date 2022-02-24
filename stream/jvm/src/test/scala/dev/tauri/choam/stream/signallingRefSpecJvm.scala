@@ -22,7 +22,7 @@ import cats.effect.IO
 
 final class SignallingRefSpec_EMCAS_TickedIO
   extends BaseSpecTickedIO
-  with SpecEMCAS
+  with SpecEmcas
   with SignallingRefSpec[IO]
 
 final class SignallingRefSpec_SpinLockMCAS_TickedIO

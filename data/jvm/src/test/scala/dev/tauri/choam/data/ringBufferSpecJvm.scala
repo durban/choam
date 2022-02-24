@@ -20,14 +20,14 @@ package data
 
 import cats.effect.IO
 
-final class RingBufferSpec_Strict_EMCAS
+final class RingBufferSpec_Strict_Emcas
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with StrictRingBufferSpec[IO]
 
-final class RingBufferSpec_Lazy_EMCAS
+final class RingBufferSpec_Lazy_Emcas
   extends BaseSpecIO
-  with SpecEMCAS
+  with SpecEmcas
   with LazyRingBufferSpec[IO]
 
 final class RingBufferSpec_Strict_SpinLockMCAS

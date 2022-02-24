@@ -19,9 +19,9 @@ package dev.tauri.choam
 package laws
 package discipline
 
-final class LawsSpecEMCAS
+final class LawsSpecEmcas
   extends LawsSpec
-  with SpecEMCAS
+  with SpecEmcas
 
 final class LawsSpecSpinLockMCAS
   extends LawsSpec
