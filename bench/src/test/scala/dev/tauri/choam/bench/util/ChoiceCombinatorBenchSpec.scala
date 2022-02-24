@@ -27,11 +27,11 @@ final class ChoiceCombinatorBenchSpec extends BaseSpecA {
     s.size = 8
     s.setup()
     val k = new KCASImplState
-    k.kcasName = mcas.MCAS.fqns.EMCAS
+    k.kcasName = mcas.MCAS.fqns.Emcas
     k.setupKCASImpl()
     b.doChoiceCAS(s, k)
     // check that the reaction happened:
-    val ctx = mcas.MCAS.EMCAS.currentContext()
+    val ctx = mcas.MCAS.Emcas.currentContext()
     assertEquals(ctx.readDirect(s.ref.loc), "bar")
     for (r <- s.refs) {
       val v = ctx.readDirect(r.loc)

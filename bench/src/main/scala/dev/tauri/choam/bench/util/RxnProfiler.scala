@@ -32,7 +32,7 @@ import org.openjdk.jmh.util.SingletonStatistics
 
 import com.monovore.decline.{ Opts, Command }
 
-import mcas.MCAS.EMCAS
+import mcas.MCAS.Emcas
 
 /**
  * JMH profiler "plugin" for `Rxn` statistics/measurements.
@@ -143,7 +143,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     ip: IterationParams
   ): Unit = {
     if (config.retriesPerCommit) {
-      val stats = EMCAS.getRetryStats()
+      val stats = Emcas.getRetryStats()
       this.commitsBefore = stats.commits
       this.fullRetriesBefore = stats.fullRetries
       this.mcasRetriesBefore = stats.mcasRetries
@@ -172,7 +172,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     if (config.reusedWeakRefs) {
       res.add(new ScalarResult(
         RxnProfiler.ReusedWeakRefs,
-        EMCAS.maxReusedWeakRefs().toDouble,
+        Emcas.maxReusedWeakRefs().toDouble,
         RxnProfiler.UnitCount,
         AggregationPolicy.MAX,
       ))
@@ -181,7 +181,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
   }
 
   private[this] final def countRetriesPerCommit(): ju.List[ScalarResult] = {
-    val rs = EMCAS.getRetryStats()
+    val rs = Emcas.getRetryStats()
     val commitsAfter = rs.commits
     val fullRetriesAfter = rs.fullRetries
     val mcasRetriesAfter = rs.mcasRetries
@@ -259,7 +259,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
       )
     }
     if (config.exchangerStats) {
-      val stats = EMCAS
+      val stats = Emcas
         .collectExchangerStats()
         .view
         .mapValues { m => m.filter(kv => kv._1 ne Exchanger.paramsKey) }

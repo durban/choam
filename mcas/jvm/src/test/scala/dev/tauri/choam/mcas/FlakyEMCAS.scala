@@ -32,7 +32,7 @@ object FlakyEMCAS extends MCAS { self =>
   def currentContext(): MCAS.ThreadContext = new MCAS.ThreadContext {
 
     private[this] val emcasCtx =
-      EMCAS.currentContext()
+      Emcas.currentContext()
 
     private[choam] final override def random: ThreadLocalRandom =
       emcasCtx.random
@@ -75,7 +75,7 @@ object FlakyEMCAS extends MCAS { self =>
       hash ^= it.next().address.##
     }
     if (this.seen.putIfAbsent(hash, ()).isDefined) {
-      EMCAS.MCAS(desc = desc, ctx = ctx)
+      Emcas.MCAS(desc = desc, ctx = ctx)
     } else {
       EmcasStatus.FailedVal // simulate a transient CAS failure to force a retry
     }

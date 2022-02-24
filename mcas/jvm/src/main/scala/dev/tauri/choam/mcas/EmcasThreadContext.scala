@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom
 private final class EmcasThreadContext(
   global: GlobalContext,
   private[mcas] val tid: Long,
-  val impl: EMCAS.type
+  val impl: Emcas.type
 ) extends EmcasThreadContextBase
   with MCAS.ThreadContext {
 

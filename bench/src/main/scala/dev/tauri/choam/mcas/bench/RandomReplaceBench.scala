@@ -30,21 +30,21 @@ class RandomReplaceBench {
 
   @Benchmark
   def replaceNever(s: SharedState, bh: Blackhole): Unit = {
-    val ctx = EMCAS.currentContext()
-    bh.consume(EMCAS.readValue(s.ref, ctx, replace = 0))
+    val ctx = Emcas.currentContext()
+    bh.consume(Emcas.readValue(s.ref, ctx, replace = 0))
     s.reset()
   }
 
   @Benchmark
   def replaceAlways(s: SharedState, bh: Blackhole): Unit = {
-    val ctx = EMCAS.currentContext()
-    bh.consume(EMCAS.readValue(s.ref, ctx, replace = 1))
+    val ctx = Emcas.currentContext()
+    bh.consume(Emcas.readValue(s.ref, ctx, replace = 1))
     s.reset()
   }
 
   @Benchmark
   def reset(s: SharedState): Unit = {
-    val _ = EMCAS.currentContext()
+    val _ = Emcas.currentContext()
     s.reset()
   }
 }
@@ -59,7 +59,7 @@ object RandomReplaceBench {
     reset()
 
     def reset(): Unit = {
-      val h = EMCAS.currentContext().start().add(
+      val h = Emcas.currentContext().start().add(
         HalfWordDescriptor[A](ref, a, a, Version.Start)
       )
       val p = EmcasDescriptor.prepare(h)

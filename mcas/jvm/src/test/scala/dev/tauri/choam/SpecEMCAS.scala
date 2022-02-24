@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 trait SpecEMCAS extends KCASImplSpec {
   final override def kcasImpl: mcas.MCAS =
-    mcas.MCAS.EMCAS
+    mcas.MCAS.Emcas
 }
 
 trait SpecFlakyEMCAS extends KCASImplSpec {

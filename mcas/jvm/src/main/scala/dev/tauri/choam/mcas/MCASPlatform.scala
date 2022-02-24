@@ -26,10 +26,10 @@ private[mcas] abstract class MCASPlatform extends AbstractMCASPlatform {
    * Guaranteed to exist (and be thread-safe) on every platform.
    */
   final override def DefaultMCAS: MCAS =
-    this.EMCAS
+    this.Emcas
 
-  final def EMCAS: MCAS =
-    mcas.EMCAS
+  final def Emcas: MCAS =
+    mcas.Emcas
 
   final def SpinLockMCAS: MCAS =
     mcas.SpinLockMCAS
@@ -40,7 +40,7 @@ private[mcas] abstract class MCASPlatform extends AbstractMCASPlatform {
       case null =>
         SpinLockMCAS.currentContext().readDirect(loc)
       case _: WordDescriptor[_] =>
-        EMCAS.currentContext().readDirect(loc)
+        Emcas.currentContext().readDirect(loc)
       case a =>
         a
     }
@@ -50,8 +50,8 @@ private[mcas] abstract class MCASPlatform extends AbstractMCASPlatform {
   private[choam] final override def unsafeLookup(fqn: String): MCAS = fqn match {
     case fqns.SpinLockMCAS =>
       mcas.SpinLockMCAS
-    case fqns.EMCAS =>
-      mcas.EMCAS
+    case fqns.Emcas =>
+      mcas.Emcas
     case x =>
       super.unsafeLookup(x)
   }
@@ -60,7 +60,7 @@ private[mcas] abstract class MCASPlatform extends AbstractMCASPlatform {
   private[choam] object fqns {
     final val SpinLockMCAS =
       "dev.tauri.choam.mcas.SpinLockMCAS"
-    final val EMCAS =
-      "dev.tauri.choam.mcas.EMCAS"
+    final val Emcas =
+      "dev.tauri.choam.mcas.Emcas"
   }
 }

@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentSkipListMap
 
 import scala.jdk.javaapi.CollectionConverters
 
-private final class GlobalContext(impl: EMCAS.type) {
+private final class GlobalContext(impl: Emcas.type) {
 
   // TODO: should be `private[emcas]`
   private[mcas] val commitTs: MemoryLocation[Long] =

@@ -87,7 +87,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   - [A Practical Multi-Word Compare-and-Swap Operation](https://web.archive.org/web/20220121034605/https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf)
     (an earlier version used this algorithm)
   - [Efficient Multi-word Compare and Swap](https://web.archive.org/web/20220215225848/https://arxiv.org/pdf/2008.02527.pdf)
-    (`MCAS.EMCAS` implements a variant of this algorithm; this is the default algorithm on the JVM)
+    (`MCAS.Emcas` implements a variant of this algorithm; this is the default algorithm on the JVM)
   - A simple, non-lock-free algorithm from the Reagents paper (see above) is implemented as
     `MCAS.SpinLockMCAS`
 - Software transactional memory (STM)

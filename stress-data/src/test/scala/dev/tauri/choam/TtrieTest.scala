@@ -78,7 +78,7 @@ class TtrieTest extends StressTestBase {
 object TtrieTest {
 
   private[this] final def initMcas: MCAS =
-    MCAS.EMCAS
+    MCAS.Emcas
 
   private final def newTtrie714(): Map[Int, String] = {
     val h = new Hash[Int] {

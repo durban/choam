@@ -21,10 +21,10 @@ package mcas
 import java.lang.ref.{ Reference, WeakReference }
 
 /**
- * Efficient Multi-word Compare and Swap:
+ * Efficient Multi-word Compare and Swap (EMCAS):
  * https://arxiv.org/pdf/2008.02527.pdf
  */
-private object EMCAS extends MCAS { self => // TODO: make this a class
+private object Emcas extends MCAS { self => // TODO: make this a class
 
   /*
    * This implementation has a few important
@@ -317,7 +317,7 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
   }
 
   private[mcas] final def readIntoHwd[A](ref: MemoryLocation[A], ctx: EmcasThreadContext): HalfWordDescriptor[A] = {
-    readValue(ref, ctx, EMCAS.replacePeriodForReadValue)
+    readValue(ref, ctx, Emcas.replacePeriodForReadValue)
   }
 
   @tailrec
@@ -586,7 +586,7 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
   private[mcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: EmcasThreadContext): Long = {
     if (desc.nonEmpty) {
       val fullDesc = EmcasDescriptor.prepare(desc)
-      val res = EMCAS.MCAS(desc = fullDesc, ctx = ctx)
+      val res = Emcas.MCAS(desc = fullDesc, ctx = ctx)
       assert((res == EmcasStatus.Successful) || (res == EmcasStatus.FailedVal) || Version.isValid(res))
       res
     } else {
@@ -619,7 +619,7 @@ private object EMCAS extends MCAS { self => // TODO: make this a class
             // CAS in progress, retry
           } else {
             // CAS finalized, but no cleanup yet, read and retry
-            EMCAS.readDirect(ref, ctx = ctx)
+            Emcas.readDirect(ref, ctx = ctx)
           }
         case a =>
           // descriptor have been cleaned up:
