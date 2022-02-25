@@ -18,7 +18,6 @@
 package dev.tauri.choam
 package async
 
-import cats.effect.kernel.Resource
 import cats.effect.std.{ Queue => CatsQueue }
 
 abstract class UnboundedQueue[F[_], A]
@@ -33,9 +32,6 @@ object UnboundedQueue {
 
     def toCats(implicit F: AsyncReactive[F]): CatsQueue[F, A] =
       new AsyncQueue.CatsQueueAdapter[F, A](this)
-
-    // FIXME:
-    def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]]
   }
 
   def apply[F[_], A]: Axn[UnboundedQueue[F, A]] = {
@@ -63,8 +59,6 @@ object UnboundedQueue {
             as.tryDeque
           final override def deque[AA >: A](implicit F: AsyncReactive[F]): F[AA] =
             F.monad.widen(af.get)
-          final override def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]] =
-            af.getResource
           final override def size(implicit F: AsyncReactive[F]): F[Int] =
             as.size.run[F]
         }

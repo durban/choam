@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package async
 
-import cats.effect.kernel.Resource
-
 import data.Queue
 
 // TODO: rename to (maybe) WaitList; write docs
@@ -50,9 +48,6 @@ final class AsyncFrom[F[_], A] private (
 
   def get(implicit F: AsyncReactive[F]): F[A] =
     F.monadCancel.bracket(this.getAcq)(this.getUse)(this.getRel)
-
-  def getResource(implicit F: AsyncReactive[F]): Resource[F, F[A]] =
-    Resource.make(this.getAcq)(this.getRel)(F.monad).map(this.getUse)
 
   private[this] def getAcq(implicit F: AsyncReactive[F]): F[Either[(Promise[F, A], Axn[Unit]), A]] = {
     Promise[F, A].flatMapF { p =>

@@ -18,9 +18,6 @@
 package dev.tauri.choam
 package async
 
-import cats.effect.kernel.Resource
-import dev.tauri.choam.Axn
-
 abstract class OverflowQueue[F[_], A]
   extends UnboundedQueue.WithSize[F, A] {
 
@@ -63,9 +60,6 @@ object OverflowQueue {
     final override def size(implicit F: AsyncReactive[F]): F[Int] =
       F.run(buff.size, null : Any)
 
-    override def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]] =
-      af.getResource
-
     final override def capacity =
       buff.capacity
 
@@ -86,9 +80,6 @@ object OverflowQueue {
 
     final def size(implicit F: AsyncReactive[F]): F[Int] =
       F.run(q.size, null : Any)
-
-    final def dequeResource(implicit F: AsyncReactive[F]): Resource[F, F[A]] =
-      af.getResource
 
     final def capacity: Int =
       q.capacity
