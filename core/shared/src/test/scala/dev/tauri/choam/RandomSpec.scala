@@ -425,7 +425,7 @@ trait RandomSpec[F[_]]
           }
         } *> (
           rnd.nextAlphaNumeric.run[F].replicateA(32).flatMap { alnums =>
-            assertF(clue(alnums.toSet.size) >= 16)
+            assertF(clue(alnums.toSet.size) >= 8)
           }
         )
       }
