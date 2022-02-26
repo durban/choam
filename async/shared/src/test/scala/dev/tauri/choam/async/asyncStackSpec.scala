@@ -29,7 +29,7 @@ trait AsyncStackSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
 
-  protected def newStack[G[_] : Reactive, A]: G[AsyncStack[G, A]] =
+  protected def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[G, A]] =
     AsyncStack.apply[G, A].run[G]
 
   test("pop on a non-empty stack should work like on Treiber stack") {
@@ -103,6 +103,7 @@ trait AsyncStackSpec[F[_]]
 
   test("cancellation should not cause elements to be lost") {
     for {
+      _ <- this.assumeNotZio
       s <- newStack[F, String]
       f1 <- s.pop.start
       _ <- this.tickAll

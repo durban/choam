@@ -32,7 +32,7 @@ trait AsyncFromSpec[F[_]]
   test("AsyncFrom around a Ref") {
     for {
       ref <- Ref[Option[Int]](None).run[F]
-      af <- AsyncFrom[F, Int](
+      af <- rF.waitList[Int](
         ref.get,
         ref.getAndSet.contramap[Int](Some(_)).void
       ).run[F]

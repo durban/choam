@@ -21,28 +21,28 @@ package async
 import cats.effect.std.{ Queue => CatsQueue }
 
 trait AsyncQueueSource[F[_], +A] extends data.QueueSource[A] {
-  def deque[AA >: A](implicit F: AsyncReactive[F]): F[AA]
+  def deque[AA >: A]: F[AA]
 }
 
 trait BoundedQueueSink[F[_], -A] extends data.QueueSink[A] {
-  def enqueue(a: A)(implicit F: AsyncReactive[F]): F[Unit]
+  def enqueue(a: A): F[Unit]
 }
 
 object AsyncQueue {
 
-  def unbounded[F[_], A]: Axn[UnboundedQueue[F, A]] =
+  def unbounded[F[_] : AsyncReactive, A]: Axn[UnboundedQueue[F, A]] =
     UnboundedQueue[F, A]
 
-  def bounded[F[_], A](bound: Int): Axn[BoundedQueue[F, A]] =
+  def bounded[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] =
     BoundedQueue.linked[F, A](bound)
 
-  def dropping[F[_], A](capacity: Int): Axn[OverflowQueue[F, A]] =
+  def dropping[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] =
     OverflowQueue.droppingQueue[F, A](capacity)
 
-  def ringBuffer[F[_], A](capacity: Int): Axn[OverflowQueue[F, A]] =
+  def ringBuffer[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] =
     OverflowQueue.ringBuffer[F, A](capacity)
 
-  def unboundedWithSize[F[_], A]: Axn[UnboundedQueue.WithSize[F, A]] =
+  def unboundedWithSize[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue.WithSize[F, A]] =
     UnboundedQueue.withSize[F, A]
 
   private[choam] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: UnboundedQueue.WithSize[F, A])

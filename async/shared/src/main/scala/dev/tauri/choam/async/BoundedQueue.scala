@@ -28,7 +28,7 @@ abstract class BoundedQueue[F[_], A]
 
   def bound: Int
 
-  def toCats(implicit F: AsyncReactive[F]): CatsQueue[F, A]
+  def toCats: CatsQueue[F, A]
 
   private[choam] def currentSize: Axn[Int]
 }
@@ -39,7 +39,7 @@ object BoundedQueue {
   // TODO: we store async callbacks directly?
   // TODO: Would it be faster?
 
-  def linked[F[_], A](bound: Int): Axn[BoundedQueue[F, A]] = {
+  def linked[F[_]: AsyncReactive, A](bound: Int): Axn[BoundedQueue[F, A]] = {
     require(bound > 0)
     val maxSize = bound
     (Queue.unbounded[A] * Queue.withRemove[Promise[F, A]] * data.Queue.withRemove[(A, Promise[F, Unit])]).flatMap {
@@ -50,7 +50,7 @@ object BoundedQueue {
     }
   }
 
-  def array[F[_], A](bound: Int): Axn[BoundedQueue[F, A]] = {
+  def array[F[_]: AsyncReactive, A](bound: Int): Axn[BoundedQueue[F, A]] = {
     require(bound > 0)
     Queue.boundedArray[A](bound).flatMapF { q =>
       (Queue.withRemove[Promise[F, A]] * data.Queue.withRemove[(A, Promise[F, Unit])]).map {
@@ -66,7 +66,7 @@ object BoundedQueue {
     q: Queue[A],
     getters: Queue.WithRemove[Promise[F, A]],
     setters: Queue.WithRemove[(A, Promise[F, Unit])],
-  ) extends BoundedQueueCommon[F, A](bound, getters, setters) {
+  )(implicit F: AsyncReactive[F]) extends BoundedQueueCommon[F, A](bound, getters, setters) {
 
     private[choam] final override def currentSize: Axn[Int] =
       s.get
@@ -90,7 +90,7 @@ object BoundedQueue {
       }
     }
 
-    override def dequeAcq(implicit F: AsyncReactive[F]): F[Either[(Promise[F, A], Axn[Unit]), A]] = {
+    override def dequeAcq: F[Either[(Promise[F, A], Axn[Unit]), A]] = {
       (Promise[F, A] * q.tryDeque).flatMapF { case (p, dq) =>
         dq match {
           case Some(b) =>
@@ -120,9 +120,9 @@ object BoundedQueue {
     q: ArrayQueue[A] with QueueSourceSink[A],
     getters: Queue.WithRemove[Promise[F, A]],
     setters: Queue.WithRemove[(A, Promise[F, Unit])],
-  ) extends BoundedQueueCommon[F, A](bound, getters, setters) {
+  )(implicit F: AsyncReactive[F]) extends BoundedQueueCommon[F, A](bound, getters, setters) {
 
-    protected final override def dequeAcq(implicit F: AsyncReactive[F]): F[Either[(Promise[F, A], Axn[Unit]), A]] = {
+    protected final override def dequeAcq: F[Either[(Promise[F, A], Axn[Unit]), A]] = {
       (Promise[F, A] * q.tryDeque).flatMapF { case (p, dq) =>
         dq match {
           case Some(a) =>
@@ -156,9 +156,9 @@ object BoundedQueue {
     final override val bound: Int,
     protected val getters: Queue.WithRemove[Promise[F, A]],
     protected val setters: Queue.WithRemove[(A, Promise[F, Unit])],
-  ) extends BoundedQueue[F, A] { self =>
+  )(implicit F: AsyncReactive[F]) extends BoundedQueue[F, A] { self =>
 
-    protected def dequeAcq(implicit F: AsyncReactive[F]): F[Either[(Promise[F, A], Axn[Unit]), A]]
+    protected def dequeAcq: F[Either[(Promise[F, A], Axn[Unit]), A]]
 
     /** Partial, retries if no waiting getter! */
     protected def tryWaitingEnq: A =#> true = {
@@ -176,10 +176,10 @@ object BoundedQueue {
       }
     }
 
-    final override def enqueue(a: A)(implicit F: AsyncReactive[F]): F[Unit] =
+    final override def enqueue(a: A): F[Unit] =
       F.monadCancel.bracket(acquire = this.enqueueAcq(a))(use = this.enqueueUse)(release = this.enqueueRel)
 
-    private[this] def enqueueAcq(a: A)(implicit F: AsyncReactive[F]): F[Either[(A, Promise[F, Unit], Axn[Unit]), Unit]] = {
+    private[this] def enqueueAcq(a: A): F[Either[(A, Promise[F, Unit], Axn[Unit]), Unit]] = {
       (Promise[F, Unit] * getters.tryDeque).flatMap { case (p, dq) =>
         dq match {
           case Some(getterPromise) =>
@@ -207,7 +207,7 @@ object BoundedQueue {
       case Right(_) => F.monad.unit
     }
 
-    final override def deque[AA >: A](implicit F: AsyncReactive[F]): F[AA] = {
+    final override def deque[AA >: A]: F[AA] = {
       F.monad.widen(
         F.monadCancel.bracket(acquire = this.dequeAcq)(use = this.dequeUse)(release = this.dequeRel)
       )
@@ -223,7 +223,7 @@ object BoundedQueue {
       case Right(a) => F.monad.pure(a)
     }
 
-    final override def toCats(implicit F: AsyncReactive[F]): CatsQueue[F, A] = {
+    final override def toCats: CatsQueue[F, A] = {
       new CatsQueue[F, A] {
         final override def take: F[A] =
           self.deque

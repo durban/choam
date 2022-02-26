@@ -28,39 +28,40 @@ object UnboundedQueue {
 
   abstract class WithSize[F[_], A] extends UnboundedQueue[F, A] {
 
-    def size(implicit F: AsyncReactive[F]): F[Int]
+    def size: F[Int]
 
-    def toCats(implicit F: AsyncReactive[F]): CatsQueue[F, A] =
-      new AsyncQueue.CatsQueueAdapter[F, A](this)
+    def toCats: CatsQueue[F, A]
   }
 
-  def apply[F[_], A]: Axn[UnboundedQueue[F, A]] = {
+  def apply[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue[F, A]] = {
     data.Queue.unbounded[A].flatMapF { as =>
-      AsyncFrom[F, A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
+      F.waitList[A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
         new UnboundedQueue[F, A] {
           final override def enqueue: A =#> Unit =
             af.set
           final override def tryDeque: Axn[Option[A]] =
             as.tryDeque
-          final override def deque[AA >: A](implicit F: AsyncReactive[F]): F[AA] =
+          final override def deque[AA >: A]: F[AA] =
             F.monad.widen(af.get)
         }
       }
     }
   }
 
-  def withSize[F[_], A]: Axn[UnboundedQueue.WithSize[F, A]] = {
+  def withSize[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue.WithSize[F, A]] = {
     data.Queue.withSize[A].flatMapF { as =>
-      AsyncFrom[F, A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
+      F.waitList[A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
         new UnboundedQueue.WithSize[F, A] {
           final override def enqueue: A =#> Unit =
             af.set
           final override def tryDeque: Axn[Option[A]] =
             as.tryDeque
-          final override def deque[AA >: A](implicit F: AsyncReactive[F]): F[AA] =
+          final override def deque[AA >: A]: F[AA] =
             F.monad.widen(af.get)
-          final override def size(implicit F: AsyncReactive[F]): F[Int] =
+          final override def size: F[Int] =
             as.size.run[F]
+          final override def toCats =
+            new AsyncQueue.CatsQueueAdapter(this)
         }
       }
     }

@@ -81,6 +81,10 @@ trait BaseSpecF[F[_]]
       F.raiseError[A](new IllegalStateException("unreachable code"))
     }
   }
+
+  def assumeNotZio: F[Unit] = {
+    this.assumeF(true) // ZIO spec must override
+  }
 }
 
 trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] { this: KCASImplSpec =>

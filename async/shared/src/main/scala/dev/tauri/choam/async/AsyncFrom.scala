@@ -18,63 +18,70 @@
 package dev.tauri.choam
 package async
 
+import cats.effect.kernel.Async
+
 import data.Queue
 
-// TODO: rename to (maybe) WaitList; write docs
-final class AsyncFrom[F[_], A] private (
+import AsyncFrom.Callback
+
+private final class AsyncFrom[F[_], A] private (
   val syncGet: Axn[Option[A]],
   val syncSet: A =#> Unit,
-  waiters: Queue.WithRemove[Promise[F, A]]
-) {
-
-  // TODO: Instead of storing promises, could
-  // TODO: we store async callbacks directly?
-  // TODO: Would it be faster?
+  waiters: Queue.WithRemove[Callback[A]],
+)(implicit F: Async[F], arF: AsyncReactive[F]) {
 
   /** Partial, retries if no waiters */
   private[choam] def trySetWaiters: A =#> Unit = {
     this.waiters.tryDeque.flatMap {
-      case None => Rxn.unsafe.retry
-      case Some(p) => p.complete.void
+      case None =>
+        Rxn.unsafe.retry
+      case Some(cb) =>
+        callCb(cb)
     }
+  }
+
+  private[this] final def callCb(cb: Callback[A]): Rxn[A, Unit] = {
+    Rxn.identity[A].postCommit(Rxn.unsafe.delay { (a: A) =>
+      cb(Right(a))
+    }).void
   }
 
   def set: A =#> Unit = {
     this.waiters.tryDeque.flatMap {
-      case None => this.syncSet
-      case Some(p) => p.complete.void
+      case None =>
+        this.syncSet
+      case Some(cb) =>
+        callCb(cb)
     }
   }
 
-  def get(implicit F: AsyncReactive[F]): F[A] =
-    F.monadCancel.bracket(this.getAcq)(this.getUse)(this.getRel)
-
-  private[this] def getAcq(implicit F: AsyncReactive[F]): F[Either[(Promise[F, A], Axn[Unit]), A]] = {
-    Promise[F, A].flatMapF { p =>
-      this.syncGet.flatMapF {
-        case Some(b) => Rxn.pure(Right(b))
-        case None => this.waiters.enqueueWithRemover.provide(p).map { remover =>
-          Left((p, remover))
-        }
+  def get: F[A] = {
+    F.async[A] { cb =>
+      val rxn: Axn[Either[Axn[Unit], A]] = this.syncGet.flatMapF {
+        case Some(a) =>
+          Rxn.pure(Right(a))
+        case None =>
+          this.waiters.enqueueWithRemover.provide(cb).map { remover =>
+            Left(remover)
+          }
       }
-    }.run[F]
-  }
-
-  private[this] def getRel(r: Either[(Promise[F, A], Axn[Unit]), A])(implicit F: Reactive[F]): F[Unit] = r match {
-    case Left((_, remover)) => remover.run[F]
-    case Right(_) => F.monad.unit
-  }
-
-  private[this] def getUse(r: Either[(Promise[F, A], Axn[Unit]), A])(implicit F: Reactive[F]): F[A] = r match {
-    case Left((p, _)) => p.get
-    case Right(a) => F.monad.pure(a)
+      F.flatMap[Either[Axn[Unit], A], Option[F[Unit]]](arF.run(rxn, null: Any)) {
+        case Right(a) =>
+          F.as(F.delay(cb(Right(a))), None)
+        case Left(remover) =>
+          F.pure(Some(arF.run(remover, null: Any)))
+      }
+    }
   }
 }
 
-object AsyncFrom {
+private object AsyncFrom {
 
-  def apply[F[_], A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[AsyncFrom[F, A]] = {
-    Queue.withRemove[Promise[F, A]].map { waiters =>
+  type Callback[A] =
+    Either[Throwable, A] => Unit
+
+  def apply[F[_] : Async : AsyncReactive, A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[AsyncFrom[F, A]] = {
+    Queue.withRemove[Callback[A]].map { waiters =>
       new AsyncFrom[F, A](syncGet, syncSet, waiters)
     }
   }

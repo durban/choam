@@ -82,15 +82,19 @@
     - maybe `semiFlatMap` (or `semiflatMap`?)
     - or `subflatMap`?
   - Rxn.delay?
-    - allocating (but: only `Ref` really needs it, others are built on that)
-    - calling async callbacks (but: only `Promise` needs it, others don't)
-    - allocating `Exchanger` (this is similar to `Ref`)
-    - allocating `Ref.array` (this is similar to `Ref`)
+    - allocating:
+      - `Ref` (most others are built on this)
+      - `Ref.array`
+      - `Exchanger`
+    - calling async callbacks:
+      - only `Promise` really needs it
+      - `AsyncFrom` (as an optimization, to avoid `Promise`)
     - other special cases:
       - `UUIDGen`
       - `Unique`
       - `Clock`
       - `cats.effect.std.Random`
+      - `Ttrie` (toavoid `Rxn`-level contention)
   - Maybe rename `Ref`?
     - Collision with `cats.effect.kernel.Ref`
     - Although it is hard to confuse them

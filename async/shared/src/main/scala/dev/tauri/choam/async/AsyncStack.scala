@@ -22,22 +22,22 @@ import data.TreiberStack
 
 abstract class AsyncStack[F[_], A] {
   def push: Rxn[A, Unit]
-  def pop(implicit F: AsyncReactive[F]): F[A]
+  def pop: F[A]
   def tryPop: Axn[Option[A]]
 }
 
 object AsyncStack {
 
-  def apply[F[_], A]: Axn[AsyncStack[F, A]] = {
+  def apply[F[_], A](implicit F: AsyncReactive[F]): Axn[AsyncStack[F, A]] = {
     TreiberStack[A].flatMapF { es =>
-      AsyncFrom[F, A](
+      F.waitList(
         syncGet = es.tryPop,
         syncSet = es.push
       ).map { af =>
         new AsyncStack[F, A] {
           final override def push: A =#> Unit =
             af.set
-          final override def pop(implicit F: AsyncReactive[F]): F[A] =
+          final override def pop: F[A] =
             af.get
           final override def tryPop: Axn[Option[A]] =
             es.tryPop

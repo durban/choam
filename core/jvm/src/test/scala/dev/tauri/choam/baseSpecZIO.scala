@@ -36,6 +36,11 @@ trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with KCASImplSpec =>
   ): zio.Task[Unit] = {
     obtained.flatMap(ob => zio.Task { this.assertEquals(ob, expected, clue) })
   }
+
+  // https://github.com/zio/interop-cats/issues/509
+  final override def assumeNotZio: zio.Task[Unit] = {
+    this.assumeF(false)
+  }
 }
 
 abstract class BaseSpecZIO
