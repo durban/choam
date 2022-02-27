@@ -83,10 +83,22 @@ object BoundedQueue {
     }
 
     final override def tryDeque: Axn[Option[A]] = {
-      // TODO: also consider setters
       q.tryDeque.flatMapF {
-        case r @ Some(_) => s.update(_ - 1).as(r)
-        case None => Rxn.pure(None)
+        case r @ Some(_) =>
+          // size was decremented...
+          setters.tryDeque.flatMapF {
+            case Some((setterA, setterPromise)) =>
+              // ...then incremented
+              q.enqueue.provide(setterA) *> (
+                setterPromise.complete.provide(()).as(r)
+              )
+            case None =>
+              // ...then nothing
+              s.update(_ - 1).as(r)
+          }
+        case None =>
+          // size didn't change
+          Rxn.pure(None)
       }
     }
 
@@ -98,7 +110,7 @@ object BoundedQueue {
             setters.tryDeque.flatMapF {
               case Some((setterA, setterPromise)) =>
                 // ...then incremented
-                s.get *> q.enqueue.provide(setterA).flatTap(
+                q.enqueue.provide(setterA).flatTap(
                   setterPromise.complete.provide(()).void
                 ).as(Right(b))
               case None =>
@@ -128,9 +140,9 @@ object BoundedQueue {
           case Some(a) =>
             setters.tryDeque.flatMapF {
               case Some((setterA, setterPromise)) =>
-                q.tryEnqueue.provide(setterA).flatMapF { _ =>
+                q.tryEnqueue.provide(setterA) *> (
                   setterPromise.complete.provide(()).as(Right(a))
-                }
+                )
               case None =>
                 Rxn.pure(Right(a))
             }
@@ -142,8 +154,21 @@ object BoundedQueue {
       }.run[F]
     }
 
-    final override def tryDeque: Axn[Option[A]] =
-      this.tryWaitingDeq + q.tryDeque
+    final override def tryDeque: Axn[Option[A]] = {
+      q.tryDeque.flatMapF {
+        case s @ Some(_) =>
+          setters.tryDeque.flatMapF {
+            case None =>
+              Rxn.pure(s)
+            case Some((setterA, setterPromise)) =>
+              q.tryEnqueue.provide(setterA) *> (
+                setterPromise.complete.provide(()).as(s)
+              )
+          }
+        case None =>
+          Rxn.pure(None)
+      }
+    }
 
     final override def tryEnqueue: Rxn[A, Boolean] =
       this.tryWaitingEnq + q.tryEnqueue
@@ -165,14 +190,6 @@ object BoundedQueue {
       getters.tryDeque.flatMap {
         case None => Rxn.unsafe.retry
         case Some(p) => p.complete.as(true)
-      }
-    }
-
-    /** Partial, retries if no waiting setter! */
-    protected def tryWaitingDeq: Axn[Some[A]] = {
-      setters.tryDeque.flatMapF {
-        case None => Rxn.unsafe.retry
-        case Some((a, p)) => p.complete.provide(()).as(Some(a))
       }
     }
 

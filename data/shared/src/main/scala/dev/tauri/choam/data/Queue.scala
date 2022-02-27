@@ -55,9 +55,12 @@ trait Queue[A]
 
 object Queue {
 
+  private[choam] type Remover =
+    Axn[Unit]
+
   private[choam] abstract class WithRemove[A] extends Queue[A] {
     def remove: Rxn[A, Boolean]
-    def enqueueWithRemover: Rxn[A, Axn[Unit]]
+    def enqueueWithRemover: Rxn[A, Remover]
   }
 
   private[choam] abstract class WithSize[A] extends Queue[A] {

@@ -99,7 +99,7 @@ trait BoundedQueueSpec[F[_]]
     } yield ()
   }
 
-  test("BoundedQueue full enqueue") {
+  test("BoundedQueue full enqueue / deque") {
     for {
       s <- newQueue[String](bound = 4)
       _ <- assertResultF(s.currentSize.run[F], 0)
@@ -136,6 +136,47 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(s.currentSize.run[F], 1)
       _ <- assertResultF(s.deque, "g")
       _ <- assertResultF(s.currentSize.run[F], 0)
+    } yield ()
+  }
+
+  test("BoundedQueue full enqueue / tryDeque") {
+    for {
+      s <- newQueue[String](bound = 4)
+      _ <- assertResultF(s.currentSize.run[F], 0)
+      _ <- s.enqueue("a")
+      _ <- assertResultF(s.currentSize.run[F], 1)
+      _ <- s.enqueue("b")
+      _ <- assertResultF(s.currentSize.run[F], 2)
+      _ <- s.enqueue("c")
+      _ <- assertResultF(s.currentSize.run[F], 3)
+      _ <- s.enqueue("d")
+      _ <- assertResultF(s.currentSize.run[F], 4)
+      _ <- assertResultF(s.tryEnqueue[F]("x"), false)
+      _ <- assertResultF(s.currentSize.run[F], 4)
+      f1 <- s.enqueue("e").start
+      _ <- this.tickAll
+      f2 <- s.enqueue("f").start
+      _ <- this.tickAll
+      f3 <- s.enqueue("g").start
+      _ <- this.tickAll
+      _ <- assertResultF(s.tryDeque.run[F], Some("a"))
+      _ <- assertResultF(s.currentSize.run[F], 4)
+      _ <- f1.joinWithNever
+      _ <- assertResultF(s.tryDeque.run[F], Some("b"))
+      _ <- assertResultF(s.currentSize.run[F], 4)
+      _ <- f2.joinWithNever
+      _ <- assertResultF(s.tryDeque.run[F], Some("c"))
+      _ <- assertResultF(s.currentSize.run[F], 4)
+      _ <- f3.joinWithNever
+      _ <- assertResultF(s.tryDeque.run[F], Some("d"))
+      _ <- assertResultF(s.currentSize.run[F], 3)
+      _ <- assertResultF(s.tryDeque.run[F], Some("e"))
+      _ <- assertResultF(s.currentSize.run[F], 2)
+      _ <- assertResultF(s.tryDeque.run[F], Some("f"))
+      _ <- assertResultF(s.currentSize.run[F], 1)
+      _ <- assertResultF(s.tryDeque.run[F], Some("g"))
+      _ <- assertResultF(s.currentSize.run[F], 0)
+      _ <- assertResultF(s.tryDeque.run[F], None)
     } yield ()
   }
 
