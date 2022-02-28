@@ -52,6 +52,14 @@ trait BoundedQueueSpec[F[_]]
 
   def newQueue[A](bound: Int): F[BoundedQueue[F, A]]
 
+  test("BoundedQueue bound") {
+    (1 to 1024).toList.traverse { b =>
+      newQueue[String](bound = b).flatMap { q =>
+        assertEqualsF(q.bound, b)
+      }
+    }
+  }
+
   test("BoundedQueue non-empty deque") {
     for {
       s <- newQueue[String](bound = 4)
@@ -61,6 +69,19 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(s.deque, "a")
       _ <- assertResultF(s.deque, "b")
       _ <- assertResultF(s.deque, "c")
+    } yield ()
+  }
+
+  test("BoundedQueue non-empty tryDeque") {
+    for {
+      s <- newQueue[String](bound = 4)
+      _ <- s.enqueue("a")
+      _ <- s.enqueue("b")
+      _ <- s.enqueue("c")
+      _ <- assertResultF(s.tryDeque.run[F], Some("a"))
+      _ <- assertResultF(s.tryDeque.run[F], Some("b"))
+      _ <- assertResultF(s.tryDeque.run[F], Some("c"))
+      _ <- assertResultF(s.tryDeque.run[F], None)
     } yield ()
   }
 
@@ -79,6 +100,29 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f2.joinWithNever, "b")
       _ <- assertResultF(f3.joinWithNever, "c")
+    } yield ()
+  }
+
+  test("BoundedQueue empty tryDeque") {
+    for {
+      s <- newQueue[String](bound = 4)
+      _ <- assertResultF(s.tryDeque.run[F], None)
+      _ <- assertResultF(s.tryDeque.run[F], None)
+    } yield ()
+  }
+
+  test("BoundedQueue tryEnqueue") {
+    for {
+      s <- newQueue[String](bound = 4)
+      _ <- assertResultF(s.tryEnqueue[F]("a"), true)
+      _ <- assertResultF(s.tryEnqueue[F]("b"), true)
+      _ <- assertResultF(s.tryEnqueue[F]("c"), true)
+      _ <- assertResultF(s.tryDeque.run[F], Some("a"))
+      _ <- assertResultF(s.tryEnqueue[F]("d"), true)
+      _ <- assertResultF(s.tryEnqueue[F]("e"), true)
+      _ <- assertResultF(s.tryEnqueue[F]("x"), false)
+      _ <- assertResultF(s.drainOnce, List("b", "c", "d", "e"))
+      _ <- assertResultF(s.tryDeque.run[F], None)
     } yield ()
   }
 
