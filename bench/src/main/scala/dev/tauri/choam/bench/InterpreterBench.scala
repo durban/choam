@@ -39,7 +39,7 @@ class InterpreterBench {
     bh.consume(Rxn.interpreter(s.rxn, x, k.kcasImpl.currentContext()))
   }
 
-  // @Benchmark
+  @Benchmark
   def rxnNewDisjoint(s: DisjointSt, bh: Blackhole, k: KCASImplState): Unit = {
     val x = k.nextInt()
     bh.consume(Rxn.interpreter(s.rxn, x, k.kcasImpl.currentContext()))
