@@ -233,9 +233,10 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     val exchangesPerSecond = if (elapsedTime == 0L) {
       Double.NaN
     } else {
-      val elapsedSeconds =
-        TimeUnit.SECONDS.convert(elapsedTime, TimeUnit.NANOSECONDS)
-      exchangeCount / elapsedSeconds.toDouble
+      val elapsedSeconds: Double =
+        TimeUnit.SECONDS.convert(elapsedTime, TimeUnit.NANOSECONDS).toDouble
+      if (elapsedSeconds == 0.0d) Double.NaN
+      else exchangeCount / elapsedSeconds
     }
     val res = new ju.ArrayList[Result[_]]
     if (config.exchangesPerSecond) {
