@@ -69,15 +69,17 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * stack-safe interpreter (see `interpreter`). A limited version
    * of an `Exchanger` is also implemented, which can be used to
    * implement elimination arrays. (The `Exchanger` by itself could
-   * cause indefininte retries, so it must always be combined with
+   * cause indefinite retries, so it must always be combined with
    * a lock-free operation.)
    *
-   * Another difference is the referentially transparent ("pure
+   * Another difference is the referentially transparent ("purely
    * functional") API. All side-effecting APIs are prefixed by
-   * `unsafe`.
+   * `unsafe`. (But not all `unsafe` APIs are side-effecting, some
+   * of them are `unsafe` for another reason.)
    *
    * We also offer [*opacity*](https://nbronson.github.io/scala-stm/semantics.html#opacity),
-   * a correctness guarantee of the read values visible inside a `Rxn`.
+   * a consistency guarantee of the read values visible inside a
+   * running `Rxn`.
    *
    * Finally (unlike with reagents), two `Rxn`s which touch the same
    * `Ref`s are composable with each other. This allows multiple
