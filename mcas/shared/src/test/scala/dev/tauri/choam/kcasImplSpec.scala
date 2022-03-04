@@ -19,6 +19,8 @@ package dev.tauri.choam
 
 trait KCASImplSpec {
   protected def kcasImpl: mcas.MCAS
+  protected def isEmcas: Boolean =
+    false
 }
 
 trait SpecThreadConfinedMCAS extends KCASImplSpec {

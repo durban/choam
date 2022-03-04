@@ -344,12 +344,17 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val ver = ctx.readVersion(r2)
     // the ongoing op should fail:
     val res = ctx.tryPerform(d4)
-    assertEquals(res, ver)
+    if (this.isEmcas) { // TODO
+      assertEquals(res, EmcasStatus.FailedVal)
+    } else {
+      assertEquals(res, ver)
+    }
     assertSameInstance(ctx.readDirect(r1), "a")
     assertSameInstance(ctx.readDirect(r2), "x")
   }
 
   test("singleCasDirect should work without changing the global commitTs") {
+    assume(!this.isEmcas) // TODO?
     val ctx = kcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val startTs = ctx.start().validTs
@@ -444,15 +449,20 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
       assertSameInstance(l2(1).address, r1)
     }
     val d3 = ctx.addVersionCas(d2)
-    assertEquals(d3.size, 3)
-    val l3 = d3.iterator().toList
-    assertEquals(l3.length, 3)
-    if (MemoryLocation.orderingInstance[String].lt(r1, r2)) {
-      assertSameInstance(l3(1).address, r1)
-      assertSameInstance(l3(2).address, r2)
+    val (expSize, offset) = if (this.isEmcas) { // TODO
+      (2, 0)
     } else {
-      assertSameInstance(l3(1).address, r2)
-      assertSameInstance(l3(2).address, r1)
+      (3, 1)
+    }
+    assertEquals(d3.size, expSize)
+    val l3 = d3.iterator().toList
+    assertEquals(l3.length, expSize)
+    if (MemoryLocation.orderingInstance[String].lt(r1, r2)) {
+      assertSameInstance(l3(0 + offset).address, r1)
+      assertSameInstance(l3(1 + offset).address, r2)
+    } else {
+      assertSameInstance(l3(0 + offset).address, r2)
+      assertSameInstance(l3(1 + offset).address, r1)
     }
   }
 
@@ -528,7 +538,12 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     // now the value is the same, but version isn't:
     assertSameInstance(ctx.readDirect(ref), "B")
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv(("X")))
-    assertEquals(ctx.tryPerform(d2), ver)
+    val res = ctx.tryPerform(d2)
+    if (this.isEmcas) { // TODO
+      assertEquals(res, EmcasStatus.FailedVal)
+    } else {
+      assertEquals(res, ver)
+    }
     assertEquals(ctx.readVersion(ref), ver)
   }
 }

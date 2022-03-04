@@ -158,7 +158,6 @@ object MCAS extends MCASPlatform { self =>
         // TODO: and the version CAS _should_
         // TODO: catch any concurrent changes(?)
         val finalDesc = this.addVersionCas(desc)
-        assert(finalDesc.size == (desc.size + 1))
         val res = this.tryPerformInternal(finalDesc)
         assert((res == EmcasStatus.Successful) || (res == EmcasStatus.FailedVal) || Version.isValid(res))
         res

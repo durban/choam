@@ -128,16 +128,16 @@ private final class EmcasThreadContext(
     impl.readVersion(ref, this)
 
   final override def start(): HalfEMCASDescriptor =
-    HalfEMCASDescriptor.empty(this.global.commitTs, this)
+    HalfEMCASDescriptor.emptyFromVer(this.global.commitTs.get())
 
   protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
-    desc.addVersionCas(this.global.commitTs)
+    desc // we increment the global commit version differently
 
   protected[choam] def validateAndTryExtend(
     desc: HalfEMCASDescriptor,
     hwd: HalfWordDescriptor[_],
   ): HalfEMCASDescriptor = {
-    desc.validateAndTryExtend(this.global.commitTs, this, hwd)
+    desc.validateAndTryExtendVer(this.global.commitTs.get(), this, hwd)
   }
 
   final override def toString: String =

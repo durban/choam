@@ -453,7 +453,7 @@ lazy val dependencies = new {
 
 val stressTestNames = List[String](
   "stressMcas",
-  // "stressCore",
+  "stressCore",
   "stressData",
 )
 

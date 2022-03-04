@@ -41,8 +41,11 @@ private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDesc
   final def oldVersion: Long =
     this.half.version
 
-  final def newVersion: Long =
-    this.parent.newVersion
+  final def newVersion: Long = {
+    val cv = this.parent.getCommitVer()
+    assert(Version.isValid(cv))
+    cv
+  }
 
   final def cast[B]: WordDescriptor[B] =
     this.asInstanceOf[WordDescriptor[B]]
@@ -51,7 +54,7 @@ private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDesc
     this.asInstanceOf[A]
 
   final override def toString: String =
-    s"WordDescriptor(${this.address}, ${this.ov} -> ${this.nv}, ${this.oldVersion} -> ${this.newVersion})"
+    s"WordDescriptor(${this.address}, ${this.ov} -> ${this.nv}, oldVer = ${this.oldVersion})"
 }
 
 private object WordDescriptor {

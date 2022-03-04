@@ -18,12 +18,29 @@
 package dev.tauri.choam
 package mcas
 
+import java.util.concurrent.atomic.AtomicLong
+
 private final class EmcasDescriptor private (
   private val half: HalfEMCASDescriptor,
   final val newVersion: Long,
 ) extends EmcasDescriptorBase { self =>
 
   require(Version.isValid(newVersion))
+
+  // TODO: do not store `commitVer` and `status` separately
+  private[this] val commitVer: AtomicLong =
+    new AtomicLong(Version.None)
+
+  final def cmpxchgCommitVer(nv: Long): Long = {
+    require(Version.isValid(nv))
+    this.commitVer.compareAndExchange(Version.None, nv)
+  }
+
+  final def getCommitVer(): Long = {
+    val r = this.commitVer.get()
+    assert(Version.isValid(r))
+    r
+  }
 
   // effectively immutable array:
   private[this] val words: Array[WordDescriptor[_]] = {
@@ -47,6 +64,10 @@ private final class EmcasDescriptor private (
 
   private[mcas] final def casStatus(ov: Long, nv: Long): Boolean = {
     this.casStatusInternal(ov, nv)
+  }
+
+  private[mcas] final def hasVersionCas: Boolean = {
+    this.half.hasVersionCas
   }
 
   final override def toString: String = {

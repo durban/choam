@@ -69,7 +69,7 @@ final class HalfEMCASDescriptor private (
 
   /** True iff `this` can (theoretically) commit with the same version as `that` */
   private[mcas] final def canShareVersionWith(that: HalfEMCASDescriptor): Boolean = {
-    if (this.versionCas ne null) {
+    if (this.hasVersionCas) {
       assert(this.map.nonEmpty)
       (!this.readOnly) &&
       (!that.readOnly) &&
@@ -79,6 +79,10 @@ final class HalfEMCASDescriptor private (
     } else {
       false
     }
+  }
+
+  private[mcas] final def hasVersionCas: Boolean = {
+    this.versionCas ne null
   }
 
   private final def withValidTsBoxed(newBoxed: java.lang.Long): HalfEMCASDescriptor =  {
@@ -191,6 +195,26 @@ final class HalfEMCASDescriptor private (
     // NB: we must read the commitTs *before* the `ctx.validate...`
     val newValidTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
+    this.validateAndTryExtendInternal(newValidTsBoxed, ctx, additionalHwd)
+  }
+
+  private[mcas] final def validateAndTryExtendVer(
+    currentTs: Long,
+    ctx: MCAS.ThreadContext,
+    additionalHwd: HalfWordDescriptor[_], // can be null
+  ): HalfEMCASDescriptor = {
+    this.validateAndTryExtendInternal(
+      java.lang.Long.valueOf(currentTs),
+      ctx,
+      additionalHwd,
+    )
+  }
+
+  private[this] final def validateAndTryExtendInternal(
+    newValidTsBoxed: java.lang.Long,
+    ctx: MCAS.ThreadContext,
+    additionalHwd: HalfWordDescriptor[_], // can be null
+  ): HalfEMCASDescriptor = {
     if (newValidTsBoxed.longValue > this.validTs) {
       if (
         ctx.validate(this) &&
@@ -233,9 +257,16 @@ final class HalfEMCASDescriptor private (
       case that: HalfEMCASDescriptor =>
         (this eq that) || (
           (this.readOnly == that.readOnly) &&
-          (this.validTsBoxed eq that.validTsBoxed) &&
+          (this.versionCas == that.versionCas) && {
+            // TODO: we only compare `validTsBoxed` identity,
+            // TODO: if we already have a version-CAS
+            if (this.hasVersionCas) {
+              this.validTsBoxed eq that.validTsBoxed
+            } else {
+              this.validTsBoxed.longValue == that.validTsBoxed.longValue
+            }
+          } &&
           (this.versionIncr == that.versionIncr) &&
-          (this.versionCas == that.versionCas) &&
           (this.map == that.map)
         )
       case _ =>
@@ -244,7 +275,7 @@ final class HalfEMCASDescriptor private (
   }
 
   final override def hashCode: Int = {
-    val h1 = MurmurHash3.mix(0xefebde66, System.identityHashCode(this.validTsBoxed))
+    val h1 = MurmurHash3.mix(0xefebde66, this.validTsBoxed.longValue.##)
     val h2 = MurmurHash3.mix(h1, this.readOnly.##)
     val h3 = MurmurHash3.mix(h2, this.versionIncr.##)
     val h4 = MurmurHash3.mix(h3, this.versionCas.##)
@@ -258,11 +289,19 @@ object HalfEMCASDescriptor {
   private final val DefaultVersionIncr =
     Version.Incr
 
-  private[mcas] def empty(commitTsRef: MemoryLocation[Long], ctx: MCAS.ThreadContext): HalfEMCASDescriptor = {
+  private[mcas] final def empty(commitTsRef: MemoryLocation[Long], ctx: MCAS.ThreadContext): HalfEMCASDescriptor = {
     val validTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
+    emptyFromBoxed(validTsBoxed)
+  }
+
+  private[mcas] final def emptyFromVer(currentTs: Long): HalfEMCASDescriptor = {
+    emptyFromBoxed(java.lang.Long.valueOf(currentTs))
+  }
+
+  private[this] final def emptyFromBoxed(validTsBoxed: java.lang.Long): HalfEMCASDescriptor = {
     new HalfEMCASDescriptor(
-      LogMap.empty, // TreeMap.empty(MemoryLocation.orderingInstance[Any]),
+      LogMap.empty,
       validTsBoxed = validTsBoxed,
       readOnly = true,
       versionIncr = DefaultVersionIncr,

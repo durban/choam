@@ -20,14 +20,15 @@ package mcas
 
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentSkipListMap
+import java.util.concurrent.atomic.AtomicLong
 
 import scala.jdk.javaapi.CollectionConverters
 
 private final class GlobalContext(impl: Emcas.type) {
 
   // TODO: should be `private[emcas]`
-  private[mcas] val commitTs: MemoryLocation[Long] =
-    MemoryLocation.unsafePadded(Version.Start)
+  private[mcas] val commitTs: AtomicLong = // TODO:padding!
+    new AtomicLong(Version.Start)
 
   /**
    * `ThreadContext`s of all the (active) threads

@@ -18,7 +18,7 @@
 package dev.tauri.choam.mcas;
 
 // Note: this class/object is duplicated for JVM/JS
-public final class EmcasStatus {
+public final class EmcasStatus { // TODO: rename to McasStatus
 
   /**
    * Marker for an op, which already started,

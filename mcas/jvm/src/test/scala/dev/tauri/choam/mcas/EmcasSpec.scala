@@ -271,7 +271,6 @@ class EmcasSpec extends BaseSpecA {
       )
       val desc = EmcasDescriptor.prepare(hDesc)
       val it = desc.wordIterator()
-      it.next() // global version CAS
       val d0 = it.next().asInstanceOf[WordDescriptor[String]]
       val mark = new McasMarker
       assert(d0.address eq r1)
@@ -366,7 +365,6 @@ class EmcasSpec extends BaseSpecA {
       )
       val desc = EmcasDescriptor.prepare(hDesc)
       val it = desc.wordIterator()
-      it.next() // global version CAS
       val d0 = it.next().asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
       assert(d0.address.unsafeCasVolatile(d0.ov, d0.castToData))
@@ -590,7 +588,7 @@ class EmcasSpec extends BaseSpecA {
     // T1 continues:
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv("C"))
     val result = ctx.tryPerform(d2)
-    assertEquals(result, ver)
+    assertEquals(result, EmcasStatus.FailedVal)
     val ver2 = ctx.readVersion(ref)
     // version mustn't decrease:
     assert(ver2 >= ver, s"${ver2} < ${ver}")

@@ -205,21 +205,27 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     t.join()
     assert(ok)
     // try to finish the swap:
-    val badVer = ctx.tryPerform(d4) // should fail due to version-CAS failing
-    assertEquals(badVer, newVer)
-    assert(Version.isValid(badVer))
-    // TODO: A completely disjoint commit caused
-    // TODO: our commit to fail. We should have
-    // TODO: an optimization to reuse commit versions
-    // TODO: for disjoint ops (if possible).
+    val res = ctx.tryPerform(d4)
     val endTs = ctx.start().validTs
-    assertEquals(endTs, startTs + Version.Incr)
-    assertSameInstance(ctx.readDirect(r1), "a")
-    assertEquals(ctx.readVersion(r1), v1)
-    assertSameInstance(ctx.readDirect(r2), "b")
-    assertEquals(ctx.readVersion(r2), v2)
+    // EMCAS should be able to handle this (disjoint op), but
+    // others should fail due to the version-CAS failing:
+    if (ctx.isInstanceOf[EmcasThreadContext]) {
+      assertEquals(res, EmcasStatus.Successful)
+      assertEquals(endTs, startTs + (2 * Version.Incr))
+      assertSameInstance(ctx.readDirect(r1), "b")
+      assertSameInstance(ctx.readDirect(r2), "a")
+      assertEquals(ctx.readVersion(r3), endTs - Version.Incr)
+    } else {
+      assertEquals(res, newVer)
+      assert(Version.isValid(res))
+      assertEquals(endTs, startTs + Version.Incr)
+      assertSameInstance(ctx.readDirect(r1), "a")
+      assertEquals(ctx.readVersion(r1), v1) // TODO
+      assertSameInstance(ctx.readDirect(r2), "b")
+      assertEquals(ctx.readVersion(r2), v2) // TODO
+      assertEquals(ctx.readVersion(r3), endTs)
+    }
     assertSameInstance(ctx.readDirect(r3), "cc")
-    assertEquals(ctx.readVersion(r3), endTs)
   }
 
   test("Merging must detect if the logs are inconsistent") {
@@ -256,7 +262,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     assert(ctx.addAll(d2a, d2b) eq null)
   }
 
-  test("CommitTs ref must be the last (JVM)") {
+  test("CommitTs ref must be the first (JVM)") {
     val r1 = MemoryLocation.unsafe[String]("foo")
     val r2 = MemoryLocation.unsafe[String]("bar")
     val ctx = this.kcasImpl.currentContext()
@@ -271,10 +277,16 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       lb += it.next().address
     }
     val lst: List[MemoryLocation[_]] = lb.result()
-    assertEquals(lst.length, 3)
-    assert((lst(1) eq r1) || (lst(1) eq r2))
-    assert((lst(2) eq r1) || (lst(2) eq r2))
-    assert(lst(0) ne r1)
-    assert(lst(0) ne r2)
+    if (ctx.isInstanceOf[EmcasThreadContext]) { // TODO
+      assertEquals(lst.length, 2)
+      assert((lst(0) eq r1) || (lst(0) eq r2))
+      assert((lst(1) eq r1) || (lst(1) eq r2))
+    } else {
+      assertEquals(lst.length, 3)
+      assert((lst(1) eq r1) || (lst(1) eq r2))
+      assert((lst(2) eq r1) || (lst(2) eq r2))
+      assert(lst(0) ne r1)
+      assert(lst(0) ne r2)
+    }
   }
 }

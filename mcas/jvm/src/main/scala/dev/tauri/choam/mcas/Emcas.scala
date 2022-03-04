@@ -125,15 +125,23 @@ private object Emcas extends MCAS { self => // TODO: make this a class
    *
    * ### Versions ###
    *
-   * To be able to detect inconsistent reads (and thus support
-   * opacity), refs also store their version. The EMCAS impl.
+   * To provide opacity, we need to validate previously read
+   * values when we read from a new ref. To be able to do this
+   * quickly, refs also store their version. The EMCAS impl.
    * has a global commit counter (commit-ts, commit version),
-   * which is a `Long` (a few values have special meaning,
-   * see `Version.isValid`). The version of a ref is the commit
-   * version which last changed the ref (or `Version.Start` if it
+   * which is a `Long` (a few values are reserved and have a special
+   * meaning, see `Version.isValid`). The version of a ref is the
+   * commit version which last changed the ref (or `Version.Start` if it
    * was never changed). This system is based on the one in
    * SwissTM (https://infoscience.epfl.ch/record/136702/files/pldi127-dragojevic.pdf),
    * although this implementation is lock-free.
+   *
+   * On top of this version-based validation system, we implement
+   * an optimization from the paper "Commit Phase in Timestamp-based STM"
+   * (https://web.archive.org/web/20220302005715/https://www.researchgate.net/profile/Zoran-Budimlic/publication/221257687_Commit_phase_in_timestamp-based_stm/links/004635254086f87ab9000000/Commit-phase-in-timestamp-based-stm.pdf).
+   * We allow ops to *share* a commit-ts (if they do not conflict).
+   * Our implementation is a lock-free version of algorithm "V1" from
+   * the paper.
    *
    * Versions (both of a ref and the global one) are always
    * monotonically increasing.
@@ -463,39 +471,13 @@ private object Emcas extends MCAS { self => // TODO: make this a class
       assert((mark eq null) || (mark eq weakref.get()))
       assert(Version.isValid(version))
 
-      def expectedValueOrVersionDiff(
-        value: A,
-        isGlobalVersionCas: Boolean,
-      ): Long = {
-        if (isGlobalVersionCas) {
-          // this is a global version-CAS, and it failed,
-          // so we return the actual current version:
-          val globalVersion = value.asInstanceOf[Long]
-          assert(Version.isValid(globalVersion))
-          globalVersion
-        } else {
-          // this is an ordinary CAS, and it failed,
-          // so we return the error code (we return
-          // this even if failed due to an unexpected
-          // version of the ref, since returning the
-          // version is specifically for the global
-          // version CAS):
-          EmcasStatus.FailedVal
-        }
-      }
-
-      val isGlobalVersionCas = (wordDesc.address eq this.global.commitTs)
       if (!equ(value, wordDesc.ov)) {
         // Expected value is different:
-        expectedValueOrVersionDiff(value, isGlobalVersionCas)
-      } else if ((!isGlobalVersionCas) && (version != wordDesc.oldVersion)) {
-        // NB: We only check the expected
-        // version, if this is not a global
-        // version CAS (the version's version
-        // is arbitrary/unused).
+        EmcasStatus.FailedVal
+      } else if (version != wordDesc.oldVersion) {
         // The expected value is the same,
         // but the expected version isn't:
-        expectedValueOrVersionDiff(value, isGlobalVersionCas)
+        EmcasStatus.FailedVal
       } else if (desc.getStatus() != EmcasStatus.Active) {
         // we have been finalized (by a helping thread), no reason to continue
         EmcasStatus.Break
@@ -554,12 +536,24 @@ private object Emcas extends MCAS { self => // TODO: make this a class
       }
     }
 
+    assert(!desc.hasVersionCas) // just to be sure
     val r = go(desc.wordIterator())
     if (r == EmcasStatus.Break) {
       // someone else finalized the descriptor, we must read its status:
       desc.getStatus()
     } else {
       assert(r != EmcasStatus.Active)
+      if (r == EmcasStatus.Successful) {
+        val ourTs = retrieveFreshTs()
+        val wit = desc.cmpxchgCommitVer(ourTs)
+        if (wit != Version.None) {
+          // someone else already did it
+          assert(wit >= desc.newVersion)
+        } else {
+          // ok, we did it
+          assert(ourTs >= desc.newVersion)
+        }
+      }
       val witness: Long = desc.cmpxchgStatus(EmcasStatus.Active, r)
       if (witness == EmcasStatus.Active) {
         // we finalized the descriptor
@@ -569,6 +563,28 @@ private object Emcas extends MCAS { self => // TODO: make this a class
       } else {
         // someone else already finalized the descriptor, we return its status:
         witness
+      }
+    }
+  }
+
+  private[this] final def retrieveFreshTs(): Long = {
+    val ts1 = this.global.commitTs.get()
+    val ts2 = this.global.commitTs.get()
+    if (ts1 != ts2) {
+      // we've observed someone else changing the version:
+      assert(ts2 > ts1)
+      ts2
+    } else {
+      // we try to increment it:
+      val candidate = ts1 + 1L
+      val ctsWitness = this.global.commitTs.compareAndExchange(ts1, candidate)
+      if (ctsWitness == ts1) {
+        // ok, successful CAS:
+        candidate
+      } else {
+        // failed CAS, but this means that someone else incremented it:
+        assert(ctsWitness > ts1)
+        ctsWitness
       }
     }
   }
@@ -587,7 +603,7 @@ private object Emcas extends MCAS { self => // TODO: make this a class
     if (desc.nonEmpty) {
       val fullDesc = EmcasDescriptor.prepare(desc)
       val res = Emcas.MCAS(desc = fullDesc, ctx = ctx)
-      assert((res == EmcasStatus.Successful) || (res == EmcasStatus.FailedVal) || Version.isValid(res))
+      assert((res == EmcasStatus.Successful) || (res == EmcasStatus.FailedVal))
       res
     } else {
       EmcasStatus.Successful
