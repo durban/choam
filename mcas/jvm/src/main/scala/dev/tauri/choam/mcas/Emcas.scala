@@ -544,6 +544,8 @@ private object Emcas extends MCAS { self => // TODO: make this a class
     } else {
       assert(r != EmcasStatus.Active)
       if (r == EmcasStatus.Successful) {
+        // successfully installed all descriptors (~ACQUIRE)
+        // we'll need a new commit-ts:
         val ourTs = retrieveFreshTs()
         val wit = desc.cmpxchgCommitVer(ourTs)
         if (wit != Version.None) {
