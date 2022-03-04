@@ -39,12 +39,28 @@ abstract class EmcasSpecF[F[_]] extends BaseSpecA {
 
   protected def testF(name: String)(body: Async[F] => F[Any])(implicit loc: munit.Location): Unit
 
+  private[this] def sub(s: String): String =
+    s.substring(1)
+
   testF("EMCAS sharing commit-ts (disjoint)") { implicit F =>
     for {
-      r1 <- F.delay(MemoryLocation.unsafe("a"))
-      r2 <- F.delay(MemoryLocation.unsafe("b"))
-      r3 <- F.delay(MemoryLocation.unsafe("c"))
-      r4 <- F.delay(MemoryLocation.unsafe("d"))
+      r1 <- F.delay(MemoryLocation.unsafe("-a"))
+      r2 <- F.delay(MemoryLocation.unsafe("-b"))
+      r3 <- F.delay(MemoryLocation.unsafe("-c"))
+      r4 <- F.delay(MemoryLocation.unsafe("-d"))
+      // initialize them (a, b, c, d):
+      _ <- F.delay {
+        val ok = Emcas
+          .currentContext()
+          .builder()
+          .updateRef(r1, sub)
+          .updateRef(r2, sub)
+          .updateRef(r3, sub)
+          .updateRef(r4, sub)
+          .tryPerformOk()
+        assert(ok)
+      }
+      // 2 racing disjoint updates:
       txn1 = F.delay {
         val ok = Emcas
           .currentContext()
@@ -88,9 +104,21 @@ abstract class EmcasSpecF[F[_]] extends BaseSpecA {
 
   testF("EMCAS sharing commit-ts (real conflict)") { implicit F =>
     for {
-      r1 <- F.delay(MemoryLocation.unsafe("a"))
-      r2 <- F.delay(MemoryLocation.unsafe("b"))
-      r3 <- F.delay(MemoryLocation.unsafe("c"))
+      r1 <- F.delay(MemoryLocation.unsafe("-a"))
+      r2 <- F.delay(MemoryLocation.unsafe("-b"))
+      r3 <- F.delay(MemoryLocation.unsafe("-c"))
+      // initialize them (a, b, c):
+      _ <- F.delay {
+        val ok = Emcas
+          .currentContext()
+          .builder()
+          .updateRef(r1, sub)
+          .updateRef(r2, sub)
+          .updateRef(r3, sub)
+          .tryPerformOk()
+        assert(ok)
+      }
+      // 2 racing conflicting updates:
       txn1 = F.delay {
         Emcas
           .currentContext()
