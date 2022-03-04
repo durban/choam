@@ -22,10 +22,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 private final class EmcasDescriptor private (
   private val half: HalfEMCASDescriptor,
-  final val newVersion: Long,
 ) extends EmcasDescriptorBase { self =>
-
-  require(Version.isValid(newVersion))
 
   // TODO: do not store `commitVer` and `status` separately
   private[this] val commitVer: AtomicLong =
@@ -70,15 +67,20 @@ private final class EmcasDescriptor private (
     this.half.hasVersionCas
   }
 
+  /** Only for informational purposes, not actually used */
+  private[mcas] final def expectedNewVersion: Long = {
+    this.half.newVersion
+  }
+
   final override def toString: String = {
-    s"EMCASDescriptor(${half}, newVersion = ${newVersion})"
+    s"EMCASDescriptor(${half})"
   }
 }
 
 private object EmcasDescriptor {
 
   def prepare(half: HalfEMCASDescriptor): EmcasDescriptor = {
-    new EmcasDescriptor(half, newVersion = half.newVersion)
+    new EmcasDescriptor(half)
   }
 
   private final class Iterator(words: Array[WordDescriptor[_]])

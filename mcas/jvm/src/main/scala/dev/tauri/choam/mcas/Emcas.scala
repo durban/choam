@@ -163,6 +163,9 @@ private object Emcas extends MCAS { self => // TODO: make this a class
    *   content = descriptor with parent status `EmcasStatus.Active`
    *   version = (don't care)
    *   Meaning: the logical version is the OLD version in the desc
+   *            (although, we never use the old version in this case,
+   *            instead we always help the active op; this is
+   *            important to allow version sharing)
    *
    *   content = descriptor with parent status `EmcasStatus.Successful`
    *   version = (don't care)
@@ -550,10 +553,10 @@ private object Emcas extends MCAS { self => // TODO: make this a class
         val wit = desc.cmpxchgCommitVer(ourTs)
         if (wit != Version.None) {
           // someone else already did it
-          assert(wit >= desc.newVersion)
+          assert(wit >= desc.expectedNewVersion)
         } else {
           // ok, we did it
-          assert(ourTs >= desc.newVersion)
+          assert(ourTs >= desc.expectedNewVersion)
         }
       }
       val witness: Long = desc.cmpxchgStatus(EmcasStatus.Active, r)
