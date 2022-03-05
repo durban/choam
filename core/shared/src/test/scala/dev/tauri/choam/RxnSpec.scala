@@ -929,6 +929,31 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  // This tests an implementation detail,
+  // because we depend on this implementation
+  // detail in some of our tests:
+  test("unsafe.delay(throw)") {
+    final class MyException extends Exception
+    val exc = new MyException
+    def attemptRun[A](axn: Axn[A]): F[Either[Throwable, A]] = {
+      rF.run(axn, null: Any).attempt
+    }
+    for {
+      _ <- assertResultF(
+        attemptRun[Int](Rxn.unsafe.delay { _ => 42 }),
+        Right(42),
+      )
+      _ <- assertResultF(
+        attemptRun[Int](Rxn.unsafe.delay { _ => throw exc }),
+        Left(exc),
+      )
+      _ <- assertResultF(
+        attemptRun[Int](Rxn.unsafe.delay[Any, Int] { _ => throw exc } >>> Rxn.unsafe.retry),
+        Left(exc),
+      )
+    } yield ()
+  }
+
   test("Autoboxing") {
     // On the JVM integers between (typically) -128 and
     // 127 are cached. Due to autoboxing, other integers
