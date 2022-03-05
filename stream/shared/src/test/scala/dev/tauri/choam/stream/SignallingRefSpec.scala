@@ -23,9 +23,9 @@ import fs2.Stream
 
 import async.AsyncReactiveSpec
 
-final class SignallingRefSpec_ThreadConfinedMCAS_TickedIO
+final class SignallingRefSpec_ThreadConfinedMcas_TickedIO
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with SignallingRefSpec[IO]
 
 trait SignallingRefSpec[F[_]]

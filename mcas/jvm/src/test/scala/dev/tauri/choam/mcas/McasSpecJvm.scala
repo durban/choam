@@ -18,19 +18,19 @@
 package dev.tauri.choam
 package mcas
 
-final class KCASSpecJvmEMCAS
-  extends KCASSpecJvm
+final class McasSpecJvmEMCAS
+  extends McasSpecJvm
   with SpecEmcas
 
-final class KCASSpecJvmSpinLockMCAS
-  extends KCASSpecJvm
+final class McasSpecJvmSpinLockMCAS
+  extends McasSpecJvm
   with SpecSpinLockMCAS
 
-final class KCASSpecJvmThreadConfinedMCAS
-  extends KCASSpecJvm
-  with SpecThreadConfinedMCAS
+final class McasSpecJvmThreadConfinedMCAS
+  extends McasSpecJvm
+  with SpecThreadConfinedMcas
 
-abstract class KCASSpecJvm extends KCASSpec { this: McasImplSpec =>
+abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
 
   test("readIntoLog should work (version conflict)") {
     val ctx = mcasImpl.currentContext()

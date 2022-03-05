@@ -20,25 +20,25 @@ package data
 
 import cats.effect.IO
 
-final class QueueMsSpec_ThreadConfinedMCAS_IO
+final class QueueMsSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with QueueMsSpec[IO]
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
 
-final class QueueWithRemoveSpec_ThreadConfinedMCAS_IO
+final class QueueWithRemoveSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with QueueWithRemoveSpec[IO]
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
 
-final class QueueWithSizeSpec_ThreadConfinedMCAS_IO
+final class QueueWithSizeSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with QueueWithSizeSpec[IO]
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
 
-final class QueueGcHostileSpec_ThreadConfinedMCAS_IO
+final class QueueGcHostileSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with QueueGcHostileSpec[IO]
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
 
 trait QueueWithSizeSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 

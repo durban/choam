@@ -21,9 +21,9 @@ import cats.effect.SyncIO
 
 import bobcats.unsafe.SecureRandom
 
-final class RandomSpecJs_ThreadConfinedMCAS_SyncIO
+final class RandomSpecJs_ThreadConfinedMcas_SyncIO
   extends BaseSpecSyncIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with RandomSpecJs[SyncIO]
 
 trait RandomSpecJs[F[_]] extends RandomSpec[F] { this: McasImplSpec =>

@@ -23,9 +23,9 @@ import scala.collection.immutable.{ Map => ScalaMap }
 import cats.kernel.Hash
 import cats.effect.IO
 
-final class RefSpec_Map_Simple_ThreadConfinedMCAS_IO
+final class RefSpec_Map_Simple_ThreadConfinedMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with RefSpec_Map_Simple[IO]
 
 trait RefSpec_Map_Simple[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>

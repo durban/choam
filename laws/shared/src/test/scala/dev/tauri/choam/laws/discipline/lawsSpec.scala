@@ -33,9 +33,9 @@ import munit.DisciplineSuite
 
 import mcas.Mcas
 
-final class LawsSpecThreadConfinedMCAS
+final class LawsSpecThreadConfinedMcas
   extends LawsSpec
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
 
 trait LawsSpec
   extends DisciplineSuite

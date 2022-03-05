@@ -29,9 +29,9 @@ import cats.effect.std.{ UUIDGen, Random }
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.effect.PropF
 
-final class RandomSpec_ThreadConfinedMCAS_SyncIO
+final class RandomSpec_ThreadConfinedMcas_SyncIO
   extends BaseSpecSyncIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with RandomSpec[SyncIO]
 
 trait RandomSpec[F[_]]

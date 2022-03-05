@@ -26,9 +26,9 @@ import cats.effect.std.{ Queue => CatsQueue }
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
-final class DroppingQueueSpec_ThreadConfinedMCAS
+final class DroppingQueueSpec_ThreadConfinedMcas
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with DroppingQueueSpec[IO]
 
 trait DroppingQueueSpec[F[_]]

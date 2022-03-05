@@ -20,14 +20,14 @@ package data
 
 import cats.effect.IO
 
-final class StackSpec_Treiber_ThreadConfinedMCAS_IO
+final class StackSpec_Treiber_ThreadConfinedMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with StackSpecTreiber[IO]
 
-final class StackSpec_Elimination_ThreadConfinedMCAS_IO
+final class StackSpec_Elimination_ThreadConfinedMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with StackSpecElimination[IO]
 
 trait StackSpecTreiber[F[_]] extends StackSpec[F] { this: McasImplSpec =>

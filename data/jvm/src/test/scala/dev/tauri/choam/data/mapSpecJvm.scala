@@ -41,9 +41,9 @@ final class MapSpec_Ttrie_Emcas_SyncIO
   with SpecEmcas
   with MapSpecTtrie[SyncIO]
 
-final class MapSpec_Ttrie_ThreadConfinedMCAS_SyncIO
+final class MapSpec_Ttrie_ThreadConfinedMcas_SyncIO
   extends BaseSpecSyncIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with MapSpecTtrie[SyncIO]
 
 trait MapSpecTtrie[F[_]] extends MapSpec[F] { this: McasImplSpec =>

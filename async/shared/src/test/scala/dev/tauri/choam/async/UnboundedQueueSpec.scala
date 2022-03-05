@@ -20,14 +20,14 @@ package async
 
 import cats.effect.IO
 
-final class UnboundedQueueSpec_Simple_ThreadConfinedMCAS_IO
+final class UnboundedQueueSpec_Simple_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with UnboundedQueueImplSimple[IO]
 
-final class UnboundedQueueSpec_WithSize_ThreadConfinedMCAS_IO
+final class UnboundedQueueSpec_WithSize_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with UnboundedQueueImplWithSize[IO]
 
 trait UnboundedQueueImplSimple[F[_]] extends UnboundedQueueSpec[F] { this: McasImplSpec with TestContextSpec[F] =>

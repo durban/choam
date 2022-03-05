@@ -23,17 +23,17 @@ trait McasImplSpec {
     false
 }
 
-trait SpecThreadConfinedMCAS extends McasImplSpec {
+trait SpecThreadConfinedMcas extends McasImplSpec {
   final override def mcasImpl: mcas.Mcas =
     mcas.Mcas.ThreadConfinedMCAS
 }
 
-trait SpecNullKCAS extends McasImplSpec {
+trait SpecNullMcas extends McasImplSpec {
   final override def mcasImpl: mcas.Mcas =
     mcas.Mcas.NullMcas
 }
 
-trait SpecNoKCAS extends McasImplSpec {
+trait SpecNoMcas extends McasImplSpec {
   final override def mcasImpl: Nothing =
     sys.error("No MCAS here")
 }

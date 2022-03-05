@@ -30,7 +30,7 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
   new Outcome(id = Array("true, false, x"), expect = ACCEPTABLE_INTERESTING, desc = "writer1 succeeded"),
   new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE_INTERESTING, desc = "writer2 succeeded"),
 ))
-class KCASTestVer1 extends StressTestBase {
+class McasTestVer1 extends StressTestBase {
 
   private[this] val refs: Array[MemoryLocation[String]] = {
     Array.fill(7)(MemoryLocation.unsafe("ov"))

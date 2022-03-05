@@ -22,14 +22,14 @@ import scala.util.Try
 
 import cats.effect.IO
 
-final class BoundedQueueSpecLinked_ThreadConfinedMCAS_IO
+final class BoundedQueueSpecLinked_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with BoundedQueueSpecLinked[IO]
 
-final class BoundedQueueSpecArray_ThreadConfinedMCAS_IO
+final class BoundedQueueSpecArray_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with BoundedQueueSpecArray[IO]
 
 trait BoundedQueueSpecLinked[F[_]]

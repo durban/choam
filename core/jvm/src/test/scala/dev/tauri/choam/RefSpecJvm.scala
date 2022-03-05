@@ -40,9 +40,9 @@ final class RefSpecJvm_Real_Emcas_ZIO
   with SpecEmcas
   with RefSpecJvm_Real[zio.Task]
 
-final class RefSpecJvm_Real_ThreadConfinedMCAS_ZIO
+final class RefSpecJvm_Real_ThreadConfinedMcas_ZIO
   extends BaseSpecZIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with RefSpecJvm_Real[zio.Task]
 
 final class RefSpecJvm_Arr_Emcas_IO

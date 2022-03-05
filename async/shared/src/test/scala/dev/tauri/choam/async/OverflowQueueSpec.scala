@@ -26,14 +26,14 @@ import cats.effect.std.{ Queue => CatsQueue }
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
-final class OverflowQueueSpec_Strict_ThreadConfinedMCAS_IO
+final class OverflowQueueSpec_Strict_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with StrictOverflowQueueSpec[IO]
 
-final class OverflowQueueSpec_Lazy_ThreadConfinedMCAS_IO
+final class OverflowQueueSpec_Lazy_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with LazyOverflowQueueSpec[IO]
 
 trait StrictOverflowQueueSpec[F[_]]

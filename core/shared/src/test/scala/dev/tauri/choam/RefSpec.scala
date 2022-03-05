@@ -22,19 +22,19 @@ import scala.math.Ordering
 import cats.kernel.{ Order, Hash }
 import cats.effect.IO
 
-final class RefSpec_Real_ThreadConfinedMCAS_IO
+final class RefSpec_Real_ThreadConfinedMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with RefSpec_Real[IO]
 
-final class RefSpec_Arr_ThreadConfinedMCAS_IO
+final class RefSpec_Arr_ThreadConfinedMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with RefSpec_Arr[IO]
 
-final class RefSpec_Ref2_ThreadConfinedMCAS_IO
+final class RefSpec_Ref2_ThreadConfinedMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with RefSpec_Ref2[IO]
 
 trait RefSpec_Arr[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>

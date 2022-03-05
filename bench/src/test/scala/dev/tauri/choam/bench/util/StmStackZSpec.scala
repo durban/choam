@@ -19,7 +19,7 @@ package dev.tauri.choam
 package bench
 package util
 
-final class StmStackZSpec extends BaseSpecZIO with SpecNoKCAS {
+final class StmStackZSpec extends BaseSpecZIO with SpecNoMcas {
 
   test("StmStackZ should be a correct stack") {
     for {

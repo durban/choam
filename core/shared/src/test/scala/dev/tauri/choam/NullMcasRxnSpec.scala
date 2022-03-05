@@ -23,9 +23,9 @@ import cats.effect.std.Random
 final class NullMcasRxnSpecIO
   extends BaseSpecIO
   with NullMcasRxnSpec[IO]
-  with SpecNullKCAS
+  with SpecNullMcas
 
-trait NullMcasRxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: SpecNullKCAS =>
+trait NullMcasRxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: SpecNullMcas =>
 
   test("NullMcas must be able to run a create-only Rxn") {
     for {

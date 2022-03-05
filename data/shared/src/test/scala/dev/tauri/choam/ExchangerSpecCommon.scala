@@ -19,9 +19,9 @@ package dev.tauri.choam
 
 import cats.effect.IO
 
-final class ExchangerSpecCommon_ThreadConfinedMCAS_IO
+final class ExchangerSpecCommon_ThreadConfinedMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with ExchangerSpecCommon[IO]
 
 trait ExchangerSpecCommon[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>

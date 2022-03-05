@@ -25,32 +25,65 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 
 @JCStressTest
 @State
-@Description("k-CAS should be atomic")
+@Description("k-CAS should be atomic (with versions, after another op)")
 @Outcomes(Array(
   new Outcome(id = Array("true, false, x"), expect = ACCEPTABLE_INTERESTING, desc = "writer1 succeeded"),
-  new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE_INTERESTING, desc = "writer2 succeeded")
+  new Outcome(id = Array("false, true, y"), expect = ACCEPTABLE_INTERESTING, desc = "writer2 succeeded"),
 ))
-class KCASTest extends StressTestBase {
+class McasTestVer2 extends StressTestBase {
 
-  private[this] val refs: List[MemoryLocation[String]] =
-    List.fill(7)(MemoryLocation.unsafe("ov"))
+  private[this] val refs: Array[MemoryLocation[String]] = {
+    Array.fill(7)(MemoryLocation.unsafe("-"))
+  }
 
-  private def write(nv: String): Boolean = {
-    val ctx = impl.currentContext()
-    val d = refs.foldLeft(ctx.start()) { (d, ref) =>
-      ctx.addCasFromInitial(d, ref, "ov", nv)
+  this.init()
+
+  @tailrec
+  private[this] def init(): Unit = {
+    val s = this.writeInternal("-", "ov")
+    if (s != McasStatus.Successful) {
+      if (s == McasStatus.FailedVal) {
+        throw new AssertionError
+      } else  {
+        // failed due to commit-ts changing, retry:
+        init()
+      }
     }
-    ctx.tryPerformInternal(d) == McasStatus.Successful
+  }
+
+  private[this] def write(ov: String, nv: String): Boolean = {
+    writeInternal(ov, nv) == McasStatus.Successful
+  }
+
+  private[this] def writeInternal(ov: String, nv: String): Long = {
+    val ctx = impl.currentContext()
+    var d = ctx.start()
+    var idx = 0
+    while (idx < refs.length) {
+      val ref = refs(idx)
+      ctx.readMaybeFromLog(ref, d) match {
+        case Some((value, desc)) =>
+          if (value eq ov) {
+            d = desc.overwrite(desc.getOrElseNull(ref).withNv(nv))
+          } else {
+            return McasStatus.FailedVal // scalafix:ok
+          }
+        case None =>
+          write(ov, nv) // retry
+      }
+      idx += 1
+    }
+    ctx.tryPerform(d)
   }
 
   @Actor
   def writer1(r: ZZL_Result): Unit = {
-    r.r1 = write("x")
+    r.r1 = write("ov", "x")
   }
 
   @Actor
   def writer2(r: ZZL_Result): Unit = {
-    r.r2 = write("y")
+    r.r2 = write("ov", "y")
   }
 
   @Arbiter

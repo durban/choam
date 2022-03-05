@@ -29,7 +29,7 @@ final class StmStackCSpecIO
   extends BaseSpecIO
   with StmStackCSpec[IO]
 
-trait StmStackCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with SpecNoKCAS {
+trait StmStackCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with SpecNoMcas {
 
   test("StmStackC should be a correct stack") {
     for {

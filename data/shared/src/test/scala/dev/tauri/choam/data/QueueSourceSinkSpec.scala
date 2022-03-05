@@ -20,9 +20,9 @@ package data
 
 import cats.effect.IO
 
-final class QueueSourceSinkSpec_ThreadConfinedMCAS_IO
+final class QueueSourceSinkSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with QueueSourceSinkSpec[IO]
 
 trait QueueSourceSinkSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>

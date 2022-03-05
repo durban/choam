@@ -26,14 +26,14 @@ import cats.effect.std.{ Queue => CatsQueue }
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
-final class RingBufferSpec_Strict_ThreadConfinedMCAS
+final class RingBufferSpec_Strict_ThreadConfinedMcas
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with StrictRingBufferSpec[IO]
 
-final class RingBufferSpec_Lazy_ThreadConfinedMCAS
+final class RingBufferSpec_Lazy_ThreadConfinedMcas
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with LazyRingBufferSpec[IO]
 
 trait StrictRingBufferSpec[F[_]] extends RingBufferSpec[F] { this: McasImplSpec =>

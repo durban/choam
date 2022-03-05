@@ -20,9 +20,9 @@ package async
 
 import cats.effect.IO
 
-final class AsyncFromSpec_ThreadConfinedMCAS_IO
+final class AsyncFromSpec_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with AsyncFromSpec[IO]
 
 trait AsyncFromSpec[F[_]]

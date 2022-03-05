@@ -27,9 +27,9 @@ import fs2.{ Stream, Chunk }
 import async.{ UnboundedQueue, BoundedQueue, Promise, AsyncReactiveSpec }
 import syntax._
 
-final class StreamSpec_ThreadConfinedMCAS_IO
+final class StreamSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with StreamSpec[IO]
 
 trait StreamSpec[F[_]]

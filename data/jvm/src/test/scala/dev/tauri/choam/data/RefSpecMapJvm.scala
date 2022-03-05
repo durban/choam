@@ -24,9 +24,9 @@ import cats.kernel.Hash
 import cats.Applicative
 import cats.effect.IO
 
-final class RefSpec_Map_Ttrie_ThreadConfinedMCAS_IO
+final class RefSpec_Map_Ttrie_ThreadConfinedMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with RefSpec_Map_Ttrie[IO]
 
 final class RefSpec_Map_Ttrie_Emcas_IO

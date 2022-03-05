@@ -24,9 +24,9 @@ import cats.implicits._
 import cats.effect.IO
 import cats.mtl.Local
 
-final class RxnSpec_ThreadConfinedMCAS_IO
+final class RxnSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with RxnSpec[IO]
 
 trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>

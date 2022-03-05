@@ -29,7 +29,7 @@ final class StmQueueCSpecIO
   extends BaseSpecIO
   with StmQueueCSpec[IO]
 
-trait StmQueueCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with SpecNoKCAS {
+trait StmQueueCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with SpecNoMcas {
 
   test("StmQueueC should be a correct queue") {
     for {

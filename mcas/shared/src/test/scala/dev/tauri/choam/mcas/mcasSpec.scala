@@ -18,18 +18,18 @@
 package dev.tauri.choam
 package mcas
 
-final class KCASSpecThreadConfinedMCAS
-  extends KCASSpec
-  with SpecThreadConfinedMCAS
+final class McasSpecThreadConfinedMcas
+  extends McasSpec
+  with SpecThreadConfinedMcas
 
-object KCASSpec {
+object McasSpec {
 
   final case class CASD[A](address: MemoryLocation[A], ov: A, nv: A)
 }
 
-abstract class KCASSpec extends BaseSpecA { this: McasImplSpec =>
+abstract class McasSpec extends BaseSpecA { this: McasImplSpec =>
 
-  import KCASSpec._
+  import McasSpec._
 
   private final def tryPerformBatch(ops: List[CASD[_]]): Boolean = {
     val ctx = mcasImpl.currentContext()

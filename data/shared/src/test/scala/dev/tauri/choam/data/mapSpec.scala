@@ -24,9 +24,9 @@ import cats.effect.SyncIO
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
-final class MapSpec_Simple_ThreadConfinedMCAS_SyncIO
+final class MapSpec_Simple_ThreadConfinedMcas_SyncIO
   extends BaseSpecSyncIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with MapSpecSimple[SyncIO]
 
 trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>

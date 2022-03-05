@@ -29,7 +29,7 @@ final class IOCancelSpec extends BaseSpecIO with IOCancelSpecBase[IO]
 // TODO: these tests deadlock on Scala.js, need other tests there
 sealed trait IOCancelSpecBase[F[_]]
   extends BaseSpecAsyncF[F]
-  with SpecThreadConfinedMCAS {
+  with SpecThreadConfinedMcas {
 
   import IOCancel.stoppable
 

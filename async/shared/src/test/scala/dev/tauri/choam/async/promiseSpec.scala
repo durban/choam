@@ -25,14 +25,14 @@ import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.Outcome
 
-final class PromiseSpec_ThreadConfinedMCAS_IO_Real
+final class PromiseSpec_ThreadConfinedMcas_IO_Real
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with PromiseSpec[IO]
 
-final class PromiseSpec_ThreadConfinedMCAS_IO_Ticked
+final class PromiseSpec_ThreadConfinedMcas_IO_Ticked
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with PromiseSpecTicked[IO]
 
 trait PromiseSpecTicked[F[_]]

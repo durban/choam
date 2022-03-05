@@ -29,7 +29,7 @@ final class CeQueueSpecIO
   extends BaseSpecIO
   with CeQueueSpec[IO]
 
-trait CeQueueSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with SpecNoKCAS {
+trait CeQueueSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with SpecNoMcas {
 
   test("CeQueue should be a correct queue") {
     for {

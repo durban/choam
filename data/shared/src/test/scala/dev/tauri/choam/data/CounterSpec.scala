@@ -20,9 +20,9 @@ package data
 
 import cats.effect.IO
 
-final class CounterSpecSimple_ThreadConfinedMCAS_IO
+final class CounterSpecSimple_ThreadConfinedMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMCAS
+  with SpecThreadConfinedMcas
   with CounterSpecSimple[IO]
 
 trait CounterSpecSimple[F[_]] extends CounterSpec[F] { this: McasImplSpec =>
