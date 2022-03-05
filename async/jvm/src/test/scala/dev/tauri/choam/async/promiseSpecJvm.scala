@@ -22,42 +22,42 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-final class PromiseSpecJvm_SpinLockMCAS_IO_Real
+final class PromiseSpecJvm_SpinLockMcas_IO_Real
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with PromiseSpecJvm[IO]
 
-final class PromiseSpec_SpinLockMCAS_IO_Ticked
+final class PromiseSpec_SpinLockMcas_IO_Ticked
   extends BaseSpecTickedIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with PromiseSpecTicked[IO]
 
-final class PromiseSpecJvm_SpinLockMCAS_ZIO_Real
+final class PromiseSpecJvm_SpinLockMcas_ZIO_Real
   extends BaseSpecZIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with PromiseSpecJvm[zio.Task]
 
-final class PromiseSpec_SpinLockMCAS_ZIO_Ticked
+final class PromiseSpec_SpinLockMcas_ZIO_Ticked
   extends BaseSpecTickedZIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with PromiseSpecTicked[zio.Task]
 
-final class PromiseSpecJvm_EMCAS_IO_Real
+final class PromiseSpecJvm_Emcas_IO_Real
   extends BaseSpecIO
   with SpecEmcas
   with PromiseSpecJvm[IO]
 
-final class PromiseSpec_EMCAS_IO_Ticked
+final class PromiseSpec_Emcas_IO_Ticked
   extends BaseSpecTickedIO
   with SpecEmcas
   with PromiseSpecTicked[IO]
 
-final class PromiseSpecJvm_EMCAS_ZIO_Real
+final class PromiseSpecJvm_Emcas_ZIO_Real
   extends BaseSpecZIO
   with SpecEmcas
   with PromiseSpecJvm[zio.Task]
 
-final class PromiseSpec_EMCAS_ZIO_Ticked
+final class PromiseSpec_Emcas_ZIO_Ticked
   extends BaseSpecTickedZIO
   with SpecEmcas
   with PromiseSpecTicked[zio.Task]

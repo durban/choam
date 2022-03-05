@@ -21,9 +21,9 @@ package data
 import cats.kernel.Hash
 import cats.effect.SyncIO
 
-final class MapSpec_Simple_SpinLockMCAS_SyncIO
+final class MapSpec_Simple_SpinLockMcas_SyncIO
   extends BaseSpecSyncIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with MapSpecSimple[SyncIO]
 
 final class MapSpec_Simple_Emcas_SyncIO
@@ -31,9 +31,9 @@ final class MapSpec_Simple_Emcas_SyncIO
   with SpecEmcas
   with MapSpecSimple[SyncIO]
 
-final class MapSpec_Ttrie_SpinLockMCAS_SyncIO
+final class MapSpec_Ttrie_SpinLockMcas_SyncIO
   extends BaseSpecSyncIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with MapSpecTtrie[SyncIO]
 
 final class MapSpec_Ttrie_Emcas_SyncIO

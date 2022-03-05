@@ -34,9 +34,9 @@ final class RefSpec_Map_Ttrie_Emcas_IO
   with SpecEmcas
   with RefSpec_Map_Ttrie[IO]
 
-final class RefSpec_Map_Ttrie_SpinLockMCAS_IO
+final class RefSpec_Map_Ttrie_SpinLockMcas_IO
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with RefSpec_Map_Ttrie[IO]
 
 final class RefSpec_Map_Simple_Emcas_IO
@@ -44,9 +44,9 @@ final class RefSpec_Map_Simple_Emcas_IO
   with SpecEmcas
   with RefSpec_Map_Simple[IO]
 
-final class RefSpec_Map_Simple_SpinLockMCAS_IO
+final class RefSpec_Map_Simple_SpinLockMcas_IO
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with RefSpec_Map_Simple[IO]
 
 trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>

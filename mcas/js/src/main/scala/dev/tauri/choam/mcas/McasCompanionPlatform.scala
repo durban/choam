@@ -20,7 +20,7 @@ package mcas
 
 private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
 
-  final override def DefaultMCAS: Mcas =
+  final override def DefaultMcas: Mcas =
     this.ThreadConfinedMCAS
 
   private[choam] final override def debugRead[A](loc: MemoryLocation[A]): A =

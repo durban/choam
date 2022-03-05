@@ -25,9 +25,9 @@ final class StackSpec_Treiber_Emcas_IO
   with SpecEmcas
   with StackSpecTreiberJvm[IO]
 
-final class StackSpec_Treiber_SpinLockMCAS_IO
+final class StackSpec_Treiber_SpinLockMcas_IO
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with StackSpecTreiberJvm[IO]
 
 final class StackSpec_Elimination_Emcas_IO
@@ -35,9 +35,9 @@ final class StackSpec_Elimination_Emcas_IO
   with SpecEmcas
   with StackSpecEliminationJvm[IO]
 
-final class StackSpec_Elimination_SpinLockMCAS_IO
+final class StackSpec_Elimination_SpinLockMcas_IO
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with StackSpecEliminationJvm[IO]
 
 trait StackSpecTreiberJvm[F[_]]

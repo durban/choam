@@ -23,6 +23,6 @@ final class LawsSpecEmcas
   extends LawsSpec
   with SpecEmcas
 
-final class LawsSpecSpinLockMCAS
+final class LawsSpecSpinLockMcas
   extends LawsSpec
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas

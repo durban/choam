@@ -39,7 +39,7 @@ object Reactive {
     inst
 
   private[choam] def defaultMcasImpl: Mcas =
-    Mcas.DefaultMCAS
+    Mcas.DefaultMcas
 
   implicit def reactiveForSync[F[_]](implicit F: Sync[F]): Reactive[F] =
     new SyncReactive[F](defaultMcasImpl)(F)

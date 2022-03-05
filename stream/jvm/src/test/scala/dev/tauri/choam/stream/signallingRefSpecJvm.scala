@@ -20,12 +20,12 @@ package stream
 
 import cats.effect.IO
 
-final class SignallingRefSpec_EMCAS_TickedIO
+final class SignallingRefSpec_Emcas_TickedIO
   extends BaseSpecTickedIO
   with SpecEmcas
   with SignallingRefSpec[IO]
 
-final class SignallingRefSpec_SpinLockMCAS_TickedIO
+final class SignallingRefSpec_SpinLockMcas_TickedIO
   extends BaseSpecTickedIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with SignallingRefSpec[IO]

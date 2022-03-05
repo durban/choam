@@ -20,14 +20,14 @@ package dev.tauri.choam
 import cats.effect.IO
 import dev.tauri.choam.mcas.{ MemoryLocation, Version }
 
-final class RefSpecJvm_Real_SpinLockMCAS_IO
+final class RefSpecJvm_Real_SpinLockMcas_IO
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with RefSpecJvm_Real[IO]
 
-final class RefSpecJvm_Real_SpinLockMCAS_ZIO
+final class RefSpecJvm_Real_SpinLockMcas_ZIO
   extends BaseSpecZIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with RefSpecJvm_Real[zio.Task]
 
 final class RefSpecJvm_Real_Emcas_IO

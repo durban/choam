@@ -25,7 +25,7 @@ final class DroppingQueueSpec_Emcas
   with SpecEmcas
   with DroppingQueueSpec[IO]
 
-final class DroppingQueueSpec_SpinLockMCAS
+final class DroppingQueueSpec_SpinLockMcas
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with DroppingQueueSpec[IO]

@@ -20,12 +20,12 @@ package stream
 
 import cats.effect.IO
 
-final class StreamSpec_EMCAS_IO
+final class StreamSpec_Emcas_IO
   extends BaseSpecIO
   with SpecEmcas
   with StreamSpec[IO]
 
-final class StreamSpec_SpinLockMCAS_IO
+final class StreamSpec_SpinLockMcas_IO
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with StreamSpec[IO]

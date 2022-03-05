@@ -32,9 +32,9 @@ final class RxnImplSpec_FlakyEMCAS_IO
   with SpecFlakyEMCAS
   with RxnImplSpec[IO]
 
-final class RxnImplSpec_SpinLockMCAS_IO
+final class RxnImplSpec_SpinLockMcas_IO
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with RxnImplSpec[IO]
 
 final class RxnImplSpec_Emcas_ZIO
@@ -47,9 +47,9 @@ final class RxnImplSpec_FlakyEMCAS_ZIO
   with SpecFlakyEMCAS
   with RxnImplSpec[zio.Task]
 
-final class RxnImplSpec_SpinLockMCAS_ZIO
+final class RxnImplSpec_SpinLockMcas_ZIO
   extends BaseSpecZIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with RxnImplSpec[zio.Task]
 
 /** Specific implementation tests, which should also pass with `SpecFlakyEMCAS` */

@@ -24,14 +24,14 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-final class RxnSpecJvm_SpinLockMCAS_IO
+final class RxnSpecJvm_SpinLockMcas_IO
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with RxnSpecJvm[IO]
 
-final class RxnSpecJvm_SpinLockMCAS_ZIO
+final class RxnSpecJvm_SpinLockMcas_ZIO
   extends BaseSpecZIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with RxnSpecJvm[zio.Task]
 
 final class RxnSpecJvm_Emcas_IO

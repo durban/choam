@@ -25,20 +25,20 @@ private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanion
    *
    * Guaranteed to exist (and be thread-safe) on every platform.
    */
-  final override def DefaultMCAS: Mcas =
+  final override def DefaultMcas: Mcas =
     this.Emcas
 
   final def Emcas: Mcas =
     mcas.Emcas
 
-  final def SpinLockMCAS: Mcas =
-    mcas.SpinLockMCAS
+  final def SpinLockMcas: Mcas =
+    mcas.SpinLockMcas
 
   /** For testing */
   private[choam] final override def debugRead[A](loc: MemoryLocation[A]): A = {
     loc.unsafeGetVolatile() match {
       case null =>
-        SpinLockMCAS.currentContext().readDirect(loc)
+        SpinLockMcas.currentContext().readDirect(loc)
       case _: WordDescriptor[_] =>
         Emcas.currentContext().readDirect(loc)
       case a =>
@@ -49,7 +49,7 @@ private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanion
   /** Benchmark infra */
   private[choam] final override def unsafeLookup(fqn: String): Mcas = fqn match {
     case fqns.SpinLockMCAS =>
-      mcas.SpinLockMCAS
+      mcas.SpinLockMcas
     case fqns.Emcas =>
       mcas.Emcas
     case x =>
@@ -59,7 +59,7 @@ private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanion
   /** Benchmark infra */
   private[choam] object fqns {
     final val SpinLockMCAS =
-      "dev.tauri.choam.mcas.SpinLockMCAS"
+      "dev.tauri.choam.mcas.SpinLockMcas"
     final val Emcas =
       "dev.tauri.choam.mcas.Emcas"
   }

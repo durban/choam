@@ -25,15 +25,15 @@ import scala.jdk.CollectionConverters._
 
 import cats.effect.IO
 
-final class QueueMsSpecJvm_SpinLockMCAS_ZIO
+final class QueueMsSpecJvm_SpinLockMcas_ZIO
   extends BaseSpecZIO
   with QueueMsSpecJvm[zio.Task]
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
 
-final class QueueMsSpecJvm_SpinLockMCAS_IO
+final class QueueMsSpecJvm_SpinLockMcas_IO
   extends BaseSpecIO
   with QueueMsSpecJvm[IO]
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
 
 final class QueueMsSpecJvm_Emcas_ZIO
   extends BaseSpecZIO
@@ -45,15 +45,15 @@ final class QueueMsSpecJvm_Emcas_IO
   with QueueMsSpecJvm[IO]
   with SpecEmcas
 
-final class QueueWithRemoveSpecJvm_SpinLockMCAS_ZIO
+final class QueueWithRemoveSpecJvm_SpinLockMcas_ZIO
   extends BaseSpecZIO
   with QueueWithRemoveSpecJvm[zio.Task]
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
 
-final class QueueWithRemoveSpecJvm_SpinLockMCAS_IO
+final class QueueWithRemoveSpecJvm_SpinLockMcas_IO
   extends BaseSpecIO
   with QueueWithRemoveSpecJvm[IO]
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
 
 final class QueueWithRemoveSpecJvm_Emcas_ZIO
   extends BaseSpecZIO

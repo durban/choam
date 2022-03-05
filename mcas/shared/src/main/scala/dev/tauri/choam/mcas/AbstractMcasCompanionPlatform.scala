@@ -20,7 +20,7 @@ package mcas
 
 private[mcas] abstract class AbstractMcasCompanionPlatform {
 
-  def DefaultMCAS: Mcas
+  def DefaultMcas: Mcas
 
   final def ThreadConfinedMCAS: Mcas =
     mcas.ThreadConfinedMCAS

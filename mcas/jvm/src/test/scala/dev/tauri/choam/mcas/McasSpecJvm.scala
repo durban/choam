@@ -18,15 +18,15 @@
 package dev.tauri.choam
 package mcas
 
-final class McasSpecJvmEMCAS
+final class McasSpecJvmEmcas
   extends McasSpecJvm
   with SpecEmcas
 
-final class McasSpecJvmSpinLockMCAS
+final class McasSpecJvmSpinLockMcas
   extends McasSpecJvm
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
 
-final class McasSpecJvmThreadConfinedMCAS
+final class McasSpecJvmThreadConfinedMcas
   extends McasSpecJvm
   with SpecThreadConfinedMcas
 

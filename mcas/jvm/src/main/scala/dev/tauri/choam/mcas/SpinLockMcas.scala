@@ -31,7 +31,7 @@ import java.util.concurrent.ThreadLocalRandom
  *
  * Implemented as a baseline for benchmarking and correctness tests.
  */
-private object SpinLockMCAS extends Mcas { self =>
+private object SpinLockMcas extends Mcas { self =>
 
   final override def currentContext(): Mcas.ThreadContext =
     dummyContext

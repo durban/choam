@@ -177,7 +177,7 @@ abstract class McasSpec extends BaseSpecA { this: McasImplSpec =>
   }
 
   test("Platform default must be thread-safe") {
-    assert(Mcas.DefaultMCAS.isThreadSafe)
+    assert(Mcas.DefaultMcas.isThreadSafe)
   }
 
   test("A successful k-CAS should increase the version of the refs") {

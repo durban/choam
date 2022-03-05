@@ -20,22 +20,22 @@ package async
 
 import cats.effect.IO
 
-final class AsyncStackSpec_EMCAS_IO
+final class AsyncStackSpec_Emcas_IO
   extends BaseSpecTickedIO
   with SpecEmcas
   with AsyncStackSpec[IO]
 
-final class AsyncStackSpec_EMCAS_ZIO
+final class AsyncStackSpec_Emcas_ZIO
   extends BaseSpecTickedZIO
   with SpecEmcas
   with AsyncStackSpec[zio.Task]
 
-final class AsyncStackSpec_SpinLockMCAS_IO
+final class AsyncStackSpec_SpinLockMcas_IO
   extends BaseSpecTickedIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with AsyncStackSpec[IO]
 
-final class AsyncStackSpec_SpinLockMCAS_ZIO
+final class AsyncStackSpec_SpinLockMcas_ZIO
   extends BaseSpecTickedZIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with AsyncStackSpec[zio.Task]

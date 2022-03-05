@@ -30,12 +30,12 @@ final class RingBufferSpec_Lazy_Emcas
   with SpecEmcas
   with LazyRingBufferSpec[IO]
 
-final class RingBufferSpec_Strict_SpinLockMCAS
+final class RingBufferSpec_Strict_SpinLockMcas
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with StrictRingBufferSpec[IO]
 
-final class RingBufferSpec_Lazy_SpinLockMCAS
+final class RingBufferSpec_Lazy_SpinLockMcas
   extends BaseSpecIO
-  with SpecSpinLockMCAS
+  with SpecSpinLockMcas
   with LazyRingBufferSpec[IO]
