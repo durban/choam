@@ -357,7 +357,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         ) >> F.pure(block.head >>> 8)
       }
     }
-    val t = for {
+    for {
       _ <- this.assumeF(this.mcasImpl.isThreadSafe)
       q <- newQueueFromList[Int](Nil)
       indices = (0 until TaskSize).toList
@@ -366,6 +366,5 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       }
       _ <- assertEqualsF(results.sorted, indices)
     } yield ()
-    (t *> F.cede).replicateA(4)
   }
 }
