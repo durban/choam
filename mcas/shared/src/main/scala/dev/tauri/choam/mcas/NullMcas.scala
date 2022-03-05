@@ -30,7 +30,7 @@ import java.util.concurrent.ThreadLocalRandom
  * when it is necessary to immediately execute a `Rxn` which
  * is known not to actually do any k-CASes.
  */
-object NullMcas extends MCAS {
+object NullMcas extends Mcas {
 
   private[this] val ctx =
     new NullContext
@@ -38,13 +38,13 @@ object NullMcas extends MCAS {
   private[this] val globalVersion =
     MemoryLocation.unsafeUnpadded[Long](Version.Start)
 
-  final override def currentContext(): MCAS.ThreadContext =
+  final override def currentContext(): Mcas.ThreadContext =
     this.ctx
 
   private[choam] final override def isThreadSafe: Boolean =
     true
 
-  private[this] final class NullContext extends MCAS.ThreadContext {
+  private[this] final class NullContext extends Mcas.ThreadContext {
 
     final override def start(): HalfEMCASDescriptor =
       HalfEMCASDescriptor.empty(globalVersion, this)

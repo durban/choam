@@ -87,7 +87,7 @@ private object Exchanger extends ExchangerCompanionPlatform {
 
   // TODO: these are JVM-only:
 
-  import mcas.{ MCAS, HalfEMCASDescriptor }
+  import mcas.{ Mcas, HalfEMCASDescriptor }
 
   private[choam] val paramsKey =
     new Exchanger.Key
@@ -128,7 +128,7 @@ private object Exchanger extends ExchangerCompanionPlatform {
 
   private[choam] object Msg {
 
-    def fromFinishedEx(fx: FinishedEx[_], newStats: Rxn.ExStatMap, ctx: MCAS.ThreadContext): Msg = {
+    def fromFinishedEx(fx: FinishedEx[_], newStats: Rxn.ExStatMap, ctx: Mcas.ThreadContext): Msg = {
       Msg(
         value = fx.result,
         contK = fx.contK,

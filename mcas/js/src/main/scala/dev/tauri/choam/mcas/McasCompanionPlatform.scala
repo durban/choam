@@ -18,22 +18,14 @@
 package dev.tauri.choam
 package mcas
 
-private[mcas] abstract class AbstractMCASPlatform {
+private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
 
-  def DefaultMCAS: MCAS
+  final override def DefaultMCAS: Mcas =
+    this.ThreadConfinedMCAS
 
-  final def ThreadConfinedMCAS: MCAS =
-    mcas.ThreadConfinedMCAS
+  private[choam] final override def debugRead[A](loc: MemoryLocation[A]): A =
+    loc.unsafeGetVolatile()
 
-  final def NullMcas: MCAS =
-    mcas.NullMcas
-
-  /** For testing */
-  private[choam] def debugRead[A](loc: MemoryLocation[A]): A
-
-  /** Benchmark infra */
-  private[choam] def unsafeLookup(fqn: String): MCAS = fqn match {
-    case "dev.tauri.choam.mcas.ThreadConfinedMCAS" => this.ThreadConfinedMCAS
-    case x => throw new IllegalArgumentException(x)
-  }
+  private[choam] final override def unsafeLookup(fqn: String): Mcas =
+    super.unsafeLookup(fqn)
 }

@@ -21,17 +21,17 @@ package mcas
 import java.util.concurrent.ThreadLocalRandom
 
 /** Common interface for MCAS (i.e., k-CAS) implementations */
-abstract class MCAS {
+abstract class Mcas {
 
   /** Returns the context associated with the current thread */
-  def currentContext(): MCAS.ThreadContext
+  def currentContext(): Mcas.ThreadContext
 
   /** True iff `this` can be used to perform ops on arbitrary refs */
   private[choam] def isThreadSafe: Boolean
 
   /** Only for testing/benchmarking */
-  private[choam] def getRetryStats(): MCAS.RetryStats = {
-    MCAS.RetryStats(0L, 0L, 0L)
+  private[choam] def getRetryStats(): Mcas.RetryStats = {
+    Mcas.RetryStats(0L, 0L, 0L)
   }
 
   /** Only for testing/benchmarking */
@@ -45,7 +45,7 @@ abstract class MCAS {
   }
 }
 
-object MCAS extends MCASPlatform { self =>
+object Mcas extends McasCompanionPlatform { self =>
 
   trait ThreadContext {
 

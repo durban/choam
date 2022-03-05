@@ -39,7 +39,7 @@ private[choam] final class TreiberStack[A] private () extends Stack[A] {
   private[choam] def toList: Axn[List[A]] =
     head.get.map(_.toList)
 
-  private[choam] def unsafeToList(kcas: mcas.MCAS): List[A] = {
+  private[choam] def unsafeToList(kcas: mcas.Mcas): List[A] = {
     this.toList.unsafePerform((), kcas).toList
   }
 }

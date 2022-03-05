@@ -58,18 +58,18 @@ class RandomState {
 @State(Scope.Thread)
 class KCASImplState extends RandomState {
 
-  @Param(Array(mcas.MCAS.fqns.Emcas))
+  @Param(Array(mcas.Mcas.fqns.Emcas))
   private[choam] var kcasName: String = _
 
-  private[choam] var kcasImpl: mcas.MCAS = _
+  private[choam] var kcasImpl: mcas.Mcas = _
 
-  private[choam] var kcasCtx: mcas.MCAS.ThreadContext = _
+  private[choam] var kcasCtx: mcas.Mcas.ThreadContext = _
 
   private[choam] var reactive: Reactive[IO] = _
 
   @Setup
   def setupKCASImpl(): Unit = {
-    this.kcasImpl = mcas.MCAS.unsafeLookup(kcasName)
+    this.kcasImpl = mcas.Mcas.unsafeLookup(kcasName)
     this.kcasCtx = this.kcasImpl.currentContext()
     this.reactive = new AsyncReactive.AsyncReactiveImpl(this.kcasImpl)(IO.asyncForIO)
     java.lang.invoke.VarHandle.releaseFence()

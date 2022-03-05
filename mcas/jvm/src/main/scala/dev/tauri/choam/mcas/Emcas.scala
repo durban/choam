@@ -24,7 +24,7 @@ import java.lang.ref.{ Reference, WeakReference }
  * Efficient Multi-word Compare and Swap (EMCAS):
  * https://arxiv.org/pdf/2008.02527.pdf
  */
-private object Emcas extends MCAS { self => // TODO: make this a class
+private object Emcas extends Mcas { self => // TODO: make this a class
 
   /*
    * This implementation has a few important
@@ -620,7 +620,7 @@ private object Emcas extends MCAS { self => // TODO: make this a class
     }
   }
 
-  private[choam] final override def getRetryStats(): mcas.MCAS.RetryStats = {
+  private[choam] final override def getRetryStats(): Mcas.RetryStats = {
     this.global.getRetryStats()
   }
 

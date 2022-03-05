@@ -31,7 +31,7 @@ import cats.mtl.laws.discipline.LocalTests
 import org.scalacheck.Prop
 import munit.DisciplineSuite
 
-import mcas.MCAS
+import mcas.Mcas
 
 final class LawsSpecThreadConfinedMCAS
   extends LawsSpec
@@ -49,7 +49,7 @@ trait LawsSpec
     Ticker(tc)
 
   checkAll("Rxn", new RxnLawTests with TestInstances {
-    override def kcasImpl: MCAS = self.kcasImpl
+    override def kcasImpl: Mcas = self.kcasImpl
   }.rxn[String, Int, Float, Double, Boolean, Long])
 
   checkAll("Ref", RefLawTests(self).ref[String, Int, Float])

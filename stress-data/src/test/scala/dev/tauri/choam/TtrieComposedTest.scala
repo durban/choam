@@ -24,7 +24,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-import mcas.MCAS
+import mcas.Mcas
 import data.Map
 
 @JCStressTest
@@ -66,8 +66,8 @@ class TtrieComposedTest extends StressTestBase {
 
 object TtrieComposedTest {
 
-  private[this] final def initMcas: MCAS =
-    MCAS.Emcas
+  private[this] final def initMcas: Mcas =
+    Mcas.Emcas
 
   private final def newTtrie714Small(): Map[Int, String] = {
     val h = new Hash[Int] {

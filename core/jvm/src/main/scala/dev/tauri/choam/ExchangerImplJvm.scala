@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import java.util.concurrent.atomic.AtomicReferenceArray
 
-import mcas.MCAS
+import mcas.Mcas
 import internal.ObjStack
 import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx, Params }
 
@@ -53,7 +53,7 @@ private sealed trait ExchangerImplJvm[A, B]
   private[choam] final def tryExchange[C](
     msg: Msg,
     params: Params,
-    ctx: MCAS.ThreadContext,
+    ctx: Mcas.ThreadContext,
   ): Either[StatMap, Msg] = {
     // TODO: exchangerData grows forever
     val stats = msg.exchangerData.getOrElse(this.key, Statistics.zero).asInstanceOf[Int]
@@ -66,7 +66,7 @@ private sealed trait ExchangerImplJvm[A, B]
     }
   }
 
-  private[this] final def tryIdx[C](idx: Int, msg: Msg, stats: Statistics, params: Params, ctx: MCAS.ThreadContext): Either[Statistics, Msg] = {
+  private[this] final def tryIdx[C](idx: Int, msg: Msg, stats: Statistics, params: Params, ctx: Mcas.ThreadContext): Either[Statistics, Msg] = {
     debugLog(s"tryIdx(${idx}) - thread#${Thread.currentThread().getId()}")
     val incoming = this.incoming match {
       case null =>
@@ -144,7 +144,7 @@ private sealed trait ExchangerImplJvm[A, B]
     maybeResult: Option[NodeResult[C]],
     stats: Statistics,
     params: Params,
-    ctx: MCAS.ThreadContext,
+    ctx: Mcas.ThreadContext,
   ): Either[Statistics, Msg] = {
     val rres = maybeResult.orElse {
       self.spinWait(stats = stats, params = params, ctx = ctx)
@@ -188,7 +188,7 @@ private sealed trait ExchangerImplJvm[A, B]
     selfMsg: Msg,
     stats: Statistics,
     params: Params,
-    ctx: MCAS.ThreadContext,
+    ctx: Mcas.ThreadContext,
   ): Right[Statistics, Msg] = {
     val a: A = selfMsg.value.asInstanceOf[A]
     val b: B = other.msg.value.asInstanceOf[B]

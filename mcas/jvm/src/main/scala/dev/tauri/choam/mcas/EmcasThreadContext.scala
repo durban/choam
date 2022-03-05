@@ -26,7 +26,7 @@ private final class EmcasThreadContext(
   private[mcas] val tid: Long,
   val impl: Emcas.type
 ) extends EmcasThreadContextBase
-  with MCAS.ThreadContext {
+  with Mcas.ThreadContext {
 
   // NB: it is a `val`, not a `def`
   private[choam] final override val random: ThreadLocalRandom =
@@ -148,8 +148,8 @@ private final class EmcasThreadContext(
   }
 
   /** Only for testing/benchmarking */
-  private[choam] def getRetryStats(): MCAS.RetryStats = {
-    MCAS.RetryStats(
+  private[choam] def getRetryStats(): Mcas.RetryStats = {
+    Mcas.RetryStats(
       commits = this.getCommitsOpaque(),
       fullRetries = this.getFullRetriesOpaque(),
       mcasRetries = this.getMcasRetriesOpaque(),

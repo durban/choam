@@ -71,7 +71,7 @@ private final class GlobalContext(impl: Emcas.type) {
   }
 
   /** Only for testing/benchmarking */
-  private[choam] final def getRetryStats(): MCAS.RetryStats = {
+  private[choam] final def getRetryStats(): Mcas.RetryStats = {
     var commits = 0L
     var fullRetries = 0L
     var mcasRetries = 0L
@@ -84,7 +84,7 @@ private final class GlobalContext(impl: Emcas.type) {
       fullRetries += stats.fullRetries
       mcasRetries += stats.mcasRetries
     }
-    MCAS.RetryStats(
+    Mcas.RetryStats(
       commits = commits,
       fullRetries = fullRetries,
       mcasRetries = mcasRetries

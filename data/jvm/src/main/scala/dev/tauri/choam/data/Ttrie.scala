@@ -25,7 +25,7 @@ import scala.util.hashing.byteswap32
 import cats.kernel.Hash
 import cats.syntax.all._
 
-import mcas.MCAS
+import mcas.Mcas
 import Ttrie._
 
 /**
@@ -132,7 +132,7 @@ private final class Ttrie[K, V] private (
   }
 
   /** Only call if `ref` really contains `End`! */
-  private[this] final def unsafeDelRef(k: K, ref: TrieRef[V], ctx: MCAS.ThreadContext): Unit = {
+  private[this] final def unsafeDelRef(k: K, ref: TrieRef[V], ctx: Mcas.ThreadContext): Unit = {
     // just to be sure:
     assert(ctx.readDirect(ref.loc) eq End)
     // NB: `TrieMap#remove(K, V)` checks V with

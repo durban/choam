@@ -32,7 +32,7 @@ import org.openjdk.jmh.util.SingletonStatistics
 
 import com.monovore.decline.{ Opts, Command }
 
-import mcas.MCAS.Emcas
+import mcas.Mcas.Emcas
 
 /**
  * JMH profiler "plugin" for `Rxn` statistics/measurements.

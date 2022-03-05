@@ -60,7 +60,7 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
 
   /** For testing */
   private[choam] final def debugRead(): A =
-    mcas.MCAS.debugRead(this)
+    mcas.Mcas.debugRead(this)
 
   private[choam] def dummy(v: Long): Long
 }
@@ -124,7 +124,7 @@ object Ref extends RefInstances0 {
   // TODO: do we need this? (We have `forceValidate`.)
   private[choam] final def unsafeWithCurrentVer[A](
     initial: A,
-    ctx: mcas.MCAS.ThreadContext,
+    ctx: mcas.Mcas.ThreadContext,
   ): Ref[A] = {
     // Important: we create a fresh ref, which
     // appears to have been modified when the

@@ -24,12 +24,12 @@ import scala.collection.concurrent.TrieMap
 
 import mcas.MemoryLocation
 
-object FlakyEMCAS extends MCAS { self =>
+object FlakyEMCAS extends Mcas { self =>
 
   private[this] val seen =
     new TrieMap[Int, Unit]
 
-  def currentContext(): MCAS.ThreadContext = new MCAS.ThreadContext {
+  def currentContext(): Mcas.ThreadContext = new Mcas.ThreadContext {
 
     private[this] val emcasCtx =
       Emcas.currentContext()

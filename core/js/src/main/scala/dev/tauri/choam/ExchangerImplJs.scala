@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import mcas.MCAS
+import mcas.Mcas
 
 private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
   extends Exchanger.UnsealedExchanger[A, B] {
@@ -40,7 +40,7 @@ private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
     private[choam] final def tryExchange[C](
       @unused msg: Exchanger.Msg,
       @unused params: Exchanger.Params,
-      @unused ctx: MCAS.ThreadContext,
+      @unused ctx: Mcas.ThreadContext,
     ): Either[Rxn.ExStatMap, Exchanger.Msg] = {
       impossible("ExchangerImplJs#tryExchange")
     }

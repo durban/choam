@@ -146,8 +146,8 @@ object DataMapBench {
 
   final val size = 8
 
-  private[this] final def initMcas: mcas.MCAS =
-    mcas.MCAS.Emcas
+  private[this] final def initMcas: mcas.Mcas =
+    mcas.Mcas.Emcas
 
   @State(Scope.Benchmark)
   abstract class AbstractSt {

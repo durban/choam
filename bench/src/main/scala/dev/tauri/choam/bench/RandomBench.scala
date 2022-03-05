@@ -68,12 +68,12 @@ object RandomBench {
     def baseline(i: Int): Axn[Int] =
       Rxn.pure(i)
     val rndThreadLocal: Random[Axn] =
-      Rxn.fastRandom.unsafeRun(mcas.MCAS.NullMcas)
+      Rxn.fastRandom.unsafeRun(mcas.Mcas.NullMcas)
     val rndDeterministic: Random[Axn] =
-      Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.MCAS.NullMcas)
+      Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.Mcas.NullMcas)
     val rndMinimal: Random[Axn] =
-      Rxn.minimalRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.MCAS.NullMcas)
+      Rxn.minimalRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.Mcas.NullMcas)
     val rndSecure: Random[Axn] =
-      Rxn.secureRandom.unsafeRun(mcas.MCAS.NullMcas)
+      Rxn.secureRandom.unsafeRun(mcas.Mcas.NullMcas)
   }
 }

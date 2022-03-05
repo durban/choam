@@ -83,9 +83,9 @@ object TreiberStackGlobalTest {
     1024 * 128
 
   private[this] val stacks =
-    new TrieMap[mcas.MCAS, (Stack[String], Stack[String])]
+    new TrieMap[mcas.Mcas, (Stack[String], Stack[String])]
 
-  private def getStacks(impl: mcas.MCAS): (Stack[String], Stack[String]) = {
+  private def getStacks(impl: mcas.Mcas): (Stack[String], Stack[String]) = {
     def mkNew() = {
       val stack1 = TreiberStack.fromList[SyncIO, String](List.fill(N)("z")).unsafeRunSync()
       val stack2 = TreiberStack.fromList[SyncIO, String](List.fill(N)("z")).unsafeRunSync()

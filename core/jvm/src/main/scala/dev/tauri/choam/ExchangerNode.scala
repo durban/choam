@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import mcas.MCAS
+import mcas.Mcas
 import internal.Backoff
 import Exchanger.{ Msg, NodeResult }
 
@@ -41,7 +41,7 @@ private final class ExchangerNode[C](val msg: Msg) {
   def spinWait(
     stats: ExchangerImplJvm.Statistics,
     params: Exchanger.Params,
-    ctx: MCAS.ThreadContext,
+    ctx: Mcas.ThreadContext,
   ): Option[NodeResult[C]] = {
     @tailrec
     def go(n: Int): Option[NodeResult[C]] = {

@@ -21,7 +21,7 @@ package mcas
 final class NullMcasSpec extends BaseSpecA {
 
   test("NullMcas must be able to perform an empty k-CAS") {
-    val ctx = MCAS.NullMcas.currentContext()
+    val ctx = Mcas.NullMcas.currentContext()
     val d0 = ctx.start()
     assertEquals(d0.validTs, Version.Start)
     assert(ctx.tryPerformOk(d0))

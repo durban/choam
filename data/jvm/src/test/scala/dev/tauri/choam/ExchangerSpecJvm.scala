@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import cats.effect.kernel.Fiber
 import cats.effect.{ IO, Outcome }
 
-import mcas.MCAS
+import mcas.Mcas
 import data.EliminationStack
 
 final class ExchangerSpecCommon_Emcas_ZIO
@@ -389,7 +389,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  private[this] final def getStats(ctx: MCAS.ThreadContext): Option[Map[AnyRef, AnyRef]] = {
+  private[this] final def getStats(ctx: Mcas.ThreadContext): Option[Map[AnyRef, AnyRef]] = {
     if (ctx.supportsStatistics) Some(ctx.getStatisticsPlain())
     else None
   }

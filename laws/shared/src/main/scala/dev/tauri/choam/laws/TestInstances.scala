@@ -25,7 +25,7 @@ import org.scalacheck.{ Gen, Arbitrary, Cogen }
 
 trait TestInstances extends TestInstancesLowPrio0 { self =>
 
-  def kcasImpl: mcas.MCAS
+  def kcasImpl: mcas.Mcas
 
   implicit def arbRef[A](implicit arbA: Arbitrary[A]): Arbitrary[Ref[A]] = Arbitrary {
     import refs.Ref2

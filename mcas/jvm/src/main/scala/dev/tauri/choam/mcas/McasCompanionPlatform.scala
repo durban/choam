@@ -18,20 +18,20 @@
 package dev.tauri.choam
 package mcas
 
-private[mcas] abstract class MCASPlatform extends AbstractMCASPlatform {
+private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
 
   /**
    * The default MCAS implementation of the platform
    *
    * Guaranteed to exist (and be thread-safe) on every platform.
    */
-  final override def DefaultMCAS: MCAS =
+  final override def DefaultMCAS: Mcas =
     this.Emcas
 
-  final def Emcas: MCAS =
+  final def Emcas: Mcas =
     mcas.Emcas
 
-  final def SpinLockMCAS: MCAS =
+  final def SpinLockMCAS: Mcas =
     mcas.SpinLockMCAS
 
   /** For testing */
@@ -47,7 +47,7 @@ private[mcas] abstract class MCASPlatform extends AbstractMCASPlatform {
   }
 
   /** Benchmark infra */
-  private[choam] final override def unsafeLookup(fqn: String): MCAS = fqn match {
+  private[choam] final override def unsafeLookup(fqn: String): Mcas = fqn match {
     case fqns.SpinLockMCAS =>
       mcas.SpinLockMCAS
     case fqns.Emcas =>

@@ -22,13 +22,13 @@ import java.util.concurrent.ThreadLocalRandom
 
 private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
 
-  final override def currentContext(): MCAS.ThreadContext =
+  final override def currentContext(): Mcas.ThreadContext =
     _ctx
 
   private[this] val _commitTs: MemoryLocation[Long] =
     MemoryLocation.unsafeUnpadded(Version.Start)
 
-  private[this] val _ctx = new MCAS.ThreadContext {
+  private[this] val _ctx = new Mcas.ThreadContext {
 
     final override def readDirect[A](ref: MemoryLocation[A]): A = {
       ref.unsafeGetPlain()

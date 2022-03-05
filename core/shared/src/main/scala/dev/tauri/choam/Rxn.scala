@@ -28,7 +28,7 @@ import cats.mtl.Local
 import cats.effect.kernel.{ Unique, Clock }
 import cats.effect.std.{ UUIDGen, Random }
 
-import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor, HalfWordDescriptor, McasStatus }
+import mcas.{ MemoryLocation, Mcas, HalfEMCASDescriptor, HalfWordDescriptor, McasStatus }
 import internal.{ ByteStack, ObjStack, Backoff }
 
 /**
@@ -218,7 +218,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
   final def unsafePerform(
     a: A,
-    kcas: MCAS,
+    kcas: Mcas,
     maxBackoff: Int = 16,
     randomizeBackoff: Boolean = true,
   ): B = {
@@ -232,7 +232,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
   private[choam] final def unsafePerformInternal(
     a: A,
-    ctx: MCAS.ThreadContext,
+    ctx: Mcas.ThreadContext,
     maxBackoff: Int = 16,
     randomizeBackoff: Boolean = true,
   ): B = {
@@ -418,17 +418,17 @@ object Rxn extends RxnInstances0 {
     private[choam] def suspend[A, B](uf: A => Axn[B]): Rxn[A, B] =
       delay(uf).flatten // TODO: optimize
 
-    private[choam] def delayContext[A](uf: MCAS.ThreadContext => A): Axn[A] =
+    private[choam] def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
       context(uf)
 
     // TODO: NB: this is also like `delay`
     // TODO: Calling `unsafePerform` (or similar) inside
     // TODO: `uf` is dangerous; currently is only messes
     // TODO: up exchanger statistics; in the future, who knows...
-    private[choam] def context[A](uf: MCAS.ThreadContext => A): Axn[A] =
+    private[choam] def context[A](uf: Mcas.ThreadContext => A): Axn[A] =
       new Ctx[A](uf)
 
-    private[choam] def suspendContext[A](uf: MCAS.ThreadContext => Axn[A]): Axn[A] =
+    private[choam] def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       this.context(uf).flatten // TODO: optimize
 
     // TODO: Do we even need `immediately` and
@@ -549,7 +549,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Done(${result})"
   }
 
-  private final class Ctx[A](val uf: MCAS.ThreadContext => A) extends Rxn[Any, A] {
+  private final class Ctx[A](val uf: Mcas.ThreadContext => A) extends Rxn[Any, A] {
     private[choam] final override def tag = 14
     final override def toString: String = s"Ctx(<block>)"
   }
@@ -628,7 +628,7 @@ object Rxn extends RxnInstances0 {
   private[choam] def interpreter[X, R](
     rxn: Rxn[X, R],
     x: X,
-    ctx: MCAS.ThreadContext,
+    ctx: Mcas.ThreadContext,
     maxBackoff: Int = 16,
     randomizeBackoff: Boolean = true
   ): R = {
@@ -659,7 +659,7 @@ object Rxn extends RxnInstances0 {
   private final class InterpreterState[X, R](
     rxn: Rxn[X, R],
     x: X,
-    ctx: MCAS.ThreadContext,
+    ctx: Mcas.ThreadContext,
     maxBackoff: Int,
     randomizeBackoff: Boolean
   ) {
@@ -1419,11 +1419,11 @@ private[choam] sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.t
       F.run(self, null : Any)
 
     final def unsafeRun(
-      kcas: MCAS,
+      mcas: Mcas,
       maxBackoff: Int = 16,
       randomizeBackoff: Boolean = true
     ): A = {
-      self.unsafePerform(null : Any, kcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
+      self.unsafePerform(null : Any, mcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
     }
   }
 }

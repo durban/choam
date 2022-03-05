@@ -886,7 +886,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
   }
 
   test("unsafe.context") {
-    Rxn.unsafe.context { (tc: mcas.MCAS.ThreadContext) =>
+    Rxn.unsafe.context { (tc: mcas.Mcas.ThreadContext) =>
       tc eq this.kcasImpl.currentContext()
     }.run[F].flatMap(ok => assertF(ok))
   }

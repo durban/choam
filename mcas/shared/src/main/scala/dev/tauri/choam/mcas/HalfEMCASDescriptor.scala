@@ -188,7 +188,7 @@ final class HalfEMCASDescriptor private (
 
   private[mcas] final def validateAndTryExtend(
     commitTsRef: MemoryLocation[Long],
-    ctx: MCAS.ThreadContext,
+    ctx: Mcas.ThreadContext,
     additionalHwd: HalfWordDescriptor[_], // can be null
   ): HalfEMCASDescriptor = {
     require(this.versionCas eq null)
@@ -200,7 +200,7 @@ final class HalfEMCASDescriptor private (
 
   private[mcas] final def validateAndTryExtendVer(
     currentTs: Long,
-    ctx: MCAS.ThreadContext,
+    ctx: Mcas.ThreadContext,
     additionalHwd: HalfWordDescriptor[_], // can be null
   ): HalfEMCASDescriptor = {
     this.validateAndTryExtendInternal(
@@ -212,7 +212,7 @@ final class HalfEMCASDescriptor private (
 
   private[this] final def validateAndTryExtendInternal(
     newValidTsBoxed: java.lang.Long,
-    ctx: MCAS.ThreadContext,
+    ctx: Mcas.ThreadContext,
     additionalHwd: HalfWordDescriptor[_], // can be null
   ): HalfEMCASDescriptor = {
     if (newValidTsBoxed.longValue > this.validTs) {
@@ -289,7 +289,7 @@ object HalfEMCASDescriptor {
   private final val DefaultVersionIncr =
     Version.Incr
 
-  private[mcas] final def empty(commitTsRef: MemoryLocation[Long], ctx: MCAS.ThreadContext): HalfEMCASDescriptor = {
+  private[mcas] final def empty(commitTsRef: MemoryLocation[Long], ctx: Mcas.ThreadContext): HalfEMCASDescriptor = {
     val validTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
     emptyFromBoxed(validTsBoxed)
@@ -312,7 +312,7 @@ object HalfEMCASDescriptor {
   private[mcas] final def merge(
     a: HalfEMCASDescriptor,
     b: HalfEMCASDescriptor,
-    ctx: MCAS.ThreadContext,
+    ctx: Mcas.ThreadContext,
   ): HalfEMCASDescriptor = {
     require(a.versionCas eq null)
     require(b.versionCas eq null)

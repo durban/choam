@@ -114,8 +114,8 @@ trait RefArraySpec extends BaseSpecA {
 
   test("consistentRead") {
     val a = mkRefArray[Int](42)
-    a.unsafeGet(0).update(_ + 1).unsafeRun(mcas.MCAS.DefaultMCAS)
-    val (x, y) = Rxn.consistentRead(a.unsafeGet(0), a.unsafeGet(2)).unsafeRun(mcas.MCAS.DefaultMCAS)
+    a.unsafeGet(0).update(_ + 1).unsafeRun(mcas.Mcas.DefaultMCAS)
+    val (x, y) = Rxn.consistentRead(a.unsafeGet(0), a.unsafeGet(2)).unsafeRun(mcas.Mcas.DefaultMCAS)
     assert(x == 43)
     assert(y == 42)
   }

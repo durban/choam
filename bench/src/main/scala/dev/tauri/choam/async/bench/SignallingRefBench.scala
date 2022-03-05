@@ -72,7 +72,7 @@ object SignallingRefBench {
     val fs2Reset: IO[Unit] =
       reset(fs2)
     val rxn: SignallingRef[IO, String] =
-      stream.signallingRef[IO, String]("initial").unsafeRun(mcas.MCAS.Emcas)
+      stream.signallingRef[IO, String]("initial").unsafeRun(mcas.Mcas.Emcas)
     val rxnReset: IO[Unit] =
       reset(rxn)
 
