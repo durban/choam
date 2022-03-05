@@ -326,7 +326,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Queue parallel multiple enq/deq".ignore) {
+  test("Queue parallel multiple enq/deq") {
     val TaskSize = 1024
     val RxnSize = 16
     val Parallelism = 256
@@ -335,7 +335,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       require(shifted >= idx) // ensure no overflow
       val items = (1 to RxnSize).toList.map(_ | shifted)
       val rxn: Axn[Unit] = items.traverse_ { item => q.enqueue.provide(item) }
-      rxn.run[F]
+      rF.applyInterruptibly(rxn, null: Any)
     }
     def deqTask(q: QueueType[Int]): F[Int] = {
       def go(acc: List[Int]): Axn[List[Int]] = {
@@ -351,13 +351,13 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           }
         }
       }
-      go(Nil).run[F].flatMap { block =>
+      rF.applyInterruptibly(go(Nil), null: Any).flatMap { block =>
         assertEqualsF(block.length, RxnSize) >> (
           assertEqualsF(block.map(_ >>> 8).toSet.size, 1)
         ) >> F.pure(block.head >>> 8)
       }
     }
-    for {
+    val t = for {
       _ <- this.assumeF(this.mcasImpl.isThreadSafe)
       q <- newQueueFromList[Int](Nil)
       indices = (0 until TaskSize).toList
@@ -366,5 +366,6 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       }
       _ <- assertEqualsF(results.sorted, indices)
     } yield ()
+    (t *> F.cede).replicateA(4)
   }
 }
