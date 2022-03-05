@@ -326,7 +326,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
     } yield ()
   }
 
-  test("Queue parallel multiple enq/deq") {
+  test("Queue parallel multiple enq/deq".ignore) {
     val TaskSize = 1024
     val RxnSize = 16
     val Parallelism = 256
