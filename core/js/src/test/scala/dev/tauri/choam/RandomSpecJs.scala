@@ -26,7 +26,7 @@ final class RandomSpecJs_ThreadConfinedMCAS_SyncIO
   with SpecThreadConfinedMCAS
   with RandomSpecJs[SyncIO]
 
-trait RandomSpecJs[F[_]] extends RandomSpec[F] { this: KCASImplSpec =>
+trait RandomSpecJs[F[_]] extends RandomSpec[F] { this: McasImplSpec =>
 
   test("SecureRandom (JS/bobcats)") {
     val bt = System.nanoTime()

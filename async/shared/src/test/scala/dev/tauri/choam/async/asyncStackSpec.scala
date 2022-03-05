@@ -27,7 +27,7 @@ final class AsyncStackSpec_ThreadConfinedMCAS_IO
 
 trait AsyncStackSpec[F[_]]
   extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+  with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
   protected def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[G, A]] =
     AsyncStack.apply[G, A].run[G]

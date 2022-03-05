@@ -25,5 +25,5 @@ final class QueueSourceSinkSpecJvm_Emcas_IO
   with SpecEmcas
   with QueueSourceSinkSpecJvm[IO]
 
-trait QueueSourceSinkSpecJvm[F[_]] extends QueueSourceSinkSpec[F] { this: KCASImplSpec =>
+trait QueueSourceSinkSpecJvm[F[_]] extends QueueSourceSinkSpec[F] { this: McasImplSpec =>
 }

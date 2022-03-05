@@ -29,7 +29,7 @@ import cats.effect.kernel.testkit.TestContext
 
 import munit.{ CatsEffectSuite, Location }
 
-trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with KCASImplSpec =>
+trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with McasImplSpec =>
 
   final override def assertResultF[A, B](obtained: zio.Task[A], expected: B, clue: String = "values are not the same")(
     implicit loc: Location, ev: B <:< A
@@ -46,7 +46,7 @@ trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with KCASImplSpec =>
 abstract class BaseSpecZIO
   extends CatsEffectSuite
   with BaseSpecAsyncF[zio.Task]
-  with UtilsForZIO { this: KCASImplSpec =>
+  with UtilsForZIO { this: McasImplSpec =>
 
   private[this] val runtime =
     zio.Runtime.default
@@ -80,7 +80,7 @@ abstract class BaseSpecTickedZIO
   extends CatsEffectSuite
   with TestContextSpec[zio.Task]
   with BaseSpecAsyncF[zio.Task]
-  with UtilsForZIO { this: KCASImplSpec =>
+  with UtilsForZIO { this: McasImplSpec =>
 
   import zio._
 

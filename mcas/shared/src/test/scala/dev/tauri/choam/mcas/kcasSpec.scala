@@ -27,12 +27,12 @@ object KCASSpec {
   final case class CASD[A](address: MemoryLocation[A], ov: A, nv: A)
 }
 
-abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
+abstract class KCASSpec extends BaseSpecA { this: McasImplSpec =>
 
   import KCASSpec._
 
   private final def tryPerformBatch(ops: List[CASD[_]]): Boolean = {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val builder = ops.foldLeft(ctx.builder()) { (b, op) =>
       op match {
         case op: CASD[a] =>
@@ -52,7 +52,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
       CASD(r3, "r3", "z")
     ))
     assert(succ)
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     assertSameInstance(ctx.readDirect(r1), "x")
     assertSameInstance(ctx.readDirect(r2), "y")
     assertSameInstance(ctx.readDirect(r3), "z")
@@ -71,7 +71,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
       ))
     }
 
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
 
     assert(ctx.tryPerformSingleCas(r1, "r1", "x"))
     assert(!go())
@@ -125,7 +125,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
       CASD(r3, "z2", "z3")
     )))
 
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     assertSameInstance(ctx.readDirect(r1), "x2")
     assertSameInstance(ctx.readDirect(r2), "y2")
     assertSameInstance(ctx.readDirect(r3), "z2")
@@ -135,7 +135,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r1 = MemoryLocation.unsafe("r1")
     val r2 = MemoryLocation.unsafe("r2")
     val r3 = MemoryLocation.unsafe("r3")
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "r1", "r1x")
 
@@ -156,7 +156,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val r1 = MemoryLocation.unsafe("r1")
     val r2 = MemoryLocation.unsafe("r2")
     val r3 = MemoryLocation.unsafe("r3")
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "r1", "r1x")
     val snap = ctx.snapshot(d1)
@@ -173,7 +173,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
 
   test("read should be able to read from a fresh ref") {
     val r = MemoryLocation.unsafe[String]("x")
-    assertEquals(kcasImpl.currentContext().readDirect(r), "x")
+    assertEquals(mcasImpl.currentContext().readDirect(r), "x")
   }
 
   test("Platform default must be thread-safe") {
@@ -181,7 +181,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("A successful k-CAS should increase the version of the refs") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("r1")
     val r2 = MemoryLocation.unsafe("r2")
     val v11 = ctx.readVersion(r1)
@@ -199,7 +199,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("A failed k-CAS should not increase the version of the refs") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("r1")
     val r2 = MemoryLocation.unsafe("r2")
     val v11 = ctx.readVersion(r1)
@@ -215,7 +215,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("Version.None must not be stored") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("r1")
     val r2 = MemoryLocation.unsafe("r2")
     val v11 = ctx.readVersion(r1)
@@ -231,7 +231,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("readIntoLog should work (no conflict)") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val r2 = MemoryLocation.unsafe("b")
     val d0 = ctx.start()
@@ -275,7 +275,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("tryPerform2 should work (read-only)") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val r2 = MemoryLocation.unsafe("b")
     val d0 = ctx.start()
@@ -299,7 +299,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("tryPerform2 should work (read-write)") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val r2 = MemoryLocation.unsafe("b")
     val d0 = ctx.start()
@@ -325,7 +325,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("tryPerform2 should work (FailedVal)") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val r2 = MemoryLocation.unsafe("b")
     val d0 = ctx.start()
@@ -355,7 +355,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
 
   test("singleCasDirect should work without changing the global commitTs") {
     assume(!this.isEmcas) // TODO?
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val startTs = ctx.start().validTs
     // successful:
@@ -371,7 +371,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("Merging disjoint descriptors should work") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val r2 = MemoryLocation.unsafe("b")
     val r3 = MemoryLocation.unsafe("x")
@@ -403,7 +403,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("Merging overlapping descriptors does not work") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val r2 = MemoryLocation.unsafe("b")
     val d0 = ctx.start()
@@ -426,7 +426,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("HalfEMCASDescriptor iterator") {
-    val ctx = this.kcasImpl.currentContext()
+    val ctx = this.mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("foo")
     val r2 = MemoryLocation.unsafe("foo")
     val d0 = ctx.start()
@@ -467,7 +467,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("equals/hashCode/toString for descriptors") {
-    val ctx = this.kcasImpl.currentContext()
+    val ctx = this.mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("foo")
     val r2 = MemoryLocation.unsafe("foo")
     // hwd:
@@ -525,7 +525,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
   }
 
   test("Expected version must also be checked") {
-    val ctx = this.kcasImpl.currentContext()
+    val ctx = this.mcasImpl.currentContext()
     val ref = MemoryLocation.unsafe("A")
     assert(ctx.tryPerformSingleCas(ref, "A", "B"))
     val d0 = ctx.start()

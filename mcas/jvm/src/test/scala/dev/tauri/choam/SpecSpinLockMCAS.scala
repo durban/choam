@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-trait SpecSpinLockMCAS extends KCASImplSpec {
-  final override def kcasImpl: mcas.Mcas =
+trait SpecSpinLockMCAS extends McasImplSpec {
+  final override def mcasImpl: mcas.Mcas =
     mcas.Mcas.SpinLockMCAS
 }

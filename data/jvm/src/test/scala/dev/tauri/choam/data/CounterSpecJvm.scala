@@ -26,5 +26,5 @@ final class CounterSpecSimple_Emcas_IO
   with CounterSpecSimple[IO]
   with CounterSpecJvm[IO]
 
-trait CounterSpecJvm[F[_]] { this: CounterSpec[F] with KCASImplSpec =>
+trait CounterSpecJvm[F[_]] { this: CounterSpec[F] with McasImplSpec =>
 }

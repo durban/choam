@@ -36,19 +36,19 @@ final class RingBufferSpec_Lazy_ThreadConfinedMCAS
   with SpecThreadConfinedMCAS
   with LazyRingBufferSpec[IO]
 
-trait StrictRingBufferSpec[F[_]] extends RingBufferSpec[F] { this: KCASImplSpec =>
+trait StrictRingBufferSpec[F[_]] extends RingBufferSpec[F] { this: McasImplSpec =>
   final override def newRingBuffer[A](capacity: Int): F[RingBuffer[A]] =
     RingBuffer.apply[A](capacity).run[F]
 }
 
-trait LazyRingBufferSpec[F[_]] extends RingBufferSpec[F] { this: KCASImplSpec =>
+trait LazyRingBufferSpec[F[_]] extends RingBufferSpec[F] { this: McasImplSpec =>
   final override def newRingBuffer[A](capacity: Int): F[RingBuffer[A]] =
     RingBuffer.lazyRingBuffer[A](capacity).run[F]
 }
 
 trait RingBufferSpec[F[_]]
   extends BaseSpecAsyncF[F]
-  with ScalaCheckEffectSuite { this: KCASImplSpec =>
+  with ScalaCheckEffectSuite { this: McasImplSpec =>
 
   def newRingBuffer[A](capacity: Int): F[RingBuffer[A]]
 

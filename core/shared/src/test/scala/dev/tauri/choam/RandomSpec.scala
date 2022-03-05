@@ -36,7 +36,7 @@ final class RandomSpec_ThreadConfinedMCAS_SyncIO
 
 trait RandomSpec[F[_]]
   extends BaseSpecSyncF[F]
-  with ScalaCheckEffectSuite { this: KCASImplSpec =>
+  with ScalaCheckEffectSuite { this: McasImplSpec =>
 
   final val N = 128
 

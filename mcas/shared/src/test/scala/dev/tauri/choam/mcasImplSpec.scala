@@ -17,23 +17,23 @@
 
 package dev.tauri.choam
 
-trait KCASImplSpec {
-  protected def kcasImpl: mcas.Mcas
+trait McasImplSpec {
+  protected def mcasImpl: mcas.Mcas
   protected def isEmcas: Boolean =
     false
 }
 
-trait SpecThreadConfinedMCAS extends KCASImplSpec {
-  final override def kcasImpl: mcas.Mcas =
+trait SpecThreadConfinedMCAS extends McasImplSpec {
+  final override def mcasImpl: mcas.Mcas =
     mcas.Mcas.ThreadConfinedMCAS
 }
 
-trait SpecNullKCAS extends KCASImplSpec {
-  final override def kcasImpl: mcas.Mcas =
+trait SpecNullKCAS extends McasImplSpec {
+  final override def mcasImpl: mcas.Mcas =
     mcas.Mcas.NullMcas
 }
 
-trait SpecNoKCAS extends KCASImplSpec {
-  final override def kcasImpl: Nothing =
-    sys.error("No KCAS here")
+trait SpecNoKCAS extends McasImplSpec {
+  final override def mcasImpl: Nothing =
+    sys.error("No MCAS here")
 }

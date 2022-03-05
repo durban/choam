@@ -40,7 +40,7 @@ final class QueueGcHostileSpec_ThreadConfinedMCAS_IO
   with QueueGcHostileSpec[IO]
   with SpecThreadConfinedMCAS
 
-trait QueueWithSizeSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
+trait QueueWithSizeSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 
   override type QueueType[A] = Queue.WithSize[A]
 
@@ -71,7 +71,7 @@ trait QueueWithSizeSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
   }
 }
 
-trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
+trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 
   override type QueueType[A] = Queue.WithRemove[A]
 
@@ -184,7 +184,7 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
     val P = 128
     val S = List("a", "b", "c", "d", "e", "f", "g", "h")
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       q <- newQueueFromList(S)
       finderRemovers = S.map { item =>
         q.remove.provide(item).void
@@ -210,7 +210,7 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
   }
 }
 
-trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
+trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 
   override type QueueType[A] = MsQueue[A]
 
@@ -245,7 +245,7 @@ trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
   }
 }
 
-trait QueueGcHostileSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
+trait QueueGcHostileSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 
   override type QueueType[A] = GcHostileMsQueue[A]
 
@@ -253,7 +253,7 @@ trait QueueGcHostileSpec[F[_]] extends BaseQueueSpec[F] { this: KCASImplSpec =>
     GcHostileMsQueue.fromList(as)
 }
 
-trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   type QueueType[A] <: Queue[A]
 
@@ -358,7 +358,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       }
     }
     for {
-      _ <- this.assumeF(this.kcasImpl.isThreadSafe)
+      _ <- this.assumeF(this.mcasImpl.isThreadSafe)
       q <- newQueueFromList[Int](Nil)
       indices = (0 until TaskSize).toList
       results <- indices.parTraverseN(Parallelism) { idx =>

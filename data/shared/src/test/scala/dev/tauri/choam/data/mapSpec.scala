@@ -29,7 +29,7 @@ final class MapSpec_Simple_ThreadConfinedMCAS_SyncIO
   with SpecThreadConfinedMCAS
   with MapSpecSimple[SyncIO]
 
-trait MapSpecSimple[F[_]] extends MapSpec[F] { this: KCASImplSpec =>
+trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
 
   override type MyMap[K, V] = Map.Extra[K, V]
 
@@ -73,7 +73,7 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: KCASImplSpec =>
 
 trait MapSpec[F[_]]
   extends BaseSpecSyncF[F]
-  with ScalaCheckEffectSuite { this: KCASImplSpec =>
+  with ScalaCheckEffectSuite { this: McasImplSpec =>
 
   type MyMap[K, V] <: Map[K, V]
 

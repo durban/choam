@@ -25,7 +25,7 @@ import org.scalacheck.{ Gen, Arbitrary, Cogen }
 
 trait TestInstances extends TestInstancesLowPrio0 { self =>
 
-  def kcasImpl: mcas.Mcas
+  def mcasImpl: mcas.Mcas
 
   implicit def arbRef[A](implicit arbA: Arbitrary[A]): Arbitrary[Ref[A]] = Arbitrary {
     import refs.Ref2
@@ -111,7 +111,7 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
   }
 
   private[choam] final def unsafePerformForTest[A, B](rxn: A =#> B, a: A): B = {
-    rxn.unsafePerform(a, self.kcasImpl)
+    rxn.unsafePerform(a, self.mcasImpl)
   }
 }
 

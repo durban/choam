@@ -27,7 +27,7 @@ final class AsyncFromSpec_ThreadConfinedMCAS_IO
 
 trait AsyncFromSpec[F[_]]
   extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+  with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
   test("AsyncFrom around a Ref") {
     for {

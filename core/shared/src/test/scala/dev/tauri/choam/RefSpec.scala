@@ -37,17 +37,17 @@ final class RefSpec_Ref2_ThreadConfinedMCAS_IO
   with SpecThreadConfinedMCAS
   with RefSpec_Ref2[IO]
 
-trait RefSpec_Arr[F[_]] extends RefSpec_Real[F] { this: KCASImplSpec =>
+trait RefSpec_Arr[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>
   override def newRef[A](initial: A): F[RefType[A]] =
     Ref.array(1, initial).run[F].map(_.unsafeGet(0))
 }
 
-trait RefSpec_Ref2[F[_]] extends RefSpec_Real[F] { this: KCASImplSpec =>
+trait RefSpec_Ref2[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>
   override def newRef[A](initial: A): F[RefType[A]] =
     Ref.refP2[A, String](initial, "foo").map(_._1).run[F]
 }
 
-trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
+trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
 
   import Rxn._
 
@@ -126,7 +126,7 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
   }
 }
 
-trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   import Rxn._
 

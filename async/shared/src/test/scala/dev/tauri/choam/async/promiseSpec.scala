@@ -37,7 +37,7 @@ final class PromiseSpec_ThreadConfinedMCAS_IO_Ticked
 
 trait PromiseSpecTicked[F[_]]
   extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+  with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
   test("Completing an empty promise should call all registered callbacks") {
     for {
@@ -76,7 +76,7 @@ trait PromiseSpecTicked[F[_]]
 
 trait PromiseSpec[F[_]]
   extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: KCASImplSpec =>
+  with AsyncReactiveSpec[F] { this: McasImplSpec =>
 
   test("Completing a fulfilled promise should not be possible") {
     for {
@@ -108,7 +108,7 @@ trait PromiseSpec[F[_]]
 
   test("Promise#get should be rerunnable") {
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       p <- Promise[F, Int].run[F]
       l1 <- CountDownLatch[F](1)
       l2 <- CountDownLatch[F](1)
@@ -138,7 +138,7 @@ trait PromiseSpec[F[_]]
 
   test("Invariant functor instance") {
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       p <- Promise[F, Int].run[F]
       p2 = Invariant[Promise[F, *]].imap(p)(_ * 2)(_ / 2)
       f <- p.get.start
@@ -149,7 +149,7 @@ trait PromiseSpec[F[_]]
 
   test("Contravariant functor instance") {
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       p <- Promise[F, Int].run[F]
       pw = (p : PromiseWrite[Int])
       p2 = Contravariant[PromiseWrite[*]].contramap[Int, Int](pw)(_ / 2)
@@ -161,7 +161,7 @@ trait PromiseSpec[F[_]]
 
   test("Covariant functor instance") {
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       p <- Promise[F, Int].run[F]
       pr = (p : PromiseRead[F, Int])
       p2 = Functor[PromiseRead[F, *]].map(pr)(_ * 2)
@@ -172,9 +172,9 @@ trait PromiseSpec[F[_]]
   }
 
   test("Promise mapK") {
-    val raForIo: AsyncReactive[IO] = new AsyncReactive.AsyncReactiveImpl[IO](this.kcasImpl)
+    val raForIo: AsyncReactive[IO] = new AsyncReactive.AsyncReactiveImpl[IO](this.mcasImpl)
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       p <- Promise.apply[IO, Int](raForIo).run[F]
       pp = p.mapK[F](new ~>[IO, F] {
         final override def apply[A](fa: IO[A]): F[A] = {
@@ -190,9 +190,9 @@ trait PromiseSpec[F[_]]
   }
 
   test("PromiseRead mapK") {
-    val raForIo: AsyncReactive[IO] = new AsyncReactive.AsyncReactiveImpl[IO](this.kcasImpl)
+    val raForIo: AsyncReactive[IO] = new AsyncReactive.AsyncReactiveImpl[IO](this.mcasImpl)
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       p <- Promise.apply[IO, Int](raForIo).run[F]
       pp = (p : PromiseRead[IO, Int]).mapK[F](new ~>[IO, F] {
         final override def apply[A](fa: IO[A]): F[A] = {
@@ -209,7 +209,7 @@ trait PromiseSpec[F[_]]
 
   test("Promise#toCats") {
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       p1 <- Promise[F, Int].run[F]
       d1 = p1.toCats
       fib1 <- d1.get.start

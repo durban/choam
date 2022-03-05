@@ -33,7 +33,7 @@ trait BaseSpecF[F[_]]
   extends FunSuite
   with MUnitUtils
   with cats.syntax.AllSyntax
-  with cats.effect.syntax.AllSyntax { this: KCASImplSpec =>
+  with cats.effect.syntax.AllSyntax { this: McasImplSpec =>
 
   implicit def rF: Reactive[F]
 
@@ -87,26 +87,26 @@ trait BaseSpecF[F[_]]
   }
 }
 
-trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] { this: KCASImplSpec =>
+trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] { this: McasImplSpec =>
   /** Not implicit, so that `rF` is used for sure */
   override def F: Async[F]
   override implicit def mcF: Temporal[F] =
     this.F
   override implicit def rF: Reactive[F] =
-    new Reactive.SyncReactive[F](this.kcasImpl)(this.F)
+    new Reactive.SyncReactive[F](this.mcasImpl)(this.F)
 }
 
-trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] { this: KCASImplSpec =>
+trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] { this: McasImplSpec =>
   /** Not implicit, so that `rF` is used for sure */
   override def F: Sync[F]
   override implicit def rF: Reactive[F] =
-    new Reactive.SyncReactive[F](this.kcasImpl)(F)
+    new Reactive.SyncReactive[F](this.mcasImpl)(F)
 }
 
 abstract class BaseSpecIO
   extends CatsEffectSuite
   with BaseSpecAsyncF[IO]
-  with BaseSpecIOPlatform { this: KCASImplSpec =>
+  with BaseSpecIOPlatform { this: McasImplSpec =>
 
   /** Not implicit, so that `rF` is used for sure */
   final override def F: Async[IO] =
@@ -160,7 +160,7 @@ abstract class BaseSpecIO
   }
 }
 
-abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { this: KCASImplSpec =>
+abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { this: McasImplSpec =>
 
   protected override lazy val testContext: TestContext =
     TestContext()
@@ -251,7 +251,7 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
     true
 }
 
-abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO] { this: KCASImplSpec =>
+abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO] { this: McasImplSpec =>
 
   /** Not implicit, so that `rF` is used for sure */
   final override def F: Sync[SyncIO] =
@@ -267,7 +267,7 @@ abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO]
   }
 }
 
-trait TestContextSpec[F[_]] { this: BaseSpecAsyncF[F] with KCASImplSpec =>
+trait TestContextSpec[F[_]] { this: BaseSpecAsyncF[F] with McasImplSpec =>
 
   protected def testContext: TestContext
 

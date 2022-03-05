@@ -44,7 +44,7 @@ final class RxnSpecJvm_Emcas_ZIO
   with SpecEmcas
   with RxnSpecJvm[zio.Task]
 
-trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
+trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
 
   test("Thread interruption in infinite retry") {
     val never = Rxn.unsafe.retry[Any, Unit]
@@ -53,7 +53,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
       val cdl = new CountDownLatch(1)
       val t = new Thread(() => {
         cdl.countDown()
-        never.unsafeRun(this.kcasImpl)
+        never.unsafeRun(this.mcasImpl)
       })
       t.setUncaughtExceptionHandler((_, ex) => {
         if (!ex.isInstanceOf[InterruptedException]) {
@@ -87,7 +87,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
       val cdl = new CountDownLatch(1)
       val t = new Thread(() => {
         cdl.countDown()
-        never.unsafeRun(this.kcasImpl)
+        never.unsafeRun(this.mcasImpl)
       })
       t.setUncaughtExceptionHandler((_, ex) => {
         if (!ex.isInstanceOf[InterruptedException]) {
@@ -132,7 +132,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
         }
       }
       fib <- F.interruptible {
-        unsafeRxn.unsafePerform((), this.kcasImpl)
+        unsafeRxn.unsafePerform((), this.mcasImpl)
       }.start
       _ <- F.sleep(0.5.second)
       _ <- fib.cancel
@@ -213,7 +213,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: KCASImplSpec =>
           } else {
             v12
           }
-        }.unsafeRun(this.kcasImpl)
+        }.unsafeRun(this.mcasImpl)
       }
       _ <- F.both(F.cede *> writer, F.cede *> reader)
     } yield ()

@@ -77,34 +77,34 @@ final class QueueGcHostileSpecJvm_Emcas_IO
 
 trait QueueWithRemoveSpecJvm[F[_]]
   extends QueueWithRemoveSpec[F]
-  with QueueJvmTests[F] { this: KCASImplSpec =>
+  with QueueJvmTests[F] { this: McasImplSpec =>
 }
 
 trait QueueWithSizeSpecJvm[F[_]]
   extends QueueWithSizeSpec[F]
-  with QueueJvmTests[F] { this: KCASImplSpec =>
+  with QueueJvmTests[F] { this: McasImplSpec =>
 }
 
 trait QueueGcHostileSpecJvm[F[_]]
   extends QueueGcHostileSpec[F]
-  with QueueJvmTests[F] { this: KCASImplSpec =>
+  with QueueJvmTests[F] { this: McasImplSpec =>
 }
 
 trait QueueMsSpecJvm[F[_]]
   extends QueueMsSpec[F]
-  with QueueJvmTests[F] { this: KCASImplSpec =>
+  with QueueJvmTests[F] { this: McasImplSpec =>
 }
 
-trait QueueJvmTests[F[_]] { this: KCASImplSpec with BaseQueueSpec[F] =>
+trait QueueJvmTests[F[_]] { this: McasImplSpec with BaseQueueSpec[F] =>
 
   test("Queue should allow multiple producers and consumers") {
     val max = 5000
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       q <- newQueueFromList(List.empty[String])
       produce = F.blocking {
         for (i <- 0 until max) {
-          q.enqueue.unsafePerform(i.toString, this.kcasImpl)
+          q.enqueue.unsafePerform(i.toString, this.mcasImpl)
         }
       }
       cs <- F.delay { new ConcurrentLinkedQueue[String] }
@@ -112,7 +112,7 @@ trait QueueJvmTests[F[_]] { this: KCASImplSpec with BaseQueueSpec[F] =>
       consume = F.blocking {
         @tailrec
         def go(last: Boolean = false): Unit = {
-          q.tryDeque.unsafePerform((), this.kcasImpl) match {
+          q.tryDeque.unsafePerform((), this.mcasImpl) match {
             case Some(s) =>
               cs.offer(s)
               go(last = last)

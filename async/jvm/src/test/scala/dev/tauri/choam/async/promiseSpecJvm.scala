@@ -62,12 +62,12 @@ final class PromiseSpec_EMCAS_ZIO_Ticked
   with SpecEmcas
   with PromiseSpecTicked[zio.Task]
 
-trait PromiseSpecJvm[F[_]] extends PromiseSpec[F] { this: KCASImplSpec =>
+trait PromiseSpecJvm[F[_]] extends PromiseSpec[F] { this: McasImplSpec =>
 
   test("Calling the callback should be followed by a thread shift") {
     @volatile var stop = false
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       p <- Promise[F, Int].run[F]
       f <- p.get.map { v =>
         while (!stop) CompatPlatform.threadOnSpinWait()

@@ -29,7 +29,7 @@ trait NullMcasRxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: SpecNullKCAS =>
 
   test("NullMcas must be able to run a create-only Rxn") {
     for {
-      _ <- assertF(clue(this.kcasImpl.getClass().getName()).endsWith("NullMcas$"))
+      _ <- assertF(clue(this.mcasImpl.getClass().getName()).endsWith("NullMcas$"))
       rnd <- Rxn.fastRandom.run[F]
       _ = (rnd: Random[Axn])
       ref <- Ref("abc").run[F]

@@ -24,7 +24,7 @@ final class ExchangerSpecJs_ThreadConfinedMCAS_IO
   with SpecThreadConfinedMCAS
   with ExchangerSpecJs[IO]
 
-trait ExchangerSpecJs[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait ExchangerSpecJs[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   final val iterations = 10
 

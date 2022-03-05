@@ -55,21 +55,21 @@ final class RefSpecJvm_Ref2_EMCAS_IO
   with SpecEmcas
   with RefSpecJvm_Ref2[IO]
 
-trait RefSpecJvm_Arr[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Arr[F] { this: KCASImplSpec =>
+trait RefSpecJvm_Arr[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Arr[F] { this: McasImplSpec =>
 }
 
-trait RefSpecJvm_Ref2[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Ref2[F] { this: KCASImplSpec =>
+trait RefSpecJvm_Ref2[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Ref2[F] { this: McasImplSpec =>
 }
 
-trait RefSpecJvm_Real[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Real[F] { this: KCASImplSpec =>
+trait RefSpecJvm_Real[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Real[F] { this: McasImplSpec =>
 }
 
-trait RefLikeSpecJvm[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
+trait RefLikeSpecJvm[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
 
   test("version") {
-    val p1p1 = Ref.refP1P1("a", "a").unsafeRun(this.kcasImpl)
-    val p2 = Ref.refP2("a", "a").unsafeRun(this.kcasImpl)
-    val arr = Ref.array(size = 3, initial = "a").unsafeRun(this.kcasImpl)
+    val p1p1 = Ref.refP1P1("a", "a").unsafeRun(this.mcasImpl)
+    val p2 = Ref.refP2("a", "a").unsafeRun(this.mcasImpl)
+    val arr = Ref.array(size = 3, initial = "a").unsafeRun(this.mcasImpl)
     val refs = List[MemoryLocation[String]](
       MemoryLocation.unsafePadded("a"),
       MemoryLocation.unsafeUnpadded("a"),

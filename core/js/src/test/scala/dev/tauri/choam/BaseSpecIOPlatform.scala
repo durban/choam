@@ -21,7 +21,7 @@ import cats.effect.IO
 
 import munit.CatsEffectSuite
 
-trait BaseSpecIOPlatform { this: BaseSpecAsyncF[IO] with KCASImplSpec with CatsEffectSuite =>
+trait BaseSpecIOPlatform { this: BaseSpecAsyncF[IO] with McasImplSpec with CatsEffectSuite =>
 
   protected final override def absolutelyUnsafeRunSync[A](@unused fa: IO[A]): A =
     this.fail("cannot unsafeRunSync on JS")

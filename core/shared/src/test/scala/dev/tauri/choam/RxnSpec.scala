@@ -29,12 +29,12 @@ final class RxnSpec_ThreadConfinedMCAS_IO
   with SpecThreadConfinedMCAS
   with RxnSpec[IO]
 
-trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   import Rxn._
 
   test("Check environment") {
-    assertSameInstance(Reactive[F].mcasImpl, this.kcasImpl) // just to be sure
+    assertSameInstance(Reactive[F].mcasImpl, this.mcasImpl) // just to be sure
     println(s"NUM_CPU = ${Runtime.getRuntime().availableProcessors()}")
     println(s"OS_ARCH = ${System.getProperty("os.arch")}")
     println(s"VM_NAME = ${System.getProperty("java.vm.name")}")
@@ -90,12 +90,12 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       rea = (
         (
           (Rxn.unsafe.cas(a, "a", "aa") + (Rxn.unsafe.cas(b, "b", "bb") >>> Rxn.unsafe.delay { _ =>
-            this.kcasImpl.currentContext().tryPerformSingleCas(y.loc, "y", "-")
+            this.mcasImpl.currentContext().tryPerformSingleCas(y.loc, "y", "-")
           })) >>> Rxn.unsafe.cas(y, "-", "yy")
         ) +
         (Rxn.unsafe.cas(p, "p", "pp") >>> Rxn.unsafe.cas(q, "q", "qq"))
       )
-      _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, ())
+      _ <- assertResultF(F.delay { rea.unsafePerform((), this.mcasImpl) }, ())
       _ <- assertResultF(a.unsafeDirectRead.run, "a")
       _ <- assertResultF(b.unsafeDirectRead.run, "bb")
       _ <- assertResultF(y.unsafeDirectRead.run, "yy")
@@ -112,7 +112,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         (a.getAndUpdate(_ => "c") >>> p.getAndSet >>> Rxn.unsafe.retry) +
         (a.getAndUpdate(_ => "x") >>> p.getAndSet)
       )
-      _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, "p")
+      _ <- assertResultF(F.delay { rea.unsafePerform((), this.mcasImpl) }, "p")
       _ <- assertResultF(a.unsafeDirectRead.run, "x")
       _ <- assertResultF(p.unsafeDirectRead.run, "b")
     } yield ()
@@ -597,7 +597,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       rea = Rxn.unsafe.delayComputed[Unit, String](a.upd { (oa: String, _: Unit) =>
         ("x", oa)
       }.map { oa => b.upd { (ob: String, _: Any) => (oa, ob) } })
-      _ <- assertResultF(F.delay { rea.unsafePerform((), this.kcasImpl) }, "b")
+      _ <- assertResultF(F.delay { rea.unsafePerform((), this.mcasImpl) }, "b")
       _ <- assertResultF(a.unsafeDirectRead.run, "x")
       _ <- assertResultF(b.unsafeDirectRead.run, "a")
     } yield ()
@@ -887,7 +887,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   test("unsafe.context") {
     Rxn.unsafe.context { (tc: mcas.Mcas.ThreadContext) =>
-      tc eq this.kcasImpl.currentContext()
+      tc eq this.mcasImpl.currentContext()
     }.run[F].flatMap(ok => assertF(ok))
   }
 
@@ -952,7 +952,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
         }
       }
       res <- F.delay {
-        unsafeRxn.?.unsafePerform((), this.kcasImpl)
+        unsafeRxn.?.unsafePerform((), this.mcasImpl)
       }
       _ <- res match {
         case Some(_) =>

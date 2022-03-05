@@ -30,7 +30,7 @@ final class RxnProfilerSpecIO
   with SpecEmcas
   with RxnProfilerSpec[IO]
 
-trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   def simulateStart(config: String = "debug"): F[RxnProfiler] = F.delay {
     val p = new RxnProfiler(config)

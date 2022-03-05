@@ -25,12 +25,12 @@ final class CounterSpecSimple_ThreadConfinedMCAS_IO
   with SpecThreadConfinedMCAS
   with CounterSpecSimple[IO]
 
-trait CounterSpecSimple[F[_]] extends CounterSpec[F] { this: KCASImplSpec =>
+trait CounterSpecSimple[F[_]] extends CounterSpec[F] { this: McasImplSpec =>
   final override def mkCounter(initial: Long): F[Counter] =
     F.delay { Counter.unsafe(initial) }
 }
 
-trait CounterSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait CounterSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   protected def mkCounter(initial: Long): F[Counter]
 

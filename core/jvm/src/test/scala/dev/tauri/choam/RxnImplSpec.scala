@@ -53,7 +53,7 @@ final class RxnImplSpec_SpinLockMCAS_ZIO
   with RxnImplSpec[zio.Task]
 
 /** Specific implementation tests, which should also pass with `SpecFlakyEMCAS` */
-trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private def computeStackLimit(): Int = {
     // NOT @tailrec
@@ -105,15 +105,15 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       if (n > 0) Rxn.lift[Int, Either[Int, Int]](_ => Left(n - 1))
       else Rxn.ret(Right(99))
     }
-    assertEquals(r1.unsafePerform(42, this.kcasImpl), 42 + N)
-    assertEquals(r2.unsafePerform(42, this.kcasImpl), 42 + N)
-    assertEquals(r3.unsafePerform(42, this.kcasImpl), 42 + 1)
-    assertEquals(r3left.unsafePerform(42, this.kcasImpl), 42 + 1)
-    assertEquals(r3right.unsafePerform(42, this.kcasImpl), 42 + 1)
-    assertEquals(r4.unsafePerform(42, this.kcasImpl), 42 + 1)
-    assertEquals(r5.unsafePerform(42, this.kcasImpl), 42 + 1)
-    assertEquals(r6.unsafePerform(42, this.kcasImpl), 42 + N)
-    assertEquals(r7.unsafePerform(42, this.kcasImpl), 99)
+    assertEquals(r1.unsafePerform(42, this.mcasImpl), 42 + N)
+    assertEquals(r2.unsafePerform(42, this.mcasImpl), 42 + N)
+    assertEquals(r3.unsafePerform(42, this.mcasImpl), 42 + 1)
+    assertEquals(r3left.unsafePerform(42, this.mcasImpl), 42 + 1)
+    assertEquals(r3right.unsafePerform(42, this.mcasImpl), 42 + 1)
+    assertEquals(r4.unsafePerform(42, this.mcasImpl), 42 + 1)
+    assertEquals(r5.unsafePerform(42, this.mcasImpl), 42 + 1)
+    assertEquals(r6.unsafePerform(42, this.mcasImpl), 42 + N)
+    assertEquals(r7.unsafePerform(42, this.mcasImpl), 99)
 
     def rNegativeTest: Rxn[Int, Int] = {
       // NOT @tailrec
@@ -124,7 +124,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       go(N * 4)
     }
     try {
-      rNegativeTest.unsafePerform(42, this.kcasImpl)
+      rNegativeTest.unsafePerform(42, this.mcasImpl)
       this.fail("unexpected success")
     } catch {
       case _: StackOverflowError =>
@@ -139,16 +139,16 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       }
       go(N * 4)
     }
-    assertEquals(rPositiveTest.unsafePerform(42, this.kcasImpl), 42 + 1)
+    assertEquals(rPositiveTest.unsafePerform(42, this.mcasImpl), 42 + 1)
   }
 
   test("first and second") {
     for {
       _ <- F.unit
       rea = Rxn.lift[Int, String](_.toString).first[Boolean]
-      _ <- assertResultF(F.delay { rea.unsafePerform((42, true), this.kcasImpl) }, ("42", true))
+      _ <- assertResultF(F.delay { rea.unsafePerform((42, true), this.mcasImpl) }, ("42", true))
       rea = Rxn.lift[Int, String](_.toString).second[Float]
-      _ <- assertResultF(F.delay { rea.unsafePerform((1.5f, 21), this.kcasImpl) }, (1.5f, "21"))
+      _ <- assertResultF(F.delay { rea.unsafePerform((1.5f, 21), this.mcasImpl) }, (1.5f, "21"))
     } yield ()
   }
 

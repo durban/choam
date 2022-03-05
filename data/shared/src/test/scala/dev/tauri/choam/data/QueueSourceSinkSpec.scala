@@ -25,7 +25,7 @@ final class QueueSourceSinkSpec_ThreadConfinedMCAS_IO
   with SpecThreadConfinedMCAS
   with QueueSourceSinkSpec[IO]
 
-trait QueueSourceSinkSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait QueueSourceSinkSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("QueueSourceSink enq/deq") {
     for {

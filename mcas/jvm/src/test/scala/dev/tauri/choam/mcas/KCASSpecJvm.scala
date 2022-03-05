@@ -30,10 +30,10 @@ final class KCASSpecJvmThreadConfinedMCAS
   extends KCASSpecJvm
   with SpecThreadConfinedMCAS
 
-abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
+abstract class KCASSpecJvm extends KCASSpec { this: McasImplSpec =>
 
   test("readIntoLog should work (version conflict)") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val r2 = MemoryLocation.unsafe("b")
     val d0 = ctx.start()
@@ -49,7 +49,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     // concurrently change version of r2 (so that it's newer than r1):
     var ok = false
     val t = new Thread(() => {
-      val ctx = kcasImpl.currentContext()
+      val ctx = mcasImpl.currentContext()
       val Some((ov2, dx)) = ctx.readMaybeFromLog(r2, ctx.start()) : @unchecked
       assertSameInstance(ov2, "b")
       val hwd = dx.getOrElseNull(r2)
@@ -92,7 +92,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
   }
 
   test("readIntoLog should work (real conflict)") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val r2 = MemoryLocation.unsafe("b")
     val d0 = ctx.start()
@@ -108,7 +108,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     // concurrently change r1 and r2:
     var ok = false
     val t = new Thread(() => {
-      val ctx = kcasImpl.currentContext()
+      val ctx = mcasImpl.currentContext()
       val Some((ov1, dx)) = ctx.readMaybeFromLog(r1, ctx.start()) : @unchecked
       assertSameInstance(ov1, "a")
       val dx2 = dx.overwrite(dx.getOrElseNull(r1).withNv("x"))
@@ -133,7 +133,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
   }
 
   test("tryPerform2 should work (read-only, concurrent commit)") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val r2 = MemoryLocation.unsafe("b")
     val d0 = ctx.start()
@@ -148,7 +148,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     // concurrent commit:
     var ok = false
     val t = new Thread(() => {
-      val ctx = kcasImpl.currentContext()
+      val ctx = mcasImpl.currentContext()
       val d0 = ctx.start()
       val Some((_, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
       val Some((_, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
@@ -170,7 +170,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
   }
 
   test("tryPerform2 should work (read-write, concurrent commit)") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val r2 = MemoryLocation.unsafe("b")
     val r3 = MemoryLocation.unsafe("c")
@@ -193,7 +193,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     var ok = false
     var newVer: Long = Version.None
     val t = new Thread(() => {
-      val ctx = kcasImpl.currentContext()
+      val ctx = mcasImpl.currentContext()
       val d0 = ctx.start()
       val Some((_, d1)) = ctx.readMaybeFromLog(r3, d0) : @unchecked
       val d2 = d1.overwrite(d1.getOrElseNull(r3).withNv("cc"))
@@ -229,7 +229,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
   }
 
   test("Merging must detect if the logs are inconsistent") {
-    val ctx = kcasImpl.currentContext()
+    val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val r2 = MemoryLocation.unsafe("b")
     val d0 = ctx.start()
@@ -241,7 +241,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     // concurrent:
     var ok = false
     val t = new Thread(() => {
-      val ctx = kcasImpl.currentContext()
+      val ctx = mcasImpl.currentContext()
       val d0 = ctx.start()
       val Some((_, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
       val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("x"))
@@ -265,7 +265,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
   test("CommitTs ref must be the first (JVM)") {
     val r1 = MemoryLocation.unsafe[String]("foo")
     val r2 = MemoryLocation.unsafe[String]("bar")
-    val ctx = this.kcasImpl.currentContext()
+    val ctx = this.mcasImpl.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")
     val d2 = ctx.addCasFromInitial(d1, r2, "bar", "foo")

@@ -42,15 +42,15 @@ final class StackSpec_Elimination_SpinLockMCAS_IO
 
 trait StackSpecTreiberJvm[F[_]]
   extends StackSpecTreiber[F]
-  with  StackSpecJvm[F] { this: KCASImplSpec =>
+  with  StackSpecJvm[F] { this: McasImplSpec =>
 }
 
 trait StackSpecEliminationJvm[F[_]]
   extends StackSpecElimination[F]
-  with  StackSpecJvm[F] { this: KCASImplSpec =>
+  with  StackSpecJvm[F] { this: McasImplSpec =>
 }
 
-trait StackSpecJvm[F[_]] { this: StackSpec[F] with KCASImplSpec =>
+trait StackSpecJvm[F[_]] { this: StackSpec[F] with McasImplSpec =>
 
   test("Multiple producers/consumers") {
     val N = 4

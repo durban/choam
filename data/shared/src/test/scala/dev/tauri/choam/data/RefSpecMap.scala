@@ -28,7 +28,7 @@ final class RefSpec_Map_Simple_ThreadConfinedMCAS_IO
   with SpecThreadConfinedMCAS
   with RefSpec_Map_Simple[IO]
 
-trait RefSpec_Map_Simple[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
+trait RefSpec_Map_Simple[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
 
   final override type MapType[K, V] = Map.Extra[K, V]
 
@@ -36,7 +36,7 @@ trait RefSpec_Map_Simple[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
     Map.simple[K, V].run[F]
 }
 
-trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
+trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
 
   private[data] type MapType[K, V] <: Map[K, V]
 
@@ -106,7 +106,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
   test("Map put, update, del (parallel)") {
     val N = 1024
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       m <- newMap[String, Int]
       _ <- (1 to N).toList.parTraverseN(512) { n =>
         m.put[F](n.toString -> n)
@@ -157,7 +157,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
     val P = 512
     val rng = new scala.util.Random()
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       m <- newRandomMap[String, String](
         genK = F.delay { rng.nextString(length = 24) },
         genV = F.pure("value"),
@@ -190,7 +190,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: KCASImplSpec =>
     val P = 512
     val rng = new scala.util.Random()
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       m <- newRandomMap[String, String](
         genK = F.delay { rng.nextString(length = 24) },
         genV = F.pure("x"),

@@ -30,19 +30,19 @@ final class StackSpec_Elimination_ThreadConfinedMCAS_IO
   with SpecThreadConfinedMCAS
   with StackSpecElimination[IO]
 
-trait StackSpecTreiber[F[_]] extends StackSpec[F] { this: KCASImplSpec =>
+trait StackSpecTreiber[F[_]] extends StackSpec[F] { this: McasImplSpec =>
   final override def newStack[A](as: A*): F[Stack[A]] = {
     TreiberStack.fromList(as.toList)
   }
 }
 
-trait StackSpecElimination[F[_]] extends StackSpec[F] { this: KCASImplSpec =>
+trait StackSpecElimination[F[_]] extends StackSpec[F] { this: McasImplSpec =>
   final override def newStack[A](as: A*): F[Stack[A]] = {
     EliminationStack.fromList(as.toList)
   }
 }
 
-trait StackSpec[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait StackSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   def newStack[A](as: A*): F[Stack[A]]
 

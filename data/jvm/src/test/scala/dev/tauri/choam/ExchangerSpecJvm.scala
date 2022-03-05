@@ -46,7 +46,7 @@ final class ExchangerSpecJvm_Emcas_IO
   with SpecEmcas
   with ExchangerSpecJvm[IO]
 
-trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   final val iterations = 10
 
@@ -396,8 +396,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
 
   private[this] final def startExchange[A, B](ex: Exchanger[A, B], a: A): F[Fiber[F, Throwable, (B, Option[Map[AnyRef, AnyRef]])]] = {
     F.interruptible {
-      val b: B = ex.exchange.unsafePerform(a, this.kcasImpl)
-      val ctx = Rxn.unsafe.context(ctx => ctx).unsafeRun(this.kcasImpl)
+      val b: B = ex.exchange.unsafePerform(a, this.mcasImpl)
+      val ctx = Rxn.unsafe.context(ctx => ctx).unsafeRun(this.mcasImpl)
       (b, getStats(ctx))
     }.start
   }
@@ -500,8 +500,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       rxn1 = (ref.update(_ + "d") >>> ex.exchange.provide("foo"))
       rxn2 = (ref.update(_ + "x") >>> ex.dual.exchange.provide(42))
-      tsk1 = F.interruptible { rxn1.unsafeRun(this.kcasImpl) }
-      tsk2 = F.interruptible { rxn2.unsafeRun(this.kcasImpl) }
+      tsk1 = F.interruptible { rxn1.unsafeRun(this.mcasImpl) }
+      tsk2 = F.interruptible { rxn2.unsafeRun(this.mcasImpl) }
       // one of them must fail, the other one unfortunately
       // will retry forever, so we need to interrupt it:
       r <- F.raceOutcome(tsk1, tsk2)

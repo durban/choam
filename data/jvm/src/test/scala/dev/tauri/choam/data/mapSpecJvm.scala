@@ -46,7 +46,7 @@ final class MapSpec_Ttrie_ThreadConfinedMCAS_SyncIO
   with SpecThreadConfinedMCAS
   with MapSpecTtrie[SyncIO]
 
-trait MapSpecTtrie[F[_]] extends MapSpec[F] { this: KCASImplSpec =>
+trait MapSpecTtrie[F[_]] extends MapSpec[F] { this: McasImplSpec =>
 
   override type MyMap[K, V] = Map[K, V]
 

@@ -33,7 +33,7 @@ final class DroppingQueueSpec_ThreadConfinedMCAS
 
 trait DroppingQueueSpec[F[_]]
   extends BaseSpecAsyncF[F]
-  with ScalaCheckEffectSuite { this: KCASImplSpec =>
+  with ScalaCheckEffectSuite { this: McasImplSpec =>
 
   def newDq[A](capacity: Int): F[DroppingQueue[A]] =
     DroppingQueue.apply(capacity).run[F]

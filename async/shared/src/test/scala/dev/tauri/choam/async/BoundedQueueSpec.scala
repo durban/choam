@@ -33,14 +33,14 @@ final class BoundedQueueSpecArray_ThreadConfinedMCAS_IO
   with BoundedQueueSpecArray[IO]
 
 trait BoundedQueueSpecLinked[F[_]]
-  extends BoundedQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+  extends BoundedQueueSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
   def newQueue[A](bound: Int): F[BoundedQueue[F, A]] =
     BoundedQueue.linked[F, A](bound).run[F]
 }
 
 trait BoundedQueueSpecArray[F[_]]
-  extends BoundedQueueSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+  extends BoundedQueueSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
   def newQueue[A](bound: Int): F[BoundedQueue[F, A]] =
     BoundedQueue.array[F, A](bound).run[F]
@@ -48,7 +48,7 @@ trait BoundedQueueSpecArray[F[_]]
 
 trait BoundedQueueSpec[F[_]]
   extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: KCASImplSpec with TestContextSpec[F] =>
+  with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
   def newQueue[A](bound: Int): F[BoundedQueue[F, A]]
 

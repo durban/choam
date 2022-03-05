@@ -24,7 +24,7 @@ final class ExchangerSpecCommon_ThreadConfinedMCAS_IO
   with SpecThreadConfinedMCAS
   with ExchangerSpecCommon[IO]
 
-trait ExchangerSpecCommon[F[_]] extends BaseSpecAsyncF[F] { this: KCASImplSpec =>
+trait ExchangerSpecCommon[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   final val iterations = 10
 

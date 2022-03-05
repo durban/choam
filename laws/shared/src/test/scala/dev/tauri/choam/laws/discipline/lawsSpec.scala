@@ -40,7 +40,7 @@ final class LawsSpecThreadConfinedMCAS
 trait LawsSpec
   extends DisciplineSuite
   with TestInstances
-  with cats.effect.testkit.TestInstances { self: KCASImplSpec =>
+  with cats.effect.testkit.TestInstances { self: McasImplSpec =>
 
   val tc: TestContext =
     TestContext()
@@ -49,7 +49,7 @@ trait LawsSpec
     Ticker(tc)
 
   checkAll("Rxn", new RxnLawTests with TestInstances {
-    override def kcasImpl: Mcas = self.kcasImpl
+    override def mcasImpl: Mcas = self.mcasImpl
   }.rxn[String, Int, Float, Double, Boolean, Long])
 
   checkAll("Ref", RefLawTests(self).ref[String, Int, Float])
@@ -60,7 +60,7 @@ trait LawsSpec
   checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])
   checkAll("Monad[Rxn]", MonadTests[Rxn[String, *]].monad[Int, String, Int])
   checkAll("Unique[Rxn]", UniqueTests[Rxn[Any, *]].unique { (act: Axn[Boolean]) =>
-    Prop(act.unsafeRun(self.kcasImpl))
+    Prop(act.unsafeRun(self.mcasImpl))
   })
   checkAll("MonoidK[Rxn]", MonoidKTests[λ[a => Rxn[a, a]]].monoidK[String])
   checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[String, Int]](Rxn.choiceSemigroup).semigroup)
@@ -68,7 +68,7 @@ trait LawsSpec
   checkAll("Defer[Rxn]", DeferTests[Rxn[String, *]].defer[Int])
   checkAll("Align[Rxn]", AlignTests[Rxn[String, *]].align[Int, Float, Double, Long])
   checkAll("Clock[Rxn]", ClockTests[Rxn[String, *]].clock { (act: Rxn[String, Boolean]) =>
-    Prop(act.unsafePerform(null : String, self.kcasImpl))
+    Prop(act.unsafePerform(null : String, self.mcasImpl))
   })
 
   checkAll("Order[Ref[Int]]", OrderTests[Ref[Int]].order)

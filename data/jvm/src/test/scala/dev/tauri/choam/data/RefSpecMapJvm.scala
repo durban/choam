@@ -49,7 +49,7 @@ final class RefSpec_Map_Simple_SpinLockMCAS_IO
   with SpecSpinLockMCAS
   with RefSpec_Map_Simple[IO]
 
-trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
+trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
 
   private[data] final override type MapType[K, V] = Ttrie[K, V]
 
@@ -131,7 +131,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: KCASImplSpec =>
     expectedSizeAtEnd: Int,
   ): F[Unit] = {
     for {
-      _ <- assumeF(this.kcasImpl.isThreadSafe)
+      _ <- assumeF(this.mcasImpl.isThreadSafe)
       m <- newMap[K, V]
       _ <- Applicative[F].replicateA(
         N,
