@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package data
 
-import scala.concurrent.duration._
-
 import cats.effect.IO
 
 final class QueueMsSpec_ThreadConfinedMcas_IO
@@ -337,7 +335,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       require(shifted >= idx) // ensure no overflow
       val items = (1 to RxnSize).toList.map(_ | shifted)
       val rxn: Axn[Unit] = items.traverse_ { item => q.enqueue.provide(item) }
-      rF.applyInterruptibly(rxn, null: Any)
+      rF.run(rxn, null: Any)
     }
     def deqTask(q: QueueType[Int]): F[Int] = {
       def go(acc: List[Int]): Axn[List[Int]] = {
@@ -353,13 +351,13 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           }
         }
       }
-      rF.applyInterruptibly(go(Nil), null: Any).flatMap { block =>
+      rF.run(go(Nil), null: Any).flatMap { block =>
         assertEqualsF(block.length, RxnSize) >> (
           assertEqualsF(block.map(_ >>> 8).toSet.size, 1)
         ) >> F.pure(block.head >>> 8)
       }
     }
-    val t = for {
+    for {
       _ <- this.assumeF(this.mcasImpl.isThreadSafe)
       q <- newQueueFromList[Int](Nil)
       indices = (0 until TaskSize).toList
@@ -368,6 +366,5 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       }
       _ <- assertEqualsF(results.sorted, indices)
     } yield ()
-    F.timeout(t, 28.seconds)
   }
 }
