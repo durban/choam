@@ -29,6 +29,8 @@ trait Reactive[F[_]] { self =>
   def monad: Monad[F]
   def mapK[G[_]](t: F ~> G)(implicit G: Monad[G]): Reactive[G] =
     new Reactive.TransformedReactive[F, G](self, t)
+  def applyInterruptibly[A, B](r: Rxn[A, B], a: A): F[B] =
+    this.run(r, a) // default implementation, interruptible `F` should override
 }
 
 object Reactive {
@@ -45,11 +47,19 @@ object Reactive {
   private[choam] class SyncReactive[F[_]](
     final override val mcasImpl: Mcas
   )(implicit F: Sync[F]) extends Reactive[F] {
+
     final override def run[A, B](r: Rxn[A, B], a: A): F[B] = {
       F.delay {
         r.unsafePerform(a, this.mcasImpl)
       }
     }
+
+    final override def applyInterruptibly[A, B](r: Rxn[A, B], a: A): F[B] = {
+      F.interruptible {
+        r.unsafePerform(a, this.mcasImpl)
+      }
+    }
+
     final override def monad =
       F
   }
