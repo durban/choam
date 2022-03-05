@@ -45,7 +45,7 @@ class CAS2ReadTest extends StressTestBase {
     val ctx = impl.currentContext()
     r.r3 = (ctx.tryPerformInternal(
       ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
-    ) == EmcasStatus.Successful)
+    ) == McasStatus.Successful)
   }
 
   @Actor

@@ -79,7 +79,7 @@ object NullMcas extends MCAS {
       if (desc.nonEmpty) {
         throw new UnsupportedOperationException
       } else {
-        EmcasStatus.Successful
+        McasStatus.Successful
       }
     }
 

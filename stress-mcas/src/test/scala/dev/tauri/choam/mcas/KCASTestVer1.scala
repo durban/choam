@@ -54,7 +54,7 @@ class KCASTestVer1 extends StressTestBase {
       }
       idx += 1
     }
-    ctx.tryPerform(d) == EmcasStatus.Successful
+    ctx.tryPerform(d) == McasStatus.Successful
   }
 
   @Actor

@@ -75,9 +75,11 @@ object FlakyEMCAS extends MCAS { self =>
       hash ^= it.next().address.##
     }
     if (this.seen.putIfAbsent(hash, ()).isDefined) {
-      Emcas.MCAS(desc = desc, ctx = ctx)
+      val r = Emcas.MCAS(desc = desc, ctx = ctx)
+      if (EmcasStatus.isSuccessful(r)) McasStatus.Successful
+      else r
     } else {
-      EmcasStatus.FailedVal // simulate a transient CAS failure to force a retry
+      McasStatus.FailedVal // simulate a transient CAS failure to force a retry
     }
   }
 }

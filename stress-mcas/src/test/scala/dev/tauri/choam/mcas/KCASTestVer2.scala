@@ -41,8 +41,8 @@ class KCASTestVer2 extends StressTestBase {
   @tailrec
   private[this] def init(): Unit = {
     val s = this.writeInternal("-", "ov")
-    if (s != EmcasStatus.Successful) {
-      if (s == EmcasStatus.FailedVal) {
+    if (s != McasStatus.Successful) {
+      if (s == McasStatus.FailedVal) {
         throw new AssertionError
       } else  {
         // failed due to commit-ts changing, retry:
@@ -52,7 +52,7 @@ class KCASTestVer2 extends StressTestBase {
   }
 
   private[this] def write(ov: String, nv: String): Boolean = {
-    writeInternal(ov, nv) == EmcasStatus.Successful
+    writeInternal(ov, nv) == McasStatus.Successful
   }
 
   private[this] def writeInternal(ov: String, nv: String): Long = {
@@ -66,7 +66,7 @@ class KCASTestVer2 extends StressTestBase {
           if (value eq ov) {
             d = desc.overwrite(desc.getOrElseNull(ref).withNv(nv))
           } else {
-            return EmcasStatus.FailedVal // scalafix:ok
+            return McasStatus.FailedVal // scalafix:ok
           }
         case None =>
           write(ov, nv) // retry

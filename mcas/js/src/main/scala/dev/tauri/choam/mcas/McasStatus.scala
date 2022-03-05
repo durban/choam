@@ -18,9 +18,8 @@
 package dev.tauri.choam.mcas
 
 // Note: this class/object is duplicated for JVM/JS
-object EmcasStatus {
+object McasStatus {
   private[mcas] final val Active = Version.Active
   final val Successful = Version.Successful
   final val FailedVal = Version.FailedVal
-  // `Break` is not used in JS
 }

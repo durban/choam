@@ -266,7 +266,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val d7 = d6.overwrite(d6.getOrElseNull(r2).withNv("bbb"))
     assert(!d7.readOnly)
     // perform:
-    assertEquals(ctx.tryPerform(d7), EmcasStatus.Successful)
+    assertEquals(ctx.tryPerform(d7), McasStatus.Successful)
     val newVer = d7.newVersion
     assertEquals(ctx.readVersion(r1), newVer)
     assertEquals(ctx.readVersion(r2), newVer)
@@ -290,7 +290,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assertSameInstance(ov2, "b")
     assert(d2.readOnly)
     // commit:
-    assert(ctx.tryPerform(d2) == EmcasStatus.Successful)
+    assert(ctx.tryPerform(d2) == McasStatus.Successful)
     assertEquals(ctx.start().validTs, startTs) // it's read-only, no need to incr version
     assertSameInstance(ctx.readDirect(r1), "a")
     assertEquals(ctx.readVersion(r1), v1)
@@ -315,7 +315,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(!d3.readOnly)
     val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv(ov1))
     assert(!d4.readOnly)
-    assert(ctx.tryPerform(d4) == EmcasStatus.Successful)
+    assert(ctx.tryPerform(d4) == McasStatus.Successful)
     val endTs = ctx.start().validTs
     assertEquals(endTs, startTs + Version.Incr)
     assertSameInstance(ctx.readDirect(r1), "b")
@@ -345,7 +345,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     // the ongoing op should fail:
     val res = ctx.tryPerform(d4)
     if (this.isEmcas) { // TODO
-      assertEquals(res, EmcasStatus.FailedVal)
+      assertEquals(res, McasStatus.FailedVal)
     } else {
       assertEquals(res, ver)
     }
@@ -393,7 +393,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     assert(!d3.readOnly)
     assertEquals(d3.validTs, startTs + Version.Incr)
     // commit:
-    assert(ctx.tryPerform(d3) == EmcasStatus.Successful)
+    assert(ctx.tryPerform(d3) == McasStatus.Successful)
     val endTs = ctx.start().validTs
     assertEquals(endTs, startTs + (2 * Version.Incr))
     assertSameInstance(ctx.readDirect(r1), "aa")
@@ -540,7 +540,7 @@ abstract class KCASSpec extends BaseSpecA { this: KCASImplSpec =>
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv(("X")))
     val res = ctx.tryPerform(d2)
     if (this.isEmcas) { // TODO
-      assertEquals(res, EmcasStatus.FailedVal)
+      assertEquals(res, McasStatus.FailedVal)
     } else {
       assertEquals(res, ver)
     }

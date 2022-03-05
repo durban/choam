@@ -151,7 +151,7 @@ object MCAS extends MCASPlatform { self =>
       if (desc.readOnly) {
         // we've validated each read,
         // so nothing to do here
-        EmcasStatus.Successful
+        McasStatus.Successful
       } else {
         // TODO: Could we ignore read-only HWDs
         // TODO: in the log? They're validated,
@@ -159,14 +159,14 @@ object MCAS extends MCASPlatform { self =>
         // TODO: catch any concurrent changes(?)
         val finalDesc = this.addVersionCas(desc)
         val res = this.tryPerformInternal(finalDesc)
-        assert((res == EmcasStatus.Successful) || (res == EmcasStatus.FailedVal) || Version.isValid(res))
+        assert((res == McasStatus.Successful) || (res == McasStatus.FailedVal) || Version.isValid(res))
         res
       }
     }
 
     /** Like `tryPerform`, but returns whether it was successful */
     final def tryPerformOk(desc: HalfEMCASDescriptor): Boolean = {
-      tryPerform(desc) == EmcasStatus.Successful
+      tryPerform(desc) == McasStatus.Successful
     }
 
     final def addCasFromInitial[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
@@ -242,7 +242,7 @@ object MCAS extends MCASPlatform { self =>
         val d1 = d0.add(hwd.withNv(nv)).withNoNewVersion
         assert(d1.newVersion == d1.validTs)
         // we're intentionally NOT having a version-CAS:
-        this.tryPerformInternal(d1) == EmcasStatus.Successful
+        this.tryPerformInternal(d1) == McasStatus.Successful
       } else {
         false
       }
@@ -264,7 +264,7 @@ object MCAS extends MCASPlatform { self =>
       assert(hwd ne null)
       if (equ(hwd.ov, ov)) {
         val d2 = d1.overwrite(hwd.withNv(nv))
-        this.tryPerform(d2) == EmcasStatus.Successful
+        this.tryPerform(d2) == McasStatus.Successful
       } else {
         false
       }

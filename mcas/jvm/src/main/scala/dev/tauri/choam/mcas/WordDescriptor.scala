@@ -41,9 +41,13 @@ private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDesc
   final def oldVersion: Long =
     this.half.version
 
+  // TODO: when we call this, usually
+  // TODO: we already know the status,
+  // TODO: so this volatile read could
+  // TODO: be avoided
   final def newVersion: Long = {
-    val cv = this.parent.getCommitVer()
-    assert(Version.isValid(cv))
+    val cv = this.parent.getStatus()
+    assert(EmcasStatus.isSuccessful(cv))
     cv
   }
 

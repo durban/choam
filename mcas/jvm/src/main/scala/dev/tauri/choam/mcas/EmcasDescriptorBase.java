@@ -33,8 +33,9 @@ abstract class EmcasDescriptorBase {
     }
   }
 
+  // TODO: padding (although, it might increase GC pressure?)
   private volatile long _status =
-    EmcasStatus.Active;
+    McasStatus.Active;
 
   long getStatus() {
     return this._status; // volatile

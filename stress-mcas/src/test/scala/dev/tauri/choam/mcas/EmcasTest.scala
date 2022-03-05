@@ -59,7 +59,7 @@ class EmcasTest {
     val res = ctx.tryPerformInternal(
       ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), this.ref1, "a", "b"), this.ref2, "x", "y")
     )
-    r.r1 = (res == EmcasStatus.Successful) // true
+    r.r1 = (res == McasStatus.Successful) // true
   }
 
   @Actor

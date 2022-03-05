@@ -40,7 +40,7 @@ class KCASTest extends StressTestBase {
     val d = refs.foldLeft(ctx.start()) { (d, ref) =>
       ctx.addCasFromInitial(d, ref, "ov", nv)
     }
-    ctx.tryPerformInternal(d) == EmcasStatus.Successful
+    ctx.tryPerformInternal(d) == McasStatus.Successful
   }
 
   @Actor

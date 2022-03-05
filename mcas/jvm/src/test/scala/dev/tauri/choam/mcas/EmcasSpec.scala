@@ -45,10 +45,10 @@ class EmcasSpec extends BaseSpecA {
     val ctx = Emcas.currentContext()
     val desc = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, null, "x"), r2, "x", null)
     val snap = ctx.snapshot(desc)
-    assertEquals(Emcas.tryPerformInternal(desc, ctx), EmcasStatus.Successful)
+    assertEquals(Emcas.tryPerformInternal(desc, ctx), McasStatus.Successful)
     assert(clue(ctx.readDirect[String](r1)) eq "x")
     assert(ctx.readDirect(r2) eq null)
-    assertEquals(Emcas.tryPerformInternal(snap, ctx), EmcasStatus.FailedVal)
+    assertEquals(Emcas.tryPerformInternal(snap, ctx), McasStatus.FailedVal)
     assert(ctx.readDirect(r1) eq "x")
     assert(ctx.readDirect(r2) eq null)
   }
@@ -102,7 +102,7 @@ class EmcasSpec extends BaseSpecA {
     val v21 = ctx.readVersion(r2)
     val d0 = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
     val desc = ctx.addCasWithVersion(d0, r2, "y", "b", version = v21)
-    assertEquals(ctx.tryPerform(desc), EmcasStatus.Successful)
+    assertEquals(ctx.tryPerform(desc), McasStatus.Successful)
     assertEquals(desc.newVersion, desc.validTs + Version.Incr)
     assert(ctx.readDirect(r1) eq "a")
     assert(ctx.readDirect(r2) eq "b")
@@ -116,7 +116,7 @@ class EmcasSpec extends BaseSpecA {
     // now we run another op:
     val desc1 = ctx.addCasWithVersion(ctx.start(), r1, "a", "aa", version = v12)
     val desc2 = ctx.addCasWithVersion(desc1, r2, "b", "bb", version = v22)
-    assertEquals(ctx.tryPerform(desc2), EmcasStatus.Successful)
+    assertEquals(ctx.tryPerform(desc2), McasStatus.Successful)
     assertEquals(desc2.newVersion, v12 + Version.Incr)
     assert(ctx.readDirect(r1) eq "aa")
     assert(ctx.readDirect(r2) eq "bb")
@@ -139,7 +139,7 @@ class EmcasSpec extends BaseSpecA {
     val v21 = ctx.readVersion(r2)
     val d0 = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
     val desc = ctx.addCasWithVersion(d0, r2, "y", "b", version = v21)
-    assertEquals(ctx.tryPerform(desc), EmcasStatus.Successful)
+    assertEquals(ctx.tryPerform(desc), McasStatus.Successful)
     assert(ctx.readDirect(r1) eq "a")
     assert(ctx.readDirect(r2) eq "b")
     val v12 = ctx.readVersion(r1)
@@ -153,7 +153,7 @@ class EmcasSpec extends BaseSpecA {
     val ts0 = ctx.start().validTs
     val desc1 = ctx.addCasWithVersion(ctx.start(), r1, "a", "aa", version = v12)
     val desc2 = ctx.addCasWithVersion(desc1, r2, "x", "bb", version = v22)
-    assertEquals(ctx.tryPerform(desc2), EmcasStatus.FailedVal)
+    assertEquals(ctx.tryPerform(desc2), McasStatus.FailedVal)
     // commitTs didn't change, since we failed:
     assertEquals(ctx.start().validTs, ts0)
     assert(ctx.readDirect(r1) eq "a")
@@ -176,7 +176,7 @@ class EmcasSpec extends BaseSpecA {
     var mark: AnyRef = null
     val desc = {
       val desc = EmcasDescriptor.prepare(hDesc)
-      val ok = Emcas.MCAS(desc = desc, ctx = ctx) == EmcasStatus.Successful
+      val ok = EmcasStatus.isSuccessful(Emcas.MCAS(desc = desc, ctx = ctx))
       // TODO: if *right now* the GC clears the mark, the assertion below will fail
       mark = desc.wordIterator().next().address.unsafeGetMarkerVolatile().get()
       assert(mark ne null)
@@ -424,7 +424,7 @@ class EmcasSpec extends BaseSpecA {
     assertEquals(res, "x")
     assertEquals(ctx.readDirect(r1), "x")
     assertEquals(ctx.readDirect(r2), "y")
-    assert(other.getStatus() == EmcasStatus.Successful)
+    assert(EmcasStatus.isSuccessful(other.getStatus()))
     // we hold a strong ref, since we're pretending we're another op
     Reference.reachabilityFence(mark)
   }
@@ -444,7 +444,7 @@ class EmcasSpec extends BaseSpecA {
     assertEquals(res, "r1")
     assertEquals(ctx.readDirect(r1), "r1")
     assertEquals(ctx.readDirect(r2), "r2")
-    assert(other.getStatus() == EmcasStatus.FailedVal)
+    assert(other.getStatus() == McasStatus.FailedVal)
     // we hold a strong ref, since we're pretending we're another op
     Reference.reachabilityFence(mark)
   }
@@ -586,7 +586,7 @@ class EmcasSpec extends BaseSpecA {
     // T1 continues:
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv("C"))
     val result = ctx.tryPerform(d2)
-    assertEquals(result, EmcasStatus.FailedVal)
+    assertEquals(result, McasStatus.FailedVal)
     val ver2 = ctx.readVersion(ref)
     // version mustn't decrease:
     assert(ver2 >= ver, s"${ver2} < ${ver}")

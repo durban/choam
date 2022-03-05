@@ -28,7 +28,7 @@ import cats.mtl.Local
 import cats.effect.kernel.{ Unique, Clock }
 import cats.effect.std.{ UUIDGen, Random }
 
-import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor, HalfWordDescriptor, EmcasStatus }
+import mcas.{ MemoryLocation, MCAS, HalfEMCASDescriptor, HalfWordDescriptor, McasStatus }
 import internal.{ ByteStack, ObjStack, Backoff }
 
 /**
@@ -982,11 +982,14 @@ object Rxn extends RxnInstances0 {
     @tailrec
     private[this] final def casLoop(): Boolean = {
       ctx.tryPerform(desc) match {
-        case EmcasStatus.Successful =>
+        case McasStatus.Successful =>
           true
-        case EmcasStatus.FailedVal =>
+        case McasStatus.FailedVal =>
           false
         case _ => // failed due to version
+          // TODO: This actually never happens with EMCAS now
+          // TODO: (and also never happends on JS); so do we
+          // TODO: actually need this code?
           ctx.validateAndTryExtend(desc, hwd = null) match {
             case null =>
               // can't extend:

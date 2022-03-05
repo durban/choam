@@ -184,18 +184,18 @@ private object SpinLockMCAS extends MCAS { self =>
 
       ops match {
         case Nil =>
-          EmcasStatus.Successful
+          McasStatus.Successful
         case l @ (_ :: _) =>
           lock(l) match {
             case (Nil, bv) =>
               assert(bv.isEmpty)
               commit(l, newVersion)
-              EmcasStatus.Successful
+              McasStatus.Successful
             case (to @ (_ :: _), bv) =>
               rollback(l, to)
               bv match {
                 case Some(ver) => ver
-                case None => EmcasStatus.FailedVal
+                case None => McasStatus.FailedVal
               }
           }
       }

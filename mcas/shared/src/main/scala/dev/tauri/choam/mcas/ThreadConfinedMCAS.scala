@@ -55,11 +55,11 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
                 prepare(it)
               } else {
                 if (isGlobalVerCas) witness.asInstanceOf[Long]
-                else EmcasStatus.FailedVal
+                else McasStatus.FailedVal
               }
           }
         } else {
-          EmcasStatus.Successful
+          McasStatus.Successful
         }
       }
 
@@ -81,9 +81,9 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
       }
 
       val prepResult = prepare(desc.iterator())
-      if (prepResult == EmcasStatus.Successful) {
+      if (prepResult == McasStatus.Successful) {
         execute(desc.iterator(), desc.newVersion)
-        EmcasStatus.Successful
+        McasStatus.Successful
       } else {
         prepResult
       }

@@ -215,14 +215,14 @@ private object Emcas extends MCAS { self => // TODO: make this a class
             } else { // m eq null (from either a cleared or a removed weakref)
               // descriptor can be detached
               val parentStatus = wd.parent.getStatus()
-              if (parentStatus == EmcasStatus.Active) {
+              if (parentStatus == McasStatus.Active) {
                 // active op without a mark: this can
                 // happen if a thread died during an op;
                 // we help the active op, then retry ours:
                 MCAS(wd.parent, ctx = ctx)
                 go(mark = null, ver1 = ver1)
               } else { // finalized op
-                val successful = (parentStatus == EmcasStatus.Successful)
+                val successful = (parentStatus != McasStatus.FailedVal)
                 val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
                 val currVer = if (successful) wd.newVersion else wd.oldVersion
                 // marker is null, so we can replace the descriptor:
@@ -240,11 +240,11 @@ private object Emcas extends MCAS { self => // TODO: make this a class
           } else { // mark ne null
             // OK, we're already holding the descriptor
             val parentStatus = wd.parent.getStatus()
-            if (parentStatus == EmcasStatus.Active) {
+            if (parentStatus == McasStatus.Active) {
               MCAS(wd.parent, ctx = ctx) // help the other op
               go(mark = mark, ver1 = ver1) // retry
             } else { // finalized
-              val successful = (parentStatus == EmcasStatus.Successful)
+              val successful = (parentStatus != McasStatus.FailedVal)
               val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
               val currVer = if (successful) wd.newVersion else wd.oldVersion
               HalfWordDescriptor(ref, ov = a, nv = a, version = currVer)
@@ -338,14 +338,14 @@ private object Emcas extends MCAS { self => // TODO: make this a class
       case wd: WordDescriptor[_] =>
         val p = wd.parent
         val s = p.getStatus()
-        if (s == EmcasStatus.Active) {
+        if (s == McasStatus.Active) {
           // help and retry:
           MCAS(p, ctx = ctx)
           readVersion(ref, ctx)
-        } else if (s == EmcasStatus.Successful) {
-          wd.newVersion
-        } else { // Failed
+        } else if (s == McasStatus.FailedVal) {
           wd.oldVersion
+        } else { // successful
+          wd.newVersion
         }
       case _ => // value
         val ver2 = ref.unsafeGetVersionVolatile()
@@ -394,26 +394,26 @@ private object Emcas extends MCAS { self => // TODO: make this a class
               } else { // mark eq null
                 // the old descriptor is unused, could be detached
                 val parentStatus = wd.parent.getStatus()
-                if (parentStatus == EmcasStatus.Active) {
+                if (parentStatus == McasStatus.Active) {
                   // active op without a mark: this can
                   // happen if a thread died during an op
                   if (wd eq wordDesc) {
                     // this is us!
                     // already points to the right place, early return:
-                    return EmcasStatus.Successful // scalafix:ok
+                    return McasStatus.Successful // scalafix:ok
                   } else {
                     // we help the active op (who is not us),
                     // then continue with another iteration:
                     MCAS(wd.parent, ctx = ctx)
                   }
                 } else { // finalized op
-                  if (parentStatus == EmcasStatus.Successful) {
-                    value = wd.cast[A].nv
-                    version = wd.newVersion
-                    go = false
-                  } else { // Failed
+                  if (parentStatus == McasStatus.FailedVal) {
                     value = wd.cast[A].ov
                     version = wd.oldVersion
+                    go = false
+                  } else { // successful
+                    value = wd.cast[A].nv
+                    version = wd.newVersion
                     go = false
                   }
                 }
@@ -421,24 +421,24 @@ private object Emcas extends MCAS { self => // TODO: make this a class
             } else { // mark ne null
               if (wd eq wordDesc) {
                 // already points to the right place, early return:
-                return EmcasStatus.Successful // scalafix:ok
+                return McasStatus.Successful // scalafix:ok
               } else {
                 // At this point, we're sure that `wd` belongs to another op
                 // (not `desc`), because otherwise it would've been equal to
                 // `wordDesc` (we're assuming that any WordDescriptor only
                 // appears at most once in an MCASDescriptor).
                 val parentStatus = wd.parent.getStatus()
-                if (parentStatus == EmcasStatus.Active) {
+                if (parentStatus == McasStatus.Active) {
                   MCAS(wd.parent, ctx = ctx) // help the other op
                   // Note: we're not "helping" ourselves for sure, see the comment above.
                   // Here, we still don't have the value, so the loop must retry.
-                } else if (parentStatus == EmcasStatus.Successful) {
-                  value = wd.cast[A].nv
-                  version = wd.newVersion
-                  go = false
-                } else { // Failed
+                } else if (parentStatus == McasStatus.FailedVal) {
                   value = wd.cast[A].ov
                   version = wd.oldVersion
+                  go = false
+                } else { // successful
+                  value = wd.cast[A].nv
+                  version = wd.newVersion
                   go = false
                 }
               }
@@ -476,12 +476,12 @@ private object Emcas extends MCAS { self => // TODO: make this a class
 
       if (!equ(value, wordDesc.ov)) {
         // Expected value is different:
-        EmcasStatus.FailedVal
+        McasStatus.FailedVal
       } else if (version != wordDesc.oldVersion) {
         // The expected value is the same,
         // but the expected version isn't:
-        EmcasStatus.FailedVal
-      } else if (desc.getStatus() != EmcasStatus.Active) {
+        McasStatus.FailedVal
+      } else if (desc.getStatus() != McasStatus.Active) {
         // we have been finalized (by a helping thread), no reason to continue
         EmcasStatus.Break
       } else {
@@ -508,7 +508,7 @@ private object Emcas extends MCAS { self => // TODO: make this a class
         // a non-empty weakref (but this case is also handled, see above).
         if (weakRefOk && wordDesc.address.unsafeCasVolatile(content, wordDesc.castToData)) {
           Reference.reachabilityFence(mark)
-          EmcasStatus.Successful
+          McasStatus.Successful
         } else {
           // either we couldn't install the new mark, or
           // the CAS on the `Ref` failed; in either case,
@@ -525,46 +525,44 @@ private object Emcas extends MCAS { self => // TODO: make this a class
         val word = words.next()
         if (word ne null) {
           val twr = tryWord(word)
-          if (twr == EmcasStatus.Successful) go(words)
+          assert((twr == McasStatus.Successful) || (twr == McasStatus.FailedVal) || (twr == EmcasStatus.Break))
+          if (twr == McasStatus.Successful) go(words)
           else twr
         } else {
           // Another thread already finalized the descriptor,
           // and cleaned up this word descriptor (hence the `null`);
           // thus, we should not continue:
-          assert(desc.getStatus() != EmcasStatus.Active)
+          assert(desc.getStatus() != McasStatus.Active)
           EmcasStatus.Break
         }
       } else {
-        EmcasStatus.Successful
+        McasStatus.Successful
       }
     }
 
     assert(!desc.hasVersionCas) // just to be sure
     val r = go(desc.wordIterator())
+    assert((r == McasStatus.Successful) || (r == McasStatus.FailedVal) || (r == EmcasStatus.Break))
     if (r == EmcasStatus.Break) {
       // someone else finalized the descriptor, we must read its status:
-      desc.getStatus()
+      val rr = desc.getStatus()
+      assert(rr != McasStatus.Active)
+      rr
     } else {
-      assert(r != EmcasStatus.Active)
-      if (r == EmcasStatus.Successful) {
+      val realRes = if (r == McasStatus.Successful) {
         // successfully installed all descriptors (~ACQUIRE)
-        // we'll need a new commit-ts:
-        val ourTs = retrieveFreshTs()
-        val wit = desc.cmpxchgCommitVer(ourTs)
-        if (wit != Version.None) {
-          // someone else already did it
-          assert(wit >= desc.expectedNewVersion)
-        } else {
-          // ok, we did it
-          assert(ourTs >= desc.expectedNewVersion)
-        }
+        // we'll need a new commit-ts, which we will
+        // CAS into the descriptor:
+        retrieveFreshTs()
+      } else {
+        r
       }
-      val witness: Long = desc.cmpxchgStatus(EmcasStatus.Active, r)
-      if (witness == EmcasStatus.Active) {
+      val witness: Long = desc.cmpxchgStatus(McasStatus.Active, realRes)
+      if (witness == McasStatus.Active) {
         // we finalized the descriptor
         // TODO: we should consider emptying the
         // TODO: array of WDs in `desc` now, to help GC
-        r
+        realRes
       } else {
         // someone else already finalized the descriptor, we return its status:
         witness
@@ -607,11 +605,18 @@ private object Emcas extends MCAS { self => // TODO: make this a class
   private[mcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: EmcasThreadContext): Long = {
     if (desc.nonEmpty) {
       val fullDesc = EmcasDescriptor.prepare(desc)
-      val res = Emcas.MCAS(desc = fullDesc, ctx = ctx)
-      assert((res == EmcasStatus.Successful) || (res == EmcasStatus.FailedVal))
-      res
+      val res = MCAS(desc = fullDesc, ctx = ctx)
+      if (EmcasStatus.isSuccessful(res)) {
+        // EMCAS stores a version in the descriptor,
+        // to signify success; however, here we return
+        // a constant, to follow the MCAS API:
+        McasStatus.Successful
+      } else {
+        assert(res == McasStatus.FailedVal)
+        McasStatus.FailedVal
+      }
     } else {
-      EmcasStatus.Successful
+      McasStatus.Successful
     }
   }
 
@@ -636,7 +641,7 @@ private object Emcas extends MCAS { self => // TODO: make this a class
     while (ctr < max) {
       ref.unsafeGetVolatile() match {
         case wd: WordDescriptor[_] =>
-          if (wd.parent.getStatus() == EmcasStatus.Active) {
+          if (wd.parent.getStatus() == McasStatus.Active) {
             // CAS in progress, retry
           } else {
             // CAS finalized, but no cleanup yet, read and retry

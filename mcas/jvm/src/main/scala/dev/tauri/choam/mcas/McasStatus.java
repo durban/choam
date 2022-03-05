@@ -17,28 +17,25 @@
 
 package dev.tauri.choam.mcas;
 
-/**
- * The status of an EMCAS-operation (and its
- * descriptor) has the following values and
- * transitions:
- *
- *   McasStatus.Active
- *          /\
- *         /  \
- *        /    \
- *       /      \
- *   FailedVal  any `v` where `EmcasStatus.isSuccessful(v)`
- */
-final class EmcasStatus {
+// Note: this class/object is duplicated for JVM/JS
+public final class McasStatus {
 
-  /** Not really a status, used to break from `tryWord` */
-  static final long Break = Version.None;
+  /**
+   * Marker for an op, which already started,
+   * but haven't finished yet.
+   */
+  static final long Active = Version.Active;
 
-  private EmcasStatus() {
-    throw new UnsupportedOperationException();
-  }
+  /**
+   * The MCAS operation finished successfully.
+   */
+  public static final long Successful = Version.Successful;
 
-  static final boolean isSuccessful(long s) {
-    return Version.isValid(s);
-  }
+  /**
+   * The MCAS operation failed, because one
+   * of the expected values (or its version)
+   * was not equal to the witness value (or
+   * the expected version).
+   */
+  public static final long FailedVal = Version.FailedVal;
 }

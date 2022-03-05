@@ -56,7 +56,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       assert(hwd ne null)
       val newHwd = hwd.withNv("bb")
       val dx2 = dx.overwrite(newHwd)
-      assertEquals(ctx.tryPerform(dx2), EmcasStatus.Successful)
+      assertEquals(ctx.tryPerform(dx2), McasStatus.Successful)
       val newVer = dx2.newVersion
       assertEquals(ctx.readVersion(r2), newVer)
       assert(newVer > d2.validTs)
@@ -83,7 +83,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     val d6 = d5.overwrite(d5.getOrElseNull(r2).withNv("bbb"))
     assert(!d6.readOnly)
     // perform:
-    assertEquals(ctx.tryPerform(d6), EmcasStatus.Successful)
+    assertEquals(ctx.tryPerform(d6), McasStatus.Successful)
     val newVer = d6.newVersion
     assertEquals(ctx.readVersion(r1), newVer)
     assertEquals(ctx.readVersion(r2), newVer)
@@ -115,7 +115,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       val Some((ov2, dx3)) = ctx.readMaybeFromLog(r2, dx2) : @unchecked
       assertSameInstance(ov2, "b")
       val dx4 = dx3.overwrite(dx3.getOrElseNull(r2).withNv("y"))
-      assertEquals(ctx.tryPerform(dx4), EmcasStatus.Successful)
+      assertEquals(ctx.tryPerform(dx4), McasStatus.Successful)
       val newVer = dx4.newVersion
       assertEquals(ctx.readVersion(r1), newVer)
       assertEquals(ctx.readVersion(r2), newVer)
@@ -154,14 +154,14 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       val Some((_, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
       val d3 = d2.overwrite(d2.getOrElseNull(r1).withNv("aa"))
       val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("bb"))
-      assertEquals(ctx.tryPerform(d4), EmcasStatus.Successful)
+      assertEquals(ctx.tryPerform(d4), McasStatus.Successful)
       ok = true
     })
     t.start()
     t.join()
     assert(ok)
     // commit:
-    assertEquals(ctx.tryPerform(d2), EmcasStatus.Successful) // read-only should still succeed
+    assertEquals(ctx.tryPerform(d2), McasStatus.Successful) // read-only should still succeed
     assertEquals(ctx.start().validTs, startTs + Version.Incr) //concurrent commit increased
     assertSameInstance(ctx.readDirect(r1), "aa")
     assertEquals(ctx.readVersion(r1), startTs + Version.Incr)
@@ -197,7 +197,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       val d0 = ctx.start()
       val Some((_, d1)) = ctx.readMaybeFromLog(r3, d0) : @unchecked
       val d2 = d1.overwrite(d1.getOrElseNull(r3).withNv("cc"))
-      assertEquals(ctx.tryPerform(d2), EmcasStatus.Successful)
+      assertEquals(ctx.tryPerform(d2), McasStatus.Successful)
       newVer = ctx.start().validTs
       ok = true
     })
@@ -210,7 +210,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
     // EMCAS should be able to handle this (disjoint op), but
     // others should fail due to the version-CAS failing:
     if (ctx.isInstanceOf[EmcasThreadContext]) {
-      assertEquals(res, EmcasStatus.Successful)
+      assertEquals(res, McasStatus.Successful)
       assertEquals(endTs, startTs + (2 * Version.Incr))
       assertSameInstance(ctx.readDirect(r1), "b")
       assertSameInstance(ctx.readDirect(r2), "a")
@@ -245,7 +245,7 @@ abstract class KCASSpecJvm extends KCASSpec { this: KCASImplSpec =>
       val d0 = ctx.start()
       val Some((_, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
       val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("x"))
-      assertEquals(ctx.tryPerform(d2), EmcasStatus.Successful)
+      assertEquals(ctx.tryPerform(d2), McasStatus.Successful)
       assertSameInstance(ctx.readDirect(r1), "x")
       ok = true
     })
