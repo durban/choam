@@ -33,7 +33,7 @@ import cats.effect.std.Random
  * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
  */
 private abstract class RandomBase
-  extends DeterministicRandomPlatform
+  extends RandomBasePlatform
   with Random[Axn] {
 
   import RandomBase._

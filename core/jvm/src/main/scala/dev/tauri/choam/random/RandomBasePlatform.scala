@@ -16,13 +16,16 @@
  */
 
 package dev.tauri.choam
+package random
 
-/** Beause Scala.js doesn't have StrictMath */
-private abstract class DeterministicRandomPlatform {
+/** We need this on the JVM too (because Scala.js doesn't have StrictMath) */
+private abstract class RandomBasePlatform {
 
+  @inline
   protected final def strictMathSqrt(a: Double): Double =
-    Math.sqrt(a) // ¯\_(ツ)_/¯
+    StrictMath.sqrt(a)
 
+  @inline
   protected final def strictMathLog(a: Double): Double =
-    Math.log(a) // ¯\_(ツ)_/¯
+    StrictMath.log(a)
 }
