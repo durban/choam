@@ -46,7 +46,7 @@ private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDesc
   // TODO: we already know the status,
   // TODO: so this volatile read could
   // TODO: be avoided
-  final def newVersion: Long = {
+  private[emcas] final def newVersion: Long = {
     val cv = this.parent.getStatus()
     assert(EmcasStatus.isSuccessful(cv))
     cv
@@ -64,12 +64,12 @@ private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDesc
 
 private object WordDescriptor {
 
-  private[mcas] def apply[A](
+  private[emcas] def apply[A](
     half: HalfWordDescriptor[A],
     parent: EmcasDescriptor,
   ): WordDescriptor[A] = new WordDescriptor[A](half, parent)
 
-  private[mcas] def prepare[A](
+  private[emcas] def prepare[A](
     half: HalfWordDescriptor[A],
     parent: EmcasDescriptor,
   ): WordDescriptor[A] = WordDescriptor(half, parent)

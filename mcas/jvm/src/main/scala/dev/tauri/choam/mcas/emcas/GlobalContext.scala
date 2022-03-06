@@ -27,8 +27,7 @@ import scala.jdk.javaapi.CollectionConverters
 
 private final class GlobalContext(impl: Emcas.type) {
 
-  // TODO: should be `private[emcas]`
-  private[mcas] val commitTs: AtomicLong = // TODO:padding!
+  private[emcas] val commitTs: AtomicLong = // TODO:padding!
     new AtomicLong(Version.Start)
 
   /**
@@ -56,7 +55,7 @@ private final class GlobalContext(impl: Emcas.type) {
     new EmcasThreadContext(this, Thread.currentThread().getId(), impl)
 
   /** Gets of creates the context for the current thread */
-  private[mcas] def currentContext(): EmcasThreadContext = {
+  private[emcas] def currentContext(): EmcasThreadContext = {
     threadContextKey.get() match {
       case null =>
         val tc = this.newThreadContext()
@@ -107,7 +106,7 @@ private final class GlobalContext(impl: Emcas.type) {
     }
   }
 
-  private[mcas] final def threadContexts(): Iterator[EmcasThreadContext] = {
+  private[emcas] final def threadContexts(): Iterator[EmcasThreadContext] = {
     val iterWeak = this._threadContexts.values().iterator()
     CollectionConverters.asScala(iterWeak).flatMap { weakref =>
       weakref.get() match {

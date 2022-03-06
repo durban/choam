@@ -181,7 +181,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
   private[choam] final val replacePeriodForReadValue =
     4096
 
-  private[emcas] val global =
+  private[emcas] final val global =
     new GlobalContext(self)
 
   // Listing 2 in the paper:
@@ -201,7 +201,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
    * @param ctx: The [[ThreadContext]] of the current thread.
    * @param replace: Pass 0 to not do any replacing/clearing.
    */
-  private[choam] final def readValue[A](ref: MemoryLocation[A], ctx: EmcasThreadContext, replace: Int): HalfWordDescriptor[A] = {
+  private[emcas] final def readValue[A](ref: MemoryLocation[A], ctx: EmcasThreadContext, replace: Int): HalfWordDescriptor[A] = {
     @tailrec
     def go(mark: AnyRef, ver1: Long): HalfWordDescriptor[A] = {
       ref.unsafeGetVolatile() match {
@@ -363,7 +363,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
    * @param desc: The main descriptor.
    * @param ctx: The [[EMCASThreadContext]] of the current thread.
    */
-  def MCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext): Long = {
+  private[emcas] final def MCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext): Long = {
 
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): Long = {
@@ -639,7 +639,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
 
   /** For testing */
   @throws[InterruptedException]
-  private[mcas] def spinUntilCleanup[A](ref: MemoryLocation[A], max: Long = Long.MaxValue): A = {
+  private[emcas] final def spinUntilCleanup[A](ref: MemoryLocation[A], max: Long = Long.MaxValue): A = {
     val ctx = this.currentContextInternal()
     var ctr: Long = 0L
     while (ctr < max) {

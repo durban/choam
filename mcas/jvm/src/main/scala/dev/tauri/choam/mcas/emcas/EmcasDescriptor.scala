@@ -39,20 +39,20 @@ private final class EmcasDescriptor private (
   final def size: Int =
     this.words.length
 
-  private[mcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
+  private[emcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
     new EmcasDescriptor.Iterator(this.words)
   }
 
-  private[mcas] final def casStatus(ov: Long, nv: Long): Boolean = {
+  private[emcas] final def casStatus(ov: Long, nv: Long): Boolean = {
     this.casStatusInternal(ov, nv)
   }
 
-  private[mcas] final def hasVersionCas: Boolean = {
+  private[emcas] final def hasVersionCas: Boolean = {
     this.half.hasVersionCas
   }
 
   /** Only for informational purposes, not actually used */
-  private[mcas] final def expectedNewVersion: Long = {
+  private[emcas] final def expectedNewVersion: Long = {
     this.half.newVersion
   }
 
