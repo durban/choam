@@ -50,33 +50,39 @@ class StmStackSpec extends CatsEffectSuite with BaseSpecA {
 
   test("StmStack should not lose items") {
     val s = new StmStack[Int]
-    val N = 10000
+    val B = 1024
+    val R = 32
+    val N = R * B
     val seed1 = ThreadLocalRandom.current().nextInt()
     val seed2 = ThreadLocalRandom.current().nextInt()
-    def push(xs: XorShift): Unit = {
-      for (_ <- 1 to N) {
-        s.push(xs.nextInt())
+    def push(xs: XorShift): IO[Unit] = {
+      val one = IO.blocking {
+        for (_ <- 1 to B) { s.push(xs.nextInt()) }
       }
+      (IO.cede *> one).replicateA_(R)
     }
     @tailrec
-    def pop(i: Int, cs: Int = 0): Int = {
+    def pop1(i: Int, cs: Int): Int = {
       if (i > 0) {
         s.tryPop() match {
           case Some(item) =>
-            pop(i - 1, cs ^ item)
+            pop1(i - 1, cs ^ item)
           case None =>
-            pop(i, cs)
+            pop1(i, cs)
         }
       } else {
         cs
       }
     }
+    def pop(cs: Int = 0): IO[Int] = {
+      (IO.cede *> IO.blocking { pop1(B, cs = cs) }).replicateA(R).map(_.reduce(_ ^ _))
+    }
 
     val tsk = for {
-      fpu1 <- IO.blocking { push(XorShift(seed1)) }.start
-      fpu2 <- IO.blocking { push(XorShift(seed2)) }.start
-      fpo1 <- IO.blocking { pop(N) }.start
-      fpo2 <- IO.blocking { pop(N) }.start
+      fpu1 <- push(XorShift(seed1)).start
+      fpu2 <- push(XorShift(seed2)).start
+      fpo1 <- pop().start
+      fpo2 <- pop().start
       _ <- fpu1.joinWithNever
       _ <- fpu2.joinWithNever
       cs1 <- fpo1.joinWithNever
@@ -101,18 +107,22 @@ class StmStackSpec extends CatsEffectSuite with BaseSpecA {
   test("StmStack should have composable transactions") {
     val s1 = new StmStack[Int]
     val s2 = new StmStack[Int]
-    val N = 100000
-    def push(xs: XorShift): Unit = {
-      for (_ <- 1 to N) {
-        val item = xs.nextInt()
-        atomic { implicit txn =>
-          s1.push(item)
-          s2.push(item)
+    val B = 1024
+    val R = 32
+    def push(xs: XorShift): IO[Unit] = {
+      val one = IO.blocking {
+        for (_ <- 1 to B) {
+          val item = xs.nextInt()
+          atomic { implicit txn =>
+            s1.push(item)
+            s2.push(item)
+          }
         }
       }
+      (IO.cede *> one).replicateA_(R)
     }
-    def pop(): Unit = {
-      for (_ <- 1 to N) {
+    def pop1(): Unit = {
+      for (_ <- 1 to B) {
         atomic { implicit txn =>
           val i1 = s1.tryPop()
           val i2 = s2.tryPop()
@@ -127,12 +137,15 @@ class StmStackSpec extends CatsEffectSuite with BaseSpecA {
         }
       }
     }
+    def pop(): IO[Unit] = {
+      (IO.cede *> IO.blocking { pop1() }).replicateA_(R)
+    }
 
     for {
-      fpu1 <- IO.blocking { push(XorShift()) }.start
-      fpo1 <- IO.blocking { pop() }.start
-      fpu2 <- IO.blocking { push(XorShift()) }.start
-      fpo2 <- IO.blocking { pop() }.start
+      fpu1 <- push(XorShift()).start
+      fpo1 <- pop().start
+      fpu2 <- push(XorShift()).start
+      fpo2 <- pop().start
       _ <- fpu1.join
       _ <- fpu2.join
       _ <- fpo1.join
