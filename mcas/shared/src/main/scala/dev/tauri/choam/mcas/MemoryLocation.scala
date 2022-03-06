@@ -74,6 +74,8 @@ trait MemoryLocation[A] {
 
   def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean
 
+  def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long
+
   // marker:
 
   /** Used by EMCAS */ // TODO: this is JVM-only

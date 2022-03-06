@@ -15,25 +15,26 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.refs;
+package dev.tauri.choam
+package mcas
 
-import java.lang.ref.WeakReference;
+final class MemoryLocationSpec extends BaseSpecA {
 
-interface Ref2ImplBase<A, B> {
-  A unsafeGetVolatile1();
-  A unsafeGetPlain1();
-  boolean unsafeCasVolatile1(A ov, A nv);
-  A unsafeCmpxchgVolatile1(A ov, A nv);
-  void unsafeSetVolatile1(A nv);
-  void unsafeSetPlain1(A nv);
-  long unsafeGetVersionVolatile1();
-  boolean unsafeCasVersionVolatile1(long ov, long nv);
-  long unsafeCmpxchgVersionVolatile1(long ov, long nv);
-  WeakReference<Object> unsafeGetMarkerVolatile1();
-  boolean unsafeCasMarkerVolatile1(WeakReference<Object> ov, WeakReference<Object> nv);
-  long id0();
-  long id1();
-  long id2();
-  long id3();
-  long dummyImpl1(long v);
+  def mkTestRefs(): List[MemoryLocation[String]] = {
+    List(
+      MemoryLocation.unsafeUnpadded("foo"),
+      MemoryLocation.unsafePadded("foo"),
+    )
+  }
+
+  test("MemoryLocation#unsafeCmpxchgVersionVolatile") {
+    for (ref <- mkTestRefs()) {
+      val wit = ref.unsafeCmpxchgVersionVolatile(Version.Start, 42L)
+      assertEquals(wit, Version.Start)
+      assertEquals(ref.unsafeGetVersionVolatile(), 42L)
+      val wit2 = ref.unsafeCmpxchgVersionVolatile(0L, 99L)
+      assertEquals(wit2, 42L)
+      assertEquals(ref.unsafeGetVersionVolatile(), 42L)
+    }
+  }
 }

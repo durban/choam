@@ -158,6 +158,11 @@ final class RefP2<A, B>
   }
 
   @Override
+  public final long unsafeCmpxchgVersionVolatile1(long ov, long nv) {
+    return (long) VERSION_A.compareAndExchange(this, ov, nv);
+  }
+
+  @Override
   public final WeakReference<Object> unsafeGetMarkerVolatile1() {
     return this.markerA;
   }
@@ -205,6 +210,11 @@ final class RefP2<A, B>
   @Override
   public final boolean unsafeCasVersionVolatile2(long ov, long nv) {
     return VERSION_B.compareAndSet(this, ov, nv);
+  }
+
+  @Override
+  public final long unsafeCmpxchgVersionVolatile2(long ov, long nv) {
+    return (long) VERSION_B.compareAndExchange(this, ov, nv);
   }
 
   @Override

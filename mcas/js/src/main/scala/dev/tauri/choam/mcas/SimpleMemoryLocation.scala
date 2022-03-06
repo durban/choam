@@ -75,6 +75,15 @@ private[choam] class SimpleMemoryLocation[A](private[this] var value: A)(
     }
   }
 
+  final override def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long = {
+    if (this.version == ov) {
+      this.version = nv
+      ov
+    } else {
+      this.version
+    }
+  }
+
   // These are used only by EMCAS, which is JVM-only:
 
   final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =

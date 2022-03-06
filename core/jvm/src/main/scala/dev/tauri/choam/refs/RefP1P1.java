@@ -131,6 +131,11 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
   }
 
   @Override
+  public final long unsafeCmpxchgVersionVolatile2(long ov, long nv) {
+    return (long) VERSION_B.compareAndExchange(this, ov, nv);
+  }
+
+  @Override
   public final WeakReference<Object> unsafeGetMarkerVolatile2() {
     return this.markerB;
   }

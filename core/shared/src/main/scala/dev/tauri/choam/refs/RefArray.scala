@@ -227,6 +227,19 @@ private object RefArray {
       }
     }
 
+    final override def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long = {
+      val idx = physicalIdx + 1
+      // unfortunately we have to be careful with object identity:
+      val current: AnyRef = array.items.get(idx)
+      val currentValue: Long = current.asInstanceOf[Long]
+      if (currentValue == ov) {
+        val wit = array.items.compareAndExchange(idx, current, nv.asInstanceOf[AnyRef])
+        wit.asInstanceOf[Long]
+      } else {
+        currentValue
+      }
+    }
+
     final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
       array.items.get(physicalIdx + 2).asInstanceOf[WeakReference[AnyRef]]
 

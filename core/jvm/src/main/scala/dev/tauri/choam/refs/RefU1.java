@@ -109,6 +109,11 @@ final class RefU1<A> extends RefIdOnly implements Ref<A>, MemoryLocation<A> {
   }
 
   @Override
+  public final long unsafeCmpxchgVersionVolatile(long ov, long nv) {
+    return (long) VERSION.compareAndExchange(this, ov, nv);
+  }
+
+  @Override
   public final WeakReference<Object> unsafeGetMarkerVolatile() {
     return this.marker;
   }
