@@ -47,7 +47,7 @@ trait DroppingQueueSpec[F[_]]
       }
     }
     PropF.forAllF { (cap: Int, ints: List[Int]) =>
-      val c = min(max(cap.abs, 1), 0xffff)
+      val c = min(max(cap.abs, 1), 0x7fff)
       for {
         q <- newDq[Int](c)
         s <- CatsQueue.dropping[F, Int](capacity = c)
