@@ -225,7 +225,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
               } else { // finalized op
                 val successful = (parentStatus != McasStatus.FailedVal)
                 val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
-                val currVer = if (successful) wd.newVersion else wd.oldVersion
+                val currVer = if (successful) parentStatus else wd.oldVersion
                 // marker is null, so we can replace the descriptor:
                 this.maybeReplaceDescriptor[A](
                   ref,
@@ -247,7 +247,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
             } else { // finalized
               val successful = (parentStatus != McasStatus.FailedVal)
               val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
-              val currVer = if (successful) wd.newVersion else wd.oldVersion
+              val currVer = if (successful) parentStatus else wd.oldVersion
               HalfWordDescriptor(ref, ov = a, nv = a, version = currVer)
             }
           }
@@ -344,7 +344,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
         } else if (s == McasStatus.FailedVal) {
           wd.oldVersion
         } else { // successful
-          wd.newVersion
+          s
         }
       case _ => // value
         val ver2 = ref.unsafeGetVersionVolatile()
@@ -412,7 +412,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
                     go = false
                   } else { // successful
                     value = wd.cast[A].nv
-                    version = wd.newVersion
+                    version = parentStatus
                     go = false
                   }
                 }
@@ -437,7 +437,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
                   go = false
                 } else { // successful
                   value = wd.cast[A].nv
-                  version = wd.newVersion
+                  version = parentStatus
                   go = false
                 }
               }
