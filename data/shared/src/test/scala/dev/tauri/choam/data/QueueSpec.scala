@@ -338,20 +338,25 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       rF.run(rxn, null: Any)
     }
     def deqTask(q: QueueType[Int]): F[Int] = {
-      def go(acc: List[Int]): Axn[List[Int]] = {
+      def goOnce(acc: List[Int]): Axn[List[Int]] = {
         if (acc.length == RxnSize) {
           Rxn.pure(acc.reverse)
         } else {
           q.tryDeque.flatMapF {
             case None =>
-              // spin-wait:
-              Axn.unsafe.delay(assert(acc.isEmpty)) *> Rxn.unsafe.retry
+              Axn.unsafe.delay(assert(acc.isEmpty)).as(Nil)
             case Some(item) =>
-              go(item :: acc)
+              goOnce(item :: acc)
           }
         }
       }
-      rF.run(go(Nil), null: Any).flatMap { block =>
+      def go: F[List[Int]] = {
+        goOnce(Nil).run[F].flatMap { lst =>
+          if (lst.isEmpty) go
+          else F.pure(lst)
+        }
+      }
+      go.flatMap { block =>
         assertEqualsF(block.length, RxnSize) >> (
           assertEqualsF(block.map(_ >>> 8).toSet.size, 1)
         ) >> F.pure(block.head >>> 8)
