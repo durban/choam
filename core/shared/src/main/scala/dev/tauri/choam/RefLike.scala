@@ -74,20 +74,29 @@ trait RefLike[A] {
   final def tryModify[B](f: A => (A, B)): Axn[Option[B]] =
     modify(f).?
 
-  final def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] =
+  def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] =
     new RefLike.CatsRefFromRefLike[F, A](this) {}
 }
 
 object RefLike {
 
+  private[choam] abstract class CatsRefFromRef[F[_], A](self: Ref[A])(implicit F: Reactive[F])
+    extends CatsRefFromRefLike[F, A](self)(F) {
+
+    override def get: F[A] =
+      self.unsafeDirectRead.run[F]
+  }
+
   private[choam] abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
     extends CatsRef[F, A] {
+
     def get: F[A] =
-      self.get.run[F] // TODO: actual `Ref`s could optimize this with unsafeDirectRead
+      self.get.run[F]
+
     override def set(a: A): F[Unit] =
       self.set[F](a)
+
     override def access: F[(A, A => F[Boolean])] = {
-      // TODO: we could have an optimized impl. with tickets (for actual `Ref`s)
       F.monad.flatMap(this.get) { ov =>
         // `access` as defined in cats-effect must never
         // succeed after it was called once, so we need a flag:
@@ -108,16 +117,22 @@ object RefLike {
         }
       }
     }
+
     override def tryUpdate(f: A => A): F[Boolean] =
       self.tryUpdate(f).run[F]
+
     override def tryModify[B](f: A => (A, B)): F[Option[B]] =
       self.tryModify(f).run[F]
+
     override def update(f: A => A): F[Unit] =
       self.update(f).run[F]
+
     override def modify[B](f: A => (A, B)): F[B] =
       self.modify(f).run[F]
+
     override def tryModifyState[B](state: State[A, B]): F[Option[B]] =
       self.tryModify(a => state.runF.value(a).value).run[F]
+
     override def modifyState[B](state: State[A,B]): F[B] =
       self.modify(a => state.runF.value(a).value).run[F]
   }

@@ -22,6 +22,7 @@ import java.util.concurrent.ThreadLocalRandom
 import scala.math.Ordering
 
 import cats.kernel.{ Order, Hash }
+import cats.effect.kernel.{ Ref => CatsRef }
 
 import mcas.MemoryLocation
 
@@ -54,6 +55,9 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
 
   final def unsafeCas(ov: A, nv: A): Axn[Unit] =
     Rxn.unsafe.cas(this, ov, nv)
+
+  final override def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] =
+    new RefLike.CatsRefFromRef[F, A](this) {}
 
   private[choam] final def loc: MemoryLocation[A] =
     this
