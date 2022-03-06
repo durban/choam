@@ -33,7 +33,7 @@ final class HalfEMCASDescriptor private (
   require((versionCas eq null) || (versionIncr > 0L))
 
   final def validTs: Long =
-    this.validTsBoxed // unboxing happens
+    this.validTsBoxed.longValue()
 
   final def size: Int =
     this.map.size + (if (this.versionCas ne null) 1 else 0)
@@ -166,7 +166,7 @@ final class HalfEMCASDescriptor private (
     val hwd = HalfWordDescriptor[java.lang.Long](
       commitTsRef.asInstanceOf[MemoryLocation[java.lang.Long]],
       ov = this.validTsBoxed, // no boxing here
-      nv = this.newVersion, // boxing happens here
+      nv = java.lang.Long.valueOf(this.newVersion),
       version = Version.Start, // the version's version is unused/arbitrary
     )
     new HalfEMCASDescriptor(

@@ -615,4 +615,10 @@ class EmcasSpec extends BaseSpecA {
     assert((lst(0) eq r1) || (lst(0) eq r2))
     assert((lst(1) eq r1) || (lst(1) eq r2))
   }
+
+  test("Version.Incr should be 1") {
+    // EMCAS assumes we're incrementing by 1,
+    // so we have a test to remember this:
+    assertEquals(Version.Incr, 1L)
+  }
 }

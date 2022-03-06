@@ -299,10 +299,8 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
       if (!ref.unsafeCasVersionVolatile(currentInRef, currentVersion)) {
         // concurrent write, but re-check to be sure:
         assert(ref.unsafeGetVersionVolatile() >= currentVersion)
-        // TODO: ^--- This assertion failed once (in BoundedQueueBench);
-        // TODO: figure out, why that could've happened.
       } // else: successfully updated version
-    } // else: either a concurrent write to newer version, or is already correct
+    } // else: either a concurrent write to a newer version, or it is already correct
 
     // We replace the descriptor with the final value.
     // If this CAS fails, someone else might've
@@ -580,7 +578,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
       ts2
     } else {
       // we try to increment it:
-      val candidate = ts1 + 1L // TODO: use Version.Incr
+      val candidate = ts1 + Version.Incr
       val ctsWitness = this.global.commitTs.compareAndExchange(ts1, candidate)
       if (ctsWitness == ts1) {
         // ok, successful CAS:
