@@ -105,17 +105,13 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(a.unsafeGet(N - 1).get.run[F], "x")
       idx <- F.delay {
         val tlr = java.util.concurrent.ThreadLocalRandom.current()
-        tlr.nextInt().abs % N
+        (tlr.nextInt().abs % (N - 2)) + 1
       }
       _ <- assertResultF(a.unsafeGet(idx).get.run[F], "x")
       _ <- a.unsafeGet(idx).getAndSet[F]("foo")
-      _ <- if (idx != 0) {
-        assertResultF(a.unsafeGet(0).get.run[F], "x")
-      } else F.unit
+      _ <- assertResultF(a.unsafeGet(0).get.run[F], "x")
       _ <- assertResultF(a.unsafeGet(idx).get.run[F], "foo")
-      _ <- if (idx != (N - 1)) {
-        assertResultF(a.unsafeGet(N - 1).get.run[F], "x")
-      } else F.unit
+      _ <- assertResultF(a.unsafeGet(N - 1).get.run[F], "x")
     } yield ()
   }
 
