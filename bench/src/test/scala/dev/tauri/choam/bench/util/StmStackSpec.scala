@@ -50,7 +50,7 @@ class StmStackSpec extends CatsEffectSuite with BaseSpecA {
 
   test("StmStack should not lose items") {
     val s = new StmStack[Int]
-    val N = 100000
+    val N = 10000
     val seed1 = ThreadLocalRandom.current().nextInt()
     val seed2 = ThreadLocalRandom.current().nextInt()
     def push(xs: XorShift): Unit = {
