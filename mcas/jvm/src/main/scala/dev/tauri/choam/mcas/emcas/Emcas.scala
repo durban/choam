@@ -570,8 +570,8 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
   }
 
   private[this] final def retrieveFreshTs(): Long = {
-    val ts1 = this.global.commitTs.get()
-    val ts2 = this.global.commitTs.get()
+    val ts1 = this.global.getCommitTs()
+    val ts2 = this.global.getCommitTs()
     if (ts1 != ts2) {
       // we've observed someone else changing the version:
       assert(ts2 > ts1)
@@ -579,7 +579,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
     } else {
       // we try to increment it:
       val candidate = ts1 + Version.Incr
-      val ctsWitness = this.global.commitTs.compareAndExchange(ts1, candidate)
+      val ctsWitness = this.global.cmpxchgCommitTs(ts1, candidate)
       if (ctsWitness == ts1) {
         // ok, successful CAS:
         candidate

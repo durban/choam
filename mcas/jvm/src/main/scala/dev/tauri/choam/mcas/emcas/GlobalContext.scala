@@ -21,14 +21,11 @@ package emcas
 
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentSkipListMap
-import java.util.concurrent.atomic.AtomicLong
 
 import scala.jdk.javaapi.CollectionConverters
 
-private final class GlobalContext(impl: Emcas.type) {
-
-  private[emcas] val commitTs: AtomicLong = // TODO:padding!
-    new AtomicLong(Version.Start)
+private final class GlobalContext(impl: Emcas.type)
+  extends GlobalContextBase {
 
   /**
    * `ThreadContext`s of all the (active) threads

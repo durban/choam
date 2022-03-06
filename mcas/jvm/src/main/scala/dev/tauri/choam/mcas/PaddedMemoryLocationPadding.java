@@ -17,7 +17,7 @@
 
 package dev.tauri.choam.mcas;
 
-abstract class PaddedMemoryLocationPadding {
+public abstract class PaddedMemoryLocationPadding {
 
   byte pad000;
   byte pad001;
