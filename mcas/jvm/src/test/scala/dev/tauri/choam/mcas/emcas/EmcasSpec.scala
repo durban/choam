@@ -501,6 +501,21 @@ class EmcasSpec extends BaseSpecA {
     assertEquals(r1.elem.tid, r2.elem.tid)
   }
 
+  test("ThreadContext cleanup") {
+    val N = 5000
+    val task: Runnable = () => {
+      val ctx = Emcas.currentContext()
+      ctx.random.nextInt()
+      ()
+    }
+    for (_ <- 1 to N) {
+      val t = new Thread(task)
+      t.start()
+      t.join()
+    }
+    assert(Emcas.global.size <= (N / 2))
+  }
+
   test("Descriptors should be sorted") {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 1L)
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 2L)

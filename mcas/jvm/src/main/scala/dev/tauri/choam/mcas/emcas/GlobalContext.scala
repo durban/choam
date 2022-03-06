@@ -20,12 +20,12 @@ package mcas
 package emcas
 
 import java.lang.ref.WeakReference
-import java.util.concurrent.ConcurrentSkipListMap
+import java.util.concurrent.{ ConcurrentSkipListMap, ThreadLocalRandom }
 
-import scala.jdk.javaapi.CollectionConverters
+import scala.collection.AbstractIterator
 
 private final class GlobalContext(impl: Emcas.type)
-  extends GlobalContextBase {
+  extends GlobalContextBase { self =>
 
   /**
    * `ThreadContext`s of all the (active) threads
@@ -40,9 +40,16 @@ private final class GlobalContext(impl: Emcas.type)
    * affect safety, because a dead thread will never
    * continue its current op (if any).
    */
-  private[this] val _threadContexts =
+  private[this] val _threadContexts = {
+    // TODO: Technically `ConcurrentSkipListMap` is
+    // TODO: not lock-free, because it maintains its
+    // TODO: size in a `LongAdder`, which has a
+    // TODO: slow-path protected by a spinlock.
+    // TODO: (We usually expect low contention on this
+    // TODO: `ConcurrentSkipListMap`, so it should
+    // TODO: rarely hit this slow-path, if ever.)
     new ConcurrentSkipListMap[Long, WeakReference[EmcasThreadContext]]
-    // TODO: we need to remove empty weakrefs somewhere
+  }
 
   /** Holds the context for each (active) thread */
   private[this] val threadContextKey =
@@ -55,14 +62,17 @@ private final class GlobalContext(impl: Emcas.type)
   private[emcas] def currentContext(): EmcasThreadContext = {
     threadContextKey.get() match {
       case null =>
+        // slow path: need to create new ctx
         val tc = this.newThreadContext()
         threadContextKey.set(tc)
         this._threadContexts.put(
           Thread.currentThread().getId(),
           new WeakReference(tc)
         )
+        this.maybeGcThreadContexts(tc.random) // we might also clear weakrefs
         tc
       case tc =>
+        // "fast" path: ctx already exists
         tc
     }
   }
@@ -105,13 +115,81 @@ private final class GlobalContext(impl: Emcas.type)
 
   private[emcas] final def threadContexts(): Iterator[EmcasThreadContext] = {
     val iterWeak = this._threadContexts.values().iterator()
-    CollectionConverters.asScala(iterWeak).flatMap { weakref =>
-      weakref.get() match {
-        case null =>
-          Iterator.empty
-        case tctx =>
-          Iterator.single(tctx)
+    new AbstractIterator[EmcasThreadContext] {
+
+      private[this] val _underlying = iterWeak
+
+      private[this] var _next: EmcasThreadContext = null
+
+      final override def hasNext: Boolean =
+        fetchNext()
+
+      @tailrec
+      private[this] final def fetchNext(): Boolean = {
+        if (_next ne null) {
+          true
+        } else if (_underlying.hasNext()) {
+          _next = _underlying.next().get()
+          if (_next eq null) {
+            _underlying.remove() // remove weakref from _threadContexts
+          }
+          fetchNext()
+        } else {
+          false
+        }
+      }
+
+      final override def next(): EmcasThreadContext = {
+        val r = _next
+        _next = null
+        if (r eq null) {
+          throw new IllegalStateException
+        }
+        r
       }
     }
+  }
+
+  /**
+   * We occasionally clean the empty weakrefs from
+   * `_threadContexts`, to catch the case when a lot
+   * of threads (and `ThreadContexts`) are created,
+   * then discarded. (In this case we could hold on
+   * to an unbounded number of empty weakrefs.) We
+   * don't want to do this often (because we need
+   * to traverse the whole skip-list), so we do it
+   * approximately once every 256 `ThreadContext`
+   * creation. During typical usage (i.e., a thread-pool)
+   * the actual cleanup (`gcThreadContexts`) should
+   * almost never be called.
+   */
+  private[this] final def maybeGcThreadContexts(tlr: ThreadLocalRandom): Unit = {
+    if (
+      (tlr.nextInt(256) == 0) &&
+      (_threadContexts.size() > Runtime.getRuntime().availableProcessors())
+    ) {
+      gcThreadContexts()
+    }
+  }
+
+  /**
+   * Unfortunately we have to traverse the whole
+   * skip-list to remove empty weakrefs. (We could
+   * use a `ReferenceQueue` like `WeakHashMap` does,
+   * but `ReferenceQueue` locks a lot, so we avoid
+   * it.)
+   */
+  private[this] final def gcThreadContexts(): Unit = {
+    val it = this._threadContexts.values().iterator()
+    while (it.hasNext()) {
+      if (it.next().get() eq null) {
+        it.remove()
+      }
+    }
+  }
+
+  /** For testing */
+  private[emcas] final def size: Int = {
+    this._threadContexts.size()
   }
 }
