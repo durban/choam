@@ -295,10 +295,10 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
     assert(currentVersion >= ov.oldVersion)
     val currentInRef = ref.unsafeGetVersionVolatile()
     if (currentInRef < currentVersion) {
-      // TODO: we could use an `unsafeCmpxchgVersionVolatile` here:
-      if (!ref.unsafeCasVersionVolatile(currentInRef, currentVersion)) {
+      val wit = ref.unsafeCmpxchgVersionVolatile(currentInRef, currentVersion)
+      if (wit != currentInRef) {
         // concurrent write, but re-check to be sure:
-        assert(ref.unsafeGetVersionVolatile() >= currentVersion)
+        assert(wit >= currentVersion)
       } // else: successfully updated version
     } // else: either a concurrent write to a newer version, or it is already correct
 
