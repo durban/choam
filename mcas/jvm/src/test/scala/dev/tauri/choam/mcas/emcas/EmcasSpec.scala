@@ -502,16 +502,20 @@ class EmcasSpec extends BaseSpecA {
   }
 
   test("ThreadContext cleanup") {
-    val N = 5000
+    val K = 100
+    val N = 50 * K
     val task: Runnable = () => {
       val ctx = Emcas.currentContext()
       ctx.random.nextInt()
       ()
     }
-    for (_ <- 1 to N) {
+    for (i <- 1 to N) {
       val t = new Thread(task)
       t.start()
       t.join()
+      if ((i % K) == 0) {
+        System.gc()
+      }
     }
     assert(Emcas.global.size <= (N / 2))
   }
