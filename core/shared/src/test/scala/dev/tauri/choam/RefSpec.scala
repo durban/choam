@@ -108,10 +108,14 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         tlr.nextInt().abs % N
       }
       _ <- assertResultF(a.unsafeGet(idx).get.run[F], "x")
-      _ <- a.unsafeGet(idx).getAndSet("foo")
-      _ <- assertResultF(a.unsafeGet(0).get.run[F], "x")
+      _ <- a.unsafeGet(idx).getAndSet[F]("foo")
+      _ <- if (idx != 0) {
+        assertResultF(a.unsafeGet(0).get.run[F], "x")
+      } else F.unit
       _ <- assertResultF(a.unsafeGet(idx).get.run[F], "foo")
-      _ <- assertResultF(a.unsafeGet(N - 1).get.run[F], "x")
+      _ <- if (idx != (N - 1)) {
+        assertResultF(a.unsafeGet(N - 1).get.run[F], "x")
+      } else F.unit
     } yield ()
   }
 
