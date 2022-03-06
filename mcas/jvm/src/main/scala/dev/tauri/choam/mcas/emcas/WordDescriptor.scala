@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package mcas
+package emcas
 
 // NB: It is important, that this is private;
 // we're writing `WordDescriptor[A]`s into

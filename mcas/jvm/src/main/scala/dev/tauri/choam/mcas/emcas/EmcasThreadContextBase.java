@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.mcas;
+package dev.tauri.choam.mcas.emcas;
 
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;

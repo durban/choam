@@ -17,12 +17,11 @@
 
 package dev.tauri.choam
 package mcas
+package emcas
 
 import java.util.concurrent.ThreadLocalRandom
 
 import scala.collection.concurrent.TrieMap
-
-import mcas.MemoryLocation
 
 object FlakyEMCAS extends Mcas { self =>
 
@@ -32,7 +31,7 @@ object FlakyEMCAS extends Mcas { self =>
   def currentContext(): Mcas.ThreadContext = new Mcas.ThreadContext {
 
     private[this] val emcasCtx =
-      Emcas.currentContext()
+      Emcas.currentContextInternal()
 
     private[choam] final override def random: ThreadLocalRandom =
       emcasCtx.random

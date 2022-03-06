@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package mcas
+package emcas
 
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes

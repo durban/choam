@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package mcas
+package emcas
 
 import cats.syntax.all._
 import cats.effect.{ Async, IO }

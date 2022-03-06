@@ -24,7 +24,7 @@ public final class McasStatus {
    * Marker for an op, which already started,
    * but haven't finished yet.
    */
-  static final long Active = Version.Active;
+  public static final long Active = Version.Active;
 
   /**
    * The MCAS operation finished successfully.

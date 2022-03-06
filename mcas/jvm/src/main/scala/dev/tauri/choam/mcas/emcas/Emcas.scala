@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package mcas
+package emcas
 
 import java.lang.ref.{ Reference, WeakReference }
 
@@ -24,7 +25,7 @@ import java.lang.ref.{ Reference, WeakReference }
  * Efficient Multi-word Compare and Swap (EMCAS):
  * https://arxiv.org/pdf/2008.02527.pdf
  */
-private object Emcas extends Mcas { self => // TODO: make this a class
+private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
 
   /*
    * This implementation has a few important
@@ -180,7 +181,7 @@ private object Emcas extends Mcas { self => // TODO: make this a class
   private[choam] final val replacePeriodForReadValue =
     4096
 
-  private[choam] val global =
+  private[emcas] val global =
     new GlobalContext(self)
 
   // Listing 2 in the paper:
@@ -579,7 +580,7 @@ private object Emcas extends Mcas { self => // TODO: make this a class
       ts2
     } else {
       // we try to increment it:
-      val candidate = ts1 + 1L
+      val candidate = ts1 + 1L // TODO: use Version.Incr
       val ctsWitness = this.global.commitTs.compareAndExchange(ts1, candidate)
       if (ctsWitness == ts1) {
         // ok, successful CAS:
@@ -592,7 +593,10 @@ private object Emcas extends Mcas { self => // TODO: make this a class
     }
   }
 
-  final override def currentContext(): EmcasThreadContext =
+  final override def currentContext(): Mcas.ThreadContext =
+    this.currentContextInternal()
+
+  private[emcas] final def currentContextInternal(): EmcasThreadContext =
     this.global.currentContext()
 
   private[choam] final override def isThreadSafe =
@@ -636,7 +640,7 @@ private object Emcas extends Mcas { self => // TODO: make this a class
   /** For testing */
   @throws[InterruptedException]
   private[mcas] def spinUntilCleanup[A](ref: MemoryLocation[A], max: Long = Long.MaxValue): A = {
-    val ctx = this.currentContext()
+    val ctx = this.currentContextInternal()
     var ctr: Long = 0L
     while (ctr < max) {
       ref.unsafeGetVolatile() match {

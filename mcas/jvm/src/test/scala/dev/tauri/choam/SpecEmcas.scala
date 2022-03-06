@@ -26,7 +26,7 @@ trait SpecEmcas extends McasImplSpec {
 
 trait SpecFlakyEMCAS extends McasImplSpec {
   final override def mcasImpl: mcas.Mcas =
-    mcas.FlakyEMCAS
+    mcas.emcas.FlakyEMCAS
   final override def isEmcas: Boolean =
     true
 }

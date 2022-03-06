@@ -85,7 +85,8 @@ object ResourceAllocationRxn {
 
     @TearDown
     def checkResults(): Unit = {
-      val currentValues = rss.map(_.debugRead()).toVector
+      val ctx = mcas.Mcas.DefaultMcas.currentContext()
+      val currentValues = rss.map(ref => ctx.readDirect(ref.loc)).toVector
       if (currentValues == initialValues) {
         throw new Exception(s"Unchanged results")
       }

@@ -23,9 +23,6 @@ private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanion
   final override def DefaultMcas: Mcas =
     this.ThreadConfinedMCAS
 
-  private[choam] final override def debugRead[A](loc: MemoryLocation[A]): A =
-    loc.unsafeGetVolatile()
-
   private[choam] final override def unsafeLookup(fqn: String): Mcas =
     super.unsafeLookup(fqn)
 }

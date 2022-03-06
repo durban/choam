@@ -67,6 +67,7 @@ class DelayComputedTest extends StressTestBase {
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r3 = (ref1.debugRead(), ref2.debugRead())
+    val ctx = this.impl.currentContext()
+    r.r3 = (ctx.readDirect(ref1.loc), ctx.readDirect(ref2.loc))
   }
 }

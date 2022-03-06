@@ -28,9 +28,6 @@ private[mcas] abstract class AbstractMcasCompanionPlatform {
   final def NullMcas: Mcas =
     mcas.NullMcas
 
-  /** For testing */
-  private[choam] def debugRead[A](loc: MemoryLocation[A]): A
-
   /** Benchmark infra */
   private[choam] def unsafeLookup(fqn: String): Mcas = fqn match {
     case "dev.tauri.choam.mcas.ThreadConfinedMCAS" => this.ThreadConfinedMCAS

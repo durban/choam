@@ -58,10 +58,6 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
   private[choam] final def loc: MemoryLocation[A] =
     this
 
-  /** For testing */
-  private[choam] final def debugRead(): A =
-    mcas.Mcas.debugRead(this)
-
   private[choam] def dummy(v: Long): Long
 }
 

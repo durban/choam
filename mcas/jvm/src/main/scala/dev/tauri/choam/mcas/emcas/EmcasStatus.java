@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.mcas;
+package dev.tauri.choam.mcas.emcas;
+
+import dev.tauri.choam.mcas.Version;
 
 /**
  * The status of an EMCAS-operation (and its

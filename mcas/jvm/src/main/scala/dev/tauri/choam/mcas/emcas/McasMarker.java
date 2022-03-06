@@ -15,29 +15,17 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam
-package mcas
+package dev.tauri.choam.mcas.emcas;
 
-import org.openjdk.jmh.annotations._
-import org.openjdk.jmh.infra.Blackhole
-
-@Fork(3)
-@Threads(2)
-@BenchmarkMode(Array(Mode.AverageTime))
-class McasMarkerBench {
-
-  @Benchmark
-  def anyRef(bh: Blackhole): Unit = {
-    bh.consume(new AnyRef)
-  }
-
-  @Benchmark
-  def mcasMarker(bh: Blackhole): Unit = {
-    bh.consume(new McasMarker)
-  }
-
-  @Benchmark
-  def xBaseline(bh: Blackhole): Unit = {
-    bh.consume(bh)
-  }
+/**
+ * This is not strictly necessary, we could
+ * use a simple `new AnyRef` as a marker.
+ * However, a separate class makes debugging
+ * easier (e.g., analyzing heap dumps).
+ *
+ * TODO: According to McasMarkerBench, creating
+ * TODO: an `AnyRef` is faster; so we'll need
+ * TODO: to remove this.
+ */
+final class McasMarker {
 }

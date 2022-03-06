@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package mcas
+package emcas
 
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
@@ -119,9 +120,9 @@ class EmcasTest {
       case v: Long =>
         r.r4 = v match {
           case v if EmcasStatus.isSuccessful(v) => "SUCCESSFUL"
-          case Version.Active => "ACTIVE"
-          case Version.Successful => "error: Version.Successful"
-          case Version.FailedVal => "FAILED"
+          case McasStatus.Active => "ACTIVE"
+          case McasStatus.Successful => "error: McasStatus.Successful"
+          case McasStatus.FailedVal => "FAILED"
           case Version.None => "error: Version.None"
           case v => s"error: ${v}L"
         }

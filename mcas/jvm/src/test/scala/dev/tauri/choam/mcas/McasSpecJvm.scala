@@ -209,7 +209,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val endTs = ctx.start().validTs
     // EMCAS should be able to handle this (disjoint op), but
     // others should fail due to the version-CAS failing:
-    if (ctx.isInstanceOf[EmcasThreadContext]) {
+    if (this.isEmcas) {
       assertEquals(res, McasStatus.Successful)
       assertEquals(endTs, startTs + (2 * Version.Incr))
       assertSameInstance(ctx.readDirect(r1), "b")
@@ -263,6 +263,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
   }
 
   test("CommitTs ref must be the first (JVM)") {
+    assume(!this.isEmcas)
     val r1 = MemoryLocation.unsafe[String]("foo")
     val r2 = MemoryLocation.unsafe[String]("bar")
     val ctx = this.mcasImpl.currentContext()
@@ -270,23 +271,16 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")
     val d2 = ctx.addCasFromInitial(d1, r2, "bar", "foo")
     val d3 = ctx.addVersionCas(d2)
-    val d = EmcasDescriptor.prepare(d3)
     val lb = List.newBuilder[MemoryLocation[_]]
-    val it = d.wordIterator()
-    while (it.hasNext()) {
+    val it = d3.iterator()
+    while (it.hasNext) {
       lb += it.next().address
     }
     val lst: List[MemoryLocation[_]] = lb.result()
-    if (ctx.isInstanceOf[EmcasThreadContext]) { // TODO
-      assertEquals(lst.length, 2)
-      assert((lst(0) eq r1) || (lst(0) eq r2))
-      assert((lst(1) eq r1) || (lst(1) eq r2))
-    } else {
-      assertEquals(lst.length, 3)
-      assert((lst(1) eq r1) || (lst(1) eq r2))
-      assert((lst(2) eq r1) || (lst(2) eq r2))
-      assert(lst(0) ne r1)
-      assert(lst(0) ne r2)
-    }
+    assertEquals(lst.length, 3)
+    assert((lst(1) eq r1) || (lst(1) eq r2))
+    assert((lst(2) eq r1) || (lst(2) eq r2))
+    assert(lst(0) ne r1)
+    assert(lst(0) ne r2)
   }
 }

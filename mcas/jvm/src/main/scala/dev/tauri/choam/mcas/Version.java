@@ -23,8 +23,10 @@ public final class Version {
   /** The initial version of every ref */
   public static final long Start = Long.MIN_VALUE;
 
-  static final long Incr = 1L;
-  static final long None = Long.MAX_VALUE;
+  public static final long Incr = 1L;
+
+  /** An invalid version constant */
+  public static final long None = Long.MAX_VALUE;
 
   static final long Active = None - 1L;
   static final long Successful = None - 2L;

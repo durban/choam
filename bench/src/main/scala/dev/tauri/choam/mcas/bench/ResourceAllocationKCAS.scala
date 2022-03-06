@@ -92,7 +92,10 @@ object ResourceAllocationKCAS {
 
     @TearDown
     def checkResults(): Unit = {
-      val currentValues = rss.map(_.asInstanceOf[Ref[String]].debugRead()).toVector
+      val ctx = Mcas.DefaultMcas.currentContext()
+      val currentValues = rss.map { ref =>
+        ctx.readDirect(ref)
+      }.toVector
       if (currentValues == initialValues) {
         throw new Exception(s"Unchanged results")
       }

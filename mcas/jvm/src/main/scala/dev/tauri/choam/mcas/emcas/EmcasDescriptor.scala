@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package mcas
+package emcas
 
 private final class EmcasDescriptor private (
   private val half: HalfEMCASDescriptor,
