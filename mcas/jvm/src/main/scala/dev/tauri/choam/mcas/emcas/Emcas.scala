@@ -133,8 +133,8 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
    * which is a `Long` (a few values are reserved and have a special
    * meaning, see `Version.isValid`). The version of a ref is the
    * commit version which last changed the ref (or `Version.Start` if it
-   * was never changed). This system is based on the one in
-   * SwissTM (https://infoscience.epfl.ch/record/136702/files/pldi127-dragojevic.pdf),
+   * was never changed). This system is based on the one in SwissTM
+   * (https://web.archive.org/web/20220215230304/https://www.researchgate.net/profile/Aleksandar-Dragojevic/publication/37470225_Stretching_Transactional_Memory/links/0912f50d430e2cf991000000/Stretching-Transactional-Memory.pdf),
    * although this implementation is lock-free.
    *
    * On top of this version-based validation system, we implement
@@ -161,20 +161,25 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
    *   Meaning: the currently physically stored version is
    *   the same as the logical version.
    *
-   *   content = descriptor with parent status `EmcasStatus.Active`
+   *   content = descriptor with parent status `McasStatus.Active`
    *   version = (don't care)
    *   Meaning: the logical version is the OLD version in the desc
    *            (although, we never use the old version in this case,
    *            instead we always help the active op; this is
-   *            important to allow version sharing)
+   *            important to allow version sharing); this is an op
+   *            which is still active
    *
-   *   content = descriptor with parent status `EmcasStatus.Successful`
+   *   content = descriptor with parent status `McasStatus.FailedVal`
    *   version = (don't care)
-   *   Meaning: the logical version is the NEW version in the desc
+   *   Meaning: the logical version is the OLD version in the desc;
+   *            this is an op which already failed
    *
-   *   content = descriptor with any other parent status
+   *   content = descriptor with any parent status `s` for which
+   *             `EmcasStatus.isSuccessful(s)` is true
    *   version = (don't care)
-   *   Meaning: the logical version is the OLD version in the desc
+   *   Meaning: the logical version is the NEW version in the desc,
+   *            which is stored indirectly: the version is the parent
+   *            status itself; this is a successful op
    */
 
   // TODO: this is unused (only 0 or non-0 matters)
@@ -539,7 +544,11 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
       }
     }
 
-    assert(!desc.hasVersionCas) // just to be sure
+    // EMCAS handles the global version
+    // separately, so the descriptor must
+    // not have a CAS for changing it:
+    assert(!desc.hasVersionCas)
+
     val r = go(desc.wordIterator())
     assert((r == McasStatus.Successful) || (r == McasStatus.FailedVal) || (r == EmcasStatus.Break))
     if (r == EmcasStatus.Break) {
@@ -550,7 +559,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
     } else {
       val realRes = if (r == McasStatus.Successful) {
         // successfully installed all descriptors (~ACQUIRE)
-        // we'll need a new commit-ts, which we will
+        // but we'll need a new commit-ts, which we will
         // CAS into the descriptor:
         retrieveFreshTs()
       } else {
@@ -568,6 +577,54 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
     }
   }
 
+  /**
+   * Retrieves the (possibly new) version, which
+   * will (tentatively) be the commit-version of
+   * the current op.
+   *
+   * (Note: if we later fail to CAS this version
+   * into the status of the descriptor, then it
+   * might have a different commit-version. This
+   * can happen if another helper thread wins the
+   * race and finalizes the op before us.)
+   *
+   * This method retrieves a "fresh" version number
+   * (commit-ts) by possibly incrementing the global
+   * version. However, it doesn't necessarily needs
+   * to *actually* increment it. It is enough if it
+   * *observes* an increment of the version. The
+   * act of incrementing could be performed by another
+   * thread (even by a completely unrelated op).
+   *
+   * This is safe, because this method runs *after*
+   * all word descriptors in the current op were
+   * successfully installed into the refs. This means
+   * that any concurrent read of any of the refs
+   * would help finalize *us* before doing anything
+   * with the ref. (In effect, it is as if we've
+   * "acquired" the refs. Of course, since we're
+   * lock-free, this will not block anybody, but
+   * they will help us first.)
+   *
+   * This mechanism is the one which allows unrelated
+   * (i.e., non-conflicting, disjoint) ops to *share*
+   * a commit-version. Unrelated ops can do this
+   * safely, because (as explained above) by the
+   * time the version incrementing happens, the refs
+   * are already "acquired". Related (i.e., conflicting)
+   * ops will not share a version number (that would
+   * be unsafe). This is guaranteed, because
+   * installing 2 conflicting word descriptors into
+   * one ref is not possible (the loser helps the
+   * winner to finalize, then retries).
+   *
+   * TODO: Currently even read-only word descriptors
+   * TODO: are installed into the refs. If this
+   * TODO: changes, they will need special handling
+   * TODO: for sharing version numbers. Probably
+   * TODO: an additional validation; see section 3.1
+   * TODO: in the paper, about read-write conflicts.
+   */
   private[this] final def retrieveFreshTs(): Long = {
     val ts1 = this.global.getCommitTs()
     val ts2 = this.global.getCommitTs()

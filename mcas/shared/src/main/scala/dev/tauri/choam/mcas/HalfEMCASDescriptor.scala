@@ -317,9 +317,16 @@ object HalfEMCASDescriptor {
     require(a.versionCas eq null)
     require(b.versionCas eq null)
     require(a.versionIncr == b.versionIncr)
-    // TODO: it is unclear, how should an exchange work when
+    // TODO: It is unclear, how should an exchange work when
     // TODO: both sides already touched the same refs;
-    // TODO: for now, we only allow disjoint logs
+    // TODO: for now, we only allow disjoint logs.
+    // TODO: (This seems to make exchanges fundamentally
+    // TODO: non-composable. Unless a solution is found
+    // TODO: to this problem, an elimination stack (e.g.)
+    // TODO: cannot be used in bigger `Rxn`s, because
+    // TODO: by the time the elimination happens, the
+    // TODO: two bigger `Rxn`s might've already touched
+    // TODO: the same ref.)
     val it = b.map.valuesIterator
     var merged: HalfEMCASDescriptor = a
     while (it.hasNext) {
