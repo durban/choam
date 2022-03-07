@@ -1075,7 +1075,7 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[Cas[Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            loop(retry()) // TODO: optimize rollback based on version(?)
+            loop(retry())
           } else {
             val currVal = hwd.nv
             if (equ(currVal, c.ov)) {
@@ -1091,7 +1091,7 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[Upd[A, B, Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            loop(retry()) // TODO: optimize rollback based on version(?)
+            loop(retry())
           } else {
             val ox = hwd.nv
             val (nx, b) = c.f(ox, a.asInstanceOf[A])
@@ -1153,7 +1153,7 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[UpdWith[Any, Any, _]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            loop(retry()) // TODO: optimize rollback based on version(?)
+            loop(retry())
           } else {
             val ox = hwd.nv
             val axn = c.f(ox, a)
@@ -1197,7 +1197,7 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[Read[Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            loop(retry()) // TODO: optimize rollback based on version(?)
+            loop(retry())
           } else {
             a = hwd.nv
             desc = desc.addOrOverwrite(hwd)
@@ -1207,7 +1207,7 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[TicketRead[Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            loop(retry()) // TODO: optimize rollback based on version(?)
+            loop(retry())
           } else {
             val ticket = new unsafe.TicketImpl[Any](hwd)
             a = ticket
@@ -1221,7 +1221,7 @@ object Rxn extends RxnInstances0 {
               // not in log yet, we try to insert it:
               revalidateIfNeeded(c.hwd) match {
                 case null =>
-                  loop(retry()) // TODO: optimize rollback based on version(?)
+                  loop(retry())
                 case hwd =>
                   desc = desc.add(hwd.withNv(c.newest))
                   loop(next())
