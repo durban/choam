@@ -175,20 +175,20 @@ class EmcasSpec extends BaseSpecA {
     val ctx = Emcas.currentContextInternal()
     val hDesc = ctx.addCasFromInitial(ctx.start(), ref, "s", "x")
     var mark: AnyRef = null
-    val desc = {
+    locally {
       val desc = EmcasDescriptor.prepare(hDesc)
+      val wd = desc.wordIterator().next()
       val ok = EmcasStatus.isSuccessful(Emcas.MCAS(desc = desc, ctx = ctx))
       // TODO: if *right now* the GC clears the mark, the assertion below will fail
-      mark = desc.wordIterator().next().address.unsafeGetMarkerVolatile().get()
+      mark = wd.address.unsafeGetMarkerVolatile().get()
       assert(mark ne null)
       assert(ok)
-      desc
     }
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     var ok = false
     val t = new Thread(() => {
-      val mark = desc.wordIterator().next().address.unsafeGetMarkerVolatile().get()
+      val mark = ref.unsafeGetMarkerVolatile().get()
       assert(mark ne null)
       latch1.countDown()
       latch2.await()
@@ -198,12 +198,11 @@ class EmcasSpec extends BaseSpecA {
     t.start()
     latch1.await()
     mark = null
-    val wd = desc.wordIterator().next()
     System.gc()
-    assert(wd.address.unsafeGetMarkerVolatile().get() ne null)
+    assert(ref.unsafeGetMarkerVolatile().get() ne null)
     latch2.countDown()
     t.join()
-    while (wd.address.unsafeGetMarkerVolatile().get() ne null) {
+    while (ref.unsafeGetMarkerVolatile().get() ne null) {
       System.gc()
       Thread.sleep(1L)
     }

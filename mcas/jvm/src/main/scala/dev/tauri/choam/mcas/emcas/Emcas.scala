@@ -559,8 +559,7 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
       val witness: Long = desc.cmpxchgStatus(McasStatus.Active, realRes)
       if (witness == McasStatus.Active) {
         // we finalized the descriptor
-        // TODO: we should consider emptying the
-        // TODO: array of WDs in `desc` now, to help GC
+        desc.wasFinalized()
         realRes
       } else {
         // someone else already finalized the descriptor, we return its status:

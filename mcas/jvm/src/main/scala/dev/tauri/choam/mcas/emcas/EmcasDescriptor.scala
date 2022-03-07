@@ -23,7 +23,14 @@ private final class EmcasDescriptor private (
   private val half: HalfEMCASDescriptor,
 ) extends EmcasDescriptorBase { self =>
 
-  // effectively immutable array:
+  /**
+   * While the status is `Active`, this array
+   * is never mutated. After the op is finalized,
+   * it may be cleared (to help GC), so helpers
+   * must be prepared to handle `null`s. (There
+   * is no need to help an op which is finalized,
+   * so this is not a problem.)
+   */
   private[this] val words: Array[WordDescriptor[_]] = {
     val arr = new Array[WordDescriptor[_]](half.size)
     val it = half.iterator()
@@ -54,6 +61,16 @@ private final class EmcasDescriptor private (
   /** Only for informational purposes, not actually used */
   private[emcas] final def expectedNewVersion: Long = {
     this.half.newVersion
+  }
+
+  private[emcas] final def wasFinalized(): Unit = {
+    // help the GC (best effort,
+    // so just plain writes):
+    var idx = 0
+    while (idx < this.size) {
+      this.words(idx) = null
+      idx += 1
+    }
   }
 
   final override def toString: String = {
