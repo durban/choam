@@ -245,13 +245,13 @@ object BoundedQueue {
         final override def take: F[A] =
           self.deque
         final override def tryTake: F[Option[A]] =
-          F.run(self.tryDeque, null : Any)
+          F.apply(self.tryDeque, null : Any)
         final override def size: F[Int] =
-          F.run(self.currentSize, null : Any)
+          F.apply(self.currentSize, null : Any)
         final override def offer(a: A): F[Unit] =
           self.enqueue(a)
         final override def tryOffer(a: A): F[Boolean] =
-          F.run(self.tryEnqueue, a)
+          F.apply(self.tryEnqueue, a)
       }
     }
   }

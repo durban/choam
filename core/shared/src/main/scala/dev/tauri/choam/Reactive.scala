@@ -24,13 +24,13 @@ import mcas.Mcas
 
 trait Reactive[F[_]] { self =>
   // TODO: rename `run` to `apply`, and make `def run[A](a: Axn[A]): F[A]`
-  def run[A, B](r: Rxn[A, B], a: A): F[B]
+  def apply[A, B](r: Rxn[A, B], a: A): F[B]
   def mcasImpl: Mcas
   def monad: Monad[F]
   def mapK[G[_]](t: F ~> G)(implicit G: Monad[G]): Reactive[G] =
     new Reactive.TransformedReactive[F, G](self, t)
   def applyInterruptibly[A, B](r: Rxn[A, B], a: A): F[B] =
-    this.run(r, a) // default implementation, interruptible `F` should override
+    this.apply(r, a) // default implementation, interruptible `F` should override
 }
 
 object Reactive {
@@ -48,7 +48,7 @@ object Reactive {
     final override val mcasImpl: Mcas
   )(implicit F: Sync[F]) extends Reactive[F] {
 
-    final override def run[A, B](r: Rxn[A, B], a: A): F[B] = {
+    final override def apply[A, B](r: Rxn[A, B], a: A): F[B] = {
       F.delay {
         r.unsafePerform(a, this.mcasImpl)
       }
@@ -68,8 +68,8 @@ object Reactive {
     underlying: Reactive[F],
     t: F ~> G,
   )(implicit G: Monad[G]) extends Reactive[G] {
-    final override def run[A, B](r: Rxn[A, B], a: A): G[B] =
-      t(underlying.run(r, a))
+    final override def apply[A, B](r: Rxn[A, B], a: A): G[B] =
+      t(underlying.apply(r, a))
     final override def mcasImpl: Mcas =
       underlying.mcasImpl
     final override def monad: Monad[G] =

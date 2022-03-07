@@ -54,7 +54,7 @@ sealed trait PromiseRead[F[_], A] { self =>
     final override def get: F[A] =
       self.get
     final override def tryGet: F[Option[A]] =
-      rF.run(self.tryGet, ())
+      rF.apply(self.tryGet, ())
   }
 }
 
@@ -121,9 +121,9 @@ sealed abstract class Promise[F[_], A] extends PromiseRead[F, A] with PromiseWri
     final override def get: F[A] =
       self.get
     final override def tryGet: F[Option[A]] =
-      rF.run(self.tryGet, ())
+      rF.apply(self.tryGet, ())
     final override def complete(a: A): F[Boolean] =
-      rF.run(self.complete, a)
+      rF.apply(self.complete, a)
   }
 }
 

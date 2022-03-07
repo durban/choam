@@ -936,7 +936,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     final class MyException extends Exception
     val exc = new MyException
     def attemptRun[A](axn: Axn[A]): F[Either[Throwable, A]] = {
-      rF.run(axn, null: Any).attempt
+      rF.apply(axn, null: Any).attempt
     }
     for {
       _ <- assertResultF(

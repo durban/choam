@@ -31,13 +31,13 @@ trait ReactiveLaws[F[_]] {
     reactive.monad
 
   def runPure[A](a: A): IsEq[F[A]] =
-    reactive.run(Rxn.pure(a), ()) <-> monad.pure(a)
+    reactive.apply(Rxn.pure(a), ()) <-> monad.pure(a)
 
   def runLift[A, B](f: A => B, a: A): IsEq[F[B]] =
-    reactive.run(Rxn.lift(f), a) <-> monad.pure(a).map(f)
+    reactive.apply(Rxn.lift(f), a) <-> monad.pure(a).map(f)
 
   def runToFunction[A, B](rxn: A =#> B, a: A): IsEq[F[B]] =
-    reactive.run(rxn.toFunction(a), ()) <-> reactive.run(rxn, a)
+    reactive.apply(rxn.toFunction(a), ()) <-> reactive.apply(rxn, a)
 }
 
 object ReactiveLaws {

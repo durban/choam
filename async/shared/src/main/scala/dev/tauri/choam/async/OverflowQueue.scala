@@ -58,7 +58,7 @@ object OverflowQueue {
   )(implicit F: AsyncReactive[F]) extends OverflowQueue[F, A] {
 
     final override def size: F[Int] =
-      F.run(buff.size, null : Any)
+      F.apply(buff.size, null : Any)
 
     final override def toCats =
       new AsyncQueue.CatsQueueAdapter(this)
@@ -82,7 +82,7 @@ object OverflowQueue {
   )(implicit F: AsyncReactive[F]) extends OverflowQueue[F, A] {
 
     final def size: F[Int] =
-      F.run(q.size, null : Any)
+      F.apply(q.size, null : Any)
 
     final override def toCats =
       new AsyncQueue.CatsQueueAdapter(this)
