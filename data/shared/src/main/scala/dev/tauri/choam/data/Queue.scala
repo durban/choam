@@ -27,7 +27,7 @@ trait QueueSource[+A] {
 
   private[choam] final def drainOnce[F[_], AA >: A](implicit F: Reactive[F]): F[List[AA]] = {
     F.monad.tailRecM(List.empty[AA]) { acc =>
-      F.monad.map(F.apply(this.tryDeque, ())) {
+      F.monad.map(F.run(this.tryDeque)) {
         case Some(a) => Left(a :: acc)
         case None => Right(acc.reverse)
       }

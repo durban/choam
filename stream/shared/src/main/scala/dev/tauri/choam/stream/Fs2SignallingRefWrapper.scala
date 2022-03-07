@@ -108,10 +108,10 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
             // (see `notifyListeners`)
         }
       }
-      F.monad.flatten(F.apply(rxn, ()))
+      F.monad.flatten(F.run(rxn))
     }
 
-    Stream.bracket(acquire = F.apply(acq, ()))(release = { tokRef =>
+    Stream.bracket(acquire = F.run(acq))(release = { tokRef =>
       F.apply(rel, tokRef._1)
     }).flatMap { tokRef =>
       Stream.repeatEval(nextElement(tokRef._2))

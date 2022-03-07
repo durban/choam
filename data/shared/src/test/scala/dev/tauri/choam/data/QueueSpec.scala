@@ -335,7 +335,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       require(shifted >= idx) // ensure no overflow
       val items = (1 to RxnSize).toList.map(_ | shifted)
       val rxn: Axn[Unit] = items.traverse_ { item => q.enqueue.provide(item) }
-      rF.apply(rxn, null: Any)
+      rF.run(rxn)
     }
     def deqTask(q: QueueType[Int]): F[Int] = {
       def goOnce(acc: List[Int]): Axn[List[Int]] = {

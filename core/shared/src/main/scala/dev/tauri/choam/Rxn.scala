@@ -1416,7 +1416,7 @@ private[choam] sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.t
   implicit final class AxnSyntax[A](private val self: Axn[A]) {
 
     final def run[F[_]](implicit F: Reactive[F]): F[A] =
-      F.apply(self, null : Any)
+      F.run(self)
 
     final def unsafeRun(
       mcas: Mcas,

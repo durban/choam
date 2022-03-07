@@ -65,11 +65,11 @@ private final class AsyncFrom[F[_], A] private (
             Left(remover)
           }
       }
-      F.flatMap[Either[Axn[Unit], A], Option[F[Unit]]](arF.apply(rxn, null: Any)) {
+      F.flatMap[Either[Axn[Unit], A], Option[F[Unit]]](arF.run(rxn)) {
         case Right(a) =>
           F.as(F.delay(cb(Right(a))), None)
         case Left(remover) =>
-          F.pure(Some(arF.apply(remover, null: Any)))
+          F.pure(Some(arF.run(remover)))
       }
     }
   }
