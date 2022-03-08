@@ -551,10 +551,48 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
     val r = go(desc.wordIterator())
     assert((r == McasStatus.Successful) || (r == McasStatus.FailedVal) || (r == EmcasStatus.Break))
     if (r == EmcasStatus.Break) {
-      // someone else finalized the descriptor, we must read its status:
-      val rr = desc.getStatus()
-      assert(rr != McasStatus.Active)
-      rr
+      // Someone else finalized the descriptor, we must read its status;
+      // however, a volatile read is NOT sufficient here, because it
+      // might not actually see the finalized status. Indeed, it COULD
+      // return `Active`, which is useless here.
+      //
+      // The reason for this problem is the plain mode (non-volatile) writes
+      // to the array elements in `desc` (when clearing with `null`s).
+      // Those are not properly synchronized. And a volatile read of status
+      // would not save us here: volatile-reading the new value written
+      // by a successful volatile-CAS creates a happens-before relationship
+      // (JLS 17.4.4.); however, volatile-reading the OLD value does NOT
+      // create a "happens-after" relationship -- at least I can't find anything
+      // in the spec that says it does. So, here, after plain-reading a
+      // `null` from the array, we could volatile-read `Active`; and this
+      // actually happened (with JCStress).
+      //
+      // So, instead of a volatile read, we do a volatile-CAS (with
+      // `cmpxchgStatus`) which must necessarily fail, but creates the
+      // necessary ordering constraints to get the actual current status
+      // (as the witness value of the CAS).
+      //
+      // To see why this is correct, there are 2 (possible) cases: this
+      // `cmpxchgStatus` either reads (1) `Active`, or (2) non-`Active`.
+      //
+      // If (1), it reads `Active`, then we atomically write `FailedVal`,
+      // *and* the finalizing CAS in another thread MUST READ this
+      // `FailedVal`, as 2 such CAS-es cannot both succeed. Thus, this
+      // CAS happens-before the finalizing CAS, which happens-before
+      // writing the `null` to the array. As reading `null` happened-before
+      // this CAS, reading the `null` happens-before writing it. Which
+      // is not allowed (JLS 17.4.5.). Thus, case (1) is actually impossible.
+      //
+      // So case (2) is what must happen: this `cmpxchgStatus` reads a
+      // non-`Active` value as the witness value (which is what we need).
+      //
+      // (Besides reading `null`, another reason for the `Break` could be
+      // that we already volatile-read a non-`Active` status. In that case
+      // the `cmpxchgStatus` will also fail, and we will read the final
+      // status again. Which is fine.
+      val wit = desc.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
+      assert(wit != McasStatus.Active)
+      wit
     } else {
       val realRes = if (r == McasStatus.Successful) {
         // successfully installed all descriptors (~ACQUIRE)

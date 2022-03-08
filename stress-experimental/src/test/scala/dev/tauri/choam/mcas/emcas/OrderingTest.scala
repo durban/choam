@@ -26,29 +26,13 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-/**
- * This test shows a problem with a previously existing
- * assertion in EMCAS. If we read `null`, we logically
- * "know", that `flag` must be `1` (i.e., the descriptor
- * is finalized), but we might not actually "see" it
- * with a volatile read. The reason for this is that
- * while reading the value written by a volatile write
- * (or CAS) ensures a happens-before relationship, the
- * converse is not true: reading the previous value
- * does NOT create a "happens-after" relationship.
- *
- * Experiments show, that if instead of the volatile
- * read, we have another CAS, that CAS will always
- * fail if we read `null`. TODO: Explain this (based
- * on the memory model).
- */
 @JCStressTest
 @State
 @Description("Emcas status/array")
 @Outcomes(Array(
   new Outcome(id = Array("abcd, 0"), expect = ACCEPTABLE, desc = ""),
   new Outcome(id = Array("abcd, 1"), expect = ACCEPTABLE, desc = ""),
-  new Outcome(id = Array("null, 0"), expect = ACCEPTABLE_INTERESTING, desc = ""),
+  new Outcome(id = Array("null, 0"), expect = FORBIDDEN, desc = ""),
   new Outcome(id = Array("null, 1"), expect = ACCEPTABLE, desc = ""),
 ))
 class OrderingTest {
@@ -68,7 +52,11 @@ class OrderingTest {
   @Actor
   def reader(r: LL_Result): Unit = {
     val s: String = this.str
-    val f: Int = this.flag.get()
+    val f: Int = if (s == null) {
+      this.flag.compareAndExchange(0, 42)
+    } else {
+      this.flag.get()
+    }
     r.r1 = s
     r.r2 = f
   }
