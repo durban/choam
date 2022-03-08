@@ -109,6 +109,7 @@ lazy val choam = project.in(file("."))
     stressCore, // JVM
     stressData, // JVM
     stressDataSlow, // JVM
+    stressExperimental, // JVM
     layout, // JVM
   )
 
@@ -249,6 +250,15 @@ lazy val stressDataSlow = project.in(file("stress-data-slow"))
   .enablePlugins(JCStressPlugin)
   .dependsOn(data.jvm % "compile->compile;test->test")
   .dependsOn(stressData % "compile->compile;test->test")
+
+lazy val stressExperimental = project.in(file("stress-experimental"))
+  .settings(name := "choam-stress-experimental")
+  .settings(commonSettings)
+  .settings(commonSettingsJvm)
+  .settings(stressSettings)
+  .enablePlugins(JCStressPlugin)
+  .dependsOn(async.jvm % "compile->compile;test->test")
+  .dependsOn(stressMcas % "compile->compile;test->test")
 
 lazy val stress = project.in(file("stress"))
   .settings(name := "choam-stress")

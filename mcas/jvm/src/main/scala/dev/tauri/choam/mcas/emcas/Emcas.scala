@@ -536,7 +536,6 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
           // Another thread already finalized the descriptor,
           // and cleaned up this word descriptor (hence the `null`);
           // thus, we should not continue:
-          assert(desc.getStatus() != McasStatus.Active)
           EmcasStatus.Break
         }
       } else {
