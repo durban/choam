@@ -20,6 +20,8 @@ package data
 
 import scala.collection.immutable.{ Map => ScalaMap }
 
+import cats.kernel.Order
+
 trait Map[K, V] {
   def put: Rxn[(K, V), Option[V]]
   def putIfAbsent: Rxn[(K, V), Option[V]]
@@ -36,6 +38,6 @@ object Map extends MapPlatform {
 
   trait Extra[K, V] extends Map[K, V] {
     def clear: Axn[Unit]
-    def values: Axn[Vector[V]] // TODO: this should take an `Order[V]`
+    def values(implicit V: Order[V]): Axn[Vector[V]]
   }
 }

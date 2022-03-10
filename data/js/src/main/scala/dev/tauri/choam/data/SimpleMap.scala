@@ -20,7 +20,7 @@ package data
 
 import scala.collection.immutable.{ Map => SMap }
 
-import cats.kernel.Hash
+import cats.kernel.{ Hash, Order }
 
 import SimpleMap.Wrapper
 
@@ -91,9 +91,9 @@ private final class SimpleMap[K, V] private (
   override def clear: Axn[Unit] =
     repr.update(_ => SMap.empty)
 
-  override def values: Axn[Vector[V]] = {
+  override def values(implicit V: Order[V]): Axn[Vector[V]] = {
     repr.get.map { m =>
-      m.valuesIterator.toVector
+      m.valuesIterator.toVector.sorted(V.toOrdering)
     }
   }
 

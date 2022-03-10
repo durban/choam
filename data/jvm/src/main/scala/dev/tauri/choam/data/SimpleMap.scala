@@ -20,7 +20,7 @@ package data
 
 import scala.collection.immutable.{ Map => ScalaMap }
 
-import cats.kernel.Hash
+import cats.kernel.{ Hash, Order }
 
 import org.organicdesign.fp.collections.{ PersistentHashMap, Equator }
 
@@ -89,15 +89,15 @@ private final class SimpleMap[K, V](
   override val clear: Axn[Unit] =
     repr.update(_ => SimpleMap.emptyPhm[K, V])
 
-  final override def values: Axn[Vector[V]] = {
+  final override def values(implicit V: Order[V]): Axn[Vector[V]] = {
     repr.get.map { phm =>
-      val b = Vector.newBuilder[V]
+      val b = scala.collection.mutable.ArrayBuffer.newBuilder[V]
       b.sizeHint(phm.size())
       val it = phm.valIterator()
       while (it.hasNext()) {
         b += it.next()
       }
-      b.result()
+      b.result().sortInPlace()(V.toOrdering).toVector
     }
   }
 
