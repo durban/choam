@@ -76,7 +76,7 @@ private final class Ttrie[K, V] private (
    *
    * Also guarantees the following:
    * - The result `ref` is a ref associated with the key.
-   * - The result is already part of the current log.
+   * - The result ref is already part of the current log.
    * - If the result is in the write-log (i.e., modified),
    *   then the current value (nv) may be `End`.
    * - Otherwise, the current value (in the read-log) is
@@ -87,7 +87,7 @@ private final class Ttrie[K, V] private (
    *
    * Since we're switching out tombed refs, we lose automatic
    * conflict detection on reads. So we need to do it manually
-   * (see below). An undetected conflict can arise, if, e.g.,
+   * (see below). An undetected conflict could arise, if, e.g.,
    * Rxn1 reads a ref, Rxn2 tombs and changes it, then Rxn1
    * reads it again with `getRef`, but now it will be a
    * *different* ref.
@@ -114,9 +114,10 @@ private final class Ttrie[K, V] private (
             // ticket `nv eq End` AND `nv eq ov`
             // => ticket `ov` is also `End`
             // => the `End` was read directly from the ref
-            // => it will never change, so ref can be removed:
+            // => it will never change, so ref can be removed,
+            //    and we'll retry
             // (NB: in this case, `ref` won't be inserted into the log)
-            Rxn.unsafe.context(unsafeDelRef(k, ref, _)) *> getRefWithKey(k)
+            Rxn.unsafe.context(unsafeDelRef(k, ref, _)) >>> getRefWithKey(k)
           case _ =>
             // Make sure `ref` is in the log, then force re-validation:
             ticket.unsafeValidate >>> Rxn.unsafe.forceValidate.as(ref)
@@ -177,8 +178,8 @@ private final class Ttrie[K, V] private (
         ref.modify {
           case Init | End =>
             // it is possible, that we created
-            // the ref with `Init`, so we have
-            // to write `End`, to not leak memory:
+            // the ref with `Init`, so we must
+            // write `End`, to not leak memory:
             (End, None)
           case v @ Value(w) =>
             (v, Some(w))
@@ -267,8 +268,8 @@ private final class Ttrie[K, V] private (
             case (newVal, c) =>
               if (equ(newVal, default)) {
                 // it is possible, that we created
-                // the ref with `Init`, so we have
-                // to write `End`, to not leak memory:
+                // the ref with `Init`, so we must
+                // write `End`, to not leak memory:
                 Rxn.postCommit(cleanupLater(key, ref)).as((End, c))
               } else {
                 Rxn.pure((Value(newVal), c))
@@ -305,6 +306,7 @@ private final class Ttrie[K, V] private (
   }
 
   private[choam] final def unsafeTrieMapSize: Axn[Int] = {
+    // NB: non-composable, sees empty refs, etc.
     Axn.unsafe.delay { m.size }
   }
 }
@@ -318,11 +320,11 @@ private final object Ttrie {
    * go through these states (it starts
    * from `Init`):
    *
-   *         ---> Value(...) ---
+   *         ---> Value(v1) ---
    *        /        ↕          \
-   *   Init ----> Value(...) ----+--> End
+   *   Init ----> Value(v2) ----+--> End
    *        \        ↕          /
-   *         ---> Value(...) ---
+   *         ---> Value(v3) ---
    *                 ↕
    *                ...
    *
