@@ -21,10 +21,9 @@
 
 ## Bugs
 
-- `ttrie` limitations (see comments there)
 - Can't run benchmarks with Scala 3
 - CI: Tests sometimes time out
-  - probably due to GC pauses
+  - ExchangerSpecJvm_* (on VMs with 2 CPUs; probably can't exchange fast enough?)
 
 ## Other improvements
 
@@ -94,7 +93,7 @@
       - `Unique`
       - `Clock`
       - `cats.effect.std.Random`
-      - `Ttrie` (toavoid `Rxn`-level contention)
+      - `Ttrie` (to avoid `Rxn`-level contention)
   - Maybe rename `Ref`?
     - Collision with `cats.effect.kernel.Ref`
     - Although it is hard to confuse them
@@ -107,11 +106,13 @@
       - If something can fail, return `Option` or `Either`
     - Need to review and document the handling of exceptions
       - they should fall-through, but with cleanup (if needed)
+      - (maybe: do not guarantee any behavior fo now)
     - Transient errors can sometimes be handled with `+` (`Choice`)
       - but sometimes this can cause infinite retry
 - Cancellation support
   - `Thread.interrupt` (done)
   - cats-effect cancellation?
+    - see `IOCancel` for a few attempts
 - Composition of maybe-infinitely-retrying reactions:
   - `stack.pop`, if empty, retries forever (unsafe, because non-lock-free)
   - `exchanger.exchange`, if no partner found, retries forever (also unsafe)
@@ -122,7 +123,6 @@
     - `.?` would make a (safe) `Rxn` from it
     - `.+(<something safe here>)` would also make it safe
 - Think about global / thread-local state:
-  - cleanup of unused contexts
   - cleanup of unused exchanger stats
 
 ## Misc.
@@ -137,7 +137,7 @@
   - but, a problem with all these: we can't write a descriptor into them!
   - see also: JEP 412 (https://openjdk.java.net/jeps/412)
 - Other data structures:
-  - ttrie-set
+  - ttrie-set(?)
   - `SkipListMap`, `SkipListSet`
   - concurrent bag (e.g., https://dl.acm.org/doi/10.1145/1989493.1989550)
   - dual data structures:

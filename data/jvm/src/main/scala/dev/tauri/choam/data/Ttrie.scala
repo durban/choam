@@ -38,6 +38,9 @@ import Ttrie._
  *
  * We're using a `TrieMap` directly (instead of reimplementing),
  * since we get it for free from the stdlib.
+ *
+ * Unlike `ttrie` in the paper (section 3.3), we don't leak
+ * memory on failed lookups, and removal compacts the trie.
  */
 private final class Ttrie[K, V] private (
   m: TrieMap[K, TrieRef[V]],
