@@ -61,7 +61,7 @@ private[choam] final class MsQueue[A] private[this] (
                 else ov
               }
             ).as((n.copy(data = nullOf[A]), Some(a)))
-          case End =>
+          case End() =>
             ticket.unsafeValidate.as((node, None))
         }
       }
@@ -88,7 +88,7 @@ private[choam] final class MsQueue[A] private[this] (
           // TODO: if we allow the tail to lag:
           // case null =>
           //   head.get.flatMapF { h => go(h) }
-          case End =>
+          case End() =>
             // found true tail; will update, and adjust the tail ref:
             // TODO: we could allow tail to lag by a constant
             ticket.unsafeSet(node) >>> tail.set.provide(node)
@@ -110,7 +110,7 @@ private[choam] final class MsQueue[A] private[this] (
         ticket.unsafePeek match {
           case null =>
             Rxn.pure(-1)
-          case End =>
+          case End() =>
             Rxn.pure(acc)
           case nv @ Node(_, _) =>
             go(n = nv, acc = acc + 1)
@@ -123,12 +123,20 @@ private[choam] final class MsQueue[A] private[this] (
 
 private[choam] object MsQueue {
 
-  private sealed trait Elem[+A]
-  private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
-  private final case object End extends Elem[Nothing]
+  private sealed trait Elem[A]
 
-  private final def End[A](): Elem[A] =
-    End
+  private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
+
+  private final case class End[A]() extends Elem[A]
+
+  private final object End {
+
+    private[this] final val _end: End[Any] =
+      new End[Any]()
+
+    final def apply[A](): End[A] =
+      _end.asInstanceOf[End[A]]
+  }
 
   def apply[A]: Axn[MsQueue[A]] =
     padded[A]

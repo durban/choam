@@ -59,7 +59,7 @@ private[data] final class RemoveQueue[A] private[this] (sentinel: Node[A])
             Rxn.pure(Some((a, n)))
           }
         }
-      case End =>
+      case End() =>
         Rxn.pure(None)
     }
   }
@@ -85,7 +85,7 @@ private[data] final class RemoveQueue[A] private[this] (sentinel: Node[A])
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
     def go(n: Node[A]): Axn[Unit] = {
       n.next.get.flatMapF {
-        case End =>
+        case End() =>
           // found true tail; will update, and adjust the tail ref:
           n.next.set.provide(node) >>> tail.set.provide(node)
         case nv @ Node(_, _) =>
@@ -121,7 +121,7 @@ private[data] final class RemoveQueue[A] private[this] (sentinel: Node[A])
             findAndTomb(item, nextRef)
           }
         }
-      case End =>
+      case End() =>
         Rxn.pure(false)
     }
   }
@@ -132,7 +132,7 @@ private[data] object RemoveQueue {
   def apply[A]: Axn[RemoveQueue[A]] =
     Rxn.unsafe.delay { _ => new RemoveQueue }
 
-  private sealed trait Elem[+A]
+  private sealed trait Elem[A]
 
   /**
    * Sentinel node (head and tail): `data` is `null` (not a `Ref`).
@@ -151,10 +151,16 @@ private[data] object RemoveQueue {
     }
   }
 
-  private final case object End extends Elem[Nothing]
+  private final case class End[A]() extends Elem[A]
 
-  private final def End[A](): Elem[A] =
-    End
+  private final object End {
+
+    private[this] final val _end: End[Any] =
+      new End[Any]()
+
+    final def apply[A](): End[A] =
+      _end.asInstanceOf[End[A]]
+  }
 
   // Note: it's important, that user code
   // can never access a `Tombstone`, as we
