@@ -21,7 +21,7 @@ package async
 import cats.~>
 import cats.effect.kernel.Async
 
-sealed abstract class WaitList[F[_], A] { self =>
+abstract class WaitList[F[_], A] { self =>
 
   def set: A =#> Unit
 
@@ -47,21 +47,65 @@ sealed abstract class WaitList[F[_], A] { self =>
 
 object WaitList {
 
+  private type Callback[A] =
+    Either[Throwable, A] => Unit
+
   def forAsync[F[_], A](
     _syncGet: Axn[Option[A]],
     _syncSet: A =#> Unit
   )(implicit F: Async[F], rF: AsyncReactive[F]): Axn[WaitList[F, A]] = {
-    // TODO: remove indirection (AsyncFrom extend WaitList)
-    AsyncFrom.apply[F, A](_syncGet, _syncSet).map { af =>
-      new WaitList[F, A] {
-        final def set: A =#> Unit =
-          af.set
-        final def get: F[A] =
-          af.get
-        final def syncGet =
-          _syncGet
-        final def unsafeSetWaitersOrRetry: A =#> Unit =
-          af.trySetWaiters
+    data.Queue.withRemove[Callback[A]].map { waiters =>
+      new AsyncWaitList[F, A](_syncGet, _syncSet, waiters)
+    }
+  }
+
+  private final class AsyncWaitList[F[_], A](
+    val syncGet: Axn[Option[A]],
+    val syncSet: A =#> Unit,
+    waiters: data.Queue.WithRemove[Callback[A]],
+  )(implicit F: Async[F], arF: AsyncReactive[F]) extends WaitList[F, A] {
+
+    /** Partial, retries if no waiters */
+    final def unsafeSetWaitersOrRetry: A =#> Unit = {
+      this.waiters.tryDeque.flatMap {
+        case None =>
+          Rxn.unsafe.retry
+        case Some(cb) =>
+          callCb(cb)
+      }
+    }
+
+    private[this] final def callCb(cb: Callback[A]): Rxn[A, Unit] = {
+      Rxn.identity[A].postCommit(Rxn.unsafe.delay { (a: A) =>
+        cb(Right(a))
+      }).void
+    }
+
+    def set: A =#> Unit = {
+      this.waiters.tryDeque.flatMap {
+        case None =>
+          this.syncSet
+        case Some(cb) =>
+          callCb(cb)
+      }
+    }
+
+    def get: F[A] = {
+      F.async[A] { cb =>
+        val rxn: Axn[Either[Axn[Unit], A]] = this.syncGet.flatMapF {
+          case Some(a) =>
+            Rxn.pure(Right(a))
+          case None =>
+            this.waiters.enqueueWithRemover.provide(cb).map { remover =>
+              Left(remover)
+            }
+        }
+        F.flatMap[Either[Axn[Unit], A], Option[F[Unit]]](arF.run(rxn)) {
+          case Right(a) =>
+            F.as(F.delay(cb(Right(a))), None)
+          case Left(remover) =>
+            F.pure(Some(arF.run(remover)))
+        }
       }
     }
   }
