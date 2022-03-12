@@ -126,6 +126,23 @@ trait BoundedQueueSpec[F[_]]
     } yield ()
   }
 
+  test("BoundedQueue tryEnqueue with waiters") {
+    for {
+      s <- newQueue[String](bound = 4)
+      f1 <- s.deque.start
+      _ <- this.tickAll
+      f2 <- s.deque.start
+      _ <- this.tickAll
+      _ <- assertResultF(s.tryEnqueue[F]("a"), true)
+      _ <- assertResultF(f1.joinWithNever, "a")
+      _ <- assertResultF(s.tryEnqueue[F]("b"), true)
+      _ <- assertResultF(f2.joinWithNever, "b")
+      _ <- assertResultF(s.tryEnqueue[F]("c"), true)
+      _ <- assertResultF(s.tryDeque.run[F], Some("c"))
+      _ <- assertResultF(s.tryDeque.run[F], None)
+    } yield ()
+  }
+
   test("BoundedQueue multiple enq in a Rxn") {
     for {
       s <- newQueue[String](bound = 4)
@@ -245,6 +262,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue canceled getter") {
     for {
+      _ <- this.assumeNotZio
       s <- newQueue[String](bound = 4)
       f1 <- s.deque.start
       _ <- this.tickAll
@@ -264,6 +282,7 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue canceled setter") {
     for {
+      _ <- this.assumeNotZio
       s <- newQueue[String](bound = 1)
       _ <- assertResultF(s.currentSize.run[F], 0)
       _ <- s.enqueue("a")

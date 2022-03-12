@@ -24,13 +24,16 @@ import cats.effect.kernel.{ MonadCancel, Async }
 trait AsyncReactive[F[_]] extends Reactive[F] { self =>
   def promise[A]: Axn[Promise[F, A]]
   def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[F, A]]
+  def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean): Axn[GenWaitList[F, A]]
   def monadCancel: MonadCancel[F, _]
   def mapKAsync[G[_]](t: F ~> G)(implicit G: MonadCancel[G, _]): AsyncReactive[G] = {
     new Reactive.TransformedReactive[F, G](self, t) with AsyncReactive[G] {
       final override def promise[A]: Axn[Promise[G, A]] =
         self.promise[A].map(_.mapK(t))
       final override def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit) =
-        self.waitList[A](syncGet, syncSet).map(_.mapK(t))
+        self.waitList[A](syncGet, syncSet).map(_.mapK(t)(this))
+      override def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean) =
+        self.genWaitList(tryGet, trySet).map(_.mapK(t)(this))
       final override def monadCancel: MonadCancel[G, _] =
         G
     }
@@ -48,6 +51,9 @@ object AsyncReactive {
   private[choam] class AsyncReactiveImpl[F[_]](mi: mcas.Mcas)(implicit F: Async[F])
     extends Reactive.SyncReactive[F](mi)
     with AsyncReactive[F] {
+
+    final override def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean) =
+      GenWaitList.forAsync[F, A](tryGet, trySet)(F, this)
 
     final override def promise[A]: Axn[Promise[F, A]] =
       Promise.forAsync[F, A](this, F)

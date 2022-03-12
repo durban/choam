@@ -41,21 +41,22 @@ object BoundedQueue {
 
   def linked[F[_]: AsyncReactive, A](bound: Int): Axn[BoundedQueue[F, A]] = {
     require(bound > 0)
-    val maxSize = bound
     (Queue.unbounded[A] * Queue.withRemove[Promise[F, A]] * data.Queue.withRemove[(A, Promise[F, Unit])]).flatMap {
       case ((q, getters), setters) =>
         Ref[Int](0).map { s =>
-          new LinkedBoundedQueue[F, A](maxSize, s, q, getters, setters)
+          new LinkedBoundedQueue[F, A](bound, s, q, getters, setters)
         }
     }
   }
 
-  def array[F[_]: AsyncReactive, A](bound: Int): Axn[BoundedQueue[F, A]] = {
+  def array[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
     require(bound > 0)
     Queue.boundedArray[A](bound).flatMapF { q =>
-      (Queue.withRemove[Promise[F, A]] * data.Queue.withRemove[(A, Promise[F, Unit])]).map {
-        case (getters, setters) =>
-          new ArrayBoundedQueue[F, A](bound, q, getters, setters)
+      F.genWaitList[A](
+        tryGet = q.tryDeque,
+        trySet = q.tryEnqueue,
+      ).map { gwl =>
+        new ArrayBoundedQueue[F, A](bound, q, gwl)
       }
     }
   }
@@ -128,52 +129,42 @@ object BoundedQueue {
   }
 
   private final class ArrayBoundedQueue[F[_], A](
-    bound: Int,
+    _bound: Int,
     q: ArrayQueue[A] with QueueSourceSink[A],
-    getters: Queue.WithRemove[Promise[F, A]],
-    setters: Queue.WithRemove[(A, Promise[F, Unit])],
-  )(implicit F: AsyncReactive[F]) extends BoundedQueueCommon[F, A](bound, getters, setters) {
+    gwl: GenWaitList[F, A],
+  )(implicit F: AsyncReactive[F]) extends BoundedQueue[F, A] { self =>
 
-    protected final override def dequeAcq: F[Either[(Promise[F, A], Axn[Unit]), A]] = {
-      (Promise[F, A] * q.tryDeque).flatMapF { case (p, dq) =>
-        dq match {
-          case Some(a) =>
-            setters.tryDeque.flatMapF {
-              case Some((setterA, setterPromise)) =>
-                q.tryEnqueue.provide(setterA) *> (
-                  setterPromise.complete.provide(()).as(Right(a))
-                )
-              case None =>
-                Rxn.pure(Right(a))
-            }
-          case None =>
-            getters.enqueueWithRemover.provide(p).map { remover =>
-              Left((p, remover))
-            }
-        }
-      }.run[F]
-    }
+    override def tryDeque: Axn[Option[A]] =
+      gwl.tryGet
 
-    final override def tryDeque: Axn[Option[A]] = {
-      q.tryDeque.flatMapF {
-        case s @ Some(_) =>
-          setters.tryDeque.flatMapF {
-            case None =>
-              Rxn.pure(s)
-            case Some((setterA, setterPromise)) =>
-              q.tryEnqueue.provide(setterA) *> (
-                setterPromise.complete.provide(()).as(s)
-              )
-          }
-        case None =>
-          Rxn.pure(None)
+    override def deque[AA >: A]: F[AA] =
+      F.monad.widen(gwl.asyncGet)
+
+    override def tryEnqueue: Rxn[A, Boolean] =
+      gwl.trySet
+
+    override def enqueue(a: A): F[Unit] =
+      gwl.asyncSet(a)
+
+    override def bound: Int =
+      _bound
+
+    override def toCats: CatsQueue[F, A] = {
+      new CatsQueue[F, A] {
+        final override def take: F[A] =
+          self.deque
+        final override def tryTake: F[Option[A]] =
+          F.run(self.tryDeque)
+        final override def size: F[Int] =
+          F.run(self.currentSize)
+        final override def offer(a: A): F[Unit] =
+          self.enqueue(a)
+        final override def tryOffer(a: A): F[Boolean] =
+          F.apply(self.tryEnqueue, a)
       }
     }
 
-    final override def tryEnqueue: Rxn[A, Boolean] =
-      this.tryWaitingEnq + q.tryEnqueue
-
-    private[choam] final override def currentSize: Axn[Int] =
+    override private[choam] def currentSize: Axn[Int] =
       q.size
   }
 
