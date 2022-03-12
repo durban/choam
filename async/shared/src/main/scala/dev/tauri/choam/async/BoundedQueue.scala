@@ -150,7 +150,7 @@ object BoundedQueue {
       _bound
 
     override def toCats: CatsQueue[F, A] = {
-      new CatsQueueFromBoundedQueue[F, A](this)
+      new CatsQueueFromBoundedQueue[F, A](this)(F)
     }
 
     override private[choam] def currentSize: Axn[Int] =
@@ -236,7 +236,7 @@ object BoundedQueue {
     }
 
     final override def toCats: CatsQueue[F, A] = {
-      new CatsQueueFromBoundedQueue[F, A](this)
+      new CatsQueueFromBoundedQueue[F, A](this)(F)
     }
   }
 }
