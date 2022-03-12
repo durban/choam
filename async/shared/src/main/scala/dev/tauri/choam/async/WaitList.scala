@@ -101,38 +101,46 @@ object GenWaitList {
     }
 
     override def asyncSet(a: A): F[Unit] = {
-      val trySync = rF.apply(
-        getters.tryDeque.flatMap {
-          case Some(cb) =>
-            callCb(cb).as(true)
+      F.async[Unit] { cb =>
+        F.flatMap(
+          rF.apply(
+            getters.tryDeque.flatMap {
+              case Some(getterCb) =>
+                callCb(getterCb).as(None)
+              case None =>
+                _trySet.flatMapF { ok =>
+                  if (ok) Rxn.pure(None)
+                  else setters.enqueueWithRemover.provide((a, cb)).map(Some(_))
+                }
+            },
+            a
+          )
+        ) {
           case None =>
-            trySet
-        },
-        a,
-      )
-      F.flatMap(trySync) { ok =>
-        if (ok) {
-          F.unit
-        } else {
-          F.async[Unit] { cb =>
-            F.map(rF.apply(setters.enqueueWithRemover, (a, cb))) { remover =>
-              Some(rF.run(remover))
-            }
-          }
+            F.as(F.delay(cb(Right(()))), None)
+          case Some(remover) =>
+            F.pure(Some(rF.run(remover)))
         }
       }
     }
 
     override def asyncGet: F[A] = {
-      F.flatMap(rF.run(this.tryGet)) {
-        case Some(a) =>
-          F.pure(a)
-        case None =>
-          F.async[A] { cb =>
-            F.map(rF.apply(getters.enqueueWithRemover, cb)) { remover =>
-              Some(rF.run(remover))
+      F.async[A] { cb =>
+        F.flatMap(
+          rF.run(
+            this.tryGet.flatMapF {
+              case Some(a) =>
+                Rxn.pure(Right(a))
+              case None =>
+                getters.enqueueWithRemover.provide(cb).map(Left(_))
             }
-          }
+          )
+        ) {
+          case Right(a) =>
+            F.as(F.delay(cb(Right(a))), None)
+          case Left(remover) =>
+            F.pure(Some(rF.run(remover)))
+        }
       }
     }
 

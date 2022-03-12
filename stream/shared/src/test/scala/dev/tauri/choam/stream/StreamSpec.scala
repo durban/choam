@@ -53,16 +53,23 @@ trait StreamSpec[F[_]]
   }
 
   test("BoundedQueue to stream") {
+    def check(q: BoundedQueue[F, Option[String]]): F[Unit] = {
+      for {
+        _ <- assumeF(this.mcasImpl.isThreadSafe)
+        fibVec <- Stream.fromQueueNoneTerminated(q.toCats, limit = 4).compile.toVector.start
+        _ <- (1 to 8).toList.traverse { idx => q.enqueue(Some(idx.toString)) }
+        _ <- q.enqueue(None)
+        _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
+        _ <- List(9, 10).traverse { idx => q.enqueue(Some(idx.toString)) }
+        _ <- assertResultF(q.deque, Some("9"))
+        _ <- assertResultF(q.deque, Some("10"))
+      } yield ()
+    }
     for {
-      _ <- assumeF(this.mcasImpl.isThreadSafe)
-      q <- BoundedQueue.array[F, Option[String]](bound = 10).run[F]
-      fibVec <- Stream.fromQueueNoneTerminated(q.toCats, limit = 4).compile.toVector.start
-      _ <- (1 to 8).toList.traverse { idx => q.enqueue(Some(idx.toString)) }
-      _ <- q.enqueue(None)
-      _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
-      _ <- List(9, 10).traverse { idx => q.enqueue(Some(idx.toString)) }
-      _ <- assertResultF(q.deque, Some("9"))
-      _ <- assertResultF(q.deque, Some("10"))
+      q1 <- BoundedQueue.array[F, Option[String]](bound = 10).run[F]
+      q2 <- BoundedQueue.linked[F, Option[String]](bound = 10).run[F]
+      _ <- check(q1)
+      _ <- check(q2)
     } yield ()
   }
 
