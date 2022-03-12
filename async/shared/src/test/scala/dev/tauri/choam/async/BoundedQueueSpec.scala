@@ -325,4 +325,29 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(q.size, 0)
     } yield ()
   }
+
+  test("currentSize should be correct even if changed in the same Rxn") {
+    for {
+      q <- newQueue[String](bound = 8)
+      _ <- assertResultF(q.currentSize.run[F], 0)
+      rxn = (
+        (q.tryEnqueue.provide("a") *> q.currentSize).flatMapF { s1 =>
+          (q.tryEnqueue.provide("b") *> q.currentSize).flatMapF { s2 =>
+            (q.tryDeque *> q.currentSize).map { s3 =>
+              (s1, s2, s3)
+            }
+          }
+        }
+      )
+      _ <- assertResultF(rxn.run[F], (1, 2, 1))
+      _ <- assertResultF(q.currentSize.run[F], 1)
+      _ <- assertResultF(q.deque, "b")
+      _ <- q.enqueue("x")
+      _ <- assertResultF(rxn.run[F], (2, 3, 2))
+      _ <- assertResultF(q.deque, "a")
+      _ <- assertResultF(q.deque, "b")
+      _ <- assertResultF(q.currentSize.run[F], 0)
+      _ <- assertResultF(q.tryDeque.run[F], None)
+    } yield ()
+  }
 }
