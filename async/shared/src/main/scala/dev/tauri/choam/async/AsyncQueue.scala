@@ -57,6 +57,6 @@ object AsyncQueue {
     final override def offer(a: A): F[Unit] =
       self.enqueue[F](a)
     final override def tryOffer(a: A): F[Boolean] =
-      self.enqueue.as(true).apply[F](a)
+      self.tryEnqueue.apply[F](a)
   }
 }

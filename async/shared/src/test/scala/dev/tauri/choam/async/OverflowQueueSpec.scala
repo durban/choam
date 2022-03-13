@@ -61,10 +61,12 @@ trait OverflowQueueSpec[F[_]]
     OverflowQueue.droppingQueue(capacity).run[F]
 
   test("RingBuffer property") {
-    def checkSize[A](q: OverflowQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
+    def checkSize[A](q: OverflowQueue[F, A], qc: CatsQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
       q.size.flatMap { qs =>
-        s.size.flatMap { ss =>
-          assertEqualsF(qs, ss)
+        qc.size.flatMap { qcs =>
+          s.size.flatMap { ss =>
+            assertEqualsF(qs, ss) *> assertEqualsF(qcs, ss)
+          }
         }
       }
     }
@@ -72,20 +74,23 @@ trait OverflowQueueSpec[F[_]]
       val c = min(max(cap.abs, 1), 0xffff)
       for {
         q <- newRingBuffer[Int](capacity = c)
+        qc <- newRingBuffer[Int](capacity = c).map(_.toCats)
         s <- CatsQueue.circularBuffer[F, Int](capacity = c)
-        _ <- checkSize(q, s)
+        _ <- checkSize(q, qc, s)
         _ <- ints.traverse_ { i =>
           if ((i % 4) == 0) {
             // deq:
             q.tryDeque.run[F].flatMap { qr =>
-              s.tryTake.flatMap { sr =>
-                assertEqualsF(qr, sr) *> checkSize(q, s)
+              qc.tryTake.flatMap { qcr =>
+                s.tryTake.flatMap { sr =>
+                  assertEqualsF(qr, sr) *> assertEqualsF(qcr, sr) *> checkSize(q, qc, s)
+                }
               }
             }
           } else {
             // enq:
-            q.enqueue[F](i) *> s.offer(i) *> (
-              checkSize(q, s)
+            q.enqueue[F](i) *> qc.offer(i) *> s.offer(i) *> (
+              checkSize(q, qc, s)
             )
           }
         }
@@ -94,10 +99,12 @@ trait OverflowQueueSpec[F[_]]
   }
 
   test("Dropping property") {
-    def checkSize[A](q: OverflowQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
+    def checkSize[A](q: OverflowQueue[F, A], qc: CatsQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
       q.size.flatMap { qs =>
-        s.size.flatMap { ss =>
-          assertEqualsF(qs, ss)
+        qc.size.flatMap { qcs =>
+          s.size.flatMap { ss =>
+            assertEqualsF(qs, ss) *> assertEqualsF(qcs, ss)
+          }
         }
       }
     }
@@ -105,21 +112,26 @@ trait OverflowQueueSpec[F[_]]
       val c = min(max(cap.abs, 1), 0xffff)
       for {
         q <- newDroppingQueue[Int](capacity = c)
+        qc <- newDroppingQueue[Int](capacity = c).map(_.toCats)
         s <- CatsQueue.dropping[F, Int](capacity = c)
-        _ <- checkSize(q, s)
+        _ <- checkSize(q, qc, s)
         _ <- ints.traverse_ { i =>
           if ((i % 4) == 0) {
             // deq:
             q.tryDeque.run[F].flatMap { qr =>
-              s.tryTake.flatMap { sr =>
-                assertEqualsF(qr, sr) *> checkSize(q, s)
+              qc.tryTake.flatMap { qcr =>
+                s.tryTake.flatMap { sr =>
+                  assertEqualsF(qr, sr) *> assertEqualsF(qcr, sr) *> checkSize(q, qc, s)
+                }
               }
             }
           } else {
             // enq:
             q.tryEnqueue[F](i).flatMap { qr =>
-              s.tryOffer(i).flatMap { sr =>
-                assertEqualsF(qr, sr) *> checkSize(q, s)
+              qc.tryOffer(i).flatMap { qcr =>
+                s.tryOffer(i).flatMap { sr =>
+                  assertEqualsF(qr, sr) *> assertEqualsF(qcr, sr) *> checkSize(q, qc, s)
+                }
               }
             }
           }
