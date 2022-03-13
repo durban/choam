@@ -71,7 +71,7 @@ trait OverflowQueueSpec[F[_]]
       }
     }
     PropF.forAllF { (cap: Int, ints: List[Int]) =>
-      val c = min(max(cap.abs, 1), 0xffff)
+      val c = min(max(cap.abs, 1), 0x3fff)
       for {
         q <- newRingBuffer[Int](capacity = c)
         qc <- newRingBuffer[Int](capacity = c).map(_.toCats)
@@ -109,7 +109,7 @@ trait OverflowQueueSpec[F[_]]
       }
     }
     PropF.forAllF { (cap: Int, ints: List[Int]) =>
-      val c = min(max(cap.abs, 1), 0xffff)
+      val c = min(max(cap.abs, 1), 0x3fff)
       for {
         q <- newDroppingQueue[Int](capacity = c)
         qc <- newDroppingQueue[Int](capacity = c).map(_.toCats)
