@@ -37,6 +37,8 @@ object UnboundedQueue {
     data.Queue.unbounded[A].flatMapF { as =>
       F.waitList[A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
         new UnboundedQueue[F, A] {
+          final override def tryEnqueue: A =#> Boolean =
+            this.enqueue.as(true)
           final override def enqueue: A =#> Unit =
             af.set
           final override def tryDeque: Axn[Option[A]] =
@@ -52,6 +54,8 @@ object UnboundedQueue {
     data.Queue.withSize[A].flatMapF { as =>
       F.waitList[A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
         new UnboundedQueue.WithSize[F, A] {
+          final override def tryEnqueue: A =#> Boolean =
+            this.enqueue.as(true)
           final override def enqueue: A =#> Unit =
             af.set
           final override def tryDeque: Axn[Option[A]] =

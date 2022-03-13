@@ -60,6 +60,9 @@ private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
     }
   }
 
+  final override def tryEnqueue: Rxn[A, Boolean] =
+    this.enqueue.as(true)
+
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
     def go(n: Node[A]): Axn[Unit] = {
       n.next.get.flatMapF {

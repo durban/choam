@@ -64,6 +64,9 @@ private[data] final class RemoveQueue[A] private[this] (sentinel: Node[A])
     }
   }
 
+  final override def tryEnqueue: Rxn[A, Boolean] =
+    this.enqueue.as(true)
+
   override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
     Ref[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref(a).flatMap { dataRef =>

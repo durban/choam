@@ -66,13 +66,16 @@ object OverflowQueue {
     final override def capacity =
       buff.capacity
 
-    override def enqueue: Rxn[A, Unit] =
+    final override def tryEnqueue: Rxn[A, Boolean] =
+      this.enqueue.as(true)
+
+    final override def enqueue: Rxn[A, Unit] =
       af.set
 
-    override def tryDeque: Axn[Option[A]] =
+    final override def tryDeque: Axn[Option[A]] =
       af.syncGet
 
-    override def deque[AA >: A]: F[AA] =
+    final override def deque[AA >: A]: F[AA] =
       F.monad.widen(af.get)
   }
 

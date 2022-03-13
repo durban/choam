@@ -45,8 +45,6 @@ trait QueueSourceSink[A]
 
 trait UnboundedQueueSink[-A] extends QueueSink[A] {
   def enqueue: Rxn[A, Unit]
-  override def tryEnqueue: Rxn[A, Boolean] =
-    this.enqueue.as(true)
 }
 
 trait Queue[A]
@@ -110,6 +108,9 @@ object Queue {
 
           final override def enqueue: Rxn[A, Unit] =
             s.update(_ + 1) *> q.enqueue
+
+          final override def tryEnqueue: Rxn[A, Boolean] =
+            this.enqueue.as(true)
 
           final override def size: Axn[Int] =
             s.get

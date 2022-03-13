@@ -72,6 +72,9 @@ private[choam] final class MsQueue[A] private[this] (
     findAndEnqueue(newNode(a))
   }
 
+  final override def tryEnqueue: Rxn[A, Boolean] =
+    this.enqueue.as(true)
+
   private[this] def newNode(a: A): Node[A] = {
     val newRef: Ref[Elem[A]] = if (this.padded) {
       Ref.unsafePadded(End[A]())

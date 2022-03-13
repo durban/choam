@@ -40,7 +40,7 @@ private[choam] final class RingBuffer[A](
   require(capacity === arr.size)
 
   final override def tryEnqueue: A =#> Boolean =
-    super[Queue].tryEnqueue
+    this.enqueue.as(true)
 
   final override def enqueue: Rxn[A, Unit] = Rxn.computed[A, Unit] { newVal =>
     tail.getAndUpdate(incrIdx).flatMapF { idx =>
