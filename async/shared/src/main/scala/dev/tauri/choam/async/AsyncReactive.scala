@@ -53,13 +53,13 @@ object AsyncReactive {
     with AsyncReactive[F] {
 
     final override def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean) =
-      GenWaitList.forAsync[F, A](tryGet, trySet)(F, this)
+      GenWaitList.genWaitListForAsync[F, A](tryGet, trySet)(F, this)
+
+    final override def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[F, A]] =
+      GenWaitList.waitListForAsync(syncGet, syncSet)(F, this)
 
     final override def promise[A]: Axn[Promise[F, A]] =
       Promise.forAsync[F, A](this, F)
-
-    final override def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[F, A]] =
-      WaitList.forAsync(syncGet, syncSet)(F, this)
 
     final override def monadCancel =
       F
