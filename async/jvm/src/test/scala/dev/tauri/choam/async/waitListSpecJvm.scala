@@ -20,29 +20,22 @@ package async
 
 import cats.effect.IO
 
-final class AsyncFromSpec_ThreadConfinedMcas_IO
+final class WaitListSpec_SpinLockMcas_IO
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMcas
-  with AsyncFromSpec[IO]
+  with SpecSpinLockMcas
+  with WaitListSpec[IO]
 
-trait AsyncFromSpec[F[_]]
-  extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+final class WaitListSpec_SpinLockMcas_ZIO
+  extends BaseSpecTickedZIO
+  with SpecSpinLockMcas
+  with WaitListSpec[zio.Task]
 
-  test("AsyncFrom around a Ref") {
-    for {
-      ref <- Ref[Option[Int]](None).run[F]
-      af <- rF.waitList[Int](
-        ref.get,
-        ref.getAndSet.contramap[Int](Some(_)).void
-      ).run[F]
-      f1 <- af.asyncGet.start
-      _ <- this.tickAll
-      f2 <- af.asyncGet.start
-      _ <- af.set[F](42)
-      _ <- assertResultF(f1.joinWithNever, 42)
-      _ <- af.set[F](21)
-      _ <- assertResultF(f2.joinWithNever, 21)
-    } yield ()
-  }
-}
+final class WaitListSpec_Emcas_IO
+  extends BaseSpecTickedIO
+  with SpecEmcas
+  with WaitListSpec[IO]
+
+final class WaitListSpec_Emcas_ZIO
+  extends BaseSpecTickedZIO
+  with SpecEmcas
+  with WaitListSpec[zio.Task]

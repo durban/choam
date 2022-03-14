@@ -33,12 +33,12 @@ object AsyncStack {
       F.waitList(
         syncGet = es.tryPop,
         syncSet = es.push
-      ).map { af =>
+      ).map { wl =>
         new AsyncStack[F, A] {
           final override def push: A =#> Unit =
-            af.set
+            wl.set
           final override def pop: F[A] =
-            af.asyncGet
+            wl.asyncGet
           final override def tryPop: Axn[Option[A]] =
             es.tryPop
         }

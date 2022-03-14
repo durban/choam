@@ -87,7 +87,7 @@
       - `Exchanger`
     - calling async callbacks:
       - only `Promise` really needs it
-      - `AsyncFrom` (as an optimization, to avoid `Promise`)
+      - `[Gen]WaitList` (as an optimization, to avoid `Promise`)
     - other special cases:
       - `UUIDGen`
       - `Unique`

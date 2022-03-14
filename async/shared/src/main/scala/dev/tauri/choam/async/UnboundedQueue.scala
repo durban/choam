@@ -34,36 +34,36 @@ object UnboundedQueue {
   }
 
   def apply[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue[F, A]] = {
-    data.Queue.unbounded[A].flatMapF { as =>
-      F.waitList[A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
+    data.Queue.unbounded[A].flatMapF { q =>
+      F.waitList[A](syncGet = q.tryDeque, syncSet = q.enqueue).map { wl =>
         new UnboundedQueue[F, A] {
           final override def tryEnqueue: A =#> Boolean =
             this.enqueue.as(true)
           final override def enqueue: A =#> Unit =
-            af.set
+            wl.set
           final override def tryDeque: Axn[Option[A]] =
-            as.tryDeque
+            q.tryDeque
           final override def deque[AA >: A]: F[AA] =
-            F.monad.widen(af.asyncGet)
+            F.monad.widen(wl.asyncGet)
         }
       }
     }
   }
 
   def withSize[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue.WithSize[F, A]] = {
-    data.Queue.withSize[A].flatMapF { as =>
-      F.waitList[A](syncGet = as.tryDeque, syncSet = as.enqueue).map { af =>
+    data.Queue.withSize[A].flatMapF { q =>
+      F.waitList[A](syncGet = q.tryDeque, syncSet = q.enqueue).map { wl =>
         new UnboundedQueue.WithSize[F, A] {
           final override def tryEnqueue: A =#> Boolean =
             this.enqueue.as(true)
           final override def enqueue: A =#> Unit =
-            af.set
+            wl.set
           final override def tryDeque: Axn[Option[A]] =
-            as.tryDeque
+            q.tryDeque
           final override def deque[AA >: A]: F[AA] =
-            F.monad.widen(af.asyncGet)
+            F.monad.widen(wl.asyncGet)
           final override def size: F[Int] =
-            as.size.run[F]
+            q.size.run[F]
           final override def toCats =
             new AsyncQueue.CatsQueueAdapter(this)
         }
