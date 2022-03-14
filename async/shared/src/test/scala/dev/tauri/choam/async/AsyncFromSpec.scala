@@ -36,9 +36,9 @@ trait AsyncFromSpec[F[_]]
         ref.get,
         ref.getAndSet.contramap[Int](Some(_)).void
       ).run[F]
-      f1 <- af.get.start
+      f1 <- af.asyncGet.start
       _ <- this.tickAll
-      f2 <- af.get.start
+      f2 <- af.asyncGet.start
       _ <- af.set[F](42)
       _ <- assertResultF(f1.joinWithNever, 42)
       _ <- af.set[F](21)

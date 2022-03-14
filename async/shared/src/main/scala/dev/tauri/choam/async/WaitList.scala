@@ -162,15 +162,12 @@ object GenWaitList {
 
 abstract class WaitList[F[_], A] extends GenWaitList[F, A] { self =>
 
-  def set: A =#> Unit
+  def asyncGet: F[A]
 
-  def get: F[A]
+  def set: A =#> Unit
 
   final override def trySet: A =#> Boolean =
     this.set.as(true)
-
-  final override def asyncGet: F[A] =
-    this.get
 
   final override def asyncSet(a: A): F[Unit] =
     this.reactive.apply(this.set, a)
@@ -179,8 +176,8 @@ abstract class WaitList[F[_], A] extends GenWaitList[F, A] { self =>
     new WaitList[G, A] {
       override def set =
         self.set
-      override def get =
-        t(self.get)
+      override def asyncGet =
+        t(self.asyncGet)
       override def tryGet =
         self.tryGet
       override def reactive: Reactive[G] =
@@ -215,7 +212,7 @@ object WaitList {
       }).void
     }
 
-    def set: A =#> Unit = {
+    final def set: A =#> Unit = {
       this.waiters.tryDeque.flatMap {
         case None =>
           this.syncSet
@@ -224,7 +221,7 @@ object WaitList {
       }
     }
 
-    def get: F[A] = {
+    final def asyncGet: F[A] = {
       F.async[A] { cb =>
         val rxn: Axn[Either[Axn[Unit], A]] = this.tryGet.flatMapF {
           case Some(a) =>

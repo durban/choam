@@ -38,7 +38,7 @@ object AsyncStack {
           final override def push: A =#> Unit =
             af.set
           final override def pop: F[A] =
-            af.get
+            af.asyncGet
           final override def tryPop: Axn[Option[A]] =
             es.tryPop
         }

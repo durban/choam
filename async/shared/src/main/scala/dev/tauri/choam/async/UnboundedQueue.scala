@@ -44,7 +44,7 @@ object UnboundedQueue {
           final override def tryDeque: Axn[Option[A]] =
             as.tryDeque
           final override def deque[AA >: A]: F[AA] =
-            F.monad.widen(af.get)
+            F.monad.widen(af.asyncGet)
         }
       }
     }
@@ -61,7 +61,7 @@ object UnboundedQueue {
           final override def tryDeque: Axn[Option[A]] =
             as.tryDeque
           final override def deque[AA >: A]: F[AA] =
-            F.monad.widen(af.get)
+            F.monad.widen(af.asyncGet)
           final override def size: F[Int] =
             as.size.run[F]
           final override def toCats =

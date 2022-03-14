@@ -76,7 +76,7 @@ object OverflowQueue {
       af.tryGet
 
     final override def deque[AA >: A]: F[AA] =
-      F.monad.widen(af.get)
+      F.monad.widen(af.asyncGet)
   }
 
   private final class DroppingQueue[F[_], A](
