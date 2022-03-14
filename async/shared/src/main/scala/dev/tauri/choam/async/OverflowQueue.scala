@@ -73,7 +73,7 @@ object OverflowQueue {
       af.set
 
     final override def tryDeque: Axn[Option[A]] =
-      af.syncGet
+      af.tryGet
 
     final override def deque[AA >: A]: F[AA] =
       F.monad.widen(af.get)

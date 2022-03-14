@@ -166,11 +166,6 @@ abstract class WaitList[F[_], A] extends GenWaitList[F, A] { self =>
 
   def get: F[A]
 
-  def syncGet: Axn[Option[A]] // TODO: better name
-
-  final override def tryGet: Axn[Option[A]] =
-    this.syncGet
-
   final override def trySet: A =#> Boolean =
     this.set.as(true)
 
@@ -186,8 +181,8 @@ abstract class WaitList[F[_], A] extends GenWaitList[F, A] { self =>
         self.set
       override def get =
         t(self.get)
-      override def syncGet =
-        self.syncGet
+      override def tryGet =
+        self.tryGet
       override def reactive: Reactive[G] =
         G
     }
@@ -209,7 +204,7 @@ object WaitList {
   }
 
   private final class AsyncWaitList[F[_], A](
-    val syncGet: Axn[Option[A]],
+    val tryGet: Axn[Option[A]],
     val syncSet: A =#> Unit,
     waiters: data.Queue.WithRemove[Callback[A]],
   )(implicit F: Async[F], arF: AsyncReactive[F]) extends WaitList[F, A] {
@@ -231,7 +226,7 @@ object WaitList {
 
     def get: F[A] = {
       F.async[A] { cb =>
-        val rxn: Axn[Either[Axn[Unit], A]] = this.syncGet.flatMapF {
+        val rxn: Axn[Either[Axn[Unit], A]] = this.tryGet.flatMapF {
           case Some(a) =>
             Rxn.pure(Right(a))
           case None =>
