@@ -168,8 +168,6 @@ abstract class WaitList[F[_], A] extends GenWaitList[F, A] { self =>
 
   def syncGet: Axn[Option[A]] // TODO: better name
 
-  def unsafeSetWaitersOrRetry: A =#> Unit // TODO: better name (or remove)
-
   final override def tryGet: Axn[Option[A]] =
     this.syncGet
 
@@ -190,8 +188,6 @@ abstract class WaitList[F[_], A] extends GenWaitList[F, A] { self =>
         t(self.get)
       override def syncGet =
         self.syncGet
-      override def unsafeSetWaitersOrRetry =
-        self.unsafeSetWaitersOrRetry
       override def reactive: Reactive[G] =
         G
     }
@@ -217,16 +213,6 @@ object WaitList {
     val syncSet: A =#> Unit,
     waiters: data.Queue.WithRemove[Callback[A]],
   )(implicit F: Async[F], arF: AsyncReactive[F]) extends WaitList[F, A] {
-
-    /** Partial, retries if no waiters */
-    final def unsafeSetWaitersOrRetry: A =#> Unit = {
-      this.waiters.tryDeque.flatMap {
-        case None =>
-          Rxn.unsafe.retry
-        case Some(cb) =>
-          callCb(cb)
-      }
-    }
 
     private[this] final def callCb(cb: Callback[A]): Rxn[A, Unit] = {
       Rxn.identity[A].postCommit(Rxn.unsafe.delay { (a: A) =>
