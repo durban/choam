@@ -24,7 +24,7 @@ import cats.effect.IO
 
 import fs2.{ Stream, Chunk }
 
-import async.{ UnboundedQueue, BoundedQueue, Promise, AsyncReactiveSpec }
+import async.{ AsyncQueue, UnboundedQueue, BoundedQueue, Promise, AsyncReactiveSpec }
 import syntax._
 
 final class StreamSpec_ThreadConfinedMcas_IO
@@ -36,19 +36,27 @@ trait StreamSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: McasImplSpec =>
 
-  final def newAsyncQueue[A]: F[UnboundedQueue[F, A]] =
-    UnboundedQueue[F, A].run[F]
-
   test("UnboundedQueue to stream") {
+    def check(q: UnboundedQueue[F, String]): F[Unit] = {
+      for {
+        _ <- assumeF(this.mcasImpl.isThreadSafe)
+        fibVec <- q.stream.take(8).compile.toVector.start
+        _ <- (1 to 8).toList.traverse { idx => q.enqueue[F](idx.toString) }
+        _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
+        _ <- List(9, 10).traverse { idx => q.enqueue[F](idx.toString) }
+        _ <- assertResultF(q.deque, "9")
+        _ <- assertResultF(q.deque, "10")
+      } yield ()
+    }
     for {
-      _ <- assumeF(this.mcasImpl.isThreadSafe)
-      q <- newAsyncQueue[String]
-      fibVec <- q.stream.take(8).compile.toVector.start
-      _ <- (1 to 8).toList.traverse { idx => q.enqueue[F](idx.toString) }
-      _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
-      _ <- List(9, 10).traverse { idx => q.enqueue[F](idx.toString) }
-      _ <- assertResultF(q.deque, "9")
-      _ <- assertResultF(q.deque, "10")
+      q1 <- AsyncQueue.unbounded[F, String].run[F]
+      q2 <- AsyncQueue.unboundedWithSize[F, String].run[F]
+      q3 <- AsyncQueue.ringBuffer[F, String](capacity = 128).run[F]
+      q4 <- AsyncQueue.dropping[F, String](capacity = 128).run[F]
+      _ <- check(q1)
+      _ <- check(q2)
+      _ <- check(q3)
+      _ <- check(q4)
     } yield ()
   }
 
@@ -76,22 +84,22 @@ trait StreamSpec[F[_]]
   test("AsyncQueue extension methods") {
     for {
       // .stream:
-      q <- newAsyncQueue[String]
+      q <- AsyncQueue.unbounded[F, String].run[F]
       _ <- q.enqueue[F]("foo")
       qr <- q.stream.take(1).compile.toVector
       _ <- assertEqualsF(qr, Vector("foo"))
       // .streamNoneTerminated:
-      qOpt <- newAsyncQueue[Option[String]]
+      qOpt <- AsyncQueue.unbounded[F, Option[String]].run[F]
       _ <- qOpt.enqueue[F](Some("foo")) >> qOpt.enqueue[F](None)
       qOptR <- qOpt.streamNoneTerminated.compile.toVector
       _ <- assertEqualsF(qOptR, Vector("foo"))
       // .streamFromChunks:
-      qChunk <- newAsyncQueue[Chunk[String]]
+      qChunk <- AsyncQueue.unbounded[F, Chunk[String]].run[F]
       _ <- qChunk.enqueue[F](Chunk("foo", "bar"))
       qChunkR <- qChunk.streamFromChunks.take(2).compile.toVector
       _ <- assertEqualsF(qChunkR, Vector("foo", "bar"))
       // .streamFromChunksNoneTerminated:
-      qOptChunk <- newAsyncQueue[Option[Chunk[String]]]
+      qOptChunk <- AsyncQueue.unbounded[F, Option[Chunk[String]]].run[F]
       _ <- qOptChunk.enqueue[F](Some(Chunk("foo", "bar"))) >> qOptChunk.enqueue[F](None)
       qOptChunkR <- qOptChunk.streamFromChunksNoneTerminated.compile.toVector
       _ <- assertEqualsF(qOptChunkR, Vector("foo", "bar"))
