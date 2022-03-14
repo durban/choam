@@ -31,9 +31,7 @@ abstract class GenWaitList[F[_], A] { self =>
 
   def asyncGet: F[A]
 
-  def reactive: Reactive[F]
-
-  def mapK[G[_]](t: F ~> G)(implicit G: Reactive[G]): GenWaitList[G, A] = {
+  def mapK[G[_]](t: F ~> G)(implicit @unused G: Reactive[G]): GenWaitList[G, A] = {
     new GenWaitList[G, A] {
       override def trySet =
         self.trySet
@@ -43,8 +41,6 @@ abstract class GenWaitList[F[_], A] { self =>
         t(self.asyncSet(a))
       override def asyncGet: G[A] =
         t(self.asyncGet)
-      override def reactive: Reactive[G] =
-        G
     }
   }
 }
@@ -144,9 +140,6 @@ object GenWaitList {
       }
     }
 
-    override def reactive: Reactive[F] =
-      rF
-
     private[this] final def callCbUnit(cb: Callback[Unit]): Rxn[Any, Unit] = {
       this.callCb(cb).provide(())
     }
@@ -169,19 +162,16 @@ abstract class WaitList[F[_], A] extends GenWaitList[F, A] { self =>
   final override def trySet: A =#> Boolean =
     this.set.as(true)
 
-  final override def asyncSet(a: A): F[Unit] =
-    this.reactive.apply(this.set, a)
-
   override def mapK[G[_]](t: F ~> G)(implicit G: Reactive[G]): WaitList[G, A] = {
     new WaitList[G, A] {
       override def set =
         self.set
+      final override def asyncSet(a: A): G[Unit] =
+        G.apply(this.set, a)
       override def asyncGet =
         t(self.asyncGet)
       override def tryGet =
         self.tryGet
-      override def reactive: Reactive[G] =
-        G
     }
   }
 }
@@ -219,6 +209,10 @@ object WaitList {
         case Some(cb) =>
           callCb(cb)
       }
+    }
+
+    final def asyncSet(a: A): F[Unit] = {
+      arF.apply(this.set, a)
     }
 
     final def asyncGet: F[A] = {
