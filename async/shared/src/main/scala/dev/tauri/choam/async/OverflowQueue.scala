@@ -34,8 +34,8 @@ object OverflowQueue {
 
   def droppingQueue[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] = {
     data.DroppingQueue[A](capacity).flatMapF { dq =>
-      F.waitList[A](syncGet = dq.tryDeque, syncSet = dq.enqueue).map { af =>
-        new DroppingQueue[F, A](dq, af)
+      F.genWaitList[A](tryGet = dq.tryDeque, trySet = dq.tryEnqueue).map { gwl =>
+        new DroppingQueue[F, A](dq, gwl)
       }
     }
   }
@@ -81,28 +81,28 @@ object OverflowQueue {
 
   private final class DroppingQueue[F[_], A](
     q: data.DroppingQueue[A],
-    af: WaitList[F, A],
+    gwl: GenWaitList[F, A],
   )(implicit F: AsyncReactive[F]) extends OverflowQueue[F, A] {
 
     final def size: F[Int] =
       F.run(q.size)
 
-    final override def toCats =
+    final def toCats =
       new AsyncQueue.CatsQueueAdapter(this)
 
     final def capacity: Int =
       q.capacity
 
-    final override def tryEnqueue: Rxn[A, Boolean] =
-      af.unsafeSetWaitersOrRetry.as(true) + q.tryEnqueue
+    final def tryEnqueue: Rxn[A, Boolean] =
+      gwl.trySet
 
     final def enqueue: Rxn[A, Unit] =
-      af.set
+      this.tryEnqueue.void
 
     final def tryDeque: Axn[Option[A]] =
-      af.syncGet
+      gwl.tryGet
 
     final def deque[AA >: A]: F[AA] =
-      F.monad.widen(af.get)
+      F.monad.widen(gwl.asyncGet)
   }
 }
