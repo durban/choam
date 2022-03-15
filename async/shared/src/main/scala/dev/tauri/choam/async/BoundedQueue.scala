@@ -124,7 +124,7 @@ object BoundedQueue {
       q.size
   }
 
-  private final class CatsQueueFromBoundedQueue[F[_], A](
+  private[async] final class CatsQueueFromBoundedQueue[F[_], A](
     self: BoundedQueue[F, A]
   )(implicit F: Reactive[F]) extends CatsQueue[F, A] {
     final override def take: F[A] =

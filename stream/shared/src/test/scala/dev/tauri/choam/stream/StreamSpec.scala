@@ -68,16 +68,19 @@ trait StreamSpec[F[_]]
         _ <- (1 to 8).toList.traverse { idx => q.enqueue(Some(idx.toString)) }
         _ <- q.enqueue(None)
         _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
-        _ <- List(9, 10).traverse { idx => q.enqueue(Some(idx.toString)) }
+        fib2 <- List(9, 10).traverse { idx => q.enqueue(Some(idx.toString)) }.start
         _ <- assertResultF(q.deque, Some("9"))
         _ <- assertResultF(q.deque, Some("10"))
+        _ <- fib2.joinWithNever
       } yield ()
     }
     for {
       q1 <- BoundedQueue.array[F, Option[String]](bound = 10).run[F]
       q2 <- BoundedQueue.linked[F, Option[String]](bound = 10).run[F]
+      q3 <- AsyncQueue.synchronous[F, Option[String]].run[F]
       _ <- check(q1)
       _ <- check(q2)
+      _ <- check(q3)
     } yield ()
   }
 

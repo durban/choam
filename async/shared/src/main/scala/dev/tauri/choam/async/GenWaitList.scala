@@ -123,8 +123,15 @@ object GenWaitList {
               Rxn.pure(s)
           }
         case None =>
-          // can't get:
-          Rxn.pure(None)
+          // can't get, so it's "empty"; however,
+          // it can also be "full" (e.g., queue of
+          // size 0), so we need to check setters:
+          setters.tryDeque.flatMapF {
+            case Some((setterVal, setterCb)) =>
+              callCbUnit(setterCb).as(Some(setterVal))
+            case None =>
+              Rxn.pure(None)
+          }
       }
     }
 

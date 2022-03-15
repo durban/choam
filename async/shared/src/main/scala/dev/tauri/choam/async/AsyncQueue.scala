@@ -34,7 +34,7 @@ object AsyncQueue {
     UnboundedQueue[F, A]
 
   def bounded[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] =
-    BoundedQueue.linked[F, A](bound)
+    BoundedQueue.array[F, A](bound)
 
   def dropping[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] =
     OverflowQueue.droppingQueue[F, A](capacity)
@@ -44,6 +44,27 @@ object AsyncQueue {
 
   def unboundedWithSize[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue.WithSize[F, A]] =
     UnboundedQueue.withSize[F, A]
+
+  def synchronous[F[_], A](implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
+    F.genWaitList[A](tryGet = Rxn.pure(None), trySet = Rxn.ret(false)).map { gwl =>
+      new BoundedQueue[F, A] {
+        final def tryDeque: Axn[Option[A]] =
+          gwl.tryGet
+        final def deque[AA >: A]: F[AA] =
+          F.monad.widen(gwl.asyncGet)
+        final def tryEnqueue: Rxn[A, Boolean] =
+          gwl.trySet
+        final def enqueue(a: A): F[Unit] =
+          gwl.asyncSet(a)
+        final def bound: Int =
+          0
+        final def toCats: CatsQueue[F, A] =
+          new BoundedQueue.CatsQueueFromBoundedQueue[F, A](this)
+        private[choam] final def currentSize: Axn[Int] =
+          Rxn.pure(0)
+      }
+    }
+  }
 
   private[choam] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: UnboundedQueue.WithSize[F, A])
     extends CatsQueue[F, A] {
