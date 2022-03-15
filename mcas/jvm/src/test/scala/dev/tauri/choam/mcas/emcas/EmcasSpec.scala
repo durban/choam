@@ -20,7 +20,7 @@ package mcas
 package emcas
 
 import java.lang.ref.{ Reference, WeakReference }
-import java.util.concurrent.{ ConcurrentLinkedQueue, CountDownLatch }
+import java.util.concurrent.{ ConcurrentLinkedQueue, CountDownLatch, ThreadLocalRandom }
 
 import scala.runtime.VolatileObjectRef
 
@@ -225,6 +225,7 @@ class EmcasSpec extends BaseSpecA {
       Emcas.spinUntilCleanup(ref) match {
         case s if s == old =>
           // CAS not started yet, retry
+          Thread.sleep(ThreadLocalRandom.current().nextLong(32L))
           checkCleanup(ref, old, exp)
         case s if s == exp =>
           // descriptor have been cleaned up:
@@ -239,6 +240,7 @@ class EmcasSpec extends BaseSpecA {
     var ok2 = false
     val c2 = new Thread(() => { ok2 = checkCleanup(r2, "y", "b") })
     t.start()
+    Thread.`yield`()
     c1.start()
     c2.start()
     t.join()

@@ -752,7 +752,11 @@ private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
         if (Thread.interrupted()) {
           throw new InterruptedException
         } else {
-          System.gc()
+          if ((ctr % 1024L) == 0L) {
+            System.gc()
+          } else {
+            Thread.sleep(32L)
+          }
         }
       }
     }
