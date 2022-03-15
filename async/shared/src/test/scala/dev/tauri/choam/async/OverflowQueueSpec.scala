@@ -60,6 +60,9 @@ trait OverflowQueueSpec[F[_]]
   def newDroppingQueue[A](capacity: Int): F[OverflowQueue[F, A]] =
     OverflowQueue.droppingQueue(capacity).run[F]
 
+  final val Max =
+    0x3fff
+
   test("RingBuffer property") {
     def checkSize[A](q: OverflowQueue[F, A], qc: CatsQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
       q.size.flatMap { qs =>
@@ -70,8 +73,9 @@ trait OverflowQueueSpec[F[_]]
         }
       }
     }
-    PropF.forAllF { (cap: Int, ints: List[Int]) =>
-      val c = min(max(cap.abs, 1), 0x3fff)
+    PropF.forAllF { (cap: Int, _ints: List[Int]) =>
+      val c = min(max(cap.abs, 1), Max)
+      val ints = _ints.take(2 * Max)
       for {
         q <- newRingBuffer[Int](capacity = c)
         qc <- newRingBuffer[Int](capacity = c).map(_.toCats)
@@ -108,8 +112,9 @@ trait OverflowQueueSpec[F[_]]
         }
       }
     }
-    PropF.forAllF { (cap: Int, ints: List[Int]) =>
-      val c = min(max(cap.abs, 1), 0x3fff)
+    PropF.forAllF { (cap: Int, _ints: List[Int]) =>
+      val c = min(max(cap.abs, 1), Max)
+      val ints = _ints.take(2 * Max)
       for {
         q <- newDroppingQueue[Int](capacity = c)
         qc <- newDroppingQueue[Int](capacity = c).map(_.toCats)
