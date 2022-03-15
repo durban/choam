@@ -24,38 +24,12 @@ import cats.{ ~>, Functor, Invariant, Contravariant, Monad }
 import cats.syntax.all._
 import cats.effect.kernel.{ Async, Deferred, DeferredSink, DeferredSource }
 
-sealed trait PromiseRead[F[_], A] { self =>
-
+trait PromiseRead[F[_], A] { self =>
   def get: F[A]
-
   def tryGet: Axn[Option[A]]
-
-  protected def rF: Reactive[F]
-
-  final def map[B](f: A => B): PromiseRead[F, B] = new PromiseRead[F, B] {
-    final override def rF =
-      self.rF
-    final override def get: F[B] =
-      rF.monad.map(self.get)(f)
-    final override def tryGet: Axn[Option[B]] =
-      self.tryGet.map(_.map(f))
-  }
-
-  def mapK[G[_] : Monad](t: F ~> G): PromiseRead[G, A] = new PromiseRead[G, A] {
-    final override def rF =
-      self.rF.mapK(t)
-    final override def get: G[A] =
-      t(self.get)
-    final override def tryGet: Axn[Option[A]] =
-      self.tryGet
-  }
-
-  def toCats: DeferredSource[F, A] = new DeferredSource[F, A] {
-    final override def get: F[A] =
-      self.get
-    final override def tryGet: F[Option[A]] =
-      rF.run(self.tryGet)
-  }
+  def map[B](f: A => B): PromiseRead[F, B]
+  def mapK[G[_] : Monad](t: F ~> G): PromiseRead[G, A]
+  def toCats: DeferredSource[F, A]
 }
 
 object PromiseRead {
@@ -68,13 +42,13 @@ object PromiseRead {
   }
 }
 
-sealed trait PromiseWrite[A] { self =>
+trait PromiseWrite[A] { self =>
 
   def complete: A =#> Boolean
 
   final def contramap[B](f: B => A): PromiseWrite[B] = new PromiseWrite[B] {
     final override def complete: Rxn[B, Boolean] =
-      self.complete.lmap(f)
+      self.complete.contramap(f)
   }
 
   final def toCatsIn[F[_]](implicit F: Reactive[F]): DeferredSink[F, A] = new DeferredSink[F, A] {
@@ -93,38 +67,10 @@ object PromiseWrite {
   }
 }
 
-sealed abstract class Promise[F[_], A] extends PromiseRead[F, A] with PromiseWrite[A] { self =>
-
-  final def imap[B](f: A => B)(g: B => A): Promise[F, B] = new Promise[F, B] {
-    final override def rF =
-      self.rF
-    final override def complete: Rxn[B, Boolean] =
-      self.complete.lmap(g)
-    final override def tryGet: Axn[Option[B]] =
-      self.tryGet.map(_.map(f))
-    final override def get: F[B] =
-      rF.monad.map(self.get)(f)
-  }
-
-  final override def mapK[G[_] : Monad](t: F ~> G): Promise[G, A] = new Promise[G, A] {
-    final override def rF =
-      self.rF.mapK(t)
-    final override def complete: Rxn[A, Boolean] =
-      self.complete
-    final override def tryGet: Axn[Option[A]] =
-      self.tryGet
-    final override def get: G[A] =
-      t(self.get)
-  }
-
-  final override def toCats: Deferred[F, A] = new Deferred[F, A] {
-    final override def get: F[A] =
-      self.get
-    final override def tryGet: F[Option[A]] =
-      rF.run(self.tryGet)
-    final override def complete(a: A): F[Boolean] =
-      rF.apply(self.complete, a)
-  }
+trait Promise[F[_], A] extends PromiseRead[F, A] with PromiseWrite[A] {
+  def imap[B](f: A => B)(g: B => A): Promise[F, B]
+  override def mapK[G[_] : Monad](t: F ~> G): Promise[G, A]
+  override def toCats: Deferred[F, A]
 }
 
 object Promise {
@@ -154,13 +100,83 @@ object Promise {
 
   private final case class Done[A](a: A) extends State[A]
 
-  private final class PromiseImpl[F[_], A](ref: Ref[State[A]])(implicit _rF: Reactive[F], F: Async[F])
-    extends Promise[F, A] {
+  private[this] abstract class PromiseReadImpl[F[_], A]
+    extends PromiseRead[F, A] { self =>
 
-    final override def rF =
+    protected def rF: Reactive[F]
+
+    final def map[B](f: A => B): PromiseRead[F, B] = new PromiseReadImpl[F, B] {
+      final override def rF =
+        self.rF
+      final override def get: F[B] =
+        self.rF.monad.map(self.get)(f)
+      final override def tryGet: Axn[Option[B]] =
+        self.tryGet.map(_.map(f))
+    }
+
+    def mapK[G[_] : Monad](t: F ~> G): PromiseRead[G, A] = new PromiseReadImpl[G, A] {
+      final def rF =
+        self.rF.mapK(t)
+      final override def get: G[A] =
+        t(self.get)
+      final override def tryGet: Axn[Option[A]] =
+        self.tryGet
+    }
+
+    def toCats: DeferredSource[F, A] = new DeferredSource[F, A] {
+      final override def get: F[A] =
+        self.get
+      final override def tryGet: F[Option[A]] =
+        rF.run(self.tryGet)
+    }
+  }
+
+  private[this] abstract class PromiseImplBase[F[_], A]
+    extends PromiseReadImpl[F, A]
+    with Promise[F, A] { self =>
+
+    final def imap[B](f: A => B)(g: B => A): Promise[F, B] = new PromiseImplBase[F, B] {
+      final override def rF =
+        self.rF
+      final override def complete: Rxn[B, Boolean] =
+        self.complete.lmap(g)
+      final override def tryGet: Axn[Option[B]] =
+        self.tryGet.map(_.map(f))
+      final override def get: F[B] =
+        rF.monad.map(self.get)(f)
+    }
+
+    final override def mapK[G[_] : Monad](t: F ~> G): Promise[G, A] = new PromiseImplBase[G, A] {
+      final override def rF =
+        self.rF.mapK(t)
+      final override def complete: Rxn[A, Boolean] =
+        self.complete
+      final override def tryGet: Axn[Option[A]] =
+        self.tryGet
+      final override def get: G[A] =
+        t(self.get)
+    }
+
+    final override def toCats: Deferred[F, A] = new Deferred[F, A] {
+      final override def get: F[A] =
+        self.get
+      final override def tryGet: F[Option[A]] =
+        rF.run(self.tryGet)
+      final override def complete(a: A): F[Boolean] =
+        rF.apply(self.complete, a)
+    }
+  }
+
+  private[this] final class PromiseImpl[F[_], A](ref: Ref[State[A]])(implicit _rF: Reactive[F], _F: Async[F])
+    extends PromiseImplBase[F, A] {
+
+    final def rF =
       _rF
 
-    def complete: A =#> Boolean = {
+    final def F =
+      _F
+
+    final def complete: A =#> Boolean = {
       ref.updWith[A, Boolean] { (state, a) =>
         state match {
           case Waiting(cbs, _) =>
@@ -173,7 +189,7 @@ object Promise {
       }
     }
 
-    def tryGet: Axn[Option[A]] = {
+    final def tryGet: Axn[Option[A]] = {
       ref.get.map {
         case Done(a) => Some(a)
         case Waiting(_, _) => None
