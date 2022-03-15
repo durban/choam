@@ -102,6 +102,7 @@ lazy val choam = project.in(file("."))
     async.jvm, async.js,
     stream.jvm, stream.js,
     laws.jvm, laws.js,
+    testExt.jvm, testExt.js,
     bench, // JVM
     stress, // JVM
     stressMcas, // JVM
@@ -189,6 +190,16 @@ lazy val laws = crossProject(JVMPlatform, JSPlatform)
     dependencies.catsEffectLaws.value,
     dependencies.catsEffectTestkit.value % TestInternal,
   ))
+
+lazy val testExt = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("test-ext"))
+  .settings(name := "choam-test-ext")
+  .settings(commonSettings)
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
+  .dependsOn(stream % "compile->compile;test->test")
 
 lazy val bench = project.in(file("bench"))
   .settings(name := "choam-bench")
