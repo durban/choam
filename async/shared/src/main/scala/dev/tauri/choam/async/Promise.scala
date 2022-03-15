@@ -131,7 +131,7 @@ object Promise {
     }
   }
 
-  private[this] abstract class PromiseImplBase[F[_], A]
+  private[Promise] abstract class PromiseImplBase[F[_], A]
     extends PromiseReadImpl[F, A]
     with Promise[F, A] { self =>
 
@@ -167,14 +167,22 @@ object Promise {
     }
   }
 
-  private[this] final class PromiseImpl[F[_], A](ref: Ref[State[A]])(implicit _rF: Reactive[F], _F: Async[F])
-    extends PromiseImplBase[F, A] {
+  /**
+   * Abstract base class for a minimal implementation of `Promise`.
+   */
+  abstract class AbstractPromise[F[_], A](
+  )(implicit override val rF: Reactive[F]) extends PromiseImplBase[F, A] {
 
-    final def rF =
-      _rF
+    def complete: A =#> Boolean
 
-    final def F =
-      _F
+    def tryGet: Axn[Option[A]]
+
+    def get: F[A]
+  }
+
+  private[this] final class PromiseImpl[F[_], A](
+    ref: Ref[State[A]]
+  )(implicit _rF: Reactive[F], F: Async[F]) extends AbstractPromise[F, A]()(_rF) {
 
     final def complete: A =#> Boolean = {
       ref.updWith[A, Boolean] { (state, a) =>

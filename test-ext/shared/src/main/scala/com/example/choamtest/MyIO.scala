@@ -33,12 +33,11 @@ import cats.effect.kernel.{
   Deferred,
   Ref,
   Outcome,
-  DeferredSource,
 }
 
 import dev.tauri.choam.mcas.Mcas
 import dev.tauri.choam.{ Rxn, Axn, Reactive, =#> }
-import dev.tauri.choam.async.{ AsyncReactive, Promise, PromiseRead, GenWaitList, WaitList }
+import dev.tauri.choam.async.{ AsyncReactive, Promise, GenWaitList, WaitList }
 
 final case class MyIO[+A](val impl: IO[A]) {
 
@@ -196,72 +195,9 @@ object MyIO {
       underlying.mapK(myIOFromIO.andThen(t))
   }
 
-  private abstract class PromiseReadImpl[F[_], A](
-  ) extends PromiseRead[F, A] { self =>
-
-    protected def rF: Reactive[F]
-
-    def toCats: DeferredSource[F, A] = new DeferredSource[F, A] {
-      final override def get: F[A] =
-        self.get
-      final override def tryGet: F[Option[A]] =
-        rF.run(self.tryGet)
-    }
-
-    final def map[B](f: A => B): PromiseRead[F, B] = new PromiseReadImpl[F, B] {
-      override protected def rF: Reactive[F] =
-        self.rF
-      final override def get: F[B] =
-        self.rF.monad.map(self.get)(f)
-      final override def tryGet: Axn[Option[B]] =
-        self.tryGet.map(_.map(f))
-    }
-
-    def mapK[G[_] : Monad](t: F ~> G): PromiseRead[G, A] = new PromiseReadImpl[G, A] {
-      override protected def rF: Reactive[G] =
-        self.rF.mapK(t)
-      final override def get: G[A] =
-        t(self.get)
-      final override def tryGet: Axn[Option[A]] =
-        self.tryGet
-    }
-  }
-
-  private abstract class PromiseImplBase[F[_], A](
-   )(implicit val rF: Reactive[F]) extends PromiseReadImpl[F, A]
-    with Promise[F, A] { self =>
-
-    final override def toCats: Deferred[F, A] = new Deferred[F, A] {
-      final override def get: F[A] =
-        self.get
-      final override def tryGet: F[Option[A]] =
-        rF.run(self.tryGet)
-      final override def complete(a: A): F[Boolean] =
-        rF.apply(self.complete, a)
-    }
-
-    final def imap[B](f: A => B)(g: B => A): Promise[F, B] = new PromiseImplBase[F, B] {
-      final override def complete: Rxn[B, Boolean] =
-        self.complete.contramap(g)
-      final override def tryGet: Axn[Option[B]] =
-        self.tryGet.map(_.map(f))
-      final override def get: F[B] =
-        rF.monad.map(self.get)(f)
-    }
-
-    final override def mapK[G[_] : Monad](t: F ~> G): Promise[G, A] = new PromiseImplBase[G, A]()(rF.mapK(t)) {
-      final override def complete: Rxn[A, Boolean] =
-        self.complete
-      final override def tryGet: Axn[Option[A]] =
-        self.tryGet
-      final override def get: G[A] =
-        t(self.get)
-    }
-  }
-
   private final class PromiseForMyIO[A](
     underlying: Promise[IO, A],
-  )(implicit override val rF: Reactive[MyIO]) extends PromiseImplBase[MyIO, A]()(MyIO.asyncReactiveForMyIO) {
+  )(implicit override val rF: Reactive[MyIO]) extends Promise.AbstractPromise[MyIO, A]()(MyIO.asyncReactiveForMyIO) {
 
     override def get: MyIO[A] =
       MyIO(underlying.get)
