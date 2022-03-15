@@ -73,7 +73,8 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
         _ <- assertF(r(RxnProfiler.RetriesPerCommitMcas).getScore.isNaN)
         _ <- assertEqualsF(r(RxnProfiler.ReusedWeakRefs).getScore, 0.0)
         _ <- assertEqualsF(r(RxnProfiler.ExchangeCount).getScore, 0.0)
-        _ <- assertF(r(RxnProfiler.ExchangesPerSecond).getScore.isNaN)
+        eps = r(RxnProfiler.ExchangesPerSecond).getScore
+        _ <- assertF(eps.isNaN || (eps == 0.0d))
       } yield ()
     }
   }
