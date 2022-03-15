@@ -17,21 +17,24 @@
 
 package com.example.choamtest
 
-import cats.effect.{ Sync, IO }
+import cats.effect.{ Async, IO }
 
 import munit.{ Location, CatsEffectSuite }
 
 import dev.tauri.choam.mcas.Mcas
-import dev.tauri.choam.Reactive
-import dev.tauri.choam.{ BaseSpecF, McasImplSpec }
+import dev.tauri.choam.async.AsyncReactive
+import dev.tauri.choam.{ BaseSpecAsyncF, McasImplSpec }
 
-abstract class BaseSpecMyIO extends CatsEffectSuite with BaseSpecF[MyIO] with McasImplSpec {
+abstract class BaseSpecMyIO
+  extends CatsEffectSuite
+  with BaseSpecAsyncF[MyIO]
+  with McasImplSpec {
 
-  override implicit def rF: Reactive[MyIO] =
+  override implicit def rF: AsyncReactive[MyIO] =
     MyIO.asyncReactiveForMyIO
 
-  override def F: Sync[MyIO] =
-    MyIO.syncForMyIO
+  override def F: Async[MyIO] =
+    MyIO.asyncForMyIO
 
   override protected def absolutelyUnsafeRunSync[A](fa: MyIO[A]): A =
     throw new NotImplementedError

@@ -17,22 +17,41 @@
 
 package com.example.choamtest
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 import cats.~>
 import cats.Monad
 import cats.effect.IO
-import cats.effect.kernel.{ MonadCancel, Sync, CancelScope, Poll }
-
+import cats.effect.kernel.{
+  MonadCancel,
+  Async,
+  Sync,
+  Poll,
+  Fiber,
+  Cont,
+  Deferred,
+  Ref,
+  Outcome,
+}
 
 import dev.tauri.choam.mcas.Mcas
 import dev.tauri.choam.{ Rxn, Axn, Reactive, =#> }
 import dev.tauri.choam.async.{ AsyncReactive, Promise, GenWaitList, WaitList }
 
 final case class MyIO[+A](val impl: IO[A]) {
+
+  final def flatMap[B](f: A => MyIO[B]): MyIO[B] =
+    MyIO(this.impl.flatMap { a => f(a).impl })
+
+  final def map[B](f: A => B): MyIO[B] =
+    this.flatMap { a => MyIO.pure(f(a)) }
 }
 
 object MyIO {
+
+  def pure[A](a: A): MyIO[A] =
+    MyIO(IO.pure(a))
 
   implicit def asyncReactiveForMyIO: AsyncReactive[MyIO] = new AsyncReactive[MyIO] {
 
@@ -43,7 +62,7 @@ object MyIO {
       Mcas.DefaultMcas
 
     override def monad: Monad[MyIO] =
-      syncForMyIO
+      asyncForMyIO
 
     override def promise[A]: Axn[Promise[MyIO, A]] = {
       // TODO: we should be able to implement Promise
@@ -66,11 +85,38 @@ object MyIO {
     }
 
     override def monadCancel: MonadCancel[MyIO, _] =
-      syncForMyIO
+      asyncForMyIO
   }
 
   // non-implicit!
-  def syncForMyIO: Sync[MyIO] = new Sync[MyIO] {
+  def asyncForMyIO: Async[MyIO] = new Async[MyIO] {
+    override def start[A](fa: MyIO[A]): MyIO[Fiber[MyIO, Throwable, A]] = {
+      MyIO(fa.impl.start.map { fio =>
+        new Fiber[MyIO, Throwable, A] {
+          override def cancel: MyIO[Unit] =
+            MyIO(fio.cancel)
+          override def join: MyIO[Outcome[MyIO, Throwable, A]] =
+            MyIO(fio.join.map(_.mapK(myIOFromIO)))
+        }
+      })
+    }
+    override def cede: MyIO[Unit] =
+      MyIO(IO.cede)
+    override def ref[A](a: A): MyIO[Ref[MyIO, A]] =
+      MyIO(IO.ref(a).map(_.mapK(myIOFromIO)))
+    override def deferred[A]: MyIO[Deferred[MyIO, A]] =
+      MyIO(IO.deferred[A].map(_.mapK(myIOFromIO)))
+    override def sleep(time: FiniteDuration): MyIO[Unit] =
+      MyIO(IO.sleep(time))
+    override def evalOn[A](fa: MyIO[A], ec: ExecutionContext): MyIO[A] =
+      MyIO(fa.impl.evalOn(ec))
+    override def executionContext: MyIO[ExecutionContext] =
+      MyIO(IO.executionContext)
+    override def cont[K, R](body: Cont[MyIO, K, R]): MyIO[R] =
+      MyIO(IO.cont[K, R](new Cont[IO, K, R] {
+        override def apply[G[_]](implicit G: MonadCancel[G, Throwable]): (Either[Throwable, K] => Unit, G[K], IO ~> G) => G[R] =
+          (cb, get, tr) => body.apply[G](G).apply(cb, get, ioFromMyIO.andThen(tr))
+      }))
     override def pure[A](x: A): MyIO[A] =
       MyIO(IO.pure(x))
     override def raiseError[A](e: Throwable): MyIO[A] =
@@ -81,8 +127,6 @@ object MyIO {
       MyIO(fa.impl.flatMap { a => f(a).impl })
     override def tailRecM[A, B](a: A)(f: A => MyIO[Either[A,B]]): MyIO[B] =
       MyIO(IO.asyncForIO.tailRecM(a) { a => f(a).impl })
-    override def rootCancelScope: CancelScope =
-      CancelScope.Cancelable
     override def forceR[A, B](fa: MyIO[A])(fb: MyIO[B]): MyIO[B] =
       MyIO(IO.asyncForIO.forceR(fa.impl)(fb.impl))
     override def uncancelable[A](body: Poll[MyIO] => MyIO[A]): MyIO[A] = MyIO(
@@ -104,6 +148,10 @@ object MyIO {
 
   private def myIOFromIO: IO ~> MyIO = new ~>[IO, MyIO] {
     final def apply[B](fa: IO[B]): MyIO[B] = MyIO(fa)
+  }
+
+  private def ioFromMyIO: MyIO ~> IO = new ~>[MyIO, IO] {
+    final def apply[B](fa: MyIO[B]) = fa.impl
   }
 
   private def asyncReactiveForIO: AsyncReactive[IO] =
