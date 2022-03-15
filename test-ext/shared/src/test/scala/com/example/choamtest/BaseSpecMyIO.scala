@@ -22,10 +22,10 @@ import cats.effect.{ Sync, IO }
 import munit.{ Location, CatsEffectSuite }
 
 import dev.tauri.choam.mcas.Mcas
-import dev.tauri.choam.{ Reactive, Ref }
+import dev.tauri.choam.Reactive
 import dev.tauri.choam.{ BaseSpecF, McasImplSpec }
 
-final class CoreSpec extends CatsEffectSuite with BaseSpecF[MyIO] with McasImplSpec {
+abstract class BaseSpecMyIO extends CatsEffectSuite with BaseSpecF[MyIO] with McasImplSpec {
 
   override implicit def rF: Reactive[MyIO] =
     MyIO.asyncReactiveForMyIO
@@ -53,12 +53,5 @@ final class CoreSpec extends CatsEffectSuite with BaseSpecF[MyIO] with McasImplS
           task.impl.unsafeToFuture()
       }
     ) +: super.munitValueTransforms
-  }
-
-  test("Test") {
-    val rxn = Ref[String]("foo").flatMapF { ref =>
-      ref.updateAndGet(_ + "bar")
-    }
-    assertResultF(rxn.run[MyIO], "foobar")
   }
 }
