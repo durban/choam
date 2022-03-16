@@ -33,8 +33,8 @@ class DataMapBench {
   import DataMapBench._
 
   @Benchmark
-  def baseline(s: BaselineSt, bh: Blackhole, k: KCASImplState): Unit = {
-    baselineTask(s, bh, k)
+  def concurrentHashMap(s: ChmSt, bh: Blackhole, k: KCASImplState): Unit = {
+    chmTask(s, bh, k)
   }
 
   @Benchmark
@@ -115,26 +115,28 @@ class DataMapBench {
     }
   }
 
-  private[this] final def baselineTask(s: AbstractSt, bh: Blackhole, k: KCASImplState): Unit = {
+  private[this] final def chmTask(s: ChmSt, bh: Blackhole, k: KCASImplState): Unit = {
     k.nextIntBounded(4) match {
       case n @ (0 | 1) =>
-        val key: String = if (n == 0) {
+        val key = if (n == 0) {
           // successful lookup:
           s.keys(k.nextIntBounded(s.keys.length))
         } else {
           // unsuccessful lookup:
           s.dummyKeys(k.nextIntBounded(s.dummyKeys.length))
         }
-        bh.consume(key)
+        val res: Option[String] = Option(s.chm.get(key))
+        bh.consume(res)
       case n @ (2 | 3) =>
-        val key: String = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
+        val key = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
         if (n == 2) {
           // insert:
-          val tup: (String, String) = (key, s.constValue)
-          bh.consume(tup)
+          val res: Option[String] = Option(s.chm.put(key, s.constValue))
+          bh.consume(res)
         } else {
           // remove:
-          bh.consume(key)
+          val res: String = s.chm.remove(key)
+          bh.consume(res)
         }
       case x =>
         impossible(x.toString)
@@ -254,10 +256,6 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  class BaselineSt extends AbstractSt {
-  }
-
-  @State(Scope.Benchmark)
   class SimpleSt extends RxnMapSt {
 
     val simple: Map[String, String] =
@@ -307,6 +305,38 @@ object DataMapBench {
         idx += 1
       }
       assert(atomic { implicit txn => this.tmap.size } == this.mapSize)
+    }
+  }
+
+  @State(Scope.Benchmark)
+  class ChmSt extends AbstractSt {
+
+    import java.util.concurrent.ConcurrentHashMap
+
+    val chm: ConcurrentHashMap[String, String] =
+      new ConcurrentHashMap[String, String]
+
+    protected override def setupImpl(): Unit = {
+      super.setupImpl()
+      this.initializeMap()
+    }
+
+    private def initializeMap(): Unit = {
+      var idx = 0
+      while (idx < delInsKeys.length) {
+        val key = delInsKeys(idx)
+        assert(key ne null)
+        assert(this.chm.put(key, constValue) eq null)
+        idx += 1
+      }
+      idx = 0
+      while (idx < keys.length) {
+        val key = keys(idx)
+        assert(key ne null)
+        assert(this.chm.put(key, constValue) eq null)
+        idx += 1
+      }
+      assert(this.chm.size() == this.mapSize)
     }
   }
 }
