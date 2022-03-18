@@ -30,7 +30,7 @@ private final class EmcasThreadContext(
   with Mcas.UnsealedThreadContext {
 
   // NB: it is a `val`, not a `def`
-  private[choam] final override val random: ThreadLocalRandom =
+  final override val random: ThreadLocalRandom =
     ThreadLocalRandom.current()
 
   private[this] var markerUsedCount: Int =
@@ -134,7 +134,7 @@ private final class EmcasThreadContext(
   protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
     desc // we increment the global commit version differently
 
-  protected[choam] def validateAndTryExtend(
+  def validateAndTryExtend(
     desc: HalfEMCASDescriptor,
     hwd: HalfWordDescriptor[_],
   ): HalfEMCASDescriptor = {

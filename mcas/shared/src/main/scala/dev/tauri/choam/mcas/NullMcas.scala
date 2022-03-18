@@ -68,7 +68,7 @@ object NullMcas extends Mcas.UnsealedMcas {
     private[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       throw new UnsupportedOperationException
 
-    private[choam] final override def validateAndTryExtend(
+    final override def validateAndTryExtend(
       desc: HalfEMCASDescriptor,
       hwd: HalfWordDescriptor[_]
     ): HalfEMCASDescriptor = {
@@ -83,7 +83,7 @@ object NullMcas extends Mcas.UnsealedMcas {
       }
     }
 
-    private[choam] final override def random: ThreadLocalRandom =
+    final override def random: ThreadLocalRandom =
       ThreadLocalRandom.current()
   }
 }

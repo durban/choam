@@ -85,7 +85,7 @@ object Mcas extends McasCompanionPlatform { self =>
      */
     private[mcas] def readVersion[A](ref: MemoryLocation[A]): Long
 
-    private[choam] def validateAndTryExtend(
+    def validateAndTryExtend(
       desc: HalfEMCASDescriptor,
       hwd: HalfWordDescriptor[_], // may be null
     ): HalfEMCASDescriptor
@@ -102,7 +102,7 @@ object Mcas extends McasCompanionPlatform { self =>
     private[mcas] def tryPerformInternal(desc: HalfEMCASDescriptor): Long
 
     /** @return a `ThreadLocalRandom` valid for the current thread */
-    private[choam] def random: ThreadLocalRandom
+    def random: ThreadLocalRandom
 
     // concrete:
 

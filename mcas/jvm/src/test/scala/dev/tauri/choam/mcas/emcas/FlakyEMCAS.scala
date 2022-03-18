@@ -33,7 +33,7 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
     private[this] val emcasCtx =
       Emcas.currentContextInternal()
 
-    private[choam] final override def random: ThreadLocalRandom =
+    final override def random: ThreadLocalRandom =
       emcasCtx.random
 
     final override def readDirect[A](ref: MemoryLocation[A]): A =
@@ -54,7 +54,7 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
     protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
       emcasCtx.addVersionCas(desc)
 
-    protected[choam] final override def validateAndTryExtend(
+    final override def validateAndTryExtend(
       desc: HalfEMCASDescriptor,
       hwd: HalfWordDescriptor[_],
     ): HalfEMCASDescriptor = {
