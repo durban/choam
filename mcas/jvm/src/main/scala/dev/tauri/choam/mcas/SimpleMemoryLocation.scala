@@ -21,7 +21,7 @@ package mcas
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.{ AtomicReference, AtomicLong }
 
-private[choam] class SimpleMemoryLocation[A](initial: A)(
+private class SimpleMemoryLocation[A](initial: A)(
   override val id0: Long,
   override val id1: Long,
   override val id2: Long,

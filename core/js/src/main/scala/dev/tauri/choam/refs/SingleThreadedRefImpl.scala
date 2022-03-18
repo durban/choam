@@ -18,14 +18,17 @@
 package dev.tauri.choam
 package refs
 
-import mcas.SimpleMemoryLocation
+import java.lang.ref.WeakReference
 
-private final class SingleThreadedRefImpl[A](initial: A)(
-  i0: Long,
-  i1: Long,
-  i2: Long,
-  i3: Long,
-) extends SimpleMemoryLocation[A](initial)(i0, i1, i2, i3)
+import mcas.{ MemoryLocation, Version }
+
+// This is JS:
+private final class SingleThreadedRefImpl[A](private[this] var value: A)(
+  override val id0: Long,
+  override val id1: Long,
+  override val id2: Long,
+  override val id3: Long,
+) extends MemoryLocation[A]
   with Ref[A] {
 
   final override def toString: String =
@@ -33,4 +36,65 @@ private final class SingleThreadedRefImpl[A](initial: A)(
 
   private[choam] final override def dummy(v: Long): Long =
     id0 ^ id1 ^ id2 ^ id3 ^ v
+
+  private[this] var version: Long =
+    Version.Start
+
+  final override def unsafeGetVolatile(): A =
+    this.value
+
+  final override def unsafeGetPlain(): A =
+    this.value
+
+  final override def unsafeSetVolatile(nv: A): Unit =
+    this.value = nv
+
+  final override def unsafeSetPlain(nv: A): Unit =
+    this.value = nv
+
+  final override def unsafeCasVolatile(ov: A, nv: A): Boolean = {
+    if (equ(this.value, ov)) {
+      this.value = nv
+      true
+    } else {
+      false
+    }
+  }
+
+  final override def unsafeCmpxchgVolatile(ov: A, nv: A): A = {
+    val witness = this.value
+    if (equ(witness, ov)) {
+      this.value = nv
+    }
+    witness
+  }
+
+  final override def unsafeGetVersionVolatile(): Long =
+    this.version
+
+  final override def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean = {
+    if (this.version == ov) {
+      this.version = nv
+      true
+    } else {
+      false
+    }
+  }
+
+  final override def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long = {
+    if (this.version == ov) {
+      this.version = nv
+      ov
+    } else {
+      this.version
+    }
+  }
+
+  // These are used only by EMCAS, which is JVM-only:
+
+  final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
+    impossible("SingleThreadedRefImpl#unsafeGetMarkerVolatile called on JS")
+
+  final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
+    impossible("SingleThreadedRefImpl#unsafeCasMarkerVolatile called on JS")
 }

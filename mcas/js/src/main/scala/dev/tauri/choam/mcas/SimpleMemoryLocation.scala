@@ -21,7 +21,7 @@ package mcas
 import java.lang.ref.WeakReference
 
 // This is JS:
-private[choam] class SimpleMemoryLocation[A](private[this] var value: A)(
+private class SimpleMemoryLocation[A](private[this] var value: A)(
   override val id0: Long,
   override val id1: Long,
   override val id2: Long,
