@@ -21,7 +21,7 @@ package mcas
 import java.util.concurrent.ThreadLocalRandom
 
 /** Common interface for MCAS (i.e., k-CAS) implementations */
-abstract class Mcas {
+sealed abstract class Mcas {
 
   /** Returns the context associated with the current thread */
   def currentContext(): Mcas.ThreadContext
@@ -47,7 +47,11 @@ abstract class Mcas {
 
 object Mcas extends McasCompanionPlatform { self =>
 
-  trait ThreadContext {
+  private[mcas] abstract class UnsealedMcas extends Mcas
+
+  private[mcas] trait UnsealedThreadContext extends ThreadContext
+
+  sealed trait ThreadContext {
 
     // abstract:
 

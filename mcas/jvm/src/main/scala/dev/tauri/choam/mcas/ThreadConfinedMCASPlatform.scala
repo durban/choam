@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package mcas
 
-abstract class ThreadConfinedMCASPlatform extends Mcas {
+abstract class ThreadConfinedMCASPlatform extends Mcas.UnsealedMcas {
 
   private[choam] final override def isThreadSafe =
     false

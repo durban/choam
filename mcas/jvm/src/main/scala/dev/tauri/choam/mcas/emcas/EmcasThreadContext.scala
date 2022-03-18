@@ -27,7 +27,7 @@ private final class EmcasThreadContext(
   private[mcas] val tid: Long,
   val impl: Emcas.type
 ) extends EmcasThreadContextBase
-  with Mcas.ThreadContext {
+  with Mcas.UnsealedThreadContext {
 
   // NB: it is a `val`, not a `def`
   private[choam] final override val random: ThreadLocalRandom =

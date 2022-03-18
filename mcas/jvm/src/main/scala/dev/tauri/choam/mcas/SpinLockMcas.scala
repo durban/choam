@@ -31,7 +31,7 @@ import java.util.concurrent.ThreadLocalRandom
  *
  * Implemented as a baseline for benchmarking and correctness tests.
  */
-private object SpinLockMcas extends Mcas { self =>
+private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
 
   final override def currentContext(): Mcas.ThreadContext =
     dummyContext
@@ -42,7 +42,7 @@ private object SpinLockMcas extends Mcas { self =>
   private[this] val commitTs: MemoryLocation[Long] =
     MemoryLocation.unsafePadded(Version.Start)
 
-  private[this] val dummyContext = new Mcas.ThreadContext {
+  private[this] val dummyContext = new Mcas.UnsealedThreadContext {
 
     // NB: it is a `def`, not a `val`
     final override def random =

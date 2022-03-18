@@ -23,12 +23,12 @@ import java.util.concurrent.ThreadLocalRandom
 
 import scala.collection.concurrent.TrieMap
 
-object FlakyEMCAS extends Mcas { self =>
+object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
 
   private[this] val seen =
     new TrieMap[Int, Unit]
 
-  def currentContext(): Mcas.ThreadContext = new Mcas.ThreadContext {
+  def currentContext(): Mcas.ThreadContext = new Mcas.UnsealedThreadContext {
 
     private[this] val emcasCtx =
       Emcas.currentContextInternal()

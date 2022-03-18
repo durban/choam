@@ -28,7 +28,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
   private[this] val _commitTs: MemoryLocation[Long] =
     MemoryLocation.unsafeUnpadded(Version.Start)
 
-  private[this] val _ctx = new Mcas.ThreadContext {
+  private[this] val _ctx = new Mcas.UnsealedThreadContext {
 
     final override def readDirect[A](ref: MemoryLocation[A]): A = {
       ref.unsafeGetPlain()

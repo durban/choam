@@ -25,7 +25,7 @@ import java.lang.ref.{ Reference, WeakReference }
  * Efficient Multi-word Compare and Swap (EMCAS):
  * https://arxiv.org/pdf/2008.02527.pdf
  */
-private[mcas] object Emcas extends Mcas { self => // TODO: make this a class
+private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make this a class
 
   /*
    * This implementation has a few important
