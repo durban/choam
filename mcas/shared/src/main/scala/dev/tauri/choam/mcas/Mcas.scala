@@ -277,7 +277,7 @@ object Mcas extends McasCompanionPlatform { self =>
     // statistics/testing/benchmarking:
 
     /** Only for testing */
-    private[choam] def builder(): Builder = {
+    private[mcas] def builder(): Builder = {
       new Builder(this, this.start())
     }
 
@@ -328,7 +328,7 @@ object Mcas extends McasCompanionPlatform { self =>
   )
 
   /** Only for testing */
-  private[choam] final class Builder(
+  private[mcas] final class Builder(
     private[this] val ctx: ThreadContext,
     private[this] val desc: HalfEMCASDescriptor,
   ) {
