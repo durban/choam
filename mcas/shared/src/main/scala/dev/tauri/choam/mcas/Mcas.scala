@@ -277,7 +277,7 @@ object Mcas extends McasCompanionPlatform { self =>
     // statistics/testing/benchmarking:
 
     /** Only for testing */
-    private[mcas] def builder(): Builder = {
+    private[mcas] final def builder(): Builder = {
       new Builder(this, this.start())
     }
 

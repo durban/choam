@@ -81,4 +81,34 @@ trait WaitListSpec[F[_]]
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
   }
+
+  test("AsyncQueue.synchronous both empty and full") {
+    for {
+      q <- AsyncQueue.synchronous[F, Int].run[F]
+      // a setter is waiting:
+      f1 <- q.enqueue(1).start
+      _ <- this.tickAll
+      // tryGet must complete it:
+      _ <- assertResultF(q.tryDeque.run[F], Some(1))
+      _ <- assertResultF(f1.joinWithNever, ())
+      // another setter is waiting:
+      f2 <- q.enqueue(2).start
+      _ <- this.tickAll
+      // asyncGet must complete it:
+      _ <- assertResultF(q.deque, 2)
+      _ <- assertResultF(f2.joinWithNever, ())
+      // a getter is waiting:
+      f3 <- q.deque.start
+      _ <- this.tickAll
+      // trySet must complete it:
+      _ <- assertResultF(q.tryEnqueue.apply[F](3), true)
+      _ <- assertResultF(f3.joinWithNever, 3)
+      // another getter is waiting:
+      f4 <- q.deque.start
+      _ <- this.tickAll
+      // asyncSet must complete it:
+      _ <- assertResultF(q.enqueue(4), ())
+      _ <- assertResultF(f4.joinWithNever, 4)
+    } yield ()
+  }
 }
