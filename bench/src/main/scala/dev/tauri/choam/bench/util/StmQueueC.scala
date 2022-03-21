@@ -20,13 +20,12 @@ package bench
 package util
 
 import cats.syntax.all._
-import cats.effect.Concurrent
 
 import io.github.timwspence.cats.stm.{ STMLike }
 
 object StmQueueC {
 
-  def make[S[F[_]] <: STMLike[F], F[_] : Concurrent, A](q: StmQueueCLike[S, F])(els: List[A]): q.stm.Txn[q.StmQueueC[A]] = {
+  def make[S[F[_]] <: STMLike[F], F[_], A](q: StmQueueCLike[S, F])(els: List[A]): q.stm.Txn[q.StmQueueC[A]] = {
     import q._
     import q.stm._
     for {
@@ -61,7 +60,7 @@ abstract class StmQueueCLike[S[F[_]] <: STMLike[F], F[_]]  {
     tail: TVar[Node[A]]
   ) {
 
-    def enqueue(a: A)(implicit F: Concurrent[F]): Txn[Unit] = {
+    def enqueue(a: A): Txn[Unit] = {
       for {
         end <- TVar.of[Elem[A]](End[A]())
         node = Node(a, end)

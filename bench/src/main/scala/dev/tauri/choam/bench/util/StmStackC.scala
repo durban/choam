@@ -20,13 +20,12 @@ package bench
 package util
 
 import cats.syntax.all._
-import cats.effect.Concurrent
 
 import io.github.timwspence.cats.stm.{ STMLike }
 
 object StmStackC {
 
-  def make[S[F[_]] <: STMLike[F], F[_] : Concurrent, A](q: StmStackCLike[S, F])(els: List[A]): q.stm.Txn[q.StmStackC[A]] = {
+  def make[S[F[_]] <: STMLike[F], F[_], A](q: StmStackCLike[S, F])(els: List[A]): q.stm.Txn[q.StmStackC[A]] = {
     import q._
     import q.stm._
     for {
