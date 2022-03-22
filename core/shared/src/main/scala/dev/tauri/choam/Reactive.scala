@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import cats.{ Monad, ~> }
+import cats.{ ~>, Monad }
 import cats.effect.kernel.Sync
 
 import mcas.Mcas

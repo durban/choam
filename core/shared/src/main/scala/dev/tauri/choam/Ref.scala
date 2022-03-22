@@ -21,7 +21,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 import scala.math.Ordering
 
-import cats.kernel.{ Order, Hash }
+import cats.kernel.{ Hash, Order }
 import cats.effect.kernel.{ Ref => CatsRef }
 
 import mcas.MemoryLocation

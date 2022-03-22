@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import fs2.{ Stream, Chunk }
+import fs2.{ Chunk, Stream }
 
 import async.{ UnboundedQueue, AsyncReactive }
 

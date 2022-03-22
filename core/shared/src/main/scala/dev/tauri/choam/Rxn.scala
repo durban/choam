@@ -21,12 +21,12 @@ import java.util.{ Arrays, UUID }
 
 import scala.concurrent.duration._
 
-import cats.{ Monad, Functor, Applicative, MonoidK, Monoid, Semigroup, Defer, Show, Align }
+import cats.{ Align, Applicative, Defer, Functor, Monad, Monoid, MonoidK, Semigroup, Show }
 import cats.arrow.ArrowChoice
 import cats.data.Ior
 import cats.mtl.Local
-import cats.effect.kernel.{ Unique, Clock }
-import cats.effect.std.{ UUIDGen, Random }
+import cats.effect.kernel.{ Clock, Unique }
+import cats.effect.std.{ Random, UUIDGen }
 
 import mcas.{ MemoryLocation, Mcas, HalfEMCASDescriptor, HalfWordDescriptor, McasStatus }
 import internal.{ ByteStack, ObjStack, Backoff }

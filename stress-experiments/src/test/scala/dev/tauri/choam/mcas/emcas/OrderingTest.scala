@@ -22,8 +22,8 @@ package emcas
 import java.util.concurrent.atomic.AtomicInteger
 
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
-import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
+import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.infra.results.LL_Result
 
 @JCStressTest
