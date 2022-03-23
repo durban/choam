@@ -29,4 +29,7 @@ object StackHelper {
 
   def eliminationStackFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Stack[A]] =
     EliminationStack.fromList(as)
+
+  def popAll[F[_], A](s: Stack[A])(implicit F: Reactive[F]): F[List[A]] =
+    Stack.popAll(s)
 }

@@ -25,14 +25,6 @@ abstract class Stack[A] {
   def push: Rxn[A, Unit]
   def tryPop: Axn[Option[A]]
   def size: Axn[Int]
-  private[choam] def popAll[F[_]](implicit F: Reactive[F]): F[List[A]] = {
-    F.monad.tailRecM(List.empty[A]) { lst =>
-      F.monad.map(this.tryPop.run[F]) {
-        case None => Right(lst.reverse)
-        case Some(a) => Left(a :: lst)
-      }
-    }
-  }
 }
 
 object Stack {
@@ -49,6 +41,15 @@ object Stack {
       as.traverse { a =>
         stack.push[F](a)
       }.as(stack)
+    }
+  }
+
+  private[data] def popAll[F[_], A](s: Stack[A])(implicit F: Reactive[F]): F[List[A]] = {
+    F.monad.tailRecM(List.empty[A]) { lst =>
+      F.monad.map(s.tryPop.run[F]) {
+        case None => Right(lst.reverse)
+        case Some(a) => Left(a :: lst)
+      }
     }
   }
 }

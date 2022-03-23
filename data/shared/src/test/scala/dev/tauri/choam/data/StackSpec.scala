@@ -74,9 +74,9 @@ trait StackSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Stack should include the elements passed to its constructor") {
     for {
       s1 <- newStack[Int]()
-      _ <- assertResultF(s1.popAll[F], Nil)
+      _ <- assertResultF(Stack.popAll[F, Int](s1), Nil)
       s2 <- newStack(1, 2, 3)
-      _ <- assertResultF(s2.popAll[F], List(3, 2, 1))
+      _ <- assertResultF(Stack.popAll[F, Int](s2), List(3, 2, 1))
     } yield ()
   }
 }
