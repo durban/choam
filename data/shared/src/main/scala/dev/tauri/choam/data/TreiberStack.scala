@@ -46,7 +46,7 @@ private object TreiberStack {
     Stack.fromList(this.apply[A])(as)
   }
 
-  private[data] sealed trait Lst[+A] {
+  private sealed trait Lst[+A] {
 
     def length: Int = {
       @tailrec
@@ -72,7 +72,7 @@ private object TreiberStack {
     }
   }
 
-  private[data] final case class Cons[A](h: A, t: Lst[A]) extends Lst[A]
+  private final case class Cons[A](h: A, t: Lst[A]) extends Lst[A]
 
-  private[data] final case object End extends Lst[Nothing]
+  private final case object End extends Lst[Nothing]
 }
