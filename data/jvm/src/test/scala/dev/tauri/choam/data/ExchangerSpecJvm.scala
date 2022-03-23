@@ -529,7 +529,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       pushResults <- f1.joinWithNever
       options <- f2.joinWithNever
       successes = options.count(_.isDefined)
-      stackLen <- elst.length.run[F]
+      stackLen <- elst.size.run[F]
       _ <- assertEqualsF(clue(successes) + clue(stackLen), N)
       popResults = options.collect { case Some(r) => r }
       pushExchangeCount <- {

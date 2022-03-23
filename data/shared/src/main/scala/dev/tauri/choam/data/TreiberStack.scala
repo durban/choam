@@ -33,7 +33,7 @@ private final class TreiberStack[A] private () extends Stack[A] {
     case End => (End, None)
   }
 
-  private[choam] final override val length: Axn[Int] =
+  final override val size: Axn[Int] =
     head.get.map(_.length)
 
   private[data] def toList: Axn[List[A]] =

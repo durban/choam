@@ -24,7 +24,7 @@ import cats.syntax.all._
 abstract class Stack[A] {
   def push: Rxn[A, Unit]
   def tryPop: Axn[Option[A]]
-  private[choam] def length: Axn[Int]
+  def size: Axn[Int]
   private[choam] def popAll[F[_]](implicit F: Reactive[F]): F[List[A]] = {
     F.monad.tailRecM(List.empty[A]) { lst =>
       F.monad.map(this.tryPop.run[F]) {

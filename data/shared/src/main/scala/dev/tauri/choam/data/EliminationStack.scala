@@ -30,8 +30,8 @@ private final class EliminationStack[A] private (
   final override val tryPop: Axn[Option[A]] =
     (primary.tryPop + elimination.exchange.provide(()).map(Some(_)))
 
-  private[choam] final override def length: Axn[Int] =
-    primary.length
+  final override def size: Axn[Int] =
+    primary.size
 }
 
 private object EliminationStack {
@@ -98,7 +98,7 @@ private object EliminationStack {
     final override def tryPop: Axn[Option[A]] =
       tryPopDebug.map(_.map(_.value))
 
-    private[choam] final override def length: Axn[Int] =
-      primary.length
+    final override def size: Axn[Int] =
+      primary.size
   }
 }
