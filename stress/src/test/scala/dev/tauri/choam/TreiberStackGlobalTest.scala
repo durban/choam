@@ -28,7 +28,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZZ_Result
 
-import data.{ Stack, TreiberStack }
+import data.{ Stack, StackHelper }
 
 // @JCStressTest
 @State
@@ -87,8 +87,8 @@ object TreiberStackGlobalTest {
 
   private def getStacks(impl: mcas.Mcas): (Stack[String], Stack[String]) = {
     def mkNew() = {
-      val stack1 = TreiberStack.fromList[SyncIO, String](List.fill(N)("z")).unsafeRunSync()
-      val stack2 = TreiberStack.fromList[SyncIO, String](List.fill(N)("z")).unsafeRunSync()
+      val stack1 = StackHelper.treiberStackFromList[SyncIO, String](List.fill(N)("z")).unsafeRunSync()
+      val stack2 = StackHelper.treiberStackFromList[SyncIO, String](List.fill(N)("z")).unsafeRunSync()
       (stack1, stack2)
     }
     stacks.getOrElseUpdate(impl, mkNew())

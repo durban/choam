@@ -16,15 +16,17 @@
  */
 
 package dev.tauri.choam
+package data
 
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicInteger
+
+import scala.collection.immutable.{ Map => SMap }
 
 import cats.effect.kernel.Fiber
 import cats.effect.{ IO, Outcome }
 
 import mcas.Mcas
-import data.EliminationStack
 
 final class ExchangerSpecCommon_Emcas_ZIO
   extends BaseSpecZIO
@@ -389,12 +391,12 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  private[this] final def getStats(ctx: Mcas.ThreadContext): Option[Map[AnyRef, AnyRef]] = {
+  private[this] final def getStats(ctx: Mcas.ThreadContext): Option[SMap[AnyRef, AnyRef]] = {
     if (ctx.supportsStatistics) Some(ctx.getStatisticsPlain())
     else None
   }
 
-  private[this] final def startExchange[A, B](ex: Exchanger[A, B], a: A): F[Fiber[F, Throwable, (B, Option[Map[AnyRef, AnyRef]])]] = {
+  private[this] final def startExchange[A, B](ex: Exchanger[A, B], a: A): F[Fiber[F, Throwable, (B, Option[SMap[AnyRef, AnyRef]])]] = {
     F.interruptible {
       val b: B = ex.exchange.unsafePerform(a, this.mcasImpl)
       val ctx = Rxn.unsafe.context(ctx => ctx).unsafeRun(this.mcasImpl)

@@ -24,7 +24,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import data.TreiberStack
+import data.StackHelper
 
 // @JCStressTest
 @State
@@ -36,7 +36,7 @@ import data.TreiberStack
 class TreiberStackTest extends StressTestBase {
 
   private[this] val stack =
-    TreiberStack.fromList[SyncIO, String](List("z")).unsafeRunSync()
+    StackHelper.treiberStackFromList[SyncIO, String](List("z")).unsafeRunSync()
 
   private[this] val _push =
     stack.push

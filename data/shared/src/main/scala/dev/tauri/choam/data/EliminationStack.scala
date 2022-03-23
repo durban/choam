@@ -34,7 +34,7 @@ private final class EliminationStack[A] private (
     primary.length
 }
 
-private[choam] object EliminationStack {
+private object EliminationStack {
 
   def apply[A]: Axn[Stack[A]] = {
     (TreiberStack[A] * Rxn.unsafe.exchanger[Unit, A]).map {
@@ -47,25 +47,25 @@ private[choam] object EliminationStack {
     Stack.fromList(this.apply[A])(as)
   }
 
-  private[choam] def debug[A]: Axn[DebugStack[A]] = {
+  private[data] def debug[A]: Axn[DebugStack[A]] = {
     (TreiberStack[A] * Rxn.unsafe.exchanger[Unit, A]).map {
       case (tStack, exc) =>
         new DebugStackImpl(tStack, exc)
     }
   }
 
-  private[choam] sealed abstract class DebugStack[A] extends Stack[A] {
+  private[data] sealed abstract class DebugStack[A] extends Stack[A] {
     def pushDebug: Rxn[A, DebugResult[Unit]]
     def tryPopDebug: Axn[Option[DebugResult[A]]]
   }
 
-  private[choam] sealed abstract class DebugResult[A] {
+  private[data] sealed abstract class DebugResult[A] {
     def value: A
   }
 
-  private[choam] final case class FromStack[A](override val value: A)
+  private[data] final case class FromStack[A](override val value: A)
     extends DebugResult[A]
-  private[choam] final case class Exchanged[A](override val value: A)
+  private[data] final case class Exchanged[A](override val value: A)
     extends DebugResult[A]
 
   private[this] val _fromStackUnit: DebugResult[Unit] =

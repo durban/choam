@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-private[choam] final class TreiberStack[A] private () extends Stack[A] {
+private final class TreiberStack[A] private () extends Stack[A] {
 
   import TreiberStack._
 
@@ -36,15 +36,15 @@ private[choam] final class TreiberStack[A] private () extends Stack[A] {
   private[choam] final override val length: Axn[Int] =
     head.get.map(_.length)
 
-  private[choam] def toList: Axn[List[A]] =
+  private[data] def toList: Axn[List[A]] =
     head.get.map(_.toList)
 
-  private[choam] def unsafeToList(kcas: mcas.Mcas): List[A] = {
+  private[data] def unsafeToList(kcas: mcas.Mcas): List[A] = {
     this.toList.unsafePerform((), kcas).toList
   }
 }
 
-private[choam] object TreiberStack {
+private object TreiberStack {
 
   def apply[A]: Axn[TreiberStack[A]] =
     Rxn.unsafe.delay { _ => new TreiberStack[A] }
@@ -53,7 +53,7 @@ private[choam] object TreiberStack {
     Stack.fromList(this.apply[A])(as)
   }
 
-  private[choam] sealed trait Lst[+A] {
+  private[data] sealed trait Lst[+A] {
 
     def length: Int = {
       @tailrec
@@ -79,7 +79,7 @@ private[choam] object TreiberStack {
     }
   }
 
-  private[choam] final case class Cons[A](h: A, t: Lst[A]) extends Lst[A]
+  private[data] final case class Cons[A](h: A, t: Lst[A]) extends Lst[A]
 
-  private[choam] final case object End extends Lst[Nothing]
+  private[data] final case object End extends Lst[Nothing]
 }

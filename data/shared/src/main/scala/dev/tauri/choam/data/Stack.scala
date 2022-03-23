@@ -43,7 +43,7 @@ object Stack {
   def eliminationStack[A]: Axn[Stack[A]] =
     EliminationStack[A]
 
-  private[choam] def fromList[F[_], A](mkEmpty: Axn[Stack[A]])(as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
+  private[data] def fromList[F[_], A](mkEmpty: Axn[Stack[A]])(as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
     implicit val monadF: Monad[F] = F.monad
     mkEmpty.run[F].flatMap { stack =>
       as.traverse { a =>

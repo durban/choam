@@ -16,33 +16,17 @@
  */
 
 package dev.tauri.choam
-package async
+package data
 
-import data.Stack
+/**
+ * Public access to package-private utilities
+ * (for the purposes of testing/benchmarking)
+ */
+object StackHelper {
 
-abstract class AsyncStack[F[_], A] {
-  def push: Rxn[A, Unit]
-  def pop: F[A]
-  def tryPop: Axn[Option[A]]
-}
+  def treiberStackFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Stack[A]] =
+    TreiberStack.fromList(as)
 
-object AsyncStack {
-
-  def apply[F[_], A](implicit F: AsyncReactive[F]): Axn[AsyncStack[F, A]] = {
-    Stack.treiberStack[A].flatMapF { es =>
-      F.waitList(
-        syncGet = es.tryPop,
-        syncSet = es.push
-      ).map { wl =>
-        new AsyncStack[F, A] {
-          final override def push: A =#> Unit =
-            wl.set
-          final override def pop: F[A] =
-            wl.asyncGet
-          final override def tryPop: Axn[Option[A]] =
-            es.tryPop
-        }
-      }
-    }
-  }
+  def eliminationStackFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Stack[A]] =
+    EliminationStack.fromList(as)
 }

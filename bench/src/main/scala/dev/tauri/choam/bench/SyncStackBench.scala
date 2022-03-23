@@ -19,13 +19,12 @@ package dev.tauri.choam
 package bench
 
 import cats.effect.{ IO, SyncIO }
-import cats.syntax.all._
 import io.github.timwspence.cats.stm._
 
 import org.openjdk.jmh.annotations._
 
 import util._
-import data.{ Stack, TreiberStack, EliminationStack }
+import data.{ Stack, StackHelper }
 
 @Fork(2)
 @Threads(1) // set it to _concurrentOps!
@@ -139,17 +138,15 @@ object SyncStackBench {
     val runtime =
       cats.effect.unsafe.IORuntime.global
     val treiberStack: Stack[String] =
-      TreiberStack.fromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
+      StackHelper.treiberStackFromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
   }
 
   @State(Scope.Benchmark)
   class EliminationSt extends BaseSt {
-    val runtime = cats.effect.unsafe.IORuntime.global
-    val eliminationStack: Stack[String] = EliminationStack.apply[String].run[IO].flatMap { s =>
-      Prefill.prefill().toList.traverse_ { item =>
-        s.push[IO](item)
-      }.as(s)
-    }.unsafeRunSync()(runtime)
+    val runtime =
+      cats.effect.unsafe.IORuntime.global
+    val eliminationStack: Stack[String] =
+      StackHelper.eliminationStackFromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
   }
 
   @State(Scope.Benchmark)

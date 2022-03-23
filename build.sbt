@@ -101,6 +101,7 @@ lazy val choam = project.in(file("."))
     data.jvm, data.js,
     async.jvm, async.js,
     stream.jvm, stream.js,
+    internalHelpers.jvm, internalHelpers.js,
     laws.jvm, laws.js,
     testExt.jvm, testExt.js,
     bench, // JVM
@@ -176,6 +177,16 @@ lazy val stream = crossProject(JVMPlatform, JSPlatform)
   .dependsOn(async % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.fs2.value)
 
+lazy val internalHelpers = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Pure)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("internal-helpers"))
+  .settings(name := "choam-internal-helpers")
+  .settings(commonSettings)
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
+  .dependsOn(async % "compile->compile;test->test")
+
 lazy val laws = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
@@ -215,6 +226,7 @@ lazy val bench = project.in(file("bench"))
   .enablePlugins(JmhPlugin)
   .settings(jmhSettings)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
+  .dependsOn(internalHelpers.jvm)
 
 // Stress tests (with JCStress):
 // TODO: move all stress test projects under a common `/stress` folder
@@ -280,6 +292,7 @@ lazy val stress = project.in(file("stress"))
   .enablePlugins(JCStressPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
+  .dependsOn(internalHelpers.jvm)
 
 lazy val layout = project.in(file("layout"))
   .settings(name := "choam-layout")
