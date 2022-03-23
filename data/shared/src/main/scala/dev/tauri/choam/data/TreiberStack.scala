@@ -35,13 +35,6 @@ private final class TreiberStack[A] private () extends Stack[A] {
 
   final override val size: Axn[Int] =
     head.get.map(_.length)
-
-  private[data] def toList: Axn[List[A]] =
-    head.get.map(_.toList)
-
-  private[data] def unsafeToList(kcas: mcas.Mcas): List[A] = {
-    this.toList.unsafePerform((), kcas).toList
-  }
 }
 
 private object TreiberStack {
