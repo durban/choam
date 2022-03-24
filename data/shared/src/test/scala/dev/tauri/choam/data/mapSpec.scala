@@ -349,4 +349,15 @@ trait MapSpec[F[_]]
       _ <- assertResultF(m.get[F](0), Some("y"))
     } yield ()
   }
+
+  test("Map creation API") {
+    for {
+      m1 <- Map.simpleHashMap[Int, String].run[F]
+      m2 <- Map.hashMap[Int, String].run[F]
+      _ = (
+        m1 : Map.Extra[Int, String],
+        m2 : Map[Int, String],
+      )
+    } yield ()
+  }
 }

@@ -22,4 +22,5 @@ import cats.kernel.Hash
 
 private abstract class AbstractMapPlatform {
   def simpleHashMap[K: Hash, V]: Axn[Map.Extra[K, V]]
+  def hashMap[K: Hash, V]: Axn[Map[K, V]]
 }

@@ -51,5 +51,5 @@ trait MapSpecTtrie[F[_]] extends MapSpec[F] { this: McasImplSpec =>
   override type MyMap[K, V] = Map[K, V]
 
   def mkEmptyMap[K: Hash, V]: F[Map[K, V]] =
-    Map.ttrie[K, V].run[F]
+    Ttrie.apply[K, V].run[F].widen
 }

@@ -22,8 +22,8 @@ import cats.kernel.Hash
 
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
-  private[choam] final def ttrie[K: Hash, V]: Axn[Map[K, V]] =
-    Ttrie[K, V]
+  final override def hashMap[K: Hash, V]: Axn[Map[K, V]] =
+    Ttrie.apply[K, V]
 
   final override def simpleHashMap[K: Hash, V]: Axn[Map.Extra[K, V]] =
     SimpleMap[K, V]

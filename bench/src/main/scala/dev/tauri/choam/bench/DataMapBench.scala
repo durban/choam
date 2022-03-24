@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadLocalRandom
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import data.Map
+import data.{ Map, MapHelper }
 import util._
 
 @Fork(2)
@@ -269,7 +269,7 @@ object DataMapBench {
   class TtrieSt extends RxnMapSt {
 
     val ttrie: Map[String, String] =
-      Map.ttrie[String, String].unsafeRun(initMcas)
+      MapHelper.ttrie[String, String].unsafeRun(initMcas)
 
     final def map: Map[String, String] =
       ttrie

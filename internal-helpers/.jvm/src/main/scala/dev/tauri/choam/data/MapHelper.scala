@@ -19,13 +19,13 @@ package dev.tauri.choam
 package data
 
 import cats.kernel.Hash
-import dev.tauri.choam.Axn
 
-private[data] abstract class MapPlatform extends AbstractMapPlatform {
+/**
+ * Public access to package-private utilities
+ * (for the purposes of testing/benchmarking)
+ */
+object MapHelper {
 
-  final override def simpleHashMap[K: Hash, V]: Axn[Map.Extra[K, V]] =
-    SimpleMap[K, V]
-
-  final override def hashMap[K: Hash, V]: Axn[Map[K, V]] =
-    this.simpleHashMap[K, V]
+  def ttrie[K: Hash, V]: Axn[Map[K, V]] =
+    Ttrie.apply[K, V]
 }

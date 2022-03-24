@@ -27,7 +27,7 @@ import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLLL_Result
 
 import mcas.Mcas
-import data.Map
+import data.{ Map, MapHelper }
 
 @JCStressTest
 @State
@@ -87,7 +87,7 @@ object TtrieTest {
       override def hash(x: Int): Int =
         x % 7
     }
-    val m = Map.ttrie[Int, String](h).unsafeRun(initMcas)
+    val m = MapHelper.ttrie[Int, String](h).unsafeRun(initMcas)
     m.put.unsafePerform(1 -> "1", initMcas)
     m.put.unsafePerform(2 -> "2", initMcas)
     m.put.unsafePerform(3 -> "3", initMcas)
@@ -106,7 +106,7 @@ object TtrieTest {
   final def newRandomTtrie(size: Int, avoid: Int): Map[Int, String] = {
     require(size >= 0)
     require(size < 0x10000000)
-    val m = Map.ttrie[Int, String].unsafeRun(initMcas)
+    val m = MapHelper.ttrie[Int, String].unsafeRun(initMcas)
     val tlr = ThreadLocalRandom.current()
     // save memory by using a single value:
     val value = "e52262dfbfdf08fb"
