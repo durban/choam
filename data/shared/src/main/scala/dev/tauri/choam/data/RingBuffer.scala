@@ -29,13 +29,13 @@ import ArrayQueue.{ empty, isEmpty }
  * will be overwritten by the new
  * incoming item.
  */
-private[choam] final class RingBuffer[A](
+private final class RingBuffer[A](
   capacity: Int,
   arr: Ref.Array[A],
   head: Ref[Int], // index for next element to deque
   tail: Ref[Int], // index for next element to enqueue
 ) extends ArrayQueue[A](capacity, arr, head, tail)
-  with Queue[A] {
+  with Queue.WithSize[A] {
 
   require(capacity === arr.size)
 
@@ -57,16 +57,17 @@ private[choam] final class RingBuffer[A](
   }
 }
 
-private[choam] object RingBuffer {
+private object RingBuffer {
 
-  private[choam] def apply[A](capacity: Int): Axn[RingBuffer[A]] = {
+  def apply[A](capacity: Int): Axn[RingBuffer[A]] = {
     require(capacity > 0)
     Ref.array[A](size = capacity, initial = empty[A]).flatMapF { arr =>
       makeRingBuffer(capacity, arr)
     }
   }
 
-  private[choam] def lazyRingBuffer[A](capacity: Int): Axn[RingBuffer[A]] = {
+  // TODO: do we need this?
+  def lazyRingBuffer[A](capacity: Int): Axn[RingBuffer[A]] = {
     require(capacity > 0)
     Ref.lazyArray[A](size = capacity, initial = empty[A]).flatMapF { arr =>
       makeRingBuffer(capacity, arr)

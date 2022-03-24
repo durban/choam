@@ -20,19 +20,21 @@ package data
 
 import ArrayQueue.empty
 
+// TODO: there should be a `BoundedQueue` with `def capacity: Int`
+
 /**
  * Array-based bounded queue
  *
  * If it's full, the incoming
  * item will not be inserted.
  */
-private[choam] final class DroppingQueue[A](
+private final class DroppingQueue[A](
   capacity: Int,
   arr: Ref.Array[A],
   head: Ref[Int], // index for next element to deque
   tail: Ref[Int], // index for next element to enqueue
 ) extends ArrayQueue[A](capacity, arr, head, tail)
-  with Queue[A] {
+  with Queue.WithSize[A] {
 
   final override def tryEnqueue: A =#> Boolean =
     super[ArrayQueue].tryEnqueue
@@ -41,9 +43,9 @@ private[choam] final class DroppingQueue[A](
     this.tryEnqueue.void
 }
 
-private[choam] object DroppingQueue {
+private object DroppingQueue {
 
-  private[choam] def apply[A](capacity: Int): Axn[DroppingQueue[A]] = {
+  def apply[A](capacity: Int): Axn[Queue.WithSize[A]] = {
     require(capacity > 0)
     Ref.array[A](size = capacity, initial = empty[A]).flatMapF { arr =>
       (Ref(0) * Ref(0)).map {

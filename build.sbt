@@ -177,6 +177,7 @@ lazy val stream = crossProject(JVMPlatform, JSPlatform)
   .dependsOn(async % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.fs2.value)
 
+/** Internal use only; no published project may depend on this */
 lazy val internalHelpers = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Pure)
   .withoutSuffixFor(JVMPlatform)
@@ -264,6 +265,7 @@ lazy val stressData = project.in(file("stress-data"))
   .enablePlugins(JCStressPlugin)
   .dependsOn(data.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
+  .dependsOn(internalHelpers.jvm)
 
 lazy val stressDataSlow = project.in(file("stress-data-slow"))
   .settings(name := "choam-stress-data-slow")

@@ -18,8 +18,12 @@
 package dev.tauri.choam
 package data
 
-import cats.kernel.Hash
+/**
+ * Public access to package-private utilities
+ * (for the purposes of testing/benchmarking)
+ */
+object QueueHelper {
 
-private abstract class AbstractMapPlatform {
-  def simple[K: Hash, V]: Axn[Map.Extra[K, V]]
+  def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] =
+    Queue.fromList(mkEmpty)(as)
 }

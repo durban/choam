@@ -37,23 +37,23 @@ final class RingBufferSpec_Lazy_ThreadConfinedMcas
   with LazyRingBufferSpec[IO]
 
 trait StrictRingBufferSpec[F[_]] extends RingBufferSpec[F] { this: McasImplSpec =>
-  final override def newRingBuffer[A](capacity: Int): F[RingBuffer[A]] =
-    RingBuffer.apply[A](capacity).run[F]
+  final override def newRingBuffer[A](capacity: Int): F[Queue.WithSize[A]] =
+    RingBuffer.apply[A](capacity).run[F].widen
 }
 
 trait LazyRingBufferSpec[F[_]] extends RingBufferSpec[F] { this: McasImplSpec =>
-  final override def newRingBuffer[A](capacity: Int): F[RingBuffer[A]] =
-    RingBuffer.lazyRingBuffer[A](capacity).run[F]
+  final override def newRingBuffer[A](capacity: Int): F[Queue.WithSize[A]] =
+    RingBuffer.lazyRingBuffer[A](capacity).run[F].widen
 }
 
 trait RingBufferSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with ScalaCheckEffectSuite { this: McasImplSpec =>
 
-  def newRingBuffer[A](capacity: Int): F[RingBuffer[A]]
+  def newRingBuffer[A](capacity: Int): F[Queue.WithSize[A]]
 
   test("RingBuffer property") {
-    def checkSize[A](q: RingBuffer[A], s: CatsQueue[F, A]): F[Unit] = {
+    def checkSize[A](q: Queue.WithSize[A], s: CatsQueue[F, A]): F[Unit] = {
       q.size.run[F].flatMap { qs =>
         s.size.flatMap { ss =>
           assertEqualsF(qs, ss)
@@ -89,7 +89,7 @@ trait RingBufferSpec[F[_]]
     // OK, scalac overflows the stack if
     // a `for` is sufficiently long, so
     // we split the test into parts:
-    def part1(q: RingBuffer[Int]): F[Unit] = for {
+    def part1(q: Queue.WithSize[Int]): F[Unit] = for {
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.tryDeque.run[F], None)
@@ -112,7 +112,7 @@ trait RingBufferSpec[F[_]]
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
-    def part2(q: RingBuffer[Int]): F[Unit] = for {
+    def part2(q: Queue.WithSize[Int]): F[Unit] = for {
       _ <- q.enqueue[F](4)
       _ <- assertResultF(q.size.run[F], 1)
       _ <- q.enqueue[F](5)
@@ -132,7 +132,7 @@ trait RingBufferSpec[F[_]]
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
-    def part3(q: RingBuffer[Int]): F[Unit] = for {
+    def part3(q: Queue.WithSize[Int]): F[Unit] = for {
       _ <- q.enqueue[F](8)
       _ <- assertResultF(q.size.run[F], 1)
       _ <- q.enqueue[F](9)
@@ -156,7 +156,7 @@ trait RingBufferSpec[F[_]]
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
-    def part4(q: RingBuffer[Int]): F[Unit] = for {
+    def part4(q: Queue.WithSize[Int]): F[Unit] = for {
       _ <- q.enqueue[F](14)
       _ <- assertResultF(q.size.run[F], 1)
       _ <- q.enqueue[F](15)

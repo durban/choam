@@ -35,11 +35,11 @@ trait DroppingQueueSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with ScalaCheckEffectSuite { this: McasImplSpec =>
 
-  def newDq[A](capacity: Int): F[DroppingQueue[A]] =
+  def newDq[A](capacity: Int): F[Queue.WithSize[A]] =
     DroppingQueue.apply(capacity).run[F]
 
   test("Dropping property") {
-    def checkSize[A](q: DroppingQueue[A], s: CatsQueue[F, A]): F[Unit] = {
+    def checkSize[A](q: Queue.WithSize[A], s: CatsQueue[F, A]): F[Unit] = {
       q.size.run[F].flatMap { qs =>
         s.size.flatMap { ss =>
           assertEqualsF(qs, ss)

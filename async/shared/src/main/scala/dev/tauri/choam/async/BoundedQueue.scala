@@ -20,7 +20,7 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import data.{ Queue, QueueSourceSink, ArrayQueue }
+import data.{ Queue }
 
 abstract class BoundedQueue[F[_], A]
   extends AsyncQueueSource[F, A]
@@ -97,7 +97,7 @@ object BoundedQueue {
 
   private final class ArrayBoundedQueue[F[_], A](
     _bound: Int,
-    q: ArrayQueue[A] with QueueSourceSink[A],
+    q: Queue.WithSize[A],
     gwl: GenWaitList[F, A],
   )(implicit F: AsyncReactive[F]) extends BoundedQueue[F, A] { self =>
 

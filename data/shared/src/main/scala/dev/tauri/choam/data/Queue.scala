@@ -61,7 +61,7 @@ object Queue {
     def enqueueWithRemover: Rxn[A, Remover]
   }
 
-  private[choam] abstract class WithSize[A] extends Queue[A] {
+  private[choam] trait WithSize[A] extends Queue[A] {
     def size: Axn[Int]
   }
 
@@ -71,20 +71,23 @@ object Queue {
   def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
     boundedArray[A](bound)
 
-  // TODO: this return type is not very good:
-  private[choam] def boundedArray[A](bound: Int): Axn[ArrayQueue[A] with QueueSourceSink[A]] =
+  private[choam] def boundedArray[A](bound: Int): Axn[Queue.WithSize[A]] =
     DroppingQueue.apply[A](bound)
 
-  def dropping[A](capacity: Int): Axn[Queue[A]] =
+  def dropping[A](capacity: Int): Axn[Queue.WithSize[A]] =
     DroppingQueue.apply[A](capacity)
 
-  def ringBuffer[A](capacity: Int): Axn[Queue[A]] =
+  def ringBuffer[A](capacity: Int): Axn[Queue.WithSize[A]] =
     RingBuffer.apply[A](capacity)
 
-  private[choam] def unpadded[A]: Axn[Queue[A]] =
+  // TODO: do we need this?
+  def lazyRingBuffer[A](capacity: Int): Axn[Queue.WithSize[A]] =
+    RingBuffer.lazyRingBuffer[A](capacity)
+
+  private[data] def unpadded[A]: Axn[Queue[A]] =
     MsQueue.unpadded[A]
 
-  private[choam] def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
+  private[data] def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
     implicit val m: Monad[F] = Reactive[F].monad
     mkEmpty.run[F].flatMap { q =>
       as.traverse(a => q.enqueue[F](a)).as(q)

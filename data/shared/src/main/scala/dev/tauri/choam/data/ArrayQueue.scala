@@ -25,7 +25,7 @@ import cats.syntax.all._
 import ArrayQueue.{ empty, isEmpty }
 
 /** Common functionality for array-based queues */
-private[choam] abstract class ArrayQueue[A](
+private abstract class ArrayQueue[A](
   val capacity: Int,
   arr: Ref.Array[A],
   head: Ref[Int], // index for next element to deque
@@ -67,7 +67,7 @@ private[choam] abstract class ArrayQueue[A](
     }
   }
 
-  private[choam] def size: Axn[Int] = {
+  def size: Axn[Int] = {
     (head.get * tail.get).flatMapF {
       case (h, t) =>
         if (h < t) {
@@ -84,7 +84,7 @@ private[choam] abstract class ArrayQueue[A](
   }
 }
 
-private[choam] object ArrayQueue {
+private object ArrayQueue {
 
   private[this] object EMPTY {
     def as[A]: A =
