@@ -21,7 +21,7 @@ package data
 import cats.kernel.Hash
 import dev.tauri.choam.Axn
 
-private abstract class MapPlatform extends AbstractMapPlatform {
+private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
   final override def simple[K: Hash, V]: Axn[Map.Extra[K, V]] =
     SimpleMap[K, V]

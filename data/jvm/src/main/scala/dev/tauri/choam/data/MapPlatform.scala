@@ -20,7 +20,7 @@ package data
 
 import cats.kernel.Hash
 
-private abstract class MapPlatform extends AbstractMapPlatform {
+private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
   private[choam] final def ttrie[K: Hash, V]: Axn[Map[K, V]] =
     Ttrie[K, V]
