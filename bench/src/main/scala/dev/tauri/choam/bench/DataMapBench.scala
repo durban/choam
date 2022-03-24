@@ -259,7 +259,7 @@ object DataMapBench {
   class SimpleSt extends RxnMapSt {
 
     val simple: Map[String, String] =
-      Map.simple[String, String].unsafeRun(initMcas)
+      Map.simpleHashMap[String, String].unsafeRun(initMcas)
 
     final def map: Map[String, String] =
       simple

@@ -151,7 +151,7 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
 private[stream] object Fs2SignallingRefWrapper {
 
   def apply[F[_] : AsyncReactive, A](initial: A): Axn[Fs2SignallingRefWrapper[F, A]] = {
-    (Ref[A](initial) * Map.simple[Unique.Token, Ref[Listener[F, A]]]).map {
+    (Ref[A](initial) * Map.simpleHashMap[Unique.Token, Ref[Listener[F, A]]]).map {
       case (underlying, listeners) =>
         new Fs2SignallingRefWrapper[F, A](underlying, listeners)
     }

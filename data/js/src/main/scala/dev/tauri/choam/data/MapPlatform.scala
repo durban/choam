@@ -23,6 +23,6 @@ import dev.tauri.choam.Axn
 
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
-  final override def simple[K: Hash, V]: Axn[Map.Extra[K, V]] =
+  final override def simpleHashMap[K: Hash, V]: Axn[Map.Extra[K, V]] =
     SimpleMap[K, V]
 }

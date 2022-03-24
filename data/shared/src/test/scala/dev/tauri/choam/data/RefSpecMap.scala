@@ -33,7 +33,7 @@ trait RefSpec_Map_Simple[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
   final override type MapType[K, V] = Map.Extra[K, V]
 
   final override def newMap[K: Hash, V]: F[MapType[K, V]] =
-    Map.simple[K, V].run[F]
+    Map.simpleHashMap[K, V].run[F]
 }
 
 trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>

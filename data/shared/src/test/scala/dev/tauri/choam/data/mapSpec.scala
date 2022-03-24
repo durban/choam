@@ -34,7 +34,7 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
   override type MyMap[K, V] = Map.Extra[K, V]
 
   def mkEmptyMap[K: Hash, V]: F[Map.Extra[K, V]] =
-    Map.simple[K, V].run[F]
+    Map.simpleHashMap[K, V].run[F]
 
   test("Map.Extra should perform clear correctly") {
     for {
