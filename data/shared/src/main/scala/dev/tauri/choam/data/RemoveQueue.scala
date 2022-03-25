@@ -104,9 +104,10 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A])
    *
    * Note: an item is only removed if it is identical to
    * (i.e., the same object as) the input. That is, items
-   * are compared by reference equality.
+   * are compared by reference equality. (This is why this
+   * operation is not part of the public API.)
    */
-  override val remove: Rxn[A, Boolean] = Rxn.computed { (a: A) =>
+  private[data] val remove: Rxn[A, Boolean] = Rxn.computed { (a: A) =>
     head.get.flatMapF { h =>
       findAndTomb(a, h.next)
     }

@@ -53,20 +53,22 @@ trait Queue[A]
 
 object Queue {
 
-  private[choam] type Remover =
+  type Remover =
     Axn[Unit]
 
-  private[choam] abstract class WithRemove[A] extends Queue[A] {
-    def remove: Rxn[A, Boolean]
+  abstract class WithRemove[A] extends Queue[A] {
     def enqueueWithRemover: Rxn[A, Remover]
   }
 
-  private[choam] trait WithSize[A] extends Queue[A] {
+  trait WithSize[A] extends Queue[A] {
     def size: Axn[Int]
   }
 
   def unbounded[A]: Axn[Queue[A]] =
     MsQueue[A]
+
+  def unboundedWithRemove[A]: Axn[Queue.WithRemove[A]] =
+    RemoveQueue.apply[A]
 
   def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
     boundedArray[A](bound)
@@ -84,20 +86,7 @@ object Queue {
   def lazyRingBuffer[A](capacity: Int): Axn[Queue.WithSize[A]] =
     RingBuffer.lazyRingBuffer[A](capacity)
 
-  private[data] def unpadded[A]: Axn[Queue[A]] =
-    MsQueue.unpadded[A]
-
-  private[data] def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
-    implicit val m: Monad[F] = Reactive[F].monad
-    mkEmpty.run[F].flatMap { q =>
-      as.traverse(a => q.enqueue[F](a)).as(q)
-    }
-  }
-
-  private[choam] def withRemove[A]: Axn[Queue.WithRemove[A]] =
-    RemoveQueue[A]
-
-  private[choam] def withSize[A]: Axn[Queue.WithSize[A]] = {
+  def unboundedWithSize[A]: Axn[Queue.WithSize[A]] = {
     Queue.unbounded[A].flatMapF { q =>
       Ref[Int](0).map { s =>
         new WithSize[A] {
@@ -119,6 +108,16 @@ object Queue {
             s.get
         }
       }
+    }
+  }
+
+  private[data] def unpadded[A]: Axn[Queue[A]] =
+    MsQueue.unpadded[A]
+
+  private[data] def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
+    implicit val m: Monad[F] = Reactive[F].monad
+    mkEmpty.run[F].flatMap { q =>
+      as.traverse(a => q.enqueue[F](a)).as(q)
     }
   }
 }

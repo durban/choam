@@ -20,7 +20,7 @@ package dev.tauri.choam
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LLZ_Result
+import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.SyncIO
 
@@ -30,34 +30,33 @@ import data.Queue
 @State
 @Description("RemoveQueue concurrent deq and remove")
 @Outcomes(Array(
-  new Outcome(id = Array("List(), Some(z), false"), expect = ACCEPTABLE_INTERESTING, desc = "deq wins"),
-  new Outcome(id = Array("List(), None, true"), expect = ACCEPTABLE, desc = "rem wins"),
-  new Outcome(id = Array("List(), Some(z), true"), expect = FORBIDDEN, desc = "rem seems to win, but doesn't")
+  new Outcome(id = Array("List(), Some(z)"), expect = ACCEPTABLE_INTERESTING, desc = "deq wins"),
+  new Outcome(id = Array("List(), None"), expect = ACCEPTABLE, desc = "rem wins"),
 ))
 class RemoveQueueRemoveTest1A extends RemoveQueueStressTestBase {
 
   private[this] val queue: Queue.WithRemove[String] = {
-    this.newQueue("z")
+    this.newQueue[String]()
   }
 
-  private[this] val tryDeque =
+  private[this] val tryDeque: Axn[Option[String]] =
     queue.tryDeque
 
-  private[this] val remove =
-    queue.remove
+  private[this] val remove: Queue.Remover =
+    queue.enqueueWithRemover[SyncIO]("z").unsafeRunSync()
 
   @Actor
-  def deq(r: LLZ_Result): Unit = {
+  def deq(r: LL_Result): Unit = {
     r.r2 = tryDeque.unsafeRun(this.impl)
   }
 
   @Actor
-  def rem(r: LLZ_Result): Unit = {
-    r.r3 = remove.unsafePerform("z", this.impl)
+  def rem(): Unit = {
+    remove.unsafeRun(this.impl)
   }
 
   @Arbiter
-  def arbiter(r: LLZ_Result): Unit = {
+  def arbiter(r: LL_Result): Unit = {
     r.r1 = queue.drainOnce[SyncIO, String].unsafeRunSync()
   }
 }

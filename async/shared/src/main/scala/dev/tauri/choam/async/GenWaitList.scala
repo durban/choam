@@ -53,8 +53,8 @@ object GenWaitList {
     tryGet: Axn[Option[A]],
     trySet: A =#> Boolean,
   )(implicit F: Async[F], rF: AsyncReactive[F]): Axn[GenWaitList[F, A]] = {
-    data.Queue.withRemove[Callback[A]].flatMapF { getters =>
-      data.Queue.withRemove[(A, Callback[Unit])].map { setters =>
+    data.Queue.unboundedWithRemove[Callback[A]].flatMapF { getters =>
+      data.Queue.unboundedWithRemove[(A, Callback[Unit])].map { setters =>
         new AsyncGenWaitList[F, A](tryGet, trySet, getters, setters)
       }
     }
@@ -64,7 +64,7 @@ object GenWaitList {
     tryGet: Axn[Option[A]],
     syncSet: A =#> Unit
   )(implicit F: Async[F], rF: AsyncReactive[F]): Axn[WaitList[F, A]] = {
-    data.Queue.withRemove[Callback[A]].map { waiters =>
+    data.Queue.unboundedWithRemove[Callback[A]].map { waiters =>
       new AsyncWaitList[F, A](tryGet, syncSet, waiters)
     }
   }

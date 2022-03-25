@@ -152,7 +152,7 @@ object SyncUnboundedQueueBench {
     val runtime =
       cats.effect.unsafe.IORuntime.global
     val removeQueue: Queue.WithRemove[String] =
-      QueueHelper.fromList[SyncIO, Queue.WithRemove, String](Queue.withRemove[String])(Prefill.prefill().toList).unsafeRunSync()
+      QueueHelper.fromList[SyncIO, Queue.WithRemove, String](Queue.unboundedWithRemove[String])(Prefill.prefill().toList).unsafeRunSync()
   }
 
   @State(Scope.Benchmark)

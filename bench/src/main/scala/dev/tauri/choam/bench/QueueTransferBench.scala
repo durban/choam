@@ -144,7 +144,7 @@ object QueueTransferBench {
   class RmSt extends MsStBase {
 
     protected override def newQueue(): Queue[String] =
-      QueueHelper.fromList[SyncIO, Queue, String](Queue.withRemove[String])(Prefill.prefill().toList).unsafeRunSync()
+      QueueHelper.fromList[SyncIO, Queue, String](Queue.unboundedWithRemove[String])(Prefill.prefill().toList).unsafeRunSync()
 
     @Setup
     def setup(): Unit =

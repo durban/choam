@@ -45,7 +45,7 @@ trait QueueWithSizeSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
   override type QueueType[A] = Queue.WithSize[A]
 
   protected override def newQueueFromList[A](as: List[A]): F[this.QueueType[A]] = {
-    Queue.fromList(Queue.withSize[A])(as)
+    Queue.fromList(Queue.unboundedWithSize[A])(as)
   }
 
   test("Queue size composed with other ops") {
@@ -73,10 +73,10 @@ trait QueueWithSizeSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 
 trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 
-  override type QueueType[A] = Queue.WithRemove[A]
+  private[data] override type QueueType[A] = RemoveQueue[A]
 
   protected override def newQueueFromList[A](as: List[A]): F[this.QueueType[A]] =
-    Queue.fromList(Queue.withRemove[A])(as)
+    Queue.fromList(RemoveQueue.apply[A])(as)
 
   test("Queue.WithRemove#remove") {
     for {

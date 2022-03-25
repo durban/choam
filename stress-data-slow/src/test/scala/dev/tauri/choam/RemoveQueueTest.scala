@@ -22,6 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
+import cats.syntax.all._
 import cats.effect.SyncIO
 
 import data.Queue
@@ -38,10 +39,14 @@ import data.Queue
 class RemoveQueueTest extends RemoveQueueStressTestBase {
 
   private[this] val queue: Queue.WithRemove[String] = {
-    val q = this.newQueue("-", "-")
+    val q = this.newQueue[String]()
     (for {
-      _ <- q.remove[SyncIO]("-")
-      _ <- q.remove[SyncIO]("-")
+      //                0    1
+      removers <- List("-", "-").traverse { s =>
+        q.enqueueWithRemover[SyncIO](s)
+      }
+      _ <- removers(0).run[SyncIO]
+      _ <- removers(1).run[SyncIO]
     } yield ()).unsafeRunSync()
     q
   }

@@ -32,5 +32,5 @@ abstract class MsQueueStressTestBase extends QueueStressTestBase {
 
 abstract class RemoveQueueStressTestBase extends QueueStressTestBase {
   protected final override def newQueue[A](as: A*): Queue.WithRemove[A] =
-    QueueHelper.fromList[SyncIO, Queue.WithRemove, A](Queue.withRemove[A])(as.toList).unsafeRunSync()
+    QueueHelper.fromList[SyncIO, Queue.WithRemove, A](Queue.unboundedWithRemove[A])(as.toList).unsafeRunSync()
 }

@@ -22,6 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
+import cats.syntax.all._
 import cats.effect.SyncIO
 
 @JCStressTest
@@ -33,11 +34,15 @@ import cats.effect.SyncIO
 class RemoveQueueComposedTest1 extends RemoveQueueStressTestBase {
 
   private[this] val queue1 = {
-    val q = this.newQueue("-", "a", "-", "-", "b", "c", "d")
+    val q = this.newQueue[String]()
     (for {
-      _ <- q.remove[SyncIO]("-")
-      _ <- q.remove[SyncIO]("-")
-      _ <- q.remove[SyncIO]("-")
+      //                0         2    3
+      removers <- List("-", "a", "-", "-", "b", "c", "d").traverse { s =>
+        q.enqueueWithRemover[SyncIO](s)
+      }
+      _ <- removers(0).run[SyncIO]
+      _ <- removers(2).run[SyncIO]
+      _ <- removers(3).run[SyncIO]
     } yield ()).unsafeRunSync()
     q
   }
