@@ -247,7 +247,7 @@ trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 
 trait QueueGcHostileSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 
-  override type QueueType[A] = GcHostileMsQueue[A]
+  private[data] override type QueueType[A] = GcHostileMsQueue[A]
 
   protected override def newQueueFromList[A](as: List[A]): F[this.QueueType[A]] =
     GcHostileMsQueue.fromList(as)
@@ -255,7 +255,7 @@ trait QueueGcHostileSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 
 trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
-  type QueueType[A] <: Queue[A]
+  private[data] type QueueType[A] <: Queue[A]
 
   protected def newQueueFromList[A](as: List[A]): F[this.QueueType[A]]
 

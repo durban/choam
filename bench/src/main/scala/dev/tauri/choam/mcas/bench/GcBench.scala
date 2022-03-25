@@ -21,7 +21,7 @@ package bench
 
 import org.openjdk.jmh.annotations._
 
-import data.{ Queue, GcHostileMsQueue, MsQueue }
+import data.{ Queue, QueueHelper, MsQueue }
 import dev.tauri.choam.bench.util.{ Prefill, KCASImplState }
 
 @Fork(value = 6, jvmArgsAppend = Array("-Xmx2048M"))
@@ -70,8 +70,8 @@ object GcBench {
   @State(Scope.Benchmark)
   class GcHostileSt extends BaseState {
 
-    private[this] val _circle: List[GcHostileMsQueue[String]] = List.fill(circleSize) {
-      GcHostileMsQueue.fromList[cats.effect.SyncIO, String](
+    private[this] val _circle: List[Queue[String]] = List.fill(circleSize) {
+      QueueHelper.gcHostileMsQueueFromList[cats.effect.SyncIO, String](
         Prefill.prefill().toList
       ).unsafeRunSync()
     }

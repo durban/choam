@@ -32,7 +32,7 @@ import GcHostileMsQueue._
  * It also lacks other optimizations present in
  * `MsQueue` (see there).
  */
-private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
+private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
   extends Queue[A] {
 
   private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel)
@@ -78,7 +78,7 @@ private[choam] final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
   }
 }
 
-private[choam] object GcHostileMsQueue {
+private object GcHostileMsQueue {
 
   private sealed trait Elem[A]
   private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
