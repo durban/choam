@@ -20,11 +20,12 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import data.{ Queue }
+import data.{ Queue, QueueSourceSink }
 
 abstract class BoundedQueue[F[_], A]
   extends AsyncQueueSource[F, A]
-  with BoundedQueueSink[F, A] {
+  with BoundedQueueSink[F, A]
+  with QueueSourceSink[A] {
 
   def bound: Int
 
