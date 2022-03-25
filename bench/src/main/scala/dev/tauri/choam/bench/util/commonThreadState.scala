@@ -25,7 +25,7 @@ import org.openjdk.jmh.annotations.{ State, Param, Setup, Scope }
 
 import cats.effect.IO
 
-import async.AsyncReactive
+import async.AsyncReactiveHelper
 
 @State(Scope.Thread)
 class RandomState {
@@ -71,7 +71,7 @@ class KCASImplState extends RandomState {
   def setupKCASImpl(): Unit = {
     this.kcasImpl = mcas.Mcas.unsafeLookup(kcasName)
     this.kcasCtx = this.kcasImpl.currentContext()
-    this.reactive = new AsyncReactive.AsyncReactiveImpl(this.kcasImpl)(IO.asyncForIO)
+    this.reactive = AsyncReactiveHelper.newAsyncReactiveImpl(this.kcasImpl)(IO.asyncForIO)
     java.lang.invoke.VarHandle.releaseFence()
   }
 }

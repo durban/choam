@@ -66,7 +66,7 @@ object AsyncQueue {
     }
   }
 
-  private[choam] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: UnboundedQueue.WithSize[F, A])
+  private[async] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: UnboundedQueue.WithSize[F, A])
     extends CatsQueue[F, A] {
 
     final override def take: F[A] =
