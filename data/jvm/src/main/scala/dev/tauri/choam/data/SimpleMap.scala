@@ -131,7 +131,7 @@ private final class SimpleMap[K, V](
     }
   }
 
-  private[choam] final def unsafeSnapshot: Axn[ScalaMap[K, V]] = {
+  private[data] final def unsafeSnapshot: Axn[ScalaMap[K, V]] = {
     repr.get.map { phm =>
       // NB: ScalaMap won't use a custom
       // Hash; this is one reason why

@@ -18,9 +18,14 @@
 package dev.tauri.choam
 package data
 
+import scala.collection.immutable.{ Map => ScalaMap }
+
 import cats.kernel.Hash
 
 private abstract class AbstractMapPlatform {
   def simpleHashMap[K: Hash, V]: Axn[Map.Extra[K, V]]
   def hashMap[K: Hash, V]: Axn[Map[K, V]]
+  private[data] final def unsafeGetSize[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]): F[Int] =
+    F.monad.map(this.unsafeSnapshot(m))(_.size)
+  private[data] def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]): F[ScalaMap[K, V]]
 }

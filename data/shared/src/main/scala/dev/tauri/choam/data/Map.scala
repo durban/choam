@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package data
 
-import scala.collection.immutable.{ Map => ScalaMap }
-
 import cats.kernel.Order
 
 trait Map[K, V] {
@@ -31,7 +29,6 @@ trait Map[K, V] {
   // TODO: a variant of `del` could return the old value (if any)
   def remove: Rxn[(K, V), Boolean]
   def refLike(key: K, default: V): RefLike[V]
-  private[choam] def unsafeSnapshot: Axn[ScalaMap[K, V]]
 }
 
 object Map extends MapPlatform {

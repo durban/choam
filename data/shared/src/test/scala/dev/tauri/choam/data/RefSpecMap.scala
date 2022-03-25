@@ -135,17 +135,17 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
   test("Map unsafeSnapshot") {
     for {
       m <- newMap[String, Int]
-      _ <- assertResultF(m.unsafeSnapshot.run[F], ScalaMap.empty[String, Int])
+      _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap.empty[String, Int])
       _ <- m.put[F]("a" -> 1)
       _ <- m.put[F]("b" -> 2)
       _ <- m.put[F]("c" -> 3)
       _ <- m.put[F]("a" -> 42)
       _ <- assertResultF(
-        m.unsafeSnapshot.run[F],
+        Map.unsafeSnapshot(m),
         ScalaMap("a" -> 42, "b" -> 2, "c" -> 3)
       )
       r <- newRandomStringMap[Int](genV = F.pure(42), size = 1024)
-      s <- r.unsafeSnapshot.run[F]
+      s <- Map.unsafeSnapshot(r)
       _ <- assertF(s.size >= (1024 * 0.9))
       _ <- assertEqualsF(s.values.toSet, Set(42))
     } yield ()
@@ -163,7 +163,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         genV = F.pure("value"),
         size = S,
       )
-      _ <- assertResultF(m.unsafeSnapshot.run[F].map(_.size), S)
+      _ <- assertResultF(Map.unsafeGetSize(m), S)
       doubleGet = (key: String) => (m.get.provide(key) * m.get.provide(key)).run[F]
       insert = (key: String) => m.put[F](key -> "x")
       both = (key: String) => F.both(
@@ -181,7 +181,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       // if found it, the value must be "x":
       _ <- assertF(clue(results).forall(r => r._1.getOrElse("x") == "x"))
       // map must have changed size:
-      _ <- assertResultF(m.unsafeSnapshot.run[F].map(_.size), S + N)
+      _ <- assertResultF(Map.unsafeGetSize(m), S + N)
     } yield ()
   }
 
@@ -196,14 +196,14 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         genV = F.pure("x"),
         size = S,
       )
-      _ <- assertResultF(m.unsafeSnapshot.run[F].map(_.size), S)
+      _ <- assertResultF(Map.unsafeGetSize(m), S)
       doubleGet = (key: String) => (m.get.provide(key) * m.get.provide(key)).run[F]
       delete = (key: String) => m.del[F](key)
       both = (key: String) => F.both(
         F.cede *> doubleGet(key),
         F.cede *> delete(key),
       )
-      snap <- m.unsafeSnapshot.run[F]
+      snap <- Map.unsafeSnapshot(m)
       keys <- F.delay {
         // we select half of the keys:
         val ks = rng.shuffle(snap.keys.toList)
@@ -226,7 +226,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       // del results must be successful:
       _ <- assertF(clue(delResults).forall(r => r))
       // map must've halved in size:
-      _ <- assertResultF(m.unsafeSnapshot.run[F].map(_.size), S / 2)
+      _ <- assertResultF(Map.unsafeGetSize(m), S / 2)
     } yield ()
   }
 }

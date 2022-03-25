@@ -283,7 +283,7 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  private[choam] final def unsafeSnapshot: Axn[ScalaMap[K, V]] = {
+  private[data] final def unsafeSnapshot: Axn[ScalaMap[K, V]] = {
     // NB: this is not composable,
     // as running it twice in one Rxn
     // may return a different set of
@@ -308,7 +308,7 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  private[choam] final def unsafeTrieMapSize: Axn[Int] = {
+  private[data] final def unsafeTrieMapSize: Axn[Int] = {
     // NB: non-composable, sees empty refs, etc.
     Axn.unsafe.delay { m.size }
   }

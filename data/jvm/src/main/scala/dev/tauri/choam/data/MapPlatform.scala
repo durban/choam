@@ -27,4 +27,15 @@ private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
   final override def simpleHashMap[K: Hash, V]: Axn[Map.Extra[K, V]] =
     SimpleMap[K, V]
+
+  private[data] final override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {
+    m match {
+      case m: SimpleMap[_, _] =>
+        m.unsafeSnapshot.run[F]
+      case m: Ttrie[_, _] =>
+        m.unsafeSnapshot.run[F]
+      case x =>
+        throw new IllegalArgumentException(s"unexpected Map: ${x.getClass().getName()}")
+    }
+  }
 }

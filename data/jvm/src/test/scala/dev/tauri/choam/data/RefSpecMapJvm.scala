@@ -60,7 +60,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
     val constValue = "foo"
     val S = 4096
     val N = 8
-    def task(m: Map[String, String], size: Int): F[Unit] = {
+    def task(m: MapType[String, String], size: Int): F[Unit] = {
       randomStrings(size).flatMap { (keys: Vector[String]) =>
         keys.parTraverseN(NCPU) { key =>
           m.put[F](key -> constValue) *> assertResultF(m.get[F](key), Some(constValue))
@@ -69,7 +69,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
             assertResultF(m.del[F](key), true)
           }
         ) >> (
-          assertResultF(m.unsafeSnapshot.run[F].map(_.size), 0)
+          assertResultF(m.unsafeTrieMapSize.run[F], 0)
         )
       }
     }
@@ -80,12 +80,12 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
   test("Ttrie failed lookups should not leak memory") {
     val S = 4096
     val N = 8
-    def task(m: Map[String, String], size: Int): F[Unit] = {
+    def task(m: MapType[String, String], size: Int): F[Unit] = {
       randomStrings(size).flatMap { (keys: Vector[String]) =>
         keys.parTraverseN(NCPU) { key =>
           assertResultF(m.get[F](key), None)
         } >> (
-          assertResultF(m.unsafeSnapshot.run[F].map(_.size), 0)
+          assertResultF(m.unsafeTrieMapSize.run[F], 0)
         )
       }
     }
@@ -96,12 +96,12 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
   test("Ttrie removing not included keys should not leak memory") {
     val S = 4096
     val N = 8
-    def task(m: Map[String, String], size: Int): F[Unit] = {
+    def task(m: MapType[String, String], size: Int): F[Unit] = {
       randomStrings(size).flatMap { (keys: Vector[String]) =>
         keys.parTraverseN(NCPU) { key =>
           assertResultF(m.del[F](key), false)
         } >> (
-          assertResultF(m.unsafeSnapshot.run[F].map(_.size), 0)
+          assertResultF(m.unsafeTrieMapSize.run[F], 0)
         )
       }
     }
@@ -127,7 +127,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
   private[this] final def runMemoryReclamationTest[K: Hash, V](
     S: Int,
     N: Int,
-    task: (Map[K, V], Int) => F[Unit],
+    task: (MapType[K, V], Int) => F[Unit],
     expectedSizeAtEnd: Int,
   ): F[Unit] = {
     for {
