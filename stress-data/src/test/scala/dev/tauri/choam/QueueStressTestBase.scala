@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import cats.effect.SyncIO
 
-import data.{ Queue, MsQueue, QueueHelper }
+import data.{ Queue, QueueHelper }
 
 abstract class QueueStressTestBase extends StressTestBase {
   protected def newQueue[A](as: A*): Queue[A]
@@ -27,7 +27,7 @@ abstract class QueueStressTestBase extends StressTestBase {
 
 abstract class MsQueueStressTestBase extends QueueStressTestBase {
   protected final override def newQueue[A](as: A*): Queue[A] =
-    QueueHelper.fromList[SyncIO, Queue, A](MsQueue.apply[A])(as.toList).unsafeRunSync()
+    QueueHelper.msQueueFromList[SyncIO, A](as.toList).unsafeRunSync()
 }
 
 abstract class RemoveQueueStressTestBase extends QueueStressTestBase {

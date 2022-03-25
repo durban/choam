@@ -27,7 +27,7 @@ import io.github.timwspence.cats.stm.STM
 import zio.stm.ZSTM
 
 import util._
-import data.{ Queue, MsQueue, QueueHelper }
+import data.{ Queue, QueueHelper }
 
 @Fork(2)
 @Threads(1) // set it to _concurrentOps!
@@ -143,8 +143,8 @@ object SyncUnboundedQueueBench {
   class MsSt extends BaseSt {
     val runtime =
       cats.effect.unsafe.IORuntime.global
-    val michaelScottQueue: MsQueue[String] =
-      QueueHelper.fromList[SyncIO, MsQueue, String](MsQueue.padded[String])(Prefill.prefill().toList).unsafeRunSync()
+    val michaelScottQueue: Queue[String] =
+      QueueHelper.msQueueFromList[SyncIO, String](Prefill.prefill().toList).unsafeRunSync()
   }
 
   @State(Scope.Benchmark)

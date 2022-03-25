@@ -212,7 +212,7 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 
 trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 
-  override type QueueType[A] = MsQueue[A]
+  private[data] override type QueueType[A] = MsQueue[A]
 
   protected override def newQueueFromList[A](as: List[A]): F[this.QueueType[A]] =
     Queue.fromList(MsQueue.unpadded[A])(as)

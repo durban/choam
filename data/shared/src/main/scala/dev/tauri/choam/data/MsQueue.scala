@@ -29,7 +29,7 @@ import MsQueue._
  * or on the implementation in the Reagents paper
  * (https://web.archive.org/web/20220214132428/https://www.ccis.northeastern.edu/home/turon/reagents.pdf).
  */
-private[choam] final class MsQueue[A] private[this] (
+private final class MsQueue[A] private[this] (
   sentinel: Node[A],
   padded: Boolean,
 ) extends Queue[A] {
@@ -124,7 +124,7 @@ private[choam] final class MsQueue[A] private[this] (
   }
 }
 
-private[choam] object MsQueue {
+private object MsQueue {
 
   private sealed trait Elem[A]
 
@@ -150,7 +150,7 @@ private[choam] object MsQueue {
   def unpadded[A]: Axn[MsQueue[A]] =
     applyInternal(padded = false)
 
-  private[choam] def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[MsQueue[A]] = {
+  private[data] def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[MsQueue[A]] = {
     Queue.fromList[F, MsQueue, A](this.apply[A])(as)
   }
 

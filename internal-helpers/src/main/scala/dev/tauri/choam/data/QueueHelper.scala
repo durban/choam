@@ -27,6 +27,12 @@ object QueueHelper {
   def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] =
     Queue.fromList(mkEmpty)(as)
 
+  def msQueueFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Queue[A]] =
+    F.monad.widen(this.fromList(MsQueue.padded[A])(as))
+
+  def msQueueUnpaddedFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Queue[A]] =
+    F.monad.widen(this.fromList(MsQueue.unpadded[A])(as))
+
   def gcHostileMsQueueFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Queue[A]] =
     F.monad.widen(GcHostileMsQueue.fromList(as))
 }
