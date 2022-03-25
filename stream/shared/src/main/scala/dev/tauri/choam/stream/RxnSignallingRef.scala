@@ -22,6 +22,12 @@ import fs2.concurrent.SignallingRef
 
 import async.AsyncReactive
 
+/**
+ * An [[fs2.concurrent.SignallingRef]], which
+ * is also readable/writable in the context
+ * of [[dev.tauri.choam.Rxn]] (i.e., it is a
+ * [[dev.tauri.choam.RefLike]]).
+ */
 abstract class RxnSignallingRef[F[_], A]
   extends SignallingRef[F, A] {
 
