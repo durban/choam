@@ -61,7 +61,7 @@ trait OverflowQueueSpec[F[_]]
     OverflowQueue.droppingQueue(capacity).run[F]
 
   final val Max =
-    3072
+    2048
 
   test("RingBuffer property") {
     def checkSize[A](q: OverflowQueue[F, A], qc: CatsQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
