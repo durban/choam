@@ -57,7 +57,7 @@ object BoundedQueue {
 
   def array[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
     require(bound > 0)
-    Queue.boundedArray[A](bound).flatMapF { q =>
+    Queue.dropping[A](bound).flatMapF { q =>
       F.genWaitList[A](
         tryGet = q.tryDeque,
         trySet = q.tryEnqueue,

@@ -71,10 +71,7 @@ object Queue {
     RemoveQueue.apply[A]
 
   def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
-    boundedArray[A](bound)
-
-  private[choam] def boundedArray[A](bound: Int): Axn[Queue.WithSize[A]] =
-    DroppingQueue.apply[A](bound)
+    dropping(bound)
 
   def dropping[A](capacity: Int): Axn[Queue.WithSize[A]] =
     DroppingQueue.apply[A](capacity)
