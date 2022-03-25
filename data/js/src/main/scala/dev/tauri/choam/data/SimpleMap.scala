@@ -129,7 +129,7 @@ private final class SimpleMap[K, V] private (
     }
   }
 
-  private[choam] final def unsafeSnapshot: Axn[SMap[K, V]] = {
+  private[data] final def unsafeSnapshot: Axn[SMap[K, V]] = {
     repr.get.map { m =>
       // NB: SMap won't use a custom
       // Hash; this is one reason why

@@ -24,7 +24,7 @@ import cats.kernel.{ Hash, Order }
 
 import org.organicdesign.fp.collections.{ PersistentHashMap, Equator }
 
-private final class SimpleMap[K, V](
+private final class SimpleMap[K, V] private (
   repr: Ref[PersistentHashMap[K, V]],
 )(implicit K: Hash[K]) extends Map.Extra[K, V] { self =>
 
