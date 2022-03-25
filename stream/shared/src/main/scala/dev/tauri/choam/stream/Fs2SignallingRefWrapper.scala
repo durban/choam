@@ -75,7 +75,7 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
   }
 
   private[this] val _refLikeAsCats: CatsRef[F, A] =
-    new RefLike.CatsRefFromRefLike[F, A](_refLike) {}
+    RefLike.catsRefFromRefLike[F, A](_refLike)
 
   // Streams:
 

@@ -80,12 +80,8 @@ trait RefLike[A] {
 
 object RefLike {
 
-  private[choam] abstract class CatsRefFromRef[F[_], A](self: Ref[A])(implicit F: Reactive[F])
-    extends CatsRefFromRefLike[F, A](self)(F) {
-
-    override def get: F[A] =
-      self.unsafeDirectRead.run[F]
-  }
+  def catsRefFromRefLike[F[_] : Reactive, A](ref: RefLike[A]): CatsRef[F, A] =
+    new CatsRefFromRefLike[F, A](ref) {}
 
   private[choam] abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
     extends CatsRef[F, A] {

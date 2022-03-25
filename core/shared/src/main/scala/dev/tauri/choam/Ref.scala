@@ -57,7 +57,7 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
     Rxn.unsafe.cas(this, ov, nv)
 
   final override def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] =
-    new RefLike.CatsRefFromRef[F, A](this) {}
+    new Ref.CatsRefFromRef[F, A](this) {}
 
   private[choam] final def loc: MemoryLocation[A] =
     this
@@ -83,6 +83,16 @@ object Ref extends RefInstances0 {
 
   def lazyArray[A](size: Int, initial: A): Axn[Ref.Array[A]] =
     Rxn.unsafe.delay(_ => unsafeLazyArray(size, initial))
+
+  def catsRefFromRef[F[_] : Reactive, A](ref: Ref[A]): CatsRef[F, A] =
+    new CatsRefFromRef[F, A](ref) {}
+
+  private[choam] abstract class CatsRefFromRef[F[_], A](self: Ref[A])(implicit F: Reactive[F])
+    extends RefLike.CatsRefFromRefLike[F, A](self)(F) {
+
+    override def get: F[A] =
+      self.unsafeDirectRead.run[F]
+  }
 
   def unsafeStrictArray[A](size: Int, initial: A): Ref.Array[A] = {
     if (size > 0) {
