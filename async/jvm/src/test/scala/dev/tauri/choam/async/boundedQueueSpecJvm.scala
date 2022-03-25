@@ -54,11 +54,11 @@ trait BoundedQueueSpecJvm[F[_]] { this: BoundedQueueSpec[F] with McasImplSpec wi
       _ <- F.delay(assertIntIsNotCached(n))
       q <- newQueue[String](bound = n)
       _ <- F.replicateA(n, q.enqueue("foo"))
-      _ <- assertResultF(q.currentSize.run[F], n)
+      _ <- assertResultF(q.size.run[F], n)
       fib <- q.enqueue("bar").start
       _ <- assertResultF(q.deque, "foo")
       _ <- fib.joinWithNever
-      _ <- assertResultF(q.currentSize.run[F], n)
+      _ <- assertResultF(q.size.run[F], n)
     } yield ()
   }
 

@@ -60,7 +60,7 @@ object AsyncQueue {
           0
         final def toCats: CatsQueue[F, A] =
           new BoundedQueue.CatsQueueFromBoundedQueue[F, A](this)
-        private[choam] final def currentSize: Axn[Int] =
+        final def size: Axn[Int] =
           Rxn.pure(0)
       }
     }

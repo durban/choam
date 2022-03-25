@@ -30,7 +30,7 @@ abstract class BoundedQueue[F[_], A]
 
   def toCats: CatsQueue[F, A]
 
-  private[choam] def currentSize: Axn[Int]
+  def size: Axn[Int]
 }
 
 object BoundedQueue {
@@ -91,7 +91,7 @@ object BoundedQueue {
       new CatsQueueFromBoundedQueue(this)
     }
 
-    private[choam] def currentSize: Axn[Int] =
+    override def size: Axn[Int] =
       s.get
   }
 
@@ -120,7 +120,7 @@ object BoundedQueue {
       new CatsQueueFromBoundedQueue[F, A](this)(F)
     }
 
-    override private[choam] def currentSize: Axn[Int] =
+    override def size: Axn[Int] =
       q.size
   }
 
@@ -132,7 +132,7 @@ object BoundedQueue {
     final override def tryTake: F[Option[A]] =
       F.run(self.tryDeque)
     final override def size: F[Int] =
-      F.run(self.currentSize)
+      F.run(self.size)
     final override def offer(a: A): F[Unit] =
       self.enqueue(a)
     final override def tryOffer(a: A): F[Boolean] =
