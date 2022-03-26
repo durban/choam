@@ -20,12 +20,12 @@ package refs
 
 import java.util.concurrent.ThreadLocalRandom
 
-abstract class Ref2Platform {
+private[refs] abstract class Ref2Platform {
 
-  private[choam] def unsafeP1P1[A, B](a: A, b: B): refs.Ref2[A, B] =
+  final def unsafeP1P1[A, B](a: A, b: B): refs.Ref2[A, B] =
     unsafeRef2(a, b)
 
-  private[choam] def unsafeP2[A, B](a: A, b: B): refs.Ref2[A, B] =
+  final def unsafeP2[A, B](a: A, b: B): refs.Ref2[A, B] =
     unsafeRef2(a, b)
 
   private[this] def unsafeRef2[A, B](a: A, b: B): refs.Ref2[A, B] = {

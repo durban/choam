@@ -20,9 +20,9 @@ package refs
 
 import java.util.concurrent.ThreadLocalRandom
 
-abstract class Ref2Platform {
+private[refs] abstract class Ref2Platform {
 
-  private[choam] def unsafeP1P1[A, B](a: A, b: B): refs.Ref2[A, B] = {
+  final def unsafeP1P1[A, B](a: A, b: B): refs.Ref2[A, B] = {
     val tlr = ThreadLocalRandom.current()
     new refs.RefP1P1[A, B](
       a,
@@ -38,7 +38,7 @@ abstract class Ref2Platform {
     )
   }
 
-  private[choam] def unsafeP2[A, B](a: A, b: B): refs.Ref2[A, B] = {
+  final def unsafeP2[A, B](a: A, b: B): refs.Ref2[A, B] = {
     val tlr = ThreadLocalRandom.current()
     new refs.RefP2[A, B](
       a,

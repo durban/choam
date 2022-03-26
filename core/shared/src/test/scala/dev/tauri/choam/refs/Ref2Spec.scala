@@ -16,8 +16,7 @@
  */
 
 package dev.tauri.choam
-
-import refs.Ref2
+package refs
 
 final class Ref2SpecP1P1 extends Ref2Spec {
 
