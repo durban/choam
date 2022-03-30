@@ -19,13 +19,13 @@ package dev.tauri.choam
 
 package object mcas {
 
-  private[choam] type tailrec = scala.annotation.tailrec
+  private[mcas] type tailrec = scala.annotation.tailrec
 
-  private[choam] type switch = scala.annotation.switch
+  private[mcas] type switch = scala.annotation.switch
 
-  private[choam] type unused = scala.annotation.unused
+  private[mcas] type unused = scala.annotation.unused
 
-  private[choam] type nowarn = scala.annotation.nowarn
+  private[mcas] type nowarn = scala.annotation.nowarn
 
   @inline
   private[choam] def box[A](a: A): AnyRef =
