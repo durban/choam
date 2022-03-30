@@ -34,7 +34,7 @@ trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with McasImplSpec =>
   final override def assertResultF[A, B](obtained: zio.Task[A], expected: B, clue: String = "values are not the same")(
     implicit loc: Location, ev: B <:< A
   ): zio.Task[Unit] = {
-    obtained.flatMap(ob => zio.Task { this.assertEquals(ob, expected, clue) })
+    obtained.flatMap(ob => zio.Task.attempt { this.assertEquals(ob, expected, clue) })
   }
 
   // https://github.com/zio/interop-cats/issues/509
@@ -208,7 +208,7 @@ abstract class BaseSpecTickedZIO
 
       override def sleep(duration: => Duration)(implicit trace: ZTraceElement): UIO[Unit] = {
         val finDur = FiniteDuration(duration.toNanos(), "ns")
-        UIO.asyncInterrupt[Unit] { cb =>
+        UIO.asyncInterrupt[Any, Nothing, Unit] { cb =>
           val cancel = testContext.schedule(
             finDur,
             () => { cb(UIO.succeed(())) }
