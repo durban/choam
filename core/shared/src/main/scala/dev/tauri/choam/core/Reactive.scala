@@ -40,11 +40,8 @@ object Reactive {
   def apply[F[_]](implicit inst: Reactive[F]): inst.type =
     inst
 
-  private[choam] def defaultMcasImpl: Mcas =
-    Mcas.DefaultMcas
-
   implicit def reactiveForSync[F[_]](implicit F: Sync[F]): Reactive[F] =
-    new SyncReactive[F](defaultMcasImpl)(F)
+    new SyncReactive[F](Mcas.DefaultMcas)(F)
 
   private[choam] class SyncReactive[F[_]](
     final override val mcasImpl: Mcas
