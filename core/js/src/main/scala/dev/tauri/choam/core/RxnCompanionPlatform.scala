@@ -16,14 +16,15 @@
  */
 
 package dev.tauri.choam
+package core
 
 import java.util.UUID
 
 import bobcats.unsafe.SecureRandom
 
-private abstract class RxnCompanionPlatform { this: Rxn.type =>
+private[choam] abstract class RxnCompanionPlatform { this: Rxn.type => // TODO: make it private
 
-  private[choam] final type ExchangerImpl[A, B] = ExchangerImplJs[A, B]
+  private[core] final type ExchangerImpl[A, B] = ExchangerImplJs[A, B]
 
   private[choam] final type ExStatMap = Map[Exchanger.Key, AnyRef]
 

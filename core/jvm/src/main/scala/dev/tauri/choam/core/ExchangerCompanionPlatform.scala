@@ -15,22 +15,11 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam;
+package dev.tauri.choam
+package core
 
-public final class Statics {
+private[choam] abstract class ExchangerCompanionPlatform { // TODO: make it private
 
-  /** This is just some static methods, don't instantiate it */
-  private Statics() {}
-
-  public static final <A> boolean equ(A x, A y) {
-    return x == y;
-  }
-
-  public static final <A> boolean isNull(A a) {
-    return a == null;
-  }
-
-  public static final <A> A nullOf() {
-    return null;
-  }
+  private[choam] def unsafe[A, B]: Exchanger[A, B] =
+    ExchangerImplJvm.unsafe[A, B]
 }

@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package refs
 
 import java.util.concurrent.ThreadLocalRandom
 
@@ -56,7 +57,7 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
   final def unsafeCas(ov: A, nv: A): Axn[Unit] =
     Rxn.unsafe.cas(this, ov, nv)
 
-  final override def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] =
+  final override def toCats[F[_]](implicit F: core.Reactive[F]): CatsRef[F, A] =
     new Ref.CatsRefFromRef[F, A](this) {}
 
   private[choam] final def loc: MemoryLocation[A] =

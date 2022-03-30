@@ -551,7 +551,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Statistics") {
-    import ExchangerImplJvm.Statistics
+    import core.ExchangerImplJvm.Statistics
     import Exchanger.Params
     val s = Statistics(
       effectiveSize = 32,
@@ -586,7 +586,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     assertEquals(Statistics.misses(s4), 0.toByte)
     assertEquals(Statistics.spinShift(s4), 21.toByte)
     assertEquals(Statistics.exchanges(s4), -23.toByte)
-    val s5 = Statistics.contended(s4, size = ExchangerImplJvm.size, p = Params())
+    val s5 = Statistics.contended(s4, size = core.ExchangerImplJvm.size, p = Params())
     assertEquals(Statistics.effectiveSize(s5), 16.toByte)
     assertEquals(Statistics.misses(s5), -1.toByte)
     assertEquals(Statistics.spinShift(s5), 21.toByte)

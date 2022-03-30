@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package core
 
 import java.util.concurrent.atomic.AtomicReferenceArray
 
@@ -24,7 +25,7 @@ import internal.ObjStack
 import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx, Params }
 
 // TODO: move all exchanger stuff into dev.tauri.choam.exchanger
-private sealed trait ExchangerImplJvm[A, B]
+private[choam] sealed trait ExchangerImplJvm[A, B] // TODO: make it private
   extends Exchanger.UnsealedExchanger[A, B] {
 
   import ExchangerImplJvm.{ size => _, _ }
@@ -54,7 +55,7 @@ private sealed trait ExchangerImplJvm[A, B]
     msg: Msg,
     params: Params,
     ctx: Mcas.ThreadContext,
-  ): Either[StatMap, Msg] = {
+  ): Either[StatMap, Exchanger.Msg] = {
     // TODO: exchangerData grows forever
     val stats = msg.exchangerData.getOrElse(this.key, Statistics.zero).asInstanceOf[Int]
     val effSize = Statistics.effectiveSize(stats)
@@ -330,7 +331,7 @@ private final class PrimaryExchangerImplJvm[A, B] private[choam] (
     this._outgoing
 }
 
-private object ExchangerImplJvm {
+private[choam] object ExchangerImplJvm {
 
   private[choam] def unsafe[A, B]: Exchanger[A, B] = {
     new PrimaryExchangerImplJvm[A, B]()

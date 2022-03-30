@@ -27,7 +27,27 @@ package object choam {
 
   private[choam] type nowarn = scala.annotation.nowarn
 
-  final type =#>[-A, +B] = Rxn[A, B]
+  final type Rxn[-A, +B] = core.Rxn[A, B]
+
+  final type =#>[-A, +B] = core.Rxn[A, B]
+
+  final val Rxn: core.Rxn.type = core.Rxn
+
+  final type Reactive[F[_]] = core.Reactive[F]
+
+  final val Reactive: core.Reactive.type = core.Reactive
+
+  final type Ref[A] = refs.Ref[A]
+
+  final val Ref: refs.Ref.type = refs.Ref
+
+  final type RefLike[A] = refs.RefLike[A]
+
+  final val RefLike: refs.RefLike.type = refs.RefLike
+
+  final type Exchanger[A, B] = core.Exchanger[A, B]
+
+  final val Exchanger: core.Exchanger.type = core.Exchanger
 
   /*
    * Implementation note: in some cases, composing

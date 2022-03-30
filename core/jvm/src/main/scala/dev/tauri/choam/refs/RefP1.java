@@ -21,7 +21,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
-import dev.tauri.choam.Ref;
 import dev.tauri.choam.mcas.MemoryLocation;
 import dev.tauri.choam.mcas.Version;
 

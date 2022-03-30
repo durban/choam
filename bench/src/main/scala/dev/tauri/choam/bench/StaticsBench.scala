@@ -22,6 +22,8 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 import java.util.concurrent.ThreadLocalRandom
 
+import core.Statics
+
 @Fork(2)
 class StaticsBench {
 

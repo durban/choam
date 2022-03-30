@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package core
 
 import java.util.concurrent.atomic.LongAdder
 
@@ -28,7 +29,7 @@ sealed trait Exchanger[A, B] {
 }
 
 /** Private, because an `Exchanger` is unsafe (may block indefinitely) */
-private object Exchanger extends ExchangerCompanionPlatform {
+private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: make it really private
 
   private[choam] def apply[A, B]: Axn[Exchanger[A, B]] =
     Rxn.unsafe.delay { _ => this.unsafe[A, B] }

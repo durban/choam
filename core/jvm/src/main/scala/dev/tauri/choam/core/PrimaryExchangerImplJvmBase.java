@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam;
+package dev.tauri.choam.core;
 
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;

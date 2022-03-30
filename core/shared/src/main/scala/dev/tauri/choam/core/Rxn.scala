@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package core
 
 import java.util.{ Arrays, UUID }
 
@@ -1252,7 +1253,7 @@ object Rxn extends RxnInstances0 {
   }
 }
 
-private[choam] sealed abstract class RxnInstances0 extends RxnInstances1 { this: Rxn.type =>
+private[core] sealed abstract class RxnInstances0 extends RxnInstances1 { this: Rxn.type =>
 
   implicit final def arrowChoiceInstance: ArrowChoice[Rxn] = new ArrowChoice[Rxn] {
 
@@ -1293,7 +1294,7 @@ private[choam] sealed abstract class RxnInstances0 extends RxnInstances1 { this:
   }
 }
 
-private[choam] sealed abstract class RxnInstances1 extends RxnInstances2 { self: Rxn.type =>
+private[core] sealed abstract class RxnInstances1 extends RxnInstances2 { self: Rxn.type =>
 
   implicit final def localInstance[E]: Local[Rxn[E, *], E] = new Local[Rxn[E, *], E] {
     final override def applicative: Applicative[Rxn[E, *]] =
@@ -1305,7 +1306,7 @@ private[choam] sealed abstract class RxnInstances1 extends RxnInstances2 { self:
   }
 }
 
-private[choam] sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.type =>
+private[core] sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.type =>
 
   implicit final def monadInstance[X]: Monad[Rxn[X, *]] = new Monad[Rxn[X, *]] {
     final override def flatMap[A, B](fa: Rxn[X, A])(f: A => Rxn[X, B]): Rxn[X, B] =
@@ -1321,7 +1322,7 @@ private[choam] sealed abstract class RxnInstances2 extends RxnInstances3 { this:
   }
 }
 
-private[choam] sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.type =>
+private[core] sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.type =>
 
   implicit final def uniqueInstance[X]: Unique[Rxn[X, *]] = new Unique[Rxn[X, *]] {
     final override def applicative: Applicative[Rxn[X, *]] =
@@ -1331,7 +1332,7 @@ private[choam] sealed abstract class RxnInstances3 extends RxnInstances4 { self:
   }
 }
 
-private[choam] sealed abstract class RxnInstances4 extends RxnInstances5 { this: Rxn.type =>
+private[core] sealed abstract class RxnInstances4 extends RxnInstances5 { this: Rxn.type =>
   implicit final def monoidKInstance: MonoidK[λ[a => Rxn[a, a]]] = {
     new MonoidK[λ[a => Rxn[a, a]]] {
       final override def combineK[A](x: Rxn[A, A], y: Rxn[A, A]): Rxn[A, A] =
@@ -1342,7 +1343,7 @@ private[choam] sealed abstract class RxnInstances4 extends RxnInstances5 { this:
   }
 }
 
-private[choam] sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.type =>
+private[core] sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.type =>
 
   /** Not implicit, because it would conflict with [[monoidInstance]]. */
   final def choiceSemigroup[A, B]: Semigroup[Rxn[A, B]] = new Semigroup[Rxn[A, B]] {
@@ -1359,19 +1360,19 @@ private[choam] sealed abstract class RxnInstances5 extends RxnInstances6 { this:
   }
 }
 
-private[choam] sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.type =>
+private[core] sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.type =>
   implicit final def deferInstance[X]: Defer[Rxn[X, *]] = new Defer[Rxn[X, *]] {
     final override def defer[A](fa: => Rxn[X, A]): Rxn[X, A] =
       self.computed[X, A] { x => fa.provide(x) }
   }
 }
 
-private[choam] sealed abstract class RxnInstances7 extends RxnInstances8 { self: Rxn.type =>
+private[core] sealed abstract class RxnInstances7 extends RxnInstances8 { self: Rxn.type =>
   implicit final def showInstance[A, B]: Show[Rxn[A, B]] =
     Show.fromToString
 }
 
-private[choam] sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.type =>
+private[core] sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.type =>
   implicit final def alignInstance[X]: Align[Rxn[X, *]] = new Align[Rxn[X, *]] {
     final override def functor: Functor[Rxn[X, *]] =
       self.monadInstance[X]
@@ -1386,14 +1387,14 @@ private[choam] sealed abstract class RxnInstances8 extends RxnInstances9 { self:
   }
 }
 
-private[choam] sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
+private[core] sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
   implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {
     final override def randomUUID: Rxn[X, UUID] =
       self.rxnRandomUUID[X]
   }
 }
 
-private[choam] sealed abstract class RxnInstances10 extends RxnSyntax0 { self: Rxn.type =>
+private[core] sealed abstract class RxnInstances10 extends RxnSyntax0 { self: Rxn.type =>
   implicit final def clockInstance[X]: Clock[Rxn[X, *]] = new Clock[Rxn[X, *]] {
     final override def applicative: Applicative[Rxn[X, *]] =
       self.monadInstance[X]
@@ -1404,14 +1405,14 @@ private[choam] sealed abstract class RxnInstances10 extends RxnSyntax0 { self: R
   }
 }
 
-private[choam] sealed abstract class RxnSyntax0 extends RxnSyntax1 { this: Rxn.type =>
+private[core] sealed abstract class RxnSyntax0 extends RxnSyntax1 { this: Rxn.type =>
   implicit final class InvariantSyntax[A, B](private val self: Rxn[A, B]) {
     final def apply[F[_]](a: A)(implicit F: Reactive[F]): F[B] =
       F.apply(self, a)
   }
 }
 
-private[choam] sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.type =>
+private[core] sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.type =>
 
   implicit final class AxnSyntax[A](private val self: Axn[A]) {
 
@@ -1428,7 +1429,7 @@ private[choam] sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.t
   }
 }
 
-private[choam] sealed abstract class RxnSyntax2 extends RxnCompanionPlatform { this: Rxn.type =>
+private[core] sealed abstract class RxnSyntax2 extends RxnCompanionPlatform { this: Rxn.type =>
 
   // FIXME: do we need this?
   implicit final class Tuple2RxnSyntax[A, B, C](private val self: Rxn[A, (B, C)]) {

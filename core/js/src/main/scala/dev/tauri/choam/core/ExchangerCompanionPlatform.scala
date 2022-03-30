@@ -16,16 +16,10 @@
  */
 
 package dev.tauri.choam
+package core
 
-private[choam] object CompatPlatform {
+private[choam] abstract class ExchangerCompanionPlatform { // TODO: make it private
 
-  final type AtomicReferenceArray[A] =
-    _root_.java.util.concurrent.atomic.AtomicReferenceArray[A]
-
-  final type SecureRandom =
-    _root_.java.security.SecureRandom
-
-  final def threadOnSpinWait(): Unit = {
-    Thread.onSpinWait()
-  }
+  private[choam] def unsafe[A, B]: Exchanger[A, B] =
+    new ExchangerImplJs[A, B]
 }

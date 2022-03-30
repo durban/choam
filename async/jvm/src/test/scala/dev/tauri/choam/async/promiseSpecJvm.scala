@@ -70,7 +70,7 @@ trait PromiseSpecJvm[F[_]] extends PromiseSpec[F] { this: McasImplSpec =>
       _ <- assumeF(this.mcasImpl.isThreadSafe)
       p <- Promise[F, Int].run[F]
       f <- p.get.map { v =>
-        while (!stop) CompatPlatform.threadOnSpinWait()
+        while (!stop) Thread.onSpinWait()
         v + 1
       }.start
       ok <- p.complete(42)

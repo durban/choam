@@ -16,9 +16,17 @@
  */
 
 package dev.tauri.choam
+package core
 
-private abstract class ExchangerCompanionPlatform {
+private[choam] object CompatPlatform {
 
-  private[choam] def unsafe[A, B]: Exchanger[A, B] =
-    ExchangerImplJvm.unsafe[A, B]
+  final type AtomicReferenceArray[A] =
+    _root_.dev.tauri.choam.refs.AtomicReferenceArray[A]
+
+  final type SecureRandom =
+    _root_.bobcats.unsafe.SecureRandom
+
+  final def threadOnSpinWait(): Unit = {
+    ()
+  }
 }

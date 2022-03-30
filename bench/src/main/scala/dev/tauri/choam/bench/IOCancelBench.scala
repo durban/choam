@@ -26,6 +26,8 @@ import cats.effect.IO
 
 import org.openjdk.jmh.annotations._
 
+import core.IOCancel
+
 @Fork(3)
 @Threads(1) // thread-pool
 class IOCancelBench {

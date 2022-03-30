@@ -16,12 +16,13 @@
  */
 
 package dev.tauri.choam
+package core
 
 import mcas.Mcas
 import internal.Backoff
 import Exchanger.{ Msg, NodeResult }
 
-private final class ExchangerNode[C](val msg: Msg) {
+private[choam] final class ExchangerNode[C](val msg: Msg) {
 
   /**
    *     .---> result: FinishedEx[C] (fulfiller successfully completed)

@@ -15,17 +15,22 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam
+package dev.tauri.choam.core;
 
-private[choam] object CompatPlatform {
+public final class Statics {
 
-  final type AtomicReferenceArray[A] =
-    _root_.dev.tauri.choam.refs.AtomicReferenceArray[A]
+  /** This is just some static methods, don't instantiate it */
+  private Statics() {}
 
-  final type SecureRandom =
-    _root_.bobcats.unsafe.SecureRandom
+  public static final <A> boolean equ(A x, A y) {
+    return x == y;
+  }
 
-  final def threadOnSpinWait(): Unit = {
-    ()
+  public static final <A> boolean isNull(A a) {
+    return a == null;
+  }
+
+  public static final <A> A nullOf() {
+    return null;
   }
 }
