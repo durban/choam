@@ -16,11 +16,13 @@
  */
 
 package dev.tauri.choam
-package internal
+package core
 
-private[choam] abstract class BackoffPlatform {
+private abstract class BackoffPlatform {
 
   final def once(): Unit = {
-    Thread.onSpinWait()
+    // There is no Thread.onSpinWait in JS,
+    // but there is also no need for backoff.
+    ()
   }
 }

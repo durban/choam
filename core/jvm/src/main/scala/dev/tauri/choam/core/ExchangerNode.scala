@@ -19,7 +19,6 @@ package dev.tauri.choam
 package core
 
 import mcas.Mcas
-import internal.Backoff
 import Exchanger.{ Msg, NodeResult }
 
 private[choam] final class ExchangerNode[C](val msg: Msg) {
