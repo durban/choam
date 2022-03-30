@@ -26,6 +26,6 @@ private abstract class RxnCompanionPlatform { this: Rxn.type =>
 
   private[choam] final type ExStatMap = ExchangerImplJvm.StatMap
 
-  private[choam] final def rxnRandomUUID[X]: Rxn[X, UUID] =
+  private[core] final def rxnRandomUUID[X]: Rxn[X, UUID] =
     this.unsafe.delay { _ => UUID.randomUUID() }
 }

@@ -117,7 +117,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * TODO: Check if it's indeed faster than a simple `match` (apparently "tag"
    * TODO: was removed from the Scala compiler because it was not worth it).
    */
-  private[choam] def tag: Byte
+  private[core] def tag: Byte
 
   final def + [X <: A, Y >: B](that: Rxn[X, Y]): Rxn[X, Y] =
     new Choice[X, Y](this, that)
@@ -463,7 +463,7 @@ object Rxn extends RxnInstances0 {
       new ForceValidate
   }
 
-  private[choam] final object internal {
+  private[core] final object internal {
 
     final def exchange[A, B](ex: ExchangerImpl[A, B]): Rxn[A, B] =
       new Exchange[A, B](ex)
@@ -479,94 +479,94 @@ object Rxn extends RxnInstances0 {
 
   /** Only the interpreter can use this! */
   private final class Commit[A]() extends Rxn[A, A] {
-    private[choam] final override def tag = 0
+    private[core] final override def tag = 0
     final override def toString: String = "Commit()"
   }
 
   private final class AlwaysRetry[A, B]() extends Rxn[A, B] {
-    private[choam] final override def tag = 1
+    private[core] final override def tag = 1
     final override def toString: String = "AlwaysRetry()"
   }
 
   private final class PostCommit[A](val pc: Rxn[A, Unit]) extends Rxn[A, A] {
-    private[choam] final override def tag = 2
+    private[core] final override def tag = 2
     final override def toString: String = s"PostCommit(${pc})"
   }
 
   private final class Lift[A, B](val func: A => B) extends Rxn[A, B] {
-    private[choam] final override def tag = 3
+    private[core] final override def tag = 3
     final override def toString: String = "Lift(<function>)"
   }
 
   private final class Computed[A, B](val f: A => Axn[B]) extends Rxn[A, B] {
-    private[choam] final def tag = 4
+    private[core] final def tag = 4
     final override def toString: String = "Computed(<function>)"
   }
 
   // TODO: we need a better name
   private final class DelayComputed[A, B](val prepare: Rxn[A, Axn[B]]) extends Rxn[A, B] {
-    private[choam] final override def tag = 5
+    private[core] final override def tag = 5
     final override def toString: String = s"DelayComputed(${prepare})"
   }
 
   private final class Choice[A, B](val left: Rxn[A, B], val right: Rxn[A, B]) extends Rxn[A, B] {
-    private[choam] final override def tag = 6
+    private[core] final override def tag = 6
     final override def toString: String = s"Choice(${left}, ${right})"
   }
 
   private final class Cas[A](val ref: MemoryLocation[A], val ov: A, val nv: A) extends Rxn[Any, Unit] {
-    private[choam] final override def tag = 7
+    private[core] final override def tag = 7
     final override def toString: String = s"Cas(${ref}, ${ov}, ${nv})"
   }
 
   private final class Upd[A, B, X](val ref: MemoryLocation[X], val f: (X, A) => (X, B)) extends Rxn[A, B] {
-    private[choam] final override def tag = 8
+    private[core] final override def tag = 8
     final override def toString: String = s"Upd(${ref}, <function>)"
   }
 
   private final class DirectRead[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
-    private[choam] final override def tag = 9
+    private[core] final override def tag = 9
     final override def toString: String = s"DirectRead(${ref})"
   }
 
   private final class Exchange[A, B](val exchanger: ExchangerImpl[A, B]) extends Rxn[A, B] {
-    private[choam] final override def tag = 10
+    private[core] final override def tag = 10
     final override def toString: String = s"Exchange(${exchanger})"
   }
 
   private final class AndThen[A, B, C](val left: Rxn[A, B], val right: Rxn[B, C]) extends Rxn[A, C] {
-    private[choam] final override def tag = 11
+    private[core] final override def tag = 11
     final override def toString: String = s"AndThen(${left}, ${right})"
   }
 
   private final class AndAlso[A, B, C, D](val left: Rxn[A, B], val right: Rxn[C, D]) extends Rxn[(A, C), (B, D)] {
-    private[choam] final override def tag = 12
+    private[core] final override def tag = 12
     final override def toString: String = s"AndAlso(${left}, ${right})"
   }
 
   /** Only the interpreter can use this! */
   private final class Done[A](val result: A) extends Rxn[Any, A] {
-    private[choam] final override def tag = 13
+    private[core] final override def tag = 13
     final override def toString: String = s"Done(${result})"
   }
 
   private final class Ctx[A](val uf: Mcas.ThreadContext => A) extends Rxn[Any, A] {
-    private[choam] final override def tag = 14
+    private[core] final override def tag = 14
     final override def toString: String = s"Ctx(<block>)"
   }
 
   private final class Provide[A, B](val rxn: Rxn[A, B], val a: A) extends Rxn[Any, B] {
-    private[choam] final override def tag = 15
+    private[core] final override def tag = 15
     final override def toString: String = s"Provide(${rxn}, ${a})"
   }
 
   private final class UpdWith[A, B, C](val ref: MemoryLocation[A], val f: (A, B) => Axn[(A, C)]) extends Rxn[B, C] {
-    private[choam] final override def tag = 16
+    private[core] final override def tag = 16
     final override def toString: String = s"UpdWith(${ref}, <function>)"
   }
 
   private final class As[A, B, C](val rxn: Rxn[A, B], val c: C) extends Rxn[A, C] {
-    private[choam] final override def tag = 17
+    private[core] final override def tag = 17
     final override def toString: String = s"As(${rxn}, ${c})"
   }
 
@@ -576,7 +576,7 @@ object Rxn extends RxnInstances0 {
     val restOtherContK: ObjStack.Lst[Any],
     val lenSelfContT: Int,
   ) extends Rxn[D, Unit] {
-    private[choam] final override def tag = 18
+    private[core] final override def tag = 18
     final override def toString: String = {
       val rockLen = ObjStack.Lst.length(this.restOtherContK)
       s"FinishExchange(${hole}, <ObjStack.Lst of length ${rockLen}>, ${lenSelfContT})"
@@ -584,22 +584,22 @@ object Rxn extends RxnInstances0 {
   }
 
   private final class Read[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
-    private[choam] final override def tag = 19
+    private[core] final override def tag = 19
     final override def toString: String = s"Read(${ref})"
   }
 
   private final class TicketRead[A](val ref: MemoryLocation[A]) extends Rxn[Any, unsafe.Ticket[A]] {
-    private[choam] final override def tag = 20
+    private[core] final override def tag = 20
     final override def toString: String = s"TicketRead(${ref})"
   }
 
   private final class TicketWrite[A](val hwd: HalfWordDescriptor[A], val newest: A) extends Rxn[Any, Unit] {
-    private[choam] final override def tag = 21
+    private[core] final override def tag = 21
     final override def toString: String = s"TicketWrite(${hwd}, ${newest})"
   }
 
   private final class ForceValidate() extends Rxn[Any, Unit] {
-    private[choam] final override def tag = 22
+    private[core] final override def tag = 22
     final override def toString: String = s"ForceValidate()"
   }
 
@@ -609,7 +609,7 @@ object Rxn extends RxnInstances0 {
     new ObjStack[A]
   }
 
-  private[choam] final val ContAndThen = 0.toByte
+  private[this] final val ContAndThen = 0.toByte
   private[this] final val ContAndAlso = 1.toByte
   private[this] final val ContAndAlsoJoin = 2.toByte
   private[this] final val ContAfterDelayComp = 3.toByte
@@ -620,13 +620,13 @@ object Rxn extends RxnInstances0 {
   private[this] final val ContAs = 8.toByte
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
-  private[this] val postCommitResultMarker =
+  private[this] final val postCommitResultMarker =
     new PostCommitResultMarker
 
-  private[choam] val commitSingleton: Rxn[Any, Any] = // TODO: make this a java enum?
+  private[core] final val commitSingleton: Rxn[Any, Any] = // TODO: make this a java enum?
     new Commit[Any]
 
-  private[choam] def interpreter[X, R](
+  private[core] final def interpreter[X, R](
     rxn: Rxn[X, R],
     x: X,
     ctx: Mcas.ThreadContext,

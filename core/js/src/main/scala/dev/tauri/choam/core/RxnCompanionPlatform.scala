@@ -42,7 +42,7 @@ private[choam] abstract class RxnCompanionPlatform { this: Rxn.type => // TODO: 
   private[this] final val VARIANT = 0x8000000000000000L
   private[this] final val VARIANT_MASK = 0x3FFFFFFFFFFFFFFFL
 
-  private[choam] final def rxnRandomUUID[X]: Rxn[X, UUID] = {
+  private[core] final def rxnRandomUUID[X]: Rxn[X, UUID] = {
     this.unsafe.delay { _ =>
       val sr = this._secureRandom
       val msb = (sr.nextLong() & VERSION_MASK) | VERSION
