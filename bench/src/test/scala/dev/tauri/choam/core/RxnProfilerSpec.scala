@@ -16,8 +16,7 @@
  */
 
 package dev.tauri.choam
-package bench
-package util
+package core
 
 import cats.effect.IO
 

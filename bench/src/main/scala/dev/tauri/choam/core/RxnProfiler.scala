@@ -16,8 +16,7 @@
  */
 
 package dev.tauri.choam
-package bench
-package util
+package core
 
 import java.{ util => ju }
 import java.util.concurrent.TimeUnit
@@ -37,10 +36,10 @@ import mcas.Mcas.Emcas
 /**
  * JMH profiler "plugin" for `Rxn` statistics/measurements.
  *
- * How to use: `-prof dev.tauri.choam.bench.util.RxnProfiler`
+ * How to use: `-prof dev.tauri.choam.core.RxnProfiler`
  *
  * Configuration:
- * `-prof "dev.tauri.choam.bench.util.RxnProfiler:opt1;opt2;opt3"`
+ * `-prof "dev.tauri.choam.core.RxnProfiler:opt1;opt2;opt3"`
  *
  * Available options are:
  * - retries (-> rxn.retriesPerCommit)
@@ -62,7 +61,7 @@ import mcas.Mcas.Emcas
  *   exchanges
  * - rxn.exchangerStats: TODO
  */
-final class RxnProfiler(configLine: String) extends InternalProfiler {
+final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: eventually move to a published module
 
   import RxnProfiler._
 

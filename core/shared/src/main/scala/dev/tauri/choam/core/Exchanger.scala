@@ -31,10 +31,10 @@ sealed trait Exchanger[A, B] {
 /** Private, because an `Exchanger` is unsafe (may block indefinitely) */
 private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: make it really private
 
-  private[choam] def apply[A, B]: Axn[Exchanger[A, B]] =
+  private[core] def apply[A, B]: Axn[Exchanger[A, B]] =
     Rxn.unsafe.delay { _ => this.unsafe[A, B] }
 
-  private[choam] def profiled[A, B](counter: LongAdder): Axn[Exchanger[A, B]] = {
+  private[core] def profiled[A, B](counter: LongAdder): Axn[Exchanger[A, B]] = {
     this.apply[A, B].flatMapF { underlying =>
       Rxn.unsafe.delay { _ =>
         new ProfiledExchanger[A, B](
@@ -46,14 +46,14 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: ma
     }
   }
 
-  private[choam] final class Key
+  private[core] final class Key
     extends Serializable {
 
     final override def toString: String =
       s"Key@${this.hashCode.toHexString}"
   }
 
-  private[choam] trait UnsealedExchanger[A, B]
+  private[core] trait UnsealedExchanger[A, B]
     extends Exchanger[A, B]
 
   private[this] final class ProfiledExchanger[A, B](

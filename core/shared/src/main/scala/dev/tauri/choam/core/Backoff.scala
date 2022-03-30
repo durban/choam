@@ -44,7 +44,7 @@ private object Backoff extends BackoffPlatform {
   final def backoffConst(retries: Int, maxBackoff: Int): Unit =
     spin(constTokens(retries, maxBackoff))
 
-  private[choam] final def constTokens(retries: Int, maxBackoff: Int): Int =
+  private[core] final def constTokens(retries: Int, maxBackoff: Int): Int =
     Math.min(1 << normalizeRetries(retries), maxBackoff)
 
   final def backoffRandom(retries: Int, halfMaxBackoff: Int): Unit =
@@ -74,14 +74,14 @@ private object Backoff extends BackoffPlatform {
   final def backoffRandom(retries: Int, halfMaxBackoff: Int, random: ThreadLocalRandom): Unit =
     spin(randomTokens(retries, halfMaxBackoff, random))
 
-  private[choam] final def randomTokens(retries: Int, halfMaxBackoff: Int, random: ThreadLocalRandom): Int = {
+  private[core] final def randomTokens(retries: Int, halfMaxBackoff: Int, random: ThreadLocalRandom): Int = {
     val max = Math.min(1 << normalizeRetries(retries + 1), halfMaxBackoff << 1)
     if (max < 2) 1
     else 1 + random.nextInt(max)
   }
 
   @tailrec
-  private[choam] final def spin(n: Int): Unit = {
+  private[core] final def spin(n: Int): Unit = {
     if (n > 0) {
       once()
       spin(n - 1)

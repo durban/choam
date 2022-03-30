@@ -21,7 +21,8 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import util.{ RxnProfiler, KCASImplState }
+import util.KCASImplState
+import core.RxnProfiler
 
 @Fork(3)
 @Threads(2) // 4, 6, 8, ...
