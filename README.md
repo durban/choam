@@ -23,11 +23,11 @@
 
 ## Overview
 
-The type [`Rxn[-A, +B]`](core/shared/src/main/scala/dev/tauri/choam/Rxn.scala)
+The type [`Rxn[-A, +B]`](core/shared/src/main/scala/dev/tauri/choam/core/Rxn.scala)
 is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but:
 
 - The only effect it can perform is lock-free updates to
-  [`Ref`s](core/shared/src/main/scala/dev/tauri/choam/Ref.scala)
+  [`Ref`s](core/shared/src/main/scala/dev/tauri/choam/refs/Ref.scala)
   (mutable memory locations with a pure API).
   - For example, if `x` is a `Ref[Int]`, then `x.update(_ + 1)` is a `Rxn` which
     (when executed) will increment its value.
@@ -40,8 +40,8 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
 
 - [`choam-core`](core/shared/src/main/scala/dev/tauri/choam/):
   - core types, like
-    [`Rxn`](core/shared/src/main/scala/dev/tauri/choam/Rxn.scala) and
-    [`Ref`](core/shared/src/main/scala/dev/tauri/choam/Ref.scala)
+    [`Rxn`](core/shared/src/main/scala/dev/tauri/choam/core/Rxn.scala) and
+    [`Ref`](core/shared/src/main/scala/dev/tauri/choam/refs/Ref.scala)
   - integration with synchronous effect types in
     [Cats Effect](https://github.com/typelevel/cats-effect)
 - [`choam-data`](data/shared/src/main/scala/dev/tauri/choam/data/):
