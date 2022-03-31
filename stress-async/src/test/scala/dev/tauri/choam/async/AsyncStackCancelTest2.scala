@@ -45,9 +45,9 @@ class AsyncStackCancelTest2 {
     null
 
   private[this] val popper: Fiber[IO, Throwable, String] = {
-    val tsk = IO.cede *> (
-      IO.uncancelable { _ => stack.pop.flatTap { s => IO { this.result = s } } }
-    ) <* IO.cede
+    val tsk = IO.uncancelable { poll =>
+      poll(stack.pop).flatTap { s => IO { this.result = s } }
+    }
     tsk.start.unsafeRunSync()(runtime)
   }
 
