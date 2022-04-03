@@ -477,7 +477,7 @@ lazy val dependencies = new {
     "io.github.cquiroz" %%% "scala-java-locales" % scalaJsLocaleVersion,
     "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
   ))
-  val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-d9771b2")
+  val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-8140612")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
@@ -495,8 +495,8 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.1")
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "3.3.0-RC3-2")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.0-RC3")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "3.3.0-RC4")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.0-RC4")
 }
 
 val stressTestNames = List[String](

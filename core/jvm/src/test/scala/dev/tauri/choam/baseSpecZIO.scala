@@ -20,7 +20,7 @@ package dev.tauri.choam
 import java.{ util => ju }
 import java.util.Collection
 import java.util.concurrent.{ TimeUnit, Callable, Future, ScheduledFuture, ScheduledExecutorService }
-import java.time.{ OffsetDateTime, Instant, LocalDateTime, ZoneId }
+import java.time.{ OffsetDateTime, Instant, LocalDateTime, ZoneId, Clock => JClock }
 
 import scala.concurrent.duration._
 
@@ -99,7 +99,8 @@ abstract class BaseSpecTickedZIO
       "Ticked ZIO",
       { case x: zio.ZIO[_, _, _] =>
         val tsk = x.asInstanceOf[zio.Task[_]]
-        val fut = this.zioRuntime.unsafeRunToFuture(tsk)
+        val prepare = zio.ZEnv.services.update(_.unionAll(this.zioRuntime.environment))
+        val fut = this.zioRuntime.unsafeRunToFuture(prepare *> tsk)
         testContext.tickAll()
         fut
       }
@@ -109,7 +110,7 @@ abstract class BaseSpecTickedZIO
   protected override val testContext: TestContext =
     TestContext()
 
-  private lazy val zioRuntime: Runtime[ZEnv] = {
+  private lazy val zioRuntime = {
 
     val testContextExecutor: zio.Executor =
       zio.Executor.fromExecutionContext(32)(testContext.derive())
@@ -171,10 +172,25 @@ abstract class BaseSpecTickedZIO
         throw new NotImplementedError("scheduleWithFixedDelay(Runnable, Long, Long, TimeUnit)")
     })
 
-    val myClock = new Clock {
+    val myClock = new Clock { self =>
 
       private[this] final val zone =
         ZoneId.of("UTC")
+
+      override def javaClock(implicit trace: ZTraceElement): UIO[JClock] = {
+        UIO.succeed {
+          new JClock {
+            override def getZone(): ZoneId =
+              self.zone
+            override def withZone(z: ZoneId): JClock =
+              throw new NotImplementedError("withZone(ZoneId)")
+            override def instant(): Instant = {
+              val now = testContext.now()
+              Instant.ofEpochMilli(now.toMillis)
+            }
+          }
+        }
+      }
 
       override def currentTime(unit: => TimeUnit)(implicit trace: ZTraceElement): UIO[Long] = {
         this.instant.map { inst =>
@@ -222,6 +238,6 @@ abstract class BaseSpecTickedZIO
       .default
       .withExecutor(testContextExecutor)
       .withBlockingExecutor(testContextBlockingExecutor)
-      .map { env => env.update[Clock](_ => myClock) }
+      .map(_.add[Clock](myClock))
   }
 }
