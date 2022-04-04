@@ -134,7 +134,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies += dependencies.zioCats.value % Test, // https://github.com/zio/interop-cats/issues/471
   )
   .jsSettings(
-    libraryDependencies += dependencies.bobcats.value
+    libraryDependencies += dependencies.scalaJsSecRnd.value % Test
   )
 
 lazy val mcas = crossProject(JVMPlatform, JSPlatform)
@@ -477,6 +477,7 @@ lazy val dependencies = new {
     "io.github.cquiroz" %%% "scala-java-locales" % scalaJsLocaleVersion,
     "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
   ))
+  val scalaJsSecRnd = Def.setting("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0")
   val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-8140612")
 
   val test = Def.setting[Seq[ModuleID]] {

@@ -23,9 +23,6 @@ private[choam] object CompatPlatform {
   final type AtomicReferenceArray[A] =
     _root_.dev.tauri.choam.refs.AtomicReferenceArray[A]
 
-  final type SecureRandom =
-    _root_.bobcats.unsafe.SecureRandom
-
   final def threadOnSpinWait(): Unit = {
     ()
   }

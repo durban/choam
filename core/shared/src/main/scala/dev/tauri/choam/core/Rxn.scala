@@ -1390,7 +1390,7 @@ private[core] sealed abstract class RxnInstances8 extends RxnInstances9 { self: 
 private[core] sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
   implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {
     final override def randomUUID: Rxn[X, UUID] =
-      self.rxnRandomUUID[X]
+      self.unsafe.delay { _ => UUID.randomUUID() }
   }
 }
 

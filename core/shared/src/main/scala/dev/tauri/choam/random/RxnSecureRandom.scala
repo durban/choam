@@ -20,7 +20,7 @@ package random
 
 import cats.effect.std.Random
 
-import core.CompatPlatform.SecureRandom
+import java.security.SecureRandom
 
 private[choam] object RxnSecureRandom {
   def unsafe(): Random[Axn] = {

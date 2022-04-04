@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import cats.effect.SyncIO
 
-import bobcats.unsafe.SecureRandom
+import java.security.SecureRandom
 
 final class RandomSpecJs_ThreadConfinedMcas_SyncIO
   extends BaseSpecSyncIO
@@ -28,7 +28,7 @@ final class RandomSpecJs_ThreadConfinedMcas_SyncIO
 
 trait RandomSpecJs[F[_]] extends RandomSpec[F] { this: McasImplSpec =>
 
-  test("SecureRandom (JS/bobcats)") {
+  test("SecureRandom (JS)") {
     val bt = System.nanoTime()
     val s = new SecureRandom()
     s.nextBytes(new Array[Byte](20)) // force seed
