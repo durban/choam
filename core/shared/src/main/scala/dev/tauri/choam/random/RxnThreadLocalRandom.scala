@@ -22,7 +22,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 import cats.effect.std.Random
 
-private[choam] object RxnThreadLocalRandom {
+private object RxnThreadLocalRandom {
   def unsafe(): Random[Axn] = {
     new RxnThreadLocalRandom
   }

@@ -27,7 +27,7 @@ import RandomBase._
 // TODO: everything could be optimized to a single `seed.modify { ... }`
 // TODO: remove asserts after a while
 
-private[choam] object DeterministicRandom {
+private object DeterministicRandom {
   def apply(initialSeed: Long): Axn[SplittableRandom[Axn]] = {
     Ref(initialSeed).map { (seed: Ref[Long]) =>
       new DeterministicRandom(seed, GoldenGamma)

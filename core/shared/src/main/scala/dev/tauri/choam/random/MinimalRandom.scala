@@ -20,7 +20,7 @@ package random
 
 import cats.effect.std.Random
 
-private[choam] object MinimalRandom {
+private object MinimalRandom {
   def unsafe(initialSeed: Long): Random[Axn] = {
     new MinimalRandom(Ref.unsafe(initialSeed), RandomBase.GoldenGamma)
   }

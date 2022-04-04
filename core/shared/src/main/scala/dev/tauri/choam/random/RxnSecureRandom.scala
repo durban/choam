@@ -22,7 +22,7 @@ import cats.effect.std.Random
 
 import java.security.SecureRandom
 
-private[choam] object RxnSecureRandom {
+private object RxnSecureRandom {
   def unsafe(): Random[Axn] = {
     val sr = new SecureRandom
     // force seeding the generator here:
@@ -32,7 +32,7 @@ private[choam] object RxnSecureRandom {
   }
 }
 
-private final class RxnSecureRandom private (private[this] val jRnd: SecureRandom)
+private final class RxnSecureRandom private (jRnd: SecureRandom)
   extends RandomBase {
 
   import Axn.unsafe.delay
