@@ -47,7 +47,7 @@ trait RefLike[A] {
 
   /** Returns `false` iff the update failed */
   final def tryUpdate(f: A => A): Axn[Boolean] =
-    update(f).as(true) + Rxn.ret(false)
+    update(f).as(true) + Rxn.pure(false)
 
   /** Returns previous value */
   final def getAndUpdate(f: A => A): Axn[A] =

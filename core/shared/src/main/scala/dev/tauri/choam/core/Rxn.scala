@@ -135,7 +135,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     this.attempt
 
   final def attempt: Rxn[A, Option[B]] =
-    this.map(Some(_)) + ret[A, Option[B]](None)
+    this.map(Some(_)) + pure[Option[B]](None)
 
   final def map[C](f: B => C): Rxn[A, C] =
     this >>> lift(f)
@@ -257,10 +257,11 @@ object Rxn extends RxnInstances0 {
   // API:
 
   def pure[A](a: A): Axn[A] =
-    ret(a)
+    lift(_ => a) // TODO: optimize
 
-  def ret[X, A](a: A): Rxn[X, A] =
-    lift[X, A](_ => a)
+  /** Old name of `pure` */
+  private[choam] def ret[A](a: A): Axn[A] =
+    pure(a)
 
   def identity[A]: Rxn[A, A] =
     lift(a => a)
@@ -269,7 +270,7 @@ object Rxn extends RxnInstances0 {
     new Lift(f)
 
   def unit[A]: Rxn[A, Unit] =
-    lift(_ => ()) // TODO: optimize
+    pure(())
 
   def computed[A, B](f: A => Axn[B]): Rxn[A, B] =
     new Computed(f)
@@ -328,7 +329,7 @@ object Rxn extends RxnInstances0 {
 
   // TODO: maybe move this to `Ref`?
   def consistentReadMany[A](refs: List[Ref[A]]): Axn[List[A]] = {
-    refs.foldRight(ret(List.empty[A])) { (ref, acc) =>
+    refs.foldRight(pure(List.empty[A])) { (ref, acc) =>
       (ref.get * acc).map {
         case (h, t) => h :: t
       }
@@ -1271,8 +1272,8 @@ private[core] sealed abstract class RxnInstances0 extends RxnInstances1 { this: 
 
     final override def choose[A, B, C, D](f: Rxn[A, C])(g: Rxn[B, D]): Rxn[Either[A, B], Either[C, D]] = {
       computed[Either[A, B], Either[C, D]] {
-        case Left(a) => (ret(a) >>> f).map(Left(_))
-        case Right(b) => (ret(b) >>> g).map(Right(_))
+        case Left(a) => (pure(a) >>> f).map(Left(_))
+        case Right(b) => (pure(b) >>> g).map(Right(_))
       }
     }
 
@@ -1281,8 +1282,8 @@ private[core] sealed abstract class RxnInstances0 extends RxnInstances1 { this: 
 
     final override def choice[A, B, C](f: Rxn[A, C], g: Rxn[B, C]): Rxn[Either[A, B], C] = {
       computed[Either[A, B], C] {
-        case Left(a) => ret(a) >>> f
-        case Right(b) => ret(b) >>> g
+        case Left(a) => pure(a) >>> f
+        case Right(b) => pure(b) >>> g
       }
     }
 
@@ -1356,7 +1357,7 @@ private[core] sealed abstract class RxnInstances5 extends RxnInstances6 { this: 
       (x * y).map { bb => B.combine(bb._1, bb._2) }
     }
     override def empty: Rxn[A, B] =
-      Rxn.ret(B.empty)
+      Rxn.pure(B.empty)
   }
 }
 
