@@ -30,7 +30,6 @@ import cats.effect.kernel.{ Clock, Unique }
 import cats.effect.std.{ Random, UUIDGen }
 
 import mcas.{ MemoryLocation, Mcas, HalfEMCASDescriptor, HalfWordDescriptor, McasStatus }
-import internal.{ ByteStack, ObjStack }
 
 /**
  * An effectful function from `A` to `B`; when executed,

@@ -20,8 +20,6 @@ package core
 
 import java.util.concurrent.atomic.LongAdder
 
-import internal.ObjStack
-
 sealed trait Exchanger[A, B] {
   def exchange: Rxn[A, B]
   def dual: Exchanger[B, A]
@@ -118,7 +116,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: ma
       16,
   )
 
-  private[choam] final case class Msg(
+  private[core] final case class Msg(
     value: Any,
     contK: ObjStack.Lst[Any],
     contT: Array[Byte],
@@ -127,7 +125,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: ma
     exchangerData: Rxn.ExStatMap,
   )
 
-  private[choam] object Msg {
+  private[core] object Msg {
 
     def fromFinishedEx(fx: FinishedEx[_], newStats: Rxn.ExStatMap, ctx: Mcas.ThreadContext): Msg = {
       Msg(
@@ -141,18 +139,18 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: ma
     }
   }
 
-  private[choam] sealed abstract class NodeResult[C]
+  private[core] sealed abstract class NodeResult[C]
 
-  private[choam] final class FinishedEx[C](
+  private[core] final class FinishedEx[C](
     val result: C,
     val contK: ObjStack.Lst[Any],
     val contT: Array[Byte],
   ) extends NodeResult[C]
 
-  private[choam] final class Rescinded[C]
+  private[core] final class Rescinded[C]
     extends NodeResult[C]
 
-  private[choam] final object Rescinded {
+  private[core] final object Rescinded {
     def apply[C]: Rescinded[C] =
       _singleton.asInstanceOf[Rescinded[C]]
     private[this] val _singleton =

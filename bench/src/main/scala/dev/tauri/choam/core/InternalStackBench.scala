@@ -16,12 +16,10 @@
  */
 
 package dev.tauri.choam
-package bench
+package core
 
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
-
-import internal.{ ByteStack, ObjStack }
 
 @Fork(2)
 class InternalStackBench {

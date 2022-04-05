@@ -16,9 +16,9 @@
  */
 
 package dev.tauri.choam
-package internal
+package core
 
-private[choam] final class ObjStack[A]() {
+private final class ObjStack[A]() {
 
   private[this] var lst: ObjStack.Lst[A] =
     null
@@ -77,7 +77,7 @@ private[choam] final class ObjStack[A]() {
   }
 }
 
-private[choam] object ObjStack {
+private object ObjStack {
 
   final class Lst[+A](final val head: A, final val tail: Lst[A]) {
 

@@ -16,13 +16,13 @@
  */
 
 package dev.tauri.choam
-package internal
+package core
 
 import java.util.Arrays
 
 import scala.collection.immutable.ArraySeq
 
-private[choam] final class ByteStack(initSize: Int) {
+private final class ByteStack(initSize: Int) {
 
   require(initSize > 0)
   require((initSize & (initSize - 1)) == 0) // power of 2
@@ -96,7 +96,7 @@ private[choam] final class ByteStack(initSize: Int) {
   }
 }
 
-private[choam] final object ByteStack {
+private final object ByteStack {
 
   def splitAt(arr: Array[Byte], idx: Int): (Array[Byte], Array[Byte]) = {
     require(idx >= 0)

@@ -16,10 +16,9 @@
  */
 
 package dev.tauri.choam
+package core
 
 import scala.util.Try
-
-import internal.{ ByteStack, ObjStack }
 
 final class InternalStackSpec extends BaseSpecA {
 
