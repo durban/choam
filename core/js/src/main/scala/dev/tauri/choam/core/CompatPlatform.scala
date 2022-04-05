@@ -22,8 +22,4 @@ private[choam] object CompatPlatform {
 
   final type AtomicReferenceArray[A] =
     _root_.dev.tauri.choam.refs.AtomicReferenceArray[A]
-
-  final def threadOnSpinWait(): Unit = {
-    ()
-  }
 }
