@@ -24,7 +24,7 @@ package refs
  * in the Scala.js stdlib is not enough). This contains
  * exactly the methods we need.
  */
-private[choam] final class AtomicReferenceArray[A](size: Int) {
+private final class AtomicReferenceArray[A](size: Int) {
 
   require(size >= 0)
 

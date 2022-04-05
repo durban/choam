@@ -21,7 +21,7 @@ package refs
 import java.lang.ref.WeakReference
 
 import mcas.{ MemoryLocation, Version }
-import core.CompatPlatform.AtomicReferenceArray
+import CompatPlatform.AtomicReferenceArray
 import RefArray.RefArrayRef
 
 /**

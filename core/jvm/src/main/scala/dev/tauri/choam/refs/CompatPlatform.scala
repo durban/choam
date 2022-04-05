@@ -16,10 +16,10 @@
  */
 
 package dev.tauri.choam
-package core
+package refs
 
-private[choam] object CompatPlatform {
+private object CompatPlatform {
 
   final type AtomicReferenceArray[A] =
-    _root_.dev.tauri.choam.refs.AtomicReferenceArray[A]
+    _root_.java.util.concurrent.atomic.AtomicReferenceArray[A]
 }

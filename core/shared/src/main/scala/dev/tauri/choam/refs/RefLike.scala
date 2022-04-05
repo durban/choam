@@ -84,7 +84,7 @@ object RefLike {
   def catsRefFromRefLike[F[_] : Reactive, A](ref: RefLike[A]): CatsRef[F, A] =
     new CatsRefFromRefLike[F, A](ref) {}
 
-  private[choam] abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
+  private[refs] abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
     extends CatsRef[F, A] {
 
     def get: F[A] =
