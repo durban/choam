@@ -23,8 +23,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray
 import mcas.Mcas
 import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx, Params }
 
-// TODO: move all exchanger stuff into dev.tauri.choam.exchanger
-private[choam] sealed trait ExchangerImplJvm[A, B] // TODO: make it private
+private sealed trait ExchangerImplJvm[A, B]
   extends Exchanger.UnsealedExchanger[A, B] {
 
   import ExchangerImplJvm.{ size => _, _ }
@@ -34,7 +33,7 @@ private[choam] sealed trait ExchangerImplJvm[A, B] // TODO: make it private
 
   protected def outgoing: AtomicReferenceArray[ExchangerNode[_]]
 
-  private[choam] def key: Exchanger.Key
+  private[core] def key: Exchanger.Key
 
   protected def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]]
 
@@ -50,7 +49,7 @@ private[choam] sealed trait ExchangerImplJvm[A, B] // TODO: make it private
     }
   }
 
-  private[choam] final def tryExchange[C](
+  private[core] final def tryExchange[C](
     msg: Msg,
     params: Params,
     ctx: Mcas.ThreadContext,
@@ -282,24 +281,24 @@ private final class DualExchangerImplJvm[A, B](
   protected final override def outgoing =
     dual.incoming
 
-  private[choam] final override def key =
+  private[core] final override def key =
     dual.key
 
   protected final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]] =
     dual.initializeIfNeeded(!retInc)
 }
 
-private final class PrimaryExchangerImplJvm[A, B] private[choam] (
+private final class PrimaryExchangerImplJvm[A, B] private[core] (
 ) extends PrimaryExchangerImplJvmBase
   with ExchangerImplJvm[A, B] {
 
   final override val dual: Exchanger[B, A] =
     new DualExchangerImplJvm[B, A](this)
 
-  protected[choam] final override val key =
+  protected[core] final override val key =
     new Exchanger.Key
 
-  protected[choam] final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]] = {
+  protected[core] final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]] = {
     val inc = this.incoming match {
       case null =>
         val newInc = ExchangerImplJvm.mkArray()
@@ -323,23 +322,23 @@ private final class PrimaryExchangerImplJvm[A, B] private[choam] (
     if (retInc) inc else out
   }
 
-  protected[choam] final override def incoming: AtomicReferenceArray[ExchangerNode[_]] =
+  protected[core] final override def incoming: AtomicReferenceArray[ExchangerNode[_]] =
     this._incoming
 
-  protected[choam] final override def outgoing: AtomicReferenceArray[ExchangerNode[_]] =
+  protected[core] final override def outgoing: AtomicReferenceArray[ExchangerNode[_]] =
     this._outgoing
 }
 
-private[choam] object ExchangerImplJvm {
+private object ExchangerImplJvm {
 
-  private[choam] def unsafe[A, B]: Exchanger[A, B] = {
+  private[core] def unsafe[A, B]: Exchanger[A, B] = {
     new PrimaryExchangerImplJvm[A, B]()
   }
 
-  private[choam] type StatMap =
+  private[core] type StatMap =
     Map[Exchanger.Key, Any]
 
-  private[choam] final object StatMap {
+  private[core] final object StatMap {
     def empty: StatMap =
       Map.empty
   }
@@ -473,14 +472,14 @@ private[choam] object ExchangerImplJvm {
       0
   }
 
-  private[choam] val size = Math.min(
+  private[core] val size = Math.min(
     // `availableProcessors` is guaranteed to return >= 1,
     // so this is always at least (1 + 1) / 2 = 1
     (Runtime.getRuntime().availableProcessors() + 1) >>> 1,
     0xFF
   )
 
-  private[choam] def mkArray(): AtomicReferenceArray[ExchangerNode[_]] = {
+  private[core] def mkArray(): AtomicReferenceArray[ExchangerNode[_]] = {
     // TODO: use padded references
     new AtomicReferenceArray[ExchangerNode[_]](this.size)
   }

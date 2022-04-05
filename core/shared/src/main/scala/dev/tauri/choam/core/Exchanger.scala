@@ -23,11 +23,10 @@ import java.util.concurrent.atomic.LongAdder
 sealed trait Exchanger[A, B] {
   def exchange: Rxn[A, B]
   def dual: Exchanger[B, A]
-  private[choam] def key: Exchanger.Key
+  private[core] def key: Exchanger.Key
 }
 
-/** Private, because an `Exchanger` is unsafe (may block indefinitely) */
-private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: make it really private
+private object Exchanger extends ExchangerCompanionPlatform {
 
   private[core] def apply[A, B]: Axn[Exchanger[A, B]] =
     Rxn.unsafe.delay { _ => this.unsafe[A, B] }
@@ -80,7 +79,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: ma
       else new ProfiledExchanger[B, A](this, underlying.dual, counter)
     }
 
-    private[choam] final override val key =
+    private[core] final override val key =
       underlying.key
   }
 
@@ -88,15 +87,15 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: ma
 
   import mcas.{ Mcas, HalfEMCASDescriptor }
 
-  private[choam] val paramsKey =
+  private[core] val paramsKey =
     new Exchanger.Key
 
   // TODO: these are temporarily mutable for benchmarking
   @volatile
-  private[choam] var params: Params =
+  private[core] var params: Params =
     Params()
 
-  private[choam] final case class Params(
+  private[core] final case class Params(
     final val maxMisses: Byte =
       64,
     final val minMisses: Byte =

@@ -47,8 +47,6 @@ package object choam {
 
   final type Exchanger[A, B] = core.Exchanger[A, B]
 
-  final val Exchanger: core.Exchanger.type = core.Exchanger
-
   /*
    * Implementation note: in some cases, composing
    * `Rxn`s with `>>>` (or `*>`) will be faster

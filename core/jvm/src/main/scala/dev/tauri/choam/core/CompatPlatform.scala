@@ -23,6 +23,7 @@ private[choam] object CompatPlatform {
   final type AtomicReferenceArray[A] =
     _root_.java.util.concurrent.atomic.AtomicReferenceArray[A]
 
+  // TODO: unused:
   final def threadOnSpinWait(): Unit = {
     Thread.onSpinWait()
   }

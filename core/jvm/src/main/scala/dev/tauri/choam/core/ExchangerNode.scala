@@ -21,7 +21,7 @@ package core
 import mcas.Mcas
 import Exchanger.{ Msg, NodeResult }
 
-private[choam] final class ExchangerNode[C](val msg: Msg) {
+private final class ExchangerNode[C](val msg: Msg) {
 
   /**
    *     .---> result: FinishedEx[C] (fulfiller successfully completed)

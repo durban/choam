@@ -28,7 +28,7 @@ private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
 
     // NB: this MUST be initialized before `dual`,
     // otherwise it could remain uninitialized (null).
-    private[choam] final override val key: Exchanger.Key = {
+    private[core] final override val key: Exchanger.Key = {
       if (d ne null) d.key
       else new Exchanger.Key
     }
@@ -38,7 +38,7 @@ private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
       else new ExchangerImplJs[B, A](this)
     }
 
-    private[choam] final def tryExchange[C](
+    private[core] final def tryExchange[C](
       @unused msg: Exchanger.Msg,
       @unused params: Exchanger.Params,
       @unused ctx: Mcas.ThreadContext,

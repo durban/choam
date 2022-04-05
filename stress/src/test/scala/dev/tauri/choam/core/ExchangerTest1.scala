@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package core
 
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes

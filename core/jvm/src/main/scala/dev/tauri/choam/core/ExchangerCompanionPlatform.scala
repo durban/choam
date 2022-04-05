@@ -18,8 +18,8 @@
 package dev.tauri.choam
 package core
 
-private[choam] abstract class ExchangerCompanionPlatform { // TODO: make it private
+private abstract class ExchangerCompanionPlatform {
 
-  private[choam] def unsafe[A, B]: Exchanger[A, B] =
+  private[core] def unsafe[A, B]: Exchanger[A, B] =
     ExchangerImplJvm.unsafe[A, B]
 }

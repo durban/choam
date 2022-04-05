@@ -16,13 +16,12 @@
  */
 
 package dev.tauri.choam
-package bench
+package core
 
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import util.KCASImplState
-import core.RxnProfiler
+import bench.util.KCASImplState
 
 @Fork(3)
 @Threads(2) // 4, 6, 8, ...

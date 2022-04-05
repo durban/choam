@@ -20,7 +20,7 @@ package core
 
 private abstract class RxnCompanionPlatform { this: Rxn.type =>
 
-  private[choam] final type ExchangerImpl[A, B] = ExchangerImplJvm[A, B]
+  private[core] final type ExchangerImpl[A, B] = ExchangerImplJvm[A, B]
 
-  private[choam] final type ExStatMap = ExchangerImplJvm.StatMap
+  private[core] final type ExStatMap = ExchangerImplJvm.StatMap
 }

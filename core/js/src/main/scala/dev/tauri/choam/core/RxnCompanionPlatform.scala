@@ -18,9 +18,9 @@
 package dev.tauri.choam
 package core
 
-private[choam] abstract class RxnCompanionPlatform { this: Rxn.type => // TODO: make it private
+private abstract class RxnCompanionPlatform { this: Rxn.type =>
 
   private[core] final type ExchangerImpl[A, B] = ExchangerImplJs[A, B]
 
-  private[choam] final type ExStatMap = Map[Exchanger.Key, AnyRef]
+  private[core] final type ExStatMap = Map[Exchanger.Key, AnyRef]
 }
