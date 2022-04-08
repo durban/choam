@@ -132,30 +132,6 @@ object Ref extends RefInstances0 {
     refs.unsafeNewRefU1(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
-  // TODO: do we need this? (We have `forceValidate`.)
-  private[choam] final def unsafeWithCurrentVer[A](
-    initial: A,
-    ctx: mcas.Mcas.ThreadContext,
-  ): Ref[A] = {
-    // Important: we create a fresh ref, which
-    // appears to have been modified when the
-    // current global version was committed.
-    // This is not the case, but the ref is fresh,
-    // so there is no chance of inconsistency.
-    // (Except if there are other unsafe things
-    // going on.)
-    val currentVer: Long = ctx.start().validTs
-    assert(mcas.Version.isValid(currentVer))
-    val ref = this.unsafe(initial)
-    // TODO: We could optimize this, by creating a ctor
-    // TODO: for Ref which accepts currentVer; that way
-    // TODO: we could avoid this extra CAS (although that
-    // TODO: CAS is on a thread-confined object, so it
-    // TODO: might already be optimized by the JVM).
-    assert(ref.loc.unsafeCasVersionVolatile(mcas.Version.Start, currentVer))
-    ref
-  }
-
   /** Only for testing/benchmarks */
   private[choam] def unsafeWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
     refs.unsafeNewRefP1(initial)(i0, i1, i2, i3)
