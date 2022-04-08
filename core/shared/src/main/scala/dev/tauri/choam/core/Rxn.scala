@@ -183,7 +183,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     this.productR(that)
 
   final def productR[X <: A, C](that: Rxn[X, C]): Rxn[X, C] =
-    (this * that).map(_._2)
+    new ProductR[X, B, C](this, that)
 
   final def first[C]: Rxn[(A, C), (B, C)] =
     this × identity[C]
@@ -608,6 +608,11 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Pure(${a})"
   }
 
+  private final class ProductR[A, B, C](val left: Rxn[A, B], val right: Rxn[A, C]) extends Rxn[A, C] {
+    private[core] final override def tag = 24
+    final override def toString: String = s"ProductR(${left}, ${right})"
+  }
+
   // Interpreter:
 
   private[this] def newStack[A]() = {
@@ -623,6 +628,7 @@ object Rxn extends RxnInstances0 {
   private[this] final val ContCommitPostCommit = 6.toByte
   private[this] final val ContUpdWith = 7.toByte
   private[this] final val ContAs = 8.toByte
+  private[this] final val ContProductR = 9.toByte
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
   private[this] final val postCommitResultMarker =
@@ -891,6 +897,9 @@ object Rxn extends RxnInstances0 {
         case 8 => // ContAs
           a = contK.pop()
           next()
+        case 9 => // ContProductR
+          a = contK.pop()
+          contK.pop().asInstanceOf[Rxn[Any, Any]]
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -1249,6 +1258,12 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[Pure[Any]]
           a = c.a
           loop(next())
+        case 24 => // ProductR
+          val c = curr.asInstanceOf[ProductR[Any, Any, Any]]
+          contT.push(ContProductR)
+          contK.push(c.right)
+          contK.push(a)
+          loop(c.left)
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }

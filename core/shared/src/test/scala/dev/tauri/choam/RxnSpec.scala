@@ -682,6 +682,17 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("*> receives the correct input") {
+    for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("b").run[F]
+      res <- (r1.getAndSet *> r2.getAndSet).apply[F]("x")
+      _ <- assertEqualsF(res, "b")
+      _ <- assertResultF(r1.get.run[F], "x")
+      _ <- assertResultF(r2.get.run[F], "x")
+    } yield ()
+  }
+
   test("Recursive >> stack safety") {
     def foo(i: Int, one: Rxn[Int, Int]): Rxn[Int, Int] = {
       if (i == 0) one
