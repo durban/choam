@@ -61,16 +61,16 @@ package object choam {
   /**
    * The description of an effect, which (when executed),
    * results in a value of type `A`. During execution,
-   * it may update any number of [[Ref]]s atomically. (It
+   * it may update any number of [[dev.tauri.choam.Ref Ref]]s atomically. (It
    * may also create new `Ref`s.)
    *
    * This type forms a `Monad`. However, when composing
-   * these kinds of effects, also consider using [[Rxn]]
+   * these kinds of effects, also consider using [[dev.tauri.choam.core.Rxn Rxn]]
    * and `>>>` or `*>` instead of `flatMap`.
    *
-   * The relation between [[Axn]] and [[Rxn]] is approximately
+   * The relation between [[Axn]] and [[dev.tauri.choam.core.Rxn Rxn]] is approximately
    * `Axn[A] ≡ Axn[Any, A]`; or, alternatively
-   * `Rxn[A, B] ≡ (A => Axn[B])` (see [[Rxn#toFunction]]).
+   * `Rxn[A, B] ≡ (A => Axn[B])` (see [[dev.tauri.choam.core.Rxn!.toFunction toFunction]]).
    */
   final type Axn[+A] = Rxn[Any, A] // short for 'astaxanthin'
 
