@@ -145,7 +145,7 @@ object Ref extends RefInstances0 {
     refs.Ref2.p2(a, b)
 }
 
-private[choam] sealed abstract class RefInstances0 extends RefInstances1 { this: Ref.type =>
+private[refs] sealed abstract class RefInstances0 extends RefInstances1 { this: Ref.type =>
 
   private[this] val _orderingInstance: Ordering[Ref[Any]] = new Ordering[Ref[Any]] {
     final override def compare(x: Ref[Any], y: Ref[Any]): Int =
@@ -156,7 +156,7 @@ private[choam] sealed abstract class RefInstances0 extends RefInstances1 { this:
     _orderingInstance.asInstanceOf[Ordering[Ref[A]]]
 }
 
-private[choam] sealed abstract class RefInstances1 extends RefInstances2 { this: Ref.type =>
+private sealed abstract class RefInstances1 extends RefInstances2 { this: Ref.type =>
 
   private[this] val _orderInstance: Order[Ref[Any]] = new Order[Ref[Any]] {
     final override def compare(x: Ref[Any], y: Ref[Any]): Int =
@@ -167,7 +167,7 @@ private[choam] sealed abstract class RefInstances1 extends RefInstances2 { this:
     _orderInstance.asInstanceOf[Order[Ref[A]]]
 }
 
-private[choam] sealed abstract class RefInstances2 { this: Ref.type =>
+private sealed abstract class RefInstances2 { this: Ref.type =>
 
   private[this] val _hashInstance: Hash[Ref[Any]] =
     Hash.fromUniversalHashCode[Ref[Any]]
