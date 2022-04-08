@@ -256,7 +256,7 @@ object Rxn extends RxnInstances0 {
   // API:
 
   def pure[A](a: A): Axn[A] =
-    lift(_ => a) // TODO: optimize
+    new Pure[A](a)
 
   /** Old name of `pure` */
   private[choam] def ret[A](a: A): Axn[A] =
@@ -601,6 +601,11 @@ object Rxn extends RxnInstances0 {
   private final class ForceValidate() extends Rxn[Any, Unit] {
     private[core] final override def tag = 22
     final override def toString: String = s"ForceValidate()"
+  }
+
+  private final class Pure[A](val a: A) extends Rxn[Any, A] {
+    private[core] final override def tag = 23
+    final override def toString: String = s"Pure(${a})"
   }
 
   // Interpreter:
@@ -1240,6 +1245,10 @@ object Rxn extends RxnInstances0 {
           } else {
             loop(retry())
           }
+        case 23 => // Pure
+          val c = curr.asInstanceOf[Pure[Any]]
+          a = c.a
+          loop(next())
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }

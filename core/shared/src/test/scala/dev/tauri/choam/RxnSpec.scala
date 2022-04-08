@@ -1000,7 +1000,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     def foo[G[_] : Monad](ga: G[Int]): G[String] =
       ga.flatMap(x => x.toString.pure[G])
 
-    assertResultF(foo[Rxn[Any, *]](Rxn.ret(42)).run[F], "42")
+    assertResultF(foo[Rxn[Any, *]](Rxn.pure(42)).run[F], "42")
   }
 
   test("ArrowChoice instance") {
