@@ -45,6 +45,13 @@ class FlatMapBench {
   }
 
   @Benchmark
+  def withFlatMapFOld(s: FlatMapBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+    val idx = Math.abs(k.nextInt()) % ArrowBench.size
+    val r: Axn[String] = s.rsWithFlatMapFOld(idx)
+    bh.consume(r.unsafePerform((), k.kcasImpl))
+  }
+
+  @Benchmark
   def withStarGreater(s: FlatMapBench.St, bh: Blackhole, k: KCASImplState): Unit = {
     val idx = Math.abs(k.nextInt()) % ArrowBench.size
     val r: Axn[String] = s.rsWithStarGreater(idx)
@@ -60,6 +67,7 @@ object FlatMapBench {
   sealed abstract class OpType extends Product with Serializable
   final case object FlatMap extends OpType
   final case object FlatMapF extends OpType
+  final case object FlatMapFOld extends OpType
   final case object StarGreater extends OpType
 
   @State(Scope.Benchmark)
@@ -92,6 +100,13 @@ object FlatMapBench {
       }
     }
 
+    val rsWithFlatMapFOld: List[Axn[String]] = {
+      List.tabulate(size) { idx =>
+        val idx2 = (idx + 1) % size
+        buildReaction(n, first = addXs(idx), last = addYs(idx2), opType = FlatMapFOld)
+      }
+    }
+
     val rsWithStarGreater: List[Axn[String]] = {
       List.tabulate(size) { idx =>
         val idx2 = (idx + 1) % size
@@ -107,6 +122,7 @@ object FlatMapBench {
           val newAcc = opType match {
             case FlatMap => acc.flatMap { _ => dummy }
             case FlatMapF => acc.flatMapF { _ => dummy }
+            case FlatMapFOld => acc.flatMapFOld { _ => dummy }
             case StarGreater => acc *> dummy
           }
           go(n - 1, newAcc)
@@ -116,6 +132,7 @@ object FlatMapBench {
       opType match {
         case FlatMap => go(n, first).flatMap { _ => last }
         case FlatMapF => go(n, first).flatMapF { _ => last }
+        case FlatMapFOld => go(n, first).flatMapFOld { _ => last }
         case StarGreater => go(n, first) *> last
       }
     }

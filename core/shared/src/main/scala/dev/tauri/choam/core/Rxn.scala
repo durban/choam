@@ -198,8 +198,11 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     self >>> comp
   }
 
-  // TODO: optimize
   final def flatMapF[C](f: B => Axn[C]): Rxn[A, C] =
+    new FlatMapF(this, f)
+
+  // TODO: Unoptimized impl.:
+  private[choam] final def flatMapFOld[C](f: B => Axn[C]): Rxn[A, C] =
     this >>> computed(f)
 
   // TODO: optimize
@@ -564,6 +567,11 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"ProductR(${left}, ${right})"
   }
 
+  private final class FlatMapF[A, B, C](val rxn: Rxn[A, B], val f: B => Axn[C]) extends Rxn[A, C] {
+    private[core] final override def tag = 25
+    final override def toString: String = s"FlatMapF(${rxn}, <function>)"
+  }
+
   // Interpreter:
 
   private[this] def newStack[A]() = {
@@ -580,6 +588,7 @@ object Rxn extends RxnInstances0 {
   private[this] final val ContUpdWith = 7.toByte
   private[this] final val ContAs = 8.toByte
   private[this] final val ContProductR = 9.toByte
+  private[this] final val ContFlatMapF = 10.toByte
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
   private[this] final val postCommitResultMarker =
@@ -851,6 +860,8 @@ object Rxn extends RxnInstances0 {
         case 9 => // ContProductR
           a = contK.pop()
           contK.pop().asInstanceOf[Rxn[Any, Any]]
+        case 10 => //ContFlatMapF
+          contK.pop().asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -1215,6 +1226,11 @@ object Rxn extends RxnInstances0 {
           contK.push(c.right)
           contK.push(a)
           loop(c.left)
+        case 25 => // FlatMapF
+          val c = curr.asInstanceOf[FlatMapF[Any, Any, Any]]
+          contT.push(ContFlatMapF)
+          contK.push(c.f)
+          loop(c.rxn)
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }
