@@ -477,7 +477,7 @@ lazy val dependencies = new {
     "io.github.cquiroz" %%% "scala-java-locales" % scalaJsLocaleVersion,
     "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
   ))
-  val scalaJsSecRnd = Def.setting("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0")
+  val scalaJsSecRnd = Def.setting(("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13))
   val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-8140612")
 
   val test = Def.setting[Seq[ModuleID]] {
