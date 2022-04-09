@@ -299,33 +299,6 @@ object Rxn extends RxnInstances0 {
     ra.get * rb.get
   }
 
-  @deprecated("old implementation with new updWith", since = "2022-01-07")
-  final def consistentReadWithUpdWith[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
-    ra.updWith[Any, (A, B)] { (a, _) =>
-      rb.upd[Any, B] { (b, _) =>
-        (b, b)
-      }.map { b => (a, (a, b)) }
-    }
-  }
-
-  @deprecated("old implementation with invisibleRead/cas", since = "2021-03-27")
-  private[choam] def consistentReadOld[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
-    ra.unsafeDirectRead >>> computed[A, (A, B)] { a =>
-      rb.unsafeDirectRead >>> computed[B, (A, B)] { b =>
-        (ra.unsafeCas(a, a) × rb.unsafeCas(b, b)).provide(((), ())).map { _ => (a, b) }
-      }
-    }
-  }
-
-  @deprecated("old implementation with old updWith", since = "2021-11-27")
-  def consistentReadWithOldUpdWith[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
-    Rxn.ref.updWithOld[A, Any, (A, B)](ra) { (a, _) =>
-      rb.upd[Any, B] { (b, _) =>
-        (b, b)
-      }.map { b => (a, (a, b)) }
-    }
-  }
-
   // TODO: maybe move this to `Ref`?
   def consistentReadMany[A](refs: List[Ref[A]]): Axn[List[A]] = {
     refs.foldRight(pure(List.empty[A])) { (ref, acc) =>
@@ -1114,7 +1087,7 @@ object Rxn extends RxnInstances0 {
             a = b
             loop(next())
           }
-        case 9 => // InvisibleRead
+        case 9 => // DirectRead
           val c = curr.asInstanceOf[DirectRead[B]]
           a = ctx.readDirect(c.ref)
           loop(next())

@@ -29,8 +29,7 @@ import InterpreterBench._
 class InterpreterBench {
 
   // TODO: this benchmark doesn't include:
-  // TODO: - invisible read
-  // TODO: - delayComputed
+  // TODO: - direct read
   // TODO: - creating new Refs
 
   @Benchmark
