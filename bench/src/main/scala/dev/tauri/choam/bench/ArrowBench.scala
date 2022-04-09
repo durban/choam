@@ -41,12 +41,6 @@ class ArrowBench {
   }
 
   @Benchmark
-  def updDerived(s: ArrowBench.USt, bh: Blackhole, k: KCASImplState): Unit = {
-    val r = s.updDerived(s.refs(Math.abs(k.nextInt()) % ArrowBench.size))
-    bh.consume(r.unsafePerform(k.nextString(), k.kcasImpl))
-  }
-
-  @Benchmark
   def updPrimitive(s: ArrowBench.USt, bh: Blackhole, k: KCASImplState): Unit = {
     val r = s.updPrimitive(s.refs(Math.abs(k.nextInt()) % ArrowBench.size))
     bh.consume(r.unsafePerform(k.nextString(), k.kcasImpl))
@@ -83,10 +77,6 @@ object ArrowBench {
 
     val refs: List[Ref[Long]] = List.fill(size) {
       Ref.unsafe[Long](ThreadLocalRandom.current().nextLong())
-    }
-
-    def updDerived(ref: Ref[Long]): Rxn[String, Long] = {
-      Rxn.ref.updDerived[Long, String, Long](ref) { (i, s) => (i + 1, s.length.toLong) }
     }
 
     def updPrimitive(ref: Ref[Long]): Rxn[String, Long] = {

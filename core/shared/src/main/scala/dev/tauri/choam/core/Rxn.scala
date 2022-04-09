@@ -325,30 +325,8 @@ object Rxn extends RxnInstances0 {
     final def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
       new Upd(r.loc, f)
 
-    /** Old (slower) impl of `upd`, keep it for benchmarks */
-    private[choam] final def updDerived[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] = {
-      val self: Rxn[B, (A, B)] = r.unsafeDirectRead.first[B].contramap[B](b => ((), b))
-      val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
-        val (na, c) = f(oa, b)
-        r.unsafeCas(oa, na).as(c)
-      }
-      self >>> comp
-    }
-
     final def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
       new UpdWith[A, B, C](r.loc, f)
-
-    // old, derived implementation:
-    private[choam] final def updWithOld[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] = {
-      val self: Rxn[B, (A, B)] = Rxn.unsafe.directRead(r).first[B].contramap[B](b => ((), b))
-      val comp: Rxn[(A, B), C] = computed[(A, B), C] { case (oa, b) =>
-        f(oa, b).flatMap {
-          case (na, c) =>
-            Rxn.unsafe.cas(r, oa, na).map(_ => c)
-        }
-      }
-      self >>> comp
-    }
   }
 
   final object unsafe {
