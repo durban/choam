@@ -43,7 +43,7 @@ def openJ9Options: String = {
 ThisBuild / scalaVersion := scala2
 ThisBuild / crossScalaVersions := Seq(
   (ThisBuild / scalaVersion).value,
-  // scala3, // TODO: https://github.com/zio/zio/issues/6544
+  scala3,
 )
 ThisBuild / scalaOrganization := "org.scala-lang"
 ThisBuild / evictionErrorLevel := Level.Warn
