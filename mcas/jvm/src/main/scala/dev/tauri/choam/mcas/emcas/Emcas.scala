@@ -253,6 +253,7 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
               val successful = (parentStatus != McasStatus.FailedVal)
               val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
               val currVer = if (successful) parentStatus else wd.oldVersion
+              Reference.reachabilityFence(mark)
               HalfWordDescriptor(ref, ov = a, nv = a, version = currVer)
             }
           }
@@ -340,6 +341,7 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
     val ver1 = ref.unsafeGetVersionVolatile()
     ref.unsafeGetVolatile() match {
       case wd: WordDescriptor[_] =>
+        // TODO: we may need to hold the marker here!
         val p = wd.parent
         val s = p.getStatus()
         if (s == McasStatus.Active) {
@@ -479,13 +481,16 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
       assert(Version.isValid(version))
 
       if (!equ(value, wordDesc.ov)) {
+        Reference.reachabilityFence(mark)
         // Expected value is different:
         McasStatus.FailedVal
       } else if (version != wordDesc.oldVersion) {
+        Reference.reachabilityFence(mark)
         // The expected value is the same,
         // but the expected version isn't:
         McasStatus.FailedVal
       } else if (desc.getStatus() != McasStatus.Active) {
+        Reference.reachabilityFence(mark)
         // we have been finalized (by a helping thread), no reason to continue
         EmcasStatus.Break
       } else {
@@ -702,9 +707,9 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
       val fullDesc = EmcasDescriptor.prepare(desc)
       val res = MCAS(desc = fullDesc, ctx = ctx)
       if (EmcasStatus.isSuccessful(res)) {
-        // EMCAS stores a version in the descriptor,
+        // `Emcas` stores a version in the descriptor,
         // to signify success; however, here we return
-        // a constant, to follow the MCAS API:
+        // a constant, to follow the `Mcas` API:
         McasStatus.Successful
       } else {
         assert(res == McasStatus.FailedVal)
