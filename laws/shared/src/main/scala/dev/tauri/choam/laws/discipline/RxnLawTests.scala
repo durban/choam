@@ -86,6 +86,7 @@ trait RxnLawTests extends Laws { this: TestInstances =>
     "disributive (× and +) 2" -> forAll(laws.distributiveAndAlsoChoice2[A, B, C, D] _),
     "associative ×" -> forAll(laws.associativeAndAlso[A, B, C, D, E, F] _),
     "flatMapF is >>> and computed" -> forAll(laws.flatMapFIsAndThenComputed[A, B, C] _),
+    "flatMap is .second, >>> and computed" -> forAll(laws.flatMapIsSecondAndThenComputed[A, B, C] _),
     "retry is neutral for choice (left)" -> forAll(laws.choiceRetryNeutralLeft[A, B] _),
     "retry is neutral for choice (right)" -> forAll(laws.choiceRetryNeutralRight[A, B] _),
   )

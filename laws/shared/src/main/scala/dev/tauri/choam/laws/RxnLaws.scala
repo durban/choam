@@ -79,9 +79,17 @@ trait RxnLaws {
     )
   }
 
-  // TODO: similar for `flatMap`
   def flatMapFIsAndThenComputed[A, B, C](x: A =#> B, f: B => Axn[C]): IsEq[Rxn[A, C]] =
     x.flatMapF(f) <-> (x >>> computed(f))
+
+  def flatMapIsSecondAndThenComputed[A, B, C](x: A =#> B, f: B => Rxn[A, C]): IsEq[Rxn[A, C]] =
+    x.flatMap(f) <-> flatMapDerived(x, f)
+
+  private def flatMapDerived[A, B, C](rxn: Rxn[A, B], f: B => Rxn[A, C]): Rxn[A, C] = {
+    val self: Rxn[A, (A, B)] = rxn.second[A].contramap[A](x => (x, x))
+    val comp: Rxn[(A, B), C] = computed[(A, B), C](xb => f(xb._2).provide(xb._1))
+    self >>> comp
+  }
 
   // TODO: does this always hold?
   def choiceRetryNeutralRight[A, B](x: A =#> B) =
