@@ -191,8 +191,11 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def second[C]: Rxn[(C, A), (C, B)] =
     identity[C] × this
 
-  // TODO: optimize
-  final def flatMap[X <: A, C](f: B => Rxn[X, C]): Rxn[X, C] = {
+  final def flatMap[X <: A, C](f: B => Rxn[X, C]): Rxn[X, C] =
+    new FlatMap(this, f)
+
+  // TODO: Unoptimized impl.:
+  private[choam] final def flatMapOld[X <: A, C](f: B => Rxn[X, C]): Rxn[X, C] = {
     val self: Rxn[X, (X, B)] = this.second[X].contramap[X](x => (x, x))
     val comp: Rxn[(X, B), C] = computed[(X, B), C](xb => f(xb._2).provide(xb._1))
     self >>> comp
@@ -572,6 +575,11 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"FlatMapF(${rxn}, <function>)"
   }
 
+  private final class FlatMap[A, B, C](val rxn: Rxn[A, B], val f: B => Rxn[A, C]) extends Rxn[A, C] {
+    private[core] final override def tag = 26
+    final override def toString: String = s"FlatMap(${rxn}, <function>)"
+  }
+
   // Interpreter:
 
   private[this] def newStack[A]() = {
@@ -589,6 +597,7 @@ object Rxn extends RxnInstances0 {
   private[this] final val ContAs = 8.toByte
   private[this] final val ContProductR = 9.toByte
   private[this] final val ContFlatMapF = 10.toByte
+  private[this] final val ContFlatMap = 11.toByte
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
   private[this] final val postCommitResultMarker =
@@ -860,8 +869,12 @@ object Rxn extends RxnInstances0 {
         case 9 => // ContProductR
           a = contK.pop()
           contK.pop().asInstanceOf[Rxn[Any, Any]]
-        case 10 => //ContFlatMapF
+        case 10 => // ContFlatMapF
           contK.pop().asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
+        case 11 => // ContFlatMap
+          val n = contK.pop().asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
+          a = contK.pop()
+          n
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -1229,6 +1242,12 @@ object Rxn extends RxnInstances0 {
         case 25 => // FlatMapF
           val c = curr.asInstanceOf[FlatMapF[Any, Any, Any]]
           contT.push(ContFlatMapF)
+          contK.push(c.f)
+          loop(c.rxn)
+        case 26 => // FlatMap
+          val c = curr.asInstanceOf[FlatMap[Any, Any, Any]]
+          contT.push(ContFlatMap)
+          contK.push(a)
           contK.push(c.f)
           loop(c.rxn)
         case t => // mustn't happen
