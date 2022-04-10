@@ -870,7 +870,9 @@ object Rxn extends RxnInstances0 {
           a = contK.pop()
           contK.pop().asInstanceOf[Rxn[Any, Any]]
         case 10 => // ContFlatMapF
-          contK.pop().asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
+          val n = contK.pop().asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
+          a = () : Any
+          n
         case 11 => // ContFlatMap
           val n = contK.pop().asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
           a = contK.pop()
