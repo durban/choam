@@ -94,6 +94,10 @@ abstract class BaseSpecTickedZIO
     super.munitValueTransforms :+ this.transformZIO
   }
 
+  override def munitIgnore: Boolean = {
+    super.munitIgnore || this.isOpenJ9()
+  }
+
   private def transformZIO: ValueTransform = {
     new this.ValueTransform(
       "Ticked ZIO",
