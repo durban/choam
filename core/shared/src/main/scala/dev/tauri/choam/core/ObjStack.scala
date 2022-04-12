@@ -18,18 +18,34 @@
 package dev.tauri.choam
 package core
 
+import scala.collection.mutable.{ Stack => MutStack }
+
 private final class ObjStack[A]() {
 
+  private[this] val scratch: MutStack[A] =
+    new MutStack
+
   private[this] var lst: ObjStack.Lst[A] =
-    null
+    ObjStack.Lst.empty[A]
 
   final override def toString: String = {
-    if (this.lst ne null) s"ObjStack(${this.lst.mkString(", ")})"
-    else "ObjStack()"
+    if (this.lst ne null) {
+      if (this.scratch.nonEmpty) {
+        s"ObjStack(${this.scratch.mkString(", ")}, ${this.lst.mkString(", ")})"
+      } else {
+        s"ObjStack(${this.lst.mkString(", ")})"
+      }
+    } else {
+      if (this.scratch.nonEmpty) {
+        s"ObjStack(${this.scratch.mkString(", ")})"
+      } else {
+        "ObjStack()"
+      }
+    }
   }
 
   final def push(a: A): Unit = {
-    this.lst = new ObjStack.Lst(a, this.lst)
+    this.scratch.push(a)
   }
 
   final def pushAll(as: Iterable[A]): Unit = {
@@ -39,7 +55,7 @@ private final class ObjStack[A]() {
     }
   }
 
-  private[this] final  def assertNonEmpty(): Unit = {
+  private[this] final def assertNonEmpty(): Unit = {
     if (this.isEmpty) {
       throw new NoSuchElementException
     }
@@ -47,33 +63,46 @@ private final class ObjStack[A]() {
 
   final def pop(): A = {
     assertNonEmpty()
-    val r = this.lst.head
-    this.lst = this.lst.tail
-    r
+    if (this.scratch.nonEmpty) {
+      this.scratch.pop()
+    } else {
+      val r = this.lst.head
+      this.lst = this.lst.tail
+      r
+    }
   }
 
   final def clear(): Unit = {
     this.lst = null
+    this.scratch.clear()
   }
 
   final def isEmpty: Boolean = {
-    this.lst eq null
+    (this.lst eq null) && this.scratch.isEmpty
   }
 
   final def nonEmpty: Boolean = {
-    this.lst ne null
+    (this.lst ne null) || this.scratch.nonEmpty
   }
 
   final def takeSnapshot(): ObjStack.Lst[A] = {
-    this.lst
+    var res = this.lst
+    var idx = this.scratch.length - 1
+    while (idx >= 0) {
+      res = ObjStack.Lst(this.scratch.apply(idx), res)
+      idx -= 1
+    }
+    res
   }
 
   final def loadSnapshot(snapshot: ObjStack.Lst[A]): Unit = {
     this.lst = snapshot
+    this.scratch.clear()
   }
 
   final def loadSnapshotUnsafe(snapshot: ObjStack.Lst[Any]): Unit = {
     this.lst = snapshot.asInstanceOf[ObjStack.Lst[A]]
+    this.scratch.clear()
   }
 }
 
