@@ -77,64 +77,74 @@ final class InternalStackSpec extends BaseSpecA {
     assert(Try { s.pop() }.isFailure)
   }
 
+  private def lstFromAs[A](as: A*): ObjStack.Lst[A] = {
+    val s = new ObjStack[A]
+    as.toList.reverse.foreach(s.push)
+    val res = s.takeSnapshot()
+    assertEquals(ObjStack.Lst.mkString(res), as.mkString(", "))
+    res
+  }
+
   test("ObjStack.Lst.length") {
     import ObjStack.Lst
     assertEquals(Lst.length(null), 0)
-    assertEquals(Lst.length(Lst(1, null)), 1)
-    assertEquals(Lst.length(Lst(1, Lst(2, null))), 2)
-    assertEquals(Lst.length(Lst(1, Lst(2, Lst(3, null)))), 3)
-    assertEquals(Lst.length(Lst(1, Lst(2, Lst(3, Lst(4, null))))), 4)
-  }
-
-  test("ObjStack.Lst.reversed") {
-    import ObjStack.Lst
-    assertEquals(Lst.reversed(null), null)
-    assertEquals(Lst.reversed(Lst(1, null)).mkString(), "1")
-    assertEquals(Lst.reversed(Lst(1, Lst(2, null))).mkString(), "2, 1")
-    assertEquals(Lst.reversed(Lst(1, Lst(2, Lst(3, null)))).mkString(), "3, 2, 1")
-    assertEquals(Lst.reversed(Lst(1, Lst(2, Lst(3, Lst(4, null))))).mkString(), "4, 3, 2, 1")
+    assertEquals(Lst.length(lstFromAs(1)), 1)
+    assertEquals(Lst.length(lstFromAs(1, 2)), 2)
+    assertEquals(Lst.length(lstFromAs(1, 2, 3)), 3)
+    assertEquals(Lst.length(lstFromAs(1, 2, 3, 4)), 4)
   }
 
   test("ObjStack.Lst.concat") {
     import ObjStack.Lst
     assertEquals(Lst.concat(null, null), null)
-    assertEquals(Lst.concat(Lst(1, null), null).mkString(), "1")
-    assertEquals(Lst.concat(null, Lst(1, null)).mkString(), "1")
-    assertEquals(Lst.concat(Lst(1, null), Lst(2, null)).mkString(), "1, 2")
-    assertEquals(Lst.concat(Lst(1, null), Lst(2, Lst(3, null))).mkString(), "1, 2, 3")
-    assertEquals(Lst.concat(Lst(1, Lst(2, null)), Lst(3, null)).mkString(), "1, 2, 3")
-    assertEquals(Lst.concat(Lst(1, Lst(2, null)), Lst(3, Lst(4, null))).mkString(), "1, 2, 3, 4")
-    assertEquals(Lst.concat(Lst(1, Lst(2, null)), null).mkString(), "1, 2")
-    assertEquals(Lst.concat(null, Lst(3, Lst(4, null))).mkString(), "3, 4")
+    assertEquals(Lst.mkString(Lst.concat(lstFromAs(1), null)), "1")
+    assertEquals(Lst.mkString(Lst.concat(null, lstFromAs(1))), "1")
+    assertEquals(Lst.mkString(Lst.concat(lstFromAs(1), lstFromAs(2))), "1, 2")
+    assertEquals(Lst.mkString(Lst.concat(lstFromAs(1), lstFromAs(2, 3))), "1, 2, 3")
+    assertEquals(Lst.mkString(Lst.concat(lstFromAs(1, 2), lstFromAs(3))), "1, 2, 3")
+    assertEquals(Lst.mkString(Lst.concat(lstFromAs(1, 2), lstFromAs(3, 4))), "1, 2, 3, 4")
+    assertEquals(Lst.mkString(Lst.concat(lstFromAs(1, 2), null)), "1, 2")
+    assertEquals(Lst.mkString(Lst.concat(null, lstFromAs(3, 4))), "3, 4")
+    assertEquals(
+      Lst.mkString(Lst.concat[Int](lstFromAs(1 to 100: _*), lstFromAs(200 to 300: _*))),
+      ((1 to 100).toList ++ (200 to 300).toList).mkString(", ")
+    )
   }
 
   test("ObjStack.Lst.splitBefore") {
     import ObjStack.Lst
     assertEquals(Lst.splitBefore[String](null, "a"), null)
-    assertEquals(Lst.splitBefore[String](Lst("x", null), "a"), null)
-    assertEquals(Lst.splitBefore[String](Lst("x", Lst("y", null)), "a"), null)
-    val (a0, b0) = Lst.splitBefore[String](Lst("a", null), "a")
+    assertEquals(Lst.splitBefore[String](lstFromAs("x"), "a"), null)
+    assertEquals(Lst.splitBefore[String](lstFromAs("x", "y"), "a"), null)
+    val (a0, b0) = Lst.splitBefore[String](lstFromAs("a"), "a")
     assertEquals(a0, null)
-    assertEquals(b0.mkString(), "a")
-    val (a1, b1) = Lst.splitBefore[String](Lst("a", Lst("b", null)), "a")
+    assertEquals(Lst.mkString(b0), "a")
+    val (a1, b1) = Lst.splitBefore[String](lstFromAs("a", "b"), "a")
     assertEquals(a1, null)
-    assertEquals(b1.mkString(), "a, b")
-    val (a2, b2) = Lst.splitBefore[String](Lst("a", Lst("b", null)), "b")
-    assertEquals(a2.mkString(), "a")
-    assertEquals(b2.mkString(), "b")
-    val (a3, b3) = Lst.splitBefore[String](Lst("a", Lst("b", Lst("c", null))), "b")
-    assertEquals(a3.mkString(), "a")
-    assertEquals(b3.mkString(), "b, c")
-    val (a4, b4) = Lst.splitBefore[String](Lst("a", Lst("b", Lst("c", null))), "a")
+    assertEquals(Lst.mkString(b1), "a, b")
+    val (a2, b2) = Lst.splitBefore[String](lstFromAs("a", "b"), "b")
+    assertEquals(Lst.mkString(a2), "a")
+    assertEquals(Lst.mkString(b2), "b")
+    val (a3, b3) = Lst.splitBefore[String](lstFromAs("a", "b", "c"), "b")
+    assertEquals(Lst.mkString(a3), "a")
+    assertEquals(Lst.mkString(b3), "b, c")
+    val (a4, b4) = Lst.splitBefore[String](lstFromAs("a", "b", "c"), "a")
     assertEquals(a4, null)
-    assertEquals(b4.mkString(), "a, b, c")
-    val (a5, b5) = Lst.splitBefore[String](Lst("a", Lst("b", Lst("c", null))), "c")
-    assertEquals(a5.mkString(), "a, b")
-    assertEquals(b5.mkString(), "c")
-    assertEquals(Lst.splitBefore[String](Lst("a", Lst("b", Lst("c", null))), "x"), null)
-    val (a6, b6) = Lst.splitBefore[String](Lst("a", Lst("b", Lst("c", Lst("d", Lst("e", Lst("f", null)))))), "d")
-    assertEquals(a6.mkString(), "a, b, c")
-    assertEquals(b6.mkString(), "d, e, f")
+    assertEquals(Lst.mkString(b4), "a, b, c")
+    val (a5, b5) = Lst.splitBefore[String](lstFromAs("a", "b", "c"), "c")
+    assertEquals(Lst.mkString(a5), "a, b")
+    assertEquals(Lst.mkString(b5), "c")
+    assertEquals(Lst.splitBefore[String](lstFromAs("a", "b", "c"), "x"), null)
+    val (a6, b6) = Lst.splitBefore[String](lstFromAs("a", "b", "c", "d", "e", "f"), "d")
+    assertEquals(Lst.mkString(a6), "a, b, c")
+    assertEquals(Lst.mkString(b6), "d, e, f")
+    val ints = (0 until 100).map(_.toString()).toList
+    val l7 = lstFromAs(ints: _*)
+    for (idx <- 50 to 80) {
+      val (a7, b7) = Lst.splitBefore(l7, ints(idx))
+      assertEquals(Lst.mkString(a7), (0 until idx).mkString(", "))
+      assertEquals(Lst.mkString(b7), (idx until 100).mkString(", "))
+    }
   }
 
   test("ByteStack.splitAt") {

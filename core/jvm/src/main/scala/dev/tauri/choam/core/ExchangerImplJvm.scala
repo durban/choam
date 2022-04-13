@@ -195,7 +195,7 @@ private sealed trait ExchangerImplJvm[A, B]
     val (newContT, newContK) = mergeConts[D](
       selfContT = selfMsg.contT,
       // we put `b` on top of contK; `FinishExchange` will pop it:
-      selfContK = ObjStack.Lst[Any](b, selfMsg.contK),
+      selfContK = ObjStack.Lst.prepend[Any](b, selfMsg.contK),
       otherContT = other.msg.contT,
       otherContK = other.msg.contK,
       hole = other.hole,
@@ -248,14 +248,14 @@ private sealed trait ExchangerImplJvm[A, B]
         )
         val newContK = ObjStack.Lst.concat(
           prefix,
-          ObjStack.Lst(extraOp, selfContK),
+          ObjStack.Lst.prepend(extraOp, selfContK),
         )
         val newContT = mergeContTs(selfContT = selfContT, otherContT = otherContT)
         (newContT, newContK)
       case null =>
         val len = ObjStack.Lst.length(otherContK)
         if (len == 0) impossible("empty otherContK")
-        else impossible(s"no commit in otherContK: ${otherContK.mkString()}")
+        else impossible(s"no commit in otherContK: ${ObjStack.Lst.mkString(otherContK)}")
     }
   }
 
