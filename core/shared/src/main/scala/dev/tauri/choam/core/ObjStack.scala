@@ -22,14 +22,21 @@ import java.util.Arrays
 
 private final class ObjStack[A]() {
 
-  private[this] val scratch: Array[AnyRef] =
-    new Array[AnyRef](ObjStack.nodeSize)
+  private[this] var scratch: Array[AnyRef] =
+    null
 
   private[this] var scratchSize: Int =
     0
 
   private[this] var lst: ObjStack.Lst[A] =
     ObjStack.Lst.empty[A]
+
+  newScratch()
+
+  private[this] final def newScratch(): Unit = {
+    this.scratch = new Array[AnyRef](ObjStack.nodeSize)
+    this.scratchSize = 0
+  }
 
   final override def toString: String = {
     if (this.lst ne null) {
@@ -48,7 +55,7 @@ private final class ObjStack[A]() {
   }
 
   final def push(a: A): Unit = {
-    if (this.scratchSize == this.scratch.size) {
+    if (this.scratchSize == this.scratch.length) {
       this.moveScratchToList()
     }
     this.pushToScratch(a)
@@ -60,8 +67,13 @@ private final class ObjStack[A]() {
   }
 
   private[this] final def moveScratchToList(): Unit = {
-    this.lst = this.mkListFromScratch()
-    this.clearScratch()
+    if (this.scratchSize == ObjStack.nodeSize) {
+      this.lst = ObjStack.Lst.wrapArr(this.scratch, this.lst)
+      this.newScratch()
+    } else {
+      this.lst = this.mkListFromScratch()
+      this.clearScratch()
+    }
   }
 
   private[this] final def mkListFromScratch(): ObjStack.Lst[A] = {
@@ -106,7 +118,7 @@ private final class ObjStack[A]() {
     require(this.scratchSize == 0)
     require(this.lst ne null)
     val n = this.lst.buff.size
-    require(n <= this.scratch.size)
+    require(n <= this.scratch.length)
     System.arraycopy(this.lst.buff, 0, this.scratch, 0, n)
     this.scratchSize = n
     this.lst = this.lst.next
@@ -147,7 +159,7 @@ private final class ObjStack[A]() {
 private object ObjStack {
 
   private final val nodeSize =
-    32
+    13
 
   final class Lst[+A] private (
     private[ObjStack] final val buff: Array[AnyRef],
