@@ -136,28 +136,45 @@ private object ObjStack {
   private final val nodeSize =
     4
 
-  final class Lst[A] private (
-    private[ObjStack] final var size: Int,
-    private[ObjStack] final var _0: A,
-    private[ObjStack] final var _1: A,
-    private[ObjStack] final var _2: A,
-    private[ObjStack] final var _3: A,
-    private[ObjStack] final var next: Lst[A],
-  ) {
+  final class Lst[A] private () {
 
-    //require(size <= nodeSize)
-    //require(size > 0)
+    private[ObjStack] final var size: Int =
+      0
+
+    private[ObjStack] final var _0: A =
+      nullOf[A]
+
+    private[ObjStack] final var _1: A =
+      nullOf[A]
+
+    private[ObjStack] final var _2: A =
+      nullOf[A]
+
+    private[ObjStack] final var _3: A =
+      nullOf[A]
+
+    private[ObjStack] final var next: Lst[A] =
+      null
 
     final override def toString: String = {
       "ObjStack.Lst(" + this.mkString(", ") + ")"
     }
 
     private[ObjStack] final def copyNode(): Lst[A] = {
-      new Lst[A](this.size, this._0, this._1, this._2, this._3, this.next)
+      val res = new Lst[A]()
+      res.size = this.size
+      res._0 = this._0
+      res._1 = this._1
+      res._2 = this._2
+      res._3 = this._3
+      res.next = this.next
+      res
     }
 
     private[ObjStack] final def withNext(newNext: Lst[A]): Lst[A] = {
-      new Lst[A](this.size, this._0, this._1, this._2, this._3, newNext)
+      val res = this.copyNode()
+      res.next = newNext
+      res
     }
 
     private[ObjStack] final def setNext(newNext: Lst[A]): Unit = {
@@ -294,17 +311,43 @@ private object ObjStack {
 
   final object Lst {
 
-    private[ObjStack] def mk1[A](a: A, next: Lst[A]) =
-      new Lst(1, a, nullOf[A], nullOf[A], nullOf[A], next)
+    private[ObjStack] def mk1[A](a: A, next: Lst[A]) = {
+      val res = new Lst[A]()
+      res.size = 1
+      res._0 = a
+      res.next = next
+      res
+    }
 
-    private[ObjStack] def mk2[A](a0: A, a1: A, next: Lst[A]) =
-      new Lst(2, a0, a1, nullOf[A], nullOf[A], next)
+    private[ObjStack] def mk2[A](a0: A, a1: A, next: Lst[A]) = {
+      val res = new Lst[A]()
+      res.size = 2
+      res._0 = a0
+      res._1 = a1
+      res.next = next
+      res
+    }
 
-    private[ObjStack] def mk3[A](a0: A, a1: A, a2: A, next: Lst[A]) =
-      new Lst(3, a0, a1, a2, nullOf[A], next)
+    private[ObjStack] def mk3[A](a0: A, a1: A, a2: A, next: Lst[A]) = {
+      val res = new Lst[A]()
+      res.size = 3
+      res._0 = a0
+      res._1 = a1
+      res._2 = a2
+      res.next = next
+      res
+    }
 
-    private[ObjStack] def mk4[A](a0: A, a1: A, a2: A, a3: A, next: Lst[A]) =
-      new Lst(4, a0, a1, a2, a3, next)
+    private[ObjStack] def mk4[A](a0: A, a1: A, a2: A, a3: A, next: Lst[A]) = {
+      val res = new Lst[A]()
+      res.size = 4
+      res._0 = a0
+      res._1 = a1
+      res._2 = a2
+      res._3 = a3
+      res.next = next
+      res
+    }
 
     def empty[A]: Lst[A] =
       null
