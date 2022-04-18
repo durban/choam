@@ -18,80 +18,41 @@
 package dev.tauri.choam
 package core
 
-import java.util.Arrays
-
 private final class ObjStack[A]() {
 
-  private[this] var scratch: Array[AnyRef] =
-    null
-
-  private[this] var scratchSize: Int =
-    0
-
-  private[this] var scratchFrozen: Boolean =
+  private[this] var headFrozen: Boolean =
     false
 
-  private[this] var lst: ObjStack.Lst[A] =
+  private[this] var head: ObjStack.Lst[A] =
     ObjStack.Lst.empty[A]
 
-  newScratch()
-
-  private[this] final def newScratch(): Unit = {
-    this.scratch = new Array[AnyRef](ObjStack.nodeSize)
-    this.scratchSize = 0
-    this.scratchFrozen = false
-  }
+  private[this] final def headSize: Int =
+    if (this.head eq null) 0 else this.head.size
 
   final override def toString: String = {
-    if (this.lst ne null) {
-      if (this.scratchSize > 0) {
-        s"ObjStack(${this.scratch.take(this.scratchSize).reverse.mkString(", ")}, ${ObjStack.Lst.mkString(this.lst, sep = ", ")})"
-      } else {
-        s"ObjStack(${ObjStack.Lst.mkString(this.lst, sep = ", ")})"
-      }
-    } else {
-      if (this.scratchSize > 0) {
-        s"ObjStack(${this.scratch.take(this.scratchSize).reverse.mkString(", ")})"
-      } else {
-        "ObjStack()"
-      }
-    }
+    s"ObjStack(${ObjStack.Lst.mkString(this.head)})"
   }
 
   final def push(a: A): Unit = {
-    if (this.scratchFrozen || (this.scratchSize == this.scratch.length)) {
-      this.moveScratchToList()
-    }
-    this.pushToScratch(a)
-  }
-
-  private[this] final def pushToScratch(a: A): Unit = {
-    require(!this.scratchFrozen)
-    this.scratch(this.scratchSize) = a.asInstanceOf[AnyRef]
-    this.scratchSize += 1
-  }
-
-  private[this] final def moveScratchToList(): Unit = {
-    if (this.scratchSize == 0) {
-      this.clearOrNewScratch()
-    } else if (this.scratchFrozen || (this.scratchSize == ObjStack.nodeSize)) {
-      this.lst = ObjStack.Lst.wrapArr(this.scratch, this.scratchSize, this.lst)
-      this.newScratch()
+    if (this.headFrozen || (this.headSize == ObjStack.nodeSize)) {
+      this.moveScratchToList(a)
     } else {
-      this.lst = this.mkListFromScratch()
-      this.clearScratch()
+      this.pushToHead(a)
     }
   }
 
-  private[this] final def mkListFromScratch(): ObjStack.Lst[A] = {
-    val buff = Arrays.copyOfRange(this.scratch, 0, this.scratchSize)
-    ObjStack.Lst.wrapArr(buff, buff.length, this.lst)
+  private[this] final def pushToHead(a: A): Unit = {
+    //require(!this.headFrozen)
+    if (this.head eq null) {
+      this.head = ObjStack.Lst.mk1(a, this.head)
+    } else {
+      this.head.push(a)
+    }
   }
 
-  private[this] final def clearScratch(): Unit = {
-    require(!this.scratchFrozen)
-    Arrays.fill(this.scratch, 0, this.scratchSize, null)
-    this.scratchSize = 0
+  private[this] final def moveScratchToList(a: A): Unit = {
+    this.head = ObjStack.Lst.mk1(a, this.head)
+    this.headFrozen = false
   }
 
   final def pushAll(as: Iterable[A]): Unit = {
@@ -101,137 +62,249 @@ private final class ObjStack[A]() {
     }
   }
 
-  private[this] final def assertNonEmpty(): Unit = {
-    if (this.isEmpty) {
-      throw new NoSuchElementException
-    }
-  }
+  // private[this] final def assertNonEmpty(): Unit = {
+  //   if (this.isEmpty) {
+  //     throw new NoSuchElementException
+  //   }
+  // }
 
   final def pop(): A = {
-    assertNonEmpty()
-    if (this.scratchSize == 0) {
+    //assertNonEmpty()
+    if (this.headSize == 0) {
       this.moveFromListToScratch()
     }
     this.popFromScratch()
   }
 
   private[this] final def popFromScratch(): A = {
-    this.scratchSize -= 1
-    this.scratch(this.scratchSize).asInstanceOf[A]
+    if (this.headFrozen) {
+      this.head = this.head.copyNode()
+      this.headFrozen = false
+    }
+    this.head.pop()
   }
 
   private[this] final def moveFromListToScratch(): Unit = {
-    require(this.scratchSize == 0)
-    require(this.lst ne null)
-    this.scratchSize = this.lst.size
-    this.scratch = this.lst.buff
-    this.scratchFrozen = true
-    this.lst = this.lst.next
+    //require(this.headSize == 0)
+    //require(this.head ne null)
+    this.head = this.head.next
+    this.headFrozen = true
   }
 
   final def clear(): Unit = {
-    this.lst = null
-    this.clearOrNewScratch()
-  }
-
-  private[this] final def clearOrNewScratch(): Unit = {
-    if (this.scratchFrozen) {
-      this.newScratch()
-    } else {
-      this.clearScratch()
+    if (this.headFrozen) {
+      this.head = null
+      this.headFrozen = false
+    } else if (this.head ne null) {
+      this.head.clear()
+      this.head.setNext(null)
     }
   }
 
   final def isEmpty: Boolean = {
-    (this.lst eq null) && (this.scratchSize == 0)
+    (this.head eq null) || this.head.isEmpty
   }
 
   final def nonEmpty: Boolean = {
-    (this.lst ne null) || (this.scratchSize > 0)
+    (this.head ne null) && this.head.nonEmpty
   }
 
   final def takeSnapshot(): ObjStack.Lst[A] = {
-    if (this.scratchSize > 0) {
-      this.scratchFrozen = true
-      ObjStack.Lst.wrapArr(this.scratch, this.scratchSize, this.lst)
+    if (this.head eq null) {
+      null
+    } else if (this.head.size == 0) {
+      this.head.next
     } else {
-      this.lst
+      this.headFrozen = true
+      this.head
     }
   }
 
   final def loadSnapshot(snapshot: ObjStack.Lst[A]): Unit = {
-    this.lst = snapshot
-    this.clearOrNewScratch()
+    this.head = snapshot
+    this.headFrozen = true
   }
 
   final def loadSnapshotUnsafe(snapshot: ObjStack.Lst[Any]): Unit = {
-    this.lst = snapshot.asInstanceOf[ObjStack.Lst[A]]
-    this.clearOrNewScratch()
+    this.head = snapshot.asInstanceOf[ObjStack.Lst[A]]
+    this.headFrozen = true
   }
 }
 
 private object ObjStack {
 
   private final val nodeSize =
-    8
+    4
 
-  final class Lst[+A] private (
-    private[ObjStack] final val buff: Array[AnyRef],
-    private[ObjStack] final val size: Int,
-    private[ObjStack] final val next: Lst[A],
+  final class Lst[A] private (
+    private[ObjStack] final var size: Int,
+    private[ObjStack] final var _0: A,
+    private[ObjStack] final var _1: A,
+    private[ObjStack] final var _2: A,
+    private[ObjStack] final var _3: A,
+    private[ObjStack] final var next: Lst[A],
   ) {
 
-    require(buff.size <= nodeSize)
-    require(buff.size > 0)
-    require(buff.size >= size)
-    require(size > 0)
+    //require(size <= nodeSize)
+    //require(size > 0)
 
     final override def toString: String = {
       "ObjStack.Lst(" + this.mkString(", ") + ")"
     }
 
+    private[ObjStack] final def copyNode(): Lst[A] = {
+      new Lst[A](this.size, this._0, this._1, this._2, this._3, this.next)
+    }
+
+    private[ObjStack] final def withNext(newNext: Lst[A]): Lst[A] = {
+      new Lst[A](this.size, this._0, this._1, this._2, this._3, newNext)
+    }
+
+    private[ObjStack] final def setNext(newNext: Lst[A]): Unit = {
+      this.next = newNext
+    }
+
+    @tailrec
+    final def isEmpty: Boolean = {
+      (this.size == 0) && {
+        (this.next eq null) || this.next.isEmpty
+      }
+    }
+
+    @tailrec
+    final def nonEmpty: Boolean = {
+      (this.size > 0) || {
+        (this.next ne null) && this.next.nonEmpty
+      }
+    }
+
     private final def mkString(sep: String): String = {
       val sb = new StringBuilder()
-      sb.append(this.buff.take(size).reverse.mkString(sep))
-      var curr = this.next
-      while (curr ne null) {
-        sb.append(sep)
-        sb.append(curr.buff.take(curr.size).reverse.mkString(sep))
-        curr = curr.next
-      }
+      this.mkStringRecursive(sep, sb)
       sb.toString
     }
 
-    private final def splitBufferBefore[AA >: A](item: AA): (Array[AnyRef], Array[AnyRef]) = {
-      var idx = size - 1
-      var foundIdx = -1
-      while ((foundIdx == -1) && (idx >= 0)) {
-        if (equ(buff(idx), item)) {
-          foundIdx = idx
-        } else {
-          idx -= 1
-        }
+    @tailrec
+    private final def mkStringRecursive(sep: String, sb: StringBuilder): String = {
+      if (size > 3) {
+        sb.append(this._3)
+        sb.append(sep)
       }
-      if (foundIdx == -1) {
-        null
-      } else if (foundIdx == (size - 1)) {
-        val before = null
-        val rest = Arrays.copyOfRange(buff, 0, size)
-        (before, rest)
+      if (size > 2) {
+        sb.append(this._2)
+        sb.append(sep)
+      }
+      if (size > 1) {
+        sb.append(this._1)
+        sb.append(sep)
+      }
+      if (size > 0) {
+        sb.append(this._0)
+      }
+      if (this.next ne null) {
+        sb.append(sep)
+        this.next.mkStringRecursive(sep, sb)
       } else {
-        val rest = new Array[AnyRef](foundIdx + 1)
-        System.arraycopy(buff, 0, rest, 0, rest.size)
-        val before = new Array[AnyRef](size - rest.size)
-        System.arraycopy(buff, rest.size, before, 0, before.size)
-        (before, rest)
+        sb.result()
+      }
+    }
+
+    private[ObjStack] final def push(a: A): Unit = {
+      require(this.size < nodeSize)
+      (this.size : @switch) match {
+        case 0 =>
+          this._0 = a
+        case 1 =>
+          this._1 = a
+        case 2 =>
+          this._2 = a
+        case 3 =>
+          this._3 = a
+      }
+      this.size += 1
+    }
+
+    private[ObjStack] final def pop(): A = {
+      require(this.size > 0)
+      val res: A = (this.size : @switch) match {
+        case 1 =>
+          this._0
+        case 2 =>
+          this._1
+        case 3 =>
+          this._2
+        case 4 =>
+          this._3
+      }
+      this.size -= 1
+      res
+    }
+
+    private[ObjStack] final def clear(): Unit = {
+      this.size = 0
+      this._0 = nullOf[A]
+      this._1 = nullOf[A]
+      this._2 = nullOf[A]
+      this._3 = nullOf[A]
+    }
+
+    private final def splitBufferBefore(item: A): (Lst[A], Lst[A]) = {
+      (this.size : @switch) match {
+        case 4 =>
+          if (equ(this._3, item)) {
+            (null, this.copyNode())
+          } else if (equ(this._2, item)) {
+            (Lst.mk1(this._3, null), Lst.mk3(this._0, this._1, this._2, null))
+          } else if (equ(this._1, item)) {
+            (Lst.mk2(this._2, this._3, null), Lst.mk2(this._0, this._1, null))
+          } else if (equ(this._0, item)) {
+            (Lst.mk3(this._1, this._2, this._3, null), Lst.mk1(this._0, null))
+          } else {
+            null
+          }
+        case 3 =>
+          if (equ(this._2, item)) {
+            (null, this.copyNode())
+          } else if (equ(this._1, item)) {
+            (Lst.mk1(this._2, null), Lst.mk2(this._0, this._1, null))
+          } else if (equ(this._0, item)) {
+            (Lst.mk2(this._1, this._2, null), Lst.mk1(this._0, null))
+          } else {
+            null
+          }
+        case 2 =>
+          if (equ(this._1, item)) {
+            (null, this.copyNode())
+          } else if (equ(this._0, item)) {
+            (Lst.mk1(this._1, null), Lst.mk1(this._0, null))
+          } else {
+            null
+          }
+        case 1 =>
+          if (equ(this._0, item)) {
+            (null, this.copyNode())
+          } else {
+            null
+          }
+        case 0 =>
+          (null, this.copyNode())
       }
     }
   }
 
   final object Lst {
 
-    private[ObjStack] def wrapArr[A](arr: Array[AnyRef], size: Int, next: Lst[A]): Lst[A] =
-      new Lst(arr, size, next)
+    private[ObjStack] def mk1[A](a: A, next: Lst[A]) =
+      new Lst(1, a, nullOf[A], nullOf[A], nullOf[A], next)
+
+    private[ObjStack] def mk2[A](a0: A, a1: A, next: Lst[A]) =
+      new Lst(2, a0, a1, nullOf[A], nullOf[A], next)
+
+    private[ObjStack] def mk3[A](a0: A, a1: A, a2: A, next: Lst[A]) =
+      new Lst(3, a0, a1, a2, nullOf[A], next)
+
+    private[ObjStack] def mk4[A](a0: A, a1: A, a2: A, a3: A, next: Lst[A]) =
+      new Lst(4, a0, a1, a2, a3, next)
 
     def empty[A]: Lst[A] =
       null
@@ -262,15 +335,14 @@ private object ObjStack {
     }
 
     def prepend[A](a: A, lst: Lst[A]): Lst[A] = {
-      if (lst.size < nodeSize) {
-        val buff = new Array[AnyRef](lst.size + 1)
-        System.arraycopy(lst.buff, 0, buff, 0, lst.size)
-        buff(lst.size) = a.asInstanceOf[AnyRef]
-        Lst.wrapArr(buff, buff.size, lst.next)
+      if (lst eq null) {
+        Lst.mk1(a, null)
+      } else if (lst.size < nodeSize) {
+        val res = lst.copyNode()
+        res.push(a)
+        res
       } else {
-        val buff = new Array[AnyRef](1)
-        buff(0) = a.asInstanceOf[AnyRef]
-        Lst.wrapArr(buff, 1, lst)
+        Lst.mk1(a, lst)
       }
     }
 
@@ -282,11 +354,14 @@ private object ObjStack {
         } else {
           rest.splitBufferBefore(item) match {
             case null =>
-              go(rest.next, new Lst(rest.buff, rest.size, acc))
+              go(rest.next, rest.withNext(acc))
             case (null, after) =>
-              (acc, new Lst(after, after.size, rest.next))
+              after.setNext(rest.next)
+              (acc, after)
             case (before, after) =>
-              (new Lst(before, before.size, acc), new Lst(after, after.size, rest.next))
+              before.setNext(acc)
+              after.setNext(rest.next)
+              (before, after)
           }
         }
       }
@@ -303,7 +378,7 @@ private object ObjStack {
       if (lst eq null) {
         acc
       } else {
-        go(lst.next, new Lst(lst.buff, lst.size, acc))
+        go(lst.next, lst.withNext(acc))
       }
     }
   }
