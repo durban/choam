@@ -136,13 +136,13 @@ private object ObjStack {
   private final val nodeSize =
     4
 
-  final class Lst[A] private () {
+  final class Lst[A] private (
+    private[ObjStack] final var _0: A,
+    private[ObjStack] final var next: Lst[A],
+  ) {
 
     private[ObjStack] final var size: Int =
-      0
-
-    private[ObjStack] final var _0: A =
-      nullOf[A]
+      1
 
     private[ObjStack] final var _1: A =
       nullOf[A]
@@ -153,21 +153,16 @@ private object ObjStack {
     private[ObjStack] final var _3: A =
       nullOf[A]
 
-    private[ObjStack] final var next: Lst[A] =
-      null
-
     final override def toString: String = {
       "ObjStack.Lst(" + this.mkString(", ") + ")"
     }
 
     private[ObjStack] final def copyNode(): Lst[A] = {
-      val res = new Lst[A]()
+      val res = new Lst[A](this._0, this.next)
       res.size = this.size
-      res._0 = this._0
       res._1 = this._1
       res._2 = this._2
       res._3 = this._3
-      res.next = this.next
       res
     }
 
@@ -312,40 +307,30 @@ private object ObjStack {
   final object Lst {
 
     private[ObjStack] def mk1[A](a: A, next: Lst[A]) = {
-      val res = new Lst[A]()
-      res.size = 1
-      res._0 = a
-      res.next = next
-      res
+      new Lst[A](a, next)
     }
 
     private[ObjStack] def mk2[A](a0: A, a1: A, next: Lst[A]) = {
-      val res = new Lst[A]()
+      val res = new Lst[A](a0, next)
       res.size = 2
-      res._0 = a0
       res._1 = a1
-      res.next = next
       res
     }
 
     private[ObjStack] def mk3[A](a0: A, a1: A, a2: A, next: Lst[A]) = {
-      val res = new Lst[A]()
+      val res = new Lst[A](a0, next)
       res.size = 3
-      res._0 = a0
       res._1 = a1
       res._2 = a2
-      res.next = next
       res
     }
 
     private[ObjStack] def mk4[A](a0: A, a1: A, a2: A, a3: A, next: Lst[A]) = {
-      val res = new Lst[A]()
+      val res = new Lst[A](a0, next)
       res.size = 4
-      res._0 = a0
       res._1 = a1
       res._2 = a2
       res._3 = a3
-      res.next = next
       res
     }
 
