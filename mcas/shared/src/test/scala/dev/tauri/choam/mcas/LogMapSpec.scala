@@ -42,15 +42,13 @@ final class LogMapSpec extends ScalaCheckSuite {
       )
       for (ref <- refs) {
         val hwd = HalfWordDescriptor(ref, "x", "y", 0L)
-        assert(!lm.containsUnopt(ref))
-        assert(!lm.containsOpt(ref))
+        assert(!lm.contains(ref))
         assertEquals(lm.getOrElse(ref, null), null)
         lm = lm.updated(ref, hwd)
         tm = tm.updated(ref, hwd)
         assertEquals(lm.size, tm.size)
         for (h <- tm.valuesIterator) {
-          assert(lm.containsUnopt(h.address))
-          assert(lm.containsOpt(h.address))
+          assert(lm.contains(h.address))
           assertEquals(lm.getOrElse(h.address, null), h)
         }
       }
@@ -65,8 +63,7 @@ final class LogMapSpec extends ScalaCheckSuite {
       val shuffled = rng.shuffle(tm.keySet.toList)
       for (ref <- shuffled) {
         val newHwd = HalfWordDescriptor(ref, rng.nextString(32), "q", rng.nextLong())
-        assert(lm.containsUnopt(ref))
-        assert(lm.containsOpt(ref))
+        assert(lm.contains(ref))
         val oldHwd = lm.getOrElse(ref, null)
         assert(oldHwd ne null)
         assertNotEquals(oldHwd, newHwd)
@@ -76,8 +73,7 @@ final class LogMapSpec extends ScalaCheckSuite {
         tm = tm.updated(ref, newHwd)
         assertEquals(lm.size, tm.size)
         for (h <- tm.valuesIterator) {
-          assert(lm.containsUnopt(h.address))
-          assert(lm.containsOpt(h.address))
+          assert(lm.contains(h.address))
           assertEquals(lm.getOrElse(h.address, null), h)
         }
       }

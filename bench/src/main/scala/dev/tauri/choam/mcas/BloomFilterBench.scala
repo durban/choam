@@ -42,19 +42,18 @@ private[mcas] class BloomFilterBench {
     bh.consume(key)
   }
 
-
-  @Benchmark
-  def contains(s: LogMapState, rnd: RandomState, bh: Blackhole): Unit = {
-    val isDummy = (rnd.nextInt() % 2) == 0
-    val key = if (!isDummy) {
-      val idx = rnd.nextIntBounded(s.size)
-      s.keys(idx)
-    } else {
-      val idx = rnd.nextIntBounded(DummySize)
-      s.dummyKeys(idx)
-    }
-    bh.consume(s.map.containsUnopt(key))
-  }
+  // @Benchmark
+  // def contains(s: LogMapState, rnd: RandomState, bh: Blackhole): Unit = {
+  //   val isDummy = (rnd.nextInt() % 2) == 0
+  //   val key = if (!isDummy) {
+  //     val idx = rnd.nextIntBounded(s.size)
+  //     s.keys(idx)
+  //   } else {
+  //     val idx = rnd.nextIntBounded(DummySize)
+  //     s.dummyKeys(idx)
+  //   }
+  //   bh.consume(s.map.containsUnopt(key))
+  // }
 
   @Benchmark
   def containsOpt(s: LogMapState, rnd: RandomState, bh: Blackhole): Unit = {
@@ -66,7 +65,7 @@ private[mcas] class BloomFilterBench {
       val idx = rnd.nextIntBounded(DummySize)
       s.dummyKeys(idx)
     }
-    bh.consume(s.map.containsOpt(key))
+    bh.consume(s.map.contains(key))
   }
 }
 

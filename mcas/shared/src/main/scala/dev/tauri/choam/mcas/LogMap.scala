@@ -29,9 +29,7 @@ private sealed abstract class LogMap {
   def size: Int
   def valuesIterator: Iterator[HalfWordDescriptor[_]]
   def nonEmpty: Boolean
-  // def contains[A](ref: MemoryLocation[A]): Boolean
-  def containsUnopt[A](ref: MemoryLocation[A]): Boolean
-  def containsOpt[A](ref: MemoryLocation[A]): Boolean
+  def contains[A](ref: MemoryLocation[A]): Boolean
   def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
   def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]): HalfWordDescriptor[A]
   def isDisjoint(that: LogMap): Boolean
@@ -56,11 +54,8 @@ private object LogMap {
     final override def nonEmpty =
       false
 
-    final override def containsOpt[A](ref: MemoryLocation[A]) =
+    final override def contains[A](ref: MemoryLocation[A]) =
       false
-
-    final override def containsUnopt[A](ref: MemoryLocation[A]) =
-      containsOpt(ref)
 
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap =
       new LogMap1(v)
@@ -90,11 +85,8 @@ private object LogMap {
     final override def nonEmpty =
       true
 
-    final override def containsOpt[A](ref: MemoryLocation[A]) =
+    final override def contains[A](ref: MemoryLocation[A]) =
       (ref eq v1.address)
-
-    final override def containsUnopt[A](ref: MemoryLocation[A]) =
-      containsOpt(ref)
 
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
       require(k eq v.address)
@@ -109,7 +101,7 @@ private object LogMap {
       if (k eq v1.address) v1.cast[A] else default
 
     final def isDisjoint(that: LogMap): Boolean =
-      !that.containsOpt(this.v1.address)
+      !that.contains(this.v1.address)
 
     final override def equals(that: Any): Boolean = that match {
       case that: LogMap1 =>
@@ -155,10 +147,10 @@ private object LogMap {
     final override def nonEmpty =
       true
 
-    final override def containsUnopt[A](ref: MemoryLocation[A]) =
+    private[this] final def containsUnopt[A](ref: MemoryLocation[A]) =
       treeMap.contains(ref.cast[Any])
 
-    final override def containsOpt[A](ref: MemoryLocation[A]) = {
+    final override def contains[A](ref: MemoryLocation[A]) = {
       if (BloomFilter.definitelyNotContains(bloomFilterLeft, bloomFilterRight, ref)) {
         false
       } else {
