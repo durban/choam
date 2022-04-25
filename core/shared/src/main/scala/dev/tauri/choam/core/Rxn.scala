@@ -217,7 +217,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     this.flatMap { b => rxn.provide(b).as(b) }
 
   final def flatten[C](implicit ev: B <:< Axn[C]): Rxn[A, C] =
-    this.flatMap(ev)
+    this.flatMapF(ev)
 
   final def postCommit(pc: Rxn[B, Unit]): Rxn[A, B] =
     this >>> Rxn.postCommit[B](pc)
