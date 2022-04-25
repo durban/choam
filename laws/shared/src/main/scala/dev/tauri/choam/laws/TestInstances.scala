@@ -202,19 +202,6 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
         }
       },
       Gen.lzy {
-        for {
-          a <- arbA.arbitrary
-          aa <- arbAA.arbitrary
-          r <- arbResetRxn[A, B].arbitrary
-          ref <- Gen.delay { Ref.unsafe[A](a) }
-        } yield {
-          ResetRxn(
-            Rxn.unsafe.delayComputed(prepare = r.rxn.map(b => ref.update(aa).as(b))),
-            r.refs + ResetRef(ref, a)
-          )
-        }
-      },
-      Gen.lzy {
         arbResetRxn[A, B].arbitrary.map { rxn =>
           ResetRxn(Rxn.unsafe.retry[A, B]) + rxn
         }

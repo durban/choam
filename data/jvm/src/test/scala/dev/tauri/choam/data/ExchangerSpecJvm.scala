@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package data
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import cats.effect.{ IO, Outcome }
 
 final class ExchangerSpecCommon_Emcas_ZIO
@@ -105,88 +103,6 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  private[this] def countRetry(@unused label: String, rc: AtomicInteger): Rxn[Any, Unit] = {
-    Rxn.unsafe.delay { (_: Any) =>
-      val nv = rc.incrementAndGet()
-      // println(s"${label} retry count: ${nv}")
-      nv
-    } >>> Rxn.unsafe.retry[Any, Unit]
-  }
-
-  test("delayComputed after exchange") {
-    val tsk = for {
-      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      r1a <- Ref(0).run[F]
-      r1b <- Ref(0).run[F]
-      r1c <- Ref(0).run[F]
-      retryCount1 <- F.delay(new AtomicInteger(0))
-      r2a <- Ref(0).run[F]
-      r2b <- Ref(0).run[F]
-      r2c <- Ref(0).run[F]
-      retryCount2 <- F.delay(new AtomicInteger(0))
-      rxn1 = r1a.update(_ + 1) *> ex.exchange.provide("bar") >>> Rxn.unsafe.delayComputed(Rxn.computed { (i: Int) =>
-        r1b.update(_ + 1).as(r1c.update(_ + i))
-      }) + countRetry("rxn1", retryCount1)
-      rxn2 = r2a.update(_ + 1) *> ex.dual.exchange.provide(42) >>> Rxn.unsafe.delayComputed(Rxn.computed { (s: String) =>
-        r2b.update(_ + 1).as(r2c.update(_ + s.length))
-      }) + countRetry("rxn2", retryCount2)
-      f1 <- logOutcome("f1", rxn1.run[F]).start
-      f2 <- logOutcome("f2", rxn2.run[F]).start
-      _ <- f1.joinWithNever
-      _ <- f2.joinWithNever
-      // rxn1:
-      _ <- assertResultF(r1a.get.run[F], 1) // exactly once
-      rc1 <- F.delay(retryCount1.get())
-      _ <- assertF(rc1 >= 0)
-      _ <- assertResultF(r1b.get.run[F], rc1 + 1) // at least once (delayComputed may be re-run)
-      _ <- assertResultF(r1c.get.run[F], 42) // value from exchange
-      // rxn2:
-      _ <- assertResultF(r2a.get.run[F], 1) // exactly once
-      rc2 <- F.delay(retryCount2.get())
-      _ <- assertResultF(r2b.get.run[F], rc2 + 1) // at least once (delayComputed may be re-run)
-      _ <- assertResultF(r2c.get.run[F], 3) // "bar".length
-    } yield ()
-    tsk.replicateA(iterations)
-  }
-
-  // TODO: Occasionally only one of the outer Rxn's
-  // TODO: can't commit, and retries everything,
-  // TODO: including the delayComputed and exchange;
-  // TODO: that will get in an infinite loop, since the
-  // TODO: other one is already done.
-  test("Exchange during delayComputed".ignore) {
-    val tsk = for {
-      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      r1a <- Ref(0).run[F]
-      r1b <- Ref(0).run[F]
-      r1c <- Ref(0).run[F]
-      r2a <- Ref(0).run[F]
-      r2b <- Ref(0).run[F]
-      r2c <- Ref(0).run[F]
-      rxn1 = r1a.update(_ + 1) >>> Rxn.unsafe.delayComputed(
-        r1b.update(_ + 1) *> (
-          ex.exchange.provide("foo").map { (i: Int) => r1c.update(_ + i) }
-        )
-      )
-      rxn2 = r2a.update(_ + 1) >>> Rxn.unsafe.delayComputed(
-        r2b.update(_ + 1) *> (
-          ex.dual.exchange.provide(9).map { (s: String) => r2c.update(_ + s.length) }
-        )
-      )
-      f1 <- rxn1.run[F].flatTap(_ => F.delay(println(s"rxn1 done - thread#${Thread.currentThread().getId()}"))).start
-      f2 <- rxn2.run[F].flatTap(_ => F.delay(println(s"rxn2 done - thread#${Thread.currentThread().getId()}"))).start
-      _ <- f1.joinWithNever
-      _ <- f2.joinWithNever
-      _ <- assertResultF(r1a.get.run[F], 1) // exactly once
-      _ <- assertResultF(r1b.get.run[F], 1) // exactly once
-      _ <- assertResultF(r1c.get.run[F], 9) // value from exchange
-      _ <- assertResultF(r2a.get.run[F], 1) // exactly once
-      _ <- assertResultF(r2b.get.run[F], 1) // exactly once
-      _ <- assertResultF(r2c.get.run[F], 3) // "bar".length
-    } yield ()
-    tsk.replicateA(iterations)
-  }
-
   test("Post-commit action can touch the same Refs") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
@@ -245,108 +161,6 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(r2c.get.run[F], 3) // "str".length
       _ <- assertResultF(r2d.get.run[F], 3) // "str".length
       _ <- assertResultF(r2e.get.run[F], 1) // exactly once
-    } yield ()
-    tsk.replicateA(iterations)
-  }
-
-  test("delayComputed after exchange + postCommit actions on one side") {
-    val tsk = for {
-      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      r1a <- Ref(0).run[F]
-      r1ap <- Ref(0).run[F]
-      r1p <- Ref(0).run[F]
-      r1b <- Ref(0).run[F]
-      r1bp <- Ref(0).run[F]
-      r1c <- Ref(0).run[F]
-      r1cp <- Ref(0).run[F]
-      retryCount1 <- F.delay(new AtomicInteger(0))
-      r2a <- Ref(0).run[F]
-      r2b <- Ref(0).run[F]
-      r2c <- Ref(0).run[F]
-      retryCount2 <- F.delay(new AtomicInteger(0))
-      rxn1 = r1a.update(_ + 1).postCommit(r1ap.update(_ + 1)) *> ex.exchange.provide("bar").postCommit(r1p.getAndSet.void) >>> Rxn.unsafe.delayComputed(Rxn.computed { (i: Int) =>
-        r1b.update(_ + 1).postCommit(r1bp.update(_ + 1)).as(r1c.update(_ + i).postCommit(r1cp.update(_ + 1)))
-      }) + countRetry("rxn1", retryCount1)
-      rxn2 = r2a.update(_ + 1) *> ex.dual.exchange.provide(42) >>> Rxn.unsafe.delayComputed(Rxn.computed { (s: String) =>
-        r2b.update(_ + 1).as(r2c.update(_ + s.length))
-      }) + countRetry("rxn2", retryCount2)
-      f1 <- logOutcome("f1", rxn1.run[F]).start
-      f2 <- logOutcome("f2", rxn2.run[F]).start
-      _ <- f1.joinWithNever
-      _ <- f2.joinWithNever
-      // rxn1:
-      _ <- assertResultF(r1a.get.run[F], 1) // exactly once
-      _ <- assertResultF(r1ap.get.run[F], 1) // exactly once
-      _ <- assertResultF(r1p.get.run[F], 42) // value from exchange
-      rc1 <- F.delay(retryCount1.get())
-      _ <- assertF(rc1 >= 0)
-      _ <- assertResultF(r1b.get.run[F], rc1 + 1) // at least once (delayComputed may be re-run)
-      _ <- assertResultF(r1bp.get.run[F], rc1 + 1) // at least once (delayComputed may be re-run)
-      _ <- assertResultF(r1c.get.run[F], 42) // value from exchange
-      _ <- assertResultF(r1cp.get.run[F], 1) // exactly once
-      // rxn2:
-      _ <- assertResultF(r2a.get.run[F], 1) // exactly once
-      rc2 <- F.delay(retryCount2.get())
-      _ <- assertResultF(r2b.get.run[F], rc2 + 1) // at least once (delayComputed may be re-run)
-      _ <- assertResultF(r2c.get.run[F], 3) // "bar".length
-    } yield ()
-    tsk.replicateA(iterations)
-  }
-
-  // TODO: See above for the explanation of `.ignore`
-  test("Exchange during delayComputed + postCommit actions on both sides".ignore) {
-    val tsk = for {
-      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      r1a <- Ref(0).run[F]
-      r1ap <- Ref(0).run[F]
-      r1b <- Ref(0).run[F]
-      r1bp1 <- Ref(0).run[F]
-      r1bp2 <- Ref(0).run[F]
-      r1p <- Ref(0).run[F]
-      r1c <- Ref(0).run[F]
-      r1cp <- Ref(0).run[F]
-      r2a <- Ref(0).run[F]
-      r2ap <- Ref(0).run[F]
-      r2b <- Ref(0).run[F]
-      r2bp1 <- Ref(0).run[F]
-      r2bp2 <- Ref(0).run[F]
-      r2p <- Ref(0).run[F]
-      r2c <- Ref(0).run[F]
-      r2cp <- Ref(0).run[F]
-      rxn1 = r1a.update(_ + 1).postCommit(r1ap.update(_ + 1)) >>> Rxn.unsafe.delayComputed(
-        r1b.update(_ + 1).postCommit(r1bp1.update(_ + 1)).postCommit(r1bp2.update(_ + 1)) *> (
-          ex.exchange.postCommit(r1p.getAndSet.void).provide("foo").map { (i: Int) =>
-            r1c.update(_ + i).postCommit(r1cp.update(_ + 1))
-          }
-        )
-      )
-      rxn2 = r2a.update(_ + 1).postCommit(r2ap.update(_ + 1)) >>> Rxn.unsafe.delayComputed(
-        r2b.update(_ + 1).postCommit(r2bp1.update(_ + 1)).postCommit(r2bp2.update(_ + 1)) *> (
-          ex.dual.exchange.map(_.length).postCommit(r2p.getAndSet.void).provide(9).map { (i: Int) =>
-            r2c.update(_ + i).postCommit(r2cp.update(_ + 1))
-          }
-        )
-      )
-      f1 <- rxn1.run[F].start
-      f2 <- rxn2.run[F].start
-      _ <- f1.joinWithNever
-      _ <- f2.joinWithNever
-      _ <- assertResultF(r1a.get.run[F], 1) // exactly once
-      _ <- assertResultF(r1ap.get.run[F], 1) // exactly once
-      _ <- assertResultF(r1b.get.run[F], 1) // exactly once
-      _ <- assertResultF(r1bp1.get.run[F], 1) // exactly once
-      _ <- assertResultF(r1bp1.get.run[F], 1) // exactly once
-      _ <- assertResultF(r1p.get.run[F], 9) // value from exchange
-      _ <- assertResultF(r1c.get.run[F], 9) // value from exchange
-      _ <- assertResultF(r1cp.get.run[F], 1) // exactly once
-      _ <- assertResultF(r2a.get.run[F], 1) // exactly once
-      _ <- assertResultF(r2ap.get.run[F], 1) // exactly once
-      _ <- assertResultF(r2b.get.run[F], 1) // exactly once
-      _ <- assertResultF(r2bp1.get.run[F], 1) // exactly once
-      _ <- assertResultF(r2bp2.get.run[F], 1) // exactly once
-      _ <- assertResultF(r2p.get.run[F], 3) // "bar".length
-      _ <- assertResultF(r2c.get.run[F], 3) // "bar".length
-      _ <- assertResultF(r2cp.get.run[F], 1) // exactly once
     } yield ()
     tsk.replicateA(iterations)
   }

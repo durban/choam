@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package core
 
-import java.util.{ Arrays, UUID }
+import java.util.UUID
 
 import scala.concurrent.duration._
 
@@ -389,21 +389,6 @@ object Rxn extends RxnInstances0 {
     private[choam] def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       this.context(uf).flatten // TODO: optimize
 
-    // TODO: Do we even need `immediately` and
-    // TODO: `delayComputed` now that we can touch
-    // TODO: a ref more than once in a Rxn? (Check
-    // TODO: if, e.g., MS-queue can work that way.)
-
-    // TODO: idea:
-    def immediately[A, B](@unused invisibleRxn: Rxn[A, B]): Rxn[A, B] =
-      sys.error("TODO: not implemented yet")
-
-    // TODO: we need a better name
-    // TODO: when we have `immediately`, this could be:
-    // TODO: `immediately(prepare).flatten` (but benchmark!)
-    def delayComputed[A, B](prepare: Rxn[A, Axn[B]]): Rxn[A, B] =
-      new DelayComputed[A, B](prepare)
-
     def exchanger[A, B]: Axn[Exchanger[A, B]] =
       Exchanger.apply[A, B]
 
@@ -460,11 +445,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = "Computed(<function>)"
   }
 
-  // TODO: we need a better name
-  private final class DelayComputed[A, B](val prepare: Rxn[A, Axn[B]]) extends Rxn[A, B] {
-    private[core] final override def tag = 5
-    final override def toString: String = s"DelayComputed(${prepare})"
-  }
+  // tag = 5 (unused)
 
   private final class Choice[A, B](val left: Rxn[A, B], val right: Rxn[A, B]) extends Rxn[A, B] {
     private[core] final override def tag = 6
@@ -589,7 +570,7 @@ object Rxn extends RxnInstances0 {
   private[this] final val ContAndThen = 0.toByte
   private[this] final val ContAndAlso = 1.toByte
   private[this] final val ContAndAlsoJoin = 2.toByte
-  private[this] final val ContAfterDelayComp = 3.toByte
+  // 3.toByte is unused
   private[this] final val ContPostCommit = 4.toByte
   private[this] final val ContAfterPostCommit = 5.toByte // TODO: rename(?)
   private[this] final val ContCommitPostCommit = 6.toByte
@@ -644,8 +625,6 @@ object Rxn extends RxnInstances0 {
     maxBackoff: Int,
     randomizeBackoff: Boolean
   ) {
-
-    private[this] var delayCompStorage: ObjStack[Any] = null
 
     private[this] var startRxn: Rxn[Any, Any] = rxn.asInstanceOf[Rxn[Any, Any]]
     private[this] var startA: Any = x
@@ -738,42 +717,8 @@ object Rxn extends RxnInstances0 {
       contK.loadSnapshot(contKReset)
     }
 
-    private[this] final def saveEverything(): Unit = {
-      if (delayCompStorage eq null) {
-        delayCompStorage = newStack()
-      }
-      // save everything:
-      saveAlt(null)
-      delayCompStorage.push(alts.takeSnapshot())
-      delayCompStorage.push(retries)
-      delayCompStorage.push(startRxn)
-      delayCompStorage.push(startA)
-      delayCompStorage.push(Arrays.copyOf(contTReset, contTReset.length))
-      delayCompStorage.push(contKReset)
-      // reset state:
-      clearDesc()
-      clearAlts()
-      contT.clear()
-      contK.clear()
-      pc.clear()
-      a = () : Any
-      startA = () : Any
-      retries = 0L
-    }
-
     private[this] final def clearAlts(): Unit = {
       alts.clear()
-    }
-
-    private[this] final def loadEverything(): Unit = {
-      contKReset = delayCompStorage.pop().asInstanceOf[ObjStack.Lst[Any]]
-      contTReset = delayCompStorage.pop().asInstanceOf[Array[Byte]]
-      startA = delayCompStorage.pop()
-      startRxn = delayCompStorage.pop().asInstanceOf[Rxn[Any, R]]
-      retries = delayCompStorage.pop().asInstanceOf[Long]
-      alts.loadSnapshot(delayCompStorage.pop().asInstanceOf[ObjStack.Lst[Any]])
-      loadAlt()
-      ()
     }
 
     private[this] final def saveAlt(k: Rxn[Any, R]): Unit = {
@@ -825,11 +770,8 @@ object Rxn extends RxnInstances0 {
           val savedA = contK.pop()
           a = (savedA, a)
           next()
-        case 3 => // ContAfterDelayComp
-          val delayCompResult = popFinalResult().asInstanceOf[Rxn[Any, Any]]
-          // continue with the rest:
-          loadEverything()
-          delayCompResult
+        case 3 => // was ContAfterDelayComp
+          impossible("Unknown contT: 3")
         case 4 => // ContPostCommit
           val pcAction = contK.pop().asInstanceOf[Rxn[Any, Any]]
           clearAlts()
@@ -1043,22 +985,8 @@ object Rxn extends RxnInstances0 {
           val nxt = c.f(a.asInstanceOf[A])
           a = () : Any
           loop(nxt)
-        case 5 => // DelayComputed
-          // Note: we'll be performing `prepare` here directly;
-          // as a consequence of this, `prepare` will not
-          // be part of the atomic reaction, but it will run here
-          // as a side-effect.
-          val c = curr.asInstanceOf[DelayComputed[A, B]]
-          val input = a
-          saveEverything()
-          contT.push(ContAfterDelayComp)
-          contT.push(ContAndThen) // commit `prepare`
-          contK.push(commit)
-          setContReset()
-          a = input
-          startA = input
-          startRxn = c.prepare.asInstanceOf[Rxn[Any, Any]]
-          loop(c.prepare)
+        case 5 => // (was DelayComputed)
+          impossible(s"Unknown tag 5 for ${curr}")
         case 6 => // Choice
           val c = curr.asInstanceOf[Choice[A, B]]
           saveAlt(c.right.asInstanceOf[Rxn[Any, R]])

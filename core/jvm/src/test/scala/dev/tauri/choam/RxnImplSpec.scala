@@ -100,7 +100,6 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     }
     val r4: Rxn[Int, Int] = nest(N, _ >> _)
     val r5: Rxn[Int, Int] = nest(N, _ + _)
-    val r6: Rxn[Int, Int] = nest(N, (x, y) => Rxn.unsafe.delayComputed(x.map(Rxn.ret(_) >>> y)))
     val r7: Rxn[Int, Int] = Monad[Rxn[Int, *]].tailRecM(N) { n =>
       if (n > 0) Rxn.lift[Int, Either[Int, Int]](_ => Left(n - 1))
       else Rxn.ret(Right(99))
@@ -112,7 +111,6 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     assertEquals(r3right.unsafePerform(42, this.mcasImpl), 42 + 1)
     assertEquals(r4.unsafePerform(42, this.mcasImpl), 42 + 1)
     assertEquals(r5.unsafePerform(42, this.mcasImpl), 42 + 1)
-    assertEquals(r6.unsafePerform(42, this.mcasImpl), 42 + N)
     assertEquals(r7.unsafePerform(42, this.mcasImpl), 99)
 
     def rNegativeTest: Rxn[Int, Int] = {
@@ -168,72 +166,6 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(a.unsafeDirectRead.run, "aa")
       _ <- assertResultF(b.unsafeDirectRead.run, "bbbb")
       _ <- assertResultF(c.unsafeDirectRead.run, "cccc")
-    } yield ()
-  }
-
-  test("delayComputed prepare is not part of the reaction") {
-
-    final case class Node(value: Ref[String], next: Ref[Node])
-
-    object Node {
-
-      def newSentinel(): Node =
-        Node(Ref.unsafe(null), Ref.unsafe(null))
-
-      def fromList(l: List[String]): Node = l match {
-        case Nil =>
-          newSentinel()
-        case h :: t =>
-          Node(value = Ref.unsafe(h), next = Ref.unsafe(fromList(t)))
-      }
-
-      def pop(head: Ref[Node]): Rxn[Any, String] = Rxn.unsafe.delayComputed {
-        head.unsafeDirectRead.flatMap { h =>
-          h.value.unsafeDirectRead.flatMap {
-            case null =>
-              // sentinel node, discard it and retry:
-              h.next.get.flatMap { nxt =>
-                Rxn.unsafe.cas(head, h, nxt)
-              }.as(Rxn.unsafe.retry)
-            case v =>
-              // found the real head, pop it:
-              Rxn.ret(h.next.get.flatMap { nxt =>
-                Rxn.unsafe.cas(head, h, nxt).flatMap { _ =>
-                  Rxn.unsafe.cas(h.value, v, v)
-                }
-              }.as(v))
-          }
-        }
-      }
-    }
-
-    for {
-      _ <- F.unit
-      // check list structure:
-      lst0 = List[String](null, "a", "b", null, "c")
-      lst1 <- F.delay { Ref.unsafe(Node.fromList(lst0)) }
-      lst2 <- F.tailRecM((List.empty[String], lst1)) { case (acc, ref) =>
-        ref.get.flatMap { node =>
-          if (node eq null) {
-            // there is an extra sentinel at the end:
-            Rxn.ret(Right[(List[String], Ref[Node]), List[String]](acc.tail.reverse))
-          } else {
-            node.value.get.map { v =>
-              Left[(List[String], Ref[Node]), List[String]]((v :: acc, node.next))
-            }
-          }
-        }.run[F]
-      }
-      _ <- assertEqualsF(lst2, lst0)
-      // real test:
-      r1 <- F.delay { Ref.unsafe(Node.fromList(List[String](null, "a", "b", null, "x"))) }
-      r2 <- F.delay { Ref.unsafe(Node.fromList(List[String](null, "c", null, null, "d", "y"))) }
-      popBoth = (Node.pop(r1) * Node.pop(r2)).run[F]
-      _ <- assertResultF(popBoth, ("a", "c"))
-      _ <- assertResultF(popBoth, ("b", "d"))
-      _ <- assertResultF(popBoth, ("x", "y"))
-      _ <- assertResultF(r1.unsafeDirectRead.flatMap(_.value.unsafeDirectRead).run[F], null)
-      _ <- assertResultF(r2.unsafeDirectRead.flatMap(_.value.unsafeDirectRead).run[F], null)
     } yield ()
   }
 }
