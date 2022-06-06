@@ -48,7 +48,7 @@ trait BenchUtils {
   }
 
   protected final def runIdxZ(rt: ZRuntime[_], task: Int => Task[Unit], size: Int): Unit = {
-    rt.unsafeRunTask(Task.foreachDiscard((0 until size).toList) { idx => task(idx) })
+    rt.unsafeRunTask(zio.ZIO.foreachDiscard((0 until size).toList) { idx => task(idx) })
     Blackhole.consumeCPU(waitTime)
   }
 

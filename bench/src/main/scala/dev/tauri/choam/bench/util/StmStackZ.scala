@@ -31,7 +31,7 @@ object StmStackZ {
   def apply[A](els: List[A]): IO[Nothing, StmStackZ[A]] = for {
     head <- TRef.makeCommit[TsList[A]](TsList.End)
     q = new StmStackZ[A](head)
-    _ <- els.foldLeft[IO[Nothing, Unit]](IO.unit) { (t, a) =>
+    _ <- els.foldLeft[IO[Nothing, Unit]](zio.ZIO.unit) { (t, a) =>
       t.flatMap { _ => STM.atomically(q.push(a)) }
     }
   } yield q

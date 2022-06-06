@@ -444,10 +444,10 @@ lazy val jmhSettings = Seq[Setting[_]](
 lazy val dependencies = new {
 
   val catsVersion = "2.7.0"
-  val catsEffectVersion = "3.3.11"
+  val catsEffectVersion = "3.3.12"
   val catsMtlVersion = "1.2.1"
   val fs2Version = "3.2.7"
-  val scalacheckEffectVersion = "1.0.3"
+  val scalacheckEffectVersion = "1.0.4"
   val kindProjectorVersion = "0.13.2"
   val jcstressVersion = "0.15"
   val jmhVersion = "1.33"
@@ -467,7 +467,7 @@ lazy val dependencies = new {
   val decline = Def.setting("com.monovore" %%% "decline" % "2.2.0") // https://github.com/bkirwi/decline
 
   // JVM:
-  val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.10.1") // https://github.com/GlenKPeterson/Paguro
+  val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.10.3") // https://github.com/GlenKPeterson/Paguro
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.16")
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "3.3.0") // https://github.com/JCTools/JCTools
 
@@ -478,7 +478,7 @@ lazy val dependencies = new {
     "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
   ))
   val scalaJsSecRnd = Def.setting(("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13))
-  val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-8140612")
+  val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-221360a")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
@@ -496,8 +496,8 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.1")
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "3.3.0-RC5")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.0-RC5")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "3.3.0-RC7")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.0-RC6")
 }
 
 val stressTestNames = List[String](

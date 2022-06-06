@@ -52,7 +52,7 @@ class RandomState {
     IO { (this.nextInt() % 2) == 0 }
 
   final def nextBooleanZIO: zio.Task[Boolean] =
-    zio.Task.attempt { (this.nextInt() % 2) == 0 }
+    zio.ZIO.attempt { (this.nextInt() % 2) == 0 }
 }
 
 @State(Scope.Thread)

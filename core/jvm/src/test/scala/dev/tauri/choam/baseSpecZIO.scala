@@ -34,7 +34,7 @@ trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with McasImplSpec =>
   final override def assertResultF[A, B](obtained: zio.Task[A], expected: B, clue: String = "values are not the same")(
     implicit loc: Location, ev: B <:< A
   ): zio.Task[Unit] = {
-    obtained.flatMap(ob => zio.Task.attempt { this.assertEquals(ob, expected, clue) })
+    obtained.flatMap(ob => zio.ZIO.attempt { this.assertEquals(ob, expected, clue) })
   }
 
   // https://github.com/zio/interop-cats/issues/509
@@ -181,8 +181,8 @@ abstract class BaseSpecTickedZIO
       private[this] final val zone =
         ZoneId.of("UTC")
 
-      override def javaClock(implicit trace: ZTraceElement): UIO[JClock] = {
-        UIO.succeed {
+      override def javaClock(implicit trace: Trace): UIO[JClock] = {
+        ZIO.succeed {
           new JClock {
             override def getZone(): ZoneId =
               self.zone
@@ -196,52 +196,53 @@ abstract class BaseSpecTickedZIO
         }
       }
 
-      override def currentTime(unit: => TimeUnit)(implicit trace: ZTraceElement): UIO[Long] = {
+      override def currentTime(unit: => TimeUnit)(implicit trace: Trace): UIO[Long] = {
         this.instant.map { inst =>
           unit.convert(inst.toEpochMilli, TimeUnit.MILLISECONDS)
         }
       }
 
-      override def currentDateTime(implicit trace: ZTraceElement): UIO[OffsetDateTime] = {
+      override def currentDateTime(implicit trace: Trace): UIO[OffsetDateTime] = {
         this.instant.map { inst =>
           OffsetDateTime.ofInstant(inst, zone)
         }
       }
 
-      override def instant(implicit trace: ZTraceElement): UIO[Instant] = UIO.succeed {
+      override def instant(implicit trace: Trace): UIO[Instant] = ZIO.succeed {
         val now = testContext.now()
         Instant.ofEpochMilli(now.toMillis)
       }
 
-      override def localDateTime(implicit trace: ZTraceElement): UIO[LocalDateTime] = {
+      override def localDateTime(implicit trace: Trace): UIO[LocalDateTime] = {
         this.instant.map { inst =>
           LocalDateTime.ofInstant(inst, zone)
         }
       }
 
-      override def nanoTime(implicit trace: ZTraceElement): UIO[Long] = UIO.succeed {
+      override def nanoTime(implicit trace: Trace): UIO[Long] = ZIO.succeed {
         testContext.now().toNanos
       }
 
-      override def scheduler(implicit trace: ZTraceElement): UIO[Scheduler] =
-        UIO.succeed(myScheduler)
+      override def scheduler(implicit trace: Trace): UIO[Scheduler] =
+        ZIO.succeed(myScheduler)
 
-      override def sleep(duration: => Duration)(implicit trace: ZTraceElement): UIO[Unit] = {
+      override def sleep(duration: => Duration)(implicit trace: Trace): UIO[Unit] = {
         val finDur = FiniteDuration(duration.toNanos(), "ns")
-        UIO.asyncInterrupt[Any, Nothing, Unit] { cb =>
+        ZIO.asyncInterrupt[Any, Nothing, Unit] { cb =>
           val cancel = testContext.schedule(
             finDur,
-            () => { cb(UIO.succeed(())) }
+            () => { cb(ZIO.succeed(())) }
           )
-          Left(UIO.succeed(cancel()))
+          Left(ZIO.succeed(cancel()))
         }
       }
     }
 
-    Runtime
-      .default
-      .withExecutor(testContextExecutor)
-      .withBlockingExecutor(testContextBlockingExecutor)
-      .map(_.add[Clock](myClock))
+    Runtime.unsafeFromLayer(
+      ZLayer.empty
+        .and(Runtime.setExecutor(testContextExecutor))
+        .and(Runtime.setBlockingExecutor(testContextBlockingExecutor))
+        .map(_.add[Clock](myClock))
+    )
   }
 }

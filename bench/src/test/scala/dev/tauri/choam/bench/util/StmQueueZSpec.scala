@@ -19,20 +19,20 @@ package dev.tauri.choam
 package bench
 package util
 
-import zio.IO
+import zio.{ IO, ZIO }
 import zio.stm.STM
 
 class StmQueueZSpec extends BaseSpecA {
 
   def assertF(cond: Boolean): IO[Throwable, Unit] =
-    IO.attempt { assert(cond) }
+    ZIO.attempt { assert(cond) }
 
   def assertEqualsF[A](x: A, y: A): IO[Throwable, Unit] =
-    IO.attempt { assertEquals(x, y) }
+    ZIO.attempt { assertEquals(x, y) }
 
   def assertResultF[A](tsk: IO[Throwable, A], expected: A): IO[Throwable, Unit] = {
     tsk.flatMap { a =>
-      IO.attempt { assertEquals(a, expected) }
+      ZIO.attempt { assertEquals(a, expected) }
     }
   }
 
@@ -72,16 +72,16 @@ class StmQueueZSpec extends BaseSpecA {
     val tsk = for {
       q1 <- StmQueueZ[Int](Nil)
       q2 <- StmQueueZ[Int](Nil)
-      x1 <- IO.attempt(XorShift())
-      x2 <- IO.attempt(XorShift())
+      x1 <- ZIO.attempt(XorShift())
+      x2 <- ZIO.attempt(XorShift())
       enq = { (xs: XorShift) =>
-        IO.attempt(xs.nextInt()).flatMap { item =>
+        ZIO.attempt(xs.nextInt()).flatMap { item =>
           STM.atomically(q1.enqueue(item).flatMap { _ => q2.enqueue(item) })
         }.repeatN(N)
       }
       deq = STM.atomically(q1.tryDequeue.flatMap { r1 => q2.tryDequeue.map((r1, _)) }).flatMap {
         case (None, None) =>
-          IO.unit // OK, empty queues
+          ZIO.unit // OK, empty queues
         case (Some(v1), Some(v2)) =>
           assertEqualsF(v1, v2)
         case (x, y) =>

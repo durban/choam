@@ -36,7 +36,7 @@ object StmQueueZ {
     head <- TRef.makeCommit[Node[A]](sentinel)
     tail <- TRef.makeCommit[Node[A]](sentinel)
     q = new StmQueueZ[A](head, tail)
-    _ <- els.foldLeft[IO[Nothing, Unit]](IO.unit) { (t, a) =>
+    _ <- els.foldLeft[IO[Nothing, Unit]](zio.ZIO.unit) { (t, a) =>
       t.flatMap { _ => STM.atomically(q.enqueue(a)) }
     }
   } yield q
