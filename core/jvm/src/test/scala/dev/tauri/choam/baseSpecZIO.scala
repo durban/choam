@@ -21,6 +21,7 @@ import java.{ util => ju }
 import java.util.Collection
 import java.util.concurrent.{ TimeUnit, Callable, Future, ScheduledFuture, ScheduledExecutorService }
 import java.time.{ OffsetDateTime, Instant, LocalDateTime, ZoneId, Clock => JClock }
+import java.time.temporal.ChronoUnit
 
 import scala.concurrent.duration._
 
@@ -54,15 +55,20 @@ abstract class BaseSpecZIO
   final override def F: Async[zio.Task] =
     zio.interop.catz.asyncRuntimeInstance(this.runtime)
 
-  protected final override def absolutelyUnsafeRunSync[A](fa: zio.Task[A]): A =
-    this.runtime.unsafeRunTask(fa)
+  protected final override def absolutelyUnsafeRunSync[A](fa: zio.Task[A]): A = {
+    zio.Unsafe.unsafe { implicit u =>
+      this.runtime.unsafe.run(fa).getOrThrow()
+    }
+  }
 
   private def transformZIO: ValueTransform = {
     new this.ValueTransform(
       "ZIO",
       { case x: zio.ZIO[_, _, _] =>
         val tsk = x.asInstanceOf[zio.Task[_]]
-        zio.Runtime.default.unsafeRunToFuture(tsk)
+        zio.Unsafe.unsafe { implicit u =>
+          this.runtime.unsafe.runToFuture(tsk)
+        }
       }
     )
   }
@@ -87,8 +93,11 @@ abstract class BaseSpecTickedZIO
   final override def F: Async[zio.Task] =
     zio.interop.catz.asyncRuntimeInstance(this.zioRuntime)
 
-  protected final override def absolutelyUnsafeRunSync[A](fa: zio.Task[A]): A =
-    this.zioRuntime.unsafeRunTask(fa)
+  protected final override def absolutelyUnsafeRunSync[A](fa: zio.Task[A]): A = {
+    zio.Unsafe.unsafe { implicit u =>
+      this.zioRuntime.unsafe.run(fa).getOrThrow()
+    }
+  }
 
   override def munitValueTransforms: List[this.ValueTransform] = {
     super.munitValueTransforms :+ this.transformZIO
@@ -103,8 +112,9 @@ abstract class BaseSpecTickedZIO
       "Ticked ZIO",
       { case x: zio.ZIO[_, _, _] =>
         val tsk = x.asInstanceOf[zio.Task[_]]
-        val prepare = zio.ZEnv.services.update(_.unionAll(this.zioRuntime.environment))
-        val fut = this.zioRuntime.unsafeRunToFuture(prepare *> tsk)
+        val fut = zio.Unsafe.unsafe { implicit u =>
+          this.zioRuntime.unsafe.runToFuture(tsk)
+        }
         testContext.tickAll()
         fut
       }
@@ -117,10 +127,10 @@ abstract class BaseSpecTickedZIO
   private lazy val zioRuntime = {
 
     val testContextExecutor: zio.Executor =
-      zio.Executor.fromExecutionContext(32)(testContext.derive())
+      zio.Executor.fromExecutionContext(testContext.derive())
 
     val testContextBlockingExecutor: zio.Executor =
-      zio.Executor.fromExecutionContext(32)(testContext.deriveBlocking())
+      zio.Executor.fromExecutionContext(testContext.deriveBlocking())
 
     val myScheduler = Scheduler.fromScheduledExecutorService(new ScheduledExecutorService {
 
@@ -202,6 +212,12 @@ abstract class BaseSpecTickedZIO
         }
       }
 
+      override def currentTime(unit: => ChronoUnit)(implicit trace: Trace, d: DummyImplicit): UIO[Long] = {
+        this.instant.map { inst =>
+          unit.between(java.time.Instant.EPOCH, inst)
+        }
+      }
+
       override def currentDateTime(implicit trace: Trace): UIO[OffsetDateTime] = {
         this.instant.map { inst =>
           OffsetDateTime.ofInstant(inst, zone)
@@ -238,11 +254,13 @@ abstract class BaseSpecTickedZIO
       }
     }
 
-    Runtime.unsafeFromLayer(
-      ZLayer.empty
-        .and(Runtime.setExecutor(testContextExecutor))
-        .and(Runtime.setBlockingExecutor(testContextBlockingExecutor))
-        .map(_.add[Clock](myClock))
-    )
+    zio.Unsafe.unsafe { implicit u =>
+      Runtime.unsafe.fromLayer(
+        ZLayer.empty
+          .and(Runtime.setExecutor(testContextExecutor))
+          .and(Runtime.setBlockingExecutor(testContextBlockingExecutor))
+          .map(_.add[Clock](myClock))
+      )
+    }
   }
 }

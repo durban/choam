@@ -61,10 +61,12 @@ class StmQueueZSpec extends BaseSpecA {
       _ <- assertResultF(STM.atomically(q.tryDequeue), None)
     } yield ()
 
-    zio.Runtime.default.unsafeRunSync(tsk).fold(
-      failed = err => assert(false, s"task failed: ${err}"),
-      completed = _ => ()
-    )
+    zio.Unsafe.unsafe { implicit u =>
+      zio.Runtime.default.unsafe.run(tsk).foldExit(
+        failed = err => assert(false, s"task failed: ${err}"),
+        completed = _ => ()
+      )
+    }
   }
 
   test("StmQueueZ should have composable transactions") {
@@ -99,9 +101,11 @@ class StmQueueZSpec extends BaseSpecA {
       _ <- fpo2.join
     } yield ()
 
-    zio.Runtime.default.unsafeRunSync(tsk).fold(
-      failed = err => assert(false, s"task failed: ${err}"),
-      completed = _ => ()
-    )
+    zio.Unsafe.unsafe { implicit u =>
+      zio.Runtime.default.unsafe.run(tsk).foldExit(
+        failed = err => assert(false, s"task failed: ${err}"),
+        completed = _ => ()
+      )
+    }
   }
 }

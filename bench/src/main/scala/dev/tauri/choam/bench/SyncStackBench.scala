@@ -183,7 +183,10 @@ object SyncStackBench {
 
     val runtime = zio.Runtime.default
 
-    val stmZStack: StmStackZ[String] =
-      runtime.unsafeRunTask(StmStackZ.apply(Prefill.prefill().toList))
+    val stmZStack: StmStackZ[String] = {
+      zio.Unsafe.unsafe { implicit u =>
+        runtime.unsafe.run(StmStackZ.apply(Prefill.prefill().toList)).getOrThrow()
+      }
+    }
   }
 }

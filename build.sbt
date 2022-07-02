@@ -443,10 +443,10 @@ lazy val jmhSettings = Seq[Setting[_]](
 
 lazy val dependencies = new {
 
-  val catsVersion = "2.7.0"
-  val catsEffectVersion = "3.3.12"
-  val catsMtlVersion = "1.2.1"
-  val fs2Version = "3.2.7"
+  val catsVersion = "2.8.0"
+  val catsEffectVersion = "3.3.13"
+  val catsMtlVersion = "1.3.0"
+  val fs2Version = "3.2.9"
   val scalacheckEffectVersion = "1.0.4"
   val kindProjectorVersion = "0.13.2"
   val jcstressVersion = "0.15"
@@ -464,7 +464,7 @@ lazy val dependencies = new {
   val catsMtl = Def.setting("org.typelevel" %%% "cats-mtl" % catsMtlVersion)
   val catsMtlLaws = Def.setting("org.typelevel" %%% "cats-mtl-laws" % catsMtlVersion)
   val fs2 = Def.setting("co.fs2" %%% "fs2-core" % fs2Version)
-  val decline = Def.setting("com.monovore" %%% "decline" % "2.2.0") // https://github.com/bkirwi/decline
+  val decline = Def.setting("com.monovore" %%% "decline" % "2.3.0") // https://github.com/bkirwi/decline
 
   // JVM:
   val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.10.3") // https://github.com/GlenKPeterson/Paguro
@@ -478,7 +478,7 @@ lazy val dependencies = new {
     "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
   ))
   val scalaJsSecRnd = Def.setting(("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13))
-  val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-221360a")
+  val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-a4d5d6c")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
@@ -496,8 +496,8 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.1")
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "3.3.0-RC7")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.0-RC6")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "3.3.0")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.0")
 }
 
 val stressTestNames = List[String](
