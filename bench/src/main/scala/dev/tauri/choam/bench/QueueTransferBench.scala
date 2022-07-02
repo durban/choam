@@ -267,7 +267,7 @@ object QueueTransferBench {
     def setup(): Unit = {
       this.queues = List.fill(this.txSize) {
         List.fill(this.circleSize) {
-          zio.Unsafe.unsafe { implicit u =>
+          zio.Unsafe.unsafeCompat { implicit u =>
             runtime.unsafe.run(StmQueueZ[String](Prefill.prefill().toList)).getOrThrow()
           }
         }

@@ -61,7 +61,7 @@ class StmQueueZSpec extends BaseSpecA {
       _ <- assertResultF(STM.atomically(q.tryDequeue), None)
     } yield ()
 
-    zio.Unsafe.unsafe { implicit u =>
+    zio.Unsafe.unsafeCompat { implicit u =>
       zio.Runtime.default.unsafe.run(tsk).foldExit(
         failed = err => assert(false, s"task failed: ${err}"),
         completed = _ => ()
@@ -101,7 +101,7 @@ class StmQueueZSpec extends BaseSpecA {
       _ <- fpo2.join
     } yield ()
 
-    zio.Unsafe.unsafe { implicit u =>
+    zio.Unsafe.unsafeCompat { implicit u =>
       zio.Runtime.default.unsafe.run(tsk).foldExit(
         failed = err => assert(false, s"task failed: ${err}"),
         completed = _ => ()

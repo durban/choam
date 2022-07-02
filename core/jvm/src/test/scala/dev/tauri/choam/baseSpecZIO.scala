@@ -56,7 +56,7 @@ abstract class BaseSpecZIO
     zio.interop.catz.asyncRuntimeInstance(this.runtime)
 
   protected final override def absolutelyUnsafeRunSync[A](fa: zio.Task[A]): A = {
-    zio.Unsafe.unsafe { implicit u =>
+    zio.Unsafe.unsafeCompat { implicit u =>
       this.runtime.unsafe.run(fa).getOrThrow()
     }
   }
@@ -66,7 +66,7 @@ abstract class BaseSpecZIO
       "ZIO",
       { case x: zio.ZIO[_, _, _] =>
         val tsk = x.asInstanceOf[zio.Task[_]]
-        zio.Unsafe.unsafe { implicit u =>
+        zio.Unsafe.unsafeCompat { implicit u =>
           this.runtime.unsafe.runToFuture(tsk)
         }
       }
@@ -94,7 +94,7 @@ abstract class BaseSpecTickedZIO
     zio.interop.catz.asyncRuntimeInstance(this.zioRuntime)
 
   protected final override def absolutelyUnsafeRunSync[A](fa: zio.Task[A]): A = {
-    zio.Unsafe.unsafe { implicit u =>
+    zio.Unsafe.unsafeCompat { implicit u =>
       this.zioRuntime.unsafe.run(fa).getOrThrow()
     }
   }
@@ -112,7 +112,7 @@ abstract class BaseSpecTickedZIO
       "Ticked ZIO",
       { case x: zio.ZIO[_, _, _] =>
         val tsk = x.asInstanceOf[zio.Task[_]]
-        val fut = zio.Unsafe.unsafe { implicit u =>
+        val fut = zio.Unsafe.unsafeCompat { implicit u =>
           this.zioRuntime.unsafe.runToFuture(tsk)
         }
         testContext.tickAll()
@@ -254,7 +254,7 @@ abstract class BaseSpecTickedZIO
       }
     }
 
-    zio.Unsafe.unsafe { implicit u =>
+    zio.Unsafe.unsafeCompat { implicit u =>
       Runtime.unsafe.fromLayer(
         ZLayer.empty
           .and(Runtime.setExecutor(testContextExecutor))

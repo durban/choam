@@ -186,7 +186,7 @@ object SyncUnboundedQueueBench {
   @State(Scope.Benchmark)
   class StmZSt extends BaseSt {
     val runtime = zio.Runtime.default
-    val stmQueue: StmQueueZ[String] = zio.Unsafe.unsafe { implicit u =>
+    val stmQueue: StmQueueZ[String] = zio.Unsafe.unsafeCompat { implicit u =>
       runtime.unsafe.run(StmQueueZ[String](Prefill.prefill().toList)).getOrThrow()
     }
   }
