@@ -24,6 +24,7 @@ import java.time.{ OffsetDateTime, Instant, LocalDateTime, ZoneId, Clock => JClo
 import java.time.temporal.ChronoUnit
 
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext
 
 import cats.effect.kernel.Async
 import cats.effect.kernel.testkit.TestContext
@@ -121,13 +122,28 @@ abstract class BaseSpecTickedZIO
     )
   }
 
-  protected override val testContext: TestContext =
+  protected override lazy val testContext: TestContext =
     TestContext()
 
-  private lazy val zioRuntime = {
+  private[this] var initializing =
+    true
 
-    val testContextExecutor: zio.Executor =
-      zio.Executor.fromExecutionContext(testContext.derive())
+  private lazy val zioRuntime: Runtime[Any] = {
+
+    val testContextExecutor: zio.Executor = {
+      zio.Executor.fromExecutionContext(new ExecutionContext {
+        def execute(runnable: Runnable): Unit = {
+          testContext.execute(runnable)
+          if (initializing) {
+            // This is a hack to avoid deadlock
+            // when creating the runtime itself:
+            testContext.tickAll()
+          }
+        }
+        def reportFailure(cause: Throwable): Unit =
+          testContext.reportFailure(cause)
+      })
+    }
 
     val testContextBlockingExecutor: zio.Executor =
       zio.Executor.fromExecutionContext(testContext.deriveBlocking())
@@ -173,17 +189,21 @@ abstract class BaseSpecTickedZIO
       override def invokeAny[T <: Object](x: Collection[_ <: Callable[T]], y: Long, z: TimeUnit): T =
         testContextExecutor.asExecutionContextExecutorService.invokeAny(x, y, z)
 
-      override def schedule(x: Runnable, y: Long, z: TimeUnit): ScheduledFuture[_ <: Object] =
+      override def schedule(x: Runnable, y: Long, z: TimeUnit): ScheduledFuture[_ <: Object] = {
         throw new NotImplementedError("schedule(Runnable, Long, TimeUnit)")
+      }
 
-      override def schedule[V <: Object](x: Callable[V], y: Long, z: TimeUnit): ScheduledFuture[V] =
+      override def schedule[V <: Object](x: Callable[V], y: Long, z: TimeUnit): ScheduledFuture[V] = {
         throw new NotImplementedError("schedule(Callable, Long, TimeUnit)")
+      }
 
-      override def scheduleAtFixedRate(x: Runnable, y: Long, z: Long, zz: TimeUnit): ScheduledFuture[_ <: Object] =
+      override def scheduleAtFixedRate(x: Runnable, y: Long, z: Long, zz: TimeUnit): ScheduledFuture[_ <: Object] = {
         throw new NotImplementedError("scheduleAtFixedRate(Runnable, Long, Long, TimeUnit)")
+      }
 
-      override def scheduleWithFixedDelay(x: Runnable, y: Long, z: Long, zz: TimeUnit): ScheduledFuture[_ <: Object] =
+      override def scheduleWithFixedDelay(x: Runnable, y: Long, z: Long, zz: TimeUnit): ScheduledFuture[_ <: Object] = {
         throw new NotImplementedError("scheduleWithFixedDelay(Runnable, Long, Long, TimeUnit)")
+      }
     })
 
     val myClock = new Clock { self =>
@@ -254,13 +274,15 @@ abstract class BaseSpecTickedZIO
       }
     }
 
-    zio.Unsafe.unsafeCompat { implicit u =>
+    val res = zio.Unsafe.unsafeCompat { implicit u =>
       Runtime.unsafe.fromLayer(
-        ZLayer.empty
+        ZLayer
+          .scoped(ZIO.withClockScoped(myClock))
           .and(Runtime.setExecutor(testContextExecutor))
           .and(Runtime.setBlockingExecutor(testContextBlockingExecutor))
-          .map(_.add[Clock](myClock))
       )
     }
+    initializing = false
+    res
   }
 }
