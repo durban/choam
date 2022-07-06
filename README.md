@@ -78,16 +78,16 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   The main diferences from the paper are:
   - Only lock-free features (and a few low-level ones) are implemented.
   - `Rxn` has a referentially transparent ("pure functional") API.
-  - The interpreter is stack-safe.
+  - The interpreter (that executes `Rxn`s) is stack-safe.
   - We also support composing `Rxn`s which modify the same `Ref`
     (thus, an `Rxn` is closer to an STM transaction than a *reagent*;
     see below).
-  - Reads are guaranteed to be consistent (this is called *opacity*, see below).
+  - Reads are always guaranteed to be consistent (this is called *opacity*, see below).
 - Multi-word compare-and-swap (MCAS/*k*-CAS) implementations:
   - [A Practical Multi-Word Compare-and-Swap Operation](https://web.archive.org/web/20220121034605/https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf)
     (an earlier version used this algorithm)
   - [Efficient Multi-word Compare and Swap](https://web.archive.org/web/20220215225848/https://arxiv.org/pdf/2008.02527.pdf)
-    (`MCAS.Emcas` implements a variant of this algorithm; this is the default algorithm on the JVM)
+    (`MCAS.Emcas` implements a variant of this algorithm; this is the default algorithm we use on the JVM)
   - A simple, non-lock-free algorithm from the Reagents paper (see above) is implemented as
     `MCAS.SpinLockMCAS`
 - Software transactional memory (STM)
