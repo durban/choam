@@ -274,6 +274,14 @@ object Mcas extends McasCompanionPlatform { self =>
       }
     }
 
+    def saveFreelist(@unused fl: AnyRef): Unit = {
+      () // override to actually save
+    }
+
+    def loadFreelist(): AnyRef = {
+      null // override to actually load
+    }
+
     // statistics/testing/benchmarking:
 
     /** Only for testing */

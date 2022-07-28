@@ -53,17 +53,17 @@ class InternalStackBench {
     s.objStack = new ObjStack[String]
     var i = 0
     while (i < N) {
-      s.objStack.push("test")
+      s.objStack.push("test", ObjStack.Freelist.Dummy)
       i += 1
     }
     i = 0
     while (i < N) {
-      bh.consume(s.objStack.pop())
+      bh.consume(s.objStack.pop(ObjStack.Freelist.Dummy))
       i += 1
     }
     i = 0
     while (i < N) {
-      s.objStack.push("test")
+      s.objStack.push("test", ObjStack.Freelist.Dummy)
       i += 1
     }
   }

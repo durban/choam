@@ -39,6 +39,9 @@ private final class EmcasThreadContext(
   private[this] final val maxMarkerUsedCount =
     4096
 
+  private[this] var freelistHead: AnyRef =
+    null
+
   /**
    * When storing a `WordDescriptor` into a ref, `EMCAS` first
    * tries to reuse an existing weakref and marker in the ref
@@ -146,6 +149,16 @@ private final class EmcasThreadContext(
 
   private[choam] final override def recordCommit(fullRetries: Int, mcasRetries: Int): Unit = {
     this.recordCommitPlain(fullRetries, mcasRetries)
+  }
+
+  final override def saveFreelist(fl: AnyRef): Unit = {
+    this.freelistHead = fl
+  }
+
+  final override def loadFreelist(): AnyRef = {
+    val r = this.freelistHead
+    this.freelistHead = null
+    r
   }
 
   /** Only for testing/benchmarking */

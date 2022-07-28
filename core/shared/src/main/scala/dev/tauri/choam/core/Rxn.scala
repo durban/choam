@@ -624,13 +624,39 @@ object Rxn extends RxnInstances0 {
     ctx: Mcas.ThreadContext,
     maxBackoff: Int,
     randomizeBackoff: Boolean
-  ) {
+  ) extends ObjStack.Freelist {
 
     private[this] var startRxn: Rxn[Any, Any] = rxn.asInstanceOf[Rxn[Any, Any]]
     private[this] var startA: Any = x
 
     private[this] var _desc: HalfEMCASDescriptor =
       null
+
+    private[this] var _freelist: ObjStack.Lst[_] =
+      ctx.loadFreelist().asInstanceOf[ObjStack.Lst[_]]
+
+    private[this] var _freelistSize: Int =
+      ObjStack.Lst.length(_freelist)
+
+    final override def tryAlloc[A](): ObjStack.Lst[A] = {
+      if (this._freelist ne null) {
+        val r = this._freelist
+        this._freelist = r.tail
+        this._freelistSize -= 1
+        r.tail = null
+        r.asInstanceOf[ObjStack.Lst[A]]
+      } else {
+        null
+      }
+    }
+
+    final override def free[A](node: ObjStack.Lst[A]): Unit = {
+      require(node.refcnt == 0)
+      node.head = nullOf[A]
+      node.tail = this._freelist.asInstanceOf[ObjStack.Lst[A]]
+      this._freelist = node
+      this._freelistSize += 1
+    }
 
     private[this] final def desc: HalfEMCASDescriptor = {
       if (_desc ne null) {
@@ -660,7 +686,7 @@ object Rxn extends RxnInstances0 {
     private[this] val commit = commitSingleton
     contT.push(ContAfterPostCommit)
     contT.push(ContAndThen)
-    contK.push(commit)
+    contK.push(commit, this)
 
     private[this] var contTReset: Array[Byte] = contT.takeSnapshot()
     private[this] var contKReset: ObjStack.Lst[Any] = contK.takeSnapshot()
@@ -722,21 +748,21 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def saveAlt(k: Rxn[Any, R]): Unit = {
-      alts.push(ctx.snapshot(_desc))
-      alts.push(a)
-      alts.push(contT.takeSnapshot())
-      alts.push(contK.takeSnapshot())
-      alts.push(pc.takeSnapshot())
-      alts.push(k)
+      alts.push(ctx.snapshot(_desc), this)
+      alts.push(a, this)
+      alts.push(contT.takeSnapshot(), this)
+      alts.push(contK.takeSnapshot(), this)
+      alts.push(pc.takeSnapshot(), this)
+      alts.push(k, this)
     }
 
     private[this] final def loadAlt(): Rxn[Any, R] = {
-      val res = alts.pop().asInstanceOf[Rxn[Any, R]]
-      pc.loadSnapshotUnsafe(alts.pop().asInstanceOf[ObjStack.Lst[Any]])
-      contK.loadSnapshot(alts.pop().asInstanceOf[ObjStack.Lst[Any]])
-      contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
-      a = alts.pop()
-      _desc = alts.pop().asInstanceOf[HalfEMCASDescriptor]
+      val res = alts.pop(this).asInstanceOf[Rxn[Any, R]]
+      pc.loadSnapshotUnsafe(alts.pop(this).asInstanceOf[ObjStack.Lst[Any]])
+      contK.loadSnapshot(alts.pop(this).asInstanceOf[ObjStack.Lst[Any]])
+      contT.loadSnapshot(alts.pop(this).asInstanceOf[Array[Byte]])
+      a = alts.pop(this)
+      _desc = alts.pop(this).asInstanceOf[HalfEMCASDescriptor]
       res
     }
 
@@ -750,7 +776,7 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def popFinalResult(): Any = {
-      val r = contK.pop()
+      val r = contK.pop(this)
       assert(!equ(r, postCommitResultMarker))
       r
     }
@@ -759,21 +785,21 @@ object Rxn extends RxnInstances0 {
     private[this] final def next(): Rxn[Any, Any] = {
       (contT.pop() : @switch) match {
         case 0 => // ContAndThen
-          contK.pop().asInstanceOf[Rxn[Any, Any]]
+          contK.pop(this).asInstanceOf[Rxn[Any, Any]]
         case 1 => // ContAndAlso
           val savedA = a
-          a = contK.pop()
-          val res = contK.pop().asInstanceOf[Rxn[Any, Any]]
-          contK.push(savedA)
+          a = contK.pop(this)
+          val res = contK.pop(this).asInstanceOf[Rxn[Any, Any]]
+          contK.push(savedA, this)
           res
         case 2 => // ContAndAlsoJoin
-          val savedA = contK.pop()
+          val savedA = contK.pop(this)
           a = (savedA, a)
           next()
         case 3 => // was ContAfterDelayComp
           impossible("Unknown contT: 3")
         case 4 => // ContPostCommit
-          val pcAction = contK.pop().asInstanceOf[Rxn[Any, Any]]
+          val pcAction = contK.pop(this).asInstanceOf[Rxn[Any, Any]]
           clearAlts()
           setContReset()
           a = () : Any
@@ -791,8 +817,8 @@ object Rxn extends RxnInstances0 {
           a = postCommitResultMarker : Any
           commit.asInstanceOf[Rxn[Any, Any]]
         case 7 => // ContUpdWith
-          val ox = contK.pop()
-          val ref = contK.pop().asInstanceOf[MemoryLocation[Any]]
+          val ox = contK.pop(this)
+          val ref = contK.pop(this).asInstanceOf[MemoryLocation[Any]]
           val (nx, res) = a.asInstanceOf[Tuple2[_, _]]
           val hwd = desc.getOrElseNull(ref)
           assert(hwd ne null)
@@ -806,18 +832,18 @@ object Rxn extends RxnInstances0 {
           }
           next()
         case 8 => // ContAs
-          a = contK.pop()
+          a = contK.pop(this)
           next()
         case 9 => // ContProductR
-          a = contK.pop()
-          contK.pop().asInstanceOf[Rxn[Any, Any]]
+          a = contK.pop(this)
+          contK.pop(this).asInstanceOf[Rxn[Any, Any]]
         case 10 => // ContFlatMapF
-          val n = contK.pop().asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
+          val n = contK.pop(this).asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
           a = () : Any
           n
         case 11 => // ContFlatMap
-          val n = contK.pop().asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
-          a = contK.pop()
+          val n = contK.pop(this).asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
+          a = contK.pop(this)
           n
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
@@ -955,18 +981,18 @@ object Rxn extends RxnInstances0 {
             a = () : Any
             if (!equ(res, postCommitResultMarker)) {
               // final result, Done (or ContAfterDelayComp) will need it:
-              contK.push(res)
+              contK.push(res, this)
             }
             while (pc.nonEmpty) {
               // commits the post-commit action:
               contT.push(ContCommitPostCommit)
               // the post-commit action itself:
-              contK.push(pc.pop())
+              contK.push(pc.pop(this), this)
               contT.push(ContPostCommit)
             }
             loop(next())
           } else {
-            contK.push(commit)
+            contK.push(commit, this)
             contT.push(ContAndThen)
             loop(retry())
           }
@@ -974,7 +1000,7 @@ object Rxn extends RxnInstances0 {
           loop(retry())
         case 2 => // PostCommit
           val c = curr.asInstanceOf[PostCommit[A]]
-          pc.push(c.pc.provide(a.asInstanceOf[A]))
+          pc.push(c.pc.provide(a.asInstanceOf[A]), this)
           loop(next())
         case 3 => // Lift
           val c = curr.asInstanceOf[Lift[A, B]]
@@ -1044,7 +1070,7 @@ object Rxn extends RxnInstances0 {
         case 11 => // AndThen
           val c = curr.asInstanceOf[AndThen[A, _, B]]
           contT.push(ContAndThen)
-          contK.push(c.right)
+          contK.push(c.right, this)
           loop(c.left)
         case 12 => // AndAlso
           val c = curr.asInstanceOf[AndAlso[_, _, _, _]]
@@ -1053,8 +1079,8 @@ object Rxn extends RxnInstances0 {
           contT.push(ContAndAlsoJoin)
           // right:
           contT.push(ContAndAlso)
-          contK.push(c.right)
-          contK.push(xp._2)
+          contK.push(c.right, this)
+          contK.push(xp._2, this)
           // left:
           a = xp._1
           loop(c.left)
@@ -1079,15 +1105,15 @@ object Rxn extends RxnInstances0 {
             val axn = c.f(ox, a)
             desc = desc.addOrOverwrite(hwd)
             contT.push(ContUpdWith)
-            contK.push(c.ref)
-            contK.push(ox)
+            contK.push(c.ref, this)
+            contK.push(ox, this)
             // TODO: if `axn` writes to the same ref, we'll throw (see above)
             loop(axn)
           }
         case 17 => // As
           val c = curr.asInstanceOf[As[_, _, _]]
           contT.push(ContAs)
-          contK.push(c.c)
+          contK.push(c.c, this)
           loop(c.rxn)
         case 18 => // FinishExchange
           val c = curr.asInstanceOf[FinishExchange[Any]]
@@ -1110,7 +1136,7 @@ object Rxn extends RxnInstances0 {
             contT = otherContT,
           )
           desc = ctx.addCasFromInitial(desc, c.hole.loc, null, fx)
-          a = contK.pop() // the exchanged value we've got from the other thread
+          a = contK.pop(this) // the exchanged value we've got from the other thread
           //println(s"FinishExchange: our result is '${a}' - thread#${Thread.currentThread().getId()}")
           loop(next())
         case 19 => // Read
@@ -1166,19 +1192,19 @@ object Rxn extends RxnInstances0 {
         case 24 => // ProductR
           val c = curr.asInstanceOf[ProductR[Any, Any, Any]]
           contT.push(ContProductR)
-          contK.push(c.right)
-          contK.push(a)
+          contK.push(c.right, this)
+          contK.push(a, this)
           loop(c.left)
         case 25 => // FlatMapF
           val c = curr.asInstanceOf[FlatMapF[Any, Any, Any]]
           contT.push(ContFlatMapF)
-          contK.push(c.f)
+          contK.push(c.f, this)
           loop(c.rxn)
         case 26 => // FlatMap
           val c = curr.asInstanceOf[FlatMap[Any, Any, Any]]
           contT.push(ContFlatMap)
-          contK.push(a)
-          contK.push(c.f)
+          contK.push(a, this)
+          contK.push(c.f, this)
           loop(c.rxn)
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
@@ -1188,6 +1214,7 @@ object Rxn extends RxnInstances0 {
     final def interpret(): R = {
       val r = loop(startRxn)
       this.ctx.setStatisticsPlain(this.stats.asInstanceOf[Map[AnyRef, AnyRef]])
+      this.ctx.saveFreelist(this._freelist)
       r
     }
   }

@@ -23,19 +23,30 @@ private final class ObjStack[A]() {
   private[this] var lst: ObjStack.Lst[A] =
     null
 
+  private[this] var size: Int =
+    0
+
   final override def toString: String = {
     if (this.lst ne null) s"ObjStack(${this.lst.mkString(", ")})"
     else "ObjStack()"
   }
 
-  final def push(a: A): Unit = {
-    this.lst = new ObjStack.Lst(a, this.lst)
+  final def push(a: A, fl: ObjStack.Freelist): Unit = {
+    this.lst = fl.tryAlloc[A]() match {
+      case null =>
+        new ObjStack.Lst(a, this.lst)
+      case node =>
+        node.head = a
+        node.tail = this.lst
+        node
+    }
+    this.size += 1
   }
 
-  final def pushAll(as: Iterable[A]): Unit = {
+  final def pushAll(as: Iterable[A], fl: ObjStack.Freelist): Unit = {
     val it = as.iterator
     while (it.hasNext) {
-      this.push(it.next())
+      this.push(it.next(), fl)
     }
   }
 
@@ -45,15 +56,21 @@ private final class ObjStack[A]() {
     }
   }
 
-  final def pop(): A = {
+  final def pop(fl: ObjStack.Freelist): A = {
     assertNonEmpty()
-    val r = this.lst.head
-    this.lst = this.lst.tail
+    val node = this.lst
+    val r = node.head
+    this.lst = node.tail
+    this.size -= 1
+    if (node.refcnt == 0) {
+      fl.free(node)
+    }
     r
   }
 
   final def clear(): Unit = {
     this.lst = null
+    this.size = 0
   }
 
   final def isEmpty: Boolean = {
@@ -65,21 +82,42 @@ private final class ObjStack[A]() {
   }
 
   final def takeSnapshot(): ObjStack.Lst[A] = {
+    ObjStack.Lst.incrRefcnt(this.lst)
     this.lst
   }
 
   final def loadSnapshot(snapshot: ObjStack.Lst[A]): Unit = {
+    ObjStack.Lst.decrRefcnt(snapshot)
     this.lst = snapshot
+    this.size = ObjStack.Lst.length(snapshot)
   }
 
   final def loadSnapshotUnsafe(snapshot: ObjStack.Lst[Any]): Unit = {
-    this.lst = snapshot.asInstanceOf[ObjStack.Lst[A]]
+    this.loadSnapshot(snapshot.asInstanceOf[ObjStack.Lst[A]])
   }
 }
 
 private object ObjStack {
 
-  final class Lst[+A](final val head: A, final val tail: Lst[A]) {
+  abstract class Freelist {
+    def tryAlloc[A](): Lst[A]
+    def free[A](node: Lst[A]): Unit
+  }
+
+  final object Freelist {
+    final object Dummy extends Freelist {
+      override def tryAlloc[A](): Lst[A] =
+        null
+      override def free[A](node: Lst[A]): Unit =
+        ()
+    }
+  }
+
+  final class Lst[A](
+    final var head: A,
+    final var tail: Lst[A],
+    final var refcnt: Int = 0,
+  ) {
 
     final def mkString(sep: String = ", "): String = {
       val sb = new StringBuilder()
@@ -104,6 +142,26 @@ private object ObjStack {
 
     def empty[A]: Lst[A] =
       null
+
+    @tailrec
+    def incrRefcnt[A](lst: Lst[A]): Unit = {
+      if (lst eq null) {
+        ()
+      } else {
+        lst.refcnt += 1
+        incrRefcnt(lst.tail)
+      }
+    }
+
+    @tailrec
+    def decrRefcnt[A](lst: Lst[A]): Unit = {
+      if (lst eq null) {
+        ()
+      } else {
+        lst.refcnt -= 1
+        decrRefcnt(lst.tail)
+      }
+    }
 
     def mkString[A](lst: Lst[A], sep: String = ", "): String = {
       lst match {

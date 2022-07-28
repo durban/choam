@@ -34,9 +34,9 @@ class ObjStackBench {
   @Benchmark
   def pushPopObjStack(s: ObjSt, bh: Blackhole): Unit = {
     if (ThreadLocalRandom.current().nextBoolean() || s.objStack.isEmpty) {
-      s.objStack.push("x")
+      s.objStack.push("x", ObjStack.Freelist.Dummy)
     } else {
-      bh.consume(s.objStack.pop())
+      bh.consume(s.objStack.pop(ObjStack.Freelist.Dummy))
     }
   }
 
@@ -82,7 +82,7 @@ private object ObjStackBench {
       val s = new ObjStack[String]
       for (i <- 1 to 8) {
         if (ThreadLocalRandom.current().nextBoolean()) {
-          s.push(i.toString())
+          s.push(i.toString(), ObjStack.Freelist.Dummy)
         }
       }
       s
@@ -114,7 +114,7 @@ private object ObjStackBench {
         ThreadLocalRandom.current().nextLong().toString()
       }
       val s = new ObjStack[String]
-      s.pushAll(l)
+      s.pushAll(l, ObjStack.Freelist.Dummy)
       s.takeSnapshot()
     }
   }
