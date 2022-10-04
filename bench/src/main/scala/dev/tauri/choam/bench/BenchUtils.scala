@@ -43,14 +43,14 @@ trait BenchUtils {
   }
 
   protected final def runZ(rt: ZRuntime[_], task: Task[Unit], size: Int): Unit = {
-    zio.Unsafe.unsafeCompat { implicit u =>
+    zio.Unsafe.unsafe { implicit u =>
       rt.unsafe.run(task.repeatN(size - 1)).getOrThrow()
     }
     Blackhole.consumeCPU(waitTime)
   }
 
   protected final def runIdxZ(rt: ZRuntime[_], task: Int => Task[Unit], size: Int): Unit = {
-    zio.Unsafe.unsafeCompat { implicit u =>
+    zio.Unsafe.unsafe { implicit u =>
       rt.unsafe.run(zio.ZIO.foreachDiscard((0 until size).toList) { idx => task(idx) }).getOrThrow()
     }
     Blackhole.consumeCPU(waitTime)
@@ -66,7 +66,7 @@ trait BenchUtils {
   protected final def runReplZ(rt: ZRuntime[_], task: Task[Unit], size: Int, parallelism: Int): Unit = {
     val n = size / parallelism
     assert((n * parallelism) == size) // avoid rounding error
-    zio.Unsafe.unsafeCompat { implicit u =>
+    zio.Unsafe.unsafe { implicit u =>
       rt.unsafe.run(task.replicateZIO(n)).getOrThrow() : Iterable[Unit]
     }
     ()

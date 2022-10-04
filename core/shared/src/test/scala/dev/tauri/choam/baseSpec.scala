@@ -152,7 +152,7 @@ abstract class BaseSpecIO
     }
     IO {
       this
-        .munitIoRuntime
+        .munitIORuntime
         .asInstanceOf[FmHolder]
         .fiberMonitor
         .liveFiberSnapshot(System.err.print(_))

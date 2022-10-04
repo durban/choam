@@ -184,7 +184,7 @@ object SyncStackBench {
     val runtime = zio.Runtime.default
 
     val stmZStack: StmStackZ[String] = {
-      zio.Unsafe.unsafeCompat { implicit u =>
+      zio.Unsafe.unsafe { implicit u =>
         runtime.unsafe.run(StmStackZ.apply(Prefill.prefill().toList)).getOrThrow()
       }
     }

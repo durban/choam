@@ -41,7 +41,7 @@ abstract class BaseSpecMyIO
 
   override def assertResultF[A, B](obtained: MyIO[A], expected: B, clue: String)(implicit loc: Location, ev: B <:< A): MyIO[Unit] = {
     MyIO(obtained.impl.flatMap { r =>
-      IO { this.assertEquals(r, expected, clue)(loc, ev) }
+      IO { this.assertEquals(r, expected, clue) }
     })
   }
 
