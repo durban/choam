@@ -174,7 +174,7 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
         task
           .flatMap(IO.pure)
           .handleErrorWith(IO.raiseError)
-          .unsafeRunAsyncOutcome({ (outcome) => res = outcome })(this.munitIoRuntime)
+          .unsafeRunAsyncOutcome({ (outcome) => res = outcome })(this.tickedMunitIoRuntime)
         testContext.tickAll()
         if (res eq null) {
           Future.failed(new FailException("ticked IO didn't complete", Location.empty))
@@ -189,19 +189,18 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
     ) +: super.munitValueTransforms
   }
 
-  final override implicit def munitIoRuntime: IORuntime = {
-    // This is an ugly hack: munit always uses
-    // `munitIoRuntime.compute` for its own things.
-    // If that value is a `TestContext`, things won't
-    // work. So, during initialization, we return
-    // a dummy pool (munit saves that in the
-    // constructor). Later (when the tests run),
-    // we cheat, and return the ticked runtime.
-    if (this.isInitialized : @unchecked) this.realMunitIoRuntime
-    else this.dummyMunitIoRuntime
+  final override def munitIoRuntime: IORuntime = {
+    // Note: we're NOT returning the ticked runtime,
+    // because MUnit will use this for its own stuff.
+    this.dummyMunitIoRuntime
   }
 
-  private[this] lazy val realMunitIoRuntime = {
+  final override def munitIORuntime: IORuntime = {
+    // See above
+    this.munitIoRuntime
+  }
+
+  private[this] lazy val tickedMunitIoRuntime = {
     IORuntime(
       compute = testContext,
       blocking = testContext,
@@ -246,9 +245,6 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
       config = IORuntimeConfig()
     )
   }
-
-  private[this] var isInitialized: Boolean =
-    true
 }
 
 abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO] { this: McasImplSpec =>
