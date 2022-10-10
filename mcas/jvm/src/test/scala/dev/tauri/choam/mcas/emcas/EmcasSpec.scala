@@ -22,6 +22,7 @@ package emcas
 import java.lang.ref.{ Reference, WeakReference }
 import java.util.concurrent.{ ConcurrentLinkedQueue, CountDownLatch, ThreadLocalRandom }
 
+import scala.concurrent.duration._
 import scala.runtime.VolatileObjectRef
 
 // TODO: all tests in `choam-mcas` are executed with
@@ -29,6 +30,9 @@ import scala.runtime.VolatileObjectRef
 // TODO: with actual `Ref`s too (or instead?)
 
 class EmcasSpec extends BaseSpecA {
+
+  final override def munitTimeout: Duration =
+    120.seconds
 
   final override def test(name: String)(body: => Any)(implicit loc: munit.Location): Unit = {
     def wrappedBody(): Any = {
