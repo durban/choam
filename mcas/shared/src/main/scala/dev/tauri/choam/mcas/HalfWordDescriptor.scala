@@ -58,8 +58,8 @@ final class HalfWordDescriptor[A] private (
       case that: HalfWordDescriptor[_] =>
         (this eq that) || (
           (this.address == that.address) &&
-          equ(this.ov, that.ov) &&
-          equ(this.nv, that.nv) &&
+          equ[Any](this.ov, that.ov) &&
+          equ[Any](this.nv, that.nv) &&
           (this.version == that.version)
         )
       case _ =>

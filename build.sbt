@@ -341,7 +341,7 @@ lazy val commonSettings = Seq[Setting[_]](
     if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
       // 2.13:
       List(
-        "-target:11",
+        // -release implies -target
         "-Xsource:3",
         "-Xverify",
         "-Wconf:any:warning-verbose",

@@ -274,10 +274,10 @@ abstract class BaseSpecTickedZIO
       }
     }
 
-    val res = zio.Unsafe.unsafeCompat { implicit u =>
+    val res: Runtime.Scoped[Unit] = zio.Unsafe.unsafeCompat { implicit u =>
       Runtime.unsafe.fromLayer(
         ZLayer
-          .scoped(ZIO.withClockScoped(myClock))
+          .scoped[Any](ZIO.withClockScoped(myClock))
           .and(Runtime.setExecutor(testContextExecutor))
           .and(Runtime.setBlockingExecutor(testContextBlockingExecutor))
       )
