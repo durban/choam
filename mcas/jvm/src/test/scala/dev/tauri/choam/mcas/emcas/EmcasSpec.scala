@@ -32,7 +32,7 @@ import scala.runtime.VolatileObjectRef
 class EmcasSpec extends BaseSpecA {
 
   final override def munitTimeout: Duration =
-    120.seconds
+    240.seconds
 
   final override def test(name: String)(body: => Any)(implicit loc: munit.Location): Unit = {
     def wrappedBody(): Any = {
