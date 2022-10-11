@@ -69,7 +69,9 @@ trait SignallingRefSpec[F[_]]
         .compile
         .toList
       f1 <- listener.start
+      _ <- this.tickAll
       f2 <- listener.start
+      _ <- this.tickAll
       f3 <- (ref.discrete.take(10).evalTap { _ =>
         // we check the number of listeners during and after the stream
         checkListeners(ref, min = 1, max = 3)
