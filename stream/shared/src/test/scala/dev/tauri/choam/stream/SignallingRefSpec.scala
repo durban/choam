@@ -52,7 +52,7 @@ trait SignallingRefSpec[F[_]]
           )
       }
       // we assume that at least *some* updates are not lost:
-      assertF(clue(l.length).toDouble >= (max.toDouble / 100.0)) *> go(l, -1)
+      assertF(clue(l.length).toDouble >= (max.toDouble / 200.0)) *> go(l, -1)
     }
     def checkListeners(ref: RxnSignallingRef[F, Int], min: Int, max: Int): F[Unit] = {
       F.defer {
