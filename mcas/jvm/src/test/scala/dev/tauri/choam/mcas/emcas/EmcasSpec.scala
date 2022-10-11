@@ -508,7 +508,7 @@ class EmcasSpec extends BaseSpecA {
 
   test("ThreadContext cleanup") {
     val K = 100
-    val N = 50 * K
+    val N = 25 * K
     val task: Runnable = () => {
       val ctx = Emcas.currentContext()
       ctx.random.nextInt()
