@@ -32,7 +32,7 @@ trait SignallingRefSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
-  test("RxnSignallingRef") {
+  test("RxnSignallingRef".ignore) {
     val N = 1000
     def writer(ref: RxnSignallingRef[F, Int], next: Int): F[Unit] = {
       if (next > N) {
