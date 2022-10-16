@@ -522,7 +522,7 @@ class EmcasSpec extends BaseSpecA {
         System.gc()
       }
     }
-    assert(Emcas.global.size <= (N / 2))
+    assert(Emcas.global.size.toDouble <= (0.75 * N.toDouble))
   }
 
   test("Descriptors should be sorted") {
