@@ -21,6 +21,7 @@ package core
 import java.lang.ref.WeakReference
 
 import scala.collection.immutable.{ Map => SMap }
+import scala.concurrent.duration._
 
 import cats.effect.kernel.Fiber
 import cats.effect.IO
@@ -36,6 +37,9 @@ final class ExchangerStatsSpecJvm_Emcas_IO
   with ExchangerStatsSpecJvm[IO]
 
 trait ExchangerStatsSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
+
+  final override def munitTimeout =
+    5.minutes
 
   test("Statistics") {
     import ExchangerImplJvm.Statistics
