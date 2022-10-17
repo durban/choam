@@ -38,7 +38,7 @@ final class ExchangerStatsSpecJvm_Emcas_IO
 
 trait ExchangerStatsSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
-  final override def munitTimeout =
+  final override def munitTimeout: Duration =
     5.minutes
 
   test("Statistics") {
