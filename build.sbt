@@ -444,7 +444,7 @@ lazy val jmhSettings = Seq[Setting[_]](
 lazy val dependencies = new {
 
   val catsVersion = "2.8.0"
-  val catsEffectVersion = "3.4.0-RC2"
+  val catsEffectVersion = "3.4.0"
   val catsMtlVersion = "1.3.0"
   val fs2Version = "3.3.0"
   val scalacheckEffectVersion = "2.0.0-M2"
@@ -478,7 +478,7 @@ lazy val dependencies = new {
     "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
   ))
   val scalaJsSecRnd = Def.setting(("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13))
-  val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-128c8aa")
+  val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-d3032a7")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
