@@ -51,7 +51,6 @@ trait WaitListSpec[F[_]]
   test("AsyncQueue.synchronous") {
     final object Cancelled extends Exception
     for {
-      _ <- this.assumeNotZio
       q <- AsyncQueue.synchronous[F, Int].run[F]
       _ <- assertResultF(q.tryEnqueue[F](1), false)
       _ <- assertResultF(q.tryDeque.run[F], None)

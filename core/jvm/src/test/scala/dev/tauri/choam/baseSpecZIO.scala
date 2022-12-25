@@ -39,7 +39,6 @@ trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with McasImplSpec =>
     obtained.flatMap(ob => zio.ZIO.attempt { this.assertEquals(ob, expected, clue) })
   }
 
-  // https://github.com/zio/interop-cats/issues/509
   final override def assumeNotZio: zio.Task[Unit] = {
     this.assumeF(false)
   }

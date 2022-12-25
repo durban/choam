@@ -103,7 +103,6 @@ trait AsyncStackSpec[F[_]]
 
   test("cancellation should not cause elements to be lost") {
     for {
-      _ <- this.assumeNotZio
       s <- newStack[F, String]
       f1 <- s.pop.start
       _ <- this.tickAll

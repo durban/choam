@@ -262,7 +262,6 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue canceled getter") {
     for {
-      _ <- this.assumeNotZio
       s <- newQueue[String](bound = 4)
       f1 <- s.deque.start
       _ <- this.tickAll
@@ -282,7 +281,6 @@ trait BoundedQueueSpec[F[_]]
 
   test("BoundedQueue canceled setter") {
     for {
-      _ <- this.assumeNotZio
       s <- newQueue[String](bound = 1)
       _ <- assertResultF(s.size.run[F], 0)
       _ <- s.enqueue("a")

@@ -303,7 +303,6 @@ trait OverflowQueueSpec[F[_]]
 
   test("RingBuffer cancellation") {
     for {
-      _ <- this.assumeNotZio // TODO: https://github.com/zio/interop-cats/issues/509
       q <- newRingBuffer[Int](capacity = 3)
       f1 <- q.deque.start
       _ <- this.tickAll

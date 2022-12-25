@@ -166,14 +166,15 @@ trait ExchangerStatsSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec
   }
 
   test("A StatMap must not prevent an Exchanger from being garbage collected") {
-    val tsk0 = for {
+    // NB: ZIO seems to hold a strong ref to the exchanger
+    val tsk0 = this.assumeNotZio *> (for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       f1 <- startExchange(ex, "foo")
       f2 <- ex.dual.exchange.apply[F](42).start
       r1 <- f1.joinWithNever
       _ <- assertEqualsF(r1._1, 42)
       _ <- assertResultF(f2.joinWithNever, "foo")
-    } yield (new WeakReference(ex), r1._2)
+    } yield (new WeakReference(ex), r1._2))
 
     val tsk1: F[Unit] = tsk0.flatMap { wc =>
       val (weakref, stats) = wc
