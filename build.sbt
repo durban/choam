@@ -16,8 +16,8 @@
  */
 
  // Scala versions:
-val scala2 = "2.13.9"
-val scala3 = "3.2.0"
+val scala2 = "2.13.10"
+val scala3 = "3.2.1"
 
 // CI JVM versions:
 val jvmLatest = JavaSpec.temurin("17")
