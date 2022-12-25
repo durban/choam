@@ -208,13 +208,11 @@ object Promise {
       ref.unsafeDirectRead.run[F].flatMap {
         case Waiting(_, _) =>
           F.async { cb =>
-            F.uncancelable { poll =>
-              insertCallback(cb).run[F].flatMap {
-                case Left(id) =>
-                  F.pure(Some(removeCallback(id)))
-                case Right(a) =>
-                  poll(F.delay { cb(Right(a)) }).as(None)
-              }
+            insertCallback(cb).run[F].flatMap {
+              case Left(id) =>
+                F.pure(Some(removeCallback(id)))
+              case Right(a) =>
+                (F.delay { cb(Right(a)) }).as(Some(F.unit))
             }
           }
         case Done(a) =>

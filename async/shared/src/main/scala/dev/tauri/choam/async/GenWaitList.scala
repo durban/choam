@@ -152,7 +152,7 @@ object GenWaitList {
           )
         ) {
           case None =>
-            F.as(F.delay(cb(Right(()))), None)
+            F.as(F.delay(cb(Right(()))), Some(F.unit))
           case Some(remover) =>
             F.pure(Some(rF.run(remover)))
         }
@@ -172,7 +172,7 @@ object GenWaitList {
           )
         ) {
           case Right(a) =>
-            F.as(F.delay(cb(Right(a))), None)
+            F.as(F.delay(cb(Right(a))), Some(F.unit))
           case Left(remover) =>
             F.pure(Some(rF.run(remover)))
         }
@@ -233,7 +233,7 @@ object GenWaitList {
         }
         F.flatMap[Either[Axn[Unit], A], Option[F[Unit]]](arF.run(rxn)) {
           case Right(a) =>
-            F.as(F.delay(cb(Right(a))), None)
+            F.as(F.delay(cb(Right(a))), Some(F.unit))
           case Left(remover) =>
             F.pure(Some(arF.run(remover)))
         }
