@@ -443,15 +443,15 @@ lazy val jmhSettings = Seq[Setting[_]](
 
 lazy val dependencies = new {
 
-  val catsVersion = "2.8.0"
-  val catsEffectVersion = "3.4.0"
+  val catsVersion = "2.9.0"
+  val catsEffectVersion = "3.4.3"
   val catsMtlVersion = "1.3.0"
-  val fs2Version = "3.3.0"
+  val fs2Version = "3.4.0"
   val scalacheckEffectVersion = "2.0.0-M2"
   val kindProjectorVersion = "0.13.2"
   val jcstressVersion = "0.15"
   val jmhVersion = "1.33"
-  val scalaJsLocaleVersion = "1.4.1"
+  val scalaJsLocaleVersion = "1.5.1"
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
   val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
@@ -464,7 +464,7 @@ lazy val dependencies = new {
   val catsMtl = Def.setting("org.typelevel" %%% "cats-mtl" % catsMtlVersion)
   val catsMtlLaws = Def.setting("org.typelevel" %%% "cats-mtl-laws" % catsMtlVersion)
   val fs2 = Def.setting("co.fs2" %%% "fs2-core" % fs2Version)
-  val decline = Def.setting("com.monovore" %%% "decline" % "2.3.1") // https://github.com/bkirwi/decline
+  val decline = Def.setting("com.monovore" %%% "decline" % "2.4.1") // https://github.com/bkirwi/decline
 
   // JVM:
   val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.10.3") // https://github.com/GlenKPeterson/Paguro
@@ -496,8 +496,8 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.2")
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "3.3.0")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.2")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.0.0.0")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.5")
 }
 
 val stressTestNames = List[String](
