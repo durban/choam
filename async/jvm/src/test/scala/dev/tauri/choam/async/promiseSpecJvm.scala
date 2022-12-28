@@ -64,15 +64,19 @@ final class PromiseSpec_Emcas_ZIO_Ticked
 
 trait PromiseSpecJvm[F[_]] extends PromiseSpec[F] { this: McasImplSpec =>
 
-  test("Calling the callback should be followed by a thread shift") {
+  test("Calling the callback should be followed by a thread shift (async boundary)") {
     @volatile var stop = false
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
       p <- Promise[F, Int].run[F]
+      // subscribe for the promise on another fiber:
       f <- p.get.map { v =>
         while (!stop) Thread.onSpinWait()
         v + 1
       }.start
+      // give a chance for registration to happen:
+      _ <- F.sleep(1.second)
+      // complete the promise:
       ok <- p.complete(42)
       // now the fiber spins, hopefully on some other thread
       _ <- assertF(ok)
