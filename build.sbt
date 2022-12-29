@@ -444,7 +444,7 @@ lazy val jmhSettings = Seq[Setting[_]](
 lazy val dependencies = new {
 
   val catsVersion = "2.9.0"
-  val catsEffectVersion = "3.4.3"
+  val catsEffectVersion = "3.5-6581dc4"
   val catsMtlVersion = "1.3.0"
   val fs2Version = "3.4.0"
   val scalacheckEffectVersion = "2.0.0-M2"

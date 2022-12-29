@@ -207,12 +207,12 @@ object Promise {
     final def get: F[A] = {
       ref.unsafeDirectRead.run[F].flatMap {
         case Waiting(_, _) =>
-          F.async { cb =>
-            insertCallback(cb).run[F].flatMap {
+          F.asyncCheckAttempt { cb =>
+            insertCallback(cb).run[F].map {
               case Left(id) =>
-                F.pure(Some(removeCallback(id)))
+                Left(Some(removeCallback(id)))
               case Right(a) =>
-                (F.delay { cb(Right(a)) }).as(Some(F.unit))
+                Right(a)
             }
           }
         case Done(a) =>
@@ -232,12 +232,10 @@ object Promise {
     }
 
     private[this] final def removeCallback(id: Long): F[Unit] = {
-      F.uncancelable { _ =>
-        ref.update {
-          case Waiting(cbs, nid) => Waiting(cbs - id, nid)
-          case d @ Done(_) => d
-        }.run[F]
-      }
+      ref.update {
+        case Waiting(cbs, nid) => Waiting(cbs - id, nid)
+        case d @ Done(_) => d
+      }.run[F]
     }
   }
 }
