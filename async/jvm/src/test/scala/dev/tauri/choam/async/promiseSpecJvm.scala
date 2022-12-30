@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package async
 
+import java.util.concurrent.atomic.AtomicLong
+
 import scala.concurrent.duration._
 
 import cats.effect.IO
@@ -66,11 +68,13 @@ trait PromiseSpecJvm[F[_]] extends PromiseSpec[F] { this: McasImplSpec =>
 
   test("Calling the callback should be followed by a thread shift (async boundary)") {
     @volatile var stop = false
+    val spinCount = new AtomicLong(1L << 24)
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
       p <- Promise[F, Int].run[F]
       // subscribe for the promise on another fiber:
       f <- p.get.map { v =>
+        // we block this thread (until `stop`):
         while (!stop) Thread.onSpinWait()
         v + 1
       }.start
@@ -80,7 +84,16 @@ trait PromiseSpecJvm[F[_]] extends PromiseSpec[F] { this: McasImplSpec =>
       ok <- p.complete(42)
       // now the fiber spins, hopefully on some other thread
       _ <- assertF(ok)
-      _ <- F.sleep(0.1.seconds)
+      // at this point, we don't want to release this
+      // thread (e.g., with a `sleep`), because the
+      // forked fibercould get rescheduled to this one
+      // (and our `sleep` timer could never fire)
+      _ <- F.delay {
+        // so... instead of sleeping, we spin :-(
+        while (spinCount.getAndDecrement() > 0) {
+          Thread.onSpinWait()
+        }
+      }
       _ <- F.delay { stop = true }
       _ <- f.joinWithNever
     } yield ()
