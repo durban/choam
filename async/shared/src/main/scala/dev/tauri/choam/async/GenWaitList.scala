@@ -211,21 +211,16 @@ object GenWaitList {
     }
 
     final def asyncGet: F[A] = {
-      F.async[A] { cb =>
-        val rxn: Axn[Either[Axn[Unit], A]] = this.tryGet.flatMapF {
+      F.asyncCheckAttempt { cb =>
+        val rxn: Axn[Either[Some[F[Unit]], A]] = this.tryGet.flatMapF {
           case Some(a) =>
             Rxn.pure(Right(a))
           case None =>
             this.waiters.enqueueWithRemover.provide(cb).map { remover =>
-              Left(remover)
+              Left(Some(arF.run(remover)))
             }
         }
-        F.flatMap[Either[Axn[Unit], A], Option[F[Unit]]](arF.run(rxn)) {
-          case Right(a) =>
-            F.as(F.delay(cb(Right(a))), Some(F.unit))
-          case Left(remover) =>
-            F.pure(Some(arF.run(remover)))
-        }
+        arF.run(rxn)
       }
     }
   }
