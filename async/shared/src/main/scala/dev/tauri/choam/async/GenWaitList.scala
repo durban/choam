@@ -99,6 +99,9 @@ object GenWaitList {
     setters: data.Queue.WithRemove[(A, Callback[Unit])],
   )(implicit F: Async[F], rF: AsyncReactive[F]) extends GenWaitListCommon[F, A] {
 
+    private[this] val rightUnit: Either[Nothing, Unit] =
+      Right(())
+
     override def trySet: A =#> Boolean = {
       getters.tryDeque.flatMap {
         case Some(cb) =>
@@ -137,45 +140,31 @@ object GenWaitList {
 
     override def asyncSet(a: A): F[Unit] = {
       F.asyncCheckAttempt { cb =>
-        F.map(
-          rF.apply(
-            getters.tryDeque.flatMap {
-              case Some(getterCb) =>
-                callCb(getterCb).as(None)
-              case None =>
-                _trySet.flatMapF { ok =>
-                  if (ok) Rxn.pure(None)
-                  else setters.enqueueWithRemover.provide((a, cb)).map(Some(_))
-                }
-            },
-            a
-          )
-        ) {
-          case None =>
-            Right(())
-          case Some(remover) =>
-            Left(Some(rF.run(remover)))
-        }
+        rF.apply(
+          getters.tryDeque.flatMap {
+            case Some(getterCb) =>
+              callCb(getterCb).as(rightUnit)
+            case None =>
+              _trySet.flatMapF { ok =>
+                if (ok) Rxn.pure(rightUnit)
+                else setters.enqueueWithRemover.provide((a, cb)).map { remover => Left(Some(rF.run(remover))) }
+              }
+          },
+          a
+        )
       }
     }
 
     override def asyncGet: F[A] = {
       F.asyncCheckAttempt { cb =>
-        F.map(
-          rF.run(
-            this.tryGet.flatMapF {
-              case Some(a) =>
-                Rxn.pure(Right(a))
-              case None =>
-                getters.enqueueWithRemover.provide(cb).map(Left(_))
-            }
-          )
-        ) {
-          case Right(a) =>
-            Right(a)
-          case Left(remover) =>
-            Left(Some(rF.run(remover)))
-        }
+        rF.run(
+          this.tryGet.flatMapF {
+            case Some(a) =>
+              Rxn.pure(Right(a))
+            case None =>
+              getters.enqueueWithRemover.provide(cb).map { remover => Left(Some(rF.run(remover))) }
+          }
+        )
       }
     }
 
