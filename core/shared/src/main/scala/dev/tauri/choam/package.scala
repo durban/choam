@@ -84,6 +84,10 @@ package object choam {
         Rxn.unsafe.delay[Any, A](_ => da)
       def suspend[A](daa: => Axn[A]): Axn[A] = // TODO: optimize
         this.delay(daa).flatten
+      def context[A](uf: mcas.Mcas.ThreadContext => A): Axn[A] =
+        Rxn.unsafe.context(uf)
+      def suspendContext[A](uf: mcas.Mcas.ThreadContext => Axn[A]): Axn[A] =
+        Rxn.unsafe.suspendContext(uf)
     }
   }
 
