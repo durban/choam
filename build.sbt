@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright 2016-2022 Daniel Urban and contributors listed in NOTICE.txt
+ * Copyright 2016-2023 Daniel Urban and contributors listed in NOTICE.txt
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -414,7 +414,7 @@ lazy val commonSettings = Seq[Setting[_]](
   licenses := Seq("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
   headerLicense := Some(HeaderLicense.Custom(
     """|SPDX-License-Identifier: Apache-2.0
-       |Copyright 2016-2022 Daniel Urban and contributors listed in NOTICE.txt
+       |Copyright 2016-2023 Daniel Urban and contributors listed in NOTICE.txt
        |
        |Licensed under the Apache License, Version 2.0 (the "License");
        |you may not use this file except in compliance with the License.
