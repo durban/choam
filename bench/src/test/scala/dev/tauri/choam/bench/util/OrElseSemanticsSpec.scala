@@ -33,9 +33,29 @@ import io.github.timwspence.cats.stm.STM
 import zio.{ stm => zstm }
 
 /**
- * TODO: The semantics of `orElse` in STM implementations
- * TODO: seem to be different from `Rxn#+`. We'll have to
- * TODO: figure out which one we really want.
+ * This test shows that the current semantics of
+ * the `+` (choice) combinator of `Rxn` are different
+ * from the semantics of `orElse` in typical STM
+ * implementations (cats-stm, zstm and scala-stm are
+ * shown here).
+ *
+ * We inherited the current behavior from reagents.
+ * It is not clear, whether this is an intentional
+ * divergence from STM, although the "disjunction
+ * of conjunctions" mentioned in section 3.8 seems
+ * to imply the current behavior.
+ *
+ * The reagents paper mentions (in section 7.2) an
+ * intentional difference from Haskell STM `orElse`,
+ * but that is about a different issue: trying the
+ * right-hand side even if the failure is transient
+ * (unlike Haskell STM). `Rxn` doesn't even have
+ * permanent failure, so in this case we don't really
+ * have a choice: `+` doesn't even make sense if we
+ * don't try the right-hand side on a transient
+ * failure.
+ *
+ * TODO: Figure out which `+` semantics we really want.
  */
 final class OrElseSemanticsSpec extends CatsEffectSuite {
 
