@@ -69,7 +69,13 @@ final class OrElseSemanticsSpec extends CatsEffectSuite {
     import stm._
 
     def txn1(ref1: TVar[Int], ref2: TVar[Int], ref3: TVar[Int]) = for {
-      _ <- (ref1.modify(_ + 1)) orElse (ref2.modify(_ + 1))
+      _ <- (ref1.modify { v1 =>
+        println(s"cats-stm modify1: $v1 ->")
+        v1 + 1
+      }) orElse (ref2.modify { v2 =>
+        println(s"cats-stm modify2: $v2 ->")
+        v2 + 1
+      })
       v3 <- ref3.get
       _ <- check(v3 > 0)
     } yield ()
@@ -94,7 +100,13 @@ final class OrElseSemanticsSpec extends CatsEffectSuite {
 
   test("zstm orElse") {
     def txn1(ref1: zstm.TRef[Int], ref2: zstm.TRef[Int], ref3: zstm.TRef[Int]) = for {
-      _ <- (ref1.update(_ + 1)) orElse (ref2.update(_ + 1))
+      _ <- (ref1.update{ v1 =>
+        println(s"zstm modify1: $v1 ->")
+        v1 + 1
+      }) orElse (ref2.update{ v2 =>
+        println(s"zstm modify2: $v2 ->")
+        v2 + 1
+      })
       v3 <- ref3.get
       _ <- zstm.STM.check(v3 > 0)
     } yield ()
@@ -126,9 +138,13 @@ final class OrElseSemanticsSpec extends CatsEffectSuite {
 
     def txn1(ref1: Ref[Int], ref2: Ref[Int], ref3: Ref[Int]): Unit = atomic { implicit txn =>
       wrapChainedAtomic(atomic { implicit txn =>
-        ref1.transform(_ + 1)
+        val v1 = ref1.get
+        println(s"scala-stm modify1: $v1 ->")
+        ref1.set(v1 + 1)
       }) orAtomic { implicit txn =>
-        ref2.transform(_ + 1)
+        val v2 = ref2.get
+        println(s"scala-stm modify2: $v2 ->")
+        ref2.set(v2 + 1)
       }
 
       val v3 = ref3.get
@@ -157,7 +173,13 @@ final class OrElseSemanticsSpec extends CatsEffectSuite {
 
   test("choam orElse") {
     def rxn1(ref1: Ref[Int], ref2: Ref[Int], ref3: AtomicInteger) = for {
-      _ <- (ref1.update(_ + 1)) + (ref2.update(_ + 1))
+      _ <- (ref1.update { v1 =>
+        println(s"choam modify1: $v1 ->")
+        v1 + 1
+      }) + (ref2.update { v2 =>
+        println(s"choam modify2: $v2 ->")
+        v2 + 1
+      })
       // force a retry *once*:
       v3 <- Axn.unsafe.delay { ref3.getAndIncrement() }
       _ <- if (v3 > 0) {
