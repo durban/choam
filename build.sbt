@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
- // Scala versions:
+// Scala versions:
 val scala2 = "2.13.10"
 val scala3 = "3.2.1"
 
@@ -94,7 +94,8 @@ ThisBuild / githubWorkflowBuildMatrixInclusions += MatrixInclude(
 lazy val choam = project.in(file("."))
   .settings(name := "choam")
   .settings(commonSettings)
-  .settings(publishArtifact := false)
+  .enablePlugins(NoPublishPlugin)
+  .disablePlugins(JCStressPlugin)
   .aggregate(
     mcas.jvm, mcas.js,
     core.jvm, core.js,
@@ -121,6 +122,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .withoutSuffixFor(JVMPlatform)
   .in(file("core"))
   .settings(name := "choam-core")
+  .disablePlugins(JCStressPlugin)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
@@ -130,11 +132,8 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
     dependencies.catsMtl.value,
     dependencies.catsEffectStd.value,
   ))
-  .jvmSettings(
-    libraryDependencies += dependencies.zioCats.value % Test, // https://github.com/zio/interop-cats/issues/471
-  )
   .jsSettings(
-    libraryDependencies += dependencies.scalaJsSecRnd.value % Test
+    libraryDependencies += dependencies.scalaJsSecRnd.value % TestInternal
   )
 
 lazy val mcas = crossProject(JVMPlatform, JSPlatform)
@@ -142,6 +141,7 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .withoutSuffixFor(JVMPlatform)
   .in(file("mcas"))
   .settings(name := "choam-mcas")
+  .disablePlugins(JCStressPlugin)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
@@ -151,6 +151,7 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
   .withoutSuffixFor(JVMPlatform)
   .in(file("data"))
   .settings(name := "choam-data")
+  .disablePlugins(JCStressPlugin)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
@@ -162,6 +163,7 @@ lazy val async = crossProject(JVMPlatform, JSPlatform)
   .withoutSuffixFor(JVMPlatform)
   .in(file("async"))
   .settings(name := "choam-async")
+  .disablePlugins(JCStressPlugin)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
@@ -172,6 +174,7 @@ lazy val stream = crossProject(JVMPlatform, JSPlatform)
   .withoutSuffixFor(JVMPlatform)
   .in(file("stream"))
   .settings(name := "choam-stream")
+  .disablePlugins(JCStressPlugin)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
@@ -184,6 +187,8 @@ lazy val internalHelpers = crossProject(JVMPlatform, JSPlatform)
   .withoutSuffixFor(JVMPlatform)
   .in(file("internal-helpers"))
   .settings(name := "choam-internal-helpers")
+  .enablePlugins(NoPublishPlugin)
+  .disablePlugins(JCStressPlugin)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
@@ -194,6 +199,7 @@ lazy val laws = crossProject(JVMPlatform, JSPlatform)
   .withoutSuffixFor(JVMPlatform)
   .in(file("laws"))
   .settings(name := "choam-laws")
+  .disablePlugins(JCStressPlugin)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
@@ -209,6 +215,8 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform)
   .withoutSuffixFor(JVMPlatform)
   .in(file("test-ext"))
   .settings(name := "choam-test-ext")
+  .enablePlugins(NoPublishPlugin)
+  .disablePlugins(JCStressPlugin)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
@@ -216,8 +224,9 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform)
 
 lazy val bench = project.in(file("bench"))
   .settings(name := "choam-bench")
+  .enablePlugins(NoPublishPlugin)
+  .disablePlugins(JCStressPlugin)
   .settings(commonSettings)
-  .settings(publishArtifact := false)
   .settings(libraryDependencies ++= Seq(
     dependencies.scalaStm.value,
     dependencies.catsStm.value,
@@ -239,6 +248,7 @@ lazy val stressMcas = project.in(file("stress-mcas"))
   .settings(commonSettingsJvm)
   .settings(stressSettings)
   .enablePlugins(JCStressPlugin)
+  .enablePlugins(NoPublishPlugin)
   .dependsOn(mcas.jvm % "compile->compile;test->test")
 
 lazy val stressMcasSlow = project.in(file("stress-mcas-slow"))
@@ -247,6 +257,7 @@ lazy val stressMcasSlow = project.in(file("stress-mcas-slow"))
   .settings(commonSettingsJvm)
   .settings(stressSettings)
   .enablePlugins(JCStressPlugin)
+  .enablePlugins(NoPublishPlugin)
   .dependsOn(stressMcas % "compile->compile;test->test")
 
 lazy val stressCore = project.in(file("stress-core"))
@@ -255,6 +266,7 @@ lazy val stressCore = project.in(file("stress-core"))
   .settings(commonSettingsJvm)
   .settings(stressSettings)
   .enablePlugins(JCStressPlugin)
+  .enablePlugins(NoPublishPlugin)
   .dependsOn(core.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
 
@@ -264,6 +276,7 @@ lazy val stressData = project.in(file("stress-data"))
   .settings(commonSettingsJvm)
   .settings(stressSettings)
   .enablePlugins(JCStressPlugin)
+  .enablePlugins(NoPublishPlugin)
   .dependsOn(data.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
   .dependsOn(internalHelpers.jvm)
@@ -274,6 +287,7 @@ lazy val stressDataSlow = project.in(file("stress-data-slow"))
   .settings(commonSettingsJvm)
   .settings(stressSettings)
   .enablePlugins(JCStressPlugin)
+  .enablePlugins(NoPublishPlugin)
   .dependsOn(data.jvm % "compile->compile;test->test")
   .dependsOn(stressData % "compile->compile;test->test")
 
@@ -283,6 +297,7 @@ lazy val stressAsync = project.in(file("stress-async"))
   .settings(commonSettingsJvm)
   .settings(stressSettings)
   .enablePlugins(JCStressPlugin)
+  .enablePlugins(NoPublishPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
   .dependsOn(internalHelpers.jvm)
@@ -293,6 +308,7 @@ lazy val stressExperiments = project.in(file("stress-experiments"))
   .settings(commonSettingsJvm)
   .settings(stressSettings)
   .enablePlugins(JCStressPlugin)
+  .enablePlugins(NoPublishPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
 
@@ -303,14 +319,16 @@ lazy val stress = project.in(file("stress"))
   .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
   .settings(libraryDependencies += dependencies.zioStm.value) // TODO: temporary
   .enablePlugins(JCStressPlugin)
+  .enablePlugins(NoPublishPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
   .dependsOn(internalHelpers.jvm)
 
 lazy val layout = project.in(file("layout"))
   .settings(name := "choam-layout")
+  .enablePlugins(NoPublishPlugin)
+  .disablePlugins(JCStressPlugin)
   .settings(commonSettings)
-  .settings(publishArtifact := false)
   .settings(
     libraryDependencies += dependencies.jol.value % Test,
     Test / fork := true // JOL doesn't like sbt classpath
@@ -406,11 +424,6 @@ lazy val commonSettings = Seq[Setting[_]](
       Nil
     }
   ),
-  autoAPIMappings := true,
-  // apiURL := ... // TODO
-  organization := "dev.tauri",
-  publishMavenStyle := true,
-  publishArtifact := false, // TODO,
   licenses := Seq("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
   headerLicense := Some(HeaderLicense.Custom(
     """|SPDX-License-Identifier: Apache-2.0
@@ -429,10 +442,30 @@ lazy val commonSettings = Seq[Setting[_]](
        |limitations under the License.
        |""".stripMargin
   ))
+) ++ inConfig(Compile)(
+  inTask(packageBin)(extraPackagingSettings) ++
+  inTask(packageSrc)(extraPackagingSettings) ++
+  inTask(packageDoc)(extraPackagingSettings)
+) ++ publishSettings
+
+lazy val publishSettings = Seq[Setting[_]](
+  autoAPIMappings := true,
+  // apiURL := ... // TODO
+  organization := "dev.tauri",
+  publishMavenStyle := true,
+  Compile / publishArtifact := true,
+  Test / publishArtifact := false,
+  pomIncludeRepository := { _ => false },
+)
+
+lazy val extraPackagingSettings = Seq[Setting[_]](
+  mappings ++= Seq("LICENSE.txt", "NOTICE.txt") map { f =>
+    ((ThisBuild / baseDirectory).value / f) -> f
+  },
+  packageOptions += Package.ManifestAttributes(java.util.jar.Attributes.Name.SEALED -> "true")
 )
 
 lazy val stressSettings = Seq[Setting[_]](
-  publishArtifact := false,
   Jcstress / version := dependencies.jcstressVersion,
 )
 
@@ -480,6 +513,11 @@ lazy val dependencies = new {
   val scalaJsSecRnd = Def.setting(("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13))
   val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-d3032a7")
 
+  val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
+  val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.2")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.0.0.0")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.5")
+
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
       catsEffectAll.value,
@@ -491,13 +529,9 @@ lazy val dependencies = new {
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
       "org.typelevel" %%% "discipline-munit" % "2.0.0-M3",
+      zioCats.value,
     )
   }
-
-  val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
-  val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.2")
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.0.0.0")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.5")
 }
 
 val stressTestNames = List[String](

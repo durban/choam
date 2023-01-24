@@ -18,6 +18,8 @@
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.3")
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 addSbtPlugin("com.codecommit" % "sbt-github-actions" % "0.14.2")
+addSbtPlugin("io.crashbox" % "sbt-gpg" % "0.2.1")
+addSbtPlugin("org.typelevel" % "sbt-typelevel-no-publish" % "0.5.0-M9")
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.0")
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.9.0")
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.10.4")
