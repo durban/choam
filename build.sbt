@@ -51,6 +51,8 @@ ThisBuild / scalafixScalaBinaryVersion := scalaBinaryVersion.value
 ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
+ThisBuild / tlBaseVersion := "0.1"
+
 ThisBuild / githubWorkflowUseSbtThinClient := false
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowBuild := Seq(
