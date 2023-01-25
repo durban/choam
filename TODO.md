@@ -22,8 +22,6 @@
 ## Bugs
 
 - Can't run benchmarks with Scala 3
-- CI: Tests sometimes time out
-  - ExchangerSpecJvm_* (on VMs with 2 CPUs; probably can't exchange fast enough?)
 
 ## Other improvements
 
@@ -106,7 +104,7 @@
       - If something can fail, return `Option` or `Either`
     - Need to review and document the handling of exceptions
       - they should fall-through, but with cleanup (if needed)
-      - (maybe: do not guarantee any behavior fo now)
+      - (maybe: do not guarantee any behavior for now)
     - Transient errors can sometimes be handled with `+` (`Choice`)
       - but sometimes this can cause infinite retry
 - Cancellation support

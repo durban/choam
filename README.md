@@ -56,8 +56,10 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     - the main integration point is a `Promise`, which can be
       completed as a `Rxn`, and can be waited on as an async `F[_]`
     - async (dual) data structures can be built on this primitive
-  - async data structures (some of their operations are *semantically*
-    blocking, and so are in an async `F[_]`):
+  - async data structures; some of their operations are
+    *semantically* blocking (i.e., [fiber blocking
+    ](https://typelevel.org/cats-effect/docs/thread-model#fiber-blocking-previously-semantic-blocking)),
+    and so are in an async `F[_]`):
     - queues
     - stack
 - [`choam-stream`](stream/shared/src/main/scala/dev/tauri/choam/stream/):
