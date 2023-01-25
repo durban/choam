@@ -492,7 +492,7 @@ lazy val jmhSettings = Seq[Setting[_]](
 
 lazy val consts = new {
   val githubOrg = "durban"
-  val githubProject = "seals"
+  val githubProject = "choam"
   val additionalFiles = Seq("LICENSE.txt", "NOTICE.txt")
 }
 
