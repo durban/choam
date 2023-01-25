@@ -340,7 +340,10 @@ lazy val commonSettingsJvm = Seq[Setting[_]](
 )
 
 lazy val commonSettingsJs = Seq[Setting[_]](
-  libraryDependencies ++= dependencies.scalaJsLocale.value.map(_ % TestInternal),
+  libraryDependencies ++= Seq(
+    dependencies.scalaJsLocale.value.map(_ % TestInternal),
+    Seq(dependencies.scalaJsSecRnd.value % TestInternal),
+  ).flatten
 )
 
 lazy val commonSettings = Seq[Setting[_]](
@@ -548,7 +551,6 @@ lazy val dependencies = new {
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
       "org.typelevel" %%% "discipline-munit" % "2.0.0-M3",
-      scalaJsSecRnd.value,
       zioCats.value,
     )
   }
