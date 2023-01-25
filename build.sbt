@@ -136,9 +136,6 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
     dependencies.catsMtl.value,
     dependencies.catsEffectStd.value,
   ))
-  .jsSettings(
-    libraryDependencies += dependencies.scalaJsSecRnd.value % TestInternal
-  )
 
 lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -551,6 +548,7 @@ lazy val dependencies = new {
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
       "org.typelevel" %%% "discipline-munit" % "2.0.0-M3",
+      scalaJsSecRnd.value,
       zioCats.value,
     )
   }
