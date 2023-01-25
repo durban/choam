@@ -52,6 +52,8 @@ ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 ThisBuild / tlBaseVersion := "0.1"
+ThisBuild / tlUntaggedAreSnapshots := true
+ThisBuild / tlSonatypeUseLegacyHost := true
 
 ThisBuild / githubWorkflowUseSbtThinClient := false
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
