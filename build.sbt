@@ -456,6 +456,18 @@ lazy val publishSettings = Seq[Setting[_]](
   autoAPIMappings := true,
   // apiURL := ... // TODO
   organization := "dev.tauri",
+  organizationHomepage := Some(url("https://tauri.dev")),
+  homepage := Some(url(s"https://github.com/${consts.githubOrg}/${consts.githubProject}")),
+  scmInfo := Some(ScmInfo(
+    url(s"https://github.com/${consts.githubOrg}/${consts.githubProject}"),
+    s"scm:git@github.com:${consts.githubOrg}/${consts.githubProject}.git"
+  )),
+  developers += Developer(
+    id = "durban",
+    name = "Daniel Urban",
+    email = "urban.dani@gmail.com",
+    url = url("https://github.com/durban")
+  ),
   publishMavenStyle := true,
   Compile / publishArtifact := true,
   Test / publishArtifact := false,
@@ -463,7 +475,7 @@ lazy val publishSettings = Seq[Setting[_]](
 )
 
 lazy val extraPackagingSettings = Seq[Setting[_]](
-  mappings ++= Seq("LICENSE.txt", "NOTICE.txt") map { f =>
+  mappings ++= consts.additionalFiles map { f =>
     ((ThisBuild / baseDirectory).value / f) -> f
   },
   packageOptions += Package.ManifestAttributes(java.util.jar.Attributes.Name.SEALED -> "true")
@@ -477,6 +489,12 @@ lazy val jmhSettings = Seq[Setting[_]](
   Jmh / version := dependencies.jmhVersion,
   Jmh / bspEnabled := false, // https://github.com/sbt/sbt-jmh/issues/193
 )
+
+lazy val consts = new {
+  val githubOrg = "durban"
+  val githubProject = "seals"
+  val additionalFiles = Seq("LICENSE.txt", "NOTICE.txt")
+}
 
 lazy val dependencies = new {
 
