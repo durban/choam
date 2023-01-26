@@ -536,7 +536,7 @@ lazy val dependencies = new {
   val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-d3032a7")
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
-  val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.2")
+  val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.3")
   val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.0.0.0")
   val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.5")
 
