@@ -55,6 +55,8 @@ ThisBuild / tlBaseVersion := "0.1"
 ThisBuild / tlUntaggedAreSnapshots := true
 ThisBuild / tlSonatypeUseLegacyHost := true
 
+ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
+
 ThisBuild / githubWorkflowUseSbtThinClient := false
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowBuild := Seq(
@@ -472,6 +474,16 @@ lazy val publishSettings = Seq[Setting[_]](
   Compile / publishArtifact := true,
   Test / publishArtifact := false,
   pomIncludeRepository := { _ => false },
+  // replicating some logic from sbt-typelevel-mima,
+  // because sbt-version-policy overwrites this key
+  // (https://github.com/scalacenter/sbt-version-policy/issues/138):
+  mimaPreviousArtifacts := {
+    if (publishArtifact.value) {
+      mimaPreviousArtifacts.value
+    } else {
+      Set.empty
+    }
+  },
 )
 
 lazy val extraPackagingSettings = Seq[Setting[_]](
