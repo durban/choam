@@ -55,6 +55,9 @@ ThisBuild / tlBaseVersion := "0.1"
 ThisBuild / tlUntaggedAreSnapshots := true
 ThisBuild / tlSonatypeUseLegacyHost := true
 
+// When checking version policy, ignore dependencies to internal modules whose version is like `1.2.3+4...`:
+ThisBuild / versionPolicyIgnoredInternalDependencyVersions := Some("^\\d+\\.\\d+\\.\\d+\\-.*-SNAPSHOT".r)
+// Otherwise require bincompat:
 ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
 
 ThisBuild / githubWorkflowUseSbtThinClient := false
