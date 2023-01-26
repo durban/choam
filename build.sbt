@@ -592,7 +592,7 @@ addCommandAlias("stressTest", stressTestCommand)
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
 addCommandAlias("ci", ";headerCheckAll;Test/compile;Test/fastLinkJS;test")
 addCommandAlias("ciStress", "stressTest")
-addCommandAlias("release", ";reload;versionPolicyCheck;tlRelease")
+addCommandAlias("release", ";reload;+versionPolicyCheck;tlRelease")
 
 // profiling: `-prof jfr`
 addCommandAlias("measurePerformance", "bench/jmh:run -foe true -rf json -rff results.json .*")
