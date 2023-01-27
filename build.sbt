@@ -477,12 +477,20 @@ lazy val publishSettings = Seq[Setting[_]](
   Compile / publishArtifact := true,
   Test / publishArtifact := false,
   pomIncludeRepository := { _ => false },
-  // replicating some logic from sbt-typelevel-mima,
-  // because sbt-version-policy overwrites this key
-  // (https://github.com/scalacenter/sbt-version-policy/issues/138):
+  // Replicating some logic from sbt-typelevel-mima and
+  // sbt-version-policy, because both of these plugins
+  // unconditionally overwrite `mimaPreviousArtifacts`;
+  // this is a blend of the two algorithms (see also
+  // https://github.com/scalacenter/sbt-version-policy/issues/138):
   mimaPreviousArtifacts := {
     if (publishArtifact.value) {
-      mimaPreviousArtifacts.value
+      tlMimaPreviousVersions.value.map { ver =>
+        val pid = projectID.value
+        pid
+          .withExplicitArtifacts(Vector.empty)
+          .withExtraAttributes(pid.extraAttributes.filter { kv => !kv._1.stripPrefix("e:").startsWith("info.") })
+          .withRevision(ver)
+      }
     } else {
       Set.empty
     }
