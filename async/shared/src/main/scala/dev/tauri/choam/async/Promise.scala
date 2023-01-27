@@ -207,7 +207,7 @@ object Promise {
     final def get: F[A] = {
       ref.unsafeDirectRead.run[F].flatMap {
         case Waiting(_, _) =>
-          F.asyncCheckAttempt { cb =>
+          asyncCheckAttempt { cb =>
             insertCallback(cb).run[F].map {
               case Left(id) =>
                 Left(Some(removeCallback(id)))

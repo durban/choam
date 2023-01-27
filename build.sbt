@@ -514,7 +514,7 @@ lazy val consts = new {
 lazy val dependencies = new {
 
   val catsVersion = "2.9.0"
-  val catsEffectVersion = "3.5-6581dc4"
+  val catsEffectVersion = "3.4.5"
   val catsMtlVersion = "1.3.0"
   val fs2Version = "3.4.0"
   val scalacheckEffectVersion = "2.0.0-M2"
@@ -593,6 +593,7 @@ addCommandAlias("validate", ";staticAnalysis;test;stressTest")
 addCommandAlias("ci", ";headerCheckAll;Test/compile;Test/fastLinkJS;test")
 addCommandAlias("ciStress", "stressTest")
 addCommandAlias("release", ";reload;+versionPolicyCheck;tlRelease")
+// TODO: check bincompat and version policy in CI
 
 // profiling: `-prof jfr`
 addCommandAlias("measurePerformance", "bench/jmh:run -foe true -rf json -rff results.json .*")
