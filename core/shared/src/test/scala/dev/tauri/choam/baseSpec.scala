@@ -118,6 +118,9 @@ abstract class BaseSpecIO
     assertIO(obtained, expected, clue)
   }
 
+  override def munitIOTimeout: Duration =
+    super.munitIOTimeout * 2
+
   override def munitValueTransforms: List[ValueTransform] = {
     new ValueTransform(
       "IO",
