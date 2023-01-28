@@ -139,6 +139,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .settings(libraryDependencies ++= Seq(
     dependencies.catsCore.value,
     dependencies.catsMtl.value,
+    dependencies.catsEffectKernel.value,
     dependencies.catsEffectStd.value,
   ))
 
@@ -151,6 +152,7 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
+  .settings(libraryDependencies += dependencies.catsKernel.value) // TODO: we only need this due to `Order`
 
 lazy val data = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -420,12 +422,7 @@ lazy val commonSettings = Seq[Setting[_]](
   // subprojects' tests still run concurrently; see
   // https://github.com/sbt/sbt/issues/2516 and
   // https://github.com/sbt/sbt/issues/2425.)
-  libraryDependencies ++= Seq(
-    Seq(
-      dependencies.catsKernel.value, // TODO: mcas only needs this due to `Order`
-    ),
-    dependencies.test.value.map(_ % TestInternal)
-  ).flatten,
+  libraryDependencies ++= dependencies.test.value.map(_ % TestInternal),
   libraryDependencies ++= (
     if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
       List(compilerPlugin("org.typelevel" % "kind-projector" % dependencies.kindProjectorVersion cross CrossVersion.full))
