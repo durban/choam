@@ -22,7 +22,7 @@ package util
 import zio.{ IO, ZIO }
 import zio.stm.STM
 
-class StmQueueZSpec extends BaseSpecA {
+class StmQueueZSpec extends BaseSpec {
 
   def assertF(cond: Boolean): IO[Throwable, Unit] =
     ZIO.attempt { assert(cond) }

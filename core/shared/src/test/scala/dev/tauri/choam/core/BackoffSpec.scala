@@ -20,7 +20,7 @@ package core
 
 import java.util.concurrent.ThreadLocalRandom
 
-class BackoffSpec extends BaseSpecA {
+class BackoffSpec extends BaseSpec {
 
   test("Backoff.backoffConst") {
     assertEquals(Backoff.constTokens(retries = 0, maxBackoff = 16), 1)

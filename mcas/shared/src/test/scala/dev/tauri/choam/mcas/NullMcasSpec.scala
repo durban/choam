@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package mcas
 
-final class NullMcasSpec extends BaseSpecA {
+final class NullMcasSpec extends BaseSpec {
 
   test("NullMcas must be able to perform an empty k-CAS") {
     val ctx = Mcas.NullMcas.currentContext()

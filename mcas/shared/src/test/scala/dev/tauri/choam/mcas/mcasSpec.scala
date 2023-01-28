@@ -27,7 +27,7 @@ object McasSpec {
   final case class CASD[A](address: MemoryLocation[A], ov: A, nv: A)
 }
 
-abstract class McasSpec extends BaseSpecA { this: McasImplSpec =>
+abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   import McasSpec._
 

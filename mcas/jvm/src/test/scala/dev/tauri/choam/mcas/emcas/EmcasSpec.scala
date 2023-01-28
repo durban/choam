@@ -29,7 +29,7 @@ import scala.runtime.VolatileObjectRef
 // TODO: `SimpleMemoryLocation`; we should run them
 // TODO: with actual `Ref`s too (or instead?)
 
-class EmcasSpec extends BaseSpecA {
+class EmcasSpec extends BaseSpec {
 
   final override def munitTimeout: Duration =
     5.minutes

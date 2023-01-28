@@ -52,7 +52,7 @@ object JolSpec {
   ).union(id47)
 }
 
-class JolSpec extends BaseSpecA {
+class JolSpec extends BaseSpec {
 
   import JolSpec.targetSize
 

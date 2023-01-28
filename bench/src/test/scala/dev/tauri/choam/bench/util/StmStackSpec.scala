@@ -28,7 +28,7 @@ import cats.syntax.all._
 
 import munit.CatsEffectSuite
 
-class StmStackSpec extends CatsEffectSuite with BaseSpecA {
+class StmStackSpec extends CatsEffectSuite with BaseSpec {
 
   test("StmStack should be a correct stack") {
     val s = new StmStack[Int]

@@ -19,7 +19,7 @@ package dev.tauri.choam
 package bench
 package util
 
-class ReferenceTreiberStackSpec extends BaseSpecA {
+class ReferenceTreiberStackSpec extends BaseSpec {
 
   test("length should be correct") {
     assertEquals(new ReferenceTreiberStack[Int].length, 0)

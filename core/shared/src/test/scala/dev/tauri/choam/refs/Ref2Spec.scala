@@ -30,7 +30,7 @@ final class Ref2SpecP2 extends Ref2Spec {
     Ref2.unsafeP2(a, b)
 }
 
-abstract class Ref2Spec extends BaseSpecA {
+abstract class Ref2Spec extends BaseSpec {
 
   def mkRef2[A, B](a: A, b: B): Ref2[A, B]
 

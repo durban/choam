@@ -33,7 +33,7 @@ final class RefArraySpec_Lazy extends RefArraySpec {
     Ref.unsafeLazyArray(size = size, initial = a)
 }
 
-trait RefArraySpec extends BaseSpecA {
+trait RefArraySpec extends BaseSpec {
 
   final val N = 4
 

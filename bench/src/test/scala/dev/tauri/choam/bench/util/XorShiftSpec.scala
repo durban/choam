@@ -19,7 +19,7 @@ package dev.tauri.choam
 package bench
 package util
 
-class XorShiftSpec extends BaseSpecA {
+class XorShiftSpec extends BaseSpec {
 
   test("XorShift should mostly work") {
     val xs = XorShift()

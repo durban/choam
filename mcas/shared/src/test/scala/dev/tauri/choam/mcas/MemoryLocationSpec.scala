@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package mcas
 
-final class MemoryLocationSpec extends BaseSpecA {
+final class MemoryLocationSpec extends BaseSpec {
 
   def mkTestRefs(): List[MemoryLocation[String]] = {
     List(

@@ -28,7 +28,7 @@ import scala.concurrent.stm._
 
 import munit.CatsEffectSuite
 
-class StmQueueSpec extends CatsEffectSuite with BaseSpecA {
+class StmQueueSpec extends CatsEffectSuite with BaseSpec {
 
   test("StmQueue should be a correct queue") {
     val q = new StmQueue[Int]

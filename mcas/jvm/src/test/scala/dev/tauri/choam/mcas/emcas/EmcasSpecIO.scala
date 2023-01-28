@@ -36,7 +36,7 @@ final class EmcasSpecIO extends EmcasSpecF[IO] {
   }
 }
 
-abstract class EmcasSpecF[F[_]] extends BaseSpecA {
+abstract class EmcasSpecF[F[_]] extends BaseSpec {
 
   protected def testF(name: String)(body: Async[F] => F[Any])(implicit loc: munit.Location): Unit
 

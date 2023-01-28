@@ -19,7 +19,7 @@ package dev.tauri.choam
 package bench
 package util
 
-final class ChoiceCombinatorBenchSpec extends BaseSpecA {
+final class ChoiceCombinatorBenchSpec extends BaseSpec {
 
   test("ChoiceCombinatorBench") {
     val b = new ChoiceCombinatorBench

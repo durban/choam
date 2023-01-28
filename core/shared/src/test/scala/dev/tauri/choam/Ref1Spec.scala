@@ -31,7 +31,7 @@ final class Ref1SpecU1 extends Ref1Spec {
     Ref1.unsafeUnpadded(a)
 }
 
-abstract class Ref1Spec extends BaseSpecA {
+abstract class Ref1Spec extends BaseSpec {
 
   def mkRef1[A](a: A): Ref1[A]
 

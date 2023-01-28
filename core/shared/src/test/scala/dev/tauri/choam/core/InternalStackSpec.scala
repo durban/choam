@@ -20,7 +20,7 @@ package core
 
 import scala.util.Try
 
-final class InternalStackSpec extends BaseSpecA {
+final class InternalStackSpec extends BaseSpec {
 
   test("ObjStack") {
     val s = new ObjStack[String]
