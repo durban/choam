@@ -263,6 +263,9 @@ class EmcasSpec extends BaseSpecA {
   }
 
   def threadDeathTest(runGcBetween: Boolean, finishWithAnotherOp: Boolean): Unit = {
+    if (runGcBetween) {
+      this.assumeNotOpenJ9()
+    }
     val r1 = MemoryLocation.unsafeWithId[String]("x")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
     val latch1 = new CountDownLatch(1)
