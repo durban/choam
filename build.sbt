@@ -521,7 +521,7 @@ lazy val dependencies = new {
   val catsVersion = "2.9.0"
   val catsEffectVersion = "3.4.5"
   val catsMtlVersion = "1.3.0"
-  val fs2Version = "3.4.0"
+  val fs2Version = "3.5.0"
   val scalacheckEffectVersion = "2.0.0-M2"
   val kindProjectorVersion = "0.13.2"
   val jcstressVersion = "0.15"
@@ -553,12 +553,11 @@ lazy val dependencies = new {
     "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
   ))
   val scalaJsSecRnd = Def.setting(("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13))
-  val bobcats = Def.setting("org.typelevel" %%% "bobcats" % "0.1-d3032a7")
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.3")
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.0.0.0")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.5")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.0.0.1")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.6")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
