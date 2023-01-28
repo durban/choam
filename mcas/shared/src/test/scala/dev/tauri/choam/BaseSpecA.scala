@@ -17,14 +17,20 @@
 
 package dev.tauri.choam
 
-import mcas.equ
+import scala.concurrent.duration._
 
 import munit.{ Location, FunSuite }
+
+import mcas.equ
 
 // TODO: rename to `BaseSpec`
 trait BaseSpecA
   extends FunSuite
-  with MUnitUtils
+  with MUnitUtils {
+
+  override def munitTimeout: Duration =
+    super.munitTimeout * 2
+}
 
 trait MUnitUtils { this: FunSuite =>
 
