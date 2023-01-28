@@ -510,6 +510,7 @@ class EmcasSpec extends BaseSpecA {
   }
 
   test("ThreadContext cleanup") {
+    this.assumeNotOpenJ9()
     val K = 100
     val N = 25 * K
     val task: Runnable = () => {
