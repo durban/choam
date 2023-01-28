@@ -103,8 +103,14 @@ trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] { this: McasImplSpec =>
     new Reactive.SyncReactive[F](this.mcasImpl)(F)
 }
 
+/** Yeah, so this indirection exists so dotty doesn't crash... */
+abstract class CatsEffectSuiteIndirection extends CatsEffectSuite {
+  final override def munitIOTimeout: Duration =
+    super.munitIOTimeout * 2
+}
+
 abstract class BaseSpecIO
-  extends CatsEffectSuite
+  extends CatsEffectSuiteIndirection
   with BaseSpecAsyncF[IO]
   with BaseSpecIOPlatform { this: McasImplSpec =>
 
@@ -117,9 +123,6 @@ abstract class BaseSpecIO
   ): IO[Unit] = {
     assertIO(obtained, expected, clue)
   }
-
-  override def munitIOTimeout: Duration =
-    super.munitIOTimeout * 2
 
   override def munitValueTransforms: List[ValueTransform] = {
     new ValueTransform(
