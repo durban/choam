@@ -33,26 +33,26 @@ class DataMapBench {
   import DataMapBench._
 
   @Benchmark
-  def concurrentHashMap(s: ChmSt, bh: Blackhole, k: KCASImplState): Unit = {
+  def concurrentHashMap(s: ChmSt, bh: Blackhole, k: McasImplState): Unit = {
     chmTask(s, bh, k)
   }
 
   @Benchmark
-  def rxnSimple(s: SimpleSt, bh: Blackhole, k: KCASImplState): Unit = {
+  def rxnSimple(s: SimpleSt, bh: Blackhole, k: McasImplState): Unit = {
     rxnTask(s, bh, k)
   }
 
   @Benchmark
-  def rxnTtrie(s: TtrieSt, bh: Blackhole, k: KCASImplState): Unit = {
+  def rxnTtrie(s: TtrieSt, bh: Blackhole, k: McasImplState): Unit = {
     rxnTask(s, bh, k)
   }
 
   @Benchmark
-  def scalaStm(s: ScalaStmSt, bh: Blackhole, k: KCASImplState): Unit = {
+  def scalaStm(s: ScalaStmSt, bh: Blackhole, k: McasImplState): Unit = {
     scalaStmTask(s, bh, k)
   }
 
-  private[this] final def rxnTask(s: RxnMapSt, bh: Blackhole, k: KCASImplState): Unit = {
+  private[this] final def rxnTask(s: RxnMapSt, bh: Blackhole, k: McasImplState): Unit = {
     k.nextIntBounded(4) match {
       case n @ (0 | 1) =>
         val key = if (n == 0) {
@@ -62,17 +62,17 @@ class DataMapBench {
           // unsuccessful lookup:
           s.dummyKeys(k.nextIntBounded(s.dummyKeys.length))
         }
-        val res: Option[String] = s.map.get.unsafePerformInternal(key, k.kcasCtx)
+        val res: Option[String] = s.map.get.unsafePerformInternal(key, k.mcasCtx)
         bh.consume(res)
       case n @ (2 | 3) =>
         val key = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
         if (n == 2) {
           // insert:
-          val res: Option[String] = s.map.put.unsafePerformInternal((key, s.constValue), k.kcasCtx)
+          val res: Option[String] = s.map.put.unsafePerformInternal((key, s.constValue), k.mcasCtx)
           bh.consume(res)
         } else {
           // remove:
-          val res: Boolean = s.map.del.unsafePerformInternal(key, k.kcasCtx)
+          val res: Boolean = s.map.del.unsafePerformInternal(key, k.mcasCtx)
           bh.consume(res)
         }
       case x =>
@@ -80,7 +80,7 @@ class DataMapBench {
     }
   }
 
-  private[this] final def scalaStmTask(s: ScalaStmSt, bh: Blackhole, k: KCASImplState): Unit = {
+  private[this] final def scalaStmTask(s: ScalaStmSt, bh: Blackhole, k: McasImplState): Unit = {
     import scala.concurrent.stm.atomic
     k.nextIntBounded(4) match {
       case n @ (0 | 1) =>
@@ -115,7 +115,7 @@ class DataMapBench {
     }
   }
 
-  private[this] final def chmTask(s: ChmSt, bh: Blackhole, k: KCASImplState): Unit = {
+  private[this] final def chmTask(s: ChmSt, bh: Blackhole, k: McasImplState): Unit = {
     k.nextIntBounded(4) match {
       case n @ (0 | 1) =>
         val key = if (n == 0) {

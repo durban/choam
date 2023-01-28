@@ -32,28 +32,28 @@ import util._
 class RandomBench {
 
   @Benchmark
-  def baseline(s: RandomBench.St, k: KCASImplState): Int = {
-    s.baseline(s.bound(k)).unsafePerformInternal(null, k.kcasCtx)
+  def baseline(s: RandomBench.St, k: McasImplState): Int = {
+    s.baseline(s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
   }
 
   @Benchmark
-  def betweenIntThreadLocal(s: RandomBench.St, k: KCASImplState): Int = {
-    s.rndThreadLocal.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.kcasCtx)
+  def betweenIntThreadLocal(s: RandomBench.St, k: McasImplState): Int = {
+    s.rndThreadLocal.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
   }
 
   @Benchmark
-  def betweenIntDeterministic(s: RandomBench.St, k: KCASImplState): Int = {
-    s.rndDeterministic.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.kcasCtx)
+  def betweenIntDeterministic(s: RandomBench.St, k: McasImplState): Int = {
+    s.rndDeterministic.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
   }
 
   @Benchmark
-  def betweenIntMinimal(s: RandomBench.St, k: KCASImplState): Int = {
-    s.rndMinimal.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.kcasCtx)
+  def betweenIntMinimal(s: RandomBench.St, k: McasImplState): Int = {
+    s.rndMinimal.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
   }
 
   @Benchmark
-  def betweenIntSecure(s: RandomBench.St, k: KCASImplState): Int = {
-    s.rndSecure.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.kcasCtx)
+  def betweenIntSecure(s: RandomBench.St, k: McasImplState): Int = {
+    s.rndSecure.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
   }
 }
 

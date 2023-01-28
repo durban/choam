@@ -22,7 +22,7 @@ package bench
 import org.openjdk.jmh.annotations._
 
 import data.{ Queue, QueueHelper }
-import dev.tauri.choam.bench.util.{ Prefill, KCASImplState }
+import dev.tauri.choam.bench.util.{ Prefill, McasImplState }
 
 @Fork(value = 6, jvmArgsAppend = Array("-Xmx2048M"))
 @Threads(2)
@@ -31,8 +31,8 @@ class GcBench {
   import GcBench._
 
   @Benchmark
-  def gcHostile(s: GcHostileSt, m: KCASImplState): Unit = {
-    val ctx = m.kcasCtx
+  def gcHostile(s: GcHostileSt, m: McasImplState): Unit = {
+    val ctx = m.mcasCtx
     var idx = 0
     while (idx < s.size) {
       s.transferOne(idx).unsafePerformInternal(a = null : Any, ctx = ctx)
@@ -41,8 +41,8 @@ class GcBench {
   }
 
   @Benchmark
-  def msQueue(s: MsQueueSt, m: KCASImplState): Unit = {
-    val ctx = m.kcasCtx
+  def msQueue(s: MsQueueSt, m: McasImplState): Unit = {
+    val ctx = m.mcasCtx
     var idx = 0
     while (idx < s.size) {
       s.transferOne(idx).unsafePerformInternal(a = null : Any, ctx = ctx)

@@ -22,49 +22,49 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import _root_.dev.tauri.choam.bench.util.KCASImplState
+import _root_.dev.tauri.choam.bench.util.McasImplState
 
 /**
- * Benchmark for reading with different k-CAS implementations.
+ * Benchmark for reading with different MCAS implementations.
  *
  * One thread just reads 2 refs one-by-one, as fast as it can.
  * The other thread occasionally changes the values with a 2-CAS.
  */
 @Fork(2)
-class ReadKCAS {
+class ReadMcas {
 
-  import ReadKCAS._
+  import ReadMcas._
 
   @Benchmark
-  @Group("ReadKCAS")
+  @Group("ReadMcas")
   def read(s: RefSt, t: ThSt, bh: Blackhole): Unit = {
-    bh.consume(t.kcasCtx.readDirect(s.ref1))
-    bh.consume(t.kcasCtx.readDirect(s.ref2))
+    bh.consume(t.mcasCtx.readDirect(s.ref1))
+    bh.consume(t.mcasCtx.readDirect(s.ref2))
   }
 
   @Benchmark
-  @Group("ReadKCAS")
+  @Group("ReadMcas")
   def change(s: RefSt, t: ThSt): Unit = {
     val next1 = t.nextString()
     val next2 = t.nextString()
     val success = {
-      val d0 = t.kcasCtx.start()
-      val Some((_, d1)) = t.kcasCtx.readMaybeFromLog(s.ref1, d0) : @unchecked
+      val d0 = t.mcasCtx.start()
+      val Some((_, d1)) = t.mcasCtx.readMaybeFromLog(s.ref1, d0) : @unchecked
       val d2 = d1.overwrite(d1.getOrElseNull(s.ref1).withNv(next1))
-      val Some((_, d3)) = t.kcasCtx.readMaybeFromLog(s.ref2, d2) : @unchecked
+      val Some((_, d3)) = t.mcasCtx.readMaybeFromLog(s.ref2, d2) : @unchecked
       val d4 = d3.overwrite(d3.getOrElseNull(s.ref2).withNv(next2))
-      t.kcasCtx.tryPerformOk(d4)
+      t.mcasCtx.tryPerformOk(d4)
     }
     if (success) {
       // we only occasionally want to change values, so wait a bit:
-      Blackhole.consumeCPU(ReadKCAS.tokens)
+      Blackhole.consumeCPU(ReadMcas.tokens)
     } else {
       throw new Exception
     }
   }
 }
 
-object ReadKCAS {
+object ReadMcas {
 
   final val tokens = 4096L
 
@@ -75,5 +75,5 @@ object ReadKCAS {
   }
 
   @State(Scope.Thread)
-  class ThSt extends KCASImplState
+  class ThSt extends McasImplState
 }

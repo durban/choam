@@ -22,7 +22,7 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import _root_.dev.tauri.choam.bench.util.KCASImplState
+import _root_.dev.tauri.choam.bench.util.McasImplState
 
 /**
  * Resource allocation scenario, described in [Software transactional memory](
@@ -30,14 +30,14 @@ import _root_.dev.tauri.choam.bench.util.KCASImplState
  * by Nir Shavit and Dan Touitou.
  */
 @Fork(2)
-class ResourceAllocationKCAS {
+class ResourceAllocationMcas {
 
-  import ResourceAllocationKCAS._
+  import ResourceAllocationMcas._
 
   @Benchmark
   def bench(s: RaSt, t: ThSt): Unit = {
     val n = t.allocSize
-    val ctx = t.kcasCtx
+    val ctx = t.mcasCtx
     val rss = t.selectResources(s.rss)
     t.desc = ctx.start()
 
@@ -77,7 +77,7 @@ class ResourceAllocationKCAS {
   }
 }
 
-object ResourceAllocationKCAS {
+object ResourceAllocationMcas {
 
   private[this] final val nRes = 60
 
@@ -108,7 +108,7 @@ object ResourceAllocationKCAS {
   }
 
   @State(Scope.Thread)
-  class ThSt extends KCASImplState {
+  class ThSt extends McasImplState {
 
     final val tokens = 128L
 

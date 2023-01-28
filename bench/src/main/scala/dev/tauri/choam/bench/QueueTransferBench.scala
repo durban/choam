@@ -38,19 +38,19 @@ class QueueTransferBench extends BenchUtils {
 
   /** MS-Queues (padded) implemented with `Rxn` */
   @Benchmark
-  def michaelScottQueuePadded(s: MsSt, ct: KCASImplState): Unit = {
+  def michaelScottQueuePadded(s: MsSt, ct: McasImplState): Unit = {
     runIdx(s.runtime, s.transfer(_).run[IO](ct.reactive), size = size)
   }
 
   /** MS-Queues (unpadded) implemented with `Rxn` */
   @Benchmark
-  def michaelScottQueueUnpadded(s: MsuSt, ct: KCASImplState): Unit = {
+  def michaelScottQueueUnpadded(s: MsuSt, ct: McasImplState): Unit = {
     runIdx(s.runtime, s.transfer(_).run[IO](ct.reactive), size = size)
   }
 
   /** MS-Queues (+ interior deletion) implemented with `Rxn` */
   @Benchmark
-  def michaelScottQueueWithRemove(s: RmSt, ct: KCASImplState): Unit = {
+  def michaelScottQueueWithRemove(s: RmSt, ct: McasImplState): Unit = {
     runIdx(s.runtime, s.transfer(_).run[IO](ct.reactive), size = size)
   }
 

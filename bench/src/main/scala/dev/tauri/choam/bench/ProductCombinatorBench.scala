@@ -31,13 +31,13 @@ class ProductCombinatorBench {
   import ProductCombinatorBench._
 
   @Benchmark
-  def productDummy(s: DummyProduct, k: KCASImplState): Unit = {
-    s.prod.unsafePerform((), k.kcasImpl)
+  def productDummy(s: DummyProduct, k: McasImplState): Unit = {
+    s.prod.unsafePerform((), k.mcasImpl)
   }
 
   @Benchmark
-  def productCAS(s: CASProduct, k: KCASImplState): Unit = {
-    s.prod.unsafePerform((), k.kcasImpl)
+  def productCAS(s: CASProduct, k: McasImplState): Unit = {
+    s.prod.unsafePerform((), k.mcasImpl)
     s.reset.reset()
   }
 }

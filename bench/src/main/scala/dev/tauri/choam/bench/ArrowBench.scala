@@ -29,21 +29,21 @@ import util._
 class ArrowBench {
 
   @Benchmark
-  def onlyComputed(s: ArrowBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+  def onlyComputed(s: ArrowBench.St, bh: Blackhole, k: McasImplState): Unit = {
     val ref = s.refs(Math.abs(k.nextInt()) % ArrowBench.size)
-    bh.consume(s.rOnlyComputed(ref).unsafePerform((), k.kcasImpl))
+    bh.consume(s.rOnlyComputed(ref).unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
-  def withoutComputed(s: ArrowBench.St, bh: Blackhole, k: KCASImplState): Unit = {
+  def withoutComputed(s: ArrowBench.St, bh: Blackhole, k: McasImplState): Unit = {
     val ref = s.refs(Math.abs(k.nextInt()) % ArrowBench.size)
-    bh.consume(s.rWithoutComputed(ref).unsafePerform((), k.kcasImpl))
+    bh.consume(s.rWithoutComputed(ref).unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
-  def updPrimitive(s: ArrowBench.USt, bh: Blackhole, k: KCASImplState): Unit = {
+  def updPrimitive(s: ArrowBench.USt, bh: Blackhole, k: McasImplState): Unit = {
     val r = s.updPrimitive(s.refs(Math.abs(k.nextInt()) % ArrowBench.size))
-    bh.consume(r.unsafePerform(k.nextString(), k.kcasImpl))
+    bh.consume(r.unsafePerform(k.nextString(), k.mcasImpl))
   }
 }
 

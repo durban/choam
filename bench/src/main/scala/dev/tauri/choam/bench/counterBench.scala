@@ -44,8 +44,8 @@ class CounterBench {
   }
 
   @Benchmark
-  def react(s: ReactSt, k: KCASImplState, bh: Blackhole): Unit = {
-    bh.consume(s.reactCtr.add.unsafePerform(k.nextLong(), k.kcasImpl))
+  def react(s: ReactSt, k: McasImplState, bh: Blackhole): Unit = {
+    bh.consume(s.reactCtr.add.unsafePerform(k.nextLong(), k.mcasImpl))
     Blackhole.consumeCPU(waitTime)
   }
 }
@@ -95,8 +95,8 @@ class CounterBenchN {
   }
 
   @Benchmark
-  def reactN(s: ReactStN, k: KCASImplState, bh: Blackhole): Unit = {
-    bh.consume(s.r.unsafePerform(k.nextLong(), k.kcasImpl))
+  def reactN(s: ReactStN, k: McasImplState, bh: Blackhole): Unit = {
+    bh.consume(s.r.unsafePerform(k.nextLong(), k.mcasImpl))
     Blackhole.consumeCPU(waitTime)
   }
 }

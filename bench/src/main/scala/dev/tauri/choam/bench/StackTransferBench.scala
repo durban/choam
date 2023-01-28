@@ -34,10 +34,10 @@ class StackTransferBench {
   final val waitTime = 128L
 
   @Benchmark
-  def treiberStack(s: TreiberSt, bh: Blackhole, ct: KCASImplState): Unit = {
-    bh.consume(s.treiberStack1.push.unsafePerform(ct.nextString(), ct.kcasImpl))
-    bh.consume(s.transfer.unsafePerform((), ct.kcasImpl))
-    if (s.treiberStack2.tryPop.unsafePerform((), ct.kcasImpl) eq None) throw Errors.EmptyStack
+  def treiberStack(s: TreiberSt, bh: Blackhole, ct: McasImplState): Unit = {
+    bh.consume(s.treiberStack1.push.unsafePerform(ct.nextString(), ct.mcasImpl))
+    bh.consume(s.transfer.unsafePerform((), ct.mcasImpl))
+    if (s.treiberStack2.tryPop.unsafePerform((), ct.mcasImpl) eq None) throw Errors.EmptyStack
     Blackhole.consumeCPU(waitTime)
   }
 

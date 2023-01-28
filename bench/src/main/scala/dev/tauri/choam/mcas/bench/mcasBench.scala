@@ -29,16 +29,16 @@ import _root_.dev.tauri.choam.bench.util._
 @BenchmarkMode(Array(Mode.AverageTime))
 class FailedCAS1Bench {
 
-  import KCASBenchHelpers._
+  import McasBenchHelpers._
 
   @Benchmark
-  def failedCAS1(r: RefState, t: KCASImplState): Unit = {
-    val succ = t.kcasCtx.tryPerformSingleCas(r.ref, ov = incorrectOv, nv = t.nextString())
+  def failedCAS1(r: RefState, t: McasImplState): Unit = {
+    val succ = t.mcasCtx.tryPerformSingleCas(r.ref, ov = incorrectOv, nv = t.nextString())
     if (succ) throw new AssertionError("CAS should've failed")
   }
 
   @Benchmark
-  def failedCAS1Reference(r: RefState, t: KCASImplState): Unit = {
+  def failedCAS1Reference(r: RefState, t: McasImplState): Unit = {
     val succ = r.ref.unsafeCasVolatile(incorrectOv, t.nextString())
     if (succ) throw new AssertionError("CAS should've failed")
   }
@@ -48,12 +48,12 @@ class FailedCAS1Bench {
 @BenchmarkMode(Array(Mode.AverageTime))
 class CAS1LoopBench {
 
-  import KCASBenchHelpers._
+  import McasBenchHelpers._
 
   @Benchmark
-  def successfulCAS1Loop(r: RefState, t: KCASImplState): Unit = {
+  def successfulCAS1Loop(r: RefState, t: McasImplState): Unit = {
     val ref = r.ref
-    val kcasCtx = t.kcasCtx
+    val kcasCtx = t.mcasCtx
     @tailrec
     def go(): Unit = {
       val ov = kcasCtx.readDirect(ref)
@@ -66,7 +66,7 @@ class CAS1LoopBench {
   }
 
   @Benchmark
-  def successfulCAS1LoopReference(r: RefState, t: KCASImplState): Unit = {
+  def successfulCAS1LoopReference(r: RefState, t: McasImplState): Unit = {
     val ref = r.ref
     @tailrec
     def go(): Unit = {
@@ -80,7 +80,7 @@ class CAS1LoopBench {
   }
 }
 
-object KCASBenchHelpers {
+object McasBenchHelpers {
 
   final val incorrectOv = "no such number"
 

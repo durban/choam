@@ -28,23 +28,23 @@ import util._
 class OptCombinatorBench {
 
   @Benchmark
-  def providePrimitive(s: OptCombinatorBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-    bh.consume(s.provide.unsafePerformInternal(null, k.kcasCtx))
+  def providePrimitive(s: OptCombinatorBench.St, bh: Blackhole, k: McasImplState): Unit = {
+    bh.consume(s.provide.unsafePerformInternal(null, k.mcasCtx))
   }
 
   @Benchmark
-  def provideWithContramap(s: OptCombinatorBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-    bh.consume(s.contramap.unsafePerformInternal(null, k.kcasCtx))
+  def provideWithContramap(s: OptCombinatorBench.St, bh: Blackhole, k: McasImplState): Unit = {
+    bh.consume(s.contramap.unsafePerformInternal(null, k.mcasCtx))
   }
 
   @Benchmark
-  def asPrimitive(s: OptCombinatorBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-    bh.consume(s.as.unsafePerformInternal(null, k.kcasCtx))
+  def asPrimitive(s: OptCombinatorBench.St, bh: Blackhole, k: McasImplState): Unit = {
+    bh.consume(s.as.unsafePerformInternal(null, k.mcasCtx))
   }
 
   @Benchmark
-  def asWithMap(s: OptCombinatorBench.St, bh: Blackhole, k: KCASImplState): Unit = {
-    bh.consume(s.map.unsafePerformInternal(null, k.kcasCtx))
+  def asWithMap(s: OptCombinatorBench.St, bh: Blackhole, k: McasImplState): Unit = {
+    bh.consume(s.map.unsafePerformInternal(null, k.mcasCtx))
   }
 }
 

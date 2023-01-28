@@ -33,15 +33,15 @@ class InterpreterBench {
   // TODO: - creating new Refs
 
   @Benchmark
-  def rxnNew(s: St, bh: Blackhole, k: KCASImplState): Unit = {
+  def rxnNew(s: St, bh: Blackhole, k: McasImplState): Unit = {
     val x = k.nextInt()
-    bh.consume(s.rxn.unsafePerform(x, k.kcasImpl))
+    bh.consume(s.rxn.unsafePerform(x, k.mcasImpl))
   }
 
   @Benchmark
-  def rxnNewDisjoint(s: DisjointSt, bh: Blackhole, k: KCASImplState): Unit = {
+  def rxnNewDisjoint(s: DisjointSt, bh: Blackhole, k: McasImplState): Unit = {
     val x = k.nextInt()
-    bh.consume(s.rxn.unsafePerform(x, k.kcasImpl))
+    bh.consume(s.rxn.unsafePerform(x, k.mcasImpl))
   }
 }
 

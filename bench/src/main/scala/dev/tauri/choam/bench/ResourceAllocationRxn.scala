@@ -21,7 +21,7 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import util.KCASImplState
+import util.McasImplState
 
 /**
  * A variant of `dev.tauri.choam.kcas.bench.ResourceAllocation`,
@@ -64,7 +64,7 @@ class ResourceAllocationRxn {
 
     val r = read(0, Rxn.ret(t.ovs))
     val w = write(0, Rxn.unit)
-    (r >>> w).unsafePerform((), t.kcasImpl)
+    (r >>> w).unsafePerform((), t.mcasImpl)
 
     Blackhole.consumeCPU(t.tokens)
   }
@@ -99,7 +99,7 @@ object ResourceAllocationRxn {
   }
 
   @State(Scope.Thread)
-  class ThreadSt extends KCASImplState {
+  class ThreadSt extends McasImplState {
 
     final val tokens = 128L
 

@@ -26,9 +26,9 @@ final class ChoiceCombinatorBenchSpec extends BaseSpec {
     val s = new ChoiceCombinatorBench.CASChoice
     s.size = 8
     s.setup()
-    val k = new KCASImplState
-    k.kcasName = mcas.Mcas.fqns.Emcas
-    k.setupKCASImpl()
+    val k = new McasImplState
+    k.mcasName = mcas.Mcas.fqns.Emcas
+    k.setupMcasImpl()
     b.doChoiceCAS(s, k)
     // check that the reaction happened:
     val ctx = mcas.Mcas.Emcas.currentContext()

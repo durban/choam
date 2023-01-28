@@ -21,7 +21,7 @@ package core
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import bench.util.KCASImplState
+import bench.util.McasImplState
 
 @Fork(3)
 @Threads(2) // 4, 6, 8, ...
@@ -31,14 +31,14 @@ class ExchangerBench {
 
   @Benchmark
   @Group("exchanger")
-  def exchangerLeft(s: St, bh: Blackhole, k: KCASImplState): Unit = {
-    bh.consume(s.left.unsafePerformInternal("foo", ctx = k.kcasCtx))
+  def exchangerLeft(s: St, bh: Blackhole, k: McasImplState): Unit = {
+    bh.consume(s.left.unsafePerformInternal("foo", ctx = k.mcasCtx))
   }
 
   @Benchmark
   @Group("exchanger")
-  def exchangerRight(s: St, bh: Blackhole, k: KCASImplState): Unit = {
-    bh.consume(s.right.unsafePerformInternal("bar", ctx = k.kcasCtx))
+  def exchangerRight(s: St, bh: Blackhole, k: McasImplState): Unit = {
+    bh.consume(s.right.unsafePerformInternal("bar", ctx = k.mcasCtx))
   }
 
   // @Benchmark

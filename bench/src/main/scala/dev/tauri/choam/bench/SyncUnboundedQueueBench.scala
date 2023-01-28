@@ -39,7 +39,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
 
   /** MS-Queue implemented with `Rxn` */
   @Benchmark
-  def msQueue(s: MsSt, t: KCASImplState): Unit = {
+  def msQueue(s: MsSt, t: McasImplState): Unit = {
     val tsk = t.nextBooleanIO.flatMap { enq =>
       if (enq) s.michaelScottQueue.enqueue[IO](t.nextString())(t.reactive)
       else s.michaelScottQueue.tryDeque.run[IO](t.reactive)
@@ -49,7 +49,7 @@ class SyncUnboundedQueueBench extends BenchUtils {
 
   /** MS-Queue (+ interior deletion) implemented with `Rxn` */
   @Benchmark
-  def msQueueWithRemove(s: RmSt, t: KCASImplState): Unit = {
+  def msQueueWithRemove(s: RmSt, t: McasImplState): Unit = {
     val tsk = t.nextBooleanIO.flatMap { enq =>
       if (enq) s.removeQueue.enqueue[IO](t.nextString())(t.reactive)
       else s.removeQueue.tryDeque.run[IO](t.reactive)
