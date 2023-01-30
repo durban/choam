@@ -38,10 +38,8 @@ import org.openjdk.jcstress.infra.results.LLLL_Result
 ))
 class CatsAsyncTest {
 
-  private[this] val runtime: IORuntime = {
-    val (wstp, fin) = IORuntime.createWorkStealingComputeThreadPool(threads = 3)
-    IORuntime.builder().setCompute(wstp, fin).build()
-  }
+  private[this] val runtime: IORuntime =
+    CatsAsyncTest.runtime
 
   @volatile
   private[this] var cb: (Either[Throwable, String] => Unit) =
@@ -101,5 +99,13 @@ class CatsAsyncTest {
       fib = this.fib
     }
     r.r3 = fib.cancel.unsafeRunSync()(this.runtime)
+  }
+}
+
+final object CatsAsyncTest {
+
+  lazy val runtime: IORuntime = {
+    val (wstp, fin) = IORuntime.createWorkStealingComputeThreadPool(threads = 3)
+    IORuntime.builder().setCompute(wstp, fin).build()
   }
 }
