@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import scala.concurrent.duration._
+
 import cats.effect.kernel.{ Fiber, Outcome }
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
@@ -24,15 +26,15 @@ import cats.effect.unsafe.IORuntime
 import org.openjdk.jcstress.annotations.{ Ref => _, Outcome => JOutcome, _ }
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
-import org.openjdk.jcstress.infra.results.LLL_Result
+import org.openjdk.jcstress.infra.results.LLLL_Result
 
 @JCStressTest
 @State
 @Description("async register/complete/cancel race")
 @Outcomes(Array(
-  new JOutcome(id = Array("foo, Succeeded(IO(foo)), ()"), expect = ACCEPTABLE_INTERESTING, desc = "succeeded"),
-  new JOutcome(id = Array("null, Canceled(), ()"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled early"),
-  new JOutcome(id = Array("foo, Canceled(), ()"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled late"), // FORBIDDEN?
+  new JOutcome(id = Array("foo, Succeeded(IO(foo)), (), null"), expect = ACCEPTABLE_INTERESTING, desc = "succeeded"),
+  new JOutcome(id = Array("null, Canceled(), (), null"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled early"),
+  new JOutcome(id = Array("foo, Canceled(), (), null"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled late"), // FORBIDDEN?
 ))
 class CatsAsyncTest {
 
@@ -53,7 +55,7 @@ class CatsAsyncTest {
     Right("foo")
 
   @Actor
-  def register(r: LLL_Result): Unit = {
+  def register(r: LLLL_Result): Unit = {
     val a: IO[String] = IO.uncancelable { poll =>
       poll(
         IO.async[String] { cb =>
@@ -64,8 +66,20 @@ class CatsAsyncTest {
       }
     }
 
-    val t: IO[Outcome[IO, Throwable, String]] = a.start.flatMap { fib =>
-      IO { this.fib = fib } *> fib.join
+    val t: IO[Outcome[IO, Throwable, String]] = IO.uncancelable { poll =>
+      // timeout, because JCStress first runs the actors
+      // sequentially, and we would deadlock otherwise:
+      IO.both(a.start, IO.sleep(1.second).start).flatMap {
+        case (fib, sleepFib) =>
+          IO { this.fib = fib } *> poll(IO.race(fib.join, sleepFib.join)).flatMap {
+            case Left(oc) =>
+              // `a` finished (or was canceled by `cancel`)
+              sleepFib.cancel.as(oc)
+            case Right(_) =>
+              // timeout, so we just cancel `a`
+              IO { r.r4 = "timeout" } *> fib.cancel *> fib.join
+          }
+      }
     }
 
     r.r2 = t.unsafeRunSync()(this.runtime).toString()
@@ -81,7 +95,7 @@ class CatsAsyncTest {
   }
 
   @Actor
-  def cancel(r: LLL_Result): Unit = {
+  def cancel(r: LLLL_Result): Unit = {
     var fib: Fiber[IO, Throwable, String] = null
     while (fib eq null) {
       fib = this.fib
