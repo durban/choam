@@ -34,9 +34,10 @@ import org.openjdk.jcstress.infra.results.LLLL_Result
 @State
 @Description("async register/complete/cancel race")
 @Outcomes(Array(
-  new JOutcome(id = Array("foo, Succeeded(IO(foo)), (), null"), expect = ACCEPTABLE_INTERESTING, desc = "succeeded"),
-  new JOutcome(id = Array("null, Canceled(), (), null"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled early"),
-  new JOutcome(id = Array("foo, Canceled(), (), null"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled late"), // FORBIDDEN?
+  new JOutcome(id = Array("foo, Succeeded(IO(foo)), null, null"), expect = ACCEPTABLE, desc = "succeeded"),
+  new JOutcome(id = Array("null, Canceled(), null, null"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled early"),
+  new JOutcome(id = Array("null, Canceled(), cbIsNull, null"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled very early"),
+  new JOutcome(id = Array("foo, Canceled(), .*, .*"), expect = FORBIDDEN, desc = "cancelled late (in uncancelable)"),
 ))
 class CatsAsyncTest {
 
@@ -88,16 +89,8 @@ class CatsAsyncTest {
 
     // make sure `complete` will not spin forever:
     if (this.cb.compareAndSet(null, this.dummyCb)) {
-      // it was cancelled very early(?)
-      val msg = "cb eq null"
-      r.r4 match {
-        case null =>
-          r.r4 = msg
-        case s: String =>
-          r.r4 = s + "," + msg
-        case x =>
-          r.r4 = x.toString() + "," + msg
-      }
+      // it was cancelled before even starting
+      r.r3 = "cbIsNull"
     }
 
     // make sure `cancel` will not spin forever:
@@ -118,12 +111,12 @@ class CatsAsyncTest {
   }
 
   @Actor
-  def cancel(r: LLLL_Result): Unit = {
+  def cancel(): Unit = {
     var fib: Fiber[IO, Throwable, String] = null
     while (fib eq null) {
       fib = this.fib
     }
-    r.r3 = fib.cancel.unsafeRunSync()(this.runtime)
+    fib.cancel.unsafeRunSync()(this.runtime)
   }
 }
 
@@ -146,7 +139,7 @@ final object CatsAsyncTest {
   //   val r = new LLLL_Result
   //   obj.register(r)
   //   obj.complete()
-  //   obj.cancel(r)
+  //   obj.cancel()
   //   println(r)
   // }
 }
