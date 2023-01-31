@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import java.util.concurrent.atomic.AtomicReference
+
 import scala.concurrent.duration._
 
 import cats.effect.kernel.{ Fiber, Outcome }
@@ -41,9 +43,11 @@ class CatsAsyncTest {
   private[this] val runtime: IORuntime =
     CatsAsyncTest.runtime
 
-  @volatile
-  private[this] var cb: (Either[Throwable, String] => Unit) =
-    null
+  private[this] val cb: AtomicReference[Either[Throwable, String] => Unit] =
+    new AtomicReference
+
+  private[this] val dummyCb: (Either[Throwable, String] => Unit) =
+    CatsAsyncTest.dummyCb
 
   @volatile
   private[this] var fib: Fiber[IO, Throwable, String] =
@@ -57,7 +61,7 @@ class CatsAsyncTest {
     val a: IO[String] = IO.uncancelable { poll =>
       poll(
         IO.async[String] { cb =>
-          IO { this.cb = cb }.as(Some(IO.unit))
+          IO { this.cb.set(cb) }.as(Some(IO.unit))
         }
       ).flatTap { s =>
         IO { r.r1 = s }
@@ -81,13 +85,34 @@ class CatsAsyncTest {
     }
 
     r.r2 = t.unsafeRunSync()(this.runtime).toString()
+
+    // make sure `complete` will not spin forever:
+    if (this.cb.compareAndSet(null, this.dummyCb)) {
+      // it was cancelled very early(?)
+      val msg = "cb eq null"
+      r.r4 match {
+        case null =>
+          r.r4 = msg
+        case s: String =>
+          r.r4 = s + "," + msg
+        case x =>
+          r.r4 = x.toString() + "," + msg
+      }
+    }
+
+    // make sure `cancel` will not spin forever:
+    if (this.fib eq null) {
+      this.fib = CatsAsyncTest.dummyFib
+      // this should never happen:
+      throw new Exception("fib eq null")
+    }
   }
 
   @Actor
   def complete(): Unit = {
     var cb: (Either[Throwable, String] => Unit) = null
     while (cb eq null) {
-      cb = this.cb
+      cb = this.cb.get()
     }
     cb(this.res)
   }
@@ -104,8 +129,24 @@ class CatsAsyncTest {
 
 final object CatsAsyncTest {
 
-  lazy val runtime: IORuntime = {
+  val runtime: IORuntime = {
     val (wstp, fin) = IORuntime.createWorkStealingComputeThreadPool(threads = 3)
     IORuntime.builder().setCompute(wstp, fin).build()
   }
+
+  val dummyCb: (Either[Throwable, String] => Unit) = {
+    { _ => () }
+  }
+
+  val dummyFib: Fiber[IO, Throwable, String] =
+    IO.never[String].start.unsafeRunSync()(this.runtime)
+
+  // def main(args: Array[String]): Unit = {
+  //   val obj = new CatsAsyncTest
+  //   val r = new LLLL_Result
+  //   obj.register(r)
+  //   obj.complete()
+  //   obj.cancel(r)
+  //   println(r)
+  // }
 }
