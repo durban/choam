@@ -22,7 +22,7 @@ import java.util.UUID
 
 import scala.concurrent.duration._
 
-import cats.{ Align, Applicative, Defer, Functor, Monad, Monoid, MonoidK, Semigroup, Show }
+import cats.{ Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, MonoidK, Semigroup, Show }
 import cats.arrow.ArrowChoice
 import cats.data.{ Ior, State }
 import cats.mtl.Local
@@ -1251,18 +1251,11 @@ private sealed abstract class RxnInstances1 extends RxnInstances2 { self: Rxn.ty
 
 private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.type =>
 
-  // TODO: StackSafeMonad
-  implicit final def monadInstance[X]: Monad[Rxn[X, *]] = new Monad[Rxn[X, *]] {
+  implicit final def monadInstance[X]: StackSafeMonad[Rxn[X, *]] = new StackSafeMonad[Rxn[X, *]] {
     final override def flatMap[A, B](fa: Rxn[X, A])(f: A => Rxn[X, B]): Rxn[X, B] =
       fa.flatMap(f)
     final override def pure[A](a: A): Rxn[X, A] =
       Rxn.pure(a)
-    final override def tailRecM[A, B](a: A)(f: A => Rxn[X, Either[A, B]]): Rxn[X, B] = {
-      f(a).flatMap {
-        case Left(a) => this.tailRecM(a)(f)
-        case Right(b) => this.pure(b)
-      }
-    }
   }
 }
 

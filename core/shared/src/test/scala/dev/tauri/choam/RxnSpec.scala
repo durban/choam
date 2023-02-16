@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import cats.{ Applicative, Monad, Align }
+import cats.{ Applicative, Monad, StackSafeMonad, Align }
 import cats.arrow.{ ArrowChoice, FunctionK }
 import cats.data.Ior
 import cats.implicits._
@@ -895,7 +895,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Monad instance") {
-    def foo[G[_] : Monad](ga: G[Int]): G[String] =
+    def foo[G[_] : StackSafeMonad](ga: G[Int]): G[String] =
       ga.flatMap(x => x.toString.pure[G])
 
     assertResultF(foo[Rxn[Any, *]](Rxn.pure(42)).run[F], "42")
