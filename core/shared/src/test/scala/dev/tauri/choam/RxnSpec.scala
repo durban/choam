@@ -18,10 +18,11 @@
 package dev.tauri.choam
 
 import cats.{ Applicative, Monad, Align }
-import cats.arrow.ArrowChoice
+import cats.arrow.{ ArrowChoice, FunctionK }
 import cats.data.Ior
 import cats.implicits._
 import cats.effect.IO
+import cats.effect.kernel.{ Ref => CatsRef }
 import cats.mtl.Local
 
 final class RxnSpec_ThreadConfinedMcas_IO
@@ -773,6 +774,15 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("maybe") {
+    for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("a").run[F]
+      r = r1.unsafeCas("x", "y").maybe * r2.unsafeCas("a", "b").maybe
+      _ <- assertResultF(r.run[F], (false, true))
+    } yield ()
+  }
+
   test("unsafe.context") {
     Rxn.unsafe.context { (tc: mcas.Mcas.ThreadContext) =>
       tc eq this.mcasImpl.currentContext()
@@ -931,6 +941,14 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Ref.Make instance") {
+    val inst = implicitly[CatsRef.Make[Rxn[Int, *]]]
+    val rxn = inst.refOf(42).flatMap { ref =>
+      ref.get
+    }
+    assertResultF(rxn[F](-1), 42)
+  }
+
   test("UUIDGen instance") {
     val inst = cats.effect.std.UUIDGen[Rxn[Any, *]]
     for {
@@ -958,5 +976,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       rr = r.split(Rxn.identity, Rxn.lift[String, String](_ + "x"))
       _ <- assertResultF(rr.run[F], ("a", "bx"))
     } yield ()
+  }
+
+  test("Reactive is a FunctionK") {
+    Reactive[F] : FunctionK[Axn, F]
   }
 }

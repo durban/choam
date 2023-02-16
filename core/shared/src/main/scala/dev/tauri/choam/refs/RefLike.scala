@@ -47,7 +47,7 @@ trait RefLike[A] {
 
   /** Returns `false` iff the update failed */
   final def tryUpdate(f: A => A): Axn[Boolean] =
-    update(f).as(true) + Rxn.pure(false)
+    update(f).maybe
 
   /** Returns previous value */
   final def getAndUpdate(f: A => A): Axn[A] =
@@ -128,9 +128,9 @@ object RefLike {
       self.modify(f).run[F]
 
     override def tryModifyState[B](state: State[A, B]): F[Option[B]] =
-      self.tryModify(a => state.runF.value(a).value).run[F]
+      self.tryModify(a => state.runF.flatMap(_(a)).value).run[F]
 
     override def modifyState[B](state: State[A,B]): F[B] =
-      self.modify(a => state.runF.value(a).value).run[F]
+      self.modify(a => state.runF.flatMap(_(a)).value).run[F]
   }
 }

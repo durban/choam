@@ -24,9 +24,9 @@ import scala.concurrent.duration._
 
 import cats.{ Align, Applicative, Defer, Functor, Monad, Monoid, MonoidK, Semigroup, Show }
 import cats.arrow.ArrowChoice
-import cats.data.Ior
+import cats.data.{ Ior, State }
 import cats.mtl.Local
-import cats.effect.kernel.{ Clock, Unique }
+import cats.effect.kernel.{ Clock, Unique, Ref => CatsRef }
 import cats.effect.std.{ Random, UUIDGen }
 
 import mcas.{ MemoryLocation, Mcas, HalfEMCASDescriptor, HalfWordDescriptor, McasStatus }
@@ -135,6 +135,9 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
   final def attempt: Rxn[A, Option[B]] =
     this.map(Some(_)) + pure[Option[B]](None)
+
+  final def maybe: Rxn[A, Boolean] =
+    this.as(true) + pure(false)
 
   final def map[C](f: B => C): Rxn[A, C] =
     this >>> lift(f)
@@ -1248,6 +1251,7 @@ private sealed abstract class RxnInstances1 extends RxnInstances2 { self: Rxn.ty
 
 private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.type =>
 
+  // TODO: StackSafeMonad
   implicit final def monadInstance[X]: Monad[Rxn[X, *]] = new Monad[Rxn[X, *]] {
     final override def flatMap[A, B](fa: Rxn[X, A])(f: A => Rxn[X, B]): Rxn[X, B] =
       fa.flatMap(f)
@@ -1334,7 +1338,7 @@ private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.t
   }
 }
 
-private sealed abstract class RxnInstances10 extends RxnSyntax0 { self: Rxn.type =>
+private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.type =>
   implicit final def clockInstance[X]: Clock[Rxn[X, *]] = new Clock[Rxn[X, *]] {
     final override def applicative: Applicative[Rxn[X, *]] =
       self.monadInstance[X]
@@ -1342,6 +1346,42 @@ private sealed abstract class RxnInstances10 extends RxnSyntax0 { self: Rxn.type
       self.unsafe.delay { _ => System.nanoTime().nanoseconds }
     final override def realTime: Rxn[X, FiniteDuration] =
       self.unsafe.delay { _ => System.currentTimeMillis().milliseconds }
+  }
+}
+
+private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type =>
+  implicit final def catsRefMakeInstance[X]: CatsRef.Make[Rxn[X, *]] = new CatsRef.Make[Rxn[X, *]] {
+    final override def refOf[A](a: A): Rxn[X, CatsRef[Rxn[X, *], A]] = {
+      refs.Ref.apply(initial = a).map { underlying =>
+        new CatsRef[Rxn[X, *], A] {
+          final override def get: Rxn[X, A] =
+            underlying.get
+          final override def set(a: A): Rxn[X, Unit] =
+            underlying.set.provide(a)
+          final override def access: Rxn[X, (A, A => Rxn[X, Boolean])] = {
+            underlying.get.map { ov =>
+              val setter = { (nv: A) =>
+                // TODO: can we relax this? Would `ticketRead` be safe?
+                underlying.modify { cv => if (equ(cv, ov)) (nv, true) else (cv, false) }
+              }
+              (ov, setter)
+            }
+          }
+          final override def tryUpdate(f: A => A): Rxn[X, Boolean] =
+            this.update(f).maybe
+          final override def tryModify[B](f: A => (A, B)): Rxn[X, Option[B]] =
+            this.modify(f).attempt
+          final override def update(f: A => A): Rxn[X, Unit] =
+            underlying.update(f)
+          final override def modify[B](f: A => (A, B)): Rxn[X, B] =
+            underlying.modify(f)
+          final override def tryModifyState[B](state: State[A, B]): Rxn[X, Option[B]] =
+            underlying.tryModify { a => state.runF.flatMap(_(a)).value }
+          final override def modifyState[B](state: State[A, B]): Rxn[X, B] =
+            underlying.modify { a => state.runF.flatMap(_(a)).value }
+        }
+      }
+    }
   }
 }
 

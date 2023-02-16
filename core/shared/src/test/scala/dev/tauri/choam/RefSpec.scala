@@ -19,8 +19,11 @@ package dev.tauri.choam
 
 import scala.math.Ordering
 
+import cats.{ Monad, ~> }
+import cats.arrow.FunctionK
 import cats.kernel.{ Order, Hash }
 import cats.effect.IO
+import cats.effect.kernel.{ Ref => CatsRef }
 
 final class RefSpec_Real_ThreadConfinedMcas_IO
   extends BaseSpecIO
@@ -211,29 +214,40 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  def testCatsRef[G[_]](r: CatsRef[G, String], initial: String, run: ~>[G, F])(implicit G: Monad[G]): F[Unit] = {
+    for {
+      _ <- F.unit
+      _ <- assertResultF(run(r.get), initial)
+      _ <- assertResultF(run(r.set("b") *> r.get), "b")
+      acc = r.access.flatMap {
+        case (ov, setter) =>
+          if (ov ne "b") G.pure(false)
+          else setter("c")
+      }
+      _ <- assertResultF(run(acc), true)
+      _ <- assertResultF(run(r.get), "c")
+      acc = r.access.flatMap {
+        case (_, setter) =>
+          r.set("x") *> (setter("y"), setter("z")).tupled
+      }
+      _ <- assertResultF(run(acc), (false, false))
+      _ <- assertResultF(run(r.get), "x")
+    } yield ()
+  }
+
   test("Ref#toCats") {
     for {
       r <- newRef("a")
       cr = r.toCats
-      _ <- assertResultF(cr.get, "a")
-      _ <- cr.set("b")
-      _ <- assertResultF(r.get.run[F], "b")
-      _ <- assertResultF(cr.get, "b")
-      vs <- cr.access
-      (v, s) = vs
-      _ <- assertEqualsF(v, "b")
-      _ <- assertResultF(s("c"), true)
-      _ <- assertResultF(r.get.run[F], "c")
-      _ <- assertResultF(cr.get, "c")
-      _ <- cr.set("b")
-      _ <- assertResultF(s("c"), false) // second call must always fail
-      vs <- cr.access
-      (v, s) = vs
-      _ <- assertEqualsF(v, "b")
-      _ <- cr.update(_ + "x")
-      _ <- assertResultF(s("c"), false) // concurrent modification
-      _ <- assertResultF(r.get.run[F], "bx")
-      _ <- assertResultF(cr.get, "bx")
+      _ <- r.update(_ + "a").run[F]
+      _ <- testCatsRef[F](cr, initial = "aa", run = FunctionK.id)
+    } yield ()
+  }
+
+  test("CatsRef[Axn, A]") {
+    for {
+      r <- implicitly[CatsRef.Make[Axn]].refOf("a").run[F]
+      _ <- testCatsRef[Axn](r, initial = "a", run = this.rF)
     } yield ()
   }
 }

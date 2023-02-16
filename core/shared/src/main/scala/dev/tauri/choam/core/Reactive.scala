@@ -23,7 +23,7 @@ import cats.effect.kernel.Sync
 
 import mcas.Mcas
 
-trait Reactive[F[_]] { self =>
+trait Reactive[F[_]] extends ~>[Axn, F] { self =>
   def apply[A, B](r: Rxn[A, B], a: A): F[B]
   def mcasImpl: Mcas
   def monad: Monad[F]
@@ -31,6 +31,8 @@ trait Reactive[F[_]] { self =>
     new Reactive.TransformedReactive[F, G](self, t)
   def run[A](a: Axn[A]): F[A] =
     this.apply[Any, A](a, null: Any)
+  final override def apply[A](a: Axn[A]): F[A] =
+    this.run(a)
   def applyInterruptibly[A, B](r: Rxn[A, B], a: A): F[B] =
     this.apply(r, a) // default implementation, interruptible `F` should override
 }
