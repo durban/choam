@@ -51,7 +51,7 @@ ThisBuild / scalafixScalaBinaryVersion := scalaBinaryVersion.value
 ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
-ThisBuild / tlBaseVersion := "0.2"
+ThisBuild / tlBaseVersion := "0.3"
 ThisBuild / tlUntaggedAreSnapshots := true
 ThisBuild / tlSonatypeUseLegacyHost := true
 
