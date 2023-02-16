@@ -447,7 +447,10 @@ lazy val commonSettings = Seq[Setting[_]](
        |See the License for the specific language governing permissions and
        |limitations under the License.
        |""".stripMargin
-  ))
+  )),
+  // disable build server protocol for JS (idea from
+  // https://github.com/typelevel/sbt-typelevel/pull/465)
+  bspEnabled := crossProjectPlatform.?.value.forall(_ == JVMPlatform),
 ) ++ inConfig(Compile)(
   inTask(packageBin)(extraPackagingSettings) ++
   inTask(packageSrc)(extraPackagingSettings) ++
