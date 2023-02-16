@@ -17,34 +17,4 @@
 
 package dev.tauri.choam
 
-import cats.~>
-import cats.effect.kernel.{ Async, Cont, MonadCancel }
-
-package object async {
-
-  /**
-   * This is basically `cats.effect.kernel.Async#asyncCheckAttempt`,
-   * which is not released yet.
-   *
-   * TODO: use that instead of this.
-   */
-  def asyncCheckAttempt[F[_], A](
-    k: (Either[Throwable, A] => Unit) => F[Either[Option[F[Unit]], A]]
-  )(implicit F: Async[F]): F[A] = {
-    val c = new Cont[F, A, A] {
-      final override def apply[G[_]](
-        implicit G: MonadCancel[G, Throwable]
-      ): (Either[Throwable, A] => Unit, G[A], F ~> G) => G[A] = { (resume, get, lift) =>
-        G.uncancelable { poll =>
-          G.flatMap(lift(k(resume))) {
-            case Left(Some(finalizer)) => G.onCancel(poll(get), lift(finalizer))
-            case Left(None) => get
-            case Right(result) => G.pure(result)
-          }
-        }
-      }
-    }
-
-    F.cont(c)
-  }
-}
+package object async

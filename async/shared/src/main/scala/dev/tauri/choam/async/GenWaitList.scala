@@ -139,7 +139,7 @@ object GenWaitList {
     }
 
     override def asyncSet(a: A): F[Unit] = {
-      asyncCheckAttempt { cb =>
+      F.asyncCheckAttempt { cb =>
         rF.apply(
           getters.tryDeque.flatMap {
             case Some(getterCb) =>
@@ -156,7 +156,7 @@ object GenWaitList {
     }
 
     override def asyncGet: F[A] = {
-      asyncCheckAttempt { cb =>
+      F.asyncCheckAttempt { cb =>
         rF.run(
           this.tryGet.flatMapF {
             case Some(a) =>
@@ -211,7 +211,7 @@ object GenWaitList {
     }
 
     final def asyncGet: F[A] = {
-      asyncCheckAttempt { cb =>
+      F.asyncCheckAttempt { cb =>
         val rxn: Axn[Either[Some[F[Unit]], A]] = this.tryGet.flatMapF {
           case Some(a) =>
             Rxn.pure(Right(a))
