@@ -209,7 +209,7 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
   private[this] lazy val tickedMunitIoRuntime = {
     IORuntime(
       compute = testContext,
-      blocking = testContext,
+      blocking = testContext.deriveBlocking(),
       scheduler = new Scheduler {
         override def sleep(delay: FiniteDuration, task: Runnable): Runnable = {
           val cancel = testContext.schedule(delay, task)
@@ -225,7 +225,12 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
         }
       },
       shutdown = () => {},
-      config = IORuntimeConfig(),
+      config = IORuntimeConfig(
+        // artificially low values, to stress
+        // test behavior with auto-ceding:
+        cancelationCheckThreshold = 1,
+        autoYieldThreshold = 2,
+      ),
     )
   }
 
