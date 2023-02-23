@@ -320,6 +320,24 @@ lazy val stressExperiments = project.in(file("stress-experiments"))
   .dependsOn(async.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
 
+lazy val stressLinchk = project.in(file("stress-linchk"))
+  .settings(name := "choam-stress-linchk")
+  .settings(commonSettings)
+  .settings(commonSettingsJvm)
+  .disablePlugins(JCStressPlugin)
+  .enablePlugins(NoPublishPlugin)
+  .dependsOn(async.jvm % "compile->compile;test->test")
+  .settings(
+    libraryDependencies += dependencies.lincheck.value,
+    Test / fork := true, // otherwise the bytecode transformer doesn't work
+    // Maybe we'll need these too:
+    // Test / javaOptions ++= List(
+    //   "--add-opens", "java.base/java.lang=ALL-UNNAMED",
+    //   "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",
+    //   "--add-exports", "java.base/jdk.internal.util=ALL-UNNAMED",
+    // ),
+  )
+
 lazy val stress = project.in(file("stress"))
   .settings(name := "choam-stress")
   .settings(commonSettings)
@@ -548,6 +566,7 @@ lazy val dependencies = new {
   val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.10.3") // https://github.com/GlenKPeterson/Paguro
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.16")
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.1") // https://github.com/JCTools/JCTools
+  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.16") // https://github.com/Kotlin/kotlinx-lincheck
 
   // JS:
   val scalaJsLocale = Def.setting[Seq[ModuleID]](Seq(
