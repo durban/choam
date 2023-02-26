@@ -123,6 +123,8 @@ lazy val choam = project.in(file("."))
     stressDataSlow, // JVM
     stressAsync, // JVM
     stressExperiments, // JVM
+    stressLinchk, // JVM
+    stressLinchkAgent, // JVM
     layout, // JVM
   )
 
@@ -329,13 +331,37 @@ lazy val stressLinchk = project.in(file("stress-linchk"))
   .dependsOn(async.jvm % "compile->compile;test->test")
   .settings(
     libraryDependencies += dependencies.lincheck.value,
-    Test / fork := true, // otherwise the bytecode transformer doesn't work
-    // Maybe we'll need these too:
-    // Test / javaOptions ++= List(
-    //   "--add-opens", "java.base/java.lang=ALL-UNNAMED",
-    //   "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",
-    //   "--add-exports", "java.base/jdk.internal.util=ALL-UNNAMED",
-    // ),
+    Test / fork := true, // otherwise the bytecode transformers won't work
+    Test / test := {
+      // we'll need the agent JAR to run the tests:
+      (stressLinchkAgent / Compile / packageBin).value.##
+      (Test / test).value
+    },
+    Test / testOnly := {
+      // we'll need the agent JAR to run the tests:
+      (stressLinchkAgent / Compile / packageBin).value.##
+      (Test / testOnly).evaluated
+    },
+    Test / javaOptions ++= List(
+      "--add-opens", "java.base/java.lang=ALL-UNNAMED",
+      "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",
+      "--add-exports", "java.base/jdk.internal.util=ALL-UNNAMED",
+      s"-javaagent:${(stressLinchkAgent / Compile / packageBin / artifactPath).value}",
+      // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:8000",
+    ),
+  )
+
+lazy val stressLinchkAgent = project.in(file("stress-linchk-agent"))
+  .settings(name := "choam-stress-linchk-agent")
+  .settings(commonSettings)
+  .settings(commonSettingsJvm)
+  .disablePlugins(JCStressPlugin)
+  .enablePlugins(NoPublishPlugin)
+  .settings(
+    libraryDependencies += dependencies.asm.value,
+    packageOptions += Package.ManifestAttributes(
+      "Premain-Class" -> "dev.tauri.choam.lcagent.Premain",
+    ),
   )
 
 lazy val stress = project.in(file("stress"))
@@ -567,6 +593,7 @@ lazy val dependencies = new {
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.16")
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.1") // https://github.com/JCTools/JCTools
   val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.16") // https://github.com/Kotlin/kotlinx-lincheck
+  val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.4")
 
   // JS:
   val scalaJsLocale = Def.setting[Seq[ModuleID]](Seq(

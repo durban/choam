@@ -71,6 +71,8 @@ object Reactive {
   )(implicit G: Monad[G]) extends Reactive[G] {
     final override def apply[A, B](r: Rxn[A, B], a: A): G[B] =
       t(underlying.apply(r, a))
+    final override def applyInterruptibly[A, B](r: Rxn[A, B], a: A): G[B] =
+      t(underlying.applyInterruptibly(r, a))
     final override def mcasImpl: Mcas =
       underlying.mcasImpl
     final override def monad: Monad[G] =

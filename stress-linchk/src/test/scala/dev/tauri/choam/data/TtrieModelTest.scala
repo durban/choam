@@ -22,27 +22,30 @@ import org.jetbrains.kotlinx.lincheck.LinChecker
 import org.jetbrains.kotlinx.lincheck.paramgen.StringGen
 import org.jetbrains.kotlinx.lincheck.verifier.VerifierState
 import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
-import org.jetbrains.kotlinx.lincheck.strategy.stress.StressOptions
 
 import munit.FunSuite
 
-final class StressTestExample extends FunSuite {
+final class TtrieModelTest extends FunSuite with BaseLinchkSpec {
 
-  test("Map test") {
-    val opts = new StressOptions()
-      .iterations(10)
+  test("Model checking test of Ttrie") {
+    val opts = defaultModelCheckingOptions()
+      .checkObstructionFreedom(true)
+      .iterations(100)
       .invocationsPerIteration(100)
       .threads(2)
       .actorsBefore(2)
       .actorsPerThread(2)
       .actorsAfter(1)
-    LinChecker.check(classOf[StressTestExample.TestState], opts)
+    printFatalErrors {
+      LinChecker.check(classOf[TtrieModelTest.TestState], opts)
+    }
   }
 }
 
-final object StressTestExample {
+final object TtrieModelTest {
 
   @Param(name = "k", gen = classOf[StringGen])
+  @Param(name = "v", gen = classOf[StringGen])
   class TestState extends VerifierState {
 
     private[this] val emcas: mcas.Mcas =
@@ -56,8 +59,8 @@ final object StressTestExample {
     }
 
     @Operation
-    def insert(k: String): Option[String] = {
-      m.put.unsafePerform(k -> "dummy", emcas)
+    def insert(k: String, v: String): Option[String] = {
+      m.put.unsafePerform(k -> v, emcas)
     }
 
     @Operation
