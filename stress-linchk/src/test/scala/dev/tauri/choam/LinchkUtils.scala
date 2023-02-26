@@ -44,7 +44,7 @@ trait LinchkUtils {
       (fullClassName == classOf[TrieMap[_, _]].getName()) || fullClassName.startsWith("scala.collection.immutable.")
     }
     val assumedAtomic: ManagedStrategyGuarantee = {
-      new ManagedStrategyGuarantee.MethodBuilder(assumedAtomicPred _)
+      new ManagedStrategyGuarantee.MethodBuilder(KotlinFromScala.function1(assumedAtomicPred _))
         .allMethods()
         .treatAsAtomic()
     }
@@ -52,9 +52,9 @@ trait LinchkUtils {
       fullClassName.startsWith("scala.Predef")
     }
     val ignored: ManagedStrategyGuarantee = {
-      new ManagedStrategyGuarantee.MethodBuilder(ignoredPred _)
-      .allMethods()
-      .ignore()
+      new ManagedStrategyGuarantee.MethodBuilder(KotlinFromScala.function1(ignoredPred _))
+        .allMethods()
+        .ignore()
     }
 
     new ModelCheckingOptions().addGuarantee(assumedAtomic).addGuarantee(ignored)
