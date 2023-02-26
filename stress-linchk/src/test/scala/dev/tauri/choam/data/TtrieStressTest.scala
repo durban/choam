@@ -26,9 +26,9 @@ import org.jetbrains.kotlinx.lincheck.strategy.stress.StressOptions
 
 import munit.FunSuite
 
-final class StressTestExample extends FunSuite {
+final class TtrieStressTest extends FunSuite {
 
-  test("Map test") {
+  test("Stress test of Ttrie") {
     val opts = new StressOptions()
       .iterations(10)
       .invocationsPerIteration(100)
@@ -36,11 +36,11 @@ final class StressTestExample extends FunSuite {
       .actorsBefore(2)
       .actorsPerThread(2)
       .actorsAfter(1)
-    LinChecker.check(classOf[StressTestExample.TestState], opts)
+    LinChecker.check(classOf[TtrieStressTest.TestState], opts)
   }
 }
 
-final object StressTestExample {
+final object TtrieStressTest {
 
   @Param(name = "k", gen = classOf[StringGen])
   class TestState extends VerifierState {
