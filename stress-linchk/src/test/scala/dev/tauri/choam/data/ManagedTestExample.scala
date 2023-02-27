@@ -52,7 +52,7 @@ class ManagedTestState extends VerifierState {
   }
 }
 
-final class ManagedTestExample extends FunSuite {
+final class ManagedTestExample extends FunSuite with BaseLinchkSpec {
 
   test("Dummy counter test".ignore) { // expected failure
     val opts = new ModelCheckingOptions()

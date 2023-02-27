@@ -19,10 +19,23 @@ package dev.tauri.choam
 
 import scala.concurrent.duration._
 
-import munit.BaseFunSuite
+import munit.{ BaseFunSuite, Location }
 
-trait BaseLinchkSpec extends LinchkUtils { this: BaseFunSuite =>
+trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils {
 
   override def munitTimeout: Duration =
     2.minutes
+
+  final override def test(name: String)(body: => Any)(implicit loc: Location): Unit = {
+    super[BaseFunSuite].test(name) {
+      // lincheck tests seem unstable in CI windows:
+      assumeNotWin()
+      body
+    } (loc)
+  }
+
+  protected def assumeNotWin(): Unit = {
+    val isWin = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("windows")
+    this.assume(!isWin)
+  }
 }

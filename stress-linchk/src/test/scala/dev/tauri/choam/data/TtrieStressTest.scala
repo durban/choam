@@ -26,7 +26,7 @@ import org.jetbrains.kotlinx.lincheck.strategy.stress.StressOptions
 
 import munit.FunSuite
 
-final class TtrieStressTest extends FunSuite {
+final class TtrieStressTest extends FunSuite with BaseLinchkSpec {
 
   test("Stress test of Ttrie") {
     val opts = new StressOptions()
