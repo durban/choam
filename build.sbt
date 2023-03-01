@@ -566,9 +566,9 @@ lazy val consts = new {
 lazy val dependencies = new {
 
   val catsVersion = "2.9.0"
-  val catsEffectVersion = "3.5.0-RC2"
+  val catsEffectVersion = "3.5.0-RC3"
   val catsMtlVersion = "1.3.0"
-  val fs2Version = "3.5.0"
+  val fs2Version = "3.7.0-RC2"
   val scalacheckEffectVersion = "2.0.0-M2"
   val kindProjectorVersion = "0.13.2"
   val jcstressVersion = "0.15"
