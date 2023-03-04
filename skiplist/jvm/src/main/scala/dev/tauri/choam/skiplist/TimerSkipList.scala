@@ -80,7 +80,19 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     // conceptually a `(triggerTime, seqNo)` tuple.
     // We generate unique (for this skip list)
     // sequence numbers with an atomic counter.
-    val seqNo = sequenceNumber.getAndIncrement() // TODO: overflow?
+    val seqNo = {
+      val sn = sequenceNumber.getAndIncrement()
+      // In case of overflow (very unlikely),
+      // we make sure we don't use MARKER for
+      // a valid node (which would be very bad);
+      // otherwise the overflow can only cause
+      // problems with the ordering of callbacks
+      // with the exact same triggerTime...
+      // which is unspecified anyway (due to
+      // stealing).
+      if (sn != MARKER) sn
+      else sequenceNumber.getAndIncrement()
+    }
     doPut(triggerTime, seqNo, callback)
     () => { doRemove(triggerTime, seqNo) }
   }
@@ -166,7 +178,12 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    */
   private[this] final def overflowFree(now: Long, delay: Long): Long = {
     val head = peekFirstNode()
-    // TODO: there is a race condition here, explain it
+    // Note, that there is a race condition here:
+    // the node we're looking at (`head`) can be
+    // concurrently removed/cancelled. But the
+    // consequence of that here is only that we
+    // will be MORE careful with `delay` than
+    // necessary.
     if (head ne null) {
       val headDelay = head.triggerTime - now
       if ((headDelay < 0) && (delay - headDelay < 0)) {
@@ -443,7 +460,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * @param _q starting index node for the current level
    * @param _skips levels to skip down before inserting
    * @param x the top of a "tower" of new indices (with `.right == null`)
-   * @return TODO
+   * @return `true` iff we successfully inserted the new indices
    */
   private[this] final def addIndices(_q: Index, _skips: Int, x: Index): Boolean = {
     if (x ne null) {
@@ -571,17 +588,35 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     }
   }
 
-  /** TODO: copy/explain JSR-166 comment */
+  /**
+   * Tries to reduce the number of levels by removing
+   * the topmost level.
+   *
+   * Multiple conditions must be fulfilled to actually
+   * remove the level: not only the topmost (1st) level
+   * must be (likely) empty, but the 2nd and 3rd too.
+   * This is to (1) reduce the chance of mistakes (see
+   * below), and (2) reduce the chance of frequent
+   * adding/removing of levels (hysteresis).
+   *
+   * We can make mistakes here: we can (with a small
+   * probability) remove a level which is concurrently
+   * becoming non-empty. This can degrade performance,
+   * but does not impact correctness (e.g., we won't
+   * lose keys/values). To even further reduce the
+   * possibility of mistakes, if we detect one, we
+   * try to quickly undo the deletion we did.
+   */
   private[this] final def tryReduceLevel(): Unit = {
     val h = head.getAcquire()
     if (h ne null) {
-      if (h.getRight() eq null) { // 1st level is empty
+      if (h.getRight() eq null) { // 1st level seems empty
         val d = h.getDown()
         if (d ne null) {
-          if (d.getRight() eq null) { // 2nd level is empty
+          if (d.getRight() eq null) { // 2nd level seems empty
             val e = d.getDown()
             if (e ne null) {
-              if (e.getRight() eq null) { // 3rd level is empty
+              if (e.getRight() eq null) { // 3rd level seems empty
                 // the topmost 3 levels seem empty,
                 // so try to decrease levels by 1:
                 if (head.compareAndSet(h, d)) {
