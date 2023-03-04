@@ -109,6 +109,7 @@ lazy val choam = project.in(file("."))
     mcas.jvm, mcas.js,
     core.jvm, core.js,
     data.jvm, data.js,
+    skiplist.jvm, skiplist.js,
     async.jvm, async.js,
     stream.jvm, stream.js,
     internalHelpers.jvm, internalHelpers.js,
@@ -167,6 +168,19 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
   .jsSettings(commonSettingsJs)
   .dependsOn(core % "compile->compile;test->test")
   .jvmSettings(libraryDependencies += dependencies.paguro.value)
+
+// WIP skip list:
+lazy val skiplist = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("skiplist"))
+  .settings(name := "choam-skiplist")
+  .enablePlugins(JCStressPlugin)
+  .enablePlugins(NoPublishPlugin)
+  .settings(commonSettings)
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
+  .dependsOn(core % "compile->compile;test->test")
 
 lazy val async = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -577,6 +591,7 @@ lazy val dependencies = new {
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
   val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
+  val catsKernelLaws = Def.setting("org.typelevel" %%% "cats-kernel-laws" % catsVersion)
   val catsLaws = Def.setting("org.typelevel" %%% "cats-laws" % catsVersion)
   val catsEffectKernel = Def.setting("org.typelevel" %%% "cats-effect-kernel" % catsEffectVersion)
   val catsEffectStd = Def.setting("org.typelevel" %%% "cats-effect-std" % catsEffectVersion)
@@ -611,6 +626,7 @@ lazy val dependencies = new {
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
       catsEffectAll.value,
+      catsKernelLaws.value,
       catsLaws.value,
       "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
