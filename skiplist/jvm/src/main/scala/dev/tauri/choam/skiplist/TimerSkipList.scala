@@ -94,7 +94,13 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
       else sequenceNumber.getAndIncrement()
     }
     doPut(triggerTime, seqNo, callback)
-    () => { doRemove(triggerTime, seqNo) }
+    new Canceller(triggerTime, seqNo)
+  }
+
+  private[skiplist] final class Canceller(val triggerTime: Long, val seqNo: Long) extends Runnable {
+    final override def run(): Unit = {
+      TimerSkipList.this.doRemove(triggerTime, seqNo)
+    }
   }
 
   /**
@@ -140,6 +146,17 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     }
   }
 
+  /**
+   * Compares keys, first by trigger time, then by
+   * sequence number; this method determines the "total
+   * order" that is used by the skip list.
+   *
+   * The trigger times are `System.nanoTime` longs, so they
+   * have to be compared in a peculiar way (see javadoc there).
+   * This makes this order non-transitive, which is quite bad.
+   * However, `computeTriggerTime` makes sure that there is
+   * no overflow here, so we're okay.
+   */
   private[this] final def cpr(xTriggerTime: Long, xSeqNo: Long, yTriggerTime: Long, ySeqNo: Long): Int = {
     // first compare trigger times:
     val d = xTriggerTime - yTriggerTime
@@ -606,6 +623,11 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * lose keys/values). To even further reduce the
    * possibility of mistakes, if we detect one, we
    * try to quickly undo the deletion we did.
+   *
+   * The reason for (rarely) allowing the removal of a
+   * level which shouldn't be removed, is that this is
+   * still better than allowing levels to just grow
+   * (which would also degrade performance).
    */
   private[this] final def tryReduceLevel(): Unit = {
     val h = head.getAcquire()
