@@ -23,15 +23,20 @@ import java.util.concurrent.ThreadLocalRandom
 import java.util.SplittableRandom
 
 import scala.collection.mutable.{ TreeMap => MutTreeMap }
+import scala.concurrent.duration._
 
-import munit.FunSuite
 import cats.kernel.Comparison.EqualTo
 import cats.kernel.Comparison.GreaterThan
 import cats.kernel.Comparison.LessThan
 
+import munit.FunSuite
+
 final class SkipListSpec extends FunSuite {
 
   import SkipListSpec._
+
+  override def munitTimeout: Duration =
+    2.minutes
 
   def mkNewCb(): Callback = new Function1[Right[Nothing, Unit], Unit] {
     final override def apply(r: Right[Nothing, Unit]): Unit = ()
@@ -104,21 +109,26 @@ final class SkipListSpec extends FunSuite {
   test("random test") { // TODO: use scalacheck
     val r = new TimerSkipList
     val s = new Shadow
-    var n = 100000
+    var n = 5000000
     val seed = ThreadLocalRandom.current().nextLong()
     println(s"SEED = ${seed}L")
     val rnd = new SplittableRandom(seed)
+    def nextNonNegativeLong(): Long = rnd.nextLong() match {
+      case MIN => MAX
+      case n if n < 0 => -n
+      case n => n
+    }
 
+    val startNow = MIN + rnd.nextLong(0xffffffL)
+    var now = startNow
+    val cancellersBuilder = Vector.newBuilder[(Runnable, Runnable)]
     while (n > 0) {
-      val delay = rnd.nextLong() match {
-        case MIN => MAX
-        case n if n < 0 => -n
-        case n => n
-      }
-      val now = 0L // TODO: also generate this
+      now += rnd.nextLong(0xffffffffL) // simulate time passing
+      val delay = nextNonNegativeLong()
       val cb = mkNewCb()
       val rs = s.insert(now, delay, cb)
       val rr = r.insert(now, delay, cb)
+      cancellersBuilder += ((rs, rr))
       if (rnd.nextInt(8) == 0) {
         rs.run()
         rr.run()
@@ -126,12 +136,15 @@ final class SkipListSpec extends FunSuite {
       n -= 1
     }
 
-    // TODO: do some more cancels
-
-    // println("REAL:")
-    // r.printBaseNodesQuiescent(println(_))
-    // println("SHADOW:")
-    // s.printBaseNodesQuiescent(println(_))
+    val cancellers = cancellersBuilder.result()
+    var removeExtra = cancellers.size >> 2
+    while (removeExtra > 0) {
+      val idx = rnd.nextInt(cancellers.size)
+      val (rs, rr) = cancellers(idx)
+      rs.run()
+      rr.run()
+      removeExtra -= 1
+    }
 
     while (s.size() > 0) {
       val nt = s.nextTrigger()
