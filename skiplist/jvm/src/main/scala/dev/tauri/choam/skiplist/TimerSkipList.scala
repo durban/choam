@@ -236,21 +236,11 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         var r: Index = q.getRight()
         while (r ne null) {
           val p = r.node
-          if (p eq null) {
-            val psn = p.sequenceNum
-            if ((psn == MARKER) || (p.getCb() eq null)) {
-              // marker or deleted node, unlink it:
-              q.casRight(r, r.getRight())
-              // and retry:
-              r = q.getRight()
-            } else if (cpr(triggerTime, seqNo, p.triggerTime, psn) > 0) {
-              // we can still go right:
-              q = r
-              r = q.getRight()
-            } else {
-              // we must go down, break inner loop:
-              r = null
-            }
+          if ((p eq null) || p.isMarker || (p.getCb() eq null)) {
+            // marker or deleted node, unlink it:
+            q.casRight(r, r.getRight())
+            // and retry:
+            r = q.getRight()
           } else if (cpr(triggerTime, seqNo, p.triggerTime, p.sequenceNum) > 0) {
             // we can still go right:
             q = r
