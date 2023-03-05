@@ -236,7 +236,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         var r: Index = q.getRight()
         while (r ne null) {
           val p = r.node
-          if ((p eq null) || p.isMarker || (p.getCb() eq null)) {
+          if ((p eq null) || p.isMarker || p.isDeleted()) {
             // marker or deleted node, unlink it:
             q.casRight(r, r.getRight())
             // and retry:
@@ -273,12 +273,11 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         n = b.getNext()
         if (n eq null) {
           c = -1
-        } else if (n.sequenceNum == MARKER) {
+        } else if (n.isMarker) {
           // someone is deleting `b` right now,
           // will restart insertion (`z` is still null)
           go = false
-        } else if (n.getCb() eq null) {
-          // `n` is logically deleted
+        } else if (n.isDeleted()) {
           unlinkNode(b, n)
           c = 1 // will retry going right
         } else {
@@ -331,7 +330,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
             head.compareAndSet(h, nh)
           }
 
-          if (z.getCb() eq null) {
+          if (z.isDeleted()) {
             // was deleted while we added indices,
             // need to clean up:
             findPredecessor(triggerTime, seqNo)
@@ -365,7 +364,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         } else if (n.isMarker) {
           inner = false
           b = findPredecessor(triggerTime, seqNo)
-        } else if (n.getCb() eq null) {
+        } else if (n.isDeleted()) {
           unlinkNode(b, n)
         } else {
           val c = cpr(triggerTime, seqNo, n.triggerTime, n.sequenceNum)
@@ -402,7 +401,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
       var n: Node = null
       while ({
         n = b.getNext()
-        (n ne null) && (n.getCb() eq null)
+        (n ne null) && (n.isDeleted())
       }) {
         b = n
       }
@@ -481,7 +480,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
           var c: Int = 0
           if (r ne null) {
             val p = r.node
-            if ((p eq null) || p.isMarker || (p.getCb() eq null)) {
+            if ((p eq null) || p.isMarker || p.isDeleted()) {
               q.casRight(r, r.getRight())
               c = 0
             } else {
@@ -535,7 +534,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
           if (p eq null) {
             q.casRight(r, r.getRight())
             r = q.getRight()
-          } else if (p.isMarker || (p.getCb() eq null)) {
+          } else if (p.isMarker || p.isDeleted()) {
             q.casRight(r, r.getRight())
             r = q.getRight()
           } else if (cpr(triggerTime, seqNo, p.triggerTime, p.sequenceNum) > 0) {
@@ -680,6 +679,10 @@ final object TimerSkipList {
       // but that's also a valid trigger time, so we need
       // `sequenceNum` here
       sequenceNum == MARKER
+    }
+
+    final def isDeleted(): Boolean = {
+      getCb() eq null
     }
 
     final def getNext(): Node = {
