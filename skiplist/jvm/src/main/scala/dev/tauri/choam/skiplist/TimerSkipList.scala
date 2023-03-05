@@ -381,8 +381,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    */
   private[this] final def doRemove(triggerTime: Long, seqNo: Long): Unit = {
     var b = findPredecessor(triggerTime, seqNo)
-    var done = false
-    while ((b ne null) && !done) { // outer
+    while (b ne null) { // outer
       var inner = true
       while (inner) {
         val n = b.getNext()
@@ -394,6 +393,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
           b = findPredecessor(triggerTime, seqNo)
         } else if (n.isDeleted()) {
           unlinkNode(b, n)
+          // and retry `b.getNext()`
         } else {
           val c = cpr(triggerTime, seqNo, n.triggerTime, n.sequenceNum)
           if (c > 0) {
@@ -403,17 +403,14 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
             b = null // break outer
           } else if (n.casCb(n.getCb(), null)) {
             // successfully logically deleted
-            done = true
             inner = false
             unlinkNode(b, n)
             findPredecessor(triggerTime, seqNo) // cleanup
+            tryReduceLevel()
+            b = null // break outer
           }
         }
       }
-    }
-
-    if (done) {
-      tryReduceLevel()
     }
   }
 
@@ -446,6 +443,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
   private[this] final def doRemoveFirstNodeIfTriggered(now: Long): Callback = {
     val b = baseHead()
     if (b ne null) {
+
       @tailrec
       def go(): Callback = {
         val n = b.getNext()
@@ -454,14 +452,13 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
           if (now - tt >= 0) { // triggered
             val cb = n.getCb()
             if (cb eq null) {
-              // alread deleted node
+              // alread (logically) deleted node
               unlinkNode(b, n)
               go()
             } else if (n.casCb(cb, null)) {
-              val sn = n.sequenceNum
               unlinkNode(b, n)
               tryReduceLevel()
-              findPredecessor(tt, sn) // clean index
+              findPredecessor(tt, n.sequenceNum) // clean index
               cb
             } else {
               // lost race, retry
@@ -493,10 +490,10 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
 
   /**
    * Adds indices after an insertion was performed (e.g. `doPut`).
-   * TODO: iter-recurse
-   *
-   * Returns `false` on staleness, which disables higher-level
-   * insertions.
+   * Descends iteratively to the highest index to insert, and
+   * from then recursively calls itself to insert lower level
+   * indices. Returns `false` on staleness, which disables higher
+   * level insertions (from the recursive calls).
    *
    * Analogous to `addIndices` in the JSR-166 `ConcurrentSkipListMap`.
    *
@@ -514,10 +511,11 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         var retrying = false
         while (true) { // find splice point
           val r = q.getRight()
-          var c: Int = 0
+          var c: Int = 0 // comparison result
           if (r ne null) {
             val p = r.node
             if ((p eq null) || p.isMarker || p.isDeleted()) {
+              // clean deleted node:
               q.casRight(r, r.getRight())
               c = 0
             } else {
@@ -526,6 +524,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
             if (c > 0) {
               q = r
             } else if (c == 0) {
+              // stale
               return false // scalafix:ok
             }
           } else {
@@ -602,7 +601,9 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * Tries to unlink the (logically) already deleted node
    * `n` from its predecessor `b`. Before unlinking, this
    * method inserts a "marker" node after `n`, to make
-   * sure there are no lost concurrent inserts.
+   * sure there are no lost concurrent inserts. (An insert
+   * would do a CAS on `n.next`; linking a marker node after
+   * `n` makes sure the concurrent CAS on `n.next` will fail.)
    *
    * When this method returns, `n` is already unlinked
    * from `b` (either by this method, or a concurrent
@@ -662,29 +663,23 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * Analogous to `tryReduceLevel` in the JSR-166 `ConcurrentSkipListMap`.
    */
   private[this] final def tryReduceLevel(): Unit = {
-    val h = head.getAcquire()
-    if (h ne null) {
-      if (h.getRight() eq null) { // 1st level seems empty
-        val d = h.getDown()
-        if (d ne null) {
-          if (d.getRight() eq null) { // 2nd level seems empty
-            val e = d.getDown()
-            if (e ne null) {
-              if (e.getRight() eq null) { // 3rd level seems empty
-                // the topmost 3 levels seem empty,
-                // so try to decrease levels by 1:
-                if (head.compareAndSet(h, d)) {
-                  // successfully reduced level,
-                  // but re-check if it's still empty:
-                  if (h.getRight() ne null) {
-                    // oops, we deleted a level
-                    // with concurrent insert(s),
-                    // try to fix our mistake:
-                    head.compareAndSet(d, h)
-                    ()
-                  }
-                }
-              }
+    val lv1 = head.getAcquire()
+    if ((lv1 ne null) && (lv1.getRight() eq null)) { // 1st level seems empty
+      val lv2 = lv1.getDown()
+      if ((lv2 ne null) && (lv2.getRight() eq null)) { // 2nd level seems empty
+        val lv3 = lv2.getDown()
+        if ((lv3 ne null) && (lv3.getRight() eq null)) { // 3rd level seems empty
+          // the topmost 3 levels seem empty,
+          // so try to decrease levels by 1:
+          if (head.compareAndSet(lv1, lv2)) {
+            // successfully reduced level,
+            // but re-check if it's still empty:
+            if (lv1.getRight() ne null) {
+              // oops, we deleted a level
+              // with concurrent insert(s),
+              // try to fix our mistake:
+              head.compareAndSet(lv2, lv1)
+              ()
             }
           }
         }
