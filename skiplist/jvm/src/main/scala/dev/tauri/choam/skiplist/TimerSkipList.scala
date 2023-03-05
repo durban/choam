@@ -27,6 +27,9 @@ import java.util.concurrent.ThreadLocalRandom
 // TODO: to make it generic (and remove any assumptions
 // TODO: and simplifications which are no longer valid).
 
+// TODO: ThreadLocalRandom could be an argument.
+// TODO: Try to relax volatile reads.
+
 /**
  * Concurrent skip list holding timer callbacks and their
  * associated trigger times. The 3 main operations are
@@ -97,10 +100,17 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     new Canceller(triggerTime, seqNo)
   }
 
-  private[skiplist] final class Canceller(val triggerTime: Long, val seqNo: Long) extends Runnable {
+  private[skiplist] final class Canceller(tt: Long, sn: Long) extends Runnable {
+
     final override def run(): Unit = {
-      TimerSkipList.this.doRemove(triggerTime, seqNo)
+      TimerSkipList.this.doRemove(tt, sn)
     }
+
+    final def triggerTime: Long =
+      tt
+
+    final def seqNo: Long =
+      sn
   }
 
   /**
@@ -122,7 +132,6 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
       case _ =>
         "TimerSkipList(...)"
     }
-
   }
 
   private[skiplist] final def printBaseNodesQuiescent(println: String => Unit): Unit = {
@@ -156,6 +165,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * This makes this order non-transitive, which is quite bad.
    * However, `computeTriggerTime` makes sure that there is
    * no overflow here, so we're okay.
+   *
+   * Analogous to `cpr` in the JSR-166 `ConcurrentSkipListMap`.
    */
   private[this] final def cpr(xTriggerTime: Long, xSeqNo: Long, yTriggerTime: Long, ySeqNo: Long): Int = {
     // first compare trigger times:
@@ -179,7 +190,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * if `delay` is so big, we'll reduce it to the greatest
    * allowable (in `overflowFree`).
    *
-   * From the public domain JSR-166 `ScheduledThreadPoolExecutor`.
+   * From the public domain JSR-166 `ScheduledThreadPoolExecutor`
+   * (`triggerTime` method).
    */
   private[this] final def computeTriggerTime(now: Long, delay: Long): Long = {
     val safeDelay = if (delay < (MAX_VALUE >> 1)) delay else overflowFree(now, delay)
@@ -191,7 +203,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * a callback was already triggered (based on `now`), but
    * was not removed yet; and `delay` is sufficiently big.
    *
-   * From the public domain JSR-166 `ScheduledThreadPoolExecutor`.
+   * From the public domain JSR-166 `ScheduledThreadPoolExecutor`
+   * (`overflowFree` method).
    */
   private[this] final def overflowFree(now: Long, delay: Long): Long = {
     val head = peekFirstNode()
@@ -215,10 +228,13 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     }
   }
 
+  /**
+   * Analogous to `doPut` in the JSR-166 `ConcurrentSkipListMap`.
+   */
   @tailrec
   private[this] final def doPut(triggerTime: Long, seqNo: Long, cb: Callback): Unit = {
     val h = head.getAcquire()
-    var levels = 0
+    var levels = 0 // number of levels descended
     var b: Node = if (h eq null) {
       // head not initialized yet, do it now;
       // first node of the base list is a sentinel
@@ -263,19 +279,20 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
       foundBase
     }
     if (b ne null) {
-      // `b` is a node in the base list, "close to"
+      // `b` is a node in the base list, "close to",
       // but before the insertion point
       var z: Node = null // will be the new node when inserted
       var n: Node = null // next node
       var go = true
       while (go) {
-        var c = 0
+        var c = 0 // `cpr` result
         n = b.getNext()
         if (n eq null) {
+          // end of the list, insert right here
           c = -1
         } else if (n.isMarker) {
-          // someone is deleting `b` right now,
-          // will restart insertion (`z` is still null)
+          // someone is deleting `b` right now, will
+          // restart insertion (as `z` is still null)
           go = false
         } else if (n.isDeleted()) {
           unlinkNode(b, n)
@@ -302,21 +319,29 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         // we successfully inserted a new node;
         // maybe add extra indices:
         var rnd = ThreadLocalRandom.current().nextLong()
-        if ((rnd & 0x3L) == 0L) { // add indices with 1/4 probability
+        if ((rnd & 0x3L) == 0L) { // add at least one index with 1/4 probability
           // first create a "tower" of index
           // nodes (all with `.right == null`):
           var skips = levels
           var x: Index = null // most recently created (topmost) index node in the tower
           var go = true
-          while (go) { // create at most 62 indices in the tower
+          while (go) {
+            // the height of the tower is at most 62
+            // we create at most 62 indices in the tower
+            // (62 = 64 - 2; the 2 low bits are 0);
+            // also, the height is at most the number
+            // of levels we descended when inserting
             x = new Index(z, x, null)
-            if (rnd >= 0) {
+            if (rnd >= 0L) {
+              // reached the first 0 bit in `rnd`
               go = false
             } else {
               skips -= 1
               if (skips < 0) {
+                // reached the existing levels
                 go = false
               } else {
+                // each additional index level has 1/2 probability
                 rnd <<= 1
               }
             }
@@ -324,7 +349,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
 
           // then actually add these index nodes to the skiplist:
           if (addIndices(h, skips, x) && (skips < 0) && (head.getAcquire() eq h)) {
-            // try to add new level:
+            // if we successfully added a full height
+            // "tower", try to add new level:
             val hx = new Index(z, x, null)
             val nh = new Index(h.node, h, hx) // new head
             head.compareAndSet(h, nh)
@@ -336,7 +362,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
             findPredecessor(triggerTime, seqNo)
             ()
           }
-        }
+        } // else: we're done, and won't add indices
       } else { // restart
         doPut(triggerTime, seqNo, cb)
       }
@@ -350,6 +376,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * logically by CASing the callback to null; unlinks
    * it (first inserting a marker); removes associated
    * index nodes; and possibly reduces index level.
+   *
+   * Analogous to `doRemove` in the JSR-166 `ConcurrentSkipListMap`.
    */
   private[this] final def doRemove(triggerTime: Long, seqNo: Long): Unit = {
     var b = findPredecessor(triggerTime, seqNo)
@@ -412,6 +440,9 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     }
   }
 
+  /**
+   * Analogous to `doRemoveFirstEntry` in the JSR-166 `ConcurrentSkipListMap`.
+   */
   private[this] final def doRemoveFirstNodeIfTriggered(now: Long): Callback = {
     val b = baseHead()
     if (b ne null) {
@@ -450,7 +481,11 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     }
   }
 
-  /** The head of the base list (or `null` if uninitialized) */
+  /**
+   * The head of the base list (or `null` if uninitialized).
+   *
+   * Analogous to `baseHead` in the JSR-166 `ConcurrentSkipListMap`.
+   */
   private[this] final def baseHead(): Node = {
     val h = head.getAcquire()
     if (h ne null) h.node else null
@@ -462,6 +497,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    *
    * Returns `false` on staleness, which disables higher-level
    * insertions.
+   *
+   * Analogous to `addIndices` in the JSR-166 `ConcurrentSkipListMap`.
    *
    * @param _q starting index node for the current level
    * @param _skips levels to skip down before inserting
@@ -521,6 +558,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
   /**
    * Returns a base node whith key < the parameters. Also unlinks
    * indices to deleted nodes while searching.
+   *
+   * Analogous to `findPredecessor` in the JSR-166 `ConcurrentSkipListMap`.
    */
   private[this] final def findPredecessor(triggerTime: Long, seqNo: Long): Node = {
     var q: Index = head.getAcquire() // current index node
@@ -571,6 +610,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    *
    * `b` or `n` may be `null`, in which case this method
    * is a no-op.
+   *
+   * Analogous to `unlinkNode` in the JSR-166 `ConcurrentSkipListMap`.
    */
   private[this] final def unlinkNode(b: Node, n: Node): Unit = {
     if ((b ne null) && (n ne null)) {
@@ -617,6 +658,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * level which shouldn't be removed, is that this is
    * still better than allowing levels to just grow
    * (which would also degrade performance).
+   *
+   * Analogous to `tryReduceLevel` in the JSR-166 `ConcurrentSkipListMap`.
    */
   private[this] final def tryReduceLevel(): Unit = {
     val h = head.getAcquire()
@@ -711,6 +754,8 @@ final object TimerSkipList {
     down: AtomicReference[Index],
     r: Index,
   ) extends AtomicReference[Index](r) { right =>
+
+    require(node ne null)
 
     def this(node: Node, down: Index, right: Index) = {
       this(node, new AtomicReference(down), right)
