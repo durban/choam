@@ -40,9 +40,9 @@ class SkipListTest1 {
   private[this] val m = {
     val m = new TimerSkipList
     // head is 1025L:
-    m.insert(now = 1L, delay = 1024L, callback = headCb)
+    m.insertTlr(now = 1L, delay = 1024L, callback = headCb)
     for (i <- 2 to 128) {
-      m.insert(now = i.toLong, delay = 1024L, callback = newCallback())
+      m.insertTlr(now = i.toLong, delay = 1024L, callback = newCallback())
     }
     m
   }
@@ -53,7 +53,7 @@ class SkipListTest1 {
   @Actor
   def insert(r: JJJJ_Result): Unit = {
     // head is 1025L now, we insert 1024L:
-    val cancel = m.insert(now = 128L, delay = 896L, callback = newCb).asInstanceOf[m.Canceller]
+    val cancel = m.insertTlr(now = 128L, delay = 896L, callback = newCb).asInstanceOf[m.Canceller]
     r.r1 = cancel.triggerTime
     r.r2 = cancel.seqNo
   }

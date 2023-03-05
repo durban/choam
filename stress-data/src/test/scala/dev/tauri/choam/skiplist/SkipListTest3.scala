@@ -37,7 +37,7 @@ class SkipListTest3 {
     val DELAY = 1024L
     val m = new TimerSkipList
     for (i <- 1 to 128) {
-      m.insert(now = i.toLong, delay = DELAY, callback = newCallback(i.toLong, DELAY))
+      m.insertTlr(now = i.toLong, delay = DELAY, callback = newCallback(i.toLong, DELAY))
     }
     m
   }
@@ -48,7 +48,7 @@ class SkipListTest3 {
     newCallback(128L, MAGIC)
 
   private[this] val canceller: Runnable =
-    m.insert(128L, MAGIC, cancelledCb)
+    m.insertTlr(128L, MAGIC, cancelledCb)
 
   private[this] val newCb: MyCallback =
     newCallback(128L, MAGIC)
@@ -56,7 +56,7 @@ class SkipListTest3 {
   @Actor
   def insert(r: JJJJ_Result): Unit = {
     // the list contains times between 1025 and 1152, we insert at 1100:
-    val cancel = m.insert(now = newCb.now, delay = newCb.delay, callback = newCb).asInstanceOf[m.Canceller]
+    val cancel = m.insertTlr(now = newCb.now, delay = newCb.delay, callback = newCb).asInstanceOf[m.Canceller]
     r.r1 = cancel.triggerTime
     r.r2 = cancel.seqNo
   }

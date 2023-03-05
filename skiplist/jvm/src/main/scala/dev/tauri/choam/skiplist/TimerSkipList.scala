@@ -27,7 +27,6 @@ import java.util.concurrent.ThreadLocalRandom
 // TODO: to make it generic (and remove any assumptions
 // TODO: and simplifications which are no longer valid).
 
-// TODO: ThreadLocalRandom could be an argument.
 // TODO: Try to relax volatile reads.
 
 /**
@@ -63,6 +62,15 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
   private[this] val head =
     new AtomicReference[Index]
 
+  /** For testing */
+  private[skiplist] final def insertTlr(
+    now: Long,
+    delay: Long,
+    callback: Right[Nothing, Unit] => Unit,
+  ): Runnable = {
+    insert(now, delay, callback, ThreadLocalRandom.current())
+  }
+
   /**
    * Inserts a new `callback` which will be triggered not earlier
    * than `now + delay`. Returns a "canceller", which (if executed)
@@ -73,7 +81,12 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * @param delay nanoseconds delay, must be nonnegative
    * @param callback the callback to insert into the skip list
    */
-  final def insert(now: Long, delay: Long, callback: Right[Nothing, Unit] => Unit): Runnable = {
+  final def insert(
+    now: Long,
+    delay: Long,
+    callback: Right[Nothing, Unit] => Unit,
+    tlr: ThreadLocalRandom,
+  ): Runnable = {
     require(delay >= 0L)
     // we have to check for overflow:
     val triggerTime = computeTriggerTime(now = now, delay = delay)
@@ -96,7 +109,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
       if (sn != MARKER) sn
       else sequenceNumber.getAndIncrement()
     }
-    doPut(triggerTime, seqNo, callback)
+    doPut(triggerTime, seqNo, callback, tlr)
     new Canceller(triggerTime, seqNo)
   }
 
@@ -232,7 +245,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * Analogous to `doPut` in the JSR-166 `ConcurrentSkipListMap`.
    */
   @tailrec
-  private[this] final def doPut(triggerTime: Long, seqNo: Long, cb: Callback): Unit = {
+  private[this] final def doPut(triggerTime: Long, seqNo: Long, cb: Callback, tlr: ThreadLocalRandom): Unit = {
     val h = head.getAcquire()
     var levels = 0 // number of levels descended
     var b: Node = if (h eq null) {
@@ -318,7 +331,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
       if (z ne null) {
         // we successfully inserted a new node;
         // maybe add extra indices:
-        var rnd = ThreadLocalRandom.current().nextLong()
+        var rnd = tlr.nextLong()
         if ((rnd & 0x3L) == 0L) { // add at least one index with 1/4 probability
           // first create a "tower" of index
           // nodes (all with `.right == null`):
@@ -364,10 +377,10 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
           }
         } // else: we're done, and won't add indices
       } else { // restart
-        doPut(triggerTime, seqNo, cb)
+        doPut(triggerTime, seqNo, cb, tlr)
       }
     } else { // restart
-      doPut(triggerTime, seqNo, cb)
+      doPut(triggerTime, seqNo, cb, tlr)
     }
   }
 

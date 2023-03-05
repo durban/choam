@@ -55,17 +55,17 @@ final class SkipListSpec extends FunSuite {
     assertEquals(m.pollFirstIfTriggered(MAX), null)
     assertEquals(m.toString, "TimerSkipList()")
 
-    m.insert(0L, 0L, cb0)
+    m.insertTlr(0L, 0L, cb0)
     assertEquals(m.toString, "TimerSkipList(...)")
     assertEquals(m.pollFirstIfTriggered(MIN), null)
     assertEquals(m.pollFirstIfTriggered(MAX), cb0)
     assertEquals(m.pollFirstIfTriggered(MAX), null)
     assertEquals(m.pollFirstIfTriggered(MIN), null)
 
-    m.insert(0L, 10L, cb0)
-    m.insert(0L, 30L, cb1)
-    m.insert(0L, 0L, cb2)
-    m.insert(0L, 20L, cb3)
+    m.insertTlr(0L, 10L, cb0)
+    m.insertTlr(0L, 30L, cb1)
+    m.insertTlr(0L, 0L, cb2)
+    m.insertTlr(0L, 20L, cb3)
     assertEquals(m.pollFirstIfTriggered(-1L), null)
     assertEquals(m.pollFirstIfTriggered(0L), cb2)
     assertEquals(m.pollFirstIfTriggered(0L), null)
@@ -80,12 +80,12 @@ final class SkipListSpec extends FunSuite {
 
   test("insert / remove (cancel)") {
     val m = new TimerSkipList
-    val r0 = m.insert(0L, 0L, cb0)
-    val r1 = m.insert(0L, 1L, cb1)
-    val r5 = m.insert(0L, 5L, cb5)
-    val r4 = m.insert(0L, 4L, cb4)
-    val r2 = m.insert(0L, 2L, cb2)
-    val r3 = m.insert(0L, 3L, cb3)
+    val r0 = m.insertTlr(0L, 0L, cb0)
+    val r1 = m.insertTlr(0L, 1L, cb1)
+    val r5 = m.insertTlr(0L, 5L, cb5)
+    val r4 = m.insertTlr(0L, 4L, cb4)
+    val r2 = m.insertTlr(0L, 2L, cb2)
+    val r3 = m.insertTlr(0L, 3L, cb3)
 
     assertEquals(m.peekFirstQuiescent(), cb0)
     r0.run()
@@ -127,7 +127,7 @@ final class SkipListSpec extends FunSuite {
       val delay = nextNonNegativeLong()
       val cb = mkNewCb()
       val rs = s.insert(now, delay, cb)
-      val rr = r.insert(now, delay, cb)
+      val rr = r.insertTlr(now, delay, cb)
       cancellersBuilder += ((rs, rr))
       if (rnd.nextInt(8) == 0) {
         rs.run()
