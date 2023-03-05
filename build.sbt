@@ -302,6 +302,7 @@ lazy val stressData = project.in(file("stress-data"))
   .enablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
   .dependsOn(data.jvm % "compile->compile;test->test")
+  .dependsOn(skiplist.jvm % "compile->compile;test->test") // temporarily
   .dependsOn(stressMcas % "compile->compile;test->test")
   .dependsOn(internalHelpers.jvm)
 
@@ -334,6 +335,7 @@ lazy val stressExperiments = project.in(file("stress-experiments"))
   .enablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
+  .dependsOn(skiplist.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
 
 lazy val stressLinchk = project.in(file("stress-linchk"))

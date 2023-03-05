@@ -290,13 +290,13 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         } else if (n.getCb() eq null) {
           // `n` is logically deleted
           unlinkNode(b, n)
-          c = 1
-        } else  {
+          c = 1 // will retry going right
+        } else {
             c = cpr(triggerTime, seqNo, n.triggerTime, n.sequenceNum)
             if (c > 0) {
               // continue right
               b = n
-            } // else: we assume c < 0, due to seqNr
+            } // else: we assume c < 0, due to seqNr being unique
         }
 
         if (c < 0) {
