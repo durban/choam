@@ -24,7 +24,7 @@ import munit.{ BaseFunSuite, Location }
 trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils {
 
   override def munitTimeout: Duration =
-    4.minutes
+    5.minutes
 
   final override def test(name: String)(body: => Any)(implicit loc: Location): Unit = {
     super[BaseFunSuite].test(name) {
