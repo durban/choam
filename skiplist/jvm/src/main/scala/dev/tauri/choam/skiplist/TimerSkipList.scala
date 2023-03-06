@@ -262,23 +262,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
       var foundBase: Node = null // we're looking for this
       while (foundBase eq null) {
         // first try to go right:
-        var r: Index = q.getRight()
-        while (r ne null) {
-          val p = r.node
-          if ((p eq null) || p.isMarker || p.isDeleted()) {
-            // marker or deleted node, unlink it:
-            q.casRight(r, r.getRight())
-            // and retry:
-            r = q.getRight()
-          } else if (cpr(triggerTime, seqNo, p.triggerTime, p.sequenceNum) > 0) {
-            // we can still go right:
-            q = r
-            r = q.getRight()
-          } else {
-            // we must go down, break inner loop:
-            r = null
-          }
-        }
+        q = walkRight(q, triggerTime, seqNo)
         // then try to go down:
         val d = q.getDown()
         if (d ne null) {
@@ -363,7 +347,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
           // then actually add these index nodes to the skiplist:
           if (addIndices(h, skips, x) && (skips < 0) && (head.getAcquire() eq h)) {
             // if we successfully added a full height
-            // "tower", try to add new level:
+            // "tower", try to also add a new level
+            // (with only 1 index node + the head)
             val hx = new Index(z, x, null)
             val nh = new Index(h.node, h, hx) // new head
             head.compareAndSet(h, nh)
@@ -381,6 +366,43 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
       }
     } else { // restart
       doPut(triggerTime, seqNo, cb, tlr)
+    }
+  }
+
+  /**
+   * Starting from the `q` index node, walks right while
+   * possible by comparing keys (`triggerTime` and `seqNo`).
+   * Returns the last index node (at this level) which is
+   * still a predecessor of the node with the specified
+   * key (`triggerTime` and `seqNo`). This returned index
+   * node can be `q` itself. (This method assumes that
+   * the specified `q` is a predecessor of the node with
+   * the key.)
+   *
+   * This method has no direct equivalent in the JSR-166
+   * `ConcurrentSkipListMap`; the same logic is embedded
+   * in various methods as a `while` loop.
+   */
+  @tailrec
+  private[this] final def walkRight(q: Index, triggerTime: Long, seqNo: Long): Index = {
+    val r = q.getRight()
+    if (r ne null) {
+      val p = r.node
+      if (p.isMarker || p.isDeleted()) {
+        // marker or deleted node, unlink it:
+        q.casRight(r, r.getRight())
+        // and retry:
+        walkRight(q, triggerTime, seqNo)
+      } else if (cpr(triggerTime, seqNo, p.triggerTime, p.sequenceNum) > 0) {
+        // we can still go right:
+        walkRight(r, triggerTime, seqNo)
+      } else {
+        // can't go right any more:
+        q
+      }
+    } else {
+      // can't go right any more:
+      q
     }
   }
 
@@ -578,24 +600,9 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     if ((q eq null) || (seqNo == MARKER)) {
       null
     } else {
-      while (true) { // outer
-        var r = q.getRight()
-        while (r ne null) { // inner
-          val p = r.node
-          if (p eq null) {
-            q.casRight(r, r.getRight())
-            r = q.getRight()
-          } else if (p.isMarker || p.isDeleted()) {
-            q.casRight(r, r.getRight())
-            r = q.getRight()
-          } else if (cpr(triggerTime, seqNo, p.triggerTime, p.sequenceNum) > 0) {
-            q = r
-            r = q.getRight()
-          } else {
-            // can't go right, break inner
-            r = null
-          }
-        }
+      while (true) {
+        // go right:
+        q = walkRight(q, triggerTime, seqNo)
         // go down:
         val d = q.getDown()
         if (d ne null) {
