@@ -24,6 +24,7 @@ import java.util.concurrent.ThreadLocalRandom
 import scala.concurrent.duration._
 
 import cats.syntax.all._
+import cats.effect.kernel.Ref
 import cats.effect.IO
 
 import munit.CatsEffectSuite
@@ -32,6 +33,23 @@ final class SkipListParallelSpec extends CatsEffectSuite {
 
   final val N = 100000
   final val DELAY = 1000L
+
+  private[this] val RightUnit =
+    Right(())
+
+  private def drainUntilDone(m: TimerSkipList, done: Ref[IO, Boolean]): IO [Unit] = {
+    val pollSome = IO {
+      while ({
+        val cb = m.pollFirstIfTriggered(System.nanoTime())
+        if (cb ne null) {
+          cb(RightUnit)
+          true
+        } else false
+      }) {}
+    }
+    def go: IO[Unit] = pollSome *> done.get.ifM(IO.unit, IO.cede *> go)
+    go
+  }
 
   test("Parallel insert/pollFirstIfTriggered") {
     IO.ref(false).flatMap { done =>
@@ -46,22 +64,9 @@ final class SkipListParallelSpec extends CatsEffectSuite {
               tlr = ThreadLocalRandom.current()
             )
           }
-          val inserts = insert.parReplicateA_(N) *> IO.sleep(2 * DELAY.nanos) *> done.set(true)
+          val inserts = (insert.parReplicateA_(N) *> IO.sleep(2 * DELAY.nanos)).guarantee(done.set(true))
 
-          val poll: IO[Boolean] = IO {
-            val cb = m.pollFirstIfTriggered(now = System.nanoTime())
-            if (cb ne null) {
-              cb(Right(()))
-              true
-            } else {
-              false
-            }
-          }.flatMap { nonEmpty =>
-            done.get.map { isDone =>
-              nonEmpty || !isDone
-            }
-          }
-          val polls = poll.iterateWhile(go => go).parReplicateA_(2)
+          val polls = drainUntilDone(m, done).parReplicateA_(2)
 
           IO.both(inserts, polls).flatMap { _ =>
             IO.sleep(0.5.second) *> IO {
