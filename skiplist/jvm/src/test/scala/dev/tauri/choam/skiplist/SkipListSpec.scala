@@ -31,6 +31,8 @@ import cats.kernel.Comparison.LessThan
 
 import munit.FunSuite
 
+import SkipListHelper._
+
 final class SkipListSpec extends FunSuite {
 
   import SkipListSpec._
@@ -106,6 +108,32 @@ final class SkipListSpec extends FunSuite {
     r4.run() // NOP
   }
 
+  test("nanoTime wraparound") {
+    val m = new TimerSkipList
+    val startFrom = MAX - 100L
+    var nanoTime = startFrom
+    val removersBuilder = Vector.newBuilder[Runnable]
+    val callbacksBuilder = Vector.newBuilder[MyCallback]
+    for (_ <- 0 until 200) {
+      val cb = MyCallback(nanoTime, 10L)
+      val r = m.insertTlr(nanoTime, 10L, cb)
+      removersBuilder += r
+      callbacksBuilder += cb
+      nanoTime += 1L
+    }
+    val removers = removersBuilder.result()
+    for (idx <- 0 until removers.size by 2) {
+      removers(idx).run()
+    }
+    nanoTime += 100L
+    val callbacks = callbacksBuilder.result()
+    for (i <- 0 until 200 by 2) {
+      val cb = m.pollFirstIfTriggered(nanoTime).asInstanceOf[MyCallback]
+      val expected = callbacks(i + 1)
+      assertEquals(cb, expected)
+    }
+  }
+
   test("random test") { // TODO: use scalacheck
     val r = new TimerSkipList
     val s = new Shadow
@@ -159,8 +187,6 @@ final class SkipListSpec extends FunSuite {
 }
 
 final object SkipListSpec {
-
-  type Callback = Function1[Right[Nothing, Unit], Unit]
 
   final object Shadow {
 

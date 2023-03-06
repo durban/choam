@@ -23,6 +23,16 @@ final object SkipListHelper {
   type Callback = Function1[Right[Nothing, Unit], Unit]
 
   final class MyCallback(val now: Long, val  delay: Long) extends Callback {
-    final override def apply(r: Right[Nothing, Unit]): Unit = ()
+
+    final override def apply(r: Right[Nothing, Unit]): Unit =
+      ()
+
+    final override def toString: String =
+      s"MyCallback(${now}, ${delay})"
+  }
+
+  final object MyCallback {
+    final def apply(now: Long, delay: Long): MyCallback =
+      new MyCallback(now, delay)
   }
 }
