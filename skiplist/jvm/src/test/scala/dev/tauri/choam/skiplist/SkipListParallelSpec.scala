@@ -38,7 +38,7 @@ final class SkipListParallelSpec extends CatsEffectSuite {
     Right(())
 
   private def drainUntilDone(m: TimerSkipList, done: Ref[IO, Boolean]): IO[Unit] = {
-    val pollSome = IO {
+    val pollSome: IO[Long] = IO {
       while ({
         val cb = m.pollFirstIfTriggered(System.nanoTime())
         if (cb ne null) {
@@ -46,8 +46,14 @@ final class SkipListParallelSpec extends CatsEffectSuite {
           true
         } else false
       }) {}
+      m.peekFirstDelay(System.nanoTime())
     }
-    def go: IO[Unit] = pollSome *> done.get.ifM(IO.unit, IO.cede *> go)
+    def go: IO[Unit] = pollSome.flatMap { next =>
+      if (next == Long.MinValue) IO.cede
+      else if (next < 0L) IO.unit
+      else IO.sleep(next.nanos)
+    } *> done.get.ifM(IO.unit, IO.cede *> go)
+
     go
   }
 

@@ -90,20 +90,27 @@ final class SkipListSpec extends FunSuite {
     val r3 = m.insertTlr(0L, 3L, cb3)
 
     assertEquals(m.peekFirstQuiescent(), cb0)
+    assertEquals(m.peekFirstDelay(0L), 0L)
     r0.run()
     assertEquals(m.peekFirstQuiescent(), cb1)
+    assertEquals(m.peekFirstDelay(0L), 1L)
     assertEquals(m.pollFirstIfTriggered(MAX), cb1)
     assertEquals(m.peekFirstQuiescent(), cb2)
+    assertEquals(m.peekFirstDelay(0L), 2L)
     r1.run() // NOP
     r3.run()
     assertEquals(m.peekFirstQuiescent(), cb2)
+    assertEquals(m.peekFirstDelay(0L), 2L)
     assertEquals(m.pollFirstIfTriggered(MAX), cb2)
     assertEquals(m.peekFirstQuiescent(), cb4)
+    assertEquals(m.peekFirstDelay(0L), 4L)
     assertEquals(m.pollFirstIfTriggered(MAX), cb4)
     assertEquals(m.peekFirstQuiescent(), cb5)
+    assertEquals(m.peekFirstDelay(0L), 5L)
     r2.run()
     r5.run()
     assertEquals(m.peekFirstQuiescent(), null)
+    assertEquals(m.peekFirstDelay(0L), MIN)
     assertEquals(m.pollFirstIfTriggered(MAX), null)
     r4.run() // NOP
   }

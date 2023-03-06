@@ -41,7 +41,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * This implementation is based on the public
    * domain JSR-166 `ConcurrentSkipListMap`.
    * Contains simplifications, because we just
-   * need the 3 main operations. Also,
+   * need a few main operations. Also,
    * `pollFirstIfTriggered` contains an extra
    * condition (compared to `pollFirstEntry`
    * in the JSR-166 implementation), because
@@ -176,7 +176,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * removes (cancels) the inserted callback. (Of course, by that
    * time the callback might've been already invoked.)
    *
-   * @param now current time as returned by `System.nanoTime`
+   * @param now the current time as returned by `System.nanoTime`
    * @param delay nanoseconds delay, must be nonnegative
    * @param callback the callback to insert into the skip list
    * @param tlr the `ThreadLocalRandom` of the current (calling) thread
@@ -220,9 +220,38 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    *
    * It is the caller's responsibility to check for `null`,
    * and actually invoke the callback (if desired).
+   *
+   * @param now the current time as returned by `System.nanoTime`
    */
   final def pollFirstIfTriggered(now: Long): Right[Nothing, Unit] => Unit = {
     doRemoveFirstNodeIfTriggered(now)
+  }
+
+  /**
+   * Looks at the first callback in the list,
+   * and returns the delay (in nanoseconds)
+   * until its triggerTime is reached, assuming
+   * the current time is `now`.
+   *
+   * @param now the current time as returned by `System.nanoTime`
+   * @return the delay (possibly negative) until the first
+   * triggerTime, or `Long.MinValue` if the list is empty
+   */
+  final def peekFirstDelay(now: Long): Long = {
+    val head = peekFirstNode()
+    if (head ne null) {
+      val headDelay = head.triggerTime - now
+      if (headDelay != MARKER) {
+        headDelay
+      } else {
+        // in the VERY unlikely case when
+        // the delay is exactly our sentinel,
+        // we just cheat a little:
+        headDelay + 1L
+      }
+    } else {
+      MARKER
+    }
   }
 
   final override def toString: String = {
