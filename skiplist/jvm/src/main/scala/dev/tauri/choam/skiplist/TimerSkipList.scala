@@ -56,7 +56,106 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * "marker" nodes (see `Node#isMarker`).
    */
 
-  import TimerSkipList.{ Node, Index, Callback }
+  private[this] type Callback =
+    Right[Nothing, Unit] => Unit
+
+  /**
+   * Base nodes (which form the base list) store the payload.
+   *
+   * `next` is the next node in the base list (with a key > than this).
+   *
+   * A `Node` is a special "marker" node (for deletion) if `sequenceNum == MARKER`.
+   * A `Node` is logically deleted if `cb eq null`.
+   *
+   * We're also (ab)using the `Node` class as the "canceller" for an
+   * inserted timer callback (see `run` method).
+   */
+  private[skiplist] final class Node private (
+    val triggerTime: Long,
+    val sequenceNum: Long,
+    cb: AtomicReference[Callback],
+    n: Node,
+  ) extends AtomicReference[Node](n)
+    with Runnable { next =>
+
+    private[TimerSkipList] def this(triggerTime: Long, seqNo: Long, cb: Callback, next: Node) = {
+      this(triggerTime, seqNo, new AtomicReference(cb), next)
+    }
+
+    /** Cancels the timer */
+    final override def run(): Unit = {
+      // TODO: We could null the callback here directly,
+      // TODO: and the do the lookup after (for unlinking).
+      TimerSkipList.this.doRemove(triggerTime, sequenceNum)
+    }
+
+    private[TimerSkipList] final def isMarker: Boolean = {
+      // note: a marker node also has `triggerTime == MARKER`,
+      // but that's also a valid trigger time, so we need
+      // `sequenceNum` here
+      sequenceNum == MARKER
+    }
+
+    private[TimerSkipList] final def isDeleted(): Boolean = {
+      getCb() eq null
+    }
+
+    private[TimerSkipList] final def getNext(): Node = {
+      next.getAcquire()
+    }
+
+    private[TimerSkipList] final def casNext(ov: Node, nv: Node): Boolean = {
+      next.compareAndSet(ov, nv)
+    }
+
+    private[TimerSkipList] final def getCb(): Callback = {
+      cb.getAcquire()
+    }
+
+    private[TimerSkipList] final def casCb(ov: Callback, nv: Callback): Boolean = {
+      cb.compareAndSet(ov, nv)
+    }
+
+    final override def toString: String =
+      "<function>"
+  }
+
+  /** Index nodes */
+  private[this] final class Index(
+    val node: Node,
+    down: AtomicReference[Index],
+    r: Index,
+  ) extends AtomicReference[Index](r) { right =>
+
+    require(node ne null)
+
+    def this(node: Node, down: Index, right: Index) = {
+      this(node, new AtomicReference(down), right)
+    }
+
+    final def getDown(): Index = {
+      down.getAcquire()
+    }
+
+    final def casDown(ov: Index, nv: Index): Boolean = {
+      down.compareAndSet(ov, nv)
+    }
+
+    final def getRight(): Index = {
+      right.getAcquire()
+    }
+
+    final def setRight(nv: Index): Unit = {
+      right.set(nv)
+    }
+
+    final def casRight(ov: Index, nv: Index): Boolean = {
+      right.compareAndSet(ov, nv)
+    }
+
+    final override def toString: String =
+      "Index(...)"
+  }
 
   /** The top left index node (or null if empty) */
   private[this] val head =
@@ -80,6 +179,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * @param now current time as returned by `System.nanoTime`
    * @param delay nanoseconds delay, must be nonnegative
    * @param callback the callback to insert into the skip list
+   * @param tlr the `ThreadLocalRandom` of the current (calling) thread
    */
   final def insert(
     now: Long,
@@ -109,21 +209,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
       if (sn != MARKER) sn
       else sequenceNumber.getAndIncrement()
     }
+
     doPut(triggerTime, seqNo, callback, tlr)
-    new Canceller(triggerTime, seqNo)
-  }
-
-  private[skiplist] final class Canceller(tt: Long, sn: Long) extends Runnable {
-
-    final override def run(): Unit = {
-      TimerSkipList.this.doRemove(tt, sn)
-    }
-
-    final def triggerTime: Long =
-      tt
-
-    final def seqNo: Long =
-      sn
   }
 
   /**
@@ -245,7 +332,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * Analogous to `doPut` in the JSR-166 `ConcurrentSkipListMap`.
    */
   @tailrec
-  private[this] final def doPut(triggerTime: Long, seqNo: Long, cb: Callback, tlr: ThreadLocalRandom): Unit = {
+  private[this] final def doPut(triggerTime: Long, seqNo: Long, cb: Callback, tlr: ThreadLocalRandom): Node = {
     val h = head.getAcquire()
     var levels = 0 // number of levels descended
     var b: Node = if (h eq null) {
@@ -361,6 +448,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
             ()
           }
         } // else: we're done, and won't add indices
+
+        z
       } else { // restart
         doPut(triggerTime, seqNo, cb, tlr)
       }
@@ -705,98 +794,5 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         }
       }
     }
-  }
-}
-
-final object TimerSkipList {
-
-  private type Callback =
-    Right[Nothing, Unit] => Unit
-
-  /**
-   * Base nodes (which form the base list).
-   *
-   * `next` is the next node in the base list (with a key > than this).
-   *
-   * A `Node` is a special "marker" node (for deletion) if `sequenceNum == MARKER`.
-   * A `Node` is logically deleted if `cb eq null`.
-   */
-  private final class Node(
-    val triggerTime: Long,
-    val sequenceNum: Long,
-    cb: AtomicReference[Callback],
-    n: Node,
-  ) extends AtomicReference[Node](n) { next =>
-
-    def this(triggerTime: Long, seqNo: Long, cb: Callback, next: Node) = {
-      this(triggerTime, seqNo, new AtomicReference(cb), next)
-    }
-
-    final def isMarker: Boolean = {
-      // note: a marker node also has `triggerTime == MARKER`,
-      // but that's also a valid trigger time, so we need
-      // `sequenceNum` here
-      sequenceNum == MARKER
-    }
-
-    final def isDeleted(): Boolean = {
-      getCb() eq null
-    }
-
-    final def getNext(): Node = {
-      next.getAcquire()
-    }
-
-    final def casNext(ov: Node, nv: Node): Boolean = {
-      next.compareAndSet(ov, nv)
-    }
-
-    final def getCb(): Callback = {
-      cb.getAcquire()
-    }
-
-    final def casCb(ov: Callback, nv: Callback): Boolean = {
-      cb.compareAndSet(ov, nv)
-    }
-
-    final override def toString: String =
-      s"Node(${triggerTime}, ${sequenceNum}, ...)"
-  }
-
-  /** Index nodes */
-  private final class Index(
-    val node: Node,
-    down: AtomicReference[Index],
-    r: Index,
-  ) extends AtomicReference[Index](r) { right =>
-
-    require(node ne null)
-
-    def this(node: Node, down: Index, right: Index) = {
-      this(node, new AtomicReference(down), right)
-    }
-
-    final def getDown(): Index = {
-      down.getAcquire()
-    }
-
-    final def casDown(ov: Index, nv: Index): Boolean = {
-      down.compareAndSet(ov, nv)
-    }
-
-    final def getRight(): Index = {
-      right.getAcquire()
-    }
-
-    final def setRight(nv: Index): Unit = {
-      right.set(nv)
-    }
-
-    final def casRight(ov: Index, nv: Index): Boolean = {
-      right.compareAndSet(ov, nv)
-    }
-
-    final override def toString: String =
-      "Index(...)"
   }
 }

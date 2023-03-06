@@ -54,17 +54,17 @@ class SkipListTest2 {
   @Actor
   def insert1(r: JJJJJJ_Result): Unit = {
     // the list contains times between 1025 and 1152, we insert at 1100:
-    val cancel = m.insertTlr(now = newCb1.now, delay = newCb1.delay, callback = newCb1).asInstanceOf[m.Canceller]
+    val cancel = m.insertTlr(now = newCb1.now, delay = newCb1.delay, callback = newCb1).asInstanceOf[m.Node]
     r.r1 = cancel.triggerTime
-    r.r2 = cancel.seqNo
+    r.r2 = cancel.sequenceNum
   }
 
   @Actor
   def insert2(r: JJJJJJ_Result): Unit = {
     // the list contains times between 1025 and 1152, we insert at 1100:
-    val cancel = m.insertTlr(now = newCb2.now, delay = newCb2.delay, callback = newCb2).asInstanceOf[m.Canceller]
+    val cancel = m.insertTlr(now = newCb2.now, delay = newCb2.delay, callback = newCb2).asInstanceOf[m.Node]
     r.r3 = cancel.triggerTime
-    r.r4 = cancel.seqNo
+    r.r4 = cancel.sequenceNum
   }
 
   @Arbiter

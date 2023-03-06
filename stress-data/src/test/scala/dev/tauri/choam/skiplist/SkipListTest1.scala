@@ -53,9 +53,9 @@ class SkipListTest1 {
   @Actor
   def insert(r: JJJJ_Result): Unit = {
     // head is 1025L now, we insert 1024L:
-    val cancel = m.insertTlr(now = 128L, delay = 896L, callback = newCb).asInstanceOf[m.Canceller]
+    val cancel = m.insertTlr(now = 128L, delay = 896L, callback = newCb).asInstanceOf[m.Node]
     r.r1 = cancel.triggerTime
-    r.r2 = cancel.seqNo
+    r.r2 = cancel.sequenceNum
   }
 
   @Actor

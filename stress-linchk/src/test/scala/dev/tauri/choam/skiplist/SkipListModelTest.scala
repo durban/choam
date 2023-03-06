@@ -94,7 +94,7 @@ final object SkipListModelTest {
 
     @Operation
     def insert(delay: Long, callback: Callback): Long = {
-      val c = m.insertTlr(now = MIN_VALUE, delay = delay, callback = callback).asInstanceOf[m.Canceller]
+      val c = m.insertTlr(now = MIN_VALUE, delay = delay, callback = callback).asInstanceOf[m.Node]
       c.triggerTime
     }
 
