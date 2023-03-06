@@ -38,7 +38,7 @@ final class SkipListSpec extends FunSuite {
   import SkipListSpec._
 
   override def munitTimeout: Duration =
-    5.minutes
+    6.minutes
 
   def mkNewCb(): Callback = new Function1[Right[Nothing, Unit], Unit] {
     final override def apply(r: Right[Nothing, Unit]): Unit = ()

@@ -19,7 +19,7 @@ package dev.tauri.choam
 package skiplist
 
 import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.{ ThreadLocalRandom, ConcurrentSkipListSet }
 
 import scala.concurrent.duration._
 
@@ -32,12 +32,12 @@ import munit.CatsEffectSuite
 final class SkipListParallelSpec extends CatsEffectSuite {
 
   final val N = 100000
-  final val DELAY = 1000L
+  final val DELAY = 10000L // ns
 
   private[this] val RightUnit =
     Right(())
 
-  private def drainUntilDone(m: TimerSkipList, done: Ref[IO, Boolean]): IO [Unit] = {
+  private def drainUntilDone(m: TimerSkipList, done: Ref[IO, Boolean]): IO[Unit] = {
     val pollSome = IO {
       while ({
         val cb = m.pollFirstIfTriggered(System.nanoTime())
@@ -61,7 +61,7 @@ final class SkipListParallelSpec extends CatsEffectSuite {
               now = System.nanoTime(),
               delay = DELAY,
               callback = { _ => ctr.getAndIncrement; () },
-              tlr = ThreadLocalRandom.current()
+              tlr = ThreadLocalRandom.current(),
             )
           }
           val inserts = (insert.parReplicateA_(N) *> IO.sleep(2 * DELAY.nanos)).guarantee(done.set(true))
@@ -74,6 +74,63 @@ final class SkipListParallelSpec extends CatsEffectSuite {
               assertEquals(ctr.get(), N.toLong)
             }
           }
+      }
+    }
+  }
+
+  test("Parallel insert/cancel") {
+    IO.ref(false).flatMap { done =>
+      IO { (new TimerSkipList, new ConcurrentSkipListSet[Int]) }.flatMap {
+        case (m, called) =>
+
+          def insert(id: Int): IO[Runnable] = IO {
+            val now = System.nanoTime()
+            val canceller = m.insert(
+              now = now,
+              delay = DELAY,
+              callback = { _ => called.add(id); () },
+              tlr = ThreadLocalRandom.current(),
+            )
+            canceller
+          }
+
+          def cancel(c: Runnable): IO[Unit] = IO {
+            c.run()
+          }
+
+          val firstBatch = (0 until N).toList
+          val secondBatch = (N until (2 * N)).toList
+
+          for {
+            // add the first N callbacks:
+            cancellers <- firstBatch.traverse(insert)
+            // then race removing those, and adding another N:
+            _ <- IO.both(
+              cancellers.parTraverse(cancel),
+              secondBatch.parTraverse(insert),
+            )
+            // since the fibers calling callbacks
+            // are not running yet, the cancelled
+            // ones must never be invoked
+            _ <- IO.both(
+              IO.sleep(2 * DELAY.nanos).guarantee(done.set(true)),
+              drainUntilDone(m, done).parReplicateA_(2),
+            )
+            _ <- IO {
+              assert(m.pollFirstIfTriggered(System.nanoTime()) eq null)
+              // no cancelled callback should've been called,
+              // and all the other ones must've been called:
+              val calledIds = {
+                val b = Set.newBuilder[Int]
+                val it = called.iterator()
+                while (it.hasNext()) {
+                  b += it.next()
+                }
+                b.result()
+              }
+              assertEquals(calledIds, secondBatch.toSet)
+            }
+          } yield ()
       }
     }
   }
