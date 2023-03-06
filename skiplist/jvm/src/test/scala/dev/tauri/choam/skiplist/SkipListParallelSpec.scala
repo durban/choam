@@ -140,4 +140,52 @@ final class SkipListParallelSpec extends CatsEffectSuite {
       }
     }
   }
+
+  test("Random racing sleeps") {
+    IO.ref(false).flatMap { dummy =>
+      IO { (new TimerSkipList) }.flatMap {
+        case (m) =>
+
+          def mySleep(d: FiniteDuration): IO[Unit] = IO.async[Unit] { cb =>
+            IO {
+              val canceller = m.insert(System.nanoTime(), d.toNanos, cb, ThreadLocalRandom.current())
+              Some(IO { canceller.run() })
+            }
+          }
+
+          def randomSleep: IO[Unit] = IO.defer {
+            val n = ThreadLocalRandom.current().nextInt(2000000)
+            mySleep(n.micros) // less than 2 seconds
+          }
+
+          def race(ios: List[IO[Unit]]): IO[Unit] = {
+            ios match {
+              case head :: tail => tail.foldLeft(head) { (x, y) => IO.race(x, y).void }
+              case Nil => IO.unit
+            }
+          }
+
+          def all(ios: List[IO[Unit]]): IO[Unit] =
+            ios.parSequence_
+
+          val N = 2000
+
+          for {
+            // start the "scheduler":
+            sch <- drainUntilDone(m, dummy).parReplicateA_(2).start
+            // race a lot of "sleeps", it must not hang
+            // (this includes inserting and cancelling
+            // a lot of callbacks into the skip list,
+            // thus hopefully stressing the data structure):
+            _ <- all(List.fill(N) {
+              race(List.fill(N) { randomSleep })
+            })
+            _ <- sch.cancel
+            _ <- IO {
+              assert(m.pollFirstIfTriggered(System.nanoTime()) eq null)
+            }
+          } yield ()
+      }
+    }
+  }
 }
