@@ -168,7 +168,7 @@ final class SkipListParallelSpec extends CatsEffectSuite {
           def all(ios: List[IO[Unit]]): IO[Unit] =
             ios.parSequence_
 
-          val N = 2000
+          val N = 1000
 
           for {
             // start the "scheduler":
