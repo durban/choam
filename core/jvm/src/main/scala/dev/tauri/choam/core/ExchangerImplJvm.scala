@@ -475,6 +475,9 @@ private object ExchangerImplJvm {
   private[core] val size = Math.min(
     // `availableProcessors` is guaranteed to return >= 1,
     // so this is always at least (1 + 1) / 2 = 1
+    // TODO: According to the javadoc, we should
+    // TODO: "occasionally poll this property"
+    // TODO: (availableProcessors) because it may change!
     (Runtime.getRuntime().availableProcessors() + 1) >>> 1,
     0xFF
   )

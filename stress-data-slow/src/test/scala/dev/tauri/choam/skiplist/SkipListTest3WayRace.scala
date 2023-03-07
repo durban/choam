@@ -21,7 +21,7 @@ package skiplist
 import org.openjdk.jcstress.annotations.{ Ref => _, Outcome => JOutcome, _ }
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
-import org.openjdk.jcstress.infra.results.JJJJ_Result
+import org.openjdk.jcstress.infra.results.JJ_Result
 
 @JCStressTest
 @State
@@ -75,12 +75,12 @@ class SkipListTest3WayRace {
   }
 
   @Actor
-  def pollFirst(r: JJJJ_Result): Unit = {
+  def pollFirst(r: JJ_Result): Unit = {
     r.r1 = longFromCb(m.pollFirstIfTriggered(now = 2048L))
   }
 
   @Arbiter
-  def arbiter(r: JJJJ_Result): Unit = {
+  def arbiter(r: JJ_Result): Unit = {
     r.r2 = longFromCb(m.pollFirstIfTriggered(now = 2048L))
   }
 
