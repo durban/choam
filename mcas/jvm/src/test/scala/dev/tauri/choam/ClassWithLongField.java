@@ -15,22 +15,8 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam
+package dev.tauri.choam;
 
-import scala.concurrent.duration._
-
-import munit.{ FunSuite, BaseFunSuite, Location }
-
-trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { this: FunSuite =>
-
-  override def munitTimeout: Duration =
-    5.minutes
-
-  final override def test(name: String)(body: => Any)(implicit loc: Location): Unit = {
-    super[BaseFunSuite].test(name) {
-      // lincheck tests seem unstable in CI windows:
-      assumeNotWin()
-      body
-    } (loc)
-  }
+final class ClassWithLongField {
+  volatile long field = 42L;
 }

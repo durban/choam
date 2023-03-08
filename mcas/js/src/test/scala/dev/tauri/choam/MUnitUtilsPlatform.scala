@@ -17,20 +17,15 @@
 
 package dev.tauri.choam
 
-import scala.concurrent.duration._
+trait MUnitUtilsPlatform {
 
-import munit.{ FunSuite, BaseFunSuite, Location }
+  final def isJvm(): Boolean =
+    false
 
-trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { this: FunSuite =>
+  final def isJs(): Boolean =
+    true
 
-  override def munitTimeout: Duration =
-    5.minutes
-
-  final override def test(name: String)(body: => Any)(implicit loc: Location): Unit = {
-    super[BaseFunSuite].test(name) {
-      // lincheck tests seem unstable in CI windows:
-      assumeNotWin()
-      body
-    } (loc)
+  final def isVmSupportsLongCas(): Boolean = {
+    true // LOL!
   }
 }

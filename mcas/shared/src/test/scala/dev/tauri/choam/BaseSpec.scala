@@ -31,7 +31,7 @@ trait BaseSpec
     super.munitTimeout * 2
 }
 
-trait MUnitUtils { this: FunSuite =>
+trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
 
   def assertSameInstance[A](
     obtained: A,
@@ -59,6 +59,10 @@ trait MUnitUtils { this: FunSuite =>
     assume(!isOpenJ9(), "this test doesn't run on OpenJ9")
   }
 
+  def assumeNotWin(): Unit = {
+    this.assume(!isWindows(), "this test doesn't run on Windows")
+  }
+
   def isOpenJdk(): Boolean = {
     val vmName = java.lang.System.getProperty("java.vm.name")
     vmName.contains("HotSpot") || vmName.contains("OpenJDK")
@@ -67,5 +71,9 @@ trait MUnitUtils { this: FunSuite =>
   def isOpenJ9(): Boolean = {
     val vmName = java.lang.System.getProperty("java.vm.name")
     vmName.contains("OpenJ9")
+  }
+
+  def isWindows(): Boolean = {
+    System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("windows")
   }
 }

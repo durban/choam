@@ -17,20 +17,21 @@
 
 package dev.tauri.choam
 
-import scala.concurrent.duration._
+import java.util.concurrent.atomic.AtomicLongFieldUpdater
 
-import munit.{ FunSuite, BaseFunSuite, Location }
+trait MUnitUtilsPlatform {
 
-trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { this: FunSuite =>
+  final def isJvm(): Boolean =
+    true
 
-  override def munitTimeout: Duration =
-    5.minutes
+  final def isJs(): Boolean =
+    false
 
-  final override def test(name: String)(body: => Any)(implicit loc: Location): Unit = {
-    super[BaseFunSuite].test(name) {
-      // lincheck tests seem unstable in CI windows:
-      assumeNotWin()
-      body
-    } (loc)
+  final def isVmSupportsLongCas(): Boolean = {
+    val u = AtomicLongFieldUpdater.newUpdater(classOf[ClassWithLongField], "field")
+    val n = u.getClass().getName()
+    if (n.endsWith("CASUpdater")) true
+    else if (n.endsWith("LockedUpdater")) false
+    else throw new Exception(s"we don't know (name is '${n}')")
   }
 }
