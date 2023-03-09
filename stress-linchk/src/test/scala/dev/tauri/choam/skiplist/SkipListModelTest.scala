@@ -30,13 +30,13 @@ final class SkipListModelTest extends FunSuite with BaseLinchkSpec {
 
   test("Model checking test of TimerSkipList") {
     val opts = defaultModelCheckingOptions()
-      .checkObstructionFreedom(false)
+      .checkObstructionFreedom(true)
       .iterations(1000)
       .invocationsPerIteration(1000)
       .threads(2)
       .actorsBefore(5)
-      .actorsPerThread(3)
-      .actorsAfter(0)
+      .actorsPerThread(4)
+      .actorsAfter(3)
       .sequentialSpecification(classOf[SkipListModelTest.TestStateSequential])
     printFatalErrors {
       LinChecker.check(classOf[SkipListModelTest.TestState], opts)
