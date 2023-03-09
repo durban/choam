@@ -22,6 +22,8 @@
 ## Bugs
 
 - Can't run benchmarks with Scala 3
+- Flaky tests:
+  - `dev.tauri.choam.async.PromiseSpecJvm_Emcas_ZIO_Real.Covariant functor instance  31.056s java.util.concurrent.TimeoutException: test timed out after 31 seconds`
 
 ## Other improvements
 

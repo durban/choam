@@ -17,6 +17,24 @@
 
 package dev.tauri.choam
 
+import java.util.concurrent.{
+  ConcurrentSkipListMap,
+  ConcurrentSkipListSet,
+  ConcurrentLinkedQueue,
+  ConcurrentLinkedDeque,
+  ConcurrentHashMap,
+}
+
+import java.util.concurrent.atomic.{
+  AtomicBoolean,
+  AtomicInteger,
+  AtomicIntegerArray,
+  AtomicLong,
+  AtomicLongArray,
+  AtomicReference,
+  AtomicReferenceArray,
+}
+
 import scala.util.control.NonFatal
 import scala.collection.concurrent.TrieMap
 
@@ -41,7 +59,8 @@ trait LinchkUtils {
 
   def defaultModelCheckingOptions(): ModelCheckingOptions = {
     def assumedAtomicPred(fullClassName: String): Boolean = {
-      (fullClassName == classOf[TrieMap[_, _]].getName()) || fullClassName.startsWith("scala.collection.immutable.")
+      assumedAtomicClassNames.contains(fullClassName) ||
+      fullClassName.startsWith("scala.collection.immutable.")
     }
     val assumedAtomic: ManagedStrategyGuarantee = {
       new ManagedStrategyGuarantee.MethodBuilder(KotlinFromScala.function1(assumedAtomicPred _))
@@ -58,5 +77,23 @@ trait LinchkUtils {
     }
 
     new ModelCheckingOptions().addGuarantee(assumedAtomic).addGuarantee(ignored)
+  }
+
+  private val assumedAtomicClassNames: Set[String] = {
+    Set(
+      classOf[TrieMap[_, _]],
+      classOf[ConcurrentSkipListMap[_, _]],
+      classOf[ConcurrentSkipListSet[_]],
+      classOf[ConcurrentHashMap[_, _]],
+      classOf[ConcurrentLinkedQueue[_]],
+      classOf[ConcurrentLinkedDeque[_]],
+      classOf[AtomicBoolean],
+      classOf[AtomicInteger],
+      classOf[AtomicIntegerArray],
+      classOf[AtomicLong],
+      classOf[AtomicLongArray],
+      classOf[AtomicReference[_]],
+      classOf[AtomicReferenceArray[_]],
+    ).map(_.getName())
   }
 }

@@ -87,6 +87,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
       // TODO: We could null the callback here directly,
       // TODO: and the do the lookup after (for unlinking).
       TimerSkipList.this.doRemove(triggerTime, sequenceNum)
+      ()
     }
 
     private[TimerSkipList] final def isMarker: Boolean = {
@@ -108,7 +109,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
       next.compareAndSet(ov, nv)
     }
 
-    private[TimerSkipList] final def getCb(): Callback = {
+    private[skiplist] final def getCb(): Callback = {
       cb.getAcquire()
     }
 
@@ -275,6 +276,28 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     }
   }
 
+  private[skiplist] final def printRepr(println: String => Unit): Unit = {
+    var n = baseHead()
+    while (n ne null) {
+      val cb = n.getCb()
+      if ((cb ne null) && !n.isMarker) {
+        println(s"[${n.triggerTime}, ${n.sequenceNum}, ${cb.toString}]")
+      }
+      n = n.getNext()
+    }
+  }
+
+  private[skiplist] final def foreachNode(go: Node => Unit): Unit = {
+    var n = baseHead()
+    while (n ne null) {
+      val cb = n.getCb()
+      if ((cb ne null) && !n.isMarker) {
+        go(n)
+      }
+      n = n.getNext()
+    }
+  }
+
   private[skiplist] final def peekFirstQuiescent(): Callback = {
     val n = peekFirstNode()
     if (n ne null) {
@@ -355,6 +378,11 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     } else {
       delay // empty
     }
+  }
+
+  /** For testing */
+  private[skiplist] final def put(triggerTime: Long, seqNo: Long, cb: Callback): Runnable = {
+    doPut(triggerTime, seqNo, cb, ThreadLocalRandom.current())
   }
 
   /**
@@ -524,6 +552,11 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     }
   }
 
+  /** For testing */
+  private[skiplist] final def remove(triggerTime: Long, seqNo: Long): Boolean = {
+    doRemove(triggerTime, seqNo)
+  }
+
   /**
    * Finds the node with the specified key; deletes it
    * logically by CASing the callback to null; unlinks
@@ -532,15 +565,14 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    *
    * Analogous to `doRemove` in the JSR-166 `ConcurrentSkipListMap`.
    */
-  private[this] final def doRemove(triggerTime: Long, seqNo: Long): Unit = {
+  private[this] final def doRemove(triggerTime: Long, seqNo: Long): Boolean = {
     var b = findPredecessor(triggerTime, seqNo)
     while (b ne null) { // outer
       var inner = true
       while (inner) {
         val n = b.getNext()
-        if (n eq null){
-          inner = false
-          b = null // break outer
+        if (n eq null) {
+          return false // scalafix:ok
         } else if (n.isMarker) {
           inner = false
           b = findPredecessor(triggerTime, seqNo)
@@ -552,19 +584,19 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
           if (c > 0) {
             b = n
           } else if (c < 0) {
-            inner = false
-            b = null // break outer
+            return false // scalafix:ok
           } else if (n.casCb(n.getCb(), null)) {
             // successfully logically deleted
-            inner = false
             unlinkNode(b, n)
             findPredecessor(triggerTime, seqNo) // cleanup
             tryReduceLevel()
-            b = null // break outer
+            return true // scalafix:ok
           }
         }
       }
     }
+
+    false
   }
 
   /**
