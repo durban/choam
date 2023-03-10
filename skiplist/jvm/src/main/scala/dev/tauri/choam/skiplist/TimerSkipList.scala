@@ -27,8 +27,6 @@ import java.util.concurrent.ThreadLocalRandom
 // TODO: to make it generic (and remove any assumptions
 // TODO: and simplifications which are no longer valid).
 
-// TODO: Try to relax volatile reads.
-
 /**
  * Concurrent skip list holding timer callbacks and their
  * associated trigger times. The 3 main operations are
@@ -124,30 +122,18 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
   /** Index nodes */
   private[this] final class Index(
     val node: Node,
-    down: AtomicReference[Index],
+    val down: Index,
     r: Index,
   ) extends AtomicReference[Index](r) { right =>
 
     require(node ne null)
 
-    def this(node: Node, down: Index, right: Index) = {
-      this(node, new AtomicReference(down), right)
-    }
-
-    final def getDown(): Index = {
-      down.getAcquire()
-    }
-
-    final def casDown(ov: Index, nv: Index): Boolean = {
-      down.compareAndSet(ov, nv)
-    }
-
     final def getRight(): Index = {
       right.getAcquire()
     }
 
-    final def setRight(nv: Index): Unit = {
-      right.set(nv)
+    final def setRightPlain(nv: Index): Unit = {
+      right.setPlain(nv)
     }
 
     final def casRight(ov: Index, nv: Index): Boolean = {
@@ -264,6 +250,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     }
   }
 
+  /** For testing */
   private[skiplist] final def printBaseNodesQuiescent(println: String => Unit): Unit = {
     var n = baseHead()
     while (n ne null) {
@@ -276,6 +263,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     }
   }
 
+  /** For testing */
   private[skiplist] final def printRepr(println: String => Unit): Unit = {
     var n = baseHead()
     while (n ne null) {
@@ -287,6 +275,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     }
   }
 
+  /** For testing */
   private[skiplist] final def foreachNode(go: Node => Unit): Unit = {
     var n = baseHead()
     while (n ne null) {
@@ -298,6 +287,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     }
   }
 
+  /** For testing */
   private[skiplist] final def peekFirstQuiescent(): Callback = {
     val n = peekFirstNode()
     if (n ne null) {
@@ -408,7 +398,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         // first try to go right:
         q = walkRight(q, triggerTime, seqNo)
         // then try to go down:
-        val d = q.getDown()
+        val d = q.down
         if (d ne null) {
           levels += 1
           q = d // went down 1 level, will continue going right
@@ -576,21 +566,24 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         } else if (n.isMarker) {
           inner = false
           b = findPredecessor(triggerTime, seqNo)
-        } else if (n.isDeleted()) {
-          unlinkNode(b, n)
-          // and retry `b.getNext()`
-        } else {
-          val c = cpr(triggerTime, seqNo, n.triggerTime, n.sequenceNum)
-          if (c > 0) {
-            b = n
-          } else if (c < 0) {
-            return false // scalafix:ok
-          } else if (n.casCb(n.getCb(), null)) {
-            // successfully logically deleted
+        } else  {
+          val ncb = n.getCb()
+          if (ncb eq null) {
             unlinkNode(b, n)
-            findPredecessor(triggerTime, seqNo) // cleanup
-            tryReduceLevel()
-            return true // scalafix:ok
+            // and retry `b.getNext()`
+          } else {
+            val c = cpr(triggerTime, seqNo, n.triggerTime, n.sequenceNum)
+            if (c > 0) {
+              b = n
+            } else if (c < 0) {
+              return false // scalafix:ok
+            } else if (n.casCb(ncb, null)) {
+              // successfully logically deleted
+              unlinkNode(b, n)
+              findPredecessor(triggerTime, seqNo) // cleanup
+              tryReduceLevel()
+              return true // scalafix:ok
+            }
           }
         }
       }
@@ -699,7 +692,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
           var c: Int = 0 // comparison result
           if (r ne null) {
             val p = r.node
-            if ((p eq null) || p.isMarker || p.isDeleted()) {
+            if (p.isMarker || p.isDeleted()) {
               // clean deleted node:
               q.casRight(r, r.getRight())
               c = 0
@@ -717,14 +710,14 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
           }
 
           if (c < 0) {
-            val d = q.getDown()
+            val d = q.down
             if ((d ne null) && (skips > 0)) {
               skips -= 1
               q = d
-            } else if ((d ne null) && !retrying && !addIndices(d, 0, x.getDown())) {
+            } else if ((d ne null) && !retrying && !addIndices(d, 0, x.down)) {
               return false // scalafix:ok
             } else {
-              x.setRight(r)
+              x.setRightPlain(r) // CAS piggyback
               if (q.casRight(r, x)) {
                 return true // scalafix:ok
               } else {
@@ -754,7 +747,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         // go right:
         q = walkRight(q, triggerTime, seqNo)
         // go down:
-        val d = q.getDown()
+        val d = q.down
         if (d ne null) {
           q = d
         } else {
@@ -835,9 +828,9 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
   private[this] final def tryReduceLevel(): Unit = {
     val lv1 = head.getAcquire()
     if ((lv1 ne null) && (lv1.getRight() eq null)) { // 1st level seems empty
-      val lv2 = lv1.getDown()
+      val lv2 = lv1.down
       if ((lv2 ne null) && (lv2.getRight() eq null)) { // 2nd level seems empty
-        val lv3 = lv2.getDown()
+        val lv3 = lv2.down
         if ((lv3 ne null) && (lv3.getRight() eq null)) { // 3rd level seems empty
           // the topmost 3 levels seem empty,
           // so try to decrease levels by 1:
