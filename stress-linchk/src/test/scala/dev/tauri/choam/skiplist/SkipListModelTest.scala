@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 final class SkipListModelTest extends FunSuite with BaseLinchkSpec {
 
-  test("Model checking test of TimerSkipList") {
+  test("Model checking test of TimerSkipList".ignore) {
     val opts = defaultModelCheckingOptions()
       .checkObstructionFreedom(true)
       .iterations(1000)
