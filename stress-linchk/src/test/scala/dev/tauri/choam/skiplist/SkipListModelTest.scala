@@ -32,7 +32,7 @@ final class SkipListModelTest extends FunSuite with BaseLinchkSpec {
     val opts = defaultModelCheckingOptions()
       .checkObstructionFreedom(true)
       .iterations(500) // 1000
-      .invocationsPerIteration(100) // 1000
+      .invocationsPerIteration(200) // 1000
       .threads(2)
       .actorsBefore(5)
       .actorsPerThread(4)
