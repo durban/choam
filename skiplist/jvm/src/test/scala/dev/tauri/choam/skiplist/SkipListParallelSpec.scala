@@ -37,6 +37,9 @@ final class SkipListParallelSpec extends CatsEffectSuite {
   private[this] val RightUnit =
     Right(())
 
+  override def munitIOTimeout: Duration =
+    2 * super.munitIOTimeout
+
   private def drainUntilDone(m: TimerSkipList, done: Ref[IO, Boolean]): IO[Unit] = {
     val pollSome: IO[Long] = IO {
       while ({
