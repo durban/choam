@@ -175,7 +175,7 @@ lazy val skiplist = crossProject(JVMPlatform, JSPlatform)
   .withoutSuffixFor(JVMPlatform)
   .in(file("skiplist"))
   .settings(name := "choam-skiplist")
-  .enablePlugins(JCStressPlugin)
+  .disablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
@@ -262,6 +262,7 @@ lazy val bench = project.in(file("bench"))
   .settings(jmhSettings)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
   .dependsOn(internalHelpers.jvm)
+  .dependsOn(skiplist.jvm)
 
 // Stress tests (with JCStress):
 // TODO: move all stress test projects under a common `/stress` folder
