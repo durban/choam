@@ -216,25 +216,24 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
 
   /**
    * Looks at the first callback in the list,
-   * and returns the delay (in nanoseconds)
-   * until its triggerTime is reached, assuming
-   * the current time is `now`.
+   * and returns its trigger time.
    *
-   * @param now the current time as returned by `System.nanoTime`
-   * @return the delay (possibly negative) until the first
-   * triggerTime, or `Long.MinValue` if the list is empty
+   * @return the `triggerTime` of the first callback,
+   * or `Long.MinValue` if the list is empty.
    */
-  final def peekFirstDelay(now: Long): Long = {
+  final def peekFirstTriggerTime(): Long = {
     val head = peekFirstNode()
     if (head ne null) {
-      val headDelay = head.triggerTime - now
-      if (headDelay != MARKER) {
-        headDelay
+      val tt = head.triggerTime
+      if (tt != MARKER) {
+        tt
       } else {
         // in the VERY unlikely case when
-        // the delay is exactly our sentinel,
-        // we just cheat a little:
-        headDelay + 1L
+        // the trigger time is exactly our
+        // sentinel, we just cheat a little
+        // (this could cause threads to wake
+        // up 1 ns too early):
+        MAX_VALUE
       }
     } else {
       MARKER

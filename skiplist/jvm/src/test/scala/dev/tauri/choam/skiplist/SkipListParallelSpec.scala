@@ -49,12 +49,18 @@ final class SkipListParallelSpec extends CatsEffectSuite {
           true
         } else false
       }) {}
-      m.peekFirstDelay(System.nanoTime())
+      m.peekFirstTriggerTime()
     }
     def go(lastOne: Boolean): IO[Unit] = pollSome.flatMap { next =>
       if (next == Long.MinValue) IO.cede
-      else if (next < 0L) IO.unit
-      else IO.sleep(next.nanos)
+      else {
+        IO.defer {
+          val now = System.nanoTime()
+          val delay = next - now
+          if (delay > 0L) IO.sleep(delay.nanos)
+          else IO.unit
+        }
+      }
     } *> {
       if (lastOne) IO.unit
       else done.get.ifM(go(lastOne = true), IO.cede *> go(lastOne = false))
