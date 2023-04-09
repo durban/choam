@@ -360,4 +360,22 @@ trait MapSpec[F[_]]
       )
     } yield ()
   }
+
+  test("Map#toCats (MapRef)") {
+    // TODO: Make sure that if the default is written,
+    // TODO: then the entry is removed from the map.
+    for {
+      m <- mkEmptyMap[String, Option[Int]]
+      mapRef = m.toCats[F](default = None)
+      r1 = mapRef("a")
+      r2 = mapRef("b")
+      r3 = mapRef("c")
+      _ <- r1.set(Some(42))
+      _ <- assertResultF(r1.get, Some(42))
+      _ <- r2.update(_ => Some(23))
+      _ <- assertResultF(m.get[F]("a"), Some(Some(42)))
+      _ <- assertResultF(m.get[F]("b"), Some(Some(23)))
+      _ <- assertResultF(m.get[F]("c"), None)
+    } yield ()
+  }
 }

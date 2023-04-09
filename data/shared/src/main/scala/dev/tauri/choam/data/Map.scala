@@ -19,8 +19,13 @@ package dev.tauri.choam
 package data
 
 import cats.kernel.Order
+import cats.effect.kernel.{ Ref => CatsRef }
+import cats.effect.std.MapRef
 
-trait Map[K, V] {
+import core.Reactive
+
+trait Map[K, V] { self =>
+
   def put: Rxn[(K, V), Option[V]]
   def putIfAbsent: Rxn[(K, V), Option[V]]
   def replace: Rxn[(K, V, V), Boolean]
@@ -29,6 +34,13 @@ trait Map[K, V] {
   // TODO: a variant of `del` could return the old value (if any)
   def remove: Rxn[(K, V), Boolean]
   def refLike(key: K, default: V): RefLike[V]
+
+  def toCats[F[_]](default: V)(implicit F: Reactive[F]): MapRef[F, K, V] = {
+    new MapRef[F, K, V] {
+      final override def apply(k: K): CatsRef[F, V] =
+        self.refLike(k, default).toCats
+    }
+  }
 }
 
 object Map extends MapPlatform {
