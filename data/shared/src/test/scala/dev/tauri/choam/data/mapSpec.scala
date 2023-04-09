@@ -362,8 +362,6 @@ trait MapSpec[F[_]]
   }
 
   test("Map#toCats (MapRef)") {
-    // TODO: Make sure that if the default is written,
-    // TODO: then the entry is removed from the map.
     for {
       m <- mkEmptyMap[String, Option[Int]]
       mapRef = m.toCats[F](default = None)
@@ -376,6 +374,10 @@ trait MapSpec[F[_]]
       _ <- assertResultF(m.get[F]("a"), Some(Some(42)))
       _ <- assertResultF(m.get[F]("b"), Some(Some(23)))
       _ <- assertResultF(m.get[F]("c"), None)
+      _ <- r3.set(Some(99))
+      _ <- assertResultF(m.get[F]("c"), Some(Some(99)))
+      _ <- r3.set(None)
+      _ <- assertResultF(m.get[F]("c"), None) // NB: it's `None` and not `Some(None)`
     } yield ()
   }
 }
