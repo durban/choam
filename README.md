@@ -48,7 +48,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   concurrent data structures:
   - queues
   - stacks
-  - maps (*in progress*)
+  - maps
   - counter
 - [`choam-async`](async/shared/src/main/scala/dev/tauri/choam/async/):
   - integration with asynchronous effect types in
@@ -79,7 +79,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   [Racket](https://github.com/aturon/Caper).)
   The main diferences from the paper are:
   - Only lock-free features (and a few low-level ones) are implemented.
-  - `Rxn` has a referentially transparent ("pure functional") API.
+  - `Rxn` has a referentially transparent ("pure functional" / "programs as values") API.
   - The interpreter (that executes `Rxn`s) is stack-safe.
   - We also support composing `Rxn`s which modify the same `Ref`
     (thus, an `Rxn` is closer to an STM transaction than a *reagent*;
@@ -89,9 +89,9 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   - [A Practical Multi-Word Compare-and-Swap Operation](https://web.archive.org/web/20220121034605/https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf)
     (an earlier version used this algorithm)
   - [Efficient Multi-word Compare and Swap](https://web.archive.org/web/20220215225848/https://arxiv.org/pdf/2008.02527.pdf)
-    (`MCAS.Emcas` implements a variant of this algorithm; this is the default algorithm we use on the JVM)
+    (`Mcas.Emcas` implements a variant of this algorithm; this is the default algorithm we use on the JVM)
   - A simple, non-lock-free algorithm from the Reagents paper (see above) is implemented as
-    `MCAS.SpinLockMCAS`
+    `Mcas.SpinLockMcas`
 - Software transactional memory (STM)
   - A `Rxn` is somewhat similar to a memory transaction, but there are
     important differences:
