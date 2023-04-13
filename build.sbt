@@ -167,6 +167,7 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .dependsOn(core % "compile->compile;test->test")
+  .settings(libraryDependencies += dependencies.catsCollections.value)
   .jvmSettings(libraryDependencies += dependencies.paguro.value)
 
 // WIP skip list:
@@ -586,6 +587,7 @@ lazy val dependencies = new {
   val catsVersion = "2.9.0"
   val catsEffectVersion = "3.5.0-RC3"
   val catsMtlVersion = "1.3.0"
+  val catsCollectionsVersion = "0.9.6"
   val fs2Version = "3.7.0-RC4"
   val scalacheckEffectVersion = "2.0.0-M2"
   val kindProjectorVersion = "0.13.2"
@@ -604,6 +606,7 @@ lazy val dependencies = new {
   val catsEffectTestkit = Def.setting("org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion)
   val catsMtl = Def.setting("org.typelevel" %%% "cats-mtl" % catsMtlVersion)
   val catsMtlLaws = Def.setting("org.typelevel" %%% "cats-mtl-laws" % catsMtlVersion)
+  val catsCollections = Def.setting("org.typelevel" %%% "cats-collections-core" % catsCollectionsVersion)
   val fs2 = Def.setting("co.fs2" %%% "fs2-core" % fs2Version)
   val decline = Def.setting("com.monovore" %%% "decline" % "2.4.1") // https://github.com/bkirwi/decline
 

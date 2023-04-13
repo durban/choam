@@ -18,18 +18,28 @@
 package dev.tauri.choam
 package data
 
-import cats.kernel.Hash
+import cats.kernel.{ Hash, Order }
 import cats.effect.SyncIO
 
-final class MapSpec_Simple_SpinLockMcas_SyncIO
+final class MapSpec_SimpleHash_SpinLockMcas_SyncIO
   extends BaseSpecSyncIO
   with SpecSpinLockMcas
-  with MapSpecSimple[SyncIO]
+  with MapSpecSimpleHash[SyncIO]
 
-final class MapSpec_Simple_Emcas_SyncIO
+final class MapSpec_SimpleHash_Emcas_SyncIO
   extends BaseSpecSyncIO
   with SpecEmcas
-  with MapSpecSimple[SyncIO]
+  with MapSpecSimpleHash[SyncIO]
+
+final class MapSpec_SimpleOrdered_SpinLockMcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecSpinLockMcas
+  with MapSpecSimpleOrdered[SyncIO]
+
+final class MapSpec_SimpleOrdered_Emcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecEmcas
+  with MapSpecSimpleOrdered[SyncIO]
 
 final class MapSpec_Ttrie_SpinLockMcas_SyncIO
   extends BaseSpecSyncIO
@@ -50,6 +60,6 @@ trait MapSpecTtrie[F[_]] extends MapSpec[F] { this: McasImplSpec =>
 
   override type MyMap[K, V] = Map[K, V]
 
-  def mkEmptyMap[K: Hash, V]: F[Map[K, V]] =
+  def mkEmptyMap[K : Hash : Order, V]: F[Map[K, V]] =
     Ttrie.apply[K, V].run[F].widen
 }

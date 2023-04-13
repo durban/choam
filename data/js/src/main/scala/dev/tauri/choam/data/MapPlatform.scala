@@ -29,7 +29,7 @@ private[data] abstract class MapPlatform extends AbstractMapPlatform {
   final override def hashMap[K: Hash, V]: Axn[Map[K, V]] =
     this.simpleHashMap[K, V]
 
-  private[data] final override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {
+  private[data] override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {
     m match {
       case m: SimpleMap[_, _] =>
         m.unsafeSnapshot.run[F]

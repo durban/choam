@@ -18,23 +18,30 @@
 package dev.tauri.choam
 package data
 
-import cats.kernel.Hash
+import cats.kernel.{ Hash, Order }
 import cats.effect.SyncIO
 
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
-final class MapSpec_Simple_ThreadConfinedMcas_SyncIO
+final class MapSpec_SimpleHash_ThreadConfinedMcas_SyncIO
   extends BaseSpecSyncIO
   with SpecThreadConfinedMcas
-  with MapSpecSimple[SyncIO]
+  with MapSpecSimpleHash[SyncIO]
 
-trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
+final class MapSpec_SimpleOrdered_ThreadConfinedMcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecThreadConfinedMcas
+  with MapSpecSimpleOrdered[SyncIO]
+
+trait MapSpecSimpleHash[F[_]] extends MapSpec[F] { this: McasImplSpec =>
 
   override type MyMap[K, V] = Map.Extra[K, V]
 
-  def mkEmptyMap[K: Hash, V]: F[Map.Extra[K, V]] =
+  def mkEmptyMap[K : Hash : Order, V]: F[Map.Extra[K, V]] =
     Map.simpleHashMap[K, V].run[F]
+
+  // TODO: these should run for simpleOrderedMap too
 
   test("Map.Extra should perform clear correctly") {
     for {
@@ -69,13 +76,21 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
   }
 }
 
+trait MapSpecSimpleOrdered[F[_]] extends MapSpec[F] { this: McasImplSpec =>
+
+  override type MyMap[K, V] = Map.Extra[K, V]
+
+  def mkEmptyMap[K : Hash : Order, V]: F[Map.Extra[K, V]] =
+    Map.simpleOrderedMap[K, V].run[F]
+}
+
 trait MapSpec[F[_]]
   extends BaseSpecSyncF[F]
   with ScalaCheckEffectSuite { this: McasImplSpec =>
 
   type MyMap[K, V] <: Map[K, V]
 
-  def mkEmptyMap[K: Hash, V]: F[MyMap[K, V]]
+  def mkEmptyMap[K : Hash : Order, V]: F[MyMap[K, V]]
 
   test("Map should perform put correctly") {
     for {
@@ -174,15 +189,17 @@ trait MapSpec[F[_]]
     } yield ()
   }
 
-  test("Map should support custom hash/eqv") {
+  test("Map should support custom hash/eqv/order") {
     val myHash: Hash[Int] = new Hash[Int] {
       final override def eqv(x: Int, y: Int): Boolean =
         (x % 8) === (y % 8)
       final override def hash(x: Int): Int =
         (x % 4)
     }
+    val myOrder: Order[Int] =
+      Order.by[Int, Int](_ % 8)
     for {
-      m <- mkEmptyMap[Int, String](myHash)
+      m <- mkEmptyMap[Int, String](myHash, myOrder)
       _ <- (Rxn.pure(0 -> "0") >>> m.put).run[F]
       _ <- (Rxn.pure(1 -> "1") >>> m.put).run[F]
       _ <- (Rxn.pure(4 -> "4") >>> m.put).run[F]
@@ -251,13 +268,16 @@ trait MapSpec[F[_]]
   }
 
   test("Map get should find an equal key which is not equal according to universal equality") {
+    val myHash = new Hash[Int] {
+      final def eqv(x: Int, y: Int) =
+        (x % 8) == (y % 8)
+      final def hash(x: Int) =
+        x % 4
+    }
+    val myOrder =
+      Order.by[Int, Int](_ % 8)
     for {
-      m <- mkEmptyMap[Int, String](new Hash[Int] {
-        final def eqv(x: Int, y: Int) =
-          (x % 8) == (y % 8)
-        final def hash(x: Int) =
-          x % 4
-      })
+      m <- mkEmptyMap[Int, String](myHash, myOrder)
       _ <- m.put[F](0 -> "0")
       _ <- assertResultF(m.get(0), Some("0"))
       _ <- assertResultF(m.get(8), Some("0"))
@@ -294,14 +314,15 @@ trait MapSpec[F[_]]
   }
 
   test("Map insertion should handle hash collisions correctly") {
+    val myHash = new Hash[Int] {
+      final def eqv(x: Int, y: Int) =
+        x == y
+      final def hash(x: Int) =
+        x % 8
+    }
     PropF.forAllF { (ks: Set[Int], x: Int) =>
       for {
-        m <- mkEmptyMap[Int, String](new Hash[Int] {
-          final def eqv(x: Int, y: Int) =
-            x == y
-          final def hash(x: Int) =
-            x % 8
-        })
+        m <- mkEmptyMap[Int, String](myHash, Order[Int])
         _ <- m.put[F](x -> x.toString)
         _ <- assertResultF(m.get(x), Some(x.toString))
         _ <- m.put(x + 8 -> (x + 8).toString)

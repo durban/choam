@@ -49,4 +49,16 @@ object Map extends MapPlatform {
     def clear: Axn[Unit]
     def values(implicit V: Order[V]): Axn[Vector[V]]
   }
+
+  final override def simpleOrderedMap[K: Order, V]: Axn[Extra[K, V]] =
+    SimpleOrderedMap[K, V]
+
+  private[data] final override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {
+    m match {
+      case m: SimpleOrderedMap[_, _] =>
+        m.unsafeSnapshot.run[F]
+      case _ =>
+        super.unsafeSnapshot(m)(F)
+    }
+  }
 }

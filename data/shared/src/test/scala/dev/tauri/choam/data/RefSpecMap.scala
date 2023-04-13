@@ -20,20 +20,33 @@ package data
 
 import scala.collection.immutable.{ Map => ScalaMap }
 
-import cats.kernel.Hash
+import cats.kernel.{ Hash, Order }
 import cats.effect.IO
 
-final class RefSpec_Map_Simple_ThreadConfinedMcas_IO
+final class RefSpec_Map_SimpleHash_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with SpecThreadConfinedMcas
-  with RefSpec_Map_Simple[IO]
+  with RefSpec_Map_SimpleHash[IO]
 
-trait RefSpec_Map_Simple[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
+final class RefSpec_Map_SimpleOrdered_ThreadConfinedMcas_IO
+  extends BaseSpecIO
+  with SpecThreadConfinedMcas
+  with RefSpec_Map_SimpleOrdered[IO]
+
+trait RefSpec_Map_SimpleHash[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
 
   final override type MapType[K, V] = Map.Extra[K, V]
 
-  final override def newMap[K: Hash, V]: F[MapType[K, V]] =
+  final override def newMap[K : Hash : Order, V]: F[MapType[K, V]] =
     Map.simpleHashMap[K, V].run[F]
+}
+
+trait RefSpec_Map_SimpleOrdered[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
+
+  final override type MapType[K, V] = Map.Extra[K, V]
+
+  final override def newMap[K : Hash : Order, V]: F[MapType[K, V]] =
+    Map.simpleOrderedMap[K, V].run[F]
 }
 
 trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
@@ -45,9 +58,9 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
   final override def newRef[A](initial: A): F[RefType[A]] =
     newMap[String, A].map(_.refLike("foo", default = initial))
 
-  def newMap[K: Hash, V]: F[MapType[K, V]]
+  def newMap[K : Hash : Order, V]: F[MapType[K, V]]
 
-  def newRandomMap[K: Hash, V](genK: F[K], genV: F[V], size: Int): F[MapType[K, V]] = {
+  def newRandomMap[K : Hash : Order, V](genK: F[K], genV: F[V], size: Int): F[MapType[K, V]] = {
     this.newMap[K, V].flatMap { m =>
       def go(currSize: Int): F[Unit] = {
         if (currSize < size) {

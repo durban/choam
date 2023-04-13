@@ -20,7 +20,7 @@ package data
 
 import java.util.concurrent.ThreadLocalRandom
 
-import cats.kernel.Hash
+import cats.kernel.{ Hash, Order }
 import cats.Applicative
 import cats.effect.IO
 
@@ -39,21 +39,31 @@ final class RefSpec_Map_Ttrie_SpinLockMcas_IO
   with SpecSpinLockMcas
   with RefSpec_Map_Ttrie[IO]
 
-final class RefSpec_Map_Simple_Emcas_IO
+final class RefSpec_Map_SimpleHash_Emcas_IO
   extends BaseSpecIO
   with SpecEmcas
-  with RefSpec_Map_Simple[IO]
+  with RefSpec_Map_SimpleHash[IO]
 
-final class RefSpec_Map_Simple_SpinLockMcas_IO
+final class RefSpec_Map_SimpleHash_SpinLockMcas_IO
   extends BaseSpecIO
   with SpecSpinLockMcas
-  with RefSpec_Map_Simple[IO]
+  with RefSpec_Map_SimpleHash[IO]
+
+final class RefSpec_Map_SimpleOrdered_Emcas_IO
+  extends BaseSpecIO
+  with SpecEmcas
+  with RefSpec_Map_SimpleOrdered[IO]
+
+final class RefSpec_Map_SimpleOrdered_SpinLockMcas_IO
+  extends BaseSpecIO
+  with SpecSpinLockMcas
+  with RefSpec_Map_SimpleOrdered[IO]
 
 trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
 
   private[data] final override type MapType[K, V] = Ttrie[K, V]
 
-  final override def newMap[K: Hash, V]: F[MapType[K, V]] =
+  final override def newMap[K : Hash : Order, V]: F[MapType[K, V]] =
     Ttrie[K, V].run[F]
 
   test("Ttrie insert/remove should not leak memory") {
@@ -124,7 +134,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
     }
   }
 
-  private[this] final def runMemoryReclamationTest[K: Hash, V](
+  private[this] final def runMemoryReclamationTest[K : Hash : Order, V](
     S: Int,
     N: Int,
     task: (MapType[K, V], Int) => F[Unit],

@@ -20,10 +20,11 @@ package data
 
 import scala.collection.immutable.{ Map => ScalaMap }
 
-import cats.kernel.Hash
+import cats.kernel.{ Hash, Order }
 
 private abstract class AbstractMapPlatform {
   def simpleHashMap[K: Hash, V]: Axn[Map.Extra[K, V]]
+  def simpleOrderedMap[K: Order, V]: Axn[Map.Extra[K, V]]
   def hashMap[K: Hash, V]: Axn[Map[K, V]]
   private[data] final def unsafeGetSize[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]): F[Int] =
     F.monad.map(this.unsafeSnapshot(m))(_.size)
