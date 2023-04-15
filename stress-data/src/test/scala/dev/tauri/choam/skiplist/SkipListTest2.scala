@@ -27,8 +27,8 @@ import org.openjdk.jcstress.infra.results.JJJJJJ_Result
 @State
 @Description("TimerSkipList insert/insert race")
 @Outcomes(Array(
-  new JOutcome(id = Array("1100, -9223372036854775679, 1100, -9223372036854775678, 1, 2"), expect = ACCEPTABLE_INTERESTING, desc = "insert1 won"),
-  new JOutcome(id = Array("1100, -9223372036854775678, 1100, -9223372036854775679, 2, 1"), expect = ACCEPTABLE_INTERESTING, desc = "insert2 won"),
+  new JOutcome(id = Array("1100, 0, 1100, 0, 1, 2"), expect = ACCEPTABLE_INTERESTING, desc = "insert1 won"),
+  new JOutcome(id = Array("1100, 0, 1100, 0, 2, 1"), expect = ACCEPTABLE_INTERESTING, desc = "insert2 won"),
 ))
 class SkipListTest2 {
 
@@ -36,9 +36,9 @@ class SkipListTest2 {
 
   private[this] val m = {
     val DELAY = 1024L
-    val m = new TimerSkipList
+    val m = new SkipListMap[Long, Callback]
     for (i <- 1 to 128) {
-      m.insertTlr(now = i.toLong, delay = DELAY, callback = newCallback(i.toLong, DELAY))
+      m.insertTlr(i.toLong + DELAY, newCallback(i.toLong, DELAY))
     }
     m
   }
@@ -54,17 +54,17 @@ class SkipListTest2 {
   @Actor
   def insert1(r: JJJJJJ_Result): Unit = {
     // the list contains times between 1025 and 1152, we insert at 1100:
-    val cancel = m.insertTlr(now = newCb1.now, delay = newCb1.delay, callback = newCb1).asInstanceOf[m.Node]
-    r.r1 = cancel.triggerTime
-    r.r2 = cancel.sequenceNum
+    val cancel = m.insertTlr(newCb1.now + newCb1.delay, newCb1).asInstanceOf[m.Node]
+    r.r1 = cancel.key
+    // TODO: r.r2
   }
 
   @Actor
   def insert2(r: JJJJJJ_Result): Unit = {
     // the list contains times between 1025 and 1152, we insert at 1100:
-    val cancel = m.insertTlr(now = newCb2.now, delay = newCb2.delay, callback = newCb2).asInstanceOf[m.Node]
-    r.r3 = cancel.triggerTime
-    r.r4 = cancel.sequenceNum
+    val cancel = m.insertTlr(newCb2.now + newCb2.delay, newCb2).asInstanceOf[m.Node]
+    r.r3 = cancel.key
+    // TODO: r.r4
   }
 
   @Arbiter
@@ -74,11 +74,11 @@ class SkipListTest2 {
       val cb = m.peekFirstQuiescent().asInstanceOf[MyCallback]
       cb.delay != MAGIC
     }) {
-      m.pollFirstIfTriggered(now = 2048L)
+      m.pollFirstIfTriggered(2048L)
     }
     // then look at the 2 racy inserts:
-    val first = m.pollFirstIfTriggered(now = 2048L)
-    val second = m.pollFirstIfTriggered(now = 2048L)
+    val first = m.pollFirstIfTriggered(2048L)
+    val second = m.pollFirstIfTriggered(2048L)
     r.r5 = if (first eq newCb1) 1L else if (first eq newCb2) 2L else -1L
     r.r6 = if (second eq newCb1) 1L else if (second eq newCb2) 2L else -1L
   }

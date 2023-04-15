@@ -38,27 +38,27 @@ class SkipListTest5 {
     newCallback()
 
   private[this] val m = {
-    val m = new TimerSkipList
+    val m = new SkipListMap[Long, Callback]
     // head is 1025L:
-    m.insertTlr(now = 1L, delay = 1024L, callback = headCb)
+    m.insertTlr(1L + 1024L, headCb)
     m
   }
 
   @Actor
   def pollFirst1(r: JJJ_Result): Unit = {
-    val cb = m.pollFirstIfTriggered(now = 2048L)
+    val cb = m.pollFirstIfTriggered(2048L)
     r.r1 = if (cb eq headCb) 1L else if (cb eq null) 0L else -1L
   }
 
   @Actor
   def pollFirst2(r: JJJ_Result): Unit = {
-    val cb = m.pollFirstIfTriggered(now = 2048L)
+    val cb = m.pollFirstIfTriggered(2048L)
     r.r2 = if (cb eq headCb) 1L else if (cb eq null) 0L else -1L
   }
 
   @Arbiter
   def arbiter(r: JJJ_Result): Unit = {
-    val cb = m.pollFirstIfTriggered(now = 2048L)
+    val cb = m.pollFirstIfTriggered(2048L)
     r.r3 = if (cb eq null) 0L else -1L
   }
 

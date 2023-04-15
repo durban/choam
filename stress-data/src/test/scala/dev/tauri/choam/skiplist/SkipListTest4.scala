@@ -41,32 +41,32 @@ class SkipListTest4 {
     newCallback()
 
   private[this] val m = {
-    val m = new TimerSkipList
+    val m = new SkipListMap[Long, Callback]
     // head is 1025L:
-    m.insertTlr(now = 1L, delay = 1024L, callback = headCb)
+    m.insertTlr(1L + 1024L, headCb)
     // second is 1026L:
-    m.insertTlr(now = 2L, delay = 1024L, callback = secondCb)
+    m.insertTlr(2L + 1024L, secondCb)
     for (i <- 3 to 128) {
-      m.insertTlr(now = i.toLong, delay = 1024L, callback = newCallback())
+      m.insertTlr(i.toLong + 1024L, newCallback())
     }
     m
   }
 
   @Actor
   def pollFirst1(r: JJJ_Result): Unit = {
-    val cb = m.pollFirstIfTriggered(now = 2048L)
+    val cb = m.pollFirstIfTriggered(2048L)
     r.r1 = if (cb eq headCb) 1L else if (cb eq secondCb) 0L else -1L
   }
 
   @Actor
   def pollFirst2(r: JJJ_Result): Unit = {
-    val cb = m.pollFirstIfTriggered(now = 2048L)
+    val cb = m.pollFirstIfTriggered(2048L)
     r.r2 = if (cb eq headCb) 1L else if (cb eq secondCb) 0L else -1L
   }
 
   @Arbiter
   def arbiter(r: JJJ_Result): Unit = {
-    val otherCb = m.pollFirstIfTriggered(now = 2048L)
+    val otherCb = m.pollFirstIfTriggered(2048L)
     r.r3 = if (otherCb eq headCb) -1L else if (otherCb eq secondCb) -1L else 0L
   }
 

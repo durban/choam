@@ -29,6 +29,8 @@ import cats.effect.IO
 
 import munit.CatsEffectSuite
 
+import SkipListHelper.Callback
+
 final class SkipListParallelSpec extends CatsEffectSuite {
 
   final val N = 100000
@@ -40,7 +42,7 @@ final class SkipListParallelSpec extends CatsEffectSuite {
   override def munitIOTimeout: Duration =
     2 * super.munitIOTimeout
 
-  private def drainUntilDone(m: TimerSkipList, done: Ref[IO, Boolean]): IO[Unit] = {
+  private def drainUntilDone(m: SkipListMap[Long, Callback], done: Ref[IO, Boolean]): IO[Unit] = {
     val pollSome: IO[Long] = IO {
       while ({
         val cb = m.pollFirstIfTriggered(System.nanoTime())
@@ -71,14 +73,13 @@ final class SkipListParallelSpec extends CatsEffectSuite {
 
   test("Parallel insert/pollFirstIfTriggered") {
     IO.ref(false).flatMap { done =>
-      IO { (new TimerSkipList, new AtomicLong) }.flatMap {
+      IO { (new SkipListMap[Long, Callback], new AtomicLong) }.flatMap {
         case (m, ctr) =>
 
           val insert = IO {
             m.insert(
-              now = System.nanoTime(),
-              delay = DELAY,
-              callback = { _ => ctr.getAndIncrement; () },
+              key = System.nanoTime() + DELAY,
+              value = { _ => ctr.getAndIncrement; () },
               tlr = ThreadLocalRandom.current(),
             )
           }
@@ -98,15 +99,14 @@ final class SkipListParallelSpec extends CatsEffectSuite {
 
   test("Parallel insert/cancel") {
     IO.ref(false).flatMap { done =>
-      IO { (new TimerSkipList, new ConcurrentSkipListSet[Int]) }.flatMap {
+      IO { (new SkipListMap[Long, Callback], new ConcurrentSkipListSet[Int]) }.flatMap {
         case (m, called) =>
 
           def insert(id: Int): IO[Runnable] = IO {
             val now = System.nanoTime()
             val canceller = m.insert(
-              now = now,
-              delay = DELAY,
-              callback = { _ => called.add(id); () },
+              key = now + DELAY,
+              value = { _ => called.add(id); () },
               tlr = ThreadLocalRandom.current(),
             )
             canceller
@@ -155,12 +155,12 @@ final class SkipListParallelSpec extends CatsEffectSuite {
 
   test("Random racing sleeps") {
     IO.ref(false).flatMap { dummy =>
-      IO { (new TimerSkipList) }.flatMap {
+      IO { (new SkipListMap[Long, Callback]) }.flatMap {
         case (m) =>
 
           def mySleep(d: FiniteDuration): IO[Unit] = IO.async[Unit] { cb =>
             IO {
-              val canceller = m.insert(System.nanoTime(), d.toNanos, cb, ThreadLocalRandom.current())
+              val canceller = m.insert(System.nanoTime() + d.toNanos, cb, ThreadLocalRandom.current())
               Some(IO { canceller.run() })
             }
           }

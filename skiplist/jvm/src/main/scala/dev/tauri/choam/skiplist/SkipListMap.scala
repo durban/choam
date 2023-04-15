@@ -18,22 +18,16 @@
 package dev.tauri.choam
 package skiplist
 
-import java.util.concurrent.atomic.{ AtomicReference, AtomicLong }
-import java.lang.Long.{ MAX_VALUE, MIN_VALUE => MARKER }
+import java.util.concurrent.atomic.{ AtomicReference }
+import java.lang.Long.{ MAX_VALUE }
 import java.util.concurrent.ThreadLocalRandom
 
-// TODO: For now this skip list is very specialized
-// TODO: to callbacks and trigger times; we'll need
-// TODO: to make it generic (and remove any assumptions
-// TODO: and simplifications which are no longer valid).
+import cats.kernel.Order
 
 /**
- * Concurrent skip list holding timer callbacks and their
- * associated trigger times. The 3 main operations are
- * `pollFirstIfTriggered`, `insert`, and the "remove"
- * returned by `insert` (for cancelling timers).
+ * Concurrent skip list map.
  */
-final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
+final class SkipListMap[K, V]()(implicit K: Order[K]) {
 
   /*
    * This implementation is based on the public
@@ -54,9 +48,6 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * "marker" nodes (see `Node#isMarker`).
    */
 
-  private[this] type Callback =
-    Right[Nothing, Unit] => Unit
-
   /**
    * Base nodes (which form the base list) store the payload.
    *
@@ -69,50 +60,46 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * inserted timer callback (see `run` method).
    */
   private[skiplist] final class Node private (
-    val triggerTime: Long,
-    val sequenceNum: Long,
-    cb: AtomicReference[Callback],
+    val key: K,
+    value: AtomicReference[V],
     n: Node,
   ) extends AtomicReference[Node](n)
     with Runnable { next =>
 
-    private[TimerSkipList] def this(triggerTime: Long, seqNo: Long, cb: Callback, next: Node) = {
-      this(triggerTime, seqNo, new AtomicReference(cb), next)
+    private[SkipListMap] def this(key: K, value: V, next: Node) = {
+      this(key, new AtomicReference(value), next)
     }
 
-    /** Cancels the timer */
+    /** Removes the entry */
     final override def run(): Unit = {
-      // TODO: We could null the callback here directly,
+      // TODO: We could null the value here directly,
       // TODO: and the do the lookup after (for unlinking).
-      TimerSkipList.this.doRemove(triggerTime, sequenceNum)
+      SkipListMap.this.doRemove(key)
       ()
     }
 
-    private[TimerSkipList] final def isMarker: Boolean = {
-      // note: a marker node also has `triggerTime == MARKER`,
-      // but that's also a valid trigger time, so we need
-      // `sequenceNum` here
-      sequenceNum == MARKER
+    private[SkipListMap] final def isMarker: Boolean = {
+      isMARKER(key)
     }
 
-    private[TimerSkipList] final def isDeleted(): Boolean = {
-      getCb() eq null
+    private[SkipListMap] final def isDeleted(): Boolean = {
+      isTOMB(getValue())
     }
 
-    private[TimerSkipList] final def getNext(): Node = {
+    private[SkipListMap] final def getNext(): Node = {
       next.getAcquire()
     }
 
-    private[TimerSkipList] final def casNext(ov: Node, nv: Node): Boolean = {
+    private[SkipListMap] final def casNext(ov: Node, nv: Node): Boolean = {
       next.compareAndSet(ov, nv)
     }
 
-    private[skiplist] final def getCb(): Callback = {
-      cb.getAcquire()
+    private[skiplist] final def getValue(): V = {
+      value.getAcquire()
     }
 
-    private[TimerSkipList] final def casCb(ov: Callback, nv: Callback): Boolean = {
-      cb.compareAndSet(ov, nv)
+    private[SkipListMap] final def casValue(ov: V, nv: V): Boolean = {
+      value.compareAndSet(ov, nv)
     }
 
     final override def toString: String =
@@ -148,13 +135,34 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
   private[this] val head =
     new AtomicReference[Index]
 
+  private[this] val _marker: AnyRef =
+    new AnyRef
+
+  private[this] val _tomb: AnyRef =
+    new AnyRef
+
+  private[this] final def MARKER: K = {
+    _marker.asInstanceOf[K]
+  }
+
+  private[this] final def isMARKER(k: K): Boolean = {
+    equ(k, MARKER)
+  }
+
+  private[this] final def TOMB: V = {
+    _tomb.asInstanceOf[V]
+  }
+
+  private[this] final def isTOMB(v: V): Boolean = {
+    equ(v, TOMB)
+  }
+
   /** For testing */
   private[skiplist] final def insertTlr(
-    now: Long,
-    delay: Long,
-    callback: Right[Nothing, Unit] => Unit,
+    key: K,
+    value: V,
   ): Runnable = {
-    insert(now, delay, callback, ThreadLocalRandom.current())
+    insert(key, value, ThreadLocalRandom.current())
   }
 
   /**
@@ -169,35 +177,11 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * @param tlr the `ThreadLocalRandom` of the current (calling) thread
    */
   final def insert(
-    now: Long,
-    delay: Long,
-    callback: Right[Nothing, Unit] => Unit,
+    key: K,
+    value: V,
     tlr: ThreadLocalRandom,
   ): Runnable = {
-    require(delay >= 0L)
-    // we have to check for overflow:
-    val triggerTime = computeTriggerTime(now = now, delay = delay)
-    // Because our skip list can't handle multiple
-    // values (callbacks) for the same key, the
-    // key is not only the `triggerTime`, but a
-    // conceptually a `(triggerTime, seqNo)` tuple.
-    // We generate unique (for this skip list)
-    // sequence numbers with an atomic counter.
-    val seqNo = {
-      val sn = sequenceNumber.getAndIncrement()
-      // In case of overflow (very unlikely),
-      // we make sure we don't use MARKER for
-      // a valid node (which would be very bad);
-      // otherwise the overflow can only cause
-      // problems with the ordering of callbacks
-      // with the exact same triggerTime...
-      // which is unspecified anyway (due to
-      // stealing).
-      if (sn != MARKER) sn
-      else sequenceNumber.getAndIncrement()
-    }
-
-    doPut(triggerTime, seqNo, callback, tlr)
+    doPut(key, value, tlr)
   }
 
   /**
@@ -207,70 +191,30 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    *
    * It is the caller's responsibility to check for `null`,
    * and actually invoke the callback (if desired).
-   *
-   * @param now the current time as returned by `System.nanoTime`
    */
-  final def pollFirstIfTriggered(now: Long): Right[Nothing, Unit] => Unit = {
-    doRemoveFirstNodeIfTriggered(now)
+  final def pollFirstIfTriggered(k: K): V = {
+    doRemoveFirstNodeIfTriggered(k)
   }
 
-  /**
-   * Looks at the first callback in the list,
-   * and returns its trigger time.
-   *
-   * @return the `triggerTime` of the first callback,
-   * or `Long.MinValue` if the list is empty.
-   */
-  final def peekFirstTriggerTime(): Long = {
+  final def pollFirst(): V = {
+    doRemoveFirstNodeIfTriggered(MARKER)
+  }
+
+  final def peekFirstTriggerTime(): K = {
     val head = peekFirstNode()
     if (head ne null) {
-      val tt = head.triggerTime
-      if (tt != MARKER) {
-        tt
-      } else {
-        // in the VERY unlikely case when
-        // the trigger time is exactly our
-        // sentinel, we just cheat a little
-        // (this could cause threads to wake
-        // up 1 ns too early):
-        MAX_VALUE
-      }
+      head.key
     } else {
-      MARKER
+      nullOf[K]
     }
   }
 
   final override def toString: String = {
     peekFirstNode() match {
       case null =>
-        "TimerSkipList()"
+        "SkipListMap()"
       case _ =>
-        "TimerSkipList(...)"
-    }
-  }
-
-  /** For testing */
-  private[skiplist] final def printBaseNodesQuiescent(println: String => Unit): Unit = {
-    var n = baseHead()
-    while (n ne null) {
-      val cb = n.getCb() match {
-        case null => "null"
-        case cb => cb.##.toHexString
-      }
-      println(s"${n.triggerTime}, ${n.sequenceNum}, ${cb}")
-      n = n.getNext()
-    }
-  }
-
-  /** For testing */
-  private[skiplist] final def printRepr(println: String => Unit): Unit = {
-    var n = baseHead()
-    while (n ne null) {
-      val cb = n.getCb()
-      if ((cb ne null) && !n.isMarker) {
-        println(s"[${n.triggerTime}, ${n.sequenceNum}, ${cb.toString}]")
-      }
-      n = n.getNext()
+        "SkipListMap(...)"
     }
   }
 
@@ -278,114 +222,45 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
   private[skiplist] final def foreachNode(go: Node => Unit): Unit = {
     var n = baseHead()
     while (n ne null) {
-      val cb = n.getCb()
-      if ((cb ne null) && !n.isMarker) {
+      val cb = n.getValue()
+      if (!isTOMB(cb) && !n.isMarker) {
         go(n)
       }
       n = n.getNext()
     }
   }
 
-  /** For testing */
-  private[skiplist] final def peekFirstQuiescent(): Callback = {
-    val n = peekFirstNode()
-    if (n ne null) {
-      n.getCb()
-    } else {
-      null
-    }
-  }
+  // /** For testing */
+  // private[skiplist] final def peekFirstQuiescent(): V = {
+  //   val n = peekFirstNode()
+  //   if (n ne null) {
+  //     n.getCb()
+  //   } else {
+  //     nullOf[V]
+  //   }
+  // }
 
   /**
-   * Compares keys, first by trigger time, then by
-   * sequence number; this method determines the "total
-   * order" that is used by the skip list.
-   *
-   * The trigger times are `System.nanoTime` longs, so they
-   * have to be compared in a peculiar way (see javadoc there).
-   * This makes this order non-transitive, which is quite bad.
-   * However, `computeTriggerTime` makes sure that there is
-   * no overflow here, so we're okay.
+   * Compares keys.
    *
    * Analogous to `cpr` in the JSR-166 `ConcurrentSkipListMap`.
    */
-  private[this] final def cpr(xTriggerTime: Long, xSeqNo: Long, yTriggerTime: Long, ySeqNo: Long): Int = {
-    // first compare trigger times:
-    val d = xTriggerTime - yTriggerTime
-    if (d < 0) -1
-    else if (d > 0) 1
-    else {
-      // if times are equal, compare seq numbers:
-      if (xSeqNo < ySeqNo) -1
-      else if (xSeqNo == ySeqNo) 0
-      else 1
-    }
-  }
-
-  /**
-   * Computes the trigger time in an overflow-safe manner.
-   * The trigger time is essentially `now + delay`. However,
-   * we must constrain all trigger times in the skip list
-   * to be within `Long.MaxValue` of each other (otherwise
-   * there will be overflow when comparing in `cpr`). Thus,
-   * if `delay` is so big, we'll reduce it to the greatest
-   * allowable (in `overflowFree`).
-   *
-   * From the public domain JSR-166 `ScheduledThreadPoolExecutor`
-   * (`triggerTime` method).
-   */
-  private[this] final def computeTriggerTime(now: Long, delay: Long): Long = {
-    val safeDelay = if (delay < (MAX_VALUE >> 1)) delay else overflowFree(now, delay)
-    now + safeDelay
-  }
-
-  /**
-   * See `computeTriggerTime`. The overflow can happen if
-   * a callback was already triggered (based on `now`), but
-   * was not removed yet; and `delay` is sufficiently big.
-   *
-   * From the public domain JSR-166 `ScheduledThreadPoolExecutor`
-   * (`overflowFree` method).
-   */
-  private[this] final def overflowFree(now: Long, delay: Long): Long = {
-    val head = peekFirstNode()
-    // Note, that there is a race condition here:
-    // the node we're looking at (`head`) can be
-    // concurrently removed/cancelled. But the
-    // consequence of that here is only that we
-    // will be MORE careful with `delay` than
-    // necessary.
-    if (head ne null) {
-      val headDelay = head.triggerTime - now
-      if ((headDelay < 0) && (delay - headDelay < 0)) {
-        // head was already triggered, and `delay` is big enough,
-        // so we must clamp `delay`:
-        MAX_VALUE + headDelay
-      } else {
-        delay
-      }
-    } else {
-      delay // empty
-    }
-  }
-
-  /** For testing */
-  private[skiplist] final def put(triggerTime: Long, seqNo: Long, cb: Callback): Runnable = {
-    doPut(triggerTime, seqNo, cb, ThreadLocalRandom.current())
+  private[this] final def cpr(x: K, y: K): Int = {
+    K.compare(x, y)
   }
 
   /**
    * Analogous to `doPut` in the JSR-166 `ConcurrentSkipListMap`.
    */
   @tailrec
-  private[this] final def doPut(triggerTime: Long, seqNo: Long, cb: Callback, tlr: ThreadLocalRandom): Node = {
+  private[this] final def doPut(key: K, value: V, tlr: ThreadLocalRandom): Node = {
     val h = head.getAcquire()
     var levels = 0 // number of levels descended
     var b: Node = if (h eq null) {
       // head not initialized yet, do it now;
       // first node of the base list is a sentinel
       // (without payload):
-      val base = new Node(MARKER, MARKER, null: Callback, null)
+      val base = new Node(MARKER, TOMB, null)
       val h = new Index(base, null, null)
       if (head.compareAndSet(null, h)) base else null
     } else {
@@ -395,7 +270,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
       var foundBase: Node = null // we're looking for this
       while (foundBase eq null) {
         // first try to go right:
-        q = walkRight(q, triggerTime, seqNo)
+        q = walkRight(q, key)
         // then try to go down:
         val d = q.down
         if (d ne null) {
@@ -428,16 +303,16 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
           unlinkNode(b, n)
           c = 1 // will retry going right
         } else {
-            c = cpr(triggerTime, seqNo, n.triggerTime, n.sequenceNum)
+            c = cpr(key, n.key)
             if (c > 0) {
               // continue right
               b = n
-            } // else: we assume c < 0, due to seqNr being unique
+            } // else: we assume c < 0, due to seqNr being unique // XXX
         }
 
         if (c < 0) {
           // found insertion point
-          val p = new Node(triggerTime, seqNo, cb, n)
+          val p = new Node(key, value, n)
           if (b.casNext(n, p)) {
             z = p
             go = false
@@ -490,17 +365,17 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
           if (z.isDeleted()) {
             // was deleted while we added indices,
             // need to clean up:
-            findPredecessor(triggerTime, seqNo)
+            findPredecessor(key)
             ()
           }
         } // else: we're done, and won't add indices
 
         z
       } else { // restart
-        doPut(triggerTime, seqNo, cb, tlr)
+        doPut(key, value, tlr)
       }
     } else { // restart
-      doPut(triggerTime, seqNo, cb, tlr)
+      doPut(key, value, tlr)
     }
   }
 
@@ -519,7 +394,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    * in various methods as a `while` loop.
    */
   @tailrec
-  private[this] final def walkRight(q: Index, triggerTime: Long, seqNo: Long): Index = {
+  private[this] final def walkRight(q: Index, key: K): Index = {
     val r = q.getRight()
     if (r ne null) {
       val p = r.node
@@ -527,10 +402,10 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         // marker or deleted node, unlink it:
         q.casRight(r, r.getRight())
         // and retry:
-        walkRight(q, triggerTime, seqNo)
-      } else if (cpr(triggerTime, seqNo, p.triggerTime, p.sequenceNum) > 0) {
+        walkRight(q, key)
+      } else if (cpr(key, p.key) > 0) {
         // we can still go right:
-        walkRight(r, triggerTime, seqNo)
+        walkRight(r, key)
       } else {
         // can't go right any more:
         q
@@ -542,8 +417,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
   }
 
   /** For testing */
-  private[skiplist] final def remove(triggerTime: Long, seqNo: Long): Boolean = {
-    doRemove(triggerTime, seqNo)
+  private[skiplist] final def remove(key: K): Boolean = {
+    doRemove(key)
   }
 
   /**
@@ -554,8 +429,8 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
    *
    * Analogous to `doRemove` in the JSR-166 `ConcurrentSkipListMap`.
    */
-  private[this] final def doRemove(triggerTime: Long, seqNo: Long): Boolean = {
-    var b = findPredecessor(triggerTime, seqNo)
+  private[this] final def doRemove(key: K): Boolean = {
+    var b = findPredecessor(key)
     while (b ne null) { // outer
       var inner = true
       while (inner) {
@@ -564,22 +439,22 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
           return false // scalafix:ok
         } else if (n.isMarker) {
           inner = false
-          b = findPredecessor(triggerTime, seqNo)
+          b = findPredecessor(key)
         } else  {
-          val ncb = n.getCb()
-          if (ncb eq null) {
+          val ncb = n.getValue()
+          if (isTOMB(ncb)) {
             unlinkNode(b, n)
             // and retry `b.getNext()`
           } else {
-            val c = cpr(triggerTime, seqNo, n.triggerTime, n.sequenceNum)
+            val c = cpr(key, n.key)
             if (c > 0) {
               b = n
             } else if (c < 0) {
               return false // scalafix:ok
-            } else if (n.casCb(ncb, null)) {
+            } else if (n.casValue(ncb, TOMB)) {
               // successfully logically deleted
               unlinkNode(b, n)
-              findPredecessor(triggerTime, seqNo) // cleanup
+              findPredecessor(key) // cleanup
               tryReduceLevel()
               return true // scalafix:ok
             }
@@ -614,44 +489,56 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
     }
   }
 
+  /** For testing */
+  private[skiplist] final def peekFirstQuiescent(): V = {
+    val n = peekFirstNode()
+    if (n ne null) {
+      n.getValue()
+    } else {
+      nullOf[V]
+    }
+  }
+
   /**
+   * Pass MARKER to unconditionally remove the first node.
+   *
    * Analogous to `doRemoveFirstEntry` in the JSR-166 `ConcurrentSkipListMap`.
    */
-  private[this] final def doRemoveFirstNodeIfTriggered(now: Long): Callback = {
+  private[this] final def doRemoveFirstNodeIfTriggered(k: K): V = {
     val b = baseHead()
     if (b ne null) {
 
       @tailrec
-      def go(): Callback = {
+      def go(): V = {
         val n = b.getNext()
         if (n ne null) {
-          val tt = n.triggerTime
-          if (now - tt >= 0) { // triggered
-            val cb = n.getCb()
-            if (cb eq null) {
+          val tt = n.key
+          if (isMARKER(k) || K.lteqv(tt, k)) {
+            val cb = n.getValue()
+            if (isTOMB(cb)) {
               // alread (logically) deleted node
               unlinkNode(b, n)
               go()
-            } else if (n.casCb(cb, null)) {
+            } else if (n.casValue(cb, TOMB)) {
               unlinkNode(b, n)
               tryReduceLevel()
-              findPredecessor(tt, n.sequenceNum) // clean index
+              findPredecessor(tt) // clean index
               cb
             } else {
               // lost race, retry
               go()
             }
-          } else { // not triggered yet
-            null
+          } else { // not <= (or MARKER)
+            nullOf[V]
           }
         } else {
-          null
+          nullOf[V]
         }
       }
 
       go()
     } else {
-      null
+      nullOf[V]
     }
   }
 
@@ -696,7 +583,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
               q.casRight(r, r.getRight())
               c = 0
             } else {
-              c = cpr(z.triggerTime, z.sequenceNum, p.triggerTime, p.sequenceNum)
+              c = cpr(z.key, p.key)
             }
             if (c > 0) {
               q = r
@@ -732,19 +619,19 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
   }
 
   /**
-   * Returns a base node whith key < the parameters. Also unlinks
+   * Returns a base node with key < `key`. Also unlinks
    * indices to deleted nodes while searching.
    *
    * Analogous to `findPredecessor` in the JSR-166 `ConcurrentSkipListMap`.
    */
-  private[this] final def findPredecessor(triggerTime: Long, seqNo: Long): Node = {
+  private[this] final def findPredecessor(key: K): Node = {
     var q: Index = head.getAcquire() // current index node
-    if ((q eq null) || (seqNo == MARKER)) {
+    if ((q eq null) || isNull(key)) {
       null
     } else {
       while (true) {
         // go right:
-        q = walkRight(q, triggerTime, seqNo)
+        q = walkRight(q, key)
         // go down:
         val d = q.down
         if (d ne null) {
@@ -784,7 +671,7 @@ final class TimerSkipList() extends AtomicLong(MARKER + 1L) { sequenceNumber =>
         val f = n.getNext()
         if ((f ne null) && f.isMarker) {
           f.getNext() // `n` is already marked
-        } else if (n.casNext(f, new Node(MARKER, MARKER, null: Callback, f))) {
+        } else if (n.casNext(f, new Node(MARKER, TOMB, f))) {
           f // we've successfully marked `n`
         } else {
           mark() // lost race, retry

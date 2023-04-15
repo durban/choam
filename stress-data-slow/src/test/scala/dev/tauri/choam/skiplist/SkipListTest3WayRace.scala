@@ -45,10 +45,10 @@ class SkipListTest3WayRace {
     newCallback()
 
   private[this] val m = {
-    val m = new TimerSkipList
-    m.insertTlr(now = 2L, delay = 1024L, callback = secondCb)
+    val m = new SkipListMap[Long, Callback]
+    m.insertTlr(2L + 1024L, secondCb)
     for (i <- 3 to 128) {
-      m.insertTlr(now = i.toLong, delay = 1024L, callback = newCallback())
+      m.insertTlr(i.toLong + 1024L, newCallback())
     }
     m
   }
@@ -57,7 +57,7 @@ class SkipListTest3WayRace {
     newCallback()
 
   private[this] val headCanceller =
-    m.insertTlr(now = 1L, delay = 1024L, callback = headCb)
+    m.insertTlr(1L + 1024L, headCb)
 
   private[this] val newCb =
     newCallback()
@@ -70,18 +70,18 @@ class SkipListTest3WayRace {
   @Actor
   def insert(): Unit = {
     // head is 1025L now, we insert another 1025L:
-    m.insertTlr(now = 1L, delay = 1024L, callback = newCb)
+    m.insertTlr(1L + 1024L, newCb)
     ()
   }
 
   @Actor
   def pollFirst(r: JJ_Result): Unit = {
-    r.r1 = longFromCb(m.pollFirstIfTriggered(now = 2048L))
+    r.r1 = longFromCb(m.pollFirstIfTriggered(2048L))
   }
 
   @Arbiter
   def arbiter(r: JJ_Result): Unit = {
-    r.r2 = longFromCb(m.pollFirstIfTriggered(now = 2048L))
+    r.r2 = longFromCb(m.pollFirstIfTriggered(2048L))
   }
 
   private[this] final def longFromCb(cb: Callback): Long = {

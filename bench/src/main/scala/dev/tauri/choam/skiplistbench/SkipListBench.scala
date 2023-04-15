@@ -24,7 +24,7 @@ import java.util.concurrent.{ ConcurrentSkipListMap, ThreadLocalRandom }
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import skiplist.TimerSkipList
+import skiplist.SkipListMap
 
 @Fork(2)
 @Threads(2)
@@ -42,7 +42,7 @@ class SkipListBench {
   @Benchmark
   def insertRemoveTimerSkipList(s: TslState, @unused bh: Blackhole): Unit = {
     val d = s.nextDelay(ThreadLocalRandom.current())
-    val remover = s.tsl.insert(now = MIN_VALUE, delay = d, callback = s.dummyCallback, ThreadLocalRandom.current())
+    val remover = s.tsl.insert(MIN_VALUE + d, s.dummyCallback, ThreadLocalRandom.current())
     remover.run()
   }
 }
@@ -82,11 +82,11 @@ object SkipListBench {
   @State(Scope.Benchmark)
   class TslState extends AbstractState {
 
-    val tsl: TimerSkipList = {
-      val m = new TimerSkipList
+    val tsl: SkipListMap[Long, Callback] = {
+      val m = new SkipListMap[Long, Callback]
       val tlr = ThreadLocalRandom.current()
       for (_ <- 0 until size) {
-        m.insert(now = MIN_VALUE, delay = nextDelay(tlr), callback = dummyCallback, tlr = tlr)
+        m.insert(key = MIN_VALUE + nextDelay(tlr), value = dummyCallback, tlr = tlr)
       }
       m
     }

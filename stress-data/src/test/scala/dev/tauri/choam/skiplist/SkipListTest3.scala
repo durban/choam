@@ -35,9 +35,9 @@ class SkipListTest3 {
 
   private[this] val m = {
     val DELAY = 1024L
-    val m = new TimerSkipList
+    val m = new SkipListMap[Long, Callback]
     for (i <- 1 to 128) {
-      m.insertTlr(now = i.toLong, delay = DELAY, callback = newCallback(i.toLong, DELAY))
+      m.insertTlr( i.toLong + DELAY, newCallback(i.toLong, DELAY))
     }
     m
   }
@@ -48,7 +48,7 @@ class SkipListTest3 {
     newCallback(128L, MAGIC)
 
   private[this] val canceller: Runnable =
-    m.insertTlr(128L, MAGIC, cancelledCb)
+    m.insertTlr(128L + MAGIC, cancelledCb)
 
   private[this] val newCb: MyCallback =
     newCallback(128L, MAGIC)
@@ -56,9 +56,9 @@ class SkipListTest3 {
   @Actor
   def insert(r: JJJJ_Result): Unit = {
     // the list contains times between 1025 and 1152, we insert at 1100:
-    val cancel = m.insertTlr(now = newCb.now, delay = newCb.delay, callback = newCb).asInstanceOf[m.Node]
-    r.r1 = cancel.triggerTime
-    r.r2 = cancel.sequenceNum
+    val cancel = m.insertTlr(newCb.now + newCb.delay, newCb).asInstanceOf[m.Node]
+    r.r1 = cancel.key
+    // TODO: r.r2
   }
 
   @Actor
@@ -73,13 +73,13 @@ class SkipListTest3 {
       val cb = m.peekFirstQuiescent().asInstanceOf[MyCallback]
       cb.delay != MAGIC
     }) {
-      m.pollFirstIfTriggered(now = 2048L)
+      m.pollFirstIfTriggered(2048L)
     }
     // then look at the inserted item:
-    val cb = m.pollFirstIfTriggered(now = 2048L)
+    val cb = m.pollFirstIfTriggered(2048L)
     r.r3 = if (cb eq newCb) 1L else 0L
     // the cancelled one must be missing:
-    val other = m.pollFirstIfTriggered(now = 2048L)
+    val other = m.pollFirstIfTriggered(2048L)
     r.r4 = if (other eq cancelledCb) 0L else if (other eq newCb) -1L else 1L
   }
 

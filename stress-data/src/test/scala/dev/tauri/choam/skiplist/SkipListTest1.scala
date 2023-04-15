@@ -27,8 +27,8 @@ import org.openjdk.jcstress.infra.results.JJJJ_Result
 @State
 @Description("TimerSkipList insert/pollFirstIfTriggered race")
 @Outcomes(Array(
-  new JOutcome(id = Array("1024, -9223372036854775679, 1, 0"), expect = ACCEPTABLE_INTERESTING, desc = "insert won"),
-  new JOutcome(id = Array("1024, -9223372036854775679, 0, 1"), expect = ACCEPTABLE_INTERESTING, desc = "pollFirst won"),
+  new JOutcome(id = Array("1024, 0, 1, 0"), expect = ACCEPTABLE_INTERESTING, desc = "insert won"),
+  new JOutcome(id = Array("1024, 0, 0, 1"), expect = ACCEPTABLE_INTERESTING, desc = "pollFirst won"),
 ))
 class SkipListTest1 {
 
@@ -38,11 +38,11 @@ class SkipListTest1 {
     newCallback()
 
   private[this] val m = {
-    val m = new TimerSkipList
+    val m = new SkipListMap[Long, Callback]
     // head is 1025L:
-    m.insertTlr(now = 1L, delay = 1024L, callback = headCb)
+    m.insertTlr(1L + 1024L, headCb)
     for (i <- 2 to 128) {
-      m.insertTlr(now = i.toLong, delay = 1024L, callback = newCallback())
+      m.insertTlr(i.toLong + 1024L, newCallback())
     }
     m
   }
@@ -53,20 +53,20 @@ class SkipListTest1 {
   @Actor
   def insert(r: JJJJ_Result): Unit = {
     // head is 1025L now, we insert 1024L:
-    val cancel = m.insertTlr(now = 128L, delay = 896L, callback = newCb).asInstanceOf[m.Node]
-    r.r1 = cancel.triggerTime
-    r.r2 = cancel.sequenceNum
+    val cancel = m.insertTlr(128L + 896L, newCb).asInstanceOf[m.Node]
+    r.r1 = cancel.key
+    // TODO: r2 is unused
   }
 
   @Actor
   def pollFirst(r: JJJJ_Result): Unit = {
-    val cb = m.pollFirstIfTriggered(now = 2048L)
+    val cb = m.pollFirstIfTriggered(2048L)
     r.r3 = if (cb eq headCb) 0L else if (cb eq newCb) 1L else -1L
   }
 
   @Arbiter
   def arbiter(r: JJJJ_Result): Unit = {
-    val otherCb = m.pollFirstIfTriggered(now = 2048L)
+    val otherCb = m.pollFirstIfTriggered(2048L)
     r.r4 = if (otherCb eq headCb) 0L else if (otherCb eq newCb) 1L else -1L
   }
 

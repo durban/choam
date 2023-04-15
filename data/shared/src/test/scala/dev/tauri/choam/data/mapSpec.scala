@@ -375,9 +375,11 @@ trait MapSpec[F[_]]
     for {
       m1 <- Map.simpleHashMap[Int, String].run[F]
       m2 <- Map.hashMap[Int, String].run[F]
+      m3 <- Map.simpleOrderedMap[Int, String].run[F]
       _ = (
         m1 : Map.Extra[Int, String],
         m2 : Map[Int, String],
+        m3 : Map.Extra[Int, String],
       )
     } yield ()
   }

@@ -52,22 +52,22 @@ final class SkipListSpec extends FunSuite {
   private val cb5 = mkNewCb()
 
   test("insert / pollFirstIfTriggered") {
-    val m = new TimerSkipList
+    val m = new SkipListMap[Long, Callback]
     assertEquals(m.pollFirstIfTriggered(MIN), null)
     assertEquals(m.pollFirstIfTriggered(MAX), null)
     assertEquals(m.toString, "TimerSkipList()")
 
-    m.insertTlr(0L, 0L, cb0)
+    m.insertTlr(0L, cb0)
     assertEquals(m.toString, "TimerSkipList(...)")
     assertEquals(m.pollFirstIfTriggered(MIN), null)
     assertEquals(m.pollFirstIfTriggered(MAX), cb0)
     assertEquals(m.pollFirstIfTriggered(MAX), null)
     assertEquals(m.pollFirstIfTriggered(MIN), null)
 
-    m.insertTlr(0L, 10L, cb0)
-    m.insertTlr(0L, 30L, cb1)
-    m.insertTlr(0L, 0L, cb2)
-    m.insertTlr(0L, 20L, cb3)
+    m.insertTlr(10L, cb0)
+    m.insertTlr(30L, cb1)
+    m.insertTlr(0L, cb2)
+    m.insertTlr(20L, cb3)
     assertEquals(m.pollFirstIfTriggered(-1L), null)
     assertEquals(m.pollFirstIfTriggered(0L), cb2)
     assertEquals(m.pollFirstIfTriggered(0L), null)
@@ -81,116 +81,83 @@ final class SkipListSpec extends FunSuite {
   }
 
   test("insert / remove (cancel)") {
-    val m = new TimerSkipList
-    val r0 = m.insertTlr(0L, 0L, cb0)
-    val r1 = m.insertTlr(0L, 1L, cb1)
-    val r5 = m.insertTlr(0L, 5L, cb5)
-    val r4 = m.insertTlr(0L, 4L, cb4)
-    val r2 = m.insertTlr(0L, 2L, cb2)
-    val r3 = m.insertTlr(0L, 3L, cb3)
+    val m = new SkipListMap[Long, Callback]
+    val r0 = m.insertTlr(0L, cb0)
+    val r1 = m.insertTlr(1L, cb1)
+    val r5 = m.insertTlr(5L, cb5)
+    val r4 = m.insertTlr(4L, cb4)
+    val r2 = m.insertTlr(2L, cb2)
+    val r3 = m.insertTlr(3L, cb3)
 
-    assertEquals(m.peekFirstQuiescent(), cb0)
     assertEquals(m.peekFirstTriggerTime(), 0L)
     r0.run()
-    assertEquals(m.peekFirstQuiescent(), cb1)
     assertEquals(m.peekFirstTriggerTime(), 1L)
     assertEquals(m.pollFirstIfTriggered(MAX), cb1)
-    assertEquals(m.peekFirstQuiescent(), cb2)
     assertEquals(m.peekFirstTriggerTime(), 2L)
     r1.run() // NOP
     r3.run()
-    assertEquals(m.peekFirstQuiescent(), cb2)
     assertEquals(m.peekFirstTriggerTime(), 2L)
     assertEquals(m.pollFirstIfTriggered(MAX), cb2)
-    assertEquals(m.peekFirstQuiescent(), cb4)
     assertEquals(m.peekFirstTriggerTime(), 4L)
     assertEquals(m.pollFirstIfTriggered(MAX), cb4)
-    assertEquals(m.peekFirstQuiescent(), cb5)
     assertEquals(m.peekFirstTriggerTime(), 5L)
     r2.run()
     r5.run()
-    assertEquals(m.peekFirstQuiescent(), null)
     assertEquals(m.peekFirstTriggerTime(), MIN)
     assertEquals(m.pollFirstIfTriggered(MAX), null)
     r4.run() // NOP
   }
 
-  test("nanoTime wraparound") {
-    val m = new TimerSkipList
-    val startFrom = MAX - 100L
-    var nanoTime = startFrom
-    val removersBuilder = Vector.newBuilder[Runnable]
-    val callbacksBuilder = Vector.newBuilder[MyCallback]
-    for (_ <- 0 until 200) {
-      val cb = MyCallback(nanoTime, 10L)
-      val r = m.insertTlr(nanoTime, 10L, cb)
-      removersBuilder += r
-      callbacksBuilder += cb
-      nanoTime += 1L
-    }
-    val removers = removersBuilder.result()
-    for (idx <- 0 until removers.size by 2) {
-      removers(idx).run()
-    }
-    nanoTime += 100L
-    val callbacks = callbacksBuilder.result()
-    for (i <- 0 until 200 by 2) {
-      val cb = m.pollFirstIfTriggered(nanoTime).asInstanceOf[MyCallback]
-      val expected = callbacks(i + 1)
-      assertEquals(cb, expected)
-    }
-  }
+  // test("random test") { // TODO: use scalacheck
+  //   val r = new SkipListMap
+  //   val s = new Shadow
+  //   var n = 5000000
+  //   val seed = ThreadLocalRandom.current().nextLong()
+  //   println(s"SEED = ${seed}L")
+  //   val rnd = new SplittableRandom(seed)
+  //   def nextNonNegativeLong(): Long = rnd.nextLong() match {
+  //     case MIN => MAX
+  //     case n if n < 0 => -n
+  //     case n => n
+  //   }
 
-  test("random test") { // TODO: use scalacheck
-    val r = new TimerSkipList
-    val s = new Shadow
-    var n = 5000000
-    val seed = ThreadLocalRandom.current().nextLong()
-    println(s"SEED = ${seed}L")
-    val rnd = new SplittableRandom(seed)
-    def nextNonNegativeLong(): Long = rnd.nextLong() match {
-      case MIN => MAX
-      case n if n < 0 => -n
-      case n => n
-    }
+  //   val startNow = MIN + rnd.nextLong(0xffffffL)
+  //   var now = startNow
+  //   val cancellersBuilder = Vector.newBuilder[(Runnable, Runnable)]
+  //   while (n > 0) {
+  //     now += rnd.nextLong(0xffffffffL) // simulate time passing
+  //     val delay = nextNonNegativeLong()
+  //     val cb = mkNewCb()
+  //     val rs = s.insert(now, delay, cb)
+  //     val rr = r.insertTlr(now, delay, cb)
+  //     cancellersBuilder += ((rs, rr))
+  //     if (rnd.nextInt(8) == 0) {
+  //       rs.run()
+  //       rr.run()
+  //     }
+  //     n -= 1
+  //   }
 
-    val startNow = MIN + rnd.nextLong(0xffffffL)
-    var now = startNow
-    val cancellersBuilder = Vector.newBuilder[(Runnable, Runnable)]
-    while (n > 0) {
-      now += rnd.nextLong(0xffffffffL) // simulate time passing
-      val delay = nextNonNegativeLong()
-      val cb = mkNewCb()
-      val rs = s.insert(now, delay, cb)
-      val rr = r.insertTlr(now, delay, cb)
-      cancellersBuilder += ((rs, rr))
-      if (rnd.nextInt(8) == 0) {
-        rs.run()
-        rr.run()
-      }
-      n -= 1
-    }
+  //   val cancellers = cancellersBuilder.result()
+  //   var removeExtra = cancellers.size >> 2
+  //   while (removeExtra > 0) {
+  //     val idx = rnd.nextInt(cancellers.size)
+  //     val (rs, rr) = cancellers(idx)
+  //     rs.run()
+  //     rr.run()
+  //     removeExtra -= 1
+  //   }
 
-    val cancellers = cancellersBuilder.result()
-    var removeExtra = cancellers.size >> 2
-    while (removeExtra > 0) {
-      val idx = rnd.nextInt(cancellers.size)
-      val (rs, rr) = cancellers(idx)
-      rs.run()
-      rr.run()
-      removeExtra -= 1
-    }
-
-    while (s.size() > 0) {
-      val nt = s.nextTrigger()
-      assertEquals(s.pollFirstIfTriggered(nt - 1L), null)
-      assertEquals(r.pollFirstIfTriggered(nt - 1L), null)
-      val cbs = s.pollFirstIfTriggered(nt)
-      val cbr = r.pollFirstIfTriggered(nt)
-      assert(cbr ne null)
-      assert(cbr eq cbs)
-    }
-  }
+  //   while (s.size() > 0) {
+  //     val nt = s.nextTrigger()
+  //     assertEquals(s.pollFirstIfTriggered(nt - 1L), null)
+  //     assertEquals(r.pollFirstIfTriggered(nt - 1L), null)
+  //     val cbs = s.pollFirstIfTriggered(nt)
+  //     val cbr = r.pollFirstIfTriggered(nt)
+  //     assert(cbr ne null)
+  //     assert(cbr eq cbs)
+  //   }
+  // }
 }
 
 final object SkipListSpec {
