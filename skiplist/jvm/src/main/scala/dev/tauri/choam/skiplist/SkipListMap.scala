@@ -86,7 +86,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
     }
 
     final override def toString: String =
-      "<function>"
+      "Node(...)"
   }
 
   /** Index nodes */
@@ -140,8 +140,21 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
     equ(v, TOMB)
   }
 
+  /** @return the old value (if any). */
+  final def put(key: K, value: V): Option[V] = {
+    doPut(key, value, ThreadLocalRandom.current())
+  }
+
+  final def get(key: K): Option[V] = {
+    doGet(key)
+  }
+
+  final def del(key: K): Boolean = {
+    doRemove(key)
+  }
+
   /** For testing */
-  private[skiplist] final def insertTlr(
+  private[skiplist] final def insertTlr( // TODO: remove
     key: K,
     value: V,
   ): Runnable = {
@@ -159,12 +172,13 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    * @param callback the callback to insert into the skip list
    * @param tlr the `ThreadLocalRandom` of the current (calling) thread
    */
-  final def insert(
+  final def insert( // TODO: remove
     key: K,
     value: V,
     tlr: ThreadLocalRandom,
   ): Runnable = {
     doPut(key, value, tlr)
+    () => {}
   }
 
   /**
@@ -213,16 +227,6 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
     }
   }
 
-  // /** For testing */
-  // private[skiplist] final def peekFirstQuiescent(): V = {
-  //   val n = peekFirstNode()
-  //   if (n ne null) {
-  //     n.getCb()
-  //   } else {
-  //     nullOf[V]
-  //   }
-  // }
-
   /**
    * Compares keys.
    *
@@ -236,7 +240,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    * Analogous to `doPut` in the JSR-166 `ConcurrentSkipListMap`.
    */
   @tailrec
-  private[this] final def doPut(key: K, value: V, tlr: ThreadLocalRandom): Node = {
+  private[this] final def doPut(key: K, value: V, tlr: ThreadLocalRandom): Option[V] = {
     val h = head.getAcquire()
     var levels = 0 // number of levels descended
     var b: Node = if (h eq null) {
@@ -294,7 +298,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
                 b = n
               } else if ((c == 0) && n.casValue(v, value)) {
                 // successfully overwritten existing value
-                return n // scalafix:ok
+                return Some(v) // scalafix:ok
               } // else: c < 0 for sure
           }
         }
@@ -359,12 +363,79 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
           }
         } // else: we're done, and won't add indices
 
-        z
+        None
       } else { // restart
         doPut(key, value, tlr)
       }
     } else { // restart
       doPut(key, value, tlr)
+    }
+  }
+
+  private[this] final def doGet(key: K): Option[V] = {
+    var q = head.getAcquire()
+    if (q ne null) {
+      while (true) {
+        var inner = true
+        // first try to go right on the indices:
+        while (inner) {
+          val r = q.getRight()
+          if (r ne null) {
+            val p = r.node
+            val v = p.getValue()
+            if (p.isMarker || isTOMB(v)) {
+              // marker or deleted node, unlink it:
+              q.casRight(r, r.getRight())
+              // and will retry going right
+            } else {
+              val c = cpr(key, p.key)
+              if (c > 0) {
+                q = r // continue going right
+              } else if (c == 0) {
+                return Some(v) // scalafix:ok
+              } else {
+                inner = false // will go down
+              }
+            }
+          } else {
+            inner = false
+          }
+        }
+        // then go down:
+        val d = q.down
+        if (d ne null) {
+          q = d
+        } else {
+          // go right in the base list:
+          var b = q.node
+          while (true) {
+            val n = b.getNext()
+            if (n ne null) {
+              val v = n.getValue()
+              if (n.isMarker || isTOMB(v)) {
+                // jump over deleted nodes
+                b = n // continue right
+              } else {
+                val c = cpr(key, n.key)
+                if (c > 0) {
+                  b = n // continue right
+                } else if (c == 0) {
+                  return Some(v) // scalafix:ok
+                } else { // c < 0
+                  return None // scalafix:ok
+                }
+              }
+            } else {
+              // reached end of list
+              return None // scalafix:ok
+            }
+          }
+        }
+      }
+
+      null // unreachable
+    } else {
+      None // empty list
     }
   }
 
