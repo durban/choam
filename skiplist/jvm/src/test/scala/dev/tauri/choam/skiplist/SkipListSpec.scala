@@ -25,10 +25,6 @@ import java.util.SplittableRandom
 import scala.collection.mutable.{ TreeMap => MutTreeMap }
 import scala.concurrent.duration._
 
-import cats.kernel.Comparison.EqualTo
-import cats.kernel.Comparison.GreaterThan
-import cats.kernel.Comparison.LessThan
-
 import munit.FunSuite
 
 import SkipListHelper._
@@ -55,10 +51,10 @@ final class SkipListSpec extends FunSuite {
     val m = new SkipListMap[Long, Callback]
     assertEquals(m.pollFirstIfTriggered(MIN), null)
     assertEquals(m.pollFirstIfTriggered(MAX), null)
-    assertEquals(m.toString, "TimerSkipList()")
+    assertEquals(m.toString, "SkipListMap()")
 
     m.insertTlr(0L, cb0)
-    assertEquals(m.toString, "TimerSkipList(...)")
+    assertEquals(m.toString, "SkipListMap(...)")
     assertEquals(m.pollFirstIfTriggered(MIN), null)
     assertEquals(m.pollFirstIfTriggered(MAX), cb0)
     assertEquals(m.pollFirstIfTriggered(MAX), null)
@@ -103,103 +99,71 @@ final class SkipListSpec extends FunSuite {
     assertEquals(m.peekFirstTriggerTime(), 5L)
     r2.run()
     r5.run()
-    assertEquals(m.peekFirstTriggerTime(), MIN)
     assertEquals(m.pollFirstIfTriggered(MAX), null)
     r4.run() // NOP
   }
 
-  // test("random test") { // TODO: use scalacheck
-  //   val r = new SkipListMap
-  //   val s = new Shadow
-  //   var n = 5000000
-  //   val seed = ThreadLocalRandom.current().nextLong()
-  //   println(s"SEED = ${seed}L")
-  //   val rnd = new SplittableRandom(seed)
-  //   def nextNonNegativeLong(): Long = rnd.nextLong() match {
-  //     case MIN => MAX
-  //     case n if n < 0 => -n
-  //     case n => n
-  //   }
+  test("random test") { // TODO: use scalacheck
+    val r = new SkipListMap[Long, Callback]
+    val s = new Shadow
+    var n = 5000000
+    val seed = ThreadLocalRandom.current().nextLong()
+    println(s"SEED = ${seed}L")
+    val rnd = new SplittableRandom(seed)
+    def nextNonNegativeLong(): Long = rnd.nextLong() match {
+      case MIN => MAX
+      case n if n < 0 => -n
+      case n => n
+    }
 
-  //   val startNow = MIN + rnd.nextLong(0xffffffL)
-  //   var now = startNow
-  //   val cancellersBuilder = Vector.newBuilder[(Runnable, Runnable)]
-  //   while (n > 0) {
-  //     now += rnd.nextLong(0xffffffffL) // simulate time passing
-  //     val delay = nextNonNegativeLong()
-  //     val cb = mkNewCb()
-  //     val rs = s.insert(now, delay, cb)
-  //     val rr = r.insertTlr(now, delay, cb)
-  //     cancellersBuilder += ((rs, rr))
-  //     if (rnd.nextInt(8) == 0) {
-  //       rs.run()
-  //       rr.run()
-  //     }
-  //     n -= 1
-  //   }
+    val startNow = MIN + rnd.nextLong(0xffffffL)
+    var now = startNow
+    val cancellersBuilder = Vector.newBuilder[(Runnable, Runnable)]
+    while (n > 0) {
+      now += rnd.nextLong(0xffffffffL) // simulate time passing
+      val delay = nextNonNegativeLong()
+      val cb = mkNewCb()
+      val rs = s.insert(now + delay, cb)
+      val rr = r.insertTlr(now + delay, cb)
+      cancellersBuilder += ((rs, rr))
+      if (rnd.nextInt(8) == 0) {
+        rs.run()
+        rr.run()
+      }
+      n -= 1
+    }
 
-  //   val cancellers = cancellersBuilder.result()
-  //   var removeExtra = cancellers.size >> 2
-  //   while (removeExtra > 0) {
-  //     val idx = rnd.nextInt(cancellers.size)
-  //     val (rs, rr) = cancellers(idx)
-  //     rs.run()
-  //     rr.run()
-  //     removeExtra -= 1
-  //   }
+    val cancellers = cancellersBuilder.result()
+    var removeExtra = cancellers.size >> 2
+    while (removeExtra > 0) {
+      val idx = rnd.nextInt(cancellers.size)
+      val (rs, rr) = cancellers(idx)
+      rs.run()
+      rr.run()
+      removeExtra -= 1
+    }
 
-  //   while (s.size() > 0) {
-  //     val nt = s.nextTrigger()
-  //     assertEquals(s.pollFirstIfTriggered(nt - 1L), null)
-  //     assertEquals(r.pollFirstIfTriggered(nt - 1L), null)
-  //     val cbs = s.pollFirstIfTriggered(nt)
-  //     val cbr = r.pollFirstIfTriggered(nt)
-  //     assert(cbr ne null)
-  //     assert(cbr eq cbs)
-  //   }
-  // }
+    while (s.size() > 0) {
+      val nt = s.nextTrigger()
+      assertEquals(s.pollFirstIfTriggered(nt - 1L), null)
+      assertEquals(r.pollFirstIfTriggered(nt - 1L), null)
+      val cbs = s.pollFirstIfTriggered(nt)
+      val cbr = r.pollFirstIfTriggered(nt)
+      assert(cbr ne null)
+      assert(cbr eq cbs)
+    }
+  }
 }
 
 final object SkipListSpec {
 
-  final object Shadow {
-
-    val comparator: Ordering[(Long, Long)] = new Ordering[(Long, Long)] {
-      final override def compare(x: (Long, Long), y: (Long, Long)): Int = {
-        val (xTriggerTime, xSeqNo) = x
-        val (yTriggerTime, ySeqNo) = y
-        // first compare trigger times:
-        val d = xTriggerTime - yTriggerTime
-        if (d < 0) -1
-        else if (d > 0) 1
-        else {
-          // if times are equal, compare seq numbers:
-          if (xSeqNo < ySeqNo) -1
-          else if (xSeqNo == ySeqNo) 0
-          else 1
-        }
-      }
-    }
-
-    val catsComparator: cats.kernel.Order[(Long, Long)] =
-      cats.kernel.Order.fromOrdering(comparator)
-  }
-
-  final class Shadow private (map: MutTreeMap[(Long, Long), Callback]) {
-
-    private[this] var seqNo: Long =
-      MIN + 1L
+  final class Shadow private (map: MutTreeMap[Long, Callback]) {
 
     def this() = {
-      this(MutTreeMap.empty(Shadow.comparator))
+      this(MutTreeMap.empty)
     }
 
-    final def insert(now: Long, delay: Long, callback: Callback): Runnable = {
-      require(delay >= 0L)
-      val triggerTime = computeTriggerTime(now, delay)
-      val sn = this.seqNo
-      this.seqNo += 1L
-      val key = (triggerTime, sn)
+    final def insert(key: Long, callback: Callback): Runnable = {
       map.put(key, callback)
       () => { map.remove(key); () }
     }
@@ -209,7 +173,7 @@ final object SkipListSpec {
         null
       } else {
         val entry = map.head
-        val tt = entry._1._1
+        val tt = entry._1
         if (now - tt >= 0) {
           assert(map.remove(entry._1).isDefined)
           entry._2
@@ -221,84 +185,11 @@ final object SkipListSpec {
 
     final def nextTrigger(): Long = {
       val h = map.head
-      h._1._1
+      h._1
     }
 
     final def size(): Int = {
       map.size
-    }
-
-    private def peekFirstNode(): ((Long, Long), Callback) = {
-      if (map.isEmpty) null
-      else map.head
-    }
-
-    private[skiplist] final def printBaseNodesQuiescent(println: String => Unit): Unit = {
-      val it = map.iterator
-      while (it.hasNext) {
-        val ((tt, sn), cb) = it.next()
-        val cbStr = cb match {
-          case null => "null"
-          case cb => cb.##.toHexString
-        }
-        println(s"${tt}, ${sn}, ${cbStr}")
-      }
-    }
-
-    final def printComparisons(println: String => Unit): Unit = {
-      val it = map.keysIterator
-      var prev: (Long, Long) = null
-      while (it.hasNext) {
-        val curr = it.next()
-        if (prev ne null) {
-          val cmp = Shadow.catsComparator.comparison(prev, curr) match {
-            case EqualTo => "=="
-            case GreaterThan => ">"
-            case LessThan => "<"
-          }
-          println(s"$prev ${cmp} $curr")
-        }
-        prev = curr
-      }
-    }
-
-    /**
-     * Computes the trigger time in an overflow-safe manner.
-     * The trigger time is essentially `now + delay`. However,
-     * we must constrain all trigger times in the skip list
-     * to be within `Long.MaxValue` of each other (otherwise
-     * there will be overflow when comparing in `cpr`). Thus,
-     * if `delay` is so big, we'll reduce it to the greatest
-     * allowable (in `overflowFree`).
-     *
-     * From the public domain JSR-166 `ScheduledThreadPoolExecutor`.
-     */
-    private[this] final def computeTriggerTime(now: Long, delay: Long): Long = {
-      val safeDelay = if (delay < (MAX >> 1)) delay else overflowFree(now, delay)
-      now + safeDelay
-    }
-
-    /**
-     * See `computeTriggerTime`. The overflow can happen if
-     * a callback was already triggered (based on `now`), but
-     * was not removed yet; and `delay` is sufficiently big.
-     *
-     * From the public domain JSR-166 `ScheduledThreadPoolExecutor`.
-     */
-    private[this] final def overflowFree(now: Long, delay: Long): Long = {
-      val head = peekFirstNode()
-      if (head ne null) {
-        val headDelay = head._1._1 - now
-        if ((headDelay < 0) && (delay - headDelay < 0)) {
-          // head was already triggered, and `delay` is big enough,
-          // so we must clamp `delay`:
-          MAX + headDelay
-        } else {
-          delay
-        }
-      } else {
-        delay // empty
-      }
     }
   }
 }
