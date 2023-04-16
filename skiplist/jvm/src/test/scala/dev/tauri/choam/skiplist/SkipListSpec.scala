@@ -178,6 +178,44 @@ final class SkipListSpec extends ScalaCheckSuite {
       }
     }
   }
+
+  property("null keys/values") {
+    val nullTolerantStringOrder: Order[String] = { (x, y) =>
+      if ((x eq null) && (y eq null)) {
+        0
+      } else if (x eq null) {
+        -1
+      } else if (y eq null) {
+        1
+      } else {
+        Order[String].compare(x, y)
+      }
+    }
+    Prop.forAll { (kvs: Map[String, String]) =>
+      val m = new SkipListMap[String, String]()(nullTolerantStringOrder)
+      for ((k, v) <- kvs) {
+        m.put(k, v)
+      }
+      m.put(null, "a")
+      for ((k, v) <- kvs if (k ne null)) {
+        assertEquals(m.get(k), Some(v))
+      }
+      assertEquals(m.get(null), Some("a"))
+      val myKey = "qwerty"
+      m.put(myKey, null)
+      for ((k, v) <- kvs if ((k ne null) && (k != myKey))) {
+        assertEquals(m.get(k), Some(v))
+      }
+      assertEquals(m.get(null), Some("a"))
+      assertEquals(m.get(myKey), Some(null))
+      m.put(null, null)
+      for ((k, v) <- kvs if ((k ne null) && (k != myKey))) {
+        assertEquals(m.get(k), Some(v))
+      }
+      assertEquals(m.get(null), Some(null))
+      assertEquals(m.get(myKey), Some(null))
+    }
+  }
 }
 
 final object SkipListSpec {
