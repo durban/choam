@@ -19,7 +19,6 @@ package dev.tauri.choam
 package skiplist
 
 import java.util.concurrent.atomic.{ AtomicReference }
-import java.lang.Long.{ MAX_VALUE }
 import java.util.concurrent.ThreadLocalRandom
 
 import cats.kernel.Order
@@ -33,19 +32,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    * This implementation is based on the public
    * domain JSR-166 `ConcurrentSkipListMap`.
    * Contains simplifications, because we just
-   * need a few main operations. Also,
-   * `pollFirstIfTriggered` contains an extra
-   * condition (compared to `pollFirstEntry`
-   * in the JSR-166 implementation), because
-   * we don't want to remove if the trigger time
-   * is still in the future.
-   *
-   * Our values are the callbacks, and used
-   * similarly. Our keys are essentially the
-   * trigger times, but see the comment in
-   * `insert`. Due to longs not having nulls,
-   * we use a special value for designating
-   * "marker" nodes (see `Node#isMarker`).
+   * need a few main operations.
    */
 
   /**
@@ -53,11 +40,8 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    *
    * `next` is the next node in the base list (with a key > than this).
    *
-   * A `Node` is a special "marker" node (for deletion) if `sequenceNum == MARKER`.
-   * A `Node` is logically deleted if `cb eq null`.
-   *
-   * We're also (ab)using the `Node` class as the "canceller" for an
-   * inserted timer callback (see `run` method).
+   * A `Node` is a special "marker" node (for deletion) if `key == MARKER`.
+   * A `Node` is logically deleted if `value == TOMB`.
    */
   private[skiplist] final class Node private (
     val key: K,
@@ -72,8 +56,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
 
     /** Removes the entry */
     final override def run(): Unit = {
-      // TODO: We could null the value here directly,
-      // TODO: and the do the lookup after (for unlinking).
+      // TODO: this is incorrect, since we now overwrite values in `doPut`
       SkipListMap.this.doRemove(key)
       ()
     }
@@ -299,15 +282,21 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
           // someone is deleting `b` right now, will
           // restart insertion (as `z` is still null)
           go = false
-        } else if (n.isDeleted()) {
-          unlinkNode(b, n)
-          c = 1 // will retry going right
         } else {
-            c = cpr(key, n.key)
-            if (c > 0) {
-              // continue right
-              b = n
-            } // else: we assume c < 0, due to seqNr being unique // XXX
+          val v = n.getValue()
+          if (isTOMB(v)) {
+            unlinkNode(b, n)
+            c = 1 // will retry going right
+          } else {
+              c = cpr(key, n.key)
+              if (c > 0) {
+                // continue right
+                b = n
+              } else if ((c == 0) && n.casValue(v, value)) {
+                // successfully overwritten existing value
+                return n // scalafix:ok
+              } // else: c < 0 for sure
+          }
         }
 
         if (c < 0) {

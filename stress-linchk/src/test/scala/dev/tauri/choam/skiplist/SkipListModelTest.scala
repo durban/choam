@@ -27,7 +27,7 @@ import munit.FunSuite
 
 final class SkipListModelTest extends FunSuite with BaseLinchkSpec {
 
-  test("Model checking test of TimerSkipList") {
+  test("Model checking test of SkipListMap") {
     val opts = defaultModelCheckingOptions()
       .checkObstructionFreedom(true)
       .iterations(500) // 1000
@@ -67,10 +67,11 @@ final object SkipListModelTest {
       ()
     }
 
-    @Operation
-    def pollFirst(): String = {
-      m.pollFirst()
-    }
+    // TODO:
+    // @Operation
+    // def lookup(key: Int): String = {
+    //   ???
+    // }
 
     @Operation
     def remove(key: Int): Boolean = {
@@ -102,23 +103,11 @@ final object SkipListModelTest {
       ()
     }
 
-    @Operation
-    def pollFirst(): String = {
-      val it = m.iterator
-      if (it.hasNext) {
-        val (k, cb) = it.next()
-        m.remove(k) match {
-          case Some(cb2) =>
-            assert(cb2 eq cb)
-            cb2
-          case None =>
-            assert(false)
-            null // unreachable
-        }
-      } else {
-        null
-      }
-    }
+    // TODO:
+    // @Operation
+    // def lookup(key: Int): String = {
+    //   ???
+    // }
 
     @Operation
     def remove(key: Int): Boolean = {
