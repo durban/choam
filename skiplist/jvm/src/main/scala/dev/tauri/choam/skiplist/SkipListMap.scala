@@ -142,7 +142,12 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
 
   /** @return the old value (if any). */
   final def put(key: K, value: V): Option[V] = {
-    doPut(key, value, ThreadLocalRandom.current())
+    doPut(key, value, onlyIfAbsent = false, tlr = ThreadLocalRandom.current())
+  }
+
+  /** @return the existing value (if any). */
+  final def putIfAbsent(key: K, value: V): Option[V] = {
+    doPut(key, value, onlyIfAbsent = true, tlr = ThreadLocalRandom.current())
   }
 
   final def get(key: K): Option[V] = {
@@ -177,7 +182,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
     value: V,
     tlr: ThreadLocalRandom,
   ): Runnable = {
-    doPut(key, value, tlr)
+    doPut(key, value, onlyIfAbsent = false, tlr = tlr)
     () => {}
   }
 
@@ -240,7 +245,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    * Analogous to `doPut` in the JSR-166 `ConcurrentSkipListMap`.
    */
   @tailrec
-  private[this] final def doPut(key: K, value: V, tlr: ThreadLocalRandom): Option[V] = {
+  private[this] final def doPut(key: K, value: V, onlyIfAbsent: Boolean, tlr: ThreadLocalRandom): Option[V] = {
     val h = head.getAcquire()
     var levels = 0 // number of levels descended
     var b: Node = if (h eq null) {
@@ -296,8 +301,8 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
               if (c > 0) {
                 // continue right
                 b = n
-              } else if ((c == 0) && n.casValue(v, value)) {
-                // successfully overwritten existing value
+              } else if ((c == 0) && (onlyIfAbsent || n.casValue(v, value))) {
+                // successfully overwritten existing value (or not, if `onlyIfAbsent`)
                 return Some(v) // scalafix:ok
               } // else: c < 0 for sure
           }
@@ -365,10 +370,10 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
 
         None
       } else { // restart
-        doPut(key, value, tlr)
+        doPut(key, value, onlyIfAbsent, tlr)
       }
     } else { // restart
-      doPut(key, value, tlr)
+      doPut(key, value, onlyIfAbsent, tlr)
     }
   }
 

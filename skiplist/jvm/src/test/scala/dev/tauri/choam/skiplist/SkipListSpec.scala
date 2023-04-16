@@ -106,6 +106,19 @@ final class SkipListSpec extends ScalaCheckSuite {
     assertEquals(m.get(5), None)
   }
 
+  test("putIfAbsent") {
+    val m = new SkipListMap[Int, String]
+    assertEquals(m.putIfAbsent(42, "foo"), None)
+    assertEquals(m.get(42), Some("foo"))
+    assertEquals(m.putIfAbsent(42, "bar"), Some("foo"))
+    assertEquals(m.get(42), Some("foo"))
+    assertEquals(m.putIfAbsent(42, "xyz"), Some("foo"))
+    assertEquals(m.get(42), Some("foo"))
+    assertEquals(m.putIfAbsent(33, "xyz"), None)
+    assertEquals(m.get(42), Some("foo"))
+    assertEquals(m.get(33), Some("xyz"))
+  }
+
   property("empty list get") {
     val m = new SkipListMap[Int, String]
     Prop.forAll { (k: Int) =>
@@ -127,6 +140,23 @@ final class SkipListSpec extends ScalaCheckSuite {
       m.put(k, v)
       m.del(k)
       assert(m.get(k).isEmpty)
+    }
+  }
+
+  property("putIfAbsent doesn't overwrite values") {
+    Prop.forAll { (ks: Set[Int], k: Int) =>
+      val m = new SkipListMap[Int, String]
+      for (k <- ks) {
+        m.put(k, k.toString)
+      }
+      val v = "xyz"
+      if (ks.contains(k)) {
+        assertEquals(m.putIfAbsent(k, v), Some(k.toString))
+        assertEquals(m.get(k), Some(k.toString))
+      } else {
+        assertEquals(m.putIfAbsent(k, v), None)
+        assertEquals(m.get(k), Some(v))
+      }
     }
   }
 
