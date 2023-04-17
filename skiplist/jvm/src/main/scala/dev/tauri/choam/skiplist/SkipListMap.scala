@@ -150,22 +150,6 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
     doRemove(key)
   }
 
-  /**
-   * Removes and returns the first (earliest) timer callback,
-   * if its trigger time is not later than `now`. Can return
-   * `null` if there is no such callback.
-   *
-   * It is the caller's responsibility to check for `null`,
-   * and actually invoke the callback (if desired).
-   */
-  final def pollFirstIfTriggered(k: K): V = {
-    doRemoveFirstNodeIfTriggered(k)
-  }
-
-  final def pollFirst(): V = {
-    doRemoveFirstNodeIfTriggered(MARKER)
-  }
-
   final override def toString: String = {
     peekFirstNode() match {
       case null =>
@@ -501,49 +485,6 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
       n
     } else {
       null
-    }
-  }
-
-  /**
-   * Pass MARKER to unconditionally remove the first node.
-   *
-   * Analogous to `doRemoveFirstEntry` in the JSR-166 `ConcurrentSkipListMap`.
-   */
-  private[this] final def doRemoveFirstNodeIfTriggered(k: K): V = {
-    val b = baseHead()
-    if (b ne null) {
-
-      @tailrec
-      def go(): V = {
-        val n = b.getNext()
-        if (n ne null) {
-          val tt = n.key
-          if (isMARKER(k) || K.lteqv(tt, k)) {
-            val cb = n.getValue()
-            if (isTOMB(cb)) {
-              // alread (logically) deleted node
-              unlinkNode(b, n)
-              go()
-            } else if (n.casValue(cb, TOMB)) {
-              unlinkNode(b, n)
-              tryReduceLevel()
-              findPredecessor(tt) // clean index
-              cb
-            } else {
-              // lost race, retry
-              go()
-            }
-          } else { // not <= (or MARKER)
-            nullOf[V]
-          }
-        } else {
-          nullOf[V]
-        }
-      }
-
-      go()
-    } else {
-      nullOf[V]
     }
   }
 
