@@ -21,59 +21,39 @@ package skiplist
 import org.openjdk.jcstress.annotations.{ Ref => _, Outcome => JOutcome, _ }
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
-import org.openjdk.jcstress.infra.results.JJJ_Result
+import org.openjdk.jcstress.infra.results.ZZZ_Result
 
 @JCStressTest
 @State
-@Description("TimerSkipList pollFirstIfTriggered/pollFirstIfTriggered race")
+@Description("SkipListMap del/del race")
 @Outcomes(Array(
-  new JOutcome(id = Array("1, 0, 0"), expect = ACCEPTABLE_INTERESTING, desc = "pollFirst1 won"),
-  new JOutcome(id = Array("0, 1, 0"), expect = ACCEPTABLE_INTERESTING, desc = "pollFirst2 won"),
+  new JOutcome(id = Array("true, false, false"), expect = ACCEPTABLE_INTERESTING, desc = "del1 won"),
+  new JOutcome(id = Array("false, true, false"), expect = ACCEPTABLE_INTERESTING, desc = "del2 won"),
 ))
 class SkipListTest4 {
 
-  import SkipListHelper.Callback
-
-  private[this] val headCb =
-    newCallback()
-
-  private[this] val secondCb =
-    newCallback()
+  private[this] final val KEY = 64L
 
   private[this] val m = {
-    val m = new SkipListMap[Long, Callback]
-    // head is 1025L:
-    m.insertTlr(1L + 1024L, headCb)
-    // second is 1026L:
-    m.insertTlr(2L + 1024L, secondCb)
-    for (i <- 3 to 128) {
-      m.insertTlr(i.toLong + 1024L, newCallback())
+    val m = new SkipListMap[Long, String]
+    for (i <- 1 to 128) {
+      m.put(i.toLong, i.toString)
     }
     m
   }
 
   @Actor
-  def pollFirst1(r: JJJ_Result): Unit = {
-    val cb = m.pollFirstIfTriggered(2048L)
-    r.r1 = if (cb eq headCb) 1L else if (cb eq secondCb) 0L else -1L
+  def del1(r: ZZZ_Result): Unit = {
+    r.r1 = m.del(KEY)
   }
 
   @Actor
-  def pollFirst2(r: JJJ_Result): Unit = {
-    val cb = m.pollFirstIfTriggered(2048L)
-    r.r2 = if (cb eq headCb) 1L else if (cb eq secondCb) 0L else -1L
+  def del2(r: ZZZ_Result): Unit = {
+    r.r2 = m.del(KEY)
   }
 
   @Arbiter
-  def arbiter(r: JJJ_Result): Unit = {
-    val otherCb = m.pollFirstIfTriggered(2048L)
-    r.r3 = if (otherCb eq headCb) -1L else if (otherCb eq secondCb) -1L else 0L
-  }
-
-  private[this] final def newCallback(): Callback = {
-    new Function1[Right[Nothing, Unit], Unit] with Serializable {
-      final override def apply(r: Right[Nothing, Unit]): Unit = ()
-      final override def toString: String = s"Callback(#${this.##.toHexString})"
-    }
+  def arbiter(r: ZZZ_Result): Unit = {
+    r.r3 = m.get(KEY).isDefined
   }
 }

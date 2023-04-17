@@ -21,51 +21,40 @@ package skiplist
 import org.openjdk.jcstress.annotations.{ Ref => _, Outcome => JOutcome, _ }
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
-import org.openjdk.jcstress.infra.results.JJJ_Result
+import org.openjdk.jcstress.infra.results.LLL_Result
 
 @JCStressTest
 @State
-@Description("TimerSkipList pollFirstIfTriggered/pollFirstIfTriggered race (single element)")
+@Description("SkipListMap get/del race")
 @Outcomes(Array(
-  new JOutcome(id = Array("1, 0, 0"), expect = ACCEPTABLE_INTERESTING, desc = "pollFirst1 won"),
-  new JOutcome(id = Array("0, 1, 0"), expect = ACCEPTABLE_INTERESTING, desc = "pollFirst2 won"),
+  new JOutcome(id = Array("Some(64), true, None"), expect = ACCEPTABLE_INTERESTING, desc = "get won"),
+  new JOutcome(id = Array("None, true, None"), expect = ACCEPTABLE_INTERESTING, desc = "del won"),
 ))
 class SkipListTest5 {
 
-  import SkipListHelper.Callback
-
-  private[this] val headCb =
-    newCallback()
+  private[this] final val KEY =
+    64L
 
   private[this] val m = {
-    val m = new SkipListMap[Long, Callback]
-    // head is 1025L:
-    m.insertTlr(1L + 1024L, headCb)
+    val m = new SkipListMap[Long, String]
+    for (k <- 1L to 128L) {
+      m.put(k, k.toString)
+    }
     m
   }
 
   @Actor
-  def pollFirst1(r: JJJ_Result): Unit = {
-    val cb = m.pollFirstIfTriggered(2048L)
-    r.r1 = if (cb eq headCb) 1L else if (cb eq null) 0L else -1L
+  def get(r: LLL_Result): Unit = {
+    r.r1 = m.get(KEY)
   }
 
   @Actor
-  def pollFirst2(r: JJJ_Result): Unit = {
-    val cb = m.pollFirstIfTriggered(2048L)
-    r.r2 = if (cb eq headCb) 1L else if (cb eq null) 0L else -1L
+  def del(r: LLL_Result): Unit = {
+    r.r2 = m.del(KEY)
   }
 
   @Arbiter
-  def arbiter(r: JJJ_Result): Unit = {
-    val cb = m.pollFirstIfTriggered(2048L)
-    r.r3 = if (cb eq null) 0L else -1L
-  }
-
-  private[this] final def newCallback(): Callback = {
-    new Function1[Right[Nothing, Unit], Unit] with Serializable {
-      final override def apply(r: Right[Nothing, Unit]): Unit = ()
-      final override def toString: String = s"Callback(#${this.##.toHexString})"
-    }
+  def arbiter(r: LLL_Result): Unit = {
+    r.r3 = m.get(KEY)
   }
 }
