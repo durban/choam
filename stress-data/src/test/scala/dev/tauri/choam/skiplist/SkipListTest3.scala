@@ -21,69 +21,44 @@ package skiplist
 import org.openjdk.jcstress.annotations.{ Ref => _, Outcome => JOutcome, _ }
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
-import org.openjdk.jcstress.infra.results.JJJJ_Result
+import org.openjdk.jcstress.infra.results.LLL_Result
 
 @JCStressTest
 @State
-@Description("TimerSkipList insert/cancel race")
+@Description("TimerSkipList put/del race")
 @Outcomes(Array(
-  new JOutcome(id = Array("1100, -9223372036854775678, 1, 1"), expect = ACCEPTABLE_INTERESTING, desc = "ok"),
+  new JOutcome(id = Array("?, ?, ?"), expect = ACCEPTABLE_INTERESTING, desc = "put won"),
+  new JOutcome(id = Array("?, ?, ?"), expect = ACCEPTABLE_INTERESTING, desc = "del won"),
 ))
 class SkipListTest3 {
 
-  import SkipListHelper._
+  private[this] final val KEY =
+    1100L
 
   private[this] val m = {
     val DELAY = 1024L
-    val m = new SkipListMap[Long, Callback]
+    val m = new SkipListMap[Long, String]
     for (i <- 1 to 128) {
-      m.insertTlr( i.toLong + DELAY, newCallback(i.toLong, DELAY))
+      val key = i.toLong + DELAY
+      m.put(key, key.toString)
     }
+    m.put(KEY, "MAGIC") // this will be removed/overwritten
     m
   }
 
-  private[this] final val MAGIC = 972L
-
-  val cancelledCb: Callback =
-    newCallback(128L, MAGIC)
-
-  private[this] val canceller: Runnable =
-    m.insertTlr(128L + MAGIC, cancelledCb)
-
-  private[this] val newCb: MyCallback =
-    newCallback(128L, MAGIC)
-
   @Actor
-  def insert(r: JJJJ_Result): Unit = {
-    // the list contains times between 1025 and 1152, we insert at 1100:
-    val cancel = m.insertTlr(newCb.now + newCb.delay, newCb).asInstanceOf[m.Node]
-    r.r1 = cancel.key
-    // TODO: r.r2
+  def insert(r: LLL_Result): Unit = {
+    // the list contains keys between 1025 and 1152, we insert (overwrite) at 1100:
+    r.r1 = m.put(KEY, "INSERT")
   }
 
   @Actor
-  def cancel(): Unit = {
-    canceller.run()
+  def remove(r: LLL_Result): Unit = {
+    r.r2 = m.del(KEY)
   }
 
   @Arbiter
-  def arbiter(r: JJJJ_Result): Unit = {
-    // first remove all the items before the racy ones:
-    while ({
-      val cb = m.peekFirstQuiescent().asInstanceOf[MyCallback]
-      cb.delay != MAGIC
-    }) {
-      m.pollFirstIfTriggered(2048L)
-    }
-    // then look at the inserted item:
-    val cb = m.pollFirstIfTriggered(2048L)
-    r.r3 = if (cb eq newCb) 1L else 0L
-    // the cancelled one must be missing:
-    val other = m.pollFirstIfTriggered(2048L)
-    r.r4 = if (other eq cancelledCb) 0L else if (other eq newCb) -1L else 1L
-  }
-
-  private[this] final def newCallback(now: Long, delay: Long): MyCallback = {
-    new MyCallback(now, delay)
+  def arbiter(r: LLL_Result): Unit = {
+    r.r3 = m.get(KEY)
   }
 }
