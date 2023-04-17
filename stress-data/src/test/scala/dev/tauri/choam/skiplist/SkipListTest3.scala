@@ -25,10 +25,10 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 
 @JCStressTest
 @State
-@Description("TimerSkipList put/del race")
+@Description("SkipListMap put/del race")
 @Outcomes(Array(
-  new JOutcome(id = Array("?, ?, ?"), expect = ACCEPTABLE_INTERESTING, desc = "put won"),
-  new JOutcome(id = Array("?, ?, ?"), expect = ACCEPTABLE_INTERESTING, desc = "del won"),
+  new JOutcome(id = Array("Some(MAGIC), true, None"), expect = ACCEPTABLE_INTERESTING, desc = "put won (overwrite)"),
+  new JOutcome(id = Array("None, true, Some(OVER)"), expect = ACCEPTABLE_INTERESTING, desc = "del won"),
 ))
 class SkipListTest3 {
 
@@ -47,13 +47,12 @@ class SkipListTest3 {
   }
 
   @Actor
-  def insert(r: LLL_Result): Unit = {
-    // the list contains keys between 1025 and 1152, we insert (overwrite) at 1100:
-    r.r1 = m.put(KEY, "INSERT")
+  def put(r: LLL_Result): Unit = {
+    r.r1 = m.put(KEY, "OVER")
   }
 
   @Actor
-  def remove(r: LLL_Result): Unit = {
+  def del(r: LLL_Result): Unit = {
     r.r2 = m.del(KEY)
   }
 
