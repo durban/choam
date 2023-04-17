@@ -32,7 +32,7 @@ import org.openjdk.jcstress.infra.results.LLLL_Result
   new JOutcome(id = Array("Some(VAL), Some(64), true, None"), expect = ACCEPTABLE_INTERESTING, desc = "put, get, del"),
   new JOutcome(id = Array("None, Some(64), true, None"), expect = ACCEPTABLE_INTERESTING, desc = "put, del, get"),
   new JOutcome(id = Array("None, None, true, Some(VAL)"), expect = ACCEPTABLE_INTERESTING, desc = "del, get, put"),
-  new JOutcome(id = Array("Some(VAL), None, true, Some(VAL"), expect = ACCEPTABLE_INTERESTING, desc = "del, put, get"),
+  new JOutcome(id = Array("Some(VAL), None, true, Some(VAL)"), expect = ACCEPTABLE_INTERESTING, desc = "del, put, get"),
 ))
 class SkipListTest3WayRace {
 
