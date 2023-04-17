@@ -18,6 +18,31 @@
 package dev.tauri.choam
 package skiplist
 
+import cats.kernel.Order
+import cats.syntax.all._
+
+import org.scalacheck.{ Arbitrary, Gen }
+import org.scalacheck.cats.implicits._
+
+trait SkipListHelper {
+
+  implicit def arbSkipListMap[K, V](implicit ordK: Order[K], arbK: Arbitrary[K], arbV: Arbitrary[V]): Arbitrary[SkipListMap[K, V]] = {
+    Arbitrary {
+      for {
+        m <- Gen.delay { new SkipListMap[K, V] }
+        ks <- implicitly[Arbitrary[Set[K]]].arbitrary
+        _ <- ks.toList.traverse_ { k =>
+          arbV.arbitrary.flatMap { v =>
+            Gen.delay {
+              m.put(k, v)
+            }
+          }
+        }
+      } yield m
+    }
+  }
+}
+
 final object SkipListHelper {
 
   type Callback = Function1[Right[Nothing, Unit], Unit]

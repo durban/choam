@@ -18,185 +18,84 @@
 package dev.tauri.choam
 package skiplist
 
-import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.{ ThreadLocalRandom, ConcurrentSkipListSet }
-
-import scala.concurrent.duration._
-
-import cats.syntax.all._
-import cats.effect.kernel.Ref
 import cats.effect.IO
+import cats.syntax.all._
 
-import munit.CatsEffectSuite
+import munit.{ ScalaCheckEffectSuite, CatsEffectSuite }
 
-import SkipListHelper.Callback
+import org.scalacheck.effect.PropF
 
-final class SkipListParallelSpec extends CatsEffectSuite {
+final class SkipListParallelSpec extends CatsEffectSuite with ScalaCheckEffectSuite with SkipListHelper {
 
-  final val N = 100000
-  final val DELAY = 10000L // ns
+  private final val N = 1024
 
-  private[this] val RightUnit =
-    Right(())
-
-  override def munitIOTimeout: Duration =
-    2 * super.munitIOTimeout
-
-  private def drainUntilDone(m: SkipListMap[Long, Callback], done: Ref[IO, Boolean]): IO[Unit] = {
-    val pollSome: IO[Long] = IO {
-      while ({
-        val cb = m.pollFirstIfTriggered(System.nanoTime())
-        if (cb ne null) {
-          cb(RightUnit)
-          true
-        } else false
-      }) {}
-      m.peekFirstTriggerTime()
+  private final def repeat[A](action: => A): IO[List[A]] = {
+    IO {
+      val lb = List.newBuilder[A]
+      var n = N
+      while (n > 0) {
+        lb += action
+        n -= 1
+      }
+      lb.result()
     }
-    def go(lastOne: Boolean): IO[Unit] = pollSome.flatMap { next =>
-      if (next == Long.MinValue) IO.cede
-      else {
-        IO.defer {
-          val now = System.nanoTime()
-          val delay = next - now
-          if (delay > 0L) IO.sleep(delay.nanos)
-          else IO.unit
+  }
+
+  test("get race") {
+    PropF.forAllF { (m: SkipListMap[Int, String], ks: Set[Int]) =>
+      IO {
+        for (k <- ks) {
+          m.put(k, k.toString)
         }
-      }
-    } *> {
-      if (lastOne) IO.unit
-      else done.get.ifM(go(lastOne = true), IO.cede *> go(lastOne = false))
-    }
-
-    go(lastOne = false)
-  }
-
-  test("Parallel insert/pollFirstIfTriggered") {
-    IO.ref(false).flatMap { done =>
-      IO { (new SkipListMap[Long, Callback], new AtomicLong) }.flatMap {
-        case (m, ctr) =>
-
-          val insert = IO {
-            m.insert(
-              key = System.nanoTime() + DELAY,
-              value = { _ => ctr.getAndIncrement; () },
-              tlr = ThreadLocalRandom.current(),
-            )
-          }
-          val inserts = (insert.parReplicateA_(N) *> IO.sleep(2 * DELAY.nanos)).guarantee(done.set(true))
-
-          val polls = drainUntilDone(m, done).parReplicateA_(2)
-
-          IO.both(inserts, polls).flatMap { _ =>
-            IO.sleep(0.5.second) *> IO {
-              assert(m.pollFirstIfTriggered(System.nanoTime()) eq null)
-              assertEquals(ctr.get(), N.toLong)
-            }
-          }
-      }
+      } *> IO.parTraverseN(4)(ks.toList) { k =>
+        repeat { assertEquals(m.get(k), Some(k.toString())) }
+      }.void
     }
   }
 
-  test("Parallel insert/cancel") {
-    IO.ref(false).flatMap { done =>
-      IO { (new SkipListMap[Long, Callback], new ConcurrentSkipListSet[Int]) }.flatMap {
-        case (m, called) =>
-
-          def insert(id: Int): IO[Runnable] = IO {
-            val now = System.nanoTime()
-            val canceller = m.insert(
-              key = now + DELAY,
-              value = { _ => called.add(id); () },
-              tlr = ThreadLocalRandom.current(),
-            )
-            canceller
-          }
-
-          def cancel(c: Runnable): IO[Unit] = IO {
-            c.run()
-          }
-
-          val firstBatch = (0 until N).toList
-          val secondBatch = (N until (2 * N)).toList
-
-          for {
-            // add the first N callbacks:
-            cancellers <- firstBatch.traverse(insert)
-            // then race removing those, and adding another N:
-            _ <- IO.both(
-              cancellers.parTraverse(cancel),
-              secondBatch.parTraverse(insert),
-            )
-            // since the fibers calling callbacks
-            // are not running yet, the cancelled
-            // ones must never be invoked
-            _ <- IO.both(
-              IO.sleep(2 * DELAY.nanos).guarantee(done.set(true)),
-              drainUntilDone(m, done).parReplicateA_(2),
-            )
-            _ <- IO {
-              assert(m.pollFirstIfTriggered(System.nanoTime()) eq null)
-              // no cancelled callback should've been called,
-              // and all the other ones must've been called:
-              val calledIds = {
-                val b = Set.newBuilder[Int]
-                val it = called.iterator()
-                while (it.hasNext()) {
-                  b += it.next()
-                }
-                b.result()
-              }
-              assertEquals(calledIds, secondBatch.toSet)
-            }
-          } yield ()
+  test("put race") {
+    PropF.forAllF { (m: SkipListMap[Int, String], m1: Map[Int, String], _m2: Map[Int, String]) =>
+      val b = Map.newBuilder[Int, String]
+      m.foreachNode { n =>
+        b += ((n.key, n.getValue()))
       }
-    }
-  }
-
-  test("Random racing sleeps") {
-    IO.ref(false).flatMap { dummy =>
-      IO { (new SkipListMap[Long, Callback]) }.flatMap {
-        case (m) =>
-
-          def mySleep(d: FiniteDuration): IO[Unit] = IO.async[Unit] { cb =>
-            IO {
-              val canceller = m.insert(System.nanoTime() + d.toNanos, cb, ThreadLocalRandom.current())
-              Some(IO { canceller.run() })
+      val original = b.result()
+      val m2 = _m2 -- m1.keySet // make sure they're disjoint
+      val put1 = IO { for ((k1, v1) <- m1) yield (k1, m.put(k1, v1)) }
+      val put2 = IO { for ((k2, v2) <- m2) yield (k2, m.put(k2, v2 + "_A")) }
+      val put3 = IO { for ((k2, v2) <- m2) yield (k2, m.put(k2, v2 + "_B")) }
+      IO.both(put1, IO.both(put2, put3)).flatMap { r =>
+        val (r1, (r2, r3)) = r
+        IO {
+          for ((k, ov) <- r1) {
+            assertEquals(m.get(k), Some(m1(k)))
+            ov match {
+              case Some(oldValue) => assertEquals(oldValue, original(k))
+              case None => ()
             }
           }
-
-          def randomSleep: IO[Unit] = IO.defer {
-            val n = ThreadLocalRandom.current().nextInt(2000000)
-            mySleep(n.micros) // less than 2 seconds
-          }
-
-          def race(ios: List[IO[Unit]]): IO[Unit] = {
-            ios match {
-              case head :: tail => tail.foldLeft(head) { (x, y) => IO.race(x, y).void }
-              case Nil => IO.unit
+          assertEquals(r2.keySet, r3.keySet)
+          for ((k, ov) <- r2) {
+            val cv = m.get(k).get
+            (ov, r3(k)) match {
+              case (Some(ov1), Some(ov2)) =>
+                assert(
+                  ((ov1 === original(k)) && (ov2 === m2(k) + "_A") && (cv === m2(k) + "_B")) ||
+                  ((ov1 === m2(k) + "_B") && (ov2 === original(k)) && (cv === m2(k) + "_A"))
+                )
+              case (Some(ov), None) =>
+                assertEquals(ov, m2(k) + "_B")
+                assertEquals(cv, m2(k) + "_A")
+                assert(!original.contains(k))
+              case (None, Some(ov)) =>
+                assertEquals(ov, m2(k) + "_A")
+                assertEquals(cv, m2(k) + "_B")
+                assert(!original.contains(k))
+              case (None, None) =>
+                fail("neither put have seen an old value")
             }
           }
-
-          def all(ios: List[IO[Unit]]): IO[Unit] =
-            ios.parSequence_
-
-          val N = 1000
-
-          for {
-            // start the "scheduler":
-            sch <- drainUntilDone(m, dummy).parReplicateA_(2).start
-            // race a lot of "sleeps", it must not hang
-            // (this includes inserting and cancelling
-            // a lot of callbacks into the skip list,
-            // thus hopefully stressing the data structure):
-            _ <- all(List.fill(N) {
-              race(List.fill(N) { randomSleep })
-            })
-            _ <- sch.cancel
-            _ <- IO {
-              assert(m.pollFirstIfTriggered(System.nanoTime()) eq null)
-            }
-          } yield ()
+        }
       }
     }
   }

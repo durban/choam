@@ -70,7 +70,7 @@ final object SkipListModelTest {
     // TODO:
     // @Operation
     // def lookup(key: Int): String = {
-    //   ???
+    //   // ...
     // }
 
     @Operation
@@ -106,7 +106,7 @@ final object SkipListModelTest {
     // TODO:
     // @Operation
     // def lookup(key: Int): String = {
-    //   ???
+    //   // ...
     // }
 
     @Operation

@@ -182,6 +182,7 @@ lazy val skiplist = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .dependsOn(core % "compile->compile;test->test")
+  .settings(libraryDependencies += dependencies.catsScalacheck.value % Test)
 
 lazy val async = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -645,6 +646,8 @@ lazy val dependencies = new {
       zioCats.value,
     )
   }
+
+  val catsScalacheck = Def.setting("io.chrisdavenport" %%% "cats-scalacheck" % "0.3.2") // https://github.com/davenverse/cats-scalacheck
 }
 
 val stressTestNames = List[String](
