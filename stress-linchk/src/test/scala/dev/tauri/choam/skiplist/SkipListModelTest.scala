@@ -66,11 +66,10 @@ final object SkipListModelTest {
       m.put(key, value)
     }
 
-    // TODO:
-    // @Operation
-    // def lookup(key: Int): String = {
-    //   // ...
-    // }
+    @Operation
+    def lookup(key: Int): Option[String] = {
+      m.get(key)
+    }
 
     @Operation
     def remove(key: Int): Boolean = {
@@ -101,11 +100,10 @@ final object SkipListModelTest {
       m.put(key, value)
     }
 
-    // TODO:
-    // @Operation
-    // def lookup(key: Int): String = {
-    //   // ...
-    // }
+    @Operation
+    def lookup(key: Int): Option[String] = {
+      m.get(key)
+    }
 
     @Operation
     def remove(key: Int): Boolean = {
