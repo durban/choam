@@ -42,8 +42,9 @@ class SkipListBench {
   @Benchmark
   def insertRemoveTimerSkipList(s: TslState, @unused bh: Blackhole): Unit = {
     val d = s.nextDelay(ThreadLocalRandom.current())
-    val remover = s.tsl.insert(MIN_VALUE + d, s.dummyCallback, ThreadLocalRandom.current())
-    remover.run()
+    val key = MIN_VALUE + d
+    bh.consume(s.tsl.put(key, s.dummyCallback))
+    bh.consume(s.tsl.del(key))
   }
 }
 
@@ -86,7 +87,7 @@ object SkipListBench {
       val m = new SkipListMap[Long, Callback]
       val tlr = ThreadLocalRandom.current()
       for (_ <- 0 until size) {
-        m.insert(key = MIN_VALUE + nextDelay(tlr), value = dummyCallback, tlr = tlr)
+        m.put(key = MIN_VALUE + nextDelay(tlr), value = dummyCallback)
       }
       m
     }

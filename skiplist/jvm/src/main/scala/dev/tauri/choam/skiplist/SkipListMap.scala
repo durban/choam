@@ -47,18 +47,10 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
     val key: K,
     value: AtomicReference[V],
     n: Node,
-  ) extends AtomicReference[Node](n)
-    with Runnable { next =>
+  ) extends AtomicReference[Node](n) { next =>
 
     private[SkipListMap] def this(key: K, value: V, next: Node) = {
       this(key, new AtomicReference(value), next)
-    }
-
-    /** Removes the entry */
-    final override def run(): Unit = {
-      // TODO: this is incorrect, since we now overwrite values in `doPut`
-      SkipListMap.this.doRemove(key)
-      ()
     }
 
     private[SkipListMap] final def isMarker: Boolean = {
@@ -158,34 +150,6 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
     doRemove(key)
   }
 
-  /** For testing */
-  private[skiplist] final def insertTlr( // TODO: remove
-    key: K,
-    value: V,
-  ): Runnable = {
-    insert(key, value, ThreadLocalRandom.current())
-  }
-
-  /**
-   * Inserts a new `callback` which will be triggered not earlier
-   * than `now + delay`. Returns a "canceller", which (if executed)
-   * removes (cancels) the inserted callback. (Of course, by that
-   * time the callback might've been already invoked.)
-   *
-   * @param now the current time as returned by `System.nanoTime`
-   * @param delay nanoseconds delay, must be nonnegative
-   * @param callback the callback to insert into the skip list
-   * @param tlr the `ThreadLocalRandom` of the current (calling) thread
-   */
-  final def insert( // TODO: remove
-    key: K,
-    value: V,
-    tlr: ThreadLocalRandom,
-  ): Runnable = {
-    doPut(key, value, onlyIfAbsent = false, tlr = tlr)
-    () => {}
-  }
-
   /**
    * Removes and returns the first (earliest) timer callback,
    * if its trigger time is not later than `now`. Can return
@@ -200,15 +164,6 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
 
   final def pollFirst(): V = {
     doRemoveFirstNodeIfTriggered(MARKER)
-  }
-
-  final def peekFirstTriggerTime(): K = {
-    val head = peekFirstNode()
-    if (head ne null) {
-      head.key
-    } else {
-      nullOf[K]
-    }
   }
 
   final override def toString: String = {
@@ -481,11 +436,6 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
     }
   }
 
-  /** For testing */
-  private[skiplist] final def remove(key: K): Boolean = {
-    doRemove(key)
-  }
-
   /**
    * Finds the node with the specified key; deletes it
    * logically by CASing the callback to null; unlinks
@@ -551,16 +501,6 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
       n
     } else {
       null
-    }
-  }
-
-  /** For testing */
-  private[skiplist] final def peekFirstQuiescent(): V = {
-    val n = peekFirstNode()
-    if (n ne null) {
-      n.getValue()
-    } else {
-      nullOf[V]
     }
   }
 

@@ -62,9 +62,8 @@ final object SkipListModelTest {
     }
 
     @Operation
-    def insert(key: Int, value: String): Unit = {
-      m.insertTlr(key, value)
-      ()
+    def insert(key: Int, value: String): Option[String] = {
+      m.put(key, value)
     }
 
     // TODO:
@@ -75,7 +74,7 @@ final object SkipListModelTest {
 
     @Operation
     def remove(key: Int): Boolean = {
-      m.remove(key)
+      m.del(key)
     }
   }
 
@@ -98,9 +97,8 @@ final object SkipListModelTest {
     }
 
     @Operation
-    def insert(key: Int, value: String): Unit = {
+    def insert(key: Int, value: String): Option[String] = {
       m.put(key, value)
-      ()
     }
 
     // TODO:
