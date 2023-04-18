@@ -55,8 +55,8 @@ final object SkipListModelTest {
     @StateRepresentation
     def stateRepr(): String = {
       val lst = List.newBuilder[String]
-      m.foreachNode { n =>
-        lst += s"[${n.key}, ${n.getValue()}]"
+      m.foreach { (k, v) =>
+        lst += s"[${k}, ${v}]"
       }
       lst.result().mkString("{", "; ", "}")
     }
