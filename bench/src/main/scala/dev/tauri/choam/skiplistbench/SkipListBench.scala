@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package skiplistbench
 
-import java.lang.Long.{ MAX_VALUE, MIN_VALUE }
+import java.lang.Long.MAX_VALUE
 import java.util.concurrent.{ ConcurrentSkipListMap, ThreadLocalRandom }
 
 import org.openjdk.jmh.annotations._
@@ -34,33 +34,31 @@ class SkipListBench {
 
   @Benchmark
   def insertRemoveJucConcurrentSkipListMap(s: CslmState, bh: Blackhole): Unit = {
-    val k = s.nextDelay(ThreadLocalRandom.current())
-    bh.consume(s.cslm.put(k, s.dummyCallback))
-    bh.consume(s.cslm.remove(k))
+    val k = s.nextKey(ThreadLocalRandom.current())
+    val m = s.cslm
+    bh.consume(m.put(k, "FOO"))
+    bh.consume(m.remove(k))
   }
 
   @Benchmark
-  def insertRemoveTimerSkipList(s: TslState, @unused bh: Blackhole): Unit = {
-    val d = s.nextDelay(ThreadLocalRandom.current())
-    val key = MIN_VALUE + d
-    bh.consume(s.tsl.put(key, s.dummyCallback))
-    bh.consume(s.tsl.del(key))
+  def insertRemoveSkipListMap(s: SlmState, bh: Blackhole): Unit = {
+    val k = s.nextKey(ThreadLocalRandom.current())
+    val m = s.slm
+    bh.consume(m.put(k, "FOO"))
+    bh.consume(m.del(k))
   }
 }
 
 object SkipListBench {
 
-  type Callback = Right[Nothing, Unit] => Unit
-
   final val size = 1024 * 1024
+
+  final val foo = "FOO"
 
   @State(Scope.Benchmark)
   sealed abstract class AbstractState {
 
-    val dummyCallback: Callback =
-      { _ => () }
-
-    final def nextDelay(tlr: ThreadLocalRandom): Long = {
+    final def nextKey(tlr: ThreadLocalRandom): Long = {
       val n = tlr.nextLong(MAX_VALUE >> 2)
       if (n < 0) -n else n
     }
@@ -69,11 +67,11 @@ object SkipListBench {
   @State(Scope.Benchmark)
   class CslmState extends AbstractState {
 
-    val cslm: ConcurrentSkipListMap[Long, Callback] = {
-      val m = new ConcurrentSkipListMap[Long, Callback]
+    val cslm: ConcurrentSkipListMap[Long, String] = {
+      val m = new ConcurrentSkipListMap[Long, String]
       val tlr = ThreadLocalRandom.current()
       for (_ <- 0 until size) {
-        m.put(nextDelay(tlr), dummyCallback)
+        m.put(nextKey(tlr), foo)
       }
       assert(m.size() >= size / 2)
       m
@@ -81,15 +79,24 @@ object SkipListBench {
   }
 
   @State(Scope.Benchmark)
-  class TslState extends AbstractState {
+  class SlmState extends AbstractState {
 
-    val tsl: SkipListMap[Long, Callback] = {
-      val m = new SkipListMap[Long, Callback]
+    val slm: SkipListMap[Long, String] = {
+      val m = new SkipListMap[Long, String]
       val tlr = ThreadLocalRandom.current()
       for (_ <- 0 until size) {
-        m.put(key = MIN_VALUE + nextDelay(tlr), value = dummyCallback)
+        m.put(key = nextKey(tlr), value = foo)
       }
+      assert(mapSize(m) >= size / 2)
       m
+    }
+
+    private[this] final def mapSize(m: SkipListMap[Long, String]): Int = {
+      var size = 0
+      m.foreach { (_, _) =>
+        size += 1
+      }
+      size
     }
   }
 }
