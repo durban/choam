@@ -55,48 +55,71 @@ final class SkipListParallelSpec extends CatsEffectSuite with ScalaCheckEffectSu
 
   test("put race") {
     PropF.forAllF { (m: SkipListMap[Int, String], m1: Map[Int, String], _m2: Map[Int, String]) =>
-      val b = Map.newBuilder[Int, String]
-      m.foreachNode { n =>
-        b += ((n.key, n.getValue()))
-      }
-      val original = b.result()
-      val m2 = _m2 -- m1.keySet // make sure they're disjoint
-      val put1 = IO { for ((k1, v1) <- m1) yield (k1, m.put(k1, v1)) }
-      val put2 = IO { for ((k2, v2) <- m2) yield (k2, m.put(k2, v2 + "_A")) }
-      val put3 = IO { for ((k2, v2) <- m2) yield (k2, m.put(k2, v2 + "_B")) }
-      IO.both(put1, IO.both(put2, put3)).flatMap { r =>
-        val (r1, (r2, r3)) = r
-        IO {
-          for ((k, ov) <- r1) {
-            assertEquals(m.get(k), Some(m1(k)))
-            ov match {
-              case Some(oldValue) => assertEquals(oldValue, original(k))
-              case None => ()
-            }
+      for {
+        original <- IO {
+          val b = Map.newBuilder[Int, String]
+          m.foreach { (k, v) =>
+            b += ((k, v))
           }
-          assertEquals(r2.keySet, r3.keySet)
-          for ((k, ov) <- r2) {
-            val cv = m.get(k).get
-            (ov, r3(k)) match {
-              case (Some(ov1), Some(ov2)) =>
-                assert(
-                  ((ov1 === original(k)) && (ov2 === m2(k) + "_A") && (cv === m2(k) + "_B")) ||
-                  ((ov1 === m2(k) + "_B") && (ov2 === original(k)) && (cv === m2(k) + "_A"))
-                )
-              case (Some(ov), None) =>
-                assertEquals(ov, m2(k) + "_B")
-                assertEquals(cv, m2(k) + "_A")
-                assert(!original.contains(k))
-              case (None, Some(ov)) =>
-                assertEquals(ov, m2(k) + "_A")
-                assertEquals(cv, m2(k) + "_B")
-                assert(!original.contains(k))
-              case (None, None) =>
-                fail("neither put have seen an old value")
+          b.result()
+        }
+        m2 = _m2 -- m1.keySet // make sure they're disjoint
+        put1 = IO { for ((k1, v1) <- m1) yield (k1, m.put(k1, v1)) }
+        put2 = IO { for ((k2, v2) <- m2) yield (k2, m.put(k2, v2 + "_A")) }
+        put3 = IO { for ((k2, v2) <- m2) yield (k2, m.put(k2, v2 + "_B")) }
+
+        _ <- IO.both(put1, IO.both(put2, put3)).flatMap { r =>
+          val (r1, (r2, r3)) = r
+          IO {
+            for ((k, ov) <- r1) {
+              assertEquals(m.get(k), Some(m1(k)))
+              ov match {
+                case Some(oldValue) => assertEquals(oldValue, original(k))
+                case None => ()
+              }
+            }
+            assertEquals(r2.keySet, r3.keySet)
+            for ((k, ov) <- r2) {
+              val cv = m.get(k).get
+              (ov, r3(k)) match {
+                case (Some(ov1), Some(ov2)) =>
+                  assert(
+                    ((ov1 === original(k)) && (ov2 === m2(k) + "_A") && (cv === m2(k) + "_B")) ||
+                    ((ov1 === m2(k) + "_B") && (ov2 === original(k)) && (cv === m2(k) + "_A"))
+                  )
+                case (Some(ov), None) =>
+                  assertEquals(ov, m2(k) + "_B")
+                  assertEquals(cv, m2(k) + "_A")
+                  assert(!original.contains(k))
+                case (None, Some(ov)) =>
+                  assertEquals(ov, m2(k) + "_A")
+                  assertEquals(cv, m2(k) + "_B")
+                  assert(!original.contains(k))
+                case (None, None) =>
+                  fail("neither put have seen an old value")
+              }
             }
           }
         }
-      }
+      } yield ()
+    }
+  }
+
+  test("del / foreach race") {
+    PropF.forAllF { (m: SkipListMap[Int, String], k: Int, v: String) =>
+      for {
+        _ <- IO { m.del(k) }
+        initial <- IO { SkipListHelper.listFromSkipList(m) }
+        _ <- IO { m.put(k, v) }
+        inserted <- IO { SkipListHelper.listFromSkipList(m) }
+        r <- IO.both(
+          IO { SkipListHelper.listFromSkipList(m) },
+          IO.both(IO { m.del(k) }, IO { m.del(k) })
+        )
+        (lst, (d1, d2)) = r
+        _ <- IO { assert((lst === initial) || (lst === inserted), s"lst == ${lst}; initial == ${initial}; inserted == ${inserted}") }
+        _ <- IO { assert(d1 ^ d2) } // one true, one false
+      } yield ()
     }
   }
 }

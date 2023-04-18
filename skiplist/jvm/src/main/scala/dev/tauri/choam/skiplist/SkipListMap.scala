@@ -23,6 +23,9 @@ import java.util.concurrent.ThreadLocalRandom
 
 import cats.kernel.Order
 
+// TODO: use `VarHandle`s instead of `AtomicReference`s.
+// TODO: try to micro-optimize retrieving the `Order` (see JSR-166).
+
 /**
  * Concurrent skip list map.
  */
@@ -150,24 +153,16 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
     doRemove(key)
   }
 
+  private[choam] final def foreach(cb: (K, V) => Unit): Unit = {
+    doForeach(cb)
+  }
+
   final override def toString: String = {
     peekFirstNode() match {
       case null =>
         "SkipListMap()"
       case _ =>
         "SkipListMap(...)"
-    }
-  }
-
-  /** For testing */
-  private[skiplist] final def foreachNode(go: Node => Unit): Unit = {
-    var n = baseHead()
-    while (n ne null) {
-      val cb = n.getValue()
-      if (!isTOMB(cb) && !n.isMarker) {
-        go(n)
-      }
-      n = n.getNext()
     }
   }
 
@@ -463,6 +458,28 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
     }
 
     false
+  }
+
+  /**
+   * Calls `cb` with each (non-deleted) key-value
+   * pair in the list. Note: this method is not
+   * atomic or consistent (see "weakly consistent"
+   * iterators in the JDK).
+   *
+   * Analogous to the iterators in the JSR-166 `ConcurrentSkipListMap`.
+   */
+  private[this] final def doForeach(cb: (K, V) => Unit): Unit = {
+    var n = baseHead()
+    while (n ne null) {
+      val key = n.key
+      if (!isMARKER(key)) {
+        val value = n.getValue()
+        if (!isTOMB(value)) {
+          cb(key, value)
+        }
+      }
+      n = n.getNext()
+    }
   }
 
   /**

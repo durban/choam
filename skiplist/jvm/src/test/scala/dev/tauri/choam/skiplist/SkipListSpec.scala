@@ -25,6 +25,8 @@ import cats.kernel.Order
 import munit.ScalaCheckSuite
 import org.scalacheck.Prop
 
+import SkipListHelper.listFromSkipList
+
 final class SkipListSpec extends ScalaCheckSuite {
 
   import SkipListSpec._
@@ -119,6 +121,26 @@ final class SkipListSpec extends ScalaCheckSuite {
     assertEquals(m.get(33), Some("xyz"))
   }
 
+  test("foreach") {
+    val m = new SkipListMap[Int, String]
+    assertEquals(listFromSkipList(m), List())
+
+    m.put(99, "A")
+    m.put(-1, "B")
+    m.put(100, "C")
+    assertEquals(listFromSkipList(m), List(-1 -> "B", 99 -> "A", 100 -> "C"))
+
+    m.del(99)
+    assertEquals(listFromSkipList(m), List(-1 -> "B", 100 -> "C"))
+
+    m.put(100, "X")
+    assertEquals(listFromSkipList(m), List(-1 -> "B", 100 -> "X"))
+
+    m.del(-1)
+    m.del(100)
+    assertEquals(listFromSkipList(m), List())
+  }
+
   property("empty list get") {
     val m = new SkipListMap[Int, String]
     Prop.forAll { (k: Int) =>
@@ -157,6 +179,18 @@ final class SkipListSpec extends ScalaCheckSuite {
         assertEquals(m.putIfAbsent(k, v), None)
         assertEquals(m.get(k), Some(v))
       }
+    }
+  }
+
+  property("foreach returns each KV-pair") {
+    Prop.forAll { (_ks: Set[Int], k: Int) =>
+      val ks = (_ks + k).toList.sorted
+      val m = new SkipListMap[Int, String]
+      for (k <- ks) {
+        m.put(k, k.toString)
+      }
+      assert(m.del(k))
+      assertEquals(listFromSkipList(m), (_ks - k).toList.sorted.map(k => k -> k.toString))
     }
   }
 

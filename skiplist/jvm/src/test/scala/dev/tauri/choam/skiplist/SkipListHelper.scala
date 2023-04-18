@@ -60,4 +60,10 @@ final object SkipListHelper {
     final def apply(now: Long, delay: Long): MyCallback =
       new MyCallback(now, delay)
   }
+
+  def listFromSkipList[K, V](m: SkipListMap[K, V]): List[(K, V)] = {
+    val lb = List.newBuilder[(K, V)]
+    m.foreach { (k, v) => lb += ((k, v)) }
+    lb.result()
+  }
 }
