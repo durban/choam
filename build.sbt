@@ -169,7 +169,7 @@ lazy val skiplist = crossProject(JVMPlatform, JSPlatform)
   .jsSettings(commonSettingsJs)
   .settings(libraryDependencies ++= Seq(
     dependencies.catsKernel.value,
-    dependencies.catsScalacheck.value % Test,
+    dependencies.catsScalacheck.value % TestInternal,
   ))
 
 lazy val data = crossProject(JVMPlatform, JSPlatform)
