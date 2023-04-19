@@ -583,7 +583,7 @@ lazy val consts = new {
 lazy val dependencies = new {
 
   val catsVersion = "2.9.0"
-  val catsEffectVersion = "3.5.0-RC3"
+  val catsEffectVersion = "3.5.0-RC4"
   val catsMtlVersion = "1.3.0"
   val catsCollectionsVersion = "0.9.6"
   val fs2Version = "3.7.0-RC4"
@@ -625,8 +625,8 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.3")
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.0.0.3")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.11")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.0.0.4")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.13")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
