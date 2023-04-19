@@ -20,9 +20,9 @@ package mcas
 package emcas
 
 import java.lang.ref.WeakReference
-import java.util.concurrent.{ ConcurrentSkipListMap, ThreadLocalRandom }
+import java.util.concurrent.ThreadLocalRandom
 
-import scala.collection.AbstractIterator
+import skiplist.SkipListMap
 
 private final class GlobalContext(impl: Emcas.type)
   extends GlobalContextBase { self =>
@@ -40,16 +40,8 @@ private final class GlobalContext(impl: Emcas.type)
    * affect safety, because a dead thread will never
    * continue its current op (if any).
    */
-  private[this] val _threadContexts = {
-    // TODO: Technically `ConcurrentSkipListMap` is
-    // TODO: not lock-free, because it maintains its
-    // TODO: size in a `LongAdder`, which has a
-    // TODO: slow-path protected by a spinlock.
-    // TODO: (We usually expect low contention on this
-    // TODO: `ConcurrentSkipListMap`, so it should
-    // TODO: rarely hit this slow-path, if ever.)
-    new ConcurrentSkipListMap[Long, WeakReference[EmcasThreadContext]]
-  }
+  private[this] val _threadContexts =
+    new SkipListMap[Long, WeakReference[EmcasThreadContext]]
 
   /** Holds the context for each (active) thread */
   private[this] val threadContextKey =
@@ -82,14 +74,20 @@ private final class GlobalContext(impl: Emcas.type)
     var commits = 0L
     var fullRetries = 0L
     var mcasRetries = 0L
-    threadContexts().foreach { tctx =>
-      // Calling `getCommitsAndRetries` is not
-      // thread-safe here, but we only need these statistics
-      // for benchmarking, so we're just hoping for the best...
-      val stats = tctx.getRetryStats()
-      commits += stats.commits
-      fullRetries += stats.fullRetries
-      mcasRetries += stats.mcasRetries
+    this._threadContexts.foreach { (tid, wr) =>
+      val tctx = wr.get()
+      if (tctx ne null) {
+        // Calling `getCommitsAndRetries` is not
+        // thread-safe here, but we only need these statistics
+        // for benchmarking, so we're just hoping for the best...
+        val stats = tctx.getRetryStats()
+        commits += stats.commits
+        fullRetries += stats.fullRetries
+        mcasRetries += stats.mcasRetries
+      } else {
+        this._threadContexts.del(tid) // clean empty weakref
+        ()
+      }
     }
     Mcas.RetryStats(
       commits = commits,
@@ -100,54 +98,63 @@ private final class GlobalContext(impl: Emcas.type)
 
   /** Only for testing/benchmarking */
   private[choam] def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
-    threadContexts().foldLeft(Map.empty[Long, Map[AnyRef, AnyRef]]) { (acc, tc) =>
-      acc + (tc.tid -> tc.getStatisticsOpaque())
+    val mb = Map.newBuilder[Long, Map[AnyRef, AnyRef]]
+    this._threadContexts.foreach { (tid, wr) =>
+      val tc = wr.get()
+      if (tc ne null) {
+        mb += ((tid, tc.getStatisticsOpaque()))
+      } else {
+        this._threadContexts.del(tid) // clean empty weakref
+        ()
+      }
     }
+    mb.result()
   }
 
   /** Only for testing/benchmarking */
   private[choam] final def maxReusedWeakRefs(): Int = {
-    threadContexts().foldLeft(0) { (max, tc) =>
-      val n = tc.maxReusedWeakRefs()
-      if (n > max) n else max
+    var max = 0
+    this._threadContexts.foreach { (tid, wr) =>
+      val tc = wr.get()
+      if (tc ne null) {
+        val n = tc.maxReusedWeakRefs()
+        if (n > max) {
+          max = n
+        }
+      } else {
+        this._threadContexts.del(tid) // clean empty weakref
+        ()
+      }
     }
+    max
   }
 
-  private[emcas] final def threadContexts(): Iterator[EmcasThreadContext] = {
-    val iterWeak = this._threadContexts.values().iterator()
-    new AbstractIterator[EmcasThreadContext] {
-
-      private[this] val _underlying = iterWeak
-
-      private[this] var _next: EmcasThreadContext = null
-
-      final override def hasNext: Boolean =
-        fetchNext()
-
-      @tailrec
-      private[this] final def fetchNext(): Boolean = {
-        if (_next ne null) {
-          true
-        } else if (_underlying.hasNext()) {
-          _next = _underlying.next().get()
-          if (_next eq null) {
-            _underlying.remove() // remove weakref from _threadContexts
-          }
-          fetchNext()
-        } else {
-          false
-        }
-      }
-
-      final override def next(): EmcasThreadContext = {
-        val r = _next
-        _next = null
-        if (r eq null) {
-          throw new IllegalStateException
-        }
-        r
+  /** For testing. */
+  private[emcas] final def threadContextExists(threadId: Long): Boolean = {
+    var exists = false
+    this._threadContexts.foreach { (tid, wr) =>
+      if (wr.get() eq null) {
+        this._threadContexts.del(tid) // clean empty weakref
+        ()
+      } else if (tid == threadId) {
+        exists = true
       }
     }
+    exists
+  }
+
+  /** For testing. */
+  private[emcas] final def threadContextCount(): Int = {
+    var count = 0
+    this._threadContexts.foreach { (tid, wr) =>
+      if (wr.get() eq null) {
+        this._threadContexts.del(tid) // clean empty weakref
+        ()
+      } else {
+        count += 1
+      }
+    }
+    count
   }
 
   /**
@@ -164,10 +171,7 @@ private final class GlobalContext(impl: Emcas.type)
    * almost never be called.
    */
   private[this] final def maybeGcThreadContexts(tlr: ThreadLocalRandom): Unit = {
-    if (
-      (tlr.nextInt(256) == 0) &&
-      (_threadContexts.size() > Runtime.getRuntime().availableProcessors())
-    ) {
+    if (tlr.nextInt(256) == 0) {
       gcThreadContexts()
     }
   }
@@ -180,16 +184,11 @@ private final class GlobalContext(impl: Emcas.type)
    * it.)
    */
   private[this] final def gcThreadContexts(): Unit = {
-    val it = this._threadContexts.values().iterator()
-    while (it.hasNext()) {
-      if (it.next().get() eq null) {
-        it.remove()
+    this._threadContexts.foreach { (tid, wr) =>
+      if (wr.get() eq null) {
+        this._threadContexts.del(tid)
+        ()
       }
     }
-  }
-
-  /** For testing */
-  private[emcas] final def size: Int = {
-    this._threadContexts.size()
   }
 }

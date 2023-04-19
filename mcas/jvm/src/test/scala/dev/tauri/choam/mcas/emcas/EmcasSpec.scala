@@ -352,7 +352,7 @@ class EmcasSpec extends BaseSpec {
     t.join()
     assert(!t.isAlive())
     assert(error eq null, s"error: ${error}")
-    while (Emcas.global.threadContexts().exists(_.tid == t.getId())) {
+    while (Emcas.global.threadContextExists(t.getId())) {
       System.gc()
       Thread.sleep(1L)
     }
@@ -526,7 +526,7 @@ class EmcasSpec extends BaseSpec {
         System.gc()
       }
     }
-    assert(Emcas.global.size.toDouble <= (0.75 * N.toDouble))
+    assert(Emcas.global.threadContextCount().toDouble <= (0.75 * N.toDouble))
   }
 
   test("Descriptors should be sorted") {
