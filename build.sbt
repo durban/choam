@@ -155,7 +155,22 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
+  .dependsOn(skiplist % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.catsKernel.value) // TODO: we only need this due to `Order`
+
+lazy val skiplist = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("skiplist"))
+  .settings(name := "choam-skiplist")
+  .disablePlugins(JCStressPlugin)
+  .settings(commonSettings)
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
+  .settings(libraryDependencies ++= Seq(
+    dependencies.catsKernel.value,
+    dependencies.catsScalacheck.value % Test,
+  ))
 
 lazy val data = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -169,20 +184,6 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
   .dependsOn(core % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.catsCollections.value)
   .jvmSettings(libraryDependencies += dependencies.paguro.value)
-
-// WIP skip list:
-lazy val skiplist = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
-  .withoutSuffixFor(JVMPlatform)
-  .in(file("skiplist"))
-  .settings(name := "choam-skiplist")
-  .disablePlugins(JCStressPlugin)
-  .enablePlugins(NoPublishPlugin)
-  .settings(commonSettings)
-  .jvmSettings(commonSettingsJvm)
-  .jsSettings(commonSettingsJs)
-  .dependsOn(core % "compile->compile;test->test")
-  .settings(libraryDependencies += dependencies.catsScalacheck.value % Test)
 
 lazy val async = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -264,7 +265,6 @@ lazy val bench = project.in(file("bench"))
   .settings(jmhSettings)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
   .dependsOn(internalHelpers.jvm)
-  .dependsOn(skiplist.jvm)
 
 // Stress tests (with JCStress):
 // TODO: move all stress test projects under a common `/stress` folder
@@ -305,7 +305,6 @@ lazy val stressData = project.in(file("stress-data"))
   .enablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
   .dependsOn(data.jvm % "compile->compile;test->test")
-  .dependsOn(skiplist.jvm % "compile->compile;test->test") // temporarily
   .dependsOn(stressMcas % "compile->compile;test->test")
   .dependsOn(internalHelpers.jvm)
 
@@ -338,7 +337,6 @@ lazy val stressExperiments = project.in(file("stress-experiments"))
   .enablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
-  .dependsOn(skiplist.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
 
 lazy val stressLinchk = project.in(file("stress-linchk"))
@@ -348,7 +346,6 @@ lazy val stressLinchk = project.in(file("stress-linchk"))
   .disablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
-  .dependsOn(skiplist.jvm % "compile->compile;test->test")
   .settings(
     libraryDependencies += dependencies.lincheck.value,
     Test / fork := true, // otherwise the bytecode transformers won't work

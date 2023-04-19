@@ -28,8 +28,8 @@ package object mcas {
   private[mcas] type nowarn = scala.annotation.nowarn
 
   @inline
-  private[choam] def box[A](a: A): AnyRef =
-    a.asInstanceOf[AnyRef]
+  private[choam] final def box[A](a: A): AnyRef =
+    skiplist.box(a)
 
   @inline
   private[choam] final def nullOf[A]: A =
@@ -41,7 +41,7 @@ package object mcas {
 
   @inline
   private[choam] final def equ[A](x: A, y: A): Boolean =
-    box(x) eq box(y)
+    skiplist.equ(x, y)
 
   private[choam] final def impossible(s: String): Nothing =
     throw new AssertionError(s)

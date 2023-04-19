@@ -589,7 +589,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    */
   private[this] final def findPredecessor(key: K): Node = {
     var q: Index = head.getAcquire() // current index node
-    if ((q eq null) || isNull(key)) {
+    if ((q eq null) || isMARKER(key)) {
       null
     } else {
       while (true) {
