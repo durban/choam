@@ -612,7 +612,7 @@ lazy val dependencies = new {
   val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.10.3") // https://github.com/GlenKPeterson/Paguro
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.16")
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.1") // https://github.com/JCTools/JCTools
-  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.16") // https://github.com/Kotlin/kotlinx-lincheck
+  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.17") // https://github.com/Kotlin/kotlinx-lincheck
   val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.4")
 
   // JS:
@@ -624,7 +624,7 @@ lazy val dependencies = new {
   val scalaJsSecRnd = Def.setting(("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13))
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
-  val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.3")
+  val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.4")
   val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.0.0.4")
   val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.13")
 
