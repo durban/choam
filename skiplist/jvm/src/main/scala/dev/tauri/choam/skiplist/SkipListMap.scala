@@ -46,7 +46,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    * A `Node` is a special "marker" node (for deletion) if `key == MARKER`.
    * A `Node` is logically deleted if `value == TOMB`.
    */
-  private[skiplist] final class Node private (
+  private[this] final class Node private (
     val key: K,
     value: AtomicReference[V],
     n: Node,
@@ -72,7 +72,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
       next.compareAndSet(ov, nv)
     }
 
-    private[skiplist] final def getValue(): V = {
+    private[SkipListMap] final def getValue(): V = {
       value.getAcquire()
     }
 
