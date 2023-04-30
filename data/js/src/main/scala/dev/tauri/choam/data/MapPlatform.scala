@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import cats.kernel.Hash
+import cats.kernel.{ Hash, Order }
 import dev.tauri.choam.Axn
 
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
@@ -28,6 +28,9 @@ private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
   final override def hashMap[K: Hash, V]: Axn[Map[K, V]] =
     this.simpleHashMap[K, V]
+
+  final override def orderedMap[K: Order, V]: Axn[Map[K, V]] =
+    this.simpleOrderedMap[K, V]
 
   private[data] override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {
     m match {

@@ -18,12 +18,15 @@
 package dev.tauri.choam
 package data
 
-import cats.kernel.Hash
+import cats.kernel.{ Hash, Order }
 
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
   final override def hashMap[K: Hash, V]: Axn[Map[K, V]] =
     Ttrie.apply[K, V]
+
+  final override def orderedMap[K: Order, V]: Axn[Map[K, V]] =
+    sys.error("TODO")
 
   final override def simpleHashMap[K: Hash, V]: Axn[Map.Extra[K, V]] =
     SimpleMap[K, V]
