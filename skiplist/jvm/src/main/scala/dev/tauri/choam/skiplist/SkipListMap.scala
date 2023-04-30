@@ -149,18 +149,30 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
     doGet(key)
   }
 
+  /** @return `true` iff an item have been removed. */
   final def del(key: K): Boolean = {
     doRemove(key, value = TOMB)
   }
 
+  /**
+   * Removes the item at `key` if its value
+   * (reference) equals `value`.
+   *
+   * @return `true` iff an item have been removed.
+   */
   final def remove(key: K, value: V): Boolean = {
     doRemove(key, value)
   }
 
-  // TODO:
-  // final def replace(key: K, ov: V, nv: V): Boolean = {
-  //   ...
-  // }
+  /**
+   * Replaces the item's current value with
+   * `nv` iff it (reference) equals `ov`.
+   *
+   * @return `true` iff a replacement have been made.
+   */
+  final def replace(key: K, ov: V, nv: V): Boolean = {
+    doReplace(key, ov, nv)
+  }
 
   private[choam] final def foreach(cb: (K, V) => Unit): Unit = {
     doForeach(cb)
@@ -318,6 +330,35 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
     } else { // restart
       doPut(key, value, onlyIfAbsent, tlr)
     }
+  }
+
+  /**
+   * Replaces `oldValue` with `newValue` at `key`.
+   *
+   * Analogous to `replace(K, V, V)` in the JSR-166 `ConcurrentSkipListMap`.
+   *
+   * @return `true` iff a replacement have been made.
+   */
+  private[this] final def doReplace(key: K, oldValue: V, newValue: V): Boolean = {
+    while (true) {
+      val n = findNode(key)
+      if (n eq null) {
+        return false // scalafix:ok
+      } else {
+        val v = n.getValue()
+        if (!isTOMB(v)) {
+          if (!equ(oldValue, v)) {
+            return false // scalafix:ok
+          }
+          if (n.casValue(v, newValue)) {
+            return true // scalafix:ok
+          }
+          // else: lost race, retry
+        } // else: deleted, retry
+      }
+    }
+
+    false // unreachable
   }
 
   private[this] final def doGet(key: K): Option[V] = {
@@ -530,6 +571,49 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
   private[this] final def baseHead(): Node = {
     val h = head.getAcquire()
     if (h ne null) h.node else null
+  }
+
+  /**
+   * Analogous to `findNode` in the JSR-166 `ConcurrentSkipListMap`.
+   */
+  private[this] final def findNode(key: K): Node = {
+    while (true) {
+      var b = findPredecessor(key)
+      if (b ne null) {
+        var inner = true
+        while (inner) {
+          val n = b.getNext()
+          if (n eq null) {
+            return null // scalafix:ok
+          } else {
+            val k = n.key
+            if (isMARKER(k)) {
+              // b is deleted, retry `findPredecessor`:
+              inner = false
+            } else {
+              val v = n.getValue()
+              if (isTOMB(v)) {
+                // n is deleted, unlink and retry:
+                unlinkNode(b, n)
+              } else {
+                val c = cpr(key, k)
+                if (c > 0) {
+                  b = n // continue right
+                } else if (c == 0) {
+                  return n // scalafix:ok
+                } else {
+                  return null // scalafix:ok
+                }
+              }
+            }
+          }
+        }
+      } else {
+        return null // scalafix:ok
+      }
+    }
+
+    null // unreachable
   }
 
   /**

@@ -27,7 +27,7 @@ import org.scalacheck.Prop
 
 import SkipListHelper.listFromSkipList
 
-final class SkipListSpec extends ScalaCheckSuite {
+final class SkipListSpec extends ScalaCheckSuite with SkipListHelper {
 
   import SkipListSpec._
 
@@ -172,6 +172,70 @@ final class SkipListSpec extends ScalaCheckSuite {
     assertEquals(m.get(5), None)
   }
 
+  test("put / replace") {
+    val m = new SkipListMap[Int, String]
+    m.put(0, "0")
+    m.put(1, "1")
+    m.put(5, "5")
+    m.put(4, "4")
+    m.put(2, "2")
+    m.put(3, "3")
+    assertEquals(m.get(0), Some("0"))
+    assertEquals(m.get(1), Some("1"))
+    assertEquals(m.get(2), Some("2"))
+    assertEquals(m.get(3), Some("3"))
+    assertEquals(m.get(4), Some("4"))
+    assertEquals(m.get(5), Some("5"))
+
+    assert(!m.replace(-1, "x", "y"))
+    assert(!m.replace(6, "x", "y"))
+    assert(!m.replace(4, "x", "y"))
+    assertEquals(m.get(4), Some("4"))
+    assert(m.replace(4, "4", "4!"))
+    assertEquals(m.get(0), Some("0"))
+    assertEquals(m.get(1), Some("1"))
+    assertEquals(m.get(2), Some("2"))
+    assertEquals(m.get(3), Some("3"))
+    assertEquals(m.get(4), Some("4!"))
+    assertEquals(m.get(5), Some("5"))
+
+    assert(!m.replace(4, "4", "y"))
+    assert(!m.replace(0, "x", "y"))
+    assertEquals(m.get(0), Some("0"))
+    assert(m.replace(0, "0", "0!"))
+    assertEquals(m.get(0), Some("0!"))
+    assertEquals(m.get(1), Some("1"))
+    assertEquals(m.get(2), Some("2"))
+    assertEquals(m.get(3), Some("3"))
+    assertEquals(m.get(4), Some("4!"))
+    assertEquals(m.get(5), Some("5"))
+
+    assert(!m.replace(4, "4", "y"))
+    assert(!m.replace(0, "0", "y"))
+    assert(!m.replace(5, "x", "y"))
+    assertEquals(m.get(5), Some("5"))
+    assert(m.replace(5, "5", "5!"))
+    assertEquals(m.get(0), Some("0!"))
+    assertEquals(m.get(1), Some("1"))
+    assertEquals(m.get(2), Some("2"))
+    assertEquals(m.get(3), Some("3"))
+    assertEquals(m.get(4), Some("4!"))
+    assertEquals(m.get(5), Some("5!"))
+
+    assert(!m.replace(4, "4", "x"))
+    assert(!m.replace(0, "0", "x"))
+    assert(!m.replace(5, "5", "x"))
+    assert(!m.replace(2, "x", "y"))
+    assertEquals(m.get(2), Some("2"))
+    assert(m.replace(2, "2", "2!"))
+    assertEquals(m.get(0), Some("0!"))
+    assertEquals(m.get(1), Some("1"))
+    assertEquals(m.get(2), Some("2!"))
+    assertEquals(m.get(3), Some("3"))
+    assertEquals(m.get(4), Some("4!"))
+    assertEquals(m.get(5), Some("5!"))
+  }
+
   test("putIfAbsent") {
     val m = new SkipListMap[Int, String]
     assertEquals(m.putIfAbsent(42, "foo"), None)
@@ -213,19 +277,37 @@ final class SkipListSpec extends ScalaCheckSuite {
   }
 
   property("put then get") {
-    val m = new SkipListMap[Int, String]
-    Prop.forAll { (k: Int, v: String) =>
+    Prop.forAll { (m: SkipListMap[Int, String], k: Int, v: String) =>
       m.put(k, v)
       assertEquals(m.get(k), Some(v))
     }
   }
 
   property("put then del") {
-    val m = new SkipListMap[Int, String]
-    Prop.forAll { (k: Int, v: String) =>
+    Prop.forAll { (m: SkipListMap[Int, String], k: Int, v: String) =>
       m.put(k, v)
       m.del(k)
-      assert(m.get(k).isEmpty)
+      assertEquals(m.get(k), None)
+    }
+  }
+
+  property("put then remove") {
+    Prop.forAll { (m: SkipListMap[Int, String], k: Int, v: String) =>
+      m.put(k, v)
+      m.remove(k, v + "!")
+      assertEquals(m.get(k), Some(v))
+      m.remove(k, v)
+      assertEquals(m.get(k), None)
+    }
+  }
+
+  property("put then replace") {
+    Prop.forAll { (m: SkipListMap[Int, String], k: Int, v: String) =>
+      m.put(k, v)
+      assert(!m.replace(k, v + "!", "foo"))
+      assertEquals(m.get(k), Some(v))
+      assert(m.replace(k, v, "foo"))
+      assertEquals(m.get(k), Some("foo"))
     }
   }
 
@@ -258,22 +340,31 @@ final class SkipListSpec extends ScalaCheckSuite {
     }
   }
 
-  property("random put / del / get") {
-    Prop.forAll { (put: List[Int], del: List[Int]) =>
+  property("random put / del / remove / replace / get") {
+    Prop.forAll { (put: List[Int], del: List[Int], remove: List[(Int, String)], replace: List[(Int, String, String)]) =>
       val m = new SkipListMap[Int, String]
       val s = new Shadow[Int, String]
+      def checkAllKeys(): Unit = {
+        for (k <- (put ++ del ++ remove.map(_._1) ++ replace.map(_._1))) {
+          assertEquals(m.get(k), s.get(k))
+        }
+      }
       for (k <- put) {
         assertEquals(m.put(k, k.toString), s.put(k, k.toString))
       }
+      checkAllKeys()
       for (k <- del) {
         assertEquals(m.del(k), s.del(k))
       }
-      for (k <- put) {
-        assertEquals(m.get(k), s.get(k))
+      checkAllKeys()
+      for ((k, v) <- remove) {
+        assertEquals(m.remove(k, v), s.remove(k, v))
       }
-      for (k <- del) {
-        assert(m.get(k).isEmpty)
+      checkAllKeys()
+      for ((k, ov, nv) <- replace) {
+        assertEquals(m.replace(k, ov, nv), s.replace(k, ov, nv))
       }
+      checkAllKeys()
     }
   }
 
@@ -373,6 +464,34 @@ final object SkipListSpec {
 
     final def del(key: K): Boolean = {
       map.remove(key).isDefined
+    }
+
+    final def remove(key: K, value: V): Boolean = {
+      map.get(key) match {
+        case Some(curr) =>
+          if (equ(curr, value)) {
+            map.remove(key)
+            true
+          } else {
+            false
+          }
+        case None =>
+          false
+      }
+    }
+
+    final def replace(key: K, ov: V, nv: V): Boolean = {
+      map.get(key) match {
+        case Some(curr) =>
+          if (equ(curr, ov)) {
+            map.put(key, nv)
+            true
+          } else {
+            false
+          }
+        case None =>
+          false
+      }
     }
 
     final def size(): Int = {

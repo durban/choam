@@ -26,12 +26,14 @@ import core.Reactive
 
 trait Map[K, V] { self =>
 
+  // TODO: a variant of `del` could return the old value (if any)
+  // TODO: think about a `putIfPresent` (in CSLM this is another overload of `replace`)
+
   def put: Rxn[(K, V), Option[V]]
   def putIfAbsent: Rxn[(K, V), Option[V]]
   def replace: Rxn[(K, V, V), Boolean]
   def get: Rxn[K, Option[V]]
   def del: Rxn[K, Boolean]
-  // TODO: a variant of `del` could return the old value (if any)
   def remove: Rxn[(K, V), Boolean]
   def refLike(key: K, default: V): RefLike[V]
 
