@@ -108,6 +108,70 @@ final class SkipListSpec extends ScalaCheckSuite {
     assertEquals(m.get(5), None)
   }
 
+  test("put / remove") {
+    val m = new SkipListMap[Int, String]
+    m.put(0, "0")
+    m.put(1, "1")
+    m.put(5, "5")
+    m.put(4, "4")
+    m.put(2, "2")
+    m.put(3, "3")
+    assertEquals(m.get(0), Some("0"))
+    assertEquals(m.get(1), Some("1"))
+    assertEquals(m.get(2), Some("2"))
+    assertEquals(m.get(3), Some("3"))
+    assertEquals(m.get(4), Some("4"))
+    assertEquals(m.get(5), Some("5"))
+
+    assert(!m.remove(-1, "x"))
+    assert(!m.remove(6, "x"))
+    assert(!m.remove(4, "x"))
+    assertEquals(m.get(4), Some("4"))
+    assert(m.remove(4, "4"))
+    assertEquals(m.get(0), Some("0"))
+    assertEquals(m.get(1), Some("1"))
+    assertEquals(m.get(2), Some("2"))
+    assertEquals(m.get(3), Some("3"))
+    assertEquals(m.get(4), None)
+    assertEquals(m.get(5), Some("5"))
+
+    assert(!m.remove(4, "4"))
+    assert(!m.remove(0, "x"))
+    assertEquals(m.get(0), Some("0"))
+    assert(m.remove(0, "0"))
+    assertEquals(m.get(0), None)
+    assertEquals(m.get(1), Some("1"))
+    assertEquals(m.get(2), Some("2"))
+    assertEquals(m.get(3), Some("3"))
+    assertEquals(m.get(4), None)
+    assertEquals(m.get(5), Some("5"))
+
+    assert(!m.remove(4, "4"))
+    assert(!m.remove(0, "0"))
+    assert(!m.remove(5, "x"))
+    assertEquals(m.get(5), Some("5"))
+    assert(m.remove(5, "5"))
+    assertEquals(m.get(0), None)
+    assertEquals(m.get(1), Some("1"))
+    assertEquals(m.get(2), Some("2"))
+    assertEquals(m.get(3), Some("3"))
+    assertEquals(m.get(4), None)
+    assertEquals(m.get(5), None)
+
+    assert(!m.remove(4, "4"))
+    assert(!m.remove(0, "0"))
+    assert(!m.remove(5, "5"))
+    assert(!m.remove(2, "x"))
+    assertEquals(m.get(2), Some("2"))
+    assert(m.remove(2, "2"))
+    assertEquals(m.get(0), None)
+    assertEquals(m.get(1), Some("1"))
+    assertEquals(m.get(2), None)
+    assertEquals(m.get(3), Some("3"))
+    assertEquals(m.get(4), None)
+    assertEquals(m.get(5), None)
+  }
+
   test("putIfAbsent") {
     val m = new SkipListMap[Int, String]
     assertEquals(m.putIfAbsent(42, "foo"), None)
@@ -230,24 +294,61 @@ final class SkipListSpec extends ScalaCheckSuite {
       for ((k, v) <- kvs) {
         m.put(k, v)
       }
-      m.put(null, "a")
-      for ((k, v) <- kvs if (k ne null)) {
-        assertEquals(m.get(k), Some(v))
+      def checkOriginalItems(ignoreKeys: Set[String]): Unit = {
+        for ((k, v) <- kvs if (!ignoreKeys.contains(k))) {
+          assertEquals(m.get(k), Some(v))
+        }
       }
+      // null key:
+      m.put(null, "a")
+      checkOriginalItems(Set(null))
       assertEquals(m.get(null), Some("a"))
+      assertEquals(m.putIfAbsent(null, "x"), Some("a"))
+      assertEquals(m.get(null), Some("a"))
+      assert(m.del(null))
+      assertEquals(m.get(null), None)
+      assertEquals(m.putIfAbsent(null, "a"), None)
+      assertEquals(m.get(null), Some("a"))
+      checkOriginalItems(Set(null))
+      assert(!m.remove(null, "x"))
+      assert(m.remove(null, "a"))
+      checkOriginalItems(Set(null))
+      assertEquals(m.get(null), None)
+      assertEquals(m.putIfAbsent(null, "a"), None)
+      assertEquals(m.get(null), Some("a"))
+      // null value:
       val myKey = "qwerty"
       m.put(myKey, null)
-      for ((k, v) <- kvs if ((k ne null) && (k != myKey))) {
-        assertEquals(m.get(k), Some(v))
-      }
+      checkOriginalItems(Set(null, myKey))
       assertEquals(m.get(null), Some("a"))
       assertEquals(m.get(myKey), Some(null))
-      m.put(null, null)
-      for ((k, v) <- kvs if ((k ne null) && (k != myKey))) {
-        assertEquals(m.get(k), Some(v))
+      if (kvs.nonEmpty) {
+        val arbKey = kvs.keysIterator.next()
+        val itsValue = kvs(arbKey)
+        assertEquals(m.putIfAbsent(arbKey, null), Some(itsValue))
+        assertEquals(m.get(arbKey), Some(itsValue))
       }
+      assert(!m.remove(myKey, "x"))
+      assertEquals(m.get(myKey), Some(null))
+      assert(m.remove(myKey, null))
+      assertEquals(m.get(myKey), None)
+      checkOriginalItems(Set(null, myKey))
+      assertEquals(m.putIfAbsent(myKey, null), None)
+      assertEquals(m.get(myKey), Some(null))
+      checkOriginalItems(Set(null, myKey))
+      // null key and value:
+      m.put(null, null)
+      checkOriginalItems(Set(null, myKey))
       assertEquals(m.get(null), Some(null))
       assertEquals(m.get(myKey), Some(null))
+      assert(!m.remove(null, "x"))
+      assertEquals(m.get(null), Some(null))
+      assert(m.remove(null, null))
+      assertEquals(m.get(null), None)
+      checkOriginalItems(Set(null, myKey))
+      assertEquals(m.putIfAbsent(null, null), None)
+      assertEquals(m.get(null), Some(null))
+      checkOriginalItems(Set(null, myKey))
     }
   }
 }

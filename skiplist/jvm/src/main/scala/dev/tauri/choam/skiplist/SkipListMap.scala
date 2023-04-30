@@ -150,8 +150,17 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
   }
 
   final def del(key: K): Boolean = {
-    doRemove(key)
+    doRemove(key, value = TOMB)
   }
+
+  final def remove(key: K, value: V): Boolean = {
+    doRemove(key, value)
+  }
+
+  // TODO:
+  // final def replace(key: K, ov: V, nv: V): Boolean = {
+  //   ...
+  // }
 
   private[choam] final def foreach(cb: (K, V) => Unit): Unit = {
     doForeach(cb)
@@ -416,14 +425,19 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
   }
 
   /**
-   * Finds the node with the specified key; deletes it
-   * logically by CASing the callback to null; unlinks
-   * it (first inserting a marker); removes associated
-   * index nodes; and possibly reduces index level.
+   * Finds the node with the specified key (and optionally
+   * value); deletes it logically by CASing the value to
+   * `TOMB`; unlinks it (first inserting a marker); removes
+   * associated index nodes; and possibly reduces index level.
    *
    * Analogous to `doRemove` in the JSR-166 `ConcurrentSkipListMap`.
+   *
+   * @param key the key of the node to remove.
+   * @param value the value of the node to remove; compared by
+   *   object identity; pass `TOMB` to remove a node with any value.
+   * @return `true` iff a node was removed.
    */
-  private[this] final def doRemove(key: K): Boolean = {
+  private[this] final def doRemove(key: K, value: V): Boolean = {
     var b = findPredecessor(key)
     while (b ne null) { // outer
       var inner = true
@@ -444,6 +458,9 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
             if (c > 0) {
               b = n
             } else if (c < 0) {
+              return false // scalafix:ok
+            } else if (!isTOMB(value) && !equ(value, ncb)) {
+              // `value` was specified, and doesn't match:
               return false // scalafix:ok
             } else if (n.casValue(ncb, TOMB)) {
               // successfully logically deleted
