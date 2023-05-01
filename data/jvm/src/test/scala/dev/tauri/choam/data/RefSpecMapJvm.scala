@@ -24,20 +24,35 @@ import cats.kernel.{ Hash, Order }
 import cats.Applicative
 import cats.effect.IO
 
-final class RefSpec_Map_Ttrie_ThreadConfinedMcas_IO
+final class RefSpec_Map_TtrieHash_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with SpecThreadConfinedMcas
-  with RefSpec_Map_Ttrie[IO]
+  with RefSpec_Map_TtrieHash[IO]
 
-final class RefSpec_Map_Ttrie_Emcas_IO
+final class RefSpec_Map_TtrieOrder_ThreadConfinedMcas_IO
+  extends BaseSpecIO
+  with SpecThreadConfinedMcas
+  with RefSpec_Map_TtrieOrder[IO]
+
+final class RefSpec_Map_TtrieHash_Emcas_IO
   extends BaseSpecIO
   with SpecEmcas
-  with RefSpec_Map_Ttrie[IO]
+  with RefSpec_Map_TtrieHash[IO]
 
-final class RefSpec_Map_Ttrie_SpinLockMcas_IO
+final class RefSpec_Map_TtrieOrder_Emcas_IO
+  extends BaseSpecIO
+  with SpecEmcas
+  with RefSpec_Map_TtrieOrder[IO]
+
+final class RefSpec_Map_TtrieHash_SpinLockMcas_IO
   extends BaseSpecIO
   with SpecSpinLockMcas
-  with RefSpec_Map_Ttrie[IO]
+  with RefSpec_Map_TtrieHash[IO]
+
+final class RefSpec_Map_TtrieOrder_SpinLockMcas_IO
+  extends BaseSpecIO
+  with SpecSpinLockMcas
+  with RefSpec_Map_TtrieOrder[IO]
 
 final class RefSpec_Map_SimpleHash_Emcas_IO
   extends BaseSpecIO
@@ -59,12 +74,19 @@ final class RefSpec_Map_SimpleOrdered_SpinLockMcas_IO
   with SpecSpinLockMcas
   with RefSpec_Map_SimpleOrdered[IO]
 
+trait RefSpec_Map_TtrieHash[F[_]] extends RefSpec_Map_Ttrie[F] { this: McasImplSpec =>
+  final override def newMap[K : Hash : Order, V]: F[MapType[K, V]] =
+    Ttrie[K, V].run[F]
+}
+
+trait RefSpec_Map_TtrieOrder[F[_]] extends RefSpec_Map_Ttrie[F] { this: McasImplSpec =>
+  final override def newMap[K : Hash : Order, V]: F[MapType[K, V]] =
+    Ttrie.skipListBased[K, V].run[F]
+}
+
 trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
 
   private[data] final override type MapType[K, V] = Ttrie[K, V]
-
-  final override def newMap[K : Hash : Order, V]: F[MapType[K, V]] =
-    Ttrie[K, V].run[F]
 
   test("Ttrie insert/remove should not leak memory") {
     val constValue = "foo"

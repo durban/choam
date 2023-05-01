@@ -25,7 +25,7 @@ import cats.kernel.Order
 import munit.ScalaCheckSuite
 import org.scalacheck.Prop
 
-import SkipListHelper.listFromSkipList
+import SkipListHelper.{ listFromSkipList, listFromSkipListIterator }
 
 final class SkipListSpec extends ScalaCheckSuite with SkipListHelper {
 
@@ -249,24 +249,32 @@ final class SkipListSpec extends ScalaCheckSuite with SkipListHelper {
     assertEquals(m.get(33), Some("xyz"))
   }
 
-  test("foreach") {
+  test("foreach / iterator") {
     val m = new SkipListMap[Int, String]
     assertEquals(listFromSkipList(m), List())
+    assertEquals(listFromSkipListIterator(m), List())
 
     m.put(99, "A")
     m.put(-1, "B")
     m.put(100, "C")
-    assertEquals(listFromSkipList(m), List(-1 -> "B", 99 -> "A", 100 -> "C"))
+    val exp1 = List(-1 -> "B", 99 -> "A", 100 -> "C")
+    assertEquals(listFromSkipList(m), exp1)
+    assertEquals(listFromSkipListIterator(m), exp1)
 
     m.del(99)
-    assertEquals(listFromSkipList(m), List(-1 -> "B", 100 -> "C"))
+    val exp2 = List(-1 -> "B", 100 -> "C")
+    assertEquals(listFromSkipList(m), exp2)
+    assertEquals(listFromSkipListIterator(m), exp2)
 
     m.put(100, "X")
-    assertEquals(listFromSkipList(m), List(-1 -> "B", 100 -> "X"))
+    val exp3 = List(-1 -> "B", 100 -> "X")
+    assertEquals(listFromSkipList(m), exp3)
+    assertEquals(listFromSkipListIterator(m), exp3)
 
     m.del(-1)
     m.del(100)
     assertEquals(listFromSkipList(m), List())
+    assertEquals(listFromSkipListIterator(m), List())
   }
 
   property("empty list get") {

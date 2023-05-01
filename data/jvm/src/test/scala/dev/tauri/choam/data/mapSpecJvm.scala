@@ -41,25 +41,48 @@ final class MapSpec_SimpleOrdered_Emcas_SyncIO
   with SpecEmcas
   with MapSpecSimpleOrdered[SyncIO]
 
-final class MapSpec_Ttrie_SpinLockMcas_SyncIO
+final class MapSpec_TtrieHash_SpinLockMcas_SyncIO
   extends BaseSpecSyncIO
   with SpecSpinLockMcas
-  with MapSpecTtrie[SyncIO]
+  with MapSpecTtrieHash[SyncIO]
 
-final class MapSpec_Ttrie_Emcas_SyncIO
+final class MapSpec_TtrieOrder_SpinLockMcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecSpinLockMcas
+  with MapSpecTtrieOrder[SyncIO]
+
+final class MapSpec_TtrieHash_Emcas_SyncIO
   extends BaseSpecSyncIO
   with SpecEmcas
-  with MapSpecTtrie[SyncIO]
+  with MapSpecTtrieHash[SyncIO]
 
-final class MapSpec_Ttrie_ThreadConfinedMcas_SyncIO
+final class MapSpec_TtrieOrder_Emcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecEmcas
+  with MapSpecTtrieOrder[SyncIO]
+
+final class MapSpec_TtrieHash_ThreadConfinedMcas_SyncIO
   extends BaseSpecSyncIO
   with SpecThreadConfinedMcas
-  with MapSpecTtrie[SyncIO]
+  with MapSpecTtrieHash[SyncIO]
 
-trait MapSpecTtrie[F[_]] extends MapSpec[F] { this: McasImplSpec =>
+final class MapSpec_TtrieOrder_ThreadConfinedMcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecThreadConfinedMcas
+  with MapSpecTtrieOrder[SyncIO]
+
+trait MapSpecTtrieHash[F[_]] extends MapSpec[F] { this: McasImplSpec =>
 
   override type MyMap[K, V] = Map[K, V]
 
   def mkEmptyMap[K : Hash : Order, V]: F[Map[K, V]] =
     Ttrie.apply[K, V].run[F].widen
+}
+
+trait MapSpecTtrieOrder[F[_]] extends MapSpec[F] { this: McasImplSpec =>
+
+  override type MyMap[K, V] = Map[K, V]
+
+  def mkEmptyMap[K : Hash : Order, V]: F[Map[K, V]] =
+    Ttrie.skipListBased[K, V].run[F].widen
 }

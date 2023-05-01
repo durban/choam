@@ -18,13 +18,14 @@
 package dev.tauri.choam
 package data
 
-import scala.collection.concurrent.TrieMap
+import scala.collection.concurrent.{ TrieMap, Map => CMap }
 import scala.collection.immutable.{ Map => ScalaMap }
 import scala.util.hashing.byteswap32
 
-import cats.kernel.Hash
+import cats.kernel.{ Hash, Order }
 import cats.syntax.all._
 
+import skiplist.SkipListMap
 import mcas.Mcas
 import Ttrie._
 
@@ -37,13 +38,15 @@ import Ttrie._
  * https://web.archive.org/web/20210506144154/https://lampwww.epfl.ch/~prokopec/ctries-snapshot.pdf).
  *
  * We're using a `TrieMap` directly (instead of reimplementing),
- * since we get it for free from the stdlib.
+ * since we get it for free from the stdlib. (Also, this is
+ * written against the `scala.collection.concurrent.Map`
+ * interface, so it can work with other concurrent maps too.)
  *
  * Unlike `ttrie` in the paper (section 3.3), we don't leak
  * memory on failed lookups, and removal compacts the trie.
  */
 private final class Ttrie[K, V] private (
-  m: TrieMap[K, TrieRef[V]],
+  m: CMap[K, TrieRef[V]],
 ) extends Map[K, V] { self =>
 
   /*
@@ -353,6 +356,13 @@ private final object Ttrie {
         hashf = { k => byteswap32(K.hash(k)) },
         ef = K.eqv(_, _),
       )
+      new Ttrie[K, V](m)
+    }
+  }
+
+  def skipListBased[K, V](implicit K: Order[K]): Axn[Ttrie[K, V]] = {
+    Axn.unsafe.delay {
+      val m = new SkipListMap[K, TrieRef[V]]()(K)
       new Ttrie[K, V](m)
     }
   }

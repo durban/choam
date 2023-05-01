@@ -28,8 +28,14 @@ import cats.kernel.Order
 
 /**
  * Concurrent skip list map.
+ *
+ * Note: this implements the `scala.collection.concurrent.Map`
+ * interface, but some methods throw an exception, others use
+ * reference equality instead of value equality. (We need this
+ * to be able to use it without indirection in `Ttrie`.)
  */
-final class SkipListMap[K, V]()(implicit K: Order[K]) {
+private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
+  extends scala.collection.concurrent.Map[K, V] {
 
   /*
    * This implementation is based on the public
@@ -110,7 +116,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
   }
 
   /** The top left index node (or null if empty) */
-  private[this] val head =
+  private[this] val _head =
     new AtomicReference[Index]
 
   private[this] val _marker: AnyRef =
@@ -136,16 +142,16 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
   }
 
   /** @return the old value (if any). */
-  final def put(key: K, value: V): Option[V] = {
+  final override def put(key: K, value: V): Option[V] = {
     doPut(key, value, onlyIfAbsent = false, tlr = ThreadLocalRandom.current())
   }
 
   /** @return the existing value (if any). */
-  final def putIfAbsent(key: K, value: V): Option[V] = {
+  final override def putIfAbsent(key: K, value: V): Option[V] = {
     doPut(key, value, onlyIfAbsent = true, tlr = ThreadLocalRandom.current())
   }
 
-  final def get(key: K): Option[V] = {
+  final override def get(key: K): Option[V] = {
     doGet(key)
   }
 
@@ -158,9 +164,14 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    * Removes the item at `key` if its value
    * (reference) equals `value`.
    *
+   * TODO: this overrides a `concurrent.Map`
+   * method with incompatible semantics: we
+   * use reference equality (instead of value
+   * equality).
+   *
    * @return `true` iff an item have been removed.
    */
-  final def remove(key: K, value: V): Boolean = {
+  final override def remove(key: K, value: V): Boolean = {
     doRemove(key, value)
   }
 
@@ -168,10 +179,89 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    * Replaces the item's current value with
    * `nv` iff it (reference) equals `ov`.
    *
+   * TODO: this overrides a `concurrent.Map`
+   * method with incompatible semantics: we
+   * use reference equality (instead of value
+   * equality).
+   *
    * @return `true` iff a replacement have been made.
    */
-  final def replace(key: K, ov: V, nv: V): Boolean = {
+  final override def replace(key: K, ov: V, nv: V): Boolean = {
     doReplace(key, ov, nv)
+  }
+
+  // `concurrent.Map` methods:
+
+  /**
+   * Note: this method is NOT linearizable.
+   *
+   * Analogous to the iterators in the JSR-166 `ConcurrentSkipListMap`.
+   */
+  final override def iterator: Iterator[(K, V)] = {
+    new Iterator[(K, V)] {
+
+      private[this] var nextNode: Node =
+        null
+
+      private[this] var nextValue: V =
+        TOMB
+
+      advance(baseHead())
+
+      final override def hasNext: Boolean = {
+        this.nextNode ne null
+      }
+
+      final override def next(): (K, V) = {
+        val n = this.nextNode
+        if (n eq null) {
+          throw new NoSuchElementException
+        } else {
+          val k = n.key
+          val v = this.nextValue
+          advance(n)
+          (k, v)
+        }
+      }
+
+      private[this] final def advance(_b: Node): Unit = {
+        var b: Node = _b
+        if (b ne null) {
+          while (true) {
+            val n = b.getNext()
+            if (n ne null) {
+              val v = n.getValue()
+              if (!isTOMB(v)) {
+                this.nextValue = v
+                this.nextNode = n
+                return // scalafix:ok
+              } else {
+                b = n // and retry
+              }
+            } else {
+              // end of list
+              this.nextValue = TOMB
+              this.nextNode = null
+              return // scalafix:ok
+            }
+          }
+        }
+      }
+    }
+  }
+
+  final override def addOne(elem: (K, V)): this.type = {
+    put(elem._1, elem._2)
+    this
+  }
+
+  final override def subtractOne(elem: K): this.type = {
+    del(elem)
+    this
+  }
+
+  final override def replace(k: K, v: V): Option[V] = {
+    throw new NotImplementedError("SkipListMap#replace(K,V)")
   }
 
   private[choam] final def foreach(cb: (K, V) => Unit): Unit = {
@@ -201,7 +291,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    */
   @tailrec
   private[this] final def doPut(key: K, value: V, onlyIfAbsent: Boolean, tlr: ThreadLocalRandom): Option[V] = {
-    val h = head.getAcquire()
+    val h = _head.getAcquire()
     var levels = 0 // number of levels descended
     var b: Node = if (h eq null) {
       // head not initialized yet, do it now;
@@ -209,7 +299,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
       // (without payload):
       val base = new Node(MARKER, TOMB, null)
       val h = new Index(base, null, null)
-      if (head.compareAndSet(null, h)) base else null
+      if (_head.compareAndSet(null, h)) base else null
     } else {
       // we have a head; find a node in the base list
       // "close to" (but before) the inserion point:
@@ -306,13 +396,13 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
           }
 
           // then actually add these index nodes to the skiplist:
-          if (addIndices(h, skips, x) && (skips < 0) && (head.getAcquire() eq h)) {
+          if (addIndices(h, skips, x) && (skips < 0) && (_head.getAcquire() eq h)) {
             // if we successfully added a full height
             // "tower", try to also add a new level
             // (with only 1 index node + the head)
             val hx = new Index(z, x, null)
             val nh = new Index(h.node, h, hx) // new head
-            head.compareAndSet(h, nh)
+            _head.compareAndSet(h, nh)
           }
 
           if (z.isDeleted()) {
@@ -362,7 +452,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
   }
 
   private[this] final def doGet(key: K): Option[V] = {
-    var q = head.getAcquire()
+    var q = _head.getAcquire()
     if (q ne null) {
       while (true) {
         var inner = true
@@ -569,7 +659,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    * Analogous to `baseHead` in the JSR-166 `ConcurrentSkipListMap`.
    */
   private[this] final def baseHead(): Node = {
-    val h = head.getAcquire()
+    val h = _head.getAcquire()
     if (h ne null) h.node else null
   }
 
@@ -689,7 +779,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    * Analogous to `findPredecessor` in the JSR-166 `ConcurrentSkipListMap`.
    */
   private[this] final def findPredecessor(key: K): Node = {
-    var q: Index = head.getAcquire() // current index node
+    var q: Index = _head.getAcquire() // current index node
     if ((q eq null) || isMARKER(key)) {
       null
     } else {
@@ -776,7 +866,7 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
    * Analogous to `tryReduceLevel` in the JSR-166 `ConcurrentSkipListMap`.
    */
   private[this] final def tryReduceLevel(): Unit = {
-    val lv1 = head.getAcquire()
+    val lv1 = _head.getAcquire()
     if ((lv1 ne null) && (lv1.getRight() eq null)) { // 1st level seems empty
       val lv2 = lv1.down
       if ((lv2 ne null) && (lv2.getRight() eq null)) { // 2nd level seems empty
@@ -784,14 +874,14 @@ final class SkipListMap[K, V]()(implicit K: Order[K]) {
         if ((lv3 ne null) && (lv3.getRight() eq null)) { // 3rd level seems empty
           // the topmost 3 levels seem empty,
           // so try to decrease levels by 1:
-          if (head.compareAndSet(lv1, lv2)) {
+          if (_head.compareAndSet(lv1, lv2)) {
             // successfully reduced level,
             // but re-check if it's still empty:
             if (lv1.getRight() ne null) {
               // oops, we deleted a level
               // with concurrent insert(s),
               // try to fix our mistake:
-              head.compareAndSet(lv2, lv1)
+              _head.compareAndSet(lv2, lv1)
               ()
             }
           }

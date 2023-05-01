@@ -66,4 +66,10 @@ final object SkipListHelper {
     m.foreach { (k, v) => lb += ((k, v)) }
     lb.result()
   }
+
+  def listFromSkipListIterator[K, V](m: SkipListMap[K, V]): List[(K, V)] = {
+    val lb = List.newBuilder[(K, V)]
+    m.iterator.foreach { kv => lb += (kv) }
+    lb.result()
+  }
 }

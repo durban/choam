@@ -26,7 +26,7 @@ private[data] abstract class MapPlatform extends AbstractMapPlatform {
     Ttrie.apply[K, V]
 
   final override def orderedMap[K: Order, V]: Axn[Map[K, V]] =
-    sys.error("TODO")
+    Ttrie.skipListBased[K, V]
 
   final override def simpleHashMap[K: Hash, V]: Axn[Map.Extra[K, V]] =
     SimpleMap[K, V]
