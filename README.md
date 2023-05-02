@@ -24,7 +24,7 @@
 ## Overview
 
 The type [`Rxn[-A, +B]`](core/shared/src/main/scala/dev/tauri/choam/core/Rxn.scala)
-is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but:
+is similar to an effectful function from `A` to `B` (that is, `A => F[B]`), but:
 
 - The only effect it can perform is lock-free updates to
   [`Ref`s](core/shared/src/main/scala/dev/tauri/choam/refs/Ref.scala)
@@ -33,7 +33,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
     (when executed) will increment its value.
 - Multiple `Rxn`s can be composed (by using various combinators),
   and the resulting `Rxn` will *update all affected memory locations atomically*.
-  - For example, if `y` is also a `Ref[Int]`, then `x.update(_ + 1) >>> y.update(_ + 1)`
+  - For example, if `y` is also a `Ref[Int]`, then `x.update(_ + 1) *> y.update(_ + 1)`
     will increment both of them atomically.
 
 ## Modules
@@ -68,6 +68,8 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   properties fulfilled by the various `Rxn` combinators
 - [`choam-mcas`](mcas/shared/src/main/scala/dev/tauri/choam/mcas/):
   low-level multi-word compare-and-swap (MCAS/*k*-CAS) implementations
+- [`choam-skiplist`](skiplist/jvm/src/main/scala/dev/tauri/choam/skiplist/):
+  a concurrent skip list map for internal use
 
 ## Related work
 
@@ -91,7 +93,7 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
   - [Efficient Multi-word Compare and Swap](https://web.archive.org/web/20220215225848/https://arxiv.org/pdf/2008.02527.pdf)
     (`Mcas.Emcas` implements a variant of this algorithm; this is the default algorithm we use on the JVM)
   - A simple, non-lock-free algorithm from the Reagents paper (see above) is implemented as
-    `Mcas.SpinLockMcas`
+    `Mcas.SpinLockMcas` (we use it for testing)
 - Software transactional memory (STM)
   - A `Rxn` is somewhat similar to a memory transaction, but there are
     important differences:
@@ -104,8 +106,8 @@ is similar to an effectful function from `A` to `B` (that is, `A ⇒ F[B]`), but
       interoperable with async data types which implement
       [Cats Effect](https://github.com/typelevel/cats-effect) typeclasses
       (see the ``choam-async`` module). This feature can be used to provide such
-      "waiting" functionality (e.g., `AsyncQueue.ringBuffer` is a queue with
-      `enqueue` in `Rxn` and `deque` in `IO`).
+      "waiting" functionality (e.g., `dev.tauri.choam.async.AsyncQueue.ringBuffer`
+      is a queue with `enqueue` in `Rxn` and `deque` in, e.g., `IO` or another async `F[_]`).
     - The implementation (the `Rxn` interpreter) is also lock-free; STM implementations
       are usually not (although there are exceptions).
     - STM transactions usually have a way of raising/handling errors
