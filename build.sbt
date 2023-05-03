@@ -20,10 +20,10 @@ val scala2 = "2.13.10"
 val scala3 = "3.2.2"
 
 // CI JVM versions:
-val jvmLatest = JavaSpec.temurin("19")
+val jvmLatest = JavaSpec.temurin("20")
 val jvmOldest = JavaSpec.temurin("11")
-val jvmGraal_11 = JavaSpec.graalvm("22.3.1", "11")
-val jvmGraal_19 = JavaSpec.graalvm("22.3.1", "19")
+val jvmGraal_11 = JavaSpec.graalvm("22.3.2", "11")
+val jvmGraalLatest = JavaSpec.graalvm("22.3.2", "17")
 val jvmOpenj9_11 = JavaSpec(JavaSpec.Distribution.OpenJ9, "11")
 val jvmOpenj9_17 = JavaSpec(JavaSpec.Distribution.OpenJ9, "17")
 
@@ -81,7 +81,7 @@ ThisBuild / githubWorkflowBuild := Seq(
 ThisBuild / githubWorkflowJavaVersions := Seq(
   jvmOldest,
   jvmGraal_11,
-  jvmGraal_19,
+  jvmGraalLatest,
   jvmOpenj9_11,
   jvmOpenj9_17,
   jvmLatest,
@@ -90,7 +90,7 @@ ThisBuild / githubWorkflowOSes := Seq(linux, windows, macos)
 ThisBuild / githubWorkflowSbtCommand := "sbt -v"
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   MatrixExclude(Map("os" -> windows, "java" -> jvmGraal_11.render)), // win+graal seems unstable
-  MatrixExclude(Map("os" -> windows, "java" -> jvmGraal_19.render)), // win+graal seems unstable
+  MatrixExclude(Map("os" -> windows, "java" -> jvmGraalLatest.render)), // win+graal seems unstable
   MatrixExclude(Map("os" -> windows, "java" -> jvmOpenj9_11.render)), // win+openJ9 seems unstable
   MatrixExclude(Map("os" -> windows, "java" -> jvmOpenj9_17.render)), // win+openJ9 seems unstable
   MatrixExclude(Map("os" -> macos)), // don't run everything on macos, but see below
