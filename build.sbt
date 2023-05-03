@@ -20,7 +20,7 @@ val scala2 = "2.13.10"
 val scala3 = "3.2.2"
 
 // CI JVM versions:
-val jvmLatest = JavaSpec.temurin("20")
+val jvmLatest = JavaSpec.temurin("17")
 val jvmOldest = JavaSpec.temurin("11")
 val jvmGraal_11 = JavaSpec.graalvm("22.3.2", "11")
 val jvmGraalLatest = JavaSpec.graalvm("22.3.2", "17")
@@ -613,7 +613,7 @@ lazy val dependencies = new {
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.17")
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.1") // https://github.com/JCTools/JCTools
   val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.17") // https://github.com/Kotlin/kotlinx-lincheck
-  val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.4")
+  val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.5")
 
   // JS:
   val scalaJsLocale = Def.setting[Seq[ModuleID]](Seq(
