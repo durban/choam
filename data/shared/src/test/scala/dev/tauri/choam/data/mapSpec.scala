@@ -405,4 +405,61 @@ trait MapSpec[F[_]]
       _ <- assertResultF(m.get[F]("c"), None) // NB: it's `None` and not `Some(None)`
     } yield ()
   }
+
+  test("Map should support null keys/values") {
+    val nullTolerantStringHash: Hash[String] = new Hash[String] {
+      final override def eqv(x: String, y: String): Boolean = {
+        if (x eq y) true
+        else if (x eq null) false
+        else if (y eq null) false
+        else Hash[String].eqv(x, y)
+      }
+      final override def hash(s: String): Int = {
+        s.##
+      }
+    }
+    val nullTolerantStringOrder: Order[String] = { (x, y) =>
+      if ((x eq null) && (y eq null)) {
+        0
+      } else if (x eq null) {
+        -1
+      } else if (y eq null) {
+        1
+      } else {
+        Order[String].compare(x, y)
+      }
+    }
+    PropF.forAllF { (_k0: String, _ks: List[String], _v: String) =>
+      val k0 = if (_k0 ne null) _k0 else "foo"
+      val ks = _ks.filter(k => (k ne null) && (k != k0))
+      val v = if (_v ne null) _v else "bar"
+      for {
+        m <- mkEmptyMap[String, String](nullTolerantStringHash, nullTolerantStringOrder)
+        _ <- assertResultF(m.get(null), None)
+        _ <- ks.traverse_ { k =>
+          m.put[F]((k, v))
+        }
+        _ <- assertResultF(m.get(null), None)
+        _ <- m.put[F]((k0, null))
+        _ <- assertResultF(m.get(null), None)
+        _ <- assertResultF(m.get(k0), Some(null))
+        _ <- ks.traverse_ { k =>
+          assertResultF(m.get[F](k), Some(v))
+        }
+        _ <- assertResultF(m.putIfAbsent((k0, v)), Some(null))
+        _ <- assertResultF(m.putIfAbsent((null, "x")), None)
+        _ <- assertResultF(m.get(null), Some("x"))
+        _ <- assertResultF(m.get(k0), Some(null))
+        _ <- ks.traverse_ { k =>
+          assertResultF(m.get[F](k), Some(v))
+        }
+        _ <- assertResultF(m.replace((null, "x", null)), true)
+        _ <- assertResultF(m.get(null), Some(null))
+        _ <- assertResultF(m.get(k0), Some(null))
+        _ <- ks.traverse_ { k =>
+          assertResultF(m.get[F](k), Some(v))
+        }
+      } yield ()
+    }
+  }
 }

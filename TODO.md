@@ -138,7 +138,6 @@
   - see also: JEP 412 (https://openjdk.java.net/jeps/412)
 - Other data structures:
   - ttrie-set(?)
-  - `SkipListMap`, `SkipListSet`
   - concurrent bag (e.g., https://dl.acm.org/doi/10.1145/1989493.1989550)
   - dual data structures:
     - e.g., stack

@@ -23,46 +23,53 @@ import scala.collection.immutable.{ Map => ScalaMap }
 import cats.kernel.{ Hash, Order }
 
 import org.organicdesign.fp.collections.{ PersistentHashMap, Equator }
+import org.organicdesign.fp.collections.UnmodMap.UnEntry
+import org.organicdesign.fp.oneOf.{ Option => POption }
 
 private final class SimpleMap[K, V] private (
   repr: Ref[PersistentHashMap[K, V]],
 )(implicit K: Hash[K]) extends Map.Extra[K, V] { self =>
 
+  private[this] final def valueOptionFromEntry(e: POption[UnEntry[K, V]]): Option[V] = {
+    if (e.isSome()) Some(e.get().getValue()) else None
+  }
+
   override val put: Rxn[(K, V), Option[V]] = {
     repr.upd[(K, V), Option[V]] { (m, kv) =>
-      // `m.get` can return `null`
-      (m.assoc(kv._1, kv._2), Option(m.get(kv._1)))
+      (m.assoc(kv._1, kv._2), valueOptionFromEntry(m.entry(kv._1)))
     }
   }
 
   override val putIfAbsent: Rxn[(K, V), Option[V]] = {
     repr.upd[(K, V), Option[V]] { (m, kv) =>
-      m.get(kv._1) match {
-        case null =>
-          (m.assoc(kv._1, kv._2), None)
-        case v =>
-          (m, Some(v))
+      val e = m.entry(kv._1)
+      if (e.isSome()) {
+        (m, Some(e.get().getValue()))
+      } else {
+        (m.assoc(kv._1, kv._2), None)
       }
     }
   }
 
   override val replace: Rxn[(K, V, V), Boolean] = {
     repr.upd[(K, V, V), Boolean] { (m, kvv) =>
-      m.get(kvv._1) match {
-        case null =>
-          (m, false)
-        case v if equ(v, kvv._2) =>
+      val e = m.entry(kvv._1)
+      if (e.isSome()) {
+        val v = e.get().getValue()
+        if (equ(v, kvv._2)) {
           (m.assoc(kvv._1, kvv._3), true)
-        case _ =>
+        } else {
           (m, false)
+        }
+      } else {
+        (m, false)
       }
     }
   }
 
   override val get: Rxn[K, Option[V]] = {
     repr.upd[K, Option[V]] { (m, k) =>
-      // `m.get` can return `null`
-      (m, Option(m.get(k)))
+      (m, valueOptionFromEntry(m.entry(k)))
     }
   }
 
@@ -75,13 +82,16 @@ private final class SimpleMap[K, V] private (
 
   override val remove: Rxn[(K, V), Boolean] = {
     repr.upd[(K, V), Boolean] { (m, kv) =>
-      m.get(kv._1) match {
-        case null =>
-          (m, false)
-        case v if equ(v, kv._2) =>
+      val e = m.entry(kv._1)
+      if (e.isSome()) {
+        val v = e.get().getValue()
+        if (equ(v, kv._2)) {
           (m.without(kv._1), true)
-        case _ =>
+        } else {
           (m, false)
+        }
+      } else {
+        (m, false)
       }
     }
   }
