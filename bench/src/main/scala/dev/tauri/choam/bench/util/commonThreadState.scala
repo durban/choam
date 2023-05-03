@@ -25,7 +25,7 @@ import org.openjdk.jmh.annotations.{ State, Param, Setup, Scope }
 
 import cats.effect.IO
 
-import async.AsyncReactiveHelper
+import async.AsyncReactive
 
 @State(Scope.Thread)
 class RandomState {
@@ -71,7 +71,11 @@ class McasImplState extends RandomState {
   def setupMcasImpl(): Unit = {
     this.mcasImpl = mcas.Mcas.unsafeLookup(mcasName)
     this.mcasCtx = this.mcasImpl.currentContext()
-    this.reactive = AsyncReactiveHelper.newAsyncReactiveImpl(this.mcasImpl)(IO.asyncForIO)
+    this.reactive = {
+      val ar = AsyncReactive.asyncReactiveForAsync[IO](IO.asyncForIO)
+      assert(ar.mcasImpl eq this.mcasImpl)
+      ar
+    }
     java.lang.invoke.VarHandle.releaseFence()
   }
 }

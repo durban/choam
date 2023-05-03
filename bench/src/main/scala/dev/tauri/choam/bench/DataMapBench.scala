@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadLocalRandom
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import data.{ Map, MapHelper }
+import data.Map
 import util._
 
 @Fork(2)
@@ -33,23 +33,38 @@ class DataMapBench {
   import DataMapBench._
 
   @Benchmark
-  def concurrentHashMap(s: ChmSt, bh: Blackhole, k: McasImplState): Unit = {
-    chmTask(s, bh, k)
+  def jucConcurrentHashMap(s: ChmSt, bh: Blackhole, k: McasImplState): Unit = {
+    cmTask(s, bh, k)
   }
 
   @Benchmark
-  def rxnSimple(s: SimpleSt, bh: Blackhole, k: McasImplState): Unit = {
-    rxnTask(s, bh, k)
+  def jucConcurrentSkipListMap(s: CslmSt, bh:Blackhole, k: McasImplState): Unit = {
+    cmTask(s, bh, k)
   }
 
   @Benchmark
-  def rxnTtrie(s: TtrieSt, bh: Blackhole, k: McasImplState): Unit = {
-    rxnTask(s, bh, k)
-  }
-
-  @Benchmark
-  def scalaStm(s: ScalaStmSt, bh: Blackhole, k: McasImplState): Unit = {
+  def scalaStmTMap(s: ScalaStmSt, bh: Blackhole, k: McasImplState): Unit = {
     scalaStmTask(s, bh, k)
+  }
+
+  @Benchmark
+  def rxnSimpleHash(s: SimpleHashSt, bh: Blackhole, k: McasImplState): Unit = {
+    rxnTask(s, bh, k)
+  }
+
+  @Benchmark
+  def rxnSimpleOrdered(s: SimpleOrderedSt, bh: Blackhole, k: McasImplState): Unit = {
+    rxnTask(s, bh, k)
+  }
+
+  @Benchmark
+  def rxnMapHash(s: TMapHashSt, bh: Blackhole, k: McasImplState): Unit = {
+    rxnTask(s, bh, k)
+  }
+
+  @Benchmark
+  def rxnMapOrdered(s: TMapOrderedSt, bh: Blackhole, k: McasImplState): Unit = {
+    rxnTask(s, bh, k)
   }
 
   private[this] final def rxnTask(s: RxnMapSt, bh: Blackhole, k: McasImplState): Unit = {
@@ -57,10 +72,12 @@ class DataMapBench {
       case n @ (0 | 1) =>
         val key = if (n == 0) {
           // successful lookup:
-          s.keys(k.nextIntBounded(s.keys.length))
+          val keys = s.keys
+          keys(k.nextIntBounded(keys.length))
         } else {
           // unsuccessful lookup:
-          s.dummyKeys(k.nextIntBounded(s.dummyKeys.length))
+          val dummyKeys = s.dummyKeys
+          dummyKeys(k.nextIntBounded(dummyKeys.length))
         }
         val res: Option[String] = s.map.get.unsafePerformInternal(key, k.mcasCtx)
         bh.consume(res)
@@ -86,10 +103,12 @@ class DataMapBench {
       case n @ (0 | 1) =>
         val key = if (n == 0) {
           // successful lookup:
-          s.keys(k.nextIntBounded(s.keys.length))
+          val keys = s.keys
+          keys(k.nextIntBounded(keys.length))
         } else {
           // unsuccessful lookup:
-          s.dummyKeys(k.nextIntBounded(s.dummyKeys.length))
+          val dummyKeys = s.dummyKeys
+          dummyKeys(k.nextIntBounded(dummyKeys.length))
         }
         val res: Option[String] = atomic { implicit txn =>
           s.tmap.get(key)
@@ -115,27 +134,29 @@ class DataMapBench {
     }
   }
 
-  private[this] final def chmTask(s: ChmSt, bh: Blackhole, k: McasImplState): Unit = {
+  private[this] final def cmTask(s: JucCmSt, bh: Blackhole, k: McasImplState): Unit = {
     k.nextIntBounded(4) match {
       case n @ (0 | 1) =>
         val key = if (n == 0) {
           // successful lookup:
-          s.keys(k.nextIntBounded(s.keys.length))
+          val keys = s.keys
+          keys(k.nextIntBounded(keys.length))
         } else {
           // unsuccessful lookup:
-          s.dummyKeys(k.nextIntBounded(s.dummyKeys.length))
+          val dummyKeys = s.dummyKeys
+          dummyKeys(k.nextIntBounded(dummyKeys.length))
         }
-        val res: Option[String] = Option(s.chm.get(key))
+        val res: Option[String] = Option(s.cm.get(key))
         bh.consume(res)
       case n @ (2 | 3) =>
         val key = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
         if (n == 2) {
           // insert:
-          val res: Option[String] = Option(s.chm.put(key, s.constValue))
+          val res: Option[String] = Option(s.cm.put(key, s.constValue))
           bh.consume(res)
         } else {
           // remove:
-          val res: String = s.chm.remove(key)
+          val res: String = s.cm.remove(key)
           bh.consume(res)
         }
       case x =>
@@ -170,19 +191,19 @@ object DataMapBench {
     private[this] var _dummyKeys: Array[String] =
       null
 
-    def mapSize: Int =
+    final def mapSize: Int =
       _mapSize
 
     /** Keys, which are initially included in the map, and never removed */
-    def keys: Array[String] =
+    final def keys: Array[String] =
       _keys
 
     /** Keys, which are initially included in the map, and repeately removed/inserted */
-    def delInsKeys: Array[String] =
+    final def delInsKeys: Array[String] =
       _delInsKeys
 
     /** Keys, which are not included in the map, and used for unsuccessful lookups */
-    def dummyKeys: Array[String] =
+    final def dummyKeys: Array[String] =
       _dummyKeys
 
     @Setup
@@ -237,7 +258,7 @@ object DataMapBench {
       this.initializeMap()
     }
 
-    private def initializeMap(): Unit = {
+    private[this] def initializeMap(): Unit = {
       var idx = 0
       while (idx < delInsKeys.length) {
         val key = delInsKeys(idx)
@@ -256,9 +277,9 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  class SimpleSt extends RxnMapSt {
+  class SimpleHashSt extends RxnMapSt {
 
-    val simple: Map[String, String] =
+    private[this] val simple: Map[String, String] =
       Map.simpleHashMap[String, String].unsafeRun(initMcas)
 
     final def map: Map[String, String] =
@@ -266,13 +287,33 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  class TtrieSt extends RxnMapSt {
+  class SimpleOrderedSt extends RxnMapSt {
 
-    val ttrie: Map[String, String] =
-      MapHelper.ttrie[String, String].unsafeRun(initMcas)
+    private[this] val simple: Map[String, String] =
+      Map.simpleOrderedMap[String, String].unsafeRun(initMcas)
 
     final def map: Map[String, String] =
-      ttrie
+      simple
+  }
+
+  @State(Scope.Benchmark)
+  class TMapHashSt extends RxnMapSt {
+
+    private[this] val m: Map[String, String] =
+      Map.hashMap[String, String].unsafeRun(initMcas)
+
+    final def map: Map[String, String] =
+      m
+  }
+
+  @State(Scope.Benchmark)
+  class TMapOrderedSt extends RxnMapSt {
+
+    private[this] val m: Map[String, String] =
+      Map.orderedMap[String, String].unsafeRun(initMcas)
+
+    final def map: Map[String, String] =
+      m
   }
 
   @State(Scope.Benchmark)
@@ -309,34 +350,55 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  class ChmSt extends AbstractSt {
+  abstract class JucCmSt extends AbstractSt {
 
-    import java.util.concurrent.ConcurrentHashMap
+    def cm: java.util.concurrent.ConcurrentMap[String, String]
 
-    val chm: ConcurrentHashMap[String, String] =
-      new ConcurrentHashMap[String, String]
-
-    protected override def setupImpl(): Unit = {
+    protected final override def setupImpl(): Unit = {
       super.setupImpl()
       this.initializeMap()
     }
 
-    private def initializeMap(): Unit = {
+    private[this] final def initializeMap(): Unit = {
       var idx = 0
       while (idx < delInsKeys.length) {
         val key = delInsKeys(idx)
         assert(key ne null)
-        assert(this.chm.put(key, constValue) eq null)
+        assert(this.cm.put(key, constValue) eq null)
         idx += 1
       }
       idx = 0
       while (idx < keys.length) {
         val key = keys(idx)
         assert(key ne null)
-        assert(this.chm.put(key, constValue) eq null)
+        assert(this.cm.put(key, constValue) eq null)
         idx += 1
       }
-      assert(this.chm.size() == this.mapSize)
+      assert(this.cm.size() == this.mapSize)
     }
+  }
+
+  @State(Scope.Benchmark)
+  class ChmSt extends JucCmSt {
+
+    import java.util.concurrent.ConcurrentHashMap
+
+    private[this] val chm: ConcurrentHashMap[String, String] =
+      new ConcurrentHashMap[String, String]
+
+    final override def cm =
+      chm
+  }
+
+  @State(Scope.Benchmark)
+  class CslmSt extends JucCmSt {
+
+    import java.util.concurrent.ConcurrentSkipListMap
+
+    val cslm: ConcurrentSkipListMap[String, String] =
+      new ConcurrentSkipListMap[String, String]
+
+    final override def cm =
+      cslm
   }
 }
