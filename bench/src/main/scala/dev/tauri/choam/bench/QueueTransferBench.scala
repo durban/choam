@@ -85,6 +85,7 @@ object QueueTransferBench {
   abstract class BaseSt {
 
     @Param(Array(/*"2",*/ "4"/*, "6"*/))
+    @nowarn("cat=unused-privates")
     private[this] var _txSize: Int = _
 
     def txSize: Int =

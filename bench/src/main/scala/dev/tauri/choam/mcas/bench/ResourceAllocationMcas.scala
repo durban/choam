@@ -117,6 +117,7 @@ object ResourceAllocationMcas {
     var desc: HalfEMCASDescriptor = _
 
     @Param(Array("2", "4", "6"))
+    @nowarn("cat=unused-privates")
     private[this] var dAllocSize: Int = _
 
     def allocSize: Int =

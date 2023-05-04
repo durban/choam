@@ -122,6 +122,7 @@ object SyncStackBench {
   abstract class BaseSt {
 
     @Param(Array("2", "4", "6", "8", "10"))
+    @nowarn("cat=unused-privates")
     private[this] var _concurrentOps: Int = _
 
     def concurrentOps: Int =

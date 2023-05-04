@@ -182,6 +182,7 @@ object DataMapBench {
       "abcde"
 
     @Param(Array("1048576"))
+    @nowarn("cat=unused-privates")
     private[this] var _mapSize: Int =
       -1
 
