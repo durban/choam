@@ -447,8 +447,9 @@ lazy val commonSettings = Seq[Setting[_]](
         "-Xlint:_",
         "-Ywarn-numeric-widen",
         "-Ywarn-dead-code",
-        "-Ywarn-value-discard",
-        s"-P:semanticdb:sourceroot:${(ThisBuild / baseDirectory).value.absolutePath}", // metals needs this
+        "-Wvalue-discard",
+        "-Wperformance",
+        // TODO: "-Wnonunit-statement",
       )
     } else {
       // 3.x:
@@ -468,6 +469,7 @@ lazy val commonSettings = Seq[Setting[_]](
       )
     }
   ),
+  Test / scalacOptions -= "-Wperformance",
   Compile / console / scalacOptions ~= { _.filterNot("-Ywarn-unused-import" == _).filterNot("-Ywarn-unused:imports" == _) },
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   javacOptions ++= Seq(

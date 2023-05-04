@@ -30,6 +30,9 @@ import util._
 @Threads(2)
 class DataMapBench {
 
+  // TODO: measure hashing / comparing keys
+  // TODO: measure Scala TrieMap (hash)
+
   import DataMapBench._
 
   @Benchmark
