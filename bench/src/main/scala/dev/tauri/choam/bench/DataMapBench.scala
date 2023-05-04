@@ -32,8 +32,6 @@ import util._
 @Threads(2)
 class DataMapBench {
 
-  // TODO: measure Scala TrieMap (hash)
-
   import DataMapBench._
 
   @Benchmark
@@ -76,6 +74,11 @@ class DataMapBench {
   @Benchmark
   def jucConcurrentSkipListMap(s: CslmSt, bh:Blackhole, k: McasImplState): Unit = {
     cmTask(s, bh, k)
+  }
+
+  @Benchmark
+  def sccTrieMap(s: TmSt, bh:Blackhole, k: McasImplState): Unit = {
+    tmTask(s, bh, k)
   }
 
   @Benchmark
@@ -193,6 +196,36 @@ class DataMapBench {
         } else {
           // remove:
           val res: String = s.cm.remove(key)
+          bh.consume(res)
+        }
+      case x =>
+        impossible(x.toString)
+    }
+  }
+
+  private[this] final def tmTask(s: TmSt, bh: Blackhole, k: McasImplState): Unit = {
+    k.nextIntBounded(4) match {
+      case n @ (0 | 1) =>
+        val key = if (n == 0) {
+          // successful lookup:
+          val keys = s.keys
+          keys(k.nextIntBounded(keys.length))
+        } else {
+          // unsuccessful lookup:
+          val dummyKeys = s.dummyKeys
+          dummyKeys(k.nextIntBounded(dummyKeys.length))
+        }
+        val res: Option[String] = s.tm.get(key)
+        bh.consume(res)
+      case n @ (2 | 3) =>
+        val key = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
+        if (n == 2) {
+          // insert:
+          val res: Option[String] = s.tm.put(key, s.constValue)
+          bh.consume(res)
+        } else {
+          // remove:
+          val res: Option[String] = s.tm.remove(key)
           bh.consume(res)
         }
       case x =>
@@ -447,5 +480,37 @@ object DataMapBench {
 
     final override def cm =
       cslm
+  }
+
+  @State(Scope.Benchmark)
+  class TmSt extends AbstractSt {
+
+    import scala.collection.concurrent.TrieMap
+
+    val tm: TrieMap[String, String] =
+      new TrieMap
+
+    protected final override def setupImpl(): Unit = {
+      super.setupImpl()
+      this.initializeMap()
+    }
+
+    private[this] final def initializeMap(): Unit = {
+      var idx = 0
+      while (idx < delInsKeys.length) {
+        val key = delInsKeys(idx)
+        assert(key ne null)
+        assert(this.tm.put(key, constValue).isEmpty)
+        idx += 1
+      }
+      idx = 0
+      while (idx < keys.length) {
+        val key = keys(idx)
+        assert(key ne null)
+        assert(this.tm.put(key, constValue).isEmpty)
+        idx += 1
+      }
+      assert(this.tm.size == this.mapSize)
+    }
   }
 }
