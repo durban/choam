@@ -35,74 +35,42 @@ class DataMapBench {
   import DataMapBench._
 
   @Benchmark
-  def _hashKeyJava(s: DummySt, bh: Blackhole, k: McasImplState): Unit = {
-    val keys = s.keys
-    val key: AnyRef = keys(k.nextIntBounded(keys.length))
-    bh.consume(key.hashCode())
-  }
-
-  @Benchmark
-  def _hashKeyScala(s: DummySt, bh: Blackhole, k: McasImplState): Unit = {
-    val keys = s.keys
-    val key: String = keys(k.nextIntBounded(keys.length))
-    bh.consume(s.hash.hash(key))
-  }
-
-  @Benchmark
-  def _compareKeyJava(s: DummySt, bh: Blackhole, k: McasImplState): Unit = {
-    val keys = s.keys
-    val key1: AnyRef = keys(k.nextIntBounded(keys.length))
-    val dummyKeys = s.dummyKeys
-    val key2: AnyRef = dummyKeys(k.nextIntBounded(dummyKeys.length))
-    bh.consume(key1.asInstanceOf[java.lang.Comparable[AnyRef]].compareTo(key2))
-  }
-
-  @Benchmark
-  def _compareKeyScala(s: DummySt, bh: Blackhole, k: McasImplState): Unit = {
-    val keys = s.keys
-    val key1: String = keys(k.nextIntBounded(keys.length))
-    val dummyKeys = s.dummyKeys
-    val key2: String = dummyKeys(k.nextIntBounded(dummyKeys.length))
-    bh.consume(s.order.compare(key1, key2))
-  }
-
-  @Benchmark
-  def jucConcurrentHashMap(s: ChmSt, bh: Blackhole, k: McasImplState): Unit = {
+  def hash_jucCM(s: ChmSt, bh: Blackhole, k: McasImplState): Unit = {
     cmTask(s, bh, k)
   }
 
   @Benchmark
-  def jucConcurrentSkipListMap(s: CslmSt, bh:Blackhole, k: McasImplState): Unit = {
+  def ordered_jucCSLM(s: CslmSt, bh:Blackhole, k: McasImplState): Unit = {
     cmTask(s, bh, k)
   }
 
   @Benchmark
-  def sccTrieMap(s: TmSt, bh:Blackhole, k: McasImplState): Unit = {
+  def hash_sccTrieMap(s: TmSt, bh:Blackhole, k: McasImplState): Unit = {
     tmTask(s, bh, k)
   }
 
   @Benchmark
-  def scalaStmTMap(s: ScalaStmSt, bh: Blackhole, k: McasImplState): Unit = {
+  def hash_scalaStm(s: ScalaStmSt, bh: Blackhole, k: McasImplState): Unit = {
     scalaStmTask(s, bh, k)
   }
 
   @Benchmark
-  def rxnSimpleHash(s: SimpleHashSt, bh: Blackhole, k: McasImplState): Unit = {
+  def hash_rxnSimple(s: SimpleHashSt, bh: Blackhole, k: McasImplState): Unit = {
     rxnTask(s, bh, k)
   }
 
   @Benchmark
-  def rxnSimpleOrdered(s: SimpleOrderedSt, bh: Blackhole, k: McasImplState): Unit = {
+  def ordered_rxnSimple(s: SimpleOrderedSt, bh: Blackhole, k: McasImplState): Unit = {
     rxnTask(s, bh, k)
   }
 
   @Benchmark
-  def rxnMapHash(s: TMapHashSt, bh: Blackhole, k: McasImplState): Unit = {
+  def hash_rxn(s: TMapHashSt, bh: Blackhole, k: McasImplState): Unit = {
     rxnTask(s, bh, k)
   }
 
   @Benchmark
-  def rxnMapOrdered(s: TMapOrderedSt, bh: Blackhole, k: McasImplState): Unit = {
+  def ordered_rxn(s: TMapOrderedSt, bh: Blackhole, k: McasImplState): Unit = {
     rxnTask(s, bh, k)
   }
 
