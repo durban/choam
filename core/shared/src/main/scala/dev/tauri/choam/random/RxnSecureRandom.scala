@@ -18,13 +18,13 @@
 package dev.tauri.choam
 package random
 
-import cats.effect.std.Random
+import java.security.{ SecureRandom => JSecureRandom }
 
-import java.security.SecureRandom
+import cats.effect.std.SecureRandom
 
 private object RxnSecureRandom {
-  def unsafe(): Random[Axn] = {
-    val sr = new SecureRandom
+  def unsafe(): SecureRandom[Axn] = {
+    val sr = new JSecureRandom
     // force seeding the generator here:
     val dummy = new Array[Byte](4)
     sr.nextBytes(dummy)
@@ -32,8 +32,8 @@ private object RxnSecureRandom {
   }
 }
 
-private final class RxnSecureRandom private (jRnd: SecureRandom)
-  extends RandomBase {
+private final class RxnSecureRandom private (jRnd: JSecureRandom)
+  extends RandomBase with SecureRandom[Axn] {
 
   import Axn.unsafe.delay
 

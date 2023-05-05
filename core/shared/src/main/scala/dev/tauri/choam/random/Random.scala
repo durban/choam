@@ -18,14 +18,14 @@
 package dev.tauri.choam
 package random
 
-import cats.effect.std.{ Random => CRandom }
+import cats.effect.std.{ Random => CRandom, SecureRandom }
 
 object Random {
 
   final def fastRandom: Axn[CRandom[Axn]] =
     Rxn.unsafe.delay { _ => RxnThreadLocalRandom.unsafe() }
 
-  final def secureRandom: Axn[CRandom[Axn]] =
+  final def secureRandom: Axn[SecureRandom[Axn]] =
     Rxn.unsafe.delay { _ => RxnSecureRandom.unsafe() }
 
   final def deterministicRandom(initialSeed: Long): Axn[SplittableRandom[Axn]] =

@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import cats.effect.SyncIO
 import cats.effect.kernel.Unique
-import cats.effect.std.{ UUIDGen, Random }
+import cats.effect.std.{ UUIDGen, Random, SecureRandom }
 
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.effect.PropF
@@ -65,10 +65,17 @@ trait RandomSpec[F[_]]
     }
   }
 
+  test("secureRandom must implement cats.effect.std.SecureRandom") {
+    Rxn.secureRandom.run[F].flatMap { rnd =>
+      val r: SecureRandom[Axn] = rnd
+      F.pure(r.##).void
+    }
+  }
+
   // TODO: more tests for Rxn.*Random
 
   checkRandom("Rxn.fastRandom", _ => Rxn.fastRandom.run[F])
-  checkRandom("Rxn.secureRandom", _ => Rxn.secureRandom.run[F])
+  checkRandom("Rxn.secureRandom", _ => Rxn.secureRandom.run[F].widen)
   checkRandom(
     "Rxn.deterministicRandom",
     seed => Rxn.deterministicRandom(seed).run[F].widen[Random[Axn]],

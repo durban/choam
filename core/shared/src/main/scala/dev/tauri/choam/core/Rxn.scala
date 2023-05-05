@@ -27,7 +27,7 @@ import cats.arrow.ArrowChoice
 import cats.data.{ Ior, State }
 import cats.mtl.Local
 import cats.effect.kernel.{ Clock, Unique, Ref => CatsRef }
-import cats.effect.std.{ Random, UUIDGen }
+import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
 import mcas.{ MemoryLocation, Mcas, HalfEMCASDescriptor, HalfWordDescriptor, McasStatus }
 
@@ -294,7 +294,7 @@ object Rxn extends RxnInstances0 {
   final def fastRandom: Axn[Random[Axn]] =
     random.Random.fastRandom
 
-  final def secureRandom: Axn[Random[Axn]] =
+  final def secureRandom: Axn[SecureRandom[Axn]] =
     random.Random.secureRandom
 
   final def deterministicRandom(initialSeed: Long): Axn[random.SplittableRandom[Axn]] =
