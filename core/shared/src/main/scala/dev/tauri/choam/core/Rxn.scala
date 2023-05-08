@@ -230,12 +230,14 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     kcas: Mcas,
     maxBackoff: Int = 16,
     randomizeBackoff: Boolean = true,
+    maxRetries: Int = -1,
   ): B = {
     unsafePerformInternal(
       a = a,
       ctx = kcas.currentContext(),
       maxBackoff = maxBackoff,
       randomizeBackoff = randomizeBackoff,
+      maxRetries = maxRetries,
     )
   }
 
@@ -244,13 +246,15 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     ctx: Mcas.ThreadContext,
     maxBackoff: Int = 16,
     randomizeBackoff: Boolean = true,
+    maxRetries: Int = -1,
   ): B = {
     Rxn.interpreter(
       this,
       a,
       ctx = ctx,
       maxBackoff = maxBackoff,
-      randomizeBackoff = randomizeBackoff
+      randomizeBackoff = randomizeBackoff,
+      maxRetries = maxRetries,
     )
   }
 
@@ -595,7 +599,8 @@ object Rxn extends RxnInstances0 {
     x: X,
     ctx: Mcas.ThreadContext,
     maxBackoff: Int = 16,
-    randomizeBackoff: Boolean = true
+    randomizeBackoff: Boolean = true,
+    maxRetries: Int = -1,
   ): R = {
     /*
      * The default value of 16 for `maxBackoff` ensures that
@@ -617,16 +622,21 @@ object Rxn extends RxnInstances0 {
        x = x,
        ctx = ctx,
        maxBackoff = maxBackoff,
-       randomizeBackoff = randomizeBackoff
+       randomizeBackoff = randomizeBackoff,
+       maxRetries = maxRetries,
      ).interpret()
   }
+
+  final class MaxRetriesReached(maxRetries: Int)
+    extends Exception(s"reached maxRetries of ${maxRetries}")
 
   private final class InterpreterState[X, R](
     rxn: Rxn[X, R],
     x: X,
     ctx: Mcas.ThreadContext,
     maxBackoff: Int,
-    randomizeBackoff: Boolean
+    randomizeBackoff: Boolean,
+    maxRetries: Int,
   ) {
 
     private[this] var startRxn: Rxn[Any, Any] = rxn.asInstanceOf[Rxn[Any, Any]]
@@ -678,9 +688,11 @@ object Rxn extends RxnInstances0 {
       (this.retries >>> 32).toInt
     }
 
+    /** @return the new value of full retries */
     @inline
-    private[this] final def incrFullRetries(): Unit = {
+    private[this] final def incrFullRetries(): Int = {
       this.retries += (1L << 32)
+      getFullRetries()
     }
 
     @inline
@@ -830,7 +842,11 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def retry(): Rxn[Any, Any] = {
-      incrFullRetries()
+      val retries = incrFullRetries()
+      val mr = maxRetries
+      if ((mr > 0) && ((retries > mr)|| (retries == Integer.MAX_VALUE))) {
+        throw new MaxRetriesReached(mr)
+      }
       maybeCheckInterrupt()
       if (alts.nonEmpty) {
         loadAlt()

@@ -76,6 +76,15 @@ trait BaseSpecF[F[_]]
     implicit loc: Location, ev: B <:< A
   ): F[Unit]
 
+  def assertRaisesF[A](obtained: F[A], matcher: Throwable => Boolean)(implicit loc: Location): F[Unit] = {
+    obtained.attempt.flatMap {
+      case Left(e) =>
+        F.delay(matcher(e)).flatMap { ok  => if (ok) F.unit else failF[Unit](s"assertRaisesF: errored with ${e}") }
+      case Right(fa) =>
+        failF(s"assertRaisesF: succeeded with ${fa}")
+    }
+  }
+
   def failF[A](clue: String = "assertion failed")(implicit loc: Location): F[A] = {
     F.flatMap(assertF(false, clue)) { _ =>
       F.raiseError[A](new IllegalStateException("unreachable code"))

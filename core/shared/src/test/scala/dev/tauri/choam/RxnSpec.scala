@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import cats.{ Applicative, Monad, StackSafeMonad, Align }
 import cats.arrow.{ ArrowChoice, FunctionK }
 import cats.data.Ior
@@ -977,5 +979,28 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("Reactive is a FunctionK") {
     Reactive[F] : FunctionK[Axn, F]
+  }
+
+  test("maxRetries") {
+    val never = Rxn.unsafe.retry[Any, Int]
+    def countTries(ctr: AtomicInteger) = {
+      Axn.unsafe.delay { ctr.getAndIncrement() } *> Rxn.unsafe.retry[Any, Int]
+    }
+    def succeedsOn3rdRetry(ref: Ref[String]) = {
+      Rxn.unsafe.retry[Any, String] + ref.unsafeCas("x", "y").as("z") + Rxn.unsafe.retry[Any, String] + Rxn.pure("foo")
+    }
+    for {
+      // finite maxRetries:
+      _ <- assertRaisesF(F.delay(never.unsafePerform((), this.mcasImpl, maxRetries = 4096)), _.isInstanceOf[Rxn.MaxRetriesReached])
+      ctr <- F.delay(new AtomicInteger)
+      _ <- assertRaisesF(F.delay(countTries(ctr).unsafePerform((), this.mcasImpl, maxRetries = 42)), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertResultF(F.delay(ctr.get()), 42 + 1)
+      r <- Ref("a").run[F]
+      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries = 2)), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertResultF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries = 3)), "foo")
+      // infinite maxRetries:
+      _ <- assertResultF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries = -1)), "foo")
+      _ <- assertResultF(F.delay(Rxn.pure("foo").unsafePerform((), this.mcasImpl, maxRetries = -1)), "foo")
+    } yield ()
   }
 }
