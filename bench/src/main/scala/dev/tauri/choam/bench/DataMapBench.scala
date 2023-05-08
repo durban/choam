@@ -75,6 +75,8 @@ class DataMapBench {
   }
 
   private[this] final def rxnTask(s: RxnMapSt, bh: Blackhole, k: McasImplState): Unit = {
+    val mcasCtx = k.mcasCtx
+    val map = s.map
     k.nextIntBounded(4) match {
       case n @ (0 | 1) =>
         val key = if (n == 0) {
@@ -86,17 +88,18 @@ class DataMapBench {
           val dummyKeys = s.dummyKeys
           dummyKeys(k.nextIntBounded(dummyKeys.length))
         }
-        val res: Option[String] = s.map.get.unsafePerformInternal(key, k.mcasCtx)
+        val res: Option[String] = map.get.unsafePerformInternal(key, mcasCtx)
         bh.consume(res)
       case n @ (2 | 3) =>
-        val key = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
+        val delInsKeys = s.delInsKeys
+        val key = delInsKeys(k.nextIntBounded(delInsKeys.length))
         if (n == 2) {
           // insert:
-          val res: Option[String] = s.map.put.unsafePerformInternal((key, s.constValue), k.mcasCtx)
+          val res: Option[String] = map.put.unsafePerformInternal((key, s.constValue), mcasCtx)
           bh.consume(res)
         } else {
           // remove:
-          val res: Boolean = s.map.del.unsafePerformInternal(key, k.mcasCtx)
+          val res: Boolean = map.del.unsafePerformInternal(key, mcasCtx)
           bh.consume(res)
         }
       case x =>
@@ -106,6 +109,7 @@ class DataMapBench {
 
   private[this] final def scalaStmTask(s: ScalaStmSt, bh: Blackhole, k: McasImplState): Unit = {
     import scala.concurrent.stm.atomic
+    val tmap = s.tmap
     k.nextIntBounded(4) match {
       case n @ (0 | 1) =>
         val key = if (n == 0) {
@@ -118,21 +122,22 @@ class DataMapBench {
           dummyKeys(k.nextIntBounded(dummyKeys.length))
         }
         val res: Option[String] = atomic { implicit txn =>
-          s.tmap.get(key)
+          tmap.get(key)
         }
         bh.consume(res)
       case n @ (2 | 3) =>
-        val key = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
+        val delInsKeys = s.delInsKeys
+        val key = delInsKeys(k.nextIntBounded(delInsKeys.length))
         if (n == 2) {
           // insert:
           val res: Option[String] = atomic { implicit txn =>
-            s.tmap.put(key, s.constValue)
+            tmap.put(key, s.constValue)
           }
           bh.consume(res)
         } else {
           // remove:
           val res: Boolean = atomic { implicit txn =>
-            s.tmap.remove(key)
+            tmap.remove(key)
           }.isDefined
           bh.consume(res)
         }
@@ -142,6 +147,7 @@ class DataMapBench {
   }
 
   private[this] final def cmTask(s: JucCmSt, bh: Blackhole, k: McasImplState): Unit = {
+    val cm = s.cm
     k.nextIntBounded(4) match {
       case n @ (0 | 1) =>
         val key = if (n == 0) {
@@ -153,17 +159,18 @@ class DataMapBench {
           val dummyKeys = s.dummyKeys
           dummyKeys(k.nextIntBounded(dummyKeys.length))
         }
-        val res: Option[String] = Option(s.cm.get(key))
+        val res: Option[String] = Option(cm.get(key))
         bh.consume(res)
       case n @ (2 | 3) =>
-        val key = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
+        val delInsKeys = s.delInsKeys
+        val key = delInsKeys(k.nextIntBounded(delInsKeys.length))
         if (n == 2) {
           // insert:
-          val res: Option[String] = Option(s.cm.put(key, s.constValue))
+          val res: Option[String] = Option(cm.put(key, s.constValue))
           bh.consume(res)
         } else {
           // remove:
-          val res: String = s.cm.remove(key)
+          val res: String = cm.remove(key)
           bh.consume(res)
         }
       case x =>
@@ -172,6 +179,7 @@ class DataMapBench {
   }
 
   private[this] final def tmTask(s: TmSt, bh: Blackhole, k: McasImplState): Unit = {
+    val tm = s.tm
     k.nextIntBounded(4) match {
       case n @ (0 | 1) =>
         val key = if (n == 0) {
@@ -183,17 +191,18 @@ class DataMapBench {
           val dummyKeys = s.dummyKeys
           dummyKeys(k.nextIntBounded(dummyKeys.length))
         }
-        val res: Option[String] = s.tm.get(key)
+        val res: Option[String] = tm.get(key)
         bh.consume(res)
       case n @ (2 | 3) =>
-        val key = s.delInsKeys(k.nextIntBounded(s.delInsKeys.length))
+        val delInsKeys = s.delInsKeys
+        val key = delInsKeys(k.nextIntBounded(delInsKeys.length))
         if (n == 2) {
           // insert:
-          val res: Option[String] = s.tm.put(key, s.constValue)
+          val res: Option[String] = tm.put(key, s.constValue)
           bh.consume(res)
         } else {
           // remove:
-          val res: Option[String] = s.tm.remove(key)
+          val res: Option[String] = tm.remove(key)
           bh.consume(res)
         }
       case x =>
