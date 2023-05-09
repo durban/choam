@@ -136,15 +136,16 @@ private object MergeBenchResults {
     log.info(label)
     inputFiles.foreach { f =>
       log.info(s" * ${f.absolutePath}")
-      transformFile(f, transformation)
+      transformFile(f, transformation, log)
     }
   }
 
   private[this] final def transformFile(
     file: File,
     transformation: BenchmarkResult => BenchmarkResult,
+    log: ManagedLogger,
   ): Unit = {
-    val r = parse(file)
+    val r = parse(file, log)
     val rr = r.map(transformation)
     dump(rr, file)
   }
@@ -204,13 +205,15 @@ private object MergeBenchResults {
     inputFiles.foreach { f =>
       log.info(s" <- ${f.absolutePath}")
     }
-    val result = mergeFiles(outFile, inputFiles)
+    val result = mergeFiles(outFile, inputFiles, log)
+    log.info("Merged files, writing output")
     dump(result, outFile)
+    log.info("Written output")
   }
 
-  private[this] final def mergeFiles(output: File, inputs: List[File]): ResultFile = {
+  private[this] final def mergeFiles(output: File, inputs: List[File], log: ManagedLogger): ResultFile = {
     val result = inputs.foldLeft(ResultFile.empty) { (acc, input) =>
-      val rf = parse(input).map(_.withThreadsInParams)
+      val rf = parse(input, log).map(_.withThreadsInParams)
       acc ++ rf
     }
     @tailrec
@@ -288,13 +291,18 @@ private object MergeBenchResults {
     })
   }
 
-  private[this] final def parse(file: File): ResultFile = {
+  private[this] final def parse(file: File, log: ManagedLogger): ResultFile = {
     val contents = SbtIO.read(file)
     val j: Json = io.circe.parser.parse(contents).getOrElse {
-      throw new IllegalArgumentException(s"not a JSON file: ${file.absolutePath}")
+      val msg = s"not a JSON file: ${file.absolutePath}"
+      log.err(msg)
+      throw new IllegalArgumentException(msg)
     }
     j.as[ResultFile].fold(
-      err => throw new IllegalArgumentException(err.toString),
+      err => {
+        log.err(err.toString)
+        throw new IllegalArgumentException(err.toString)
+      },
       ok => ok
     )
   }
@@ -362,7 +370,7 @@ private object Model {
 
     def withThreadsInParams: BenchmarkResult = {
       import BenchmarkResult.threadsKey
-      require(!this.params.contains(threadsKey))
+      require(!this.params.contains(threadsKey), s"params already contains '${threadsKey}'")
       val newParams = (threadsKey -> Json.fromString(this.threads.toString)) +: this.params
       this.copy(params = newParams)
     }
