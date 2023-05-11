@@ -130,17 +130,9 @@
 - Think about global / thread-local state:
   - cleanup of unused exchanger stats
 
-## Misc.
+## Misc. ideas
 
 - Try building a native image with Graal, to see if it works
-- `LongRef`, `IntRef`, ... (benchmarks needed, it might not make sense)
-  - especially since we can't store a descriptor in, e.g., a real `AtomicLong`
-- `Ref` which is backed by mmapped memory(?)
-  - similar: mmapped from _persistent_ memory
-  - similar: JS shared array
-    - this would break assumptions the default JS MCAS relies on (single threaded)
-  - but, a problem with all these: we can't write a descriptor into them!
-  - see also: JEP 412 (https://openjdk.java.net/jeps/412)
 - Other data structures:
   - ttrie-set(?)
   - concurrent bag (e.g., https://dl.acm.org/doi/10.1145/1989493.1989550)
@@ -157,3 +149,10 @@
         - `pop: AsyncRxn[Any, A]`
         - `def unsafeRun(ar: AsyncRxn[A, B], a: A): Either[F[A], A]`
         - `def unsafeToF(ar: AsyncRxn[A, B], a: A): F[A] = unsafeRun(...).fold(x => x, F.pure)`
+
+## Considered ideas
+
+- `LongRef`, `IntRef`, etc.
+  - won't work, because we can't store a descriptor in them
+- `Ref` which is backed by mmapped memory / JS shared array
+  - won't work, because we can't store a descriptor in them
