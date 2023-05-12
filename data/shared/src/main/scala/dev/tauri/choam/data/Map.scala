@@ -26,6 +26,7 @@ import core.Reactive
 
 trait Map[K, V] { self =>
 
+  // TODO: contains: K =#> Boolean
   // TODO: a variant of `del` could return the old value (if any)
   // TODO: think about a `putIfPresent` (in CSLM this is another overload of `replace`)
 

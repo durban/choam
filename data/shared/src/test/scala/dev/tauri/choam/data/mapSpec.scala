@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package data
 
+import scala.collection.immutable.{ Set => ScalaSet }
+
 import cats.kernel.{ Hash, Order }
 import cats.effect.SyncIO
 
@@ -244,7 +246,7 @@ trait MapSpec[F[_]]
   }
 
   test("Map get should find all previously inserted keys") {
-    PropF.forAllF { (ks: Set[Int], x: Int) =>
+    PropF.forAllF { (ks: ScalaSet[Int], x: Int) =>
       for {
         m <- mkEmptyMap[Int, String]
         shadow <- F.delay { new scala.collection.mutable.HashSet[Int] }
@@ -320,7 +322,7 @@ trait MapSpec[F[_]]
       final def hash(x: Int) =
         x % 8
     }
-    PropF.forAllF { (ks: Set[Int], x: Int) =>
+    PropF.forAllF { (ks: ScalaSet[Int], x: Int) =>
       for {
         m <- mkEmptyMap[Int, String](myHash, Order[Int])
         _ <- m.put[F](x -> x.toString)

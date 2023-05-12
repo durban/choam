@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import scala.collection.immutable.{ Map => ScalaMap }
+import scala.collection.immutable.{ Map => ScalaMap, Set => ScalaSet }
 
 import cats.kernel.{ Hash, Order }
 import cats.effect.IO
@@ -160,7 +160,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       r <- newRandomStringMap[Int](genV = F.pure(42), size = 1024)
       s <- Map.unsafeSnapshot(r)
       _ <- assertF(s.size >= (1024 * 0.9))
-      _ <- assertEqualsF(s.values.toSet, Set(42))
+      _ <- assertEqualsF(s.values.toSet, ScalaSet(42))
     } yield ()
   }
 
