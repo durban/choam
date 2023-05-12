@@ -48,7 +48,7 @@ is similar to an effectful function from `A` to `B` (that is, `A => F[B]`), but:
   concurrent data structures:
   - queues
   - stacks
-  - hash- and ordered maps
+  - hash- and ordered maps and sets
   - counter
 - [`choam-async`](async/shared/src/main/scala/dev/tauri/choam/async/):
   - integration with asynchronous effect types in
