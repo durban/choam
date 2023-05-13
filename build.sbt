@@ -399,7 +399,7 @@ lazy val layout = project.in(file("layout"))
   .disablePlugins(JCStressPlugin)
   .settings(commonSettings)
   .settings(
-    libraryDependencies += dependencies.jol.value % Test,
+    libraryDependencies += dependencies.jol.value % TestInternal,
     Test / fork := true // JOL doesn't like sbt classpath
   )
   .dependsOn(core.jvm % "compile->compile;test->test")
@@ -585,10 +585,10 @@ lazy val consts = new {
 lazy val dependencies = new {
 
   val catsVersion = "2.9.0"
-  val catsEffectVersion = "3.5.0-RC5"
+  val catsEffectVersion = "3.5.0"
   val catsMtlVersion = "1.3.0"
   val catsCollectionsVersion = "0.9.6"
-  val fs2Version = "3.7.0-RC5"
+  val fs2Version = "3.7.0"
   val scalacheckEffectVersion = "2.0.0-M2"
   val kindProjectorVersion = "0.13.2"
   val jcstressVersion = "0.16"
