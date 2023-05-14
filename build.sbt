@@ -543,7 +543,6 @@ lazy val commonSettings = Seq[Setting[_]](
 
 lazy val publishSettings = Seq[Setting[_]](
   autoAPIMappings := true,
-  // apiURL := ... // TODO
   organization := "dev.tauri",
   organizationHomepage := Some(url("https://tauri.dev")),
   homepage := Some(url(s"https://github.com/${consts.githubOrg}/${consts.githubProject}")),
