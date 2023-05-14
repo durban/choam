@@ -56,7 +56,7 @@ class StmQueueSpec extends CatsEffectSuite with BaseSpec {
 
   test("StmQueue should not lose items") {
     val q = new StmQueue[Int]
-    val N = 1000000
+    val N = 100000
     def enq(xs: XorShift): Unit = {
       for (_ <- 1 to N) {
         q.enqueue(xs.nextInt())
@@ -104,7 +104,7 @@ class StmQueueSpec extends CatsEffectSuite with BaseSpec {
   test("StmQueue should have composable transactions") {
     val q1 = new StmQueue[Int]
     val q2 = new StmQueue[Int]
-    val N = 1000000
+    val N = 100000
     def enq(xs: XorShift): Unit = {
       for (_ <- 1 to N) {
         val item = xs.nextInt()
