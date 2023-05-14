@@ -114,6 +114,7 @@ lazy val choam = project.in(file("."))
     stream.jvm, stream.js,
     internalHelpers.jvm, internalHelpers.js,
     laws.jvm, laws.js,
+    unidocs,
     testExt.jvm, testExt.js,
     bench, // JVM
     stress, // JVM
@@ -236,6 +237,26 @@ lazy val laws = crossProject(JVMPlatform, JSPlatform)
     dependencies.catsEffectLaws.value,
     dependencies.catsEffectTestkit.value % TestInternal,
   ))
+
+lazy val unidocs = project
+  .in(file("unidocs"))
+  .disablePlugins(JCStressPlugin)
+  .settings(commonSettings)
+  .settings(publishSettings)
+  .enablePlugins(TypelevelUnidocPlugin)
+  .settings(
+    name := "choam-docs",
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(
+      core.jvm,
+      mcas.jvm,
+      skiplist.jvm,
+      data.jvm,
+      async.jvm,
+      stream.jvm,
+      laws.jvm,
+    ),
+    bspEnabled := false,
+  )
 
 lazy val testExt = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -530,12 +551,14 @@ lazy val publishSettings = Seq[Setting[_]](
     url(s"https://github.com/${consts.githubOrg}/${consts.githubProject}"),
     s"scm:git@github.com:${consts.githubOrg}/${consts.githubProject}.git"
   )),
-  developers += Developer(
-    id = "durban",
-    name = "Daniel Urban",
-    email = "urban.dani@gmail.com",
-    url = url("https://github.com/durban")
-  ),
+  developers := {
+    val old = developers.value
+    if (!old.contains(consts.developer)) {
+      consts.developer :: old
+    } else {
+      old
+    }
+  },
   publishMavenStyle := true,
   Compile / publishArtifact := true,
   Test / publishArtifact := false,
@@ -580,6 +603,12 @@ lazy val consts = new {
   val githubOrg = "durban"
   val githubProject = "choam"
   val additionalFiles = Seq("LICENSE.txt", "NOTICE.txt")
+  val developer = Developer(
+    id = "durban",
+    name = "Daniel Urban",
+    email = "urban.dani@gmail.com",
+    url = url("https://github.com/durban"),
+  )
 }
 
 lazy val dependencies = new {
