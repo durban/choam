@@ -425,7 +425,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     }
   }
 
-  test("HalfEMCASDescriptor iterator") {
+  test("mcas.Descriptor iterator") {
     val ctx = this.mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("foo")
     val r2 = MemoryLocation.unsafe("foo")

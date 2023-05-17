@@ -46,10 +46,10 @@ object NullMcas extends Mcas.UnsealedMcas {
 
   private[this] final class NullContext extends Mcas.UnsealedThreadContext {
 
-    final override def start(): HalfEMCASDescriptor =
-      HalfEMCASDescriptor.empty(globalVersion, this)
+    final override def start(): Descriptor =
+      Descriptor.empty(globalVersion, this)
 
-    private[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+    private[mcas] final override def addVersionCas(desc: Descriptor): Descriptor =
       throw new UnsupportedOperationException
 
     final override def readDirect[A](ref: MemoryLocation[A]): A = {
@@ -69,13 +69,13 @@ object NullMcas extends Mcas.UnsealedMcas {
       throw new UnsupportedOperationException
 
     final override def validateAndTryExtend(
-      desc: HalfEMCASDescriptor,
+      desc: Descriptor,
       hwd: HalfWordDescriptor[_]
-    ): HalfEMCASDescriptor = {
+    ): Descriptor = {
       throw new UnsupportedOperationException
     }
 
-    private[mcas] final override def tryPerformInternal(desc: HalfEMCASDescriptor): Long = {
+    private[mcas] final override def tryPerformInternal(desc: Descriptor): Long = {
       if (desc.nonEmpty) {
         throw new UnsupportedOperationException
       } else {

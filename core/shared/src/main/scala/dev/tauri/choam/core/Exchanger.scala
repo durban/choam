@@ -85,7 +85,7 @@ private object Exchanger extends ExchangerCompanionPlatform {
 
   // TODO: these are JVM-only:
 
-  import mcas.{ Mcas, HalfEMCASDescriptor }
+  import mcas.{ Mcas, Descriptor }
 
   private[core] val paramsKey =
     new Exchanger.Key
@@ -119,7 +119,7 @@ private object Exchanger extends ExchangerCompanionPlatform {
     value: Any,
     contK: ObjStack.Lst[Any],
     contT: Array[Byte],
-    desc: HalfEMCASDescriptor,
+    desc: Descriptor,
     postCommit: ObjStack.Lst[Axn[Unit]],
     exchangerData: Rxn.ExStatMap,
   )

@@ -60,9 +60,9 @@ object Mcas extends McasCompanionPlatform { self =>
      * (its `.validTs` will be the
      * current global sersion).
      */
-    def start(): HalfEMCASDescriptor
+    def start(): Descriptor
 
-    private[mcas] def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor
+    private[mcas] def addVersionCas(desc: Descriptor): Descriptor
 
     /**
      * @return the current value of `ref`, as
@@ -86,9 +86,9 @@ object Mcas extends McasCompanionPlatform { self =>
     private[mcas] def readVersion[A](ref: MemoryLocation[A]): Long
 
     def validateAndTryExtend(
-      desc: HalfEMCASDescriptor,
+      desc: Descriptor,
       hwd: HalfWordDescriptor[_], // may be null
-    ): HalfEMCASDescriptor
+    ): Descriptor
 
     /**
      * Directly tries to perform the k-CAS described by `desc`
@@ -99,7 +99,7 @@ object Mcas extends McasCompanionPlatform { self =>
      *         global version (if failed due to the version
      *         being newer than `desc.validTs`).
      */
-    private[mcas] def tryPerformInternal(desc: HalfEMCASDescriptor): Long
+    private[mcas] def tryPerformInternal(desc: Descriptor): Long
 
     /** @return a `ThreadLocalRandom` valid for the current thread */
     def random: ThreadLocalRandom
@@ -107,7 +107,7 @@ object Mcas extends McasCompanionPlatform { self =>
     // concrete:
 
     /** Utility to first try to read from the log, and only from the ref if not found */
-    final def readMaybeFromLog[A](ref: MemoryLocation[A], log: HalfEMCASDescriptor): Option[(A, HalfEMCASDescriptor)] = {
+    final def readMaybeFromLog[A](ref: MemoryLocation[A], log: Descriptor): Option[(A, Descriptor)] = {
       log.getOrElseNull(ref) match {
         case null =>
           // not in log
@@ -124,7 +124,7 @@ object Mcas extends McasCompanionPlatform { self =>
       }
     }
 
-    private[this] final def readIntoLog[A](ref: MemoryLocation[A], log: HalfEMCASDescriptor): HalfEMCASDescriptor = {
+    private[this] final def readIntoLog[A](ref: MemoryLocation[A], log: Descriptor): Descriptor = {
       require(log.getOrElseNull(ref) eq null)
       val hwd = this.readIntoHwd(ref)
       val newLog = log.add(hwd)
@@ -151,7 +151,7 @@ object Mcas extends McasCompanionPlatform { self =>
      *         global version (if failed due to the version
      *         being newer than `desc.validTs`).
      */
-    final def tryPerform(desc: HalfEMCASDescriptor): Long = {
+    final def tryPerform(desc: Descriptor): Long = {
       if (desc.readOnly) {
         // we've validated each read,
         // so nothing to do here
@@ -169,20 +169,20 @@ object Mcas extends McasCompanionPlatform { self =>
     }
 
     /** Like `tryPerform`, but returns whether it was successful */
-    final def tryPerformOk(desc: HalfEMCASDescriptor): Boolean = {
+    final def tryPerformOk(desc: Descriptor): Boolean = {
       tryPerform(desc) == McasStatus.Successful
     }
 
-    final def addCasFromInitial[A](desc: HalfEMCASDescriptor, ref: MemoryLocation[A], ov: A, nv: A): HalfEMCASDescriptor =
+    final def addCasFromInitial[A](desc: Descriptor, ref: MemoryLocation[A], ov: A, nv: A): Descriptor =
       this.addCasWithVersion(desc, ref, ov = ov, nv = nv, version = Version.Start)
 
     final def addCasWithVersion[A](
-      desc: HalfEMCASDescriptor,
+      desc: Descriptor,
       ref: MemoryLocation[A],
       ov: A,
       nv: A,
       version: Long
-    ): HalfEMCASDescriptor = {
+    ): Descriptor = {
       val wd = HalfWordDescriptor(ref, ov, nv, version)
       desc.add(wd)
     }
@@ -193,7 +193,7 @@ object Mcas extends McasCompanionPlatform { self =>
      *
      * @return true, iff `desc` is still valid.
      */
-    private[mcas] final def validate(desc: HalfEMCASDescriptor): Boolean = {
+    private[mcas] final def validate(desc: Descriptor): Boolean = {
       @tailrec
       def go(it: Iterator[HalfWordDescriptor[_]]): Boolean = {
         if (it.hasNext) {
@@ -215,7 +215,7 @@ object Mcas extends McasCompanionPlatform { self =>
     /**
      * @return a snapshot of `desc`.
      */
-    final def snapshot(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+    final def snapshot(desc: Descriptor): Descriptor =
       desc
 
     /**
@@ -224,8 +224,8 @@ object Mcas extends McasCompanionPlatform { self =>
      * @return The merged descriptor, which contains
      *         all the ops either in `to` or `from`.
      */
-    private[choam] final def addAll(to: HalfEMCASDescriptor, from: HalfEMCASDescriptor): HalfEMCASDescriptor = {
-      HalfEMCASDescriptor.merge(to, from, this)
+    private[choam] final def addAll(to: Descriptor, from: Descriptor): Descriptor = {
+      Descriptor.merge(to, from, this)
     }
 
     /**
@@ -330,7 +330,7 @@ object Mcas extends McasCompanionPlatform { self =>
   /** Only for testing */
   private[mcas] final class Builder(
     private[this] val ctx: ThreadContext,
-    private[this] val desc: HalfEMCASDescriptor,
+    private[this] val desc: Descriptor,
   ) {
 
     final def updateRef[A](ref: MemoryLocation[A], f: A => A): Builder = {

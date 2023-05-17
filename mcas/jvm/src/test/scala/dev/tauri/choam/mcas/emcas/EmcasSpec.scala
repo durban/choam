@@ -422,7 +422,7 @@ class EmcasSpec extends BaseSpec {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 42L)
     val ctx = Emcas.currentContext()
-    val hOther: HalfEMCASDescriptor = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
+    val hOther: Descriptor = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
     val other = EmcasDescriptor.prepare(hOther)
     val d0 = other.wordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)

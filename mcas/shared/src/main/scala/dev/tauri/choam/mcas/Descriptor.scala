@@ -21,8 +21,7 @@ package mcas
 import scala.collection.AbstractIterator
 import scala.util.hashing.MurmurHash3
 
-// TODO: this really should have a better name
-final class HalfEMCASDescriptor private (
+final class Descriptor private (
   private val map: LogMap,
   private val validTsBoxed: java.lang.Long,
   val readOnly: Boolean,
@@ -68,7 +67,7 @@ final class HalfEMCASDescriptor private (
   }
 
   /** True iff `this` can (theoretically) commit with the same version as `that` */
-  private[mcas] final def canShareVersionWith(that: HalfEMCASDescriptor): Boolean = {
+  private[mcas] final def canShareVersionWith(that: Descriptor): Boolean = {
     if (this.hasVersionCas) {
       assert(this.map.nonEmpty)
       (!this.readOnly) &&
@@ -85,8 +84,8 @@ final class HalfEMCASDescriptor private (
     this.versionCas ne null
   }
 
-  private final def withValidTsBoxed(newBoxed: java.lang.Long): HalfEMCASDescriptor =  {
-    new HalfEMCASDescriptor(
+  private final def withValidTsBoxed(newBoxed: java.lang.Long): Descriptor =  {
+    new Descriptor(
       map = this.map,
       validTsBoxed = newBoxed,
       readOnly = this.readOnly,
@@ -95,9 +94,9 @@ final class HalfEMCASDescriptor private (
     )
   }
 
-  private[mcas] final def withNoNewVersion: HalfEMCASDescriptor = {
+  private[mcas] final def withNoNewVersion: Descriptor = {
     require(this.versionCas eq null)
-    new HalfEMCASDescriptor(
+    new Descriptor(
       map = this.map,
       validTsBoxed = this.validTsBoxed,
       readOnly = this.readOnly,
@@ -112,14 +111,14 @@ final class HalfEMCASDescriptor private (
   private[mcas] final def nonEmpty: Boolean =
     this.map.nonEmpty
 
-  private[choam] final def add[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
+  private[choam] final def add[A](desc: HalfWordDescriptor[A]): Descriptor = {
     val d = desc.cast[Any]
     // Note, that it is important, that we don't allow
     // adding an already included ref; the Exchanger
     // depends on this behavior:
     require(!this.map.contains(d.address))
     val newMap = this.map.updated(d.address, d)
-    new HalfEMCASDescriptor(
+    new Descriptor(
       newMap,
       this.validTsBoxed,
       this.readOnly && desc.readOnly,
@@ -128,12 +127,12 @@ final class HalfEMCASDescriptor private (
     )
   }
 
-  private[choam] final def overwrite[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
+  private[choam] final def overwrite[A](desc: HalfWordDescriptor[A]): Descriptor = {
     require(desc.version <= this.validTs)
     val d = desc.cast[Any]
     require(this.map.contains(d.address))
     val newMap = this.map.updated(d.address, d)
-    new HalfEMCASDescriptor(
+    new Descriptor(
       newMap,
       this.validTsBoxed,
       this.readOnly && desc.readOnly, // this is a simplification:
@@ -144,11 +143,11 @@ final class HalfEMCASDescriptor private (
     )
   }
 
-  private[choam] final def addOrOverwrite[A](desc: HalfWordDescriptor[A]): HalfEMCASDescriptor = {
+  private[choam] final def addOrOverwrite[A](desc: HalfWordDescriptor[A]): Descriptor = {
     require(desc.version <= this.validTs)
     val d = desc.cast[Any]
     val newMap = this.map.updated(d.address, d)
-    new HalfEMCASDescriptor(
+    new Descriptor(
       newMap,
       this.validTsBoxed,
       this.readOnly && desc.readOnly, // this is a simplification:
@@ -159,7 +158,7 @@ final class HalfEMCASDescriptor private (
     )
   }
 
-  private[mcas] final def addVersionCas(commitTsRef: MemoryLocation[Long]): HalfEMCASDescriptor = {
+  private[mcas] final def addVersionCas(commitTsRef: MemoryLocation[Long]): Descriptor = {
     require(this.versionCas eq null)
     require(!this.readOnly)
     require(this.versionIncr > 0L)
@@ -169,7 +168,7 @@ final class HalfEMCASDescriptor private (
       nv = java.lang.Long.valueOf(this.newVersion),
       version = Version.Start, // the version's version is unused/arbitrary
     )
-    new HalfEMCASDescriptor(
+    new Descriptor(
       map = this.map,
       validTsBoxed = this.validTsBoxed,
       readOnly = false,
@@ -190,7 +189,7 @@ final class HalfEMCASDescriptor private (
     commitTsRef: MemoryLocation[Long],
     ctx: Mcas.ThreadContext,
     additionalHwd: HalfWordDescriptor[_], // can be null
-  ): HalfEMCASDescriptor = {
+  ): Descriptor = {
     require(this.versionCas eq null)
     // NB: we must read the commitTs *before* the `ctx.validate...`
     val newValidTsBoxed: java.lang.Long =
@@ -202,7 +201,7 @@ final class HalfEMCASDescriptor private (
     currentTs: Long,
     ctx: Mcas.ThreadContext,
     additionalHwd: HalfWordDescriptor[_], // can be null
-  ): HalfEMCASDescriptor = {
+  ): Descriptor = {
     this.validateAndTryExtendInternal(
       java.lang.Long.valueOf(currentTs),
       ctx,
@@ -214,14 +213,14 @@ final class HalfEMCASDescriptor private (
     newValidTsBoxed: java.lang.Long,
     ctx: Mcas.ThreadContext,
     additionalHwd: HalfWordDescriptor[_], // can be null
-  ): HalfEMCASDescriptor = {
+  ): Descriptor = {
     if (newValidTsBoxed.longValue > this.validTs) {
       if (
         ctx.validate(this) &&
         ((additionalHwd eq null) || ctx.validateHwd(additionalHwd))
       ) {
         assert((additionalHwd eq null) || (additionalHwd.version <= newValidTsBoxed.longValue))
-        new HalfEMCASDescriptor(
+        new Descriptor(
           map = this.map,
           validTsBoxed = newValidTsBoxed,
           readOnly = this.readOnly,
@@ -239,7 +238,7 @@ final class HalfEMCASDescriptor private (
 
   final override def toString: String = {
     val m = map.valuesIterator.mkString("[", ", ", "]")
-    val vi = if (versionIncr == HalfEMCASDescriptor.DefaultVersionIncr) {
+    val vi = if (versionIncr == Descriptor.DefaultVersionIncr) {
       ""
     } else {
       s", versionIncr = ${versionIncr}"
@@ -249,12 +248,12 @@ final class HalfEMCASDescriptor private (
     } else {
       s", versionCas = ${versionCas}"
     }
-    s"HalfEMCASDescriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly}${vi}${vc})"
+    s"mcas.Descriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly}${vi}${vc})"
   }
 
   final override def equals(that: Any): Boolean = {
     that match {
-      case that: HalfEMCASDescriptor =>
+      case that: Descriptor =>
         (this eq that) || (
           (this.readOnly == that.readOnly) &&
           (this.versionCas == that.versionCas) && {
@@ -284,23 +283,23 @@ final class HalfEMCASDescriptor private (
   }
 }
 
-object HalfEMCASDescriptor {
+object Descriptor {
 
   private final val DefaultVersionIncr =
     Version.Incr
 
-  private[mcas] final def empty(commitTsRef: MemoryLocation[Long], ctx: Mcas.ThreadContext): HalfEMCASDescriptor = {
+  private[mcas] final def empty(commitTsRef: MemoryLocation[Long], ctx: Mcas.ThreadContext): Descriptor = {
     val validTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
     emptyFromBoxed(validTsBoxed)
   }
 
-  private[mcas] final def emptyFromVer(currentTs: Long): HalfEMCASDescriptor = {
+  private[mcas] final def emptyFromVer(currentTs: Long): Descriptor = {
     emptyFromBoxed(java.lang.Long.valueOf(currentTs))
   }
 
-  private[this] final def emptyFromBoxed(validTsBoxed: java.lang.Long): HalfEMCASDescriptor = {
-    new HalfEMCASDescriptor(
+  private[this] final def emptyFromBoxed(validTsBoxed: java.lang.Long): Descriptor = {
+    new Descriptor(
       LogMap.empty,
       validTsBoxed = validTsBoxed,
       readOnly = true,
@@ -310,10 +309,10 @@ object HalfEMCASDescriptor {
   }
 
   private[mcas] final def merge(
-    a: HalfEMCASDescriptor,
-    b: HalfEMCASDescriptor,
+    a: Descriptor,
+    b: Descriptor,
     ctx: Mcas.ThreadContext,
-  ): HalfEMCASDescriptor = {
+  ): Descriptor = {
     require(a.versionCas eq null)
     require(b.versionCas eq null)
     require(a.versionIncr == b.versionIncr)
@@ -328,7 +327,7 @@ object HalfEMCASDescriptor {
     // TODO: two bigger `Rxn`s might've already touched
     // TODO: the same ref.)
     val it = b.map.valuesIterator
-    var merged: HalfEMCASDescriptor = a
+    var merged: Descriptor = a
     while (it.hasNext) {
       // this also takes care of `readOnly`:
       merged = merged.add(it.next()) // throws in case of conflict

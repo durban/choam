@@ -45,19 +45,19 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
     protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       emcasCtx.readVersion(ref)
 
-    final override def tryPerformInternal(desc: HalfEMCASDescriptor): Long =
+    final override def tryPerformInternal(desc: Descriptor): Long =
       self.tryPerformInternal(desc, emcasCtx)
 
-    final override def start(): HalfEMCASDescriptor =
+    final override def start(): Descriptor =
       emcasCtx.start()
 
-    protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+    protected[mcas] final override def addVersionCas(desc: Descriptor): Descriptor =
       emcasCtx.addVersionCas(desc)
 
     final override def validateAndTryExtend(
-      desc: HalfEMCASDescriptor,
+      desc: Descriptor,
       hwd: HalfWordDescriptor[_],
-    ): HalfEMCASDescriptor = {
+    ): Descriptor = {
       emcasCtx.validateAndTryExtend(desc, hwd)
     }
   }
@@ -65,7 +65,7 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
   private[choam] final override def isThreadSafe =
     true
 
-  private final def tryPerformInternal(hDesc: HalfEMCASDescriptor, ctx: EmcasThreadContext): Long = {
+  private final def tryPerformInternal(hDesc: Descriptor, ctx: EmcasThreadContext): Long = {
     // perform or not the operation based on whether we've already seen it
     val desc = EmcasDescriptor.prepare(hDesc)
     var hash = 0x75F4D07D

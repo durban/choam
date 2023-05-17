@@ -42,7 +42,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
     protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       ref.unsafeGetVersionVolatile()
 
-    final override def tryPerformInternal(desc: HalfEMCASDescriptor): Long = {
+    final override def tryPerformInternal(desc: Descriptor): Long = {
       @tailrec
       def prepare(it: Iterator[HalfWordDescriptor[_]]): Long = {
         if (it.hasNext) {
@@ -89,16 +89,16 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
       }
     }
 
-    final override def start(): HalfEMCASDescriptor =
-      HalfEMCASDescriptor.empty(_commitTs, this)
+    final override def start(): Descriptor =
+      Descriptor.empty(_commitTs, this)
 
-    protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+    protected[mcas] final override def addVersionCas(desc: Descriptor): Descriptor =
       desc.addVersionCas(_commitTs)
 
     def validateAndTryExtend(
-      desc: HalfEMCASDescriptor,
+      desc: Descriptor,
       hwd: HalfWordDescriptor[_],
-    ): HalfEMCASDescriptor =
+    ): Descriptor =
       desc.validateAndTryExtend(_commitTs, this, additionalHwd = hwd)
 
     // NB: it is a `def`, not a `val`

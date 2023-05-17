@@ -113,7 +113,7 @@ private final class EmcasThreadContext(
     mark // caller MUST hold a strong ref
   }
 
-  final override def tryPerformInternal(desc: HalfEMCASDescriptor): Long =
+  final override def tryPerformInternal(desc: Descriptor): Long =
     impl.tryPerformInternal(desc, this)
 
   final override def readDirect[A](ref: MemoryLocation[A]): A =
@@ -128,16 +128,16 @@ private final class EmcasThreadContext(
   protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
     impl.readVersion(ref, this)
 
-  final override def start(): HalfEMCASDescriptor =
-    HalfEMCASDescriptor.emptyFromVer(this.global.getCommitTs())
+  final override def start(): Descriptor =
+    Descriptor.emptyFromVer(this.global.getCommitTs())
 
-  protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+  protected[mcas] final override def addVersionCas(desc: Descriptor): Descriptor =
     desc // we increment the global commit version differently
 
   def validateAndTryExtend(
-    desc: HalfEMCASDescriptor,
+    desc: Descriptor,
     hwd: HalfWordDescriptor[_],
-  ): HalfEMCASDescriptor = {
+  ): Descriptor = {
     desc.validateAndTryExtendVer(this.global.getCommitTs(), this, hwd)
   }
 

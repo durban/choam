@@ -20,7 +20,7 @@ package mcas
 package emcas
 
 private final class EmcasDescriptor private (
-  private val half: HalfEMCASDescriptor,
+  private val half: Descriptor,
 ) extends EmcasDescriptorBase { self =>
 
   /**
@@ -80,7 +80,7 @@ private final class EmcasDescriptor private (
 
 private object EmcasDescriptor {
 
-  def prepare(half: HalfEMCASDescriptor): EmcasDescriptor = {
+  def prepare(half: Descriptor): EmcasDescriptor = {
     new EmcasDescriptor(half)
   }
 

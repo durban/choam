@@ -114,7 +114,7 @@ object ResourceAllocationMcas {
 
     private[this] var selectedRss: Array[MemoryLocation[String]] = _
 
-    var desc: HalfEMCASDescriptor = _
+    var desc: mcas.Descriptor = _
 
     @Param(Array("2", "4", "6"))
     @nowarn("cat=unused-privates")

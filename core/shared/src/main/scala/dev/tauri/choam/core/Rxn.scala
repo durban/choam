@@ -29,7 +29,7 @@ import cats.mtl.Local
 import cats.effect.kernel.{ Clock, Unique, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
-import mcas.{ MemoryLocation, Mcas, HalfEMCASDescriptor, HalfWordDescriptor, McasStatus }
+import mcas.{ MemoryLocation, Mcas, HalfWordDescriptor, McasStatus }
 
 /**
  * An effectful function from `A` to `B`; when executed,
@@ -642,10 +642,10 @@ object Rxn extends RxnInstances0 {
     private[this] var startRxn: Rxn[Any, Any] = rxn.asInstanceOf[Rxn[Any, Any]]
     private[this] var startA: Any = x
 
-    private[this] var _desc: HalfEMCASDescriptor =
+    private[this] var _desc: mcas.Descriptor =
       null
 
-    private[this] final def desc: HalfEMCASDescriptor = {
+    private[this] final def desc: mcas.Descriptor = {
       if (_desc ne null) {
         _desc
       } else {
@@ -655,7 +655,7 @@ object Rxn extends RxnInstances0 {
     }
 
     @inline
-    private[this] final def desc_=(d: HalfEMCASDescriptor): Unit = {
+    private[this] final def desc_=(d: mcas.Descriptor): Unit = {
       require(d ne null)
       _desc = d
     }
@@ -751,7 +751,7 @@ object Rxn extends RxnInstances0 {
       contK.loadSnapshot(alts.pop().asInstanceOf[ObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
-      _desc = alts.pop().asInstanceOf[HalfEMCASDescriptor]
+      _desc = alts.pop().asInstanceOf[mcas.Descriptor]
       res
     }
 

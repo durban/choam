@@ -48,7 +48,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
     final override def random =
       ThreadLocalRandom.current()
 
-    final override def tryPerformInternal(desc: HalfEMCASDescriptor): Long = {
+    final override def tryPerformInternal(desc: Descriptor): Long = {
       val ops = desc.iterator().toList
       perform(ops, newVersion = desc.newVersion)
     }
@@ -109,16 +109,16 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
       go(ref.unsafeGetVersionVolatile())
     }
 
-    final override def start(): HalfEMCASDescriptor =
-      HalfEMCASDescriptor.empty(commitTs, this)
+    final override def start(): Descriptor =
+      Descriptor.empty(commitTs, this)
 
-    protected[mcas] final override def addVersionCas(desc: HalfEMCASDescriptor): HalfEMCASDescriptor =
+    protected[mcas] final override def addVersionCas(desc: Descriptor): Descriptor =
       desc.addVersionCas(commitTs)
 
     final override def validateAndTryExtend(
-      desc: HalfEMCASDescriptor,
+      desc: Descriptor,
       hwd: HalfWordDescriptor[_],
-    ): HalfEMCASDescriptor = {
+    ): Descriptor = {
       desc.validateAndTryExtend(commitTs, this, hwd)
     }
 

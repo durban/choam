@@ -698,11 +698,11 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
   private[choam] final override def isThreadSafe =
     true
 
-  private[mcas] final def tryPerformInternal(desc: HalfEMCASDescriptor, ctx: EmcasThreadContext): Long = {
+  private[mcas] final def tryPerformInternal(desc: Descriptor, ctx: EmcasThreadContext): Long = {
     tryPerformDebug(desc = desc, ctx = ctx)
   }
 
-  private[mcas] final def tryPerformDebug(desc: HalfEMCASDescriptor, ctx: EmcasThreadContext): Long = {
+  private[mcas] final def tryPerformDebug(desc: Descriptor, ctx: EmcasThreadContext): Long = {
     if (desc.nonEmpty) {
       val fullDesc = EmcasDescriptor.prepare(desc)
       val res = MCAS(desc = fullDesc, ctx = ctx)
