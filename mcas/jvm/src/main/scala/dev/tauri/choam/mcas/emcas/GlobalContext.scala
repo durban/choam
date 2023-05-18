@@ -25,7 +25,8 @@ import java.util.concurrent.ThreadLocalRandom
 import skiplist.SkipListMap
 
 private[mcas] abstract class GlobalContext
-  extends GlobalContextBase with Mcas.UnsealedMcas { this: Emcas =>
+  extends GlobalContextBase
+  with Mcas.UnsealedMcas { this: Emcas =>
 
   /**
    * `ThreadContext`s of all the (active) threads
