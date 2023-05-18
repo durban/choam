@@ -182,10 +182,6 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
    *            status itself; this is a successful op
    */
 
-  // TODO: this is unused (only 0 or non-0 matters)
-  private[choam] final val replacePeriodForReadValue =
-    4096
-
   private[emcas] final val global =
     new GlobalContext(self)
 
@@ -206,7 +202,7 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
    * @param ctx: The [[ThreadContext]] of the current thread.
    * @param replace: Pass 0 to not do any replacing/clearing.
    */
-  private[emcas] final def readValue[A](ref: MemoryLocation[A], ctx: EmcasThreadContext, replace: Int): HalfWordDescriptor[A] = {
+  private[emcas] final def readValue[A](ref: MemoryLocation[A], ctx: EmcasThreadContext, replace: Boolean): HalfWordDescriptor[A] = {
     @tailrec
     def go(mark: AnyRef, ver1: Long): HalfWordDescriptor[A] = {
       ref.unsafeGetVolatile() match {
@@ -275,10 +271,10 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
     ov: WordDescriptor[A],
     nv: A,
     weakref: WeakReference[AnyRef],
-    replace: Int,
+    replace: Boolean,
     currentVersion: Long,
   ): Unit = {
-    if (replace != 0) {
+    if (replace) {
       replaceDescriptor[A](ref, ov, nv, weakref, currentVersion)
     }
   }
@@ -333,7 +329,7 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
   }
 
   private[mcas] final def readIntoHwd[A](ref: MemoryLocation[A], ctx: EmcasThreadContext): HalfWordDescriptor[A] = {
-    readValue(ref, ctx, Emcas.replacePeriodForReadValue)
+    readValue(ref, ctx, replace = true)
   }
 
   @tailrec
