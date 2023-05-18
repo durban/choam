@@ -19,7 +19,7 @@ package dev.tauri.choam
 package mcas
 package emcas
 
-private final class EmcasDescriptor private (
+private final class EmcasDescriptor private[emcas] (
   private val half: Descriptor,
 ) extends EmcasDescriptorBase { self =>
 
@@ -46,7 +46,7 @@ private final class EmcasDescriptor private (
   final def size: Int =
     this.words.length
 
-  private[emcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
+  private[emcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = { // TODO: try to use a no-alloc cursor
     new EmcasDescriptor.Iterator(this.words)
   }
 
@@ -66,9 +66,11 @@ private final class EmcasDescriptor private (
   private[emcas] final def wasFinalized(): Unit = {
     // help the GC (best effort,
     // so just plain writes):
+    val words = this.words
+    val len = words.length
     var idx = 0
-    while (idx < this.size) {
-      this.words(idx) = null
+    while (idx < len) {
+      words(idx) = null
       idx += 1
     }
   }

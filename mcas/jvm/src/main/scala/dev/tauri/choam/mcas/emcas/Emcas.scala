@@ -219,12 +219,13 @@ private[mcas] final class Emcas extends GlobalContext { global =>
               go(mark = m, ver1 = ver1)
             } else { // m eq null (from either a cleared or a removed weakref)
               // descriptor can be detached
-              val parentStatus = wd.parent.getStatus()
+              val parent = wd.parent
+              val parentStatus = parent.getStatus()
               if (parentStatus == McasStatus.Active) {
                 // active op without a mark: this can
                 // happen if a thread died during an op;
                 // we help the active op, then retry ours:
-                MCAS(wd.parent, ctx = ctx)
+                MCAS(parent, ctx = ctx)
                 go(mark = null, ver1 = ver1)
               } else { // finalized op
                 val successful = (parentStatus != McasStatus.FailedVal)
@@ -244,9 +245,10 @@ private[mcas] final class Emcas extends GlobalContext { global =>
             }
           } else { // mark ne null
             // OK, we're already holding the descriptor
-            val parentStatus = wd.parent.getStatus()
+            val parent = wd.parent
+            val parentStatus = parent.getStatus()
             if (parentStatus == McasStatus.Active) {
-              MCAS(wd.parent, ctx = ctx) // help the other op
+              MCAS(parent, ctx = ctx) // help the other op
               go(mark = mark, ver1 = ver1) // retry
             } else { // finalized
               val successful = (parentStatus != McasStatus.FailedVal)
@@ -341,11 +343,11 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     ref.unsafeGetVolatile() match {
       case wd: WordDescriptor[_] =>
         // TODO: we may need to hold the marker here!
-        val p = wd.parent
-        val s = p.getStatus()
+        val parent = wd.parent
+        val s = parent.getStatus()
         if (s == McasStatus.Active) {
           // help and retry:
-          MCAS(p, ctx = ctx)
+          MCAS(parent, ctx = ctx)
           readVersion(ref, ctx)
         } else if (s == McasStatus.FailedVal) {
           wd.oldVersion
@@ -375,7 +377,8 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       var value: A = nullOf[A]
       var weakref: WeakReference[AnyRef] = null
       var mark: AnyRef = null
-      var version: Long = wordDesc.address.unsafeGetVersionVolatile()
+      val address = wordDesc.address
+      var version: Long = address.unsafeGetVersionVolatile()
       var go = true
       // Read `content`, and `value` if necessary;
       // this is a specialized and inlined version
@@ -386,19 +389,20 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // them would require allocating a tuple (like in
       // the paper).
       while (go) {
-        content = wordDesc.address.unsafeGetVolatile()
+        content = address.unsafeGetVolatile()
         content match {
           case wd: WordDescriptor[_] =>
             if (mark eq null) {
               // not holding it yet
-              weakref = wordDesc.address.unsafeGetMarkerVolatile()
+              weakref = address.unsafeGetMarkerVolatile()
               mark = if (weakref ne null) weakref.get() else null
               if (mark ne null) {
                 // continue with another iteration, and re-read the
                 // descriptor, while holding the mark
               } else { // mark eq null
                 // the old descriptor is unused, could be detached
-                val parentStatus = wd.parent.getStatus()
+                val parent = wd.parent
+                val parentStatus = parent.getStatus()
                 if (parentStatus == McasStatus.Active) {
                   // active op without a mark: this can
                   // happen if a thread died during an op
@@ -409,7 +413,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                   } else {
                     // we help the active op (who is not us),
                     // then continue with another iteration:
-                    MCAS(wd.parent, ctx = ctx)
+                    MCAS(parent, ctx = ctx)
                   }
                 } else { // finalized op
                   if (parentStatus == McasStatus.FailedVal) {
@@ -432,9 +436,10 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                 // (not `desc`), because otherwise it would've been equal to
                 // `wordDesc` (we're assuming that any WordDescriptor only
                 // appears at most once in an MCASDescriptor).
-                val parentStatus = wd.parent.getStatus()
+                val parent = wd.parent
+                val parentStatus = parent.getStatus()
                 if (parentStatus == McasStatus.Active) {
-                  MCAS(wd.parent, ctx = ctx) // help the other op
+                  MCAS(parent, ctx = ctx) // help the other op
                   // Note: we're not "helping" ourselves for sure, see the comment above.
                   // Here, we still don't have the value, so the loop must retry.
                 } else if (parentStatus == McasStatus.FailedVal) {
@@ -450,11 +455,11 @@ private[mcas] final class Emcas extends GlobalContext { global =>
             }
           case a =>
             value = a
-            val version2 = wordDesc.address.unsafeGetVersionVolatile()
+            val version2 = address.unsafeGetVersionVolatile()
             if (version == version2) {
               // ok, we have a version that belongs to `value`
               go = false
-              weakref = wordDesc.address.unsafeGetMarkerVolatile()
+              weakref = address.unsafeGetMarkerVolatile()
               // we found a value (i.e., not a descriptor)
               if (weakref ne null) {
                 // in rare cases, `mark` could be non-null here
@@ -501,7 +506,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           mark = ctx.getReusableMarker()
           val weakref2 = ctx.getReusableWeakRef()
           assert(weakref2.get() eq mark)
-          wordDesc.address.unsafeCasMarkerVolatile(weakref, weakref2)
+          address.unsafeCasMarkerVolatile(weakref, weakref2)
           // if this fails, we'll retry, see below
         } else {
           // we have a valid mark from reading
@@ -514,7 +519,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // then the following CAS will fail (not a problem), and
         // on our next retry, we may see a ref with a value *and*
         // a non-empty weakref (but this case is also handled, see above).
-        if (weakRefOk && wordDesc.address.unsafeCasVolatile(content, wordDesc.castToData)) {
+        if (weakRefOk && address.unsafeCasVolatile(content, wordDesc.castToData)) {
           Reference.reachabilityFence(mark)
           McasStatus.Successful
         } else {
@@ -700,7 +705,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
 
   private[mcas] final def tryPerformDebug(desc: Descriptor, ctx: EmcasThreadContext): Long = {
     if (desc.nonEmpty) {
-      val fullDesc = EmcasDescriptor.prepare(desc)
+      val fullDesc = new EmcasDescriptor(desc)
       val res = MCAS(desc = fullDesc, ctx = ctx)
       if (EmcasStatus.isSuccessful(res)) {
         // `Emcas` stores a version in the descriptor,

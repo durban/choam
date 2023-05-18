@@ -48,11 +48,11 @@ private[mcas] abstract class GlobalContext
   private[this] val threadContextKey =
     new ThreadLocal[EmcasThreadContext]()
 
-  private[this] def newThreadContext(): EmcasThreadContext =
+  private[this] final def newThreadContext(): EmcasThreadContext =
     new EmcasThreadContext(this, Thread.currentThread().getId())
 
   /** Gets of creates the context for the current thread */
-  private[emcas] def currentContextInternal(): EmcasThreadContext = {
+  private[emcas] final def currentContextInternal(): EmcasThreadContext = {
     threadContextKey.get() match {
       case null =>
         // slow path: need to create new ctx
