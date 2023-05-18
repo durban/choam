@@ -79,6 +79,10 @@
     - Channel?
     - Optimize SignallingRef
 - API cleanup:
+  - Implicitly deriving `AsyncReactive` from `Async` has problems
+    - (and similarly for `Reactive` from `Sync`)
+    - it can cause users to have an `: Async` constraint, when they should an `: AsyncReactive` instead
+    - but this makes things work out-of-the-box, what to do otherwise?
   - MCAS API review
     - e.g., KCAS is still mentioned a lot
     - is it usable outside of `choam`?
