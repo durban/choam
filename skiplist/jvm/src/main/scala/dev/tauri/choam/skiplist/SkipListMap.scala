@@ -630,6 +630,23 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
     }
   }
 
+  /** Non-linearizable! */
+  final override def size: Int = {
+    var count = 0
+    var n = baseHead()
+    while (n ne null) {
+      val key = n.key
+      if (!isMARKER(key)) {
+        val value = n.getValue()
+        if (!isTOMB(value)) {
+          count += 1
+        }
+      }
+      n = n.getNext()
+    }
+    count
+  }
+
   /**
    * Returns the first node of the base list.
    * Skips logically deleted nodes, so the

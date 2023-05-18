@@ -87,16 +87,8 @@ object SkipListBench {
       for (_ <- 0 until size) {
         m.put(key = nextKey(tlr), value = foo)
       }
-      assert(mapSize(m) >= size / 2)
+      assert(m.size >= size / 2)
       m
-    }
-
-    private[this] final def mapSize(m: SkipListMap[Long, String]): Int = {
-      var size = 0
-      m.foreach { (_, _) =>
-        size += 1
-      }
-      size
     }
   }
 }
