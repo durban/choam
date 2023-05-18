@@ -75,8 +75,8 @@ ThisBuild / githubWorkflowBuild := Seq(
   ),
   // Static analysis (not working on Scala 3):
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${scala3}'")),
-  // JCStress tests (only usable on macos):
-  WorkflowStep.Sbt(List("ciStress"), cond = Some(s"matrix.os == '${macos}'"))
+  // JCStress tests (only usable on macos, only runs if commit msg contains 'ci stress'):
+  WorkflowStep.Sbt(List("ciStress"), cond = Some(s"(matrix.os == '${macos}') && contains(github.event.head_commit.message, 'ci stress')"))
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
   jvmOldest,
@@ -680,7 +680,7 @@ lazy val dependencies = new {
 val stressTestNames = List[String](
   "stressMcas",
   "stressCore",
-  // "stressData",
+  "stressData",
   "stressAsync",
 )
 
