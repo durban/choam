@@ -24,8 +24,8 @@ import java.util.concurrent.ThreadLocalRandom
 
 import skiplist.SkipListMap
 
-private final class GlobalContext(impl: Emcas.type)
-  extends GlobalContextBase { self =>
+private[mcas] abstract class GlobalContext
+  extends GlobalContextBase with Mcas.UnsealedMcas { this: Emcas =>
 
   /**
    * `ThreadContext`s of all the (active) threads
@@ -48,10 +48,10 @@ private final class GlobalContext(impl: Emcas.type)
     new ThreadLocal[EmcasThreadContext]()
 
   private[this] def newThreadContext(): EmcasThreadContext =
-    new EmcasThreadContext(this, Thread.currentThread().getId(), impl)
+    new EmcasThreadContext(this, Thread.currentThread().getId())
 
   /** Gets of creates the context for the current thread */
-  private[emcas] def currentContext(): EmcasThreadContext = {
+  private[emcas] def currentContextInternal(): EmcasThreadContext = {
     threadContextKey.get() match {
       case null =>
         // slow path: need to create new ctx
@@ -70,7 +70,7 @@ private final class GlobalContext(impl: Emcas.type)
   }
 
   /** Only for testing/benchmarking */
-  private[choam] final def getRetryStats(): Mcas.RetryStats = {
+  private[choam] final override def getRetryStats(): Mcas.RetryStats = {
     var commits = 0L
     var fullRetries = 0L
     var mcasRetries = 0L
@@ -97,7 +97,7 @@ private final class GlobalContext(impl: Emcas.type)
   }
 
   /** Only for testing/benchmarking */
-  private[choam] def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
+  private[choam] final override def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
     val mb = Map.newBuilder[Long, Map[AnyRef, AnyRef]]
     this._threadContexts.foreach { (tid, wr) =>
       val tc = wr.get()
@@ -112,7 +112,7 @@ private final class GlobalContext(impl: Emcas.type)
   }
 
   /** Only for testing/benchmarking */
-  private[choam] final def maxReusedWeakRefs(): Int = {
+  private[choam] final override def maxReusedWeakRefs(): Int = {
     var max = 0
     this._threadContexts.foreach { (tid, wr) =>
       val tc = wr.get()

@@ -31,7 +31,7 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
   def currentContext(): Mcas.ThreadContext = new Mcas.UnsealedThreadContext {
 
     private[this] val emcasCtx =
-      Emcas.currentContextInternal()
+      Emcas.inst.currentContextInternal()
 
     final override def random: ThreadLocalRandom =
       emcasCtx.random
@@ -74,7 +74,7 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
       hash ^= it.next().address.##
     }
     if (this.seen.putIfAbsent(hash, ()).isDefined) {
-      val r = Emcas.MCAS(desc = desc, ctx = ctx)
+      val r = Emcas.inst.MCAS(desc = desc, ctx = ctx)
       if (EmcasStatus.isSuccessful(r)) McasStatus.Successful
       else r
     } else {

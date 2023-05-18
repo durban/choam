@@ -56,7 +56,7 @@ class EmcasTest {
 
   @Actor
   def write(r: LLLLL_Result): Unit = {
-    val ctx = Emcas.currentContext()
+    val ctx = Emcas.inst.currentContext()
     val res = ctx.tryPerformInternal(
       ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), this.ref1, "a", "b"), this.ref2, "x", "y")
     )
@@ -113,7 +113,7 @@ class EmcasTest {
 
   @Arbiter
   def arbiter(r: LLLLL_Result): Unit = {
-    val ctx = Emcas.currentContext()
+    val ctx = Emcas.inst.currentContext()
     assert(ctx.readDirect(this.ref1) eq "b")
     assert(ctx.readDirect(this.ref2) eq "y")
     r.r4 match {

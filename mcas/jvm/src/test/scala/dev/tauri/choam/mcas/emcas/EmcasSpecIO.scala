@@ -52,6 +52,7 @@ abstract class EmcasSpecF[F[_]] extends BaseSpec {
       // initialize them (a, b, c, d):
       _ <- F.delay {
         val ok = Emcas
+          .inst
           .currentContext()
           .builder()
           .updateRef(r1, sub)
@@ -64,6 +65,7 @@ abstract class EmcasSpecF[F[_]] extends BaseSpec {
       // 2 racing disjoint updates:
       txn1 = F.delay {
         val ok = Emcas
+          .inst
           .currentContext()
           .builder()
           .updateRef(r1, (_: String) + "a")
@@ -73,6 +75,7 @@ abstract class EmcasSpecF[F[_]] extends BaseSpec {
       }
       txn2 = F.delay {
         val ok = Emcas
+          .inst
           .currentContext()
           .builder()
           .updateRef(r3, (_: String) + "c")
@@ -82,7 +85,7 @@ abstract class EmcasSpecF[F[_]] extends BaseSpec {
       }
       _ <- F.both(F.cede *> txn1, F.cede *> txn2)
       _ <- F.delay {
-        val ctx = Emcas.currentContext()
+        val ctx = Emcas.inst.currentContext()
         assertEquals(ctx.readDirect(r1), "aa")
         assertEquals(ctx.readDirect(r2), "bb")
         assertEquals(ctx.readDirect(r3), "cc")
@@ -111,6 +114,7 @@ abstract class EmcasSpecF[F[_]] extends BaseSpec {
       // initialize them (a, b, c):
       _ <- F.delay {
         val ok = Emcas
+          .inst
           .currentContext()
           .builder()
           .updateRef(r1, sub)
@@ -122,6 +126,7 @@ abstract class EmcasSpecF[F[_]] extends BaseSpec {
       // 2 racing conflicting updates:
       txn1 = F.delay {
         Emcas
+          .inst
           .currentContext()
           .builder()
           .updateRef(r1, (_: String) + "a1")
@@ -130,6 +135,7 @@ abstract class EmcasSpecF[F[_]] extends BaseSpec {
       }
       txn2 = F.delay {
         Emcas
+          .inst
           .currentContext()
           .builder()
           .updateRef(r1, (_: String) + "a2")
@@ -139,7 +145,7 @@ abstract class EmcasSpecF[F[_]] extends BaseSpec {
       ok1ok2 <- F.both(F.cede *> txn1, F.cede *> txn2)
       (ok1, ok2) = ok1ok2
       _ <- F.delay {
-        val ctx = Emcas.currentContext()
+        val ctx = Emcas.inst.currentContext()
         val v1 = ctx.readDirect(r1)
         val r1Ver = ctx.readVersion(r1)
         val r2Ver = ctx.readVersion(r2)

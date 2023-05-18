@@ -21,11 +21,17 @@ package emcas
 
 import java.lang.ref.{ Reference, WeakReference }
 
+private[mcas] object Emcas {
+  /** For testing */
+  val inst: Emcas =
+    Mcas.internalEmcas
+}
+
 /**
  * Efficient Multi-word Compare and Swap (EMCAS):
  * https://arxiv.org/pdf/2008.02527.pdf
  */
-private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make this a class
+private[mcas] final class Emcas extends GlobalContext { global =>
 
   /*
    * This implementation has a few important
@@ -181,9 +187,6 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
    *            which is stored indirectly: the version is the parent
    *            status itself; this is a successful op
    */
-
-  private[emcas] final val global =
-    new GlobalContext(self)
 
   // Listing 2 in the paper:
 
@@ -664,8 +667,8 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
    * TODO: in the paper, about read-write conflicts.
    */
   private[this] final def retrieveFreshTs(): Long = {
-    val ts1 = this.global.getCommitTs()
-    val ts2 = this.global.getCommitTs()
+    val ts1 = global.getCommitTs()
+    val ts2 = global.getCommitTs()
     if (ts1 != ts2) {
       // we've observed someone else changing the version:
       assert(ts2 > ts1)
@@ -673,7 +676,7 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
     } else {
       // we try to increment it:
       val candidate = ts1 + Version.Incr
-      val ctsWitness = this.global.cmpxchgCommitTs(ts1, candidate)
+      val ctsWitness = global.cmpxchgCommitTs(ts1, candidate)
       if (ctsWitness == ts1) {
         // ok, successful CAS:
         candidate
@@ -686,10 +689,7 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
   }
 
   final override def currentContext(): Mcas.ThreadContext =
-    this.currentContextInternal()
-
-  private[emcas] final def currentContextInternal(): EmcasThreadContext =
-    this.global.currentContext()
+    global.currentContextInternal()
 
   private[choam] final override def isThreadSafe =
     true
@@ -716,19 +716,6 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
     }
   }
 
-  private[choam] final override def getRetryStats(): Mcas.RetryStats = {
-    this.global.getRetryStats()
-  }
-
-  private[choam] final override def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
-    this.global.collectExchangerStats()
-  }
-
-  /** Only for testing/benchmarking */
-  private[choam] final override def maxReusedWeakRefs(): Int = {
-    this.global.maxReusedWeakRefs()
-  }
-
   /** For testing */
   @throws[InterruptedException]
   private[emcas] final def spinUntilCleanup[A](ref: MemoryLocation[A], max: Long = Long.MaxValue): A = {
@@ -741,7 +728,7 @@ private[mcas] object Emcas extends Mcas.UnsealedMcas { self => // TODO: make thi
             // CAS in progress, retry
           } else {
             // CAS finalized, but no cleanup yet, read and retry
-            Emcas.readDirect(ref, ctx = ctx)
+            readDirect(ref, ctx = ctx)
           }
         case a =>
           // descriptor have been cleaned up:

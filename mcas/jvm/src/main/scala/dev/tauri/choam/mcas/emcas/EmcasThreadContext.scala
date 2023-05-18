@@ -23,9 +23,8 @@ import java.lang.ref.WeakReference
 import java.util.concurrent.ThreadLocalRandom
 
 private final class EmcasThreadContext(
-  global: GlobalContext,
+  impl: Emcas,
   private[mcas] val tid: Long,
-  val impl: Emcas.type
 ) extends EmcasThreadContextBase
   with Mcas.UnsealedThreadContext {
 
@@ -129,7 +128,7 @@ private final class EmcasThreadContext(
     impl.readVersion(ref, this)
 
   final override def start(): Descriptor =
-    Descriptor.emptyFromVer(this.global.getCommitTs())
+    Descriptor.emptyFromVer(this.impl.getCommitTs())
 
   protected[mcas] final override def addVersionCas(desc: Descriptor): Descriptor =
     desc // we increment the global commit version differently
@@ -138,11 +137,11 @@ private final class EmcasThreadContext(
     desc: Descriptor,
     hwd: HalfWordDescriptor[_],
   ): Descriptor = {
-    desc.validateAndTryExtendVer(this.global.getCommitTs(), this, hwd)
+    desc.validateAndTryExtendVer(this.impl.getCommitTs(), this, hwd)
   }
 
   final override def toString: String =
-    s"ThreadContext(global = ${this.global}, tid = ${this.tid})"
+    s"ThreadContext(impl = ${this.impl}, tid = ${this.tid})"
 
   private[choam] final override def recordCommit(fullRetries: Int, mcasRetries: Int): Unit = {
     this.recordCommitPlain(fullRetries, mcasRetries)

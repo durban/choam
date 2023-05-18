@@ -20,6 +20,13 @@ package mcas
 
 private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
 
+  /** The single existing instance of `Emcas` */
+  private[this] val _emcas =
+    new emcas.Emcas
+
+  private[mcas] final def internalEmcas: emcas.Emcas =
+    _emcas
+
   /**
    * The default MCAS implementation of the platform
    *
@@ -29,7 +36,7 @@ private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanion
     this.Emcas
 
   final def Emcas: Mcas =
-    mcas.emcas.Emcas
+    _emcas
 
   final def SpinLockMcas: Mcas =
     mcas.SpinLockMcas
@@ -39,7 +46,7 @@ private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanion
     case fqns.SpinLockMCAS =>
       mcas.SpinLockMcas
     case fqns.Emcas =>
-      mcas.emcas.Emcas
+      this.Emcas
     case x =>
       super.unsafeLookup(x)
   }

@@ -41,7 +41,7 @@ class EmcasCleanup1Test {
 
   @Actor
   final def write(r: ILL_Result): Unit = {
-    val ctx = Emcas.currentContext()
+    val ctx = Emcas.inst.currentContext()
     val res = ctx.tryPerformInternal(ctx.addCasFromInitial(ctx.start(), this.ref, "a", "b"))
     r.r1 = if (res == McasStatus.Successful) 1 else -1
   }
