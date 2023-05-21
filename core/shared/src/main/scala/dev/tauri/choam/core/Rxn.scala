@@ -225,19 +225,31 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def postCommit(pc: Rxn[B, Unit]): Rxn[A, B] =
     this >>> Rxn.postCommit[B](pc)
 
+  /**
+   * Execute the [[Rxn]] with the specified input `a`.
+   *
+   * This method is `unsafe` because it performs side-effects.
+   *
+   * @param a the input to the [[Rxn]].
+   * @param mcas the [[Mcas]] implementation to use.
+   * @param maxBackoff the maximal amount to spin when backing off (before retries).
+   * @param randomizeBackoff whether to do exponential backoff *with* randomization.
+   * @param maxRetries the maximum number of retries (pass `None` for possibly infinite retries).
+   * @return the result of the executed [[Rxn]].
+   */
   final def unsafePerform(
     a: A,
-    kcas: Mcas,
+    mcas: Mcas,
     maxBackoff: Int = 16,
     randomizeBackoff: Boolean = true,
-    maxRetries: Int = -1,
+    maxRetries: Option[Int] = None,
   ): B = {
     unsafePerformInternal(
       a = a,
-      ctx = kcas.currentContext(),
+      ctx = mcas.currentContext(),
       maxBackoff = maxBackoff,
       randomizeBackoff = randomizeBackoff,
-      maxRetries = maxRetries,
+      maxRetries = maxRetries.getOrElse(-1),
     )
   }
 
