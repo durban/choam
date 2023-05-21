@@ -52,6 +52,18 @@ class SpinBench {
   }
 
   @Benchmark
+  @Group("withLongExpWait1")
+  def withLongExpWait1(s: SpinSt, bh: Blackhole): Unit = {
+    bh.consume(s.single.unsafePerform((), s.mcasImpl, maxBackoff = 32, randomizeBackoff = false))
+  }
+
+  @Benchmark
+  @Group("withLongExpWait1Rnd")
+  def withLongExpWait1Rnd(s: SpinSt, bh: Blackhole): Unit = {
+    bh.consume(s.single.unsafePerform((), s.mcasImpl, maxBackoff = 32, randomizeBackoff = true))
+  }
+
+  @Benchmark
   @Group("baseline2")
   def baseline2Forward(s: SpinSt, bh: Blackhole): Unit = {
     bh.consume(s.forward.unsafePerform((), s.mcasImpl, maxBackoff = 0, randomizeBackoff = false))
@@ -97,6 +109,30 @@ class SpinBench {
   @Group("withExpWait2Rnd")
   def withExpWait2RndBackward(s: SpinSt, bh: Blackhole): Unit = {
     bh.consume(s.backward.unsafePerform((), s.mcasImpl, maxBackoff = 16, randomizeBackoff = true))
+  }
+
+  @Benchmark
+  @Group("withLongExpWait2")
+  def withLongExpWait2Forward(s: SpinSt, bh: Blackhole): Unit = {
+    bh.consume(s.forward.unsafePerform((), s.mcasImpl, maxBackoff = 32, randomizeBackoff = false))
+  }
+
+  @Benchmark
+  @Group("withLongExpWait2")
+  def withLongExpWait2Backward(s: SpinSt, bh: Blackhole): Unit = {
+    bh.consume(s.backward.unsafePerform((), s.mcasImpl, maxBackoff = 32, randomizeBackoff = false))
+  }
+
+  @Benchmark
+  @Group("withLongExpWait2Rnd")
+  def withLongExpWait2RndForward(s: SpinSt, bh: Blackhole): Unit = {
+    bh.consume(s.forward.unsafePerform((), s.mcasImpl, maxBackoff = 32, randomizeBackoff = true))
+  }
+
+  @Benchmark
+  @Group("withLongExpWait2Rnd")
+  def withLongExpWait2RndBackward(s: SpinSt, bh: Blackhole): Unit = {
+    bh.consume(s.backward.unsafePerform((), s.mcasImpl, maxBackoff = 32, randomizeBackoff = true))
   }
 }
 
