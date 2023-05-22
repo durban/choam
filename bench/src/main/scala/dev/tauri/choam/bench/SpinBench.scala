@@ -27,6 +27,8 @@ import SpinBench._
 @Fork(3)
 class SpinBench {
 
+  private[this] final val LONG_WAIT = 128
+
   @Benchmark
   @Group("baseline1")
   def baseline1(s: SpinSt, bh: Blackhole): Unit = {
@@ -54,13 +56,13 @@ class SpinBench {
   @Benchmark
   @Group("withLongExpWait1")
   def withLongExpWait1(s: SpinSt, bh: Blackhole): Unit = {
-    bh.consume(s.single.unsafePerform((), s.mcasImpl, maxBackoff = 32, randomizeBackoff = false))
+    bh.consume(s.single.unsafePerform((), s.mcasImpl, maxBackoff = LONG_WAIT, randomizeBackoff = false))
   }
 
   @Benchmark
   @Group("withLongExpWait1Rnd")
   def withLongExpWait1Rnd(s: SpinSt, bh: Blackhole): Unit = {
-    bh.consume(s.single.unsafePerform((), s.mcasImpl, maxBackoff = 32, randomizeBackoff = true))
+    bh.consume(s.single.unsafePerform((), s.mcasImpl, maxBackoff = LONG_WAIT, randomizeBackoff = true))
   }
 
   @Benchmark
@@ -114,25 +116,25 @@ class SpinBench {
   @Benchmark
   @Group("withLongExpWait2")
   def withLongExpWait2Forward(s: SpinSt, bh: Blackhole): Unit = {
-    bh.consume(s.forward.unsafePerform((), s.mcasImpl, maxBackoff = 32, randomizeBackoff = false))
+    bh.consume(s.forward.unsafePerform((), s.mcasImpl, maxBackoff = LONG_WAIT, randomizeBackoff = false))
   }
 
   @Benchmark
   @Group("withLongExpWait2")
   def withLongExpWait2Backward(s: SpinSt, bh: Blackhole): Unit = {
-    bh.consume(s.backward.unsafePerform((), s.mcasImpl, maxBackoff = 32, randomizeBackoff = false))
+    bh.consume(s.backward.unsafePerform((), s.mcasImpl, maxBackoff = LONG_WAIT, randomizeBackoff = false))
   }
 
   @Benchmark
   @Group("withLongExpWait2Rnd")
   def withLongExpWait2RndForward(s: SpinSt, bh: Blackhole): Unit = {
-    bh.consume(s.forward.unsafePerform((), s.mcasImpl, maxBackoff = 32, randomizeBackoff = true))
+    bh.consume(s.forward.unsafePerform((), s.mcasImpl, maxBackoff = LONG_WAIT, randomizeBackoff = true))
   }
 
   @Benchmark
   @Group("withLongExpWait2Rnd")
   def withLongExpWait2RndBackward(s: SpinSt, bh: Blackhole): Unit = {
-    bh.consume(s.backward.unsafePerform((), s.mcasImpl, maxBackoff = 32, randomizeBackoff = true))
+    bh.consume(s.backward.unsafePerform((), s.mcasImpl, maxBackoff = LONG_WAIT, randomizeBackoff = true))
   }
 }
 
