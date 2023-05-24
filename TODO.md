@@ -22,8 +22,6 @@
 ## Bugs
 
 - Can't run benchmarks with Scala 3
-- Flaky tests:
-  - `dev.tauri.choam.async.PromiseSpecJvm_Emcas_ZIO_Real.Covariant functor instance  31.056s java.util.concurrent.TimeoutException: test timed out after 31 seconds`
 - `GenWaitList` doesn't handle lost wakeups
   - this affects basically all data structures in `choam-async`
   - if a suspended operation (e.g., a stack `pop`) is cancelled, this can cause lost items
