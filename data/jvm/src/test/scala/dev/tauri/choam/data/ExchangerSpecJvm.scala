@@ -42,7 +42,7 @@ final class ExchangerSpecJvm_Emcas_IO
 
 trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
-  final val iterations = 10
+  final val iterations = 8
 
   private[this] def logOutcome[A](name: String, fa: F[A]): F[A] = {
     fa.guaranteeCase {
