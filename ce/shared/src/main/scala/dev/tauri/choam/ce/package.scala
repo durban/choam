@@ -17,21 +17,16 @@
 
 package dev.tauri.choam
 
-import cats.effect.SyncIO
+import cats.effect.{ IO, SyncIO }
 
-import data.{ Queue, QueueHelper }
-import ce._
+import core.Reactive
+import async.AsyncReactive
 
-abstract class QueueStressTestBase extends StressTestBase {
-  protected def newQueue[A](as: A*): Queue[A]
-}
+package object ce {
 
-abstract class MsQueueStressTestBase extends QueueStressTestBase {
-  protected final override def newQueue[A](as: A*): Queue[A] =
-    QueueHelper.msQueueFromList[SyncIO, A](as.toList).unsafeRunSync()
-}
+  implicit def reactiveForSyncIO: Reactive[SyncIO] =
+    Reactive.reactiveForSync
 
-abstract class RemoveQueueStressTestBase extends QueueStressTestBase {
-  protected final override def newQueue[A](as: A*): Queue.WithRemove[A] =
-    QueueHelper.fromList[SyncIO, Queue.WithRemove, A](Queue.unboundedWithRemove[A])(as.toList).unsafeRunSync()
+  implicit def asyncReactiveForIO: AsyncReactive[IO] =
+    AsyncReactive.asyncReactiveForAsync
 }

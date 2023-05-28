@@ -26,6 +26,7 @@ import cats.effect.{ IO, SyncIO }
 import cats.effect.unsafe.IORuntime
 
 import _root_.dev.tauri.choam.bench.BenchUtils
+import ce._
 
 @Fork(2)
 @Threads(1)

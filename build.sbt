@@ -112,6 +112,7 @@ lazy val choam = project.in(file("."))
     skiplist.jvm, skiplist.js,
     async.jvm, async.js,
     stream.jvm, stream.js,
+    ce.jvm, ce.js,
     internalHelpers.jvm, internalHelpers.js,
     laws.jvm, laws.js,
     unidocs,
@@ -209,6 +210,19 @@ lazy val stream = crossProject(JVMPlatform, JSPlatform)
   .dependsOn(async % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.fs2.value)
 
+lazy val ce = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("ce"))
+  .settings(name := "choam-ce")
+  .enablePlugins(NoPublishPlugin) // TODO: maybe publish it?
+  .disablePlugins(JCStressPlugin)
+  .settings(commonSettings)
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
+  .dependsOn(async % "compile->compile;test->test")
+  .settings(libraryDependencies += dependencies.catsEffectAll.value)
+
 /** Internal use only; no published project may depend on this */
 lazy val internalHelpers = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Pure)
@@ -220,7 +234,7 @@ lazy val internalHelpers = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
-  .dependsOn(async % "compile->compile;test->test")
+  .dependsOn(ce % "compile->compile;test->test")
 
 lazy val laws = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)

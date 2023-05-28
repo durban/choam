@@ -27,6 +27,7 @@ import zio.stm.ZSTM
 
 import util._
 import data.{ Queue, QueueHelper }
+import ce._
 
 @Fork(1)
 class QueueTransferBench extends BenchUtils {

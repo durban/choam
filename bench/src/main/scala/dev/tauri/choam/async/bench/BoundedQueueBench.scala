@@ -27,6 +27,7 @@ import cats.effect.IO
 import cats.effect.std.{ Queue => CatsQueue }
 
 import _root_.dev.tauri.choam.bench.BenchUtils
+import ce._
 
 @Fork(2)
 @Threads(1) // because it runs on the CE threadpool

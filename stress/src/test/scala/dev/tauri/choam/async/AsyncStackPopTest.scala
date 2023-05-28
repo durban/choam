@@ -25,6 +25,8 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.{ IO, SyncIO }
 
+import ce._
+
 // @JCStressTest
 @State
 @Description("AsyncStack: racing pops should work fine")

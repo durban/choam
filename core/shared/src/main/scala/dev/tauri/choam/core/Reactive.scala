@@ -42,7 +42,7 @@ object Reactive {
   def apply[F[_]](implicit inst: Reactive[F]): inst.type =
     inst
 
-  implicit def reactiveForSync[F[_]](implicit F: Sync[F]): Reactive[F] =
+  def reactiveForSync[F[_]](implicit F: Sync[F]): Reactive[F] =
     new SyncReactive[F](Mcas.DefaultMcas)(F)
 
   private[choam] class SyncReactive[F[_]](

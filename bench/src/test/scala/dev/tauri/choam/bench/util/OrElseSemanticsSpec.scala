@@ -32,6 +32,8 @@ import munit.CatsEffectSuite
 import io.github.timwspence.cats.stm.STM
 import zio.{ stm => zstm }
 
+import ce._
+
 /**
  * This test shows that the current semantics of
  * the `+` (choice) combinator of `Rxn` are different

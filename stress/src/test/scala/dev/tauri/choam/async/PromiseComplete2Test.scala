@@ -25,6 +25,8 @@ import org.openjdk.jcstress.infra.results.ZLL_Result
 
 import cats.effect.{ IO, SyncIO }
 
+import ce._
+
 @JCStressTest
 @State
 @Description("Promise: completing 2 promises should occur atomically")

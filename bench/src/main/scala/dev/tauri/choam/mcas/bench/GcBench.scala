@@ -23,6 +23,7 @@ import org.openjdk.jmh.annotations._
 
 import data.{ Queue, QueueHelper }
 import dev.tauri.choam.bench.util.{ Prefill, McasImplState }
+import ce._
 
 @Fork(value = 6, jvmArgsAppend = Array("-Xmx2048M"))
 @Threads(2)

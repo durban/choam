@@ -25,6 +25,8 @@ import org.openjdk.jcstress.infra.results.ZLL_Result
 
 import cats.effect.{ IO, SyncIO, Fiber }
 
+import ce._
+
 // @JCStressTest
 @State
 @Description("Promise: get should be cancellable")

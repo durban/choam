@@ -25,6 +25,7 @@ import org.openjdk.jmh.infra.Blackhole
 
 import util._
 import data.{ Stack, StackHelper }
+import ce._
 
 @Fork(3)
 class StackTransferBench {

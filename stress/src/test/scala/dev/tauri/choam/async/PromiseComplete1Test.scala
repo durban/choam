@@ -25,6 +25,8 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 
 import cats.effect.{ IO, SyncIO, Fiber }
 
+import ce._
+
 @JCStressTest
 @State
 @Description("Promise: racing completers should work fine")

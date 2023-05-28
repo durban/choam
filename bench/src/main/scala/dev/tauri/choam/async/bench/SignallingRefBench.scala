@@ -25,6 +25,7 @@ import cats.effect.IO
 import fs2.concurrent.SignallingRef
 
 import _root_.dev.tauri.choam.bench.BenchUtils
+import ce._
 
 @Fork(2)
 @Threads(1) // because it run on the CE compute pool

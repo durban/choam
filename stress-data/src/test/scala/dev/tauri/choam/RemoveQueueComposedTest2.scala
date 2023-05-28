@@ -25,6 +25,8 @@ import org.openjdk.jcstress.infra.results.LL_Result
 import cats.effect.SyncIO
 import cats.syntax.all._
 
+import ce._
+
 @JCStressTest
 @State
 @Description("RemoveQueue enq/deq should be composable (concurrent enqueue)")

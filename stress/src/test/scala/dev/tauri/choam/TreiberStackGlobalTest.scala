@@ -29,6 +29,7 @@ import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZZ_Result
 
 import data.{ Stack, StackHelper }
+import ce._
 
 // @JCStressTest
 @State
