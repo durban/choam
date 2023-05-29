@@ -53,12 +53,12 @@ class CAS1LoopBench {
   @Benchmark
   def successfulCAS1Loop(r: RefState, t: McasImplState): Unit = {
     val ref = r.ref
-    val kcasCtx = t.mcasCtx
+    val mcasCtx = t.mcasCtx
     @tailrec
     def go(): Unit = {
-      val ov = kcasCtx.readDirect(ref)
+      val ov = mcasCtx.readDirect(ref)
       val nv = (ov.toLong + t.nextLong()).toString
-      val succ = kcasCtx.tryPerformSingleCas(ref, ov, nv)
+      val succ = mcasCtx.tryPerformSingleCas(ref, ov, nv)
       if (succ) ()
       else go()
     }

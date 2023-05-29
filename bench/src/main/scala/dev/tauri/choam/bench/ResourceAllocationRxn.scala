@@ -24,7 +24,7 @@ import org.openjdk.jmh.infra.Blackhole
 import util.McasImplState
 
 /**
- * A variant of `dev.tauri.choam.kcas.bench.ResourceAllocation`,
+ * A variant of `dev.tauri.choam.mcas.bench.ResourceAllocationMcas`,
  * implemented with reagents.
  */
 @Fork(2)

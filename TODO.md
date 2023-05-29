@@ -78,7 +78,6 @@
     - Optimize SignallingRef
 - API cleanup:
   - MCAS API review
-    - e.g., KCAS is still mentioned a lot
     - is it usable outside of `choam`?
   - Rename `flatMapF`
     - maybe `semiFlatMap` (or `semiflatMap`?)
