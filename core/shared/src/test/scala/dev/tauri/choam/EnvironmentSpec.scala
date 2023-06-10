@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-final class EnvironmentSpec extends BaseSpec {
+final class EnvironmentSpec extends EnvironmentSpecPlatform {
 
   test("Check environment") {
     for (prop <- sysProps) {
