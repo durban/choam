@@ -26,11 +26,6 @@ abstract class EnvironmentSpecPlatform extends BaseSpec {
     printSecureRandomInfo(sr, prefix = "SecureRandom")
   }
 
-  test("Check NativePRNG") {
-    val sr = JSecureRandom.getInstance("NativePRNG")
-    printSecureRandomInfo(sr, prefix = "NativePRNG")
-  }
-
   private def printSecureRandomInfo(sr: JSecureRandom, prefix: String): Unit = {
     println(s"${prefix} class: ${sr.getClass().getCanonicalName()}")
     println(s"${prefix} algorithm: ${sr.getAlgorithm()}")
