@@ -84,7 +84,7 @@ private final class ByteStack(initSize: Int) {
   /**
    * Computes a power of 2 which is `>= n`.
    *
-   * Assumes `x` is non-negative (an array length)
+   * Assumes `x` is non-negative (an array length).
    *
    * From Hacker's Delight by Henry S. Warren, Jr. (section 3–2).
    */
@@ -113,9 +113,8 @@ private final class ByteStack(initSize: Int) {
   }
 
   private[this] def grow(): Unit = {
-    val newArr = new Array[Byte](this.arr.length << 1)
-    System.arraycopy(this.arr, 0, newArr, 0, this.size)
-    this.arr = newArr
+    val newLength = this.arr.length << 1
+    this.arr = Arrays.copyOf(this.arr, newLength)
   }
 }
 
@@ -130,9 +129,9 @@ private final object ByteStack {
   }
 
   def push(arr: Array[Byte], item: Byte): Array[Byte] = {
-    val res = new Array[Byte](arr.length + 1)
-    System.arraycopy(arr, 0, res, 0, arr.length)
-    res(arr.length) = item
+    val arrLength = arr.length
+    val res = Arrays.copyOf(arr, arrLength + 1)
+    res(arrLength) = item
     res
   }
 }
