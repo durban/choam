@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package core
 
+import java.util.Arrays
 import java.util.concurrent.atomic.AtomicReferenceArray
 
 import mcas.Mcas
@@ -264,9 +265,10 @@ private sealed trait ExchangerImplJvm[A, B]
     otherContT: Array[Byte],
   ): Array[Byte] = {
     // The top of the stack has the _highest_ index (see `ByteStack`)
-    val res = new Array[Byte](selfContT.length + otherContT.length)
-    System.arraycopy(selfContT, 0, res, 0, selfContT.length)
-    System.arraycopy(otherContT, 0, res, selfContT.length, otherContT.length)
+    val selfContTLength = selfContT.length
+    val otherContTLength = otherContT.length
+    val res = Arrays.copyOf(selfContT, selfContTLength + otherContTLength)
+    System.arraycopy(otherContT, 0, res, selfContTLength, otherContTLength)
     res
   }
 }
