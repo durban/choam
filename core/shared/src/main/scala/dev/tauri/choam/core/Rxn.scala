@@ -231,7 +231,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * This method is `unsafe` because it performs side-effects.
    *
    * @param a the input to the [[Rxn]].
-   * @param mcas the [[Mcas]] implementation to use.
+   * @param mcas the [[mcas.Mcas]] implementation to use.
    * @param maxBackoff the maximal amount to spin when backing off (before retries).
    * @param randomizeBackoff whether to do exponential backoff *with* randomization.
    * @param maxRetries the maximum number of retries (pass `None` for possibly infinite retries).
