@@ -856,7 +856,7 @@ object Rxn extends RxnInstances0 {
     private[this] final def retry(): Rxn[Any, Any] = {
       val retries = incrFullRetries()
       val mr = maxRetries
-      if ((mr > 0) && ((retries > mr)|| (retries == Integer.MAX_VALUE))) {
+      if ((mr > 0) && ((retries > mr) || (retries == Integer.MAX_VALUE))) {
         throw new MaxRetriesReached(mr)
       }
       maybeCheckInterrupt()
