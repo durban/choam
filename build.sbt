@@ -28,7 +28,6 @@ val jvmGraal_17 = JavaSpec.graalvm("22.3.2", "17")
 val jvmGraalLatest = JavaSpec.graalvm("22.3.2", "20")
 val jvmOpenj9_11 = JavaSpec(JavaSpec.Distribution.OpenJ9, "11")
 val jvmOpenj9_17 = JavaSpec(JavaSpec.Distribution.OpenJ9, "17")
-val jvmOpenj9_20 = JavaSpec(JavaSpec.Distribution.OpenJ9, "20")
 
 // CI OS versions:
 val linux = "ubuntu-latest"
@@ -88,7 +87,6 @@ ThisBuild / githubWorkflowJavaVersions := Seq(
   jvmGraalLatest,
   jvmOpenj9_11,
   jvmOpenj9_17,
-  jvmOpenj9_20,
   jvmLatest,
   jvmLts,
 )
