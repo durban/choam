@@ -310,7 +310,8 @@ object Rxn extends RxnInstances0 {
   final def fastRandom: Axn[Random[Axn]] =
     random.Random.fastRandom
 
-  final def secureRandom: Axn[SecureRandom[Axn]] =
+  // TODO: blocking; either fix, or remove
+  private[choam] final def secureRandom: Axn[SecureRandom[Axn]] =
     random.Random.secureRandom
 
   final def deterministicRandom(initialSeed: Long): Axn[random.SplittableRandom[Axn]] =
@@ -1353,7 +1354,8 @@ private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.ty
 }
 
 private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
-  implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {
+  // TODO: blocking; either fix, or remove
+  private[choam] implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {
     final override def randomUUID: Rxn[X, UUID] =
       self.unsafe.delay { _ => UUID.randomUUID() }
   }

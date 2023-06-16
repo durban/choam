@@ -29,6 +29,7 @@
   - and even if we would know that the wakeup is lost, it's already too late: the `Rxn` have been already committed
 - JDK `SecureRandom` (and thus `UUID.randomUUID`) can (in theory) block
   - on Unix-like systems, it indeed blocks (`synchronized`): https://github.com/openjdk/jdk/blob/16c3d53b1bb60b1c1570731041f564bf13b45098/src/java.base/unix/classes/sun/security/provider/NativePRNG.java#L547
+  - thus, it is `private` for now (until it's fixed or removed)
 
 ## Other improvements
 
