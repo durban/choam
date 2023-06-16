@@ -27,7 +27,6 @@ jobs:
           - temurin@11
           - graal_22.3.2@11
           - graal_22.3.2@17
-          - graal_22.3.2@20
           - adopt-openj9@11
           - adopt-openj9@17
           - temurin@20
@@ -89,16 +88,6 @@ jobs:
         with:
           version: 22.3.2
           java-version: 17
-          components: native-image
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache: sbt
-
-      - name: Setup GraalVM (graal_22.3.2@20)
-        if: matrix.java == 'graal_22.3.2@20'
-        uses: graalvm/setup-graalvm@v1
-        with:
-          version: 22.3.2
-          java-version: 20
           components: native-image
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: sbt

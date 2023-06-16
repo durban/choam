@@ -25,7 +25,6 @@ val jvmLts = JavaSpec.temurin("17")
 val jvmOldest = JavaSpec.temurin("11")
 val jvmGraal_11 = JavaSpec.graalvm("22.3.2", "11")
 val jvmGraal_17 = JavaSpec.graalvm("22.3.2", "17")
-val jvmGraalLatest = JavaSpec.graalvm("22.3.2", "20")
 val jvmOpenj9_11 = JavaSpec(JavaSpec.Distribution.OpenJ9, "11")
 val jvmOpenj9_17 = JavaSpec(JavaSpec.Distribution.OpenJ9, "17")
 
@@ -84,7 +83,6 @@ ThisBuild / githubWorkflowJavaVersions := Seq(
   jvmOldest,
   jvmGraal_11,
   jvmGraal_17,
-  jvmGraalLatest,
   jvmOpenj9_11,
   jvmOpenj9_17,
   jvmLatest,
