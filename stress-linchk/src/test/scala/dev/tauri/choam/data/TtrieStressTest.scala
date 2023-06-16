@@ -20,7 +20,6 @@ package data
 
 import org.jetbrains.kotlinx.lincheck.LinChecker
 import org.jetbrains.kotlinx.lincheck.paramgen.StringGen
-import org.jetbrains.kotlinx.lincheck.verifier.VerifierState
 import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
 import org.jetbrains.kotlinx.lincheck.strategy.stress.StressOptions
 
@@ -43,17 +42,13 @@ final class TtrieStressTest extends FunSuite with BaseLinchkSpec {
 final object TtrieStressTest {
 
   @Param(name = "k", gen = classOf[StringGen])
-  class TestState extends VerifierState {
+  class TestState {
 
     private[this] val emcas: mcas.Mcas =
       mcas.Mcas.Emcas
 
     private[this] val m: Ttrie[String, String] =
       Ttrie[String, String].unsafeRun(emcas)
-
-    override def extractState(): AnyRef = {
-      m.unsafeSnapshot.unsafeRun(emcas) : scala.collection.immutable.Map[String, String]
-    }
 
     @Operation
     def insert(k: String): Option[String] = {

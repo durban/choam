@@ -20,7 +20,6 @@ package skiplist
 
 import org.jetbrains.kotlinx.lincheck.LinChecker
 import org.jetbrains.kotlinx.lincheck.paramgen.{ IntGen, StringGen }
-import org.jetbrains.kotlinx.lincheck.verifier.VerifierState
 import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param, StateRepresentation }
 
 import munit.FunSuite
@@ -79,14 +78,10 @@ final object SkipListModelTest {
 
   @Param(name = "key", gen = classOf[IntGen])
   @Param(name = "value", gen = classOf[StringGen])
-  class TestStateSequential extends VerifierState {
+  class TestStateSequential {
 
     private[this] val m =
       scala.collection.mutable.TreeMap.empty[Int, String]
-
-    override def extractState(): Map[Int, String] = {
-      m.toMap
-    }
 
     @StateRepresentation
     def stateRepr(): String = {

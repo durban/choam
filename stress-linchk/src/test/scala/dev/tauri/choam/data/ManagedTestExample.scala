@@ -18,24 +18,19 @@
 package dev.tauri.choam
 package data
 
-import org.jetbrains.kotlinx.lincheck.LinChecker
+import org.jetbrains.kotlinx.lincheck.{ LinChecker, LincheckAssertionError }
 import org.jetbrains.kotlinx.lincheck.paramgen.IntGen
-import org.jetbrains.kotlinx.lincheck.verifier.VerifierState
 import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 
 import munit.FunSuite
 
 @Param(name = "v", gen = classOf[IntGen], conf = "0:127")
-class ManagedTestState extends VerifierState {
+class ManagedTestState {
 
   @volatile
   private[this] var count: Int =
     0
-
-  override def extractState(): AnyRef = {
-    Integer.valueOf(this.count)
-  }
 
   @Operation
   def incr(v: Int): Int = {
@@ -54,8 +49,14 @@ class ManagedTestState extends VerifierState {
 
 final class ManagedTestExample extends FunSuite with BaseLinchkSpec {
 
-  test("Dummy counter test".ignore) { // expected failure
+  test("Dummy counter test") {
     val opts = new ModelCheckingOptions()
-    LinChecker.check(classOf[ManagedTestState], opts)
+    try {
+      LinChecker.check(classOf[ManagedTestState], opts)
+      fail("expected a lincheck failure")
+    } catch {
+      case _: LincheckAssertionError =>
+        () // ok, expected failure
+    }
   }
 }
