@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        scala: [2.13.10, 3.3.0]
+        scala: [2.13.11, 3.3.0]
         java:
           - temurin@11
           - graal_22.3.2@11
@@ -33,7 +33,7 @@ jobs:
         include:
           - os: macos-latest
             java: temurin@17
-            scala: 2.13.10
+            scala: 2.13.11
         exclude:
           - os: windows-latest
             java: graal_22.3.2@11

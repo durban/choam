@@ -16,7 +16,7 @@
  */
 
 // Scala versions:
-val scala2 = "2.13.10"
+val scala2 = "2.13.11"
 val scala3 = "3.3.0"
 
 // CI JVM versions:
