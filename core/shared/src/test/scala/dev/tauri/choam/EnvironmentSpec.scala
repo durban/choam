@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import random.OsRandom
+
 final class EnvironmentSpec extends EnvironmentSpecPlatform {
 
   test("Check environment") {
@@ -24,6 +26,12 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
       printSystemProperty(prop)
     }
     println(s"Runtime.getRuntime().availableProcessors() == ${Runtime.getRuntime().availableProcessors()}")
+  }
+
+  test("Check osRandom") {
+    val or = OsRandom.mkNew()
+    println(s"OsRandom class: ${or.getClass().getName()}")
+    or.nextBytes(256)
   }
 
   test("Check autodetection") {

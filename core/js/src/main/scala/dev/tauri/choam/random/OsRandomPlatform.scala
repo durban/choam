@@ -20,29 +20,12 @@ package random
 
 import java.security.{ SecureRandom => JSecureRandom }
 
-// TODO: ref https://unix.stackexchange.com/questions/324209/when-to-use-dev-random-vs-dev-urandom#answer-324210
+private[random] abstract class OsRandomPlatform {
 
-private[choam] object OsRandom extends OsRandomPlatform
-
-private[choam] abstract class OsRandom {
-
-  def nextBytes(dest: Array[Byte]): Unit
-
-  def nextBytes(n: Int): Array[Byte] = {
-    require(n >= 0)
-    val dest = new Array[Byte](n)
-    if (n > 0) {
-      nextBytes(dest)
-    }
-    dest
+  def mkNew(): OsRandom = {
+    new JsRandom
   }
 }
 
-private class AdaptedOsRandom(underlying: JSecureRandom) extends OsRandom {
-
-  final override def nextBytes(dest: Array[Byte]): Unit = {
-    if (dest.length > 0) {
-      underlying.nextBytes(dest)
-    }
-  }
-}
+private final class JsRandom
+  extends AdaptedOsRandom(new JSecureRandom())
