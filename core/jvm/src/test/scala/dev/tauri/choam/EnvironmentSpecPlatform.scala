@@ -19,6 +19,8 @@ package dev.tauri.choam
 
 import java.security.{ SecureRandom => JSecureRandom, Provider }
 
+import random.OsRandom
+
 abstract class EnvironmentSpecPlatform extends BaseSpec {
 
   test("Check SecureRandom") {
@@ -42,5 +44,11 @@ abstract class EnvironmentSpecPlatform extends BaseSpec {
     (sr.getAlgorithm() ne null) && java.lang.Boolean.parseBoolean(
       pr.getProperty("SecureRandom." + sr.getAlgorithm() + " ThreadSafe", "false")
     )
+  }
+
+  test("Check osRandom") {
+    val or = OsRandom.mkNew()
+    println(s"OsRandom class: ${or.getClass().getCanonicalName()}")
+    or.nextBytes(256)
   }
 }
