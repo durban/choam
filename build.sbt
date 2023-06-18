@@ -512,7 +512,7 @@ lazy val commonSettings = Seq[Setting[_]](
         "-Wunused:all",
         // no equivalent:
         "-Ykind-projector",
-        "-Ysafe-init",
+        // TODO: "-Ysafe-init", // https://github.com/lampepfl/dotty/issues/17997
         "-Ycheck-all-patmat",
         // TODO: "-Ycheck-reentrant",
         // TODO: "-Yexplicit-nulls",
