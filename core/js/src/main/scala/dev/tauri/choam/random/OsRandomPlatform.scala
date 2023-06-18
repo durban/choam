@@ -22,6 +22,21 @@ import java.security.{ SecureRandom => JSecureRandom }
 
 private[random] abstract class OsRandomPlatform {
 
+  /**
+   * Creates (and initializes) a new `OsRandom`
+   * RNG instance, which will get secure random
+   * bytes directly from the JS runtime.
+   *
+   * Strategy on JS:
+   *
+   * - We use [[java.security.SecureRandom]]
+   *   directly, which is provided by the
+   *   [scalajs-java-securerandom](https://github.com/scala-js/scala-js-java-securerandom)
+   *   project. It detects the JS runtime,
+   *   and uses the appropriate API (either
+   *   `crypto.getRandomValues` or the Node.js
+   *   `crypto` module).
+   */
   def mkNew(): OsRandom = {
     new JsRandom
   }

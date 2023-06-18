@@ -20,8 +20,6 @@ package random
 
 import java.security.{ SecureRandom => JSecureRandom }
 
-// TODO: ref https://unix.stackexchange.com/questions/324209/when-to-use-dev-random-vs-dev-urandom#answer-324210
-
 private[choam] object OsRandom extends OsRandomPlatform
 
 private[choam] abstract class OsRandom {
