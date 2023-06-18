@@ -21,9 +21,9 @@ import cats.syntax.all._
 
 import random.OsRng
 
-final class OsRandomSpec extends BaseSpec {
+final class OsRngSpec extends BaseSpec {
 
-  test("OsRandom#nextBytes") {
+  test("OsRng#nextBytes") {
     val rng = OsRng.mkNew()
     assert(Either.catchOnly[IllegalArgumentException] { rng.nextBytes(-1) }.isLeft)
     assertEquals(rng.nextBytes(0).length, 0)

@@ -42,7 +42,7 @@ object OsRngDieharder extends IOApp {
     IO.blocking { OsRng.mkNew() }.flatMap { rng =>
       IO { System.out }.flatMap { out =>
         // we also want to test using
-        // `OsRandom` from multiple
+        // `OsRng` from multiple
         // threads, so we start N
         // independent fibers:
         val getN = args match {

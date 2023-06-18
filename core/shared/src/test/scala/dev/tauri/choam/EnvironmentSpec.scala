@@ -28,9 +28,9 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
     println(s"Runtime.getRuntime().availableProcessors() == ${Runtime.getRuntime().availableProcessors()}")
   }
 
-  test("Check osRandom") {
+  test("Check OsRng") {
     val or = OsRng.mkNew()
-    println(s"OsRandom class: ${or.getClass().getName()}")
+    println(s"OsRng class: ${or.getClass().getName()}")
     or.nextBytes(256)
   }
 

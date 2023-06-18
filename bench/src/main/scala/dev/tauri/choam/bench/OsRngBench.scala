@@ -24,12 +24,12 @@ import org.openjdk.jmh.annotations._
 
 import random.OsRng
 
-import OsRandomBench._
+import OsRngBench._
 
 @Fork(3)
 @Threads(2)
 @BenchmarkMode(Array(Mode.Throughput))
-class OsRandomBench {
+class OsRngBench {
 
   @Benchmark
   def small_baseline(s: BaselineSharedSt, b: BufferSt): Unit = {
@@ -62,7 +62,7 @@ class OsRandomBench {
   }
 }
 
-object OsRandomBench {
+object OsRngBench {
 
   @State(Scope.Benchmark)
   class SharedSt {
