@@ -130,6 +130,7 @@ lazy val choam = project.in(file("."))
     stressExperiments, // JVM
     stressLinchk, // JVM
     stressLinchkAgent, // JVM
+    stressRng, // JVM
     layout, // JVM
   )
 
@@ -416,6 +417,19 @@ lazy val stressLinchkAgent = project.in(file("stress-linchk-agent"))
     packageOptions += Package.ManifestAttributes(
       "Premain-Class" -> "dev.tauri.choam.lcagent.Premain",
     ),
+  )
+
+lazy val stressRng = project.in(file("stress-rng"))
+  .settings(name := "choam-stress-rng")
+  .settings(commonSettings)
+  .settings(commonSettingsJvm)
+  .disablePlugins(JCStressPlugin)
+  .enablePlugins(NoPublishPlugin)
+  .enablePlugins(JavaAppPackaging)
+  .dependsOn(core.jvm)
+  .settings(
+    // we have testing code in `main`:
+    libraryDependencies ++= dependencies.test.value
   )
 
 lazy val stress = project.in(file("stress"))

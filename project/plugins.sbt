@@ -32,6 +32,7 @@ addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.11.0")
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.1")
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.13.1")
 addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1")
+addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.9.16")
 
 ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := "4.7.8"
