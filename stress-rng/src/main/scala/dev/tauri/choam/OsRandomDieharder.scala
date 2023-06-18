@@ -23,10 +23,10 @@ import java.io.{ PrintStream, IOException }
 import cats.syntax.all._
 import cats.effect.{ IO, IOApp, ExitCode }
 
-import random.OsRandom
+import random.OsRng
 
 /**
- * Writes data form `OsRandom` to stdout in a format
+ * Writes data form `OsRng` to stdout in a format
  * which is suitable for `dieharder`.
  *
  * How to use:
@@ -34,12 +34,12 @@ import random.OsRandom
  * - `stress-rng/target/universal/stage/bin/choam-stress-rng | dieharder -a -g 200`
  *   (or `-d N` instead of `-a` to only run test no. `N`)
  */
-object OsRandomDieharder extends IOApp {
+object OsRngDieharder extends IOApp {
 
   final val bufferSize = 4 * 1024
 
   final override def run(args: List[String]): IO[ExitCode] = {
-    IO.blocking { OsRandom.mkNew() }.flatMap { rng =>
+    IO.blocking { OsRng.mkNew() }.flatMap { rng =>
       IO { System.out }.flatMap { out =>
         // we also want to test using
         // `OsRandom` from multiple
@@ -65,7 +65,7 @@ object OsRandomDieharder extends IOApp {
     }
   }
 
-  def writeMany(idx: Int, rng: OsRandom, out: PrintStream): IO[Nothing] = {
+  def writeMany(idx: Int, rng: OsRng, out: PrintStream): IO[Nothing] = {
     IO { new AtomicLong }.flatMap { ctr =>
       IO { new Array[Byte](bufferSize) }.flatMap { buff =>
         (writeOne(rng, buff, out, ctr) >> IO.cede).foreverM
@@ -75,7 +75,7 @@ object OsRandomDieharder extends IOApp {
     }
   }
 
-  def writeOne(rng: OsRandom, buff: Array[Byte], out: PrintStream, ctr: AtomicLong): IO[Unit] = {
+  def writeOne(rng: OsRng, buff: Array[Byte], out: PrintStream, ctr: AtomicLong): IO[Unit] = {
     IO { rng.nextBytes(buff) } >> IO {
       out.write(buff)
       // `PrintStream` swallows errors, but we need

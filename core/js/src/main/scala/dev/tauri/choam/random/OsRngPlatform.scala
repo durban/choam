@@ -20,27 +20,27 @@ package random
 
 import java.security.{ SecureRandom => JSecureRandom }
 
-private[choam] object OsRandom extends OsRandomPlatform
+private[random] abstract class OsRngPlatform {
 
-private[choam] abstract class OsRandom {
-
-  def nextBytes(dest: Array[Byte]): Unit
-
-  def nextBytes(n: Int): Array[Byte] = {
-    require(n >= 0)
-    val dest = new Array[Byte](n)
-    if (n > 0) {
-      nextBytes(dest)
-    }
-    dest
+  /**
+   * Creates (and initializes) a new `OsRng`
+   * RNG instance, which will get secure random
+   * bytes directly from the JS runtime.
+   *
+   * Strategy on JS:
+   *
+   * - We use [[java.security.SecureRandom]]
+   *   directly, which is provided by the
+   *   [scalajs-java-securerandom](https://github.com/scala-js/scala-js-java-securerandom)
+   *   project. It detects the JS runtime,
+   *   and uses the appropriate API (either
+   *   `crypto.getRandomValues` or the Node.js
+   *   `crypto` module).
+   */
+  def mkNew(): OsRng = {
+    new JsRng
   }
 }
 
-private class AdaptedOsRandom(underlying: JSecureRandom) extends OsRandom {
-
-  final override def nextBytes(dest: Array[Byte]): Unit = {
-    if (dest.length > 0) {
-      underlying.nextBytes(dest)
-    }
-  }
-}
+private final class JsRng
+  extends AdaptedOsRng(new JSecureRandom())

@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import random.OsRandom
+import random.OsRng
 
 final class EnvironmentSpec extends EnvironmentSpecPlatform {
 
@@ -29,7 +29,7 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
   }
 
   test("Check osRandom") {
-    val or = OsRandom.mkNew()
+    val or = OsRng.mkNew()
     println(s"OsRandom class: ${or.getClass().getName()}")
     or.nextBytes(256)
   }

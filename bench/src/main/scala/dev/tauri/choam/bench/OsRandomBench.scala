@@ -22,7 +22,7 @@ import java.security.{ SecureRandom => JSecureRandom }
 
 import org.openjdk.jmh.annotations._
 
-import random.OsRandom
+import random.OsRng
 
 import OsRandomBench._
 
@@ -66,8 +66,8 @@ object OsRandomBench {
 
   @State(Scope.Benchmark)
   class SharedSt {
-    val osRandom: OsRandom =
-      OsRandom.mkNew()
+    val osRandom: OsRng =
+      OsRng.mkNew()
   }
 
   @State(Scope.Benchmark)

@@ -19,12 +19,12 @@ package dev.tauri.choam
 
 import cats.syntax.all._
 
-import random.OsRandom
+import random.OsRng
 
 final class OsRandomSpec extends BaseSpec {
 
   test("OsRandom#nextBytes") {
-    val rng = OsRandom.mkNew()
+    val rng = OsRng.mkNew()
     assert(Either.catchOnly[IllegalArgumentException] { rng.nextBytes(-1) }.isLeft)
     assertEquals(rng.nextBytes(0).length, 0)
     assertEquals(rng.nextBytes(1).length, 1)

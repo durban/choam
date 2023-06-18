@@ -21,11 +21,11 @@ package random
 import java.io.{ FileInputStream, EOFException }
 import java.security.{ SecureRandom => JSecureRandom, NoSuchAlgorithmException }
 
-private[random] abstract class OsRandomPlatform {
+private[random] abstract class OsRngPlatform {
 
   /**
-   * Creates (and initializes) a new `OsRandom`
-   * RNG instance, which will get secure random
+   * Creates (and initializes) a new `OsRng`
+   * instance, which will get secure random
    * bytes directly from the OS.
    *
    * Strategy on the JVM:
@@ -44,7 +44,7 @@ private[random] abstract class OsRandomPlatform {
    *   devices are available. We first read some bytes from
    *   `/dev/random` (to make sure the kernel RNG is initialized,
    *   because otherwise, e.g., older Linux may return non-random
-   *   data form `/dev/urandom`), then return an `OsRandom` which
+   *   data form `/dev/urandom`), then return an `OsRng` which
    *   will read from `/dev/urandom` (which is non-blocking).
    *   See [this description](https://unix.stackexchange.com/questions/324209/when-to-use-dev-random-vs-dev-urandom#answer-324210)
    *   about [u]random on various Unix-like systems.
@@ -54,22 +54,24 @@ private[random] abstract class OsRandomPlatform {
    *
    * Note: this method may block (e.g., read from
    * `/dev/random`), buf after that, the returned
-   * `OsRandom` will (most likely) will not.
+   * `OsRng` will (most likely) will not.
    */
-  def mkNew(): OsRandom = {
+  def mkNew(): OsRng = {
     try {
-      new WinRandom
+      // TODO: avoid loading the `WinRng` class
+      // TODO: on non-Windows (to help the JIT)
+      new WinRng
     } catch {
       case _: NoSuchAlgorithmException =>
-        new UnixRandom
+        new UnixRng
     }
   }
 }
 
-private final class WinRandom
-  extends AdaptedOsRandom(JSecureRandom.getInstance("Windows-PRNG"))
+private final class WinRng
+  extends AdaptedOsRng(JSecureRandom.getInstance("Windows-PRNG"))
 
-private final class UnixRandom extends OsRandom {
+private final class UnixRng extends OsRng {
 
   private[this] val stream: FileInputStream = {
     val random = new FileInputStream("/dev/random")
