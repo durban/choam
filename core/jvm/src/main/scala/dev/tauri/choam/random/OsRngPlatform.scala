@@ -58,9 +58,8 @@ private[random] abstract class OsRngPlatform {
    */
   def mkNew(): OsRng = {
     try {
-      // TODO: avoid loading the `WinRng` class
-      // TODO: on non-Windows (to help the JIT)
-      new WinRng
+      val wprng = JSecureRandom.getInstance("Windows-PRNG")
+      new WinRng(wprng)
     } catch {
       case _: NoSuchAlgorithmException =>
         new UnixRng
@@ -68,8 +67,11 @@ private[random] abstract class OsRngPlatform {
   }
 }
 
-private final class WinRng
-  extends AdaptedOsRng(JSecureRandom.getInstance("Windows-PRNG"))
+private final class WinRng(sr: JSecureRandom)
+  extends AdaptedOsRng(sr) {
+
+  require(sr.getAlgorithm() == "Windows-PRNG") // just to be sure
+}
 
 private final class UnixRng extends OsRng {
 
