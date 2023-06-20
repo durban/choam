@@ -31,6 +31,10 @@ import cats.effect.std.Random
  * Some of these derived methods were adapted from the algorithms
  * in the public domain JSR-166 ThreadLocalRandom
  * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
+ *
+ * Note: some of the methods are implemented in terms of
+ * each other, so subclasses *must* override either
+ * `nextBytes` OR (`nextLong` AND `nextInt`).
  */
 private abstract class RandomBase
   extends RandomBasePlatform
@@ -38,7 +42,25 @@ private abstract class RandomBase
 
   import RandomBase._
 
-  def nextBytes(n: Int): Axn[Array[Byte]] = {
+  def nextLong: Axn[Long] = {
+    this.nextBytes(8).map { (arr: Array[Byte]) =>
+      this.getLongAt0(arr)
+    }
+  }
+
+  def nextInt: Axn[Int] = {
+    this.nextLong.map { (r: Long) =>
+      r.toInt
+    }
+  }
+
+  // TODO: there should be a (protected) allocation-less
+  // TODO: version of `nextBytes` (for performance)
+
+  def nextBytes(n: Int): Axn[Array[Byte]] =
+    nextBytesInternal(n, this.nextLong)
+
+  protected[this] def nextBytesInternal(n: Int, nextLong: Axn[Long]): Axn[Array[Byte]] = {
     require(n >= 0)
 
     /* Puts the last (at most 7) bytes into buf */
@@ -50,10 +72,11 @@ private abstract class RandomBase
       }
     }
 
+    // TODO: do this with VarHandle instead of ByteBuffer (for performance)
     def go(buf: ByteBuffer): Axn[Unit] = {
       Axn.unsafe.delay(buf.remaining()).flatMap { (rem: Int) =>
         if (rem > 0) {
-          this.nextLong.flatMapF { (r: Long) =>
+          nextLong.flatMapF { (r: Long) =>
             if (rem >= 8) {
               Axn.unsafe.delay(buf.putLong(r)) *> go(buf)
             } else {

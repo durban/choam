@@ -19,7 +19,7 @@ package dev.tauri.choam
 package random
 
 /** We need this on the JVM too (because Scala.js doesn't have StrictMath) */
-private abstract class RandomBasePlatform {
+private abstract class RandomBasePlatform extends RandomBasePlatformBase {
 
   @inline
   protected final def strictMathSqrt(a: Double): Double =

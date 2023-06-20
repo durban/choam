@@ -33,6 +33,10 @@ object Random {
     DeterministicRandom(initialSeed)
 
   // TODO: do we need this?
-  private[choam] def minimalRandom(initialSeed: Long): Axn[CRandom[Axn]] =
-    Rxn.unsafe.delay { _ => MinimalRandom.unsafe(initialSeed) }
+  private[choam] def minimalRandom1(initialSeed: Long): Axn[CRandom[Axn]] =
+    Rxn.unsafe.delay { _ => MinimalRandom.unsafe1(initialSeed) }
+
+  // TODO: do we need this?
+  private[choam] def minimalRandom2(initialSeed: Long): Axn[CRandom[Axn]] =
+    Rxn.unsafe.delay { _ => MinimalRandom.unsafe2(initialSeed) }
 }

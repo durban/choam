@@ -37,13 +37,13 @@ private final class RxnSecureRandom private (jRnd: JSecureRandom)
 
   import Axn.unsafe.delay
 
-  final def nextInt: Axn[Int] =
+  // Override these, to use the secure impl:
+
+  final override def nextInt: Axn[Int] =
     delay { jRnd.nextInt() }
 
-  final def nextLong: Axn[Long] =
+  final override def nextLong: Axn[Long] =
     delay { jRnd.nextLong() }
-
-  // Override these, to use the secure impl:
 
   final override def nextIntBounded(n: Int): Axn[Int] =
     delay { jRnd.nextInt(n) }

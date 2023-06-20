@@ -47,9 +47,11 @@ class RandomBench {
   }
 
   @Benchmark
-  def betweenIntMinimal(s: RandomBench.St, k: McasImplState): Int = {
-    s.rndMinimal.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
+  def betweenIntMinimal1(s: RandomBench.St, k: McasImplState): Int = {
+    s.rndMinimal1.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
   }
+
+  // TODO: minimal2
 
   @Benchmark
   def betweenIntSecure(s: RandomBench.St, k: McasImplState): Int = {
@@ -71,8 +73,8 @@ object RandomBench {
       Rxn.fastRandom.unsafeRun(mcas.Mcas.NullMcas)
     val rndDeterministic: Random[Axn] =
       Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.Mcas.NullMcas)
-    val rndMinimal: Random[Axn] =
-      Rxn.minimalRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.Mcas.NullMcas)
+    val rndMinimal1: Random[Axn] =
+      random.Random.minimalRandom1(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.Mcas.NullMcas)
     val rndSecure: Random[Axn] =
       Rxn.secureRandom.unsafeRun(mcas.Mcas.NullMcas)
   }

@@ -33,13 +33,13 @@ private final class RxnThreadLocalRandom private ()
 
   import Rxn.unsafe.delayContext
 
-  final def nextLong: Axn[Long] =
+  // override these, because TLR is faster:
+
+  final override def nextLong: Axn[Long] =
     delayContext { ctx => (ctx.random : ThreadLocalRandom).nextLong() }
 
-  final def nextInt: Axn[Int] =
+  final override def nextInt: Axn[Int] =
     delayContext { ctx => ctx.random.nextInt() }
-
-  // override these, because TLR is faster:
 
   final override def nextLongBounded(n: Long): Axn[Long] =
     delayContext { ctx => ctx.random.nextLong(n) }

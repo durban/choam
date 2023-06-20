@@ -81,8 +81,12 @@ trait RandomSpec[F[_]]
     seed => Rxn.deterministicRandom(seed).run[F].widen[Random[Axn]],
   )
   checkRandom(
-    "MinimalRandom",
-    seed => Rxn.minimalRandom(seed).run[F],
+    "MinimalRandom1",
+    seed => random.Random.minimalRandom1(seed).run[F],
+  )
+  checkRandom(
+    "MinimalRandom2",
+    seed => random.Random.minimalRandom2(seed).run[F],
   )
 
   test("Rxn.deterministicRandom must be deterministic (1)") {
@@ -187,7 +191,11 @@ trait RandomSpec[F[_]]
   test("Rxn.deterministicRandom must generate the same values as MinimalRandom") {
     checkSame(
       seed => Rxn.deterministicRandom(seed),
-      seed => Rxn.minimalRandom(seed),
+      seed => random.Random.minimalRandom1(seed),
+    )
+    checkSame(
+      seed => Rxn.deterministicRandom(seed),
+      seed => random.Random.minimalRandom2(seed),
     )
   }
 
@@ -243,10 +251,10 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def assertSameRng[A](rng1: Random[Axn], rng2: Random[Axn], f: Random[Axn] => Axn[A]): F[Unit] = {
+  def assertSameRng[A](rng1: Random[Axn], rng2: Random[Axn], f: Random[Axn] => Axn[A], clue: String = "different results"): F[Unit] = {
     val fa1 = f(rng1).run[F]
     val fa2 = f(rng2).run[F]
-    assertSameResult(fa1, fa2)
+    assertSameResult(fa1, fa2, clue = clue)
   }
 
   /** Checks that `rnd1` and `rnd2` generates the same numbers */
@@ -254,11 +262,11 @@ trait RandomSpec[F[_]]
     PropF.forAllF { (seed: Long, lst: List[Int], bound: Int) =>
       (mkRnd1(seed) * mkRnd2(seed)).run[F].flatMap {
         case (rnd1, rnd2) =>
-          def checkBoth[A](f: Random[Axn] => Axn[A]): F[Unit] =
-            assertSameRng(rnd1, rnd2, f)
+          def checkBoth[A](f: Random[Axn] => Axn[A], clue: String = "different results"): F[Unit] =
+            assertSameRng(rnd1, rnd2, f, clue = clue)
           for {
-            _ <- checkBoth(_.nextLong)
-            _ <- checkBoth(_.nextInt)
+            _ <- checkBoth(_.nextLong, "nextLong")
+            _ <- checkBoth(_.nextInt, "nextInt")
             _ <- checkBoth(_.nextBytes(remainderUnsigned(bound, 64)).map(_.toVector))
             _ <- checkBoth(_.nextLongBounded(remainderUnsigned(bound, 1024) + 1L))
             _ <- checkBoth(_.betweenLong(-4L, 45L))

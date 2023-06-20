@@ -20,23 +20,28 @@ package random
 
 import cats.effect.std.Random
 
-private object MinimalRandom {
-  def unsafe(initialSeed: Long): Random[Axn] = {
-    new MinimalRandom(Ref.unsafe(initialSeed), RandomBase.GoldenGamma)
-  }
-}
-
 /**
  * Uses `RandomBase` for everything, implements
  * only the absolutely necessary methods. (For
  * testing and benchmarking.)
  */
-private final class MinimalRandom private (
+private object MinimalRandom {
+
+  def unsafe1(initialSeed: Long): Random[Axn] = {
+    new MinimalRandom1(Ref.unsafe(initialSeed), RandomBase.GoldenGamma)
+  }
+
+  def unsafe2(initialSeed: Long): Random[Axn] = {
+    new MinimalRandom2(Ref.unsafe(initialSeed), RandomBase.GoldenGamma)
+  }
+}
+
+private abstract class MinimalRandom protected (
   seed: Ref[Long],
   gamma: Long,
 ) extends RandomBase {
 
-  private[this] val nextSeed: Axn[Long] =
+  protected[this] val nextSeed: Axn[Long] =
     seed.updateAndGet(_ + gamma)
 
   private[this] final def mix64(s: Long): Long =
@@ -44,6 +49,12 @@ private final class MinimalRandom private (
 
   private[this] final def mix32(s: Long): Int =
     (staffordMix04(s) >>> 32).toInt
+
+  protected[this] final def nextLongInternal: Axn[Long] =
+    nextSeed.map(mix64)
+
+  final override def nextInt: Axn[Int] =
+    nextSeed.map(mix32)
 
   private[this] final def staffordMix13(s: Long): Long = {
     var n: Long = s
@@ -64,10 +75,24 @@ private final class MinimalRandom private (
     n ^= (n >>> 32)
     n
   }
+}
 
-  final def nextInt: Axn[Int] =
-    nextSeed.map(mix32)
+/** Implements only `nextLong` and `nextInt` */
+private final class MinimalRandom1(
+  seed: Ref[Long],
+  gamma: Long,
+) extends MinimalRandom(seed, gamma) {
 
-  final def nextLong: Axn[Long] =
-    nextSeed.map(mix64)
+  final override def nextLong: Axn[Long] =
+    nextLongInternal
+}
+
+/** Implements only `nextBytes` and `nextInt` */
+private final class MinimalRandom2(
+  seed: Ref[Long],
+  gamma: Long,
+) extends MinimalRandom(seed, gamma) {
+
+  final override def nextBytes(n: Int): Axn[Array[Byte]] =
+    nextBytesInternal(n, nextLongInternal)
 }

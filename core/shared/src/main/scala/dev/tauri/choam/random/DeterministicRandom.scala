@@ -204,7 +204,7 @@ private final class DeterministicRandom(
     }
   }
 
-  final def nextInt: Axn[Int] =
+  final override def nextInt: Axn[Int] =
     nextSeed.map(mix32)
 
   // This should be faster than the one in `RandomBase`
@@ -260,7 +260,7 @@ private final class DeterministicRandom(
     }
   }
 
-  final def nextLong: Axn[Long] =
+  final override def nextLong: Axn[Long] =
     nextSeed.map(mix64)
 
   // This should be faster than the one in `RandomBase`
