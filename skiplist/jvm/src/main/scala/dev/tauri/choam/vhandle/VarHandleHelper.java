@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam;
+package dev.tauri.choam.vhandle;
 
 import java.util.Collections;
 import java.lang.invoke.MethodHandle;
@@ -23,7 +23,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 
-// TODO: should be internal (at least the package name)
 public final class VarHandleHelper {
 
   private static final MethodHandle WITH_INVOKE_EXACT_BEHAVIOR;

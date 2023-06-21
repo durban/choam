@@ -20,6 +20,8 @@ package dev.tauri.choam;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
+import dev.tauri.choam.vhandle.VarHandleHelper;
+
 final class VarHandleTest {
 
   private static final VarHandle VALUE;
