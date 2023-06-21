@@ -23,10 +23,17 @@ import cats.syntax.all._
 
 final class VarHandleHelperSpec extends munit.FunSuite {
 
-  // TODO: this will fail on JVM < 16
   test("withInvokeExactBehavior") {
     val x = new VarHandleTest
     assert(x.casCorrect(0L, 1L))
-    assert(Either.catchOnly[WrongMethodTypeException] { x.casIncorrect(1L, 2L) }.isLeft)
+    if (jvmVersion() >= 16) {
+      assert(Either.catchOnly[WrongMethodTypeException] { x.casIncorrect(1L, 2L) }.isLeft)
+    } else {
+      assert(x.casIncorrect(1L, 2L))
+    }
+  }
+
+  private def jvmVersion(): Int = {
+    System.getProperty("java.version").split('.')(0).toInt
   }
 }
