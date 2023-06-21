@@ -21,6 +21,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
+import dev.tauri.choam.vhandle.VarHandleHelper;
 import dev.tauri.choam.mcas.Version;
 
 final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B> {
@@ -32,9 +33,9 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE_B = l.findVarHandle(RefP1P1.class, "valueB", Object.class);
-      VERSION_B = l.findVarHandle(RefP1P1.class, "versionB", long.class);
-      MARKER_B = l.findVarHandle(RefP1P1.class, "markerB", WeakReference.class);
+      VALUE_B = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefP1P1.class, "valueB", Object.class));
+      VERSION_B = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefP1P1.class, "versionB", long.class));
+      MARKER_B = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefP1P1.class, "markerB", WeakReference.class));
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }

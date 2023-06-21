@@ -106,6 +106,10 @@
     - Channel?
     - Optimize SignallingRef
 - API cleanup:
+  - Document internal packages
+    - dev.tauri.choam.skiplist
+    - dev.tauri.choam.vhandle
+    - ...
   - MCAS API review
     - is it usable outside of `choam`?
   - Rename `flatMapF`

@@ -20,6 +20,7 @@ package dev.tauri.choam.mcas.emcas;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
+import dev.tauri.choam.vhandle.VarHandleHelper;
 import dev.tauri.choam.mcas.Version;
 import dev.tauri.choam.mcas.PaddedMemoryLocationPadding;
 
@@ -30,7 +31,7 @@ abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      COMMIT_TS = l.findVarHandle(GlobalContextBase.class, "commitTs", long.class);
+      COMMIT_TS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(GlobalContextBase.class, "commitTs", long.class));
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }

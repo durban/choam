@@ -21,6 +21,8 @@ import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+import dev.tauri.choam.vhandle.VarHandleHelper;
+
 abstract class PrimaryExchangerImplJvmBase {
 
   private static final VarHandle _INCOMING;
@@ -29,8 +31,12 @@ abstract class PrimaryExchangerImplJvmBase {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      _INCOMING = l.findVarHandle(PrimaryExchangerImplJvmBase.class, "_incoming", AtomicReferenceArray.class);
-      _OUTGOING = l.findVarHandle(PrimaryExchangerImplJvmBase.class, "_outgoing", AtomicReferenceArray.class);
+      _INCOMING = VarHandleHelper.withInvokeExactBehavior(
+        l.findVarHandle(PrimaryExchangerImplJvmBase.class, "_incoming", AtomicReferenceArray.class)
+      );
+      _OUTGOING = VarHandleHelper.withInvokeExactBehavior(
+        l.findVarHandle(PrimaryExchangerImplJvmBase.class, "_outgoing", AtomicReferenceArray.class)
+      );
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }

@@ -21,6 +21,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
+import dev.tauri.choam.vhandle.VarHandleHelper;
 import dev.tauri.choam.mcas.MemoryLocation;
 import dev.tauri.choam.mcas.Version;
 
@@ -33,9 +34,9 @@ final class RefU1<A> extends RefIdOnly implements Ref<A>, MemoryLocation<A> {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE = l.findVarHandle(RefU1.class, "value", Object.class);
-      VERSION = l.findVarHandle(RefU1.class, "version", long.class);
-      MARKER = l.findVarHandle(RefU1.class, "marker", WeakReference.class);
+      VALUE = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefU1.class, "value", Object.class));
+      VERSION = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefU1.class, "version", long.class));
+      MARKER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefU1.class, "marker", WeakReference.class));
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }

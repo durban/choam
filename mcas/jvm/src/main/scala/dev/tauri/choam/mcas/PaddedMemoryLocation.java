@@ -21,6 +21,8 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
+import dev.tauri.choam.vhandle.VarHandleHelper;
+
 final class PaddedMemoryLocation<A>
   extends PaddedMemoryLocationPadding
   implements MemoryLocation<A> {
@@ -32,9 +34,9 @@ final class PaddedMemoryLocation<A>
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE = l.findVarHandle(PaddedMemoryLocation.class, "value", Object.class);
-      VERSION = l.findVarHandle(PaddedMemoryLocation.class, "version", long.class);
-      MARKER = l.findVarHandle(PaddedMemoryLocation.class, "marker", WeakReference.class);
+      VALUE = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(PaddedMemoryLocation.class, "value", Object.class));
+      VERSION = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(PaddedMemoryLocation.class, "version", long.class));
+      MARKER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(PaddedMemoryLocation.class, "marker", WeakReference.class));
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }

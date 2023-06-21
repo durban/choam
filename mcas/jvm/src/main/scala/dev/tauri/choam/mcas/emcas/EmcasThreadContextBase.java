@@ -23,6 +23,8 @@ import java.lang.invoke.MethodHandles;
 import scala.collection.immutable.Map;
 import scala.collection.immutable.Map$;
 
+import dev.tauri.choam.vhandle.VarHandleHelper;
+
 abstract class EmcasThreadContextBase {
 
   private static final VarHandle COMMITS;
@@ -34,11 +36,11 @@ abstract class EmcasThreadContextBase {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      COMMITS = l.findVarHandle(EmcasThreadContextBase.class, "_commits", long.class);
-      FULL_RETRIES = l.findVarHandle(EmcasThreadContextBase.class, "_fullRetries", long.class);
-      MCAS_RETRIES = l.findVarHandle(EmcasThreadContextBase.class, "_mcasRetries", long.class);
-      MAX_REUSE_EVER = l.findVarHandle(EmcasThreadContextBase.class, "_maxReuseEver", int.class);
-      STATISTICS = l.findVarHandle(EmcasThreadContextBase.class, "_statistics", Map.class);
+      COMMITS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_commits", long.class));
+      FULL_RETRIES = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_fullRetries", long.class));
+      MCAS_RETRIES = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_mcasRetries", long.class));
+      MAX_REUSE_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxReuseEver", int.class));
+      STATISTICS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_statistics", Map.class));
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }
