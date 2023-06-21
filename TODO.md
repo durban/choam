@@ -30,6 +30,32 @@
 - JDK `SecureRandom` (and thus `UUID.randomUUID`) can (in theory) block
   - on Unix-like systems, it indeed blocks (`synchronized`): https://github.com/openjdk/jdk/blob/16c3d53b1bb60b1c1570731041f564bf13b45098/src/java.base/unix/classes/sun/security/provider/NativePRNG.java#L547
   - thus, it is `private` for now (until it's fixed or removed)
+- `SkipListModelTest` sometimes fails; it's unclear if this is just a timeout, but seems likely:
+  ```
+  ==> X dev.tauri.choam.skiplist.SkipListModelTest.Model checking test of SkipListMap  288.505s org.jetbrains.kotlinx.lincheck.LincheckAssertionError:
+  = The execution has hung, see the thread dump =
+  Execution scenario (init part):
+  [insert(0, Gx), remove(-1), lookup(0), remove(1), remove(-1)]
+  Execution scenario (parallel part):
+  | insert(0, uPI)  | remove(-2)        |
+  | insert(0, Rw7N) | insert(2, Kjq4)   |
+  | lookup(-3)      | insert(-3, ygZVM) |
+  | remove(3)       | lookup(-3)        |
+  Execution scenario (post part):
+  [remove(-4), remove(-3), insert(-1, NTGQz)]
+  Thread-0:
+    java.lang.Thread.run(Thread.java:829)
+  Thread-1:
+    jdk.internal.misc.Unsafe.park(Native Method)
+    java.util.concurrent.locks.LockSupport.park(LockSupport.java:323)
+    java.lang.Thread.run(Thread.java:829)
+
+      at org.jetbrains.kotlinx.lincheck.LinChecker.check(LinChecker.kt:38)
+      at org.jetbrains.kotlinx.lincheck.LinChecker$Companion.check(LinChecker.kt:197)
+      at org.jetbrains.kotlinx.lincheck.LinChecker.check(LinChecker.kt)
+      at dev.tauri.choam.skiplist.SkipListModelTest.$anonfun$new$1(SkipListModelTest.scala:40)
+      at dev.tauri.choam.BaseLinchkSpec.$anonfun$test$1(BaseLinchkSpec.scala:33)
+  ```
 
 ## Other improvements
 
