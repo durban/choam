@@ -111,8 +111,15 @@
     - dev.tauri.choam.skiplist
     - dev.tauri.choam.vhandle
     - ...
+  - Document compatibility
+    - binary compatibility and versioning
+      - note that between choam modules, exact version match is needed
+    - supported platforms (JVM 11+ and scala-js for now)
+      - either `Windows-PRNG`, or (`/dev/random` and `/dev/urandom`) must be available
+    - Scala 2.13 and 3.3
   - MCAS API review
     - is it usable outside of `choam`?
+    - if not, it doesn't really make sense to have it in a separate module
   - Rename `flatMapF`
     - maybe `semiFlatMap` (or `semiflatMap`?)
     - or `subflatMap`?
