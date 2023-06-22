@@ -23,10 +23,10 @@ val scala3 = "3.3.0"
 val jvmLatest = JavaSpec.temurin("20")
 val jvmLts = JavaSpec.temurin("17")
 val jvmOldest = JavaSpec.temurin("11")
-val jvmGraal_11 = JavaSpec.graalvm("22.3.2", "11")
-val jvmGraal_17 = JavaSpec.graalvm("22.3.2", "17")
-val jvmOpenj9_11 = JavaSpec(JavaSpec.Distribution.OpenJ9, "11")
-val jvmOpenj9_17 = JavaSpec(JavaSpec.Distribution.OpenJ9, "17")
+val jvmGraal_11 = JavaSpec.graalvm("11")
+val jvmGraal_17 = JavaSpec.graalvm("17")
+val jvmOpenj9_11 = JavaSpec.openj9("11")
+val jvmOpenj9_17 = JavaSpec.openj9("17")
 
 // CI OS versions:
 val linux = "ubuntu-latest"
@@ -75,7 +75,7 @@ ThisBuild / githubWorkflowBuild := Seq(
     cond = Some(s"(matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}')"),
   ),
   // Static analysis (not working on Scala 3):
-  WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${scala3}'")),
+  WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
   // JCStress tests (only usable on macos, only runs if commit msg contains 'ci stress'):
   WorkflowStep.Sbt(List("ciStress"), cond = Some(s"(matrix.os == '${macos}') && contains(github.event.head_commit.message, 'ci stress')"))
 )
@@ -98,7 +98,7 @@ ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   MatrixExclude(Map("os" -> macos)), // don't run anything on macos, but see below
 )
 ThisBuild / githubWorkflowBuildMatrixInclusions += MatrixInclude(
-  matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> scala2),
+  matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> CrossVersion.binaryScalaVersion(scala2)),
   additions = Map.empty
 )
 
