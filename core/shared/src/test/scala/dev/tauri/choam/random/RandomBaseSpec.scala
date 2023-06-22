@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package random
 
-import java.util.Arrays
+import java.util.{ Arrays, UUID }
 import java.nio.{ ByteBuffer, ByteOrder }
 
 final class RandomBaseSpec extends munit.FunSuite {
@@ -48,5 +48,28 @@ final class RandomBaseSpec extends munit.FunSuite {
     assertEquals(ByteBuffer.wrap(arr).order(ByteOrder.LITTLE_ENDIAN).getLong(), 72057594037927936L)
     arr(7) = 0xff.toByte
     assertEquals(ByteBuffer.wrap(arr).order(ByteOrder.LITTLE_ENDIAN).getLong(), -72057594037927936L)
+  }
+
+  test("RxnUuidGen") {
+    val gen = new RxnUuidGen[Any](OsRng.mkNew())
+    val first = gen.randomUUID.unsafeRun(mcas.Mcas.DefaultMcas)
+    def checkUuid(u: UUID): Unit = {
+      assertEquals(u.variant, 2)
+      assertEquals(u.version, 4)
+      assertNotEquals(u, first)
+      assertNotEquals(u.getMostSignificantBits, first.getMostSignificantBits)
+      assertNotEquals(u.getLeastSignificantBits, first.getLeastSignificantBits)
+      assertNotEquals(u.hashCode(), 0)
+    }
+    for (_ <- 1 to 1024) {
+      // at most 2**-50 chance of accidental failure
+      checkUuid(gen.randomUUID.unsafeRun(mcas.Mcas.DefaultMcas))
+    }
+    checkUuid(gen.uuidFromRandomBytes(Array.fill[Byte](16)(0x00.toByte)))
+    checkUuid(gen.uuidFromRandomBytes(Array.fill[Byte](16)(0xff.toByte)))
+    checkUuid(gen.uuidFromRandomBytes(Array.fill[Byte](16)(0x55.toByte)))
+    val aa = gen.uuidFromRandomBytes(Array.fill[Byte](16)(0xaa.toByte))
+    checkUuid(aa)
+    assertEquals(aa.toString, "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa")
   }
 }

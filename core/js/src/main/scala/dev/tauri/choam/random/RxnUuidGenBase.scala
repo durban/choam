@@ -15,21 +15,13 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam
-package random
+package dev.tauri.choam.random
 
 import java.nio.{ ByteBuffer, ByteOrder }
 
-/** Beause Scala.js doesn't have StrictMath/VarHandle */
-private abstract class RandomBasePlatform {
+private abstract class RxnUuidGenBase {
 
-  protected final def strictMathSqrt(a: Double): Double =
-    Math.sqrt(a) // ¯\_(ツ)_/¯
-
-  protected final def strictMathLog(a: Double): Double =
-    Math.log(a) // ¯\_(ツ)_/¯
-
-  protected final def getLongAt0(arr: Array[Byte]): Long = {
-    ByteBuffer.wrap(arr, 0, 8).order(ByteOrder.LITTLE_ENDIAN).getLong()
+  protected final def getLongAt(arr: Array[Byte], offset: Int): Long = {
+    ByteBuffer.wrap(arr, offset, 8).order(ByteOrder.BIG_ENDIAN).getLong()
   }
 }

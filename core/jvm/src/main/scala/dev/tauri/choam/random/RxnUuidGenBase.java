@@ -15,21 +15,25 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam
-package random
+package dev.tauri.choam.random;
 
-import java.nio.{ ByteBuffer, ByteOrder }
 
-/** Beause Scala.js doesn't have StrictMath/VarHandle */
-private abstract class RandomBasePlatform {
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.nio.ByteOrder;
 
-  protected final def strictMathSqrt(a: Double): Double =
-    Math.sqrt(a) // ¯\_(ツ)_/¯
+import dev.tauri.choam.vhandle.VarHandleHelper;
 
-  protected final def strictMathLog(a: Double): Double =
-    Math.log(a) // ¯\_(ツ)_/¯
+abstract class RxnUuidGenBase {
+  private static final VarHandle BYTE_ARRAY_VIEW;
 
-  protected final def getLongAt0(arr: Array[Byte]): Long = {
-    ByteBuffer.wrap(arr, 0, 8).order(ByteOrder.LITTLE_ENDIAN).getLong()
+  static {
+    BYTE_ARRAY_VIEW = VarHandleHelper.withInvokeExactBehavior(
+      MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.BIG_ENDIAN)
+    );
+  }
+
+  protected final long getLongAt(byte[] arr, int offset) {
+    return (long) BYTE_ARRAY_VIEW.get(arr, offset);
   }
 }
