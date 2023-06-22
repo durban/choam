@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-val sbtTypelevelVersion = "0.5.0-M10"
+val sbtTypelevelVersion = "0.5.0-RC2"
 
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.4")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.5")
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 addSbtPlugin("com.github.sbt" % "sbt-github-actions" % "0.15.0")
 addSbtPlugin("io.crashbox" % "sbt-gpg" % "0.2.1")

@@ -300,9 +300,9 @@ lazy val bench = project.in(file("bench"))
     dependencies.jcTools.value,
   ))
   .enablePlugins(JmhPlugin)
-  .settings(jmhSettings)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
   .dependsOn(internalHelpers.jvm)
+  .settings(Jmh / version := dependencies.jmhVersion)
 
 // Stress tests (with JCStress):
 // TODO: move all stress test projects under a common `/stress` folder
@@ -621,11 +621,6 @@ lazy val extraPackagingSettings = Seq[Setting[_]](
 
 lazy val stressSettings = Seq[Setting[_]](
   Jcstress / version := dependencies.jcstressVersion,
-)
-
-lazy val jmhSettings = Seq[Setting[_]](
-  Jmh / version := dependencies.jmhVersion,
-  Jmh / bspEnabled := false, // https://github.com/sbt/sbt-jmh/issues/193
 )
 
 lazy val consts = new {
