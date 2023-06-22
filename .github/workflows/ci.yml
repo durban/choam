@@ -30,7 +30,7 @@ jobs:
         scala: [2.13, 3]
         java:
           - temurin@11
-          - graalvm@11
+          - graal_22.3.2@11
           - graalvm@17
           - openj9@11
           - openj9@17
@@ -42,7 +42,7 @@ jobs:
             scala: 2.13
         exclude:
           - os: windows-latest
-            java: graalvm@11
+            java: graal_22.3.2@11
           - os: windows-latest
             java: graalvm@17
           - os: windows-latest
@@ -77,17 +77,17 @@ jobs:
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' reload +update
 
-      - name: Setup Java (graalvm@11)
-        id: setup-java-graalvm-11
-        if: matrix.java == 'graalvm@11'
+      - name: Setup GraalVM (graal_22.3.2@11)
+        id: setup-graalvm-22.3.2-11
+        if: matrix.java == 'graal_22.3.2@11'
         uses: graalvm/setup-graalvm@v1
         with:
-          distribution: graalvm
+          version: 22.3.2
           java-version: 11
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'graalvm@11' && steps.setup-java-graalvm-11.outputs.cache-hit == 'false'
+        if: matrix.java == 'graal_22.3.2@11' && steps.setup-graalvm-22.3.2-11.outputs.cache-hit == 'false'
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' reload +update
 
