@@ -18,9 +18,12 @@
 package dev.tauri.choam
 package random
 
-import cats.effect.std.{ Random => CRandom, SecureRandom }
+import cats.effect.std.{ Random => CRandom, SecureRandom, UUIDGen }
 
 object Random {
+
+  private[choam] final def uuidGen[X](rng: OsRng): UUIDGen[Rxn[X, *]] =
+    new RxnUuidGen[X](rng)
 
   final def fastRandom: Axn[CRandom[Axn]] =
     Rxn.unsafe.delay { _ => RxnThreadLocalRandom.unsafe() }

@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package core
 
-import java.util.UUID
-
 import scala.concurrent.duration._
 
 import cats.{ Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, MonoidK, Semigroup, Show }
@@ -303,6 +301,18 @@ object Rxn extends RxnInstances0 {
     new PostCommit[A](pc)
 
   // Utilities:
+
+  private[core] val osRng: random.OsRng = {
+    // Under certain circumstances (e.g.,
+    // Linux right after boot in a
+    // fresh VM), this call might block.
+    // We really can't do anything about
+    // it, but at least it's not during
+    // executing a `Rxn` (it happens when
+    // the very first `Rxn` is *created*,
+    // and the `Rxn` class is loaded).
+    random.OsRng.mkNew()
+  }
 
   final def unique: Axn[Unique.Token] =
     unsafe.delay { _ => new Unique.Token() }
@@ -1351,11 +1361,8 @@ private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.ty
 }
 
 private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
-  // TODO: blocking; either fix, or remove
-  private[choam] implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {
-    final override def randomUUID: Rxn[X, UUID] =
-      self.unsafe.delay { _ => UUID.randomUUID() }
-  }
+  implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] =
+    random.Random.uuidGen(self.osRng)
 }
 
 private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.type =>

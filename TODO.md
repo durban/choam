@@ -30,6 +30,7 @@
 - JDK `SecureRandom` (and thus `UUID.randomUUID`) can (in theory) block
   - on Unix-like systems, it indeed blocks (`synchronized`): https://github.com/openjdk/jdk/blob/16c3d53b1bb60b1c1570731041f564bf13b45098/src/java.base/unix/classes/sun/security/provider/NativePRNG.java#L547
   - thus, it is `private` for now (until it's fixed or removed)
+  - `UUIDGen` is fixed now with `OsRng`, still need to fix `SecureRandom`
 - `SkipListModelTest` sometimes fails; it's unclear if this is just a timeout, but seems likely:
   ```
   ==> X dev.tauri.choam.skiplist.SkipListModelTest.Model checking test of SkipListMap  288.505s org.jetbrains.kotlinx.lincheck.LincheckAssertionError:
