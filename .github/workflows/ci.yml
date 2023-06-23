@@ -165,7 +165,7 @@ jobs:
         shell: bash
         run: sbt -v githubWorkflowCheck
 
-      - if: (matrix.java != 'adopt-openj9@11') && (matrix.java != 'adopt-openj9@17')
+      - if: '!((matrix.java == ''adopt-openj9@11'') || (matrix.java == ''adopt-openj9@17''))'
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' ci
 

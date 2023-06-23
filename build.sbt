@@ -41,6 +41,12 @@ def openJ9Options: String = {
   opts.map(opt => s"-J${opt}").mkString(" ")
 }
 
+val isOpenJ9Cond: String =
+  s"(matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}')"
+
+val isNotOpenJ9Cond: String =
+  s"!((matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}'))"
+
 ThisBuild / scalaVersion := scala2
 ThisBuild / crossScalaVersions := Seq(
   (ThisBuild / scalaVersion).value,
@@ -67,12 +73,12 @@ ThisBuild / githubWorkflowBuild := Seq(
   // Tests on non-OpenJ9:
   WorkflowStep.Sbt(
     List(ciCommand),
-    cond = Some(s"(matrix.java != '${jvmOpenj9_11.render}') && (matrix.java != '${jvmOpenj9_17.render}')"),
+    cond = Some(isNotOpenJ9Cond),
   ),
   // Tests on OpenJ9 only:
   WorkflowStep.Sbt(
     List(openJ9Options, ciCommand),
-    cond = Some(s"(matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}')"),
+    cond = Some(isOpenJ9Cond),
   ),
   // Static analysis (not working on Scala 3):
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
