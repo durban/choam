@@ -45,7 +45,11 @@ val isOpenJ9Cond: String =
   s"(matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}')"
 
 val isNotOpenJ9Cond: String =
-  s"!((matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}'))"
+  s"!(${isOpenJ9Cond})"
+
+/** If the commit msg contains "full CI", we run much more things */
+val fullCiCond: String =
+  "contains(github.event.head_commit.message, 'full CI')"
 
 ThisBuild / scalaVersion := scala2
 ThisBuild / crossScalaVersions := Seq(
@@ -82,8 +86,8 @@ ThisBuild / githubWorkflowBuild := Seq(
   ),
   // Static analysis (not working on Scala 3):
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
-  // JCStress tests (only usable on macos, only runs if commit msg contains 'ci stress'):
-  WorkflowStep.Sbt(List("ciStress"), cond = Some(s"(matrix.os == '${macos}') && contains(github.event.head_commit.message, 'ci stress')"))
+  // JCStress tests (only usable on macos, only runs if commit msg contains 'full CI'):
+  WorkflowStep.Sbt(List("ciStress"), cond = Some(s"(matrix.os == '${macos}') && (${fullCiCond})"))
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
   jvmOldest,

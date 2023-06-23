@@ -177,6 +177,6 @@ jobs:
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' checkScalafix
 
-      - if: (matrix.os == 'macos-latest') && contains(github.event.head_commit.message, 'ci stress')
+      - if: (matrix.os == 'macos-latest') && (contains(github.event.head_commit.message, 'full CI'))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' ciStress
