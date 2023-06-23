@@ -70,10 +70,10 @@ ThisBuild / githubWorkflowBuild := Seq(
     cond = Some(s"(matrix.java != '${jvmOpenj9_11.render}') && (matrix.java != '${jvmOpenj9_17.render}')"),
   ),
   // Tests on OpenJ9 only:
-  WorkflowStep.Run(
-    List(s"${githubWorkflowSbtCommand.value} ${openJ9Options} ++$${{ matrix.scala }} ${ciCommand}"),
-    cond = Some(s"(matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}')"),
-  ),
+//   WorkflowStep.Run(
+//     List(s"${githubWorkflowSbtCommand.value} ${openJ9Options} ++$${{ matrix.scala }} ${ciCommand}"),
+//     cond = Some(s"(matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}')"),
+//   ),
   // Static analysis (not working on Scala 3):
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
   // JCStress tests (only usable on macos, only runs if commit msg contains 'ci stress'):

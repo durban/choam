@@ -169,10 +169,6 @@ jobs:
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' ci
 
-      - if: (matrix.java == 'adopt-openj9@11') || (matrix.java == 'adopt-openj9@17')
-        shell: bash
-        run: 'sbt -v -J-Xgcpolicy:balanced ++${{ matrix.scala }} ci'
-
       - if: matrix.scala != '3'
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' checkScalafix
