@@ -71,7 +71,7 @@ ThisBuild / githubWorkflowBuild := Seq(
   ),
   // Tests on OpenJ9 only:
   WorkflowStep.Run(
-    List(s"${githubWorkflowSbtCommand.value} ${openJ9Options} '++ $${{ matrix.scala }}' ${ciCommand}"),
+    List(s"${githubWorkflowSbtCommand.value} ${openJ9Options} ++ $${{ matrix.scala }} ${ciCommand}"),
     cond = Some(s"(matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}')"),
   ),
   // Static analysis (not working on Scala 3):
