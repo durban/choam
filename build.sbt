@@ -52,11 +52,8 @@ val isNotOpenJ9Cond: String =
 val fullCiCond: String =
   "contains(github.event.head_commit.message, 'full CI')"
 
-ThisBuild / scalaVersion := scala2
-ThisBuild / crossScalaVersions := Seq(
-  (ThisBuild / scalaVersion).value,
-  scala3,
-)
+ThisBuild / crossScalaVersions := Seq(scala2, scala3)
+ThisBuild / scalaVersion := crossScalaVersions.value.head
 ThisBuild / scalaOrganization := "org.scala-lang"
 ThisBuild / evictionErrorLevel := Level.Warn
 ThisBuild / scalafixScalaBinaryVersion := scalaBinaryVersion.value
@@ -64,6 +61,7 @@ ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 ThisBuild / tlBaseVersion := "0.3"
+ThisBuild / tlJdkRelease := Some(11)
 ThisBuild / tlSonatypeUseLegacyHost := true
 
 // When checking version policy, ignore dependencies to internal modules whose version is like `1.2.3+4...`:
@@ -479,13 +477,7 @@ lazy val commonSettingsJs = Seq[Setting[_]](
 
 lazy val commonSettings = Seq[Setting[_]](
   scalacOptions ++= Seq(
-    "-feature",
-    "-deprecation",
-    "-unchecked",
-    "-encoding", "UTF-8",
-    "-language:higherKinds,experimental.macros",
-    "-release", "11",
-    "-Xmigration:2.13.6",
+    "-language:higherKinds",
     // TODO: "-Xelide-below", "INFO",
     // TODO: experiment with -Ydelambdafy:inline for performance
     // TODO: experiment with -Yno-predef and/or -Yno-imports
@@ -494,36 +486,19 @@ lazy val commonSettings = Seq[Setting[_]](
     if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
       // 2.13:
       List(
-        // -release implies -target
-        "-Xsource:3",
         "-Xverify",
         "-Wconf:any:warning-verbose",
-        "-Ywarn-unused:implicits",
-        "-Ywarn-unused:imports",
-        "-Ywarn-unused:locals",
-        "-Ywarn-unused:patvars",
-        "-Ywarn-unused:params",
-        "-Ywarn-unused:privates",
-        // no equivalent:
         "-opt:l:inline",
         "-opt-inline-from:<sources>",
-        "-Xlint:_",
-        "-Ywarn-numeric-widen",
-        "-Ywarn-dead-code",
-        "-Wvalue-discard",
         "-Wperformance",
         // TODO: "-Wnonunit-statement",
       )
     } else {
       // 3.x:
       List(
-        // -release implies -Xtarget
-        "-source:3.0",
         "-Xverify-signatures",
         "-Wconf:any:v",
         "-Wunused:all",
-        // no equivalent:
-        "-Ykind-projector",
         // TODO: "-Ysafe-init", // https://github.com/lampepfl/dotty/issues/17997
         "-Ycheck-all-patmat",
         // TODO: "-Ycheck-reentrant",
@@ -532,13 +507,9 @@ lazy val commonSettings = Seq[Setting[_]](
       )
     }
   ),
+  scalacOptions -= "-language:implicitConversions", // got it from sbt-typelevel, but don't want it
+  scalacOptions -= "-language:_", // got it from sbt-typelevel, but don't want it
   Test / scalacOptions -= "-Wperformance",
-  Compile / console / scalacOptions ~= { _.filterNot("-Ywarn-unused-import" == _).filterNot("-Ywarn-unused:imports" == _) },
-  Test / console / scalacOptions := (Compile / console / scalacOptions).value,
-  javacOptions ++= Seq(
-    "--release", "11", // implies "-source 11 -target 11"
-    "-Xlint",
-  ),
   // Somewhat counter-intuitively, to really run
   // tests sequentially, we need to set this to true:
   Test / parallelExecution := true,
@@ -549,13 +520,6 @@ lazy val commonSettings = Seq[Setting[_]](
   // https://github.com/sbt/sbt/issues/2516 and
   // https://github.com/sbt/sbt/issues/2425.)
   libraryDependencies ++= dependencies.test.value.map(_ % TestInternal),
-  libraryDependencies ++= (
-    if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
-      List(compilerPlugin("org.typelevel" % "kind-projector" % dependencies.kindProjectorVersion cross CrossVersion.full))
-    } else {
-      Nil
-    }
-  ),
   licenses := Seq("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
   headerLicense := Some(HeaderLicense.Custom(
     """|SPDX-License-Identifier: Apache-2.0
@@ -601,7 +565,6 @@ lazy val publishSettings = Seq[Setting[_]](
   },
   Compile / publishArtifact := true,
   Test / publishArtifact := false,
-  pomIncludeRepository := { _ => false },
   // Replicating some logic from sbt-typelevel-mima and
   // sbt-version-policy, because both of these plugins
   // unconditionally overwrite `mimaPreviousArtifacts`;
