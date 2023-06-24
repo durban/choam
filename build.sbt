@@ -30,10 +30,6 @@ val jvmGraals = List(jvmGraal_11, jvmGraal_17, jvmGraal_20)
 val jvmOpenj9_11 = JavaSpec.openj9("11")
 val jvmOpenj9_17 = JavaSpec.openj9("17")
 val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17)
-val jvmsForFullCi = List(jvmGraal_11, jvmGraal_17, jvmOpenj9_11)
-val jvmsForFullCiStrings = jvmsForFullCi.map(x => s"""(matrix.java == '${x.render}')""")
-val jvmsForFullCiCond = jvmsForFullCiStrings.mkString(" || ")
-val jvmsForFullCiCondNeg = s"!(${jvmsForFullCiCond})"
 
 // CI OS versions:
 val linux = "ubuntu-latest"
@@ -54,7 +50,7 @@ val isOpenJ9Cond: String =
 val isNotOpenJ9Cond: String =
   s"!(${isOpenJ9Cond})"
 
-/** If the commit msg contains "full CI", we run much more things */
+/** If the commit msg contains "full CI", we run more things */
 val fullCiCond: String =
   "contains(github.event.head_commit.message, 'full CI')"
 
@@ -85,22 +81,12 @@ ThisBuild / githubWorkflowBuild := Seq(
   // Tests on non-OpenJ9:
   WorkflowStep.Sbt(
     List(ciCommand),
-    cond = Some(s"(${isNotOpenJ9Cond}) && (${quickCiCond}) && (${jvmsForFullCiCondNeg})"),
-  ),
-  // Tests on non-OpenJ9 (full CI):
-  WorkflowStep.Sbt(
-    List(ciCommand),
-    cond = Some(s"(${isNotOpenJ9Cond}) && (${quickCiCond}) && (${jvmsForFullCiCond})"),
+    cond = Some(isNotOpenJ9Cond),
   ),
   // Tests on OpenJ9 only:
   WorkflowStep.Sbt(
     List(openJ9Options, ciCommand),
-    cond = Some(s"(${isOpenJ9Cond}) && (${fullCiCond}) && (${jvmsForFullCiCondNeg})"),
-  ),
-  // Tests on OpenJ9 only:
-  WorkflowStep.Sbt(
-    List(openJ9Options, ciCommand),
-    cond = Some(s"(${isOpenJ9Cond}) && (${fullCiCond}) && (${jvmsForFullCiCond})"),
+    cond = Some(isOpenJ9Cond),
   ),
   // Static analysis (doesn't work on Scala 3):
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
