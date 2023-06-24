@@ -29,8 +29,8 @@ val jvmGraal_20 = JavaSpec.graalvm("20")
 val jvmGraals = List(jvmGraal_11, jvmGraal_17, jvmGraal_20)
 val jvmOpenj9_11 = JavaSpec.openj9("11")
 val jvmOpenj9_17 = JavaSpec.openj9("17")
-val jvmOpenj9_20 = JavaSpec.openj9("20")
-val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17, jvmOpenj9_20)
+// val jvmOpenj9_20 = JavaSpec.openj9("20") // TODO: semeru
+val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17)
 
 // CI OS versions:
 val linux = "ubuntu-latest"
