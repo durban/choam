@@ -38,10 +38,6 @@ jobs:
           - adopt-openj9@11
           - adopt-openj9@17
           - adopt-openj9@20
-        include:
-          - os: macos-latest
-            java: temurin@20
-            scala: 2.13
         exclude:
           - os: windows-latest
             java: graal_22.3.2@11
@@ -55,7 +51,6 @@ jobs:
             java: adopt-openj9@17
           - os: windows-latest
             java: adopt-openj9@20
-          - os: macos-latest
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:

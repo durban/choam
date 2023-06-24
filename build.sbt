@@ -108,12 +108,11 @@ ThisBuild / githubWorkflowSbtCommand := "sbt -v"
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   jvmGraals.map { gr => MatrixExclude(Map("os" -> windows, "java" -> gr.render)) }, // win+graal seems unstable
   jvmOpenj9s.map { j9 => MatrixExclude(Map("os" -> windows, "java" -> j9.render)) }, // win+openJ9 seems unstable
-  List(MatrixExclude(Map("os" -> macos))), // don't run anything on macos, but see below
 ).flatten
-ThisBuild / githubWorkflowBuildMatrixInclusions += MatrixInclude(
-  matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> CrossVersion.binaryScalaVersion(scala2)),
-  additions = Map.empty
-)
+// ThisBuild / githubWorkflowBuildMatrixInclusions += MatrixInclude(
+//   matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> CrossVersion.binaryScalaVersion(scala2)),
+//   additions = Map.empty
+// )
 
 lazy val choam = project.in(file("."))
   .settings(name := "choam")
