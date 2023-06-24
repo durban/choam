@@ -29,7 +29,8 @@ val jvmGraal_20 = JavaSpec.graalvm("20")
 val jvmGraals = List(jvmGraal_11, jvmGraal_17, jvmGraal_20)
 val jvmOpenj9_11 = JavaSpec.openj9("11")
 val jvmOpenj9_17 = JavaSpec.openj9("17")
-val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17)
+val jvmOpenj9_20 = JavaSpec.openj9("20")
+val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17, jvmOpenj9_20)
 
 // CI OS versions:
 val linux = "ubuntu-latest"
@@ -44,8 +45,12 @@ def openJ9Options: String = {
   opts.map(opt => s"-J${opt}").mkString(" ")
 }
 
-val isOpenJ9Cond: String =
-  s"(matrix.java == '${jvmOpenj9_11.render}') || (matrix.java == '${jvmOpenj9_17.render}')"
+val isOpenJ9Cond: String = {
+  jvmOpenj9s.map { j9 =>
+    val j9s = j9.render
+    s"(matrix.java == '${j9s}')"
+  }.mkString(" || ")
+}
 
 val isNotOpenJ9Cond: String =
   s"!(${isOpenJ9Cond})"
@@ -94,15 +99,10 @@ ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ciStress"), cond = Some(s"(matrix.os == '${macos}') && (${fullCiCond})"))
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(
-  jvmOldest,
-  jvmLts,
-  jvmLatest,
-  jvmGraal_11,
-  jvmGraal_17,
-  jvmGraal_20,
-  jvmOpenj9_11,
-  jvmOpenj9_17,
-)
+  List(jvmOldest, jvmLts, jvmLatest),
+  jvmGraals,
+  jvmOpenj9s,
+).flatten
 ThisBuild / githubWorkflowOSes := Seq(linux, windows, macos)
 ThisBuild / githubWorkflowSbtCommand := "sbt -v"
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
