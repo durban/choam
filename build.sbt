@@ -64,7 +64,6 @@ ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 ThisBuild / tlBaseVersion := "0.3"
-ThisBuild / tlUntaggedAreSnapshots := true
 ThisBuild / tlSonatypeUseLegacyHost := true
 
 // When checking version policy, ignore dependencies to internal modules whose version is like `1.2.3+4...`:
@@ -585,7 +584,6 @@ lazy val commonSettings = Seq[Setting[_]](
 ) ++ publishSettings
 
 lazy val publishSettings = Seq[Setting[_]](
-  autoAPIMappings := true,
   organization := "dev.tauri",
   organizationHomepage := Some(url("https://tauri.dev")),
   homepage := Some(url(s"https://github.com/${consts.githubOrg}/${consts.githubProject}")),
@@ -601,7 +599,6 @@ lazy val publishSettings = Seq[Setting[_]](
       old
     }
   },
-  publishMavenStyle := true,
   Compile / publishArtifact := true,
   Test / publishArtifact := false,
   pomIncludeRepository := { _ => false },
