@@ -26,8 +26,14 @@ val jvmLatest = JavaSpec.temurin("20")
 val jvmGraal_11 = JavaSpec(JavaSpec.Distribution.GraalVM("22.3.2"), "11")
 val jvmGraal_17 = JavaSpec.graalvm("17")
 val jvmGraal_20 = JavaSpec.graalvm("20")
+val jvmGraals = List(jvmGraal_11, jvmGraal_17, jvmGraal_20)
 val jvmOpenj9_11 = JavaSpec.openj9("11")
 val jvmOpenj9_17 = JavaSpec.openj9("17")
+val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17)
+val jvmsForFullCi = List(jvmGraal_11, jvmGraal_17, jvmOpenj9_11)
+val jvmsForFullCiStrings = jvmsForFullCi.map(x => s""""${x.render}"""")
+val jvmsForFullCiCond = s"contains([${jvmsForFullCiStrings.mkString(", ")}], matrix.java)"
+val jvmsForFullCiCondNeg = s"!(${jvmsForFullCiCond})"
 
 // CI OS versions:
 val linux = "ubuntu-latest"
@@ -52,6 +58,10 @@ val isNotOpenJ9Cond: String =
 val fullCiCond: String =
   "contains(github.event.head_commit.message, 'full CI')"
 
+/** The opposite of "full CI" (this is the default) */
+val quickCiCond: String =
+  s"!(${fullCiCond})"
+
 ThisBuild / crossScalaVersions := Seq(scala2, scala3)
 ThisBuild / scalaVersion := crossScalaVersions.value.head
 ThisBuild / scalaOrganization := "org.scala-lang"
@@ -75,14 +85,24 @@ ThisBuild / githubWorkflowBuild := Seq(
   // Tests on non-OpenJ9:
   WorkflowStep.Sbt(
     List(ciCommand),
-    cond = Some(isNotOpenJ9Cond),
+    cond = Some(s"(${isNotOpenJ9Cond}) && (${quickCiCond}) && (${jvmsForFullCiCondNeg})"),
+  ),
+  // Tests on non-OpenJ9 (full CI):
+  WorkflowStep.Sbt(
+    List(ciCommand),
+    cond = Some(s"(${isNotOpenJ9Cond}) && (${quickCiCond}) && (${jvmsForFullCiCond})"),
   ),
   // Tests on OpenJ9 only:
   WorkflowStep.Sbt(
     List(openJ9Options, ciCommand),
-    cond = Some(isOpenJ9Cond),
+    cond = Some(s"(${isOpenJ9Cond}) && (${fullCiCond}) && (${jvmsForFullCiCondNeg})"),
   ),
-  // Static analysis (not working on Scala 3):
+  // Tests on OpenJ9 only:
+  WorkflowStep.Sbt(
+    List(openJ9Options, ciCommand),
+    cond = Some(s"(${isOpenJ9Cond}) && (${fullCiCond}) && (${jvmsForFullCiCond})"),
+  ),
+  // Static analysis (doesn't work on Scala 3):
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
   // JCStress tests (only usable on macos, only runs if commit msg contains 'full CI'):
   WorkflowStep.Sbt(List("ciStress"), cond = Some(s"(matrix.os == '${macos}') && (${fullCiCond})"))
@@ -100,13 +120,10 @@ ThisBuild / githubWorkflowJavaVersions := Seq(
 ThisBuild / githubWorkflowOSes := Seq(linux, windows, macos)
 ThisBuild / githubWorkflowSbtCommand := "sbt -v"
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
-  MatrixExclude(Map("os" -> windows, "java" -> jvmGraal_11.render)), // win+graal seems unstable
-  MatrixExclude(Map("os" -> windows, "java" -> jvmGraal_17.render)), // win+graal seems unstable
-  MatrixExclude(Map("os" -> windows, "java" -> jvmGraal_20.render)), // win+graal seems unstable
-  MatrixExclude(Map("os" -> windows, "java" -> jvmOpenj9_11.render)), // win+openJ9 seems unstable
-  MatrixExclude(Map("os" -> windows, "java" -> jvmOpenj9_17.render)), // win+openJ9 seems unstable
-  MatrixExclude(Map("os" -> macos)), // don't run anything on macos, but see below
-)
+  jvmGraals.map { gr => MatrixExclude(Map("os" -> windows, "java" -> gr.render)) }, // win+graal seems unstable
+  jvmOpenj9s.map { j9 => MatrixExclude(Map("os" -> windows, "java" -> j9.render)) }, // win+openJ9 seems unstable
+  List(MatrixExclude(Map("os" -> macos))), // don't run anything on macos, but see below
+).flatten
 ThisBuild / githubWorkflowBuildMatrixInclusions += MatrixInclude(
   matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> CrossVersion.binaryScalaVersion(scala2)),
   additions = Map.empty
