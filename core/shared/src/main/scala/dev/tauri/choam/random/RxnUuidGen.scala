@@ -37,10 +37,17 @@ private final class RxnUuidGen[X](rng: OsRng) extends RxnUuidGenBase with UUIDGe
     0x8000000000000000L
 
   final override def randomUUID: Rxn[X, UUID] = Rxn.unsafe.delay { _ =>
+    unsafeRandomUuidInternal()
+  }
+
+  private[this] final def unsafeRandomUuidInternal(): UUID = {
     val buff = new Array[Byte](16) // TODO: don't allocate (use a thread-local buffer)
     rng.nextBytes(buff)
     uuidFromRandomBytesInternal(buff)
   }
+
+  private[choam] final def unsafeRandomUuid(): UUID =
+    unsafeRandomUuidInternal()
 
   private[this] final def uuidFromRandomBytesInternal(buff: Array[Byte]): UUID = {
     var msbs = getLongAt(buff, 0)

@@ -52,7 +52,7 @@ final class RandomBaseSpec extends munit.FunSuite {
 
   test("RxnUuidGen") {
     val gen = new RxnUuidGen[Any](OsRng.mkNew())
-    val first = gen.randomUUID.unsafeRun(mcas.Mcas.DefaultMcas)
+    val first = gen.unsafeRandomUuid()
     def checkUuid(u: UUID): Unit = {
       assertEquals(u.variant, 2)
       assertEquals(u.version, 4)
@@ -63,7 +63,7 @@ final class RandomBaseSpec extends munit.FunSuite {
     }
     for (_ <- 1 to 1024) {
       // at most 2**-50 chance of accidental failure
-      checkUuid(gen.randomUUID.unsafeRun(mcas.Mcas.DefaultMcas))
+      checkUuid(gen.unsafeRandomUuid())
     }
     checkUuid(gen.uuidFromRandomBytes(Array.fill[Byte](16)(0x00.toByte)))
     checkUuid(gen.uuidFromRandomBytes(Array.fill[Byte](16)(0xff.toByte)))
