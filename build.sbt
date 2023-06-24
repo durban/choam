@@ -23,6 +23,7 @@ val scala3 = "3.3.0"
 val jvmOldest = JavaSpec.temurin("11")
 val jvmLts = JavaSpec.temurin("17")
 val jvmLatest = JavaSpec.temurin("20")
+val jvmTemurins = List(jvmOldest, jvmLts, jvmLatest)
 val jvmGraal_11 = JavaSpec(JavaSpec.Distribution.GraalVM("22.3.2"), "11")
 val jvmGraal_17 = JavaSpec.graalvm("17")
 val jvmGraal_20 = JavaSpec.graalvm("20")
@@ -108,11 +109,16 @@ ThisBuild / githubWorkflowSbtCommand := "sbt -v"
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   jvmGraals.map { gr => MatrixExclude(Map("os" -> windows, "java" -> gr.render)) }, // win+graal seems unstable
   jvmOpenj9s.map { j9 => MatrixExclude(Map("os" -> windows, "java" -> j9.render)) }, // win+openJ9 seems unstable
+  // these are excluded so that we don't have too much jobs:
+  jvmGraals.map { gr => MatrixExclude(Map("os" -> macos, "java" -> gr.render)) },
+  jvmOpenj9s.map { j9 => MatrixExclude(Map("os" -> macos, "java" -> j9.render)) },
+  jvmTemurins.map { j => MatrixExclude(Map("os" -> macos, "java" -> j.render)) }, // but see inclusions
+  jvmTemurins.map { j => MatrixExclude(Map("os" -> windows, "java" -> j.render)) }, // but see inclusions
 ).flatten
-// ThisBuild / githubWorkflowBuildMatrixInclusions += MatrixInclude(
-//   matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> CrossVersion.binaryScalaVersion(scala2)),
-//   additions = Map.empty
-// )
+ThisBuild / githubWorkflowBuildMatrixInclusions ++= Seq(
+  MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render), additions = Map.empty),
+  MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render), additions = Map.empty),
+)
 
 lazy val choam = project.in(file("."))
   .settings(name := "choam")
