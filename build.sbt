@@ -115,10 +115,13 @@ ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   jvmTemurins.map { j => MatrixExclude(Map("os" -> macos, "java" -> j.render)) }, // but see inclusions
   jvmTemurins.map { j => MatrixExclude(Map("os" -> windows, "java" -> j.render)) }, // but see inclusions
 ).flatten
-ThisBuild / githubWorkflowBuildMatrixInclusions ++= Seq(
-  MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render), additions = Map.empty),
-  MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render), additions = Map.empty),
-)
+ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.flatMap { scalaVer =>
+  val binVer = CrossVersion.binaryScalaVersion(scalaVer)
+  Seq(
+    MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
+    MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
+  )
+}
 
 lazy val choam = project.in(file("."))
   .settings(name := "choam")

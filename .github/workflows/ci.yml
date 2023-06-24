@@ -40,8 +40,16 @@ jobs:
         include:
           - os: macos-latest
             java: temurin@20
+            scala: 2.13
           - os: windows-latest
             java: temurin@20
+            scala: 2.13
+          - os: macos-latest
+            java: temurin@20
+            scala: 3
+          - os: windows-latest
+            java: temurin@20
+            scala: 3
         exclude:
           - os: windows-latest
             java: graal_22.3.2@11
