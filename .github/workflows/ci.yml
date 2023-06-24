@@ -182,19 +182,19 @@ jobs:
         shell: bash
         run: sbt -v githubWorkflowCheck
 
-      - if: (!((matrix.java == 'adopt-openj9@11') || (matrix.java == 'adopt-openj9@17'))) && (!(contains(github.event.head_commit.message, 'full CI'))) && (!((matrix.java == "graal_22.3.2@11") || (matrix.java == "graalvm@17") || (matrix.java == "adopt-openj9@11")))
+      - if: (!((matrix.java == 'adopt-openj9@11') || (matrix.java == 'adopt-openj9@17'))) && (!(contains(github.event.head_commit.message, 'full CI'))) && (!((matrix.java == 'graal_22.3.2@11') || (matrix.java == 'graalvm@17') || (matrix.java == 'adopt-openj9@11')))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' ci
 
-      - if: (!((matrix.java == 'adopt-openj9@11') || (matrix.java == 'adopt-openj9@17'))) && (!(contains(github.event.head_commit.message, 'full CI'))) && ((matrix.java == "graal_22.3.2@11") || (matrix.java == "graalvm@17") || (matrix.java == "adopt-openj9@11"))
+      - if: (!((matrix.java == 'adopt-openj9@11') || (matrix.java == 'adopt-openj9@17'))) && (!(contains(github.event.head_commit.message, 'full CI'))) && ((matrix.java == 'graal_22.3.2@11') || (matrix.java == 'graalvm@17') || (matrix.java == 'adopt-openj9@11'))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' ci
 
-      - if: ((matrix.java == 'adopt-openj9@11') || (matrix.java == 'adopt-openj9@17')) && (contains(github.event.head_commit.message, 'full CI')) && (!((matrix.java == "graal_22.3.2@11") || (matrix.java == "graalvm@17") || (matrix.java == "adopt-openj9@11")))
+      - if: ((matrix.java == 'adopt-openj9@11') || (matrix.java == 'adopt-openj9@17')) && (contains(github.event.head_commit.message, 'full CI')) && (!((matrix.java == 'graal_22.3.2@11') || (matrix.java == 'graalvm@17') || (matrix.java == 'adopt-openj9@11')))
         shell: bash
         run: 'sbt -v ''++ ${{ matrix.scala }}'' -J-Xgcpolicy:balanced ci'
 
-      - if: ((matrix.java == 'adopt-openj9@11') || (matrix.java == 'adopt-openj9@17')) && (contains(github.event.head_commit.message, 'full CI')) && ((matrix.java == "graal_22.3.2@11") || (matrix.java == "graalvm@17") || (matrix.java == "adopt-openj9@11"))
+      - if: ((matrix.java == 'adopt-openj9@11') || (matrix.java == 'adopt-openj9@17')) && (contains(github.event.head_commit.message, 'full CI')) && ((matrix.java == 'graal_22.3.2@11') || (matrix.java == 'graalvm@17') || (matrix.java == 'adopt-openj9@11'))
         shell: bash
         run: 'sbt -v ''++ ${{ matrix.scala }}'' -J-Xgcpolicy:balanced ci'
 

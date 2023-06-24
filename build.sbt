@@ -31,7 +31,7 @@ val jvmOpenj9_11 = JavaSpec.openj9("11")
 val jvmOpenj9_17 = JavaSpec.openj9("17")
 val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17)
 val jvmsForFullCi = List(jvmGraal_11, jvmGraal_17, jvmOpenj9_11)
-val jvmsForFullCiStrings = jvmsForFullCi.map(x => s"""(matrix.java == "${x.render}")""")
+val jvmsForFullCiStrings = jvmsForFullCi.map(x => s"""(matrix.java == '${x.render}')""")
 val jvmsForFullCiCond = jvmsForFullCiStrings.mkString(" || ")
 val jvmsForFullCiCondNeg = s"!(${jvmsForFullCiCond})"
 
