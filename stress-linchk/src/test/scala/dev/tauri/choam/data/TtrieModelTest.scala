@@ -26,7 +26,7 @@ import munit.FunSuite
 
 final class TtrieModelTest extends FunSuite with BaseLinchkSpec {
 
-  test("Model checking test of Ttrie") {
+  test("Model checking test of Ttrie".tag(SLOW)) {
     val opts = defaultModelCheckingOptions()
       .checkObstructionFreedom(true)
       .iterations(100)

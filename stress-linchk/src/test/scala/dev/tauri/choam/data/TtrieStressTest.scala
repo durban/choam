@@ -27,7 +27,7 @@ import munit.FunSuite
 
 final class TtrieStressTest extends FunSuite with BaseLinchkSpec {
 
-  test("Stress test of Ttrie") {
+  test("Stress test of Ttrie".tag(SLOW)) {
     val opts = new StressOptions()
       .iterations(10)
       .invocationsPerIteration(100)

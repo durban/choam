@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import scala.concurrent.duration._
 
-import munit.{ FunSuite, BaseFunSuite, Location }
+import munit.{ FunSuite, BaseFunSuite, Location, TestOptions }
 
 trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { this: FunSuite =>
 
@@ -28,6 +28,14 @@ trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { thi
 
   final override def test(name: String)(body: => Any)(implicit loc: Location): Unit = {
     super[BaseFunSuite].test(name) {
+      // lincheck tests seem unstable in CI windows:
+      assumeNotWin()
+      body
+    } (loc)
+  }
+
+  final override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit = {
+    super[BaseFunSuite].test(options) {
       // lincheck tests seem unstable in CI windows:
       assumeNotWin()
       body

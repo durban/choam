@@ -25,6 +25,8 @@ import java.util.concurrent.{ ConcurrentLinkedQueue, CountDownLatch, ThreadLocal
 import scala.concurrent.duration._
 import scala.runtime.VolatileObjectRef
 
+import munit.{Location, TestOptions}
+
 // TODO: all tests in `choam-mcas` are executed with
 // TODO: `SimpleMemoryLocation`; we should run them
 // TODO: with actual `Ref`s too (or instead?)
@@ -34,14 +36,14 @@ class EmcasSpec extends BaseSpec {
   final override def munitTimeout: Duration =
     5.minutes
 
-  final override def test(name: String)(body: => Any)(implicit loc: munit.Location): Unit = {
+  final override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit = {
     def wrappedBody(): Any = {
-      println(s"Starting '${name}'")
+      println(s"Starting '${options.name}'")
       val res: Any = body
-      println(s"Finished '${name}'")
+      println(s"Finished '${options.name}'")
       res
     }
-    super.test(name)(wrappedBody())(loc)
+    super.test(options)(wrappedBody())(loc)
   }
 
   test("EMCAS should allow null as ov or nv") {
@@ -255,7 +257,7 @@ class EmcasSpec extends BaseSpec {
     assert(ok2)
   }
 
-  test("EMCAS op should be finalizable even if a thread dies mid-op") {
+  test("EMCAS op should be finalizable even if a thread dies mid-op".tag(SLOW)) {
     threadDeathTest(runGcBetween = false, finishWithAnotherOp = true)
     threadDeathTest(runGcBetween = false, finishWithAnotherOp = false)
     threadDeathTest(runGcBetween = true, finishWithAnotherOp = true)
@@ -359,7 +361,7 @@ class EmcasSpec extends BaseSpec {
     // now the `ThreadContext` have been collected by the JVM GC
   }
 
-  test("EMCAS should not simply replace  active descriptors (mark should be handled)") {
+  test("EMCAS should not simply replace  active descriptors (mark should be handled)".tag(SLOW)) {
     val r1 = MemoryLocation.unsafeWithId[String]("x")(0L, 0L, 0L, 0L)
     val r2 = MemoryLocation.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
     val latch1 = new CountDownLatch(1)
@@ -509,7 +511,7 @@ class EmcasSpec extends BaseSpec {
     assertEquals(r1.elem.tid, r2.elem.tid)
   }
 
-  test("ThreadContext cleanup") {
+  test("ThreadContext cleanup".tag(SLOW)) {
     this.assumeNotOpenJ9()
     val K = 100
     val N = 25 * K

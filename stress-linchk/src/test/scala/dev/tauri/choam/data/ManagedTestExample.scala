@@ -49,7 +49,7 @@ class ManagedTestState {
 
 final class ManagedTestExample extends FunSuite with BaseLinchkSpec {
 
-  test("Dummy counter test") {
+  test("Dummy counter test".tag(SLOW)) {
     val opts = new ModelCheckingOptions()
     try {
       LinChecker.check(classOf[ManagedTestState], opts)
