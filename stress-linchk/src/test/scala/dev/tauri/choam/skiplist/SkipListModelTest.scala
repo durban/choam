@@ -26,7 +26,7 @@ import munit.FunSuite
 
 final class SkipListModelTest extends FunSuite with BaseLinchkSpec {
 
-  test("Model checking test of SkipListMap") {
+  test("Model checking test of SkipListMap".tag(SLOW)) {
     val opts = defaultModelCheckingOptions()
       .checkObstructionFreedom(true)
       .iterations(500) // 1000

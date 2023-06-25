@@ -40,6 +40,7 @@ val macos = "macos-latest"
 
 val TestInternal = "test-internal"
 val ciCommand = "ci"
+val ciFullCommand = "ciFull"
 
 def openJ9Options: String = {
   val opts = List("-Xgcpolicy:balanced")
@@ -88,12 +89,22 @@ ThisBuild / githubWorkflowBuild := Seq(
   // Tests on non-OpenJ9:
   WorkflowStep.Sbt(
     List(ciCommand),
-    cond = Some(isNotOpenJ9Cond),
+    cond = Some(s"($isNotOpenJ9Cond) && ($quickCiCond)"),
+  ),
+  // Full tests on non-OpenJ9:
+  WorkflowStep.Sbt(
+    List(ciFullCommand),
+    cond = Some(s"($isNotOpenJ9Cond) && ($fullCiCond)"),
   ),
   // Tests on OpenJ9 only:
   WorkflowStep.Sbt(
     List(openJ9Options, ciCommand),
-    cond = Some(isOpenJ9Cond),
+    cond = Some(s"($isOpenJ9Cond) && ($quickCiCond)"),
+  ),
+  // Full tests on OpenJ9 only:
+  WorkflowStep.Sbt(
+    List(openJ9Options, ciFullCommand),
+    cond = Some(s"($isOpenJ9Cond) && ($fullCiCond)"),
   ),
   // Static analysis (doesn't work on Scala 3):
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
@@ -705,7 +716,8 @@ addCommandAlias("checkScalafix", "scalafixAll --check")
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
 addCommandAlias("stressTest", stressTestCommand)
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
-addCommandAlias("ci", ";headerCheckAll;Test/compile;Test/fastLinkJS;test")
+addCommandAlias(ciCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;testOnly -- --exclude-tags=SLOW")
+addCommandAlias(ciFullCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;test")
 addCommandAlias("ciStress", "stressTest")
 addCommandAlias("release", ";reload;+versionPolicyCheck;tlRelease")
 // TODO: check bincompat and version policy in CI

@@ -33,6 +33,9 @@ trait BaseSpec
 
 trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
 
+  final protected val SLOW =
+    new munit.Tag("SLOW")
+
   def assertSameInstance[A](
     obtained: A,
     expected: A,
