@@ -84,7 +84,7 @@ jobs:
           - os: windows-latest
             java: temurin@20
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - name: Ignore line ending differences in git
         if: contains(runner.os, 'windows')
