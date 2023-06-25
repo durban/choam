@@ -606,6 +606,9 @@ lazy val publishSettings = Seq[Setting[_]](
       Set.empty
     }
   },
+  // sbt-version-policy sometimes sets this to a previous
+  // snapshot, but we want proper releases:
+  versionPolicyPreviousVersions := tlMimaPreviousVersions.value.toSeq.sorted,
 )
 
 lazy val extraPackagingSettings = Seq[Setting[_]](
