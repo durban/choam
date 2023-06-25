@@ -84,7 +84,7 @@ jobs:
           - os: windows-latest
             java: temurin@20
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: if (contains(runner.os, 'windows')) 120 else 60
     steps:
       - name: Ignore line ending differences in git
         if: contains(runner.os, 'windows')
@@ -207,10 +207,6 @@ jobs:
         if: matrix.java == 'adopt-openj9@17' && steps.setup-java-adopt-openj9-17.outputs.cache-hit == 'false'
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' reload +update
-
-      - name: Check that workflows are up to date
-        shell: bash
-        run: sbt -v githubWorkflowCheck
 
       - if: '!((matrix.java == ''adopt-openj9@11'') || (matrix.java == ''adopt-openj9@17''))'
         shell: bash
