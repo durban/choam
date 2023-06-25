@@ -153,7 +153,7 @@ lazy val choam = project.in(file("."))
     unidocs,
     testExt.jvm, testExt.js,
     bench, // JVM
-    stress, // JVM
+    stressOld, // JVM
     stressMcas, // JVM
     stressMcasSlow, // JVM
     stressCore, // JVM
@@ -465,8 +465,8 @@ lazy val stressRng = project.in(file("stress-rng"))
     libraryDependencies ++= dependencies.test.value
   )
 
-lazy val stress = project.in(file("stress"))
-  .settings(name := "choam-stress")
+lazy val stressOld = project.in(file("stress-old"))
+  .settings(name := "choam-stress-old")
   .settings(commonSettings)
   .settings(stressSettings)
   .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
