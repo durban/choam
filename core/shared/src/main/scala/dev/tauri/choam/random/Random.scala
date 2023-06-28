@@ -20,26 +20,30 @@ package random
 
 import cats.effect.std.{ Random => CRandom, SecureRandom, UUIDGen }
 
+// TODO: this whole thing should be private[choam]
 object Random {
 
   private[choam] final def uuidGen[X](rng: OsRng): UUIDGen[Rxn[X, *]] =
     new RxnUuidGen[X](rng)
 
   final def fastRandom: Axn[CRandom[Axn]] =
-    Rxn.unsafe.delay { _ => RxnThreadLocalRandom.unsafe() }
+    Axn.unsafe.delay { RxnThreadLocalRandom.unsafe() }
+
+  private[choam] final def secureRandom(rng: OsRng): Axn[SecureRandom[Axn]] =
+    Axn.unsafe.delay { SecureRandomRxn.unsafe(rng) }
 
   @deprecated("Don't use secureRandomWrapper, because it may block", since = "0.4")
   private[choam] final def secureRandomWrapper: Axn[SecureRandom[Axn]] =
-    Rxn.unsafe.delay { _ => SecureRandomWrapper.unsafe() }
+    Axn.unsafe.delay { SecureRandomWrapper.unsafe() }
 
   final def deterministicRandom(initialSeed: Long): Axn[SplittableRandom[Axn]] =
     DeterministicRandom(initialSeed)
 
   // TODO: do we need this?
   private[choam] def minimalRandom1(initialSeed: Long): Axn[CRandom[Axn]] =
-    Rxn.unsafe.delay { _ => MinimalRandom.unsafe1(initialSeed) }
+    Axn.unsafe.delay { MinimalRandom.unsafe1(initialSeed) }
 
   // TODO: do we need this?
   private[choam] def minimalRandom2(initialSeed: Long): Axn[CRandom[Axn]] =
-    Rxn.unsafe.delay { _ => MinimalRandom.unsafe2(initialSeed) }
+    Axn.unsafe.delay { MinimalRandom.unsafe2(initialSeed) }
 }

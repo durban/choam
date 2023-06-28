@@ -320,9 +320,8 @@ object Rxn extends RxnInstances0 {
   final def fastRandom: Axn[Random[Axn]] =
     random.Random.fastRandom
 
-  // TODO: blocking; either fix, or remove
-  private[choam] final def secureRandom: Axn[SecureRandom[Axn]] =
-    sys.error("TODO")
+  final def secureRandom: Axn[SecureRandom[Axn]] =
+    random.Random.secureRandom(this.osRng)
 
   final def deterministicRandom(initialSeed: Long): Axn[random.SplittableRandom[Axn]] =
     random.Random.deterministicRandom(initialSeed)
