@@ -107,19 +107,23 @@
     - Channel?
     - Optimize SignallingRef
 - API cleanup:
-  - Document internal packages
-    - dev.tauri.choam.skiplist
-    - dev.tauri.choam.vhandle
-    - ...
+  - Rename unstable (i.e., no bincompat) packages:
+    - dev.tauri.choam.skiplist -> dev.tauri.choam.internal.skiplist (impl. detail)
+    - dev.tauri.choam.vhandle -> ... (impl. detail)
+    - dev.tauri.choam.mcas -> ... (API is not good enough to promise stability)
+    - others?
   - Document compatibility
     - binary compatibility and versioning
       - note that between choam modules, exact version match is needed
     - supported platforms (JVM 11+ and scala-js for now)
       - either `Windows-PRNG`, or (`/dev/random` and `/dev/urandom`) must be available
     - Scala 2.13 and 3.3
+    - \*.internal.\* packages (no bincompat)
   - MCAS API review
     - is it usable outside of `choam`?
+      - it is, but the API is really not very good
     - if not, it doesn't really make sense to have it in a separate module
+      - being in the same module would simplify using `ThreadContext` for `Rxn`-things
   - Rename `flatMapF`
     - maybe `semiFlatMap` (or `semiflatMap`?)
     - or `subflatMap`?

@@ -54,7 +54,13 @@ is similar to an effectful function from `A` to `B` (that is, `A => F[B]`), but:
   - integration with asynchronous effect types in
     [Cats Effect](https://github.com/typelevel/cats-effect):
     - the main integration point is a `Promise`, which can be
-      completed as a `Rxn`, and can be waited on as an async `F[_]`
+      completed as a `Rxn`, and can be waited on as an async `F[_]`:
+      ```scala
+      trait Promise[F[_], A] {
+        def complete: Rxn[A, Boolean]
+        def get: F[A]
+      }
+      ```
     - async (dual) data structures can be built on this primitive
   - async data structures; some of their operations are
     *semantically* blocking (i.e., [fiber blocking
@@ -66,10 +72,11 @@ is similar to an effectful function from `A` to `B` (that is, `A => F[B]`), but:
   integration with [FS2](https://github.com/typelevel/fs2) `Stream`s
 - [`choam-laws`](laws/shared/src/main/scala/dev/tauri/choam/laws/):
   properties fulfilled by the various `Rxn` combinators
-- [`choam-mcas`](mcas/shared/src/main/scala/dev/tauri/choam/mcas/):
-  low-level multi-word compare-and-swap (MCAS/*k*-CAS) implementations
-- [`choam-skiplist`](skiplist/jvm/src/main/scala/dev/tauri/choam/skiplist/):
-  a concurrent skip list map for internal use
+- Internal modules (don't use them directly):
+  - [`choam-mcas`](mcas/shared/src/main/scala/dev/tauri/choam/mcas/):
+    low-level multi-word compare-and-swap (MCAS/*k*-CAS) implementations
+  - [`choam-skiplist`](skiplist/jvm/src/main/scala/dev/tauri/choam/skiplist/):
+    a concurrent skip list map for internal use
 
 ## Related work
 
