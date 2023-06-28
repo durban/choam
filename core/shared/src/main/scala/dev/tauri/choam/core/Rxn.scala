@@ -322,7 +322,7 @@ object Rxn extends RxnInstances0 {
 
   // TODO: blocking; either fix, or remove
   private[choam] final def secureRandom: Axn[SecureRandom[Axn]] =
-    random.Random.secureRandom
+    sys.error("TODO")
 
   final def deterministicRandom(initialSeed: Long): Axn[random.SplittableRandom[Axn]] =
     random.Random.deterministicRandom(initialSeed)

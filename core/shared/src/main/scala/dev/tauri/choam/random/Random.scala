@@ -28,9 +28,9 @@ object Random {
   final def fastRandom: Axn[CRandom[Axn]] =
     Rxn.unsafe.delay { _ => RxnThreadLocalRandom.unsafe() }
 
-  // TODO: blocking; either fix, or remove
-  private[choam] final def secureRandom: Axn[SecureRandom[Axn]] =
-    Rxn.unsafe.delay { _ => RxnSecureRandom.unsafe() }
+  @deprecated("Don't use secureRandomWrapper, because it may block", since = "0.4")
+  private[choam] final def secureRandomWrapper: Axn[SecureRandom[Axn]] =
+    Rxn.unsafe.delay { _ => SecureRandomWrapper.unsafe() }
 
   final def deterministicRandom(initialSeed: Long): Axn[SplittableRandom[Axn]] =
     DeterministicRandom(initialSeed)

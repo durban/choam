@@ -22,17 +22,24 @@ import java.security.{ SecureRandom => JSecureRandom }
 
 import cats.effect.std.SecureRandom
 
-private object RxnSecureRandom {
+private object SecureRandomWrapper {
+  @deprecated("Don't use SecureRandomWrapper, because it may block", since = "0.4")
   def unsafe(): SecureRandom[Axn] = {
     val sr = new JSecureRandom
     // force seeding the generator here:
     val dummy = new Array[Byte](4)
     sr.nextBytes(dummy)
-    new RxnSecureRandom(sr)
+    new SecureRandomWrapper(sr)
   }
 }
 
-private final class RxnSecureRandom private (jRnd: JSecureRandom)
+/**
+ * Implements [[cats.effect.std.SecureRandom]] by wrapping
+ * a [[java.security.SecureRandom]]. Don't use, because
+ * these typically block. Preserved only for testing and
+ * benchmarking.
+ */
+private final class SecureRandomWrapper private (jRnd: JSecureRandom)
   extends RandomBase with SecureRandom[Axn] {
 
   import Axn.unsafe.delay
