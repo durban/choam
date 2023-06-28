@@ -337,8 +337,7 @@ lazy val bench = project.in(file("bench"))
   .dependsOn(internalHelpers.jvm)
   .settings(Jmh / version := dependencies.jmhVersion)
 
-// Stress tests (with JCStress):
-// TODO: move all stress test projects under a common `/stress` folder
+// Stress tests (mostly with JCStress):
 
 lazy val stressMcas = project.in(file("stress") / "stress-mcas")
   .settings(name := "choam-stress-mcas")
@@ -724,6 +723,8 @@ addCommandAlias(ciFullCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;tes
 addCommandAlias("ciStress", "stressTest")
 addCommandAlias("release", ";reload;+versionPolicyCheck;tlRelease")
 // TODO: check bincompat and version policy in CI
+// TODO: bincompat: `mimaReportBinaryIssues`
+// TODO: version compat: `versionPolicyReportDependencyIssues`
 
 // profiling: `-prof jfr`
 addCommandAlias("measurePerformance", "bench/jmh:run -foe true -rf json -rff results.json .*")
