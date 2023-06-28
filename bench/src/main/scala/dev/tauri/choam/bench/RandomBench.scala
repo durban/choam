@@ -20,7 +20,7 @@ package bench
 
 import java.util.concurrent.ThreadLocalRandom
 
-import cats.effect.std.Random
+import cats.effect.std.{ Random, SecureRandom }
 
 import org.openjdk.jmh.annotations._
 
@@ -55,8 +55,14 @@ class RandomBench {
   // TODO: UUIDGen
 
   @Benchmark
-  def betweenIntSecure(s: RandomBench.St, k: McasImplState): Int = {
-    s.rndSecure.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
+  def betweenIntSecureRxn(s: RandomBench.St, k: McasImplState): Int = {
+    s.rndSecureRxn.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
+  }
+
+  @Benchmark
+  @deprecated("so that we can call secureRandomWrapper", since = "0.4")
+  def betweenIntSecureWrapper(s: RandomBench.St, k: McasImplState): Int = {
+    s.rndSecureWrapper.betweenInt(0, s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
   }
 }
 
@@ -76,7 +82,10 @@ object RandomBench {
       Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.Mcas.NullMcas)
     val rndMinimal1: Random[Axn] =
       random.Random.minimalRandom1(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.Mcas.NullMcas)
-    val rndSecure: Random[Axn] =
+    val rndSecureRxn: SecureRandom[Axn] =
       Rxn.secureRandom.unsafeRun(mcas.Mcas.NullMcas)
+    @deprecated("so that we can call secureRandomWrapper", since = "0.4")
+    val rndSecureWrapper: SecureRandom[Axn] =
+      random.Random.secureRandomWrapper.unsafeRun(mcas.Mcas.NullMcas)
   }
 }
