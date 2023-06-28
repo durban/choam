@@ -88,6 +88,12 @@ jobs:
             java: temurin@17
           - os: windows-latest
             java: temurin@20
+          - os: ubuntu-latest
+            java: semeru@11
+            scala: 3
+          - os: ubuntu-latest
+            java: graal_22.3.2@11
+            scala: 3
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     steps:

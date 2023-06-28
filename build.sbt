@@ -122,6 +122,10 @@ ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   jvmOpenj9s.map { j9 => MatrixExclude(Map("os" -> macos, "java" -> j9.render)) },
   jvmTemurins.map { j => MatrixExclude(Map("os" -> macos, "java" -> j.render)) }, // but see inclusions
   jvmTemurins.map { j => MatrixExclude(Map("os" -> windows, "java" -> j.render)) }, // but see inclusions
+  Seq(
+    MatrixExclude(Map("os" -> linux, "java" -> jvmOpenj9_11.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
+    MatrixExclude(Map("os" -> linux, "java" -> jvmGraal_11.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
+  ),
 ).flatten
 ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.flatMap { scalaVer =>
   val binVer = CrossVersion.binaryScalaVersion(scalaVer)
