@@ -718,13 +718,11 @@ addCommandAlias("checkScalafix", "scalafixAll --check")
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
 addCommandAlias("stressTest", stressTestCommand)
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
-addCommandAlias(ciCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;testOnly -- --exclude-tags=SLOW")
-addCommandAlias(ciFullCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;test")
+addCommandAlias("compatCheck", ";versionPolicyReportDependencyIssues;mimaReportBinaryIssues")
+addCommandAlias(ciCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;testOnly -- --exclude-tags=SLOW;compatCheck")
+addCommandAlias(ciFullCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;test;compatCheck")
 addCommandAlias("ciStress", "stressTest")
 addCommandAlias("release", ";reload;+versionPolicyCheck;tlRelease")
-// TODO: check bincompat and version policy in CI
-// TODO: bincompat: `mimaReportBinaryIssues`
-// TODO: version compat: `versionPolicyReportDependencyIssues`
 
 // profiling: `-prof jfr`
 addCommandAlias("measurePerformance", "bench/jmh:run -foe true -rf json -rff results.json .*")
