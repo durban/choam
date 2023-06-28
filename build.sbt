@@ -28,8 +28,8 @@ val jvmGraal_11 = JavaSpec(JavaSpec.Distribution.GraalVM("22.3.2"), "11")
 val jvmGraal_17 = JavaSpec.graalvm("17")
 val jvmGraal_20 = JavaSpec.graalvm("20")
 val jvmGraals = List(jvmGraal_11, jvmGraal_17, jvmGraal_20)
-val jvmOpenj9_11 = JavaSpec.openj9("11")
-val jvmOpenj9_17 = JavaSpec.openj9("17")
+val jvmOpenj9_11 = JavaSpec.semeru("11")
+val jvmOpenj9_17 = JavaSpec.semeru("17")
 // val jvmOpenj9_20 = JavaSpec.openj9("20") // TODO: semeru
 val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17)
 

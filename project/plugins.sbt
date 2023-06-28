@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-val sbtTypelevelVersion = "0.5.0-RC3"
+val sbtTypelevelVersion = "0.5.0-RC4"
 
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.5")
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
