@@ -30,8 +30,8 @@ val jvmGraal_20 = JavaSpec.graalvm("20")
 val jvmGraals = List(jvmGraal_11, jvmGraal_17, jvmGraal_20)
 val jvmOpenj9_11 = JavaSpec.semeru("11")
 val jvmOpenj9_17 = JavaSpec.semeru("17")
-// val jvmOpenj9_20 = JavaSpec.openj9("20") // TODO: semeru
-val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17)
+val jvmOpenj9_20 = JavaSpec.semeru("20")
+val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17, jvmOpenj9_20)
 
 // CI OS versions:
 val linux = "ubuntu-latest"
@@ -111,11 +111,7 @@ ThisBuild / githubWorkflowBuild := Seq(
   // JCStress tests (only usable on macos, only runs if commit msg contains 'full CI'):
   WorkflowStep.Sbt(List("ciStress"), cond = Some(s"(matrix.os == '${macos}') && (${fullCiCond})"))
 )
-ThisBuild / githubWorkflowJavaVersions := Seq(
-  List(jvmOldest, jvmLts, jvmLatest),
-  jvmGraals,
-  jvmOpenj9s,
-).flatten
+ThisBuild / githubWorkflowJavaVersions := Seq(jvmTemurins, jvmGraals, jvmOpenj9s).flatten
 ThisBuild / githubWorkflowOSes := Seq(linux, windows, macos)
 ThisBuild / githubWorkflowSbtCommand := "sbt -v"
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
