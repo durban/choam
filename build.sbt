@@ -722,7 +722,7 @@ addCommandAlias("compatCheck", ";versionPolicyReportDependencyIssues;mimaReportB
 addCommandAlias(ciCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;testOnly -- --exclude-tags=SLOW;compatCheck")
 addCommandAlias(ciFullCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;test;compatCheck")
 addCommandAlias("ciStress", "stressTest")
-addCommandAlias("release", ";reload;+versionPolicyCheck;tlRelease")
+addCommandAlias("release", ";reload;+versionPolicyReportDependencyIssues;tlRelease")
 
 // profiling: `-prof jfr`
 addCommandAlias("measurePerformance", "bench/jmh:run -foe true -rf json -rff results.json .*")
