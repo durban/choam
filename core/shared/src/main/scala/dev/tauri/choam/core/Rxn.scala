@@ -1360,8 +1360,14 @@ private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.ty
 }
 
 private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
+
   implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] =
     random.Random.uuidGen(self.osRng)
+
+  @deprecated("Don't use uuidGenWrapper, because it may block", since = "0.4")
+  private[choam] final def uuidGenWrapper[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {
+    final override def randomUUID = Rxn.unsafe.delay { _ => java.util.UUID.randomUUID() }
+  }
 }
 
 private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.type =>
