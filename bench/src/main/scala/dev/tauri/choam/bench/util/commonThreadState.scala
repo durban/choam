@@ -26,6 +26,7 @@ import org.openjdk.jmh.annotations.{ State, Param, Setup, Scope }
 import cats.effect.IO
 
 import async.AsyncReactive
+import internal.mcas.Mcas
 
 @State(Scope.Thread)
 class RandomState {
@@ -58,18 +59,18 @@ class RandomState {
 @State(Scope.Thread)
 class McasImplState extends RandomState {
 
-  @Param(Array(mcas.Mcas.fqns.Emcas))
+  @Param(Array(Mcas.fqns.Emcas))
   private[choam] var mcasName: String = _
 
-  private[choam] var mcasImpl: mcas.Mcas = _
+  private[choam] var mcasImpl: Mcas = _
 
-  private[choam] var mcasCtx: mcas.Mcas.ThreadContext = _
+  private[choam] var mcasCtx: Mcas.ThreadContext = _
 
   private[choam] var reactive: Reactive[IO] = _
 
   @Setup
   def setupMcasImpl(): Unit = {
-    this.mcasImpl = mcas.Mcas.unsafeLookup(mcasName)
+    this.mcasImpl = Mcas.unsafeLookup(mcasName)
     this.mcasCtx = this.mcasImpl.currentContext()
     this.reactive = {
       val ar = AsyncReactive.asyncReactiveForAsync[IO](IO.asyncForIO)

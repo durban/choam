@@ -21,9 +21,9 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
-import dev.tauri.choam.vhandle.VarHandleHelper;
-import dev.tauri.choam.mcas.MemoryLocation;
-import dev.tauri.choam.mcas.Version;
+import dev.tauri.choam.internal.VarHandleHelper;
+import dev.tauri.choam.internal.mcas.MemoryLocation;
+import dev.tauri.choam.internal.mcas.Version;
 
 final class RefU1<A> extends RefIdOnly implements Ref<A>, MemoryLocation<A> {
 

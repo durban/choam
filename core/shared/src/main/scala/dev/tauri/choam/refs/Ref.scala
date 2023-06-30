@@ -25,7 +25,7 @@ import scala.math.Ordering
 import cats.kernel.{ Hash, Order }
 import cats.effect.kernel.{ Ref => CatsRef }
 
-import mcas.MemoryLocation
+import internal.mcas.MemoryLocation
 
 /**
  * A mutable memory location with a pure API and

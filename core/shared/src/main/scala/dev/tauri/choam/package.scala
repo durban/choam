@@ -19,6 +19,8 @@ package dev.tauri
 
 package object choam {
 
+  import internal.mcas.Mcas
+
   private[choam] type tailrec = scala.annotation.tailrec
 
   private[choam] type switch = scala.annotation.switch
@@ -84,9 +86,9 @@ package object choam {
         Rxn.unsafe.delay[Any, A](_ => da)
       def suspend[A](daa: => Axn[A]): Axn[A] = // TODO: optimize
         this.delay(daa).flatten
-      def context[A](uf: mcas.Mcas.ThreadContext => A): Axn[A] =
+      def context[A](uf: Mcas.ThreadContext => A): Axn[A] =
         Rxn.unsafe.context(uf)
-      def suspendContext[A](uf: mcas.Mcas.ThreadContext => Axn[A]): Axn[A] =
+      def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
         Rxn.unsafe.suspendContext(uf)
     }
   }
@@ -99,18 +101,18 @@ package object choam {
 
   @inline
   private[choam] final def equ[A](x: A, y: A): Boolean =
-    mcas.equ(x, y)
+    internal.mcas.equ(x, y)
 
   @inline
   private[choam] final def isNull[A](a: A): Boolean =
-    mcas.isNull(a)
+    internal.mcas.isNull(a)
 
   @inline
   private[choam] final def nullOf[A]: A =
-    mcas.nullOf[A]
+    internal.mcas.nullOf[A]
 
   private[choam] final def impossible(s: String): Nothing =
-    mcas.impossible(s)
+    internal.mcas.impossible(s)
 
   private[choam] final def requireNonNull[A](a: A): Unit =
     require(!isNull(a))

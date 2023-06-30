@@ -22,6 +22,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import bench.util.McasImplState
+import internal.mcas.Mcas
 
 @Fork(3)
 @Threads(2) // 4, 6, 8, ...
@@ -54,7 +55,7 @@ object ExchangerBench {
   class St {
 
     private[this] val exchanger: Exchanger[String, String] =
-      RxnProfiler.profiledExchanger[String, String].unsafePerform((), mcas.Mcas.NullMcas)
+      RxnProfiler.profiledExchanger[String, String].unsafePerform((), Mcas.NullMcas)
 
     val left: Rxn[String, Option[String]] =
       exchanger.exchange.?

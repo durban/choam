@@ -21,7 +21,7 @@ import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-import dev.tauri.choam.vhandle.VarHandleHelper;
+import dev.tauri.choam.internal.VarHandleHelper;
 
 abstract class PrimaryExchangerImplJvmBase {
 

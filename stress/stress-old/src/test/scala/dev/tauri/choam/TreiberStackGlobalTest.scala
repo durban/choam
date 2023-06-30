@@ -30,6 +30,7 @@ import org.openjdk.jcstress.infra.results.ZZZ_Result
 
 import data.{ Stack, StackHelper }
 import ce._
+import internal.mcas.Mcas
 
 // @JCStressTest
 @State
@@ -84,9 +85,9 @@ object TreiberStackGlobalTest {
     1024 * 128
 
   private[this] val stacks =
-    new TrieMap[mcas.Mcas, (Stack[String], Stack[String])]
+    new TrieMap[Mcas, (Stack[String], Stack[String])]
 
-  private def getStacks(impl: mcas.Mcas): (Stack[String], Stack[String]) = {
+  private def getStacks(impl: Mcas): (Stack[String], Stack[String]) = {
     def mkNew() = {
       val stack1 = StackHelper.treiberStackFromList[SyncIO, String](List.fill(N)("z")).unsafeRunSync()
       val stack2 = StackHelper.treiberStackFromList[SyncIO, String](List.fill(N)("z")).unsafeRunSync()

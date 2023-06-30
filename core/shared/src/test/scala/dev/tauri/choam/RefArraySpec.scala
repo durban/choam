@@ -21,6 +21,8 @@ import scala.util.Try
 
 import munit.Location
 
+import internal.mcas.Mcas
+
 final class RefArraySpec_Strict extends RefArraySpec {
 
   final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
@@ -114,8 +116,8 @@ trait RefArraySpec extends BaseSpec {
 
   test("consistentRead") {
     val a = mkRefArray[Int](42)
-    a.unsafeGet(0).update(_ + 1).unsafeRun(mcas.Mcas.DefaultMcas)
-    val (x, y) = Rxn.consistentRead(a.unsafeGet(0), a.unsafeGet(2)).unsafeRun(mcas.Mcas.DefaultMcas)
+    a.unsafeGet(0).update(_ + 1).unsafeRun(Mcas.DefaultMcas)
+    val (x, y) = Rxn.consistentRead(a.unsafeGet(0), a.unsafeGet(2)).unsafeRun(Mcas.DefaultMcas)
     assert(x == 43)
     assert(y == 42)
   }

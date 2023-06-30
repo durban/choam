@@ -20,7 +20,7 @@ package refs
 
 import java.lang.ref.WeakReference
 
-import mcas.MemoryLocation
+import internal.mcas.MemoryLocation
 
 private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
   extends Ref[A]

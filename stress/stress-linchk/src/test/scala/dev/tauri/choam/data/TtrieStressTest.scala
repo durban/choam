@@ -25,6 +25,8 @@ import org.jetbrains.kotlinx.lincheck.strategy.stress.StressOptions
 
 import munit.FunSuite
 
+import internal.mcas.Mcas
+
 final class TtrieStressTest extends FunSuite with BaseLinchkSpec {
 
   test("Stress test of Ttrie".tag(SLOW)) {
@@ -44,8 +46,8 @@ final object TtrieStressTest {
   @Param(name = "k", gen = classOf[StringGen])
   class TestState {
 
-    private[this] val emcas: mcas.Mcas =
-      mcas.Mcas.Emcas
+    private[this] val emcas: Mcas =
+      Mcas.Emcas
 
     private[this] val m: Ttrie[String, String] =
       Ttrie[String, String].unsafeRun(emcas)

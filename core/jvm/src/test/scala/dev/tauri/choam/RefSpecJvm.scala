@@ -18,7 +18,7 @@
 package dev.tauri.choam
 
 import cats.effect.IO
-import dev.tauri.choam.mcas.{ MemoryLocation, Version }
+import dev.tauri.choam.internal.mcas.{ MemoryLocation, Version }
 
 final class RefSpecJvm_Real_SpinLockMcas_IO
   extends BaseSpecIO

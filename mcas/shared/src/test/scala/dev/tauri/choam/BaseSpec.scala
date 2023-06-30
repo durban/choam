@@ -21,7 +21,7 @@ import scala.concurrent.duration._
 
 import munit.{ Location, FunSuite }
 
-import mcas.equ
+import internal.mcas.equ
 
 trait BaseSpec
   extends FunSuite

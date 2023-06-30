@@ -21,7 +21,7 @@ package core
 import cats.{ ~>, Monad }
 import cats.effect.kernel.Sync
 
-import mcas.Mcas
+import internal.mcas.Mcas
 
 trait Reactive[F[_]] extends ~>[Axn, F] { self =>
   def apply[A, B](r: Rxn[A, B], a: A): F[B]

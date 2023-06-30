@@ -17,20 +17,22 @@
 
 package dev.tauri.choam
 
+import internal.mcas.Mcas
+
 trait McasImplSpec {
-  protected def mcasImpl: mcas.Mcas
+  protected def mcasImpl: Mcas
   protected def isEmcas: Boolean =
     false
 }
 
 trait SpecThreadConfinedMcas extends McasImplSpec {
-  final override def mcasImpl: mcas.Mcas =
-    mcas.Mcas.ThreadConfinedMCAS
+  final override def mcasImpl: Mcas =
+    Mcas.ThreadConfinedMCAS
 }
 
 trait SpecNullMcas extends McasImplSpec {
-  final override def mcasImpl: mcas.Mcas =
-    mcas.Mcas.NullMcas
+  final override def mcasImpl: Mcas =
+    Mcas.NullMcas
 }
 
 trait SpecNoMcas extends McasImplSpec {

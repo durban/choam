@@ -25,6 +25,7 @@ import cats.kernel.{ Order, Hash }
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
+import internal.mcas.Mcas
 import data.Map
 import util._
 
@@ -215,8 +216,8 @@ object DataMapBench {
 
   final val size = 8
 
-  private[this] final def initMcas: mcas.Mcas =
-    mcas.Mcas.Emcas
+  private[this] final def initMcas: Mcas =
+    Mcas.Emcas
 
   @State(Scope.Benchmark)
   abstract class AbstractSt {

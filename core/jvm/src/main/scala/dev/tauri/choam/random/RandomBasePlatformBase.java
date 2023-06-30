@@ -21,7 +21,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 
-import dev.tauri.choam.vhandle.VarHandleHelper;
+import dev.tauri.choam.internal.VarHandleHelper;
 
 abstract class RandomBasePlatformBase {
 

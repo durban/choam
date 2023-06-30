@@ -27,6 +27,8 @@ import cats.effect.IO
 import cats.effect.kernel.{ Ref => CatsRef }
 import cats.mtl.Local
 
+import internal.mcas.Mcas
+
 final class RxnSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with SpecThreadConfinedMcas
@@ -783,7 +785,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("unsafe.context") {
-    Rxn.unsafe.context { (tc: mcas.Mcas.ThreadContext) =>
+    Rxn.unsafe.context { (tc: Mcas.ThreadContext) =>
       tc eq this.mcasImpl.currentContext()
     }.run[F].flatMap(ok => assertF(ok))
   }

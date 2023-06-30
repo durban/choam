@@ -20,8 +20,10 @@ package async
 
 import cats.effect.kernel.Async
 
+import internal.mcas.Mcas
+
 object AsyncReactiveHelper {
 
-  def newAsyncReactiveImpl[F[_]](mcasImpl: mcas.Mcas)(implicit F: Async[F]): AsyncReactive[F] =
+  def newAsyncReactiveImpl[F[_]](mcasImpl: Mcas)(implicit F: Async[F]): AsyncReactive[F] =
     new AsyncReactive.AsyncReactiveImpl[F](mcasImpl)(F)
 }

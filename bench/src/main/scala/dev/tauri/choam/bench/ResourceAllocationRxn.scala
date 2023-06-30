@@ -21,6 +21,7 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
+import internal.mcas.Mcas
 import util.McasImplState
 
 /**
@@ -85,7 +86,7 @@ object ResourceAllocationRxn {
 
     @TearDown
     def checkResults(): Unit = {
-      val ctx = mcas.Mcas.DefaultMcas.currentContext()
+      val ctx = Mcas.DefaultMcas.currentContext()
       val currentValues = rss.map(ref => ctx.readDirect(ref.loc)).toVector
       if (currentValues == initialValues) {
         throw new Exception(s"Unchanged results")

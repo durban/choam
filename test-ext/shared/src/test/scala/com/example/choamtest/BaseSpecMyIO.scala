@@ -21,7 +21,7 @@ import cats.effect.{ Async, IO }
 
 import munit.{ Location, CatsEffectSuite }
 
-import dev.tauri.choam.mcas.Mcas
+import dev.tauri.choam.internal.mcas.Mcas
 import dev.tauri.choam.async.AsyncReactive
 import dev.tauri.choam.{ BaseSpecAsyncF, McasImplSpec }
 

@@ -26,6 +26,8 @@ import scala.concurrent.duration._
 import cats.effect.kernel.Fiber
 import cats.effect.IO
 
+import internal.mcas.Mcas
+
 final class ExchangerStatsSpecJvm_Emcas_ZIO
   extends BaseSpecZIO
   with SpecEmcas
@@ -93,7 +95,7 @@ trait ExchangerStatsSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec
     assertEquals(Statistics.exchanges(s6), -23.toByte)
   }
 
-  private[this] final def getStats(ctx: mcas.Mcas.ThreadContext): Option[SMap[AnyRef, AnyRef]] = {
+  private[this] final def getStats(ctx: Mcas.ThreadContext): Option[SMap[AnyRef, AnyRef]] = {
     if (ctx.supportsStatistics) Some(ctx.getStatisticsPlain())
     else None
   }

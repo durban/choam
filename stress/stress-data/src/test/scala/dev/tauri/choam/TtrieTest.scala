@@ -26,7 +26,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLLL_Result
 
-import mcas.Mcas
+import internal.mcas.Mcas
 import data.{ Map, MapHelper }
 
 @JCStressTest

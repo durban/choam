@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package core
 
-import mcas.Mcas
+import internal.mcas.Mcas
 
 private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
   extends Exchanger.UnsealedExchanger[A, B] {

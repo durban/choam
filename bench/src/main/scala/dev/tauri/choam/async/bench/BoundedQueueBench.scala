@@ -28,6 +28,7 @@ import cats.effect.std.{ Queue => CatsQueue }
 
 import _root_.dev.tauri.choam.bench.BenchUtils
 import ce._
+import internal.mcas.Mcas
 
 @Fork(2)
 @Threads(1) // because it runs on the CE threadpool
@@ -111,8 +112,8 @@ object BoundedQueueBench {
     val catsQ: CatsQueue[IO, String] =
       CatsQueue.bounded[IO, String](Bound).unsafeRunSync()(runtime)
     val rxnLinkedQ: CatsQueue[IO, String] =
-      BoundedQueue.linked[IO, String](Bound).unsafeRun(mcas.Mcas.Emcas).toCats
+      BoundedQueue.linked[IO, String](Bound).unsafeRun(Mcas.Emcas).toCats
     val rxnArrayQ: CatsQueue[IO, String] =
-      BoundedQueue.array[IO, String](Bound).unsafeRun(mcas.Mcas.Emcas).toCats
+      BoundedQueue.array[IO, String](Bound).unsafeRun(Mcas.Emcas).toCats
   }
 }

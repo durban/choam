@@ -35,7 +35,7 @@ import cats.effect.kernel.{
   Outcome,
 }
 
-import dev.tauri.choam.mcas.Mcas
+import dev.tauri.choam.internal.mcas.Mcas
 import dev.tauri.choam.{ Rxn, Axn, Reactive, =#> }
 import dev.tauri.choam.async.{ AsyncReactive, Promise, GenWaitList, WaitList }
 

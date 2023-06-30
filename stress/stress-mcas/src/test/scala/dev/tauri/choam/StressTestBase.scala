@@ -17,8 +17,10 @@
 
 package dev.tauri.choam
 
+import internal.mcas.Mcas
+
 abstract class StressTestBase {
 
-  protected val impl: mcas.Mcas =
-    mcas.Mcas.Emcas
+  protected val impl: Mcas =
+    Mcas.Emcas
 }

@@ -23,7 +23,7 @@ import org.openjdk.jmh.annotations._
 import scala.collection.immutable.ArraySeq
 
 import util._
-import mcas.bench.Reset
+import internal.mcas.bench.Reset
 
 @Fork(2)
 class ProductCombinatorBench {

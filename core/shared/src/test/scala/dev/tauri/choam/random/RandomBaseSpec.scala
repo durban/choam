@@ -21,6 +21,8 @@ package random
 import java.util.{ Arrays, UUID }
 import java.nio.{ ByteBuffer, ByteOrder }
 
+import internal.mcas.Mcas
+
 final class RandomBaseSpec extends munit.FunSuite {
 
   test("byteArrayViewVarHandle") {
@@ -33,9 +35,9 @@ final class RandomBaseSpec extends munit.FunSuite {
       }
     }
     val rng1 = new DummyRng(Array.fill(8)(0x01.toByte))
-    assertEquals(rng1.nextLong.unsafeRun(mcas.Mcas.DefaultMcas), 0x0101010101010101L)
+    assertEquals(rng1.nextLong.unsafeRun(Mcas.DefaultMcas), 0x0101010101010101L)
     val rng2 = new DummyRng({ val arr = Array.fill(8)(0x01.toByte); arr(0) = 0xff.toByte; arr })
-    assertEquals(rng2.nextLong.unsafeRun(mcas.Mcas.DefaultMcas), 0x01010101010101ffL)
+    assertEquals(rng2.nextLong.unsafeRun(Mcas.DefaultMcas), 0x01010101010101ffL)
   }
 
   test("ByteBuffer endianness") {

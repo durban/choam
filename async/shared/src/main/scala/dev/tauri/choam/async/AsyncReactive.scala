@@ -21,6 +21,8 @@ package async
 import cats.~>
 import cats.effect.kernel.{ MonadCancel, Async }
 
+import internal.mcas.Mcas
+
 trait AsyncReactive[F[_]] extends Reactive[F] { self =>
   def promise[A]: Axn[Promise[F, A]]
   def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[F, A]]
@@ -46,9 +48,9 @@ object AsyncReactive {
     inst
 
   def asyncReactiveForAsync[F[_]](implicit F: Async[F]): AsyncReactive[F] =
-    new AsyncReactiveImpl[F](mcas.Mcas.DefaultMcas)(F)
+    new AsyncReactiveImpl[F](Mcas.DefaultMcas)(F)
 
-  private[async] class AsyncReactiveImpl[F[_]](mi: mcas.Mcas)(implicit F: Async[F])
+  private[async] class AsyncReactiveImpl[F[_]](mi: Mcas)(implicit F: Async[F])
     extends Reactive.SyncReactive[F](mi)
     with AsyncReactive[F] {
 

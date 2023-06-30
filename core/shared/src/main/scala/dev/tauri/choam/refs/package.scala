@@ -46,7 +46,7 @@ package object refs {
     i2: Long,
     i3: Long
   ): String = {
-    "Ref@" + mcas.refHashString(i0, i1, i2, i3)
+    "Ref@" + internal.mcas.refHashString(i0, i1, i2, i3)
   }
 
   private[refs] def refStringFrom8Ids(
@@ -59,7 +59,7 @@ package object refs {
     i6: Long,
     i7: Long
   ): String = {
-    "Ref2@" + mcas.refHashString(i0 ^ i1, i2 ^ i3, i4 ^ i5, i6 ^ i7)
+    "Ref2@" + internal.mcas.refHashString(i0 ^ i1, i2 ^ i3, i4 ^ i5, i6 ^ i7)
   }
 
   private[refs] def refStringFromIdsAndIdx(
@@ -69,8 +69,8 @@ package object refs {
     i3: Long,
     idx: Int,
   ): String = {
-    val l: Long = mcas.refShortHash(i0, i1, i2, i3) & (~0xffffL)
+    val l: Long = internal.mcas.refShortHash(i0, i1, i2, i3) & (~0xffffL)
     val s: Int = (idx & 0xffff)
-    "ARef@" + mcas.toHexPadded(l | s.toLong)
+    "ARef@" + internal.mcas.toHexPadded(l | s.toLong)
   }
 }

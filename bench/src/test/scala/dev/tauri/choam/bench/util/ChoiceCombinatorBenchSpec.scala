@@ -19,6 +19,8 @@ package dev.tauri.choam
 package bench
 package util
 
+import internal.mcas.Mcas
+
 final class ChoiceCombinatorBenchSpec extends BaseSpec {
 
   test("ChoiceCombinatorBench") {
@@ -27,11 +29,11 @@ final class ChoiceCombinatorBenchSpec extends BaseSpec {
     s.size = 8
     s.setup()
     val k = new McasImplState
-    k.mcasName = mcas.Mcas.fqns.Emcas
+    k.mcasName = Mcas.fqns.Emcas
     k.setupMcasImpl()
     b.doChoiceCAS(s, k)
     // check that the reaction happened:
-    val ctx = mcas.Mcas.Emcas.currentContext()
+    val ctx = Mcas.Emcas.currentContext()
     assertEquals(ctx.readDirect(s.ref.loc), "bar")
     for (r <- s.refs) {
       val v = ctx.readDirect(r.loc)

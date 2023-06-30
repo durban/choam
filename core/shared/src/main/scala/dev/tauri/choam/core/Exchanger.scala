@@ -85,7 +85,7 @@ private object Exchanger extends ExchangerCompanionPlatform {
 
   // TODO: these are JVM-only:
 
-  import mcas.{ Mcas, Descriptor }
+  import internal.mcas.{ Mcas, Descriptor }
 
   private[core] val paramsKey =
     new Exchanger.Key

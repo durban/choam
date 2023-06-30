@@ -23,9 +23,11 @@ import cats.data.Ior
 
 import org.scalacheck.{ Gen, Arbitrary, Cogen }
 
+import internal.mcas.Mcas
+
 trait TestInstances extends TestInstancesLowPrio0 { self =>
 
-  def mcasImpl: mcas.Mcas
+  def mcasImpl: Mcas
 
   implicit def arbRef[A](implicit arbA: Arbitrary[A]): Arbitrary[Ref[A]] = Arbitrary {
     import refs.Ref2

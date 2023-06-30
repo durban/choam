@@ -25,6 +25,7 @@ import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
 import org.openjdk.jmh.annotations._
 
+import internal.mcas.Mcas
 import util._
 
 @Fork(3)
@@ -91,18 +92,18 @@ object RandomBench {
     def baseline(n: Long): Axn[Long] =
       Rxn.pure(n)
     val rndThreadLocal: Random[Axn] =
-      Rxn.fastRandom.unsafeRun(mcas.Mcas.NullMcas)
+      Rxn.fastRandom.unsafeRun(Mcas.NullMcas)
     val rndDeterministic: Random[Axn] =
-      Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.Mcas.NullMcas)
+      Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(Mcas.NullMcas)
     val rndMinimal1: Random[Axn] =
-      random.Random.minimalRandom1(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.Mcas.NullMcas)
+      random.Random.minimalRandom1(ThreadLocalRandom.current().nextLong()).unsafeRun(Mcas.NullMcas)
     val rndMinimal2: Random[Axn] =
-      random.Random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafeRun(mcas.Mcas.NullMcas)
+      random.Random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafeRun(Mcas.NullMcas)
     val rndSecureRxn: SecureRandom[Axn] =
-      Rxn.secureRandom.unsafeRun(mcas.Mcas.NullMcas)
+      Rxn.secureRandom.unsafeRun(Mcas.NullMcas)
     @deprecated("so that we can call secureRandomWrapper", since = "0.4")
     val rndSecureWrapper: SecureRandom[Axn] =
-      random.Random.secureRandomWrapper.unsafeRun(mcas.Mcas.NullMcas)
+      random.Random.secureRandomWrapper.unsafeRun(Mcas.NullMcas)
     val uuidRxn: UUIDGen[Axn] =
       Rxn.uuidGenInstance
     @deprecated("so that we can call uuidGenWrapper", since = "0.4")

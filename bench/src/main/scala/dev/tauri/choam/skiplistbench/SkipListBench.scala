@@ -24,7 +24,7 @@ import java.util.concurrent.{ ConcurrentSkipListMap, ThreadLocalRandom }
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import skiplist.SkipListMap
+import internal.skiplist.SkipListMap
 
 @Fork(2)
 @Threads(2)

@@ -21,7 +21,7 @@ package core
 import java.util.Arrays
 import java.util.concurrent.atomic.AtomicReferenceArray
 
-import mcas.Mcas
+import internal.mcas.Mcas
 import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx, Params }
 
 private sealed trait ExchangerImplJvm[A, B]

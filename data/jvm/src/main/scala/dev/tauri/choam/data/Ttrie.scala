@@ -25,8 +25,8 @@ import scala.util.hashing.byteswap32
 import cats.kernel.{ Hash, Order }
 import cats.syntax.all._
 
-import skiplist.SkipListMap
-import mcas.Mcas
+import internal.skiplist.SkipListMap
+import internal.mcas.Mcas
 import Ttrie._
 
 /**

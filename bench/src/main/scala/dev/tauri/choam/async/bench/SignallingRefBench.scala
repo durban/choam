@@ -26,6 +26,7 @@ import fs2.concurrent.SignallingRef
 
 import _root_.dev.tauri.choam.bench.BenchUtils
 import ce._
+import internal.mcas.Mcas
 
 @Fork(2)
 @Threads(1) // because it run on the CE compute pool
@@ -73,7 +74,7 @@ object SignallingRefBench {
     val fs2Reset: IO[Unit] =
       reset(fs2)
     val rxn: SignallingRef[IO, String] =
-      stream.signallingRef[IO, String]("initial").unsafeRun(mcas.Mcas.Emcas)
+      stream.signallingRef[IO, String]("initial").unsafeRun(Mcas.Emcas)
     val rxnReset: IO[Unit] =
       reset(rxn)
 

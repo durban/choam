@@ -27,6 +27,7 @@ import cats.effect.std.{ Queue => CatsQueue }
 
 import _root_.dev.tauri.choam.bench.BenchUtils
 import ce._
+import internal.mcas.Mcas
 
 @Fork(2)
 @Threads(1)
@@ -74,8 +75,8 @@ object RingBufferBench {
     val catsQ: CatsQueue[IO, String] =
       CatsQueue.circularBuffer[IO, String](Capacity).unsafeRunSync()(runtime)
     val rxnQStrict: CatsQueue[IO, String] =
-      OverflowQueue.ringBuffer[IO, String](Capacity).unsafeRun(mcas.Mcas.Emcas).toCats
+      OverflowQueue.ringBuffer[IO, String](Capacity).unsafeRun(Mcas.Emcas).toCats
     val rxnQLazy: CatsQueue[IO, String] =
-      OverflowQueue.lazyRingBuffer[IO, String](Capacity).unsafeRun(mcas.Mcas.Emcas).toCats
+      OverflowQueue.lazyRingBuffer[IO, String](Capacity).unsafeRun(Mcas.Emcas).toCats
   }
 }

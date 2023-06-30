@@ -24,6 +24,8 @@ import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
 
 import munit.FunSuite
 
+import internal.mcas.Mcas
+
 final class TtrieModelTest extends FunSuite with BaseLinchkSpec {
 
   test("Model checking test of Ttrie".tag(SLOW)) {
@@ -47,8 +49,8 @@ final object TtrieModelTest {
   @Param(name = "v", gen = classOf[StringGen])
   class TestState  {
 
-    private[this] val emcas: mcas.Mcas =
-      mcas.Mcas.Emcas
+    private[this] val emcas: Mcas =
+      Mcas.Emcas
 
     private[this] val m: Ttrie[String, String] =
       Ttrie[String, String].unsafeRun(emcas)
