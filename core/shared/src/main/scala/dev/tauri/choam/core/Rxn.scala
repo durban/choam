@@ -273,7 +273,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
 object Rxn extends RxnInstances0 {
 
-  private final val interruptCheckPeriod =
+  private[this] final val interruptCheckPeriod =
     16384
 
   /** This is just exporting `DefaultMcas`, because that's in an internal package */
@@ -899,7 +899,7 @@ object Rxn extends RxnInstances0 {
      * throw an `InterruptedException`).
      */
     private[this] final def maybeCheckInterrupt(): Unit = {
-      if ((getFullRetries() % Rxn.interruptCheckPeriod) == 0) {
+      if ((getFullRetries() % interruptCheckPeriod) == 0) {
         checkInterrupt()
       }
     }
