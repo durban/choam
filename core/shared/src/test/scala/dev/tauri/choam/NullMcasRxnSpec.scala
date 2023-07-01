@@ -20,6 +20,8 @@ package dev.tauri.choam
 import cats.effect.IO
 import cats.effect.std.Random
 
+import core.Exchanger
+
 final class NullMcasRxnSpecIO
   extends BaseSpecIO
   with NullMcasRxnSpec[IO]

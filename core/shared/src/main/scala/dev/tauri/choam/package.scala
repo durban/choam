@@ -47,8 +47,6 @@ package object choam {
 
   final val RefLike: refs.RefLike.type = refs.RefLike
 
-  final type Exchanger[A, B] = core.Exchanger[A, B]
-
   /*
    * Implementation note: in some cases, composing
    * `Rxn`s with `>>>` (or `*>`) will be faster

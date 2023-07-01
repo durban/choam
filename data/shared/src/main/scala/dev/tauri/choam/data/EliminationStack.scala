@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package data
 
+import core.Exchanger
+
 // Note: this logic is duplicated below in `DebugStackImpl`
 private final class EliminationStack[A] private (
   primary: TreiberStack[A],
