@@ -20,8 +20,7 @@ package random
 
 import cats.effect.std.{ Random => CRandom, SecureRandom, UUIDGen }
 
-// TODO: this whole thing should be private[choam]
-object Random {
+private[choam] object Random {
 
   private[choam] final def uuidGen[X](rng: OsRng): UUIDGen[Rxn[X, *]] =
     new RxnUuidGen[X](rng)
