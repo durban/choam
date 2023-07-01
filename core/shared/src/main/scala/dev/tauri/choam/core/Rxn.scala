@@ -276,6 +276,10 @@ object Rxn extends RxnInstances0 {
   private final val interruptCheckPeriod =
     16384
 
+  /** This is just exporting `DefaultMcas`, because that's in an internal package */
+  final def DefaultMcas: Mcas =
+    Mcas.DefaultMcas
+
   // API:
 
   def pure[A](a: A): Axn[A] =

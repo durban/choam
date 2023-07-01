@@ -48,7 +48,7 @@ object AsyncReactive {
     inst
 
   def asyncReactiveForAsync[F[_]](implicit F: Async[F]): AsyncReactive[F] =
-    new AsyncReactiveImpl[F](Mcas.DefaultMcas)(F)
+    new AsyncReactiveImpl[F](Rxn.DefaultMcas)(F)
 
   private[async] class AsyncReactiveImpl[F[_]](mi: Mcas)(implicit F: Async[F])
     extends Reactive.SyncReactive[F](mi)

@@ -43,7 +43,7 @@ object Reactive {
     inst
 
   def reactiveForSync[F[_]](implicit F: Sync[F]): Reactive[F] =
-    new SyncReactive[F](Mcas.DefaultMcas)(F)
+    new SyncReactive[F](Rxn.DefaultMcas)(F)
 
   private[choam] class SyncReactive[F[_]](
     final override val mcasImpl: Mcas
