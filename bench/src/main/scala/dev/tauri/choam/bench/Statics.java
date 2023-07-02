@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.core;
+package dev.tauri.choam.bench;
 
-final class Statics {
+public final class Statics {
 
   /** This is just some static methods, don't instantiate it */
   private Statics() {}

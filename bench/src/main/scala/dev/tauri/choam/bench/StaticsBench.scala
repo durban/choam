@@ -16,7 +16,7 @@
  */
 
 package dev.tauri.choam
-package core
+package bench
 
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
