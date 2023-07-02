@@ -40,7 +40,7 @@ class AsyncStackPushWaitTest {
     cats.effect.unsafe.IORuntime.global
 
   private[this] val stack: AsyncStack[IO, String] =
-    AsyncStack[IO, String].run[SyncIO].unsafeRunSync()
+    AsyncStack.treiberStack[IO, String].run[SyncIO].unsafeRunSync()
 
   private[this] val popper: Fiber[IO, Throwable, String] =
     stack.pop.start.unsafeRunSync()(runtime)

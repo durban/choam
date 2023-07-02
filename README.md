@@ -67,7 +67,7 @@ is similar to an effectful function from `A` to `B` (that is, `A => F[B]`), but:
     ](https://typelevel.org/cats-effect/docs/thread-model#fiber-blocking-previously-semantic-blocking)),
     and so are in an async `F[_]`):
     - queues
-    - stack
+    - stacks
 - [`choam-stream`](stream/shared/src/main/scala/dev/tauri/choam/stream/):
   integration with [FS2](https://github.com/typelevel/fs2) `Stream`s
 - [`choam-laws`](laws/shared/src/main/scala/dev/tauri/choam/laws/):

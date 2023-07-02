@@ -20,17 +20,35 @@ package async
 
 import cats.effect.IO
 
-final class AsyncStackSpec_ThreadConfinedMcas_IO
+final class AsyncStackSpec_Treiber_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
   with SpecThreadConfinedMcas
-  with AsyncStackSpec[IO]
+  with AsyncStackSpec_Treiber[IO]
+
+final class AsyncStackSpec_Elimination_ThreadConfinedMcas_IO
+  extends BaseSpecTickedIO
+  with SpecThreadConfinedMcas
+  with AsyncStackSpec_Elimination[IO]
+
+trait AsyncStackSpec_Treiber[F[_]]
+  extends AsyncStackSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+
+  protected final override def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[G, A]] =
+    AsyncStack.treiberStack[G, A].run[G]
+}
+
+trait AsyncStackSpec_Elimination[F[_]]
+  extends AsyncStackSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+
+  protected final override def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[G, A]] =
+    AsyncStack.eliminationStack[G, A].run[G]
+}
 
 trait AsyncStackSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
-  protected def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[G, A]] =
-    AsyncStack.apply[G, A].run[G]
+  protected def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[G, A]]
 
   test("pop on a non-empty stack should work like on Treiber stack") {
     for {

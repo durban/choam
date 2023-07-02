@@ -32,6 +32,7 @@ object Stack {
   def treiberStack[A]: Axn[Stack[A]] =
     TreiberStack[A]
 
+  // TODO: on JS, we could just return a TreiberStack
   def eliminationStack[A]: Axn[Stack[A]] =
     EliminationStack[A]
 

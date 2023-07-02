@@ -60,9 +60,9 @@ package object choam {
 
   /**
    * The description of an effect, which (when executed),
-   * results in a value of type `A`. During execution,
-   * it may update any number of [[dev.tauri.choam.Ref Ref]]s atomically. (It
-   * may also create new `Ref`s.)
+   * results in a value of type `A`; during execution,
+   * it may update any number of [[dev.tauri.choam.Ref Ref]]s atomically
+   * (and it may also create new `Ref`s).
    *
    * This type forms a `Monad`. However, when composing
    * these kinds of effects, also consider using [[dev.tauri.choam.core.Rxn Rxn]]

@@ -28,20 +28,24 @@ abstract class AsyncStack[F[_], A] {
 
 object AsyncStack {
 
-  def apply[F[_], A](implicit F: AsyncReactive[F]): Axn[AsyncStack[F, A]] = {
-    Stack.treiberStack[A].flatMapF { es =>
-      F.waitList(
-        syncGet = es.tryPop,
-        syncSet = es.push
-      ).map { wl =>
-        new AsyncStack[F, A] {
-          final override def push: A =#> Unit =
-            wl.set
-          final override def pop: F[A] =
-            wl.asyncGet
-          final override def tryPop: Axn[Option[A]] =
-            es.tryPop
-        }
+  final def treiberStack[F[_], A](implicit F: AsyncReactive[F]): Axn[AsyncStack[F, A]] =
+    Stack.treiberStack[A].flatMapF(fromSyncStack[F, A])
+
+  final def eliminationStack[F[_], A](implicit F: AsyncReactive[F]): Axn[AsyncStack[F, A]] =
+    Stack.eliminationStack[A].flatMapF(fromSyncStack[F, A])
+
+  private[this] final def fromSyncStack[F[_], A](stack: Stack[A])(implicit F: AsyncReactive[F]): Axn[AsyncStack[F, A]] = {
+    F.waitList(
+      syncGet = stack.tryPop,
+      syncSet = stack.push
+    ).map { wl =>
+      new AsyncStack[F, A] {
+        final override def push: A =#> Unit =
+          wl.set
+        final override def pop: F[A] =
+          wl.asyncGet
+        final override def tryPop: Axn[Option[A]] =
+          stack.tryPop
       }
     }
   }

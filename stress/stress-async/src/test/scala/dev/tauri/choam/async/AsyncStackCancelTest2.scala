@@ -42,7 +42,7 @@ class AsyncStackCancelTest2 {
     cats.effect.unsafe.IORuntime.global
 
   private[this] val stack: AsyncStack[IO, String] =
-    AsyncStack[IO, String].run[SyncIO].unsafeRunSync()
+    AsyncStack.treiberStack[IO, String].run[SyncIO].unsafeRunSync()
 
   private[this] var result: String =
     null
