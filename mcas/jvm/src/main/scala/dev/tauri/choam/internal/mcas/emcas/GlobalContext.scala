@@ -79,7 +79,7 @@ private[mcas] abstract class GlobalContext
     this._threadContexts.foreach { (tid, wr) =>
       val tctx = wr.get()
       if (tctx ne null) {
-        // Calling `getCommitsAndRetries` is not
+        // Calling `getRetryStats` is not
         // thread-safe here, but we only need these statistics
         // for benchmarking, so we're just hoping for the best...
         val stats = tctx.getRetryStats()
@@ -87,7 +87,7 @@ private[mcas] abstract class GlobalContext
         fullRetries += stats.fullRetries
         mcasRetries += stats.mcasRetries
       } else {
-        this._threadContexts.del(tid) // clean empty weakref
+        this._threadContexts.remove(tid, wr) // clean empty weakref
         ()
       }
     }
@@ -106,7 +106,7 @@ private[mcas] abstract class GlobalContext
       if (tc ne null) {
         mb += ((tid, tc.getStatisticsOpaque()))
       } else {
-        this._threadContexts.del(tid) // clean empty weakref
+        this._threadContexts.remove(tid, wr) // clean empty weakref
         ()
       }
     }
@@ -124,7 +124,7 @@ private[mcas] abstract class GlobalContext
           max = n
         }
       } else {
-        this._threadContexts.del(tid) // clean empty weakref
+        this._threadContexts.remove(tid, wr) // clean empty weakref
         ()
       }
     }
@@ -136,7 +136,7 @@ private[mcas] abstract class GlobalContext
     var exists = false
     this._threadContexts.foreach { (tid, wr) =>
       if (wr.get() eq null) {
-        this._threadContexts.del(tid) // clean empty weakref
+        this._threadContexts.remove(tid, wr) // clean empty weakref
         ()
       } else if (tid == threadId) {
         exists = true
@@ -150,7 +150,7 @@ private[mcas] abstract class GlobalContext
     var count = 0
     this._threadContexts.foreach { (tid, wr) =>
       if (wr.get() eq null) {
-        this._threadContexts.del(tid) // clean empty weakref
+        this._threadContexts.remove(tid, wr) // clean empty weakref
         ()
       } else {
         count += 1
@@ -188,7 +188,7 @@ private[mcas] abstract class GlobalContext
   private[this] final def gcThreadContexts(): Unit = {
     this._threadContexts.foreach { (tid, wr) =>
       if (wr.get() eq null) {
-        this._threadContexts.del(tid)
+        this._threadContexts.remove(tid, wr)
         ()
       }
     }
