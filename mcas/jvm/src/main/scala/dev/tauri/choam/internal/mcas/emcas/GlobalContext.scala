@@ -73,8 +73,12 @@ private[mcas] abstract class GlobalContext
 
   /** Only for testing/benchmarking */
   private[choam] final override def getRetryStats(): Mcas.RetryStats = {
+    // `LongRef`s are still cheaper than using an iterator (tuples):
+    @nowarn("cat=lint-performance")
     var commits = 0L
+    @nowarn("cat=lint-performance")
     var fullRetries = 0L
+    @nowarn("cat=lint-performance")
     var mcasRetries = 0L
     this._threadContexts.foreach { (tid, wr) =>
       val tctx = wr.get()
@@ -115,6 +119,8 @@ private[mcas] abstract class GlobalContext
 
   /** Only for testing/benchmarking */
   private[choam] final override def maxReusedWeakRefs(): Int = {
+    // An `IntRef` is still cheaper than using an iterator (tuples):
+    @nowarn("cat=lint-performance")
     var max = 0
     this._threadContexts.foreach { (tid, wr) =>
       val tc = wr.get()
@@ -133,6 +139,8 @@ private[mcas] abstract class GlobalContext
 
   /** For testing. */
   private[emcas] final def threadContextExists(threadId: Long): Boolean = {
+    // A `BooleanRef` is still cheaper than using an iterator (tuples):
+    @nowarn("cat=lint-performance")
     var exists = false
     this._threadContexts.foreach { (tid, wr) =>
       if (wr.get() eq null) {
@@ -147,6 +155,10 @@ private[mcas] abstract class GlobalContext
 
   /** For testing. */
   private[emcas] final def threadContextCount(): Int = {
+    // Allocating one `IntRef`, and using that
+    // is still cheaper than using an iterator,
+    // and allocating a tuple on each iteration:
+    @nowarn("cat=lint-performance")
     var count = 0
     this._threadContexts.foreach { (tid, wr) =>
       if (wr.get() eq null) {
