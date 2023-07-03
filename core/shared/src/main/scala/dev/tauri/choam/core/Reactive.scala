@@ -33,8 +33,6 @@ trait Reactive[F[_]] extends ~>[Axn, F] { self =>
     this.apply[Any, A](a, null: Any)
   final override def apply[A](a: Axn[A]): F[A] =
     this.run(a)
-  def applyInterruptibly[A, B](r: Rxn[A, B], a: A): F[B] =
-    this.apply(r, a) // default implementation, interruptible `F` should override
 }
 
 object Reactive {
@@ -55,12 +53,6 @@ object Reactive {
       }
     }
 
-    final override def applyInterruptibly[A, B](r: Rxn[A, B], a: A): F[B] = {
-      F.interruptible {
-        r.unsafePerform(a, this.mcasImpl)
-      }
-    }
-
     final override def monad =
       F
   }
@@ -71,8 +63,6 @@ object Reactive {
   )(implicit G: Monad[G]) extends Reactive[G] {
     final override def apply[A, B](r: Rxn[A, B], a: A): G[B] =
       t(underlying.apply(r, a))
-    final override def applyInterruptibly[A, B](r: Rxn[A, B], a: A): G[B] =
-      t(underlying.applyInterruptibly(r, a))
     final override def mcasImpl: Mcas =
       underlying.mcasImpl
     final override def monad: Monad[G] =
