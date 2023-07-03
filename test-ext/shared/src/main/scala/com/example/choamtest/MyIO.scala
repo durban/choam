@@ -64,11 +64,8 @@ object MyIO {
     override def monad: Monad[MyIO] =
       asyncForMyIO
 
-    override def promise[A]: Axn[Promise[MyIO, A]] = {
-      asyncReactiveForIO.promise[A].map { p =>
-        new PromiseForMyIO[A](p)(this)
-      }
-    }
+    override def promise[A]: Axn[Promise[MyIO, A]] =
+      Promise.forAsync[MyIO, A](this, asyncForMyIO)
 
     override def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[MyIO, A]] = {
       asyncReactiveForIO.waitList[A](syncGet, syncSet).map { wl =>
@@ -193,19 +190,5 @@ object MyIO {
 
     override def mapK[G[_]](t: MyIO ~> G)(implicit G: Reactive[G]): GenWaitList[G, A] =
       underlying.mapK(myIOFromIO.andThen(t))
-  }
-
-  private final class PromiseForMyIO[A](
-    underlying: Promise[IO, A],
-  )(implicit override val rF: Reactive[MyIO]) extends Promise.AbstractPromise[MyIO, A]()(MyIO.asyncReactiveForMyIO) {
-
-    override def get: MyIO[A] =
-      MyIO(underlying.get)
-
-    override def tryGet: Axn[Option[A]] =
-      underlying.tryGet
-
-    override def complete: A =#> Boolean =
-      underlying.complete
   }
 }

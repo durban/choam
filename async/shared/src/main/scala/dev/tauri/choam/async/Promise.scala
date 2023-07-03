@@ -79,14 +79,14 @@ object Promise {
     F.promise[A]
 
   def forAsync[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] =
-    Rxn.unsafe.delay(_ => new PromiseImpl[F, A](Ref.unsafe[State[A]](Waiting(LongMap.empty, 0L))))
+    Axn.unsafe.delay(new PromiseImpl[F, A](Ref.unsafe[State[A]](Waiting(LongMap.empty, 0L))))
 
   implicit def invariantFunctorForPromise[F[_]]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
     final override def imap[A, B](fa: Promise[F, A])(f: A => B)(g: B => A): Promise[F, B] =
       fa.imap(f)(g)
   }
 
-  private sealed abstract class State[A] extends Product with Serializable
+  private[this] sealed abstract class State[A] extends Product with Serializable
 
   /**
    * We store the callbacks in a `LongMap`, because apparently
@@ -96,9 +96,9 @@ object Promise {
    *
    * The idea is from here: https://github.com/typelevel/cats-effect/pull/1128.
    */
-  private final case class Waiting[A](cbs: LongMap[A => Unit], nextId: Long) extends State[A]
+  private[this] final case class Waiting[A](cbs: LongMap[A => Unit], nextId: Long) extends State[A]
 
-  private final case class Done[A](a: A) extends State[A]
+  private[this] final case class Done[A](a: A) extends State[A]
 
   private[this] abstract class PromiseReadImpl[F[_], A]
     extends PromiseRead[F, A] { self =>
@@ -131,7 +131,7 @@ object Promise {
     }
   }
 
-  private[Promise] abstract class PromiseImplBase[F[_], A]
+  private[this] abstract class PromiseImplBase[F[_], A]
     extends PromiseReadImpl[F, A]
     with Promise[F, A] { self =>
 
@@ -170,7 +170,7 @@ object Promise {
   /**
    * Abstract base class for a minimal implementation of `Promise`.
    */
-  abstract class AbstractPromise[F[_], A](
+  private[this] abstract class AbstractPromise[F[_], A](
   )(implicit override val rF: Reactive[F]) extends PromiseImplBase[F, A] {
 
     def complete: A =#> Boolean
