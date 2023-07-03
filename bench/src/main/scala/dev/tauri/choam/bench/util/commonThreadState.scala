@@ -73,7 +73,7 @@ class McasImplState extends RandomState {
     this.mcasImpl = Mcas.unsafeLookup(mcasName)
     this.mcasCtx = this.mcasImpl.currentContext()
     this.reactive = {
-      val ar = AsyncReactive.asyncReactiveForAsync[IO](IO.asyncForIO)
+      val ar = AsyncReactive.forAsync[IO](IO.asyncForIO)
       assert(ar.mcasImpl eq this.mcasImpl)
       ar
     }

@@ -54,8 +54,8 @@ trait LawsSpec
   }.rxn[String, Int, Float, Double, Boolean, Long])
 
   checkAll("Ref", RefLawTests(self).ref[String, Int, Float])
-  checkAll("Reactive", ReactiveLawTests[SyncIO](Reactive.reactiveForSync).reactive[String, Int])
-  checkAll("AsyncReactive", AsyncReactiveLawTests[IO](AsyncReactive.asyncReactiveForAsync).asyncReactive[String, Int])
+  checkAll("Reactive", ReactiveLawTests[SyncIO](Reactive.forSync).reactive[String, Int])
+  checkAll("AsyncReactive", AsyncReactiveLawTests[IO](AsyncReactive.forAsync).asyncReactive[String, Int])
 
   checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
   checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])

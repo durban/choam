@@ -25,8 +25,8 @@ import async.AsyncReactive
 package object ce {
 
   implicit def reactiveForSyncIO: Reactive[SyncIO] =
-    Reactive.reactiveForSync
+    Reactive.forSync
 
   implicit def asyncReactiveForIO: AsyncReactive[IO] =
-    AsyncReactive.asyncReactiveForAsync
+    AsyncReactive.forAsync
 }

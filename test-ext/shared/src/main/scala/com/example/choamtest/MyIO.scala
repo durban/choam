@@ -153,7 +153,7 @@ object MyIO {
   }
 
   private def asyncReactiveForIO: AsyncReactive[IO] =
-    AsyncReactive.asyncReactiveForAsync[IO]
+    AsyncReactive.forAsync[IO]
 
   private final class WaitListForMyIO[A](
     underlying: WaitList[IO, A],
