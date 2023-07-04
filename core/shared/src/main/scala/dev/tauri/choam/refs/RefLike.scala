@@ -94,24 +94,14 @@ object RefLike {
       self.set[F](a)
 
     override def access: F[(A, A => F[Boolean])] = {
-      F.monad.flatMap(this.get) { ov =>
-        // `access` as defined in cats-effect must never
-        // succeed after it was called once, so we need a flag:
-        F.monad.map(Ref.unpadded[Boolean](false).run[F]) { hasBeenCalled =>
-          val setter = { (nv: A) =>
-            hasBeenCalled.getAndSet.provide(true).flatMapF { wasAlreadyCalled =>
-              if (!wasAlreadyCalled) {
-                self.modify { currVal =>
-                  if (equ(currVal, ov)) (nv, true)
-                  else (currVal, false)
-                }
-              } else {
-                Rxn.pure(false)
-              }
-            }.run[F]
-          }
-          (ov, setter)
+      F.monad.map(this.get) { ov =>
+        val setter = { (nv: A) =>
+          self.modify { currVal =>
+            if (equ(currVal, ov)) (nv, true)
+            else (currVal, false)
+          }.run[F]
         }
+        (ov, setter)
       }
     }
 
