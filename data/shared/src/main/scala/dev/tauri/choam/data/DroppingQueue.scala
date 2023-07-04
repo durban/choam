@@ -48,7 +48,7 @@ private object DroppingQueue {
   def apply[A](capacity: Int): Axn[Queue.WithSize[A]] = {
     require(capacity > 0)
     Ref.array[A](size = capacity, initial = empty[A]).flatMapF { arr =>
-      (Ref(0) * Ref(0)).map {
+      (Ref.padded(0) * Ref.padded(0)).map {
         case (h, t) =>
           new DroppingQueue[A](capacity, arr, h, t)
       }

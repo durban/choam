@@ -55,7 +55,7 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
   }
 
   override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
-    Ref[Elem[A]](End()).flatMapF { newRef =>
+    Ref.padded[Elem[A]](End()).flatMapF { newRef =>
       findAndEnqueue(Node(a, newRef))
     }
   }

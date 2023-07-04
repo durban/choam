@@ -180,10 +180,10 @@ private final class EmptyRefArray[A] extends RefArray[A](0, 0L, 0L, 0L, 0) {
     None
 
   final override def unsafeGet(idx: Int): Ref[A] =
-    throw new IllegalArgumentException("EmptyRefArray")
+    throw new IllegalArgumentException("EmptyRefArray#unsafeGet")
 
   protected final override def items: AtomicReferenceArray[AnyRef] =
-    throw new UnsupportedOperationException("EmptyRefArray")
+    throw new UnsupportedOperationException("EmptyRefArray#items")
 }
 
 private object RefArray {

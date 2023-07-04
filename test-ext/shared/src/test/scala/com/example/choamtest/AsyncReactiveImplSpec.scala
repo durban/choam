@@ -17,12 +17,12 @@
 
 package com.example.choamtest
 
-import dev.tauri.choam.{ Ref }
+import dev.tauri.choam.Ref
 
 final class AsyncReactiveImplSpec extends BaseSpecMyIO {
 
   test("Ref") {
-    val rxn = Ref[String]("foo").flatMapF { ref =>
+    val rxn = Ref.padded[String]("foo").flatMapF { ref =>
       ref.updateAndGet(_ + "bar")
     }
     assertResultF(rxn.run[MyIO], "foobar")

@@ -77,7 +77,7 @@ private object RingBuffer {
   private[this] def makeRingBuffer[A](capacity: Int, underlying: Ref.Array[A]): Axn[RingBuffer[A]] = {
     require(capacity > 0)
     require(underlying.size === capacity)
-    (Ref(0) * Ref(0)).map {
+    (Ref.padded(0) * Ref.padded(0)).map {
       case (h, t) =>
         new RingBuffer[A](
           capacity = capacity,

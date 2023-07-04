@@ -68,16 +68,16 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A])
     this.enqueue.as(true)
 
   override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
-    Ref[Elem[A]](End[A]()).flatMap { nextRef =>
-      Ref(a).flatMap { dataRef =>
+    Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
+      Ref.unpadded(a).flatMap { dataRef =>
         findAndEnqueue(Node(dataRef, nextRef))
       }
     }
   }
 
   override val enqueueWithRemover: Rxn[A, Axn[Unit]] = Rxn.computed { (a: A) =>
-    Ref[Elem[A]](End[A]()).flatMap { nextRef =>
-      Ref(a).flatMap { dataRef =>
+    Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
+      Ref.unpadded(a).flatMap { dataRef =>
         val newNode = Node(dataRef, nextRef)
         findAndEnqueue(newNode).as(newNode.remover)
       }

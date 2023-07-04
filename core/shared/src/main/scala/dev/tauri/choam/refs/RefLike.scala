@@ -97,7 +97,7 @@ object RefLike {
       F.monad.flatMap(this.get) { ov =>
         // `access` as defined in cats-effect must never
         // succeed after it was called once, so we need a flag:
-        F.monad.map(Ref[Boolean](false).run[F]) { hasBeenCalled =>
+        F.monad.map(Ref.unpadded[Boolean](false).run[F]) { hasBeenCalled =>
           val setter = { (nv: A) =>
             hasBeenCalled.getAndSet.provide(true).flatMapF { wasAlreadyCalled =>
               if (!wasAlreadyCalled) {

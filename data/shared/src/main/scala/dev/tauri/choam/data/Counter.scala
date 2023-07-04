@@ -41,7 +41,7 @@ final class Counter private (ref: Ref[Long]) {
 object Counter {
 
   def apply: Axn[Counter] =
-    Ref(0L).map(new Counter(_))
+    Ref.padded(0L).map(new Counter(_))
 
   private[data] def unsafe(initial: Long = 0L): Counter =
     new Counter(Ref.unsafe(initial))

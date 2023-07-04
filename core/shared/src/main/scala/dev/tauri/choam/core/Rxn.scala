@@ -1388,7 +1388,7 @@ private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.
 private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type =>
   implicit final def catsRefMakeInstance[X]: CatsRef.Make[Rxn[X, *]] = new CatsRef.Make[Rxn[X, *]] {
     final override def refOf[A](a: A): Rxn[X, CatsRef[Rxn[X, *], A]] = {
-      refs.Ref.apply(initial = a).map { underlying =>
+      refs.Ref.unpadded(initial = a).map { underlying =>
         new CatsRef[Rxn[X, *], A] {
           final override def get: Rxn[X, A] =
             underlying.get

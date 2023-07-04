@@ -29,7 +29,7 @@ import RandomBase._
 
 private object DeterministicRandom {
   def apply(initialSeed: Long): Axn[SplittableRandom[Axn]] = {
-    Ref(initialSeed).map { (seed: Ref[Long]) =>
+    Ref.padded(initialSeed).map { (seed: Ref[Long]) =>
       new DeterministicRandom(seed, GoldenGamma)
     }
   }
@@ -130,7 +130,7 @@ private final class DeterministicRandom(
       val otherSeed: Long = mix64(s1)
       val s2 = s1 + gamma
       val otherGamma: Long = mixGamma(s2)
-      Ref[Long](otherSeed).map { otherSeed =>
+      Ref.padded[Long](otherSeed).map { otherSeed =>
         (s2, new DeterministicRandom(otherSeed, otherGamma))
       }
     }

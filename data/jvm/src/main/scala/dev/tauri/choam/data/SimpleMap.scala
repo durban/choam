@@ -158,7 +158,7 @@ private final class SimpleMap[K, V] private (
 private object SimpleMap {
 
   final def apply[K: Hash, V]: Axn[Map.Extra[K, V]] = {
-    Ref[PersistentHashMap[K, V]](emptyPhm[K, V]).map {
+    Ref.unpadded[PersistentHashMap[K, V]](emptyPhm[K, V]).map {
       new SimpleMap(_)
     }
   }

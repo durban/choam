@@ -85,7 +85,7 @@ object Queue {
 
   def unboundedWithSize[A]: Axn[Queue.WithSize[A]] = {
     Queue.unbounded[A].flatMapF { q =>
-      Ref[Int](0).map { s =>
+      Ref.unpadded[Int](0).map { s =>
         new WithSize[A] {
 
           final override def tryDeque: Axn[Option[A]] = {

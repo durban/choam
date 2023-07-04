@@ -76,7 +76,7 @@ object Ref extends RefInstances0 {
       this.size
   }
 
-  def apply[A](initial: A): Axn[Ref[A]] =
+  private[choam] def apply[A](initial: A): Axn[Ref[A]] =
     padded(initial)
 
   def array[A](size: Int, initial: A): Axn[Ref.Array[A]] =

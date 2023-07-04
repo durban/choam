@@ -38,7 +38,7 @@ object BoundedQueue {
 
   def linked[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
     require(bound > 0)
-    (Queue.unbounded[A] * Ref[Int](0)).flatMapF {
+    (Queue.unbounded[A] * Ref.unpadded[Int](0)).flatMapF {
       case (q, size) =>
         F.genWaitList[A](
           tryGet = q.tryDeque.flatMapF { res =>
