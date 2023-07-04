@@ -115,9 +115,9 @@
       - either `Windows-PRNG`, or (`/dev/random` and `/dev/urandom`) must be available
     - Scala 2.13 and 3.3
     - \*.internal.\* packages (no bincompat)
+    - `unafe` APIs (no bincompat)
   - MCAS API review
     - is it usable outside of `choam`?
-      - it is, but the API is really not very good
     - if not, it doesn't really make sense to have it in a separate module
       - being in the same module would simplify using `ThreadContext` for `Rxn`-things
   - Rename `flatMapF`

@@ -22,10 +22,10 @@ package object refs {
   type Ref1[A] = Ref[A]
   val Ref1: Ref.type = Ref
 
-  def unsafeNewRefU1[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
+  private[choam] def unsafeNewRefU1[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
     RefsPlatform.unsafeNewRefU1[A](initial, i0, i1, i2, i3)
 
-  def unsafeNewRefP1[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
+  private[choam] def unsafeNewRefP1[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
     RefsPlatform.unsafeNewRefP1[A](initial, i0, i1, i2, i3)
 
   private[choam] def unsafeNewStrictRefArray[A](size: Int, initial: A)(i0: Long, i1: Long, i2: Long, i3: Int): Ref.Array[A] = {

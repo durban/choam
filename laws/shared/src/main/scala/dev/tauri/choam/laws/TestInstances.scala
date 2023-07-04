@@ -94,7 +94,7 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
     )
   }
 
-  implicit def cogIor[A, B](implicit cogA: Cogen[A], cogB: Cogen[B]): Cogen[Ior[A, B]] = {
+  implicit def cogenIor[A, B](implicit cogA: Cogen[A], cogB: Cogen[B]): Cogen[Ior[A, B]] = {
     Cogen { (seed, ior) =>
       ior.fold(
         a => cogA.perturb(seed.next, a),
