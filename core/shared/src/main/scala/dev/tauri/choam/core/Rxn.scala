@@ -229,27 +229,36 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * This method is `unsafe` because it performs side-effects.
    *
    * @param a the input to the [[Rxn]].
-   * @param mcas the [[mcas.Mcas]] implementation to use.
-   * @param maxBackoff the maximal amount to spin when backing off (before retries).
-   * @param randomizeBackoff whether to do exponential backoff *with* randomization.
+   * @param mcas the [[internal.mcas.Mcas]] implementation to use.
    * @param maxRetries the maximum number of retries (pass `None` for possibly infinite retries).
    * @return the result of the executed [[Rxn]].
    */
   final def unsafePerform(
     a: A,
     mcas: Mcas,
-    randomizeBackoff: Boolean = true,
     maxRetries: Option[Int] = None,
   ): B = {
     unsafePerformInternal(
       a = a,
       ctx = mcas.currentContext(),
       maxBackoff = Rxn.defaultMaxBackoff,
-      randomizeBackoff = randomizeBackoff,
+      randomizeBackoff = true,
       maxRetries = maxRetries.getOrElse(-1),
     )
   }
 
+  /**
+   * Execute the [[Rxn]] with the specified input `a`.
+   *
+   * This method is `unsafe` because it performs side-effects.
+   *
+   * @param a the input to the [[Rxn]].
+   * @param ctx the [[internal.mcas.Mcas.ThreadContext]] of the current thread.
+   * @param maxBackoff the maximal amount to spin when backing off (before retries).
+   * @param randomizeBackoff whether to do exponential backoff *with* randomization.
+   * @param maxRetries the maximum number of retries (pass `-1` for possibly infinite retries).
+   * @return the result of the executed [[Rxn]].
+   */
   private[choam] final def unsafePerformInternal(
     a: A,
     ctx: Mcas.ThreadContext,
@@ -1446,11 +1455,8 @@ private sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.type =>
     final def run[F[_]](implicit F: Reactive[F]): F[A] =
       F.run(self)
 
-    final def unsafeRun(
-      mcas: Mcas,
-      randomizeBackoff: Boolean = true
-    ): A = {
-      self.unsafePerform(null : Any, mcas, randomizeBackoff = randomizeBackoff)
+    final def unsafeRun(mcas: Mcas): A = {
+      self.unsafePerform(null : Any, mcas)
     }
   }
 }
