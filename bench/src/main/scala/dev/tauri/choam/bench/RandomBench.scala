@@ -96,14 +96,14 @@ object RandomBench {
     val rndDeterministic: Random[Axn] =
       Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(Mcas.NullMcas)
     val rndMinimal1: Random[Axn] =
-      random.Random.minimalRandom1(ThreadLocalRandom.current().nextLong()).unsafeRun(Mcas.NullMcas)
+      random.minimalRandom1(ThreadLocalRandom.current().nextLong()).unsafeRun(Mcas.NullMcas)
     val rndMinimal2: Random[Axn] =
-      random.Random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafeRun(Mcas.NullMcas)
+      random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafeRun(Mcas.NullMcas)
     val rndSecureRxn: SecureRandom[Axn] =
       Rxn.secureRandom
     @deprecated("so that we can call secureRandomWrapper", since = "0.4")
     val rndSecureWrapper: SecureRandom[Axn] =
-      random.Random.secureRandomWrapper.unsafeRun(Mcas.NullMcas)
+      random.secureRandomWrapper.unsafeRun(Mcas.NullMcas)
     val uuidRxn: UUIDGen[Axn] =
       Rxn.uuidGenInstance
     @deprecated("so that we can call uuidGenWrapper", since = "0.4")

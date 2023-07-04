@@ -322,10 +322,10 @@ object Rxn extends RxnInstances0 {
     _osRng
 
   private[this] val _fastRandom: Random[Axn] =
-    random.Random.newFastRandom
+    random.newFastRandom
 
   private[this] val _secureRandom: SecureRandom[Axn] =
-    random.Random.newSecureRandom(_osRng)
+    random.newSecureRandom(_osRng)
 
   final def unique: Axn[Unique.Token] =
     unsafe.delay { _ => new Unique.Token() }
@@ -337,7 +337,7 @@ object Rxn extends RxnInstances0 {
     _secureRandom
 
   final def deterministicRandom(initialSeed: Long): Axn[random.SplittableRandom[Axn]] =
-    random.Random.deterministicRandom(initialSeed)
+    random.deterministicRandom(initialSeed)
 
   // TODO: maybe move this to `Ref`?
   final def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
@@ -1375,7 +1375,7 @@ private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.ty
 private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
 
   implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] =
-    random.Random.uuidGen(self.osRng)
+    random.uuidGen(self.osRng)
 
   @deprecated("Don't use uuidGenWrapper, because it may block", since = "0.4")
   private[choam] final def uuidGenWrapper[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {

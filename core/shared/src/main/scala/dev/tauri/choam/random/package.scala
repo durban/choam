@@ -16,16 +16,15 @@
  */
 
 package dev.tauri.choam
-package random
 
-import cats.effect.std.{ Random => CRandom, SecureRandom, UUIDGen }
+import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
-private[choam] object Random {
+package object random {
 
   private[choam] final def uuidGen[X](rng: OsRng): UUIDGen[Rxn[X, *]] =
     new RxnUuidGen[X](rng)
 
-  private[choam] final def newFastRandom: CRandom[Axn] =
+  private[choam] final def newFastRandom: Random[Axn] =
     new RxnThreadLocalRandom
 
   private[choam] final def newSecureRandom(rng: OsRng): SecureRandom[Axn] =
@@ -35,14 +34,14 @@ private[choam] object Random {
   private[choam] final def secureRandomWrapper: Axn[SecureRandom[Axn]] =
     Axn.unsafe.delay { SecureRandomWrapper.unsafe() }
 
-  final def deterministicRandom(initialSeed: Long): Axn[SplittableRandom[Axn]] =
+  private[choam] final def deterministicRandom(initialSeed: Long): Axn[SplittableRandom[Axn]] =
     DeterministicRandom(initialSeed)
 
   // TODO: do we need this?
-  private[choam] def minimalRandom1(initialSeed: Long): Axn[CRandom[Axn]] =
+  private[choam] def minimalRandom1(initialSeed: Long): Axn[Random[Axn]] =
     Axn.unsafe.delay { MinimalRandom.unsafe1(initialSeed) }
 
   // TODO: do we need this?
-  private[choam] def minimalRandom2(initialSeed: Long): Axn[CRandom[Axn]] =
+  private[choam] def minimalRandom2(initialSeed: Long): Axn[Random[Axn]] =
     Axn.unsafe.delay { MinimalRandom.unsafe2(initialSeed) }
 }

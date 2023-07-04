@@ -79,11 +79,11 @@ trait RandomSpec[F[_]]
   )
   checkRandom(
     "MinimalRandom1",
-    seed => random.Random.minimalRandom1(seed).run[F],
+    seed => random.minimalRandom1(seed).run[F],
   )
   checkRandom(
     "MinimalRandom2",
-    seed => random.Random.minimalRandom2(seed).run[F],
+    seed => random.minimalRandom2(seed).run[F],
   )
 
   test("Rxn.deterministicRandom must be deterministic (1)") {
@@ -188,11 +188,11 @@ trait RandomSpec[F[_]]
   test("Rxn.deterministicRandom must generate the same values as MinimalRandom") {
     checkSame(
       seed => Rxn.deterministicRandom(seed),
-      seed => random.Random.minimalRandom1(seed),
+      seed => random.minimalRandom1(seed),
     )
     checkSame(
       seed => Rxn.deterministicRandom(seed),
-      seed => random.Random.minimalRandom2(seed),
+      seed => random.minimalRandom2(seed),
     )
   }
 
