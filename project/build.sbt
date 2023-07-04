@@ -19,8 +19,6 @@ val circeVersion = "0.14.3"
 val kindProjectorVersion = "0.13.2"
 val macroParadiseVersion = "2.1.1"
 
-ThisBuild / semanticdbEnabled := true
-
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core" % circeVersion,
   "io.circe" %% "circe-generic" % circeVersion,

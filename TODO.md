@@ -116,6 +116,7 @@
     - Scala 2.13 and 3.3
     - \*.internal.\* packages (no bincompat)
     - `unafe` APIs (no bincompat)
+    - `laws` module (no bincompat)
   - MCAS API review
     - is it usable outside of `choam`?
     - if not, it doesn't really make sense to have it in a separate module
