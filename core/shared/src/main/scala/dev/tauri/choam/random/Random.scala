@@ -25,11 +25,11 @@ private[choam] object Random {
   private[choam] final def uuidGen[X](rng: OsRng): UUIDGen[Rxn[X, *]] =
     new RxnUuidGen[X](rng)
 
-  final def fastRandom: Axn[CRandom[Axn]] =
-    Axn.unsafe.delay { RxnThreadLocalRandom.unsafe() }
+  private[choam] final def newFastRandom: CRandom[Axn] =
+    new RxnThreadLocalRandom
 
-  private[choam] final def secureRandom(rng: OsRng): Axn[SecureRandom[Axn]] =
-    Axn.unsafe.delay { SecureRandomRxn.unsafe(rng) }
+  private[choam] final def newSecureRandom(rng: OsRng): SecureRandom[Axn] =
+    new SecureRandomRxn(rng)
 
   @deprecated("Don't use secureRandomWrapper, because it may block", since = "0.4")
   private[choam] final def secureRandomWrapper: Axn[SecureRandom[Axn]] =

@@ -66,16 +66,13 @@ trait RandomSpec[F[_]]
   }
 
   test("secureRandom must implement cats.effect.std.SecureRandom") {
-    Rxn.secureRandom.run[F].flatMap { rnd =>
-      val r: SecureRandom[Axn] = rnd
-      F.pure(r.##).void
-    }
+    Rxn.secureRandom : SecureRandom[Axn]
   }
 
   // TODO: more tests for Rxn.*Random
 
-  checkRandom("Rxn.fastRandom", _ => Rxn.fastRandom.run[F])
-  checkRandom("Rxn.secureRandom", _ => Rxn.secureRandom.run[F].widen)
+  checkRandom("Rxn.fastRandom", _ => F.pure(Rxn.fastRandom))
+  checkRandom("Rxn.secureRandom", _ => F.pure(Rxn.secureRandom))
   checkRandom(
     "Rxn.deterministicRandom",
     seed => Rxn.deterministicRandom(seed).run[F].widen[Random[Axn]],

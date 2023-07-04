@@ -20,17 +20,12 @@ package random
 
 import cats.effect.std.SecureRandom
 
-private object SecureRandomRxn {
-  def unsafe(osRng: OsRng): SecureRandom[Axn] =
-    new SecureRandomRxn(osRng)
-}
-
 /**
  * Implements [[cats.effect.std.SecureRandom]] by using
  * the OS CSPRNG (through `OsRng`). This is as nonblocking
  * as possible on each platform (see `OsRng`).
  */
-private final class SecureRandomRxn private (osRng: OsRng)
+private final class SecureRandomRxn(osRng: OsRng)
   extends RandomBase with SecureRandom[Axn] {
 
   final override def nextBytes(n: Int): Axn[Array[Byte]] = Axn.unsafe.delay {

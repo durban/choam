@@ -20,15 +20,7 @@ package random
 
 import java.util.concurrent.ThreadLocalRandom
 
-import cats.effect.std.Random
-
-private object RxnThreadLocalRandom {
-  def unsafe(): Random[Axn] = {
-    new RxnThreadLocalRandom
-  }
-}
-
-private final class RxnThreadLocalRandom private ()
+private final class RxnThreadLocalRandom
   extends RandomBase {
 
   import Rxn.unsafe.delayContext

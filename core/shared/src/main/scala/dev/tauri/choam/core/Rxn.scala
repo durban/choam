@@ -306,7 +306,7 @@ object Rxn extends RxnInstances0 {
 
   // Utilities:
 
-  private[core] val osRng: random.OsRng = {
+  private[this] val _osRng: random.OsRng = {
     // Under certain circumstances (e.g.,
     // Linux right after boot in a
     // fresh VM), this call might block.
@@ -318,14 +318,23 @@ object Rxn extends RxnInstances0 {
     random.OsRng.mkNew()
   }
 
+  private[core] final def osRng: random.OsRng =
+    _osRng
+
+  private[this] val _fastRandom: Random[Axn] =
+    random.Random.newFastRandom
+
+  private[this] val _secureRandom: SecureRandom[Axn] =
+    random.Random.newSecureRandom(_osRng)
+
   final def unique: Axn[Unique.Token] =
     unsafe.delay { _ => new Unique.Token() }
 
-  final def fastRandom: Axn[Random[Axn]] =
-    random.Random.fastRandom
+  final def fastRandom: Random[Axn] =
+    _fastRandom
 
-  final def secureRandom: Axn[SecureRandom[Axn]] =
-    random.Random.secureRandom(this.osRng)
+  final def secureRandom: SecureRandom[Axn] =
+    _secureRandom
 
   final def deterministicRandom(initialSeed: Long): Axn[random.SplittableRandom[Axn]] =
     random.Random.deterministicRandom(initialSeed)

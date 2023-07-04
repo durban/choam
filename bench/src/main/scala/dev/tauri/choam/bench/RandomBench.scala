@@ -92,7 +92,7 @@ object RandomBench {
     def baseline(n: Long): Axn[Long] =
       Rxn.pure(n)
     val rndThreadLocal: Random[Axn] =
-      Rxn.fastRandom.unsafeRun(Mcas.NullMcas)
+      Rxn.fastRandom
     val rndDeterministic: Random[Axn] =
       Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(Mcas.NullMcas)
     val rndMinimal1: Random[Axn] =
@@ -100,7 +100,7 @@ object RandomBench {
     val rndMinimal2: Random[Axn] =
       random.Random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafeRun(Mcas.NullMcas)
     val rndSecureRxn: SecureRandom[Axn] =
-      Rxn.secureRandom.unsafeRun(Mcas.NullMcas)
+      Rxn.secureRandom
     @deprecated("so that we can call secureRandomWrapper", since = "0.4")
     val rndSecureWrapper: SecureRandom[Axn] =
       random.Random.secureRandomWrapper.unsafeRun(Mcas.NullMcas)
