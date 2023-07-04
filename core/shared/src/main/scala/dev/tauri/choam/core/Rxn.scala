@@ -238,14 +238,13 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def unsafePerform(
     a: A,
     mcas: Mcas,
-    maxBackoff: Int = 16,
     randomizeBackoff: Boolean = true,
     maxRetries: Option[Int] = None,
   ): B = {
     unsafePerformInternal(
       a = a,
       ctx = mcas.currentContext(),
-      maxBackoff = maxBackoff,
+      maxBackoff = Rxn.defaultMaxBackoff,
       randomizeBackoff = randomizeBackoff,
       maxRetries = maxRetries.getOrElse(-1),
     )
@@ -254,7 +253,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   private[choam] final def unsafePerformInternal(
     a: A,
     ctx: Mcas.ThreadContext,
-    maxBackoff: Int = 16,
+    maxBackoff: Int = Rxn.defaultMaxBackoff,
     randomizeBackoff: Boolean = true,
     maxRetries: Int = -1,
   ): B = {
@@ -275,6 +274,9 @@ object Rxn extends RxnInstances0 {
 
   private[this] final val interruptCheckPeriod =
     16384
+
+  private[Rxn] final val defaultMaxBackoff =
+    16
 
   /** This is just exporting `DefaultMcas`, because that's in an internal package */
   final def DefaultMcas: Mcas =
@@ -630,7 +632,7 @@ object Rxn extends RxnInstances0 {
     rxn: Rxn[X, R],
     x: X,
     ctx: Mcas.ThreadContext,
-    maxBackoff: Int = 16,
+    maxBackoff: Int = Rxn.defaultMaxBackoff,
     randomizeBackoff: Boolean = true,
     maxRetries: Int = -1,
   ): R = {
@@ -1446,10 +1448,9 @@ private sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.type =>
 
     final def unsafeRun(
       mcas: Mcas,
-      maxBackoff: Int = 16,
       randomizeBackoff: Boolean = true
     ): A = {
-      self.unsafePerform(null : Any, mcas, maxBackoff = maxBackoff, randomizeBackoff = randomizeBackoff)
+      self.unsafePerform(null : Any, mcas, randomizeBackoff = randomizeBackoff)
     }
   }
 }
