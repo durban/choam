@@ -572,19 +572,9 @@ lazy val commonSettings = Seq[Setting[_]](
 lazy val publishSettings = Seq[Setting[_]](
   organization := "dev.tauri",
   organizationHomepage := Some(url("https://tauri.dev")),
-  homepage := Some(url(s"https://github.com/${consts.githubOrg}/${consts.githubProject}")),
-  scmInfo := Some(ScmInfo(
-    url(s"https://github.com/${consts.githubOrg}/${consts.githubProject}"),
-    s"scm:git@github.com:${consts.githubOrg}/${consts.githubProject}.git"
-  )),
-  developers := {
-    val old = developers.value
-    if (!old.contains(consts.developer)) {
-      consts.developer :: old
-    } else {
-      old
-    }
-  },
+  developers := List(
+    consts.developer,
+  ),
   Compile / publishArtifact := true,
   Test / publishArtifact := false,
   // Replicating some logic from sbt-typelevel-mima and
@@ -622,8 +612,6 @@ lazy val stressSettings = Seq[Setting[_]](
 )
 
 lazy val consts = new {
-  val githubOrg = "durban"
-  val githubProject = "choam"
   val additionalFiles = Seq("LICENSE.txt", "NOTICE.txt")
   val developer = Developer(
     id = "durban",
