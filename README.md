@@ -78,6 +78,9 @@ is similar to an effectful function from `A` to `B` (that is, `A => F[B]`), but:
   - [`choam-skiplist`](skiplist/jvm/src/main/scala/dev/tauri/choam/skiplist/):
     a concurrent skip list map for internal use
 
+JARs are on Maven Central. Browsable Scaladoc is available [here](
+https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
+
 ## Related work
 
 - Our `Rxn` is an extended version of *reagents*, described in
