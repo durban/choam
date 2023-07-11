@@ -509,31 +509,31 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Rxn.consistentRead") {
+  test("Ref.consistentRead") {
     for {
       r1 <- Ref("abc").run[F]
       r2 <- Ref(42).run[F]
-      res <- Rxn.consistentRead(r1, r2).run[F]
+      res <- Ref.consistentRead(r1, r2).run[F]
       _ <- assertEqualsF(res, ("abc", 42))
     } yield ()
   }
 
-  test("Rxn.consistentReadMany") {
+  test("Ref.consistentReadMany") {
     for {
       r1 <- Ref("abc").run[F]
       r2 <- Ref("def").run[F]
       r3 <- Ref("ghi").run[F]
       r4 <- Ref("-").run[F]
-      res <- Rxn.consistentReadMany[String](List(r4, r1, r2, r3)).run[F]
+      res <- Ref.consistentReadMany[String](List(r4, r1, r2, r3)).run[F]
       _ <- assertEqualsF(res, List("-", "abc", "def", "ghi"))
     } yield ()
   }
 
-  test("swap") {
+  test("Ref.swap") {
     for {
       r1 <- Ref("abc").run[F]
       r2 <- Ref("def").run[F]
-      _ <- Rxn.swap(r1, r2).run[F]
+      _ <- Ref.swap(r1, r2).run[F]
       _ <- assertResultF(r1.unsafeDirectRead.run[F], "def")
       _ <- assertResultF(r2.unsafeDirectRead.run[F], "abc")
     } yield ()

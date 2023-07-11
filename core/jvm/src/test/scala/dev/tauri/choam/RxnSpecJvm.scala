@@ -207,7 +207,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ref2 <- Ref("b").run[F]
       writer = (ref1.update(_ + "a") *> ref2.update(_ + "b")).run[F]
       reader = F.interruptible {
-        Rxn.consistentRead(ref1, ref2).map { v12 =>
+        Ref.consistentRead(ref1, ref2).map { v12 =>
           if (v12._1.length != v12._2.length) {
             infiniteLoop().toString() -> "x"
           } else {

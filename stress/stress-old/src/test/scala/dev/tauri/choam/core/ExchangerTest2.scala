@@ -62,7 +62,7 @@ class ExchangerTest2 extends StressTestBase {
   }
 
   private[this] val read: Rxn[Any, (String, String)] =
-    Rxn.consistentRead(rl, rr)
+    Ref.consistentRead(rl, rr)
 
   @Actor
   def left(r: LLLL_Result): Unit = {

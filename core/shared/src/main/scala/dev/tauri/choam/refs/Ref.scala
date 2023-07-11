@@ -143,6 +143,28 @@ object Ref extends RefInstances0 {
 
   def refP2[A, B](a: A, b: B): Axn[refs.Ref2[A, B]] =
     refs.Ref2.p2(a, b)
+
+  // Utilities:
+
+  final def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
+    ra.get * rb.get
+  }
+
+  final def consistentReadMany[A](refs: List[Ref[A]]): Axn[List[A]] = {
+    refs.foldRight(Rxn.pure(List.empty[A])) { (ref, acc) =>
+      (ref.get * acc).map {
+        case (h, t) => h :: t
+      }
+    }
+  }
+
+  final def swap[A](r1: Ref[A], r2: Ref[A]): Axn[Unit] = {
+    r1.updateWith { o1 =>
+      r2.modify[A] { o2 =>
+        (o1, o2)
+      }
+    }
+  }
 }
 
 private[refs] sealed abstract class RefInstances0 extends RefInstances1 { this: Ref.type =>

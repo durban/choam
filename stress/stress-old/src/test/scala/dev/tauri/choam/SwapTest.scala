@@ -38,10 +38,10 @@ class SwapTest extends StressTestBase {
     Ref.unsafe("y")
 
   private[this] val sw: Axn[Unit] =
-    Rxn.swap(ref1, ref2)
+    Ref.swap(ref1, ref2)
 
   private[this] val rd =
-    Rxn.consistentRead(ref1, ref2)
+    Ref.consistentRead(ref1, ref2)
 
   @Actor
   def swap(): Unit = {

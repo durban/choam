@@ -87,8 +87,8 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       _ <- a.unsafeGet(1).getAndSet("b")
       _ <- a.unsafeGet(2).getAndSet("c")
       _ <- a.unsafeGet(3).getAndSet("d")
-      sw02 = Rxn.swap(a.unsafeGet(0), a.unsafeGet(2))
-      sw13 = Rxn.swap(a.unsafeGet(1), a.unsafeGet(3))
+      sw02 = Ref.swap(a.unsafeGet(0), a.unsafeGet(2))
+      sw13 = Ref.swap(a.unsafeGet(1), a.unsafeGet(3))
       _ <- (sw02 * sw13).run[F]
       _ <- assertResultF(a.unsafeGet(0).get.run[F], "c")
       _ <- assertResultF(a.unsafeGet(1).get.run[F], "d")

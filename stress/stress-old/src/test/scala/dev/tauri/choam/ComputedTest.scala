@@ -59,7 +59,7 @@ class ComputedTest extends StressTestBase {
   }
 
   private[this] val consistentRead: Axn[(String, String)] =
-    Rxn.consistentRead(r1, r2)
+    Ref.consistentRead(r1, r2)
 
   @Actor
   def writer(): Unit = {

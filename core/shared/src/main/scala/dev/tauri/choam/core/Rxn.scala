@@ -213,9 +213,8 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def >> [X <: A, C](that: => Rxn[X, C]): Rxn[X, C] =
     this.flatMap { _ => that }
 
-  // TODO: reconsider this
   final def flatTap(rxn: Rxn[B, Unit]): Rxn[A, B] =
-    this.flatMap { b => rxn.provide(b).as(b) }
+    this.flatMapF { b => rxn.provide(b).as(b) }
 
   final def flatten[C](implicit ev: B <:< Axn[C]): Rxn[A, C] =
     this.flatMapF(ev)
@@ -350,38 +349,15 @@ object Rxn extends RxnInstances0 {
   final def deterministicRandom(initialSeed: Long): Axn[random.SplittableRandom[Axn]] =
     random.deterministicRandom(initialSeed)
 
-  // TODO: maybe move this to `Ref`?
-  final def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Axn[(A, B)] = {
-    ra.get * rb.get
-  }
-
-  // TODO: maybe move this to `Ref`?
-  def consistentReadMany[A](refs: List[Ref[A]]): Axn[List[A]] = {
-    refs.foldRight(pure(List.empty[A])) { (ref, acc) =>
-      (ref.get * acc).map {
-        case (h, t) => h :: t
-      }
-    }
-  }
-
-  // TODO: maybe move this to `Ref`?
-  def swap[A](r1: Ref[A], r2: Ref[A]): Axn[Unit] = {
-    r1.updateWith { o1 =>
-      r2.modify[A] { o2 =>
-        (o1, o2)
-      }
-    }
-  }
-
-  final object ref {
+  private[choam] final object ref {
 
     private[choam] final def get[A](r: Ref[A]): Axn[A] =
       new Read(r.loc)
 
-    final def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
+    private[choam] final def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
       new Upd(r.loc, f)
 
-    final def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
+    private[choam] final def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
       new UpdWith[A, B, C](r.loc, f)
   }
 

@@ -25,7 +25,7 @@ trait Ref2[A, B] {
   def _2: Ref[B]
 
   def consistentRead: Axn[(A, B)] =
-    Rxn.consistentRead(this._1, this._2)
+    Ref.consistentRead(this._1, this._2)
 }
 
 object Ref2 extends Ref2Platform {

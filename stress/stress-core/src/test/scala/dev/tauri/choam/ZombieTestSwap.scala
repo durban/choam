@@ -39,7 +39,7 @@ class ZombieTestSwap extends StressTestBase {
 
   // atomically swap the contents of the refs:
   private[this] val swap: Axn[Unit] =
-    Rxn.swap(ref1, ref2)
+    Ref.swap(ref1, ref2)
 
   // another swap, but checks the observed values:
   private[this] final def swapObserve(r: LLL_Result): Axn[Unit] = {

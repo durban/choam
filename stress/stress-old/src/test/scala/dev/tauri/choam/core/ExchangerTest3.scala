@@ -60,7 +60,7 @@ class ExchangerTest3 extends StressTestBase {
     (ex.dual.exchange.? <* rightCtr.update(_ + 1)).postCommit(rightCtr.update(_ + 1))
 
   private[this] val consistentRead: Axn[(Int, Int)] =
-    Rxn.consistentRead(leftCtr, rightCtr)
+    Ref.consistentRead(leftCtr, rightCtr)
 
   @Actor
   def left(r: LLLL_Result): Unit = {

@@ -52,7 +52,7 @@ class ChoiceTest extends StressTestBase {
   }
 
   private[this] val read: Axn[(String, String)] =
-    Rxn.consistentRead(ref0, ref2)
+    Ref.consistentRead(ref0, ref2)
 
   @Actor
   def write(r: LLL_Result): Unit = {
