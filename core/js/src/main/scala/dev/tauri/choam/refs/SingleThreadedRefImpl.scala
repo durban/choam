@@ -29,7 +29,7 @@ private final class SingleThreadedRefImpl[A](private[this] var value: A)(
   override val id2: Long,
   override val id3: Long,
 ) extends MemoryLocation[A]
-  with Ref.UnsealedRef[A] {
+  with UnsealedRef[A] {
 
   final override def toString: String =
     refStringFrom4Ids(id0, id1, id2, id3)

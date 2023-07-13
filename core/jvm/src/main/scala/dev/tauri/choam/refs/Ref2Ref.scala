@@ -23,7 +23,7 @@ import java.lang.ref.WeakReference
 import internal.mcas.MemoryLocation
 
 private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
-  extends Ref.UnsealedRef[A]
+  extends UnsealedRef[A]
   with MemoryLocation[A] {
 
   override def unsafeGetVolatile(): A =
@@ -76,7 +76,7 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
 }
 
 private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
-  extends Ref.UnsealedRef[B]
+  extends UnsealedRef[B]
   with MemoryLocation[B] {
 
   override def unsafeGetVolatile(): B =

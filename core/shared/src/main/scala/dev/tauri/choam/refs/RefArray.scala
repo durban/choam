@@ -192,7 +192,7 @@ private object RefArray {
   private[refs] final class RefArrayRef[A](
     array: RefArray[A],
     physicalIdx: Int,
-  ) extends Ref.UnsealedRef[A] with MemoryLocation[A] {
+  ) extends UnsealedRef[A] with MemoryLocation[A] {
 
     final override def unsafeGetVolatile(): A =
       array.items.get(physicalIdx).asInstanceOf[A]

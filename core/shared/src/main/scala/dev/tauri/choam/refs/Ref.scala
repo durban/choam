@@ -66,6 +66,9 @@ sealed trait Ref[A] extends RefLike[A] { this: MemoryLocation[A] =>
   private[choam] def dummy(v: Long): Long
 }
 
+private[refs] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] =>
+}
+
 object Ref extends RefInstances0 {
 
   sealed trait Array[A] {
@@ -74,9 +77,6 @@ object Ref extends RefInstances0 {
     def apply(idx: Int): Option[Ref[A]]
     final def length: Int =
       this.size
-  }
-
-  private[refs] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] =>
   }
 
   private[refs] trait UnsealedArray[A] extends Array[A]
