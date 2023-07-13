@@ -24,7 +24,7 @@ import cats.laws.IsEqArrow
 import Rxn.{ pure, ret, lift, computed }
 import Rxn.unsafe.retry
 
-trait RxnLaws {
+sealed trait RxnLaws {
 
   // This is to make sure our `Arbitrary` instance
   // only creates deterministic `Rxn`s.
@@ -100,4 +100,9 @@ trait RxnLaws {
     (retry[A, B] + x) <-> x
 
   // TODO: do these make a monoid with `+`?
+}
+
+object RxnLaws {
+  def newRxnLaws: RxnLaws =
+    new RxnLaws {}
 }

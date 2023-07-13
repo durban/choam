@@ -28,7 +28,7 @@ import dev.tauri.choam.Axn
 
 private final class SimpleOrderedMap[K, V] private (
   repr: Ref[AvlMap[K, V]]
-)(implicit K: Order[K]) extends Map.Extra[K, V] { self =>
+)(implicit K: Order[K]) extends Map.UnsealedMapExtra[K, V] { self =>
 
   final override def put: Rxn[(K, V), Option[V]] = {
     repr.upd[(K, V), Option[V]] { (m, kv) =>

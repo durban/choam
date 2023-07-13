@@ -38,7 +38,7 @@ object RefLawTests {
   }
 }
 
-trait RefLawTests extends Laws {
+sealed trait RefLawTests extends Laws {
 
   implicit def arbRef[A : Arbitrary]: Arbitrary[Ref[A]]
 
@@ -47,7 +47,7 @@ trait RefLawTests extends Laws {
   implicit def eqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]]
 
   def laws: RefLaws =
-    new RefLaws {}
+    RefLaws.newRefLaws
 
   def ref[A, B, C](
     implicit

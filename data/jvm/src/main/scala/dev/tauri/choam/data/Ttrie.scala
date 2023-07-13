@@ -47,7 +47,7 @@ import Ttrie._
  */
 private final class Ttrie[K, V] private (
   m: CMap[K, TrieRef[V]],
-) extends Map[K, V] { self =>
+) extends Map.UnsealedMap[K, V] { self =>
 
   /*
    * We store refs in a `TrieMap`; the management

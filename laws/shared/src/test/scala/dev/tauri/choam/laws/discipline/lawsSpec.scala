@@ -49,7 +49,7 @@ trait LawsSpec
   implicit val ticker: Ticker =
     Ticker(tc)
 
-  checkAll("Rxn", new RxnLawTests with TestInstances {
+  checkAll("Rxn", new RxnLawTests.UnsealedRxnLawTests with TestInstances {
     override def mcasImpl: Mcas = self.mcasImpl
   }.rxn[String, Int, Float, Double, Boolean, Long])
 

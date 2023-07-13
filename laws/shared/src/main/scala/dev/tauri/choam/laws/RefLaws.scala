@@ -23,7 +23,7 @@ import cats.laws.IsEq
 import cats.laws.IsEqArrow
 import cats.syntax.all._
 
-trait RefLaws {
+sealed trait RefLaws {
 
   def equalsItself[A](r: Ref[A]): IsEq[Boolean] =
     Order[Ref[A]].eqv(r, r) <-> true
@@ -54,4 +54,9 @@ trait RefLaws {
     val u = x.upd[B, C] { (a, b) => (f(a), g(b)) }
     uw <-> u
   }
+}
+
+object RefLaws {
+  def newRefLaws: RefLaws =
+    new RefLaws {}
 }

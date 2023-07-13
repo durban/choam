@@ -28,7 +28,7 @@ import org.organicdesign.fp.oneOf.{ Option => POption }
 
 private final class SimpleMap[K, V] private (
   repr: Ref[PersistentHashMap[K, V]],
-)(implicit K: Hash[K]) extends Map.Extra[K, V] { self =>
+)(implicit K: Hash[K]) extends Map.UnsealedMapExtra[K, V] { self =>
 
   private[this] final def valueOptionFromEntry(e: POption[UnEntry[K, V]]): Option[V] = {
     if (e.isSome()) Some(e.get().getValue()) else None

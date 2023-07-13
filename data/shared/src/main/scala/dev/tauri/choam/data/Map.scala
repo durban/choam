@@ -24,7 +24,7 @@ import cats.effect.std.MapRef
 
 import core.Reactive
 
-trait Map[K, V] { self =>
+sealed trait Map[K, V] { self =>
 
   // TODO: contains: K =#> Boolean
   // TODO: a variant of `del` could return the old value (if any)
@@ -48,10 +48,14 @@ trait Map[K, V] { self =>
 
 object Map extends MapPlatform {
 
-  trait Extra[K, V] extends Map[K, V] {
+  sealed trait Extra[K, V] extends Map[K, V] {
     def clear: Axn[Unit]
     def values(implicit V: Order[V]): Axn[Vector[V]]
   }
+
+  private[data] trait UnsealedMap[K, V] extends Map[K, V]
+
+  private[data] trait UnsealedMapExtra[K, V] extends Map.Extra[K, V]
 
   final override def simpleOrderedMap[K: Order, V]: Axn[Extra[K, V]] =
     SimpleOrderedMap[K, V]

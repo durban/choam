@@ -26,7 +26,7 @@ import SimpleMap.Wrapper
 
 private final class SimpleMap[K, V] private (
   repr: Ref[SMap[Wrapper[K], V]],
-)(implicit K: Hash[K]) extends Map.Extra[K, V] { self =>
+)(implicit K: Hash[K]) extends Map.UnsealedMapExtra[K, V] { self =>
 
   override def put: Rxn[(K, V), Option[V]] = {
     repr.upd[(K, V), Option[V]] { (m, kv) =>

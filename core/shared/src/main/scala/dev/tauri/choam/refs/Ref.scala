@@ -35,7 +35,7 @@ import internal.mcas.MemoryLocation
  * or [[cats.effect.kernel.Ref]], but its operations are [[Rxn]]s.
  * Thus, operations on a `Ref` are composable with other [[Rxn]]s.
  */
-trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
+sealed trait Ref[A] extends RefLike[A] { this: MemoryLocation[A] =>
 
   final override def get: Axn[A] =
     Rxn.ref.get(this)
@@ -68,13 +68,18 @@ trait Ref[A] extends RefLike[A] { self: MemoryLocation[A] =>
 
 object Ref extends RefInstances0 {
 
-  trait Array[A] {
+  sealed trait Array[A] {
     def size: Int
     def unsafeGet(idx: Int): Ref[A]
     def apply(idx: Int): Option[Ref[A]]
     final def length: Int =
       this.size
   }
+
+  private[refs] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] =>
+  }
+
+  private[refs] trait UnsealedArray[A] extends Array[A]
 
   private[choam] def apply[A](initial: A): Axn[Ref[A]] =
     padded(initial)

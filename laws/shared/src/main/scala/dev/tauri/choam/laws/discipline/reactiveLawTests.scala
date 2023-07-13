@@ -26,7 +26,9 @@ import org.scalacheck.Arbitrary
 import org.scalacheck.Prop.forAll
 import org.typelevel.discipline.Laws
 
-trait ReactiveLawTests[F[_]] extends Laws {
+import async.AsyncReactive
+
+sealed trait ReactiveLawTests[F[_]] extends Laws {
 
   implicit def reactiveInstance: Reactive[F]
 
@@ -53,6 +55,37 @@ object ReactiveLawTests {
   def apply[F[_]](implicit rF: Reactive[F]): ReactiveLawTests[F] = {
     new ReactiveLawTests[F] {
       final override def reactiveInstance: Reactive[F] =
+        rF
+    }
+  }
+}
+
+sealed trait AsyncReactiveLawTests[F[_]] extends ReactiveLawTests[F] {
+
+  implicit override def reactiveInstance: AsyncReactive[F]
+
+  override def laws: AsyncReactiveLaws[F] =
+    AsyncReactiveLaws[F]
+
+  def asyncReactive[A, B](
+    implicit
+    arbA: Arbitrary[A],
+    arbAB: Arbitrary[A => B],
+    arbAxB: Arbitrary[A =#> B],
+    equFA: Eq[F[A]],
+    equFB: Eq[F[B]],
+    equFBoolA: Eq[F[(Boolean, A)]],
+  ): RuleSet = new DefaultRuleSet(
+    name = "Reactive.Async",
+    parent = Some(this.reactive[A, B]),
+    "promise complete then get" -> forAll(laws.promiseCompleteAndGet[A] _),
+  )
+}
+
+object AsyncReactiveLawTests {
+  def apply[F[_]](implicit rF: AsyncReactive[F]): AsyncReactiveLawTests[F] = {
+    new AsyncReactiveLawTests[F] {
+      final override def reactiveInstance: AsyncReactive[F] =
         rF
     }
   }

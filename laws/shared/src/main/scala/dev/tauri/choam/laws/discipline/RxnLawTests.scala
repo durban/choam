@@ -26,7 +26,7 @@ import org.scalacheck.{ Arbitrary, Cogen }
 import org.scalacheck.Prop.forAll
 import org.typelevel.discipline.Laws
 
-trait RxnLawTests extends Laws { this: TestInstances =>
+sealed trait RxnLawTests extends Laws { this: TestInstances =>
 
   // TODO: I gave up:
 
@@ -48,7 +48,7 @@ trait RxnLawTests extends Laws { this: TestInstances =>
   // ): Arbitrary[Rxn[A, B]]
 
   def laws: RxnLaws =
-    new RxnLaws {}
+    RxnLaws.newRxnLaws
 
   def rxn[A, B, C, D, E, F](
     implicit
@@ -90,4 +90,9 @@ trait RxnLawTests extends Laws { this: TestInstances =>
     "retry is neutral for choice (left)" -> forAll(laws.choiceRetryNeutralLeft[A, B] _),
     "retry is neutral for choice (right)" -> forAll(laws.choiceRetryNeutralRight[A, B] _),
   )
+}
+
+object RxnLawTests {
+  private[laws] trait UnsealedRxnLawTests extends RxnLawTests { this: TestInstances =>
+  }
 }

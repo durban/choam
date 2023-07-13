@@ -39,8 +39,9 @@ private abstract class RefArray[A](
   i2: Long,
   i3: Int, // LSB is array index
 ) extends RefIdOnly(i0, i1, i2, i3.toLong << 32)
-  with Ref.Array[A] {
+  with Ref.UnsealedArray[A] {
 
+  // TODO: use an array VarHandle to avoid extra indirection
   protected def items: AtomicReferenceArray[AnyRef]
 
   protected[refs] final override def refToString(): String = {
@@ -191,7 +192,7 @@ private object RefArray {
   private[refs] final class RefArrayRef[A](
     array: RefArray[A],
     physicalIdx: Int,
-  ) extends Ref[A] with MemoryLocation[A] {
+  ) extends Ref.UnsealedRef[A] with MemoryLocation[A] {
 
     final override def unsafeGetVolatile(): A =
       array.items.get(physicalIdx).asInstanceOf[A]

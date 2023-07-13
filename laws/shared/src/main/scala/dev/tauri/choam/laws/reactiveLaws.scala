@@ -18,14 +18,39 @@
 package dev.tauri.choam
 package laws
 
-import cats.effect.kernel.MonadCancel
+import cats.Monad
 import cats.laws.IsEq
 import cats.laws.IsEqArrow
 import cats.syntax.all._
 
+import cats.effect.kernel.MonadCancel
+
 import async.AsyncReactive
 
-trait AsyncReactiveLaws[F[_]] extends ReactiveLaws[F] {
+sealed trait ReactiveLaws[F[_]] {
+
+  implicit def reactive: Reactive[F]
+
+  implicit def monad: Monad[F] =
+    reactive.monad
+
+  def runPure[A](a: A): IsEq[F[A]] =
+    reactive.run(Rxn.pure(a)) <-> monad.pure(a)
+
+  def runLift[A, B](f: A => B, a: A): IsEq[F[B]] =
+    reactive.apply(Rxn.lift(f), a) <-> monad.pure(a).map(f)
+
+  def runToFunction[A, B](rxn: A =#> B, a: A): IsEq[F[B]] =
+    reactive.run(rxn.toFunction(a)) <-> reactive.apply(rxn, a)
+}
+
+object ReactiveLaws {
+  def apply[F[_]](implicit rF: Reactive[F]): ReactiveLaws[F] = new ReactiveLaws[F] {
+    implicit override def reactive: Reactive[F] = rF
+  }
+}
+
+sealed trait AsyncReactiveLaws[F[_]] extends ReactiveLaws[F] {
 
   implicit override def reactive: AsyncReactive[F]
 
