@@ -303,23 +303,23 @@ object Rxn extends RxnInstances0 {
 
   // API:
 
-  def pure[A](a: A): Axn[A] =
+  final def pure[A](a: A): Axn[A] =
     new Pure[A](a)
 
   /** Old name of `pure` */
-  private[choam] def ret[A](a: A): Axn[A] =
+  private[choam] final def ret[A](a: A): Axn[A] =
     pure(a)
 
-  def identity[A]: Rxn[A, A] =
+  final def identity[A]: Rxn[A, A] =
     lift(a => a)
 
-  def lift[A, B](f: A => B): Rxn[A, B] =
+  final def lift[A, B](f: A => B): Rxn[A, B] =
     new Lift(f)
 
-  def unit[A]: Rxn[A, Unit] =
+  final def unit[A]: Rxn[A, Unit] =
     pure(())
 
-  def computed[A, B](f: A => Axn[B]): Rxn[A, B] =
+  final def computed[A, B](f: A => Axn[B]): Rxn[A, B] =
     new Computed(f)
 
   final def postCommit[A](pc: Rxn[A, Unit]): Rxn[A, A] =

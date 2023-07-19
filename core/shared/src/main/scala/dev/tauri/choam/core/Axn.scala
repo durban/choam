@@ -25,6 +25,9 @@ import internal.mcas.Mcas
  */
 final object Axn {
 
+  final def pure[A](a: A): Axn[A] =
+    Rxn.pure(a)
+
   final object unsafe {
     def delay[A](da: => A): Axn[A] =
       Rxn.unsafe.delay[Any, A](_ => da)
