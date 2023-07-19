@@ -29,3 +29,4 @@ Unorganized notes which may be useful during development.
 1. Tag the release (e.g., `git tag -s "v1.2.3"`), but don't push the new tag.
 1. In `sbt`, call `release` (requires Sonatype credentials).
 1. If everything looks right, push the new tag (`git push --tags`).
+1. Create a "release" on github for the new tag.
