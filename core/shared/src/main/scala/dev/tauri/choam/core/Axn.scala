@@ -28,14 +28,17 @@ final object Axn {
   final def pure[A](a: A): Axn[A] =
     Rxn.pure(a)
 
+  final def unit: Axn[Unit] =
+    pure(())
+
   final object unsafe {
-    def delay[A](da: => A): Axn[A] =
+    final def delay[A](da: => A): Axn[A] =
       Rxn.unsafe.delay[Any, A](_ => da)
-    def suspend[A](daa: => Axn[A]): Axn[A] = // TODO: optimize
+    final def suspend[A](daa: => Axn[A]): Axn[A] = // TODO: optimize
       this.delay(daa).flatten
-    def context[A](uf: Mcas.ThreadContext => A): Axn[A] =
+    final def context[A](uf: Mcas.ThreadContext => A): Axn[A] =
       Rxn.unsafe.context(uf)
-    def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
+    final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       Rxn.unsafe.suspendContext(uf)
   }
 }
