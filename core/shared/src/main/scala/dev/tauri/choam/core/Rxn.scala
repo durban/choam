@@ -89,6 +89,17 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * - https://github.com/ocamllabs/reagents (OCaml)
    */
 
+  /*
+   * Implementation note: in some cases, composing
+   * `Rxn`s with `>>>` (or `*>`) will be faster
+   * than using `flatMap`. An example (with measurements)
+   * is in `ArrowBench`.
+   *
+   * TODO: More benchmarks needed to determine exactly
+   * TODO: what it is that makes them faster. Also,
+   * TODO: maybe we could optimize `flatMap`.
+   */
+
   import Rxn._
 
   /**

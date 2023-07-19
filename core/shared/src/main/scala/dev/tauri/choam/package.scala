@@ -19,8 +19,6 @@ package dev.tauri
 
 package object choam {
 
-  import internal.mcas.Mcas
-
   private[choam] type tailrec = scala.annotation.tailrec
 
   private[choam] type switch = scala.annotation.switch
@@ -35,6 +33,10 @@ package object choam {
 
   final val Rxn: core.Rxn.type = core.Rxn
 
+  final type Axn[+A] = core.Axn[A]
+
+  final val Axn: core.Axn.type = core.Axn
+
   final type Reactive[F[_]] = core.Reactive[F]
 
   final val Reactive: core.Reactive.type = core.Reactive
@@ -46,50 +48,6 @@ package object choam {
   final type RefLike[A] = refs.RefLike[A]
 
   final val RefLike: refs.RefLike.type = refs.RefLike
-
-  /*
-   * Implementation note: in some cases, composing
-   * `Rxn`s with `>>>` (or `*>`) will be faster
-   * than using `flatMap`. An example (with measurements)
-   * is in `ArrowBench`.
-   *
-   * TODO: More benchmarks needed to determine exactly
-   * TODO: what it is that makes them faster. Also,
-   * TODO: maybe we could optimize `flatMap`.
-   */
-
-  /**
-   * The description of an effect, which (when executed),
-   * results in a value of type `A`; during execution,
-   * it may update any number of [[dev.tauri.choam.Ref Ref]]s atomically
-   * (and it may also create new `Ref`s).
-   *
-   * This type forms a `Monad`. However, when composing
-   * these kinds of effects, also consider using [[dev.tauri.choam.core.Rxn Rxn]]
-   * and `>>>` or `*>` instead of `flatMap`.
-   *
-   * The relation between [[Axn]] and [[dev.tauri.choam.core.Rxn Rxn]] is approximately
-   * `Axn[A] ≡ Axn[Any, A]`; or, alternatively
-   * `Rxn[A, B] ≡ (A => Axn[B])` (see [[dev.tauri.choam.core.Rxn!.toFunction toFunction]]).
-   */
-  final type Axn[+A] = Rxn[Any, A] // short for 'astaxanthin'
-
-  /**
-   * Pseudo-companion object for the type alias `Axn`.
-   */
-  final object Axn {
-
-    final object unsafe {
-      def delay[A](da: => A): Axn[A] =
-        Rxn.unsafe.delay[Any, A](_ => da)
-      def suspend[A](daa: => Axn[A]): Axn[A] = // TODO: optimize
-        this.delay(daa).flatten
-      def context[A](uf: Mcas.ThreadContext => A): Axn[A] =
-        Rxn.unsafe.context(uf)
-      def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
-        Rxn.unsafe.suspendContext(uf)
-    }
-  }
 
   // Note: using these always leaves a check for
   // the package object in the bytecode (getstatic
