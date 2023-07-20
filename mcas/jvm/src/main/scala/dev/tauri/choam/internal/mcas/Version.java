@@ -23,6 +23,8 @@ public final class Version {
   /** The initial version of every ref */
   public static final long Start = Long.MIN_VALUE;
 
+  public static final Long BoxedStart = Long.valueOf(Start);
+
   public static final long Incr = 1L;
 
   /** An invalid version constant */

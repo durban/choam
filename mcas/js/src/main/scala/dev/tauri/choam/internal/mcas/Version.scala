@@ -23,6 +23,7 @@ package mcas
 object Version {
 
   final val Start = Long.MinValue
+  final val BoxedStart: java.lang.Long = java.lang.Long.valueOf(Start)
   final val Incr = 1L
   final val None = Long.MaxValue
 
