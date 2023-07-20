@@ -395,13 +395,13 @@ object Rxn extends RxnInstances0 {
         hwd.readOnly
     }
 
-    def directRead[A](r: Ref[A]): Axn[A] =
+    private[choam] final def directRead[A](r: Ref[A]): Axn[A] =
       new DirectRead[A](r.loc)
 
     def ticketRead[A](r: Ref[A]): Axn[unsafe.Ticket[A]] =
       new TicketRead[A](r.loc)
 
-    def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
+    private[choam] final def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
       new Cas[A](r.loc, ov, nv)
 
     def retry[A, B]: Rxn[A, B] =
@@ -426,10 +426,10 @@ object Rxn extends RxnInstances0 {
     private[choam] def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       this.context(uf).flatten // TODO: optimize
 
-    def exchanger[A, B]: Axn[Exchanger[A, B]] =
+    final def exchanger[A, B]: Axn[Exchanger[A, B]] =
       Exchanger.apply[A, B]
 
-    def exchange[A, B](ex: Exchanger[A, B]): Rxn[A, B] =
+    private[choam] final def exchange[A, B](ex: Exchanger[A, B]): Rxn[A, B] =
       ex.exchange
 
     /**
@@ -438,7 +438,7 @@ object Rxn extends RxnInstances0 {
      * is handled automatically otherwise). This is why it
      * is part of the `unsafe` API.
      */
-    def forceValidate: Axn[Unit] =
+    final def forceValidate: Axn[Unit] =
       new ForceValidate
   }
 

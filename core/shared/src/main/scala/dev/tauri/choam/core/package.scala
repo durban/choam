@@ -30,7 +30,7 @@ package object core {
    * and `>>>` or `*>` instead of `flatMap`.
    *
    * The relation between [[Axn]] and [[dev.tauri.choam.core.Rxn Rxn]] is approximately
-   * `Axn[A] ≡ Axn[Any, A]`; or, alternatively
+   * `Axn[A] ≡ Rxn[Any, A]`; or, alternatively
    * `Rxn[A, B] ≡ (A => Axn[B])` (see [[dev.tauri.choam.core.Rxn!.toFunction toFunction]]).
    */
   final type Axn[+A] = Rxn[Any, A] // short for 'astaxanthin'

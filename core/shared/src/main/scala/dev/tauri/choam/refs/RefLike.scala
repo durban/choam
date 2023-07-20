@@ -81,7 +81,7 @@ trait RefLike[A] {
 
 object RefLike {
 
-  def catsRefFromRefLike[F[_] : Reactive, A](ref: RefLike[A]): CatsRef[F, A] =
+  private[choam] final def catsRefFromRefLike[F[_] : Reactive, A](ref: RefLike[A]): CatsRef[F, A] =
     new CatsRefFromRefLike[F, A](ref) {}
 
   private[refs] abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])

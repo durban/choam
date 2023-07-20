@@ -90,7 +90,7 @@ object Ref extends RefInstances0 {
   def lazyArray[A](size: Int, initial: A): Axn[Ref.Array[A]] =
     Rxn.unsafe.delay(_ => unsafeLazyArray(size, initial))
 
-  def catsRefFromRef[F[_] : Reactive, A](ref: Ref[A]): CatsRef[F, A] =
+  private[choam] final def catsRefFromRef[F[_] : Reactive, A](ref: Ref[A]): CatsRef[F, A] =
     new CatsRefFromRef[F, A](ref) {}
 
   private[refs] abstract class CatsRefFromRef[F[_], A](self: Ref[A])(implicit F: Reactive[F])
@@ -118,21 +118,21 @@ object Ref extends RefInstances0 {
     }
   }
 
-  def padded[A](initial: A): Axn[Ref[A]] =
+  final def padded[A](initial: A): Axn[Ref[A]] =
     Rxn.unsafe.delay[Any, Ref[A]](_ => Ref.unsafe(initial))
 
-  def unpadded[A](initial: A): Axn[Ref[A]] =
+  final def unpadded[A](initial: A): Axn[Ref[A]] =
     Rxn.unsafe.delay[Any, Ref[A]](_ => Ref.unsafeUnpadded(initial))
 
-  def unsafe[A](initial: A): Ref[A] =
+  private[choam] final def unsafe[A](initial: A): Ref[A] =
     unsafePadded(initial)
 
-  def unsafePadded[A](initial: A): Ref[A] = {
+  final def unsafePadded[A](initial: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
     unsafeWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
-  def unsafeUnpadded[A](initial: A): Ref[A] = {
+  final def unsafeUnpadded[A](initial: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
     refs.unsafeNewRefU1(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
