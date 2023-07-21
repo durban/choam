@@ -81,13 +81,13 @@ object Ref extends RefInstances0 {
 
   private[refs] trait UnsealedArray[A] extends Array[A]
 
-  private[choam] def apply[A](initial: A): Axn[Ref[A]] =
+  private[choam] final def apply[A](initial: A): Axn[Ref[A]] =
     padded(initial)
 
-  def array[A](size: Int, initial: A): Axn[Ref.Array[A]] =
+  final def array[A](size: Int, initial: A): Axn[Ref.Array[A]] =
     Rxn.unsafe.delay(_ => unsafeStrictArray(size, initial))
 
-  def lazyArray[A](size: Int, initial: A): Axn[Ref.Array[A]] =
+  private[choam] final def lazyArray[A](size: Int, initial: A): Axn[Ref.Array[A]] =
     Rxn.unsafe.delay(_ => unsafeLazyArray(size, initial))
 
   private[choam] final def catsRefFromRef[F[_] : Reactive, A](ref: Ref[A]): CatsRef[F, A] =

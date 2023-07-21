@@ -105,7 +105,7 @@ private final class StrictRefArray[A](
   }
 }
 
-private final class LazyRefArray[A](
+private final class LazyRefArray[A]( // TODO: do we need this? It's not very lazy...
   size: Int,
   initial: A,
   i0: Long,
