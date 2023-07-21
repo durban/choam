@@ -27,7 +27,7 @@ import SpinBench._
 @Fork(3)
 class SpinBench {
 
-  private[this] final val LONG_WAIT = 128
+  private[this] final val LONG_WAIT = 256
 
   @Benchmark
   @Group("baseline1")

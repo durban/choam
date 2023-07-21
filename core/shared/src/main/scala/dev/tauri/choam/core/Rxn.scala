@@ -295,7 +295,7 @@ object Rxn extends RxnInstances0 {
     16384
 
   private[Rxn] final val defaultMaxBackoff =
-    16
+    256
 
   /** This is just exporting `DefaultMcas`, because that's in an internal package */
   final def DefaultMcas: Mcas =
@@ -633,14 +633,12 @@ object Rxn extends RxnInstances0 {
     maxRetries: Int = -1,
   ): R = {
     /*
-     * The default value of 16 for `maxBackoff` ensures that
-     * there is at most 16 (or 32 with randomization) calls
-     * to `onSpinWait` (see `Backoff`). Since `onSpinWait`
-     * is implemented with an x86 PAUSE instruction, which
-     * can use as much as 140 cycles (https://stackoverflow.com/a/44916975),
-     * this means 2240 (or 4480) cycles. That seems a sensible
-     * maximum (it's unlikely we'd ever want to spin for longer
-     * than that without retrying).
+     * The default value of 256 for `maxBackoff` ensures that
+     * there is at most 256 (or 512 with randomization) calls
+     * to `onSpinWait` (see `Backoff`). It was determined
+     * with experiments (see `SpinBench`), that under very
+     * high contention, this increases performance (compared
+     * to the previous value of 16.
      *
      * `randomizeBackoff` is true by default, since it seems
      * to have a small performance advantage for certain
