@@ -100,7 +100,7 @@ object Ref extends RefInstances0 {
       self.unsafeDirectRead.run[F]
   }
 
-  def unsafeStrictArray[A](size: Int, initial: A): Ref.Array[A] = {
+  private[choam] final def unsafeStrictArray[A](size: Int, initial: A): Ref.Array[A] = {
     if (size > 0) {
       val tlr = ThreadLocalRandom.current()
       refs.unsafeNewStrictRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
@@ -109,7 +109,7 @@ object Ref extends RefInstances0 {
     }
   }
 
-  def unsafeLazyArray[A](size: Int, initial: A): Ref.Array[A] = {
+  private[choam] final def unsafeLazyArray[A](size: Int, initial: A): Ref.Array[A] = {
     if (size > 0) {
       val tlr = ThreadLocalRandom.current()
       refs.unsafeNewLazyRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
@@ -127,12 +127,12 @@ object Ref extends RefInstances0 {
   private[choam] final def unsafe[A](initial: A): Ref[A] =
     unsafePadded(initial)
 
-  final def unsafePadded[A](initial: A): Ref[A] = {
+  private[choam] final def unsafePadded[A](initial: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
     unsafeWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
 
-  final def unsafeUnpadded[A](initial: A): Ref[A] = {
+  private[choam] final def unsafeUnpadded[A](initial: A): Ref[A] = {
     val tlr = ThreadLocalRandom.current()
     refs.unsafeNewRefU1(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
   }
