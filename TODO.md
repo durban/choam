@@ -61,9 +61,6 @@
     - `Exchanger`
     - replacing descriptors (weakref?)
     - Other things (Promise? delayComputed?)
-  - LawsSpec:
-    - improve generated `Rxn`s, check if they make sense
-    - check if `testingEqRxn` makes sense
   - Test with other IO impls (when they support ce3)
 - Optimization ideas:
   - Exchanger: there is a lot of `Array[Byte]` copying

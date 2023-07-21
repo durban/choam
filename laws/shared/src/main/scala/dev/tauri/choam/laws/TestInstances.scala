@@ -80,6 +80,7 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
         Gen.const(()),
         Gen.const(null),
         Gen.alphaNumStr,
+        Gen.long,
       )
     )
     implicit val cogAny: Cogen[Any] = Cogen.cogenInt.contramap[Any](_.##)
@@ -99,7 +100,7 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
       ior.fold(
         a => cogA.perturb(seed.next, a),
         b => cogB.perturb(seed.next.next, b),
-        (a, b) => cogB.perturb(cogA.perturb(seed, a), b)
+        (a, b) => cogB.perturb(cogA.perturb(seed.next.next.next, a), b)
       )
     }
   }
