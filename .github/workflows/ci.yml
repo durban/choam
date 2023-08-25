@@ -119,7 +119,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'temurin@11' && steps.setup-java-temurin-11.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v '++ ${{ matrix.scala }}' reload +update
+        run: sbt -v +update
 
       - name: Setup Java (temurin@17)
         id: setup-java-temurin-17
@@ -133,7 +133,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v '++ ${{ matrix.scala }}' reload +update
+        run: sbt -v +update
 
       - name: Setup Java (temurin@20)
         id: setup-java-temurin-20
@@ -147,7 +147,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'temurin@20' && steps.setup-java-temurin-20.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v '++ ${{ matrix.scala }}' reload +update
+        run: sbt -v +update
 
       - name: Setup GraalVM (graal_22.3.2@11)
         id: setup-graalvm-22_3_2-11
@@ -161,7 +161,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'graal_22.3.2@11' && steps.setup-graalvm-22_3_2-11.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v '++ ${{ matrix.scala }}' reload +update
+        run: sbt -v +update
 
       - name: Setup Java (graalvm@17)
         id: setup-java-graalvm-17
@@ -175,7 +175,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'graalvm@17' && steps.setup-java-graalvm-17.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v '++ ${{ matrix.scala }}' reload +update
+        run: sbt -v +update
 
       - name: Setup Java (graalvm@20)
         id: setup-java-graalvm-20
@@ -189,7 +189,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'graalvm@20' && steps.setup-java-graalvm-20.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v '++ ${{ matrix.scala }}' reload +update
+        run: sbt -v +update
 
       - name: Setup Java (semeru@11)
         id: setup-java-semeru-11
@@ -203,7 +203,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'semeru@11' && steps.setup-java-semeru-11.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v '++ ${{ matrix.scala }}' reload +update
+        run: sbt -v +update
 
       - name: Setup Java (semeru@17)
         id: setup-java-semeru-17
@@ -217,7 +217,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'semeru@17' && steps.setup-java-semeru-17.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v '++ ${{ matrix.scala }}' reload +update
+        run: sbt -v +update
 
       - name: Setup Java (semeru@20)
         id: setup-java-semeru-20
@@ -231,7 +231,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'semeru@20' && steps.setup-java-semeru-20.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v '++ ${{ matrix.scala }}' reload +update
+        run: sbt -v +update
 
       - name: Check that workflows are up to date
         shell: bash
