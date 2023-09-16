@@ -37,4 +37,4 @@ addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1")
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.9.16")
 
 ThisBuild / semanticdbEnabled := true
-ThisBuild / semanticdbVersion := "4.7.8"
+ThisBuild / semanticdbVersion := "4.8.10"

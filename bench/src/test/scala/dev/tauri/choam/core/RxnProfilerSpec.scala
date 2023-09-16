@@ -40,7 +40,7 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
   def simulateEnd(p: RxnProfiler): F[Map[String, Result[_]]] = F.delay {
     import scala.jdk.CollectionConverters._
     val rss = p.afterIteration(null, null, null)
-    Map(rss.asScala.toList.map { r =>
+    Map[String, Result[_]](rss.asScala.toList.map { r =>
       (r.getLabel -> r)
     }: _*)
   }

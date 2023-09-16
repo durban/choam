@@ -16,8 +16,8 @@
  */
 
 // Scala versions:
-val scala2 = "2.13.11"
-val scala3 = "3.3.0"
+val scala2 = "2.13.12"
+val scala3 = "3.3.1"
 
 // CI JVM versions:
 val jvmOldest = JavaSpec.temurin("11")
@@ -626,8 +626,8 @@ lazy val dependencies = new {
   val catsVersion = "2.10.0"
   val catsEffectVersion = "3.5.1"
   val catsMtlVersion = "1.3.1"
-  val catsCollectionsVersion = "0.9.7"
-  val fs2Version = "3.8.0"
+  val catsCollectionsVersion = "0.9.8"
+  val fs2Version = "3.9.2"
   val scalacheckEffectVersion = "2.0.0-M2"
   val jcstressVersion = "0.16"
   val jmhVersion = "1.33"
@@ -666,7 +666,7 @@ lazy val dependencies = new {
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.4")
   val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.0.0.8")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.16")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.0.17")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
