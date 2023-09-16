@@ -63,7 +63,7 @@ object AsyncReactive {
     final override def promise[A]: Axn[Promise[F, A]] =
       Promise.forAsync[F, A](this, F)
 
-    final override def monadCancel =
+    final override def monadCancel: MonadCancel[F, Throwable] =
       F
   }
 }

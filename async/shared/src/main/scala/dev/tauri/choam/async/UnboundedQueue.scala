@@ -64,7 +64,7 @@ object UnboundedQueue {
             F.monad.widen(wl.asyncGet)
           final override def size: F[Int] =
             q.size.run[F]
-          final override def toCats =
+          final override def toCats: CatsQueue[F, A] =
             new AsyncQueue.CatsQueueAdapter(this)
         }
       }

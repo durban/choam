@@ -439,24 +439,24 @@ object DataMapBench {
   @State(Scope.Benchmark)
   class ChmSt extends JucCmSt {
 
-    import java.util.concurrent.ConcurrentHashMap
+    import java.util.concurrent.{ ConcurrentMap, ConcurrentHashMap }
 
     private[this] val chm: ConcurrentHashMap[String, String] =
       new ConcurrentHashMap[String, String]
 
-    final override def cm =
+    final override def cm: ConcurrentMap[String, String] =
       chm
   }
 
   @State(Scope.Benchmark)
   class CslmSt extends JucCmSt {
 
-    import java.util.concurrent.ConcurrentSkipListMap
+    import java.util.concurrent.{ ConcurrentMap, ConcurrentSkipListMap }
 
     val cslm: ConcurrentSkipListMap[String, String] =
       new ConcurrentSkipListMap[String, String]
 
-    final override def cm =
+    final override def cm:ConcurrentMap[String, String] =
       cslm
   }
 

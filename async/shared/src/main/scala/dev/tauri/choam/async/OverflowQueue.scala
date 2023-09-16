@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package async
 
+import cats.effect.std.{ Queue => CatsQueue }
+
 abstract class OverflowQueue[F[_], A]
   extends UnboundedQueue.WithSize[F, A] {
 
@@ -62,7 +64,7 @@ object OverflowQueue {
     final override def size: F[Int] =
       F.run(buff.size)
 
-    final override def toCats =
+    final override def toCats: CatsQueue[F, A] =
       new AsyncQueue.CatsQueueAdapter(this)
 
     final override def tryEnqueue: Rxn[A, Boolean] =
@@ -87,7 +89,7 @@ object OverflowQueue {
     final def size: F[Int] =
       F.run(q.size)
 
-    final def toCats =
+    final def toCats: CatsQueue[F, A] =
       new AsyncQueue.CatsQueueAdapter(this)
 
     final def tryEnqueue: Rxn[A, Boolean] =

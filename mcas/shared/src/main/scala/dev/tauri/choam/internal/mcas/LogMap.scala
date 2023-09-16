@@ -49,7 +49,7 @@ private object LogMap {
     final override def size =
       0
 
-    final override def valuesIterator =
+    final override def valuesIterator: Iterator[HalfWordDescriptor[_]] =
       Iterator.empty
 
     final override def nonEmpty =

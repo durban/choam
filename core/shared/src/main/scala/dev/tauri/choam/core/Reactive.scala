@@ -53,7 +53,7 @@ object Reactive {
       }
     }
 
-    final override def monad =
+    final override def monad: Monad[F] =
       F
   }
 
