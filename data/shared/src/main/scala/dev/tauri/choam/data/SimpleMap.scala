@@ -18,43 +18,39 @@
 package dev.tauri.choam
 package data
 
-import scala.collection.immutable.{ Map => SMap }
+import scala.collection.immutable.{ Map => ScalaMap }
 
 import cats.kernel.{ Hash, Order }
-
-import SimpleMap.Wrapper
+import cats.collections.HashMap
 
 private final class SimpleMap[K, V] private (
-  repr: Ref[SMap[Wrapper[K], V]],
+  repr: Ref[HashMap[K, V]],
 )(implicit K: Hash[K]) extends Map.UnsealedMapExtra[K, V] { self =>
 
   override def put: Rxn[(K, V), Option[V]] = {
-    repr.upd[(K, V), Option[V]] { (m, kv) =>
-      val kw = Wrapper(kv._1)
-      (m + (kw -> kv._2), m.get(kw))
+    repr.upd { (m, kv) =>
+      (m.updated(kv._1, kv._2), m.get(kv._1))
     }
   }
 
   override def putIfAbsent: Rxn[(K, V), Option[V]] = {
     repr.upd[(K, V), Option[V]] { (m, kv) =>
-      val kw = Wrapper(kv._1)
-      m.get(kw) match {
+      m.get(kv._1) match {
         case None =>
-          (m + (kw -> kv._2), None)
-        case Some(v) =>
-          (m, Some(v))
+          (m.updated(kv._1, kv._2), None)
+        case s @ Some(_) =>
+          (m, s)
       }
     }
   }
 
   override def replace: Rxn[(K, V, V), Boolean] = {
     repr.upd[(K, V, V), Boolean] { (m, kvv) =>
-      val kw = Wrapper(kvv._1)
-      m.get(kw) match {
+      m.get(kvv._1) match {
         case None =>
           (m, false)
         case Some(v) if equ(v, kvv._2) =>
-          (m + (kw -> kvv._3), true)
+          (m.updated(kvv._1, kvv._3), true)
         case _ =>
           (m, false)
       }
@@ -63,25 +59,24 @@ private final class SimpleMap[K, V] private (
 
   override def get: Rxn[K, Option[V]] = {
     repr.upd[K, Option[V]] { (m, k) =>
-      (m, m.get(Wrapper(k)))
+      (m, m.get(k))
     }
   }
 
   override def del: Rxn[K, Boolean] = {
     repr.upd[K, Boolean] { (m, k) =>
-      val newM = m - Wrapper(k)
+      val newM = m.removed(k)
       (newM, newM.size != m.size)
     }
   }
 
   override def remove: Rxn[(K, V), Boolean] = {
     repr.upd[(K, V), Boolean] { (m, kv) =>
-      val kw = Wrapper(kv._1)
-      m.get(kw) match {
+      m.get(kv._1) match {
         case None =>
           (m, false)
         case Some(v) if equ(v, kv._2) =>
-          (m - kw, true)
+          (m.removed(kv._1), true)
         case _ =>
           (m, false)
       }
@@ -89,54 +84,58 @@ private final class SimpleMap[K, V] private (
   }
 
   override def clear: Axn[Unit] =
-    repr.update(_ => SMap.empty)
+    repr.update(_ => HashMap.empty[K, V])
 
   override def values(implicit V: Order[V]): Axn[Vector[V]] = {
-    repr.get.map { m =>
-      m.valuesIterator.toVector.sorted(V.toOrdering)
+    repr.get.map { hm =>
+      val b = scala.collection.mutable.ArrayBuffer.newBuilder[V]
+      b.sizeHint(hm.size)
+      val it =  hm.valuesIterator
+      while (it.hasNext) {
+        b += it.next()
+      }
+      b.result().sortInPlace()(V.toOrdering).toVector
     }
   }
 
-  final override def refLike(key: K, default: V): RefLike[V] = new RefLike[V] {
-
-    val wk = Wrapper(key)
+  override def refLike(key: K, default: V): RefLike[V] = new RefLike[V] {
 
     final def get: Axn[V] =
       self.get.provide(key).map(_.getOrElse(default))
 
     final def upd[B, C](f: (V, B) => (V, C)): B =#> C = {
       Rxn.computed[B, C] { (b: B) =>
-        repr.modify { phm =>
-          val currVal = phm.getOrElse(wk, default)
+        repr.modify { hm =>
+          val currVal = hm.getOrElse(key, default)
           val (newVal, c) = f(currVal, b)
-          if (equ(newVal, default)) (phm - wk, c)
-          else (phm.updated(wk, newVal), c)
+          if (equ(newVal, default)) (hm.removed(key), c)
+          else (hm.updated(key, newVal), c)
         }
       }
     }
 
     final def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
       Rxn.computed[B, C] { (b: B) =>
-        repr.modifyWith { phm =>
-          val currVal = phm.getOrElse(wk, default)
+        repr.modifyWith { hm =>
+          val currVal = hm.getOrElse(key, default)
           f(currVal, b).map {
             case (newVal, c) =>
-              if (equ(newVal, default)) (phm - wk, c)
-              else (phm.updated(wk, newVal), c)
+              if (equ(newVal, default)) (hm.removed(key), c)
+              else (hm.updated(key, newVal), c)
           }
         }
       }
     }
   }
 
-  private[data] final def unsafeSnapshot: Axn[SMap[K, V]] = {
-    repr.get.map { m =>
-      // NB: SMap won't use a custom
+  private[data] final def unsafeSnapshot: Axn[ScalaMap[K, V]] = {
+    repr.get.map { hm =>
+      // NB: ScalaMap won't use a custom
       // Hash; this is one reason why
       // this method is `unsafe`.
-      val b = SMap.newBuilder[K, V]
-      m.iterator.foreach { wkv =>
-        b += ((wkv._1.k, wkv._2))
+      val b = ScalaMap.newBuilder[K, V]
+      hm.iterator.foreach { entry =>
+        b += ((entry._1, entry._2))
       }
       b.result()
     }
@@ -144,29 +143,6 @@ private final class SimpleMap[K, V] private (
 }
 
 private object SimpleMap {
-
-  def apply[K, V](implicit K: Hash[K]): Axn[Map.Extra[K, V]] = {
-    Ref[SMap[Wrapper[K], V]](SMap.empty).map { repr =>
-      new SimpleMap[K, V](repr)
-    }
-  }
-
-  // Yeah, we're unfortunately wrapping each key...
-  private final class Wrapper[K](val k: K)(implicit K: Hash[K]) {
-    final override def hashCode: Int =
-      K.hash(k)
-    final override def equals(that: Any): Boolean = that match {
-      case that: Wrapper[_] =>
-        // TODO: probably safe, as `Map` is invariant in `K`,
-        // TODO: and users have no access to `Wrapper`
-        K.eqv(k, that.k.asInstanceOf[K])
-      case _ =>
-        false
-    }
-  }
-
-  private final object Wrapper {
-    def apply[K : Hash](k: K): Wrapper[K] =
-      new Wrapper(k)
-  }
+  final def apply[K: Hash, V]: Axn[Map.Extra[K, V]] =
+    Ref(HashMap.empty[K, V]).map(new SimpleMap(_))
 }

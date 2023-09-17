@@ -221,7 +221,6 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
   .jsSettings(commonSettingsJs)
   .dependsOn(core % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.catsCollections.value)
-  .jvmSettings(libraryDependencies += dependencies.paguro.value)
 
 lazy val async = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -649,7 +648,6 @@ lazy val dependencies = new {
   val decline = Def.setting("com.monovore" %%% "decline" % "2.4.1") // https://github.com/bkirwi/decline
 
   // JVM:
-  val paguro = Def.setting("org.organicdesign" % "Paguro" % "3.10.3") // https://github.com/GlenKPeterson/Paguro
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.17")
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.1") // https://github.com/JCTools/JCTools
   val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.23") // https://github.com/JetBrains/lincheck
