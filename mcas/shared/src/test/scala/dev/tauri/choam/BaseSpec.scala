@@ -66,6 +66,10 @@ trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
     this.assume(!isWindows(), "this test doesn't run on Windows")
   }
 
+  def assumeNotMac(): Unit = {
+    this.assume(!isMac(), "this test doesn't run on Mac")
+  }
+
   def isOpenJdk(): Boolean = {
     val vmName = java.lang.System.getProperty("java.vm.name")
     vmName.contains("HotSpot") || vmName.contains("OpenJDK")
@@ -78,5 +82,9 @@ trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
 
   def isWindows(): Boolean = {
     System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("windows")
+  }
+
+  def isMac(): Boolean = {
+    System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("mac os x")
   }
 }

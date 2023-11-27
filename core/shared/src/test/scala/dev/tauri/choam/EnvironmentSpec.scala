@@ -38,6 +38,7 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
     println(s"isOpenJdk() == ${isOpenJdk()}")
     println(s"isOpenJ9() == ${isOpenJ9()}")
     println(s"isWindows() == ${isWindows()}")
+    println(s"isMac() == ${isMac()}")
     println(s"isJvm() == ${isJvm()}")
     println(s"isJs() == ${isJs()}")
     println(s"isVmSupportsLongCas() == ${isVmSupportsLongCas()}")

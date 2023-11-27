@@ -87,6 +87,7 @@ class JolSpec extends BaseSpec {
 
   test("Ref should be padded to avoid false sharing") {
     assumeOpenJdk()
+    assumeNotMac()
     val refs = List[MemoryLocation[String]](
       Ref.unsafe("foo").loc,
       MemoryLocation.unsafePadded("foo"),
@@ -99,6 +100,7 @@ class JolSpec extends BaseSpec {
 
   test("Unpadded Ref should not be padded") {
     assumeOpenJdk()
+    assumeNotMac()
     val refs = List[MemoryLocation[String]](
       Ref.unsafeUnpadded("bar").loc,
       MemoryLocation.unsafeUnpadded("bar"),
@@ -110,6 +112,7 @@ class JolSpec extends BaseSpec {
 
   test("Ref2 P1P1 should be double-padded") {
     assumeOpenJdk()
+    assumeNotMac()
     val ref: Ref2[_, _] = Ref2.unsafeP1P1[String, Object]("bar", new AnyRef)
     val (left1, _) = getLeftRightPaddedSize(ref, JolSpec.fieldNamesA)
     val (left2, _) = getLeftRightPaddedSize(ref, JolSpec.fieldNamesB)
