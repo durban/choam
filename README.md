@@ -115,7 +115,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       condition set by another thread/fiber/similar). However, `Rxn` is
       interoperable with async data types which implement
       [Cats Effect](https://github.com/typelevel/cats-effect) typeclasses
-      (see the ``choam-async`` module). This feature can be used to provide such
+      (see the `choam-async` module). This feature can be used to provide such
       "waiting" functionality (e.g., `dev.tauri.choam.async.AsyncQueue.ringBuffer`
       is a queue with `enqueue` in `Rxn` and `deque` in, e.g., `IO` or another async `F[_]`).
     - The implementation (the `Rxn` interpreter) is also lock-free; STM implementations
