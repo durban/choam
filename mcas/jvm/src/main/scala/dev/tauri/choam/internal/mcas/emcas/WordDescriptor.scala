@@ -27,21 +27,12 @@ package emcas
 // be an instance of `WordDescriptor`, we could
 // not do that.
 private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDescriptor
-  final val half: HalfWordDescriptor[A],
   final val parent: EmcasDescriptor,
+  final val address: MemoryLocation[A],
+  final val ov: A,
+  final val nv: A,
+  final val oldVersion: Long,
 ) {
-
-  final def address: MemoryLocation[A] =
-    this.half.address
-
-  final def ov: A =
-    this.half.ov
-
-  final def nv: A =
-    this.half.nv
-
-  final def oldVersion: Long =
-    this.half.version
 
   final def cast[B]: WordDescriptor[B] =
     this.asInstanceOf[WordDescriptor[B]]
@@ -58,7 +49,13 @@ private object WordDescriptor {
   private[emcas] def apply[A](
     half: HalfWordDescriptor[A],
     parent: EmcasDescriptor,
-  ): WordDescriptor[A] = new WordDescriptor[A](half, parent)
+  ): WordDescriptor[A] = new WordDescriptor[A](
+    parent = parent,
+    address = half.address,
+    ov = half.ov,
+    nv = half.nv,
+    oldVersion = half.version,
+  )
 
   private[emcas] def prepare[A](
     half: HalfWordDescriptor[A],
