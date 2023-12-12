@@ -24,6 +24,7 @@ import scala.util.hashing.MurmurHash3
 
 final class Descriptor private (
   private val map: LogMap,
+  final val validTs: Long,
   private val validTsBoxed: java.lang.Long,
   val readOnly: Boolean,
   private val versionIncr: Long,
@@ -31,9 +32,7 @@ final class Descriptor private (
 ) {
 
   require((versionCas eq null) || (versionIncr > 0L))
-
-  final def validTs: Long =
-    this.validTsBoxed.longValue()
+  require((validTsBoxed eq null) || (validTsBoxed.longValue == validTs))
 
   final def size: Int =
     this.map.size + (if (this.versionCas ne null) 1 else 0)
@@ -67,28 +66,15 @@ final class Descriptor private (
     hwd.version <= this.validTs
   }
 
-  /** True iff `this` can (theoretically) commit with the same version as `that` */
-  private[mcas] final def canShareVersionWith(that: Descriptor): Boolean = {
-    if (this.hasVersionCas) {
-      assert(this.map.nonEmpty)
-      (!this.readOnly) &&
-      (!that.readOnly) &&
-      (this.validTsBoxed eq that.validTsBoxed) &&
-      (this.versionIncr == that.versionIncr) &&
-      this.map.isDisjoint(that.map)
-    } else {
-      false
-    }
-  }
-
   private[mcas] final def hasVersionCas: Boolean = {
     this.versionCas ne null
   }
 
-  private final def withValidTsBoxed(newBoxed: java.lang.Long): Descriptor =  {
+  private final def withValidTs(newValidTs: Long, newValidTsBoxed: java.lang.Long): Descriptor =  {
     new Descriptor(
       map = this.map,
-      validTsBoxed = newBoxed,
+      validTs = newValidTs,
+      validTsBoxed = newValidTsBoxed,
       readOnly = this.readOnly,
       versionIncr = this.versionIncr,
       versionCas = this.versionCas,
@@ -99,6 +85,7 @@ final class Descriptor private (
     require(this.versionCas eq null)
     new Descriptor(
       map = this.map,
+      validTs = this.validTs,
       validTsBoxed = this.validTsBoxed,
       readOnly = this.readOnly,
       versionIncr = 0L,
@@ -121,6 +108,7 @@ final class Descriptor private (
     val newMap = this.map.updated(d.address, d)
     new Descriptor(
       newMap,
+      this.validTs,
       this.validTsBoxed,
       this.readOnly && desc.readOnly,
       versionIncr = this.versionIncr,
@@ -135,6 +123,7 @@ final class Descriptor private (
     val newMap = this.map.updated(d.address, d)
     new Descriptor(
       newMap,
+      this.validTs,
       this.validTsBoxed,
       this.readOnly && desc.readOnly, // this is a simplification:
       // we don't want to rescan here the whole log, so we only pass
@@ -150,6 +139,7 @@ final class Descriptor private (
     val newMap = this.map.updated(d.address, d)
     new Descriptor(
       newMap,
+      this.validTs,
       this.validTsBoxed,
       this.readOnly && desc.readOnly, // this is a simplification:
       // we don't want to rescan here the whole log, so we only pass
@@ -163,14 +153,16 @@ final class Descriptor private (
     require(this.versionCas eq null)
     require(!this.readOnly)
     require(this.versionIncr > 0L)
+    require(this.validTsBoxed ne null)
     val hwd = HalfWordDescriptor[java.lang.Long](
       commitTsRef.asInstanceOf[MemoryLocation[java.lang.Long]],
-      ov = this.validTsBoxed, // no boxing here
+      ov = this.validTsBoxed, // no re-boxing here
       nv = java.lang.Long.valueOf(this.newVersion),
       version = Version.Start, // the version's version is unused/arbitrary
     )
     new Descriptor(
       map = this.map,
+      validTs = this.validTs,
       validTsBoxed = this.validTsBoxed,
       readOnly = false,
       versionIncr = this.versionIncr,
@@ -195,7 +187,7 @@ final class Descriptor private (
     // NB: we must read the commitTs *before* the `ctx.validate...`
     val newValidTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
-    this.validateAndTryExtendInternal(newValidTsBoxed, ctx, additionalHwd)
+    this.validateAndTryExtendInternal(newValidTsBoxed.longValue, newValidTsBoxed, ctx, additionalHwd)
   }
 
   private[mcas] final def validateAndTryExtendVer(
@@ -203,26 +195,33 @@ final class Descriptor private (
     ctx: Mcas.ThreadContext,
     additionalHwd: HalfWordDescriptor[_], // can be null
   ): Descriptor = {
+    // We're passing `newValidTsBoxed = null`. This is ugly,
+    // but nothing will actually need it (we're doing EMCAS
+    // if we're here), and this way we avoid allocating
+    // an extra `java.lang.Long`.
     this.validateAndTryExtendInternal(
-      java.lang.Long.valueOf(currentTs),
-      ctx,
-      additionalHwd,
+      newValidTs = currentTs,
+      newValidTsBoxed = null, // see above
+      ctx = ctx,
+      additionalHwd = additionalHwd,
     )
   }
 
   private[this] final def validateAndTryExtendInternal(
-    newValidTsBoxed: java.lang.Long,
+    newValidTs: Long,
+    newValidTsBoxed: java.lang.Long, // can be null
     ctx: Mcas.ThreadContext,
     additionalHwd: HalfWordDescriptor[_], // can be null
   ): Descriptor = {
-    if (newValidTsBoxed.longValue > this.validTs) {
+    if (newValidTs > this.validTs) {
       if (
         ctx.validate(this) &&
         ((additionalHwd eq null) || ctx.validateHwd(additionalHwd))
       ) {
-        assert((additionalHwd eq null) || (additionalHwd.version <= newValidTsBoxed.longValue))
+        assert((additionalHwd eq null) || (additionalHwd.version <= newValidTs))
         new Descriptor(
           map = this.map,
+          validTs = newValidTs,
           validTsBoxed = newValidTsBoxed,
           readOnly = this.readOnly,
           versionIncr = this.versionIncr,
@@ -263,7 +262,7 @@ final class Descriptor private (
             if (this.hasVersionCas) {
               this.validTsBoxed eq that.validTsBoxed
             } else {
-              this.validTsBoxed.longValue == that.validTsBoxed.longValue
+              this.validTs == that.validTs
             }
           } &&
           (this.versionIncr == that.versionIncr) &&
@@ -275,7 +274,7 @@ final class Descriptor private (
   }
 
   final override def hashCode: Int = {
-    val h1 = MurmurHash3.mix(0xefebde66, this.validTsBoxed.longValue.##)
+    val h1 = MurmurHash3.mix(0xefebde66, this.validTs.##)
     val h2 = MurmurHash3.mix(h1, this.readOnly.##)
     val h3 = MurmurHash3.mix(h2, this.versionIncr.##)
     val h4 = MurmurHash3.mix(h3, this.versionCas.##)
@@ -292,17 +291,25 @@ object Descriptor {
   private[mcas] final def empty(commitTsRef: MemoryLocation[Long], ctx: Mcas.ThreadContext): Descriptor = {
     val validTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
-    emptyFromBoxed(validTsBoxed)
+    new Descriptor(
+      LogMap.empty,
+      validTs = validTsBoxed.longValue,
+      validTsBoxed = validTsBoxed,
+      readOnly = true,
+      versionIncr = DefaultVersionIncr,
+      versionCas = null,
+    )
   }
 
   private[mcas] final def emptyFromVer(currentTs: Long): Descriptor = {
-    emptyFromBoxed(java.lang.Long.valueOf(currentTs))
-  }
-
-  private[this] final def emptyFromBoxed(validTsBoxed: java.lang.Long): Descriptor = {
+    // We're passing `validTsBoxed = null`. This is ugly,
+    // but nothing will actually need it (we're doing EMCAS
+    // if we're here), and this way we avoid allocating
+    // an extra `java.lang.Long`.
     new Descriptor(
       LogMap.empty,
-      validTsBoxed = validTsBoxed,
+      validTs = currentTs,
+      validTsBoxed = null, // see above
       readOnly = true,
       versionIncr = DefaultVersionIncr,
       versionCas = null,
@@ -337,10 +344,10 @@ object Descriptor {
     // we temporarily choose the older `validTs`,
     // but will extend if they're not equal:
     val needToExtend = if (a.validTs < b.validTs) {
-      merged = merged.withValidTsBoxed(a.validTsBoxed)
+      merged = merged.withValidTs(a.validTs, a.validTsBoxed)
       true
     } else if (a.validTs > b.validTs) {
-      merged = merged.withValidTsBoxed(b.validTsBoxed)
+      merged = merged.withValidTs(b.validTs, b.validTsBoxed)
       true
     } else {
       // they're equal, no need to extend:
