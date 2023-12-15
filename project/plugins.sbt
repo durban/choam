@@ -15,12 +15,12 @@
  * limitations under the License.
  */
 
-val sbtTypelevelVersion = "0.6.2"
+val sbtTypelevelVersion = "0.6.4"
 
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.5")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.7")
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 addSbtPlugin("io.crashbox" % "sbt-gpg" % "0.2.1")
-addSbtPlugin("ch.epfl.scala" % "sbt-version-policy" % "2.1.0")
+addSbtPlugin("ch.epfl.scala" % "sbt-version-policy" % "3.2.0")
 addSbtPlugin("org.typelevel" % "sbt-typelevel-no-publish" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-versioning" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-settings" % sbtTypelevelVersion)
@@ -28,11 +28,11 @@ addSbtPlugin("org.typelevel" % "sbt-typelevel-mima" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-sonatype" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-github" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-github-actions" % sbtTypelevelVersion)
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.0")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.10.0")
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.11.0")
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.11.1")
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.2")
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.13.2")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.14.0")
 addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1")
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.9.16")
 
