@@ -240,10 +240,16 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    *
    * @param a the input to the [[Rxn]].
    * @param mcas the [[internal.mcas.Mcas]] implementation to use.
-   * @param maxRetries the maximum number of retries (pass `None` for possibly infinite retries).
    * @return the result of the executed [[Rxn]].
    */
-  final def unsafePerform( // TODO: private
+  final def unsafePerform(
+    a: A,
+    mcas: Mcas,
+  ): B = {
+    unsafePerform(a, mcas, maxRetries = None)
+  }
+
+  private[choam] final def unsafePerform(
     a: A,
     mcas: Mcas,
     maxRetries: Option[Int] = None,
@@ -261,6 +267,17 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     )
   }
 
+  /**
+   * Execute the [[Rxn]] with the specified input `a`, and run
+   * configuration `cfg`.
+   *
+   * This method is `unsafe` because it performs side-effects.
+   *
+   * @param a the input to the [[Rxn]].
+   * @param mcas the [[internal.mcas.Mcas]] implementation to use.
+   * @param cfg the run configuration options to use.
+   * @return the result of the executed [[Rxn]].
+   */
   final def unsafePerformConfigured(
     a: A,
     mcas: Mcas,
