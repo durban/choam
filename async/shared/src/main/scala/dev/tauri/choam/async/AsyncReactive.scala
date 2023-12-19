@@ -34,7 +34,7 @@ trait AsyncReactive[F[_]] extends Reactive[F] { self =>
         self.promise[A].map(_.mapK(t))
       final override def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit) =
         self.waitList[A](syncGet, syncSet).map(_.mapK(t)(this))
-      override def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean) =
+      final override def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean) =
         self.genWaitList(tryGet, trySet).map(_.mapK(t)(this))
       final override def monadCancel: MonadCancel[G, _] =
         G

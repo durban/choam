@@ -983,8 +983,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     Reactive[F] : FunctionK[Axn, F]
   }
 
+  val never = Rxn.unsafe.retry[Any, Int]
+
   test("maxRetries") {
-    val never = Rxn.unsafe.retry[Any, Int]
     def countTries(ctr: AtomicInteger) = {
       Axn.unsafe.delay { ctr.getAndIncrement() } *> Rxn.unsafe.retry[Any, Int]
     }
@@ -1004,5 +1005,18 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries = None)), "foo")
       _ <- assertResultF(F.delay(Rxn.pure("foo").unsafePerform((), this.mcasImpl, maxRetries = None)), "foo")
     } yield ()
+  }
+
+  test("config options") {
+    val cfg = Reactive
+      .RunConfig
+      .Default
+      .withRandomizeBackoff(false)
+      .withMaxBackoff(1024)
+      .withMaxRetries(Some(42))
+    assertRaisesF(
+      Reactive[F].applyConfigured(never, 99, cfg),
+      _.isInstanceOf[Rxn.MaxRetriesReached],
+    )
   }
 }

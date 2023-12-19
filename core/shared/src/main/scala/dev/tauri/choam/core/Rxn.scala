@@ -243,17 +243,39 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * @param maxRetries the maximum number of retries (pass `None` for possibly infinite retries).
    * @return the result of the executed [[Rxn]].
    */
-  final def unsafePerform(
+  final def unsafePerform( // TODO: private
     a: A,
     mcas: Mcas,
     maxRetries: Option[Int] = None,
   ): B = {
+    val maxRetriesInt = maxRetries match {
+      case Some(n) => n
+      case None => -1
+    }
     unsafePerformInternal(
       a = a,
       ctx = mcas.currentContext(),
       maxBackoff = Rxn.defaultMaxBackoff,
       randomizeBackoff = true,
-      maxRetries = maxRetries.getOrElse(-1),
+      maxRetries = maxRetriesInt,
+    )
+  }
+
+  final def unsafePerformConfigured(
+    a: A,
+    mcas: Mcas,
+    cfg: Reactive.RunConfig,
+  ): B = {
+    val maxRetries = cfg.maxRetries match {
+      case Some(n) => n
+      case None => -1
+    }
+    unsafePerformInternal(
+      a = a,
+      ctx = mcas.currentContext(),
+      maxBackoff = cfg.maxBackoff,
+      randomizeBackoff = cfg.randomizeBackoff,
+      maxRetries = maxRetries,
     )
   }
 
@@ -294,7 +316,7 @@ object Rxn extends RxnInstances0 {
   private[this] final val interruptCheckPeriod =
     16384
 
-  private[Rxn] final val defaultMaxBackoff =
+  private[core] final val defaultMaxBackoff =
     256
 
   /** This is just exporting `DefaultMcas`, because that's in an internal package */

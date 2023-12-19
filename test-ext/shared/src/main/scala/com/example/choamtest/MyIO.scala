@@ -55,31 +55,31 @@ object MyIO {
 
   implicit def asyncReactiveForMyIO: AsyncReactive[MyIO] = new AsyncReactive[MyIO] {
 
-    override def apply[A, B](r: Rxn[A,B], a: A): MyIO[B] =
-      MyIO(IO.delay { r.unsafePerform(a, this.mcasImpl) })
+    final override def applyConfigured[A, B](r: Rxn[A,B], a: A, cfg: Reactive.RunConfig): MyIO[B] =
+      MyIO(IO.delay { r.unsafePerformConfigured(a, this.mcasImpl, cfg) })
 
-    override def mcasImpl: Mcas =
+    final override def mcasImpl: Mcas =
       Mcas.DefaultMcas
 
-    override def monad: Monad[MyIO] =
+    final override def monad: Monad[MyIO] =
       asyncForMyIO
 
-    override def promise[A]: Axn[Promise[MyIO, A]] =
+    final override def promise[A]: Axn[Promise[MyIO, A]] =
       Promise.forAsync[MyIO, A](this, asyncForMyIO)
 
-    override def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[MyIO, A]] = {
+    final override def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[MyIO, A]] = {
       asyncReactiveForIO.waitList[A](syncGet, syncSet).map { wl =>
         new WaitListForMyIO[A](wl)
       }
     }
 
-    override def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean): Axn[GenWaitList[MyIO, A]] = {
+    final override def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean): Axn[GenWaitList[MyIO, A]] = {
       asyncReactiveForIO.genWaitList[A](tryGet, trySet).map { gwl =>
         new GenWaitListForMyIO[A](gwl)
       }
     }
 
-    override def monadCancel: MonadCancel[MyIO, _] =
+    final override def monadCancel: MonadCancel[MyIO, _] =
       asyncForMyIO
   }
 
