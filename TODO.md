@@ -27,6 +27,7 @@
   - if a suspended operation (e.g., a stack `pop`) is cancelled, this can cause lost items
   - it's unclear if we can fix this with the current CE API
   - and even if we would know that the wakeup is lost, it's already too late: the `Rxn` have been already committed
+- Calling CE `async` callback might not be lock-free (it is not in CE 3 IO)
 - `SkipListModelTest` sometimes fails; it's unclear if this is just a timeout, but seems likely:
   ```
   ==> X dev.tauri.choam.skiplist.SkipListModelTest.Model checking test of SkipListMap  288.505s org.jetbrains.kotlinx.lincheck.LincheckAssertionError:

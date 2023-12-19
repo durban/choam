@@ -49,6 +49,9 @@ object GenWaitList {
   private type Callback[A] =
     Either[Throwable, A] => Unit
 
+  private[this] final val RightUnit: Either[Nothing, Unit] =
+    Right(())
+
   def genWaitListForAsync[F[_], A](
     tryGet: Axn[Option[A]],
     trySet: A =#> Boolean,
@@ -100,7 +103,7 @@ object GenWaitList {
   )(implicit F: Async[F], rF: AsyncReactive[F]) extends GenWaitListCommon[F, A] {
 
     private[this] val rightUnit: Either[Nothing, Unit] =
-      Right(())
+      RightUnit
 
     override def trySet: A =#> Boolean = {
       getters.tryDeque.flatMap {
