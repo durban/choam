@@ -25,8 +25,8 @@ import internal.mcas.Mcas
 
 trait Reactive[F[_]] extends ~>[Axn, F] { self =>
   final def apply[A, B](r: Rxn[A, B], a: A): F[B] =
-    this.applyConfigured(r, a, Reactive.RunConfig.Default)
-  def applyConfigured[A, B](r: Rxn[A, B], a: A, cfg: Reactive.RunConfig): F[B]
+    this.applyConfigured(r, a, Rxn.RunConfig.Default)
+  def applyConfigured[A, B](r: Rxn[A, B], a: A, cfg: Rxn.RunConfig): F[B]
   def mcasImpl: Mcas
   def monad: Monad[F]
   final def mapK[G[_]](t: F ~> G)(implicit G: Monad[G]): Reactive[G] =
@@ -39,46 +39,6 @@ trait Reactive[F[_]] extends ~>[Axn, F] { self =>
 
 object Reactive {
 
-  @nowarn("cat=scala3-migration")
-  final case class RunConfig private (
-    maxRetries: Option[Int],
-    maxBackoff: Int,
-    randomizeBackoff: Boolean,
-  ) {
-
-    final def withMaxRetries(maxRetries: Option[Int]): RunConfig =
-      this.copy(maxRetries = maxRetries)
-
-    final def withMaxBackoff(maxBackoff: Int): RunConfig =
-      this.copy(maxBackoff = maxBackoff)
-
-    final def withRandomizeBackoff(randomizeBackoff: Boolean): RunConfig =
-      this.copy(randomizeBackoff = randomizeBackoff)
-  }
-
-  final object RunConfig {
-
-    val Default: RunConfig = RunConfig(
-      maxRetries = None,
-      maxBackoff = Rxn.defaultMaxBackoff,
-      randomizeBackoff = true,
-    )
-
-    final def apply(
-      maxRetries: Option[Int],
-      maxBackoff: Int,
-      randomizeBackoff: Boolean,
-    ): RunConfig = new RunConfig(
-      maxRetries = maxRetries,
-      maxBackoff = maxBackoff,
-      randomizeBackoff = randomizeBackoff,
-    )
-
-    @unused
-    private final def unapply(cfg: RunConfig) =
-      cfg
-  }
-
   def apply[F[_]](implicit inst: Reactive[F]): inst.type =
     inst
 
@@ -89,7 +49,7 @@ object Reactive {
     final override val mcasImpl: Mcas
   )(implicit F: Sync[F]) extends Reactive[F] {
 
-    final override def applyConfigured[A, B](r: Rxn[A, B], a: A, cfg: Reactive.RunConfig): F[B] = {
+    final override def applyConfigured[A, B](r: Rxn[A, B], a: A, cfg: Rxn.RunConfig): F[B] = {
       F.delay {
         r.unsafePerformConfigured(a, this.mcasImpl, cfg)
       }
@@ -103,7 +63,7 @@ object Reactive {
     underlying: Reactive[F],
     t: F ~> G,
   )(implicit G: Monad[G]) extends Reactive[G] {
-    final override def applyConfigured[A, B](r: Rxn[A, B], a: A, cfg: Reactive.RunConfig): G[B] =
+    final override def applyConfigured[A, B](r: Rxn[A, B], a: A, cfg: Rxn.RunConfig): G[B] =
       t(underlying.applyConfigured(r, a, cfg))
     final override def mcasImpl: Mcas =
       underlying.mcasImpl

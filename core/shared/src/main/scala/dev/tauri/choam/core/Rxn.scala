@@ -281,7 +281,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def unsafePerformConfigured(
     a: A,
     mcas: Mcas,
-    cfg: Reactive.RunConfig,
+    cfg: RunConfig,
   ): B = {
     val maxRetries = cfg.maxRetries match {
       case Some(n) => n
@@ -329,6 +329,46 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 }
 
 object Rxn extends RxnInstances0 {
+
+  @nowarn("cat=scala3-migration")
+  final case class RunConfig private (
+    maxRetries: Option[Int],
+    maxBackoff: Int,
+    randomizeBackoff: Boolean,
+  ) {
+
+    final def withMaxRetries(maxRetries: Option[Int]): RunConfig =
+      this.copy(maxRetries = maxRetries)
+
+    final def withMaxBackoff(maxBackoff: Int): RunConfig =
+      this.copy(maxBackoff = maxBackoff)
+
+    final def withRandomizeBackoff(randomizeBackoff: Boolean): RunConfig =
+      this.copy(randomizeBackoff = randomizeBackoff)
+  }
+
+  final object RunConfig {
+
+    val Default: RunConfig = RunConfig(
+      maxRetries = None,
+      maxBackoff = defaultMaxBackoff,
+      randomizeBackoff = true,
+    )
+
+    final def apply(
+      maxRetries: Option[Int],
+      maxBackoff: Int,
+      randomizeBackoff: Boolean,
+    ): RunConfig = new RunConfig(
+      maxRetries = maxRetries,
+      maxBackoff = maxBackoff,
+      randomizeBackoff = randomizeBackoff,
+    )
+
+    @unused
+    private final def unapply(cfg: RunConfig) =
+      cfg
+  }
 
   private[this] final val interruptCheckPeriod =
     16384

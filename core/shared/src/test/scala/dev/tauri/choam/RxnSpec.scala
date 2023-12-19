@@ -1008,7 +1008,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("config options") {
-    val cfg = Reactive
+    val cfg = Rxn
       .RunConfig
       .Default
       .withRandomizeBackoff(false)
