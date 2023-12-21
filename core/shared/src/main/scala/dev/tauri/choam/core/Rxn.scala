@@ -497,7 +497,7 @@ object Rxn extends RxnInstances0 {
 
     // TODO: NB: this is also like `delay`
     // TODO: Calling `unsafePerform` (or similar) inside
-    // TODO: `uf` is dangerous; currently is only messes
+    // TODO: `uf` is dangerous; currently it only messes
     // TODO: up exchanger statistics; in the future, who knows...
     private[choam] def context[A](uf: Mcas.ThreadContext => A): Axn[A] =
       new Ctx[A](uf)
@@ -1519,7 +1519,7 @@ private sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.type =>
     final def run[F[_]](implicit F: Reactive[F]): F[A] =
       F.run(self)
 
-    final def unsafeRun(mcas: Mcas): A = {
+    private[choam] final def unsafeRun(mcas: Mcas): A = {
       self.unsafePerform(null : Any, mcas)
     }
   }
