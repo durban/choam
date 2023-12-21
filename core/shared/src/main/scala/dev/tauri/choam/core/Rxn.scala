@@ -1515,13 +1515,8 @@ private sealed abstract class RxnSyntax0 extends RxnSyntax1 { this: Rxn.type =>
 private sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.type =>
 
   implicit final class AxnSyntax[A](private val self: Axn[A]) {
-
     final def run[F[_]](implicit F: Reactive[F]): F[A] =
       F.run(self)
-
-    private[choam] final def unsafeRun(mcas: Mcas): A = {
-      self.unsafePerform(null : Any, mcas)
-    }
   }
 }
 
