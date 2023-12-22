@@ -723,18 +723,17 @@ object Rxn extends RxnInstances0 {
      * to have a small performance advantage for certain
      * operations (and no downside for others). See `SpinBench`.
      */
-
-     new InterpreterState[X, R](
-       rxn = rxn,
-       x = x,
-       ctx = ctx,
-       maxBackoff = maxBackoff,
-       randomizeBackoff = randomizeBackoff,
-       maxRetries = maxRetries,
-     ).interpret()
+    new InterpreterState[X, R](
+      rxn = rxn,
+      x = x,
+      ctx = ctx,
+      maxBackoff = maxBackoff,
+      randomizeBackoff = randomizeBackoff,
+      maxRetries = maxRetries,
+    ).interpret()
   }
 
-  final class MaxRetriesReached(maxRetries: Int)
+  final class MaxRetriesReached(val maxRetries: Int)
     extends Exception(s"reached maxRetries of ${maxRetries}")
 
   private final class InterpreterState[X, R](
