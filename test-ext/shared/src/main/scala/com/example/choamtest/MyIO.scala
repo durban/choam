@@ -55,8 +55,8 @@ object MyIO {
 
   implicit def asyncReactiveForMyIO: AsyncReactive[MyIO] = new AsyncReactive[MyIO] {
 
-    final override def applyConfigured[A, B](r: Rxn[A,B], a: A, cfg: Rxn.RunConfig): MyIO[B] =
-      MyIO(IO.delay { r.unsafePerformConfigured(a, this.mcasImpl, cfg) })
+    final override def apply[A, B](r: Rxn[A,B], a: A, s: Rxn.Strategy.LockFree): MyIO[B] =
+      MyIO(IO.delay { r.unsafePerform(a, this.mcasImpl, s) })
 
     final override def mcasImpl: Mcas =
       Mcas.DefaultMcas

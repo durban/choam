@@ -45,6 +45,9 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
 
   private[this] val dummyContext = new Mcas.UnsealedThreadContext {
 
+    final override def impl: Mcas =
+      self
+
     // NB: it is a `def`, not a `val`
     final override def random =
       ThreadLocalRandom.current()

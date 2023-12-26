@@ -24,7 +24,7 @@ import cats.{ Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, Monoid
 import cats.arrow.ArrowChoice
 import cats.data.{ Ior, State }
 import cats.mtl.Local
-import cats.effect.kernel.{ Clock, Unique, Ref => CatsRef }
+import cats.effect.kernel.{ Async, Clock, Unique, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
 import internal.mcas.{ MemoryLocation, Mcas, HalfWordDescriptor, McasStatus, Descriptor }
@@ -240,16 +240,47 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    *
    * @param a the input to the [[Rxn]].
    * @param mcas the [[internal.mcas.Mcas]] implementation to use.
+   * @param strategy the retry strategy to use.
    * @return the result of the executed [[Rxn]].
    */
   final def unsafePerform(
     a: A,
     mcas: Mcas,
+    strategy: Strategy.LockFree = Strategy.Default,
   ): B = {
-    unsafePerform(a, mcas, maxRetries = None)
+    new InterpreterState[A, B](
+      rxn = this,
+      x = a,
+      mcas = mcas,
+      maxBackoff = strategy.maxSpin,
+      randomizeBackoff = strategy.randomizeSpin,
+      maxRetries = strategy.maxRetriesInt,
+      canSuspend = false,
+      maxSleep = Duration.Zero, // no suspend
+      randomizeSleep = false, // no suspend
+    ).interpret()
   }
 
-  private[choam] final def unsafePerform(
+  final def perform[F[_], X >: B](
+    a: A,
+    mcas: Mcas,
+    strategy: Strategy = Strategy.Default,
+  )(F: Async[F]): F[X] = {
+    new InterpreterState[A, X](
+      this,
+      a,
+      mcas = mcas,
+      maxBackoff = strategy.maxSpin,
+      randomizeBackoff = strategy.randomizeSpin,
+      maxRetries = strategy.maxRetriesInt,
+      canSuspend = strategy.canSuspend,
+      maxSleep = strategy.maxSleep,
+      randomizeSleep = strategy.randomizeSleep,
+    ).interpretAsync(F)
+  }
+
+  // TODO: remove this
+  private[choam] final def unsafePerformOld(
     a: A,
     mcas: Mcas,
     maxRetries: Option[Int] = None,
@@ -258,56 +289,20 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
       case Some(n) => n
       case None => -1
     }
-    unsafePerformInternal(
-      a = a,
-      ctx = mcas.currentContext(),
-      maxBackoff = Rxn.defaultMaxBackoff,
-      randomizeBackoff = true,
+    new InterpreterState[A, B](
+      this,
+      a,
+      mcas,
+      maxBackoff = defaultMaxBackoff,
+      randomizeBackoff = defaultRandomizeBackoff,
       maxRetries = maxRetriesInt,
-    )
+      canSuspend = false,
+      maxSleep = Duration.Zero,
+      randomizeSleep = false,
+    ).interpret()
   }
 
-  /**
-   * Execute the [[Rxn]] with the specified input `a`, and run
-   * configuration `cfg`.
-   *
-   * This method is `unsafe` because it performs side-effects.
-   *
-   * @param a the input to the [[Rxn]].
-   * @param mcas the [[internal.mcas.Mcas]] implementation to use.
-   * @param cfg the run configuration options to use.
-   * @return the result of the executed [[Rxn]].
-   */
-  final def unsafePerformConfigured(
-    a: A,
-    mcas: Mcas,
-    cfg: RunConfig,
-  ): B = {
-    val maxRetries = cfg.maxRetries match {
-      case Some(n) => n
-      case None => -1
-    }
-    unsafePerformInternal(
-      a = a,
-      ctx = mcas.currentContext(),
-      maxBackoff = cfg.maxBackoff,
-      randomizeBackoff = cfg.randomizeBackoff,
-      maxRetries = maxRetries,
-    )
-  }
-
-  /**
-   * Execute the [[Rxn]] with the specified input `a`.
-   *
-   * This method is `unsafe` because it performs side-effects.
-   *
-   * @param a the input to the [[Rxn]].
-   * @param ctx the [[internal.mcas.Mcas.ThreadContext]] of the current thread.
-   * @param maxBackoff the maximal amount to spin when backing off (before retries).
-   * @param randomizeBackoff whether to do exponential backoff *with* randomization.
-   * @param maxRetries the maximum number of retries (pass `-1` for possibly infinite retries).
-   * @return the result of the executed [[Rxn]].
-   */
+  /** Only for tests/benchmarks */
   private[choam] final def unsafePerformInternal(
     a: A,
     ctx: Mcas.ThreadContext,
@@ -315,14 +310,17 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     randomizeBackoff: Boolean = true,
     maxRetries: Int = -1,
   ): B = {
-    Rxn.interpreter(
+    new InterpreterState[A, B](
       this,
       a,
-      ctx = ctx,
+      ctx.impl,
       maxBackoff = maxBackoff,
       randomizeBackoff = randomizeBackoff,
       maxRetries = maxRetries,
-    )
+      canSuspend = false,
+      maxSleep = Duration.Zero,
+      randomizeSleep = false,
+    ).interpretWithContext(ctx)
   }
 
   override def toString: String
@@ -330,51 +328,204 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
 object Rxn extends RxnInstances0 {
 
-  @nowarn("cat=scala3-migration")
-  final case class RunConfig private (
-    maxRetries: Option[Int],
-    maxBackoff: Int,
-    randomizeBackoff: Boolean,
-  ) {
+  // TODO: maxSleep and randomizeSleep are not
+  // TODO: publicly visible; they shouldn't be on
+  // TODO: `spin`, but they should be otherwise.
 
-    final def withMaxRetries(maxRetries: Option[Int]): RunConfig =
-      this.copy(maxRetries = maxRetries)
+  sealed abstract class Strategy extends Product with Serializable {
 
-    final def withMaxBackoff(maxBackoff: Int): RunConfig =
-      this.copy(maxBackoff = maxBackoff)
+    def maxRetries: Option[Int]
 
-    final def withRandomizeBackoff(randomizeBackoff: Boolean): RunConfig =
-      this.copy(randomizeBackoff = randomizeBackoff)
+    def withMaxRetries(maxRetries: Option[Int]): Strategy
+
+    private[core] def maxRetriesInt: Int
+
+    def maxSpin: Int
+
+    def withMaxSpin(maxSpin: Int): Strategy
+
+    def randomizeSpin: Boolean
+
+    def withRandomizeSpin(randomizeSpin: Boolean): Strategy
+
+    private[core] def maxSleep: Duration
+
+    def withMaxSleep(maxSleep: Duration): Strategy
+
+    private[core] def randomizeSleep: Boolean
+
+    def withRandomizeSleep(randomizeSleep: Boolean): Strategy
+
+    private[core] def canSuspend: Boolean
   }
 
-  final object RunConfig {
+  final object Strategy {
 
-    val Default: RunConfig = RunConfig(
-      maxRetries = None,
-      maxBackoff = defaultMaxBackoff,
-      randomizeBackoff = true,
-    )
+    sealed abstract class LockFree // TODO: rename to `Spin`
+      extends Strategy {
 
-    final def apply(
+      override def withMaxRetries(maxRetries: Option[Int]): LockFree
+
+      override def withMaxSpin(maxSpin: Int): LockFree
+
+      override def withRandomizeSpin(randomizeSpin: Boolean): LockFree
+
+      private[core] final override def canSuspend: Boolean =
+        false
+    }
+
+    private final case class StrategyFull(
       maxRetries: Option[Int],
-      maxBackoff: Int,
-      randomizeBackoff: Boolean,
-    ): RunConfig = new RunConfig(
-      maxRetries = maxRetries,
-      maxBackoff = maxBackoff,
-      randomizeBackoff = randomizeBackoff,
-    )
+      maxSpin: Int,
+      randomizeSpin: Boolean,
+      maxSleep: Duration,
+      randomizeSleep: Boolean,
+    ) extends Strategy {
 
-    @unused
-    private final def unapply(cfg: RunConfig) =
-      cfg
+      final override def withMaxRetries(maxRetries: Option[Int]): StrategyFull =
+        this.copy(maxRetries = maxRetries)
+
+      final override def withMaxSpin(maxSpin: Int): StrategyFull =
+        this.copy(maxSpin = maxSpin)
+
+      final override def withRandomizeSpin(randomizeSpin: Boolean): StrategyFull =
+        this.copy(randomizeSpin = randomizeSpin)
+
+      final override def withMaxSleep(maxSleep: Duration): StrategyFull =
+        this.copy(maxSleep = maxSleep)
+
+      final override def withRandomizeSleep(randomizeSleep: Boolean): StrategyFull =
+        this.copy(randomizeSleep = randomizeSleep)
+
+      private[core] override val maxRetriesInt: Int = maxRetries match {
+        case Some(n) => n
+        case None => -1
+      }
+
+      private[core] final override def canSuspend: Boolean =
+        true
+    }
+
+    private final case class StrategySpin(
+      maxRetries: Option[Int],
+      maxSpin: Int,
+      randomizeSpin: Boolean,
+    ) extends LockFree {
+
+      final override def withMaxRetries(maxRetries: Option[Int]): StrategySpin =
+        this.copy(maxRetries = maxRetries)
+
+      final override def withMaxSpin(maxSpin: Int): StrategySpin =
+        this.copy(maxSpin = maxSpin)
+
+      final override def withRandomizeSpin(randomizeSpin: Boolean): StrategySpin =
+        this.copy(randomizeSpin = randomizeSpin)
+
+      final override def withMaxSleep(maxSleep: Duration): Strategy = {
+        StrategyFull(
+          maxRetries = maxRetries,
+          maxSpin = maxSpin,
+          randomizeSpin = randomizeSpin,
+          maxSleep = maxSleep,
+          randomizeSleep = defaultRandomizeSleep,
+        )
+      }
+
+      final override def withRandomizeSleep(randomizeSleep: Boolean): Strategy = {
+        StrategyFull(
+          maxRetries = maxRetries,
+          maxSpin = maxSpin,
+          randomizeSpin = randomizeSpin,
+          maxSleep = defaultMaxSleep,
+          randomizeSleep = randomizeSleep,
+        )
+      }
+
+      private[core] override val maxRetriesInt: Int = maxRetries match {
+        case Some(n) => n
+        case None => -1
+      }
+
+      private[core] final override def maxSleep: Duration =
+        Duration.Zero
+
+      override private[core] def randomizeSleep: Boolean =
+        false
+    }
+
+    final val Default: LockFree =
+      spin(maxRetries = None, maxSpin = defaultMaxBackoff, randomizeSpin = true)
+
+    final def sleep(
+      maxRetries: Option[Int],
+      maxSpin: Int,
+      randomizeSpin: Boolean,
+      maxSleep: Duration,
+      randomizeSleep: Boolean,
+    ): Strategy = {
+      StrategyFull(
+        maxRetries = maxRetries,
+        maxSpin = maxSpin,
+        randomizeSpin = randomizeSpin,
+        maxSleep = maxSleep,
+        randomizeSleep = randomizeSleep,
+      )
+    }
+
+    final def cede(
+      maxRetries: Option[Int],
+      maxSpin: Int,
+      randomizeSpin: Boolean,
+    ): Strategy = {
+      StrategyFull(
+        maxRetries = maxRetries,
+        maxSpin = maxSpin,
+        randomizeSpin = randomizeSpin,
+        maxSleep = Duration.Zero,
+        randomizeSleep = false,
+      )
+    }
+
+    final def spin(
+      maxRetries: Option[Int],
+      maxSpin: Int,
+      randomizeSpin: Boolean,
+    ): LockFree = {
+      StrategySpin(
+        maxRetries = maxRetries,
+        maxSpin = maxSpin,
+        randomizeSpin = randomizeSpin,
+      )
+    }
   }
 
   private[this] final val interruptCheckPeriod =
     16384
 
+  /*
+   * The default value of 256 for `maxBackoff` ensures that
+   * there is at most 256 (or 512 with randomization) calls
+   * to `onSpinWait` (see `Backoff`). It was determined
+   * with experiments (see `SpinBench`), that under very
+   * high contention, this increases performance (compared
+   * to the previous value of 16.
+   */
   private[core] final val defaultMaxBackoff =
     256
+
+  /*
+   * `randomizeBackoff` is true by default, since it seems
+   * to have a small performance advantage for certain
+   * operations (and no downside for others). See `SpinBench`.
+   */
+  private[Rxn] final val defaultRandomizeBackoff =
+    true
+
+  private[core] final val defaultMaxSleep =
+    100.millis // TODO
+
+  private[Rxn] final val defaultRandomizeSleep =
+    true
 
   /** This is just exporting `DefaultMcas`, because that's in an internal package */
   final def DefaultMcas: Mcas =
@@ -703,33 +854,32 @@ object Rxn extends RxnInstances0 {
   private[core] final val commitSingleton: Rxn[Any, Any] = // TODO: make this a java enum?
     new Commit[Any]
 
+  private[this] final class Suspend // TODO: make this a java enum?
+  private[this] final val Suspend =
+    new Suspend
+
+  private[this] final def suspend[X](): X =
+    Suspend.asInstanceOf[X]
+
+  // TODO: remove this
   private[core] final def interpreter[X, R](
     rxn: Rxn[X, R],
     x: X,
-    ctx: Mcas.ThreadContext,
-    maxBackoff: Int = Rxn.defaultMaxBackoff,
-    randomizeBackoff: Boolean = true,
+    mcas: Mcas,
+    maxBackoff: Int = defaultMaxBackoff,
+    randomizeBackoff: Boolean = defaultRandomizeBackoff,
     maxRetries: Int = -1,
   ): R = {
-    /*
-     * The default value of 256 for `maxBackoff` ensures that
-     * there is at most 256 (or 512 with randomization) calls
-     * to `onSpinWait` (see `Backoff`). It was determined
-     * with experiments (see `SpinBench`), that under very
-     * high contention, this increases performance (compared
-     * to the previous value of 16.
-     *
-     * `randomizeBackoff` is true by default, since it seems
-     * to have a small performance advantage for certain
-     * operations (and no downside for others). See `SpinBench`.
-     */
     new InterpreterState[X, R](
       rxn = rxn,
       x = x,
-      ctx = ctx,
+      mcas = mcas,
       maxBackoff = maxBackoff,
       randomizeBackoff = randomizeBackoff,
       maxRetries = maxRetries,
+      canSuspend = false,
+      maxSleep = Duration.Zero, // no suspend
+      randomizeSleep = false, // no suspend
     ).interpret()
   }
 
@@ -739,11 +889,23 @@ object Rxn extends RxnInstances0 {
   private final class InterpreterState[X, R](
     rxn: Rxn[X, R],
     x: X,
-    ctx: Mcas.ThreadContext,
+    mcas: Mcas,
     maxBackoff: Int,
     randomizeBackoff: Boolean,
     maxRetries: Int,
+    canSuspend: Boolean,
+    maxSleep: Duration,
+    randomizeSleep: Boolean,
   ) {
+
+    private[this] var ctx: Mcas.ThreadContext =
+      null
+
+    private[this] final def invalidateCtx(): Unit = {
+      this.ctx = null
+      this._stats = null
+      this._exParams = null
+    }
 
     private[this] var startRxn: Rxn[Any, Any] = rxn.asInstanceOf[Rxn[Any, Any]]
     private[this] var startA: Any = x
@@ -811,20 +973,41 @@ object Rxn extends RxnInstances0 {
       this.retries += 1L
     }
 
-    private[this] var stats: ExStatMap =
-      ctx.getStatisticsPlain().asInstanceOf[ExStatMap]
+    private[this] var _stats: ExStatMap =
+      null
 
-    // TODO: this is a hack
-    private[this] val exParams: Exchanger.Params = {
-      (stats.getOrElse(Exchanger.paramsKey, null): Any) match {
-        case null =>
-          val p = Exchanger.params // volatile read
-          stats = (stats.asInstanceOf[Map[AnyRef, AnyRef]] + (Exchanger.paramsKey -> p)).asInstanceOf[ExStatMap]
-          p
-        case p: Exchanger.Params =>
-          p
-        case x =>
-          impossible(s"found ${x.getClass.getName} instead of Exchanger.Params")
+    private[this] def stats: ExStatMap = {
+      val s = this._stats
+      if (s eq null) {
+        val s2 = this.ctx.getStatisticsPlain().asInstanceOf[ExStatMap]
+        this._stats = s2
+        s2
+      } else {
+        s
+      }
+    }
+
+    private[this] var _exParams: Exchanger.Params =
+      null
+
+    private[this] final def exParams: Exchanger.Params = {
+      val ep = this._exParams
+      if (ep eq null) {
+        // TODO: this is a hack
+        val ep2 = (stats.getOrElse(Exchanger.paramsKey, null): Any) match {
+          case null =>
+            val p = Exchanger.params // volatile read
+            _stats = (_stats.asInstanceOf[Map[AnyRef, AnyRef]] + (Exchanger.paramsKey -> p)).asInstanceOf[ExStatMap]
+            p
+          case p: Exchanger.Params =>
+            p
+          case x =>
+            impossible(s"found ${x.getClass.getName} instead of Exchanger.Params")
+        }
+        this._exParams = ep2
+        ep2
+      } else {
+        ep
       }
     }
 
@@ -947,7 +1130,7 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    private[this] final def retry(): Rxn[Any, Any] = {
+    private[this] final def retry(canSuspend: Boolean = this.canSuspend): Rxn[Any, Any] = {
       val retries = incrFullRetries()
       val mr = maxRetries
       if ((mr > 0) && ((retries > mr) || (retries == Integer.MAX_VALUE))) {
@@ -962,14 +1145,25 @@ object Rxn extends RxnInstances0 {
         a = startA
         resetConts()
         pc.clear()
-        spin(getFullRetries())
-        startRxn
+        if (canSuspend) {
+          null // TODO: first we could still try to spin
+        } else {
+          spin(getFullRetries())
+          startRxn
+        }
       }
     }
 
     private[this] final def spin(retries: Int): Unit = {
-      if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff)
+      if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff, ctx.random)
       else Backoff.backoffConst(retries, maxBackoff)
+    }
+
+    private[this] final def nextSleep(): Duration = {
+      require(canSuspend)
+      val retries = getFullRetries()
+      if (randomizeSleep) Backoff.sleepRandom(retries, maxSleep, ctx.random)
+      else Backoff.sleepConst(retries, maxSleep)
     }
 
     /**
@@ -1093,10 +1287,12 @@ object Rxn extends RxnInstances0 {
           } else {
             contK.push(commit)
             contT.push(ContAndThen)
-            loop(retry())
+            val r = retry()
+            if (r ne null) loop(r) else suspend()
           }
         case 1 => // AlwaysRetry
-          loop(retry())
+          val r = retry()
+          if (r ne null) loop(r) else suspend()
         case 2 => // PostCommit
           val c = curr.asInstanceOf[PostCommit[A]]
           pc.push(c.pc.provide(a.asInstanceOf[A]))
@@ -1120,7 +1316,8 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[Cas[Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            loop(retry())
+            val r = retry()
+            if (r ne null) loop(r) else suspend()
           } else {
             val currVal = hwd.nv
             if (equ(currVal, c.ov)) {
@@ -1129,14 +1326,16 @@ object Rxn extends RxnInstances0 {
               loop(next())
             }
             else {
-              loop(retry())
+              val r = retry()
+              if (r ne null) loop(r) else suspend()
             }
           }
         case 8 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            loop(retry())
+            val r = retry()
+            if (r ne null) loop(r) else suspend()
           } else {
             val ox = hwd.nv
             val (nx, b) = c.f(ox, a.asInstanceOf[A])
@@ -1160,10 +1359,12 @@ object Rxn extends RxnInstances0 {
           )
           c.exchanger.tryExchange(msg = msg, params = exParams, ctx = ctx) match {
             case Left(newStats) =>
-              stats = newStats
-              loop(retry())
+              _stats = newStats
+              // TODO: we're never suspending with
+              // TODO: exchanger; should we?
+              loop(retry(canSuspend = false))
             case Right(contMsg) =>
-              stats = contMsg.exchangerData
+              _stats = contMsg.exchangerData
               loop(loadAltFrom(contMsg))
           }
         case 11 => // AndThen
@@ -1198,7 +1399,8 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[UpdWith[Any, Any, _]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            loop(retry())
+            val r = retry()
+            if (r ne null) loop(r) else suspend()
           } else {
             val ox = hwd.nv
             val axn = c.f(ox, a)
@@ -1242,7 +1444,8 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[Read[Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            loop(retry())
+            val r = retry()
+            if (r ne null) loop(r) else suspend()
           } else {
             a = hwd.nv
             desc = desc.addOrOverwrite(hwd)
@@ -1252,7 +1455,8 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[TicketRead[Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            loop(retry())
+            val r = retry()
+            if (r ne null) loop(r) else suspend()
           } else {
             val ticket = new unsafe.TicketImpl[Any](hwd)
             a = ticket
@@ -1266,7 +1470,8 @@ object Rxn extends RxnInstances0 {
               // not in log yet, we try to insert it:
               revalidateIfNeeded(c.hwd) match {
                 case null =>
-                  loop(retry())
+                  val r = retry()
+                  if (r ne null) loop(r) else suspend()
                 case hwd =>
                   desc = desc.add(hwd.withNv(c.newest))
                   loop(next())
@@ -1282,7 +1487,8 @@ object Rxn extends RxnInstances0 {
             a = () : Any
             loop(next())
           } else {
-            loop(retry())
+            val r = retry()
+            if (r ne null) loop(r) else suspend()
           }
         case 23 => // Pure
           val c = curr.asInstanceOf[Pure[Any]]
@@ -1310,9 +1516,40 @@ object Rxn extends RxnInstances0 {
       }
     }
 
+    // TODO: write tests for this!
+    final def interpretAsync[F[_]](implicit F: Async[F]): F[R] = {
+      F.defer {
+        require(canSuspend) // TODO: this is ugly
+        this.ctx = mcas.currentContext()
+        val fr = loop(startRxn) match {
+          case _: Suspend =>
+            val sleepFor = nextSleep()
+            val sleep = if (sleepFor > Duration.Zero) {
+              F.sleep(sleepFor)
+            } else {
+              F.cede
+            }
+            F.flatMap(sleep) { _ => interpretAsync[F](F) }
+          case r =>
+            F.pure(r)
+        }
+        this.ctx.setStatisticsPlain(this.stats.asInstanceOf[Map[AnyRef, AnyRef]])
+        this.invalidateCtx()
+        fr
+      }
+    }
+
     final def interpret(): R = {
+      interpretWithContext(mcas.currentContext())
+    }
+
+    /** This is only public because of tests/benchmarks */
+    final def interpretWithContext(ctx: Mcas.ThreadContext): R = {
+      require(!canSuspend) // TODO: this is ugly
+      this.ctx = ctx
       val r = loop(startRxn)
       this.ctx.setStatisticsPlain(this.stats.asInstanceOf[Map[AnyRef, AnyRef]])
+      this.invalidateCtx()
       r
     }
   }

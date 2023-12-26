@@ -21,7 +21,7 @@ package mcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
+private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
 
   final override def currentContext(): Mcas.ThreadContext =
     _ctx
@@ -30,6 +30,9 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform {
     MemoryLocation.unsafeUnpadded(Version.Start)
 
   private[this] val _ctx = new Mcas.UnsealedThreadContext {
+
+    final override def impl: Mcas =
+      self
 
     final override def readDirect[A](ref: MemoryLocation[A]): A = {
       ref.unsafeGetPlain()

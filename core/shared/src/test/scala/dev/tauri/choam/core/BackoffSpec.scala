@@ -20,6 +20,8 @@ package core
 
 import java.util.concurrent.ThreadLocalRandom
 
+import scala.concurrent.duration._
+
 class BackoffSpec extends BaseSpec {
 
   test("Backoff.backoffConst") {
@@ -31,8 +33,25 @@ class BackoffSpec extends BaseSpec {
     assertEquals(Backoff.constTokens(retries = 5, maxBackoff = 8), 8)
     assertEquals(Backoff.constTokens(retries = 1024*1024, maxBackoff = 32), 32)
     // illegal arguments:
-    Backoff.constTokens(retries = -1, maxBackoff = 16)
-    Backoff.constTokens(retries = 0, maxBackoff = -32)
+    assert(Backoff.constTokens(retries = -1, maxBackoff = 16) < 0)
+    assert(Backoff.constTokens(retries = 0, maxBackoff = -32) < 0)
+  }
+
+  test("Backoff.sleepConst") {
+    assertEquals(Backoff.sleepConst(retries = 0, maxSleep = 1.second), 1.micros)
+    assertEquals(Backoff.sleepConst(retries = 0, maxSleep = Duration.Inf), 1.micros)
+    assertEquals(Backoff.sleepConst(retries = 1, maxSleep = 1.second), 2.micros)
+    assertEquals(Backoff.sleepConst(retries = 2, maxSleep = 1.second), 4.micros)
+    assertEquals(Backoff.sleepConst(retries = 4, maxSleep = 1.second), 16.micros)
+    assertEquals(Backoff.sleepConst(retries = 5, maxSleep = 16.micros), 16.micros)
+    assertEquals(Backoff.sleepConst(retries = 5, maxSleep = 8.micros), 8.micros)
+    assertEquals(Backoff.sleepConst(retries = 5, maxSleep = Duration.Inf), 32.micros)
+    assertEquals(Backoff.sleepConst(retries = 1024*1024, maxSleep = 32.micros), 32.micros)
+    assertEquals(Backoff.sleepConst(retries = 1024*1024, maxSleep = Duration.Inf), (1 << 30).micros)
+    assertEquals(Backoff.sleepConst(retries = 1024*1024 + 1, maxSleep = Duration.Inf), (1 << 30).micros)
+    // illegal arguments:
+    assert(Backoff.sleepConst(retries = -1, maxSleep = 16.micros) < Duration.Zero)
+    assert(Backoff.sleepConst(retries = 0, maxSleep = -16.micros) < Duration.Zero)
   }
 
   test("Backoff.backoffRandom") {

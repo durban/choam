@@ -992,30 +992,32 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     def succeedsOn3rdRetry(ref: Ref[String]) = {
       Rxn.unsafe.retry[Any, String] + ref.unsafeCas("x", "y").as("z") + Rxn.unsafe.retry[Any, String] + Rxn.pure("foo")
     }
+    def maxRetries(mr: Option[Int]): Rxn.Strategy.LockFree =
+      Rxn.Strategy.Default.withMaxRetries(mr)
     for {
       // finite maxRetries:
-      _ <- assertRaisesF(F.delay(never.unsafePerform((), this.mcasImpl, maxRetries = Some(4096))), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertRaisesF(F.delay(never.unsafePerform((), this.mcasImpl, maxRetries(Some(4096)))), _.isInstanceOf[Rxn.MaxRetriesReached])
       ctr <- F.delay(new AtomicInteger)
-      _ <- assertRaisesF(F.delay(countTries(ctr).unsafePerform((), this.mcasImpl, maxRetries = Some(42))), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertRaisesF(F.delay(countTries(ctr).unsafePerform((), this.mcasImpl, maxRetries(Some(42)))), _.isInstanceOf[Rxn.MaxRetriesReached])
       _ <- assertResultF(F.delay(ctr.get()), 42 + 1)
       r <- Ref("a").run[F]
-      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries = Some(2))), _.isInstanceOf[Rxn.MaxRetriesReached])
-      _ <- assertResultF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries = Some(3))), "foo")
+      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries(Some(2)))), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertResultF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries(Some(3)))), "foo")
       // infinite maxRetries:
-      _ <- assertResultF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries = None)), "foo")
-      _ <- assertResultF(F.delay(Rxn.pure("foo").unsafePerform((), this.mcasImpl, maxRetries = None)), "foo")
+      _ <- assertResultF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries(None))), "foo")
+      _ <- assertResultF(F.delay(Rxn.pure("foo").unsafePerform((), this.mcasImpl, maxRetries(None))), "foo")
     } yield ()
   }
 
-  test("config options") {
-    val cfg = Rxn
-      .RunConfig
+  test("strategy options") {
+    val s = Rxn
+      .Strategy
       .Default
-      .withRandomizeBackoff(false)
-      .withMaxBackoff(1024)
+      .withRandomizeSpin(false)
+      .withMaxSpin(1024)
       .withMaxRetries(Some(42))
     assertRaisesF(
-      Reactive[F].applyConfigured(never, 99, cfg),
+      Reactive[F].apply(never, 99, s),
       _.isInstanceOf[Rxn.MaxRetriesReached],
     )
   }

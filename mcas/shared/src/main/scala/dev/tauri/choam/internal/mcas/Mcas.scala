@@ -56,6 +56,9 @@ object Mcas extends McasCompanionPlatform { self =>
 
     // abstract:
 
+    /** The `Mcas` instance from which this context was retrieved */
+    def impl: Mcas
+
     /**
      * Starts building a descriptor
      * (its `.validTs` will be the

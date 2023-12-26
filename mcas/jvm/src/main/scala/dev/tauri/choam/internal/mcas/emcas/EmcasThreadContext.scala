@@ -24,7 +24,7 @@ import java.lang.ref.WeakReference
 import java.util.concurrent.ThreadLocalRandom
 
 private final class EmcasThreadContext(
-  impl: Emcas,
+  final override val impl: Emcas,
   private[mcas] val tid: Long,
 ) extends EmcasThreadContextBase
   with Mcas.UnsealedThreadContext {

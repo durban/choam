@@ -34,6 +34,9 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
     private[this] val emcasCtx =
       Emcas.inst.currentContextInternal()
 
+    final override def impl: Mcas =
+      self
+
     final override def random: ThreadLocalRandom =
       emcasCtx.random
 

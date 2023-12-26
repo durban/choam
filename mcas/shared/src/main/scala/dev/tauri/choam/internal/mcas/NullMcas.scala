@@ -31,7 +31,7 @@ import java.util.concurrent.ThreadLocalRandom
  * when it is necessary to immediately execute a `Rxn` which
  * is known not to actually do any k-CASes.
  */
-object NullMcas extends Mcas.UnsealedMcas {
+object NullMcas extends Mcas.UnsealedMcas { self =>
 
   private[this] val ctx =
     new NullContext
@@ -46,6 +46,9 @@ object NullMcas extends Mcas.UnsealedMcas {
     true
 
   private[this] final class NullContext extends Mcas.UnsealedThreadContext {
+
+    final override def impl: Mcas =
+      self
 
     final override def start(): Descriptor =
       Descriptor.empty(globalVersion, this)
