@@ -58,6 +58,9 @@ object MyIO {
     final override def apply[A, B](r: Rxn[A,B], a: A, s: Rxn.Strategy.LockFree): MyIO[B] =
       MyIO(IO.delay { r.unsafePerform(a, this.mcasImpl, s) })
 
+    final override def applyAsync[A, B](r: Rxn[A,B], a: A, s: Rxn.Strategy): MyIO[B] =
+      r.perform[MyIO, B](a, this.mcasImpl, s)(asyncForMyIO)
+
     final override def mcasImpl: Mcas =
       Mcas.DefaultMcas
 

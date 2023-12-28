@@ -1009,7 +1009,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("strategy options") {
+  test("Strategy options") {
     val s = Rxn
       .Strategy
       .Default
@@ -1020,5 +1020,16 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       Reactive[F].apply(never, 99, s),
       _.isInstanceOf[Rxn.MaxRetriesReached],
     )
+  }
+
+  test("Running with Strategy") {
+    val r: Rxn[String, Int] =
+      Rxn.lift(s => s.length)
+    val sSpin = Rxn.Strategy.spin(
+      maxRetries = None,
+      maxSpin = 512,
+      randomizeSpin = true,
+    )
+    assertResultF(Reactive[F].apply(r, "foo", sSpin), 3)
   }
 }

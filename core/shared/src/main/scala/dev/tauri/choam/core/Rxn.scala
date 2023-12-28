@@ -265,7 +265,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     a: A,
     mcas: Mcas,
     strategy: Strategy = Strategy.Default,
-  )(F: Async[F]): F[X] = {
+  )(implicit F: Async[F]): F[X] = {
     new InterpreterState[A, X](
       this,
       a,
@@ -1519,10 +1519,10 @@ object Rxn extends RxnInstances0 {
     // TODO: write tests for this!
     final def interpretAsync[F[_]](implicit F: Async[F]): F[R] = {
       F.defer {
-        require(canSuspend) // TODO: this is ugly
         this.ctx = mcas.currentContext()
         val fr = loop(startRxn) match {
           case _: Suspend =>
+            assert(canSuspend)
             val sleepFor = nextSleep()
             val sleep = if (sleepFor > Duration.Zero) {
               F.sleep(sleepFor)
