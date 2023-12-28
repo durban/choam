@@ -58,25 +58,45 @@ trait LinchkUtils {
   }
 
   def defaultModelCheckingOptions(): ModelCheckingOptions = {
-    def assumedAtomicPred(fullClassName: String): Boolean = {
-      assumedAtomicClassNames.contains(fullClassName) ||
-      fullClassName.startsWith("scala.collection.immutable.")
-    }
+    import scala.language.reflectiveCalls
+
+    // We assume that methods of certain classes
+    // are atomic, so lincheck won't transform them
+    // (hopefully this speeds up testing):
     val assumedAtomic: ManagedStrategyGuarantee = {
+      def assumedAtomicPred(fullClassName: String): Boolean = {
+        assumedAtomicClassNames.contains(fullClassName) ||
+        fullClassName.startsWith("scala.collection.immutable.")
+      }
       new ManagedStrategyGuarantee.MethodBuilder(KotlinFromScala.function1(assumedAtomicPred _))
         .allMethods()
         .treatAsAtomic()
     }
-    def ignoredPred(fullClassName: String): Boolean = {
-      fullClassName.startsWith("scala.Predef")
-    }
+
+    // We just "ignore" certain classes, because
+    // lincheck seems to have trouble transforming
+    // them:
     val ignored: ManagedStrategyGuarantee = {
+      def ignoredPred(fullClassName: String): Boolean = {
+        fullClassName.startsWith("scala.Predef")
+      }
       new ManagedStrategyGuarantee.MethodBuilder(KotlinFromScala.function1(ignoredPred _))
         .allMethods()
         .ignore()
     }
 
-    new ModelCheckingOptions().addGuarantee(assumedAtomic).addGuarantee(ignored)
+    // Maybe we'll want to increase the linchk timeout
+    // (which is private, so we need to do unspeakable
+    // things here):
+    val timeoutMs = 10000L // default: 10000L
+    type Opts = {
+      def invocationTimeout$lincheck(timeoutMs: Long): org.jetbrains.kotlinx.lincheck.Options[_, _]
+    }
+    def increaseTimeout(mco: ModelCheckingOptions): ModelCheckingOptions = {
+      mco.asInstanceOf[Opts].invocationTimeout$lincheck(timeoutMs).asInstanceOf[ModelCheckingOptions]
+    }
+
+    increaseTimeout(new ModelCheckingOptions()).addGuarantee(assumedAtomic).addGuarantee(ignored)
   }
 
   private val assumedAtomicClassNames: Set[String] = {
