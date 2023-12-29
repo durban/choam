@@ -55,7 +55,7 @@ object MyIO {
 
   implicit def asyncReactiveForMyIO: AsyncReactive[MyIO] = new AsyncReactive[MyIO] {
 
-    final override def apply[A, B](r: Rxn[A,B], a: A, s: Rxn.Strategy.LockFree): MyIO[B] =
+    final override def apply[A, B](r: Rxn[A,B], a: A, s: Rxn.Strategy.Spin): MyIO[B] =
       MyIO(IO.delay { r.unsafePerform(a, this.mcasImpl, s) })
 
     final override def applyAsync[A, B](r: Rxn[A,B], a: A, s: Rxn.Strategy): MyIO[B] =

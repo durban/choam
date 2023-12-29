@@ -25,12 +25,12 @@ import internal.mcas.Mcas
 
 // TODO: Add a way to run with `interpretAsync` (in AsyncReactive)
 trait Reactive[F[_]] extends ~>[Axn, F] { self =>
-  def apply[A, B](r: Rxn[A, B], a: A, s: Rxn.Strategy.LockFree = Rxn.Strategy.Default): F[B]
+  def apply[A, B](r: Rxn[A, B], a: A, s: Rxn.Strategy.Spin = Rxn.Strategy.Default): F[B]
   def mcasImpl: Mcas
   def monad: Monad[F]
   final def mapK[G[_]](t: F ~> G)(implicit G: Monad[G]): Reactive[G] =
     new Reactive.TransformedReactive[F, G](self, t)
-  final def run[A](a: Axn[A], s: Rxn.Strategy.LockFree = Rxn.Strategy.Default): F[A] =
+  final def run[A](a: Axn[A], s: Rxn.Strategy.Spin = Rxn.Strategy.Default): F[A] =
     this.apply[Any, A](a, null: Any, s)
   final override def apply[A](a: Axn[A]): F[A] =
     this.run(a, Rxn.Strategy.Default)
@@ -48,7 +48,7 @@ object Reactive {
     final override val mcasImpl: Mcas
   )(implicit F: Sync[F]) extends Reactive[F] {
 
-    final override def apply[A, B](r: Rxn[A, B], a: A, s: Rxn.Strategy.LockFree): F[B] = {
+    final override def apply[A, B](r: Rxn[A, B], a: A, s: Rxn.Strategy.Spin): F[B] = {
       F.delay { r.unsafePerform(a = a, mcas = this.mcasImpl, strategy = s) }
     }
 
@@ -60,7 +60,7 @@ object Reactive {
     underlying: Reactive[F],
     t: F ~> G,
   )(implicit G: Monad[G]) extends Reactive[G] {
-    final override def apply[A, B](r: Rxn[A, B], a: A, s: Rxn.Strategy.LockFree): G[B] =
+    final override def apply[A, B](r: Rxn[A, B], a: A, s: Rxn.Strategy.Spin): G[B] =
       t(underlying.apply(r, a, s))
     final override def mcasImpl: Mcas =
       underlying.mcasImpl

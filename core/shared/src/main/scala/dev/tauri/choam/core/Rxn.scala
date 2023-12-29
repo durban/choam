@@ -246,7 +246,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def unsafePerform(
     a: A,
     mcas: Mcas,
-    strategy: Strategy.LockFree = Strategy.Default,
+    strategy: Strategy.Spin = Strategy.Default,
   ): B = {
     new InterpreterState[A, B](
       rxn = this,
@@ -361,14 +361,14 @@ object Rxn extends RxnInstances0 {
 
   final object Strategy {
 
-    sealed abstract class LockFree // TODO: rename to `Spin`
+    sealed abstract class Spin
       extends Strategy {
 
-      override def withMaxRetries(maxRetries: Option[Int]): LockFree
+      override def withMaxRetries(maxRetries: Option[Int]): Spin
 
-      override def withMaxSpin(maxSpin: Int): LockFree
+      override def withMaxSpin(maxSpin: Int): Spin
 
-      override def withRandomizeSpin(randomizeSpin: Boolean): LockFree
+      override def withRandomizeSpin(randomizeSpin: Boolean): Spin
 
       private[core] final override def canSuspend: Boolean =
         false
@@ -410,7 +410,7 @@ object Rxn extends RxnInstances0 {
       maxRetries: Option[Int],
       maxSpin: Int,
       randomizeSpin: Boolean,
-    ) extends LockFree {
+    ) extends Spin {
 
       final override def withMaxRetries(maxRetries: Option[Int]): StrategySpin =
         this.copy(maxRetries = maxRetries)
@@ -453,7 +453,7 @@ object Rxn extends RxnInstances0 {
         false
     }
 
-    final val Default: LockFree =
+    final val Default: Spin =
       spin(maxRetries = None, maxSpin = defaultMaxBackoff, randomizeSpin = true)
 
     final def sleep(
@@ -490,7 +490,7 @@ object Rxn extends RxnInstances0 {
       maxRetries: Option[Int],
       maxSpin: Int,
       randomizeSpin: Boolean,
-    ): LockFree = {
+    ): Spin = {
       StrategySpin(
         maxRetries = maxRetries,
         maxSpin = maxSpin,

@@ -25,7 +25,7 @@ import Rxn.Strategy
 class StrategySpec extends BaseSpec {
 
   test("Rxn.Strategy constructors") {
-    val s1: Strategy.LockFree = Strategy.spin(
+    val s1: Strategy.Spin = Strategy.spin(
       maxRetries = Some(42),
       maxSpin = 999,
       randomizeSpin = false,
@@ -64,17 +64,17 @@ class StrategySpec extends BaseSpec {
   }
 
   test("Rxn.Strategy copy") {
-    val s1: Strategy.LockFree = Strategy.Default
+    val s1: Strategy.Spin = Strategy.Default
     assertEquals(s1.canSuspend, false)
-    val s2: Strategy.LockFree = s1.withMaxRetries(Some(42))
+    val s2: Strategy.Spin = s1.withMaxRetries(Some(42))
     assertEquals(s2.canSuspend, false)
     assertEquals(s2.maxRetries, Some(42))
     assertEquals(s2.maxRetriesInt, 42)
-    val s3: Strategy.LockFree = s2.withMaxRetries(None).withMaxSpin(999)
+    val s3: Strategy.Spin = s2.withMaxRetries(None).withMaxSpin(999)
     assertEquals(s3.canSuspend, false)
     assertEquals(s3.maxRetries, None)
     assertEquals(s3.maxRetriesInt, -1)
-    val s4: Strategy.LockFree = s3.withRandomizeSpin(false)
+    val s4: Strategy.Spin = s3.withRandomizeSpin(false)
     assertEquals(s4.canSuspend, false)
     assertEquals(s4.maxRetries, None)
     assertEquals(s4.maxRetriesInt, -1)
