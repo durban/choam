@@ -73,18 +73,6 @@ trait LinchkUtils {
         .treatAsAtomic()
     }
 
-    // We just "ignore" certain classes, because
-    // lincheck seems to have trouble transforming
-    // them:
-    val ignored: ManagedStrategyGuarantee = {
-      def ignoredPred(fullClassName: String): Boolean = {
-        fullClassName.startsWith("scala.Predef")
-      }
-      new ManagedStrategyGuarantee.MethodBuilder(KotlinFromScala.function1(ignoredPred _))
-        .allMethods()
-        .ignore()
-    }
-
     // Maybe we'll want to increase the linchk timeout
     // (which is private, so we need to do unspeakable
     // things here):
@@ -96,7 +84,7 @@ trait LinchkUtils {
       mco.asInstanceOf[Opts].invocationTimeout$lincheck(timeoutMs).asInstanceOf[ModelCheckingOptions]
     }
 
-    increaseTimeout(new ModelCheckingOptions()).addGuarantee(assumedAtomic).addGuarantee(ignored)
+    increaseTimeout(new ModelCheckingOptions()).addGuarantee(assumedAtomic)
   }
 
   private val assumedAtomicClassNames: Set[String] = {

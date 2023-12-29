@@ -66,7 +66,7 @@ private object Exchanger extends ExchangerCompanionPlatform {
       // Every exchange has 2 sides, so only
       // the primary side increments the counter:
       if (this.isPrimary) {
-        underlying.exchange.postCommit(Rxn.unsafe.delay { _ =>
+        underlying.exchange.postCommit(Axn.unsafe.delay {
           counter.increment()
         })
       } else {
