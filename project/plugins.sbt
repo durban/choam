@@ -32,9 +32,9 @@ addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.10.0")
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.11.1")
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.2")
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.14.0")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.15.0")
 addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1")
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.9.16")
 
 ThisBuild / semanticdbEnabled := true
-ThisBuild / semanticdbVersion := "4.8.10"
+ThisBuild / semanticdbVersion := "4.8.15"
