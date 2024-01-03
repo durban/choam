@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 
 import Rxn.Strategy
 
-class StrategySpec extends BaseSpec {
+final class StrategySpec extends BaseSpec {
 
   test("Rxn.Strategy constructors") {
     val s1: Strategy.Spin = Strategy.spin(
