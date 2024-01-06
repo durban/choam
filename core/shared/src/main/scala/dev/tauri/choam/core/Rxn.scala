@@ -256,7 +256,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
       randomizeBackoff = strategy.randomizeSpin,
       maxRetries = strategy.maxRetriesInt,
       canSuspend = false,
-      maxSleep = Duration.Zero, // no suspend
+      maxSleepNanos = 0L, // no suspend
       randomizeSleep = false, // no suspend
     ).interpret()
   }
@@ -274,7 +274,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
       randomizeBackoff = strategy.randomizeSpin,
       maxRetries = strategy.maxRetriesInt,
       canSuspend = strategy.canSuspend,
-      maxSleep = strategy.maxSleep,
+      maxSleepNanos = strategy.maxSleepNanos,
       randomizeSleep = strategy.randomizeSleep,
     ).interpretAsync(F)
   }
@@ -297,7 +297,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
       randomizeBackoff = defaultRandomizeBackoff,
       maxRetries = maxRetriesInt,
       canSuspend = false,
-      maxSleep = Duration.Zero,
+      maxSleepNanos = 0L,
       randomizeSleep = false,
     ).interpret()
   }
@@ -318,7 +318,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
       randomizeBackoff = randomizeBackoff,
       maxRetries = maxRetries,
       canSuspend = false,
-      maxSleep = Duration.Zero,
+      maxSleepNanos = 0L,
       randomizeSleep = false,
     ).interpretWithContext(ctx)
   }
@@ -349,6 +349,8 @@ object Rxn extends RxnInstances0 {
     def withRandomizeSpin(randomizeSpin: Boolean): Strategy
 
     private[core] def maxSleep: Duration
+
+    private[core] def maxSleepNanos: Long
 
     def withMaxSleep(maxSleep: Duration): Strategy
 
@@ -402,6 +404,9 @@ object Rxn extends RxnInstances0 {
         case None => -1
       }
 
+      private[core] override val maxSleepNanos: Long =
+        maxSleep.toNanos
+
       private[core] final override def canSuspend: Boolean =
         true
     }
@@ -448,6 +453,9 @@ object Rxn extends RxnInstances0 {
 
       private[core] final override def maxSleep: Duration =
         Duration.Zero
+
+      private[core] final override def maxSleepNanos: Long =
+        0L
 
       override private[core] def randomizeSleep: Boolean =
         false
@@ -878,7 +886,7 @@ object Rxn extends RxnInstances0 {
       randomizeBackoff = randomizeBackoff,
       maxRetries = maxRetries,
       canSuspend = false,
-      maxSleep = Duration.Zero, // no suspend
+      maxSleepNanos = 0L, // no suspend
       randomizeSleep = false, // no suspend
     ).interpret()
   }
@@ -894,7 +902,7 @@ object Rxn extends RxnInstances0 {
     randomizeBackoff: Boolean,
     maxRetries: Int,
     canSuspend: Boolean,
-    maxSleep: Duration,
+    maxSleepNanos: Long,
     randomizeSleep: Boolean,
   ) {
 
@@ -1159,11 +1167,11 @@ object Rxn extends RxnInstances0 {
       else Backoff.backoffConst(retries, maxBackoff)
     }
 
-    private[this] final def nextSleep(): Duration = {
+    private[this] final def nextSleep[F[_]]()(implicit F: Async[F]): F[Unit] = {
       require(canSuspend)
       val retries = getFullRetries()
-      if (randomizeSleep) Backoff.sleepRandom(retries, maxSleep, ctx.random)
-      else Backoff.sleepConst(retries, maxSleep)
+      if (randomizeSleep) Backoff.sleepRandom(retries, maxSleepNanos, ctx.random)
+      else Backoff.sleepConst(retries, maxSleepNanos)
     }
 
     /**
@@ -1523,13 +1531,7 @@ object Rxn extends RxnInstances0 {
         val fr = loop(startRxn) match {
           case _: Suspend =>
             assert(canSuspend)
-            val sleepFor = nextSleep()
-            val sleep = if (sleepFor > Duration.Zero) {
-              F.sleep(sleepFor)
-            } else {
-              F.cede
-            }
-            F.flatMap(sleep) { _ => interpretAsync[F](F) }
+            F.flatMap(nextSleep[F]()) { _ => interpretAsync[F](F) }
           case r =>
             F.pure(r)
         }

@@ -38,20 +38,21 @@ class BackoffSpec extends BaseSpec {
   }
 
   test("Backoff.sleepConst") {
-    assertEquals(Backoff.sleepConst(retries = 0, maxSleep = 1.second), 1.micros)
-    assertEquals(Backoff.sleepConst(retries = 0, maxSleep = Duration.Inf), 1.micros)
-    assertEquals(Backoff.sleepConst(retries = 1, maxSleep = 1.second), 2.micros)
-    assertEquals(Backoff.sleepConst(retries = 2, maxSleep = 1.second), 4.micros)
-    assertEquals(Backoff.sleepConst(retries = 4, maxSleep = 1.second), 16.micros)
-    assertEquals(Backoff.sleepConst(retries = 5, maxSleep = 16.micros), 16.micros)
-    assertEquals(Backoff.sleepConst(retries = 5, maxSleep = 8.micros), 8.micros)
-    assertEquals(Backoff.sleepConst(retries = 5, maxSleep = Duration.Inf), 32.micros)
-    assertEquals(Backoff.sleepConst(retries = 1024*1024, maxSleep = 32.micros), 32.micros)
-    assertEquals(Backoff.sleepConst(retries = 1024*1024, maxSleep = Duration.Inf), (1 << 30).micros)
-    assertEquals(Backoff.sleepConst(retries = 1024*1024 + 1, maxSleep = Duration.Inf), (1 << 30).micros)
+    assertEquals(Backoff.sleepConstNanos(retries = 0, maxSleepNanos = 1.second.toNanos), 1.micros.toNanos)
+    assertEquals(Backoff.sleepConstNanos(retries = 0, maxSleepNanos = Long.MaxValue), 1.micros.toNanos)
+    assertEquals(Backoff.sleepConstNanos(retries = 1, maxSleepNanos = 1.second.toNanos), 2.micros.toNanos)
+    assertEquals(Backoff.sleepConstNanos(retries = 2, maxSleepNanos = 1.second.toNanos), 4.micros.toNanos)
+    assertEquals(Backoff.sleepConstNanos(retries = 4, maxSleepNanos = 1.second.toNanos), 16.micros.toNanos)
+    assertEquals(Backoff.sleepConstNanos(retries = 5, maxSleepNanos = 16.micros.toNanos), 16.micros.toNanos)
+    assertEquals(Backoff.sleepConstNanos(retries = 5, maxSleepNanos = 8.micros.toNanos), 8.micros.toNanos)
+    assertEquals(Backoff.sleepConstNanos(retries = 5, maxSleepNanos = Long.MaxValue), 32.micros.toNanos)
+    assertEquals(Backoff.sleepConstNanos(retries = 1024*1024, maxSleepNanos = 32.micros.toNanos), 32.micros.toNanos)
+    assertEquals(Backoff.sleepConstNanos(retries = 1024*1024, maxSleepNanos = Long.MaxValue), (1 << 30).micros.toNanos)
+    assertEquals(Backoff.sleepConstNanos(retries = 1024*1024 + 1, maxSleepNanos = Long.MaxValue), (1 << 30).micros.toNanos)
     // illegal arguments:
-    assert(Backoff.sleepConst(retries = -1, maxSleep = 16.micros) < Duration.Zero)
-    assert(Backoff.sleepConst(retries = 0, maxSleep = -16.micros) < Duration.Zero)
+    assert(Backoff.sleepConstNanos(retries = -1, maxSleepNanos = 16.micros.toNanos) <= 0L)
+    assert(Backoff.sleepConstNanos(retries = -2, maxSleepNanos = 16.micros.toNanos) <= 0L)
+    assert(Backoff.sleepConstNanos(retries = 0, maxSleepNanos = -16.micros.toNanos) <= 0L)
   }
 
   test("Backoff.backoffRandom") {

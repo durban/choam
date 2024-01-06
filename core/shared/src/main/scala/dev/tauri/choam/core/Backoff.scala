@@ -22,13 +22,15 @@ import java.util.concurrent.ThreadLocalRandom
 
 import scala.concurrent.duration._
 
+import cats.effect.kernel.GenTemporal
+
 /**
  * Utilities for exponential backoff.
  */
 private object Backoff extends BackoffPlatform {
 
-  private[this] final val sleepIncrement =
-    1.micros // TODO
+  private[this] final val sleepIncrementNanos =
+    1.micros.toNanos // TODO: measure appropriate default; replace method call with const
 
   /**
    * Truncated exponential backoff.
@@ -49,10 +51,19 @@ private object Backoff extends BackoffPlatform {
   final def backoffConst(retries: Int, maxBackoff: Int): Unit =
     spin(constTokens(retries, maxBackoff))
 
-  final def sleepConst(retries: Int, maxSleep: Duration): Duration = {
-    val tokens = 1 << normalizeRetries(retries)
-    val targetSleep = tokens * sleepIncrement
-    if (targetSleep > maxSleep) maxSleep else targetSleep
+  final def sleepConst[F[_]](retries: Int, maxSleepNanos: Long)(
+    implicit F: GenTemporal[F, _]
+  ): F[Unit] = {
+    val sleepNanos = sleepConstNanos(retries, maxSleepNanos)
+    if (sleepNanos > 0L) F.sleep(sleepNanos.nanos)
+    else F.cede
+  }
+
+  final def sleepConstNanos(retries: Int, maxSleepNanos: Long): Long = {
+    // TODO: since we're using longs, maybe we could use retries > 30
+    val tokens: Long = 1L << normalizeRetries(retries)
+    val targetSleepNanos: Long = tokens * sleepIncrementNanos
+    if (targetSleepNanos > maxSleepNanos) maxSleepNanos else targetSleepNanos
   }
 
   private[core] final def constTokens(retries: Int, maxBackoff: Int): Int =
@@ -105,13 +116,21 @@ private object Backoff extends BackoffPlatform {
   final def backoffRandom(retries: Int, halfMaxBackoff: Int, random: ThreadLocalRandom): Unit =
     spin(randomTokens(retries, halfMaxBackoff, random))
 
-  final def sleepRandom(retries: Int, halfMaxSleep: Duration, random: ThreadLocalRandom): Duration = {
-    val maxNanos = java.lang.Math.min(
-      (1 << normalizeRetries(retries + 1)) * sleepIncrement.toNanos,
-      (halfMaxSleep * 2).toNanos
+  final def sleepRandom[F[_]](retries: Int, halfMaxSleepNanos: Long, random: ThreadLocalRandom)(
+    implicit F: GenTemporal[F, _]
+  ): F[Unit] = {
+    val sleepNanos = sleepRandomNanos(retries, halfMaxSleepNanos, random)
+    if (sleepNanos > 0L) F.sleep(sleepNanos.nanos)
+    else F.cede
+  }
+
+  final def sleepRandomNanos(retries: Int, halfMaxSleepNanos: Long, random: ThreadLocalRandom): Long = {
+    val maxNanos: Long = java.lang.Math.min(
+      (1 << normalizeRetries(retries + 1)) * sleepIncrementNanos,
+      (halfMaxSleepNanos * 2L)
     )
-    if (maxNanos < 2) 1.nanos
-    else (1L + random.nextLong(maxNanos)).nanos
+    if (maxNanos < 2L) 1L
+    else (1L + random.nextLong(maxNanos))
   }
 
   private[core] final def randomTokens(retries: Int, halfMaxBackoff: Int, random: ThreadLocalRandom): Int = {

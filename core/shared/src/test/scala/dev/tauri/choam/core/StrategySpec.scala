@@ -60,6 +60,7 @@ final class StrategySpec extends BaseSpec {
     assertEquals(s3.maxSpin, 999)
     assertEquals(s3.randomizeSpin, false)
     assertEquals(s3.maxSleep, 1.second)
+    assertEquals(s3.maxSleepNanos, 1.second.toNanos)
     assertEquals(s3.randomizeSleep, true)
   }
 
@@ -86,6 +87,7 @@ final class StrategySpec extends BaseSpec {
     assertEquals(s5.maxRetriesInt, -1)
     assertEquals(s5.randomizeSpin, false)
     assertEquals(s5.maxSleep, 1.second)
+    assertEquals(s5.maxSleepNanos, 1.second.toNanos)
     assertEquals(s5.randomizeSleep, true)
     val s6: Strategy = s5.withRandomizeSleep(false)
     assertEquals(s6.canSuspend, true)
@@ -93,6 +95,7 @@ final class StrategySpec extends BaseSpec {
     assertEquals(s6.maxRetriesInt, -1)
     assertEquals(s6.randomizeSpin, false)
     assertEquals(s6.maxSleep, 1.second)
+    assertEquals(s6.maxSleepNanos, 1.second.toNanos)
     assertEquals(s6.randomizeSleep, false)
   }
 }
