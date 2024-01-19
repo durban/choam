@@ -325,7 +325,7 @@ object BackoffBench {
     // rest of the CPUs should run WSTP threads:
     val numCpu = Runtime.getRuntime().availableProcessors()
     assert(numCpu >= 4)
-    numCpu - 2
+    java.lang.Math.min(numCpu - 2, 6)
   }
 
   private[this] final def getRuntime(): IORuntime = {
