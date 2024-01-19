@@ -22,6 +22,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 @Fork(2)
+@BenchmarkMode(Array(Mode.AverageTime))
 class BaselineBench {
 
   @Benchmark
