@@ -25,7 +25,6 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
 import org.openjdk.jmh.annotations._
-import org.openjdk.jmh.infra.Blackhole
 
 import cats.effect.IO
 import cats.effect.unsafe.{ IORuntime, IORuntimeBuilder }
@@ -58,8 +57,6 @@ class BackoffBench {
   private[this] final val replicate =
     128
 
-  // 1. Baseline: no backoff at all (with and without IO)
-
   /**
    * 1A. Baseline without IO (main)
    *
@@ -85,40 +82,17 @@ class BackoffBench {
   }
 
   /**
-   * 1B. Baseline with IO (main)
-   *
-   * Main measurement: "do something simple with shared memory."
+   * 1B. Baseline with IO: "do something simple with shared memory."
    */
   @Benchmark
-  @Group("baselineIo")
-  def baselineIoMain(s: IoSt, t: IoThSt): Unit = {
+  def baselineIo(s: IoSt, t: IoThSt): Unit = {
     val ctr = s.ctr
     // we have the .void here to be more similar to the cede/sleep measurement
     val tsk = IO { ctr.incrementAndGet() }.void
-    unsafeRunSync(
-      tsk.replicateA_(replicate),
-      s.runtime,
-      s.parkJmhThread,
-      t.dispatcher,
-      t.pec,
-    )
+    val replicated = tsk.replicateA_(replicate)
+    val allTasks = alsoStartBgIfNeeded(replicated, s, t)
+    unsafeRunSync(allTasks, s.runtime, s.parkJmhThread, t.dispatcher, t.pec)
   }
-
-  /**
-   * 1B. Baseline with IO (bg)
-   *
-   * Background: run some fibers which do something with
-   * shared memory, so none of the compute threads go to
-   * sleep while we run the actual measurement. Also touch
-   * the same memory that is used by the main measurement.
-   */
-  @Benchmark
-  @Group("baselineIo")
-  def baselineIoBackground(s: IoSt, t: IoThSt): Unit = {
-    unsafeRunSync(ioBackground(s, t), s.runtime, s.parkJmhThread, t.dispatcher, t.pec)
-  }
-
-  // 2. Spinning (without IO)
 
   /**
    * 2. Spinning (main)
@@ -128,9 +102,10 @@ class BackoffBench {
    */
   @Benchmark
   @Group("onSpinWait")
-  def onSpinWaitMain(s: St, t: ThSt, bh: Blackhole): Unit = {
-    bh.consume(s.ctr.getAndIncrement())
+  def onSpinWaitMain(s: St, t: ThSt): Int = {
+    val r = s.ctr.getAndIncrement()
     onSpinWait(spinTokens * t.repeat)
+    r
   }
 
   /**
@@ -139,7 +114,7 @@ class BackoffBench {
    * Background: "do something more complicated" (just so that
    * the "simple thing" is not the only operation). Also touch
    * the same memory that is used by the main measurement.
-   * (No spinning here.)
+   * (No actual spinning here.)
    */
   @Benchmark
   @Group("onSpinWait")
@@ -147,72 +122,34 @@ class BackoffBench {
     background(s, t)
   }
 
-  // 3. Ceding (IO)
-
   /**
-   * 3. Ceding (main)
-   *
-   * Main measurement: "do something simple with shared memory,
+   * 3. Ceding: "do something simple with shared memory,
    * then cede to other fibers."
    */
   @Benchmark
-  @Group("cede")
-  def cedeMain(s: IoSt, t: IoThSt): Unit = {
+  def cede(s: IoSt, t: IoThSt): Unit = {
     val ctr = s.ctr
     val cedeTsk = IO.cede.replicateA_(t.repeat)
     val tsk = IO { ctr.incrementAndGet() }.flatMap { _ =>
       cedeTsk
     }
-    unsafeRunSync(tsk.replicateA_(replicate), s.runtime, s.parkJmhThread, t.dispatcher, t.pec)
+    val allTasks = alsoStartBgIfNeeded(tsk.replicateA_(replicate), s, t)
+    unsafeRunSync(allTasks, s.runtime, s.parkJmhThread, t.dispatcher, t.pec)
   }
 
   /**
-   * 3. Ceding (bg)
-   *
-   * Background: run some fibers which do something with
-   * shared memory, so none of the compute threads go to
-   * sleep while we run the actual measurement. Also touch
-   * the same memory that is used by the main measurement.
-   * (No ceding here.)
-   */
-  @Benchmark
-  @Group("cede")
-  def cedeBackground(s: IoSt, t: IoThSt): Unit = {
-    unsafeRunSync(ioBackground(s, t), s.runtime, s.parkJmhThread, t.dispatcher, t.pec)
-  }
-
-  // 4. Sleeping (IO)
-
-  /**
-   * 4. Sleeping (main)
-   *
-   * Main measurement: "do something simple with shared memory,
+   * 4. Sleeping: "do something simple with shared memory,
    * then sleep a little."
    */
   @Benchmark
-  @Group("sleep")
-  def sleepMain(s: IoSt, t: IoThSt): Unit = {
+  def sleep(s: IoSt, t: IoThSt): Unit = {
     val ctr = s.ctr
     val repeatSleep = sleepNanos * t.repeat.toLong
     val tsk = IO { ctr.incrementAndGet() }.flatMap { _ =>
       IO.sleep(repeatSleep.nanos)
     }
-    unsafeRunSync(tsk.replicateA_(replicate), s.runtime, s.parkJmhThread, t.dispatcher, t.pec)
-  }
-
-  /**
-   * 4. Sleeping (bg)
-   *
-   * Background: run some fibers which do something with
-   * shared memory, so none of the compute threads go to
-   * sleep while we run the actual measurement. Also touch
-   * the same memory that is used by the main measurement.
-   * (No sleeping here.)
-   */
-  @Benchmark
-  @Group("sleep")
-  def sleepBackground(s: IoSt, t: IoThSt): Unit = {
-    unsafeRunSync(ioBackground(s, t), s.runtime, s.parkJmhThread, t.dispatcher, t.pec)
+    val allTasks = alsoStartBgIfNeeded(tsk.replicateA_(replicate), s, t)
+    unsafeRunSync(allTasks, s.runtime, s.parkJmhThread, t.dispatcher, t.pec)
   }
 
   // Helper methods:
@@ -303,7 +240,13 @@ class BackoffBench {
     IO { go(r.get()) }
   }
 
-  private[this] final def ioBackground(s: IoSt, t: ThStBase): IO[Unit] = {
+  /**
+   * Background: run some fibers which do something with
+   * shared memory, so none of the compute threads go to
+   * sleep while we run the actual measurement. Also touch
+   * the same memory that is used by the main measurement.
+   */
+  private[this] final def startBackgroundTasksIfNeeded(s: IoSt, t: IoThSt): IO[Unit] = {
     val busyCounter = s.busyCounter
     val wstpSize = s.wstpSize
     val globalCtr = s.ctr
@@ -311,7 +254,8 @@ class BackoffBench {
     val threadLocalCtr = t.threadLocalCtr
     val threadLocalRnd = t.threadLocalRnd
     val contendedBg = t.contendedBg
-    val startBusyTasksIfNeeded: IO[Unit] = modifyAtomicLong(busyCounter, { ov =>
+
+    modifyAtomicLong(busyCounter, { ov =>
       if (ov == 0L) {
         // not started yet, we need to start it:
         val simple = if (contendedBg) {
@@ -337,10 +281,36 @@ class BackoffBench {
         (ov, IO.unit)
       }
     }).flatten
+  }
 
-    startBusyTasksIfNeeded *> IO { busyCounter.get() }.flatMap { startVal =>
-      val stopVal = startVal + 0xffffL
-      IO.sleep(0.1.millis).whileM_(IO { busyCounter.get() }.map { _ < stopVal })
+  /**
+   * Tries to be as fast as possible in checking
+   * if background tasks are running. (The common
+   * case is that they are running.) If not, returns
+   * the `IO` which will start them.
+   */
+  private[this] final def startBgIfNeeded(s: IoSt, t: IoThSt): IO[Unit] = {
+    if (t.bgIsRunning) {
+      // OK, it's already running
+      null
+    } else if (s.busyCounter.getOpaque() != 0L) {
+      // it's running, we just didn't previously seen it
+      t.bgIsRunning = true // cache the info in thread-local
+      null
+    } else if (s.busyCounter.get() != 0L) {
+      // it's running, we just needed a memory fence to see it
+      t.bgIsRunning = true
+      null
+    } else {
+      t.bgIsRunning = true // technically not yet, but will soon
+      startBackgroundTasksIfNeeded(s, t)
+    }
+  }
+
+  private[this] final def alsoStartBgIfNeeded(tsk: IO[Unit], s: IoSt, t: IoThSt): IO[Unit] = {
+    startBgIfNeeded(s, t) match {
+      case null => tsk
+      case startTask => startTask *> tsk
     }
   }
 }
@@ -454,7 +424,7 @@ object BackoffBench {
      * to execute the `IO` (or just
      * use `usafeRun*`).
      */
-    @Param(Array("true")) // Dispatcher is faster
+    @Param(Array("true", "false")) // Dispatcher seems faster(?)
     var useDispatcher =
       false
 
@@ -463,6 +433,9 @@ object BackoffBench {
 
     private[this] var closeDispatcher: IO[Unit] =
       _
+
+    var bgIsRunning: Boolean =
+      false
 
     /** "Parasitic" EC */
     final val pec: ExecutionContext = new ExecutionContext {
