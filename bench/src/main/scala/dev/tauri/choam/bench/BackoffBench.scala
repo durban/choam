@@ -432,7 +432,7 @@ object BackoffBench {
       null
 
     private[this] var closeDispatcher: IO[Unit] =
-      _
+      null
 
     var bgIsRunning: Boolean =
       false
