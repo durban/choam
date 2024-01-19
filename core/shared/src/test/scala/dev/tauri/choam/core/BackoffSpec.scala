@@ -24,6 +24,78 @@ import scala.concurrent.duration._
 
 class BackoffSpec extends BaseSpec {
 
+  private def backoffTokens(
+    retries: Int,
+    maxSpinR: Int,
+    maxSleepR: Int,
+    canSuspend: Boolean = true,
+  ): Long = {
+    val result = Backoff.backoffTokens(
+      retries = retries,
+      maxSpinRetries = maxSpinR,
+      randomizeSpin = false,
+      canSuspend = canSuspend,
+      maxSleepRetries = maxSleepR,
+      randomizeSleep = false,
+      random = ThreadLocalRandom.current()
+    )
+    if (result > 0L) {
+      assertEquals(result.toInt.toLong, result)
+    }
+    result
+  }
+
+  test("Backoff.backoffTokens") {
+    // 1.:
+    assertEquals(backoffTokens(0, maxSpinR = 3, maxSleepR = 7), 1L)
+    assertEquals(backoffTokens(1, maxSpinR = 3, maxSleepR = 7), 1L)
+    assertEquals(backoffTokens(2, maxSpinR = 3, maxSleepR = 7), 3L)
+    assertEquals(backoffTokens(3, maxSpinR = 3, maxSleepR = 7), 7L)
+    assertEquals(backoffTokens(4, maxSpinR = 3, maxSleepR = 7), 0L)
+    assertEquals(backoffTokens(5, maxSpinR = 3, maxSleepR = 7), -999L)
+    assertEquals(backoffTokens(6, maxSpinR = 3, maxSleepR = 7), -1999L)
+    assertEquals(backoffTokens(7, maxSpinR = 3, maxSleepR = 7), -3999L)
+    assertEquals(backoffTokens(8, maxSpinR = 3, maxSleepR = 7), -3999L)
+    assertEquals(backoffTokens(9, maxSpinR = 3, maxSleepR = 7), -3999L)
+    // 2.:
+    assertEquals(backoffTokens(0, maxSpinR = 3, maxSleepR = 7, canSuspend = false), 1L)
+    assertEquals(backoffTokens(1, maxSpinR = 3, maxSleepR = 7, canSuspend = false), 1L)
+    assertEquals(backoffTokens(2, maxSpinR = 3, maxSleepR = 7, canSuspend = false), 3L)
+    assertEquals(backoffTokens(3, maxSpinR = 3, maxSleepR = 7, canSuspend = false), 7L)
+    assertEquals(backoffTokens(4, maxSpinR = 3, maxSleepR = 7, canSuspend = false), 7L)
+    assertEquals(backoffTokens(5, maxSpinR = 3, maxSleepR = 7, canSuspend = false), 7L)
+    assertEquals(backoffTokens(4, maxSpinR = 5, maxSleepR = 7, canSuspend = false), 15L)
+    assertEquals(backoffTokens(5, maxSpinR = 5, maxSleepR = 7, canSuspend = false), 31L)
+    assertEquals(backoffTokens(6, maxSpinR = 5, maxSleepR = 7, canSuspend = false), 31L)
+    assertEquals(backoffTokens(7, maxSpinR = 5, maxSleepR = 7, canSuspend = false), 31L)
+    assertEquals(backoffTokens(8, maxSpinR = 5, maxSleepR = 7, canSuspend = false), 31L)
+    // 3.:
+    assertEquals(backoffTokens(0, maxSpinR = 3, maxSleepR = 4), 1L)
+    assertEquals(backoffTokens(1, maxSpinR = 3, maxSleepR = 4), 1L)
+    assertEquals(backoffTokens(2, maxSpinR = 3, maxSleepR = 4), 3L)
+    assertEquals(backoffTokens(3, maxSpinR = 3, maxSleepR = 4), 7L)
+    assertEquals(backoffTokens(4, maxSpinR = 3, maxSleepR = 4), 0L)
+    assertEquals(backoffTokens(5, maxSpinR = 3, maxSleepR = 4), 0L)
+    assertEquals(backoffTokens(6, maxSpinR = 3, maxSleepR = 4), 0L)
+    // 4.:
+    assertEquals(backoffTokens(0, maxSpinR = 3, maxSleepR = 5), 1L)
+    assertEquals(backoffTokens(1, maxSpinR = 3, maxSleepR = 5), 1L)
+    assertEquals(backoffTokens(2, maxSpinR = 3, maxSleepR = 5), 3L)
+    assertEquals(backoffTokens(3, maxSpinR = 3, maxSleepR = 5), 7L)
+    assertEquals(backoffTokens(4, maxSpinR = 3, maxSleepR = 5), 0L)
+    assertEquals(backoffTokens(5, maxSpinR = 3, maxSleepR = 5), -999L)
+    assertEquals(backoffTokens(6, maxSpinR = 3, maxSleepR = 5), -999L)
+    // 5.:
+    assertEquals(backoffTokens(0, maxSpinR = 3, maxSleepR = 6), 1L)
+    assertEquals(backoffTokens(1, maxSpinR = 3, maxSleepR = 6), 1L)
+    assertEquals(backoffTokens(2, maxSpinR = 3, maxSleepR = 6), 3L)
+    assertEquals(backoffTokens(3, maxSpinR = 3, maxSleepR = 6), 7L)
+    assertEquals(backoffTokens(4, maxSpinR = 3, maxSleepR = 6), 0L)
+    assertEquals(backoffTokens(5, maxSpinR = 3, maxSleepR = 6), -999L)
+    assertEquals(backoffTokens(6, maxSpinR = 3, maxSleepR = 6), -1999L)
+    assertEquals(backoffTokens(7, maxSpinR = 3, maxSleepR = 6), -1999L)
+  }
+
   test("Backoff.backoffConst") {
     assertEquals(Backoff.constTokens(retries = 0, maxBackoff = 16), 1)
     assertEquals(Backoff.constTokens(retries = 1, maxBackoff = 16), 2)

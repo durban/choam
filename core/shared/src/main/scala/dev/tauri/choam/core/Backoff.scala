@@ -19,6 +19,7 @@ package dev.tauri.choam
 package core
 
 import java.util.concurrent.ThreadLocalRandom
+import java.lang.Math.{ min, max }
 
 import scala.concurrent.duration._
 
@@ -31,6 +32,71 @@ private object Backoff extends BackoffPlatform {
 
   private[this] final val sleepIncrementNanos =
     1.micros.toNanos // TODO: measure appropriate default; replace method call with const
+
+  final def backoff[F[_]](
+    retries: Int,
+    maxSpinRetries: Int,
+    randomizeSpin: Boolean,
+    canSuspend: Boolean,
+    maxSleepRetries: Int,
+    randomizeSleep: Boolean,
+    random: ThreadLocalRandom,
+  )(implicit F: GenTemporal[F, _]): F[Unit] = {
+    val tok = backoffTokens(
+      retries = retries,
+      maxSpinRetries = maxSpinRetries,
+      randomizeSpin = randomizeSpin,
+      canSuspend = canSuspend,
+      maxSleepRetries = maxSleepRetries,
+      randomizeSleep = randomizeSleep,
+      random = random,
+    )
+    if (tok > 0L) {
+      // positive => spin right now, then return null
+      spin(tok.toInt)
+      nullOf[F[Unit]]
+    } else if (tok == 0L) {
+      // zero => cede in F
+      F.cede
+    } else {
+      // negative => sleep in F
+      F.sleep((-tok).nanos)
+    }
+  }
+
+  final def backoffTokens(
+    retries: Int,
+    maxSpinRetries: Int,
+    randomizeSpin: Boolean,
+    canSuspend: Boolean,
+    maxSleepRetries: Int,
+    randomizeSleep: Boolean,
+    random: ThreadLocalRandom,
+  ): Long = {
+    require(retries >= 0)
+    require(maxSpinRetries < maxSleepRetries)
+    val overSpin = retries - maxSpinRetries
+    if ((overSpin <= 0) || (!canSuspend)) {
+      // we'll spin
+      val normalizedRetries = min(retries, min(maxSpinRetries, 30))
+      val spinTarget = 1 << normalizedRetries
+      val spinTokens = if (randomizeSpin) random.nextInt(spinTarget) else spinTarget - 1
+      max(spinTokens.toLong, 1L) // always call onSpinWait at least once
+    } else {
+      val cede = maxSleepRetries - maxSpinRetries
+      if ((overSpin == 1) || (cede == 1)) {
+        // we'll cede
+        0L
+      } else {
+        // we'll sleep
+        val sleepRetries = overSpin - 2 // because -1 is cede only
+        val normalizedRetries = min(sleepRetries, min(maxSleepRetries - maxSpinRetries - 2, 30))
+        val sleepTarget: Long = (1 << normalizedRetries) * sleepIncrementNanos
+        val sleepNanos = if (randomizeSleep) random.nextLong(sleepTarget) else sleepTarget - 1L
+        -max(sleepNanos, 1L) // always sleep (not just cede)
+      }
+    }
+  }
 
   /**
    * Truncated exponential backoff.
