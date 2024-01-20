@@ -19,6 +19,7 @@ package dev.tauri.choam
 package bench
 
 import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
+import java.util.concurrent.ThreadLocalRandom
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
@@ -173,10 +174,12 @@ class BackoffBenchIo extends BackoffBenchBase {
         } else {
           IO { simpleThing(threadLocalCtr, threadLocalRnd) }
         }
-        val busyTaskOnce = simple
-          .replicateA_(32)
-          .guarantee(IO { busyCounter.getAndIncrement(); () })
-          .guarantee(IO.cede)
+        val busyTaskOnce = IO { ThreadLocalRandom.current().nextInt(4, 33) }.flatMap { randomSize =>
+          simple
+            .replicateA_(randomSize)
+            .guarantee(IO { busyCounter.getAndIncrement(); () })
+            .guarantee(IO.cede)
+        }
         val busyTaskForever = IO.asyncForIO.tailRecM(1L) { busyCtr =>
           if (busyCtr > 0L) {
             busyTaskOnce *> IO { Left(busyCounter.get()) }
