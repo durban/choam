@@ -623,10 +623,10 @@ lazy val consts = new {
 lazy val dependencies = new {
 
   val catsVersion = "2.10.0"
-  val catsEffectVersion = "3.5.2"
+  val catsEffectVersion = "3.5.3"
   val catsMtlVersion = "1.4.0"
   val catsCollectionsVersion = "0.9.8"
-  val fs2Version = "3.9.3"
+  val fs2Version = "3.9.4"
   val scalacheckEffectVersion = "2.0.0-M2"
   val jcstressVersion = "0.16"
   val jmhVersion = "1.37"
