@@ -23,11 +23,11 @@ import java.util.concurrent.ThreadLocalRandom
 
 import org.openjdk.jmh.annotations._
 
-import BackoffBench._
+import BackoffBenchSync._
 
 @Fork(1)
 @BenchmarkMode(Array(Mode.AverageTime))
-class BackoffBench extends BackoffBenchBase {
+class BackoffBenchSync extends BackoffBenchBase {
 
   /** How many `onSpinWait` calls to do when spinning */
   private[this] final val spinTokens =
@@ -104,7 +104,7 @@ class BackoffBench extends BackoffBenchBase {
   }
 }
 
-object BackoffBench {
+object BackoffBenchSync {
 
   @State(Scope.Benchmark)
   class St {

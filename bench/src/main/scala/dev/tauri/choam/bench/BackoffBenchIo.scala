@@ -260,7 +260,7 @@ object BackoffBenchIo {
   }
 
   @State(Scope.Benchmark)
-  class IoSt extends BackoffBench.St {
+  class IoSt extends BackoffBenchSync.St {
 
     /**
      * Whether to wait for the `IO`
@@ -283,7 +283,7 @@ object BackoffBenchIo {
   }
 
   @State(Scope.Thread)
-  class IoThStBase extends BackoffBench.ThStBase {
+  class IoThStBase extends BackoffBenchSync.ThStBase {
 
     /**
      * Whether to use a `Dispatcher`
