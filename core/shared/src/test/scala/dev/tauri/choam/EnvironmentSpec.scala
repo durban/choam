@@ -44,6 +44,7 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
     println(s"isVmSupportsLongCas() == ${isVmSupportsLongCas()}")
     println(s"isIntCached(42) == ${isIntCached(42)}")
     println(s"isIntCached(99999999) == ${isIntCached(99999999)}")
+    println(s"getJvmVersion() == ${getJvmVersion()}")
   }
 
   private val sysProps = List(
