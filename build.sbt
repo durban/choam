@@ -650,7 +650,7 @@ lazy val dependencies = new {
   // JVM:
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.17")
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.2") // https://github.com/JCTools/JCTools
-  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.23") // https://github.com/JetBrains/lincheck
+  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.24") // https://github.com/JetBrains/lincheck
   val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.6") // https://asm.ow2.io/
 
   // JS:
