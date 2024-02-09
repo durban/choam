@@ -81,9 +81,6 @@ object MyIO {
         new GenWaitListForMyIO[A](gwl)
       }
     }
-
-    final override def monadCancel: MonadCancel[MyIO, _] =
-      asyncForMyIO
   }
 
   // non-implicit!

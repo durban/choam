@@ -23,12 +23,11 @@ import cats.effect.kernel.Sync
 
 import internal.mcas.Mcas
 
-// TODO: Add a way to run with `interpretAsync` (in AsyncReactive)
 trait Reactive[F[_]] extends ~>[Axn, F] { self =>
   def apply[A, B](r: Rxn[A, B], a: A, s: Rxn.Strategy.Spin = Rxn.Strategy.Default): F[B]
   def mcasImpl: Mcas
   def monad: Monad[F]
-  final def mapK[G[_]](t: F ~> G)(implicit G: Monad[G]): Reactive[G] =
+  def mapK[G[_]](t: F ~> G)(implicit G: Monad[G]): Reactive[G] =
     new Reactive.TransformedReactive[F, G](self, t)
   final def run[A](a: Axn[A], s: Rxn.Strategy.Spin = Rxn.Strategy.Default): F[A] =
     this.apply[Any, A](a, null: Any, s)

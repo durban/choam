@@ -23,8 +23,6 @@ import cats.laws.IsEq
 import cats.laws.IsEqArrow
 import cats.syntax.all._
 
-import cats.effect.kernel.MonadCancel
-
 import async.AsyncReactive
 
 sealed trait ReactiveLaws[F[_]] {
@@ -53,9 +51,6 @@ object ReactiveLaws {
 sealed trait AsyncReactiveLaws[F[_]] extends ReactiveLaws[F] {
 
   implicit override def reactive: AsyncReactive[F]
-
-  implicit override def monad: MonadCancel[F, _] =
-    reactive.monadCancel
 
   def promiseCompleteAndGet[A](a: A): IsEq[F[(Boolean, A)]] = {
     val completeAndGet = for {
