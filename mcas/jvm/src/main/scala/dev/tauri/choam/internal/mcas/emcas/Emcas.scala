@@ -415,6 +415,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                     // we help the active op (who is not us),
                     // then continue with another iteration:
                     MCAS(parent, ctx = ctx)
+                    ()
                   }
                 } else { // finalized op
                   if (parentStatus == McasStatus.FailedVal) {
@@ -443,6 +444,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                   MCAS(parent, ctx = ctx) // help the other op
                   // Note: we're not "helping" ourselves for sure, see the comment above.
                   // Here, we still don't have the value, so the loop must retry.
+                  ()
                 } else if (parentStatus == McasStatus.FailedVal) {
                   value = wd.cast[A].ov
                   version = wd.oldVersion

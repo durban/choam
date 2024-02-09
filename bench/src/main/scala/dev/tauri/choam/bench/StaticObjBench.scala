@@ -68,7 +68,7 @@ sealed abstract class BaseThSt {
   }
 }
 
-final object ThStObj {
+object ThStObj {
   final def spin(): Unit = {
     Thread.onSpinWait()
   }

@@ -404,6 +404,7 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
             val hx = new Index(z, x, null)
             val nh = new Index(h.node, h, hx) // new head
             _head.compareAndSet(h, nh)
+            ()
           }
 
           if (z.isDeleted()) {
@@ -467,6 +468,7 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
               // marker or deleted node, unlink it:
               q.casRight(r, r.getRight())
               // and will retry going right
+              ()
             } else {
               val c = cpr(key, p.key)
               if (c > 0) {

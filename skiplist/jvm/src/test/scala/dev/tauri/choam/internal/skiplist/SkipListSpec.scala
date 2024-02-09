@@ -453,9 +453,9 @@ final class SkipListSpec extends ScalaCheckSuite with SkipListHelper {
   }
 }
 
-final object SkipListSpec {
+object SkipListSpec {
 
-  final class Shadow[K, V] private (map: MutTreeMap[K, V])(implicit K: Order[K]) {
+  final class Shadow[K, V] private (map: MutTreeMap[K, V]) {
 
     def this()(implicit K: Order[K]) = {
       this(MutTreeMap.empty(K.toOrdering))
