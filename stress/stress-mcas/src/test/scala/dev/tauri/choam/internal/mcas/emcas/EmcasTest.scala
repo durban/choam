@@ -79,20 +79,20 @@ class EmcasTest {
           r.r4 = "y"
         case s =>
           // mustn't happen
-          r.r5 = s"unexpected object: ${s.toString}"
+          appendErrorMsg(r, s"unexpected object: ${s.toString}")
       }
     }
     go()
   }
 
-  private[this] def checkWd(d: WordDescriptor[_], r: LLLLL_Result): Unit = {
+  private[this] final def checkWd(d: WordDescriptor[_], r: LLLLL_Result): Unit = {
     val it = d.parent.wordIterator()
     val dFirst = it.next()
     val dSecond = it.next()
     r.r2 = if (dFirst ne null) {
       if (dFirst.address ne ref2) {
         // mustn't happen
-        r.r5 = s"unexpected dFirst.address: ${dFirst.address}"
+        appendErrorMsg(r, s"unexpected dFirst.address: ${dFirst.address}")
       }
       dFirst.address.id3
     } else {
@@ -109,19 +109,36 @@ class EmcasTest {
     r.r4 = wit
     if (it.hasNext) {
       // mustn't happen
-      r.r5 = s"unexpected 3rd descriptor: ${it.next().toString}"
+      appendErrorMsg(r, s"unexpected 3rd descriptor: ${it.next().toString}")
     }
     if (wit == McasStatus.Active) {
       // mustn't happen
-      r.r5 = "unexpected witness value: McasStatus.Active"
+      appendErrorMsg(r, "unexpected witness value: McasStatus.Active")
+    }
+  }
+
+  private[this] final def appendErrorMsg(r: LLLLL_Result, msg: String): Unit = {
+    r.r5 match {
+      case null =>
+        r.r5 = msg
+      case s: String =>
+        r.r5 = s"${s}; ${msg}"
+      case x =>
+        r.r5 = s"unexpected r5: ${x.toString}; ${msg}"
     }
   }
 
   @Arbiter
   def arbiter(r: LLLLL_Result): Unit = {
     val ctx = Emcas.inst.currentContext()
-    assert(ctx.readDirect(this.ref1) eq "b")
-    assert(ctx.readDirect(this.ref2) eq "y")
+    val v1 = ctx.readDirect(this.ref1)
+    val v2 = ctx.readDirect(this.ref2)
+    if (v1 ne "b") {
+      appendErrorMsg(r, s"unexpected ref1: ${v1}")
+    }
+    if(v2 ne "y") {
+      appendErrorMsg(r, s"unexpected ref2: ${v2}")
+    }
     r.r4 match {
       case v: Long =>
         r.r4 = v match {
