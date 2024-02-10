@@ -94,6 +94,6 @@ trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
   }
 
   def getJvmVersion(): Int = {
-    java.lang.System.getProperty("java.version").split('.')(0).toInt
+    Runtime.version().feature()
   }
 }

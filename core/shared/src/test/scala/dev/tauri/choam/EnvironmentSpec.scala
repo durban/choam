@@ -26,6 +26,7 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
       printSystemProperty(prop)
     }
     println(s"Runtime.getRuntime().availableProcessors() == ${Runtime.getRuntime().availableProcessors()}")
+    println(s"Runtime.version().version() == ${Runtime.version().version()}")
   }
 
   test("Check OsRng") {

@@ -35,6 +35,6 @@ final class VarHandleHelperSpec extends munit.FunSuite {
   }
 
   private def jvmVersion(): Int = {
-    System.getProperty("java.version").split('.')(0).toInt
+    Runtime.version().feature()
   }
 }
