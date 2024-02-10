@@ -26,6 +26,10 @@ abstract class EnvironmentSpecPlatform extends BaseSpec {
     printSecureRandomInfo(sr, prefix = "SecureRandom")
   }
 
+  test("Check JVM version") {
+    println(s"Runtime.version().version() == ${Runtime.version().version()}")
+  }
+
   private def printSecureRandomInfo(sr: JSecureRandom, prefix: String): Unit = {
     println(s"${prefix} class: ${sr.getClass().getCanonicalName()}")
     println(s"${prefix} algorithm: ${sr.getAlgorithm()}")

@@ -34,4 +34,8 @@ trait MUnitUtilsPlatform {
     else if (n.endsWith("LockedUpdater")) false
     else throw new Exception(s"we don't know (name is '${n}')")
   }
+
+  final def getJvmVersion(): Int = {
+    Runtime.version().feature()
+  }
 }

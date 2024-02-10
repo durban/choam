@@ -28,4 +28,9 @@ trait MUnitUtilsPlatform {
   final def isVmSupportsLongCas(): Boolean = {
     true // LOL!
   }
+
+  final def getJvmVersion(): Int = {
+    // scala-js has no `Runtime.version()`
+    System.getProperty("java.version").split('.')(0).toInt
+  }
 }
