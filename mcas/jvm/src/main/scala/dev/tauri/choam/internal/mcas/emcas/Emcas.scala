@@ -574,10 +574,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // would not save us here: volatile-reading the new value written
       // by a successful volatile-CAS creates a happens-before relationship
       // (JLS 17.4.4.); however, volatile-reading the OLD value does NOT
-      // create a "happens-after" relationship -- at least I can't find anything
-      // in the spec that says it does. So, here, after plain-reading a
-      // `null` from the array, we could volatile-read `Active`; and this
-      // actually happened (with JCStress).
+      // create a "happens-after" relationship. So, here, after plain-reading
+      // a `null` from the array, we could volatile-read `Active` (and this
+      // actually happens with JCStress).
       //
       // So, instead of a volatile read, we do a volatile-CAS (with
       // `cmpxchgStatus`) which must necessarily fail, but creates the
@@ -600,8 +599,8 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       //
       // (Besides reading `null`, another reason for the `Break` could be
       // that we already volatile-read a non-`Active` status. In that case
-      // the `cmpxchgStatus` will also fail, and we will read the final
-      // status again. Which is fine.
+      // the `cmpxchgStatus` will also fail, and we will get the final
+      // status as the witness. Which is fine.)
       val wit = desc.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
       assert(wit != McasStatus.Active)
       wit

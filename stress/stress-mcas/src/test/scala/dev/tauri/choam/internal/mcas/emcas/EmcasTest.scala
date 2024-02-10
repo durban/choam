@@ -105,10 +105,15 @@ class EmcasTest {
       // in the process of clearing
       "CL"
     }
-    r.r4 = d.parent.getStatus()
+    val wit = d.parent.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
+    r.r4 = wit
     if (it.hasNext) {
       // mustn't happen
       r.r5 = s"unexpected 3rd descriptor: ${it.next().toString}"
+    }
+    if (wit == McasStatus.Active) {
+      // mustn't happen
+      r.r5 = "unexpected witness value: McasStatus.Active"
     }
   }
 
