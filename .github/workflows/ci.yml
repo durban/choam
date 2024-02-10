@@ -97,6 +97,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     steps:
+      - if: matrix.os == 'macos-14'
+        shell: bash
+        run: |
+          brew
+          install
+          sbt
+
       - name: Ignore line ending differences in git
         if: contains(runner.os, 'windows')
         shell: bash
@@ -236,13 +243,6 @@ jobs:
       - name: Check that workflows are up to date
         shell: bash
         run: sbt -v githubWorkflowCheck
-
-      - if: matrix.os == 'macos-14'
-        shell: bash
-        run: |
-          brew
-          install
-          sbt
 
       - if: (!((matrix.java == 'semeru@11') || (matrix.java == 'semeru@17') || (matrix.java == 'semeru@20'))) && (!(contains(github.event.head_commit.message, 'full CI')))
         shell: bash
