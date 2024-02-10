@@ -27,7 +27,6 @@
   - if a suspended operation (e.g., a stack `pop`) is cancelled, this can cause lost items
   - it's unclear if we can fix this with the current CE API
   - and even if we would know that the wakeup is lost, it's already too late: the `Rxn` have been already committed
-- Calling CE `async` callback might not be lock-free (it is not in CE 3 IO)
 - `dev.tauri.choam.data.TtrieModelTest` fails; seems to be a lincheck bug.
 - `SkipListModelTest` sometimes fails; it's unclear if this is just a timeout, but seems likely:
   ```
@@ -116,6 +115,20 @@
     - \*.internal.\* packages (no bincompat)
     - `unafe` APIs (no bincompat)
     - `laws` module (no bincompat)
+    - assumptions:
+      - for lock freedom:
+        - `VarHandle` operations are lock-free (this means 64-bit platforms, due to `long`)
+        - no infinite loop `Rxn`s
+        - no `unsafe`
+        - we ignore GC and classloading locks
+        - `UUIDGen[Axn]` and `Random[Axn]` may use the OS RNG, which might block
+        - we assume `ThreadLocalRandom` is lock-free (why wouldn't it be?)
+        - `Strategy.Spin` is the only lock-free `Strategy`
+        - operations in `F[_]` are (obviously) might not be lock-free (e.g., `Promise#get`)
+        - we assume calling a CE `async` callback is lock-free (in CE 3 IO it is not!)
+        - only `Mcas.DefaultMcas` (i.e., `Emcas`) is lock-free
+      - for scala-js:
+        - we assume single-threaded execution (TODO: what about wasm?)
   - MCAS API review
     - is it usable outside of `choam`?
     - if not, it doesn't really make sense to have it in a separate module
