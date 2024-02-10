@@ -264,3 +264,10 @@ jobs:
       - if: (matrix.os == 'macos-14') && (contains(github.event.head_commit.message, 'full CI'))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' ciStress
+
+      - name: Upload JCStress results
+        if: (matrix.os == 'macos-14') && (contains(github.event.head_commit.message, 'full CI'))
+        uses: actions/upload-artifact@v4
+        with:
+          name: jcstress-results
+          path: results/
