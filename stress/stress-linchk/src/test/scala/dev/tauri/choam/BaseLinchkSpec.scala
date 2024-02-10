@@ -30,8 +30,6 @@ trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { thi
     super[BaseFunSuite].test(name) {
       // lincheck tests seem unstable in CI windows:
       assumeNotWin()
-      // lincheck doesn't seem to work on JVM 21+:
-      assumeJvmVersion(_ < 21)
       body
     } (loc)
   }
@@ -40,8 +38,6 @@ trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { thi
     super[BaseFunSuite].test(options) {
       // lincheck tests seem unstable in CI windows:
       assumeNotWin()
-      // lincheck doesn't seem to work on JVM 21+:
-      assumeJvmVersion(_ < 21)
       body
     } (loc)
   }
