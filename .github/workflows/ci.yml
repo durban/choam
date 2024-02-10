@@ -26,7 +26,7 @@ jobs:
     name: Build and Test
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-14]
         scala: [2.13, 3]
         java:
           - temurin@11
@@ -39,13 +39,13 @@ jobs:
           - semeru@17
           - semeru@20
         include:
-          - os: macos-latest
+          - os: macos-14
             java: temurin@21
             scala: 2.13
           - os: windows-latest
             java: temurin@21
             scala: 2.13
-          - os: macos-latest
+          - os: macos-14
             java: temurin@21
             scala: 3
           - os: windows-latest
@@ -64,23 +64,23 @@ jobs:
             java: semeru@17
           - os: windows-latest
             java: semeru@20
-          - os: macos-latest
+          - os: macos-14
             java: graal_22.3.2@11
-          - os: macos-latest
+          - os: macos-14
             java: graalvm@17
-          - os: macos-latest
+          - os: macos-14
             java: graalvm@21
-          - os: macos-latest
+          - os: macos-14
             java: semeru@11
-          - os: macos-latest
+          - os: macos-14
             java: semeru@17
-          - os: macos-latest
+          - os: macos-14
             java: semeru@20
-          - os: macos-latest
+          - os: macos-14
             java: temurin@11
-          - os: macos-latest
+          - os: macos-14
             java: temurin@17
-          - os: macos-latest
+          - os: macos-14
             java: temurin@21
           - os: windows-latest
             java: temurin@11
@@ -257,6 +257,6 @@ jobs:
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' checkScalafix
 
-      - if: (matrix.os == 'macos-latest') && (contains(github.event.head_commit.message, 'full CI'))
+      - if: (matrix.os == 'macos-14') && (contains(github.event.head_commit.message, 'full CI'))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' ciStress

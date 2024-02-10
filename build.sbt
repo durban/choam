@@ -36,7 +36,7 @@ val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17, jvmOpenj9_20)
 // CI OS versions:
 val linux = "ubuntu-latest"
 val windows = "windows-latest"
-val macos = "macos-latest"
+val macos = "macos-14"
 
 val TestInternal = "test-internal"
 val ciCommand = "ci"
