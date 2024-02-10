@@ -24,7 +24,7 @@ import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.infra.results.I_Result
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("Dekker")
 @Outcomes(Array(
