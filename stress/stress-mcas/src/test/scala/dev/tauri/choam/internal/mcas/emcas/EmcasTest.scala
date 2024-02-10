@@ -35,6 +35,9 @@ import org.openjdk.jcstress.infra.results.LLLLL_Result
   new Outcome(id = Array("true, 21, CL, SUCCESSFUL, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor is being cleaned up right now (1)"),
   new Outcome(id = Array("true, CL, 42, SUCCESSFUL, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor is being cleaned up right now (2)"),
   new Outcome(id = Array("true, CL, CL, SUCCESSFUL, null"), expect = ACCEPTABLE_INTERESTING, desc = "descriptor is being cleaned up right now (3)"),
+  new Outcome(id = Array("true, CL, CL, ACTIVE, null"), expect = ACCEPTABLE_INTERESTING, desc = "active op, seeing cleaning due to data race (1)"),
+  new Outcome(id = Array("true, 21, CL, ACTIVE, null"), expect = ACCEPTABLE_INTERESTING, desc = "active op, seeing cleaning due to data race (2)"),
+  new Outcome(id = Array("true, CL, 42, ACTIVE, null"), expect = ACCEPTABLE_INTERESTING, desc = "active op, seeing cleaning due to data race (3)"),
   new Outcome(id = Array("true, 21, 42, FAILED, null"), expect = FORBIDDEN, desc = "observed descriptors in correct  order, but failed status"),
   new Outcome(id = Array("true, 42, 21, ACTIVE, null", "true, 42, 21, SUCCESSFUL, null"), expect = FORBIDDEN, desc = "observed descriptors in incorrect (unsorted) order")
 ))
@@ -105,15 +108,10 @@ class EmcasTest {
       // in the process of clearing
       "CL"
     }
-    val wit = d.parent.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
-    r.r4 = wit
+    r.r4 = d.parent.getStatus()
     if (it.hasNext) {
       // mustn't happen
       appendErrorMsg(r, s"unexpected 3rd descriptor: ${it.next().toString}")
-    }
-    if (wit == McasStatus.Active) {
-      // mustn't happen
-      appendErrorMsg(r, "unexpected witness value: McasStatus.Active")
     }
   }
 
