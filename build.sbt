@@ -705,6 +705,7 @@ val stressTestNames = List[String](
   "stressCore",
   "stressData",
   "stressAsync",
+  "stressExperiments", // temporarily
 )
 
 val stressTestNamesSlow = List[String](
