@@ -99,10 +99,7 @@ jobs:
     steps:
       - if: matrix.os == 'macos-14'
         shell: bash
-        run: |
-          brew
-          install
-          sbt
+        run: brew install sbt
 
       - name: Ignore line ending differences in git
         if: contains(runner.os, 'windows')

@@ -87,7 +87,7 @@ ThisBuild / githubWorkflowBuildTimeoutMinutes := Some(120)
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowJobSetup ~= { value =>
   WorkflowStep.Run( // install sbt on macos
-    List("brew", "install", "sbt"),
+    List("brew install sbt"),
     cond = Some(s"matrix.os == '${macos}'"),
   ) +: value
 }
