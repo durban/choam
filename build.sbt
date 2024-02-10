@@ -86,6 +86,11 @@ ThisBuild / githubWorkflowUseSbtThinClient := false
 ThisBuild / githubWorkflowBuildTimeoutMinutes := Some(120)
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowBuild := Seq(
+  // Install sbt on macos:
+  WorkflowStep.Run(
+    List("brew", "install", "sbt"),
+    cond = Some(s"matrix.os == '${macos}'")
+  ),
   // Tests on non-OpenJ9:
   WorkflowStep.Sbt(
     List(ciCommand),

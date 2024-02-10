@@ -237,6 +237,13 @@ jobs:
         shell: bash
         run: sbt -v githubWorkflowCheck
 
+      - if: matrix.os == 'macos-14'
+        shell: bash
+        run: |
+          brew
+          install
+          sbt
+
       - if: (!((matrix.java == 'semeru@11') || (matrix.java == 'semeru@17') || (matrix.java == 'semeru@20'))) && (!(contains(github.event.head_commit.message, 'full CI')))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' ci
