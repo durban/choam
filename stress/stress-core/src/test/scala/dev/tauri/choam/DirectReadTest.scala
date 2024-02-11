@@ -49,7 +49,7 @@ class DirectReadTest extends StressTestBase {
     ref1.update(_ => "b") >>> ref2.update(_ => "y")
 
   @Actor
-  def writer(@unused r: LLZ_Result): Unit = {
+  def writer(): Unit = {
     write.unsafeRun(this.impl)
   }
 

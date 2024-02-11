@@ -704,7 +704,7 @@ val stressTestNames = List[String](
   "stressMcas",
   "stressCore",
   "stressData",
-  "stressAsync",
+  // "stressAsync", // TODO: this test is not useful currently
   "stressExperiments", // temporarily
 )
 

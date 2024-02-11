@@ -17,46 +17,51 @@
 
 package dev.tauri.choam
 
-import org.openjdk.jcstress.annotations._
+import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import cats.effect.SyncIO
-
-import ce._
-
 @JCStressTest
 @State
-@Description("MsQueue enq/deq should be composable (concurrent enqueue)")
+@Description("Ref#get should be consistent")
 @Outcomes(Array(
-  new Outcome(id = Array("List(b, c, d), List(y, a)"), expect = ACCEPTABLE, desc = "Additional enq is first"),
-  new Outcome(id = Array("List(b, c, d), List(a, y)"), expect = ACCEPTABLE_INTERESTING, desc = "Additional enq is last")
+  new Outcome(id = Array("(x,y), (x1,y1)"), expect = ACCEPTABLE, desc = "Read old values"),
+  new Outcome(id = Array("(x1,y1), (x1,y1)"), expect = ACCEPTABLE_INTERESTING, desc = "Read new values")
 ))
-class MsQueueComposedTest2 extends MsQueueStressTestBase {
+class ConsistentRead extends StressTestBase {
 
-  private[this] val queue1 =
-    this.newQueue("a", "b", "c", "d")
+  private[this] val ref1 =
+    Ref.unsafe("-")
 
-  private[this] val queue2 =
-    this.newQueue[String]()
+  private[this] val ref2 =
+    Ref.unsafe("y")
 
-  private[this] val tfer: Axn[Unit] =
-    queue1.tryDeque.map(_.getOrElse("x")) >>> queue2.enqueue
+  private[this] val upd: Axn[Unit] =
+    ref1.update(_ + "1") >>> ref2.update(_ + "1")
 
-  @Actor
-  def transfer(): Unit = {
-    tfer.unsafePerform((), this.impl)
+  private[this] val get: Axn[(String, String)] =
+    ref1.get * ref2.get
+
+  this.init()
+
+  private[this] final def init(): Unit = {
+    val initRxn = ref1.update(_ => "x")
+    initRxn.unsafeRun(this.impl)
   }
 
   @Actor
-  def concurrentEnqueue(): Unit = {
-    queue2.enqueue.unsafePerform("y", this.impl)
+  def update(): Unit = {
+    upd.unsafeRun(this.impl)
+  }
+
+  @Actor
+  def read(r: LL_Result): Unit = {
+    r.r1 = get.unsafeRun(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r1 = queue1.drainOnce[SyncIO, String].unsafeRunSync()
-    r.r2 = queue2.drainOnce[SyncIO, String].unsafeRunSync()
+    r.r2 = (ref1.get.unsafeRun(this.impl), ref2.get.unsafeRun(this.impl))
   }
 }
