@@ -116,12 +116,12 @@ ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
   // JCStress tests (only usable on macos, only runs if commit msg contains 'full CI'):
   WorkflowStep.Sbt(List("ciStress"), cond = Some(s"(matrix.os == '${macos}') && (${fullCiCond})")),
-  WorkflowStep.Use( // TODO: this doesn't work if the build fails
+  WorkflowStep.Use(
     UseRef.Public("actions", "upload-artifact", "v4"),
     name = Some("Upload JCStress results"),
-    cond = Some(s"(matrix.os == '${macos}') && (${fullCiCond})"),
+    cond = Some(s"(success() || failure()) && (matrix.os == '${macos}') && (${fullCiCond})"),
     params = Map(
-      "name" -> "jcstress-results",
+      "name" -> "jcstress-results-${{ matrix.scala }}-${{ matrix.java }}",
       "path" -> "results/",
     ),
   ),
