@@ -80,7 +80,7 @@ object Queue {
     RingBuffer.apply[A](capacity)
 
   // TODO: do we need this?
-  def lazyRingBuffer[A](capacity: Int): Axn[Queue.WithSize[A]] =
+  private[choam] def lazyRingBuffer[A](capacity: Int): Axn[Queue.WithSize[A]] =
     RingBuffer.lazyRingBuffer[A](capacity)
 
   def unboundedWithSize[A]: Axn[Queue.WithSize[A]] = {

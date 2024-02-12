@@ -67,7 +67,7 @@ private object RingBuffer {
   }
 
   // TODO: do we need this?
-  def lazyRingBuffer[A](capacity: Int): Axn[RingBuffer[A]] = {
+  private[data] def lazyRingBuffer[A](capacity: Int): Axn[RingBuffer[A]] = {
     require(capacity > 0)
     Ref.lazyArray[A](size = capacity, initial = empty[A]).flatMapF { arr =>
       makeRingBuffer(capacity, arr)
