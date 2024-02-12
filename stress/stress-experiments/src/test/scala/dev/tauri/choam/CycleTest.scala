@@ -20,65 +20,49 @@ package dev.tauri.choam
 import org.openjdk.jcstress.annotations.{ Ref => _, Outcome => JOutcome, _ }
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
-import org.openjdk.jcstress.infra.results.LL_Result
+import org.openjdk.jcstress.infra.results.LLLLLL_Result
 
 @JCStressTest
 @State
 @Description("Cycles?")
 @Outcomes(Array(
-  new JOutcome(id = Array("List(a, b, c, d), null"), expect = ACCEPTABLE_INTERESTING, desc = "ok"),
+  new JOutcome(id = Array(".*"), expect = ACCEPTABLE_INTERESTING, desc = "whatever"),
 ))
 class CycleTest {
 
   import CycleTest.Node
 
-  private[this] val second: Node =
-    new Node("b", new Node("c", new Node("d", null)))
+  private[this] var a: Node =
+    null
 
-  private[this] val first: Node =
-    new Node("a", second)
+  private[this] var b: Node =
+    null
 
   @Actor
-  def callbackStackApply(r: LL_Result): Unit = {
-    var log = List.empty[String]
-    var currentNode = this.first
-    while (currentNode ne null) {
-      val cb = currentNode.callback
-      if (cb ne null) {
-        log = cb :: log
-        currentNode.callback = null
-      }
-      val nextNode = currentNode.next
-      currentNode.next = null
-      currentNode = nextNode
-    }
-    r.r1 = log.reverse
+  def write(): Unit = {
+    this.a = new Node("a", new Node("x", null))
+    this.b = new Node("b", null)
+    this.a.callback = null
   }
 
   @Actor
-  def callbackStackPackTail(): Unit = {
-    def go(node: Node, prev: Node): Unit = {
-      val next = node.next
-      if (node.callback eq null) {
-        prev.next = next
-        if (next eq null) {
-          ()
-        } else {
-          go(next, prev)
-        }
-      } else {
-        if (next eq null) {
-          ()
-        } else {
-          go(next, node)
-        }
+  def read(r: LLLLLL_Result): Unit = {
+    val a = this.a
+    r.r1 = a
+    val b = this.b
+    r.r5 = b
+    if (a ne null) {
+      val aCb = a.callback
+      val aNext = a.next
+      r.r2 = aCb
+      r.r3 = aNext
+      if (aNext ne null) {
+        r.r4 = aNext.callback
       }
     }
-
-    val first = this.first
-    val second = this.second
-    if (second ne null) {
-      go(second, first)
+    if (b ne null) {
+      val bCb = b.callback
+      r.r6 = bCb
     }
   }
 }
