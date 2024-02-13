@@ -72,6 +72,10 @@ object CycleTest {
   final class Node(
     var callback: String,
     var next: Node,
-  ) {
+  ) extends Serializable {
+
+    final override def toString: String = {
+      s"Node(${callback}, ${next})"
+    }
   }
 }
