@@ -18,45 +18,86 @@
 package dev.tauri.choam
 package data
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import org.jetbrains.kotlinx.lincheck.{ LinChecker, LincheckAssertionError }
 import org.jetbrains.kotlinx.lincheck.paramgen.IntGen
 import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 
 import munit.FunSuite
 
-@Param(name = "v", gen = classOf[IntGen], conf = "0:127")
-class ManagedTestState {
-
-  @volatile
-  private[this] var count: Int =
-    0
-
-  @Operation
-  def incr(v: Int): Int = {
-    val curr = this.count
-    this.count = curr + v
-    curr
-  }
-
-  @Operation
-  def decr(v: Int): Int = {
-    val curr = this.count
-    this.count = curr - v
-    curr
-  }
-}
+import ManagedTestExample._
 
 final class ManagedTestExample extends FunSuite with BaseLinchkSpec {
 
   test("Dummy counter test".tag(SLOW)) {
-    val opts = new ModelCheckingOptions()
+    val opts = defaultModelCheckingOptions()
     try {
-      LinChecker.check(classOf[ManagedTestState], opts)
+      LinChecker.check(classOf[BadCounterState], opts)
       fail("expected a lincheck failure")
     } catch {
       case _: LincheckAssertionError =>
         () // ok, expected failure
     }
+  }
+
+  test("Counter test which fails".tag(SLOW).fail) {
+    val opts = defaultModelCheckingOptions()
+    LinChecker.check(classOf[BadCounterState], opts)
+  }
+
+  test("Counter test which passes".tag(SLOW)) {
+    val opts = defaultModelCheckingOptions()
+    LinChecker.check(classOf[GoodCounterState], opts)
+  }
+}
+
+object ManagedTestExample {
+
+  @Param(name = "v", gen = classOf[IntGen], conf = "0:127")
+  sealed abstract class AbstractState {
+
+    protected def incrementBy(i: Int): Int
+
+    protected def decrementBy(i: Int): Int
+
+    @Operation
+    def incr(v: Int): Int =
+      incrementBy(v)
+
+    @Operation
+    def decr(v: Int): Int =
+      decrementBy(v)
+  }
+
+  class BadCounterState extends AbstractState {
+
+    @volatile
+    private[this] var count: Int =
+      0
+
+    protected override def incrementBy(v: Int): Int = {
+      val curr = this.count
+      this.count = curr + v
+      curr
+    }
+
+    protected override def decrementBy(v: Int): Int = {
+      val curr = this.count
+      this.count = curr - v
+      curr
+    }
+  }
+
+  class GoodCounterState extends AbstractState {
+
+    private[this] val count =
+      new AtomicInteger
+
+    protected override def incrementBy(i: Int): Int =
+      count.getAndAdd(i)
+
+    protected override def decrementBy(i: Int): Int =
+      count.getAndAdd(-i)
   }
 }
