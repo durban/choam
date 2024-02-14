@@ -26,9 +26,19 @@ import munit.FunSuite
 
 import internal.mcas.Mcas
 
+import TtrieModelTest._
+
 final class TtrieModelTest extends FunSuite with BaseLinchkSpec {
 
-  test("Model checking test of Ttrie".tag(SLOW)) {
+  test("Model checking Ttrie.apply".tag(SLOW)) {
+    ttrieModelCheck(classOf[TrieMapTestState])
+  }
+
+  test("Model checking Ttrie.skipListBased".tag(SLOW)) {
+    ttrieModelCheck(classOf[SkipListTestState])
+  }
+
+  def ttrieModelCheck(cls: Class[_ <: AbstractTestState]): Unit = {
     val opts = defaultModelCheckingOptions()
       .checkObstructionFreedom(true)
       .iterations(100)
@@ -38,22 +48,21 @@ final class TtrieModelTest extends FunSuite with BaseLinchkSpec {
       .actorsPerThread(2)
       .actorsAfter(1)
     printFatalErrors {
-      LinChecker.check(classOf[TtrieModelTest.TestState], opts)
+      LinChecker.check(cls, opts)
     }
   }
 }
 
-final object TtrieModelTest {
+private[data] object TtrieModelTest {
 
   @Param(name = "k", gen = classOf[StringGen])
   @Param(name = "v", gen = classOf[StringGen])
-  class TestState  {
+  sealed abstract class AbstractTestState {
 
-    private[this] val emcas: Mcas =
+    protected[this] val emcas: Mcas =
       Mcas.Emcas
 
-    private[this] val m: Ttrie[String, String] =
-      Ttrie[String, String].unsafeRun(emcas)
+    protected[this] val m: Ttrie[String, String]
 
     @Operation
     def insert(k: String, v: String): Option[String] = {
@@ -64,5 +73,15 @@ final object TtrieModelTest {
     def lookup(k: String): Option[String] = {
       m.get.unsafePerform(k, emcas)
     }
+  }
+
+  class TrieMapTestState extends AbstractTestState {
+    protected[this] override val m: Ttrie[String, String] =
+      Ttrie[String, String].unsafeRun(emcas)
+  }
+
+  class SkipListTestState extends AbstractTestState {
+    protected[this] override val m: Ttrie[String, String] =
+      Ttrie.skipListBased[String, String].unsafeRun(emcas)
   }
 }
