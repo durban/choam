@@ -70,8 +70,18 @@ private[data] object TtrieModelTest {
     }
 
     @Operation
+    def insertIfAbsent(k: String, v: String): Option[String] = {
+      m.putIfAbsent.unsafePerform(k -> v, emcas)
+    }
+
+    @Operation
     def lookup(k: String): Option[String] = {
       m.get.unsafePerform(k, emcas)
+    }
+
+    @Operation
+    def removeKey(k: String): Boolean = {
+      m.del.unsafePerform(k, emcas)
     }
   }
 
