@@ -16,7 +16,6 @@
  */
 
 package dev.tauri.choam
-package data
 
 import java.util.concurrent.atomic.AtomicInteger
 
