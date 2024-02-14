@@ -65,6 +65,28 @@ class CycleTest {
       r.r6 = bCb
     }
   }
+
+  @Arbiter
+  def arbiter(r: LLLLLL_Result): Unit = {
+    r.r1 match {
+      case n: Node =>
+        r.r1 = n.toString
+      case _ =>
+        ()
+    }
+    r.r3 match {
+      case n: Node =>
+        r.r3 = n.toString
+      case _ =>
+        ()
+    }
+    r.r5 match {
+      case n: Node =>
+        r.r5 = n.toString
+      case _ =>
+        ()
+    }
+  }
 }
 
 object CycleTest {
@@ -72,7 +94,7 @@ object CycleTest {
   final class Node(
     var callback: String,
     var next: Node,
-  ) extends Serializable {
+  ) {
 
     final override def toString: String = {
       s"Node(${callback}, ${next})"
