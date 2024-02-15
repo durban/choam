@@ -276,7 +276,14 @@ abstract class Padding extends RefToString {
   byte pad254;
   byte pad255;
 
-  final long dummyImpl(long v) {
+  final long dummyImpl(long n) {
+    byte v = (byte) n;
+    this.dummy1(v);
+    this.dummy2(v);
+    return (long) this.pad255;
+  }
+
+  private final void dummy1(byte v) {
     this.pad000 ^= v;
     this.pad001 ^= v;
     this.pad002 ^= v;
@@ -405,6 +412,9 @@ abstract class Padding extends RefToString {
     this.pad125 ^= v;
     this.pad126 ^= v;
     this.pad127 ^= v;
+  }
+
+  private final void dummy2(byte v) {
     this.pad128 ^= v;
     this.pad129 ^= v;
     this.pad130 ^= v;
@@ -533,6 +543,5 @@ abstract class Padding extends RefToString {
     this.pad253 ^= v;
     this.pad254 ^= v;
     this.pad255 ^= v;
-    return this.pad255;
   }
 }

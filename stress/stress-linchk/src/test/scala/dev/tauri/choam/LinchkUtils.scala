@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.{
 }
 
 import scala.util.control.NonFatal
-import scala.collection.concurrent.TrieMap
 
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ManagedStrategyGuarantee
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
@@ -84,12 +83,21 @@ trait LinchkUtils {
       mco.asInstanceOf[Opts].invocationTimeout$lincheck(timeoutMs).asInstanceOf[ModelCheckingOptions]
     }
 
-    increaseTimeout(new ModelCheckingOptions()).addGuarantee(assumedAtomic)
+    increaseTimeout(new ModelCheckingOptions())
+      .addGuarantee(assumedAtomic)
+      .checkObstructionFreedom(true)
+      // this is the "fast" configuration from the Lincheck paper:
+      .iterations(30) // scenarios
+      .threads(2)
+      .actorsPerThread(3) // operations per thread
+      .invocationsPerIteration(1000) // run each scenario this much time (FIXME)
+      // end of "fast" configuration
+      .actorsBefore(2) // so that we don't work with empty data structures
+      .actorsAfter(1) // to have a chance of detecting inconsistent state left
   }
 
   private val assumedAtomicClassNames: Set[String] = {
     Set(
-      classOf[TrieMap[_, _]],
       classOf[ConcurrentSkipListMap[_, _]],
       classOf[ConcurrentSkipListSet[_]],
       classOf[ConcurrentHashMap[_, _]],

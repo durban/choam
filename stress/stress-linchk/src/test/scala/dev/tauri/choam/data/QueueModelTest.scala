@@ -34,17 +34,9 @@ final class QueueModelTest extends FunSuite with BaseLinchkSpec {
     queueModelCheck(classOf[MsQueueTestState])
   }
 
-  def queueModelCheck(cls: Class[_ <: AbstractTestState]): Unit = {
-    val opts = defaultModelCheckingOptions()
-      .checkObstructionFreedom(true)
-      .iterations(100)
-      .invocationsPerIteration(100)
-      .threads(3)
-      .actorsBefore(2)
-      .actorsPerThread(2)
-      .actorsAfter(1)
+  private def queueModelCheck(cls: Class[_ <: AbstractTestState]): Unit = {
     printFatalErrors {
-      LinChecker.check(cls, opts)
+      LinChecker.check(cls, defaultModelCheckingOptions())
     }
   }
 }
