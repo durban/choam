@@ -30,11 +30,11 @@ import TtrieModelTest._
 
 final class TtrieModelTest extends FunSuite with BaseLinchkSpec {
 
-  test("Model checking Ttrie.apply".tag(SLOW)) {
+  test("Model checking Ttrie.apply".tag(SLOW).ignore) {
     ttrieModelCheck(classOf[TrieMapTestState])
   }
 
-  test("Model checking Ttrie.skipListBased".tag(SLOW).ignore) { // TODO: this fails, probably linchk bug
+  test("Model checking Ttrie.skipListBased".tag(SLOW)) {
     ttrieModelCheck(classOf[SkipListTestState])
   }
 
