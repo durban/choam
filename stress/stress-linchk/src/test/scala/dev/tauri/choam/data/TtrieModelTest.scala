@@ -30,11 +30,11 @@ import TtrieModelTest._
 
 final class TtrieModelTest extends FunSuite with BaseLinchkSpec {
 
-  test("Model checking Ttrie.apply".tag(SLOW).ignore) {
+  test("Model checking Ttrie.apply".tag(SLOW)) {
     ttrieModelCheck(classOf[TrieMapTestState])
   }
 
-  test("Model checking Ttrie.skipListBased".tag(SLOW)) {
+  test("Model checking Ttrie.skipListBased".tag(SLOW).ignore) {
     ttrieModelCheck(classOf[SkipListTestState])
   }
 
