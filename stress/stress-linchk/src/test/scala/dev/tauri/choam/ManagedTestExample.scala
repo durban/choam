@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import org.jetbrains.kotlinx.lincheck.{ LinChecker, LincheckAssertionError }
+import org.jetbrains.kotlinx.lincheck.{ LinChecker }
 import org.jetbrains.kotlinx.lincheck.paramgen.IntGen
 import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
 
@@ -29,25 +29,12 @@ import ManagedTestExample._
 
 final class ManagedTestExample extends FunSuite with BaseLinchkSpec {
 
-  test("Dummy counter test".tag(SLOW)) {
-    val opts = defaultModelCheckingOptions()
-    try {
-      LinChecker.check(classOf[BadCounterState], opts)
-      fail("expected a lincheck failure")
-    } catch {
-      case _: LincheckAssertionError =>
-        () // ok, expected failure
-    }
-  }
-
   test("Counter test which fails".tag(SLOW).fail) {
-    val opts = defaultModelCheckingOptions()
-    LinChecker.check(classOf[BadCounterState], opts)
+    LinChecker.check(classOf[BadCounterState], defaultModelCheckingOptions())
   }
 
   test("Counter test which passes".tag(SLOW)) {
-    val opts = defaultModelCheckingOptions()
-    LinChecker.check(classOf[GoodCounterState], opts)
+    LinChecker.check(classOf[GoodCounterState], defaultModelCheckingOptions())
   }
 }
 

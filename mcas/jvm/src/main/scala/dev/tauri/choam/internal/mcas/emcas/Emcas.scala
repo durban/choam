@@ -204,7 +204,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    *
    * @param ref: The [[MemoryLocation]] to read from.
    * @param ctx: The [[ThreadContext]] of the current thread.
-   * @param replace: Pass 0 to not do any replacing/clearing.
+   * @param replace: Pass `false` to not do any replacing/clearing.
    */
   private[emcas] final def readValue[A](ref: MemoryLocation[A], ctx: EmcasThreadContext, replace: Boolean): HalfWordDescriptor[A] = {
     @tailrec
