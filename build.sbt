@@ -666,7 +666,7 @@ lazy val dependencies = new {
 
   // JVM:
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.17")
-  val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.2") // https://github.com/JCTools/JCTools
+  val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.3") // https://github.com/JCTools/JCTools
   val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.26") // https://github.com/JetBrains/lincheck
   val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.6") // https://asm.ow2.io/
 
@@ -680,7 +680,7 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.4")
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.0")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.1")
   val zioStm = Def.setting("dev.zio" %%% "zio" % "2.1-RC1")
 
   val test = Def.setting[Seq[ModuleID]] {
