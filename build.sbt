@@ -150,6 +150,8 @@ ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.fla
   )
 }
 
+// ThisBuild / resolvers += Resolver.mavenLocal
+
 lazy val choam = project.in(file("."))
   .settings(name := "choam")
   .settings(commonSettings)
@@ -665,7 +667,7 @@ lazy val dependencies = new {
   // JVM:
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.17")
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.2") // https://github.com/JCTools/JCTools
-  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.25") // https://github.com/JetBrains/lincheck
+  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.26") // https://github.com/JetBrains/lincheck
   val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.6") // https://asm.ow2.io/
 
   // JS:
