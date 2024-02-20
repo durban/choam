@@ -53,15 +53,11 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
    * A `Node` is a special "marker" node (for deletion) if `key == MARKER`.
    * A `Node` is logically deleted if `value == TOMB`.
    */
-  private[this] final class Node private (
+  private[this] final class Node private[SkipListMap] (
     val key: K,
-    value: AtomicReference[V],
+    v: V,
     n: Node,
-  ) extends AtomicReference[Node](n) { next =>
-
-    private[SkipListMap] def this(key: K, value: V, next: Node) = {
-      this(key, new AtomicReference(value), next)
-    }
+  ) extends SkipListMapNodeBase[V, Node](v, n) {
 
     private[SkipListMap] final def isMarker: Boolean = {
       isMARKER(key)
@@ -69,22 +65,6 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
 
     private[SkipListMap] final def isDeleted(): Boolean = {
       isTOMB(getValue())
-    }
-
-    private[SkipListMap] final def getNext(): Node = {
-      next.getAcquire()
-    }
-
-    private[SkipListMap] final def casNext(ov: Node, nv: Node): Boolean = {
-      next.compareAndSet(ov, nv)
-    }
-
-    private[SkipListMap] final def getValue(): V = {
-      value.getAcquire()
-    }
-
-    private[SkipListMap] final def casValue(ov: V, nv: V): Boolean = {
-      value.compareAndSet(ov, nv)
     }
 
     final override def toString: String =
