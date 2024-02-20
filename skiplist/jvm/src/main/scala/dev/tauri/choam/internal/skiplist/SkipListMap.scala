@@ -24,7 +24,6 @@ import java.util.concurrent.ThreadLocalRandom
 
 import cats.kernel.Order
 
-// TODO: use `VarHandle`s instead of `AtomicReference`s.
 // TODO: try to micro-optimize retrieving the `Order` (see JSR-166).
 
 /**
@@ -76,21 +75,9 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
     val node: Node,
     val down: Index,
     r: Index,
-  ) extends AtomicReference[Index](r) { right =>
+  ) extends SkipListMapIndexBase[Index](r) {
 
     require(node ne null)
-
-    final def getRight(): Index = {
-      right.getAcquire()
-    }
-
-    final def setRightPlain(nv: Index): Unit = {
-      right.setPlain(nv)
-    }
-
-    final def casRight(ov: Index, nv: Index): Boolean = {
-      right.compareAndSet(ov, nv)
-    }
 
     final override def toString: String =
       "Index(...)"
@@ -101,10 +88,10 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
     new AtomicReference[Index]
 
   private[this] val _marker: AnyRef =
-    new AnyRef
+    SkipListMap.marker
 
   private[this] val _tomb: AnyRef =
-    new AnyRef
+    SkipListMap.tomb
 
   private[this] final def MARKER: K = {
     _marker.asInstanceOf[K]
@@ -889,4 +876,13 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
       }
     }
   }
+}
+
+private object SkipListMap {
+
+  private val marker: AnyRef =
+    new AnyRef
+
+  private val tomb: AnyRef =
+    new AnyRef
 }

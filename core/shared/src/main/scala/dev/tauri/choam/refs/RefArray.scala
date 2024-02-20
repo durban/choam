@@ -154,7 +154,7 @@ private final class LazyRefArray[A]( // TODO: do we need this? It's not very laz
     val existing = this.items.getOpaque(refIdx)
     if (existing ne null) {
       // `RefArrayRef` has only final fields,
-      // so its "safely initialized", so if
+      // so it's "safely initialized", so if
       // we've read something here with `getOpaque`,
       // then we also can see its fields; also, the
       // version is initialized with a volatile-CAS
