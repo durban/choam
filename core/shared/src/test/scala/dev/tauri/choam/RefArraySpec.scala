@@ -23,64 +23,33 @@ import munit.Location
 
 import internal.mcas.Mcas
 
-final class RefArraySpec_Strict extends RefArraySpec {
+final class RefArraySpec_Strict extends RefArraySpecIds {
 
   final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
     Ref.unsafeStrictArray(size = size, initial = a)
 }
 
-final class RefArraySpec_Lazy extends RefArraySpec {
+final class RefArraySpec_Lazy extends RefArraySpecIds {
 
   final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
     Ref.unsafeLazyArray(size = size, initial = a)
 }
 
-trait RefArraySpec extends BaseSpec {
+final class RefArraySpec_StrictArrayOfRefs extends RefArraySpec {
 
-  final val N = 4
+  final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
+    Ref.arrayOfRefs(_size = size, _initial = a).unsafeRun(Mcas.DefaultMcas)
+}
 
-  def mkRefArray[A](a: A, size: Int = N): Ref.Array[A]
+final class RefArraySpec_LazyArrayOfRefs extends RefArraySpec {
 
-  test("empty array") {
-    val arr = mkRefArray("foo", 0)
-    val pat = "RefArray\\[0\\]\\@[\\da-f]+".r
-    assert(pat.matches(clue(arr.toString)))
-    assert(Try { arr.unsafeGet(0) }.isFailure)
-  }
+  final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
+    Ref.lazyArrayOfRefs(_size = size, _initial = a).unsafeRun(Mcas.DefaultMcas)
+}
 
-  test("indexing error") {
-    def checkError(op: => Ref[String])(implicit loc: Location): Unit = {
-      val ok = Try(op).failed.get.isInstanceOf[IllegalArgumentException]
-      assert(ok)(loc)
-    }
-    val arr1 = mkRefArray("foo", 4) // even
-    checkError { arr1.unsafeGet(4) }
-    checkError { arr1.unsafeGet(5) }
-    checkError { arr1.unsafeGet(-1) }
-    checkError { arr1.unsafeGet(Int.MinValue) }
-    checkError { arr1.unsafeGet(Int.MaxValue) }
-    val arr2 = mkRefArray("foo", 5) // odd
-    checkError { arr2.unsafeGet(5) }
-    checkError { arr2.unsafeGet(6) }
-    checkError { arr2.unsafeGet(-1) }
-    checkError { arr2.unsafeGet(Int.MinValue) }
-    checkError { arr2.unsafeGet(Int.MaxValue) }
-  }
+trait RefArraySpecIds extends RefArraySpec {
 
-  test("safe indexing") {
-    val arr = mkRefArray("foo", 4)
-    assert(arr.apply(Int.MinValue).isEmpty)
-    assert(arr.apply(-1).isEmpty)
-    assert(arr.apply(0).isDefined)
-    assert(arr.apply(1).isDefined)
-    assert(arr.apply(2).isDefined)
-    assert(arr.apply(3).isDefined)
-    assert(arr.apply(4).isEmpty)
-    assert(arr.apply(5).isEmpty)
-    assert(arr.apply(6).isEmpty)
-    assert(arr.apply(1024).isEmpty)
-    assert(arr.apply(Int.MaxValue).isEmpty)
-  }
+  // TODO: fix these for the *ArrayOfRefs too
 
   test("toString format") {
     val arr = mkRefArray("a")
@@ -112,6 +81,54 @@ trait RefArraySpec extends BaseSpec {
     assertEquals(r1.loc.id1, r2.loc.id1)
     assertEquals(r1.loc.id2, r2.loc.id2)
     assertEquals(r1.loc.id3 + 1L, r2.loc.id3)
+  }
+}
+
+trait RefArraySpec extends BaseSpec {
+
+  final val N = 4
+
+  def mkRefArray[A](a: A, size: Int = N): Ref.Array[A]
+
+  test("empty array") {
+    val arr = mkRefArray("foo", 0)
+    val pat = "RefArray\\[0\\]\\@[\\da-f]+".r
+    assert(pat.matches(clue(arr.toString)))
+    assert(Try { arr.unsafeGet(0) }.isFailure)
+  }
+
+  test("indexing error") {
+    def checkError(op: => Ref[String])(implicit loc: Location): Unit = {
+      val ok = Try(op).failed.get.isInstanceOf[IndexOutOfBoundsException]
+      assert(ok)(loc)
+    }
+    val arr1 = mkRefArray("foo", 4) // even
+    checkError { arr1.unsafeGet(4) }
+    checkError { arr1.unsafeGet(5) }
+    checkError { arr1.unsafeGet(-1) }
+    checkError { arr1.unsafeGet(Int.MinValue) }
+    checkError { arr1.unsafeGet(Int.MaxValue) }
+    val arr2 = mkRefArray("foo", 5) // odd
+    checkError { arr2.unsafeGet(5) }
+    checkError { arr2.unsafeGet(6) }
+    checkError { arr2.unsafeGet(-1) }
+    checkError { arr2.unsafeGet(Int.MinValue) }
+    checkError { arr2.unsafeGet(Int.MaxValue) }
+  }
+
+  test("safe indexing") {
+    val arr = mkRefArray("foo", 4)
+    assert(arr.apply(Int.MinValue).isEmpty)
+    assert(arr.apply(-1).isEmpty)
+    assert(arr.apply(0).isDefined)
+    assert(arr.apply(1).isDefined)
+    assert(arr.apply(2).isDefined)
+    assert(arr.apply(3).isDefined)
+    assert(arr.apply(4).isEmpty)
+    assert(arr.apply(5).isEmpty)
+    assert(arr.apply(6).isEmpty)
+    assert(arr.apply(1024).isEmpty)
+    assert(arr.apply(Int.MaxValue).isEmpty)
   }
 
   test("consistentRead") {

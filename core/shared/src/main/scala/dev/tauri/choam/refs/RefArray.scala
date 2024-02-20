@@ -48,6 +48,12 @@ private abstract class RefArray[A](
     val h = (id0 ^ id1 ^ id2 ^ id3) & (~0xffffL)
     s"RefArray[${size}]@${java.lang.Long.toHexString(h >> 16)}"
   }
+
+  protected final def checkIndex(idx: Int): Unit = {
+    if ((idx < 0) || (idx >= size)) {
+      throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${size}")
+    }
+  }
 }
 
 private final class StrictRefArray[A](
@@ -88,7 +94,7 @@ private final class StrictRefArray[A](
     Option(this.getOrNull(idx))
 
   final override def unsafeGet(idx: Int): Ref[A] = {
-    require((idx >= 0) && (idx < size))
+    this.checkIndex(idx)
     this.getOrNull(idx)
   }
 
@@ -137,7 +143,7 @@ private final class LazyRefArray[A]( // TODO: do we need this? It's not very laz
     Option(this.getOrNull(idx))
 
   def unsafeGet(idx: Int): Ref[A] = {
-    require((idx >= 0) && (idx < size))
+    this.checkIndex(idx)
     this.getOrNull(idx)
   }
 
@@ -181,7 +187,7 @@ private final class EmptyRefArray[A] extends RefArray[A](0, 0L, 0L, 0L, 0) {
     None
 
   final override def unsafeGet(idx: Int): Ref[A] =
-    throw new IllegalArgumentException("EmptyRefArray#unsafeGet")
+    throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length 0")
 
   protected final override def items: AtomicReferenceArray[AnyRef] =
     throw new UnsupportedOperationException("EmptyRefArray#items")

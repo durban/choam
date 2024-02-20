@@ -19,6 +19,7 @@ package dev.tauri.choam
 package refs
 
 import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.atomic.AtomicReferenceArray
 
 import scala.math.Ordering
 
@@ -90,6 +91,85 @@ object Ref extends RefInstances0 {
   // TODO: figure out if we really want this public
   final def lazyArray[A](size: Int, initial: A): Axn[Ref.Array[A]] =
     Axn.unsafe.delay(unsafeLazyArray(size, initial))
+
+  // TODO: figure out if we really want this public
+  final def arrayOfRefs[A](_size: Int, _initial: A): Axn[Ref.Array[A]] = {
+    Axn.unsafe.delay {
+      if (_size == 0) unsafeNewEmptyRefArray()
+      else new Ref.Array[A] {
+
+        final override val size: Int =
+          _size
+
+        private[this] val initial: A =
+          _initial
+
+        private[this] val arr: scala.Array[Ref[A]] = {
+          val a = new scala.Array[Ref[A]](size)
+          var idx = 0
+          while (idx < size) {
+            a(idx) = Ref.unsafeUnpadded(initial)
+            idx += 1
+          }
+          a
+        }
+
+        final override def unsafeGet(idx: Int): Ref[A] = {
+          this.arr(idx)
+        }
+
+        final override def apply(idx: Int): Option[Ref[A]] = {
+          if ((idx >= 0) && (idx < size)) {
+            Some(this.unsafeGet(idx))
+          } else {
+            None
+          }
+        }
+      }
+    }
+  }
+
+  // TODO: figure out if we really want this public
+  final def lazyArrayOfRefs[A](_size: Int, _initial: A): Axn[Ref.Array[A]] = {
+    Axn.unsafe.delay {
+      if (_size == 0) unsafeNewEmptyRefArray()
+      else new Ref.Array[A] {
+
+        final override val size: Int =
+          _size
+
+        private[this] val initial: A =
+          _initial
+
+        private[this] val arr: AtomicReferenceArray[Ref[A]] =
+          new AtomicReferenceArray[Ref[A]](size)
+
+        final override def unsafeGet(idx: Int): Ref[A] = {
+          val arr = this.arr
+          arr.getOpaque(idx) match { // FIXME: reading a `Ref` with a race!
+            case null =>
+              val nv = Ref.unsafe(initial)
+              val wit = arr.compareAndExchange(idx, null, nv)
+              if (wit eq null) {
+                nv // we're the first
+              } else {
+                wit // found other
+              }
+            case ref =>
+              ref
+          }
+        }
+
+        final override def apply(idx: Int): Option[Ref[A]] = {
+          if ((idx >= 0) && (idx < size)) {
+            Some(this.unsafeGet(idx))
+          } else {
+            None
+          }
+        }
+      }
+    }
+  }
 
   private[choam] final def catsRefFromRef[F[_] : Reactive, A](ref: Ref[A]): CatsRef[F, A] =
     new CatsRefFromRef[F, A](ref) {}
