@@ -19,7 +19,6 @@ package dev.tauri.choam
 package refs
 
 import java.util.concurrent.ThreadLocalRandom
-import java.util.concurrent.atomic.AtomicReferenceArray
 
 import scala.math.Ordering
 
@@ -27,6 +26,7 @@ import cats.kernel.{ Hash, Order }
 import cats.effect.kernel.{ Ref => CatsRef }
 
 import internal.mcas.MemoryLocation
+import CompatPlatform.AtomicReferenceArray
 
 /**
  * A mutable memory location with a pure API and
