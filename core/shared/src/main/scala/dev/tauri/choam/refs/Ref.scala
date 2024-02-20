@@ -87,7 +87,8 @@ object Ref extends RefInstances0 {
   final def array[A](size: Int, initial: A): Axn[Ref.Array[A]] =
     Axn.unsafe.delay(unsafeStrictArray(size, initial))
 
-  private[choam] final def lazyArray[A](size: Int, initial: A): Axn[Ref.Array[A]] =
+  // TODO: figure out if we really want this public
+  final def lazyArray[A](size: Int, initial: A): Axn[Ref.Array[A]] =
     Axn.unsafe.delay(unsafeLazyArray(size, initial))
 
   private[choam] final def catsRefFromRef[F[_] : Reactive, A](ref: Ref[A]): CatsRef[F, A] =
