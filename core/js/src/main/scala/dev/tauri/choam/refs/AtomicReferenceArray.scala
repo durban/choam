@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package refs
 
+import CompatPlatform.checkArrayIndexIfScalaJs
+
 /**
  * When compiled with Scala.js (see `CompatPlatform`), we
  * need an `AtomicReferenceArray` for `RefArray` (the one
@@ -34,8 +36,10 @@ private final class AtomicReferenceArray[A](size: Int) {
   private[this] def box(a: A): AnyRef =
     a.asInstanceOf[AnyRef]
 
-  final def get(i: Int): A =
+  final def get(i: Int): A = {
+    checkArrayIndexIfScalaJs(i, size)
     this.arr(i).asInstanceOf[A]
+  }
 
   final def getOpaque(i: Int): A =
     this.get(i)
@@ -43,13 +47,16 @@ private final class AtomicReferenceArray[A](size: Int) {
   final def getPlain(i: Int): A =
     this.get(i)
 
-  final def set(i: Int, newValue: A): Unit =
+  final def set(i: Int, newValue: A): Unit = {
+    checkArrayIndexIfScalaJs(i, size)
     this.arr(i) = box(newValue)
+  }
 
   final def setPlain(i: Int, newValue: A): Unit =
     this.set(i, newValue)
 
   final def compareAndSet(i: Int, expectedValue: A, newValue: A): Boolean = {
+    checkArrayIndexIfScalaJs(i, size)
     val expBox = box(expectedValue)
     if (this.arr(i) eq expBox) {
       this.set(i, newValue)
@@ -60,6 +67,7 @@ private final class AtomicReferenceArray[A](size: Int) {
   }
 
   final def compareAndExchange(i: Int, expectedValue: A, newValue: A): A = {
+    checkArrayIndexIfScalaJs(i, size)
     val expBox = box(expectedValue)
     val old = this.arr(i)
     if (old eq expBox) {

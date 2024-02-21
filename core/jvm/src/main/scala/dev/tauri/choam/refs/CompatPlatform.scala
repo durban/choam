@@ -22,4 +22,9 @@ private object CompatPlatform {
 
   final type AtomicReferenceArray[A] =
     _root_.java.util.concurrent.atomic.AtomicReferenceArray[A]
+
+  final def checkArrayIndexIfScalaJs(idx: Int, length: Int): Unit = {
+    // scala-js needs extra check for array indexing
+    ()
+  }
 }
