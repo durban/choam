@@ -74,6 +74,7 @@ ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 ThisBuild / tlBaseVersion := "0.4"
+ThisBuild / tlUntaggedAreSnapshots := false // => we get versions like 0.4-39d987aa
 ThisBuild / tlJdkRelease := Some(11)
 ThisBuild / tlSonatypeUseLegacyHost := true
 
@@ -727,6 +728,7 @@ addCommandAlias(ciCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;testOnl
 addCommandAlias(ciFullCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;test;compatCheck")
 addCommandAlias("ciStress", "stressTest")
 addCommandAlias("release", ";reload;+versionPolicyReportDependencyIssues;tlRelease")
+addCommandAlias("releaseHash", ";reload;tlRelease")
 
 // profiling: `-prof jfr`
 addCommandAlias("measurePerformance", "bench/jmh:run -foe true -rf json -rff results.json .*")
