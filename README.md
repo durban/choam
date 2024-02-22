@@ -149,16 +149,16 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 ["Early" SemVer](https://www.scala-lang.org/blog/2021/02/16/preventing-version-conflicts-with-versionscheme.html#early-semver-and-sbt-version-policy), with the following exceptions:
 
-- The versions of `choam-` modules must match *exactly* (i.e., *don't* use `"choam-data" % "0.4.1"`
+- The versions of `choam-` modules must match *exactly* (e.g., *don't* use `"choam-data" % "0.4.1"`
   with `"choam-core" % "0.4.0"`)
-- No backwards compatibility for `\*.internal.\*` packages
+- No backwards compatibility for `*.internal.*` packages
 - No backwards compatibility for `unsafe` APIs
 - No backwards compatibility for the `choam-laws` module
 
 ### Supported platforms:
 
 - JVM 11+
-  - tested on OpenJDK, Graal, and J9
+  - tested on OpenJDK, Graal, and OpenJ9
   - `Rxn.secureRandom` and `UUIDGen` both need either the `Windows-PRNG`
     or (`/dev/random` and `/dev/urandom`) to be available
 - Scala.js
