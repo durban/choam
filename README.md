@@ -107,8 +107,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 - Software transactional memory (STM)
   - A `Rxn` is somewhat similar to a memory transaction, but there are
     important differences:
-    - A `Rxn` is lock-free by construction (unless it's infinitely recursive, or an
-      `unsafe` method was used to create it); STM transactions are not (necessarily)
+    - A `Rxn` is lock-free by construction (but see [below](#lock-freedom)); STM transactions are not (necessarily)
       lock-free (e.g., STM "retry").
     - As a consequence of the previous point, `Rxn` cannot be used to implement
       "inherently not lock-free" logic (e.g., asynchronously waiting on a
@@ -145,3 +144,47 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       the system which guarantees *opacity* (see above) for `Rxn`s is based on
       the one in SwissTM (which is itself based on the one in TL2). However, TL2 and SwissTM
       are lock-based STM implementations; our implementation is lock-free.
+
+## Assumptions and compatibility
+
+["Early" SemVer](https://www.scala-lang.org/blog/2021/02/16/preventing-version-conflicts-with-versionscheme.html#early-semver-and-sbt-version-policy), with the following exceptions:
+
+- The versions of `choam-` modules must match *exactly* (i.e., *don't* use `"choam-data" % "0.4.1"`
+  with `"choam-core" % "0.4.0"`)
+- No backwards compatibility for `\*.internal.\*` packages
+- No backwards compatibility for `unsafe` APIs
+- No backwards compatibility for the `choam-laws` module
+
+### Supported platforms:
+
+- JVM 11+
+  - tested on OpenJDK, Graal, and J9
+  - `Rxn.secureRandom` and `UUIDGen` both need either the `Windows-PRNG`
+    or (`/dev/random` and `/dev/urandom`) to be available
+- Scala.js
+  - works, but not really useful (we assume no multithreading)
+  - provided to ease cross-compiling
+- Cross-compiled for Scala 2.13 and 3.3
+
+### Lock-freedom
+
+`Rxn`s are lock-free by construction, if the following assumptions hold:
+
+- No "inifinite loops" are created (e.g., by recursive `flatMap`s)
+- No `unsafe` operations are used (e.g., `Rxn.unsafe.retry` is obviously not lock-free)
+- We assume instances of `FunctionN` to be pure and total
+- We assume that certain JVM operations are lock-free:
+  - `VarHandle` operations (e.g., `compareAndSet`)
+    - in practice, this is true only on 64-bit platforms
+  - GC and classloading
+    - in practice, this is *not* true
+  - `ThreadLocalRandom`
+- Certain `Rxn` operations require extra assumptions:
+  - `Rxn.secureRandom` and `UUIDGen` use the OS RNG, which may block
+    (although we *really* try to use the non-blocking ones)
+  - operations in `F[_]` might not be lock-free (e.g., `Promise#get`)
+  - in `choam-async` we assume that calling a CE `async` callback is lock-free
+    (in `cats.effect.IO` as of version 3.5.3 this is not technically true)
+- Executing a `Rxn` with a `Rxn.Strategy` other than `Rxn.Strategy.Spin`
+  is *not* lock-free
+- Only `Mcas.DefaultMcas` is lock-free, other `Mcas` implementations may not be
