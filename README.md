@@ -145,7 +145,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       the one in SwissTM (which is itself based on the one in TL2). However, TL2 and SwissTM
       are lock-based STM implementations; our implementation is lock-free.
 
-## Assumptions and compatibility
+## Compatibility and assumptions
 
 ["Early" SemVer](https://www.scala-lang.org/blog/2021/02/16/preventing-version-conflicts-with-versionscheme.html#early-semver-and-sbt-version-policy), with the following exceptions:
 
