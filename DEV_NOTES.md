@@ -21,12 +21,24 @@
 
 Unorganized notes which may be useful during development.
 
-## Release process
+## Release process (for tagged versions)
+
+These are the "regular" versions, e.g., `0.4.0` or `0.4.0-RC1`.
 
 1. Commit every change.
+1. Make sure there are no untracked files in git.
 1. Push any new commits.
 1. Wait for CI to become green.
 1. Tag the release (e.g., `git tag -s "v1.2.3"`), but don't push the new tag.
 1. In `sbt`, call `release` (requires Sonatype credentials).
 1. If everything looks right, push the new tag (`git push --tags`).
 1. Create a "release" on github for the new tag.
+
+## Release process for "hash" versions
+
+These are "preview" versions, e.g., `0.4-39d987a`.
+
+1. Commit every change.
+1. Make sure there are no untracked files in git.
+1. Push any new commits.
+1. In `sbt`, call `releaseHash` (requires Sonatype credentials).

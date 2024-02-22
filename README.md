@@ -150,10 +150,11 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 ["Early" SemVer](https://www.scala-lang.org/blog/2021/02/16/preventing-version-conflicts-with-versionscheme.html#early-semver-and-sbt-version-policy), with the following exceptions:
 
 - The versions of `choam-` modules must match *exactly* (e.g., *don't* use `"choam-data" % "0.4.1"`
-  with `"choam-core" % "0.4.0"`)
-- No backwards compatibility for `*.internal.*` packages
-- No backwards compatibility for `unsafe` APIs
-- No backwards compatibility for the `choam-laws` module
+  with `"choam-core" % "0.4.0"`).
+- No backwards compatibility for `*.internal.*` packages.
+- No backwards compatibility for `unsafe` APIs.
+- No backwards compatibility for the `choam-laws` module.
+- No backwards compatibility for "hash" versions (e.g., `0.4-39d987a`).
 
 ### Supported platforms:
 

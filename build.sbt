@@ -74,7 +74,7 @@ ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 ThisBuild / tlBaseVersion := "0.4"
-ThisBuild / tlUntaggedAreSnapshots := false // => we get versions like 0.4-39d987aa
+ThisBuild / tlUntaggedAreSnapshots := false // => we get versions like 0.4-39d987a
 ThisBuild / tlJdkRelease := Some(11)
 ThisBuild / tlSonatypeUseLegacyHost := true
 
