@@ -85,14 +85,17 @@ object Ref extends RefInstances0 {
   private[choam] final def apply[A](initial: A): Axn[Ref[A]] =
     padded(initial)
 
+  // TODO: Figure out which array variants we actually need,
+  // TODO: and clean up the creation API. Currently there are
+  // TODO: 4 options: (sparse or not) × (flat or not).
+  // TODO: Another possible option would be to have padding.
+
   final def array[A](size: Int, initial: A): Axn[Ref.Array[A]] =
     Axn.unsafe.delay(unsafeStrictArray(size, initial))
 
-  // TODO: figure out if we really want this public
   final def lazyArray[A](size: Int, initial: A): Axn[Ref.Array[A]] =
     Axn.unsafe.delay(unsafeLazyArray(size, initial))
 
-  // TODO: figure out if we really want this public
   final def arrayOfRefs[A](_size: Int, _initial: A): Axn[Ref.Array[A]] = {
     Axn.unsafe.delay {
       if (_size == 0) unsafeNewEmptyRefArray()
@@ -101,14 +104,11 @@ object Ref extends RefInstances0 {
         final override val size: Int =
           _size
 
-        private[this] val initial: A =
-          _initial
-
         private[this] val arr: scala.Array[Ref[A]] = {
           val a = new scala.Array[Ref[A]](size)
           var idx = 0
           while (idx < size) {
-            a(idx) = Ref.unsafeUnpadded(initial)
+            a(idx) = Ref.unsafeUnpadded(_initial)
             idx += 1
           }
           a
@@ -130,7 +130,6 @@ object Ref extends RefInstances0 {
     }
   }
 
-  // TODO: figure out if we really want this public
   final def lazyArrayOfRefs[A](_size: Int, _initial: A): Axn[Ref.Array[A]] = {
     Axn.unsafe.delay {
       if (_size == 0) unsafeNewEmptyRefArray()

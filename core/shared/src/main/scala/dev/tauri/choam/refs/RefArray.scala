@@ -111,7 +111,7 @@ private final class StrictRefArray[A](
   }
 }
 
-private final class LazyRefArray[A]( // TODO: do we need this? It's not very lazy...
+private final class LazyRefArray[A]( // TODO: rename to SparseRefArray
   size: Int,
   initial: A,
   i0: Long,
@@ -123,17 +123,21 @@ private final class LazyRefArray[A]( // TODO: do we need this? It's not very laz
   require(size > 0)
   require(((size - 1) * 4 + 3) > (size - 1)) // avoid overflow
 
+  private[this] val initVal: AnyRef =
+    initial.asInstanceOf[AnyRef]
+
   protected final override val items: AtomicReferenceArray[AnyRef] = {
-    // TODO: padding
     val ara = new AtomicReferenceArray[AnyRef](4 * size)
-    val value = this.initial.asInstanceOf[AnyRef]
     var i = 0
     while (i < size) {
-      ara.setPlain((4 * i) + 1, value)
+      val itemIdx = (4 * i) + 1
+      ara.setPlain(itemIdx, initVal)
+      val versionIdx = itemIdx + 1
+      ara.setPlain(versionIdx, Version.BoxedStart)
       // we're storing `ara` into a final field,
       // so `setPlain` is enough here, these
       // writes will be visible to any reader
-      // of `this`
+      // of `this.items`
       i += 1
     }
     ara
@@ -156,24 +160,19 @@ private final class LazyRefArray[A]( // TODO: do we need this? It's not very laz
   }
 
   private[this] final def getOrCreateRef(i: Int): Ref[A] = {
+    val items = this.items
     val refIdx = 4 * i
-    val existing = this.items.getOpaque(refIdx)
+    val existing = items.getOpaque(refIdx)
     if (existing ne null) {
       // `RefArrayRef` has only final fields,
       // so it's "safely initialized", so if
       // we've read something here with `getOpaque`,
-      // then we also can see its fields; also, the
-      // version is initialized with a volatile-CAS
-      // before the `RefArrayRef`, so we also can see
-      // the version now:
+      // then we also can see its fields:
       existing.asInstanceOf[Ref[A]]
     } else {
-      val versionIdx = refIdx + 2
-      this.items.compareAndSet(versionIdx, null, Version.BoxedStart)
-      // we ignore failure to initialize version, since it means someone else did it
       val itemIdx = refIdx + 1
       val nv = new RefArrayRef[A](this, itemIdx)
-      this.items.compareAndExchange(refIdx, null, nv) match {
+      items.compareAndExchange(refIdx, null, nv) match {
         case null => nv // we're the first
         case other => other.asInstanceOf[Ref[A]]
       }
