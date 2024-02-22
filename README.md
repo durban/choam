@@ -34,7 +34,7 @@ is similar to an effectful function from `A` to `B` (that is, `A => F[B]`), but:
 - Multiple `Rxn`s can be composed (by using various combinators),
   and the resulting `Rxn` will *update all affected memory locations atomically*.
   - For example, if `y` is also a `Ref[Int]`, then `x.update(_ + 1) *> y.update(_ + 1)`
-    will increment both of them atomically.
+    will increment both of them *atomically*.
 
 ## Modules
 
@@ -108,7 +108,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - A `Rxn` is somewhat similar to a memory transaction, but there are
     important differences:
     - A `Rxn` is lock-free by construction (unless it's infinitely recursive, or an
-      `unsafe` method was used to create it); STM transactions are not necessarily
+      `unsafe` method was used to create it); STM transactions are not (necessarily)
       lock-free (e.g., STM "retry").
     - As a consequence of the previous point, `Rxn` cannot be used to implement
       "inherently not lock-free" logic (e.g., asynchronously waiting on a
@@ -116,17 +116,17 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       interoperable with async data types which implement
       [Cats Effect](https://github.com/typelevel/cats-effect) typeclasses
       (see the `choam-async` module). This feature can be used to provide such
-      "waiting" functionality (e.g., `dev.tauri.choam.async.AsyncQueue.ringBuffer`
+      "waiting" functionality (e.g., `dev.tauri.choam.async.AsyncQueue.unbounded`
       is a queue with `enqueue` in `Rxn` and `deque` in, e.g., `IO` or another async `F[_]`).
     - The implementation (the `Rxn` interpreter) is also lock-free; STM implementations
       are usually not (although there are exceptions).
     - STM transactions usually have a way of raising/handling errors
-      (e.g., `MonadError`); `Rxn` has no such feature (of course return
+      (e.g., `MonadError`); `Rxn` has no such feature (but of course return
       values can encode errors with `Option`, `Either`, or similar).
     - Some STM systems allow access to transactional memory from
       non-transactional code; `Rxn` doesn't support this, the contents of an
       `r: Ref[A]` can only be accessed from inside a `Rxn` (although there is a
-      read-only escape hatch: `r.unsafeDirectRead`).
+      read-only almost "escape hatch": `r.unsafeDirectRead`).
   - Similarities between `Rxn`s and STM transactions include the following:
     - atomicity
     - consistency

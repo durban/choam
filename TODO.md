@@ -129,6 +129,8 @@
         - only `Mcas.DefaultMcas` (i.e., `Emcas`) is lock-free
       - for scala-js:
         - we assume single-threaded execution (TODO: what about wasm?)
+      - general:
+        - instances of `FunctionN` are pure and total
   - MCAS API review
     - is it usable outside of `choam`?
     - if not, it doesn't really make sense to have it in a separate module
@@ -169,6 +171,7 @@
   - `Thread.interrupt` (done)
   - cats-effect cancellation?
     - see `IOCancel` for a few attempts
+    - but running with `Strategy.sleep/cede` naturally makes it cancellable (this might be enough)
 - Composition of maybe-infinitely-retrying reactions:
   - `stack.pop`, if empty, retries forever (unsafe, because non-lock-free)
   - `exchanger.exchange`, if no partner found, retries forever (also unsafe)
@@ -185,7 +188,6 @@
 
 - Try building a native image with Graal, to see if it works
 - Other data structures:
-  - ttrie-set(?)
   - concurrent bag (e.g., https://dl.acm.org/doi/10.1145/1989493.1989550)
   - dual data structures:
     - e.g., stack
