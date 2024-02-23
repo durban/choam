@@ -73,6 +73,7 @@ trait MemoryLocation[A] {
 
   def unsafeGetVersionVolatile(): Long
 
+  // TODO: we don't really need this!
   def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean
 
   def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long

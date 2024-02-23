@@ -53,7 +53,7 @@ trait RefArraySpecIds extends RefArraySpec {
 
   test("toString format") {
     val arr = mkRefArray("a")
-    val pat = "RefArray\\[\\d+\\]\\@[\\da-f]+".r
+    val pat = "Ref\\.Array\\[\\d+\\]\\@[\\da-f]+".r
     assert(pat.matches(clue(arr.toString)))
     val subPat = "ARef\\@[\\da-f]{16}".r
     assert(subPat.matches(clue(arr.unsafeGet(0).toString)))
@@ -92,7 +92,7 @@ trait RefArraySpec extends BaseSpec {
 
   test("empty array") {
     val arr = mkRefArray("foo", 0)
-    val pat = "RefArray\\[0\\]\\@[\\da-f]+".r
+    val pat = "Ref\\.Array\\[0\\]\\@[\\da-f]+".r
     assert(pat.matches(clue(arr.toString)))
     assert(Try { arr.unsafeGet(0) }.isFailure)
   }

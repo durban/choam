@@ -80,7 +80,34 @@ object Ref extends RefInstances0 {
       this.size
   }
 
-  private[refs] trait UnsealedArray[A] extends Array[A]
+  private[refs] trait UnsealedArray[A] extends Array[A] { this: RefIdOnly =>
+
+    protected[refs] final override def refToString(): String = {
+      val h = (id0 ^ id1 ^ id2 ^ id3) & (~0xffffL)
+      s"Ref.Array[${size}]@${java.lang.Long.toHexString(h >> 16)}"
+    }
+
+    protected final def checkIndex(idx: Int): Unit = {
+      if ((idx < 0) || (idx >= size)) {
+        throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${size}")
+      }
+    }
+  }
+
+  private final class EmptyRefArray[A] extends Ref.Array[A] {
+
+    final override val size: Int =
+      0
+
+    final override def apply(idx: Int): Option[Ref[A]] =
+      None
+
+    final override def unsafeGet(idx: Int): Ref[A] =
+      throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length 0")
+
+    final override def toString: String =
+      s"Ref.Array[0]@${java.lang.Long.toHexString(0L)}"
+  }
 
   private[choam] final def apply[A](initial: A): Axn[Ref[A]] =
     padded(initial)
@@ -98,7 +125,7 @@ object Ref extends RefInstances0 {
 
   final def arrayOfRefs[A](_size: Int, _initial: A): Axn[Ref.Array[A]] = {
     Axn.unsafe.delay {
-      if (_size == 0) unsafeNewEmptyRefArray()
+      if (_size == 0) new EmptyRefArray()
       else new Ref.Array[A] {
 
         final override val size: Int =
@@ -132,7 +159,7 @@ object Ref extends RefInstances0 {
 
   final def lazyArrayOfRefs[A](_size: Int, _initial: A): Axn[Ref.Array[A]] = {
     Axn.unsafe.delay {
-      if (_size == 0) unsafeNewEmptyRefArray()
+      if (_size == 0) new EmptyRefArray()
       else new Ref.Array[A] {
 
         final override val size: Int =
@@ -186,7 +213,7 @@ object Ref extends RefInstances0 {
       val tlr = ThreadLocalRandom.current()
       unsafeNewStrictRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
     } else {
-      unsafeNewEmptyRefArray[A]()
+      new EmptyRefArray()
     }
   }
 
@@ -195,7 +222,7 @@ object Ref extends RefInstances0 {
       val tlr = ThreadLocalRandom.current()
       unsafeNewLazyRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
     } else {
-      unsafeNewEmptyRefArray[A]()
+      new EmptyRefArray()
     }
   }
 

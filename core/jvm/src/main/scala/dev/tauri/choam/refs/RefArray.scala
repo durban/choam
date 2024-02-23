@@ -18,10 +18,10 @@
 package dev.tauri.choam
 package refs
 
+import java.util.concurrent.atomic.AtomicReferenceArray
 import java.lang.ref.WeakReference
 
 import internal.mcas.{ MemoryLocation, Version }
-import CompatPlatform.AtomicReferenceArray
 import RefArray.RefArrayRef
 
 /**
@@ -43,17 +43,6 @@ private abstract class RefArray[A](
 
   // TODO: use an array VarHandle to avoid extra indirection
   protected def items: AtomicReferenceArray[AnyRef]
-
-  protected[refs] final override def refToString(): String = {
-    val h = (id0 ^ id1 ^ id2 ^ id3) & (~0xffffL)
-    s"RefArray[${size}]@${java.lang.Long.toHexString(h >> 16)}"
-  }
-
-  protected final def checkIndex(idx: Int): Unit = {
-    if ((idx < 0) || (idx >= size)) {
-      throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${size}")
-    }
-  }
 }
 
 private final class StrictRefArray[A](
@@ -69,7 +58,6 @@ private final class StrictRefArray[A](
   require(((size - 1) * 4 + 3) > (size - 1)) // avoid overflow
 
   protected final override val items: AtomicReferenceArray[AnyRef] = {
-    // TODO: padding
     val ara = new AtomicReferenceArray[AnyRef](4 * size)
     val value = this.initial.asInstanceOf[AnyRef]
     var i = 0
@@ -146,7 +134,7 @@ private final class LazyRefArray[A]( // TODO: rename to SparseRefArray
   final override def apply(idx: Int): Option[Ref[A]] =
     Option(this.getOrNull(idx))
 
-  def unsafeGet(idx: Int): Ref[A] = {
+  final override def unsafeGet(idx: Int): Ref[A] = {
     this.checkIndex(idx)
     this.getOrNull(idx)
   }
@@ -178,18 +166,6 @@ private final class LazyRefArray[A]( // TODO: rename to SparseRefArray
       }
     }
   }
-}
-
-private final class EmptyRefArray[A] extends RefArray[A](0, 0L, 0L, 0L, 0) {
-
-  final override def apply(idx: Int): Option[Ref[A]] =
-    None
-
-  final override def unsafeGet(idx: Int): Ref[A] =
-    throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length 0")
-
-  protected final override def items: AtomicReferenceArray[AnyRef] =
-    throw new UnsupportedOperationException("EmptyRefArray#items")
 }
 
 private object RefArray {
