@@ -43,7 +43,7 @@ abstract class RefArrayBase extends RefIdOnly {
   }
 
   protected long getVersionVolatile(int idx) {
-    return (long) VERSIONS.get(this.versions, idx);
+    return (long) VERSIONS.getVolatile(this.versions, idx);
   }
 
   protected long cmpxchgVersionVolatile(int idx, long ov, long nv) {
