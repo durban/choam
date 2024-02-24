@@ -177,17 +177,6 @@ private object RefArray {
     final override def unsafeGetVersionVolatile(): Long =
       array.items(physicalIdx + 1).asInstanceOf[Long]
 
-    final override def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean = {
-      val idx = physicalIdx + 1
-      val currentValue: Long = array.items(idx).asInstanceOf[Long]
-      if (currentValue == ov) {
-        array.items(idx) = nv.asInstanceOf[AnyRef]
-        true
-      } else {
-        false
-      }
-    }
-
     final override def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long = {
       val idx = physicalIdx + 1
       val currentValue: Long = array.items(idx).asInstanceOf[Long]

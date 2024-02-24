@@ -60,9 +60,6 @@ private class SimpleMemoryLocation[A](initial: A)(
   final override def unsafeGetVersionVolatile(): Long =
     this.version.get()
 
-  final override def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean =
-    this.version.compareAndSet(ov, nv)
-
   final override def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long =
     this.version.compareAndExchange(ov, nv)
 

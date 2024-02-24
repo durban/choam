@@ -162,10 +162,9 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
       def commit(ops: List[HalfWordDescriptor[_]], newVersion: Long): Unit = ops match {
         case Nil => ()
         case h :: tail => h match { case head: HalfWordDescriptor[a] =>
-          assert(head.address.unsafeCasVersionVolatile(
-            head.address.unsafeGetVersionVolatile(),
-            newVersion,
-          ))
+          val ov = head.address.unsafeGetVersionVolatile()
+          val wit = head.address.unsafeCmpxchgVersionVolatile(ov, newVersion)
+          assert(wit == ov)
           head.address.unsafeSetVolatile(head.nv)
           commit(tail, newVersion)
         }

@@ -155,7 +155,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * monotonically increasing.
    *
    * To support reading/writing of versions, a ref has the
-   * `unsafeGetVersionVolatile` and `unsafeCasVersionVolatile`
+   * `unsafeGetVersionVolatile` and `unsafeCmpxchgVersionVolatile`
    * methods. However, the version accessible by these is
    * only correct, if the ref currently stores a value (and not
    * a descriptor, see above). If it stores a descriptor, the

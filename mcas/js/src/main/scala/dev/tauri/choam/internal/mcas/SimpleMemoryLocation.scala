@@ -67,15 +67,6 @@ private class SimpleMemoryLocation[A](private[this] var value: A)(
   final override def unsafeGetVersionVolatile(): Long =
     this.version
 
-  final override def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean = {
-    if (this.version == ov) {
-      this.version = nv
-      true
-    } else {
-      false
-    }
-  }
-
   final override def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long = {
     if (this.version == ov) {
       this.version = nv

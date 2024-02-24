@@ -126,11 +126,6 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
   }
 
   @Override
-  public final boolean unsafeCasVersionVolatile2(long ov, long nv) {
-    return VERSION_B.compareAndSet(this, ov, nv);
-  }
-
-  @Override
   public final long unsafeCmpxchgVersionVolatile2(long ov, long nv) {
     return (long) VERSION_B.compareAndExchange(this, ov, nv);
   }

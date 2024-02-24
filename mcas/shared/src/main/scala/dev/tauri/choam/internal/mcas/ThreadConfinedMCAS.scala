@@ -75,10 +75,9 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
               val old = wd.address.unsafeGetPlain()
               assert(equ(old, wd.ov))
               wd.address.unsafeSetPlain(wd.nv)
-              assert(wd.address.unsafeCasVersionVolatile(
-                wd.address.unsafeGetVersionVolatile(),
-                newVersion,
-              ))
+              val ov = wd.address.unsafeGetVersionVolatile()
+              val wit = wd.address.unsafeCmpxchgVersionVolatile(ov, newVersion)
+              assert(wit == ov)
               execute(it, newVersion)
           }
         }

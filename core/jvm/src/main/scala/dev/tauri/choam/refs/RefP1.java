@@ -106,11 +106,6 @@ final class RefP1<A>
   }
 
   @Override
-  public final boolean unsafeCasVersionVolatile(long ov, long nv) {
-    return VERSION.compareAndSet(this, ov, nv);
-  }
-
-  @Override
   public final long unsafeCmpxchgVersionVolatile(long ov, long nv) {
     return (long) VERSION.compareAndExchange(this, ov, nv);
   }

@@ -47,9 +47,6 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
   final override def unsafeGetVersionVolatile(): Long =
     self.unsafeGetVersionVolatile1()
 
-  final override def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean =
-    self.unsafeCasVersionVolatile1(ov, nv)
-
   final override def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long =
     self.unsafeCmpxchgVersionVolatile1(ov, nv)
 
@@ -99,9 +96,6 @@ private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
 
   final override def unsafeGetVersionVolatile(): Long =
     self.unsafeGetVersionVolatile2()
-
-  final override def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean =
-    self.unsafeCasVersionVolatile2(ov, nv)
 
   final override def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long =
     self.unsafeCmpxchgVersionVolatile2(ov, nv)
