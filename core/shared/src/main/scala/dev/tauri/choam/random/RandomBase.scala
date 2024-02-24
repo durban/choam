@@ -44,7 +44,7 @@ private abstract class RandomBase
 
   def nextLong: Axn[Long] = {
     this.nextBytes(8).map { (arr: Array[Byte]) =>
-      this.getLongAt0(arr)
+      this.getLongAt0Plain(arr)
     }
   }
 

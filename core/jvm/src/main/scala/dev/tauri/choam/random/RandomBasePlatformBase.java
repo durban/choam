@@ -33,7 +33,7 @@ abstract class RandomBasePlatformBase {
     );
   }
 
-  protected final long getLongAt0(byte[] arr) {
+  protected final long getLongAt0Plain(byte[] arr) {
     return (long) BYTE_ARRAY_VIEW.get(arr, 0);
   }
 }

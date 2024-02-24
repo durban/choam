@@ -29,7 +29,7 @@ private abstract class RandomBasePlatform {
   protected final def strictMathLog(a: Double): Double =
     Math.log(a) // ¯\_(ツ)_/¯
 
-  protected final def getLongAt0(arr: Array[Byte]): Long = {
+  protected final def getLongAt0Plain(arr: Array[Byte]): Long = {
     ByteBuffer.wrap(arr, 0, 8).order(ByteOrder.LITTLE_ENDIAN).getLong()
   }
 }
