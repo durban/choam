@@ -197,24 +197,26 @@ private object RefArray {
       array.items.get(physicalIdx + 1).asInstanceOf[Long]
 
     final override def unsafeCasVersionVolatile(ov: Long, nv: Long): Boolean = {
+      val items = array.items
       val idx = physicalIdx + 1
       // unfortunately we have to be careful with object identity:
-      val current: AnyRef = array.items.get(idx)
+      val current: AnyRef = items.get(idx)
       val currentValue: Long = current.asInstanceOf[Long]
       if (currentValue == ov) {
-        array.items.compareAndSet(idx, current, nv.asInstanceOf[AnyRef])
+        items.compareAndSet(idx, current, nv.asInstanceOf[AnyRef])
       } else {
         false
       }
     }
 
     final override def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long = {
+      val items = array.items
       val idx = physicalIdx + 1
       // unfortunately we have to be careful with object identity:
-      val current: AnyRef = array.items.get(idx)
+      val current: AnyRef = items.get(idx)
       val currentValue: Long = current.asInstanceOf[Long]
       if (currentValue == ov) {
-        val wit = array.items.compareAndExchange(idx, current, nv.asInstanceOf[AnyRef])
+        val wit = items.compareAndExchange(idx, current, nv.asInstanceOf[AnyRef])
         wit.asInstanceOf[Long]
       } else {
         currentValue
