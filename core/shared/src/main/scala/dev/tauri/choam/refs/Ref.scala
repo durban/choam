@@ -73,9 +73,13 @@ private[refs] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] =>
 object Ref extends RefInstances0 {
 
   sealed trait Array[A] {
+
     def size: Int
+
     def unsafeGet(idx: Int): Ref[A]
+
     def apply(idx: Int): Option[Ref[A]]
+
     final def length: Int =
       this.size
   }
@@ -116,6 +120,12 @@ object Ref extends RefInstances0 {
   // TODO: and clean up the creation API. Currently there are
   // TODO: 4 options: (sparse or not) × (flat or not).
   // TODO: Another possible option would be to have padding.
+
+  // TODO: How to avoid allocating RefArrayRef objects?
+  // TODO: Create getAndUpdate(idx: Int, f: A => A) methods.
+  // TODO: But: what to do with out-of-bounds indices?
+  // TODO: (Refined? But can we avoid boxing?)
+  // TODO: Would implementing Traverse help? Probably not.
 
   final def array[A](size: Int, initial: A): Axn[Ref.Array[A]] =
     Axn.unsafe.delay(unsafeStrictArray(size, initial))

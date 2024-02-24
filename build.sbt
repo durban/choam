@@ -200,6 +200,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
     dependencies.catsMtl.value,
     dependencies.catsEffectKernel.value,
     dependencies.catsEffectStd.value,
+    // "eu.timepit" %%% "refined" % "0.11.1",
   ))
 
 lazy val mcas = crossProject(JVMPlatform, JSPlatform)
@@ -579,7 +580,7 @@ lazy val commonSettings = Seq[Setting[_]](
   )),
   // disable build server protocol for JS (idea from
   // https://github.com/typelevel/sbt-typelevel/pull/465)
-  // bspEnabled := crossProjectPlatform.?.value.forall(_ == JVMPlatform),
+  bspEnabled := crossProjectPlatform.?.value.forall(_ == JVMPlatform),
 ) ++ inConfig(Compile)(
   inTask(packageBin)(extraPackagingSettings) ++
   inTask(packageSrc)(extraPackagingSettings) ++
