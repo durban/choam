@@ -101,8 +101,8 @@ trait RefArraySpec extends BaseSpec {
     val size = if (isJvm()) 0x01ffffff else 0x001fffff
     val arr = mkRefArray("foo", size)
     val r = arr.unsafeGet(size / 2)
-    r.update { _ => "bar" }.unsafePerform(null, Mcas.DefaultMcas)
-    r.update { _ => "xyz" }.unsafePerform(null, Mcas.DefaultMcas)
+    r.update { ov => assertEquals(ov, "foo"); "bar" }.unsafePerform(null, Mcas.DefaultMcas)
+    r.update { ov => assertEquals(ov, "bar"); "xyz" }.unsafePerform(null, Mcas.DefaultMcas)
     assertSameInstance(r.get.unsafePerform(null, Mcas.DefaultMcas), "xyz")
     if (isJvm()) {
       assert(r.loc.unsafeGetMarkerVolatile() ne null)
