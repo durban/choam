@@ -107,6 +107,9 @@ trait RefArraySpec extends BaseSpec {
     if (isJvm()) {
       assert(r.loc.unsafeGetMarkerVolatile() ne null)
     }
+    val r2 = arr.unsafeGet(size - 1)
+    val res = Ref.consistentRead(r, r2).unsafePerform(null, Mcas.DefaultMcas)
+    assertEquals(res, ("xyz", "foo"))
   }
 
   test("indexing error") {
