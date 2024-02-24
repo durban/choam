@@ -97,6 +97,18 @@ trait RefArraySpec extends BaseSpec {
     assert(Try { arr.unsafeGet(0) }.isFailure)
   }
 
+  test("big array") {
+    val size = if (isJvm()) 0x01ffffff else 0x001fffff
+    val arr = mkRefArray("foo", size)
+    val r = arr.unsafeGet(size / 2)
+    r.update { _ => "bar" }.unsafePerform(null, Mcas.DefaultMcas)
+    r.update { _ => "xyz" }.unsafePerform(null, Mcas.DefaultMcas)
+    assertSameInstance(r.get.unsafePerform(null, Mcas.DefaultMcas), "xyz")
+    if (isJvm()) {
+      assert(r.loc.unsafeGetMarkerVolatile() ne null)
+    }
+  }
+
   test("indexing error") {
     def checkError(op: => Ref[String])(implicit loc: Location): Unit = {
       val ok = Try(op).failed.get.isInstanceOf[IndexOutOfBoundsException]
