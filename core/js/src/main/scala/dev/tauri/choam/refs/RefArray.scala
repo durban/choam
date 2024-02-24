@@ -61,16 +61,22 @@ private final class StrictRefArray[A](
     ara
   }
 
-  final override def apply(idx: Int): Option[Ref[A]] = {
-    this.checkIndex(idx)
-    Some(this.unsafeGet(idx))
-  }
+  final override def apply(idx: Int): Option[Ref[A]] =
+    Option(this.getOrNull(idx))
 
   final override def unsafeGet(idx: Int): Ref[A] = {
     this.checkIndex(idx)
-    val refIdx = 4 * idx
-    CompatPlatform.checkArrayIndexIfScalaJs(refIdx, this.items.length)
-    this.items(refIdx).asInstanceOf[Ref[A]]
+    this.getOrNull(idx)
+  }
+
+  private[this] final def getOrNull(idx: Int): Ref[A] = {
+    if ((idx >= 0) && (idx < size)) {
+      val refIdx = 4 * idx
+      CompatPlatform.checkArrayIndexIfScalaJs(refIdx, this.items.length)
+      this.items(refIdx).asInstanceOf[Ref[A]]
+    } else {
+      null
+    }
   }
 }
 
@@ -99,14 +105,20 @@ private final class LazyRefArray[A]( // TODO: rename to SparseRefArray
     ara
   }
 
-  final override def apply(idx: Int): Option[Ref[A]] = {
-    this.checkIndex(idx)
-    Some(this.getOrCreateRef(idx))
-  }
+  final override def apply(idx: Int): Option[Ref[A]] =
+    Option(this.getOrNull(idx))
 
   final override def unsafeGet(idx: Int): Ref[A] = {
     this.checkIndex(idx)
     this.getOrCreateRef(idx)
+  }
+
+  private[this] final def getOrNull(idx: Int): Ref[A] = {
+    if ((idx >= 0) && (idx < size)) {
+      this.getOrCreateRef(idx)
+    } else {
+      null
+    }
   }
 
   private[this] final def getOrCreateRef(i: Int): Ref[A] = {

@@ -136,7 +136,7 @@ private final class LazyRefArray[A]( // TODO: rename to SparseRefArray
 
   final override def unsafeGet(idx: Int): Ref[A] = {
     this.checkIndex(idx)
-    this.getOrNull(idx)
+    this.getOrCreateRef(idx)
   }
 
   private[this] final def getOrNull(idx: Int): Ref[A] = {
