@@ -33,7 +33,7 @@ abstract class RxnUuidGenBase {
     );
   }
 
-  protected final long getLongAt(byte[] arr, int offset) {
+  protected final long getLongAtPlain(byte[] arr, int offset) {
     return (long) BYTE_ARRAY_VIEW.get(arr, offset);
   }
 }

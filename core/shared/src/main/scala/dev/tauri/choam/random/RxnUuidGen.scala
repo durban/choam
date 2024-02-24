@@ -50,8 +50,8 @@ private final class RxnUuidGen[X](rng: OsRng) extends RxnUuidGenBase with UUIDGe
     unsafeRandomUuidInternal()
 
   private[this] final def uuidFromRandomBytesInternal(buff: Array[Byte]): UUID = {
-    var msbs = getLongAt(buff, 0)
-    var lsbs = getLongAt(buff, 8)
+    var msbs = getLongAtPlain(buff, 0)
+    var lsbs = getLongAtPlain(buff, 8)
     msbs &= versionNegMask
     msbs |= version
     lsbs &= variantNegMask

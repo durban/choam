@@ -21,7 +21,7 @@ import java.nio.{ ByteBuffer, ByteOrder }
 
 private abstract class RxnUuidGenBase {
 
-  protected final def getLongAt(arr: Array[Byte], offset: Int): Long = {
+  protected final def getLongAtPlain(arr: Array[Byte], offset: Int): Long = {
     ByteBuffer.wrap(arr, offset, 8).order(ByteOrder.BIG_ENDIAN).getLong()
   }
 }
