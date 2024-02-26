@@ -54,6 +54,7 @@ private[mcas] abstract class GlobalContext
 
   /** Gets of creates the context for the current thread */
   private[emcas] final def currentContextInternal(): EmcasThreadContext = {
+    val threadContextKey = this.threadContextKey
     threadContextKey.get() match {
       case null =>
         // slow path: need to create new ctx
@@ -198,9 +199,10 @@ private[mcas] abstract class GlobalContext
    * it.)
    */
   private[this] final def gcThreadContexts(): Unit = {
-    this._threadContexts.foreach { (tid, wr) =>
+    val threadContexts = this._threadContexts
+    threadContexts.foreach { (tid, wr) =>
       if (wr.get() eq null) {
-        this._threadContexts.remove(tid, wr)
+        threadContexts.remove(tid, wr)
         ()
       }
     }

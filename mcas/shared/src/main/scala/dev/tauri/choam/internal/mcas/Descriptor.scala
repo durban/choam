@@ -104,8 +104,9 @@ final class Descriptor private (
     // Note, that it is important, that we don't allow
     // adding an already included ref; the Exchanger
     // depends on this behavior:
-    require(!this.map.contains(d.address))
-    val newMap = this.map.updated(d.address, d)
+    val map = this.map
+    require(!map.contains(d.address))
+    val newMap = map.updated(d.address, d)
     new Descriptor(
       newMap,
       this.validTs,
@@ -119,8 +120,9 @@ final class Descriptor private (
   private[choam] final def overwrite[A](desc: HalfWordDescriptor[A]): Descriptor = {
     require(desc.version <= this.validTs)
     val d = desc.cast[Any]
-    require(this.map.contains(d.address))
-    val newMap = this.map.updated(d.address, d)
+    val map = this.map
+    require(map.contains(d.address))
+    val newMap = map.updated(d.address, d)
     new Descriptor(
       newMap,
       this.validTs,
@@ -171,11 +173,7 @@ final class Descriptor private (
   }
 
   private[choam] final def getOrElseNull[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
-    val r = ref.asInstanceOf[MemoryLocation[Any]]
-    this.map.getOrElse(r, null) match {
-      case null => null
-      case hwd => hwd.cast[A]
-    }
+    this.map.getOrElse(ref, null)
   }
 
   private[mcas] final def validateAndTryExtend(

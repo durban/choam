@@ -65,6 +65,12 @@ abstract class EmcasThreadContextBase {
     return (long) MCAS_RETRIES.getOpaque(this);
   }
 
+  // Note: this can cause readers to read
+  // never-written values (half of a long
+  // from another write). But we're not
+  // using these statistics for anything
+  // important; and we also have other
+  // problems on 32-bit systems.
   protected void recordCommitPlain(int fullRetries, int mcasRetries) {
     this._commits += 1L;
     this._fullRetries += (long) fullRetries;
