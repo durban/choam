@@ -98,7 +98,12 @@ abstract class RefArrayBase<A> extends RefIdOnly {
   }
 
   protected long getVersionVolatile(int idx) {
-    return (long) VERSIONS_ARR.getVolatile(this.getVersions(), idx);
+    long[] vers = (long[]) VERSIONS.getVolatile(this); // TODO: vol is a waste if `sparse` is false
+    if (vers == null) {
+      return Version.Start;
+    } else {
+      return (long) VERSIONS_ARR.getVolatile(vers, idx);
+    }
   }
 
   protected long cmpxchgVersionVolatile(int idx, long ov, long nv) {
