@@ -135,7 +135,7 @@ object Ref extends RefInstances0 {
 
   final def arrayOfRefs[A](_size: Int, _initial: A): Axn[Ref.Array[A]] = {
     Axn.unsafe.delay {
-      if (_size == 0) new EmptyRefArray()
+      if (_size == 0) new EmptyRefArray
       else new Ref.Array[A] {
 
         final override val size: Int =
@@ -169,7 +169,7 @@ object Ref extends RefInstances0 {
 
   final def lazyArrayOfRefs[A](_size: Int, _initial: A): Axn[Ref.Array[A]] = {
     Axn.unsafe.delay {
-      if (_size == 0) new EmptyRefArray()
+      if (_size == 0) new EmptyRefArray
       else new Ref.Array[A] {
 
         final override val size: Int =
@@ -223,7 +223,7 @@ object Ref extends RefInstances0 {
       val tlr = ThreadLocalRandom.current()
       unsafeNewStrictRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
     } else {
-      new EmptyRefArray()
+      new EmptyRefArray
     }
   }
 
@@ -232,7 +232,7 @@ object Ref extends RefInstances0 {
       val tlr = ThreadLocalRandom.current()
       unsafeNewLazyRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
     } else {
-      new EmptyRefArray()
+      new EmptyRefArray
     }
   }
 

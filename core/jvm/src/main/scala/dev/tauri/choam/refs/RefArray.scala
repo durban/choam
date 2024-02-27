@@ -23,15 +23,18 @@ import java.lang.ref.WeakReference
 import internal.mcas.MemoryLocation
 
 private abstract class RefArray[A](
-  val size: Int,
+  __size: Int,
   sparse: Boolean,
   init: A,
   i0: Long,
   i1: Long,
   i2: Long,
   i3: Int, // LSB is array index
-) extends RefArrayBase[A](size, sparse, init.asInstanceOf[AnyRef], i0, i1, i2, i3.toLong << 32)
+) extends RefArrayBase[A](__size, sparse, init.asInstanceOf[AnyRef], i0, i1, i2, i3.toLong << 32)
   with Ref.UnsealedArray[A] {
+
+  final override def size: Int =
+    this._size
 }
 
 private final class StrictRefArray[A](

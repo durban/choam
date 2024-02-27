@@ -26,11 +26,18 @@ import dev.tauri.choam.internal.mcas.Version;
 abstract class RefArrayBase<A> extends RefIdOnly {
 
   private static final VarHandle VERSIONS;
+  private static final VarHandle VERSIONS_ARR;
   private static final VarHandle ARRAY;
 
   static {
-    VERSIONS = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(long[].class));
-    ARRAY = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(Object[].class));
+    try {
+      MethodHandles.Lookup l = MethodHandles.lookup();
+      VERSIONS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefArrayBase.class, "versions", long[].class));
+      VERSIONS_ARR = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(long[].class));
+      ARRAY = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(Object[].class));
+    } catch (ReflectiveOperationException e) {
+      throw new ExceptionInInitializerError(e);
+    }
   }
 
   /*
@@ -44,17 +51,23 @@ abstract class RefArrayBase<A> extends RefIdOnly {
    * numbers (`long`s, at i)
    */
 
-  private final long[] versions;
+  private volatile long[] versions;
   private final Object[] array;
+  protected final int _size;
 
-  RefArrayBase(int size, boolean sparse, Object init, long i0, long i1, long i2, long i3) {
-    super(i0, i1, i2, i3);
-    // init versions:
+  private static final long[] initVersions(int size) {
     long[] vers = new long[size];
     for (int i = 0; i < size; i++) {
       vers[i] = Version.Start;
     }
-    this.versions = vers;
+    return vers;
+  }
+
+  RefArrayBase(int size, boolean sparse, Object init, long i0, long i1, long i2, long i3) {
+    super(i0, i1, i2, i3);
+
+    this._size = size;
+
     // init array:
     Object[] arr = new Object[3 * size];
     if (sparse) {
@@ -77,16 +90,34 @@ abstract class RefArrayBase<A> extends RefIdOnly {
         // writes will be visible to any reader
         // of `this`
       }
+
+      // also init versions:
+      VERSIONS.setRelease(this, initVersions(size));
     }
     this.array = arr;
   }
 
   protected long getVersionVolatile(int idx) {
-    return (long) VERSIONS.getVolatile(this.versions, idx);
+    return (long) VERSIONS_ARR.getVolatile(this.getVersions(), idx);
   }
 
   protected long cmpxchgVersionVolatile(int idx, long ov, long nv) {
-    return (long) VERSIONS.compareAndExchange(this.versions, idx, ov, nv);
+    return (long) VERSIONS_ARR.compareAndExchange(this.getVersions(), idx, ov, nv);
+  }
+
+  private final long[] getVersions() {
+    long[] vers = (long[]) VERSIONS.getAcquire(this); // TODO: acq is a waste if `sparse` is false
+    if (vers == null) {
+      vers = initVersions(this._size);
+      long[] wit = (long[]) VERSIONS.compareAndExchangeRelease(this, (long[]) null, vers);
+      if (wit == null) {
+        return vers;
+      } else {
+        return wit;
+      }
+    } else {
+      return vers;
+    }
   }
 
   protected Object getVolatile(int idx) {
