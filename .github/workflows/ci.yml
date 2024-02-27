@@ -97,7 +97,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     steps:
-      - if: matrix.os == 'macos-14'
+      - name: Install sbt
+        if: contains(runner.os, 'macos')
         shell: bash
         run: brew install sbt
 

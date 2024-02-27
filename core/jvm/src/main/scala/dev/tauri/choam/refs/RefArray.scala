@@ -116,7 +116,6 @@ private final class LazyRefArray[A]( // TODO: rename to SparseRefArray
   }
 }
 
-
 private final class RefArrayRef[A](
   array: RefArrayBase[A],
   logicalIdx: Int,

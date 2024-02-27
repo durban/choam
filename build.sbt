@@ -86,12 +86,6 @@ ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
 ThisBuild / githubWorkflowUseSbtThinClient := false
 ThisBuild / githubWorkflowBuildTimeoutMinutes := Some(120)
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
-ThisBuild / githubWorkflowJobSetup ~= { value =>
-  WorkflowStep.Run( // install sbt on macos
-    List("brew install sbt"),
-    cond = Some(s"matrix.os == '${macos}'"),
-  ) +: value
-}
 ThisBuild / githubWorkflowBuild := Seq(
   // Tests on non-OpenJ9:
   WorkflowStep.Sbt(
