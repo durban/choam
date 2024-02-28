@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package bench
+package rxn
 
 import org.openjdk.jmh.annotations._
 

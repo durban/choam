@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package bench
+package ext
 
 import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
 import java.util.concurrent.ThreadLocalRandom

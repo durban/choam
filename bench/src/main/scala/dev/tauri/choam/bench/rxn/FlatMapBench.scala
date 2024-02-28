@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package bench
+package rxn
 
 import java.util.concurrent.ThreadLocalRandom
 
@@ -32,35 +33,35 @@ class FlatMapBench {
 
   @Benchmark
   def withFlatMap(s: FlatMapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % ArrowBench.size
+    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
     val r: Axn[String] = s.rsWithFlatMap(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
   def withFlatMapOld(s: FlatMapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % ArrowBench.size
+    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
     val r: Axn[String] = s.rsWithFlatMapOld(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
   def withFlatMapF(s: FlatMapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % ArrowBench.size
+    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
     val r: Axn[String] = s.rsWithFlatMapF(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
   def withFlatMapFOld(s: FlatMapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % ArrowBench.size
+    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
     val r: Axn[String] = s.rsWithFlatMapFOld(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
   def withStarGreater(s: FlatMapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % ArrowBench.size
+    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
     val r: Axn[String] = s.rsWithStarGreater(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }

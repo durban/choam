@@ -20,6 +20,7 @@ package bench
 package util
 
 import internal.mcas.Mcas
+import rxn.ChoiceCombinatorBench
 
 final class ChoiceCombinatorBenchSpec extends BaseSpec {
 

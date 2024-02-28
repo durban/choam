@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package bench
+package datastruct
 
 import java.util.concurrent.ThreadLocalRandom
 

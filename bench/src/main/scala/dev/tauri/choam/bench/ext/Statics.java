@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.bench;
+package dev.tauri.choam.bench.ext;
 
 public final class Statics {
 

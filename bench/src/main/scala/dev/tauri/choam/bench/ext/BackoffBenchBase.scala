@@ -17,21 +17,26 @@
 
 package dev.tauri.choam
 package bench
+package ext
 
-import org.openjdk.jmh.annotations._
-import org.openjdk.jmh.infra.Blackhole
+import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
 
-@Fork(2)
-@BenchmarkMode(Array(Mode.AverageTime))
-class BaselineBench {
+abstract class BackoffBenchBase {
 
-  @Benchmark
-  def baseline128(): Unit = {
-    Blackhole.consumeCPU(128L)
-  }
+  private[this] final val gamma =
+    0x9e3779b97f4a7c15L
 
-  @Benchmark
-  def baseline2048(): Unit = {
-    Blackhole.consumeCPU(2048L)
+  protected[this] final def simpleThing(ctr: AtomicInteger, rnd: AtomicLong): Unit = {
+    @tailrec
+    def go(): Unit = {
+      val ov = rnd.get()
+      val nv = ov + gamma
+      if (!rnd.compareAndSet(ov, nv)) {
+        go()
+      }
+    }
+
+    ctr.getAndIncrement()
+    go()
   }
 }

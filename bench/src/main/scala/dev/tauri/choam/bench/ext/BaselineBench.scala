@@ -17,59 +17,22 @@
 
 package dev.tauri.choam
 package bench
+package ext
 
 import org.openjdk.jmh.annotations._
+import org.openjdk.jmh.infra.Blackhole
 
 @Fork(2)
-@Threads(2)
-class StaticObjBench {
-
-  import StaticObjBench._
+@BenchmarkMode(Array(Mode.AverageTime))
+class BaselineBench {
 
   @Benchmark
-  def callInherited(t: ThSt): Unit = {
-    t.inherited()
+  def baseline128(): Unit = {
+    Blackhole.consumeCPU(128L)
   }
 
   @Benchmark
-  def callStatic(t: ThSt): Unit = {
-    t.static()
-  }
-
-  @Benchmark
-  def callObject(t: ThSt): Unit = {
-    t.obj()
-  }
-}
-
-object StaticObjBench {
-
-  @State(Scope.Thread)
-  class ThSt extends BaseThSt {
-
-    final def inherited(): Unit = {
-      this.spin()
-    }
-
-    final def static(): Unit = {
-      StaticObjBenchHelper.spin()
-    }
-
-    final def obj(): Unit = {
-      ThStObj.spin()
-    }
-  }
-}
-
-@State(Scope.Thread)
-sealed abstract class BaseThSt {
-  protected final def spin(): Unit = {
-    Thread.onSpinWait()
-  }
-}
-
-object ThStObj {
-  final def spin(): Unit = {
-    Thread.onSpinWait()
+  def baseline2048(): Unit = {
+    Blackhole.consumeCPU(2048L)
   }
 }

@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package bench
+package datastruct
 
 import org.openjdk.jmh.annotations._
 
