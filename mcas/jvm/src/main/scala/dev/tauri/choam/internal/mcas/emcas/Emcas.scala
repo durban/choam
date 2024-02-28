@@ -683,7 +683,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     } else {
       // we try to increment it:
       val candidate = ts1 + Version.Incr
-      val ctsWitness = global.cmpxchgCommitTs(ts1, candidate)
+      val ctsWitness = global.cmpxchgCommitTs(ts1, candidate) // TODO: could this be `getAndAdd`? is it faster?
       if (ctsWitness == ts1) {
         // ok, successful CAS:
         candidate
