@@ -525,6 +525,7 @@ lazy val commonSettings = Seq[Setting[_]](
         "-opt:l:inline",
         "-opt-inline-from:<sources>",
         "-Wperformance",
+        "-Xsource:3-cross",
         // TODO: "-Wnonunit-statement",
       )
     } else {
@@ -540,6 +541,10 @@ lazy val commonSettings = Seq[Setting[_]](
         // TODO: "-Yrequire-targetName",
       )
     }
+  ),
+  scalacOptions --= (
+    if (!ScalaArtifacts.isScala3(scalaVersion.value)) List("-Xsource:3") // see above
+    else List()
   ),
   scalacOptions -= "-language:implicitConversions", // got it from sbt-typelevel, but don't want it
   scalacOptions -= "-language:_", // got it from sbt-typelevel, but don't want it
