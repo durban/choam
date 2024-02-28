@@ -1009,8 +1009,8 @@ object Rxn extends RxnInstances0 {
             p
           case p: Exchanger.Params =>
             p
-          case x =>
-            impossible(s"found ${x.getClass.getName} instead of Exchanger.Params")
+          case something =>
+            impossible(s"found ${something.getClass.getName} instead of Exchanger.Params")
         }
         this._exParams = ep2
         ep2

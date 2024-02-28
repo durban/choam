@@ -31,9 +31,9 @@ object RefLawTests {
   def apply(ti: TestInstances): RefLawTests = new RefLawTests {
     final override def arbRef[A : Arbitrary] =
       ti.arbRef
-    override implicit def eqAxn[A](implicit equA: Eq[A]) =
+    override implicit def eqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]] =
       ti.testingEqAxn[A]
-    override implicit def eqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]) =
+    override implicit def eqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]] =
       ti.testingEqRxn[A, B]
   }
 }

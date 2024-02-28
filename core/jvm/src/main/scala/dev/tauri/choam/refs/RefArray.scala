@@ -24,12 +24,12 @@ import internal.mcas.MemoryLocation
 
 private abstract class RefArray[A](
   __size: Int,
-  sparse: Boolean,
   init: A,
   i0: Long,
   i1: Long,
   i2: Long,
   i3: Int, // LSB is array index
+  sparse: Boolean,
 ) extends RefArrayBase[A](__size, sparse, init.asInstanceOf[AnyRef], i0, i1, i2, i3.toLong << 32)
   with Ref.UnsealedArray[A] {
 
@@ -44,7 +44,7 @@ private final class StrictRefArray[A](
   i1: Long,
   i2: Long,
   i3: Int,
-) extends RefArray[A](size, false, initial, i0, i1, i2, i3) {
+) extends RefArray[A](size, initial, i0, i1, i2, i3, sparse = false) {
 
   require((size > 0) && (((size - 1) * 3 + 2) > (size - 1))) // avoid overflow
 
@@ -76,7 +76,7 @@ private final class LazyRefArray[A]( // TODO: rename to SparseRefArray
   i1: Long,
   i2: Long,
   i3: Int,
-) extends RefArray[A](size, true, initial, i0, i1, i2, i3) {
+) extends RefArray[A](size, initial, i0, i1, i2, i3, sparse = true) {
 
   require((size > 0) && (((size - 1) * 3 + 2) > (size - 1))) // avoid overflow
 
