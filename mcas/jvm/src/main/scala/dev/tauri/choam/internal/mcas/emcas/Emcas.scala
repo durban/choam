@@ -206,7 +206,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * @param ctx: The [[ThreadContext]] of the current thread.
    * @param replace: Pass `false` to not do any replacing/clearing.
    */
-  private[emcas] final def readValue[A](ref: MemoryLocation[A], ctx: EmcasThreadContext, replace: Boolean): HalfWordDescriptor[A] = {
+  private[this] final def readValue[A](ref: MemoryLocation[A], ctx: EmcasThreadContext, replace: Boolean): HalfWordDescriptor[A] = {
     @tailrec
     def go(mark: AnyRef, ver1: Long): HalfWordDescriptor[A] = {
       ref.unsafeGetVolatile() match {
@@ -421,12 +421,11 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                   if (parentStatus == McasStatus.FailedVal) {
                     value = wd.cast[A].ov
                     version = wd.oldVersion
-                    go = false
                   } else { // successful
                     value = wd.cast[A].nv
                     version = parentStatus
-                    go = false
                   }
+                  go = false
                 }
               }
             } else { // mark ne null
