@@ -31,7 +31,7 @@ import org.openjdk.jcstress.infra.results.LLLL_Result
 class RefArrayLazyRaceTest extends StressTestBase {
 
   private[this] final val arr: Ref.Array[String] = {
-    val a = Ref.unsafeLazyArray[String](4, "x")
+    val a = Ref.unsafeArray[String](4, "x", Ref.Array.AllocationStrategy.SparseFlat)
     a.unsafeGet(0).loc.unsafeSetVolatile("-")
     a.unsafeGet(1).loc.unsafeSetVolatile("-")
     // we don't change/initialize `a(2)`

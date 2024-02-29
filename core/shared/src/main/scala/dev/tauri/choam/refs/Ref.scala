@@ -84,6 +84,56 @@ object Ref extends RefInstances0 {
       this.size
   }
 
+  final object Array {
+
+    final case class AllocationStrategy private (
+      sparse: Boolean,
+      flat: Boolean,
+      padded: Boolean,
+    ) {
+
+      require(!(padded && flat), "padding is currently not supported for flat = true")
+
+      final def withSparse(sparse: Boolean): AllocationStrategy =
+        this.copy(sparse = sparse)
+
+      final def withFlat(flat: Boolean): AllocationStrategy =
+        this.copy(flat = flat)
+
+      final def withPadded(padded: Boolean): AllocationStrategy =
+        this.copy(padded = padded)
+
+      private[Ref] final def toInt: Int = {
+        var r = 0
+        if (this.sparse) {
+          r |= 4
+        }
+        if (this.flat) {
+          r |= 2
+        }
+        if (this.padded) {
+          r |= 1
+        }
+        r
+      }
+    }
+
+    final object AllocationStrategy {
+
+      final val Default: AllocationStrategy =
+        this.apply(sparse = false, flat = true, padded = false)
+
+      private[choam] val SparseFlat: AllocationStrategy =
+        this.apply(sparse = true, flat = true, padded = false)
+
+      private[Ref] final val DefaultInt: Int =
+        2
+
+      final def apply(sparse: Boolean, flat: Boolean, padded: Boolean): AllocationStrategy =
+        new AllocationStrategy(sparse = sparse, flat = flat, padded = padded)
+    }
+  }
+
   private[refs] trait UnsealedArray[A] extends Array[A] { this: RefIdOnly =>
 
     protected[refs] final override def refToString(): String = {
@@ -116,94 +166,138 @@ object Ref extends RefInstances0 {
   private[choam] final def apply[A](initial: A): Axn[Ref[A]] =
     padded(initial)
 
-  // TODO: Figure out which array variants we actually need,
-  // TODO: and clean up the creation API. Currently there are
-  // TODO: 4 options: (sparse or not) × (flat or not).
-  // TODO: Another possible option would be to have padding.
-
   // TODO: How to avoid allocating RefArrayRef objects?
   // TODO: Create getAndUpdate(idx: Int, f: A => A) methods.
   // TODO: But: what to do with out-of-bounds indices?
   // TODO: (Refined? But can we avoid boxing?)
   // TODO: Would implementing Traverse help? Probably not.
 
-  final def array[A](size: Int, initial: A): Axn[Ref.Array[A]] =
-    Axn.unsafe.delay(unsafeStrictArray(size, initial))
+  final def array[A](size: Int, initial: A): Axn[Ref.Array[A]] = {
+    safeArray(size = size, initial = initial, strategy = Ref.Array.AllocationStrategy.DefaultInt)
+  }
 
-  final def lazyArray[A](size: Int, initial: A): Axn[Ref.Array[A]] =
-    Axn.unsafe.delay(unsafeLazyArray(size, initial))
+  final def array[A](size: Int, initial: A, strategy: Ref.Array.AllocationStrategy): Axn[Ref.Array[A]] = {
+    safeArray(size = size, initial = initial, strategy = strategy.toInt)
+  }
 
-  final def arrayOfRefs[A](_size: Int, _initial: A): Axn[Ref.Array[A]] = {
-    Axn.unsafe.delay {
-      if (_size == 0) new EmptyRefArray
-      else new Ref.Array[A] {
+  private[choam] final def unsafeArray[A](size: Int, initial: A, strategy: Ref.Array.AllocationStrategy): Ref.Array[A] = {
+    unsafeArray(size, initial, strategy.toInt)
+  }
 
-        final override val size: Int =
-          _size
+  // the duplicated logic with unsafeArray is to avoid
+  // having the `if` and `match` inside the `Axn`:
+  private[this] final def safeArray[A](size: Int, initial: A, strategy: Int): Axn[Ref.Array[A]] = {
+    if (size > 0) {
+      (strategy : @switch) match {
+        case 0 => Axn.unsafe.delay(new StrictArrayOfRefs(size, initial, padded = false))
+        case 1 => Axn.unsafe.delay(new StrictArrayOfRefs(size, initial, padded = true))
+        case 2 => Axn.unsafe.delay(unsafeStrictArray(size, initial))
+        case 3 => throw new IllegalArgumentException("flat && padded not implemented yet")
+        case 4 => Axn.unsafe.delay(new LazyArrayOfRefs(size, initial, padded = false))
+        case 5 => Axn.unsafe.delay(new LazyArrayOfRefs(size, initial, padded = true))
+        case 6 => Axn.unsafe.delay(unsafeLazyArray(size, initial))
+        case 7 => throw new IllegalArgumentException("flat && padded not implemented yet")
+        case _ => throw new IllegalArgumentException(s"invalid strategy: ${strategy}")
+      }
+    } else if (size == 0) {
+      Axn.unsafe.delay(new EmptyRefArray[A])
+    } else {
+      throw new IllegalArgumentException(s"size = ${size}")
+    }
+  }
 
-        private[this] val arr: scala.Array[Ref[A]] = {
-          val a = new scala.Array[Ref[A]](size)
-          var idx = 0
-          while (idx < size) {
-            a(idx) = Ref.unsafeUnpadded(_initial)
-            idx += 1
-          }
-          a
+  private[this] final def unsafeArray[A](size: Int, initial: A, strategy: Int): Ref.Array[A] = {
+    if (size > 0) {
+      (strategy : @switch) match {
+        case 0 => new StrictArrayOfRefs(size, initial, padded = false)
+        case 1 => new StrictArrayOfRefs(size, initial, padded = true)
+        case 2 => unsafeStrictArray(size, initial)
+        case 3 => throw new IllegalArgumentException("flat && padded not implemented yet")
+        case 4 => new LazyArrayOfRefs(size, initial, padded = false)
+        case 5 => new LazyArrayOfRefs(size, initial, padded = true)
+        case 6 => unsafeLazyArray(size, initial)
+        case 7 => throw new IllegalArgumentException("flat && padded not implemented yet")
+        case _ => throw new IllegalArgumentException(s"invalid strategy: ${strategy}")
+      }
+    } else if (size == 0) {
+      new EmptyRefArray[A]
+    } else {
+      throw new IllegalArgumentException(s"size = ${size}")
+    }
+  }
+
+  private[refs] final class StrictArrayOfRefs[A](
+    final override val size: Int,
+    initial: A,
+    padded: Boolean
+  ) extends Ref.Array[A] {
+
+    require(size > 0)
+
+    private[this] val arr: scala.Array[Ref[A]] = {
+      val a = new scala.Array[Ref[A]](size)
+      var idx = 0
+      while (idx < size) {
+        a(idx) = if (padded) {
+          Ref.unsafePadded(initial)
+        } else {
+          Ref.unsafeUnpadded(initial)
         }
+        idx += 1
+      }
+      a
+    }
 
-        final override def unsafeGet(idx: Int): Ref[A] = {
-          CompatPlatform.checkArrayIndexIfScalaJs(idx, size)
-          this.arr(idx)
-        }
+    final override def unsafeGet(idx: Int): Ref[A] = {
+      CompatPlatform.checkArrayIndexIfScalaJs(idx, size)
+      this.arr(idx)
+    }
 
-        final override def apply(idx: Int): Option[Ref[A]] = {
-          if ((idx >= 0) && (idx < size)) {
-            Some(this.unsafeGet(idx))
-          } else {
-            None
-          }
-        }
+    final override def apply(idx: Int): Option[Ref[A]] = {
+      if ((idx >= 0) && (idx < size)) {
+        Some(this.unsafeGet(idx))
+      } else {
+        None
       }
     }
   }
 
-  final def lazyArrayOfRefs[A](_size: Int, _initial: A): Axn[Ref.Array[A]] = {
-    Axn.unsafe.delay {
-      if (_size == 0) new EmptyRefArray
-      else new Ref.Array[A] {
+  private[refs] final class LazyArrayOfRefs[A](
+    final override val size: Int,
+    initial: A,
+    padded: Boolean,
+  ) extends Ref.Array[A] {
 
-        final override val size: Int =
-          _size
+    require(size > 0)
 
-        private[this] val initial: A =
-          _initial
+    private[this] val arr: AtomicReferenceArray[Ref[A]] =
+      new AtomicReferenceArray[Ref[A]](size)
 
-        private[this] val arr: AtomicReferenceArray[Ref[A]] =
-          new AtomicReferenceArray[Ref[A]](size)
-
-        final override def unsafeGet(idx: Int): Ref[A] = {
-          val arr = this.arr
-          arr.getOpaque(idx) match { // FIXME: reading a `Ref` with a race!
-            case null =>
-              val nv = Ref.unsafeUnpadded(initial)
-              val wit = arr.compareAndExchange(idx, null, nv)
-              if (wit eq null) {
-                nv // we're the first
-              } else {
-                wit // found other
-              }
-            case ref =>
-              ref
-          }
-        }
-
-        final override def apply(idx: Int): Option[Ref[A]] = {
-          if ((idx >= 0) && (idx < size)) {
-            Some(this.unsafeGet(idx))
+    final override def unsafeGet(idx: Int): Ref[A] = {
+      val arr = this.arr
+      arr.getOpaque(idx) match { // FIXME: reading a `Ref` with a race!
+        case null =>
+          val nv = if (padded) {
+            Ref.unsafePadded(initial)
           } else {
-            None
+            Ref.unsafeUnpadded(initial)
           }
-        }
+          val wit = arr.compareAndExchange(idx, null, nv)
+          if (wit eq null) {
+            nv // we're the first
+          } else {
+            wit // found other
+          }
+        case ref =>
+          ref
+      }
+    }
+
+    final override def apply(idx: Int): Option[Ref[A]] = {
+      if ((idx >= 0) && (idx < size)) {
+        Some(this.unsafeGet(idx))
+      } else {
+        None
       }
     }
   }
@@ -218,22 +312,16 @@ object Ref extends RefInstances0 {
       self.unsafeDirectRead.run[F]
   }
 
-  private[choam] final def unsafeStrictArray[A](size: Int, initial: A): Ref.Array[A] = {
-    if (size > 0) {
-      val tlr = ThreadLocalRandom.current()
-      unsafeNewStrictRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
-    } else {
-      new EmptyRefArray
-    }
+  private[refs] final def unsafeStrictArray[A](size: Int, initial: A): Ref.Array[A] = {
+    require(size > 0)
+    val tlr = ThreadLocalRandom.current()
+    unsafeNewStrictRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
   }
 
-  private[choam] final def unsafeLazyArray[A](size: Int, initial: A): Ref.Array[A] = {
-    if (size > 0) {
-      val tlr = ThreadLocalRandom.current()
-      unsafeNewLazyRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
-    } else {
-      new EmptyRefArray
-    }
+  private[refs] final def unsafeLazyArray[A](size: Int, initial: A): Ref.Array[A] = {
+    require(size > 0)
+    val tlr = ThreadLocalRandom.current()
+    unsafeNewLazyRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
   }
 
   final def padded[A](initial: A): Axn[Ref[A]] =

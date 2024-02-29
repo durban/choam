@@ -43,24 +43,18 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
           Gen.delay(Ref2.unsafeP2[A, String](a, "foo")._1),
           Gen.delay(Ref2.unsafeP2[String, A]("foo", a)._2),
         ),
-        Gen.oneOf(
-          Gen.choose(1, 8).flatMap { s =>
-            Gen.delay(Ref.unsafeStrictArray[A](size = s, initial = a).unsafeGet(0))
-          },
-          Gen.choose(1, 8).flatMap { s =>
-            Gen.choose(0, s - 1).flatMap { i =>
-              Gen.delay(Ref.unsafeStrictArray[A](size = s, initial = a).unsafeGet(i))
+        Gen.choose(1, 8).flatMap { s =>
+          Arbitrary.arbBool.arbitrary.flatMap { sparse =>
+            Arbitrary.arbBool.arbitrary.flatMap { flat =>
+              val str = Ref.Array.AllocationStrategy(sparse = sparse, flat = flat, padded = false)
+              Gen.delay { Ref.unsafeArray[A](size = s, initial = a, strategy = str) }.flatMap { arr =>
+                Gen.oneOf(Gen.const(0), Gen.choose(0, s - 1)).flatMap { idx =>
+                  Gen.delay { arr.unsafeGet(idx) }
+                }
+              }
             }
-          },
-          Gen.choose(1, 8).flatMap { s =>
-            Gen.delay(Ref.unsafeLazyArray[A](size = s, initial = a).unsafeGet(0))
-          },
-          Gen.choose(1, 8).flatMap { s =>
-            Gen.choose(0, s - 1).flatMap { i =>
-              Gen.delay(Ref.unsafeLazyArray[A](size = s, initial = a).unsafeGet(i))
-            }
-          },
-        ),
+          }
+        }
       )
     }
   }

@@ -69,7 +69,12 @@ private object RingBuffer {
   // TODO: do we need this?
   private[data] def lazyRingBuffer[A](capacity: Int): Axn[RingBuffer[A]] = {
     require(capacity > 0)
-    Ref.lazyArray[A](size = capacity, initial = empty[A]).flatMapF { arr =>
+    val str = Ref.Array.AllocationStrategy.Default.withSparse(true)
+    Ref.array[A](
+      size = capacity,
+      initial = empty[A],
+      strategy = str,
+    ).flatMapF { arr =>
       makeRingBuffer(capacity, arr)
     }
   }

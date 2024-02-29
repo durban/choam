@@ -16,8 +16,11 @@
  */
 
 package dev.tauri.choam
+package refs
 
 import scala.util.Try
+
+import cats.syntax.all._
 
 import munit.Location
 
@@ -26,25 +29,25 @@ import internal.mcas.Mcas
 final class RefArraySpec_Strict extends RefArraySpecIds {
 
   final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
-    Ref.unsafeStrictArray(size = size, initial = a)
+    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false))
 }
 
 final class RefArraySpec_Lazy extends RefArraySpecIds {
 
   final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
-    Ref.unsafeLazyArray(size = size, initial = a)
+    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false))
 }
 
 final class RefArraySpec_StrictArrayOfRefs extends RefArraySpec {
 
   final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
-    Ref.arrayOfRefs(_size = size, _initial = a).unsafeRun(Mcas.DefaultMcas)
+    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false))
 }
 
 final class RefArraySpec_LazyArrayOfRefs extends RefArraySpec {
 
   final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
-    Ref.lazyArrayOfRefs(_size = size, _initial = a).unsafeRun(Mcas.DefaultMcas)
+    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false))
 }
 
 trait RefArraySpecIds extends RefArraySpec {
@@ -89,6 +92,27 @@ trait RefArraySpec extends BaseSpec {
   final val N = 4
 
   def mkRefArray[A](a: A, size: Int = N): Ref.Array[A]
+
+  test("array creation") {
+    val str0 = Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false)
+    assert(Ref.array(N, "", str0).unsafeRun(Mcas.DefaultMcas).isInstanceOf[Ref.StrictArrayOfRefs[_]])
+    val str2 = Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false)
+    assert(Ref.array(N, "", str2).unsafeRun(Mcas.DefaultMcas).isInstanceOf[StrictRefArray[_]])
+    val str4 = Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false)
+    assert(Ref.array(N, "", str4).unsafeRun(Mcas.DefaultMcas).isInstanceOf[Ref.LazyArrayOfRefs[_]])
+    val str6 = Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false)
+    assert(Ref.array(N, "", str6).unsafeRun(Mcas.DefaultMcas).isInstanceOf[LazyRefArray[_]])
+    val str1 = Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = true)
+    assert(Ref.array(N, "", str1).unsafeRun(Mcas.DefaultMcas).isInstanceOf[Ref.StrictArrayOfRefs[_]])
+    assert(Either.catchOnly[IllegalArgumentException] {
+      Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = true) // 3
+    }.isLeft)
+    val str5 = Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = true)
+    assert(Ref.array(N, "", str5).unsafeRun(Mcas.DefaultMcas).isInstanceOf[Ref.LazyArrayOfRefs[_]])
+    assert(Either.catchOnly[IllegalArgumentException] {
+      Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = true) // 7
+    }.isLeft)
+  }
 
   test("empty array") {
     val arr = mkRefArray("foo", 0)

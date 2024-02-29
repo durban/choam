@@ -145,28 +145,44 @@ object RefArrayBench {
   @State(Scope.Benchmark)
   class StrictArrayState extends BaseState {
     protected final override def mkArr(size: Int): Ref.Array[String] = {
-      Ref.unsafeStrictArray(this.size, INIT)
+      Ref.array(
+        this.size,
+        INIT,
+        Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false),
+      ).unsafeRun(this.emcas)
     }
   }
 
   @State(Scope.Benchmark)
   class SparseArrayState extends BaseState {
     protected final override def mkArr(size: Int): Ref.Array[String] = {
-      Ref.unsafeLazyArray(this.size, INIT)
+      Ref.array(
+        this.size,
+        INIT,
+        Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false),
+      ).unsafeRun(this.emcas)
     }
   }
 
   @State(Scope.Benchmark)
   class StrictArrayOfRefsState extends BaseState {
     protected final override def mkArr(size: Int): Ref.Array[String] = {
-      Ref.arrayOfRefs(this.size, INIT).unsafePerform(null, this.emcas)
+      Ref.array(
+        this.size,
+        INIT,
+        Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false),
+      ).unsafeRun(this.emcas)
     }
   }
 
   @State(Scope.Benchmark)
   class SparseArrayOfRefsState extends BaseState {
     protected final override def mkArr(size: Int): Ref.Array[String] = {
-      Ref.lazyArrayOfRefs(this.size, INIT).unsafePerform(null, this.emcas)
+      Ref.array(
+        this.size,
+        INIT,
+        Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false),
+      ).unsafeRun(this.emcas)
     }
   }
 }
