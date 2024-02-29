@@ -23,7 +23,7 @@ import internal.mcas.Mcas
 /**
  * Pseudo-companion object for the type alias [[Axn]].
  */
-final object Axn {
+object Axn {
 
   final def pure[A](a: A): Axn[A] =
     Rxn.pure(a)

@@ -44,7 +44,7 @@ trait SkipListHelper {
   }
 }
 
-final object SkipListHelper {
+object SkipListHelper {
 
   def listFromSkipList[K, V](m: SkipListMap[K, V]): List[(K, V)] = {
     val lb = List.newBuilder[(K, V)]

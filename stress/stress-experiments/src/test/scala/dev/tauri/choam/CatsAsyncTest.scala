@@ -120,7 +120,7 @@ class CatsAsyncTest {
   }
 }
 
-final object CatsAsyncTest {
+object CatsAsyncTest {
 
   val runtime: IORuntime = {
     val (wstp, fin) = IORuntime.createWorkStealingComputeThreadPool(threads = 3)

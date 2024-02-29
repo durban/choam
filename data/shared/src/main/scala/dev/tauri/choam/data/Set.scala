@@ -31,7 +31,7 @@ sealed trait Set[A] {
   def remove: A =#> Boolean
 }
 
-final object Set {
+object Set {
 
   final def hashSet[A](implicit A: Hash[A]): Axn[Set[A]] =
     Map.hashMap[A, Unit].map(new SetFromMap(_))

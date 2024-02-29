@@ -36,7 +36,7 @@ final class SkipListModelTest extends FunSuite with BaseLinchkSpec {
   }
 }
 
-final object SkipListModelTest {
+object SkipListModelTest {
 
   @Param(name = "key", gen = classOf[IntGen])
   @Param(name = "value", gen = classOf[StringGen])

@@ -164,9 +164,11 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
     val res = new ju.ArrayList[Result[_]]
     if (config.retriesPerCommit) {
       res.addAll(countRetriesPerCommit())
+      ()
     }
     if (config.measureExchanges) {
       res.addAll(countExchanges())
+      ()
     }
     if (config.reusedWeakRefs) {
       res.add(new ScalarResult(
@@ -175,6 +177,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
         RxnProfiler.UnitCount,
         AggregationPolicy.MAX,
       ))
+      ()
     }
     res
   }
@@ -247,6 +250,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
           AggregationPolicy.AVG,
         )
       )
+      ()
     }
     if (config.exchangeCount) {
       res.add(
@@ -257,6 +261,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
           AggregationPolicy.SUM,
         )
       )
+      ()
     }
     if (config.exchangerStats) {
       val stats = Emcas
@@ -267,6 +272,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
       res.add(
         new StatsResult(stats :: Nil)
       )
+      ()
     }
     res
   }

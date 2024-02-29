@@ -118,7 +118,7 @@ private final class ByteStack(initSize: Int) {
   }
 }
 
-private final object ByteStack {
+private object ByteStack {
 
   def splitAt(arr: Array[Byte], idx: Int): (Array[Byte], Array[Byte]) = {
     require(idx >= 0)

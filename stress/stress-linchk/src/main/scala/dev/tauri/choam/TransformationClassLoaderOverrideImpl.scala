@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-final object TransformationClassLoaderOverrideImpl {
+object TransformationClassLoaderOverrideImpl {
 
   /**
    * Additional classes we don't want to transform
