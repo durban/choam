@@ -185,7 +185,7 @@ object Ref extends RefInstances0 {
           val arr = this.arr
           arr.getOpaque(idx) match { // FIXME: reading a `Ref` with a race!
             case null =>
-              val nv = Ref.unsafe(initial)
+              val nv = Ref.unsafeUnpadded(initial)
               val wit = arr.compareAndExchange(idx, null, nv)
               if (wit eq null) {
                 nv // we're the first
