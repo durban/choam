@@ -31,7 +31,7 @@ abstract class SparseRefArrayBase<A> extends RefArrayBase<A> {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VERSIONS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefArrayBase.class, "versions", long[].class));
+      VERSIONS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(SparseRefArrayBase.class, "versions", long[].class));
       VERSIONS_ARR = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(long[].class));
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);

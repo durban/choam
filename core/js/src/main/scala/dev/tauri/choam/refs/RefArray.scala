@@ -36,13 +36,13 @@ private abstract class RefArray[A](
 }
 
 private final class StrictRefArray[A](
-  size: Int,
+  __size: Int,
   initial: A,
   i0: Long,
   i1: Long,
   i2: Long,
   i3: Int,
-) extends RefArray[A](size, i0, i1, i2, i3) {
+) extends RefArray[A](__size, i0, i1, i2, i3) {
 
   final override val items: Array[AnyRef] = {
     val ara = new Array[AnyRef](4 * size)
@@ -81,13 +81,13 @@ private final class StrictRefArray[A](
 }
 
 private final class SparseRefArray[A](
-  size: Int,
+  __size: Int,
   initial: A,
   i0: Long,
   i1: Long,
   i2: Long,
   i3: Int,
-) extends RefArray[A](size, i0, i1, i2, i3) {
+) extends RefArray[A](__size, i0, i1, i2, i3) {
 
   private[this] val initVal: AnyRef =
     initial.asInstanceOf[AnyRef]

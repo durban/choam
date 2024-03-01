@@ -19,16 +19,16 @@ package dev.tauri.choam
 package refs
 
 private final class SparseRefArray[A](
-  size: Int,
+  __size: Int,
   initial: A,
   i0: Long,
   i1: Long,
   i2: Long,
   i3: Int, // LSB is array index
-) extends SparseRefArrayBase[A](size, initial, i0, i1, i2, i3.toLong << 32)
+) extends SparseRefArrayBase[A](__size, initial, i0, i1, i2, i3.toLong << 32)
   with Ref.UnsealedArray[A] {
 
-  require((size > 0) && (((size - 1) * 3 + 2) > (size - 1))) // avoid overflow
+  require((__size > 0) && (((__size - 1) * 3 + 2) > (__size - 1))) // avoid overflow
 
   final override def size: Int =
     this._size
