@@ -25,7 +25,7 @@ private final class SparseRefArray[A](
   i1: Long,
   i2: Long,
   i3: Int, // LSB is array index
-) extends RefArrayBase[A](size, true, initial, i0, i1, i2, i3.toLong << 32)
+) extends SparseRefArrayBase[A](size, initial, i0, i1, i2, i3.toLong << 32)
   with Ref.UnsealedArray[A] {
 
   require((size > 0) && (((size - 1) * 3 + 2) > (size - 1))) // avoid overflow
