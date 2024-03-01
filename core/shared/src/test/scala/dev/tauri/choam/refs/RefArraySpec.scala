@@ -101,7 +101,7 @@ trait RefArraySpec extends BaseSpec {
     val str4 = Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false)
     assert(Ref.array(N, "", str4).unsafeRun(Mcas.DefaultMcas).isInstanceOf[Ref.LazyArrayOfRefs[_]])
     val str6 = Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false)
-    assert(Ref.array(N, "", str6).unsafeRun(Mcas.DefaultMcas).isInstanceOf[LazyRefArray[_]])
+    assert(Ref.array(N, "", str6).unsafeRun(Mcas.DefaultMcas).isInstanceOf[SparseRefArray[_]])
     val str1 = Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = true)
     assert(Ref.array(N, "", str1).unsafeRun(Mcas.DefaultMcas).isInstanceOf[Ref.StrictArrayOfRefs[_]])
     assert(Either.catchOnly[IllegalArgumentException] {

@@ -80,7 +80,7 @@ private final class StrictRefArray[A](
   }
 }
 
-private final class LazyRefArray[A]( // TODO: rename to SparseRefArray
+private final class SparseRefArray[A](
   size: Int,
   initial: A,
   i0: Long,

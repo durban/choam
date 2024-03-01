@@ -32,8 +32,8 @@ package object refs {
     new StrictRefArray[A](size = size, initial = initial, i0 = i0, i1 = i1, i2 = i2, i3 = i3)
   }
 
-  private[choam] def unsafeNewLazyRefArray[A](size: Int, initial: A)(i0: Long, i1: Long, i2: Long, i3: Int): Ref.Array[A] = {
-    new LazyRefArray[A](size = size, initial = initial, i0 = i0, i1 = i1, i2 = i2, i3 = i3)
+  private[choam] def unsafeNewSparseRefArray[A](size: Int, initial: A)(i0: Long, i1: Long, i2: Long, i3: Int): Ref.Array[A] = {
+    new SparseRefArray[A](size = size, initial = initial, i0 = i0, i1 = i1, i2 = i2, i3 = i3)
   }
 
   private[refs] def refStringFrom4Ids(

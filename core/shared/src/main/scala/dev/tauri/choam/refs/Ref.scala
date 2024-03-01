@@ -321,7 +321,7 @@ object Ref extends RefInstances0 {
   private[refs] final def unsafeLazyArray[A](size: Int, initial: A): Ref.Array[A] = {
     require(size > 0)
     val tlr = ThreadLocalRandom.current()
-    unsafeNewLazyRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
+    unsafeNewSparseRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
   }
 
   final def padded[A](initial: A): Axn[Ref[A]] =
