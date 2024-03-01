@@ -32,42 +32,42 @@ import RefArrayBench._
 class RefArrayBench {
 
   @Benchmark
-  def strict_flat_swap(st: StrictArrayState, r: RandomState): String = {
+  def swap_strict_flat(st: StrictArrayState, r: RandomState): String = {
     st.swapAndGet(r)
   }
 
   @Benchmark
-  def strict_flat_fold(st: StrictArrayState, r: RandomState): Int = {
+  def fold_strict_flat(st: StrictArrayState, r: RandomState): Int = {
     st.foldSparse(r)
   }
 
   @Benchmark
-  def lazy_flat_swap(st: SparseArrayState, r: RandomState): String = {
+  def swap_lazy_flat(st: SparseArrayState, r: RandomState): String = {
     st.swapAndGet(r)
   }
 
   @Benchmark
-  def lazy_flat_fold(st: SparseArrayState, r: RandomState): Int = {
+  def fold_lazy_flat(st: SparseArrayState, r: RandomState): Int = {
     st.foldSparse(r)
   }
 
   @Benchmark
-  def strict_nonflat_swap(st: StrictArrayOfRefsState, r: RandomState): String = {
+  def swap_strict_nonflat(st: StrictArrayOfRefsState, r: RandomState): String = {
     st.swapAndGet(r)
   }
 
   @Benchmark
-  def strict_nonflat_fold(st: StrictArrayOfRefsState, r: RandomState): Int = {
+  def fold_strict_nonflat(st: StrictArrayOfRefsState, r: RandomState): Int = {
     st.foldSparse(r)
   }
 
   @Benchmark
-  def lazy_nonflat_swap(st: SparseArrayOfRefsState, r: RandomState): String = {
+  def swap_lazy_nonflat(st: SparseArrayOfRefsState, r: RandomState): String = {
     st.swapAndGet(r)
   }
 
   @Benchmark
-  def lazy_nonflat_fold(st: SparseArrayOfRefsState, r: RandomState): Int = {
+  def fold_lazy_nonflat(st: SparseArrayOfRefsState, r: RandomState): Int = {
     st.foldSparse(r)
   }
 }
