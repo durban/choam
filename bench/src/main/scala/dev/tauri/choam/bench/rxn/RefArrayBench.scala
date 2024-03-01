@@ -28,53 +28,45 @@ import bench.util.RandomState
 import RefArrayBench._
 
 @Fork(2)
-@Threads(2) // or multiples of 2
+@Threads(1)
 class RefArrayBench {
 
   @Benchmark
-  @Group("strict_flat")
   def strict_flat_swap(st: StrictArrayState, r: RandomState): String = {
     st.swapAndGet(r)
   }
 
   @Benchmark
-  @Group("strict_flat")
   def strict_flat_fold(st: StrictArrayState, r: RandomState): Int = {
     st.foldSparse(r)
   }
 
   @Benchmark
-  @Group("lazy_flat")
   def lazy_flat_swap(st: SparseArrayState, r: RandomState): String = {
     st.swapAndGet(r)
   }
 
   @Benchmark
-  @Group("lazy_flat")
   def lazy_flat_fold(st: SparseArrayState, r: RandomState): Int = {
     st.foldSparse(r)
   }
 
   @Benchmark
-  @Group("strict_nonflat")
   def strict_nonflat_swap(st: StrictArrayOfRefsState, r: RandomState): String = {
     st.swapAndGet(r)
   }
 
   @Benchmark
-  @Group("strict_nonflat")
   def strict_nonflat_fold(st: StrictArrayOfRefsState, r: RandomState): Int = {
     st.foldSparse(r)
   }
 
   @Benchmark
-  @Group("lazy_nonflat")
   def lazy_nonflat_swap(st: SparseArrayOfRefsState, r: RandomState): String = {
     st.swapAndGet(r)
   }
 
   @Benchmark
-  @Group("lazy_nonflat")
   def lazy_nonflat_fold(st: SparseArrayOfRefsState, r: RandomState): Int = {
     st.foldSparse(r)
   }
