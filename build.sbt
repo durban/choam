@@ -531,6 +531,7 @@ lazy val commonSettings = Seq[Setting[_]](
     } else {
       // 3.x:
       List(
+        "-source:3.3",
         "-Xverify-signatures",
         "-Wconf:any:v",
         "-Wunused:all",
@@ -543,7 +544,7 @@ lazy val commonSettings = Seq[Setting[_]](
     }
   ),
   scalacOptions --= (
-    if (!ScalaArtifacts.isScala3(scalaVersion.value)) List("-Xsource:3") // see above
+    if (!ScalaArtifacts.isScala3(scalaVersion.value)) List("-Xsource:3") // we add 3-cross above
     else List()
   ),
   scalacOptions -= "-language:implicitConversions", // got it from sbt-typelevel, but don't want it
