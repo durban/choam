@@ -710,11 +710,11 @@ lazy val dependencies = new {
 }
 
 val stressTestNames = List[String](
-  // "stressMcas",
-  // "stressCore",
-  // "stressData",
+  "stressMcas",
+  "stressCore",
+  "stressData",
   // "stressAsync", // TODO: this test is not useful currently
-  "stressExperiments", // temporarily
+  // "stressExperiments",
 )
 
 val stressTestNamesSlow = List[String](
