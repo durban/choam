@@ -30,8 +30,8 @@ val jvmGraal_21 = JavaSpec.graalvm("21")
 val jvmGraals = List(jvmGraal_11, jvmGraal_17, jvmGraal_21)
 val jvmOpenj9_11 = JavaSpec.semeru("11")
 val jvmOpenj9_17 = JavaSpec.semeru("17")
-val jvmOpenj9_20 = JavaSpec.semeru("20")
-val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17, jvmOpenj9_20)
+val jvmOpenj9_21 = JavaSpec.semeru("21")
+val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17, jvmOpenj9_21)
 
 // CI OS versions:
 val linux = "ubuntu-latest"
@@ -110,6 +110,7 @@ ThisBuild / githubWorkflowBuild := Seq(
   // Static analysis (doesn't work on Scala 3):
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
   // JCStress tests (only usable on macos, only runs if commit msg contains 'full CI'):
+  // TODO: we could run stress tests on linux now!
   WorkflowStep.Sbt(List("ciStress"), cond = Some(s"(matrix.os == '${macos}') && (${fullCiCond})")),
   WorkflowStep.Use(
     UseRef.Public("actions", "upload-artifact", "v4"),
