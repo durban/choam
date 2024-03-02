@@ -65,6 +65,10 @@ val fullCiCond: String =
 val quickCiCond: String =
   s"!(${fullCiCond})"
 
+/** Where to run JCStress tests (need more CPUs) */
+val jcstressCond: String =
+  s"(matrix.os == '${macos}') || ((matrix.os == '${linux}') && (matrix.java == '${jvmLatest.render}'))"
+
 ThisBuild / crossScalaVersions := Seq(scala2, scala3)
 ThisBuild / scalaVersion := crossScalaVersions.value.head
 ThisBuild / scalaOrganization := "org.scala-lang"
@@ -111,11 +115,11 @@ ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
   // JCStress tests (only usable on macos, only runs if commit msg contains 'full CI'):
   // TODO: we could run stress tests on linux now!
-  WorkflowStep.Sbt(List("ciStress"), cond = Some(s"(matrix.os == '${macos}') && (${fullCiCond})")),
+  WorkflowStep.Sbt(List("ciStress"), cond = Some(s"(${jcstressCond}) && (${fullCiCond})")),
   WorkflowStep.Use(
     UseRef.Public("actions", "upload-artifact", "v4"),
     name = Some("Upload JCStress results"),
-    cond = Some(s"(success() || failure()) && (matrix.os == '${macos}') && (${fullCiCond})"),
+    cond = Some(s"(success() || failure()) && (${jcstressCond}) && (${fullCiCond})"),
     params = Map(
       "name" -> "jcstress-results-${{ matrix.scala }}-${{ matrix.java }}",
       "path" -> "results/",
