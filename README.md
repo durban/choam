@@ -51,9 +51,9 @@ is similar to an effectful function from `A` to `B` (that is, `A => F[B]`), but:
   - hash- and ordered maps and sets
   - counter
 - [`choam-async`](async/shared/src/main/scala/dev/tauri/choam/async/):
-  - integration with asynchronous effect types in
+  - Integration with asynchronous effect types in
     [Cats Effect](https://github.com/typelevel/cats-effect):
-    - the main integration point is a `Promise`, which can be
+    - The main integration point is a `Promise`, which can be
       completed as a `Rxn`, and can be waited on as an async `F[_]`:
       ```scala
       trait Promise[F[_], A] {
@@ -61,13 +61,14 @@ is similar to an effectful function from `A` to `B` (that is, `A => F[B]`), but:
         def get: F[A]
       }
       ```
-    - async (dual) data structures can be built on this primitive
-  - async data structures; some of their operations are
+    - Asynchronous (dual) data structures can be built on this primitive
+  - Async data structures; some of their operations are
     *semantically* blocking (i.e., [fiber blocking
     ](https://typelevel.org/cats-effect/docs/thread-model#fiber-blocking-previously-semantic-blocking)),
-    and so are in an async `F[_]`):
+    and so are in an async `F[_]` (note, that these `F[A]` operations are – obviously – *not* lock-free):
     - queues
     - stacks
+    - `CountDownLatch`
 - [`choam-stream`](stream/shared/src/main/scala/dev/tauri/choam/stream/):
   integration with [FS2](https://github.com/typelevel/fs2) `Stream`s
 - [`choam-laws`](laws/shared/src/main/scala/dev/tauri/choam/laws/):

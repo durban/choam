@@ -60,8 +60,8 @@ trait PromiseSpecTicked[F[_]]
     @volatile var flag2 = false
     for {
       p <- Promise[F, Int].run[F]
-      f1 <- p.get.flatTap(_ => F.delay { flag1 = true }).start
-      f2 <- p.get.flatTap(_ => F.delay { flag2 = true }).start
+      f1 <- F.uncancelable { poll => poll(p.get).flatTap(_ => F.delay { flag1 = true }) }.start
+      f2 <- F.uncancelable { poll => poll(p.get).flatTap(_ => F.delay { flag2 = true }) }.start
       _ <- this.tickAll
       _ <- f1.cancel
       ok <- p.complete[F](42)
@@ -171,7 +171,7 @@ trait PromiseSpec[F[_]]
     } yield ()
   }
 
-  test("Promise mapK") {
+  test("Promise#mapK") {
     val raForIo: AsyncReactive[IO] = new AsyncReactive.AsyncReactiveImpl[IO](this.mcasImpl)
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
@@ -189,7 +189,7 @@ trait PromiseSpec[F[_]]
     } yield ()
   }
 
-  test("PromiseRead mapK") {
+  test("PromiseRead#mapK") {
     val raForIo: AsyncReactive[IO] = new AsyncReactive.AsyncReactiveImpl[IO](this.mcasImpl)
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)

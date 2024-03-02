@@ -23,6 +23,11 @@ import cats.effect.kernel.Sync
 
 import internal.mcas.Mcas
 
+// TODO: We should have a way to "propagate"
+// TODO: a `Strategy`, because this way a
+// TODO: data structure might just run things
+// TODO: with the `Default` (e.g., CDL#toCats).
+
 trait Reactive[F[_]] extends ~>[Axn, F] { self =>
   def apply[A, B](r: Rxn[A, B], a: A, s: Rxn.Strategy.Spin = Rxn.Strategy.Default): F[B]
   def mcasImpl: Mcas
