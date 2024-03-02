@@ -121,7 +121,7 @@ ThisBuild / githubWorkflowBuild := Seq(
     name = Some("Upload JCStress results"),
     cond = Some(s"(success() || failure()) && (${jcstressCond}) && (${fullCiCond})"),
     params = Map(
-      "name" -> "jcstress-results-${{ matrix.scala }}-${{ matrix.java }}",
+      "name" -> "jcstress-results-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}",
       "path" -> "results/",
     ),
   ),

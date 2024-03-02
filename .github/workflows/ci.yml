@@ -270,5 +270,5 @@ jobs:
         if: (success() || failure()) && ((matrix.os == 'macos-14') || ((matrix.os == 'ubuntu-latest') && (matrix.java == 'temurin@21'))) && (contains(github.event.head_commit.message, 'full CI'))
         uses: actions/upload-artifact@v4
         with:
-          name: jcstress-results-${{ matrix.scala }}-${{ matrix.java }}
+          name: jcstress-results-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
           path: results/
