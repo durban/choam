@@ -17,9 +17,9 @@
 
 val sbtTypelevelVersion = "0.6.7"
 
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.7")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.7") // https://github.com/sbt/sbt-jmh
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
-addSbtPlugin("io.crashbox" % "sbt-gpg" % "0.2.1")
+addSbtPlugin("io.crashbox" % "sbt-gpg" % "0.2.1") // https://github.com/jodersky/sbt-gpg
 addSbtPlugin("ch.epfl.scala" % "sbt-version-policy" % "3.2.0")
 addSbtPlugin("org.typelevel" % "sbt-typelevel-no-publish" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-versioning" % sbtTypelevelVersion)
@@ -28,12 +28,12 @@ addSbtPlugin("org.typelevel" % "sbt-typelevel-mima" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-sonatype" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-github" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-github-actions" % sbtTypelevelVersion)
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
-addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.10.0")
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.11.1")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2") // https://github.com/scalameta/sbt-scalafmt
+addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.10.0") // https://github.com/sbt/sbt-header
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.12.0") // https://github.com/scalacenter/sbt-scalafix
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.2")
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.15.0")
-addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1")
+addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1") // https://github.com/raboof/sbt-strict-scala-versions
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.9.16")
 
 ThisBuild / semanticdbEnabled := true
