@@ -1034,6 +1034,7 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def saveAlt(k: Rxn[Any, R]): Unit = {
+      val alts = this.alts
       alts.push(ctx.snapshot(_desc))
       alts.push(a)
       alts.push(contT.takeSnapshot())
@@ -1043,6 +1044,7 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def loadAlt(): Rxn[Any, R] = {
+      val alts = this.alts
       val res = alts.pop().asInstanceOf[Rxn[Any, R]]
       pc.loadSnapshotUnsafe(alts.pop().asInstanceOf[ObjStack.Lst[Any]])
       contK.loadSnapshot(alts.pop().asInstanceOf[ObjStack.Lst[Any]])
@@ -1069,6 +1071,7 @@ object Rxn extends RxnInstances0 {
 
     @tailrec
     private[this] final def next(): Rxn[Any, Any] = {
+      val contK = this.contK
       (contT.pop() : @switch) match {
         case 0 => // ContAndThen
           contK.pop().asInstanceOf[Rxn[Any, Any]]
@@ -1524,7 +1527,6 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    // TODO: write tests for this!
     final def interpretAsync[F[_]](implicit F: Async[F]): F[R] = {
       F.defer {
         this.ctx = mcas.currentContext()
