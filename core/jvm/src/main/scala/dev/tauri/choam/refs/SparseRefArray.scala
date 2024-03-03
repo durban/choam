@@ -60,7 +60,7 @@ private final class SparseRefArray[A](
       existing.asInstanceOf[Ref[A]]
     } else {
       val nv = new RefArrayRef[A](this, i)
-      this.cmpxchgVolatile(refIdx, null, nv) match {
+      this.cmpxchgVolatile(refIdx, null, nv) match { // TODO: <- we don't need volatile!
         case null => nv // we're the first
         case other => other.asInstanceOf[Ref[A]]
       }

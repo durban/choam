@@ -19,6 +19,8 @@ package dev.tauri.choam
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import scala.concurrent.duration._
+
 import cats.{ Applicative, Monad, StackSafeMonad, Align }
 import cats.arrow.{ ArrowChoice, FunctionK }
 import cats.data.Ior
@@ -1022,7 +1024,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     )
   }
 
-  test("Running with Strategy") {
+  test("Running with Strategy.spin") {
     val r: Rxn[String, Int] =
       Rxn.lift(s => s.length)
     val sSpin = Rxn.Strategy.spin(
@@ -1031,5 +1033,47 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       randomizeSpin = true,
     )
     assertResultF(Reactive[F].apply(r, "foo", sSpin), 3)
+  }
+
+  private[this] val sCede = Rxn.Strategy.cede(
+    maxRetries = None,
+    maxSpin = 512,
+    randomizeSpin = true,
+  )
+
+  test("Running with Strategy.cede") {
+    val r: Rxn[String, Int] =
+      Rxn.lift(s => s.length)
+    assertResultF(r.perform[F, Int]("foo", this.mcasImpl, sCede)(F), 3)
+  }
+
+  test("Running with Strategy.cede should be cancellable") {
+    val r: Rxn[String, Int] =
+      Rxn.unsafe.retry
+    val tsk: F[Int] =
+      r.perform[F, Int]("foo", this.mcasImpl, sCede)(F).timeoutTo(0.1.second, F.pure(42))
+    assertResultF(tsk, 42)
+  }
+
+  private[this] val sSleep = Rxn.Strategy.sleep(
+    maxRetries = None,
+    maxSpin = 512,
+    randomizeSpin = true,
+    maxSleep = 10.millis,
+    randomizeSleep = true,
+  )
+
+  test("Running with Strategy.sleep") {
+    val r: Rxn[String, Int] =
+      Rxn.lift(s => s.length)
+    assertResultF(r.perform[F, Int]("foo", this.mcasImpl, sSleep)(F), 3)
+  }
+
+  test("Running with Strategy.sleep should be cancellable") {
+    val r: Rxn[String, Int] =
+      Rxn.unsafe.retry
+    val tsk: F[Int] =
+      r.perform[F, Int]("foo", this.mcasImpl, sSleep)(F).timeoutTo(0.1.second, F.pure(42))
+    assertResultF(tsk, 42)
   }
 }
