@@ -50,7 +50,6 @@ private final class SparseRefArray[A](
   }
 
   private[this] final def getOrCreateRef(i: Int): Ref[A] = {
-
     val refIdx = 3 * i
     val existing = this.getOpaque(refIdx)
     if (existing ne null) {

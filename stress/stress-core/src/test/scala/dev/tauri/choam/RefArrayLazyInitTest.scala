@@ -20,16 +20,19 @@ package dev.tauri.choam
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LL_Result
+import org.openjdk.jcstress.infra.results.LLL_Result
 
-// @JCStressTest
+@JCStressTest
 @State
-@Description("LazyRefArray should be safely initialized")
+@Description("SparseRefArray should be safely initialized")
 @Outcomes(Array(
-  new Outcome(id = Array("0, 0"), expect = ACCEPTABLE, desc = "read first"),
-  new Outcome(id = Array("1, x"), expect = ACCEPTABLE, desc = "read found it"),
+  new Outcome(id = Array("0, 0, x"), expect = ACCEPTABLE, desc = "read first"),
+  new Outcome(id = Array("1, x, y"), expect = ACCEPTABLE, desc = "read found it"),
 ))
 class RefArrayLazyInitTest extends StressTestBase {
+
+  private[this] val f: Function1[String, String] =
+    { _ => "y" }
 
   // intentionally not volatile
   private[this] var arr: Ref.Array[String] =
@@ -41,17 +44,22 @@ class RefArrayLazyInitTest extends StressTestBase {
   }
 
   @Actor
-  def read(r: LL_Result): Unit = {
+  def read(r: LLL_Result): Unit = {
     this.arr match {
       case null =>
         // we're too early
         r.r1 = "0"
         r.r2 = "0"
       case a =>
-        // we found something, so it should
-        // be properly initialized
-        r.r2 = a.unsafeGet(2).loc.unsafeGetVolatile()
+        // we found something, so it
+        // should work properly:
+        r.r2 = a.unsafeGet(2).getAndUpdate(f).unsafeRun(this.impl)
         r.r1 = "1"
     }
+  }
+
+  @Arbiter
+  def arbiter(r: LLL_Result): Unit = {
+    r.r3 = this.arr.unsafeGet(2).get.unsafeRun(this.impl)
   }
 }
