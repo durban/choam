@@ -57,9 +57,12 @@ val isOpenJ9Cond: String = {
 val isNotOpenJ9Cond: String =
   s"!(${isOpenJ9Cond})"
 
+def commitContains(magic: String): String =
+  s"contains(github.event.head_commit.message, '${magic}')"
+
 /** If the commit msg contains "full CI", we run more things */
 val fullCiCond: String =
-  "contains(github.event.head_commit.message, 'full CI')"
+  commitContains("full CI")
 
 /** The opposite of "full CI" (this is the default) */
 val quickCiCond: String =
@@ -88,9 +91,9 @@ ThisBuild / versionPolicyIgnoredInternalDependencyVersions := Some("^\\d+\\.\\d+
 ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
 
 ThisBuild / githubWorkflowUseSbtThinClient := false
-ThisBuild / githubWorkflowBuildTimeoutMinutes := Some(120)
+ThisBuild / githubWorkflowBuildTimeoutMinutes := Some(180)
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
-ThisBuild / githubWorkflowBuild := Seq(
+ThisBuild / githubWorkflowBuild := List(
   // Tests on non-OpenJ9:
   WorkflowStep.Sbt(
     List(ciCommand),
@@ -113,13 +116,20 @@ ThisBuild / githubWorkflowBuild := Seq(
   ),
   // Static analysis (doesn't work on Scala 3):
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
-  // JCStress tests (only usable on macos, only runs if commit msg contains 'full CI'):
-  // TODO: we could run stress tests on linux now!
-  WorkflowStep.Sbt(List("ciStress"), cond = Some(s"(${jcstressCond}) && (${fullCiCond})")),
+) ++ stressTestNames.map { projName =>
+  // JCStress tests (they only run if commit msg contains 'full CI' or the project name):
+  WorkflowStep.Sbt(
+    List(mkStressTestCmd(projName)),
+    cond = Some(s"(${jcstressCond}) && ((${fullCiCond}) || (${commitContains(projName)}))")
+  ),
+} ++ List(
   WorkflowStep.Use(
     UseRef.Public("actions", "upload-artifact", "v4"),
     name = Some("Upload JCStress results"),
-    cond = Some(s"(success() || failure()) && (${jcstressCond}) && (${fullCiCond})"),
+    cond = {
+      val commitMsgCond = s"${fullCiCond} || (${stressTestNames.map(commitContains).mkString("", " || ", "")})"
+      Some(s"(success() || failure()) && (${jcstressCond}) && (${commitMsgCond})")
+    },
     params = Map(
       "name" -> "jcstress-results-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}",
       "path" -> "results/",
@@ -709,9 +719,9 @@ lazy val dependencies = new {
   val catsScalacheck = Def.setting("io.chrisdavenport" %%% "cats-scalacheck" % "0.3.2") // https://github.com/davenverse/cats-scalacheck
 }
 
-val stressTestNames = List[String](
-  // "stressMcas",
-  // "stressCore",
+lazy val stressTestNames = List[String](
+  "stressMcas",
+  "stressCore",
   "stressData",
   // "stressAsync", // TODO: this test is not useful currently
   // "stressExperiments",
@@ -722,8 +732,11 @@ val stressTestNamesSlow = List[String](
   "stressDataSlow",
 )
 
+def mkStressTestCmd(projName: String): String =
+  s"${projName}/Jcstress/run"
+
 val stressTestCommand =
-  stressTestNames.map(p => s"${p}/Jcstress/run").mkString(";", ";", "")
+  stressTestNames.map(mkStressTestCmd).mkString(";", ";", "")
 
 addCommandAlias("checkScalafix", "scalafixAll --check")
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
@@ -732,7 +745,6 @@ addCommandAlias("validate", ";staticAnalysis;test;stressTest")
 addCommandAlias("compatCheck", ";versionPolicyReportDependencyIssues;mimaReportBinaryIssues")
 addCommandAlias(ciCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;testOnly -- --exclude-tags=SLOW;compatCheck")
 addCommandAlias(ciFullCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;test;compatCheck")
-addCommandAlias("ciStress", "stressTest")
 addCommandAlias("release", ";reload;+versionPolicyReportDependencyIssues;tlRelease")
 addCommandAlias("releaseHash", ";reload;tlRelease")
 

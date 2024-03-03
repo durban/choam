@@ -95,7 +95,7 @@ jobs:
             java: graal_22.3.3@11
             scala: 3
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - name: Install sbt
         if: contains(runner.os, 'macos')
@@ -262,12 +262,20 @@ jobs:
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' checkScalafix
 
-      - if: ((matrix.os == 'macos-14') || ((matrix.os == 'ubuntu-latest') && (matrix.java == 'temurin@21'))) && (contains(github.event.head_commit.message, 'full CI'))
+      - if: ((matrix.os == 'macos-14') || ((matrix.os == 'ubuntu-latest') && (matrix.java == 'temurin@21'))) && ((contains(github.event.head_commit.message, 'full CI')) || (contains(github.event.head_commit.message, 'stressMcas')))
         shell: bash
-        run: sbt -v '++ ${{ matrix.scala }}' ciStress
+        run: sbt -v '++ ${{ matrix.scala }}' stressMcas/Jcstress/run
+
+      - if: ((matrix.os == 'macos-14') || ((matrix.os == 'ubuntu-latest') && (matrix.java == 'temurin@21'))) && ((contains(github.event.head_commit.message, 'full CI')) || (contains(github.event.head_commit.message, 'stressCore')))
+        shell: bash
+        run: sbt -v '++ ${{ matrix.scala }}' stressCore/Jcstress/run
+
+      - if: ((matrix.os == 'macos-14') || ((matrix.os == 'ubuntu-latest') && (matrix.java == 'temurin@21'))) && ((contains(github.event.head_commit.message, 'full CI')) || (contains(github.event.head_commit.message, 'stressData')))
+        shell: bash
+        run: sbt -v '++ ${{ matrix.scala }}' stressData/Jcstress/run
 
       - name: Upload JCStress results
-        if: (success() || failure()) && ((matrix.os == 'macos-14') || ((matrix.os == 'ubuntu-latest') && (matrix.java == 'temurin@21'))) && (contains(github.event.head_commit.message, 'full CI'))
+        if: (success() || failure()) && ((matrix.os == 'macos-14') || ((matrix.os == 'ubuntu-latest') && (matrix.java == 'temurin@21'))) && (contains(github.event.head_commit.message, 'full CI') || (contains(github.event.head_commit.message, 'stressMcas') || contains(github.event.head_commit.message, 'stressCore') || contains(github.event.head_commit.message, 'stressData')))
         uses: actions/upload-artifact@v4
         with:
           name: jcstress-results-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
