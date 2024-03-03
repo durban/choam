@@ -932,7 +932,7 @@ object Rxn extends RxnInstances0 {
 
     @inline
     private[this] final def desc_=(d: Descriptor): Unit = {
-      require(d ne null)
+      require(d ne null) // we want to be explicit, see `clearDesc`
       _desc = d
     }
 
@@ -1208,8 +1208,7 @@ object Rxn extends RxnInstances0 {
       desc.getOrElseNull(ref) match {
         case null =>
           // not in log
-          val hwd = ctx.readIntoHwd(ref)
-          revalidateIfNeeded(hwd)
+          revalidateIfNeeded(ctx.readIntoHwd(ref))
         case hwd =>
           hwd
       }
@@ -1244,28 +1243,31 @@ object Rxn extends RxnInstances0 {
     }
 
     @tailrec
-    private[this] final def casLoop(): Boolean = {
-      ctx.tryPerform(desc) match {
-        case McasStatus.Successful =>
-          true
-        case McasStatus.FailedVal =>
-          false
-        case _ => // failed due to version
-          // TODO: This actually never happens with EMCAS now
-          // TODO: (and also never happends on JS); so do we
-          // TODO: actually need this code?
-          ctx.validateAndTryExtend(desc, hwd = null) match {
-            case null =>
-              // can't extend:
-              clearDesc()
-              false
-            case d =>
-              // ok, was extended:
-              desc = d
-              incrMcasRetries()
-              spin(getMcasRetries())
-              casLoop() // retry
-          }
+    private[this] final def casLoop(d: Descriptor): Boolean = {
+      if (d ne null) {
+        ctx.tryPerform(d) match {
+          case McasStatus.Successful =>
+            true
+          case McasStatus.FailedVal =>
+            false
+          case _ => // failed due to version
+            // TODO: This actually never happens with EMCAS now
+            // TODO: (and also never happends on JS); so do we
+            // TODO: actually need this code?
+            ctx.validateAndTryExtend(d, hwd = null) match {
+              case null =>
+                // can't extend:
+                clearDesc()
+                false
+              case d =>
+                // ok, was extended:
+                incrMcasRetries()
+                spin(getMcasRetries())
+                casLoop(d) // retry
+            }
+        }
+      } else {
+        true
       }
     }
 
@@ -1273,7 +1275,9 @@ object Rxn extends RxnInstances0 {
     private[this] final def loop[A, B](curr: Rxn[A, B]): R = {
       (curr.tag : @switch) match {
         case 0 => // Commit
-          if (casLoop()) {
+          val d = this._desc // we avoid calling `desc` here, in case it's `null`
+          this.clearDesc()
+          if (casLoop(d)) {
             // save retry statistics:
             ctx.recordCommit(
               fullRetries = getFullRetries(),
@@ -1281,7 +1285,6 @@ object Rxn extends RxnInstances0 {
             )
             // ok, commit is done, but we still need to perform post-commit actions
             val res = a
-            clearDesc()
             a = () : Any
             if (!equ(res, postCommitResultMarker)) {
               // final result, Done (or ContAfterDelayComp) will need it:
@@ -1469,8 +1472,7 @@ object Rxn extends RxnInstances0 {
             val r = retry()
             if (r ne null) loop(r) else suspend()
           } else {
-            val ticket = new unsafe.TicketImpl[Any](hwd)
-            a = ticket
+            a = new unsafe.TicketImpl[Any](hwd)
             loop(next())
           }
         case 21 => // TicketWrite
