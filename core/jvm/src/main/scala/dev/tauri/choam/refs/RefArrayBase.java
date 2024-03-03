@@ -88,31 +88,37 @@ abstract class RefArrayBase<A> extends RefIdOnly {
 
   protected abstract long cmpxchgVersionVolatile(int idx, long ov, long nv);
 
-  protected Object getVolatile(int idx) {
+  protected final Object getVolatile(int idx) {
     return ARRAY.getVolatile(this.array, idx);
   }
 
-  protected Object getOpaque(int idx) {
+  protected final Object getOpaque(int idx) {
     return ARRAY.getOpaque(this.array, idx);
   }
 
-  protected Object getPlain(int idx) {
+  protected final Object getPlain(int idx) {
     return ARRAY.get(this.array, idx);
   }
 
-  protected void setVolatile(int idx, Object nv) {
+  protected final void setVolatile(int idx, Object nv) {
     ARRAY.setVolatile(this.array, idx, nv);
   }
 
-  protected void setPlain(int idx, Object nv) {
+  protected final void setPlain(int idx, Object nv) {
     ARRAY.set(this.array, idx, nv);
   }
 
-  protected boolean casVolatile(int idx, Object ov, Object nv) {
+  protected final boolean casVolatile(int idx, Object ov, Object nv) {
     return ARRAY.compareAndSet(this.array, idx, ov, nv);
   }
 
-  protected Object cmpxchgVolatile(int idx, Object ov, Object nv) {
+  protected final Object cmpxchgVolatile(int idx, Object ov, Object nv) {
     return ARRAY.compareAndExchange(this.array, idx, ov, nv);
+  }
+
+  protected final Object cmpxchgOpaque(int idx, Object ov, Object nv) {
+    // VarHandle doesn't have a compareAndExchangePlain,
+    // so we approximate it with the release form:
+    return ARRAY.compareAndExchangeRelease(this.array, idx, ov, nv);
   }
 }
