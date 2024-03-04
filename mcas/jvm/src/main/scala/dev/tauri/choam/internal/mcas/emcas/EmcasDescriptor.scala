@@ -84,25 +84,22 @@ private object EmcasDescriptor {
     private[this] var idx: Int =
       0
 
-    private[this] var lastIdx: Int =
-      -1
-
     final override def hasNext(): Boolean = {
       this.idx != this.words.length
     }
 
     final override def next(): WordDescriptor[_] = {
       if (this.hasNext()) {
-        this.lastIdx = this.idx
+        val lastIdx = this.idx
         this.idx += 1
-        this.words(this.lastIdx)
+        this.words(lastIdx)
       } else {
         throw new NoSuchElementException
       }
     }
 
     final override def remove(): Unit = {
-      throw new UnsupportedOperationException("EMCASDescriptor.Iterator#remove")
+      throw new UnsupportedOperationException("EmcasDescriptor.Iterator#remove")
     }
   }
 }
