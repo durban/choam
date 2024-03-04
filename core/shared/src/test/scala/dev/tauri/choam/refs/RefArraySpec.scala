@@ -112,6 +112,8 @@ trait RefArraySpec extends BaseSpec {
     assert(Either.catchOnly[IllegalArgumentException] {
       Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = true) // 7
     }.isLeft)
+    assert(Ref.unsafeArray(N, "", Ref.Array.AllocationStrategy.SparseFlat).isInstanceOf[SparseRefArray[_]])
+    assert(Ref.unsafeArray(N, "", Ref.Array.AllocationStrategy.Default).isInstanceOf[StrictRefArray[_]])
   }
 
   test("empty array") {
