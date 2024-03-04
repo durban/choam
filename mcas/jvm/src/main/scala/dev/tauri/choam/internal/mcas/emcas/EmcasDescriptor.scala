@@ -59,11 +59,6 @@ private final class EmcasDescriptor private[emcas] (
     this.half.hasVersionCas
   }
 
-  /** Only for informational purposes, not actually used */
-  private[emcas] final def expectedNewVersion: Long = {
-    this.half.newVersion
-  }
-
   private[emcas] final def wasFinalized(): Unit = {
     // help the GC (best effort,
     // so just plain writes):
