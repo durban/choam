@@ -44,10 +44,6 @@ abstract class EmcasDescriptorBase {
     return this._status; // volatile
   }
 
-  protected boolean casStatusInternal(long ov, long nv) {
-    return STATUS.compareAndSet(this, ov, nv);
-  }
-
   long cmpxchgStatus(long ov, long nv) {
     return (long) STATUS.compareAndExchange(this, ov, nv);
   }

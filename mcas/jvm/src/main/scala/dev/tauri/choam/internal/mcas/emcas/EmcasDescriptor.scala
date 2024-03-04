@@ -51,10 +51,6 @@ private final class EmcasDescriptor private[emcas] (
     new EmcasDescriptor.Iterator(this.words)
   }
 
-  private[emcas] final def casStatus(ov: Long, nv: Long): Boolean = {
-    this.casStatusInternal(ov, nv)
-  }
-
   private[emcas] final def hasVersionCas: Boolean = {
     this.half.hasVersionCas
   }
