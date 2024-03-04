@@ -34,6 +34,17 @@ private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDesc
   final val oldVersion: Long,
 ) {
 
+  def this(
+    half: HalfWordDescriptor[A],
+    parent: EmcasDescriptor,
+  ) = this(
+    parent = parent,
+    address = half.address,
+    ov = half.ov,
+    nv = half.nv,
+    oldVersion = half.version,
+  )
+
   final def cast[B]: WordDescriptor[B] =
     this.asInstanceOf[WordDescriptor[B]]
 
@@ -42,23 +53,4 @@ private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDesc
 
   final override def toString: String =
     s"WordDescriptor(${this.address}, ${this.ov} -> ${this.nv}, oldVer = ${this.oldVersion})"
-}
-
-private object WordDescriptor {
-
-  private[emcas] def apply[A](
-    half: HalfWordDescriptor[A],
-    parent: EmcasDescriptor,
-  ): WordDescriptor[A] = new WordDescriptor[A](
-    parent = parent,
-    address = half.address,
-    ov = half.ov,
-    nv = half.nv,
-    oldVersion = half.version,
-  )
-
-  private[emcas] def prepare[A](
-    half: HalfWordDescriptor[A],
-    parent: EmcasDescriptor,
-  ): WordDescriptor[A] = WordDescriptor(half, parent)
 }

@@ -42,7 +42,7 @@ private final class EmcasDescriptor private[emcas] (
     val it = half.iterator()
     var idx = 0
     while (it.hasNext) {
-      val wd = WordDescriptor.prepare(it.next(), this)
+      val wd = new WordDescriptor(it.next(), this)
       arr(idx) = wd
       idx += 1
     }
