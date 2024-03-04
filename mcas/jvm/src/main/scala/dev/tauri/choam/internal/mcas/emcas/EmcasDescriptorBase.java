@@ -26,11 +26,13 @@ import dev.tauri.choam.internal.mcas.McasStatus;
 abstract class EmcasDescriptorBase {
 
   private static final VarHandle STATUS;
+  private static final VarHandle WORDS_ARR;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       STATUS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_status", long.class));
+      WORDS_ARR = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(WordDescriptor[].class));
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }
@@ -46,5 +48,13 @@ abstract class EmcasDescriptorBase {
 
   long cmpxchgStatus(long ov, long nv) {
     return (long) STATUS.compareAndExchange(this, ov, nv);
+  }
+
+  protected void cleanWordsForGc(WordDescriptor<?>[] words) {
+    int len = words.length;
+    VarHandle.releaseFence();
+    for (int idx = 0; idx < len; idx++) {
+      WORDS_ARR.setOpaque(words, idx, (WordDescriptor<?>) null);
+    }
   }
 }

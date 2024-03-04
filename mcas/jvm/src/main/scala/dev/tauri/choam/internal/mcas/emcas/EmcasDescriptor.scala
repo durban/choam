@@ -57,15 +57,8 @@ private final class EmcasDescriptor private[emcas] (
   }
 
   private[emcas] final def wasFinalized(): Unit = {
-    // help the GC (best effort,
-    // so just plain writes):
-    val words = this.words
-    val len = words.length
-    var idx = 0
-    while (idx < len) {
-      words(idx) = null
-      idx += 1
-    }
+    // help the GC:
+    this.cleanWordsForGc(this.words)
   }
 
   final override def toString: String = {
