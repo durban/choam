@@ -38,7 +38,7 @@ private final class MsQueue[A] private[this] (
   private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel)
 
   private def this(padded: Boolean) =
-    this(Node(nullOf[A], Ref.unsafePadded(End[A]())), padded = padded)
+    this(Node(nullOf[A], if (padded) Ref.unsafePadded(End[A]()) else Ref.unsafeUnpadded(End[A]())), padded = padded)
 
   override val tryDeque: Axn[Option[A]] = {
     head.modifyWith { node =>

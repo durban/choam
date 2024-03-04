@@ -32,7 +32,7 @@ private final class ExchangerNode[C](val msg: Msg) {
    */
 
   val hole: Ref[NodeResult[C]] =
-    Ref.unsafe(null)
+    Ref.unsafePadded(null)
 
   // TODO: Also consider using `Thread.yield` and then
   // TODO: `LockSupport.parkNanos` after spinning (see

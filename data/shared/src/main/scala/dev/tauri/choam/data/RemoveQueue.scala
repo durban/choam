@@ -18,23 +18,25 @@
 package dev.tauri.choam
 package data
 
-import RemoveQueue._
+import RemoveQueue.{ Elem, Node, End, tombstone, isTombstone }
 
 /**
  * Like `MsQueue`, but also has support for interior node deletion
  * (`remove`), based on the public domain JSR-166 ConcurrentLinkedQueue
  * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
+ *
+ * TODO: also unlink removed nodes (instead of just tombing them).
  */
 private final class RemoveQueue[A] private[this] (sentinel: Node[A])
   extends Queue.WithRemove[A] {
 
   // TODO: do the optimization with ticketRead (like in `MsQueue`)
 
-  private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel)
-  private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel)
+  private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel)
 
   def this() =
-    this(Node(nullOf[Ref[A]], Ref.unsafe(End[A]())))
+    this(Node(nullOf[Ref[A]], Ref.unsafeUnpadded(End[A]())))
 
   override val tryDeque: Axn[Option[A]] = {
     head.modifyWith { node =>

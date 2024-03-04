@@ -44,5 +44,5 @@ object Counter {
     Ref.padded(0L).map(new Counter(_))
 
   private[data] def unsafe(initial: Long = 0L): Counter =
-    new Counter(Ref.unsafe(initial))
+    new Counter(Ref.unsafePadded(initial))
 }

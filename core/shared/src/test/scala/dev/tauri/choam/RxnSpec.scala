@@ -1076,4 +1076,23 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r.perform[F, Int]("foo", this.mcasImpl, sSleep)(F).timeoutTo(0.1.second, F.pure(42))
     assertResultF(tsk, 42)
   }
+
+  test("Executing a Rxn which doesn't change Refs shouldn't change the global version") {
+    val r = Ref.unpadded("foo").flatMapF { ref =>
+      Axn.unsafe.delay { new Exception }.map { ex =>
+        (ref, ex)
+      }
+    }
+    for {
+      v1 <- F.delay { this.mcasImpl.currentContext().start().validTs }
+      re <- r.run[F]
+      (ref, _) = re
+      v2 <- F.delay { this.mcasImpl.currentContext().start().validTs }
+      _ <- assertEqualsF(v2, v1)
+      // double-check, that modifying a Ref *does* change the version:
+      _ <- ref.update(_.substring(0, 1)).run[F]
+      v3 <- F.delay { this.mcasImpl.currentContext().start().validTs }
+      _ <- assertNotEqualsF(v3, v2)
+    } yield ()
+  }
 }

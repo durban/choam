@@ -28,11 +28,11 @@ import cats.effect.std.Random
 private object MinimalRandom {
 
   def unsafe1(initialSeed: Long): Random[Axn] = {
-    new MinimalRandom1(Ref.unsafe(initialSeed), RandomBase.GoldenGamma)
+    new MinimalRandom1(Ref.unsafePadded(initialSeed), RandomBase.GoldenGamma)
   }
 
   def unsafe2(initialSeed: Long): Random[Axn] = {
-    new MinimalRandom2(Ref.unsafe(initialSeed), RandomBase.GoldenGamma)
+    new MinimalRandom2(Ref.unsafePadded(initialSeed), RandomBase.GoldenGamma)
   }
 }
 

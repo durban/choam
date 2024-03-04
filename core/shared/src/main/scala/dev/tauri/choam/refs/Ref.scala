@@ -325,7 +325,7 @@ object Ref extends RefInstances0 {
   }
 
   final def padded[A](initial: A): Axn[Ref[A]] =
-    Axn.unsafe.delay[Ref[A]](Ref.unsafe(initial))
+    Axn.unsafe.delay[Ref[A]](Ref.unsafePadded(initial))
 
   final def unpadded[A](initial: A): Axn[Ref[A]] =
     Axn.unsafe.delay[Ref[A]](Ref.unsafeUnpadded(initial))

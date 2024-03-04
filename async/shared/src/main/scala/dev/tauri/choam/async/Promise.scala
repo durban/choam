@@ -67,6 +67,12 @@ object PromiseWrite {
   }
 }
 
+// TODO: Can we make a `Promise[A]`?
+// TODO: (With `def get[F[_]](implicit F: AsyncReactive[F]): F[A]`)
+// TODO: If yes, that would make it possible to have
+// TODO: `Promise.padded` and `Promise.unpadded` without bloating
+// TODO: the AsyncReactive typeclass.
+
 trait Promise[F[_], A] extends PromiseRead[F, A] with PromiseWrite[A] {
   def imap[B](f: A => B)(g: B => A): Promise[F, B]
   override def mapK[G[_] : Monad](t: F ~> G): Promise[G, A]

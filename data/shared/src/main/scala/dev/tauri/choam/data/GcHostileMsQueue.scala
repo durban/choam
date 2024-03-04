@@ -35,11 +35,11 @@ import GcHostileMsQueue._
 private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
   extends Queue[A] {
 
-  private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel)
-  private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel)
+  private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel)
 
   private def this() =
-    this(Node(nullOf[A], Ref.unsafe(End[A]())))
+    this(Node(nullOf[A], Ref.unsafePadded(End[A]())))
 
   override val tryDeque: Axn[Option[A]] = {
     head.modifyWith { node =>
