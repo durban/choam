@@ -72,9 +72,8 @@ final class HalfWordDescriptor[A] private (
     val h1 = MurmurHash3.mix(0x4beb8a16, this.address.##)
     val h2 = MurmurHash3.mix(h1, System.identityHashCode(this.ov))
     val h3 = MurmurHash3.mix(h2, System.identityHashCode(this.nv))
-    val h4 = MurmurHash3.mix(h3, this.version.toInt)
-    val h5 = MurmurHash3.mixLast(h4, (this.version >>> 32).toInt)
-    MurmurHash3.finalizeHash(h5, 5)
+    val h4 = MurmurHash3.mixLast(h3, this.version.##)
+    MurmurHash3.finalizeHash(h4, 4)
   }
 }
 
