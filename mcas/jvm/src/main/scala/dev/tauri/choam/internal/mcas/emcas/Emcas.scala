@@ -554,11 +554,6 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       }
     }
 
-    // EMCAS handles the global version
-    // separately, so the descriptor must
-    // not have a CAS for changing it:
-    assert(!desc.hasVersionCas)
-
     val r = go(desc.wordIterator())
     assert((r == McasStatus.Successful) || (r == McasStatus.FailedVal) || (r == EmcasStatus.Break))
     if (r == EmcasStatus.Break) {

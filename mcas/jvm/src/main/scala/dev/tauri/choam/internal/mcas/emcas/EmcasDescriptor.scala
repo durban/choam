@@ -21,8 +21,13 @@ package mcas
 package emcas
 
 private final class EmcasDescriptor private[emcas] (
-  private val half: Descriptor,
+  half: Descriptor,
 ) extends EmcasDescriptorBase { self =>
+
+  // EMCAS handles the global version
+  // separately, so the descriptor must
+  // not have a CAS for changing it:
+  assert(!half.hasVersionCas)
 
   /**
    * While the status is `Active`, this array
@@ -51,10 +56,6 @@ private final class EmcasDescriptor private[emcas] (
     new EmcasDescriptor.Iterator(this.words)
   }
 
-  private[emcas] final def hasVersionCas: Boolean = {
-    this.half.hasVersionCas
-  }
-
   private[emcas] final def wasFinalized(): Unit = {
     // help the GC (best effort,
     // so just plain writes):
@@ -68,7 +69,7 @@ private final class EmcasDescriptor private[emcas] (
   }
 
   final override def toString: String = {
-    s"EMCASDescriptor(${half})"
+    s"EMCASDescriptor(size = ${this.size})"
   }
 }
 
