@@ -34,6 +34,11 @@ private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDesc
   final val oldVersion: Long,
 ) {
 
+  // TODO: Technically we could clear `ov` for a successful op
+  // TODO: (and similarly `nv` for a failed); we'd need to
+  // TODO: make them non-final, so it's unclear if it's worth
+  // TODO: it. (Although, currently this is a little leak.)
+
   def this(
     half: HalfWordDescriptor[A],
     parent: EmcasDescriptor,

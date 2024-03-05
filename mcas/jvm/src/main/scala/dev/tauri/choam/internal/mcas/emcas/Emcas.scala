@@ -536,21 +536,26 @@ private[mcas] final class Emcas extends GlobalContext { global =>
 
     @tailrec
     def go(words: java.util.Iterator[WordDescriptor[_]]): Long = {
-      if (words.hasNext) {
-        val word = words.next()
-        if (word ne null) {
-          val twr = tryWord(word)
-          assert((twr == McasStatus.Successful) || (twr == McasStatus.FailedVal) || (twr == EmcasStatus.Break))
-          if (twr == McasStatus.Successful) go(words)
-          else twr
+      if (words ne null) {
+        if (words.hasNext) {
+          val word = words.next()
+          if (word ne null) {
+            val twr = tryWord(word)
+            assert((twr == McasStatus.Successful) || (twr == McasStatus.FailedVal) || (twr == EmcasStatus.Break))
+            if (twr == McasStatus.Successful) go(words)
+            else twr
+          } else {
+            // Another thread already finalized the descriptor,
+            // and cleaned up this word descriptor (hence the `null`);
+            // thus, we should not continue:
+            EmcasStatus.Break
+          }
         } else {
-          // Another thread already finalized the descriptor,
-          // and cleaned up this word descriptor (hence the `null`);
-          // thus, we should not continue:
-          EmcasStatus.Break
+          McasStatus.Successful
         }
       } else {
-        McasStatus.Successful
+        // Already finalized descriptor, see above
+        EmcasStatus.Break
       }
     }
 

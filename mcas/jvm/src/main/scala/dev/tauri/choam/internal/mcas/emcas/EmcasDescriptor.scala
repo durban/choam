@@ -29,15 +29,19 @@ private final class EmcasDescriptor private[emcas] (
   // not have a CAS for changing it:
   assert(!half.hasVersionCas)
 
-  /**
+  /*
    * While the status is `Active`, this array
    * is never mutated. After the op is finalized,
-   * it may be cleared (to help GC), so helpers
-   * must be prepared to handle `null`s. (There
-   * is no need to help an op which is finalized,
-   * so this is not a problem.)
+   * it may be cleared or set to null (to help GC),
+   * so helpers must be prepared to handle `null`s.
+   * (There  is no need to help an op which is
+   * finalized, so this is not a problem.)
+   *
+   * The plain/opaque writes in the constructor
+   * are made visible by the volatile-CASes which insert
+   * the `WordDescriptor`s into the refs.
    */
-  private[this] val words: Array[WordDescriptor[_]] = {
+  this.setWordsO({
     val arr = new Array[WordDescriptor[_]](half.size)
     val it = half.iterator()
     var idx = 0
@@ -47,22 +51,36 @@ private final class EmcasDescriptor private[emcas] (
       idx += 1
     }
     arr
-  }
+  })
 
-  final def size: Int =
-    this.words.length
-
-  private[emcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = { // TODO: try to use a no-alloc cursor
-    new EmcasDescriptor.Iterator(this.words)
+  /** Can return `null` for finalized descriptors */
+  private[emcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
+    // This is a racy read, but if we get
+    // null, the decriptor is finalized, so
+    // that's fine, we don't need to help anyway.
+    // If we get non-null, we'll see the array
+    // elements (unless later cleared), because
+    // they were written originally in the
+    // constructor, and we obtained the
+    // `EmcasDescriptor` from a
+    // `WordDescriptor` which we obtained
+    // with a volatile-read from a ref.
+    this.getWordsO() match {
+      case null => null
+      case words => new EmcasDescriptor.Iterator(words) // TODO: try to use a no-alloc cursor
+    }
   }
 
   private[emcas] final def wasFinalized(): Unit = {
     // help the GC:
-    this.cleanWordsForGc(this.words)
+    this.cleanWordsForGc()
   }
 
   final override def toString: String = {
-    s"EMCASDescriptor(size = ${this.size})"
+    this.getWordsO() match {
+      case null => "EMCASDescriptor(-)"
+      case words => s"EMCASDescriptor(size = ${words.length})"
+    }
   }
 }
 

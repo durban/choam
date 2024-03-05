@@ -26,12 +26,14 @@ import dev.tauri.choam.internal.mcas.McasStatus;
 abstract class EmcasDescriptorBase {
 
   private static final VarHandle STATUS;
+  private static final VarHandle WORDS;
   private static final VarHandle WORDS_ARR;
 
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       STATUS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_status", long.class));
+      WORDS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_words", WordDescriptor[].class));
       WORDS_ARR = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(WordDescriptor[].class));
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
@@ -42,17 +44,38 @@ abstract class EmcasDescriptorBase {
   private volatile long _status =
     McasStatus.Active;
 
-  long getStatus() {
+  private volatile WordDescriptor<?>[] _words; // = null
+
+  protected final long getStatus() {
     return this._status; // volatile
   }
 
-  long cmpxchgStatus(long ov, long nv) {
+  protected final long cmpxchgStatus(long ov, long nv) {
     return (long) STATUS.compareAndExchange(this, ov, nv);
   }
 
-  protected void cleanWordsForGc(WordDescriptor<?>[] words) {
+  protected final WordDescriptor<?>[] getWordsO() {
+    return (WordDescriptor<?>[]) WORDS.getOpaque(this);
+  }
+
+  protected final void setWordsO(WordDescriptor<?>[] words) {
+    WORDS.setOpaque(this, words);
+  }
+
+  protected final void cleanWordsForGc() {
+    // We're the only ones cleaning, so
+    // `_words` is never `null` here:
+    WordDescriptor<?>[] words = this.getWordsO();
     int len = words.length;
     VarHandle.releaseFence();
+    this.setWordsO(null);
+    // We also set every array element to `null`.
+    // This way concurrent helpers, which already
+    // have the array in hand, have a chance to
+    // realize they should stop. They're doing
+    // unsynchronized reads, so it's not guaranteed
+    // that they'll see the `null`s, bu it's possible.
+    // (We might also help the GC with this?)
     for (int idx = 0; idx < len; idx++) {
       WORDS_ARR.setOpaque(words, idx, (WordDescriptor<?>) null);
     }
