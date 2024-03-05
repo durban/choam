@@ -97,14 +97,15 @@ private object EmcasDescriptor {
       0
 
     final override def hasNext(): Boolean = {
-      this.idx != this.words.length
+      this.idx < this.words.length
     }
 
     final override def next(): WordDescriptor[_] = {
-      if (this.hasNext()) {
-        val lastIdx = this.idx
-        this.idx += 1
-        this.words(lastIdx)
+      val idx = this.idx
+      val words = this.words
+      if (idx < words.length) {
+        this.idx = idx + 1
+        this.words(idx)
       } else {
         throw new NoSuchElementException
       }
