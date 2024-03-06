@@ -1037,6 +1037,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Running with Strategy.spin, but with interpretAsync") {
+    // TODO: we should test that running it this way is uncancelable
     val r: Rxn[String, Int] =
       Rxn.lift(s => s.length)
     assertResultF(r.perform[F, Int]("foo", this.mcasImpl, sSpin)(F), 3)

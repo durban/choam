@@ -348,6 +348,31 @@ object Rxn extends RxnInstances0 {
 
     def withRandomizeSpin(randomizeSpin: Boolean): Strategy
 
+    /**
+     * If `cede` is true, makes the equivalent of a
+     * `Strategy.cede` with the applicable parameters
+     * of `this`.
+     *
+     * Otherwise, makes the equivalent of a
+     * `Strategy.spin` with the applicable parameters
+     * of `this`.
+     */
+    final def withCede(cede: Boolean): Strategy = {
+      if (cede) {
+        Strategy.cede(
+          maxRetries = this.maxRetries,
+          maxSpin = this.maxSpin,
+          randomizeSpin = this.randomizeSpin
+        )
+      } else {
+        Strategy.spin(
+          maxRetries = this.maxRetries,
+          maxSpin = this.maxSpin,
+          randomizeSpin = this.randomizeSpin
+        )
+      }
+    }
+
     private[core] def maxSleep: Duration
 
     private[core] def maxSleepNanos: Long

@@ -97,5 +97,16 @@ final class StrategySpec extends BaseSpec {
     assertEquals(s6.maxSleep, 1.second)
     assertEquals(s6.maxSleepNanos, 1.second.toNanos)
     assertEquals(s6.randomizeSleep, false)
+
+    val s7: Strategy = s4.withCede(true)
+    assertNotEquals(s7, s4)
+    assertEquals(s7.maxRetries, s4.maxRetries)
+    assertEquals(s7.maxSpin, s4.maxSpin)
+    assertEquals(s7.randomizeSpin, s4.randomizeSpin)
+    assertEquals(s7.maxSleep, Duration.Zero)
+    assertEquals(s7.randomizeSleep, false)
+    assertEquals(s7.withCede(false), s4)
+    assertEquals(s7.withCede(true), s7)
+    assertEquals(s7.withCede(false).withCede(true), s7)
   }
 }
