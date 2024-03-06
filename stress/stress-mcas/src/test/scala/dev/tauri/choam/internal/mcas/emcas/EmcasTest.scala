@@ -87,14 +87,17 @@ class EmcasTest {
   }
 
   private[this] final def checkWd(d: WordDescriptor[_], r: LLLLL_Result): Unit = {
-    val it = d.parent.wordIterator()
+    val parent = d.parent
+    val it = parent.wordIterator()
     if (it eq null) {
       // descriptor already cleared
+      r.r4 = parent.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
       r.r2 = "CA"
       r.r3 = "CA"
     } else {
       val dFirst = it.next()
       val dSecond = it.next()
+      var doCmpxchg = false
       r.r2 = if (dFirst ne null) {
         if (dFirst.address ne ref2) {
           // mustn't happen
@@ -103,20 +106,26 @@ class EmcasTest {
         dFirst.address.id3
       } else {
         // in the process of clearing
+        doCmpxchg = true
         "CL"
       }
       r.r3 = if (dSecond ne null) {
         dSecond.address.id3
       } else {
         // in the process of clearing
+        doCmpxchg = true
         "CL"
+      }
+      if (doCmpxchg) {
+        r.r4 = parent.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
+      } else {
+        r.r4 = parent.getStatus()
       }
       if (it.hasNext) {
         // mustn't happen
         appendErrorMsg(r, s"unexpected 3rd descriptor: ${it.next().toString}")
       }
     }
-    r.r4 = d.parent.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
   }
 
   private[this] final def appendErrorMsg(r: LLLLL_Result, msg: String): Unit = {
