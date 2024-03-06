@@ -1024,15 +1024,22 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     )
   }
 
+  private[this] val sSpin = Rxn.Strategy.spin(
+    maxRetries = None,
+    maxSpin = 512,
+    randomizeSpin = true,
+  )
+
   test("Running with Strategy.spin") {
     val r: Rxn[String, Int] =
       Rxn.lift(s => s.length)
-    val sSpin = Rxn.Strategy.spin(
-      maxRetries = None,
-      maxSpin = 512,
-      randomizeSpin = true,
-    )
     assertResultF(Reactive[F].apply(r, "foo", sSpin), 3)
+  }
+
+  test("Running with Strategy.spin, but with interpretAsync") {
+    val r: Rxn[String, Int] =
+      Rxn.lift(s => s.length)
+    assertResultF(r.perform[F, Int]("foo", this.mcasImpl, sSpin)(F), 3)
   }
 
   private[this] val sCede = Rxn.Strategy.cede(

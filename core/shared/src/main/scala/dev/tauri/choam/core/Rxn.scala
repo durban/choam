@@ -984,7 +984,7 @@ object Rxn extends RxnInstances0 {
     private[this] var _stats: ExStatMap =
       null
 
-    private[this] def stats: ExStatMap = {
+    private[this] final def stats: ExStatMap = {
       val s = this._stats
       if (s eq null) {
         val s2 = this.ctx.getStatisticsPlain().asInstanceOf[ExStatMap]
@@ -992,6 +992,15 @@ object Rxn extends RxnInstances0 {
         s2
       } else {
         s
+      }
+    }
+
+    private[this] final def saveStats(): Unit = {
+      this._stats match {
+        case null =>
+          ()
+        case s =>
+          this.ctx.setStatisticsPlain(s.asInstanceOf[Map[AnyRef, AnyRef]])
       }
     }
 
@@ -1530,18 +1539,29 @@ object Rxn extends RxnInstances0 {
     }
 
     final def interpretAsync[F[_]](implicit F: Async[F]): F[R] = {
-      F.defer {
-        this.ctx = mcas.currentContext()
-        val fr = loop(startRxn) match {
-          case _: Suspend =>
-            assert(canSuspend)
-            F.flatMap(nextSleep[F]()) { _ => interpretAsync[F](F) }
-          case r =>
-            F.pure(r)
+      if (this.canSuspend) {
+        // cede or sleep strategy:
+        F.defer {
+          this.ctx = mcas.currentContext()
+          try {
+            loop(startRxn) match {
+              case _: Suspend =>
+                F.flatMap(nextSleep[F]()) { _ => interpretAsync[F](F) }
+              case r =>
+                // TODO: we're cancelable here; is this a problem? (probably yes)
+                F.pure(r)
+            }
+          } finally {
+            this.saveStats()
+            this.invalidateCtx()
+          }
         }
-        this.ctx.setStatisticsPlain(this.stats.asInstanceOf[Map[AnyRef, AnyRef]])
-        this.invalidateCtx()
-        fr
+      } else {
+        // spin strategy, so not really async:
+        F.delay {
+          // note: this is uncancelable, unlike `defer(loop(...); pure(...))` above
+          this.interpret()
+        }
       }
     }
 
@@ -1554,7 +1574,7 @@ object Rxn extends RxnInstances0 {
       require(!canSuspend) // TODO: this is ugly
       this.ctx = ctx
       val r = loop(startRxn)
-      this.ctx.setStatisticsPlain(this.stats.asInstanceOf[Map[AnyRef, AnyRef]])
+      this.saveStats()
       this.invalidateCtx()
       r
     }
