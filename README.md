@@ -148,25 +148,31 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 ## Compatibility and assumptions
 
-["Early" SemVer](https://www.scala-lang.org/blog/2021/02/16/preventing-version-conflicts-with-versionscheme.html#early-semver-and-sbt-version-policy), with the following exceptions:
+["Early" SemVer](https://www.scala-lang.org/blog/2021/02/16/preventing-version-conflicts-with-versionscheme.html#early-semver-and-sbt-version-policy) _binary_ backwards compatibility, with the following exceptions:
 
 - The versions of `choam-` modules must match *exactly* (e.g., *don't* use `"choam-data" % "0.4.1"`
   with `"choam-core" % "0.4.0"`).
-- No backwards compatibility for `*.internal.*` packages.
-- No backwards compatibility for `unsafe` APIs.
-- No backwards compatibility for the `choam-laws` module.
-- No backwards compatibility for "hash" versions (e.g., `0.4-39d987a`).
+- There is no backwards compatibility for APIs which are
+  - inside `*.internal.*` packages (e.g., `dev.tauri.choam.internal.mcas`);
+  - called `unsafe*` (e.g., `Rxn.unsafe.retry`).
+- There is no backwards compatibility for these modules:
+  - `choam-laws`
+  - `choam-stream`
+  - (unpublished modules)
+- There is no backwards compatibility for "hash" versions (e.g., `0.4-39d987a`).
 
 ### Supported platforms:
 
-- JVM 11+
-  - tested on OpenJDK, Graal, and OpenJ9
-  - `Rxn.secureRandom` and `UUIDGen` both need either the `Windows-PRNG`
-    or (`/dev/random` and `/dev/urandom`) to be available
-- Scala.js
-  - works, but not really useful (we assume no multithreading)
-  - provided to ease cross-compiling
-- Cross-compiled for Scala 2.13 and 3.3
+- Platforms:
+  - JVM:
+    - versions ⩾ 11
+    - tested on OpenJDK, Graal, and OpenJ9 (but should work on others)
+    - `Rxn.secureRandom` and `UUIDGen` both need either the `Windows-PRNG`
+      or (`/dev/random` and `/dev/urandom`) to be available
+  - Scala.js:
+    - works, but not really useful (we assume no multithreading)
+    - provided to ease cross-compiling
+- Scala versions: cross-compiled for 2.13 and 3.3
 
 ### Lock-freedom
 
