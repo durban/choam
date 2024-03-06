@@ -46,23 +46,23 @@ abstract class EmcasDescriptorBase {
 
   private volatile WordDescriptor<?>[] _words; // = null
 
-  protected final long getStatus() {
+  final long getStatus() {
     return this._status; // volatile
   }
 
-  protected final long cmpxchgStatus(long ov, long nv) {
+  final long cmpxchgStatus(long ov, long nv) {
     return (long) STATUS.compareAndExchange(this, ov, nv);
   }
 
-  protected final WordDescriptor<?>[] getWordsO() {
+  final WordDescriptor<?>[] getWordsO() {
     return (WordDescriptor<?>[]) WORDS.getOpaque(this);
   }
 
-  protected final void setWordsO(WordDescriptor<?>[] words) {
+  final void setWordsO(WordDescriptor<?>[] words) {
     WORDS.setOpaque(this, words);
   }
 
-  protected final void cleanWordsForGc() {
+  final void cleanWordsForGc() {
     // We're the only ones cleaning, so
     // `_words` is never `null` here:
     WordDescriptor<?>[] words = this.getWordsO();
