@@ -258,7 +258,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
       canSuspend = false,
       maxSleepNanos = 0L, // no suspend
       randomizeSleep = false, // no suspend
-    ).interpret()
+    ).interpretSync()
   }
 
   final def perform[F[_], X >: B](
@@ -279,29 +279,6 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     ).interpretAsync(F)
   }
 
-  // TODO: remove this
-  private[choam] final def unsafePerformOld(
-    a: A,
-    mcas: Mcas,
-    maxRetries: Option[Int] = None,
-  ): B = {
-    val maxRetriesInt = maxRetries match {
-      case Some(n) => n
-      case None => -1
-    }
-    new InterpreterState[A, B](
-      this,
-      a,
-      mcas,
-      maxBackoff = defaultMaxBackoff,
-      randomizeBackoff = defaultRandomizeBackoff,
-      maxRetries = maxRetriesInt,
-      canSuspend = false,
-      maxSleepNanos = 0L,
-      randomizeSleep = false,
-    ).interpret()
-  }
-
   /** Only for tests/benchmarks */
   private[choam] final def unsafePerformInternal(
     a: A,
@@ -320,7 +297,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
       canSuspend = false,
       maxSleepNanos = 0L,
       randomizeSleep = false,
-    ).interpretWithContext(ctx)
+    ).interpretSyncWithContext(ctx)
   }
 
   override def toString: String
@@ -913,7 +890,7 @@ object Rxn extends RxnInstances0 {
       canSuspend = false,
       maxSleepNanos = 0L, // no suspend
       randomizeSleep = false, // no suspend
-    ).interpret()
+    ).interpretSync()
   }
 
   final class MaxRetriesReached(val maxRetries: Int)
@@ -1585,18 +1562,18 @@ object Rxn extends RxnInstances0 {
         // spin strategy, so not really async:
         F.delay {
           // note: this is uncancelable, unlike `defer(loop(...); pure(...))` above
-          this.interpret()
+          this.interpretSync()
         }
       }
     }
 
-    final def interpret(): R = {
-      interpretWithContext(mcas.currentContext())
+    final def interpretSync(): R = {
+      interpretSyncWithContext(mcas.currentContext())
     }
 
-    /** This is only public because of tests/benchmarks */
-    final def interpretWithContext(ctx: Mcas.ThreadContext): R = {
-      require(!canSuspend) // TODO: this is ugly
+    /** This is also called for tests/benchmarks by `unsafePerformInternal` above. */
+    final def interpretSyncWithContext(ctx: Mcas.ThreadContext): R = {
+      assert(!canSuspend)
       this.ctx = ctx
       val r = loop(startRxn)
       this.saveStats()
