@@ -871,28 +871,6 @@ object Rxn extends RxnInstances0 {
   private[this] final def suspend[X](): X =
     Suspend.asInstanceOf[X]
 
-  // TODO: remove this
-  private[core] final def interpreter[X, R](
-    rxn: Rxn[X, R],
-    x: X,
-    mcas: Mcas,
-    maxBackoff: Int = defaultMaxBackoff,
-    randomizeBackoff: Boolean = defaultRandomizeBackoff,
-    maxRetries: Int = -1,
-  ): R = {
-    new InterpreterState[X, R](
-      rxn = rxn,
-      x = x,
-      mcas = mcas,
-      maxBackoff = maxBackoff,
-      randomizeBackoff = randomizeBackoff,
-      maxRetries = maxRetries,
-      canSuspend = false,
-      maxSleepNanos = 0L, // no suspend
-      randomizeSleep = false, // no suspend
-    ).interpretSync()
-  }
-
   final class MaxRetriesReached(val maxRetries: Int)
     extends Exception(s"reached maxRetries of ${maxRetries}")
 
