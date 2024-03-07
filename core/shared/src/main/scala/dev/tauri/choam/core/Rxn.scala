@@ -252,8 +252,8 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
       rxn = this,
       x = a,
       mcas = mcas,
-      maxBackoff = strategy.maxSpin,
-      randomizeBackoff = strategy.randomizeSpin,
+      maxSpin = strategy.maxSpin,
+      randomizeSpin = strategy.randomizeSpin,
       maxRetries = strategy.maxRetriesInt,
       canSuspend = false,
       maxSleepNanos = 0L, // no suspend
@@ -270,8 +270,8 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
       this,
       a,
       mcas = mcas,
-      maxBackoff = strategy.maxSpin,
-      randomizeBackoff = strategy.randomizeSpin,
+      maxSpin = strategy.maxSpin,
+      randomizeSpin = strategy.randomizeSpin,
       maxRetries = strategy.maxRetriesInt,
       canSuspend = strategy.canSuspend,
       maxSleepNanos = strategy.maxSleepNanos,
@@ -283,16 +283,16 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   private[choam] final def unsafePerformInternal(
     a: A,
     ctx: Mcas.ThreadContext,
-    maxBackoff: Int = Rxn.defaultMaxBackoff,
-    randomizeBackoff: Boolean = true,
+    maxBackoff: Int = Rxn.defaultMaxSpin,
+    randomizeBackoff: Boolean = Rxn.defaultRandomizeSpin,
     maxRetries: Int = -1,
   ): B = {
     new InterpreterState[A, B](
       this,
       a,
       ctx.impl,
-      maxBackoff = maxBackoff,
-      randomizeBackoff = randomizeBackoff,
+      maxSpin = maxBackoff,
+      randomizeSpin = randomizeBackoff,
       maxRetries = maxRetries,
       canSuspend = false,
       maxSleepNanos = 0L,
@@ -464,7 +464,7 @@ object Rxn extends RxnInstances0 {
     }
 
     final val Default: Spin =
-      spin(maxRetries = None, maxSpin = defaultMaxBackoff, randomizeSpin = true)
+      spin(maxRetries = None, maxSpin = defaultMaxSpin, randomizeSpin = defaultRandomizeSpin)
 
     final def sleep(
       maxRetries: Option[Int],
@@ -513,22 +513,22 @@ object Rxn extends RxnInstances0 {
     16384
 
   /*
-   * The default value of 256 for `maxBackoff` ensures that
+   * The default value of 256 for `maxSpin` ensures that
    * there is at most 256 (or 512 with randomization) calls
    * to `onSpinWait` (see `Backoff`). It was determined
    * with experiments (see `SpinBench`), that under very
    * high contention, this increases performance (compared
    * to the previous value of 16.
    */
-  private[core] final val defaultMaxBackoff =
+  private[core] final val defaultMaxSpin =
     256
 
   /*
-   * `randomizeBackoff` is true by default, since it seems
+   * `randomizeSpin` is true by default, since it seems
    * to have a small performance advantage for certain
    * operations (and no downside for others). See `SpinBench`.
    */
-  private[Rxn] final val defaultRandomizeBackoff =
+  private[Rxn] final val defaultRandomizeSpin =
     true
 
   private[core] final val defaultMaxSleep =
@@ -878,8 +878,8 @@ object Rxn extends RxnInstances0 {
     rxn: Rxn[X, R],
     x: X,
     mcas: Mcas,
-    maxBackoff: Int,
-    randomizeBackoff: Boolean,
+    maxSpin: Int,
+    randomizeSpin: Boolean,
     maxRetries: Int,
     canSuspend: Boolean,
     maxSleepNanos: Long,
@@ -1155,8 +1155,8 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def spin(retries: Int): Unit = {
-      if (randomizeBackoff) Backoff.backoffRandom(retries, maxBackoff, ctx.random)
-      else Backoff.backoffConst(retries, maxBackoff)
+      if (randomizeSpin) Backoff.backoffRandom(retries, maxSpin, ctx.random)
+      else Backoff.backoffConst(retries, maxSpin)
     }
 
     private[this] final def nextSleep[F[_]]()(implicit F: Async[F]): F[Unit] = {
