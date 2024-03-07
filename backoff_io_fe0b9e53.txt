@@ -1,0 +1,50 @@
+
+dev.tauri.choam.bench.ext.BackoffBenchIo (fe0b9e53)
+AMD Ryzen (6 cores, 12 physical threads)
+OpenJDK 17.0.10
+
+
+contendedBg == true
+-------------------
+baseline = 1.7648382197760752E-5 sec.
+
+cede = {
+  1:  2.750002084191778E-4 sec. => 0.0002573518262214171 sec. over baseline
+  2:  6.944348806008502E-4 sec. => 0.0006767864984030895 sec. over baseline
+  4: 10.899319974574163E-4 sec. => 0.0010722836152596556 sec. over baseline
+} ====> IO.cede =~= 0.0003 sec. == 0.3ms
+
+sleep = {
+  100000ns: 0.019283059863072265 sec.
+  200000ns: 0.03623027785182413 sec.
+  400000ns: 0.06224593940826785 sec.
+} ====> IO.sleep(100000ns) =~= 0.018 sec. == 18ms
+
+sleepMin = {
+  1: 0.013210809259753476 sec.
+  2: 0.03186892737062459 sec.
+  4: 0.052184069661795826 sec.
+} ====> IO.sleep(1ns) =~= 0.014 sec. == 14ms
+
+
+contendedBg == false
+--------------------
+baselineNobg = 0.8926848844861194E-5 sec.
+
+cedeNobg = {
+  1: 2.8745110690628676E-4 sec. => 0.0002785242580614256 sec. over baseline
+  2: 5.012241835208361E-4 sec.  => 0.0004922973346759749 sec. over baseline
+  4: 9.529397433252991E-4 sec.  => 0.0009440128944804379 sec. over baseline
+} ====> IO.cede =~= 0.0003 sec. == 0.3ms
+
+sleepNobg = {
+  100000ns: 0.018083215383253186 sec.
+  200000ns: 0.03125104433652055 sec.
+  400000ns: 0.057580637324857034 sec.
+} ====> IO.sleep(100000ns) =~= 0.016 sec. == 16ms
+
+sleepMinNobg = {
+  1: 0.013632432707650282 sec.
+  2: 0.02737953623245449 sec.
+  4: 0.06911031660866503 sec.
+} ====> IO.sleep(1ns) =~= 0.015 sec. == 15ms
