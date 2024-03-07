@@ -39,7 +39,7 @@ class BackoffBenchIo extends BackoffBenchBase {
 
   /** How many nanoseconds to sleep when sleeping */
   private[this] final val sleepNanos =
-    1000L
+    100000L // 0.1ms
 
   /**
    * For the measurements which need IO
@@ -89,6 +89,21 @@ class BackoffBenchIo extends BackoffBenchBase {
     val repeatSleep = sleepNanos * t.repeat.toLong
     val tsk = IO { ctr.incrementAndGet() }.flatMap { _ =>
       IO.sleep(repeatSleep.nanos)
+    }
+    val allTasks = alsoStartBgIfNeeded(tsk.replicateA_(replicate), s, t)
+    unsafeRunSync(allTasks, s.runtime, s.parkJmhThread, t.dispatcher, t.pec)
+  }
+
+  /**
+   * 4b. Sleeping (min): "do something simple with shared memory,
+   * then sleep the minimal amount (possibly multiple times)."
+   */
+  @Benchmark
+  def sleepMin(s: IoSt, t: IoThSt): Unit = {
+    val ctr = s.ctr
+    val repeatSleepTsk = IO.sleep(1.nanos).replicateA_(t.repeat)
+    val tsk = IO { ctr.incrementAndGet() }.flatMap { _ =>
+      repeatSleepTsk
     }
     val allTasks = alsoStartBgIfNeeded(tsk.replicateA_(replicate), s, t)
     unsafeRunSync(allTasks, s.runtime, s.parkJmhThread, t.dispatcher, t.pec)
