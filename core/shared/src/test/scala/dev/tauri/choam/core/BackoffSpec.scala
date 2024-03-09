@@ -448,7 +448,7 @@ class BackoffSpec extends BaseSpec {
       randomizeSpin = false,
     )
     val actual1 = (1 to 30).map { retries =>
-      Test.backoffStr[Foo](retries, str1)
+      Test.backoffStr[Foo](retries, str1, canSuspend = true)
     }.toList
     val expected1 = List(
       Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
@@ -457,7 +457,7 @@ class BackoffSpec extends BaseSpec {
     assertEquals(actual1, expected1)
     val str2 = str1.withMaxCede(5).withRandomizeCede(false)
     val actual2 = (1 to 30).map { retries =>
-      Test.backoffStr[Foo](retries, str2)
+      Test.backoffStr[Foo](retries, str2, canSuspend = true)
     }.toList
     val expected2 = List(
       Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
@@ -467,7 +467,7 @@ class BackoffSpec extends BaseSpec {
     assertEquals(actual2, expected2)
     val str3 = str2.withMaxSleep(100.millis).withRandomizeSleep(false)
     val actual3 = (1 to 30).map { retries =>
-      Test.backoffStr[Foo](retries, str3)
+      Test.backoffStr[Foo](retries, str3, canSuspend = true)
     }.toList
     val expected3 = List(
       Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
@@ -479,7 +479,7 @@ class BackoffSpec extends BaseSpec {
     // really big maxSleep:
     val str4 = str3.withMaxSleep(10.minutes)
     val actual4 = (1 to 30).map { retries =>
-      Test.backoffStr[Foo](retries, str4)
+      Test.backoffStr[Foo](retries, str4, canSuspend = true)
     }.toList
     val expected4 = List(
       Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
@@ -494,10 +494,16 @@ class BackoffSpec extends BaseSpec {
     assertEquals(actual4, expected4)
     // accepts retries > 30:
     val actual4b = (1 to 1000).map { retries =>
-      Test.backoffStr[Foo](retries, str4)
+      Test.backoffStr[Foo](retries, str4, canSuspend = true)
     }.toList
     val expected4b = expected4 ++ List.fill(1000 - expected4.size)(Sleep(65536))
     assertEquals(actual4b, expected4b)
+    // canSuspend = false overrides Strategy:
+    val actual5 = (1 to 30).map { retries =>
+      Test.backoffStr[Foo](retries, str4, canSuspend = false)
+    }.toList
+    val expected5 = expected1
+    assertEquals(actual5, expected5)
   }
 
   private def checkResults(
@@ -528,13 +534,13 @@ class BackoffSpec extends BaseSpec {
       .withRandomizeCede(true)
       .withMaxSleep(10.minutes)
       .withRandomizeSleep(true)
-    val rs1 = for (_ <- 1 to 1000) yield Test.backoffStr[Foo](9, str) // Pause(0..256)
+    val rs1 = for (_ <- 1 to 1000) yield Test.backoffStr[Foo](9, str, canSuspend = true) // Pause(0..256)
     checkResults(rs1, { case Pause(n) => n }, max = 256, expAvg = 128, tolerance = 20)
-    val rs2 = for (_ <- 1 to 1000) yield Test.backoffStr[Foo](10, str) // Pause(0..512)
+    val rs2 = for (_ <- 1 to 1000) yield Test.backoffStr[Foo](10, str, canSuspend = true) // Pause(0..512)
     checkResults(rs2, { case Pause(n) => n }, max = 512, expAvg = 256, tolerance = 40)
-    val rs3 = for (_ <- 1 to 1000) yield Test.backoffStr[Foo](13, str) // Cede(0..4)
+    val rs3 = for (_ <- 1 to 1000) yield Test.backoffStr[Foo](13, str, canSuspend = true) // Cede(0..4)
     checkResults(rs3, { case Cede(n) => n }, max = 4, expAvg = 2, tolerance = 1)
-    val rs4 = for (_ <- 1 to 1000) yield Test.backoffStr[Foo](20, str) // Sleep(0..64)
+    val rs4 = for (_ <- 1 to 1000) yield Test.backoffStr[Foo](20, str, canSuspend = true) // Sleep(0..64)
     checkResults(rs4, { case Sleep(n) => java.lang.Math.toIntExact(n.toNanos / Test.slAtom.toNanos) }, max = 64, expAvg = 32, tolerance = 6)
   }
 

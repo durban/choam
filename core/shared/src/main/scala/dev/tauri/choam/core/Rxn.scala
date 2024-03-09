@@ -1379,7 +1379,7 @@ object Rxn extends RxnInstances0 {
             val res = a
             a = () : Any
             if (!equ(res, postCommitResultMarker)) {
-              // final result, Done (or ContAfterDelayComp) will need it:
+              // final result, Done will need it:
               contK.push(res)
             }
             while (pc.nonEmpty) {

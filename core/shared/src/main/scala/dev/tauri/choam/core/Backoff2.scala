@@ -68,15 +68,23 @@ private abstract class Backoff2 extends BackoffPlatform {
 
   protected[this] def sleep[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit]
 
-  final def backoffStr[F[_]](retries: Int, strategy: Rxn.Strategy)(implicit F: GenTemporal[F, _]): F[Unit] = {
-    val maxSl = strategy.maxSleep.toNanos >> sleepAtomShiftNs
+  final def backoffStr[F[_]](
+    retries: Int,
+    strategy: Rxn.Strategy,
+    canSuspend: Boolean, // if `false`, overrides `strategy.canSuspend`
+  )(implicit F: GenTemporal[F, _]): F[Unit] = {
+    val canReallySuspend = canSuspend && strategy.canSuspend
     this.backoff(
       retries = if (retries > 30) 30 else retries,
       maxPause = strategy.maxSpin,
       randomizePause = strategy.randomizeSpin,
-      maxCede = strategy.maxCede,
+      maxCede = if (canReallySuspend) strategy.maxCede else 0,
       randomizeCede = strategy.randomizeCede,
-      maxSleep = java.lang.Math.toIntExact(maxSl),
+      maxSleep = if (canReallySuspend) {
+        java.lang.Math.toIntExact(strategy.maxSleep.toNanos >> sleepAtomShiftNs)
+      } else {
+        0
+      },
       randomizeSleep = strategy.randomizeSleep,
     )
   }
