@@ -1215,7 +1215,10 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    private[this] final def retry(canSuspend: Boolean = this.canSuspend): Rxn[Any, Any] = {
+    private[this] final def retry(): Rxn[Any, Any] =
+      this.retry(this.canSuspend)
+
+    private[this] final def retry(canSuspend: Boolean): Rxn[Any, Any] = {
       val retries = incrFullRetries()
       val mr = maxRetries
       if ((mr > 0) && ((retries > mr) || (retries == Integer.MAX_VALUE))) {
