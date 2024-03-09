@@ -46,6 +46,9 @@ private abstract class Backoff2 extends BackoffPlatform {
   protected[this] final val sleepAtom: FiniteDuration =
     8.milliseconds
 
+  private[this] final val sleepAtomShiftNs =
+    23 // FIXME
+
   private[this] final val maxPauseD = // default
     4096
 
@@ -62,6 +65,17 @@ private abstract class Backoff2 extends BackoffPlatform {
   protected[this] def cede[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit]
 
   protected[this] def sleep[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit]
+
+  // TODO: test this!
+  final def backoffStr[F[_]](retries: Int, strategy: Rxn.Strategy)(implicit F: GenTemporal[F, _]): F[Unit] = {
+    val maxSl = strategy.maxSleep.toNanos >> sleepAtomShiftNs
+    this.backoff(
+      retries = retries,
+      maxPause = strategy.maxSpin,
+      maxCede = strategy.maxCede,
+      maxSleep = java.lang.Math.toIntExact(maxSl),
+    )
+  }
 
   // TODO: add randomization
   final def backoff[F[_]](
@@ -137,27 +151,30 @@ private abstract class Backoff2 extends BackoffPlatform {
     log2ceil(x)
 }
 
-private object Backoff2 extends Backoff2 {
+private object Backoff2 {
 
-  protected[this] final override def pause[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] = {
-    // spin right now, then return null
-    spin(n)
-    nullOf[F[Unit]]
-  }
+  abstract class Backoff2Impl extends Backoff2 {
 
-  @tailrec
-  private[this] final def spin(n: Int): Unit = {
-    if (n > 0) {
-      once()
-      spin(n - 1)
+    protected[this] final override def pause[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] = {
+      // spin right now, then return null
+      spin(n)
+      nullOf[F[Unit]]
     }
-  }
 
-  protected[this] final override def cede[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] = {
-    F.cede.replicateA_(n)
-  }
+    @tailrec
+    private[this] final def spin(n: Int): Unit = {
+      if (n > 0) {
+        once()
+        spin(n - 1)
+      }
+    }
 
-  protected[this] final override def sleep[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] = {
-    F.sleep(n * sleepAtom)
+    protected[this] final override def cede[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] = {
+      F.cede.replicateA_(n)
+    }
+
+    protected[this] final override def sleep[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] = {
+      F.sleep(n * sleepAtom)
+    }
   }
 }

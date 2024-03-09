@@ -311,54 +311,59 @@ object Rxn extends RxnInstances0 {
 
   sealed abstract class Strategy extends Product with Serializable {
 
+    // SPIN:
+
+    // maxRetries:
+
     def maxRetries: Option[Int]
 
     def withMaxRetries(maxRetries: Option[Int]): Strategy
 
     private[core] def maxRetriesInt: Int
 
+    // maxSpin:
+
     def maxSpin: Int
 
     def withMaxSpin(maxSpin: Int): Strategy
+
+    // randomizeSpin:
 
     def randomizeSpin: Boolean
 
     def withRandomizeSpin(randomizeSpin: Boolean): Strategy
 
-    /**
-     * If `cede` is true, makes the equivalent of a
-     * `Strategy.cede` with the applicable parameters
-     * of `this`.
-     *
-     * Otherwise, makes the equivalent of a
-     * `Strategy.spin` with the applicable parameters
-     * of `this`.
-     */
-    final def withCede(cede: Boolean): Strategy = {
-      if (cede) {
-        Strategy.cede(
-          maxRetries = this.maxRetries,
-          maxSpin = this.maxSpin,
-          randomizeSpin = this.randomizeSpin
-        )
-      } else {
-        Strategy.spin(
-          maxRetries = this.maxRetries,
-          maxSpin = this.maxSpin,
-          randomizeSpin = this.randomizeSpin
-        )
-      }
-    }
+    // CEDE:
 
-    private[core] def maxSleep: Duration
+    // maxCede:
+
+    def maxCede: Int
+
+    def withMaxCede(maxCede: Int): Strategy
+
+    // randomizeCede:
+
+    def randomizeCede: Boolean
+
+    def withRandomizeCede(randomizeCede: Boolean): Strategy
+
+    // SLEEP:
+
+    // maxSleep:
+
+    def maxSleep: FiniteDuration
 
     private[core] def maxSleepNanos: Long
 
-    def withMaxSleep(maxSleep: Duration): Strategy
+    def withMaxSleep(maxSleep: FiniteDuration): Strategy
 
-    private[core] def randomizeSleep: Boolean
+    // randomizeSleep:
+
+    def randomizeSleep: Boolean
 
     def withRandomizeSleep(randomizeSleep: Boolean): Strategy
+
+    // MISC.:
 
     private[core] def canSuspend: Boolean
   }
@@ -382,23 +387,52 @@ object Rxn extends RxnInstances0 {
       maxRetries: Option[Int],
       maxSpin: Int,
       randomizeSpin: Boolean,
-      maxSleep: Duration,
+      maxCede: Int,
+      randomizeCede: Boolean,
+      maxSleep: FiniteDuration,
       randomizeSleep: Boolean,
     ) extends Strategy {
 
-      final override def withMaxRetries(maxRetries: Option[Int]): StrategyFull =
+      require(maxSpin > 0)
+      require((maxCede > 0) || (maxSleep > Duration.Zero)) // otherwise it should be SPIN
+
+      final override def withMaxRetries(maxRetries: Option[Int]): Strategy =
         this.copy(maxRetries = maxRetries)
 
-      final override def withMaxSpin(maxSpin: Int): StrategyFull =
+      final override def withMaxSpin(maxSpin: Int): Strategy =
         this.copy(maxSpin = maxSpin)
 
-      final override def withRandomizeSpin(randomizeSpin: Boolean): StrategyFull =
+      final override def withRandomizeSpin(randomizeSpin: Boolean): Strategy =
         this.copy(randomizeSpin = randomizeSpin)
 
-      final override def withMaxSleep(maxSleep: Duration): StrategyFull =
-        this.copy(maxSleep = maxSleep)
+      final override def withMaxCede(maxCede: Int): Strategy = {
+        if ((maxCede == 0) && (this.maxSleepNanos == 0L)) {
+          StrategySpin(
+            maxRetries = this.maxRetries,
+            maxSpin = this.maxSpin,
+            randomizeSpin = this.randomizeSpin,
+          )
+        } else {
+          this.copy(maxCede = maxCede)
+        }
+      }
 
-      final override def withRandomizeSleep(randomizeSleep: Boolean): StrategyFull =
+      final override def withRandomizeCede(randomizeCede: Boolean): Strategy =
+        this.copy(randomizeCede = randomizeCede)
+
+      final override def withMaxSleep(maxSleep: FiniteDuration): Strategy = {
+        if ((maxSleep == Duration.Zero) && (this.maxCede == 0)) {
+          StrategySpin(
+            maxRetries = this.maxRetries,
+            maxSpin = this.maxSpin,
+            randomizeSpin = this.randomizeSpin,
+          )
+        } else {
+          this.copy(maxSleep = maxSleep)
+        }
+      }
+
+      final override def withRandomizeSleep(randomizeSleep: Boolean): Strategy =
         this.copy(randomizeSleep = randomizeSleep)
 
       private[core] override val maxRetriesInt: Int = maxRetries match {
@@ -419,6 +453,8 @@ object Rxn extends RxnInstances0 {
       randomizeSpin: Boolean,
     ) extends Spin {
 
+      require(maxSpin > 0)
+
       final override def withMaxRetries(maxRetries: Option[Int]): StrategySpin =
         this.copy(maxRetries = maxRetries)
 
@@ -428,11 +464,37 @@ object Rxn extends RxnInstances0 {
       final override def withRandomizeSpin(randomizeSpin: Boolean): StrategySpin =
         this.copy(randomizeSpin = randomizeSpin)
 
-      final override def withMaxSleep(maxSleep: Duration): Strategy = {
+      final override def withMaxCede(maxCede: Int): Strategy = {
         StrategyFull(
           maxRetries = maxRetries,
           maxSpin = maxSpin,
           randomizeSpin = randomizeSpin,
+          maxCede = maxCede,
+          randomizeCede = defaultRandomizeCede,
+          maxSleep = Duration.Zero,
+          randomizeSleep = false,
+        )
+      }
+
+      final override def withRandomizeCede(randomizeCede: Boolean): Strategy = {
+        StrategyFull(
+          maxRetries = maxRetries,
+          maxSpin = maxSpin,
+          randomizeSpin = randomizeSpin,
+          maxCede = defaultMaxCede,
+          randomizeCede = randomizeCede,
+          maxSleep = Duration.Zero,
+          randomizeSleep = false,
+        )
+      }
+
+      final override def withMaxSleep(maxSleep: FiniteDuration): Strategy = {
+        StrategyFull(
+          maxRetries = maxRetries,
+          maxSpin = maxSpin,
+          randomizeSpin = randomizeSpin,
+          maxCede = defaultMaxCede, // TODO: 0?
+          randomizeCede = defaultRandomizeCede, // TODO: false?
           maxSleep = maxSleep,
           randomizeSleep = defaultRandomizeSleep,
         )
@@ -443,6 +505,8 @@ object Rxn extends RxnInstances0 {
           maxRetries = maxRetries,
           maxSpin = maxSpin,
           randomizeSpin = randomizeSpin,
+          maxCede = defaultMaxCede, // TODO: 0?
+          randomizeCede = defaultRandomizeCede, // TODO: false?
           maxSleep = defaultMaxSleep,
           randomizeSleep = randomizeSleep,
         )
@@ -453,13 +517,19 @@ object Rxn extends RxnInstances0 {
         case None => -1
       }
 
-      private[core] final override def maxSleep: Duration =
+      final override def maxCede: Int =
+        0
+
+      final override def randomizeCede: Boolean =
+        false
+
+      final override def maxSleep: FiniteDuration =
         Duration.Zero
 
       private[core] final override def maxSleepNanos: Long =
         0L
 
-      override private[core] def randomizeSleep: Boolean =
+      final override def randomizeSleep: Boolean =
         false
     }
 
@@ -470,13 +540,18 @@ object Rxn extends RxnInstances0 {
       maxRetries: Option[Int],
       maxSpin: Int,
       randomizeSpin: Boolean,
-      maxSleep: Duration,
+      maxCede: Int,
+      randomizeCede: Boolean,
+      maxSleep: FiniteDuration,
       randomizeSleep: Boolean,
     ): Strategy = {
+      require(maxSleep > Duration.Zero)
       StrategyFull(
         maxRetries = maxRetries,
         maxSpin = maxSpin,
         randomizeSpin = randomizeSpin,
+        maxCede = maxCede,
+        randomizeCede = randomizeCede,
         maxSleep = maxSleep,
         randomizeSleep = randomizeSleep,
       )
@@ -486,11 +561,15 @@ object Rxn extends RxnInstances0 {
       maxRetries: Option[Int],
       maxSpin: Int,
       randomizeSpin: Boolean,
+      maxCede: Int,
+      randomizeCede: Boolean,
     ): Strategy = {
       StrategyFull(
         maxRetries = maxRetries,
         maxSpin = maxSpin,
         randomizeSpin = randomizeSpin,
+        maxCede = maxCede,
+        randomizeCede = randomizeCede,
         maxSleep = Duration.Zero,
         randomizeSleep = false,
       )
@@ -530,6 +609,12 @@ object Rxn extends RxnInstances0 {
    */
   private[Rxn] final val defaultRandomizeSpin =
     true
+
+  private[core] final val defaultMaxCede =
+    1 // TODO
+
+  private[Rxn] final val defaultRandomizeCede =
+    false // TODO
 
   private[core] final val defaultMaxSleep =
     100.millis // TODO

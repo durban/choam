@@ -40,17 +40,23 @@ final class StrategySpec extends BaseSpec {
       maxRetries = Some(42),
       maxSpin = 999,
       randomizeSpin = false,
+      maxCede = 2,
+      randomizeCede = false,
     )
     assertEquals(s2.canSuspend, true)
     assertEquals(s2.maxRetries, Some(42))
     assertEquals(s2.maxRetriesInt, 42)
     assertEquals(s2.maxSpin, 999)
     assertEquals(s2.randomizeSpin, false)
+    assertEquals(s2.maxCede, 2)
+    assertEquals(s2.randomizeCede, false)
 
     val s3: Strategy = Strategy.sleep(
       maxRetries = Some(42),
       maxSpin = 999,
       randomizeSpin = false,
+      maxCede = 2,
+      randomizeCede = false,
       maxSleep = 1.second,
       randomizeSleep = true,
     )
@@ -59,6 +65,8 @@ final class StrategySpec extends BaseSpec {
     assertEquals(s3.maxRetriesInt, 42)
     assertEquals(s3.maxSpin, 999)
     assertEquals(s3.randomizeSpin, false)
+    assertEquals(s3.maxCede, 2)
+    assertEquals(s3.randomizeCede, false)
     assertEquals(s3.maxSleep, 1.second)
     assertEquals(s3.maxSleepNanos, 1.second.toNanos)
     assertEquals(s3.randomizeSleep, true)
@@ -98,15 +106,15 @@ final class StrategySpec extends BaseSpec {
     assertEquals(s6.maxSleepNanos, 1.second.toNanos)
     assertEquals(s6.randomizeSleep, false)
 
-    val s7: Strategy = s4.withCede(true)
+    val s7: Strategy = s4.withMaxCede(1)
     assertNotEquals(s7, s4)
     assertEquals(s7.maxRetries, s4.maxRetries)
     assertEquals(s7.maxSpin, s4.maxSpin)
     assertEquals(s7.randomizeSpin, s4.randomizeSpin)
     assertEquals(s7.maxSleep, Duration.Zero)
     assertEquals(s7.randomizeSleep, false)
-    assertEquals(s7.withCede(false), s4)
-    assertEquals(s7.withCede(true), s7)
-    assertEquals(s7.withCede(false).withCede(true), s7)
+    assertEquals(s7.withMaxCede(0), s4)
+    assertEquals(s7.withMaxCede(1), s7)
+    assertEquals(s7.withMaxCede(0).withMaxCede(1), s7)
   }
 }

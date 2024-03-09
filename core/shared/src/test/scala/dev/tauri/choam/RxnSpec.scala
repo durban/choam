@@ -1047,6 +1047,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     maxRetries = None,
     maxSpin = 512,
     randomizeSpin = true,
+    maxCede = 3,
+    randomizeCede = true,
   )
 
   test("Running with Strategy.cede") {
@@ -1067,6 +1069,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     maxRetries = None,
     maxSpin = 512,
     randomizeSpin = true,
+    maxCede = 3,
+    randomizeCede = false,
     maxSleep = 10.millis,
     randomizeSleep = true,
   )

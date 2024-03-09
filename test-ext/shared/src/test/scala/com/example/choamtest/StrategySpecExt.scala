@@ -36,13 +36,13 @@ final class StrategySpecExt extends BaseSpec {
     s2.randomizeSpin : Boolean
     val s3: Strategy.Spin = Strategy.spin(None, 8, randomizeSpin = false)
     assertEquals(s3.maxSpin, 8)
-    val s4: Strategy = Strategy.cede(None, 8, randomizeSpin = false)
+    val s4: Strategy = Strategy.cede(None, 8, randomizeSpin = false, maxCede = 1, randomizeCede = false)
     assertEquals(s4.maxSpin, 8)
-    val s5: Strategy = s1.withCede(true)
+    val s5: Strategy = s1.withMaxCede(2)
     assertEquals(s5.maxRetries, s1.maxRetries)
     assertEquals(s5.maxSpin, s1.maxSpin)
     assertEquals(s5.randomizeSpin, s1.randomizeSpin)
-    val s6: Strategy = s5.withCede(false)
+    val s6: Strategy = s5.withMaxCede(0)
     assertEquals(s6, s1)
   }
 }

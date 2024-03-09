@@ -45,11 +45,15 @@ trait AsyncRxnSpec[F[_]]
       maxRetries = Some(128),
       maxSpin = 512,
       randomizeSpin = true,
+      maxCede = 1,
+      randomizeCede = false,
     )
     val sSleep = Rxn.Strategy.sleep(
       maxRetries = Some(128),
       maxSpin = 512,
       randomizeSpin = true,
+      maxCede = 1,
+      randomizeCede = false,
       maxSleep = 1.millis,
       randomizeSleep = false,
     )
