@@ -143,41 +143,39 @@ private abstract class Backoff2 extends BackoffPlatform {
     log2floor(x)
 }
 
-private object Backoff2 {
+private object Backoff2 extends Backoff2 {
 
-  abstract class Backoff2Impl extends Backoff2 {
+  protected[this] final override def pause[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
+    // spin right now, then return null
+    val k = if (randomize) rnd(n) else n
+    spin(k)
+    nullOf[F[Unit]]
+  }
 
-    protected[this] final override def pause[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
-      // spin right now, then return null
-      val k = if (randomize) rnd(n) else n
-      spin(k)
-      nullOf[F[Unit]]
+  @tailrec
+  private[this] final def spin(n: Int): Unit = {
+    if (n > 0) {
+      once()
+      spin(n - 1)
     }
+  }
 
-    @tailrec
-    private[this] final def spin(n: Int): Unit = {
-      if (n > 0) {
-        once()
-        spin(n - 1)
-      }
+  protected[this] final override def cede[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
+    val k = if (randomize) rnd(n) else n
+    if (k == 1) {
+      F.cede
+    } else {
+      F.cede.replicateA_(k)
     }
+  }
 
-    protected[this] final override def cede[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
-      val k = if (randomize) rnd(n) else n
-      if (k == 1) {
-        F.cede
-      } else {
-        F.cede.replicateA_(k)
-      }
-    }
+  protected[this] final override def sleep[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
+    val k = if (randomize) rnd(n) else n
+    F.sleep(k * sleepAtom)
+  }
 
-    protected[this] final override def sleep[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
-      val k = if (randomize) rnd(n) else n
-      F.sleep(k * sleepAtom)
-    }
-
-    private[this] final def rnd(n: Int): Int = {
-      ThreadLocalRandom.current().nextInt(n + 1)
-    }
+  @inline
+  private[this] final def rnd(n: Int): Int = {
+    ThreadLocalRandom.current().nextInt(n + 1)
   }
 }
