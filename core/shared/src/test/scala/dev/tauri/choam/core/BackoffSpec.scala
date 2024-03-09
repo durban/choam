@@ -373,6 +373,21 @@ class BackoffSpec extends BaseSpec {
       Sleep(16),
     )
     assertEquals(actual3, expected3)
+    // really big maxSleep:
+    val ms = 1024*1024
+    val actual4 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxSleep = ms)
+    }.toList
+    val expected4 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048), Pause(4096),
+      Cede(1), Cede(2), Cede(4), Cede(8),
+      Sleep(1), Sleep(2), Sleep(4), Sleep(8),
+      Sleep(16), Sleep(32), Sleep(64), Sleep(128),
+      Sleep(256), Sleep(512), Sleep(1024), Sleep(2048),
+      Sleep(4096),
+    )
+    assertEquals(actual4, expected4)
   }
 
   test("Backoff2 with non-default everything") {
@@ -437,6 +452,22 @@ class BackoffSpec extends BaseSpec {
       Sleep(1), Sleep(2), Sleep(4), Sleep(8),
     ) ++ List.fill(13)(Sleep(88.millis)) // sleep time is quantized to multiples of sleepAtom
     assertEquals(actual3, expected3)
+    // really big maxSleep:
+    val str4 = str3.withMaxSleep(10.minutes)
+    val actual4 = (1 to 30).map { retries =>
+      Test.backoffStr[Foo](retries, str4)
+    }.toList
+    val expected4 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512),
+      Cede(1), Cede(2), Cede(4),
+      Sleep(1), Sleep(2), Sleep(4), Sleep(8),
+      Sleep(16), Sleep(32), Sleep(64), Sleep(128),
+      Sleep(256), Sleep(512), Sleep(1024), Sleep(2048),
+      Sleep(4096), Sleep(8192), Sleep(16384), Sleep(32768),
+      Sleep(65536),
+    )
+    assertEquals(actual4, expected4)
   }
 
   test("Backoff2.log2floor") {

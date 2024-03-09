@@ -84,7 +84,7 @@ private abstract class Backoff2 extends BackoffPlatform {
     maxSleep: Int = maxSleepD,
   )(implicit F: GenTemporal[F, _]): F[Unit] = {
     require(retries > 0)
-    require(retries <= 30)
+    require(retries <= 30) // TODO: do we need to support bigger values?
     require(maxPause > 0)
     require(maxCede >= 0)
     require(maxSleep >= 0)
