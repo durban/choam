@@ -276,6 +276,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     maxBackoff: Int = Rxn.defaultMaxSpin,
     randomizeBackoff: Boolean = Rxn.defaultRandomizeSpin,
   ): B = {
+    // TODO: this allocation can hurt us in benchmarks!
     val str = Strategy
       .Default
       .withMaxSpin(maxBackoff)
@@ -292,10 +293,6 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 }
 
 object Rxn extends RxnInstances0 {
-
-  // TODO: maxSleep and randomizeSleep are not
-  // TODO: publicly visible; they shouldn't be on
-  // TODO: `spin`, but they should be otherwise.
 
   sealed abstract class Strategy extends Product with Serializable {
 

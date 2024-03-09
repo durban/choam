@@ -29,11 +29,15 @@ final class StrategySpecExt extends BaseSpec {
     s0.maxRetries : Option[Int]
     s0.maxSpin : Int
     s0.randomizeSpin : Boolean
+    assertEquals(s0.maxSleep, Duration.Zero)
+    assertEquals(s0.randomizeSleep, false)
     val s1: Strategy.Spin = s0.withMaxRetries(Some(1)).withMaxSpin(56).withRandomizeSpin(true)
     val s2: Strategy = s1.withMaxSleep(1.millis)
     s2.maxRetries : Option[Int]
     s2.maxSpin : Int
     s2.randomizeSpin : Boolean
+    assertEquals(s2.maxSleep, 1.millis)
+    assertEquals(s2.randomizeSleep, true)
     val s3: Strategy.Spin = Strategy.spin(None, 8, randomizeSpin = false)
     assertEquals(s3.maxSpin, 8)
     val s4: Strategy = Strategy.cede(None, 8, randomizeSpin = false, maxCede = 1, randomizeCede = false)
