@@ -31,7 +31,7 @@ private abstract class Backoff2 extends BackoffPlatform {
   // - So then we start CEDEing: 1, 2, 4, 8 (but user configurable).
   //   (Then we don't any more, because 25 CEDE ≅ 1 SLEEP = 8ms, and we do
   //   repeated calls as above.)
-  // - So then we start SLEEPing: 1=8ms, 2, 4, 8, ... ⩽ maxSleep (user defined).
+  // - So then we start SLEEPing: 1=8ms, 2, 4, 8 (but user configurable).
   // Note: with randomization, these are maximum values.
 
   // These values are very rough estimates based
@@ -92,7 +92,7 @@ private abstract class Backoff2 extends BackoffPlatform {
 
     // TODO: we could probably simplify this code:
     val ro = retries - 1
-    val pauseUntil = log2ceil(maxPause)
+    val pauseUntil = log2floor(maxPause)
     if (ro <= pauseUntil) {
       // we'll PAUSE
       pause(1 << ro)
@@ -102,7 +102,7 @@ private abstract class Backoff2 extends BackoffPlatform {
       // TODO: in this case, we could use a larger `maxPause`
     } else {
       val roo = (ro - pauseUntil) - 1
-      val cedeUntil = log2ceil(maxCede) // maxCede > 0 here
+      val cedeUntil = log2floor(maxCede) // maxCede > 0 here
       if (roo <= cedeUntil) {
         // we'll CEDE
         cede(1 << roo)
@@ -111,7 +111,7 @@ private abstract class Backoff2 extends BackoffPlatform {
         cede(maxCede)
       } else {
         val rooo = (roo - cedeUntil) - 1
-        val sleepUntil = log2ceil(maxSleep) // maxSleep > 0 here
+        val sleepUntil = log2floor(maxSleep) // maxSleep > 0 here
         // we'll SLEEP
         if (rooo <= sleepUntil) {
           sleep(1 << rooo)

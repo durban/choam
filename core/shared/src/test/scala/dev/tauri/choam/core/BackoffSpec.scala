@@ -211,20 +211,168 @@ class BackoffSpec extends BaseSpec {
       sleepAtom
   }
 
+  private val defaultExpected30 = List(
+    Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+    Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048), Pause(4096),
+    Cede(1), Cede(2), Cede(4), Cede(8),
+    Sleep(1), Sleep(2), Sleep(4), Sleep(8),
+    Sleep(8), Sleep(8), Sleep(8), Sleep(8),
+    Sleep(8), Sleep(8), Sleep(8), Sleep(8),
+    Sleep(8),
+  )
+
   test("Backoff2 with defaults") {
     val actual = (1 to 30).map { retries =>
       Test.backoff[Foo](retries)
     }.toList
-    val expected = List(
+    assertEquals(actual, defaultExpected30)
+  }
+
+  test("Backoff2 with non-default maxPause") {
+    val actual0 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxPause = 2048)
+    }.toList
+    val expected0 = List(
       Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
-      Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048), Pause(4096),
+      Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048),
       Cede(1), Cede(2), Cede(4), Cede(8),
       Sleep(1), Sleep(2), Sleep(4), Sleep(8),
       Sleep(8), Sleep(8), Sleep(8), Sleep(8),
       Sleep(8), Sleep(8), Sleep(8), Sleep(8),
-      Sleep(8),
+      Sleep(8), Sleep(8),
     )
-    assertEquals(actual, expected)
+    assertEquals(actual0, expected0)
+    val actual1 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxPause = 4095)
+    }.toList
+    val expected1 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048),
+      Cede(1), Cede(2), Cede(4), Cede(8),
+      Sleep(1), Sleep(2), Sleep(4), Sleep(8),
+      Sleep(8), Sleep(8), Sleep(8), Sleep(8),
+      Sleep(8), Sleep(8), Sleep(8), Sleep(8),
+      Sleep(8), Sleep(8)
+    )
+    assertEquals(actual1, expected1)
+    val actual2 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxPause = 4097)
+    }.toList
+    val expected2 = defaultExpected30
+    assertEquals(actual2, expected2)
+    val actual3 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxPause = 8192)
+    }.toList
+    val expected3 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048), Pause(4096), Pause(8192),
+      Cede(1), Cede(2), Cede(4), Cede(8),
+      Sleep(1), Sleep(2), Sleep(4), Sleep(8),
+      Sleep(8), Sleep(8), Sleep(8), Sleep(8),
+      Sleep(8), Sleep(8), Sleep(8), Sleep(8),
+    )
+    assertEquals(actual3, expected3)
+  }
+
+  test("Backoff2 with non-default maxCede") {
+    val actual0 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxCede = 4)
+    }.toList
+    val expected0 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048), Pause(4096),
+      Cede(1), Cede(2), Cede(4),
+      Sleep(1), Sleep(2), Sleep(4), Sleep(8),
+      Sleep(8), Sleep(8), Sleep(8), Sleep(8),
+      Sleep(8), Sleep(8), Sleep(8), Sleep(8),
+      Sleep(8), Sleep(8),
+    )
+    assertEquals(actual0, expected0)
+    val actual1 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxCede = 7)
+    }.toList
+    val expected1 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048), Pause(4096),
+      Cede(1), Cede(2), Cede(4),
+      Sleep(1), Sleep(2), Sleep(4), Sleep(8),
+      Sleep(8), Sleep(8), Sleep(8), Sleep(8),
+      Sleep(8), Sleep(8), Sleep(8), Sleep(8),
+      Sleep(8), Sleep(8),
+    )
+    assertEquals(actual1, expected1)
+    val actual2 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxCede = 9)
+    }.toList
+    val expected2 = defaultExpected30
+    assertEquals(actual2, expected2)
+    val actual3 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxCede = 16)
+    }.toList
+    val expected3 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048), Pause(4096),
+      Cede(1), Cede(2), Cede(4), Cede(8), Cede(16),
+      Sleep(1), Sleep(2), Sleep(4), Sleep(8),
+      Sleep(8), Sleep(8), Sleep(8), Sleep(8),
+      Sleep(8), Sleep(8), Sleep(8), Sleep(8),
+    )
+    assertEquals(actual3, expected3)
+  }
+
+  test("Backoff2 with non-default maxSleep") {
+    val actual0 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxSleep = 4)
+    }.toList
+    val expected0 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048), Pause(4096),
+      Cede(1), Cede(2), Cede(4), Cede(8),
+      Sleep(1), Sleep(2), Sleep(4), Sleep(4),
+      Sleep(4), Sleep(4), Sleep(4), Sleep(4),
+      Sleep(4), Sleep(4), Sleep(4), Sleep(4),
+      Sleep(4),
+    )
+    assertEquals(actual0, expected0)
+    val actual1 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxSleep = 7)
+    }.toList
+    val expected1 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048), Pause(4096),
+      Cede(1), Cede(2), Cede(4), Cede(8),
+      Sleep(1), Sleep(2), Sleep(4), Sleep(7),
+      Sleep(7), Sleep(7), Sleep(7), Sleep(7),
+      Sleep(7), Sleep(7), Sleep(7), Sleep(7),
+      Sleep(7),
+    )
+    assertEquals(actual1, expected1)
+    val actual2 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxSleep = 9)
+    }.toList
+    val expected2 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048), Pause(4096),
+      Cede(1), Cede(2), Cede(4), Cede(8),
+      Sleep(1), Sleep(2), Sleep(4), Sleep(8),
+      Sleep(9), Sleep(9), Sleep(9), Sleep(9),
+      Sleep(9), Sleep(9), Sleep(9), Sleep(9),
+      Sleep(9),
+    )
+    assertEquals(actual2, expected2)
+    val actual3 = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries, maxSleep = 16)
+    }.toList
+    val expected3 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512), Pause(1024), Pause(2048), Pause(4096),
+      Cede(1), Cede(2), Cede(4), Cede(8),
+      Sleep(1), Sleep(2), Sleep(4), Sleep(8),
+      Sleep(16), Sleep(16), Sleep(16), Sleep(16),
+      Sleep(16), Sleep(16), Sleep(16), Sleep(16),
+      Sleep(16),
+    )
+    assertEquals(actual3, expected3)
   }
 
   test("Backoff2 illegal args") {
