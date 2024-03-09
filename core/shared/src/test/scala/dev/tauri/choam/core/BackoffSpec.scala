@@ -492,6 +492,12 @@ class BackoffSpec extends BaseSpec {
       Sleep(65536),
     )
     assertEquals(actual4, expected4)
+    // accepts retries > 30:
+    val actual4b = (1 to 1000).map { retries =>
+      Test.backoffStr[Foo](retries, str4)
+    }.toList
+    val expected4b = expected4 ++ List.fill(1000 - expected4.size)(Sleep(65536))
+    assertEquals(actual4b, expected4b)
   }
 
   private def checkResults(

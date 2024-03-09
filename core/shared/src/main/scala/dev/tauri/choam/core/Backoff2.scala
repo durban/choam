@@ -46,7 +46,7 @@ private abstract class Backoff2 extends BackoffPlatform {
    * We sleep whole multiples of this.
    */
   protected[this] final val sleepAtom: FiniteDuration =
-    8.milliseconds
+    8000000L.nanos // 8ms
 
   private[this] final val sleepAtomShiftNs =
     23 // FIXME
@@ -58,7 +58,7 @@ private abstract class Backoff2 extends BackoffPlatform {
     8
 
   private[this] final val maxSleepD = // default
-    8 // 64ms
+    8 // 8×8ms = 64ms
 
   // These are abstract to ease testing:
 
@@ -71,7 +71,7 @@ private abstract class Backoff2 extends BackoffPlatform {
   final def backoffStr[F[_]](retries: Int, strategy: Rxn.Strategy)(implicit F: GenTemporal[F, _]): F[Unit] = {
     val maxSl = strategy.maxSleep.toNanos >> sleepAtomShiftNs
     this.backoff(
-      retries = retries,
+      retries = if (retries > 30) 30 else retries,
       maxPause = strategy.maxSpin,
       randomizePause = strategy.randomizeSpin,
       maxCede = strategy.maxCede,
