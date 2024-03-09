@@ -991,8 +991,11 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     def countTries(ctr: AtomicInteger) = {
       Axn.unsafe.delay { ctr.getAndIncrement() } *> Rxn.unsafe.retry[Any, Int]
     }
-    def succeedsOn3rdRetry(ref: Ref[String]) = {
-      Rxn.unsafe.retry[Any, String] + ref.unsafeCas("x", "y").as("z") + Rxn.unsafe.retry[Any, String] + Rxn.pure("foo")
+    def succeedsOn3rdRetry(ctr: AtomicInteger) = {
+      Axn.unsafe.delay { ctr.getAndIncrement() }.flatMapF { retries =>
+        if (retries == 3) Axn.pure("foo")
+        else Rxn.unsafe.retry[Any, String]
+      }
     }
     def maxRetries(mr: Option[Int]): Rxn.Strategy.Spin =
       Rxn.Strategy.Default.withMaxRetries(mr)
@@ -1002,12 +1005,11 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       ctr <- F.delay(new AtomicInteger)
       _ <- assertRaisesF(F.delay(countTries(ctr).unsafePerform((), this.mcasImpl, maxRetries(Some(42)))), _.isInstanceOf[Rxn.MaxRetriesReached])
       _ <- assertResultF(F.delay(ctr.get()), 42 + 1)
-      r <- Ref("a").run[F]
-      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries(Some(0)))), _.isInstanceOf[Rxn.MaxRetriesReached])
-      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries(Some(2)))), _.isInstanceOf[Rxn.MaxRetriesReached])
-      _ <- assertResultF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries(Some(3)))), "foo")
+      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform((), this.mcasImpl, maxRetries(Some(0)))), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform((), this.mcasImpl, maxRetries(Some(2)))), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertResultF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform((), this.mcasImpl, maxRetries(Some(3)))), "foo")
       // infinite maxRetries:
-      _ <- assertResultF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries(None))), "foo")
+      _ <- assertResultF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform((), this.mcasImpl, maxRetries(None))), "foo")
       _ <- assertResultF(F.delay(Rxn.pure("foo").unsafePerform((), this.mcasImpl, maxRetries(None))), "foo")
     } yield ()
   }

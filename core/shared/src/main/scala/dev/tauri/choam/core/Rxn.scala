@@ -1018,33 +1018,14 @@ object Rxn extends RxnInstances0 {
     private[this] var contTReset: Array[Byte] = contT.takeSnapshot()
     private[this] var contKReset: ObjStack.Lst[Any] = contK.takeSnapshot()
 
-    private[this] var a: Any = x
+    private[this] var a: Any =
+      x
 
-    // TODO: why do we pack 2 ints here?
-    /** 2 `Int`s: fullRetries and mcasRetries */
-    private[this] var retries: Long = 0L
+    private[this] var fullRetries: Int =
+      0
 
-    @inline
-    private[this] final def getFullRetries(): Int = {
-      (this.retries >>> 32).toInt
-    }
-
-    /** @return the new value of full retries */
-    @inline
-    private[this] final def incrFullRetries(): Int = {
-      this.retries += (1L << 32)
-      getFullRetries()
-    }
-
-    @inline
-    private[this] final def getMcasRetries(): Int = {
-      this.retries.toInt
-    }
-
-    @inline
-    private[this] final def incrMcasRetries(): Unit = {
-      this.retries += 1L
-    }
+    private[this] var mcasRetries: Int =
+      0
 
     private[this] var _stats: ExStatMap =
       null
@@ -1168,7 +1149,8 @@ object Rxn extends RxnInstances0 {
           a = () : Any
           startA = () : Any
           startRxn = pcAction
-          retries = 0L
+          this.fullRetries = 0
+          this.mcasRetries = 0
           clearDesc()
           pcAction
         case 5 => // ContAfterPostCommit
@@ -1219,27 +1201,29 @@ object Rxn extends RxnInstances0 {
       this.retry(this.canSuspend)
 
     private[this] final def retry(canSuspend: Boolean): Rxn[Any, Any] = {
-      val retries = incrFullRetries()
-      val mr = maxRetries
-      if ((mr >= 0) && ((retries > mr) || (retries == Integer.MAX_VALUE))) {
-        // TODO: maybe we could represent "infinity" with MAX_VALUE instead of -1?
-        throw new MaxRetriesReached(mr)
-      }
-      maybeCheckInterrupt()
+      val retriesSoFar = this.fullRetries
+      val retriesNow = retriesSoFar + 1
+      maybeCheckInterrupt(retriesNow)
       if (alts.nonEmpty) {
-        // TODO: We also increment retries when
-        // TODO: we'll execute the other side of
-        // TODO: a `+`. This is bad for backoff;
-        // TODO: we should count those separately.
-        // TODO: (Do we even need to count them?)
+        // we're not actually retrying,
+        // just going to the other side
+        // of a `+` (so we're not
+        // incrementing `fullRetries`):
         loadAlt()
       } else {
-        // really restart:
+        // really retrying:
+        val mr = this.maxRetries
+        if ((mr >= 0) && ((retriesNow > mr) || (retriesNow == Integer.MAX_VALUE))) {
+          // TODO: maybe we could represent "infinity" with MAX_VALUE instead of -1?
+          throw new MaxRetriesReached(mr)
+        }
+        this.fullRetries = retriesNow
+        // restart everything:
         clearDesc()
         a = startA
         resetConts()
         pc.clear()
-        backoffAndNext(retries, canSuspend)
+        backoffAndNext(retriesNow, canSuspend)
       }
     }
 
@@ -1264,12 +1248,11 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def nextSleep[F[_]]()(implicit F: Async[F]): F[Unit] = {
       require(canSuspend)
-      val retries = getFullRetries()
       val strategy = this.strategy
       if (strategy.randomizeSleep) {
-        Backoff.sleepRandom(retries, strategy.maxSleepNanos, ctx.random)
+        Backoff.sleepRandom(this.fullRetries, strategy.maxSleepNanos, ctx.random)
       } else {
-        Backoff.sleepConst(retries, strategy.maxSleepNanos)
+        Backoff.sleepConst(this.fullRetries, strategy.maxSleepNanos)
       }
     }
 
@@ -1282,8 +1265,8 @@ object Rxn extends RxnInstances0 {
      * interrupted by `Thread#interrupt` (in which case it will
      * throw an `InterruptedException`).
      */
-    private[this] final def maybeCheckInterrupt(): Unit = {
-      if ((getFullRetries() % interruptCheckPeriod) == 0) {
+    private[this] final def maybeCheckInterrupt(retries: Int): Unit = {
+      if ((retries % interruptCheckPeriod) == 0) {
         checkInterrupt()
       }
     }
@@ -1357,8 +1340,9 @@ object Rxn extends RxnInstances0 {
                 false
               case d =>
                 // ok, was extended:
-                incrMcasRetries()
-                spin(getMcasRetries())
+                val mcasR = this.mcasRetries + 1
+                this.mcasRetries = mcasR
+                spin(mcasR)
                 casLoop(d) // retry
             }
         }
@@ -1388,8 +1372,8 @@ object Rxn extends RxnInstances0 {
           if (casLoop(d)) {
             // save retry statistics:
             ctx.recordCommit(
-              fullRetries = getFullRetries(),
-              mcasRetries = getMcasRetries(),
+              fullRetries = this.fullRetries,
+              mcasRetries = this.mcasRetries,
             )
             // ok, commit is done, but we still need to perform post-commit actions
             val res = a
