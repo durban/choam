@@ -26,6 +26,8 @@ import scala.util.Try
 import cats.effect.kernel.{ Temporal, Poll }
 import cats.effect.kernel.GenTemporal
 
+import munit.Location
+
 class BackoffSpec extends BaseSpec {
 
   private def backoffTokens(
@@ -200,16 +202,38 @@ class BackoffSpec extends BaseSpec {
   }
 
   // dummy subclass to test `Backoff2`:
-  private object Test extends Backoff2 {
-    override def pause[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] =
-      Pause(n).asInstanceOf[F[Unit]]
-    override def cede[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] =
-      F.replicateA_(n, F.cede)
-    override def sleep[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] =
-      F.sleep(n * sleepAtom)
-    def slAtom: FiniteDuration =
+  private class BoTest(ignoreRandomize: Boolean) extends Backoff2 {
+    override def pause[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
+      val k = if (randomize && !ignoreRandomize) {
+        ThreadLocalRandom.current().nextInt(n + 1)
+      } else {
+        n
+      }
+      Pause(k).asInstanceOf[F[Unit]]
+    }
+    override def cede[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
+      val k = if (randomize && !ignoreRandomize) {
+        ThreadLocalRandom.current().nextInt(n + 1)
+      } else {
+        n
+      }
+      F.replicateA_(k, F.cede)
+    }
+    override def sleep[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
+      val k = if (randomize && !ignoreRandomize) {
+        ThreadLocalRandom.current().nextInt(n + 1)
+      } else {
+        n
+      }
+      F.sleep(k * sleepAtom)
+    }
+    def slAtom: FiniteDuration = {
       sleepAtom
+    }
   }
+
+  // for most tests, we don't do randomization, for easier testing:
+  private object Test extends BoTest(ignoreRandomize = true)
 
   private val defaultExpected30 = List(
     Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
@@ -468,6 +492,44 @@ class BackoffSpec extends BaseSpec {
       Sleep(65536),
     )
     assertEquals(actual4, expected4)
+  }
+
+  private def checkResults(
+    rs: IndexedSeq[Foo[Unit]],
+    extract: PartialFunction[Foo[Unit], Int],
+    max: Int,
+    expAvg: Int,
+    tolerance: Int,
+  )(implicit loc: Location): Unit = {
+    val nums = rs.collect(extract)
+    assertEquals(nums.length, rs.length)
+    assert(nums.forall { n => (n >= 0) && (n <= max) })
+    val avg = nums.sum.toDouble / nums.length.toDouble
+    assert((clue(avg) >= (expAvg - tolerance)) && (avg <= (expAvg + tolerance)))
+    assert(nums.toSet.size > 1)
+    assert(nums.toSet.size < nums.size)
+  }
+
+  test("Backoff2 randomization") {
+    val Test = new BoTest(ignoreRandomize = false)
+    val str0 = Rxn.Strategy.spin(
+      maxRetries = None,
+      maxSpin = 1000,
+      randomizeSpin = true,
+    )
+    val str = str0
+      .withMaxCede(5)
+      .withRandomizeCede(true)
+      .withMaxSleep(10.minutes)
+      .withRandomizeSleep(true)
+    val rs1 = for (_ <- 1 to 1000) yield Test.backoffStr[Foo](9, str) // Pause(0..256)
+    checkResults(rs1, { case Pause(n) => n }, max = 256, expAvg = 128, tolerance = 20)
+    val rs2 = for (_ <- 1 to 1000) yield Test.backoffStr[Foo](10, str) // Pause(0..512)
+    checkResults(rs2, { case Pause(n) => n }, max = 512, expAvg = 256, tolerance = 40)
+    val rs3 = for (_ <- 1 to 1000) yield Test.backoffStr[Foo](13, str) // Cede(0..4)
+    checkResults(rs3, { case Cede(n) => n }, max = 4, expAvg = 2, tolerance = 1)
+    val rs4 = for (_ <- 1 to 1000) yield Test.backoffStr[Foo](20, str) // Sleep(0..64)
+    checkResults(rs4, { case Sleep(n) => java.lang.Math.toIntExact(n.toNanos / Test.slAtom.toNanos) }, max = 64, expAvg = 32, tolerance = 6)
   }
 
   test("Backoff2.log2floor") {

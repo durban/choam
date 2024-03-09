@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package core
 
+import java.util.concurrent.ThreadLocalRandom
+
 import scala.concurrent.duration._
 
 import cats.syntax.all._
@@ -60,28 +62,33 @@ private abstract class Backoff2 extends BackoffPlatform {
 
   // These are abstract to ease testing:
 
-  protected[this] def pause[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit]
+  protected[this] def pause[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit]
 
-  protected[this] def cede[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit]
+  protected[this] def cede[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit]
 
-  protected[this] def sleep[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit]
+  protected[this] def sleep[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit]
 
   final def backoffStr[F[_]](retries: Int, strategy: Rxn.Strategy)(implicit F: GenTemporal[F, _]): F[Unit] = {
     val maxSl = strategy.maxSleep.toNanos >> sleepAtomShiftNs
     this.backoff(
       retries = retries,
       maxPause = strategy.maxSpin,
+      randomizePause = strategy.randomizeSpin,
       maxCede = strategy.maxCede,
+      randomizeCede = strategy.randomizeCede,
       maxSleep = java.lang.Math.toIntExact(maxSl),
+      randomizeSleep = strategy.randomizeSleep,
     )
   }
 
-  // TODO: add randomization
   final def backoff[F[_]](
     retries: Int,
     maxPause: Int = maxPauseD,
+    randomizePause: Boolean = true,
     maxCede: Int = maxCedeD,
+    randomizeCede: Boolean = true,
     maxSleep: Int = maxSleepD,
+    randomizeSleep: Boolean = true,
   )(implicit F: GenTemporal[F, _]): F[Unit] = {
     require(retries > 0)
     require(retries <= 30) // TODO: do we need to support bigger values?
@@ -94,28 +101,28 @@ private abstract class Backoff2 extends BackoffPlatform {
     val pauseUntil = log2floor(maxPause) // maxPause > 0 always
     if (ro <= pauseUntil) {
       // we'll PAUSE
-      pause(1 << ro)
+      pause(1 << ro, randomizePause)
     } else if (maxCede == 0) {
       // we'll PAUSE (we're not allowed to cede)
-      pause(maxPause)
+      pause(maxPause, randomizePause)
       // TODO: in this case, we could use a larger `maxPause`
     } else {
       val roo = (ro - pauseUntil) - 1
       val cedeUntil = log2floor(maxCede) // maxCede > 0 here
       if (roo <= cedeUntil) {
         // we'll CEDE
-        cede(1 << roo)
+        cede(1 << roo, randomizeCede)
       } else if (maxSleep == 0) {
         // we'll CEDE (we're not allowed to sleep)
-        cede(maxCede)
+        cede(maxCede, randomizeCede)
       } else {
         val rooo = (roo - cedeUntil) - 1
         val sleepUntil = log2floor(maxSleep) // maxSleep > 0 here
         // we'll SLEEP
         if (rooo <= sleepUntil) {
-          sleep(1 << rooo)
+          sleep(1 << rooo, randomizeSleep)
         } else {
-          sleep(maxSleep)
+          sleep(maxSleep, randomizeSleep)
         }
       }
     }
@@ -140,9 +147,10 @@ private object Backoff2 {
 
   abstract class Backoff2Impl extends Backoff2 {
 
-    protected[this] final override def pause[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] = {
+    protected[this] final override def pause[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
       // spin right now, then return null
-      spin(n)
+      val k = if (randomize) rnd(n) else n
+      spin(k)
       nullOf[F[Unit]]
     }
 
@@ -154,12 +162,22 @@ private object Backoff2 {
       }
     }
 
-    protected[this] final override def cede[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] = {
-      F.cede.replicateA_(n)
+    protected[this] final override def cede[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
+      val k = if (randomize) rnd(n) else n
+      if (k == 1) {
+        F.cede
+      } else {
+        F.cede.replicateA_(k)
+      }
     }
 
-    protected[this] final override def sleep[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] = {
-      F.sleep(n * sleepAtom)
+    protected[this] final override def sleep[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
+      val k = if (randomize) rnd(n) else n
+      F.sleep(k * sleepAtom)
+    }
+
+    private[this] final def rnd(n: Int): Int = {
+      ThreadLocalRandom.current().nextInt(n + 1)
     }
   }
 }
