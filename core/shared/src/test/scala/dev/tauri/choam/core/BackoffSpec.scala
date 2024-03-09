@@ -21,6 +21,8 @@ package core
 import java.util.concurrent.ThreadLocalRandom
 
 import scala.concurrent.duration._
+import scala.util.Try
+
 import cats.effect.kernel.{ Temporal, Poll }
 import cats.effect.kernel.GenTemporal
 
@@ -99,7 +101,6 @@ class BackoffSpec extends BaseSpec {
   }
 
   test("Backoff.backoffConst") {
-    assertEquals(Backoff.constTokens(retries = 0, maxBackoff = 16), 1)
     assertEquals(Backoff.constTokens(retries = 1, maxBackoff = 16), 2)
     assertEquals(Backoff.constTokens(retries = 2, maxBackoff = 16), 4)
     assertEquals(Backoff.constTokens(retries = 4, maxBackoff = 16), 16)
@@ -107,13 +108,11 @@ class BackoffSpec extends BaseSpec {
     assertEquals(Backoff.constTokens(retries = 5, maxBackoff = 8), 8)
     assertEquals(Backoff.constTokens(retries = 1024*1024, maxBackoff = 32), 32)
     // illegal arguments:
-    assert(Backoff.constTokens(retries = -1, maxBackoff = 16) < 0)
-    assert(Backoff.constTokens(retries = 0, maxBackoff = -32) < 0)
+    assert(Try(Backoff.constTokens(retries = -1, maxBackoff = 16)).isFailure)
+    assert(Try(Backoff.constTokens(retries = 0, maxBackoff = -32)).isFailure)
   }
 
   test("Backoff.sleepConst") {
-    assertEquals(Backoff.sleepConstNanos(retries = 0, maxSleepNanos = 1.second.toNanos), 1.micros.toNanos)
-    assertEquals(Backoff.sleepConstNanos(retries = 0, maxSleepNanos = Long.MaxValue), 1.micros.toNanos)
     assertEquals(Backoff.sleepConstNanos(retries = 1, maxSleepNanos = 1.second.toNanos), 2.micros.toNanos)
     assertEquals(Backoff.sleepConstNanos(retries = 2, maxSleepNanos = 1.second.toNanos), 4.micros.toNanos)
     assertEquals(Backoff.sleepConstNanos(retries = 4, maxSleepNanos = 1.second.toNanos), 16.micros.toNanos)
@@ -124,9 +123,9 @@ class BackoffSpec extends BaseSpec {
     assertEquals(Backoff.sleepConstNanos(retries = 1024*1024, maxSleepNanos = Long.MaxValue), (1 << 30).micros.toNanos)
     assertEquals(Backoff.sleepConstNanos(retries = 1024*1024 + 1, maxSleepNanos = Long.MaxValue), (1 << 30).micros.toNanos)
     // illegal arguments:
-    assert(Backoff.sleepConstNanos(retries = -1, maxSleepNanos = 16.micros.toNanos) <= 0L)
-    assert(Backoff.sleepConstNanos(retries = -2, maxSleepNanos = 16.micros.toNanos) <= 0L)
-    assert(Backoff.sleepConstNanos(retries = 0, maxSleepNanos = -16.micros.toNanos) <= 0L)
+    assert(Try(Backoff.sleepConstNanos(retries = -1, maxSleepNanos = 16.micros.toNanos)).isFailure)
+    assert(Try(Backoff.sleepConstNanos(retries = -2, maxSleepNanos = 16.micros.toNanos)).isFailure)
+    assert(Try(Backoff.sleepConstNanos(retries = 0, maxSleepNanos = -16.micros.toNanos)).isFailure)
   }
 
   test("Backoff.backoffRandom") {
@@ -144,7 +143,6 @@ class BackoffSpec extends BaseSpec {
       val avg = samples.sum.toDouble / samples.length.toDouble
       assert(Math.abs(clue(avg) - clue(expAvg)) <= 1.0)
     }
-    check(retries = 0, maxBackoff = 16, expMaxTokens = 2)
     check(retries = 1, maxBackoff = 16, expMaxTokens = 4)
     check(retries = 2, maxBackoff = 16, expMaxTokens = 8)
     check(retries = 3, maxBackoff = 16, expMaxTokens = 16)
@@ -152,8 +150,8 @@ class BackoffSpec extends BaseSpec {
     check(retries = 4, maxBackoff = 8, expMaxTokens = 16)
     check(retries = 1024*1024, maxBackoff = 8, expMaxTokens = 16)
     // illegal arguments:
-    Backoff.randomTokens(retries = -1, halfMaxBackoff = 16, random = ThreadLocalRandom.current())
-    Backoff.randomTokens(retries = -1024*1024, halfMaxBackoff = 16, random = ThreadLocalRandom.current())
+    assert(Try(Backoff.randomTokens(retries = -1, halfMaxBackoff = 16, random = ThreadLocalRandom.current())).isFailure)
+    assert(Try(Backoff.randomTokens(retries = -1024*1024, halfMaxBackoff = 16, random = ThreadLocalRandom.current())).isFailure)
   }
 
   test("Backoff.spin") {

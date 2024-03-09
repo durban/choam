@@ -126,14 +126,17 @@ private object Backoff extends BackoffPlatform {
   }
 
   final def sleepConstNanos(retries: Int, maxSleepNanos: Long): Long = {
+    require(retries > 0)
     // TODO: since we're using longs, maybe we could use retries > 30
     val tokens: Long = 1L << normalizeRetries(retries)
     val targetSleepNanos: Long = tokens * sleepIncrementNanos
     if (targetSleepNanos > maxSleepNanos) maxSleepNanos else targetSleepNanos
   }
 
-  private[core] final def constTokens(retries: Int, maxBackoff: Int): Int =
+  private[core] final def constTokens(retries: Int, maxBackoff: Int): Int = {
+    require(retries > 0)
     java.lang.Math.min(1 << normalizeRetries(retries), maxBackoff)
+  }
 
   /**
    * Randomized truncated exponential backoff.
@@ -191,6 +194,7 @@ private object Backoff extends BackoffPlatform {
   }
 
   final def sleepRandomNanos(retries: Int, halfMaxSleepNanos: Long, random: ThreadLocalRandom): Long = {
+    require(retries > 0)
     val maxNanos: Long = java.lang.Math.min(
       (1 << normalizeRetries(retries + 1)) * sleepIncrementNanos,
       (halfMaxSleepNanos * 2L)
@@ -200,6 +204,7 @@ private object Backoff extends BackoffPlatform {
   }
 
   private[core] final def randomTokens(retries: Int, halfMaxBackoff: Int, random: ThreadLocalRandom): Int = {
+    require(retries > 0)
     val max = java.lang.Math.min(1 << normalizeRetries(retries + 1), halfMaxBackoff << 1)
     if (max < 2) 1
     else 1 + random.nextInt(max)

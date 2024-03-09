@@ -249,7 +249,7 @@ object Ref extends RefInstances0 {
     }
 
     final override def unsafeGet(idx: Int): Ref[A] = {
-      CompatPlatform.checkArrayIndexIfScalaJs(idx, size)
+      CompatPlatform.checkArrayIndexIfScalaJs(idx, size) // TODO: check other places where we might need this
       this.arr(idx)
     }
 

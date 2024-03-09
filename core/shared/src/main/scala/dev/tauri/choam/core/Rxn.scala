@@ -311,6 +311,8 @@ object Rxn extends RxnInstances0 {
 
   sealed abstract class Strategy extends Product with Serializable {
 
+    // TODO: do we EVER want `randomize*` to be actually false?
+
     // SPIN:
 
     // maxRetries:
