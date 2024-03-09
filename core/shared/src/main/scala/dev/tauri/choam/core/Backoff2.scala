@@ -35,7 +35,7 @@ private abstract class Backoff2 extends BackoffPlatform {
   /**
    * We sleep whole multiples of this.
    */
-  protected[this] final val sleepAtom =
+  protected[this] final val sleepAtom: FiniteDuration =
     8.milliseconds
 
   private[this] final val maxPauseD = // default
