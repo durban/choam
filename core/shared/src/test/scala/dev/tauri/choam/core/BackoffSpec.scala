@@ -258,11 +258,15 @@ class BackoffSpec extends BaseSpec {
       }
     }
 
-    var i = 1 // log2ceil only works for positive ints
-    while (i < Integer.MAX_VALUE) {
-      assertEquals(Test.log2ceil_testing(i), log2ceil_correct(i))
-      i += 1
+    if (this.isJvm()) {
+      this.assumeNotOpenJ9()
+      var i = 1 // log2ceil only works for positive ints
+      while (i < Integer.MAX_VALUE) {
+        assertEquals(Test.log2ceil_testing(i), log2ceil_correct(i))
+        i += 1
+      }
     }
+
     assertEquals(Test.log2ceil_testing(Integer.MAX_VALUE), log2ceil_correct(Integer.MAX_VALUE))
   }
 }
