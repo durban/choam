@@ -1021,6 +1021,7 @@ object Rxn extends RxnInstances0 {
 
     private[this] var a: Any = x
 
+    // TODO: why do we pack 2 ints here?
     /** 2 `Int`s: fullRetries and mcasRetries */
     private[this] var retries: Long = 0L
 
@@ -1226,6 +1227,11 @@ object Rxn extends RxnInstances0 {
       }
       maybeCheckInterrupt()
       if (alts.nonEmpty) {
+        // TODO: We also increment retries when
+        // TODO: we'll execute the other side of
+        // TODO: a `+`. This is bad for backoff;
+        // TODO: we should count those separately.
+        // TODO: (Do we even need to count them?)
         loadAlt()
       } else {
         // really restart:
@@ -1233,12 +1239,17 @@ object Rxn extends RxnInstances0 {
         a = startA
         resetConts()
         pc.clear()
-        if (canSuspend) {
-          null // TODO: first we could still try to spin
-        } else {
-          spin(getFullRetries())
-          startRxn
-        }
+        backoffAndNext(retries, canSuspend)
+      }
+    }
+
+    private[this] final def backoffAndNext(retries: Int, canSuspend: Boolean): Rxn[Any, Any] = {
+      if (canSuspend) {
+        null // we'll suspend (cede or sleep)
+        // TODO: first try to spin
+      } else {
+        this.spin(retries)
+        this.startRxn
       }
     }
 
