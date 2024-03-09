@@ -402,7 +402,44 @@ class BackoffSpec extends BaseSpec {
     assert(Try(Test.backoff(Int.MaxValue)).isFailure)
   }
 
-  test("Backoff2 log2ceil") {
+  test("Backoff2.backoffStr") {
+    val str1 = Rxn.Strategy.spin(
+      maxRetries = None,
+      maxSpin = 1000,
+      randomizeSpin = false,
+    )
+    val actual1 = (1 to 30).map { retries =>
+      Test.backoffStr[Foo](retries, str1)
+    }.toList
+    val expected1 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512),
+    ) ++ List.fill(20)(Pause(1000))
+    assertEquals(actual1, expected1)
+    val str2 = str1.withMaxCede(5).withRandomizeCede(false)
+    val actual2 = (1 to 30).map { retries =>
+      Test.backoffStr[Foo](retries, str2)
+    }.toList
+    val expected2 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512),
+      Cede(1), Cede(2), Cede(4),
+    ) ++ List.fill(17)(Cede(5))
+    assertEquals(actual2, expected2)
+    val str3 = str2.withMaxSleep(100.millis).withRandomizeSleep(false)
+    val actual3 = (1 to 30).map { retries =>
+      Test.backoffStr[Foo](retries, str3)
+    }.toList
+    val expected3 = List(
+      Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
+      Pause(128), Pause(256), Pause(512),
+      Cede(1), Cede(2), Cede(4),
+      Sleep(1), Sleep(2), Sleep(4), Sleep(8),
+    ) ++ List.fill(13)(Sleep(88.millis)) // sleep time is quantized to multiples of sleepAtom
+    assertEquals(actual3, expected3)
+  }
+
+  test("Backoff2.log2ceil") {
     // examples:
     assertEquals(Test.log2ceil_testing(1), 0)
     assertEquals(Test.log2ceil_testing(2), 1)
