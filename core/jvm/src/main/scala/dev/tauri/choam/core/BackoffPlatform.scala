@@ -20,6 +20,7 @@ package core
 
 private abstract class BackoffPlatform {
 
+  @inline
   final def once(): Unit = {
     Thread.onSpinWait()
   }

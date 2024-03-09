@@ -20,6 +20,7 @@ package core
 
 private abstract class BackoffPlatform {
 
+  @inline
   final def once(): Unit = {
     // There is no Thread.onSpinWait in JS,
     // but there is also no need for backoff.

@@ -439,37 +439,17 @@ class BackoffSpec extends BaseSpec {
     assertEquals(actual3, expected3)
   }
 
-  test("Backoff2.log2ceil") {
-    // examples:
-    assertEquals(Test.log2ceil_testing(1), 0)
-    assertEquals(Test.log2ceil_testing(2), 1)
-    assertEquals(Test.log2ceil_testing(3), 2)
-    assertEquals(Test.log2ceil_testing(4), 2)
-    assertEquals(Test.log2ceil_testing(1023), 10)
-    assertEquals(Test.log2ceil_testing(1024), 10)
-    assertEquals(Test.log2ceil_testing(1025), 11)
-    assertEquals(Test.log2ceil_testing(2047), 11)
-    assertEquals(Test.log2ceil_testing(2048), 11)
-
-    // exhaustive test:
-    def log2ceil_correct(x: Int): Int = {
-      val fl = Test.log2floor_testing(x)
-      // add 1 is `x` is NOT a power of 2:
-      if ((x & (x - 1)) == 0) { // power of 2
-        fl
-      } else {
-        fl + 1
-      }
-    }
-
-    if (!this.isCI) { // too long for CI
-      var i = 1 // log2ceil only works for positive ints
-      while (i < Integer.MAX_VALUE) {
-        assertEquals(Test.log2ceil_testing(i), log2ceil_correct(i))
-        i += 1
-      }
-    }
-
-    assertEquals(Test.log2ceil_testing(Integer.MAX_VALUE), log2ceil_correct(Integer.MAX_VALUE))
+  test("Backoff2.log2floor") {
+    assertEquals(Test.log2floor_testing(1), 0)
+    assertEquals(Test.log2floor_testing(2), 1)
+    assertEquals(Test.log2floor_testing(3), 1)
+    assertEquals(Test.log2floor_testing(4), 2)
+    assertEquals(Test.log2floor_testing(1023), 9)
+    assertEquals(Test.log2floor_testing(1024), 10)
+    assertEquals(Test.log2floor_testing(1025), 10)
+    assertEquals(Test.log2floor_testing(2047), 10)
+    assertEquals(Test.log2floor_testing(2048), 11)
+    assertEquals(Test.log2floor_testing(2049), 11)
+    assertEquals(Test.log2floor_testing(Int.MaxValue), 30)
   }
 }

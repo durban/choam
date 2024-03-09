@@ -91,7 +91,7 @@ private abstract class Backoff2 extends BackoffPlatform {
 
     // TODO: we could probably simplify this code:
     val ro = retries - 1
-    val pauseUntil = log2floor(maxPause)
+    val pauseUntil = log2floor(maxPause) // maxPause > 0 always
     if (ro <= pauseUntil) {
       // we'll PAUSE
       pause(1 << ro)
@@ -122,17 +122,6 @@ private abstract class Backoff2 extends BackoffPlatform {
   }
 
   /**
-   * log₂x rounded up
-   *
-   * From https://stackoverflow.com/a/51351885
-   */
-  @inline
-  private[this] final def log2ceil(x: Int): Int = {
-    assert(x > 0) // otherwise incorrect
-    log2floor(x - 1) + 1
-  }
-
-  /**
    * log₂x rounded down
    *
    * From Hacker's Delight by Henry S. Warren, Jr. (section 11–4)
@@ -145,10 +134,6 @@ private abstract class Backoff2 extends BackoffPlatform {
   /** For testing */
   final def log2floor_testing(x: Int): Int =
     log2floor(x)
-
-  /** For testing */
-  final def log2ceil_testing(x: Int): Int =
-    log2ceil(x)
 }
 
 private object Backoff2 {
