@@ -1262,6 +1262,18 @@ object Rxn extends RxnInstances0 {
 
     @tailrec
     private[this] final def loop[A, B](curr: Rxn[A, B]): R = {
+      // TODO: While doing the runloop, we could
+      // TODO: periodically (how often?) check the
+      // TODO: global (EMCAS) version number. If it
+      // TODO: changed (that means someone committed),
+      // TODO: it _may_ be worth it to revalidate our
+      // TODO: log. If it's invalid, we should `retry`
+      // TODO: immediately (i.e., abandon our current
+      // TODO: progress, because it's impossible to
+      // TODO: commit it anyway); otherwise it was a
+      // TODO: non-conflicting commit, so we can continue.
+      // TODO: (We should benchmark this change with
+      // TODO: something with long transactions.)
       (curr.tag : @switch) match {
         case 0 => // Commit
           val d = this._desc // we avoid calling `desc` here, in case it's `null`

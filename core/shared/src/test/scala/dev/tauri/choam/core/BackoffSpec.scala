@@ -21,6 +21,8 @@ package core
 import java.util.concurrent.ThreadLocalRandom
 
 import scala.concurrent.duration._
+import cats.effect.kernel.{ Temporal, Poll }
+import cats.effect.kernel.GenTemporal
 
 class BackoffSpec extends BaseSpec {
 
@@ -161,5 +163,106 @@ class BackoffSpec extends BaseSpec {
     Backoff.spin(-1)
     Backoff.spin(-1024)
     Backoff.spin(Int.MinValue)
+  }
+
+  private sealed abstract class Foo[A]
+  private case class Cede(n: Int) extends Foo[Unit]
+  private case class Pause(n: Int) extends Foo[Unit]
+  private case class Sleep(d: FiniteDuration) extends Foo[Unit]
+  private object Sleep {
+    def apply(n: Int): Sleep =
+      Sleep(n * Test.slAtom)
+  }
+
+  // dummy Temporal to test `Backoff2`:
+  private implicit val testTemporal: Temporal[Foo] = new Temporal[Foo] {
+    override def pure[A](x: A) = fail("pure")
+    override def raiseError[A](e: Throwable) = fail("raiseError")
+    override def handleErrorWith[A](fa: Foo[A])(f: Throwable => Foo[A]) = fail("handleErrorWith")
+    override def flatMap[A, B](fa: Foo[A])(f: A => Foo[B]) = fail("flatMap")
+    override def tailRecM[A, B](a: A)(f: A => Foo[Either[A, B]]) = fail("tailRecM")
+    override def forceR[A, B](fa: Foo[A])(fb: Foo[B]) = fail("forceR")
+    override def uncancelable[A](body: Poll[Foo] => Foo[A]) = fail("uncancelable")
+    override def canceled: Foo[Unit] = fail("canceled")
+    override def onCancel[A](fa: Foo[A], fin: Foo[Unit]) = fail("onCancel")
+    override def unique = fail("unique")
+    override def start[A](fa: Foo[A]) = fail("start")
+    override def never[A] = fail("never")
+    override def cede = Cede(1)
+    override def ref[A](a: A) = fail("ref")
+    override def deferred[A] = fail("deferred")
+    override def monotonic = fail("monotonic")
+    override def realTime = fail("realTime")
+    override def sleep(time: FiniteDuration) = Sleep(time)
+    override def replicateA_[A](r: Int, fa: Foo[A]) = fa match {
+      case Sleep(d) => Sleep(r * d)
+      case Cede(n) => Cede(r * n)
+      case Pause(n) => Pause(r * n)
+    }
+  }
+
+  // dummy subclass to test `Backoff2`:
+  private object Test extends Backoff2 {
+    override def pause[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] =
+      Pause(n).asInstanceOf[F[Unit]]
+    override def cede[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] =
+      F.replicateA_(n, F.cede)
+    override def sleep[F[_]](n: Int)(implicit F: GenTemporal[F, _]): F[Unit] =
+      F.sleep(n * sleepAtom)
+    def slAtom: FiniteDuration =
+      sleepAtom
+  }
+
+  test("Backoff2") {
+    assertEquals(Test.backoff[Foo](0), Pause(1))
+    assertEquals(Test.backoff[Foo](1), Pause(2))
+    assertEquals(Test.backoff[Foo](2), Pause(4))
+    assertEquals(Test.backoff[Foo](3), Pause(8))
+    assertEquals(Test.backoff[Foo](10), Pause(1024))
+    assertEquals(Test.backoff[Foo](11), Pause(2048))
+    assertEquals(Test.backoff[Foo](12), Cede(1))
+    assertEquals(Test.backoff[Foo](13), Cede(2))
+    assertEquals(Test.backoff[Foo](14), Cede(4))
+    assertEquals(Test.backoff[Foo](15), Cede(8))
+    assertEquals(Test.backoff[Foo](16), Cede(16))
+    assertEquals(Test.backoff[Foo](17), Cede(32))
+    assertEquals(Test.backoff[Foo](18), Sleep(1))
+    assertEquals(Test.backoff[Foo](19), Sleep(2))
+    assertEquals(Test.backoff[Foo](20), Sleep(4))
+    assertEquals(Test.backoff[Foo](21), Sleep(8))
+    assertEquals(Test.backoff[Foo](22), Sleep(8))
+    assertEquals(Test.backoff[Foo](23), Sleep(8))
+    assertEquals(Test.backoff[Foo](30), Sleep(8))
+  }
+
+  test("Backoff2 log2ceil") {
+    // examples:
+    assertEquals(Test.log2ceil_testing(1), 0)
+    assertEquals(Test.log2ceil_testing(2), 1)
+    assertEquals(Test.log2ceil_testing(3), 2)
+    assertEquals(Test.log2ceil_testing(4), 2)
+    assertEquals(Test.log2ceil_testing(1023), 10)
+    assertEquals(Test.log2ceil_testing(1024), 10)
+    assertEquals(Test.log2ceil_testing(1025), 11)
+    assertEquals(Test.log2ceil_testing(2047), 11)
+    assertEquals(Test.log2ceil_testing(2048), 11)
+
+    // exhaustive test:
+    def log2ceil_correct(x: Int): Int = {
+      val fl = Test.log2floor_testing(x)
+      // add 1 is `x` is NOT a power of 2:
+      if ((x & (x - 1)) == 0) { // power of 2
+        fl
+      } else {
+        fl + 1
+      }
+    }
+
+    var i = 1 // log2ceil only works for positive ints
+    while (i < Integer.MAX_VALUE) {
+      assertEquals(Test.log2ceil_testing(i), log2ceil_correct(i))
+      i += 1
+    }
+    assertEquals(Test.log2ceil_testing(Integer.MAX_VALUE), log2ceil_correct(Integer.MAX_VALUE))
   }
 }
