@@ -252,12 +252,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
       rxn = this,
       x = a,
       mcas = mcas,
-      maxSpin = strategy.maxSpin,
-      randomizeSpin = strategy.randomizeSpin,
-      maxRetries = strategy.maxRetriesInt,
-      canSuspend = false,
-      maxSleepNanos = 0L, // no suspend
-      randomizeSleep = false, // no suspend
+      strategy = strategy,
     ).interpretSync()
   }
 
@@ -270,12 +265,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
       this,
       a,
       mcas = mcas,
-      maxSpin = strategy.maxSpin,
-      randomizeSpin = strategy.randomizeSpin,
-      maxRetries = strategy.maxRetriesInt,
-      canSuspend = strategy.canSuspend,
-      maxSleepNanos = strategy.maxSleepNanos,
-      randomizeSleep = strategy.randomizeSleep,
+      strategy = strategy,
     ).interpretAsync(F)
   }
 
@@ -285,18 +275,16 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     ctx: Mcas.ThreadContext,
     maxBackoff: Int = Rxn.defaultMaxSpin,
     randomizeBackoff: Boolean = Rxn.defaultRandomizeSpin,
-    maxRetries: Int = -1,
   ): B = {
+    val str = Strategy
+      .Default
+      .withMaxSpin(maxBackoff)
+      .withRandomizeSpin(randomizeBackoff)
     new InterpreterState[A, B](
       this,
       a,
       ctx.impl,
-      maxSpin = maxBackoff,
-      randomizeSpin = randomizeBackoff,
-      maxRetries = maxRetries,
-      canSuspend = false,
-      maxSleepNanos = 0L,
-      randomizeSleep = false,
+      strategy = str,
     ).interpretSyncWithContext(ctx)
   }
 
@@ -461,14 +449,18 @@ object Rxn extends RxnInstances0 {
       require(maxRetries.forall{ mr => (mr >= 0) && (mr < Integer.MAX_VALUE) })
       require(maxSpin > 0)
 
-      final override def withMaxRetries(maxRetries: Option[Int]): StrategySpin =
+      final override def withMaxRetries(maxRetries: Option[Int]): Spin =
         this.copy(maxRetries = maxRetries)
 
-      final override def withMaxSpin(maxSpin: Int): StrategySpin =
-        this.copy(maxSpin = maxSpin)
+      final override def withMaxSpin(maxSpin: Int): Spin = {
+        if (maxSpin == this.maxSpin) this
+        else this.copy(maxSpin = maxSpin)
+      }
 
-      final override def withRandomizeSpin(randomizeSpin: Boolean): StrategySpin =
-        this.copy(randomizeSpin = randomizeSpin)
+      final override def withRandomizeSpin(randomizeSpin: Boolean): Spin = {
+        if (randomizeSpin == this.randomizeSpin) this
+        else this.copy(randomizeSpin = randomizeSpin)
+      }
 
       final override def withMaxCede(maxCede: Int): Strategy = {
         StrategyFull(
@@ -969,13 +961,17 @@ object Rxn extends RxnInstances0 {
     rxn: Rxn[X, R],
     x: X,
     mcas: Mcas,
-    maxSpin: Int,
-    randomizeSpin: Boolean,
-    maxRetries: Int,
-    canSuspend: Boolean,
-    maxSleepNanos: Long,
-    randomizeSleep: Boolean,
+    strategy: Rxn.Strategy,
   ) {
+
+    private[this] val maxRetries: Int =
+      strategy.maxRetriesInt
+
+    private[this] val canSuspend: Boolean = {
+      val cs = strategy.canSuspend
+      assert((!cs) == strategy.isInstanceOf[Rxn.Strategy.Spin]) // just to be sure
+      cs
+    }
 
     private[this] var ctx: Mcas.ThreadContext =
       null
@@ -1261,15 +1257,23 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def spin(retries: Int): Unit = {
-      if (randomizeSpin) Backoff.backoffRandom(retries, maxSpin, ctx.random)
-      else Backoff.backoffConst(retries, maxSpin)
+      val strategy = this.strategy
+      if (strategy.randomizeSpin) {
+        Backoff.backoffRandom(retries, strategy.maxSpin, ctx.random)
+      } else {
+        Backoff.backoffConst(retries, strategy.maxSpin)
+      }
     }
 
     private[this] final def nextSleep[F[_]]()(implicit F: Async[F]): F[Unit] = {
       require(canSuspend)
       val retries = getFullRetries()
-      if (randomizeSleep) Backoff.sleepRandom(retries, maxSleepNanos, ctx.random)
-      else Backoff.sleepConst(retries, maxSleepNanos)
+      val strategy = this.strategy
+      if (strategy.randomizeSleep) {
+        Backoff.sleepRandom(retries, strategy.maxSleepNanos, ctx.random)
+      } else {
+        Backoff.sleepConst(retries, strategy.maxSleepNanos)
+      }
     }
 
     /**
