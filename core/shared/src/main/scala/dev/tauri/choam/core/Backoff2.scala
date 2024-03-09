@@ -25,12 +25,20 @@ import cats.effect.kernel.GenTemporal
 
 private abstract class Backoff2 extends BackoffPlatform {
 
-  // - We first start PAUSEing: 1, 2, 4, 8, ... 2048 (but user configurable).
-  //   (Then we don't any more, because 4000 PAUSE ≅ 1 CEDE)
-  // - So then we start CEDEing: 1, 2, 4, 8, ... 32 (but user configurable).
-  //   (Then we don't any more, because 40 CEDE ≅ 1 SLEEP = 8ms)
+  // - We first start PAUSEing: 1, 2, 4, 8, ... 4096 (but user configurable).
+  //   (Then we don't any more, because 10000 PAUSE ≅ 1 CEDE, and we do
+  //   repeated calls, so we stop well before 10000.)
+  // - So then we start CEDEing: 1, 2, 4, 8 (but user configurable).
+  //   (Then we don't any more, because 25 CEDE ≅ 1 SLEEP = 8ms, and we do
+  //   repeated calls as above.)
   // - So then we start SLEEPing: 1=8ms, 2, 4, 8, ... ⩽ maxSleep (user defined).
   // Note: with randomization, these are maximum values.
+
+  // These values are very rough estimates based
+  // on the following (rough) measurements:    estimate:             multiplier:
+  // onSpinWait() is approx.  14..40ns   -->   30ns  =       30ns    1×PAUSE
+  // IO.cede is approx.       0.2..1.5ms -->   0.3ms =   300000ns    10000×PAUSE
+  // IO.sleep(1ns) is approx. 15ms       -->   8ms  = 8000000ns      26.66×CEDE ≅ 25×CEDE
 
   /**
    * We sleep whole multiples of this.
@@ -39,10 +47,10 @@ private abstract class Backoff2 extends BackoffPlatform {
     8.milliseconds
 
   private[this] final val maxPauseD = // default
-    2048
+    4096
 
   private[this] final val maxCedeD = // default
-    32
+    8
 
   private[this] final val maxSleepD = // default
     8 // 64ms
