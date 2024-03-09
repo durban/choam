@@ -1003,6 +1003,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertRaisesF(F.delay(countTries(ctr).unsafePerform((), this.mcasImpl, maxRetries(Some(42)))), _.isInstanceOf[Rxn.MaxRetriesReached])
       _ <- assertResultF(F.delay(ctr.get()), 42 + 1)
       r <- Ref("a").run[F]
+      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries(Some(0)))), _.isInstanceOf[Rxn.MaxRetriesReached])
       _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries(Some(2)))), _.isInstanceOf[Rxn.MaxRetriesReached])
       _ <- assertResultF(F.delay(succeedsOn3rdRetry(r).unsafePerform((), this.mcasImpl, maxRetries(Some(3)))), "foo")
       // infinite maxRetries:

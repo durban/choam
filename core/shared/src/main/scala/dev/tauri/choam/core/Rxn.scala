@@ -395,7 +395,10 @@ object Rxn extends RxnInstances0 {
       randomizeSleep: Boolean,
     ) extends Strategy {
 
+      require(maxRetries.forall{ mr => (mr >= 0) && (mr < Integer.MAX_VALUE) })
       require(maxSpin > 0)
+      require(maxCede >= 0)
+      require(maxSleep >= Duration.Zero)
       require((maxCede > 0) || (maxSleep > Duration.Zero)) // otherwise it should be SPIN
 
       final override def withMaxRetries(maxRetries: Option[Int]): Strategy =
@@ -455,6 +458,7 @@ object Rxn extends RxnInstances0 {
       randomizeSpin: Boolean,
     ) extends Spin {
 
+      require(maxRetries.forall{ mr => (mr >= 0) && (mr < Integer.MAX_VALUE) })
       require(maxSpin > 0)
 
       final override def withMaxRetries(maxRetries: Option[Int]): StrategySpin =
@@ -1224,7 +1228,8 @@ object Rxn extends RxnInstances0 {
     private[this] final def retry(canSuspend: Boolean): Rxn[Any, Any] = {
       val retries = incrFullRetries()
       val mr = maxRetries
-      if ((mr > 0) && ((retries > mr) || (retries == Integer.MAX_VALUE))) {
+      if ((mr >= 0) && ((retries > mr) || (retries == Integer.MAX_VALUE))) {
+        // TODO: maybe we could represent "infinity" with MAX_VALUE instead of -1?
         throw new MaxRetriesReached(mr)
       }
       maybeCheckInterrupt()
