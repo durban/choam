@@ -84,36 +84,37 @@ private abstract class Backoff2 extends BackoffPlatform {
     maxCede: Int = maxCedeD,
     maxSleep: Int = maxSleepD,
   )(implicit F: GenTemporal[F, _]): F[Unit] = {
-    require(retries >= 0)
+    require(retries > 0)
     require(retries <= 30)
     require(maxPause > 0)
     require(maxCede >= 0)
     require(maxSleep >= 0)
 
     // TODO: we could probably simplify this code:
+    val ro = retries - 1
     val pauseUntil = log2ceil(maxPause)
-    if (retries <= pauseUntil) {
+    if (ro <= pauseUntil) {
       // we'll PAUSE
-      pause(1 << retries)
+      pause(1 << ro)
     } else if (maxCede == 0) {
       // we'll PAUSE (we're not allowed to cede)
       pause(maxPause)
       // TODO: in this case, we could use a larger `maxPause`
     } else {
-      val retriesOver = (retries - pauseUntil) - 1
+      val roo = (ro - pauseUntil) - 1
       val cedeUntil = log2ceil(maxCede) // maxCede > 0 here
-      if (retriesOver <= cedeUntil) {
+      if (roo <= cedeUntil) {
         // we'll CEDE
-        cede(1 << retriesOver)
+        cede(1 << roo)
       } else if (maxSleep == 0) {
         // we'll CEDE (we're not allowed to sleep)
         cede(maxCede)
       } else {
-        val retriesOverOver = (retriesOver - cedeUntil) - 1
+        val rooo = (roo - cedeUntil) - 1
         val sleepUntil = log2ceil(maxSleep) // maxSleep > 0 here
         // we'll SLEEP
-        if (retriesOverOver <= sleepUntil) {
-          sleep(1 << retriesOverOver)
+        if (rooo <= sleepUntil) {
+          sleep(1 << rooo)
         } else {
           sleep(maxSleep)
         }

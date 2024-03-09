@@ -211,26 +211,54 @@ class BackoffSpec extends BaseSpec {
       sleepAtom
   }
 
-  test("Backoff2") {
-    assertEquals(Test.backoff[Foo](0), Pause(1))
-    assertEquals(Test.backoff[Foo](1), Pause(2))
-    assertEquals(Test.backoff[Foo](2), Pause(4))
-    assertEquals(Test.backoff[Foo](3), Pause(8))
-    assertEquals(Test.backoff[Foo](10), Pause(1024))
-    assertEquals(Test.backoff[Foo](11), Pause(2048))
-    assertEquals(Test.backoff[Foo](12), Pause(4096))
-    assertEquals(Test.backoff[Foo](13), Cede(1))
-    assertEquals(Test.backoff[Foo](14), Cede(2))
-    assertEquals(Test.backoff[Foo](15), Cede(4))
-    assertEquals(Test.backoff[Foo](16), Cede(8))
-    assertEquals(Test.backoff[Foo](17), Sleep(1))
-    assertEquals(Test.backoff[Foo](18), Sleep(2))
-    assertEquals(Test.backoff[Foo](19), Sleep(4))
-    assertEquals(Test.backoff[Foo](20), Sleep(8))
-    assertEquals(Test.backoff[Foo](21), Sleep(8))
-    assertEquals(Test.backoff[Foo](22), Sleep(8))
-    assertEquals(Test.backoff[Foo](23), Sleep(8))
-    assertEquals(Test.backoff[Foo](30), Sleep(8))
+  test("Backoff2 with defaults") {
+    val actual = (1 to 30).map { retries =>
+      Test.backoff[Foo](retries)
+    }.toList
+    val expected = List(
+      Pause(1),
+      Pause(2),
+      Pause(4),
+      Pause(8),
+      Pause(16),
+      Pause(32),
+      Pause(64),
+      Pause(128),
+      Pause(256),
+      Pause(512),
+      Pause(1024),
+      Pause(2048),
+      Pause(4096),
+      Cede(1),
+      Cede(2),
+      Cede(4),
+      Cede(8),
+      Sleep(1),
+      Sleep(2),
+      Sleep(4),
+      Sleep(8),
+      Sleep(8),
+      Sleep(8),
+      Sleep(8),
+      Sleep(8),
+      Sleep(8),
+      Sleep(8),
+      Sleep(8),
+      Sleep(8),
+      Sleep(8),
+    )
+    assertEquals(actual, expected)
+  }
+
+  test("Backoff2 illegal args") {
+    assert(Try(Test.backoff(Int.MinValue)).isFailure)
+    assert(Try(Test.backoff(-1024)).isFailure)
+    assert(Try(Test.backoff(-1023)).isFailure)
+    assert(Try(Test.backoff(-1)).isFailure)
+    assert(Try(Test.backoff(0)).isFailure)
+    assert(Try(Test.backoff(31)).isFailure)
+    assert(Try(Test.backoff(128)).isFailure)
+    assert(Try(Test.backoff(Int.MaxValue)).isFailure)
   }
 
   test("Backoff2 log2ceil") {
