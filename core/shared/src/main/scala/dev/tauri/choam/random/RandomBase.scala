@@ -19,7 +19,6 @@ package dev.tauri.choam
 package random
 
 import java.lang.Character.{ isHighSurrogate, isLowSurrogate }
-import java.nio.{ ByteBuffer, ByteOrder }
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -65,35 +64,31 @@ private abstract class RandomBase
 
     /* Puts the last (at most 7) bytes into buf */
     @tailrec
-    def putLastBytes(buf: ByteBuffer, nBytes: Int, r: Long): Unit = {
+    def putLastBytes(arr: Array[Byte], nBytes: Int, idx: Int, r: Long): Unit = {
       if (nBytes > 0) {
-        buf.put(r.toByte)
-        putLastBytes(buf, nBytes - 1, r >>> 8)
+        arr(idx) = r.toByte
+        putLastBytes(arr, nBytes - 1, idx = idx + 1, r = r >>> 8)
       }
     }
 
-    // TODO: do this with VarHandle instead of ByteBuffer (for performance)
-    def go(buf: ByteBuffer): Axn[Unit] = {
-      Axn.unsafe.delay(buf.remaining()).flatMap { (rem: Int) =>
-        if (rem > 0) {
-          nextLong.flatMapF { (r: Long) =>
-            if (rem >= 8) {
-              Axn.unsafe.delay(buf.putLong(r)) *> go(buf)
-            } else {
-              Axn.unsafe.delay(putLastBytes(buf = buf, nBytes = rem, r = r))
-            }
+    def go(arr: Array[Byte], idx: Int): Axn[Unit] = {
+      if (idx < n) {
+        val remaining = n - idx
+        nextLong.flatMapF { (r: Long) =>
+          if (remaining >= 8) {
+            Axn.unsafe.delay(this.putLongAtIdxPlain(arr, idx, r)) *> go(arr, idx + 8)
+          } else {
+            Axn.unsafe.delay(putLastBytes(arr, nBytes = remaining, idx = idx, r = r))
           }
-        } else {
-          Rxn.unit
         }
+      } else {
+        Rxn.unit
       }
     }
 
     Axn.unsafe.delay {
       val arr = new Array[Byte](n)
-      val buf = ByteBuffer.wrap(arr)
-      buf.order(ByteOrder.LITTLE_ENDIAN)
-      go(buf).as(arr)
+      go(arr, 0).as(arr)
     }.flatten
   }
 

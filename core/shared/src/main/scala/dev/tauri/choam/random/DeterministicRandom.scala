@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package random
 
-import java.nio.{ ByteBuffer, ByteOrder }
-
 import scala.collection.mutable.ArrayBuffer
 
 import RandomBase._
@@ -143,34 +141,35 @@ private final class DeterministicRandom(
       // TODO: We're cheating here, and allocating
       // TODO: the array in a "pure" function.
       val arr = new Array[Byte](n)
-      val buf = ByteBuffer.wrap(arr)
-      buf.order(ByteOrder.LITTLE_ENDIAN)
       var s: Long = sd
 
       /* Puts the last (at most 7) bytes into buf */
       @tailrec
-      def putLastBytes(nBytes: Int, r: Long): Unit = {
+      def putLastBytes(nBytes: Int, idx: Int, r: Long): Unit = {
         if (nBytes > 0) {
-          buf.put(r.toByte)
-          putLastBytes(nBytes - 1, r >>> 8)
+          arr(idx) = r.toByte
+          putLastBytes(nBytes - 1, idx = idx + 1, r = r >>> 8)
         }
       }
 
+      var idx: Int = 0
       while ({
-        val rem = buf.remaining
-        if (rem > 0) {
+        if (idx < n) {
+          val rem = n - idx
           s += gamma
           if (rem >= 8) {
-            buf.putLong(mix64(s))
+            this.putLongAtIdxPlain(arr, idx, mix64(s))
             true
           } else {
-            putLastBytes(nBytes = rem, r = mix64(s))
+            putLastBytes(nBytes = rem, idx = idx, r = mix64(s))
             false
           }
         } else {
           false
         }
-      }) {}
+      }) {
+        idx += 8
+      }
       (s, arr)
     }
   }

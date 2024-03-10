@@ -23,7 +23,7 @@ import java.nio.{ ByteBuffer, ByteOrder }
 
 import internal.mcas.Mcas
 
-final class RandomBaseSpec extends munit.FunSuite {
+abstract class RandomBaseSpec extends munit.FunSuite {
 
   test("byteArrayViewVarHandle") {
     final class DummyRng(const: Array[Byte]) extends RandomBase {
