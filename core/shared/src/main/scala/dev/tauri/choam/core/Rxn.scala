@@ -1333,6 +1333,10 @@ object Rxn extends RxnInstances0 {
             // TODO: This actually never happens with EMCAS now
             // TODO: (and also never happends on JS); so do we
             // TODO: actually need this code?
+            // TODO: Note: this also means, that `mcasRetries`
+            // TODO: is always 0. So we never retry just the
+            // TODO: commit. So, maybe this _should_ actually
+            // TODO: happen?
             ctx.validateAndTryExtend(d, hwd = null) match {
               case null =>
                 // can't extend:

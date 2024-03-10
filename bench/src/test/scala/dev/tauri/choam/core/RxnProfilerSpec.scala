@@ -21,6 +21,8 @@ package core
 import java.util.concurrent.atomic.AtomicInteger
 
 import cats.effect.IO
+import cats.effect.instances.spawn.parallelForGenSpawn
+import cats.syntax.all._
 
 import munit.CatsEffectSuite
 
@@ -120,11 +122,17 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
   }
 
   test("rxn.retriesPerCommit") {
-    def succeedAfter(after: Int): F[Axn[Int]] = {
+    def succeedAfter(after: Int, optRef: Option[Ref[Int]] = None): F[Axn[Int]] = {
       F.delay(new AtomicInteger).map { ctr =>
         Axn.unsafe.delay { ctr.getAndIncrement() }.flatMapF { retries =>
-          if (retries == after) Axn.pure(42)
-          else Rxn.unsafe.retry
+          if (retries >= after) {
+            optRef match {
+              case Some(ref) => ref.getAndUpdate(_ + 1)
+              case None => Axn.pure(42)
+            }
+          } else {
+            Rxn.unsafe.retry
+          }
         }
       }
     }
@@ -155,6 +163,34 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
             assertEqualsF(r(RxnProfiler.RetriesPerCommitMcas).getScore, 0.0)
           )
         )
+      }
+      // parallel runs, there should be additional retries:
+      _ <- if (this.isJvm()) {
+        def mkABC(ref: Ref[Int]): (F[Int], F[Int], F[Int]) = {
+          (
+            succeedAfter(2, Some(ref)).flatMap(_.run[F]),
+            succeedAfter(2, Some(ref)).flatMap(_.run[F]),
+            succeedAfter(2, Some(ref)).flatMap(_.run[F])
+          )
+        }
+        for {
+          ref <- Ref(0).run[F]
+          tasks <- F.delay(mkABC(ref)).replicateA(100)
+          tsk = tasks.parTraverse_ {
+            case (rpA, rpB, rpC) =>
+              F.both(rpA, F.both(rpB, rpC))
+          }
+          _ <- simulateRun { _ => tsk.start.flatMap(_.joinWithNever) } { r =>
+            F.delay {
+              // there should be sometimes additional retries (due to concurrency):
+              val retries = r(RxnProfiler.RetriesPerCommit).getScore
+              assert(retries > 2.0)
+              // TODO: check MCAS retries (they're currently always 0)
+            }
+          }
+        } yield ()
+      } else {
+        F.unit
       }
     } yield ()
   }
