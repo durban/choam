@@ -218,6 +218,7 @@ private final class Ttrie[K, V] private (
     Rxn.computed { (kvv: (K, V, V)) =>
       getRefWithKey(kvv._1).flatMapF { ref =>
         ref.modify {
+          // TODO: use an enum instead of ints to avoid boxing (measure!)
           case Init | End =>
             (End, 1) // 0b01 -> false, cleanup
           case ov @ Value(currVal) =>

@@ -294,6 +294,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
 object Rxn extends RxnInstances0 {
 
+  // TODO: move this to separate file, and rename to RetryStrategy(?)
   sealed abstract class Strategy extends Product with Serializable {
 
     // TODO: do we EVER want `randomize*` to be actually false?
