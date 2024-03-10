@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package core
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import cats.effect.IO
 
 import munit.CatsEffectSuite
@@ -118,28 +120,38 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
   }
 
   test("rxn.retriesPerCommit") {
+    def succeedAfter(after: Int): F[Axn[Int]] = {
+      F.delay(new AtomicInteger).map { ctr =>
+        Axn.unsafe.delay { ctr.getAndIncrement() }.flatMapF { retries =>
+          if (retries == after) Axn.pure(42)
+          else Rxn.unsafe.retry
+        }
+      }
+    }
     for {
       // no retry:
-      _ <- simulateRun { _ => runInFiber(Rxn.pure(42)) } { r =>
+      r0 <- succeedAfter(0)
+      _ <- simulateRun { _ => runInFiber(r0) } { r =>
         assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 0.0) *> (
           assertEqualsF(r(RxnProfiler.RetriesPerCommitFull).getScore, 0.0) *> (
             assertEqualsF(r(RxnProfiler.RetriesPerCommitMcas).getScore, 0.0)
           )
         )
       }
-      // alts also count:
-      _ <- simulateRun { _ => runInFiber(Rxn.unsafe.retry + Rxn.pure(42)) } { r =>
+      // 1 retry:
+      r1 <- succeedAfter(1)
+      _ <- simulateRun { _ => runInFiber(r1) } { r =>
         assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 1.0) *> (
           assertEqualsF(r(RxnProfiler.RetriesPerCommitFull).getScore, 1.0) *> (
             assertEqualsF(r(RxnProfiler.RetriesPerCommitMcas).getScore, 0.0)
           )
         )
       }
-      _ <- simulateRun { _ =>
-        runInFiber(Rxn.unsafe.retry + (Rxn.unsafe.retry + Rxn.pure(42)))
-      } { r =>
-        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 2.0) *> (
-          assertEqualsF(r(RxnProfiler.RetriesPerCommitFull).getScore, 2.0) *> (
+      // 5 retries:
+      r5 <- succeedAfter(5)
+      _ <- simulateRun { _ => runInFiber(r5) } { r =>
+        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 5.0) *> (
+          assertEqualsF(r(RxnProfiler.RetriesPerCommitFull).getScore, 5.0) *> (
             assertEqualsF(r(RxnProfiler.RetriesPerCommitMcas).getScore, 0.0)
           )
         )
