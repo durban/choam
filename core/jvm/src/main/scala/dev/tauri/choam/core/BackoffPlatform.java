@@ -15,13 +15,23 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam
-package core
+package dev.tauri.choam.core;
 
-private abstract class BackoffPlatform {
+abstract class BackoffPlatform {
 
-  @inline
-  final def once(): Unit = {
-    Thread.onSpinWait()
+  // see the comment in Backoff2 about these values
+  static final int maxPauseDefault = 4096;
+  static final int maxCedeDefault = 8;
+  static final int maxSleepDefault = 8;
+  static final int sleepAtomShiftNs = 23;
+
+  // marker bits for `backoff`:
+  static final long backoffSpinMark = 1L << 32;
+  static final long backoffCedeMark = 2L << 32;
+  static final long backoffSleepMark = 3L << 32;
+  static final long backoffTokenMask = 0xFFFFFFFFL;
+
+  final void once() {
+    Thread.onSpinWait();
   }
 }

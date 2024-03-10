@@ -461,51 +461,67 @@ object Rxn extends RxnInstances0 {
       }
 
       final override def withMaxCede(maxCede: Int): Strategy = {
-        StrategyFull(
-          maxRetries = maxRetries,
-          maxSpin = maxSpin,
-          randomizeSpin = randomizeSpin,
-          maxCede = maxCede,
-          randomizeCede = defaultRandomizeCede,
-          maxSleep = Duration.Zero,
-          randomizeSleep = false,
-        )
+        if (maxCede == 0) {
+          this
+        } else {
+          StrategyFull(
+            maxRetries = maxRetries,
+            maxSpin = maxSpin,
+            randomizeSpin = randomizeSpin,
+            maxCede = maxCede,
+            randomizeCede = defaultRandomizeCede,
+            maxSleep = Duration.Zero,
+            randomizeSleep = false,
+          )
+        }
       }
 
       final override def withRandomizeCede(randomizeCede: Boolean): Strategy = {
-        StrategyFull(
-          maxRetries = maxRetries,
-          maxSpin = maxSpin,
-          randomizeSpin = randomizeSpin,
-          maxCede = defaultMaxCede,
-          randomizeCede = randomizeCede,
-          maxSleep = Duration.Zero,
-          randomizeSleep = false,
-        )
+        if (randomizeCede) {
+          StrategyFull(
+            maxRetries = maxRetries,
+            maxSpin = maxSpin,
+            randomizeSpin = randomizeSpin,
+            maxCede = defaultMaxCede,
+            randomizeCede = true,
+            maxSleep = Duration.Zero,
+            randomizeSleep = false,
+          )
+        } else {
+          this
+        }
       }
 
       final override def withMaxSleep(maxSleep: FiniteDuration): Strategy = {
-        StrategyFull(
-          maxRetries = maxRetries,
-          maxSpin = maxSpin,
-          randomizeSpin = randomizeSpin,
-          maxCede = defaultMaxCede, // TODO: 0?
-          randomizeCede = defaultRandomizeCede, // TODO: false?
-          maxSleep = maxSleep,
-          randomizeSleep = defaultRandomizeSleep,
-        )
+        if (maxSleep == Duration.Zero) {
+          this
+        } else {
+          StrategyFull(
+            maxRetries = maxRetries,
+            maxSpin = maxSpin,
+            randomizeSpin = randomizeSpin,
+            maxCede = defaultMaxCede, // TODO: 0?
+            randomizeCede = defaultRandomizeCede, // TODO: false?
+            maxSleep = maxSleep,
+            randomizeSleep = defaultRandomizeSleep,
+          )
+        }
       }
 
       final override def withRandomizeSleep(randomizeSleep: Boolean): Strategy = {
-        StrategyFull(
-          maxRetries = maxRetries,
-          maxSpin = maxSpin,
-          randomizeSpin = randomizeSpin,
-          maxCede = defaultMaxCede, // TODO: 0?
-          randomizeCede = defaultRandomizeCede, // TODO: false?
-          maxSleep = defaultMaxSleep,
-          randomizeSleep = randomizeSleep,
-        )
+        if (randomizeSleep) {
+          StrategyFull(
+            maxRetries = maxRetries,
+            maxSpin = maxSpin,
+            randomizeSpin = randomizeSpin,
+            maxCede = defaultMaxCede, // TODO: 0?
+            randomizeCede = defaultRandomizeCede, // TODO: false?
+            maxSleep = defaultMaxSleep,
+            randomizeSleep = true,
+          )
+        } else {
+          this
+        }
       }
 
       private[core] override val maxRetriesInt: Int = maxRetries match {

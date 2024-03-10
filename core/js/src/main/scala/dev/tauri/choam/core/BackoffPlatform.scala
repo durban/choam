@@ -27,3 +27,18 @@ private abstract class BackoffPlatform {
     ()
   }
 }
+
+private object BackoffPlatform {
+
+  // these are duplicated from BackoffPlatform.java:
+
+  @inline final val maxPauseDefault = 4096
+  @inline final val maxCedeDefault = 8
+  @inline final val maxSleepDefault = 8
+  @inline final val sleepAtomShiftNs = 23
+
+  @inline final val backoffSpinMark = 1L << 32;
+  @inline final val backoffCedeMark = 2L << 32;
+  @inline final val backoffSleepMark = 3L << 32;
+  @inline final val backoffTokenMask = 0xFFFFFFFFL;
+}

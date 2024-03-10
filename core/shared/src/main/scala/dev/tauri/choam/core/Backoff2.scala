@@ -22,7 +22,6 @@ import java.util.concurrent.ThreadLocalRandom
 
 import scala.concurrent.duration._
 
-import cats.syntax.all._
 import cats.effect.kernel.GenTemporal
 
 private abstract class Backoff2 extends BackoffPlatform {
@@ -48,31 +47,11 @@ private abstract class Backoff2 extends BackoffPlatform {
   protected[this] final val sleepAtom: FiniteDuration =
     8000000L.nanos // 8ms
 
-  private[this] final val sleepAtomShiftNs =
-    23 // FIXME
-
-  private[this] final val maxPauseD = // default
-    4096
-
-  private[this] final val maxCedeD = // default
-    8
-
-  private[this] final val maxSleepD = // default
-    8 // 8×8ms = 64ms
-
-  // These are abstract to ease testing:
-
-  protected[this] def pause[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit]
-
-  protected[this] def cede[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit]
-
-  protected[this] def sleep[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit]
-
-  final def backoffStr[F[_]](
+  final def backoffStr(
     retries: Int,
     strategy: Rxn.Strategy,
     canSuspend: Boolean, // if `false`, overrides `strategy.canSuspend`
-  )(implicit F: GenTemporal[F, _]): F[Unit] = {
+  ): Long = {
     val canReallySuspend = canSuspend && strategy.canSuspend
     this.backoff(
       retries = if (retries > 30) 30 else retries,
@@ -81,7 +60,7 @@ private abstract class Backoff2 extends BackoffPlatform {
       maxCede = if (canReallySuspend) strategy.maxCede else 0,
       randomizeCede = strategy.randomizeCede,
       maxSleep = if (canReallySuspend) {
-        java.lang.Math.toIntExact(strategy.maxSleep.toNanos >> sleepAtomShiftNs)
+        java.lang.Math.toIntExact(strategy.maxSleep.toNanos >> BackoffPlatform.sleepAtomShiftNs)
       } else {
         0
       },
@@ -89,15 +68,45 @@ private abstract class Backoff2 extends BackoffPlatform {
     )
   }
 
-  final def backoff[F[_]](
+  final def tokenToF[F[_]](token: Long)(implicit F: GenTemporal[F, _]): F[Unit] = {
+    val mark = token & (~BackoffPlatform.backoffTokenMask)
+    val k = (token & BackoffPlatform.backoffTokenMask).toInt
+    if (mark == BackoffPlatform.backoffSpinMark) {
+      F.unit
+    } else if (mark == BackoffPlatform.backoffCedeMark) {
+      if (k == 1) {
+        F.cede
+      } else {
+        F.replicateA_(k, F.cede)
+      }
+    } else if (mark == BackoffPlatform.backoffSleepMark) {
+      F.sleep(k * sleepAtom)
+    } else {
+      throw new IllegalArgumentException(token.toString)
+    }
+  }
+
+  final def isPauseToken(token: Long): Boolean = {
+    val mark = token & (~BackoffPlatform.backoffTokenMask)
+    (mark == BackoffPlatform.backoffSpinMark)
+  }
+
+  /**
+   * If PAUSE is needed, it calls `onSpinWait()` appropriate
+   * number of times, and returns ???
+   *
+   * @see tokenToF to easily convert the returned token to
+   *      a `F[Unit]`.
+   */
+  final def backoff(
     retries: Int,
-    maxPause: Int = maxPauseD,
+    maxPause: Int = BackoffPlatform.maxPauseDefault,
     randomizePause: Boolean = true,
-    maxCede: Int = maxCedeD,
+    maxCede: Int = BackoffPlatform.maxCedeDefault,
     randomizeCede: Boolean = true,
-    maxSleep: Int = maxSleepD,
+    maxSleep: Int = BackoffPlatform.maxSleepDefault,
     randomizeSleep: Boolean = true,
-  )(implicit F: GenTemporal[F, _]): F[Unit] = {
+  ): Long = {
     require(retries > 0)
     require(retries <= 30) // TODO: do we need to support bigger values?
     require(maxPause > 0)
@@ -136,6 +145,37 @@ private abstract class Backoff2 extends BackoffPlatform {
     }
   }
 
+  private[this] final def pause(n: Int, randomize: Boolean): Long = {
+    val k = if (randomize) rnd(n) else n
+    spin(k) // spin right now
+    BackoffPlatform.backoffSpinMark | k.toLong
+  }
+
+  @tailrec
+  private[this] final def spin(n: Int): Unit = {
+    if (n > 0) {
+      once()
+      spin(n - 1)
+    }
+  }
+
+  @inline
+  private[this] final def cede(n: Int, randomize: Boolean): Long = {
+    val k = if (randomize) rnd(n) else n
+    BackoffPlatform.backoffCedeMark | k.toLong
+  }
+
+  @inline
+  private[this] final def sleep(n: Int, randomize: Boolean): Long = {
+    val k = if (randomize) rnd(n) else n
+    BackoffPlatform.backoffSleepMark | k.toLong
+  }
+
+  @inline
+  private[this] final def rnd(n: Int): Int = {
+    ThreadLocalRandom.current().nextInt(n + 1)
+  }
+
   /**
    * log₂x rounded down
    *
@@ -151,39 +191,3 @@ private abstract class Backoff2 extends BackoffPlatform {
     log2floor(x)
 }
 
-private object Backoff2 extends Backoff2 {
-
-  protected[this] final override def pause[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
-    // spin right now, then return null
-    val k = if (randomize) rnd(n) else n
-    spin(k)
-    nullOf[F[Unit]]
-  }
-
-  @tailrec
-  private[this] final def spin(n: Int): Unit = {
-    if (n > 0) {
-      once()
-      spin(n - 1)
-    }
-  }
-
-  protected[this] final override def cede[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
-    val k = if (randomize) rnd(n) else n
-    if (k == 1) {
-      F.cede
-    } else {
-      F.cede.replicateA_(k)
-    }
-  }
-
-  protected[this] final override def sleep[F[_]](n: Int, randomize: Boolean)(implicit F: GenTemporal[F, _]): F[Unit] = {
-    val k = if (randomize) rnd(n) else n
-    F.sleep(k * sleepAtom)
-  }
-
-  @inline
-  private[this] final def rnd(n: Int): Int = {
-    ThreadLocalRandom.current().nextInt(n + 1)
-  }
-}

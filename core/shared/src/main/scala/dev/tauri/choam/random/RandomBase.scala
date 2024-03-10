@@ -93,6 +93,7 @@ private abstract class RandomBase
   }
 
   def nextLongBounded(bound: Long): Axn[Long] = {
+    // TODO: take a look at https://arxiv.org/abs/1805.10941
     require(bound > 0L)
     val m: Long = bound - 1L
     if ((bound & m) == 0L) { // power of 2
