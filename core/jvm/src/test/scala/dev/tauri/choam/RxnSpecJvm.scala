@@ -77,40 +77,6 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     }
   }
 
-  test("Thread interruption with alternatives") {
-    val ref = Ref.unsafe("a")
-    val never: Axn[Unit] = (1 to 1000).foldLeft(ref.unsafeCas("foo", "bar")) { (acc, num) =>
-      acc + ref.unsafeCas(ov = num.toString(), nv = "foo")
-    }
-    @volatile var exception = Option.empty[Throwable]
-    F.blocking {
-      val cdl = new CountDownLatch(1)
-      val t = new Thread(() => {
-        cdl.countDown()
-        never.unsafeRun(this.mcasImpl)
-      })
-      t.setUncaughtExceptionHandler((_, ex) => {
-        if (!ex.isInstanceOf[InterruptedException]) {
-          // ignore interrupt, otherwise fail the test
-          exception = Some(ex)
-        }
-      })
-      t.start()
-      assert(t.isAlive())
-      cdl.await()
-      Thread.sleep(1000L)
-      assert(t.isAlive())
-      t.interrupt()
-      var c = 0
-      while (t.isAlive() && (c < 2000)) {
-        c += 1
-        Thread.sleep(1L)
-      }
-      assert(!t.isAlive())
-      exception.foreach(throw _)
-    }
-  }
-
   test("Autoboxing (JVM)") {
     // Integers between (typically) -128 and 127 are
     // cached. Due to autoboxing, other integers may

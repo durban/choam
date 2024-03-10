@@ -1201,9 +1201,6 @@ object Rxn extends RxnInstances0 {
       this.retry(this.canSuspend)
 
     private[this] final def retry(canSuspend: Boolean): Rxn[Any, Any] = {
-      val retriesSoFar = this.fullRetries
-      val retriesNow = retriesSoFar + 1
-      maybeCheckInterrupt(retriesNow)
       if (alts.nonEmpty) {
         // we're not actually retrying,
         // just going to the other side
@@ -1212,12 +1209,15 @@ object Rxn extends RxnInstances0 {
         loadAlt()
       } else {
         // really retrying:
+        val retriesNow = this.fullRetries + 1
+        this.fullRetries = retriesNow
         val mr = this.maxRetries
         if ((mr >= 0) && ((retriesNow > mr) || (retriesNow == Integer.MAX_VALUE))) {
           // TODO: maybe we could represent "infinity" with MAX_VALUE instead of -1?
           throw new MaxRetriesReached(mr)
+        } else {
+          maybeCheckInterrupt(retriesNow)
         }
-        this.fullRetries = retriesNow
         // restart everything:
         clearDesc()
         a = startA
