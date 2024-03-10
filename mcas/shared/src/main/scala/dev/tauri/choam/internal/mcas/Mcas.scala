@@ -285,6 +285,7 @@ object Mcas extends McasCompanionPlatform { self =>
       new Builder(this, this.start())
     }
 
+    // TODO: Remove `mcasRetries`, because there are none; also from RxnProfiler.
     /** Only for testing/benchmarking */
     private[choam] def recordCommit(@unused fullRetries: Int, @unused mcasRetries: Int): Unit = {
       // we ignore stats by default; implementations

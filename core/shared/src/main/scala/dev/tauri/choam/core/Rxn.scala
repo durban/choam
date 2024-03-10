@@ -1025,9 +1025,6 @@ object Rxn extends RxnInstances0 {
     private[this] var fullRetries: Int =
       0
 
-    private[this] var mcasRetries: Int =
-      0
-
     private[this] var _stats: ExStatMap =
       null
 
@@ -1151,7 +1148,6 @@ object Rxn extends RxnInstances0 {
           startA = () : Any
           startRxn = pcAction
           this.fullRetries = 0
-          this.mcasRetries = 0
           clearDesc()
           pcAction
         case 5 => // ContAfterPostCommit
@@ -1322,35 +1318,29 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    @tailrec
-    private[this] final def casLoop(d: Descriptor): Boolean = {
+    private[this] final def performMcas(d: Descriptor): Boolean = {
       if (d ne null) {
-        ctx.tryPerform(d) match {
-          case McasStatus.Successful =>
-            true
-          case McasStatus.FailedVal =>
-            false
-          case _ => // failed due to version
-            // TODO: This actually never happens with EMCAS now
-            // TODO: (and also never happends on JS); so do we
-            // TODO: actually need this code?
-            // TODO: Note: this also means, that `mcasRetries`
-            // TODO: is always 0. So we never retry just the
-            // TODO: commit. So, maybe this _should_ actually
-            // TODO: happen?
-            ctx.validateAndTryExtend(d, hwd = null) match {
-              case null =>
-                // can't extend:
-                clearDesc()
-                false
-              case d =>
-                // ok, was extended:
-                val mcasR = this.mcasRetries + 1
-                this.mcasRetries = mcasR
-                spin(mcasR)
-                casLoop(d) // retry
-            }
-        }
+        (ctx.tryPerform(d) == McasStatus.Successful)
+        // `Succesful` is success; otherwise the result is:
+        // - Either `McasStatus.FailedVal`, which means that
+        //   (at least) one word had an unexpected value
+        //   (so we can't commit), or unexpected version (so
+        //    revalidation would vertainly fail).
+        // - Or it's a new global version, which means that
+        //   the global version CAS failed, in which case
+        //   we COULD try to `validateAndTryExtend` the
+        //   descriptor, and retry only the MCAS (as opposed
+        //   to the whole `Rxn`). BUT this never happens with
+        //   any of the "proper" MCAS implementations: `Emcas`
+        //   handles the global version in a smarter way, so
+        //   never has a "global version CAS", and on JS (with
+        //   `ThreadConfinedMCAS`) the global version CAS can
+        //   never fail (due to being single-threaded). So in
+        //   this case (with "improper" MCAS impls) we can also
+        //   just return `false`; this is not a correctness
+        //   problem, but only a performance issue (but we
+        //   don't really care about the performance of "improper"
+        //   MCASes anyway).
       } else {
         true
       }
@@ -1374,11 +1364,11 @@ object Rxn extends RxnInstances0 {
         case 0 => // Commit
           val d = this._desc // we avoid calling `desc` here, in case it's `null`
           this.clearDesc()
-          if (casLoop(d)) {
+          if (performMcas(d)) {
             // save retry statistics:
             ctx.recordCommit(
               fullRetries = this.fullRetries,
-              mcasRetries = this.mcasRetries,
+              mcasRetries = 0,
             )
             // ok, commit is done, but we still need to perform post-commit actions
             val res = a
