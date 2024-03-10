@@ -44,8 +44,8 @@ private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDesc
   // TODO: need to be able to differentiate reading a valid
   // TODO: ov/nv from a racy read of a finalized descriptor.
 
-  // TODO: In theory, `address` or even `parent` could be
-  // TODO: cleared too. But that's probably not worth it.
+  // TODO: In theory, `address` could be cleared too.
+  // TODO: But that's probably not worth it.
   // TODO: (A lot of extra checks would need to be introduced.)
 
   def this(

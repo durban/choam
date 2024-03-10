@@ -46,6 +46,9 @@ abstract class EmcasDescriptorBase {
 
   private volatile WordDescriptor<?>[] _words; // = null
 
+  /**
+   * @see [[EmcasStatus]]
+   */
   final long getStatus() {
     return this._status; // volatile
   }

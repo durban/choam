@@ -30,7 +30,16 @@ import dev.tauri.choam.internal.mcas.McasStatus;
  *         /  \
  *        /    \
  *       /      \
+ *      ↓        ↓
  *   FailedVal  any `v` where `EmcasStatus.isSuccessful(v)`
+ *
+ * For successful operations, we store the new version
+ * in the status field of the `EmcasDescriptor`, because
+ * when we leave `WordDescriptor`s in the refs, the
+ * new version must be accessible when later we use those
+ * refs. (We don't write back versions immediately, only
+ * later when we replace the `WordDescriptor` with the
+ * final value.)
  */
 final class EmcasStatus {
 
