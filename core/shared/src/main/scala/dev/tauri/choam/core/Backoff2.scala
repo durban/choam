@@ -24,6 +24,8 @@ import scala.concurrent.duration._
 
 import cats.effect.kernel.GenTemporal
 
+private object Backoff2 extends Backoff2
+
 private abstract class Backoff2 extends BackoffPlatform {
 
   // - We first start PAUSEing: 1, 2, 4, 8, ... 4096 (but user configurable).
@@ -92,8 +94,7 @@ private abstract class Backoff2 extends BackoffPlatform {
   }
 
   /**
-   * If PAUSE is needed, it calls `onSpinWait()` appropriate
-   * number of times, and returns ???
+   * Returns a backoff token after possibly spinning.
    *
    * @see tokenToF to easily convert the returned token to
    *      a `F[Unit]`.
@@ -190,4 +191,3 @@ private abstract class Backoff2 extends BackoffPlatform {
   final def log2floor_testing(x: Int): Int =
     log2floor(x)
 }
-

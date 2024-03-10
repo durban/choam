@@ -935,6 +935,11 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"FlatMap(${rxn}, <function>)"
   }
 
+  private final class Suspend(val token: Long) extends Rxn[Any, Nothing] {
+    private[core] final override def tag = 27
+    final override def toString: String = s"Suspend(${token.toHexString})"
+  }
+
   // Interpreter:
 
   private[this] def newStack[A]() = {
@@ -960,13 +965,6 @@ object Rxn extends RxnInstances0 {
 
   private[core] final val commitSingleton: Rxn[Any, Any] = // TODO: make this a java enum?
     new Commit[Any]
-
-  private[this] final class Suspend // TODO: make this a java enum?
-  private[this] final val Suspend =
-    new Suspend
-
-  private[this] final def suspend[X](): X =
-    Suspend.asInstanceOf[X]
 
   final class MaxRetriesReached(val maxRetries: Int)
     extends Exception(s"reached maxRetries of ${maxRetries}")
@@ -1224,6 +1222,7 @@ object Rxn extends RxnInstances0 {
         // really retrying:
         val retriesNow = this.fullRetries + 1
         this.fullRetries = retriesNow
+        // check abnormal conditions:
         val mr = this.maxRetries
         if ((mr >= 0) && ((retriesNow > mr) || (retriesNow == Integer.MAX_VALUE))) {
           // TODO: maybe we could represent "infinity" with MAX_VALUE instead of -1?
@@ -1241,31 +1240,17 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def backoffAndNext(retries: Int, canSuspend: Boolean): Rxn[Any, Any] = {
-      if (canSuspend) {
-        null // we'll suspend (cede or sleep)
-        // TODO: first try to spin
-      } else {
-        this.spin(retries)
+      val token = Backoff2.backoffStr(
+        retries = retries,
+        strategy = this.strategy,
+        canSuspend = canSuspend,
+      )
+      if (Backoff2.isPauseToken(token)) {
+        // `onSpinWait()` is already done, restart:
         this.startRxn
-      }
-    }
-
-    private[this] final def spin(retries: Int): Unit = {
-      val strategy = this.strategy
-      if (strategy.randomizeSpin) {
-        Backoff.backoffRandom(retries, strategy.maxSpin, ctx.random)
       } else {
-        Backoff.backoffConst(retries, strategy.maxSpin)
-      }
-    }
-
-    private[this] final def nextSleep[F[_]]()(implicit F: Async[F]): F[Unit] = {
-      require(canSuspend)
-      val strategy = this.strategy
-      if (strategy.randomizeSleep) {
-        Backoff.sleepRandom(this.fullRetries, strategy.maxSleepNanos, ctx.random)
-      } else {
-        Backoff.sleepConst(this.fullRetries, strategy.maxSleepNanos)
+        assert(canSuspend)
+        new Suspend(token)
       }
     }
 
@@ -1404,12 +1389,10 @@ object Rxn extends RxnInstances0 {
           } else {
             contK.push(commit)
             contT.push(ContAndThen)
-            val r = retry()
-            if (r ne null) loop(r) else suspend()
+            loop(retry())
           }
         case 1 => // AlwaysRetry
-          val r = retry()
-          if (r ne null) loop(r) else suspend()
+          loop(retry())
         case 2 => // PostCommit
           val c = curr.asInstanceOf[PostCommit[A]]
           pc.push(c.pc.provide(a.asInstanceOf[A]))
@@ -1433,8 +1416,7 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[Cas[Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            val r = retry()
-            if (r ne null) loop(r) else suspend()
+            loop(retry())
           } else {
             val currVal = hwd.nv
             if (equ(currVal, c.ov)) {
@@ -1443,16 +1425,14 @@ object Rxn extends RxnInstances0 {
               loop(next())
             }
             else {
-              val r = retry()
-              if (r ne null) loop(r) else suspend()
+              loop(retry())
             }
           }
         case 8 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            val r = retry()
-            if (r ne null) loop(r) else suspend()
+            loop(retry())
           } else {
             val ox = hwd.nv
             val (nx, b) = c.f(ox, a.asInstanceOf[A])
@@ -1516,8 +1496,7 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[UpdWith[Any, Any, _]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            val r = retry()
-            if (r ne null) loop(r) else suspend()
+            loop(retry())
           } else {
             val ox = hwd.nv
             val axn = c.f(ox, a)
@@ -1561,8 +1540,7 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[Read[Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            val r = retry()
-            if (r ne null) loop(r) else suspend()
+            loop(retry())
           } else {
             a = hwd.nv
             desc = desc.addOrOverwrite(hwd)
@@ -1572,8 +1550,7 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[TicketRead[Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
-            val r = retry()
-            if (r ne null) loop(r) else suspend()
+            loop(retry())
           } else {
             a = new unsafe.TicketImpl[Any](hwd)
             loop(next())
@@ -1586,8 +1563,7 @@ object Rxn extends RxnInstances0 {
               // not in log yet, we try to insert it:
               revalidateIfNeeded(c.hwd) match {
                 case null =>
-                  val r = retry()
-                  if (r ne null) loop(r) else suspend()
+                  loop(retry())
                 case hwd =>
                   desc = desc.add(hwd.withNv(c.newest))
                   loop(next())
@@ -1603,8 +1579,7 @@ object Rxn extends RxnInstances0 {
             a = () : Any
             loop(next())
           } else {
-            val r = retry()
-            if (r ne null) loop(r) else suspend()
+            loop(retry())
           }
         case 23 => // Pure
           val c = curr.asInstanceOf[Pure[Any]]
@@ -1627,6 +1602,12 @@ object Rxn extends RxnInstances0 {
           contK.push(a)
           contK.push(c.f)
           loop(c.rxn)
+        case 27 => // Suspend
+          assert(this.canSuspend)
+          assert(!Backoff2.isPauseToken(curr.asInstanceOf[Suspend].token))
+          // user code can't access a `Suspend`, so
+          // we can abuse `R` and return `Suspend`:
+          curr.asInstanceOf[R]
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }
@@ -1639,8 +1620,8 @@ object Rxn extends RxnInstances0 {
           this.ctx = mcas.currentContext()
           try {
             loop(startRxn) match {
-              case _: Suspend =>
-                F.flatMap(nextSleep[F]()) { _ => interpretAsync[F](F) }
+              case s: Suspend =>
+                F.flatMap(Backoff2.tokenToF[F](s.token)) { _ => interpretAsync[F](F) }
               case r =>
                 // TODO: we're cancelable here; is this a problem? (probably yes)
                 F.pure(r)

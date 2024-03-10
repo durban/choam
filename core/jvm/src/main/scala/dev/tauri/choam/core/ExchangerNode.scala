@@ -46,7 +46,7 @@ private final class ExchangerNode[C](val msg: Msg) {
     @tailrec
     def go(n: Int): Option[NodeResult[C]] = {
       if (n > 0) {
-        Backoff.once()
+        Backoff2.once()
         val res = ctx.readDirect(this.hole.loc)
         if (isNull(res)) {
           go(n - 1)
