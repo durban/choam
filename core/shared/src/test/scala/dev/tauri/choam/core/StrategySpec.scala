@@ -20,6 +20,8 @@ package core
 
 import scala.concurrent.duration._
 
+import cats.syntax.all._
+
 import Rxn.Strategy
 
 final class StrategySpec extends BaseSpec {
@@ -116,5 +118,14 @@ final class StrategySpec extends BaseSpec {
     assertEquals(s7.withMaxCede(0), s4)
     assertEquals(s7.withMaxCede(1), s7)
     assertEquals(s7.withMaxCede(0).withMaxCede(1), s7)
+  }
+
+  test("Rxn.Strategy illegal arguments") {
+    assert(Either.catchOnly[IllegalArgumentException](Strategy.spin(
+      maxRetries = Some(Int.MaxValue), // this is invalid
+      maxSpin = Int.MaxValue, // this is ok
+      randomizeSpin = false,
+    )).isLeft)
+    assert(Either.catchOnly[IllegalArgumentException](Strategy.Default.withMaxSpin(0)).isLeft)
   }
 }

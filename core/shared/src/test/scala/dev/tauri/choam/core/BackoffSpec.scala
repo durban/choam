@@ -447,10 +447,10 @@ class BackoffSpec extends BaseSpec {
   }
 
   test("Backoff2 with non-default everything") {
-    val actual = (1 to 30).map { retries =>
+    val actual1 = (1 to 30).map { retries =>
       Test.backoffT(retries, maxPause = 1000, maxCede = 10, maxSleep = 20)
     }.toList
-    val expected = List(
+    val expected1 = List(
       Pause(1), Pause(2), Pause(4), Pause(8), Pause(16), Pause(32), Pause(64),
       Pause(128), Pause(256), Pause(512),
       Cede(1), Cede(2), Cede(4), Cede(8),
@@ -459,7 +459,14 @@ class BackoffSpec extends BaseSpec {
       Sleep(20), Sleep(20), Sleep(20), Sleep(20),
       Sleep(20), Sleep(20), Sleep(20), Sleep(20),
     )
-    assertEquals(actual, expected)
+    assertEquals(actual1, expected1)
+    val actual2 = (1 to 30).map { retries =>
+      Test.backoffT(retries, maxPause = Int.MaxValue, maxCede = 10, maxSleep = 20)
+    }.toList
+    val expected2 = (1 to 30).map { retries =>
+      Pause(1 << (retries - 1))
+    }.toList
+    assertEquals(actual2, expected2)
   }
 
   test("Backoff2 illegal args") {

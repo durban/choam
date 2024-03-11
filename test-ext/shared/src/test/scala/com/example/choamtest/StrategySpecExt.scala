@@ -66,5 +66,7 @@ final class StrategySpecExt extends BaseSpec {
     assert(!s2.isInstanceOf[Strategy.Spin])
     val s3 = s1.withRandomizeSleep(false)
     assertEquals(s3, s1)
+    val s4 = s0.withRandomizeCede(false).withRandomizeSleep(false).withMaxCede(0).withMaxSleep(0.millis)
+    assertEquals(s4, s1)
   }
 }

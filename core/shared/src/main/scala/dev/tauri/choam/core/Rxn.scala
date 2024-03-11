@@ -387,14 +387,20 @@ object Rxn extends RxnInstances0 {
       require(maxSleep >= Duration.Zero)
       require((maxCede > 0) || (maxSleep > Duration.Zero)) // otherwise it should be SPIN
 
-      final override def withMaxRetries(maxRetries: Option[Int]): Strategy =
-        this.copy(maxRetries = maxRetries)
+      final override def withMaxRetries(maxRetries: Option[Int]): Strategy = {
+        if (maxRetries == this.maxRetries) this
+        else this.copy(maxRetries = maxRetries)
+      }
 
-      final override def withMaxSpin(maxSpin: Int): Strategy =
-        this.copy(maxSpin = maxSpin)
+      final override def withMaxSpin(maxSpin: Int): Strategy = {
+        if (maxSpin == this.maxSpin) this
+        else this.copy(maxSpin = maxSpin)
+      }
 
-      final override def withRandomizeSpin(randomizeSpin: Boolean): Strategy =
-        this.copy(randomizeSpin = randomizeSpin)
+      final override def withRandomizeSpin(randomizeSpin: Boolean): Strategy = {
+        if (randomizeSpin == this.randomizeSpin) this
+        else this.copy(randomizeSpin = randomizeSpin)
+      }
 
       final override def withMaxCede(maxCede: Int): Strategy = {
         if ((maxCede == 0) && (this.maxSleepNanos == 0L)) {
@@ -403,13 +409,17 @@ object Rxn extends RxnInstances0 {
             maxSpin = this.maxSpin,
             randomizeSpin = this.randomizeSpin,
           )
+        } else if (maxCede == this.maxCede) {
+          this
         } else {
           this.copy(maxCede = maxCede)
         }
       }
 
-      final override def withRandomizeCede(randomizeCede: Boolean): Strategy =
-        this.copy(randomizeCede = randomizeCede)
+      final override def withRandomizeCede(randomizeCede: Boolean): Strategy = {
+        if (randomizeCede == this.randomizeCede) this
+        else this.copy(randomizeCede = randomizeCede)
+      }
 
       final override def withMaxSleep(maxSleep: FiniteDuration): Strategy = {
         if ((maxSleep == Duration.Zero) && (this.maxCede == 0)) {
@@ -418,13 +428,17 @@ object Rxn extends RxnInstances0 {
             maxSpin = this.maxSpin,
             randomizeSpin = this.randomizeSpin,
           )
+        } else if (maxSleep == this.maxSleep) {
+          this
         } else {
           this.copy(maxSleep = maxSleep)
         }
       }
 
-      final override def withRandomizeSleep(randomizeSleep: Boolean): Strategy =
-        this.copy(randomizeSleep = randomizeSleep)
+      final override def withRandomizeSleep(randomizeSleep: Boolean): Strategy = {
+        if (randomizeSleep == this.randomizeSleep) this
+        else this.copy(randomizeSleep = randomizeSleep)
+      }
 
       private[core] override val maxRetriesInt: Int = maxRetries match {
         case Some(n) => n
@@ -447,8 +461,10 @@ object Rxn extends RxnInstances0 {
       require(maxRetries.forall{ mr => (mr >= 0) && (mr < Integer.MAX_VALUE) })
       require(maxSpin > 0)
 
-      final override def withMaxRetries(maxRetries: Option[Int]): Spin =
-        this.copy(maxRetries = maxRetries)
+      final override def withMaxRetries(maxRetries: Option[Int]): Spin = {
+        if (maxRetries == this.maxRetries) this
+        else this.copy(maxRetries = maxRetries)
+      }
 
       final override def withMaxSpin(maxSpin: Int): Spin = {
         if (maxSpin == this.maxSpin) this
