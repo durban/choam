@@ -54,6 +54,9 @@ private[mcas] abstract class GlobalContext
 
   /** Gets of creates the context for the current thread */
   private[emcas] final def currentContextInternal(): EmcasThreadContext = {
+    // TODO: Try out what happens with JVM 21+ virtual threads;
+    // TODO: this should work, but maybe wasteful? Does the
+    // TODO: skiplist grows too big? Is cleaning too slow?
     val threadContextKey = this.threadContextKey
     threadContextKey.get() match {
       case null =>
@@ -82,9 +85,11 @@ private[mcas] abstract class GlobalContext
     this._threadContexts.foreach { (tid, wr) =>
       val tctx = wr.get()
       if (tctx ne null) {
-        // Calling `getRetryStats` is not
-        // thread-safe here, but we only need these statistics
-        // for benchmarking, so we're just hoping for the best...
+        // The commits and retries values
+        // are not necessarily consistent
+        // with each other; but these are
+        // just stats for informational
+        // purposes...
         val stats = tctx.getRetryStats()
         commits += stats.commits
         retries += stats.retries

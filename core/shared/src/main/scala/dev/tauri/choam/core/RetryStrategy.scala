@@ -48,6 +48,8 @@ sealed abstract class RetryStrategy extends Product with Serializable {
 
   // CEDE:
 
+  def withCede(cede: Boolean): RetryStrategy
+
   // maxCede:
 
   def maxCede: Int
@@ -61,6 +63,8 @@ sealed abstract class RetryStrategy extends Product with Serializable {
   def withRandomizeCede(randomizeCede: Boolean): RetryStrategy
 
   // SLEEP:
+
+  def withSleep(sleep: Boolean): RetryStrategy
 
   // maxSleep:
 
@@ -109,7 +113,9 @@ object RetryStrategy {
     require(maxRetries.forall{ mr => (mr >= 0) && (mr < Integer.MAX_VALUE) })
     require(maxSpin > 0)
     require(maxCede >= 0)
+    require(!((maxCede == 0) && randomizeCede))
     require(maxSleep >= Duration.Zero)
+    require(!((maxSleep == Duration.Zero) && randomizeSleep))
     require((maxCede > 0) || (maxSleep > Duration.Zero)) // otherwise it should be SPIN
 
     final override def withMaxRetries(maxRetries: Option[Int]): RetryStrategy = {
@@ -127,6 +133,20 @@ object RetryStrategy {
       else this.copy(randomizeSpin = randomizeSpin)
     }
 
+    final override def withCede(cede: Boolean): RetryStrategy = {
+      if (cede) {
+        if (this.maxCede == 0) {
+          this
+            .withMaxCede(BackoffPlatform.maxCedeDefault)
+            .withRandomizeCede(BackoffPlatform.randomizeCedeDefault)
+        } else {
+          this
+        }
+      } else {
+        this.withMaxCede(0).withRandomizeCede(false)
+      }
+    }
+
     final override def withMaxCede(maxCede: Int): RetryStrategy = {
       if ((maxCede == 0) && (this.maxSleepNanos == 0L)) {
         StrategySpin(
@@ -136,14 +156,35 @@ object RetryStrategy {
         )
       } else if (maxCede == this.maxCede) {
         this
+      } else if (maxCede == 0) {
+        this.copy(maxCede = 0, randomizeCede = false)
       } else {
         this.copy(maxCede = maxCede)
       }
     }
 
     final override def withRandomizeCede(randomizeCede: Boolean): RetryStrategy = {
-      if (randomizeCede == this.randomizeCede) this
-      else this.copy(randomizeCede = randomizeCede)
+      if (randomizeCede == this.randomizeCede) {
+        this
+      } else if (randomizeCede && (this.maxCede == 0)) {
+        this.copy(randomizeCede = true, maxCede = BackoffPlatform.maxCedeDefault)
+      } else {
+        this.copy(randomizeCede = randomizeCede)
+      }
+    }
+
+    final override def withSleep(sleep: Boolean): RetryStrategy = {
+      if (sleep) {
+        if (this.maxSleepNanos == 0L) {
+          this
+            .withMaxSleep(BackoffPlatform.maxSleepDefaultDuration)
+            .withRandomizeSleep(BackoffPlatform.randomizeSleepDefault)
+        } else {
+          this
+        }
+      } else {
+        this.withMaxSleep(Duration.Zero).withRandomizeSleep(false)
+      }
     }
 
     final override def withMaxSleep(maxSleep: FiniteDuration): RetryStrategy = {
@@ -155,14 +196,21 @@ object RetryStrategy {
         )
       } else if (maxSleep == this.maxSleep) {
         this
+      } else if (maxSleep == Duration.Zero) {
+        this.copy(maxSleep = maxSleep, randomizeSleep = false)
       } else {
         this.copy(maxSleep = maxSleep)
       }
     }
 
     final override def withRandomizeSleep(randomizeSleep: Boolean): RetryStrategy = {
-      if (randomizeSleep == this.randomizeSleep) this
-      else this.copy(randomizeSleep = randomizeSleep)
+      if (randomizeSleep == this.randomizeSleep) {
+        this
+      } else if (randomizeSleep && (this.maxSleepNanos == 0L)) {
+        this.copy(randomizeSleep = true, maxSleep = BackoffPlatform.maxSleepDefaultDuration)
+      } else {
+        this.copy(randomizeSleep = randomizeSleep)
+      }
     }
 
     private[core] override val maxRetriesInt: Int = maxRetries match {
@@ -201,6 +249,16 @@ object RetryStrategy {
       else this.copy(randomizeSpin = randomizeSpin)
     }
 
+    final override def withCede(cede: Boolean): RetryStrategy = {
+      if (cede) {
+        this
+          .withMaxCede(BackoffPlatform.maxCedeDefault)
+          .withRandomizeCede(BackoffPlatform.randomizeCedeDefault)
+      } else {
+        this
+      }
+    }
+
     final override def withMaxCede(maxCede: Int): RetryStrategy = {
       if (maxCede == 0) {
         this
@@ -228,6 +286,16 @@ object RetryStrategy {
           maxSleep = Duration.Zero,
           randomizeSleep = false,
         )
+      } else {
+        this
+      }
+    }
+
+    final override def withSleep(sleep: Boolean): RetryStrategy = {
+      if (sleep) {
+        this
+          .withMaxSleep(BackoffPlatform.maxSleepDefaultDuration)
+          .withRandomizeSleep(BackoffPlatform.randomizeSleepDefault)
       } else {
         this
       }
@@ -287,35 +355,26 @@ object RetryStrategy {
   }
 
   final val Default: Spin =
-    spin(maxRetries = None, maxSpin = BackoffPlatform.maxPauseDefault, randomizeSpin = BackoffPlatform.randomizePauseDefault)
+    this.spin()
 
-  final def sleep(
-    maxRetries: Option[Int],
-    maxSpin: Int,
-    randomizeSpin: Boolean,
-    maxCede: Int,
-    randomizeCede: Boolean,
-    maxSleep: FiniteDuration,
-    randomizeSleep: Boolean,
-  ): RetryStrategy = {
-    require(maxSleep > Duration.Zero)
-    StrategyFull(
+  final def spin(
+    maxRetries: Option[Int] = None,
+    maxSpin: Int = BackoffPlatform.maxPauseDefault,
+    randomizeSpin: Boolean = BackoffPlatform.randomizePauseDefault,
+  ): Spin = {
+    StrategySpin(
       maxRetries = maxRetries,
       maxSpin = maxSpin,
       randomizeSpin = randomizeSpin,
-      maxCede = maxCede,
-      randomizeCede = randomizeCede,
-      maxSleep = maxSleep,
-      randomizeSleep = randomizeSleep,
     )
   }
 
   final def cede(
-    maxRetries: Option[Int],
-    maxSpin: Int,
-    randomizeSpin: Boolean,
-    maxCede: Int,
-    randomizeCede: Boolean,
+    maxRetries: Option[Int] = None,
+    maxSpin: Int = BackoffPlatform.maxPauseDefault,
+    randomizeSpin: Boolean = BackoffPlatform.randomizePauseDefault,
+    maxCede: Int = BackoffPlatform.maxCedeDefault,
+    randomizeCede: Boolean = BackoffPlatform.randomizeCedeDefault,
   ): RetryStrategy = {
     StrategyFull(
       maxRetries = maxRetries,
@@ -328,15 +387,24 @@ object RetryStrategy {
     )
   }
 
-  final def spin(
-    maxRetries: Option[Int],
-    maxSpin: Int,
-    randomizeSpin: Boolean,
-  ): Spin = {
-    StrategySpin(
+  final def sleep(
+    maxRetries: Option[Int] = None,
+    maxSpin: Int = BackoffPlatform.maxPauseDefault,
+    randomizeSpin: Boolean = BackoffPlatform.randomizePauseDefault,
+    maxCede: Int = BackoffPlatform.maxCedeDefault,
+    randomizeCede: Boolean = BackoffPlatform.randomizeCedeDefault,
+    maxSleep: FiniteDuration = BackoffPlatform.maxSleepDefaultDuration,
+    randomizeSleep: Boolean = BackoffPlatform.randomizeSleepDefault,
+  ): RetryStrategy = {
+    require(maxSleep > Duration.Zero)
+    StrategyFull(
       maxRetries = maxRetries,
       maxSpin = maxSpin,
       randomizeSpin = randomizeSpin,
+      maxCede = maxCede,
+      randomizeCede = randomizeCede,
+      maxSleep = maxSleep,
+      randomizeSleep = randomizeSleep,
     )
   }
 }
