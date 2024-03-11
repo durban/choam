@@ -51,7 +51,7 @@ private abstract class Backoff2 extends BackoffPlatform {
 
   final def backoffStrTok(
     retries: Int,
-    strategy: Rxn.Strategy,
+    strategy: RetryStrategy,
     canSuspend: Boolean, // if `false`, overrides `strategy.canSuspend`
   ): Long = {
     val canReallySuspend = canSuspend && strategy.canSuspend

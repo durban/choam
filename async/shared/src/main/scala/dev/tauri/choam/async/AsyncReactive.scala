@@ -22,15 +22,16 @@ import cats.{ ~>, Monad }
 import cats.effect.kernel.Async
 
 import internal.mcas.Mcas
+import core.RetryStrategy
 
 trait AsyncReactive[F[_]] extends Reactive[F] { self =>
-  def applyAsync[A, B](r: Rxn[A, B], a: A, s: Rxn.Strategy = Rxn.Strategy.Default): F[B]
+  def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B]
   def promise[A]: Axn[Promise[F, A]]
   def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[F, A]]
   def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean): Axn[GenWaitList[F, A]]
   final override def mapK[G[_]](t: F ~> G)(implicit G: Monad[G]): AsyncReactive[G] = {
     new Reactive.TransformedReactive[F, G](self, t) with AsyncReactive[G] {
-      final override def applyAsync[A, B](r: Rxn[A, B], a: A, s: Rxn.Strategy = Rxn.Strategy.Default): G[B] =
+      final override def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): G[B] =
         t(self.applyAsync(r, a, s))
       final override def promise[A]: Axn[Promise[G, A]] =
         self.promise[A].map(_.mapK(t))
@@ -54,7 +55,7 @@ object AsyncReactive {
     extends Reactive.SyncReactive[F](mi)
     with AsyncReactive[F] {
 
-    final override def applyAsync[A, B](r: Rxn[A, B], a: A, s: Rxn.Strategy = Rxn.Strategy.Default): F[B] =
+    final override def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B] =
       r.perform[F, B](a, this.mcasImpl, s)(F)
 
     final override def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean) =

@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 
 import cats.syntax.all._
 
-import Rxn.Strategy
+import core.{ RetryStrategy => Strategy }
 
 final class StrategySpec extends BaseSpec {
 

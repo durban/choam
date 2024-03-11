@@ -19,12 +19,12 @@ package com.example.choamtest
 
 import scala.concurrent.duration._
 
-import dev.tauri.choam.Rxn.Strategy
+import dev.tauri.choam.core.{ RetryStrategy => Strategy }
 import dev.tauri.choam.BaseSpec
 
 final class StrategySpecExt extends BaseSpec {
 
-  test("Public Rxn.Strategy API") {
+  test("Public RetryStrategy API") {
     val s0: Strategy.Spin = Strategy.Default
     s0.maxRetries : Option[Int]
     s0.maxSpin : Int

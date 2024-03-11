@@ -246,7 +246,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def unsafePerform(
     a: A,
     mcas: Mcas,
-    strategy: Strategy.Spin = Strategy.Default,
+    strategy: RetryStrategy.Spin = RetryStrategy.Default,
   ): B = {
     new InterpreterState[A, B](
       rxn = this,
@@ -259,7 +259,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   final def perform[F[_], X >: B](
     a: A,
     mcas: Mcas,
-    strategy: Strategy = Strategy.Default,
+    strategy: RetryStrategy = RetryStrategy.Default,
   )(implicit F: Async[F]): F[X] = {
     new InterpreterState[A, X](
       this,
@@ -273,11 +273,11 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   private[choam] final def unsafePerformInternal(
     a: A,
     ctx: Mcas.ThreadContext,
-    maxBackoff: Int = Rxn.defaultMaxSpin,
-    randomizeBackoff: Boolean = Rxn.defaultRandomizeSpin,
+    maxBackoff: Int = BackoffPlatform.maxPauseDefault,
+    randomizeBackoff: Boolean = BackoffPlatform.randomizePauseDefault,
   ): B = {
     // TODO: this allocation can hurt us in benchmarks!
-    val str = Strategy
+    val str = RetryStrategy
       .Default
       .withMaxSpin(maxBackoff)
       .withRandomizeSpin(randomizeBackoff)
@@ -294,361 +294,8 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
 object Rxn extends RxnInstances0 {
 
-  // TODO: move this to separate file, and rename to RetryStrategy(?)
-  sealed abstract class Strategy extends Product with Serializable {
-
-    // TODO: do we EVER want `randomize*` to be actually false?
-
-    // SPIN:
-
-    // maxRetries:
-
-    def maxRetries: Option[Int]
-
-    def withMaxRetries(maxRetries: Option[Int]): Strategy
-
-    private[core] def maxRetriesInt: Int
-
-    // maxSpin:
-
-    def maxSpin: Int
-
-    def withMaxSpin(maxSpin: Int): Strategy
-
-    // randomizeSpin:
-
-    def randomizeSpin: Boolean
-
-    def withRandomizeSpin(randomizeSpin: Boolean): Strategy
-
-    // CEDE:
-
-    // maxCede:
-
-    def maxCede: Int
-
-    def withMaxCede(maxCede: Int): Strategy
-
-    // randomizeCede:
-
-    def randomizeCede: Boolean
-
-    def withRandomizeCede(randomizeCede: Boolean): Strategy
-
-    // SLEEP:
-
-    // maxSleep:
-
-    def maxSleep: FiniteDuration
-
-    private[core] def maxSleepNanos: Long
-
-    def withMaxSleep(maxSleep: FiniteDuration): Strategy
-
-    // randomizeSleep:
-
-    def randomizeSleep: Boolean
-
-    def withRandomizeSleep(randomizeSleep: Boolean): Strategy
-
-    // MISC.:
-
-    private[core] def canSuspend: Boolean
-  }
-
-  final object Strategy {
-
-    sealed abstract class Spin
-      extends Strategy {
-
-      override def withMaxRetries(maxRetries: Option[Int]): Spin
-
-      override def withMaxSpin(maxSpin: Int): Spin
-
-      override def withRandomizeSpin(randomizeSpin: Boolean): Spin
-
-      private[core] final override def canSuspend: Boolean =
-        false
-    }
-
-    private final case class StrategyFull(
-      maxRetries: Option[Int],
-      maxSpin: Int,
-      randomizeSpin: Boolean,
-      maxCede: Int,
-      randomizeCede: Boolean,
-      maxSleep: FiniteDuration,
-      randomizeSleep: Boolean,
-    ) extends Strategy {
-
-      require(maxRetries.forall{ mr => (mr >= 0) && (mr < Integer.MAX_VALUE) })
-      require(maxSpin > 0)
-      require(maxCede >= 0)
-      require(maxSleep >= Duration.Zero)
-      require((maxCede > 0) || (maxSleep > Duration.Zero)) // otherwise it should be SPIN
-
-      final override def withMaxRetries(maxRetries: Option[Int]): Strategy = {
-        if (maxRetries == this.maxRetries) this
-        else this.copy(maxRetries = maxRetries)
-      }
-
-      final override def withMaxSpin(maxSpin: Int): Strategy = {
-        if (maxSpin == this.maxSpin) this
-        else this.copy(maxSpin = maxSpin)
-      }
-
-      final override def withRandomizeSpin(randomizeSpin: Boolean): Strategy = {
-        if (randomizeSpin == this.randomizeSpin) this
-        else this.copy(randomizeSpin = randomizeSpin)
-      }
-
-      final override def withMaxCede(maxCede: Int): Strategy = {
-        if ((maxCede == 0) && (this.maxSleepNanos == 0L)) {
-          StrategySpin(
-            maxRetries = this.maxRetries,
-            maxSpin = this.maxSpin,
-            randomizeSpin = this.randomizeSpin,
-          )
-        } else if (maxCede == this.maxCede) {
-          this
-        } else {
-          this.copy(maxCede = maxCede)
-        }
-      }
-
-      final override def withRandomizeCede(randomizeCede: Boolean): Strategy = {
-        if (randomizeCede == this.randomizeCede) this
-        else this.copy(randomizeCede = randomizeCede)
-      }
-
-      final override def withMaxSleep(maxSleep: FiniteDuration): Strategy = {
-        if ((maxSleep == Duration.Zero) && (this.maxCede == 0)) {
-          StrategySpin(
-            maxRetries = this.maxRetries,
-            maxSpin = this.maxSpin,
-            randomizeSpin = this.randomizeSpin,
-          )
-        } else if (maxSleep == this.maxSleep) {
-          this
-        } else {
-          this.copy(maxSleep = maxSleep)
-        }
-      }
-
-      final override def withRandomizeSleep(randomizeSleep: Boolean): Strategy = {
-        if (randomizeSleep == this.randomizeSleep) this
-        else this.copy(randomizeSleep = randomizeSleep)
-      }
-
-      private[core] override val maxRetriesInt: Int = maxRetries match {
-        case Some(n) => n
-        case None => -1
-      }
-
-      private[core] override val maxSleepNanos: Long =
-        maxSleep.toNanos
-
-      private[core] final override def canSuspend: Boolean =
-        true
-    }
-
-    private final case class StrategySpin(
-      maxRetries: Option[Int],
-      maxSpin: Int,
-      randomizeSpin: Boolean,
-    ) extends Spin {
-
-      require(maxRetries.forall{ mr => (mr >= 0) && (mr < Integer.MAX_VALUE) })
-      require(maxSpin > 0)
-
-      final override def withMaxRetries(maxRetries: Option[Int]): Spin = {
-        if (maxRetries == this.maxRetries) this
-        else this.copy(maxRetries = maxRetries)
-      }
-
-      final override def withMaxSpin(maxSpin: Int): Spin = {
-        if (maxSpin == this.maxSpin) this
-        else this.copy(maxSpin = maxSpin)
-      }
-
-      final override def withRandomizeSpin(randomizeSpin: Boolean): Spin = {
-        if (randomizeSpin == this.randomizeSpin) this
-        else this.copy(randomizeSpin = randomizeSpin)
-      }
-
-      final override def withMaxCede(maxCede: Int): Strategy = {
-        if (maxCede == 0) {
-          this
-        } else {
-          StrategyFull(
-            maxRetries = maxRetries,
-            maxSpin = maxSpin,
-            randomizeSpin = randomizeSpin,
-            maxCede = maxCede,
-            randomizeCede = defaultRandomizeCede,
-            maxSleep = Duration.Zero,
-            randomizeSleep = false,
-          )
-        }
-      }
-
-      final override def withRandomizeCede(randomizeCede: Boolean): Strategy = {
-        if (randomizeCede) {
-          StrategyFull(
-            maxRetries = maxRetries,
-            maxSpin = maxSpin,
-            randomizeSpin = randomizeSpin,
-            maxCede = defaultMaxCede,
-            randomizeCede = true,
-            maxSleep = Duration.Zero,
-            randomizeSleep = false,
-          )
-        } else {
-          this
-        }
-      }
-
-      final override def withMaxSleep(maxSleep: FiniteDuration): Strategy = {
-        if (maxSleep == Duration.Zero) {
-          this
-        } else {
-          StrategyFull(
-            maxRetries = maxRetries,
-            maxSpin = maxSpin,
-            randomizeSpin = randomizeSpin,
-            maxCede = defaultMaxCede, // TODO: 0?
-            randomizeCede = defaultRandomizeCede, // TODO: false?
-            maxSleep = maxSleep,
-            randomizeSleep = defaultRandomizeSleep,
-          )
-        }
-      }
-
-      final override def withRandomizeSleep(randomizeSleep: Boolean): Strategy = {
-        if (randomizeSleep) {
-          StrategyFull(
-            maxRetries = maxRetries,
-            maxSpin = maxSpin,
-            randomizeSpin = randomizeSpin,
-            maxCede = defaultMaxCede, // TODO: 0?
-            randomizeCede = defaultRandomizeCede, // TODO: false?
-            maxSleep = defaultMaxSleep,
-            randomizeSleep = true,
-          )
-        } else {
-          this
-        }
-      }
-
-      private[core] override val maxRetriesInt: Int = maxRetries match {
-        case Some(n) => n
-        case None => -1
-      }
-
-      final override def maxCede: Int =
-        0
-
-      final override def randomizeCede: Boolean =
-        false
-
-      final override def maxSleep: FiniteDuration =
-        Duration.Zero
-
-      private[core] final override def maxSleepNanos: Long =
-        0L
-
-      final override def randomizeSleep: Boolean =
-        false
-    }
-
-    final val Default: Spin =
-      spin(maxRetries = None, maxSpin = defaultMaxSpin, randomizeSpin = defaultRandomizeSpin)
-
-    final def sleep(
-      maxRetries: Option[Int],
-      maxSpin: Int,
-      randomizeSpin: Boolean,
-      maxCede: Int,
-      randomizeCede: Boolean,
-      maxSleep: FiniteDuration,
-      randomizeSleep: Boolean,
-    ): Strategy = {
-      require(maxSleep > Duration.Zero)
-      StrategyFull(
-        maxRetries = maxRetries,
-        maxSpin = maxSpin,
-        randomizeSpin = randomizeSpin,
-        maxCede = maxCede,
-        randomizeCede = randomizeCede,
-        maxSleep = maxSleep,
-        randomizeSleep = randomizeSleep,
-      )
-    }
-
-    final def cede(
-      maxRetries: Option[Int],
-      maxSpin: Int,
-      randomizeSpin: Boolean,
-      maxCede: Int,
-      randomizeCede: Boolean,
-    ): Strategy = {
-      StrategyFull(
-        maxRetries = maxRetries,
-        maxSpin = maxSpin,
-        randomizeSpin = randomizeSpin,
-        maxCede = maxCede,
-        randomizeCede = randomizeCede,
-        maxSleep = Duration.Zero,
-        randomizeSleep = false,
-      )
-    }
-
-    final def spin(
-      maxRetries: Option[Int],
-      maxSpin: Int,
-      randomizeSpin: Boolean,
-    ): Spin = {
-      StrategySpin(
-        maxRetries = maxRetries,
-        maxSpin = maxSpin,
-        randomizeSpin = randomizeSpin,
-      )
-    }
-  }
-
   private[this] final val interruptCheckPeriod =
     16384
-
-  /*
-   * The default value of 256 for `maxSpin` ensures that
-   * there is at most 256 (or 512 with randomization) calls
-   * to `onSpinWait` (see `Backoff`). It was determined
-   * with experiments (see `SpinBench`), that under very
-   * high contention, this increases performance (compared
-   * to the previous value of 16.
-   */
-  private[core] final val defaultMaxSpin =
-    256
-
-  /*
-   * `randomizeSpin` is true by default, since it seems
-   * to have a small performance advantage for certain
-   * operations (and no downside for others). See `SpinBench`.
-   */
-  private[Rxn] final val defaultRandomizeSpin =
-    true
-
-  private[core] final val defaultMaxCede =
-    1 // TODO
-
-  private[Rxn] final val defaultRandomizeCede =
-    false // TODO
-
-  private[core] final val defaultMaxSleep =
-    100.millis // TODO
-
-  private[Rxn] final val defaultRandomizeSleep =
-    true
 
   /** This is just exporting `DefaultMcas`, because that's in an internal package */
   final def DefaultMcas: Mcas =
@@ -989,7 +636,7 @@ object Rxn extends RxnInstances0 {
     rxn: Rxn[X, R],
     x: X,
     mcas: Mcas,
-    strategy: Rxn.Strategy,
+    strategy: RetryStrategy,
   ) {
 
     private[this] val maxRetries: Int =
@@ -997,7 +644,7 @@ object Rxn extends RxnInstances0 {
 
     private[this] val canSuspend: Boolean = {
       val cs = strategy.canSuspend
-      assert((!cs) == strategy.isInstanceOf[Rxn.Strategy.Spin]) // just to be sure
+      assert((!cs) == strategy.isInstanceOf[RetryStrategy.Spin]) // just to be sure
       cs
     }
 

@@ -17,6 +17,10 @@
 
 package dev.tauri.choam.core;
 
+import java.util.concurrent.TimeUnit;
+
+import scala.concurrent.duration.FiniteDuration;
+
 abstract class BackoffPlatform {
 
   // see the comment in Backoff2 about these values
@@ -24,6 +28,16 @@ abstract class BackoffPlatform {
   static final int maxCedeDefault = 8;
   static final int maxSleepDefault = 8;
   static final int sleepAtomShiftNs = 23;
+
+  static final boolean randomizePauseDefault = true;
+  static final boolean randomizeCedeDefault = true;
+  static final boolean randomizeSleepDefault = true;
+
+  static final long sleepAtomNanos =
+    8000000L;
+
+  static final FiniteDuration maxSleepDefaultDuration =
+    new FiniteDuration(maxSleepDefault * sleepAtomNanos, TimeUnit.NANOSECONDS);
 
   // marker bits for `backoff`:
   static final long backoffSpinMark = 1L << 32;

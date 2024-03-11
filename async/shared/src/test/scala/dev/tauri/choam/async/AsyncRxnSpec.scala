@@ -22,6 +22,8 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
+import core.RetryStrategy
+
 final class AsyncRxnSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with SpecThreadConfinedMcas
@@ -36,19 +38,19 @@ trait AsyncRxnSpec[F[_]]
       Rxn.lift(s => s.length)
     val never: Rxn[String, Int] =
       Rxn.unsafe.retry
-    val sSpin = Rxn.Strategy.spin(
+    val sSpin = RetryStrategy.spin(
       maxRetries = Some(128),
       maxSpin = 512,
       randomizeSpin = true,
     )
-    val sCede = Rxn.Strategy.cede(
+    val sCede = RetryStrategy.cede(
       maxRetries = Some(128),
       maxSpin = 512,
       randomizeSpin = true,
       maxCede = 1,
       randomizeCede = false,
     )
-    val sSleep = Rxn.Strategy.sleep(
+    val sSleep = RetryStrategy.sleep(
       maxRetries = Some(128),
       maxSpin = 512,
       randomizeSpin = true,

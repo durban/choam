@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package core
 
+import scala.concurrent.duration._
+
 private abstract class BackoffPlatform {
 
   @inline
@@ -36,6 +38,16 @@ private object BackoffPlatform {
   @inline final val maxCedeDefault = 8
   @inline final val maxSleepDefault = 8
   @inline final val sleepAtomShiftNs = 23
+
+  @inline final val randomizePauseDefault = true
+  @inline final val randomizeCedeDefault = true
+  @inline final val randomizeSleepDefault = true
+
+  @inline final val sleepAtomNanos =
+    8000000L
+
+  final val maxSleepDefaultDuration: FiniteDuration =
+    (maxSleepDefault * sleepAtomNanos).nanoseconds
 
   @inline final val backoffSpinMark = 1L << 32;
   @inline final val backoffCedeMark = 2L << 32;

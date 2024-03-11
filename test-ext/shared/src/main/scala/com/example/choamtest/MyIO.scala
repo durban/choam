@@ -37,6 +37,7 @@ import cats.effect.kernel.{
 
 import dev.tauri.choam.internal.mcas.Mcas
 import dev.tauri.choam.{ Rxn, Axn, Reactive, =#> }
+import dev.tauri.choam.core.RetryStrategy
 import dev.tauri.choam.async.{ AsyncReactive, Promise, GenWaitList, WaitList }
 
 final case class MyIO[+A](val impl: IO[A]) {
@@ -55,10 +56,10 @@ object MyIO {
 
   implicit def asyncReactiveForMyIO: AsyncReactive[MyIO] = new AsyncReactive[MyIO] {
 
-    final override def apply[A, B](r: Rxn[A,B], a: A, s: Rxn.Strategy.Spin): MyIO[B] =
+    final override def apply[A, B](r: Rxn[A,B], a: A, s: RetryStrategy.Spin): MyIO[B] =
       MyIO(IO.delay { r.unsafePerform(a, this.mcasImpl, s) })
 
-    final override def applyAsync[A, B](r: Rxn[A,B], a: A, s: Rxn.Strategy): MyIO[B] =
+    final override def applyAsync[A, B](r: Rxn[A,B], a: A, s: RetryStrategy): MyIO[B] =
       r.perform[MyIO, B](a, this.mcasImpl, s)(asyncForMyIO)
 
     final override def mcasImpl: Mcas =

@@ -30,6 +30,7 @@ import cats.effect.kernel.{ Ref => CatsRef }
 import cats.mtl.Local
 
 import internal.mcas.Mcas
+import core.RetryStrategy
 
 final class RxnSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
@@ -997,8 +998,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         else Rxn.unsafe.retry[Any, String]
       }
     }
-    def maxRetries(mr: Option[Int]): Rxn.Strategy.Spin =
-      Rxn.Strategy.Default.withMaxRetries(mr)
+    def maxRetries(mr: Option[Int]): RetryStrategy.Spin =
+      RetryStrategy.Default.withMaxRetries(mr)
     for {
       // finite maxRetries:
       _ <- assertRaisesF(F.delay(never.unsafePerform((), this.mcasImpl, maxRetries(Some(4096)))), _.isInstanceOf[Rxn.MaxRetriesReached])
@@ -1015,8 +1016,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Strategy options") {
-    val s = Rxn
-      .Strategy
+    val s = RetryStrategy
       .Default
       .withRandomizeSpin(false)
       .withMaxSpin(1024)
@@ -1027,7 +1027,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     )
   }
 
-  private[this] val sSpin = Rxn.Strategy.spin(
+  private[this] val sSpin = RetryStrategy.spin(
     maxRetries = None,
     maxSpin = 512,
     randomizeSpin = true,
@@ -1046,7 +1046,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     assertResultF(r.perform[F, Int]("foo", this.mcasImpl, sSpin)(F), 3)
   }
 
-  private[this] val sCede = Rxn.Strategy.cede(
+  private[this] val sCede = RetryStrategy.cede(
     maxRetries = None,
     maxSpin = 512,
     randomizeSpin = true,
@@ -1068,7 +1068,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     assertResultF(tsk, 42)
   }
 
-  private[this] val sSleep = Rxn.Strategy.sleep(
+  private[this] val sSleep = RetryStrategy.sleep(
     maxRetries = None,
     maxSpin = 512,
     randomizeSpin = true,

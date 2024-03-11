@@ -214,7 +214,7 @@ class BackoffSpec extends BaseSpec {
 
     def backoffStrT(
       retries: Int,
-      strategy: Rxn.Strategy,
+      strategy: RetryStrategy,
       canSuspend: Boolean,
     ): Foo[Unit] = {
       val str = if (ignoreRandomize) {
@@ -481,7 +481,7 @@ class BackoffSpec extends BaseSpec {
   }
 
   test("Backoff2.backoffStr") {
-    val str1 = Rxn.Strategy.spin(
+    val str1 = RetryStrategy.spin(
       maxRetries = None,
       maxSpin = 1000,
       randomizeSpin = false,
@@ -563,7 +563,7 @@ class BackoffSpec extends BaseSpec {
 
   test("Backoff2 randomization") {
     val Test = new BoTest(ignoreRandomize = false)
-    val str0 = Rxn.Strategy.spin(
+    val str0 = RetryStrategy.spin(
       maxRetries = None,
       maxSpin = 1000,
       randomizeSpin = true,
