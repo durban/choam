@@ -222,7 +222,7 @@ class BackoffSpec extends BaseSpec {
       } else {
         strategy
       }
-      val tok = this.backoffStr(retries, str, canSuspend)
+      val tok = this.backoffStrTok(retries, str, canSuspend)
       convertToken(tok)
     }
 
@@ -236,7 +236,7 @@ class BackoffSpec extends BaseSpec {
       randomizeSleep: Boolean = true,
     ): Foo[Unit] = {
       val tok = if (ignoreRandomize) {
-        this.backoff(
+        this.backoffTok(
           retries = retries,
           maxPause = maxPause,
           randomizePause = false,
@@ -246,7 +246,7 @@ class BackoffSpec extends BaseSpec {
           randomizeSleep = false,
         )
       } else {
-        this.backoff(
+        this.backoffTok(
           retries = retries,
           maxPause = maxPause,
           randomizePause = randomizePause,
@@ -470,14 +470,14 @@ class BackoffSpec extends BaseSpec {
   }
 
   test("Backoff2 illegal args") {
-    assert(Try(Test.backoff(Int.MinValue)).isFailure)
-    assert(Try(Test.backoff(-1024)).isFailure)
-    assert(Try(Test.backoff(-1023)).isFailure)
-    assert(Try(Test.backoff(-1)).isFailure)
-    assert(Try(Test.backoff(0)).isFailure)
-    assert(Try(Test.backoff(31)).isFailure)
-    assert(Try(Test.backoff(128)).isFailure)
-    assert(Try(Test.backoff(Int.MaxValue)).isFailure)
+    assert(Try(Test.backoffTok(Int.MinValue)).isFailure)
+    assert(Try(Test.backoffTok(-1024)).isFailure)
+    assert(Try(Test.backoffTok(-1023)).isFailure)
+    assert(Try(Test.backoffTok(-1)).isFailure)
+    assert(Try(Test.backoffTok(0)).isFailure)
+    assert(Try(Test.backoffTok(31)).isFailure)
+    assert(Try(Test.backoffTok(128)).isFailure)
+    assert(Try(Test.backoffTok(Int.MaxValue)).isFailure)
   }
 
   test("Backoff2.backoffStr") {

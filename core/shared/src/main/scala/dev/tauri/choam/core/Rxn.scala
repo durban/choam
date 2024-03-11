@@ -1256,13 +1256,13 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def backoffAndNext(retries: Int, canSuspend: Boolean): Rxn[Any, Any] = {
-      val token = Backoff2.backoffStr(
+      val token = Backoff2.backoffStrTok(
         retries = retries,
         strategy = this.strategy,
         canSuspend = canSuspend,
       )
-      if (Backoff2.isPauseToken(token)) {
-        // `onSpinWait()` is already done, restart:
+      if (Backoff2.spinIfPauseToken(token)) {
+        // ok, spinning done, restart:
         this.startRxn
       } else {
         assert(canSuspend)

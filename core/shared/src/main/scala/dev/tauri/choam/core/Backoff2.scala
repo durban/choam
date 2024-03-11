@@ -49,13 +49,13 @@ private abstract class Backoff2 extends BackoffPlatform {
   protected[this] final val sleepAtom: FiniteDuration =
     8000000L.nanos // 8ms
 
-  final def backoffStr(
+  final def backoffStrTok(
     retries: Int,
     strategy: Rxn.Strategy,
     canSuspend: Boolean, // if `false`, overrides `strategy.canSuspend`
   ): Long = {
     val canReallySuspend = canSuspend && strategy.canSuspend
-    this.backoff(
+    this.backoffTok(
       retries = if (retries > 30) 30 else retries,
       maxPause = strategy.maxSpin,
       randomizePause = strategy.randomizeSpin,
@@ -93,13 +93,23 @@ private abstract class Backoff2 extends BackoffPlatform {
     (mark == BackoffPlatform.backoffSpinMark)
   }
 
+  final def spinIfPauseToken(token: Long): Boolean = {
+    if (isPauseToken(token)) {
+      val k = (token & BackoffPlatform.backoffTokenMask).toInt
+      spin(k)
+      true
+    } else {
+      false
+    }
+  }
+
   /**
-   * Returns a backoff token after possibly spinning.
+   * Returns a backoff token.
    *
    * @see tokenToF to easily convert the returned token to
    *      a `F[Unit]`.
    */
-  final def backoff(
+  final def backoffTok(
     retries: Int,
     maxPause: Int = BackoffPlatform.maxPauseDefault,
     randomizePause: Boolean = true,
@@ -148,7 +158,6 @@ private abstract class Backoff2 extends BackoffPlatform {
 
   private[this] final def pause(n: Int, randomize: Boolean): Long = {
     val k = if (randomize) rnd(n) else n
-    spin(k) // spin right now
     BackoffPlatform.backoffSpinMark | k.toLong
   }
 
