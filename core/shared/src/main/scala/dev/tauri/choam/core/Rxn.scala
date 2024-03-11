@@ -699,7 +699,7 @@ object Rxn extends RxnInstances0 {
     private[this] var a: Any =
       x
 
-    private[this] var fullRetries: Int =
+    private[this] var retries: Int =
       0
 
     private[this] var _stats: ExStatMap =
@@ -824,7 +824,7 @@ object Rxn extends RxnInstances0 {
           a = () : Any
           startA = () : Any
           startRxn = pcAction
-          this.fullRetries = 0
+          this.retries = 0
           clearDesc()
           pcAction
         case 5 => // ContAfterPostCommit
@@ -879,12 +879,12 @@ object Rxn extends RxnInstances0 {
         // we're not actually retrying,
         // just going to the other side
         // of a `+` (so we're not
-        // incrementing `fullRetries`):
+        // incrementing `retries`):
         loadAlt()
       } else {
         // really retrying:
-        val retriesNow = this.fullRetries + 1
-        this.fullRetries = retriesNow
+        val retriesNow = this.retries + 1
+        this.retries = retriesNow
         // check abnormal conditions:
         val mr = this.maxRetries
         if ((mr >= 0) && ((retriesNow > mr) || (retriesNow == Integer.MAX_VALUE))) {
@@ -1030,10 +1030,7 @@ object Rxn extends RxnInstances0 {
           this.clearDesc()
           if (performMcas(d)) {
             // save retry statistics:
-            ctx.recordCommit(
-              fullRetries = this.fullRetries,
-              mcasRetries = 0,
-            )
+            ctx.recordCommit(this.retries)
             // ok, commit is done, but we still need to perform post-commit actions
             val res = a
             a = () : Any

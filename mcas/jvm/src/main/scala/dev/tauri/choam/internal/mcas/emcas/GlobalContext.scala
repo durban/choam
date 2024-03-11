@@ -78,9 +78,7 @@ private[mcas] abstract class GlobalContext
     @nowarn("cat=lint-performance")
     var commits = 0L
     @nowarn("cat=lint-performance")
-    var fullRetries = 0L
-    @nowarn("cat=lint-performance")
-    var mcasRetries = 0L
+    var retries = 0L
     this._threadContexts.foreach { (tid, wr) =>
       val tctx = wr.get()
       if (tctx ne null) {
@@ -89,8 +87,7 @@ private[mcas] abstract class GlobalContext
         // for benchmarking, so we're just hoping for the best...
         val stats = tctx.getRetryStats()
         commits += stats.commits
-        fullRetries += stats.fullRetries
-        mcasRetries += stats.mcasRetries
+        retries += stats.retries
       } else {
         this._threadContexts.remove(tid, wr) // clean empty weakref
         ()
@@ -98,8 +95,7 @@ private[mcas] abstract class GlobalContext
     }
     Mcas.RetryStats(
       commits = commits,
-      fullRetries = fullRetries,
-      mcasRetries = mcasRetries
+      retries = retries,
     )
   }
 

@@ -146,40 +146,33 @@ private final class EmcasThreadContext(
   final override def toString: String =
     s"ThreadContext(impl = ${this.impl}, tid = ${this.tid})"
 
-  private[choam] final override def recordCommit(fullRetries: Int, mcasRetries: Int): Unit = {
-    this.recordCommitPlain(fullRetries, mcasRetries)
+  private[choam] final override def recordCommit(retries: Int): Unit = {
+    this.recordCommitOpaque(retries)
   }
 
-  /** Only for testing/benchmarking */
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     Mcas.RetryStats(
       commits = this.getCommitsOpaque(),
-      fullRetries = this.getFullRetriesOpaque(),
-      mcasRetries = this.getMcasRetriesOpaque(),
+      retries = this.getRetriesOpaque(),
     )
   }
 
-  /** Only for testing/benchmarking */
   private[choam] final override def maxReusedWeakRefs(): Int = {
     this.getMaxReuseEverOpaque()
   }
 
-  /** Only for testing/benchmarking */
   private[choam] final override def supportsStatistics: Boolean = {
     true
   }
 
-  /** Only for testing/benchmarking */
   private[choam] final override def getStatisticsPlain(): Map[AnyRef, AnyRef] = {
     this._getStatisticsPlain()
   }
 
-  /** Only for testing/benchmarking */
   private[choam] final override def getStatisticsOpaque(): Map[AnyRef, AnyRef] = {
     this._getStatisticsOpaque()
   }
 
-  /** Only for testing/benchmarking */
   private[choam] final override def setStatisticsPlain(stats: Map[AnyRef, AnyRef]): Unit = {
     this._setStatisticsPlain(stats)
   }

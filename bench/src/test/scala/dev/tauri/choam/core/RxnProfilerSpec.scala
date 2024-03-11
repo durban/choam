@@ -70,10 +70,8 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
   test("baseline") {
     simulateRun { _ => F.unit } { r =>
       for {
-        _ <- assertEqualsF(r.size, 6)
+        _ <- assertEqualsF(r.size, 4)
         _ <- assertF(r(RxnProfiler.RetriesPerCommit).getScore.isNaN)
-        _ <- assertF(r(RxnProfiler.RetriesPerCommitFull).getScore.isNaN)
-        _ <- assertF(r(RxnProfiler.RetriesPerCommitMcas).getScore.isNaN)
         _ <- assertEqualsF(r(RxnProfiler.ReusedWeakRefs).getScore, 0.0)
         _ <- assertEqualsF(r(RxnProfiler.ExchangeCount).getScore, 0.0)
         eps = r(RxnProfiler.ExchangesPerSecond).getScore
@@ -140,29 +138,17 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
       // no retry:
       r0 <- succeedAfter(0)
       _ <- simulateRun { _ => runInFiber(r0) } { r =>
-        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 0.0) *> (
-          assertEqualsF(r(RxnProfiler.RetriesPerCommitFull).getScore, 0.0) *> (
-            assertEqualsF(r(RxnProfiler.RetriesPerCommitMcas).getScore, 0.0)
-          )
-        )
+        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 0.0)
       }
       // 1 retry:
       r1 <- succeedAfter(1)
       _ <- simulateRun { _ => runInFiber(r1) } { r =>
-        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 1.0) *> (
-          assertEqualsF(r(RxnProfiler.RetriesPerCommitFull).getScore, 1.0) *> (
-            assertEqualsF(r(RxnProfiler.RetriesPerCommitMcas).getScore, 0.0)
-          )
-        )
+        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 1.0)
       }
       // 5 retries:
       r5 <- succeedAfter(5)
       _ <- simulateRun { _ => runInFiber(r5) } { r =>
-        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 5.0) *> (
-          assertEqualsF(r(RxnProfiler.RetriesPerCommitFull).getScore, 5.0) *> (
-            assertEqualsF(r(RxnProfiler.RetriesPerCommitMcas).getScore, 0.0)
-          )
-        )
+        assertEqualsF(r(RxnProfiler.RetriesPerCommit).getScore, 5.0)
       }
       // parallel runs, there should be additional retries:
       _ <- if (this.isJvm()) {
@@ -185,7 +171,6 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
               // there should be sometimes additional retries (due to concurrency):
               val retries = r(RxnProfiler.RetriesPerCommit).getScore
               assert(retries > 2.0)
-              // TODO: check MCAS retries (they're currently always 0)
             }
           }
         } yield ()

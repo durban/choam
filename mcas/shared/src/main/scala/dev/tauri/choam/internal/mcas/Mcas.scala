@@ -32,7 +32,9 @@ sealed trait Mcas {
 
   /** Only for testing/benchmarking */
   private[choam] def getRetryStats(): Mcas.RetryStats = {
-    Mcas.RetryStats(0L, 0L, 0L)
+    // implementations should override if
+    // they collect statistics
+    Mcas.RetryStats(0L, 0L)
   }
 
   /** Only for testing/benchmarking */
@@ -285,9 +287,8 @@ object Mcas extends McasCompanionPlatform { self =>
       new Builder(this, this.start())
     }
 
-    // TODO: Remove `mcasRetries`, because there are none; also from RxnProfiler.
     /** Only for testing/benchmarking */
-    private[choam] def recordCommit(@unused fullRetries: Int, @unused mcasRetries: Int): Unit = {
+    private[choam] def recordCommit(@unused retries: Int): Unit = {
       // we ignore stats by default; implementations
       // can override if it matters
       ()
@@ -328,8 +329,7 @@ object Mcas extends McasCompanionPlatform { self =>
 
   private[choam] final case class RetryStats(
     commits: Long,
-    fullRetries: Long,
-    mcasRetries: Long,
+    retries: Long,
   )
 
   /** Only for testing */

@@ -28,8 +28,7 @@ import dev.tauri.choam.internal.VarHandleHelper;
 abstract class EmcasThreadContextBase {
 
   private static final VarHandle COMMITS;
-  private static final VarHandle FULL_RETRIES;
-  private static final VarHandle MCAS_RETRIES;
+  private static final VarHandle RETRIES;
   private static final VarHandle MAX_REUSE_EVER;
   private static final VarHandle STATISTICS;
 
@@ -37,8 +36,7 @@ abstract class EmcasThreadContextBase {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       COMMITS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_commits", long.class));
-      FULL_RETRIES = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_fullRetries", long.class));
-      MCAS_RETRIES = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_mcasRetries", long.class));
+      RETRIES = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_retries", long.class));
       MAX_REUSE_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxReuseEver", int.class));
       STATISTICS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_statistics", Map.class));
     } catch (ReflectiveOperationException ex) {
@@ -48,8 +46,7 @@ abstract class EmcasThreadContextBase {
 
   // intentionally non-volatile, see below
   private long _commits; // = 0L
-  private long _fullRetries; // = 0L
-  private long _mcasRetries; // = 0L
+  private long _retries; // = 0L
   private int _maxReuseEver; // = 0
   private Map<Object, Object> _statistics = Map$.MODULE$.empty();
 
@@ -57,24 +54,22 @@ abstract class EmcasThreadContextBase {
     return (long) COMMITS.getOpaque(this);
   }
 
-  protected long getFullRetriesOpaque() {
-    return (long) FULL_RETRIES.getOpaque(this);
+  protected long getRetriesOpaque() {
+    return (long) RETRIES.getOpaque(this);
   }
 
-  protected long getMcasRetriesOpaque() {
-    return (long) MCAS_RETRIES.getOpaque(this);
-  }
-
-  // Note: this can cause readers to read
-  // never-written values (half of a long
-  // from another write). But we're not
-  // using these statistics for anything
-  // important; and we also have other
-  // problems on 32-bit systems.
-  protected void recordCommitPlain(int fullRetries, int mcasRetries) {
-    this._commits += 1L;
-    this._fullRetries += (long) fullRetries;
-    this._mcasRetries += (long) mcasRetries;
+  protected void recordCommitOpaque(int retries) {
+    // Only one thread writes, so `+=`-like
+    // increment is fine here. There is a
+    // race though: a reader can read values
+    // of commits and retries which do not
+    // "belong" together (e.g., a current
+    // value for commits, and an old one
+    // for retries). But this is just for
+    // statistical and informational purposes,
+    // so we don't really care.
+    COMMITS.setOpaque(this, this._commits + 1L);
+    RETRIES.setOpaque(this, this._retries + ((long) retries));
   }
 
   protected int getMaxReuseEverPlain() {

@@ -72,10 +72,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
   private[this] var commitsBefore: Long =
     0L
 
-  private[this] var fullRetriesBefore: Long =
-    0L
-
-  private[this] var mcasRetriesBefore: Long =
+  private[this] var retriesBefore: Long =
     0L
 
   private[this] var exchangesBefore: Long =
@@ -144,8 +141,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
     if (config.retriesPerCommit) {
       val stats = Emcas.getRetryStats()
       this.commitsBefore = stats.commits
-      this.fullRetriesBefore = stats.fullRetries
-      this.mcasRetriesBefore = stats.mcasRetries
+      this.retriesBefore = stats.retries
     }
     if (config.measureExchanges) {
       this.exchangesBefore = RxnProfiler.exchangeCounter.sum()
@@ -185,43 +181,19 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
   private[this] final def countRetriesPerCommit(): ju.List[ScalarResult] = {
     val rs = Emcas.getRetryStats()
     val commitsAfter = rs.commits
-    val fullRetriesAfter = rs.fullRetries
-    val mcasRetriesAfter = rs.mcasRetries
+    val retriesAfter = rs.retries
     val allCommits = commitsAfter - this.commitsBefore
-    val allFullRetries = fullRetriesAfter - this.fullRetriesBefore
-    val allMcasRetries = mcasRetriesAfter - this.mcasRetriesBefore
-    val fullRetriesPerCommit = if (allCommits == 0L) {
+    val allRetries = retriesAfter - this.retriesBefore
+    val retriesPerCommit = if (allCommits == 0L) {
       Double.NaN
     } else {
-      allFullRetries.toDouble / allCommits.toDouble
-    }
-    val mcasRetriesPerCommit = if (allCommits == 0L) {
-      Double.NaN
-    } else {
-      allMcasRetries.toDouble / allCommits.toDouble
-    }
-    val anyRetriesPerCommit = if (allCommits == 0L) {
-      Double.NaN
-    } else {
-      (allFullRetries + allMcasRetries).toDouble / allCommits.toDouble
+      allRetries.toDouble / allCommits.toDouble
     }
 
     ju.List.of(
       new ScalarResult(
         RxnProfiler.RetriesPerCommit,
-        anyRetriesPerCommit,
-        RxnProfiler.UnitRetriesPerCommit,
-        AggregationPolicy.AVG,
-      ),
-      new ScalarResult(
-        RxnProfiler.RetriesPerCommitFull,
-        fullRetriesPerCommit,
-        RxnProfiler.UnitRetriesPerCommit,
-        AggregationPolicy.AVG,
-      ),
-      new ScalarResult(
-        RxnProfiler.RetriesPerCommitMcas,
-        mcasRetriesPerCommit,
+        retriesPerCommit,
         RxnProfiler.UnitRetriesPerCommit,
         AggregationPolicy.AVG,
       ),
@@ -359,8 +331,6 @@ object RxnProfiler {
   }
 
   final val RetriesPerCommit = "rxn.retriesPerCommit"
-  final val RetriesPerCommitFull = RetriesPerCommit + ".full"
-  final val RetriesPerCommitMcas = RetriesPerCommit + ".mcas"
   final val UnitRetriesPerCommit = "retries/commit"
   final val ExchangesPerSecond = "rxn.exchangesPerSec"
   final val UnitExchangesPerSecond = "xchg/s"
