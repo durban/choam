@@ -346,7 +346,7 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .dependsOn(stream % "compile->compile;test->test")
-  .settings(
+  .jvmSettings(
     Test / fork := true,
     Test / javaOptions ++= List(
       "-Ddev.tauri.choam.stats.mcas=true",
