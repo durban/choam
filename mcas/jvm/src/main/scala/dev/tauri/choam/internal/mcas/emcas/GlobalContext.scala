@@ -104,7 +104,6 @@ private[mcas] abstract class GlobalContext
     )
   }
 
-  /** Only for testing/benchmarking */
   private[choam] final override def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
     val mb = Map.newBuilder[Long, Map[AnyRef, AnyRef]]
     this._threadContexts.foreach { (tid, wr) =>
@@ -119,7 +118,6 @@ private[mcas] abstract class GlobalContext
     mb.result()
   }
 
-  /** Only for testing/benchmarking */
   private[choam] final override def maxReusedWeakRefs(): Int = {
     // An `IntRef` is still cheaper than using an iterator (tuples):
     @nowarn("cat=lint-performance")
@@ -155,7 +153,6 @@ private[mcas] abstract class GlobalContext
     exists
   }
 
-  /** For testing. */
   private[emcas] final def threadContextCount(): Int = {
     // Allocating one `IntRef`, and using that
     // is still cheaper than using an iterator,

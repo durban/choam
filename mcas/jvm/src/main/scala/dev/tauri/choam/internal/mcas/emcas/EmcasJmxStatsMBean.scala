@@ -28,6 +28,8 @@ private sealed trait EmcasJmxStatsMBean {
   def getCommits(): Long
   def getRetries(): Long
   def getRetriesPerCommit(): Double
+  def getThreadContextCount(): Int
+  def getMaxReusedWeakRefs(): Int
 }
 
 private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
@@ -46,5 +48,13 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
     } else {
       Double.NaN
     }
+  }
+
+  final override def getThreadContextCount(): Int = {
+    impl.threadContextCount()
+  }
+
+  final override def getMaxReusedWeakRefs(): Int = {
+    impl.maxReusedWeakRefs()
   }
 }
