@@ -760,7 +760,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
   // JMX MBean for stats:
   if (GlobalContextBase.enableStatsMbean) {
     val oName = new javax.management.ObjectName(
-      f"${GlobalContextBase.emcasJmxStatsNamePrefix}%s-${this.##}%08x"
+      f"${GlobalContextBase.emcasJmxStatsNamePrefix}%s-${System.identityHashCode(this)}%08x"
     )
     java.lang.management.ManagementFactory.getPlatformMBeanServer().registerMBean(
       new EmcasJmxStats(this),
