@@ -20,13 +20,14 @@ package core
 
 import scala.concurrent.duration._
 
+import cats.Show
 import cats.syntax.all._
 
 import core.{ RetryStrategy => Strategy }
 
 final class StrategySpec extends BaseSpec {
 
-  test("Rxn.Strategy constructors") {
+  test("RetryStrategy constructors") {
     val s1: Strategy.Spin = Strategy.spin(
       maxRetries = Some(42),
       maxSpin = 999,
@@ -74,7 +75,7 @@ final class StrategySpec extends BaseSpec {
     assertEquals(s3.randomizeSleep, true)
   }
 
-  test("Rxn.Strategy copy") {
+  test("RetryStrategy copy") {
     val s1: Strategy.Spin = Strategy.Default
     assertEquals(s1.canSuspend, false)
     val s2: Strategy.Spin = s1.withMaxRetries(Some(42))
@@ -120,12 +121,23 @@ final class StrategySpec extends BaseSpec {
     assertEquals(s7.withMaxCede(0).withMaxCede(1), s7)
   }
 
-  test("Rxn.Strategy illegal arguments") {
+  test("RetryStrategy illegal arguments") {
     assert(Either.catchOnly[IllegalArgumentException](Strategy.spin(
       maxRetries = Some(Int.MaxValue), // this is invalid
       maxSpin = Int.MaxValue, // this is ok
       randomizeSpin = false,
     )).isLeft)
     assert(Either.catchOnly[IllegalArgumentException](Strategy.Default.withMaxSpin(0)).isLeft)
+  }
+
+  test("RetryStrategy Show/toString") {
+    val s1 = Strategy.spin()
+    assertEquals(Show[Strategy].show(s1), "RetryStrategy.Spin(maxRetries=∞, spin=..4096⚄)")
+    val s2 = s1.withRandomizeSpin(false)
+    assertEquals(Show[Strategy].show(s2), "RetryStrategy.Spin(maxRetries=∞, spin=..4096)")
+    val s3 = s2.withCede(true)
+    assertEquals(Show[Strategy].show(s3), "RetryStrategy(maxRetries=∞, spin=..4096, cede=..8⚄, sleep=0)")
+    val s4 = s3.withSleep(true).withCede(false)
+    assertEquals(s4.toString(), "RetryStrategy(maxRetries=∞, spin=..4096, cede=0, sleep=..64000000 nanoseconds⚄)")
   }
 }

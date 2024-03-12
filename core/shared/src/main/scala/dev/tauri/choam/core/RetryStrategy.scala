@@ -20,9 +20,9 @@ package core
 
 import scala.concurrent.duration._
 
-sealed abstract class RetryStrategy extends Product with Serializable {
+import cats.Show
 
-  // TODO: do we EVER want `randomize*` to be actually false?
+sealed abstract class RetryStrategy extends Product with Serializable {
 
   // SPIN:
 
@@ -100,6 +100,12 @@ object RetryStrategy {
       false
   }
 
+  implicit val showForRetryStrategy: Show[RetryStrategy] = {
+    // these have proper `toString`:
+    case full: StrategyFull => full.toString
+    case spin: StrategySpin => spin.toString
+  }
+
   private final case class StrategyFull(
     maxRetries: Option[Int],
     maxSpin: Int,
@@ -117,6 +123,26 @@ object RetryStrategy {
     require(maxSleep >= Duration.Zero)
     require(!((maxSleep == Duration.Zero) && randomizeSleep))
     require((maxCede > 0) || (maxSleep > Duration.Zero)) // otherwise it should be SPIN
+
+    final override def toString: String = {
+      val mr = maxRetries match {
+        case None => "∞"
+        case Some(mr) => mr.toString
+      }
+      val die = "⚄"
+      val sRand = if (randomizeSpin) die else ""
+      val cedeStr = if (maxCede == 0) {
+        "0"
+      } else {
+        s"..${maxCede}${if (randomizeCede) die else ""}"
+      }
+      val sleepStr = if (maxSleepNanos == 0L) {
+        "0"
+      } else { // TODO: nicer formatting of Duration
+        s"..${maxSleep}${if (randomizeSleep) die else ""}"
+      }
+      s"RetryStrategy(maxRetries=${mr}, spin=..${maxSpin}${sRand}, cede=${cedeStr}, sleep=${sleepStr})"
+    }
 
     final override def withMaxRetries(maxRetries: Option[Int]): RetryStrategy = {
       if (maxRetries == this.maxRetries) this
@@ -233,6 +259,16 @@ object RetryStrategy {
 
     require(maxRetries.forall{ mr => (mr >= 0) && (mr < Integer.MAX_VALUE) })
     require(maxSpin > 0)
+
+    final override def toString: String = {
+      val mr = maxRetries match {
+        case None => "∞"
+        case Some(mr) => mr.toString
+      }
+      val die = "⚄"
+      val sRand = if (randomizeSpin) die else ""
+      s"RetryStrategy.Spin(maxRetries=${mr}, spin=..${maxSpin}${sRand})"
+    }
 
     final override def withMaxRetries(maxRetries: Option[Int]): Spin = {
       if (maxRetries == this.maxRetries) this
