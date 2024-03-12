@@ -756,4 +756,16 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     }
     nullOf[A]
   }
+
+  // JMX MBean for stats:
+  if (GlobalContextBase.enableStatsMbean) {
+    val oName = new javax.management.ObjectName(
+      f"${GlobalContextBase.emcasJmxStatsNamePrefix}%s-${this.##}%08x"
+    )
+    java.lang.management.ManagementFactory.getPlatformMBeanServer().registerMBean(
+      new EmcasJmxStats(this),
+      oName,
+    )
+    // TODO: we never unregister this...
+  }
 }

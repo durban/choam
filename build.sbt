@@ -346,6 +346,12 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .dependsOn(stream % "compile->compile;test->test")
+  .settings(
+    Test / fork := true,
+    Test / javaOptions ++= List(
+      "-Ddev.tauri.choam.stats.mcas=true",
+    ),
+  )
 
 lazy val bench = project.in(file("bench"))
   .settings(name := "choam-bench")
