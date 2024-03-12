@@ -31,12 +31,18 @@ object JmxDemo extends IOApp.Simple {
   implicit def reactive: Reactive[IO] =
     Reactive.forSync[IO]
 
+  private final val N = 1024
+
   def run: IO[Unit] = {
     for {
       r1 <- Ref.unpadded("foo").run[IO]
       r2 <- Ref.padded("bar").run[IO]
+      arr <- Ref.array(N, "x").run[IO]
       tsk = Ref.swap(r1, r2).run[IO].parReplicateA_(0xffff)
-      _ <- IO.both(tsk, tsk)
+      arrTsk = (0 until N by 4).toVector.traverse_ { idx =>
+        arr.unsafeGet(idx).update(_ + "y")
+      }.run[IO].parReplicateA_(0xfff)
+      _ <- IO.both(IO.both(tsk, tsk), arrTsk)
       _ <- IO.sleep(1.minute)
     } yield ()
   }
