@@ -27,6 +27,7 @@ private[mcas] final class RefIdGenerator {
   // TODO: this is duplicated below
   private[this] final val gamma =
      0x9e3779b97f4a7c15L // Fibonacci hashing
+     // https://web.archive.org/web/20161121124236/http://brpreiss.com/books/opus4/html/page214.html
 
   private[this] final val initialBlockSize =
     2 // TODO: maybe start with bigger for platform threads?
