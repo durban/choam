@@ -34,7 +34,7 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
   private val M =
     1024 * 1024
 
-  test("RefIdGenerator stepping") {
+  test("Stepping") {
     val rig = new RefIdGenerator
     val t1 = rig.newThreadLocal()
     val id11 = t1.nextId()
@@ -66,7 +66,7 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
     assertEquals(id41 - id32, gamma)
   }
 
-  test("RefIdGenerator race") {
+  test("Racing") {
     def generate(rig: RefIdGenerator, arr: Array[Long]): IO[Unit] = IO.cede *> IO.delay {
       val tc = rig.newThreadLocal()
       val len = arr.length
@@ -94,7 +94,7 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
     } yield ()
   }
 
-  test("RefIdGenerator lots of IDs from one thread") {
+  test("Lots of IDs from one thread") {
     val rig = new RefIdGenerator
     val t = rig.newThreadLocal()
     var acc = 0L
@@ -108,5 +108,26 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
     acc ^= t.nextId()
     assertNotEquals(acc, 0L)
     assertNotEquals(rig.newThreadLocal().nextId(), acc)
+  }
+
+  test("One ID from lots of threads each") {
+    val rig = new RefIdGenerator
+    val first = rig.newThreadLocal().nextId() // uses 0, leaks 1
+    var acc = 0L
+    var last = 0L
+    var i = 0L
+    while (i <= Integer.MAX_VALUE.toLong) {
+      // i=0: uses 2, leaks 3
+      // i=1: uses 4, leaks 5
+      // ...
+      //      uses 2*(i+1)
+      // last one is i=MAX => uses 2*(MAX+1)
+      last = rig.newThreadLocal().nextId()
+      acc ^= last
+      i += 1L
+    }
+    assertNotEquals(acc, 0L)
+    assertEquals(last - first, 2L * (Integer.MAX_VALUE.toLong + 1L) * gamma)
+    assertEquals(rig.nextIdWithoutThreadLocal() - last, 2L * gamma)
   }
 }
