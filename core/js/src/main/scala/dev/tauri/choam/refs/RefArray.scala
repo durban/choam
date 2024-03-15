@@ -21,28 +21,26 @@ package refs
 import java.lang.ref.WeakReference
 
 import internal.mcas.{ MemoryLocation, Version }
+import internal.mcas.emcas.RefIdGenerator
 import RefArray.RefArrayRef
 
 private abstract class RefArray[A](
   val size: Int,
-  i0: Long,
-  i1: Long,
-  i2: Long,
-  i3: Int, // LSB is array index
-) extends RefIdOnly(i0, i1, i2, i3.toLong << 32)
+  _idBase: Long,
+) extends RefIdOnly(_idBase)
   with Ref.UnsealedArray[A] {
 
   protected def items: Array[AnyRef]
+
+  final def idBase: Long =
+    this.id
 }
 
 private final class StrictRefArray[A](
   __size: Int,
   initial: A,
-  i0: Long,
-  i1: Long,
-  i2: Long,
-  i3: Int,
-) extends RefArray[A](__size, i0, i1, i2, i3) {
+  _idBase: Long,
+) extends RefArray[A](__size, _idBase) {
 
   final override val items: Array[AnyRef] = {
     val ara = new Array[AnyRef](4 * size)
@@ -83,11 +81,8 @@ private final class StrictRefArray[A](
 private final class SparseRefArray[A](
   __size: Int,
   initial: A,
-  i0: Long,
-  i1: Long,
-  i2: Long,
-  i3: Int,
-) extends RefArray[A](__size, i0, i1, i2, i3) {
+  _idBase: Long,
+) extends RefArray[A](__size, _idBase) {
 
   private[this] val initVal: AnyRef =
     initial.asInstanceOf[AnyRef]
@@ -200,26 +195,18 @@ private object RefArray {
       }
     }
 
-    final override def id0: Long =
-      array.id0
-
-    final override def id1: Long =
-      array.id1
-
-    final override def id2: Long =
-      array.id2
-
-    final override def id3: Long =
-      array.id3 | this.logicalIdx.toLong
+    final override def id: Long = {
+      RefIdGenerator.compute(array.idBase, this.logicalIdx)
+    }
 
     final override def toString: String = {
-      refs.refStringFromIdsAndIdx(id0, id1, id2, id3, this.logicalIdx)
+      refs.refArrayRefToString(array.idBase, this.logicalIdx)
     }
 
     private[this] final def logicalIdx: Int =
       this.physicalIdx / 4 // truncated division is OK here
 
     private[choam] final override def dummy(v: Long): Long =
-      v ^ id2
+      v ^ id
   }
 }

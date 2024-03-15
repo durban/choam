@@ -21,6 +21,7 @@ package refs
 import java.lang.ref.WeakReference
 
 import internal.mcas.MemoryLocation
+import internal.mcas.emcas.RefIdGenerator
 
 private final class RefArrayRef[A](
   array: RefArrayBase[A],
@@ -63,21 +64,13 @@ private final class RefArrayRef[A](
   final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     array.casVolatile(markerIdx, ov, nv)
 
-  final override def id0: Long =
-    array.id0
-
-  final override def id1: Long =
-    array.id1
-
-  final override def id2: Long =
-    array.id2
-
-  final override def id3: Long =
-    array.id3 | this.logicalIdx.toLong
+  final override def id: Long = { // TODO: maybe make this a val? (time vs space)
+    RefIdGenerator.compute(array.idBase, this.logicalIdx)
+  }
 
   final override def toString: String =
-    refs.refStringFromIdsAndIdx(id0, id1, id2, id3, this.logicalIdx)
+    refs.refArrayRefToString(array.idBase, this.logicalIdx)
 
   private[choam] final override def dummy(v: Long): Long =
-    v ^ id2
+    v ^ id
 }

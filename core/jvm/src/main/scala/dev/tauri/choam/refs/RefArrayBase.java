@@ -53,8 +53,8 @@ abstract class RefArrayBase<A> extends RefIdOnly {
     return vers;
   }
 
-  protected RefArrayBase(int size, Object init, long i0, long i1, long i2, long i3, boolean sparse) {
-    super(i0, i1, i2, i3);
+  protected RefArrayBase(int size, Object init, long idBase, boolean sparse) {
+    super(idBase);
 
     this._size = size;
 
@@ -82,6 +82,10 @@ abstract class RefArrayBase<A> extends RefIdOnly {
       }
     }
     this.array = arr;
+  }
+
+  final long idBase() {
+    return this.id();
   }
 
   protected abstract long getVersionVolatile(int idx);

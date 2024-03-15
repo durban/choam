@@ -54,37 +54,22 @@ final class RefP2<A, B>
   private volatile WeakReference<Object> markerA; // = null
   private final Ref<A> refA = new Ref2Ref1<A, B>(this);
 
-  private final long _id4;
-  private final long _id5;
-  private final long _id6;
-  private final long _id7;
+  private final long _id1;
   private volatile B valueB;
   private volatile long versionB = Version.Start;
   private volatile WeakReference<Object> markerB; // = null
   private final Ref<B> refB = new Ref2Ref2<A, B>(this);
 
-  public RefP2(A a, B b, long i0, long i1, long i2, long i3, long i4, long i5, long i6, long i7) {
-    super(i0, i1, i2, i3);
+  public RefP2(A a, B b, long i0, long i1) {
+    super(i0);
     this.valueA = a;
-    this._id4 = i4;
-    this._id5 = i5;
-    this._id6 = i6;
-    this._id7 = i7;
+    this._id1 = i1;
     this.valueB = b;
   }
 
   @Override
   protected final String refToString() {
-    return package$.MODULE$.refStringFrom8Ids(
-      this.id0(),
-      this.id1(),
-      this.id2(),
-      this.id3(),
-      this.id4(),
-      this.id5(),
-      this.id6(),
-      this.id7()
-    );
+    return package$.MODULE$.refStringFrom8Ids(this.id0(), this.id1());
   }
 
   @Override
@@ -98,23 +83,13 @@ final class RefP2<A, B>
   }
 
   @Override
-  public final long id4() {
-    return this._id4;
+  public final long id0() {
+    return this.id();
   }
 
   @Override
-  public final long id5() {
-    return this._id5;
-  }
-
-  @Override
-  public final long id6() {
-    return this._id6;
-  }
-
-  @Override
-  public final long id7() {
-    return this._id7;
+  public final long id1() {
+    return this._id1;
   }
 
   @Override

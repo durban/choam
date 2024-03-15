@@ -51,13 +51,13 @@ abstract class RefP1P1Base<A, B>
 
   private final Ref<A> refA = new Ref2Ref1<A, B>(this);
 
-  RefP1P1Base(A a, long i0, long i1, long i2, long i3) {
-    super(i0, i1, i2, i3);
+  RefP1P1Base(A a, long i0) {
+    super(i0);
     this.valueA = a;
   }
 
-  RefP1P1Base(long i0, long i1, long i2, long i3) {
-    super(i0, i1, i2, i3);
+  RefP1P1Base(long i0) {
+    super(i0);
   }
 
   @Override
@@ -113,5 +113,9 @@ abstract class RefP1P1Base<A, B>
   @Override
   public final boolean unsafeCasMarkerVolatile1(WeakReference<Object> ov, WeakReference<Object> nv) {
     return MARKER_A.compareAndSet(this, ov, nv);
+  }
+
+  public final long id0() {
+    return this.id();
   }
 }

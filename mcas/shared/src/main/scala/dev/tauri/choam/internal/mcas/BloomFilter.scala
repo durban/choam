@@ -25,10 +25,10 @@ import java.lang.Long.{ hashCode => longHash }
 private object BloomFilter extends BloomFilter[MemoryLocation[_]] {
 
   protected final def leftHash(a: MemoryLocation[_]): Int =
-    longHash(a.id0) ^ longHash(a.id1)
+    longHash(a.id)
 
   protected final def rightHash(a: MemoryLocation[_]): Int =
-    longHash(a.id2) ^ longHash(a.id3)
+    longHash(java.lang.Long.rotateLeft(a.id, 32)) // TODO: better hash fn
 }
 
 private sealed abstract class BloomFilter[A](

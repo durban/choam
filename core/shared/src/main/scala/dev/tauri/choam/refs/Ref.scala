@@ -137,8 +137,8 @@ object Ref extends RefInstances0 {
   private[refs] trait UnsealedArray[A] extends Array[A] { this: RefIdOnly =>
 
     protected[refs] final override def refToString(): String = {
-      val h = (id0 ^ id1 ^ id2 ^ id3) & (~0xffffL)
-      s"Ref.Array[${size}]@${java.lang.Long.toHexString(h >> 16)}"
+      val idBase = this.id
+      s"Ref.Array[${size}]@${internal.mcas.refHashString(idBase)}"
     }
 
     protected final def checkIndex(idx: Int): Unit = {
@@ -314,14 +314,12 @@ object Ref extends RefInstances0 {
 
   private[refs] final def unsafeStrictArray[A](size: Int, initial: A): Ref.Array[A] = {
     require(size > 0)
-    val tlr = ThreadLocalRandom.current()
-    unsafeNewStrictRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
+    unsafeNewStrictRefArray[A](size = size, initial = initial)(ThreadLocalRandom.current().nextLong()) // TODO: use RIG
   }
 
   private[refs] final def unsafeLazyArray[A](size: Int, initial: A): Ref.Array[A] = {
     require(size > 0)
-    val tlr = ThreadLocalRandom.current()
-    unsafeNewSparseRefArray[A](size = size, initial = initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextInt())
+    unsafeNewSparseRefArray[A](size = size, initial = initial)(ThreadLocalRandom.current().nextLong()) // TODO: use RIG
   }
 
   final def padded[A](initial: A): Axn[Ref[A]] =
@@ -334,18 +332,16 @@ object Ref extends RefInstances0 {
     unsafePadded(initial)
 
   private[choam] final def unsafePadded[A](initial: A): Ref[A] = {
-    val tlr = ThreadLocalRandom.current()
-    unsafeWithId(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+    unsafeWithId(initial)(ThreadLocalRandom.current().nextLong()) // TODO: use RIG
   }
 
   private[choam] final def unsafeUnpadded[A](initial: A): Ref[A] = {
-    val tlr = ThreadLocalRandom.current()
-    unsafeNewRefU1(initial)(tlr.nextLong(), tlr.nextLong(), tlr.nextLong(), tlr.nextLong())
+    unsafeNewRefU1(initial)(ThreadLocalRandom.current().nextLong()) // TODO: use RIG
   }
 
   /** Only for testing/benchmarks */
-  private[choam] def unsafeWithId[A](initial: A)(i0: Long, i1: Long, i2: Long, i3: Long): Ref[A] =
-    unsafeNewRefP1(initial)(i0, i1, i2, i3)
+  private[choam] def unsafeWithId[A](initial: A)(id: Long): Ref[A] =
+    unsafeNewRefP1(initial)(id)
 
   // Ref2:
 

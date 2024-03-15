@@ -24,18 +24,15 @@ import internal.mcas.{ MemoryLocation, Version }
 
 // This is JS:
 private final class SingleThreadedRefImpl[A](private[this] var value: A)(
-  override val id0: Long,
-  override val id1: Long,
-  override val id2: Long,
-  override val id3: Long,
+  override val id: Long,
 ) extends MemoryLocation[A]
   with UnsealedRef[A] {
 
   final override def toString: String =
-    refStringFrom4Ids(id0, id1, id2, id3)
+    refStringFrom4Ids(id)
 
   private[choam] final override def dummy(v: Long): Long =
-    id0 ^ id1 ^ id2 ^ id3 ^ v
+    id ^ v
 
   private[this] var version: Long =
     Version.Start

@@ -21,11 +21,11 @@ final class RefsPlatform {
 
   private RefsPlatform() {}
 
-  static final <A> Ref<A> unsafeNewRefU1(A initial, long i0, long i1, long i2, long i3) {
-    return new RefU1<A>(initial, i0, i1, i2, i3);
+  static final <A> Ref<A> unsafeNewRefU1(A initial, long id) {
+    return new RefU1<A>(initial, id);
   }
 
-  static final <A> Ref<A> unsafeNewRefP1(A initial, long i0, long i1, long i2, long i3) {
-    return new RefP1<A>(initial, i0, i1, i2, i3);
+  static final <A> Ref<A> unsafeNewRefP1(A initial, long id) {
+    return new RefP1<A>(initial, id);
   }
 }

@@ -29,19 +29,19 @@ class RefInitBench {
   /** Padded, no write to `value` */
   @Benchmark
   def nullInitPadded(bh: Blackhole): Unit = {
-    bh.consume(new RefP1[String](0L, 0L, 0L, 0L))
+    bh.consume(new RefP1[String](0L))
   }
 
   /** Padded, write `null` to `value` in release mode */
   @Benchmark
   def releaseInitPadded(bh: Blackhole): Unit = {
-    bh.consume(new RefP1[String](null : String, 0L, 0L, 0L, 0L, null : String))
+    bh.consume(new RefP1[String](null : String, 0L, null : String))
   }
 
   /** Padded, write `null` to `value` in volatile mode */
   @Benchmark
   def volatileInitPadded(bh: Blackhole): Unit = {
-    bh.consume(new RefP1[String](null : String, 0L, 0L, 0L, 0L))
+    bh.consume(new RefP1[String](null : String, 0L))
   }
 
   // UNPADDED:
@@ -49,18 +49,18 @@ class RefInitBench {
   /** Unpadded, no write to `value` */
   @Benchmark
   def nullInitUnpadded(bh: Blackhole): Unit = {
-    bh.consume(new RefU1[String](0L, 0L, 0L, 0L))
+    bh.consume(new RefU1[String](0L))
   }
 
   /** Unpadded, write `null` to `value` in release mode */
   @Benchmark
   def releaseInitUnpadded(bh: Blackhole): Unit = {
-    bh.consume(new RefU1[String](null : String, 0L, 0L, 0L, 0L, null : String))
+    bh.consume(new RefU1[String](null : String, 0L, null : String))
   }
 
   /** Unpadded, write `null` to `value` in volatile mode */
   @Benchmark
   def volatileInitUnpadded(bh: Blackhole): Unit = {
-    bh.consume(new RefU1[String](null : String, 0L, 0L, 0L, 0L))
+    bh.consume(new RefU1[String](null : String, 0L))
   }
 }

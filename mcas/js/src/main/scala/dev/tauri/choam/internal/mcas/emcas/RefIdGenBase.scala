@@ -15,17 +15,14 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.refs;
+package dev.tauri.choam
+package internal
+package mcas
+package emcas // TODO: doesn't exist on JS
 
-abstract class RefIdOnly extends RefToString {
+// TODO: duplication with JVM
+object RefIdGenBase {
 
-  private final long _id;
-
-  RefIdOnly(long i) {
-    this._id = i;
-  }
-
-  public final long id() {
-    return this._id;
-  }
+  @inline final val GAMMA =
+    0x9e3779b97f4a7c15L;
 }

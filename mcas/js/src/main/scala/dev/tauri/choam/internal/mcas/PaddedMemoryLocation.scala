@@ -22,8 +22,5 @@ package mcas
 // Not really padded, since this is on JS
 private final class PaddedMemoryLocation[A](
   a: A,
-  i0: Long,
-  i1: Long,
-  i2: Long,
-  i3: Long,
-) extends SimpleMemoryLocation[A](a)(i0, i1, i2, i3)
+  id: Long,
+) extends SimpleMemoryLocation[A](a)(id)

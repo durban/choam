@@ -40,8 +40,8 @@ abstract class SparseRefArrayBase<A> extends RefArrayBase<A> {
 
   private volatile long[] versions; // = null
 
-  protected SparseRefArrayBase(int size, Object init, long i0, long i1, long i2, long i3) {
-    super(size, init, i0, i1, i2, i3, true);
+  protected SparseRefArrayBase(int size, Object init, long idBase) {
+    super(size, init, idBase, true);
   }
 
   @Override

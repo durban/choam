@@ -30,9 +30,6 @@ interface Ref2Impl<A, B> {
   long unsafeCmpxchgVersionVolatile2(long ov, long nv);
   WeakReference<Object> unsafeGetMarkerVolatile2();
   boolean unsafeCasMarkerVolatile2(WeakReference<Object> ov, WeakReference<Object> nv);
-  long id4();
-  long id5();
-  long id6();
-  long id7();
+  long id1();
   long dummyImpl2(long v);
 }

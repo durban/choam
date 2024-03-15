@@ -29,26 +29,12 @@ private final class MemoryLocationOrdering[A]
   }
 
   private[this] final def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
-    import java.lang.Long.{ compare => lcompare }
-    if (a eq b) 0
-    else {
-      val i0 = lcompare(a.id0, b.id0)
-      if (i0 != 0) i0
-      else {
-        val i1 = lcompare(a.id1, b.id1)
-        if (i1 != 0) i1
-        else {
-          val i2 = lcompare(a.id2, b.id2)
-          if (i2 != 0) i2
-          else {
-            val i3 = lcompare(a.id3, b.id3)
-            if (i3 != 0) i3
-            else {
-              impossible(s"[globalCompare] ref collision: ${a} and ${b}")
-            }
-          }
-        }
-      }
+    if (a eq b) {
+      0
+    } else {
+      val r = java.lang.Long.compare(a.id, b.id)
+      if (r != 0) r
+      else impossible(s"[globalCompare] ref collision: ${a} and ${b}")
     }
   }
 }

@@ -48,12 +48,9 @@ package object mcas {
     throw new AssertionError(s)
 
   private[choam] final def refHashString(
-    i0: Long,
-    i1: Long,
-    i2: Long,
-    i3: Long,
+    id: Long,
   ): String = {
-    toHexPadded(refShortHash(i0, i1, i2, i3))
+    toHexPadded(refShortHash(id))
   }
 
   private[choam] final def toHexPadded(n: Long): String = {
@@ -66,13 +63,8 @@ package object mcas {
     }
   }
 
-  private[choam] final def refShortHash(
-    i0: Long,
-    i1: Long,
-    i2: Long,
-    i3: Long,
-  ): Long = {
-    mix64_13(i0 ^ i1 ^ i2 ^ i3)
+  private[this] final def refShortHash(id: Long): Long = {
+    mix64_13(id) // TODO: when we have pre-hashed IDs, remove this (except for idBase in arrays)
   }
 
   /** https://zimbry.blogspot.com/2011/09/better-bit-mixing-improving-on.html */

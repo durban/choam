@@ -269,8 +269,8 @@ class EmcasSpec extends BaseSpec {
     if (runGcBetween) {
       this.assumeNotOpenJ9()
     }
-    val r1 = MemoryLocation.unsafeWithId[String]("x")(0L, 0L, 0L, 0L)
-    val r2 = MemoryLocation.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
+    val r1 = MemoryLocation.unsafeWithId[String]("x")(0L)
+    val r2 = MemoryLocation.unsafeWithId[String]("y")(1L)
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     var weakMark: WeakReference[AnyRef] = null
@@ -363,8 +363,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should not simply replace  active descriptors (mark should be handled)".tag(SLOW)) {
-    val r1 = MemoryLocation.unsafeWithId[String]("x")(0L, 0L, 0L, 0L)
-    val r2 = MemoryLocation.unsafeWithId[String]("y")(0L, 0L, 0L, 1L)
+    val r1 = MemoryLocation.unsafeWithId[String]("x")(0L)
+    val r2 = MemoryLocation.unsafeWithId[String]("y")(1L)
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     var ok0 = false
@@ -422,8 +422,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS read should help the other operation") {
-    val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
-    val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 42L)
+    val r1 = MemoryLocation.unsafeWithId("r1")(0L)
+    val r2 = MemoryLocation.unsafeWithId("r2")(42L)
     val ctx = Emcas.inst.currentContext()
     val hOther: Descriptor = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
     val other = EmcasDescriptor.prepare(hOther)
@@ -442,8 +442,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS read should roll back the other op if necessary") {
-    val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 0L)
-    val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 99L)
+    val r1 = MemoryLocation.unsafeWithId("r1")(0L)
+    val r2 = MemoryLocation.unsafeWithId("r2")(99L)
     val ctx = Emcas.inst.currentContext()
     val hOther = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "zzz", "y")
     val other = EmcasDescriptor.prepare(hOther)
@@ -533,9 +533,9 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("Descriptors should be sorted") {
-    val r1 = MemoryLocation.unsafeWithId("r1")(0L, 0L, 0L, 1L)
-    val r2 = MemoryLocation.unsafeWithId("r2")(0L, 0L, 0L, 2L)
-    val r3 = MemoryLocation.unsafeWithId("r3")(0L, 0L, 0L, 3L)
+    val r1 = MemoryLocation.unsafeWithId("r1")(1L)
+    val r2 = MemoryLocation.unsafeWithId("r2")(2L)
+    val r3 = MemoryLocation.unsafeWithId("r3")(3L)
     val ctx = Emcas.inst.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")

@@ -20,8 +20,6 @@ package internal
 package mcas
 package bench
 
-import java.util.concurrent.ThreadLocalRandom
-
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
@@ -64,48 +62,6 @@ class GlobalCompareBench {
   def bench0(bh: Blackhole): Unit = {
     val r1 = Ref.unsafe("a").loc
     val r2 = Ref.unsafe("a").loc
-    bh.consume(r1)
-    bh.consume(r2)
-    bh.consume(MemoryLocation.globalCompare(r1, r2))
-  }
-
-  @Benchmark
-  def bench1(bh: Blackhole): Unit = {
-    val tlr = ThreadLocalRandom.current()
-    val i0 = tlr.nextLong()
-    bh.consume(tlr.nextLong())
-    val r1 = Ref.unsafeWithId("a")(i0, tlr.nextLong(), tlr.nextLong(), tlr.nextLong()).loc
-    val r2 = Ref.unsafeWithId("a")(i0, tlr.nextLong(), tlr.nextLong(), tlr.nextLong()).loc
-    bh.consume(r1)
-    bh.consume(r2)
-    bh.consume(MemoryLocation.globalCompare(r1, r2))
-  }
-
-  @Benchmark
-  def bench2(bh: Blackhole): Unit = {
-    val tlr = ThreadLocalRandom.current()
-    val i0 = tlr.nextLong()
-    bh.consume(tlr.nextLong())
-    val i1 = tlr.nextLong()
-    bh.consume(tlr.nextLong())
-    val r1 = Ref.unsafeWithId("a")(i0, i1, tlr.nextLong(), tlr.nextLong()).loc
-    val r2 = Ref.unsafeWithId("a")(i0, i1, tlr.nextLong(), tlr.nextLong()).loc
-    bh.consume(r1)
-    bh.consume(r2)
-    bh.consume(MemoryLocation.globalCompare(r1, r2))
-  }
-
-  @Benchmark
-  def bench3(bh: Blackhole): Unit = {
-    val tlr = ThreadLocalRandom.current()
-    val i0 = tlr.nextLong()
-    bh.consume(tlr.nextLong())
-    val i1 = tlr.nextLong()
-    bh.consume(tlr.nextLong())
-    val i2 = tlr.nextLong()
-    bh.consume(tlr.nextLong())
-    val r1 = Ref.unsafeWithId("a")(i0, i1, i2, tlr.nextLong()).loc
-    val r2 = Ref.unsafeWithId("a")(i0, i1, i2, tlr.nextLong()).loc
     bh.consume(r1)
     bh.consume(r2)
     bh.consume(MemoryLocation.globalCompare(r1, r2))

@@ -22,12 +22,10 @@ package emcas
 
 import java.util.concurrent.atomic.AtomicLong
 
-private[mcas] final class RefIdGenerator {
+import RefIdGenBase.GAMMA
 
-  // TODO: this is duplicated below
-  private[this] final val gamma =
-     0x9e3779b97f4a7c15L // Fibonacci hashing
-     // https://web.archive.org/web/20161121124236/http://brpreiss.com/books/opus4/html/page214.html
+// TODO: move this to `mcas` (it's not EMCAS-specific)
+private[choam] final class RefIdGenerator extends RefIdGenBase { // TODO: rename to RefIdGen
 
   private[this] final val initialBlockSize =
     2 // TODO: maybe start with bigger for platform threads?
@@ -41,6 +39,11 @@ private[mcas] final class RefIdGenerator {
     val n = this.ctr.getAndAdd(s)
     assert(n < (n + s)) // ID overflow
     n
+  }
+
+  /** Returns idBase for RefArrays */ // TODO: is ID overflow plausible with big arrays?
+  final def allocateArrayBlockWithoutThreadLocal(size: Int): Long = {
+    this.allocateThreadLocalBlock(size)
   }
 
   final def newThreadLocal(): RefIdGenerator.ThreadLocalRefIdGenerator = {
@@ -60,11 +63,16 @@ private[mcas] final class RefIdGenerator {
   final def nextIdWithoutThreadLocal(): Long = {
     val n = this.ctr.getAndIncrement()
     assert(n < (n + 1L)) // ID overflow
-    n * gamma
+    n * GAMMA
   }
 }
 
-private[mcas] object RefIdGenerator {
+private[choam] object RefIdGenerator {
+
+  /** The computed ID must've been already allocated in a block! */
+  final def compute(base: Long, offset: Int): Long = {
+    (base + offset.toLong) * GAMMA
+  }
 
   final class ThreadLocalRefIdGenerator private[RefIdGenerator] (
     private[this] val parent: RefIdGenerator,
@@ -72,9 +80,6 @@ private[mcas] object RefIdGenerator {
     private[this] var remaining: Int,
     private[this] var nextBlockSize: Int,
   ) {
-
-    private[this] final val gamma =
-      0x9e3779b97f4a7c15L // Fibonacci hashing
 
     private[this] final val maxBlockSize =
       1 << 30
@@ -84,9 +89,9 @@ private[mcas] object RefIdGenerator {
       val rem = this.remaining
       if (rem > 0) {
         val n = this.next
-        this.next = n + 1
+        this.next = n + 1L
         this.remaining = rem - 1
-        n * gamma
+        n * GAMMA
       } else {
         val s = this.nextBlockSize
         this.next = this.parent.allocateThreadLocalBlock(s)
@@ -95,6 +100,24 @@ private[mcas] object RefIdGenerator {
           this.nextBlockSize = s << 1
         }
         this.nextId()
+      }
+    }
+
+    final def allocateArrayBlock(size: Int): Long = {
+      require(size > 0)
+      val rem = this.remaining
+      if (rem >= size) {
+        val base = this.next
+        this.next = base + size.toLong
+        this.remaining = rem - size
+        base
+      } else {
+        // Not enough IDs in the current thread-local
+        // block. But instead of allocating a new one,
+        // we just fulfill this request from the global.
+        // (Because this way, we don't leak the remaining
+        // IDs in our thread-local block.)
+        this.parent.allocateArrayBlockWithoutThreadLocal(size)
       }
     }
   }

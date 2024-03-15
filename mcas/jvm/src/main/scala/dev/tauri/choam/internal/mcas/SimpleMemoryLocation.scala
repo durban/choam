@@ -23,10 +23,7 @@ import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.{ AtomicReference, AtomicLong }
 
 private class SimpleMemoryLocation[A](initial: A)(
-  override val id0: Long,
-  override val id1: Long,
-  override val id2: Long,
-  override val id3: Long,
+  override val id: Long,
 ) extends AtomicReference[A](initial)
   with MemoryLocation[A] {
 
@@ -37,7 +34,7 @@ private class SimpleMemoryLocation[A](initial: A)(
     new AtomicReference // (null)
 
   final override def toString: String =
-    "SMemLoc@" + refHashString(id0, id1, id2, id3)
+    "SMemLoc@" + refHashString(id)
 
   final override def unsafeGetVolatile(): A =
     this.get()

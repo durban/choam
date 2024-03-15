@@ -29,21 +29,11 @@ sealed trait RefLaws {
     Order[Ref[A]].eqv(r, r) <-> true
 
   def uniqueIdsSameType[A](x: Ref[A], y: Ref[A]): IsEq[Boolean] = {
-    ((x eq y) || (
-      (x.loc.id0 =!= y.loc.id0) ||
-      (x.loc.id1 =!= y.loc.id1) ||
-      (x.loc.id2 =!= y.loc.id2) ||
-      (x.loc.id3 =!= y.loc.id3)
-    )) <-> true
+    ((x eq y) || (x.loc.id =!= y.loc.id)) <-> true
   }
 
   def uniqueIdsDifferentType[A, B](x: Ref[A], y: Ref[B]): IsEq[Boolean] = {
-    ((x eq y) || (
-      (x.loc.id0 =!= y.loc.id0) ||
-      (x.loc.id1 =!= y.loc.id1) ||
-      (x.loc.id2 =!= y.loc.id2) ||
-      (x.loc.id3 =!= y.loc.id3)
-    )) <-> true
+    ((x eq y) || (x.loc.id =!= y.loc.id)) <-> true
   }
 
   def orderConsistentWithIdentity[A](x: Ref[A], y: Ref[A]): IsEq[Boolean] =

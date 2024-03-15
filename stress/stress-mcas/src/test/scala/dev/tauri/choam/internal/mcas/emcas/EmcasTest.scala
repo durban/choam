@@ -42,10 +42,10 @@ import org.openjdk.jcstress.infra.results.LLLLL_Result
 class EmcasTest {
 
   private[this] val ref1 =
-    MemoryLocation.unsafeWithId("a")(0L, 0L, 0L, i3 = 42L)
+    MemoryLocation.unsafeWithId("a")(42L)
 
   private[this] val ref2 =
-    MemoryLocation.unsafeWithId("x")(0L, 0L, 0L, i3 = 21L)
+    MemoryLocation.unsafeWithId("x")(21L)
 
   assert(MemoryLocation.globalCompare(ref1, ref2) > 0) // ref1 > ref2
 
@@ -103,14 +103,14 @@ class EmcasTest {
           // mustn't happen
           appendErrorMsg(r, s"unexpected dFirst.address: ${dFirst.address}")
         }
-        dFirst.address.id3
+        dFirst.address.id
       } else {
         // in the process of clearing
         doCmpxchg = true
         "CL"
       }
       r.r3 = if (dSecond ne null) {
-        dSecond.address.id3
+        dSecond.address.id
       } else {
         // in the process of clearing
         doCmpxchg = true

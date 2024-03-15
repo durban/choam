@@ -32,8 +32,8 @@ abstract class StrictRefArrayBase<A> extends RefArrayBase<A> {
 
   private final long[] versions;
 
-  protected StrictRefArrayBase(int size, Object init, long i0, long i1, long i2, long i3) {
-    super(size, init, i0, i1, i2, i3, false);
+  protected StrictRefArrayBase(int size, Object init, long idBase) {
+    super(size, init, idBase, false);
     this.versions = RefArrayBase.initVersions(size);
   }
 

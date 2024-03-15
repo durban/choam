@@ -66,6 +66,36 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
     assertEquals(id41 - id32, gamma)
   }
 
+  test("Stepping with arrays") {
+    val rig = new RefIdGenerator
+    val t1 = rig.newThreadLocal()
+    val id11 = t1.nextId()
+    val arrBase1 = t1.allocateArrayBlock(8) // get it from global
+    val id12 = t1.nextId()
+    assertEquals(id12 - id11, gamma)
+    val arr11 = RefIdGenerator.compute(arrBase1, 0)
+    val arr12 = RefIdGenerator.compute(arrBase1, 1)
+    assertEquals(arr12 - arr11, gamma)
+    val arr13 = RefIdGenerator.compute(arrBase1, 2)
+    assertEquals(arr13 - arr12, gamma)
+    val arr18 = RefIdGenerator.compute(arrBase1, 7)
+    assertEquals(arr18 - arr11, 7 * gamma)
+    val t2 = rig.newThreadLocal()
+    val id21 = t2.nextId()
+    val id22 = t2.nextId()
+    assertEquals(id21 - arr18, gamma)
+    assertEquals(id22 - id21, gamma)
+    val id13 = t1.nextId()
+    assertEquals(id13 - id22, gamma)
+    val arrBase2 = t1.allocateArrayBlock(2) // get it from thread-local
+    val arr21 = RefIdGenerator.compute(arrBase2, 0)
+    val arr22 = RefIdGenerator.compute(arrBase2, 1)
+    assertEquals(arr21 - id13, gamma)
+    assertEquals(arr22 - arr21, gamma)
+    val ids = List(id11, id12, arr11, arr12, arr13, arr18, id21, id22, id13, arr21, arr22)
+    assertEquals(ids.toSet.size, ids.size)
+  }
+
   test("Racing") {
     def generate(rig: RefIdGenerator, arr: Array[Long]): IO[Unit] = IO.cede *> IO.delay {
       val tc = rig.newThreadLocal()

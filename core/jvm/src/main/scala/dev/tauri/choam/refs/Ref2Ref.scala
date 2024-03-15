@@ -56,17 +56,8 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
   final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     self.unsafeCasMarkerVolatile1(ov, nv)
 
-  override def id0: Long =
+  override def id: Long =
     self.id0
-
-  override def id1: Long =
-    self.id1
-
-  override def id2: Long =
-    self.id2
-
-  override def id3: Long =
-    self.id3
 
   override def dummy(v: Long): Long =
     self.dummyImpl1(v)
@@ -106,17 +97,8 @@ private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
   final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     self.unsafeCasMarkerVolatile2(ov, nv)
 
-  override def id0: Long =
-    self.id4
-
-  override def id1: Long =
-    self.id5
-
-  override def id2: Long =
-    self.id6
-
-  override def id3: Long =
-    self.id7
+  override def id: Long =
+    self.id1
 
   override def dummy(v: Long): Long =
     self.dummyImpl2(v)

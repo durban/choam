@@ -42,10 +42,7 @@ final class PaddedMemoryLocation<A>
     }
   }
 
-  private final long _id0;
-  private final long _id1;
-  private final long _id2;
-  private final long _id3;
+  private final long _id;
 
   private volatile A value;
 
@@ -53,32 +50,14 @@ final class PaddedMemoryLocation<A>
 
   private volatile WeakReference<Object> marker; // = null
 
-  PaddedMemoryLocation(A a, long i0, long i1, long i2, long i3) {
+  PaddedMemoryLocation(A a, long id) {
     this.value = a;
-    this._id0 = i0;
-    this._id1 = i1;
-    this._id2 = i2;
-    this._id3 = i3;
+    this._id = id;
   }
 
   @Override
-  public final long id0() {
-    return this._id0;
-  }
-
-  @Override
-  public final long id1() {
-    return this._id1;
-  }
-
-  @Override
-  public final long id2() {
-    return this._id2;
-  }
-
-  @Override
-  public final long id3() {
-    return this._id3;
+  public final long id() {
+    return this._id;
   }
 
   @Override

@@ -15,17 +15,16 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.refs;
+package dev.tauri.choam
+package internal
+package mcas
+package emcas // TODO: doesn't exist on JS
 
-abstract class RefIdOnly extends RefToString {
+// TODO: duplication with JVM
+object RefIdGenerator {
 
-  private final long _id;
-
-  RefIdOnly(long i) {
-    this._id = i;
-  }
-
-  public final long id() {
-    return this._id;
+  /** The computed ID must've been already allocated in a block! */
+  final def compute(base: Long, offset: Int): Long = {
+    (base + offset.toLong) * RefIdGenBase.GAMMA // TODO: tests!
   }
 }

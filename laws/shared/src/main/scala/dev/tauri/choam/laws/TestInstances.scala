@@ -60,8 +60,8 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
   }
 
   implicit def cogenRef[A]: Cogen[Ref[A]] = {
-    Cogen.cogenList[Long].contramap[Ref[A]] { ref =>
-      List(ref.loc.id0, ref.loc.id1, ref.loc.id2, ref.loc.id3)
+    Cogen.cogenLong.contramap[Ref[A]] { ref =>
+      ref.loc.id
     }
   }
 

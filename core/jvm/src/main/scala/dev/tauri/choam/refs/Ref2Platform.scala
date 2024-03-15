@@ -27,14 +27,8 @@ private[refs] abstract class Ref2Platform {
     new refs.RefP1P1[A, B](
       a,
       b,
+      tlr.nextLong(), // TODO: use RIG
       tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong()
     )
   }
 
@@ -43,14 +37,8 @@ private[refs] abstract class Ref2Platform {
     new refs.RefP2[A, B](
       a,
       b,
+      tlr.nextLong(), // TODO: use RIG
       tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong(),
-      tlr.nextLong()
     )
   }
 }

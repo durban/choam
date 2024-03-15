@@ -15,17 +15,10 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.refs;
+package dev.tauri.choam.internal.mcas.emcas;
 
-abstract class RefIdOnly extends RefToString {
+public abstract class RefIdGenBase {
 
-  private final long _id;
-
-  RefIdOnly(long i) {
-    this._id = i;
-  }
-
-  public final long id() {
-    return this._id;
-  }
+  public static final long GAMMA =
+    0x9e3779b97f4a7c15L; // Fibonacci hashing: https://web.archive.org/web/20161121124236/http://brpreiss.com/books/opus4/html/page214.html
 }

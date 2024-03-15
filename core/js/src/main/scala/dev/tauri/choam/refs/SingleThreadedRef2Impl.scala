@@ -21,20 +21,14 @@ package refs
 private final class SingleThreadedRef2Impl[A, B](a: A, b: B)(
   i0: Long,
   i1: Long,
-  i2: Long,
-  i3: Long,
-  i4: Long,
-  i5: Long,
-  i6: Long,
-  i7: Long,
 ) extends Ref2[A, B] {
 
   final override val _1: Ref[A] =
-    new SingleThreadedRefImpl(a)(i0, i1, i2, i3)
+    new SingleThreadedRefImpl(a)(i0)
 
   final override val _2: Ref[B] =
-    new SingleThreadedRefImpl(b)(i4, i5, i6, i7)
+    new SingleThreadedRefImpl(b)(i1)
 
   final override def toString: String =
-    refStringFrom8Ids(i0, i1, i2, i3, i4, i5, i6, i7)
+    refStringFrom8Ids(i0, i1)
 }

@@ -25,6 +25,7 @@ import cats.syntax.all._
 import munit.Location
 
 import internal.mcas.Mcas
+import internal.mcas.emcas.RefIdGenBase.GAMMA
 
 final class RefArraySpec_Strict extends RefArraySpecIds {
 
@@ -56,13 +57,18 @@ trait RefArraySpecIds extends RefArraySpec {
 
   test("toString format") {
     val arr = mkRefArray("a")
-    val pat = "Ref\\.Array\\[\\d+\\]\\@[\\da-f]+".r
-    assert(pat.matches(clue(arr.toString)))
-    val subPat = "ARef\\@[\\da-f]{16}".r
-    assert(subPat.matches(clue(arr.unsafeGet(0).toString)))
-    assert(clue(arr.unsafeGet(0).toString).endsWith("0000"))
-    assert(clue(arr.unsafeGet(1).toString).endsWith("0001"))
-    assert(clue(arr.unsafeGet(2).toString).endsWith("0002"))
+    val arrPat = "Ref\\.Array\\[(\\d+)\\]\\@([\\da-f]+)".r
+    val baseHash = arr.toString match {
+      case arrPat(size, baseHash) =>
+        assertEquals(size, arr.size.toString)
+        baseHash
+      case other =>
+        fail(s"didn't match: '${other}'")
+    }
+    assertEquals(clue(arr.unsafeGet(0).toString), s"ARef@${baseHash}+0")
+    assertEquals(clue(arr.unsafeGet(1).toString), s"ARef@${baseHash}+1")
+    assertEquals(clue(arr.unsafeGet(2).toString), s"ARef@${baseHash}+2")
+    assertEquals(clue(arr.unsafeGet(3).toString), s"ARef@${baseHash}+3")
   }
 
   test("equals/toString") {
@@ -80,10 +86,7 @@ trait RefArraySpecIds extends RefArraySpec {
     assert(r2 eq a.unsafeGet(1))
     assert(r2 == a.unsafeGet(1))
     assert(r1.toString != r2.toString)
-    assertEquals(r1.loc.id0, r2.loc.id0)
-    assertEquals(r1.loc.id1, r2.loc.id1)
-    assertEquals(r1.loc.id2, r2.loc.id2)
-    assertEquals(r1.loc.id3 + 1L, r2.loc.id3)
+    assertEquals(r1.loc.id + GAMMA, r2.loc.id)
   }
 }
 

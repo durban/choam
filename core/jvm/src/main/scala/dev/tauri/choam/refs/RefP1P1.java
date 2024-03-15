@@ -41,10 +41,7 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
     }
   }
 
-  private final long _id4;
-  private final long _id5;
-  private final long _id6;
-  private final long _id7;
+  private final long _id1;
 
   private volatile B valueB;
 
@@ -54,35 +51,20 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
 
   private final Ref<B> refB = new Ref2Ref2<A, B>(this);
 
-  public RefP1P1(A a, B b, long i0, long i1, long i2, long i3, long i4, long i5, long i6, long i7) {
-    super(a, i0, i1, i2, i3);
-    this._id4 = i4;
-    this._id5 = i5;
-    this._id6 = i6;
-    this._id7 = i7;
+  public RefP1P1(A a, B b, long i0, long i1) {
+    super(a, i0);
+    this._id1 = i1;
     this.valueB = b;
   }
 
-  public RefP1P1(long i0, long i1, long i2, long i3, long i4, long i5, long i6, long i7) {
-    super(i0, i1, i2, i3);
-    this._id4 = i4;
-    this._id5 = i5;
-    this._id6 = i6;
-    this._id7 = i7;
+  public RefP1P1(long i0, long i1) {
+    super(i0);
+    this._id1 = i1;
   }
 
   @Override
   protected final String refToString() {
-    return package$.MODULE$.refStringFrom8Ids(
-      this.id0(),
-      this.id1(),
-      this.id2(),
-      this.id3(),
-      this.id4(),
-      this.id5(),
-      this.id6(),
-      this.id7()
-    );
+    return package$.MODULE$.refStringFrom8Ids(this.id0(), this.id1());
   }
 
   @Override
@@ -141,23 +123,8 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
   }
 
   @Override
-  public final long id4() {
-    return this._id4;
-  }
-
-  @Override
-  public final long id5() {
-    return this._id5;
-  }
-
-  @Override
-  public final long id6() {
-    return this._id6;
-  }
-
-  @Override
-  public final long id7() {
-    return this._id7;
+  public final long id1() {
+    return this._id1;
   }
 
   @Override

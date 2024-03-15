@@ -21,11 +21,8 @@ package refs
 private final class StrictRefArray[A](
   __size: Int,
   initial: A,
-  i0: Long,
-  i1: Long,
-  i2: Long,
-  i3: Int, // LSB is array index
-) extends StrictRefArrayBase[A](__size, initial, i0, i1, i2, i3.toLong << 32)
+  _idBase: Long,
+) extends StrictRefArrayBase[A](__size, initial, _idBase)
   with Ref.UnsealedArray[A] {
 
   require((__size > 0) && (((__size - 1) * 3 + 2) > (__size - 1))) // avoid overflow

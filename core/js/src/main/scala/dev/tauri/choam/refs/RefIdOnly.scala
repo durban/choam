@@ -19,8 +19,5 @@ package dev.tauri.choam
 package refs
 
 private abstract class RefIdOnly private[refs] (
-  final val id0: Long,
-  final val id1: Long,
-  final val id2: Long,
-  final val id3: Long,
+  final val id: Long,
 ) extends RefToString

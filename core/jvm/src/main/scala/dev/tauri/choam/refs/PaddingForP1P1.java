@@ -276,12 +276,12 @@ abstract class PaddingForP1P1<A, B> extends RefP1P1Base<A, B> {
   byte pad254;
   byte pad255;
 
-  PaddingForP1P1(A a, long i0, long i1, long i2, long i3) {
-    super(a, i0, i1, i2, i3);
+  PaddingForP1P1(A a, long i0) {
+    super(a, i0);
   }
 
-  PaddingForP1P1(long i0, long i1, long i2, long i3) {
-    super(i0, i1, i2, i3);
+  PaddingForP1P1(long i0) {
+    super(i0);
   }
 
   public final long dummyImpl2(long v) {

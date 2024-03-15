@@ -48,24 +48,24 @@ final class RefU1<A> extends RefIdOnly implements UnsealedRef<A>, MemoryLocation
 
   private volatile WeakReference<Object> marker; // = null
 
-  public RefU1(A a, long i0, long i1, long i2, long i3) {
-    super(i0, i1, i2, i3);
+  public RefU1(A a, long i) {
+    super(i);
     this.value = a;
   }
 
   /** Only for benchmarks */
-  public RefU1(A a, long i0, long i1, long i2, long i3, String release) {
-    super(i0, i1, i2, i3);
+  public RefU1(A a, long i, String release) {
+    super(i);
     VALUE.setRelease(this, a);
   }
 
-  public RefU1(long i0, long i1, long i2, long i3) {
-    super(i0, i1, i2, i3);
+  public RefU1(long i) {
+    super(i);
   }
 
   @Override
   protected final String refToString() {
-    return package$.MODULE$.refStringFrom4Ids(this.id0(), this.id1(), this.id2(), this.id3());
+    return package$.MODULE$.refStringFrom4Ids(this.id());
   }
 
   @Override
