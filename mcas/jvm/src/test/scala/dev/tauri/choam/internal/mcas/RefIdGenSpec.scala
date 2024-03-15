@@ -24,8 +24,9 @@ import cats.syntax.all._
 
 import munit.CatsEffectSuite
 
-import emcas.RefIdGenerator
+import emcas.RefIdGen
 
+// TODO: move this to shared sources
 final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
 
   private val gamma =
@@ -35,7 +36,7 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
     1024 * 1024
 
   test("Stepping") {
-    val rig = new RefIdGenerator
+    val rig = new RefIdGen
     val t1 = rig.newThreadLocal()
     val id11 = t1.nextId()
     val t2 = rig.newThreadLocal()
@@ -67,18 +68,18 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
   }
 
   test("Stepping with arrays") {
-    val rig = new RefIdGenerator
+    val rig = new RefIdGen
     val t1 = rig.newThreadLocal()
     val id11 = t1.nextId()
-    val arrBase1 = t1.allocateArrayBlock(8) // get it from global
+    val arrBase1 = t1.nextArrayIdBase(8) // get it from global
     val id12 = t1.nextId()
     assertEquals(id12 - id11, gamma)
-    val arr11 = RefIdGenerator.compute(arrBase1, 0)
-    val arr12 = RefIdGenerator.compute(arrBase1, 1)
+    val arr11 = RefIdGen.compute(arrBase1, 0)
+    val arr12 = RefIdGen.compute(arrBase1, 1)
     assertEquals(arr12 - arr11, gamma)
-    val arr13 = RefIdGenerator.compute(arrBase1, 2)
+    val arr13 = RefIdGen.compute(arrBase1, 2)
     assertEquals(arr13 - arr12, gamma)
-    val arr18 = RefIdGenerator.compute(arrBase1, 7)
+    val arr18 = RefIdGen.compute(arrBase1, 7)
     assertEquals(arr18 - arr11, 7 * gamma)
     val t2 = rig.newThreadLocal()
     val id21 = t2.nextId()
@@ -87,9 +88,9 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
     assertEquals(id22 - id21, gamma)
     val id13 = t1.nextId()
     assertEquals(id13 - id22, gamma)
-    val arrBase2 = t1.allocateArrayBlock(2) // get it from thread-local
-    val arr21 = RefIdGenerator.compute(arrBase2, 0)
-    val arr22 = RefIdGenerator.compute(arrBase2, 1)
+    val arrBase2 = t1.nextArrayIdBase(2) // get it from thread-local
+    val arr21 = RefIdGen.compute(arrBase2, 0)
+    val arr22 = RefIdGen.compute(arrBase2, 1)
     assertEquals(arr21 - id13, gamma)
     assertEquals(arr22 - arr21, gamma)
     val ids = List(id11, id12, arr11, arr12, arr13, arr18, id21, id22, id13, arr21, arr22)
@@ -97,7 +98,7 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
   }
 
   test("Racing") {
-    def generate(rig: RefIdGenerator, arr: Array[Long]): IO[Unit] = IO.cede *> IO.delay {
+    def generate(rig: RefIdGen, arr: Array[Long]): IO[Unit] = IO.cede *> IO.delay {
       val tc = rig.newThreadLocal()
       val len = arr.length
       var i = 0
@@ -109,7 +110,7 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
 
     val N = Runtime.getRuntime().availableProcessors()
     for {
-      rig <- IO(new RefIdGenerator)
+      rig <- IO(new RefIdGen)
       arrs <- IO { (1 to N).map(_ => new Array[Long](M)).toVector }
       tasks = arrs.map(arr => generate(rig, arr))
       _ <- tasks.parSequence_
@@ -125,7 +126,7 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
   }
 
   test("Lots of IDs from one thread") {
-    val rig = new RefIdGenerator
+    val rig = new RefIdGen
     val t = rig.newThreadLocal()
     var acc = 0L
     var i = Integer.MIN_VALUE
@@ -141,7 +142,7 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
   }
 
   test("One ID from lots of threads each") {
-    val rig = new RefIdGenerator
+    val rig = new RefIdGen
     val first = rig.newThreadLocal().nextId() // uses 0, leaks 1
     var acc = 0L
     var last = 0L
@@ -158,6 +159,6 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
     }
     assertNotEquals(acc, 0L)
     assertEquals(last - first, 2L * (Integer.MAX_VALUE.toLong + 1L) * gamma)
-    assertEquals(rig.nextIdWithoutThreadLocal() - last, 2L * gamma)
+    assertEquals(rig.nextIdGlobal() - last, 2L * gamma)
   }
 }
