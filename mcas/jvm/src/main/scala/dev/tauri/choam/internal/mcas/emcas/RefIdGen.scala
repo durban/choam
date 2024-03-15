@@ -24,9 +24,50 @@ import java.util.concurrent.atomic.AtomicLong
 
 import RefIdGenBase.GAMMA
 
-// TODO: move this to `mcas` (it's not EMCAS-specific)
-// TODO: move this to shrared sources (we'll need it on JS too)
+/**
+ * `RefIdGen` generates `Long` IDs for `Ref`s in a way which
+ * guarantees uniqueness (which is a must for `Ref`s) and
+ * scales with the number of cores (so that ID generation is
+ * not a bottleneck for `Rxn`s which allocate a lot of `Ref`s).
+ *
+ * The idea is that every thread has its own `ThreadLocalRefIdGen`,
+ * which has a "preallocated block" of IDs. As long as possible,
+ * it returns IDs from that block. This should be very fast,
+ * because it is entirely thread-local. When the block is
+ * exhausted, it requests a new block from the global (shared)
+ * `RefIdGen`.
+ *
+ * The sizing of these thread-local blocks should take into
+ * account performance: big blocks are good, because it means
+ * that we're mostly working thread-locally. However, if a
+ * thread is abandoned, its remaining preallocated IDs in its
+ * current block are "wasted" or "leaked". If we waste too much,
+ * we could overflow the global `ctr`. (Abandoning "real" (i.e.,
+ * platform) threads is probably not a concern, however on
+ * newer JVMs we also have virtual threads. These are designed
+ * to be used shortly, then be abandoned. And they're very
+ * fast to create.) So very big blocks are not good.
+ *
+ * So, to avoid overflow, every `ThreadLocalRefIdGen` starts from
+ * a small block, and doubles the size with every new block
+ * (up to a limit). This way every thread only wastes at most
+ * half of the IDs it preallocates. So even in the worst
+ * case (if we create a lot of virtual threads, and each
+ * of them is abandoned at the worst possible time) we only
+ * waste half of the IDs. That means we still have 63 bits,
+ * which should be plenty. (The doubling also means, that threads
+ * which create a lot of `Ref`s quickly get up to big blocks.)
+ *
+ * Generated IDs should not be contiguous, because we'd like
+ * to put them into a hash-map, hash-trie or similar. (Of course
+ * we could hash them later, but we'd rther do this once on
+ * generation.) So we use Fibonacci hashing to generate a
+ * "good" distribution.
+ */
 private[choam] final class RefIdGen private[mcas] () extends RefIdGenBase {
+
+  // TODO: move this to `mcas` (it's not EMCAS-specific)
+  // TODO: move this to shrared sources (we'll need it on JS too)
 
   private[this] final val initialBlockSize =
     2 // TODO: maybe start with bigger for platform threads?
@@ -42,8 +83,8 @@ private[choam] final class RefIdGen private[mcas] () extends RefIdGenBase {
     n
   }
 
-  final def newThreadLocal(): RefIdGen.ThreadLocalRefIdGenerator = {
-    new RefIdGen.ThreadLocalRefIdGenerator(
+  final def newThreadLocal(): RefIdGen.ThreadLocalRefIdGen = {
+    new RefIdGen.ThreadLocalRefIdGen(
       parent = this,
       next = 0L, // unused, because:
       remaining = 0, // initially no more remaining
@@ -75,7 +116,7 @@ private[choam] object RefIdGen {
     (base + offset.toLong) * GAMMA
   }
 
-  final class ThreadLocalRefIdGenerator private[RefIdGen] (
+  final class ThreadLocalRefIdGen private[RefIdGen] (
     private[this] val parent: RefIdGen,
     private[this] var next: Long,
     private[this] var remaining: Int,
@@ -119,6 +160,12 @@ private[choam] object RefIdGen {
         // we just fulfill this request from the global.
         // (Because this way, we don't leak the remaining
         // IDs in our thread-local block.)
+        // TODO: This is not exactly optimal if we're
+        // TODO: at the end of a large(ish) block, and
+        // TODO: need to allocate a lot of small arrays
+        // TODO: which do not fit in the remaining,
+        // TODO: because then we'll always go to global.
+        // TODO: But also, FAA is cheap...
         this.parent.nextArrayIdBaseGlobal(size)
       }
     }
