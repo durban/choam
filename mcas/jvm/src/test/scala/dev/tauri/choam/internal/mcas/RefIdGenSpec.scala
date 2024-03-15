@@ -27,7 +27,7 @@ import munit.CatsEffectSuite
 import emcas.RefIdGen
 
 // TODO: move this to shared sources
-final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
+final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
 
   private val gamma =
     0x9e3779b97f4a7c15L
@@ -95,6 +95,16 @@ final class RefIdGeneratorSpec extends CatsEffectSuite with BaseSpec {
     assertEquals(arr22 - arr21, gamma)
     val ids = List(id11, id12, arr11, arr12, arr13, arr18, id21, id22, id13, arr21, arr22)
     assertEquals(ids.toSet.size, ids.size)
+  }
+
+  test("Really big array") {
+    val rig = new RefIdGen
+    val t = rig.newThreadLocal()
+    val arrBase1: Long = t.nextArrayIdBase(Int.MaxValue)
+    val a1 = RefIdGen.compute(arrBase1, 0)
+    val arrBase2: Long = rig.nextArrayIdBaseGlobal(Int.MaxValue)
+    val a2 = RefIdGen.compute(arrBase2, 0)
+    assertEquals(a2 - a1, Int.MaxValue.toLong * gamma)
   }
 
   test("Racing") {

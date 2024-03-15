@@ -26,7 +26,7 @@ import RefIdGenBase.GAMMA
 
 // TODO: move this to `mcas` (it's not EMCAS-specific)
 // TODO: move this to shrared sources (we'll need it on JS too)
-private[choam] final class RefIdGen extends RefIdGenBase {
+private[choam] final class RefIdGen private[mcas] () extends RefIdGenBase {
 
   private[this] final val initialBlockSize =
     2 // TODO: maybe start with bigger for platform threads?
@@ -100,6 +100,7 @@ private[choam] object RefIdGen {
         if (s < maxBlockSize) {
           this.nextBlockSize = s << 1
         }
+        // next time we'll succeed for sure:
         this.nextId()
       }
     }
