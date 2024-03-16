@@ -23,6 +23,8 @@ package emcas
 import java.lang.ref.WeakReference
 import java.util.concurrent.ThreadLocalRandom
 
+import RefIdGen.ThreadLocalRefIdGen
+
 private final class EmcasThreadContext(
   final override val impl: Emcas,
   private[mcas] val tid: Long,
@@ -32,6 +34,10 @@ private final class EmcasThreadContext(
   // NB: it is a `val`, not a `def`
   final override val random: ThreadLocalRandom =
     ThreadLocalRandom.current()
+
+  // NB: it is a `val`, not a `def`
+  final override val refIdGen: ThreadLocalRefIdGen =
+    RefIdGen.global.newThreadLocal()
 
   private[this] var markerUsedCount: Int =
     0

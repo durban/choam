@@ -110,6 +110,9 @@ object Mcas extends McasCompanionPlatform { self =>
     /** @return a `ThreadLocalRandom` valid for the current thread */
     def random: ThreadLocalRandom
 
+    /** @return the `ThreadLocalRefIdGen` of the current thread */
+    def refIdGen: RefIdGen.ThreadLocalRefIdGen
+
     // concrete:
 
     /** Utility to first try to read from the log, and only from the ref if not found */

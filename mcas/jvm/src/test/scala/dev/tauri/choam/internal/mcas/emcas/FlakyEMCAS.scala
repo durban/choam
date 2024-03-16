@@ -40,6 +40,9 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
     final override def random: ThreadLocalRandom =
       emcasCtx.random
 
+    final override def refIdGen =
+      emcasCtx.refIdGen
+
     final override def readDirect[A](ref: MemoryLocation[A]): A =
       emcasCtx.readDirect(ref)
 

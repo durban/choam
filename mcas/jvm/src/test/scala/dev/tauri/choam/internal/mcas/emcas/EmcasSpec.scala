@@ -21,7 +21,7 @@ package mcas
 package emcas
 
 import java.lang.ref.{ Reference, WeakReference }
-import java.util.concurrent.{ ConcurrentLinkedQueue, CountDownLatch, ThreadLocalRandom }
+import java.util.concurrent.{ ConcurrentLinkedQueue, ConcurrentSkipListSet, CountDownLatch, ThreadLocalRandom }
 
 import scala.concurrent.duration._
 import scala.runtime.VolatileObjectRef
@@ -651,5 +651,30 @@ class EmcasSpec extends BaseSpec {
     // EMCAS assumes we're incrementing by 1,
     // so we have a test to remember this:
     assertEquals(Version.Incr, 1L)
+  }
+
+  test("Threads should have different `ThreadLocalRefIdGen`s") {
+    val ids = new ConcurrentSkipListSet[Long]
+    val rig1 = Emcas.inst.currentContext().refIdGen
+    ids.add(rig1.nextId())
+    var rig2: RefIdGen.ThreadLocalRefIdGen = null
+    val t = new Thread(() => {
+      val r = Emcas.inst.currentContext().refIdGen
+      ids.add(r.nextId())
+      ids.add(r.nextId())
+      ids.add(r.nextId())
+      rig2 = r
+    })
+    t.start()
+    ids.add(rig1.nextId())
+    ids.add(rig1.nextId())
+    t.join()
+    rig2 match {
+      case null =>
+        fail("missing RIG")
+      case rig2 =>
+        assert(rig1 ne rig2)
+    }
+    assertEquals(ids.size(), 6)
   }
 }

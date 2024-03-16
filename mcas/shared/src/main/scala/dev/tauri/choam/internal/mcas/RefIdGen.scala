@@ -107,6 +107,9 @@ private[choam] final class RefIdGen private[mcas] () extends RefIdGenBase {
 
 private[choam] object RefIdGen {
 
+  val global: RefIdGen = // TODO: instead of this, have a proper acq/rel Runtime
+    new RefIdGen
+
   /** The computed ID must've been already allocated in a block! */
   final def compute(base: Long, offset: Int): Long = {
     (base + offset.toLong) * GAMMA

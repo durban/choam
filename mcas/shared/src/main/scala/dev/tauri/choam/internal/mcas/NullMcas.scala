@@ -21,6 +21,8 @@ package mcas
 
 import java.util.concurrent.ThreadLocalRandom
 
+import RefIdGen.ThreadLocalRefIdGen
+
 /**
  * This is a very limited MCAS implementation,
  * which can only perform *empty* MCAS operations
@@ -89,5 +91,8 @@ object NullMcas extends Mcas.UnsealedMcas { self =>
 
     final override def random: ThreadLocalRandom =
       ThreadLocalRandom.current()
+
+    final override def refIdGen: ThreadLocalRefIdGen =
+      RefIdGen.global.newThreadLocal()
   }
 }

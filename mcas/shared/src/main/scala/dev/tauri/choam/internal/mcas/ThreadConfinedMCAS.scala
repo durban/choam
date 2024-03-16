@@ -107,5 +107,8 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
     // NB: it is a `def`, not a `val`
     final override def random: ThreadLocalRandom =
       ThreadLocalRandom.current()
+
+    final override val refIdGen =
+      RefIdGen.global.newThreadLocal()
   }
 }
