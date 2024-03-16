@@ -413,18 +413,14 @@ object Rxn extends RxnInstances0 {
     private[choam] def suspend[A, B](uf: A => Axn[B]): Rxn[A, B] =
       delay(uf).flatten // TODO: optimize
 
-    private[choam] def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
-      context(uf) // TODO: decide if we want `context` or `delayContext`, delete the other (see also `Axn`)
-
-    // TODO: NB: this is also like `delay`
     // TODO: Calling `unsafePerform` (or similar) inside
     // TODO: `uf` is dangerous; currently it only messes
     // TODO: up exchanger statistics; in the future, who knows...
-    private[choam] def context[A](uf: Mcas.ThreadContext => A): Axn[A] =
+    private[choam] def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
       new Ctx[A](uf)
 
     private[choam] def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
-      this.context(uf).flatten // TODO: optimize
+      this.delayContext(uf).flatten // TODO: optimize
 
     final def exchanger[A, B]: Axn[Exchanger[A, B]] =
       Exchanger.apply[A, B]

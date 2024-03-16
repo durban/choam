@@ -187,13 +187,13 @@ object Ref extends RefInstances0 {
   private[this] final def safeArray[A](size: Int, initial: A, strategy: Int): Axn[Ref.Array[A]] = {
     if (size > 0) {
       (strategy : @switch) match {
-        case 0 => Axn.unsafe.context(ctx => new StrictArrayOfRefs(size, initial, padded = false, rig = ctx.refIdGen))
-        case 1 => Axn.unsafe.context(ctx => new StrictArrayOfRefs(size, initial, padded = true, rig = ctx.refIdGen))
-        case 2 => Axn.unsafe.context(ctx => unsafeStrictArray(size, initial, ctx.refIdGen))
+        case 0 => Axn.unsafe.delayContext(ctx => new StrictArrayOfRefs(size, initial, padded = false, rig = ctx.refIdGen))
+        case 1 => Axn.unsafe.delayContext(ctx => new StrictArrayOfRefs(size, initial, padded = true, rig = ctx.refIdGen))
+        case 2 => Axn.unsafe.delayContext(ctx => unsafeStrictArray(size, initial, ctx.refIdGen))
         case 3 => throw new IllegalArgumentException("flat && padded not implemented yet")
         case 4 => Axn.unsafe.delay(new LazyArrayOfRefs(size, initial, padded = false))
         case 5 => Axn.unsafe.delay(new LazyArrayOfRefs(size, initial, padded = true))
-        case 6 => Axn.unsafe.context(ctx => unsafeLazyArray(size, initial, ctx.refIdGen))
+        case 6 => Axn.unsafe.delayContext(ctx => unsafeLazyArray(size, initial, ctx.refIdGen))
         case 7 => throw new IllegalArgumentException("flat && padded not implemented yet")
         case _ => throw new IllegalArgumentException(s"invalid strategy: ${strategy}")
       }
@@ -322,10 +322,10 @@ object Ref extends RefInstances0 {
   }
 
   final def padded[A](initial: A): Axn[Ref[A]] =
-    Axn.unsafe.context[Ref[A]](ctx => Ref.unsafePadded(initial, ctx.refIdGen))
+    Axn.unsafe.delayContext[Ref[A]](ctx => Ref.unsafePadded(initial, ctx.refIdGen))
 
   final def unpadded[A](initial: A): Axn[Ref[A]] =
-    Axn.unsafe.context[Ref[A]](ctx => Ref.unsafeUnpadded(initial, ctx.refIdGen))
+    Axn.unsafe.delayContext[Ref[A]](ctx => Ref.unsafeUnpadded(initial, ctx.refIdGen))
 
   private[choam] final def unsafe[A](initial: A): Ref[A] = // TODO: don't use this (except in tests)
     unsafePadded(initial)

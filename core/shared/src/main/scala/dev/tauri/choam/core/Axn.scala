@@ -36,8 +36,8 @@ object Axn {
       Rxn.unsafe.delay[Any, A](_ => da)
     final def suspend[A](daa: => Axn[A]): Axn[A] = // TODO: optimize
       this.delay(daa).flatten
-    final def context[A](uf: Mcas.ThreadContext => A): Axn[A] =
-      Rxn.unsafe.context(uf)
+    final def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
+      Rxn.unsafe.delayContext(uf)
     final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       Rxn.unsafe.suspendContext(uf)
   }

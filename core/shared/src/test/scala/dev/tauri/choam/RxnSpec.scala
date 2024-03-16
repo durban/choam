@@ -808,8 +808,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("unsafe.context") {
-    Rxn.unsafe.context { (tc: Mcas.ThreadContext) =>
+  test("unsafe.delayContext") {
+    Rxn.unsafe.delayContext { (tc: Mcas.ThreadContext) =>
       tc eq this.mcasImpl.currentContext()
     }.run[F].flatMap(ok => assertF(ok))
   }

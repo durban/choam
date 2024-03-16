@@ -86,7 +86,7 @@ object Promise {
 
   // TODO: there should be a way to make an unpadded Promise
   def forAsync[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] = {
-    Axn.unsafe.context { ctx =>
+    Axn.unsafe.delayContext { ctx =>
       new PromiseImpl[F, A](Ref.unsafePadded[State[A]](Waiting(LongMap.empty, 0L), ctx.refIdGen))
     }
   }

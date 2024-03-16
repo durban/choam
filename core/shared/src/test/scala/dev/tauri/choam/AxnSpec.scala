@@ -43,8 +43,8 @@ trait AxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Axn.unsafe.context/suspendContext") {
-    val rxn1 = Axn.unsafe.context { ctx =>
+  test("Axn.unsafe.delayContext/suspendContext") {
+    val rxn1 = Axn.unsafe.delayContext { ctx =>
       ctx.random.nextLong(42L)
     }
     val rxn2 = Axn.unsafe.suspendContext { ctx =>
