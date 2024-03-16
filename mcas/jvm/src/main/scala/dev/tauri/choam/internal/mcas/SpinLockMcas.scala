@@ -52,9 +52,8 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
     final override def random =
       ThreadLocalRandom.current()
 
-    // NB: it is a `def`, not a `val`
     final override def refIdGen =
-      RefIdGen.global.newThreadLocal()
+      RefIdGen.global
 
     final override def tryPerformInternal(desc: Descriptor): Long = {
       val ops = desc.iterator().toList

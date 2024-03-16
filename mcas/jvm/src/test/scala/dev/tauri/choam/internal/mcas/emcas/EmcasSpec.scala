@@ -657,7 +657,7 @@ class EmcasSpec extends BaseSpec {
     val ids = new ConcurrentSkipListSet[Long]
     val rig1 = Emcas.inst.currentContext().refIdGen
     ids.add(rig1.nextId())
-    var rig2: RefIdGen.ThreadLocalRefIdGen = null
+    var rig2: RefIdGen = null
     val t = new Thread(() => {
       val r = Emcas.inst.currentContext().refIdGen
       ids.add(r.nextId())

@@ -63,7 +63,23 @@ import RefIdGenBase.GAMMA
  * generation.) So we use Fibonacci hashing to generate a
  * "good" distribution.
  */
-private[choam] final class RefIdGen private[mcas] () extends RefIdGenBase {
+private[choam] sealed trait RefIdGen {
+  def nextId(): Long
+  def nextArrayIdBase(size: Int): Long
+}
+
+private[choam] object RefIdGen {
+
+  val global: GlobalRefIdGen = // TODO: instead of this, have a proper acq/rel Runtime
+    new GlobalRefIdGen
+
+  /** The computed ID must've been already allocated in a block! */
+  final def compute(base: Long, offset: Int): Long = {
+    (base + offset.toLong) * GAMMA
+  }
+}
+
+private[choam] final class GlobalRefIdGen private[mcas] () extends RefIdGenBase with RefIdGen {
 
   private[this] final val initialBlockSize =
     2 // TODO: maybe start with bigger for platform threads?
@@ -71,7 +87,7 @@ private[choam] final class RefIdGen private[mcas] () extends RefIdGenBase {
   private[this] val ctr =
     new AtomicLong(java.lang.Long.MIN_VALUE) // TODO: VarHandle, padding
 
-  private[RefIdGen] final def allocateThreadLocalBlock(size: Int): Long = {
+  private[GlobalRefIdGen] final def allocateThreadLocalBlock(size: Int): Long = {
     require(size > 0)
     val s = size.toLong
     val n = this.ctr.getAndAdd(s) // TODO: opaque
@@ -79,8 +95,8 @@ private[choam] final class RefIdGen private[mcas] () extends RefIdGenBase {
     n
   }
 
-  final def newThreadLocal(): RefIdGen.ThreadLocalRefIdGen = {
-    new RefIdGen.ThreadLocalRefIdGen(
+  final def newThreadLocal(): RefIdGen = {
+    new GlobalRefIdGen.ThreadLocalRefIdGen(
       parent = this,
       next = 0L, // unused, because:
       remaining = 0, // initially no more remaining
@@ -88,10 +104,13 @@ private[choam] final class RefIdGen private[mcas] () extends RefIdGenBase {
     )
   }
 
-  /** Returns idBase for RefArrays */ // TODO: is ID overflow plausible with big arrays?
-  final def nextArrayIdBaseGlobal(size: Int): Long = {
-    this.allocateThreadLocalBlock(size)
-  }
+  @inline
+  final override def nextId(): Long =
+    this.nextIdGlobal()
+
+  @inline
+  final override def nextArrayIdBase(size: Int): Long =
+    this.nextArrayIdBaseGlobal(size)
 
   /**
    * Slower fallback to still be able to generate
@@ -103,30 +122,27 @@ private[choam] final class RefIdGen private[mcas] () extends RefIdGenBase {
     assert(n < (n + 1L)) // ID overflow
     n * GAMMA
   }
+
+  /** Returns idBase for RefArrays */ // TODO: is ID overflow plausible with big arrays?
+  final def nextArrayIdBaseGlobal(size: Int): Long = {
+    this.allocateThreadLocalBlock(size)
+  }
 }
 
-private[choam] object RefIdGen {
+private[mcas] object GlobalRefIdGen {
 
-  val global: RefIdGen = // TODO: instead of this, have a proper acq/rel Runtime
-    new RefIdGen
-
-  /** The computed ID must've been already allocated in a block! */
-  final def compute(base: Long, offset: Int): Long = {
-    (base + offset.toLong) * GAMMA
-  }
-
-  final class ThreadLocalRefIdGen private[RefIdGen] (
-    private[this] val parent: RefIdGen,
+  final class ThreadLocalRefIdGen private[GlobalRefIdGen] (
+    private[this] val parent: GlobalRefIdGen,
     private[this] var next: Long,
     private[this] var remaining: Int,
     private[this] var nextBlockSize: Int,
-  ) {
+  ) extends RefIdGen {
 
     private[this] final val maxBlockSize =
       1 << 30
 
     @tailrec
-    final def nextId(): Long = {
+    final override def nextId(): Long = {
       val rem = this.remaining
       if (rem > 0) {
         val n = this.next
@@ -145,7 +161,7 @@ private[choam] object RefIdGen {
       }
     }
 
-    final def nextArrayIdBase(size: Int): Long = {
+    final override def nextArrayIdBase(size: Int): Long = {
       require(size > 0)
       val rem = this.remaining
       if (rem >= size) {

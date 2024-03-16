@@ -36,7 +36,7 @@ final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
   }
 
   test("Stepping") {
-    val rig = new RefIdGen
+    val rig = new GlobalRefIdGen
     val t1 = rig.newThreadLocal()
     val id11 = t1.nextId()
     val t2 = rig.newThreadLocal()
@@ -68,7 +68,7 @@ final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
   }
 
   test("Stepping with arrays") {
-    val rig = new RefIdGen
+    val rig = new GlobalRefIdGen
     val t1 = rig.newThreadLocal()
     val id11 = t1.nextId()
     val arrBase1 = t1.nextArrayIdBase(8) // get it from global
@@ -98,7 +98,7 @@ final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
   }
 
   test("Really big array") {
-    val rig = new RefIdGen
+    val rig = new GlobalRefIdGen
     val t = rig.newThreadLocal()
     val arrBase1: Long = t.nextArrayIdBase(Int.MaxValue)
     val a1 = RefIdGen.compute(arrBase1, 0)
@@ -108,7 +108,7 @@ final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
   }
 
   test("Racing") {
-    def generate(rig: RefIdGen, arr: Array[Long]): IO[Unit] = IO.cede *> IO.delay {
+    def generate(rig: GlobalRefIdGen, arr: Array[Long]): IO[Unit] = IO.cede *> IO.delay {
       val tc = rig.newThreadLocal()
       val len = arr.length
       var i = 0
@@ -120,7 +120,7 @@ final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
 
     val N = Runtime.getRuntime().availableProcessors()
     for {
-      rig <- IO(new RefIdGen)
+      rig <- IO(new GlobalRefIdGen)
       arrs <- IO { (1 to N).map(_ => new Array[Long](M)).toVector }
       tasks = arrs.map(arr => generate(rig, arr))
       _ <- tasks.parSequence_
@@ -138,7 +138,7 @@ final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
   test("Lots of IDs from one thread") {
     this.assume(this.isJvm())
     this.assumeNotOpenJ9()
-    val rig = new RefIdGen
+    val rig = new GlobalRefIdGen
     val t = rig.newThreadLocal()
     var acc = 0L
     var i = Integer.MIN_VALUE
@@ -156,7 +156,7 @@ final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
   test("One ID from lots of threads each") {
     this.assume(this.isJvm())
     this.assumeNotOpenJ9()
-    val rig = new RefIdGen
+    val rig = new GlobalRefIdGen
     val first = rig.newThreadLocal().nextId() // uses 0, leaks 1
     var acc = 0L
     var last = 0L
