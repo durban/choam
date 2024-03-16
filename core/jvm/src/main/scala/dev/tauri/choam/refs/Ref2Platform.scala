@@ -18,27 +18,15 @@
 package dev.tauri.choam
 package refs
 
-import java.util.concurrent.ThreadLocalRandom
+import internal.mcas.RefIdGen
 
 private[refs] abstract class Ref2Platform {
 
-  final def unsafeP1P1[A, B](a: A, b: B): refs.Ref2[A, B] = {
-    val tlr = ThreadLocalRandom.current()
-    new refs.RefP1P1[A, B](
-      a,
-      b,
-      tlr.nextLong(), // TODO: use RIG
-      tlr.nextLong(),
-    )
+  private[refs] final def unsafeP1P1[A, B](a: A, b: B, rig: RefIdGen): refs.Ref2[A, B] = {
+    new refs.RefP1P1[A, B](a, b, rig.nextId(), rig.nextId())
   }
 
-  final def unsafeP2[A, B](a: A, b: B): refs.Ref2[A, B] = {
-    val tlr = ThreadLocalRandom.current()
-    new refs.RefP2[A, B](
-      a,
-      b,
-      tlr.nextLong(), // TODO: use RIG
-      tlr.nextLong(),
-    )
+  private[refs] final def unsafeP2[A, B](a: A, b: B, rig: RefIdGen): refs.Ref2[A, B] = {
+    new refs.RefP2[A, B](a, b, rig.nextId(), rig.nextId())
   }
 }

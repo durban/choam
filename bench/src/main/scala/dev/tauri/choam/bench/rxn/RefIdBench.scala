@@ -23,6 +23,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 import org.openjdk.jmh.annotations._
 
+import util.McasImplState
 import RefIdBench._
 
 @Fork(3)
@@ -35,8 +36,18 @@ class RefIdBench {
   }
 
   @Benchmark
+  def createPaddedCtx(k: McasImplState): Ref[String] = {
+    Ref.unsafePadded("", k.mcasCtx.refIdGen)
+  }
+
+  @Benchmark
   def createUnpadded(): Ref[String] = {
     Ref.unsafeUnpadded("")
+  }
+
+  @Benchmark
+  def createUnpaddedCtx(k: McasImplState): Ref[String] = {
+    Ref.unsafeUnpadded("", k.mcasCtx.refIdGen)
   }
 
   @Benchmark

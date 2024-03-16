@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package refs
 
+import internal.mcas.RefIdGen
+
 trait Ref2[A, B] {
 
   def _1: Ref[A]
@@ -30,12 +32,18 @@ trait Ref2[A, B] {
 
 object Ref2 extends Ref2Platform {
 
-  def p1p1[A, B](a: A, b: B): Axn[refs.Ref2[A, B]] =
-    Rxn.unsafe.delay { _ => unsafeP1P1(a, b) }
+  final def p1p1[A, B](a: A, b: B): Axn[Ref2[A, B]] =
+    Rxn.unsafe.delayContext { ctx => unsafeP1P1(a, b, ctx.refIdGen) }
 
-  def p2[A, B](a: A, b: B): Axn[refs.Ref2[A, B]] =
-    Rxn.unsafe.delay { _ => unsafeP2(a, b) }
+  final def p2[A, B](a: A, b: B): Axn[Ref2[A, B]] =
+    Rxn.unsafe.delayContext { ctx => unsafeP2(a, b, ctx.refIdGen) }
 
-  def unapply[A, B](r: Ref2[A, B]): Some[(Ref[A], Ref[B])] =
+  final def unsafeP1P1[A, B](a: A, b: B): Ref2[A, B] =
+    this.unsafeP1P1(a, b, RefIdGen.global)
+
+  final def unsafeP2[A, B](a: A, b: B): Ref2[A, B] =
+    this.unsafeP2(a, b, RefIdGen.global)
+
+  final def unapply[A, B](r: Ref2[A, B]): Some[(Ref[A], Ref[B])] =
     Some((r._1, r._2))
 }

@@ -21,18 +21,16 @@ package core
 import internal.mcas.Mcas
 import Exchanger.{ Msg, NodeResult }
 
-private final class ExchangerNode[C](val msg: Msg) {
-
-  /**
-   *     .---> result: FinishedEx[C] (fulfiller successfully completed)
-   *    /
-   * null
-   *    \
-   *     ˙---> Rescinded[C] (owner couldn't wait any more for the fulfiller)
-   */
-
-  val hole: Ref[NodeResult[C]] =
-    Ref.unsafePadded(null)
+/**
+ * `hole` has these states/transitions:
+ *
+ *     .---> result: FinishedEx[C] (fulfiller successfully completed)
+ *    /
+ * null
+ *    \
+ *     ˙---> Rescinded[C] (owner couldn't wait any more for the fulfiller)
+ */
+private final class ExchangerNode[C](val msg: Msg, val hole: Ref[NodeResult[C]]) {
 
   // TODO: Also consider using `Thread.yield` and then
   // TODO: `LockSupport.parkNanos` after spinning (see

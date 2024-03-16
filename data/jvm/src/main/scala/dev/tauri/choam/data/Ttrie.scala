@@ -103,8 +103,8 @@ private final class Ttrie[K, V] private (
   }
 
   private[this] final def getRefWithKey(k: K): Axn[TrieRef[V]] = {
-    Axn.unsafe.suspend {
-      val newRef = Ref.unsafe[State[V]](Init)
+    Axn.unsafe.suspendContext { ctx =>
+      val newRef = Ref.unsafePadded[State[V]](Init, ctx.refIdGen) // TOOD: do we really need padded?
       val ref = m.putIfAbsent(k, newRef) match {
         case Some(existingRef) =>
           existingRef

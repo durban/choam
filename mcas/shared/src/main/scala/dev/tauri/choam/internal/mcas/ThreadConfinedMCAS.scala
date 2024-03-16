@@ -26,9 +26,6 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
   final override def currentContext(): Mcas.ThreadContext =
     _ctx
 
-  private[this] val _commitTs: MemoryLocation[Long] =
-    MemoryLocation.unsafeUnpadded(Version.Start)
-
   private[this] val _ctx = new Mcas.UnsealedThreadContext {
 
     final override def impl: Mcas =
@@ -111,4 +108,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
     final override val refIdGen =
       RefIdGen.global.newThreadLocal()
   }
+
+  private[this] val _commitTs: MemoryLocation[Long] =
+    MemoryLocation.unsafeUnpadded(Version.Start, _ctx.refIdGen)
 }

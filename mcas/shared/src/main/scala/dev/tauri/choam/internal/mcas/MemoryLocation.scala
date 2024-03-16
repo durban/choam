@@ -20,7 +20,6 @@ package internal
 package mcas
 
 import java.lang.ref.WeakReference
-import java.util.concurrent.ThreadLocalRandom
 
 import scala.math.Ordering
 
@@ -95,15 +94,21 @@ trait MemoryLocation[A] {
 
 object MemoryLocation extends MemoryLocationInstances0 {
 
-  def unsafe[A](initial: A): MemoryLocation[A] =
+  def unsafe[A](initial: A): MemoryLocation[A] = // TODO: remove this
     unsafeUnpadded[A](initial)
 
-  def unsafeUnpadded[A](initial: A): MemoryLocation[A] = {
-    unsafeUnpaddedWithId(initial)(ThreadLocalRandom.current().nextLong()) // TODO: use RIG
+  def unsafeUnpadded[A](initial: A): MemoryLocation[A] =
+    this.unsafeUnpadded(initial, RefIdGen.global)
+
+  def unsafeUnpadded[A](initial: A, rig: RefIdGen): MemoryLocation[A] = {
+    unsafeUnpaddedWithId(initial)(rig.nextId())
   }
 
-  def unsafePadded[A](initial: A): MemoryLocation[A] = {
-    unsafePaddedWithId(initial)(ThreadLocalRandom.current().nextLong()) // TODO: use RIG
+  def unsafePadded[A](initial: A): MemoryLocation[A] =
+    this.unsafePadded(initial, RefIdGen.global)
+
+  def unsafePadded[A](initial: A, rig: RefIdGen): MemoryLocation[A] = {
+    unsafePaddedWithId(initial)(rig.nextId())
   }
 
   private[mcas] def unsafeWithId[A](initial: A)(i0: Long): MemoryLocation[A] =

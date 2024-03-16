@@ -18,14 +18,12 @@
 package dev.tauri.choam
 package refs
 
-import java.util.concurrent.ThreadLocalRandom
-
 import scala.math.Ordering
 
 import cats.kernel.{ Hash, Order }
 import cats.effect.kernel.{ Ref => CatsRef }
 
-import internal.mcas.MemoryLocation
+import internal.mcas.{ MemoryLocation, RefIdGen }
 import CompatPlatform.AtomicReferenceArray
 
 /**
@@ -181,7 +179,7 @@ object Ref extends RefInstances0 {
   }
 
   private[choam] final def unsafeArray[A](size: Int, initial: A, strategy: Ref.Array.AllocationStrategy): Ref.Array[A] = {
-    unsafeArray(size, initial, strategy.toInt)
+    unsafeArray(size, initial, strategy.toInt, RefIdGen.global)
   }
 
   // the duplicated logic with unsafeArray is to avoid
@@ -189,13 +187,13 @@ object Ref extends RefInstances0 {
   private[this] final def safeArray[A](size: Int, initial: A, strategy: Int): Axn[Ref.Array[A]] = {
     if (size > 0) {
       (strategy : @switch) match {
-        case 0 => Axn.unsafe.delay(new StrictArrayOfRefs(size, initial, padded = false))
-        case 1 => Axn.unsafe.delay(new StrictArrayOfRefs(size, initial, padded = true))
-        case 2 => Axn.unsafe.delay(unsafeStrictArray(size, initial))
+        case 0 => Axn.unsafe.context(ctx => new StrictArrayOfRefs(size, initial, padded = false, rig = ctx.refIdGen))
+        case 1 => Axn.unsafe.context(ctx => new StrictArrayOfRefs(size, initial, padded = true, rig = ctx.refIdGen))
+        case 2 => Axn.unsafe.context(ctx => unsafeStrictArray(size, initial, ctx.refIdGen))
         case 3 => throw new IllegalArgumentException("flat && padded not implemented yet")
         case 4 => Axn.unsafe.delay(new LazyArrayOfRefs(size, initial, padded = false))
         case 5 => Axn.unsafe.delay(new LazyArrayOfRefs(size, initial, padded = true))
-        case 6 => Axn.unsafe.delay(unsafeLazyArray(size, initial))
+        case 6 => Axn.unsafe.context(ctx => unsafeLazyArray(size, initial, ctx.refIdGen))
         case 7 => throw new IllegalArgumentException("flat && padded not implemented yet")
         case _ => throw new IllegalArgumentException(s"invalid strategy: ${strategy}")
       }
@@ -206,16 +204,16 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[this] final def unsafeArray[A](size: Int, initial: A, strategy: Int): Ref.Array[A] = {
+  private[this] final def unsafeArray[A](size: Int, initial: A, strategy: Int, rig: RefIdGen): Ref.Array[A] = {
     if (size > 0) {
       (strategy : @switch) match {
-        case 0 => new StrictArrayOfRefs(size, initial, padded = false)
-        case 1 => new StrictArrayOfRefs(size, initial, padded = true)
-        case 2 => unsafeStrictArray(size, initial)
+        case 0 => new StrictArrayOfRefs(size, initial, padded = false, rig = rig)
+        case 1 => new StrictArrayOfRefs(size, initial, padded = true, rig = rig)
+        case 2 => unsafeStrictArray(size, initial, rig)
         case 3 => throw new IllegalArgumentException("flat && padded not implemented yet")
         case 4 => new LazyArrayOfRefs(size, initial, padded = false)
         case 5 => new LazyArrayOfRefs(size, initial, padded = true)
-        case 6 => unsafeLazyArray(size, initial)
+        case 6 => unsafeLazyArray(size, initial, rig)
         case 7 => throw new IllegalArgumentException("flat && padded not implemented yet")
         case _ => throw new IllegalArgumentException(s"invalid strategy: ${strategy}")
       }
@@ -229,7 +227,8 @@ object Ref extends RefInstances0 {
   private[refs] final class StrictArrayOfRefs[A](
     final override val size: Int,
     initial: A,
-    padded: Boolean
+    padded: Boolean,
+    rig: RefIdGen,
   ) extends Ref.Array[A] {
 
     require(size > 0)
@@ -239,9 +238,9 @@ object Ref extends RefInstances0 {
       var idx = 0
       while (idx < size) {
         a(idx) = if (padded) {
-          Ref.unsafePadded(initial)
+          Ref.unsafePadded(initial, rig)
         } else {
-          Ref.unsafeUnpadded(initial)
+          Ref.unsafeUnpadded(initial, rig)
         }
         idx += 1
       }
@@ -278,9 +277,9 @@ object Ref extends RefInstances0 {
       arr.getOpaque(idx) match { // FIXME: reading a `Ref` with a race!
         case null =>
           val nv = if (padded) {
-            Ref.unsafePadded(initial)
+            Ref.unsafePadded(initial) // TODO: this uses global RIG
           } else {
-            Ref.unsafeUnpadded(initial)
+            Ref.unsafeUnpadded(initial) // TODO: this uses global RIG
           }
           val wit = arr.compareAndExchange(idx, null, nv)
           if (wit eq null) {
@@ -312,36 +311,38 @@ object Ref extends RefInstances0 {
       self.unsafeDirectRead.run[F]
   }
 
-  private[refs] final def unsafeStrictArray[A](size: Int, initial: A): Ref.Array[A] = {
+  private[this] final def unsafeStrictArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] = {
     require(size > 0)
-    unsafeNewStrictRefArray[A](size = size, initial = initial)(ThreadLocalRandom.current().nextLong()) // TODO: use RIG
+    unsafeNewStrictRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
-  private[refs] final def unsafeLazyArray[A](size: Int, initial: A): Ref.Array[A] = {
+  private[this] final def unsafeLazyArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] = {
     require(size > 0)
-    unsafeNewSparseRefArray[A](size = size, initial = initial)(ThreadLocalRandom.current().nextLong()) // TODO: use RIG
+    unsafeNewSparseRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
   final def padded[A](initial: A): Axn[Ref[A]] =
-    Axn.unsafe.delay[Ref[A]](Ref.unsafePadded(initial))
+    Axn.unsafe.context[Ref[A]](ctx => Ref.unsafePadded(initial, ctx.refIdGen))
 
   final def unpadded[A](initial: A): Axn[Ref[A]] =
-    Axn.unsafe.delay[Ref[A]](Ref.unsafeUnpadded(initial))
+    Axn.unsafe.context[Ref[A]](ctx => Ref.unsafeUnpadded(initial, ctx.refIdGen))
 
-  private[choam] final def unsafe[A](initial: A): Ref[A] =
+  private[choam] final def unsafe[A](initial: A): Ref[A] = // TODO: don't use this (except in tests)
     unsafePadded(initial)
 
-  private[choam] final def unsafePadded[A](initial: A): Ref[A] = {
-    unsafeWithId(initial)(ThreadLocalRandom.current().nextLong()) // TODO: use RIG
+  private[choam] final def unsafePadded[A](initial: A): Ref[A] =
+    this.unsafePadded(initial, RefIdGen.global)
+
+  private[choam] final def unsafePadded[A](initial: A, rig: RefIdGen): Ref[A] = {
+    unsafeNewRefP1(initial)(rig.nextId())
   }
 
-  private[choam] final def unsafeUnpadded[A](initial: A): Ref[A] = {
-    unsafeNewRefU1(initial)(ThreadLocalRandom.current().nextLong()) // TODO: use RIG
-  }
+  private[choam] final def unsafeUnpadded[A](initial: A): Ref[A] =
+    this.unsafeUnpadded(initial, RefIdGen.global)
 
-  /** Only for testing/benchmarks */
-  private[choam] def unsafeWithId[A](initial: A)(id: Long): Ref[A] =
-    unsafeNewRefP1(initial)(id)
+  private[choam] final def unsafeUnpadded[A](initial: A, rig: RefIdGen): Ref[A] = {
+    unsafeNewRefU1(initial)(rig.nextId())
+  }
 
   // Ref2:
 

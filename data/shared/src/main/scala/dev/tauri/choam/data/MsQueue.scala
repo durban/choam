@@ -77,9 +77,9 @@ private final class MsQueue[A] private[this] (
 
   private[this] def newNode(a: A): Node[A] = {
     val newRef: Ref[Elem[A]] = if (this.padded) {
-      Ref.unsafePadded(End[A]())
+      Ref.unsafePadded(End[A]()) // TODO: optimize with RIG
     } else {
-      Ref.unsafeUnpadded(End[A]())
+      Ref.unsafeUnpadded(End[A]()) // TODO: optimize with RIG
     }
     Node(a, newRef)
   }

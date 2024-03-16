@@ -85,8 +85,11 @@ object Promise {
     F.promise[A]
 
   // TODO: there should be a way to make an unpadded Promise
-  def forAsync[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] =
-    Axn.unsafe.delay(new PromiseImpl[F, A](Ref.unsafe[State[A]](Waiting(LongMap.empty, 0L))))
+  def forAsync[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] = {
+    Axn.unsafe.context { ctx =>
+      new PromiseImpl[F, A](Ref.unsafePadded[State[A]](Waiting(LongMap.empty, 0L), ctx.refIdGen))
+    }
+  }
 
   implicit def invariantFunctorForPromise[F[_]]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
     final override def imap[A, B](fa: Promise[F, A])(f: A => B)(g: B => A): Promise[F, B] =

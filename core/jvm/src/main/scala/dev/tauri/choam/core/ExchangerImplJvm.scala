@@ -79,7 +79,10 @@ private sealed trait ExchangerImplJvm[A, B]
     incoming.get(idx) match {
       case null =>
         // empty slot, insert ourselves:
-        val self = new ExchangerNode[C](msg)
+        val self = new ExchangerNode[C](
+          msg,
+          Ref.unsafePadded[NodeResult[C]](null, ctx.refIdGen),
+        )
         if (incoming.compareAndSet(idx, null, self)) {
           debugLog(s"posted offer (contT: ${java.util.Arrays.toString(msg.contT)}) - thread#${Thread.currentThread().getId()}")
           // we posted our msg, look at the other side:
