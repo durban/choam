@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import cats.kernel.Order
+import cats.kernel.{ Hash, Order }
 import cats.effect.kernel.{ Ref => CatsRef }
 import cats.effect.std.MapRef
 
@@ -56,6 +56,9 @@ object Map extends MapPlatform {
   private[data] trait UnsealedMap[K, V] extends Map[K, V]
 
   private[data] trait UnsealedMapExtra[K, V] extends Map.Extra[K, V]
+
+  final override def simpleHashMap[K: Hash, V]: Axn[Extra[K, V]] =
+    SimpleMap[K, V]
 
   final override def simpleOrderedMap[K: Order, V]: Axn[Extra[K, V]] =
     SimpleOrderedMap[K, V]
