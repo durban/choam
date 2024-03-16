@@ -59,7 +59,7 @@ import RefIdGenBase.GAMMA
  *
  * Generated IDs should not be contiguous, because we'd like
  * to put them into a hash-map, hash-trie or similar. (Of course
- * we could hash them later, but we'd rther do this once on
+ * we could hash them later, but we'd rather do this once on
  * generation.) So we use Fibonacci hashing to generate a
  * "good" distribution.
  */
@@ -69,6 +69,8 @@ private[choam] sealed trait RefIdGen {
 }
 
 private[choam] object RefIdGen {
+
+  // TODO: create benchmark for scaling with threads
 
   val global: GlobalRefIdGen = // TODO: instead of this, have a proper acq/rel Runtime
     new GlobalRefIdGen
