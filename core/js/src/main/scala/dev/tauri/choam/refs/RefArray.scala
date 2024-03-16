@@ -20,8 +20,7 @@ package refs
 
 import java.lang.ref.WeakReference
 
-import internal.mcas.{ MemoryLocation, Version }
-import internal.mcas.emcas.RefIdGenerator
+import internal.mcas.{ MemoryLocation, Version, RefIdGen }
 import RefArray.RefArrayRef
 
 private abstract class RefArray[A](
@@ -196,7 +195,7 @@ private object RefArray {
     }
 
     final override def id: Long = {
-      RefIdGenerator.compute(array.idBase, this.logicalIdx)
+      RefIdGen.compute(array.idBase, this.logicalIdx)
     }
 
     final override def toString: String = {

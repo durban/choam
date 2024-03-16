@@ -25,7 +25,7 @@ import cats.syntax.all._
 import munit.Location
 
 import internal.mcas.Mcas
-import internal.mcas.emcas.RefIdGenBase.GAMMA
+import internal.mcas.RefIdGenBase.GAMMA
 
 final class RefArraySpec_Strict extends RefArraySpecIds {
 

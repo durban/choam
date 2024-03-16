@@ -18,7 +18,6 @@
 package dev.tauri.choam
 package internal
 package mcas
-package emcas
 
 import java.util.concurrent.atomic.AtomicLong
 
@@ -65,9 +64,6 @@ import RefIdGenBase.GAMMA
  * "good" distribution.
  */
 private[choam] final class RefIdGen private[mcas] () extends RefIdGenBase {
-
-  // TODO: move this to `mcas` (it's not EMCAS-specific)
-  // TODO: move this to shrared sources (we'll need it on JS too)
 
   private[this] final val initialBlockSize =
     2 // TODO: maybe start with bigger for platform threads?

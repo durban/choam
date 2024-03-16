@@ -20,8 +20,7 @@ package refs
 
 import java.lang.ref.WeakReference
 
-import internal.mcas.MemoryLocation
-import internal.mcas.emcas.RefIdGen
+import internal.mcas.{ MemoryLocation, RefIdGen }
 
 private final class RefArrayRef[A](
   array: RefArrayBase[A],

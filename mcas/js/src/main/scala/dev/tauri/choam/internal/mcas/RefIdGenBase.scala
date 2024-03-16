@@ -15,10 +15,14 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.internal.mcas.emcas;
+package dev.tauri.choam
+package internal
+package mcas
 
-public abstract class RefIdGenBase {
+abstract class RefIdGenBase
 
-  public static final long GAMMA =
-    0x9e3779b97f4a7c15L; // Fibonacci hashing: https://web.archive.org/web/20161121124236/http://brpreiss.com/books/opus4/html/page214.html
+object RefIdGenBase {
+
+  @inline final val GAMMA =
+    0x9e3779b97f4a7c15L;
 }
