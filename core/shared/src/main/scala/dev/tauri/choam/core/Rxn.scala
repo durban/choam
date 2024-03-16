@@ -414,7 +414,7 @@ object Rxn extends RxnInstances0 {
       delay(uf).flatten // TODO: optimize
 
     private[choam] def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
-      context(uf)
+      context(uf) // TODO: decide if we want `context` or `delayContext`, delete the other (see also `Axn`)
 
     // TODO: NB: this is also like `delay`
     // TODO: Calling `unsafePerform` (or similar) inside

@@ -641,6 +641,27 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("flatMap chain") {
+    val l = List("a", "b", "c", "d")
+    for {
+      refs <- l.traverse { s =>
+        Ref(s)
+      }.run[F]
+      r = for {
+        a <- refs(0).getAndSet
+        b <- refs(1).getAndSet
+        c <- refs(2).getAndSet
+        d <- refs(3).getAndSet
+      } yield List(a, b, c, d)
+      res <- r.apply[F]("x")
+      _ <- assertEqualsF(res, l)
+      nvs <- refs.traverse { ref =>
+        ref.get
+      }.run[F]
+      _ <- assertEqualsF(nvs, List.fill(4)("x"))
+    } yield ()
+  }
+
   test("provide and contramap") {
     for {
       r <- Ref("x").run[F]
