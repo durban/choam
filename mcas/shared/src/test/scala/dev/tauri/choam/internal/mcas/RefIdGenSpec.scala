@@ -137,6 +137,7 @@ final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
 
   test("Lots of IDs from one thread") {
     this.assume(this.isJvm())
+    this.assumeNotOpenJ9()
     val rig = new RefIdGen
     val t = rig.newThreadLocal()
     var acc = 0L
@@ -154,6 +155,7 @@ final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
 
   test("One ID from lots of threads each") {
     this.assume(this.isJvm())
+    this.assumeNotOpenJ9()
     val rig = new RefIdGen
     val first = rig.newThreadLocal().nextId() // uses 0, leaks 1
     var acc = 0L
