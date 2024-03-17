@@ -19,8 +19,6 @@ package dev.tauri.choam
 package internal
 package mcas
 
-import java.util.concurrent.atomic.AtomicLong
-
 import RefIdGenBase.GAMMA
 
 /**
@@ -75,8 +73,6 @@ private[choam] sealed trait RefIdGen {
 
 private[choam] object RefIdGen {
 
-  // TODO: create benchmark for scaling with threads
-
   val global: GlobalRefIdGen = // TODO: instead of this, have a proper acq/rel Runtime
     new GlobalRefIdGen
 
@@ -91,13 +87,10 @@ private[choam] final class GlobalRefIdGen private[mcas] () extends RefIdGenBase 
   private[this] final val initialBlockSize =
     2 // TODO: maybe start with bigger for platform threads?
 
-  private[this] val ctr =
-    new AtomicLong(java.lang.Long.MIN_VALUE) // TODO: VarHandle, padding
-
   private[GlobalRefIdGen] final def allocateThreadLocalBlock(size: Int): Long = {
     require(size > 0)
     val s = size.toLong
-    val n = this.ctr.getAndAdd(s) // TODO: opaque
+    val n = this.getAndAddCtrOpaque(s)
     assert(n < (n + s)) // ID overflow
     n
   }
@@ -125,7 +118,7 @@ private[choam] final class GlobalRefIdGen private[mcas] () extends RefIdGenBase 
    * local context.
    */
   final def nextIdGlobal(): Long = {
-    val n = this.ctr.getAndIncrement() // TODO: opaque
+    val n = this.getAndAddCtrOpaque(1L)
     assert(n < (n + 1L)) // ID overflow
     n * GAMMA
   }

@@ -19,7 +19,17 @@ package dev.tauri.choam
 package internal
 package mcas
 
-abstract class RefIdGenBase
+import java.util.concurrent.atomic.AtomicLong
+
+abstract class RefIdGenBase {
+
+  private[this] val ctr =
+    new AtomicLong(Long.MinValue)
+
+  protected final def getAndAddCtrOpaque(x: Long): Long = {
+    this.ctr.getAndAdd(x)
+  }
+}
 
 object RefIdGenBase {
 
