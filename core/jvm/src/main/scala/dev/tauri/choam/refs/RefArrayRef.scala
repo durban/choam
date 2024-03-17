@@ -27,6 +27,9 @@ private final class RefArrayRef[A](
   logicalIdx: Int,
 ) extends UnsealedRef[A] with MemoryLocation[A] {
 
+  final override val id: Long =
+    RefIdGen.compute(array.idBase, logicalIdx)
+
   private[this] final def itemIdx: Int =
     (3 * this.logicalIdx) + 1
 
@@ -62,10 +65,6 @@ private final class RefArrayRef[A](
 
   final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     array.casVolatile(markerIdx, ov, nv)
-
-  final override def id: Long = { // TODO: maybe make this a val? (time vs space)
-    RefIdGen.compute(array.idBase, this.logicalIdx)
-  }
 
   final override def toString: String =
     refs.refArrayRefToString(array.idBase, this.logicalIdx)

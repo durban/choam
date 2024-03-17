@@ -19,6 +19,7 @@ val sbtTypelevelVersion = "0.6.7"
 
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.7") // https://github.com/sbt/sbt-jmh
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
+// addSbtPlugin("pl.project13.sbt" % "sbt-jol" %  "0.1.4")
 addSbtPlugin("io.crashbox" % "sbt-gpg" % "0.2.1") // https://github.com/jodersky/sbt-gpg
 addSbtPlugin("ch.epfl.scala" % "sbt-version-policy" % "3.2.0")
 addSbtPlugin("org.typelevel" % "sbt-typelevel-no-publish" % sbtTypelevelVersion)
