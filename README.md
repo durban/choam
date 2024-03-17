@@ -148,18 +148,18 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 ## Compatibility and assumptions
 
-["Early" SemVer](https://www.scala-lang.org/blog/2021/02/16/preventing-version-conflicts-with-versionscheme.html#early-semver-and-sbt-version-policy) _binary_ backwards compatibility, with the following exceptions:
+["Early" SemVer 2.0.0](https://www.scala-lang.org/blog/2021/02/16/preventing-version-conflicts-with-versionscheme.html#early-semver-and-sbt-version-policy) _binary_ backwards compatibility, with the following exceptions:
 
 - The versions of `choam-` modules must match *exactly* (e.g., *don't* use `"choam-data" % "0.4.1"`
   with `"choam-core" % "0.4.0"`).
 - There is no backwards compatibility for APIs which are
   - inside `*.internal.*` packages (e.g., `dev.tauri.choam.internal.mcas`);
-  - called `unsafe*` (e.g., `Rxn.unsafe.retry`).
+  - called `unsafe*` (e.g., `Rxn.unsafe.retry` or `Ref#unsafeCas`).
 - There is no backwards compatibility for these modules:
   - `choam-laws`
   - `choam-stream`
-  - (unpublished modules)
-- There is no backwards compatibility for "hash" versions (e.g., `0.4-39d987a`).
+  - (and all unpublished modules)
+- There is no backwards compatibility for "hash" versions (e.g., `0.4-39d987a`; these are not even SemVer compatible).
 
 ### Supported platforms:
 
@@ -186,13 +186,13 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
     - in practice, this is true only on 64-bit platforms
   - GC and classloading
     - in practice, this is *not* true
-  - `ThreadLocalRandom`
+  - `ThreadLocalRandom`, `ThreadLocal`
 - Certain `Rxn` operations require extra assumptions:
   - `Rxn.secureRandom` and `UUIDGen` use the OS RNG, which may block
     (although we *really* try to use the non-blocking ones)
-  - operations in `F[_]` might not be lock-free (e.g., `Promise#get`)
-  - in `choam-async` we assume that calling a CE `async` callback is lock-free
-    (in `cats.effect.IO` as of version 3.5.3 this is not technically true)
+  - operations in `F[_]` might not be lock-free (an obvious example is `Promise#get`)
+  - in `choam-async` we assume that calling a CE `Async` callback is lock-free
+    (in `cats.effect.IO`, as of version 3.5.4, this is not technically true)
 - Executing a `Rxn` with a `Rxn.Strategy` other than `Rxn.Strategy.Spin`
   is *not* lock-free
 - Only `Mcas.DefaultMcas` is lock-free, other `Mcas` implementations may not be
