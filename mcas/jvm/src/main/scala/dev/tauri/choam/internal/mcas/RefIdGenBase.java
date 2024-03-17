@@ -21,4 +21,14 @@ public abstract class RefIdGenBase {
 
   public static final long GAMMA =
     0x9e3779b97f4a7c15L; // Fibonacci hashing: https://web.archive.org/web/20161121124236/http://brpreiss.com/books/opus4/html/page214.html
+
+  /**
+   * Next power of 2 which is `>= x`.
+   *
+   * `clp2` from Hacker's Delight by Henry S. Warren, Jr. (section 3–2).
+   */
+  static final int nextPowerOf2(int x) {
+    assert (x > 0) && (x <= (1 << 30));
+    return 0x80000000 >>> (Integer.numberOfLeadingZeros(x - 1) - 1);
+  }
 }

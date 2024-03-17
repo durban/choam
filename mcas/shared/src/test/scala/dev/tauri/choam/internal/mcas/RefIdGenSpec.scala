@@ -71,23 +71,24 @@ final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
     val rig = new GlobalRefIdGen
     val t1 = rig.newThreadLocal()
     val id11 = t1.nextId()
-    val arrBase1 = t1.nextArrayIdBase(8) // get it from global
+    val arrBase1 = t1.nextArrayIdBase(8) // get it from new block, leak id11+1
     val id12 = t1.nextId()
-    assertEquals(id12 - id11, GAMMA)
     val arr11 = RefIdGen.compute(arrBase1, 0)
+    assertEquals(arr11 - id11, 2L * GAMMA)
     val arr12 = RefIdGen.compute(arrBase1, 1)
     assertEquals(arr12 - arr11, GAMMA)
     val arr13 = RefIdGen.compute(arrBase1, 2)
     assertEquals(arr13 - arr12, GAMMA)
     val arr18 = RefIdGen.compute(arrBase1, 7)
-    assertEquals(arr18 - arr11, 7 * GAMMA)
+    assertEquals(arr18 - arr11, 7L * GAMMA)
+    assertEquals(id12 - arr18, GAMMA)
     val t2 = rig.newThreadLocal()
     val id21 = t2.nextId()
     val id22 = t2.nextId()
-    assertEquals(id21 - arr18, GAMMA)
+    assertEquals(id21 - id12, 16L * GAMMA)
     assertEquals(id22 - id21, GAMMA)
     val id13 = t1.nextId()
-    assertEquals(id13 - id22, GAMMA)
+    assertEquals(id13 - id12, GAMMA)
     val arrBase2 = t1.nextArrayIdBase(2) // get it from thread-local
     val arr21 = RefIdGen.compute(arrBase2, 0)
     val arr22 = RefIdGen.compute(arrBase2, 1)
@@ -174,5 +175,22 @@ final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
     assertNotEquals(acc, 0L)
     assertEquals(last - first, 2L * (Integer.MAX_VALUE.toLong + 1L) * GAMMA)
     assertEquals(rig.nextIdGlobal() - last, 2L * GAMMA)
+  }
+
+  test("nextPowerOf2") {
+    import RefIdGenBase.nextPowerOf2
+    assertEquals(nextPowerOf2(1), 1)
+    assertEquals(nextPowerOf2(2), 2)
+    assertEquals(nextPowerOf2(3), 4)
+    assertEquals(nextPowerOf2(4), 4)
+    assertEquals(nextPowerOf2(5), 8)
+    assertEquals(nextPowerOf2(6), 8)
+    assertEquals(nextPowerOf2(8), 8)
+    assertEquals(nextPowerOf2(9), 16)
+    assertEquals(nextPowerOf2(15), 16)
+    assertEquals(nextPowerOf2(16), 16)
+    assertEquals(nextPowerOf2(17), 32)
+    assertEquals(nextPowerOf2((1 << 30) - 1), 1 << 30)
+    assertEquals(nextPowerOf2(1 << 30), 1 << 30)
   }
 }

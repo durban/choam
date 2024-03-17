@@ -54,8 +54,13 @@ import RefIdGenBase.GAMMA
  * case (if we create a lot of virtual threads, and each
  * of them is abandoned at the worst possible time) we only
  * waste half of the IDs. That means we still have 63 bits,
- * which should be plenty. (The doubling also means, that threads
- * which create a lot of `Ref`s quickly get up to big blocks.)
+ * (so half of the whole ID space) which should be plenty.
+ * (The doubling also means, that threads which create a lot
+ * of `Ref`s quickly get up to big blocks.)
+ *
+ * Allocating whole blocks for `Ref.Array`s makes this a little
+ * worse, but we still have more than one-third of the whole
+ * 64-bit space (see comment in `nextArrayIdBase`).
  *
  * Generated IDs should not be contiguous, because we'd like
  * to put them into a hash-map, hash-trie or similar. (Of course
@@ -158,32 +163,50 @@ private[mcas] object GlobalRefIdGen {
         if (s < maxBlockSize) {
           this.nextBlockSize = s << 1
         }
-        // next time we'll succeed for sure:
+        // now we'll succeed for sure:
         this.nextId()
       }
     }
 
+    @tailrec
     final override def nextArrayIdBase(size: Int): Long = {
       require(size > 0)
       val rem = this.remaining
       if (rem >= size) {
+        // It fits into the current block:
         val base = this.next
         this.next = base + size.toLong
         this.remaining = rem - size
         base
+      } else if (size <= maxBlockSize) {
+        // It doesn't fit into the current block, but
+        // it can fit into a new block. We'll leak the
+        // remaining IDs in the current block. We'll
+        // potentially also leak less than half of the
+        // new block (if the thread-local is abandoned
+        // right after this). Overall, we leak less
+        // than `2*size`, which is worse than our "usual"
+        // amount (which is `<= used`; in `nextId`).
+        // This means that (worst case) we can still use
+        // (a little more than) one-third of the whole space.
+        this.allocateBlockForArray(size)
+        // now we'll succeed for sure:
+        this.nextArrayIdBase(size)
       } else {
-        // Not enough IDs in the current thread-local
-        // block. But instead of allocating a new one,
-        // we just fulfill this request from the global.
-        // (Because this way, we don't leak the remaining
-        // IDs in our thread-local block.)
-        // TODO: This is not exactly optimal if we're
-        // TODO: at the end of a large(ish) block, and
-        // TODO: need to allocate a lot of small arrays
-        // TODO: which do not fit in the remaining,
-        // TODO: because then we'll always go to global.
-        // TODO: But also, FAA is cheap...
+        // Exceptionally large array, so we just fulfill
+        // this request directly from the global. (There
+        // is zero leak here.)
         this.parent.nextArrayIdBaseGlobal(size)
+      }
+    }
+
+    private[this] final def allocateBlockForArray(arraySize: Int): Unit = {
+      val s = RefIdGenBase.nextPowerOf2(arraySize)
+      this.next = this.parent.allocateThreadLocalBlock(s)
+      this.remaining = s
+      val nbs = this.nextBlockSize
+      if ((s > nbs) && (s < maxBlockSize)) {
+        this.nextBlockSize = s << 1
       }
     }
   }
