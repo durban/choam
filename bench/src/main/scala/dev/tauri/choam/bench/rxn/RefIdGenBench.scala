@@ -50,6 +50,11 @@ class RefIdGenBench {
     RefIdGen.global.newThreadLocal().nextId()
   }
 
+  // TODO: All the array* methods below never generate
+  // TODO: "regular" IDs, so the block is always empty,
+  // TODO: so they always fall back to global. So we're
+  // TODO: not measuring the correct thing.
+
   @Benchmark
   def arrayGlobal(s: ArraySt): Long = {
     RefIdGen.global.nextArrayIdBase(s.size)

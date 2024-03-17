@@ -44,6 +44,16 @@ import Ttrie._
  *
  * Unlike `ttrie` in the paper (section 3.3), we don't leak
  * memory on failed lookups, and removal compacts the trie.
+ *
+ * The basic idea of `ttrie` seems essentially the same as
+ * the earlier idea of "transactional predication" in
+ * "Composable Operations on High-Performance Concurrent
+ * Collections" by Nathan G. Bronson
+ * (https://web.archive.org/web/20221206161946/https://stacks.stanford.edu/file/druid:gm457gs5369/nbronson_thesis_final-augmented.pdf).
+ * However, transactional predication has a more sophisticated
+ * cleanup scheme than we have here (section 3.4.1–3).
+ *
+ * TODO: see if we could use more ideas from transactional predication.
  */
 private final class Ttrie[K, V] private (
   m: CMap[K, TrieRef[V]],
