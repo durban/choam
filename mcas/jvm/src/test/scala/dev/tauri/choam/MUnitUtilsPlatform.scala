@@ -23,6 +23,16 @@ import scala.util.control.NonFatal
 
 trait MUnitUtilsPlatform {
 
+  private[this] lazy val _isGraal: Boolean = {
+    try {
+      Class.forName("org.graalvm.word.WordFactory")
+      true
+    } catch {
+      case ex if NonFatal(ex) =>
+        false
+    }
+  }
+
   final def isJvm(): Boolean =
     true
 
@@ -41,15 +51,7 @@ trait MUnitUtilsPlatform {
     Runtime.version().feature()
   }
 
-  final def checkGraal(): Unit = {
-    for (fqn <- List("org.graalvm.home.Version", "org.graalvm.word.WordFactory")) {
-      try {
-        Class.forName(fqn)
-        println(s"Successfully loaded ${fqn}")
-      } catch {
-        case ex if NonFatal(ex) =>
-          println(s"Couldn't load ${fqn}")
-      }
-    }
+  final def isGraal(): Boolean = {
+    this._isGraal
   }
 }

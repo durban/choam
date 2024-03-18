@@ -77,7 +77,9 @@ trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
 
   def isOpenJdk(): Boolean = {
     val vmName = java.lang.System.getProperty("java.vm.name")
-    vmName.contains("HotSpot") || vmName.contains("OpenJDK")
+    (vmName.contains("HotSpot") || vmName.contains("OpenJDK")) && (
+      !this.isGraal() // Graal very much looks like an OpenJDK
+    )
   }
 
   def isOpenJ9(): Boolean = {

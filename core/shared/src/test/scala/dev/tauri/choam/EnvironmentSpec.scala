@@ -34,22 +34,9 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
     or.nextBytes(256)
   }
 
-  test("Check Graal") {
-    val props = System.getProperties()
-    val it = props.keySet().iterator()
-    println("Graal system properties:")
-    while (it.hasNext()) {
-      val k: String = it.next().asInstanceOf[String]
-      if (k.toLowerCase().contains("graal")) {
-        printSystemProperty(k)
-      }
-    }
-
-    this.checkGraal()
-  }
-
   test("Check autodetection") {
     println(s"isOpenJdk() == ${isOpenJdk()}")
+    println(s"isGraal() == ${isGraal()}")
     println(s"isOpenJ9() == ${isOpenJ9()}")
     println(s"isWindows() == ${isWindows()}")
     println(s"isMac() == ${isMac()}")
