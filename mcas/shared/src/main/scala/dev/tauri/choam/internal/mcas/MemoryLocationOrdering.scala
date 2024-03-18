@@ -32,7 +32,7 @@ private final class MemoryLocationOrdering[A]
     if (a eq b) {
       0
     } else {
-      val r = java.lang.Long.compare(a.id, b.id)
+      val r = java.lang.Long.compareUnsigned(a.id, b.id)
       if (r != 0) r
       else impossible(s"[globalCompare] ref collision: ${a} and ${b}")
     }
