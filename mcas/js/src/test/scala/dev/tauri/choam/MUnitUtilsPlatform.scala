@@ -34,7 +34,7 @@ trait MUnitUtilsPlatform {
     System.getProperty("java.version").split('.')(0).toInt
   }
 
-  final def checkGraal(): Unit = {
-    println("This is JS, not Graal")
+  final def isGraal(): Boolean = {
+    false // this is JS!
   }
 }
