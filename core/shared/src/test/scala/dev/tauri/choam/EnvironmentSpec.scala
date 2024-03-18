@@ -34,6 +34,19 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
     or.nextBytes(256)
   }
 
+  test("Check Graal") {
+    val props = System.getProperties()
+    val it = props.keySet().iterator()
+    println("Graal system properties:")
+    while (it.hasNext()) {
+      val k: String = it.next().asInstanceOf[String]
+      if (k.toLowerCase().contains("graal")) {
+        printSystemProperty(k)
+      }
+    }
+    println("End of Graal system properties.")
+  }
+
   test("Check autodetection") {
     println(s"isOpenJdk() == ${isOpenJdk()}")
     println(s"isOpenJ9() == ${isOpenJ9()}")
@@ -51,15 +64,28 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
     "java.vendor",
     "java.vendor.url",
     "java.version",
+    "java.vm.specification.version",
+    "java.vm.specification.vendor",
+    "java.vm.specification.name",
+    "java.vm.version",
+    "java.vm.vendor",
     "java.vm.name",
+    "java.specification.version",
+    "java.specification.vendor",
+    "java.specification.name",
+    "java.compiler",
     "os.arch",
     "os.name",
     "os.version",
   )
 
   private def printSystemProperty(name: String): Unit = {
-    val value = System.getProperty(name)
-    val msg = s"${name} property == \"${value}\""
+    val msg = System.getProperty(name) match {
+      case null =>
+        s"${name} property is missing!"
+      case value =>
+        s"${name} property == \"${value}\""
+    }
     println(msg)
   }
 }
