@@ -19,6 +19,8 @@ package dev.tauri.choam
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater
 
+import scala.util.control.NonFatal
+
 trait MUnitUtilsPlatform {
 
   final def isJvm(): Boolean =
@@ -37,5 +39,16 @@ trait MUnitUtilsPlatform {
 
   final def getJvmVersion(): Int = {
     Runtime.version().feature()
+  }
+
+  final def checkGraal(): Unit = {
+    val fqn = "org.graalvm.home.Version"
+    try {
+      Class.forName(fqn)
+      println(s"Successfully loaded ${fqn}")
+    } catch {
+      case ex if NonFatal(ex) =>
+        println(s"Couldn't load ${fqn}")
+    }
   }
 }

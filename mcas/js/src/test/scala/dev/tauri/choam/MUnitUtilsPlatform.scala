@@ -33,4 +33,8 @@ trait MUnitUtilsPlatform {
     // scala-js has no `Runtime.version()`
     System.getProperty("java.version").split('.')(0).toInt
   }
+
+  final def checkGraal(): Unit = {
+    println("This is JS, not Graal")
+  }
 }
