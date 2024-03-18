@@ -42,13 +42,14 @@ trait MUnitUtilsPlatform {
   }
 
   final def checkGraal(): Unit = {
-    val fqn = "org.graalvm.home.Version"
-    try {
-      Class.forName(fqn)
-      println(s"Successfully loaded ${fqn}")
-    } catch {
-      case ex if NonFatal(ex) =>
-        println(s"Couldn't load ${fqn}")
+    for (fqn <- List("org.graalvm.home.Version", "org.graalvm.word.WordFactory")) {
+      try {
+        Class.forName(fqn)
+        println(s"Successfully loaded ${fqn}")
+      } catch {
+        case ex if NonFatal(ex) =>
+          println(s"Couldn't load ${fqn}")
+      }
     }
   }
 }
