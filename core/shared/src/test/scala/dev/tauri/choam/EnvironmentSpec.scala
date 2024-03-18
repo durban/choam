@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import scala.util.control.NonFatal
+
 import random.OsRng
 
 final class EnvironmentSpec extends EnvironmentSpecPlatform {
@@ -45,6 +47,14 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
       }
     }
     println("End of Graal system properties.")
+    val fqn = "org.graalvm.home.Version"
+    try {
+      Class.forName(fqn)
+      println(s"Successfully loaded ${fqn}")
+    } catch {
+      case ex if NonFatal(ex) =>
+        println(s"Couldn't load ${fqn}")
+    }
   }
 
   test("Check autodetection") {
