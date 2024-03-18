@@ -54,11 +54,9 @@ import RefIdGenBase.GAMMA
  * waste half of the IDs. That means we still have 63 bits,
  * (so half of the whole ID space) which should be plenty.
  * (The doubling also means, that threads which create a lot
- * of `Ref`s quickly get up to big blocks.)
- *
- * Allocating whole blocks for `Ref.Array`s makes this a little
- * worse, but we still have more than one-third of the whole
- * 64-bit space (see comment in `nextArrayIdBase`).
+ * of `Ref`s quickly get up to big blocks. Also, allocating
+ * prematurely new blocks for `Ref.Array`s doesn't mess up
+ * this, see comment in `nextArrayIdBase`.)
  *
  * Generated IDs should not be contiguous, because we'd like
  * to put them into a hash-map, hash-trie or similar. (Of course
@@ -174,31 +172,28 @@ private[mcas] object GlobalRefIdGen {
       } else if (size <= maxBlockSize) {
         // It doesn't fit into the current block, but
         // it can fit into a new block. We'll leak the
-        // remaining IDs in the current block. We'll
-        // potentially also leak less than half of the
-        // new block (if the thread-local is abandoned
-        // right after this). Overall, we leak less
-        // than `2*size`, which is worse than our "usual"
-        // amount (which is `<= used`; in `nextId`).
-        // This means that (worst case) we can still use
-        // (a little more than) one-third of the whole space.
+        // remaining IDs in the current block, but also
+        // use at least one more than that from the next
+        // block, so overall we're fine.
         this.allocateBlockForArray(size)
         // now we'll succeed for sure:
         this.nextArrayIdBase(size)
       } else {
         // Exceptionally large array, so we just fulfill
         // this request directly from the global. (There
-        // is zero leak here.)
+        // is zero leak here, but also no thread-local
+        // optimization.)
         this.parent.nextArrayIdBaseGlobal(size)
       }
     }
 
     private[this] final def allocateBlockForArray(arraySize: Int): Unit = {
-      val s = RefIdGenBase.nextPowerOf2(arraySize)
+      val abs = RefIdGenBase.nextPowerOf2(arraySize)
+      val nbs = this.nextBlockSize
+      val s = java.lang.Math.max(abs, nbs)
       this.next = this.parent.allocateThreadLocalBlock(s)
       this.remaining = s
-      val nbs = this.nextBlockSize
-      if ((s > nbs) && (s < maxBlockSize)) {
+      if (s < maxBlockSize) {
         this.nextBlockSize = s << 1
       }
     }
