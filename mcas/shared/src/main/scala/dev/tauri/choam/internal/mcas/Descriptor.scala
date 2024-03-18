@@ -105,7 +105,7 @@ final class Descriptor private (
     // adding an already included ref; the Exchanger
     // depends on this behavior:
     val map = this.map
-    require(!map.contains(d.address))
+    require(!map.contains(d.address)) // TODO: avoid this extra search in the map
     val newMap = map.updated(d.address, d)
     new Descriptor(
       newMap,
@@ -121,7 +121,7 @@ final class Descriptor private (
     require(desc.version <= this.validTs)
     val d = desc.cast[Any]
     val map = this.map
-    require(map.contains(d.address))
+    require(map.contains(d.address)) // TODO: avoid this extra search in the map
     val newMap = map.updated(d.address, d)
     new Descriptor(
       newMap,

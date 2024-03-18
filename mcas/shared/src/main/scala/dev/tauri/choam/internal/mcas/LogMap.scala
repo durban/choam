@@ -19,7 +19,7 @@ package dev.tauri.choam
 package internal
 package mcas
 
-import scala.collection.immutable.TreeMap
+import scala.collection.immutable.LongMap
 import scala.util.hashing.MurmurHash3
 
 // TODO: Could we use a Bloom filter for fast detection
@@ -117,7 +117,7 @@ private object LogMap {
 
   /** Invariant: `treeMap` has more than 1 items */
   private final class LogMapTree(
-    private val treeMap: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]],
+    private val treeMap: LongMap[HalfWordDescriptor[Any]],
     private val bloomFilterLeft: Long,
     private val bloomFilterRight: Long,
   ) extends LogMap {
@@ -127,12 +127,10 @@ private object LogMap {
     def this(v1: HalfWordDescriptor[Any], v2: HalfWordDescriptor[Any]) = {
       this(
         {
-          val b = TreeMap.newBuilder[MemoryLocation[Any], HalfWordDescriptor[Any]](
-            MemoryLocation.memoryLocationOrdering
-          )
-          b += ((v1.address, v1))
-          b += ((v2.address, v2))
-          b.result()
+          LongMap
+            .empty[HalfWordDescriptor[Any]]
+            .updated(v1.address.id, v1)
+            .updated(v2.address.id, v2)
         },
         BloomFilter.insertLeft(BloomFilter.insertLeft(0L, v1.address), v2.address),
         BloomFilter.insertRight(BloomFilter.insertRight(0L, v1.address), v2.address),
@@ -149,7 +147,7 @@ private object LogMap {
       true
 
     private[this] final def containsUnopt[A](ref: MemoryLocation[A]) =
-      treeMap.contains(ref.cast[Any])
+      treeMap.contains(ref.id)
 
     final override def contains[A](ref: MemoryLocation[A]) = {
       if (BloomFilter.definitelyNotContains(bloomFilterLeft, bloomFilterRight, ref)) {
@@ -160,8 +158,9 @@ private object LogMap {
     }
 
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
+      require(k eq v.address)
       new LogMapTree(
-        treeMap.updated(k.cast[Any], v.cast[Any]),
+        treeMap.updated(k.id, v.cast[Any]),
         BloomFilter.insertLeft(bloomFilterLeft, k),
         BloomFilter.insertRight(bloomFilterRight, k)
       )
@@ -171,7 +170,7 @@ private object LogMap {
       if (BloomFilter.definitelyNotContains(bloomFilterLeft, bloomFilterRight, k)) {
         default
       } else {
-        treeMap.getOrElse(k.cast[Any], default).asInstanceOf[HalfWordDescriptor[A]]
+        treeMap.getOrElse(k.id, default).asInstanceOf[HalfWordDescriptor[A]]
       }
     }
 
