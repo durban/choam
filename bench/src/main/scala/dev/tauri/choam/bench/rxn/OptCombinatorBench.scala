@@ -19,6 +19,8 @@ package dev.tauri.choam
 package bench
 package rxn
 
+import java.util.concurrent.ThreadLocalRandom
+
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
@@ -47,6 +49,16 @@ class OptCombinatorBench {
   def asWithMap(s: OptCombinatorBench.St, bh: Blackhole, k: McasImplState): Unit = {
     bh.consume(s.map.unsafePerformInternal(null, k.mcasCtx))
   }
+
+  @Benchmark
+  def tailRecMPrimitive(s: OptCombinatorBench.TrecSt, k: McasImplState): String = {
+    s.trecM.unsafePerform(null, k.mcasImpl)
+  }
+
+  @Benchmark
+  def tailRecMWithFlatMap(s: OptCombinatorBench.TrecSt, k: McasImplState): String = {
+    s.trecMWithFlatMap.unsafePerform(null, k.mcasImpl)
+  }
 }
 
 object OptCombinatorBench {
@@ -66,5 +78,47 @@ object OptCombinatorBench {
       ref.get.as("x")
     val map: Axn[String] =
       ref.get.asOld("x")
+  }
+
+  @State(Scope.Benchmark)
+  class TrecSt {
+
+    @Param(Array("8", "128", "1024"))
+    protected var size: Int =
+      -1
+
+    val ref: Ref[String] =
+      Ref.unsafe("a")
+
+    def trecM: Axn[String] =
+      this._trecM
+
+    private[this] var _trecM: Axn[String] =
+      null
+
+    def trecMWithFlatMap: Axn[String] =
+      this._trecMWithFlatMap
+
+    private[this] var _trecMWithFlatMap: Axn[String] =
+      null
+
+    @Setup
+    def setup(): Unit = {
+      val list = List.fill(this.size) {
+        ThreadLocalRandom.current().nextInt().toString()
+      }
+      this._trecM = Rxn.tailRecM(list) {
+        case h :: t =>
+          ref.getAndSet.provide(h).as(Left(t))
+        case Nil =>
+          ref.get.map(Right(_))
+      }
+      this._trecMWithFlatMap = Rxn.tailRecMWithFlatMap(list) {
+        case h :: t =>
+          ref.getAndSet.provide(h).as(Left(t))
+        case Nil =>
+          ref.get.map(Right(_))
+      }
+    }
   }
 }

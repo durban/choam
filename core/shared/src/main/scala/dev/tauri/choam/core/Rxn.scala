@@ -328,6 +328,13 @@ object Rxn extends RxnInstances0 {
   final def tailRecM[X, A, B](a: A)(f: A => Rxn[X, Either[A, B]]): Rxn[X, B] =
     new TailRecM[X, A, B](a, f)
 
+  private[choam] final def tailRecMWithFlatMap[X, A, B](a: A)(f: A => Rxn[X, Either[A, B]]): Rxn[X, B] = {
+    f(a).flatMap {
+      case Left(a)  => tailRecMWithFlatMap(a)(f)
+      case Right(b) => Rxn.pure(b)
+    }
+  }
+
   // Utilities:
 
   private[this] val _osRng: random.OsRng = {
