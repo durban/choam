@@ -658,7 +658,32 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       nvs <- refs.traverse { ref =>
         ref.get
       }.run[F]
-      _ <- assertEqualsF(nvs, List.fill(4)("x"))
+      _ <- assertEqualsF(nvs, List.fill(l.length)("x"))
+    } yield ()
+  }
+
+  test("tailRecM") {
+    val l = List("a", "b", "c", "d")
+    for {
+      refs <- l.traverse { s =>
+        Ref(s)
+      }.run[F]
+      acc <- Ref(List.empty[String]).run[F]
+      r = Rxn.tailRecM(refs) {
+        case ref :: tail =>
+          ref.getAndSet >>> acc.upd { (ov, s) =>
+            (s :: ov, Left(tail))
+          }
+        case Nil =>
+          Rxn.pure(Right(42))
+      }
+      res <- r.apply[F]("x")
+      _ <- assertEqualsF(res, 42)
+      nvs <- refs.traverse { ref =>
+        ref.get
+      }.run[F]
+      _ <- assertEqualsF(nvs, List.fill(l.length)("x"))
+      _ <- assertResultF(acc.get.run[F], l.reverse)
     } yield ()
   }
 

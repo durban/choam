@@ -52,6 +52,21 @@ private final class ObjStack[A]() {
     r
   }
 
+  final def peek(): A = {
+    assertNonEmpty()
+    this.lst.head
+  }
+
+  final def peekSecond(): A = {
+    assertNonEmpty()
+    this.lst.tail match {
+      case null =>
+        throw new NoSuchElementException
+      case t =>
+        t.head
+    }
+  }
+
   final def clear(): Unit = {
     this.lst = null
   }

@@ -325,6 +325,9 @@ object Rxn extends RxnInstances0 {
   final def postCommit[A](pc: Rxn[A, Unit]): Rxn[A, A] =
     new PostCommit[A](pc)
 
+  final def tailRecM[X, A, B](a: A)(f: A => Rxn[X, Either[A, B]]): Rxn[X, B] =
+    new TailRecM[X, A, B](a, f)
+
   // Utilities:
 
   private[this] val _osRng: random.OsRng = {
@@ -594,9 +597,15 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"FlatMap(${rxn}, <function>)"
   }
 
+  /** Only the interpreter can use this! */
   private final class Suspend(val token: Long) extends Rxn[Any, Nothing] {
     private[core] final override def tag = 27
     final override def toString: String = s"Suspend(${token.toHexString})"
+  }
+
+  private final class TailRecM[X, A, B](val a: A, val f: A => Rxn[X, Either[A, B]]) extends Rxn[X, B] {
+    private[core] final override def tag = 28
+    final override def toString: String = s"TailRecM(${a}, <function>)"
   }
 
   // Interpreter:
@@ -608,7 +617,7 @@ object Rxn extends RxnInstances0 {
   private[this] final val ContAndThen = 0.toByte
   private[this] final val ContAndAlso = 1.toByte
   private[this] final val ContAndAlsoJoin = 2.toByte
-  // 3.toByte is unused
+  private[this] final val ContTailRecM = 3.toByte
   private[this] final val ContPostCommit = 4.toByte
   private[this] final val ContAfterPostCommit = 5.toByte // TODO: rename(?)
   private[this] final val ContCommitPostCommit = 6.toByte
@@ -811,8 +820,20 @@ object Rxn extends RxnInstances0 {
           val savedA = contK.pop()
           a = (savedA, a)
           next()
-        case 3 => // was ContAfterDelayComp
-          impossible("Unknown contT: 3")
+        case 3 => // ContTailRecM
+          val e = a.asInstanceOf[Either[Any, Any]]
+          a = contK.peek()
+          val f = contK.peekSecond().asInstanceOf[Any => Rxn[Any, Any]]
+          e match {
+            case Left(more) =>
+              contT.push(ContTailRecM)
+              f(more)
+            case Right(done) =>
+              a = done
+              contK.pop() // a
+              contK.pop() // f
+              next()
+          }
         case 4 => // ContPostCommit
           val pcAction = contK.pop().asInstanceOf[Rxn[Any, Any]]
           clearAlts()
@@ -1264,6 +1285,14 @@ object Rxn extends RxnInstances0 {
           // user code can't access a `Suspend`, so
           // we can abuse `R` and return `Suspend`:
           curr.asInstanceOf[R]
+        case 28 => // TailRecM
+          val c = curr.asInstanceOf[TailRecM[Any, Any, Any]]
+          val f = c.f
+          val nxt = f(c.a)
+          contT.push(ContTailRecM)
+          contK.push(f)
+          contK.push(a)
+          loop(nxt)
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }
@@ -1367,11 +1396,17 @@ private sealed abstract class RxnInstances1 extends RxnInstances2 { self: Rxn.ty
 
 private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.type =>
 
+  // Even though we override `tailRecM`, we still
+  // inherit `StackSafeMonad`, in case someone
+  // somewhere uses that as a marker or even a
+  // typeclass:
   implicit final def monadInstance[X]: StackSafeMonad[Rxn[X, *]] = new StackSafeMonad[Rxn[X, *]] {
     final override def flatMap[A, B](fa: Rxn[X, A])(f: A => Rxn[X, B]): Rxn[X, B] =
       fa.flatMap(f)
     final override def pure[A](a: A): Rxn[X, A] =
       Rxn.pure(a)
+    final override def tailRecM[A, B](a: A)(f: A => Rxn[X, Either[A, B]]): Rxn[X, B] =
+      Rxn.tailRecM[X, A, B](a)(f)
   }
 }
 
