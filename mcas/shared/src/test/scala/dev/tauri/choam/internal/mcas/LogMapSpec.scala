@@ -78,23 +78,6 @@ final class LogMapSpec extends ScalaCheckSuite {
     }
   }
 
-  property("isDisjoint") {
-    forAll { (seed: Long, _refs1: Set[MemoryLocation[String]], _refs2: Set[MemoryLocation[String]]) =>
-      val rng = new Random(seed)
-      val (lm1, tm1) = lmTmFromRefs(rng, () => rng.nextString(32), _refs1)
-      val (lm2, tm2) = lmTmFromRefs(rng, () => rng.nextString(32), _refs2)
-      val exp = tm1.keySet.intersect(tm2.keySet).isEmpty
-      assertEquals(
-        lm1.isDisjoint(lm2),
-        exp,
-      )
-      assertEquals(
-        lm2.isDisjoint(lm1),
-        exp,
-      )
-    }
-  }
-
   private[this] def lmTmFromRefs[A](
     rng: Random,
     randomA: () => A,

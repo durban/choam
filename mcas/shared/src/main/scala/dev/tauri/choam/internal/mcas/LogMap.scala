@@ -34,8 +34,6 @@ private sealed abstract class LogMap {
 
   def nonEmpty: Boolean
 
-  protected def contains[A](ref: MemoryLocation[A]): Boolean
-
   /** Must already contain `k` */
   def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
 
@@ -46,8 +44,6 @@ private sealed abstract class LogMap {
   def upserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
 
   def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]): HalfWordDescriptor[A]
-
-  def isDisjoint(that: LogMap): Boolean
 
   override def equals(that: Any): Boolean
 
@@ -71,9 +67,6 @@ private object LogMap {
     final override def nonEmpty =
       false
 
-    final override def contains[A](ref: MemoryLocation[A]) =
-      false
-
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap =
       throw new IllegalArgumentException
 
@@ -85,9 +78,6 @@ private object LogMap {
 
     final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
       default
-
-    final def isDisjoint(that: LogMap): Boolean =
-      true
 
     final override def equals(that: Any): Boolean =
       equ[Any](that, this)
@@ -107,9 +97,6 @@ private object LogMap {
 
     final override def nonEmpty =
       true
-
-    final override def contains[A](ref: MemoryLocation[A]) =
-      (ref eq v1.address)
 
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
       require(k eq v.address)
@@ -134,9 +121,6 @@ private object LogMap {
 
     final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
       if (k eq v1.address) v1.cast[A] else default
-
-    final def isDisjoint(that: LogMap): Boolean =
-      !that.contains(this.v1.address)
 
     final override def equals(that: Any): Boolean = that match {
       case that: LogMap1 =>
@@ -178,17 +162,6 @@ private object LogMap {
 
     final override def nonEmpty =
       true
-
-    private[this] final def containsUnopt[A](ref: MemoryLocation[A]) =
-      treeMap.contains(ref.id)
-
-    final override def contains[A](ref: MemoryLocation[A]) = {
-      if (BloomFilter.definitelyNotContains(bloomFilterLeft, bloomFilterRight, ref)) {
-        false
-      } else {
-        this.containsUnopt(ref)
-      }
-    }
 
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
       require(k eq v.address)
@@ -245,30 +218,6 @@ private object LogMap {
         default
       } else {
         treeMap.getOrElse(k.id, default).asInstanceOf[HalfWordDescriptor[A]]
-      }
-    }
-
-    final def isDisjoint(that: LogMap): Boolean = {
-      that match {
-        case Empty =>
-          true
-        case that: LogMap1 =>
-          that.isDisjoint(this)
-        case that: LogMapTree =>
-          this.isDisjointTree(that)
-      }
-    }
-
-    private[this] final def isDisjointTree(that: LogMapTree): Boolean = {
-      if ((this.bloomFilterLeft & that.bloomFilterLeft) != 0) {
-        if ((this.bloomFilterRight & that.bloomFilterRight) != 0) {
-          val common = this.treeMap.keySet.intersect(that.treeMap.keySet)
-          common.isEmpty
-        } else {
-          true
-        }
-      } else {
-        true
       }
     }
 
