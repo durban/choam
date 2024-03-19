@@ -116,29 +116,27 @@ private object LogMap {
   }
 
   /** Invariant: `treeMap` has more than 1 items */
-  private final class LogMapTree(
+  private final class LogMapTree private (
     private val treeMap: LongMap[HalfWordDescriptor[Any]],
+    final override val size: Int, // `LongMap` traverses the whole tree for `.size`
     private val bloomFilterLeft: Long,
     private val bloomFilterRight: Long,
   ) extends LogMap {
 
-    require(treeMap.size > 1)
-
     def this(v1: HalfWordDescriptor[Any], v2: HalfWordDescriptor[Any]) = {
       this(
         {
+          require(v1 ne v2)
           LongMap
             .empty[HalfWordDescriptor[Any]]
             .updated(v1.address.id, v1)
             .updated(v2.address.id, v2)
         },
+        2,
         BloomFilter.insertLeft(BloomFilter.insertLeft(0L, v1.address), v2.address),
         BloomFilter.insertRight(BloomFilter.insertRight(0L, v1.address), v2.address),
       )
     }
-
-    final override def size =
-      treeMap.size
 
     final override def valuesIterator: Iterator[HalfWordDescriptor[_]] =
       treeMap.valuesIterator
@@ -159,8 +157,15 @@ private object LogMap {
 
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
       require(k eq v.address)
+      // TODO: this is a hack to be able to maintain `size`:
+      var wasPresent = false
+      val newMap = treeMap.updateWith(k.id, v.cast[Any], { (_, nv) =>
+        wasPresent = true
+        nv
+      })
       new LogMapTree(
-        treeMap.updated(k.id, v.cast[Any]),
+        newMap,
+        if (wasPresent) this.size else this.size + 1,
         BloomFilter.insertLeft(bloomFilterLeft, k),
         BloomFilter.insertRight(bloomFilterRight, k)
       )

@@ -117,4 +117,32 @@ final class LogMapSpec extends ScalaCheckSuite {
     }
     (lm, tm)
   }
+
+  test("LogMap#size") {
+    val r1 = MemoryLocation.unsafeUnpadded("1")
+    val h1 = HalfWordDescriptor(r1, "1", "x", 42L)
+    val r2 = MemoryLocation.unsafeUnpadded("2")
+    val h2 = HalfWordDescriptor(r2, "2", "x", 42L)
+    val r3 = MemoryLocation.unsafeUnpadded("3")
+    val h31 = HalfWordDescriptor(r3, "3", "x", 42L)
+    val h32 = HalfWordDescriptor(r3, "3", "y", 42L)
+    val r4 = MemoryLocation.unsafeUnpadded("4")
+    val h4 = HalfWordDescriptor(r4, "4", "x", 42L)
+    val lm0 = LogMap.empty
+    assertEquals(lm0.size, 0)
+    val lm1 = lm0.updated(r1, h1)
+    assertEquals(lm1.size, 1)
+    val lm2 = lm1.updated(r2, h2)
+    assertEquals(lm2.size, 2)
+    val lm3 = lm2.updated(r3, h31)
+    assertEquals(lm3.size, 3)
+    val lm4 = lm3.updated(r4, h4)
+    assertEquals(lm4.size, 4)
+    val lm5 = lm4.updated(r3, h32)
+    assertEquals(lm5.size, 4)
+    val lm1b = lm0.updated(r3, h31)
+    assertEquals(lm1b.size, 1)
+    val lm1c = lm1b.updated(r3, h32)
+    assertEquals(lm1c.size, 1)
+  }
 }
