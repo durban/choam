@@ -45,7 +45,7 @@ final class LogMapSpec extends ScalaCheckSuite {
       for (ref <- refs) {
         val hwd = HalfWordDescriptor(ref, "x", "y", 0L)
         assertEquals(lm.getOrElse(ref, null), null)
-        lm = lm.inserted(ref, hwd)
+        lm = lm.inserted(hwd)
         tm = tm.updated(ref, hwd)
         assertEquals(lm.size, tm.size)
         for (h <- tm.valuesIterator) {
@@ -66,7 +66,7 @@ final class LogMapSpec extends ScalaCheckSuite {
         val oldHwd = lm.getOrElse(ref, null)
         assert(oldHwd ne null)
         assertNotEquals(oldHwd, newHwd)
-        val newLm = lm.updated(ref, newHwd)
+        val newLm = lm.updated(newHwd)
         assertNotEquals(lm, newLm)
         lm = newLm
         tm = tm.updated(ref, newHwd)
@@ -91,7 +91,7 @@ final class LogMapSpec extends ScalaCheckSuite {
     // insert everything:
     for (ref <- refs) {
       val hwd = HalfWordDescriptor(ref, randomA(), randomA(), rng.nextLong())
-      lm = lm.upserted(ref, hwd)
+      lm = lm.upserted(hwd)
       tm = tm.updated(ref, hwd)
     }
     (lm, tm)
@@ -109,19 +109,19 @@ final class LogMapSpec extends ScalaCheckSuite {
     val h4 = HalfWordDescriptor(r4, "4", "x", 42L)
     val lm0 = LogMap.empty
     assertEquals(lm0.size, 0)
-    val lm1 = lm0.inserted(r1, h1)
+    val lm1 = lm0.inserted(h1)
     assertEquals(lm1.size, 1)
-    val lm2 = lm1.inserted(r2, h2)
+    val lm2 = lm1.inserted(h2)
     assertEquals(lm2.size, 2)
-    val lm3 = lm2.inserted(r3, h31)
+    val lm3 = lm2.inserted(h31)
     assertEquals(lm3.size, 3)
-    val lm4 = lm3.inserted(r4, h4)
+    val lm4 = lm3.inserted(h4)
     assertEquals(lm4.size, 4)
-    val lm5 = lm4.updated(r3, h32)
+    val lm5 = lm4.updated(h32)
     assertEquals(lm5.size, 4)
-    val lm1b = lm0.upserted(r3, h31)
+    val lm1b = lm0.upserted(h31)
     assertEquals(lm1b.size, 1)
-    val lm1c = lm1b.upserted(r3, h32)
+    val lm1c = lm1b.upserted(h32)
     assertEquals(lm1c.size, 1)
   }
 }

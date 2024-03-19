@@ -100,12 +100,10 @@ final class Descriptor private (
     this.map.nonEmpty
 
   private[choam] final def add[A](desc: HalfWordDescriptor[A]): Descriptor = {
-    val d = desc.cast[Any]
     // Note, that it is important, that we don't allow
     // adding an already included ref; the Exchanger
     // depends on this behavior:
-    val map = this.map
-    val newMap = map.inserted(d.address, d)
+    val newMap = this.map.inserted(desc)
     new Descriptor(
       newMap,
       this.validTs,
@@ -118,9 +116,7 @@ final class Descriptor private (
 
   private[choam] final def overwrite[A](desc: HalfWordDescriptor[A]): Descriptor = {
     require(desc.version <= this.validTs)
-    val d = desc.cast[Any]
-    val map = this.map
-    val newMap = map.updated(d.address, d)
+    val newMap = this.map.updated(desc)
     new Descriptor(
       newMap,
       this.validTs,
@@ -135,8 +131,7 @@ final class Descriptor private (
 
   private[choam] final def addOrOverwrite[A](desc: HalfWordDescriptor[A]): Descriptor = {
     require(desc.version <= this.validTs)
-    val d = desc.cast[Any]
-    val newMap = this.map.upserted(d.address, d)
+    val newMap = this.map.upserted(desc)
     new Descriptor(
       newMap,
       this.validTs,

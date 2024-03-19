@@ -47,7 +47,7 @@ private[mcas] class LogMapBench {
     val newKey = s.dummyKeys(idx)
     bh.consume(newKey)
     val newHwd = s.dummyHwds(idx)
-    bh.consume(s.map.inserted(newKey, newHwd))
+    bh.consume(s.map.inserted(newHwd))
   }
 
   @Benchmark
@@ -120,7 +120,7 @@ private[mcas] class LogMapBench {
       val key = s.keys(idx)
       bh.consume(key)
       val newHwd = s.newHwds(idx)
-      bh.consume(s.map.updated(key, newHwd))
+      bh.consume(s.map.updated(newHwd))
     }
   }
 
@@ -198,7 +198,6 @@ object LogMapBench {
       this.baseSetup()
       for (ref <- this.keys) {
         this.map = this.map.inserted(
-          ref,
           HalfWordDescriptor(ref, "a", "b", version = Version.Start),
         )
       }

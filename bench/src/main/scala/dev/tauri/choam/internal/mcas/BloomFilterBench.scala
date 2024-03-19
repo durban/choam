@@ -131,7 +131,6 @@ object BloomFilterBench {
       this.baseSetup()
       for (ref <- this.keys) {
         this.map = this.map.inserted(
-          ref,
           HalfWordDescriptor(ref, "a", "b", version = Version.Start),
         )
       }

@@ -34,14 +34,14 @@ private sealed abstract class LogMap {
 
   def nonEmpty: Boolean
 
-  /** Must already contain `k` */
-  def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
+  /** Must already contain `v.address` */
+  def updated[A](v: HalfWordDescriptor[A]): LogMap
 
-  /** Mustn't already contain `k` */
-  def inserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
+  /** Mustn't already contain `v.address` */
+  def inserted[A](v: HalfWordDescriptor[A]): LogMap
 
-  /** May or may not already contain `k` */
-  def upserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
+  /** May or may not already contain `v.address` */
+  def upserted[A](v: HalfWordDescriptor[A]): LogMap
 
   def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]): HalfWordDescriptor[A]
 
@@ -67,13 +67,13 @@ private object LogMap {
     final override def nonEmpty =
       false
 
-    final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap =
+    final override def updated[A](v: HalfWordDescriptor[A]): LogMap =
       throw new IllegalArgumentException
 
-    final override def inserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap =
+    final override def inserted[A](v: HalfWordDescriptor[A]): LogMap =
       new LogMap1(v)
 
-    final override def upserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap =
+    final override def upserted[A](v: HalfWordDescriptor[A]): LogMap =
       new LogMap1(v)
 
     final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
@@ -98,21 +98,18 @@ private object LogMap {
     final override def nonEmpty =
       true
 
-    final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
-      require(k eq v.address)
-      require(k eq v1.address)
+    final override def updated[A](v: HalfWordDescriptor[A]): LogMap = {
+      require(v.address eq v1.address)
       new LogMap1(v)
     }
 
-    final override def inserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
-      require(k eq v.address)
-      require(k ne v1.address)
+    final override def inserted[A](v: HalfWordDescriptor[A]): LogMap = {
+      require(v.address ne v1.address)
       new LogMapTree(v1.cast[Any], v.cast[Any])
     }
 
-    final override def upserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
-      require(k eq v.address)
-      if (k eq v1.address) {
+    final override def upserted[A](v: HalfWordDescriptor[A]): LogMap = {
+      if (v.address eq v1.address) {
         new LogMap1(v)
       } else {
         new LogMapTree(v1.cast[Any], v.cast[Any])
@@ -163,8 +160,8 @@ private object LogMap {
     final override def nonEmpty =
       true
 
-    final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
-      require(k eq v.address)
+    final override def updated[A](v: HalfWordDescriptor[A]): LogMap = {
+      val k = v.address
       // TODO: this is a hack to detect if not already there:
       var wasPresent = false
       val newMap = treeMap.updateWith(k.id, v.cast[Any], { (_, nv) =>
@@ -180,8 +177,8 @@ private object LogMap {
       )
     }
 
-    final override def inserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
-      require(k eq v.address)
+    final override def inserted[A](v: HalfWordDescriptor[A]): LogMap = {
+      val k = v.address
       // TODO: this is a hack to detect if already there:
       var wasPresent = false
       val newMap = treeMap.updateWith(k.id, v.cast[Any], { (_, nv) =>
@@ -197,8 +194,8 @@ private object LogMap {
       )
     }
 
-    final override def upserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
-      require(k eq v.address)
+    final override def upserted[A](v: HalfWordDescriptor[A]): LogMap = {
+      val k = v.address
       // TODO: this is a hack to be able to maintain `size`:
       var wasPresent = false
       val newMap = treeMap.updateWith(k.id, v.cast[Any], { (_, nv) =>
