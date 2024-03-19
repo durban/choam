@@ -38,4 +38,11 @@ final class MemoryLocationSpec extends BaseSpec {
       assertEquals(ref.unsafeGetVersionVolatile(), 42L)
     }
   }
+
+  test("MemoryLocation hashCode and equals") {
+    val l1 = MemoryLocation.unsafeUnpadded("foo")
+    assertEquals(l1.##, l1.id.toInt)
+    val l2 = MemoryLocation.unsafePadded("foo")
+    assertEquals(l2.##, l2.id.toInt)
+  }
 }

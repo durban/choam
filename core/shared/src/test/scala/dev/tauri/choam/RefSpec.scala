@@ -71,6 +71,20 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Ref hashCode and equals") {
+    for {
+      r1 <- newRef("a")
+      r2 <- newRef("a")
+      r3 <- newRef("a")
+      _ <- assertEqualsF(r1, r1)
+      _ <- assertNotEqualsF(r1, r2)
+      _ <- assertNotEqualsF(r1, r3)
+      _ <- assertEqualsF(r1.##, r1.loc.id.toInt)
+      _ <- assertEqualsF(Set(r1.loc.id, r2.loc.id, r3.loc.id).size, 3)
+      _ <- assertF(Set(r1.##, r2.##, r3.##).size >= 2) // with high probability
+    } yield ()
+  }
+
   // TODO: these are independent tests:
 
   test("Ref.apply") {

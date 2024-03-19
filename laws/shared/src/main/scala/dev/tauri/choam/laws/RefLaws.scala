@@ -36,6 +36,9 @@ sealed trait RefLaws {
     ((x eq y) || (x.loc.id =!= y.loc.id)) <-> true
   }
 
+  def hashCodeBasedOnId[A](r: Ref[A]): IsEq[Int] =
+    r.## <-> r.loc.id.toInt
+
   def orderConsistentWithIdentity[A](x: Ref[A], y: Ref[A]): IsEq[Boolean] =
     Order[Ref[A]].eqv(x, y) <-> (x eq y)
 

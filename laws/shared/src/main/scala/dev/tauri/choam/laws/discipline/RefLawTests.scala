@@ -63,6 +63,7 @@ sealed trait RefLawTests extends Laws {
     "equals itself" -> forAll(laws.equalsItself[A] _),
     "unique IDs (same type)" -> forAll(laws.uniqueIdsSameType[A] _),
     "unique IDs (different type)" -> forAll(laws.uniqueIdsDifferentType[A, B] _),
+    "hashCode is based on ID" -> forAll(laws.hashCodeBasedOnId[A] _),
     "Order consistent with identity" -> forAll(laws.orderConsistentWithIdentity[A] _),
     "updWith and ret is upd" -> forAll(laws.updWithRetIsUpd[A, B, C] _),
   )

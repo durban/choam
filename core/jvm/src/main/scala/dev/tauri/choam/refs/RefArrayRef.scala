@@ -30,6 +30,9 @@ private final class RefArrayRef[A](
   final override val id: Long =
     RefIdGen.compute(array.idBase, logicalIdx)
 
+  final override def hashCode: Int =
+    this.id.toInt
+
   private[this] final def itemIdx: Int =
     (3 * this.logicalIdx) + 1
 

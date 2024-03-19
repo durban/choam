@@ -22,7 +22,7 @@ package mcas
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.{ AtomicReference, AtomicLong }
 
-private class SimpleMemoryLocation[A](initial: A)(
+private final class SimpleMemoryLocation[A](initial: A)(
   override val id: Long,
 ) extends AtomicReference[A](initial)
   with MemoryLocation[A] {
@@ -35,6 +35,16 @@ private class SimpleMemoryLocation[A](initial: A)(
 
   final override def toString: String =
     "SMemLoc@" + refHashString(id)
+
+  final override def hashCode: Int = {
+    // `RefIdGen` generates IDs with
+    // Fibonacci hashing, so no need
+    // to hash them here even further.
+    // IDs are globally unique, to the
+    // default `equals` (based on object
+    // identity) is fine fo us.
+    this.id.toInt
+  }
 
   final override def unsafeGetVolatile(): A =
     this.get()

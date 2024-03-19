@@ -71,6 +71,17 @@ final class RefP1<A>
   }
 
   @Override
+  public final int hashCode() {
+    // `RefIdGen` generates IDs with
+    // Fibonacci hashing, so no need
+    // to hash them here even further.
+    // IDs are globally unique, to the
+    // default `equals` (based on object
+    // identity) is fine fo us.
+    return (int) this.id();
+  }
+
+  @Override
   public final A unsafeGetVolatile() {
     return this.value;
   }
