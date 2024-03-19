@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package async
 
-import scala.math.{ min, max }
+import java.lang.Math.{ min, max }
 
 import cats.effect.IO
 import cats.effect.std.{ Queue => CatsQueue }
