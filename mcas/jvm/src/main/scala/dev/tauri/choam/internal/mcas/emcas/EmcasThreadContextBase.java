@@ -30,6 +30,7 @@ abstract class EmcasThreadContextBase {
   private static final VarHandle COMMITS;
   private static final VarHandle RETRIES;
   private static final VarHandle MAX_REUSE_EVER;
+  private static final VarHandle MAX_RETRIES_EVER;
   private static final VarHandle STATISTICS;
 
   static {
@@ -38,6 +39,7 @@ abstract class EmcasThreadContextBase {
       COMMITS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_commits", long.class));
       RETRIES = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_retries", long.class));
       MAX_REUSE_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxReuseEver", int.class));
+      MAX_RETRIES_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxRetriesEver", long.class));
       STATISTICS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_statistics", Map.class));
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
@@ -48,6 +50,7 @@ abstract class EmcasThreadContextBase {
   private long _commits; // = 0L
   private long _retries; // = 0L
   private int _maxReuseEver; // = 0
+  private long _maxRetriesEver; // = 0L
   private Map<Object, Object> _statistics = Map$.MODULE$.empty();
 
   protected long getCommitsOpaque() {
@@ -56,6 +59,10 @@ abstract class EmcasThreadContextBase {
 
   protected long getRetriesOpaque() {
     return (long) RETRIES.getOpaque(this);
+  }
+
+  protected long getMaxRetriesOpaque() {
+    return (long) MAX_RETRIES_EVER.getOpaque(this);
   }
 
   protected void recordCommitOpaque(int retries) {
@@ -69,7 +76,11 @@ abstract class EmcasThreadContextBase {
     // statistical and informational purposes,
     // so we don't really care.
     COMMITS.setOpaque(this, this._commits + 1L);
-    RETRIES.setOpaque(this, this._retries + ((long) retries));
+    long retr = (long) retries;
+    RETRIES.setOpaque(this, this._retries + retr);
+    if (retr > this._maxRetriesEver) {
+      MAX_RETRIES_EVER.setOpaque(this, retr);
+    }
   }
 
   protected int getMaxReuseEverPlain() {

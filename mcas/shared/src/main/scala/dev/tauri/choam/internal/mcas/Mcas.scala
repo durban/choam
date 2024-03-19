@@ -34,7 +34,7 @@ sealed trait Mcas {
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     // implementations should override if
     // they collect statistics
-    Mcas.RetryStats(0L, 0L)
+    Mcas.RetryStats(0L, 0L, 0L)
   }
 
   /** Only for testing/benchmarking */
@@ -333,6 +333,7 @@ object Mcas extends McasCompanionPlatform { self =>
   private[choam] final case class RetryStats(
     commits: Long,
     retries: Long,
+    maxRetries: Long,
   )
 
   /** Only for testing */
