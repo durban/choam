@@ -27,14 +27,30 @@ import scala.util.hashing.MurmurHash3
 // TODO: `Rxn`s which "become" read-only)?
 
 private sealed abstract class LogMap {
+
   def size: Int
+
   def valuesIterator: Iterator[HalfWordDescriptor[_]]
+
   def nonEmpty: Boolean
-  def contains[A](ref: MemoryLocation[A]): Boolean
+
+  protected def contains[A](ref: MemoryLocation[A]): Boolean
+
+  /** Must already contain `k` */
   def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
+
+  /** Mustn't already contain `k` */
+  def inserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
+
+  /** May or may not already contain `k` */
+  def upserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap
+
   def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]): HalfWordDescriptor[A]
+
   def isDisjoint(that: LogMap): Boolean
+
   override def equals(that: Any): Boolean
+
   override def hashCode: Int
 }
 
@@ -59,6 +75,12 @@ private object LogMap {
       false
 
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap =
+      throw new IllegalArgumentException
+
+    final override def inserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap =
+      new LogMap1(v)
+
+    final override def upserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap =
       new LogMap1(v)
 
     final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
@@ -91,6 +113,18 @@ private object LogMap {
 
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
       require(k eq v.address)
+      require(k eq v1.address)
+      new LogMap1(v)
+    }
+
+    final override def inserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
+      require(k eq v.address)
+      require(k ne v1.address)
+      new LogMapTree(v1.cast[Any], v.cast[Any])
+    }
+
+    final override def upserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
+      require(k eq v.address)
       if (k eq v1.address) {
         new LogMap1(v)
       } else {
@@ -119,6 +153,7 @@ private object LogMap {
   private final class LogMapTree private (
     private val treeMap: LongMap[HalfWordDescriptor[Any]],
     final override val size: Int, // `LongMap` traverses the whole tree for `.size`
+    // TODO: figure out if this Bloom filter is still useful:
     private val bloomFilterLeft: Long,
     private val bloomFilterRight: Long,
   ) extends LogMap {
@@ -156,6 +191,40 @@ private object LogMap {
     }
 
     final override def updated[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
+      require(k eq v.address)
+      // TODO: this is a hack to detect if not already there:
+      var wasPresent = false
+      val newMap = treeMap.updateWith(k.id, v.cast[Any], { (_, nv) =>
+        wasPresent = true
+        nv
+      })
+      require(wasPresent)
+      new LogMapTree(
+        newMap,
+        this.size,
+        BloomFilter.insertLeft(bloomFilterLeft, k),
+        BloomFilter.insertRight(bloomFilterRight, k)
+      )
+    }
+
+    final override def inserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
+      require(k eq v.address)
+      // TODO: this is a hack to detect if already there:
+      var wasPresent = false
+      val newMap = treeMap.updateWith(k.id, v.cast[Any], { (_, nv) =>
+        wasPresent = true
+        nv
+      })
+      require(!wasPresent)
+      new LogMapTree(
+        newMap,
+        this.size + 1,
+        BloomFilter.insertLeft(bloomFilterLeft, k),
+        BloomFilter.insertRight(bloomFilterRight, k)
+      )
+    }
+
+    final override def upserted[A](k: MemoryLocation[A], v: HalfWordDescriptor[A]): LogMap = {
       require(k eq v.address)
       // TODO: this is a hack to be able to maintain `size`:
       var wasPresent = false

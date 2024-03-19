@@ -44,13 +44,11 @@ final class LogMapSpec extends ScalaCheckSuite {
       )
       for (ref <- refs) {
         val hwd = HalfWordDescriptor(ref, "x", "y", 0L)
-        assert(!lm.contains(ref))
         assertEquals(lm.getOrElse(ref, null), null)
-        lm = lm.updated(ref, hwd)
+        lm = lm.inserted(ref, hwd)
         tm = tm.updated(ref, hwd)
         assertEquals(lm.size, tm.size)
         for (h <- tm.valuesIterator) {
-          assert(lm.contains(h.address))
           assertEquals(lm.getOrElse(h.address, null), h)
         }
       }
@@ -65,7 +63,6 @@ final class LogMapSpec extends ScalaCheckSuite {
       val shuffled = rng.shuffle(tm.keySet.toList)
       for (ref <- shuffled) {
         val newHwd = HalfWordDescriptor(ref, rng.nextString(32), "q", rng.nextLong())
-        assert(lm.contains(ref))
         val oldHwd = lm.getOrElse(ref, null)
         assert(oldHwd ne null)
         assertNotEquals(oldHwd, newHwd)
@@ -75,7 +72,6 @@ final class LogMapSpec extends ScalaCheckSuite {
         tm = tm.updated(ref, newHwd)
         assertEquals(lm.size, tm.size)
         for (h <- tm.valuesIterator) {
-          assert(lm.contains(h.address))
           assertEquals(lm.getOrElse(h.address, null), h)
         }
       }
@@ -112,7 +108,7 @@ final class LogMapSpec extends ScalaCheckSuite {
     // insert everything:
     for (ref <- refs) {
       val hwd = HalfWordDescriptor(ref, randomA(), randomA(), rng.nextLong())
-      lm = lm.updated(ref, hwd)
+      lm = lm.upserted(ref, hwd)
       tm = tm.updated(ref, hwd)
     }
     (lm, tm)
@@ -130,19 +126,19 @@ final class LogMapSpec extends ScalaCheckSuite {
     val h4 = HalfWordDescriptor(r4, "4", "x", 42L)
     val lm0 = LogMap.empty
     assertEquals(lm0.size, 0)
-    val lm1 = lm0.updated(r1, h1)
+    val lm1 = lm0.inserted(r1, h1)
     assertEquals(lm1.size, 1)
-    val lm2 = lm1.updated(r2, h2)
+    val lm2 = lm1.inserted(r2, h2)
     assertEquals(lm2.size, 2)
-    val lm3 = lm2.updated(r3, h31)
+    val lm3 = lm2.inserted(r3, h31)
     assertEquals(lm3.size, 3)
-    val lm4 = lm3.updated(r4, h4)
+    val lm4 = lm3.inserted(r4, h4)
     assertEquals(lm4.size, 4)
     val lm5 = lm4.updated(r3, h32)
     assertEquals(lm5.size, 4)
-    val lm1b = lm0.updated(r3, h31)
+    val lm1b = lm0.upserted(r3, h31)
     assertEquals(lm1b.size, 1)
-    val lm1c = lm1b.updated(r3, h32)
+    val lm1c = lm1b.upserted(r3, h32)
     assertEquals(lm1c.size, 1)
   }
 }

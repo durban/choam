@@ -56,18 +56,18 @@ private[mcas] class BloomFilterBench {
   //   bh.consume(s.map.containsUnopt(key))
   // }
 
-  @Benchmark
-  def containsOpt(s: LogMapState, rnd: RandomState, bh: Blackhole): Unit = {
-    val isDummy = (rnd.nextInt() % 2) == 0
-    val key = if (!isDummy) {
-      val idx = rnd.nextIntBounded(s.size)
-      s.keys(idx)
-    } else {
-      val idx = rnd.nextIntBounded(DummySize)
-      s.dummyKeys(idx)
-    }
-    bh.consume(s.map.contains(key))
-  }
+  // @Benchmark
+  // def containsOpt(s: LogMapState, rnd: RandomState, bh: Blackhole): Unit = {
+  //   val isDummy = (rnd.nextInt() % 2) == 0
+  //   val key = if (!isDummy) {
+  //     val idx = rnd.nextIntBounded(s.size)
+  //     s.keys(idx)
+  //   } else {
+  //     val idx = rnd.nextIntBounded(DummySize)
+  //     s.dummyKeys(idx)
+  //   }
+  //   bh.consume(s.map.contains(key))
+  // }
 }
 
 object BloomFilterBench {
@@ -130,7 +130,7 @@ object BloomFilterBench {
     def setup(): Unit = {
       this.baseSetup()
       for (ref <- this.keys) {
-        this.map = this.map.updated(
+        this.map = this.map.inserted(
           ref,
           HalfWordDescriptor(ref, "a", "b", version = Version.Start),
         )
