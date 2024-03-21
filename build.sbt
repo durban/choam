@@ -164,6 +164,7 @@ ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.fla
 
 val disabledPlugins = Seq(
   JCStressPlugin,
+  JolPlugin,
 )
 
 lazy val choam = project.in(file("."))
@@ -525,11 +526,12 @@ lazy val stressOld = project.in(file("stress") / "stress-old")
 
 lazy val layout = project.in(file("layout"))
   .settings(name := "choam-layout")
-  .disablePlugins(disabledPlugins: _*)
+  .disablePlugins(disabledPlugins.filter(_ ne JolPlugin): _*)
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .settings(
     libraryDependencies += dependencies.jol.value % TestInternal,
+    Jol / version := dependencies.jolVersion,
     Test / fork := true // JOL doesn't like sbt classpath
   )
   .dependsOn(core.jvm % "compile->compile;test->test")
@@ -684,6 +686,7 @@ lazy val dependencies = new {
   val scalacheckEffectVersion = "2.0.0-M2"
   val jcstressVersion = "0.16"
   val jmhVersion = "1.37"
+  val jolVersion = "0.17" // https://github.com/openjdk/jol
   val scalaJsLocaleVersion = "1.5.1"
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
@@ -702,7 +705,7 @@ lazy val dependencies = new {
   val decline = Def.setting("com.monovore" %%% "decline" % "2.4.1") // https://github.com/bkirwi/decline
 
   // JVM:
-  val jol = Def.setting("org.openjdk.jol" % "jol-core" % "0.17") // https://github.com/openjdk/jol
+  val jol = Def.setting("org.openjdk.jol" % "jol-core" % jolVersion)
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.3") // https://github.com/JCTools/JCTools
   val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.27") // https://github.com/JetBrains/lincheck
   val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.6") // https://asm.ow2.io/
