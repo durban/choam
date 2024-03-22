@@ -167,6 +167,8 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
       val hamt1 = hamtFromList(nums1)
       val hamt2 = hamtFromList(nums2)
       assertEquals(hamt1.toArray.toList, hamt2.toArray.toList)
+      assertEquals(hamt1.size, nums.size)
+      assertEquals(hamt2.size, nums.size)
     }
   }
 
@@ -221,8 +223,11 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
       val merged1 = hamt1.insertedAllFrom(hamt2)
       val merged2 = hamt2.insertedAllFrom(hamt1)
       val expected = hamtFromList(rng.shuffle(nums1.toList) ++ rng.shuffle(nums2.toList))
-      assertEquals(merged1.toArray.toList, expected.toArray.toList)
-      assertEquals(merged2.toArray.toList, expected.toArray.toList)
+      val expLst = expected.toArray.toList
+      assertEquals(merged1.toArray.toList, expLst)
+      assertEquals(merged1.size, expLst.size)
+      assertEquals(merged2.toArray.toList, expLst)
+      assertEquals(merged2.size, expLst.size)
     }
   }
 }
