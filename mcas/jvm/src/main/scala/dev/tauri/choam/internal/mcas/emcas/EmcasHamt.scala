@@ -34,6 +34,9 @@ object EmcasHamt {
     protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): MemLocNode[A] =
       new MemLocNode(size, bitmap, contents)
 
+    protected final override def newArray(size: Int): Array[WordDescriptor[A]] =
+      new Array[WordDescriptor[A]](size)
+
     protected final override def convertForArray(a: HalfWordDescriptor[A]): WordDescriptor[A] = {
       // TODO: we need access to the `EmcasDescriptor` here
       new WordDescriptor(a, sys.error("TODO") : EmcasDescriptor)

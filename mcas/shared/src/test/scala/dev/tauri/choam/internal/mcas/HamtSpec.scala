@@ -220,12 +220,8 @@ object HamtSpec {
 
   /** A simple HAMT of `Long` -> `Val` pairs */
   final class LongHamt(r: LongHamtNode) extends Hamt[Val, Val, LongHamtNode, LongHamt](r) {
-    protected override def hashOf(a: Val): Long =
-      a.value
     protected override def withRoot(root: LongHamtNode): LongHamt =
       new LongHamt(root)
-    protected override def newArray(size: Int): Array[Val] =
-      new Array[Val](size)
   }
 
   object LongHamt {
@@ -242,6 +238,8 @@ object HamtSpec {
       a.value
     protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LongHamtNode =
       new LongHamtNode(size, bitmap, contents)
+    protected final override def newArray(size: Int): Array[Val] =
+      new Array[Val](size)
     protected def convertForArray(a: Val): Val =
       a
   }

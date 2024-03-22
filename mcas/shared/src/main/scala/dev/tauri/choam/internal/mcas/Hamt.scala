@@ -37,52 +37,25 @@ private[mcas] abstract class Hamt[A, E, N <: Hamt.Node[A, E, N], H <: Hamt[A, E,
   private val root: N, // TODO: do we need this extra indirection?
 ) { this: H =>
 
-  private[this] final val OP_UPDATE = 0
-  private[this] final val OP_INSERT = 1
-  private[this] final val OP_UPSERT = 2
-
-  protected def hashOf(a: A): Long
-
   protected def withRoot(root: N): H
-
-  protected def newArray(size: Int): Array[E]
 
   final def size: Int =
     this.root.size
 
-  final def getOrElse(hash: Long, default: A): A = { // TODO: we don't ever actually need `default`
-    this.root.lookupOrNull(hash, 0) match {
-      case null => default
-      case a => a
-    }
-  }
+  final def getOrElse(hash: Long, default: A): A = // TODO: we don't ever actually need `default`
+    this.root.getOrElse(hash, default)
 
-  final def updated(a: A): H = {
-    this.root.insertOrOverwrite(hashOf(a), a, 0, OP_UPDATE) match {
-      case null => this
-      case newRoot => this.withRoot(newRoot)
-    }
-  }
+  final def updated(a: A): H =
+    this.withRoot(this.root.updated(a))
 
-  final def inserted(a: A): H = {
-    val newRoot = this.root.insertOrOverwrite(hashOf(a), a, 0, OP_INSERT)
-    assert(newRoot ne null)
-    this.withRoot(newRoot)
-  }
+  final def inserted(a: A): H =
+    this.withRoot(this.root.inserted(a))
 
-  final def upserted(a: A): H = {
-    this.root.insertOrOverwrite(hashOf(a), a, 0, OP_UPSERT) match {
-      case null => this
-      case newRoot => this.withRoot(newRoot)
-    }
-  }
+  final def upserted(a: A): H =
+    this.withRoot(this.root.upserted(a))
 
-  final def toArray: Array[E] = {
-    val arr = newArray(this.size)
-    val end = this.root.copyIntoArray(arr, 0)
-    assert(end == arr.length)
-    arr
-  }
+  final def toArray: Array[E] =
+    this.root.toArray
 }
 
 private[mcas] object Hamt {
@@ -100,7 +73,47 @@ private[mcas] object Hamt {
 
     protected def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): N
 
+    protected def newArray(size: Int): Array[E]
+
     protected def convertForArray(a: A): E
+
+    // API (should only be called on a root node):
+
+    final def getOrElse(hash: Long, default: A): A = { // TODO: we don't ever actually need `default`
+      this.lookupOrNull(hash, 0) match {
+        case null => default
+        case a => a
+      }
+    }
+
+    final def updated(a: A): N = {
+      this.insertOrOverwrite(hashOf(a), a, 0, OP_UPDATE) match {
+        case null => this
+        case newRoot => newRoot
+      }
+    }
+
+    final def inserted(a: A): N = {
+      val newRoot = this.insertOrOverwrite(hashOf(a), a, 0, OP_INSERT)
+      assert(newRoot ne null)
+      newRoot
+    }
+
+    final def upserted(a: A): N = {
+      this.insertOrOverwrite(hashOf(a), a, 0, OP_UPSERT) match {
+        case null => this
+        case newRoot => newRoot
+      }
+    }
+
+    final def toArray: Array[E] = {
+      val arr = newArray(this.size)
+      val end = this.copyIntoArray(arr, 0)
+      assert(end == arr.length)
+      arr
+    }
+
+    // Internal:
 
     // @tailrec
     final def lookupOrNull(hash: Long, shift: Int): A = {
