@@ -78,6 +78,10 @@ private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
     newRoot
   }
 
+  final def insertedAllFrom(that: H): H = {
+    that.insertIntoHamt(this)
+  }
+
   final def upserted(a: A): H = {
     this.insertOrOverwrite(hashOf(a), a, 0, OP_UPSERT) match {
       case null => this
@@ -195,6 +199,24 @@ private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
       i += 1
     }
     arrIdx
+  }
+
+  private final def insertIntoHamt(that: H): H = {
+    // TODO: this is not enough for `Descriptor.merge`
+    val contents = this.contents
+    var i = 0
+    var curr = that
+    val len = contents.length
+    while (i < len) {
+      contents(i) match {
+        case node: Hamt[A, E, T, H] =>
+          curr = node.insertIntoHamt(curr)
+        case a=>
+          curr = curr.inserted(a.asInstanceOf[A])
+      }
+      i += 1
+    }
+    curr
   }
 
   private[this] final def withValue(bitmap: Long, value: A, physIdx: Int): H = {
