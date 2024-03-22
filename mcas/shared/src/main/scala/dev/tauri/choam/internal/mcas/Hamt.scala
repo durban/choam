@@ -66,10 +66,13 @@ private[mcas] object Hamt {
     val contents: Array[AnyRef],
   ) { this: N =>
 
-    private[this] final val W =
-      6
+    private[this] final val W = 6
 
-    protected def hashOf(a: A): Long // TODO: this is duplicated with `Hamt`
+    private[this] final val OP_UPDATE = 0
+    private[this] final val OP_INSERT = 1
+    private[this] final val OP_UPSERT = 2
+
+    protected def hashOf(a: A): Long
 
     protected def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): N
 
@@ -77,7 +80,7 @@ private[mcas] object Hamt {
 
     protected def convertForArray(a: A): E
 
-    // API (should only be called on a root node):
+    // API (should only be called on a root node!):
 
     final def getOrElse(hash: Long, default: A): A = { // TODO: we don't ever actually need `default`
       this.lookupOrNull(hash, 0) match {
@@ -116,7 +119,7 @@ private[mcas] object Hamt {
     // Internal:
 
     // @tailrec
-    final def lookupOrNull(hash: Long, shift: Int): A = {
+    private final def lookupOrNull(hash: Long, shift: Int): A = {
       this.getValueOrNodeOrNull(hash, shift) match {
         case null =>
           nullOf[A]
@@ -146,12 +149,7 @@ private[mcas] object Hamt {
       }
     }
 
-    // TODO: duplicated code
-    private[this] final val OP_UPDATE = 0
-    private[this] final val OP_INSERT = 1
-    private[this] final val OP_UPSERT = 2
-
-    final def insertOrOverwrite(hash: Long, value: A, shift: Int, op: Int): N = {
+    private final def insertOrOverwrite(hash: Long, value: A, shift: Int, op: Int): N = {
       val flag: Long = 1L << logicalIdx(hash, shift) // only 1 bit set, at the position in bitmap
       val bitmap = this.bitmap
       val contents = this.contents
@@ -205,7 +203,7 @@ private[mcas] object Hamt {
       }
     }
 
-    final def copyIntoArray(arr: Array[E], start: Int): Int = {
+    private final def copyIntoArray(arr: Array[E], start: Int): Int = {
       val contents = this.contents
       var i = 0
       var arrIdx = start
