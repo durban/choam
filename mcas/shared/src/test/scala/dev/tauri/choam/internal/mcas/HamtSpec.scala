@@ -234,6 +234,10 @@ object HamtSpec {
       a
     final def toArray: Array[Val] =
       this.toArray(())
+    final def getOrElse(k: Long, default: Val): Val = this.getOrElseNull(k) match {
+      case null => default
+      case v => v
+    }
   }
 
   object LongHamt {

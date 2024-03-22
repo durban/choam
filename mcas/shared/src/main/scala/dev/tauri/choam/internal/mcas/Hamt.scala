@@ -39,6 +39,8 @@ private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
   val contents: Array[AnyRef],
 ) { this: H =>
 
+  // TODO: do we need equals and hashCode?
+
   private[this] final val W = 6
 
   private[this] final val OP_UPDATE = 0
@@ -55,11 +57,12 @@ private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
 
   // API (should only be called on a root node!):
 
-  final def getOrElse(hash: Long, default: A): A = { // TODO: we don't ever actually need `default`
-    this.lookupOrNull(hash, 0) match {
-      case null => default
-      case a => a
-    }
+  final def nonEmpty: Boolean = {
+    this.size > 0
+  }
+
+  final def getOrElseNull(hash: Long): A = {
+    this.lookupOrNull(hash, 0)
   }
 
   final def updated(a: A): H = {
