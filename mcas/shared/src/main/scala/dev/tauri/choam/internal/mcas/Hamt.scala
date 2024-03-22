@@ -22,11 +22,13 @@ package mcas
 import java.util.Arrays
 
 /**
- * Immutable HAMT (hash array mapped trie) map
+ * Immutable HAMT (hash array mapped trie)
  *
  * Keys are ref IDs (i.e., `Long`s), values are HWDs.
  * We're using the IDs directly, without hashing, since
  * they're already generated with Fibonacci hashing.
+ * We don't store the keys separately, since we can
+ * always get them from the values.
  *
  * Values can't be `null` (we use `null` as the "not
  * found" sentinel).
@@ -85,22 +87,6 @@ private[mcas] abstract class Hamt[A, E, N <: Hamt.Node[A, E, N], H <: Hamt[A, E,
 
 private[mcas] object Hamt {
 
-  private[mcas] final class MemLocNode[A](
-    _size: Int,
-    _bitmap: Long,
-    _contents: Array[AnyRef],
-  ) extends Node[HalfWordDescriptor[A], Unit, MemLocNode[A]](_size, _bitmap, _contents) {
-
-    protected final override def hashOf(a: HalfWordDescriptor[A]): Long =
-      a.address.id
-
-    protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): MemLocNode[A] =
-      new MemLocNode(size, bitmap, contents)
-
-    protected def EfromA(a: HalfWordDescriptor[A]): Unit =
-      () // TODO
-  }
-
   private[mcas] abstract class Node[A, E, N <: Node[A, E, N]](
     val size: Int,
     val bitmap: Long,
@@ -114,7 +100,7 @@ private[mcas] object Hamt {
 
     protected def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): N
 
-    protected def EfromA(a: A): E
+    protected def convertForArray(a: A): E
 
     // @tailrec
     final def lookupOrNull(hash: Long, shift: Int): A = {
@@ -216,7 +202,7 @@ private[mcas] object Hamt {
           case node: Node[A, E, N] =>
             arrIdx = node.copyIntoArray(arr, arrIdx)
           case a =>
-            arr(arrIdx) = EfromA(a.asInstanceOf[A])
+            arr(arrIdx) = convertForArray(a.asInstanceOf[A])
             arrIdx += 1
         }
         i += 1
@@ -225,14 +211,14 @@ private[mcas] object Hamt {
     }
 
     private[this] final def withValue(bitmap: Long, value: A, physIdx: Int): N = {
-      this.newNode(this.size, bitmap, arrWithValue(this.contents, value.asInstanceOf[AnyRef], physIdx))
+      this.newNode(this.size, bitmap, arrReplacedValue(this.contents, box(value), physIdx))
     }
 
     private[this] final def withNode(size: Int, bitmap: Long, node: Node[A, E, _], physIdx: Int): N = {
-      this.newNode(size, bitmap, arrWithValue(this.contents, node, physIdx))
+      this.newNode(size, bitmap, arrReplacedValue(this.contents, node, physIdx))
     }
 
-    private[this] final def arrWithValue(arr: Array[AnyRef], value: AnyRef, idx: Int): Array[AnyRef] = {
+    private[this] final def arrReplacedValue(arr: Array[AnyRef], value: AnyRef, idx: Int): Array[AnyRef] = {
       val newArr = Arrays.copyOf(arr, arr.length)
       newArr(idx) = value
       newArr

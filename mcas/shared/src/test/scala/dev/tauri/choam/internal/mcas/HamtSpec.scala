@@ -32,7 +32,7 @@ import org.scalacheck.Prop.forAll
 
 final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
 
-  import HamtSpec.{ LongHamt, Vl }
+  import HamtSpec.{ LongHamt, Val }
 
   override protected def scalaCheckTestParameters: org.scalacheck.Test.Parameters = {
     val p = super.scalaCheckTestParameters
@@ -42,67 +42,67 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
   test("HAMT examples") {
     val h0 = LongHamt.empty
     assertEquals(h0.size, 0)
-    assertEquals(h0.toArray.toList, List.empty[Vl])
-    assertEquals(h0.getOrElse(0L, Vl(42L)), Vl(42L))
-    assertEquals(h0.getOrElse(1L, Vl(42L)), Vl(42L))
-    assertEquals(h0.getOrElse(2L, Vl(42L)), Vl(42L))
-    assertEquals(h0.getOrElse(0x40L, Vl(42L)), Vl(42L))
-    assertEquals(h0.getOrElse(0xfe000000000000L, Vl(42L)), Vl(42L))
-    assert(Either.catchOnly[IllegalArgumentException](h0.updated(Vl(0L))).isLeft)
-    val h1 = h0.inserted(Vl(0L))
+    assertEquals(h0.toArray.toList, List.empty[Val])
+    assertEquals(h0.getOrElse(0L, Val(42L)), Val(42L))
+    assertEquals(h0.getOrElse(1L, Val(42L)), Val(42L))
+    assertEquals(h0.getOrElse(2L, Val(42L)), Val(42L))
+    assertEquals(h0.getOrElse(0x40L, Val(42L)), Val(42L))
+    assertEquals(h0.getOrElse(0xfe000000000000L, Val(42L)), Val(42L))
+    assert(Either.catchOnly[IllegalArgumentException](h0.updated(Val(0L))).isLeft)
+    val h1 = h0.inserted(Val(0L))
     assertEquals(h1.size, 1)
-    assertEquals(h1.toArray.toList, List(0L).map(Vl(_)))
-    assertEquals(h1.getOrElse(0L, Vl(42L)), Vl(0L))
-    assertEquals(h1.getOrElse(1L, Vl(42L)), Vl(42L))
-    assertEquals(h1.getOrElse(2L, Vl(42L)), Vl(42L))
-    assertEquals(h1.getOrElse(0x40L, Vl(42L)), Vl(42L))
-    assertEquals(h1.getOrElse(0xfe000000000000L, Vl(42L)), Vl(42L))
-    val nv = Vl(0L)
+    assertEquals(h1.toArray.toList, List(0L).map(Val(_)))
+    assertEquals(h1.getOrElse(0L, Val(42L)), Val(0L))
+    assertEquals(h1.getOrElse(1L, Val(42L)), Val(42L))
+    assertEquals(h1.getOrElse(2L, Val(42L)), Val(42L))
+    assertEquals(h1.getOrElse(0x40L, Val(42L)), Val(42L))
+    assertEquals(h1.getOrElse(0xfe000000000000L, Val(42L)), Val(42L))
+    val nv = Val(0L)
     val h1b = h1.updated(nv)
     assertEquals(h1b.size, h1.size)
-    assert(h1b.getOrElse(0L, Vl(42L)) eq nv)
-    assert(Either.catchOnly[IllegalArgumentException](h1.updated(Vl(1L))).isLeft)
-    val h2 = h1.inserted(Vl(1L))
+    assert(h1b.getOrElse(0L, Val(42L)) eq nv)
+    assert(Either.catchOnly[IllegalArgumentException](h1.updated(Val(1L))).isLeft)
+    val h2 = h1.inserted(Val(1L))
     assertEquals(h2.size, 2)
-    assertEquals(h2.toArray.toList, List(0L, 1L).map(Vl(_)))
-    assertEquals(h2.getOrElse(0L, Vl(42L)), Vl(0L))
-    assertEquals(h2.getOrElse(1L, Vl(42L)), Vl(1L))
-    assertEquals(h2.getOrElse(2L, Vl(42L)), Vl(42L))
-    assertEquals(h2.getOrElse(0x40L, Vl(42L)), Vl(42L))
-    assertEquals(h2.getOrElse(0xfe000000000000L, Vl(42L)), Vl(42L))
-    val nnv = Vl(0L)
+    assertEquals(h2.toArray.toList, List(0L, 1L).map(Val(_)))
+    assertEquals(h2.getOrElse(0L, Val(42L)), Val(0L))
+    assertEquals(h2.getOrElse(1L, Val(42L)), Val(1L))
+    assertEquals(h2.getOrElse(2L, Val(42L)), Val(42L))
+    assertEquals(h2.getOrElse(0x40L, Val(42L)), Val(42L))
+    assertEquals(h2.getOrElse(0xfe000000000000L, Val(42L)), Val(42L))
+    val nnv = Val(0L)
     val h2b = h2.upserted(nnv)
     assertEquals(h2b.size, h2.size)
-    assertEquals(h2b.toArray.toList, List(0L, 1L).map(Vl(_)))
-    assert(h2b.getOrElse(0L, Vl(42L)) eq nnv)
-    assert(h2b.getOrElse(0L, Vl(42L)) ne nv)
-    assert(Either.catchOnly[IllegalArgumentException](h2.updated(Vl(2L))).isLeft)
-    val h3 = h2.upserted(Vl(2L))
+    assertEquals(h2b.toArray.toList, List(0L, 1L).map(Val(_)))
+    assert(h2b.getOrElse(0L, Val(42L)) eq nnv)
+    assert(h2b.getOrElse(0L, Val(42L)) ne nv)
+    assert(Either.catchOnly[IllegalArgumentException](h2.updated(Val(2L))).isLeft)
+    val h3 = h2.upserted(Val(2L))
     assertEquals(h3.size, 3)
-    assertEquals(h3.toArray.toList, List(0L, 1L, 2L).map(Vl(_)))
-    assertEquals(h3.getOrElse(0L, Vl(42L)), Vl(0L))
-    assertEquals(h3.getOrElse(1L, Vl(42L)), Vl(1L))
-    assertEquals(h3.getOrElse(2L, Vl(42L)), Vl(2L))
-    assertEquals(h3.getOrElse(0x40L, Vl(42L)), Vl(42L))
-    assertEquals(h3.getOrElse(0xfe000000000000L, Vl(42L)), Vl(42L))
-    assert(Either.catchOnly[IllegalArgumentException](h3.inserted(Vl(2L))).isLeft)
-    val h4 = h3.inserted(Vl(0x40L)) // collides with 0L at 1st level
+    assertEquals(h3.toArray.toList, List(0L, 1L, 2L).map(Val(_)))
+    assertEquals(h3.getOrElse(0L, Val(42L)), Val(0L))
+    assertEquals(h3.getOrElse(1L, Val(42L)), Val(1L))
+    assertEquals(h3.getOrElse(2L, Val(42L)), Val(2L))
+    assertEquals(h3.getOrElse(0x40L, Val(42L)), Val(42L))
+    assertEquals(h3.getOrElse(0xfe000000000000L, Val(42L)), Val(42L))
+    assert(Either.catchOnly[IllegalArgumentException](h3.inserted(Val(2L))).isLeft)
+    val h4 = h3.inserted(Val(0x40L)) // collides with 0L at 1st level
     assertEquals(h4.size, 4)
-    assertEquals(h4.toArray.toList, List(0L, 0x40L, 1L, 2L).map(Vl(_)))
-    assertEquals(h4.getOrElse(0L, Vl(42L)), Vl(0L))
-    assertEquals(h4.getOrElse(1L, Vl(42L)), Vl(1L))
-    assertEquals(h4.getOrElse(2L, Vl(42L)), Vl(2L))
-    assertEquals(h4.getOrElse(0x40L, Vl(42L)), Vl(0x40L))
-    assertEquals(h4.getOrElse(0xfe000000000000L, Vl(42L)), Vl(42L))
-    assert(Either.catchOnly[IllegalArgumentException](h4.updated(Vl(99L))).isLeft)
-    val h5 = h4.inserted(Vl(0xfe000000000000L))
+    assertEquals(h4.toArray.toList, List(0L, 0x40L, 1L, 2L).map(Val(_)))
+    assertEquals(h4.getOrElse(0L, Val(42L)), Val(0L))
+    assertEquals(h4.getOrElse(1L, Val(42L)), Val(1L))
+    assertEquals(h4.getOrElse(2L, Val(42L)), Val(2L))
+    assertEquals(h4.getOrElse(0x40L, Val(42L)), Val(0x40L))
+    assertEquals(h4.getOrElse(0xfe000000000000L, Val(42L)), Val(42L))
+    assert(Either.catchOnly[IllegalArgumentException](h4.updated(Val(99L))).isLeft)
+    val h5 = h4.inserted(Val(0xfe000000000000L))
     assertEquals(h5.size, 5)
-    assertEquals(h5.toArray.toList, List(0L, 0xfe000000000000L, 0x40L, 1L, 2L).map(Vl(_)))
-    assertEquals(h5.getOrElse(0L, Vl(42L)), Vl(0L))
-    assertEquals(h5.getOrElse(1L, Vl(42L)), Vl(1L))
-    assertEquals(h5.getOrElse(2L, Vl(42L)), Vl(2L))
-    assertEquals(h5.getOrElse(0x40L, Vl(42L)), Vl(0x40L))
-    assertEquals(h5.getOrElse(0xfe000000000000L, Vl(42L)), Vl(0xfe000000000000L))
+    assertEquals(h5.toArray.toList, List(0L, 0xfe000000000000L, 0x40L, 1L, 2L).map(Val(_)))
+    assertEquals(h5.getOrElse(0L, Val(42L)), Val(0L))
+    assertEquals(h5.getOrElse(1L, Val(42L)), Val(1L))
+    assertEquals(h5.getOrElse(2L, Val(42L)), Val(2L))
+    assertEquals(h5.getOrElse(0x40L, Val(42L)), Val(0x40L))
+    assertEquals(h5.getOrElse(0xfe000000000000L, Val(42L)), Val(0xfe000000000000L))
   }
 
   property("HAMT lookup/upsert/toArray") {
@@ -110,9 +110,9 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
       val rng = new Random(seed)
       val nums = rng.shuffle(_nums.toList)
       var hamt = LongHamt.empty
-      var shadow = LongMap.empty[Vl]
+      var shadow = LongMap.empty[Val]
       for (n <- nums) {
-        val v = Vl(n)
+        val v = Val(n)
         assert(Either.catchOnly[IllegalArgumentException](hamt.updated(v)).isLeft)
         hamt = if (rng.nextBoolean()) {
           hamt.inserted(v)
@@ -124,7 +124,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
         assertSameMaps(hamt, shadow)
       }
       for (n <- rng.shuffle(nums)) {
-        val nv = Vl(n)
+        val nv = Val(n)
         assert(Either.catchOnly[IllegalArgumentException](hamt.inserted(nv)).isLeft)
         hamt = if (rng.nextBoolean()) {
           hamt.updated(nv)
@@ -138,7 +138,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     }
   }
 
-  def assertSameMaps(hamt: LongHamt, shadow: LongMap[Vl]): Unit = {
+  def assertSameMaps(hamt: LongHamt, shadow: LongMap[Val]): Unit = {
     assertEquals(hamt.size, shadow.size)
     for (k <- shadow.keySet) {
       val expVal = shadow(k)
@@ -156,7 +156,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
   }
 
   private def addAll(hamt: LongHamt, lst: List[Long]): LongHamt = {
-    lst.foldLeft(hamt) { (hamt, n) => hamt.upserted(Vl(n)) }
+    lst.foldLeft(hamt) { (hamt, n) => hamt.upserted(Val(n)) }
   }
 
   property("Iteration order should be independent of insertion order") {
@@ -203,44 +203,46 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     var i = 0
     var hamt = LongHamt.empty
     while (i < N) {
-      hamt = hamt.upserted(Vl(ThreadLocalRandom.current().nextLong()))
+      hamt = hamt.upserted(Val(ThreadLocalRandom.current().nextLong()))
       i += 1
     }
     hamt = addAll(hamt, lst)
     for (n <- lst) {
-      assertEquals(hamt.getOrElse(n, Vl(0L)), Vl(n))
+      assertEquals(hamt.getOrElse(n, Val(0L)), Val(n))
     }
   }
 }
 
 object HamtSpec {
 
-  final case class Vl(value: Long)
+  /** Just a `Long`, but has its own identity */
+  final case class Val(value: Long)
+
+  /** A simple HAMT of `Long` -> `Val` pairs */
+  final class LongHamt(r: LongHamtNode) extends Hamt[Val, Val, LongHamtNode, LongHamt](r) {
+    protected override def hashOf(a: Val): Long =
+      a.value
+    protected override def withRoot(root: LongHamtNode): LongHamt =
+      new LongHamt(root)
+    protected override def newArray(size: Int): Array[Val] =
+      new Array[Val](size)
+  }
 
   object LongHamt {
     val empty: LongHamt =
       new LongHamt(new LongHamtNode(0, 0L, new Array(0)))
   }
 
-  final class LongHamt(r: LongHamtNode) extends Hamt[Vl, Vl, LongHamtNode, LongHamt](r) {
-    protected override def hashOf(a: Vl): Long =
-      a.value
-    protected override def withRoot(root: LongHamtNode): LongHamt =
-      new LongHamt(root)
-    protected override def newArray(size: Int): Array[Vl] =
-      new Array[Vl](size)
-  }
-
   final class LongHamtNode(
     _size: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends Hamt.Node[Vl, Vl, LongHamtNode](_size, _bitmap, _contents) {
-    protected final override def hashOf(a: Vl): Long =
+  ) extends Hamt.Node[Val, Val, LongHamtNode](_size, _bitmap, _contents) {
+    protected final override def hashOf(a: Val): Long =
       a.value
     protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LongHamtNode =
       new LongHamtNode(size, bitmap, contents)
-    protected def EfromA(a: Vl): Vl =
+    protected def convertForArray(a: Val): Val =
       a
   }
 }
