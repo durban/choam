@@ -138,6 +138,9 @@ private object RefArray {
     physicalIdx: Int,
   ) extends UnsealedRef[A] with MemoryLocation[A] {
 
+    final override def hashCode: Int =
+      this.id.toInt
+
     final override def unsafeGetVolatile(): A =
       array.items(physicalIdx).asInstanceOf[A]
 
