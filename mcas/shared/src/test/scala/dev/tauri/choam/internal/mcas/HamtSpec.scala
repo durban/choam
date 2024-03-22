@@ -223,15 +223,17 @@ object HamtSpec {
     _size: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends Hamt[Val, Val, LongHamt](_size, _bitmap, _contents) {
+  ) extends Hamt[Val, Val, Unit, LongHamt](_size, _bitmap, _contents) {
     protected final override def hashOf(a: Val): Long =
       a.value
     protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LongHamt =
       new LongHamt(size, bitmap, contents)
     protected final override def newArray(size: Int): Array[Val] =
       new Array[Val](size)
-    protected def convertForArray(a: Val): Val =
+    protected def convertForArray(a: Val, tok: Unit): Val =
       a
+    final def toArray: Array[Val] =
+      this.toArray(())
   }
 
   object LongHamt {

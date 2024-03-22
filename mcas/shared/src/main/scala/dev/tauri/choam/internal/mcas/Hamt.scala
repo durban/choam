@@ -33,7 +33,7 @@ import java.util.Arrays
  * Values can't be `null` (we use `null` as the "not
  * found" sentinel).
  */
-private[mcas] abstract class Hamt[A, E, H <: Hamt[A, E, H]](
+private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
   val size: Int,
   val bitmap: Long,
   val contents: Array[AnyRef],
@@ -51,7 +51,7 @@ private[mcas] abstract class Hamt[A, E, H <: Hamt[A, E, H]](
 
   protected def newArray(size: Int): Array[E]
 
-  protected def convertForArray(a: A): E
+  protected def convertForArray(a: A, tok: T): E
 
   // API (should only be called on a root node!):
 
@@ -82,9 +82,9 @@ private[mcas] abstract class Hamt[A, E, H <: Hamt[A, E, H]](
     }
   }
 
-  final def toArray: Array[E] = {
+  final def toArray(tok: T): Array[E] = {
     val arr = newArray(this.size)
-    val end = this.copyIntoArray(arr, 0)
+    val end = this.copyIntoArray(arr, 0, tok)
     assert(end == arr.length)
     arr
   }
@@ -96,7 +96,7 @@ private[mcas] abstract class Hamt[A, E, H <: Hamt[A, E, H]](
     this.getValueOrNodeOrNull(hash, shift) match {
       case null =>
         nullOf[A]
-      case node: Hamt[A, E, _] =>
+      case node: Hamt[A, E, _, _] =>
         node.lookupOrNull(hash, shift + W)
       case value =>
         val a = value.asInstanceOf[A]
@@ -130,11 +130,11 @@ private[mcas] abstract class Hamt[A, E, H <: Hamt[A, E, H]](
     if ((bitmap & flag) != 0L) {
       // we have an entry for this:
       contents(physIdx) match {
-        case node: Hamt[A, E, H] =>
+        case node: Hamt[A, E, T, H] =>
           node.insertOrOverwrite(hash, value, shift + W, op) match {
             case null =>
               nullOf[H]
-            case newNode: Hamt[A, E, H] =>
+            case newNode: Hamt[A, E, T, H] =>
               this.withNode(this.size + (newNode.size - node.size), bitmap, newNode, physIdx)
           }
         case ov =>
@@ -176,17 +176,17 @@ private[mcas] abstract class Hamt[A, E, H <: Hamt[A, E, H]](
     }
   }
 
-  private final def copyIntoArray(arr: Array[E], start: Int): Int = {
+  private final def copyIntoArray(arr: Array[E], start: Int, tok: T): Int = {
     val contents = this.contents
     var i = 0
     var arrIdx = start
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, H] =>
-          arrIdx = node.copyIntoArray(arr, arrIdx)
+        case node: Hamt[A, E, T, H] =>
+          arrIdx = node.copyIntoArray(arr, arrIdx, tok)
         case a =>
-          arr(arrIdx) = convertForArray(a.asInstanceOf[A])
+          arr(arrIdx) = convertForArray(a.asInstanceOf[A], tok)
           arrIdx += 1
       }
       i += 1
@@ -198,7 +198,7 @@ private[mcas] abstract class Hamt[A, E, H <: Hamt[A, E, H]](
     this.newNode(this.size, bitmap, arrReplacedValue(this.contents, box(value), physIdx))
   }
 
-  private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[A, E, _], physIdx: Int): H = {
+  private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[A, E, _, _], physIdx: Int): H = {
     this.newNode(size, bitmap, arrReplacedValue(this.contents, node, physIdx))
   }
 
