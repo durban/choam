@@ -22,17 +22,17 @@ package emcas
 
 object EmcasHamt {
 
-  private final class MemLocNode[A](
+  private final class MemLocHamt[A](
     _size: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends Hamt.Node[HalfWordDescriptor[A], WordDescriptor[A], MemLocNode[A]](_size, _bitmap, _contents) {
+  ) extends Hamt[HalfWordDescriptor[A], WordDescriptor[A], MemLocHamt[A]](_size, _bitmap, _contents) {
 
     protected final override def hashOf(a: HalfWordDescriptor[A]): Long =
       a.address.id
 
-    protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): MemLocNode[A] =
-      new MemLocNode(size, bitmap, contents)
+    protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): MemLocHamt[A] =
+      new MemLocHamt(size, bitmap, contents)
 
     protected final override def newArray(size: Int): Array[WordDescriptor[A]] =
       new Array[WordDescriptor[A]](size)
