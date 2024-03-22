@@ -222,14 +222,12 @@ object HamtSpec {
       new LongHamt(new LongHamtNode(0, 0L, new Array(0)))
   }
 
-  final class LongHamt(r: LongHamtNode) extends Hamt[Vl, Vl, LongHamt, LongHamtNode](r) {
-    protected def hashOf(a: Vl): Long =
+  final class LongHamt(r: LongHamtNode) extends Hamt[Vl, Vl, LongHamtNode, LongHamt](r) {
+    protected override def hashOf(a: Vl): Long =
       a.value
-    protected def copy(root: LongHamtNode): LongHamt =
+    protected override def withRoot(root: LongHamtNode): LongHamt =
       new LongHamt(root)
-    protected def self: LongHamt =
-      this
-    protected def newArray(size: Int): Array[Vl] =
+    protected override def newArray(size: Int): Array[Vl] =
       new Array[Vl](size)
   }
 
@@ -237,10 +235,10 @@ object HamtSpec {
     _size: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends Hamt.Node[LongHamtNode, Vl, Vl](_size, _bitmap, _contents) {
+  ) extends Hamt.Node[Vl, Vl, LongHamtNode](_size, _bitmap, _contents) {
     protected final override def hashOf(a: Vl): Long =
       a.value
-    protected final override def copy(size: Int, bitmap: Long, contents: Array[AnyRef]): LongHamtNode =
+    protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LongHamtNode =
       new LongHamtNode(size, bitmap, contents)
     protected def EfromA(a: Vl): Vl =
       a

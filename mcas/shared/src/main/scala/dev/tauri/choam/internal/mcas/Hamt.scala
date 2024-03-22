@@ -28,11 +28,12 @@ import java.util.Arrays
  * We're using the IDs directly, without hashing, since
  * they're already generated with Fibonacci hashing.
  *
- * TODO: Values can't be `null`.
+ * Values can't be `null` (we use `null` as the "not
+ * found" sentinel).
  */
-private[mcas] abstract class Hamt[A, E, H <: Hamt[A, E, H, N], N <: Hamt.Node[N, A, E]](
-  private val root: N,
-) {
+private[mcas] abstract class Hamt[A, E, N <: Hamt.Node[A, E, N], H <: Hamt[A, E, N, H]](
+  private val root: N, // TODO: do we need this extra indirection?
+) { this: H =>
 
   private[this] final val OP_UPDATE = 0
   private[this] final val OP_INSERT = 1
@@ -40,14 +41,14 @@ private[mcas] abstract class Hamt[A, E, H <: Hamt[A, E, H, N], N <: Hamt.Node[N,
 
   protected def hashOf(a: A): Long
 
-  protected def copy(root: N): H
+  protected def withRoot(root: N): H
 
-  protected def self: H
+  protected def newArray(size: Int): Array[E]
 
   final def size: Int =
     this.root.size
 
-  final def getOrElse(hash: Long, default: A): A = {
+  final def getOrElse(hash: Long, default: A): A = { // TODO: we don't ever actually need `default`
     this.root.lookupOrNull(hash, 0) match {
       case null => default
       case a => a
@@ -56,21 +57,21 @@ private[mcas] abstract class Hamt[A, E, H <: Hamt[A, E, H, N], N <: Hamt.Node[N,
 
   final def updated(a: A): H = {
     this.root.insertOrOverwrite(hashOf(a), a, 0, OP_UPDATE) match {
-      case null => this.self
-      case newRoot => this.copy(newRoot)
+      case null => this
+      case newRoot => this.withRoot(newRoot)
     }
   }
 
   final def inserted(a: A): H = {
     val newRoot = this.root.insertOrOverwrite(hashOf(a), a, 0, OP_INSERT)
     assert(newRoot ne null)
-    this.copy(newRoot)
+    this.withRoot(newRoot)
   }
 
   final def upserted(a: A): H = {
     this.root.insertOrOverwrite(hashOf(a), a, 0, OP_UPSERT) match {
-      case null => this.self
-      case newRoot => this.copy(newRoot)
+      case null => this
+      case newRoot => this.withRoot(newRoot)
     }
   }
 
@@ -80,50 +81,47 @@ private[mcas] abstract class Hamt[A, E, H <: Hamt[A, E, H, N], N <: Hamt.Node[N,
     assert(end == arr.length)
     arr
   }
-
-  protected def newArray(size: Int): Array[E]
 }
 
 private[mcas] object Hamt {
-
-  private[Hamt] val NOTFOUND: AnyRef = // TODO: use this
-    new AnyRef
 
   private[mcas] final class MemLocNode[A](
     _size: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends Node[MemLocNode[A], HalfWordDescriptor[A], Unit](_size, _bitmap, _contents) {
+  ) extends Node[HalfWordDescriptor[A], Unit, MemLocNode[A]](_size, _bitmap, _contents) {
 
     protected final override def hashOf(a: HalfWordDescriptor[A]): Long =
       a.address.id
 
-    protected final override def copy(size: Int, bitmap: Long, contents: Array[AnyRef]): MemLocNode[A] =
+    protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): MemLocNode[A] =
       new MemLocNode(size, bitmap, contents)
 
     protected def EfromA(a: HalfWordDescriptor[A]): Unit =
       () // TODO
   }
 
-  private[mcas] abstract class Node[N <: Node[N, A, E], A, E](
+  private[mcas] abstract class Node[A, E, N <: Node[A, E, N]](
     val size: Int,
     val bitmap: Long,
     val contents: Array[AnyRef],
-  ) {
+  ) { this: N =>
 
     private[this] final val W =
       6
 
-    protected def hashOf(a: A): Long
+    protected def hashOf(a: A): Long // TODO: this is duplicated with `Hamt`
 
-    protected def copy(size: Int, bitmap: Long, contents: Array[AnyRef]): N
+    protected def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): N
+
+    protected def EfromA(a: A): E
 
     // @tailrec
     final def lookupOrNull(hash: Long, shift: Int): A = {
       this.getValueOrNodeOrNull(hash, shift) match {
         case null =>
           nullOf[A]
-        case node: Node[_, A, E] =>
+        case node: Node[A, E, _] =>
           node.lookupOrNull(hash, shift + W)
         case value =>
           val a = value.asInstanceOf[A]
@@ -162,11 +160,11 @@ private[mcas] object Hamt {
       if ((bitmap & flag) != 0L) {
         // we have an entry for this:
         contents(physIdx) match {
-          case node: Node[N, A, E] =>
+          case node: Node[A, E, N] =>
             node.insertOrOverwrite(hash, value, shift + W, op) match {
               case null =>
                 nullOf[N]
-              case newNode: Node[N, A, E] =>
+              case newNode: Node[A, E, N] =>
                 this.withNode(this.size + (newNode.size - node.size), bitmap, newNode, physIdx)
             }
           case ov =>
@@ -186,7 +184,7 @@ private[mcas] object Hamt {
                 val cArr = new Array[AnyRef](1)
                 cArr(0) = ov
                 val oFlag = 1L << logicalIdx(oh, shift + W)
-                this.copy(1, oFlag, cArr)
+                this.newNode(1, oFlag, cArr)
               }
               val childNode2 = childNode.insertOrOverwrite(hash, value, shift + W, op)
               this.withNode(this.size + (childNode2.size - 1), bitmap, childNode2, physIdx)
@@ -203,7 +201,7 @@ private[mcas] object Hamt {
           System.arraycopy(contents, 0, newArr, 0, physIdx)
           System.arraycopy(contents, physIdx, newArr, physIdx + 1, len - physIdx)
           newArr(physIdx) = value.asInstanceOf[AnyRef]
-          this.copy(this.size + 1, newBitmap, newArr)
+          this.newNode(this.size + 1, newBitmap, newArr)
         }
       }
     }
@@ -215,7 +213,7 @@ private[mcas] object Hamt {
       val len = contents.length
       while (i < len) {
         contents(i) match {
-          case node: Node[N, A, E] =>
+          case node: Node[A, E, N] =>
             arrIdx = node.copyIntoArray(arr, arrIdx)
           case a =>
             arr(arrIdx) = EfromA(a.asInstanceOf[A])
@@ -226,14 +224,12 @@ private[mcas] object Hamt {
       arrIdx
     }
 
-    protected def EfromA(a: A): E
-
     private[this] final def withValue(bitmap: Long, value: A, physIdx: Int): N = {
-      this.copy(this.size, bitmap, arrWithValue(this.contents, value.asInstanceOf[AnyRef], physIdx))
+      this.newNode(this.size, bitmap, arrWithValue(this.contents, value.asInstanceOf[AnyRef], physIdx))
     }
 
-    private[this] final def withNode(size: Int, bitmap: Long, node: Node[_, A, E], physIdx: Int): N = {
-      this.copy(size, bitmap, arrWithValue(this.contents, node, physIdx))
+    private[this] final def withNode(size: Int, bitmap: Long, node: Node[A, E, _], physIdx: Int): N = {
+      this.newNode(size, bitmap, arrWithValue(this.contents, node, physIdx))
     }
 
     private[this] final def arrWithValue(arr: Array[AnyRef], value: AnyRef, idx: Int): Array[AnyRef] = {
