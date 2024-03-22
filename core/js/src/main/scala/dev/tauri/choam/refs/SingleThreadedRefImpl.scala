@@ -28,6 +28,16 @@ private final class SingleThreadedRefImpl[A](private[this] var value: A)(
 ) extends MemoryLocation[A]
   with UnsealedRef[A] {
 
+  final override def hashCode: Int = {
+    // `RefIdGen` generates IDs with
+    // Fibonacci hashing, so no need
+    // to hash them here even further.
+    // IDs are globally unique, so the
+    // default `equals` (based on object
+    // identity) is fine for us.
+    this.id.toInt
+  }
+
   final override def toString: String =
     refStringFrom4Ids(id)
 

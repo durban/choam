@@ -65,9 +65,9 @@ final class PaddedMemoryLocation<A>
     // `RefIdGen` generates IDs with
     // Fibonacci hashing, so no need
     // to hash them here even further.
-    // IDs are globally unique, to the
+    // IDs are globally unique, so the
     // default `equals` (based on object
-    // identity) is fine fo us.
+    // identity) is fine for us.
     return (int) this.id();
   }
 

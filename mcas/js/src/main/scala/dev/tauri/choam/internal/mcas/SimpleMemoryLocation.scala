@@ -29,6 +29,16 @@ private class SimpleMemoryLocation[A](private[this] var value: A)(
   private[this] var version: Long =
     Version.Start
 
+  final override def hashCode: Int = {
+    // `RefIdGen` generates IDs with
+    // Fibonacci hashing, so no need
+    // to hash them here even further.
+    // IDs are globally unique, so the
+    // default `equals` (based on object
+    // identity) is fine for us.
+    this.id.toInt
+  }
+
   override def toString: String =
     "SMemLoc@" + refHashString(id)
 
