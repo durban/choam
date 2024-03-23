@@ -180,7 +180,7 @@ lazy val choam = project.in(file("."))
     async.jvm, async.js,
     stream.jvm, stream.js,
     ce.jvm, ce.js,
-    internalHelpers.jvm, internalHelpers.js,
+    internalHelpers, // JVM
     laws.jvm, laws.js,
     unidocs,
     testExt.jvm, testExt.js,
@@ -292,17 +292,13 @@ lazy val ce = crossProject(JVMPlatform, JSPlatform)
   .settings(libraryDependencies += dependencies.catsEffectAll.value)
 
 /** Internal use only; no published project may depend on this */
-lazy val internalHelpers = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Pure)
-  .withoutSuffixFor(JVMPlatform)
-  .in(file("internal-helpers"))
+lazy val internalHelpers = project.in(file("internal-helpers"))
   .settings(name := "choam-internal-helpers")
   .enablePlugins(NoPublishPlugin)
   .disablePlugins(disabledPlugins: _*)
   .settings(commonSettings)
-  .jvmSettings(commonSettingsJvm)
-  .jsSettings(commonSettingsJs)
-  .dependsOn(ce % "compile->compile;test->test")
+  .settings(commonSettingsJvm)
+  .dependsOn(ce.jvm % "compile->compile;test->test")
 
 lazy val laws = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -372,7 +368,7 @@ lazy val bench = project.in(file("bench"))
   ))
   .enablePlugins(JmhPlugin)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
-  .dependsOn(internalHelpers.jvm)
+  .dependsOn(internalHelpers)
   .settings(Jmh / version := dependencies.jmhVersion)
 
 // Stress tests (mostly with JCStress):
@@ -421,7 +417,7 @@ lazy val stressData = project.in(file("stress") / "stress-data")
   .enablePlugins(NoPublishPlugin)
   .dependsOn(data.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
-  .dependsOn(internalHelpers.jvm)
+  .dependsOn(internalHelpers)
 
 lazy val stressDataSlow = project.in(file("stress") / "stress-data-slow")
   .settings(name := "choam-stress-data-slow")
@@ -444,7 +440,7 @@ lazy val stressAsync = project.in(file("stress") / "stress-async")
   .enablePlugins(NoPublishPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
-  .dependsOn(internalHelpers.jvm)
+  .dependsOn(internalHelpers)
 
 lazy val stressExperiments = project.in(file("stress") / "stress-experiments")
   .settings(name := "choam-stress-experiments")
@@ -522,7 +518,7 @@ lazy val stressOld = project.in(file("stress") / "stress-old")
   .enablePlugins(NoPublishPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
-  .dependsOn(internalHelpers.jvm)
+  .dependsOn(internalHelpers)
 
 lazy val layout = project.in(file("layout"))
   .settings(name := "choam-layout")

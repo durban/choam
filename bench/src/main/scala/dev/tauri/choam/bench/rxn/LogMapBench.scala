@@ -16,19 +16,21 @@
  */
 
 package dev.tauri.choam
-package internal
-package mcas
+package bench
+package rxn
 
 import scala.collection.immutable.TreeMap
 
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import dev.tauri.choam.bench.util.RandomState
+import internal.mcas.{ MemoryLocation, HalfWordDescriptor, Version }
+import internal.helpers.McasHelper
+import util.RandomState
 
 @Fork(1)
 @Threads(1)
-private[mcas] class LogMapBench {
+private[rxn] class LogMapBench {
 
   import LogMapBench._
 
@@ -47,7 +49,7 @@ private[mcas] class LogMapBench {
     val newKey = s.dummyKeys(idx)
     bh.consume(newKey)
     val newHwd = s.dummyHwds(idx)
-    bh.consume(s.map.inserted(newHwd))
+    bh.consume(McasHelper.LogMap_inserted(s.map, newHwd.asInstanceOf[HalfWordDescriptor[Any]]))
   }
 
   @Benchmark
@@ -56,7 +58,7 @@ private[mcas] class LogMapBench {
     val newKey = s.dummyKeys(idx)
     bh.consume(newKey)
     val newHwd = s.dummyHwds(idx)
-    bh.consume(s.map.updated(newKey.cast[Any], newHwd))
+    bh.consume(s.map.updated(newKey.asInstanceOf[MemoryLocation[Any]], newHwd))
   }
 
   @Benchmark
@@ -82,7 +84,7 @@ private[mcas] class LogMapBench {
       val idx = rnd.nextIntBounded(DummySize)
       s.dummyKeys(idx)
     }
-    bh.consume(s.map.getOrElse(key, null))
+    bh.consume(McasHelper.LogMap_getOrElse(s.map, key.asInstanceOf[MemoryLocation[Any]], null))
   }
 
   @Benchmark
@@ -95,7 +97,7 @@ private[mcas] class LogMapBench {
       val idx = rnd.nextIntBounded(DummySize)
       s.dummyKeys(idx)
     }
-    bh.consume(s.map.getOrElse(key.cast[Any], null))
+    bh.consume(s.map.getOrElse(key.asInstanceOf[MemoryLocation[Any]], null))
   }
 
   @Benchmark
@@ -120,7 +122,7 @@ private[mcas] class LogMapBench {
       val key = s.keys(idx)
       bh.consume(key)
       val newHwd = s.newHwds(idx)
-      bh.consume(s.map.updated(newHwd))
+      bh.consume(McasHelper.LogMap_updated(s.map, newHwd.asInstanceOf[HalfWordDescriptor[Any]]))
     }
   }
 
@@ -133,7 +135,7 @@ private[mcas] class LogMapBench {
       val key = s.keys(idx)
       bh.consume(key)
       val newHwd = s.newHwds(idx)
-      bh.consume(s.map.updated(key.cast[Any], newHwd))
+      bh.consume(s.map.updated(key.asInstanceOf[MemoryLocation[Any]], newHwd))
     }
   }
 }
@@ -167,14 +169,14 @@ object LogMapBench {
       for (idx <- 0 until this.size) {
         val ref = MemoryLocation.unsafe("a")
         this.keys(idx) = ref
-        this.newHwds(idx) = HalfWordDescriptor(ref, "a", "c", version = 0L)
+        this.newHwds(idx) = McasHelper.newHwd(ref, "a", "c", 0L)
       }
       this.dummyKeys = new Array(DummySize)
       this.dummyHwds = new Array(DummySize)
       for (idx <- 0 until DummySize) {
         val ref = MemoryLocation.unsafe("x")
         this.dummyKeys(idx) = ref
-        this.dummyHwds(idx) = HalfWordDescriptor(ref, "x", "y", version = 0L)
+        this.dummyHwds(idx) = McasHelper.newHwd(ref, "x", "y", 0L)
       }
     }
   }
@@ -188,17 +190,18 @@ object LogMapBench {
   }
 
   @State(Scope.Thread)
-  private[mcas] class LogMapState extends BaseState {
+  private[rxn] class LogMapState extends BaseState {
 
-    var map: LogMap =
-      LogMap.empty
+    var map: AnyRef =
+      McasHelper.LogMap_empty()
 
     @Setup
     def setup(): Unit = {
       this.baseSetup()
       for (ref <- this.keys) {
-        this.map = this.map.inserted(
-          HalfWordDescriptor(ref, "a", "b", version = Version.Start),
+        this.map = McasHelper.LogMap_inserted(
+          this.map,
+          McasHelper.newHwd(ref.asInstanceOf[MemoryLocation[Any]], "a", "b", Version.Start),
         )
       }
     }
@@ -215,8 +218,8 @@ object LogMapBench {
       this.baseSetup()
       for (ref <- this.keys) {
         this.map = this.map.updated(
-          ref.cast[Any],
-          HalfWordDescriptor(ref, "a", "b", version = Version.Start).cast[Any],
+          ref.asInstanceOf[MemoryLocation[Any]],
+          McasHelper.newHwd(ref.asInstanceOf[MemoryLocation[Any]], "a", "b", Version.Start),
         )
       }
     }
