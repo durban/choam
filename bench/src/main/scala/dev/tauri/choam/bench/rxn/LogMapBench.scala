@@ -174,6 +174,34 @@ private[rxn] class LogMapBench {
       bh.consume(s.map.updated(key.asInstanceOf[MemoryLocation[Any]], newHwd))
     }
   }
+
+  @Benchmark
+  def toArrayBaseline(s: BaselineState): Array[HalfWordDescriptor[Any]] = {
+    new Array[HalfWordDescriptor[Any]](s.size)
+  }
+
+  @Benchmark
+  def toArrayHamt(s: HamtState): Array[HalfWordDescriptor[Any]] = {
+    s.map.toArray(())
+  }
+
+  @Benchmark
+  def toArrayLog(s: LogMapState): Array[HalfWordDescriptor[Any]] = {
+    val map = s.map
+    val arr = new Array[HalfWordDescriptor[Any]](McasHelper.LogMap_size(map))
+    val it = McasHelper.LogMap_iterator(map)
+    var idx = 0
+    while (it.hasNext) {
+      arr(idx) = it.next().asInstanceOf[HalfWordDescriptor[Any]]
+      idx += 1
+    }
+    arr
+  }
+
+  @Benchmark
+  def toArrayTree(s: TreeMapState): Array[HalfWordDescriptor[Any]] = {
+    s.map.values.toArray[HalfWordDescriptor[Any]]
+  }
 }
 
 object LogMapBench {
@@ -247,11 +275,11 @@ object LogMapBench {
     _size: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends MemLocHamtBase[A, Unit, Unit](_size, _bitmap, _contents) {
-    protected final override def convertForArray(a: HalfWordDescriptor[A], tok: Unit): Unit =
-      ()
-    protected final override def newArray(size: Int): Array[Unit] =
-      new Array[Unit](size)
+  ) extends MemLocHamtBase[A, HalfWordDescriptor[A], Unit](_size, _bitmap, _contents) {
+    protected final override def convertForArray(a: HalfWordDescriptor[A], tok: Unit): HalfWordDescriptor[A] =
+      a
+    protected final override def newArray(size: Int): Array[HalfWordDescriptor[A]] =
+      new Array[HalfWordDescriptor[A]](size)
     protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): TestHamt[A] =
       new TestHamt(size, bitmap, contents)
   }
@@ -259,7 +287,7 @@ object LogMapBench {
   @State(Scope.Thread)
   class HamtState extends BaseState {
 
-    var map: MemLocHamtBase[Any, Unit, Unit] =
+    var map: MemLocHamtBase[Any, HalfWordDescriptor[Any], Unit] =
       new TestHamt[Any](0, 0L, new Array(0))
 
     @Setup

@@ -17,6 +17,8 @@
 
 package dev.tauri.choam.internal.helpers;
 
+import scala.collection.Iterator;
+
 import dev.tauri.choam.internal.mcas.LogMap;
 import dev.tauri.choam.internal.mcas.LogMap$;
 import dev.tauri.choam.internal.mcas.HalfWordDescriptor;
@@ -27,6 +29,14 @@ public final class McasHelper {
 
   public static Object LogMap_empty() {
     return LogMap$.MODULE$.empty();
+  }
+
+  public static int LogMap_size(Object m) {
+    return ((LogMap) m).size();
+  }
+
+  public static Iterator<HalfWordDescriptor<?>> LogMap_iterator(Object m) {
+    return ((LogMap) m).valuesIterator();
   }
 
   public static HalfWordDescriptor<Object> LogMap_getOrElse(Object m, MemoryLocation<Object> k, HalfWordDescriptor<Object> d) {
