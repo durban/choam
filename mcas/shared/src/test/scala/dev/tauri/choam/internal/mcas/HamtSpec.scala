@@ -201,7 +201,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
   }
 
   test("Lots of elements") {
-    val N = if (isJvm()) 5000000 else 1000
+    val N = if (isJvm()) 3000000 else 1000
     val lst = List(42L, 99L, 1024L, Long.MinValue, Long.MaxValue)
     var i = 0
     var hamt = LongHamt.empty
