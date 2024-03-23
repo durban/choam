@@ -26,7 +26,7 @@ object EmcasHamt {
     _size: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends Hamt[HalfWordDescriptor[A], WordDescriptor[A], EmcasDescriptor, MemLocHamt[A]](_size, _bitmap, _contents) {
+  ) extends Hamt[HalfWordDescriptor[A], WordDescriptor[A], EmcasDescriptor, Descriptor, MemLocHamt[A]](_size, _bitmap, _contents) {
 
     protected final override def hashOf(a: HalfWordDescriptor[A]): Long =
       a.address.id
@@ -39,6 +39,10 @@ object EmcasHamt {
 
     protected final override def convertForArray(a: HalfWordDescriptor[A], tok: EmcasDescriptor): WordDescriptor[A] = {
       new WordDescriptor(a, tok)
+    }
+
+    protected final override def convertForFoldLeft(s: Descriptor, a: HalfWordDescriptor[A]): Descriptor = {
+      s.add(a)
     }
   }
 }

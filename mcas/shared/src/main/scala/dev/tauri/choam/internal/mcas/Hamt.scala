@@ -33,7 +33,7 @@ import java.util.Arrays
  * Values can't be `null` (we use `null` as the "not
  * found" sentinel).
  */
-private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
+private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
   val size: Int,
   val bitmap: Long,
   val contents: Array[AnyRef],
@@ -54,6 +54,8 @@ private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
   protected def newArray(size: Int): Array[E]
 
   protected def convertForArray(a: A, tok: T): E
+
+  protected def convertForFoldLeft(s: S, a: A): S
 
   // API (should only be called on a root node!):
 
@@ -82,6 +84,10 @@ private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
     that.insertIntoHamt(this)
   }
 
+  final def foldLeft(z: S): S = {
+    this.foldLeftInternal(z)
+  }
+
   final def upserted(a: A): H = {
     this.insertOrOverwrite(hashOf(a), a, 0, OP_UPSERT) match {
       case null => this
@@ -103,7 +109,7 @@ private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
     this.getValueOrNodeOrNull(hash, shift) match {
       case null =>
         nullOf[A]
-      case node: Hamt[A, E, _, _] =>
+      case node: Hamt[A, E, _, _, _] =>
         node.lookupOrNull(hash, shift + W)
       case value =>
         val a = value.asInstanceOf[A]
@@ -137,11 +143,11 @@ private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
     if ((bitmap & flag) != 0L) {
       // we have an entry for this:
       contents(physIdx) match {
-        case node: Hamt[A, E, T, H] =>
+        case node: Hamt[A, E, T, _, H] =>
           node.insertOrOverwrite(hash, value, shift + W, op) match {
             case null =>
               nullOf[H]
-            case newNode: Hamt[A, E, T, H] =>
+            case newNode: Hamt[A, E, T, _, H] =>
               this.withNode(this.size + (newNode.size - node.size), bitmap, newNode, physIdx)
           }
         case ov =>
@@ -190,7 +196,7 @@ private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, T, H] =>
+        case node: Hamt[A, E, T, _, H] =>
           arrIdx = node.copyIntoArray(arr, arrIdx, tok)
         case a =>
           arr(arrIdx) = convertForArray(a.asInstanceOf[A], tok)
@@ -202,17 +208,33 @@ private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
   }
 
   private final def insertIntoHamt(that: H): H = {
-    // TODO: this is not enough for `Descriptor.merge`
     val contents = this.contents
     var i = 0
     var curr = that
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, T, H] =>
+        case node: Hamt[A, E, T, _, H] =>
           curr = node.insertIntoHamt(curr)
-        case a=>
+        case a =>
           curr = curr.inserted(a.asInstanceOf[A])
+      }
+      i += 1
+    }
+    curr
+  }
+
+  private final def foldLeftInternal(z: S): S = {
+    val contents = this.contents
+    var i = 0
+    var curr = z
+    val len = contents.length
+    while (i < len) {
+      contents(i) match {
+        case node: Hamt[A, E, T, S, H] =>
+          curr = node.foldLeftInternal(curr)
+        case a =>
+          curr = this.convertForFoldLeft(curr, a.asInstanceOf[A])
       }
       i += 1
     }
@@ -223,7 +245,7 @@ private[mcas] abstract class Hamt[A, E, T, H <: Hamt[A, E, T, H]](
     this.newNode(this.size, bitmap, arrReplacedValue(this.contents, box(value), physIdx))
   }
 
-  private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[A, E, _, _], physIdx: Int): H = {
+  private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[A, E, _, _, _], physIdx: Int): H = {
     this.newNode(size, bitmap, arrReplacedValue(this.contents, node, physIdx))
   }
 

@@ -25,6 +25,7 @@ import scala.util.Random
 import scala.collection.immutable.LongMap
 
 import cats.syntax.all._
+import cats.data.Chain
 
 import munit.ScalaCheckSuite
 
@@ -230,6 +231,18 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
       assertEquals(merged2.size, expLst.size)
     }
   }
+
+  property("HAMT foldLeft") {
+    forAll { (seed: Long, nums: Set[Long]) =>
+      val rng = new Random(seed)
+      val hamt1 = hamtFromList(rng.shuffle(nums.toList))
+      val hamt2 = hamtFromList(rng.shuffle(nums.toList))
+      val s1 = hamt1.foldLeft(Chain.empty)
+      val s2 = hamt2.foldLeft(Chain.empty)
+      assertEquals(s1, s2)
+      assertEquals(s1.toList.toSet, nums.map(Val(_)))
+    }
+  }
 }
 
 object HamtSpec {
@@ -242,15 +255,17 @@ object HamtSpec {
     _size: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends Hamt[Val, Val, Unit, LongHamt](_size, _bitmap, _contents) {
+  ) extends Hamt[Val, Val, Unit, Chain[Val], LongHamt](_size, _bitmap, _contents) {
     protected final override def hashOf(a: Val): Long =
       a.value
     protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LongHamt =
       new LongHamt(size, bitmap, contents)
     protected final override def newArray(size: Int): Array[Val] =
       new Array[Val](size)
-    protected def convertForArray(a: Val, tok: Unit): Val =
+    protected final override def convertForArray(a: Val, tok: Unit): Val =
       a
+    protected final override def convertForFoldLeft(s: Chain[Val], v: Val): Chain[Val] =
+      s :+ v
     final def toArray: Array[Val] =
       this.toArray(())
     final def getOrElse(k: Long, default: Val): Val = this.getOrElseNull(k) match {
