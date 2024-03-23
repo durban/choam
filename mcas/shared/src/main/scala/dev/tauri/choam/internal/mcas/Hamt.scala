@@ -125,17 +125,20 @@ abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]]( // TODO: should be pr
   private[this] final def getValueOrNodeOrNull(hash: Long, shift: Int): AnyRef = {
     val bitmap = this.bitmap
     val contentsSize = java.lang.Long.bitCount(bitmap)
-    if (contentsSize > 3) { // TODO: benchmark for the correct value of `3`
-      this.getValueOrNodeOrNullHash(hash, shift, bitmap)
-    } else {
-      // small array, do linear search:
-      val linRes = this.getValueOrNodeOrNullLinear(hash, contentsSize)
-      if (linRes.isInstanceOf[Hamt[_, _, _, _, _]]) {
-        // fallback:
+    (contentsSize : @switch) match {
+      case 0 =>
+        null // empty HAMT
+      case 1 | 2 | 3 => // TODO: benchmark for the correct value of `3`
+        // small array, do linear search:
+        val linRes = this.getValueOrNodeOrNullLinear(hash, contentsSize)
+        if (linRes.isInstanceOf[Hamt[_, _, _, _, _]]) {
+          // fallback:
+          this.getValueOrNodeOrNullHash(hash, shift, bitmap)
+        } else {
+          linRes
+        }
+      case _ =>
         this.getValueOrNodeOrNullHash(hash, shift, bitmap)
-      } else {
-        linRes
-      }
     }
   }
 
@@ -157,11 +160,12 @@ abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]]( // TODO: should be pr
     while (idx < len) {
       contents(idx) match {
         case node: Hamt[A, E, _, _, _] =>
-          return node // go to fallback
+          // go to fallback:
+          return node // scalafix:ok
         case value =>
           val h = this.hashOf(value.asInstanceOf[A])
           if (h == hash) {
-            return value
+            return value // scalafix:ok
           }
       }
       idx += 1
