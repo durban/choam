@@ -25,6 +25,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import internal.mcas.{ MemoryLocation, HalfWordDescriptor, Version }
+import internal.mcas.emcas.EmcasHamt.MemLocHamtBase
 import internal.helpers.McasHelper
 import util.RandomState
 
@@ -41,6 +42,15 @@ private[rxn] class LogMapBench {
     bh.consume(newKey)
     val newHwd = s.dummyHwds(idx)
     bh.consume(newHwd)
+  }
+
+  @Benchmark
+  def insertHamt(s: HamtState, rnd: RandomState, bh: Blackhole): Unit = {
+    val idx = rnd.nextIntBounded(DummySize)
+    val newKey = s.dummyKeys(idx)
+    bh.consume(newKey)
+    val newHwd = s.dummyHwds(idx)
+    bh.consume(s.map.inserted(newHwd.asInstanceOf[HalfWordDescriptor[Any]]))
   }
 
   @Benchmark
@@ -72,6 +82,19 @@ private[rxn] class LogMapBench {
       s.dummyKeys(idx)
     }
     bh.consume(key)
+  }
+
+  @Benchmark
+  def lookupHamt(s: HamtState, rnd: RandomState, bh: Blackhole): Unit = {
+    val isDummy = (s.size == 0) || ((rnd.nextInt() % 2) == 0)
+    val key = if (!isDummy) {
+      val idx = rnd.nextIntBounded(s.size)
+      s.keys(idx)
+    } else {
+      val idx = rnd.nextIntBounded(DummySize)
+      s.dummyKeys(idx)
+    }
+    bh.consume(s.map.getOrElseNull(key.id))
   }
 
   @Benchmark
@@ -110,6 +133,19 @@ private[rxn] class LogMapBench {
       bh.consume(key)
       val newHwd = s.newHwds(idx)
       bh.consume(newHwd)
+    }
+  }
+
+  @Benchmark
+  def overwriteHamt(s: HamtState, rnd: RandomState, bh: Blackhole): Unit = {
+    if (s.size == 0) {
+      bh.consume(0)
+    } else {
+      val idx = rnd.nextIntBounded(s.size)
+      val key = s.keys(idx)
+      bh.consume(key)
+      val newHwd = s.newHwds(idx)
+      bh.consume(s.map.updated(newHwd.asInstanceOf[HalfWordDescriptor[Any]]))
     }
   }
 
@@ -202,6 +238,36 @@ object LogMapBench {
         this.map = McasHelper.LogMap_inserted(
           this.map,
           McasHelper.newHwd(ref.asInstanceOf[MemoryLocation[Any]], "a", "b", Version.Start),
+        )
+      }
+    }
+  }
+
+  final class TestHamt[A](
+    _size: Int,
+    _bitmap: Long,
+    _contents: Array[AnyRef],
+  ) extends MemLocHamtBase[A, Unit, Unit](_size, _bitmap, _contents) {
+    protected final override def convertForArray(a: HalfWordDescriptor[A], tok: Unit): Unit =
+      ()
+    protected final override def newArray(size: Int): Array[Unit] =
+      new Array[Unit](size)
+    protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): TestHamt[A] =
+      new TestHamt(size, bitmap, contents)
+  }
+
+  @State(Scope.Thread)
+  class HamtState extends BaseState {
+
+    var map: MemLocHamtBase[Any, Unit, Unit] =
+      new TestHamt[Any](0, 0L, new Array(0))
+
+    @Setup
+    def setup(): Unit = {
+      this.baseSetup()
+      for (ref <- this.keys) {
+        this.map = this.map.inserted(
+          McasHelper.newHwd(ref.asInstanceOf[MemoryLocation[Any]], "a", "b", Version.Start)
         )
       }
     }

@@ -33,10 +33,10 @@ import java.util.Arrays
  * Values can't be `null` (we use `null` as the "not
  * found" sentinel).
  */
-private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
+abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]]( // TODO: should be private class
   val size: Int,
-  val bitmap: Long,
-  val contents: Array[AnyRef],
+  private[this] val bitmap: Long,
+  private[this] val contents: Array[AnyRef],
 ) { this: H =>
 
   // TODO: do we need equals and hashCode?

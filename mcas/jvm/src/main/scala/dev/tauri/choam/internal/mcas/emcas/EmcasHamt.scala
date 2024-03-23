@@ -22,14 +22,25 @@ package emcas
 
 object EmcasHamt {
 
-  private final class MemLocHamt[A](
+  abstract class MemLocHamtBase[A, E, T](
     _size: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends Hamt[HalfWordDescriptor[A], WordDescriptor[A], EmcasDescriptor, Descriptor, MemLocHamt[A]](_size, _bitmap, _contents) {
+  ) extends Hamt[HalfWordDescriptor[A], E, T, Descriptor, MemLocHamtBase[A, E, T]](_size, _bitmap, _contents) {
 
     protected final override def hashOf(a: HalfWordDescriptor[A]): Long =
       a.address.id
+
+    protected final override def convertForFoldLeft(s: Descriptor, a: HalfWordDescriptor[A]): Descriptor = {
+      s.add(a)
+    }
+  }
+
+  private[emcas] final class MemLocHamt[A](
+    _size: Int,
+    _bitmap: Long,
+    _contents: Array[AnyRef],
+  ) extends MemLocHamtBase[A, WordDescriptor[A], EmcasDescriptor](_size, _bitmap, _contents) {
 
     protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): MemLocHamt[A] =
       new MemLocHamt(size, bitmap, contents)
@@ -39,10 +50,6 @@ object EmcasHamt {
 
     protected final override def convertForArray(a: HalfWordDescriptor[A], tok: EmcasDescriptor): WordDescriptor[A] = {
       new WordDescriptor(a, tok)
-    }
-
-    protected final override def convertForFoldLeft(s: Descriptor, a: HalfWordDescriptor[A]): Descriptor = {
-      s.add(a)
     }
   }
 }
