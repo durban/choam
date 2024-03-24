@@ -124,54 +124,20 @@ abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]]( // TODO: should be pr
 
   private[this] final def getValueOrNodeOrNull(hash: Long, shift: Int): AnyRef = {
     val bitmap = this.bitmap
-    val contentsSize = java.lang.Long.bitCount(bitmap)
-    (contentsSize : @switch) match {
-      case 0 =>
-        null // empty HAMT
-      case 1 | 2 | 3 => // TODO: benchmark for the correct value of `3`
-        // small array, do linear search:
-        val linRes = this.getValueOrNodeOrNullLinear(hash, contentsSize)
-        if (linRes.isInstanceOf[Hamt[_, _, _, _, _]]) {
-          // fallback:
-          this.getValueOrNodeOrNullHash(hash, shift, bitmap)
-        } else {
-          linRes
-        }
-      case _ =>
-        this.getValueOrNodeOrNullHash(hash, shift, bitmap)
-    }
-  }
-
-  private[this] final def getValueOrNodeOrNullHash(hash: Long, shift: Int, bitmap: Long): AnyRef = {
-    val flag: Long = 1L << logicalIdx(hash, shift) // only 1 bit set, at the position in bitmap
-    if ((bitmap & flag) != 0L) {
-      // we have an entry for this:
-      val idx: Int = physicalIdx(bitmap, flag)
-      this.contents(idx)
+    if (bitmap != 0L) {
+      val flag: Long = 1L << logicalIdx(hash, shift) // only 1 bit set, at the position in bitmap
+      if ((bitmap & flag) != 0L) {
+        // we have an entry for this:
+        val idx: Int = physicalIdx(bitmap, flag)
+        this.contents(idx)
+      } else {
+        // no entry for this hash:
+        null
+      }
     } else {
-      // no entry for this hash:
+      // empty HAMT
       null
     }
-  }
-
-  private[this] final def getValueOrNodeOrNullLinear(hash: Long, len: Int): AnyRef = {
-    val contents = this.contents
-    var idx = 0
-    while (idx < len) {
-      contents(idx) match {
-        case node: Hamt[A, E, _, _, _] =>
-          // go to fallback:
-          return node // scalafix:ok
-        case value =>
-          val h = this.hashOf(value.asInstanceOf[A])
-          if (h == hash) {
-            return value // scalafix:ok
-          }
-      }
-      idx += 1
-    }
-
-    null // not found
   }
 
   private final def insertOrOverwrite(hash: Long, value: A, shift: Int, op: Int): H = {
