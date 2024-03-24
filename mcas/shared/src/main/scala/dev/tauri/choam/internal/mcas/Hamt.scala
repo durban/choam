@@ -143,53 +143,64 @@ abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]]( // TODO: should be pr
   private final def insertOrOverwrite(hash: Long, value: A, shift: Int, op: Int): H = {
     val flag: Long = 1L << logicalIdx(hash, shift) // only 1 bit set, at the position in bitmap
     val bitmap = this.bitmap
-    val contents = this.contents
-    val physIdx: Int = physicalIdx(bitmap, flag)
-    if ((bitmap & flag) != 0L) {
-      // we have an entry for this:
-      contents(physIdx) match {
-        case node: Hamt[A, E, T, _, H] =>
-          node.insertOrOverwrite(hash, value, shift + W, op) match {
-            case null =>
-              nullOf[H]
-            case newNode: Hamt[A, E, T, _, H] =>
-              this.withNode(this.size + (newNode.size - node.size), bitmap, newNode, physIdx)
-          }
-        case ov =>
-          val oh = hashOf(ov.asInstanceOf[A])
-          if (hash == oh) {
-            if (op == OP_INSERT) {
-              throw new IllegalArgumentException
-            } else if (equ(ov, value)) {
-              nullOf[H]
+    if (bitmap != 0L) {
+      val contents = this.contents
+      val physIdx: Int = physicalIdx(bitmap, flag)
+      if ((bitmap & flag) != 0L) {
+        // we have an entry for this:
+        contents(physIdx) match {
+          case node: Hamt[A, E, T, _, H] =>
+            node.insertOrOverwrite(hash, value, shift + W, op) match {
+              case null =>
+                nullOf[H]
+              case newNode: Hamt[A, E, T, _, H] =>
+                this.withNode(this.size + (newNode.size - node.size), bitmap, newNode, physIdx)
+            }
+          case ov =>
+            val oh = hashOf(ov.asInstanceOf[A])
+            if (hash == oh) {
+              if (op == OP_INSERT) {
+                throw new IllegalArgumentException
+              } else if (equ(ov, value)) {
+                nullOf[H]
+              } else {
+                this.withValue(bitmap, value, physIdx)
+              }
             } else {
-              this.withValue(bitmap, value, physIdx)
+              // hash collision at this level,
+              // so we go down one level:
+              val childNode = {
+                val cArr = new Array[AnyRef](1)
+                cArr(0) = ov
+                val oFlag = 1L << logicalIdx(oh, shift + W)
+                this.newNode(1, oFlag, cArr)
+              }
+              val childNode2 = childNode.insertOrOverwrite(hash, value, shift + W, op)
+              this.withNode(this.size + (childNode2.size - 1), bitmap, childNode2, physIdx)
             }
-          } else {
-            // hash collision at this level,
-            // so we go down one level:
-            val childNode = {
-              val cArr = new Array[AnyRef](1)
-              cArr(0) = ov
-              val oFlag = 1L << logicalIdx(oh, shift + W)
-              this.newNode(1, oFlag, cArr)
-            }
-            val childNode2 = childNode.insertOrOverwrite(hash, value, shift + W, op)
-            this.withNode(this.size + (childNode2.size - 1), bitmap, childNode2, physIdx)
-          }
+        }
+      } else {
+        // no entry for this hash:
+        if (op == OP_UPDATE) {
+          throw new IllegalArgumentException
+        } else {
+          val newBitmap: Long = bitmap | flag
+          val len = contents.length
+          val newArr = new Array[AnyRef](len + 1)
+          System.arraycopy(contents, 0, newArr, 0, physIdx)
+          System.arraycopy(contents, physIdx, newArr, physIdx + 1, len - physIdx)
+          newArr(physIdx) = box(value)
+          this.newNode(this.size + 1, newBitmap, newArr)
+        }
       }
     } else {
-      // no entry for this hash:
+      // empty node
       if (op == OP_UPDATE) {
         throw new IllegalArgumentException
       } else {
-        val newBitmap: Long = bitmap | flag
-        val len = contents.length
-        val newArr = new Array[AnyRef](len + 1)
-        System.arraycopy(contents, 0, newArr, 0, physIdx)
-        System.arraycopy(contents, physIdx, newArr, physIdx + 1, len - physIdx)
-        newArr(physIdx) = value.asInstanceOf[AnyRef]
-        this.newNode(this.size + 1, newBitmap, newArr)
+        val newArr = new Array[AnyRef](1)
+        newArr(0) = box(value)
+        this.newNode(1, flag, newArr)
       }
     }
   }
