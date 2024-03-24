@@ -21,6 +21,8 @@ package mcas
 
 import java.util.Arrays
 
+import scala.util.hashing.MurmurHash3
+
 /**
  * Immutable HAMT (hash array mapped trie)
  *
@@ -35,11 +37,9 @@ import java.util.Arrays
  */
 abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]]( // TODO: should be private class
   val size: Int,
-  private[this] val bitmap: Long,
-  private[this] val contents: Array[AnyRef],
+  private val bitmap: Long,
+  private val contents: Array[AnyRef],
 ) { this: H =>
-
-  // TODO: do we need equals and hashCode?
 
   private[this] final val W = 6
 
@@ -100,6 +100,19 @@ abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]]( // TODO: should be pr
     val end = this.copyIntoArray(arr, 0, tok)
     assert(end == arr.length)
     arr
+  }
+
+  final override def equals(that: Any): Boolean = {
+    that match {
+      case that: Hamt[_, _, _, _, _] =>
+        this.equalsInternal(that)
+      case _ =>
+        false
+    }
+  }
+
+  final override def hashCode: Int = {
+    this.hashCodeInternal(0xf9ee8a53)
   }
 
   // Internal:
@@ -251,6 +264,69 @@ abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]]( // TODO: should be pr
           curr = node.foldLeftInternal(curr)
         case a =>
           curr = this.convertForFoldLeft(curr, a.asInstanceOf[A])
+      }
+      i += 1
+    }
+    curr
+  }
+
+  private final def equalsInternal(that: Hamt[_, _, _, _, _]): Boolean = {
+    // Insertions are not order-dependent, and
+    // there is no deletion, so HAMTs with the
+    // same values always have the same tree
+    // structure. So we can just traverse the
+    // 2 trees at the same time.
+    if (this.bitmap == that.bitmap) {
+      val thisContents = this.contents
+      val thatContents = that.contents
+      val thisLen = thisContents.length
+      val thatLen = thatContents.length
+      if (thisLen == thatLen) {
+        var i = 0
+        while (i < thisLen) {
+          val iOk = thisContents(i) match {
+            case thisNode: Hamt[A, E, T, S, H] =>
+              thatContents(i) match {
+                case thatNode: Hamt[_, _, _, _, _] =>
+                  thisNode.equalsInternal(thatNode)
+                case _ =>
+                  false
+              }
+            case thisValue =>
+              thatContents(i) match {
+                case _: Hamt[_, _, _, _, _] =>
+                  false
+                case thatValue =>
+                  thisValue == thatValue
+              }
+          }
+          if (iOk) {
+            i += 1
+          } else {
+            return false // scalafix:ok
+          }
+        }
+        true
+      } else {
+        false
+      }
+    } else {
+      false
+    }
+  }
+
+  private final def hashCodeInternal(s: Int): Int = {
+    val contents = this.contents
+    var i = 0
+    var curr = s
+    val len = contents.length
+    while (i < len) {
+      contents(i) match {
+        case node: Hamt[A, E, T, S, H] =>
+          curr = node.hashCodeInternal(curr)
+        case a =>
+          curr = MurmurHash3.mix(curr, (hashOf(a.asInstanceOf[A]) >>> 32).toInt)
+          curr = MurmurHash3.mix(curr, a.##)
       }
       i += 1
     }

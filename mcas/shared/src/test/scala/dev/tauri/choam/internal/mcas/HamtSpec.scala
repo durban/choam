@@ -33,11 +33,24 @@ import org.scalacheck.Prop.forAll
 
 final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
 
-  import HamtSpec.{ LongHamt, Val }
+  import HamtSpec.{ LongHamt, Val, SpecVal }
 
   override protected def scalaCheckTestParameters: org.scalacheck.Test.Parameters = {
     val p = super.scalaCheckTestParameters
     p.withMaxSize(p.maxSize * (if (isJvm()) 32 else 2))
+  }
+
+  test("Val/SpecVal") {
+    assert(Val(42L) == Val(42L))
+    assert(Val(42L) != Val(99L))
+    val sv = new SpecVal(42L)
+    assert(sv == sv)
+    assert(sv != Val(42L))
+    assert(Val(42L) != sv)
+    val sv2 = new SpecVal(42L)
+    assert(sv != sv2)
+    assertEquals(sv.##, Val(42L).##)
+    assertEquals(sv2.##, Val(42L).##)
   }
 
   test("HAMT examples") {
@@ -243,12 +256,69 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
       assertEquals(s1.toList.toSet, nums.map(Val(_)))
     }
   }
+
+  property("HAMT equals/hashCode") {
+    forAll { (seed: Long, nums: Set[Long], num: Long) =>
+      val rng = new Random(seed)
+      val l1 = rng.shuffle((nums - num).toList)
+      val hamt1 = hamtFromList(l1)
+      val hamt2 = hamtFromList(rng.shuffle(l1))
+      val hamt3 = hamtFromList(l1.reverse)
+      assert(hamt1 == hamt1)
+      assert(hamt1 == hamt2)
+      assert(hamt1 == hamt3)
+      assert(hamt2 == hamt1)
+      assert(hamt2 == hamt2)
+      assert(hamt2 == hamt3)
+      assert(hamt3 == hamt1)
+      assert(hamt3 == hamt2)
+      assert(hamt3 == hamt3)
+      val h1 = hamt1.##
+      val h2 = hamt2.##
+      val h3 = hamt3.##
+      assertEquals(h1, h2)
+      assertEquals(h1, h3)
+      val hamt2b = hamt2.inserted(Val(num))
+      assert(hamt2b != hamt1)
+      assert(hamt2b != hamt2)
+      assert(hamt2b != hamt3)
+      assert(hamt1 != hamt2b)
+      assert(hamt2 != hamt2b)
+      assert(hamt3 != hamt2b)
+      val h2b = hamt2b.##
+      assertNotEquals(h2b, h1) // with high probability
+      val hamt2c = hamt2b.updated(new SpecVal(num)) // has identity equals
+      assert(hamt2c != hamt2b)
+      assert(hamt2b != hamt2c)
+      val h2c = hamt2c.##
+      assertEquals(h2c, h2b)
+    }
+  }
 }
 
 object HamtSpec {
 
   /** Just a `Long`, but has its own identity */
-  final case class Val(value: Long)
+  case class Val(value: Long) {
+    override def equals(that: Any): Boolean = {
+      if (that.isInstanceOf[SpecVal]) {
+        that.equals(this)
+      } else {
+        that match {
+          case Val(v) =>
+            value == v
+          case _ =>
+            false
+        }
+      }
+    }
+  }
+
+  /** This is a hack to have non-equal `Val`s with the same `value` */
+  final class SpecVal(v: Long) extends Val(v) {
+    final override def equals(that: Any): Boolean =
+      equ(this, that)
+  }
 
   /** A simple HAMT of `Long` -> `Val` pairs */
   final class LongHamt(
