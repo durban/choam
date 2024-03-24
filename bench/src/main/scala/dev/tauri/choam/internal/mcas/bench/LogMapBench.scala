@@ -16,8 +16,9 @@
  */
 
 package dev.tauri.choam
+package internal
+package mcas
 package bench
-package rxn
 
 import scala.collection.immutable.TreeMap
 
@@ -27,11 +28,11 @@ import org.openjdk.jmh.infra.Blackhole
 import internal.mcas.{ MemoryLocation, HalfWordDescriptor, Version }
 import internal.mcas.emcas.EmcasHamt.MemLocHamtBase
 import internal.helpers.McasHelper
-import util.RandomState
+import dev.tauri.choam.bench.util.RandomState
 
 @Fork(1)
 @Threads(1)
-private[rxn] class LogMapBench {
+private[mcas] class LogMapBench {
 
   import LogMapBench._
 
@@ -254,7 +255,7 @@ object LogMapBench {
   }
 
   @State(Scope.Thread)
-  private[rxn] class LogMapState extends BaseState {
+  private[mcas] class LogMapState extends BaseState {
 
     var map: AnyRef =
       McasHelper.LogMap_empty()
@@ -285,7 +286,7 @@ object LogMapBench {
   }
 
   @State(Scope.Thread)
-  class HamtState extends BaseState {
+  private[mcas] class HamtState extends BaseState {
 
     var map: MemLocHamtBase[Any, HalfWordDescriptor[Any], Unit] =
       new TestHamt[Any](0, 0L, new Array(0))

@@ -20,9 +20,9 @@ package internal
 package mcas
 package emcas
 
-object EmcasHamt {
+private[mcas] object EmcasHamt {
 
-  abstract class MemLocHamtBase[A, E, T](
+  private[mcas] abstract class MemLocHamtBase[A, E, T](
     _size: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],

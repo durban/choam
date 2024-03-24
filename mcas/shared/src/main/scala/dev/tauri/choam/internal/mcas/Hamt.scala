@@ -35,7 +35,7 @@ import scala.util.hashing.MurmurHash3
  * Values can't be `null` (we use `null` as the "not
  * found" sentinel).
  */
-abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]]( // TODO: should be private class
+private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
   val size: Int,
   private val bitmap: Long,
   private val contents: Array[AnyRef],
