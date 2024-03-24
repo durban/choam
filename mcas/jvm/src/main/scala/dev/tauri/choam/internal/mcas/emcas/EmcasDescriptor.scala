@@ -20,7 +20,7 @@ package internal
 package mcas
 package emcas
 
-private final class EmcasDescriptor private[emcas] (
+private[mcas] final class EmcasDescriptor private[emcas] (
   half: Descriptor,
 ) extends EmcasDescriptorBase { self =>
 

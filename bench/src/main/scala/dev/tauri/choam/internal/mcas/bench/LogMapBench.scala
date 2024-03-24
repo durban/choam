@@ -26,7 +26,6 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import internal.mcas.{ MemoryLocation, HalfWordDescriptor, Version }
-import internal.mcas.emcas.EmcasHamt.MemLocHamtBase
 import internal.helpers.McasHelper
 import dev.tauri.choam.bench.util.RandomState
 
@@ -177,31 +176,39 @@ private[mcas] class LogMapBench {
   }
 
   @Benchmark
-  def toArrayBaseline(s: BaselineState): Array[HalfWordDescriptor[Any]] = {
-    new Array[HalfWordDescriptor[Any]](s.size)
+  def toArrayBaseline(s: BaselineState): Array[emcas.WordDescriptor[Any]] = {
+    new Array[emcas.WordDescriptor[Any]](s.size)
   }
 
   @Benchmark
-  def toArrayHamt(s: HamtState): Array[HalfWordDescriptor[Any]] = {
-    s.map.toArray(())
+  def toArrayHamt(s: HamtState): Array[emcas.WordDescriptor[Any]] = {
+    s.map.toArray(null)
   }
 
   @Benchmark
-  def toArrayLog(s: LogMapState): Array[HalfWordDescriptor[Any]] = {
+  def toArrayLog(s: LogMapState): Array[emcas.WordDescriptor[Any]] = {
     val map = s.map
-    val arr = new Array[HalfWordDescriptor[Any]](McasHelper.LogMap_size(map))
+    val arr = new Array[emcas.WordDescriptor[Any]](McasHelper.LogMap_size(map))
     val it = McasHelper.LogMap_iterator(map)
     var idx = 0
     while (it.hasNext) {
-      arr(idx) = it.next().asInstanceOf[HalfWordDescriptor[Any]]
+      arr(idx) = new emcas.WordDescriptor(it.next().cast[Any], null)
       idx += 1
     }
     arr
   }
 
   @Benchmark
-  def toArrayTree(s: TreeMapState): Array[HalfWordDescriptor[Any]] = {
-    s.map.values.toArray[HalfWordDescriptor[Any]]
+  def toArrayTree(s: TreeMapState): Array[emcas.WordDescriptor[Any]] = {
+    val map = s.map
+    val arr = new Array[emcas.WordDescriptor[Any]](map.size)
+    val it = map.valuesIterator
+    var idx = 0
+    while (it.hasNext) {
+      arr(idx) = new emcas.WordDescriptor(it.next(), null)
+      idx += 1
+    }
+    arr
   }
 }
 
@@ -272,24 +279,11 @@ object LogMapBench {
     }
   }
 
-  final class TestHamt[A](
-    _size: Int,
-    _bitmap: Long,
-    _contents: Array[AnyRef],
-  ) extends MemLocHamtBase[A, HalfWordDescriptor[A], Unit](_size, _bitmap, _contents) {
-    protected final override def convertForArray(a: HalfWordDescriptor[A], tok: Unit): HalfWordDescriptor[A] =
-      a
-    protected final override def newArray(size: Int): Array[HalfWordDescriptor[A]] =
-      new Array[HalfWordDescriptor[A]](size)
-    protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): TestHamt[A] =
-      new TestHamt(size, bitmap, contents)
-  }
-
   @State(Scope.Thread)
   private[mcas] class HamtState extends BaseState {
 
-    var map: MemLocHamtBase[Any, HalfWordDescriptor[Any], Unit] =
-      new TestHamt[Any](0, 0L, new Array(0))
+    var map: LogMap2[Any] =
+      LogMap2.empty
 
     @Setup
     def setup(): Unit = {

@@ -26,7 +26,7 @@ package emcas
 // them from user data. If the user data could
 // be an instance of `WordDescriptor`, we could
 // not do that.
-private final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDescriptor
+private[mcas] final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDescriptor
   final val parent: EmcasDescriptor,
   final val address: MemoryLocation[A],
   final val ov: A,
