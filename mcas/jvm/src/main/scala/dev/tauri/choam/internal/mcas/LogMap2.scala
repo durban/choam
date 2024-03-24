@@ -23,11 +23,15 @@ private[mcas] final class LogMap2[A] private (
   _size: Int,
   _bitmap: Long,
   _contents: Array[AnyRef],
-) extends Hamt[HalfWordDescriptor[A], emcas.WordDescriptor[A], emcas.EmcasDescriptor, Descriptor, LogMap2[A]](
+) extends Hamt[HalfWordDescriptor[A], emcas.WordDescriptor[A], emcas.EmcasDescriptor, Mcas.ThreadContext, Descriptor, LogMap2[A]](
   _size,
   _bitmap,
   _contents,
 ) {
+
+  final def revalidate(ctx: Mcas.ThreadContext): Boolean = {
+    this.forAll(ctx)
+  }
 
   protected final override def hashOf(a: HalfWordDescriptor[A]): Long =
     a.address.id
@@ -43,6 +47,9 @@ private[mcas] final class LogMap2[A] private (
 
   protected final override def convertForFoldLeft(s: Descriptor, a: HalfWordDescriptor[A]): Descriptor =
     s.add(a)
+
+  protected final override def predicateForForAll(a: HalfWordDescriptor[A], tok: Mcas.ThreadContext): Boolean =
+    a.revalidate(tok)
 }
 
 private[mcas] object LogMap2 {

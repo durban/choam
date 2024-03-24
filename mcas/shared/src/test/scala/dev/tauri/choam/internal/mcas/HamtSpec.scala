@@ -294,6 +294,25 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
       assertEquals(h2c, h2b)
     }
   }
+
+  property("forAll") {
+    // the predicate in `LongHamt` is `>`
+    forAll { (seed: Long, nums: Set[Long]) =>
+      val rng = new Random(seed)
+      val hamt1 = hamtFromList(rng.shuffle(nums.toList.filter(_ > 42L)))
+      assert(hamt1.forAll(42L))
+      val hamt1b = hamt1.upserted(Val(1024L))
+      assert(!hamt1b.forAll(1024L))
+      val nums2 = rng.shuffle(nums.toList.filter(_ <= 42L)) match {
+        case Nil => List(42L)
+        case lst => lst
+      }
+      val hamt2 = nums2.foldLeft(hamt1) { (h, n) =>
+        h.inserted(Val(n))
+      }
+      assert(!hamt2.forAll(42L))
+    }
+  }
 }
 
 object HamtSpec {
@@ -325,7 +344,7 @@ object HamtSpec {
     _size: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends Hamt[Val, Val, Unit, Chain[Val], LongHamt](_size, _bitmap, _contents) {
+  ) extends Hamt[Val, Val, Unit, Long, Chain[Val], LongHamt](_size, _bitmap, _contents) {
     protected final override def hashOf(a: Val): Long =
       a.value
     protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LongHamt =
@@ -336,6 +355,8 @@ object HamtSpec {
       a
     protected final override def convertForFoldLeft(s: Chain[Val], v: Val): Chain[Val] =
       s :+ v
+    protected final override def predicateForForAll(a: Val, tok: Long): Boolean =
+      a.value > tok
     final def toArray: Array[Val] =
       this.toArray(())
     final def getOrElse(k: Long, default: Val): Val = this.getOrElseNull(k) match {

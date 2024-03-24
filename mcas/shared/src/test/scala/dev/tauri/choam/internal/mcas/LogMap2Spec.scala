@@ -19,6 +19,8 @@ package dev.tauri.choam
 package internal
 package mcas
 
+import java.util.concurrent.ThreadLocalRandom
+
 import scala.util.Random
 import scala.collection.immutable.TreeMap
 
@@ -27,7 +29,7 @@ import munit.ScalaCheckSuite
 import org.scalacheck.{ Arbitrary, Gen }
 import org.scalacheck.Prop.forAll
 
-final class LogMap2Spec extends ScalaCheckSuite {
+final class LogMap2Spec extends ScalaCheckSuite { self =>
 
   implicit def arbMemLoc[A](implicit arbA: Arbitrary[A]): Arbitrary[MemoryLocation[A]] = Arbitrary {
     arbA.arbitrary.flatMap { a =>
@@ -123,5 +125,41 @@ final class LogMap2Spec extends ScalaCheckSuite {
     assertEquals(lm1b.size, 1)
     val lm1c = lm1b.upserted(h32)
     assertEquals(lm1c.size, 1)
+  }
+
+  test("LogMap2#revalidate") {
+    val r1 = MemoryLocation.unsafeUnpadded("1")
+    val h1 = HalfWordDescriptor(r1, "1", "x", 42L)
+    val r2 = MemoryLocation.unsafeUnpadded("2")
+    val h2 = HalfWordDescriptor(r2, "2", "x", 42L)
+    val lm = LogMap2
+      .empty[String]
+      .inserted(h1)
+      .inserted(h2)
+    def mock(r1Version: Long) = new Mcas.UnsealedThreadContext {
+      private[mcas] def addVersionCas(desc: Descriptor): Descriptor =
+        self.fail("not implemented")
+      def impl: Mcas =
+        self.fail("not implemented")
+      def random: ThreadLocalRandom =
+        ThreadLocalRandom.current()
+      def readDirect[A](ref: MemoryLocation[A]): A =
+        self.fail("not implemented")
+      def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] =
+        self.fail("not implemented")
+      private[mcas] def readVersion[A](ref: MemoryLocation[A]): Long =
+        if (ref eq r1) r1Version else 42L // we simulate one of the refs changing version
+      def refIdGen: RefIdGen =
+        RefIdGen.global
+      def start(): Descriptor =
+        self.fail("not implemented")
+      private[mcas] def tryPerformInternal(desc: Descriptor): Long =
+        self.fail("not implemented")
+      def validateAndTryExtend(desc: Descriptor, hwd: HalfWordDescriptor[_]): Descriptor =
+        self.fail("not implemented")
+    }
+
+    assert(lm.revalidate(mock(42L)))
+    assert(!lm.revalidate(mock(43L)))
   }
 }

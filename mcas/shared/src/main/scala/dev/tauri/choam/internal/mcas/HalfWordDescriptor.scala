@@ -39,6 +39,17 @@ final class HalfWordDescriptor[A] private (
     else new HalfWordDescriptor[A](address = this.address, ov = this.ov, nv = a, version = this.version)
   }
 
+  /**
+   * Tries to revalidate `this` HWD based on the
+   * _current_ version of its ref.
+   *
+   * @return true, iff `this` is still valid.
+   */
+  private[mcas] final def revalidate(ctx: Mcas.ThreadContext): Boolean = {
+    val currVer: Long = ctx.readVersion(this.address)
+    currVer == this.version
+  }
+
   final def tryMergeTicket(ticket: HalfWordDescriptor[A], newest: A): HalfWordDescriptor[A] = {
     if (this == ticket) {
       // OK, was not modified since reading the ticket:

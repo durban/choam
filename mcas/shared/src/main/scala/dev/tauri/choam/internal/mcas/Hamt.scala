@@ -35,7 +35,7 @@ import scala.util.hashing.MurmurHash3
  * Values can't be `null` (we use `null` as the "not
  * found" sentinel).
  */
-private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
+private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]](
   val size: Int,
   private val bitmap: Long,
   private val contents: Array[AnyRef],
@@ -53,9 +53,11 @@ private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
 
   protected def newArray(size: Int): Array[E]
 
-  protected def convertForArray(a: A, tok: T): E
+  protected def convertForArray(a: A, tok: T1): E
 
   protected def convertForFoldLeft(s: S, a: A): S
+
+  protected def predicateForForAll(a: A, tok: T2): Boolean
 
   // API (should only be called on a root node!):
 
@@ -95,16 +97,20 @@ private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
     }
   }
 
-  final def toArray(tok: T): Array[E] = {
+  final def toArray(tok: T1): Array[E] = {
     val arr = newArray(this.size)
     val end = this.copyIntoArray(arr, 0, tok)
     assert(end == arr.length)
     arr
   }
 
+  final def forAll(tok: T2): Boolean = {
+    this.forAllInternal(tok)
+  }
+
   final override def equals(that: Any): Boolean = {
     that match {
-      case that: Hamt[_, _, _, _, _] =>
+      case that: Hamt[_, _, _, _, _, _] =>
         this.equalsInternal(that)
       case _ =>
         false
@@ -122,7 +128,7 @@ private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
     this.getValueOrNodeOrNull(hash, shift) match {
       case null =>
         nullOf[A]
-      case node: Hamt[A, E, _, _, _] =>
+      case node: Hamt[A, E, _, _, _, _] =>
         node.lookupOrNull(hash, shift + W)
       case value =>
         val a = value.asInstanceOf[A]
@@ -162,11 +168,11 @@ private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
       if ((bitmap & flag) != 0L) {
         // we have an entry for this:
         contents(physIdx) match {
-          case node: Hamt[A, E, T, _, H] =>
+          case node: Hamt[A, E, T1, _, _, H] =>
             node.insertOrOverwrite(hash, value, shift + W, op) match {
               case null =>
                 nullOf[H]
-              case newNode: Hamt[A, E, T, _, H] =>
+              case newNode: Hamt[A, E, T1, _, _, H] =>
                 this.withNode(this.size + (newNode.size - node.size), bitmap, newNode, physIdx)
             }
           case ov =>
@@ -218,14 +224,14 @@ private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
     }
   }
 
-  private final def copyIntoArray(arr: Array[E], start: Int, tok: T): Int = {
+  private final def copyIntoArray(arr: Array[E], start: Int, tok: T1): Int = {
     val contents = this.contents
     var i = 0
     var arrIdx = start
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, T, _, H] =>
+        case node: Hamt[A, E, T1, _, _, H] =>
           arrIdx = node.copyIntoArray(arr, arrIdx, tok)
         case a =>
           arr(arrIdx) = convertForArray(a.asInstanceOf[A], tok)
@@ -243,7 +249,7 @@ private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, T, _, H] =>
+        case node: Hamt[A, E, T1, _, _, H] =>
           curr = node.insertIntoHamt(curr)
         case a =>
           curr = curr.inserted(a.asInstanceOf[A])
@@ -260,7 +266,7 @@ private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, T, S, H] =>
+        case node: Hamt[A, E, T1, T2, S, H] =>
           curr = node.foldLeftInternal(curr)
         case a =>
           curr = this.convertForFoldLeft(curr, a.asInstanceOf[A])
@@ -270,7 +276,28 @@ private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
     curr
   }
 
-  private final def equalsInternal(that: Hamt[_, _, _, _, _]): Boolean = {
+  private final def forAllInternal(tok: T2): Boolean = {
+    val contents = this.contents
+    var i = 0
+    val len = contents.length
+    while (i < len) {
+      contents(i) match {
+        case node: Hamt[A, E, T1, T2, S, H] =>
+          if (!node.forAllInternal(tok)) {
+            return false // scalafix:ok
+          }
+        case a =>
+          if (!this.predicateForForAll(a.asInstanceOf[A], tok)) {
+            return false // scalafix:ok
+          }
+      }
+      i += 1
+    }
+
+    true
+  }
+
+  private final def equalsInternal(that: Hamt[_, _, _, _, _, _]): Boolean = {
     // Insertions are not order-dependent, and
     // there is no deletion, so HAMTs with the
     // same values always have the same tree
@@ -285,16 +312,16 @@ private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
         var i = 0
         while (i < thisLen) {
           val iOk = thisContents(i) match {
-            case thisNode: Hamt[A, E, T, S, H] =>
+            case thisNode: Hamt[A, E, T1, T2, S, H] =>
               thatContents(i) match {
-                case thatNode: Hamt[_, _, _, _, _] =>
+                case thatNode: Hamt[_, _, _, _, _, _] =>
                   thisNode.equalsInternal(thatNode)
                 case _ =>
                   false
               }
             case thisValue =>
               thatContents(i) match {
-                case _: Hamt[_, _, _, _, _] =>
+                case _: Hamt[_, _, _, _, _, _] =>
                   false
                 case thatValue =>
                   thisValue == thatValue
@@ -322,7 +349,7 @@ private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, T, S, H] =>
+        case node: Hamt[A, E, T1, T2, S, H] =>
           curr = node.hashCodeInternal(curr)
         case a =>
           curr = MurmurHash3.mix(curr, (hashOf(a.asInstanceOf[A]) >>> 32).toInt)
@@ -337,7 +364,7 @@ private[mcas] abstract class Hamt[A, E, T, S, H <: Hamt[A, E, T, S, H]](
     this.newNode(this.size, bitmap, arrReplacedValue(this.contents, box(value), physIdx))
   }
 
-  private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[A, E, _, _, _], physIdx: Int): H = {
+  private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[A, E, _, _, _, _], physIdx: Int): H = {
     this.newNode(size, bitmap, arrReplacedValue(this.contents, node, physIdx))
   }
 

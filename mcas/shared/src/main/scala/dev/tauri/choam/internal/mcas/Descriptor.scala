@@ -144,6 +144,27 @@ final class Descriptor private (
     )
   }
 
+
+  /**
+   * Tries to revalidate `this` based on the current
+   * versions of the refs it contains.
+   *
+   * @return true, iff `this` is still valid.
+   */
+  private[mcas] final def revalidate(ctx: Mcas.ThreadContext): Boolean = {
+    @tailrec
+    def go(it: Iterator[HalfWordDescriptor[_]]): Boolean = {
+      if (it.hasNext) {
+        if (it.next().revalidate(ctx)) go(it)
+        else false
+      } else {
+        true
+      }
+    }
+
+    go(this.iterator())
+  }
+
   private[mcas] final def addVersionCas(commitTsRef: MemoryLocation[Long]): Descriptor = {
     require(this.versionCas eq null)
     require(!this.readOnly)

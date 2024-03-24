@@ -203,22 +203,11 @@ object Mcas extends McasCompanionPlatform { self =>
      * @return true, iff `desc` is still valid.
      */
     private[mcas] final def validate(desc: Descriptor): Boolean = {
-      @tailrec
-      def go(it: Iterator[HalfWordDescriptor[_]]): Boolean = {
-        if (it.hasNext) {
-          if (this.validateHwd(it.next())) go(it)
-          else false
-        } else {
-          true
-        }
-      }
-
-      go(desc.iterator())
+      desc.revalidate(this)
     }
 
     private[mcas] final def validateHwd[A](hwd: HalfWordDescriptor[A]): Boolean = {
-      val currVer: Long = this.readVersion(hwd.address)
-      currVer == hwd.version
+      hwd.revalidate(this)
     }
 
     /**
