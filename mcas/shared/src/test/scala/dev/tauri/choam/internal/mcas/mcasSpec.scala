@@ -428,19 +428,24 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("mcas.Descriptor iterator") {
     val ctx = this.mcasImpl.currentContext()
+    val fakeCtx = if (this.isEmcas) {
+      Mcas.ThreadConfinedMCAS.currentContext()
+    } else {
+      ctx
+    }
     val r1 = MemoryLocation.unsafe("foo")
     val r2 = MemoryLocation.unsafe("foo")
     val d0 = ctx.start()
     assertEquals(d0.size, 0)
-    assertEquals(d0.iterator().toList, Nil)
+    assertEquals(d0.hwdIterator(fakeCtx).toList, Nil)
     val d1 = ctx.addCasFromInitial(d0, r1, "foo", "1")
     assertEquals(d1.size, 1)
-    val l1 = d1.iterator().toList
+    val l1 = d1.hwdIterator(fakeCtx).toList
     assertEquals(l1.length, 1)
     assertSameInstance(l1(0).address, r1)
     val d2 = ctx.addCasWithVersion(d1, r2, "foo", "2", Version.Start)
     assertEquals(d2.size, 2)
-    val l2 = d2.iterator().toList
+    val l2 = d2.hwdIterator(fakeCtx).toList
     assertEquals(l2.length, 2)
     if (MemoryLocation.orderingInstance[String].lt(r1, r2)) {
       assertSameInstance(l2(0).address, r1)
@@ -456,7 +461,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
       (3, 1)
     }
     assertEquals(d3.size, expSize)
-    val l3 = d3.iterator().toList
+    val l3 = d3.hwdIterator(fakeCtx).toList
     assertEquals(l3.length, expSize)
     if (MemoryLocation.orderingInstance[String].lt(r1, r2)) {
       assertSameInstance(l3(0 + offset).address, r1)

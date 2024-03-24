@@ -41,17 +41,7 @@ private[mcas] final class EmcasDescriptor private[emcas] (
    * are made visible by the volatile-CASes which insert
    * the `WordDescriptor`s into the refs.
    */
-  this.setWordsO({
-    val arr = new Array[WordDescriptor[_]](half.size)
-    val it = half.iterator()
-    var idx = 0
-    while (it.hasNext) {
-      val wd = new WordDescriptor(it.next(), this)
-      arr(idx) = wd
-      idx += 1
-    }
-    arr
-  })
+  this.setWordsO(half.toWdArray(this).asInstanceOf[Array[WordDescriptor[_]]])
 
   /** Can return `null` for finalized descriptors */
   private[emcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {

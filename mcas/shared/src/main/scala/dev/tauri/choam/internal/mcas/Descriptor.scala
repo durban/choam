@@ -19,48 +19,22 @@ package dev.tauri.choam
 package internal
 package mcas
 
-import scala.collection.AbstractIterator
 import scala.util.hashing.MurmurHash3
 
 final class Descriptor private (
-  private val map: LogMap,
+  protected final override val map: LogMap2[Any],
   final val validTs: Long,
   private val validTsBoxed: java.lang.Long,
   val readOnly: Boolean,
   private val versionIncr: Long,
-  private val versionCas: HalfWordDescriptor[java.lang.Long], // can be null
-) {
+  protected final override val versionCas: HalfWordDescriptor[java.lang.Long], // can be null
+) extends DescriptorPlatform {
 
   require((versionCas eq null) || (versionIncr > 0L))
   require((validTsBoxed eq null) || (validTsBoxed.longValue == validTs))
 
   final def size: Int =
     this.map.size + (if (this.versionCas ne null) 1 else 0)
-
-  final def iterator(): Iterator[HalfWordDescriptor[_]] = {
-    if (this.versionCas eq null) {
-      this.map.valuesIterator
-    } else {
-      val underlying = this.map.valuesIterator
-      val vc = this.versionCas
-      new AbstractIterator[HalfWordDescriptor[_]] {
-        private[this] var vcDone: Boolean = false
-        final override def hasNext: Boolean = {
-          (!vcDone) || underlying.hasNext
-        }
-        final override def next(): HalfWordDescriptor[_] = {
-          if (!vcDone) {
-            vcDone = true
-            vc
-          } else if (underlying.hasNext) {
-            underlying.next()
-          } else {
-            throw new NoSuchElementException
-          }
-        }
-      }
-    }
-  }
 
   final def isValidHwd[A](hwd: HalfWordDescriptor[A]): Boolean = {
     hwd.version <= this.validTs
@@ -103,7 +77,7 @@ final class Descriptor private (
     // Note, that it is important, that we don't allow
     // adding an already included ref; the Exchanger
     // depends on this behavior:
-    val newMap = this.map.inserted(desc)
+    val newMap = this.map.inserted(desc.cast[Any])
     new Descriptor(
       newMap,
       this.validTs,
@@ -116,7 +90,7 @@ final class Descriptor private (
 
   private[choam] final def overwrite[A](desc: HalfWordDescriptor[A]): Descriptor = {
     require(desc.version <= this.validTs)
-    val newMap = this.map.updated(desc)
+    val newMap = this.map.updated(desc.cast[Any])
     new Descriptor(
       newMap,
       this.validTs,
@@ -131,7 +105,7 @@ final class Descriptor private (
 
   private[choam] final def addOrOverwrite[A](desc: HalfWordDescriptor[A]): Descriptor = {
     require(desc.version <= this.validTs)
-    val newMap = this.map.upserted(desc)
+    val newMap = this.map.upserted(desc.cast[Any])
     new Descriptor(
       newMap,
       this.validTs,
@@ -152,17 +126,7 @@ final class Descriptor private (
    * @return true, iff `this` is still valid.
    */
   private[mcas] final def revalidate(ctx: Mcas.ThreadContext): Boolean = {
-    @tailrec
-    def go(it: Iterator[HalfWordDescriptor[_]]): Boolean = {
-      if (it.hasNext) {
-        if (it.next().revalidate(ctx)) go(it)
-        else false
-      } else {
-        true
-      }
-    }
-
-    go(this.iterator())
+    this.map.revalidate(ctx)
   }
 
   private[mcas] final def addVersionCas(commitTsRef: MemoryLocation[Long]): Descriptor = {
@@ -187,7 +151,7 @@ final class Descriptor private (
   }
 
   private[choam] final def getOrElseNull[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
-    this.map.getOrElse(ref, null)
+    this.map.asInstanceOf[LogMap2[A]].getOrElseNull(ref.id)
   }
 
   private[mcas] final def validateAndTryExtend(
@@ -249,7 +213,7 @@ final class Descriptor private (
   }
 
   final override def toString: String = {
-    val m = map.valuesIterator.mkString("[", ", ", "]")
+    val m = this.map.toString(pre = "[", post = "]")
     val vi = if (versionIncr == Descriptor.DefaultVersionIncr) {
       ""
     } else {
@@ -304,7 +268,7 @@ object Descriptor {
     val validTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
     new Descriptor(
-      LogMap.empty,
+      LogMap2.empty,
       validTs = validTsBoxed.longValue,
       validTsBoxed = validTsBoxed,
       readOnly = true,
@@ -319,7 +283,7 @@ object Descriptor {
     // if we're here), and this way we avoid allocating
     // an extra `java.lang.Long`.
     new Descriptor(
-      LogMap.empty,
+      LogMap2.empty,
       validTs = currentTs,
       validTsBoxed = null, // see above
       readOnly = true,
@@ -346,12 +310,7 @@ object Descriptor {
     // TODO: by the time the elimination happens, the
     // TODO: two bigger `Rxn`s might've already touched
     // TODO: the same ref.)
-    val it = b.map.valuesIterator
-    var merged: Descriptor = a
-    while (it.hasNext) {
-      // this also takes care of `readOnly`:
-      merged = merged.add(it.next()) // throws in case of conflict
-    }
+    var merged: Descriptor = a.map.foldLeft(b) // throws in case of conflict
 
     // we temporarily choose the older `validTs`,
     // but will extend if they're not equal:

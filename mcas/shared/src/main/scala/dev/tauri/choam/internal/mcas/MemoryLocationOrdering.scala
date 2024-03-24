@@ -29,12 +29,32 @@ private final class MemoryLocationOrdering[A]
   }
 
   private[this] final def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
+    // We're essentially reimplementing here
+    // how `Hamt` compares hashes; this is
+    // fragile, but also not easily extracted
+    // to common code (without hurting `Hamt`
+    // perfromance):
+    val W = 6
+    val MASK = 63L
+    val ah = a.id
+    val bh = b.id
+
+    @tailrec
+    def go(shift: Int): Int = {
+      val r = java.lang.Long.compareUnsigned((ah >>> shift) & MASK, (bh >>> shift) & MASK)
+      if (r != 0) {
+        r
+      } else {
+        go(shift + W)
+      }
+    }
+
     if (a eq b) {
       0
+    } else if (ah == bh) {
+      impossible(s"[globalCompare] ref collision: ${a} and ${b}")
     } else {
-      val r = java.lang.Long.compareUnsigned(a.id, b.id)
-      if (r != 0) r
-      else impossible(s"[globalCompare] ref collision: ${a} and ${b}")
+      go(0)
     }
   }
 }

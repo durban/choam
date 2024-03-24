@@ -295,6 +295,15 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     }
   }
 
+  test("HAMT toString") {
+    val h0 = LongHamt.empty
+    assertEquals(h0.toString, "Hamt()")
+    val h1 = h0.inserted(Val(0x000000ffff000000L))
+    assertEquals(h1.toString, "Hamt(Val(1099494850560))")
+    val h2 = h1.inserted(Val(0xffffff0000ffffffL))
+    assertEquals(h2.toString, "Hamt(Val(1099494850560), Val(-1099494850561))")
+  }
+
   property("forAll") {
     // the predicate in `LongHamt` is `>`
     forAll { (seed: Long, nums: Set[Long]) =>
