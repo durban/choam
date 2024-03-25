@@ -26,14 +26,49 @@ import scala.util.hashing.MurmurHash3
 /**
  * Immutable HAMT (hash array mapped trie)
  *
- * Keys are ref IDs (i.e., `Long`s), values are HWDs.
- * We're using the IDs directly, without hashing, since
- * they're already generated with Fibonacci hashing.
- * We don't store the keys separately, since we can
- * always get them from the values.
+ * HAMTs are described in "Ideal Hash Trees" by Phil Bagwell
+ * (https://infoscience.epfl.ch/record/64398/files/idealhashtrees.pdf).
+ * An improved encoding called CHAMP (compressed hash array mapped
+ * prefix trie) is described in "Optimizing Hash-Array Mapped Tries for
+ * Fast and Lean Immutable JVM Collections" by Michael J. Steindorfer
+ * and Jurgen J. Vinju (https://ir.cwi.nl/pub/24029/24029B.pdf).
+ * (TODO: Currently we don't use CHAMP here, because we need an iteration
+ * order that is globally consistent, and it's not clear how to do
+ * that in a CHAMP.)
  *
- * Values can't be `null` (we use `null` as the "not
- * found" sentinel).
+ * Unlike most HAMTs, we use 64-bit hashes in a 64-ary tree. (We can
+ * do this, because keys eventually will be `Ref` IDs, which are `Long`s.)
+ * We're using the IDs directly, without hashing, since they're already
+ * generated with Fibonacci hashing. We don't store the keys separately,
+ * since we can always get them from the values (which will be HWDs).
+ * Values can't be `null` (we use `null` as the "not found" sentinel).
+ * Deletion is not implemented, because we don't need it. We also don't
+ * implement collision nodes, because `Ref` IDs are globally unique,
+ * so it's not possible to have a collision on every level or the tree.
+ *
+ * This class contains the generic HAMT implementation. Abstract methods
+ * are provided for the "MCAS-specific" things. The API is weird, because
+ * we need this separation, but really don't want to allocate unnecessary
+ * objects. (Overall, this is not really a general HAMT, although it's
+ * somewhat abstracted away from the MCAS details.) for the MCAS-specific
+ * parts, see `LogMap2`.
+ *
+ * Type parameters are as follows:
+ * `A` is the type of values in the map (i.e., HWDs; keys/hashes are `Long`s).
+ * `E` is they type `toArray` converts the values to (`emcas.WordDescriptor[A]`
+ * on the JVM, and equals to `A` on JS).
+ * `T1` is the type of the "extra" value passed to `toArray`, which it just
+ * passes on to `convertForArray` (this is the parent `EmcasDescriptor`).
+ * `T2` is similarly the type of the "extra" value passed to `forAll`, which
+ * it just passes on to `predicateForForAll` (an `Mcas.ThreadContext` to
+ * implement revalidation).
+ * `S` is the type of the state used in `foldLeft`. (TODO: is this unused?)
+ * `H` is the self-type (we use F-bounded polymorphism here, because we need
+ * to create new nodes on insert/update, and `Hamt` is also the type of the
+ * sub-nodes, not just the root).
+ *
+ * Public methods are the "external" API. We take care never to call them
+ * on a node in lower levels (they assume they're called on the root).
  */
 private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]](
   val size: Int,
@@ -69,6 +104,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     this.lookupOrNull(hash, 0)
   }
 
+  /** Must already contain the key of `a` */
   final def updated(a: A): H = {
     this.insertOrOverwrite(hashOf(a), a, 0, OP_UPDATE) match {
       case null => this
@@ -76,6 +112,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     }
   }
 
+  /** Mustn't already contain the key of `a` */
   final def inserted(a: A): H = {
     val newRoot = this.insertOrOverwrite(hashOf(a), a, 0, OP_INSERT)
     assert(newRoot ne null)
@@ -86,10 +123,12 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     that.insertIntoHamt(this)
   }
 
+  /** Folds by using `convertForFoldLeft` implemented in a subclass */
   final def foldLeft(z: S): S = {
     this.foldLeftInternal(z)
   }
 
+  /** May or may not already contain the key of `a` */
   final def upserted(a: A): H = {
     this.insertOrOverwrite(hashOf(a), a, 0, OP_UPSERT) match {
       case null => this
@@ -97,6 +136,12 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     }
   }
 
+  /**
+   * Converts all values with `convertForArray`
+   * (implemented in a subclass), and copies the
+   * results into an array (created with `newArray`,
+   * also implemented in a subclass).
+   */
   final def toArray(tok: T1): Array[E] = {
     val arr = newArray(this.size)
     val end = this.copyIntoArray(arr, 0, tok)
@@ -104,6 +149,11 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     arr
   }
 
+  /**
+   * Evaluates `predicateForForAll` (implemented
+   * in a subclass) for the values, short-circuits
+   * on `false`.
+   */
   final def forAll(tok: T2): Boolean = {
     this.forAllInternal(tok)
   }
@@ -409,6 +459,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
 
   /** Index into the imaginary 64-element sparse array */
   private[this] final def logicalIdx(hash: Long, shift: Int): Int = {
+    // Note: this logic is duplicated in `MemoryLocationOrdering`.
     // TODO: We should use the highest 6 bits first,
     // TODO: and lower ones later, because for a
     // TODO: multiplicative hash (like the Fibonacci
