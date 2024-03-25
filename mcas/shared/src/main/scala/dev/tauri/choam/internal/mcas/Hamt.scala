@@ -70,9 +70,25 @@ import scala.util.hashing.MurmurHash3
  * Public methods are the "external" API. We take care never to call them
  * on a node in lower levels (they assume they're called on the root).
  */
-private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]](
+private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]] protected[mcas] (
+
+  /**
+   * The number of values in `this` subtree (i.e., if `this` is the
+   * root, then this number is size of the whole tree).
+   */
   val size: Int,
+
+  /**
+   * Contains 1 bits in exactly the places where the imaginary 64-element
+   * sparse array has "something" (either a value or a sub-node).
+   */
   private val bitmap: Long,
+
+  /**
+   * The dense array containing the values and/or sub-nodes. At most
+   * 64-element long, but shorter for a "not full" node. Can be a
+   * zero-element array (only for the root node of an empty tree).
+   */
   private val contents: Array[AnyRef],
 ) { this: H =>
 
