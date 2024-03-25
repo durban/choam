@@ -30,7 +30,9 @@ private sealed trait EmcasJmxStatsMBean {
   def getCommits(): Long
   def getRetries(): Long
   def getAvgRetriesPerCommit(): Double
+  def getAvgTriesPerCommit(): Double
   def getMaxRetriesPerCommit(): Long
+  def getMaxTriesPerCommit(): Long
   def getAvgLogSize(): Double
   def getMaxLogSize(): Long
   def getThreadContextCount(): Int
@@ -87,8 +89,22 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
     }
   }
 
+  final override def getAvgTriesPerCommit(): Double = {
+    val c = this.getCommits()
+    if (c != 0L) {
+      val r = this.getRetries()
+      (r + c).toDouble / c.toDouble
+    } else {
+      Double.NaN
+    }
+  }
+
   final override def getMaxRetriesPerCommit(): Long = {
     this.getStats().maxRetries
+  }
+
+  final override def getMaxTriesPerCommit(): Long = {
+    this.getMaxRetriesPerCommit() + 1L
   }
 
   final override def getAvgLogSize(): Double = {
