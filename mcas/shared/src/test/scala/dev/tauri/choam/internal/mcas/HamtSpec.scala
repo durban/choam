@@ -29,7 +29,7 @@ import cats.data.Chain
 
 import munit.ScalaCheckSuite
 
-import org.scalacheck.{ Gen, Arbitrary }
+import org.scalacheck.{ Gen, Arbitrary, Prop }
 import org.scalacheck.util.Buildable
 import org.scalacheck.Prop.forAll
 
@@ -37,15 +37,26 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
 
   import HamtSpec.{ LongHamt, Val, SpecVal }
 
+  override protected def scalaCheckTestParameters: org.scalacheck.Test.Parameters = {
+    val p = super.scalaCheckTestParameters
+    p.withMaxSize(p.maxSize * (if (isJvm()) 32 else 2))
+  }
+
   private def genLongWithRig(implicit arb: Arbitrary[Int]): Gen[Long] = {
     arb.arbitrary.map { n =>
       RefIdGen.compute(base = java.lang.Long.MIN_VALUE, offset = n)
     }
   }
 
-  override protected def scalaCheckTestParameters: org.scalacheck.Test.Parameters = {
-    val p = super.scalaCheckTestParameters
-    p.withMaxSize(p.maxSize * (if (isJvm()) 32 else 2))
+  private def myForAll(body: (Long, Set[Long]) => Prop): Prop = {
+    val genSeed = Gen.choose[Long](Long.MinValue, Long.MaxValue)
+    val arbLongWithRig = Arbitrary { genLongWithRig }
+    val genNums = Arbitrary.arbContainer[Set, Long](
+      arbLongWithRig,
+      Buildable.buildableFactory,
+      c => c
+    ).arbitrary
+    forAll(genSeed, genNums)(body)
   }
 
   test("Val/SpecVal") {
@@ -134,13 +145,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
   }
 
   property("HAMT lookup/upsert/toArray (RIG generator)") {
-    val arbLongWithRig = Arbitrary {
-      genLongWithRig
-    }
-    forAll(
-      Gen.choose[Long](Long.MinValue, Long.MaxValue),
-      Arbitrary.arbContainer[Set, Long](arbLongWithRig, Buildable.buildableFactory, c => c).arbitrary
-    ) { (seed: Long, _nums: Set[Long]) =>
+    myForAll { (seed: Long, _nums: Set[Long]) =>
       testBasics(seed, _nums)
     }
   }
