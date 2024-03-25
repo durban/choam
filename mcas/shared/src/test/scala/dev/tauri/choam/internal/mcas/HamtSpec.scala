@@ -202,17 +202,27 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     lst.foldLeft(hamt) { (hamt, n) => hamt.upserted(Val(n)) }
   }
 
-  property("Iteration order should be independent of insertion order") {
+  property("Iteration order should be independent of insertion order (default generator)") {
     forAll { (seed: Long, nums: Set[Long]) =>
-      val rng = new Random(seed)
-      val nums1 = rng.shuffle(nums.toList)
-      val nums2 = rng.shuffle(nums1)
-      val hamt1 = hamtFromList(nums1)
-      val hamt2 = hamtFromList(nums2)
-      assertEquals(hamt1.toArray.toList, hamt2.toArray.toList)
-      assertEquals(hamt1.size, nums.size)
-      assertEquals(hamt2.size, nums.size)
+      testInserionOrder(seed, nums)
     }
+  }
+
+  property("Iteration order should be independent of insertion order (RIG generator)") {
+    myForAll { (seed: Long, nums: Set[Long]) =>
+      testInserionOrder(seed, nums)
+    }
+  }
+
+  private def testInserionOrder(seed: Long, nums: Set[Long]): Unit = {
+    val rng = new Random(seed)
+    val nums1 = rng.shuffle(nums.toList)
+    val nums2 = rng.shuffle(nums1)
+    val hamt1 = hamtFromList(nums1)
+    val hamt2 = hamtFromList(nums2)
+    assertEquals(hamt1.toArray.toList, hamt2.toArray.toList)
+    assertEquals(hamt1.size, nums.size)
+    assertEquals(hamt2.size, nums.size)
   }
 
   property("Ordering should be independent of elements") {
