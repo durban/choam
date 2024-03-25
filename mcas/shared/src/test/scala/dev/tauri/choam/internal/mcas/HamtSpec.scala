@@ -29,11 +29,19 @@ import cats.data.Chain
 
 import munit.ScalaCheckSuite
 
+import org.scalacheck.{ Gen, Arbitrary }
+import org.scalacheck.util.Buildable
 import org.scalacheck.Prop.forAll
 
 final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
 
   import HamtSpec.{ LongHamt, Val, SpecVal }
+
+  private def genLongWithRig(implicit arb: Arbitrary[Int]): Gen[Long] = {
+    arb.arbitrary.map { n =>
+      RefIdGen.compute(base = java.lang.Long.MIN_VALUE, offset = n)
+    }
+  }
 
   override protected def scalaCheckTestParameters: org.scalacheck.Test.Parameters = {
     val p = super.scalaCheckTestParameters
@@ -119,40 +127,56 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     assertEquals(h5.getOrElse(0xfe000000000000L, Val(42L)), Val(0xfe000000000000L))
   }
 
-  property("HAMT lookup/upsert/toArray") {
+  property("HAMT lookup/upsert/toArray (default generator)") {
     forAll { (seed: Long, _nums: Set[Long]) =>
-      val rng = new Random(seed)
-      val nums = rng.shuffle(_nums.toList)
-      var hamt = LongHamt.empty
-      var shadow = LongMap.empty[Val]
-      for (n <- nums) {
-        val v = Val(n)
-        assert(Either.catchOnly[IllegalArgumentException](hamt.updated(v)).isLeft)
-        hamt = if (rng.nextBoolean()) {
-          hamt.inserted(v)
-        } else {
-          hamt.upserted(v)
-        }
-        shadow = shadow.updated(n, v)
-        assert(hamt.getOrElse(n, null) eq v)
-        assertSameMaps(hamt, shadow)
-      }
-      for (n <- rng.shuffle(nums)) {
-        val nv = Val(n)
-        assert(Either.catchOnly[IllegalArgumentException](hamt.inserted(nv)).isLeft)
-        hamt = if (rng.nextBoolean()) {
-          hamt.updated(nv)
-        } else {
-          hamt.upserted(nv)
-        }
-        shadow = shadow.updated(n, nv)
-        assert(hamt.getOrElse(n, null) eq nv)
-        assertSameMaps(hamt, shadow)
-      }
+      testBasics(seed, _nums)
     }
   }
 
-  def assertSameMaps(hamt: LongHamt, shadow: LongMap[Val]): Unit = {
+  property("HAMT lookup/upsert/toArray (RIG generator)") {
+    val arbLongWithRig = Arbitrary {
+      genLongWithRig
+    }
+    forAll(
+      Gen.choose[Long](Long.MinValue, Long.MaxValue),
+      Arbitrary.arbContainer[Set, Long](arbLongWithRig, Buildable.buildableFactory, c => c).arbitrary
+    ) { (seed: Long, _nums: Set[Long]) =>
+      testBasics(seed, _nums)
+    }
+  }
+
+  private def testBasics(seed: Long, _nums: Set[Long]): Unit = {
+    val rng = new Random(seed)
+    val nums = rng.shuffle(_nums.toList)
+    var hamt = LongHamt.empty
+    var shadow = LongMap.empty[Val]
+    for (n <- nums) {
+      val v = Val(n)
+      assert(Either.catchOnly[IllegalArgumentException](hamt.updated(v)).isLeft)
+      hamt = if (rng.nextBoolean()) {
+        hamt.inserted(v)
+      } else {
+        hamt.upserted(v)
+      }
+      shadow = shadow.updated(n, v)
+      assert(hamt.getOrElse(n, null) eq v)
+      assertSameMaps(hamt, shadow)
+    }
+    for (n <- rng.shuffle(nums)) {
+      val nv = Val(n)
+      assert(Either.catchOnly[IllegalArgumentException](hamt.inserted(nv)).isLeft)
+      hamt = if (rng.nextBoolean()) {
+        hamt.updated(nv)
+      } else {
+        hamt.upserted(nv)
+      }
+      shadow = shadow.updated(n, nv)
+      assert(hamt.getOrElse(n, null) eq nv)
+      assertSameMaps(hamt, shadow)
+    }
+  }
+
+  private def assertSameMaps(hamt: LongHamt, shadow: LongMap[Val]): Unit = {
     assertEquals(hamt.size, shadow.size)
     for (k <- shadow.keySet) {
       val expVal = shadow(k)
