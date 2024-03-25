@@ -75,15 +75,10 @@ private[mcas] abstract class GlobalContext
     }
   }
 
-  /** Only for testing/benchmarking */
+  /** Only for testing/benchmarking/JMX */
   private[choam] final override def getRetryStats(): Mcas.RetryStats = {
-    // `LongRef`s are still cheaper than using an iterator (tuples):
-    @nowarn("cat=lint-performance")
-    var commits = 0L
-    @nowarn("cat=lint-performance")
-    var retries = 0L
-    @nowarn("cat=lint-performance")
-    var maxRetries = 0L
+    // allocating this builder is still cheaper than using an iterator (tuples):
+    val b = new GlobalContext.StatsBuilder()
     this._threadContexts.foreach { (tid, wr) =>
       val tctx = wr.get()
       if (tctx ne null) {
@@ -93,21 +88,21 @@ private[mcas] abstract class GlobalContext
         // just stats for informational
         // purposes...
         val stats = tctx.getRetryStats()
-        commits += stats.commits
-        retries += stats.retries
-        if (stats.maxRetries > maxRetries) {
-          maxRetries = stats.maxRetries
+        b.commits += stats.commits
+        b.retries += stats.retries
+        b.committedRefs += stats.committedRefs
+        if (stats.maxRetries > b.maxRetries) {
+          b.maxRetries = stats.maxRetries
+        }
+        if (stats.maxCommittedRefs > b.maxCommittedRefs) {
+          b.maxCommittedRefs = stats.maxCommittedRefs
         }
       } else {
         this._threadContexts.remove(tid, wr) // clean empty weakref
         ()
       }
     }
-    Mcas.RetryStats(
-      commits = commits,
-      retries = retries,
-      maxRetries = maxRetries
-    )
+    b.build()
   }
 
   private[choam] final override def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
@@ -209,6 +204,28 @@ private[mcas] abstract class GlobalContext
         threadContexts.remove(tid, wr)
         ()
       }
+    }
+  }
+}
+
+private object GlobalContext {
+
+  private final class StatsBuilder {
+
+    var commits: Long = 0L
+    var retries: Long = 0L
+    var committedRefs: Long = 0L
+    var maxRetries: Long = 0L
+    var maxCommittedRefs: Long = 0L
+
+    final def build(): Mcas.RetryStats = {
+      Mcas.RetryStats(
+        commits = this.commits,
+        retries = this.retries,
+        committedRefs = this.committedRefs,
+        maxRetries = this.maxRetries,
+        maxCommittedRefs = this.maxCommittedRefs,
+      )
     }
   }
 }

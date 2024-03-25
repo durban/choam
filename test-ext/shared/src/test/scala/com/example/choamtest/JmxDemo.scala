@@ -43,7 +43,7 @@ object JmxDemo extends IOApp.Simple {
         arr.unsafeGet(idx).update(_ + "y")
       }.run[IO].parReplicateA_(0xfff)
       _ <- IO.both(IO.both(tsk, tsk), arrTsk)
-      _ <- IO.sleep(1.minute)
+      _ <- (IO.sleep(1.second) *> Ref.swap(arr.unsafeGet(1), arr.unsafeGet(2)).run[IO]).replicateA_(60)
     } yield ()
   }
 }

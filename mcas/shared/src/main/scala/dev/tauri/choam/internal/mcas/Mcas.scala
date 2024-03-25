@@ -34,7 +34,7 @@ sealed trait Mcas {
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     // implementations should override if
     // they collect statistics
-    Mcas.RetryStats(0L, 0L, 0L)
+    Mcas.RetryStats(0L, 0L, 0L, 0L, 0L)
   }
 
   /** Only for testing/benchmarking */
@@ -280,7 +280,7 @@ object Mcas extends McasCompanionPlatform { self =>
     }
 
     /** Only for testing/benchmarking */
-    private[choam] def recordCommit(@unused retries: Int): Unit = {
+    private[choam] def recordCommit(@unused retries: Int, @unused committedRefs: Int): Unit = {
       // we ignore stats by default; implementations
       // can override if it matters
       ()
@@ -320,9 +320,16 @@ object Mcas extends McasCompanionPlatform { self =>
   }
 
   private[choam] final case class RetryStats(
+    /** The number of successfully committed `Rxn`s */
     commits: Long,
+    /** The number of retries overall */
     retries: Long,
+    /** The sum of the number of `Ref`s the committed `Rxn`s touched */
+    committedRefs: Long,
+    /** The highest number of retries one `Rxn` had to perform */
     maxRetries: Long,
+    /** The size (touched `Ref`s) of the biggest `Rxn` that committed */
+    maxCommittedRefs: Long,
   )
 
   /** Only for testing */

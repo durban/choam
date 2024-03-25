@@ -29,8 +29,10 @@ abstract class EmcasThreadContextBase {
 
   private static final VarHandle COMMITS;
   private static final VarHandle RETRIES;
+  private static final VarHandle COMMITTED_REFS;
   private static final VarHandle MAX_REUSE_EVER;
   private static final VarHandle MAX_RETRIES_EVER;
+  private static final VarHandle MAX_COMMITTED_REFS_EVER;
   private static final VarHandle STATISTICS;
 
   static {
@@ -38,8 +40,10 @@ abstract class EmcasThreadContextBase {
       MethodHandles.Lookup l = MethodHandles.lookup();
       COMMITS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_commits", long.class));
       RETRIES = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_retries", long.class));
+      COMMITTED_REFS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_committedRefs", long.class));
       MAX_REUSE_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxReuseEver", int.class));
       MAX_RETRIES_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxRetriesEver", long.class));
+      MAX_COMMITTED_REFS_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxCommittedRefsEver", long.class));
       STATISTICS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_statistics", Map.class));
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
@@ -49,8 +53,10 @@ abstract class EmcasThreadContextBase {
   // intentionally non-volatile, see below
   private long _commits; // = 0L
   private long _retries; // = 0L
+  private long _committedRefs; // = 0L
   private int _maxReuseEver; // = 0
   private long _maxRetriesEver; // = 0L
+  private long _maxCommittedRefsEver; // = 0L
   private Map<Object, Object> _statistics = Map$.MODULE$.empty();
 
   protected long getCommitsOpaque() {
@@ -61,11 +67,19 @@ abstract class EmcasThreadContextBase {
     return (long) RETRIES.getOpaque(this);
   }
 
+  protected long getCommittedRefsOpaque() {
+    return (long) COMMITTED_REFS.getOpaque(this);
+  }
+
   protected long getMaxRetriesOpaque() {
     return (long) MAX_RETRIES_EVER.getOpaque(this);
   }
 
-  protected void recordCommitOpaque(int retries) {
+  protected long getMaxCommittedRefsOpaque() {
+    return (long) MAX_COMMITTED_REFS_EVER.getOpaque(this);
+  }
+
+  protected void recordCommitOpaque(int retries, int committedRefs) {
     // Only one thread writes, so `+=`-like
     // increment is fine here. There is a
     // race though: a reader can read values
@@ -78,8 +92,13 @@ abstract class EmcasThreadContextBase {
     COMMITS.setOpaque(this, this._commits + 1L);
     long retr = (long) retries;
     RETRIES.setOpaque(this, this._retries + retr);
+    long cRefs = (long) committedRefs;
+    COMMITTED_REFS.setOpaque(this, this._committedRefs + cRefs);
     if (retr > this._maxRetriesEver) {
       MAX_RETRIES_EVER.setOpaque(this, retr);
+    }
+    if (cRefs > this._maxCommittedRefsEver) {
+      MAX_COMMITTED_REFS_EVER.setOpaque(this, cRefs);
     }
   }
 
