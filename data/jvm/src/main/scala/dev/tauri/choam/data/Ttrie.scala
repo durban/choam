@@ -143,6 +143,10 @@ private final class Ttrie[K, V] private (
             // one.
             // TODO: What's the performance hit of revalidation?
             // TODO: Could we do a *partial* revalidation?
+            // TODO: Transactional predication (see above) has
+            // TODO: a solution to this problem, and is able to
+            // TODO: avoid revalidation. See `embalm` and `resurrect`
+            // TODO: in section 3.4.1.
         }
       }
     }

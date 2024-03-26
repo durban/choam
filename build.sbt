@@ -678,7 +678,7 @@ lazy val dependencies = new {
   val catsEffectVersion = "3.5.4" // https://github.com/typelevel/cats-effect
   val catsMtlVersion = "1.4.0" // https://github.com/typelevel/cats-mtl
   val catsCollectionsVersion = "0.9.8" // https://github.com/typelevel/cats-collections
-  val fs2Version = "3.10.0" // https://github.com/typelevel/fs2
+  val fs2Version = "3.10.1" // https://github.com/typelevel/fs2
   val scalacheckEffectVersion = "2.0.0-M2"
   val jcstressVersion = "0.16"
   val jmhVersion = "1.37"
@@ -704,7 +704,7 @@ lazy val dependencies = new {
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % jolVersion)
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.3") // https://github.com/JCTools/JCTools
   val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.27") // https://github.com/JetBrains/lincheck
-  val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.6") // https://asm.ow2.io/
+  val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.7") // https://asm.ow2.io/
 
   // JS:
   val scalaJsLocale = Def.setting[Seq[ModuleID]](Seq(
