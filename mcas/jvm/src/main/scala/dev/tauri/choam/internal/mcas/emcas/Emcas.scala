@@ -80,9 +80,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    *
    * The other methods (e.g., `unsafeGetVolatile`) manipulate the "content"
    * of the `MemoryLocation`. If the content is a "value", that can be
-   * freely replaced by a descriptor during an operation. (But the
-   * new descriptor must have a mark.) The content can have the following
-   * possible states:
+   * freely replaced (with a CAS) by a descriptor during an operation.
+   * (But the new descriptor must have a mark.) The content can have the
+   * following  possible states:
    *
    *   value - a user-supplied value (possibly including `null`);
    *   this state includes anything that is not a `WordDescriptor`.
@@ -127,8 +127,8 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    *   content = descriptor
    *   marker = full
    *   Meaning: the descriptor is (possibly) in use, and cannot be
-   *   replaced, except by another descriptor with the
-   *   same mark.
+   *   replaced, except CAS-ing another descriptor with the
+   *   same mark in its place.
    *
    *
    * ### Versions ###
@@ -666,11 +666,13 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * winner to finalize, then retries).
    *
    * TODO: Currently even read-only word descriptors
-   * TODO: are installed into the refs. If this
+   * TODO: are installed into the refs (so we can only
+   * TODO: have write-write conflicts). If this
    * TODO: changes, they will need special handling
    * TODO: for sharing version numbers. Probably
    * TODO: an additional validation; see section 3.1
-   * TODO: in the paper, about read-write conflicts.
+   * TODO: in the "Commit phase" paper, about read-write
+   * TODO: conflicts.
    */
   private[this] final def retrieveFreshTs(): Long = {
     val ts1 = global.getCommitTs()
