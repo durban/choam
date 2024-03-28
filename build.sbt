@@ -474,9 +474,7 @@ lazy val stressLinchk = project.in(file("stress") / "stress-linchk")
       (Test / testOnly).evaluated
     },
     Test / javaOptions ++= List(
-      "--add-opens", "java.base/java.lang=ALL-UNNAMED",
-      "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",
-      "--add-exports", "java.base/jdk.internal.util=ALL-UNNAMED",
+      "--add-exports", "java.base/jdk.internal.misc=ALL-UNNAMED", // ManagedTestExample needs this
       s"-javaagent:${(stressLinchkAgent / Compile / packageBin / artifactPath).value}",
       // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:8000",
     ),
@@ -678,7 +676,7 @@ lazy val dependencies = new {
   val catsEffectVersion = "3.5.4" // https://github.com/typelevel/cats-effect
   val catsMtlVersion = "1.4.0" // https://github.com/typelevel/cats-mtl
   val catsCollectionsVersion = "0.9.8" // https://github.com/typelevel/cats-collections
-  val fs2Version = "3.10.1" // https://github.com/typelevel/fs2
+  val fs2Version = "3.10.2" // https://github.com/typelevel/fs2
   val scalacheckEffectVersion = "2.0.0-M2"
   val jcstressVersion = "0.16"
   val jmhVersion = "1.37"
@@ -703,7 +701,7 @@ lazy val dependencies = new {
   // JVM:
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % jolVersion)
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.3") // https://github.com/JCTools/JCTools
-  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.27") // https://github.com/JetBrains/lincheck
+  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.28.1") // https://github.com/JetBrains/lincheck
   val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.7") // https://asm.ow2.io/
 
   // JS:
