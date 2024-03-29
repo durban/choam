@@ -317,20 +317,16 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // there is nothing to do here.
         ref.unsafeCasVolatile(ov.castToData, nv) // TODO: could be Release
         // Possibly also clean up the weakref:
-        if (weakref ne null) {
-          assert(weakref.get() eq null)
-          // We also delete the (now empty) `WeakReference`
-          // object, to help the GC. If this CAS fails,
-          // that means a new op already installed a new
-          // weakref; nothing to do here.
-          ref.unsafeCasMarkerVolatile(weakref, null) // TODO: could be Release
-          ()
-        }
+        cleanWeakRef(ref, weakref)
       } else {
         assert(wit >= currentVersion)
         // concurrent write, no need to replace the
         // descriptor (see the comment below)
       }
+    } else if (currentInRef == currentVersion) {
+      // version is already correct, but we'll still replace the desc:
+      ref.unsafeCasVolatile(ov.castToData, nv) // TODO: could be Release
+      cleanWeakRef(ref, weakref)
     } // else:
     // either a concurrent write to a newer version, in which
     // case there is no need to replace the descriptor, as
@@ -338,6 +334,18 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     // or it is already correct, in which case there is a
     // concurrent `replaceDescriptor` going on, so we let
     // that one win and replace the descriptor
+  }
+
+  private[this] final def cleanWeakRef[A](ref: MemoryLocation[A], weakref: WeakReference[AnyRef]): Unit = {
+    if (weakref ne null) {
+      assert(weakref.get() eq null)
+      // We also delete the (now empty) `WeakReference`
+      // object, to help the GC. If this CAS fails,
+      // that means a new op already installed a new
+      // weakref; nothing to do here.
+      ref.unsafeCasMarkerVolatile(weakref, null) // TODO: could be Release
+      ()
+    }
   }
 
   // TODO: this could have an optimized version, without creating a hwd
@@ -754,7 +762,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     }
   }
 
-  /** For testing */
+  /** Only for testing! */
   @throws[InterruptedException]
   private[emcas] final def spinUntilCleanup[A](ref: MemoryLocation[A], max: Long = Long.MaxValue): A = {
     val ctx = this.currentContextInternal()
@@ -779,7 +787,15 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           throw new InterruptedException
         } else {
           if ((ctr % 1024L) == 0L) {
-            System.gc()
+            if ((ctr % 0x100000L) == 0L) {
+              // the GC is really not doing what we
+              // want it to, so we do a new allocation,
+              // maybe  that causes the GC to run:
+              val arr = new java.util.concurrent.atomic.AtomicLongArray(8192)
+              arr.compareAndExchange(4321, 0L, 42L)
+            } else {
+              System.gc()
+            }
           } else {
             Thread.sleep(32L)
           }
