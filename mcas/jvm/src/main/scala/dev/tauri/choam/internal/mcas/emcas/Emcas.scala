@@ -58,6 +58,10 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * problems too. However, currently only fresh descriptors
    * are used.)
    *
+   * TODO: Do we still need markers? The version numbers "should"
+   * TODO: protect us from ABA-problems, and we're currently
+   * TODO: always using fresh descriptors.
+   *
    * To guarantee that in-use descriptors are never replaced,
    * every thread (the original and any helpers) must always
    * hold a strong reference to the "mark(er)" associated with
@@ -304,28 +308,36 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     val currentInRef = ref.unsafeGetVersionVolatile()
     if (currentInRef < currentVersion) {
       val wit = ref.unsafeCmpxchgVersionVolatile(currentInRef, currentVersion)
-      if (wit != currentInRef) {
-        // concurrent write, but re-check to be sure:
+      if (wit == currentInRef) {
+        // We've successfully updated the version.
+        // Now we'll replace the descriptor with the final value.
+        // If this CAS fails, someone else might've
+        // replaced the desc with the final value, or
+        // maybe started another operation; in either case,
+        // there is nothing to do here.
+        ref.unsafeCasVolatile(ov.castToData, nv) // TODO: could be Release
+        // Possibly also clean up the weakref:
+        if (weakref ne null) {
+          assert(weakref.get() eq null)
+          // We also delete the (now empty) `WeakReference`
+          // object, to help the GC. If this CAS fails,
+          // that means a new op already installed a new
+          // weakref; nothing to do here.
+          ref.unsafeCasMarkerVolatile(weakref, null) // TODO: could be Release
+          ()
+        }
+      } else {
         assert(wit >= currentVersion)
-      } // else: successfully updated version
-    } // else: either a concurrent write to a newer version, or it is already correct
-
-    // We replace the descriptor with the final value.
-    // If this CAS fails, someone else might've
-    // replaced the desc with the final value, or
-    // maybe started another operation; in either case,
-    // there is nothing to do here.
-    ref.unsafeCasVolatile(ov.castToData, nv)
-    // Possibly also clean up the weakref:
-    if (weakref ne null) {
-      assert(weakref.get() eq null)
-      // We also delete the (now empty) `WeakReference`
-      // object, to help the GC. If this CAS fails,
-      // that means a new op already installed a new
-      // weakref; nothing to do here.
-      ref.unsafeCasMarkerVolatile(weakref, null)
-      ()
-    }
+        // concurrent write, no need to replace the
+        // descriptor (see the comment below)
+      }
+    } // else:
+    // either a concurrent write to a newer version, in which
+    // case there is no need to replace the descriptor, as
+    // the newer operation will install a newer descriptor;
+    // or it is already correct, in which case there is a
+    // concurrent `replaceDescriptor` going on, so we let
+    // that one win and replace the descriptor
   }
 
   // TODO: this could have an optimized version, without creating a hwd
@@ -672,7 +684,24 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * TODO: for sharing version numbers. Probably
    * TODO: an additional validation; see section 3.1
    * TODO: in the "Commit phase" paper, about read-write
-   * TODO: conflicts.
+   * TODO: conflicts. Probably V1 or V4 would be
+   * TODO: applicable here; to detect read-write
+   * TODO: conflicts, we would do a revalidation of
+   * TODO: (probably) only the read-only word
+   * TODO: descriptors after ACQUIRE.
+   * TODO: However: doing it this way, we'd lose
+   * TODO: lock-freedom. If we have 2 EMCAS like
+   * TODO: this: [(r1, "a", "b"), (r2, "x", "x")]
+   * TODO: and [(r1, "a", "a"), (r2, "x", "y")],
+   * TODO: then both can ACQUIRE, and then when
+   * TODO: revalidating, both would try to help
+   * TODO: recursively themselves. That's an
+   * TODO: infinite loop (or probably a stack
+   * TODO: overflow). If we can detect this, then
+   * TODO: we could just retry without the read-only
+   * TODO: optimization (i.e., acquiring even read
+   * TODO: only words). But detecting it would probably
+   * TODO: need a full-blown cycle detection...
    */
   private[this] final def retrieveFreshTs(): Long = {
     val ts1 = global.getCommitTs()

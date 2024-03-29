@@ -163,6 +163,7 @@ private object LogMap {
     final override def updated[A](v: HalfWordDescriptor[A]): LogMap = {
       val k = v.address
       // TODO: this is a hack to detect if not already there:
+      @nowarn("cat=lint-performance")
       var wasPresent = false
       val newMap = treeMap.updateWith(k.id, v.cast[Any], { (_, nv) =>
         wasPresent = true
@@ -180,6 +181,7 @@ private object LogMap {
     final override def inserted[A](v: HalfWordDescriptor[A]): LogMap = {
       val k = v.address
       // TODO: this is a hack to detect if already there:
+      @nowarn("cat=lint-performance")
       var wasPresent = false
       val newMap = treeMap.updateWith(k.id, v.cast[Any], { (_, nv) =>
         wasPresent = true
@@ -197,6 +199,7 @@ private object LogMap {
     final override def upserted[A](v: HalfWordDescriptor[A]): LogMap = {
       val k = v.address
       // TODO: this is a hack to be able to maintain `size`:
+      @nowarn("cat=lint-performance")
       var wasPresent = false
       val newMap = treeMap.updateWith(k.id, v.cast[Any], { (_, nv) =>
         wasPresent = true
