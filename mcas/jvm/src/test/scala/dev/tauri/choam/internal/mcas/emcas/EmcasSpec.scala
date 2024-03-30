@@ -178,18 +178,16 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should not clean up an object referenced from another thread") {
-    val ref = MemoryLocation.unsafe[String]("s")
+    val ref = MemoryLocation.unsafeUnpadded[String]("s")
     val ctx = Emcas.inst.currentContextInternal()
     val hDesc = ctx.addCasFromInitial(ctx.start(), ref, "s", "x")
     var mark: AnyRef = null
     locally {
-      val desc = EmcasDescriptor.prepare(hDesc)
-      val wd = desc.wordIterator().next()
-      val ok = EmcasStatus.isSuccessful(Emcas.inst.MCAS(desc = desc, ctx = ctx))
+      val res = Emcas.inst.tryPerformDebug(desc = hDesc, ctx = ctx)
       // TODO: if *right now* the GC clears the mark, the assertion below will fail
-      mark = wd.address.unsafeGetMarkerVolatile().get()
+      mark = ref.unsafeGetMarkerVolatile().get()
       assert(mark ne null)
-      assert(ok)
+      assertEquals(clue(res), McasStatus.Successful)
     }
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
@@ -676,5 +674,23 @@ class EmcasSpec extends BaseSpec {
         assert(rig1 ne rig2)
     }
     assertEquals(ids.size(), 6)
+  }
+
+  test("EmcasDescriptor#instRo") {
+    val ctx = Emcas.inst.currentContext()
+    val ed1 = new EmcasDescriptor(ctx.start())
+    assert(!ed1.instRo)
+    val ed2 = new EmcasDescriptor(ed1.getWordsO())
+    assert(ed2.instRo)
+  }
+
+  test("EmcasDescriptor#fallback") {
+    val ctx = Emcas.inst.currentContext()
+    val ed1 = new EmcasDescriptor(ctx.start())
+    assert(!ed1.instRo)
+    assertEquals(ed1.cmpxchgStatus(McasStatus.Active, EmcasStatus.CycleDetected), McasStatus.Active)
+    ed1.wasFinalized(EmcasStatus.CycleDetected)
+    val ed2 = ed1.fallback
+    assert(ed2.instRo)
   }
 }

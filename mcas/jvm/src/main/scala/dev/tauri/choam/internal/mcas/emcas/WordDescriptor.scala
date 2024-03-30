@@ -59,6 +59,19 @@ private[mcas] final class WordDescriptor[A] private ( // TODO: rename to EmcasWo
     oldVersion = half.version,
   )
 
+  final def readOnly: Boolean =
+    equ(this.ov, this.nv)
+
+  final def withParent(newParent: EmcasDescriptor): WordDescriptor[A] = {
+    new WordDescriptor[A](
+      parent = newParent,
+      address = this.address,
+      ov = this.ov,
+      nv = this.nv,
+      oldVersion = this.oldVersion,
+    )
+  }
+
   final def cast[B]: WordDescriptor[B] =
     this.asInstanceOf[WordDescriptor[B]]
 

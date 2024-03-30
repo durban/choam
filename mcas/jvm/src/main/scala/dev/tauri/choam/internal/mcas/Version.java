@@ -33,6 +33,7 @@ public final class Version {
   static final long Active = None - 1L;
   static final long Successful = None - 2L;
   static final long FailedVal = None - 3L;
+  public static final long Reserved = None - 4L;
   // FailedVer = any valid version
 
   /**
@@ -40,7 +41,7 @@ public final class Version {
    *         not a constant with a special meaning.
    */
   public static final boolean isValid(long ver) {
-    return (ver >= Start) && (ver < FailedVal);
+    return (ver >= Start) && (ver < Reserved);
   }
 
   private Version() {

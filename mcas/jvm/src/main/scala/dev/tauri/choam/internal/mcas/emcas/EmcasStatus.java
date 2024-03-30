@@ -46,6 +46,9 @@ final class EmcasStatus {
   /** Not really a status, used to break from `tryWord` */
   static final long Break = Version.None;
 
+  /** Used to signal that a cycle was detected, need to retry with fallback */
+  static final long CycleDetected = Version.Reserved;
+
   private EmcasStatus() {
     throw new UnsupportedOperationException();
   }

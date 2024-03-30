@@ -28,6 +28,7 @@ abstract class EmcasDescriptorBase {
   private static final VarHandle STATUS;
   private static final VarHandle WORDS;
   private static final VarHandle WORDS_ARR;
+  private static final VarHandle FALLBACK;
 
   static {
     try {
@@ -35,6 +36,7 @@ abstract class EmcasDescriptorBase {
       STATUS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_status", long.class));
       WORDS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_words", WordDescriptor[].class));
       WORDS_ARR = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(WordDescriptor[].class));
+      FALLBACK = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_fallback", EmcasDescriptor.class));
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }
@@ -45,6 +47,8 @@ abstract class EmcasDescriptorBase {
     McasStatus.Active;
 
   private volatile WordDescriptor<?>[] _words; // = null
+
+  private volatile EmcasDescriptor _fallback; // = null
 
   /**
    * @see [[EmcasStatus]]
@@ -63,6 +67,26 @@ abstract class EmcasDescriptorBase {
 
   final void setWordsO(WordDescriptor<?>[] words) {
     WORDS.setOpaque(this, words);
+  }
+
+  final EmcasDescriptor getFallbackA() {
+    return (EmcasDescriptor) FALLBACK.getAcquire(this);
+  }
+
+  final EmcasDescriptor getOrInitFallback(EmcasDescriptor candidate) {
+    EmcasDescriptor wit = (EmcasDescriptor) FALLBACK.compareAndExchangeRelease(this, (EmcasDescriptor) null, candidate);
+    if (wit == null) {
+      return candidate;
+    } else {
+      // what we want here is a cmpxchg which has
+      // Release semantics on success, and Acquire
+      // semantics on failure (to get the witness);
+      // `VarHandle` has no method for that, so we
+      // approximate it with the compareAndExchangeRelease
+      // above, and a fence here:
+      VarHandle.acquireFence();
+      return wit;
+    }
   }
 
   final void cleanWordsForGc() {

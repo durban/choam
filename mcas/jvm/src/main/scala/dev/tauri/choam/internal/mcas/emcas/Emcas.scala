@@ -153,7 +153,21 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * (https://web.archive.org/web/20220302005715/https://www.researchgate.net/profile/Zoran-Budimlic/publication/221257687_Commit_phase_in_timestamp-based_stm/links/004635254086f87ab9000000/Commit-phase-in-timestamp-based-stm.pdf).
    * We allow ops to *share* a commit-ts (if they do not conflict).
    * Our implementation is a lock-free version of algorithm "V1" from
-   * the paper.
+   * the paper. The proof of correctness in the paper needs some
+   * changes for our system:
+   * - The proof of "Lemma 1" considers three possible scenarios:
+   *   - The first one is not possible for us not due to read-locking,
+   *     but because at t₂ the validation performed by T₁ would help
+   *     T₂ finish, and then the validation would fail (since O is
+   *     already in the log of T₁).
+   *   - The second one works the same way, except that if T₂ hasn't
+   *     committed yet, the OPEN by T₁ will help it commit.
+   *   - In the third scenario, if t₄ < t₅, then the OPEN at t₄ will
+   *     help the commit (so in fact t₄ = t₅), and revalidate T₁, so
+   *     that's fine. The other 2 cases work essentially the same.
+   *     (Note: the third scenario in the paper seems to have a typo,
+   *     "t₃ ≤ t₄ < t₂" should be "t₂ < t₄ ≤ t₃".)
+   * - The proof of "Theorem 1" works essentially the same.
    *
    * Versions (both of a ref and the global one) are always
    * monotonically increasing.
@@ -230,7 +244,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                 // active op without a mark: this can
                 // happen if a thread died during an op;
                 // we help the active op, then retry ours:
-                MCAS(parent, ctx = ctx)
+                helpMCASnoMCAS(parent, ctx = ctx)
                 go(mark = null, ver1 = ver1)
               } else { // finalized op
                 val successful = (parentStatus != McasStatus.FailedVal)
@@ -253,7 +267,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
             val parent = wd.parent
             val parentStatus = parent.getStatus()
             if (parentStatus == McasStatus.Active) {
-              MCAS(parent, ctx = ctx) // help the other op
+              helpMCASnoMCAS(parent, ctx = ctx) // help the other op
               go(mark = mark, ver1 = ver1) // retry
             } else { // finalized
               val successful = (parentStatus != McasStatus.FailedVal)
@@ -358,8 +372,17 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     readValue(ref, ctx, replace = true)
   }
 
-  @tailrec
   private[mcas] final def readVersion[A](ref: MemoryLocation[A], ctx: EmcasThreadContext): Long = {
+    readVersionInternal(ref, ctx, forMCAS = false, instRo = false)
+  }
+
+  @tailrec
+  private[this] final def readVersionInternal[A](
+    ref: MemoryLocation[A],
+    ctx: EmcasThreadContext,
+    forMCAS: Boolean,
+    instRo: Boolean,
+  ): Long = {
     val ver1 = ref.unsafeGetVersionVolatile()
     ref.unsafeGetVolatile() match {
       case wd: WordDescriptor[_] =>
@@ -367,9 +390,19 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         val parent = wd.parent
         val s = parent.getStatus()
         if (s == McasStatus.Active) {
-          // help and retry:
-          MCAS(parent, ctx = ctx)
-          readVersion(ref, ctx)
+          // help:
+          if (forMCAS) {
+            if (helpMCASforMCAS(parent, ctx = ctx, instRo = instRo)) {
+              EmcasStatus.CycleDetected
+            } else {
+              // retry:
+              readVersionInternal(ref, ctx, forMCAS = forMCAS, instRo = instRo)
+            }
+          } else {
+            helpMCASnoMCAS(parent, ctx = ctx)
+            // retry:
+            readVersionInternal(ref, ctx, forMCAS = forMCAS, instRo = instRo)
+          }
         } else if (s == McasStatus.FailedVal) {
           wd.oldVersion
         } else { // successful
@@ -378,19 +411,48 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       case _ => // value
         val ver2 = ref.unsafeGetVersionVolatile()
         if (ver1 == ver2) ver1
-        else readVersion(ref, ctx) // retry
+        else readVersionInternal(ref, ctx, forMCAS = forMCAS, instRo = instRo) // retry
     }
   }
 
-  // Listing 3 in the paper:
+  /** Returns `true` iff the helper MCAS should retry (due to a cycle) */
+  private[this] final def helpMCASforMCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext, instRo: Boolean): Boolean = {
+    if (MCAS(desc, ctx) == EmcasStatus.CycleDetected) {
+      if (instRo) {
+        // we don't care that the op we helped has
+        // a cycle, we certainly don't have one
+        false
+      } else {
+        // cycle detected, and the helper could
+        // be part of the cycle, so it should retry:
+        true
+      }
+    } else {
+      // no cycle detected:
+      false
+    }
+  }
+
+  private[this] final def helpMCASnoMCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext): Unit = {
+    // if we're NOT called from an ongoing MCAS,
+    // we don't really care if there is a cycle
+    // detected; we just watn the descriptor
+    // out of the way to do our thing (whoever
+    // started te op which got into the cycle
+    // WILL care, and will retry):
+    helpMCASforMCAS(desc, ctx, instRo = true)
+    ()
+  }
 
   /**
-   * Performs an MCAS operation.
+   * Performs an MCAS operation ("Listing 3" in the EMCAS paper).
    *
-   * @param desc: The main descriptor.
-   * @param ctx: The [[EMCASThreadContext]] of the current thread.
+   * @param desc The main descriptor.
+   * @param ctx The [[EMCASThreadContext]] of the current thread.
    */
-  private[emcas] final def MCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext): Long = {
+  private[this] final def MCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext): Long = {
+
+    val instRo = desc.instRo
 
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): Long = {
@@ -434,8 +496,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                   } else {
                     // we help the active op (who is not us),
                     // then continue with another iteration:
-                    MCAS(parent, ctx = ctx)
-                    ()
+                    if (helpMCASforMCAS(parent, ctx = ctx, instRo = instRo)) {
+                      return EmcasStatus.CycleDetected // scalafix:ok
+                    }
                   }
                 } else { // finalized op
                   if (parentStatus == McasStatus.FailedVal) {
@@ -450,20 +513,22 @@ private[mcas] final class Emcas extends GlobalContext { global =>
               }
             } else { // mark ne null
               if (wd eq wordDesc) {
+                // this is us!
                 // already points to the right place, early return:
                 return McasStatus.Successful // scalafix:ok
               } else {
                 // At this point, we're sure that `wd` belongs to another op
                 // (not `desc`), because otherwise it would've been equal to
                 // `wordDesc` (we're assuming that any WordDescriptor only
-                // appears at most once in an MCASDescriptor).
+                // appears at most once in an EmcasDescriptor).
                 val parent = wd.parent
                 val parentStatus = parent.getStatus()
                 if (parentStatus == McasStatus.Active) {
-                  MCAS(parent, ctx = ctx) // help the other op
-                  // Note: we're not "helping" ourselves for sure, see the comment above.
-                  // Here, we still don't have the value, so the loop must retry.
-                  ()
+                  // Help the other op; note: we're not "helping" ourselves
+                  // for sure, see the comment above.
+                  if (helpMCASforMCAS(parent, ctx = ctx, instRo = instRo)) {
+                    return EmcasStatus.CycleDetected // scalafix:ok
+                  } // else: we helped, but we still don't have the value, so the loop must retry
                 } else if (parentStatus == McasStatus.FailedVal) {
                   value = wd.cast[A].ov
                   version = wd.oldVersion
@@ -555,15 +620,30 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     } // tryWord
 
     @tailrec
-    def go(words: java.util.Iterator[WordDescriptor[_]]): Long = {
-      if (words ne null) {
+    def acquire(words: java.util.Iterator[WordDescriptor[_]], needsValidation: Boolean): Long = {
+      if (words ne null) { // TODO: we only need this null check once, when we start iterating
         if (words.hasNext) {
           val word = words.next()
           if (word ne null) {
-            val twr = tryWord(word)
-            assert((twr == McasStatus.Successful) || (twr == McasStatus.FailedVal) || (twr == EmcasStatus.Break))
-            if (twr == McasStatus.Successful) go(words)
-            else twr
+            if (instRo || (!word.readOnly)) {
+              val twr = tryWord(word)
+              assert(
+                (twr == McasStatus.Successful) ||
+                (twr == McasStatus.FailedVal) ||
+                (twr == EmcasStatus.Break) ||
+                (twr == EmcasStatus.CycleDetected)
+              )
+              if (twr == McasStatus.Successful) {
+                acquire(words, needsValidation = needsValidation)
+              } else {
+                twr
+              }
+            } else {
+              // read-only WD, which we don't
+              // need to install; continue, but
+              // we'll need to revalidate later:
+              acquire(words, needsValidation = true)
+            }
           } else {
             // Another thread already finalized the descriptor,
             // and cleaned up this word descriptor (hence the `null`);
@@ -571,7 +651,12 @@ private[mcas] final class Emcas extends GlobalContext { global =>
             EmcasStatus.Break
           }
         } else {
-          McasStatus.Successful
+          if (needsValidation) {
+            // this is ugly, but we use Active to signify that we'll need to validate:
+            McasStatus.Active
+          } else {
+            McasStatus.Successful
+          }
         }
       } else {
         // Already finalized descriptor, see above
@@ -579,8 +664,57 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       }
     }
 
-    val r = go(desc.wordIterator())
-    assert((r == McasStatus.Successful) || (r == McasStatus.FailedVal) || (r == EmcasStatus.Break))
+    @tailrec
+    def validate(words: java.util.Iterator[WordDescriptor[_]]): Long = {
+      assert(!instRo) // TODO: we only need this assert once, when we start iterating
+      if (words ne null) { // TODO: we only need this null check once, when we start iterating
+        if (words.hasNext) {
+          val word = words.next()
+          if (word ne null) {
+            if (word.readOnly) {
+              // revalidate:
+              val currVer = this.readVersionInternal(word.address, ctx, forMCAS = true, instRo = false)
+              if (currVer == word.oldVersion) {
+                // OK, continue:
+                validate(words)
+              } else if (currVer == EmcasStatus.CycleDetected) {
+                EmcasStatus.CycleDetected
+              } else {
+                // validation failed:
+                McasStatus.FailedVal
+              }
+            } else {
+              // this WD have been already installed by `acquire`
+              validate(words)
+            }
+          } else {
+            // already finalized
+            EmcasStatus.Break
+          }
+        } else {
+          McasStatus.Successful
+        }
+      } else {
+        // already finalized
+        EmcasStatus.Break
+      }
+    }
+
+    def getFinalResultFromHelper(): Long = {
+      // see the long comment below
+      val wit = desc.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
+      assert(wit != McasStatus.Active)
+      wit
+    }
+
+    val r = acquire(desc.wordIterator(), needsValidation = false)
+    assert(
+      (r == McasStatus.Successful) ||
+      (r == McasStatus.FailedVal) ||
+      (r == EmcasStatus.Break) ||
+      (r == EmcasStatus.CycleDetected) ||
+      (r == McasStatus.Active) // means we'll need to validate
+    )
     if (r == EmcasStatus.Break) {
       // Someone else finalized the descriptor, we must read its status;
       // however, a volatile read is NOT sufficient here, because it
@@ -620,29 +754,57 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // that we already volatile-read a non-`Active` status. In that case
       // the `cmpxchgStatus` will also fail, and we will get the final
       // status as the witness. Which is fine.)
-      val wit = desc.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
-      assert(wit != McasStatus.Active)
-      wit
+      getFinalResultFromHelper()
     } else {
-      val realRes = if (r == McasStatus.Successful) {
-        // successfully installed all descriptors (~ACQUIRE)
-        // but we'll need a new commit-ts, which we will
-        // CAS into the descriptor:
-        retrieveFreshTs()
+      val realRes = if ((r == McasStatus.Successful) || (r == McasStatus.Active)) {
+        val needsValidation = (r == McasStatus.Active)
+        assert((!instRo) || (!needsValidation))
+        if (!needsValidation) {
+          // successfully installed every descriptor (ACQUIRE)
+          // we'll need a new commit-ts, which we will
+          // CAS into the descriptor:
+          retrieveFreshTs()
+        } else {
+          // successfully installed all read-write
+          // descriptors (ACQUIRE), but still need to
+          // validate our read-set (the read-only
+          // descriptors, which were not installed):
+          val vr = validate(desc.wordIterator())
+          assert(
+            (vr == McasStatus.Successful) ||
+            (vr == McasStatus.FailedVal) ||
+            (vr == EmcasStatus.Break) ||
+            (vr == EmcasStatus.CycleDetected)
+          )
+          if (vr == EmcasStatus.Break) {
+            // we're already finalized, see the long comment above
+            getFinalResultFromHelper() // TODO: below we'll still try to CAS this into the descriptor
+          } else if (vr == McasStatus.Successful) {
+            // validation succeeded; we'll need a new
+            // commit-ts, which we will
+            // CAS into the descriptor:
+            retrieveFreshTs()
+          } else if (vr == EmcasStatus.CycleDetected) {
+            EmcasStatus.CycleDetected
+          } else {
+            // validation failed
+            McasStatus.FailedVal
+          }
+        }
       } else {
         r
       }
       val witness: Long = desc.cmpxchgStatus(McasStatus.Active, realRes)
       if (witness == McasStatus.Active) {
         // we finalized the descriptor
-        desc.wasFinalized()
+        desc.wasFinalized(realRes)
         realRes
       } else {
         // someone else already finalized the descriptor, we return its status:
         witness
       }
     }
-  }
+  } // MCAS
 
   /**
    * Retrieves the (possibly new) version, which
@@ -746,6 +908,12 @@ private[mcas] final class Emcas extends GlobalContext { global =>
 
   private[mcas] final def tryPerformDebug(desc: Descriptor, ctx: EmcasThreadContext): Long = {
     if (desc.nonEmpty) {
+      // TODO: If `desc` is completely read-only, can we avoid
+      // TODO: going through `MCAS`? In that case, `acquire`
+      // TODO: will be a no-op, and `validate` will just
+      // TODO: revalidate a descriptor which is/was already
+      // TODO: valid (because we revalidate when we insert
+      // TODO: new items, due to opacity).
       val fullDesc = new EmcasDescriptor(desc)
       val res = MCAS(desc = fullDesc, ctx = ctx)
       if (EmcasStatus.isSuccessful(res)) {
@@ -753,6 +921,21 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // to signify success; however, here we return
         // a constant, to follow the `Mcas` API:
         McasStatus.Successful
+      } else if (res == EmcasStatus.CycleDetected) {
+        // we detected a (possible) cycle, so
+        // we'll fall back to the method which
+        // is certainly lock free (always installing
+        // every WD, even the read-only ones):
+        val fallback = fullDesc.fallback
+        assert(fallback.instRo)
+        val fbRes = MCAS(fallback, ctx = ctx)
+        if (EmcasStatus.isSuccessful(fbRes)) {
+          McasStatus.Successful
+        } else {
+          // now we can't get CycleDetected for sure
+          assert(fbRes == McasStatus.FailedVal)
+          McasStatus.FailedVal
+        }
       } else {
         assert(res == McasStatus.FailedVal)
         McasStatus.FailedVal

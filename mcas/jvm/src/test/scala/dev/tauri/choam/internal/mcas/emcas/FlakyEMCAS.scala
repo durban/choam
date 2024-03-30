@@ -74,16 +74,8 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
 
   private final def tryPerformInternal(hDesc: Descriptor, ctx: EmcasThreadContext): Long = {
     // perform or not the operation based on whether we've already seen it
-    val desc = EmcasDescriptor.prepare(hDesc)
-    var hash = 0x75F4D07D
-    val it = desc.wordIterator()
-    while (it.hasNext()) {
-      hash ^= it.next().address.##
-    }
-    if (this.seen.putIfAbsent(hash, ()).isDefined) {
-      val r = Emcas.inst.MCAS(desc = desc, ctx = ctx)
-      if (EmcasStatus.isSuccessful(r)) McasStatus.Successful
-      else r
+    if (this.seen.putIfAbsent(hDesc.##, ()).isDefined) {
+      Emcas.inst.tryPerformDebug(desc = hDesc, ctx = ctx)
     } else {
       McasStatus.FailedVal // simulate a transient CAS failure to force a retry
     }
