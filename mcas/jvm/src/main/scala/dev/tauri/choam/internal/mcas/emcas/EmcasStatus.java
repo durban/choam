@@ -25,13 +25,15 @@ import dev.tauri.choam.internal.mcas.McasStatus;
  * descriptor) has the following values and
  * transitions:
  *
- *   McasStatus.Active
- *          /\
- *         /  \
- *        /    \
- *       /      \
- *      ↓        ↓
- *   FailedVal  any `v` where `EmcasStatus.isSuccessful(v)`
+ *      McasStatus.Active
+ *             /|\
+ *            / | \
+ *           /  |  \
+ *          /   |   \
+ *         ↓    |    ↓
+ *   FailedVal  |   any `v` where `EmcasStatus.isSuccessful(v)`
+ *              ↓
+ *        CycleDetected
  *
  * For successful operations, we store the new version
  * in the status field of the `EmcasDescriptor`, because
@@ -40,6 +42,19 @@ import dev.tauri.choam.internal.mcas.McasStatus;
  * refs. (We don't write back versions immediately, only
  * later when we replace the `WordDescriptor` with the
  * final value.)
+ *
+ * FailedVal means the operation failed due to an old value
+ * (or its version) not matching.
+ *
+ * CycleDetected means the operation failed due to a cycle
+ * being detected when recursively helping. This can only
+ * happen if `installRo = false` which is a "fast path",
+ * but not certain to succeed/fail; it can get into a cycle.
+ * This is not a "real" failure (although the descriptor will
+ * be finalized), and it doesn't appear as a failed operation
+ * on the public API. The solution to this failure is to
+ * immediately retry the op with `installRo = true`, which
+ * can never get into a cycle.
  */
 final class EmcasStatus {
 

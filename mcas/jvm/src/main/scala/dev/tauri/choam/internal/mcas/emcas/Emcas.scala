@@ -247,7 +247,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                 helpMCASnoMCAS(parent, ctx = ctx)
                 go(mark = null, ver1 = ver1)
               } else { // finalized op
-                val successful = (parentStatus != McasStatus.FailedVal)
+                val successful = (parentStatus != McasStatus.FailedVal) && (parentStatus != EmcasStatus.CycleDetected)
                 val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
                 val currVer = if (successful) parentStatus else wd.oldVersion
                 // marker is null, so we can replace the descriptor:
@@ -270,7 +270,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
               helpMCASnoMCAS(parent, ctx = ctx) // help the other op
               go(mark = mark, ver1 = ver1) // retry
             } else { // finalized
-              val successful = (parentStatus != McasStatus.FailedVal)
+              val successful = (parentStatus != McasStatus.FailedVal) && (parentStatus != EmcasStatus.CycleDetected)
               val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
               val currVer = if (successful) parentStatus else wd.oldVersion
               Reference.reachabilityFence(mark)
@@ -373,7 +373,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
   }
 
   private[mcas] final def readVersion[A](ref: MemoryLocation[A], ctx: EmcasThreadContext): Long = {
-    readVersionInternal(ref, ctx, forMCAS = false, instRo = false)
+    val v = readVersionInternal(ref, ctx, forMCAS = false, seen = 0L, instRo = false)
+    assert(Version.isValid(v))
+    v
   }
 
   @tailrec
@@ -381,6 +383,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     ref: MemoryLocation[A],
     ctx: EmcasThreadContext,
     forMCAS: Boolean,
+    seen: Long,
     instRo: Boolean,
   ): Long = {
     val ver1 = ref.unsafeGetVersionVolatile()
@@ -392,18 +395,18 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         if (s == McasStatus.Active) {
           // help:
           if (forMCAS) {
-            if (helpMCASforMCAS(parent, ctx = ctx, instRo = instRo)) {
+            if (helpMCASforMCAS(parent, ctx = ctx, seen = seen, instRo = instRo)) {
               EmcasStatus.CycleDetected
             } else {
               // retry:
-              readVersionInternal(ref, ctx, forMCAS = forMCAS, instRo = instRo)
+              readVersionInternal(ref, ctx, forMCAS = forMCAS, seen = seen, instRo = instRo)
             }
           } else {
             helpMCASnoMCAS(parent, ctx = ctx)
             // retry:
-            readVersionInternal(ref, ctx, forMCAS = forMCAS, instRo = instRo)
+            readVersionInternal(ref, ctx, forMCAS = forMCAS, seen = seen, instRo = instRo)
           }
-        } else if (s == McasStatus.FailedVal) {
+        } else if ((s == McasStatus.FailedVal) || (s == EmcasStatus.CycleDetected)) {
           wd.oldVersion
         } else { // successful
           s
@@ -411,13 +414,18 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       case _ => // value
         val ver2 = ref.unsafeGetVersionVolatile()
         if (ver1 == ver2) ver1
-        else readVersionInternal(ref, ctx, forMCAS = forMCAS, instRo = instRo) // retry
+        else readVersionInternal(ref, ctx, forMCAS = forMCAS, seen = seen, instRo = instRo) // retry
     }
   }
 
   /** Returns `true` iff the helper MCAS should retry (due to a cycle) */
-  private[this] final def helpMCASforMCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext, instRo: Boolean): Boolean = {
-    if (MCAS(desc, ctx) == EmcasStatus.CycleDetected) {
+  private[this] final def helpMCASforMCAS(
+    desc: EmcasDescriptor,
+    ctx: EmcasThreadContext,
+    seen: Long,
+    instRo: Boolean, // the helper's `instRo`!
+  ): Boolean = {
+    if (MCAS(desc, ctx, seen) == EmcasStatus.CycleDetected) {
       if (instRo) {
         // we don't care that the op we helped has
         // a cycle, we certainly don't have one
@@ -436,11 +444,11 @@ private[mcas] final class Emcas extends GlobalContext { global =>
   private[this] final def helpMCASnoMCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext): Unit = {
     // if we're NOT called from an ongoing MCAS,
     // we don't really care if there is a cycle
-    // detected; we just watn the descriptor
+    // detected; we just want the descriptor
     // out of the way to do our thing (whoever
     // started te op which got into the cycle
     // WILL care, and will retry):
-    helpMCASforMCAS(desc, ctx, instRo = true)
+    helpMCASforMCAS(desc, ctx, seen = 0L, instRo = true)
     ()
   }
 
@@ -449,10 +457,34 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    *
    * @param desc The main descriptor.
    * @param ctx The [[EMCASThreadContext]] of the current thread.
+   * @param seen A Bloom filter, which contains the `EmcasDescriptor`s
+   *             we have seen so far (during the recursive helping).
+   *             If it (seemingly) contains `desc`, then we return
+   *             with `CycleDetected`. Otherwise we add `desc` to the
+   *             set for further helping. (If `desc.instRo` is `true`,
+   *             `desc` is excluded from this cycle detection, because
+   *             it is certainly not part of a cycle.)
    */
-  private[this] final def MCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext): Long = {
+  private[this] final def MCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext, seen: Long): Long = {
 
     val instRo = desc.instRo
+    val newSeen = if (!instRo) {
+      BloomFilter64.insertIfAbsent(seen, desc.hashCode) match {
+        case 0L =>
+          // We (probably) detected a cycle, need to fall
+          // back to `instRo = true`. Bloom filter is
+          // probabilistic, so there is some chance that
+          // there is no actual cycle; but falling back
+          // doesn't affect correctness, only performance.
+          // (Actually, not falling back when needed _would_
+          // affect correctness.)
+          return EmcasStatus.CycleDetected // scalafix:ok
+        case bf =>
+          bf
+      }
+    } else {
+      seen
+    }
 
     @tailrec
     def tryWord[A](wordDesc: WordDescriptor[A]): Long = {
@@ -496,12 +528,12 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                   } else {
                     // we help the active op (who is not us),
                     // then continue with another iteration:
-                    if (helpMCASforMCAS(parent, ctx = ctx, instRo = instRo)) {
+                    if (helpMCASforMCAS(parent, ctx = ctx, seen = newSeen, instRo = instRo)) {
                       return EmcasStatus.CycleDetected // scalafix:ok
                     }
                   }
                 } else { // finalized op
-                  if (parentStatus == McasStatus.FailedVal) {
+                  if ((parentStatus == McasStatus.FailedVal) || (parentStatus == EmcasStatus.CycleDetected)) {
                     value = wd.cast[A].ov
                     version = wd.oldVersion
                   } else { // successful
@@ -526,10 +558,10 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                 if (parentStatus == McasStatus.Active) {
                   // Help the other op; note: we're not "helping" ourselves
                   // for sure, see the comment above.
-                  if (helpMCASforMCAS(parent, ctx = ctx, instRo = instRo)) {
+                  if (helpMCASforMCAS(parent, ctx = ctx, seen = newSeen, instRo = instRo)) {
                     return EmcasStatus.CycleDetected // scalafix:ok
                   } // else: we helped, but we still don't have the value, so the loop must retry
-                } else if (parentStatus == McasStatus.FailedVal) {
+                } else if ((parentStatus == McasStatus.FailedVal) || (parentStatus == EmcasStatus.CycleDetected)) {
                   value = wd.cast[A].ov
                   version = wd.oldVersion
                   go = false
@@ -662,7 +694,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // Already finalized descriptor, see above
         EmcasStatus.Break
       }
-    }
+    } // acquire
 
     @tailrec
     def validate(words: java.util.Iterator[WordDescriptor[_]]): Long = {
@@ -673,7 +705,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           if (word ne null) {
             if (word.readOnly) {
               // revalidate:
-              val currVer = this.readVersionInternal(word.address, ctx, forMCAS = true, instRo = false)
+              val currVer = this.readVersionInternal(word.address, ctx, forMCAS = true, seen = newSeen, instRo = false)
               if (currVer == word.oldVersion) {
                 // OK, continue:
                 validate(words)
@@ -698,7 +730,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // already finalized
         EmcasStatus.Break
       }
-    }
+    } // validate
 
     def getFinalResultFromHelper(): Long = {
       // see the long comment below
@@ -915,7 +947,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // TODO: valid (because we revalidate when we insert
       // TODO: new items, due to opacity).
       val fullDesc = new EmcasDescriptor(desc)
-      val res = MCAS(desc = fullDesc, ctx = ctx)
+      val res = MCAS(desc = fullDesc, ctx = ctx, seen = 0L)
       if (EmcasStatus.isSuccessful(res)) {
         // `Emcas` stores a version in the descriptor,
         // to signify success; however, here we return
@@ -928,7 +960,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // every WD, even the read-only ones):
         val fallback = fullDesc.fallback
         assert(fallback.instRo)
-        val fbRes = MCAS(fallback, ctx = ctx)
+        val fbRes = MCAS(fallback, ctx = ctx, seen = 0L)
         if (EmcasStatus.isSuccessful(fbRes)) {
           McasStatus.Successful
         } else {

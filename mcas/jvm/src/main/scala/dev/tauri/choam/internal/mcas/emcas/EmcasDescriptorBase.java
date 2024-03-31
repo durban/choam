@@ -101,7 +101,7 @@ abstract class EmcasDescriptorBase {
     // have the array in hand, have a chance to
     // realize they should stop. They're doing
     // unsynchronized reads, so it's not guaranteed
-    // that they'll see the `null`s, bu it's possible.
+    // that they'll see the `null`s, but it's possible.
     // (We might also help the GC with this?)
     for (int idx = 0; idx < len; idx++) {
       WORDS_ARR.setOpaque(words, idx, (WordDescriptor<?>) null);

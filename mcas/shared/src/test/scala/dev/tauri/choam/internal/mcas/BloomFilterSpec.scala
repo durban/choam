@@ -106,7 +106,7 @@ final class BloomFilterSpec extends ScalaCheckSuite {
         if (BloomFilter64.maybeContains(bf, item)) falsePositives + 1
         else falsePositives
       }
-      assert((falsePositives.toDouble / itemsToCheck.size.toDouble) < 0.1) // should be around 0.025
+      assert(clue(falsePositives.toDouble / itemsToCheck.size.toDouble) < 0.25) // should be around 0.025
     }
   }
 

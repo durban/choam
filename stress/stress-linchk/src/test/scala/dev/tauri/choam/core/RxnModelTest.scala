@@ -30,7 +30,7 @@ import RxnModelTest._
 
 final class RxnModelTest extends FunSuite with BaseLinchkSpec {
 
-  test("Model checking Rxn".tag(SLOW).fail) { // TODO: fails, because we don't have cycle detection
+  test("Model checking Rxn".tag(SLOW)) {
     val opts = defaultModelCheckingOptions()
     LinChecker.check(classOf[TestState], opts)
   }

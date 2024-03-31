@@ -36,7 +36,7 @@ trait StreamSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: McasImplSpec =>
 
-  test("UnboundedQueue to stream".ignore) { // TODO: cycle detection
+  test("UnboundedQueue to stream") {
     def check(q: UnboundedQueue[F, String]): F[Unit] = {
       for {
         _ <- assumeF(this.mcasImpl.isThreadSafe)
@@ -60,7 +60,7 @@ trait StreamSpec[F[_]]
     } yield ()
   }
 
-  test("BoundedQueue to stream".ignore) { // TODO: cycle detection
+  test("BoundedQueue to stream") {
     def check(q: BoundedQueue[F, Option[String]]): F[Unit] = {
       for {
         _ <- assumeF(this.mcasImpl.isThreadSafe)

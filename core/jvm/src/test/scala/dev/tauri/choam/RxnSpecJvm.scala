@@ -302,61 +302,37 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  private def runCatchSoe[A](a: Axn[A]): F[A] = {
-    F.delay {
-      try {
-        a.unsafeRun(this.mcasImpl)
-      } catch {
-        case _: StackOverflowError =>
-          throw new Exception("SOE")
+  test("read-write conflict cycle") {
+    val t = for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("x").run[F]
+      rxn1 = r1.getAndSet.provide("b") *> r2.get // [(r1, "a", "b"), (r2, "x", "x")]
+      rxn2 = r2.getAndSet.provide("y") *> r1.get // [(r1, "a", "a"), (r2, "x", "y")]
+      rss <- F.both(rxn1.run[F], rxn2.run[F])
+      (rs1, rs2) = rss
+      _ <- assertF(((rs1 === "x") && (rs2 === "b")) || ((rs1 === "y") && (rs2 === "a")))
+    } yield ()
+    t.replicateA_(100000)
+  }
+
+  test("indirect cycle") {
+    val t = for {
+      r0 <- Ref(0).run[F]
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("x").run[F]
+      rxn0 = r0.update(_ + 1) *> Rxn.fastRandom.nextBoolean.flatMapF {
+        case true => r1.get
+        case false => r2.get
       }
-    }
-  }
-
-  test("read-write conflict cycle".fail) { // TODO: fails with stackoverflow, because we don't have cycle detection
-    if (this.isEmcas) {
-      val t = for {
-        r1 <- Ref("a").run[F]
-        r2 <- Ref("x").run[F]
-        rxn1 = r1.getAndSet.provide("b") *> r2.get // [(r1, "a", "b"), (r2, "x", "x")]
-        rxn2 = r2.getAndSet.provide("y") *> r1.get // [(r1, "a", "a"), (r2, "x", "y")]
-        rss <- F.both(runCatchSoe(rxn1), runCatchSoe(rxn2))
-        (rs1, rs2) = rss
-        _ <- assertF(((rs1 === "x") && (rs2 === "b")) || ((rs1 === "y") && (rs2 === "a")))
-      } yield ()
-      t.replicateA_(100000)
-    } else {
-      // let's just fail because this is an expected failure for now
-      assert(false)
-    }
-  }
-
-  test("indirect cycle".fail) { // TODO: fails with stackoverflow, because we don't have cycle detection
-    if (this.isEmcas) {
-      val t = for {
-        r0 <- Ref(0).run[F]
-        r1 <- Ref("a").run[F]
-        r2 <- Ref("x").run[F]
-        rxn0 = r0.update(_ + 1) *> Rxn.fastRandom.nextBoolean.flatMapF {
-          case true => r1.get
-          case false => r2.get
-        }
-        rxn1 = r1.getAndSet.provide("b") *> r2.get // [(r1, "a", "b"), (r2, "x", "x")]
-        rxn2 = r2.getAndSet.provide("y") *> r1.get // [(r1, "a", "a"), (r2, "x", "y")]
-        rss <- F.both(
-          runCatchSoe(rxn0),
-          F.both(runCatchSoe(rxn1), runCatchSoe(rxn2))
-        )
-        (rs0, (rs1, rs2)) = rss
-        _ <- assertF((rs0 === "a") || (rs0 === "b") || (rs0 === "x") || (rs0 === "y"))
-        _ <- assertF((clue(rs1) === "x") || (rs1 === "y"))
-        _ <- assertF((rs2 === "a") || (rs2 === "b"))
-      } yield ()
-      t.replicateA_(100000)
-    } else {
-      // let's just fail because this is an expected failure for now
-      assert(false)
-    }
+      rxn1 = r1.getAndSet.provide("b") *> r2.get // [(r1, "a", "b"), (r2, "x", "x")]
+      rxn2 = r2.getAndSet.provide("y") *> r1.get // [(r1, "a", "a"), (r2, "x", "y")]
+      rss <- F.both(rxn0.run[F], F.both(rxn1.run[F], rxn2.run[F]))
+      (rs0, (rs1, rs2)) = rss
+      _ <- assertF((rs0 === "a") || (rs0 === "b") || (rs0 === "x") || (rs0 === "y"))
+      _ <- assertF((clue(rs1) === "x") || (rs1 === "y"))
+      _ <- assertF((rs2 === "a") || (rs2 === "b"))
+    } yield ()
+    t.replicateA_(100000)
   }
 
   test("read-only `Rxn`s") {

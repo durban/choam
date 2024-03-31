@@ -20,10 +20,21 @@ package internal
 package mcas
 package emcas
 
+import java.util.concurrent.ThreadLocalRandom
+
 private[mcas] final class EmcasDescriptor private[this] (
   half: Descriptor,
   wordsToCopy: Array[WordDescriptor[_]],
 ) extends EmcasDescriptorBase { self =>
+
+  /**
+   * We want an identity `hashCode`, but it's probably
+   * better to avoid `System.identityHashCode`, because
+   * it typically does a CAS (the first time it's called
+   * on an object).
+   */
+  final override val hashCode: Int =
+    ThreadLocalRandom.current().nextInt()
 
   private[emcas] final val instRo: Boolean =
     (wordsToCopy ne null)
