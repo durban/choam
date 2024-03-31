@@ -153,8 +153,11 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * (https://web.archive.org/web/20220302005715/https://www.researchgate.net/profile/Zoran-Budimlic/publication/221257687_Commit_phase_in_timestamp-based_stm/links/004635254086f87ab9000000/Commit-phase-in-timestamp-based-stm.pdf).
    * We allow ops to *share* a commit-ts (if they do not conflict).
    * Our implementation is a lock-free version of algorithm "V1" from
-   * the paper. The proof of correctness in the paper needs some
-   * changes for our system:
+   * the paper.
+   *
+   * TODO: Consider using V4 (instead of V1) from the paper.
+   *
+   * The proof of correctness in the paper needs some changes for our system:
    * - The proof of "Lemma 1" considers three possible scenarios:
    *   - The first one is not possible for us not due to read-locking,
    *     but because at t₂ the validation performed by T₁ would help
@@ -469,6 +472,14 @@ private[mcas] final class Emcas extends GlobalContext { global =>
 
     val instRo = desc.instRo
     val newSeen = if (!instRo) {
+      // Cycle detection: we need this, to preserve
+      // lock-freedom. Because if we have 2 EMCAS like
+      // this: [(r1, "a", "b"), (r2, "x", "x")]
+      // and [(r1, "a", "a"), (r2, "x", "y")],
+      // then both can ACQUIRE, and then when
+      // revalidating, both would try to help
+      // recursively themselves. That's an
+      // infinite loop (or rather a stack overflow).
       BloomFilter64.insertIfAbsent(seen, desc.hashCode) match {
         case 0L =>
           // We (probably) detected a cycle, need to fall
@@ -907,32 +918,6 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * installing 2 conflicting word descriptors into
    * one ref is not possible (the loser helps the
    * winner to finalize, then retries).
-   *
-   * TODO: Currently even read-only word descriptors
-   * TODO: are installed into the refs (so we can only
-   * TODO: have write-write conflicts). If this
-   * TODO: changes, they will need special handling
-   * TODO: for sharing version numbers. Probably
-   * TODO: an additional validation; see section 3.1
-   * TODO: in the "Commit phase" paper, about read-write
-   * TODO: conflicts. Probably V1 or V4 would be
-   * TODO: applicable here; to detect read-write
-   * TODO: conflicts, we would do a revalidation of
-   * TODO: (probably) only the read-only word
-   * TODO: descriptors after ACQUIRE.
-   * TODO: However: doing it this way, we'd lose
-   * TODO: lock-freedom. If we have 2 EMCAS like
-   * TODO: this: [(r1, "a", "b"), (r2, "x", "x")]
-   * TODO: and [(r1, "a", "a"), (r2, "x", "y")],
-   * TODO: then both can ACQUIRE, and then when
-   * TODO: revalidating, both would try to help
-   * TODO: recursively themselves. That's an
-   * TODO: infinite loop (or probably a stack
-   * TODO: overflow). If we can detect this, then
-   * TODO: we could just retry without the read-only
-   * TODO: optimization (i.e., acquiring even read
-   * TODO: only words). But detecting it would probably
-   * TODO: need a full-blown cycle detection...
    */
   private[this] final def retrieveFreshTs(): Long = {
     val ts1 = global.getCommitTs()
