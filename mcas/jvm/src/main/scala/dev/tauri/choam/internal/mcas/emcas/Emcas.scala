@@ -742,9 +742,13 @@ private[mcas] final class Emcas extends GlobalContext { global =>
 
     def getFinalResultFromHelper(): Long = {
       // see the long comment below
-      val wit = desc.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
-      assert(wit != McasStatus.Active)
-      wit
+      val witness = desc.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
+      assert(
+        Version.isValid(witness) ||
+        (witness == McasStatus.FailedVal) ||
+        (witness == EmcasStatus.CycleDetected)
+      )
+      witness
     }
 
     val r = acquire(desc.getWordDescArrOrNull())
@@ -796,7 +800,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // status as the witness. Which is fine.)
       getFinalResultFromHelper()
     } else {
-      val realRes = if ((r == McasStatus.Successful) || (r == McasStatus.Active)) {
+      val r2 = if ((r == McasStatus.Successful) || (r == McasStatus.Active)) {
         val needsValidation = (r == McasStatus.Active)
         assert((!instRo) || (!needsValidation))
         if (!needsValidation) {
@@ -818,7 +822,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           )
           if (vr == EmcasStatus.Break) {
             // we're already finalized, see the long comment above
-            getFinalResultFromHelper() // TODO: below we'll still try to CAS this into the descriptor
+            EmcasStatus.Break
           } else if (vr == McasStatus.Successful) {
             // validation succeeded; we'll need a new
             // commit-ts, which we will
@@ -834,14 +838,31 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       } else {
         r
       }
-      val witness: Long = desc.cmpxchgStatus(McasStatus.Active, realRes)
-      if (witness == McasStatus.Active) {
-        // we finalized the descriptor
-        desc.wasFinalized(realRes)
-        realRes
+
+      if (r2 == EmcasStatus.Break) {
+        // we're already finalized, see the long comment above
+        getFinalResultFromHelper()
       } else {
-        // someone else already finalized the descriptor, we return its status:
-        witness
+        val finalRes = r2
+        assert(
+          Version.isValid(finalRes) ||
+          (finalRes == McasStatus.FailedVal) ||
+          (finalRes == EmcasStatus.CycleDetected)
+        )
+        val witness: Long = desc.cmpxchgStatus(McasStatus.Active, finalRes)
+        if (witness == McasStatus.Active) {
+          // we finalized the descriptor
+          desc.wasFinalized(finalRes)
+          finalRes
+        } else {
+          // someone else already finalized the descriptor, we return its status:
+          assert(
+            Version.isValid(witness) ||
+            (witness == McasStatus.FailedVal) ||
+            (witness == EmcasStatus.CycleDetected)
+          )
+          witness
+        }
       }
     }
   } // MCAS
