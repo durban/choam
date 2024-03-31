@@ -130,7 +130,7 @@ final class RefU1<A> extends RefIdOnly implements UnsealedRef<A>, MemoryLocation
   }
 
   @Override
-  public final long dummy(long v) {
+  public final long dummy(byte v) {
     return 42L;
   }
 }

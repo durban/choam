@@ -72,6 +72,6 @@ private final class RefArrayRef[A](
   final override def toString: String =
     refs.refArrayRefToString(array.idBase, this.logicalIdx)
 
-  private[choam] final override def dummy(v: Long): Long =
+  private[choam] final override def dummy(v: Byte): Long =
     v ^ id
 }

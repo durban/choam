@@ -62,7 +62,7 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
   final override def hashCode: Int =
     this.id.toInt
 
-  override def dummy(v: Long): Long =
+  final override def dummy(v: Byte): Long =
     self.dummyImpl1(v)
 }
 
@@ -106,6 +106,6 @@ private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
   final override def hashCode: Int =
     this.id.toInt
 
-  override def dummy(v: Long): Long =
+  override def dummy(v: Byte): Long =
     self.dummyImpl2(v)
 }

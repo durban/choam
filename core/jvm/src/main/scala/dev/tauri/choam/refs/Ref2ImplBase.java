@@ -31,5 +31,5 @@ interface Ref2ImplBase<A, B> {
   WeakReference<Object> unsafeGetMarkerVolatile1();
   boolean unsafeCasMarkerVolatile1(WeakReference<Object> ov, WeakReference<Object> nv);
   long id0();
-  long dummyImpl1(long v);
+  long dummyImpl1(byte v);
 }

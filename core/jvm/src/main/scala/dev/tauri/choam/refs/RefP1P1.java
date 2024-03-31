@@ -128,7 +128,7 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
   }
 
   @Override
-  public final long dummyImpl1(long v) {
+  public final long dummyImpl1(byte v) {
     return this.dummyImpl(v);
   }
 }

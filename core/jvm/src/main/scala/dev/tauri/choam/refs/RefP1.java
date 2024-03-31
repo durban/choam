@@ -132,7 +132,7 @@ final class RefP1<A>
   }
 
   @Override
-  public final long dummy(long v) {
+  public final long dummy(byte v) {
     return this.dummyImpl(v);
   }
 }

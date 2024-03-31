@@ -62,7 +62,7 @@ sealed trait Ref[A] extends RefLike[A] { this: MemoryLocation[A] =>
   private[choam] final def loc: MemoryLocation[A] =
     this
 
-  private[choam] def dummy(v: Long): Long
+  private[choam] def dummy(v: Byte): Long
 }
 
 private[refs] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] =>

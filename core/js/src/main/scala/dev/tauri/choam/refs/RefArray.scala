@@ -208,7 +208,7 @@ private object RefArray {
     private[this] final def logicalIdx: Int =
       this.physicalIdx / 4 // truncated division is OK here
 
-    private[choam] final override def dummy(v: Long): Long =
+    private[choam] final override def dummy(v: Byte): Long =
       v ^ id
   }
 }

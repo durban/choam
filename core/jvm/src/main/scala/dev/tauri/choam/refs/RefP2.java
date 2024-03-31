@@ -193,12 +193,12 @@ final class RefP2<A, B>
   }
 
   @Override
-  public final long dummyImpl1(long v) {
+  public final long dummyImpl1(byte v) {
     return this.dummyImpl(v);
   }
 
   @Override
-  public final long dummyImpl2(long v) {
+  public final long dummyImpl2(byte v) {
     return 0L;
   }
 }
