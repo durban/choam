@@ -83,36 +83,46 @@ private[mcas] final class EmcasDescriptor private[this] (
     arr
   })
 
-  /** Can return `null` for finalized descriptors */
-  private[emcas] final def wordIterator(): java.util.Iterator[WordDescriptor[_]] = {
+  /** May return `null` for finalized descriptors */
+  private[emcas] final def getWordDescArrOrNull(): Array[WordDescriptor[_]] = {
     // This is a racy read, but if we get
     // null, the decriptor is finalized, so
-    // that's fine, we don't need to help anyway.
+    // that's fine, we don't need to continue anyway.
     // If we get non-null, we'll see the array
     // elements (unless later cleared), because
     // they were written originally in the
     // constructor, and we obtained the
     // `EmcasDescriptor` from a
     // `WordDescriptor` which we obtained
-    // with a volatile-read from a ref.
+    // with a volatile-read from a ref (or
+    // we created it originally).
+    this.getWordsO()
+  }
+
+  /** Only for testing! */
+  private[emcas] final def getWordIterator(): java.util.Iterator[WordDescriptor[_]] = {
     this.getWordsO() match {
       case null => null
-      case words => new EmcasDescriptor.Iterator(words) // TODO: try to use a no-alloc cursor
+      case words => new EmcasDescriptor.Iterator(words)
     }
   }
 
   private[emcas] final def wasFinalized(finalResult: Long): Unit = {
     if (finalResult == EmcasStatus.CycleDetected) {
       assert(!this.instRo)
-      // create fallback:
-      val fallback = new EmcasDescriptor(this.getWordsO())
-      this.getOrInitFallback(fallback)
-      // TODO: we can clear the old array now, we copied it
-      ()
-    } else {
-      // OK, we can clean up to help the GC:
-      this.cleanWordsForGc()
+      // create the fallback, we'll need it
+      // anyway, no reason to wait for lazy-init:
+      val fb = new EmcasDescriptor(this.getWordsO())
+      // but we have to store it carefully,
+      // someone else might've beat us:
+      this.getOrInitFallback(fb)
     }
+
+    // we can clean up to help the GC
+    // (even if we have to retry with
+    // the fallback, we already copied
+    // the array):
+    this.cleanWordsForGc()
   }
 
   @tailrec

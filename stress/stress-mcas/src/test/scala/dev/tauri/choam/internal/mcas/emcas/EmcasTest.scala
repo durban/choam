@@ -88,7 +88,7 @@ class EmcasTest {
 
   private[this] final def checkWd(d: WordDescriptor[_], r: LLLLL_Result): Unit = {
     val parent = d.parent
-    val it = parent.wordIterator()
+    val it = parent.getWordIterator()
     if (it eq null) {
       // descriptor already cleared
       r.r4 = parent.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)

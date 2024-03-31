@@ -651,11 +651,11 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       }
     } // tryWord
 
-    @tailrec
-    def acquire(words: java.util.Iterator[WordDescriptor[_]], needsValidation: Boolean): Long = {
-      if (words ne null) { // TODO: we only need this null check once, when we start iterating
-        if (words.hasNext) {
-          val word = words.next()
+    def acquire(words: Array[WordDescriptor[_]]): Long = {
+      @tailrec
+      def go(words: Array[WordDescriptor[_]], next: Int, len: Int, needsValidation: Boolean): Long = {
+        if (next < len) {
+          val word = words(next)
           if (word ne null) {
             if (instRo || (!word.readOnly)) {
               val twr = tryWord(word)
@@ -666,7 +666,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                 (twr == EmcasStatus.CycleDetected)
               )
               if (twr == McasStatus.Successful) {
-                acquire(words, needsValidation = needsValidation)
+                go(words, next = next + 1, len = len, needsValidation = needsValidation)
               } else {
                 twr
               }
@@ -674,7 +674,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
               // read-only WD, which we don't
               // need to install; continue, but
               // we'll need to revalidate later:
-              acquire(words, needsValidation = true)
+              go(words, next = next + 1, len = len, needsValidation = true)
             }
           } else {
             // Another thread already finalized the descriptor,
@@ -690,25 +690,28 @@ private[mcas] final class Emcas extends GlobalContext { global =>
             McasStatus.Successful
           }
         }
+      }
+
+      if (words ne null) {
+        go(words, next = 0, len = words.length, needsValidation = false)
       } else {
         // Already finalized descriptor, see above
         EmcasStatus.Break
       }
     } // acquire
 
-    @tailrec
-    def validate(words: java.util.Iterator[WordDescriptor[_]]): Long = {
-      assert(!instRo) // TODO: we only need this assert once, when we start iterating
-      if (words ne null) { // TODO: we only need this null check once, when we start iterating
-        if (words.hasNext) {
-          val word = words.next()
+    def validate(words: Array[WordDescriptor[_]]): Long = {
+      @tailrec
+      def go(words: Array[WordDescriptor[_]], next: Int, len: Int): Long = {
+        if (next < len) {
+          val word = words(next)
           if (word ne null) {
             if (word.readOnly) {
               // revalidate:
               val currVer = this.readVersionInternal(word.address, ctx, forMCAS = true, seen = newSeen, instRo = false)
               if (currVer == word.oldVersion) {
                 // OK, continue:
-                validate(words)
+                go(words, next = next + 1, len = len)
               } else if (currVer == EmcasStatus.CycleDetected) {
                 EmcasStatus.CycleDetected
               } else {
@@ -717,7 +720,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
               }
             } else {
               // this WD have been already installed by `acquire`
-              validate(words)
+              go(words, next = next + 1, len = len)
             }
           } else {
             // already finalized
@@ -726,6 +729,11 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         } else {
           McasStatus.Successful
         }
+      }
+
+      assert(!instRo)
+      if (words ne null) {
+        go(words, next = 0, len = words.length)
       } else {
         // already finalized
         EmcasStatus.Break
@@ -739,7 +747,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       wit
     }
 
-    val r = acquire(desc.wordIterator(), needsValidation = false)
+    val r = acquire(desc.getWordDescArrOrNull())
     assert(
       (r == McasStatus.Successful) ||
       (r == McasStatus.FailedVal) ||
@@ -801,7 +809,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           // descriptors (ACQUIRE), but still need to
           // validate our read-set (the read-only
           // descriptors, which were not installed):
-          val vr = validate(desc.wordIterator())
+          val vr = validate(desc.getWordDescArrOrNull())
           assert(
             (vr == McasStatus.Successful) ||
             (vr == McasStatus.FailedVal) ||

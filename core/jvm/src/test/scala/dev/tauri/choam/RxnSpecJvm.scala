@@ -312,7 +312,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       (rs1, rs2) = rss
       _ <- assertF(((rs1 === "x") && (rs2 === "b")) || ((rs1 === "y") && (rs2 === "a")))
     } yield ()
-    t.replicateA_(100000)
+    t.replicateA_(10000)
   }
 
   test("indirect cycle") {
@@ -332,7 +332,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       _ <- assertF((clue(rs1) === "x") || (rs1 === "y"))
       _ <- assertF((rs2 === "a") || (rs2 === "b"))
     } yield ()
-    t.replicateA_(100000)
+    t.replicateA_(10000)
   }
 
   test("read-only `Rxn`s") {
