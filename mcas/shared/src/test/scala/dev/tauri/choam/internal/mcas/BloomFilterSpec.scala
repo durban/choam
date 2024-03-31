@@ -75,8 +75,81 @@ final class BloomFilterSpec extends ScalaCheckSuite {
       }
       if (n != 0) {
         val falsePosRate = falsePositives.toDouble / n.toDouble
-        assert(falsePosRate < 1.0)
+        assert(falsePosRate < 1.0) // TODO: this is always true
       }
     }
+  }
+
+  property("BloomFilter64") {
+    val N = 8
+    val S = 10 * N
+    val genSet = Gen.containerOfN[Set, Int](
+      S,
+      Gen.choose(min = Int.MinValue, max = Int.MaxValue)
+    )
+    forAll(genSet) { (items: Set[Int]) =>
+      assertEquals(items.size, S)
+      val itemList = items.toList
+      val itemsToInsert = itemList.take(N)
+      val itemsToCheck = itemList.drop(N)
+      val bf = itemsToInsert.foldLeft(0L) { (bf, item) =>
+        BloomFilter64.insert(bf, item)
+      }
+      assert(itemsToInsert.forall(item => BloomFilter64.maybeContains(bf, item)))
+      val falsePositives = itemsToCheck.foldLeft(0) { (falsePositives, item) =>
+        val exp = if (BloomFilter64.definitelyAbsent(bf, item)) {
+          BloomFilter64.insert(bf, item)
+        } else {
+          0L
+        }
+        assertEquals(BloomFilter64.insertIfAbsent(bf, item), exp)
+        if (BloomFilter64.maybeContains(bf, item)) falsePositives + 1
+        else falsePositives
+      }
+      assert((falsePositives.toDouble / itemsToCheck.size.toDouble) < 0.1) // should be around 0.025
+    }
+  }
+
+  test("BloomFilter64 false positive rate".ignore) {
+    val K = 10000
+    val L = 1000
+    val N = 10
+
+    @tailrec
+    def getUniqueItem(shadow: Set[Int]): Int = {
+      val candidate = (new Object).hashCode()
+      // val candidate = ThreadLocalRandom.current().nextInt()
+      if (shadow.contains(candidate)) {
+        getUniqueItem(shadow) // hash collision, retry
+      } else {
+        candidate
+      }
+    }
+
+    val (popCnt, fps) = (1 to K).foldLeft((0, 0)) {
+      case ((popCnt, fps), _) =>
+        val (set, shadow) = (1 to N).foldLeft((0L, Set.empty[Int])) {
+          case ((bf, shadow), _) =>
+            val item = getUniqueItem(shadow)
+            val newBf = BloomFilter64.insert(bf, item)
+            val newShadow = shadow + item
+            (newBf, newShadow)
+        }
+        val fps2 = (1 to L).foldLeft(0) {
+          case (fps, _) =>
+            val item = getUniqueItem(shadow)
+            if (BloomFilter64.maybeContains(set, item)) {
+              // false positive
+              fps + 1
+            } else {
+              fps
+            }
+
+        }
+        (popCnt + java.lang.Long.bitCount(set), fps + fps2)
+    }
+    println(s"K = ${K}, L = ${L}, N = ${N}")
+    println(s"Avg. population cnt: ${popCnt.toDouble / K.toDouble}")
+    println(s"False positive rate: ${fps.toDouble / (K * L).toDouble}")
   }
 }
