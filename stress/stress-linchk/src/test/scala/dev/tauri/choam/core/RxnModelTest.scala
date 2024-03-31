@@ -21,7 +21,7 @@ package core
 import cats.syntax.all._
 
 import org.jetbrains.kotlinx.lincheck.LinChecker
-import org.jetbrains.kotlinx.lincheck.paramgen.StringGen
+import org.jetbrains.kotlinx.lincheck.paramgen.{ StringGen, BooleanGen }
 import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
 
 import munit.FunSuite
@@ -30,7 +30,7 @@ import RxnModelTest._
 
 final class RxnModelTest extends FunSuite with BaseLinchkSpec {
 
-  test("Model checking Rxn".tag(SLOW)) {
+  test("Model checking Rxn".tag(SLOW).fail) { // TODO: fails, because we don't have cycle detection
     val opts = defaultModelCheckingOptions()
     LinChecker.check(classOf[TestState], opts)
   }
@@ -39,6 +39,7 @@ final class RxnModelTest extends FunSuite with BaseLinchkSpec {
 object RxnModelTest {
 
   @Param(name = "s", gen = classOf[StringGen])
+  @Param(name = "b", gen = classOf[BooleanGen])
   class TestState {
 
     private[this] val emcas =
@@ -51,12 +52,22 @@ object RxnModelTest {
       Ref.unsafe("b")
 
     @Operation
-    def prepend(s: String): (String, String) = {
+    def writeOnly(s: String): (String, String) = {
       (r1.getAndUpdate(s + _), r2.getAndUpdate(s + _)).tupled.unsafeRun(emcas)
     }
 
     @Operation
-    def get(): (String, String) = {
+    def readWrite(s: String, b: Boolean): (String, String) = {
+      val r = if (b) {
+        r1.getAndSet.provide(s) * r2.get
+      } else {
+        r2.getAndSet.provide(s) * r1.get
+      }
+      r.unsafeRun(emcas)
+    }
+
+    @Operation
+    def readOnly(): (String, String) = {
       (r2.get, r1.get).tupled.unsafeRun(emcas)
     }
   }
