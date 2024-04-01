@@ -133,7 +133,6 @@ private[mcas] final class EmcasDescriptor private[this] (
     this.cleanWordsForGc()
   }
 
-  @tailrec
   private[emcas] final def fallback: EmcasDescriptor = {
     val fb = this.getFallbackA()
     if (fb eq null) {
@@ -141,23 +140,40 @@ private[mcas] final class EmcasDescriptor private[this] (
       assert(!this.instRo)
       this.getWordsO() match {
         case null =>
-          // retry, next time we'll succeed for sure
-          // (`wasFinalized` stored the fallback BEFORE
-          // it cleared the array):
-          this.fallback // TODO: do we really guaranted to SEE the fallback next time? (we're reading with acq)
+          // `wasFinalized` cleared the array, so it already
+          // stored the correct fallback; instead of spinning
+          // on `getFallbackA` (it's unclear if that counts
+          // as lock-free; in theory eventually we'll see the
+          // value) we have to do a surely failing CAS to
+          // immediately get the value; however, it's very
+          // likely that `getFallbackA` is enough (and it's
+          // probably much cheaper than a CAS), so we try it
+          // ONCE, then (if not enough) we do the CAS:
+          this.getFallbackFromHelper()
         case wds =>
           val candidate = new EmcasDescriptor(wds)
           if (candidate.getWordsP()(0) eq WordDescriptor.Invalid) {
-            // retry, next time we'll succeed for sure
-            // (`wasFinalized` stored the fallback BEFORE
-            // it cleared the array):
-            this.fallback // TODO: do we really guaranted to SEE the fallback next time? (we're reading with acq)
+            // `wasFinalized`, see above
+            this.getFallbackFromHelper()
           } else {
             this.getOrInitFallback(candidate)
           }
       }
     } else {
       fb
+    }
+  }
+
+  private[this] final def getFallbackFromHelper(): EmcasDescriptor = {
+    this.getFallbackA() match {
+      case null =>
+        // wasn't enough:
+        val fb2 = this.cmpxchgFallbackA(null, null)
+        assert(fb2 ne null)
+        fb2
+      case fb2 =>
+        // found it:
+        fb2
     }
   }
 

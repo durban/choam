@@ -77,6 +77,10 @@ abstract class EmcasDescriptorBase {
     return (EmcasDescriptor) FALLBACK.getAcquire(this);
   }
 
+  final EmcasDescriptor cmpxchgFallbackA(EmcasDescriptor ov, EmcasDescriptor nv) {
+    return (EmcasDescriptor) FALLBACK.compareAndExchangeAcquire(this, ov, nv);
+  }
+
   final EmcasDescriptor getOrInitFallback(EmcasDescriptor candidate) {
     EmcasDescriptor wit = (EmcasDescriptor) FALLBACK.compareAndExchangeRelease(this, (EmcasDescriptor) null, candidate);
     if (wit == null) {
