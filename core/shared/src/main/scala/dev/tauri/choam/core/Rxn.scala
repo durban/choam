@@ -1142,8 +1142,8 @@ object Rxn extends RxnInstances0 {
           c.exchanger.tryExchange(msg = msg, params = exParams, ctx = ctx) match {
             case Left(newStats) =>
               _stats = newStats
-              // TODO: we're never suspending with
-              // TODO: exchanger; should we?
+              // we're never suspending with exchanger, because
+              // the other side may not be allowed to suspend:
               loop(retry(canSuspend = false))
             case Right(contMsg) =>
               _stats = contMsg.exchangerData

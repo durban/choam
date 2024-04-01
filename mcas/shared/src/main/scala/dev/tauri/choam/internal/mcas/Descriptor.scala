@@ -232,15 +232,9 @@ final class Descriptor private (
       case that: Descriptor =>
         (this eq that) || (
           (this.readOnly == that.readOnly) &&
-          (this.versionCas == that.versionCas) && {
-            // TODO: we only compare `validTsBoxed` identity,
-            // TODO: if we already have a version-CAS
-            if (this.hasVersionCas) {
-              this.validTsBoxed eq that.validTsBoxed
-            } else {
-              this.validTs == that.validTs
-            }
-          } &&
+          (this.versionCas == that.versionCas) &&
+          (this.validTs == that.validTs) &&
+          (this.validTsBoxed eq that.validTsBoxed) &&
           (this.versionIncr == that.versionIncr) &&
           (this.map == that.map)
         )

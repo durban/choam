@@ -166,10 +166,6 @@ object Mcas extends McasCompanionPlatform { self =>
         // so nothing to do here
         McasStatus.Successful
       } else {
-        // TODO: Could we ignore read-only HWDs
-        // TODO: in the log? They're validated,
-        // TODO: and the version CAS _should_
-        // TODO: catch any concurrent changes(?)
         val finalDesc = this.addVersionCas(desc)
         val res = this.tryPerformInternal(finalDesc)
         assert((res == McasStatus.Successful) || (res == McasStatus.FailedVal) || Version.isValid(res))

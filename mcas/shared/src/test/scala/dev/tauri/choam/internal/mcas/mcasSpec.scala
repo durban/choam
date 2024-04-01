@@ -345,7 +345,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val ver = ctx.readVersion(r2)
     // the ongoing op should fail:
     val res = ctx.tryPerform(d4)
-    if (this.isEmcas) { // TODO
+    if (this.isEmcas) {
       assertEquals(res, McasStatus.FailedVal)
     } else {
       assertEquals(res, ver)
@@ -355,7 +355,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
   }
 
   test("singleCasDirect should work without changing the global commitTs") {
-    assume(!this.isEmcas) // TODO?
+    assume(!this.isEmcas)
     val ctx = mcasImpl.currentContext()
     val r1 = MemoryLocation.unsafe("a")
     val startTs = ctx.start().validTs
@@ -455,7 +455,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
       assertSameInstance(l2(1).address, r1)
     }
     val d3 = ctx.addVersionCas(d2)
-    val (expSize, offset) = if (this.isEmcas) { // TODO
+    val (expSize, offset) = if (this.isEmcas) {
       (2, 0)
     } else {
       (3, 1)
@@ -545,7 +545,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     assertSameInstance(ctx.readDirect(ref), "B")
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv(("X")))
     val res = ctx.tryPerform(d2)
-    if (this.isEmcas) { // TODO
+    if (this.isEmcas) {
       assertEquals(res, McasStatus.FailedVal)
     } else {
       assertEquals(res, ver)
