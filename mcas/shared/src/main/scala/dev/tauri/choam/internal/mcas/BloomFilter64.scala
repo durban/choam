@@ -71,6 +71,13 @@ private[mcas] object BloomFilter64 {
     (set & h) != h
   }
 
+  final def estimatedSize(set: Long): Int = {
+    import java.lang.Math.log
+    val x: Double = java.lang.Long.bitCount(set).toDouble
+    val estimate = -((64.0 / 4.0) * log(1.0 - (x / 64.0)))
+    estimate.toInt
+  }
+
   @inline
   private[this] final def hashItem(item: Int): Long = {
     val h = mix(item)

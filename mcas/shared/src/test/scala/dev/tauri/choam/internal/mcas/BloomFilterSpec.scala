@@ -103,6 +103,9 @@ final class BloomFilterSpec extends ScalaCheckSuite {
           0L
         }
         assertEquals(BloomFilter64.insertIfAbsent(bf, item), exp)
+        val estimatedSize = BloomFilter64.estimatedSize(bf)
+        val ratio = estimatedSize.toDouble / N.toDouble
+        assert((clue(ratio) >= 0.6) && (ratio <= 1.4))
         if (BloomFilter64.maybeContains(bf, item)) falsePositives + 1
         else falsePositives
       }

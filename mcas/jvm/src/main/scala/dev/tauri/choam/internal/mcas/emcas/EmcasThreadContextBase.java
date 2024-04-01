@@ -34,6 +34,7 @@ abstract class EmcasThreadContextBase {
   private static final VarHandle MAX_REUSE_EVER;
   private static final VarHandle MAX_RETRIES_EVER;
   private static final VarHandle MAX_COMMITTED_REFS_EVER;
+  private static final VarHandle MAX_BLOOM_FILTER_SIZE;
   private static final VarHandle STATISTICS;
 
   static {
@@ -46,6 +47,7 @@ abstract class EmcasThreadContextBase {
       MAX_REUSE_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxReuseEver", int.class));
       MAX_RETRIES_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxRetriesEver", long.class));
       MAX_COMMITTED_REFS_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxCommittedRefsEver", int.class));
+      MAX_BLOOM_FILTER_SIZE = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxBloomFilterSize", int.class));
       STATISTICS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_statistics", Map.class));
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
@@ -60,6 +62,7 @@ abstract class EmcasThreadContextBase {
   private int _maxReuseEver; // = 0
   private long _maxRetriesEver; // = 0L
   private int _maxCommittedRefsEver; // = 0
+  private int _maxBloomFilterSize; // = 0
   private Map<Object, Object> _statistics = Map$.MODULE$.empty();
 
   protected long getCommitsOpaque() {
@@ -86,6 +89,10 @@ abstract class EmcasThreadContextBase {
     return (int) MAX_COMMITTED_REFS_EVER.getOpaque(this);
   }
 
+  protected int getMaxBloomFilterSizeOpaque() {
+    return (int) MAX_BLOOM_FILTER_SIZE.getOpaque(this);
+  }
+
   protected void recordCommitOpaque(int retries, int committedRefs) {
     // Only one thread writes, so `+=`-like
     // increment is fine here. There is a
@@ -108,8 +115,11 @@ abstract class EmcasThreadContextBase {
     }
   }
 
-  protected void recordCycleDetectedO() {
+  protected void recordCycleDetectedO(int bloomFilterSize) {
     CYCLES_DETECTED.setOpaque(this, this._cyclesDetected + 1);
+    if (bloomFilterSize > this._maxBloomFilterSize) {
+      MAX_BLOOM_FILTER_SIZE.setOpaque(this, bloomFilterSize);
+    }
   }
 
   protected int getMaxReuseEverPlain() {

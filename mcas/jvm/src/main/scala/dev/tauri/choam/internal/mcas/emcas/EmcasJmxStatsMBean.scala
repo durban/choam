@@ -37,6 +37,7 @@ private sealed trait EmcasJmxStatsMBean {
   def getMaxTriesPerCommit(): Long
   def getAvgLogSize(): Double
   def getMaxLogSize(): Int
+  def getMaxBloomFilterSize(): Int
   def getThreadContextCount(): Int
   def getMaxReusedWeakRefs(): Int
 }
@@ -134,6 +135,10 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
 
   final override def getMaxLogSize(): Int = {
     this.getStats().maxCommittedRefs
+  }
+
+  final override def getMaxBloomFilterSize(): Int = {
+    this.getStats().maxBloomFilterSize
   }
 
   final override def getThreadContextCount(): Int = {

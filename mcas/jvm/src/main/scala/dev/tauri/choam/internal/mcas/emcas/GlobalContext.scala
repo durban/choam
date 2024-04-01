@@ -98,6 +98,9 @@ private[mcas] abstract class GlobalContext
         if (stats.maxCommittedRefs > b.maxCommittedRefs) {
           b.maxCommittedRefs = stats.maxCommittedRefs
         }
+        if (stats.maxBloomFilterSize > b.maxBloomFilterSize) {
+          b.maxBloomFilterSize = stats.maxBloomFilterSize
+        }
       } else {
         this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
       }
@@ -213,6 +216,7 @@ private object GlobalContext {
     var cyclesDetected: Long = 0
     var maxRetries: Long = 0L
     var maxCommittedRefs: Int = 0
+    var maxBloomFilterSize: Int = 0
 
     final def build(): Mcas.RetryStats = {
       Mcas.RetryStats(
@@ -222,6 +226,7 @@ private object GlobalContext {
         cyclesDetected = this.cyclesDetected,
         maxRetries = this.maxRetries,
         maxCommittedRefs = this.maxCommittedRefs,
+        maxBloomFilterSize = this.maxBloomFilterSize,
       )
     }
   }

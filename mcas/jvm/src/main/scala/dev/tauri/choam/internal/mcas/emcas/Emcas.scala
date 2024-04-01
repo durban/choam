@@ -482,7 +482,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // infinite loop (or rather a stack overflow).
       BloomFilter64.insertIfAbsent(seen, desc.hashCode) match {
         case 0L =>
-          ctx.recordCycleDetected()
+          ctx.recordCycleDetected(BloomFilter64.estimatedSize(seen))
           // We (probably) detected a cycle, need to fall
           // back to `instRo = true`. Bloom filter is
           // probabilistic, so there is some chance that
