@@ -961,6 +961,13 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // TODO: revalidate a descriptor which is/was already
       // TODO: valid (because we revalidate when we insert
       // TODO: new items, due to opacity).
+      //
+      // TODO: Can we avoid allocating WordDescriptors for
+      // TODO: read-only HWDs? The first time we try, we
+      // TODO: don't install them into the Refs, so we don't
+      // TODO: actually need real WDs. (Revalidation could
+      // TODO: work with HWDs, and by using the already existing
+      // TODO: HWDs, we could avoid some allocations.)
       val fullDesc = new EmcasDescriptor(desc)
       val res = MCAS(desc = fullDesc, ctx = ctx, seen = 0L)
       if (EmcasStatus.isSuccessful(res)) {
@@ -969,6 +976,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // a constant, to follow the `Mcas` API:
         McasStatus.Successful
       } else if (res == EmcasStatus.CycleDetected) {
+        assert(!fullDesc.instRo)
         // we detected a (possible) cycle, so
         // we'll fall back to the method which
         // is certainly lock free (always installing
