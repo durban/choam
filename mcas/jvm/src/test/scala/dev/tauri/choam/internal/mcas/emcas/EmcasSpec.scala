@@ -26,6 +26,8 @@ import java.util.concurrent.{ ConcurrentLinkedQueue, ConcurrentSkipListSet, Coun
 import scala.concurrent.duration._
 import scala.runtime.VolatileObjectRef
 
+import cats.syntax.all._
+
 import munit.{Location, TestOptions}
 
 // TODO: all tests in `choam-mcas` are executed with
@@ -626,8 +628,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("There should be no global version-CAS") {
-    val r1 = MemoryLocation.unsafe[String]("foo")
-    val r2 = MemoryLocation.unsafe[String]("bar")
+    val r1 = MemoryLocation.unsafeUnpadded[String]("foo")
+    val r2 = MemoryLocation.unsafeUnpadded[String]("bar")
     val ctx = Emcas.inst.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")
@@ -677,20 +679,45 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EmcasDescriptor#instRo") {
+    val ref = MemoryLocation.unsafeUnpadded[String]("foo")
     val ctx = Emcas.inst.currentContext()
-    val ed1 = new EmcasDescriptor(ctx.start())
+    val ed1 = new EmcasDescriptor(ctx.start().add(HalfWordDescriptor(ref, "foo", "bar", Version.Start)))
     assert(!ed1.instRo)
-    val ed2 = new EmcasDescriptor(ed1.getWordsO())
-    assert(ed2.instRo)
+    val arr = ed1.getWordsO()
+    assertSameInstance(arr(0).parent, ed1)
   }
 
   test("EmcasDescriptor#fallback") {
+    val ref = MemoryLocation.unsafeUnpadded[String]("foo")
     val ctx = Emcas.inst.currentContext()
-    val ed1 = new EmcasDescriptor(ctx.start())
+    val ed1 = new EmcasDescriptor(ctx.start().add(HalfWordDescriptor(ref, "foo", "bar", Version.Start)))
     assert(!ed1.instRo)
     assertEquals(ed1.cmpxchgStatus(McasStatus.Active, EmcasStatus.CycleDetected), McasStatus.Active)
+    assertSameInstance(ed1.getWordsO()(0).parent, ed1)
     ed1.wasFinalized(EmcasStatus.CycleDetected)
+    assertSameInstance(ed1.getWordsO(), null)
     val ed2 = ed1.fallback
+    assertSameInstance(ed2.getWordsO()(0).parent, ed2)
     assert(ed2.instRo)
+    assertSameInstance(ed1.fallback, ed2)
+    assert(Either.catchOnly[AssertionError](ed2.fallback).isLeft)
+    assert(ed1.getWordsO() ne ed2.getWordsO())
+  }
+
+  test("EmcasDescriptor#fallback call before wasFinalized call") {
+    val ref = MemoryLocation.unsafeUnpadded[String]("foo")
+    val ctx = Emcas.inst.currentContext()
+    val ed1 = new EmcasDescriptor(ctx.start().add(HalfWordDescriptor(ref, "foo", "bar", Version.Start)))
+    assert(!ed1.instRo)
+    assertEquals(ed1.cmpxchgStatus(McasStatus.Active, EmcasStatus.CycleDetected), McasStatus.Active)
+    val ed2 = ed1.fallback
+    assertSameInstance(ed1.getWordsO()(0).parent, ed1)
+    assertSameInstance(ed2.getWordsO()(0).parent, ed2)
+    ed1.wasFinalized(EmcasStatus.CycleDetected)
+    assertSameInstance(ed1.getWordsO(), null)
+    assert(ed2.instRo)
+    assertSameInstance(ed1.fallback, ed2)
+    assert(Either.catchOnly[AssertionError](ed2.fallback).isLeft)
+    assert(ed1.getWordsO() ne ed2.getWordsO())
   }
 }

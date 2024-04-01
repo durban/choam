@@ -42,7 +42,7 @@ private[mcas] final class EmcasDescriptor private[this] (
   private[emcas] def this(half: Descriptor) =
     this(half, null)
 
-  private[emcas] def this(wordsToCopy: Array[WordDescriptor[_]]) =
+  private def this(wordsToCopy: Array[WordDescriptor[_]]) =
     this(null, wordsToCopy)
 
   // EMCAS handles the global version
@@ -64,11 +64,14 @@ private[mcas] final class EmcasDescriptor private[this] (
    */
   this.setWordsO(if (half ne null) {
     assert(wordsToCopy eq null)
-    half.toWdArray(this).asInstanceOf[Array[WordDescriptor[_]]]
+    val arr = half.toWdArray(this).asInstanceOf[Array[WordDescriptor[_]]]
+    require(arr.length > 0)
+    arr
   } else {
     // we're a fallback
     assert(wordsToCopy ne null)
     val len = wordsToCopy.length
+    require(len > 0)
     val arr = new Array[WordDescriptor[_]](len)
     var idx = 0
     while (idx < len) {
@@ -130,12 +133,13 @@ private[mcas] final class EmcasDescriptor private[this] (
     val fb = this.getFallbackA()
     if (fb eq null) {
       assert(this.getStatus() == EmcasStatus.CycleDetected)
+      assert(!this.instRo)
       this.getWordsO() match {
         case null =>
           // retry, next time we'll succeed for sure
           // (`wasFinalized` stored the fallback BEFORE
           // it cleared the array):
-          this.fallback
+          this.fallback // TODO: do we really guaranted to SEE the fallback next time? (we're reading with acq)
         case wds =>
           val candidate = try {
             new EmcasDescriptor(wds)
@@ -147,7 +151,7 @@ private[mcas] final class EmcasDescriptor private[this] (
             // retry, next time we'll succeed for sure
             // (`wasFinalized` stored the fallback BEFORE
             // it cleared the array):
-            this.fallback
+            this.fallback // TODO: do we really guaranted to SEE the fallback next time? (we're reading with acq)
           } else {
             this.getOrInitFallback(candidate)
           }
