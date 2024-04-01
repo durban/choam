@@ -58,7 +58,7 @@ object CounterBench {
     val referenceCtr: ReferenceCounter = {
       val ctr = new ReferenceCounter
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
-      ctr.add(init)
+      ctr.add(init) : Unit
       ctr
     }
   }
@@ -68,7 +68,7 @@ object CounterBench {
     val lockedCtr: LockedCounter = {
       val ctr = new LockedCounter
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
-      ctr.add(init)
+      ctr.add(init) : Unit
       ctr
     }
   }

@@ -557,14 +557,17 @@ lazy val commonSettings = Seq[Setting[_]](
         "-opt-inline-from:<sources>",
         "-Wperformance",
         "-Xsource:3-cross",
-        // TODO: "-Wnonunit-statement",
+        "-Wnonunit-statement",
+        "-Wvalue-discard",
       )
     } else {
       // 3.x:
       List(
         "-source:3.3",
         "-Xverify-signatures",
-        "-Wconf:any:v",
+        // we disable warnings for `final object`, because Scala 2 doesn't always makes them final;
+        // and for "value discard", because Scala 3 does't allow silencing them with `: Unit`
+        "-Wconf:id=E147:s,id=E175:s,any:v",
         "-Wunused:all",
         // TODO: "-Ysafe-init", // https://github.com/lampepfl/dotty/issues/17997
         "-Ycheck-all-patmat",
@@ -580,7 +583,13 @@ lazy val commonSettings = Seq[Setting[_]](
   ),
   scalacOptions -= "-language:implicitConversions", // got it from sbt-typelevel, but don't want it
   scalacOptions -= "-language:_", // got it from sbt-typelevel, but don't want it
-  Test / scalacOptions -= "-Wperformance",
+  Test / scalacOptions --= Seq(
+    // we don't care about this in tests:
+    "-Wperformance",
+    // and these are to noisy in tests:
+    "-Wnonunit-statement",
+    "-Wvalue-discard",
+  ),
   // Somewhat counter-intuitively, to really run
   // tests sequentially, we need to set this to true:
   Test / parallelExecution := true,

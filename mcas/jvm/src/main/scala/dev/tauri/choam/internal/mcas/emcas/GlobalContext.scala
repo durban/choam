@@ -63,10 +63,10 @@ private[mcas] abstract class GlobalContext
         // slow path: need to create new ctx
         val tc = this.newThreadContext()
         threadContextKey.set(tc)
-        this._threadContexts.put(
+        assert(this._threadContexts.put(
           Thread.currentThread().getId(),
           new WeakReference(tc)
-        )
+        ).isEmpty) // only owner thread inserts, so ov must be missing
         this.maybeGcThreadContexts(tc.random) // we might also clear weakrefs
         tc
       case tc =>
@@ -98,8 +98,7 @@ private[mcas] abstract class GlobalContext
           b.maxCommittedRefs = stats.maxCommittedRefs
         }
       } else {
-        this._threadContexts.remove(tid, wr) // clean empty weakref
-        ()
+        this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
       }
     }
     b.build()
@@ -112,8 +111,7 @@ private[mcas] abstract class GlobalContext
       if (tc ne null) {
         mb += ((tid, tc.getStatisticsOpaque()))
       } else {
-        this._threadContexts.remove(tid, wr) // clean empty weakref
-        ()
+        this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
       }
     }
     mb.result()
@@ -131,8 +129,7 @@ private[mcas] abstract class GlobalContext
           max = n
         }
       } else {
-        this._threadContexts.remove(tid, wr) // clean empty weakref
-        ()
+        this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
       }
     }
     max
@@ -145,8 +142,7 @@ private[mcas] abstract class GlobalContext
     var exists = false
     this._threadContexts.foreach { (tid, wr) =>
       if (wr.get() eq null) {
-        this._threadContexts.remove(tid, wr) // clean empty weakref
-        ()
+        this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
       } else if (tid == threadId) {
         exists = true
       }
@@ -162,8 +158,7 @@ private[mcas] abstract class GlobalContext
     var count = 0
     this._threadContexts.foreach { (tid, wr) =>
       if (wr.get() eq null) {
-        this._threadContexts.remove(tid, wr) // clean empty weakref
-        ()
+        this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
       } else {
         count += 1
       }
@@ -201,8 +196,7 @@ private[mcas] abstract class GlobalContext
     val threadContexts = this._threadContexts
     threadContexts.foreach { (tid, wr) =>
       if (wr.get() eq null) {
-        threadContexts.remove(tid, wr)
-        ()
+        threadContexts.remove(tid, wr) : Unit
       }
     }
   }

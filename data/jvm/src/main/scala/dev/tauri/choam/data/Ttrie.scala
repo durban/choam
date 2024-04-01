@@ -161,8 +161,7 @@ private final class Ttrie[K, V] private (
     // ref, reference and univ. eq. are the same.
     // (We'd actually like `removeRefEq`, but that
     // one is private.)
-    m.remove(k, ref)
-    ()
+    m.remove(k, ref) : Unit
   }
 
   private[this] final def cleanupLater(key: K, ref: TrieRef[V]): Axn[Unit] = {

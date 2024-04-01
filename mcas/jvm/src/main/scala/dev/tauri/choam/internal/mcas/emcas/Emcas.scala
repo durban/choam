@@ -332,7 +332,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // replaced the desc with the final value, or
         // maybe started another operation; in either case,
         // there is nothing to do here.
-        ref.unsafeCasVolatile(ov.castToData, nv) // TODO: could be Release
+        ref.unsafeCasVolatile(ov.castToData, nv) : Unit // TODO: could be Release
         // Possibly also clean up the weakref:
         cleanWeakRef(ref, weakref)
       } else {
@@ -341,8 +341,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // descriptor (see the comment below)
       }
     } else if (currentInRef == currentVersion) {
-      // version is already correct, but we'll still replace the desc:
-      ref.unsafeCasVolatile(ov.castToData, nv) // TODO: could be Release
+      // version is already correct, but we'll still replace the desc;
+      // we don't care if this fails, see above:
+      ref.unsafeCasVolatile(ov.castToData, nv) : Unit // TODO: could be Release
       cleanWeakRef(ref, weakref)
     } // else:
     // either a concurrent write to a newer version, in which
@@ -360,7 +361,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // object, to help the GC. If this CAS fails,
       // that means a new op already installed a new
       // weakref; nothing to do here.
-      ref.unsafeCasMarkerVolatile(weakref, null) // TODO: could be Release
+      ref.unsafeCasMarkerVolatile(weakref, null) : Unit // TODO: could be Release
       ()
     }
   }
@@ -451,8 +452,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     // out of the way to do our thing (whoever
     // started te op which got into the cycle
     // WILL care, and will retry):
-    helpMCASforMCAS(desc, ctx, seen = 0L, instRo = true)
-    ()
+    helpMCASforMCAS(desc, ctx, seen = 0L, instRo = true) : Unit
   }
 
   /**
@@ -1003,7 +1003,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
             // CAS in progress, retry
           } else {
             // CAS finalized, but no cleanup yet, read and retry
-            readDirect(ref, ctx = ctx)
+            readDirect(ref, ctx = ctx) : Unit
           }
         case a =>
           // descriptor have been cleaned up:

@@ -219,12 +219,12 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
   }
 
   final override def addOne(elem: (K, V)): this.type = {
-    put(elem._1, elem._2)
+    put(elem._1, elem._2) : Unit
     this
   }
 
   final override def subtractOne(elem: K): this.type = {
-    del(elem)
+    del(elem) : Unit
     this
   }
 
@@ -377,8 +377,7 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
           if (z.isDeleted()) {
             // was deleted while we added indices,
             // need to clean up:
-            findPredecessor(key)
-            ()
+            findPredecessor(key) : Unit
           }
         } // else: we're done, and won't add indices
 
@@ -566,7 +565,7 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
             } else if (n.casValue(ncb, TOMB)) {
               // successfully logically deleted
               unlinkNode(b, n)
-              findPredecessor(key) // cleanup
+              findPredecessor(key) : Unit // cleanup
               tryReduceLevel()
               return true // scalafix:ok
             }

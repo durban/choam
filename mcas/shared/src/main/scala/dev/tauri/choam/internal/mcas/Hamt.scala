@@ -205,8 +205,8 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     this.getValueOrNodeOrNull(hash, shift) match {
       case null =>
         nullOf[A]
-      case node: Hamt[A, E, _, _, _, _] =>
-        node.lookupOrNull(hash, shift + W)
+      case node: Hamt[_, _, _, _, _, _] =>
+        node.lookupOrNull(hash, shift + W).asInstanceOf[A]
       case value =>
         val a = value.asInstanceOf[A]
         val hashA = hashOf(a)
@@ -245,11 +245,11 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
       if ((bitmap & flag) != 0L) {
         // we have an entry for this:
         contents(physIdx) match {
-          case node: Hamt[A, E, T1, _, _, H] =>
-            node.insertOrOverwrite(hash, value, shift + W, op) match {
+          case node: Hamt[_, _, _, _, _, _] =>
+            node.asInstanceOf[H].insertOrOverwrite(hash, value, shift + W, op) match {
               case null =>
                 nullOf[H]
-              case newNode: Hamt[A, E, T1, _, _, H] =>
+              case newNode =>
                 this.withNode(this.size + (newNode.size - node.size), bitmap, newNode, physIdx)
             }
           case ov =>
@@ -308,8 +308,8 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, T1, _, _, H] =>
-          arrIdx = node.copyIntoArray(arr, arrIdx, tok)
+        case node: Hamt[_, _, _, _, _, _] =>
+          arrIdx = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok)
         case a =>
           arr(arrIdx) = convertForArray(a.asInstanceOf[A], tok)
           arrIdx += 1
@@ -319,21 +319,21 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     arrIdx
   }
 
-  private final def insertIntoHamt(that: H): H = {
+  private final def insertIntoHamt(that: Hamt[_, _, _, _, _, _]): H = {
     val contents = this.contents
     var i = 0
     var curr = that
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, T1, _, _, H] =>
+        case node: Hamt[_, _, _, _, _, _] =>
           curr = node.insertIntoHamt(curr)
         case a =>
-          curr = curr.inserted(a.asInstanceOf[A])
+          curr = curr.asInstanceOf[H].inserted(a.asInstanceOf[A])
       }
       i += 1
     }
-    curr
+    curr.asInstanceOf[H]
   }
 
   private final def foldLeftInternal(z: S): S = {
@@ -343,8 +343,8 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, T1, T2, S, H] =>
-          curr = node.foldLeftInternal(curr)
+        case node: Hamt[_, _, _, _, _, _] =>
+          curr = node.asInstanceOf[H].foldLeftInternal(curr)
         case a =>
           curr = this.convertForFoldLeft(curr, a.asInstanceOf[A])
       }
@@ -359,8 +359,8 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, T1, T2, S, H] =>
-          if (!node.forAllInternal(tok)) {
+        case node: Hamt[_, _, _, _, _, _] =>
+          if (!node.asInstanceOf[H].forAllInternal(tok)) {
             return false // scalafix:ok
           }
         case a =>
@@ -389,7 +389,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
         var i = 0
         while (i < thisLen) {
           val iOk = thisContents(i) match {
-            case thisNode: Hamt[A, E, T1, T2, S, H] =>
+            case thisNode: Hamt[_, _, _, _, _, _] =>
               thatContents(i) match {
                 case thatNode: Hamt[_, _, _, _, _, _] =>
                   thisNode.equalsInternal(thatNode)
@@ -426,7 +426,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, T1, T2, S, H] =>
+        case node: Hamt[_, _, _, _, _, _] =>
           curr = node.hashCodeInternal(curr)
         case a =>
           curr = MurmurHash3.mix(curr, (hashOf(a.asInstanceOf[A]) >>> 32).toInt)
@@ -444,7 +444,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     var fst = first
     while (i < len) {
       contents(i) match {
-        case node: Hamt[A, E, T1, T2, S, H] =>
+        case node: Hamt[_, _, _, _, _, _] =>
           fst = node.toStringInternal(sb, fst)
         case a =>
           if (!fst) {
