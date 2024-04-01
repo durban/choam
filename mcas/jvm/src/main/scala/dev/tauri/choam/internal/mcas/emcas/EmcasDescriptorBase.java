@@ -61,6 +61,10 @@ abstract class EmcasDescriptorBase {
     return (long) STATUS.compareAndExchange(this, ov, nv);
   }
 
+  final WordDescriptor<?>[] getWordsP() {
+    return (WordDescriptor<?>[]) WORDS.get(this);
+  }
+
   final WordDescriptor<?>[] getWordsO() {
     return (WordDescriptor<?>[]) WORDS.getOpaque(this);
   }

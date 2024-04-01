@@ -81,3 +81,13 @@ private[mcas] final class WordDescriptor[A] private ( // TODO: rename to EmcasWo
   final override def toString: String =
     s"WordDescriptor(${this.address}, ${this.ov} -> ${this.nv}, oldVer = ${this.oldVersion})"
 }
+
+private object WordDescriptor {
+  private[emcas] val Invalid: WordDescriptor[_] = new WordDescriptor[AnyRef](
+    parent = null,
+    address = null,
+    ov = null,
+    nv = null,
+    oldVersion = Version.None,
+  )
+}

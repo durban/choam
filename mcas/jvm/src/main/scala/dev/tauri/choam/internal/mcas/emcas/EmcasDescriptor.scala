@@ -77,11 +77,15 @@ private[mcas] final class EmcasDescriptor private[this] (
     while (idx < len) {
       wordsToCopy(idx) match {
         case null =>
-          throw EmcasDescriptor.AlreadyFinalized
+          // the array is being cleared, we can't continue here;
+          // instead of throwing an exception, we do the ugly
+          // thing, and store a sentinel into the first array slot:
+          arr(0) = WordDescriptor.Invalid
+          idx = len // break while
         case wd =>
           arr(idx) = wd.withParent(this)
+          idx += 1
       }
-      idx += 1
     }
     arr
   })
@@ -116,6 +120,7 @@ private[mcas] final class EmcasDescriptor private[this] (
       // create the fallback, we'll need it
       // anyway, no reason to wait for lazy-init:
       val fb = new EmcasDescriptor(this.getWordsO())
+      assert(fb.getWordsP()(0) ne WordDescriptor.Invalid)
       // but we have to store it carefully,
       // someone else might've beat us:
       this.getOrInitFallback(fb)
@@ -141,13 +146,8 @@ private[mcas] final class EmcasDescriptor private[this] (
           // it cleared the array):
           this.fallback // TODO: do we really guaranted to SEE the fallback next time? (we're reading with acq)
         case wds =>
-          val candidate = try {
-            new EmcasDescriptor(wds)
-          } catch {
-            case ex if (ex eq EmcasDescriptor.AlreadyFinalized) =>
-              null
-          }
-          if (candidate eq null) {
+          val candidate = new EmcasDescriptor(wds)
+          if (candidate.getWordsP()(0) eq WordDescriptor.Invalid) {
             // retry, next time we'll succeed for sure
             // (`wasFinalized` stored the fallback BEFORE
             // it cleared the array):
@@ -170,13 +170,6 @@ private[mcas] final class EmcasDescriptor private[this] (
 }
 
 private object EmcasDescriptor {
-
-  private[this] final class AlreadyFinalizedException
-    extends Exception
-    with scala.util.control.NoStackTrace
-
-  private val AlreadyFinalized: Exception =
-    new AlreadyFinalizedException
 
   def prepare(half: Descriptor): EmcasDescriptor = {
     new EmcasDescriptor(half)
