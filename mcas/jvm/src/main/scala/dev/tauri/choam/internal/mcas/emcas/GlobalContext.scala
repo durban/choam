@@ -63,10 +63,10 @@ private[mcas] abstract class GlobalContext
         // slow path: need to create new ctx
         val tc = this.newThreadContext()
         threadContextKey.set(tc)
-        assert(this._threadContexts.put(
+        this._threadContexts.put(
           Thread.currentThread().getId(),
           new WeakReference(tc)
-        ).isEmpty) // only owner thread inserts, so ov must be missing
+        ) : Unit // don't care the old ctx, it's for a terminated thread (and the TID was reused)
         this.maybeGcThreadContexts(tc.random) // we might also clear weakrefs
         tc
       case tc =>
