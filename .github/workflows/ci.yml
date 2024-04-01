@@ -262,6 +262,10 @@ jobs:
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' checkScalafix
 
+      - if: ((matrix.os == 'macos-14') || ((matrix.os == 'ubuntu-latest') && (matrix.java == 'temurin@21'))) && ((contains(github.event.head_commit.message, 'full CI')) || (contains(github.event.head_commit.message, 'stressLinchk')))
+        shell: bash
+        run: sbt -v '++ ${{ matrix.scala }}' runLincheckTests
+
       - if: ((matrix.os == 'macos-14') || ((matrix.os == 'ubuntu-latest') && (matrix.java == 'temurin@21'))) && ((contains(github.event.head_commit.message, 'full CI')) || (contains(github.event.head_commit.message, 'stressMcas')))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' stressMcas/Jcstress/run

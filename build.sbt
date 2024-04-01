@@ -68,8 +68,8 @@ val fullCiCond: String =
 val quickCiCond: String =
   s"!(${fullCiCond})"
 
-/** Where to run JCStress tests (need more CPUs) */
-val jcstressCond: String =
+/** Where to run JCStress and Lincheck tests (need more CPUs) */
+val stressCond: String =
   s"(matrix.os == '${macos}') || ((matrix.os == '${linux}') && (matrix.java == '${jvmLatest.render}'))"
 
 ThisBuild / crossScalaVersions := Seq(scala2, scala3)
@@ -116,11 +116,17 @@ ThisBuild / githubWorkflowBuild := List(
   ),
   // Static analysis (doesn't work on Scala 3):
   WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
+) ++ List(
+  // Lincheck tests (they only run if commit msg contains 'full CI' or 'stressLinchk'):
+  WorkflowStep.Sbt(
+    List("runLincheckTests"),
+    cond = Some(s"(${stressCond}) && ((${fullCiCond}) || (${commitContains("stressLinchk")}))")
+  )
 ) ++ stressTestNames.map { projName =>
   // JCStress tests (they only run if commit msg contains 'full CI' or the project name):
   WorkflowStep.Sbt(
     List(mkStressTestCmd(projName)),
-    cond = Some(s"(${jcstressCond}) && ((${fullCiCond}) || (${commitContains(projName)}))")
+    cond = Some(s"(${stressCond}) && ((${fullCiCond}) || (${commitContains(projName)}))")
   ),
 } ++ List(
   WorkflowStep.Use(
@@ -128,7 +134,7 @@ ThisBuild / githubWorkflowBuild := List(
     name = Some("Upload JCStress results"),
     cond = {
       val commitMsgCond = s"${fullCiCond} || (${stressTestNames.map(commitContains).mkString("", " || ", "")})"
-      Some(s"(success() || failure()) && (${jcstressCond}) && (${commitMsgCond})")
+      Some(s"(success() || failure()) && (${stressCond}) && (${commitMsgCond})")
     },
     params = Map(
       "name" -> "jcstress-results-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}",
@@ -771,6 +777,7 @@ addCommandAlias("validate", ";staticAnalysis;test;stressTest")
 addCommandAlias("compatCheck", ";versionPolicyReportDependencyIssues;mimaReportBinaryIssues")
 addCommandAlias(ciCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;testOnly -- --exclude-tags=SLOW;compatCheck")
 addCommandAlias(ciFullCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;test;compatCheck")
+addCommandAlias("runLincheckTests", "stressLinchk/test")
 addCommandAlias("release", ";reload;+versionPolicyReportDependencyIssues;tlRelease")
 addCommandAlias("releaseHash", ";reload;tlRelease")
 
