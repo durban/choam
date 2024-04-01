@@ -82,8 +82,8 @@ class EmcasSpec extends BaseSpec {
     assert(v22 > v21)
     assert(Emcas.inst.spinUntilCleanup(r1) eq "a")
     assert(Emcas.inst.spinUntilCleanup(r2) eq "b")
-    assert(r1.unsafeGetVolatile() eq "a")
-    assert(r2.unsafeGetVolatile() eq "b")
+    assert(r1.unsafeGetV() eq "a")
+    assert(r2.unsafeGetV() eq "b")
     assertEquals(ctx.readVersion(r1), v12)
     assertEquals(ctx.readVersion(r2), v22)
 
@@ -98,8 +98,8 @@ class EmcasSpec extends BaseSpec {
     assert(Emcas.inst.spinUntilCleanup(r2) eq "b")
     assertEquals(ctx.readVersion(r1), v12)
     assertEquals(ctx.readVersion(r2), v22)
-    assert(r1.unsafeGetVolatile() eq "a")
-    assert(r2.unsafeGetVolatile() eq "b")
+    assert(r1.unsafeGetV() eq "a")
+    assert(r2.unsafeGetV() eq "b")
   }
 
   test("EMCAS should handle versions correctly on cleanup (after success)") {
@@ -185,7 +185,7 @@ class EmcasSpec extends BaseSpec {
     locally {
       val res = Emcas.inst.tryPerformDebug(desc = hDesc, ctx = ctx)
       // TODO: if *right now* the GC clears the mark, the assertion below will fail
-      mark = ref.unsafeGetMarkerVolatile().get()
+      mark = ref.unsafeGetMarkerV().get()
       assert(mark ne null)
       assertEquals(clue(res), McasStatus.Successful)
     }
@@ -193,7 +193,7 @@ class EmcasSpec extends BaseSpec {
     val latch2 = new CountDownLatch(1)
     var ok = false
     val t = new Thread(() => {
-      val mark = ref.unsafeGetMarkerVolatile().get()
+      val mark = ref.unsafeGetMarkerV().get()
       assert(mark ne null)
       latch1.countDown()
       latch2.await()
@@ -204,10 +204,10 @@ class EmcasSpec extends BaseSpec {
     latch1.await()
     mark = null
     System.gc()
-    assert(ref.unsafeGetMarkerVolatile().get() ne null)
+    assert(ref.unsafeGetMarkerV().get() ne null)
     latch2.countDown()
     t.join()
-    while (ref.unsafeGetMarkerVolatile().get() ne null) {
+    while (ref.unsafeGetMarkerV().get() ne null) {
       System.gc()
       Thread.sleep(1L)
     }
@@ -282,8 +282,8 @@ class EmcasSpec extends BaseSpec {
       val d0 = it.next().asInstanceOf[WordDescriptor[String]]
       val mark = new McasMarker
       assert(d0.address eq r1)
-      r1.unsafeSetVolatile(d0.castToData)
-      assert(r1.unsafeCasMarkerVolatile(null, new WeakReference(mark)))
+      r1.unsafeSetV(d0.castToData)
+      assert(r1.unsafeCasMarkerV(null, new WeakReference(mark)))
       weakMark = new WeakReference(mark)
       latch1.countDown()
       latch2.await()
@@ -324,8 +324,8 @@ class EmcasSpec extends BaseSpec {
     assert(ctx.readDirect(r2) eq "b")
     Emcas.inst.spinUntilCleanup(r1)
     Emcas.inst.spinUntilCleanup(r2)
-    assert(clue(r1.unsafeGetVolatile()) eq "a")
-    assert(clue(r2.unsafeGetVolatile()) eq "b")
+    assert(clue(r1.unsafeGetV()) eq "a")
+    assert(clue(r2.unsafeGetV()) eq "b")
     assert(weakMark.get() eq null)
   }
 
@@ -375,9 +375,9 @@ class EmcasSpec extends BaseSpec {
       val it = desc.getWordIterator()
       val d0 = it.next().asInstanceOf[WordDescriptor[String]]
       assert(d0.address eq r1)
-      assert(d0.address.unsafeCasVolatile(d0.ov, d0.castToData))
+      assert(d0.address.unsafeCasV(d0.ov, d0.castToData))
       val mark = new McasMarker
-      assert(d0.address.unsafeCasMarkerVolatile(null, new WeakReference(mark)))
+      assert(d0.address.unsafeCasMarkerV(null, new WeakReference(mark)))
       // and the thread pauses here, with an active CAS
       latch1.countDown()
       latch2.await()
@@ -405,7 +405,7 @@ class EmcasSpec extends BaseSpec {
       assertEquals(clue(Emcas.inst.spinUntilCleanup[String](r2)), "y")
       // but this one shouldn't be collected, as the other thread holds the mark of `d0`:
       assert(Emcas.inst.spinUntilCleanup(r1, max = 0x2000L) eq null)
-      assert(r1.unsafeGetMarkerVolatile().get() ne null)
+      assert(r1.unsafeGetMarkerV().get() ne null)
       ok = true
     })
     t2.start()
@@ -427,9 +427,9 @@ class EmcasSpec extends BaseSpec {
     val other = EmcasDescriptor.prepare(hOther)
     val d0 = other.getWordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
-    r1.unsafeSetVolatile(d0.castToData)
+    r1.unsafeSetV(d0.castToData)
     val mark = new McasMarker
-    assert(r1.unsafeCasMarkerVolatile(null, new WeakReference(mark)))
+    assert(r1.unsafeCasMarkerV(null, new WeakReference(mark)))
     val res = ctx.readDirect(r1)
     assertEquals(res, "x")
     assertEquals(ctx.readDirect(r1), "x")
@@ -447,9 +447,9 @@ class EmcasSpec extends BaseSpec {
     val other = EmcasDescriptor.prepare(hOther)
     val d0 = other.getWordIterator().next().asInstanceOf[WordDescriptor[String]]
     assert(d0.address eq r1)
-    r1.unsafeSetVolatile(d0.castToData)
+    r1.unsafeSetV(d0.castToData)
     val mark = new McasMarker
-    assert(r1.unsafeCasMarkerVolatile(null, new WeakReference(mark)))
+    assert(r1.unsafeCasMarkerV(null, new WeakReference(mark)))
     val res = ctx.readDirect(r1)
     assertEquals(res, "r1")
     assertEquals(ctx.readDirect(r1), "r1")
@@ -556,7 +556,7 @@ class EmcasSpec extends BaseSpec {
       val wd = ed.getWordIterator().next()
       assert(wd.toString().startsWith("WordDescriptor("))
       assert(ctx.tryPerformOk(d1))
-      (r1.unsafeGetVolatile() : Any) match {
+      (r1.unsafeGetV() : Any) match {
         case wd: WordDescriptor[_] =>
           assert(wd.toString().startsWith("WordDescriptor("))
         case x =>
@@ -612,7 +612,7 @@ class EmcasSpec extends BaseSpec {
     val ver = ctx.readVersion(ref)
     assert(Version.isValid(ver))
     assert(ver > Version.Start)
-    assertSameInstance(ref.unsafeGetVolatile(), "A")
+    assertSameInstance(ref.unsafeGetV(), "A")
     // T1 continues:
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv("C"))
     val result = ctx.tryPerform(d2)

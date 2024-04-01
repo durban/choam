@@ -27,7 +27,7 @@ final class Reset[A](a: A, refs: Ref[A]*) {
   def reset(): Unit = {
     var i = 0
     while(i < n) {
-      refs(i).loc.unsafeSetVolatile(a)
+      refs(i).loc.unsafeSetV(a)
       i += 1
     }
   }

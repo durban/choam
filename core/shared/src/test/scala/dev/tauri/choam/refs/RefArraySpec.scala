@@ -134,7 +134,7 @@ trait RefArraySpec extends BaseSpec {
     r.update { ov => assertEquals(ov, "bar"); "xyz" }.unsafePerform(null, Mcas.DefaultMcas)
     assertSameInstance(r.get.unsafePerform(null, Mcas.DefaultMcas), "xyz")
     if (isJvm()) {
-      assert(r.loc.unsafeGetMarkerVolatile() ne null)
+      assert(r.loc.unsafeGetMarkerV() ne null)
     }
     val r2 = arr.unsafeGet(size - 1)
     val res = Ref.consistentRead(r, r2).unsafePerform(null, Mcas.DefaultMcas)
@@ -187,19 +187,19 @@ trait RefArraySpec extends BaseSpec {
     val a = mkRefArray[String]("a")
     val r1 = a.unsafeGet(1).loc
     val r2 = a.unsafeGet(2).loc
-    assert(r1.unsafeGetVolatile() eq "a")
-    assert(r2.unsafeGetVolatile() eq "a")
-    r1.unsafeSetVolatile("b")
-    assert(r1.unsafeGetVolatile() eq "b")
-    assert(r2.unsafeGetVolatile() eq "a")
-    r2.unsafeSetVolatile("x")
-    assert(r1.unsafeGetVolatile() eq "b")
-    assert(r2.unsafeGetVolatile() eq "x")
-    assert(r1.unsafeCasVolatile("b", "c"))
-    assert(r1.unsafeGetVolatile() eq "c")
-    assert(r2.unsafeGetVolatile() eq "x")
-    assert(!r2.unsafeCasVolatile("-", "+"))
-    assert(r1.unsafeGetVolatile() eq "c")
-    assert(r2.unsafeGetVolatile() eq "x")
+    assert(r1.unsafeGetV() eq "a")
+    assert(r2.unsafeGetV() eq "a")
+    r1.unsafeSetV("b")
+    assert(r1.unsafeGetV() eq "b")
+    assert(r2.unsafeGetV() eq "a")
+    r2.unsafeSetV("x")
+    assert(r1.unsafeGetV() eq "b")
+    assert(r2.unsafeGetV() eq "x")
+    assert(r1.unsafeCasV("b", "c"))
+    assert(r1.unsafeGetV() eq "c")
+    assert(r2.unsafeGetV() eq "x")
+    assert(!r2.unsafeCasV("-", "+"))
+    assert(r1.unsafeGetV() eq "c")
+    assert(r2.unsafeGetV() eq "x")
   }
 }

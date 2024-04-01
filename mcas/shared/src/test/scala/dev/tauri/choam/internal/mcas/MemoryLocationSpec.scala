@@ -28,14 +28,14 @@ final class MemoryLocationSpec extends BaseSpec {
     )
   }
 
-  test("MemoryLocation#unsafeCmpxchgVersionVolatile") {
+  test("MemoryLocation#unsafeCmpxchgVersionV") {
     for (ref <- mkTestRefs()) {
-      val wit = ref.unsafeCmpxchgVersionVolatile(Version.Start, 42L)
+      val wit = ref.unsafeCmpxchgVersionV(Version.Start, 42L)
       assertEquals(wit, Version.Start)
-      assertEquals(ref.unsafeGetVersionVolatile(), 42L)
-      val wit2 = ref.unsafeCmpxchgVersionVolatile(0L, 99L)
+      assertEquals(ref.unsafeGetVersionV(), 42L)
+      val wit2 = ref.unsafeCmpxchgVersionV(0L, 99L)
       assertEquals(wit2, 42L)
-      assertEquals(ref.unsafeGetVersionVolatile(), 42L)
+      assertEquals(ref.unsafeGetVersionV(), 42L)
     }
   }
 

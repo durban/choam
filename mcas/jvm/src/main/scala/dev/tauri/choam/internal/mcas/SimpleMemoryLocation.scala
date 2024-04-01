@@ -46,33 +46,33 @@ private final class SimpleMemoryLocation[A](initial: A)(
     this.id.toInt
   }
 
-  final override def unsafeGetVolatile(): A =
+  final override def unsafeGetV(): A =
     this.get()
 
-  final override def unsafeGetPlain(): A =
+  final override def unsafeGetP(): A =
     this.getPlain()
 
-  final override def unsafeSetVolatile(nv: A): Unit =
+  final override def unsafeSetV(nv: A): Unit =
     this.set(nv)
 
-  final override def unsafeSetPlain(nv: A): Unit =
+  final override def unsafeSetP(nv: A): Unit =
     this.setPlain(nv)
 
-  final override def unsafeCasVolatile(ov: A, nv: A): Boolean =
+  final override def unsafeCasV(ov: A, nv: A): Boolean =
     this.compareAndSet(ov, nv)
 
-  final override def unsafeCmpxchgVolatile(ov: A, nv: A): A =
+  final override def unsafeCmpxchgV(ov: A, nv: A): A =
     this.compareAndExchange(ov, nv)
 
-  final override def unsafeGetVersionVolatile(): Long =
+  final override def unsafeGetVersionV(): Long =
     this.version.get()
 
-  final override def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long =
+  final override def unsafeCmpxchgVersionV(ov: Long, nv: Long): Long =
     this.version.compareAndExchange(ov, nv)
 
-  final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
+  final override def unsafeGetMarkerV(): WeakReference[AnyRef] =
     this.weakMarker.get()
 
-  final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
+  final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     this.weakMarker.compareAndSet(ov, nv)
 }

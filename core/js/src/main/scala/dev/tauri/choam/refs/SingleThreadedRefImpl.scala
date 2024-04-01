@@ -47,19 +47,19 @@ private final class SingleThreadedRefImpl[A](private[this] var value: A)(
   private[this] var version: Long =
     Version.Start
 
-  final override def unsafeGetVolatile(): A =
+  final override def unsafeGetV(): A =
     this.value
 
-  final override def unsafeGetPlain(): A =
+  final override def unsafeGetP(): A =
     this.value
 
-  final override def unsafeSetVolatile(nv: A): Unit =
+  final override def unsafeSetV(nv: A): Unit =
     this.value = nv
 
-  final override def unsafeSetPlain(nv: A): Unit =
+  final override def unsafeSetP(nv: A): Unit =
     this.value = nv
 
-  final override def unsafeCasVolatile(ov: A, nv: A): Boolean = {
+  final override def unsafeCasV(ov: A, nv: A): Boolean = {
     if (equ(this.value, ov)) {
       this.value = nv
       true
@@ -68,7 +68,7 @@ private final class SingleThreadedRefImpl[A](private[this] var value: A)(
     }
   }
 
-  final override def unsafeCmpxchgVolatile(ov: A, nv: A): A = {
+  final override def unsafeCmpxchgV(ov: A, nv: A): A = {
     val witness = this.value
     if (equ(witness, ov)) {
       this.value = nv
@@ -76,10 +76,10 @@ private final class SingleThreadedRefImpl[A](private[this] var value: A)(
     witness
   }
 
-  final override def unsafeGetVersionVolatile(): Long =
+  final override def unsafeGetVersionV(): Long =
     this.version
 
-  final override def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long = {
+  final override def unsafeCmpxchgVersionV(ov: Long, nv: Long): Long = {
     if (this.version == ov) {
       this.version = nv
       ov
@@ -90,9 +90,9 @@ private final class SingleThreadedRefImpl[A](private[this] var value: A)(
 
   // These are used only by EMCAS, which is JVM-only:
 
-  final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
+  final override def unsafeGetMarkerV(): WeakReference[AnyRef] =
     impossible("SingleThreadedRefImpl#unsafeGetMarkerVolatile called on JS")
 
-  final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
+  final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     impossible("SingleThreadedRefImpl#unsafeCasMarkerVolatile called on JS")
 }

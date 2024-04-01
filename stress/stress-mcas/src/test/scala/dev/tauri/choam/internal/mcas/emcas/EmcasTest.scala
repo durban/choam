@@ -70,7 +70,7 @@ class EmcasTest {
     @tailrec
     def go(): Unit = {
       // ref2 will be acquired first:
-      (this.ref2.unsafeGetVolatile() : Any) match {
+      (this.ref2.unsafeGetV() : Any) match {
         case s: String if s eq "x" =>
           go() // retry
         case d: WordDescriptor[_] =>

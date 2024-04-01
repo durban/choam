@@ -50,10 +50,10 @@ abstract class Ref1Spec extends BaseSpec {
 
   test("read/write/cas") {
     val r = mkRef1[String]("a").loc
-    assert(r.unsafeGetVolatile() eq "a")
-    r.unsafeSetVolatile("b")
-    assert(r.unsafeGetVolatile() eq "b")
-    assert(r.unsafeCasVolatile("b", "c"))
-    assert(r.unsafeGetVolatile() eq "c")
+    assert(r.unsafeGetV() eq "a")
+    r.unsafeSetV("b")
+    assert(r.unsafeGetV() eq "b")
+    assert(r.unsafeCasV("b", "c"))
+    assert(r.unsafeGetV() eq "c")
   }
 }

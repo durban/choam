@@ -230,11 +230,11 @@ private[mcas] final class Emcas extends GlobalContext { global =>
   private[this] final def readValue[A](ref: MemoryLocation[A], ctx: EmcasThreadContext, replace: Boolean): HalfWordDescriptor[A] = {
     @tailrec
     def go(mark: AnyRef, ver1: Long): HalfWordDescriptor[A] = {
-      ref.unsafeGetVolatile() match {
+      ref.unsafeGetV() match {
         case wd: WordDescriptor[_] =>
           if (mark eq null) {
             // not holding it yet
-            val weakref = ref.unsafeGetMarkerVolatile()
+            val weakref = ref.unsafeGetMarkerV()
             val m = if (weakref ne null) weakref.get() else null
             if (m ne null) {
               // we're holding it, re-read the descriptor:
@@ -281,7 +281,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
             }
           }
         case a =>
-          val ver2 = ref.unsafeGetVersionVolatile()
+          val ver2 = ref.unsafeGetVersionV()
           if (ver1 == ver2) {
             HalfWordDescriptor(ref, ov = a, nv = a, version = ver1)
           } else {
@@ -290,7 +290,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       }
     }
 
-    go(mark = null, ver1 = ref.unsafeGetVersionVolatile())
+    go(mark = null, ver1 = ref.unsafeGetVersionV())
   }
 
   private[this] final def maybeReplaceDescriptor[A](
@@ -322,9 +322,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     // we don't overwrite the newer version. (Versions
     // are always monotonically increasing.)
     assert(currentVersion >= ov.oldVersion)
-    val currentInRef = ref.unsafeGetVersionVolatile()
+    val currentInRef = ref.unsafeGetVersionV()
     if (currentInRef < currentVersion) {
-      val wit = ref.unsafeCmpxchgVersionVolatile(currentInRef, currentVersion)
+      val wit = ref.unsafeCmpxchgVersionV(currentInRef, currentVersion)
       if (wit == currentInRef) {
         // We've successfully updated the version.
         // Now we'll replace the descriptor with the final value.
@@ -332,7 +332,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // replaced the desc with the final value, or
         // maybe started another operation; in either case,
         // there is nothing to do here.
-        ref.unsafeCasVolatile(ov.castToData, nv) : Unit // TODO: could be Release
+        ref.unsafeCasV(ov.castToData, nv) : Unit // TODO: could be Release
         // Possibly also clean up the weakref:
         cleanWeakRef(ref, weakref)
       } else {
@@ -343,7 +343,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     } else if (currentInRef == currentVersion) {
       // version is already correct, but we'll still replace the desc;
       // we don't care if this fails, see above:
-      ref.unsafeCasVolatile(ov.castToData, nv) : Unit // TODO: could be Release
+      ref.unsafeCasV(ov.castToData, nv) : Unit // TODO: could be Release
       cleanWeakRef(ref, weakref)
     } // else:
     // either a concurrent write to a newer version, in which
@@ -361,7 +361,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // object, to help the GC. If this CAS fails,
       // that means a new op already installed a new
       // weakref; nothing to do here.
-      ref.unsafeCasMarkerVolatile(weakref, null) : Unit // TODO: could be Release
+      ref.unsafeCasMarkerV(weakref, null) : Unit // TODO: could be Release
       ()
     }
   }
@@ -390,8 +390,8 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     seen: Long,
     instRo: Boolean,
   ): Long = {
-    val ver1 = ref.unsafeGetVersionVolatile()
-    ref.unsafeGetVolatile() match {
+    val ver1 = ref.unsafeGetVersionV()
+    ref.unsafeGetV() match {
       case wd: WordDescriptor[_] =>
         // TODO: we may need to hold the marker here!
         val parent = wd.parent
@@ -416,7 +416,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           s
         }
       case _ => // value
-        val ver2 = ref.unsafeGetVersionVolatile()
+        val ver2 = ref.unsafeGetVersionV()
         if (ver1 == ver2) ver1
         else readVersionInternal(ref, ctx, forMCAS = forMCAS, seen = seen, instRo = instRo) // retry
     }
@@ -504,7 +504,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       var weakref: WeakReference[AnyRef] = null
       var mark: AnyRef = null
       val address = wordDesc.address
-      var version: Long = address.unsafeGetVersionVolatile()
+      var version: Long = address.unsafeGetVersionV()
       var go = true
       // Read `content`, and `value` if necessary;
       // this is a specialized and inlined version
@@ -515,12 +515,12 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // them would require allocating a tuple (like in
       // the paper).
       while (go) {
-        content = address.unsafeGetVolatile()
+        content = address.unsafeGetV()
         content match {
           case wd: WordDescriptor[_] =>
             if (mark eq null) {
               // not holding it yet
-              weakref = address.unsafeGetMarkerVolatile()
+              weakref = address.unsafeGetMarkerV()
               mark = if (weakref ne null) weakref.get() else null
               if (mark ne null) {
                 // continue with another iteration, and re-read the
@@ -585,11 +585,11 @@ private[mcas] final class Emcas extends GlobalContext { global =>
             }
           case a =>
             value = a
-            val version2 = address.unsafeGetVersionVolatile()
+            val version2 = address.unsafeGetVersionV()
             if (version == version2) {
               // ok, we have a version that belongs to `value`
               go = false
-              weakref = address.unsafeGetMarkerVolatile()
+              weakref = address.unsafeGetMarkerV()
               // we found a value (i.e., not a descriptor)
               if (weakref ne null) {
                 // in rare cases, `mark` could be non-null here
@@ -636,7 +636,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           mark = ctx.getReusableMarker()
           val weakref2 = ctx.getReusableWeakRef()
           assert(weakref2.get() eq mark)
-          address.unsafeCasMarkerVolatile(weakref, weakref2)
+          address.unsafeCasMarkerV(weakref, weakref2)
           // if this fails, we'll retry, see below
         } else {
           // we have a valid mark from reading
@@ -649,7 +649,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // then the following CAS will fail (not a problem), and
         // on our next retry, we may see a ref with a value *and*
         // a non-empty weakref (but this case is also handled, see above).
-        if (weakRefOk && address.unsafeCasVolatile(content, wordDesc.castToData)) {
+        if (weakRefOk && address.unsafeCasV(content, wordDesc.castToData)) {
           Reference.reachabilityFence(mark)
           McasStatus.Successful
         } else {
@@ -997,7 +997,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     val ctx = this.currentContextInternal()
     var ctr: Long = 0L
     while (ctr < max) {
-      ref.unsafeGetVolatile() match {
+      ref.unsafeGetV() match {
         case wd: WordDescriptor[_] =>
           if (wd.parent.getStatus() == McasStatus.Active) {
             // CAS in progress, retry

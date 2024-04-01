@@ -47,25 +47,25 @@ class FalseSharing {
   @Benchmark
   @Group("unpadded")
   def readUnpadded(s: Unpadded, bh: Blackhole): Unit = {
-    bh.consume(s.rr.unsafeGetVolatile())
+    bh.consume(s.rr.unsafeGetV())
   }
 
   @Benchmark
   @Group("unpadded")
   def writeUnpadded(s: Unpadded, r: RandomState): Unit = {
-    s.rw.unsafeSetVolatile(r.nextInt())
+    s.rw.unsafeSetV(r.nextInt())
   }
 
   @Benchmark
   @Group("padded")
   def readPadded(s: Padded, bh: Blackhole): Unit = {
-    bh.consume(s.rr.unsafeGetVolatile())
+    bh.consume(s.rr.unsafeGetV())
   }
 
   @Benchmark
   @Group("padded")
   def writePadded(s: Padded, r: RandomState): Unit = {
-    s.rw.unsafeSetVolatile(r.nextInt())
+    s.rw.unsafeSetV(r.nextInt())
   }
 }
 
@@ -84,7 +84,7 @@ object FalseSharing {
 
     @TearDown
     def checkResults(): Unit = {
-      rr.unsafeGetVolatile() match {
+      rr.unsafeGetV() match {
         case 42 => // OK
         case x => throw new IllegalStateException(s"unexpected value in rr: '${x}'")
       }

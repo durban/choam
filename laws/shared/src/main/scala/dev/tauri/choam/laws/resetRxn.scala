@@ -45,6 +45,6 @@ private final case class ResetRxn[-A, +B](
 
 private final case class ResetRef[A](ref: Ref[A], resetTo: A) {
   def unsafeReset(): Unit = {
-    ref.loc.unsafeSetVolatile(resetTo)
+    ref.loc.unsafeSetV(resetTo)
   }
 }

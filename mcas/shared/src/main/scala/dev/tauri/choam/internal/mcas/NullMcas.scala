@@ -58,7 +58,7 @@ object NullMcas extends Mcas.UnsealedMcas { self =>
 
     final override def readDirect[A](ref: MemoryLocation[A]): A = {
       if (ref eq globalVersion) {
-        val res = ref.unsafeGetVolatile()
+        val res = ref.unsafeGetV()
         assert(res.asInstanceOf[java.lang.Long].longValue() == Version.Start)
         res
       } else {

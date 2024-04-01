@@ -85,9 +85,9 @@ trait RefLikeSpecJvm[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     )
     refs.traverse { ref =>
       F.delay {
-        assertEquals(ref.unsafeGetVersionVolatile(), Version.Start)
-        assertEquals(ref.unsafeCmpxchgVersionVolatile(Version.Start, 42L), Version.Start)
-        assertEquals(ref.unsafeGetVersionVolatile(), 42L)
+        assertEquals(ref.unsafeGetVersionV(), Version.Start)
+        assertEquals(ref.unsafeCmpxchgVersionV(Version.Start, 42L), Version.Start)
+        assertEquals(ref.unsafeGetVersionV(), 42L)
       }
     }
   }

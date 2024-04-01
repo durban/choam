@@ -141,19 +141,19 @@ private object RefArray {
     final override def hashCode: Int =
       this.id.toInt
 
-    final override def unsafeGetVolatile(): A =
+    final override def unsafeGetV(): A =
       array.items(physicalIdx).asInstanceOf[A]
 
-    final override def unsafeGetPlain(): A =
+    final override def unsafeGetP(): A =
       array.items(physicalIdx).asInstanceOf[A]
 
-    final override def unsafeSetVolatile(nv: A): Unit =
+    final override def unsafeSetV(nv: A): Unit =
       array.items(physicalIdx) = nv.asInstanceOf[AnyRef]
 
-    final override def unsafeSetPlain(nv: A): Unit =
+    final override def unsafeSetP(nv: A): Unit =
       array.items(physicalIdx) = nv.asInstanceOf[AnyRef]
 
-    final override def unsafeCasVolatile(ov: A, nv: A): Boolean = {
+    final override def unsafeCasV(ov: A, nv: A): Boolean = {
       val wit = array.items(physicalIdx)
       if (wit eq ov.asInstanceOf[AnyRef]) {
         array.items(physicalIdx) = nv.asInstanceOf[AnyRef]
@@ -163,7 +163,7 @@ private object RefArray {
       }
     }
 
-    final override def unsafeCmpxchgVolatile(ov: A, nv: A): A = {
+    final override def unsafeCmpxchgV(ov: A, nv: A): A = {
       val wit = array.items(physicalIdx)
       if (wit eq ov.asInstanceOf[AnyRef]) {
         array.items(physicalIdx) = nv.asInstanceOf[AnyRef]
@@ -171,10 +171,10 @@ private object RefArray {
       wit.asInstanceOf[A]
     }
 
-    final override def unsafeGetVersionVolatile(): Long =
+    final override def unsafeGetVersionV(): Long =
       array.items(physicalIdx + 1).asInstanceOf[Long]
 
-    final override def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long = {
+    final override def unsafeCmpxchgVersionV(ov: Long, nv: Long): Long = {
       val idx = physicalIdx + 1
       val currentValue: Long = array.items(idx).asInstanceOf[Long]
       if (currentValue == ov) {
@@ -183,10 +183,10 @@ private object RefArray {
       currentValue
     }
 
-    final override def unsafeGetMarkerVolatile(): WeakReference[AnyRef] =
+    final override def unsafeGetMarkerV(): WeakReference[AnyRef] =
       array.items(physicalIdx + 2).asInstanceOf[WeakReference[AnyRef]]
 
-    final override def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean = {
+    final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean = {
       val markerIdx = physicalIdx + 2
       val wit = array.items(markerIdx)
       if (wit eq ov) {

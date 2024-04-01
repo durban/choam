@@ -40,7 +40,7 @@ class FailedCAS1Bench {
 
   @Benchmark
   def failedCAS1Reference(r: RefState, t: McasImplState): Unit = {
-    val succ = r.ref.unsafeCasVolatile(incorrectOv, t.nextString())
+    val succ = r.ref.unsafeCasV(incorrectOv, t.nextString())
     if (succ) throw new AssertionError("CAS should've failed")
   }
 }
@@ -71,9 +71,9 @@ class CAS1LoopBench {
     val ref = r.ref
     @tailrec
     def go(): Unit = {
-      val ov = ref.unsafeGetVolatile()
+      val ov = ref.unsafeGetV()
       val nv = (ov.toLong + t.nextLong()).toString
-      val succ = ref.unsafeCasVolatile(ov, nv)
+      val succ = ref.unsafeCasV(ov, nv)
       if (succ) ()
       else go()
     }

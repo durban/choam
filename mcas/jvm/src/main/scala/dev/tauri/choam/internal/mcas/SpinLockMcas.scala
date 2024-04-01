@@ -73,7 +73,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
 
     @tailrec
     private[this] final def readOne[A](ref: MemoryLocation[A]): A = {
-      val a = ref.unsafeGetVolatile()
+      val a = ref.unsafeGetV()
       if (isLocked(a)) {
         Thread.onSpinWait()
         readOne(ref) // retry
@@ -90,7 +90,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
       @tailrec
       def go(ver1: Long): HalfWordDescriptor[A] = {
         val a = readOne(ref)
-        val ver2 = ref.unsafeGetVersionVolatile()
+        val ver2 = ref.unsafeGetVersionV()
         if (ver1 == ver2) {
           HalfWordDescriptor[A](ref, ov = a, nv = a, version = ver1)
         } else {
@@ -98,14 +98,14 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
         }
       }
 
-      go(ref.unsafeGetVersionVolatile())
+      go(ref.unsafeGetVersionV())
     }
 
     protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long = {
       @tailrec
       def go(ver1: Long): Long = {
         val _ = readOne(ref)
-        val ver2 = ref.unsafeGetVersionVolatile()
+        val ver2 = ref.unsafeGetVersionV()
         if (ver1 == ver2) {
           ver1
         } else {
@@ -113,7 +113,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
         }
       }
 
-      go(ref.unsafeGetVersionVolatile())
+      go(ref.unsafeGetVersionV())
     }
 
     final override def start(): Descriptor =
@@ -136,10 +136,10 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
         case Nil => (Nil, None)
         case h :: tail => h match {
           case head: HalfWordDescriptor[a] =>
-            val witness: a = head.address.unsafeCmpxchgVolatile(head.ov, locked[a])
+            val witness: a = head.address.unsafeCmpxchgV(head.ov, locked[a])
             val isGlobalVerCas = (head.address eq commitTs)
             if (equ(witness, head.ov)) {
-              val witnessVer = head.address.unsafeGetVersionVolatile()
+              val witnessVer = head.address.unsafeGetVersionV()
               if (isGlobalVerCas || (witnessVer == head.version)) {
                 lock(tail)
               } else {
@@ -165,10 +165,10 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
       def commit(ops: List[HalfWordDescriptor[_]], newVersion: Long): Unit = ops match {
         case Nil => ()
         case h :: tail => h match { case head: HalfWordDescriptor[a] =>
-          val ov = head.address.unsafeGetVersionVolatile()
-          val wit = head.address.unsafeCmpxchgVersionVolatile(ov, newVersion)
+          val ov = head.address.unsafeGetVersionV()
+          val wit = head.address.unsafeCmpxchgVersionV(ov, newVersion)
           assert(wit == ov)
-          head.address.unsafeSetVolatile(head.nv)
+          head.address.unsafeSetV(head.nv)
           commit(tail, newVersion)
         }
       }
@@ -179,7 +179,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
           from match {
             case Nil => impossible("this is the end")
             case h :: tail => h match { case head: HalfWordDescriptor[a] =>
-              head.address.unsafeSetVolatile(head.ov)
+              head.address.unsafeSetV(head.ov)
               rollback(tail, to)
             }
           }

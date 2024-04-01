@@ -56,31 +56,39 @@ trait MemoryLocation[A] {
 
   // contents:
 
-  def unsafeGetVolatile(): A
+  /** volatile */
+  def unsafeGetV(): A
 
-  def unsafeGetPlain(): A
+  /** plain */
+  def unsafeGetP(): A
 
-  def unsafeSetVolatile(nv: A): Unit
+  /** volatile */
+  def unsafeSetV(nv: A): Unit
 
-  def unsafeSetPlain(nv: A): Unit
+  /** plain */
+  def unsafeSetP(nv: A): Unit
 
-  def unsafeCasVolatile(ov: A, nv: A): Boolean
+  /** volatile */
+  def unsafeCasV(ov: A, nv: A): Boolean
 
-  def unsafeCmpxchgVolatile(ov: A, nv: A): A
+  /** volatile */
+  def unsafeCmpxchgV(ov: A, nv: A): A
 
   // version:
 
-  def unsafeGetVersionVolatile(): Long
+  /** volatile */
+  def unsafeGetVersionV(): Long
 
-  def unsafeCmpxchgVersionVolatile(ov: Long, nv: Long): Long
+  /** volatile */
+  def unsafeCmpxchgVersionV(ov: Long, nv: Long): Long
 
   // marker:
 
-  /** Used by EMCAS */ // TODO: this is JVM-only
-  def unsafeGetMarkerVolatile(): WeakReference[AnyRef]
+  /** Used by EMCAS; volatile */ // TODO: this is JVM-only
+  def unsafeGetMarkerV(): WeakReference[AnyRef]
 
-  /** Used by EMCAS */ // TODO: this is JVM-only
-  def unsafeCasMarkerVolatile(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean
+  /** Used by EMCAS; volatile */ // TODO: this is JVM-only
+  def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean
 
   // ID:
 

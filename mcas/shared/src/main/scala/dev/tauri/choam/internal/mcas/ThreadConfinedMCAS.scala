@@ -32,16 +32,16 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
       self
 
     final override def readDirect[A](ref: MemoryLocation[A]): A = {
-      ref.unsafeGetPlain()
+      ref.unsafeGetP()
     }
 
     final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
-      val v = ref.unsafeGetPlain()
-      HalfWordDescriptor(ref, ov = v, nv = v, version = ref.unsafeGetVersionVolatile())
+      val v = ref.unsafeGetP()
+      HalfWordDescriptor(ref, ov = v, nv = v, version = ref.unsafeGetVersionV())
     }
 
     protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
-      ref.unsafeGetVersionVolatile()
+      ref.unsafeGetVersionV()
 
     final override def tryPerformInternal(desc: Descriptor): Long = {
       @tailrec
@@ -49,8 +49,8 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
         if (it.hasNext) {
           it.next() match {
             case wd: HalfWordDescriptor[a] =>
-              val witness = wd.address.unsafeGetPlain()
-              val witnessVer = wd.address.unsafeGetVersionVolatile()
+              val witness = wd.address.unsafeGetP()
+              val witnessVer = wd.address.unsafeGetVersionV()
               val isGlobalVerCas = (wd.address eq _commitTs)
               if ((equ[a](witness, wd.ov)) && (isGlobalVerCas || (witnessVer == wd.version))) {
                 prepare(it)
@@ -69,11 +69,11 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
         if (it.hasNext) {
           it.next() match {
             case wd: HalfWordDescriptor[a] =>
-              val old = wd.address.unsafeGetPlain()
+              val old = wd.address.unsafeGetP()
               assert(equ(old, wd.ov))
-              wd.address.unsafeSetPlain(wd.nv)
-              val ov = wd.address.unsafeGetVersionVolatile()
-              val wit = wd.address.unsafeCmpxchgVersionVolatile(ov, newVersion)
+              wd.address.unsafeSetP(wd.nv)
+              val ov = wd.address.unsafeGetVersionV()
+              val wit = wd.address.unsafeCmpxchgVersionV(ov, newVersion)
               assert(wit == ov)
               execute(it, newVersion)
           }
