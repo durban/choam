@@ -52,7 +52,7 @@ private final class SparseRefArray[A](
     if (existing ne null) {
       // `RefArrayRef` has only final fields,
       // so it's "safely initialized", so if
-      // we've read something here with `getOpaque`,
+      // we've read something here with `getO`,
       // then we also can see its fields:
       existing.asInstanceOf[Ref[A]]
     } else {

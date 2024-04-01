@@ -51,7 +51,7 @@ public abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
     return 0x80000000 >>> (Integer.numberOfLeadingZeros(x - 1) - 1);
   }
 
-  final long getAndAddCtrOpaque(long x) {
+  final long getAndAddCtrO(long x) {
     // VarHandle doesn't have opaque FAA,
     // so we just approximate it with this:
     return (long) CTR.getAndAddAcquire(this, x);

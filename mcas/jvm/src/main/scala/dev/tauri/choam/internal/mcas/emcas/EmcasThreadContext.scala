@@ -108,12 +108,12 @@ private final class EmcasThreadContext(
   private[this] final def createReusableMarker(): AnyRef = {
     val mark = new McasMarker
     this.markerWeakRef = new WeakReference(mark)
-    if (this.markerUsedCount > this.getMaxReuseEverPlain()) {
+    if (this.markerUsedCount > this.getMaxReuseEverP()) {
       // TODO: this is not exactly correct, because
       // TODO: even if we `getReusableWeakRef` from
       // TODO: this thread context, we do not necessarily
       // TODO: use it (the CAS to install it may fail)
-      this.setMaxReuseEverPlain(this.markerUsedCount)
+      this.setMaxReuseEverP(this.markerUsedCount)
     }
     this.markerUsedCount = 0
     mark // caller MUST hold a strong ref
@@ -151,7 +151,7 @@ private final class EmcasThreadContext(
     s"ThreadContext(impl = ${this.impl}, tid = ${this.tid})"
 
   private[choam] final override def recordCommit(retries: Int, committedRefs: Int): Unit = {
-    this.recordCommitOpaque(retries, committedRefs)
+    this.recordCommitO(retries, committedRefs)
   }
 
   private[emcas] final def recordCycleDetected(bloomFilterSize: Int): Unit = {
@@ -160,33 +160,33 @@ private final class EmcasThreadContext(
 
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     Mcas.RetryStats(
-      commits = this.getCommitsOpaque(),
-      retries = this.getRetriesOpaque(),
-      committedRefs = this.getCommittedRefsOpaque(),
-      cyclesDetected = this.getCyclesDetectedOpaque().toLong,
-      maxRetries = this.getMaxRetriesOpaque(),
-      maxCommittedRefs = this.getMaxCommittedRefsOpaque(),
-      maxBloomFilterSize = this.getMaxBloomFilterSizeOpaque(),
+      commits = this.getCommitsO(),
+      retries = this.getRetriesO(),
+      committedRefs = this.getCommittedRefsO(),
+      cyclesDetected = this.getCyclesDetectedO().toLong,
+      maxRetries = this.getMaxRetriesO(),
+      maxCommittedRefs = this.getMaxCommittedRefsO(),
+      maxBloomFilterSize = this.getMaxBloomFilterSizeO(),
     )
   }
 
   private[choam] final override def maxReusedWeakRefs(): Int = {
-    this.getMaxReuseEverOpaque()
+    this.getMaxReuseEverO()
   }
 
   private[choam] final override def supportsStatistics: Boolean = {
     true
   }
 
-  private[choam] final override def getStatisticsPlain(): Map[AnyRef, AnyRef] = {
-    this._getStatisticsPlain()
+  private[choam] final override def getStatisticsP(): Map[AnyRef, AnyRef] = {
+    this._getStatisticsP()
   }
 
-  private[choam] final override def getStatisticsOpaque(): Map[AnyRef, AnyRef] = {
-    this._getStatisticsOpaque()
+  private[choam] final override def getStatisticsO(): Map[AnyRef, AnyRef] = {
+    this._getStatisticsO()
   }
 
-  private[choam] final override def setStatisticsPlain(stats: Map[AnyRef, AnyRef]): Unit = {
-    this._setStatisticsPlain(stats)
+  private[choam] final override def setStatisticsP(stats: Map[AnyRef, AnyRef]): Unit = {
+    this._setStatisticsP(stats)
   }
 }

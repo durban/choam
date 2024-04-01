@@ -96,7 +96,7 @@ trait ExchangerStatsSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec
   }
 
   private[this] final def getStats(ctx: Mcas.ThreadContext): Option[SMap[AnyRef, AnyRef]] = {
-    if (ctx.supportsStatistics) Some(ctx.getStatisticsPlain())
+    if (ctx.supportsStatistics) Some(ctx.getStatisticsP())
     else None
   }
 

@@ -720,7 +720,7 @@ object Rxn extends RxnInstances0 {
     private[this] final def stats: ExStatMap = {
       val s = this._stats
       if (s eq null) {
-        val s2 = this.ctx.getStatisticsPlain().asInstanceOf[ExStatMap]
+        val s2 = this.ctx.getStatisticsP().asInstanceOf[ExStatMap]
         this._stats = s2
         s2
       } else {
@@ -733,7 +733,7 @@ object Rxn extends RxnInstances0 {
         case null =>
           ()
         case s =>
-          this.ctx.setStatisticsPlain(s.asInstanceOf[Map[AnyRef, AnyRef]])
+          this.ctx.setStatisticsP(s.asInstanceOf[Map[AnyRef, AnyRef]])
       }
     }
 

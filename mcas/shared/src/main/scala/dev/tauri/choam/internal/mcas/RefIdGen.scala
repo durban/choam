@@ -88,7 +88,7 @@ private[choam] final class GlobalRefIdGen private[mcas] () extends RefIdGenBase 
   private[GlobalRefIdGen] final def allocateThreadLocalBlock(size: Int): Long = {
     require(size > 0)
     val s = size.toLong
-    val n = this.getAndAddCtrOpaque(s)
+    val n = this.getAndAddCtrO(s)
     assert(n < (n + s)) // ID overflow
     n
   }
@@ -116,7 +116,7 @@ private[choam] final class GlobalRefIdGen private[mcas] () extends RefIdGenBase 
    * local context.
    */
   final def nextIdGlobal(): Long = {
-    val n = this.getAndAddCtrOpaque(1L)
+    val n = this.getAndAddCtrO(1L)
     assert(n < (n + 1L)) // ID overflow
     n * GAMMA
   }

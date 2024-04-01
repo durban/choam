@@ -26,7 +26,7 @@ abstract class RefIdGenBase {
   private[this] val ctr =
     new AtomicLong(Long.MinValue)
 
-  protected final def getAndAddCtrOpaque(x: Long): Long = {
+  protected final def getAndAddCtrO(x: Long): Long = {
     this.ctr.getAndAdd(x)
   }
 }

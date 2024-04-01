@@ -65,35 +65,35 @@ abstract class EmcasThreadContextBase {
   private int _maxBloomFilterSize; // = 0
   private Map<Object, Object> _statistics = Map$.MODULE$.empty();
 
-  protected long getCommitsOpaque() {
+  protected long getCommitsO() {
     return (long) COMMITS.getOpaque(this);
   }
 
-  protected long getRetriesOpaque() {
+  protected long getRetriesO() {
     return (long) RETRIES.getOpaque(this);
   }
 
-  protected long getCommittedRefsOpaque() {
+  protected long getCommittedRefsO() {
     return (long) COMMITTED_REFS.getOpaque(this);
   }
 
-  protected int getCyclesDetectedOpaque() {
+  protected int getCyclesDetectedO() {
     return (int) CYCLES_DETECTED.getOpaque(this);
   }
 
-  protected long getMaxRetriesOpaque() {
+  protected long getMaxRetriesO() {
     return (long) MAX_RETRIES_EVER.getOpaque(this);
   }
 
-  protected int getMaxCommittedRefsOpaque() {
+  protected int getMaxCommittedRefsO() {
     return (int) MAX_COMMITTED_REFS_EVER.getOpaque(this);
   }
 
-  protected int getMaxBloomFilterSizeOpaque() {
+  protected int getMaxBloomFilterSizeO() {
     return (int) MAX_BLOOM_FILTER_SIZE.getOpaque(this);
   }
 
-  protected void recordCommitOpaque(int retries, int committedRefs) {
+  protected void recordCommitO(int retries, int committedRefs) {
     // Only one thread writes, so `+=`-like
     // increment is fine here. There is a
     // race though: a reader can read values
@@ -122,28 +122,28 @@ abstract class EmcasThreadContextBase {
     }
   }
 
-  protected int getMaxReuseEverPlain() {
+  protected int getMaxReuseEverP() {
     return this._maxReuseEver;
   }
 
-  protected int getMaxReuseEverOpaque() {
+  protected int getMaxReuseEverO() {
     return (int) MAX_REUSE_EVER.getOpaque(this);
   }
 
-  protected void setMaxReuseEverPlain(int nv) {
+  protected void setMaxReuseEverP(int nv) {
     this._maxReuseEver = nv;
   }
 
   // TODO: this is a hack, should have a proper type
-  protected Map<Object, Object> _getStatisticsPlain() {
+  protected Map<Object, Object> _getStatisticsP() {
     return this._statistics;
   }
 
-  protected Map<Object, Object> _getStatisticsOpaque() {
+  protected Map<Object, Object> _getStatisticsO() {
     return (Map<Object, Object>) STATISTICS.getOpaque(this);
   }
 
-  protected void _setStatisticsPlain(Map<Object, Object> nv) {
+  protected void _setStatisticsP(Map<Object, Object> nv) {
     this._statistics = nv;
   }
 }

@@ -113,7 +113,7 @@ private[mcas] abstract class GlobalContext
     this._threadContexts.foreach { (tid, wr) =>
       val tc = wr.get()
       if (tc ne null) {
-        mb += ((tid, tc.getStatisticsOpaque()))
+        mb += ((tid, tc.getStatisticsO()))
       } else {
         this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
       }
