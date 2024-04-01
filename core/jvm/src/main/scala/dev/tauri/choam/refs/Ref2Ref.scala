@@ -27,34 +27,34 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
   with MemoryLocation[A] {
 
   override def unsafeGetV(): A =
-    self.unsafeGetVolatile1()
+    self.unsafeGet1V()
 
   override def unsafeGetP(): A =
-    self.unsafeGetPlain1()
+    self.unsafeGet1P()
 
   override def unsafeCasV(ov: A, nv: A): Boolean =
-    self.unsafeCasVolatile1(ov, nv)
+    self.unsafeCas1V(ov, nv)
 
   override def unsafeCmpxchgV(ov: A, nv: A): A =
-    self.unsafeCmpxchgVolatile1(ov, nv)
+    self.unsafeCmpxchg1V(ov, nv)
 
   override def unsafeSetV(a: A): Unit =
-    self.unsafeSetVolatile1(a)
+    self.unsafeSet1V(a)
 
   override def unsafeSetP(a: A): Unit =
-    self.unsafeSetPlain1(a)
+    self.unsafeSet1P(a)
 
   final override def unsafeGetVersionV(): Long =
-    self.unsafeGetVersionVolatile1()
+    self.unsafeGetVersion1V()
 
   final override def unsafeCmpxchgVersionV(ov: Long, nv: Long): Long =
-    self.unsafeCmpxchgVersionVolatile1(ov, nv)
+    self.unsafeCmpxchgVersion1V(ov, nv)
 
   final override def unsafeGetMarkerV(): WeakReference[AnyRef] =
-    self.unsafeGetMarkerVolatile1()
+    self.unsafeGetMarker1V()
 
   final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
-    self.unsafeCasMarkerVolatile1(ov, nv)
+    self.unsafeCasMarker1V(ov, nv)
 
   override def id: Long =
     self.id0
@@ -71,34 +71,34 @@ private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
   with MemoryLocation[B] {
 
   override def unsafeGetV(): B =
-    self.unsafeGetVolatile2()
+    self.unsafeGet2V()
 
   override def unsafeGetP(): B =
-    self.unsafeGetPlain2()
+    self.unsafeGet2P()
 
   override def unsafeCasV(ov: B, nv: B): Boolean =
-    self.unsafeCasVolatile2(ov, nv)
+    self.unsafeCas2V(ov, nv)
 
   override def unsafeCmpxchgV(ov: B, nv: B): B =
-    self.unsafeCmpxchgVolatile2(ov, nv)
+    self.unsafeCmpxchg2V(ov, nv)
 
   override def unsafeSetV(b: B): Unit =
-    self.unsafeSetVolatile2(b)
+    self.unsafeSet2V(b)
 
   override def unsafeSetP(b: B): Unit =
-    self.unsafeSetPlain2(b)
+    self.unsafeSet2P(b)
 
   final override def unsafeGetVersionV(): Long =
-    self.unsafeGetVersionVolatile2()
+    self.unsafeGetVersion2V()
 
   final override def unsafeCmpxchgVersionV(ov: Long, nv: Long): Long =
-    self.unsafeCmpxchgVersionVolatile2(ov, nv)
+    self.unsafeCmpxchgVersion2V(ov, nv)
 
   final override def unsafeGetMarkerV(): WeakReference[AnyRef] =
-    self.unsafeGetMarkerVolatile2()
+    self.unsafeGetMarker2V()
 
   final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
-    self.unsafeCasMarkerVolatile2(ov, nv)
+    self.unsafeCasMarker2V(ov, nv)
 
   override def id: Long =
     self.id1

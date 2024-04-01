@@ -69,20 +69,20 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * the JVM GC, we can be sure, that the corresponding descriptor
    * can be replaced.
    *
-   * Markers are manipulated with the `unsafeGetMarkerVolatile` and
-   * `unsafeCasMarkerVolatile` methods of `MemoryLocation`. The
+   * Markers are manipulated with the `unsafeGetMarkerV` and
+   * `unsafeCasMarkerV` methods of `MemoryLocation`. The
    * marker of a `MemoryLocation` can be in the following states:
    *
-   *   null - `unsafeGetMarkerVolatile` returns null, i.e.,
+   *   null - `unsafeGetMarkerV` returns null, i.e.,
    *   not even a `WeakReference` object exists.
    *
-   *   empty - `unsafeGetMarkerVolatile` returns an empty,
+   *   empty - `unsafeGetMarkerV` returns an empty,
    *   i.e., cleared `WeakReference` object.
    *
-   *   full - `unsafeGetMarkerVolatile` returns a full, i.e.,
+   *   full - `unsafeGetMarkerV` returns a full, i.e.,
    *   not cleared `WeakReference` object.
    *
-   * The other methods (e.g., `unsafeGetVolatile`) manipulate the "content"
+   * The other methods (e.g., `unsafeGetV`) manipulate the "content"
    * of the `MemoryLocation`. If the content is a "value", that can be
    * freely replaced (with a CAS) by a descriptor during an operation.
    * (But the new descriptor must have a mark.) The content can have the
@@ -176,7 +176,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * monotonically increasing.
    *
    * To support reading/writing of versions, a ref has the
-   * `unsafeGetVersionVolatile` and `unsafeCmpxchgVersionVolatile`
+   * `unsafeGetVersionV` and `unsafeCmpxchgVersionV`
    * methods. However, the version accessible by these is
    * only correct, if the ref currently stores a value (and not
    * a descriptor, see above). If it stores a descriptor, the

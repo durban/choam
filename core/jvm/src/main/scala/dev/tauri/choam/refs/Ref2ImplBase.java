@@ -20,16 +20,16 @@ package dev.tauri.choam.refs;
 import java.lang.ref.WeakReference;
 
 interface Ref2ImplBase<A, B> {
-  A unsafeGetVolatile1();
-  A unsafeGetPlain1();
-  boolean unsafeCasVolatile1(A ov, A nv);
-  A unsafeCmpxchgVolatile1(A ov, A nv);
-  void unsafeSetVolatile1(A nv);
-  void unsafeSetPlain1(A nv);
-  long unsafeGetVersionVolatile1();
-  long unsafeCmpxchgVersionVolatile1(long ov, long nv);
-  WeakReference<Object> unsafeGetMarkerVolatile1();
-  boolean unsafeCasMarkerVolatile1(WeakReference<Object> ov, WeakReference<Object> nv);
+  A unsafeGet1V();
+  A unsafeGet1P();
+  boolean unsafeCas1V(A ov, A nv);
+  A unsafeCmpxchg1V(A ov, A nv);
+  void unsafeSet1V(A nv);
+  void unsafeSet1P(A nv);
+  long unsafeGetVersion1V();
+  long unsafeCmpxchgVersion1V(long ov, long nv);
+  WeakReference<Object> unsafeGetMarker1V();
+  boolean unsafeCasMarker1V(WeakReference<Object> ov, WeakReference<Object> nv);
   long id0();
   long dummyImpl1(byte v);
 }

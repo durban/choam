@@ -86,8 +86,8 @@ private class SimpleMemoryLocation[A](private[this] var value: A)(
   // These are used only by EMCAS, which is JVM-only:
 
   final override def unsafeGetMarkerV(): WeakReference[AnyRef] =
-    impossible("SimpleMemoryLocation#unsafeGetMarkerVolatile called on JS")
+    impossible("SimpleMemoryLocation#unsafeGetMarkerV called on JS")
 
   final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
-    impossible("SimpleMemoryLocation#unsafeCasMarkerVolatile called on JS")
+    impossible("SimpleMemoryLocation#unsafeCasMarkerV called on JS")
 }

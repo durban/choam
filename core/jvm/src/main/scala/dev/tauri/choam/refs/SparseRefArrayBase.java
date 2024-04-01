@@ -45,10 +45,10 @@ abstract class SparseRefArrayBase<A> extends RefArrayBase<A> {
   }
 
   @Override
-  protected final long getVersionVolatile(int idx) {
+  protected final long getVersionV(int idx) {
     long[] vers = (long[]) VERSIONS.getAcquire(this);
     if (vers == null) {
-      // FIXME: in this case, we only had a `getAcquire`, so we're technically NOT `getVersionVolatile`
+      // FIXME: in this case, we only had a `getAcquire`, so we're technically NOT `getVersionV`
       return Version.Start;
     } else {
       return (long) VERSIONS_ARR.getVolatile(vers, idx);
@@ -56,7 +56,7 @@ abstract class SparseRefArrayBase<A> extends RefArrayBase<A> {
   }
 
   @Override
-  protected final long cmpxchgVersionVolatile(int idx, long ov, long nv) {
+  protected final long cmpxchgVersionV(int idx, long ov, long nv) {
     return (long) VERSIONS_ARR.compareAndExchange(this.getOrInitVersions(), idx, ov, nv);
   }
 

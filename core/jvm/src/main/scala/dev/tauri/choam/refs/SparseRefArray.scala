@@ -48,7 +48,7 @@ private final class SparseRefArray[A](
 
   private[this] final def getOrCreateRef(i: Int): Ref[A] = {
     val refIdx = 3 * i
-    val existing = this.getOpaque(refIdx)
+    val existing = this.getO(refIdx)
     if (existing ne null) {
       // `RefArrayRef` has only final fields,
       // so it's "safely initialized", so if
@@ -58,7 +58,7 @@ private final class SparseRefArray[A](
     } else {
       val nv = new RefArrayRef[A](this, i)
       // opaque is enough, see above:
-      this.cmpxchgOpaque(refIdx, null, nv) match {
+      this.cmpxchgO(refIdx, null, nv) match {
         case null => nv // we're the first
         case other => other.asInstanceOf[Ref[A]]
       }

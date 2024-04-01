@@ -91,8 +91,8 @@ private final class SingleThreadedRefImpl[A](private[this] var value: A)(
   // These are used only by EMCAS, which is JVM-only:
 
   final override def unsafeGetMarkerV(): WeakReference[AnyRef] =
-    impossible("SingleThreadedRefImpl#unsafeGetMarkerVolatile called on JS")
+    impossible("SingleThreadedRefImpl#unsafeGetMarkerV called on JS")
 
   final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
-    impossible("SingleThreadedRefImpl#unsafeCasMarkerVolatile called on JS")
+    impossible("SingleThreadedRefImpl#unsafeCasMarkerV called on JS")
 }

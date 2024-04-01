@@ -40,34 +40,34 @@ private final class RefArrayRef[A](
     (3 * this.logicalIdx) + 2
 
   final override def unsafeGetV(): A =
-    array.getVolatile(itemIdx).asInstanceOf[A]
+    array.getV(itemIdx).asInstanceOf[A]
 
   final override def unsafeGetP(): A =
-    array.getPlain(itemIdx).asInstanceOf[A]
+    array.getP(itemIdx).asInstanceOf[A]
 
   final override def unsafeSetV(nv: A): Unit =
-    array.setVolatile(itemIdx, nv)
+    array.setV(itemIdx, nv)
 
   final override def unsafeSetP(nv: A): Unit =
-    array.setPlain(itemIdx, nv)
+    array.setP(itemIdx, nv)
 
   final override def unsafeCasV(ov: A, nv: A): Boolean =
-    array.casVolatile(itemIdx, ov, nv)
+    array.casV(itemIdx, ov, nv)
 
   final override def unsafeCmpxchgV(ov: A, nv: A): A =
-    array.cmpxchgVolatile(itemIdx, ov, nv).asInstanceOf[A]
+    array.cmpxchgV(itemIdx, ov, nv).asInstanceOf[A]
 
   final override def unsafeGetVersionV(): Long =
-    array.getVersionVolatile(logicalIdx)
+    array.getVersionV(logicalIdx)
 
   final override def unsafeCmpxchgVersionV(ov: Long, nv: Long): Long =
-    array.cmpxchgVersionVolatile(logicalIdx, ov, nv)
+    array.cmpxchgVersionV(logicalIdx, ov, nv)
 
   final override def unsafeGetMarkerV(): WeakReference[AnyRef] =
-    array.getVolatile(markerIdx).asInstanceOf[WeakReference[AnyRef]]
+    array.getV(markerIdx).asInstanceOf[WeakReference[AnyRef]]
 
   final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
-    array.casVolatile(markerIdx, ov, nv)
+    array.casV(markerIdx, ov, nv)
 
   final override def toString: String =
     refs.refArrayRefToString(array.idBase, this.logicalIdx)

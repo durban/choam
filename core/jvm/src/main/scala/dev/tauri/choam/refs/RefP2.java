@@ -93,102 +93,102 @@ final class RefP2<A, B>
   }
 
   @Override
-  public final A unsafeGetVolatile1() {
+  public final A unsafeGet1V() {
     return this.valueA;
   }
 
   @Override
-  public final A unsafeGetPlain1() {
+  public final A unsafeGet1P() {
     return (A) VALUE_A.get(this);
   }
 
   @Override
-  public final void unsafeSetVolatile1(A a) {
+  public final void unsafeSet1V(A a) {
     this.valueA = a;
   }
 
   @Override
-  public final void unsafeSetPlain1(A a) {
+  public final void unsafeSet1P(A a) {
     VALUE_A.set(this, a);
   }
 
   @Override
-  public final boolean unsafeCasVolatile1(A ov, A nv) {
+  public final boolean unsafeCas1V(A ov, A nv) {
     return VALUE_A.compareAndSet(this, ov, nv);
   }
 
   @Override
-  public final A unsafeCmpxchgVolatile1(A ov, A nv) {
+  public final A unsafeCmpxchg1V(A ov, A nv) {
     return (A) VALUE_A.compareAndExchange(this, ov, nv);
   }
 
   @Override
-  public final long unsafeGetVersionVolatile1() {
+  public final long unsafeGetVersion1V() {
     return this.versionA;
   }
 
   @Override
-  public final long unsafeCmpxchgVersionVolatile1(long ov, long nv) {
+  public final long unsafeCmpxchgVersion1V(long ov, long nv) {
     return (long) VERSION_A.compareAndExchange(this, ov, nv);
   }
 
   @Override
-  public final WeakReference<Object> unsafeGetMarkerVolatile1() {
+  public final WeakReference<Object> unsafeGetMarker1V() {
     return this.markerA;
   }
 
   @Override
-  public final boolean unsafeCasMarkerVolatile1(WeakReference<Object> ov, WeakReference<Object> nv) {
+  public final boolean unsafeCasMarker1V(WeakReference<Object> ov, WeakReference<Object> nv) {
     return MARKER_A.compareAndSet(this, ov, nv);
   }
 
   @Override
-  public final B unsafeGetVolatile2() {
+  public final B unsafeGet2V() {
     return this.valueB;
   }
 
   @Override
-  public final B unsafeGetPlain2() {
+  public final B unsafeGet2P() {
     return (B) VALUE_B.get(this);
   }
 
   @Override
-  public final void unsafeSetVolatile2(B b) {
+  public final void unsafeSet2V(B b) {
     this.valueB = b;
   }
 
   @Override
-  public final void unsafeSetPlain2(B b) {
+  public final void unsafeSet2P(B b) {
     VALUE_B.set(this, b);
   }
 
   @Override
-  public final boolean unsafeCasVolatile2(B ov, B nv) {
+  public final boolean unsafeCas2V(B ov, B nv) {
     return VALUE_B.compareAndSet(this, ov, nv);
   }
 
   @Override
-  public final B unsafeCmpxchgVolatile2(B ov, B nv) {
+  public final B unsafeCmpxchg2V(B ov, B nv) {
     return (B) VALUE_B.compareAndExchange(this, ov, nv);
   }
 
   @Override
-  public final long unsafeGetVersionVolatile2() {
+  public final long unsafeGetVersion2V() {
     return this.versionB;
   }
 
   @Override
-  public final long unsafeCmpxchgVersionVolatile2(long ov, long nv) {
+  public final long unsafeCmpxchgVersion2V(long ov, long nv) {
     return (long) VERSION_B.compareAndExchange(this, ov, nv);
   }
 
   @Override
-  public final WeakReference<Object> unsafeGetMarkerVolatile2() {
+  public final WeakReference<Object> unsafeGetMarker2V() {
     return this.markerB;
   }
 
   @Override
-  public final boolean unsafeCasMarkerVolatile2(WeakReference<Object> ov, WeakReference<Object> nv) {
+  public final boolean unsafeCasMarker2V(WeakReference<Object> ov, WeakReference<Object> nv) {
     return MARKER_B.compareAndSet(this, ov, nv);
   }
 

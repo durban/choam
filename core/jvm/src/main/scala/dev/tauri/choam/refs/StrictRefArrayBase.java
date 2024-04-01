@@ -38,12 +38,12 @@ abstract class StrictRefArrayBase<A> extends RefArrayBase<A> {
   }
 
   @Override
-  protected final long getVersionVolatile(int idx) {
+  protected final long getVersionV(int idx) {
     return (long) VERSIONS_ARR.getVolatile(this.versions, idx);
   }
 
   @Override
-  protected final long cmpxchgVersionVolatile(int idx, long ov, long nv) {
+  protected final long cmpxchgVersionV(int idx, long ov, long nv) {
     return (long) VERSIONS_ARR.compareAndExchange(this.versions, idx, ov, nv);
   }
 }

@@ -44,7 +44,7 @@ private final class StrictRefArray[A](
       // `RefArrayRef`s were initialized into
       // a final field (`items`), and they
       // never change, so we can read with plain:
-      this.getPlain(refIdx).asInstanceOf[Ref[A]]
+      this.getP(refIdx).asInstanceOf[Ref[A]]
     } else {
       null
     }
