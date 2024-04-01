@@ -260,7 +260,7 @@ class BackoffSpec extends BaseSpec {
     }
 
     def slAtom: FiniteDuration = {
-      sleepAtom
+      BackoffPlatform.sleepAtomNanos.nanos
     }
   }
 

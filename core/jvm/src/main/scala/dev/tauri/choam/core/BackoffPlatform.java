@@ -33,6 +33,9 @@ abstract class BackoffPlatform {
   static final boolean randomizeCedeDefault = true;
   static final boolean randomizeSleepDefault = true;
 
+  /**
+   * We sleep whole multiples of this.
+   */
   static final long sleepAtomNanos =
     8000000L;
 

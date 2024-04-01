@@ -41,13 +41,7 @@ private abstract class Backoff2 extends BackoffPlatform {
   // on the following (rough) measurements:    estimate:             multiplier:
   // onSpinWait() is approx.  14..40ns   -->   30ns  =       30ns    1×PAUSE
   // IO.cede is approx.       0.2..1.5ms -->   0.3ms =   300000ns    10000×PAUSE
-  // IO.sleep(1ns) is approx. 15ms       -->   8ms  = 8000000ns      26.66×CEDE ≅ 25×CEDE
-
-  /**
-   * We sleep whole multiples of this.
-   */
-  protected[this] final val sleepAtom: FiniteDuration =
-    8000000L.nanos // 8ms
+  // IO.sleep(1ns) is approx. 15ms       -->   8ms   =  8000000ns    26.66×CEDE ≅ 25×CEDE
 
   final def backoffStrTok(
     retries: Int,
@@ -82,7 +76,7 @@ private abstract class Backoff2 extends BackoffPlatform {
         F.replicateA_(k, F.cede)
       }
     } else if (mark == BackoffPlatform.backoffSleepMark) {
-      F.sleep(k * sleepAtom)
+      F.sleep((k.toLong * BackoffPlatform.sleepAtomNanos).nanos)
     } else {
       throw new IllegalArgumentException(token.toString)
     }
@@ -133,7 +127,6 @@ private abstract class Backoff2 extends BackoffPlatform {
     } else if (maxCede == 0) {
       // we'll PAUSE (we're not allowed to cede)
       pause(maxPause, randomizePause)
-      // TODO: in this case, we could use a larger `maxPause`
     } else {
       val roo = (ro - pauseUntil) - 1
       val cedeUntil = log2floor(maxCede) // maxCede > 0 here
@@ -169,13 +162,11 @@ private abstract class Backoff2 extends BackoffPlatform {
     }
   }
 
-  @inline
   private[this] final def cede(n: Int, randomize: Boolean): Long = {
     val k = if (randomize) rnd(n) else n
     BackoffPlatform.backoffCedeMark | k.toLong
   }
 
-  @inline
   private[this] final def sleep(n: Int, randomize: Boolean): Long = {
     val k = if (randomize) rnd(n) else n
     BackoffPlatform.backoffSleepMark | k.toLong
