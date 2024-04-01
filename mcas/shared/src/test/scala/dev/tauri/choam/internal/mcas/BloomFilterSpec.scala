@@ -113,6 +113,14 @@ final class BloomFilterSpec extends ScalaCheckSuite {
     }
   }
 
+  test("BloomFilter64#estimatedSize") {
+    assertEquals(BloomFilter64.estimatedSize(0L), 0)
+    val bf1 = BloomFilter64.insert(0L, 42)
+    assertEquals(BloomFilter64.estimatedSize(bf1), 1)
+    val bf2 = BloomFilter64.insert(bf1, 0x57abf0cd)
+    assertEquals(BloomFilter64.estimatedSize(bf2), 2)
+  }
+
   test("BloomFilter64 false positive rate".ignore) {
     val K = 10000
     val L = 1000
