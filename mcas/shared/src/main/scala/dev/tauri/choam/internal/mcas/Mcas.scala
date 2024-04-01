@@ -34,7 +34,7 @@ sealed trait Mcas {
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     // implementations should override if
     // they collect statistics
-    Mcas.RetryStats(0L, 0L, 0L, 0L, 0L)
+    Mcas.RetryStats(0L, 0L, 0L, 0L, 0L, 0)
   }
 
   /** Only for testing/benchmarking */
@@ -322,10 +322,12 @@ object Mcas extends McasCompanionPlatform { self =>
     retries: Long,
     /** The sum of the number of `Ref`s the committed `Rxn`s touched */
     committedRefs: Long,
+    /** The number of times cycles were detected when helping */
+    cyclesDetected: Long,
     /** The highest number of retries one `Rxn` had to perform */
     maxRetries: Long,
     /** The size (touched `Ref`s) of the biggest `Rxn` that committed */
-    maxCommittedRefs: Long,
+    maxCommittedRefs: Int,
   )
 
   /** Only for testing */

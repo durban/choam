@@ -30,6 +30,7 @@ abstract class EmcasThreadContextBase {
   private static final VarHandle COMMITS;
   private static final VarHandle RETRIES;
   private static final VarHandle COMMITTED_REFS;
+  private static final VarHandle CYCLES_DETECTED;
   private static final VarHandle MAX_REUSE_EVER;
   private static final VarHandle MAX_RETRIES_EVER;
   private static final VarHandle MAX_COMMITTED_REFS_EVER;
@@ -41,9 +42,10 @@ abstract class EmcasThreadContextBase {
       COMMITS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_commits", long.class));
       RETRIES = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_retries", long.class));
       COMMITTED_REFS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_committedRefs", long.class));
+      CYCLES_DETECTED = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_cyclesDetected", int.class));
       MAX_REUSE_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxReuseEver", int.class));
       MAX_RETRIES_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxRetriesEver", long.class));
-      MAX_COMMITTED_REFS_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxCommittedRefsEver", long.class));
+      MAX_COMMITTED_REFS_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxCommittedRefsEver", int.class));
       STATISTICS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_statistics", Map.class));
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
@@ -54,9 +56,10 @@ abstract class EmcasThreadContextBase {
   private long _commits; // = 0L
   private long _retries; // = 0L
   private long _committedRefs; // = 0L
+  private int _cyclesDetected; // = 0
   private int _maxReuseEver; // = 0
   private long _maxRetriesEver; // = 0L
-  private long _maxCommittedRefsEver; // = 0L
+  private int _maxCommittedRefsEver; // = 0
   private Map<Object, Object> _statistics = Map$.MODULE$.empty();
 
   protected long getCommitsOpaque() {
@@ -71,12 +74,16 @@ abstract class EmcasThreadContextBase {
     return (long) COMMITTED_REFS.getOpaque(this);
   }
 
+  protected int getCyclesDetectedOpaque() {
+    return (int) CYCLES_DETECTED.getOpaque(this);
+  }
+
   protected long getMaxRetriesOpaque() {
     return (long) MAX_RETRIES_EVER.getOpaque(this);
   }
 
-  protected long getMaxCommittedRefsOpaque() {
-    return (long) MAX_COMMITTED_REFS_EVER.getOpaque(this);
+  protected int getMaxCommittedRefsOpaque() {
+    return (int) MAX_COMMITTED_REFS_EVER.getOpaque(this);
   }
 
   protected void recordCommitOpaque(int retries, int committedRefs) {
@@ -92,14 +99,17 @@ abstract class EmcasThreadContextBase {
     COMMITS.setOpaque(this, this._commits + 1L);
     long retr = (long) retries;
     RETRIES.setOpaque(this, this._retries + retr);
-    long cRefs = (long) committedRefs;
-    COMMITTED_REFS.setOpaque(this, this._committedRefs + cRefs);
+    COMMITTED_REFS.setOpaque(this, this._committedRefs + ((long) committedRefs));
     if (retr > this._maxRetriesEver) {
       MAX_RETRIES_EVER.setOpaque(this, retr);
     }
-    if (cRefs > this._maxCommittedRefsEver) {
-      MAX_COMMITTED_REFS_EVER.setOpaque(this, cRefs);
+    if (committedRefs > this._maxCommittedRefsEver) {
+      MAX_COMMITTED_REFS_EVER.setOpaque(this, committedRefs);
     }
+  }
+
+  protected void recordCycleDetectedO() {
+    CYCLES_DETECTED.setOpaque(this, this._cyclesDetected + 1);
   }
 
   protected int getMaxReuseEverPlain() {

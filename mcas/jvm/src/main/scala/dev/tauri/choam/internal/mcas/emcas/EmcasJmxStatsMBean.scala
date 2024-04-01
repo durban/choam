@@ -29,12 +29,14 @@ import java.util.concurrent.atomic.AtomicReference
 private sealed trait EmcasJmxStatsMBean {
   def getCommits(): Long
   def getRetries(): Long
+  def getCyclesDetected(): Long
   def getAvgRetriesPerCommit(): Double
   def getAvgTriesPerCommit(): Double
+  def getAvgCyclesPerCommit(): Double
   def getMaxRetriesPerCommit(): Long
   def getMaxTriesPerCommit(): Long
   def getAvgLogSize(): Double
-  def getMaxLogSize(): Long
+  def getMaxLogSize(): Int
   def getThreadContextCount(): Int
   def getMaxReusedWeakRefs(): Int
 }
@@ -79,6 +81,9 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
   final override def getRetries(): Long =
     this.getStats().retries
 
+  final override def getCyclesDetected(): Long =
+    this.getStats().cyclesDetected
+
   final override def getAvgRetriesPerCommit(): Double = {
     val c = this.getCommits()
     if (c != 0L) {
@@ -94,6 +99,16 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
     if (c != 0L) {
       val r = this.getRetries()
       (r + c).toDouble / c.toDouble
+    } else {
+      Double.NaN
+    }
+  }
+
+  final override def getAvgCyclesPerCommit(): Double = {
+    val c = this.getCommits()
+    if (c != 0L) {
+      val cd = this.getCyclesDetected()
+      cd.toDouble / c.toDouble
     } else {
       Double.NaN
     }
@@ -117,7 +132,7 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
     }
   }
 
-  final override def getMaxLogSize(): Long = {
+  final override def getMaxLogSize(): Int = {
     this.getStats().maxCommittedRefs
   }
 

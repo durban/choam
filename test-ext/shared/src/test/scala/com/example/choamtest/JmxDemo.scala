@@ -18,12 +18,13 @@
 package com.example.choamtest
 
 import scala.concurrent.duration._
+import scala.util.hashing.byteswap32
 
 import cats.syntax.all._
 import cats.effect.{ IO, IOApp }
 import cats.effect.instances.all._
 
-import dev.tauri.choam.{ Ref, Reactive }
+import dev.tauri.choam.{ Ref, Reactive, Axn }
 
 /** Simple program to interactively try the JMX MBean (with visualvm, or jconsole, or similar) */
 object JmxDemo extends IOApp.Simple {
@@ -43,7 +44,16 @@ object JmxDemo extends IOApp.Simple {
         arr.unsafeGet(idx).update(_ + "y")
       }.run[IO].parReplicateA_(0xfff)
       _ <- IO.both(IO.both(tsk, tsk), arrTsk)
-      _ <- (IO.sleep(1.second) *> Ref.swap(arr.unsafeGet(1), arr.unsafeGet(2)).run[IO]).replicateA_(60)
+      ta1 = trickyAxn(r1, r2)
+      ta2 = trickyAxn(r2, r1)
+      runTricky = IO.both(ta1.run[IO], ta2.run[IO])
+      _ <- (runTricky *> IO.sleep(0.01.second)).foreverM.background.use { _ =>
+        (IO.sleep(1.second) *> Ref.swap(arr.unsafeGet(1), arr.unsafeGet(2)).run[IO]).replicateA_(60)
+      }
     } yield ()
+  }
+
+  private def trickyAxn(r1: Ref[String], r2: Ref[String]): Axn[String] = {
+    r1.update(s => byteswap32(s.length).toString) *> r2.get
   }
 }

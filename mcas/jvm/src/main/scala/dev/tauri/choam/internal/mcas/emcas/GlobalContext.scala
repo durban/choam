@@ -91,6 +91,7 @@ private[mcas] abstract class GlobalContext
         b.commits += stats.commits
         b.retries += stats.retries
         b.committedRefs += stats.committedRefs
+        b.cyclesDetected += stats.cyclesDetected
         if (stats.maxRetries > b.maxRetries) {
           b.maxRetries = stats.maxRetries
         }
@@ -209,14 +210,16 @@ private object GlobalContext {
     var commits: Long = 0L
     var retries: Long = 0L
     var committedRefs: Long = 0L
+    var cyclesDetected: Long = 0
     var maxRetries: Long = 0L
-    var maxCommittedRefs: Long = 0L
+    var maxCommittedRefs: Int = 0
 
     final def build(): Mcas.RetryStats = {
       Mcas.RetryStats(
         commits = this.commits,
         retries = this.retries,
         committedRefs = this.committedRefs,
+        cyclesDetected = this.cyclesDetected,
         maxRetries = this.maxRetries,
         maxCommittedRefs = this.maxCommittedRefs,
       )

@@ -154,11 +154,16 @@ private final class EmcasThreadContext(
     this.recordCommitOpaque(retries, committedRefs)
   }
 
+  private[emcas] final def recordCycleDetected(): Unit = {
+    this.recordCycleDetectedO()
+  }
+
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     Mcas.RetryStats(
       commits = this.getCommitsOpaque(),
       retries = this.getRetriesOpaque(),
       committedRefs = this.getCommittedRefsOpaque(),
+      cyclesDetected = this.getCyclesDetectedOpaque().toLong,
       maxRetries = this.getMaxRetriesOpaque(),
       maxCommittedRefs = this.getMaxCommittedRefsOpaque(),
     )
