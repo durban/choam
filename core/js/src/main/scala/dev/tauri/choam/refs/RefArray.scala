@@ -171,6 +171,10 @@ private object RefArray {
       wit.asInstanceOf[A]
     }
 
+    final override def unsafeCmpxchgR(ov: A, nv: A): A = {
+      this.unsafeCmpxchgV(ov, nv)
+    }
+
     final override def unsafeGetVersionV(): Long =
       array.items(physicalIdx + 1).asInstanceOf[Long]
 

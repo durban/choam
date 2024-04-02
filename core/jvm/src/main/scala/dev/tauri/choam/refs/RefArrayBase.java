@@ -120,6 +120,10 @@ abstract class RefArrayBase<A> extends RefIdOnly {
     return ARRAY.compareAndExchange(this.array, idx, ov, nv);
   }
 
+  protected final Object cmpxchgR(int idx, Object ov, Object nv) {
+    return ARRAY.compareAndExchangeRelease(this.array, idx, ov, nv);
+  }
+
   protected final Object cmpxchgO(int idx, Object ov, Object nv) {
     // VarHandle doesn't have a compareAndExchangePlain,
     // so we approximate it with the release form:

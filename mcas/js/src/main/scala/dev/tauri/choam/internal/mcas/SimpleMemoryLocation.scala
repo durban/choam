@@ -71,6 +71,10 @@ private class SimpleMemoryLocation[A](private[this] var value: A)(
     witness
   }
 
+  final override def unsafeCmpxchgR(ov: A, nv: A): A = {
+    this.unsafeCmpxchgV(ov, nv)
+  }
+
   final override def unsafeGetVersionV(): Long =
     this.version
 

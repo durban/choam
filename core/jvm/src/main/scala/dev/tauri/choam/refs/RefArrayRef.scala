@@ -57,6 +57,9 @@ private final class RefArrayRef[A](
   final override def unsafeCmpxchgV(ov: A, nv: A): A =
     array.cmpxchgV(itemIdx, ov, nv).asInstanceOf[A]
 
+  final override def unsafeCmpxchgR(ov: A, nv: A): A =
+    array.cmpxchgR(itemIdx, ov, nv).asInstanceOf[A]
+
   final override def unsafeGetVersionV(): Long =
     array.getVersionV(logicalIdx)
 

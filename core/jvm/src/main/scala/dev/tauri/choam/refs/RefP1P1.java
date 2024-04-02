@@ -103,6 +103,11 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
   }
 
   @Override
+  public final B unsafeCmpxchg2R(B ov, B nv) {
+    return (B) VALUE_B.compareAndExchangeRelease(this, ov, nv);
+  }
+
+  @Override
   public final long unsafeGetVersion2V() {
     return this.versionB;
   }

@@ -38,6 +38,9 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
   override def unsafeCmpxchgV(ov: A, nv: A): A =
     self.unsafeCmpxchg1V(ov, nv)
 
+  override def unsafeCmpxchgR(ov: A, nv: A): A =
+    self.unsafeCmpxchg1R(ov, nv)
+
   override def unsafeSetV(a: A): Unit =
     self.unsafeSet1V(a)
 
@@ -81,6 +84,9 @@ private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
 
   override def unsafeCmpxchgV(ov: B, nv: B): B =
     self.unsafeCmpxchg2V(ov, nv)
+
+  override def unsafeCmpxchgR(ov: B, nv: B): B =
+    self.unsafeCmpxchg2R(ov, nv)
 
   override def unsafeSetV(b: B): Unit =
     self.unsafeSet2V(b)

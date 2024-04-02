@@ -24,6 +24,7 @@ interface Ref2Impl<A, B> {
   B unsafeGet2P();
   boolean unsafeCas2V(B ov, B nv);
   B unsafeCmpxchg2V(B ov, B nv);
+  B unsafeCmpxchg2R(B ov, B nv);
   void unsafeSet2V(B nv);
   void unsafeSet2P(B nv);
   long unsafeGetVersion2V();

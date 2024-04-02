@@ -110,6 +110,11 @@ final class RefU1<A> extends RefIdOnly implements UnsealedRef<A>, MemoryLocation
   }
 
   @Override
+  public final A unsafeCmpxchgR(A ov, A nv) {
+    return (A) VALUE.compareAndExchangeRelease(this, ov, nv);
+  }
+
+  @Override
   public final long unsafeGetVersionV() {
     return this.version;
   }

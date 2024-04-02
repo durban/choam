@@ -123,6 +123,11 @@ final class RefP2<A, B>
   }
 
   @Override
+  public final A unsafeCmpxchg1R(A ov, A nv) {
+    return (A) VALUE_A.compareAndExchangeRelease(this, ov, nv);
+  }
+
+  @Override
   public final long unsafeGetVersion1V() {
     return this.versionA;
   }
@@ -170,6 +175,11 @@ final class RefP2<A, B>
   @Override
   public final B unsafeCmpxchg2V(B ov, B nv) {
     return (B) VALUE_B.compareAndExchange(this, ov, nv);
+  }
+
+  @Override
+  public final B unsafeCmpxchg2R(B ov, B nv) {
+    return (B) VALUE_B.compareAndExchangeRelease(this, ov, nv);
   }
 
   @Override

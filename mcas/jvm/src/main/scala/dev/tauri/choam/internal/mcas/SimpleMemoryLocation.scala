@@ -64,6 +64,9 @@ private final class SimpleMemoryLocation[A](initial: A)(
   final override def unsafeCmpxchgV(ov: A, nv: A): A =
     this.compareAndExchange(ov, nv)
 
+  final override def unsafeCmpxchgR(ov: A, nv: A): A =
+    this.compareAndExchangeRelease(ov, nv)
+
   final override def unsafeGetVersionV(): Long =
     this.version.get()
 

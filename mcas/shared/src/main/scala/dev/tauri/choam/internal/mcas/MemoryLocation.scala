@@ -74,6 +74,9 @@ trait MemoryLocation[A] {
   /** volatile */
   def unsafeCmpxchgV(ov: A, nv: A): A
 
+  /** release */
+  def unsafeCmpxchgR(ov: A, nv: A): A
+
   // version:
 
   /** volatile */
