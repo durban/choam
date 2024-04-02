@@ -27,33 +27,6 @@
   - if a suspended operation (e.g., a stack `pop`) is cancelled, this can cause lost items
   - it's unclear if we can fix this with the current CE API
   - and even if we would know that the wakeup is lost, it's already too late: the `Rxn` have been already committed
-- `dev.tauri.choam.data.TtrieModelTest` fails; seems to be a lincheck bug.
-- `SkipListModelTest` sometimes fails; it's unclear if this is just a timeout, but seems likely:
-  ```
-  ==> X dev.tauri.choam.skiplist.SkipListModelTest.Model checking test of SkipListMap  288.505s org.jetbrains.kotlinx.lincheck.LincheckAssertionError:
-  = The execution has hung, see the thread dump =
-  Execution scenario (init part):
-  [insert(0, Gx), remove(-1), lookup(0), remove(1), remove(-1)]
-  Execution scenario (parallel part):
-  | insert(0, uPI)  | remove(-2)        |
-  | insert(0, Rw7N) | insert(2, Kjq4)   |
-  | lookup(-3)      | insert(-3, ygZVM) |
-  | remove(3)       | lookup(-3)        |
-  Execution scenario (post part):
-  [remove(-4), remove(-3), insert(-1, NTGQz)]
-  Thread-0:
-    java.lang.Thread.run(Thread.java:829)
-  Thread-1:
-    jdk.internal.misc.Unsafe.park(Native Method)
-    java.util.concurrent.locks.LockSupport.park(LockSupport.java:323)
-    java.lang.Thread.run(Thread.java:829)
-
-      at org.jetbrains.kotlinx.lincheck.LinChecker.check(LinChecker.kt:38)
-      at org.jetbrains.kotlinx.lincheck.LinChecker$Companion.check(LinChecker.kt:197)
-      at org.jetbrains.kotlinx.lincheck.LinChecker.check(LinChecker.kt)
-      at dev.tauri.choam.skiplist.SkipListModelTest.$anonfun$new$1(SkipListModelTest.scala:40)
-      at dev.tauri.choam.BaseLinchkSpec.$anonfun$test$1(BaseLinchkSpec.scala:33)
-  ```
 
 ## Other improvements
 
@@ -84,7 +57,6 @@
   - Ref padding:
     - allocating a padded Ref is much slower than an unpadded
     - however, false sharing could be a problem
-    - which should be the default? padded/unpadded?
   - Ref initialization:
     - currently: volatile write
     - a release write would be faster
@@ -94,6 +66,7 @@
       - otherwise, it might not see the contents
         - e.g., when calling `Ref.unsafe`, and storing it in a plain `var`
         - could it happen without using unsafe? (or `unsafeRun*` on the IO)
+      - but: it probably might already not see the contents with the volatile write (that only works for `final`s)
 - Cleanup:
   - Review benchmarks, remove useless ones
 - Async:
@@ -103,12 +76,12 @@
 - API cleanup:
   - MCAS API review
     - is it usable outside of `choam`?
-    - if not, it doesn't really make sense to have it in a separate module
+    - if not, it doesn't really make sense to have it in a separate module(?)
       - being in the same module would simplify using `ThreadContext` for `Rxn`-things
   - Rename `flatMapF`
     - maybe `semiFlatMap` (or `semiflatMap`?)
     - or `subflatMap`?
-  - Rxn.delay?
+  - `Rxn.delay` use cases:
     - allocating:
       - `Ref` (most others are built on this)
       - `Ref.array`
@@ -118,7 +91,7 @@
       - `[Gen]WaitList` (as an optimization, to avoid `Promise`)
     - other special cases:
       - `UUIDGen`
-      - `Unique`
+      - `Unique` (this is a special case of "allocating")
       - `Clock`
       - `cats.effect.std.Random`
       - `Ttrie` (to avoid `Rxn`-level contention)
@@ -134,7 +107,7 @@
       - If something can fail, return `Option` or `Either`
     - Need to review and document the handling of exceptions
       - they should fall-through, but with cleanup (if needed)
-      - (maybe: do not guarantee any behavior for now)
+      - (maybe: do not guarantee any specific behavior for now)
     - Transient errors can sometimes be handled with `+` (`Choice`)
       - but sometimes this can cause infinite retry
 - Cancellation support
