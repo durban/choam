@@ -954,13 +954,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
 
   private[mcas] final def tryPerformDebug(desc: Descriptor, ctx: EmcasThreadContext): Long = {
     if (desc.nonEmpty) {
-      // TODO: If `desc` is completely read-only, can we avoid
-      // TODO: going through `MCAS`? In that case, `acquire`
-      // TODO: will be a no-op, and `validate` will just
-      // TODO: revalidate a descriptor which is/was already
-      // TODO: valid (because we revalidate when we insert
-      // TODO: new items, due to opacity).
-      //
+      assert(!desc.readOnly)
       // TODO: Can we avoid allocating WordDescriptors for
       // TODO: read-only HWDs? The first time we try, we
       // TODO: don't install them into the Refs, so we don't
