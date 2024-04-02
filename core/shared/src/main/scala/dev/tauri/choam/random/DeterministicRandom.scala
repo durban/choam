@@ -158,7 +158,7 @@ private final class DeterministicRandom(
           val rem = n - idx
           s += gamma
           if (rem >= 8) {
-            this.putLongAtIdxPlain(arr, idx, mix64(s))
+            this.putLongAtIdxP(arr, idx, mix64(s))
             true
           } else {
             putLastBytes(nBytes = rem, idx = idx, r = mix64(s))

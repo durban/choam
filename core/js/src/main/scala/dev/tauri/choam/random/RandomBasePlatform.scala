@@ -32,11 +32,11 @@ private abstract class RandomBasePlatform {
   // TODO: These ByteBuffers are probably pretty
   // TODO: bad for performance, but this is JS.
 
-  protected final def getLongAt0Plain(arr: Array[Byte]): Long = {
+  protected final def getLongAt0P(arr: Array[Byte]): Long = {
     ByteBuffer.wrap(arr, 0, 8).order(ByteOrder.LITTLE_ENDIAN).getLong()
   }
 
-  protected final def putLongAtIdxPlain(arr: Array[Byte], idx: Int, nv: Long): Unit = {
+  protected final def putLongAtIdxP(arr: Array[Byte], idx: Int, nv: Long): Unit = {
     ByteBuffer.wrap(arr, idx, 8).order(ByteOrder.LITTLE_ENDIAN).putLong(nv)
     ()
   }

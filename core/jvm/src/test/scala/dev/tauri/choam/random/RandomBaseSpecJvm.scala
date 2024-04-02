@@ -25,18 +25,18 @@ final class RandomBaseSpecJvm extends RandomBaseSpec {
   test("VarHandle endianness") {
     val arr = new Array[Byte](8)
     // get:
-    assertEquals(VarHandleAccess.getLongAt0Plain(arr), 0L)
+    assertEquals(VarHandleAccess.getLongAt0P(arr), 0L)
     arr(0) = 1.toByte
-    assertEquals(VarHandleAccess.getLongAt0Plain(arr), 1L)
+    assertEquals(VarHandleAccess.getLongAt0P(arr), 1L)
     arr(0) = 0.toByte
     arr(7) = 1.toByte
-    assertEquals(VarHandleAccess.getLongAt0Plain(arr), 72057594037927936L)
+    assertEquals(VarHandleAccess.getLongAt0P(arr), 72057594037927936L)
     arr(7) = 0xff.toByte
-    assertEquals(VarHandleAccess.getLongAt0Plain(arr), -72057594037927936L)
+    assertEquals(VarHandleAccess.getLongAt0P(arr), -72057594037927936L)
     // put:
-    VarHandleAccess.putLongAtIdxPlain(arr, 0, 0L)
-    assertEquals(VarHandleAccess.getLongAt0Plain(arr), 0L)
-    VarHandleAccess.putLongAtIdxPlain(arr, 0, 42L)
-    assertEquals(VarHandleAccess.getLongAt0Plain(arr), 42L)
+    VarHandleAccess.putLongAtIdxP(arr, 0, 0L)
+    assertEquals(VarHandleAccess.getLongAt0P(arr), 0L)
+    VarHandleAccess.putLongAtIdxP(arr, 0, 42L)
+    assertEquals(VarHandleAccess.getLongAt0P(arr), 42L)
   }
 }

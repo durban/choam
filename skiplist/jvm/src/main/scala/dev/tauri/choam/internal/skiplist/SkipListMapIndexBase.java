@@ -48,7 +48,7 @@ abstract class SkipListMapIndexBase<I extends SkipListMapIndexBase<I>> {
     return (I) RIGHT.getAcquire(this);
   }
 
-  final void setRightPlain(I nv) {
+  final void setRightP(I nv) {
     this.right = nv;
   }
 

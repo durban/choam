@@ -743,7 +743,7 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
             } else if ((d ne null) && !retrying && !addIndices(d, 0, x.down)) {
               return false // scalafix:ok
             } else {
-              x.setRightPlain(r) // CAS piggyback
+              x.setRightP(r) // CAS piggyback
               if (q.casRight(r, x)) {
                 return true // scalafix:ok
               } else {

@@ -23,6 +23,7 @@ private object CompatPlatform {
   final type AtomicReferenceArray[A] =
     _root_.dev.tauri.choam.refs.AtomicReferenceArray[A]
 
+  @inline
   final def checkArrayIndexIfScalaJs(idx: Int, length: Int): Unit = {
     // Out-of-bounds array indexing is undefined behavior(??) on scala-js,
     // so we need this extra check here (on the JVM, we rely on arrays working):

@@ -43,7 +43,7 @@ private abstract class RandomBase
 
   def nextLong: Axn[Long] = {
     this.nextBytes(8).map { (arr: Array[Byte]) =>
-      this.getLongAt0Plain(arr)
+      this.getLongAt0P(arr)
     }
   }
 
@@ -76,7 +76,7 @@ private abstract class RandomBase
         val remaining = n - idx
         nextLong.flatMapF { (r: Long) =>
           if (remaining >= 8) {
-            Axn.unsafe.delay(this.putLongAtIdxPlain(arr, idx, r)) *> go(arr, idx + 8)
+            Axn.unsafe.delay(this.putLongAtIdxP(arr, idx, r)) *> go(arr, idx + 8)
           } else {
             Axn.unsafe.delay(putLastBytes(arr, nBytes = remaining, idx = idx, r = r))
           }
