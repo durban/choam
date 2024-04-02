@@ -59,6 +59,9 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
   final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     self.unsafeCasMarker1V(ov, nv)
 
+  final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
+    self.unsafeCmpxchgMarker1R(ov, nv)
+
   override def id: Long =
     self.id0
 
@@ -105,6 +108,9 @@ private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
 
   final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     self.unsafeCasMarker2V(ov, nv)
+
+  final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
+    self.unsafeCmpxchgMarker2R(ov, nv)
 
   override def id: Long =
     self.id1

@@ -42,14 +42,13 @@ private final class StrictRefArray[A](
 ) extends RefArray[A](__size, _idBase) {
 
   final override val items: Array[AnyRef] = {
-    val ara = new Array[AnyRef](4 * size)
+    val ara = new Array[AnyRef](3 * size)
     val value = initial.asInstanceOf[AnyRef]
     var i = 0
     while (i < size) {
-      val refIdx = 4 * i
+      val refIdx = 3 * i
       val itemIdx = refIdx + 1
       val versionIdx = refIdx + 2
-      // val markerIdx = refIdx + 3
       ara(refIdx) = new RefArrayRef[A](this, itemIdx)
       ara(itemIdx) = value
       ara(versionIdx) = Version.BoxedStart
@@ -68,7 +67,7 @@ private final class StrictRefArray[A](
 
   private[this] final def getOrNull(idx: Int): Ref[A] = {
     if ((idx >= 0) && (idx < size)) {
-      val refIdx = 4 * idx
+      val refIdx = 3 * idx
       CompatPlatform.checkArrayIndexIfScalaJs(refIdx, this.items.length)
       this.items(refIdx).asInstanceOf[Ref[A]]
     } else {
@@ -87,10 +86,10 @@ private final class SparseRefArray[A](
     initial.asInstanceOf[AnyRef]
 
   final override val items: Array[AnyRef] = {
-    val ara = new Array[AnyRef](4 * size)
+    val ara = new Array[AnyRef](3 * size)
     var i = 0
     while (i < size) {
-      val itemIdx = (4 * i) + 1
+      val itemIdx = (3 * i) + 1
       ara(itemIdx) = initVal
       val versionIdx = itemIdx + 1
       ara(versionIdx) = Version.BoxedStart
@@ -117,7 +116,7 @@ private final class SparseRefArray[A](
 
   private[this] final def getOrCreateRef(i: Int): Ref[A] = {
     val items = this.items
-    val refIdx = 4 * i
+    val refIdx = 3 * i
     CompatPlatform.checkArrayIndexIfScalaJs(refIdx, items.length)
     val existing = items(refIdx)
     if (existing ne null) {
@@ -188,18 +187,13 @@ private object RefArray {
     }
 
     final override def unsafeGetMarkerV(): WeakReference[AnyRef] =
-      array.items(physicalIdx + 2).asInstanceOf[WeakReference[AnyRef]]
+      impossible("RefArrayRef#unsafeGetMarkerV called on JS")
 
-    final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean = {
-      val markerIdx = physicalIdx + 2
-      val wit = array.items(markerIdx)
-      if (wit eq ov) {
-        array.items(markerIdx) = nv
-        true
-      } else {
-        false
-      }
-    }
+    final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
+      impossible("RefArrayRef#unsafeCasMarkerV called on JS")
+
+    final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
+      impossible("RefArrayRef#unsafeCmpxchgMarkerR called on JS")
 
     final override def id: Long = {
       RefIdGen.compute(array.idBase, this.logicalIdx)
@@ -210,7 +204,7 @@ private object RefArray {
     }
 
     private[this] final def logicalIdx: Int =
-      this.physicalIdx / 4 // truncated division is OK here
+      this.physicalIdx / 3 // truncated division is OK here
 
     private[choam] final override def dummy(v: Byte): Long =
       v ^ id

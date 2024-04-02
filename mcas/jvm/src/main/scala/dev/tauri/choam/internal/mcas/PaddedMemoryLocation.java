@@ -126,6 +126,11 @@ final class PaddedMemoryLocation<A>
     return MARKER.compareAndSet(this, ov, nv);
   }
 
+  @Override
+  public final WeakReference<Object> unsafeCmpxchgMarkerR(WeakReference<Object> ov, WeakReference<Object> nv) {
+    return (WeakReference<Object>) MARKER.compareAndExchangeRelease(this, ov, nv);
+  }
+
   public final long dummy() {
     return this.dummyImpl(42L);
   }

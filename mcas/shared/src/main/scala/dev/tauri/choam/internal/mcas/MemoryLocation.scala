@@ -93,6 +93,9 @@ trait MemoryLocation[A] {
   /** Used by EMCAS; volatile */ // TODO: this is JVM-only
   def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean
 
+  /** Used by EMCAS; release */ // TODO: this is JVM-only
+  def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef]
+
   // ID:
 
   def id: Long

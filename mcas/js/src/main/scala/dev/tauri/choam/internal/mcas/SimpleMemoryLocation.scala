@@ -94,4 +94,7 @@ private class SimpleMemoryLocation[A](private[this] var value: A)(
 
   final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     impossible("SimpleMemoryLocation#unsafeCasMarkerV called on JS")
+
+  final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
+    impossible("SimpleMemoryLocation#unsafeCmpxchgMarkerR called on JS")
 }

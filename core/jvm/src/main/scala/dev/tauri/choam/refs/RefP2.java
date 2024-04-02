@@ -148,6 +148,11 @@ final class RefP2<A, B>
   }
 
   @Override
+  public final WeakReference<Object> unsafeCmpxchgMarker1R(WeakReference<Object> ov, WeakReference<Object> nv) {
+    return (WeakReference<Object>) MARKER_A.compareAndExchangeRelease(this, ov, nv);
+  }
+
+  @Override
   public final B unsafeGet2V() {
     return this.valueB;
   }
@@ -200,6 +205,11 @@ final class RefP2<A, B>
   @Override
   public final boolean unsafeCasMarker2V(WeakReference<Object> ov, WeakReference<Object> nv) {
     return MARKER_B.compareAndSet(this, ov, nv);
+  }
+
+  @Override
+  public final WeakReference<Object> unsafeCmpxchgMarker2R(WeakReference<Object> ov, WeakReference<Object> nv) {
+    return (WeakReference<Object>) MARKER_B.compareAndExchangeRelease(this, ov, nv);
   }
 
   @Override

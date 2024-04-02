@@ -137,6 +137,11 @@ final class RefP1<A>
   }
 
   @Override
+  public final WeakReference<Object> unsafeCmpxchgMarkerR(WeakReference<Object> ov, WeakReference<Object> nv) {
+    return (WeakReference<Object>) MARKER.compareAndExchangeRelease(this, ov, nv);
+  }
+
+  @Override
   public final long dummy(byte v) {
     return this.dummyImpl(v);
   }

@@ -99,4 +99,7 @@ private final class SingleThreadedRefImpl[A](private[this] var value: A)(
 
   final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     impossible("SingleThreadedRefImpl#unsafeCasMarkerV called on JS")
+
+  final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
+    impossible("SingleThreadedRefImpl#unsafeCmpxchgMarkerR called on JS")
 }

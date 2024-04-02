@@ -128,6 +128,11 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
   }
 
   @Override
+  public final WeakReference<Object> unsafeCmpxchgMarker2R(WeakReference<Object> ov, WeakReference<Object> nv) {
+    return (WeakReference<Object>) MARKER_B.compareAndExchangeRelease(this, ov, nv);
+  }
+
+  @Override
   public final long id1() {
     return this._id1;
   }
