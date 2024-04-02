@@ -361,8 +361,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // object, to help the GC. If this CAS fails,
       // that means a new op already installed a new
       // weakref; nothing to do here.
-      ref.unsafeCasMarkerV(weakref, null) : Unit // TODO: could be Release
-      ()
+      ref.unsafeCmpxchgMarkerR(weakref, null) : Unit
     }
   }
 
