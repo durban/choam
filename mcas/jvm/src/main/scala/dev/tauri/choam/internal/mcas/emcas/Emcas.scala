@@ -470,35 +470,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
   private[this] final def MCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext, seen: Long): Long = {
 
     val instRo = desc.instRo
-    val newSeen = if (!instRo) {
-      // Cycle detection: we need this, to preserve
-      // lock-freedom. Because if we have 2 EMCAS like
-      // this: [(r1, "a", "b"), (r2, "x", "x")]
-      // and [(r1, "a", "a"), (r2, "x", "y")],
-      // then both can ACQUIRE, and then when
-      // revalidating, both would try to help
-      // recursively themselves. That's an
-      // infinite loop (or rather a stack overflow).
-      BloomFilter64.insertIfAbsent(seen, desc.hashCode) match {
-        case 0L =>
-          ctx.recordCycleDetected(BloomFilter64.estimatedSize(seen))
-          // We (probably) detected a cycle, need to fall
-          // back to `instRo = true`. Bloom filter is
-          // probabilistic, so there is some chance that
-          // there is no actual cycle; but falling back
-          // doesn't affect correctness, only performance.
-          // (Actually, not falling back when needed _would_
-          // affect correctness.)
-          return EmcasStatus.CycleDetected // scalafix:ok
-        case bf =>
-          bf
-      }
-    } else {
-      seen
-    }
 
     @tailrec
-    def tryWord[A](wordDesc: WordDescriptor[A]): Long = {
+    def tryWord[A](wordDesc: WordDescriptor[A], newSeen: Long): Long = {
       var content: A = nullOf[A]
       var value: A = nullOf[A]
       var weakref: WeakReference[AnyRef] = null
@@ -657,19 +631,19 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           // the CAS on the `Ref` failed; in either case,
           // we'll retry:
           Reference.reachabilityFence(mark)
-          tryWord(wordDesc)
+          tryWord(wordDesc, newSeen)
         }
       }
     } // tryWord
 
-    def acquire(words: Array[WordDescriptor[_]]): Long = {
+    def acquire(words: Array[WordDescriptor[_]], newSeen: Long): Long = {
       @tailrec
       def go(words: Array[WordDescriptor[_]], next: Int, len: Int, needsValidation: Boolean): Long = {
         if (next < len) {
           val word = words(next)
           if (word ne null) {
             if (instRo || (!word.readOnly)) {
-              val twr = tryWord(word)
+              val twr = tryWord(word, newSeen)
               assert(
                 (twr == McasStatus.Successful) ||
                 (twr == McasStatus.FailedVal) ||
@@ -711,7 +685,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       }
     } // acquire
 
-    def validate(words: Array[WordDescriptor[_]]): Long = {
+    def validate(words: Array[WordDescriptor[_]], newSeen: Long): Long = {
       @tailrec
       def go(words: Array[WordDescriptor[_]], next: Int, len: Int): Long = {
         if (next < len) {
@@ -762,7 +736,37 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       witness
     }
 
-    val r = acquire(desc.getWordDescArrOrNull())
+    var seen2: Long = seen
+    val r = if (!instRo) {
+      // Cycle detection: we need this to preserve
+      // lock-freedom. Because if we have 2 EMCAS like
+      // this: [(r1, "a", "b"), (r2, "x", "x")]
+      // and [(r1, "a", "a"), (r2, "x", "y")],
+      // then both can ACQUIRE, and then when
+      // revalidating, both would try to help
+      // recursively themselves. That's an
+      // infinite loop (or rather a stack overflow).
+      BloomFilter64.insertIfAbsent(seen, desc.hashCode) match {
+        case 0L =>
+          ctx.recordCycleDetected(BloomFilter64.estimatedSize(seen))
+          // We (probably) detected a cycle, need to fall
+          // back to `instRo = true`. Bloom filter is
+          // probabilistic, so there is some chance that
+          // there is no actual cycle; but falling back
+          // doesn't affect correctness, only performance.
+          // (Actually, not falling back when needed _would_
+          // affect correctness.)
+          EmcasStatus.CycleDetected
+        case bf =>
+          // fine, no cycle, we've added `desc` to `seen`
+          seen2 = bf
+          acquire(desc.getWordDescArrOrNull(), seen2)
+      }
+    } else {
+      // we're installing every WD, no chance of cycles:
+      acquire(desc.getWordDescArrOrNull(), seen2)
+    }
+
     assert(
       (r == McasStatus.Successful) ||
       (r == McasStatus.FailedVal) ||
@@ -824,7 +828,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           // descriptors (ACQUIRE), but still need to
           // validate our read-set (the read-only
           // descriptors, which were not installed):
-          val vr = validate(desc.getWordDescArrOrNull())
+          val vr = validate(desc.getWordDescArrOrNull(), newSeen = seen2)
           assert(
             (vr == McasStatus.Successful) ||
             (vr == McasStatus.FailedVal) ||
