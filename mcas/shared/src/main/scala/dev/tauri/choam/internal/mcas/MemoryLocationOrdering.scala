@@ -28,25 +28,32 @@ private final class MemoryLocationOrdering[A]
     this.globalCompare(x, y)
   }
 
+  /**
+   * We don't really care HOW the `MemoryLocation`s are
+   * ordered; we just need a total global order. So we
+   * order them the way they're naturally in the `Hamt`.
+   */
   private[this] final def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
     // We're essentially reimplementing here
-    // how `Hamt` compares hashes; this is
-    // fragile, but also not easily extracted
-    // to common code (without hurting `Hamt`
-    // perfromance):
+    // how `Hamt` compares hashes:
     val W = 6
-    val MASK = 63L
     val ah = a.id
     val bh = b.id
 
     @tailrec
     def go(shift: Int): Int = {
-      val r = java.lang.Long.compareUnsigned((ah >>> shift) & MASK, (bh >>> shift) & MASK)
+      val r = Integer.compare(logicalIdx(ah, shift), logicalIdx(bh, shift))
       if (r != 0) {
         r
       } else {
         go(shift + W)
       }
+    }
+
+    def logicalIdx(n: Long, shift: Int): Int = {
+      val mask = 0xFC00000000000000L >>> shift
+      val sh = java.lang.Long.numberOfTrailingZeros(mask)
+      ((n & mask) >>> sh).toInt
     }
 
     if (a eq b) {

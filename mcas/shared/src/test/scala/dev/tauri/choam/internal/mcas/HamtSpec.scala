@@ -72,70 +72,103 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     assertEquals(sv2.##, Val(42L).##)
   }
 
+  property("HAMT logicalIdx") {
+    val h = LongHamt.empty
+
+    def testLogicalIdx(n: Long): Unit = {
+      assertEquals(h.logicalIdx_public(n, shift =  0), ( n >>> 58       ).toInt)
+      assertEquals(h.logicalIdx_public(n, shift =  6), ((n >>> 52) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 12), ((n >>> 46) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 18), ((n >>> 40) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 24), ((n >>> 34) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 30), ((n >>> 28) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 36), ((n >>> 22) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 42), ((n >>> 16) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 48), ((n >>> 10) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 54), ((n >>>  4) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 60), ( n         & 15L).toInt) // this is the tricky one
+    }
+
+    val prop1 = forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { (n: Long) =>
+      testLogicalIdx(n)
+    }
+
+    val prop2 = forAll { (n: Long) =>
+      testLogicalIdx(n)
+    }
+
+    prop1 && prop2
+  }
+
   test("HAMT examples") {
+    val c0 = 0x0L
+    val c1 = 0x8000000000000000L
+    val c2 = 0x4000000000000000L
+    val c3 = 0x1L
+    val c4 = 0x2L
     val h0 = LongHamt.empty
     assertEquals(h0.size, 0)
     assertEquals(h0.toArray.toList, List.empty[Val])
-    assertEquals(h0.getOrElse(0L, Val(42L)), Val(42L))
-    assertEquals(h0.getOrElse(1L, Val(42L)), Val(42L))
-    assertEquals(h0.getOrElse(2L, Val(42L)), Val(42L))
-    assertEquals(h0.getOrElse(0x40L, Val(42L)), Val(42L))
-    assertEquals(h0.getOrElse(0xfe000000000000L, Val(42L)), Val(42L))
-    assert(Either.catchOnly[IllegalArgumentException](h0.updated(Val(0L))).isLeft)
-    val h1 = h0.inserted(Val(0L))
+    assertEquals(h0.getOrElse(c0, Val(42L)), Val(42L))
+    assertEquals(h0.getOrElse(c1, Val(42L)), Val(42L))
+    assertEquals(h0.getOrElse(c2, Val(42L)), Val(42L))
+    assertEquals(h0.getOrElse(c3, Val(42L)), Val(42L))
+    assertEquals(h0.getOrElse(c4, Val(42L)), Val(42L))
+    assert(Either.catchOnly[IllegalArgumentException](h0.updated(Val(c0))).isLeft)
+    val h1 = h0.inserted(Val(c0))
     assertEquals(h1.size, 1)
-    assertEquals(h1.toArray.toList, List(0L).map(Val(_)))
-    assertEquals(h1.getOrElse(0L, Val(42L)), Val(0L))
-    assertEquals(h1.getOrElse(1L, Val(42L)), Val(42L))
-    assertEquals(h1.getOrElse(2L, Val(42L)), Val(42L))
-    assertEquals(h1.getOrElse(0x40L, Val(42L)), Val(42L))
-    assertEquals(h1.getOrElse(0xfe000000000000L, Val(42L)), Val(42L))
-    val nv = Val(0L)
+    assertEquals(h1.toArray.toList, List(c0).map(Val(_)))
+    assertEquals(h1.getOrElse(c0, Val(42L)), Val(c0))
+    assertEquals(h1.getOrElse(c1, Val(42L)), Val(42L))
+    assertEquals(h1.getOrElse(c2, Val(42L)), Val(42L))
+    assertEquals(h1.getOrElse(c3, Val(42L)), Val(42L))
+    assertEquals(h1.getOrElse(c4, Val(42L)), Val(42L))
+    val nv = Val(c0)
     val h1b = h1.updated(nv)
     assertEquals(h1b.size, h1.size)
-    assert(h1b.getOrElse(0L, Val(42L)) eq nv)
-    assert(Either.catchOnly[IllegalArgumentException](h1.updated(Val(1L))).isLeft)
-    val h2 = h1.inserted(Val(1L))
+    assert(h1b.getOrElse(c0, Val(42L)) eq nv)
+    assert(Either.catchOnly[IllegalArgumentException](h1.updated(Val(c1))).isLeft)
+    val h2 = h1.inserted(Val(c1))
     assertEquals(h2.size, 2)
-    assertEquals(h2.toArray.toList, List(0L, 1L).map(Val(_)))
-    assertEquals(h2.getOrElse(0L, Val(42L)), Val(0L))
-    assertEquals(h2.getOrElse(1L, Val(42L)), Val(1L))
-    assertEquals(h2.getOrElse(2L, Val(42L)), Val(42L))
-    assertEquals(h2.getOrElse(0x40L, Val(42L)), Val(42L))
-    assertEquals(h2.getOrElse(0xfe000000000000L, Val(42L)), Val(42L))
-    val nnv = Val(0L)
+    assertEquals(h2.toArray.toList, List(c0, c1).map(Val(_)))
+    assertEquals(h2.getOrElse(c0, Val(42L)), Val(c0))
+    assertEquals(h2.getOrElse(c1, Val(42L)), Val(c1))
+    assertEquals(h2.getOrElse(c2, Val(42L)), Val(42L))
+    assertEquals(h2.getOrElse(c3, Val(42L)), Val(42L))
+    assertEquals(h2.getOrElse(c4, Val(42L)), Val(42L))
+    val nnv = Val(c0)
     val h2b = h2.upserted(nnv)
     assertEquals(h2b.size, h2.size)
-    assertEquals(h2b.toArray.toList, List(0L, 1L).map(Val(_)))
-    assert(h2b.getOrElse(0L, Val(42L)) eq nnv)
-    assert(h2b.getOrElse(0L, Val(42L)) ne nv)
-    assert(Either.catchOnly[IllegalArgumentException](h2.updated(Val(2L))).isLeft)
-    val h3 = h2.upserted(Val(2L))
+    assertEquals(h2b.toArray.toList, List(c0, c1).map(Val(_)))
+    assert(h2b.getOrElse(c0, Val(42L)) eq nnv)
+    assert(h2b.getOrElse(c0, Val(42L)) ne nv)
+    assert(Either.catchOnly[IllegalArgumentException](h2.updated(Val(c2))).isLeft)
+    val h3 = h2.upserted(Val(c2))
     assertEquals(h3.size, 3)
-    assertEquals(h3.toArray.toList, List(0L, 1L, 2L).map(Val(_)))
-    assertEquals(h3.getOrElse(0L, Val(42L)), Val(0L))
-    assertEquals(h3.getOrElse(1L, Val(42L)), Val(1L))
-    assertEquals(h3.getOrElse(2L, Val(42L)), Val(2L))
-    assertEquals(h3.getOrElse(0x40L, Val(42L)), Val(42L))
-    assertEquals(h3.getOrElse(0xfe000000000000L, Val(42L)), Val(42L))
-    assert(Either.catchOnly[IllegalArgumentException](h3.inserted(Val(2L))).isLeft)
-    val h4 = h3.inserted(Val(0x40L)) // collides with 0L at 1st level
+    assertEquals(h3.toArray.toList, List(c0, c2, c1).map(Val(_)))
+    assertEquals(h3.getOrElse(c0, Val(42L)), Val(c0))
+    assertEquals(h3.getOrElse(c1, Val(42L)), Val(c1))
+    assertEquals(h3.getOrElse(c2, Val(42L)), Val(c2))
+    assertEquals(h3.getOrElse(c3, Val(42L)), Val(42L))
+    assertEquals(h3.getOrElse(c4, Val(42L)), Val(42L))
+    assert(Either.catchOnly[IllegalArgumentException](h3.inserted(Val(c2))).isLeft)
+    val h4 = h3.inserted(Val(c3)) // collides with c0 at 1st level
     assertEquals(h4.size, 4)
-    assertEquals(h4.toArray.toList, List(0L, 0x40L, 1L, 2L).map(Val(_)))
-    assertEquals(h4.getOrElse(0L, Val(42L)), Val(0L))
-    assertEquals(h4.getOrElse(1L, Val(42L)), Val(1L))
-    assertEquals(h4.getOrElse(2L, Val(42L)), Val(2L))
-    assertEquals(h4.getOrElse(0x40L, Val(42L)), Val(0x40L))
-    assertEquals(h4.getOrElse(0xfe000000000000L, Val(42L)), Val(42L))
+    assertEquals(h4.toArray.toList, List(c0, c3, c2, c1).map(Val(_)))
+    assertEquals(h4.getOrElse(c0, Val(42L)), Val(c0))
+    assertEquals(h4.getOrElse(c1, Val(42L)), Val(c1))
+    assertEquals(h4.getOrElse(c2, Val(42L)), Val(c2))
+    assertEquals(h4.getOrElse(c3, Val(42L)), Val(c3))
+    assertEquals(h4.getOrElse(c4, Val(42L)), Val(42L))
     assert(Either.catchOnly[IllegalArgumentException](h4.updated(Val(99L))).isLeft)
-    val h5 = h4.inserted(Val(0xfe000000000000L))
+    val h5 = h4.inserted(Val(c4))
     assertEquals(h5.size, 5)
-    assertEquals(h5.toArray.toList, List(0L, 0xfe000000000000L, 0x40L, 1L, 2L).map(Val(_)))
-    assertEquals(h5.getOrElse(0L, Val(42L)), Val(0L))
-    assertEquals(h5.getOrElse(1L, Val(42L)), Val(1L))
-    assertEquals(h5.getOrElse(2L, Val(42L)), Val(2L))
-    assertEquals(h5.getOrElse(0x40L, Val(42L)), Val(0x40L))
-    assertEquals(h5.getOrElse(0xfe000000000000L, Val(42L)), Val(0xfe000000000000L))
+    assertEquals(h5.toArray.toList, List(c0, c3, c4, c2, c1).map(Val(_)))
+    assertEquals(h5.getOrElse(c0, Val(42L)), Val(c0))
+    assertEquals(h5.getOrElse(c1, Val(42L)), Val(c1))
+    assertEquals(h5.getOrElse(c2, Val(42L)), Val(c2))
+    assertEquals(h5.getOrElse(c3, Val(42L)), Val(c3))
+    assertEquals(h5.getOrElse(c4, Val(42L)), Val(c4))
   }
 
   property("HAMT lookup/upsert/toArray (default generator)") {

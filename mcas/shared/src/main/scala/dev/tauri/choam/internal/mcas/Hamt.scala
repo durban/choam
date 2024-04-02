@@ -92,6 +92,21 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
   private val contents: Array[AnyRef],
 ) { this: H =>
 
+  /**
+   * The highest 6 bits set; we start masking
+   * the hash with this, and go to lower bits
+   * as we go down in the tree.
+   *
+   * We use the highest 6 bits first, and
+   * lower ones later, because for a
+   * multiplicative hash (like the Fibonacci
+   * we're using to generate IDs) the low
+   * bits are the "worst quality" ones (see
+   * https://stackoverflow.com/a/11872511).
+   */
+  private[this] final val START_MASK = 0xFC00000000000000L
+
+  /** 6 bits for indexing a 64-element array */
   private[this] final val W = 6
 
   private[this] final val OP_UPDATE = 0
@@ -476,14 +491,21 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
   /** Index into the imaginary 64-element sparse array */
   private[this] final def logicalIdx(hash: Long, shift: Int): Int = {
     // Note: this logic is duplicated in `MemoryLocationOrdering`.
-    // TODO: We should use the highest 6 bits first,
-    // TODO: and lower ones later, because for a
-    // TODO: multiplicative hash (like the Fibonacci
-    // TODO: we're using to generate IDs) the low
-    // TODO: bits are the "worst quality" ones
-    // TODO: (see https://stackoverflow.com/a/11872511).
-    // 63 is 0b111111
-    ((hash >>> shift) & 63L).toInt
+    val mask = START_MASK >>> shift // masks the bits we're interested in
+    val sh = java.lang.Long.numberOfTrailingZeros(mask) // we'll shift the masked result
+    // we do it this way, because at the end, when `shift` is 60,
+    // we don't actually need to shift (i.e., `sh` will be 0),
+    // because we just need the 4 lowest bits
+    ((hash & mask) >>> sh).toInt
+    // TODO: It it measurably slower this way, than
+    // TODO: just using the lowest bits first (see
+    // TODO: `ShiftBench`). We should check if it
+    // TODO: really matters.
+  }
+
+  /** For testing only! */
+  private[mcas] final def logicalIdx_public(hash: Long, shift: Int): Int = {
+    this.logicalIdx(hash, shift)
   }
 
   /** Index into the actual dense array (`contents`) */
