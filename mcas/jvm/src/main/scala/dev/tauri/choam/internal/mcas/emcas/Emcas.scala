@@ -332,7 +332,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // replaced the desc with the final value, or
         // maybe started another operation; in either case,
         // there is nothing to do here.
-        ref.unsafeCasV(ov.castToData, nv) : Unit // TODO: could be Release
+        ref.unsafeCmpxchgR(ov.castToData, nv) : Unit
         // Possibly also clean up the weakref:
         cleanWeakRef(ref, weakref)
       } else {
@@ -343,7 +343,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     } else if (currentInRef == currentVersion) {
       // version is already correct, but we'll still replace the desc;
       // we don't care if this fails, see above:
-      ref.unsafeCasV(ov.castToData, nv) : Unit // TODO: could be Release
+      ref.unsafeCmpxchgR(ov.castToData, nv) : Unit
       cleanWeakRef(ref, weakref)
     } // else:
     // either a concurrent write to a newer version, in which
