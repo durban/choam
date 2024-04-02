@@ -335,6 +335,23 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     t.replicateA_(10000)
   }
 
+  test("read-mostly `Rxn`s with cycle") {
+    val N = 64
+    val P = 16
+    def readMostlyRxn(refs: List[Ref[Int]]): Axn[Int] = {
+      Rxn.fastRandom.shuffleList(refs).flatMapF { sRefs =>
+        sRefs.tail.take(refs.size >> 1).traverse(ref => ref.get) *> sRefs.head.getAndUpdate(_ + 1)
+      }
+    }
+    val t = for {
+      refs <- Ref(0).run[F].replicateA(N)
+      tsk = readMostlyRxn(refs).run[F]
+      _ <- tsk.parReplicateA_(P)(cats.effect.instances.spawn.parallelForGenSpawn)
+      _ <- assertResultF(refs.traverse(_.get).map(_.sum).run[F], P)
+    } yield ()
+    t.replicateA_(10000)
+  }
+
   test("read-only `Rxn`s") {
     val t = for {
       r1 <- Ref("a").run[F]
