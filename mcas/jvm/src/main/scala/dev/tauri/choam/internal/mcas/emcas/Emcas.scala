@@ -449,7 +449,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     // we don't really care if there is a cycle
     // detected; we just want the descriptor
     // out of the way to do our thing (whoever
-    // started te op which got into the cycle
+    // started the op which got into the cycle
     // WILL care, and will retry):
     helpMCASforMCAS(desc, ctx, seen = 0L, instRo = true) : Unit
   }
@@ -466,6 +466,11 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    *             set for further helping. (If `desc.instRo` is `true`,
    *             `desc` is excluded from this cycle detection, because
    *             it is certainly not part of a cycle.)
+   * @return The result of the MCAS operation on `desc`: the new version
+   *         iff it was successful, `FailedVal` iff it failed, and `CycleDetected`
+   *         iff a cycle was detected during helping (can only happen if
+   *         `desc.instRo` is `false`). Postcondition: `desc` have been
+   *         already finalized with the result which is returned.
    */
   private[this] final def MCAS(desc: EmcasDescriptor, ctx: EmcasThreadContext, seen: Long): Long = {
 
@@ -511,11 +516,12 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                     // already points to the right place, early return:
                     return McasStatus.Successful // scalafix:ok
                   } else {
-                    // we help the active op (who is not us),
-                    // then continue with another iteration:
+                    // we help the active op (who is not us)
                     if (helpMCASforMCAS(parent, ctx = ctx, seen = newSeen, instRo = instRo)) {
+                      // oops, we'll have to finalize ourselves with CycleDetected too
+                      // TODO: Do we really have to? The other one was finalized, doesn't that break the cycle?
                       return EmcasStatus.CycleDetected // scalafix:ok
-                    }
+                    } // else: then continue with another iteration
                   }
                 } else { // finalized op
                   if ((parentStatus == McasStatus.FailedVal) || (parentStatus == EmcasStatus.CycleDetected)) {
@@ -544,6 +550,8 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                   // Help the other op; note: we're not "helping" ourselves
                   // for sure, see the comment above.
                   if (helpMCASforMCAS(parent, ctx = ctx, seen = newSeen, instRo = instRo)) {
+                    // oops, we'll have to finalize ourselves with CycleDetected too
+                    // TODO: Do we really have to? The other one was finalized, doesn't that break the cycle?
                     return EmcasStatus.CycleDetected // scalafix:ok
                   } // else: we helped, but we still don't have the value, so the loop must retry
                 } else if ((parentStatus == McasStatus.FailedVal) || (parentStatus == EmcasStatus.CycleDetected)) {
@@ -748,7 +756,6 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // infinite loop (or rather a stack overflow).
       BloomFilter64.insertIfAbsent(seen, desc.hashCode) match {
         case 0L =>
-          ctx.recordCycleDetected(BloomFilter64.estimatedSize(seen))
           // We (probably) detected a cycle, need to fall
           // back to `instRo = true`. Bloom filter is
           // probabilistic, so there is some chance that
@@ -756,6 +763,8 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           // doesn't affect correctness, only performance.
           // (Actually, not falling back when needed _would_
           // affect correctness.)
+          // Note: we still have to finalize `desc` with
+          // the `CycleDetected` result.
           EmcasStatus.CycleDetected
         case bf =>
           // fine, no cycle, we've added `desc` to `seen`
@@ -868,6 +877,18 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         if (witness == McasStatus.Active) {
           // we finalized the descriptor
           desc.wasFinalized(finalRes)
+          if (finalRes == EmcasStatus.CycleDetected) {
+            // TODO: Note: Our Bloom filter `seen2` isn't necessarily
+            // TODO: correct here, since it could be that it wasn't this
+            // TODO: op who detected the cycle, but we could have detected
+            // TODO: it during helping. This is not a big problem, since
+            // TODO: the Bloom filter size is just for statistical/informational
+            // TODO: purposes. (We could fix this, if we somehow got back the
+            // TODO: filter from helping. But we only get back a `Long`, which
+            // TODO: is `CycleDetected` in this case.)
+            // We finalized `desc` with a cycle, so record it for stats:
+            ctx.recordCycleDetected(BloomFilter64.estimatedSize(seen2))
+          }
           finalRes
         } else {
           // someone else already finalized the descriptor, we return its status:
