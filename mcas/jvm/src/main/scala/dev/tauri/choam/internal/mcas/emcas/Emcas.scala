@@ -52,15 +52,31 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * be removed (i.e., detached, replaced by the final value
    * or a new descriptor) if no other thread (helpers, or the
    * original thread, in case a helper completes the op) uses
-   * the `WordDescriptor`. If they are removed while still
-   * in use, that can cause ABA-problems. (Also, if existing
-   * descriptor objects would be reused, it would cause other
-   * problems too. However, currently only fresh descriptors
-   * are used.)
+   * the `WordDescriptor` any more. If they are removed while
+   * still in use, that can cause ABA-problems. (Also, if
+   * existing descriptor objects would be reused, it would cause
+   * other problems too. However, currently only fresh
+   * descriptors are used.)
    *
-   * TODO: Do we still need markers? The version numbers "should"
-   * TODO: protect us from ABA-problems, and we're currently
-   * TODO: always using fresh descriptors.
+   * A specific scenario which would cause a problem:
+   * - T1 starts an op [(r1, "a", "b"), (r2, "x", "y")]
+   * - Checks version and current value of r1, ok, so it
+   *   installs the WD into r1.
+   * - Checks version and current value of r2, ok.
+   * - T1 "pauses" right before the CAS to install WD
+   *   into r2.
+   * - T2 helps, finalizes the op.
+   * - T2 executes unrelated op, which changes r2 back
+   *   to "x", finalizes.
+   * - T2 detaches the WD from r2, so now r2="x".
+   * - T1 continues execution, executes the CAS to
+   *   install WD into r2, which succeeds (since r2="x").
+   *   But this is incorrect, the version of r2 changed
+   *   since it checked.
+   * So versions by themselves don't save us from ABA-problems,
+   * because we can't CAS them together with the values.
+   * We could, if we had a double-word-CAS (or would implement
+   * something like RDCSS or GCAS). But instead we use marks...
    *
    * To guarantee that in-use descriptors are never replaced,
    * every thread (the original and any helpers) must always
