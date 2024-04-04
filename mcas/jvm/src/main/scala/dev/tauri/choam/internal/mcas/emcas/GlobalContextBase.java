@@ -28,11 +28,8 @@ abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
 
   private static final VarHandle COMMIT_TS;
 
-  static final boolean enableStatsMbean =
-    Boolean.getBoolean("dev.tauri.choam.stats.mcas") || Boolean.getBoolean("dev.tauri.choam.stats.mcas.emcas");
-
   static final String emcasJmxStatsNamePrefix =
-    "dev.tauri.choam.internal.mcas.emcas:type=EmcasJmxStats";
+    "dev.tauri.choam.stats:type=EmcasJmxStats";
 
   static {
     try {

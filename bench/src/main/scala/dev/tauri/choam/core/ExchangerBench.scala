@@ -21,8 +21,9 @@ package core
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import bench.util.McasImplState
 import internal.mcas.Mcas
+import stats.RxnProfiler
+import bench.util.McasImplState
 
 @Fork(3)
 @Threads(2) // 4, 6, 8, ...

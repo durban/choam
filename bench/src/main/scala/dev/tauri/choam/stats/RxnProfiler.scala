@@ -16,7 +16,7 @@
  */
 
 package dev.tauri.choam
-package core
+package stats
 
 import java.{ util => ju }
 import java.util.concurrent.TimeUnit
@@ -26,20 +26,27 @@ import cats.syntax.all._
 
 import org.openjdk.jmh.profile.InternalProfiler
 import org.openjdk.jmh.infra.{ BenchmarkParams, IterationParams }
-import org.openjdk.jmh.results.{ IterationResult, Result, ResultRole, ScalarResult, AggregationPolicy, Aggregator }
+import org.openjdk.jmh.results.{ IterationResult, Result, ResultRole, ScalarResult, TextResult, AggregationPolicy, Aggregator }
 import org.openjdk.jmh.util.SingletonStatistics
 
 import com.monovore.decline.{ Opts, Command }
 
+import core.Exchanger
+
+import internal.mcas.McasStatus
 import internal.mcas.Mcas.Emcas
 
 /**
  * JMH profiler "plugin" for `Rxn` statistics/measurements.
  *
- * How to use: `-prof dev.tauri.choam.core.RxnProfiler`
+ * How to use: `-prof dev.tauri.choam.stats.RxnProfiler`
  *
  * Configuration:
- * `-prof "dev.tauri.choam.core.RxnProfiler:opt1;opt2;opt3"`
+ * `-prof "dev.tauri.choam.stats.RxnProfiler:opt1;opt2;opt3"`
+ *
+ * Most statistics are only collected if explicitly enabled
+ * with setting the `dev.tauri.choam.stats` system property
+ * to `true`.
  *
  * Available options are:
  * - retries (-> rxn.retriesPerCommit)
@@ -50,7 +57,7 @@ import internal.mcas.Mcas.Emcas
  *
  * Measurements:
  * - rxn.retriesPerCommit:
- *   average number of retries (including alternatives) per commit
+ *   average number of retries (not including alternatives) per commit
  * - rxn.reusedWeakRefs: TODO
  * - rxn.exchangesPerSec:
  *   average number of successful exchanges per second (note: this data
@@ -160,11 +167,9 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
     val res = new ju.ArrayList[Result[_]]
     if (config.retriesPerCommit) {
       res.addAll(countRetriesPerCommit())
-      ()
     }
     if (config.measureExchanges) {
       res.addAll(countExchanges())
-      ()
     }
     if (config.reusedWeakRefs) {
       res.add(new ScalarResult(
@@ -173,7 +178,12 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
         RxnProfiler.UnitCount,
         AggregationPolicy.MAX,
       ))
-      ()
+    }
+    if (!McasStatus.statsEnabled) {
+      res.add(new TextResult(
+        s"WARNING: stats are not enabled (if desired, enable them with -D${McasStatus.statsEnabledProp}=true)",
+        "rxn.warning",
+      ))
     }
     res
   }

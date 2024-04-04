@@ -45,7 +45,7 @@ private sealed trait EmcasJmxStatsMBean {
 private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
 
   private[this] final val cacheTimeoutNanos =
-    1000000L // 1ms
+    10000000L // 10ms
 
   private[this] val _cachedStats: AtomicReference[(Mcas.RetryStats, Long)] =
     new AtomicReference

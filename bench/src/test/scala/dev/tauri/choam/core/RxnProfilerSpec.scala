@@ -28,6 +28,8 @@ import munit.CatsEffectSuite
 
 import org.openjdk.jmh.results.Result
 
+import stats.RxnProfiler
+
 final class RxnProfilerSpecIO
   extends BaseSpecIO
   with SpecEmcas

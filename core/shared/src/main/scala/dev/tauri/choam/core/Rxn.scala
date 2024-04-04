@@ -1054,8 +1054,10 @@ object Rxn extends RxnInstances0 {
           this.clearDesc()
           val dSize = if (d ne null) d.size else 0
           if (performMcas(d)) {
-            // save retry statistics:
-            ctx.recordCommit(retries = this.retries, committedRefs = dSize)
+            if (McasStatus.statsEnabled) {
+              // save retry statistics:
+              ctx.recordCommit(retries = this.retries, committedRefs = dSize)
+            }
             // ok, commit is done, but we still need to perform post-commit actions
             val res = a
             a = () : Any

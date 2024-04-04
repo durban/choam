@@ -902,8 +902,10 @@ private[mcas] final class Emcas extends GlobalContext { global =>
             // TODO: purposes. (We could fix this, if we somehow got back the
             // TODO: filter from helping. But we only get back a `Long`, which
             // TODO: is `CycleDetected` in this case.)
-            // We finalized `desc` with a cycle, so record it for stats:
-            ctx.recordCycleDetected(BloomFilter64.estimatedSize(seen2))
+            if (McasStatus.statsEnabled) {
+              // We finalized `desc` with a cycle, so record it for stats:
+              ctx.recordCycleDetected(BloomFilter64.estimatedSize(seen2))
+            }
           }
           finalRes
         } else {
@@ -1078,7 +1080,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
   }
 
   // JMX MBean for stats:
-  if (GlobalContextBase.enableStatsMbean) {
+  if (McasStatus.statsEnabled) {
     val oName = new javax.management.ObjectName(
       f"${GlobalContextBase.emcasJmxStatsNamePrefix}%s-${System.identityHashCode(this)}%08x"
     )

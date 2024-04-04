@@ -38,4 +38,11 @@ public final class McasStatus {
    * the expected version).
    */
   public static final long FailedVal = Version.FailedVal;
+
+  public static final String statsEnabledProp =
+    "dev.tauri.choam.stats";
+
+  /** TDOO: this probably needs a better place */
+  public static final boolean statsEnabled =
+    Boolean.getBoolean(statsEnabledProp);
 }

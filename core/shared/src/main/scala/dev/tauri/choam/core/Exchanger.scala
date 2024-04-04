@@ -26,12 +26,12 @@ sealed trait Exchanger[A, B] {
   private[core] def key: Exchanger.Key
 }
 
-private object Exchanger extends ExchangerCompanionPlatform {
+private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: should be private[core]
 
   private[core] def apply[A, B]: Axn[Exchanger[A, B]] =
     Rxn.unsafe.delay { _ => this.unsafe[A, B] }
 
-  private[core] def profiled[A, B](counter: LongAdder): Axn[Exchanger[A, B]] = {
+  private[choam] def profiled[A, B](counter: LongAdder): Axn[Exchanger[A, B]] = { // TODO: should be private[core]
     this.apply[A, B].flatMapF { underlying =>
       Rxn.unsafe.delay { _ =>
         new ProfiledExchanger[A, B](
@@ -87,7 +87,7 @@ private object Exchanger extends ExchangerCompanionPlatform {
 
   import internal.mcas.{ Mcas, Descriptor }
 
-  private[core] val paramsKey =
+  private[choam] val paramsKey = // TODO: should be private[core]
     new Exchanger.Key
 
   // TODO: these are temporarily mutable for benchmarking

@@ -2,4 +2,4 @@
 -Xmx5G
 -Xss2M
 -XX:+UseG1GC
--Ddev.tauri.choam.stats.mcas=true
+-Ddev.tauri.choam.stats=true
