@@ -27,7 +27,7 @@ final class Descriptor private (
   private val validTsBoxed: java.lang.Long,
   val readOnly: Boolean,
   private val versionIncr: Long,
-  protected final override val versionCas: HalfWordDescriptor[java.lang.Long], // can be null
+  protected final override val versionCas: LogEntry[java.lang.Long], // can be null
 ) extends DescriptorPlatform {
 
   require((versionCas eq null) || (versionIncr > 0L))
@@ -36,7 +36,7 @@ final class Descriptor private (
   final def size: Int =
     this.map.size + (if (this.versionCas ne null) 1 else 0)
 
-  final def isValidHwd[A](hwd: HalfWordDescriptor[A]): Boolean = {
+  final def isValidHwd[A](hwd: LogEntry[A]): Boolean = {
     hwd.version <= this.validTs
   }
 
@@ -73,7 +73,7 @@ final class Descriptor private (
   private[mcas] final def nonEmpty: Boolean =
     this.map.nonEmpty
 
-  private[choam] final def add[A](desc: HalfWordDescriptor[A]): Descriptor = {
+  private[choam] final def add[A](desc: LogEntry[A]): Descriptor = {
     // Note, that it is important, that we don't allow
     // adding an already included ref; the Exchanger
     // depends on this behavior:
@@ -88,7 +88,7 @@ final class Descriptor private (
     )
   }
 
-  private[choam] final def overwrite[A](desc: HalfWordDescriptor[A]): Descriptor = {
+  private[choam] final def overwrite[A](desc: LogEntry[A]): Descriptor = {
     require(desc.version <= this.validTs)
     val newMap = this.map.updated(desc.cast[Any])
     new Descriptor(
@@ -103,7 +103,7 @@ final class Descriptor private (
     )
   }
 
-  private[choam] final def addOrOverwrite[A](desc: HalfWordDescriptor[A]): Descriptor = {
+  private[choam] final def addOrOverwrite[A](desc: LogEntry[A]): Descriptor = {
     require(desc.version <= this.validTs)
     val newMap = this.map.upserted(desc.cast[Any])
     new Descriptor(
@@ -134,7 +134,7 @@ final class Descriptor private (
     require(!this.readOnly)
     require(this.versionIncr > 0L)
     require(this.validTsBoxed ne null)
-    val hwd = HalfWordDescriptor[java.lang.Long](
+    val hwd = LogEntry[java.lang.Long](
       commitTsRef.asInstanceOf[MemoryLocation[java.lang.Long]],
       ov = this.validTsBoxed, // no re-boxing here
       nv = java.lang.Long.valueOf(this.newVersion),
@@ -150,14 +150,14 @@ final class Descriptor private (
     )
   }
 
-  private[choam] final def getOrElseNull[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
+  private[choam] final def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A] = {
     this.map.asInstanceOf[LogMap2[A]].getOrElseNull(ref.id)
   }
 
   private[mcas] final def validateAndTryExtend(
     commitTsRef: MemoryLocation[Long],
     ctx: Mcas.ThreadContext,
-    additionalHwd: HalfWordDescriptor[_], // can be null
+    additionalHwd: LogEntry[_], // can be null
   ): Descriptor = {
     require(this.versionCas eq null)
     // NB: we must read the commitTs *before* the `ctx.validate...`
@@ -169,7 +169,7 @@ final class Descriptor private (
   private[mcas] final def validateAndTryExtendVer(
     currentTs: Long,
     ctx: Mcas.ThreadContext,
-    additionalHwd: HalfWordDescriptor[_], // can be null
+    additionalHwd: LogEntry[_], // can be null
   ): Descriptor = {
     // We're passing `newValidTsBoxed = null`. This is ugly,
     // but nothing will actually need it (we're doing EMCAS
@@ -187,7 +187,7 @@ final class Descriptor private (
     newValidTs: Long,
     newValidTsBoxed: java.lang.Long, // can be null
     ctx: Mcas.ThreadContext,
-    additionalHwd: HalfWordDescriptor[_], // can be null
+    additionalHwd: LogEntry[_], // can be null
   ): Descriptor = {
     if (newValidTs > this.validTs) {
       if (

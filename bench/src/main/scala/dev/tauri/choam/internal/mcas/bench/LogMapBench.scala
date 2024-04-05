@@ -25,7 +25,7 @@ import scala.collection.immutable.TreeMap
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import internal.mcas.{ MemoryLocation, HalfWordDescriptor, Version }
+import internal.mcas.{ MemoryLocation, LogEntry, Version }
 import internal.helpers.McasHelper
 import dev.tauri.choam.bench.util.RandomState
 
@@ -50,7 +50,7 @@ private[mcas] class LogMapBench {
     val newKey = s.dummyKeys(idx)
     bh.consume(newKey)
     val newHwd = s.dummyHwds(idx)
-    bh.consume(s.map.inserted(newHwd.asInstanceOf[HalfWordDescriptor[Any]]))
+    bh.consume(s.map.inserted(newHwd.asInstanceOf[LogEntry[Any]]))
   }
 
   @Benchmark
@@ -59,7 +59,7 @@ private[mcas] class LogMapBench {
     val newKey = s.dummyKeys(idx)
     bh.consume(newKey)
     val newHwd = s.dummyHwds(idx)
-    bh.consume(McasHelper.LogMap_inserted(s.map, newHwd.asInstanceOf[HalfWordDescriptor[Any]]))
+    bh.consume(McasHelper.LogMap_inserted(s.map, newHwd.asInstanceOf[LogEntry[Any]]))
   }
 
   @Benchmark
@@ -145,7 +145,7 @@ private[mcas] class LogMapBench {
       val key = s.keys(idx)
       bh.consume(key)
       val newHwd = s.newHwds(idx)
-      bh.consume(s.map.updated(newHwd.asInstanceOf[HalfWordDescriptor[Any]]))
+      bh.consume(s.map.updated(newHwd.asInstanceOf[LogEntry[Any]]))
     }
   }
 
@@ -158,7 +158,7 @@ private[mcas] class LogMapBench {
       val key = s.keys(idx)
       bh.consume(key)
       val newHwd = s.newHwds(idx)
-      bh.consume(McasHelper.LogMap_updated(s.map, newHwd.asInstanceOf[HalfWordDescriptor[Any]]))
+      bh.consume(McasHelper.LogMap_updated(s.map, newHwd.asInstanceOf[LogEntry[Any]]))
     }
   }
 
@@ -226,13 +226,13 @@ object LogMapBench {
     var keys: Array[MemoryLocation[String]] =
       null
 
-    var newHwds: Array[HalfWordDescriptor[String]] =
+    var newHwds: Array[LogEntry[String]] =
       null
 
     var dummyKeys: Array[MemoryLocation[String]] =
       null
 
-    var dummyHwds: Array[HalfWordDescriptor[String]] =
+    var dummyHwds: Array[LogEntry[String]] =
       null
 
     def baseSetup(): Unit = {
@@ -299,7 +299,7 @@ object LogMapBench {
   @State(Scope.Thread)
   class TreeMapState extends BaseState {
 
-    var map: TreeMap[MemoryLocation[Any], HalfWordDescriptor[Any]] =
+    var map: TreeMap[MemoryLocation[Any], LogEntry[Any]] =
       TreeMap.empty(MemoryLocation.orderingInstance[Any])
 
     @Setup

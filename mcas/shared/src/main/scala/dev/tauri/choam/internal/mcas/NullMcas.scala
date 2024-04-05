@@ -66,7 +66,7 @@ object NullMcas extends Mcas.UnsealedMcas { self =>
       }
     }
 
-    final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] =
+    final override def readIntoHwd[A](ref: MemoryLocation[A]): LogEntry[A] =
       throw new UnsupportedOperationException
 
     private[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
@@ -74,7 +74,7 @@ object NullMcas extends Mcas.UnsealedMcas { self =>
 
     final override def validateAndTryExtend(
       desc: Descriptor,
-      hwd: HalfWordDescriptor[_]
+      hwd: LogEntry[_]
     ): Descriptor = {
       throw new UnsupportedOperationException
     }

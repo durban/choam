@@ -681,7 +681,7 @@ class EmcasSpec extends BaseSpec {
   test("EmcasDescriptor#instRo") {
     val ref = MemoryLocation.unsafeUnpadded[String]("foo")
     val ctx = Emcas.inst.currentContext()
-    val ed1 = new EmcasDescriptor(ctx.start().add(HalfWordDescriptor(ref, "foo", "bar", Version.Start)))
+    val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)))
     assert(!ed1.instRo)
     val arr = ed1.getWordsO()
     assertSameInstance(arr(0).parent, ed1)
@@ -690,7 +690,7 @@ class EmcasSpec extends BaseSpec {
   test("EmcasDescriptor#fallback") {
     val ref = MemoryLocation.unsafeUnpadded[String]("foo")
     val ctx = Emcas.inst.currentContext()
-    val ed1 = new EmcasDescriptor(ctx.start().add(HalfWordDescriptor(ref, "foo", "bar", Version.Start)))
+    val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)))
     assert(!ed1.instRo)
     assertEquals(ed1.cmpxchgStatus(McasStatus.Active, EmcasStatus.CycleDetected), McasStatus.Active)
     assertSameInstance(ed1.getWordsO()(0).parent, ed1)
@@ -707,7 +707,7 @@ class EmcasSpec extends BaseSpec {
   test("EmcasDescriptor#fallback call before wasFinalized call") {
     val ref = MemoryLocation.unsafeUnpadded[String]("foo")
     val ctx = Emcas.inst.currentContext()
-    val ed1 = new EmcasDescriptor(ctx.start().add(HalfWordDescriptor(ref, "foo", "bar", Version.Start)))
+    val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)))
     assert(!ed1.instRo)
     assertEquals(ed1.cmpxchgStatus(McasStatus.Active, EmcasStatus.CycleDetected), McasStatus.Active)
     val ed2 = ed1.fallback

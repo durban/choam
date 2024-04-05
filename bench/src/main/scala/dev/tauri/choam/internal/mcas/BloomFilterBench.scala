@@ -84,13 +84,13 @@ object BloomFilterBench {
     var keys: Array[MemoryLocation[String]] =
       null
 
-    var newHwds: Array[HalfWordDescriptor[String]] =
+    var newHwds: Array[LogEntry[String]] =
       null
 
     var dummyKeys: Array[MemoryLocation[String]] =
       null
 
-    var dummyHwds: Array[HalfWordDescriptor[String]] =
+    var dummyHwds: Array[LogEntry[String]] =
       null
 
     def baseSetup(): Unit = {
@@ -100,14 +100,14 @@ object BloomFilterBench {
       for (idx <- 0 until this.size) {
         val ref = MemoryLocation.unsafe("a")
         this.keys(idx) = ref
-        this.newHwds(idx) = HalfWordDescriptor(ref, "a", "c", version = 0L)
+        this.newHwds(idx) = LogEntry(ref, "a", "c", version = 0L)
       }
       this.dummyKeys = new Array(DummySize)
       this.dummyHwds = new Array(DummySize)
       for (idx <- 0 until DummySize) {
         val ref = MemoryLocation.unsafe("x")
         this.dummyKeys(idx) = ref
-        this.dummyHwds(idx) = HalfWordDescriptor(ref, "x", "y", version = 0L)
+        this.dummyHwds(idx) = LogEntry(ref, "x", "y", version = 0L)
       }
     }
   }
@@ -131,7 +131,7 @@ object BloomFilterBench {
       this.baseSetup()
       for (ref <- this.keys) {
         this.map = this.map.inserted(
-          HalfWordDescriptor(ref, "a", "b", version = Version.Start),
+          LogEntry(ref, "a", "b", version = Version.Start),
         )
       }
     }

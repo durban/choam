@@ -83,7 +83,7 @@ object Mcas extends McasCompanionPlatform { self =>
      *         consistent with each other. The descriptor's
      *         `.ov` and `.nv` are guaranteed to be the same.
      */
-    def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A]
+    def readIntoHwd[A](ref: MemoryLocation[A]): LogEntry[A]
 
     /**
      * @return the current version of `ref`, as if
@@ -93,7 +93,7 @@ object Mcas extends McasCompanionPlatform { self =>
 
     def validateAndTryExtend(
       desc: Descriptor,
-      hwd: HalfWordDescriptor[_], // may be null
+      hwd: LogEntry[_], // may be null
     ): Descriptor
 
     /**
@@ -188,7 +188,7 @@ object Mcas extends McasCompanionPlatform { self =>
       nv: A,
       version: Long
     ): Descriptor = {
-      val wd = HalfWordDescriptor(ref, ov, nv, version)
+      val wd = LogEntry(ref, ov, nv, version)
       desc.add(wd)
     }
 
@@ -202,7 +202,7 @@ object Mcas extends McasCompanionPlatform { self =>
       desc.revalidate(this)
     }
 
-    private[mcas] final def validateHwd[A](hwd: HalfWordDescriptor[A]): Boolean = {
+    private[mcas] final def validateHwd[A](hwd: LogEntry[A]): Boolean = {
       hwd.revalidate(this)
     }
 
@@ -370,7 +370,7 @@ object Mcas extends McasCompanionPlatform { self =>
             newDesc.overwrite(newDesc.getOrElseNull(ref).withNv(to))
           } else {
             val oldHwd = newDesc.getOrElseNull(ref)
-            val newHwd = HalfWordDescriptor(ref, from, to, oldHwd.version)
+            val newHwd = LogEntry(ref, from, to, oldHwd.version)
             newDesc.overwrite(newHwd)
           }
           new Builder(this.ctx, newestDesc)

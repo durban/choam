@@ -243,9 +243,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * @param ctx: The [[ThreadContext]] of the current thread.
    * @param replace: Pass `false` to not do any replacing/clearing.
    */
-  private[this] final def readValue[A](ref: MemoryLocation[A], ctx: EmcasThreadContext, replace: Boolean): HalfWordDescriptor[A] = {
+  private[this] final def readValue[A](ref: MemoryLocation[A], ctx: EmcasThreadContext, replace: Boolean): LogEntry[A] = {
     @tailrec
-    def go(mark: AnyRef, ver1: Long): HalfWordDescriptor[A] = {
+    def go(mark: AnyRef, ver1: Long): LogEntry[A] = {
       ref.unsafeGetV() match {
         case wd: EmcasWordDesc[_] =>
           if (mark eq null) {
@@ -278,7 +278,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                   replace = replace,
                   currentVersion = currVer,
                 )
-                HalfWordDescriptor(ref, ov = a, nv = a, version = currVer)
+                LogEntry(ref, ov = a, nv = a, version = currVer)
               }
             }
           } else { // mark ne null
@@ -293,13 +293,13 @@ private[mcas] final class Emcas extends GlobalContext { global =>
               val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
               val currVer = if (successful) parentStatus else wd.oldVersion
               Reference.reachabilityFence(mark)
-              HalfWordDescriptor(ref, ov = a, nv = a, version = currVer)
+              LogEntry(ref, ov = a, nv = a, version = currVer)
             }
           }
         case a =>
           val ver2 = ref.unsafeGetVersionV()
           if (ver1 == ver2) {
-            HalfWordDescriptor(ref, ov = a, nv = a, version = ver1)
+            LogEntry(ref, ov = a, nv = a, version = ver1)
           } else {
             go(mark = null, ver1 = ver2)
           }
@@ -387,7 +387,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     hwd.nv
   }
 
-  private[mcas] final def readIntoHwd[A](ref: MemoryLocation[A], ctx: EmcasThreadContext): HalfWordDescriptor[A] = {
+  private[mcas] final def readIntoHwd[A](ref: MemoryLocation[A], ctx: EmcasThreadContext): LogEntry[A] = {
     readValue(ref, ctx, replace = true)
   }
 

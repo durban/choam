@@ -23,28 +23,28 @@ private[mcas] final class LogMap2[A] private (
   _size: Int,
   _bitmap: Long,
   _contents: Array[AnyRef],
-) extends Hamt[HalfWordDescriptor[A], HalfWordDescriptor[A], Unit, Mcas.ThreadContext, Descriptor, LogMap2[A]](_size, _bitmap, _contents) {
+) extends Hamt[LogEntry[A], LogEntry[A], Unit, Mcas.ThreadContext, Descriptor, LogMap2[A]](_size, _bitmap, _contents) {
 
   final def revalidate(ctx: Mcas.ThreadContext): Boolean = {
     this.forAll(ctx)
   }
 
-  protected final override def hashOf(a: HalfWordDescriptor[A]): Long =
+  protected final override def hashOf(a: LogEntry[A]): Long =
     a.address.id
 
   protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LogMap2[A] =
     new LogMap2(size, bitmap, contents)
 
-  protected final override def newArray(size: Int): Array[HalfWordDescriptor[A]] =
-    new Array[HalfWordDescriptor[A]](size)
+  protected final override def newArray(size: Int): Array[LogEntry[A]] =
+    new Array[LogEntry[A]](size)
 
-  protected final override def convertForArray(a: HalfWordDescriptor[A], tok: Unit): HalfWordDescriptor[A] =
+  protected final override def convertForArray(a: LogEntry[A], tok: Unit): LogEntry[A] =
     a
 
-  protected final override def convertForFoldLeft(s: Descriptor, a: HalfWordDescriptor[A]): Descriptor =
+  protected final override def convertForFoldLeft(s: Descriptor, a: LogEntry[A]): Descriptor =
     s.add(a)
 
-  protected final override def predicateForForAll(a: HalfWordDescriptor[A], tok: Mcas.ThreadContext): Boolean =
+  protected final override def predicateForForAll(a: LogEntry[A], tok: Mcas.ThreadContext): Boolean =
     a.revalidate(tok)
 }
 

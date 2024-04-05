@@ -23,15 +23,15 @@ private[mcas] abstract class DescriptorPlatform {
 
   protected def map: LogMap2[Any]
 
-  protected def versionCas: HalfWordDescriptor[java.lang.Long]
+  protected def versionCas: LogEntry[java.lang.Long]
 
-  final def hwdIterator(ctx: Mcas.ThreadContext): Iterator[HalfWordDescriptor[Any]] = {
+  final def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
     require(ctx.impl ne Mcas.Emcas)
     // This is really not effective (we're making an
     // array of WDs, and mapping it back to HWDs), but
     // this is not EMCAS, so we don't really care:
     val wordsItr = this.map.toArray(null).map { (wd: emcas.EmcasWordDesc[_]) =>
-      HalfWordDescriptor(wd.address.cast[Any], wd.ov, wd.nv, wd.oldVersion)
+      LogEntry(wd.address.cast[Any], wd.ov, wd.nv, wd.oldVersion)
     }.iterator
     val vc = this.versionCas
     if (vc eq null) {

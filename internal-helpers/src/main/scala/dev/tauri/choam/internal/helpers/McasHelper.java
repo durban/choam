@@ -21,8 +21,8 @@ import scala.collection.Iterator;
 
 import dev.tauri.choam.internal.mcas.LogMap;
 import dev.tauri.choam.internal.mcas.LogMap$;
-import dev.tauri.choam.internal.mcas.HalfWordDescriptor;
-import dev.tauri.choam.internal.mcas.HalfWordDescriptor$;
+import dev.tauri.choam.internal.mcas.LogEntry;
+import dev.tauri.choam.internal.mcas.LogEntry$;
 import dev.tauri.choam.internal.mcas.MemoryLocation;
 
 public final class McasHelper {
@@ -35,28 +35,28 @@ public final class McasHelper {
     return ((LogMap) m).size();
   }
 
-  public static Iterator<HalfWordDescriptor<?>> LogMap_iterator(Object m) {
+  public static Iterator<LogEntry<?>> LogMap_iterator(Object m) {
     return ((LogMap) m).valuesIterator();
   }
 
-  public static HalfWordDescriptor<Object> LogMap_getOrElse(Object m, MemoryLocation<Object> k, HalfWordDescriptor<Object> d) {
+  public static LogEntry<Object> LogMap_getOrElse(Object m, MemoryLocation<Object> k, LogEntry<Object> d) {
     return ((LogMap) m).getOrElse(k, d);
   }
 
-  public static Object LogMap_inserted(Object m, HalfWordDescriptor<Object> hwd) {
+  public static Object LogMap_inserted(Object m, LogEntry<Object> hwd) {
     return ((LogMap) m).inserted(hwd);
   }
 
-  public static Object LogMap_updated(Object m, HalfWordDescriptor<Object> hwd) {
+  public static Object LogMap_updated(Object m, LogEntry<Object> hwd) {
     return ((LogMap) m).updated(hwd);
   }
 
-  public static <A> HalfWordDescriptor<A> newHwd(
+  public static <A> LogEntry<A> newHwd(
     MemoryLocation<A> address,
     A ov,
     A nv,
     long version
   ) {
-    return HalfWordDescriptor$.MODULE$.apply(address, ov, nv, version);
+    return LogEntry$.MODULE$.apply(address, ov, nv, version);
   }
 }

@@ -21,8 +21,7 @@ package mcas
 
 import scala.util.hashing.MurmurHash3
 
-// TODO: this really should have a better name
-final class HalfWordDescriptor[A] private (
+final class LogEntry[A] private ( // formerly called HWD
   val address: MemoryLocation[A],
   val ov: A,
   val nv: A,
@@ -31,12 +30,12 @@ final class HalfWordDescriptor[A] private (
 
   require(Version.isValid(version))
 
-  private[mcas] final def cast[B]: HalfWordDescriptor[B] =
-    this.asInstanceOf[HalfWordDescriptor[B]]
+  private[mcas] final def cast[B]: LogEntry[B] =
+    this.asInstanceOf[LogEntry[B]]
 
-  final def withNv(a: A): HalfWordDescriptor[A] = {
+  final def withNv(a: A): LogEntry[A] = {
     if (equ(this.nv, a)) this
-    else new HalfWordDescriptor[A](address = this.address, ov = this.ov, nv = a, version = this.version)
+    else new LogEntry[A](address = this.address, ov = this.ov, nv = a, version = this.version)
   }
 
   /**
@@ -50,7 +49,7 @@ final class HalfWordDescriptor[A] private (
     currVer == this.version
   }
 
-  final def tryMergeTicket(ticket: HalfWordDescriptor[A], newest: A): HalfWordDescriptor[A] = {
+  final def tryMergeTicket(ticket: LogEntry[A], newest: A): LogEntry[A] = {
     if (this == ticket) {
       // OK, was not modified since reading the ticket:
       this.withNv(newest)
@@ -63,11 +62,11 @@ final class HalfWordDescriptor[A] private (
     equ(this.ov, this.nv)
 
   final override def toString: String =
-    s"HalfWordDescriptor(${this.address}, ${this.ov}, ${this.nv}, version = ${version})"
+    s"LogEntry(${this.address}, ${this.ov}, ${this.nv}, version = ${version})"
 
   final override def equals(that: Any): Boolean = {
     that match {
-      case that: HalfWordDescriptor[_] =>
+      case that: LogEntry[_] =>
         (this eq that) || (
           (this.address == that.address) &&
           equ[Any](this.ov, that.ov) &&
@@ -88,14 +87,14 @@ final class HalfWordDescriptor[A] private (
   }
 }
 
-private object HalfWordDescriptor {
+private object LogEntry {
 
   private[mcas] def apply[A](
     address: MemoryLocation[A],
     ov: A,
     nv: A,
     version: Long,
-  ): HalfWordDescriptor[A] = {
-    new HalfWordDescriptor[A](address = address, ov = ov, nv = nv, version = version)
+  ): LogEntry[A] = {
+    new LogEntry[A](address = address, ov = ov, nv = nv, version = version)
   }
 }

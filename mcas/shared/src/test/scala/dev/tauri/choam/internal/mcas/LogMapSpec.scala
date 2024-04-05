@@ -39,11 +39,11 @@ final class LogMapSpec extends ScalaCheckSuite {
     forAll { (seed: Long, _refs: Set[MemoryLocation[String]]) =>
       val refs = new Random(seed).shuffle(_refs.toList)
       var lm = LogMap.empty
-      var tm = TreeMap.empty[MemoryLocation[String], HalfWordDescriptor[String]](
+      var tm = TreeMap.empty[MemoryLocation[String], LogEntry[String]](
         MemoryLocation.orderingInstance
       )
       for (ref <- refs) {
-        val hwd = HalfWordDescriptor(ref, "x", "y", 0L)
+        val hwd = LogEntry(ref, "x", "y", 0L)
         assertEquals(lm.getOrElse(ref, null), null)
         lm = lm.inserted(hwd)
         tm = tm.updated(ref, hwd)
@@ -62,7 +62,7 @@ final class LogMapSpec extends ScalaCheckSuite {
       // overwrite everything:
       val shuffled = rng.shuffle(tm.keySet.toList)
       for (ref <- shuffled) {
-        val newHwd = HalfWordDescriptor(ref, rng.nextString(32), "q", rng.nextLong())
+        val newHwd = LogEntry(ref, rng.nextString(32), "q", rng.nextLong())
         val oldHwd = lm.getOrElse(ref, null)
         assert(oldHwd ne null)
         assertNotEquals(oldHwd, newHwd)
@@ -82,15 +82,15 @@ final class LogMapSpec extends ScalaCheckSuite {
     rng: Random,
     randomA: () => A,
     _refs: Set[MemoryLocation[A]],
-  ): (LogMap, TreeMap[MemoryLocation[A], HalfWordDescriptor[A]]) = {
+  ): (LogMap, TreeMap[MemoryLocation[A], LogEntry[A]]) = {
     val refs = rng.shuffle(_refs.toList)
     var lm = LogMap.empty
-    var tm = TreeMap.empty[MemoryLocation[A], HalfWordDescriptor[A]](
+    var tm = TreeMap.empty[MemoryLocation[A], LogEntry[A]](
       MemoryLocation.orderingInstance
     )
     // insert everything:
     for (ref <- refs) {
-      val hwd = HalfWordDescriptor(ref, randomA(), randomA(), rng.nextLong())
+      val hwd = LogEntry(ref, randomA(), randomA(), rng.nextLong())
       lm = lm.upserted(hwd)
       tm = tm.updated(ref, hwd)
     }
@@ -99,14 +99,14 @@ final class LogMapSpec extends ScalaCheckSuite {
 
   test("LogMap#size") {
     val r1 = MemoryLocation.unsafeUnpadded("1")
-    val h1 = HalfWordDescriptor(r1, "1", "x", 42L)
+    val h1 = LogEntry(r1, "1", "x", 42L)
     val r2 = MemoryLocation.unsafeUnpadded("2")
-    val h2 = HalfWordDescriptor(r2, "2", "x", 42L)
+    val h2 = LogEntry(r2, "2", "x", 42L)
     val r3 = MemoryLocation.unsafeUnpadded("3")
-    val h31 = HalfWordDescriptor(r3, "3", "x", 42L)
-    val h32 = HalfWordDescriptor(r3, "3", "y", 42L)
+    val h31 = LogEntry(r3, "3", "x", 42L)
+    val h32 = LogEntry(r3, "3", "y", 42L)
     val r4 = MemoryLocation.unsafeUnpadded("4")
-    val h4 = HalfWordDescriptor(r4, "4", "x", 42L)
+    val h4 = LogEntry(r4, "4", "x", 42L)
     val lm0 = LogMap.empty
     assertEquals(lm0.size, 0)
     val lm1 = lm0.inserted(h1)

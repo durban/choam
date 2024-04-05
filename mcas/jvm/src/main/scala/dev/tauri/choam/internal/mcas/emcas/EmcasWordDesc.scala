@@ -49,7 +49,7 @@ private[mcas] final class EmcasWordDesc[A] private (
   // TODO: (A lot of extra checks would need to be introduced.)
 
   def this(
-    half: HalfWordDescriptor[A],
+    half: LogEntry[A],
     parent: EmcasDescriptor,
   ) = this(
     parent = parent,

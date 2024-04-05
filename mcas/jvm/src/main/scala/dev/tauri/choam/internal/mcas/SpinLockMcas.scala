@@ -86,13 +86,13 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
       readOne(ref)
     }
 
-    final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
+    final override def readIntoHwd[A](ref: MemoryLocation[A]): LogEntry[A] = {
       @tailrec
-      def go(ver1: Long): HalfWordDescriptor[A] = {
+      def go(ver1: Long): LogEntry[A] = {
         val a = readOne(ref)
         val ver2 = ref.unsafeGetVersionV()
         if (ver1 == ver2) {
-          HalfWordDescriptor[A](ref, ov = a, nv = a, version = ver1)
+          LogEntry[A](ref, ov = a, nv = a, version = ver1)
         } else {
           go(ver2)
         }
@@ -124,18 +124,18 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
 
     final override def validateAndTryExtend(
       desc: Descriptor,
-      hwd: HalfWordDescriptor[_],
+      hwd: LogEntry[_],
     ): Descriptor = {
       desc.validateAndTryExtend(commitTs, this, hwd)
     }
 
-    private def perform(ops: List[HalfWordDescriptor[_]], newVersion: Long): Long = {
+    private def perform(ops: List[LogEntry[_]], newVersion: Long): Long = {
 
       @tailrec
-      def lock(ops: List[HalfWordDescriptor[_]]): (List[HalfWordDescriptor[_]], Option[Long]) = ops match {
+      def lock(ops: List[LogEntry[_]]): (List[LogEntry[_]], Option[Long]) = ops match {
         case Nil => (Nil, None)
         case h :: tail => h match {
-          case head: HalfWordDescriptor[a] =>
+          case head: LogEntry[a] =>
             val witness: a = head.address.unsafeCmpxchgV(head.ov, locked[a])
             val isGlobalVerCas = (head.address eq commitTs)
             if (equ(witness, head.ov)) {
@@ -162,9 +162,9 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
       }
 
       @tailrec
-      def commit(ops: List[HalfWordDescriptor[_]], newVersion: Long): Unit = ops match {
+      def commit(ops: List[LogEntry[_]], newVersion: Long): Unit = ops match {
         case Nil => ()
-        case h :: tail => h match { case head: HalfWordDescriptor[a] =>
+        case h :: tail => h match { case head: LogEntry[a] =>
           val ov = head.address.unsafeGetVersionV()
           val wit = head.address.unsafeCmpxchgVersionV(ov, newVersion)
           assert(wit == ov)
@@ -174,11 +174,11 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
       }
 
       @tailrec
-      def rollback(from: List[HalfWordDescriptor[_]], to: List[HalfWordDescriptor[_]]): Unit = {
+      def rollback(from: List[LogEntry[_]], to: List[LogEntry[_]]): Unit = {
         if (from ne to) {
           from match {
             case Nil => impossible("this is the end")
-            case h :: tail => h match { case head: HalfWordDescriptor[a] =>
+            case h :: tail => h match { case head: LogEntry[a] =>
               head.address.unsafeSetV(head.ov)
               rollback(tail, to)
             }

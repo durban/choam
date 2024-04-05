@@ -35,9 +35,9 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
       ref.unsafeGetP()
     }
 
-    final override def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
+    final override def readIntoHwd[A](ref: MemoryLocation[A]): LogEntry[A] = {
       val v = ref.unsafeGetP()
-      HalfWordDescriptor(ref, ov = v, nv = v, version = ref.unsafeGetVersionV())
+      LogEntry(ref, ov = v, nv = v, version = ref.unsafeGetVersionV())
     }
 
     protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
@@ -45,10 +45,10 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
 
     final override def tryPerformInternal(desc: Descriptor): Long = {
       @tailrec
-      def prepare(it: Iterator[HalfWordDescriptor[_]]): Long = {
+      def prepare(it: Iterator[LogEntry[_]]): Long = {
         if (it.hasNext) {
           it.next() match {
-            case wd: HalfWordDescriptor[a] =>
+            case wd: LogEntry[a] =>
               val witness = wd.address.unsafeGetP()
               val witnessVer = wd.address.unsafeGetVersionV()
               val isGlobalVerCas = (wd.address eq _commitTs)
@@ -65,10 +65,10 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
       }
 
       @tailrec
-      def execute(it: Iterator[HalfWordDescriptor[_]], newVersion: Long): Unit = {
+      def execute(it: Iterator[LogEntry[_]], newVersion: Long): Unit = {
         if (it.hasNext) {
           it.next() match {
-            case wd: HalfWordDescriptor[a] =>
+            case wd: LogEntry[a] =>
               val old = wd.address.unsafeGetP()
               assert(equ(old, wd.ov))
               wd.address.unsafeSetP(wd.nv)
@@ -97,7 +97,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
 
     def validateAndTryExtend(
       desc: Descriptor,
-      hwd: HalfWordDescriptor[_],
+      hwd: LogEntry[_],
     ): Descriptor =
       desc.validateAndTryExtend(_commitTs, this, additionalHwd = hwd)
 

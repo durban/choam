@@ -30,20 +30,20 @@ private sealed abstract class LogMap {
 
   def size: Int
 
-  def valuesIterator: Iterator[HalfWordDescriptor[_]]
+  def valuesIterator: Iterator[LogEntry[_]]
 
   def nonEmpty: Boolean
 
   /** Must already contain `v.address` */
-  def updated[A](v: HalfWordDescriptor[A]): LogMap
+  def updated[A](v: LogEntry[A]): LogMap
 
   /** Mustn't already contain `v.address` */
-  def inserted[A](v: HalfWordDescriptor[A]): LogMap
+  def inserted[A](v: LogEntry[A]): LogMap
 
   /** May or may not already contain `v.address` */
-  def upserted[A](v: HalfWordDescriptor[A]): LogMap
+  def upserted[A](v: LogEntry[A]): LogMap
 
-  def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]): HalfWordDescriptor[A]
+  def getOrElse[A](k: MemoryLocation[A], default: LogEntry[A]): LogEntry[A]
 
   override def equals(that: Any): Boolean
 
@@ -61,22 +61,22 @@ private object LogMap {
     final override def size =
       0
 
-    final override def valuesIterator: Iterator[HalfWordDescriptor[_]] =
+    final override def valuesIterator: Iterator[LogEntry[_]] =
       Iterator.empty
 
     final override def nonEmpty =
       false
 
-    final override def updated[A](v: HalfWordDescriptor[A]): LogMap =
+    final override def updated[A](v: LogEntry[A]): LogMap =
       throw new IllegalArgumentException
 
-    final override def inserted[A](v: HalfWordDescriptor[A]): LogMap =
+    final override def inserted[A](v: LogEntry[A]): LogMap =
       new LogMap1(v)
 
-    final override def upserted[A](v: HalfWordDescriptor[A]): LogMap =
+    final override def upserted[A](v: LogEntry[A]): LogMap =
       new LogMap1(v)
 
-    final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
+    final override def getOrElse[A](k: MemoryLocation[A], default: LogEntry[A]) =
       default
 
     final override def equals(that: Any): Boolean =
@@ -86,29 +86,29 @@ private object LogMap {
       0x8de3a9b3
   }
 
-  private final class LogMap1(private val v1: HalfWordDescriptor[_])
+  private final class LogMap1(private val v1: LogEntry[_])
     extends LogMap {
 
     final override def size =
       1
 
-    final override def valuesIterator: Iterator[HalfWordDescriptor[_]] =
+    final override def valuesIterator: Iterator[LogEntry[_]] =
       Iterator.single(v1)
 
     final override def nonEmpty =
       true
 
-    final override def updated[A](v: HalfWordDescriptor[A]): LogMap = {
+    final override def updated[A](v: LogEntry[A]): LogMap = {
       require(v.address eq v1.address)
       new LogMap1(v)
     }
 
-    final override def inserted[A](v: HalfWordDescriptor[A]): LogMap = {
+    final override def inserted[A](v: LogEntry[A]): LogMap = {
       require(v.address ne v1.address)
       new LogMapTree(v1.cast[Any], v.cast[Any])
     }
 
-    final override def upserted[A](v: HalfWordDescriptor[A]): LogMap = {
+    final override def upserted[A](v: LogEntry[A]): LogMap = {
       if (v.address eq v1.address) {
         new LogMap1(v)
       } else {
@@ -116,7 +116,7 @@ private object LogMap {
       }
     }
 
-    final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) =
+    final override def getOrElse[A](k: MemoryLocation[A], default: LogEntry[A]) =
       if (k eq v1.address) v1.cast[A] else default
 
     final override def equals(that: Any): Boolean = that match {
@@ -132,19 +132,19 @@ private object LogMap {
 
   /** Invariant: `treeMap` has more than 1 items */
   private final class LogMapTree private (
-    private val treeMap: LongMap[HalfWordDescriptor[Any]],
+    private val treeMap: LongMap[LogEntry[Any]],
     final override val size: Int, // `LongMap` traverses the whole tree for `.size`
     // TODO: figure out if this Bloom filter is still useful:
     private val bloomFilterLeft: Long,
     private val bloomFilterRight: Long,
   ) extends LogMap {
 
-    def this(v1: HalfWordDescriptor[Any], v2: HalfWordDescriptor[Any]) = {
+    def this(v1: LogEntry[Any], v2: LogEntry[Any]) = {
       this(
         {
           require(v1 ne v2)
           LongMap
-            .empty[HalfWordDescriptor[Any]]
+            .empty[LogEntry[Any]]
             .updated(v1.address.id, v1)
             .updated(v2.address.id, v2)
         },
@@ -154,13 +154,13 @@ private object LogMap {
       )
     }
 
-    final override def valuesIterator: Iterator[HalfWordDescriptor[_]] =
+    final override def valuesIterator: Iterator[LogEntry[_]] =
       treeMap.valuesIterator
 
     final override def nonEmpty =
       true
 
-    final override def updated[A](v: HalfWordDescriptor[A]): LogMap = {
+    final override def updated[A](v: LogEntry[A]): LogMap = {
       val k = v.address
       // TODO: this is a hack to detect if not already there:
       @nowarn("cat=lint-performance")
@@ -178,7 +178,7 @@ private object LogMap {
       )
     }
 
-    final override def inserted[A](v: HalfWordDescriptor[A]): LogMap = {
+    final override def inserted[A](v: LogEntry[A]): LogMap = {
       val k = v.address
       // TODO: this is a hack to detect if already there:
       @nowarn("cat=lint-performance")
@@ -196,7 +196,7 @@ private object LogMap {
       )
     }
 
-    final override def upserted[A](v: HalfWordDescriptor[A]): LogMap = {
+    final override def upserted[A](v: LogEntry[A]): LogMap = {
       val k = v.address
       // TODO: this is a hack to be able to maintain `size`:
       @nowarn("cat=lint-performance")
@@ -213,11 +213,11 @@ private object LogMap {
       )
     }
 
-    final override def getOrElse[A](k: MemoryLocation[A], default: HalfWordDescriptor[A]) = {
+    final override def getOrElse[A](k: MemoryLocation[A], default: LogEntry[A]) = {
       if (BloomFilter.definitelyNotContains(bloomFilterLeft, bloomFilterRight, k)) {
         default
       } else {
-        treeMap.getOrElse(k.id, default).asInstanceOf[HalfWordDescriptor[A]]
+        treeMap.getOrElse(k.id, default).asInstanceOf[LogEntry[A]]
       }
     }
 

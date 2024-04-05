@@ -27,7 +27,7 @@ import cats.mtl.Local
 import cats.effect.kernel.{ Async, Clock, Unique, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
-import internal.mcas.{ MemoryLocation, Mcas, HalfWordDescriptor, McasStatus, Descriptor }
+import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor }
 
 /**
  * An effectful function from `A` to `B`; when executed,
@@ -392,7 +392,7 @@ object Rxn extends RxnInstances0 {
         this.unsafeSet(this.unsafePeek)
     }
 
-    private[Rxn] final class TicketImpl[A](hwd: HalfWordDescriptor[A])
+    private[Rxn] final class TicketImpl[A](hwd: LogEntry[A])
       extends Ticket[A] {
 
       final def unsafePeek: A =
@@ -574,7 +574,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"TicketRead(${ref})"
   }
 
-  private final class TicketWrite[A](val hwd: HalfWordDescriptor[A], val newest: A) extends Rxn[Any, Unit] {
+  private final class TicketWrite[A](val hwd: LogEntry[A], val newest: A) extends Rxn[Any, Unit] {
     private[core] final override def tag = 21
     final override def toString: String = s"TicketWrite(${hwd}, ${newest})"
   }
@@ -968,7 +968,7 @@ object Rxn extends RxnInstances0 {
      * Note: returns `null` if a rollback is required!
      * Note: may update `desc` (revalidate/extend).
      */
-    private[this] final def readMaybeFromLog[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] = {
+    private[this] final def readMaybeFromLog[A](ref: MemoryLocation[A]): LogEntry[A] = {
       desc.getOrElseNull(ref) match {
         case null =>
           // not in log
@@ -978,7 +978,7 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    private[this] final def revalidateIfNeeded[A](hwd: HalfWordDescriptor[A]): HalfWordDescriptor[A] = {
+    private[this] final def revalidateIfNeeded[A](hwd: LogEntry[A]): LogEntry[A] = {
       require(hwd ne null)
       if (!desc.isValidHwd(hwd)) {
         if (forceValidate(hwd)) {
@@ -993,7 +993,7 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    private[this] final def forceValidate(optHwd: HalfWordDescriptor[_]): Boolean = {
+    private[this] final def forceValidate(optHwd: LogEntry[_]): Boolean = {
       ctx.validateAndTryExtend(desc, hwd = optHwd) match {
         case null =>
           // need to roll back

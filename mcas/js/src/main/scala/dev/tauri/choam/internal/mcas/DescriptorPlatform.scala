@@ -23,9 +23,9 @@ private[mcas] abstract class DescriptorPlatform {
 
   protected def map: LogMap2[Any]
 
-  protected def versionCas: HalfWordDescriptor[java.lang.Long]
+  protected def versionCas: LogEntry[java.lang.Long]
 
-  final def hwdIterator(@unused ctx: Mcas.ThreadContext): Iterator[HalfWordDescriptor[Any]] = {
+  final def hwdIterator(@unused ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
     val wordsItr = this.map.toArray(()).iterator
     val vc = this.versionCas
     if (vc eq null) {

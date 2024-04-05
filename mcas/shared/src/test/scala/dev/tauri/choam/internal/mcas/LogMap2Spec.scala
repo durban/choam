@@ -41,11 +41,11 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
     forAll { (seed: Long, _refs: Set[MemoryLocation[String]]) =>
       val refs = new Random(seed).shuffle(_refs.toList)
       var lm = LogMap2.empty[String]
-      var tm = TreeMap.empty[MemoryLocation[String], HalfWordDescriptor[String]](
+      var tm = TreeMap.empty[MemoryLocation[String], LogEntry[String]](
         MemoryLocation.orderingInstance
       )
       for (ref <- refs) {
-        val hwd = HalfWordDescriptor(ref, "x", "y", 0L)
+        val hwd = LogEntry(ref, "x", "y", 0L)
         assertEquals(lm.getOrElseNull(ref.id), null)
         lm = lm.inserted(hwd)
         tm = tm.updated(ref, hwd)
@@ -64,7 +64,7 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
       // overwrite everything:
       val shuffled = rng.shuffle(tm.keySet.toList)
       for (ref <- shuffled) {
-        val newHwd = HalfWordDescriptor(ref, rng.nextString(32), "q", rng.nextLong())
+        val newHwd = LogEntry(ref, rng.nextString(32), "q", rng.nextLong())
         val oldHwd = lm.getOrElseNull(ref.id)
         assert(oldHwd ne null)
         assertNotEquals(oldHwd, newHwd)
@@ -84,15 +84,15 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
     rng: Random,
     randomA: () => A,
     _refs: Set[MemoryLocation[A]],
-  ): (LogMap2[A], TreeMap[MemoryLocation[A], HalfWordDescriptor[A]]) = {
+  ): (LogMap2[A], TreeMap[MemoryLocation[A], LogEntry[A]]) = {
     val refs = rng.shuffle(_refs.toList)
     var lm = LogMap2.empty[A]
-    var tm = TreeMap.empty[MemoryLocation[A], HalfWordDescriptor[A]](
+    var tm = TreeMap.empty[MemoryLocation[A], LogEntry[A]](
       MemoryLocation.orderingInstance
     )
     // insert everything:
     for (ref <- refs) {
-      val hwd = HalfWordDescriptor(ref, randomA(), randomA(), rng.nextLong())
+      val hwd = LogEntry(ref, randomA(), randomA(), rng.nextLong())
       lm = lm.upserted(hwd)
       tm = tm.updated(ref, hwd)
     }
@@ -101,14 +101,14 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
 
   test("LogMap2#size") {
     val r1 = MemoryLocation.unsafeUnpadded("1")
-    val h1 = HalfWordDescriptor(r1, "1", "x", 42L)
+    val h1 = LogEntry(r1, "1", "x", 42L)
     val r2 = MemoryLocation.unsafeUnpadded("2")
-    val h2 = HalfWordDescriptor(r2, "2", "x", 42L)
+    val h2 = LogEntry(r2, "2", "x", 42L)
     val r3 = MemoryLocation.unsafeUnpadded("3")
-    val h31 = HalfWordDescriptor(r3, "3", "x", 42L)
-    val h32 = HalfWordDescriptor(r3, "3", "y", 42L)
+    val h31 = LogEntry(r3, "3", "x", 42L)
+    val h32 = LogEntry(r3, "3", "y", 42L)
     val r4 = MemoryLocation.unsafeUnpadded("4")
-    val h4 = HalfWordDescriptor(r4, "4", "x", 42L)
+    val h4 = LogEntry(r4, "4", "x", 42L)
     val lm0 = LogMap2.empty[String]
     assertEquals(lm0.size, 0)
     val lm1 = lm0.inserted(h1)
@@ -129,9 +129,9 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
 
   test("LogMap2#revalidate") {
     val r1 = MemoryLocation.unsafeUnpadded("1")
-    val h1 = HalfWordDescriptor(r1, "1", "x", 42L)
+    val h1 = LogEntry(r1, "1", "x", 42L)
     val r2 = MemoryLocation.unsafeUnpadded("2")
-    val h2 = HalfWordDescriptor(r2, "2", "x", 42L)
+    val h2 = LogEntry(r2, "2", "x", 42L)
     val lm = LogMap2
       .empty[String]
       .inserted(h1)
@@ -145,7 +145,7 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
         ThreadLocalRandom.current()
       def readDirect[A](ref: MemoryLocation[A]): A =
         self.fail("not implemented")
-      def readIntoHwd[A](ref: MemoryLocation[A]): HalfWordDescriptor[A] =
+      def readIntoHwd[A](ref: MemoryLocation[A]): LogEntry[A] =
         self.fail("not implemented")
       private[mcas] def readVersion[A](ref: MemoryLocation[A]): Long =
         if (ref eq r1) r1Version else 42L // we simulate one of the refs changing version
@@ -155,7 +155,7 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
         self.fail("not implemented")
       private[mcas] def tryPerformInternal(desc: Descriptor): Long =
         self.fail("not implemented")
-      def validateAndTryExtend(desc: Descriptor, hwd: HalfWordDescriptor[_]): Descriptor =
+      def validateAndTryExtend(desc: Descriptor, hwd: LogEntry[_]): Descriptor =
         self.fail("not implemented")
     }
 
