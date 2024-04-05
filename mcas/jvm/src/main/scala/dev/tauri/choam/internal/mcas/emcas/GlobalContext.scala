@@ -82,25 +82,7 @@ private[mcas] abstract class GlobalContext
     this._threadContexts.foreach { (tid, wr) =>
       val tctx = wr.get()
       if (tctx ne null) {
-        // The commits and retries values
-        // are not necessarily consistent
-        // with each other; but these are
-        // just stats for informational
-        // purposes...
-        val stats = tctx.getRetryStats()
-        b.commits += stats.commits
-        b.retries += stats.retries
-        b.committedRefs += stats.committedRefs
-        b.cyclesDetected += stats.cyclesDetected
-        if (stats.maxRetries > b.maxRetries) {
-          b.maxRetries = stats.maxRetries
-        }
-        if (stats.maxCommittedRefs > b.maxCommittedRefs) {
-          b.maxCommittedRefs = stats.maxCommittedRefs
-        }
-        if (stats.maxBloomFilterSize > b.maxBloomFilterSize) {
-          b.maxBloomFilterSize = stats.maxBloomFilterSize
-        }
+        b += tctx.getRetryStats()
       } else {
         this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
       }
@@ -210,18 +192,44 @@ private object GlobalContext {
 
   private final class StatsBuilder {
 
-    var commits: Long = 0L
-    var retries: Long = 0L
-    var committedRefs: Long = 0L
-    var cyclesDetected: Long = 0
-    var maxRetries: Long = 0L
-    var maxCommittedRefs: Int = 0
-    var maxBloomFilterSize: Int = 0
+    private[this] var commits: Long = 0L
+    private[this] var retries: Long = 0L
+    private[this] var mcasAttempts: Long = 0L
+    private[this] var committedRefs: Long = 0L
+    private[this] var cyclesDetected: Long = 0
+    private[this] var maxRetries: Long = 0L
+    private[this] var maxCommittedRefs: Int = 0
+    private[this] var maxBloomFilterSize: Int = 0
+
+    final def += (stats: Mcas.RetryStats): this.type = {
+      // The commits and retries values
+      // are not necessarily consistent
+      // with each other; but these are
+      // just stats for informational
+      // purposes...
+      this.commits += stats.commits
+      this.retries += stats.retries
+      this.mcasAttempts += stats.mcasAttempts
+      this.committedRefs += stats.committedRefs
+      this.cyclesDetected += stats.cyclesDetected
+      if (stats.maxRetries > this.maxRetries) {
+        this.maxRetries = stats.maxRetries
+      }
+      if (stats.maxCommittedRefs > this.maxCommittedRefs) {
+        this.maxCommittedRefs = stats.maxCommittedRefs
+      }
+      if (stats.maxBloomFilterSize > this.maxBloomFilterSize) {
+        this.maxBloomFilterSize = stats.maxBloomFilterSize
+      }
+
+      this
+    }
 
     final def build(): Mcas.RetryStats = {
       Mcas.RetryStats(
         commits = this.commits,
         retries = this.retries,
+        mcasAttempts = this.mcasAttempts,
         committedRefs = this.committedRefs,
         cyclesDetected = this.cyclesDetected,
         maxRetries = this.maxRetries,

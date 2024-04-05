@@ -162,6 +162,7 @@ private final class EmcasThreadContext(
     Mcas.RetryStats(
       commits = this.getCommitsO(),
       retries = this.getRetriesO(),
+      mcasAttempts = this.getMcasAttemptsO(),
       committedRefs = this.getCommittedRefsO(),
       cyclesDetected = this.getCyclesDetectedO().toLong,
       maxRetries = this.getMaxRetriesO(),

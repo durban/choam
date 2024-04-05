@@ -893,16 +893,17 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         if (witness == McasStatus.Active) {
           // we finalized the descriptor
           desc.wasFinalized(finalRes)
-          if (finalRes == EmcasStatus.CycleDetected) {
-            // TODO: Note: Our Bloom filter `seen2` isn't necessarily
-            // TODO: correct here, since it could be that it wasn't this
-            // TODO: op who detected the cycle, but we could have detected
-            // TODO: it during helping. This is not a big problem, since
-            // TODO: the Bloom filter size is just for statistical/informational
-            // TODO: purposes. (We could fix this, if we somehow got back the
-            // TODO: filter from helping. But we only get back a `Long`, which
-            // TODO: is `CycleDetected` in this case.)
-            if (McasStatus.statsEnabled) {
+          if (McasStatus.statsEnabled) {
+            ctx.recordEmcasFinalizedO()
+            if (finalRes == EmcasStatus.CycleDetected) {
+              // TODO: Note: Our Bloom filter `seen2` isn't necessarily
+              // TODO: correct here, since it could be that it wasn't this
+              // TODO: op who detected the cycle, but we could have detected
+              // TODO: it during helping. This is not a big problem, since
+              // TODO: the Bloom filter size is just for statistical/informational
+              // TODO: purposes. (We could fix this, if we somehow got back the
+              // TODO: filter from helping. But we only get back a `Long`, which
+              // TODO: is `CycleDetected` in this case.)
               // We finalized `desc` with a cycle, so record it for stats:
               ctx.recordCycleDetected(BloomFilter64.estimatedSize(seen2))
             }

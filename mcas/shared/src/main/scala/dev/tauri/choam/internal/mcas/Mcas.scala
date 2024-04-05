@@ -34,7 +34,7 @@ sealed trait Mcas {
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     // implementations should override if
     // they collect statistics
-    Mcas.RetryStats(0L, 0L, 0L, 0L, 0L, 0, 0)
+    Mcas.RetryStats(0L, 0L, 0L, 0L, 0L, 0L, 0, 0)
   }
 
   /** Only for testing/benchmarking */
@@ -320,6 +320,12 @@ object Mcas extends McasCompanionPlatform { self =>
     commits: Long,
     /** The number of retries overall */
     retries: Long,
+    /**
+     * The number of internal `Mcas` attempts (can be more
+     * than the `tryPerform` calls, e.g., `Emcas` makes up to
+     * two internal attempts).
+     */
+    mcasAttempts: Long,
     /** The sum of the number of `Ref`s the committed `Rxn`s touched */
     committedRefs: Long,
     /** The number of times cycles were detected when helping */

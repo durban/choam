@@ -29,10 +29,11 @@ import java.util.concurrent.atomic.AtomicReference
 private sealed trait EmcasJmxStatsMBean {
   def getCommits(): Long
   def getRetries(): Long
+  def getMcasAttempts(): Long
   def getCyclesDetected(): Long
   def getAvgRetriesPerCommit(): Double
   def getAvgTriesPerCommit(): Double
-  def getAvgCyclesPerCommit(): Double
+  def getAvgCyclesPerMcasAttempt(): Double
   def getMaxRetriesPerCommit(): Long
   def getMaxTriesPerCommit(): Long
   def getAvgLogSize(): Double
@@ -40,6 +41,8 @@ private sealed trait EmcasJmxStatsMBean {
   def getMaxBloomFilterSize(): Int
   def getThreadContextCount(): Int
   def getMaxReusedWeakRefs(): Int
+
+  def checkConsistency(): String
 }
 
 private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
@@ -76,11 +79,28 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
     }
   }
 
+  final override def checkConsistency(): String = {
+    val s = this.getStats()
+    if ((s.commits + s.retries) >= (s.mcasAttempts - s.cyclesDetected)) {
+      null // OK
+    } else {
+      s"""Stats(
+      |  Commits = ${s.commits}
+      |  Retries = ${s.retries}
+      |  McasAttempts = ${s.mcasAttempts}
+      |  CyclesDetected = ${s.cyclesDetected}
+      |)""".stripMargin
+    }
+  }
+
   final override def getCommits(): Long =
     this.getStats().commits
 
   final override def getRetries(): Long =
     this.getStats().retries
+
+  final override def getMcasAttempts(): Long =
+    this.getStats().mcasAttempts
 
   final override def getCyclesDetected(): Long =
     this.getStats().cyclesDetected
@@ -105,11 +125,11 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
     }
   }
 
-  final override def getAvgCyclesPerCommit(): Double = {
-    val c = this.getCommits()
-    if (c != 0L) {
+  final override def getAvgCyclesPerMcasAttempt(): Double = {
+    val a = this.getMcasAttempts()
+    if (a != 0L) {
       val cd = this.getCyclesDetected()
-      cd.toDouble / c.toDouble
+      cd.toDouble / a.toDouble
     } else {
       Double.NaN
     }

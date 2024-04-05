@@ -50,10 +50,23 @@ object JmxDemo extends IOApp.Simple {
       _ <- (runTricky *> IO.sleep(0.01.second)).foreverM.background.use { _ =>
         (IO.sleep(1.second) *> Ref.swap(arr.unsafeGet(1), arr.unsafeGet(2)).run[IO]).replicateA_(60)
       }
+      _ <- IO { checkConsistency() }
     } yield ()
   }
 
   private def trickyAxn(r1: Ref[String], r2: Ref[String]): Axn[String] = {
     r1.update(s => byteswap32(s.length).toString) *> r2.get
+  }
+
+  private def checkConsistency() = {
+    val srv = java.lang.management.ManagementFactory.getPlatformMBeanServer()
+    val beanName = srv.queryNames(
+      new javax.management.ObjectName("dev.tauri.choam.stats:type=EmcasJmxStats*"),
+      null
+    ).iterator().next()
+    val errMsg = srv.invoke(beanName, "checkConsistency", Array.empty[AnyRef], Array.empty[String])
+    if (errMsg ne null) {
+      throw new AssertionError(errMsg)
+    }
   }
 }

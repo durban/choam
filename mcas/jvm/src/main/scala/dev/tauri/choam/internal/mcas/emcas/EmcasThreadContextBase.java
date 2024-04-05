@@ -29,6 +29,7 @@ abstract class EmcasThreadContextBase {
 
   private static final VarHandle COMMITS;
   private static final VarHandle RETRIES;
+  private static final VarHandle MCAS_ATTEMPTS;
   private static final VarHandle COMMITTED_REFS;
   private static final VarHandle CYCLES_DETECTED;
   private static final VarHandle MAX_REUSE_EVER;
@@ -42,6 +43,7 @@ abstract class EmcasThreadContextBase {
       MethodHandles.Lookup l = MethodHandles.lookup();
       COMMITS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_commits", long.class));
       RETRIES = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_retries", long.class));
+      MCAS_ATTEMPTS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_mcasAttempts", long.class));
       COMMITTED_REFS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_committedRefs", long.class));
       CYCLES_DETECTED = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_cyclesDetected", int.class));
       MAX_REUSE_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxReuseEver", int.class));
@@ -57,6 +59,7 @@ abstract class EmcasThreadContextBase {
   // intentionally non-volatile, see below
   private long _commits; // = 0L
   private long _retries; // = 0L
+  private long _mcasAttempts; // = 0L
   private long _committedRefs; // = 0L
   private int _cyclesDetected; // = 0
   private int _maxReuseEver; // = 0
@@ -71,6 +74,10 @@ abstract class EmcasThreadContextBase {
 
   protected long getRetriesO() {
     return (long) RETRIES.getOpaque(this);
+  }
+
+  protected long getMcasAttemptsO() {
+    return (long) MCAS_ATTEMPTS.getOpaque(this);
   }
 
   protected long getCommittedRefsO() {
@@ -91,6 +98,10 @@ abstract class EmcasThreadContextBase {
 
   protected int getMaxBloomFilterSizeO() {
     return (int) MAX_BLOOM_FILTER_SIZE.getOpaque(this);
+  }
+
+  protected void recordEmcasFinalizedO() {
+    MCAS_ATTEMPTS.setOpaque(this, this._mcasAttempts + 1L);
   }
 
   protected void recordCommitO(int retries, int committedRefs) {
