@@ -37,10 +37,10 @@ import dev.tauri.choam.internal.mcas.McasStatus;
  *
  * For successful operations, we store the new version
  * in the status field of the `EmcasDescriptor`, because
- * when we leave `WordDescriptor`s in the refs, the
+ * when we leave `EmcasWordDesc`s in the refs, the
  * new version must be accessible when later we use those
  * refs. (We don't write back versions immediately, only
- * later when we replace the `WordDescriptor` with the
+ * later when we replace the `EmcasWordDesc` with the
  * final value.)
  *
  * FailedVal means the operation failed due to an old value

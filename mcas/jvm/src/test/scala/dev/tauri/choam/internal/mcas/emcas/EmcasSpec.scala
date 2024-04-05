@@ -281,7 +281,7 @@ class EmcasSpec extends BaseSpec {
       )
       val desc = EmcasDescriptor.prepare(hDesc)
       val it = desc.getWordIterator()
-      val d0 = it.next().asInstanceOf[WordDescriptor[String]]
+      val d0 = it.next().asInstanceOf[EmcasWordDesc[String]]
       val mark = new McasMarker
       assert(d0.address eq r1)
       r1.unsafeSetV(d0.castToData)
@@ -375,7 +375,7 @@ class EmcasSpec extends BaseSpec {
       )
       val desc = EmcasDescriptor.prepare(hDesc)
       val it = desc.getWordIterator()
-      val d0 = it.next().asInstanceOf[WordDescriptor[String]]
+      val d0 = it.next().asInstanceOf[EmcasWordDesc[String]]
       assert(d0.address eq r1)
       assert(d0.address.unsafeCasV(d0.ov, d0.castToData))
       val mark = new McasMarker
@@ -427,7 +427,7 @@ class EmcasSpec extends BaseSpec {
     val ctx = Emcas.inst.currentContext()
     val hOther: Descriptor = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
     val other = EmcasDescriptor.prepare(hOther)
-    val d0 = other.getWordIterator().next().asInstanceOf[WordDescriptor[String]]
+    val d0 = other.getWordIterator().next().asInstanceOf[EmcasWordDesc[String]]
     assert(d0.address eq r1)
     r1.unsafeSetV(d0.castToData)
     val mark = new McasMarker
@@ -447,7 +447,7 @@ class EmcasSpec extends BaseSpec {
     val ctx = Emcas.inst.currentContext()
     val hOther = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "zzz", "y")
     val other = EmcasDescriptor.prepare(hOther)
-    val d0 = other.getWordIterator().next().asInstanceOf[WordDescriptor[String]]
+    val d0 = other.getWordIterator().next().asInstanceOf[EmcasWordDesc[String]]
     assert(d0.address eq r1)
     r1.unsafeSetV(d0.castToData)
     val mark = new McasMarker
@@ -556,11 +556,11 @@ class EmcasSpec extends BaseSpec {
       val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")
       val ed = EmcasDescriptor.prepare(d1)
       val wd = ed.getWordIterator().next()
-      assert(wd.toString().startsWith("WordDescriptor("))
+      assert(wd.toString().startsWith("EmcasWordDesc("))
       assert(ctx.tryPerformOk(d1))
       (r1.unsafeGetV() : Any) match {
-        case wd: WordDescriptor[_] =>
-          assert(wd.toString().startsWith("WordDescriptor("))
+        case wd: EmcasWordDesc[_] =>
+          assert(wd.toString().startsWith("EmcasWordDesc("))
         case x =>
           fail(s"unexpected contents: ${x}")
       }

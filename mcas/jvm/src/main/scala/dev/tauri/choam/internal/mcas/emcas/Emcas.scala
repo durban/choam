@@ -47,12 +47,12 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * is important not just for the performance, but for the
    * correctness of the algorithm.
    *
-   * A finished EMCAS operation leaves `WordDescriptor`s
+   * A finished EMCAS operation leaves `EmcasWordDesc`s
    * in the `MemoryLocation`s it touches. These can only
    * be removed (i.e., detached, replaced by the final value
    * or a new descriptor) if no other thread (helpers, or the
    * original thread, in case a helper completes the op) uses
-   * the `WordDescriptor` any more. If they are removed while
+   * the `EmcasWordDesc` any more. If they are removed while
    * still in use, that can cause ABA-problems. (Also, if
    * existing descriptor objects would be reused, it would cause
    * other problems too. However, currently only fresh
@@ -105,9 +105,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    * following  possible states:
    *
    *   value - a user-supplied value (possibly including `null`);
-   *   this state includes anything that is not a `WordDescriptor`.
+   *   this state includes anything that is not a `EmcasWordDesc`.
    *
-   *   descriptor - a (non-null) `WordDescriptor` object.
+   *   descriptor - a (non-null) `EmcasWordDesc` object.
    *
    * Thus, the possible states (and their meaning) of a
    * `MemoryLocation` are as follows:
@@ -247,7 +247,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     @tailrec
     def go(mark: AnyRef, ver1: Long): HalfWordDescriptor[A] = {
       ref.unsafeGetV() match {
-        case wd: WordDescriptor[_] =>
+        case wd: EmcasWordDesc[_] =>
           if (mark eq null) {
             // not holding it yet
             val weakref = ref.unsafeGetMarkerV()
@@ -311,7 +311,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
 
   private[this] final def maybeReplaceDescriptor[A](
     ref: MemoryLocation[A],
-    ov: WordDescriptor[A],
+    ov: EmcasWordDesc[A],
     nv: A,
     weakref: WeakReference[AnyRef],
     replace: Boolean,
@@ -324,7 +324,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
 
   private[this] final def replaceDescriptor[A](
     ref: MemoryLocation[A],
-    ov: WordDescriptor[A],
+    ov: EmcasWordDesc[A],
     nv: A,
     weakref: WeakReference[AnyRef],
     currentVersion: Long,
@@ -407,7 +407,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
   ): Long = {
     val ver1 = ref.unsafeGetVersionV()
     ref.unsafeGetV() match {
-      case wd: WordDescriptor[_] =>
+      case wd: EmcasWordDesc[_] =>
         // TODO: we may need to hold the marker here!
         val parent = wd.parent
         val s = parent.getStatus()
@@ -493,7 +493,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     val instRo = desc.instRo
 
     @tailrec
-    def tryWord[A](wordDesc: WordDescriptor[A], newSeen: Long): Long = {
+    def tryWord[A](wordDesc: EmcasWordDesc[A], newSeen: Long): Long = {
       var content: A = nullOf[A]
       var value: A = nullOf[A]
       var weakref: WeakReference[AnyRef] = null
@@ -512,7 +512,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       while (go) {
         content = address.unsafeGetV()
         content match {
-          case wd: WordDescriptor[_] =>
+          case wd: EmcasWordDesc[_] =>
             if (mark eq null) {
               // not holding it yet
               weakref = address.unsafeGetMarkerV()
@@ -558,7 +558,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
               } else {
                 // At this point, we're sure that `wd` belongs to another op
                 // (not `desc`), because otherwise it would've been equal to
-                // `wordDesc` (we're assuming that any WordDescriptor only
+                // `wordDesc` (we're assuming that any EmcasWordDesc only
                 // appears at most once in an EmcasDescriptor).
                 val parent = wd.parent
                 val parentStatus = parent.getStatus()
@@ -660,9 +660,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       }
     } // tryWord
 
-    def acquire(words: Array[WordDescriptor[_]], newSeen: Long): Long = {
+    def acquire(words: Array[EmcasWordDesc[_]], newSeen: Long): Long = {
       @tailrec
-      def go(words: Array[WordDescriptor[_]], next: Int, len: Int, needsValidation: Boolean): Long = {
+      def go(words: Array[EmcasWordDesc[_]], next: Int, len: Int, needsValidation: Boolean): Long = {
         if (next < len) {
           val word = words(next)
           if (word ne null) {
@@ -709,9 +709,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       }
     } // acquire
 
-    def validate(words: Array[WordDescriptor[_]], newSeen: Long): Long = {
+    def validate(words: Array[EmcasWordDesc[_]], newSeen: Long): Long = {
       @tailrec
-      def go(words: Array[WordDescriptor[_]], next: Int, len: Int): Long = {
+      def go(words: Array[EmcasWordDesc[_]], next: Int, len: Int): Long = {
         if (next < len) {
           val word = words(next)
           if (word ne null) {
@@ -999,7 +999,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
   private[mcas] final def tryPerformDebug(desc: Descriptor, ctx: EmcasThreadContext): Long = {
     if (desc.nonEmpty) {
       assert(!desc.readOnly)
-      // TODO: Can we avoid allocating WordDescriptors for
+      // TODO: Can we avoid allocating EmcasWordDescs for
       // TODO: read-only HWDs? The first time we try, we
       // TODO: don't install them into the Refs, so we don't
       // TODO: actually need real WDs. (Revalidation could
@@ -1044,7 +1044,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     var ctr: Long = 0L
     while (ctr < max) {
       ref.unsafeGetV() match {
-        case wd: WordDescriptor[_] =>
+        case wd: EmcasWordDesc[_] =>
           if (wd.parent.getStatus() == McasStatus.Active) {
             // CAS in progress, retry
           } else {

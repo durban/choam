@@ -34,8 +34,8 @@ abstract class EmcasDescriptorBase {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       STATUS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_status", long.class));
-      WORDS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_words", WordDescriptor[].class));
-      WORDS_ARR = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(WordDescriptor[].class));
+      WORDS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_words", EmcasWordDesc[].class));
+      WORDS_ARR = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(EmcasWordDesc[].class));
       FALLBACK = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_fallback", EmcasDescriptor.class));
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
@@ -46,7 +46,7 @@ abstract class EmcasDescriptorBase {
   private volatile long _status =
     McasStatus.Active;
 
-  private volatile WordDescriptor<?>[] _words; // = null
+  private volatile EmcasWordDesc<?>[] _words; // = null
 
   private volatile EmcasDescriptor _fallback; // = null
 
@@ -61,15 +61,15 @@ abstract class EmcasDescriptorBase {
     return (long) STATUS.compareAndExchange(this, ov, nv);
   }
 
-  final WordDescriptor<?>[] getWordsP() {
-    return (WordDescriptor<?>[]) WORDS.get(this);
+  final EmcasWordDesc<?>[] getWordsP() {
+    return (EmcasWordDesc<?>[]) WORDS.get(this);
   }
 
-  final WordDescriptor<?>[] getWordsO() {
-    return (WordDescriptor<?>[]) WORDS.getOpaque(this);
+  final EmcasWordDesc<?>[] getWordsO() {
+    return (EmcasWordDesc<?>[]) WORDS.getOpaque(this);
   }
 
-  final void setWordsO(WordDescriptor<?>[] words) {
+  final void setWordsO(EmcasWordDesc<?>[] words) {
     WORDS.setOpaque(this, words);
   }
 
@@ -100,7 +100,7 @@ abstract class EmcasDescriptorBase {
   final void cleanWordsForGc() {
     // We're the only ones cleaning, so
     // `_words` is never `null` here:
-    WordDescriptor<?>[] words = this.getWordsO();
+    EmcasWordDesc<?>[] words = this.getWordsO();
     int len = words.length;
     VarHandle.releaseFence();
     this.setWordsO(null);
@@ -112,7 +112,7 @@ abstract class EmcasDescriptorBase {
     // that they'll see the `null`s, but it's possible.
     // (We might also help the GC with this?)
     for (int idx = 0; idx < len; idx++) {
-      WORDS_ARR.setOpaque(words, idx, (WordDescriptor<?>) null);
+      WORDS_ARR.setOpaque(words, idx, (EmcasWordDesc<?>) null);
     }
   }
 }

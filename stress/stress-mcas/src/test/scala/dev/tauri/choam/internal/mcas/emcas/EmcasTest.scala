@@ -73,7 +73,7 @@ class EmcasTest {
       (this.ref2.unsafeGetV() : Any) match {
         case s: String if s eq "x" =>
           go() // retry
-        case d: WordDescriptor[_] =>
+        case d: EmcasWordDesc[_] =>
           checkWd(d, r)
         case s: String if s eq "y" =>
           // descriptor was already cleaned up
@@ -86,7 +86,7 @@ class EmcasTest {
     go()
   }
 
-  private[this] final def checkWd(d: WordDescriptor[_], r: LLLLL_Result): Unit = {
+  private[this] final def checkWd(d: EmcasWordDesc[_], r: LLLLL_Result): Unit = {
     val parent = d.parent
     val it = parent.getWordIterator()
     if (it eq null) {

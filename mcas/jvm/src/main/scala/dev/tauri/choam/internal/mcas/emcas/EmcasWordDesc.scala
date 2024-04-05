@@ -21,12 +21,12 @@ package mcas
 package emcas
 
 // NB: It is important, that this is private;
-// we're writing `WordDescriptor[A]`s into
+// we're writing `EmcasWordDesc[A]`s into
 // `Ref[A]`s, and we need to be able to distinguish
 // them from user data. If the user data could
-// be an instance of `WordDescriptor`, we could
+// be an instance of `EmcasWordDesc`, we could
 // not do that.
-private[mcas] final class WordDescriptor[A] private ( // TODO: rename to EmcasWordDescriptor
+private[mcas] final class EmcasWordDesc[A] private (
   final val parent: EmcasDescriptor,
   final val address: MemoryLocation[A],
   final val ov: A,
@@ -62,8 +62,8 @@ private[mcas] final class WordDescriptor[A] private ( // TODO: rename to EmcasWo
   final def readOnly: Boolean =
     equ(this.ov, this.nv)
 
-  final def withParent(newParent: EmcasDescriptor): WordDescriptor[A] = {
-    new WordDescriptor[A](
+  final def withParent(newParent: EmcasDescriptor): EmcasWordDesc[A] = {
+    new EmcasWordDesc[A](
       parent = newParent,
       address = this.address,
       ov = this.ov,
@@ -72,18 +72,18 @@ private[mcas] final class WordDescriptor[A] private ( // TODO: rename to EmcasWo
     )
   }
 
-  final def cast[B]: WordDescriptor[B] =
-    this.asInstanceOf[WordDescriptor[B]]
+  final def cast[B]: EmcasWordDesc[B] =
+    this.asInstanceOf[EmcasWordDesc[B]]
 
   final def castToData: A =
     this.asInstanceOf[A]
 
   final override def toString: String =
-    s"WordDescriptor(${this.address}, ${this.ov} -> ${this.nv}, oldVer = ${this.oldVersion})"
+    s"EmcasWordDesc(${this.address}, ${this.ov} -> ${this.nv}, oldVer = ${this.oldVersion})"
 }
 
-private object WordDescriptor {
-  private[emcas] val Invalid: WordDescriptor[_] = new WordDescriptor[AnyRef](
+private object EmcasWordDesc {
+  private[emcas] val Invalid: EmcasWordDesc[_] = new EmcasWordDesc[AnyRef](
     parent = null,
     address = null,
     ov = null,

@@ -31,8 +31,8 @@ import org.openjdk.jcstress.infra.results.ILL_Result
 @State
 @Description("EmcasCleanup1Test")
 @Outcomes(Array(
-  new Outcome(id = Array("1, WordDescriptor\\(a, b\\), ACTIVE"), expect = ACCEPTABLE, desc = "(1) has desc, active op"),
-  new Outcome(id = Array("1, WordDescriptor\\(a, b\\), SUCCESSFUL"), expect = ACCEPTABLE, desc = "(2) has desc, finalized op"),
+  new Outcome(id = Array("1, EmcasWordDesc\\(a, b\\), ACTIVE"), expect = ACCEPTABLE, desc = "(1) has desc, active op"),
+  new Outcome(id = Array("1, EmcasWordDesc\\(a, b\\), SUCCESSFUL"), expect = ACCEPTABLE, desc = "(2) has desc, finalized op"),
   new Outcome(id = Array("1, b, -"), expect = ACCEPTABLE_INTERESTING, desc = "(3) final value, desc was cleaned up")
 ))
 class EmcasCleanup1Test {
@@ -54,7 +54,7 @@ class EmcasCleanup1Test {
       case s: String if s eq "a" =>
         // no CAS yet, retry:
         read(r)
-      case wd: WordDescriptor[_] =>
+      case wd: EmcasWordDesc[_] =>
         // observing the descriptor:
         r.r2 = wd
         r.r3 = wd.parent.getStatus()
@@ -67,11 +67,11 @@ class EmcasCleanup1Test {
 
   @Arbiter
   final def arbiter(r: ILL_Result): Unit = {
-    // WordDescriptor is not serializable:
+    // EmcasWordDesc is not serializable:
     r.r2 match {
-      case wd: WordDescriptor[_] =>
+      case wd: EmcasWordDesc[_] =>
         // we ignore address here, it just generates a lot of output
-        r.r2 = s"WordDescriptor(${wd.ov}, ${wd.nv})"
+        r.r2 = s"EmcasWordDesc(${wd.ov}, ${wd.nv})"
       case _ =>
         ()
     }

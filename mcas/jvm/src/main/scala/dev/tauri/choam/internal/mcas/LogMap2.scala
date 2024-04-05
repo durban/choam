@@ -23,7 +23,7 @@ private[mcas] final class LogMap2[A] private (
   _size: Int,
   _bitmap: Long,
   _contents: Array[AnyRef],
-) extends Hamt[HalfWordDescriptor[A], emcas.WordDescriptor[A], emcas.EmcasDescriptor, Mcas.ThreadContext, Descriptor, LogMap2[A]](
+) extends Hamt[HalfWordDescriptor[A], emcas.EmcasWordDesc[A], emcas.EmcasDescriptor, Mcas.ThreadContext, Descriptor, LogMap2[A]](
   _size,
   _bitmap,
   _contents,
@@ -39,11 +39,11 @@ private[mcas] final class LogMap2[A] private (
   protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LogMap2[A] =
     new LogMap2(size, bitmap, contents)
 
-  protected final override def newArray(size: Int): Array[emcas.WordDescriptor[A]] =
-    new Array[emcas.WordDescriptor[A]](size)
+  protected final override def newArray(size: Int): Array[emcas.EmcasWordDesc[A]] =
+    new Array[emcas.EmcasWordDesc[A]](size)
 
-  protected final override def convertForArray(a: HalfWordDescriptor[A], tok: emcas.EmcasDescriptor): emcas.WordDescriptor[A] =
-    new emcas.WordDescriptor[A](a, tok)
+  protected final override def convertForArray(a: HalfWordDescriptor[A], tok: emcas.EmcasDescriptor): emcas.EmcasWordDesc[A] =
+    new emcas.EmcasWordDesc[A](a, tok)
 
   protected final override def convertForFoldLeft(s: Descriptor, a: HalfWordDescriptor[A]): Descriptor =
     s.add(a)

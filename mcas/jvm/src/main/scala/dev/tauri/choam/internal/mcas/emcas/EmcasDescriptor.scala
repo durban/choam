@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 private[mcas] final class EmcasDescriptor private[this] (
   half: Descriptor,
-  wordsToCopy: Array[WordDescriptor[_]],
+  wordsToCopy: Array[EmcasWordDesc[_]],
 ) extends EmcasDescriptorBase { self =>
 
   /**
@@ -42,7 +42,7 @@ private[mcas] final class EmcasDescriptor private[this] (
   private[emcas] def this(half: Descriptor) =
     this(half, null)
 
-  private def this(wordsToCopy: Array[WordDescriptor[_]]) =
+  private def this(wordsToCopy: Array[EmcasWordDesc[_]]) =
     this(null, wordsToCopy)
 
   // EMCAS handles the global version
@@ -60,11 +60,11 @@ private[mcas] final class EmcasDescriptor private[this] (
    *
    * The plain/opaque writes in the constructor
    * are made visible by the volatile-CASes which insert
-   * the `WordDescriptor`s into the refs.
+   * the `EmcasWordDesc`s into the refs.
    */
   this.setWordsO(if (half ne null) {
     assert(wordsToCopy eq null)
-    val arr = half.toWdArray(this).asInstanceOf[Array[WordDescriptor[_]]]
+    val arr = half.toWdArray(this).asInstanceOf[Array[EmcasWordDesc[_]]]
     require(arr.length > 0)
     arr
   } else {
@@ -72,7 +72,7 @@ private[mcas] final class EmcasDescriptor private[this] (
     assert(wordsToCopy ne null)
     val len = wordsToCopy.length
     require(len > 0)
-    val arr = new Array[WordDescriptor[_]](len)
+    val arr = new Array[EmcasWordDesc[_]](len)
     var idx = 0
     while (idx < len) {
       wordsToCopy(idx) match {
@@ -80,7 +80,7 @@ private[mcas] final class EmcasDescriptor private[this] (
           // the array is being cleared, we can't continue here;
           // instead of throwing an exception, we do the ugly
           // thing, and store a sentinel into the first array slot:
-          arr(0) = WordDescriptor.Invalid
+          arr(0) = EmcasWordDesc.Invalid
           idx = len // break while
         case wd =>
           arr(idx) = wd.withParent(this)
@@ -91,7 +91,7 @@ private[mcas] final class EmcasDescriptor private[this] (
   })
 
   /** May return `null` for finalized descriptors */
-  private[emcas] final def getWordDescArrOrNull(): Array[WordDescriptor[_]] = {
+  private[emcas] final def getWordDescArrOrNull(): Array[EmcasWordDesc[_]] = {
     // This is a racy read, but if we get
     // null, the decriptor is finalized, so
     // that's fine, we don't need to continue anyway.
@@ -100,14 +100,14 @@ private[mcas] final class EmcasDescriptor private[this] (
     // they were written originally in the
     // constructor, and we obtained the
     // `EmcasDescriptor` from a
-    // `WordDescriptor` which we obtained
+    // `EmcasWordDesc` which we obtained
     // with a volatile-read from a ref (or
     // we created it originally).
     this.getWordsO()
   }
 
   /** Only for testing! */
-  private[emcas] final def getWordIterator(): java.util.Iterator[WordDescriptor[_]] = {
+  private[emcas] final def getWordIterator(): java.util.Iterator[EmcasWordDesc[_]] = {
     this.getWordsO() match {
       case null => null
       case words => new EmcasDescriptor.Iterator(words)
@@ -120,7 +120,7 @@ private[mcas] final class EmcasDescriptor private[this] (
       // create the fallback, we'll need it
       // anyway, no reason to wait for lazy-init:
       val fb = new EmcasDescriptor(this.getWordsO())
-      assert(fb.getWordsP()(0) ne WordDescriptor.Invalid)
+      assert(fb.getWordsP()(0) ne EmcasWordDesc.Invalid)
       // but we have to store it carefully,
       // someone else might've beat us:
       this.getOrInitFallback(fb)
@@ -152,7 +152,7 @@ private[mcas] final class EmcasDescriptor private[this] (
           this.getFallbackFromHelper()
         case wds =>
           val candidate = new EmcasDescriptor(wds)
-          if (candidate.getWordsP()(0) eq WordDescriptor.Invalid) {
+          if (candidate.getWordsP()(0) eq EmcasWordDesc.Invalid) {
             // `wasFinalized`, see above
             this.getFallbackFromHelper()
           } else {
@@ -191,8 +191,8 @@ private object EmcasDescriptor {
     new EmcasDescriptor(half)
   }
 
-  private final class Iterator(words: Array[WordDescriptor[_]])
-    extends java.util.Iterator[WordDescriptor[_]] {
+  private final class Iterator(words: Array[EmcasWordDesc[_]])
+    extends java.util.Iterator[EmcasWordDesc[_]] {
 
     private[this] var idx: Int =
       0
@@ -201,7 +201,7 @@ private object EmcasDescriptor {
       this.idx < this.words.length
     }
 
-    final override def next(): WordDescriptor[_] = {
+    final override def next(): EmcasWordDesc[_] = {
       val idx = this.idx
       val words = this.words
       if (idx < words.length) {

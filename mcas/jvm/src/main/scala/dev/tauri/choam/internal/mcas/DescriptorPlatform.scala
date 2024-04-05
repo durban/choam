@@ -30,7 +30,7 @@ private[mcas] abstract class DescriptorPlatform {
     // This is really not effective (we're making an
     // array of WDs, and mapping it back to HWDs), but
     // this is not EMCAS, so we don't really care:
-    val wordsItr = this.map.toArray(null).map { (wd: emcas.WordDescriptor[_]) =>
+    val wordsItr = this.map.toArray(null).map { (wd: emcas.EmcasWordDesc[_]) =>
       HalfWordDescriptor(wd.address.cast[Any], wd.ov, wd.nv, wd.oldVersion)
     }.iterator
     val vc = this.versionCas
@@ -42,7 +42,7 @@ private[mcas] abstract class DescriptorPlatform {
   }
 
   /** This only exists on the JVM, and used by EMCAS instead of the above */
-  final def toWdArray(parent: emcas.EmcasDescriptor): Array[emcas.WordDescriptor[Any]] = {
+  final def toWdArray(parent: emcas.EmcasDescriptor): Array[emcas.EmcasWordDesc[Any]] = {
     this.map.toArray(parent)
   }
 }

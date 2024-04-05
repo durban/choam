@@ -44,7 +44,7 @@ private final class EmcasThreadContext(
     4096
 
   /**
-   * When storing a `WordDescriptor` into a ref, `EMCAS` first
+   * When storing a `EmcasWordDesc` into a ref, `EMCAS` first
    * tries to reuse an existing weakref and marker in the ref
    * (see there). If that is not possible, we need another
    * (full) weakref and mark.
