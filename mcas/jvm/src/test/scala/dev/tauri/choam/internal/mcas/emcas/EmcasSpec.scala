@@ -684,7 +684,7 @@ class EmcasSpec extends BaseSpec {
     val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)))
     assert(!ed1.instRo)
     val arr = ed1.getWordsO()
-    assertSameInstance(arr(0).parent, ed1)
+    assertSameInstance(arr(0).asInstanceOf[EmcasWordDesc[_]].parent, ed1)
   }
 
   test("EmcasDescriptor#fallback") {
@@ -693,11 +693,11 @@ class EmcasSpec extends BaseSpec {
     val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)))
     assert(!ed1.instRo)
     assertEquals(ed1.cmpxchgStatus(McasStatus.Active, EmcasStatus.CycleDetected), McasStatus.Active)
-    assertSameInstance(ed1.getWordsO()(0).parent, ed1)
+    assertSameInstance(ed1.getWordsO()(0).asInstanceOf[EmcasWordDesc[_]].parent, ed1)
     ed1.wasFinalized(EmcasStatus.CycleDetected)
     assertSameInstance(ed1.getWordsO(), null)
     val ed2 = ed1.fallback
-    assertSameInstance(ed2.getWordsO()(0).parent, ed2)
+    assertSameInstance(ed2.getWordsO()(0).asInstanceOf[EmcasWordDesc[_]].parent, ed2)
     assert(ed2.instRo)
     assertSameInstance(ed1.fallback, ed2)
     assert(Either.catchOnly[AssertionError](ed2.fallback).isLeft)
@@ -711,13 +711,48 @@ class EmcasSpec extends BaseSpec {
     assert(!ed1.instRo)
     assertEquals(ed1.cmpxchgStatus(McasStatus.Active, EmcasStatus.CycleDetected), McasStatus.Active)
     val ed2 = ed1.fallback
-    assertSameInstance(ed1.getWordsO()(0).parent, ed1)
-    assertSameInstance(ed2.getWordsO()(0).parent, ed2)
+    assertSameInstance(ed1.getWordsO()(0).asInstanceOf[EmcasWordDesc[_]].parent, ed1)
+    assertSameInstance(ed2.getWordsO()(0).asInstanceOf[EmcasWordDesc[_]].parent, ed2)
     ed1.wasFinalized(EmcasStatus.CycleDetected)
     assertSameInstance(ed1.getWordsO(), null)
     assert(ed2.instRo)
     assertSameInstance(ed1.fallback, ed2)
     assert(Either.catchOnly[AssertionError](ed2.fallback).isLeft)
     assert(ed1.getWordsO() ne ed2.getWordsO())
+  }
+
+  test("There should be no EmcasWordDesc created for RO HWDs (the first time)".only) {
+    val ref1 = MemoryLocation.unsafeUnpadded[String]("foo")
+    val ref2 = MemoryLocation.unsafeUnpadded[String]("x")
+    val ctx = Emcas.inst.currentContext()
+    val desc = ctx
+      .start()
+      .add(LogEntry(ref1, "foo", "bar", Version.Start)) // RW
+      .add(LogEntry(ref2, "x", "x", Version.Start)) // RO
+    val ed1 = new EmcasDescriptor(desc)
+    assert(!ed1.instRo)
+    assertEquals(ed1.cmpxchgStatus(McasStatus.Active, EmcasStatus.CycleDetected), McasStatus.Active)
+    val (wd1, wd2) = if (MemoryLocation.orderInstance.lt(ref1, ref2)) {
+      (ed1.getWordsO()(0).asInstanceOf[WdLike[Any]], ed1.getWordsO()(1).asInstanceOf[WdLike[Any]])
+    } else {
+      (ed1.getWordsO()(1).asInstanceOf[WdLike[Any]], ed1.getWordsO()(0).asInstanceOf[WdLike[Any]])
+    }
+    assertSameInstance(wd1.asInstanceOf[EmcasWordDesc[_]].parent, ed1)
+    assert(wd2.isInstanceOf[LogEntry[_]])
+
+    ed1.wasFinalized(EmcasStatus.CycleDetected)
+    assertSameInstance(ed1.getWordsO(), null)
+    val ed2 = ed1.fallback
+    val (wd21, wd22) = if (MemoryLocation.orderInstance.lt(ref1, ref2)) {
+      (ed2.getWordsO()(0).asInstanceOf[WdLike[Any]], ed2.getWordsO()(1).asInstanceOf[WdLike[Any]])
+    } else {
+      (ed2.getWordsO()(1).asInstanceOf[WdLike[Any]], ed2.getWordsO()(0).asInstanceOf[WdLike[Any]])
+    }
+    assertSameInstance(wd21.asInstanceOf[EmcasWordDesc[_]].parent, ed2)
+    assertSameInstance(wd22.asInstanceOf[EmcasWordDesc[_]].parent, ed2)
+    assert(wd21 ne wd1)
+    assert(ed2.instRo)
+    assertSameInstance(ed1.fallback, ed2)
+    assert(Either.catchOnly[AssertionError](ed2.fallback).isLeft)
   }
 }

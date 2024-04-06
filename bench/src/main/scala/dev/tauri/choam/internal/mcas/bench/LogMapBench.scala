@@ -176,36 +176,38 @@ private[mcas] class LogMapBench {
   }
 
   @Benchmark
-  def toArrayBaseline(s: BaselineState): Array[emcas.EmcasWordDesc[Any]] = {
-    new Array[emcas.EmcasWordDesc[Any]](s.size)
+  def toArrayBaseline(s: BaselineState): Array[WdLike[Any]] = {
+    new Array[WdLike[Any]](s.size)
   }
 
   @Benchmark
-  def toArrayHamt(s: HamtState): Array[emcas.EmcasWordDesc[Any]] = {
+  def toArrayHamt(s: HamtState): Array[WdLike[Any]] = {
     s.map.toArray(null)
   }
 
   @Benchmark
-  def toArrayLog(s: LogMapState): Array[emcas.EmcasWordDesc[Any]] = {
+  def toArrayLog(s: LogMapState): Array[WdLike[Any]] = {
     val map = s.map
-    val arr = new Array[emcas.EmcasWordDesc[Any]](McasHelper.LogMap_size(map))
+    val arr = new Array[WdLike[Any]](McasHelper.LogMap_size(map))
     val it = McasHelper.LogMap_iterator(map)
     var idx = 0
     while (it.hasNext) {
-      arr(idx) = new emcas.EmcasWordDesc(it.next().cast[Any], null)
+      val wd = it.next().cast[Any]
+      arr(idx) = if (wd.readOnly) wd else new EmcasWordDesc(wd, null)
       idx += 1
     }
     arr
   }
 
   @Benchmark
-  def toArrayTree(s: TreeMapState): Array[emcas.EmcasWordDesc[Any]] = {
+  def toArrayTree(s: TreeMapState): Array[WdLike[Any]] = {
     val map = s.map
-    val arr = new Array[emcas.EmcasWordDesc[Any]](map.size)
+    val arr = new Array[WdLike[Any]](map.size)
     val it = map.valuesIterator
     var idx = 0
     while (it.hasNext) {
-      arr(idx) = new emcas.EmcasWordDesc(it.next(), null)
+      val wd = it.next()
+      arr(idx) = if (wd.readOnly) wd else new EmcasWordDesc(wd, null)
       idx += 1
     }
     arr

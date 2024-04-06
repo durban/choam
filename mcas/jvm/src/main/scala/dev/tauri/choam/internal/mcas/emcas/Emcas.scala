@@ -660,14 +660,19 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       }
     } // tryWord
 
-    def acquire(words: Array[EmcasWordDesc[_]], newSeen: Long): Long = {
+    def acquire(words: Array[WdLike[_]], newSeen: Long): Long = {
       @tailrec
-      def go(words: Array[EmcasWordDesc[_]], next: Int, len: Int, needsValidation: Boolean): Long = {
+      def go(words: Array[WdLike[_]], next: Int, len: Int, needsValidation: Boolean): Long = {
         if (next < len) {
-          val word = words(next)
-          if (word ne null) {
-            if (instRo || (!word.readOnly)) {
-              val twr = tryWord(word, newSeen)
+          words(next) match {
+            case null =>
+              // Another thread already finalized the descriptor,
+              // and cleaned up this word descriptor (hence the `null`);
+              // thus, we should not continue:
+              EmcasStatus.Break
+            case wd: EmcasWordDesc[_] =>
+              assert(instRo || (!wd.readOnly))
+              val twr = tryWord(wd, newSeen)
               assert(
                 (twr == McasStatus.Successful) ||
                 (twr == McasStatus.FailedVal) ||
@@ -679,17 +684,12 @@ private[mcas] final class Emcas extends GlobalContext { global =>
               } else {
                 twr
               }
-            } else {
+            case wd: LogEntry[_] =>
               // read-only WD, which we don't
               // need to install; continue, but
               // we'll need to revalidate later:
+              assert(wd.readOnly)
               go(words, next = next + 1, len = len, needsValidation = true)
-            }
-          } else {
-            // Another thread already finalized the descriptor,
-            // and cleaned up this word descriptor (hence the `null`);
-            // thus, we should not continue:
-            EmcasStatus.Break
           }
         } else {
           if (needsValidation) {
@@ -709,16 +709,22 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       }
     } // acquire
 
-    def validate(words: Array[EmcasWordDesc[_]], newSeen: Long): Long = {
+    def validate(words: Array[WdLike[_]], newSeen: Long): Long = {
       @tailrec
-      def go(words: Array[EmcasWordDesc[_]], next: Int, len: Int): Long = {
+      def go(words: Array[WdLike[_]], next: Int, len: Int): Long = {
         if (next < len) {
-          val word = words(next)
-          if (word ne null) {
-            if (word.readOnly) {
+          words(next) match {
+            case null =>
+              // already finalized
+              EmcasStatus.Break
+            case _: EmcasWordDesc[_] =>
+              // this WD have been already installed by `acquire`
+              go(words, next = next + 1, len = len)
+            case wd: LogEntry[_] =>
+              assert(wd.readOnly)
               // revalidate:
-              val currVer = this.readVersionInternal(word.address, ctx, forMCAS = true, seen = newSeen, instRo = false)
-              if (currVer == word.oldVersion) {
+              val currVer = this.readVersionInternal(wd.address, ctx, forMCAS = true, seen = newSeen, instRo = false)
+              if (currVer == wd.oldVersion) {
                 // OK, continue:
                 go(words, next = next + 1, len = len)
               } else if (currVer == EmcasStatus.CycleDetected) {
@@ -727,13 +733,6 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                 // validation failed:
                 McasStatus.FailedVal
               }
-            } else {
-              // this WD have been already installed by `acquire`
-              go(words, next = next + 1, len = len)
-            }
-          } else {
-            // already finalized
-            EmcasStatus.Break
           }
         } else {
           McasStatus.Successful
@@ -769,7 +768,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       // then both can ACQUIRE, and then when
       // revalidating, both would try to help
       // recursively themselves. That's an
-      // infinite loop (or rather a stack overflow).
+      // infinite loop (or possibly a stack overflow).
       BloomFilter64.insertIfAbsent(seen, desc.hashCode) match {
         case 0L =>
           // We (probably) detected a cycle, need to fall

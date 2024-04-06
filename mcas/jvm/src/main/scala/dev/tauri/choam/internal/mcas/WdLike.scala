@@ -28,6 +28,7 @@ sealed abstract class WdLike[A] {
   val oldVersion: Long
 }
 
+// TODO: this is duplicated on JS
 final class LogEntry[A] private ( // formerly called HWD
   final override val address: MemoryLocation[A],
   final override val ov: A,

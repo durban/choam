@@ -22,6 +22,7 @@ import java.lang.invoke.MethodHandles;
 
 import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.McasStatus;
+import dev.tauri.choam.internal.mcas.WdLike;
 
 abstract class EmcasDescriptorBase {
 
@@ -34,8 +35,8 @@ abstract class EmcasDescriptorBase {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
       STATUS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_status", long.class));
-      WORDS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_words", EmcasWordDesc[].class));
-      WORDS_ARR = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(EmcasWordDesc[].class));
+      WORDS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_words", WdLike[].class));
+      WORDS_ARR = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(WdLike[].class));
       FALLBACK = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_fallback", EmcasDescriptor.class));
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
@@ -46,7 +47,7 @@ abstract class EmcasDescriptorBase {
   private volatile long _status =
     McasStatus.Active;
 
-  private volatile EmcasWordDesc<?>[] _words; // = null
+  private volatile WdLike<?>[] _words; // = null
 
   private volatile EmcasDescriptor _fallback; // = null
 
@@ -61,15 +62,15 @@ abstract class EmcasDescriptorBase {
     return (long) STATUS.compareAndExchange(this, ov, nv);
   }
 
-  final EmcasWordDesc<?>[] getWordsP() {
-    return (EmcasWordDesc<?>[]) WORDS.get(this);
+  final WdLike<?>[] getWordsP() {
+    return (WdLike<?>[]) WORDS.get(this);
   }
 
-  final EmcasWordDesc<?>[] getWordsO() {
-    return (EmcasWordDesc<?>[]) WORDS.getOpaque(this);
+  final WdLike<?>[] getWordsO() {
+    return (WdLike<?>[]) WORDS.getOpaque(this);
   }
 
-  final void setWordsO(EmcasWordDesc<?>[] words) {
+  final void setWordsO(WdLike<?>[] words) {
     WORDS.setOpaque(this, words);
   }
 
@@ -100,7 +101,7 @@ abstract class EmcasDescriptorBase {
   final void cleanWordsForGc() {
     // We're the only ones cleaning, so
     // `_words` is never `null` here:
-    EmcasWordDesc<?>[] words = this.getWordsO();
+    WdLike<?>[] words = this.getWordsO();
     int len = words.length;
     VarHandle.releaseFence();
     this.setWordsO(null);
@@ -112,7 +113,7 @@ abstract class EmcasDescriptorBase {
     // that they'll see the `null`s, but it's possible.
     // (We might also help the GC with this?)
     for (int idx = 0; idx < len; idx++) {
-      WORDS_ARR.setOpaque(words, idx, (EmcasWordDesc<?>) null);
+      WORDS_ARR.setOpaque(words, idx, (WdLike<?>) null);
     }
   }
 }
