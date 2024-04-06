@@ -23,6 +23,8 @@ package emcas
 import java.lang.ref.WeakReference
 import java.util.concurrent.ThreadLocalRandom
 
+import cats.kernel.Order
+
 import skiplist.SkipListMap
 
 private[mcas] abstract class GlobalContext
@@ -43,7 +45,7 @@ private[mcas] abstract class GlobalContext
    * continue its current op (if any).
    */
   private[this] val _threadContexts =
-    new SkipListMap[Long, WeakReference[EmcasThreadContext]]
+    new SkipListMap[GlobalContext.TCtxWeakRef, Unit]
 
   /** Holds the context for each (active) thread */
   private[this] val threadContextKey =
@@ -63,9 +65,10 @@ private[mcas] abstract class GlobalContext
         // slow path: need to create new ctx
         val tc = this.newThreadContext()
         threadContextKey.set(tc)
+        val wr = new GlobalContext.TCtxWeakRef(Thread.currentThread().getId(), tc)
         this._threadContexts.put(
-          Thread.currentThread().getId(),
-          new WeakReference(tc)
+          wr,
+          ()
         ) : Unit // don't care the old ctx, it's for a terminated thread (and the TID was reused)
         this.maybeGcThreadContexts(tc.random) // we might also clear weakrefs
         tc
@@ -79,12 +82,12 @@ private[mcas] abstract class GlobalContext
   private[choam] final override def getRetryStats(): Mcas.RetryStats = {
     // allocating this builder is still cheaper than using an iterator (tuples):
     val b = new GlobalContext.StatsBuilder()
-    this._threadContexts.foreach { (tid, wr) =>
+    this._threadContexts.foreach { (wr, _) =>
       val tctx = wr.get()
       if (tctx ne null) {
         b += tctx.getRetryStats()
       } else {
-        this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
+        this._threadContexts.del(wr) : Unit // clean empty weakref
       }
     }
     b.build()
@@ -92,12 +95,12 @@ private[mcas] abstract class GlobalContext
 
   private[choam] final override def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
     val mb = Map.newBuilder[Long, Map[AnyRef, AnyRef]]
-    this._threadContexts.foreach { (tid, wr) =>
+    this._threadContexts.foreach { (wr, _) =>
       val tc = wr.get()
       if (tc ne null) {
-        mb += ((tid, tc.getStatisticsO()))
+        mb += ((wr.tid, tc.getStatisticsO()))
       } else {
-        this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
+        this._threadContexts.del(wr) : Unit // clean empty weakref
       }
     }
     mb.result()
@@ -107,7 +110,7 @@ private[mcas] abstract class GlobalContext
     // An `IntRef` is still cheaper than using an iterator (tuples):
     @nowarn("cat=lint-performance")
     var max = 0
-    this._threadContexts.foreach { (tid, wr) =>
+    this._threadContexts.foreach { (wr, _) =>
       val tc = wr.get()
       if (tc ne null) {
         val n = tc.maxReusedWeakRefs()
@@ -115,7 +118,7 @@ private[mcas] abstract class GlobalContext
           max = n
         }
       } else {
-        this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
+        this._threadContexts.del(wr) : Unit // clean empty weakref
       }
     }
     max
@@ -126,10 +129,10 @@ private[mcas] abstract class GlobalContext
     // A `BooleanRef` is still cheaper than using an iterator (tuples):
     @nowarn("cat=lint-performance")
     var exists = false
-    this._threadContexts.foreach { (tid, wr) =>
+    this._threadContexts.foreach { (wr, _) =>
       if (wr.get() eq null) {
-        this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
-      } else if (tid == threadId) {
+        this._threadContexts.del(wr) : Unit // clean empty weakref
+      } else if (wr.tid == threadId) {
         exists = true
       }
     }
@@ -142,9 +145,9 @@ private[mcas] abstract class GlobalContext
     // and allocating a tuple on each iteration:
     @nowarn("cat=lint-performance")
     var count = 0
-    this._threadContexts.foreach { (tid, wr) =>
+    this._threadContexts.foreach { (wr, _) =>
       if (wr.get() eq null) {
-        this._threadContexts.remove(tid, wr) : Unit // clean empty weakref
+        this._threadContexts.del(wr) : Unit // clean empty weakref
       } else {
         count += 1
       }
@@ -180,15 +183,28 @@ private[mcas] abstract class GlobalContext
    */
   private[this] final def gcThreadContexts(): Unit = {
     val threadContexts = this._threadContexts
-    threadContexts.foreach { (tid, wr) =>
+    threadContexts.foreach { (wr, _) =>
       if (wr.get() eq null) {
-        threadContexts.remove(tid, wr) : Unit
+        threadContexts.del(wr) : Unit
       }
     }
   }
 }
 
 private object GlobalContext {
+
+  private final class TCtxWeakRef(
+    val tid: Long,
+    ctx: EmcasThreadContext
+  ) extends WeakReference[EmcasThreadContext](ctx) {
+
+  }
+
+  private final object TCtxWeakRef {
+    implicit val orderInstance: Order[TCtxWeakRef] = {
+     Order.by(_.tid)
+    }
+  }
 
   private final class StatsBuilder {
 
