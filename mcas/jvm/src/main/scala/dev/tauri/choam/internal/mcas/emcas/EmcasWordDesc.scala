@@ -28,11 +28,11 @@ package emcas
 // not do that.
 private[mcas] final class EmcasWordDesc[A] private (
   final val parent: EmcasDescriptor,
-  final val address: MemoryLocation[A],
-  final val ov: A,
-  final val nv: A,
-  final val oldVersion: Long,
-) {
+  final override val address: MemoryLocation[A],
+  final override val ov: A,
+  final override val nv: A,
+  final override val oldVersion: Long,
+) extends WdLike.UnsealedWdLike[A] {
 
   // TODO: Technically we could clear `ov` for a successful op
   // TODO: (and similarly `nv` for a failed); we'd need to

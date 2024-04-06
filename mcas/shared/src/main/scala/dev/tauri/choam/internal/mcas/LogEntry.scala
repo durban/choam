@@ -22,20 +22,23 @@ package mcas
 import scala.util.hashing.MurmurHash3
 
 final class LogEntry[A] private ( // formerly called HWD
-  val address: MemoryLocation[A],
-  val ov: A,
-  val nv: A,
-  val version: Long,
-) {
+  final override val address: MemoryLocation[A],
+  final override val ov: A,
+  final override val nv: A,
+  final override val oldVersion: Long,
+) extends WdLike.UnsealedWdLike[A] {
 
   require(Version.isValid(version))
 
   private[mcas] final def cast[B]: LogEntry[B] =
     this.asInstanceOf[LogEntry[B]]
 
+  final def version: Long =
+    this.oldVersion
+
   final def withNv(a: A): LogEntry[A] = {
     if (equ(this.nv, a)) this
-    else new LogEntry[A](address = this.address, ov = this.ov, nv = a, version = this.version)
+    else new LogEntry[A](address = this.address, ov = this.ov, nv = a, oldVersion = this.oldVersion)
   }
 
   /**
@@ -95,6 +98,6 @@ private object LogEntry {
     nv: A,
     version: Long,
   ): LogEntry[A] = {
-    new LogEntry[A](address = address, ov = ov, nv = nv, version = version)
+    new LogEntry[A](address = address, ov = ov, nv = nv, oldVersion = version)
   }
 }
