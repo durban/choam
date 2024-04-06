@@ -31,7 +31,7 @@ private[mcas] abstract class DescriptorPlatform {
     // array of WDs, and mapping it back to HWDs), but
     // this is not EMCAS, so we don't really care:
     val wordsItr = this.map.toArray(null).map {
-      case wd: EmcasWordDesc[_] =>
+      case wd: emcas.EmcasWordDesc[_] =>
         LogEntry(wd.address.cast[Any], wd.ov, wd.nv, wd.oldVersion)
       case entry: LogEntry[_] =>
         entry.cast[Any]

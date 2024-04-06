@@ -193,7 +193,7 @@ private[mcas] class LogMapBench {
     var idx = 0
     while (it.hasNext) {
       val wd = it.next().cast[Any]
-      arr(idx) = if (wd.readOnly) wd else new EmcasWordDesc(wd, null)
+      arr(idx) = if (wd.readOnly) wd else new emcas.EmcasWordDesc(wd, null)
       idx += 1
     }
     arr
@@ -207,7 +207,7 @@ private[mcas] class LogMapBench {
     var idx = 0
     while (it.hasNext) {
       val wd = it.next()
-      arr(idx) = if (wd.readOnly) wd else new EmcasWordDesc(wd, null)
+      arr(idx) = if (wd.readOnly) wd else new emcas.EmcasWordDesc(wd, null)
       idx += 1
     }
     arr

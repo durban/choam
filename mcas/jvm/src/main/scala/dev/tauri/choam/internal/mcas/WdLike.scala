@@ -110,74 +110,79 @@ private object LogEntry {
   }
 }
 
-// NB: It is important, that this is private;
-// we're writing `EmcasWordDesc[A]`s into
-// `Ref[A]`s, and we need to be able to distinguish
-// them from user data. If the user data could
-// be an instance of `EmcasWordDesc`, we could
-// not do that.
-private[mcas] final class EmcasWordDesc[A] private (
-  final val parent: emcas.EmcasDescriptor,
-  final override val address: MemoryLocation[A],
-  final override val ov: A,
-  final override val nv: A,
-  final override val oldVersion: Long,
-) extends WdLike[A] { // logically this should be in `emcas`; it's here, so that `WdLike` can be `sealed`
+package emcas {
 
-  // TODO: Technically we could clear `ov` for a successful op
-  // TODO: (and similarly `nv` for a failed); we'd need to
-  // TODO: make them non-final, so it's unclear if it's worth
-  // TODO: it. (Although, currently this is a little leak.)
+  // Ideally this should be in the `emcas` folder; it's here, so that `WdLike` can be `sealed`.
 
-  // TODO: But: we'd need to use a custom sentinel instead of
-  // TODO: `null`, because `null` is a valid ov/nv, and helpers
-  // TODO: need to be able to differentiate reading a valid
-  // TODO: ov/nv from a racy read of a finalized descriptor.
+  // NB: It is important, that this is private;
+  // we're writing `EmcasWordDesc[A]`s into
+  // `Ref[A]`s, and we need to be able to distinguish
+  // them from user data. If the user data could
+  // be an instance of `EmcasWordDesc`, we could
+  // not do that.
+  private[mcas] final class EmcasWordDesc[A] private (
+    final val parent: emcas.EmcasDescriptor,
+    final override val address: MemoryLocation[A],
+    final override val ov: A,
+    final override val nv: A,
+    final override val oldVersion: Long,
+  ) extends WdLike[A] {
 
-  // TODO: In theory, `address` could be cleared too.
-  // TODO: But that's probably not worth it.
-  // TODO: (A lot of extra checks would need to be introduced.)
+    // TODO: Technically we could clear `ov` for a successful op
+    // TODO: (and similarly `nv` for a failed); we'd need to
+    // TODO: make them non-final, so it's unclear if it's worth
+    // TODO: it. (Although, currently this is a little leak.)
 
-  def this(
-    half: LogEntry[A],
-    parent: emcas.EmcasDescriptor,
-  ) = this(
-    parent = parent,
-    address = half.address,
-    ov = half.ov,
-    nv = half.nv,
-    oldVersion = half.version,
-  )
+    // TODO: But: we'd need to use a custom sentinel instead of
+    // TODO: `null`, because `null` is a valid ov/nv, and helpers
+    // TODO: need to be able to differentiate reading a valid
+    // TODO: ov/nv from a racy read of a finalized descriptor.
 
-  final def readOnly: Boolean =
-    equ(this.ov, this.nv)
+    // TODO: In theory, `address` could be cleared too.
+    // TODO: But that's probably not worth it.
+    // TODO: (A lot of extra checks would need to be introduced.)
 
-  final def withParent(newParent: emcas.EmcasDescriptor): EmcasWordDesc[A] = {
-    new EmcasWordDesc[A](
-      parent = newParent,
-      address = this.address,
-      ov = this.ov,
-      nv = this.nv,
-      oldVersion = this.oldVersion,
+    def this(
+      half: LogEntry[A],
+      parent: emcas.EmcasDescriptor,
+    ) = this(
+      parent = parent,
+      address = half.address,
+      ov = half.ov,
+      nv = half.nv,
+      oldVersion = half.version,
     )
+
+    final def readOnly: Boolean =
+      equ(this.ov, this.nv)
+
+    final def withParent(newParent: emcas.EmcasDescriptor): EmcasWordDesc[A] = {
+      new EmcasWordDesc[A](
+        parent = newParent,
+        address = this.address,
+        ov = this.ov,
+        nv = this.nv,
+        oldVersion = this.oldVersion,
+      )
+    }
+
+    final def cast[B]: EmcasWordDesc[B] =
+      this.asInstanceOf[EmcasWordDesc[B]]
+
+    final def castToData: A =
+      this.asInstanceOf[A]
+
+    final override def toString: String =
+      s"EmcasWordDesc(${this.address}, ${this.ov} -> ${this.nv}, oldVer = ${this.oldVersion})"
   }
 
-  final def cast[B]: EmcasWordDesc[B] =
-    this.asInstanceOf[EmcasWordDesc[B]]
-
-  final def castToData: A =
-    this.asInstanceOf[A]
-
-  final override def toString: String =
-    s"EmcasWordDesc(${this.address}, ${this.ov} -> ${this.nv}, oldVer = ${this.oldVersion})"
-}
-
-private object EmcasWordDesc {
-  private[mcas] val Invalid: EmcasWordDesc[_] = new EmcasWordDesc[AnyRef](
-    parent = null,
-    address = null,
-    ov = null,
-    nv = null,
-    oldVersion = Version.None,
-  )
+  private object EmcasWordDesc {
+    private[mcas] val Invalid: EmcasWordDesc[_] = new EmcasWordDesc[AnyRef](
+      parent = null,
+      address = null,
+      ov = null,
+      nv = null,
+      oldVersion = Version.None,
+    )
+  }
 }

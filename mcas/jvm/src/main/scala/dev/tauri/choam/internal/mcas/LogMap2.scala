@@ -44,7 +44,7 @@ private[mcas] final class LogMap2[A] private (
 
   protected final override def convertForArray(a: LogEntry[A], tok: emcas.EmcasDescriptor): WdLike[A] = {
     if (a.readOnly) a
-    else new EmcasWordDesc[A](a, parent = tok)
+    else new emcas.EmcasWordDesc[A](a, parent = tok)
   }
 
   protected final override def convertForFoldLeft(s: Descriptor, a: LogEntry[A]): Descriptor =
