@@ -32,6 +32,8 @@ class InterpreterBench {
   // TODO: this benchmark doesn't include:
   // TODO: - direct read
   // TODO: - creating new Refs
+  // TODO: - read-only LogEntry
+  // TODO: - read-only Rxn
 
   @Benchmark
   def rxnNew(s: St, bh: Blackhole, k: McasImplState): Unit = {

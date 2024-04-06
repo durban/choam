@@ -34,7 +34,7 @@ private[mcas] abstract class DescriptorPlatform {
       case wd: EmcasWordDesc[_] =>
         LogEntry(wd.address.cast[Any], wd.ov, wd.nv, wd.oldVersion)
       case entry: LogEntry[_] =>
-        entry
+        entry.cast[Any]
     }.iterator
     val vc = this.versionCas
     if (vc eq null) {
