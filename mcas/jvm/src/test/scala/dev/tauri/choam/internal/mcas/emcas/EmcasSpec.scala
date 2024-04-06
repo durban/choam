@@ -721,7 +721,7 @@ class EmcasSpec extends BaseSpec {
     assert(ed1.getWordsO() ne ed2.getWordsO())
   }
 
-  test("There should be no EmcasWordDesc created for RO HWDs (the first time)".only) {
+  test("There should be no EmcasWordDesc created for RO HWDs (the first time)") {
     val ref1 = MemoryLocation.unsafeUnpadded[String]("foo")
     val ref2 = MemoryLocation.unsafeUnpadded[String]("x")
     val ctx = Emcas.inst.currentContext()
