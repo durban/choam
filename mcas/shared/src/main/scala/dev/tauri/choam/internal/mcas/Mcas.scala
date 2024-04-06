@@ -34,7 +34,7 @@ sealed trait Mcas {
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     // implementations should override if
     // they collect statistics
-    Mcas.RetryStats(0L, 0L, 0L, 0L, 0L, 0L, 0, 0)
+    Mcas.RetryStats(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0)
   }
 
   /** Only for testing/benchmarking */
@@ -276,7 +276,7 @@ object Mcas extends McasCompanionPlatform { self =>
     }
 
     /** Only for testing/benchmarking */
-    private[choam] def recordCommit(@unused retries: Int, @unused committedRefs: Int): Unit = {
+    private[choam] def recordCommit(@unused retries: Int, @unused committedRefs: Int, @unused descExtensions: Int): Unit = {
       // we ignore stats by default; implementations
       // can override if it matters
       ()
@@ -320,6 +320,8 @@ object Mcas extends McasCompanionPlatform { self =>
     commits: Long,
     /** The number of retries overall */
     retries: Long,
+    /** The number of times a `Descriptor` was revalidated and extended successfully */
+    extensions: Long,
     /**
      * The number of internal `Mcas` attempts (can be more
      * than the `tryPerform` calls, e.g., `Emcas` makes up to

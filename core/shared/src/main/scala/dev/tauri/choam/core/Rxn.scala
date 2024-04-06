@@ -714,6 +714,10 @@ object Rxn extends RxnInstances0 {
     private[this] var retries: Int =
       0
 
+    /** How many times was `desc` revalidated and successfully extended? */
+    private[this] var descExtensions: Int =
+      0
+
     private[this] var _stats: ExStatMap =
       null
 
@@ -1001,6 +1005,7 @@ object Rxn extends RxnInstances0 {
           false
         case newDesc =>
           // OK, it was extended
+          this.descExtensions += 1
           desc = newDesc
           true
       }
@@ -1056,7 +1061,7 @@ object Rxn extends RxnInstances0 {
           if (performMcas(d)) {
             if (McasStatus.statsEnabled) {
               // save retry statistics:
-              ctx.recordCommit(retries = this.retries, committedRefs = dSize)
+              ctx.recordCommit(retries = this.retries, committedRefs = dSize, descExtensions = this.descExtensions)
             }
             // ok, commit is done, but we still need to perform post-commit actions
             val res = a

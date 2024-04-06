@@ -150,8 +150,8 @@ private final class EmcasThreadContext(
   final override def toString: String =
     s"ThreadContext(impl = ${this.impl}, tid = ${this.tid})"
 
-  private[choam] final override def recordCommit(retries: Int, committedRefs: Int): Unit = {
-    this.recordCommitO(retries, committedRefs)
+  private[choam] final override def recordCommit(retries: Int, committedRefs: Int, descExtensions: Int): Unit = {
+    this.recordCommitO(retries, committedRefs, descExtensions)
   }
 
   private[emcas] final def recordCycleDetected(bloomFilterSize: Int): Unit = {
@@ -162,6 +162,7 @@ private final class EmcasThreadContext(
     Mcas.RetryStats(
       commits = this.getCommitsO(),
       retries = this.getRetriesO(),
+      extensions = this.getExtensionsO(),
       mcasAttempts = this.getMcasAttemptsO(),
       committedRefs = this.getCommittedRefsO(),
       cyclesDetected = this.getCyclesDetectedO().toLong,

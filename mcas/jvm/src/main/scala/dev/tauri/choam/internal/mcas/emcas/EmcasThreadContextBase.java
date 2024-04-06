@@ -29,6 +29,7 @@ abstract class EmcasThreadContextBase {
 
   private static final VarHandle COMMITS;
   private static final VarHandle RETRIES;
+  private static final VarHandle EXTENSIONS;
   private static final VarHandle MCAS_ATTEMPTS;
   private static final VarHandle COMMITTED_REFS;
   private static final VarHandle CYCLES_DETECTED;
@@ -43,6 +44,7 @@ abstract class EmcasThreadContextBase {
       MethodHandles.Lookup l = MethodHandles.lookup();
       COMMITS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_commits", long.class));
       RETRIES = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_retries", long.class));
+      EXTENSIONS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_extensions", long.class));
       MCAS_ATTEMPTS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_mcasAttempts", long.class));
       COMMITTED_REFS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_committedRefs", long.class));
       CYCLES_DETECTED = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_cyclesDetected", int.class));
@@ -59,6 +61,7 @@ abstract class EmcasThreadContextBase {
   // intentionally non-volatile, see below
   private long _commits; // = 0L
   private long _retries; // = 0L
+  private long _extensions; // = 0L
   private long _mcasAttempts; // = 0L
   private long _committedRefs; // = 0L
   private int _cyclesDetected; // = 0
@@ -74,6 +77,10 @@ abstract class EmcasThreadContextBase {
 
   protected long getRetriesO() {
     return (long) RETRIES.getOpaque(this);
+  }
+
+  protected long getExtensionsO() {
+    return (long) EXTENSIONS.getOpaque(this);
   }
 
   protected long getMcasAttemptsO() {
@@ -104,7 +111,7 @@ abstract class EmcasThreadContextBase {
     MCAS_ATTEMPTS.setOpaque(this, this._mcasAttempts + 1L);
   }
 
-  protected void recordCommitO(int retries, int committedRefs) {
+  protected void recordCommitO(int retries, int committedRefs, int descExtensions) {
     // Only one thread writes, so `+=`-like
     // increment is fine here. There is a
     // race though: a reader can read values
@@ -117,6 +124,7 @@ abstract class EmcasThreadContextBase {
     COMMITS.setOpaque(this, this._commits + 1L);
     long retr = (long) retries;
     RETRIES.setOpaque(this, this._retries + retr);
+    EXTENSIONS.setOpaque(this, this._extensions + descExtensions);
     COMMITTED_REFS.setOpaque(this, this._committedRefs + ((long) committedRefs));
     if (retr > this._maxRetriesEver) {
       MAX_RETRIES_EVER.setOpaque(this, retr);

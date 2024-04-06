@@ -29,10 +29,12 @@ import java.util.concurrent.atomic.AtomicReference
 private sealed trait EmcasJmxStatsMBean {
   def getCommits(): Long
   def getRetries(): Long
+  def getExtensions(): Long
   def getMcasAttempts(): Long
   def getCyclesDetected(): Long
   def getAvgRetriesPerCommit(): Double
   def getAvgTriesPerCommit(): Double
+  def getAvgExtensionsPerCommit(): Double
   def getAvgCyclesPerMcasAttempt(): Double
   def getMaxRetriesPerCommit(): Long
   def getMaxTriesPerCommit(): Long
@@ -99,6 +101,9 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
   final override def getRetries(): Long =
     this.getStats().retries
 
+  final override def getExtensions(): Long =
+    this.getStats().extensions
+
   final override def getMcasAttempts(): Long =
     this.getStats().mcasAttempts
 
@@ -120,6 +125,16 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
     if (c != 0L) {
       val r = this.getRetries()
       (r + c).toDouble / c.toDouble
+    } else {
+      Double.NaN
+    }
+  }
+
+  final override def getAvgExtensionsPerCommit(): Double = {
+    val c = this.getCommits()
+    if (c != 0L) {
+      val e = this.getExtensions()
+      e.toDouble / c.toDouble
     } else {
       Double.NaN
     }

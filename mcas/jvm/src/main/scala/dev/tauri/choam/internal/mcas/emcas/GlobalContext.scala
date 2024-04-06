@@ -194,6 +194,7 @@ private object GlobalContext {
 
     private[this] var commits: Long = 0L
     private[this] var retries: Long = 0L
+    private[this] var extensions: Long = 0L
     private[this] var mcasAttempts: Long = 0L
     private[this] var committedRefs: Long = 0L
     private[this] var cyclesDetected: Long = 0
@@ -209,6 +210,7 @@ private object GlobalContext {
       // purposes...
       this.commits += stats.commits
       this.retries += stats.retries
+      this.extensions += stats.extensions
       this.mcasAttempts += stats.mcasAttempts
       this.committedRefs += stats.committedRefs
       this.cyclesDetected += stats.cyclesDetected
@@ -229,6 +231,7 @@ private object GlobalContext {
       Mcas.RetryStats(
         commits = this.commits,
         retries = this.retries,
+        extensions = this.extensions,
         mcasAttempts = this.mcasAttempts,
         committedRefs = this.committedRefs,
         cyclesDetected = this.cyclesDetected,
