@@ -20,6 +20,12 @@ package dev.tauri.choam.internal.mcas;
 // Note: this class/object is duplicated for JVM/JS
 public final class Consts {
 
+  public static final long OPTIMISTIC =
+    1L;
+
+  public static final long PESSIMISTIC =
+    0L;
+
   public static final String statsEnabledProp =
     "dev.tauri.choam.stats";
 

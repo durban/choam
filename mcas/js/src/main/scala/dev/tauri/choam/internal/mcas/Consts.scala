@@ -23,6 +23,14 @@ package mcas
 object Consts {
 
   @inline
+  final val OPTIMISTIC =
+    1L;
+
+  @inline
+  final val PESSIMISTIC =
+    0L;
+
+  @inline
   final val statsEnabledProp =
     "dev.tauri.choam.stats";
 

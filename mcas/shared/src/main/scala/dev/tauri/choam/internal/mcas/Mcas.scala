@@ -166,6 +166,10 @@ object Mcas extends McasCompanionPlatform { self =>
      *         being newer than `desc.validTs`).
      */
     final def tryPerform(desc: Descriptor): Long = {
+      this.tryPerform(desc, Consts.OPTIMISTIC)
+    }
+
+    final def tryPerform(desc: Descriptor, optimism: Long): Long = {
       if (desc.readOnly) {
         // we've validated each read,
         // so nothing to do here
@@ -178,9 +182,13 @@ object Mcas extends McasCompanionPlatform { self =>
       }
     }
 
-    /** Like `tryPerform`, but returns whether it was successful */
     final def tryPerformOk(desc: Descriptor): Boolean = {
-      tryPerform(desc) == McasStatus.Successful
+      this.tryPerformOk(desc, Consts.OPTIMISTIC)
+    }
+
+    /** Like `tryPerform`, but returns whether it was successful */
+    final def tryPerformOk(desc: Descriptor, optimism: Long): Boolean = {
+      tryPerform(desc, optimism = optimism) == McasStatus.Successful
     }
 
     final def addCasFromInitial[A](desc: Descriptor, ref: MemoryLocation[A], ov: A, nv: A): Descriptor =
@@ -267,7 +275,7 @@ object Mcas extends McasCompanionPlatform { self =>
       assert(hwd ne null)
       if (equ(hwd.ov, ov)) {
         val d2 = d1.overwrite(hwd.withNv(nv))
-        this.tryPerform(d2) == McasStatus.Successful
+        this.tryPerform(d2, optimism = Consts.PESSIMISTIC) == McasStatus.Successful
       } else {
         false
       }
@@ -405,7 +413,11 @@ object Mcas extends McasCompanionPlatform { self =>
     }
 
     final def tryPerformOk(): Boolean = {
-      this.ctx.tryPerformOk(this.desc)
+      this.tryPerformOk(Consts.OPTIMISTIC)
+    }
+
+    final def tryPerformOk(optimism: Long): Boolean = {
+      this.ctx.tryPerformOk(this.desc, optimism)
     }
   }
 }

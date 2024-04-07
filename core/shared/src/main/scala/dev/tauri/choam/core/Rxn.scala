@@ -718,6 +718,10 @@ object Rxn extends RxnInstances0 {
     private[this] var descExtensions: Int =
       0
 
+    /** Strats from `true`, and after 1 MCAS failure, goes to `false` */
+    private[this] var optimisticMcas: Boolean =
+      true
+
     private[this] var _stats: ExStatMap =
       null
 
@@ -1013,7 +1017,8 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def performMcas(d: Descriptor): Boolean = {
       if (d ne null) {
-        (ctx.tryPerform(d) == McasStatus.Successful)
+        val o = if (this.optimisticMcas) Consts.OPTIMISTIC else Consts.PESSIMISTIC
+        (ctx.tryPerform(d, o) == McasStatus.Successful)
         // `Succesful` is success; otherwise the result is:
         // - Either `McasStatus.FailedVal`, which means that
         //   (at least) one word had an unexpected value
@@ -1079,6 +1084,7 @@ object Rxn extends RxnInstances0 {
             }
             loop(next())
           } else {
+            this.optimisticMcas = false
             contK.push(commit)
             contT.push(ContAndThen)
             loop(retry())
