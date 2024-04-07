@@ -20,7 +20,6 @@ package bench
 package rxn
 
 import org.openjdk.jmh.annotations._
-import org.openjdk.jmh.infra.Blackhole
 
 import util._
 import InterpreterBench._
@@ -32,19 +31,30 @@ class InterpreterBench {
   // TODO: this benchmark doesn't include:
   // TODO: - direct read
   // TODO: - creating new Refs
-  // TODO: - read-only LogEntry
   // TODO: - read-only Rxn
 
   @Benchmark
-  def rxnNew(s: St, bh: Blackhole, k: McasImplState): Unit = {
+  def rxnNew(s: St, k: McasImplState): String = {
     val x = k.nextInt()
-    bh.consume(s.rxn.unsafePerform(x, k.mcasImpl))
+    s.rxn.unsafePerform(x, k.mcasImpl)
   }
 
   @Benchmark
-  def rxnNewDisjoint(s: DisjointSt, bh: Blackhole, k: McasImplState): Unit = {
+  def rxnNewDisjoint(s: DisjointSt, k: McasImplState): String = {
     val x = k.nextInt()
-    bh.consume(s.rxn.unsafePerform(x, k.mcasImpl))
+    s.rxn.unsafePerform(x, k.mcasImpl)
+  }
+
+  @Benchmark
+  def readHeavy(s: St, k: McasImplState): String = {
+    val x = k.nextInt()
+    s.rhRxn.unsafePerform(x, k.mcasImpl)
+  }
+
+  @Benchmark
+  def readHeavyDisjoint(s: DisjointSt, k: McasImplState): String = {
+    val x = k.nextInt()
+    s.rhRxn.unsafePerform(x, k.mcasImpl)
   }
 }
 
@@ -126,6 +136,40 @@ object InterpreterBench {
       modOrRetry(ref6) + modOrRetry(ref7) + ref8.update { s =>
         s.##.toString
       }
+    }
+
+    private[InterpreterBench] val rhRxn: Rxn[Int, String] = {
+      val rxn1 = (0 until N).map { idx =>
+        mkRhRxn1(ref1s(idx), ref2s(idx), ref3s(idx))
+      }.reduce { (x, y) => (x * y).map(_._2) }
+
+      val rxn2 = (0 until N).map { idx =>
+        mkRhRxn2(ref4s(idx), ref5s(idx))
+      }.reduce { (x, y) => (x * y).map(_._2) }
+
+      val rxn3 = (0 until N).map { idx =>
+        mkRhRxn3(ref6s(idx), ref7s(idx), ref8s(idx))
+      }.reduce { (x, y) => (x * y).map(_._2) }
+
+      rxn1 *> rxn3 *> rxn2
+    }
+
+    private[this] def mkRhRxn1(ref1: Ref[String], ref2: Ref[String], ref3: Ref[String]): Int =#> String = {
+      Rxn.computed { (i: Int) =>
+        (if ((i % 2) == 0) ref1.get else ref2.get) >>> ref3.updateAndGet(_.length.toString)
+      }
+    }
+
+    private[this] def mkRhRxn2(ref4: Ref[String], ref5: Ref[String]): Int =#> String = {
+      ref4.upd[Int, Int] { (ov4, i) =>
+        (ov4, i + 1)
+      }.flatMapF { i =>
+        if ((i % 2) == 0) ref5.get else ref5.getAndSet.provide(i.toString)
+      }
+    }
+
+    private[this] def mkRhRxn3(ref6: Ref[String], ref7: Ref[String], ref8: Ref[String]): Axn[Unit] = {
+      (ref6.get *> ref7.get *> ref8.get).void
     }
   }
 
