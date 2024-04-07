@@ -38,7 +38,7 @@ private[mcas] final class LogMap2[A] private (
   protected final override def newArray(size: Int): Array[LogEntry[A]] =
     new Array[LogEntry[A]](size)
 
-  protected final override def convertForArray(a: LogEntry[A], tok: Unit): LogEntry[A] =
+  protected final override def convertForArray(a: LogEntry[A], tok: Unit, flag: Boolean): LogEntry[A] =
     a
 
   protected final override def convertForFoldLeft(s: Descriptor, a: LogEntry[A]): Descriptor =

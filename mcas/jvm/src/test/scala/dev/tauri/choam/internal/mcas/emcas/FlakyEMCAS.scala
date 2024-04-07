@@ -52,8 +52,8 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
     protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       emcasCtx.readVersion(ref)
 
-    final override def tryPerformInternal(desc: Descriptor): Long =
-      self.tryPerformInternal(desc, emcasCtx)
+    final override def tryPerformInternal(desc: Descriptor, optimism: Long): Long =
+      self.tryPerformInternal(desc, emcasCtx, optimism)
 
     final override def start(): Descriptor =
       emcasCtx.start()
@@ -72,10 +72,10 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
   private[choam] final override def isThreadSafe =
     true
 
-  private final def tryPerformInternal(hDesc: Descriptor, ctx: EmcasThreadContext): Long = {
+  private final def tryPerformInternal(hDesc: Descriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
     // perform or not the operation based on whether we've already seen it
     if (this.seen.putIfAbsent(hDesc.##, ()).isDefined) {
-      Emcas.inst.tryPerformDebug(desc = hDesc, ctx = ctx)
+      Emcas.inst.tryPerformDebug(desc = hDesc, ctx = ctx, optimism = optimism)
     } else {
       McasStatus.FailedVal // simulate a transient CAS failure to force a retry
     }

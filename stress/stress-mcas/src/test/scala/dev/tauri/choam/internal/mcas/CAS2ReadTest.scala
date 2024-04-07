@@ -45,7 +45,8 @@ class CAS2ReadTest extends StressTestBase {
   def writer(r: LLZ_Result): Unit = {
     val ctx = impl.currentContext()
     r.r3 = (ctx.tryPerformInternal(
-      ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
+      ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b"),
+      Consts.PESSIMISTIC
     ) == McasStatus.Successful)
   }
 

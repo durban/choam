@@ -119,8 +119,8 @@ private final class EmcasThreadContext(
     mark // caller MUST hold a strong ref
   }
 
-  final override def tryPerformInternal(desc: Descriptor): Long =
-    impl.tryPerformInternal(desc, this)
+  final override def tryPerformInternal(desc: Descriptor, optimism: Long): Long =
+    impl.tryPerformInternal(desc, this, optimism)
 
   final override def readDirect[A](ref: MemoryLocation[A]): A =
     impl.readDirect(ref, this)

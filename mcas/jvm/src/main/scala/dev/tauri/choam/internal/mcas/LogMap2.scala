@@ -42,8 +42,8 @@ private[mcas] final class LogMap2[A] private (
   protected final override def newArray(size: Int): Array[WdLike[A]] =
     new Array[WdLike[A]](size)
 
-  protected final override def convertForArray(a: LogEntry[A], tok: emcas.EmcasDescriptor): WdLike[A] = {
-    if (a.readOnly) a
+  protected final override def convertForArray(a: LogEntry[A], tok: emcas.EmcasDescriptor, instRo: Boolean): WdLike[A] = {
+    if ((!instRo) && a.readOnly) a
     else new emcas.EmcasWordDesc[A](a, parent = tok)
   }
 

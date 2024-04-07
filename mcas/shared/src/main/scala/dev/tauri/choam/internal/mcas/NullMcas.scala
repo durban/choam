@@ -79,7 +79,7 @@ object NullMcas extends Mcas.UnsealedMcas { self =>
       throw new UnsupportedOperationException
     }
 
-    private[mcas] final override def tryPerformInternal(desc: Descriptor): Long = {
+    private[mcas] final override def tryPerformInternal(desc: Descriptor, optimism: Long): Long = {
       if (desc.nonEmpty) {
         throw new UnsupportedOperationException
       } else {

@@ -45,7 +45,8 @@ class CAS2Test extends StressTestBase {
   def writer1(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
     r.r1 = (ctx.tryPerformInternal(
-      ctx.addCasFromInitial(ctx.start(), ref1, "ov1", "x")
+      ctx.addCasFromInitial(ctx.start(), ref1, "ov1", "x"),
+      Consts.PESSIMISTIC
     ) == McasStatus.Successful)
   }
 
@@ -53,7 +54,8 @@ class CAS2Test extends StressTestBase {
   def writer2(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
     r.r2 = (ctx.tryPerformInternal(
-      ctx.addCasFromInitial(ctx.start(), ref2, "ov2", "y")
+      ctx.addCasFromInitial(ctx.start(), ref2, "ov2", "y"),
+      Consts.PESSIMISTIC
     ) == McasStatus.Successful)
   }
 
@@ -61,7 +63,8 @@ class CAS2Test extends StressTestBase {
   def writer3(r: ZZZZ_Result): Unit = {
     val ctx = impl.currentContext()
     r.r3 = (ctx.tryPerformInternal(
-      ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b")
+      ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), ref1, "ov1", "a"), ref2, "ov2", "b"),
+      Consts.PESSIMISTIC
     ) == McasStatus.Successful)
   }
 

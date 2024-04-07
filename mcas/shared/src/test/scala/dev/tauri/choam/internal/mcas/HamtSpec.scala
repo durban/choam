@@ -432,14 +432,14 @@ object HamtSpec {
       new LongHamt(size, bitmap, contents)
     protected final override def newArray(size: Int): Array[Val] =
       new Array[Val](size)
-    protected final override def convertForArray(a: Val, tok: Unit): Val =
+    protected final override def convertForArray(a: Val, tok: Unit, dontCare: Boolean): Val =
       a
     protected final override def convertForFoldLeft(s: Chain[Val], v: Val): Chain[Val] =
       s :+ v
     protected final override def predicateForForAll(a: Val, tok: Long): Boolean =
       a.value > tok
     final def toArray: Array[Val] =
-      this.toArray(())
+      this.toArray((), flag = false)
     final def getOrElse(k: Long, default: Val): Val = this.getOrElseNull(k) match {
       case null => default
       case v => v

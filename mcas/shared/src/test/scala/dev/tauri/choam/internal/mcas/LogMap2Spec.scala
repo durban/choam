@@ -153,7 +153,7 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
         RefIdGen.global
       def start(): Descriptor =
         self.fail("not implemented")
-      private[mcas] def tryPerformInternal(desc: Descriptor): Long =
+      private[mcas] def tryPerformInternal(desc: Descriptor, optimism: Long): Long =
         self.fail("not implemented")
       def validateAndTryExtend(desc: Descriptor, hwd: LogEntry[_]): Descriptor =
         self.fail("not implemented")

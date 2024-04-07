@@ -119,7 +119,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
 
   protected def newArray(size: Int): Array[E]
 
-  protected def convertForArray(a: A, tok: T1): E
+  protected def convertForArray(a: A, tok: T1, flag: Boolean): E
 
   protected def convertForFoldLeft(s: S, a: A): S
 
@@ -173,9 +173,9 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
    * results into an array (created with `newArray`,
    * also implemented in a subclass).
    */
-  final def toArray(tok: T1): Array[E] = {
+  final def toArray(tok: T1, flag: Boolean): Array[E] = {
     val arr = newArray(this.size)
-    val end = this.copyIntoArray(arr, 0, tok)
+    val end = this.copyIntoArray(arr, 0, tok, flag = flag)
     assert(end == arr.length)
     arr
   }
@@ -316,7 +316,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     }
   }
 
-  private final def copyIntoArray(arr: Array[E], start: Int, tok: T1): Int = {
+  private final def copyIntoArray(arr: Array[E], start: Int, tok: T1, flag: Boolean): Int = {
     val contents = this.contents
     var i = 0
     var arrIdx = start
@@ -324,9 +324,9 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     while (i < len) {
       contents(i) match {
         case node: Hamt[_, _, _, _, _, _] =>
-          arrIdx = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok)
+          arrIdx = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok, flag = flag)
         case a =>
-          arr(arrIdx) = convertForArray(a.asInstanceOf[A], tok)
+          arr(arrIdx) = convertForArray(a.asInstanceOf[A], tok, flag = flag)
           arrIdx += 1
       }
       i += 1

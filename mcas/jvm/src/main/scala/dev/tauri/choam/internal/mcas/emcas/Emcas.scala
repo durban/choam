@@ -991,20 +991,19 @@ private[mcas] final class Emcas extends GlobalContext { global =>
   private[choam] final override def isThreadSafe =
     true
 
-  private[mcas] final def tryPerformInternal(desc: Descriptor, ctx: EmcasThreadContext): Long = {
-    tryPerformDebug(desc = desc, ctx = ctx)
+  private[mcas] final def tryPerformInternal(desc: Descriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
+    tryPerformDebug(desc = desc, ctx = ctx, optimism = optimism)
   }
 
-  private[mcas] final def tryPerformDebug(desc: Descriptor, ctx: EmcasThreadContext): Long = {
+  private[mcas] final def tryPerformDebug(desc: Descriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
     if (desc.nonEmpty) {
       assert(!desc.readOnly)
-      // TODO: Can we avoid allocating EmcasWordDescs for
-      // TODO: read-only HWDs? The first time we try, we
-      // TODO: don't install them into the Refs, so we don't
-      // TODO: actually need real WDs. (Revalidation could
-      // TODO: work with HWDs, and by using the already existing
-      // TODO: HWDs, we could avoid some allocations.)
-      val fullDesc = new EmcasDescriptor(desc)
+      val instRo = (optimism.toInt : @switch) match {
+        case 0 => true
+        case 1 => false
+        case _ => throw new IllegalArgumentException
+      }
+      val fullDesc = new EmcasDescriptor(desc, instRo = instRo)
       val res = MCAS(desc = fullDesc, ctx = ctx, seen = 0L)
       if (EmcasStatus.isSuccessful(res)) {
         // `Emcas` stores a version in the descriptor,
@@ -1012,7 +1011,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // a constant, to follow the `Mcas` API:
         McasStatus.Successful
       } else if (res == EmcasStatus.CycleDetected) {
-        assert(!fullDesc.instRo)
+        assert(!instRo)
         // we detected a (possible) cycle, so
         // we'll fall back to the method which
         // is certainly lock free (always installing

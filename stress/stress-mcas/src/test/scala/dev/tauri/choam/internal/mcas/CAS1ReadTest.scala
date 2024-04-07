@@ -39,7 +39,7 @@ class CAS1ReadTest extends StressTestBase {
   @Actor
   def writer(r: ZZL_Result): Unit = {
     val ctx = impl.currentContext()
-    r.r1 = (ctx.tryPerformInternal(ctx.addCasFromInitial(ctx.start(), ref, "ov", "x")) == McasStatus.Successful)
+    r.r1 = (ctx.tryPerformInternal(ctx.addCasFromInitial(ctx.start(), ref, "ov", "x"), Consts.PESSIMISTIC) == McasStatus.Successful)
   }
 
   @Actor

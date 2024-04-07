@@ -43,7 +43,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
     protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       ref.unsafeGetVersionV()
 
-    final override def tryPerformInternal(desc: Descriptor): Long = {
+    final override def tryPerformInternal(desc: Descriptor, optimism: Long): Long = {
       @tailrec
       def prepare(it: Iterator[LogEntry[_]]): Long = {
         if (it.hasNext) {

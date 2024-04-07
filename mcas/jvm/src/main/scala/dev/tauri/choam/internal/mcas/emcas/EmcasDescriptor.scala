@@ -25,6 +25,7 @@ import java.util.concurrent.ThreadLocalRandom
 private[mcas] final class EmcasDescriptor private[this] (
   half: Descriptor,
   wordsToCopy: Array[WdLike[_]],
+  private[emcas] final val instRo: Boolean,
 ) extends EmcasDescriptorBase { self =>
 
   /**
@@ -36,14 +37,11 @@ private[mcas] final class EmcasDescriptor private[this] (
   final override val hashCode: Int =
     ThreadLocalRandom.current().nextInt()
 
-  private[emcas] final val instRo: Boolean =
-    (wordsToCopy ne null)
-
-  private[emcas] def this(half: Descriptor) =
-    this(half, null)
+  private[emcas] def this(half: Descriptor, instRo: Boolean) =
+    this(half, null, instRo = instRo)
 
   private def this(wordsToCopy: Array[WdLike[_]]) =
-    this(null, wordsToCopy)
+    this(null, wordsToCopy, instRo = true)
 
   // EMCAS handles the global version
   // separately, so the descriptor must
@@ -62,36 +60,39 @@ private[mcas] final class EmcasDescriptor private[this] (
    * are made visible by the volatile-CASes which insert
    * the `EmcasWordDesc`s into the refs.
    */
-  this.setWordsO(if (half ne null) {
-    assert(wordsToCopy eq null)
-    val arr = half.toWdArray(this).asInstanceOf[Array[WdLike[_]]]
-    require(arr.length > 0)
-    arr
-  } else {
-    // we're a fallback
-    assert(wordsToCopy ne null)
-    val len = wordsToCopy.length
-    require(len > 0)
-    val arr = new Array[WdLike[_]](len)
-    var idx = 0
-    while (idx < len) {
-      wordsToCopy(idx) match {
-        case null =>
-          // the array is being cleared, we can't continue here;
-          // instead of throwing an exception, we do the ugly
-          // thing, and store a sentinel into the first array slot:
-          arr(0) = EmcasWordDesc.Invalid
-          idx = len // break while
-        case wd: EmcasWordDesc[_] =>
-          arr(idx) = wd.withParent(this)
-          idx += 1
-        case hwd: LogEntry[_] =>
-          arr(idx) = new EmcasWordDesc(hwd, parent = this)
-          idx += 1
+  this.setWordsO(
+    if (half ne null) {
+      // optimistic/pessimistic mode
+      assert(wordsToCopy eq null)
+      val arr = half.toWdArray(this, instRo = instRo).asInstanceOf[Array[WdLike[_]]]
+      assert(arr.length > 0)
+      arr
+    } else {
+      // we're a fallback
+      assert(instRo && (wordsToCopy ne null))
+      val len = wordsToCopy.length
+      assert(len > 0)
+      val arr = new Array[WdLike[_]](len)
+      var idx = 0
+      while (idx < len) {
+        wordsToCopy(idx) match {
+          case null =>
+            // the array is being cleared, we can't continue here;
+            // instead of throwing an exception, we do the ugly
+            // thing, and store a sentinel into the first array slot:
+            arr(0) = EmcasWordDesc.Invalid
+            idx = len // break while
+          case wd: EmcasWordDesc[_] =>
+            arr(idx) = wd.withParent(this)
+            idx += 1
+          case hwd: LogEntry[_] =>
+            arr(idx) = new EmcasWordDesc(hwd, parent = this)
+            idx += 1
+        }
       }
+      arr
     }
-    arr
-  })
+  )
 
   /** May return `null` for finalized descriptors */
   private[emcas] final def getWordDescArrOrNull(): Array[WdLike[_]] = {
@@ -190,8 +191,8 @@ private[mcas] final class EmcasDescriptor private[this] (
 
 private object EmcasDescriptor {
 
-  def prepare(half: Descriptor): EmcasDescriptor = {
-    new EmcasDescriptor(half)
+  def prepare(half: Descriptor, instRo: Boolean): EmcasDescriptor = { // TODO: do we need this?
+    new EmcasDescriptor(half, instRo = instRo)
   }
 
   private final class Iterator(words: Array[WdLike[_]])

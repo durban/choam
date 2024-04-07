@@ -60,7 +60,8 @@ class EmcasTest {
   def write(r: LLLLL_Result): Unit = {
     val ctx = Emcas.inst.currentContext()
     val res = ctx.tryPerformInternal(
-      ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), this.ref1, "a", "b"), this.ref2, "x", "y")
+      ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), this.ref1, "a", "b"), this.ref2, "x", "y"),
+      Consts.OPTIMISTIC
     )
     r.r1 = (res == McasStatus.Successful) // true
   }

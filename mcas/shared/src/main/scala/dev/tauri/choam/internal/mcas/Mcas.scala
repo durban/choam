@@ -104,13 +104,16 @@ object Mcas extends McasCompanionPlatform { self =>
     /**
      * Directly tries to perform the k-CAS described by `desc`
      *
+     * @param optimism Specify `Consts.OPTIMISTIC`, to try first
+     *                 in optimistic mode; `Consts.PESSIMISTIC`,
+     *                 to not even try being optimistic.
      * @return either `EmcasStatus.Successful` (if successful);
      *         `EmcasStatus.FailedVal` (if failed due to an
      *         expected value not matching); or the current
      *         global version (if failed due to the version
      *         being newer than `desc.validTs`).
      */
-    private[mcas] def tryPerformInternal(desc: Descriptor): Long
+    private[mcas] def tryPerformInternal(desc: Descriptor, optimism: Long): Long
 
     /** @return a `ThreadLocalRandom` valid for the current thread */
     def random: ThreadLocalRandom
@@ -176,7 +179,7 @@ object Mcas extends McasCompanionPlatform { self =>
         McasStatus.Successful
       } else {
         val finalDesc = this.addVersionCas(desc)
-        val res = this.tryPerformInternal(finalDesc)
+        val res = this.tryPerformInternal(finalDesc, optimism = optimism)
         assert((res == McasStatus.Successful) || (res == McasStatus.FailedVal) || Version.isValid(res))
         res
       }
@@ -253,7 +256,7 @@ object Mcas extends McasCompanionPlatform { self =>
         val d1 = d0.add(hwd.withNv(nv)).withNoNewVersion
         assert(d1.newVersion == d1.validTs)
         // we're intentionally NOT having a version-CAS:
-        this.tryPerformInternal(d1) == McasStatus.Successful
+        this.tryPerformInternal(d1, optimism = Consts.PESSIMISTIC) == McasStatus.Successful
       } else {
         false
       }
