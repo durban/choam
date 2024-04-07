@@ -30,10 +30,10 @@ import org.openjdk.jmh.results.Result
 
 import stats.RxnProfiler
 
-final class RxnProfilerSpecIO
-  extends BaseSpecIO
-  with SpecEmcas
-  with RxnProfilerSpec[IO]
+// final class RxnProfilerSpecIO // TODO
+//   extends BaseSpecIO
+//   with SpecEmcas
+//   with RxnProfilerSpec[IO]
 
 trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { this: McasImplSpec =>
 

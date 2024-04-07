@@ -65,12 +65,14 @@ private[mcas] abstract class GlobalContext
         val tc = this.newThreadContext()
         threadContextKey.set(tc)
         val currThread = Thread.currentThread()
-        val wr = new GlobalContext.TCtxWeakRef(currThread.getId(), tc)
-        this._threadContexts.put(
-          wr,
-          ()
-        ) : Unit // don't care the old ctx, it's for a terminated thread (and the TID was reused)
-        this.maybeGcThreadContexts(this.getAndIncrThreadCtxCount() + 1L) // we might also clear weakrefs
+        if (false) { // TODO
+          val wr = new GlobalContext.TCtxWeakRef(currThread.getId(), tc)
+          this._threadContexts.put(
+            wr,
+            ()
+          ) : Unit // don't care the old ctx, it's for a terminated thread (and the TID was reused)
+          this.maybeGcThreadContexts(this.getAndIncrThreadCtxCount() + 1L) // we might also clear weakrefs
+        }
         tc
       case tc =>
         // "fast" path: ctx already exists
