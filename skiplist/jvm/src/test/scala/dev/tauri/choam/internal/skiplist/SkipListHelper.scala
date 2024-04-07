@@ -48,7 +48,7 @@ object SkipListHelper {
 
   def listFromSkipList[K, V](m: SkipListMap[K, V]): List[(K, V)] = {
     val lb = List.newBuilder[(K, V)]
-    m.foreach { (k, v) => lb += ((k, v)) }
+    m.foreachAndSum { (k, v) => lb += ((k, v)); 0 }
     lb.result()
   }
 

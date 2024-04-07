@@ -232,7 +232,7 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
     throw new NotImplementedError("SkipListMap#replace(K,V)")
   }
 
-  private[choam] final def foreach(cb: (K, V) => Unit): Unit = {
+  private[choam] final def foreachAndSum(cb: (K, V) => Int): Int = {
     doForeach(cb)
   }
 
@@ -581,22 +581,25 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
    * Calls `cb` with each (non-deleted) key-value
    * pair in the list. Note: this method is not
    * atomic or consistent (see "weakly consistent"
-   * iterators in the JDK).
+   * iterators in the JDK). Also sums the `Int`s
+   * returned by `cb`.
    *
    * Analogous to the iterators in the JSR-166 `ConcurrentSkipListMap`.
    */
-  private[this] final def doForeach(cb: (K, V) => Unit): Unit = {
+  private[this] final def doForeach(cb: (K, V) => Int): Int = {
     var n = baseHead()
+    var sum = 0
     while (n ne null) {
       val key = n.key
       if (!isMARKER(key)) {
         val value = n.getValue()
         if (!isTOMB(value)) {
-          cb(key, value)
+          sum += cb(key, value)
         }
       }
       n = n.getNext()
     }
+    sum
   }
 
   /** Non-linearizable! */

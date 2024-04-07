@@ -74,10 +74,10 @@ abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
   }
 
   final long getAndIncrThreadCtxCount() {
-    return (long) THREAD_CTX_COUNT.getAndAddAcquire(this, 1L);
+    return this.getAndAddThreadCtxCount(1L);
   }
 
-  final long getAndDecrThreadCtxCount() {
-    return (long) THREAD_CTX_COUNT.getAndAddAcquire(this, -1L);
+  final long getAndAddThreadCtxCount(long x) {
+    return (long) THREAD_CTX_COUNT.getAndAddAcquire(this, x);
   }
 }

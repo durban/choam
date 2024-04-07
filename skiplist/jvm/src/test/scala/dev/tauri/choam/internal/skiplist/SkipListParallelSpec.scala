@@ -59,8 +59,9 @@ final class SkipListParallelSpec extends CatsEffectSuite with ScalaCheckEffectSu
       for {
         original <- IO {
           val b = Map.newBuilder[Int, String]
-          m.foreach { (k, v) =>
+          m.foreachAndSum { (k, v) =>
             b += ((k, v))
+            0
           }
           b.result()
         }

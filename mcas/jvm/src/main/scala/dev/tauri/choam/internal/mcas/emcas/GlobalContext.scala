@@ -82,27 +82,29 @@ private[mcas] abstract class GlobalContext
   private[choam] final override def getRetryStats(): Mcas.RetryStats = {
     // allocating this builder is still cheaper than using an iterator (tuples):
     val b = new GlobalContext.StatsBuilder()
-    this._threadContexts.foreach { (wr, _) =>
+    this._threadContexts.foreachAndSum { (wr, _) =>
       val tctx = wr.get()
       if (tctx ne null) {
         b += tctx.getRetryStats()
       } else {
         this._threadContexts.del(wr) : Unit // clean empty weakref
       }
-    }
+      0
+    } : Unit
     b.build()
   }
 
   private[choam] final override def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
     val mb = Map.newBuilder[Long, Map[AnyRef, AnyRef]]
-    this._threadContexts.foreach { (wr, _) =>
+    this._threadContexts.foreachAndSum { (wr, _) =>
       val tc = wr.get()
       if (tc ne null) {
         mb += ((wr.tid, tc.getStatisticsO()))
       } else {
         this._threadContexts.del(wr) : Unit // clean empty weakref
       }
-    }
+      0
+    } : Unit
     mb.result()
   }
 
@@ -110,7 +112,7 @@ private[mcas] abstract class GlobalContext
     // An `IntRef` is still cheaper than using an iterator (tuples):
     @nowarn("cat=lint-performance")
     var max = 0
-    this._threadContexts.foreach { (wr, _) =>
+    this._threadContexts.foreachAndSum { (wr, _) =>
       val tc = wr.get()
       if (tc ne null) {
         val n = tc.maxReusedWeakRefs()
@@ -120,39 +122,36 @@ private[mcas] abstract class GlobalContext
       } else {
         this._threadContexts.del(wr) : Unit // clean empty weakref
       }
-    }
+      0
+    } : Unit
     max
   }
 
   /** For testing. */
   private[emcas] final def threadContextExists(threadId: Long): Boolean = {
-    // A `BooleanRef` is still cheaper than using an iterator (tuples):
-    @nowarn("cat=lint-performance")
-    var exists = false
-    this._threadContexts.foreach { (wr, _) =>
+    val sum = this._threadContexts.foreachAndSum { (wr, _) =>
       if (wr.get() eq null) {
         this._threadContexts.del(wr) : Unit // clean empty weakref
+        0
       } else if (wr.tid == threadId) {
-        exists = true
+        1
+      } else {
+        0
       }
     }
-    exists
+
+    (sum != 0)
   }
 
   private[emcas] final def threadContextCount(): Int = {
-    // Allocating one `IntRef`, and using that
-    // is still cheaper than using an iterator,
-    // and allocating a tuple on each iteration:
-    @nowarn("cat=lint-performance")
-    var count = 0
-    this._threadContexts.foreach { (wr, _) =>
+    this._threadContexts.foreachAndSum { (wr, _) =>
       if (wr.get() eq null) {
         this._threadContexts.del(wr) : Unit // clean empty weakref
+        0
       } else {
-        count += 1
+        1
       }
     }
-    count
   }
 
   /**
@@ -181,12 +180,15 @@ private[mcas] abstract class GlobalContext
    */
   private[this] final def gcThreadContexts(): Unit = {
     val threadContexts = this._threadContexts
-    threadContexts.foreach { (wr, _) =>
+    val sum = threadContexts.foreachAndSum { (wr, _) =>
       if (wr.get() eq null) {
         threadContexts.del(wr) : Unit
-        this.getAndDecrThreadCtxCount() : Unit
+        -1
+      } else {
+        0
       }
     }
+    this.getAndAddThreadCtxCount(sum.toLong) : Unit
   }
 }
 
