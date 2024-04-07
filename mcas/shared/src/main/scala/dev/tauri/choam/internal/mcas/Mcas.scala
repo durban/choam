@@ -338,7 +338,22 @@ object Mcas extends McasCompanionPlatform { self =>
     maxCommittedRefs: Int,
     /** The (estimated) maximum observed size of the cycle detection Bloom filter */
     maxBloomFilterSize: Int,
-  )
+  ) {
+
+    final def merge(that: RetryStats): RetryStats = {
+      RetryStats(
+        commits = this.commits + that.commits,
+        retries = this.retries + that.retries,
+        extensions = this.extensions + that.extensions,
+        mcasAttempts = this.mcasAttempts + that.mcasAttempts,
+        committedRefs = this.committedRefs + that.committedRefs,
+        cyclesDetected = this.cyclesDetected + that.cyclesDetected,
+        maxRetries = java.lang.Math.max(this.maxRetries, that.maxRetries),
+        maxCommittedRefs = java.lang.Math.max(this.maxCommittedRefs, that.maxCommittedRefs),
+        maxBloomFilterSize = java.lang.Math.max(this.maxBloomFilterSize, that.maxBloomFilterSize),
+      )
+    }
+  }
 
   /** Only for testing */
   private[mcas] final class Builder(

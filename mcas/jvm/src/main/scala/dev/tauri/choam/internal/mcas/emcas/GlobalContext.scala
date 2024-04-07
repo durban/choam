@@ -21,7 +21,6 @@ package mcas
 package emcas
 
 import java.lang.ref.WeakReference
-import java.util.concurrent.ThreadLocalRandom
 
 import cats.kernel.Order
 
@@ -65,12 +64,13 @@ private[mcas] abstract class GlobalContext
         // slow path: need to create new ctx
         val tc = this.newThreadContext()
         threadContextKey.set(tc)
-        val wr = new GlobalContext.TCtxWeakRef(Thread.currentThread().getId(), tc)
+        val currThread = Thread.currentThread()
+        val wr = new GlobalContext.TCtxWeakRef(currThread.getId(), tc)
         this._threadContexts.put(
           wr,
           ()
         ) : Unit // don't care the old ctx, it's for a terminated thread (and the TID was reused)
-        this.maybeGcThreadContexts(tc.random) // we might also clear weakrefs
+        this.maybeGcThreadContexts(this.getAndIncrThreadCtxCount() + 1L) // we might also clear weakrefs
         tc
       case tc =>
         // "fast" path: ctx already exists
@@ -162,14 +162,12 @@ private[mcas] abstract class GlobalContext
    * then discarded. (In this case we could hold on
    * to an unbounded number of empty weakrefs.) We
    * don't want to do this often (because we need
-   * to traverse the whole skip-list), so we do it
-   * approximately once every 256 `ThreadContext`
-   * creation. During typical usage (i.e., a thread-pool)
-   * the actual cleanup (`gcThreadContexts`) should
-   * almost never be called.
+   * to traverse the whole skip-list). During typical
+   * usage (i.e., a thread-pool) the actual cleanup
+   * (`gcThreadContexts`) should almost never be called.
    */
-  private[this] final def maybeGcThreadContexts(tlr: ThreadLocalRandom): Unit = {
-    if (tlr.nextInt(256) == 0) {
+  private[this] final def maybeGcThreadContexts(n: Long): Unit = {
+    if ((n & (n - 1L)) == 0L) { // power of 2
       gcThreadContexts()
     }
   }
@@ -186,6 +184,7 @@ private[mcas] abstract class GlobalContext
     threadContexts.foreach { (wr, _) =>
       if (wr.get() eq null) {
         threadContexts.del(wr) : Unit
+        this.getAndDecrThreadCtxCount() : Unit
       }
     }
   }
@@ -196,13 +195,11 @@ private object GlobalContext {
   private final class TCtxWeakRef(
     val tid: Long,
     ctx: EmcasThreadContext
-  ) extends WeakReference[EmcasThreadContext](ctx) {
-
-  }
+  ) extends WeakReference[EmcasThreadContext](ctx)
 
   private final object TCtxWeakRef {
-    implicit val orderInstance: Order[TCtxWeakRef] = {
-     Order.by(_.tid)
+    implicit val orderInstance: Order[TCtxWeakRef] = { (wr1, wr2) =>
+      java.lang.Long.compare(wr1.tid, wr2.tid)
     }
   }
 
