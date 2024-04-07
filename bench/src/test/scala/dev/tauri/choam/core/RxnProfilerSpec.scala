@@ -28,7 +28,7 @@ import munit.CatsEffectSuite
 
 import org.openjdk.jmh.results.Result
 
-import internal.mcas.McasStatus
+import internal.mcas.Consts
 import stats.RxnProfiler
 
 final class RxnProfilerSpecIO
@@ -71,7 +71,7 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
   }
 
   test("baseline") {
-    this.assume(McasStatus.statsEnabled)
+    this.assume(Consts.statsEnabled)
     simulateRun { _ => F.unit } { r =>
       for {
         _ <- assertEqualsF(r.size, 4)
@@ -85,7 +85,7 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
   }
 
   test("config") {
-    this.assume(McasStatus.statsEnabled)
+    this.assume(Consts.statsEnabled)
     for {
       _ <- simulateRunConfig("") { _ => F.unit } { r => F.delay {
         assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
@@ -125,7 +125,7 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
   }
 
   test("rxn.retriesPerCommit") {
-    this.assume(McasStatus.statsEnabled)
+    this.assume(Consts.statsEnabled)
     def succeedAfter(after: Int, optRef: Option[Ref[Int]] = None): F[Axn[Int]] = {
       F.delay(new AtomicInteger).map { ctr =>
         Axn.unsafe.delay { ctr.getAndIncrement() }.flatMapF { retries =>
@@ -187,7 +187,7 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
   }
 
   test("rxn.exchanges") {
-    this.assume(McasStatus.statsEnabled)
+    this.assume(Consts.statsEnabled)
     for {
       e <- RxnProfiler.profiledExchanger[String, Int].run[F]
       p <- simulateStart()

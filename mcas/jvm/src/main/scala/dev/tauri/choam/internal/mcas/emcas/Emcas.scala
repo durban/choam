@@ -892,7 +892,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         if (witness == McasStatus.Active) {
           // we finalized the descriptor
           desc.wasFinalized(finalRes)
-          if (McasStatus.statsEnabled) {
+          if (Consts.statsEnabled) {
             ctx.recordEmcasFinalizedO()
             if (finalRes == EmcasStatus.CycleDetected) {
               // TODO: Note: Our Bloom filter `seen2` isn't necessarily
@@ -1080,7 +1080,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
   }
 
   // JMX MBean for stats:
-  if (McasStatus.statsEnabled) {
+  if (Consts.statsEnabled) {
     val oName = new javax.management.ObjectName(
       f"${GlobalContextBase.emcasJmxStatsNamePrefix}%s-${System.identityHashCode(this)}%08x"
     )

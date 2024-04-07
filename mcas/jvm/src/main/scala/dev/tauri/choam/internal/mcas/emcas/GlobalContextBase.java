@@ -62,7 +62,6 @@ abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
   }
 
   private volatile long commitTs = Version.Start;
-  // TODO: padding between `commitTs` and `threadCtxCount`
   private volatile long threadCtxCount;
 
   final long getCommitTs() {

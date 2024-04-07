@@ -24,5 +24,4 @@ object McasStatus {
   private[mcas] final val Active = Version.Active
   final val Successful = Version.Successful
   final val FailedVal = Version.FailedVal
-  final val statsEnabled = false // no stats on JS
 }

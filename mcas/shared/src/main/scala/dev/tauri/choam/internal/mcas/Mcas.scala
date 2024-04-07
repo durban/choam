@@ -27,23 +27,27 @@ sealed trait Mcas {
   /** Returns the context associated with the current thread */
   def currentContext(): Mcas.ThreadContext
 
-  /** True iff `this` can be used to perform ops on arbitrary refs */
+  /** True iff `this` can be used to perform concurrent ops on separate threads */
   private[choam] def isThreadSafe: Boolean
 
   /** Only for testing/benchmarking */
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     // implementations should override if
     // they collect statistics
-    Mcas.RetryStats(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0)
+    Mcas.RetryStats.zero
   }
 
   /** Only for testing/benchmarking */
   private[choam] def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
+    // implementations should override if
+    // they collect statistics
     Map.empty
   }
 
   /** Only for testing/benchmarking */
   private[choam] def maxReusedWeakRefs(): Int = {
+    // implementations should override if
+    // they collect statistics
     0
   }
 }
@@ -62,9 +66,10 @@ object Mcas extends McasCompanionPlatform { self =>
     def impl: Mcas
 
     /**
+     * Reads the global version, and
      * Starts building a descriptor
      * (its `.validTs` will be the
-     * current global sersion).
+     * current global version).
      */
     def start(): Descriptor
 
@@ -353,6 +358,11 @@ object Mcas extends McasCompanionPlatform { self =>
         maxBloomFilterSize = java.lang.Math.max(this.maxBloomFilterSize, that.maxBloomFilterSize),
       )
     }
+  }
+
+  private[mcas] final object RetryStats {
+    val zero: RetryStats =
+      RetryStats(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0)
   }
 
   /** Only for testing */

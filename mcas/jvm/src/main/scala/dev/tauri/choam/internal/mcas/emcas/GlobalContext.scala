@@ -62,7 +62,7 @@ private[mcas] abstract class GlobalContext
         val tc = this.newThreadContext()
         threadContextKey.set(tc)
         val currThread = Thread.currentThread()
-        if (McasStatus.statsEnabled) {
+        if (Consts.statsEnabled) {
           val wr = new GlobalContext.TCtxWeakRef(currThread.getId(), tc)
           this._threadContexts.put(
             wr,

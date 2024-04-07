@@ -27,7 +27,7 @@ import cats.mtl.Local
 import cats.effect.kernel.{ Async, Clock, Unique, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
-import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor }
+import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, Consts }
 
 /**
  * An effectful function from `A` to `B`; when executed,
@@ -1059,7 +1059,7 @@ object Rxn extends RxnInstances0 {
           this.clearDesc()
           val dSize = if (d ne null) d.size else 0
           if (performMcas(d)) {
-            if (McasStatus.statsEnabled) {
+            if (Consts.statsEnabled) {
               // save retry statistics:
               ctx.recordCommit(retries = this.retries, committedRefs = dSize, descExtensions = this.descExtensions)
             }

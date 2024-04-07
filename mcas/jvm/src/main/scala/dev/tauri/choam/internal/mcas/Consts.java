@@ -18,24 +18,11 @@
 package dev.tauri.choam.internal.mcas;
 
 // Note: this class/object is duplicated for JVM/JS
-public final class McasStatus {
+public final class Consts {
 
-  /**
-   * Marker for an op, which already started,
-   * but haven't finished yet.
-   */
-  public static final long Active = Version.Active;
+  public static final String statsEnabledProp =
+    "dev.tauri.choam.stats";
 
-  /**
-   * The MCAS operation finished successfully.
-   */
-  public static final long Successful = Version.Successful;
-
-  /**
-   * The MCAS operation failed, because one
-   * of the expected values (or its version)
-   * was not equal to the witness value (or
-   * the expected version).
-   */
-  public static final long FailedVal = Version.FailedVal;
+  public static final boolean statsEnabled =
+    Boolean.getBoolean(statsEnabledProp);
 }

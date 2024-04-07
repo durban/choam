@@ -15,27 +15,18 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.internal.mcas;
+package dev.tauri.choam
+package internal
+package mcas
 
 // Note: this class/object is duplicated for JVM/JS
-public final class McasStatus {
+object Consts {
 
-  /**
-   * Marker for an op, which already started,
-   * but haven't finished yet.
-   */
-  public static final long Active = Version.Active;
+  @inline
+  final val statsEnabledProp =
+    "dev.tauri.choam.stats";
 
-  /**
-   * The MCAS operation finished successfully.
-   */
-  public static final long Successful = Version.Successful;
-
-  /**
-   * The MCAS operation failed, because one
-   * of the expected values (or its version)
-   * was not equal to the witness value (or
-   * the expected version).
-   */
-  public static final long FailedVal = Version.FailedVal;
+  @inline
+  final val statsEnabled =
+    false // no stats on JS
 }

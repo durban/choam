@@ -33,7 +33,7 @@ import com.monovore.decline.{ Opts, Command }
 
 import core.Exchanger
 
-import internal.mcas.McasStatus
+import internal.mcas.Consts
 import internal.mcas.Mcas.Emcas
 
 /**
@@ -179,9 +179,9 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
         AggregationPolicy.MAX,
       ))
     }
-    if (!McasStatus.statsEnabled) {
+    if (!Consts.statsEnabled) {
       res.add(new TextResult(
-        s"WARNING: stats are not enabled (if desired, enable them with -D${McasStatus.statsEnabledProp}=true)",
+        s"WARNING: stats are not enabled (if desired, enable them with -D${Consts.statsEnabledProp}=true)",
         "rxn.warning",
       ))
     }
