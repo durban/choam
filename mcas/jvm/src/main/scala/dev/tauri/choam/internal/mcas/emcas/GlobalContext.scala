@@ -53,11 +53,8 @@ private[mcas] abstract class GlobalContext
   private[this] final def newThreadContext(): EmcasThreadContext =
     new EmcasThreadContext(this, Thread.currentThread().getId())
 
-  /** Gets of creates the context for the current thread */
+  /** Gets or creates the context for the current thread */
   private[emcas] final def currentContextInternal(): EmcasThreadContext = {
-    // TODO: Try out what happens with JVM 21+ virtual threads;
-    // TODO: this should work, but maybe wasteful? Does the
-    // TODO: skiplist grows too big? Is cleaning too slow?
     val threadContextKey = this.threadContextKey
     threadContextKey.get() match {
       case null =>
@@ -65,7 +62,7 @@ private[mcas] abstract class GlobalContext
         val tc = this.newThreadContext()
         threadContextKey.set(tc)
         val currThread = Thread.currentThread()
-        if (false) { // TODO
+        if (McasStatus.statsEnabled) {
           val wr = new GlobalContext.TCtxWeakRef(currThread.getId(), tc)
           this._threadContexts.put(
             wr,
