@@ -167,6 +167,15 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     }
   }
 
+  final def computeIfAbsent(hash: Long, visitor: Hamt.ComputeVisitor[A]): H = {
+    this.lookupOrCompute(hash, visitor, shift = 0) match {
+      case null =>
+        this
+      case newRoot =>
+        newRoot
+    }
+  }
+
   /**
    * Converts all values with `convertForArray`
    * (implemented in a subclass), and copies the
@@ -248,6 +257,48 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     } else {
       // empty HAMT
       null
+    }
+  }
+
+  private final def lookupOrCompute(hash: Long, visitor: Hamt.ComputeVisitor[A], shift: Int): H = {
+    this.getValueOrNodeOrNull(hash, shift) match {
+      case null =>
+        visitor.absent() match {
+          case null =>
+            nullOf[H]
+          case newVal =>
+            assert(hashOf(newVal) == hash)
+            // TODO: this will compute physIdx again:
+            this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
+        }
+      case node: Hamt[_, _, _, _, _, _] =>
+        node.asInstanceOf[H].lookupOrCompute(hash, visitor, shift + W) match {
+          case null =>
+            nullOf[H]
+          case newNode =>
+            val newSize = this.size + (newNode.size - node.size)
+            assert(newSize == (this.size + 1))
+            val bitmap = this.bitmap
+            // TODO: we're computing physIdx twice:
+            val physIdx: Int = physicalIdx(bitmap, 1L << logicalIdx(hash, shift))
+            this.withNode(newSize, bitmap, newNode, physIdx)
+        }
+      case value =>
+        val a = value.asInstanceOf[A]
+        val hashA = hashOf(a)
+        if (hash == hashA) {
+          visitor.present(a)
+          nullOf[H]
+        } else {
+          visitor.absent() match {
+            case null =>
+              nullOf[H]
+            case newVal =>
+              assert(hashOf(newVal) == hash)
+              // TODO: this will compute physIdx again:
+              this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
+          }
+        }
     }
   }
 
@@ -511,5 +562,13 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
   /** Index into the actual dense array (`contents`) */
   private[this] final def physicalIdx(bitmap: Long, flag: Long): Int = {
     java.lang.Long.bitCount(bitmap & (flag - 1L))
+  }
+}
+
+private[choam] object Hamt {
+
+  trait ComputeVisitor[A] {
+    def present(a: A): Unit
+    def absent(): A
   }
 }

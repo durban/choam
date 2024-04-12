@@ -214,6 +214,66 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     }
   }
 
+  property("HAMT computeIfAbsent (default generator)") {
+    forAll { (seed: Long, _nums: Set[Long]) =>
+      testComputeIfAbsent(seed, _nums)
+    }
+  }
+
+  property("HAMT computeIfAbsent (RIG generator)") {
+    myForAll { (seed: Long, _nums: Set[Long]) =>
+      testComputeIfAbsent(seed, _nums)
+    }
+  }
+
+  private def testComputeIfAbsent(seed: Long, _nums: Set[Long]): Unit = {
+    val rng = new Random(seed)
+    val nums = rng.shuffle(_nums.toList)
+    var hamt = LongHamt.empty
+    for (n <- nums) {
+      val v = Val(n)
+      var count = 0
+      val nullVis = new Hamt.ComputeVisitor[Val] {
+        override def present(a: Val): Unit =
+          fail("present called")
+        override def absent(): Val = {
+          count += 1
+          null
+        }
+      }
+      val newHamt = hamt.computeIfAbsent(n, nullVis)
+      assertEquals(count, 1)
+      assertSameInstance(newHamt, hamt)
+      val vis = new Hamt.ComputeVisitor[Val] {
+        override def present(a: Val): Unit =
+          fail("present called")
+        override def absent(): Val = {
+          count += 1
+          v
+        }
+      }
+      hamt = hamt.computeIfAbsent(n, vis)
+      assertEquals(count, 2)
+      assertEquals(hamt.getOrElse(n, null), v)
+    }
+    for (n <- rng.shuffle(nums)) {
+      var e: Val = null
+      var count = 0
+      val vis = new Hamt.ComputeVisitor[Val] {
+        override def present(a: Val): Unit = {
+          count += 1
+          e = a
+        }
+        override def absent(): Val =
+          fail("absent called")
+      }
+      val newHamt = hamt.computeIfAbsent(n, vis)
+      assertEquals(count, 1)
+      assertEquals(e, Val(n))
+      assertSameInstance(newHamt, hamt)
+    }
+  }
+
   private def assertSameMaps(hamt: LongHamt, shadow: LongMap[Val]): Unit = {
     assertEquals(hamt.size, shadow.size)
     for (k <- shadow.keySet) {
