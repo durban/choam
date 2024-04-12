@@ -22,7 +22,7 @@ package mcas
 import scala.util.hashing.MurmurHash3
 
 final class Descriptor private (
-  protected final override val map: LogMap2[Any],
+  protected[choam] final override val map: LogMap2[Any],
   final val validTs: Long,
   private val validTsBoxed: java.lang.Long,
   val readOnly: Boolean,
@@ -38,6 +38,21 @@ final class Descriptor private (
 
   final def isValidHwd[A](hwd: LogEntry[A]): Boolean = {
     hwd.version <= this.validTs
+  }
+
+  private[choam] final def withLogMap(newMap: LogMap2[Any]): Descriptor = {
+    if (newMap eq this.map) {
+      this
+    } else {
+      new Descriptor(
+        map = newMap,
+        validTs = this.validTs,
+        validTsBoxed = this.validTsBoxed,
+        readOnly = this.readOnly,
+        versionIncr = this.versionIncr,
+        versionCas = this.versionCas,
+      )
+    }
   }
 
   private[mcas] final def hasVersionCas: Boolean = {

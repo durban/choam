@@ -27,7 +27,7 @@ import cats.mtl.Local
 import cats.effect.kernel.{ Async, Clock, Unique, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
-import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, Consts }
+import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, Consts, Hamt }
 
 /**
  * An effectful function from `A` to `B`; when executed,
@@ -649,7 +649,7 @@ object Rxn extends RxnInstances0 {
     x: X,
     mcas: Mcas,
     strategy: RetryStrategy,
-  ) {
+  ) extends Hamt.ComputeVisitor[MemoryLocation[Any], LogEntry[Any]] {
 
     private[this] val maxRetries: Int =
       strategy.maxRetriesInt
@@ -721,6 +721,21 @@ object Rxn extends RxnInstances0 {
     /** Strats from `true`, and after 1 MCAS failure, goes to `false` */
     private[this] var optimisticMcas: Boolean =
       true
+
+    /** Used by `Read` as an "out" parameter; @see entryPresent/entryAbsent. */
+    private[this] var _entryHolder: LogEntry[Any] =
+      null
+
+    final override def entryPresent(ref: MemoryLocation[Any], hwd: LogEntry[Any]): Unit = {
+      assert(hwd ne null)
+      this._entryHolder = hwd
+    }
+
+    final override def entryAbsent(ref: MemoryLocation[Any]): LogEntry[Any] = {
+      val res = revalidateIfNeeded(this.ctx.readIntoHwd(ref))
+      this._entryHolder = res // can be null
+      res
+    }
 
     private[this] var _stats: ExStatMap =
       null
@@ -1236,12 +1251,16 @@ object Rxn extends RxnInstances0 {
           loop(next())
         case 19 => // Read
           val c = curr.asInstanceOf[Read[Any]]
-          val hwd = readMaybeFromLog(c.ref)
+          assert(this._entryHolder eq null) // just to be sure
+          val newLogMap = desc.map.computeIfAbsent(c.ref, this)
+          val hwd = this._entryHolder
+          this._entryHolder = null // cleanup
           if (hwd eq null) {
+            assert(this._desc eq null)
             loop(retry())
           } else {
             a = hwd.nv
-            desc = desc.addOrOverwrite(hwd)
+            desc = desc.withLogMap(newLogMap)
             loop(next())
           }
         case 20 => // TicketRead

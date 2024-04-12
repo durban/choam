@@ -54,7 +54,8 @@ import scala.util.hashing.MurmurHash3
  * parts, see `LogMap2`.
  *
  * Type parameters are as follows:
- * `A` is the type of values in the map (i.e., HWDs; keys/hashes are `Long`s).
+ * `K` is the type of keys.
+ * `V` is the type of values in the map (i.e., HWDs; keys/hashes are `Long`s).
  * `E` is they type `toArray` converts the values to (`emcas.WordDescriptor[A]`
  * on the JVM, and equals to `A` on JS).
  * `T1` is the type of the "extra" value passed to `toArray`, which it just
@@ -70,7 +71,7 @@ import scala.util.hashing.MurmurHash3
  * Public methods are the "external" API. We take care never to call them
  * on a node in lower levels (they assume they're called on the root).
  */
-private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]] protected[mcas] (
+private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2, S, H]] protected[mcas] (
 
   /**
    * The number of values in `this` subtree (i.e., if `this` is the
@@ -113,17 +114,19 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
   private[this] final val OP_INSERT = 1
   private[this] final val OP_UPSERT = 2
 
-  protected def hashOf(a: A): Long
+  protected def keyOf(a: V): K
+
+  protected def hashOf(k: K): Long
 
   protected def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): H
 
   protected def newArray(size: Int): Array[E]
 
-  protected def convertForArray(a: A, tok: T1, flag: Boolean): E
+  protected def convertForArray(a: V, tok: T1, flag: Boolean): E
 
-  protected def convertForFoldLeft(s: S, a: A): S
+  protected def convertForFoldLeft(s: S, a: V): S
 
-  protected def predicateForForAll(a: A, tok: T2): Boolean
+  protected def predicateForForAll(a: V, tok: T2): Boolean
 
   // API (should only be called on a root node!):
 
@@ -131,21 +134,21 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     this.size > 0
   }
 
-  final def getOrElseNull(hash: Long): A = {
+  final def getOrElseNull(hash: Long): V = {
     this.lookupOrNull(hash, 0)
   }
 
   /** Must already contain the key of `a` */
-  final def updated(a: A): H = {
-    this.insertOrOverwrite(hashOf(a), a, 0, OP_UPDATE) match {
+  final def updated(a: V): H = {
+    this.insertOrOverwrite(hashOf(keyOf(a)), a, 0, OP_UPDATE) match {
       case null => this
       case newRoot => newRoot
     }
   }
 
   /** Mustn't already contain the key of `a` */
-  final def inserted(a: A): H = {
-    val newRoot = this.insertOrOverwrite(hashOf(a), a, 0, OP_INSERT)
+  final def inserted(a: V): H = {
+    val newRoot = this.insertOrOverwrite(hashOf(keyOf(a)), a, 0, OP_INSERT)
     assert(newRoot ne null)
     newRoot
   }
@@ -160,15 +163,16 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
   }
 
   /** May or may not already contain the key of `a` */
-  final def upserted(a: A): H = {
-    this.insertOrOverwrite(hashOf(a), a, 0, OP_UPSERT) match {
+  final def upserted(a: V): H = {
+    this.insertOrOverwrite(hashOf(keyOf(a)), a, 0, OP_UPSERT) match {
       case null => this
       case newRoot => newRoot
     }
   }
 
-  final def computeIfAbsent(hash: Long, visitor: Hamt.ComputeVisitor[A]): H = {
-    this.lookupOrCompute(hash, visitor, shift = 0) match {
+  final def computeIfAbsent(k: K, visitor: Hamt.ComputeVisitor[K, V]): H = {
+    val hash = hashOf(k)
+    this.lookupOrCompute(k, hash, visitor, shift = 0) match {
       case null =>
         this
       case newRoot =>
@@ -200,7 +204,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
 
   final override def equals(that: Any): Boolean = {
     that match {
-      case that: Hamt[_, _, _, _, _, _] =>
+      case that: Hamt[_, _, _, _, _, _, _] =>
         this.equalsInternal(that)
       case _ =>
         false
@@ -225,19 +229,19 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
   // Internal:
 
   // @tailrec
-  private final def lookupOrNull(hash: Long, shift: Int): A = {
+  private final def lookupOrNull(hash: Long, shift: Int): V = {
     this.getValueOrNodeOrNull(hash, shift) match {
       case null =>
-        nullOf[A]
-      case node: Hamt[_, _, _, _, _, _] =>
-        node.lookupOrNull(hash, shift + W).asInstanceOf[A]
+        nullOf[V]
+      case node: Hamt[_, _, _, _, _, _, _] =>
+        node.lookupOrNull(hash, shift + W).asInstanceOf[V]
       case value =>
-        val a = value.asInstanceOf[A]
-        val hashA = hashOf(a)
+        val a = value.asInstanceOf[V]
+        val hashA = hashOf(keyOf(a))
         if (hash == hashA) {
           a
         } else {
-          nullOf[A]
+          nullOf[V]
         }
     }
   }
@@ -260,19 +264,19 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     }
   }
 
-  private final def lookupOrCompute(hash: Long, visitor: Hamt.ComputeVisitor[A], shift: Int): H = {
+  private final def lookupOrCompute(k: K, hash: Long, visitor: Hamt.ComputeVisitor[K, V], shift: Int): H = {
     this.getValueOrNodeOrNull(hash, shift) match {
       case null =>
-        visitor.absent() match {
+        visitor.entryAbsent(k) match {
           case null =>
             nullOf[H]
           case newVal =>
-            assert(hashOf(newVal) == hash)
+            assert(hashOf(keyOf(newVal)) == hash)
             // TODO: this will compute physIdx again:
             this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
         }
-      case node: Hamt[_, _, _, _, _, _] =>
-        node.asInstanceOf[H].lookupOrCompute(hash, visitor, shift + W) match {
+      case node: Hamt[_, _, _, _, _, _, _] =>
+        node.asInstanceOf[H].lookupOrCompute(k, hash, visitor, shift + W) match {
           case null =>
             nullOf[H]
           case newNode =>
@@ -284,17 +288,17 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
             this.withNode(newSize, bitmap, newNode, physIdx)
         }
       case value =>
-        val a = value.asInstanceOf[A]
-        val hashA = hashOf(a)
+        val a = value.asInstanceOf[V]
+        val hashA = hashOf(keyOf(a))
         if (hash == hashA) {
-          visitor.present(a)
+          visitor.entryPresent(k, a)
           nullOf[H]
         } else {
-          visitor.absent() match {
+          visitor.entryAbsent(k) match {
             case null =>
               nullOf[H]
             case newVal =>
-              assert(hashOf(newVal) == hash)
+              assert(hashOf(keyOf(newVal)) == hash)
               // TODO: this will compute physIdx again:
               this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
           }
@@ -302,7 +306,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     }
   }
 
-  private final def insertOrOverwrite(hash: Long, value: A, shift: Int, op: Int): H = {
+  private final def insertOrOverwrite(hash: Long, value: V, shift: Int, op: Int): H = {
     val flag: Long = 1L << logicalIdx(hash, shift) // only 1 bit set, at the position in bitmap
     val bitmap = this.bitmap
     if (bitmap != 0L) {
@@ -311,7 +315,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
       if ((bitmap & flag) != 0L) {
         // we have an entry for this:
         contents(physIdx) match {
-          case node: Hamt[_, _, _, _, _, _] =>
+          case node: Hamt[_, _, _, _, _, _, _] =>
             node.asInstanceOf[H].insertOrOverwrite(hash, value, shift + W, op) match {
               case null =>
                 nullOf[H]
@@ -319,7 +323,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
                 this.withNode(this.size + (newNode.size - node.size), bitmap, newNode, physIdx)
             }
           case ov =>
-            val oh = hashOf(ov.asInstanceOf[A])
+            val oh = hashOf(keyOf(ov.asInstanceOf[V]))
             if (hash == oh) {
               if (op == OP_INSERT) {
                 throw new IllegalArgumentException
@@ -374,10 +378,10 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[_, _, _, _, _, _] =>
+        case node: Hamt[_, _, _, _, _, _, _] =>
           arrIdx = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok, flag = flag)
         case a =>
-          arr(arrIdx) = convertForArray(a.asInstanceOf[A], tok, flag = flag)
+          arr(arrIdx) = convertForArray(a.asInstanceOf[V], tok, flag = flag)
           arrIdx += 1
       }
       i += 1
@@ -385,17 +389,17 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     arrIdx
   }
 
-  private final def insertIntoHamt(that: Hamt[_, _, _, _, _, _]): H = {
+  private final def insertIntoHamt(that: Hamt[_, _, _, _, _, _, _]): H = {
     val contents = this.contents
     var i = 0
     var curr = that
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[_, _, _, _, _, _] =>
+        case node: Hamt[_, _, _, _, _, _, _] =>
           curr = node.insertIntoHamt(curr)
         case a =>
-          curr = curr.asInstanceOf[H].inserted(a.asInstanceOf[A])
+          curr = curr.asInstanceOf[H].inserted(a.asInstanceOf[V])
       }
       i += 1
     }
@@ -409,10 +413,10 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[_, _, _, _, _, _] =>
+        case node: Hamt[_, _, _, _, _, _, _] =>
           curr = node.asInstanceOf[H].foldLeftInternal(curr)
         case a =>
-          curr = this.convertForFoldLeft(curr, a.asInstanceOf[A])
+          curr = this.convertForFoldLeft(curr, a.asInstanceOf[V])
       }
       i += 1
     }
@@ -425,12 +429,12 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[_, _, _, _, _, _] =>
+        case node: Hamt[_, _, _, _, _, _, _] =>
           if (!node.asInstanceOf[H].forAllInternal(tok)) {
             return false // scalafix:ok
           }
         case a =>
-          if (!this.predicateForForAll(a.asInstanceOf[A], tok)) {
+          if (!this.predicateForForAll(a.asInstanceOf[V], tok)) {
             return false // scalafix:ok
           }
       }
@@ -440,7 +444,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     true
   }
 
-  private final def equalsInternal(that: Hamt[_, _, _, _, _, _]): Boolean = {
+  private final def equalsInternal(that: Hamt[_, _, _, _, _, _, _]): Boolean = {
     // Insertions are not order-dependent, and
     // there is no deletion, so HAMTs with the
     // same values always have the same tree
@@ -455,16 +459,16 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
         var i = 0
         while (i < thisLen) {
           val iOk = thisContents(i) match {
-            case thisNode: Hamt[_, _, _, _, _, _] =>
+            case thisNode: Hamt[_, _, _, _, _, _, _] =>
               thatContents(i) match {
-                case thatNode: Hamt[_, _, _, _, _, _] =>
+                case thatNode: Hamt[_, _, _, _, _, _, _] =>
                   thisNode.equalsInternal(thatNode)
                 case _ =>
                   false
               }
             case thisValue =>
               thatContents(i) match {
-                case _: Hamt[_, _, _, _, _, _] =>
+                case _: Hamt[_, _, _, _, _, _, _] =>
                   false
                 case thatValue =>
                   thisValue == thatValue
@@ -492,10 +496,10 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[_, _, _, _, _, _] =>
+        case node: Hamt[_, _, _, _, _, _, _] =>
           curr = node.hashCodeInternal(curr)
         case a =>
-          curr = MurmurHash3.mix(curr, (hashOf(a.asInstanceOf[A]) >>> 32).toInt)
+          curr = MurmurHash3.mix(curr, (hashOf(keyOf(a.asInstanceOf[V])) >>> 32).toInt)
           curr = MurmurHash3.mix(curr, a.##)
       }
       i += 1
@@ -510,7 +514,7 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     var fst = first
     while (i < len) {
       contents(i) match {
-        case node: Hamt[_, _, _, _, _, _] =>
+        case node: Hamt[_, _, _, _, _, _, _] =>
           fst = node.toStringInternal(sb, fst)
         case a =>
           if (!fst) {
@@ -525,11 +529,11 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
     fst
   }
 
-  private[this] final def withValue(bitmap: Long, value: A, physIdx: Int): H = {
+  private[this] final def withValue(bitmap: Long, value: V, physIdx: Int): H = {
     this.newNode(this.size, bitmap, arrReplacedValue(this.contents, box(value), physIdx))
   }
 
-  private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[A, E, _, _, _, _], physIdx: Int): H = {
+  private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[K, V, E, _, _, _, _], physIdx: Int): H = {
     this.newNode(size, bitmap, arrReplacedValue(this.contents, node, physIdx))
   }
 
@@ -567,8 +571,8 @@ private[mcas] abstract class Hamt[A, E, T1, T2, S, H <: Hamt[A, E, T1, T2, S, H]
 
 private[choam] object Hamt {
 
-  trait ComputeVisitor[A] {
-    def present(a: A): Unit
-    def absent(): A
+  trait ComputeVisitor[K, V] {
+    def entryPresent(k: K, v: V): Unit
+    def entryAbsent(k: K): V
   }
 }

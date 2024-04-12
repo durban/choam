@@ -23,14 +23,17 @@ private[mcas] final class LogMap2[A] private (
   _size: Int,
   _bitmap: Long,
   _contents: Array[AnyRef],
-) extends Hamt[LogEntry[A], LogEntry[A], Unit, Mcas.ThreadContext, Descriptor, LogMap2[A]](_size, _bitmap, _contents) {
+) extends Hamt[MemoryLocation[A], LogEntry[A], LogEntry[A], Unit, Mcas.ThreadContext, Descriptor, LogMap2[A]](_size, _bitmap, _contents) {
 
   final def revalidate(ctx: Mcas.ThreadContext): Boolean = {
     this.forAll(ctx)
   }
 
-  protected final override def hashOf(a: LogEntry[A]): Long =
-    a.address.id
+  protected final override def hashOf(k: MemoryLocation[A]): Long =
+    k.id
+
+  protected final override def keyOf(a: LogEntry[A]): MemoryLocation[A] =
+    a.address
 
   protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LogMap2[A] =
     new LogMap2(size, bitmap, contents)

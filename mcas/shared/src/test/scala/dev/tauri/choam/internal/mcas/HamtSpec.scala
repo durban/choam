@@ -233,10 +233,11 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     for (n <- nums) {
       val v = Val(n)
       var count = 0
-      val nullVis = new Hamt.ComputeVisitor[Val] {
-        override def present(a: Val): Unit =
+      val nullVis = new Hamt.ComputeVisitor[Long, Val] {
+        override def entryPresent(k: Long, a: Val): Unit =
           fail("present called")
-        override def absent(): Val = {
+        override def entryAbsent(k: Long): Val = {
+          assertEquals(k, n)
           count += 1
           null
         }
@@ -244,10 +245,11 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
       val newHamt = hamt.computeIfAbsent(n, nullVis)
       assertEquals(count, 1)
       assertSameInstance(newHamt, hamt)
-      val vis = new Hamt.ComputeVisitor[Val] {
-        override def present(a: Val): Unit =
+      val vis = new Hamt.ComputeVisitor[Long, Val] {
+        override def entryPresent(k: Long, a: Val): Unit =
           fail("present called")
-        override def absent(): Val = {
+        override def entryAbsent(k: Long): Val = {
+          assertEquals(k, n)
           count += 1
           v
         }
@@ -259,12 +261,13 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     for (n <- rng.shuffle(nums)) {
       var e: Val = null
       var count = 0
-      val vis = new Hamt.ComputeVisitor[Val] {
-        override def present(a: Val): Unit = {
+      val vis = new Hamt.ComputeVisitor[Long, Val] {
+        override def entryPresent(k: Long, a: Val): Unit = {
+          assertEquals(k, n)
           count += 1
           e = a
         }
-        override def absent(): Val =
+        override def entryAbsent(k: Long): Val =
           fail("absent called")
       }
       val newHamt = hamt.computeIfAbsent(n, vis)
@@ -485,8 +488,10 @@ object HamtSpec {
     _size: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends Hamt[Val, Val, Unit, Long, Chain[Val], LongHamt](_size, _bitmap, _contents) {
-    protected final override def hashOf(a: Val): Long =
+  ) extends Hamt[Long, Val, Val, Unit, Long, Chain[Val], LongHamt](_size, _bitmap, _contents) {
+    protected final override def hashOf(k: Long): Long =
+      k
+    protected final override def keyOf(a: Val): Long =
       a.value
     protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LongHamt =
       new LongHamt(size, bitmap, contents)
