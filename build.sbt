@@ -746,7 +746,7 @@ lazy val dependencies = new {
       "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
       catsMtlLaws.value,
-      "org.typelevel" %%% "munit-cats-effect" % "2.0.0-M4",
+      "org.typelevel" %%% "munit-cats-effect" % "2.0.0-M5",
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
       "org.typelevel" %%% "discipline-munit" % "2.0.0-M3",
