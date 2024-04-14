@@ -225,6 +225,18 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     }
   }
 
+  property("HAMT computeOrModify (default generator)") {
+    forAll { (seed: Long, _nums: Set[Long]) =>
+      testComputeOrModify(seed, _nums)
+    }
+  }
+
+  property("HAMT computeOrModify (RIG generator)") {
+    myForAll { (seed: Long, _nums: Set[Long]) =>
+      testComputeOrModify(seed, _nums)
+    }
+  }
+
   private def testComputeIfAbsent(seed: Long, _nums: Set[Long]): Unit = {
     val rng = new Random(seed)
     val nums = rng.shuffle(_nums.toList)
@@ -234,7 +246,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
       val v = Val(n)
       var count = 0
       val nullVis = new Hamt.ComputeVisitor[Long, Val, AnyRef] {
-        override def entryPresent(k: Long, a: Val, tok: AnyRef): Unit =
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val =
           fail("present called")
         override def entryAbsent(k: Long, tok: AnyRef): Val = {
           assertEquals(k, n)
@@ -248,7 +260,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
       assertSameInstance(newHamt, hamt)
       val token2 = new AnyRef
       val vis = new Hamt.ComputeVisitor[Long, Val, AnyRef] {
-        override def entryPresent(k: Long, a: Val, tok: AnyRef): Unit =
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val =
           fail("present called")
         override def entryAbsent(k: Long, tok: AnyRef): Val = {
           assertEquals(k, n)
@@ -265,20 +277,109 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
       var e: Val = null
       var count = 0
       val token3 = new AnyRef
-      val vis = new Hamt.ComputeVisitor[Long, Val, AnyRef] {
-        override def entryPresent(k: Long, a: Val, tok: AnyRef): Unit = {
+      val incorrectVisitor = new Hamt.ComputeVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {
           assertEquals(k, n)
           assertSameInstance(tok, token3)
           count += 1
           e = a
+          new Val(a.value) // same value, different instance
+        }
+        override def entryAbsent(k: Long, tok: AnyRef): Val =
+          fail("absent called")
+      }
+      assert(Either.catchOnly[AssertionError] {
+        hamt.computeIfAbsent(n, token3, incorrectVisitor)
+      }.isLeft)
+      val vis = new Hamt.ComputeVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token3)
+          count += 1
+          e = a
+          a
         }
         override def entryAbsent(k: Long, tok: AnyRef): Val =
           fail("absent called")
       }
       val newHamt = hamt.computeIfAbsent(n, token3, vis)
-      assertEquals(count, 1)
+      assertEquals(count, 2)
       assertEquals(e, Val(n))
       assertSameInstance(newHamt, hamt)
+    }
+  }
+
+  private def testComputeOrModify(seed: Long, _nums: Set[Long]): Unit = {
+    val rng = new Random(seed)
+    val nums = rng.shuffle(_nums.toList)
+    var hamt = LongHamt.empty
+    val token1 = new AnyRef
+    for (n <- nums) {
+      val v = Val(n)
+      var count = 0
+      val nullVis = new Hamt.ComputeVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val =
+          fail("present called")
+        override def entryAbsent(k: Long, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token1)
+          count += 1
+          null
+        }
+      }
+      val newHamt = hamt.computeOrModify(n, token1, nullVis)
+      assertEquals(count, 1)
+      assertSameInstance(newHamt, hamt)
+      val token2 = new AnyRef
+      val vis = new Hamt.ComputeVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val =
+          fail("present called")
+        override def entryAbsent(k: Long, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token2)
+          count += 1
+          v
+        }
+      }
+      hamt = hamt.computeOrModify(n, token2, vis)
+      assertEquals(count, 2)
+      assertEquals(hamt.getOrElse(n, null), v)
+    }
+    for (n <- rng.shuffle(nums)) {
+      var e: Val = null
+      var count = 0
+      val token3 = new AnyRef
+      val readOnlyVisitor = new Hamt.ComputeVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token3)
+          count += 1
+          e = a
+          a
+        }
+        override def entryAbsent(k: Long, tok: AnyRef): Val =
+          fail("absent called")
+      }
+      val newHamt2 =  hamt.computeOrModify(n, token3, readOnlyVisitor)
+      assertSameInstance(newHamt2, hamt)
+      val vis = new Hamt.ComputeVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token3)
+          count += 1
+          val newA = Val(a.value, extra = "foo")
+          e = newA
+          newA
+        }
+        override def entryAbsent(k: Long, tok: AnyRef): Val =
+          fail("absent called")
+      }
+      val newHamt = hamt.computeOrModify(n, token3, vis)
+      assertEquals(count, 2)
+      assertEquals(e, Val(n, "foo"))
+      assert(newHamt ne hamt)
+      assertEquals(newHamt.getOrElse(n, Val(42L)), Val(n, "foo"))
+      hamt = newHamt
     }
   }
 
@@ -427,9 +528,9 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     val h0 = LongHamt.empty
     assertEquals(h0.toString, "Hamt()")
     val h1 = h0.inserted(Val(0x000000ffff000000L))
-    assertEquals(h1.toString, "Hamt(Val(1099494850560))")
+    assertEquals(h1.toString, "Hamt(Val(1099494850560,fortytwo))")
     val h2 = h1.inserted(Val(0xffffff0000ffffffL))
-    assertEquals(h2.toString, "Hamt(Val(1099494850560), Val(-1099494850561))")
+    assertEquals(h2.toString, "Hamt(Val(1099494850560,fortytwo), Val(-1099494850561,fortytwo))")
   }
 
   property("forAll") {
@@ -455,14 +556,14 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
 object HamtSpec {
 
   /** Just a `Long`, but has its own identity */
-  case class Val(value: Long) {
+  case class Val(value: Long, extra: String = "fortytwo") {
     override def equals(that: Any): Boolean = {
       if (that.isInstanceOf[SpecVal]) {
         that.equals(this)
       } else {
         that match {
-          case Val(v) =>
-            value == v
+          case Val(v, ex) =>
+            (value == v) && (extra == ex)
           case _ =>
             false
         }
@@ -471,7 +572,7 @@ object HamtSpec {
   }
 
   /** This is a hack to have non-equal `Val`s with the same `value` */
-  final class SpecVal(v: Long) extends Val(v) {
+  final class SpecVal(v: Long, extra: String = "fortytwo") extends Val(v, extra) {
     final override def equals(that: Any): Boolean =
       equ(this, that)
   }

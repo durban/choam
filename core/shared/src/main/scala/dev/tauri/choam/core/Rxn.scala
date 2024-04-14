@@ -722,14 +722,28 @@ object Rxn extends RxnInstances0 {
     private[this] var optimisticMcas: Boolean =
       true
 
-    /** Used by `Read` as an "out" parameter; @see entryPresent/entryAbsent. */
+    /**
+     * Used by `Read`/`TicketWrite` as an "out" parameter
+     *
+     * @see `entryPresent`/`entryAbsent`
+     */
     private[this] var _entryHolder: LogEntry[Any] =
       null
 
     final override def entryAbsent(ref: MemoryLocation[Any], curr: Rxn[Any, Any]): LogEntry[Any] = {
-      val res = curr match {
+      val res: LogEntry[Any] = curr match {
         case _: Read[_] =>
           revalidateIfNeeded(this.ctx.readIntoHwd(ref))
+        case c: Upd[_, _, _] =>
+          val hwd = revalidateIfNeeded(this.ctx.readIntoHwd(c.ref))
+          if (hwd ne null) {
+            val ox = hwd.nv
+            val (nx, b) = c.f(ox, this.a)
+            this.a = b
+            hwd.withNv(nx).cast[Any]
+          } else {
+            null
+          }
         case c: TicketWrite[_] =>
           val hwd = revalidateIfNeeded(c.hwd.cast[Any])
           if (hwd ne null) {
@@ -744,11 +758,16 @@ object Rxn extends RxnInstances0 {
       res
     }
 
-    final override def entryPresent(ref: MemoryLocation[Any], hwd: LogEntry[Any], curr: Rxn[Any, Any]): Unit = {
+    final override def entryPresent(ref: MemoryLocation[Any], hwd: LogEntry[Any], curr: Rxn[Any, Any]): LogEntry[Any] = {
       assert(hwd ne null)
-      this._entryHolder = curr match {
+      val res: LogEntry[Any] = curr match {
         case _: Read[_] =>
           hwd
+        case c: Upd[_, _, _] =>
+          val ox = hwd.nv
+          val (nx, b) = c.asInstanceOf[Upd[Any, Any, Any]].f(ox, this.a)
+          this.a = b
+          hwd.withNv(nx)
         case c: TicketWrite[_] =>
           // NB: This throws if it was modified in the meantime.
           // NB: This doesn't need extra validation, as
@@ -758,6 +777,8 @@ object Rxn extends RxnInstances0 {
         case _ =>
           throw new AssertionError
       }
+      this._entryHolder = res
+      res
     }
 
     private[this] var _stats: ExStatMap =
@@ -1166,14 +1187,19 @@ object Rxn extends RxnInstances0 {
           }
         case 8 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, Any]]
-          val hwd = readMaybeFromLog(c.ref)
+          assert(this._entryHolder eq null) // just to be sure
+          val newLogMap = desc.map.computeOrModify(c.ref, tok = curr.asInstanceOf[Rxn[Any, Any]], visitor = this)
+          val hwd = this._entryHolder
+          this._entryHolder = null // cleanup
           if (hwd eq null) {
+            assert(this._desc eq null)
             loop(retry())
           } else {
-            val ox = hwd.nv
-            val (nx, b) = c.f(ox, a.asInstanceOf[A])
-            desc = desc.addOrOverwrite(hwd.withNv(nx))
-            a = b
+            // NB: This is fragile: `computeIfAbsent`
+            // NB: might've revalidated `desc`, but
+            // NB: that never changes `desc.map`, so
+            // NB: we can replace the map here.
+            desc = desc.withLogMap(newLogMap, readOnly = desc.readOnly && hwd.readOnly)
             loop(next())
           }
         case 9 => // DirectRead
@@ -1287,7 +1313,7 @@ object Rxn extends RxnInstances0 {
             // NB: might've revalidated `desc`, but
             // NB: that never changes `desc.map`, so
             // NB: we can replace the map here.
-            desc = desc.withLogMap(newLogMap)
+            desc = desc.withLogMap(newLogMap, readOnly = desc.readOnly && hwd.readOnly)
             loop(next())
           }
         case 20 => // TicketRead
@@ -1303,7 +1329,7 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[TicketWrite[Any]]
           assert(this._entryHolder eq null) // just to be sure
           a = () : Any
-          val newLogMap = desc.map.computeIfAbsent(c.hwd.address, tok = c, visitor = this)
+          val newLogMap = desc.map.computeOrModify(c.hwd.address, tok = c, visitor = this)
           val newHwd = this._entryHolder
           this._entryHolder = null // cleanup
           if (newHwd eq null) {
@@ -1314,7 +1340,7 @@ object Rxn extends RxnInstances0 {
             // NB: might've revalidated `desc`, but
             // NB: that never changes `desc.map`, so
             // NB: we can replace the map here.
-            desc = desc.withLogMap(newLogMap)
+            desc = desc.withLogMap(newLogMap, readOnly = desc.readOnly && newHwd.readOnly)
             loop(next())
           }
         case 22 => // ForceValidate

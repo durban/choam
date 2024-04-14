@@ -40,7 +40,7 @@ final class Descriptor private (
     hwd.version <= this.validTs
   }
 
-  private[choam] final def withLogMap(newMap: LogMap2[Any]): Descriptor = {
+  private[choam] final def withLogMap(newMap: LogMap2[Any], readOnly: Boolean): Descriptor = {
     if (newMap eq this.map) {
       this
     } else {
@@ -48,7 +48,7 @@ final class Descriptor private (
         map = newMap,
         validTs = this.validTs,
         validTsBoxed = this.validTsBoxed,
-        readOnly = this.readOnly,
+        readOnly = readOnly,
         versionIncr = this.versionIncr,
         versionCas = this.versionCas,
       )
@@ -314,14 +314,14 @@ object Descriptor {
     // but will extend if they're not equal:
     var merged: Descriptor = null
     val needToExtend = if (a.validTs < b.validTs) {
-      merged = a.withLogMap(mergedMap)
+      merged = a.withLogMap(mergedMap, readOnly = a.readOnly && b.readOnly)
       true
     } else if (a.validTs > b.validTs) {
-      merged = b.withLogMap(mergedMap)
+      merged = b.withLogMap(mergedMap, readOnly = a.readOnly && b.readOnly)
       true
     } else {
       // they're equal, no need to extend:
-      merged = a.withLogMap(mergedMap)
+      merged = a.withLogMap(mergedMap, readOnly = a.readOnly && b.readOnly)
       false
     }
     if (needToExtend) {

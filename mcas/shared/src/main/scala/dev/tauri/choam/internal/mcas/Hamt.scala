@@ -163,8 +163,16 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
   }
 
   final def computeIfAbsent[T](k: K, tok: T, visitor: Hamt.ComputeVisitor[K, V, T]): H = {
-    val hash = hashOf(k)
-    this.lookupOrCompute(k, hash, tok, visitor, shift = 0) match {
+    this.visit(k, hashOf(k), tok, visitor, modify = false, shift = 0) match {
+      case null =>
+        this
+      case newRoot =>
+        newRoot
+    }
+  }
+
+  final def computeOrModify[T](k: K, tok: T, visitor: Hamt.ComputeVisitor[K, V, T]): H = {
+    this.visit(k, hashOf(k), tok, visitor, modify = true, shift = 0) match {
       case null =>
         this
       case newRoot =>
@@ -256,7 +264,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
     }
   }
 
-  private final def lookupOrCompute[T](k: K, hash: Long, tok: T, visitor: Hamt.ComputeVisitor[K, V, T], shift: Int): H = {
+  private final def visit[T](k: K, hash: Long, tok: T, visitor: Hamt.ComputeVisitor[K, V, T], modify: Boolean, shift: Int): H = {
     this.getValueOrNodeOrNull(hash, shift) match {
       case null =>
         visitor.entryAbsent(k, tok) match {
@@ -268,12 +276,12 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
             this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
         }
       case node: Hamt[_, _, _, _, _, _] =>
-        node.asInstanceOf[H].lookupOrCompute(k, hash, tok, visitor, shift + W) match {
+        node.asInstanceOf[H].visit(k, hash, tok, visitor, modify = modify, shift = shift + W) match {
           case null =>
             nullOf[H]
           case newNode =>
             val newSize = this.size + (newNode.size - node.size)
-            assert(newSize == (this.size + 1))
+            assert((modify && ((newSize == this.size) || (newSize == (this.size + 1)))) || (newSize == (this.size + 1)))
             val bitmap = this.bitmap
             // TODO: we're computing physIdx twice:
             val physIdx: Int = physicalIdx(bitmap, 1L << logicalIdx(hash, shift))
@@ -283,8 +291,18 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
         val a = value.asInstanceOf[V]
         val hashA = hashOf(keyOf(a))
         if (hash == hashA) {
-          visitor.entryPresent(k, a, tok)
-          nullOf[H]
+          val newEntry = visitor.entryPresent(k, a, tok)
+          if (modify) {
+            if (equ(newEntry, a)) {
+              nullOf[H]
+            } else {
+              assert(hashOf(keyOf(newEntry)) == hashA)
+              this.insertOrOverwrite(hashA, newEntry, shift, op = OP_UPDATE)
+            }
+          } else {
+            assert(equ(newEntry, a))
+            nullOf[H]
+          }
         } else {
           visitor.entryAbsent(k, tok) match {
             case null =>
@@ -546,8 +564,8 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
 private[choam] object Hamt {
 
-  trait ComputeVisitor[K, V, T] {
-    def entryPresent(k: K, v: V, tok: T): Unit
+  trait ComputeVisitor[K, V, T] { // TODO: rename to EntryVisitor
+    def entryPresent(k: K, v: V, tok: T): V
     def entryAbsent(k: K, tok: T): V
   }
 }

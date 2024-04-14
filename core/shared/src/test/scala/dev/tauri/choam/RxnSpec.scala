@@ -864,6 +864,23 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("unsafe.ticketRead (already in log)") {
+    for {
+      r2 <- Ref("a").run[F]
+      r = r2.update(_ + "b").flatMapF { _ =>
+        r2.unsafeTicketRead.flatMapF { ticket =>
+          ticket.unsafeSet(ticket.unsafePeek + "x")
+        }
+      }
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(r2.get.run[F], "abx")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(r2.get.run[F], "abxbx")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(r2.get.run[F], "abxbxbx")
+    } yield ()
+  }
+
   test("unsafe.forceValidate (dummy)") {
     for {
       r1 <- Ref("a").run[F]
