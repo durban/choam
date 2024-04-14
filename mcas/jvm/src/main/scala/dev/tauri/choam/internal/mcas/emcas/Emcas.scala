@@ -1024,7 +1024,8 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         } else {
           // now we can't get CycleDetected for sure
           assert(fbRes == McasStatus.FailedVal)
-          McasStatus.FailedVal
+          // but we signal, that previously there WAS a cycle:
+          Version.Reserved
         }
       } else {
         assert(res == McasStatus.FailedVal)

@@ -111,7 +111,10 @@ object Mcas extends McasCompanionPlatform { self =>
      *         `EmcasStatus.FailedVal` (if failed due to an
      *         expected value not matching); or the current
      *         global version (if failed due to the version
-     *         being newer than `desc.validTs`).
+     *         being newer than `desc.validTs`). Can also return
+     *         `Version.Reserved`, which has the same semantics as
+     *         `FailedVal`, but hints that further retries should
+     *         be `PESSIMISTIC`.
      */
     private[mcas] def tryPerformInternal(desc: Descriptor, optimism: Long): Long
 
@@ -180,7 +183,7 @@ object Mcas extends McasCompanionPlatform { self =>
       } else {
         val finalDesc = this.addVersionCas(desc)
         val res = this.tryPerformInternal(finalDesc, optimism = optimism)
-        assert((res == McasStatus.Successful) || (res == McasStatus.FailedVal) || Version.isValid(res))
+        assert((res == McasStatus.Successful) || (res == McasStatus.FailedVal) || (res == Version.Reserved) || Version.isValid(res))
         res
       }
     }

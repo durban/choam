@@ -27,7 +27,7 @@ import cats.mtl.Local
 import cats.effect.kernel.{ Async, Clock, Unique, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
-import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, Consts, Hamt }
+import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, Consts, Hamt, Version }
 
 /**
  * An effectful function from `A` to `B`; when executed,
@@ -1077,12 +1077,24 @@ object Rxn extends RxnInstances0 {
     private[this] final def performMcas(d: Descriptor): Boolean = {
       if (d ne null) {
         val o = if (this.optimisticMcas) Consts.OPTIMISTIC else Consts.PESSIMISTIC
-        (ctx.tryPerform(d, o) == McasStatus.Successful)
+        val success = ctx.tryPerform(d, o) match {
+          case McasStatus.Successful =>
+            true
+          case Version.Reserved =>
+            // a cycle was detected
+            this.optimisticMcas = false
+            false
+          case _ =>
+            false
+        }
         // `Succesful` is success; otherwise the result is:
         // - Either `McasStatus.FailedVal`, which means that
         //   (at least) one word had an unexpected value
         //   (so we can't commit), or unexpected version (so
         //    revalidation would vertainly fail).
+        // - Or `Version.Reserved`, which is essentially the
+        //   same, but also hints that we should be pessimistic
+        //   in the future.
         // - Or it's a new global version, which means that
         //   the global version CAS failed, in which case
         //   we COULD try to `validateAndTryExtend` the
@@ -1098,6 +1110,7 @@ object Rxn extends RxnInstances0 {
         //   problem, but only a performance issue (but we
         //   don't really care about the performance of "improper"
         //   MCASes anyway).
+        success
       } else {
         true
       }
@@ -1143,7 +1156,6 @@ object Rxn extends RxnInstances0 {
             }
             loop(next())
           } else {
-            this.optimisticMcas = false
             contK.push(commit)
             contT.push(ContAndThen)
             loop(retry())
