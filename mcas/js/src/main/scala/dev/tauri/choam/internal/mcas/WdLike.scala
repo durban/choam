@@ -37,7 +37,7 @@ final class LogEntry[A] private ( // formerly called HWD
 
   require(Version.isValid(version))
 
-  private[mcas] final def cast[B]: LogEntry[B] =
+  private[choam] final def cast[B]: LogEntry[B] =
     this.asInstanceOf[LogEntry[B]]
 
   final def version: Long =

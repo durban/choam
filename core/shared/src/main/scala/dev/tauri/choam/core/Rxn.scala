@@ -726,15 +726,38 @@ object Rxn extends RxnInstances0 {
     private[this] var _entryHolder: LogEntry[Any] =
       null
 
-    final override def entryPresent(ref: MemoryLocation[Any], hwd: LogEntry[Any], tok: Rxn[Any, Any]): Unit = {
-      assert(hwd ne null)
-      this._entryHolder = hwd
-    }
-
-    final override def entryAbsent(ref: MemoryLocation[Any], tok: Rxn[Any, Any]): LogEntry[Any] = {
-      val res = revalidateIfNeeded(this.ctx.readIntoHwd(ref))
+    final override def entryAbsent(ref: MemoryLocation[Any], curr: Rxn[Any, Any]): LogEntry[Any] = {
+      val res = curr match {
+        case _: Read[_] =>
+          revalidateIfNeeded(this.ctx.readIntoHwd(ref))
+        case c: TicketWrite[_] =>
+          val hwd = revalidateIfNeeded(c.hwd.cast[Any])
+          if (hwd ne null) {
+            hwd.withNv(c.newest)
+          } else {
+            null
+          }
+        case _ =>
+          throw new AssertionError
+      }
       this._entryHolder = res // can be null
       res
+    }
+
+    final override def entryPresent(ref: MemoryLocation[Any], hwd: LogEntry[Any], curr: Rxn[Any, Any]): Unit = {
+      assert(hwd ne null)
+      this._entryHolder = curr match {
+        case _: Read[_] =>
+          hwd
+        case c: TicketWrite[_] =>
+          // NB: This throws if it was modified in the meantime.
+          // NB: This doesn't need extra validation, as
+          // NB: `tryMergeTicket` checks that they have the
+          // NB: same version.
+          hwd.tryMergeTicket(c.hwd.cast[Any], c.newest)
+        case _ =>
+          throw new AssertionError
+      }
     }
 
     private[this] var _stats: ExStatMap =
@@ -1260,6 +1283,10 @@ object Rxn extends RxnInstances0 {
             loop(retry())
           } else {
             a = hwd.nv
+            // NB: This is fragile: `computeIfAbsent`
+            // NB: might've revalidated `desc`, but
+            // NB: that never changes `desc.map`, so
+            // NB: we can replace the map here.
             desc = desc.withLogMap(newLogMap)
             loop(next())
           }
@@ -1274,24 +1301,21 @@ object Rxn extends RxnInstances0 {
           }
         case 21 => // TicketWrite
           val c = curr.asInstanceOf[TicketWrite[Any]]
+          assert(this._entryHolder eq null) // just to be sure
           a = () : Any
-          desc.getOrElseNull(c.hwd.address) match {
-            case null =>
-              // not in log yet, we try to insert it:
-              revalidateIfNeeded(c.hwd) match {
-                case null =>
-                  loop(retry())
-                case hwd =>
-                  desc = desc.add(hwd.withNv(c.newest))
-                  loop(next())
-              }
-            case existingHwd =>
-              // NB: Throws if it was modified in the meantime.
-              // NB: this doesn't need extra validation, as
-              // NB: `tryMergeTicket` checks that they have the
-              // NB: same version.
-              desc = desc.overwrite(existingHwd.tryMergeTicket(c.hwd, c.newest))
-              loop(next())
+          val newLogMap = desc.map.computeIfAbsent(c.hwd.address, tok = c, visitor = this)
+          val newHwd = this._entryHolder
+          this._entryHolder = null // cleanup
+          if (newHwd eq null) {
+            assert(this._desc eq null)
+            loop(retry())
+          } else {
+            // NB: This is fragile: `computeIfAbsent`
+            // NB: might've revalidated `desc`, but
+            // NB: that never changes `desc.map`, so
+            // NB: we can replace the map here.
+            desc = desc.withLogMap(newLogMap)
+            loop(next())
           }
         case 22 => // ForceValidate
           if (forceValidate(optHwd = null)) {
@@ -1350,6 +1374,7 @@ object Rxn extends RxnInstances0 {
               case s: Suspend =>
                 F.flatMap(Backoff2.tokenToF[F](s.token)) { _ => interpretAsync[F](F) }
               case r =>
+                assert(this._entryHolder eq null)
                 // TODO: we're cancelable here; is this a problem? (probably yes)
                 F.pure(r)
             }
@@ -1376,6 +1401,7 @@ object Rxn extends RxnInstances0 {
       assert(!canSuspend)
       this.ctx = ctx
       val r = loop(startRxn)
+      assert(this._entryHolder eq null)
       this.saveStats()
       this.invalidateCtx()
       r
