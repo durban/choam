@@ -162,9 +162,9 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
     }
   }
 
-  final def computeIfAbsent(k: K, visitor: Hamt.ComputeVisitor[K, V]): H = {
+  final def computeIfAbsent[T](k: K, tok: T, visitor: Hamt.ComputeVisitor[K, V, T]): H = {
     val hash = hashOf(k)
-    this.lookupOrCompute(k, hash, visitor, shift = 0) match {
+    this.lookupOrCompute(k, hash, tok, visitor, shift = 0) match {
       case null =>
         this
       case newRoot =>
@@ -256,10 +256,10 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
     }
   }
 
-  private final def lookupOrCompute(k: K, hash: Long, visitor: Hamt.ComputeVisitor[K, V], shift: Int): H = {
+  private final def lookupOrCompute[T](k: K, hash: Long, tok: T, visitor: Hamt.ComputeVisitor[K, V, T], shift: Int): H = {
     this.getValueOrNodeOrNull(hash, shift) match {
       case null =>
-        visitor.entryAbsent(k) match {
+        visitor.entryAbsent(k, tok) match {
           case null =>
             nullOf[H]
           case newVal =>
@@ -268,7 +268,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
             this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
         }
       case node: Hamt[_, _, _, _, _, _] =>
-        node.asInstanceOf[H].lookupOrCompute(k, hash, visitor, shift + W) match {
+        node.asInstanceOf[H].lookupOrCompute(k, hash, tok, visitor, shift + W) match {
           case null =>
             nullOf[H]
           case newNode =>
@@ -283,10 +283,10 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
         val a = value.asInstanceOf[V]
         val hashA = hashOf(keyOf(a))
         if (hash == hashA) {
-          visitor.entryPresent(k, a)
+          visitor.entryPresent(k, a, tok)
           nullOf[H]
         } else {
-          visitor.entryAbsent(k) match {
+          visitor.entryAbsent(k, tok) match {
             case null =>
               nullOf[H]
             case newVal =>
@@ -546,8 +546,8 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
 private[choam] object Hamt {
 
-  trait ComputeVisitor[K, V] {
-    def entryPresent(k: K, v: V): Unit
-    def entryAbsent(k: K): V
+  trait ComputeVisitor[K, V, T] {
+    def entryPresent(k: K, v: V, tok: T): Unit
+    def entryAbsent(k: K, tok: T): V
   }
 }

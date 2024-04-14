@@ -229,47 +229,53 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     val rng = new Random(seed)
     val nums = rng.shuffle(_nums.toList)
     var hamt = LongHamt.empty
+    val token1 = new AnyRef
     for (n <- nums) {
       val v = Val(n)
       var count = 0
-      val nullVis = new Hamt.ComputeVisitor[Long, Val] {
-        override def entryPresent(k: Long, a: Val): Unit =
+      val nullVis = new Hamt.ComputeVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Unit =
           fail("present called")
-        override def entryAbsent(k: Long): Val = {
+        override def entryAbsent(k: Long, tok: AnyRef): Val = {
           assertEquals(k, n)
+          assertSameInstance(tok, token1)
           count += 1
           null
         }
       }
-      val newHamt = hamt.computeIfAbsent(n, nullVis)
+      val newHamt = hamt.computeIfAbsent(n, token1, nullVis)
       assertEquals(count, 1)
       assertSameInstance(newHamt, hamt)
-      val vis = new Hamt.ComputeVisitor[Long, Val] {
-        override def entryPresent(k: Long, a: Val): Unit =
+      val token2 = new AnyRef
+      val vis = new Hamt.ComputeVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Unit =
           fail("present called")
-        override def entryAbsent(k: Long): Val = {
+        override def entryAbsent(k: Long, tok: AnyRef): Val = {
           assertEquals(k, n)
+          assertSameInstance(tok, token2)
           count += 1
           v
         }
       }
-      hamt = hamt.computeIfAbsent(n, vis)
+      hamt = hamt.computeIfAbsent(n, token2, vis)
       assertEquals(count, 2)
       assertEquals(hamt.getOrElse(n, null), v)
     }
     for (n <- rng.shuffle(nums)) {
       var e: Val = null
       var count = 0
-      val vis = new Hamt.ComputeVisitor[Long, Val] {
-        override def entryPresent(k: Long, a: Val): Unit = {
+      val token3 = new AnyRef
+      val vis = new Hamt.ComputeVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Unit = {
           assertEquals(k, n)
+          assertSameInstance(tok, token3)
           count += 1
           e = a
         }
-        override def entryAbsent(k: Long): Val =
+        override def entryAbsent(k: Long, tok: AnyRef): Val =
           fail("absent called")
       }
-      val newHamt = hamt.computeIfAbsent(n, vis)
+      val newHamt = hamt.computeIfAbsent(n, token3, vis)
       assertEquals(count, 1)
       assertEquals(e, Val(n))
       assertSameInstance(newHamt, hamt)

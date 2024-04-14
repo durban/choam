@@ -649,7 +649,7 @@ object Rxn extends RxnInstances0 {
     x: X,
     mcas: Mcas,
     strategy: RetryStrategy,
-  ) extends Hamt.ComputeVisitor[MemoryLocation[Any], LogEntry[Any]] {
+  ) extends Hamt.ComputeVisitor[MemoryLocation[Any], LogEntry[Any], Rxn[Any, Any]] {
 
     private[this] val maxRetries: Int =
       strategy.maxRetriesInt
@@ -726,12 +726,12 @@ object Rxn extends RxnInstances0 {
     private[this] var _entryHolder: LogEntry[Any] =
       null
 
-    final override def entryPresent(ref: MemoryLocation[Any], hwd: LogEntry[Any]): Unit = {
+    final override def entryPresent(ref: MemoryLocation[Any], hwd: LogEntry[Any], tok: Rxn[Any, Any]): Unit = {
       assert(hwd ne null)
       this._entryHolder = hwd
     }
 
-    final override def entryAbsent(ref: MemoryLocation[Any]): LogEntry[Any] = {
+    final override def entryAbsent(ref: MemoryLocation[Any], tok: Rxn[Any, Any]): LogEntry[Any] = {
       val res = revalidateIfNeeded(this.ctx.readIntoHwd(ref))
       this._entryHolder = res // can be null
       res
@@ -1252,7 +1252,7 @@ object Rxn extends RxnInstances0 {
         case 19 => // Read
           val c = curr.asInstanceOf[Read[Any]]
           assert(this._entryHolder eq null) // just to be sure
-          val newLogMap = desc.map.computeIfAbsent(c.ref, this)
+          val newLogMap = desc.map.computeIfAbsent(c.ref, tok = c, visitor = this)
           val hwd = this._entryHolder
           this._entryHolder = null // cleanup
           if (hwd eq null) {
