@@ -1286,8 +1286,10 @@ object Rxn extends RxnInstances0 {
                   loop(next())
               }
             case existingHwd =>
-              // NB: throws if it was modified in the meantime.
-              // NB: this does no validation! (TODO: is this a problem?)
+              // NB: Throws if it was modified in the meantime.
+              // NB: this doesn't need extra validation, as
+              // NB: `tryMergeTicket` checks that they have the
+              // NB: same version.
               desc = desc.overwrite(existingHwd.tryMergeTicket(c.hwd, c.newest))
               loop(next())
           }
