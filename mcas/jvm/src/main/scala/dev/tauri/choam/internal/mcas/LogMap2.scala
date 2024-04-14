@@ -23,7 +23,7 @@ private[mcas] final class LogMap2[A] private (
   _size: Int,
   _bitmap: Long,
   _contents: Array[AnyRef],
-) extends Hamt[MemoryLocation[A], LogEntry[A], WdLike[A], emcas.EmcasDescriptor, Mcas.ThreadContext, Descriptor, LogMap2[A]](
+) extends Hamt[MemoryLocation[A], LogEntry[A], WdLike[A], emcas.EmcasDescriptor, Mcas.ThreadContext, LogMap2[A]](
   _size,
   _bitmap,
   _contents,
@@ -49,9 +49,6 @@ private[mcas] final class LogMap2[A] private (
     if ((!instRo) && a.readOnly) a
     else new emcas.EmcasWordDesc[A](a, parent = tok)
   }
-
-  protected final override def convertForFoldLeft(s: Descriptor, a: LogEntry[A]): Descriptor =
-    s.add(a)
 
   protected final override def predicateForForAll(a: LogEntry[A], tok: Mcas.ThreadContext): Boolean =
     a.revalidate(tok)

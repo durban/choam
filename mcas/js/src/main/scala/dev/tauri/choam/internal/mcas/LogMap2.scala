@@ -23,7 +23,7 @@ private[mcas] final class LogMap2[A] private (
   _size: Int,
   _bitmap: Long,
   _contents: Array[AnyRef],
-) extends Hamt[MemoryLocation[A], LogEntry[A], LogEntry[A], Unit, Mcas.ThreadContext, Descriptor, LogMap2[A]](_size, _bitmap, _contents) {
+) extends Hamt[MemoryLocation[A], LogEntry[A], LogEntry[A], Unit, Mcas.ThreadContext, LogMap2[A]](_size, _bitmap, _contents) {
 
   final def revalidate(ctx: Mcas.ThreadContext): Boolean = {
     this.forAll(ctx)
@@ -43,9 +43,6 @@ private[mcas] final class LogMap2[A] private (
 
   protected final override def convertForArray(a: LogEntry[A], tok: Unit, flag: Boolean): LogEntry[A] =
     a
-
-  protected final override def convertForFoldLeft(s: Descriptor, a: LogEntry[A]): Descriptor =
-    s.add(a)
 
   protected final override def predicateForForAll(a: LogEntry[A], tok: Mcas.ThreadContext): Boolean =
     a.revalidate(tok)

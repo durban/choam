@@ -59,17 +59,6 @@ final class Descriptor private (
     this.versionCas ne null
   }
 
-  private final def withValidTs(newValidTs: Long, newValidTsBoxed: java.lang.Long): Descriptor =  {
-    new Descriptor(
-      map = this.map,
-      validTs = newValidTs,
-      validTsBoxed = newValidTsBoxed,
-      readOnly = this.readOnly,
-      versionIncr = this.versionIncr,
-      versionCas = this.versionCas,
-    )
-  }
-
   private[mcas] final def withNoNewVersion: Descriptor = {
     require(this.versionCas eq null)
     new Descriptor(
@@ -319,18 +308,20 @@ object Descriptor {
     // TODO: by the time the elimination happens, the
     // TODO: two bigger `Rxn`s might've already touched
     // TODO: the same ref.)
-    var merged: Descriptor = a.map.foldLeft(b) // throws in case of conflict
+    val mergedMap = a.map.insertedAllFrom(b.map) // throws in case of conflict
 
     // we temporarily choose the older `validTs`,
     // but will extend if they're not equal:
+    var merged: Descriptor = null
     val needToExtend = if (a.validTs < b.validTs) {
-      merged = merged.withValidTs(a.validTs, a.validTsBoxed)
+      merged = a.withLogMap(mergedMap)
       true
     } else if (a.validTs > b.validTs) {
-      merged = merged.withValidTs(b.validTs, b.validTsBoxed)
+      merged = b.withLogMap(mergedMap)
       true
     } else {
       // they're equal, no need to extend:
+      merged = a.withLogMap(mergedMap)
       false
     }
     if (needToExtend) {

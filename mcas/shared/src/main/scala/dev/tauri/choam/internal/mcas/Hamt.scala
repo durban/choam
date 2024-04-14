@@ -50,7 +50,7 @@ import scala.util.hashing.MurmurHash3
  * are provided for the "MCAS-specific" things. The API is weird, because
  * we need this separation, but really don't want to allocate unnecessary
  * objects. (Overall, this is not really a general HAMT, although it's
- * somewhat abstracted away from the MCAS details.) for the MCAS-specific
+ * somewhat abstracted away from the MCAS details.) For the MCAS-specific
  * parts, see `LogMap2`.
  *
  * Type parameters are as follows:
@@ -63,7 +63,6 @@ import scala.util.hashing.MurmurHash3
  * `T2` is similarly the type of the "extra" value passed to `forAll`, which
  * it just passes on to `predicateForForAll` (an `Mcas.ThreadContext` to
  * implement revalidation).
- * `S` is the type of the state used in `foldLeft`. (TODO: is this unused?)
  * `H` is the self-type (we use F-bounded polymorphism here, because we need
  * to create new nodes on insert/update, and `Hamt` is also the type of the
  * sub-nodes, not just the root).
@@ -71,7 +70,7 @@ import scala.util.hashing.MurmurHash3
  * Public methods are the "external" API. We take care never to call them
  * on a node in lower levels (they assume they're called on the root).
  */
-private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2, S, H]] protected[mcas] (
+private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]] protected[mcas] (
 
   /**
    * The number of values in `this` subtree (i.e., if `this` is the
@@ -124,8 +123,6 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
 
   protected def convertForArray(a: V, tok: T1, flag: Boolean): E
 
-  protected def convertForFoldLeft(s: S, a: V): S
-
   protected def predicateForForAll(a: V, tok: T2): Boolean
 
   // API (should only be called on a root node!):
@@ -155,11 +152,6 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
 
   final def insertedAllFrom(that: H): H = {
     that.insertIntoHamt(this)
-  }
-
-  /** Folds by using `convertForFoldLeft` implemented in a subclass */
-  final def foldLeft(z: S): S = {
-    this.foldLeftInternal(z)
   }
 
   /** May or may not already contain the key of `a` */
@@ -204,7 +196,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
 
   final override def equals(that: Any): Boolean = {
     that match {
-      case that: Hamt[_, _, _, _, _, _, _] =>
+      case that: Hamt[_, _, _, _, _, _] =>
         this.equalsInternal(that)
       case _ =>
         false
@@ -233,7 +225,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
     this.getValueOrNodeOrNull(hash, shift) match {
       case null =>
         nullOf[V]
-      case node: Hamt[_, _, _, _, _, _, _] =>
+      case node: Hamt[_, _, _, _, _, _] =>
         node.lookupOrNull(hash, shift + W).asInstanceOf[V]
       case value =>
         val a = value.asInstanceOf[V]
@@ -275,7 +267,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
             // TODO: this will compute physIdx again:
             this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
         }
-      case node: Hamt[_, _, _, _, _, _, _] =>
+      case node: Hamt[_, _, _, _, _, _] =>
         node.asInstanceOf[H].lookupOrCompute(k, hash, visitor, shift + W) match {
           case null =>
             nullOf[H]
@@ -315,7 +307,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
       if ((bitmap & flag) != 0L) {
         // we have an entry for this:
         contents(physIdx) match {
-          case node: Hamt[_, _, _, _, _, _, _] =>
+          case node: Hamt[_, _, _, _, _, _] =>
             node.asInstanceOf[H].insertOrOverwrite(hash, value, shift + W, op) match {
               case null =>
                 nullOf[H]
@@ -378,7 +370,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[_, _, _, _, _, _, _] =>
+        case node: Hamt[_, _, _, _, _, _] =>
           arrIdx = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok, flag = flag)
         case a =>
           arr(arrIdx) = convertForArray(a.asInstanceOf[V], tok, flag = flag)
@@ -389,14 +381,14 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
     arrIdx
   }
 
-  private final def insertIntoHamt(that: Hamt[_, _, _, _, _, _, _]): H = {
+  private final def insertIntoHamt(that: Hamt[_, _, _, _, _, _]): H = {
     val contents = this.contents
     var i = 0
     var curr = that
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[_, _, _, _, _, _, _] =>
+        case node: Hamt[_, _, _, _, _, _] =>
           curr = node.insertIntoHamt(curr)
         case a =>
           curr = curr.asInstanceOf[H].inserted(a.asInstanceOf[V])
@@ -406,30 +398,13 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
     curr.asInstanceOf[H]
   }
 
-  private final def foldLeftInternal(z: S): S = {
-    val contents = this.contents
-    var i = 0
-    var curr = z
-    val len = contents.length
-    while (i < len) {
-      contents(i) match {
-        case node: Hamt[_, _, _, _, _, _, _] =>
-          curr = node.asInstanceOf[H].foldLeftInternal(curr)
-        case a =>
-          curr = this.convertForFoldLeft(curr, a.asInstanceOf[V])
-      }
-      i += 1
-    }
-    curr
-  }
-
   private final def forAllInternal(tok: T2): Boolean = {
     val contents = this.contents
     var i = 0
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[_, _, _, _, _, _, _] =>
+        case node: Hamt[_, _, _, _, _, _] =>
           if (!node.asInstanceOf[H].forAllInternal(tok)) {
             return false // scalafix:ok
           }
@@ -444,7 +419,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
     true
   }
 
-  private final def equalsInternal(that: Hamt[_, _, _, _, _, _, _]): Boolean = {
+  private final def equalsInternal(that: Hamt[_, _, _, _, _, _]): Boolean = {
     // Insertions are not order-dependent, and
     // there is no deletion, so HAMTs with the
     // same values always have the same tree
@@ -459,16 +434,16 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
         var i = 0
         while (i < thisLen) {
           val iOk = thisContents(i) match {
-            case thisNode: Hamt[_, _, _, _, _, _, _] =>
+            case thisNode: Hamt[_, _, _, _, _, _] =>
               thatContents(i) match {
-                case thatNode: Hamt[_, _, _, _, _, _, _] =>
+                case thatNode: Hamt[_, _, _, _, _, _] =>
                   thisNode.equalsInternal(thatNode)
                 case _ =>
                   false
               }
             case thisValue =>
               thatContents(i) match {
-                case _: Hamt[_, _, _, _, _, _, _] =>
+                case _: Hamt[_, _, _, _, _, _] =>
                   false
                 case thatValue =>
                   thisValue == thatValue
@@ -496,7 +471,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
     val len = contents.length
     while (i < len) {
       contents(i) match {
-        case node: Hamt[_, _, _, _, _, _, _] =>
+        case node: Hamt[_, _, _, _, _, _] =>
           curr = node.hashCodeInternal(curr)
         case a =>
           curr = MurmurHash3.mix(curr, (hashOf(keyOf(a.asInstanceOf[V])) >>> 32).toInt)
@@ -514,7 +489,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
     var fst = first
     while (i < len) {
       contents(i) match {
-        case node: Hamt[_, _, _, _, _, _, _] =>
+        case node: Hamt[_, _, _, _, _, _] =>
           fst = node.toStringInternal(sb, fst)
         case a =>
           if (!fst) {
@@ -533,7 +508,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, S, H <: Hamt[K, V, E, T1, T2,
     this.newNode(this.size, bitmap, arrReplacedValue(this.contents, box(value), physIdx))
   }
 
-  private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[K, V, E, _, _, _, _], physIdx: Int): H = {
+  private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[K, V, E, _, _, _], physIdx: Int): H = {
     this.newNode(size, bitmap, arrReplacedValue(this.contents, node, physIdx))
   }
 
