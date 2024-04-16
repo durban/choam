@@ -25,14 +25,9 @@ object TransformationClassLoaderOverrideImpl {
    * most of `kotlin.*`, but doesn't know about `scala.*`).
    */
   final def doNotTransform(className: String): Boolean = {
-    val mp = "dev.tauri.choam.internal.mcas."
-    val grig = mp + "GlobalRefIdGen"
-    val rig = mp + "RefIdGen"
     if (
-      className.startsWith("scala.") ||
-      // TODO: figure out why it doesn't work with these:
-      className.startsWith(grig) ||
-      className.startsWith(rig)
+      className.startsWith("scala.")
+      // TODO: others?
     ) {
       true
     } else {
