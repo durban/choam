@@ -20,7 +20,7 @@ package core
 
 import scala.concurrent.duration._
 
-import cats.{ Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, MonoidK, Semigroup, Show }
+import cats.{ ~>, Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, MonoidK, Semigroup, Show }
 import cats.arrow.ArrowChoice
 import cats.data.{ Ior, State }
 import cats.mtl.Local
@@ -1405,15 +1405,15 @@ object Rxn extends RxnInstances0 {
     final def interpretAsync[F[_]](implicit F: Async[F]): F[R] = {
       if (this.canSuspend) {
         // cede or sleep strategy:
-        F.defer {
+        def step(poll: F ~> F): F[R] = F.defer {
           this.ctx = mcas.currentContext()
           try {
             loop(startRxn) match {
               case s: Suspend =>
-                F.flatMap(Backoff2.tokenToF[F](s.token)) { _ => interpretAsync[F](F) }
+                assert(this._entryHolder eq null)
+                F.flatMap(poll(Backoff2.tokenToF[F](s.token))) { _ => step(poll) }
               case r =>
                 assert(this._entryHolder eq null)
-                // TODO: we're cancelable here; is this a problem? (probably yes)
                 F.pure(r)
             }
           } finally {
@@ -1421,10 +1421,10 @@ object Rxn extends RxnInstances0 {
             this.invalidateCtx()
           }
         }
+        F.uncancelable { poll => step(poll) }
       } else {
         // spin strategy, so not really async:
         F.delay {
-          // note: this is uncancelable, unlike `defer(loop(...); pure(...))` above
           this.interpretSync()
         }
       }
@@ -1438,11 +1438,14 @@ object Rxn extends RxnInstances0 {
     final def interpretSyncWithContext(ctx: Mcas.ThreadContext): R = {
       assert(!canSuspend)
       this.ctx = ctx
-      val r = loop(startRxn)
-      assert(this._entryHolder eq null)
-      this.saveStats()
-      this.invalidateCtx()
-      r
+      try {
+        val r = loop(startRxn)
+        assert(this._entryHolder eq null)
+        r
+      } finally {
+        this.saveStats()
+        this.invalidateCtx()
+      }
     }
   }
 }
