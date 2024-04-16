@@ -162,7 +162,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
     }
   }
 
-  final def computeIfAbsent[T](k: K, tok: T, visitor: Hamt.ComputeVisitor[K, V, T]): H = {
+  final def computeIfAbsent[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): H = {
     this.visit(k, hashOf(k), tok, visitor, modify = false, shift = 0) match {
       case null =>
         this
@@ -171,7 +171,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
     }
   }
 
-  final def computeOrModify[T](k: K, tok: T, visitor: Hamt.ComputeVisitor[K, V, T]): H = {
+  final def computeOrModify[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): H = {
     this.visit(k, hashOf(k), tok, visitor, modify = true, shift = 0) match {
       case null =>
         this
@@ -264,7 +264,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
     }
   }
 
-  private final def visit[T](k: K, hash: Long, tok: T, visitor: Hamt.ComputeVisitor[K, V, T], modify: Boolean, shift: Int): H = {
+  private final def visit[T](k: K, hash: Long, tok: T, visitor: Hamt.EntryVisitor[K, V, T], modify: Boolean, shift: Int): H = {
     this.getValueOrNodeOrNull(hash, shift) match {
       case null =>
         visitor.entryAbsent(k, tok) match {
@@ -564,7 +564,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
 private[choam] object Hamt {
 
-  trait ComputeVisitor[K, V, T] { // TODO: rename to EntryVisitor
+  trait EntryVisitor[K, V, T] {
     def entryPresent(k: K, v: V, tok: T): V
     def entryAbsent(k: K, tok: T): V
   }

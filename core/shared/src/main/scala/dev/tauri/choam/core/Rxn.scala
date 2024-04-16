@@ -649,7 +649,7 @@ object Rxn extends RxnInstances0 {
     x: X,
     mcas: Mcas,
     strategy: RetryStrategy,
-  ) extends Hamt.ComputeVisitor[MemoryLocation[Any], LogEntry[Any], Rxn[Any, Any]] {
+  ) extends Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], Rxn[Any, Any]] {
 
     private[this] val maxRetries: Int =
       strategy.maxRetriesInt
