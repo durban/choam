@@ -23,6 +23,7 @@ import scala.concurrent.duration._
 import cats.effect.IO
 
 import core.RetryStrategy
+import RxnSpec.{ MyException, throwingRxns }
 
 final class AsyncRxnSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
@@ -67,5 +68,13 @@ trait AsyncRxnSpec[F[_]]
       _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, "foo", sCede), _.isInstanceOf[Rxn.MaxRetriesReached])
       _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, "foo", sSleep), _.isInstanceOf[Rxn.MaxRetriesReached])
     } yield ()
+  }
+
+  test("Exception passthrough (AsyncReactive)") {
+    throwingRxns.traverse_[F, Unit] { r =>
+      AsyncReactive[F].applyAsync(r, null, RetryStrategy.Default).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      AsyncReactive[F].applyAsync(r, null, RetryStrategy.Default.withCede(true)).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      AsyncReactive[F].applyAsync(r, null, RetryStrategy.Default.withSleep(true)).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+    }
   }
 }

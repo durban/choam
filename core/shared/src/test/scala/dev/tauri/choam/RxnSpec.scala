@@ -24,7 +24,6 @@ import scala.concurrent.duration._
 import cats.{ Applicative, Monad, StackSafeMonad, Align }
 import cats.arrow.{ ArrowChoice, FunctionK }
 import cats.data.Ior
-import cats.implicits._
 import cats.effect.IO
 import cats.effect.kernel.{ Ref => CatsRef }
 import cats.mtl.Local
@@ -1173,4 +1172,34 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertNotEqualsF(v3, v2)
     } yield ()
   }
+
+  test("Exception passthrough (unsafePerform)") {
+    import RxnSpec.{ MyException, throwingRxns }
+    for (r <- throwingRxns) {
+      assert(Either.catchOnly[MyException] {
+        r.unsafePerform(42, this.mcasImpl)
+      }.isLeft)
+    }
+  }
+
+  test("Exception passthrough (Reactive)") {
+    import RxnSpec.{ MyException, throwingRxns }
+    throwingRxns.traverse_ { r =>
+      r.apply[F](null).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+    }
+  }
+}
+
+private[choam] object RxnSpec {
+
+  private[choam] class MyException extends Exception
+
+  private[choam] val throwingRxns = List[Rxn[Any, Any]](
+    Rxn.unit.map(_ => throw new MyException),
+    Rxn.unit.flatMapF(_ => throw new MyException),
+    Rxn.unit.flatMap(_ => throw new MyException),
+    Rxn.unsafe.delay[Any, Unit] { _ => throw new MyException },
+    Axn.unsafe.delay[Unit] { throw new MyException },
+    Axn.pure(42L).postCommit(Rxn.unit.map(_ => throw new MyException)),
+  )
 }
