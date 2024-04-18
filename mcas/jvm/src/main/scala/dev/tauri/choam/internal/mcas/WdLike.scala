@@ -21,11 +21,12 @@ package mcas
 
 import scala.util.hashing.MurmurHash3
 
-sealed abstract class WdLike[A] {
+sealed trait WdLike[A] {
   val address: MemoryLocation[A]
-  val ov: A
-  val nv: A
+  def ov: A
+  def nv: A
   val oldVersion: Long
+  def cleanForGc(wasSuccessful: Boolean, sentinel: A): Unit
 }
 
 // TODO: this is duplicated on JS
@@ -37,6 +38,9 @@ final class LogEntry[A] private ( // formerly called HWD
 ) extends WdLike[A] {
 
   require(Version.isValid(version))
+
+  final override def cleanForGc(wasSuccessful: Boolean, sentinel: A): Unit =
+    ()
 
   private[choam] final def cast[B]: LogEntry[B] =
     this.asInstanceOf[LogEntry[B]]
@@ -123,24 +127,11 @@ package emcas {
   private[mcas] final class EmcasWordDesc[A] private (
     final val parent: emcas.EmcasDescriptor,
     final override val address: MemoryLocation[A],
-    final override val ov: A,
-    final override val nv: A,
+    _ov: A,
+    _nv: A,
     final override val oldVersion: Long,
-  ) extends WdLike[A] {
-
-    // TODO: Technically we could clear `ov` for a successful op
-    // TODO: (and similarly `nv` for a failed); we'd need to
-    // TODO: make them non-final, so it's unclear if it's worth
-    // TODO: it. (Although, currently this is a little leak.)
-
-    // TODO: But: we'd need to use a custom sentinel instead of
-    // TODO: `null`, because `null` is a valid ov/nv, and helpers
-    // TODO: need to be able to differentiate reading a valid
-    // TODO: ov/nv from a racy read of a finalized descriptor.
-
-    // TODO: In theory, `address` could be cleared too.
-    // TODO: But that's probably not worth it.
-    // TODO: (A lot of extra checks would need to be introduced.)
+  ) extends EmcasWordDescBase[A](_ov, _nv)
+    with WdLike[A] {
 
     def this(
       half: LogEntry[A],
@@ -148,8 +139,8 @@ package emcas {
     ) = this(
       parent = parent,
       address = half.address,
-      ov = half.ov,
-      nv = half.nv,
+      _ov = half.ov,
+      _nv = half.nv,
       oldVersion = half.version,
     )
 
@@ -160,8 +151,8 @@ package emcas {
       new EmcasWordDesc[A](
         parent = newParent,
         address = this.address,
-        ov = this.ov,
-        nv = this.nv,
+        _ov = this.ov,
+        _nv = this.nv,
         oldVersion = this.oldVersion,
       )
     }
@@ -180,8 +171,8 @@ package emcas {
     private[mcas] val Invalid: EmcasWordDesc[_] = new EmcasWordDesc[AnyRef](
       parent = null,
       address = null,
-      ov = null,
-      nv = null,
+      _ov = null,
+      _nv = null,
       oldVersion = Version.None,
     )
   }

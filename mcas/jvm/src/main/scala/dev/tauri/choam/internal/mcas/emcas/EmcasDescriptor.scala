@@ -134,7 +134,7 @@ private[mcas] final class EmcasDescriptor private[this] (
     // (even if we have to retry with
     // the fallback, we already copied
     // the array):
-    this.cleanWordsForGc()
+    this.cleanWordsForGc(EmcasStatus.isSuccessful(finalResult))
   }
 
   private[emcas] final def fallback: EmcasDescriptor = {

@@ -612,7 +612,12 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       assert((mark eq null) || (mark eq weakref.get()))
       assert(Version.isValid(version))
 
-      if (!equ(value, wordDesc.ov)) {
+      val wordDescOv = wordDesc.ov
+      if (equ(wordDescOv, EmcasDescriptorBase.CLEARED)) {
+        Reference.reachabilityFence(mark)
+        // we have been finalized (by a helping thread), no reason to continue
+        EmcasStatus.Break
+      } else if (!equ(value, wordDescOv)) {
         Reference.reachabilityFence(mark)
         // Expected value is different:
         McasStatus.FailedVal
