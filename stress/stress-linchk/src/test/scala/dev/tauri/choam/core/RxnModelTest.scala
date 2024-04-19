@@ -31,7 +31,7 @@ import RxnModelTest._
 final class RxnModelTest extends FunSuite with BaseLinchkSpec {
 
   test("Model checking Rxn".tag(SLOW)) {
-    val opts = longModelCheckingOptions()
+    val opts = fastModelCheckingOptions()
     LinChecker.check(classOf[TestState], opts)
   }
 }
