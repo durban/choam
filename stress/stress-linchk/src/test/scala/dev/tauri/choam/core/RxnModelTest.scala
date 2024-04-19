@@ -21,7 +21,7 @@ package core
 import cats.syntax.all._
 
 import org.jetbrains.kotlinx.lincheck.LinChecker
-import org.jetbrains.kotlinx.lincheck.paramgen.{ StringGen, BooleanGen }
+import org.jetbrains.kotlinx.lincheck.paramgen.{ StringGen, BooleanGen, IntGen }
 import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
 
 import munit.FunSuite
@@ -31,7 +31,7 @@ import RxnModelTest._
 final class RxnModelTest extends FunSuite with BaseLinchkSpec {
 
   test("Model checking Rxn".tag(SLOW)) {
-    val opts = defaultModelCheckingOptions()
+    val opts = longModelCheckingOptions()
     LinChecker.check(classOf[TestState], opts)
   }
 }
@@ -39,36 +39,54 @@ final class RxnModelTest extends FunSuite with BaseLinchkSpec {
 object RxnModelTest {
 
   @Param(name = "s", gen = classOf[StringGen])
+  @Param(name = "t", gen = classOf[StringGen])
   @Param(name = "b", gen = classOf[BooleanGen])
+  @Param(name = "i", gen = classOf[IntGen])
   class TestState {
 
     private[this] val emcas =
       internal.mcas.Mcas.Emcas
 
     private[this] val r1 =
-      Ref.unsafe("a")
+      Ref.unsafeUnpadded("a")
 
     private[this] val r2 =
-      Ref.unsafe("b")
+      Ref.unsafeUnpadded("b")
 
-    @Operation
-    def writeOnly(s: String): (String, String) = {
-      (r1.getAndUpdate(s + _), r2.getAndUpdate(s + _)).tupled.unsafeRun(emcas)
-    }
+    private[this] val r3 =
+      Ref.unsafeUnpadded("c")
 
-    @Operation
-    def readWrite(s: String, b: Boolean): (String, String) = {
-      val r = if (b) {
-        r1.getAndSet.provide(s) * r2.get
-      } else {
-        r2.getAndSet.provide(s) * r1.get
+    private[this] def select2(i: Int): (Ref[String], Ref[String]) = {
+      java.lang.Math.abs(i % 6) match {
+        case 0 => (r2, r3)
+        case 1 => (r1, r3)
+        case 2 => (r1, r2)
+        case 3 => (r3, r2)
+        case 4 => (r3, r1)
+        case 5 => (r2, r1)
       }
-      r.unsafeRun(emcas)
     }
 
     @Operation
-    def readOnly(): (String, String) = {
-      (r2.get, r1.get).tupled.unsafeRun(emcas)
+    def writeOnly(s: String, t: String, i: Int): (String, String) = {
+      val (ref1, ref2) = this.select2(i)
+      (ref1.getAndUpdate(s + _), ref2.getAndUpdate(t + _)).tupled.unsafeRun(emcas)
+    }
+
+    @Operation
+    def readWrite(s: String, i: Int): (String, String) = {
+      val (ref1, ref2) = this.select2(i)
+      (ref1.getAndSet.provide(s) * ref2.get).unsafeRun(emcas)
+    }
+
+    @Operation
+    def readOnly(b: Boolean): (String, String, String) = {
+      val tup = if (b) {
+        (r1.get, r2.get, r3.get)
+      } else {
+        (r2.get, r1.get, r3.get)
+      }
+      tup.tupled.unsafeRun(emcas)
     }
   }
 }

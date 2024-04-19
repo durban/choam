@@ -56,7 +56,35 @@ trait LinchkUtils {
     }
   }
 
-  def defaultModelCheckingOptions(): ModelCheckingOptions = {
+  def defaultModelCheckingOptions(): ModelCheckingOptions =
+    this.fastModelCheckingOptions()
+
+  def fastModelCheckingOptions(): ModelCheckingOptions = {
+    // this is the "fast" configuration from the Lincheck paper:
+    this.makeModelCheckingOptions(
+      scenarios = 30,
+      threads = 2,
+      operationsPerThread = 3,
+      invocationsPerScenario = 1000,
+    )
+  }
+
+  def longModelCheckingOptions(): ModelCheckingOptions = {
+    // this is the "long" configuration from the Lincheck paper:
+    this.makeModelCheckingOptions(
+      scenarios = 100,
+      threads = 3,
+      operationsPerThread = 4,
+      invocationsPerScenario = 10000,
+    )
+  }
+
+  private[this] def makeModelCheckingOptions(
+    scenarios: Int,
+    threads: Int,
+    operationsPerThread: Int,
+    invocationsPerScenario: Int,
+  ): ModelCheckingOptions = {
     import scala.language.reflectiveCalls
 
     // We assume that methods of certain classes
@@ -86,12 +114,10 @@ trait LinchkUtils {
     increaseTimeout(new ModelCheckingOptions())
       .addGuarantee(assumedAtomic)
       .checkObstructionFreedom(true)
-      // this is the "fast" configuration from the Lincheck paper:
-      .iterations(30) // scenarios
-      .threads(2)
-      .actorsPerThread(3) // operations per thread
-      .invocationsPerIteration(1000) // run each scenario this much time (FIXME)
-      // end of "fast" configuration
+      .iterations(scenarios)
+      .threads(threads)
+      .actorsPerThread(operationsPerThread)
+      .invocationsPerIteration(invocationsPerScenario)
       .actorsBefore(2) // so that we don't work with empty data structures
       .actorsAfter(1) // to have a chance of detecting inconsistent state left
   }
