@@ -22,6 +22,7 @@ import java.lang.instrument.Instrumentation;
 final class Premain {
 
   public static final void premain(String agentArgs, Instrumentation inst) {
-    inst.addTransformer(new TclTransformer());
+    // We (probably) don't need any transformation since Lincheck 2.30:
+    // inst.addTransformer(new TclTransformer());
   }
 }

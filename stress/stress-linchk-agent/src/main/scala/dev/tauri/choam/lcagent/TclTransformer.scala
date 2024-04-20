@@ -24,16 +24,25 @@ import org.objectweb.asm.{ ClassReader, ClassWriter, ClassVisitor, MethodVisitor
 import org.objectweb.asm.commons.{ GeneratorAdapter, Method }
 
 /**
- * This is a terrible idea: the `TransformationClassLoader` of
+ * This is a terrible idea (and we're not using it currently):
  * lincheck does some bytecode-rewriting to do model-checking.
- * Some of this rewriting makes the bytecode of some Scala
- * classes invalid (e.g., probably `scala.Predef`), so we want
+ * Some of this rewriting made the bytecode of some Scala
+ * classes invalid (e.g., probably `scala.Predef`), so we wanted
  * to exclude them from rewriting. But, the set of classes
- * affected by this rewriting is determined by a private method
- * `TransformationClassLoader#doNotTransform`. So we... have a
+ * affected by this rewriting was determined by a private method
+ * `TransformationClassLoader#doNotTransform`. So we... had a
  * java agent, which transforms the bytecode of `TransformationClassLoader`,
  * and modifies the `doNotTransform` method, to include our
  * additional classes to not transform (see `TransformationClassLoaderOverrideImpl`).
+ *
+ * Since version 2.30, lincheck does the transformation in a different
+ * way, so we (probably) don't need this any more (see `Premain`).
+ * (And the current `TclTransformer` does nothing anyway, because
+ * `TransformationClassLoader` doesn't exist any more.)
+ *
+ * For future reference, the set of excluded classes is now determined in
+ * org/jetbrains/kotlinx/lincheck/transformation/LincheckJavaAgent.kt
+ * by `internal object LincheckClassFileTransformer`.
  */
 final class TclTransformer extends ClassFileTransformer { cTransformer =>
 

@@ -486,7 +486,6 @@ lazy val stressLinchk = project.in(file("stress") / "stress-linchk")
       (Test / testOnly).evaluated
     },
     Test / javaOptions ++= List(
-      "--add-exports", "java.base/jdk.internal.misc=ALL-UNNAMED", // ManagedTestExample needs this
       s"-javaagent:${(stressLinchkAgent / Compile / packageBin / artifactPath).value}",
       // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:8000",
     ),
@@ -722,7 +721,7 @@ lazy val dependencies = new {
   // JVM:
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % jolVersion)
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.3") // https://github.com/JCTools/JCTools
-  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.29") // https://github.com/JetBrains/lincheck
+  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.30") // https://github.com/JetBrains/lincheck
   val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.7") // https://asm.ow2.io/
 
   // JS:
