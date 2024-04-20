@@ -42,3 +42,11 @@ These are "preview" versions, e.g., `0.4-39d987a`.
 1. Make sure there are no untracked files in git.
 1. Push any new commits.
 1. In `sbt`, call `releaseHash` (requires Sonatype credentials).
+
+## Lincheck
+
+A warning like this appears when running tests in `stressLinchk`:
+
+> OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+
+According to https://stackoverflow.com/a/57957031, this is harmless.
