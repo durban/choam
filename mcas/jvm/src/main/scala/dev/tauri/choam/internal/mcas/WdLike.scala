@@ -37,7 +37,7 @@ final class LogEntry[A] private ( // formerly called HWD
   final override val oldVersion: Long,
 ) extends WdLike[A] {
 
-  require(Version.isValid(version))
+  require(Version.isValid(oldVersion))
 
   final override def cleanForGc(wasSuccessful: Boolean, sentinel: A): Unit =
     ()
