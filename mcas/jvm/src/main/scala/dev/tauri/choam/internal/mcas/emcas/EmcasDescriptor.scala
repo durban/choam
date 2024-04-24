@@ -140,7 +140,7 @@ private[mcas] final class EmcasDescriptor private[this] (
   private[emcas] final def fallback: EmcasDescriptor = {
     val fb = this.getFallbackA()
     if (fb eq null) {
-      assert(this.getStatus() == EmcasStatus.CycleDetected)
+      assert(this.getStatusA() == EmcasStatus.CycleDetected)
       assert(!this.instRo)
       this.getWordsO() match {
         case null =>

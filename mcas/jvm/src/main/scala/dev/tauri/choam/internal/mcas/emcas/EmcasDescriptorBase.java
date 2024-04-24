@@ -57,8 +57,12 @@ abstract class EmcasDescriptorBase {
   /**
    * @see [[EmcasStatus]]
    */
-  final long getStatus() {
+  final long getStatusV() {
     return this._status; // volatile
+  }
+
+  final long getStatusA() {
+    return (long) STATUS.getAcquire(this);
   }
 
   final long cmpxchgStatus(long ov, long nv) {

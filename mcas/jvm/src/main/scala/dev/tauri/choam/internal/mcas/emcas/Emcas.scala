@@ -258,7 +258,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
             } else { // m eq null (from either a cleared or a removed weakref)
               // descriptor can be detached
               val parent = wd.parent
-              val parentStatus = parent.getStatus()
+              val parentStatus = parent.getStatusV()
               if (parentStatus == McasStatus.Active) {
                 // active op without a mark: this can
                 // happen if a thread died during an op;
@@ -284,7 +284,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           } else { // mark ne null
             // OK, we're already holding the descriptor
             val parent = wd.parent
-            val parentStatus = parent.getStatus()
+            val parentStatus = parent.getStatusV()
             if (parentStatus == McasStatus.Active) {
               helpMCASnoMCAS(parent, ctx = ctx) // help the other op
               go(mark = mark, ver1 = ver1) // retry
@@ -410,7 +410,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       case wd: EmcasWordDesc[_] =>
         // TODO: we may need to hold the marker here!
         val parent = wd.parent
-        val s = parent.getStatus()
+        val s = parent.getStatusV()
         if (s == McasStatus.Active) {
           // help:
           if (forMCAS) {
@@ -523,7 +523,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
               } else { // mark eq null
                 // the old descriptor is unused, could be detached
                 val parent = wd.parent
-                val parentStatus = parent.getStatus()
+                val parentStatus = parent.getStatusV()
                 if (parentStatus == McasStatus.Active) {
                   // active op without a mark: this can
                   // happen if a thread died during an op
@@ -561,7 +561,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
                 // `wordDesc` (we're assuming that any EmcasWordDesc only
                 // appears at most once in an EmcasDescriptor).
                 val parent = wd.parent
-                val parentStatus = parent.getStatus()
+                val parentStatus = parent.getStatusV()
                 if (parentStatus == McasStatus.Active) {
                   // Help the other op; note: we're not "helping" ourselves
                   // for sure, see the comment above.
@@ -626,7 +626,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // The expected value is the same,
         // but the expected version isn't:
         McasStatus.FailedVal
-      } else if (desc.getStatus() != McasStatus.Active) {
+      } else if (desc.getStatusV() != McasStatus.Active) {
         Reference.reachabilityFence(mark)
         // we have been finalized (by a helping thread), no reason to continue
         EmcasStatus.Break
@@ -754,14 +754,20 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     } // validate
 
     def getFinalResultFromHelper(): Long = {
-      // see the long comment below
-      val witness = desc.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
+      // TODO: val readStatus = desc.getStatusA() // optimistic read
+      val result = { // TODO: if (readStatus != McasStatus.Active) {
+        // TODO: readStatus
+      // TODO: } else {
+        // we don't see it yet, need to force
+        // (see the long comment below)
+        desc.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
+      }
       assert(
-        Version.isValid(witness) ||
-        (witness == McasStatus.FailedVal) ||
-        (witness == EmcasStatus.CycleDetected)
+        Version.isValid(result) ||
+        (result == McasStatus.FailedVal) ||
+        (result == EmcasStatus.CycleDetected)
       )
-      witness
+      result
     }
 
     var seen2: Long = seen
@@ -1049,7 +1055,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     while (ctr < max) {
       ref.unsafeGetV() match {
         case wd: EmcasWordDesc[_] =>
-          if (wd.parent.getStatus() == McasStatus.Active) {
+          if (wd.parent.getStatusV() == McasStatus.Active) {
             // CAS in progress, retry
           } else {
             // CAS finalized, but no cleanup yet, read and retry

@@ -57,7 +57,7 @@ class EmcasCleanup1Test {
       case wd: EmcasWordDesc[_] =>
         // observing the descriptor:
         r.r2 = wd
-        r.r3 = wd.parent.getStatus()
+        r.r3 = wd.parent.getStatusV()
       case x =>
         // was cleaned up, observing final value:
         r.r2 = x

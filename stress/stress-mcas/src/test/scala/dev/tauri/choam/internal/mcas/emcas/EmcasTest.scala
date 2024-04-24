@@ -120,7 +120,7 @@ class EmcasTest {
       if (doCmpxchg) {
         r.r4 = parent.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
       } else {
-        r.r4 = parent.getStatus()
+        r.r4 = parent.getStatusV()
       }
       if (it.hasNext) {
         // mustn't happen
