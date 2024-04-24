@@ -754,10 +754,10 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     } // validate
 
     def getFinalResultFromHelper(): Long = {
-      // TODO: val readStatus = desc.getStatusA() // optimistic read
-      val result = { // TODO: if (readStatus != McasStatus.Active) {
-        // TODO: readStatus
-      // TODO: } else {
+      val readStatus = desc.getStatusA() // optimistic read
+      val result = if (readStatus != McasStatus.Active) {
+        readStatus
+      } else {
         // we don't see it yet, need to force
         // (see the long comment below)
         desc.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
