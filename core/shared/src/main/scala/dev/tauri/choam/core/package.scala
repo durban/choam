@@ -34,4 +34,6 @@ package object core {
    * `Rxn[A, B] ≡ (A => Axn[B])` (see [[dev.tauri.choam.core.Rxn!.toFunction toFunction]]).
    */
   final type Axn[+A] = Rxn[Any, A] // short for 'astaxanthin'
+
+  final type Txn[F[_], +A] = Txn.Type[F, A]
 }
