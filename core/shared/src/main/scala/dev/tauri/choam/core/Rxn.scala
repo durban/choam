@@ -621,19 +621,6 @@ object Rxn extends RxnInstances0 {
     new ObjStack[A]
   }
 
-  private[this] final val ContAndThen = 0.toByte
-  private[this] final val ContAndAlso = 1.toByte
-  private[this] final val ContAndAlsoJoin = 2.toByte
-  private[this] final val ContTailRecM = 3.toByte
-  private[this] final val ContPostCommit = 4.toByte
-  private[this] final val ContAfterPostCommit = 5.toByte // TODO: rename(?)
-  private[this] final val ContCommitPostCommit = 6.toByte
-  private[this] final val ContUpdWith = 7.toByte
-  private[this] final val ContAs = 8.toByte
-  private[this] final val ContProductR = 9.toByte
-  private[this] final val ContFlatMapF = 10.toByte
-  private[this] final val ContFlatMap = 11.toByte
-
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
   private[this] final val postCommitResultMarker =
     new PostCommitResultMarker
@@ -701,8 +688,8 @@ object Rxn extends RxnInstances0 {
     private[this] val contK: ObjStack[Any] = newStack[Any]()
     private[this] val pc: ObjStack[Rxn[Any, Unit]] = newStack[Rxn[Any, Unit]]()
     private[this] val commit = commitSingleton
-    contT.push(ContAfterPostCommit)
-    contT.push(ContAndThen)
+    contT.push(RxnConsts.ContAfterPostCommit)
+    contT.push(RxnConsts.ContAndThen)
     contK.push(commit)
 
     private[this] var contTReset: Array[Byte] = contT.takeSnapshot()
@@ -900,7 +887,7 @@ object Rxn extends RxnInstances0 {
           val f = contK.peekSecond().asInstanceOf[Any => Rxn[Any, Any]]
           e match {
             case Left(more) =>
-              contT.push(ContTailRecM)
+              contT.push(RxnConsts.ContTailRecM)
               f(more)
             case Right(done) =>
               a = done
@@ -1149,15 +1136,15 @@ object Rxn extends RxnInstances0 {
             }
             while (pc.nonEmpty) {
               // commits the post-commit action:
-              contT.push(ContCommitPostCommit)
+              contT.push(RxnConsts.ContCommitPostCommit)
               // the post-commit action itself:
               contK.push(pc.pop())
-              contT.push(ContPostCommit)
+              contT.push(RxnConsts.ContPostCommit)
             }
             loop(next())
           } else {
             contK.push(commit)
-            contT.push(ContAndThen)
+            contT.push(RxnConsts.ContAndThen)
             loop(retry())
           }
         case 1 => // AlwaysRetry
@@ -1240,16 +1227,16 @@ object Rxn extends RxnInstances0 {
           }
         case 11 => // AndThen
           val c = curr.asInstanceOf[AndThen[A, _, B]]
-          contT.push(ContAndThen)
+          contT.push(RxnConsts.ContAndThen)
           contK.push(c.right)
           loop(c.left)
         case 12 => // AndAlso
           val c = curr.asInstanceOf[AndAlso[_, _, _, _]]
           val xp = a.asInstanceOf[Tuple2[_, _]]
           // join:
-          contT.push(ContAndAlsoJoin)
+          contT.push(RxnConsts.ContAndAlsoJoin)
           // right:
-          contT.push(ContAndAlso)
+          contT.push(RxnConsts.ContAndAlso)
           contK.push(c.right)
           contK.push(xp._2)
           // left:
@@ -1275,7 +1262,7 @@ object Rxn extends RxnInstances0 {
             val ox = hwd.nv
             val axn = c.f(ox, a)
             desc = desc.addOrOverwrite(hwd)
-            contT.push(ContUpdWith)
+            contT.push(RxnConsts.ContUpdWith)
             contK.push(c.ref)
             contK.push(ox)
             // TODO: if `axn` writes to the same ref, we'll throw (see above)
@@ -1283,7 +1270,7 @@ object Rxn extends RxnInstances0 {
           }
         case 17 => // As
           val c = curr.asInstanceOf[As[_, _, _]]
-          contT.push(ContAs)
+          contT.push(RxnConsts.ContAs)
           contK.push(c.c)
           loop(c.rxn)
         case 18 => // FinishExchange
@@ -1297,7 +1284,7 @@ object Rxn extends RxnInstances0 {
           // however, the extraOp (this FinishExchange) already "ate"
           // the ContAndThen from otherContT which belongs to that Commit();
           // so we push back that ContAndThen here:
-          val otherContT = ByteStack.push(_otherContT, ContAndThen)
+          val otherContT = ByteStack.push(_otherContT, RxnConsts.ContAndThen)
           //println(s"FinishExchange: passing back result '${a}' - thread#${Thread.currentThread().getId()}")
           //println(s"FinishExchange: passing back contT ${java.util.Arrays.toString(otherContT)} - thread#${Thread.currentThread().getId()}")
           //println(s"FinishExchange: passing back contK ${c.restOtherContK.mkString()} - thread#${Thread.currentThread().getId()}")
@@ -1368,18 +1355,18 @@ object Rxn extends RxnInstances0 {
           loop(next())
         case 24 => // ProductR
           val c = curr.asInstanceOf[ProductR[Any, Any, Any]]
-          contT.push(ContProductR)
+          contT.push(RxnConsts.ContProductR)
           contK.push(c.right)
           contK.push(a)
           loop(c.left)
         case 25 => // FlatMapF
           val c = curr.asInstanceOf[FlatMapF[Any, Any, Any]]
-          contT.push(ContFlatMapF)
+          contT.push(RxnConsts.ContFlatMapF)
           contK.push(c.f)
           loop(c.rxn)
         case 26 => // FlatMap
           val c = curr.asInstanceOf[FlatMap[Any, Any, Any]]
-          contT.push(ContFlatMap)
+          contT.push(RxnConsts.ContFlatMap)
           contK.push(a)
           contK.push(c.f)
           loop(c.rxn)
@@ -1393,7 +1380,7 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[TailRecM[Any, Any, Any]]
           val f = c.f
           val nxt = f(c.a)
-          contT.push(ContTailRecM)
+          contT.push(RxnConsts.ContTailRecM)
           contK.push(f)
           contK.push(a)
           loop(nxt)
