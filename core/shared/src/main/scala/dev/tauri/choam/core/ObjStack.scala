@@ -38,8 +38,6 @@ private abstract class ObjStack[A]() {
 
   def loadSnapshot(snapshot: ListObjStack.Lst[A]): Unit
 
-  def loadSnapshotUnsafe(snapshot: ListObjStack.Lst[Any]): Unit
-
   final def pushAll(as: Iterable[A]): Unit = {
     val it = as.iterator
     while (it.hasNext) {

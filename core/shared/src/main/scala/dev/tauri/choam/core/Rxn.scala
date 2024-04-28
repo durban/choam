@@ -838,7 +838,7 @@ object Rxn extends RxnInstances0 {
     private[this] final def loadAlt(): Rxn[Any, R] = {
       val alts = this.alts
       val res = alts.pop().asInstanceOf[Rxn[Any, R]]
-      pc.loadSnapshotUnsafe(alts.pop().asInstanceOf[ListObjStack.Lst[Any]])
+      pc.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Rxn[Any, Unit]]])
       contK.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()

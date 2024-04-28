@@ -79,10 +79,6 @@ private final class ListObjStack[A]() extends ObjStack[A] {
   final override def loadSnapshot(snapshot: ListObjStack.Lst[A]): Unit = {
     this.lst = snapshot
   }
-
-  final override def loadSnapshotUnsafe(snapshot: ListObjStack.Lst[Any]): Unit = {
-    this.lst = snapshot.asInstanceOf[ListObjStack.Lst[A]]
-  }
 }
 
 private object ListObjStack {
