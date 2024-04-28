@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package core
 
-private final class ListObjStack[A]() {
+private final class ListObjStack[A]() extends ObjStack[A] {
 
   private[this] var lst: ListObjStack.Lst[A] =
     null
@@ -28,15 +28,8 @@ private final class ListObjStack[A]() {
     else "ListObjStack()"
   }
 
-  final def push(a: A): Unit = {
+  final override def push(a: A): Unit = {
     this.lst = new ListObjStack.Lst(a, this.lst)
-  }
-
-  final def pushAll(as: Iterable[A]): Unit = {
-    val it = as.iterator
-    while (it.hasNext) {
-      this.push(it.next())
-    }
   }
 
   private[this] final  def assertNonEmpty(): Unit = {
@@ -45,19 +38,19 @@ private final class ListObjStack[A]() {
     }
   }
 
-  final def pop(): A = {
+  final override def pop(): A = {
     assertNonEmpty()
     val r = this.lst.head
     this.lst = this.lst.tail
     r
   }
 
-  final def peek(): A = {
+  final override def peek(): A = {
     assertNonEmpty()
     this.lst.head
   }
 
-  final def peekSecond(): A = {
+  final override def peekSecond(): A = {
     assertNonEmpty()
     this.lst.tail match {
       case null =>
@@ -67,27 +60,27 @@ private final class ListObjStack[A]() {
     }
   }
 
-  final def clear(): Unit = {
+  final override def clear(): Unit = {
     this.lst = null
   }
 
-  final def isEmpty: Boolean = {
+  final override def isEmpty: Boolean = {
     this.lst eq null
   }
 
-  final def nonEmpty: Boolean = {
+  final override def nonEmpty: Boolean = {
     this.lst ne null
   }
 
-  final def takeSnapshot(): ListObjStack.Lst[A] = {
+  final override def takeSnapshot(): ListObjStack.Lst[A] = {
     this.lst
   }
 
-  final def loadSnapshot(snapshot: ListObjStack.Lst[A]): Unit = {
+  final override def loadSnapshot(snapshot: ListObjStack.Lst[A]): Unit = {
     this.lst = snapshot
   }
 
-  final def loadSnapshotUnsafe(snapshot: ListObjStack.Lst[Any]): Unit = {
+  final override def loadSnapshotUnsafe(snapshot: ListObjStack.Lst[Any]): Unit = {
     this.lst = snapshot.asInstanceOf[ListObjStack.Lst[A]]
   }
 }

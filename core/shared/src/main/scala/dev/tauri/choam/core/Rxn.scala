@@ -560,7 +560,7 @@ object Rxn extends RxnInstances0 {
     private[core] final override def tag = 18
     final override def toString: String = {
       val rockLen = ListObjStack.Lst.length(this.restOtherContK)
-      s"FinishExchange(${hole}, <ObjStack.Lst of length ${rockLen}>, ${lenSelfContT})"
+      s"FinishExchange(${hole}, <ListObjStack.Lst of length ${rockLen}>, ${lenSelfContT})"
     }
   }
 
@@ -616,10 +616,6 @@ object Rxn extends RxnInstances0 {
   }
 
   // Interpreter:
-
-  private[this] def newStack[A]() = {
-    new ListObjStack[A]
-  }
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
   private[this] final val postCommitResultMarker =
@@ -682,11 +678,11 @@ object Rxn extends RxnInstances0 {
       _desc = null
     }
 
-    private[this] val alts: ListObjStack[Any] = newStack[Any]()
+    private[this] val alts: ListObjStack[Any] = new ListObjStack[Any]()
 
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
-    private[this] val contK: ListObjStack[Any] = newStack[Any]()
-    private[this] val pc: ListObjStack[Rxn[Any, Unit]] = newStack[Rxn[Any, Unit]]()
+    private[this] val contK: ObjStack[Any] = new ListObjStack[Any]()
+    private[this] val pc: ObjStack[Rxn[Any, Unit]] = new ListObjStack[Rxn[Any, Unit]]()
     private[this] val commit = commitSingleton
     contT.push(RxnConsts.ContAfterPostCommit)
     contT.push(RxnConsts.ContAndThen)

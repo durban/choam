@@ -17,63 +17,74 @@
 
 package dev.tauri.choam
 package core
+package bench
 
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 @Fork(2)
+@Threads(1)
 class InternalStackBench {
-
-  import InternalStackBench._
 
   final val N = 512
 
   @Benchmark
-  def byteStack(s: St, bh: Blackhole): Unit = {
-    s.byteStack = new ByteStack(initSize = 8)
+  def byteStack(bh: Blackhole): Unit = {
+    val byteStack = new ByteStack(initSize = 8)
     var i = 0
     while (i < N) {
-      s.byteStack.push(42)
+      byteStack.push(42)
       i += 1
     }
     i = 0
     while (i < N) {
-      bh.consume(s.byteStack.pop())
+      bh.consume(byteStack.pop())
       i += 1
     }
     i = 0
     while (i < N) {
-      s.byteStack.push(42)
+      byteStack.push(42)
       i += 1
     }
   }
 
   @Benchmark
-  def listObjStack(s: St, bh: Blackhole): Unit = {
-    s.listObjStack = new ListObjStack[String]
+  def listObjStack(bh: Blackhole): Unit = {
+    val listObjStack: ListObjStack[String] = new ListObjStack[String]
     var i = 0
     while (i < N) {
-      s.listObjStack.push("test")
+      listObjStack.push("test")
       i += 1
     }
     i = 0
     while (i < N) {
-      bh.consume(s.listObjStack.pop())
+      bh.consume(listObjStack.pop())
       i += 1
     }
     i = 0
     while (i < N) {
-      s.listObjStack.push("test")
+      listObjStack.push("test")
       i += 1
     }
   }
-}
 
-private object InternalStackBench {
-
-  @State(Scope.Benchmark)
-  class St {
-    final var byteStack: ByteStack = null
-    final var listObjStack: ListObjStack[String] = null
+  @Benchmark
+  def listObjStackAbstract(bh: Blackhole): Unit = {
+    val listObjStackAbstract: ObjStack[String] = new ListObjStack[String]
+    var i = 0
+    while (i < N) {
+      listObjStackAbstract.push("test")
+      i += 1
+    }
+    i = 0
+    while (i < N) {
+      bh.consume(listObjStackAbstract.pop())
+      i += 1
+    }
+    i = 0
+    while (i < N) {
+      listObjStackAbstract.push("test")
+      i += 1
+    }
   }
 }
