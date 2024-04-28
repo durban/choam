@@ -61,6 +61,20 @@ private final class ArrayObjStack[A]() extends ObjStack[A] {
     this.arr.nonEmpty
   }
 
+  final def toListObjStack(): ListObjStack[A] = {
+    val arr = this.arr
+    var lst = ListObjStack.Lst.empty[A]
+    var idx = 0
+    val len = arr.length
+    while (idx < len) {
+      lst = ListObjStack.Lst(head = arr.apply(idx), tail = lst)
+      idx += 1
+    }
+    val r = new ListObjStack[A]
+    r.loadSnapshot(lst)
+    r
+  }
+
   final override def takeSnapshot(): ListObjStack.Lst[A] = {
     sys.error("TODO")
   }
