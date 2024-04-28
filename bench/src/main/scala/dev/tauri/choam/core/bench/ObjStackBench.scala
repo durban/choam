@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package core
+package bench
 
 import java.util.concurrent.ThreadLocalRandom
 
@@ -26,17 +27,26 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 @Fork(1)
-@Threads(2)
+@Threads(1)
 class ObjStackBench {
 
   import ObjStackBench._
 
   @Benchmark
-  def pushPopOListbjStack(s: ListObjSt, bh: Blackhole): Unit = {
+  def pushPopListObjStack(s: ListObjSt, bh: Blackhole): Unit = {
     if (ThreadLocalRandom.current().nextBoolean() || s.listObjStack.isEmpty) {
       s.listObjStack.push("x")
     } else {
       bh.consume(s.listObjStack.pop())
+    }
+  }
+
+  @Benchmark
+  def pushPopArrayObjStack(s: ArrayObjSt, bh: Blackhole): Unit = {
+    if (ThreadLocalRandom.current().nextBoolean() || s.arrayObjStack.isEmpty) {
+      s.arrayObjStack.push("x")
+    } else {
+      bh.consume(s.arrayObjStack.pop())
     }
   }
 
@@ -78,8 +88,21 @@ private object ObjStackBench {
 
   @State(Scope.Thread)
   class ListObjSt {
-    val listObjStack: ListObjStack[String] = {
+    val listObjStack: ObjStack[String] = {
       val s = new ListObjStack[String]
+      for (i <- 1 to 8) {
+        if (ThreadLocalRandom.current().nextBoolean()) {
+          s.push(i.toString())
+        }
+      }
+      s
+    }
+  }
+
+  @State(Scope.Thread)
+  class ArrayObjSt {
+    val arrayObjStack: ObjStack[String] = {
+      val s = new ArrayObjStack[String]
       for (i <- 1 to 8) {
         if (ThreadLocalRandom.current().nextBoolean()) {
           s.push(i.toString())

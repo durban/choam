@@ -87,4 +87,24 @@ class InternalStackBench {
       i += 1
     }
   }
+
+  @Benchmark
+  def arrayObjStackAbstract(bh: Blackhole): Unit = {
+    val arrayObjStackAbstract: ObjStack[String] = new ArrayObjStack[String]
+    var i = 0
+    while (i < N) {
+      arrayObjStackAbstract.push("test")
+      i += 1
+    }
+    i = 0
+    while (i < N) {
+      bh.consume(arrayObjStackAbstract.pop())
+      i += 1
+    }
+    i = 0
+    while (i < N) {
+      arrayObjStackAbstract.push("test")
+      i += 1
+    }
+  }
 }

@@ -22,6 +22,36 @@ import scala.util.Try
 
 final class InternalStackSpec extends BaseSpec {
 
+  test("ArrayObjStack") {
+    val s = new ArrayObjStack[String]
+    assert(s.isEmpty)
+    assert(!s.nonEmpty)
+    assertEquals(s.toString, "ArrayObjStack()")
+    s.push("a")
+    assertEquals(s.toString, "ArrayObjStack(a)")
+    assert(!s.isEmpty)
+    assert(s.nonEmpty)
+    s.push("b")
+    assertEquals(s.toString, "ArrayObjStack(b, a)")
+    assertSameInstance(s.pop(), "b")
+    assertEquals(s.toString, "ArrayObjStack(a)")
+    s.push("b")
+    assertEquals(s.toString, "ArrayObjStack(b, a)")
+    s.pushAll("c" :: "d" :: Nil)
+    assertEquals(s.toString, "ArrayObjStack(d, c, b, a)")
+    assertEquals(s.peek(), "d")
+    assertEquals(s.peek(), "d")
+    assertEquals(s.peekSecond(), "c")
+    assertEquals(s.peek(), "d")
+    assertEquals(s.peekSecond(), "c")
+    assertEquals(s.toString, "ArrayObjStack(d, c, b, a)")
+    assertSameInstance(s.pop(), "d")
+    assertSameInstance(s.pop(), "c")
+    s.clear()
+    assert(s.isEmpty)
+    assert(Try { s.pop() }.isFailure)
+  }
+
   test("ListObjStack") {
     val s = new ListObjStack[String]
     assert(s.isEmpty)
