@@ -455,7 +455,7 @@ object Rxn extends RxnInstances0 {
 
     final def finishExchange[D](
       hole: Ref[Exchanger.NodeResult[D]],
-      restOtherContK: ObjStack.Lst[Any],
+      restOtherContK: ListObjStack.Lst[Any],
       lenSelfContT: Int,
     ): Rxn[D, Unit] = new FinishExchange(hole, restOtherContK, lenSelfContT)
   }
@@ -554,12 +554,12 @@ object Rxn extends RxnInstances0 {
   /** Only the interpreter/exchanger can use this! */
   private final class FinishExchange[D](
     val hole: Ref[Exchanger.NodeResult[D]],
-    val restOtherContK: ObjStack.Lst[Any],
+    val restOtherContK: ListObjStack.Lst[Any],
     val lenSelfContT: Int,
   ) extends Rxn[D, Unit] {
     private[core] final override def tag = 18
     final override def toString: String = {
-      val rockLen = ObjStack.Lst.length(this.restOtherContK)
+      val rockLen = ListObjStack.Lst.length(this.restOtherContK)
       s"FinishExchange(${hole}, <ObjStack.Lst of length ${rockLen}>, ${lenSelfContT})"
     }
   }
@@ -618,7 +618,7 @@ object Rxn extends RxnInstances0 {
   // Interpreter:
 
   private[this] def newStack[A]() = {
-    new ObjStack[A]
+    new ListObjStack[A]
   }
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
@@ -682,18 +682,18 @@ object Rxn extends RxnInstances0 {
       _desc = null
     }
 
-    private[this] val alts: ObjStack[Any] = newStack[Any]()
+    private[this] val alts: ListObjStack[Any] = newStack[Any]()
 
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
-    private[this] val contK: ObjStack[Any] = newStack[Any]()
-    private[this] val pc: ObjStack[Rxn[Any, Unit]] = newStack[Rxn[Any, Unit]]()
+    private[this] val contK: ListObjStack[Any] = newStack[Any]()
+    private[this] val pc: ListObjStack[Rxn[Any, Unit]] = newStack[Rxn[Any, Unit]]()
     private[this] val commit = commitSingleton
     contT.push(RxnConsts.ContAfterPostCommit)
     contT.push(RxnConsts.ContAndThen)
     contK.push(commit)
 
     private[this] var contTReset: Array[Byte] = contT.takeSnapshot()
-    private[this] var contKReset: ObjStack.Lst[Any] = contK.takeSnapshot()
+    private[this] var contKReset: ListObjStack.Lst[Any] = contK.takeSnapshot()
 
     private[this] var a: Any =
       x
@@ -842,8 +842,8 @@ object Rxn extends RxnInstances0 {
     private[this] final def loadAlt(): Rxn[Any, R] = {
       val alts = this.alts
       val res = alts.pop().asInstanceOf[Rxn[Any, R]]
-      pc.loadSnapshotUnsafe(alts.pop().asInstanceOf[ObjStack.Lst[Any]])
-      contK.loadSnapshot(alts.pop().asInstanceOf[ObjStack.Lst[Any]])
+      pc.loadSnapshotUnsafe(alts.pop().asInstanceOf[ListObjStack.Lst[Any]])
+      contK.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
       _desc = alts.pop().asInstanceOf[Descriptor]

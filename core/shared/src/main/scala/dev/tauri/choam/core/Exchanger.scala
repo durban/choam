@@ -117,10 +117,10 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
 
   private[core] final case class Msg(
     value: Any,
-    contK: ObjStack.Lst[Any],
+    contK: ListObjStack.Lst[Any],
     contT: Array[Byte],
     desc: Descriptor,
-    postCommit: ObjStack.Lst[Axn[Unit]],
+    postCommit: ListObjStack.Lst[Axn[Unit]],
     exchangerData: Rxn.ExStatMap,
   )
 
@@ -132,7 +132,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
         contK = fx.contK,
         contT = fx.contT,
         desc = ctx.start(),
-        postCommit = ObjStack.Lst.empty[Axn[Unit]],
+        postCommit = ListObjStack.Lst.empty[Axn[Unit]],
         exchangerData = newStats,
       )
     }
@@ -142,7 +142,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
 
   private[core] final class FinishedEx[C](
     val result: C,
-    val contK: ObjStack.Lst[Any],
+    val contK: ListObjStack.Lst[Any],
     val contT: Array[Byte],
   ) extends NodeResult[C]
 

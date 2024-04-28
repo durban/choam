@@ -18,18 +18,18 @@
 package dev.tauri.choam
 package core
 
-private final class ObjStack[A]() {
+private final class ListObjStack[A]() {
 
-  private[this] var lst: ObjStack.Lst[A] =
+  private[this] var lst: ListObjStack.Lst[A] =
     null
 
   final override def toString: String = {
-    if (this.lst ne null) s"ObjStack(${this.lst.mkString(", ")})"
-    else "ObjStack()"
+    if (this.lst ne null) s"ListObjStack(${this.lst.mkString(", ")})"
+    else "ListObjStack()"
   }
 
   final def push(a: A): Unit = {
-    this.lst = new ObjStack.Lst(a, this.lst)
+    this.lst = new ListObjStack.Lst(a, this.lst)
   }
 
   final def pushAll(as: Iterable[A]): Unit = {
@@ -79,20 +79,20 @@ private final class ObjStack[A]() {
     this.lst ne null
   }
 
-  final def takeSnapshot(): ObjStack.Lst[A] = {
+  final def takeSnapshot(): ListObjStack.Lst[A] = {
     this.lst
   }
 
-  final def loadSnapshot(snapshot: ObjStack.Lst[A]): Unit = {
+  final def loadSnapshot(snapshot: ListObjStack.Lst[A]): Unit = {
     this.lst = snapshot
   }
 
-  final def loadSnapshotUnsafe(snapshot: ObjStack.Lst[Any]): Unit = {
-    this.lst = snapshot.asInstanceOf[ObjStack.Lst[A]]
+  final def loadSnapshotUnsafe(snapshot: ListObjStack.Lst[Any]): Unit = {
+    this.lst = snapshot.asInstanceOf[ListObjStack.Lst[A]]
   }
 }
 
-private object ObjStack {
+private object ListObjStack {
 
   final class Lst[+A](final val head: A, final val tail: Lst[A]) {
 

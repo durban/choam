@@ -199,12 +199,12 @@ private sealed trait ExchangerImplJvm[A, B]
     val (newContT, newContK) = mergeConts[D](
       selfContT = selfMsg.contT,
       // we put `b` on top of contK; `FinishExchange` will pop it:
-      selfContK = ObjStack.Lst[Any](b, selfMsg.contK),
+      selfContK = ListObjStack.Lst[Any](b, selfMsg.contK),
       otherContT = other.msg.contT,
       otherContK = other.msg.contK,
       hole = other.hole,
     )
-    debugLog(s"merged conts: newContT = ${java.util.Arrays.toString(newContT)}; newContK = [${ObjStack.Lst.mkString(newContK)}] - thread#${Thread.currentThread().getId()}")
+    debugLog(s"merged conts: newContT = ${java.util.Arrays.toString(newContT)}; newContK = [${ListObjStack.Lst.mkString(newContK)}] - thread#${Thread.currentThread().getId()}")
     val mergedDesc = try {
       ctx.addAll(selfMsg.desc, other.msg.desc)
     } catch {
@@ -221,21 +221,21 @@ private sealed trait ExchangerImplJvm[A, B]
       contK = newContK,
       contT = newContT,
       desc = mergedDesc,
-      postCommit = ObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit),
+      postCommit = ListObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit),
       // this thread will continue, so we use (and update) our data:
       exchangerData = selfMsg.exchangerData.updated(this.key, Statistics.exchanged(stats, params))
     )
-    debugLog(s"merged postCommit: ${ObjStack.Lst.mkString(resMsg.postCommit)} - thread#${Thread.currentThread().getId()}")
+    debugLog(s"merged postCommit: ${ListObjStack.Lst.mkString(resMsg.postCommit)} - thread#${Thread.currentThread().getId()}")
     Right(resMsg)
   }
 
   private[this] final def mergeConts[D](
     selfContT: Array[Byte],
-    selfContK: ObjStack.Lst[Any],
+    selfContK: ListObjStack.Lst[Any],
     otherContT: Array[Byte],
-    otherContK: ObjStack.Lst[Any],
+    otherContK: ListObjStack.Lst[Any],
     hole: Ref[NodeResult[D]],
-  ): (Array[Byte], ObjStack.Lst[Any]) = {
+  ): (Array[Byte], ListObjStack.Lst[Any]) = {
     // otherContK: |-|-|-|-...-|COMMIT|-|-...-|
     //             \-----------/
     // we'll need this first part (until the first commit)
@@ -243,21 +243,21 @@ private sealed trait ExchangerImplJvm[A, B]
     // after this, we'll continue with selfContK
     // (extra op: to fill `other.hole` with the result
     // and also the remaining part of otherContK and otherContT)
-    ObjStack.Lst.splitBefore[Any](lst = otherContK, item = Rxn.commitSingleton) match {
+    ListObjStack.Lst.splitBefore[Any](lst = otherContK, item = Rxn.commitSingleton) match {
       case (prefix, rest) =>
         val extraOp = Rxn.internal.finishExchange[D](
           hole = hole,
           restOtherContK = rest,
           lenSelfContT = selfContT.length,
         )
-        val newContK = ObjStack.Lst.concat(
+        val newContK = ListObjStack.Lst.concat(
           prefix,
-          ObjStack.Lst(extraOp, selfContK),
+          ListObjStack.Lst(extraOp, selfContK),
         )
         val newContT = mergeContTs(selfContT = selfContT, otherContT = otherContT)
         (newContT, newContK)
       case null =>
-        val len = ObjStack.Lst.length(otherContK)
+        val len = ListObjStack.Lst.length(otherContK)
         if (len == 0) impossible("empty otherContK")
         else impossible(s"no commit in otherContK: ${otherContK.mkString()}")
     }

@@ -32,11 +32,11 @@ class ObjStackBench {
   import ObjStackBench._
 
   @Benchmark
-  def pushPopObjStack(s: ObjSt, bh: Blackhole): Unit = {
-    if (ThreadLocalRandom.current().nextBoolean() || s.objStack.isEmpty) {
-      s.objStack.push("x")
+  def pushPopOListbjStack(s: ListObjSt, bh: Blackhole): Unit = {
+    if (ThreadLocalRandom.current().nextBoolean() || s.listObjStack.isEmpty) {
+      s.listObjStack.push("x")
     } else {
-      bh.consume(s.objStack.pop())
+      bh.consume(s.listObjStack.pop())
     }
   }
 
@@ -50,8 +50,8 @@ class ObjStackBench {
   }
 
   @Benchmark
-  def toArrayObjStack(s: ObjSt, bh: Blackhole): Unit = {
-    bh.consume(s.objStack.takeSnapshot())
+  def toArrayListObjStack(s: ListObjSt, bh: Blackhole): Unit = {
+    bh.consume(s.listObjStack.takeSnapshot())
   }
 
   @Benchmark
@@ -60,9 +60,9 @@ class ObjStackBench {
   }
 
   @Benchmark
-  def addAllClearObjStack(s: ObjSt, r: RandomArray): Unit = {
-    s.objStack.loadSnapshot(r.randomList)
-    s.objStack.clear()
+  def addAllClearListObjStack(s: ListObjSt, r: RandomArray): Unit = {
+    s.listObjStack.loadSnapshot(r.randomList)
+    s.listObjStack.clear()
   }
 
   @Benchmark
@@ -77,9 +77,9 @@ private object ObjStackBench {
   final val initSize = 8
 
   @State(Scope.Thread)
-  class ObjSt {
-    val objStack: ObjStack[String] = {
-      val s = new ObjStack[String]
+  class ListObjSt {
+    val listObjStack: ListObjStack[String] = {
+      val s = new ListObjStack[String]
       for (i <- 1 to 8) {
         if (ThreadLocalRandom.current().nextBoolean()) {
           s.push(i.toString())
@@ -109,11 +109,11 @@ private object ObjStackBench {
         ThreadLocalRandom.current().nextLong().toString()
       }
     }
-    val randomList: ObjStack.Lst[String] = {
+    val randomList: ListObjStack.Lst[String] = {
       val l = List.fill(ThreadLocalRandom.current().nextInt(16)) {
         ThreadLocalRandom.current().nextLong().toString()
       }
-      val s = new ObjStack[String]
+      val s = new ListObjStack[String]
       s.pushAll(l)
       s.takeSnapshot()
     }

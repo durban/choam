@@ -22,31 +22,31 @@ import scala.util.Try
 
 final class InternalStackSpec extends BaseSpec {
 
-  test("ObjStack") {
-    val s = new ObjStack[String]
+  test("ListObjStack") {
+    val s = new ListObjStack[String]
     assert(s.isEmpty)
     assert(!s.nonEmpty)
-    assertEquals(s.toString, "ObjStack()")
+    assertEquals(s.toString, "ListObjStack()")
     val s0 = s.takeSnapshot()
     s.push("a")
-    assertEquals(s.toString, "ObjStack(a)")
+    assertEquals(s.toString, "ListObjStack(a)")
     assert(!s.isEmpty)
     assert(s.nonEmpty)
     s.push("b")
-    assertEquals(s.toString, "ObjStack(b, a)")
+    assertEquals(s.toString, "ListObjStack(b, a)")
     assertSameInstance(s.pop(), "b")
-    assertEquals(s.toString, "ObjStack(a)")
+    assertEquals(s.toString, "ListObjStack(a)")
     val s1 = s.takeSnapshot()
     s.push("b")
-    assertEquals(s.toString, "ObjStack(b, a)")
+    assertEquals(s.toString, "ListObjStack(b, a)")
     s.pushAll("c" :: "d" :: Nil)
-    assertEquals(s.toString, "ObjStack(d, c, b, a)")
+    assertEquals(s.toString, "ListObjStack(d, c, b, a)")
     assertEquals(s.peek(), "d")
     assertEquals(s.peek(), "d")
     assertEquals(s.peekSecond(), "c")
     assertEquals(s.peek(), "d")
     assertEquals(s.peekSecond(), "c")
-    assertEquals(s.toString, "ObjStack(d, c, b, a)")
+    assertEquals(s.toString, "ListObjStack(d, c, b, a)")
     val s2 = s.takeSnapshot()
     s.loadSnapshot(s1)
     assertSameInstance(s.pop(), "a")
@@ -88,7 +88,7 @@ final class InternalStackSpec extends BaseSpec {
   }
 
   test("ObjStack.Lst.length") {
-    import ObjStack.Lst
+    import ListObjStack.Lst
     assertEquals(Lst.length(null), 0)
     assertEquals(Lst.length(Lst(1, null)), 1)
     assertEquals(Lst.length(Lst(1, Lst(2, null))), 2)
@@ -97,7 +97,7 @@ final class InternalStackSpec extends BaseSpec {
   }
 
   test("ObjStack.Lst.reversed") {
-    import ObjStack.Lst
+    import ListObjStack.Lst
     assertEquals(Lst.reversed(null), null)
     assertEquals(Lst.reversed(Lst(1, null)).mkString(), "1")
     assertEquals(Lst.reversed(Lst(1, Lst(2, null))).mkString(), "2, 1")
@@ -106,7 +106,7 @@ final class InternalStackSpec extends BaseSpec {
   }
 
   test("ObjStack.Lst.concat") {
-    import ObjStack.Lst
+    import ListObjStack.Lst
     assertEquals(Lst.concat(null, null), null)
     assertEquals(Lst.concat(Lst(1, null), null).mkString(), "1")
     assertEquals(Lst.concat(null, Lst(1, null)).mkString(), "1")
@@ -119,7 +119,7 @@ final class InternalStackSpec extends BaseSpec {
   }
 
   test("ObjStack.Lst.splitBefore") {
-    import ObjStack.Lst
+    import ListObjStack.Lst
     assertEquals(Lst.splitBefore[String](null, "a"), null)
     assertEquals(Lst.splitBefore[String](Lst("x", null), "a"), null)
     assertEquals(Lst.splitBefore[String](Lst("x", Lst("y", null)), "a"), null)

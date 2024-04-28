@@ -49,21 +49,21 @@ class InternalStackBench {
   }
 
   @Benchmark
-  def objStack(s: St, bh: Blackhole): Unit = {
-    s.objStack = new ObjStack[String]
+  def listObjStack(s: St, bh: Blackhole): Unit = {
+    s.listObjStack = new ListObjStack[String]
     var i = 0
     while (i < N) {
-      s.objStack.push("test")
+      s.listObjStack.push("test")
       i += 1
     }
     i = 0
     while (i < N) {
-      bh.consume(s.objStack.pop())
+      bh.consume(s.listObjStack.pop())
       i += 1
     }
     i = 0
     while (i < N) {
-      s.objStack.push("test")
+      s.listObjStack.push("test")
       i += 1
     }
   }
@@ -74,6 +74,6 @@ private object InternalStackBench {
   @State(Scope.Benchmark)
   class St {
     final var byteStack: ByteStack = null
-    final var objStack: ObjStack[String] = null
+    final var listObjStack: ListObjStack[String] = null
   }
 }
