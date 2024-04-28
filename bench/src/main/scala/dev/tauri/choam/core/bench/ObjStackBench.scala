@@ -88,7 +88,7 @@ private object ObjStackBench {
 
   @State(Scope.Thread)
   class ListObjSt {
-    val listObjStack: ObjStack[String] = {
+    val listObjStack: ListObjStack[String] = {
       val s = new ListObjStack[String]
       for (i <- 1 to 8) {
         if (ThreadLocalRandom.current().nextBoolean()) {

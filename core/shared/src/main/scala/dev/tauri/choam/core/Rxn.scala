@@ -687,8 +687,8 @@ object Rxn extends RxnInstances0 {
     private[this] val alts: ListObjStack[Any] = new ListObjStack[Any]()
 
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
-    private[this] val contK: ObjStack[Any] = new ListObjStack[Any]()
-    private[this] val pc: ObjStack[Rxn[Any, Unit]] = new ListObjStack[Rxn[Any, Unit]]()
+    private[this] var contK: ObjStack[Any] = new ArrayObjStack[Any]()
+    private[this] val pc: ListObjStack[Rxn[Any, Unit]] = new ListObjStack[Rxn[Any, Unit]]()
     private[this] val commit = commitSingleton
     contT.push(RxnConsts.ContAfterPostCommit)
     contT.push(RxnConsts.ContAndThen)
@@ -707,9 +707,29 @@ object Rxn extends RxnInstances0 {
     private[this] var descExtensions: Int =
       0
 
-    /** Strats from `true`, and after 1 MCAS failure, goes to `false` */
+    /** Initially `true`, and if an MCAS cycle is detected, becomes `false` (and then remains `false`) */
     private[this] var optimisticMcas: Boolean =
       true
+
+    /** Initially `true`, and if a `+` is encountered, becomes `false` (and then remains `false`) */
+    private[this] var mutable: Boolean =
+      true
+
+    // TODO: this makes it slower if there is `+`! (See `InterpreterBench`.)
+
+    private[this] final def contKList: ListObjStack[Any] = {
+      this.contK match { // TODO: address warning
+        case arr: ArrayObjStack[_] =>
+          assert(this.mutable)
+          this.mutable = false
+          val lst = arr.toListObjStack()
+          this.contK = lst
+          lst
+        case lst: ListObjStack[_] =>
+          assert(!this.mutable)
+          lst
+      }
+    }
 
     /**
      * Used by `Read`/`TicketWrite` as an "out" parameter
@@ -819,12 +839,17 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def setContReset(): Unit = {
       contTReset = contT.takeSnapshot()
-      contKReset = contK.takeSnapshot()
+      // TODO: Due to the next line, if we have
+      // TODO: post-commit actions, we're always
+      // TODO: falling back to `ListObjStack`
+      // TODO: (even if we have no `+`). This
+      // TODO: probably could be avoided.
+      contKReset = contKList.takeSnapshot()
     }
 
     private[this] final def resetConts(): Unit = {
       contT.loadSnapshot(contTReset)
-      contK.loadSnapshot(contKReset)
+      contKList.loadSnapshot(contKReset)
     }
 
     private[this] final def clearAlts(): Unit = {
@@ -836,7 +861,7 @@ object Rxn extends RxnInstances0 {
       alts.push(ctx.snapshot(_desc))
       alts.push(a)
       alts.push(contT.takeSnapshot())
-      alts.push(contK.takeSnapshot())
+      alts.push(contKList.takeSnapshot())
       alts.push(pc.takeSnapshot())
       alts.push(k)
     }
@@ -845,7 +870,7 @@ object Rxn extends RxnInstances0 {
       val alts = this.alts
       val res = alts.pop().asInstanceOf[Rxn[Any, R]]
       pc.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Rxn[Any, Unit]]])
-      contK.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Any]])
+      contKList.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
       _desc = alts.pop().asInstanceOf[Descriptor]
@@ -854,7 +879,7 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def loadAltFrom(msg: Exchanger.Msg): Rxn[Any, R] = {
       pc.loadSnapshot(msg.postCommit)
-      contK.loadSnapshot(msg.contK)
+      contKList.loadSnapshot(msg.contK)
       contT.loadSnapshot(msg.contT)
       a = msg.value
       desc = msg.desc
@@ -1211,7 +1236,7 @@ object Rxn extends RxnInstances0 {
           val c = curr.asInstanceOf[Exchange[A, B]]
           val msg = Exchanger.Msg(
             value = a,
-            contK = contK.takeSnapshot(),
+            contK = contKList.takeSnapshot(),
             contT = contT.takeSnapshot(),
             desc = desc,
             postCommit = pc.takeSnapshot(),

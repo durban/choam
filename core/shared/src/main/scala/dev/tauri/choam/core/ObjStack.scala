@@ -34,10 +34,6 @@ private abstract class ObjStack[A]() {
 
   def nonEmpty: Boolean
 
-  def takeSnapshot(): ListObjStack.Lst[A]
-
-  def loadSnapshot(snapshot: ListObjStack.Lst[A]): Unit
-
   final def pushAll(as: Iterable[A]): Unit = {
     val it = as.iterator
     while (it.hasNext) {

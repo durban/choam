@@ -74,12 +74,4 @@ private final class ArrayObjStack[A]() extends ObjStack[A] {
     r.loadSnapshot(lst)
     r
   }
-
-  final override def takeSnapshot(): ListObjStack.Lst[A] = {
-    sys.error("TODO")
-  }
-
-  final override def loadSnapshot(snapshot: ListObjStack.Lst[A]): Unit = {
-    sys.error("TODO")
-  }
 }
