@@ -630,6 +630,12 @@ object Rxn extends RxnInstances0 {
     stack.takeSnapshot()
   }
 
+  private[this] final def mkInitialContK(): ObjStack[Any] = {
+    val ck = new ArrayObjStack[Any]()
+    ck.push(commitSingleton)
+    ck
+  }
+
   final class MaxRetriesReached(val maxRetries: Int)
     extends Exception(s"reached maxRetries of ${maxRetries}")
 
@@ -687,12 +693,11 @@ object Rxn extends RxnInstances0 {
     private[this] val alts: ListObjStack[Any] = new ListObjStack[Any]()
 
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
-    private[this] var contK: ObjStack[Any] = new ArrayObjStack[Any]()
+    private[this] var contK: ObjStack[Any] = mkInitialContK()
     private[this] val pc: ListObjStack[Rxn[Any, Unit]] = new ListObjStack[Rxn[Any, Unit]]()
     private[this] val commit = commitSingleton
     contT.push(RxnConsts.ContAfterPostCommit)
     contT.push(RxnConsts.ContAndThen)
-    contK.push(commit)
 
     private[this] var contTReset: Array[Byte] = contT.takeSnapshot()
     private[this] var contKReset: ListObjStack.Lst[Any] = objStackWithOneCommit
@@ -711,22 +716,19 @@ object Rxn extends RxnInstances0 {
     private[this] var optimisticMcas: Boolean =
       true
 
-    /** Initially `true`, and if a `+` is encountered, becomes `false` (and then remains `false`) */
-    private[this] var mutable: Boolean =
-      true
+    // /** Initially `true`, and if a `+` is encountered, becomes `false` (and then remains `false`) */
+    // private[this] var mutable: Boolean =
+    //   true
 
     // TODO: this makes it slower if there is `+`! (See `InterpreterBench`.)
 
     private[this] final def contKList: ListObjStack[Any] = {
       this.contK match { // TODO: address warning
         case arr: ArrayObjStack[_] =>
-          assert(this.mutable)
-          this.mutable = false
           val lst = arr.toListObjStack()
           this.contK = lst
           lst
         case lst: ListObjStack[_] =>
-          assert(!this.mutable)
           lst
       }
     }
@@ -848,8 +850,13 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def resetConts(): Unit = {
-      contT.loadSnapshot(contTReset)
-      contKList.loadSnapshot(contKReset)
+      contT.loadSnapshot(this.contTReset)
+      val ckr = this.contKReset
+      if (ckr eq objStackWithOneCommit) {
+        this.contK = mkInitialContK()
+      } else {
+        this.contKList.loadSnapshot(ckr)
+      }
     }
 
     private[this] final def clearAlts(): Unit = {
