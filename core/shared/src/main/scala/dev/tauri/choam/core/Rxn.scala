@@ -624,6 +624,12 @@ object Rxn extends RxnInstances0 {
   private[core] final val commitSingleton: Rxn[Any, Any] = // TODO: make this a java enum?
     new Commit[Any]
 
+  private[this] final val objStackWithOneCommit: ListObjStack.Lst[Any] = {
+    val stack = new ListObjStack[Any]
+    stack.push(commitSingleton)
+    stack.takeSnapshot()
+  }
+
   final class MaxRetriesReached(val maxRetries: Int)
     extends Exception(s"reached maxRetries of ${maxRetries}")
 
@@ -689,7 +695,7 @@ object Rxn extends RxnInstances0 {
     contK.push(commit)
 
     private[this] var contTReset: Array[Byte] = contT.takeSnapshot()
-    private[this] var contKReset: ListObjStack.Lst[Any] = contK.takeSnapshot()
+    private[this] var contKReset: ListObjStack.Lst[Any] = objStackWithOneCommit
 
     private[this] var a: Any =
       x
