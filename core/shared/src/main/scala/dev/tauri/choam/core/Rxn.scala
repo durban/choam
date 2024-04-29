@@ -716,20 +716,24 @@ object Rxn extends RxnInstances0 {
     private[this] var optimisticMcas: Boolean =
       true
 
-    // /** Initially `true`, and if a `+` is encountered, becomes `false` (and then remains `false`) */
-    // private[this] var mutable: Boolean =
-    //   true
+    /** Initially `true`, and if a `+` is encountered, becomes `false` (and then remains `false`) */
+    private[this] var mutable: Boolean =
+      true
 
     // TODO: this makes it slower if there is `+`! (See `InterpreterBench`.)
 
     private[this] final def contKList: ListObjStack[Any] = {
-      this.contK match { // TODO: address warning
-        case arr: ArrayObjStack[_] =>
-          val lst = arr.toListObjStack()
-          this.contK = lst
-          lst
-        case lst: ListObjStack[_] =>
-          lst
+      val ck = this.contK
+      if (ck.isInstanceOf[ArrayObjStack[_]]) {
+        val arr = ck.asInstanceOf[ArrayObjStack[Any]]
+        assert(this.mutable)
+        this.mutable = false
+        val lst = arr.toListObjStack()
+        this.contK = lst
+        lst
+      } else {
+        assert(!this.mutable)
+        ck.asInstanceOf[ListObjStack[Any]]
       }
     }
 
@@ -852,7 +856,7 @@ object Rxn extends RxnInstances0 {
     private[this] final def resetConts(): Unit = {
       contT.loadSnapshot(this.contTReset)
       val ckr = this.contKReset
-      if (ckr eq objStackWithOneCommit) {
+      if (this.mutable && (ckr eq objStackWithOneCommit)) {
         this.contK = mkInitialContK()
       } else {
         this.contKList.loadSnapshot(ckr)
