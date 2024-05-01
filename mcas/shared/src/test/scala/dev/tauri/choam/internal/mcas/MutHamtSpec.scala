@@ -30,7 +30,7 @@ import munit.ScalaCheckSuite
 
 import org.scalacheck.Prop.forAll
 
-final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils {
+final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelpers {
 
   import HamtSpec.{ Val, hamtFromList, addAll }
   import MutHamtSpec.LongMutHamt
@@ -162,7 +162,11 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils {
     }
   }
 
-  // TODO: "HAMT lookup/upsert/toArray (RIG generator)"
+  property("HAMT lookup/upsert/toArray (RIG generator)") {
+    myForAll { (seed: Long, _nums: Set[Long]) =>
+      testBasics(seed, _nums)
+    }
+  }
 
   private def testBasics(seed: Long, _nums: Set[Long]): Unit = {
     val rng = new Random(seed)
@@ -225,7 +229,11 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils {
     }
   }
 
-  // TODO: "Iteration order should be independent of insertion order (RIG generator)"
+  property("Iteration order should be independent of insertion order (RIG generator)") {
+    myForAll { (seed: Long, nums: Set[Long]) =>
+      testInsertionOrder(seed, nums)
+    }
+  }
 
   private def testInsertionOrder(seed: Long, nums: Set[Long]): Unit = {
     val rng = new Random(seed)

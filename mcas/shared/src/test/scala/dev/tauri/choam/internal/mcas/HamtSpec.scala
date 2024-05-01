@@ -28,34 +28,16 @@ import cats.syntax.all._
 
 import munit.ScalaCheckSuite
 
-import org.scalacheck.{ Gen, Arbitrary, Prop }
-import org.scalacheck.util.Buildable
+import org.scalacheck.Gen
 import org.scalacheck.Prop.forAll
 
-final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
+final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelpers {
 
   import HamtSpec.{ LongHamt, Val, SpecVal, hamtFromList, addAll }
 
   override protected def scalaCheckTestParameters: org.scalacheck.Test.Parameters = {
     val p = super.scalaCheckTestParameters
     p.withMaxSize(p.maxSize * (if (isJvm()) 32 else 2))
-  }
-
-  private def genLongWithRig(implicit arb: Arbitrary[Int]): Gen[Long] = {
-    arb.arbitrary.map { n =>
-      RefIdGen.compute(base = java.lang.Long.MIN_VALUE, offset = n)
-    }
-  }
-
-  private def myForAll(body: (Long, Set[Long]) => Prop): Prop = {
-    val genSeed = Gen.choose[Long](Long.MinValue, Long.MaxValue)
-    val arbLongWithRig = Arbitrary { genLongWithRig }
-    val genNums = Arbitrary.arbContainer[Set, Long](
-      arbLongWithRig,
-      Buildable.buildableFactory,
-      c => c
-    ).arbitrary
-    forAll(genSeed, genNums)(body)
   }
 
   test("Val/SpecVal") {
@@ -398,17 +380,17 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
 
   property("Iteration order should be independent of insertion order (default generator)") {
     forAll { (seed: Long, nums: Set[Long]) =>
-      testInserionOrder(seed, nums)
+      testInsertionOrder(seed, nums)
     }
   }
 
   property("Iteration order should be independent of insertion order (RIG generator)") {
     myForAll { (seed: Long, nums: Set[Long]) =>
-      testInserionOrder(seed, nums)
+      testInsertionOrder(seed, nums)
     }
   }
 
-  private def testInserionOrder(seed: Long, nums: Set[Long]): Unit = {
+  private def testInsertionOrder(seed: Long, nums: Set[Long]): Unit = {
     val rng = new Random(seed)
     val nums1 = rng.shuffle(nums.toList)
     val nums2 = rng.shuffle(nums1)
