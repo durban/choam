@@ -39,28 +39,28 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils {
 
   test("necessarySize") {
     val h = LongMutHamt.newEmpty()
-    assertEquals(h.necessarySize_public(0b100000, 0b000000), 2)
-    assertEquals(h.necessarySize_public(0b111111, 0b011111), 2)
-    assertEquals(h.necessarySize_public(0b010000, 0b000000), 4)
-    assertEquals(h.necessarySize_public(0b011111, 0b001111), 4)
-    assertEquals(h.necessarySize_public(0b000000, 0b000001), 64)
-    assertEquals(h.necessarySize_public(0b110110, 0b110111), 64)
+    assertEquals(h.necessarySize_public(32, 0), 2)
+    assertEquals(h.necessarySize_public(63, 31), 2)
+    assertEquals(h.necessarySize_public(16, 0), 4)
+    assertEquals(h.necessarySize_public(31, 15), 4)
+    assertEquals(h.necessarySize_public(0, 1), 64)
+    assertEquals(h.necessarySize_public(54, 55), 64)
   }
 
   test("physicalIdx") {
     val h = LongMutHamt.newEmpty()
     assertEquals(h.physicalIdx_public(0, size = 1), 0)
     assertEquals(h.physicalIdx_public(63, size = 1), 0)
-    assertEquals(h.physicalIdx_public(0b000000, size = 2), 0)
-    assertEquals(h.physicalIdx_public(0b011111, size = 2), 0)
-    assertEquals(h.physicalIdx_public(0b100000, size = 2), 1)
-    assertEquals(h.physicalIdx_public(0b111111, size = 2), 1)
-    assertEquals(h.physicalIdx_public(0b000000, size = 32), 0)
-    assertEquals(h.physicalIdx_public(0b000001, size = 32), 0)
-    assertEquals(h.physicalIdx_public(0b000010, size = 32), 1)
-    assertEquals(h.physicalIdx_public(0b000011, size = 32), 1)
-    assertEquals(h.physicalIdx_public(0b111110, size = 32), 31)
-    assertEquals(h.physicalIdx_public(0b111111, size = 32), 31)
+    assertEquals(h.physicalIdx_public(0, size = 2), 0)
+    assertEquals(h.physicalIdx_public(31, size = 2), 0)
+    assertEquals(h.physicalIdx_public(32, size = 2), 1)
+    assertEquals(h.physicalIdx_public(63, size = 2), 1)
+    assertEquals(h.physicalIdx_public(0, size = 32), 0)
+    assertEquals(h.physicalIdx_public(1, size = 32), 0)
+    assertEquals(h.physicalIdx_public(2, size = 32), 1)
+    assertEquals(h.physicalIdx_public(3, size = 32), 1)
+    assertEquals(h.physicalIdx_public(62, size = 32), 31)
+    assertEquals(h.physicalIdx_public(63, size = 32), 31)
     for (logIdx <- 0 to 63) {
       assertEquals(h.physicalIdx_public(logIdx, size = 64), logIdx)
     }
@@ -143,9 +143,9 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils {
   }
 
   test("HAMT examples (2)") {
-    val k1 = 0b001L << 54
-    val k2 = 0b010L << 54
-    val k3 = 0b110L << 54
+    val k1 = 1L << 54
+    val k2 = 2L << 54
+    val k3 = 6L << 54
     val mutable = LongMutHamt.newEmpty()
     mutable.insert(Val(k1))
     mutable.insert(Val(k2))
