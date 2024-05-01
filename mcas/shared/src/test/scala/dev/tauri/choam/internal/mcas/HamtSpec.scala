@@ -34,7 +34,7 @@ import org.scalacheck.Prop.forAll
 
 final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
 
-  import HamtSpec.{ LongHamt, Val, SpecVal }
+  import HamtSpec.{ LongHamt, Val, SpecVal, hamtFromList, addAll }
 
   override protected def scalaCheckTestParameters: org.scalacheck.Test.Parameters = {
     val p = super.scalaCheckTestParameters
@@ -396,14 +396,6 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils {
     }
   }
 
-  private def hamtFromList(lst: List[Long]): LongHamt = {
-    addAll(LongHamt.empty, lst)
-  }
-
-  private def addAll(hamt: LongHamt, lst: List[Long]): LongHamt = {
-    lst.foldLeft(hamt) { (hamt, n) => hamt.upserted(Val(n)) }
-  }
-
   property("Iteration order should be independent of insertion order (default generator)") {
     forAll { (seed: Long, nums: Set[Long]) =>
       testInserionOrder(seed, nums)
@@ -606,5 +598,13 @@ object HamtSpec {
   object LongHamt {
     val empty: LongHamt =
       new LongHamt(0, 0L, new Array(0))
+  }
+
+  private[mcas] def hamtFromList(lst: List[Long]): LongHamt = {
+    addAll(LongHamt.empty, lst)
+  }
+
+  private[mcas] def addAll(hamt: LongHamt, lst: List[Long]): LongHamt = {
+    lst.foldLeft(hamt) { (hamt, n) => hamt.upserted(Val(n)) }
   }
 }
