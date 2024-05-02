@@ -26,7 +26,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
   // NB: the root doesn't have a logical idx, so we're abusing this field to store the tree size
   private var logIdx: Int,
   private var contents: Array[AnyRef],
-) extends AbstractHamt {
+) extends AbstractHamt[V, T2, H] { this: H =>
 
   require(contents.length > 0)
 
@@ -47,8 +47,6 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
   protected def newArray(size: Int): Array[E]
 
   protected def convertForArray(a: V, tok: T1, flag: Boolean): E
-
-  protected def predicateForForAll(a: V, tok: T2): Boolean
 
   protected final override def contentsArr: Array[AnyRef] =
     this.contents
@@ -94,10 +92,6 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
     val end = this.copyIntoArray(arr, 0, tok, flag = flag)
     assert(end == arr.length)
     arr
-  }
-
-  final def forAll(tok: T2): Boolean = {
-    this.forAllInternal(tok)
   }
 
   // TODO: equals/hashCode
@@ -262,29 +256,6 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
       idx += 1
     }
     this.contents = newContents
-  }
-
-  private final def forAllInternal(tok: T2): Boolean = {
-    val contents = this.contents
-    var i = 0
-    val len = contents.length
-    while (i < len) {
-      contents(i) match {
-        case null =>
-          ()
-        case node: MutHamt[_, _, _, _, _, _] =>
-          if (!node.asInstanceOf[H].forAllInternal(tok)) {
-            return false // scalafix:ok
-          }
-        case a =>
-          if (!this.predicateForForAll(a.asInstanceOf[V], tok)) {
-            return false // scalafix:ok
-          }
-      }
-      i += 1
-    }
-
-    true
   }
 
   private[this] final def necessarySize(logIdx1: Int, logIdx2: Int): Int = {

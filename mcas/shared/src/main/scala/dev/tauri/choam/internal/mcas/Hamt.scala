@@ -90,7 +90,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
    * zero-element array (only for the root node of an empty tree).
    */
   private val contents: Array[AnyRef],
-) extends AbstractHamt { this: H =>
+) extends AbstractHamt[V, T2, H] { this: H =>
 
   /**
    * The highest 6 bits set; we start masking
@@ -122,8 +122,6 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
   protected def newArray(size: Int): Array[E]
 
   protected def convertForArray(a: V, tok: T1, flag: Boolean): E
-
-  protected def predicateForForAll(a: V, tok: T2): Boolean
 
   protected final override def contentsArr: Array[AnyRef] =
     this.contents
@@ -194,15 +192,6 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
     val end = this.copyIntoArray(arr, 0, tok, flag = flag)
     assert(end == arr.length)
     arr
-  }
-
-  /**
-   * Evaluates `predicateForForAll` (implemented
-   * in a subclass) for the values, short-circuits
-   * on `false`.
-   */
-  final def forAll(tok: T2): Boolean = {
-    this.forAllInternal(tok)
   }
 
   final override def equals(that: Any): Boolean = {
@@ -410,27 +399,6 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
       i += 1
     }
     curr.asInstanceOf[H]
-  }
-
-  private final def forAllInternal(tok: T2): Boolean = {
-    val contents = this.contents
-    var i = 0
-    val len = contents.length
-    while (i < len) {
-      contents(i) match {
-        case node: Hamt[_, _, _, _, _, _] =>
-          if (!node.asInstanceOf[H].forAllInternal(tok)) {
-            return false // scalafix:ok
-          }
-        case a =>
-          if (!this.predicateForForAll(a.asInstanceOf[V], tok)) {
-            return false // scalafix:ok
-          }
-      }
-      i += 1
-    }
-
-    true
   }
 
   private final def equalsInternal(that: Hamt[_, _, _, _, _, _]): Boolean = {
