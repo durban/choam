@@ -22,24 +22,27 @@ package mcas
 private[mcas] final class LogMapMut[A] private (
   _logIdx: Int,
   _contents: Array[AnyRef],
-) extends MutHamt[MemoryLocation[A], LogEntry[A], WdLike[A], emcas.EmcasDescriptor, LogMapMut[A]](_logIdx, _contents) {
+) extends MutHamt[MemoryLocation[A], LogEntry[A], WdLike[A], emcas.EmcasDescriptor, Mcas.ThreadContext, LogMapMut[A]](_logIdx, _contents) {
 
-  protected def keyOf(a: LogEntry[A]): MemoryLocation[A] =
+  protected final override def keyOf(a: LogEntry[A]): MemoryLocation[A] =
     a.address
 
-  protected def hashOf(k: MemoryLocation[A]): Long =
+  protected final override def hashOf(k: MemoryLocation[A]): Long =
     k.id
 
-  protected def newNode(logIdx: Int, contents: Array[AnyRef]): LogMapMut[A] =
+  protected final override def newNode(logIdx: Int, contents: Array[AnyRef]): LogMapMut[A] =
     new LogMapMut[A](logIdx, contents)
 
-  protected def newArray(size: Int): Array[WdLike[A]] =
+  protected final override def newArray(size: Int): Array[WdLike[A]] =
     new Array[WdLike[A]](size)
 
-  protected def convertForArray(a: LogEntry[A], tok: emcas.EmcasDescriptor, instRo: Boolean): WdLike[A] = {
+  protected final override def convertForArray(a: LogEntry[A], tok: emcas.EmcasDescriptor, instRo: Boolean): WdLike[A] = {
     if ((!instRo) && a.readOnly) a
     else new emcas.EmcasWordDesc[A](a, parent = tok)
   }
+
+  protected final override def predicateForForAll(a: LogEntry[A], tok: Mcas.ThreadContext): Boolean =
+    a.revalidate(tok)
 }
 
 private[mcas] object LogMapMut {

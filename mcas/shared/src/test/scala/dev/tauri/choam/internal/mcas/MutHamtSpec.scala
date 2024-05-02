@@ -295,6 +295,17 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       assertEquals(hamt.getOrElse(n, Val(0L)), Val(n))
     }
   }
+
+  property("forAll") {
+    // the predicate in `LongMutHamt` is `>`
+    forAll { (seed: Long, nums: Set[Long]) =>
+      val rng = new Random(seed)
+      val hamt = mutHamtFromList(rng.shuffle(nums.toList.filter(_ > 42L)))
+      assert(hamt.forAll(42L))
+      hamt.upsert(Val(1024L))
+      assert(!hamt.forAll(1024L))
+    }
+  }
 }
 
 object MutHamtSpec {
@@ -304,7 +315,7 @@ object MutHamtSpec {
   final class LongMutHamt(
     logIdx: Int,
     contents: Array[AnyRef],
-  ) extends MutHamt[Long, Val, Val, Unit, LongMutHamt](logIdx, contents) {
+  ) extends MutHamt[Long, Val, Val, Unit, Long, LongMutHamt](logIdx, contents) {
 
     protected final override def keyOf(a: Val): Long =
       a.value
@@ -320,6 +331,9 @@ object MutHamtSpec {
 
     protected final override def convertForArray(a: Val, tok: Unit, flag: Boolean): Val =
       a
+
+    protected final override def predicateForForAll(a: Val, tok: Long): Boolean =
+      a.value > tok
 
     final def getOrElse(k: Long, default: Val): Val = this.getOrElseNull(k) match {
       case null => default

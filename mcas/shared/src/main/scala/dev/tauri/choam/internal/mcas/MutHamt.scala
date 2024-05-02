@@ -22,7 +22,7 @@ package mcas
 /**
  * Mutable HAMT; not thread safe; `null` values are forbidden.
  */
-private[mcas] abstract class MutHamt[K, V, E, T1, H <: MutHamt[K, V, E, T1, H]](
+private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, T2, H]](
   // NB: the root doesn't have a logical idx, so we're abusing this field to store the tree size
   private var logIdx: Int,
   private var contents: Array[AnyRef],
@@ -48,15 +48,21 @@ private[mcas] abstract class MutHamt[K, V, E, T1, H <: MutHamt[K, V, E, T1, H]](
 
   protected def convertForArray(a: V, tok: T1, flag: Boolean): E
 
-  // API:
+  protected def predicateForForAll(a: V, tok: T2): Boolean
 
-  final def getOrElseNull(hash: Long): V = {
-    this.lookupOrNull(hash, 0)
-  }
+  // API (should only be called on a root node!):
 
   final def size: Int = {
     // we abuse the `logIdx` of the root to store the size of the whole tree:
     this.logIdx
+  }
+
+  final def nonEmpty: Boolean = {
+    this.size > 0
+  }
+
+  final def getOrElseNull(hash: Long): V = {
+    this.lookupOrNull(hash, 0)
   }
 
   final def update(a: V): Unit = {
@@ -70,11 +76,15 @@ private[mcas] abstract class MutHamt[K, V, E, T1, H <: MutHamt[K, V, E, T1, H]](
     this.logIdx += 1
   }
 
+  // TODO: insertAllFrom
+
   final def upsert(a: V): Unit = {
     val sizeDiff = this.insertOrOverwrite(hashOf(keyOf(a)), a, shift = 0, op = OP_UPSERT)
     assert((sizeDiff == 0) || (sizeDiff == 1))
     this.logIdx += sizeDiff
   }
+
+  // TODO: computeIfAbsent/computeOrModify
 
   final def copyToArray(tok: T1, flag: Boolean): Array[E] = {
     val arr = this.newArray(this.size)
@@ -83,13 +93,19 @@ private[mcas] abstract class MutHamt[K, V, E, T1, H <: MutHamt[K, V, E, T1, H]](
     arr
   }
 
+  final def forAll(tok: T2): Boolean = {
+    this.forAllInternal(tok)
+  }
+
+  // TODO: equals/hashCode/toString
+
   // Internal:
 
   private final def lookupOrNull(hash: Long, shift: Int): V = {
     this.getValueOrNodeOrNull(hash, shift) match {
       case null =>
         nullOf[V]
-      case node: MutHamt[_, _, _, _, _] =>
+      case node: MutHamt[_, _, _, _, _, _] =>
         node.lookupOrNull(hash, shift + W).asInstanceOf[V]
       case value =>
         val a = value.asInstanceOf[V]
@@ -137,7 +153,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, H <: MutHamt[K, V, E, T1, H]](
           contents(physIdx) = box(value)
           1
         }
-      case node: MutHamt[_, _, _, _, _] =>
+      case node: MutHamt[_, _, _, _, _, _] =>
         val nodeLogIdx = node.logIdx
         if (logIdx == nodeLogIdx) {
           node.asInstanceOf[H].insertOrOverwrite(hash, value, shift + W, op)
@@ -205,7 +221,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, H <: MutHamt[K, V, E, T1, H]](
       contents(i) match {
         case null =>
           ()
-        case node: MutHamt[_, _, _, _, _] =>
+        case node: MutHamt[_, _, _, _, _, _] =>
           arrIdx = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok, flag = flag)
         case a =>
           arr(arrIdx) = convertForArray(a.asInstanceOf[V], tok, flag = flag)
@@ -227,7 +243,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, H <: MutHamt[K, V, E, T1, H]](
       contents(idx) match {
         case null =>
           ()
-        case node: MutHamt[_, _, _, _, _] =>
+        case node: MutHamt[_, _, _, _, _, _] =>
           val logIdx = node.logIdx
           val newPhysIdx = physicalIdx(logIdx, newSize)
           newContents(newPhysIdx) = node
@@ -239,6 +255,29 @@ private[mcas] abstract class MutHamt[K, V, E, T1, H <: MutHamt[K, V, E, T1, H]](
       idx += 1
     }
     this.contents = newContents
+  }
+
+  private final def forAllInternal(tok: T2): Boolean = {
+    val contents = this.contents
+    var i = 0
+    val len = contents.length
+    while (i < len) {
+      contents(i) match {
+        case null =>
+          ()
+        case node: MutHamt[_, _, _, _, _, _] =>
+          if (!node.asInstanceOf[H].forAllInternal(tok)) {
+            return false // scalafix:ok
+          }
+        case a =>
+          if (!this.predicateForForAll(a.asInstanceOf[V], tok)) {
+            return false // scalafix:ok
+          }
+      }
+      i += 1
+    }
+
+    true
   }
 
   private[this] final def necessarySize(logIdx1: Int, logIdx2: Int): Int = {
