@@ -90,7 +90,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
    * zero-element array (only for the root node of an empty tree).
    */
   private val contents: Array[AnyRef],
-) { this: H =>
+) extends AbstractHamt { this: H =>
 
   /**
    * The highest 6 bits set; we start masking
@@ -124,6 +124,9 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
   protected def convertForArray(a: V, tok: T1, flag: Boolean): E
 
   protected def predicateForForAll(a: V, tok: T2): Boolean
+
+  protected final override def contentsArr: Array[AnyRef] =
+    this.contents
 
   // API (should only be called on a root node!):
 
@@ -217,13 +220,6 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
   final override def toString: String = {
     this.toString(pre = "Hamt(", post = ")")
-  }
-
-  final def toString(pre: String, post: String): String = {
-    val sb = new java.lang.StringBuilder(pre)
-    val _ = this.toStringInternal(sb, first = true)
-    sb.append(post)
-    sb.toString()
   }
 
   // Internal:
@@ -498,28 +494,6 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
       i += 1
     }
     curr
-  }
-
-  private final def toStringInternal(sb: java.lang.StringBuilder, first: Boolean): Boolean = {
-    val contents = this.contents
-    var i = 0
-    val len = contents.length
-    var fst = first
-    while (i < len) {
-      contents(i) match {
-        case node: Hamt[_, _, _, _, _, _] =>
-          fst = node.toStringInternal(sb, fst)
-        case a =>
-          if (!fst) {
-            sb.append(", ")
-          } else {
-            fst = false
-          }
-          sb.append(a.toString)
-      }
-      i += 1
-    }
-    fst
   }
 
   private[this] final def withValue(bitmap: Long, value: V, physIdx: Int): H = {
