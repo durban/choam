@@ -296,6 +296,15 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     }
   }
 
+  test("HAMT toString") {
+    val h = LongMutHamt.newEmpty()
+    assertEquals(h.toString, "MutHamt()")
+    h.insert(Val(0x000000ffff000000L))
+    assertEquals(h.toString, "MutHamt(Val(1099494850560,fortytwo))")
+    h.insert(Val(0xffffff0000ffffffL))
+    assertEquals(h.toString, "MutHamt(Val(1099494850560,fortytwo), Val(-1099494850561,fortytwo))")
+  }
+
   property("forAll") {
     // the predicate in `LongMutHamt` is `>`
     forAll { (seed: Long, nums: Set[Long]) =>

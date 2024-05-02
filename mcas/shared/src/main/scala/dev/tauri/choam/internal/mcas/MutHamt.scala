@@ -97,7 +97,18 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
     this.forAllInternal(tok)
   }
 
-  // TODO: equals/hashCode/toString
+  // TODO: equals/hashCode
+
+  final override def toString: String = {
+    this.toString(pre = "MutHamt(", post = ")")
+  }
+
+  final def toString(pre: String, post: String): String = {
+    val sb = new java.lang.StringBuilder(pre)
+    val _ = this.toStringInternal(sb, first = true)
+    sb.append(post)
+    sb.toString()
+  }
 
   // Internal:
 
@@ -297,5 +308,29 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
     val mask = START_MASK >>> shift // masks the bits we're interested in
     val sh = java.lang.Long.numberOfTrailingZeros(mask) // we'll shift the masked result
     ((hash & mask) >>> sh).toInt
+  }
+
+  private final def toStringInternal(sb: java.lang.StringBuilder, first: Boolean): Boolean = {
+    val contents = this.contents
+    var i = 0
+    val len = contents.length
+    var fst = first
+    while (i < len) {
+      contents(i) match {
+        case null =>
+          ()
+        case node: MutHamt[_, _, _, _, _, _] =>
+          fst = node.toStringInternal(sb, fst)
+        case a =>
+          if (!fst) {
+            sb.append(", ")
+          } else {
+            fst = false
+          }
+          sb.append(a.toString)
+      }
+      i += 1
+    }
+    fst
   }
 }
