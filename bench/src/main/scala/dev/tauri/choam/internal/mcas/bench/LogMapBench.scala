@@ -45,6 +45,11 @@ private[mcas] class LogMapBench {
   }
 
   @Benchmark
+  def buildNewMutHamt(s: MutHamtState): s.M = {
+    s.buildNew()
+  }
+
+  @Benchmark
   def buildNewLog(s: LogMapState): s.M = {
     s.buildNew()
   }
@@ -357,6 +362,33 @@ object LogMapBench {
 
     override def inserted(m: LogMap2[Any], hwd: LogEntry[String]): LogMap2[Any] =
       m.inserted(hwd.cast[Any])
+  }
+
+  @State(Scope.Thread)
+  private[mcas] class MutHamtState extends BaseState {
+
+    override type M = LogMapMut[Any]
+
+    val map: LogMapMut[Any] =
+      LogMapMut.newEmpty()
+
+    @Setup
+    def setup(): Unit = {
+      this.baseSetup()
+      for (ref <- this.keys) {
+        this.map.insert(
+          LogEntry.apply(ref.cast[Any], "a", "b", Version.Start)
+        )
+      }
+    }
+
+    override def newEmpty(): LogMapMut[Any] =
+      LogMapMut.newEmpty()
+
+    override def inserted(m: LogMapMut[Any], hwd: LogEntry[String]): LogMapMut[Any] = {
+      m.insert(hwd.cast[Any])
+      m
+    }
   }
 
   @State(Scope.Thread)
