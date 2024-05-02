@@ -35,6 +35,26 @@ private[mcas] class LogMapBench {
   import LogMapBench._
 
   @Benchmark
+  def buildNewBaseline(s: BaselineState): s.M = {
+    s.buildNew()
+  }
+
+  @Benchmark
+  def buildNewHamt(s: HamtState): s.M = {
+    s.buildNew()
+  }
+
+  @Benchmark
+  def buildNewLog(s: LogMapState): s.M = {
+    s.buildNew()
+  }
+
+  @Benchmark
+  def buildNewTree(s: TreeMapState): s.M = {
+    s.buildNew()
+  }
+
+  @Benchmark
   def insertBaseline(s: BaselineState, rnd: RandomState, bh: Blackhole): Unit = {
     val idx = rnd.nextIntBounded(DummySize)
     val newKey = s.dummyKeys(idx)
@@ -220,6 +240,8 @@ object LogMapBench {
   @State(Scope.Thread)
   abstract class BaseState {
 
+    type M
+
     @Param(Array("0", "1", "2", "3", "8", "1024"))
     var size: Int =
       0
@@ -235,6 +257,10 @@ object LogMapBench {
 
     var dummyHwds: Array[LogEntry[String]] =
       null
+
+    def newEmpty(): M
+
+    def inserted(m: M, hwd: LogEntry[String]): M
 
     def baseSetup(): Unit = {
       this.keys = new Array(this.size)
@@ -252,18 +278,41 @@ object LogMapBench {
         this.dummyHwds(idx) = LogEntry.apply(ref, "x", "y", 0L)
       }
     }
-  }
 
-  @State(Scope.Thread)
-  class BaselineState extends BaseState {
-    @Setup
-    def setup(): Unit = {
-      this.baseSetup()
+    def buildNew(): M = {
+      var m: M = newEmpty()
+      val newHwds = this.newHwds
+      var idx = 0
+      val len = this.size
+      while (idx < len) {
+        m = this.inserted(m, newHwds(idx))
+        idx += 1
+      }
+      m
     }
   }
 
   @State(Scope.Thread)
+  class BaselineState extends BaseState {
+
+    override type M = Unit
+
+    @Setup
+    def setup(): Unit = {
+      this.baseSetup()
+    }
+
+    override def newEmpty(): Unit =
+      ()
+
+    override def inserted(m: Unit, hwd: LogEntry[String]): Unit =
+      ()
+  }
+
+  @State(Scope.Thread)
   private[mcas] class LogMapState extends BaseState {
+
+    override type M = LogMap
 
     var map: LogMap =
       LogMap.empty
@@ -277,10 +326,18 @@ object LogMapBench {
         )
       }
     }
+
+    override def newEmpty(): LogMap =
+      LogMap.empty
+
+    override def inserted(m: LogMap, hwd: LogEntry[String]): LogMap =
+      m.inserted(hwd)
   }
 
   @State(Scope.Thread)
   private[mcas] class HamtState extends BaseState {
+
+    override type M = LogMap2[Any]
 
     var map: LogMap2[Any] =
       LogMap2.empty
@@ -294,10 +351,18 @@ object LogMapBench {
         )
       }
     }
+
+    override def newEmpty(): LogMap2[Any] =
+      LogMap2.empty
+
+    override def inserted(m: LogMap2[Any], hwd: LogEntry[String]): LogMap2[Any] =
+      m.inserted(hwd.cast[Any])
   }
 
   @State(Scope.Thread)
   class TreeMapState extends BaseState {
+
+    override type M = TreeMap[MemoryLocation[Any], LogEntry[Any]]
 
     var map: TreeMap[MemoryLocation[Any], LogEntry[Any]] =
       TreeMap.empty(MemoryLocation.orderingInstance[Any])
@@ -312,5 +377,11 @@ object LogMapBench {
         )
       }
     }
+
+    override def newEmpty(): M =
+      TreeMap.empty
+
+    override def inserted(m: M, hwd: LogEntry[String]): M =
+      m.updated(hwd.address.cast[Any], hwd.cast[Any])
   }
 }
