@@ -76,7 +76,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
    * The number of values in `this` subtree (i.e., if `this` is the
    * root, then this number is size of the whole tree).
    */
-  val size: Int,
+  final override val size: Int,
 
   /**
    * Contains 1 bits in exactly the places where the imaginary 64-element
@@ -90,7 +90,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
    * zero-element array (only for the root node of an empty tree).
    */
   private val contents: Array[AnyRef],
-) extends AbstractHamt[V, T2, H] { this: H =>
+) extends AbstractHamt[V, E, T1, T2, H] { this: H =>
 
   /**
    * The highest 6 bits set; we start masking
@@ -118,10 +118,6 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
   protected def hashOf(k: K): Long
 
   protected def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): H
-
-  protected def newArray(size: Int): Array[E]
-
-  protected def convertForArray(a: V, tok: T1, flag: Boolean): E
 
   protected final override def contentsArr: Array[AnyRef] =
     this.contents
@@ -187,12 +183,8 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
    * results into an array (created with `newArray`,
    * also implemented in a subclass).
    */
-  final def toArray(tok: T1, flag: Boolean): Array[E] = {
-    val arr = newArray(this.size)
-    val end = this.copyIntoArray(arr, 0, tok, flag = flag)
-    assert(end == arr.length)
-    arr
-  }
+  final def toArray(tok: T1, flag: Boolean): Array[E] =
+    this.copyToArrayInternal(tok, flag)
 
   final override def equals(that: Any): Boolean = {
     that match {
@@ -364,24 +356,6 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
         this.newNode(1, flag, newArr)
       }
     }
-  }
-
-  private final def copyIntoArray(arr: Array[E], start: Int, tok: T1, flag: Boolean): Int = {
-    val contents = this.contents
-    var i = 0
-    var arrIdx = start
-    val len = contents.length
-    while (i < len) {
-      contents(i) match {
-        case node: Hamt[_, _, _, _, _, _] =>
-          arrIdx = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok, flag = flag)
-        case a =>
-          arr(arrIdx) = convertForArray(a.asInstanceOf[V], tok, flag = flag)
-          arrIdx += 1
-      }
-      i += 1
-    }
-    arrIdx
   }
 
   private final def insertIntoHamt(that: Hamt[_, _, _, _, _, _]): H = {

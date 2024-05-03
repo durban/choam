@@ -19,9 +19,15 @@ package dev.tauri.choam
 package internal
 package mcas
 
-private[mcas] abstract class AbstractHamt[V, T2, H <: AbstractHamt[V, T2, H]] protected[mcas] () { this: H =>
+private[mcas] abstract class AbstractHamt[V, E, T1, T2, H <: AbstractHamt[V, E, T1, T2, H]] protected[mcas] () { this: H =>
+
+  protected def newArray(size: Int): Array[E]
+
+  protected def convertForArray(a: V, tok: T1, flag: Boolean): E
 
   protected def predicateForForAll(a: V, tok: T2): Boolean
+
+  def size: Int
 
   protected def contentsArr: Array[AnyRef]
 
@@ -41,6 +47,33 @@ private[mcas] abstract class AbstractHamt[V, T2, H <: AbstractHamt[V, T2, H]] pr
     sb.toString()
   }
 
+  protected final def copyToArrayInternal(tok: T1, flag: Boolean): Array[E] = {
+    val arr = this.newArray(this.size)
+    val end = this.copyIntoArray(arr, 0, tok, flag = flag)
+    assert(end == arr.length)
+    arr
+  }
+
+  private final def copyIntoArray(arr: Array[E], start: Int, tok: T1, flag: Boolean): Int = {
+    val contents = this.contentsArr
+    var i = 0
+    var arrIdx = start
+    val len = contents.length
+    while (i < len) {
+      contents(i) match {
+        case null =>
+          ()
+        case node: AbstractHamt[_, _, _, _, _] =>
+          arrIdx = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok, flag = flag)
+        case a =>
+          arr(arrIdx) = convertForArray(a.asInstanceOf[V], tok, flag = flag)
+          arrIdx += 1
+      }
+      i += 1
+    }
+    arrIdx
+  }
+
   private final def forAllInternal(tok: T2): Boolean = {
     val contents = this.contentsArr
     var i = 0
@@ -49,7 +82,7 @@ private[mcas] abstract class AbstractHamt[V, T2, H <: AbstractHamt[V, T2, H]] pr
       contents(i) match {
         case null =>
           ()
-        case node: AbstractHamt[_, _, _] =>
+        case node: AbstractHamt[_, _, _, _, _] =>
           if (!node.asInstanceOf[H].forAllInternal(tok)) {
             return false // scalafix:ok
           }
@@ -73,7 +106,7 @@ private[mcas] abstract class AbstractHamt[V, T2, H <: AbstractHamt[V, T2, H]] pr
       contents(i) match {
         case null =>
           ()
-        case node: AbstractHamt[_, _, _] =>
+        case node: AbstractHamt[_, _, _, _, _] =>
           fst = node.toStringInternal(sb, fst)
         case a =>
           if (!fst) {

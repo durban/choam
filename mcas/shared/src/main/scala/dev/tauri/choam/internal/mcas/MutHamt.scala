@@ -26,7 +26,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
   // NB: the root doesn't have a logical idx, so we're abusing this field to store the tree size
   private var logIdx: Int,
   private var contents: Array[AnyRef],
-) extends AbstractHamt[V, T2, H] { this: H =>
+) extends AbstractHamt[V, E, T1, T2, H] { this: H =>
 
   require(contents.length > 0)
 
@@ -44,16 +44,12 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
 
   protected def newNode(logIdx: Int, contents: Array[AnyRef]): H
 
-  protected def newArray(size: Int): Array[E]
-
-  protected def convertForArray(a: V, tok: T1, flag: Boolean): E
-
   protected final override def contentsArr: Array[AnyRef] =
     this.contents
 
   // API (should only be called on a root node!):
 
-  final def size: Int = {
+  final override def size: Int = {
     // we abuse the `logIdx` of the root to store the size of the whole tree:
     this.logIdx
   }
@@ -87,12 +83,8 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
 
   // TODO: computeIfAbsent/computeOrModify
 
-  final def copyToArray(tok: T1, flag: Boolean): Array[E] = {
-    val arr = this.newArray(this.size)
-    val end = this.copyIntoArray(arr, 0, tok, flag = flag)
-    assert(end == arr.length)
-    arr
-  }
+  final def copyToArray(tok: T1, flag: Boolean): Array[E] =
+    this.copyToArrayInternal(tok, flag)
 
   // TODO: equals/hashCode
 
@@ -211,26 +203,6 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
           }
         }
     }
-  }
-
-  private final def copyIntoArray(arr: Array[E], start: Int, tok: T1, flag: Boolean): Int = {
-    val contents = this.contents
-    var i = 0
-    var arrIdx = start
-    val len = contents.length
-    while (i < len) {
-      contents(i) match {
-        case null =>
-          ()
-        case node: MutHamt[_, _, _, _, _, _] =>
-          arrIdx = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok, flag = flag)
-        case a =>
-          arr(arrIdx) = convertForArray(a.asInstanceOf[V], tok, flag = flag)
-          arrIdx += 1
-      }
-      i += 1
-    }
-    arrIdx
   }
 
   private[this] final def growLevel(newSize: Int, shift: Int): Unit = {
