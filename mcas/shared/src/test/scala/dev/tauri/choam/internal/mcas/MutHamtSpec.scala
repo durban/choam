@@ -35,6 +35,11 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
   import HamtSpec.{ Val, SpecVal, hamtFromList, addAll }
   import MutHamtSpec.LongMutHamt
 
+  override protected def scalaCheckTestParameters: org.scalacheck.Test.Parameters = {
+    val p = super.scalaCheckTestParameters
+    p.withMaxSize(p.maxSize * (if (isJvm()) 32 else 2))
+  }
+
   // TODO: "HAMT logicalIdx"
 
   test("necessarySize") {
