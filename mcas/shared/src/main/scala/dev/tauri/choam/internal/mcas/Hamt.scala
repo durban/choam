@@ -184,11 +184,15 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
     this.copyToArrayInternal(tok, flag)
 
   final override def equals(that: Any): Boolean = {
-    that match {
-      case that: Hamt[_, _, _, _, _, _] =>
-        this.equalsInternal(that)
-      case _ =>
-        false
+    if (equ(this, that)) {
+      true
+    } else {
+      that match {
+        case that: Hamt[_, _, _, _, _, _] =>
+          this.equalsInternal(that)
+        case _ =>
+          false
+      }
     }
   }
 

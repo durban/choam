@@ -90,11 +90,15 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
     this.copyToArrayInternal(tok, flag)
 
   final override def equals(that: Any): Boolean = {
-    that match {
-      case that: MutHamt[_, _, _, _, _, _] =>
-        this.equalsInternal(that)
-      case _ =>
-        false
+    if (equ(this, that)) {
+      true
+    } else {
+      that match {
+        case that: MutHamt[_, _, _, _, _, _] =>
+          this.equalsInternal(that)
+        case _ =>
+          false
+      }
     }
   }
 
