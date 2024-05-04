@@ -31,6 +31,8 @@ private[mcas] abstract class AbstractHamt[V, E, T1, T2, H <: AbstractHamt[V, E, 
 
   protected def contentsArr: Array[AnyRef]
 
+  protected def insertInternal(v: V): H
+
   /**
    * Evaluates `predicateForForAll` (implemented
    * in a subclass) for the values, short-circuits
@@ -72,6 +74,25 @@ private[mcas] abstract class AbstractHamt[V, E, T1, T2, H <: AbstractHamt[V, E, 
       i += 1
     }
     arrIdx
+  }
+
+  protected final def insertIntoHamt(into: AbstractHamt[_, _, _, _, _]): H = {
+    val contents = this.contentsArr
+    var i = 0
+    var curr = into
+    val len = contents.length
+    while (i < len) {
+      contents(i) match {
+        case null =>
+          ()
+        case node: AbstractHamt[_, _, _, _, _] =>
+          curr = node.insertIntoHamt(curr)
+        case a =>
+          curr = curr.asInstanceOf[H].insertInternal(a.asInstanceOf[V])
+      }
+      i += 1
+    }
+    curr.asInstanceOf[H]
   }
 
   private final def forAllInternal(tok: T2): Boolean = {

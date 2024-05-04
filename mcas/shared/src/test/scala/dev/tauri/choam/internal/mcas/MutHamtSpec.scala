@@ -296,6 +296,23 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     }
   }
 
+  property("Merging HAMTs") {
+    forAll { (seed: Long, nums1: Set[Long], _nums2: Set[Long]) =>
+      val rng = new Random(seed)
+      val nums2 = _nums2 -- nums1
+      val hamt1 = mutHamtFromList(rng.shuffle(nums1.toList))
+      val hamt2 = mutHamtFromList(rng.shuffle(nums2.toList))
+      val expected = hamtFromList(rng.shuffle(nums1.toList) ++ rng.shuffle(nums2.toList))
+      val expLst = expected.toArray.toList
+      hamt1.insertAllFrom(hamt2)
+      assertEquals(hamt1.toArray.toList, expLst)
+      assertEquals(hamt1.size, expLst.size)
+      // hamt2 should remain unmodified:
+      assertEquals(hamt2.toArray.toList, hamtFromList(nums2.toList).toArray.toList)
+      assertEquals(hamt2.size, nums2.size)
+    }
+  }
+
   test("HAMT toString") {
     val h = LongMutHamt.newEmpty()
     assertEquals(h.toString, "MutHamt()")

@@ -122,6 +122,9 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
   protected final override def contentsArr: Array[AnyRef] =
     this.contents
 
+  protected final override def insertInternal(v: V): H =
+    this.inserted(v)
+
   // API (should only be called on a root node!):
 
   final def nonEmpty: Boolean = {
@@ -356,23 +359,6 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
         this.newNode(1, flag, newArr)
       }
     }
-  }
-
-  private final def insertIntoHamt(that: Hamt[_, _, _, _, _, _]): H = {
-    val contents = this.contents
-    var i = 0
-    var curr = that
-    val len = contents.length
-    while (i < len) {
-      contents(i) match {
-        case node: Hamt[_, _, _, _, _, _] =>
-          curr = node.insertIntoHamt(curr)
-        case a =>
-          curr = curr.asInstanceOf[H].inserted(a.asInstanceOf[V])
-      }
-      i += 1
-    }
-    curr.asInstanceOf[H]
   }
 
   private final def equalsInternal(that: Hamt[_, _, _, _, _, _]): Boolean = {

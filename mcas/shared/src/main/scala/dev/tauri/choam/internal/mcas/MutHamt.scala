@@ -47,6 +47,11 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
   protected final override def contentsArr: Array[AnyRef] =
     this.contents
 
+  protected final override def insertInternal(v: V): H = {
+    this.insert(v)
+    this
+  }
+
   // API (should only be called on a root node!):
 
   final override def size: Int = {
@@ -73,7 +78,9 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
     this.logIdx += 1
   }
 
-  // TODO: insertAllFrom
+  final def insertAllFrom(that: H): H = {
+    that.insertIntoHamt(this)
+  }
 
   final def upsert(a: V): Unit = {
     val sizeDiff = this.insertOrOverwrite(hashOf(keyOf(a)), a, shift = 0, op = OP_UPSERT)
