@@ -26,7 +26,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
   // NB: the root doesn't have a logical idx, so we're abusing this field to store the tree size
   private var logIdx: Int,
   private var contents: Array[AnyRef],
-) extends AbstractHamt[V, E, T1, T2, H] { this: H =>
+) extends AbstractHamt[K, V, E, T1, T2, H] { this: H =>
 
   require(contents.length > 0)
 
@@ -37,10 +37,6 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
   private[this] final val OP_UPDATE = 0
   private[this] final val OP_INSERT = 1
   private[this] final val OP_UPSERT = 2
-
-  protected def keyOf(a: V): K
-
-  protected def hashOf(k: K): Long
 
   protected def newNode(logIdx: Int, contents: Array[AnyRef]): H
 
@@ -93,7 +89,18 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
   final def copyToArray(tok: T1, flag: Boolean): Array[E] =
     this.copyToArrayInternal(tok, flag)
 
-  // TODO: equals/hashCode
+  final override def equals(that: Any): Boolean = {
+    that match {
+      case that: MutHamt[_, _, _, _, _, _] =>
+        this.equalsInternal(that)
+      case _ =>
+        false
+    }
+  }
+
+  final override def hashCode: Int = {
+    this.hashCodeInternal(0xe7019a9a)
+  }
 
   final override def toString: String = {
     this.toString(pre = "MutHamt(", post = ")")

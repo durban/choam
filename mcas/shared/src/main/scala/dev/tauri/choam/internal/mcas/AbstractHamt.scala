@@ -19,7 +19,13 @@ package dev.tauri.choam
 package internal
 package mcas
 
-private[mcas] abstract class AbstractHamt[V, E, T1, T2, H <: AbstractHamt[V, E, T1, T2, H]] protected[mcas] () { this: H =>
+import scala.util.hashing.MurmurHash3
+
+private[mcas] abstract class AbstractHamt[K, V, E, T1, T2, H <: AbstractHamt[K, V, E, T1, T2, H]] protected[mcas] () { this: H =>
+
+  protected def keyOf(a: V): K
+
+  protected def hashOf(k: K): Long
 
   protected def newArray(size: Int): Array[E]
 
@@ -65,7 +71,7 @@ private[mcas] abstract class AbstractHamt[V, E, T1, T2, H <: AbstractHamt[V, E, 
       contents(i) match {
         case null =>
           ()
-        case node: AbstractHamt[_, _, _, _, _] =>
+        case node: AbstractHamt[_, _, _, _, _, _] =>
           arrIdx = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok, flag = flag)
         case a =>
           arr(arrIdx) = convertForArray(a.asInstanceOf[V], tok, flag = flag)
@@ -76,7 +82,7 @@ private[mcas] abstract class AbstractHamt[V, E, T1, T2, H <: AbstractHamt[V, E, 
     arrIdx
   }
 
-  protected final def insertIntoHamt(into: AbstractHamt[_, _, _, _, _]): H = {
+  protected final def insertIntoHamt(into: AbstractHamt[_, _, _, _, _, _]): H = {
     val contents = this.contentsArr
     var i = 0
     var curr = into
@@ -85,7 +91,7 @@ private[mcas] abstract class AbstractHamt[V, E, T1, T2, H <: AbstractHamt[V, E, 
       contents(i) match {
         case null =>
           ()
-        case node: AbstractHamt[_, _, _, _, _] =>
+        case node: AbstractHamt[_, _, _, _, _, _] =>
           curr = node.insertIntoHamt(curr)
         case a =>
           curr = curr.asInstanceOf[H].insertInternal(a.asInstanceOf[V])
@@ -103,7 +109,7 @@ private[mcas] abstract class AbstractHamt[V, E, T1, T2, H <: AbstractHamt[V, E, 
       contents(i) match {
         case null =>
           ()
-        case node: AbstractHamt[_, _, _, _, _] =>
+        case node: AbstractHamt[_, _, _, _, _, _] =>
           if (!node.asInstanceOf[H].forAllInternal(tok)) {
             return false // scalafix:ok
           }
@@ -118,6 +124,69 @@ private[mcas] abstract class AbstractHamt[V, E, T1, T2, H <: AbstractHamt[V, E, 
     true
   }
 
+  protected def equalsInternal(that: AbstractHamt[_, _, _, _, _, _]): Boolean = {
+    // Insertions are not order-dependent, and
+    // there is no deletion, so HAMTs with the
+    // same values always have the same tree
+    // structure. So we can just traverse the
+    // 2 trees at the same time.
+    val thisContents = this.contentsArr
+    val thatContents = that.contentsArr
+    val thisLen = thisContents.length
+    val thatLen = thatContents.length
+    if (thisLen == thatLen) {
+      var i = 0
+      while (i < thisLen) {
+        val iOk = thisContents(i) match {
+          case null =>
+            thatContents(i) eq null
+          case thisNode: AbstractHamt[_, _, _, _, _, _] =>
+            thatContents(i) match {
+              case thatNode: AbstractHamt[_, _, _, _, _, _] =>
+                thisNode.equalsInternal(thatNode)
+              case _ => // including null
+                false
+            }
+          case thisValue =>
+            thatContents(i) match {
+              case null | (_: Hamt[_, _, _, _, _, _]) =>
+                false
+              case thatValue =>
+                thisValue == thatValue
+            }
+        }
+        if (iOk) {
+          i += 1
+        } else {
+          return false // scalafix:ok
+        }
+      }
+      true
+    } else {
+      false
+    }
+  }
+
+  protected final def hashCodeInternal(s: Int): Int = {
+    val contents = this.contentsArr
+    var i = 0
+    var curr = s
+    val len = contents.length
+    while (i < len) {
+      contents(i) match {
+        case null =>
+          ()
+        case node: AbstractHamt[_, _, _, _, _, _] =>
+          curr = node.hashCodeInternal(curr)
+        case a =>
+          curr = MurmurHash3.mix(curr, (hashOf(keyOf(a.asInstanceOf[V])) >>> 32).toInt)
+          curr = MurmurHash3.mix(curr, a.##)
+      }
+      i += 1
+    }
+    curr
+  }
+
   private final def toStringInternal(sb: java.lang.StringBuilder, first: Boolean): Boolean = {
     val contents = this.contentsArr
     var i = 0
@@ -127,7 +196,7 @@ private[mcas] abstract class AbstractHamt[V, E, T1, T2, H <: AbstractHamt[V, E, 
       contents(i) match {
         case null =>
           ()
-        case node: AbstractHamt[_, _, _, _, _] =>
+        case node: AbstractHamt[_, _, _, _, _, _] =>
           fst = node.toStringInternal(sb, fst)
         case a =>
           if (!fst) {

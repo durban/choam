@@ -32,7 +32,7 @@ import org.scalacheck.Prop.forAll
 
 final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelpers {
 
-  import HamtSpec.{ Val, hamtFromList, addAll }
+  import HamtSpec.{ Val, SpecVal, hamtFromList, addAll }
   import MutHamtSpec.LongMutHamt
 
   // TODO: "HAMT logicalIdx"
@@ -310,6 +310,50 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       // hamt2 should remain unmodified:
       assertEquals(hamt2.toArray.toList, hamtFromList(nums2.toList).toArray.toList)
       assertEquals(hamt2.size, nums2.size)
+    }
+  }
+
+  property("HAMT equals/hashCode") {
+    forAll { (seed: Long, nums: Set[Long], num: Long) =>
+      val rng = new Random(seed)
+      val l1 = rng.shuffle((nums - num).toList)
+      val hamt1 = mutHamtFromList(l1)
+      val hamt2 = mutHamtFromList(rng.shuffle(l1))
+      val hamt3 = mutHamtFromList(l1.reverse)
+      val immutable = hamtFromList(l1)
+      assert(hamt1 == hamt1)
+      assert(hamt1 == hamt2)
+      assert(hamt1 == hamt3)
+      assert(hamt1 != immutable)
+      assert(hamt2 == hamt1)
+      assert(hamt2 == hamt2)
+      assert(hamt2 == hamt3)
+      assert(hamt2 != immutable)
+      assert(hamt3 == hamt1)
+      assert(hamt3 == hamt2)
+      assert(hamt3 == hamt3)
+      assert(hamt3 != immutable)
+      assert(immutable != hamt1)
+      assert(immutable != hamt2)
+      assert(immutable != hamt3)
+      val h1 = hamt1.##
+      val h2 = hamt2.##
+      val h3 = hamt3.##
+      val hImmutable = immutable.##
+      assertEquals(h1, h2)
+      assertEquals(h1, h3)
+      assertNotEquals(hImmutable, h1)
+      hamt2.insert(Val(num))
+      assert(hamt2 != hamt1)
+      assert(hamt2 == hamt2)
+      assert(hamt2 != hamt3)
+      assert(hamt1 != hamt2)
+      assert(hamt3 != hamt2)
+      val h2b = hamt2.##
+      assertNotEquals(h2b, h1) // with high probability
+      hamt2.update(new SpecVal(num)) // has identity equals
+      val h2c = hamt2.##
+      assertEquals(h2c, h2b)
     }
   }
 
