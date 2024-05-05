@@ -84,7 +84,17 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
     this.logIdx += sizeDiff
   }
 
-  // TODO: computeIfAbsent/computeOrModify
+  final def computeIfAbsent[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): Unit = {
+    val sizeDiff = this.visit(k, hashOf(k), tok, visitor, newValue = nullOf[V], modify = false, shift = 0)
+    assert((sizeDiff == 0) || (sizeDiff == 1))
+    this.logIdx += sizeDiff
+  }
+
+  final def computeOrModify[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): Unit = {
+    val sizeDiff = this.visit(k, hashOf(k), tok, visitor, newValue = nullOf[V], modify = true, shift = 0)
+    assert((sizeDiff == 0) || (sizeDiff == 1))
+    this.logIdx += sizeDiff
+  }
 
   final def copyToArray(tok: T1, flag: Boolean): Array[E] =
     this.copyToArrayInternal(tok, flag)
@@ -135,6 +145,106 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
     val size = contents.length // always a power of 2
     val physIdx = physicalIdx(logIdx, size)
     contents(physIdx)
+  }
+
+  /** Returns the increase in size */
+  private final def visit[T](
+    k: K,
+    hash: Long,
+    tok: T,
+    visitor: Hamt.EntryVisitor[K, V, T], // only call if `newVal` is null
+    newValue: V, // or null, to call `visitor`
+    modify: Boolean,
+    shift: Int,
+  ): Int = {
+    this.getValueOrNodeOrNull(hash, shift) match {
+      case null =>
+        val newVal = if (isNull(newValue)) {
+          visitor.entryAbsent(k, tok)
+        } else {
+          newValue
+        }
+        newVal match {
+          case null =>
+            0
+          case newVal =>
+            assert(hashOf(keyOf(newVal)) == hash)
+            // TODO: this will compute physIdx again:
+            this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
+        }
+      case node: MutHamt[_, _, _, _, _, _] =>
+        val logIdx = logicalIdx(hash, shift)
+        val nodeLogIdx = node.logIdx
+        if (logIdx == nodeLogIdx) {
+          node.asInstanceOf[H].visit(k, hash, tok, visitor, newValue = newValue, modify = modify, shift = shift + W)
+        } else {
+          if (isNull(newValue)) {
+            // growing mutates the tree, so we must check
+            // if we need to insert BEFORE growing:
+            visitor.entryAbsent(k, tok) match {
+              case null =>
+                0
+              case newVal =>
+                this.growLevel(newSize = necessarySize(logIdx, nodeLogIdx), shift = shift)
+                // now we can insert the new value:
+                this.visit(k, hash, tok, visitor, newValue = newVal, modify = modify, shift = shift)
+            }
+          } else {
+            this.insertOrOverwrite(hash, newValue, shift, op = OP_INSERT)
+          }
+        }
+      case value =>
+        val a = value.asInstanceOf[V]
+        val hashA = hashOf(keyOf(a))
+        if (hash == hashA) {
+          val newVal = if (isNull(newValue)) {
+            visitor.entryPresent(k, a, tok)
+          } else {
+            newValue
+          }
+          if (modify) {
+            if (equ(newValue, a)) {
+              0
+            } else {
+              assert(hashOf(keyOf(newVal)) == hashA)
+              this.insertOrOverwrite(hash, newVal, shift, op = OP_UPDATE)
+            }
+          } else {
+            assert(equ(newVal, a))
+            0
+          }
+        } else {
+          val logIdx = logicalIdx(hash, shift)
+          val logIdxA = logicalIdx(hashA, shift)
+          if (logIdx == logIdxA) {
+            // hash collision at this level
+            val newVal = if (isNull(newValue)) {
+              visitor.entryAbsent(k, tok)
+            } else {
+              newValue
+            }
+            newVal match {
+              case null =>
+                0
+              case newVal =>
+                assert(hashOf(keyOf(newVal)) == hash)
+                this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
+            }
+          } else {
+            if (isNull(newValue)) {
+              visitor.entryAbsent(k, tok) match {
+                case null =>
+                  0
+                case newVal =>
+                  this.growLevel(newSize = necessarySize(logIdx, logIdxA), shift = shift)
+                  this.visit(k, hash, tok, visitor, newValue = newVal, modify = modify, shift = shift)
+              }
+            } else {
+              this.insertOrOverwrite(hash, newValue, shift, op = OP_INSERT)
+            }
+          }
+        }
+    }
   }
 
   private[this] final def physicalIdx(logIdx: Int, size: Int): Int = {

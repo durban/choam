@@ -342,7 +342,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
         override def entryAbsent(k: Long, tok: AnyRef): Val =
           fail("absent called")
       }
-      val newHamt2 =  hamt.computeOrModify(n, token3, readOnlyVisitor)
+      val newHamt2 = hamt.computeOrModify(n, token3, readOnlyVisitor)
       assertSameInstance(newHamt2, hamt)
       val vis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
         override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {

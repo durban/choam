@@ -204,6 +204,195 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     }
   }
 
+  property("HAMT computeIfAbsent (default generator)") {
+    forAll { (seed: Long, _nums: Set[Long]) =>
+      testComputeIfAbsent(seed, _nums)
+    }
+  }
+
+  property("HAMT computeIfAbsent (RIG generator)") {
+    myForAll { (seed: Long, _nums: Set[Long]) =>
+      testComputeIfAbsent(seed, _nums)
+    }
+  }
+
+  property("HAMT computeOrModify (default generator)") {
+    forAll { (seed: Long, _nums: Set[Long]) =>
+      testComputeOrModify(seed, _nums)
+    }
+  }
+
+  property("HAMT computeOrModify (RIG generator)") {
+    myForAll { (seed: Long, _nums: Set[Long]) =>
+      testComputeOrModify(seed, _nums)
+    }
+  }
+
+  private def testComputeIfAbsent(seed: Long, _nums: Set[Long]): Unit = {
+    val rng = new Random(seed)
+    val nums = rng.shuffle(_nums.toList)
+    val hamt = LongMutHamt.newEmpty()
+    val token1 = new AnyRef
+    for (n <- nums) {
+      val v = Val(n)
+      var count = 0
+      val nullVis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val =
+          fail("present called")
+        override def entryAbsent(k: Long, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token1)
+          count += 1
+          null
+        }
+      }
+      val oldSize = hamt.size
+      val oldValues = hamt.toArray.toList
+      hamt.computeIfAbsent(n, token1, nullVis)
+      assertEquals(count, 1)
+      assertEquals(hamt.size, oldSize)
+      assertEquals(hamt.toArray.toList, oldValues)
+      val immutable = hamtFromList(oldValues.map(_.value))
+      val token2 = new AnyRef
+      val vis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val =
+          fail("present called")
+        override def entryAbsent(k: Long, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token2)
+          count += 1
+          v
+        }
+      }
+      hamt.computeIfAbsent(n, token2, vis)
+      assertEquals(count, 2)
+      assertEquals(hamt.getOrElse(n, null), v)
+      assertEquals(hamt.size, oldSize + 1)
+      assertEquals(hamt.toArray.toList, immutable.inserted(v).toArray.toList)
+    }
+    for (n <- rng.shuffle(nums)) {
+      var e: Val = null
+      var count = 0
+      val token3 = new AnyRef
+      val incorrectVisitor = new Hamt.EntryVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token3)
+          count += 1
+          e = a
+          new Val(a.value) // same value, different instance
+        }
+        override def entryAbsent(k: Long, tok: AnyRef): Val =
+          fail("absent called")
+      }
+      val oldSize = hamt.size
+      val oldValues = hamt.toArray.toList
+      assert(Either.catchOnly[AssertionError] {
+        hamt.computeIfAbsent(n, token3, incorrectVisitor)
+      }.isLeft)
+      assertEquals(hamt.size, oldSize)
+      assertEquals(hamt.toArray.toList, oldValues)
+      val vis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token3)
+          count += 1
+          e = a
+          a
+        }
+        override def entryAbsent(k: Long, tok: AnyRef): Val =
+          fail("absent called")
+      }
+      hamt.computeIfAbsent(n, token3, vis)
+      assertEquals(count, 2)
+      assertEquals(e, Val(n))
+      assertEquals(hamt.size, oldSize)
+      assertEquals(hamt.toArray.toList, oldValues)
+    }
+  }
+
+  private def testComputeOrModify(seed: Long, _nums: Set[Long]): Unit = {
+    val rng = new Random(seed)
+    val nums = rng.shuffle(_nums.toList)
+    val hamt = LongMutHamt.newEmpty()
+    val token1 = new AnyRef
+    for (n <- nums) {
+      val v = Val(n)
+      var count = 0
+      val nullVis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val =
+          fail("present called")
+        override def entryAbsent(k: Long, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token1)
+          count += 1
+          null
+        }
+      }
+      val oldSize = hamt.size
+      val oldValues = hamt.toArray.toList
+      val immutable = hamtFromList(oldValues.map(_.value))
+      hamt.computeOrModify(n, token1, nullVis)
+      assertEquals(count, 1)
+      assertEquals(hamt.size, oldSize)
+      assertEquals(hamt.toArray.toList, oldValues)
+      val token2 = new AnyRef
+      val vis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val =
+          fail("present called")
+        override def entryAbsent(k: Long, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token2)
+          count += 1
+          v
+        }
+      }
+      hamt.computeOrModify(n, token2, vis)
+      assertEquals(count, 2)
+      assertEquals(hamt.getOrElse(n, null), v)
+      assertEquals(hamt.size, oldSize + 1)
+      assertEquals(hamt.toArray.toList, immutable.inserted(v).toArray.toList)
+    }
+    for (n <- rng.shuffle(nums)) {
+      var e: Val = null
+      var count = 0
+      val token3 = new AnyRef
+      val readOnlyVisitor = new Hamt.EntryVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token3)
+          count += 1
+          e = a
+          a
+        }
+        override def entryAbsent(k: Long, tok: AnyRef): Val =
+          fail("absent called")
+      }
+      val oldSize = hamt.size
+      val oldValues = hamt.toArray.toList
+      hamt.computeOrModify(n, token3, readOnlyVisitor)
+      assertEquals(hamt.size, oldSize)
+      assertEquals(hamt.toArray.toList, oldValues)
+      val vis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
+        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {
+          assertEquals(k, n)
+          assertSameInstance(tok, token3)
+          count += 1
+          val newA = Val(a.value, extra = "foo")
+          e = newA
+          newA
+        }
+        override def entryAbsent(k: Long, tok: AnyRef): Val =
+          fail("absent called")
+      }
+      hamt.computeOrModify(n, token3, vis)
+      assertEquals(count, 2)
+      assertEquals(e, Val(n, "foo"))
+      assertEquals(hamt.getOrElse(n, Val(42L)), Val(n, "foo"))
+      assertEquals(hamt.size, oldSize)
+    }
+  }
+
   private def assertSameMaps(hamt: LongMutHamt, shadow: LongMap[Val]): Unit = {
     assertEquals(hamt.size, shadow.size)
     for (k <- shadow.keySet) {

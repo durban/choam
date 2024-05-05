@@ -410,7 +410,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
 private[choam] object Hamt {
 
-  trait EntryVisitor[K, V, T] {
+  trait EntryVisitor[K, V, T] { // TODO: maybe move this to AbstractHamt?
     def entryPresent(k: K, v: V, tok: T): V
     def entryAbsent(k: K, tok: T): V
   }
