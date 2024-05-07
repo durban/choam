@@ -22,7 +22,7 @@ package mcas
 /**
  * Mutable HAMT; not thread safe; `null` values are forbidden.
  */
-private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, T2, H]] protected[mcas] (
+private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I], H <: MutHamt[K, V, E, T1, T2, I, H]] protected[mcas] (
   // NB: the root doesn't have a logical idx, so we're abusing this field to store the tree size
   private var logIdx: Int,
   private var contents: Array[AnyRef],
@@ -39,6 +39,8 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
   private[this] final val OP_UPSERT = 2
 
   protected def newNode(logIdx: Int, contents: Array[AnyRef]): H
+
+  protected def newImmutableNode(size: Int, bitmap: Long, contents: Array[AnyRef]): I
 
   protected final override def contentsArr: Array[AnyRef] =
     this.contents
@@ -99,12 +101,16 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
   final def copyToArray(tok: T1, flag: Boolean): Array[E] =
     this.copyToArrayInternal(tok, flag)
 
+  final def copyToImmutable(): I = {
+    this.copyToImmutableInternal(shift = 0)
+  }
+
   final override def equals(that: Any): Boolean = {
     if (equ(this, that)) {
       true
     } else {
       that match {
-        case that: MutHamt[_, _, _, _, _, _] =>
+        case that: MutHamt[_, _, _, _, _, _, _] =>
           this.equalsInternal(that)
         case _ =>
           false
@@ -126,7 +132,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
     this.getValueOrNodeOrNull(hash, shift) match {
       case null =>
         nullOf[V]
-      case node: MutHamt[_, _, _, _, _, _] =>
+      case node: MutHamt[_, _, _, _, _, _, _] =>
         node.lookupOrNull(hash, shift + W).asInstanceOf[V]
       case value =>
         val a = value.asInstanceOf[V]
@@ -172,7 +178,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
             // TODO: this will compute physIdx again:
             this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
         }
-      case node: MutHamt[_, _, _, _, _, _] =>
+      case node: MutHamt[_, _, _, _, _, _, _] =>
         val logIdx = logicalIdx(hash, shift)
         val nodeLogIdx = node.logIdx
         if (logIdx == nodeLogIdx) {
@@ -274,7 +280,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
           contents(physIdx) = box(value)
           1
         }
-      case node: MutHamt[_, _, _, _, _, _] =>
+      case node: MutHamt[_, _, _, _, _, _, _] =>
         val nodeLogIdx = node.logIdx
         if (logIdx == nodeLogIdx) {
           node.asInstanceOf[H].insertOrOverwrite(hash, value, shift + W, op)
@@ -344,7 +350,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
       contents(idx) match {
         case null =>
           ()
-        case node: MutHamt[_, _, _, _, _, _] =>
+        case node: MutHamt[_, _, _, _, _, _, _] =>
           val logIdx = node.logIdx
           val newPhysIdx = physicalIdx(logIdx, newSize)
           newContents(newPhysIdx) = node
@@ -356,6 +362,45 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, H <: MutHamt[K, V, E, T1, 
       idx += 1
     }
     this.contents = newContents
+  }
+
+  private final def copyToImmutableInternal(shift: Int): I = {
+    val contents = this.contents
+    var i = 0
+    val len = contents.length
+    var arity = 0
+    while (i < len) {
+      // we don't know the number of non-null items, so we pre-scan:
+      if (contents(i) ne null) {
+        arity += 1
+      }
+      i += 1
+    }
+    val arr = new Array[AnyRef](arity)
+    var bitmap = 0L
+    var size = 0
+    i = 0
+    arity = 0
+    while (i < len) {
+      contents(i) match {
+        case null =>
+          ()
+        case node: MutHamt[_, _, _, _, _, _, _] =>
+          bitmap |= (1L << node.logIdx)
+          val child: I = node.asInstanceOf[H].copyToImmutableInternal(shift = shift + W)
+          size += child.size
+          arr(arity) = box(child)
+          arity += 1
+        case value =>
+          bitmap |= (1L << logicalIdx(hashOf(keyOf(value.asInstanceOf[V])), shift = shift))
+          size += 1
+          arr(arity) = value
+          arity += 1
+      }
+      i += 1
+    }
+
+    this.newImmutableNode(size = size, bitmap = bitmap, contents = arr)
   }
 
   private[this] final def necessarySize(logIdx1: Int, logIdx2: Int): Int = {

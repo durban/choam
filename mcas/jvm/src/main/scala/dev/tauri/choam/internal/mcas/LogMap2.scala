@@ -19,7 +19,7 @@ package dev.tauri.choam
 package internal
 package mcas
 
-private[mcas] final class LogMap2[A] private (
+private[mcas] final class LogMap2[A] private[mcas] (
   _size: Int,
   _bitmap: Long,
   _contents: Array[AnyRef],

@@ -570,16 +570,39 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       assert(!hamt.forAll(1024L))
     }
   }
+
+  property("copyToImmutable (default generator)") {
+    forAll { (seed: Long, nums: Set[Long]) =>
+      testCopyToImmutable(seed, nums)
+    }
+  }
+
+  property("copyToImmutable (RIG generator)") {
+    myForAll { (seed: Long, nums: Set[Long]) =>
+      testCopyToImmutable(seed, nums)
+    }
+  }
+
+  private def testCopyToImmutable(seed: Long, nums: Set[Long]): Unit = {
+    val rng = new Random(seed)
+    val nums1 = rng.shuffle(nums.toList)
+    val mutable = mutHamtFromList(nums1)
+    val immutableExp = hamtFromList(rng.shuffle(nums1))
+    val immutableAct = mutable.copyToImmutable()
+    assertEquals(immutableAct, immutableExp)
+    assertEquals(immutableAct.size, immutableExp.size)
+    assertEquals(immutableAct.toArray.toList, immutableExp.toArray.toList)
+  }
 }
 
 object MutHamtSpec {
 
-  import HamtSpec.Val
+  import HamtSpec.{ Val, LongHamt }
 
   final class LongMutHamt(
     logIdx: Int,
     contents: Array[AnyRef],
-  ) extends MutHamt[Long, Val, Val, Unit, Long, LongMutHamt](logIdx, contents) {
+  ) extends MutHamt[Long, Val, Val, Unit, Long, LongHamt, LongMutHamt](logIdx, contents) {
 
     protected final override def keyOf(a: Val): Long =
       a.value
@@ -589,6 +612,9 @@ object MutHamtSpec {
 
     protected final override def newNode(logIdx: Int, contents: Array[AnyRef]): LongMutHamt =
       new LongMutHamt(logIdx, contents)
+
+    protected final override def newImmutableNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LongHamt =
+      new LongHamt(size, bitmap, contents)
 
     protected final override def newArray(size: Int): Array[Val] =
       new Array[Val](size)
