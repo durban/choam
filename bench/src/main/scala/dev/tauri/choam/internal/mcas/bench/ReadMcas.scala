@@ -50,7 +50,7 @@ class ReadMcas {
     val next2 = t.nextString()
     val success = {
       val d0 = t.mcasCtx.start()
-      val Some((_, d1)) = t.mcasCtx.readMaybeFromLog(s.ref1, d0) : @unchecked
+      val Some((_, d1)) = t.mcasCtx.readMaybeFromLog(s.ref1, d0.selfD) : @unchecked
       val d2 = d1.overwrite(d1.getOrElseNull(s.ref1).withNv(next1))
       val Some((_, d3)) = t.mcasCtx.readMaybeFromLog(s.ref2, d2) : @unchecked
       val d4 = d3.overwrite(d3.getOrElseNull(s.ref2).withNv(next2))

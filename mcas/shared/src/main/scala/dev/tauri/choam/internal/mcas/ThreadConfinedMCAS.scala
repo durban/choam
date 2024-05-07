@@ -28,6 +28,8 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
 
   private[this] val _ctx = new Mcas.UnsealedThreadContext {
 
+    final override type START = Descriptor
+
     final override def impl: Mcas =
       self
 
@@ -43,7 +45,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
     protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       ref.unsafeGetVersionV()
 
-    final override def tryPerformInternal(desc: Descriptor, optimism: Long): Long = {
+    final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long = {
       @tailrec
       def prepare(it: Iterator[LogEntry[_]]): Long = {
         if (it.hasNext) {
@@ -92,13 +94,13 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
     final override def start(): Descriptor =
       Descriptor.empty(_commitTs, this)
 
-    protected[mcas] final override def addVersionCas(desc: Descriptor): Descriptor =
+    protected[mcas] final override def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D] =
       desc.addVersionCas(_commitTs)
 
     def validateAndTryExtend(
-      desc: Descriptor,
+      desc: AbstractDescriptor,
       hwd: LogEntry[_],
-    ): Descriptor =
+    ): AbstractDescriptor.Aux[desc.D] =
       desc.validateAndTryExtend(_commitTs, this, additionalHwd = hwd)
 
     // NB: it is a `def`, not a `val`

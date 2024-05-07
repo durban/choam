@@ -1002,11 +1002,11 @@ private[mcas] final class Emcas extends GlobalContext { global =>
   private[choam] final override def isThreadSafe =
     true
 
-  private[mcas] final def tryPerformInternal(desc: Descriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
+  private[mcas] final def tryPerformInternal(desc: AbstractDescriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
     tryPerformDebug(desc = desc, ctx = ctx, optimism = optimism)
   }
 
-  private[mcas] final def tryPerformDebug(desc: Descriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
+  private[mcas] final def tryPerformDebug(desc: AbstractDescriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
     if (desc.nonEmpty) {
       assert(!desc.readOnly)
       val instRo = (optimism.toInt : @switch) match {

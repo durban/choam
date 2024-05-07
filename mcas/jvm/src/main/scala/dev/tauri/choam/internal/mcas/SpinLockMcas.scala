@@ -45,6 +45,8 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
 
   private[this] val dummyContext = new Mcas.UnsealedThreadContext {
 
+    final override type START = Descriptor
+
     final override def impl: Mcas =
       self
 
@@ -55,7 +57,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
     final override def refIdGen =
       RefIdGen.global
 
-    final override def tryPerformInternal(desc: Descriptor, optimism: Long): Long = {
+    final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long = {
       val ops = desc.hwdIterator(this).toList
       perform(ops, newVersion = desc.newVersion)
     }
@@ -119,13 +121,13 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
     final override def start(): Descriptor =
       Descriptor.empty(commitTs, this)
 
-    protected[mcas] final override def addVersionCas(desc: Descriptor): Descriptor =
+    protected[mcas] final override def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D] =
       desc.addVersionCas(commitTs)
 
     final override def validateAndTryExtend(
-      desc: Descriptor,
+      desc: AbstractDescriptor,
       hwd: LogEntry[_],
-    ): Descriptor = {
+    ): AbstractDescriptor.Aux[desc.D] = {
       desc.validateAndTryExtend(commitTs, this, hwd)
     }
 

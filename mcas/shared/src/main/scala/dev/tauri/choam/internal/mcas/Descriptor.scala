@@ -25,22 +25,29 @@ final class Descriptor private (
   protected[choam] final override val map: LogMap2[Any],
   final val validTs: Long,
   private val validTsBoxed: java.lang.Long,
-  val readOnly: Boolean,
-  private val versionIncr: Long,
+  final override val readOnly: Boolean,
+  final override val versionIncr: Long,
   protected final override val versionCas: LogEntry[java.lang.Long], // can be null
 ) extends DescriptorPlatform {
+
+  final override type D = Descriptor
+
+  final override def self: D =
+    this
+
+  final override def selfD: D =
+    this
 
   require((versionCas eq null) || (versionIncr > 0L))
   require((validTsBoxed eq null) || (validTsBoxed.longValue == validTs))
 
-  final def size: Int =
-    this.map.size + (if (this.versionCas ne null) 1 else 0)
+  final override def hamt: AbstractHamt[_, _, _, _, _, _] =
+    this.map
 
-  final def isValidHwd[A](hwd: LogEntry[A]): Boolean = {
-    hwd.version <= this.validTs
-  }
+  final override def toImmutable: Descriptor =
+    this
 
-  private[choam] final def withLogMap(newMap: LogMap2[Any], readOnly: Boolean): Descriptor = {
+  private final def withLogMap(newMap: LogMap2[Any], readOnly: Boolean): Descriptor = {
     assert(newMap.definitelyReadOnly == readOnly)
     if (newMap eq this.map) {
       this
@@ -53,6 +60,32 @@ final class Descriptor private (
         versionIncr = this.versionIncr,
         versionCas = this.versionCas,
       )
+    }
+  }
+
+  private[choam] final override def computeIfAbsent[A, T](
+    ref: MemoryLocation[A],
+    tok: T,
+    visitor: Hamt.EntryVisitor[MemoryLocation[A], LogEntry[A], T],
+  ): Descriptor = {
+    val newMap = this.map.computeIfAbsent(ref.cast[Any], tok, visitor.asInstanceOf[Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], T]])
+    if (newMap eq this.map) {
+      this
+    } else {
+      this.withLogMap(newMap, readOnly = false) // TODO: readOnly
+    }
+  }
+
+  private[choam] final override def computeOrModify[A, T](
+    ref: MemoryLocation[A],
+    tok: T,
+    visitor: Hamt.EntryVisitor[MemoryLocation[A], LogEntry[A], T],
+  ): Descriptor = {
+    val newMap = this.map.computeOrModify(ref.cast[Any], tok, visitor.asInstanceOf[Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], T]])
+    if (newMap eq this.map) {
+      this
+    } else {
+      this.withLogMap(newMap, readOnly = false) // TODO: readOnly
     }
   }
 
@@ -72,13 +105,7 @@ final class Descriptor private (
     )
   }
 
-  private[mcas] final def newVersion: Long =
-    this.validTs + this.versionIncr
-
-  private[mcas] final def nonEmpty: Boolean =
-    this.map.nonEmpty
-
-  private[choam] final def add[A](desc: LogEntry[A]): Descriptor = {
+  private[choam] final override def add[A](desc: LogEntry[A]): Descriptor = {
     // Note, that it is important, that we don't allow
     // adding an already included ref; the Exchanger
     // depends on this behavior:
@@ -95,7 +122,7 @@ final class Descriptor private (
     )
   }
 
-  private[choam] final def overwrite[A](desc: LogEntry[A]): Descriptor = {
+  private[choam] final override def overwrite[A](desc: LogEntry[A]): Descriptor = {
     require(desc.version <= this.validTs)
     val newMap = this.map.updated(desc.cast[Any])
     val ro = this.readOnly && desc.readOnly
@@ -136,11 +163,11 @@ final class Descriptor private (
    *
    * @return true, iff `this` is still valid.
    */
-  private[mcas] final def revalidate(ctx: Mcas.ThreadContext): Boolean = {
+  private[mcas] final override def revalidate(ctx: Mcas.ThreadContext): Boolean = {
     this.map.revalidate(ctx)
   }
 
-  private[mcas] final def addVersionCas(commitTsRef: MemoryLocation[Long]): Descriptor = {
+  private[mcas] final override def addVersionCas(commitTsRef: MemoryLocation[Long]): Descriptor = {
     require(this.versionCas eq null)
     require(!this.readOnly)
     require(this.versionIncr > 0L)
@@ -161,11 +188,11 @@ final class Descriptor private (
     )
   }
 
-  private[choam] final def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A] = {
+  private[choam] final override def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A] = {
     this.map.asInstanceOf[LogMap2[A]].getOrElseNull(ref.id)
   }
 
-  private[mcas] final def validateAndTryExtend(
+  private[mcas] final override def validateAndTryExtend(
     commitTsRef: MemoryLocation[Long],
     ctx: Mcas.ThreadContext,
     additionalHwd: LogEntry[_], // can be null
@@ -336,7 +363,7 @@ object Descriptor {
     if (needToExtend) {
       // this will be null, if we cannot extend,
       // in which case we return null:
-      merged = ctx.validateAndTryExtend(merged, hwd = null)
+      merged = ctx.validateAndTryExtend(merged, hwd = null).selfD
     }
     merged
   }

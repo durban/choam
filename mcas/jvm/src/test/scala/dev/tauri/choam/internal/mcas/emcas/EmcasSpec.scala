@@ -54,7 +54,7 @@ class EmcasSpec extends BaseSpec {
     val r2 = MemoryLocation.unsafe[String]("x")
     val ctx = Emcas.inst.currentContextInternal()
     val desc = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, null, "x"), r2, "x", null)
-    val snap = ctx.snapshot(desc)
+    val snap = ctx.snapshot(desc.toImmutable)
     assertEquals(Emcas.inst.tryPerformInternal(desc, ctx, Consts.OPTIMISTIC), McasStatus.Successful)
     assert(clue(ctx.readDirect[String](r1)) eq "x")
     assert(ctx.readDirect(r2) eq null)
@@ -70,7 +70,7 @@ class EmcasSpec extends BaseSpec {
     val v11 = ctx.readVersion(r1)
     val v21 = ctx.readVersion(r2)
     val desc = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
-    val snap = ctx.snapshot(desc)
+    val snap = ctx.snapshot(desc.toImmutable)
     assert(ctx.tryPerformOk(ctx.addCasWithVersion(desc, r2, "y", "b", version = v21)))
     val newVer = ctx.start().validTs
     assertEquals(newVer, desc.validTs + Version.Incr)
@@ -425,7 +425,7 @@ class EmcasSpec extends BaseSpec {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L)
     val r2 = MemoryLocation.unsafeWithId("r2")(42L)
     val ctx = Emcas.inst.currentContext()
-    val hOther: Descriptor = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
+    val hOther = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
     val other = EmcasDescriptor.prepare(hOther, instRo = false)
     val d0 = other.getWordIterator().next().asInstanceOf[EmcasWordDesc[String]]
     assert(d0.address eq r1)

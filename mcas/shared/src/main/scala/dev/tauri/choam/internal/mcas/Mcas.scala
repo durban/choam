@@ -60,6 +60,8 @@ object Mcas extends McasCompanionPlatform { self =>
 
   sealed trait ThreadContext {
 
+    type START <: AbstractDescriptor.Aux[START]
+
     // abstract:
 
     /** The `Mcas` instance from which this context was retrieved */
@@ -71,9 +73,9 @@ object Mcas extends McasCompanionPlatform { self =>
      * (its `.validTs` will be the
      * current global version).
      */
-    def start(): Descriptor
+    def start(): START
 
-    private[mcas] def addVersionCas(desc: Descriptor): Descriptor
+    private[mcas] def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D]
 
     /**
      * @return the current value of `ref`, as
@@ -97,9 +99,9 @@ object Mcas extends McasCompanionPlatform { self =>
     private[mcas] def readVersion[A](ref: MemoryLocation[A]): Long
 
     def validateAndTryExtend(
-      desc: Descriptor,
+      desc: AbstractDescriptor,
       hwd: LogEntry[_], // may be null
-    ): Descriptor
+    ): AbstractDescriptor.Aux[desc.D]
 
     /**
      * Directly tries to perform the k-CAS described by `desc`
@@ -116,7 +118,7 @@ object Mcas extends McasCompanionPlatform { self =>
      *         `FailedVal`, but hints that further retries should
      *         be `PESSIMISTIC`.
      */
-    private[mcas] def tryPerformInternal(desc: Descriptor, optimism: Long): Long
+    private[mcas] def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long
 
     /** @return a `ThreadLocalRandom` valid for the current thread */
     def random: ThreadLocalRandom
@@ -127,7 +129,7 @@ object Mcas extends McasCompanionPlatform { self =>
     // concrete:
 
     /** Utility to first try to read from the log, and only from the ref if not found */
-    final def readMaybeFromLog[A](ref: MemoryLocation[A], log: Descriptor): Option[(A, Descriptor)] = {
+    final def readMaybeFromLog[A](ref: MemoryLocation[A], log: AbstractDescriptor): Option[(A, AbstractDescriptor.Aux[log.D])] = {
       log.getOrElseNull(ref) match {
         case null =>
           // not in log
@@ -140,14 +142,14 @@ object Mcas extends McasCompanionPlatform { self =>
           }
         case hwd =>
           // found in log
-          Some((hwd.cast[A].nv, log))
+          Some((hwd.cast[A].nv, log.self))
       }
     }
 
-    private[this] final def readIntoLog[A](ref: MemoryLocation[A], log: Descriptor): Descriptor = {
+    private[this] final def readIntoLog[A](ref: MemoryLocation[A], log: AbstractDescriptor): AbstractDescriptor.Aux[log.D] = {
       require(log.getOrElseNull(ref) eq null)
       val hwd = this.readIntoHwd(ref)
-      val newLog = log.add(hwd)
+      val newLog: AbstractDescriptor.Aux[log.D] = log.add(hwd)
       if (!newLog.isValidHwd(hwd)) {
         // this returns null if we need to roll back
         // (and we pass on the null to our caller):
@@ -171,11 +173,11 @@ object Mcas extends McasCompanionPlatform { self =>
      *         global version (if failed due to the version
      *         being newer than `desc.validTs`).
      */
-    final def tryPerform(desc: Descriptor): Long = {
+    final def tryPerform(desc: AbstractDescriptor): Long = {
       this.tryPerform(desc, Consts.OPTIMISTIC)
     }
 
-    final def tryPerform(desc: Descriptor, optimism: Long): Long = {
+    final def tryPerform(desc: AbstractDescriptor, optimism: Long): Long = {
       if (desc.readOnly) {
         // we've validated each read,
         // so nothing to do here
@@ -188,25 +190,25 @@ object Mcas extends McasCompanionPlatform { self =>
       }
     }
 
-    final def tryPerformOk(desc: Descriptor): Boolean = {
+    final def tryPerformOk(desc: AbstractDescriptor): Boolean = {
       this.tryPerformOk(desc, Consts.OPTIMISTIC)
     }
 
     /** Like `tryPerform`, but returns whether it was successful */
-    final def tryPerformOk(desc: Descriptor, optimism: Long): Boolean = {
+    final def tryPerformOk(desc: AbstractDescriptor, optimism: Long): Boolean = {
       tryPerform(desc, optimism = optimism) == McasStatus.Successful
     }
 
-    final def addCasFromInitial[A](desc: Descriptor, ref: MemoryLocation[A], ov: A, nv: A): Descriptor =
+    final def addCasFromInitial[A](desc: AbstractDescriptor, ref: MemoryLocation[A], ov: A, nv: A): AbstractDescriptor.Aux[desc.D] =
       this.addCasWithVersion(desc, ref, ov = ov, nv = nv, version = Version.Start)
 
     final def addCasWithVersion[A](
-      desc: Descriptor,
+      desc: AbstractDescriptor,
       ref: MemoryLocation[A],
       ov: A,
       nv: A,
       version: Long
-    ): Descriptor = {
+    ): AbstractDescriptor.Aux[desc.D] = {
       val wd = LogEntry(ref, ov, nv, version)
       desc.add(wd)
     }
@@ -217,7 +219,7 @@ object Mcas extends McasCompanionPlatform { self =>
      *
      * @return true, iff `desc` is still valid.
      */
-    private[mcas] final def validate(desc: Descriptor): Boolean = {
+    private[mcas] final def validate(desc: AbstractDescriptor): Boolean = {
       desc.revalidate(this)
     }
 
@@ -290,7 +292,7 @@ object Mcas extends McasCompanionPlatform { self =>
     // statistics/testing/benchmarking:
 
     /** Only for testing */
-    private[mcas] final def builder(): Builder = {
+    private[mcas] final def builder(): Builder[START] = {
       new Builder(this, this.start())
     }
 
@@ -380,31 +382,31 @@ object Mcas extends McasCompanionPlatform { self =>
   }
 
   /** Only for testing */
-  private[mcas] final class Builder(
+  private[mcas] final class Builder[D <: AbstractDescriptor.Aux[D]](
     private[this] val ctx: ThreadContext,
-    private[this] val desc: Descriptor,
+    private[this] val desc: D,
   ) {
 
-    final def updateRef[A](ref: MemoryLocation[A], f: A => A): Builder = {
+    final def updateRef[A](ref: MemoryLocation[A], f: A => A): Builder[D] = {
       this.ctx.readMaybeFromLog(ref, this.desc) match {
         case Some((ov, newDesc)) =>
           val nv = f(ov)
           val newestDesc = newDesc.overwrite(
             newDesc.getOrElseNull(ref).withNv(nv)
           )
-          new Builder(this.ctx, newestDesc)
+          new Builder(this.ctx, newestDesc.selfD)
         case None =>
           throw new IllegalStateException("couldn't extend, rollback is necessary")
       }
     }
 
-    final def casRef[A](ref: MemoryLocation[A], from: A, to: A): Builder = {
+    final def casRef[A](ref: MemoryLocation[A], from: A, to: A): Builder[D] = {
       this.tryCasRef(ref, from, to).getOrElse(
         throw new IllegalStateException("couldn't extend, rollback is necessary")
       )
     }
 
-    final def tryCasRef[A](ref: MemoryLocation[A], from: A, to: A): Option[Builder] = {
+    final def tryCasRef[A](ref: MemoryLocation[A], from: A, to: A): Option[Builder[D]] = {
       this.ctx.readMaybeFromLog(ref, this.desc).map {
         case (ov, newDesc) =>
           val newestDesc = if (equ(ov, from)) {
@@ -414,7 +416,7 @@ object Mcas extends McasCompanionPlatform { self =>
             val newHwd = LogEntry(ref, from, to, oldHwd.version)
             newDesc.overwrite(newHwd)
           }
-          new Builder(this.ctx, newestDesc)
+          new Builder(this.ctx, newestDesc.selfD)
       }
     }
 

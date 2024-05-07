@@ -47,7 +47,8 @@ class ResourceAllocationMcas {
       if (i >= n) {
         ()
       } else {
-        val Some((_, newDesc)) = ctx.readMaybeFromLog(rss(i), t.desc) : @unchecked
+        val d = t.desc
+        val Some((_, newDesc)) = ctx.readMaybeFromLog(rss(i), d.self) : @unchecked
         t.desc = newDesc
         read(i + 1)
       }
@@ -115,7 +116,7 @@ object ResourceAllocationMcas {
 
     private[this] var selectedRss: Array[MemoryLocation[String]] = _
 
-    var desc: mcas.Descriptor = _
+    var desc: mcas.AbstractDescriptor = _
 
     @Param(Array("2", "4", "6"))
     @nowarn("cat=unused-privates")

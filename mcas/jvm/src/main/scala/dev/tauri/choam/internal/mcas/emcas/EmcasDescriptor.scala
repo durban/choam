@@ -23,7 +23,7 @@ package emcas
 import java.util.concurrent.ThreadLocalRandom
 
 private[mcas] final class EmcasDescriptor private[this] (
-  half: Descriptor,
+  half: AbstractDescriptor,
   wordsToCopy: Array[WdLike[_]],
   private[emcas] final val instRo: Boolean,
 ) extends EmcasDescriptorBase { self =>
@@ -37,7 +37,7 @@ private[mcas] final class EmcasDescriptor private[this] (
   final override val hashCode: Int =
     ThreadLocalRandom.current().nextInt()
 
-  private[emcas] def this(half: Descriptor, instRo: Boolean) =
+  private[emcas] def this(half: AbstractDescriptor, instRo: Boolean) =
     this(half, null, instRo = instRo)
 
   private def this(wordsToCopy: Array[WdLike[_]]) =
@@ -191,7 +191,7 @@ private[mcas] final class EmcasDescriptor private[this] (
 
 private object EmcasDescriptor {
 
-  def prepare(half: Descriptor, instRo: Boolean): EmcasDescriptor = { // TODO: do we need this?
+  def prepare(half: AbstractDescriptor, instRo: Boolean): EmcasDescriptor = { // TODO: do we need this?
     new EmcasDescriptor(half, instRo = instRo)
   }
 

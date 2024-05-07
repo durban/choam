@@ -264,7 +264,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val d2b = d1b.overwrite(d1b.getOrElseNull(r2).withNv("bb"))
     // try to merge; the logs are disjoint, but inconsistent:
     // `d2a` cannot be extended; will need to rollback/retry
-    assert(ctx.addAll(d2a, d2b) eq null)
+    assert(ctx.addAll(d2a.toImmutable, d2b.toImmutable) eq null)
   }
 
   test("CommitTs ref must be the first (JVM)") {

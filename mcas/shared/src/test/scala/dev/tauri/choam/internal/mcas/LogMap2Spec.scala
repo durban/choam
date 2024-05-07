@@ -137,7 +137,10 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
       .inserted(h1)
       .inserted(h2)
     def mock(r1Version: Long) = new Mcas.UnsealedThreadContext {
-      private[mcas] def addVersionCas(desc: Descriptor): Descriptor =
+
+      final override type START = Descriptor
+
+      private[mcas] def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D] =
         self.fail("not implemented")
       def impl: Mcas =
         self.fail("not implemented")
@@ -153,9 +156,9 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
         RefIdGen.global
       def start(): Descriptor =
         self.fail("not implemented")
-      private[mcas] def tryPerformInternal(desc: Descriptor, optimism: Long): Long =
+      private[mcas] def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long =
         self.fail("not implemented")
-      def validateAndTryExtend(desc: Descriptor, hwd: LogEntry[_]): Descriptor =
+      def validateAndTryExtend(desc: AbstractDescriptor, hwd: LogEntry[_]): AbstractDescriptor.Aux[desc.D] =
         self.fail("not implemented")
     }
 

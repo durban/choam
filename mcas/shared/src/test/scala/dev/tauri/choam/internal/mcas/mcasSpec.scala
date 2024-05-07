@@ -140,7 +140,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "r1", "r1x")
 
-    val snap = ctx.snapshot(d1)
+    val snap = ctx.snapshot(d1.toImmutable)
     val d21 = ctx.addCasFromInitial(d1, r2, "foo", "bar")
     assert(!ctx.tryPerformOk(d21))
     assertSameInstance(ctx.readDirect(r1), "r1")
@@ -160,7 +160,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val ctx = mcasImpl.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "r1", "r1x")
-    val snap = ctx.snapshot(d1)
+    val snap = ctx.snapshot(d1.toImmutable)
     ctx.addCasFromInitial(d1, r2, "foo", "bar") // unused
     assertSameInstance(ctx.readDirect(r1), "r1")
     assertSameInstance(ctx.readDirect(r2), "r2")
@@ -390,7 +390,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     assertSameInstance(ov2, "b")
     val d2b = d1b.overwrite(d1b.getOrElseNull(r2).withNv("bb"))
     // merge:
-    val d3 = ctx.addAll(d2a, d2b)
+    val d3 = ctx.addAll(d2a.toImmutable, d2b.toImmutable)
     assert(!d3.readOnly)
     assertEquals(d3.validTs, startTs + Version.Incr)
     // commit:
@@ -419,7 +419,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val Some((_, d2b)) = ctx.readMaybeFromLog(r1, d1b) : @unchecked
     // merge:
     try {
-      ctx.addAll(d2a, d2b)
+      ctx.addAll(d2a.toImmutable, d2b.toImmutable)
       fail("expected exception thrown")
     } catch {
       case _: IllegalArgumentException => // OK

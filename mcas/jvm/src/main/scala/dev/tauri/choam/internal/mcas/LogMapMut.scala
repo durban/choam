@@ -27,6 +27,10 @@ private[mcas] final class LogMapMut[A] private (
   final def definitelyReadOnly: Boolean =
     this.isBlueTree
 
+  final def revalidate(ctx: Mcas.ThreadContext): Boolean = {
+    this.forAll(ctx)
+  }
+
   protected final override def keyOf(a: LogEntry[A]): MemoryLocation[A] =
     a.address
 

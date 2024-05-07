@@ -19,7 +19,7 @@ package dev.tauri.choam
 package internal
 package mcas
 
-private[mcas] abstract class DescriptorPlatform {
+private[mcas] abstract class DescriptorPlatform extends AbstractDescriptor {
 
   protected def map: LogMap2[Any]
 
@@ -45,7 +45,7 @@ private[mcas] abstract class DescriptorPlatform {
   }
 
   /** This only exists on the JVM, and used by EMCAS instead of the above */
-  final def toWdArray(parent: emcas.EmcasDescriptor, instRo: Boolean): Array[WdLike[Any]] = {
+  private[mcas] final def toWdArray(parent: emcas.EmcasDescriptor, instRo: Boolean): Array[WdLike[Any]] = {
     this.map.toArray(parent, flag = instRo)
   }
 }

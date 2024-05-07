@@ -19,19 +19,7 @@ package dev.tauri.choam
 package internal
 package mcas
 
-private[mcas] abstract class DescriptorPlatform extends AbstractDescriptor {
+abstract class AbstractDescriptorPlatform {
 
-  protected def map: LogMap2[Any]
-
-  protected def versionCas: LogEntry[java.lang.Long]
-
-  final def hwdIterator(@unused ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
-    val wordsItr = this.map.toArray((), flag = false).iterator
-    val vc = this.versionCas
-    if (vc eq null) {
-      wordsItr
-    } else {
-      Iterator.single(vc.cast[Any]).concat(wordsItr)
-    }
-  }
+  def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]]
 }

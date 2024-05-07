@@ -33,6 +33,8 @@ import java.util.concurrent.ThreadLocalRandom
  */
 object NullMcas extends Mcas.UnsealedMcas { self =>
 
+
+
   private[this] val ctx =
     new NullContext
 
@@ -47,13 +49,15 @@ object NullMcas extends Mcas.UnsealedMcas { self =>
 
   private[this] final class NullContext extends Mcas.UnsealedThreadContext {
 
+    final override type START = Descriptor
+
     final override def impl: Mcas =
       self
 
     final override def start(): Descriptor =
       Descriptor.empty(globalVersion, this)
 
-    private[mcas] final override def addVersionCas(desc: Descriptor): Descriptor =
+    private[mcas] final override def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D] =
       throw new UnsupportedOperationException
 
     final override def readDirect[A](ref: MemoryLocation[A]): A = {
@@ -73,13 +77,13 @@ object NullMcas extends Mcas.UnsealedMcas { self =>
       throw new UnsupportedOperationException
 
     final override def validateAndTryExtend(
-      desc: Descriptor,
+      desc: AbstractDescriptor,
       hwd: LogEntry[_]
-    ): Descriptor = {
+    ): AbstractDescriptor.Aux[desc.D] = {
       throw new UnsupportedOperationException
     }
 
-    private[mcas] final override def tryPerformInternal(desc: Descriptor, optimism: Long): Long = {
+    private[mcas] final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long = {
       if (desc.nonEmpty) {
         throw new UnsupportedOperationException
       } else {

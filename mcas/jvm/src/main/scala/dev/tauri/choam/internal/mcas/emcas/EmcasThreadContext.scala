@@ -29,6 +29,8 @@ private final class EmcasThreadContext(
 ) extends EmcasThreadContextBase
   with Mcas.UnsealedThreadContext {
 
+  final override type START = MutDescriptor
+
   // NB: it is a `val`, not a `def`
   final override val random: ThreadLocalRandom =
     ThreadLocalRandom.current()
@@ -119,7 +121,7 @@ private final class EmcasThreadContext(
     mark // caller MUST hold a strong ref
   }
 
-  final override def tryPerformInternal(desc: Descriptor, optimism: Long): Long =
+  final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long =
     impl.tryPerformInternal(desc, this, optimism)
 
   final override def readDirect[A](ref: MemoryLocation[A]): A =
@@ -134,16 +136,16 @@ private final class EmcasThreadContext(
   protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
     impl.readVersion(ref, this)
 
-  final override def start(): Descriptor =
-    Descriptor.emptyFromVer(this.impl.getCommitTs())
+  final override def start(): MutDescriptor =
+    MutDescriptor.newEmptyFromVer(this.impl.getCommitTs())
 
-  protected[mcas] final override def addVersionCas(desc: Descriptor): Descriptor =
-    desc // we increment the global commit version differently
+  protected[mcas] final override def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D] =
+    desc.self // we increment the global commit version differently
 
-  def validateAndTryExtend(
-    desc: Descriptor,
+  final override def validateAndTryExtend(
+    desc: AbstractDescriptor,
     hwd: LogEntry[_],
-  ): Descriptor = {
+  ): AbstractDescriptor.Aux[desc.D] = {
     desc.validateAndTryExtendVer(this.impl.getCommitTs(), this, hwd)
   }
 

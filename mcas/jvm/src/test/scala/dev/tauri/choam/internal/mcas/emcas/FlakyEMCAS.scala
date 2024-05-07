@@ -31,6 +31,8 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
 
   def currentContext(): Mcas.ThreadContext = new Mcas.UnsealedThreadContext {
 
+    final override type START = MutDescriptor
+
     private[this] val emcasCtx =
       Emcas.inst.currentContextInternal()
 
@@ -52,19 +54,19 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
     protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       emcasCtx.readVersion(ref)
 
-    final override def tryPerformInternal(desc: Descriptor, optimism: Long): Long =
+    final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long =
       self.tryPerformInternal(desc, emcasCtx, optimism)
 
-    final override def start(): Descriptor =
+    final override def start(): MutDescriptor =
       emcasCtx.start()
 
-    protected[mcas] final override def addVersionCas(desc: Descriptor): Descriptor =
+    protected[mcas] final override def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D] =
       emcasCtx.addVersionCas(desc)
 
     final override def validateAndTryExtend(
-      desc: Descriptor,
+      desc: AbstractDescriptor,
       hwd: LogEntry[_],
-    ): Descriptor = {
+    ): AbstractDescriptor.Aux[desc.D] = {
       emcasCtx.validateAndTryExtend(desc, hwd)
     }
   }
@@ -72,7 +74,7 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
   private[choam] final override def isThreadSafe =
     true
 
-  private final def tryPerformInternal(hDesc: Descriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
+  private final def tryPerformInternal(hDesc: AbstractDescriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
     // perform or not the operation based on whether we've already seen it
     if (this.seen.putIfAbsent(hDesc.##, ()).isDefined) {
       Emcas.inst.tryPerformDebug(desc = hDesc, ctx = ctx, optimism = optimism)
