@@ -16,7 +16,7 @@
  */
 
 // Scala versions:
-val scala2 = "2.13.13"
+val scala2 = "2.13.14"
 val scala3 = "3.3.3"
 
 // CI JVM versions:
@@ -744,7 +744,7 @@ lazy val dependencies = new {
       "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
       catsMtlLaws.value,
-      "org.typelevel" %%% "munit-cats-effect" % "2.0.0-M5",
+      "org.typelevel" %%% "munit-cats-effect" % "2.0.0-RC1",
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
       "org.typelevel" %%% "discipline-munit" % "2.0.0-M3",
