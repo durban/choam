@@ -324,6 +324,22 @@ object Descriptor {
     )
   }
 
+  private[mcas] final def fromLogMapAndVer(
+    map: LogMap2[Any],
+    validTs: Long,
+    readOnly: Boolean,
+    versionIncr: Long,
+  ): Descriptor = {
+    new Descriptor(
+      map = map,
+      validTs = validTs,
+      validTsBoxed = null, // see above
+      readOnly = readOnly,
+      versionIncr = versionIncr,
+      versionCas = null,
+    )
+  }
+
   private[mcas] final def merge(
     a: Descriptor,
     b: Descriptor,

@@ -33,9 +33,23 @@ final class MutDescriptor private (
   final override def hamt: AbstractHamt[_, _, _, _, _, _] =
     this.map
 
-  final override def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = ???
+  final override def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
+    require(ctx.impl ne Mcas.Emcas)
+    // This is really not effective (we're making an
+    // array of WDs, and mapping it back to HWDs), but
+    // this is not EMCAS, so we don't really care:
+    this.map.copyToArray(null, flag = false).map {
+      case wd: emcas.EmcasWordDesc[_] =>
+        LogEntry(wd.address.cast[Any], wd.ov, wd.nv, wd.oldVersion)
+      case entry: LogEntry[_] =>
+        entry.cast[Any]
+    }.iterator
+  }
 
-  override private[mcas] def toWdArray(parent: EmcasDescriptor, instRo: Boolean): Array[WdLike[Any]] = ???
+  /** This is used by EMCAS instead of the above */
+  private[mcas] final override def toWdArray(parent: EmcasDescriptor, instRo: Boolean): Array[WdLike[Any]] = {
+    this.map.copyToArray(parent, flag = instRo)
+  }
 
   override def self: AbstractDescriptor.Aux[MutDescriptor] =
     this
@@ -156,7 +170,14 @@ final class MutDescriptor private (
     this
   }
 
-  override def toImmutable: Descriptor = ???
+  final override def toImmutable: Descriptor = {
+    Descriptor.fromLogMapAndVer(
+      map = this.map.copyToImmutable(),
+      validTs = this.validTs,
+      readOnly = this.readOnly,
+      versionIncr = this.versionIncr,
+    )
+  }
 }
 
 object MutDescriptor {
