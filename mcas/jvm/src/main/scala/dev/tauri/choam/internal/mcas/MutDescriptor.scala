@@ -22,9 +22,8 @@ package mcas
 import emcas.EmcasDescriptor
 
 final class MutDescriptor private (
-  val map: LogMapMut[Any],
+  private val map: LogMapMut[Any],
   private var _validTs: Long,
-  private var _readOnly: Boolean,
   private var _versionIncr: Long,
 ) extends AbstractDescriptor {
 
@@ -58,7 +57,7 @@ final class MutDescriptor private (
     this
 
   override def readOnly: Boolean =
-    this._readOnly
+    this.map.definitelyReadOnly
 
   override def validTs: Long =
     this._validTs
@@ -102,25 +101,18 @@ final class MutDescriptor private (
     // adding an already included ref; the Exchanger
     // depends on this behavior:
     this.map.insert(desc.cast[Any])
-    this._readOnly &= desc.readOnly
     this
   }
 
   private[choam] final override def overwrite[A](desc: LogEntry[A]): AbstractDescriptor.Aux[MutDescriptor] = {
     require(desc.version <= this.validTs)
     this.map.update(desc.cast[Any])
-    this._readOnly &= desc.readOnly // this is a simplification:
-    // we don't want to rescan here the whole log, so we only set
-    // true if it's DEFINITELY read-only
     this
   }
 
   private[choam] final override def addOrOverwrite[A](desc: LogEntry[A]): AbstractDescriptor.Aux[MutDescriptor] = {
     require(desc.version <= this.validTs)
     this.map.upsert(desc.cast[Any])
-    this._readOnly &= desc.readOnly // this is a simplification:
-    // we don't want to rescan here the whole log, so we only set
-    // true if it's DEFINITELY read-only
     this
   }
 
@@ -174,7 +166,6 @@ final class MutDescriptor private (
     Descriptor.fromLogMapAndVer(
       map = this.map.copyToImmutable(),
       validTs = this.validTs,
-      readOnly = this.readOnly,
       versionIncr = this.versionIncr,
     )
   }
@@ -189,7 +180,6 @@ object MutDescriptor {
     new MutDescriptor(
       LogMapMut.newEmpty(),
       _validTs = currentTs,
-      _readOnly = true,
       _versionIncr = DefaultVersionIncr,
     )
   }

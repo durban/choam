@@ -22,10 +22,9 @@ package mcas
 import scala.util.hashing.MurmurHash3
 
 final class Descriptor private (
-  protected[choam] final override val map: LogMap2[Any],
+  protected final override val map: LogMap2[Any],
   final val validTs: Long,
   private val validTsBoxed: java.lang.Long,
-  final override val readOnly: Boolean,
   final override val versionIncr: Long,
   protected final override val versionCas: LogEntry[java.lang.Long], // can be null
 ) extends DescriptorPlatform {
@@ -47,8 +46,7 @@ final class Descriptor private (
   final override def toImmutable: Descriptor =
     this
 
-  private final def withLogMap(newMap: LogMap2[Any], readOnly: Boolean): Descriptor = {
-    assert(newMap.definitelyReadOnly == readOnly)
+  private final def withLogMap(newMap: LogMap2[Any]): Descriptor = {
     if (newMap eq this.map) {
       this
     } else {
@@ -56,11 +54,14 @@ final class Descriptor private (
         map = newMap,
         validTs = this.validTs,
         validTsBoxed = this.validTsBoxed,
-        readOnly = readOnly,
         versionIncr = this.versionIncr,
         versionCas = this.versionCas,
       )
     }
+  }
+
+  final override val readOnly: Boolean = {
+    this.map.definitelyReadOnly && (!this.hasVersionCas)
   }
 
   private[choam] final override def computeIfAbsent[A, T](
@@ -72,7 +73,7 @@ final class Descriptor private (
     if (newMap eq this.map) {
       this
     } else {
-      this.withLogMap(newMap, readOnly = false) // TODO: readOnly
+      this.withLogMap(newMap)
     }
   }
 
@@ -85,7 +86,7 @@ final class Descriptor private (
     if (newMap eq this.map) {
       this
     } else {
-      this.withLogMap(newMap, readOnly = false) // TODO: readOnly
+      this.withLogMap(newMap)
     }
   }
 
@@ -99,7 +100,6 @@ final class Descriptor private (
       map = this.map,
       validTs = this.validTs,
       validTsBoxed = this.validTsBoxed,
-      readOnly = this.readOnly,
       versionIncr = 0L,
       versionCas = null,
     )
@@ -110,52 +110,20 @@ final class Descriptor private (
     // adding an already included ref; the Exchanger
     // depends on this behavior:
     val newMap = this.map.inserted(desc.cast[Any])
-    val ro = this.readOnly && desc.readOnly
-    assert(newMap.definitelyReadOnly == ro)
-    new Descriptor(
-      newMap,
-      this.validTs,
-      this.validTsBoxed,
-      ro,
-      versionIncr = this.versionIncr,
-      versionCas = this.versionCas,
-    )
+    this.withLogMap(newMap)
   }
 
   private[choam] final override def overwrite[A](desc: LogEntry[A]): Descriptor = {
     require(desc.version <= this.validTs)
     val newMap = this.map.updated(desc.cast[Any])
-    val ro = this.readOnly && desc.readOnly
-    assert(newMap.definitelyReadOnly == ro)
-    new Descriptor(
-      newMap,
-      this.validTs,
-      this.validTsBoxed,
-      ro, // this is a simplification:
-      // we don't want to rescan here the whole log, so we only pass
-      // true if it's DEFINITELY read-only
-      versionIncr = this.versionIncr,
-      versionCas = this.versionCas,
-    )
+    this.withLogMap(newMap)
   }
 
   private[choam] final def addOrOverwrite[A](desc: LogEntry[A]): Descriptor = {
     require(desc.version <= this.validTs)
     val newMap = this.map.upserted(desc.cast[Any])
-    val ro = this.readOnly && desc.readOnly
-    assert(newMap.definitelyReadOnly == ro)
-    new Descriptor(
-      newMap,
-      this.validTs,
-      this.validTsBoxed,
-      ro, // this is a simplification:
-      // we don't want to rescan here the whole log, so we only pass
-      // true if it's DEFINITELY read-only
-      versionIncr = this.versionIncr,
-      versionCas = this.versionCas,
-    )
+    this.withLogMap(newMap)
   }
-
 
   /**
    * Tries to revalidate `this` based on the current
@@ -182,7 +150,6 @@ final class Descriptor private (
       map = this.map,
       validTs = this.validTs,
       validTsBoxed = this.validTsBoxed,
-      readOnly = false,
       versionIncr = this.versionIncr,
       versionCas = hwd,
     )
@@ -237,7 +204,6 @@ final class Descriptor private (
           map = this.map,
           validTs = newValidTs,
           validTsBoxed = newValidTsBoxed,
-          readOnly = this.readOnly,
           versionIncr = this.versionIncr,
           versionCas = this.versionCas,
         )
@@ -269,7 +235,6 @@ final class Descriptor private (
     that match {
       case that: Descriptor =>
         (this eq that) || (
-          (this.readOnly == that.readOnly) &&
           (this.versionCas == that.versionCas) &&
           (this.validTs == that.validTs) &&
           (this.validTsBoxed eq that.validTsBoxed) &&
@@ -282,12 +247,11 @@ final class Descriptor private (
   }
 
   final override def hashCode: Int = {
-    val h1 = MurmurHash3.mix(0xefebde66, this.validTs.##)
-    val h2 = MurmurHash3.mix(h1, this.readOnly.##)
-    val h3 = MurmurHash3.mix(h2, this.versionIncr.##)
-    val h4 = MurmurHash3.mix(h3, this.versionCas.##)
-    val h5 = MurmurHash3.mix(h4, this.map.##)
-    MurmurHash3.finalizeHash(h5, this.map.size)
+    var h = MurmurHash3.mix(0xefebde66, this.validTs.##)
+    h = MurmurHash3.mix(h, this.versionIncr.##)
+    h = MurmurHash3.mix(h, this.versionCas.##)
+    h = MurmurHash3.mix(h, this.map.##)
+    MurmurHash3.finalizeHash(h, this.map.size)
   }
 }
 
@@ -303,7 +267,6 @@ object Descriptor {
       LogMap2.empty,
       validTs = validTsBoxed.longValue,
       validTsBoxed = validTsBoxed,
-      readOnly = true,
       versionIncr = DefaultVersionIncr,
       versionCas = null,
     )
@@ -318,7 +281,6 @@ object Descriptor {
       LogMap2.empty,
       validTs = currentTs,
       validTsBoxed = null, // see above
-      readOnly = true,
       versionIncr = DefaultVersionIncr,
       versionCas = null,
     )
@@ -327,14 +289,12 @@ object Descriptor {
   private[mcas] final def fromLogMapAndVer(
     map: LogMap2[Any],
     validTs: Long,
-    readOnly: Boolean,
     versionIncr: Long,
   ): Descriptor = {
     new Descriptor(
       map = map,
       validTs = validTs,
       validTsBoxed = null, // see above
-      readOnly = readOnly,
       versionIncr = versionIncr,
       versionCas = null,
     )
@@ -362,18 +322,16 @@ object Descriptor {
 
     // we temporarily choose the older `validTs`,
     // but will extend if they're not equal:
-    val ro = a.readOnly && b.readOnly
-    assert(mergedMap.definitelyReadOnly == ro)
     var merged: Descriptor = null
     val needToExtend = if (a.validTs < b.validTs) {
-      merged = a.withLogMap(mergedMap, readOnly = ro)
+      merged = a.withLogMap(mergedMap)
       true
     } else if (a.validTs > b.validTs) {
-      merged = b.withLogMap(mergedMap, readOnly = ro)
+      merged = b.withLogMap(mergedMap)
       true
     } else {
       // they're equal, no need to extend:
-      merged = a.withLogMap(mergedMap, readOnly = ro)
+      merged = a.withLogMap(mergedMap)
       false
     }
     if (needToExtend) {
