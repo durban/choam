@@ -64,7 +64,7 @@ class McasTestVer extends StressTestBase {
 
   private[this] def writeInternal(ov: String, nv: String, startIdx: Int = 0): Long = {
     val ctx = impl.currentContext()
-    var d = ctx.start().self
+    var d = ctx.start()
     var idx = startIdx
     while (idx < refs.length) {
       val ref = refs(idx)

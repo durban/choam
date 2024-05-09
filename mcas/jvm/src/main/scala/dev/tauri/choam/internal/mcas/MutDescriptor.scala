@@ -50,9 +50,6 @@ final class MutDescriptor private (
     this.map.copyToArray(parent, flag = instRo)
   }
 
-  override def self: AbstractDescriptor.Aux[MutDescriptor] =
-    this
-
   override def selfD: MutDescriptor =
     this
 

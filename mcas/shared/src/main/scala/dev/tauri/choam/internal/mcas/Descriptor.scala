@@ -31,9 +31,6 @@ final class Descriptor private (
 
   final override type D = Descriptor
 
-  final override def self: D =
-    this
-
   final override def selfD: D =
     this
 

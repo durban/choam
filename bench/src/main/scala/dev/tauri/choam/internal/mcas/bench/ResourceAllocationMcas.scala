@@ -48,7 +48,7 @@ class ResourceAllocationMcas {
         ()
       } else {
         val d = t.desc
-        val Some((_, newDesc)) = ctx.readMaybeFromLog(rss(i), d.self) : @unchecked
+        val Some((_, newDesc)) = ctx.readMaybeFromLog(rss(i), d) : @unchecked
         t.desc = newDesc
         read(i + 1)
       }
@@ -60,8 +60,7 @@ class ResourceAllocationMcas {
         ()
       } else {
         val nv = t.desc.getOrElseNull(rss((i + 1) % n)).ov
-        val newDesc = t.desc.overwrite(t.desc.getOrElseNull(rss(i)).withNv(nv))
-        t.desc = newDesc
+        t.desc = t.desc.overwrite(t.desc.getOrElseNull(rss(i)).withNv(nv))
         prepare(i + 1)
       }
     }

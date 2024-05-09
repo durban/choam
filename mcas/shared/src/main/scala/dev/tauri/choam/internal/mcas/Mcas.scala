@@ -73,7 +73,7 @@ object Mcas extends McasCompanionPlatform { self =>
      * (its `.validTs` will be the
      * current global version).
      */
-    def start(): START
+    def start(): AbstractDescriptor.Aux[START]
 
     private[mcas] def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D]
 
@@ -142,7 +142,7 @@ object Mcas extends McasCompanionPlatform { self =>
           }
         case hwd =>
           // found in log
-          Some((hwd.cast[A].nv, log.self))
+          Some((hwd.cast[A].nv, log : AbstractDescriptor.Aux[log.D]))
       }
     }
 
@@ -292,7 +292,7 @@ object Mcas extends McasCompanionPlatform { self =>
     // statistics/testing/benchmarking:
 
     /** Only for testing */
-    private[mcas] final def builder(): Builder[START] = {
+    private[mcas] final def builder(): Builder = {
       new Builder(this, this.start())
     }
 
@@ -382,12 +382,12 @@ object Mcas extends McasCompanionPlatform { self =>
   }
 
   /** Only for testing */
-  private[mcas] final class Builder[D <: AbstractDescriptor.Aux[D]](
+  private[mcas] final class Builder(
     private[this] val ctx: ThreadContext,
-    private[this] val desc: D,
+    private[this] val desc: AbstractDescriptor,
   ) {
 
-    final def updateRef[A](ref: MemoryLocation[A], f: A => A): Builder[D] = {
+    final def updateRef[A](ref: MemoryLocation[A], f: A => A): Builder = {
       this.ctx.readMaybeFromLog(ref, this.desc) match {
         case Some((ov, newDesc)) =>
           val nv = f(ov)
@@ -400,13 +400,13 @@ object Mcas extends McasCompanionPlatform { self =>
       }
     }
 
-    final def casRef[A](ref: MemoryLocation[A], from: A, to: A): Builder[D] = {
+    final def casRef[A](ref: MemoryLocation[A], from: A, to: A): Builder = {
       this.tryCasRef(ref, from, to).getOrElse(
         throw new IllegalStateException("couldn't extend, rollback is necessary")
       )
     }
 
-    final def tryCasRef[A](ref: MemoryLocation[A], from: A, to: A): Option[Builder[D]] = {
+    final def tryCasRef[A](ref: MemoryLocation[A], from: A, to: A): Option[Builder] = {
       this.ctx.readMaybeFromLog(ref, this.desc).map {
         case (ov, newDesc) =>
           val newestDesc = if (equ(ov, from)) {

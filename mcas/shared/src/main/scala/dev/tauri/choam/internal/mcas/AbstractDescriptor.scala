@@ -20,6 +20,7 @@ package internal
 package mcas
 
 object AbstractDescriptor {
+
   type Aux[d <: AbstractDescriptor] = AbstractDescriptor {
     type D = d
   }
@@ -28,8 +29,6 @@ object AbstractDescriptor {
 abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   type D <: AbstractDescriptor
-
-  def self: AbstractDescriptor.Aux[D]
 
   def selfD: D
 
@@ -48,13 +47,13 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
     ref: MemoryLocation[A],
     tok: T,
     visitor: Hamt.EntryVisitor[MemoryLocation[A], LogEntry[A], T],
-  ): D
+  ): AbstractDescriptor.Aux[D]
 
   private[choam] def computeOrModify[A, T](
     ref: MemoryLocation[A],
     tok: T,
     visitor: Hamt.EntryVisitor[MemoryLocation[A], LogEntry[A], T],
-  ): D
+  ): AbstractDescriptor.Aux[D]
 
   private[mcas] final def nonEmpty: Boolean =
     this.size > 0
@@ -98,7 +97,7 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
     additionalHwd: LogEntry[_], // can be null
   ): AbstractDescriptor.Aux[D]
 
-  private[mcas] def withNoNewVersion: D
+  private[mcas] def withNoNewVersion: AbstractDescriptor.Aux[D]
 
   def toImmutable: Descriptor
 }
