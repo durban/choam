@@ -26,7 +26,7 @@ private[mcas] abstract class DescriptorPlatform extends AbstractDescriptor {
   protected def versionCas: LogEntry[java.lang.Long]
 
   final def hwdIterator(@unused ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
-    val wordsItr = this.map.toArray((), flag = false).iterator
+    val wordsItr = this.map.toArray((), flag = false, nullIfBlue = false).iterator
     val vc = this.versionCas
     if (vc eq null) {
       wordsItr

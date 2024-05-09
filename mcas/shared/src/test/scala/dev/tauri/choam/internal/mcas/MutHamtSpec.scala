@@ -590,17 +590,23 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     val hamt = LongMutHamt.newEmpty()
     var size = 0
     assert(hamt.definitelyBlue)
+    assert(hamt.copyToImmutable().definitelyBlue)
     for (n <- evenNums) {
       hamt.insert(Val(n, isBlue = true))
       size += 1
       assert(hamt.definitelyBlue)
+      assert(hamt.copyToImmutable().definitelyBlue)
       assertEquals(hamt.size, size)
     }
     for (k <- oddNums) {
       hamt.insert(Val(k, isBlue = false))
       size += 1
       assert(!hamt.definitelyBlue)
+      assert(!hamt.copyToImmutable().definitelyBlue)
       assertEquals(hamt.size, size)
+    }
+    if (oddNums.nonEmpty) {
+      assertNotEquals(hamt.copyToArray((), flag = false, nullIfBlue = true), null)
     }
     // it's just an approximation, so overwriting with isBlue = true doesn't change `definitelyBlue`:
     for (k <- oddNums) {
@@ -608,6 +614,10 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       assert(!hamt.definitelyBlue)
       assertEquals(hamt.size, size)
     }
+    // however, when copying, we re-check, so this is exact:
+    assert(hamt.copyToImmutable().definitelyBlue)
+    // copying to an array also detects it:
+    assertEquals(hamt.copyToArray((), flag = false, nullIfBlue = true), null)
   }
 
   property("copyToImmutable (default generator)") {
@@ -655,8 +665,8 @@ object MutHamtSpec {
     protected final override def newNode(logIdx: Int, contents: Array[AnyRef]): LongMutHamt =
       new LongMutHamt(logIdx, contents)
 
-    protected final override def newImmutableNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LongHamt =
-      new LongHamt(size, bitmap, contents)
+    protected final override def newImmutableNode(sizeAndBlue: Int, bitmap: Long, contents: Array[AnyRef]): LongHamt =
+      new LongHamt(sizeAndBlue, bitmap, contents)
 
     protected final override def newArray(size: Int): Array[Val] =
       new Array[Val](size)
@@ -673,7 +683,7 @@ object MutHamtSpec {
     }
 
     final def toArray: Array[Val] =
-      this.copyToArray((), flag = false)
+      this.copyToArray((), flag = false, nullIfBlue = false)
 
     final def definitelyBlue: Boolean =
       this.isBlueTree

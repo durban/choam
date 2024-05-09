@@ -65,7 +65,7 @@ private[mcas] final class EmcasDescriptor private[this] (
       // optimistic/pessimistic mode
       assert(wordsToCopy eq null)
       val arr = half.toWdArray(this, instRo = instRo).asInstanceOf[Array[WdLike[_]]]
-      assert(arr.length > 0)
+      assert((arr eq null) || (arr.length > 0))
       arr
     } else {
       // we're a fallback

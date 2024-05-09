@@ -140,7 +140,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "r1", "r1x")
 
-    val snap = ctx.snapshot(d1.toImmutable)
+    val snap = ctx.snapshot(d1)
     val d21 = ctx.addCasFromInitial(d1, r2, "foo", "bar")
     assert(!ctx.tryPerformOk(d21))
     assertSameInstance(ctx.readDirect(r1), "r1")
@@ -160,7 +160,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val ctx = mcasImpl.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "r1", "r1x")
-    val snap = ctx.snapshot(d1.toImmutable)
+    val snap = ctx.snapshot(d1)
     ctx.addCasFromInitial(d1, r2, "foo", "bar") // unused
     assertSameInstance(ctx.readDirect(r1), "r1")
     assertSameInstance(ctx.readDirect(r2), "r2")

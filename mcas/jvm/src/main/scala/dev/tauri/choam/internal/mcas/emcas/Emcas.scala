@@ -1015,32 +1015,45 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         case _ => throw new IllegalArgumentException
       }
       val fullDesc = new EmcasDescriptor(desc, instRo = instRo)
-      val res = MCAS(desc = fullDesc, ctx = ctx, seen = 0L)
-      if (EmcasStatus.isSuccessful(res)) {
-        // `Emcas` stores a version in the descriptor,
-        // to signify success; however, here we return
-        // a constant, to follow the `Mcas` API:
-        McasStatus.Successful
-      } else if (res == EmcasStatus.CycleDetected) {
-        assert(!instRo)
-        // we detected a (possible) cycle, so
-        // we'll fall back to the method which
-        // is certainly lock free (always installing
-        // every WD, even the read-only ones):
-        val fallback = fullDesc.fallback
-        assert(fallback.instRo)
-        val fbRes = MCAS(fallback, ctx = ctx, seen = 0L)
-        if (EmcasStatus.isSuccessful(fbRes)) {
+      if (fullDesc.getWordsP() ne null) {
+        val res = MCAS(desc = fullDesc, ctx = ctx, seen = 0L)
+        if (EmcasStatus.isSuccessful(res)) {
+          // `Emcas` stores a version in the descriptor,
+          // to signify success; however, here we return
+          // a constant, to follow the `Mcas` API:
           McasStatus.Successful
+        } else if (res == EmcasStatus.CycleDetected) {
+          assert(!instRo)
+          // we detected a (possible) cycle, so
+          // we'll fall back to the method which
+          // is certainly lock free (always installing
+          // every WD, even the read-only ones):
+          val fallback = fullDesc.fallback
+          assert(fallback.instRo)
+          val fbRes = MCAS(fallback, ctx = ctx, seen = 0L)
+          if (EmcasStatus.isSuccessful(fbRes)) {
+            McasStatus.Successful
+          } else {
+            // now we can't get CycleDetected for sure
+            assert(fbRes == McasStatus.FailedVal)
+            // but we signal, that previously there WAS a cycle:
+            Version.Reserved
+          }
         } else {
-          // now we can't get CycleDetected for sure
-          assert(fbRes == McasStatus.FailedVal)
-          // but we signal, that previously there WAS a cycle:
-          Version.Reserved
+          assert(res == McasStatus.FailedVal)
+          McasStatus.FailedVal
         }
       } else {
-        assert(res == McasStatus.FailedVal)
-        McasStatus.FailedVal
+        // The `readOnly` status of the `AbstractDescriptor`
+        // is only an approximation; if every non-read-only
+        // HWD "becomes" read-only, `desc.readOnly` could still
+        // be false. We detect this when copying the HAMT
+        // into an array, and return a `null` array. This
+        // happened here; since the descriptor is read-only,
+        // and we validated every read, we're done (i.e.,
+        // this is a read-only reaction, we just didn't
+        // realize it until now).
+        McasStatus.Successful
       }
     } else {
       McasStatus.Successful

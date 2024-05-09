@@ -54,7 +54,7 @@ class EmcasSpec extends BaseSpec {
     val r2 = MemoryLocation.unsafe[String]("x")
     val ctx = Emcas.inst.currentContextInternal()
     val desc = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, null, "x"), r2, "x", null)
-    val snap = ctx.snapshot(desc.toImmutable)
+    val snap = ctx.snapshot(desc)
     assertEquals(Emcas.inst.tryPerformInternal(desc, ctx, Consts.OPTIMISTIC), McasStatus.Successful)
     assert(clue(ctx.readDirect[String](r1)) eq "x")
     assert(ctx.readDirect(r2) eq null)
@@ -70,7 +70,7 @@ class EmcasSpec extends BaseSpec {
     val v11 = ctx.readVersion(r1)
     val v21 = ctx.readVersion(r2)
     val desc = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
-    val snap = ctx.snapshot(desc.toImmutable)
+    val snap = ctx.snapshot(desc)
     assert(ctx.tryPerformOk(ctx.addCasWithVersion(desc, r2, "y", "b", version = v21)))
     val newVer = ctx.start().validTs
     assertEquals(newVer, desc.validTs + Version.Incr)
@@ -679,7 +679,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EmcasDescriptor#instRo") {
-    val ref = MemoryLocation.unsafeUnpadded[String]("foo")
+    val ref = MemoryLocation.unsafeWithId[String]("foo")(1L)
+    val ref2 = MemoryLocation.unsafeWithId[String]("foo")(2L)
     val ctx = Emcas.inst.currentContext()
     val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)), instRo = false)
     assert(!ed1.instRo)
@@ -687,15 +688,18 @@ class EmcasSpec extends BaseSpec {
     assertSameInstance(arr1(0).asInstanceOf[EmcasWordDesc[_]].parent, ed1)
 
     val entry2 = LogEntry(ref, "foo", "foo", Version.Start)
-    val ed2 = new EmcasDescriptor(ctx.start().add(entry2), instRo = false)
+    val entry3 = LogEntry(ref2, "foo", "bar", Version.Start)
+    val ed2 = new EmcasDescriptor(ctx.start().add(entry2).add(entry3), instRo = false)
     assert(!ed2.instRo)
     val arr2 = ed2.getWordsO()
     assertSameInstance(arr2(0), entry2)
+    assertSameInstance(arr2(1).asInstanceOf[EmcasWordDesc[_]].parent, ed2)
 
-    val ed3 = new EmcasDescriptor(ctx.start().add(entry2), instRo = true)
+    val ed3 = new EmcasDescriptor(ctx.start().add(entry2).add(entry3), instRo = true)
     assert(ed3.instRo)
     val arr3 = ed3.getWordsO()
     assertSameInstance(arr3(0).asInstanceOf[EmcasWordDesc[_]].parent, ed3)
+    assertSameInstance(arr3(1).asInstanceOf[EmcasWordDesc[_]].parent, ed3)
   }
 
   test("EmcasDescriptor#fallback") {
@@ -784,5 +788,32 @@ class EmcasSpec extends BaseSpec {
     }
     assertSameInstance(wd1.asInstanceOf[EmcasWordDesc[_]].parent, ed1)
     assertSameInstance(wd2.asInstanceOf[EmcasWordDesc[_]].parent, ed1)
+  }
+
+  test("AbstractDescriptor#readOnly is false, but in fact it is read-only") {
+    val ref1 = MemoryLocation.unsafeUnpadded[String]("a")
+    val ref2 = MemoryLocation.unsafeUnpadded[String]("x")
+    val ctx = Emcas.inst.currentContext()
+    val dRw = ctx
+      .start()
+      .add(LogEntry(ref1, "a", "b", Version.Start)) // RW
+      .add(LogEntry(ref2, "x", "x", Version.Start)) // RO
+    val snapRw = ctx.snapshot(dRw)
+    val dRo = dRw.overwrite(LogEntry(ref1, "a", "a", Version.Start)) // becomes RO
+    val snapRo = snapRw.overwrite(LogEntry(ref1, "a", "a", Version.Start)) // becomes RO
+    assert(!dRo.readOnly)
+    assert(!snapRo.readOnly)
+    val ed1 = new EmcasDescriptor(dRo, instRo = false)
+    assertEquals(ed1.getWordsP(), null)
+    assert(ctx.tryPerformOk(dRo, optimism = Consts.OPTIMISTIC))
+    val ed2 = new EmcasDescriptor(dRo, instRo = true)
+    assertEquals(ed2.getWordsP(), null)
+    assert(ctx.tryPerformOk(dRo, optimism = Consts.PESSIMISTIC))
+    val ed3 = new EmcasDescriptor(snapRo, instRo = false)
+    assertEquals(ed3.getWordsP(), null)
+    assert(ctx.tryPerformOk(snapRo, optimism = Consts.OPTIMISTIC))
+    val ed4 = new EmcasDescriptor(snapRo, instRo = true)
+    assertEquals(ed4.getWordsP(), null)
+    assert(ctx.tryPerformOk(snapRo, optimism = Consts.PESSIMISTIC))
   }
 }

@@ -115,7 +115,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
   protected final override def insertInternal(v: V): H =
     this.inserted(v)
 
-  protected final def isBlueSubtree: Boolean = {
+  private[mcas] final def isBlueSubtree: Boolean = {
     this.sizeAndBlue >= 0
   }
 
@@ -188,8 +188,8 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
    * results into an array (created with `newArray`,
    * also implemented in a subclass).
    */
-  final def toArray(tok: T1, flag: Boolean): Array[E] =
-    this.copyToArrayInternal(tok, flag)
+  final def toArray(tok: T1, flag: Boolean, nullIfBlue: Boolean): Array[E] =
+    this.copyToArrayInternal(tok, flag = flag, nullIfBlue = nullIfBlue)
 
   final override def equals(that: Any): Boolean = {
     if (equ(this, that)) {
@@ -197,7 +197,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
     } else {
       that match {
         case that: Hamt[_, _, _, _, _, _] =>
-          (this.isBlueSubtree == that.isBlueSubtree) && this.equalsInternal(that)
+          this.equalsInternal(that)
         case _ =>
           false
       }
@@ -335,7 +335,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
                 val cArr = new Array[AnyRef](1)
                 cArr(0) = ov
                 val oFlag = 1L << logicalIdx(oh, shift + W)
-                this.newNode(sizeAndBlue = packSizeAndBlue(1, isBlue(ov.asInstanceOf[V])), bitmap = oFlag, contents = cArr)
+                this.newNode(sizeAndBlue = packSizeAndBlueInternal(1, isBlue(ov.asInstanceOf[V])), bitmap = oFlag, contents = cArr)
               }
               val childNode2 = childNode.insertOrOverwrite(hash, value, shift + W, op)
               this.withNode(this.size + (childNode2.size - 1), bitmap, childNode2, physIdx)
@@ -353,7 +353,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
           System.arraycopy(contents, physIdx, newArr, physIdx + 1, len - physIdx)
           newArr(physIdx) = box(value)
           this.newNode(
-            sizeAndBlue = packSizeAndBlue(this.size + 1, this.isBlueSubtree && isBlue(value)),
+            sizeAndBlue = packSizeAndBlueInternal(this.size + 1, this.isBlueSubtree && isBlue(value)),
             bitmap = newBitmap,
             contents = newArr
           )
@@ -366,7 +366,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
       } else {
         val newArr = new Array[AnyRef](1)
         newArr(0) = box(value)
-        this.newNode(packSizeAndBlue(1, isBlue(value)), flag, newArr)
+        this.newNode(packSizeAndBlueInternal(1, isBlue(value)), flag, newArr)
       }
     }
   }
@@ -382,7 +382,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
   private[this] final def withValue(bitmap: Long, value: V, physIdx: Int): H = {
     this.newNode(
-      sizeAndBlue = packSizeAndBlue(this.size, this.isBlueSubtree && isBlue(value)),
+      sizeAndBlue = packSizeAndBlueInternal(this.size, this.isBlueSubtree && isBlue(value)),
       bitmap = bitmap,
       contents = arrReplacedValue(this.contents, box(value), physIdx),
     )
@@ -390,7 +390,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
   private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[K, V, E, _, _, _], physIdx: Int): H = {
     this.newNode(
-      sizeAndBlue = packSizeAndBlue(size, this.isBlueSubtree && node.isBlueSubtree),
+      sizeAndBlue = packSizeAndBlueInternal(size, this.isBlueSubtree && node.isBlueSubtree),
       bitmap = bitmap,
       contents = arrReplacedValue(this.contents, node, physIdx),
     )
@@ -427,7 +427,8 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
     java.lang.Long.bitCount(bitmap & (flag - 1L))
   }
 
-  private[this] final def packSizeAndBlue(size: Int, isBlue: Boolean): Int = {
+  // TODO: this is duplicated with `AbstractHamt`
+  private[this] final def packSizeAndBlueInternal(size: Int, isBlue: Boolean): Int = {
     assert(size >= 0)
     if (isBlue) size
     else -size

@@ -40,7 +40,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
 
   protected def newNode(logIdx: Int, contents: Array[AnyRef]): H
 
-  protected def newImmutableNode(size: Int, bitmap: Long, contents: Array[AnyRef]): I
+  protected def newImmutableNode(sizeAndBlue: Int, bitmap: Long, contents: Array[AnyRef]): I
 
   protected final override def contentsArr: Array[AnyRef] =
     this.contents
@@ -123,8 +123,8 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     this.isBlueTree = this.isBlueTree && unpackIsBlue(sdb)
   }
 
-  final def copyToArray(tok: T1, flag: Boolean): Array[E] =
-    this.copyToArrayInternal(tok, flag)
+  final def copyToArray(tok: T1, flag: Boolean, nullIfBlue: Boolean): Array[E] =
+    this.copyToArrayInternal(tok, flag = flag, nullIfBlue = nullIfBlue)
 
   final def copyToImmutable(): I = {
     this.copyToImmutableInternal(shift = 0)
@@ -136,7 +136,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     } else {
       that match {
         case that: MutHamt[_, _, _, _, _, _, _] =>
-          (this.isBlueTree == that.isBlueTree) && this.equalsInternal(that)
+          this.equalsInternal(that)
         case _ =>
           false
       }
@@ -404,6 +404,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     val arr = new Array[AnyRef](arity)
     var bitmap = 0L
     var size = 0
+    var isBlueSubtree = true
     i = 0
     arity = 0
     while (i < len) {
@@ -414,18 +415,24 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
           bitmap |= (1L << node.logIdx)
           val child: I = node.asInstanceOf[H].copyToImmutableInternal(shift = shift + W)
           size += child.size
+          if (!child.isBlueSubtree) {
+            isBlueSubtree = false
+          }
           arr(arity) = box(child)
           arity += 1
         case value =>
           bitmap |= (1L << logicalIdx(hashOf(keyOf(value.asInstanceOf[V])), shift = shift))
           size += 1
+          if (!isBlue(value.asInstanceOf[V])) {
+            isBlueSubtree = false
+          }
           arr(arity) = value
           arity += 1
       }
       i += 1
     }
 
-    this.newImmutableNode(size = size, bitmap = bitmap, contents = arr)
+    this.newImmutableNode(sizeAndBlue = packSizeAndBlue(size, isBlueSubtree), bitmap = bitmap, contents = arr)
   }
 
   private[this] final def necessarySize(logIdx1: Int, logIdx2: Int): Int = {

@@ -43,8 +43,8 @@ private[mcas] final class LogMapMut[A] private (
   protected final override def newNode(logIdx: Int, contents: Array[AnyRef]): LogMapMut[A] =
     new LogMapMut[A](logIdx, contents)
 
-  protected final override def newImmutableNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LogMap2[A] =
-    new LogMap2[A](size, bitmap, contents)
+  protected final override def newImmutableNode(sizeAndBlue: Int, bitmap: Long, contents: Array[AnyRef]): LogMap2[A] =
+    new LogMap2[A](sizeAndBlue, bitmap, contents)
 
   protected final override def newArray(size: Int): Array[WdLike[A]] =
     new Array[WdLike[A]](size)

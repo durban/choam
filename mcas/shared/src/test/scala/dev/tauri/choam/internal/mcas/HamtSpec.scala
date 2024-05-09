@@ -557,12 +557,17 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
       assert(!hamt.definitelyBlue)
       assertEquals(hamt.size, size)
     }
+    if (oddNums.nonEmpty) {
+      assertNotEquals(hamt.toArray((), flag = false, nullIfBlue = true), null)
+    }
     // it's just an approximation, so overwriting with isBlue = true doesn't change `definitelyBlue`:
     for (k <- oddNums) {
       hamt = hamt.updated(Val(k, isBlue = true))
       assert(!hamt.definitelyBlue)
       assertEquals(hamt.size, size)
     }
+    // but copying to an array detects it:
+    assertEquals(hamt.toArray((), flag = false, nullIfBlue = true), null)
   }
 }
 
@@ -592,10 +597,10 @@ object HamtSpec {
 
   /** A simple HAMT of `Long` -> `Val` pairs */
   final class LongHamt(
-    _size: Int,
+    _sizeAndBlue: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends Hamt[Long, Val, Val, Unit, Long, LongHamt](_size, _bitmap, _contents) {
+  ) extends Hamt[Long, Val, Val, Unit, Long, LongHamt](_sizeAndBlue, _bitmap, _contents) {
     protected final override def hashOf(k: Long): Long =
       k
     protected final override def keyOf(a: Val): Long =
@@ -611,7 +616,7 @@ object HamtSpec {
     protected final override def predicateForForAll(a: Val, tok: Long): Boolean =
       a.value > tok
     final def toArray: Array[Val] =
-      this.toArray((), flag = false)
+      this.toArray((), flag = false, nullIfBlue = false)
     final def definitelyBlue: Boolean =
       this.isBlueSubtree
     final def getOrElse(k: Long, default: Val): Val = this.getOrElseNull(k) match {

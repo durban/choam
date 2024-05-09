@@ -57,31 +57,43 @@ private[mcas] abstract class AbstractHamt[K, V, E, T1, T2, H <: AbstractHamt[K, 
     sb.toString()
   }
 
-  protected final def copyToArrayInternal(tok: T1, flag: Boolean): Array[E] = {
+  protected final def copyToArrayInternal(tok: T1, flag: Boolean, nullIfBlue: Boolean): Array[E] = {
     val arr = this.newArray(this.size)
-    val end = this.copyIntoArray(arr, 0, tok, flag = flag)
-    assert(end == arr.length)
-    arr
+    val endAndBlue = this.copyIntoArray(arr, 0, tok, flag = flag)
+    assert(unpackSize(endAndBlue) == arr.length)
+    if (nullIfBlue && unpackBlue(endAndBlue)) {
+      null
+    } else {
+      arr
+    }
   }
 
   private final def copyIntoArray(arr: Array[E], start: Int, tok: T1, flag: Boolean): Int = {
     val contents = this.contentsArr
     var i = 0
     var arrIdx = start
+    var isBlueSt = true
     val len = contents.length
     while (i < len) {
       contents(i) match {
         case null =>
           ()
         case node: AbstractHamt[_, _, _, _, _, _] =>
-          arrIdx = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok, flag = flag)
+          val arrIdxAndBlue = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok, flag = flag)
+          arrIdx = unpackSize(arrIdxAndBlue)
+          if (!unpackBlue(arrIdxAndBlue)) {
+            isBlueSt = false
+          }
         case a =>
           arr(arrIdx) = convertForArray(a.asInstanceOf[V], tok, flag = flag)
+          if (!isBlue(a.asInstanceOf[V])) {
+            isBlueSt = false
+          }
           arrIdx += 1
       }
       i += 1
     }
-    arrIdx
+    packSizeAndBlue(arrIdx, isBlueSt)
   }
 
   protected final def insertIntoHamt(into: AbstractHamt[_, _, _, _, _, _]): H = {
@@ -211,5 +223,22 @@ private[mcas] abstract class AbstractHamt[K, V, E, T1, T2, H <: AbstractHamt[K, 
       i += 1
     }
     fst
+  }
+
+  // TODO: this is duplicated with `Hamt`
+  protected[this] final def packSizeAndBlue(size: Int, isBlue: Boolean): Int = {
+    assert(size >= 0)
+    if (isBlue) size
+    else -size
+  }
+
+  @inline
+  protected[this] final def unpackSize(sb: Int): Int = {
+    java.lang.Math.abs(sb)
+  }
+
+  @inline
+  protected[this] final def unpackBlue(sb: Int): Boolean = {
+    sb >= 0
   }
 }
