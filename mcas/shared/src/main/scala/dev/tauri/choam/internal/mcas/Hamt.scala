@@ -197,7 +197,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
     } else {
       that match {
         case that: Hamt[_, _, _, _, _, _] =>
-          this.equalsInternal(that)
+          (this.isBlueSubtree == that.isBlueSubtree) && this.equalsInternal(that)
         case _ =>
           false
       }

@@ -43,7 +43,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     // read from r1 (not in the log):
     val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
     assertSameInstance(ov1, "a")
-    assert(d1 ne d0)
+    if (this.isEmcas) assert(d1 eq d0) else assert(d1 ne d0)
     assert(d1 ne null)
     // read from r1 (already in the log):
     val Some((ov1b, d2)) = ctx.readMaybeFromLog(r1, d1) : @unchecked
@@ -70,9 +70,11 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     t.join()
     assert(ok)
     // continue with reading from r2 (version conflict only, will be extended):
+    val d2vt = d2.validTs
     val Some((ov2, d3)) = ctx.readMaybeFromLog(r2, d2) : @unchecked
+    val d3vt = d3.validTs
     assertSameInstance(ov2, "bb")
-    assert(d3.validTs > d2.validTs)
+    assert(d3vt > d2vt)
     assertEquals(d3.getOrElseNull(r1).version, d2.getOrElseNull(r1).version)
     assertEquals(d3.getOrElseNull(r2).version, d3.validTs)
     // read r2 again (it's already in the log):
@@ -102,7 +104,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     // read from r1 (not in the log):
     val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
     assertSameInstance(ov1, "a")
-    assert(d1 ne d0)
+    if (this.isEmcas) assert(d1 eq d0) else assert(d1 ne d0)
     assert(d1 ne null)
     // read from r1 (already in the log):
     val Some((ov1b, d2)) = ctx.readMaybeFromLog(r1, d1) : @unchecked

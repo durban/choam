@@ -19,6 +19,8 @@ package dev.tauri.choam
 package internal
 package mcas
 
+import scala.util.hashing.MurmurHash3
+
 import emcas.EmcasDescriptor
 
 final class MutDescriptor private (
@@ -165,6 +167,36 @@ final class MutDescriptor private (
       validTs = this.validTs,
       versionIncr = this.versionIncr,
     )
+  }
+
+  final override def toString: String = {
+    val m = this.map.toString(pre = "[", post = "]")
+    val vi = if (versionIncr == MutDescriptor.DefaultVersionIncr) {
+      ""
+    } else {
+      s", versionIncr = ${versionIncr}"
+    }
+    s"mcas.MutDescriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly}${vi})"
+  }
+
+  final override def equals(that: Any): Boolean = {
+    that match {
+      case that: MutDescriptor =>
+        (this eq that) || (
+          (this.validTs == that.validTs) &&
+          (this.versionIncr == that.versionIncr) &&
+          (this.map == that.map)
+        )
+      case _ =>
+        false
+    }
+  }
+
+  final override def hashCode: Int = {
+    var h = MurmurHash3.mix(0x9bae16ae, this.validTs.##)
+    h = MurmurHash3.mix(h, this.versionIncr.##)
+    h = MurmurHash3.mix(h, this.map.##)
+    MurmurHash3.finalizeHash(h, this.map.size)
   }
 }
 

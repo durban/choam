@@ -136,7 +136,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     } else {
       that match {
         case that: MutHamt[_, _, _, _, _, _, _] =>
-          this.equalsInternal(that)
+          (this.isBlueTree == that.isBlueTree) && this.equalsInternal(that)
         case _ =>
           false
       }

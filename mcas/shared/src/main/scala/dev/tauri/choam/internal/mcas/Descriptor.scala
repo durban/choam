@@ -332,9 +332,10 @@ object Descriptor {
       false
     }
     if (needToExtend) {
-      // this will be null, if we cannot extend,
-      // in which case we return null:
-      merged = ctx.validateAndTryExtend(merged, hwd = null).self // TODO: can we avoid `.self` here?
+      merged = ctx.validateAndTryExtend(merged, hwd = null) match {
+        case null => null // couldn't extend
+        case extended => extended.self // TODO: can we avoid `.self` here?
+      }
     }
     merged
   }

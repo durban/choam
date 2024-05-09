@@ -239,7 +239,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     // read from r1 (not in the log):
     val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
     assertSameInstance(ov1, "a")
-    assert(d1 ne d0)
+    if (this.isEmcas) assert(d1 eq d0) else assert(d1 ne d0)
     assert(d1 ne null)
     assert(d1.readOnly)
     // read from r1 (already in the log):
@@ -250,7 +250,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     // read from r2 (not in the log, but consistent):
     val  Some((ov2, d3)) = ctx.readMaybeFromLog(r2, d2) : @unchecked
     assertSameInstance(ov2, "b")
-    assert(d3 ne d2)
+    if (this.isEmcas) assert(d3 eq d2) else assert(d3 ne d2)
     assert(d3 ne null)
     assert(d3.readOnly)
     // read from r2 (now in the log):
@@ -261,7 +261,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     // writes:
     val d5 = d4.overwrite(d4.getOrElseNull(r1).withNv("aa"))
     assert(!d5.readOnly)
-    assert(d5 ne d4)
+    if (this.isEmcas) assert(d5 eq d4) else assert(d5 ne d4)
     val d6 = d5.overwrite(d5.getOrElseNull(r2).withNv("bb"))
     assert(!d6.readOnly)
     val d7 = d6.overwrite(d6.getOrElseNull(r2).withNv("bbb"))
@@ -474,22 +474,22 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("equals/hashCode/toString for descriptors") {
     val ctx = this.mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("foo")
-    val r2 = MemoryLocation.unsafe("foo")
+    val d1 = ctx.start()
+    val r1 = MemoryLocation.unsafeUnpadded("foo")
+    val r2 = MemoryLocation.unsafeUnpadded("foo")
     // hwd:
-    val hwd1 = LogEntry[String](r1, "foo", "bar", 42L)
+    val hwd1 = LogEntry[String](r1, "foo", "bar", d1.validTs)
     assertEquals(hwd1, hwd1)
     assertEquals(hwd1.##, hwd1.##)
-    val hwd2 = LogEntry[String](r1, "foo", "bar", 42L)
+    val hwd2 = LogEntry[String](r1, "foo", "bar", d1.validTs)
     assertEquals(hwd1, hwd2)
     assertEquals(hwd1.##, hwd2.##)
     assertEquals(hwd1.toString, hwd2.toString)
-    val hwd3 = LogEntry[String](r2, "foo", "bar", 42L)
+    val hwd3 = LogEntry[String](r2, "foo", "bar", d1.validTs)
     assertNotEquals(hwd1, hwd3)
     assertNotEquals(hwd1.##, hwd3.##)
     assertNotEquals(hwd1.toString, hwd3.toString)
     // hed:
-    val d1 = ctx.start()
     assertEquals(d1, d1)
     assertEquals(d1.##, d1.##)
     val d2 = ctx.start()
@@ -500,14 +500,43 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     assertNotEquals(d1, d3)
     assertNotEquals(d1.##, d3.##)
     assertNotEquals(d1.toString, d3.toString)
-    val d4 = d2.add(hwd3)
+    val d4 = d2.addOrOverwrite(hwd3)
     assertEquals(d4, d3)
     assertEquals(d4.##, d3.##)
     assertEquals(d4.toString, d3.toString)
+    val d4h = d4.##
+    val d4s = d4.toString
     val d5 = d4.withNoNewVersion
-    assertNotEquals(d5, d4)
-    assertNotEquals(d5.##, d4.##)
-    assertNotEquals(d5.toString, d4.toString)
+    val d5h = d5.##
+    val d5s = d5.toString
+    if (!this.isEmcas) {
+      assertNotEquals(d5, d4)
+    }
+    assertNotEquals(d5h, d4h) // with high probability
+    assertNotEquals(d5s, d4s)
+  }
+
+  test("readOnly for descriptors") {
+    val r1 = MemoryLocation.unsafeUnpadded("foo")
+    val r2 = MemoryLocation.unsafeUnpadded("foo")
+    val ctx = this.mcasImpl.currentContext()
+    val d0 = ctx.start()
+    assert(d0.readOnly)
+    val d1 = d0.add(LogEntry(r1, "foo", "foo", d0.validTs))
+    assert(d1.readOnly)
+    if (this.isEmcas) {
+      assertSameInstance(d1, d0)
+    }
+    val d2 = d1.add(LogEntry(r2, "foo", "foo", d0.validTs))
+    assert(d2.readOnly)
+    if (this.isEmcas) {
+      assertSameInstance(d2, d0)
+    }
+    val d3 = d2.overwrite(LogEntry(r1, "foo", "bar", d0.validTs))
+    assert(!d3.readOnly)
+    if (this.isEmcas) {
+      assertSameInstance(d3, d0)
+    }
   }
 
   test("Version numbers must be unique") {
