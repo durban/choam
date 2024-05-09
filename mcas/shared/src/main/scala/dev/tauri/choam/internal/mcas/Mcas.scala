@@ -230,8 +230,8 @@ object Mcas extends McasCompanionPlatform { self =>
     /**
      * @return a snapshot of `desc`.
      */
-    final def snapshot(desc: Descriptor): Descriptor =
-      desc
+    final def snapshot(desc: AbstractDescriptor): Descriptor =
+      desc.toImmutable
 
     /**
      * Merges disjoint descriptors `to` and `from`.

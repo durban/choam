@@ -266,6 +266,9 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     assert(!d6.readOnly)
     val d7 = d6.overwrite(d6.getOrElseNull(r2).withNv("bbb"))
     assert(!d7.readOnly)
+    // snapshot:
+    val ds = ctx.snapshot(d7)
+    if (isEmcas) assert(ds ne d7) else assert(ds eq d7)
     // perform:
     assertEquals(ctx.tryPerform(d7), McasStatus.Successful)
     val newVer = d7.newVersion
