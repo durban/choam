@@ -33,6 +33,8 @@ private[mcas] abstract class AbstractHamt[K, V, E, T1, T2, H <: AbstractHamt[K, 
 
   protected def predicateForForAll(a: V, tok: T2): Boolean
 
+  protected def isBlue(a: V): Boolean
+
   def size: Int
 
   protected def contentsArr: Array[AnyRef]

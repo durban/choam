@@ -1236,7 +1236,9 @@ object Rxn extends RxnInstances0 {
             // NB: might've revalidated `desc`, but
             // NB: that never changes `desc.map`, so
             // NB: we can replace the map here.
-            desc = desc.withLogMap(newLogMap, readOnly = desc.readOnly && hwd.readOnly)
+            val readOnly = desc.readOnly && hwd.readOnly
+            assert(newLogMap.definitelyReadOnly == readOnly)
+            desc = desc.withLogMap(newLogMap, readOnly)
             loop(next())
           }
         case 9 => // DirectRead
@@ -1350,7 +1352,9 @@ object Rxn extends RxnInstances0 {
             // NB: might've revalidated `desc`, but
             // NB: that never changes `desc.map`, so
             // NB: we can replace the map here.
-            desc = desc.withLogMap(newLogMap, readOnly = desc.readOnly && hwd.readOnly)
+            val readOnly = desc.readOnly && hwd.readOnly
+            assert(newLogMap.definitelyReadOnly == readOnly)
+            desc = desc.withLogMap(newLogMap, readOnly)
             loop(next())
           }
         case 20 => // TicketRead
@@ -1377,7 +1381,9 @@ object Rxn extends RxnInstances0 {
             // NB: might've revalidated `desc`, but
             // NB: that never changes `desc.map`, so
             // NB: we can replace the map here.
-            desc = desc.withLogMap(newLogMap, readOnly = desc.readOnly && newHwd.readOnly)
+            val readOnly = desc.readOnly && newHwd.readOnly
+            assert(newLogMap.definitelyReadOnly == readOnly)
+            desc = desc.withLogMap(newLogMap, readOnly)
             loop(next())
           }
         case 22 => // ForceValidate

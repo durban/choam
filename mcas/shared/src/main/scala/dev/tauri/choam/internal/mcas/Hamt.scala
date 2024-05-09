@@ -70,11 +70,7 @@ import java.util.Arrays
  */
 private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]] protected[mcas] (
 
-  /**
-   * The number of values in `this` subtree (i.e., if `this` is the
-   * root, then this number is size of the whole tree).
-   */
-  final override val size: Int,
+  private val sizeAndBlue: Int,
 
   /**
    * Contains 1 bits in exactly the places where the imaginary 64-element
@@ -111,7 +107,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
   private[this] final val OP_INSERT = 1
   private[this] final val OP_UPSERT = 2
 
-  protected def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): H
+  protected def newNode(sizeAndBlue: Int, bitmap: Long, contents: Array[AnyRef]): H
 
   protected final override def contentsArr: Array[AnyRef] =
     this.contents
@@ -119,7 +115,19 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
   protected final override def insertInternal(v: V): H =
     this.inserted(v)
 
+  protected final def isBlueSubtree: Boolean = {
+    this.sizeAndBlue >= 0
+  }
+
   // API (should only be called on a root node!):
+
+  /**
+   * The number of values in `this` subtree (i.e., if `this` is the
+   * root, then this number is size of the whole tree).
+   */
+  final override def size: Int = {
+    java.lang.Math.abs(this.sizeAndBlue)
+  }
 
   final def nonEmpty: Boolean = {
     this.size > 0
@@ -327,7 +335,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
                 val cArr = new Array[AnyRef](1)
                 cArr(0) = ov
                 val oFlag = 1L << logicalIdx(oh, shift + W)
-                this.newNode(1, oFlag, cArr)
+                this.newNode(sizeAndBlue = packSizeAndBlue(1, isBlue(ov.asInstanceOf[V])), bitmap = oFlag, contents = cArr)
               }
               val childNode2 = childNode.insertOrOverwrite(hash, value, shift + W, op)
               this.withNode(this.size + (childNode2.size - 1), bitmap, childNode2, physIdx)
@@ -344,7 +352,11 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
           System.arraycopy(contents, 0, newArr, 0, physIdx)
           System.arraycopy(contents, physIdx, newArr, physIdx + 1, len - physIdx)
           newArr(physIdx) = box(value)
-          this.newNode(this.size + 1, newBitmap, newArr)
+          this.newNode(
+            sizeAndBlue = packSizeAndBlue(this.size + 1, this.isBlueSubtree && isBlue(value)),
+            bitmap = newBitmap,
+            contents = newArr
+          )
         }
       }
     } else {
@@ -354,7 +366,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
       } else {
         val newArr = new Array[AnyRef](1)
         newArr(0) = box(value)
-        this.newNode(1, flag, newArr)
+        this.newNode(packSizeAndBlue(1, isBlue(value)), flag, newArr)
       }
     }
   }
@@ -369,11 +381,19 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
   }
 
   private[this] final def withValue(bitmap: Long, value: V, physIdx: Int): H = {
-    this.newNode(this.size, bitmap, arrReplacedValue(this.contents, box(value), physIdx))
+    this.newNode(
+      sizeAndBlue = packSizeAndBlue(this.size, this.isBlueSubtree && isBlue(value)),
+      bitmap = bitmap,
+      contents = arrReplacedValue(this.contents, box(value), physIdx),
+    )
   }
 
   private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[K, V, E, _, _, _], physIdx: Int): H = {
-    this.newNode(size, bitmap, arrReplacedValue(this.contents, node, physIdx))
+    this.newNode(
+      sizeAndBlue = packSizeAndBlue(size, this.isBlueSubtree && node.isBlueSubtree),
+      bitmap = bitmap,
+      contents = arrReplacedValue(this.contents, node, physIdx),
+    )
   }
 
   private[this] final def arrReplacedValue(arr: Array[AnyRef], value: AnyRef, idx: Int): Array[AnyRef] = {
@@ -405,6 +425,12 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
   /** Index into the actual dense array (`contents`) */
   private[this] final def physicalIdx(bitmap: Long, flag: Long): Int = {
     java.lang.Long.bitCount(bitmap & (flag - 1L))
+  }
+
+  private[this] final def packSizeAndBlue(size: Int, isBlue: Boolean): Int = {
+    assert(size >= 0)
+    if (isBlue) size
+    else -size
   }
 }
 

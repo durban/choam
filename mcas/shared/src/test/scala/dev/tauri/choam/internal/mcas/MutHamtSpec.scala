@@ -555,9 +555,9 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     val h = LongMutHamt.newEmpty()
     assertEquals(h.toString, "MutHamt()")
     h.insert(Val(0x000000ffff000000L))
-    assertEquals(h.toString, "MutHamt(Val(1099494850560,fortytwo))")
+    assertEquals(h.toString, "MutHamt(Val(1099494850560,fortytwo,true))")
     h.insert(Val(0xffffff0000ffffffL))
-    assertEquals(h.toString, "MutHamt(Val(1099494850560,fortytwo), Val(-1099494850561,fortytwo))")
+    assertEquals(h.toString, "MutHamt(Val(1099494850560,fortytwo,true), Val(-1099494850561,fortytwo,true))")
   }
 
   property("forAll") {
@@ -568,6 +568,45 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       assert(hamt.forAll(42L))
       hamt.upsert(Val(1024L))
       assert(!hamt.forAll(1024L))
+    }
+  }
+
+  property("isBlue (default generator)") {
+    forAll { (seed: Long, nums: Set[Long]) =>
+      testIsBlue(seed, nums)
+    }
+  }
+
+  property("isBlue (RIG generator)") {
+    myForAll { (seed: Long, nums: Set[Long]) =>
+      testIsBlue(seed, nums)
+    }
+  }
+
+  private def testIsBlue(seed: Long, nums: Set[Long]): Unit = {
+    val rng = new Random(seed)
+    val evenNums = rng.shuffle(nums.toList.filter(n => (n % 2L) == 0L))
+    val oddNums = rng.shuffle(nums.toList.filter(n => (n % 2L) != 0L))
+    val hamt = LongMutHamt.newEmpty()
+    var size = 0
+    assert(hamt.definitelyBlue)
+    for (n <- evenNums) {
+      hamt.insert(Val(n, isBlue = true))
+      size += 1
+      assert(hamt.definitelyBlue)
+      assertEquals(hamt.size, size)
+    }
+    for (k <- oddNums) {
+      hamt.insert(Val(k, isBlue = false))
+      size += 1
+      assert(!hamt.definitelyBlue)
+      assertEquals(hamt.size, size)
+    }
+    // it's just an approximation, so overwriting with isBlue = true doesn't change `definitelyBlue`:
+    for (k <- oddNums) {
+      hamt.update(Val(k, isBlue = true))
+      assert(!hamt.definitelyBlue)
+      assertEquals(hamt.size, size)
     }
   }
 
@@ -610,6 +649,9 @@ object MutHamtSpec {
     protected final override def hashOf(k: Long): Long =
       k
 
+    protected final override def isBlue(a: Val): Boolean =
+      a.isBlue
+
     protected final override def newNode(logIdx: Int, contents: Array[AnyRef]): LongMutHamt =
       new LongMutHamt(logIdx, contents)
 
@@ -632,6 +674,9 @@ object MutHamtSpec {
 
     final def toArray: Array[Val] =
       this.copyToArray((), flag = false)
+
+    final def definitelyBlue: Boolean =
+      this.isBlueTree
   }
 
   final object LongMutHamt {

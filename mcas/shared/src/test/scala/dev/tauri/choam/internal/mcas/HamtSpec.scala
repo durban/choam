@@ -502,9 +502,9 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     val h0 = LongHamt.empty
     assertEquals(h0.toString, "Hamt()")
     val h1 = h0.inserted(Val(0x000000ffff000000L))
-    assertEquals(h1.toString, "Hamt(Val(1099494850560,fortytwo))")
+    assertEquals(h1.toString, "Hamt(Val(1099494850560,fortytwo,true))")
     val h2 = h1.inserted(Val(0xffffff0000ffffffL))
-    assertEquals(h2.toString, "Hamt(Val(1099494850560,fortytwo), Val(-1099494850561,fortytwo))")
+    assertEquals(h2.toString, "Hamt(Val(1099494850560,fortytwo,true), Val(-1099494850561,fortytwo,true))")
   }
 
   property("forAll") {
@@ -525,19 +525,58 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
       assert(!hamt2.forAll(42L))
     }
   }
+
+  property("isBlue (default generator)") {
+    forAll { (seed: Long, nums: Set[Long]) =>
+      testIsBlue(seed, nums)
+    }
+  }
+
+  property("isBlue (RIG generator)") {
+    myForAll { (seed: Long, nums: Set[Long]) =>
+      testIsBlue(seed, nums)
+    }
+  }
+
+  private def testIsBlue(seed: Long, nums: Set[Long]): Unit = {
+    val rng = new Random(seed)
+    val evenNums = rng.shuffle(nums.toList.filter(n => (n % 2L) == 0L))
+    val oddNums = rng.shuffle(nums.toList.filter(n => (n % 2L) != 0L))
+    var hamt = LongHamt.empty
+    var size = 0
+    assert(hamt.definitelyBlue)
+    for (n <- evenNums) {
+      hamt = hamt.inserted(Val(n, isBlue = true))
+      size += 1
+      assert(hamt.definitelyBlue)
+      assertEquals(hamt.size, size)
+    }
+    for (k <- oddNums) {
+      hamt = hamt.inserted(Val(k, isBlue = false))
+      size += 1
+      assert(!hamt.definitelyBlue)
+      assertEquals(hamt.size, size)
+    }
+    // it's just an approximation, so overwriting with isBlue = true doesn't change `definitelyBlue`:
+    for (k <- oddNums) {
+      hamt = hamt.updated(Val(k, isBlue = true))
+      assert(!hamt.definitelyBlue)
+      assertEquals(hamt.size, size)
+    }
+  }
 }
 
 object HamtSpec {
 
   /** Just a `Long`, but has its own identity */
-  case class Val(value: Long, extra: String = "fortytwo") {
+  case class Val(value: Long, extra: String = "fortytwo", isBlue: Boolean = true) {
     override def equals(that: Any): Boolean = {
       if (that.isInstanceOf[SpecVal]) {
         that.equals(this)
       } else {
         that match {
-          case Val(v, ex) =>
-            (value == v) && (extra == ex)
+          case Val(v, ex, ib) =>
+            (value == v) && (extra == ex) && (isBlue == ib)
           case _ =>
             false
         }
@@ -561,6 +600,8 @@ object HamtSpec {
       k
     protected final override def keyOf(a: Val): Long =
       a.value
+    protected final override def isBlue(a: Val): Boolean =
+      a.isBlue
     protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LongHamt =
       new LongHamt(size, bitmap, contents)
     protected final override def newArray(size: Int): Array[Val] =
@@ -571,6 +612,8 @@ object HamtSpec {
       a.value > tok
     final def toArray: Array[Val] =
       this.toArray((), flag = false)
+    final def definitelyBlue: Boolean =
+      this.isBlueSubtree
     final def getOrElse(k: Long, default: Val): Val = this.getOrElseNull(k) match {
       case null => default
       case v => v

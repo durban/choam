@@ -50,11 +50,26 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     this
   }
 
+  protected final def isBlueTree: Boolean = {
+    this.logIdx >= 0
+  }
+
+  private[this] final def isBlueTree_=(isBlue: Boolean): Unit = {
+    if (isBlue != this.isBlueTree) {
+      this.logIdx = -this.logIdx
+    }
+  }
+
   // API (should only be called on a root node!):
 
   final override def size: Int = {
     // we abuse the `logIdx` of the root to store the size of the whole tree:
-    this.logIdx
+    java.lang.Math.abs(this.logIdx)
+  }
+
+  private[this] def addToSize(s: Int) = {
+    val x = if (this.logIdx >= 0) s else -s
+    this.logIdx += x
   }
 
   final def nonEmpty: Boolean = {
@@ -66,14 +81,18 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
   }
 
   final def update(a: V): Unit = {
-    val sizeDiff = this.insertOrOverwrite(hashOf(keyOf(a)), a, shift = 0, op = OP_UPDATE)
+    val sdb = this.insertOrOverwrite(hashOf(keyOf(a)), a, shift = 0, op = OP_UPDATE)
+    val sizeDiff = unpackSizeDiff(sdb)
     assert(sizeDiff == 0)
+    this.isBlueTree = this.isBlueTree && unpackIsBlue(sdb)
   }
 
   final def insert(a: V): Unit = {
-    val sizeDiff = this.insertOrOverwrite(hashOf(keyOf(a)), a, shift = 0, op = OP_INSERT)
+    val sdb = this.insertOrOverwrite(hashOf(keyOf(a)), a, shift = 0, op = OP_INSERT)
+    val sizeDiff = unpackSizeDiff(sdb)
     assert(sizeDiff == 1)
-    this.logIdx += 1
+    this.addToSize(1)
+    this.isBlueTree = this.isBlueTree && unpackIsBlue(sdb)
   }
 
   final def insertAllFrom(that: H): H = {
@@ -81,21 +100,27 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
   }
 
   final def upsert(a: V): Unit = {
-    val sizeDiff = this.insertOrOverwrite(hashOf(keyOf(a)), a, shift = 0, op = OP_UPSERT)
+    val sdb = this.insertOrOverwrite(hashOf(keyOf(a)), a, shift = 0, op = OP_UPSERT)
+    val sizeDiff = unpackSizeDiff(sdb)
     assert((sizeDiff == 0) || (sizeDiff == 1))
-    this.logIdx += sizeDiff
+    this.addToSize(sizeDiff)
+    this.isBlueTree = this.isBlueTree && unpackIsBlue(sdb)
   }
 
   final def computeIfAbsent[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): Unit = {
-    val sizeDiff = this.visit(k, hashOf(k), tok, visitor, newValue = nullOf[V], modify = false, shift = 0)
+    val sdb = this.visit(k, hashOf(k), tok, visitor, newValue = nullOf[V], modify = false, shift = 0)
+    val sizeDiff = unpackSizeDiff(sdb)
     assert((sizeDiff == 0) || (sizeDiff == 1))
-    this.logIdx += sizeDiff
+    this.addToSize(sizeDiff)
+    this.isBlueTree = this.isBlueTree && unpackIsBlue(sdb)
   }
 
   final def computeOrModify[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): Unit = {
-    val sizeDiff = this.visit(k, hashOf(k), tok, visitor, newValue = nullOf[V], modify = true, shift = 0)
+    val sdb = this.visit(k, hashOf(k), tok, visitor, newValue = nullOf[V], modify = true, shift = 0)
+    val sizeDiff = unpackSizeDiff(sdb)
     assert((sizeDiff == 0) || (sizeDiff == 1))
-    this.logIdx += sizeDiff
+    this.addToSize(sizeDiff)
+    this.isBlueTree = this.isBlueTree && unpackIsBlue(sdb)
   }
 
   final def copyToArray(tok: T1, flag: Boolean): Array[E] =
@@ -153,7 +178,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     contents(physIdx)
   }
 
-  /** Returns the increase in size */
+  /** Returns the increase in size and isBlue */
   private final def visit[T](
     k: K,
     hash: Long,
@@ -172,7 +197,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
         }
         newVal match {
           case null =>
-            0
+            packSizeDiffAndBlue(0, true)
           case newVal =>
             assert(hashOf(keyOf(newVal)) == hash)
             // TODO: this will compute physIdx again:
@@ -189,7 +214,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
             // if we need to insert BEFORE growing:
             visitor.entryAbsent(k, tok) match {
               case null =>
-                0
+                packSizeDiffAndBlue(0, true)
               case newVal =>
                 this.growLevel(newSize = necessarySize(logIdx, nodeLogIdx), shift = shift)
                 // now we can insert the new value:
@@ -210,14 +235,14 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
           }
           if (modify) {
             if (equ(newValue, a)) {
-              0
+              packSizeDiffAndBlue(0, isBlue(a))
             } else {
               assert(hashOf(keyOf(newVal)) == hashA)
               this.insertOrOverwrite(hash, newVal, shift, op = OP_UPDATE)
             }
           } else {
             assert(equ(newVal, a))
-            0
+            packSizeDiffAndBlue(0, true)
           }
         } else {
           val logIdx = logicalIdx(hash, shift)
@@ -231,7 +256,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
             }
             newVal match {
               case null =>
-                0
+                packSizeDiffAndBlue(0, true)
               case newVal =>
                 assert(hashOf(keyOf(newVal)) == hash)
                 this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
@@ -240,7 +265,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
             if (isNull(newValue)) {
               visitor.entryAbsent(k, tok) match {
                 case null =>
-                  0
+                  packSizeDiffAndBlue(0, true)
                 case newVal =>
                   this.growLevel(newSize = necessarySize(logIdx, logIdxA), shift = shift)
                   this.visit(k, hash, tok, visitor, newValue = newVal, modify = modify, shift = shift)
@@ -266,7 +291,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     physicalIdx(logIdx, size)
   }
 
-  /** Returns the increase in size */
+  /** Returns the increase in size and isBlue */
   private final def insertOrOverwrite(hash: Long, value: V, shift: Int, op: Int, tries: Int = 0): Int = {
     val contents = this.contents
     val logIdx = logicalIdx(hash, shift)
@@ -278,7 +303,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
           throw new IllegalArgumentException
         } else {
           contents(physIdx) = box(value)
-          1
+          packSizeDiffAndBlue(1, isBlue(value))
         }
       case node: MutHamt[_, _, _, _, _, _, _] =>
         val nodeLogIdx = node.logIdx
@@ -305,9 +330,9 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
             throw new IllegalArgumentException
           } else if (!equ(ov, value)) {
             contents(physIdx) = box(value)
-            0
+            packSizeDiffAndBlue(0, isBlue(value))
           } else {
-            0
+            packSizeDiffAndBlue(0, isBlue(value))
           }
         } else {
           val oLogIdx = logicalIdx(oh, shift)
@@ -321,8 +346,8 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
             }
             val r = childNode.insertOrOverwrite(hash, value, shift = shift + W, op = op)
             contents(physIdx) = childNode
-            assert(r == 1)
-            1
+            assert(unpackSizeDiff(r) == 1)
+            r
           } else {
             if (op == OP_UPDATE) {
               // there is no chance that we'll be able to
@@ -420,5 +445,21 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     val mask = START_MASK >>> shift // masks the bits we're interested in
     val sh = java.lang.Long.numberOfTrailingZeros(mask) // we'll shift the masked result
     ((hash & mask) >>> sh).toInt
+  }
+
+  private[this] final def packSizeDiffAndBlue(sizeDiff: Int, isBlue: Boolean): Int = {
+    assert((sizeDiff == 0) || (sizeDiff == 1))
+    val bl = if (isBlue) 2 else 0
+    bl | sizeDiff
+  }
+
+  @inline
+  private[this] final def unpackSizeDiff(sdb: Int): Int = {
+    sdb & 1
+  }
+
+  @inline
+  private[this] final def unpackIsBlue(sdb: Int): Boolean = {
+    (sdb & 2) != 0
   }
 }

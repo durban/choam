@@ -24,11 +24,17 @@ private[mcas] final class LogMapMut[A] private (
   _contents: Array[AnyRef],
 ) extends MutHamt[MemoryLocation[A], LogEntry[A], WdLike[A], emcas.EmcasDescriptor, Mcas.ThreadContext, LogMap2[A], LogMapMut[A]](_logIdx, _contents) {
 
+  final def definitelyReadOnly: Boolean =
+    this.isBlueTree
+
   protected final override def keyOf(a: LogEntry[A]): MemoryLocation[A] =
     a.address
 
   protected final override def hashOf(k: MemoryLocation[A]): Long =
     k.id
+
+  protected final override def isBlue(a: LogEntry[A]): Boolean =
+    a.readOnly
 
   protected final override def newNode(logIdx: Int, contents: Array[AnyRef]): LogMapMut[A] =
     new LogMapMut[A](logIdx, contents)

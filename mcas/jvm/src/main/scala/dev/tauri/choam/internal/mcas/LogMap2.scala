@@ -20,11 +20,11 @@ package internal
 package mcas
 
 private[mcas] final class LogMap2[A] private[mcas] (
-  _size: Int,
+  _sizeAndBlue: Int,
   _bitmap: Long,
   _contents: Array[AnyRef],
 ) extends Hamt[MemoryLocation[A], LogEntry[A], WdLike[A], emcas.EmcasDescriptor, Mcas.ThreadContext, LogMap2[A]](
-  _size,
+  _sizeAndBlue,
   _bitmap,
   _contents,
 ) {
@@ -33,14 +33,20 @@ private[mcas] final class LogMap2[A] private[mcas] (
     this.forAll(ctx)
   }
 
+  final def definitelyReadOnly: Boolean =
+    this.isBlueSubtree
+
   protected final override def hashOf(k: MemoryLocation[A]): Long =
     k.id
 
   protected final override def keyOf(a: LogEntry[A]): MemoryLocation[A] =
     a.address
 
-  protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LogMap2[A] =
-    new LogMap2(size, bitmap, contents)
+  protected final override def isBlue(a: LogEntry[A]): Boolean =
+    a.readOnly
+
+  protected final override def newNode(sizeAndBlue: Int, bitmap: Long, contents: Array[AnyRef]): LogMap2[A] =
+    new LogMap2(sizeAndBlue, bitmap, contents)
 
   protected final override def newArray(size: Int): Array[WdLike[A]] =
     new Array[WdLike[A]](size)
@@ -57,7 +63,7 @@ private[mcas] final class LogMap2[A] private[mcas] (
 private[mcas] object LogMap2 {
 
   private[this] val _empty: LogMap2[Any] =
-    new LogMap2(0, 0L, new Array[AnyRef](0))
+    new LogMap2(_sizeAndBlue = 0, _bitmap = 0L, _contents = new Array[AnyRef](0))
 
   final def empty[A]: LogMap2[A] =
     _empty.asInstanceOf[LogMap2[A]]

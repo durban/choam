@@ -20,14 +20,17 @@ package internal
 package mcas
 
 private[mcas] final class LogMap2[A] private (
-  _size: Int,
+  _sizeAndBlue: Int,
   _bitmap: Long,
   _contents: Array[AnyRef],
-) extends Hamt[MemoryLocation[A], LogEntry[A], LogEntry[A], Unit, Mcas.ThreadContext, LogMap2[A]](_size, _bitmap, _contents) {
+) extends Hamt[MemoryLocation[A], LogEntry[A], LogEntry[A], Unit, Mcas.ThreadContext, LogMap2[A]](_sizeAndBlue, _bitmap, _contents) {
 
   final def revalidate(ctx: Mcas.ThreadContext): Boolean = {
     this.forAll(ctx)
   }
+
+  final def definitelyReadOnly: Boolean =
+    this.isBlueSubtree
 
   protected final override def hashOf(k: MemoryLocation[A]): Long =
     k.id
@@ -35,8 +38,11 @@ private[mcas] final class LogMap2[A] private (
   protected final override def keyOf(a: LogEntry[A]): MemoryLocation[A] =
     a.address
 
-  protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LogMap2[A] =
-    new LogMap2(size, bitmap, contents)
+  protected final override def isBlue(a: LogEntry[A]): Boolean =
+    a.readOnly
+
+  protected final override def newNode(sizeAndBlue: Int, bitmap: Long, contents: Array[AnyRef]): LogMap2[A] =
+    new LogMap2(sizeAndBlue, bitmap, contents)
 
   protected final override def newArray(size: Int): Array[LogEntry[A]] =
     new Array[LogEntry[A]](size)
