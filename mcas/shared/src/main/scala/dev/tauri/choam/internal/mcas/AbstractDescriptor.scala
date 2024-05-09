@@ -30,7 +30,7 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   type D <: AbstractDescriptor
 
-  def selfD: D
+  def self: D
 
   def readOnly: Boolean
 

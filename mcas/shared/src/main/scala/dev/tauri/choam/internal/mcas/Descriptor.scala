@@ -31,7 +31,7 @@ final class Descriptor private (
 
   final override type D = Descriptor
 
-  final override def selfD: D =
+  final override def self: D =
     this
 
   require((versionCas eq null) || (versionIncr > 0L))
@@ -334,7 +334,7 @@ object Descriptor {
     if (needToExtend) {
       // this will be null, if we cannot extend,
       // in which case we return null:
-      merged = ctx.validateAndTryExtend(merged, hwd = null).selfD
+      merged = ctx.validateAndTryExtend(merged, hwd = null).self // TODO: can we avoid `.self` here?
     }
     merged
   }

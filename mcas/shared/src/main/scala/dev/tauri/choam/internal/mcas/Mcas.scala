@@ -394,7 +394,7 @@ object Mcas extends McasCompanionPlatform { self =>
           val newestDesc = newDesc.overwrite(
             newDesc.getOrElseNull(ref).withNv(nv)
           )
-          new Builder(this.ctx, newestDesc.selfD)
+          new Builder(this.ctx, newestDesc)
         case None =>
           throw new IllegalStateException("couldn't extend, rollback is necessary")
       }
@@ -416,7 +416,7 @@ object Mcas extends McasCompanionPlatform { self =>
             val newHwd = LogEntry(ref, from, to, oldHwd.version)
             newDesc.overwrite(newHwd)
           }
-          new Builder(this.ctx, newestDesc.selfD)
+          new Builder(this.ctx, newestDesc)
       }
     }
 

@@ -50,7 +50,7 @@ final class MutDescriptor private (
     this.map.copyToArray(parent, flag = instRo)
   }
 
-  override def selfD: MutDescriptor =
+  override def self: MutDescriptor =
     this
 
   override def readOnly: Boolean =
