@@ -300,18 +300,18 @@ object LogMapBench {
   @State(Scope.Thread)
   class BaselineState extends BaseState {
 
-    override type M = Unit
+    override type M = String
 
     @Setup
     def setup(): Unit = {
       this.baseSetup()
     }
 
-    override def newEmpty(): Unit =
-      ()
+    override def newEmpty(): String =
+      ""
 
-    override def inserted(m: Unit, hwd: LogEntry[String]): Unit =
-      ()
+    override def inserted(m: String, hwd: LogEntry[String]): String =
+      m
   }
 
   @State(Scope.Thread)
