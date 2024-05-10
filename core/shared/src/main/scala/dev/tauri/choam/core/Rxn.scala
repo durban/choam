@@ -674,9 +674,10 @@ object Rxn extends RxnInstances0 {
       if (_desc ne null) {
         _desc
       } else {
-        _desc = ctx.start()
-        if (!this.mutable) {
-          _desc = ctx.snapshot(_desc)
+        if (this.mutable) {
+          _desc = ctx.start()
+        } else {
+          _desc = ctx.startSnap()
         }
         _desc
       }

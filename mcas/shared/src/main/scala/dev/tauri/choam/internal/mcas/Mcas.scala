@@ -75,6 +75,15 @@ object Mcas extends McasCompanionPlatform { self =>
      */
     def start(): AbstractDescriptor.Aux[START]
 
+    /**
+     * Subclasses may override to provide a more
+     * efficient implementation than the default
+     * `snapshot(start())`.
+     */
+    def startSnap(): Descriptor = {
+      this.snapshot(this.start())
+    }
+
     private[mcas] def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D]
 
     /**
