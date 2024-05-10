@@ -206,7 +206,7 @@ private[mcas] class LogMapBench {
 
   @Benchmark
   def toArrayHamt(s: HamtState): Array[WdLike[Any]] = {
-    s.map.toArray(null, flag = false)
+    s.map.toArray(null, flag = false, nullIfBlue = true)
   }
 
   @Benchmark

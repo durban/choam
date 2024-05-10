@@ -131,7 +131,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
         value = fx.result,
         contK = fx.contK,
         contT = fx.contT,
-        desc = ctx.start().toImmutable, // TODO: ???
+        desc = ctx.start().toImmutable, // TODO: could we avoid the `toImmutable`?
         postCommit = ListObjStack.Lst.empty[Axn[Unit]],
         exchangerData = newStats,
       )

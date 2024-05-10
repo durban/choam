@@ -675,8 +675,28 @@ object Rxn extends RxnInstances0 {
         _desc
       } else {
         _desc = ctx.start()
+        if (!this.mutable) {
+          _desc = ctx.snapshot(_desc)
+        }
         _desc
       }
+    }
+
+    @tailrec
+    private[this] final def descImm: Descriptor = {
+      if (this.mutable) {
+        this.convertToImmutable()
+        this.descImm
+      } else {
+        this.desc.asInstanceOf[Descriptor]
+      }
+    }
+
+    private[this] final def convertToImmutable(): Unit = {
+      assert(this.mutable)
+      this.mutable = false
+      this.desc = ctx.snapshot(this.desc)
+      this.contK = this.contK.asInstanceOf[ArrayObjStack[Any]].toListObjStack()
     }
 
     @inline
@@ -722,18 +742,13 @@ object Rxn extends RxnInstances0 {
 
     // TODO: this makes it slower if there is `+`! (See `InterpreterBench`.)
 
+    @tailrec
     private[this] final def contKList: ListObjStack[Any] = {
-      val ck = this.contK
-      if (ck.isInstanceOf[ArrayObjStack[_]]) {
-        val arr = ck.asInstanceOf[ArrayObjStack[Any]]
-        assert(this.mutable)
-        this.mutable = false
-        val lst = arr.toListObjStack()
-        this.contK = lst
-        lst
+      if (this.mutable) {
+        this.convertToImmutable()
+        this.contKList
       } else {
-        assert(!this.mutable)
-        ck.asInstanceOf[ListObjStack[Any]]
+        this.contK.asInstanceOf[ListObjStack[Any]]
       }
     }
 
@@ -868,10 +883,8 @@ object Rxn extends RxnInstances0 {
       alts.push(_desc match {
         case null =>
           null
-        case d =>
-          val imm = d.toImmutable
-          this.desc = imm // FIXME ???
-          ctx.snapshot(imm)
+        case _ =>
+          ctx.snapshot(this.descImm)
       })
       alts.push(a)
       alts.push(contT.takeSnapshot())
@@ -1258,7 +1271,7 @@ object Rxn extends RxnInstances0 {
             value = a,
             contK = contKList.takeSnapshot(),
             contT = contT.takeSnapshot(),
-            desc = desc.toImmutable, // TODO: ???
+            desc = this.descImm, // TODO: could we just call `toImmutable`?
             postCommit = pc.takeSnapshot(),
             exchangerData = stats,
           )
