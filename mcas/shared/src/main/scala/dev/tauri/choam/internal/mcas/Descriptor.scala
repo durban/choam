@@ -34,9 +34,6 @@ final class Descriptor private (
 
   final override type D = Descriptor
 
-  final override def self: D =
-    this
-
   final override val readOnly: Boolean =
     this.map.definitelyReadOnly && (!this.hasVersionCas)
 
@@ -332,8 +329,17 @@ object Descriptor {
     }
     if (needToExtend) {
       merged = ctx.validateAndTryExtend(merged, hwd = null) match {
-        case null => null // couldn't extend
-        case extended => extended.self // TODO: can we avoid `.self` here?
+        case null =>
+          // couldn't extend:
+          null
+        case extended =>
+          // we know it's immutable here
+          // (so `toImmutable` is a NOP),
+          // we just need to convince scalac
+          // that it's type is `Descriptor`:
+          val r = extended.toImmutable
+          assert(r eq extended)
+          r
       }
     }
     merged

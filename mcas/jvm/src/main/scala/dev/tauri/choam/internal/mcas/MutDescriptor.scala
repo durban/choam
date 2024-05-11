@@ -31,9 +31,6 @@ final class MutDescriptor private (
 
   final override type D = MutDescriptor
 
-  final override def self: MutDescriptor =
-    this
-
   final override def readOnly: Boolean =
     this.map.definitelyReadOnly
 
