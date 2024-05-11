@@ -19,7 +19,7 @@ package dev.tauri.choam
 package internal
 package mcas
 
-abstract class AbstractDescriptorPlatform {
+private[mcas] abstract class AbstractDescriptorPlatform {
 
-  def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]]
+  private[mcas] def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]]
 }

@@ -24,71 +24,41 @@ import scala.util.hashing.MurmurHash3
 import emcas.EmcasDescriptor
 
 final class MutDescriptor private (
-  private val map: LogMapMut[Any],
-  private var _validTs: Long,
-  private var _versionIncr: Long,
+  private[this] val map: LogMapMut[Any],
+  private[this] var _validTs: Long,
+  private[this] var _versionIncr: Long,
 ) extends AbstractDescriptor {
 
   final override type D = MutDescriptor
 
-  final override def hamt: AbstractHamt[_, _, _, _, _, _] =
-    this.map
-
-  final override def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
-    require(ctx.impl ne Mcas.Emcas)
-    // This is really not effective (we're making an
-    // array of WDs, and mapping it back to HWDs), but
-    // this is not EMCAS, so we don't really care:
-    this.map.copyToArray(null, flag = false, nullIfBlue = false).map {
-      case wd: emcas.EmcasWordDesc[_] =>
-        LogEntry(wd.address.cast[Any], wd.ov, wd.nv, wd.oldVersion)
-      case entry: LogEntry[_] =>
-        entry.cast[Any]
-    }.iterator
-  }
-
-  /** This is used by EMCAS instead of the above */
-  private[mcas] final override def toWdArray(parent: EmcasDescriptor, instRo: Boolean): Array[WdLike[Any]] = {
-    this.map.copyToArray(parent, flag = instRo, nullIfBlue = true)
-  }
-
-  override def self: MutDescriptor =
+  final override def self: MutDescriptor =
     this
 
-  override def readOnly: Boolean =
+  final override def readOnly: Boolean =
     this.map.definitelyReadOnly
 
-  override def validTs: Long =
+  final override def validTs: Long =
     this._validTs
 
   final override def versionIncr: Long =
     this._versionIncr
 
-  private[choam] final override def computeIfAbsent[A, T](
-    ref: MemoryLocation[A],
-    tok: T,
-    visitor: Hamt.EntryVisitor[MemoryLocation[A], LogEntry[A], T],
-  ): MutDescriptor = {
-    this.map.computeIfAbsent(ref.cast[Any], tok, visitor.asInstanceOf[Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], T]])
-    // TODO: readOnly
-    this
+  final override def toImmutable: Descriptor = {
+    Descriptor.fromLogMapAndVer(
+      map = this.map.copyToImmutable(),
+      validTs = this.validTs,
+      versionIncr = this.versionIncr,
+    )
   }
 
-  private[choam] final override def computeOrModify[A, T](
-    ref: MemoryLocation[A],
-    tok: T,
-    visitor: Hamt.EntryVisitor[MemoryLocation[A],LogEntry[A],T],
-  ): MutDescriptor = {
-    this.map.computeOrModify(ref.cast[Any], tok, visitor.asInstanceOf[Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], T]])
-    // TODO: readOnly
-    this
-  }
+  protected final override def hamt: AbstractHamt[_, _, _, _, _, _] =
+    this.map
 
   private[mcas] final override def hasVersionCas: Boolean =
     false
 
   private[mcas] final override def addVersionCas(commitTsRef: MemoryLocation[Long]): AbstractDescriptor.Aux[MutDescriptor] = {
-    impossible("MutDescriptor#addVersionCas") // TODO: FIXME
+    impossible("MutDescriptor#addVersionCas")
   }
 
   private[choam] final override def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A] = {
@@ -115,12 +85,24 @@ final class MutDescriptor private (
     this
   }
 
-  private[mcas] final override def validateAndTryExtend(
-    commitTsRef: MemoryLocation[Long],
-    ctx: Mcas.ThreadContext,
-    additionalHwd: LogEntry[_],
-  ): AbstractDescriptor.Aux[MutDescriptor] = {
-    impossible("MutDescriptor#validateAndTryExtend") // TODO: FIXME
+  private[choam] final override def computeIfAbsent[A, T](
+    ref: MemoryLocation[A],
+    tok: T,
+    visitor: Hamt.EntryVisitor[MemoryLocation[A], LogEntry[A], T],
+  ): MutDescriptor = {
+    this.map.computeIfAbsent(ref.cast[Any], tok, visitor.asInstanceOf[Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], T]])
+    // TODO: readOnly
+    this
+  }
+
+  private[choam] final override def computeOrModify[A, T](
+    ref: MemoryLocation[A],
+    tok: T,
+    visitor: Hamt.EntryVisitor[MemoryLocation[A],LogEntry[A],T],
+  ): MutDescriptor = {
+    this.map.computeOrModify(ref.cast[Any], tok, visitor.asInstanceOf[Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], T]])
+    // TODO: readOnly
+    this
   }
 
   /**
@@ -131,6 +113,14 @@ final class MutDescriptor private (
    */
   private[mcas] final override def revalidate(ctx: Mcas.ThreadContext): Boolean = {
     this.map.revalidate(ctx)
+  }
+
+  private[mcas] final override def validateAndTryExtend(
+    commitTsRef: MemoryLocation[Long],
+    ctx: Mcas.ThreadContext,
+    additionalHwd: LogEntry[_],
+  ): AbstractDescriptor.Aux[MutDescriptor] = {
+    impossible("MutDescriptor#validateAndTryExtend") // TODO: FIXME
   }
 
   private[mcas] final override def validateAndTryExtendVer(
@@ -161,12 +151,22 @@ final class MutDescriptor private (
     this
   }
 
-  final override def toImmutable: Descriptor = {
-    Descriptor.fromLogMapAndVer(
-      map = this.map.copyToImmutable(),
-      validTs = this.validTs,
-      versionIncr = this.versionIncr,
-    )
+  private[mcas] final override def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
+    require(ctx.impl ne Mcas.Emcas)
+    // This is really not effective (we're making an
+    // array of WDs, and mapping it back to HWDs), but
+    // this is not EMCAS, so we don't really care:
+    this.map.copyToArray(null, flag = false, nullIfBlue = false).map {
+      case wd: emcas.EmcasWordDesc[_] =>
+        LogEntry(wd.address.cast[Any], wd.ov, wd.nv, wd.oldVersion)
+      case entry: LogEntry[_] =>
+        entry.cast[Any]
+    }.iterator
+  }
+
+  /** This is used by EMCAS instead of the above */
+  private[mcas] final override def toWdArray(parent: EmcasDescriptor, instRo: Boolean): Array[WdLike[Any]] = {
+    this.map.copyToArray(parent, flag = instRo, nullIfBlue = true)
   }
 
   final override def toString: String = {
@@ -185,7 +185,7 @@ final class MutDescriptor private (
         (this eq that) || (
           (this.validTs == that.validTs) &&
           (this.versionIncr == that.versionIncr) &&
-          (this.map == that.map)
+          (this.map == that.hamt)
         )
       case _ =>
         false

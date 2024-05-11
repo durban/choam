@@ -23,42 +23,75 @@ import scala.util.hashing.MurmurHash3
 
 final class Descriptor private (
   protected final override val map: LogMap2[Any],
-  final val validTs: Long,
+  final override val validTs: Long,
   private val validTsBoxed: java.lang.Long,
   final override val versionIncr: Long,
   protected final override val versionCas: LogEntry[java.lang.Long], // can be null
 ) extends DescriptorPlatform {
+
+  require((versionCas eq null) || (versionIncr > 0L))
+  require((validTsBoxed eq null) || (validTsBoxed.longValue == validTs))
 
   final override type D = Descriptor
 
   final override def self: D =
     this
 
-  require((versionCas eq null) || (versionIncr > 0L))
-  require((validTsBoxed eq null) || (validTsBoxed.longValue == validTs))
-
-  final override def hamt: AbstractHamt[_, _, _, _, _, _] =
-    this.map
+  final override val readOnly: Boolean =
+    this.map.definitelyReadOnly && (!this.hasVersionCas)
 
   final override def toImmutable: Descriptor =
     this
 
-  private final def withLogMap(newMap: LogMap2[Any]): Descriptor = {
-    if (newMap eq this.map) {
-      this
-    } else {
-      new Descriptor(
-        map = newMap,
-        validTs = this.validTs,
-        validTsBoxed = this.validTsBoxed,
-        versionIncr = this.versionIncr,
-        versionCas = this.versionCas,
-      )
-    }
+  protected final override def hamt: AbstractHamt[_, _, _, _, _, _] =
+    this.map
+
+  private[mcas] final override def hasVersionCas: Boolean = {
+    this.versionCas ne null
   }
 
-  final override val readOnly: Boolean = {
-    this.map.definitelyReadOnly && (!this.hasVersionCas)
+  private[mcas] final override def addVersionCas(commitTsRef: MemoryLocation[Long]): Descriptor = {
+    require(this.versionCas eq null)
+    require(!this.readOnly)
+    require(this.versionIncr > 0L)
+    require(this.validTsBoxed ne null)
+    val hwd = LogEntry[java.lang.Long](
+      commitTsRef.asInstanceOf[MemoryLocation[java.lang.Long]],
+      ov = this.validTsBoxed, // no re-boxing here
+      nv = java.lang.Long.valueOf(this.newVersion),
+      version = Version.Start, // the version's version is unused/arbitrary
+    )
+    new Descriptor(
+      map = this.map,
+      validTs = this.validTs,
+      validTsBoxed = this.validTsBoxed,
+      versionIncr = this.versionIncr,
+      versionCas = hwd,
+    )
+  }
+
+  private[choam] final override def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A] = {
+    this.map.asInstanceOf[LogMap2[A]].getOrElseNull(ref.id)
+  }
+
+  private[choam] final override def add[A](desc: LogEntry[A]): Descriptor = {
+    // Note, that it is important, that we don't allow
+    // adding an already included ref; the Exchanger
+    // depends on this behavior:
+    val newMap = this.map.inserted(desc.cast[Any])
+    this.withLogMap(newMap)
+  }
+
+  private[choam] final override def overwrite[A](desc: LogEntry[A]): Descriptor = {
+    require(desc.version <= this.validTs)
+    val newMap = this.map.updated(desc.cast[Any])
+    this.withLogMap(newMap)
+  }
+
+  private[choam] final def addOrOverwrite[A](desc: LogEntry[A]): Descriptor = {
+    require(desc.version <= this.validTs)
+    val newMap = this.map.upserted(desc.cast[Any])
+    this.withLogMap(newMap)
   }
 
   private[choam] final override def computeIfAbsent[A, T](
@@ -87,41 +120,6 @@ final class Descriptor private (
     }
   }
 
-  private[mcas] final def hasVersionCas: Boolean = {
-    this.versionCas ne null
-  }
-
-  private[mcas] final def withNoNewVersion: Descriptor = {
-    require(this.versionCas eq null)
-    new Descriptor(
-      map = this.map,
-      validTs = this.validTs,
-      validTsBoxed = this.validTsBoxed,
-      versionIncr = 0L,
-      versionCas = null,
-    )
-  }
-
-  private[choam] final override def add[A](desc: LogEntry[A]): Descriptor = {
-    // Note, that it is important, that we don't allow
-    // adding an already included ref; the Exchanger
-    // depends on this behavior:
-    val newMap = this.map.inserted(desc.cast[Any])
-    this.withLogMap(newMap)
-  }
-
-  private[choam] final override def overwrite[A](desc: LogEntry[A]): Descriptor = {
-    require(desc.version <= this.validTs)
-    val newMap = this.map.updated(desc.cast[Any])
-    this.withLogMap(newMap)
-  }
-
-  private[choam] final def addOrOverwrite[A](desc: LogEntry[A]): Descriptor = {
-    require(desc.version <= this.validTs)
-    val newMap = this.map.upserted(desc.cast[Any])
-    this.withLogMap(newMap)
-  }
-
   /**
    * Tries to revalidate `this` based on the current
    * versions of the refs it contains.
@@ -130,30 +128,6 @@ final class Descriptor private (
    */
   private[mcas] final override def revalidate(ctx: Mcas.ThreadContext): Boolean = {
     this.map.revalidate(ctx)
-  }
-
-  private[mcas] final override def addVersionCas(commitTsRef: MemoryLocation[Long]): Descriptor = {
-    require(this.versionCas eq null)
-    require(!this.readOnly)
-    require(this.versionIncr > 0L)
-    require(this.validTsBoxed ne null)
-    val hwd = LogEntry[java.lang.Long](
-      commitTsRef.asInstanceOf[MemoryLocation[java.lang.Long]],
-      ov = this.validTsBoxed, // no re-boxing here
-      nv = java.lang.Long.valueOf(this.newVersion),
-      version = Version.Start, // the version's version is unused/arbitrary
-    )
-    new Descriptor(
-      map = this.map,
-      validTs = this.validTs,
-      validTsBoxed = this.validTsBoxed,
-      versionIncr = this.versionIncr,
-      versionCas = hwd,
-    )
-  }
-
-  private[choam] final override def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A] = {
-    this.map.asInstanceOf[LogMap2[A]].getOrElseNull(ref.id)
   }
 
   private[mcas] final override def validateAndTryExtend(
@@ -210,6 +184,31 @@ final class Descriptor private (
     } else {
       // no need to validate:
       this
+    }
+  }
+
+  private[mcas] final def withNoNewVersion: Descriptor = {
+    require(this.versionCas eq null)
+    new Descriptor(
+      map = this.map,
+      validTs = this.validTs,
+      validTsBoxed = this.validTsBoxed,
+      versionIncr = 0L,
+      versionCas = null,
+    )
+  }
+
+  private final def withLogMap(newMap: LogMap2[Any]): Descriptor = {
+    if (newMap eq this.map) {
+      this
+    } else {
+      new Descriptor(
+        map = newMap,
+        validTs = this.validTs,
+        validTsBoxed = this.validTsBoxed,
+        versionIncr = this.versionIncr,
+        versionCas = this.versionCas,
+      )
     }
   }
 

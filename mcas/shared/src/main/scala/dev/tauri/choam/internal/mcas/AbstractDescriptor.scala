@@ -38,22 +38,12 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   def versionIncr: Long
 
+  def toImmutable: Descriptor
+
   final def size: Int =
     this.hamt.size + (if (this.hasVersionCas) 1 else 0)
 
   protected def hamt: AbstractHamt[_, _, _, _, _, _]
-
-  private[choam] def computeIfAbsent[A, T](
-    ref: MemoryLocation[A],
-    tok: T,
-    visitor: Hamt.EntryVisitor[MemoryLocation[A], LogEntry[A], T],
-  ): AbstractDescriptor.Aux[D]
-
-  private[choam] def computeOrModify[A, T](
-    ref: MemoryLocation[A],
-    tok: T,
-    visitor: Hamt.EntryVisitor[MemoryLocation[A], LogEntry[A], T],
-  ): AbstractDescriptor.Aux[D]
 
   private[mcas] final def nonEmpty: Boolean =
     this.size > 0
@@ -67,6 +57,24 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   private[choam] def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A]
 
+  private[choam] def add[A](desc: LogEntry[A]): AbstractDescriptor.Aux[D]
+
+  private[choam] def overwrite[A](desc: LogEntry[A]): AbstractDescriptor.Aux[D]
+
+  private[choam] def addOrOverwrite[A](desc: LogEntry[A]): AbstractDescriptor.Aux[D]
+
+  private[choam] def computeIfAbsent[A, T](
+    ref: MemoryLocation[A],
+    tok: T,
+    visitor: Hamt.EntryVisitor[MemoryLocation[A], LogEntry[A], T],
+  ): AbstractDescriptor.Aux[D]
+
+  private[choam] def computeOrModify[A, T](
+    ref: MemoryLocation[A],
+    tok: T,
+    visitor: Hamt.EntryVisitor[MemoryLocation[A], LogEntry[A], T],
+  ): AbstractDescriptor.Aux[D]
+
   final def isValidHwd[A](hwd: LogEntry[A]): Boolean = {
     hwd.version <= this.validTs
   }
@@ -78,12 +86,6 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
    * @return true, iff `this` is still valid.
    */
   private[mcas] def revalidate(ctx: Mcas.ThreadContext): Boolean
-
-  private[choam] def add[A](desc: LogEntry[A]): AbstractDescriptor.Aux[D]
-
-  private[choam] def overwrite[A](desc: LogEntry[A]): AbstractDescriptor.Aux[D]
-
-  private[choam] def addOrOverwrite[A](desc: LogEntry[A]): AbstractDescriptor.Aux[D]
 
   private[mcas] def validateAndTryExtend(
     commitTsRef: MemoryLocation[Long],
@@ -98,6 +100,4 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
   ): AbstractDescriptor.Aux[D]
 
   private[mcas] def withNoNewVersion: AbstractDescriptor.Aux[D]
-
-  def toImmutable: Descriptor
 }

@@ -25,7 +25,7 @@ private[mcas] abstract class DescriptorPlatform extends AbstractDescriptor {
 
   protected def versionCas: LogEntry[java.lang.Long]
 
-  final def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
+  private[mcas] final override def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
     require(ctx.impl ne Mcas.Emcas)
     // This is really not effective (we're making an
     // array of WDs, and mapping it back to HWDs), but
@@ -45,7 +45,7 @@ private[mcas] abstract class DescriptorPlatform extends AbstractDescriptor {
   }
 
   /** This only exists on the JVM, and used by EMCAS instead of the above */
-  private[mcas] final def toWdArray(parent: emcas.EmcasDescriptor, instRo: Boolean): Array[WdLike[Any]] = {
+  private[mcas] final override def toWdArray(parent: emcas.EmcasDescriptor, instRo: Boolean): Array[WdLike[Any]] = {
     this.map.toArray(parent, flag = instRo, nullIfBlue = true)
   }
 }
