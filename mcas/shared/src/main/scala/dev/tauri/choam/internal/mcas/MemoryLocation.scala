@@ -128,7 +128,7 @@ object MemoryLocation extends MemoryLocationInstances0 {
   private[mcas] def unsafeWithId[A](initial: A)(i0: Long): MemoryLocation[A] =
     unsafeUnpaddedWithId(initial)(i0)
 
-  private[this] def unsafeUnpaddedWithId[A](initial: A)(i0: Long): MemoryLocation[A] = {
+  private[mcas] def unsafeUnpaddedWithId[A](initial: A)(i0: Long): MemoryLocation[A] = {
     new SimpleMemoryLocation[A](initial)(i0)
   }
 

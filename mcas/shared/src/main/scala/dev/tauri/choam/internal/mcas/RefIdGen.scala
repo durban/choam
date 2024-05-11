@@ -89,7 +89,7 @@ private[choam] final class GlobalRefIdGen private[mcas] () extends RefIdGenBase 
     require(size > 0)
     val s = size.toLong
     val n = this.getAndAddCtrO(s)
-    assert(n < (n + s)) // ID overflow
+    require(n < (n + s)) // ID overflow
     n
   }
 
@@ -117,7 +117,7 @@ private[choam] final class GlobalRefIdGen private[mcas] () extends RefIdGenBase 
    */
   final def nextIdGlobal(): Long = {
     val n = this.getAndAddCtrO(1L)
-    assert(n < (n + 1L)) // ID overflow
+    require(n < (n + 1L)) // ID overflow
     n * GAMMA
   }
 

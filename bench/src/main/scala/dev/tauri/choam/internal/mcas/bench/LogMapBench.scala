@@ -45,7 +45,7 @@ private[mcas] class LogMapBench {
   }
 
   @Benchmark
-  def buildNewMutHamt(s: MutHamtState): s.M = {
+  def buildNewHamtMut(s: MutHamtState): s.M = {
     s.buildNew()
   }
 
@@ -110,6 +110,19 @@ private[mcas] class LogMapBench {
 
   @Benchmark
   def lookupHamt(s: HamtState, rnd: RandomState, bh: Blackhole): Unit = {
+    val isDummy = (s.size == 0) || ((rnd.nextInt() % 2) == 0)
+    val key = if (!isDummy) {
+      val idx = rnd.nextIntBounded(s.size)
+      s.keys(idx)
+    } else {
+      val idx = rnd.nextIntBounded(DummySize)
+      s.dummyKeys(idx)
+    }
+    bh.consume(s.map.getOrElseNull(key.id))
+  }
+
+  @Benchmark
+  def lookupHamtMut(s: MutHamtState, rnd: RandomState, bh: Blackhole): Unit = {
     val isDummy = (s.size == 0) || ((rnd.nextInt() % 2) == 0)
     val key = if (!isDummy) {
       val idx = rnd.nextIntBounded(s.size)
@@ -210,6 +223,11 @@ private[mcas] class LogMapBench {
   }
 
   @Benchmark
+  def toArrayHamtMut(s: MutHamtState): Array[WdLike[Any]] = {
+    s.map.copyToArray(null, flag = false, nullIfBlue = true)
+  }
+
+  @Benchmark
   def toArrayLog(s: LogMapState): Array[WdLike[Any]] = {
     val map = s.map
     val arr = new Array[WdLike[Any]](map.size)
@@ -240,14 +258,14 @@ private[mcas] class LogMapBench {
 
 object LogMapBench {
 
-  final val DummySize = 8
+  final val DummySize = 64
 
   @State(Scope.Thread)
   abstract class BaseState {
 
     type M
 
-    @Param(Array("0", "1", "2", "3", "8", "1024"))
+    @Param(Array("0", "1", "2", "3", "8", "16384"))
     var size: Int =
       0
 
@@ -268,17 +286,18 @@ object LogMapBench {
     def inserted(m: M, hwd: LogEntry[String]): M
 
     def baseSetup(): Unit = {
+      val base = RefIdGen.global.nextArrayIdBase(this.size + DummySize)
       this.keys = new Array(this.size)
       this.newHwds = new Array(this.size)
       for (idx <- 0 until this.size) {
-        val ref = MemoryLocation.unsafe("a")
+        val ref = MemoryLocation.unsafeUnpaddedWithId("a")(RefIdGen.compute(base = base, offset = idx))
         this.keys(idx) = ref
         this.newHwds(idx) = LogEntry.apply(ref, "a", "c", 0L)
       }
       this.dummyKeys = new Array(DummySize)
       this.dummyHwds = new Array(DummySize)
       for (idx <- 0 until DummySize) {
-        val ref = MemoryLocation.unsafe("x")
+        val ref = MemoryLocation.unsafeUnpaddedWithId("x")(RefIdGen.compute(base = base, offset = this.size + idx))
         this.dummyKeys(idx) = ref
         this.dummyHwds(idx) = LogEntry.apply(ref, "x", "y", 0L)
       }
