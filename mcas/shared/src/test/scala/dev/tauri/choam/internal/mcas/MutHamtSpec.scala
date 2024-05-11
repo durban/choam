@@ -28,6 +28,7 @@ import cats.syntax.all._
 
 import munit.ScalaCheckSuite
 
+import org.scalacheck.Gen
 import org.scalacheck.Prop.forAll
 
 final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelpers {
@@ -40,34 +41,77 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     p.withMaxSize(p.maxSize * (if (isJvm()) 32 else 2))
   }
 
-  // TODO: "HAMT logicalIdx"
+  property("HAMT logicalIdx") {
+    val h = LongMutHamt.newEmpty()
+
+    def testLogicalIdx(n: Long): Unit = {
+      assertEquals(h.logicalIdx_public(n, shift =  0), ( n >>> 58       ).toInt)
+      assertEquals(h.logicalIdx_public(n, shift =  6), ((n >>> 52) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 12), ((n >>> 46) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 18), ((n >>> 40) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 24), ((n >>> 34) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 30), ((n >>> 28) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 36), ((n >>> 22) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 42), ((n >>> 16) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 48), ((n >>> 10) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 54), ((n >>>  4) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 60), ( n         & 15L).toInt) // this is the tricky one
+    }
+
+    val prop1 = forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { (n: Long) =>
+      testLogicalIdx(n)
+    }
+
+    val prop2 = forAll { (n: Long) =>
+      testLogicalIdx(n)
+    }
+
+    prop1 && prop2
+  }
 
   test("necessarySize") {
     val h = LongMutHamt.newEmpty()
-    assertEquals(h.necessarySize_public(32, 0), 2)
-    assertEquals(h.necessarySize_public(63, 31), 2)
-    assertEquals(h.necessarySize_public(16, 0), 4)
-    assertEquals(h.necessarySize_public(31, 15), 4)
-    assertEquals(h.necessarySize_public(0, 1), 64)
-    assertEquals(h.necessarySize_public(54, 55), 64)
+    assertEquals(h.necessarySize_public(32, 0, shift = 0), 2)
+    assertEquals(h.necessarySize_public(63, 31, shift = 0), 2)
+    assertEquals(h.necessarySize_public(16, 0, shift = 0), 4)
+    assertEquals(h.necessarySize_public(31, 15, shift = 0), 4)
+    assertEquals(h.necessarySize_public(0, 1, shift = 0), 64)
+    assertEquals(h.necessarySize_public(0, 1, shift = 6), 64)
+    assertEquals(h.necessarySize_public(0, 1, shift = 12), 64)
+    assertEquals(h.necessarySize_public(0, 1, shift = 54), 64)
+    assertEquals(h.necessarySize_public(0, 1, shift = 60), 16)
+    assertEquals(h.necessarySize_public(54, 55, shift = 0), 64)
   }
 
   test("physicalIdx") {
     val h = LongMutHamt.newEmpty()
-    assertEquals(h.physicalIdx_public(0, size = 1), 0)
-    assertEquals(h.physicalIdx_public(63, size = 1), 0)
-    assertEquals(h.physicalIdx_public(0, size = 2), 0)
-    assertEquals(h.physicalIdx_public(31, size = 2), 0)
-    assertEquals(h.physicalIdx_public(32, size = 2), 1)
-    assertEquals(h.physicalIdx_public(63, size = 2), 1)
-    assertEquals(h.physicalIdx_public(0, size = 32), 0)
-    assertEquals(h.physicalIdx_public(1, size = 32), 0)
-    assertEquals(h.physicalIdx_public(2, size = 32), 1)
-    assertEquals(h.physicalIdx_public(3, size = 32), 1)
-    assertEquals(h.physicalIdx_public(62, size = 32), 31)
-    assertEquals(h.physicalIdx_public(63, size = 32), 31)
+    assertEquals(h.physicalIdx_public(0, size = 1, shift = 0), 0)
+    assertEquals(h.physicalIdx_public(63, size = 1, shift = 0), 0)
+    assertEquals(h.physicalIdx_public(0, size = 2, shift = 0), 0)
+    assertEquals(h.physicalIdx_public(31, size = 2, shift = 0), 0)
+    assertEquals(h.physicalIdx_public(32, size = 2, shift = 0), 1)
+    assertEquals(h.physicalIdx_public(63, size = 2, shift = 0), 1)
+    assertEquals(h.physicalIdx_public(0, size = 16, shift = 0), 0)
+    assertEquals(h.physicalIdx_public(1, size = 16, shift = 0), 0)
+    assertEquals(h.physicalIdx_public(4, size = 16, shift = 0), 1)
+    assertEquals(h.physicalIdx_public(0, size = 16, shift = 6), 0)
+    assertEquals(h.physicalIdx_public(1, size = 16, shift = 6), 0)
+    assertEquals(h.physicalIdx_public(4, size = 16, shift = 6), 1)
+    assertEquals(h.physicalIdx_public(0, size = 16, shift = 60), 0)
+    assertEquals(h.physicalIdx_public(1, size = 16, shift = 60), 1)
+    assertEquals(h.physicalIdx_public(4, size = 16, shift = 60), 4)
+    assertEquals(h.physicalIdx_public(16, size = 16, shift = 60), 16)
+    assertEquals(h.physicalIdx_public(0, size = 32, shift = 0), 0)
+    assertEquals(h.physicalIdx_public(1, size = 32, shift = 0), 0)
+    assertEquals(h.physicalIdx_public(2, size = 32, shift = 0), 1)
+    assertEquals(h.physicalIdx_public(3, size = 32, shift = 0), 1)
+    assertEquals(h.physicalIdx_public(62, size = 32, shift = 0), 31)
+    assertEquals(h.physicalIdx_public(63, size = 32, shift = 0), 31)
     for (logIdx <- 0 to 63) {
-      assertEquals(h.physicalIdx_public(logIdx, size = 64), logIdx)
+      assertEquals(h.physicalIdx_public(logIdx, size = 64, shift = 0), logIdx)
+    }
+    for (logIdx <- 0 to 15) {
+      assertEquals(h.physicalIdx_public(logIdx, size = 16, shift = 60), logIdx)
     }
   }
 
@@ -159,6 +203,18 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     mutable.insert(Val(k3))
     val immutable2 = immutable1.inserted(Val(k3))
     assertEquals(mutable.toArray.toList, immutable2.toArray.toList)
+  }
+
+  test("HAMT examples (3)") {
+    val k0 = 0L
+    val k1 = 1L
+    val k2 = 2L
+    val mutable = LongMutHamt.newEmpty()
+    mutable.insert(Val(k0))
+    mutable.insert(Val(k1))
+    mutable.insert(Val(k2))
+    val immutable = HamtSpec.LongHamt.empty.inserted(Val(k0)).inserted(Val(k1)).inserted(Val(k2))
+    assertEquals(mutable.toArray.toList, immutable.toArray.toList)
   }
 
   property("HAMT lookup/upsert/toArray (default generator)") {
