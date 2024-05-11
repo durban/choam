@@ -23,7 +23,7 @@ package mcas
  * Mutable HAMT; not thread safe; `null` values are forbidden.
  */
 private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I], H <: MutHamt[K, V, E, T1, T2, I, H]] protected[mcas] (
-  // NB: the root doesn't have a logical idx, so we're abusing this field to store the tree size
+  // NB: the root doesn't have a logical idx, so we're abusing this field to store the tree size (and also the blue bit)
   private var logIdx: Int,
   private var contents: Array[AnyRef],
 ) extends AbstractHamt[K, V, E, T1, T2, H] { this: H =>
@@ -68,8 +68,9 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
   }
 
   private[this] def addToSize(s: Int) = {
-    val x = if (this.logIdx >= 0) s else -s
-    this.logIdx += x
+    val logIdx = this.logIdx
+    val x = if (logIdx >= 0) s else -s
+    this.logIdx = java.lang.Math.addExact(logIdx, x)
   }
 
   final def nonEmpty: Boolean = {
@@ -278,21 +279,8 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     }
   }
 
-  private[this] final def physicalIdx(logIdx: Int, size: Int): Int = {
-    assert(logIdx < 64)
-    // size is always a power of 2
-    val width = java.lang.Integer.numberOfTrailingZeros(size)
-    assert(width <= W)
-    val sh = W - width
-    logIdx >>> sh
-  }
-
-  private[mcas] final def physicalIdx_public(logIdx: Int, size: Int): Int = {
-    physicalIdx(logIdx, size)
-  }
-
   /** Returns the increase in size and isBlue */
-  private final def insertOrOverwrite(hash: Long, value: V, shift: Int, op: Int, tries: Int = 0): Int = {
+  private final def insertOrOverwrite(hash: Long, value: V, shift: Int, op: Int): Int = {
     val contents = this.contents
     val logIdx = logicalIdx(hash, shift)
     val size = contents.length // always a power of 2
@@ -320,7 +308,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
             // we need to grow this level:
             this.growLevel(newSize = necessarySize(logIdx, nodeLogIdx), shift = shift)
             // now we'll suceed for sure:
-            this.insertOrOverwrite(hash, value, shift, op, tries = tries + 1)
+            this.insertOrOverwrite(hash, value, shift, op)
           }
         }
       case ov =>
@@ -357,7 +345,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
               // grow this level:
               this.growLevel(newSize = necessarySize(logIdx, oLogIdx), shift = shift)
               // now we'll suceed for sure:
-              this.insertOrOverwrite(hash, value, shift, op, tries = tries + 1)
+              this.insertOrOverwrite(hash, value, shift, op)
             }
           }
         }
@@ -452,6 +440,19 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     val mask = START_MASK >>> shift // masks the bits we're interested in
     val sh = java.lang.Long.numberOfTrailingZeros(mask) // we'll shift the masked result
     ((hash & mask) >>> sh).toInt
+  }
+
+  private[this] final def physicalIdx(logIdx: Int, size: Int): Int = {
+    assert((logIdx >= 0) && (logIdx < 64))
+    // size is always a power of 2
+    val width = java.lang.Integer.numberOfTrailingZeros(size)
+    assert(width <= W)
+    val sh = W - width
+    logIdx >>> sh
+  }
+
+  private[mcas] final def physicalIdx_public(logIdx: Int, size: Int): Int = {
+    physicalIdx(logIdx, size)
   }
 
   private[this] final def packSizeDiffAndBlue(sizeDiff: Int, isBlue: Boolean): Int = {
