@@ -166,19 +166,15 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
   final def computeIfAbsent[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): H = {
     this.visit(k, hashOf(k), tok, visitor, modify = false, shift = 0) match {
-      case null =>
-        this
-      case newRoot =>
-        newRoot
+      case null => this
+      case newRoot => newRoot
     }
   }
 
   final def computeOrModify[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): H = {
     this.visit(k, hashOf(k), tok, visitor, modify = true, shift = 0) match {
-      case null =>
-        this
-      case newRoot =>
-        newRoot
+      case null => this
+      case newRoot => newRoot
     }
   }
 
@@ -430,8 +426,8 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
   // TODO: this is duplicated with `AbstractHamt`
   private[this] final def packSizeAndBlueInternal(size: Int, isBlue: Boolean): Int = {
     assert(size >= 0)
-    if (isBlue) size
-    else -size
+    val x = (-1) * java.lang.Math.abs(java.lang.Boolean.compare(isBlue, true))
+    size * ((x << 1) + 1)
   }
 }
 

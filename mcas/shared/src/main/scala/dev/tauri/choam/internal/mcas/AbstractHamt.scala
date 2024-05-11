@@ -81,14 +81,10 @@ private[mcas] abstract class AbstractHamt[K, V, E, T1, T2, H <: AbstractHamt[K, 
         case node: AbstractHamt[_, _, _, _, _, _] =>
           val arrIdxAndBlue = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok, flag = flag)
           arrIdx = unpackSize(arrIdxAndBlue)
-          if (!unpackBlue(arrIdxAndBlue)) {
-            isBlueSt = false
-          }
+          isBlueSt &= unpackBlue(arrIdxAndBlue)
         case a =>
           arr(arrIdx) = convertForArray(a.asInstanceOf[V], tok, flag = flag)
-          if (!isBlue(a.asInstanceOf[V])) {
-            isBlueSt = false
-          }
+          isBlueSt &= isBlue(a.asInstanceOf[V])
           arrIdx += 1
       }
       i += 1
@@ -228,8 +224,8 @@ private[mcas] abstract class AbstractHamt[K, V, E, T1, T2, H <: AbstractHamt[K, 
   // TODO: this is duplicated with `Hamt`
   protected[this] final def packSizeAndBlue(size: Int, isBlue: Boolean): Int = {
     assert(size >= 0)
-    if (isBlue) size
-    else -size
+    val x = (-1) * java.lang.Math.abs(java.lang.Boolean.compare(isBlue, true))
+    size * ((x << 1) + 1)
   }
 
   @inline

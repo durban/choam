@@ -60,9 +60,8 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
   }
 
   private[this] final def isBlueTree_=(isBlue: Boolean): Unit = {
-    if (isBlue != this.isBlueTree) {
-      this.logIdx = -this.logIdx
-    }
+    val x = (-1) * java.lang.Math.abs(java.lang.Boolean.compare(isBlue, this.isBlueTree))
+    this.logIdx *= (x << 1) + 1
   }
 
   // API (should only be called on a root node!):
@@ -74,8 +73,8 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
 
   private[this] def addToSize(s: Int) = {
     val logIdx = this.logIdx
-    val x = if (logIdx >= 0) s else -s
-    this.logIdx = java.lang.Math.addExact(logIdx, x)
+    val x = -(logIdx >>> 31)
+    this.logIdx = java.lang.Math.addExact(logIdx, ((x << 1) + 1) * s)
   }
 
   final def nonEmpty: Boolean = {
@@ -90,7 +89,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     val sdb = this.insertOrOverwrite(hashOf(keyOf(a)), a, shift = 0, op = OP_UPDATE)
     val sizeDiff = unpackSizeDiff(sdb)
     assert(sizeDiff == 0)
-    this.isBlueTree = this.isBlueTree && unpackIsBlue(sdb)
+    this.isBlueTree &= unpackIsBlue(sdb)
   }
 
   final def insert(a: V): Unit = {
@@ -98,7 +97,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     val sizeDiff = unpackSizeDiff(sdb)
     assert(sizeDiff == 1)
     this.addToSize(1)
-    this.isBlueTree = this.isBlueTree && unpackIsBlue(sdb)
+    this.isBlueTree &= unpackIsBlue(sdb)
   }
 
   final def insertAllFrom(that: H): H = {
@@ -110,7 +109,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     val sizeDiff = unpackSizeDiff(sdb)
     assert((sizeDiff == 0) || (sizeDiff == 1))
     this.addToSize(sizeDiff)
-    this.isBlueTree = this.isBlueTree && unpackIsBlue(sdb)
+    this.isBlueTree &= unpackIsBlue(sdb)
   }
 
   final def computeIfAbsent[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): Unit = {
@@ -118,7 +117,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     val sizeDiff = unpackSizeDiff(sdb)
     assert((sizeDiff == 0) || (sizeDiff == 1))
     this.addToSize(sizeDiff)
-    this.isBlueTree = this.isBlueTree && unpackIsBlue(sdb)
+    this.isBlueTree &= unpackIsBlue(sdb)
   }
 
   final def computeOrModify[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): Unit = {
@@ -126,7 +125,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
     val sizeDiff = unpackSizeDiff(sdb)
     assert((sizeDiff == 0) || (sizeDiff == 1))
     this.addToSize(sizeDiff)
-    this.isBlueTree = this.isBlueTree && unpackIsBlue(sdb)
+    this.isBlueTree &= unpackIsBlue(sdb)
   }
 
   final def copyToArray(tok: T1, flag: Boolean, nullIfBlue: Boolean): Array[E] =
@@ -409,17 +408,13 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
           bitmap |= (1L << node.logIdx)
           val child: I = node.asInstanceOf[H].copyToImmutableInternal(shift = shift + W)
           size += child.size
-          if (!child.isBlueSubtree) {
-            isBlueSubtree = false
-          }
+          isBlueSubtree &= child.isBlueSubtree
           arr(arity) = box(child)
           arity += 1
         case value =>
           bitmap |= (1L << logicalIdx(hashOf(keyOf(value.asInstanceOf[V])), shift = shift))
           size += 1
-          if (!isBlue(value.asInstanceOf[V])) {
-            isBlueSubtree = false
-          }
+          isBlueSubtree &= isBlue(value.asInstanceOf[V])
           arr(arity) = value
           arity += 1
       }
@@ -472,7 +467,7 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
 
   private[this] final def packSizeDiffAndBlue(sizeDiff: Int, isBlue: Boolean): Int = {
     assert((sizeDiff == 0) || (sizeDiff == 1))
-    val bl = if (isBlue) 2 else 0
+    val bl = java.lang.Math.abs(java.lang.Boolean.compare(isBlue, false)) << 1
     bl | sizeDiff
   }
 

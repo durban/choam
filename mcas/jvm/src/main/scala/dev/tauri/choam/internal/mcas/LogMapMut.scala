@@ -61,5 +61,5 @@ private[mcas] final class LogMapMut[A] private (
 private[mcas] object LogMapMut {
 
   final def newEmpty[A](): LogMapMut[A] =
-    new LogMapMut(0, new Array[AnyRef](1))
+    new LogMapMut(0, new Array[AnyRef](2))
 }
