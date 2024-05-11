@@ -33,8 +33,6 @@ import java.util.concurrent.ThreadLocalRandom
  */
 object NullMcas extends Mcas.UnsealedMcas { self =>
 
-
-
   private[this] val ctx =
     new NullContext
 

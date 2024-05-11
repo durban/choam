@@ -88,7 +88,6 @@ final class MutDescriptor private (
     visitor: Hamt.EntryVisitor[MemoryLocation[A], LogEntry[A], T],
   ): MutDescriptor = {
     this.map.computeIfAbsent(ref.cast[Any], tok, visitor.asInstanceOf[Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], T]])
-    // TODO: readOnly
     this
   }
 
@@ -98,7 +97,6 @@ final class MutDescriptor private (
     visitor: Hamt.EntryVisitor[MemoryLocation[A],LogEntry[A],T],
   ): MutDescriptor = {
     this.map.computeOrModify(ref.cast[Any], tok, visitor.asInstanceOf[Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], T]])
-    // TODO: readOnly
     this
   }
 
@@ -117,7 +115,7 @@ final class MutDescriptor private (
     ctx: Mcas.ThreadContext,
     additionalHwd: LogEntry[_],
   ): AbstractDescriptor.Aux[MutDescriptor] = {
-    impossible("MutDescriptor#validateAndTryExtend") // TODO: FIXME
+    impossible("MutDescriptor#validateAndTryExtend")
   }
 
   private[mcas] final override def validateAndTryExtendVer(

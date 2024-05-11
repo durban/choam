@@ -47,8 +47,7 @@ class ResourceAllocationMcas {
       if (i >= n) {
         ()
       } else {
-        val d = t.desc
-        val Some((_, newDesc)) = ctx.readMaybeFromLog(rss(i), d) : @unchecked
+        val Some((_, newDesc: AbstractDescriptor)) = ctx.readMaybeFromLog(rss(i), t.desc) : @unchecked
         t.desc = newDesc
         read(i + 1)
       }

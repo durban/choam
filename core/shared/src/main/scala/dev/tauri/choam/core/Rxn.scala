@@ -773,7 +773,7 @@ object Rxn extends RxnInstances0 {
             this.a = b
             hwd.withNv(nx).cast[Any]
           } else {
-            hwd.cast[Any] // TODO:...
+            hwd.cast[Any]
           }
         case c: TicketWrite[_] =>
           val hwd = c.hwd.cast[Any]
@@ -975,7 +975,7 @@ object Rxn extends RxnInstances0 {
           val hwd = desc.getOrElseNull(ref)
           assert(hwd ne null)
           if (equ(hwd.nv, ox)) {
-            this.desc = this.desc.overwrite(hwd.withNv(nx)).asInstanceOf[AbstractDescriptor] // TODO
+            this.desc = this.desc.overwrite(hwd.withNv(nx))
             a = res
           } else {
             // TODO: "during" the updWith, we wrote to
