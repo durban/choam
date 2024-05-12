@@ -453,10 +453,8 @@ private[mcas] abstract class MutHamt[K, V, E, T1, T2, I <: Hamt[_, _, _, _, _, I
   }
 
   private[this] final def physicalIdx(logIdx: Int, size: Int, shift: Int): Int = {
-    assert((logIdx >= 0) && (logIdx < 64))
     val width = java.lang.Integer.numberOfTrailingZeros(size) // size is always a power of 2
     val logIdxW = logIdxWidth(shift)
-    assert((width <= logIdxW) && (logIdxW <= W))
     val sh = logIdxW - width
     logIdx >>> sh
   }

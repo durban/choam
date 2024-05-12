@@ -223,7 +223,6 @@ private[mcas] abstract class AbstractHamt[K, V, E, T1, T2, H <: AbstractHamt[K, 
 
   // TODO: this is duplicated with `Hamt`
   protected[this] final def packSizeAndBlue(size: Int, isBlue: Boolean): Int = {
-    assert(size >= 0)
     val x = (-1) * java.lang.Math.abs(java.lang.Boolean.compare(isBlue, true))
     size * ((x << 1) + 1)
   }

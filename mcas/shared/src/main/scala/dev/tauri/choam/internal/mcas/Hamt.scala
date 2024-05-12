@@ -262,8 +262,9 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
           case null =>
             nullOf[H]
           case newNode =>
-            val newSize = this.size + (newNode.size - node.size)
-            assert((modify && ((newSize == this.size) || (newSize == (this.size + 1)))) || (newSize == (this.size + 1)))
+            val oldSize = this.size
+            val newSize = oldSize + (newNode.size - node.size)
+            assert((modify && ((newSize == oldSize) || (newSize == (oldSize + 1)))) || (newSize == (oldSize + 1)))
             val bitmap = this.bitmap
             // TODO: we're computing physIdx twice:
             val physIdx: Int = physicalIdx(bitmap, 1L << logicalIdx(hash, shift))
@@ -425,7 +426,6 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
   // TODO: this is duplicated with `AbstractHamt`
   private[this] final def packSizeAndBlueInternal(size: Int, isBlue: Boolean): Int = {
-    assert(size >= 0)
     val x = (-1) * java.lang.Math.abs(java.lang.Boolean.compare(isBlue, true))
     size * ((x << 1) + 1)
   }
