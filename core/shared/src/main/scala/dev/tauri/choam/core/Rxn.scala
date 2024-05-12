@@ -696,7 +696,9 @@ object Rxn extends RxnInstances0 {
     private[this] final def convertToImmutable(): Unit = {
       assert(this.mutable)
       this.mutable = false
-      this.desc = ctx.snapshot(this.desc)
+      if (this._desc ne null) {
+        this.desc = ctx.snapshot(this.desc)
+      }
       this.contK = this.contK.asInstanceOf[ArrayObjStack[Any]].toListObjStack()
     }
 
