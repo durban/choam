@@ -20,6 +20,8 @@ package internal
 package mcas
 package bench
 
+import java.util.concurrent.ThreadLocalRandom
+
 import scala.collection.immutable.TreeMap
 
 import org.openjdk.jmh.annotations._
@@ -292,14 +294,16 @@ object LogMapBench {
       for (idx <- 0 until this.size) {
         val ref = MemoryLocation.unsafeUnpaddedWithId("a")(RefIdGen.compute(base = base, offset = idx))
         this.keys(idx) = ref
-        this.newHwds(idx) = LogEntry.apply(ref, "a", "c", 0L)
+        val ro = ThreadLocalRandom.current().nextBoolean()
+        this.newHwds(idx) = LogEntry.apply(ref, "a", if (ro) "a" else "c", 0L)
       }
       this.dummyKeys = new Array(DummySize)
       this.dummyHwds = new Array(DummySize)
       for (idx <- 0 until DummySize) {
         val ref = MemoryLocation.unsafeUnpaddedWithId("x")(RefIdGen.compute(base = base, offset = this.size + idx))
         this.dummyKeys(idx) = ref
-        this.dummyHwds(idx) = LogEntry.apply(ref, "x", "y", 0L)
+        val ro = ThreadLocalRandom.current().nextBoolean()
+        this.dummyHwds(idx) = LogEntry.apply(ref, "x", if (ro) "x" else "y", 0L)
       }
     }
 
@@ -345,8 +349,9 @@ object LogMapBench {
     def setup(): Unit = {
       this.baseSetup()
       for (ref <- this.keys) {
+        val ro = ThreadLocalRandom.current().nextBoolean()
         this.map = this.map.inserted(
-          LogEntry.apply(ref, "a", "b", Version.Start)
+          LogEntry.apply(ref, "a", if (ro) "a" else "b", Version.Start)
         )
       }
     }
@@ -370,8 +375,9 @@ object LogMapBench {
     def setup(): Unit = {
       this.baseSetup()
       for (ref <- this.keys) {
+        val ro = ThreadLocalRandom.current().nextBoolean()
         this.map = this.map.inserted(
-          LogEntry.apply(ref.cast[Any], "a", "b", Version.Start)
+          LogEntry.apply(ref.cast[Any], "a", if (ro) "a" else "b", Version.Start)
         )
       }
     }
@@ -395,8 +401,9 @@ object LogMapBench {
     def setup(): Unit = {
       this.baseSetup()
       for (ref <- this.keys) {
+        val ro = ThreadLocalRandom.current().nextBoolean()
         this.map.insert(
-          LogEntry.apply(ref.cast[Any], "a", "b", Version.Start)
+          LogEntry.apply(ref.cast[Any], "a", if (ro) "a" else "b", Version.Start)
         )
       }
     }
@@ -422,9 +429,10 @@ object LogMapBench {
     def setup(): Unit = {
       this.baseSetup()
       for (ref <- this.keys) {
+        val ro = ThreadLocalRandom.current().nextBoolean()
         this.map = this.map.updated(
           ref.asInstanceOf[MemoryLocation[Any]],
-          LogEntry.apply(ref.cast[Any], "a", "b", Version.Start),
+          LogEntry.apply(ref.cast[Any], "a", if (ro) "a" else "b", Version.Start),
         )
       }
     }
