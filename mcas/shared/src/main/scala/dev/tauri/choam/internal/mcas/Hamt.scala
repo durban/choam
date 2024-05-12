@@ -68,7 +68,7 @@ import java.util.Arrays
  * Public methods are the "external" API. We take care never to call them
  * on a node in lower levels (they assume they're called on the root).
  */
-private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]] protected[mcas] (
+private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]] protected[mcas] (
 
   private val sizeAndBlue: Int,
 
@@ -139,7 +139,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
   /** Must already contain the key of `a` */
   final def updated(a: V): H = {
-    this.insertOrOverwrite(hashOf(keyOf(a)), a, 0, OP_UPDATE) match {
+    this.insertOrOverwrite(a.key.hash, a, 0, OP_UPDATE) match {
       case null => this
       case newRoot => newRoot
     }
@@ -147,7 +147,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
   /** Mustn't already contain the key of `a` */
   final def inserted(a: V): H = {
-    val newRoot = this.insertOrOverwrite(hashOf(keyOf(a)), a, 0, OP_INSERT)
+    val newRoot = this.insertOrOverwrite(a.key.hash, a, 0, OP_INSERT)
     assert(newRoot ne null)
     newRoot
   }
@@ -158,21 +158,21 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
   /** May or may not already contain the key of `a` */
   final def upserted(a: V): H = {
-    this.insertOrOverwrite(hashOf(keyOf(a)), a, 0, OP_UPSERT) match {
+    this.insertOrOverwrite(a.key.hash, a, 0, OP_UPSERT) match {
       case null => this
       case newRoot => newRoot
     }
   }
 
   final def computeIfAbsent[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): H = {
-    this.visit(k, hashOf(k), tok, visitor, modify = false, shift = 0) match {
+    this.visit(k, k.hash, tok, visitor, modify = false, shift = 0) match {
       case null => this
       case newRoot => newRoot
     }
   }
 
   final def computeOrModify[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): H = {
-    this.visit(k, hashOf(k), tok, visitor, modify = true, shift = 0) match {
+    this.visit(k, k.hash, tok, visitor, modify = true, shift = 0) match {
       case null => this
       case newRoot => newRoot
     }
@@ -219,7 +219,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
         node.lookupOrNull(hash, shift + W).asInstanceOf[V]
       case value =>
         val a = value.asInstanceOf[V]
-        val hashA = hashOf(keyOf(a))
+        val hashA = a.key.hash
         if (hash == hashA) {
           a
         } else {
@@ -253,7 +253,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
           case null =>
             nullOf[H]
           case newVal =>
-            assert(hashOf(keyOf(newVal)) == hash)
+            assert(newVal.key.hash == hash)
             // TODO: this will compute physIdx again:
             this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
         }
@@ -272,14 +272,14 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
         }
       case value =>
         val a = value.asInstanceOf[V]
-        val hashA = hashOf(keyOf(a))
+        val hashA = a.key.hash
         if (hash == hashA) {
           val newEntry = visitor.entryPresent(k, a, tok)
           if (modify) {
             if (equ(newEntry, a)) {
               nullOf[H]
             } else {
-              assert(hashOf(keyOf(newEntry)) == hashA)
+              assert(newEntry.key.hash == hashA)
               this.insertOrOverwrite(hashA, newEntry, shift, op = OP_UPDATE)
             }
           } else {
@@ -291,7 +291,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
             case null =>
               nullOf[H]
             case newVal =>
-              assert(hashOf(keyOf(newVal)) == hash)
+              assert(newVal.key.hash == hash)
               // TODO: this will compute physIdx again:
               this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
           }
@@ -316,7 +316,7 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
                 this.withNode(this.size + (newNode.size - node.size), bitmap, newNode, physIdx)
             }
           case ov =>
-            val oh = hashOf(keyOf(ov.asInstanceOf[V]))
+            val oh = ov.asInstanceOf[V].key.hash
             if (hash == oh) {
               if (op == OP_INSERT) {
                 throw new IllegalArgumentException
@@ -433,7 +433,15 @@ private[mcas] abstract class Hamt[K, V, E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]
 
 private[choam] object Hamt {
 
-  trait EntryVisitor[K, V, T] { // TODO: maybe move this to AbstractHamt?
+  trait HasKey[K <: HasHash] {
+    def key: K
+  }
+
+  trait HasHash {
+    def hash: Long
+  }
+
+  trait EntryVisitor[K, V, T] {
     def entryPresent(k: K, v: V, tok: T): V
     def entryAbsent(k: K, tok: T): V
   }

@@ -52,7 +52,7 @@ import cats.kernel.Order
  * directly. Instead, use MCAS, or an even higher
  * level abstraction.
  */
-trait MemoryLocation[A] {
+trait MemoryLocation[A] extends Hamt.HasHash {
 
   // contents:
 
@@ -99,6 +99,9 @@ trait MemoryLocation[A] {
   // ID:
 
   def id: Long
+
+  final override def hash: Long =
+    this.id
 
   // private utilities:
 

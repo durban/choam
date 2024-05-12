@@ -33,7 +33,7 @@ import org.scalacheck.Prop.forAll
 
 final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelpers {
 
-  import HamtSpec.{ LongHamt, Val, SpecVal, hamtFromList, addAll }
+  import HamtSpec.{ LongHamt, LongWr, Val, SpecVal, hamtFromList, addAll }
 
   override protected def scalaCheckTestParameters: org.scalacheck.Test.Parameters = {
     val p = super.scalaCheckTestParameters
@@ -227,31 +227,31 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     for (n <- nums) {
       val v = Val(n)
       var count = 0
-      val nullVis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
-        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val =
+      val nullVis = new Hamt.EntryVisitor[LongWr, Val, AnyRef] {
+        override def entryPresent(k: LongWr, a: Val, tok: AnyRef): Val =
           fail("present called")
-        override def entryAbsent(k: Long, tok: AnyRef): Val = {
-          assertEquals(k, n)
+        override def entryAbsent(k: LongWr, tok: AnyRef): Val = {
+          assertEquals(k.n, n)
           assertSameInstance(tok, token1)
           count += 1
           null
         }
       }
-      val newHamt = hamt.computeIfAbsent(n, token1, nullVis)
+      val newHamt = hamt.computeIfAbsent(LongWr(n), token1, nullVis)
       assertEquals(count, 1)
       assertSameInstance(newHamt, hamt)
       val token2 = new AnyRef
-      val vis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
-        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val =
+      val vis = new Hamt.EntryVisitor[LongWr, Val, AnyRef] {
+        override def entryPresent(k: LongWr, a: Val, tok: AnyRef): Val =
           fail("present called")
-        override def entryAbsent(k: Long, tok: AnyRef): Val = {
-          assertEquals(k, n)
+        override def entryAbsent(k: LongWr, tok: AnyRef): Val = {
+          assertEquals(k.n, n)
           assertSameInstance(tok, token2)
           count += 1
           v
         }
       }
-      hamt = hamt.computeIfAbsent(n, token2, vis)
+      hamt = hamt.computeIfAbsent(LongWr(n), token2, vis)
       assertEquals(count, 2)
       assertEquals(hamt.getOrElse(n, null), v)
     }
@@ -259,32 +259,32 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
       var e: Val = null
       var count = 0
       val token3 = new AnyRef
-      val incorrectVisitor = new Hamt.EntryVisitor[Long, Val, AnyRef] {
-        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {
-          assertEquals(k, n)
+      val incorrectVisitor = new Hamt.EntryVisitor[LongWr, Val, AnyRef] {
+        override def entryPresent(k: LongWr, a: Val, tok: AnyRef): Val = {
+          assertEquals(k.n, n)
           assertSameInstance(tok, token3)
           count += 1
           e = a
           new Val(a.value) // same value, different instance
         }
-        override def entryAbsent(k: Long, tok: AnyRef): Val =
+        override def entryAbsent(k: LongWr, tok: AnyRef): Val =
           fail("absent called")
       }
       assert(Either.catchOnly[AssertionError] {
-        hamt.computeIfAbsent(n, token3, incorrectVisitor)
+        hamt.computeIfAbsent(LongWr(n), token3, incorrectVisitor)
       }.isLeft)
-      val vis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
-        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {
-          assertEquals(k, n)
+      val vis = new Hamt.EntryVisitor[LongWr, Val, AnyRef] {
+        override def entryPresent(k: LongWr, a: Val, tok: AnyRef): Val = {
+          assertEquals(k.n, n)
           assertSameInstance(tok, token3)
           count += 1
           e = a
           a
         }
-        override def entryAbsent(k: Long, tok: AnyRef): Val =
+        override def entryAbsent(k: LongWr, tok: AnyRef): Val =
           fail("absent called")
       }
-      val newHamt = hamt.computeIfAbsent(n, token3, vis)
+      val newHamt = hamt.computeIfAbsent(LongWr(n), token3, vis)
       assertEquals(count, 2)
       assertEquals(e, Val(n))
       assertSameInstance(newHamt, hamt)
@@ -299,31 +299,31 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     for (n <- nums) {
       val v = Val(n)
       var count = 0
-      val nullVis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
-        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val =
+      val nullVis = new Hamt.EntryVisitor[LongWr, Val, AnyRef] {
+        override def entryPresent(k: LongWr, a: Val, tok: AnyRef): Val =
           fail("present called")
-        override def entryAbsent(k: Long, tok: AnyRef): Val = {
-          assertEquals(k, n)
+        override def entryAbsent(k: LongWr, tok: AnyRef): Val = {
+          assertEquals(k.n, n)
           assertSameInstance(tok, token1)
           count += 1
           null
         }
       }
-      val newHamt = hamt.computeOrModify(n, token1, nullVis)
+      val newHamt = hamt.computeOrModify(LongWr(n), token1, nullVis)
       assertEquals(count, 1)
       assertSameInstance(newHamt, hamt)
       val token2 = new AnyRef
-      val vis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
-        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val =
+      val vis = new Hamt.EntryVisitor[LongWr, Val, AnyRef] {
+        override def entryPresent(k: LongWr, a: Val, tok: AnyRef): Val =
           fail("present called")
-        override def entryAbsent(k: Long, tok: AnyRef): Val = {
-          assertEquals(k, n)
+        override def entryAbsent(k: LongWr, tok: AnyRef): Val = {
+          assertEquals(k.n, n)
           assertSameInstance(tok, token2)
           count += 1
           v
         }
       }
-      hamt = hamt.computeOrModify(n, token2, vis)
+      hamt = hamt.computeOrModify(LongWr(n), token2, vis)
       assertEquals(count, 2)
       assertEquals(hamt.getOrElse(n, null), v)
     }
@@ -331,32 +331,32 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
       var e: Val = null
       var count = 0
       val token3 = new AnyRef
-      val readOnlyVisitor = new Hamt.EntryVisitor[Long, Val, AnyRef] {
-        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {
-          assertEquals(k, n)
+      val readOnlyVisitor = new Hamt.EntryVisitor[LongWr, Val, AnyRef] {
+        override def entryPresent(k: LongWr, a: Val, tok: AnyRef): Val = {
+          assertEquals(k.n, n)
           assertSameInstance(tok, token3)
           count += 1
           e = a
           a
         }
-        override def entryAbsent(k: Long, tok: AnyRef): Val =
+        override def entryAbsent(k: LongWr, tok: AnyRef): Val =
           fail("absent called")
       }
-      val newHamt2 = hamt.computeOrModify(n, token3, readOnlyVisitor)
+      val newHamt2 = hamt.computeOrModify(LongWr(n), token3, readOnlyVisitor)
       assertSameInstance(newHamt2, hamt)
-      val vis = new Hamt.EntryVisitor[Long, Val, AnyRef] {
-        override def entryPresent(k: Long, a: Val, tok: AnyRef): Val = {
-          assertEquals(k, n)
+      val vis = new Hamt.EntryVisitor[LongWr, Val, AnyRef] {
+        override def entryPresent(k: LongWr, a: Val, tok: AnyRef): Val = {
+          assertEquals(k.n, n)
           assertSameInstance(tok, token3)
           count += 1
           val newA = Val(a.value, extra = "foo")
           e = newA
           newA
         }
-        override def entryAbsent(k: Long, tok: AnyRef): Val =
+        override def entryAbsent(k: LongWr, tok: AnyRef): Val =
           fail("absent called")
       }
-      val newHamt = hamt.computeOrModify(n, token3, vis)
+      val newHamt = hamt.computeOrModify(LongWr(n), token3, vis)
       assertEquals(count, 2)
       assertEquals(e, Val(n, "foo"))
       assert(newHamt ne hamt)
@@ -573,8 +573,16 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
 
 object HamtSpec {
 
-  /** Just a `Long`, but has its own identity */
-  case class Val(value: Long, extra: String = "fortytwo", isBlue: Boolean = true) {
+  case class LongWr(n: Long) extends Hamt.HasHash {
+    final override def hash: Long =
+      n
+  }
+
+  case class Val(value: Long, extra: String = "fortytwo", isBlue: Boolean = true) extends Hamt.HasKey[LongWr] {
+
+    final override val key: LongWr =
+      LongWr(value)
+
     override def equals(that: Any): Boolean = {
       if (that.isInstanceOf[SpecVal]) {
         that.equals(this)
@@ -600,11 +608,7 @@ object HamtSpec {
     _sizeAndBlue: Int,
     _bitmap: Long,
     _contents: Array[AnyRef],
-  ) extends Hamt[Long, Val, Val, Unit, Long, LongHamt](_sizeAndBlue, _bitmap, _contents) {
-    protected final override def hashOf(k: Long): Long =
-      k
-    protected final override def keyOf(a: Val): Long =
-      a.value
+  ) extends Hamt[LongWr, Val, Val, Unit, Long, LongHamt](_sizeAndBlue, _bitmap, _contents) {
     protected final override def isBlue(a: Val): Boolean =
       a.isBlue
     protected final override def newNode(size: Int, bitmap: Long, contents: Array[AnyRef]): LongHamt =

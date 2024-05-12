@@ -36,12 +36,6 @@ private[mcas] final class LogMap2[A] private[mcas] (
   final def definitelyReadOnly: Boolean =
     this.isBlueSubtree
 
-  protected final override def hashOf(k: MemoryLocation[A]): Long =
-    k.id
-
-  protected final override def keyOf(a: LogEntry[A]): MemoryLocation[A] =
-    a.address
-
   protected final override def isBlue(a: LogEntry[A]): Boolean =
     a.readOnly
 

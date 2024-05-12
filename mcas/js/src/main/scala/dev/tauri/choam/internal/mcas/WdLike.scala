@@ -21,11 +21,14 @@ package mcas
 
 import scala.util.hashing.MurmurHash3
 
-sealed abstract class WdLike[A] {
+sealed abstract class WdLike[A] extends Hamt.HasKey[MemoryLocation[A]] {
   val address: MemoryLocation[A]
   val ov: A
   val nv: A
   val oldVersion: Long
+
+  final override def key: MemoryLocation[A] =
+    this.address
 }
 
 final class LogEntry[A] private ( // formerly called HWD

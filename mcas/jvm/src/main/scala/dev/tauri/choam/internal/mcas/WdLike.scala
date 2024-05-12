@@ -21,12 +21,15 @@ package mcas
 
 import scala.util.hashing.MurmurHash3
 
-sealed trait WdLike[A] {
+sealed trait WdLike[A] extends Hamt.HasKey[MemoryLocation[A]] {
   val address: MemoryLocation[A]
   def ov: A
   def nv: A
   val oldVersion: Long
   def cleanForGc(wasSuccessful: Boolean, sentinel: A): Unit
+
+  final override def key: MemoryLocation[A] =
+    this.address
 }
 
 // TODO: this is duplicated on JS

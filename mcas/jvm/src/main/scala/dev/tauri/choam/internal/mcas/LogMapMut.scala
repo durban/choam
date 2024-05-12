@@ -31,12 +31,6 @@ private[mcas] final class LogMapMut[A] private (
     this.forAll(ctx)
   }
 
-  protected final override def keyOf(a: LogEntry[A]): MemoryLocation[A] =
-    a.address
-
-  protected final override def hashOf(k: MemoryLocation[A]): Long =
-    k.id
-
   protected final override def isBlue(a: LogEntry[A]): Boolean =
     a.readOnly
 

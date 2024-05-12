@@ -21,11 +21,7 @@ package mcas
 
 import scala.util.hashing.MurmurHash3
 
-private[mcas] abstract class AbstractHamt[K, V, E, T1, T2, H <: AbstractHamt[K, V, E, T1, T2, H]] protected[mcas] () { this: H =>
-
-  protected def keyOf(a: V): K
-
-  protected def hashOf(k: K): Long
+private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E, T1, T2, H <: AbstractHamt[K, V, E, T1, T2, H]] protected[mcas] () { this: H =>
 
   protected def newArray(size: Int): Array[E]
 
@@ -189,7 +185,7 @@ private[mcas] abstract class AbstractHamt[K, V, E, T1, T2, H <: AbstractHamt[K, 
         case node: AbstractHamt[_, _, _, _, _, _] =>
           curr = node.hashCodeInternal(curr)
         case a =>
-          curr = MurmurHash3.mix(curr, (hashOf(keyOf(a.asInstanceOf[V])) >>> 32).toInt)
+          curr = MurmurHash3.mix(curr, (a.asInstanceOf[V].key.hash >>> 32).toInt)
           curr = MurmurHash3.mix(curr, a.##)
       }
       i += 1
