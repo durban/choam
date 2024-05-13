@@ -184,6 +184,7 @@ lazy val choam = project.in(file("."))
     skiplist.jvm, skiplist.js,
     async.jvm, async.js,
     stream.jvm, stream.js,
+    profiler, // JVM
     ce.jvm, ce.js,
     internalHelpers, // JVM
     laws.jvm, laws.js,
@@ -283,6 +284,23 @@ lazy val stream = crossProject(JVMPlatform, JSPlatform)
   .dependsOn(async % "compile->compile;test->test")
   .settings(libraryDependencies += dependencies.fs2.value)
 
+lazy val profiler = project.in(file("profiler"))
+  .settings(name := "choam-profiler")
+  .disablePlugins(disabledPlugins: _*)
+  .settings(commonSettings)
+  .settings(commonSettingsJvm)
+  .dependsOn(core.jvm % "compile->compile;test->test")
+  .settings(
+    libraryDependencies ++= Seq(
+      dependencies.jmh.value,
+      dependencies.decline.value,
+    ),
+    Test / fork := true,
+    Test / javaOptions ++= List(
+      "-Ddev.tauri.choam.stats=true",
+    ),
+  )
+
 lazy val ce = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
@@ -337,6 +355,7 @@ lazy val unidocs = project
       async.jvm,
       stream.jvm,
       laws.jvm,
+      profiler,
     ),
     bspEnabled := false,
   )
@@ -369,7 +388,6 @@ lazy val bench = project.in(file("bench"))
       dependencies.scalaStm.value,
       dependencies.catsStm.value,
       dependencies.zioStm.value,
-      dependencies.decline.value,
       dependencies.jcTools.value,
     ),
     Test / fork := true,
@@ -379,6 +397,7 @@ lazy val bench = project.in(file("bench"))
   )
   .enablePlugins(JmhPlugin)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
+  .dependsOn(profiler % "compile->compile")
   .dependsOn(internalHelpers)
   .settings(Jmh / version := dependencies.jmhVersion)
 
@@ -719,6 +738,7 @@ lazy val dependencies = new {
 
   // JVM:
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % jolVersion)
+  val jmh = Def.setting("org.openjdk.jmh" % "jmh-core" % jmhVersion)
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.3") // https://github.com/JCTools/JCTools
   val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.32") // https://github.com/JetBrains/lincheck
   val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.7") // https://asm.ow2.io/
@@ -787,5 +807,5 @@ addCommandAlias("releaseHash", ";reload;tlRelease")
 
 // profiling: `-prof jfr`
 addCommandAlias("measurePerformance", "bench/jmh:run -foe true -rf json -rff results.json .*")
-addCommandAlias("measureExchanger", "bench/jmh:run -foe true -rf json -rff results_exchanger.json -prof dev.tauri.choam.stats.RxnProfiler .*ExchangerBench")
+addCommandAlias("measureExchanger", "bench/jmh:run -foe true -rf json -rff results_exchanger.json -prof dev.tauri.choam.profiler.RxnProfiler .*ExchangerBench")
 addCommandAlias("quickBenchmark", "bench/jmh:run -foe true -rf json -rff results_quick.json -p size=16 .*(InterpreterBench|ChoiceCombinatorBench)")

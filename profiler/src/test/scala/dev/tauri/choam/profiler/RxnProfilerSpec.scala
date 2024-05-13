@@ -16,7 +16,7 @@
  */
 
 package dev.tauri.choam
-package core
+package profiler
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -29,7 +29,6 @@ import munit.CatsEffectSuite
 import org.openjdk.jmh.results.Result
 
 import internal.mcas.Consts
-import stats.RxnProfiler
 
 final class RxnProfilerSpecIO
   extends BaseSpecIO

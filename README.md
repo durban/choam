@@ -73,6 +73,9 @@ is similar to an effectful function from `A` to `B` (that is, `A => F[B]`), but:
   integration with [FS2](https://github.com/typelevel/fs2) `Stream`s
 - [`choam-laws`](laws/shared/src/main/scala/dev/tauri/choam/laws/):
   properties fulfilled by the various `Rxn` combinators
+- [`choam-profiler`](profiler/src/main/scala/dev/tauri/choam/profiler/):
+  JMH profiler "plugin" for `Rxn` statistics/measurements; enable it with
+  `-prof dev.tauri.choam.profiler.RxnProfiler`.
 - Internal modules (don't use them directly):
   - [`choam-mcas`](mcas/shared/src/main/scala/dev/tauri/choam/mcas/):
     low-level multi-word compare-and-swap (MCAS/*k*-CAS) implementations
@@ -158,6 +161,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 - There is no backwards compatibility for these modules:
   - `choam-laws`
   - `choam-stream`
+  - `choam-profiler`
   - (and all unpublished modules)
 - There is no backwards compatibility for "hash" versions (e.g., `0.4-39d987a`; these are not even SemVer compatible).
 

@@ -16,7 +16,7 @@
  */
 
 package dev.tauri.choam
-package stats
+package profiler
 
 import java.{ util => ju }
 import java.util.concurrent.TimeUnit
@@ -39,10 +39,10 @@ import internal.mcas.Mcas.Emcas
 /**
  * JMH profiler "plugin" for `Rxn` statistics/measurements.
  *
- * How to use: `-prof dev.tauri.choam.stats.RxnProfiler`
+ * How to use: `-prof dev.tauri.choam.profiler.RxnProfiler`
  *
  * Configuration:
- * `-prof "dev.tauri.choam.stats.RxnProfiler:opt1;opt2;opt3"`
+ * `-prof "dev.tauri.choam.profiler.RxnProfiler:opt1;opt2;opt3"`
  *
  * Most statistics are only collected if explicitly enabled
  * with setting the `dev.tauri.choam.stats` system property
@@ -68,7 +68,7 @@ import internal.mcas.Mcas.Emcas
  *   exchanges
  * - rxn.exchangerStats: TODO
  */
-final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: eventually move to a published module
+final class RxnProfiler(configLine: String) extends InternalProfiler {
 
   import RxnProfiler._
 
@@ -232,7 +232,6 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
           AggregationPolicy.AVG,
         )
       )
-      ()
     }
     if (config.exchangeCount) {
       res.add(
@@ -243,7 +242,6 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
           AggregationPolicy.SUM,
         )
       )
-      ()
     }
     if (config.exchangerStats) {
       val stats = Emcas
@@ -254,7 +252,6 @@ final class RxnProfiler(configLine: String) extends InternalProfiler { // TODO: 
       res.add(
         new StatsResult(stats :: Nil)
       )
-      ()
     }
     res
   }
