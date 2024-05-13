@@ -75,8 +75,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    *   since it checked.
    * So versions by themselves don't save us from ABA-problems,
    * because we can't CAS them together with the values.
-   * We could, if we had a double-word-CAS (or would implement
-   * something like RDCSS or GCAS). But instead we use marks...
+   * TODO: We could, if we had a double-word-CAS (or would implement
+   * TODO: something like RDCSS or GCAS).
+   * But instead we use marks...
    *
    * To guarantee that in-use descriptors are never replaced,
    * every thread (the original and any helpers) must always
@@ -225,6 +226,10 @@ private[mcas] final class Emcas extends GlobalContext { global =>
    *            which is stored indirectly: the version is the parent
    *            status itself; this is a successful op
    */
+
+  // TODO: Most accesses here (and elsewhere) are volatile;
+  // TODO: figure out if we can use acq/rel, and still remain
+  // TODO: correct.
 
   // Listing 2 in the paper:
 

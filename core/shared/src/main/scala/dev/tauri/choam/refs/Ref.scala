@@ -166,6 +166,7 @@ object Ref extends RefInstances0 {
 
   // TODO: How to avoid allocating RefArrayRef objects?
   // TODO: Create getAndUpdate(idx: Int, f: A => A) methods.
+  // TODO: (Implement them with something like `OffsetMemoryLocation`.)
   // TODO: But: what to do with out-of-bounds indices?
   // TODO: (Refined? But can we avoid boxing?)
   // TODO: Would implementing Traverse help? Probably not.
