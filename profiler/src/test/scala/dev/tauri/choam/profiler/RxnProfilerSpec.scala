@@ -73,7 +73,8 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     this.assume(Consts.statsEnabled)
     simulateRun { _ => F.unit } { r =>
       for {
-        _ <- assertEqualsF(r.size, 4)
+        _ <- assertEqualsF(r.size, 5)
+        _ <- assertF(r(RxnProfiler.CommitsPerSecond).getScore.isNaN)
         _ <- assertF(r(RxnProfiler.RetriesPerCommit).getScore.isNaN)
         _ <- assertEqualsF(r(RxnProfiler.ReusedWeakRefs).getScore, 0.0)
         _ <- assertEqualsF(r(RxnProfiler.ExchangeCount).getScore, 0.0)
@@ -87,34 +88,42 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     this.assume(Consts.statsEnabled)
     for {
       _ <- simulateRunConfig("") { _ => F.unit } { r => F.delay {
+        assert(r.get(RxnProfiler.CommitsPerSecond).isDefined)
         assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
-        assert(r.get(RxnProfiler.ExchangesPerSecond).isDefined)
+        assert(r.get(RxnProfiler.ReusedWeakRefs).isDefined)
+        assert(r.get(RxnProfiler.ExchangesPerSecond).isEmpty)
         assert(r.get(RxnProfiler.ExchangeCount).isEmpty)
       }}
       _ <- simulateRunConfig("debug") { _ => F.unit } { r => F.delay {
+        assert(r.get(RxnProfiler.CommitsPerSecond).isDefined)
         assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
         assert(r.get(RxnProfiler.ReusedWeakRefs).isDefined)
         assert(r.get(RxnProfiler.ExchangesPerSecond).isDefined)
         assert(r.get(RxnProfiler.ExchangeCount).isDefined)
       }}
       _ <- simulateRunConfig("retries") { _ => F.unit } { r => F.delay {
+        assert(r.get(RxnProfiler.CommitsPerSecond).isEmpty)
         assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
+        assert(r.get(RxnProfiler.ReusedWeakRefs).isEmpty)
         assert(r.get(RxnProfiler.ExchangesPerSecond).isEmpty)
         assert(r.get(RxnProfiler.ExchangeCount).isEmpty)
       }}
       _ <- simulateRunConfig("retries;reusedWeakRefs") { _ => F.unit } { r => F.delay {
+        assert(r.get(RxnProfiler.CommitsPerSecond).isEmpty)
         assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
         assert(r.get(RxnProfiler.ReusedWeakRefs).isDefined)
         assert(r.get(RxnProfiler.ExchangesPerSecond).isEmpty)
         assert(r.get(RxnProfiler.ExchangeCount).isEmpty)
       }}
       _ <- simulateRunConfig("retries;exchanges") { _ => F.unit } { r => F.delay {
+        assert(r.get(RxnProfiler.CommitsPerSecond).isEmpty)
         assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
         assert(r.get(RxnProfiler.ReusedWeakRefs).isEmpty)
         assert(r.get(RxnProfiler.ExchangesPerSecond).isDefined)
         assert(r.get(RxnProfiler.ExchangeCount).isEmpty)
       }}
       _ <- simulateRunConfig("retries;exchangeCount") { _ => F.unit } { r => F.delay {
+        assert(r.get(RxnProfiler.CommitsPerSecond).isEmpty)
         assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
         assert(r.get(RxnProfiler.ReusedWeakRefs).isEmpty)
         assert(r.get(RxnProfiler.ExchangesPerSecond).isEmpty)
