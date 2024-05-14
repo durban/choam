@@ -383,6 +383,60 @@ object Mcas extends McasCompanionPlatform { self =>
         maxBloomFilterSize = java.lang.Math.max(this.maxBloomFilterSize, that.maxBloomFilterSize),
       )
     }
+
+    final def avgRetriesPerCommit: Double = {
+      val c = this.commits.toDouble
+      if (c != 0.0) {
+        val r = this.retries
+        r.toDouble / c
+      } else {
+        Double.NaN
+      }
+    }
+
+    final def avgTriesPerCommit: Double = {
+      val c = this.commits.toDouble
+      if (c != 0.0) {
+        val r = this.retries
+        (r.toDouble + c) / c
+      } else {
+        Double.NaN
+      }
+    }
+
+    final def avgExtensionsPerCommit: Double = {
+      val c = this.commits.toDouble
+      if (c != 0.0) {
+        val e = this.extensions.toDouble
+        e / c
+      } else {
+        Double.NaN
+      }
+    }
+
+    final def avgCyclesPerMcasAttempt: Double = {
+      val a = this.mcasAttempts.toDouble
+      if (a != 0.0) {
+        val cd = this.cyclesDetected.toDouble
+        cd / a
+      } else {
+        Double.NaN
+      }
+    }
+
+    final def avgLogSize: Double = {
+      val c = this.commits.toDouble
+      if (c != 0.0) {
+        val allCommittedRefs = this.committedRefs.toDouble
+        allCommittedRefs / c
+      } else {
+        Double.NaN
+      }
+    }
+
+    final def maxLogSize: Int = {
+      this.maxCommittedRefs
+    }
   }
 
   private[mcas] final object RetryStats {

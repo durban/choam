@@ -111,43 +111,19 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
     this.getStats().cyclesDetected
 
   final override def getAvgRetriesPerCommit(): Double = {
-    val c = this.getCommits()
-    if (c != 0L) {
-      val r = this.getRetries()
-      r.toDouble / c.toDouble
-    } else {
-      Double.NaN
-    }
+    this.getStats().avgRetriesPerCommit
   }
 
   final override def getAvgTriesPerCommit(): Double = {
-    val c = this.getCommits()
-    if (c != 0L) {
-      val r = this.getRetries()
-      (r + c).toDouble / c.toDouble
-    } else {
-      Double.NaN
-    }
+    this.getStats().avgTriesPerCommit
   }
 
   final override def getAvgExtensionsPerCommit(): Double = {
-    val c = this.getCommits()
-    if (c != 0L) {
-      val e = this.getExtensions()
-      e.toDouble / c.toDouble
-    } else {
-      Double.NaN
-    }
+    this.getStats().avgExtensionsPerCommit
   }
 
   final override def getAvgCyclesPerMcasAttempt(): Double = {
-    val a = this.getMcasAttempts()
-    if (a != 0L) {
-      val cd = this.getCyclesDetected()
-      cd.toDouble / a.toDouble
-    } else {
-      Double.NaN
-    }
+    this.getStats().avgCyclesPerMcasAttempt
   }
 
   final override def getMaxRetriesPerCommit(): Long = {
@@ -159,17 +135,11 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
   }
 
   final override def getAvgLogSize(): Double = {
-    val c = this.getCommits()
-    if (c != 0L) {
-      val allCommittedRefs = this.getStats().committedRefs
-      allCommittedRefs.toDouble / c.toDouble
-    } else {
-      Double.NaN
-    }
+    this.getStats().avgLogSize
   }
 
   final override def getMaxLogSize(): Int = {
-    this.getStats().maxCommittedRefs
+    this.getStats().maxLogSize
   }
 
   final override def getMaxBloomFilterSize(): Int = {
