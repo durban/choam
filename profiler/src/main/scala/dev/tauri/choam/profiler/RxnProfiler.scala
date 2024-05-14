@@ -100,11 +100,12 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
       val commits = Opts.flag("commits", help = "commits / sec").orFalse
       val retries = Opts.flag("retries", help = "retries / commit").orFalse
       val tries = Opts.flag("tries", help = "tries / commit").orFalse
+      val extensions = Opts.flag("extensions", help = "extensions / commit").orFalse
       val reusedWr = Opts.flag("reusedWeakRefs", help = "max. number of Refs sharing a weak marker").orFalse
       val exchangesPs = Opts.flag("exchanges", help = "exchanges / sec").orFalse
       val exchangeCount = Opts.flag("exchangeCount", help = "exchange count").orFalse
       val exchangerStats = Opts.flag("exchangerStats", help = "exchanger stats").orFalse
-      val cfg = (commits, retries, tries, reusedWr, exchangesPs, exchangeCount, exchangerStats).mapN(Config.apply)
+      val cfg = (commits, retries, tries, extensions, reusedWr, exchangesPs, exchangeCount, exchangerStats).mapN(Config.apply)
       (debug, cfg).mapN { (debug, cfg) =>
         if (debug) {
           cfg || Config.debug
@@ -171,6 +172,9 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     if (config.triesPerCommit) {
       res.addAll(countRetriesPerCommit(retries = false))
     }
+    if (config.extensionsPerCommit) {
+      res.addAll(countExtensionsPerCommit())
+    }
     if (config.measureExchanges) {
       res.addAll(countExchanges())
     }
@@ -230,6 +234,18 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
         if (retries) RxnProfiler.RetriesPerCommit else RxnProfiler.TriesPerCommit,
         value,
         if (retries) RxnProfiler.UnitRetriesPerCommit else RxnProfiler.UnitTriesPerCommit,
+        AggregationPolicy.AVG,
+      ),
+    )
+  }
+
+  private[this] final def countExtensionsPerCommit(): ju.List[ScalarResult] = {
+    val extPerCommit = (this.statsAfter - this.statsBefore).avgExtensionsPerCommit
+    ju.List.of(
+      new ScalarResult(
+        RxnProfiler.ExtensionsPerCommit,
+        extPerCommit,
+        RxnProfiler.UnitExtensionsPerCommit,
         AggregationPolicy.AVG,
       ),
     )
@@ -317,6 +333,7 @@ object RxnProfiler {
     commitsPerSecond: Boolean,
     retriesPerCommit: Boolean,
     triesPerCommit: Boolean,
+    extensionsPerCommit: Boolean,
     reusedWeakRefs: Boolean,
     exchangesPerSecond: Boolean,
     exchangeCount: Boolean,
@@ -328,6 +345,7 @@ object RxnProfiler {
         commitsPerSecond = this.commitsPerSecond || that.commitsPerSecond,
         retriesPerCommit = this.retriesPerCommit || that.retriesPerCommit,
         triesPerCommit = this.triesPerCommit || that.triesPerCommit,
+        extensionsPerCommit = this.extensionsPerCommit || that.extensionsPerCommit,
         reusedWeakRefs = this.reusedWeakRefs || that.reusedWeakRefs,
         exchangesPerSecond = this.exchangesPerSecond || that.exchangesPerSecond,
         exchangeCount = this.exchangeCount || that.exchangeCount,
@@ -345,6 +363,7 @@ object RxnProfiler {
       commitsPerSecond = true,
       retriesPerCommit = true,
       triesPerCommit = true,
+      extensionsPerCommit = true,
       reusedWeakRefs = true,
       exchangesPerSecond = true,
       exchangeCount = true,
@@ -355,6 +374,7 @@ object RxnProfiler {
       commitsPerSecond = true,
       retriesPerCommit = false,
       triesPerCommit = true,
+      extensionsPerCommit = true,
       reusedWeakRefs = true,
       exchangesPerSecond = false,
       exchangeCount = false,
@@ -368,6 +388,8 @@ object RxnProfiler {
   final val UnitRetriesPerCommit = "retries/commit"
   final val TriesPerCommit = "rxn.triesPerCommit"
   final val UnitTriesPerCommit = "tries/commit"
+  final val ExtensionsPerCommit = "rxn.extensionsPerCommit"
+  final val UnitExtensionsPerCommit = "extensions/commit"
   final val ExchangesPerSecond = "rxn.exchangesPerSec"
   final val UnitExchangesPerSecond = "xchg/s"
   final val ExchangeCount = "rxn.exchangeCount"
