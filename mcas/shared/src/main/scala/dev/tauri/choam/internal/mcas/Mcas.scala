@@ -370,7 +370,7 @@ object Mcas extends McasCompanionPlatform { self =>
     maxBloomFilterSize: Int,
   ) {
 
-    final def merge(that: RetryStats): RetryStats = {
+    final def + (that: RetryStats): RetryStats = {
       RetryStats(
         commits = this.commits + that.commits,
         retries = this.retries + that.retries,
@@ -381,6 +381,26 @@ object Mcas extends McasCompanionPlatform { self =>
         maxRetries = java.lang.Math.max(this.maxRetries, that.maxRetries),
         maxCommittedRefs = java.lang.Math.max(this.maxCommittedRefs, that.maxCommittedRefs),
         maxBloomFilterSize = java.lang.Math.max(this.maxBloomFilterSize, that.maxBloomFilterSize),
+      )
+    }
+
+    /** Delta between `this` and an _earlier_ stats instance `that` */
+    final def - (that: RetryStats): RetryStats = {
+      require(
+        (that.maxRetries <= this.maxRetries) &&
+        (that.maxCommittedRefs <= this.maxCommittedRefs) &&
+        (that.maxBloomFilterSize <= this.maxBloomFilterSize)
+      )
+      RetryStats(
+        commits = this.commits - that.commits,
+        retries = this.retries - that.retries,
+        extensions = this.extensions - that.extensions,
+        mcasAttempts = this.mcasAttempts - that.mcasAttempts,
+        committedRefs = this.committedRefs - that.committedRefs,
+        cyclesDetected = this.cyclesDetected - that.cyclesDetected,
+        maxRetries = that.maxRetries,
+        maxCommittedRefs = that.maxCommittedRefs,
+        maxBloomFilterSize = that.maxBloomFilterSize,
       )
     }
 

@@ -215,16 +215,8 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
   }
 
   private[this] final def countRetriesPerCommit(): ju.List[ScalarResult] = {
-    val commitsAfter = this.statsAfter.commits
-    val retriesAfter = this.statsAfter.retries
-    val allCommits = commitsAfter - this.statsBefore.commits
-    val allRetries = retriesAfter - this.statsBefore.retries
-    val retriesPerCommit = if (allCommits == 0L) {
-      Double.NaN
-    } else {
-      allRetries.toDouble / allCommits.toDouble
-    }
-
+    val delta = this.statsAfter - this.statsBefore
+    val retriesPerCommit = delta.avgRetriesPerCommit
     ju.List.of(
       new ScalarResult(
         RxnProfiler.RetriesPerCommit,
