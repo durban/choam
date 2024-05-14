@@ -73,9 +73,10 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     this.assume(Consts.statsEnabled)
     simulateRun { _ => F.unit } { r =>
       for {
-        _ <- assertEqualsF(r.size, 5)
+        _ <- assertEqualsF(r.size, 6)
         _ <- assertF(r(RxnProfiler.CommitsPerSecond).getScore.isNaN)
         _ <- assertF(r(RxnProfiler.RetriesPerCommit).getScore.isNaN)
+        _ <- assertF(r(RxnProfiler.TriesPerCommit).getScore.isNaN)
         _ <- assertEqualsF(r(RxnProfiler.ReusedWeakRefs).getScore, 0.0)
         _ <- assertEqualsF(r(RxnProfiler.ExchangeCount).getScore, 0.0)
         eps = r(RxnProfiler.ExchangesPerSecond).getScore
@@ -89,7 +90,7 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     for {
       _ <- simulateRunConfig("") { _ => F.unit } { r => F.delay {
         assert(r.get(RxnProfiler.CommitsPerSecond).isDefined)
-        assert(r.get(RxnProfiler.RetriesPerCommit).isDefined)
+        assert(r.get(RxnProfiler.TriesPerCommit).isDefined)
         assert(r.get(RxnProfiler.ReusedWeakRefs).isDefined)
         assert(r.get(RxnProfiler.ExchangesPerSecond).isEmpty)
         assert(r.get(RxnProfiler.ExchangeCount).isEmpty)
