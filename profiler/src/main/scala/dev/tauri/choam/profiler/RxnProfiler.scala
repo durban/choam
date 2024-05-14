@@ -33,8 +33,8 @@ import com.monovore.decline.{ Opts, Command }
 
 import core.Exchanger
 
-import internal.mcas.{ Consts, Mcas }
-import internal.mcas.Mcas.Emcas
+import internal.mcas.Consts
+import internal.mcas.Mcas.{ Emcas, RetryStats }
 
 /**
  * JMH profiler "plugin" for `Rxn` statistics/measurements.
@@ -76,19 +76,19 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     this("")
   }
 
-  private[this] var commitsBefore: Long =
-    0L
+  private[this] var statsBefore: RetryStats =
+    null
 
-  private[this] var retriesBefore: Long =
-    0L
+  private[this] var statsAfter: RetryStats =
+    null
 
   private[this] var exchangesBefore: Long =
     0L
 
-  private[this] var beforeTime: Long =
+  private[this] var timeBefore: Long =
     0L
 
-  private[this] var afterTime: Long =
+  private[this] var timeAfter: Long =
     0L
 
   private[this] val config: Config = {
@@ -139,15 +139,13 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     ip: IterationParams
   ): Unit = {
     if (config.commitsPerSecond || config.retriesPerCommit) {
-      val stats = Emcas.getRetryStats()
-      this.commitsBefore = stats.commits
-      this.retriesBefore = stats.retries
+      this.statsBefore = Emcas.getRetryStats()
     }
     if (config.measureExchanges) {
       this.exchangesBefore = RxnProfiler.exchangeCounter.sum()
     }
     if (config.commitsPerSecond || config.measureExchanges) {
-      this.beforeTime = System.nanoTime()
+      this.timeBefore = System.nanoTime()
     }
   }
 
@@ -158,14 +156,14 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
   ): ju.Collection[_ <: Result[_]] = {
     val res = new ju.ArrayList[Result[_]]
     if (config.commitsPerSecond || config.measureExchanges) {
-      this.afterTime = System.nanoTime()
+      this.timeAfter = System.nanoTime()
     }
-    val stats = Emcas.getRetryStats()
+    this.statsAfter = Emcas.getRetryStats()
     if (config.commitsPerSecond) {
-      res.addAll(countCommitsPerSecond(stats))
+      res.addAll(countCommitsPerSecond())
     }
     if (config.retriesPerCommit) {
-      res.addAll(countRetriesPerCommit(stats))
+      res.addAll(countRetriesPerCommit())
     }
     if (config.measureExchanges) {
       res.addAll(countExchanges())
@@ -188,7 +186,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
   }
 
   private[this] final def getElapsedSeconds(): Double = {
-    val elapsedTime = this.afterTime - this.beforeTime
+    val elapsedTime = this.timeAfter - this.timeBefore
     if (elapsedTime == 0L) {
       0.0
     } else {
@@ -196,9 +194,9 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     }
   }
 
-  private[this] final def countCommitsPerSecond(rs: Mcas.RetryStats): ju.List[ScalarResult] = {
-    val commitsAfter = rs.commits
-    val allCommits = commitsAfter - this.commitsBefore
+  private[this] final def countCommitsPerSecond(): ju.List[ScalarResult] = {
+    val commitsAfter = this.statsAfter.commits
+    val allCommits = commitsAfter - this.statsBefore.commits
     val elapsedSeconds = getElapsedSeconds()
     val commitsPerSecond = if (elapsedSeconds == 0.0) {
       Double.NaN
@@ -216,11 +214,11 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     )
   }
 
-  private[this] final def countRetriesPerCommit(rs: Mcas.RetryStats): ju.List[ScalarResult] = {
-    val commitsAfter = rs.commits
-    val retriesAfter = rs.retries
-    val allCommits = commitsAfter - this.commitsBefore
-    val allRetries = retriesAfter - this.retriesBefore
+  private[this] final def countRetriesPerCommit(): ju.List[ScalarResult] = {
+    val commitsAfter = this.statsAfter.commits
+    val retriesAfter = this.statsAfter.retries
+    val allCommits = commitsAfter - this.statsBefore.commits
+    val allRetries = retriesAfter - this.statsBefore.retries
     val retriesPerCommit = if (allCommits == 0L) {
       Double.NaN
     } else {
