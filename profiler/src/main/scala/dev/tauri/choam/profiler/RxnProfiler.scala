@@ -101,11 +101,13 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
       val retries = Opts.flag("retries", help = "retries / commit").orFalse
       val tries = Opts.flag("tries", help = "tries / commit").orFalse
       val extensions = Opts.flag("extensions", help = "extensions / commit").orFalse
+      val avgLs = Opts.flag("avgLogSize", help = "average log size").orFalse
+      val maxLs = Opts.flag("maxLogSize", help = "max. log size").orFalse
       val reusedWr = Opts.flag("reusedWeakRefs", help = "max. number of Refs sharing a weak marker").orFalse
       val exchangesPs = Opts.flag("exchanges", help = "exchanges / sec").orFalse
       val exchangeCount = Opts.flag("exchangeCount", help = "exchange count").orFalse
       val exchangerStats = Opts.flag("exchangerStats", help = "exchanger stats").orFalse
-      val cfg = (commits, retries, tries, extensions, reusedWr, exchangesPs, exchangeCount, exchangerStats).mapN(Config.apply)
+      val cfg = (commits, retries, tries, extensions, avgLs, maxLs, reusedWr, exchangesPs, exchangeCount, exchangerStats).mapN(Config.apply)
       (debug, cfg).mapN { (debug, cfg) =>
         if (debug) {
           cfg || Config.debug
@@ -174,6 +176,12 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     }
     if (config.extensionsPerCommit) {
       res.addAll(countExtensionsPerCommit())
+    }
+    if (config.avgLogSize) {
+      res.addAll(countLogSize(avg = true))
+    }
+    if (config.maxLogSize) {
+      res.addAll(countLogSize(avg = false))
     }
     if (config.measureExchanges) {
       res.addAll(countExchanges())
@@ -247,6 +255,19 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
         extPerCommit,
         RxnProfiler.UnitExtensionsPerCommit,
         AggregationPolicy.AVG,
+      ),
+    )
+  }
+
+  private[this] final def countLogSize(avg: Boolean): ju.List[ScalarResult] = {
+    val delta = (this.statsAfter - this.statsBefore)
+    val ls = if (avg) delta.avgLogSize else delta.maxLogSize.toDouble
+    ju.List.of(
+      new ScalarResult(
+        if (avg) RxnProfiler.AvgLogSize else RxnProfiler.MaxLogSize,
+        ls,
+        RxnProfiler.UnitLogSize,
+        if (avg) AggregationPolicy.AVG else AggregationPolicy.MAX,
       ),
     )
   }
@@ -334,6 +355,8 @@ object RxnProfiler {
     retriesPerCommit: Boolean,
     triesPerCommit: Boolean,
     extensionsPerCommit: Boolean,
+    avgLogSize: Boolean,
+    maxLogSize: Boolean,
     reusedWeakRefs: Boolean,
     exchangesPerSecond: Boolean,
     exchangeCount: Boolean,
@@ -346,6 +369,8 @@ object RxnProfiler {
         retriesPerCommit = this.retriesPerCommit || that.retriesPerCommit,
         triesPerCommit = this.triesPerCommit || that.triesPerCommit,
         extensionsPerCommit = this.extensionsPerCommit || that.extensionsPerCommit,
+        avgLogSize = this.avgLogSize || that.avgLogSize,
+        maxLogSize = this.maxLogSize || that.maxLogSize,
         reusedWeakRefs = this.reusedWeakRefs || that.reusedWeakRefs,
         exchangesPerSecond = this.exchangesPerSecond || that.exchangesPerSecond,
         exchangeCount = this.exchangeCount || that.exchangeCount,
@@ -364,6 +389,8 @@ object RxnProfiler {
       retriesPerCommit = true,
       triesPerCommit = true,
       extensionsPerCommit = true,
+      avgLogSize = true,
+      maxLogSize = true,
       reusedWeakRefs = true,
       exchangesPerSecond = true,
       exchangeCount = true,
@@ -375,6 +402,8 @@ object RxnProfiler {
       retriesPerCommit = false,
       triesPerCommit = true,
       extensionsPerCommit = true,
+      avgLogSize = true,
+      maxLogSize = true,
       reusedWeakRefs = true,
       exchangesPerSecond = false,
       exchangeCount = false,
@@ -390,12 +419,17 @@ object RxnProfiler {
   final val UnitTriesPerCommit = "tries/commit"
   final val ExtensionsPerCommit = "rxn.extensionsPerCommit"
   final val UnitExtensionsPerCommit = "extensions/commit"
+  final val AvgLogSize = "rxn.avgLogSize"
+  final val MaxLogSize = "rxn.maxLogSize"
+  final val UnitLogSize = "entries"
+
+  final val ReusedWeakRefs = "rxn.reusedWeakRefs"
+  final val UnitCount = "counts"
+
   final val ExchangesPerSecond = "rxn.exchangesPerSec"
   final val UnitExchangesPerSecond = "xchg/s"
   final val ExchangeCount = "rxn.exchangeCount"
   final val ExchangerStats = "rxn.exchangerStats"
-  final val ReusedWeakRefs = "rxn.reusedWeakRefs"
-  final val UnitCount = "counts"
 
   final def profiledExchanger[A, B]: Axn[Exchanger[A, B]] =
     Exchanger.profiled[A, B](this.exchangeCounter)

@@ -398,9 +398,9 @@ object Mcas extends McasCompanionPlatform { self =>
         mcasAttempts = this.mcasAttempts - that.mcasAttempts,
         committedRefs = this.committedRefs - that.committedRefs,
         cyclesDetected = this.cyclesDetected - that.cyclesDetected,
-        maxRetries = that.maxRetries,
-        maxCommittedRefs = that.maxCommittedRefs,
-        maxBloomFilterSize = that.maxBloomFilterSize,
+        maxRetries = this.maxRetries,
+        maxCommittedRefs = this.maxCommittedRefs,
+        maxBloomFilterSize = this.maxBloomFilterSize,
       )
     }
 

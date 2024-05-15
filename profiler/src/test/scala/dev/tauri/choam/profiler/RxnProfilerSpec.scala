@@ -73,11 +73,13 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     this.assume(Consts.statsEnabled)
     simulateRun { _ => F.unit } { r =>
       for {
-        _ <- assertEqualsF(r.size, 7)
+        _ <- assertEqualsF(r.size, 9)
         _ <- assertF(r(RxnProfiler.CommitsPerSecond).getScore.isNaN)
         _ <- assertF(r(RxnProfiler.RetriesPerCommit).getScore.isNaN)
         _ <- assertF(r(RxnProfiler.TriesPerCommit).getScore.isNaN)
         _ <- assertF(r(RxnProfiler.ExtensionsPerCommit).getScore.isNaN)
+        _ <- assertF(r(RxnProfiler.AvgLogSize).getScore.isNaN)
+        _ <- assertEqualsF(r(RxnProfiler.MaxLogSize).getScore, 0.0)
         _ <- assertEqualsF(r(RxnProfiler.ReusedWeakRefs).getScore, 0.0)
         _ <- assertEqualsF(r(RxnProfiler.ExchangeCount).getScore, 0.0)
         eps = r(RxnProfiler.ExchangesPerSecond).getScore
