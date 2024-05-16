@@ -715,9 +715,9 @@ lazy val dependencies = new {
   val catsMtlVersion = "1.4.0" // https://github.com/typelevel/cats-mtl
   val catsCollectionsVersion = "0.9.8" // https://github.com/typelevel/cats-collections
   val fs2Version = "3.10.2" // https://github.com/typelevel/fs2
-  val scalacheckEffectVersion = "2.0.0-M2"
-  val jcstressVersion = "0.16"
-  val jmhVersion = "1.37"
+  val scalacheckEffectVersion = "2.0.0-M2" // https://github.com/typelevel/scalacheck-effect
+  val jcstressVersion = "0.16" // https://github.com/openjdk/jcstress
+  val jmhVersion = "1.37" // https://github.com/openjdk/jmh
   val jolVersion = "0.17" // https://github.com/openjdk/jol
   val scalaJsLocaleVersion = "1.5.1"
 

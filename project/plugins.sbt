@@ -21,7 +21,7 @@ addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.7") // https://github.com/s
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 addSbtPlugin("pl.project13.sbt" % "sbt-jol" %  "0.1.4")
 addSbtPlugin("io.crashbox" % "sbt-gpg" % "0.2.1") // https://github.com/jodersky/sbt-gpg
-addSbtPlugin("ch.epfl.scala" % "sbt-version-policy" % "3.2.0")
+addSbtPlugin("ch.epfl.scala" % "sbt-version-policy" % "3.2.1") // https://github.com/scalacenter/sbt-version-policy
 addSbtPlugin("org.typelevel" % "sbt-typelevel-no-publish" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-versioning" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-settings" % sbtTypelevelVersion)
@@ -38,4 +38,4 @@ addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1") // https://gith
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.10.0") // https://github.com/sbt/sbt-native-packager
 
 ThisBuild / semanticdbEnabled := true
-ThisBuild / semanticdbVersion := "4.9.3" // https://github.com/scalameta/scalameta
+ThisBuild / semanticdbVersion := "4.9.4" // https://github.com/scalameta/scalameta
