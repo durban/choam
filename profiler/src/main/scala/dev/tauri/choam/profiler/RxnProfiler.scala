@@ -42,31 +42,49 @@ import internal.mcas.Mcas.{ Emcas, RetryStats }
  * How to use: `-prof dev.tauri.choam.profiler.RxnProfiler`
  *
  * Configuration:
- * `-prof "dev.tauri.choam.profiler.RxnProfiler:opt1;opt2;opt3"`
+ * `-prof "dev.tauri.choam.profiler.RxnProfiler:opt1;opt2;..."`
  *
  * Most statistics are only collected if explicitly enabled
- * with setting the `dev.tauri.choam.stats` system property
- * to `true`.
+ * by setting the `dev.tauri.choam.stats` system property
+ * to `true` (i.e., `-Ddev.tauri.choam.stats=true`).
  *
  * Available options are:
- * - retries (-> rxn.retriesPerCommit)
- * - reusedWeakRefs (-> rxn.reusedWeakRefs)
- * - exchanges (-> rxn.exchangesPerSec)
- * - exchangeCount (-> rxn.exchangeCount)
- * - exchangerStats (-> rxn.exchangerStats)
+ * - `commits` → `rxn.commitsPerSec`
+ * - `retries` → `rxn.retriesPerCommit`
+ * - `tries` → `rxn.triesPerCommit`
+ * - `extensions` → `rxn.extensionsPerCommit`
+ * - `avgLogSize` → `rxn.avgLogSize`
+ * - `maxLogSize` → `rxn.maxLogSize`
+ * - `reusedWeakRefs` → `rxn.reusedWeakRefs`
+ * - `exchanges` → `rxn.exchangesPerSec`
+ * - `exchangeCount` → `rxn.exchangeCount`
+ * - `exchangerStats` → `rxn.exchangerStats`
  *
  * Measurements:
- * - rxn.retriesPerCommit:
+ * - `rxn.commitsPerSec`:
+ *   average number of commits per second
+ * - `rxn.retriesPerCommit`:
  *   average number of retries (not including alternatives) per commit
- * - rxn.reusedWeakRefs: TODO
- * - rxn.exchangesPerSec:
+ * - `rxn.triesPerCommit`:
+ *   average number of tries (not including alternatives) per commit
+ *   (tries `==` retries `+ 1`)
+ * - `rxn.extensionsPerCommit`:
+ *   TODO
+ * - `rxn.avgLogSize`:
+ *   average size of the R/W log (when committing)
+ * - `rxn.maxLogSize`:
+ *   maximal size of the R/W log (ever committed)
+ * - `rxn.reusedWeakRefs`:
+ *   internal
+ * - `rxn.exchangesPerSec`:
  *   average number of successful exchanges per second (note: this data
  *   is not collected for every exchanger, only for ones created by
  *   `RxnProfiler.profiledExchanger`)
- * - rxn.exchangeCount:
+ * - `rxn.exchangeCount`:
  *   like `rxn.exchangesPerSec`, but reports the count of successful
  *   exchanges
- * - rxn.exchangerStats: TODO
+ * - `rxn.exchangerStats`:
+ *   internal
  */
 final class RxnProfiler(configLine: String) extends InternalProfiler {
 
