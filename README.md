@@ -155,6 +155,10 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 - The versions of `choam-` modules must match *exactly* (e.g., *don't* use `"choam-data" % "0.4.1"`
   with `"choam-core" % "0.4.0"`).
+  - In sbt ⩾ 1.10.0 this can be ensured like this:
+    ```scala
+    csrSameVersions += Set(sbt.librarymanagement.InclExclRule("dev.tauri", "choam-*"))
+    ```
 - There is no backwards compatibility for APIs which are
   - inside `*.internal.*` packages (e.g., `dev.tauri.choam.internal.mcas`);
   - called `unsafe*` (e.g., `Rxn.unsafe.retry` or `Ref#unsafeCas`).
