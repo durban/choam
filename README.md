@@ -160,6 +160,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
     csrSameVersions += Set(sbt.librarymanagement.InclExclRule("dev.tauri", "choam-*"))
     ```
 - There is no backwards compatibility for APIs which are
+  - non-public in Scala (even though some of these are public in the bytecode);
   - inside `*.internal.*` packages (e.g., `dev.tauri.choam.internal.mcas`);
   - called `unsafe*` (e.g., `Rxn.unsafe.retry` or `Ref#unsafeCas`).
 - There is no backwards compatibility for these modules:
