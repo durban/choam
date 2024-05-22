@@ -164,9 +164,12 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - inside `*.internal.*` packages (e.g., `dev.tauri.choam.internal.mcas`);
   - called `unsafe*` (e.g., `Rxn.unsafe.retry` or `Ref#unsafeCas`).
 - There is no backwards compatibility for these modules:
+  - `choam-mcas`
+  - `choam-skiplist`
   - `choam-laws`
   - `choam-stream`
   - `choam-profiler`
+  - `choam-docs`
   - (and all unpublished modules)
 - There is no backwards compatibility for "hash" versions (e.g., `0.4-39d987a`; these are not even SemVer compatible).
 
