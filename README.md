@@ -19,6 +19,8 @@
 
 # CHOAM
 
+[![choam-core version](https://index.scala-lang.org/durban/choam/choam-core/latest.svg)](https://index.scala-lang.org/durban/choam/choam-core)
+
 *Experiments with composable lock-free concurrency*
 
 ## Overview
