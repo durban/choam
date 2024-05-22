@@ -38,6 +38,45 @@ is similar to an effectful function from `A` to `B` (that is, `A => F[B]`), but:
   - For example, if `y` is also a `Ref[Int]`, then `x.update(_ + 1) *> y.update(_ + 1)`
     will increment both of them *atomically*.
 
+## Getting started
+
+```scala
+libraryDependencies += "dev.tauri" %%% "choam-core" % choamVersion // see above for latest version
+```
+
+The `choam-core` module contains the fundamental types for working with `Rxn`s.
+For more modules, see [below](#modules).
+
+The complete version of the example [above](#overview), which increments the value of
+two `Ref`s is as follows:
+
+```scala
+import dev.tauri.choam.{ Ref, Rxn }
+
+def incrBoth(x: Ref[Int], y: Ref[Int]): Rxn[Any, Unit] = {
+  x.update(_ + 1) *> y.update(_ + 1)
+}
+```
+
+It can be executed with (for example) Cats Effect like this:
+
+```scala
+import cats.effect.IO
+import dev.tauri.choam.Reactive
+
+implicit val reactiveForIo: Reactive[IO] =
+  Reactive.forSync[IO]
+
+val myTask: IO[Unit] = for {
+  // create two refs:
+  x <- Ref.unpadded(0).run[IO]
+  y <- Ref.unpadded(42).run[IO]
+  // increment their values atomically:
+  _ <- incrBoth(x, y).run[IO]
+} yield ()
+```
+
+
 ## Modules
 
 - [`choam-core`](core/shared/src/main/scala/dev/tauri/choam/):
