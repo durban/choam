@@ -719,7 +719,7 @@ lazy val dependencies = new {
   val jcstressVersion = "0.16" // https://github.com/openjdk/jcstress
   val jmhVersion = "1.37" // https://github.com/openjdk/jmh
   val jolVersion = "0.17" // https://github.com/openjdk/jol
-  val scalaJsLocaleVersion = "1.5.1"
+  val scalaJsLocaleVersion = "1.5.3" // https://github.com/cquiroz/scala-java-locales
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
   val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
@@ -745,7 +745,6 @@ lazy val dependencies = new {
 
   // JS:
   val scalaJsLocale = Def.setting[Seq[ModuleID]](Seq(
-    // https://github.com/cquiroz/scala-java-locales
     "io.github.cquiroz" %%% "scala-java-locales" % scalaJsLocaleVersion,
     "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
   ))
@@ -754,7 +753,7 @@ lazy val dependencies = new {
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.4")
   val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.2")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.1.0")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.1.1")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
@@ -764,10 +763,10 @@ lazy val dependencies = new {
       "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
       catsMtlLaws.value,
-      "org.typelevel" %%% "munit-cats-effect" % "2.0.0-RC1",
+      "org.typelevel" %%% "munit-cats-effect" % "2.0.0",
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
-      "org.typelevel" %%% "discipline-munit" % "2.0.0-M3",
+      "org.typelevel" %%% "discipline-munit" % "2.0.0", // https://github.com/typelevel/discipline-munit
       zioCats.value,
     )
   }
