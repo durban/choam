@@ -23,4 +23,12 @@ private abstract class RxnCompanionPlatform { this: Rxn.type =>
   private[core] final type ExchangerImpl[A, B] = ExchangerImplJs[A, B]
 
   private[core] final type ExStatMap = Map[Exchanger.Key, AnyRef]
+
+  @inline
+  protected[this] final def releaseFence(): Unit =
+    ()
+
+  @inline
+  protected[this] final def acquireFence(): Unit =
+    ()
 }

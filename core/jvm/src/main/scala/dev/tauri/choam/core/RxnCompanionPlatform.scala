@@ -18,9 +18,21 @@
 package dev.tauri.choam
 package core
 
+import java.lang.invoke.VarHandle
+
 private abstract class RxnCompanionPlatform { this: Rxn.type =>
 
   private[core] final type ExchangerImpl[A, B] = ExchangerImplJvm[A, B]
 
   private[core] final type ExStatMap = ExchangerImplJvm.StatMap
+
+  @inline
+  protected[this] final def releaseFence(): Unit = {
+    VarHandle.releaseFence()
+  }
+
+  @inline
+  protected[this] final def acquireFence(): Unit = {
+    VarHandle.acquireFence()
+  }
 }

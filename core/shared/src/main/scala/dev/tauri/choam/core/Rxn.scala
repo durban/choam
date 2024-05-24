@@ -1604,12 +1604,25 @@ private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.ty
     final override def defer[A](fa: => Rxn[X, A]): Rxn[X, A] =
       self.computed[X, A] { x => fa.provide(x) }
     final override def fix[A](fn: Rxn[X, A] => Rxn[X, A]): Rxn[X, A] = {
-      // This is in effect a "thread-unsafe lazy val";
-      // we know exactly how `defer` works, so it's safe
-      // to do this here (and this way we avoid the
-      // synchronization of an actual lazy val):
+      // Instead of a `lazy val` (like in the superclass), we just
+      // do a rel/acq here, because we know exactly how `defer`
+      // works, and know that `.elem` will be initialized before
+      // we return from this method. However, we still need the
+      // fences, to make sure that if the resulting `Rxn[X, A]`
+      // is published by a race, there is an ordering between
+      // writing `ref.elem` and reading it.
+      // TODO: The point of this whole thing is to avoid a
+      // TODO: `lazy val`, which might block. This way of
+      // TODO: doing it is correct, but it's unclear if it's
+      // TODO: faster than a `lazy val`, and also, it could
+      // TODO: be that in this specific case, a `lazy val`
+      // TODO: also woudn't block.
       val ref = new scala.runtime.ObjectRef[Rxn[X, A]](null)
-      ref.elem = fn(defer { ref.elem })
+      ref.elem = fn(defer {
+        self.acquireFence()
+        ref.elem
+      })
+      self.releaseFence()
       ref.elem
     }
   }
