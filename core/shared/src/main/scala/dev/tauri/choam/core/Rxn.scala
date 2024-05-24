@@ -1603,6 +1603,15 @@ private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.ty
   implicit final def deferInstance[X]: Defer[Rxn[X, *]] = new Defer[Rxn[X, *]] {
     final override def defer[A](fa: => Rxn[X, A]): Rxn[X, A] =
       self.computed[X, A] { x => fa.provide(x) }
+    final override def fix[A](fn: Rxn[X, A] => Rxn[X, A]): Rxn[X, A] = {
+      // This is in effect a "thread-unsafe lazy val";
+      // we know exactly how `defer` works, so it's safe
+      // to do this here (and this way we avoid the
+      // synchronization of an actual lazy val):
+      val ref = new scala.runtime.ObjectRef[Rxn[X, A]](null)
+      ref.elem = fn(defer { ref.elem })
+      ref.elem
+    }
   }
 }
 

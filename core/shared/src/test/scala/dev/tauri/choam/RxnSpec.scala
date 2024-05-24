@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.duration._
 
-import cats.{ Applicative, Monad, StackSafeMonad, Align }
+import cats.{ Applicative, Monad, StackSafeMonad, Align, Defer }
 import cats.arrow.{ ArrowChoice, FunctionK }
 import cats.data.Ior
 import cats.effect.IO
@@ -1004,6 +1004,27 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertEqualsF(res2, Ior.left(42))
       res3 <- inst.align(Rxn.ret[Int](42), Rxn.ret[Long](23L)).apply[F](0)
       _ <- assertEqualsF(res3, Ior.both(42, 23L))
+    } yield ()
+  }
+
+  test("Defer instance") {
+    val inst = Defer[Rxn[Int, *]]
+    for {
+      ctr <- F.delay { new AtomicInteger }
+      rxn0 = inst.defer {
+        ctr.getAndIncrement()
+        Rxn.pure("result")
+      }
+      _ <- assertEqualsF(ctr.get(), 0)
+      _ <- assertResultF(rxn0[F](99), "result")
+      ref <- Ref.unpadded("-").run[F]
+      rxn1 = inst.fix[Int] { rec =>
+        ref.unsafeCas("a", "b").as(42) + (Axn.unsafe.delay {
+          if (!ref.loc.unsafeCasV("-", "a")) { throw new AssertionError }
+        } *> Rxn.unsafe.retry) + rec
+      }
+      _ <- assertResultF(rxn1[F](99), 42)
+      _ <- assertResultF(ref.get.run[F], "b")
     } yield ()
   }
 
