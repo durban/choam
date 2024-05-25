@@ -76,7 +76,6 @@ val myTask: IO[Unit] = for {
 } yield ()
 ```
 
-
 ## Modules
 
 - [`choam-core`](core/shared/src/main/scala/dev/tauri/choam/):
@@ -205,6 +204,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - inside `*.internal.*` packages (e.g., `dev.tauri.choam.internal.mcas`);
   - called `unsafe*` (e.g., `Rxn.unsafe.retry` or `Ref#unsafeCas`).
 - There is no backwards compatibility for these modules:
+  - `choam-stm`
   - `choam-mcas`
   - `choam-skiplist`
   - `choam-laws`

@@ -48,7 +48,8 @@ import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, A
  * `Rxn[A, B] ≡ (A => Axn[B])`; or, alternatively
  * `Axn[A] ≡ Rxn[Any, A]`.
  */
-sealed abstract class Rxn[-A, +B] { // short for 'reaction'
+sealed abstract class Rxn[-A, +B] // short for 'reaction'
+  extends Txn[Rxn.Anything, B] {
 
   /*
    * An implementation similar to reagents, described in [Reagents: Expressing and
@@ -290,9 +291,25 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   }
 
   override def toString: String
+
+  // STM:
+
+  final override def flatMap[C](f: B => Txn[Rxn.Anything, C]): Txn[Rxn.Anything, C] = {
+    this.flatMapF { b => f(b).impl }
+  }
+
+  private[choam] final def castF[F[_]]: Txn[F, B] =
+    this.asInstanceOf[Txn[F, B]]
+
+  private[core] final override def impl: Axn[B] =
+    this.asInstanceOf[Rxn[Any, B]] // Note: this is unsafe in general, we must take care to only use it on Txns
+
+  // /STM
 }
 
 object Rxn extends RxnInstances0 {
+
+  type Anything[_]
 
   private[this] final val interruptCheckPeriod =
     16384
@@ -380,6 +397,15 @@ object Rxn extends RxnInstances0 {
 
     private[choam] final def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
       new UpdWith[A, B, C](r.loc, f)
+  }
+
+  private[choam] final object loc {
+
+    private[choam] final def get[A](r: MemoryLocation[A]): Axn[A] =
+      new Read(r)
+
+    private[choam] final def upd[A, B, C](r: MemoryLocation[A])(f: (A, B) => (A, C)): Rxn[B, C] =
+      new Upd(r, f)
   }
 
   final object unsafe {

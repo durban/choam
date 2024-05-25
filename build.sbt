@@ -183,6 +183,7 @@ lazy val choam = project.in(file("."))
     data.jvm, data.js,
     skiplist.jvm, skiplist.js,
     async.jvm, async.js,
+    stm.jvm, stm.js,
     stream.jvm, stream.js,
     profiler, // JVM
     ce.jvm, ce.js,
@@ -272,6 +273,20 @@ lazy val async = crossProject(JVMPlatform, JSPlatform)
   .jsSettings(commonSettingsJs)
   .dependsOn(data % "compile->compile;test->test")
 
+lazy val stm = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("stm"))
+  .settings(name := "choam-stm")
+  .disablePlugins(disabledPlugins: _*)
+  .settings(commonSettings)
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
+  .dependsOn(async % "compile->compile;test->test")
+  .settings(
+    tlVersionIntroduced := Map("2.13" -> "0.4.1", "3" -> "0.4.1"),
+  )
+
 lazy val stream = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
@@ -353,6 +368,7 @@ lazy val unidocs = project
       skiplist.jvm,
       data.jvm,
       async.jvm,
+      stm.jvm,
       stream.jvm,
       laws.jvm,
       profiler,
@@ -371,6 +387,7 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .dependsOn(stream % "compile->compile;test->test")
+  .dependsOn(stm % "compile->compile;test->test")
   .jvmSettings(
     Test / fork := true,
     Test / javaOptions ++= List(
@@ -397,6 +414,7 @@ lazy val bench = project.in(file("bench"))
   )
   .enablePlugins(JmhPlugin)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
+  .dependsOn(stm.jvm % "compile->compile;compile->test")
   .dependsOn(profiler % "compile->compile")
   .dependsOn(internalHelpers)
   .settings(Jmh / version := dependencies.jmhVersion)
