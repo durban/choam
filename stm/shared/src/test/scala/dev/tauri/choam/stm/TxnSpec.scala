@@ -16,21 +16,28 @@
  */
 
 package dev.tauri.choam
-package core
+package stm
 
-import cats.effect.kernel.Async
+import cats.effect.IO
 
-private[choam] sealed trait Transactive[F[_]] extends Reactive[F] {
-  def commit[B](txn: Txn[F, B]): F[B]
-}
+final class TxnSpec_ThreadConfinedMcas_IO
+  extends BaseSpecIO
+  with SpecThreadConfinedMcas
+  with TxnSpec[IO]
 
-private[choam] object Transactive {
+trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
 
-  final def forAsync[F[_]](implicit F: Async[F]): Transactive[F] = {
-    new Reactive.SyncReactive[F](Rxn.DefaultMcas) with Transactive[F] {
-      final override def commit[B](txn: Txn[F, B]): F[B] = {
-        txn.impl.perform[F, B](null, this.mcasImpl, RetryStrategy.sleep())
-      }
-    }
+  test("Hello World") {
+    def txn(r: TRef[F, Int]): Txn[F, (Int, Int)] = for {
+      v0 <- r.get
+      _ <- r.set(99)
+      v1 <- r.get
+    } yield (v0, v1)
+
+    for {
+      r <- TRef[F, Int](42).commit
+      _ <- assertResultF(txn(r).commit, (42, 99))
+      _ <- assertResultF(r.get.commit, 99)
+    } yield ()
   }
 }

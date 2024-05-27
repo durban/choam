@@ -16,21 +16,10 @@
  */
 
 package dev.tauri.choam
-package core
+package stm
 
-import cats.effect.kernel.Async
+trait TxnBaseSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
-private[choam] sealed trait Transactive[F[_]] extends Reactive[F] {
-  def commit[B](txn: Txn[F, B]): F[B]
-}
-
-private[choam] object Transactive {
-
-  final def forAsync[F[_]](implicit F: Async[F]): Transactive[F] = {
-    new Reactive.SyncReactive[F](Rxn.DefaultMcas) with Transactive[F] {
-      final override def commit[B](txn: Txn[F, B]): F[B] = {
-        txn.impl.perform[F, B](null, this.mcasImpl, RetryStrategy.sleep())
-      }
-    }
-  }
+  protected implicit def trF: Transactive[F] =
+    Transactive.forAsync[F](this.F)
 }
