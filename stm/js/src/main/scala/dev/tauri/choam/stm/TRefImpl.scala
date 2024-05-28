@@ -91,4 +91,14 @@ private final class TRefImpl[F[_], A](
 
   final override def set(a: A): Txn[F, Unit] =
     core.Rxn.loc.upd[A, Unit, Unit](this) { (_, _) => (a, ()) }.castF[F]
+
+  final override def hashCode: Int = {
+    // `RefIdGen` generates IDs with
+    // Fibonacci hashing, so no need
+    // to hash them here even further.
+    // IDs are globally unique, so the
+    // default `equals` (based on object
+    // identity) is fine for us.
+    this.id.toInt
+  }
 }
