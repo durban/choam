@@ -201,6 +201,7 @@ lazy val choam = project.in(file("."))
     stressExperiments, // JVM
     stressLinchk, // JVM
     stressLinchkAgent, // JVM
+    lcdebug, // JVM
     stressRng, // JVM
     layout, // JVM
   )
@@ -472,6 +473,7 @@ lazy val stressLinchk = project.in(file("stress") / "stress-linchk")
   .disablePlugins(disabledPlugins: _*)
   .enablePlugins(NoPublishPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
+  .dependsOn(lcdebug % "compile->compile;test->test")
   .settings(
     libraryDependencies += dependencies.lincheck.value,
     Test / fork := true, // otherwise the bytecode transformers won't work
@@ -504,6 +506,14 @@ lazy val stressLinchkAgent = project.in(file("stress") / "stress-linchk-agent")
       "Premain-Class" -> "dev.tauri.choam.lcagent.Premain",
     ),
   )
+
+lazy val lcdebug = project.in(file("stress") / "lcdebug")
+  .settings(name := "choam-stress-lcdebug")
+  .settings(commonSettings)
+  .settings(commonSettingsJvm)
+  .disablePlugins(disabledPlugins: _*)
+  .enablePlugins(NoPublishPlugin)
+  .dependsOn(async.jvm % "compile->compile;test->test")
 
 lazy val stressRng = project.in(file("stress") / "stress-rng")
   .settings(name := "choam-stress-rng")
