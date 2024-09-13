@@ -82,7 +82,7 @@ ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 ThisBuild / tlBaseVersion := "0.4"
 ThisBuild / tlUntaggedAreSnapshots := false // => we get versions like 0.4-39d987a
 ThisBuild / tlJdkRelease := Some(11)
-ThisBuild / tlSonatypeUseLegacyHost := true
+ThisBuild / sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeLegacy
 
 // When checking version policy, ignore dependencies to internal modules whose version is like `1.2.3+4...`:
 ThisBuild / versionPolicyIgnoredInternalDependencyVersions := Some("^\\d+\\.\\d+\\.\\d+\\-.*-SNAPSHOT".r)
