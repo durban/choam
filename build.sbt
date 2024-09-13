@@ -730,9 +730,9 @@ lazy val dependencies = new {
 
   val catsVersion = "2.12.0" // https://github.com/typelevel/cats
   val catsEffectVersion = "3.5.4" // https://github.com/typelevel/cats-effect
-  val catsMtlVersion = "1.4.0" // https://github.com/typelevel/cats-mtl
+  val catsMtlVersion = "1.5.0" // https://github.com/typelevel/cats-mtl
   val catsCollectionsVersion = "0.9.8" // https://github.com/typelevel/cats-collections
-  val fs2Version = "3.10.2" // https://github.com/typelevel/fs2
+  val fs2Version = "3.11.0" // https://github.com/typelevel/fs2
   val scalacheckEffectVersion = "2.0.0-M2" // https://github.com/typelevel/scalacheck-effect
   val jcstressVersion = "0.16" // https://github.com/openjdk/jcstress
   val jmhVersion = "1.37" // https://github.com/openjdk/jmh
@@ -758,7 +758,7 @@ lazy val dependencies = new {
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % jolVersion)
   val jmh = Def.setting("org.openjdk.jmh" % "jmh-core" % jmhVersion)
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.5") // https://github.com/JCTools/JCTools
-  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.32") // https://github.com/JetBrains/lincheck
+  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.34") // https://github.com/JetBrains/lincheck
   val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.7") // https://asm.ow2.io/
 
   // JS:
@@ -770,8 +770,8 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.4")
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.2")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.1.6")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.3")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.1.9")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
