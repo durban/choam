@@ -24,8 +24,7 @@ import scala.collection.immutable.ArraySeq
 
 private final class ByteStack(initSize: Int) {
 
-  require(initSize > 0)
-  require((initSize & (initSize - 1)) == 0) // power of 2
+  require((initSize > 0) && ((initSize & (initSize - 1)) == 0)) // power of 2
 
   private[this] var size: Int =
     0
