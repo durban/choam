@@ -21,17 +21,17 @@ val scala3 = "3.3.3"
 
 // CI JVM versions:
 val jvmOldest = JavaSpec.temurin("11")
-val jvmLts = JavaSpec.temurin("17")
-val jvmLatest = JavaSpec.temurin("21")
+val jvmLts = JavaSpec.temurin("21")
+val jvmLatest = JavaSpec.temurin("23")
 val jvmTemurins = List(jvmOldest, jvmLts, jvmLatest)
-val jvmGraal_11 = JavaSpec(JavaSpec.Distribution.GraalVM("22.3.3"), "11")
-val jvmGraal_17 = JavaSpec.graalvm("17")
-val jvmGraal_21 = JavaSpec.graalvm("21")
-val jvmGraals = List(jvmGraal_11, jvmGraal_17, jvmGraal_21)
-val jvmOpenj9_11 = JavaSpec.semeru("11")
-val jvmOpenj9_17 = JavaSpec.semeru("17")
-val jvmOpenj9_21 = JavaSpec.semeru("21")
-val jvmOpenj9s = List(jvmOpenj9_11, jvmOpenj9_17, jvmOpenj9_21)
+val jvmGraalOldest = JavaSpec(JavaSpec.Distribution.GraalVM("22.3.3"), "11")
+val jvmGraalLts = JavaSpec.graalvm("21")
+val jvmGraalLatest = JavaSpec.graalvm("23")
+val jvmGraals = List(jvmGraalOldest, jvmGraalLts, jvmGraalLatest)
+val jvmOpenj9Oldest = JavaSpec.semeru("11")
+val jvmOpenj9Lts = JavaSpec.semeru("21")
+val jvmOpenj9Latest = JavaSpec.semeru("23")
+val jvmOpenj9s = List(jvmOpenj9Oldest, jvmOpenj9Lts, jvmOpenj9Latest)
 
 // CI OS versions:
 val linux = "ubuntu-latest"
@@ -153,8 +153,8 @@ ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   jvmTemurins.map { j => MatrixExclude(Map("os" -> macos, "java" -> j.render)) }, // but see inclusions
   jvmTemurins.map { j => MatrixExclude(Map("os" -> windows, "java" -> j.render)) }, // but see inclusions
   Seq(
-    MatrixExclude(Map("os" -> linux, "java" -> jvmOpenj9_11.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
-    MatrixExclude(Map("os" -> linux, "java" -> jvmGraal_11.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
+    MatrixExclude(Map("os" -> linux, "java" -> jvmOpenj9Oldest.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
+    MatrixExclude(Map("os" -> linux, "java" -> jvmGraalOldest.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
   ),
 ).flatten
 ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.flatMap { scalaVer =>
