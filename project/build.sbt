@@ -16,7 +16,7 @@
  */
 
 val circeVersion = "0.14.6"
-val kindProjectorVersion = "0.13.2"
+val kindProjectorVersion = "0.13.3"
 val macroParadiseVersion = "2.1.1"
 
 libraryDependencies ++= Seq(
