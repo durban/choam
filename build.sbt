@@ -16,21 +16,21 @@
  */
 
 // Scala versions:
-val scala2 = "2.13.14"
+val scala2 = "2.13.15"
 val scala3 = "3.3.3"
 
 // CI JVM versions:
 val jvmOldest = JavaSpec.temurin("11")
 val jvmLts = JavaSpec.temurin("21")
-val jvmLatest = JavaSpec.temurin("22")
+val jvmLatest = JavaSpec.temurin("23")
 val jvmTemurins = List(jvmOldest, jvmLts, jvmLatest)
 val jvmGraalOldest = JavaSpec(JavaSpec.Distribution.GraalVM("22.3.3"), "11")
 val jvmGraalLts = JavaSpec.graalvm("21")
-val jvmGraalLatest = JavaSpec.graalvm("22")
+val jvmGraalLatest = JavaSpec.graalvm("23")
 val jvmGraals = List(jvmGraalOldest, jvmGraalLts, jvmGraalLatest)
 val jvmOpenj9Oldest = JavaSpec.semeru("11")
 val jvmOpenj9Lts = JavaSpec.semeru("21")
-val jvmOpenj9Latest = JavaSpec.semeru("22")
+val jvmOpenj9Latest = JavaSpec.semeru("23")
 val jvmOpenj9s = List(jvmOpenj9Oldest, jvmOpenj9Lts, jvmOpenj9Latest)
 
 // CI OS versions:
