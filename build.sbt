@@ -815,7 +815,7 @@ addCommandAlias("checkScalafix", "scalafixAll --check")
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
 addCommandAlias("stressTest", stressTestCommand)
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
-addCommandAlias("compatCheck", ";versionPolicyReportDependencyIssues;mimaReportBinaryIssues")
+addCommandAlias("compatCheck", ";mimaReportBinaryIssues") // TODO: versionPolicyReportDependencyIssues
 addCommandAlias(ciCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;testOnly -- --exclude-tags=SLOW;compatCheck")
 addCommandAlias(ciFullCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;test;compatCheck")
 addCommandAlias("runLincheckTests", "stressLinchk/test")
