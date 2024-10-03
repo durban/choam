@@ -59,7 +59,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("z").run[F]
       r2 <- Ref("r2").run[F]
-      rea = r1.unsafeCas("r1", "x") + (r2.unsafeCas("r2", "x") * r1.unsafeCas("z", "r1"))
+      rea = r1.unsafeCas("r1", "x") + (r2.unsafeCas("r2", "x") * r1.unsafeCas("z", "r1")).void
       // r2: "r2" -> "x" AND r1: "z" -> "r1"
       _ <- rea.run
       _ <- assertResultF(r2.unsafeDirectRead.run, "x")
@@ -95,7 +95,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         (
           (Rxn.unsafe.cas(a, "a", "aa") + (Rxn.unsafe.cas(b, "b", "bb") >>> Rxn.unsafe.delay { _ =>
             this.mcasImpl.currentContext().tryPerformSingleCas(y.loc, "y", "-")
-          })) >>> Rxn.unsafe.cas(y, "-", "yy")
+          }).void) >>> Rxn.unsafe.cas(y, "-", "yy")
         ) +
         (Rxn.unsafe.cas(p, "p", "pp") >>> Rxn.unsafe.cas(q, "q", "qq"))
       )
@@ -1218,7 +1218,7 @@ private[choam] object RxnSpec {
   private[choam] val throwingRxns = List[Rxn[Any, Any]](
     Rxn.unit.map(_ => throw new MyException),
     Rxn.unit.flatMapF(_ => throw new MyException),
-    Rxn.unit.flatMap(_ => throw new MyException),
+    Rxn.unit[Any].flatMap[Any, Unit](_ => throw new MyException),
     Rxn.unsafe.delay[Any, Unit] { _ => throw new MyException },
     Axn.unsafe.delay[Unit] { throw new MyException },
     Axn.pure(42L).postCommit(Rxn.unit.map(_ => throw new MyException)),

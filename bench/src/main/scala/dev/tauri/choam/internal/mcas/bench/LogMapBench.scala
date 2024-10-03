@@ -27,7 +27,6 @@ import scala.collection.immutable.TreeMap
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import internal.mcas.{ MemoryLocation, LogEntry, Version }
 import dev.tauri.choam.bench.util.RandomState
 
 @Fork(1)
