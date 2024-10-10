@@ -759,7 +759,7 @@ lazy val dependencies = new {
   val jmh = Def.setting("org.openjdk.jmh" % "jmh-core" % jmhVersion)
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.5") // https://github.com/JCTools/JCTools
   val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.34") // https://github.com/JetBrains/lincheck
-  val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.7") // https://asm.ow2.io/
+  val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.7.1") // https://asm.ow2.io/
 
   // JS:
   val scalaJsLocale = Def.setting[Seq[ModuleID]](Seq(
@@ -771,7 +771,7 @@ lazy val dependencies = new {
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1")
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.4")
   val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.3")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.1.9")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.1.11")
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(
