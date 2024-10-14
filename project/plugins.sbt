@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-val sbtTypelevelVersion = "0.7.3" // https://github.com/typelevel/sbt-typelevel
+val sbtTypelevelVersion = "0.7.4" // https://github.com/typelevel/sbt-typelevel
 
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.7") // https://github.com/sbt/sbt-jmh
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
@@ -38,4 +38,4 @@ addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1") // https://gith
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.10.4") // https://github.com/sbt/sbt-native-packager
 
 ThisBuild / semanticdbEnabled := true
-ThisBuild / semanticdbVersion := "4.10.1" // https://github.com/scalameta/scalameta
+ThisBuild / semanticdbVersion := "4.10.2" // https://github.com/scalameta/scalameta
