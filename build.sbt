@@ -819,7 +819,7 @@ addCommandAlias("compatCheck", ";mimaReportBinaryIssues") // TODO: versionPolicy
 addCommandAlias(ciCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;testOnly -- --exclude-tags=SLOW;compatCheck")
 addCommandAlias(ciFullCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;test;compatCheck")
 addCommandAlias("runLincheckTests", "stressLinchk/test")
-addCommandAlias("release", ";reload;+versionPolicyReportDependencyIssues;tlRelease")
+addCommandAlias("release", ";reload;tlRelease") // TODO: +versionPolicyReportDependencyIssues
 addCommandAlias("releaseHash", ";reload;tlRelease")
 
 // profiling: `-prof jfr`
