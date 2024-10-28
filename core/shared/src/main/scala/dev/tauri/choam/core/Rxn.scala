@@ -631,9 +631,9 @@ object Rxn extends RxnInstances0 {
   }
 
   /** Only the interpreter can use this! */
-  private final class Suspend(val token: Long) extends Rxn[Any, Nothing] {
+  private final class SuspendUntil(val token: Long) extends Rxn[Any, Nothing] {
     private[core] final override def tag = 27
-    final override def toString: String = s"Suspend(${token.toHexString})"
+    final override def toString: String = s"SuspendUntil(${token.toHexString})"
   }
 
   private final class TailRecM[X, A, B](val a: A, val f: A => Rxn[X, Either[A, B]]) extends Rxn[X, B] {
@@ -1074,7 +1074,7 @@ object Rxn extends RxnInstances0 {
         this.startRxn
       } else {
         assert(canSuspend)
-        new Suspend(token)
+        new SuspendUntil(token)
       }
     }
 
@@ -1453,7 +1453,7 @@ object Rxn extends RxnInstances0 {
           loop(c.rxn)
         case 27 => // Suspend
           assert(this.canSuspend)
-          assert(!Backoff2.isPauseToken(curr.asInstanceOf[Suspend].token))
+          assert(!Backoff2.isPauseToken(curr.asInstanceOf[SuspendUntil].token))
           // user code can't access a `Suspend`, so
           // we can abuse `R` and return `Suspend`:
           curr.asInstanceOf[R]
@@ -1477,7 +1477,7 @@ object Rxn extends RxnInstances0 {
           this.ctx = mcas.currentContext()
           try {
             loop(startRxn) match {
-              case s: Suspend =>
+              case s: SuspendUntil =>
                 assert(this._entryHolder eq null)
                 F.flatMap(poll(Backoff2.tokenToF[F](s.token))) { _ => step(poll) }
               case r =>

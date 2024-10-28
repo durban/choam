@@ -15,6 +15,11 @@
  * limitations under the License.
  */
 
+import com.typesafe.tools.mima.core.{
+  ProblemFilters,
+  MissingClassProblem,
+}
+
 // Scala versions:
 val scala2 = "2.13.15"
 val scala3 = "3.3.4"
@@ -216,13 +221,18 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .dependsOn(mcas % "compile->compile;test->test")
-  .settings(libraryDependencies ++= Seq(
-    dependencies.catsCore.value,
-    dependencies.catsMtl.value,
-    dependencies.catsEffectKernel.value,
-    dependencies.catsEffectStd.value,
-    // "eu.timepit" %%% "refined" % "0.11.1",
-  ))
+  .settings(
+    libraryDependencies ++= Seq(
+      dependencies.catsCore.value,
+      dependencies.catsMtl.value,
+      dependencies.catsEffectKernel.value,
+      dependencies.catsEffectStd.value,
+      // "eu.timepit" %%% "refined" % "0.11.1",
+    ),
+    mimaBinaryIssueFilters ++= Seq(
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.Rxn$Suspend") // private
+    ),
+  )
 
 lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
