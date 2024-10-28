@@ -21,12 +21,14 @@ package stm
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.{ AtomicReference, AtomicLong }
 
+import scala.collection.immutable.LongMap
+
 import internal.mcas.MemoryLocation
 
 private final class TRefImpl[F[_], A](
   initial: A,
   final override val id: Long,
-) extends MemoryLocation[A] with TRef.UnsealedTRef[F, A] {
+) extends MemoryLocation[A] with MemoryLocation.WithListeners[A] with TRef.UnsealedTRef[F, A] {
 
   // TODO: use VarHandles
 
@@ -38,6 +40,12 @@ private final class TRefImpl[F[_], A](
 
   private[this] val marker =
     new AtomicReference[WeakReference[AnyRef]]
+
+  private[this] val listeners =
+    new AtomicReference[LongMap[Null => Unit]](LongMap.empty)
+
+  private[this] val nextListenerId =
+    new AtomicLong(java.lang.Long.MIN_VALUE)
 
   final override def unsafeGetV(): A =
     contents.get()
@@ -89,5 +97,45 @@ private final class TRefImpl[F[_], A](
     // default `equals` (based on object
     // identity) is fine for us.
     this.id.toInt
+  }
+
+  private[choam] final override def withListeners: this.type =
+    this
+
+  private[choam] final override def unsafeRegisterListener(listener: Null => Unit, lastSeenVersion: Long): Long = {
+    val lid = nextListenerId.incrementAndGet() // could be opaque
+    assert(lid != java.lang.Long.MIN_VALUE) // detect overflow
+
+    @tailrec
+    def go(ov: LongMap[Null => Unit]): Long = {
+      val nv = ov.updated(lid, listener)
+      val wit = listeners.compareAndExchange(ov, nv)
+      if (wit eq ov) {
+        lid
+      } else {
+        go(wit)
+      }
+    }
+
+    go(listeners.get())
+
+    // TODO: double-check concurrent version change
+    // TODO: actually call listeners when needed
+  }
+
+  private[choam] final override def unsafeCancelListener(lid: Long): Unit = {
+
+    @tailrec
+    def go(ov: LongMap[Null => Unit]): Unit = {
+      val nv = ov.removed(lid)
+      if (nv ne ov) {
+        val wit = listeners.compareAndExchange(ov, nv)
+        if (wit ne ov) {
+          go(wit)
+        } // else: we're done
+      } // else: we're done
+    }
+
+    go(listeners.get())
   }
 }

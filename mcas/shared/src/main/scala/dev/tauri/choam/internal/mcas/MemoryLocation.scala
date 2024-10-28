@@ -103,6 +103,11 @@ trait MemoryLocation[A] extends Hamt.HasHash {
   final override def hash: Long =
     this.id
 
+  // listeners (for STM):
+
+  private[choam] def withListeners: MemoryLocation.WithListeners[A] =
+    throw new UnsupportedOperationException
+
   // private utilities:
 
   private[mcas] final def cast[B]: MemoryLocation[B] =
@@ -110,6 +115,11 @@ trait MemoryLocation[A] extends Hamt.HasHash {
 }
 
 object MemoryLocation extends MemoryLocationInstances0 {
+
+  private[choam] trait WithListeners[A] {
+    private[choam] def unsafeRegisterListener(listener: Null => Unit, lastSeenVersion: Long): Long
+    private[choam] def unsafeCancelListener(lid: Long): Unit
+  }
 
   def unsafe[A](initial: A): MemoryLocation[A] = // TODO: remove this
     unsafeUnpadded[A](initial)
