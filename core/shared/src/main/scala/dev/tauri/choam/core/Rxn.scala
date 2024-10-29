@@ -434,28 +434,28 @@ object Rxn extends RxnInstances0 {
     private[choam] final def directRead[A](r: Ref[A]): Axn[A] =
       new DirectRead[A](r.loc)
 
-    def ticketRead[A](r: Ref[A]): Axn[unsafe.Ticket[A]] =
+    final def ticketRead[A](r: Ref[A]): Axn[unsafe.Ticket[A]] =
       new TicketRead[A](r.loc)
 
     private[choam] final def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
       new Cas[A](r.loc, ov, nv)
 
-    def retry[A, B]: Rxn[A, B] =
+    final def retry[A, B]: Rxn[A, B] =
       new AlwaysRetry[A, B]
 
-    private[choam] def delay[A, B](uf: A => B): Rxn[A, B] =
+    private[choam] final def delay[A, B](uf: A => B): Rxn[A, B] =
       lift(uf)
 
-    private[choam] def suspend[A, B](uf: A => Axn[B]): Rxn[A, B] =
+    private[choam] final def suspend[A, B](uf: A => Axn[B]): Rxn[A, B] =
       delay(uf).flatten // TODO: optimize
 
     // TODO: Calling `unsafePerform` (or similar) inside
     // TODO: `uf` is dangerous; currently it only messes
     // TODO: up exchanger statistics; in the future, who knows...
-    private[choam] def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
+    private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
       new Ctx[A](uf)
 
-    private[choam] def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
+    private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       this.delayContext(uf).flatten // TODO: optimize
 
     final def exchanger[A, B]: Axn[Exchanger[A, B]] =

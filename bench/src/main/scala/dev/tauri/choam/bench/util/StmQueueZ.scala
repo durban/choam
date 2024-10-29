@@ -56,8 +56,13 @@ final class StmQueueZ[A](
       _ <- tn match {
         case End() =>
           t.next.set(node).flatMap { _ => tail.set(node) }
-        case tn @ Node(_, _) =>
-          tail.set(tn) *> ZSTM.retry // lagging tail
+        case _ @ Node(_, _) =>
+          // due to the lack of opacity in ZSTM,
+          // we're seeing something inconsistent
+          // (a lagging tail); however, this doesn't
+          // seem to happen in practice, so we just
+          // throw an exception:
+          ZSTM.dieMessage("lagging tail due to non-opacity")
       }
     } yield ()
   }
