@@ -38,8 +38,6 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   def toImmutable: Descriptor
 
-  private[mcas] def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]]
-
   final def size: Int =
     this.hamt.size + (if (this.hasVersionCas) 1 else 0)
 
@@ -54,6 +52,8 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   private[mcas] final def newVersion: Long =
     this.validTs + this.versionIncr
+
+  private[choam] def hwdIterator: Iterator[LogEntry[Any]]
 
   private[choam] def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A]
 

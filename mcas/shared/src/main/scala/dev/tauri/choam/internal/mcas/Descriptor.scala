@@ -184,7 +184,7 @@ final class Descriptor private (
     }
   }
 
-  private[mcas] final override def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
+  private[choam] final override def hwdIterator: Iterator[LogEntry[Any]] = {
     val values = this.map.valuesIterator
     val vc = this.versionCas
     if (vc eq null) {

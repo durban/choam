@@ -19,8 +19,6 @@ package dev.tauri.choam
 package internal
 package mcas
 
-import cats.syntax.all._
-
 final class McasSpecJvmEmcas
   extends McasSpecJvm
   with SpecEmcas
@@ -279,7 +277,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val d2 = ctx.addCasFromInitial(d1, r2, "bar", "foo")
     val d3 = ctx.addVersionCas(d2)
     val lb = List.newBuilder[MemoryLocation[_]]
-    val it = d3.hwdIterator(ctx)
+    val it = d3.hwdIterator
     while (it.hasNext) {
       lb += it.next().address
     }
@@ -289,14 +287,5 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     assert((lst(2) eq r1) || (lst(2) eq r2))
     assert(lst(0) ne r1)
     assert(lst(0) ne r2)
-  }
-
-  test("Descriptor mustn't allow EMCAS to use `hwdIterator`") {
-    // because it's slow
-    val r1 = MemoryLocation.unsafe[String]("foo")
-    val ctx = emcas.Emcas.inst.currentContext()
-    val d0 = ctx.start()
-    val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")
-    assert(Either.catchOnly[IllegalArgumentException] { d1.hwdIterator(ctx) }.isLeft)
   }
 }

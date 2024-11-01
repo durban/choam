@@ -58,7 +58,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
       RefIdGen.global
 
     final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long = {
-      val ops = desc.hwdIterator(this).toList
+      val ops = desc.hwdIterator.toList
       perform(ops, newVersion = desc.newVersion)
     }
 

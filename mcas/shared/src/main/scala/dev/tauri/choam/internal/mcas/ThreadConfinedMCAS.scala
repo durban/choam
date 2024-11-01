@@ -82,9 +82,9 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
         }
       }
 
-      val prepResult = prepare(desc.hwdIterator(this))
+      val prepResult = prepare(desc.hwdIterator)
       if (prepResult == McasStatus.Successful) {
-        execute(desc.hwdIterator(this), desc.newVersion)
+        execute(desc.hwdIterator, desc.newVersion)
         McasStatus.Successful
       } else {
         prepResult

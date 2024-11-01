@@ -146,7 +146,7 @@ final class MutDescriptor private (
     this
   }
 
-  private[mcas] final override def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
+  private[choam] final override def hwdIterator: Iterator[LogEntry[Any]] = {
     this.map.valuesIterator
   }
 
