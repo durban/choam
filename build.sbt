@@ -18,6 +18,8 @@
 import com.typesafe.tools.mima.core.{
   ProblemFilters,
   MissingClassProblem,
+  DirectMissingMethodProblem,
+  ReversedMissingMethodProblem,
 }
 
 // Scala versions:
@@ -244,7 +246,14 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .dependsOn(skiplist % "compile->compile;test->test")
-  .settings(libraryDependencies += dependencies.catsKernel.value) // TODO: we only need this due to `Order`
+  .settings(
+    libraryDependencies += dependencies.catsKernel.value, // TODO: we only need this due to `Order`
+    mimaBinaryIssueFilters ++= Seq(
+      // there is no backward compat for `choam-mcas`:
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.Descriptor.versionCas"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.AbstractDescriptor.hwdIterator"),
+    ),
+  )
 
 lazy val skiplist = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
