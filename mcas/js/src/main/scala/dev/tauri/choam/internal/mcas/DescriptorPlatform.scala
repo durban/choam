@@ -22,16 +22,4 @@ package mcas
 private[mcas] abstract class DescriptorPlatform extends AbstractDescriptor {
 
   protected def map: LogMap2[Any]
-
-  protected def versionCas: LogEntry[java.lang.Long]
-
-  private[mcas] final override def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
-    val wordsItr = this.map.toArray((), flag = false, nullIfBlue = false).iterator
-    val vc = this.versionCas
-    if (vc eq null) {
-      wordsItr
-    } else {
-      Iterator.single(vc.cast[Any]).concat(wordsItr)
-    }
-  }
 }

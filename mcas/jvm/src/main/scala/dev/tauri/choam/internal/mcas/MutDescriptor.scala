@@ -147,16 +147,7 @@ final class MutDescriptor private (
   }
 
   private[mcas] final override def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
-    require(ctx.impl ne Mcas.Emcas)
-    // This is really not effective (we're making an
-    // array of WDs, and mapping it back to HWDs), but
-    // this is not EMCAS, so we don't really care:
-    this.map.copyToArray(null, flag = false, nullIfBlue = false).map {
-      case wd: emcas.EmcasWordDesc[_] =>
-        LogEntry(wd.address.cast[Any], wd.ov, wd.nv, wd.oldVersion)
-      case entry: LogEntry[_] =>
-        entry.cast[Any]
-    }.iterator
+    this.map.valuesIterator
   }
 
   /** This is used by EMCAS instead of the above */

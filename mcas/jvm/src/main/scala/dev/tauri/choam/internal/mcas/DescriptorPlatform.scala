@@ -23,27 +23,6 @@ private[mcas] abstract class DescriptorPlatform extends AbstractDescriptor {
 
   protected def map: LogMap2[Any]
 
-  protected def versionCas: LogEntry[java.lang.Long]
-
-  private[mcas] final override def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
-    require(ctx.impl ne Mcas.Emcas)
-    // This is really not effective (we're making an
-    // array of WDs, and mapping it back to HWDs), but
-    // this is not EMCAS, so we don't really care:
-    val wordsItr = this.map.toArray(null, flag = false, nullIfBlue = false).map {
-      case wd: emcas.EmcasWordDesc[_] =>
-        LogEntry(wd.address.cast[Any], wd.ov, wd.nv, wd.oldVersion)
-      case entry: LogEntry[_] =>
-        entry.cast[Any]
-    }.iterator
-    val vc = this.versionCas
-    if (vc eq null) {
-      wordsItr
-    } else {
-      Iterator.single(vc.cast[Any]).concat(wordsItr)
-    }
-  }
-
   /** This only exists on the JVM, and used by EMCAS instead of the above */
   private[mcas] final override def toWdArray(parent: emcas.EmcasDescriptor, instRo: Boolean): Array[WdLike[Any]] = {
     this.map.toArray(parent, flag = instRo, nullIfBlue = true)

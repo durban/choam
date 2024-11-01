@@ -21,7 +21,5 @@ package mcas
 
 private[mcas] abstract class AbstractDescriptorPlatform {
 
-  private[mcas] def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]]
-
   private[mcas] def toWdArray(parent: emcas.EmcasDescriptor, instRo: Boolean): Array[WdLike[Any]]
 }

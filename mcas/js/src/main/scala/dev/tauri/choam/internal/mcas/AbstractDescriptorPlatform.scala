@@ -20,6 +20,4 @@ package internal
 package mcas
 
 private[mcas] abstract class AbstractDescriptorPlatform {
-
-  private[mcas] def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]]
 }

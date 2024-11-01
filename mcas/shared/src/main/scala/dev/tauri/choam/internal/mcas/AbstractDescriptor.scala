@@ -38,6 +38,8 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   def toImmutable: Descriptor
 
+  private[mcas] def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]]
+
   final def size: Int =
     this.hamt.size + (if (this.hasVersionCas) 1 else 0)
 

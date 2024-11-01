@@ -26,7 +26,7 @@ final class Descriptor private (
   final override val validTs: Long,
   private val validTsBoxed: java.lang.Long,
   final override val versionIncr: Long,
-  protected final override val versionCas: LogEntry[java.lang.Long], // can be null
+  private final val versionCas: LogEntry[java.lang.Long], // can be null
 ) extends DescriptorPlatform {
 
   require((versionCas eq null) || (versionIncr > 0L))
@@ -181,6 +181,16 @@ final class Descriptor private (
     } else {
       // no need to validate:
       this
+    }
+  }
+
+  private[mcas] final override def hwdIterator(ctx: Mcas.ThreadContext): Iterator[LogEntry[Any]] = {
+    val values = this.map.valuesIterator
+    val vc = this.versionCas
+    if (vc eq null) {
+      values
+    } else {
+      Iterator.single(vc.cast[Any]).concat(values)
     }
   }
 
