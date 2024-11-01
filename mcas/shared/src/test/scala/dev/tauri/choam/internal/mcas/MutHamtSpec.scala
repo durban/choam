@@ -698,6 +698,71 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     assertEquals(immutableAct.size, immutableExp.size)
     assertEquals(immutableAct.toArray.toList, immutableExp.toArray.toList)
   }
+
+  test("valuesIterator examples") {
+    val c0 = 0x0L
+    val c1 = 0x8000000000000000L
+    val h = LongMutHamt.newEmpty()
+    val it00 = h.valuesIterator
+    assert(!it00.hasNext)
+    assert(!it00.hasNext)
+    try it00.next() catch { case _: NoSuchElementException => () }
+    val it01 = h.valuesIterator
+    val it02 = h.valuesIterator
+    assert(!it01.hasNext)
+    assert(!it02.hasNext)
+    assert(!it00.hasNext)
+    h.insert(Val(c0))
+    val it10 = h.valuesIterator
+    val it11 = h.valuesIterator
+    assert(it10.hasNext)
+    assert(it10.hasNext)
+    assertEquals(it10.next(), Val(c0))
+    assert(!it10.hasNext)
+    assert(!it10.hasNext)
+    assert(it11.hasNext)
+    assertEquals(it11.next(), Val(c0))
+    assert(!it10.hasNext)
+    assert(!it11.hasNext)
+    h.insert(Val(c1))
+    val it20 = h.valuesIterator
+    val it21 = h.valuesIterator
+    assert(it20.hasNext)
+    assert(it21.hasNext)
+    assertEquals(it20.next(), Val(c0))
+    assert(it20.hasNext)
+    assert(it21.hasNext)
+    assertEquals(it20.next(), Val(c1))
+    assert(!it20.hasNext)
+    assert(!it20.hasNext)
+    assert(it21.hasNext)
+    assertEquals(it21.next(), Val(c0))
+    assertEquals(it21.next(), Val(c1))
+    assert(!it20.hasNext)
+    assert(!it20.hasNext)
+    assert(!it21.hasNext)
+    assert(!it21.hasNext)
+  }
+
+  property("valuesIterator (default generator)") {
+    forAll { (seed: Long, nums: Set[Long]) =>
+      testValuesIterator(seed, nums)
+    }
+  }
+
+  property("valuesIterator (RIG generator)") {
+    myForAll { (seed: Long, nums: Set[Long]) =>
+      testValuesIterator(seed, nums)
+    }
+  }
+
+  private def testValuesIterator(seed: Long, nums: Set[Long]): Unit = {
+    val rng = new Random(seed)
+    val h = mutHamtFromList(rng.shuffle(nums.toList))
+    val expected = h.toArray.toList
+    val actual = h.valuesIterator.toList
+    assertEquals(actual, expected)
+  }
 }
 
 object MutHamtSpec {

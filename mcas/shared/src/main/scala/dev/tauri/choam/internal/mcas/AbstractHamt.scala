@@ -20,8 +20,9 @@ package internal
 package mcas
 
 import scala.util.hashing.MurmurHash3
+import scala.collection.AbstractIterator
 
-private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E, T1, T2, H <: AbstractHamt[K, V, E, T1, T2, H]] protected[mcas] () { this: H =>
+private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E, T1, T2, H <: AbstractHamt[K, V, E, T1, T2, H]] protected[mcas] () { self: H =>
 
   protected def newArray(size: Int): Array[E]
 
@@ -44,6 +45,77 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
    */
   final def forAll(tok: T2): Boolean = {
     this.forAllInternal(tok)
+  }
+
+  /** Only call on the root! */
+  final def valuesIterator: Iterator[V] = {
+    new AbstractIterator[V] {
+
+      private[this] val arrays =
+        new Array[Array[AnyRef]](11)
+
+      private[this] val indices =
+        new Array[Int](11)
+
+      private[this] var depth: Int =
+        0
+
+      private[this] var loadedNext: V =
+        nullOf[V]
+
+      locally {
+        this.arrays(0) = self.contentsArr
+        this.indices(0) = -1
+        this.loadNext()
+      }
+
+      final override def hasNext: Boolean = {
+        !isNull(this.loadedNext)
+      }
+
+      final override def next(): V = {
+        if (this.hasNext) {
+          val res = this.loadedNext
+          this.loadedNext = nullOf[V]
+          this.loadNext()
+          res
+        } else {
+          throw new NoSuchElementException
+        }
+      }
+
+      @tailrec
+      private[this] final def loadNext(): Unit = {
+        val d = this.depth
+        val idx = this.indices(d) + 1
+        this.indices(d) = idx
+        val arr = this.arrays(d)
+        if (idx < arr.length) {
+          arr(idx) match {
+            case null =>
+              // skip empty slot:
+              this.loadNext()
+            case node: AbstractHamt[_, _, _, _, _, _] =>
+              // descend:
+              val newDepth = d + 1
+              this.depth = newDepth
+              this.indices(newDepth) = -1
+              this.arrays(newDepth) = node.contentsArr
+              this.loadNext()
+            case a =>
+              // found it:
+              this.loadedNext = a.asInstanceOf[V]
+          }
+        } else {
+          // ascend:
+          val newDepth = d - 1
+          this.depth = newDepth
+          if (newDepth >= 0) {
+            this.loadNext()
+          } // else: at end
+        }
+      }
+    }
   }
 
   final def toString(pre: String, post: String): String = {
