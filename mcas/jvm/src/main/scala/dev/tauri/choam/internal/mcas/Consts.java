@@ -26,6 +26,9 @@ public final class Consts {
   public static final long PESSIMISTIC =
     0L;
 
+  public static final long InvalidListenerId =
+    Long.MIN_VALUE;
+
   public static final String statsEnabledProp =
     "dev.tauri.choam.stats";
 

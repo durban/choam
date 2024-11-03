@@ -24,15 +24,19 @@ object Consts {
 
   @inline
   final val OPTIMISTIC =
-    1L;
+    1L
 
   @inline
   final val PESSIMISTIC =
-    0L;
+    0L
+
+  @inline
+  final val InvalidListenerId =
+    java.lang.Long.MIN_VALUE
 
   @inline
   final val statsEnabledProp =
-    "dev.tauri.choam.stats";
+    "dev.tauri.choam.stats"
 
   @inline
   final val statsEnabled =

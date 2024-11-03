@@ -24,11 +24,12 @@ import java.util.concurrent.atomic.{ AtomicReference, AtomicLong }
 import scala.collection.immutable.LongMap
 
 import internal.mcas.MemoryLocation
+import internal.mcas.Consts
 
 private final class TRefImpl[F[_], A](
   initial: A,
   final override val id: Long,
-) extends MemoryLocation[A] with MemoryLocation.WithListeners[A] with TRef.UnsealedTRef[F, A] {
+) extends MemoryLocation[A] with MemoryLocation.WithListeners with TRef.UnsealedTRef[F, A] {
 
   // TODO: use VarHandles
 
@@ -44,8 +45,8 @@ private final class TRefImpl[F[_], A](
   private[this] val listeners =
     new AtomicReference[LongMap[Null => Unit]](LongMap.empty)
 
-  private[this] val nextListenerId =
-    new AtomicLong(java.lang.Long.MIN_VALUE)
+  private[this] val previousListenerId =
+    new AtomicLong(Consts.InvalidListenerId)
 
   final override def unsafeGetV(): A =
     contents.get()
@@ -103,27 +104,31 @@ private final class TRefImpl[F[_], A](
     this
 
   private[choam] final override def unsafeRegisterListener(listener: Null => Unit, lastSeenVersion: Long): Long = {
-    val lid = nextListenerId.incrementAndGet() // could be opaque
-    assert(lid != java.lang.Long.MIN_VALUE) // detect overflow
+    val lid = previousListenerId.incrementAndGet() // could be opaque
+    assert(lid != Consts.InvalidListenerId) // detect overflow
 
     @tailrec
-    def go(ov: LongMap[Null => Unit]): Long = {
+    def go(ov: LongMap[Null => Unit]): Unit = {
       val nv = ov.updated(lid, listener)
       val wit = listeners.compareAndExchange(ov, nv)
-      if (wit eq ov) {
-        lid
-      } else {
+      if (wit ne ov) {
         go(wit)
       }
     }
 
     go(listeners.get())
+    val currVer = this.unsafeGetVersionV()
+    if (currVer != lastSeenVersion) {
+      Consts.InvalidListenerId
+    } else {
+      lid
+    }
 
-    // TODO: double-check concurrent version change
     // TODO: actually call listeners when needed
   }
 
   private[choam] final override def unsafeCancelListener(lid: Long): Unit = {
+    assert(lid != Consts.InvalidListenerId)
 
     @tailrec
     def go(ov: LongMap[Null => Unit]): Unit = {
