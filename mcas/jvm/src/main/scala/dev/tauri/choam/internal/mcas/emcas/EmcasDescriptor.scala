@@ -130,11 +130,7 @@ private[mcas] final class EmcasDescriptor private[this] (
       this.getOrInitFallback(fb)
     }
 
-    // we can clean up to help the GC
-    // (even if we have to retry with
-    // the fallback, we already copied
-    // the array):
-    this.cleanWordsForGc(EmcasStatus.isSuccessful(finalResult))
+    this.wasFinalized(EmcasStatus.isSuccessful(finalResult))
   }
 
   private[emcas] final def fallback: EmcasDescriptor = {

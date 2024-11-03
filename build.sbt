@@ -252,6 +252,9 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
       // there is no backward compat for `choam-mcas`:
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.Descriptor.versionCas"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.AbstractDescriptor.hwdIterator"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.LogEntry.cleanForGc"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.WdLike.cleanForGc"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.WdLike.wasFinalized"),
     ),
   )
 

@@ -105,9 +105,13 @@ abstract class EmcasDescriptorBase {
     }
   }
 
-  final void cleanWordsForGc(boolean wasSuccessful) {
-    // We're the only ones cleaning, so
-    // `_words` is never `null` here:
+  final void wasFinalized(boolean wasSuccessful) {
+    // We can clean up to help the GC
+    // (even if we have to retry with
+    // the fallback, we already copied
+    // the array). We're the only ones
+    // cleaning up, so `_words` is never
+    // `null` here:
     WdLike<?>[] words = this.getWordsO();
     int len = words.length;
     VarHandle.releaseFence();
@@ -124,7 +128,7 @@ abstract class EmcasDescriptorBase {
       @SuppressWarnings("unchecked")
       WdLike<Object> wd = (WdLike<Object>) words[idx];
       WORDS_ARR.setOpaque(words, idx, (WdLike<?>) null);
-      wd.cleanForGc(wasSuccessful, sentinel);
+      wd.wasFinalized(wasSuccessful, sentinel);
     }
   }
 }

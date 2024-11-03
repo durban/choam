@@ -53,7 +53,7 @@ abstract class EmcasWordDescBase<A> {
     return this.getNvP();
   }
 
-  public final void cleanForGc(boolean wasSuccessful, A sentinel) {
+  public final void wasFinalized(boolean wasSuccessful, A sentinel) {
     if (wasSuccessful) {
       OV.setOpaque(this, sentinel);
     } else {

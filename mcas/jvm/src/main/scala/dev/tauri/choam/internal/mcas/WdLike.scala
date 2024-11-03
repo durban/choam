@@ -26,7 +26,7 @@ sealed trait WdLike[A] extends Hamt.HasKey[MemoryLocation[A]] {
   def ov: A
   def nv: A
   val oldVersion: Long
-  def cleanForGc(wasSuccessful: Boolean, sentinel: A): Unit
+  def wasFinalized(wasSuccessful: Boolean, sentinel: A): Unit
 
   final override def key: MemoryLocation[A] =
     this.address
@@ -42,7 +42,7 @@ final class LogEntry[A] private ( // formerly called HWD
 
   require(Version.isValid(oldVersion))
 
-  final override def cleanForGc(wasSuccessful: Boolean, sentinel: A): Unit =
+  final override def wasFinalized(wasSuccessful: Boolean, sentinel: A): Unit =
     ()
 
   private[choam] final def cast[B]: LogEntry[B] =
