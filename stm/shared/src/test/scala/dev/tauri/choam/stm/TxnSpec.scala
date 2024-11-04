@@ -18,7 +18,12 @@
 package dev.tauri.choam
 package stm
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import cats.effect.IO
+
+import internal.mcas.MemoryLocation
+import internal.mcas.Consts
 
 final class TxnSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
@@ -38,6 +43,32 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       r <- TRef[F, Int](42).commit
       _ <- assertResultF(txn(r).commit, (42, 99))
       _ <- assertResultF(r.get.commit, 99)
+    } yield ()
+  }
+
+  test("TRef should have .withListeners") {
+    def incr(ref: TRef[F, Int]): F[Unit] =
+      ref.get.flatMap { ov => ref.set(ov + 1) }.commit
+    def check(ref: TRef[F, Int]): F[Unit] = for {
+      loc <- F.delay(ref.asInstanceOf[MemoryLocation[Int]])
+      wl <- F.delay(loc.withListeners)
+      ctr <- F.delay(new AtomicInteger(0))
+      lid <- F.delay(wl.unsafeRegisterListener({ _ => ctr.getAndIncrement(); () }, loc.unsafeGetVersionV()))
+      _ <- assertNotEqualsF(lid, Consts.InvalidListenerId)
+      _ <- incr(ref)
+      _ <- F.delay(assertEquals(ctr.get(), 1))
+      _ <- incr(ref)
+      _ <- F.delay(assertEquals(ctr.get(), 1))
+      lid <- F.delay(wl.unsafeRegisterListener({ _ => ctr.getAndIncrement(); () }, loc.unsafeGetVersionV()))
+      _ <- assertNotEqualsF(lid, Consts.InvalidListenerId)
+      _ <- F.delay(wl.unsafeCancelListener(lid))
+      _ <- incr(ref)
+      _ <- F.delay(assertEquals(ctr.get(), 1))
+    } yield ()
+
+    for {
+      r <- TRef[F, Int](42).commit
+      _ <- check(r)
     } yield ()
   }
 }

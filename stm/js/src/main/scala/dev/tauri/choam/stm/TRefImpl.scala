@@ -20,18 +20,27 @@ package stm
 
 import java.lang.ref.WeakReference
 
+import scala.collection.mutable.{ LongMap => MutLongMap }
+
 import internal.mcas.MemoryLocation
+import internal.mcas.Consts
 
 private final class TRefImpl[F[_], A](
   initial: A,
   final override val id: Long,
-) extends MemoryLocation[A] with TRef.UnsealedTRef[F, A] {
+) extends MemoryLocation[A] with MemoryLocation.WithListeners with TRef.UnsealedTRef[F, A] {
 
   private[this] var contents: A =
     initial
 
   private[this] var version: Long =
     internal.mcas.Version.Start
+
+  private[this] val listeners =
+    MutLongMap.empty[Null => Unit]
+
+  private[this] var previousListenerId: Long =
+    Consts.InvalidListenerId
 
   final override def unsafeGetV(): A =
     contents
@@ -100,5 +109,37 @@ private final class TRefImpl[F[_], A](
     // default `equals` (based on object
     // identity) is fine for us.
     this.id.toInt
+  }
+
+  private[choam] final override def withListeners: this.type =
+    this
+
+  private[choam] final override def unsafeRegisterListener(listener: Null => Unit, lastSeenVersion: Long): Long = {
+    val lid = previousListenerId + 1L
+    previousListenerId = lid
+    assert(lid != Consts.InvalidListenerId) // detect overflow
+
+    listeners.put(lid, listener) : Unit
+    val currVer = this.unsafeGetVersionV()
+    if (currVer != lastSeenVersion) {
+      listeners.remove(lid) : Unit
+      Consts.InvalidListenerId
+    } else {
+      lid
+    }
+  }
+
+  private[choam] final override def unsafeCancelListener(lid: Long): Unit = {
+    assert(lid != Consts.InvalidListenerId)
+    listeners.remove(lid) : Unit
+  }
+
+  private[choam] final override def unsafeNotifyListeners(): Unit = {
+    val itr = listeners.valuesIterator
+    while (itr.hasNext) {
+      val cb = itr.next()
+      cb(null)
+    }
+    listeners.clear()
   }
 }

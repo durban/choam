@@ -119,6 +119,7 @@ private final class TRefImpl[F[_], A](
     go(listeners.get())
     val currVer = this.unsafeGetVersionV()
     if (currVer != lastSeenVersion) {
+      // TODO: remove the listener we inserted (to not to leak memory)
       Consts.InvalidListenerId
     } else {
       lid
