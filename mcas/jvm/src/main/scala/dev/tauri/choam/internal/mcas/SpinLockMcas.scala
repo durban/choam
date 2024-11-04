@@ -171,6 +171,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
           val wit = head.address.unsafeCmpxchgVersionV(ov, newVersion)
           assert(wit == ov)
           head.address.unsafeSetV(head.nv)
+          head.address.unsafeNotifyListeners()
           commit(tail, newVersion)
         }
       }

@@ -19,6 +19,8 @@ package dev.tauri.choam
 package internal
 package mcas
 
+import java.util.concurrent.atomic.AtomicInteger
+
 final class McasSpecThreadConfinedMcas
   extends McasSpec
   with SpecThreadConfinedMcas
@@ -578,5 +580,40 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
       assertEquals(res, ver)
     }
     assertEquals(ctx.readVersion(ref), ver)
+  }
+
+  test("subscriber notification should be called on success") {
+    val ctx = this.mcasImpl.currentContext()
+    val ctr = new AtomicInteger(0)
+    val ref = new SimpleMemoryLocation[String]("A")(ctx.refIdGen.nextId()) {
+      private[choam] final override def unsafeNotifyListeners(): Unit = {
+        ctr.getAndIncrement()
+        ()
+      }
+    }
+    val d0 = ctx.start()
+    val Some((ov, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
+    val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv(("B")))
+    assert(ctx.tryPerformOk(d2))
+    assertEquals(ctr.get(), 1)
+    assertEquals(ctx.readDirect(ref), "B")
+  }
+
+  test("subscriber notification should NOT be called on failure") {
+    val ctx = this.mcasImpl.currentContext()
+    val ctr = new AtomicInteger(0)
+    val ref = new SimpleMemoryLocation[String]("A")(ctx.refIdGen.nextId()) {
+      private[choam] final override def unsafeNotifyListeners(): Unit = {
+        ctr.getAndIncrement()
+        ()
+      }
+    }
+    val d0 = ctx.start()
+    val Some((ov, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
+    val e = d1.getOrElseNull(ref)
+    val d2 = d1.overwrite(LogEntry(e.address, "X", "B", e.version))
+    assert(!ctx.tryPerformOk(d2))
+    assertEquals(ctr.get(), 0)
+    assertEquals(ctx.readDirect(ref), "A")
   }
 }

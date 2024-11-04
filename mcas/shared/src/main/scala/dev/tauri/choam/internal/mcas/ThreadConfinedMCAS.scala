@@ -77,6 +77,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
               val ov = wd.address.unsafeGetVersionV()
               val wit = wd.address.unsafeCmpxchgVersionV(ov, newVersion)
               assert(wit == ov)
+              wd.address.unsafeNotifyListeners()
               execute(it, newVersion)
           }
         }

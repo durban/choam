@@ -22,7 +22,7 @@ package mcas
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.{ AtomicReference, AtomicLong }
 
-private final class SimpleMemoryLocation[A](initial: A)(
+private class SimpleMemoryLocation[A](initial: A)(
   override val id: Long,
 ) extends AtomicReference[A](initial)
   with MemoryLocation[A] {
