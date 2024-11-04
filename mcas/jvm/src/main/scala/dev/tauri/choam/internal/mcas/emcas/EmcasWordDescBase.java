@@ -20,6 +20,7 @@ package dev.tauri.choam.internal.mcas.emcas;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
+import dev.tauri.choam.internal.mcas.MemoryLocation;
 import dev.tauri.choam.internal.VarHandleHelper;
 
 abstract class EmcasWordDescBase<A> {
@@ -45,6 +46,8 @@ abstract class EmcasWordDescBase<A> {
     this._nv = nv;
   }
 
+  protected abstract MemoryLocation<A> address();
+
   public final A ov() {
     return this.getOvP();
   }
@@ -56,6 +59,8 @@ abstract class EmcasWordDescBase<A> {
   public final void wasFinalized(boolean wasSuccessful, A sentinel) {
     if (wasSuccessful) {
       OV.setOpaque(this, sentinel);
+      // TODO: Could we safely omit the notification if `ov eq nv`?
+      address().unsafeNotifyListeners();
     } else {
       NV.setOpaque(this, sentinel);
     }

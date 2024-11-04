@@ -108,6 +108,9 @@ trait MemoryLocation[A] extends Hamt.HasHash {
   private[choam] def withListeners: MemoryLocation.WithListeners =
     throw new UnsupportedOperationException
 
+  private[choam] def unsafeNotifyListeners(): Unit =
+    ()
+
   // private utilities:
 
   private[mcas] final def cast[B]: MemoryLocation[B] =

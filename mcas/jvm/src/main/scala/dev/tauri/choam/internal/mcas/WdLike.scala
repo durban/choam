@@ -42,8 +42,11 @@ final class LogEntry[A] private ( // formerly called HWD
 
   require(Version.isValid(oldVersion))
 
-  final override def wasFinalized(wasSuccessful: Boolean, sentinel: A): Unit =
-    ()
+  final override def wasFinalized(wasSuccessful: Boolean, sentinel: A): Unit = {
+    if (wasSuccessful) {
+      this.address.unsafeNotifyListeners()
+    }
+  }
 
   private[choam] final def cast[B]: LogEntry[B] =
     this.asInstanceOf[LogEntry[B]]

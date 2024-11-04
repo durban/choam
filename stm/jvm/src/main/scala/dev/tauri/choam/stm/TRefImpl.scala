@@ -123,8 +123,6 @@ private final class TRefImpl[F[_], A](
     } else {
       lid
     }
-
-    // TODO: actually call listeners when needed
   }
 
   private[choam] final override def unsafeCancelListener(lid: Long): Unit = {
@@ -142,5 +140,18 @@ private final class TRefImpl[F[_], A](
     }
 
     go(listeners.get())
+  }
+
+  private[choam] final override def unsafeNotifyListeners(): Unit = {
+    // TODO: If there are A LOT of listeners, calling all
+    // TODO: these async callbacks could take a while;
+    // TODO: we should consider passing these off to an
+    // TODO: execution context (how?).
+    val lss = listeners.getAndSet(LongMap.empty)
+    val itr = lss.valuesIterator
+    while (itr.hasNext) {
+      val cb = itr.next()
+      cb(null)
+    }
   }
 }

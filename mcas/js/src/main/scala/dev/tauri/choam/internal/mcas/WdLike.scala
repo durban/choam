@@ -26,6 +26,7 @@ sealed abstract class WdLike[A] extends Hamt.HasKey[MemoryLocation[A]] {
   val ov: A
   val nv: A
   val oldVersion: Long
+  def wasFinalized(wasSuccessful: Boolean, sentinel: A): Unit
 
   final override def key: MemoryLocation[A] =
     this.address
@@ -42,6 +43,12 @@ final class LogEntry[A] private ( // formerly called HWD
 
   private[choam] final def cast[B]: LogEntry[B] =
     this.asInstanceOf[LogEntry[B]]
+
+  final override def wasFinalized(wasSuccessful: Boolean, sentinel: A): Unit = {
+    if (wasSuccessful) {
+      this.address.unsafeNotifyListeners()
+    }
+  }
 
   final def version: Long =
     this.oldVersion
