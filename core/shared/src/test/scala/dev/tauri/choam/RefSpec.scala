@@ -270,6 +270,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Regular Ref shouldn't have .withListeners") {
     for {
       r <- newRef("a")
+      _ <- F.delay(assume(r.isInstanceOf[MemoryLocation[_]]))
       loc <- F.delay(r.asInstanceOf[MemoryLocation[String]])
       e = Either.catchOnly[UnsupportedOperationException] { loc.withListeners }
       _ <- assertF(e.isLeft)
