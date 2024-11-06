@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package core
 
+import internal.mcas.Mcas
+
 private[choam] trait Txn[F[_], +B] { // TODO: sealed
 
   def map[C](f: B => C): Txn[F, C]
@@ -36,5 +38,10 @@ private[choam] object Txn {
     Rxn.pure(a).castF[F]
 
   final def retry[F[_], A]: Txn[F, A] =
-    Rxn.unsafe.retry[Any, A].castF[F]
+    Rxn.unsafe.retry[Any, A].castF[F] // TODO: retry when changed
+
+  private[choam] final object unsafe {
+    private[choam] final def delayContext[F[_], A](uf: Mcas.ThreadContext => A): Txn[F, A] =
+      Rxn.unsafe.delayContext(uf).castF[F]
+  }
 }

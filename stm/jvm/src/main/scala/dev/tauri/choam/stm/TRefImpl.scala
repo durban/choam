@@ -23,8 +23,7 @@ import java.util.concurrent.atomic.{ AtomicReference, AtomicLong }
 
 import scala.collection.immutable.LongMap
 
-import internal.mcas.MemoryLocation
-import internal.mcas.Consts
+import internal.mcas.{ Mcas, MemoryLocation, Consts }
 
 private final class TRefImpl[F[_], A](
   initial: A,
@@ -103,7 +102,11 @@ private final class TRefImpl[F[_], A](
   private[choam] final override def withListeners: this.type =
     this
 
-  private[choam] final override def unsafeRegisterListener(listener: Null => Unit, lastSeenVersion: Long): Long = {
+  private[choam] final override def unsafeRegisterListener(
+    ctx: Mcas.ThreadContext,
+    listener: Null => Unit,
+    lastSeenVersion: Long,
+  ): Long = {
     val lid = previousListenerId.incrementAndGet() // could be opaque
     assert(lid != Consts.InvalidListenerId) // detect overflow
 
@@ -117,9 +120,16 @@ private final class TRefImpl[F[_], A](
     }
 
     go(listeners.get())
-    val currVer = this.unsafeGetVersionV()
+    val currVer = ctx.readVersion(this)
     if (currVer != lastSeenVersion) {
-      // TODO: remove the listener we inserted (to not to leak memory)
+      // already changed since our caller last seen it
+      // (it is possible that the callback will be called
+      // anyway, since there is a race between double-
+      // checking the version and a possible notification;
+      // it is the responsibility of the caller to check
+      // the return value of this method, and ignore calls
+      // to the callback if we return `InvalidListenerId`)
+      unsafeCancelListener(lid)
       Consts.InvalidListenerId
     } else {
       lid

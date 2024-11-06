@@ -49,19 +49,34 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
   test("TRef should have .withListeners") {
     def incr(ref: TRef[F, Int]): F[Unit] =
       ref.get.flatMap { ov => ref.set(ov + 1) }.commit
+    def getVersion(loc: MemoryLocation[Int]): F[Long] =
+      Txn.unsafe.delayContext { ctx => ctx.readIntoHwd(loc).version }.commit
+    def regListener(wl: MemoryLocation.WithListeners, cb: Null => Unit, lastSeenVersion: Long): F[Long] =
+      Txn.unsafe.delayContext { ctx => wl.unsafeRegisterListener(ctx, cb, lastSeenVersion) }.commit
     def check(ref: TRef[F, Int]): F[Unit] = for {
       loc <- F.delay(ref.asInstanceOf[MemoryLocation[Int]])
       wl <- F.delay(loc.withListeners)
       ctr <- F.delay(new AtomicInteger(0))
-      lid <- F.delay(wl.unsafeRegisterListener({ _ => ctr.getAndIncrement(); () }, loc.unsafeGetVersionV()))
+      firstVersion <- getVersion(loc)
+      // registered listener should be called:
+      lid <- regListener(wl, { _ => ctr.getAndIncrement(); () }, firstVersion)
       _ <- assertNotEqualsF(lid, Consts.InvalidListenerId)
       _ <- incr(ref)
       _ <- F.delay(assertEquals(ctr.get(), 1))
+      // after it was called once, it shouldn't any more:
       _ <- incr(ref)
       _ <- F.delay(assertEquals(ctr.get(), 1))
-      lid <- F.delay(wl.unsafeRegisterListener({ _ => ctr.getAndIncrement(); () }, loc.unsafeGetVersionV()))
+      // registered, but then cancelled listener shouldn't be called:
+      otherVersion <- getVersion(loc)
+      _ <- assertF(firstVersion < otherVersion)
+      lid <- regListener(wl, { _ => ctr.getAndIncrement(); () }, otherVersion)
       _ <- assertNotEqualsF(lid, Consts.InvalidListenerId)
       _ <- F.delay(wl.unsafeCancelListener(lid))
+      _ <- incr(ref)
+      _ <- F.delay(assertEquals(ctr.get(), 1))
+      // failed registration due to outdated `lastSeenVersion`:
+      lid <- regListener(wl, { _ => ctr.getAndIncrement(); () }, firstVersion)
+      _ <- assertEqualsF(lid, Consts.InvalidListenerId)
       _ <- incr(ref)
       _ <- F.delay(assertEquals(ctr.get(), 1))
     } yield ()

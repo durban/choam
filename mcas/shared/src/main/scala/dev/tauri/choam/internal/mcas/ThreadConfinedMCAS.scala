@@ -42,7 +42,7 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
       LogEntry(ref, ov = v, nv = v, version = ref.unsafeGetVersionV())
     }
 
-    protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
+    protected[choam] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       ref.unsafeGetVersionV()
 
     final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long = {

@@ -420,6 +420,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           // help:
           if (forMCAS) {
             if (helpMCASforMCAS(parent, ctx = ctx, seen = seen, instRo = instRo)) {
+              // Note: `forMCAS` is true here, so we can return a reserved version
               EmcasStatus.CycleDetected
             } else {
               // retry:

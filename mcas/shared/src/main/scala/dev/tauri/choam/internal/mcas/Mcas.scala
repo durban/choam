@@ -105,7 +105,7 @@ object Mcas extends McasCompanionPlatform { self =>
      * @return the current version of `ref`, as if
      *         read by `readIntoHwd(ref).version`.
      */
-    private[mcas] def readVersion[A](ref: MemoryLocation[A]): Long
+    private[choam] def readVersion[A](ref: MemoryLocation[A]): Long
 
     def validateAndTryExtend(
       desc: AbstractDescriptor,

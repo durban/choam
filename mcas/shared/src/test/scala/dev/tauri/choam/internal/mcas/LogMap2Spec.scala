@@ -150,7 +150,7 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
         self.fail("not implemented")
       def readIntoHwd[A](ref: MemoryLocation[A]): LogEntry[A] =
         self.fail("not implemented")
-      private[mcas] def readVersion[A](ref: MemoryLocation[A]): Long =
+      private[choam] def readVersion[A](ref: MemoryLocation[A]): Long =
         if (ref eq r1) r1Version else 42L // we simulate one of the refs changing version
       def refIdGen: RefIdGen =
         RefIdGen.global

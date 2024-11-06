@@ -22,8 +22,7 @@ import java.lang.ref.WeakReference
 
 import scala.collection.mutable.{ LongMap => MutLongMap }
 
-import internal.mcas.MemoryLocation
-import internal.mcas.Consts
+import internal.mcas.{ Mcas, MemoryLocation, Consts }
 
 private final class TRefImpl[F[_], A](
   initial: A,
@@ -114,17 +113,20 @@ private final class TRefImpl[F[_], A](
   private[choam] final override def withListeners: this.type =
     this
 
-  private[choam] final override def unsafeRegisterListener(listener: Null => Unit, lastSeenVersion: Long): Long = {
+  private[choam] final override def unsafeRegisterListener(
+    ctx: Mcas.ThreadContext,
+    listener: Null => Unit,
+    lastSeenVersion: Long,
+  ): Long = {
     val lid = previousListenerId + 1L
     previousListenerId = lid
     assert(lid != Consts.InvalidListenerId) // detect overflow
 
-    listeners.put(lid, listener) : Unit
-    val currVer = this.unsafeGetVersionV()
+    val currVer = ctx.readVersion(this)
     if (currVer != lastSeenVersion) {
-      listeners.remove(lid) : Unit
       Consts.InvalidListenerId
     } else {
+      listeners.put(lid, listener) : Unit
       lid
     }
   }

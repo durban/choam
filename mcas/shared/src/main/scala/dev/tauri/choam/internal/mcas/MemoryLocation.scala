@@ -120,7 +120,13 @@ trait MemoryLocation[A] extends Hamt.HasHash {
 object MemoryLocation extends MemoryLocationInstances0 {
 
   private[choam] trait WithListeners {
-    private[choam] def unsafeRegisterListener(listener: Null => Unit, lastSeenVersion: Long): Long
+
+    private[choam] def unsafeRegisterListener(
+      ctx: Mcas.ThreadContext,
+      listener: Null => Unit,
+      lastSeenVersion: Long,
+    ): Long
+
     private[choam] def unsafeCancelListener(lid: Long): Unit
   }
 

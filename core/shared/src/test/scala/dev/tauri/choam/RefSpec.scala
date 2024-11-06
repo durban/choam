@@ -25,6 +25,8 @@ import cats.kernel.{ Order, Hash }
 import cats.effect.IO
 import cats.effect.kernel.{ Ref => CatsRef }
 
+import internal.mcas.MemoryLocation
+
 final class RefSpec_Real_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with SpecThreadConfinedMcas
@@ -262,6 +264,15 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r <- implicitly[CatsRef.Make[Axn]].refOf("a").run[F]
       _ <- testCatsRef[Axn](r, initial = "a", run = this.rF)
+    } yield ()
+  }
+
+  test("Regular Ref shouldn't have .withListeners") {
+    for {
+      r <- newRef("a")
+      loc <- F.delay(r.asInstanceOf[MemoryLocation[String]])
+      e = Either.catchOnly[UnsupportedOperationException] { loc.withListeners }
+      _ <- assertF(e.isLeft)
     } yield ()
   }
 }

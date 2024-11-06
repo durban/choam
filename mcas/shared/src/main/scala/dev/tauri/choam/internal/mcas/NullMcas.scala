@@ -71,7 +71,7 @@ object NullMcas extends Mcas.UnsealedMcas { self =>
     final override def readIntoHwd[A](ref: MemoryLocation[A]): LogEntry[A] =
       throw new UnsupportedOperationException
 
-    private[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
+    private[choam] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       throw new UnsupportedOperationException
 
     final override def validateAndTryExtend(

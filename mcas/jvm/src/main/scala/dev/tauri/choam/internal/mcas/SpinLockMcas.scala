@@ -103,7 +103,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
       go(ref.unsafeGetVersionV())
     }
 
-    protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long = {
+    protected[choam] final override def readVersion[A](ref: MemoryLocation[A]): Long = {
       @tailrec
       def go(ver1: Long): Long = {
         val _ = readOne(ref)

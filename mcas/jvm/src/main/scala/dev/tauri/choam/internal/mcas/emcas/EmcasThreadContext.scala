@@ -133,7 +133,7 @@ private final class EmcasThreadContext(
     hwd
   }
 
-  protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
+  protected[choam] final override def readVersion[A](ref: MemoryLocation[A]): Long =
     impl.readVersion(ref, this)
 
   final override def start(): MutDescriptor =

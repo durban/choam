@@ -51,7 +51,7 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
     final override def readIntoHwd[A](ref: MemoryLocation[A]): LogEntry[A] =
       emcasCtx.readIntoHwd(ref)
 
-    protected[mcas] final override def readVersion[A](ref: MemoryLocation[A]): Long =
+    protected[choam] final override def readVersion[A](ref: MemoryLocation[A]): Long =
       emcasCtx.readVersion(ref)
 
     final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long =
