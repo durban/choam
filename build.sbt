@@ -255,6 +255,7 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.LogEntry.cleanForGc"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.WdLike.cleanForGc"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.WdLike.wasFinalized"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasThreadContext.this"),
     ),
   )
 
