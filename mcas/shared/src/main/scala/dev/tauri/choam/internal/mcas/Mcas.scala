@@ -27,6 +27,16 @@ sealed trait Mcas {
   /** Returns the context associated with the current thread */
   def currentContext(): Mcas.ThreadContext
 
+  /**
+   * The same as `ctx eq currentContext()`, but
+   * might be more efficient.
+   */
+  def isCurrentContext(ctx: Mcas.ThreadContext): Boolean = {
+    // subclasses should override if
+    // they can be more efficient:
+    ctx eq currentContext()
+  }
+
   /** True iff `this` can be used to perform concurrent ops on separate threads */
   private[choam] def isThreadSafe: Boolean
 

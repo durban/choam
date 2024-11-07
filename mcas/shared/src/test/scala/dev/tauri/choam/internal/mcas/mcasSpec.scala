@@ -616,4 +616,11 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     assertEquals(ctr.get(), 0)
     assertEquals(ctx.readDirect(ref), "A")
   }
+
+  test("Mcas#isCurrentContext") {
+    val impl = this.mcasImpl
+    assert(!impl.isCurrentContext(null))
+    val ctx = impl.currentContext()
+    assert(impl.isCurrentContext(ctx))
+  }
 }

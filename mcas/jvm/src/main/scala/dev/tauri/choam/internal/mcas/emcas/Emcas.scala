@@ -1005,6 +1005,15 @@ private[mcas] final class Emcas extends GlobalContext { global =>
   final override def currentContext(): Mcas.ThreadContext =
     global.currentContextInternal()
 
+  final override def isCurrentContext(ctx: Mcas.ThreadContext): Boolean = {
+    if (ctx.isInstanceOf[EmcasThreadContext]) {
+      val etc = ctx.asInstanceOf[EmcasThreadContext]
+      etc.isCurrentContext()
+    } else {
+      false
+    }
+  }
+
   private[choam] final override def isThreadSafe =
     true
 

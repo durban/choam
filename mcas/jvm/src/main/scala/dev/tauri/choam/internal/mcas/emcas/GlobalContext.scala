@@ -51,7 +51,7 @@ private[mcas] abstract class GlobalContext
     new ThreadLocal[EmcasThreadContext]()
 
   private[this] final def newThreadContext(): EmcasThreadContext =
-    new EmcasThreadContext(this, Thread.currentThread().getId())
+    new EmcasThreadContext(this)
 
   /** Gets or creates the context for the current thread */
   private[emcas] final def currentContextInternal(): EmcasThreadContext = {

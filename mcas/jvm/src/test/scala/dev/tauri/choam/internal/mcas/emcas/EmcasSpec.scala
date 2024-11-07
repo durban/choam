@@ -362,6 +362,31 @@ class EmcasSpec extends BaseSpec {
     // now the `ThreadContext` have been collected by the JVM GC
   }
 
+  test("Emcas.isCurrentContext") {
+    val impl = Emcas.inst
+    val ctx = impl.currentContext()
+    assert(impl.isCurrentContext(ctx))
+    var same = true
+    val t = new Thread({ () =>
+      same = impl.isCurrentContext(ctx)
+    })
+    t.start()
+    t.join()
+    assert(!same)
+  }
+
+  test("Emcas.isCurrentContext should not call currentContext") {
+    val impl = Emcas.inst
+    val ctx = impl.currentContext()
+    var ok = false
+    val t = new Thread({ () =>
+      ok = (!impl.isCurrentContext(ctx)) && (!impl.threadContextExists(Thread.currentThread().getId()))
+    })
+    t.start()
+    t.join()
+    assert(ok)
+  }
+
   test("EMCAS should not simply replace  active descriptors (mark should be handled)".tag(SLOW)) {
     val r1 = MemoryLocation.unsafeWithId[String]("x")(0L)
     val r2 = MemoryLocation.unsafeWithId[String]("y")(1L)

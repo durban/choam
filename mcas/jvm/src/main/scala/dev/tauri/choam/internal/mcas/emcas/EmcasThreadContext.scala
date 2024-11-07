@@ -23,13 +23,19 @@ package emcas
 import java.lang.ref.WeakReference
 import java.util.concurrent.ThreadLocalRandom
 
+/** Ctor must be called on the thread of the new instance! */
 private final class EmcasThreadContext(
   final override val impl: Emcas,
-  private[mcas] val tid: Long,
 ) extends EmcasThreadContextBase
   with Mcas.UnsealedThreadContext {
 
   final override type START = MutDescriptor
+
+  private[this] val thread: Thread =
+    Thread.currentThread()
+
+  private[mcas] val tid: Long =
+    thread.getId()
 
   // NB: it is a `val`, not a `def`
   final override val random: ThreadLocalRandom =
@@ -119,6 +125,10 @@ private final class EmcasThreadContext(
     }
     this.markerUsedCount = 0
     mark // caller MUST hold a strong ref
+  }
+
+  private[emcas] final def isCurrentContext(): Boolean = {
+    this.thread eq Thread.currentThread()
   }
 
   final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long =
