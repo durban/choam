@@ -26,6 +26,8 @@ private[choam] trait Txn[F[_], +B] { // TODO: sealed
 
   def flatMap[C](f: B => Txn[F, C]): Txn[F, C]
 
+  def orElse[Y >: B](that: Txn[F, Y]): Txn[F, Y]
+
   private[core] def impl: Axn[B]
 
   final def commit[X >: B](implicit F: Transactive[F]): F[X] =
@@ -37,10 +39,20 @@ private[choam] object Txn {
   final def pure[F[_], A](a: A): Txn[F, A] =
     Rxn.pure(a).castF[F]
 
+  final def unit[F[_]]: Txn[F, Unit] =
+    pure(())
+
   final def retry[F[_], A]: Txn[F, A] =
-    Rxn.unsafe.retry[Any, A].castF[F] // TODO: retry when changed
+    Rxn.StmImpl.retryWhenChanged[A].castF[F]
+
+  final def check[F[_]](cond: Boolean): Txn[F, Unit] =
+    if (cond) unit else retry
 
   private[choam] final object unsafe {
+
+    private[choam] final def delay[F[_], A](uf: => A): Txn[F, A] =
+      Rxn.unsafe.delay[Any, A](_ => uf).castF[F]
+
     private[choam] final def delayContext[F[_], A](uf: Mcas.ThreadContext => A): Txn[F, A] =
       Rxn.unsafe.delayContext(uf).castF[F]
   }

@@ -25,10 +25,18 @@ final class TxnSpecJvm_Emcas_IO
   with SpecEmcas
   with TxnSpecJvm[IO]
 
+final class TxnSpecJvmTicked_Emcas_IO
+  extends BaseSpecTickedIO
+  with SpecEmcas
+  with TxnSpecJvmTicked[IO]
+
 final class TxnSpecJvm_Emcas_ZIO
   extends BaseSpecZIO
   with SpecEmcas
   with TxnSpecJvm[zio.Task]
 
 trait TxnSpecJvm[F[_]] extends TxnSpec[F] { this: McasImplSpec =>
+}
+
+trait TxnSpecJvmTicked[F[_]] extends TxnSpecTicked[F] { this: McasImplSpec =>
 }

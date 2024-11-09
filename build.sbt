@@ -232,7 +232,8 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       // "eu.timepit" %%% "refined" % "0.11.1",
     ),
     mimaBinaryIssueFilters ++= Seq(
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.Rxn$Suspend") // private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.Rxn$Suspend"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Rxn#InterpreterState.this"), // private
     ),
   )
 

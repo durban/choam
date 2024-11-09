@@ -20,7 +20,9 @@ package core
 
 import cats.effect.kernel.Async
 
-private[choam] sealed trait Transactive[F[_]] extends Reactive[F] {
+private[choam] sealed trait Transactive[F[_]]
+  extends Reactive[F] { // TODO: we probably shouldn't extend Reactive
+
   def commit[B](txn: Txn[F, B]): F[B]
 }
 
@@ -29,7 +31,7 @@ private[choam] object Transactive {
   final def forAsync[F[_]](implicit F: Async[F]): Transactive[F] = {
     new Reactive.SyncReactive[F](Rxn.DefaultMcas) with Transactive[F] {
       final override def commit[B](txn: Txn[F, B]): F[B] = {
-        txn.impl.perform[F, B](null, this.mcasImpl, RetryStrategy.sleep())
+        txn.impl.performStm[F, B](null, this.mcasImpl)
       }
     }
   }
