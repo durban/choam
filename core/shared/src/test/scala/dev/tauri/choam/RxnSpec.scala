@@ -1209,6 +1209,15 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r.apply[F](null).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
     }
   }
+
+  test("STM API shouldn't leak (too much) from Rxn") {
+    import core.Txn
+    import Rxn.Anything
+    val rxn: Axn[String] = Rxn.pure("foo")
+    val txn: Txn[Anything, String] = rxn
+    val flatMapped = rxn.flatMap(_ => txn)
+    flatMapped : Txn[Anything, String]
+  }
 }
 
 private[choam] object RxnSpec {
