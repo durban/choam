@@ -810,6 +810,7 @@ lazy val dependencies = new {
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
       "org.typelevel" %%% "discipline-munit" % "2.0.0", // https://github.com/typelevel/discipline-munit
       zioCats.value,
+      zioStm.value,
     )
   }
 
