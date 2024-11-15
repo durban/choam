@@ -18,7 +18,10 @@
 package dev.tauri.choam
 package data
 
+import scala.concurrent.duration._
+
 import cats.effect.IO
+import cats.effect.instances.spawn.parallelForGenSpawn
 
 final class StackSpec_Treiber_Emcas_IO
   extends BaseSpecIO
@@ -48,6 +51,19 @@ trait StackSpecTreiberJvm[F[_]]
 trait StackSpecEliminationJvm[F[_]]
   extends StackSpecElimination[F]
   with  StackSpecJvm[F] { this: McasImplSpec =>
+
+  test("Elimination stack conflict in `Rxn`s".fail) {
+    val once = for {
+      ref <- Ref.unpadded(0).run[F]
+      stack <- this.newStack[String]()
+      rxn1 = ref.update(_ + 1) *> stack.push.provide("a")
+      rxn2 = ref.update(_ + 2) *> stack.tryPop
+      tsk = F.both(F.cede *> rxn1.run[F], F.cede *> rxn2.run[F])
+      _ <- F.cede
+      _ <- tsk.parReplicateA_(8)
+    } yield ()
+    (once *> F.sleep(0.01.seconds)).replicateA_(128)
+  }
 }
 
 trait StackSpecJvm[F[_]] { this: StackSpec[F] with McasImplSpec =>
