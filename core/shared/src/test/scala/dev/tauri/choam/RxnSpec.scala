@@ -441,6 +441,42 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     }
   } yield (ref0 +: refs, r)
 
+  test("Choice should be associative") {
+    def m(r: Ref[Int]) =
+      r.update { v => v + 1 }
+    def retryOnce(r: AtomicInteger) = {
+      Axn.unsafe.delay { r.getAndIncrement }.flatMap { ctr =>
+        if (ctr > 0) Rxn.unit
+        else Rxn.unsafe.retry
+      }
+    }
+    def rxn1(ref1: Ref[Int], ref2: Ref[Int], ref3: Ref[Int], ref4: AtomicInteger) = {
+      val orElse = m(ref1) + (m(ref2) + m(ref3))
+      orElse >> retryOnce(ref4)
+    }
+    def rxn2(ref1: Ref[Int], ref2: Ref[Int], ref3: Ref[Int], ref4: AtomicInteger) = {
+      val orElse = (m(ref1) + m(ref2)) + m(ref3)
+      orElse >> retryOnce(ref4)
+    }
+
+    for {
+      r11 <- Ref(0).run[F]
+      r12 <- Ref(0).run[F]
+      r13 <- Ref(0).run[F]
+      c1 <- F.delay(new AtomicInteger(0))
+      _ <- rxn1(r11, r12, r13, c1).run[F]
+      _ <- assertResultF((r11.get * r12.get * r13.get).run[F], ((0, 1), 0))
+      _ <- assertResultF(F.delay(c1.get()), 2)
+      r21 <- Ref(0).run[F]
+      r22 <- Ref(0).run[F]
+      r23 <- Ref(0).run[F]
+      c2 <- F.delay(new AtomicInteger(0))
+      _ <- rxn2(r21, r22, r23, c2).run[F]
+      _ <- assertResultF((r21.get * r22.get * r23.get).run[F], ((0, 1), 0))
+      _ <- assertResultF(F.delay(c2.get()), 2)
+    } yield ()
+  }
+
   test("Post-commit actions should be executed") {
     for {
       r1 <- Ref("a").run[F]
