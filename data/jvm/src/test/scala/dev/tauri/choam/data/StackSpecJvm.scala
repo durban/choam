@@ -45,14 +45,14 @@ final class StackSpec_Elimination_SpinLockMcas_IO
 
 trait StackSpecTreiberJvm[F[_]]
   extends StackSpecTreiber[F]
-  with  StackSpecJvm[F] { this: McasImplSpec =>
+  with StackSpecJvm[F] { this: McasImplSpec =>
 }
 
 trait StackSpecEliminationJvm[F[_]]
   extends StackSpecElimination[F]
-  with  StackSpecJvm[F] { this: McasImplSpec =>
+  with StackSpecJvm[F] { this: McasImplSpec =>
 
-  test("Elimination stack conflict in `Rxn`s".fail) {
+  test("Elimination stack conflict before the elimination".fail) { // TODO: expected failure
     val once = for {
       ref <- Ref.unpadded(0).run[F]
       stack <- this.newStack[String]()
@@ -95,5 +95,49 @@ trait StackSpecJvm[F[_]] { this: StackSpec[F] with McasImplSpec =>
       )
     } yield ()
     tsk.replicateA(64).void
+  }
+
+  test("Elimination stack conflict after the elimination".ignore) { // TODO: expected failure with EliminationStack
+    // This test works fine with a Treiber stack, but
+    // (non-deterministically) can fail with an elimination
+    // stack. There are 2 possible ways for it to fail:
+    // - with a "Couldn't merge logs" assertion failure:
+    //   - here one of the logs (`rxn2`'s) is empty, so the
+    //     reason for the failure is that the *other* log
+    //     needs extending, which fails;
+    // - with one of the `assertEqualsF`s below failing
+    //   (see below for an explanation).
+    val once = for {
+      ref <- Ref.unpadded(0).run[F]
+      ref2 <- Ref.unpadded(0).run[F] // invariant: always twice the value of `ref`
+      stack <- this.newStack[String]()
+      rxn1 = ref.getAndSet.provide(42).flatMap { ov =>
+        stack.push.provide("a") *> ref2.getAndSet.provide(84).map { ov2 => (ov, ov2) }
+      }
+      rxn2 = stack.tryPop.flatMapF {
+        case None => Rxn.unsafe.retry
+        case Some(s) => ref2.getAndSet.provide(66).flatMap { ov2 =>
+          ref.getAndSet.provide(33).map { ov => (ov, ov2, s) }
+        }
+      }
+      misc1 = stack.push.provide("b")
+      misc2 = stack.tryPop
+      tsk = F.both(
+        F.both(F.cede *> rxn1.run[F], F.cede *> rxn2.run[F]),
+        F.both(F.cede *> misc1.run[F], F.cede *> misc2.run[F]).parReplicateA_(6),
+      ).map(_._1)
+      _ <- F.cede
+      r <- tsk
+      rxn1Results = r._1
+      rxn2Results = r._2
+      // These can fail with an elimination stack; the reason is that for
+      // not *entirely* independent reactions the current `Descriptor.merge` can
+      // succeed, in which case they're committed together, but this can
+      // cause non-linearizable results, like these:
+      _ <- assertEqualsF(rxn1Results._2, rxn1Results._1 * 2, clue = (rxn1Results, rxn2Results).toString)
+      _ <- assertEqualsF(rxn2Results._2, rxn2Results._1 * 2, clue = (rxn1Results, rxn2Results).toString)
+      // when it fails: (rxn1Results, rxn2Results) == ((0,66),(42,0,a))
+    } yield ()
+    (once *> F.sleep(0.01.seconds)).replicateA_(512)
   }
 }
