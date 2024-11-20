@@ -150,7 +150,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     this.as(true) + pure(false)
 
   final def map[C](f: B => C): Rxn[A, C] =
-    this >>> lift(f)
+    new Map_(this, f)
 
   final def as[C](c: C): Rxn[A, C] =
     new As(this, c)
@@ -772,6 +772,11 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"TailRecM(${a}, <function>)"
   }
 
+  private final class Map_[A, B, C](val rxn: Rxn[A, B], val f: B => C) extends Rxn[A, C] {
+    private[core] final override def tag = 29
+    final override def toString: String = s"Map_(${rxn}, <function>)"
+  }
+
   // Interpreter:
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
@@ -1160,6 +1165,10 @@ object Rxn extends RxnInstances0 {
           val n = contK.pop().asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
           a = contK.pop()
           n
+        case 12 => // ContMap
+          val b = contK.pop().asInstanceOf[Function1[Any, Any]].apply(a)
+          a = b
+          next()
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -1621,6 +1630,11 @@ object Rxn extends RxnInstances0 {
           contK.push(f)
           contK.push(a)
           loop(nxt)
+        case 29 => // Map_
+          val c = curr.asInstanceOf[Map_[Any, Any, Any]]
+          contT.push(RxnConsts.ContMap)
+          contK.push(c.f)
+          loop(c.rxn)
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }

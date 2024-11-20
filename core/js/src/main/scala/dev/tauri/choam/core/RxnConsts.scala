@@ -32,4 +32,5 @@ private[core] object RxnConsts {
   @inline private[core] final val ContProductR = 9.toByte
   @inline private[core] final val ContFlatMapF = 10.toByte
   @inline private[core] final val ContFlatMap = 11.toByte
+  @inline private[core] final val ContMap = 12.toByte
 }

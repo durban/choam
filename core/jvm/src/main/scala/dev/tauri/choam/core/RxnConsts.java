@@ -31,4 +31,5 @@ class RxnConsts {
   static final byte ContProductR = 9;
   static final byte ContFlatMapF = 10;
   static final byte ContFlatMap = 11;
+  static final byte ContMap = 12;
 }
