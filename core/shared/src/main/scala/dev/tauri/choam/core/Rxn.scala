@@ -226,7 +226,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     this.flatMap { _ => that }
 
   final def flatTap(rxn: Rxn[B, Unit]): Rxn[A, B] =
-    this.flatMapF { b => rxn.provide(b).as(b) }
+    this.flatMapF { b => rxn.provide(b).as(b) } // TODO: is this really better than the one with flatMap?
 
   final def flatten[C](implicit ev: B <:< Axn[C]): Rxn[A, C] =
     this.flatMapF(ev)
@@ -1740,10 +1740,22 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
   // somewhere uses that as a marker or even a
   // typeclass:
   implicit final def monadInstance[X]: StackSafeMonad[Rxn[X, *]] = new StackSafeMonad[Rxn[X, *]] {
-    final override def flatMap[A, B](fa: Rxn[X, A])(f: A => Rxn[X, B]): Rxn[X, B] =
-      fa.flatMap(f)
+    final override def unit: Rxn[X, Unit] =
+      Rxn.unit
     final override def pure[A](a: A): Rxn[X, A] =
       Rxn.pure(a)
+    final override def point[A](a: A): Rxn[X, A] =
+      Rxn.pure(a)
+    final override def as[A, B](fa: Rxn[X, A], b: B): Rxn[X, B] =
+      fa.as(b)
+    final override def map[A, B](fa: Rxn[X, A])(f: A => B): Rxn[X, B] =
+      fa.map(f)
+    final override def map2[A, B, Z](fa: Rxn[X, A], fb: Rxn[X, B])(f: (A, B) => Z): Rxn[X, Z] =
+      fa.map2(fb)(f)
+    final override def productR[A, B](fa: Rxn[X, A])(fb: Rxn[X, B]): Rxn[X, B] =
+      fa.productR(fb)
+    final override def flatMap[A, B](fa: Rxn[X, A])(f: A => Rxn[X, B]): Rxn[X, B] =
+      fa.flatMap(f)
     final override def tailRecM[A, B](a: A)(f: A => Rxn[X, Either[A, B]]): Rxn[X, B] =
       Rxn.tailRecM[X, A, B](a)(f)
   }
