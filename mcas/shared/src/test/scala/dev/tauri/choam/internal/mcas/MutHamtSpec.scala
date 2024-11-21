@@ -777,7 +777,7 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
           0
         case d =>
           java.lang.Math.abs(d) match {
-            case d if d < (java.lang.Integer.MAX_VALUE - oldSize) =>
+            case d if d <= (java.lang.Integer.MAX_VALUE - oldSize) =>
               d
             case d =>
               // overflow:
