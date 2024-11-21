@@ -347,8 +347,8 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E, T1,
           val len = contents.length
           val newArr = new Array[AnyRef](len + 1)
           System.arraycopy(contents, 0, newArr, 0, physIdx)
-          System.arraycopy(contents, physIdx, newArr, physIdx + 1, len - physIdx)
           newArr(physIdx) = box(value)
+          System.arraycopy(contents, physIdx, newArr, physIdx + 1, len - physIdx)
           this.newNode(
             sizeAndBlue = packSizeAndBlueInternal(this.size + 1, this.isBlueSubtree && isBlue(value)),
             bitmap = newBitmap,

@@ -137,7 +137,9 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E, 
     this.copyToArrayInternal(tok, flag = flag, nullIfBlue = nullIfBlue)
 
   final def copyToImmutable(): I = {
-    this.copyToImmutableInternal(shift = 0)
+    val imm = this.copyToImmutableInternal(shift = 0)
+    assert((imm.size == this.size) && ((!this.isBlueTree) || imm.isBlueSubtree))
+    imm
   }
 
   final override def equals(that: Any): Boolean = {
@@ -417,9 +419,10 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E, 
           arr(arity) = box(child)
           arity += 1
         case value =>
-          bitmap |= (1L << logicalIdx(value.asInstanceOf[V].key.hash, shift = shift))
+          val v: V = value.asInstanceOf[V]
+          bitmap |= (1L << logicalIdx(v.key.hash, shift = shift))
           size += 1
-          isBlueSubtree &= isBlue(value.asInstanceOf[V])
+          isBlueSubtree &= isBlue(v)
           arr(arity) = value
           arity += 1
       }
