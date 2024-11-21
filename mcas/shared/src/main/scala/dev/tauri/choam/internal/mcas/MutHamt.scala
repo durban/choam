@@ -71,10 +71,15 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E, 
     java.lang.Math.abs(this.logIdx)
   }
 
-  private[this] def addToSize(s: Int) = {
+  private[this] final def addToSize(s: Int): Unit = {
     val logIdx = this.logIdx
     val x = -(logIdx >>> 31)
     this.logIdx = java.lang.Math.addExact(logIdx, ((x << 1) + 1) * s)
+  }
+
+  private[mcas] final def addToSize_public(s: Int): Unit = {
+    require(s >= 0)
+    this.addToSize(s)
   }
 
   final def nonEmpty: Boolean = {

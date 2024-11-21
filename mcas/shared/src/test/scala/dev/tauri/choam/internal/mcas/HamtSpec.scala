@@ -453,10 +453,12 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
       val merged2 = hamt2.insertedAllFrom(hamt1)
       val expected = hamtFromList(rng.shuffle(nums1.toList) ++ rng.shuffle(nums2.toList))
       val expLst = expected.toArray.toList
+      val expSize = (nums1 union nums2).size
+      assertEquals(expLst.size, expSize)
       assertEquals(merged1.toArray.toList, expLst)
-      assertEquals(merged1.size, expLst.size)
+      assertEquals(merged1.size, expSize)
       assertEquals(merged2.toArray.toList, expLst)
-      assertEquals(merged2.size, expLst.size)
+      assertEquals(merged2.size, expSize)
     }
   }
 
@@ -634,6 +636,25 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     val actual = h.valuesIterator.toList
     assertEquals(actual, expected)
   }
+
+  property("packSizeAndBlue") {
+    forAll { (_size: Int, _isBlue: Boolean) =>
+      val (size, isBlue) = _size match {
+        case 0 =>
+          // empty HAMT is always blue:
+          (0, true)
+        case java.lang.Integer.MIN_VALUE =>
+          // size is never negative:
+          (java.lang.Integer.MAX_VALUE, _isBlue)
+        case s =>
+          (java.lang.Math.abs(s), _isBlue)
+      }
+      val h = LongHamt.empty
+      val sb: Int = h._packSizeAndBlue(size, isBlue)
+      assertEquals(h._unpackSize(sb), size)
+      assertEquals(h._unpackBlue(sb), isBlue)
+    }
+  }
 }
 
 object HamtSpec {
@@ -691,6 +712,15 @@ object HamtSpec {
     final def getOrElse(k: Long, default: Val): Val = this.getOrElseNull(k) match {
       case null => default
       case v => v
+    }
+    final def _packSizeAndBlue(size: Int, isBlue: Boolean): Int = {
+      this.packSizeAndBlue(size, isBlue)
+    }
+    final def _unpackSize(sb: Int): Int = {
+      this.unpackSize(sb)
+    }
+    final def _unpackBlue(sb: Int): Boolean = {
+      this.unpackBlue(sb)
     }
   }
 

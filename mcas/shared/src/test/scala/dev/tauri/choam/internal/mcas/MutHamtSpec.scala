@@ -554,9 +554,11 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       val hamt2 = mutHamtFromList(rng.shuffle(nums2.toList))
       val expected = hamtFromList(rng.shuffle(nums1.toList) ++ rng.shuffle(nums2.toList))
       val expLst = expected.toArray.toList
+      val expSize = (nums1 union nums2).size
+      assertEquals(expLst.size, expSize)
       hamt1.insertAllFrom(hamt2)
       assertEquals(hamt1.toArray.toList, expLst)
-      assertEquals(hamt1.size, expLst.size)
+      assertEquals(hamt1.size, expSize)
       // hamt2 should remain unmodified:
       assertEquals(hamt2.toArray.toList, hamtFromList(nums2.toList).toArray.toList)
       assertEquals(hamt2.size, nums2.size)
@@ -762,6 +764,33 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     val expected = h.toArray.toList
     val actual = h.valuesIterator.toList
     assertEquals(actual, expected)
+  }
+
+  property("addToSize") {
+    forAll { (_diff: Int, seed: Long, nums: Set[Long]) =>
+      val rng = new Random(seed)
+      val h = mutHamtFromList(rng.shuffle(nums.toList))
+      val oldSize = h.size
+      val oldIsBlue = h.definitelyBlue
+      val diff = _diff match {
+        case java.lang.Integer.MIN_VALUE =>
+          0
+        case d =>
+          java.lang.Math.abs(d) match {
+            case d if d < (java.lang.Integer.MAX_VALUE - oldSize) =>
+              d
+            case d =>
+              // overflow:
+              Either.catchOnly[ArithmeticException] { h.addToSize_public(d) }.fold(
+                _ => 0,
+                _ => fail("expected an ArithmeticException")
+              )
+          }
+      }
+      h.addToSize_public(diff)
+      assertEquals(h.size, java.lang.Math.addExact(oldSize, diff))
+      assertEquals(oldIsBlue, h.definitelyBlue)
+    }
   }
 }
 
