@@ -151,6 +151,13 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
           arrIdx = unpackSize(arrIdxAndBlue)
           isBlueSt &= unpackBlue(arrIdxAndBlue)
         case a =>
+          // temporary assertion to diagnose a bug here:
+          if (arrIdx >= arr.length) {
+            throw new AssertionError(
+              s"indexing array of length ${arr.length} with index ${arrIdx} (a = ${a}; arr = ${arr.mkString("[", ", ", "]")})"
+            )
+          }
+          // end of temporary assertion
           arr(arrIdx) = convertForArray(a.asInstanceOf[V], tok, flag = flag)
           isBlueSt &= isBlue(a.asInstanceOf[V])
           arrIdx += 1
