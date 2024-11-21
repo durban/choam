@@ -89,7 +89,7 @@ object GenWaitList {
     }
 
     protected[this] final def callCb[B](cb: Callback[B]): Rxn[B, Unit] = {
-      Rxn.identity[B].postCommit(Rxn.unsafe.delay { (b: B) =>
+      Rxn.postCommit[B](Rxn.unsafe.delay { (b: B) =>
         cb(Right(b))
       }).void
     }
