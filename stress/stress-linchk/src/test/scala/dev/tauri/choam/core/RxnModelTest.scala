@@ -74,9 +74,14 @@ object RxnModelTest {
     }
 
     @Operation
-    def readWrite(s: String, i: Int): (String, String) = {
+    def readWrite(s: String, i: Int, b: Boolean): (String, String) = {
       val (ref1, ref2) = this.select2(i)
-      (ref1.getAndSet.provide(s) * ref2.get).unsafeRun(emcas)
+      val rxn = if (b) {
+        ref1.getAndSet.provide(s) * ref2.get
+      } else {
+        ref2.get * ref1.getAndSet.provide(s)
+      }
+      rxn.unsafeRun(emcas)
     }
 
     @Operation
