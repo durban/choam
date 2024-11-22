@@ -34,13 +34,13 @@ trait RefLike[A] {
   def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
     updWith[B, C] { (a, b) => Axn.pure(f(a, b)) }
 
+  def getAndSet: Rxn[A, A] =
+    upd[A, A] { (oa, na) => (na, oa) }
+
   // derived:
 
   final def set: Rxn[A, Unit] =
     getAndSet.void
-
-  final def getAndSet: Rxn[A, A] =
-    upd[A, A] { (oa, na) => (na, oa) }
 
   final def update(f: A => A): Axn[Unit] =
     upd[Any, Unit] { (oa, _) => (f(oa), ()) }

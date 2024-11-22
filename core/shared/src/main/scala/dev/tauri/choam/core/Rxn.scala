@@ -412,6 +412,9 @@ object Rxn extends RxnInstances0 {
     private[choam] final def get[A](r: Ref[A]): Axn[A] =
       new Read(r.loc)
 
+    private[choam] final def getAndSet[A](r: Ref[A]): Rxn[A, A] =
+      new GetAndSet(r.loc)
+
     private[choam] final def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
       new Upd(r.loc, f)
 
@@ -777,6 +780,11 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Map_(${rxn}, <function>)"
   }
 
+  private final class GetAndSet[A](val ref: MemoryLocation[A]) extends Rxn[A, A] {
+    private[core] final override def tag = 30
+    final override def toString: String = s"GetAndSet(${ref})"
+  }
+
   // Interpreter:
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
@@ -933,6 +941,15 @@ object Rxn extends RxnInstances0 {
       val res: LogEntry[Any] = curr match {
         case _: Read[_] =>
           this.ctx.readIntoHwd(ref)
+        case c: GetAndSet[_] =>
+          val hwd = this.ctx.readIntoHwd(c.ref)
+          if (this.desc.isValidHwd(hwd)) {
+            val res = hwd.withNv(this.a)
+            this.a = hwd.nv
+            res
+          } else {
+            hwd
+          }
         case c: Upd[_, _, _] =>
           val hwd = this.ctx.readIntoHwd(c.ref)
           if (this.desc.isValidHwd(hwd)) {
@@ -958,6 +975,10 @@ object Rxn extends RxnInstances0 {
       val res: LogEntry[Any] = curr match {
         case _: Read[_] =>
           hwd
+        case _: GetAndSet[_] =>
+          val res = hwd.withNv(this.a)
+          this.a = hwd.nv
+          res
         case c: Upd[_, _, _] =>
           val ox = hwd.nv
           val (nx, b) = c.asInstanceOf[Upd[Any, Any, Any]].f(ox, this.a)
@@ -1635,6 +1656,28 @@ object Rxn extends RxnInstances0 {
           contT.push(RxnConsts.ContMap)
           contK.push(c.f)
           loop(c.rxn)
+        case 30 => // GetAndSet
+          val c = curr.asInstanceOf[GetAndSet[Any]]
+          assert(this._entryHolder eq null) // just to be sure
+          desc = desc.computeOrModify(c.ref, tok = c, visitor = this)
+          val hwd = this._entryHolder
+          this._entryHolder = null // cleanup
+          val nxt = if (!desc.isValidHwd(hwd)) {
+            if (forceValidate(hwd)) {
+              // OK, `desc` was extended;
+              // but need to finish `GetAndSet`:
+              val newHwd = hwd.withNv(this.a)
+              this.a = hwd.nv
+              desc = desc.overwrite(newHwd)
+              next()
+            } else {
+              assert(this._desc eq null)
+              retry()
+            }
+          } else {
+            next()
+          }
+          loop(nxt)
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }
