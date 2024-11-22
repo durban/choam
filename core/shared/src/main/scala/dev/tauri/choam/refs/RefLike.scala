@@ -23,15 +23,18 @@ import cats.effect.kernel.{ Ref => CatsRef }
 
 trait RefLike[A] {
 
-  // abstract:
+  // primitive:
 
   def get: Axn[A]
 
-  def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C]
-
   def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C]
 
-  // derived implementations:
+  // derived (but overridden for performance):
+
+  def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
+    updWith[B, C] { (a, b) => Axn.pure(f(a, b)) }
+
+  // derived:
 
   final def set: Rxn[A, Unit] =
     getAndSet.void
@@ -74,6 +77,8 @@ trait RefLike[A] {
 
   final def tryModify[B](f: A => (A, B)): Axn[Option[B]] =
     modify(f).?
+
+  // interop:
 
   def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] =
     new RefLike.CatsRefFromRefLike[F, A](this) {}
