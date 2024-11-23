@@ -781,7 +781,7 @@ object Rxn extends RxnInstances0 {
   }
 
   private final class GetAndSet[A](val ref: MemoryLocation[A]) extends Rxn[A, A] {
-    private[core] final override def tag = 30
+    private[core] final override def tag = 5
     final override def toString: String = s"GetAndSet(${ref})"
   }
 
@@ -1431,9 +1431,28 @@ object Rxn extends RxnInstances0 {
           val nxt = c.f(a.asInstanceOf[A])
           a = () : Any
           loop(nxt)
-        case 5 => // RetryWhenChanged (STM)
-          assert(this.canSuspend && this.isStm)
-          loop(retry(canSuspend = true, suspendUntilChanged = true))
+        case 5 => // GetAndSet
+          val c = curr.asInstanceOf[GetAndSet[Any]]
+          assert(this._entryHolder eq null) // just to be sure
+          desc = desc.computeOrModify(c.ref, tok = c, visitor = this)
+          val hwd = this._entryHolder
+          this._entryHolder = null // cleanup
+          val nxt = if (!desc.isValidHwd(hwd)) {
+            if (forceValidate(hwd)) {
+              // OK, `desc` was extended;
+              // but need to finish `GetAndSet`:
+              val newHwd = hwd.withNv(this.a)
+              this.a = hwd.nv
+              desc = desc.overwrite(newHwd)
+              next()
+            } else {
+              assert(this._desc eq null)
+              retry()
+            }
+          } else {
+            next()
+          }
+          loop(nxt)
         case 6 => // Choice
           val c = curr.asInstanceOf[Choice[A, B]]
           saveAlt(c.right.asInstanceOf[Rxn[Any, R]])
@@ -1656,28 +1675,6 @@ object Rxn extends RxnInstances0 {
           contT.push(RxnConsts.ContMap)
           contK.push(c.f)
           loop(c.rxn)
-        case 30 => // GetAndSet
-          val c = curr.asInstanceOf[GetAndSet[Any]]
-          assert(this._entryHolder eq null) // just to be sure
-          desc = desc.computeOrModify(c.ref, tok = c, visitor = this)
-          val hwd = this._entryHolder
-          this._entryHolder = null // cleanup
-          val nxt = if (!desc.isValidHwd(hwd)) {
-            if (forceValidate(hwd)) {
-              // OK, `desc` was extended;
-              // but need to finish `GetAndSet`:
-              val newHwd = hwd.withNv(this.a)
-              this.a = hwd.nv
-              desc = desc.overwrite(newHwd)
-              next()
-            } else {
-              assert(this._desc eq null)
-              retry()
-            }
-          } else {
-            next()
-          }
-          loop(nxt)
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }
