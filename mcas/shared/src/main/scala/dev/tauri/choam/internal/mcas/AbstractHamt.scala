@@ -154,7 +154,9 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
           // temporary assertion to diagnose a bug here:
           if (arrIdx >= arr.length) {
             throw new AssertionError(
-              s"indexing array of length ${arr.length} with index ${arrIdx} (a = ${a}; arr = ${arr.mkString("[", ", ", "]")})"
+              s"indexing array of length ${arr.length} with index ${arrIdx} (" +
+              s"a = ${a}; arr = ${arr.mkString("[", ", ", "]")}; " +
+              s"contents = ${contents.mkString("[", ", ", "]")})"
             )
           }
           // end of temporary assertion

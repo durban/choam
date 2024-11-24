@@ -792,6 +792,31 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       assertEquals(oldIsBlue, h.definitelyBlue)
     }
   }
+
+  property("repro") {
+    forAll { (seed: Long, flip: Boolean) =>
+      val rng = new Random(seed)
+      val x1d3 = 0x1d32989eb776f07fL
+      val x981 = 0x981f5faca10443fdL
+      val x455 = 0x45556be62505908dL
+      val x785 = 0x7859b1954a0356ccL // exchanger hole
+      val xe5d = 0xe5d970efe9590ff3L
+      val _ids = List[Long](x1d3, x981, x455, x785, xe5d)
+      val ids = rng.shuffle(_ids)
+      val mutHamt1 = LongMutHamt.newEmpty()
+      mutHamt1.insert(Val(ids(0)))
+      val mutHamt2 = LongMutHamt.newEmpty()
+      mutHamt2.insert(Val(ids(1)))
+      val hamt1 = mutHamt1.copyToImmutable()
+      val hamt2 = mutHamt2.copyToImmutable()
+      val merged0 = if (flip) { hamt2 insertedAllFrom hamt1 } else { hamt1 insertedAllFrom hamt2 }
+      val merged1 = merged0.inserted(Val(ids(4)))
+      val merged2 = merged1.inserted(Val(ids(3)))
+      val merged3 = merged2.inserted(Val(ids(2)))
+      assertEquals(merged3.size, 5)
+      assertEquals(merged3.toArray.toList, List(Val(x1d3), Val(x455), Val(x785), Val(x981), Val(xe5d)))
+    }
+  }
 }
 
 object MutHamtSpec {
