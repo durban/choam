@@ -20,6 +20,7 @@ import com.typesafe.tools.mima.core.{
   MissingClassProblem,
   DirectMissingMethodProblem,
   ReversedMissingMethodProblem,
+  NewMixinForwarderProblem,
 }
 
 // Scala versions:
@@ -235,6 +236,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.Rxn$Suspend"), // private
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.Rxn$GetAndSet"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Rxn#InterpreterState.this"), // private
+      ProblemFilters.exclude[NewMixinForwarderProblem]("dev.tauri.choam.refs.Ref.getAndSet"), // Ref is sealed
     ),
   )
 
