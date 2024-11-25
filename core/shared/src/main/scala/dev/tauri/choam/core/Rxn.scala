@@ -412,9 +412,6 @@ object Rxn extends RxnInstances0 {
     private[choam] final def get[A](r: Ref[A]): Axn[A] =
       new Read(r.loc)
 
-    private[choam] final def getAndSet[A](r: Ref[A]): Rxn[A, A] =
-      new GetAndSet(r.loc)
-
     private[choam] final def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
       new Upd(r.loc, f)
 
@@ -562,11 +559,6 @@ object Rxn extends RxnInstances0 {
   private final class Read[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
     private[core] final override def tag = 8
     final override def toString: String = s"Read(${ref})"
-  }
-
-  private final class GetAndSet[A](val ref: MemoryLocation[A]) extends Rxn[A, A] {
-    private[core] final override def tag = 9
-    final override def toString: String = s"GetAndSet(${ref})"
   }
 
   private final class Upd[A, B, X](val ref: MemoryLocation[X], val f: (X, A) => (X, B)) extends Rxn[A, B] {
@@ -941,16 +933,8 @@ object Rxn extends RxnInstances0 {
       val res: LogEntry[Any] = (curr.tag : @switch) match {
         case 8 => // Read
           this.ctx.readIntoHwd(ref)
-        case 9 => // GetAndSet
-          val c = curr.asInstanceOf[GetAndSet[Any]]
-          val hwd = this.ctx.readIntoHwd(c.ref)
-          if (this.desc.isValidHwd(hwd)) {
-            val res = hwd.withNv(this.a)
-            this.a = hwd.nv
-            res
-          } else {
-            hwd
-          }
+        case 9 => // was GetAndSet
+          sys.error("GetAndSet")
         case 10 => // Upd
           val c = curr.asInstanceOf[Upd[Any, Any, Any]]
           val hwd = this.ctx.readIntoHwd(c.ref)
@@ -978,10 +962,8 @@ object Rxn extends RxnInstances0 {
       val res: LogEntry[Any] = (curr.tag : @switch) match {
         case 8 => // Read
           hwd
-        case 9 => // GetAndSet
-          val res = hwd.withNv(this.a)
-          this.a = hwd.nv
-          res
+        case 9 => // was GetAndSet
+          sys.error("GetAndSet")
         case 10 => // Upd
           val ox = hwd.nv
           val (nx, b) = curr.asInstanceOf[Upd[Any, Any, Any]].f(ox, this.a)
@@ -1472,28 +1454,8 @@ object Rxn extends RxnInstances0 {
             a = hwd2.nv
             loop(next())
           }
-        case 9 => // GetAndSet
-          val c = curr.asInstanceOf[GetAndSet[Any]]
-          assert(this._entryHolder eq null) // just to be sure
-          desc = desc.computeOrModify(c.ref, tok = c, visitor = this)
-          val hwd = this._entryHolder
-          this._entryHolder = null // cleanup
-          val nxt = if (!desc.isValidHwd(hwd)) {
-            if (forceValidate(hwd)) {
-              // OK, `desc` was extended;
-              // but need to finish `GetAndSet`:
-              val newHwd = hwd.withNv(this.a)
-              this.a = hwd.nv
-              desc = desc.overwrite(newHwd)
-              next()
-            } else {
-              assert(this._desc eq null)
-              retry()
-            }
-          } else {
-            next()
-          }
-          loop(nxt)
+        case 9 => // was GetAndSet
+          sys.error("GetAndSet")
         case 10 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, Any]]
           assert(this._entryHolder eq null) // just to be sure

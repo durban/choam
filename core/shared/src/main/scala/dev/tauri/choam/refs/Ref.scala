@@ -39,9 +39,6 @@ sealed trait Ref[A] extends RefLike[A] { this: MemoryLocation[A] =>
   final override def get: Axn[A] =
     Rxn.ref.get(this)
 
-  final override def getAndSet: Rxn[A, A] =
-    Rxn.ref.getAndSet(this)
-
   // TODO: needs better name (it's like `modify`)
   final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
     Rxn.ref.upd(this)(f)
