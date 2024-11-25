@@ -930,13 +930,10 @@ object Rxn extends RxnInstances0 {
       null
 
     final override def entryAbsent(ref: MemoryLocation[Any], curr: Rxn[Any, Any]): LogEntry[Any] = {
-      val res: LogEntry[Any] = (curr.tag : @switch) match {
-        case 8 => // Read
+      val res: LogEntry[Any] = curr match {
+        case _: Read[_] =>
           this.ctx.readIntoHwd(ref)
-        case 9 => // was GetAndSet
-          sys.error("GetAndSet")
-        case 10 => // Upd
-          val c = curr.asInstanceOf[Upd[Any, Any, Any]]
+        case c: Upd[_, _, _] =>
           val hwd = this.ctx.readIntoHwd(c.ref)
           if (this.desc.isValidHwd(hwd)) {
             val ox = hwd.nv
@@ -946,10 +943,8 @@ object Rxn extends RxnInstances0 {
           } else {
             hwd.cast[Any]
           }
-        case 11 => // TicketWrite
-          val c = curr.asInstanceOf[TicketWrite[_]]
-          val hwd = c.hwd.cast[Any]
-          hwd.withNv(c.newest)
+        case c: TicketWrite[_] =>
+          c.hwd.withNv(c.newest).cast[Any]
         case _ =>
           throw new AssertionError
       }
@@ -959,18 +954,15 @@ object Rxn extends RxnInstances0 {
 
     final override def entryPresent(ref: MemoryLocation[Any], hwd: LogEntry[Any], curr: Rxn[Any, Any]): LogEntry[Any] = {
       assert(hwd ne null)
-      val res: LogEntry[Any] = (curr.tag : @switch) match {
-        case 8 => // Read
+      val res: LogEntry[Any] = curr match {
+        case _: Read[_] =>
           hwd
-        case 9 => // was GetAndSet
-          sys.error("GetAndSet")
-        case 10 => // Upd
+        case c: Upd[_, _, _] =>
           val ox = hwd.nv
-          val (nx, b) = curr.asInstanceOf[Upd[Any, Any, Any]].f(ox, this.a)
+          val (nx, b) = c.asInstanceOf[Upd[Any, Any, Any]].f(ox, this.a)
           this.a = b
           hwd.withNv(nx)
-        case 11 => // TicketWrite
-          val c = curr.asInstanceOf[TicketWrite[_]]
+        case c: TicketWrite[_] =>
           // NB: This throws if it was modified in the meantime.
           // NB: This doesn't need extra validation, as
           // NB: `tryMergeTicket` checks that they have the
