@@ -62,7 +62,7 @@ trait StackSpecEliminationJvm[F[_]]
       _ <- F.cede
       _ <- tsk.parReplicateA_(8)
     } yield ()
-    (once *> F.sleep(0.01.seconds)).replicateA_(256)
+    (once *> F.sleep(0.01.seconds)).replicateA_(512)
   }
 }
 
