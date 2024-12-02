@@ -105,7 +105,7 @@ private final class SimpleOrderedMap[K, V] private (
     final def get: Axn[V] =
       self.get.provide(key).map(_.getOrElse(default))
 
-    final override def upd[B, C](f: (V, B) => (V, C)): B =#> C = {
+    final def upd[B, C](f: (V, B) => (V, C)): B =#> C = {
       Rxn.computed[B, C] { (b: B) =>
         repr.modify { am =>
           val currVal = am.get(key).getOrElse(default)
