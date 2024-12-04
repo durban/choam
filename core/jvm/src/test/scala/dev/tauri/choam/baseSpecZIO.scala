@@ -66,8 +66,11 @@ abstract class BaseSpecZIO
       "ZIO",
       { case x: zio.ZIO[_, _, _] =>
         val tsk = x.asInstanceOf[zio.Task[_]]
+        val tskWithLogCfg = zio.ZIO.scopedWith { scope =>
+          zio.Runtime.setUnhandledErrorLogLevel(zio.LogLevel.Info).build(scope) *> tsk
+        }
         zio.Unsafe.unsafe { implicit u =>
-          this.runtime.unsafe.runToFuture(tsk)
+          this.runtime.unsafe.runToFuture(tskWithLogCfg)
         }
       }
     )
