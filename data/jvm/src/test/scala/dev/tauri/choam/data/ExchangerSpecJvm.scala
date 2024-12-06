@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package data
 
+import scala.util.Try
+
 import cats.effect.{ IO, Outcome }
 
 final class ExchangerSpecCommon_Emcas_ZIO
@@ -205,15 +207,22 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       rxn1 = (ref.update(_ + "d") >>> ex.exchange.provide("foo"))
       rxn2 = (ref.update(_ + "x") >>> ex.dual.exchange.provide(42))
-      tsk1 = F.interruptible { rxn1.unsafeRun(this.mcasImpl) }
-      tsk2 = F.interruptible { rxn2.unsafeRun(this.mcasImpl) }
+      tsk1 = F.interruptible { Try(rxn1.unsafeRun(this.mcasImpl)) }.map(_.map(_ => ()))
+      tsk2 = F.interruptible { Try(rxn2.unsafeRun(this.mcasImpl)) }.map(_.map(_ => ()))
       // one of them must fail, the other one unfortunately
       // will retry forever, so we need to interrupt it:
-      r <- F.raceOutcome(tsk1, tsk2)
-      _ <- r match {
-        case Left(oc) => assertF(oc.isError)
-        case Right(oc) => assertF(oc.isError)
+      r <- F.uncancelable { poll =>
+        poll(F.racePair(tsk1, tsk2)).flatMap {
+          case Left((oc1, fib)) =>
+            fib.cancel *> fib.join.map { oc2 => (oc1, oc2) }
+          case Right((fib, oc2)) =>
+            fib.cancel *> fib.join.map { oc1 => (oc2, oc1) }
+        }
       }
+      (ocWinner, ocLoser) = r
+      _ <- assertF(ocWinner.isSuccess)
+      _ <- ocWinner.fold(assertF(false), _ => assertF(false), _.flatMap(r => assertF(r.isFailure)))
+      _ <- assertF(ocLoser.isCanceled)
       _ <- assertResultF(ref.unsafeDirectRead.run[F], "abc")
     } yield ()
     tsk.replicateA(iterations)
