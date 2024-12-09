@@ -33,7 +33,7 @@ private final class TreiberStack[A] private () extends Stack[A] {
     case End => (End, None)
   }
 
-  final override val size: Axn[Int] =
+  final override val size: Axn[Int] = // TODO: this is O(n)
     head.get.map(_.length)
 }
 
