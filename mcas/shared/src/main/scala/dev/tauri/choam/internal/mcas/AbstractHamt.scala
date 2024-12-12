@@ -161,8 +161,8 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
           }
           // end of temporary assertion
           arr(arrIdx) = convertForArray(a.asInstanceOf[V], tok, flag = flag)
-          isBlueSt &= isBlue(a.asInstanceOf[V])
           arrIdx += 1
+          isBlueSt &= isBlue(a.asInstanceOf[V])
       }
       i += 1
     }
