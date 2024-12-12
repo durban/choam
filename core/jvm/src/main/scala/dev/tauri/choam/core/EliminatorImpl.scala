@@ -18,33 +18,24 @@
 package dev.tauri.choam
 package core
 
-sealed trait Eliminator[-A, +B, -C, +D] {
-  def leftOp: A =#> B
-  def rightOp: C =#> D
-}
+/**
+ * Internally, we can use this by subclassing (to avoid an extra object)
+ *
+ * Note: this is duplicated on JS (where it doesn't do anything).
+ */
+private[choam] abstract class EliminatorImpl[-A, +B, -C, +D] private[choam] (
+  underlyingLeft: A =#> B,
+  transformLeft: A => D,
+  underlyingRight: C =#> D,
+  transformRight: C => B,
+) extends Eliminator.UnsealedEliminator[A, B, C, D] {
 
-object Eliminator {
+  private[this] val exchanger: Exchanger[A, C] =
+    Exchanger.unsafe[A, C]
 
-  private[core] abstract class UnsealedEliminator[-A, +B, -C, +D]
-    extends Eliminator[A, B, C, D]
+  final override val leftOp: A =#> B =
+    underlyingLeft + exchanger.exchange.map(transformRight)
 
-  def apply[A, B, C, D](
-    left: A =#> B,
-    tLeft: A => D,
-    right: C =#> D,
-    tRight: C => B,
-  ): Axn[Eliminator[A, B, C, D]] = {
-    Axn.unsafe.delay {
-      this.unsafe(left, tLeft, right, tRight)
-    }
-  }
-
-  private[choam] def unsafe[A, B, C, D](
-    left: A =#> B,
-    tLeft: A => D,
-    right: C =#> D,
-    tRight: C => B,
-  ): Eliminator[A, B, C, D] = {
-    new EliminatorImpl[A, B, C, D](left, tLeft, right, tRight) {}
-  }
+  final override val rightOp: C =#> D =
+    underlyingRight + exchanger.dual.exchange.map(transformLeft)
 }
