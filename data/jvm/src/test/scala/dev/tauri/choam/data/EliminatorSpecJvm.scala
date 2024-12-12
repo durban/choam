@@ -18,7 +18,9 @@
 package dev.tauri.choam
 package data
 
+import cats.syntax.all._
 import cats.effect.IO
+import cats.effect.instances.spawn.parallelForGenSpawn
 
 final class EliminatorSpecJvm_Emcas_ZIO
   extends BaseSpecZIO
@@ -32,4 +34,25 @@ final class EliminatorSpecJvm_Emcas_IO
 
 trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
 
+  test("EliminationStackForTesting (elimination)") {
+    val k = 4
+    val t = for {
+      _ <- F.cede
+      s <- EliminationStackForTesting[Int].run[F]
+      _ <- s.push[F](0)
+      res <- F.both(
+        List.fill(k)(s.tryPop.run[F]).parSequence,
+        List.tabulate(k)(idx => s.push[F](idx + 1)).parSequence_,
+      )
+      popped = res._1.collect { case Some(i) => i }
+      remaining = (k + 1) - popped.size
+      maybePopped2 <- s.tryPop.run[F].replicateA(remaining)
+      popped2 = maybePopped2.collect { case Some(i) => i}
+      _ <- assertEqualsF(popped2.size, maybePopped2.size)
+      set = (popped ++ popped2).toSet
+      _ <- assertEqualsF(set.size, popped.size + popped2.size)
+      _ <- assertEqualsF(set, (0 to k).toSet)
+    } yield ()
+    t.replicateA_(50000)
+  }
 }
