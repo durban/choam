@@ -38,4 +38,3 @@ addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1") // https://gith
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.10.4") // https://github.com/sbt/sbt-native-packager
 
 ThisBuild / semanticdbEnabled := true
-ThisBuild / semanticdbVersion := "4.12.0" // https://github.com/scalameta/scalameta

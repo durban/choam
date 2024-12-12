@@ -85,7 +85,6 @@ ThisBuild / scalaVersion := crossScalaVersions.value.head
 ThisBuild / scalaOrganization := "org.scala-lang"
 ThisBuild / evictionErrorLevel := Level.Warn
 ThisBuild / semanticdbEnabled := true
-ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 ThisBuild / tlBaseVersion := "0.4"
 ThisBuild / tlUntaggedAreSnapshots := false // => we get versions like 0.4-39d987a
