@@ -132,7 +132,8 @@ object SyncStackBench {
 
   @State(Scope.Benchmark)
   class BaselineSt extends BaseSt {
-    val runtime = cats.effect.unsafe.IORuntime.global
+    val runtime =
+      cats.effect.unsafe.IORuntime.global
   }
 
   @State(Scope.Benchmark)
@@ -153,29 +154,36 @@ object SyncStackBench {
 
   @State(Scope.Benchmark)
   class ReferenceSt extends BaseSt {
-    val runtime = cats.effect.unsafe.IORuntime.global
-    val referenceStack = new ReferenceTreiberStack[String](Prefill.prefill())
+    val runtime =
+      cats.effect.unsafe.IORuntime.global
+    val referenceStack =
+      new ReferenceTreiberStack[String](Prefill.prefill())
   }
 
   @State(Scope.Benchmark)
   class LockedSt extends BaseSt {
-    val runtime = cats.effect.unsafe.IORuntime.global
-    val lockedStack = new LockedStack[String](Prefill.prefill())
+    val runtime =
+      cats.effect.unsafe.IORuntime.global
+    val lockedStack =
+      new LockedStack[String](Prefill.prefill())
   }
 
   @State(Scope.Benchmark)
   class StmSt extends BaseSt {
-    val runtime = cats.effect.unsafe.IORuntime.global
-    val stmStack = new StmStack[String](Prefill.prefill())
+    val runtime =
+      cats.effect.unsafe.IORuntime.global
+    val stmStack =
+      new StmStack[String](Prefill.prefill())
   }
 
   @State(Scope.Benchmark)
   class StmCSt extends BaseSt {
-
-    val runtime = cats.effect.unsafe.IORuntime.global
-    val s: STM[IO] = STM.runtime[IO](128L).unsafeRunSync()(runtime)
-    val st = StmStackCLike[STM, IO](s) // scalafix:ok
-
+    val runtime =
+      cats.effect.unsafe.IORuntime.global
+    val s: STM[IO] =
+      STM.runtime[IO](128L).unsafeRunSync()(runtime)
+    val st =
+      StmStackCLike[STM, IO](s) // scalafix:ok
     val stmCStack: st.StmStackC[String] =
       s.commit(StmStackC.make(st)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
   }
@@ -183,7 +191,8 @@ object SyncStackBench {
   @State(Scope.Benchmark)
   class StmZSt extends BaseSt {
 
-    val runtime = zio.Runtime.default
+    val runtime =
+      zio.Runtime.default
 
     val stmZStack: StmStackZ[String] = {
       zio.Unsafe.unsafe { implicit u =>
