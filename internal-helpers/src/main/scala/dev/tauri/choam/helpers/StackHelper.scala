@@ -16,20 +16,18 @@
  */
 
 package dev.tauri.choam
-package data
+package helpers
 
-/**
- * Public access to package-private utilities
- * (for the purposes of testing/benchmarking)
- */
+import data.Stack
+
 object StackHelper {
 
   def treiberStackFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Stack[A]] =
-    TreiberStack.fromList(as)
+    Stack.fromList[F, A](Stack.treiberStack)(as)
 
   def eliminationStackFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Stack[A]] =
-    EliminationStack.fromList(as)
+    Stack.fromList[F, A](Stack.eliminationStack)(as)
 
   def popAll[F[_], A](s: Stack[A])(implicit F: Reactive[F]): F[List[A]] =
-    Stack.popAll(s)
+    Stack.popAll[F, A](s)
 }

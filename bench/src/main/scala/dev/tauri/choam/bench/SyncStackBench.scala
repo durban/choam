@@ -24,7 +24,8 @@ import io.github.timwspence.cats.stm._
 import org.openjdk.jmh.annotations._
 
 import util._
-import data.{ Stack, StackHelper }
+import data.Stack
+import helpers.StackHelper
 import ce._
 
 @Fork(2)

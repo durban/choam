@@ -25,7 +25,8 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util._
-import data.{ Stack, StackHelper }
+import data.Stack
+import helpers.StackHelper
 import ce._
 
 @Fork(3)

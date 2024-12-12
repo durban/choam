@@ -36,7 +36,7 @@ object Stack {
   def eliminationStack[A]: Axn[Stack[A]] =
     EliminationStack[A]
 
-  private[data] def fromList[F[_], A](mkEmpty: Axn[Stack[A]])(as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
+  private[choam] def fromList[F[_], A](mkEmpty: Axn[Stack[A]])(as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
     implicit val monadF: Monad[F] = F.monad
     mkEmpty.run[F].flatMap { stack =>
       as.traverse { a =>
@@ -45,7 +45,7 @@ object Stack {
     }
   }
 
-  private[data] def popAll[F[_], A](s: Stack[A])(implicit F: Reactive[F]): F[List[A]] = {
+  private[choam] def popAll[F[_], A](s: Stack[A])(implicit F: Reactive[F]): F[List[A]] = {
     F.monad.tailRecM(List.empty[A]) { lst =>
       F.monad.map(s.tryPop.run[F]) {
         case None => Right(lst.reverse)
