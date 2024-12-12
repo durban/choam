@@ -29,36 +29,6 @@ final class EliminatorSpec_ThreadConfinedMcas_IO
 
 trait EliminatorSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
-  final class EliminationStackForTesting[A] private (
-    underlying: TreiberStack[A],
-    eliminator: Eliminator[A, Unit, Any, Option[A]],
-  ) extends Stack[A] {
-
-    override def push: Rxn[A, Unit] =
-      eliminator.leftOp
-
-    override def tryPop: Axn[Option[A]] =
-      eliminator.rightOp
-
-    override def size: Axn[Int] =
-      underlying.size
-  }
-
-  final object EliminationStackForTesting {
-    def apply[A]: Axn[EliminationStackForTesting[A]] = {
-      TreiberStack[A].flatMapF { underlying =>
-        Eliminator[A, Unit, Any, Option[A]](
-          underlying.push,
-          Some(_),
-          underlying.tryPop,
-          _ => (),
-        ).map { eliminator =>
-          new EliminationStackForTesting(underlying, eliminator)
-        }
-      }
-    }
-  }
-
   test("Eliminator.apply") {
     for {
       e <- Eliminator[String, String, String, String](
@@ -75,6 +45,18 @@ trait EliminatorSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("EliminationStackForTesting (basic)") {
     for {
       s <- EliminationStackForTesting[Int].run[F]
+      _ <- assertResultF(s.tryPop.run[F], None)
+      _ <- s.push[F](1)
+      _ <- (s.push.provide(2) *> s.push.provide(3)).run[F]
+      _ <- assertResultF(s.tryPop.run[F], Some(3))
+      _ <- assertResultF((s.tryPop * s.tryPop).run[F], (Some(2), Some(1)))
+      _ <- assertResultF(s.tryPop.run[F], None)
+    } yield ()
+  }
+
+  test("EliminationStack2 (basic)") {
+    for {
+      s <- EliminationStack2[Int].run[F]
       _ <- assertResultF(s.tryPop.run[F], None)
       _ <- s.push[F](1)
       _ <- (s.push.provide(2) *> s.push.provide(3)).run[F]

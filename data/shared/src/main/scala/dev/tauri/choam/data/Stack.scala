@@ -21,7 +21,7 @@ package data
 import cats.Monad
 import cats.syntax.all._
 
-abstract class Stack[A] {
+abstract class Stack[A] { // TODO:0.5: make it a trait
   def push: Rxn[A, Unit]
   def tryPop: Axn[Option[A]]
   def size: Axn[Int]
@@ -35,6 +35,9 @@ object Stack {
   // TODO: on JS, we could just return a TreiberStack
   def eliminationStack[A]: Axn[Stack[A]] =
     EliminationStack[A]
+
+  private[choam] def eliminationStack2[A]: Axn[EliminationStack2[A]] =
+    EliminationStack2[A]
 
   private[choam] def fromList[F[_], A](mkEmpty: Axn[Stack[A]])(as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
     implicit val monadF: Monad[F] = F.monad

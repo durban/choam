@@ -36,21 +36,34 @@ final class StackSpec_Treiber_SpinLockMcas_IO
 final class StackSpec_Elimination_Emcas_IO
   extends BaseSpecIO
   with SpecEmcas
-  with StackSpecEliminationJvm[IO]
+  with StackSpecElimination12Jvm[IO]
+  with StackSpecElimination[IO]
+
+final class StackSpec_Elimination2_Emcas_IO
+  extends BaseSpecIO
+  with SpecEmcas
+  with StackSpecElimination12Jvm[IO]
+  with StackSpecElimination2[IO]
 
 final class StackSpec_Elimination_SpinLockMcas_IO
   extends BaseSpecIO
   with SpecSpinLockMcas
-  with StackSpecEliminationJvm[IO]
+  with StackSpecElimination12Jvm[IO]
+  with StackSpecElimination[IO]
+
+final class StackSpec_Elimination2_SpinLockMcas_IO
+  extends BaseSpecIO
+  with SpecSpinLockMcas
+  with StackSpecElimination12Jvm[IO]
+  with StackSpecElimination2[IO]
 
 trait StackSpecTreiberJvm[F[_]]
   extends StackSpecTreiber[F]
   with StackSpecJvm[F] { this: McasImplSpec =>
 }
 
-trait StackSpecEliminationJvm[F[_]]
-  extends StackSpecElimination[F]
-  with StackSpecJvm[F] { this: McasImplSpec =>
+trait StackSpecElimination12Jvm[F[_]]
+  extends StackSpecJvm[F] { this: StackSpec[F] with McasImplSpec =>
 
   test("Elimination stack conflict before the elimination".fail) { // TODO: expected failure
     val once = for {

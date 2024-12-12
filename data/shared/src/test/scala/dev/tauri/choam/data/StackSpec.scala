@@ -30,6 +30,11 @@ final class StackSpec_Elimination_ThreadConfinedMcas_IO
   with SpecThreadConfinedMcas
   with StackSpecElimination[IO]
 
+final class StackSpec_Elimination2_ThreadConfinedMcas_IO
+  extends BaseSpecIO
+  with SpecThreadConfinedMcas
+  with StackSpecElimination2[IO]
+
 trait StackSpecTreiber[F[_]] extends StackSpec[F] { this: McasImplSpec =>
   final override def newStack[A](as: A*): F[Stack[A]] = {
     TreiberStack.fromList(as.toList)
@@ -39,6 +44,18 @@ trait StackSpecTreiber[F[_]] extends StackSpec[F] { this: McasImplSpec =>
 trait StackSpecElimination[F[_]] extends StackSpec[F] { this: McasImplSpec =>
   final override def newStack[A](as: A*): F[Stack[A]] = {
     EliminationStack.fromList(as.toList)
+  }
+}
+
+trait StackSpecElimination2[F[_]] extends StackSpec[F] { this: McasImplSpec =>
+  final override def newStack[A](as: A*): F[Stack[A]] = {
+    Stack.fromList[F, A](Stack.eliminationStack2[A].map { es2 =>
+      new Stack[A] { // TODO:0.5: remove this wrapper
+        final override def push: Rxn[A, Unit] = es2.push
+        final override def tryPop: Axn[Option[A]] = es2.tryPop
+        final override def size: Axn[Int] = es2.size
+      }
+    })(as.toList)
   }
 }
 
