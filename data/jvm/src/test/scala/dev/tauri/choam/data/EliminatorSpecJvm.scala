@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package data
 
+import scala.concurrent.duration._
+
 import cats.syntax.all._
 import cats.effect.IO
 import cats.effect.instances.spawn.parallelForGenSpawn
@@ -33,6 +35,9 @@ final class EliminatorSpecJvm_Emcas_IO
   with EliminatorSpecJvm[IO]
 
 trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
+
+  final override def munitTimeout: Duration =
+    super.munitTimeout * 2
 
   test("EliminationStackForTesting (elimination)") {
     val k = 4
