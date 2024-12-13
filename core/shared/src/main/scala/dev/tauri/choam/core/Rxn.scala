@@ -1646,19 +1646,19 @@ object Rxn extends RxnInstances0 {
     final def interpretAsync[F[_]](implicit F: Async[F]): F[R] = {
       if (this.canSuspend) {
         // cede or sleep strategy:
-        def step(poll: F ~> F): F[R] = F.defer {
-          // TODO: We could try passing ctx between
-          // TODO: steps, as it's likely that we remain
-          // TODO: on the same thread. But we have to
-          // TODO: always check.
-          val ctx = mcas.currentContext()
+        def step(poll: F ~> F, ctxHint: Mcas.ThreadContext): F[R] = F.defer {
+          val ctx = if ((ctxHint ne null) && mcas.isCurrentContext(ctxHint)) {
+            ctxHint
+          } else {
+            mcas.currentContext()
+          }
           this.ctx = ctx
           try {
             loop(startRxn) match {
               case s: SuspendUntil =>
                 assert(this._entryHolder eq null)
                 val sus: F[Unit] = s.toF[F](mcas, ctx)
-                F.flatMap(poll(sus)) { _ => step(poll) }
+                F.flatMap(poll(sus)) { _ => step(poll, ctxHint = ctx) }
               case r =>
                 assert(this._entryHolder eq null)
                 F.pure(r)
@@ -1668,7 +1668,7 @@ object Rxn extends RxnInstances0 {
             this.invalidateCtx()
           }
         }
-        F.uncancelable { poll => step(poll) }
+        F.uncancelable { poll => step(poll, ctxHint = null) }
       } else {
         // spin strategy, so not really async:
         F.delay {
