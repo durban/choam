@@ -1211,6 +1211,14 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     assertResultF(tsk, 42)
   }
 
+  test("Rxn#perform should be repeatable") {
+    val r: Rxn[Any, Int] =
+      Rxn.pure(42)
+    val tsk =
+      r.perform[F, Int](null, this.mcasImpl, sCede)(F)
+    assertResultF(tsk.replicateA(3), List(42, 42, 42))
+  }
+
   test("Executing a Rxn which doesn't change Refs shouldn't change the global version") {
     val r = Ref.unpadded("foo").flatMapF { ref =>
       Axn.unsafe.delay { new Exception }.map { ex =>

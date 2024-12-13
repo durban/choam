@@ -263,13 +263,15 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     mcas: Mcas,
     strategy: RetryStrategy = RetryStrategy.Default,
   )(implicit F: Async[F]): F[X] = {
-    new InterpreterState[A, X](
-      this,
-      a,
-      mcas = mcas,
-      strategy = strategy,
-      isStm = false,
-    ).interpretAsync(F)
+    F.defer {
+      new InterpreterState[A, X](
+        this,
+        a,
+        mcas = mcas,
+        strategy = strategy,
+        isStm = false,
+      ).interpretAsync(F)
+    }
   }
 
   /** Only for tests/benchmarks */
