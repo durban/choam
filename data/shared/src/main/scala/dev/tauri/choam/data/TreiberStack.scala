@@ -40,7 +40,7 @@ private final class TreiberStack[A] private () extends Stack[A] {
 private object TreiberStack {
 
   def apply[A]: Axn[TreiberStack[A]] =
-    Rxn.unsafe.delay { _ => new TreiberStack[A] }
+    Axn.unsafe.delay { new TreiberStack[A] }
 
   def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
     Stack.fromList(this.apply[A])(as)

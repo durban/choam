@@ -407,7 +407,7 @@ object Rxn extends RxnInstances0 {
     random.newSecureRandom(_osRng)
 
   final def unique: Axn[Unique.Token] =
-    unsafe.delay { _ => new Unique.Token() }
+    Axn.unsafe.delay { new Unique.Token() }
 
   final def fastRandom: Random[Axn] =
     _fastRandom
@@ -1883,9 +1883,9 @@ private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.t
   implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] =
     random.uuidGen(self.osRng)
 
-  @deprecated("Don't use uuidGenWrapper, because it may block", since = "0.4")
+  @deprecated("Don't use uuidGenWrapper, because it may block", since = "0.4") // TODO:0.5: remove this
   private[choam] final def uuidGenWrapper[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {
-    final override def randomUUID = Rxn.unsafe.delay { _ => java.util.UUID.randomUUID() }
+    final override def randomUUID = Axn.unsafe.delay { java.util.UUID.randomUUID() }
   }
 }
 
@@ -1894,9 +1894,9 @@ private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.
     final override def applicative: Applicative[Rxn[X, *]] =
       self.monadInstance[X]
     final override def monotonic: Rxn[X, FiniteDuration] =
-      self.unsafe.delay { _ => System.nanoTime().nanoseconds }
+      Axn.unsafe.delay { System.nanoTime().nanoseconds }
     final override def realTime: Rxn[X, FiniteDuration] =
-      self.unsafe.delay { _ => System.currentTimeMillis().milliseconds }
+      Axn.unsafe.delay { System.currentTimeMillis().milliseconds }
   }
 }
 

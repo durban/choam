@@ -136,7 +136,7 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A])
 private object RemoveQueue {
 
   def apply[A]: Axn[RemoveQueue[A]] =
-    Rxn.unsafe.delay { _ => new RemoveQueue }
+    Axn.unsafe.delay { new RemoveQueue }
 
   private sealed trait Elem[A]
 

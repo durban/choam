@@ -198,7 +198,7 @@ object Promise {
       ref.updWith[A, Boolean] { (state, a) =>
         state match {
           case Waiting(cbs, _) =>
-            Rxn.postCommit[Any](Rxn.unsafe.delay { _ =>
+            Rxn.postCommit[Any](Axn.unsafe.delay {
               cbs.valuesIterator.foreach(_(a))
             }).as((Done(a), true))
           case d @ Done(_) =>

@@ -29,11 +29,11 @@ sealed trait Exchanger[A, B] {
 private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: should be private[core]
 
   private[core] def apply[A, B]: Axn[Exchanger[A, B]] =
-    Rxn.unsafe.delay { _ => this.unsafe[A, B] }
+    Axn.unsafe.delay { this.unsafe[A, B] }
 
   private[choam] def profiled[A, B](counter: LongAdder): Axn[Exchanger[A, B]] = { // TODO: should be private[core]
     this.apply[A, B].flatMapF { underlying =>
-      Rxn.unsafe.delay { _ =>
+      Axn.unsafe.delay {
         new ProfiledExchanger[A, B](
           d = null,
           underlying = underlying,

@@ -155,5 +155,5 @@ private object MsQueue {
   }
 
   private[this] def applyInternal[A](padded: Boolean): Axn[MsQueue[A]] =
-    Rxn.unsafe.delay { _ => new MsQueue(padded = padded) }
+    Axn.unsafe.delay { new MsQueue(padded = padded) }
 }

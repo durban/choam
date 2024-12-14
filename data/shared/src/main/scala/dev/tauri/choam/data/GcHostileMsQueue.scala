@@ -85,7 +85,7 @@ private object GcHostileMsQueue {
   private final case class End[A]() extends Elem[A]
 
   def apply[A]: Axn[GcHostileMsQueue[A]] =
-    Rxn.unsafe.delay { _ => new GcHostileMsQueue[A] }
+    Axn.unsafe.delay { new GcHostileMsQueue[A] }
 
   def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[GcHostileMsQueue[A]] = {
     Queue.fromList[F, GcHostileMsQueue, A](this.apply[A])(as)

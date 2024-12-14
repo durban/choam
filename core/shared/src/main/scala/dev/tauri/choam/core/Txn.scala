@@ -51,7 +51,7 @@ private[choam] object Txn {
   private[choam] final object unsafe {
 
     private[choam] final def delay[F[_], A](uf: => A): Txn[F, A] =
-      Rxn.unsafe.delay[Any, A](_ => uf).castF[F]
+      Axn.unsafe.delay[A](uf).castF[F]
 
     private[choam] final def delayContext[F[_], A](uf: Mcas.ThreadContext => A): Txn[F, A] =
       Rxn.unsafe.delayContext(uf).castF[F]
