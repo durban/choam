@@ -472,7 +472,7 @@ object Rxn extends RxnInstances0 {
       new Cas[A](r.loc, ov, nv)
 
     final def retry[A, B]: Rxn[A, B] =
-      new AlwaysRetry[A, B]
+      _AlwaysRetry.asInstanceOf[Rxn[A, B]]
 
     private[choam] final def delay[A, B](uf: A => B): Rxn[A, B] =
       lift(uf)
@@ -519,7 +519,7 @@ object Rxn extends RxnInstances0 {
 
   private[choam] final object StmImpl {
     private[choam] final def retryWhenChanged[A]: Axn[A] =
-      new RetryWhenChanged[A]
+      _RetryWhenChanged.asInstanceOf[Rxn[Any, A]]
   }
 
   // Representation:
@@ -530,11 +530,13 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = "Commit()"
   }
 
-  // TODO: this could be a singleton
   private final class AlwaysRetry[A, B]() extends Rxn[A, B] {
     private[core] final override def tag = 1
     final override def toString: String = "AlwaysRetry()"
   }
+
+  private[this] val _AlwaysRetry: Rxn[Any, Any] =
+    new AlwaysRetry
 
   private final class PostCommit[A](val pc: Rxn[A, Unit]) extends Rxn[A, A] {
     private[core] final override def tag = 2
@@ -551,11 +553,13 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = "Computed(<function>)"
   }
 
-  // TODO: this could be a singleton
   private final class RetryWhenChanged[A]() extends Rxn[Any, A] { // STM
     private[core] final override def tag = 5
     final override def toString: String = "RetryWhenChanged()"
   }
+
+  private[this] val _RetryWhenChanged: Rxn[Any, Any] =
+    new RetryWhenChanged[Any]
 
   private final class Choice[A, B](val left: Rxn[A, B], val right: Rxn[A, B]) extends Rxn[A, B] {
     private[core] final override def tag = 6
