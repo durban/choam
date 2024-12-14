@@ -31,7 +31,7 @@ trait RefLike[A] {
 
   // derived (but overridden for performance):
 
-  def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
+  def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] = // TODO:0.5: remove the default impl (we almost always override it)
     updWith[B, C] { (a, b) => Axn.pure(f(a, b)) }
 
   // derived:
