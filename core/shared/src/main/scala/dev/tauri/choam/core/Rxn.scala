@@ -263,14 +263,16 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     mcas: Mcas,
     strategy: RetryStrategy = RetryStrategy.Default,
   )(implicit F: Async[F]): F[X] = {
-    F.defer {
-      new InterpreterState[A, X](
-        this,
-        a,
-        mcas = mcas,
-        strategy = strategy,
-        isStm = false,
-      ).interpretAsync(F)
+    F.uncancelable { poll =>
+      F.defer {
+        new InterpreterState[A, X](
+          this,
+          a,
+          mcas = mcas,
+          strategy = strategy,
+          isStm = false,
+        ).interpretAsync(poll)(F)
+      }
     }
   }
 
@@ -317,13 +319,17 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     a: A,
     mcas: Mcas,
   )(implicit F: Async[F]): F[X] = {
-    new InterpreterState[A, X](
-      this,
-      a,
-      mcas = mcas,
-      strategy = RetryStrategy.sleep(),
-      isStm = true,
-    ).interpretAsync(F)
+    F.uncancelable { poll =>
+      F.defer {
+        new InterpreterState[A, X](
+          this,
+          a,
+          mcas = mcas,
+          strategy = RetryStrategy.sleep(),
+          isStm = true,
+        ).interpretAsync(poll)(F)
+      }
+    }
   }
 
   // /STM
@@ -1643,10 +1649,10 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    final def interpretAsync[F[_]](implicit F: Async[F]): F[R] = {
+    final def interpretAsync[F[_]](poll: F ~> F)(implicit F: Async[F]): F[R] = {
       if (this.canSuspend) {
         // cede or sleep strategy:
-        def step(poll: F ~> F, ctxHint: Mcas.ThreadContext): F[R] = F.defer {
+        def step(ctxHint: Mcas.ThreadContext): F[R] = F.defer {
           val ctx = if ((ctxHint ne null) && mcas.isCurrentContext(ctxHint)) {
             ctxHint
           } else {
@@ -1658,7 +1664,7 @@ object Rxn extends RxnInstances0 {
               case s: SuspendUntil =>
                 assert(this._entryHolder eq null)
                 val sus: F[Unit] = s.toF[F](mcas, ctx)
-                F.flatMap(poll(sus)) { _ => step(poll, ctxHint = ctx) }
+                F.flatMap(poll(sus)) { _ => step(ctxHint = ctx) }
               case r =>
                 assert(this._entryHolder eq null)
                 F.pure(r)
@@ -1668,7 +1674,7 @@ object Rxn extends RxnInstances0 {
             this.invalidateCtx()
           }
         }
-        F.uncancelable { poll => step(poll, ctxHint = null) }
+        step(ctxHint = null)
       } else {
         // spin strategy, so not really async:
         F.delay {

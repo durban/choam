@@ -123,6 +123,13 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       _ <- check(r)
     } yield ()
   }
+
+  test("Txn#commit should be repeatable") {
+    val t: Txn[F, Int] =
+      Txn.pure(42)
+    val tsk = t.commit
+    assertResultF(tsk.replicateA(3), List(42, 42, 42))
+  }
 }
 
 trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this: McasImplSpec =>
