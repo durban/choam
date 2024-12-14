@@ -36,8 +36,11 @@ trait RefLike[A] {
 
   // derived:
 
-  final def set: Rxn[A, Unit] =
+  final def set: Rxn[A, Unit] = // TODO:0.5: rename (maybe to `set1`)
     getAndSet.void
+
+  final def set0(a: A): Axn[Unit] = // TODO: make this a primitive
+    update { _ => a }
 
   final def getAndSet: Rxn[A, A] =
     upd[A, A] { (oa, na) => (na, oa) }

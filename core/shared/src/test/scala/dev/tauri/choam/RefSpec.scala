@@ -245,6 +245,22 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Ref#set0") {
+    for {
+      r <- newRef("a")
+      s0b = r.set0("b")
+      s0c = r.set0("c")
+      _ <- assertResultF(s0b[F](42), ())
+      _ <- assertResultF(r.get.run[F], "b")
+      _ <- assertResultF(s0c.run[F], ())
+      _ <- assertResultF(r.get.run[F], "c")
+      _ <- assertResultF(s0b.run[F], ())
+      _ <- assertResultF(r.get.run[F], "b")
+      _ <- assertResultF(r.set0("d").run[F], ())
+      _ <- assertResultF(r.get.run[F], "d")
+    } yield ()
+  }
+
   def testCatsRef[G[_]](r: CatsRef[G, String], initial: String, run: ~>[G, F])(implicit G: Monad[G]): F[Unit] = {
     for {
       _ <- F.unit
