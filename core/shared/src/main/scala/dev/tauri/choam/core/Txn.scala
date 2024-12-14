@@ -40,7 +40,7 @@ private[choam] object Txn {
     Rxn.pure(a).castF[F]
 
   final def unit[F[_]]: Txn[F, Unit] =
-    pure(())
+    Rxn.unit[Any].castF[F]
 
   final def retry[F[_], A]: Txn[F, A] =
     Rxn.StmImpl.retryWhenChanged[A].castF[F]

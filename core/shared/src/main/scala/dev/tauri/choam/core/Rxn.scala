@@ -361,8 +361,11 @@ object Rxn extends RxnInstances0 {
   final def lift[A, B](f: A => B): Rxn[A, B] =
     new Lift(f)
 
-  final def unit[A]: Rxn[A, Unit] =
+  private[this] val _unit: Rxn[Any, Unit] =
     pure(())
+
+  final def unit[A]: Rxn[A, Unit] =
+    _unit
 
   final def computed[A, B](f: A => Axn[B]): Rxn[A, B] =
     new Computed(f)
