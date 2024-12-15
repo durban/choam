@@ -147,13 +147,19 @@ ThisBuild / githubWorkflowBuild := List(
       "path" -> "results/",
     ),
   ),
+  WorkflowStep.Run(
+    List("zip", "-r", "graal_dumps.zip", ".", "-i", "graal_dumps/"),
+    name = Some("ZIP Graal dumps"),
+    cond = Some("(success() || failure())"),
+  ),
   WorkflowStep.Use(
     UseRef.Public("actions", "upload-artifact", "v4"),
     name = Some("Upload Graal dumps"),
-    cond = None,
+    cond = Some("(success() || failure())"),
     params = Map(
       "name" -> "graal-dumps-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}",
-      "path" -> "graal_dumps/",
+      "path" -> "graal_dumps.zip",
+      "if-no-files-found" -> "error",
     ),
   ),
 )
