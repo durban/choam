@@ -58,6 +58,22 @@ import ce._
  * failure.
  *
  * TODO: Figure out which `+` semantics we really want.
+ *
+ * Questions:
+ *
+ * 1. Let's consider `t1 orElse t2`. If `t1` transiently
+ *    fails, do we (A) try `t2`, or do we (B) retry `t1`?
+ *    Elimination requires (A), that's probably why
+ *    reagents (sec. 7.2) do (A); is there any other use
+ *    case for it? STMs do (B); why?
+ *
+ * 2. Let's consider `(t1 orElse t2) *> t3`. If `t1` succeeds,
+ *    then `t3` retries, do we (A) restart with `t2` or
+ *    (B) with `t1`? Reagents (probably) do (A). STMs do (B).
+ *    Also consider, that when `t3` retries, that could also
+ *    be a transient failure.
+ *
+ * This test class shows the 2. question.
  */
 final class OrElseSemanticsSpec extends CatsEffectSuite {
 
