@@ -290,13 +290,7 @@ jobs:
       - name: ZIP Graal dumps
         if: (success() || failure())
         shell: bash
-        run: |
-          zip
-          -r
-          graal_dumps.zip
-          .
-          -i
-          graal_dumps/
+        run: zip -r graal_dumps.zip . -i graal_dumps/
 
       - name: Upload Graal dumps
         if: (success() || failure())
