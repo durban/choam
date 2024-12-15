@@ -65,6 +65,13 @@ val isOpenJ9Cond: String = {
 val isNotOpenJ9Cond: String =
   s"!(${isOpenJ9Cond})"
 
+val isGraalCond: String = {
+  jvmGraals.map { g =>
+    val gs = g.render
+    s"(matrix.java == '${gs}')"
+  }.mkString(" || ")
+}
+
 def commitContains(magic: String): String =
   s"contains(github.event.head_commit.message, '${magic}')"
 
@@ -150,12 +157,12 @@ ThisBuild / githubWorkflowBuild := List(
   WorkflowStep.Run(
     List("zip -r graal_dumps.zip . -i graal_dumps/"),
     name = Some("ZIP Graal dumps"),
-    cond = Some("(success() || failure())"),
+    cond = Some(s"(success() || failure()) && (matrix.os == '${linux}') && (${isGraalCond})"),
   ),
   WorkflowStep.Use(
     UseRef.Public("actions", "upload-artifact", "v4"),
     name = Some("Upload Graal dumps"),
-    cond = Some("(success() || failure())"),
+    cond = Some(s"(success() || failure()) && (matrix.os == '${linux}') && (${isGraalCond})"),
     params = Map(
       "name" -> "graal-dumps-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}",
       "path" -> "graal_dumps.zip",
