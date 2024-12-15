@@ -147,6 +147,15 @@ ThisBuild / githubWorkflowBuild := List(
       "path" -> "results/",
     ),
   ),
+  WorkflowStep.Use(
+    UseRef.Public("actions", "upload-artifact", "v4"),
+    name = Some("Upload Graal dumps"),
+    cond = None,
+    params = Map(
+      "name" -> "graal-dumps-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}",
+      "path" -> "graal_dumps/",
+    ),
+  ),
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(jvmTemurins, jvmGraals, jvmOpenj9s).flatten
 ThisBuild / githubWorkflowOSes := Seq(linux, windows, macos)

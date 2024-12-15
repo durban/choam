@@ -3,3 +3,6 @@
 -Xss2M
 -XX:+UseG1GC
 -Ddev.tauri.choam.stats=true
+-Djdk.graal.Dump=
+-Djdk.graal.PrintBackendCFG=true
+-Djdk.graal.MethodFilter=AbstractHamt.*

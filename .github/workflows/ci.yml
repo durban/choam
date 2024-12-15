@@ -286,3 +286,9 @@ jobs:
         with:
           name: jcstress-results-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
           path: results/
+
+      - name: Upload Graal dumps
+        uses: actions/upload-artifact@v4
+        with:
+          name: graal-dumps-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
+          path: graal_dumps/
