@@ -155,7 +155,7 @@ ThisBuild / githubWorkflowBuild := List(
     ),
   ),
   WorkflowStep.Run(
-    List("zip -r graal_dumps.zip . -i graal_dumps/"),
+    List("zip -r graal_dumps.zip . -i 'graal_dumps/*'"),
     name = Some("ZIP Graal dumps"),
     cond = Some(s"(success() || failure()) && (matrix.os == '${linux}') && (${isGraalCond})"),
   ),
