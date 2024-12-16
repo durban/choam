@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package data
 
+import java.util.concurrent.ThreadLocalRandom
+
 import scala.concurrent.duration._
 
 import cats.effect.IO
@@ -66,6 +68,9 @@ trait StackSpecElimination12Jvm[F[_]]
   extends StackSpecJvm[F] { this: StackSpec[F] with McasImplSpec =>
 
   test("Elimination stack conflict before the elimination".fail) { // TODO: expected failure
+    val randomSleep: F[Unit] = F.delay(ThreadLocalRandom.current().nextInt(10)).flatMap { x =>
+      F.sleep(x.millis)
+    }
     val once = for {
       ref <- Ref.unpadded(0).run[F]
       stack <- this.newStack[String]()
@@ -75,7 +80,7 @@ trait StackSpecElimination12Jvm[F[_]]
       _ <- F.cede
       _ <- tsk.parReplicateA_(8)
     } yield ()
-    (once *> F.sleep(0.01.seconds)).replicateA_(512)
+    (once *> randomSleep).replicateA_(768)
   }
 }
 
