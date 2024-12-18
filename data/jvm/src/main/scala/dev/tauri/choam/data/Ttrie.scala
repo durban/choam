@@ -56,7 +56,7 @@ import Ttrie._
  * TODO: see if we could use more ideas from transactional predication.
  */
 private final class Ttrie[K, V] private (
-  m: CMap[K, TrieRef[V]],
+  m: CMap[K, Ref[V]],
 ) extends Map.UnsealedMap[K, V] { self =>
 
   /*
@@ -108,13 +108,13 @@ private final class Ttrie[K, V] private (
    * reads it again with `getRef`, but now it will be a
    * *different* ref.
    */
-  private[this] final def getRef: K =#> TrieRef[V] = {
+  private[this] final def getRef: K =#> Ref[V] = {
     Rxn.computed(getRefWithKey)
   }
 
-  private[this] final def getRefWithKey(k: K): Axn[TrieRef[V]] = {
+  private[this] final def getRefWithKey(k: K): Axn[Ref[V]] = {
     Axn.unsafe.suspendContext { ctx =>
-      val newRef = Ref.unsafePadded[State[V]](Init, ctx.refIdGen) // TODO: do we really need padded?
+      val newRef = Ref.unsafePadded[V](Init[V], ctx.refIdGen) // TODO: do we really need padded?
       val ref = m.putIfAbsent(k, newRef) match {
         case Some(existingRef) =>
           existingRef
@@ -125,37 +125,37 @@ private final class Ttrie[K, V] private (
       // we created the ref, because it's
       // already visible to others.
       ref.unsafeTicketRead.flatMapF { ticket =>
-        ticket.unsafePeek match {
-          case End if ticket.unsafeIsReadOnly =>
-            // ticket `nv eq End` AND `nv eq ov`
-            // => ticket `ov` is also `End`
-            // => the `End` was read directly from the ref
-            // => it will never change, so ref can be removed,
-            //    and we'll retry
-            // (NB: in this case, `ref` won't be inserted into the log)
-            Rxn.unsafe.delayContext(unsafeDelRef(k, ref, _)) >>> getRefWithKey(k)
-          case _ =>
-            // Make sure `ref` is in the log, then force re-validation:
-            ticket.unsafeValidate >>> Rxn.unsafe.forceValidate.as(ref)
-            // Re-validation is necessary, because otherwise
-            // there would be no conflict detected between
-            // a new ref and the previous (tombed and removed)
-            // one.
-            // TODO: What's the performance hit of revalidation?
-            // TODO: Could we do a *partial* revalidation?
-            // TODO: Transactional predication (see above) has
-            // TODO: a solution to this problem, and is able to
-            // TODO: avoid revalidation. See `embalm` and `resurrect`
-            // TODO: in section 3.4.1.
+        val currVal = ticket.unsafePeek
+        if (isEnd[V](currVal) && ticket.unsafeIsReadOnly) {
+          // ticket `nv eq End` AND `nv eq ov`
+          // => ticket `ov` is also `End`
+          // => the `End` was read directly from the ref
+          // => it will never change, so ref can be removed,
+          //    and we'll retry
+          // (NB: in this case, `ref` won't be inserted into the log)
+          Rxn.unsafe.delayContext(unsafeDelRef(k, ref, _)) >>> getRefWithKey(k)
+        } else {
+          // Make sure `ref` is in the log, then force re-validation:
+          ticket.unsafeValidate >>> Rxn.unsafe.forceValidate.as(ref)
+          // Re-validation is necessary, because otherwise
+          // there would be no conflict detected between
+          // a new ref and the previous (tombed and removed)
+          // one.
+          // TODO: What's the performance hit of revalidation?
+          // TODO: Could we do a *partial* revalidation?
+          // TODO: Transactional predication (see above) has
+          // TODO: a solution to this problem, and is able to
+          // TODO: avoid revalidation. See `embalm` and `resurrect`
+          // TODO: in section 3.4.1.
         }
       }
     }
   }
 
   /** Only call if `ref` really contains `End`! */
-  private[this] final def unsafeDelRef(k: K, ref: TrieRef[V], ctx: Mcas.ThreadContext): Unit = {
+  private[this] final def unsafeDelRef(k: K, ref: Ref[V], ctx: Mcas.ThreadContext): Unit = {
     // just to be sure:
-    assert(ctx.readDirect(ref.loc) eq End)
+    assert(isEnd(ctx.readDirect(ref.loc)))
     // NB: `TrieMap#remove(K, V)` checks V with
     // universal equality; fortunately, for a
     // ref, reference and univ. eq. are the same.
@@ -164,27 +164,28 @@ private final class Ttrie[K, V] private (
     m.remove(k, ref) : Unit
   }
 
-  private[this] final def cleanupLater(key: K, ref: TrieRef[V]): Axn[Unit] = {
+  private[this] final def cleanupLater(key: K, ref: Ref[V]): Axn[Unit] = {
     // First we need to check, if `End` was actually
     // committed (into `ref`), since the Rxn
     // which added us as a post-commit action
     // might've chaged it back later (in its log):
-    ref.unsafeDirectRead.flatMapF {
-      case End => // OK, we can delete it:
+    ref.unsafeDirectRead.flatMapF { v =>
+      if (isEnd[V](v)) { // OK, we can delete it:
         Rxn.unsafe.delayContext(unsafeDelRef(key, ref, _))
-      case _ => // oops, don't delete it:
+      } else { // oops, don't delete it:
         Rxn.unit
+      }
     }
   }
 
-  private[this] final def cleanupLaterIfNone[A](key: K, ref: TrieRef[V]): Rxn[Option[A], Unit] = {
+  private[this] final def cleanupLaterIfNone[A](key: K, ref: Ref[V]): Rxn[Option[A], Unit] = {
     Rxn.computed { option =>
       if (option.isEmpty) cleanupLater(key, ref)
       else Rxn.unit
     }
   }
 
-  private[this] final def cleanupLaterIfOdd[A](key: K, ref: TrieRef[V]): Rxn[Int, Unit] = {
+  private[this] final def cleanupLaterIfOdd[A](key: K, ref: Ref[V]): Rxn[Int, Unit] = {
     Rxn.computed { n =>
       if ((n & 1) == 1) cleanupLater(key, ref)
       else Rxn.unit
@@ -194,14 +195,15 @@ private final class Ttrie[K, V] private (
   final def get: K =#> Option[V] = {
     Rxn.computed { (key: K) =>
       getRefWithKey(key).flatMapF { ref =>
-        ref.modify {
-          case Init | End =>
+        ref.modify { v =>
+          if (isInit(v) || isEnd(v)) {
             // it is possible, that we created
             // the ref with `Init`, so we must
             // write `End`, to not leak memory:
-            (End, None)
-          case v @ Value(w) =>
-            (v, Some(w))
+            (End[V], None)
+          } else {
+            (v, Some(v))
+          }
         }.postCommit(cleanupLaterIfNone(key, ref))
       }
     }
@@ -210,9 +212,12 @@ private final class Ttrie[K, V] private (
   final def put: (K, V) =#> Option[V] = {
     getRef.first[V].flatMapF {
       case (ref, v) =>
-        ref.modify {
-          case Init | End => (Value(v), None)
-          case Value(oldVal) => (Value(v), Some(oldVal))
+        ref.modify { ov =>
+          if (isInit(ov) || isEnd(ov)) {
+            (v, None)
+          } else {
+            (v, Some(ov))
+          }
         }
     }
   }
@@ -220,9 +225,12 @@ private final class Ttrie[K, V] private (
   final def putIfAbsent: (K, V) =#> Option[V] = {
     getRef.first[V].flatMapF {
       case (ref, v) =>
-        ref.modify {
-          case Init | End => (Value(v), None)
-          case v @ Value(w) => (v, Some(w))
+        ref.modify { ov =>
+          if (isInit(ov) || isEnd(ov)) {
+            (v, None)
+          } else {
+            (ov, Some(ov))
+          }
         }
     }
   }
@@ -230,13 +238,14 @@ private final class Ttrie[K, V] private (
   final def replace: Rxn[(K, V, V), Boolean] = {
     Rxn.computed { (kvv: (K, V, V)) =>
       getRefWithKey(kvv._1).flatMapF { ref =>
-        ref.modify {
+        ref.modify { ov =>
           // TODO: use an enum instead of ints to avoid boxing (measure!)
-          case Init | End =>
-            (End, 1) // 0b01 -> false, cleanup
-          case ov @ Value(currVal) =>
-            if (equ(currVal, kvv._2)) (Value(kvv._3), 2) // 0b10 -> true, no cleanup
+          if (isInit(ov) || isEnd(ov)) {
+            (End[V], 1) // 0b01 -> false, cleanup
+          } else {
+            if (equ(ov, kvv._2)) (kvv._3, 2) // 0b10 -> true, no cleanup
             else (ov, 0) // 0b00 -> false, no cleanup
+          }
         }.postCommit(cleanupLaterIfOdd(kvv._1, ref)).map { n =>
           (n & 2) == 2
         }
@@ -247,9 +256,12 @@ private final class Ttrie[K, V] private (
   final def del: Rxn[K, Boolean] = {
     Rxn.computed { (key: K) =>
       getRefWithKey(key).flatMapF { ref =>
-        ref.modify {
-          case Init | End => (End, false)
-          case Value(_) => (End, true)
+        ref.modify { ov =>
+          if (isInit(ov) || isEnd(ov)) {
+            (End[V], false)
+          } else {
+            (End[V], true)
+          }
         }.postCommit(cleanupLater(key, ref))
       }
     }
@@ -258,12 +270,13 @@ private final class Ttrie[K, V] private (
   final def remove: Rxn[(K, V), Boolean] = {
     Rxn.computed { (kv: (K, V)) =>
       getRefWithKey(kv._1).flatMapF { ref =>
-        ref.modify {
-          case Init | End =>
-            (End, false)
-          case value @ Value(currVal) =>
-            if (equ(currVal, kv._2)) (End, true)
-            else (value, false)
+        ref.modify { ov =>
+          if (isInit(ov) || isEnd(ov)) {
+            (End[V], false)
+          } else {
+            if (equ(ov, kv._2)) (End[V], true)
+            else (ov, false)
+          }
         }.postCommit(cleanupLater(kv._1, ref))
       }
     }
@@ -279,9 +292,10 @@ private final class Ttrie[K, V] private (
     final def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
       getRefWithKey(key).flatMap { ref =>
         ref.updWith[B, C] { (oldVal, b) =>
-          val currVal = oldVal match {
-            case Init | End => default
-            case Value(currVal) => currVal
+          val currVal = if (isInit(oldVal) || isEnd(oldVal)) {
+            default
+          } else {
+            oldVal
           }
           f(currVal, b).flatMapF {
             case (newVal, c) =>
@@ -289,9 +303,9 @@ private final class Ttrie[K, V] private (
                 // it is possible, that we created
                 // the ref with `Init`, so we must
                 // write `End`, to not leak memory:
-                Rxn.postCommit(cleanupLater(key, ref)).as((End, c))
+                Rxn.postCommit(cleanupLater(key, ref)).as((End[V], c))
               } else {
-                Rxn.pure((Value(newVal), c))
+                Rxn.pure((newVal, c))
               }
           }
         }
@@ -314,9 +328,11 @@ private final class Ttrie[K, V] private (
         // this method is `unsafe`.
         val b = ScalaMap.newBuilder[K, V]
         kvs.foreach { kv =>
-          kv._2.toOption match {
-            case None => ()
-            case Some(v) => b += (kv._1 -> v)
+          val v = kv._2
+          if (isInit(v) || isEnd(v)) {
+            ()
+          } else {
+            b += (kv._1 -> v)
           }
         }
         b.result()
@@ -332,18 +348,16 @@ private final class Ttrie[K, V] private (
 
 private object Ttrie {
 
-  private type TrieRef[V] = Ref[State[V]]
-
-  /**
+  /*
    * The value of a ref in the trie can
    * go through these states (it starts
    * from `Init`):
    *
-   *         ---> Value(v1) ---
-   *        /        ↕          \
-   *   Init ----> Value(v2) ----+--> End
-   *        \        ↕          /
-   *         ---> Value(v3) ---
+   *         ---> (v1: V) ---
+   *        /        ↕       \
+   *   Init ----> (v2: V) ----+--> End
+   *        \        ↕       /
+   *         ---> (v3: V) ---
    *                 ↕
    *                ...
    *
@@ -351,21 +365,26 @@ private object Ttrie {
    * never change. (A tentative `End` in
    * the write-log can still change though.)
    */
-  private sealed abstract class State[+V] {
-    final def toOption: Option[V] = this match {
-      case Init | End => None
-      case Value(v) => Some(v)
-    }
-  }
 
-  // TODO: could we optimize these to Init, End, and simply V?
-  private final case object Init extends State[Nothing]
-  private final case class Value[+V](v: V) extends State[V]
-  private final case object End extends State[Nothing]
+  private[this] final case object _Init
+
+  @inline private final def Init[V]: V =
+    _Init.asInstanceOf[V]
+
+  @inline private final def isInit[V](v: V): Boolean =
+    equ[V](v, Init[V])
+
+  private[this] final case object _End
+
+  @inline private final def End[V]: V =
+    _End.asInstanceOf[V]
+
+  @inline private final def isEnd[V](v: V): Boolean =
+    equ[V](v, End[V])
 
   def apply[K, V](implicit K: Hash[K]): Axn[Ttrie[K, V]] = {
     Axn.unsafe.delay {
-      val m = new TrieMap[K, TrieRef[V]](
+      val m = new TrieMap[K, Ref[V]](
         hashf = { k => byteswap32(K.hash(k)) },
         ef = K.eqv(_, _),
       )
@@ -375,7 +394,7 @@ private object Ttrie {
 
   def skipListBased[K, V](implicit K: Order[K]): Axn[Ttrie[K, V]] = {
     Axn.unsafe.delay {
-      val m = new SkipListMap[K, TrieRef[V]]()(K)
+      val m = new SkipListMap[K, Ref[V]]()(K)
       new Ttrie[K, V](m)
     }
   }

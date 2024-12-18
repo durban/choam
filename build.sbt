@@ -309,7 +309,16 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .dependsOn(core % "compile->compile;test->test")
-  .settings(libraryDependencies += dependencies.catsCollections.value)
+  .settings(
+    libraryDependencies += dependencies.catsCollections.value,
+    mimaBinaryIssueFilters ++= Seq(
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$End$"), // private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$Init$"), // private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$State"), // private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$Value"), // private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$Value$"), // private
+    ),
+  )
 
 lazy val async = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
