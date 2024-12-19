@@ -30,6 +30,8 @@ sealed trait Map[K, V] { self =>
   // TODO: a variant of `del` could return the old value (if any)
   // TODO: think about a `putIfPresent` (in CSLM this is another overload of `replace`)
 
+  // TODO:0.5: figure out if we really want to take the key as input (instead of as an arg)
+
   def put: Rxn[(K, V), Option[V]]
   def putIfAbsent: Rxn[(K, V), Option[V]]
   def replace: Rxn[(K, V, V), Boolean]

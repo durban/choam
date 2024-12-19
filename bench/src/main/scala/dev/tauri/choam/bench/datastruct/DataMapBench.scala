@@ -36,6 +36,8 @@ class DataMapBench {
 
   import DataMapBench._
 
+  // lookup (successful and not), insert, remove:
+
   @Benchmark
   def hash_jucCM(s: ChmSt, bh: Blackhole, k: McasImplState): Unit = {
     cmTask(s, bh, k)
@@ -211,6 +213,37 @@ class DataMapBench {
         impossible(x.toString)
     }
   }
+
+  // replace:
+
+  @Benchmark
+  def replace_hash_rxnSimple(s: SimpleHashSt, bh: Blackhole, k: McasImplState): Unit = {
+    rxnReplaceTask(s, bh, k)
+  }
+
+  @Benchmark
+  def replace_ordered_rxnSimple(s: SimpleOrderedSt, bh: Blackhole, k: McasImplState): Unit = {
+    rxnReplaceTask(s, bh, k)
+  }
+
+  @Benchmark
+  def replace_hash_rxn(s: TMapHashSt, bh: Blackhole, k: McasImplState): Unit = {
+    rxnReplaceTask(s, bh, k)
+  }
+
+  @Benchmark
+  def replace_ordered_rxn(s: TMapOrderedSt, bh: Blackhole, k: McasImplState): Unit = {
+    rxnReplaceTask(s, bh, k)
+  }
+
+  private[this] final def rxnReplaceTask(s: RxnMapSt, bh: Blackhole, k: McasImplState): Unit = {
+    val mcasCtx = k.mcasCtx
+    val map = s.map
+    val keys = s.keys
+    val key = keys(k.nextIntBounded(keys.length))
+    val res: Boolean = map.replace.unsafePerformInternal((key, s.constValue, s.constValue2), mcasCtx)
+    bh.consume(res)
+  }
 }
 
 object DataMapBench {
@@ -225,6 +258,9 @@ object DataMapBench {
 
     final val constValue =
       "abcde"
+
+    final val constValue2 =
+      "edcba"
 
     @Param(Array("1048576"))
     @nowarn("cat=unused-privates")
