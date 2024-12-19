@@ -22,7 +22,7 @@ package mcas
 import scala.util.hashing.MurmurHash3
 import scala.collection.AbstractIterator
 
-private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E, T1, T2, H <: AbstractHamt[K, V, E, T1, T2, H]] protected[mcas] () { self: H =>
+private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: AnyRef, T1, T2, H <: AbstractHamt[K, V, E, T1, T2, H]] protected[mcas] () { self: H =>
 
   protected def newArray(size: Int): Array[E]
 

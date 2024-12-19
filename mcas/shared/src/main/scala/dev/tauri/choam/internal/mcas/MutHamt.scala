@@ -22,7 +22,7 @@ package mcas
 /**
  * Mutable HAMT; not thread safe; `null` values are forbidden.
  */
-private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E, T1, T2, I <: Hamt[_, _, _, _, _, I], H <: MutHamt[K, V, E, T1, T2, I, H]] protected[mcas] (
+private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: AnyRef, T1, T2, I <: Hamt[_, _, _, _, _, I], H <: MutHamt[K, V, E, T1, T2, I, H]] protected[mcas] (
   // NB: the root doesn't have a logical idx, so we're abusing this field to store the tree size (and also the blue bit)
   private var logIdx: Int,
   private var contents: Array[AnyRef],

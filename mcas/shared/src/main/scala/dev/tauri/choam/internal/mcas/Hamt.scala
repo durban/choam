@@ -68,7 +68,7 @@ import java.util.Arrays
  * Public methods are the "external" API. We take care never to call them
  * on a node in lower levels (they assume they're called on the root).
  */
-private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E, T1, T2, H <: Hamt[K, V, E, T1, T2, H]] protected[mcas] (
+private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: AnyRef, T1, T2, H <: Hamt[K, V, E, T1, T2, H]] protected[mcas] (
 
   private val sizeAndBlue: Int,
 
