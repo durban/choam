@@ -185,9 +185,9 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  private[this] final def cleanupLaterIfOdd[A](key: K, ref: Ref[V]): Rxn[Int, Unit] = {
-    Rxn.computed { n =>
-      if ((n & 1) == 1) cleanupLater(key, ref)
+  private[this] final def cleanupLaterIfNeeded[A](key: K, ref: Ref[V]): Rxn[ReplaceResult, Unit] = {
+    Rxn.computed { rr =>
+      if (rr.needsCleanup) cleanupLater(key, ref)
       else Rxn.unit
     }
   }
@@ -238,16 +238,15 @@ private final class Ttrie[K, V] private (
   final def replace: Rxn[(K, V, V), Boolean] = {
     Rxn.computed { (kvv: (K, V, V)) =>
       getRefWithKey(kvv._1).flatMapF { ref =>
-        ref.modify { ov =>
-          // TODO: use an enum instead of ints to avoid boxing (measure!)
+        ref.modify[ReplaceResult] { ov =>
           if (isInit(ov) || isEnd(ov)) {
-            (End[V], 1) // 0b01 -> false, cleanup
+            (End[V], FalseCleanup)
           } else {
-            if (equ(ov, kvv._2)) (kvv._3, 2) // 0b10 -> true, no cleanup
-            else (ov, 0) // 0b00 -> false, no cleanup
+            if (equ(ov, kvv._2)) (kvv._3, TrueNoCleanup)
+            else (ov, FalseNoCleanup)
           }
-        }.postCommit(cleanupLaterIfOdd(kvv._1, ref)).map { n =>
-          (n & 2) == 2
+        }.postCommit(cleanupLaterIfNeeded(kvv._1, ref)).map { rr =>
+          rr.toBoolean
         }
       }
     }
@@ -381,6 +380,26 @@ private object Ttrie {
 
   @inline private final def isEnd[V](v: V): Boolean =
     equ[V](v, End[V])
+
+  private sealed abstract class ReplaceResult {
+    def toBoolean: Boolean
+    def needsCleanup: Boolean
+  }
+
+  private final object TrueNoCleanup extends ReplaceResult {
+    final override def toBoolean = true
+    final override def needsCleanup = false
+  }
+
+  private final object FalseNoCleanup extends ReplaceResult {
+    final override def toBoolean = false
+    final override def needsCleanup = false
+  }
+
+  private final object FalseCleanup extends ReplaceResult {
+    final override def toBoolean = false
+    final override def needsCleanup = true
+  }
 
   def apply[K, V](implicit K: Hash[K]): Axn[Ttrie[K, V]] = {
     Axn.unsafe.delay {
