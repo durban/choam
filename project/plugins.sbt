@@ -29,6 +29,7 @@ addSbtPlugin("org.typelevel" % "sbt-typelevel-mima" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-sonatype" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-github" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-github-actions" % sbtTypelevelVersion)
+addSbtPlugin("org.typelevel" % "sbt-typelevel-ci" % sbtTypelevelVersion)
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2") // https://github.com/scalameta/sbt-scalafmt
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.10.0") // https://github.com/sbt/sbt-header
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.13.0") // https://github.com/scalacenter/sbt-scalafix

@@ -9,9 +9,9 @@ name: Continuous Integration
 
 on:
   pull_request:
-    branches: ['**']
+    branches: ['**', '!update/**', '!pr/**']
   push:
-    branches: ['**']
+    branches: ['**', '!update/**', '!pr/**']
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -299,3 +299,147 @@ jobs:
           name: graal-dumps-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
           path: graal_dumps.zip
           if-no-files-found: error
+
+  dependency-submission:
+    name: Submit Dependencies
+    if: github.event.repository.fork == false && github.event_name != 'pull_request'
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        java: [temurin@11]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Ignore line ending differences in git
+        if: contains(runner.os, 'windows')
+        run: git config --global core.autocrlf false
+
+      - name: Checkout current branch (full)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java (temurin@11)
+        id: setup-java-temurin-11
+        if: matrix.java == 'temurin@11'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 11
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@11' && steps.setup-java-temurin-11.outputs.cache-hit == 'false'
+        run: sbt -v +update
+
+      - name: Setup Java (temurin@21)
+        id: setup-java-temurin-21
+        if: matrix.java == 'temurin@21'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt -v +update
+
+      - name: Setup Java (temurin@23)
+        id: setup-java-temurin-23
+        if: matrix.java == 'temurin@23'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 23
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@23' && steps.setup-java-temurin-23.outputs.cache-hit == 'false'
+        run: sbt -v +update
+
+      - name: Setup GraalVM (graal_22.3.3@11)
+        id: setup-graalvm-22_3_3-11
+        if: matrix.java == 'graal_22.3.3@11'
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: 22.3.3
+          java-version: 11
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'graal_22.3.3@11' && steps.setup-graalvm-22_3_3-11.outputs.cache-hit == 'false'
+        run: sbt -v +update
+
+      - name: Setup Java (graalvm@21)
+        id: setup-java-graalvm-21
+        if: matrix.java == 'graalvm@21'
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'graalvm@21' && steps.setup-java-graalvm-21.outputs.cache-hit == 'false'
+        run: sbt -v +update
+
+      - name: Setup Java (graalvm@23)
+        id: setup-java-graalvm-23
+        if: matrix.java == 'graalvm@23'
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: 23
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'graalvm@23' && steps.setup-java-graalvm-23.outputs.cache-hit == 'false'
+        run: sbt -v +update
+
+      - name: Setup Java (semeru@11)
+        id: setup-java-semeru-11
+        if: matrix.java == 'semeru@11'
+        uses: actions/setup-java@v4
+        with:
+          distribution: semeru
+          java-version: 11
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'semeru@11' && steps.setup-java-semeru-11.outputs.cache-hit == 'false'
+        run: sbt -v +update
+
+      - name: Setup Java (semeru@21)
+        id: setup-java-semeru-21
+        if: matrix.java == 'semeru@21'
+        uses: actions/setup-java@v4
+        with:
+          distribution: semeru
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'semeru@21' && steps.setup-java-semeru-21.outputs.cache-hit == 'false'
+        run: sbt -v +update
+
+      - name: Setup Java (semeru@23)
+        id: setup-java-semeru-23
+        if: matrix.java == 'semeru@23'
+        uses: actions/setup-java@v4
+        with:
+          distribution: semeru
+          java-version: 23
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'semeru@23' && steps.setup-java-semeru-23.outputs.cache-hit == 'false'
+        run: sbt -v +update
+
+      - name: Submit Dependencies
+        uses: scalacenter/sbt-dependency-submission@v2
+        with:
+          modules-ignore: choam-stress-data-slow_2.13 choam-stress-data-slow_3 choam_2.13 choam_3 choam-internal-helpers_2.13 choam-internal-helpers_3 choam-stress-mcas-slow_2.13 choam-stress-mcas-slow_3 choam-ce_sjs1_2.13 choam-ce_sjs1_3 choam-stress-experiments_2.13 choam-stress-experiments_3 choam-ce_2.13 choam-ce_3 choam-stress-linchk_2.13 choam-stress-linchk_3 choam-stress-mcas_2.13 choam-stress-mcas_3 choam-test-ext_2.13 choam-test-ext_3 choam-stress-linchk-agent_2.13 choam-stress-linchk-agent_3 choam-test-ext_sjs1_2.13 choam-test-ext_sjs1_3 choam-layout_2.13 choam-layout_3 choam-stress-old_2.13 choam-stress-old_3 choam-stress-core_2.13 choam-stress-core_3 choam-stress-data_2.13 choam-stress-data_3 choam-stress-async_2.13 choam-stress-async_3 choam-stress-rng_2.13 choam-stress-rng_3 choam-bench_2.13 choam-bench_3
+          configs-ignore: test scala-tool scala-doc-tool test-internal
