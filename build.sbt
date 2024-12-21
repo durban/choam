@@ -317,6 +317,9 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$State"), // private
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$Value"), // private
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$Value$"), // private
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.Map#Extra.keys"), // sealed
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.Map#Extra.valuesUnsorted"), // sealed
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.Map#Extra.items"), // sealed
     ),
   )
 

@@ -21,6 +21,7 @@ package data
 import scala.collection.immutable.{ Map => ScalaMap }
 
 import cats.kernel.Order
+import cats.data.Chain
 import cats.collections.AvlMap
 import dev.tauri.choam.Rxn
 import dev.tauri.choam.RefLike
@@ -92,11 +93,41 @@ private final class SimpleOrderedMap[K, V] private (
 
   final override def values(implicit V: Order[V]): Axn[Vector[V]] = {
     repr.get.map { am =>
-      val vb = Vector.newBuilder[V]
-      am.foldLeft(()) { (_, kv) =>
-        vb += kv._2
-      }
-      vb.result()
+      val b = scala.collection.mutable.ArrayBuffer.newBuilder[V]
+      b.sizeHint(am.set.size)
+      am.foldLeft(b) { (b, kv) =>
+        b += kv._2
+      }.result().sortInPlace()(V.toOrdering).toVector
+    }
+  }
+
+  final override def keys: Axn[Chain[K]] = {
+    repr.get.map { m =>
+      Chain.fromSeq(
+        m.foldLeft(Vector.newBuilder[K]) { (vb, kv) =>
+          vb.addOne(kv._1)
+        }.result()
+      )
+    }
+  }
+
+  final override def valuesUnsorted: Axn[Chain[V]] = {
+    repr.get.map { m =>
+      Chain.fromSeq(
+        m.foldLeft(Vector.newBuilder[V]) { (vb, kv) =>
+          vb.addOne(kv._2)
+        }.result()
+      )
+    }
+  }
+
+  final override def items: Axn[Chain[(K, V)]] = {
+    repr.get.map { m =>
+      Chain.fromSeq(
+        m.foldLeft(Vector.newBuilder[(K, V)]) { (vb, kv) =>
+          vb.addOne(kv)
+        }.result()
+      )
     }
   }
 

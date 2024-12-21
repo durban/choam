@@ -21,6 +21,7 @@ package data
 import scala.collection.immutable.{ Set => ScalaSet }
 
 import cats.kernel.{ Hash, Order }
+import cats.data.Chain
 import cats.effect.SyncIO
 
 import org.scalacheck.effect.PropF
@@ -36,16 +37,23 @@ final class MapSpec_SimpleOrdered_ThreadConfinedMcas_SyncIO
   with SpecThreadConfinedMcas
   with MapSpecSimpleOrdered[SyncIO]
 
-trait MapSpecSimpleHash[F[_]] extends MapSpec[F] { this: McasImplSpec =>
-
-  override type MyMap[K, V] = Map.Extra[K, V]
+trait MapSpecSimpleHash[F[_]] extends MapSpecSimple[F] { this: McasImplSpec =>
 
   def mkEmptyMap[K : Hash : Order, V]: F[Map.Extra[K, V]] =
     Map.simpleHashMap[K, V].run[F]
+}
 
-  // TODO: these should run for simpleOrderedMap too
+trait MapSpecSimpleOrdered[F[_]] extends MapSpecSimple[F] { this: McasImplSpec =>
 
-  test("Map.Extra should perform clear correctly") {
+  def mkEmptyMap[K : Hash : Order, V]: F[Map.Extra[K, V]] =
+    Map.simpleOrderedMap[K, V].run[F]
+}
+
+trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
+
+  override type MyMap[K, V] = Map.Extra[K, V]
+
+  test("Map.Extra should perform `clear` correctly") {
     for {
       m <- mkEmptyMap[Int, String]
       _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
@@ -61,7 +69,7 @@ trait MapSpecSimpleHash[F[_]] extends MapSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Map.Extra should perform values correctly") {
+  test("Map.Extra should perform `values` correctly") {
     for {
       m <- mkEmptyMap[Int, String]
       _ <- assertResultF(m.values.run[F], Vector.empty)
@@ -76,14 +84,54 @@ trait MapSpecSimpleHash[F[_]] extends MapSpec[F] { this: McasImplSpec =>
       _ <- assertEqualsF(v2, Vector("abc", "xyz"))
     } yield ()
   }
-}
 
-trait MapSpecSimpleOrdered[F[_]] extends MapSpec[F] { this: McasImplSpec =>
+  test("Map.Extra should perform `keys` correctly") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      _ <- assertResultF(m.keys.run[F], Chain.empty)
+      _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
+      _ <- (Rxn.pure(99 -> "bar") >>> m.put).run[F]
+      v1 <- m.keys.run[F]
+      _ <- assertEqualsF(v1.iterator.toSet, ScalaSet(42, 99))
+      _ <- (Rxn.pure(99 -> "xyz") >>> m.put).run[F]
+      _ <- (Rxn.pure(128 -> "abc") >>> m.put).run[F]
+      _ <- m.del[F](42)
+      v2 <- m.keys.run[F]
+      _ <- assertEqualsF(v2.iterator.toSet, ScalaSet(99, 128))
+    } yield ()
+  }
 
-  override type MyMap[K, V] = Map.Extra[K, V]
+  test("Map.Extra should perform `valuesUnsorted` correctly") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      _ <- assertResultF(m.valuesUnsorted.run[F], Chain.empty)
+      _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
+      _ <- (Rxn.pure(99 -> "bar") >>> m.put).run[F]
+      v1 <- m.valuesUnsorted.run[F]
+      _ <- assertEqualsF(v1.iterator.toSet, ScalaSet("bar", "foo"))
+      _ <- (Rxn.pure(99 -> "xyz") >>> m.put).run[F]
+      _ <- (Rxn.pure(128 -> "abc") >>> m.put).run[F]
+      _ <- m.del[F](42)
+      v2 <- m.valuesUnsorted.run[F]
+      _ <- assertEqualsF(v2.iterator.toSet, ScalaSet("abc", "xyz"))
+    } yield ()
+  }
 
-  def mkEmptyMap[K : Hash : Order, V]: F[Map.Extra[K, V]] =
-    Map.simpleOrderedMap[K, V].run[F]
+  test("Map.Extra should perform `items` correctly") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      _ <- assertResultF(m.items.run[F], Chain.empty)
+      _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
+      _ <- (Rxn.pure(99 -> "bar") >>> m.put).run[F]
+      v1 <- m.items.run[F]
+      _ <- assertEqualsF(v1.iterator.toSet, ScalaSet(42 -> "foo", 99 -> "bar"))
+      _ <- (Rxn.pure(99 -> "xyz") >>> m.put).run[F]
+      _ <- (Rxn.pure(128 -> "abc") >>> m.put).run[F]
+      _ <- m.del[F](42)
+      v2 <- m.items.run[F]
+      _ <- assertEqualsF(v2.iterator.toSet, ScalaSet(128 -> "abc", 99 -> "xyz"))
+    } yield ()
+  }
 }
 
 trait MapSpec[F[_]]

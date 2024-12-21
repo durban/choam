@@ -21,6 +21,7 @@ package data
 import scala.collection.immutable.{ Map => ScalaMap }
 
 import cats.kernel.{ Hash, Order }
+import cats.data.Chain
 import cats.collections.HashMap
 
 private final class SimpleMap[K, V] private (
@@ -95,6 +96,24 @@ private final class SimpleMap[K, V] private (
         b += it.next()
       }
       b.result().sortInPlace()(V.toOrdering).toVector
+    }
+  }
+
+  final override def keys: Axn[Chain[K]] = {
+    repr.get.map { hm =>
+      Chain.fromIterableOnce(hm.keysIterator)
+    }
+  }
+
+  final override def valuesUnsorted: Axn[Chain[V]] = {
+    repr.get.map { hm =>
+      Chain.fromIterableOnce(hm.valuesIterator)
+    }
+  }
+
+  final override def items: Axn[Chain[(K, V)]] = {
+    repr.get.map { hm =>
+      Chain.fromIterableOnce(hm.iterator)
     }
   }
 

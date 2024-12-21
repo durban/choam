@@ -19,6 +19,7 @@ package dev.tauri.choam
 package data
 
 import cats.kernel.{ Hash, Order }
+import cats.data.Chain
 import cats.effect.kernel.{ Ref => CatsRef }
 import cats.effect.std.MapRef
 
@@ -51,8 +52,19 @@ sealed trait Map[K, V] { self =>
 object Map extends MapPlatform {
 
   sealed trait Extra[K, V] extends Map[K, V] {
+
+    // TODO: type Snapshot
+    // TODO: def snapshot: Axn[Snapshot]
+
     def clear: Axn[Unit]
-    def values(implicit V: Order[V]): Axn[Vector[V]]
+
+    def values(implicit V: Order[V]): Axn[Vector[V]] // TODO:0.5: remove this
+
+    def keys: Axn[Chain[K]]
+
+    def valuesUnsorted: Axn[Chain[V]] // TODO:0.5: rename to `values`
+
+    def items: Axn[Chain[(K, V)]]
   }
 
   private[data] trait UnsealedMap[K, V] extends Map[K, V]
