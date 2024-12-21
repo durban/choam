@@ -76,12 +76,12 @@ final class RefSpec_Map_SimpleOrdered_SpinLockMcas_IO
 
 trait RefSpec_Map_TtrieHash[F[_]] extends RefSpec_Map_Ttrie[F] { this: McasImplSpec =>
   final override def newMap[K : Hash : Order, V]: F[MapType[K, V]] =
-    Ttrie[K, V].run[F]
+    Ttrie[K, V](Ref.AllocationStrategy.Default).run[F]
 }
 
 trait RefSpec_Map_TtrieOrder[F[_]] extends RefSpec_Map_Ttrie[F] { this: McasImplSpec =>
   final override def newMap[K : Hash : Order, V]: F[MapType[K, V]] =
-    Ttrie.skipListBased[K, V].run[F]
+    Ttrie.skipListBased[K, V](Ref.AllocationStrategy.Default).run[F]
 }
 
 trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>

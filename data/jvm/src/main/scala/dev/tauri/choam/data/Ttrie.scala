@@ -57,6 +57,7 @@ import Ttrie._
  */
 private final class Ttrie[K, V] private (
   m: CMap[K, Ref[V]],
+  str: Ref.AllocationStrategy,
 ) extends Map.UnsealedMap[K, V] { self =>
 
   /*
@@ -114,7 +115,7 @@ private final class Ttrie[K, V] private (
 
   private[this] final def getRefWithKey(k: K): Axn[Ref[V]] = {
     Axn.unsafe.suspendContext { ctx =>
-      val newRef = Ref.unsafePadded[V](Init[V], ctx.refIdGen) // TODO: do we really need padded?
+      val newRef = Ref.unsafe[V](Init[V], str, ctx.refIdGen)
       val ref = m.putIfAbsent(k, newRef) match {
         case Some(existingRef) =>
           existingRef
@@ -401,20 +402,20 @@ private object Ttrie {
     final override def needsCleanup = true
   }
 
-  def apply[K, V](implicit K: Hash[K]): Axn[Ttrie[K, V]] = {
+  def apply[K, V](str: Ref.AllocationStrategy)(implicit K: Hash[K]): Axn[Ttrie[K, V]] = {
     Axn.unsafe.delay {
       val m = new TrieMap[K, Ref[V]](
         hashf = { k => byteswap32(K.hash(k)) },
         ef = K.eqv(_, _),
       )
-      new Ttrie[K, V](m)
+      new Ttrie[K, V](m, str)
     }
   }
 
-  def skipListBased[K, V](implicit K: Order[K]): Axn[Ttrie[K, V]] = {
+  def skipListBased[K, V](str: Ref.AllocationStrategy)(implicit K: Order[K]): Axn[Ttrie[K, V]] = {
     Axn.unsafe.delay {
       val m = new SkipListMap[K, Ref[V]]()(K)
-      new Ttrie[K, V](m)
+      new Ttrie[K, V](m, str)
     }
   }
 }

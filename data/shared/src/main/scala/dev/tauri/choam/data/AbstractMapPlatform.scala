@@ -26,7 +26,9 @@ private abstract class AbstractMapPlatform {
   def simpleHashMap[K: Hash, V]: Axn[Map.Extra[K, V]]
   def simpleOrderedMap[K: Order, V]: Axn[Map.Extra[K, V]]
   def hashMap[K: Hash, V]: Axn[Map[K, V]]
+  def hashMap[K: Hash, V](str: Ref.AllocationStrategy): Axn[Map[K, V]]
   def orderedMap[K: Order, V]: Axn[Map[K, V]]
+  def orderedMap[K: Order, V](str: Ref.AllocationStrategy): Axn[Map[K, V]]
   private[data] final def unsafeGetSize[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]): F[Int] =
     F.monad.map(this.unsafeSnapshot(m))(_.size)
   private[data] def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]): F[ScalaMap[K, V]]

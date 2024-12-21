@@ -50,12 +50,12 @@ final class MapSpecPar_TtrieOrder_Emcas_IO
 
 trait MapSpecParTtrieHash[F[_]] extends MapSpecPar[F] { this: McasImplSpec =>
   def mkEmptyMap[K : Hash : Order, V]: F[Map[K, V]] =
-    Ttrie.apply[K, V].run[F].widen
+    Ttrie.apply[K, V](Ref.AllocationStrategy.Default).run[F].widen
 }
 
 trait MapSpecParTtrieOrder[F[_]] extends MapSpecPar[F] { this: McasImplSpec =>
   def mkEmptyMap[K : Hash : Order, V]: F[Map[K, V]] =
-    Ttrie.skipListBased[K, V].run[F].widen
+    Ttrie.skipListBased[K, V](Ref.AllocationStrategy.Default).run[F].widen
 }
 
 trait MapSpecPar[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { this: McasImplSpec =>

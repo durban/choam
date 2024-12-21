@@ -76,7 +76,7 @@ trait MapSpecTtrieHash[F[_]] extends MapSpec[F] { this: McasImplSpec =>
   override type MyMap[K, V] = Map[K, V]
 
   def mkEmptyMap[K : Hash : Order, V]: F[Map[K, V]] =
-    Ttrie.apply[K, V].run[F].widen
+    Ttrie.apply[K, V](Ref.AllocationStrategy.Default).run[F].widen
 }
 
 trait MapSpecTtrieOrder[F[_]] extends MapSpec[F] { this: McasImplSpec =>
@@ -84,5 +84,5 @@ trait MapSpecTtrieOrder[F[_]] extends MapSpec[F] { this: McasImplSpec =>
   override type MyMap[K, V] = Map[K, V]
 
   def mkEmptyMap[K : Hash : Order, V]: F[Map[K, V]] =
-    Ttrie.skipListBased[K, V].run[F].widen
+    Ttrie.skipListBased[K, V](Ref.AllocationStrategy.Default).run[F].widen
 }

@@ -70,6 +70,24 @@ private[refs] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] =>
 
 object Ref extends RefInstances0 {
 
+  final case class AllocationStrategy private (padded: Boolean) {
+
+    final def withPadded(padded: Boolean): AllocationStrategy =
+      this.copy(padded = padded)
+
+    final def toArrayAllocationStrategy: Array.AllocationStrategy =
+      Array.AllocationStrategy.Default.withPadded(padded = this.padded)
+  }
+
+  final object AllocationStrategy {
+
+    final val Default: AllocationStrategy =
+      AllocationStrategy(padded = false)
+
+    final def apply(padded: Boolean): AllocationStrategy =
+      new AllocationStrategy(padded = padded)
+  }
+
   sealed trait Array[A] {
 
     def size: Int
@@ -129,6 +147,9 @@ object Ref extends RefInstances0 {
 
       final def apply(sparse: Boolean, flat: Boolean, padded: Boolean): AllocationStrategy =
         new AllocationStrategy(sparse = sparse, flat = flat, padded = padded)
+
+      final def fromRefAllocationStrategy(ras: Ref.AllocationStrategy): AllocationStrategy =
+        ras.toArrayAllocationStrategy
     }
   }
 
@@ -163,6 +184,11 @@ object Ref extends RefInstances0 {
 
   private[choam] final def apply[A](initial: A): Axn[Ref[A]] =
     padded(initial)
+
+  final def apply[A](initial: A, str: Ref.AllocationStrategy): Axn[Ref[A]] = {
+    if (str.padded) padded(initial)
+    else unpadded(initial)
+  }
 
   // TODO: How to avoid allocating RefArrayRef objects?
   // TODO: Create getAndUpdate(idx: Int, f: A => A) methods.
@@ -330,6 +356,11 @@ object Ref extends RefInstances0 {
 
   private[choam] final def unsafe[A](initial: A): Ref[A] = // TODO: don't use this (except in tests)
     unsafePadded(initial)
+
+  private[choam] final def unsafe[A](initial: A, str: AllocationStrategy, rig: RefIdGen): Ref[A] = {
+    if (str.padded) unsafePadded(initial, rig)
+    else unsafeUnpadded(initial, rig)
+  }
 
   private[choam] final def unsafePadded[A](initial: A): Ref[A] =
     this.unsafePadded(initial, RefIdGen.global)

@@ -320,6 +320,10 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.Map#Extra.keys"), // sealed
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.Map#Extra.valuesUnsorted"), // sealed
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.Map#Extra.items"), // sealed
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.AbstractMapPlatform.hashMap"), //private
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.AbstractMapPlatform.orderedMap"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.Ttrie.skipListBased"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.Ttrie.apply"), // private
     ),
   )
 

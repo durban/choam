@@ -23,10 +23,16 @@ import cats.kernel.{ Hash, Order }
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
   final override def hashMap[K: Hash, V]: Axn[Map[K, V]] =
-    Ttrie.apply[K, V]
+    hashMap(Ref.AllocationStrategy.Default)
+
+  final override def hashMap[K: Hash, V](str: Ref.AllocationStrategy): Axn[Map[K, V]] =
+    Ttrie.apply[K, V](str)
 
   final override def orderedMap[K: Order, V]: Axn[Map[K, V]] =
-    Ttrie.skipListBased[K, V]
+    orderedMap(Ref.AllocationStrategy.Default)
+
+  final override def orderedMap[K: Order, V](str: Ref.AllocationStrategy): Axn[Map[K, V]] =
+    Ttrie.skipListBased[K, V](str)
 
   private[data] override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {
     m match {

@@ -27,5 +27,5 @@ import cats.kernel.Hash
 object MapHelper {
 
   def ttrie[K: Hash, V]: Axn[Map[K, V]] =
-    Ttrie.apply[K, V]
+    Ttrie.apply[K, V](Ref.AllocationStrategy.Default)
 }

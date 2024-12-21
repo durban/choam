@@ -26,8 +26,14 @@ private[data] abstract class MapPlatform extends AbstractMapPlatform {
   final override def hashMap[K: Hash, V]: Axn[Map[K, V]] =
     this.simpleHashMap[K, V]
 
+  final override def hashMap[K: Hash, V](str: Ref.AllocationStrategy): Axn[Map[K, V]] =
+    hashMap[K, V]
+
   final override def orderedMap[K: Order, V]: Axn[Map[K, V]] =
     this.simpleOrderedMap[K, V]
+
+  final override def orderedMap[K: Order, V](str: Ref.AllocationStrategy): Axn[Map[K, V]] =
+    orderedMap[K, V]
 
   private[data] override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {
     m match {
