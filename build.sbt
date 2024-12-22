@@ -193,6 +193,32 @@ ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.fla
     MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
   )
 }
+ThisBuild / githubWorkflowAddedJobs ~= { jobs =>
+  import org.typelevel.sbt.gha.{ Permissions, PermissionValue }
+  val (newJobs, ok) = jobs.foldLeft((List.empty[WorkflowJob], false)) { (st, job) =>
+    val (acc, ok) = st
+    if (job.id == "dependency-submission") {
+      (job.withPermissions(Some(Permissions.Specify(
+        actions = PermissionValue.None,
+        checks = PermissionValue.None,
+        contents = PermissionValue.Write,
+        deployments = PermissionValue.None,
+        idToken = PermissionValue.None,
+        issues = PermissionValue.None,
+        packages = PermissionValue.None,
+        pages = PermissionValue.None,
+        pullRequests = PermissionValue.None,
+        repositoryProjects = PermissionValue.None,
+        securityEvents = PermissionValue.None,
+        statuses = PermissionValue.None,
+      ))) :: acc, true)
+    } else {
+      (job :: acc, ok)
+    }
+  }
+  assert(ok)
+  newJobs
+}
 
 // ThisBuild / resolvers += Resolver.mavenLocal
 

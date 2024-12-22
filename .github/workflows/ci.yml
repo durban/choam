@@ -308,6 +308,19 @@ jobs:
         os: [ubuntu-latest]
         java: [temurin@11]
     runs-on: ${{ matrix.os }}
+    permissions:
+      actions: none
+      checks: none
+      contents: write
+      deployments: none
+      id-token: none
+      issues: none
+      packages: none
+      pages: none
+      pull-requests: none
+      repository-projects: none
+      security-events: none
+      statuses: none
     steps:
       - name: Install sbt
         uses: sbt/setup-sbt@v1
