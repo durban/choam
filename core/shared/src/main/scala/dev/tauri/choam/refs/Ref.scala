@@ -102,7 +102,7 @@ object Ref extends RefInstances0 {
 
   final object Array {
 
-    final case class AllocationStrategy private (
+    final case class AllocationStrategy private ( // TODO:0.5: could be a subtype of Ref.AllocationStrategy
       sparse: Boolean,
       flat: Boolean,
       padded: Boolean,
