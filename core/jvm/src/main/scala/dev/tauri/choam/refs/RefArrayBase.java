@@ -23,7 +23,7 @@ import java.lang.invoke.MethodHandles;
 import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.Version;
 
-abstract class RefArrayBase<A> extends RefIdOnly {
+abstract class RefArrayBase<A> extends RefIdOnlyN {
 
   private static final VarHandle ARRAY;
 

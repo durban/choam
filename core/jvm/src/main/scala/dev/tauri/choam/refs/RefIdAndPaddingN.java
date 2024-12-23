@@ -17,11 +17,11 @@
 
 package dev.tauri.choam.refs;
 
-abstract class RefIdAndPadding<A> extends Padding<A> {
+abstract class RefIdAndPaddingN extends PaddingN {
 
   private final long _id;
 
-  RefIdAndPadding(long i) {
+  RefIdAndPaddingN(long i) {
     this._id = i;
   }
 

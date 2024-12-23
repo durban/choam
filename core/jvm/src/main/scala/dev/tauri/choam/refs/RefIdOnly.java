@@ -17,7 +17,7 @@
 
 package dev.tauri.choam.refs;
 
-abstract class RefIdOnly extends RefToString {
+abstract class RefIdOnly<A> extends RefToString<A> {
 
   private final long _id;
 

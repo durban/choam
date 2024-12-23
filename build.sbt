@@ -18,6 +18,7 @@
 import com.typesafe.tools.mima.core.{
   ProblemFilters,
   MissingClassProblem,
+  MissingTypesProblem,
   DirectMissingMethodProblem,
   ReversedMissingMethodProblem,
   NewMixinForwarderProblem,
@@ -285,6 +286,14 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Rxn#InterpreterState.this"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Rxn#InterpreterState.interpretAsync"), // private
       ProblemFilters.exclude[NewMixinForwarderProblem]("dev.tauri.choam.refs.Ref.getAndSet"), // Ref is sealed
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.Rxn$Read"), // private
+      ProblemFilters.exclude[MissingTypesProblem]("dev.tauri.choam.refs.SparseRefArray"), // private
+      ProblemFilters.exclude[MissingTypesProblem]("dev.tauri.choam.refs.StrictRefArray"), // private
+    ),
+  ).jsSettings(
+    mimaBinaryIssueFilters ++= Seq(
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.refs.RefIdOnly"), // private
+      ProblemFilters.exclude[MissingTypesProblem]("dev.tauri.choam.refs.RefArray"), //private
     ),
   )
 

@@ -30,8 +30,7 @@ private[choam] trait Txn[F[_], +B] { // TODO: sealed
 
   private[core] def impl: Axn[B]
 
-  final def commit[X >: B](implicit F: Transactive[F]): F[X] =
-    F.commit(this)
+  def commit[X >: B](implicit F: Transactive[F]): F[X]
 }
 
 private[choam] object Txn {

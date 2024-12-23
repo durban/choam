@@ -25,7 +25,7 @@ import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.Version;
 
 abstract class RefP1P1Base<A, B>
-  extends RefIdAndPadding
+  extends RefIdAndPaddingN
   implements Ref2<A, B>, Ref2ImplBase<A, B> {
 
   private static final VarHandle VALUE_A;

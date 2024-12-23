@@ -15,9 +15,17 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam
-package refs
+package dev.tauri.choam.refs;
 
-private abstract class RefIdOnly private[refs] (
-  final val id: Long,
-) extends RefToString
+abstract class RefIdOnlyN extends RefToStringN {
+
+  private final long _id;
+
+  RefIdOnlyN(long i) {
+    this._id = i;
+  }
+
+  public final long id() {
+    return this._id;
+  }
+}

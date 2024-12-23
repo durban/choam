@@ -309,6 +309,10 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     this + that.impl // TODO: orElse/+ semantics
   }
 
+  final override def commit[X >: B](implicit F: Transactive[Rxn.Anything]): Rxn.Anything[X] = {
+    F.commit(this)
+  }
+
   private[choam] final def castF[F[_]]: Txn[F, B] =
     this.asInstanceOf[Txn[F, B]]
 
@@ -335,9 +339,17 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   // /STM
 }
 
+/** This is specifically only for `Ref` to use! */
+private[choam] abstract class RefGetAxn[B] extends Rxn[Any, B] {
+  private[core] final override def tag = 8
+}
+
+/** Bincompat stub */
+private[core] final abstract class Rxn$Anything // TODO:0.5: remove this
+
 object Rxn extends RxnInstances0 {
 
-  final abstract class Anything[A]
+  type Anything[A]
 
   private[this] final val interruptCheckPeriod =
     16384
@@ -420,9 +432,6 @@ object Rxn extends RxnInstances0 {
 
   private[choam] final object ref {
 
-    private[choam] final def get[A](r: Ref[A]): Axn[A] =
-      new Read(r.loc)
-
     private[choam] final def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
       new Upd(r.loc, f)
 
@@ -431,9 +440,6 @@ object Rxn extends RxnInstances0 {
   }
 
   private[choam] final object loc {
-
-    private[choam] final def get[A](r: MemoryLocation[A]): Axn[A] =
-      new Read(r)
 
     private[choam] final def upd[A, B, C](r: MemoryLocation[A])(f: (A, B) => (A, C)): Rxn[B, C] =
       new Upd(r, f)
@@ -571,10 +577,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Cas(${ref}, ${ov}, ${nv})"
   }
 
-  private final class Read[A](val ref: MemoryLocation[A]) extends Rxn[Any, A] {
-    private[core] final override def tag = 8
-    final override def toString: String = s"Read(${ref})"
-  }
+  // Note: tag = 8 is RefGetAxn
 
   private final class Upd[A, B, X](val ref: MemoryLocation[X], val f: (X, A) => (X, B)) extends Rxn[A, B] {
     private[core] final override def tag = 10
@@ -946,7 +949,7 @@ object Rxn extends RxnInstances0 {
 
     final override def entryAbsent(ref: MemoryLocation[Any], curr: Rxn[Any, Any]): LogEntry[Any] = {
       val res: LogEntry[Any] = curr match {
-        case _: Read[_] =>
+        case _: RefGetAxn[_] =>
           this.ctx.readIntoHwd(ref)
         case c: Upd[_, _, _] =>
           val hwd = this.ctx.readIntoHwd(c.ref)
@@ -961,7 +964,7 @@ object Rxn extends RxnInstances0 {
         case c: TicketWrite[_] =>
           c.hwd.withNv(c.newest).cast[Any]
         case _ =>
-          throw new AssertionError
+          throw new AssertionError(s"unexpected Rxn: ${curr.getClass}: $curr")
       }
       this._entryHolder = res // can be null
       res
@@ -970,7 +973,7 @@ object Rxn extends RxnInstances0 {
     final override def entryPresent(ref: MemoryLocation[Any], hwd: LogEntry[Any], curr: Rxn[Any, Any]): LogEntry[Any] = {
       assert(hwd ne null)
       val res: LogEntry[Any] = curr match {
-        case _: Read[_] =>
+        case _: RefGetAxn[_] =>
           hwd
         case c: Upd[_, _, _] =>
           val ox = hwd.nv
@@ -984,7 +987,7 @@ object Rxn extends RxnInstances0 {
           // NB: same version.
           hwd.tryMergeTicket(c.hwd.cast[Any], c.newest)
         case _ =>
-          throw new AssertionError
+          throw new AssertionError(s"unexpected Rxn: ${curr.getClass}: $curr")
       }
       this._entryHolder = res
       res
@@ -1447,10 +1450,10 @@ object Rxn extends RxnInstances0 {
               loop(retry())
             }
           }
-        case 8 => // Read
-          val c = curr.asInstanceOf[Read[Any]]
+        case 8 => // RefGetAxn
+          val ref = curr.asInstanceOf[MemoryLocation[Any] with Rxn[Any, Any]]
           assert(this._entryHolder eq null) // just to be sure
-          desc = desc.computeIfAbsent(c.ref, tok = c, visitor = this)
+          desc = desc.computeIfAbsent(ref, tok = ref, visitor = this)
           val hwd = this._entryHolder
           this._entryHolder = null // cleanup
           val hwd2 = revalidateIfNeeded(hwd)

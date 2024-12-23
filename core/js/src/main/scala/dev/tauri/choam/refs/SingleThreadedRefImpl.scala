@@ -25,7 +25,8 @@ import internal.mcas.{ MemoryLocation, Version }
 // This is JS:
 private final class SingleThreadedRefImpl[A](private[this] var value: A)(
   override val id: Long,
-) extends MemoryLocation[A]
+) extends core.RefGetAxn[A]
+  with MemoryLocation[A]
   with UnsealedRef[A] {
 
   final override def hashCode: Int = {

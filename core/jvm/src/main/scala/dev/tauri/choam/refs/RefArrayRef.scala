@@ -25,7 +25,7 @@ import internal.mcas.{ MemoryLocation, RefIdGen }
 private final class RefArrayRef[A](
   array: RefArrayBase[A],
   logicalIdx: Int,
-) extends UnsealedRef[A] with MemoryLocation[A] {
+) extends core.RefGetAxn[A] with UnsealedRef[A] with MemoryLocation[A] {
 
   final override val id: Long =
     RefIdGen.compute(array.idBase, logicalIdx)

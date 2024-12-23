@@ -15,17 +15,9 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.refs;
+package dev.tauri.choam
+package refs
 
-abstract class RefIdAndPadding<A> extends Padding<A> {
-
-  private final long _id;
-
-  RefIdAndPadding(long i) {
-    this._id = i;
-  }
-
-  public final long id() {
-    return this._id;
-  }
-}
+private abstract class RefIdOnlyN private[refs] (
+  final val id: Long,
+) extends RefToString

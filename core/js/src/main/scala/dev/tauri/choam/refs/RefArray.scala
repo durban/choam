@@ -26,7 +26,7 @@ import RefArray.RefArrayRef
 private abstract class RefArray[A](
   val size: Int,
   _idBase: Long,
-) extends RefIdOnly(_idBase)
+) extends RefIdOnlyN(_idBase)
   with Ref.UnsealedArray[A] {
 
   protected def items: Array[AnyRef]
@@ -135,7 +135,7 @@ private object RefArray {
   private[refs] final class RefArrayRef[A](
     array: RefArray[A],
     physicalIdx: Int,
-  ) extends UnsealedRef[A] with MemoryLocation[A] {
+  ) extends core.RefGetAxn[A] with UnsealedRef[A] with MemoryLocation[A] {
 
     final override def hashCode: Int =
       this.id.toInt

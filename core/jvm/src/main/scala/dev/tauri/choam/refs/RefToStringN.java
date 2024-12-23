@@ -17,15 +17,14 @@
 
 package dev.tauri.choam.refs;
 
-abstract class RefIdAndPadding<A> extends Padding<A> {
+import dev.tauri.choam.core.RefGetAxn;
 
-  private final long _id;
+abstract class RefToStringN {
 
-  RefIdAndPadding(long i) {
-    this._id = i;
-  }
+  protected abstract String refToString();
 
-  public final long id() {
-    return this._id;
+  @Override
+  public final String toString() {
+    return this.refToString();
   }
 }

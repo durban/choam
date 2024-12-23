@@ -23,7 +23,8 @@ import java.lang.ref.WeakReference
 import internal.mcas.MemoryLocation
 
 private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
-  extends UnsealedRef[A]
+  extends core.RefGetAxn[A]
+  with UnsealedRef[A]
   with MemoryLocation[A] {
 
   override def unsafeGetV(): A =
@@ -68,12 +69,16 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
   final override def hashCode: Int =
     this.id.toInt
 
+  final override def toString: String =
+    refStringFrom4Ids(this.id)
+
   final override def dummy(v: Byte): Long =
     self.dummyImpl1(v)
 }
 
 private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
-  extends UnsealedRef[B]
+  extends core.RefGetAxn[B]
+  with UnsealedRef[B]
   with MemoryLocation[B] {
 
   override def unsafeGetV(): B =
@@ -117,6 +122,9 @@ private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
 
   final override def hashCode: Int =
     this.id.toInt
+
+  final override def toString: String =
+    refStringFrom4Ids(this.id)
 
   override def dummy(v: Byte): Long =
     self.dummyImpl2(v)

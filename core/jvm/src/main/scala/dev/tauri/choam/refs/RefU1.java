@@ -25,7 +25,7 @@ import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.MemoryLocation;
 import dev.tauri.choam.internal.mcas.Version;
 
-final class RefU1<A> extends RefIdOnly implements UnsealedRef<A>, MemoryLocation<A> {
+final class RefU1<A> extends RefIdOnly<A> implements UnsealedRef<A>, MemoryLocation<A> {
 
   private static final VarHandle VALUE;
   private static final VarHandle VERSION;

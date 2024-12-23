@@ -17,7 +17,7 @@
 
 package dev.tauri.choam.refs;
 
-abstract class Padding<A> extends RefToString<A> {
+abstract class PaddingN extends RefToStringN {
 
   byte pad000;
   byte pad001;

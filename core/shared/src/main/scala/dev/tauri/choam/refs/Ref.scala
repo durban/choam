@@ -34,10 +34,10 @@ import CompatPlatform.AtomicReferenceArray
  * or [[cats.effect.kernel.Ref]], but its operations are [[Rxn]]s.
  * Thus, operations on a `Ref` are composable with other [[Rxn]]s.
  */
-sealed trait Ref[A] extends RefLike[A] { this: MemoryLocation[A] =>
+sealed trait Ref[A] extends RefLike[A] { this: MemoryLocation[A] with core.RefGetAxn[A] =>
 
   final override def get: Axn[A] =
-    Rxn.ref.get(this)
+    this
 
   // TODO: needs better name (it's like `modify`)
   final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
@@ -65,7 +65,7 @@ sealed trait Ref[A] extends RefLike[A] { this: MemoryLocation[A] =>
   private[choam] def dummy(v: Byte): Long
 }
 
-private[refs] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] =>
+private[refs] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] & core.RefGetAxn[A] =>
 }
 
 object Ref extends RefInstances0 {
@@ -153,7 +153,7 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[refs] trait UnsealedArray[A] extends Array[A] { this: RefIdOnly =>
+  private[refs] trait UnsealedArray[A] extends Array[A] { this: RefIdOnlyN =>
 
     protected[refs] final override def refToString(): String = {
       val idBase = this.id

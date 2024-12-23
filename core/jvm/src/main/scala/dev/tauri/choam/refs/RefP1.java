@@ -26,7 +26,7 @@ import dev.tauri.choam.internal.mcas.MemoryLocation;
 import dev.tauri.choam.internal.mcas.Version;
 
 final class RefP1<A>
-  extends RefIdAndPadding
+  extends RefIdAndPadding<A>
   implements UnsealedRef<A>, MemoryLocation<A> {
 
   private static final VarHandle VALUE;

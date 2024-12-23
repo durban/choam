@@ -24,7 +24,7 @@ import cats.effect.kernel.Async
 import internal.mcas.Mcas
 import core.RetryStrategy
 
-trait AsyncReactive[F[_]] extends Reactive[F] { self =>
+trait AsyncReactive[F[_]] extends Reactive[F] { self => // TODO:0.5: make it sealed
   def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B]
   def promise[A]: Axn[Promise[F, A]]
   def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[F, A]]

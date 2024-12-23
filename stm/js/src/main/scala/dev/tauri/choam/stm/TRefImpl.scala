@@ -27,7 +27,10 @@ import internal.mcas.{ Mcas, MemoryLocation, Consts }
 private final class TRefImpl[F[_], A](
   initial: A,
   final override val id: Long,
-) extends MemoryLocation[A] with MemoryLocation.WithListeners with TRef.UnsealedTRef[F, A] {
+) extends core.RefGetAxn[A]
+  with MemoryLocation[A]
+  with MemoryLocation.WithListeners
+  with TRef.UnsealedTRef[F, A] {
 
   private[this] var contents: A =
     initial
@@ -95,7 +98,7 @@ private final class TRefImpl[F[_], A](
     impossible("TRefImpl#unsafeCmpxchgMarkerR called on JS")
 
   final override def get: Txn[F, A] =
-    core.Rxn.loc.get(this).castF[F]
+    this.castF[F]
 
   final override def set(a: A): Txn[F, Unit] =
     core.Rxn.loc.upd[A, Unit, Unit](this) { (_, _) => (a, ()) }.castF[F]
@@ -109,6 +112,9 @@ private final class TRefImpl[F[_], A](
     // identity) is fine for us.
     this.id.toInt
   }
+
+  final override def toString: String =
+    "TRef@" + internal.mcas.refHashString(this.id)
 
   private[choam] final override def withListeners: this.type =
     this
