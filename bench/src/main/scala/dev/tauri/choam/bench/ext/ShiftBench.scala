@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom
 import org.openjdk.jmh.infra.Blackhole
 import org.openjdk.jmh.annotations._
 
-@Fork(2)
+@Fork(value = 2) //, jvmArgsAppend = Array("-XX:+UnlockDiagnosticVMOptions", "-XX:+PrintIntrinsics"))
 @Threads(1)
 class ShiftBench { // see HAMT
 
@@ -68,6 +68,26 @@ class ShiftBench { // see HAMT
     val mask = 0xFC00000000000000L >>> shift
     val sh = java.lang.Long.numberOfTrailingZeros(mask)
     ((n & mask) >>> sh).toInt
+  }
+
+  @Benchmark
+  def highestFirstExperimental(r: ShiftBench.St, bh: Blackhole): Unit = {
+    val arr = r.arr
+    var idx = 0
+    val len = arr.length
+    while (idx < len) {
+      val n = arr(idx)
+      var shift = 0
+      while (shift < 64) {
+        bh.consume(_highestFirstExperimental(n, shift))
+        shift += 1
+      }
+      idx += 1
+    }
+  }
+
+  private[this] final def _highestFirstExperimental(n: Long, shift: Int): Int = {
+    ((n << shift) >>> 58).toInt
   }
 }
 
