@@ -67,7 +67,8 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
       assertEquals(h.logicalIdx_public(n, shift = 42), ((n >>> 16) & 63L).toInt)
       assertEquals(h.logicalIdx_public(n, shift = 48), ((n >>> 10) & 63L).toInt)
       assertEquals(h.logicalIdx_public(n, shift = 54), ((n >>>  4) & 63L).toInt)
-      assertEquals(h.logicalIdx_public(n, shift = 60), ( n         & 15L).toInt) // this is the tricky one
+      // this is the tricky one, the last level:
+      assertEquals(h.logicalIdx_public(n, shift = 60), ( n         & 15L).toInt)
     }
 
     val prop1 = forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { (n: Long) =>

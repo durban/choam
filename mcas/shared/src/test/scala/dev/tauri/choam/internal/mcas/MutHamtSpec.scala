@@ -33,6 +33,19 @@ import org.scalacheck.Prop.forAll
 
 final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelpers {
 
+  /**
+   * The only reason for this nonsense is that dotty LTS
+   * apparently has no binary literal syntax (e.g., `0b1011`).
+   * So we made our own: `b"1011"`.
+   */
+  implicit private final class HomemadeBinaryLiteralSyntax(val sc: StringContext) {
+    final def b(args: Any*): Int = {
+      require(sc.parts.length == 1)
+      require(args.length == 0)
+      java.lang.Integer.parseInt(sc.parts(0), 2)
+    }
+  }
+
   import HamtSpec.{ Val, SpecVal, LongWr, hamtFromList, addAll }
   import MutHamtSpec.LongMutHamt
 
@@ -55,7 +68,8 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       assertEquals(h.logicalIdx_public(n, shift = 42), ((n >>> 16) & 63L).toInt)
       assertEquals(h.logicalIdx_public(n, shift = 48), ((n >>> 10) & 63L).toInt)
       assertEquals(h.logicalIdx_public(n, shift = 54), ((n >>>  4) & 63L).toInt)
-      assertEquals(h.logicalIdx_public(n, shift = 60), ( n         & 15L).toInt) // this is the tricky one
+      // this is the tricky one, the last level:
+      assertEquals(h.logicalIdx_public(n, shift = 60), ( n         & 15L).toInt)
     }
 
     val prop1 = forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { (n: Long) =>
@@ -71,16 +85,30 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
 
   test("necessarySize") {
     val h = LongMutHamt.newEmpty()
-    assertEquals(h.necessarySize_public(32, 0, shift = 0), 2)
-    assertEquals(h.necessarySize_public(63, 31, shift = 0), 2)
-    assertEquals(h.necessarySize_public(16, 0, shift = 0), 4)
-    assertEquals(h.necessarySize_public(31, 15, shift = 0), 4)
-    assertEquals(h.necessarySize_public(0, 1, shift = 0), 64)
-    assertEquals(h.necessarySize_public(0, 1, shift = 6), 64)
-    assertEquals(h.necessarySize_public(0, 1, shift = 12), 64)
-    assertEquals(h.necessarySize_public(0, 1, shift = 54), 64)
-    assertEquals(h.necessarySize_public(0, 1, shift = 60), 16)
-    assertEquals(h.necessarySize_public(54, 55, shift = 0), 64)
+    assertEquals(h.necessarySize_public(b"100000", b"000000", shift = 0), 2)
+    assertEquals(h.necessarySize_public(b"111111", b"011111", shift = 0), 2)
+    assertEquals(h.necessarySize_public(b"010000", b"000000", shift = 0), 4)
+    assertEquals(h.necessarySize_public(b"011111", b"001111", shift = 0), 4)
+    assertEquals(h.necessarySize_public(b"000111", b"001110", shift = 0), 8)
+    assertEquals(h.necessarySize_public(b"000011", b"000110", shift = 0), 16)
+    assertEquals(h.necessarySize_public(b"000011", b"000001", shift = 0), 32)
+    assertEquals(h.necessarySize_public(b"000000", b"000001", shift = 0), 64)
+    assertEquals(h.necessarySize_public(b"110110", b"110111", shift = 0), 64)
+    assertEquals(h.necessarySize_public(b"100010", b"000001", shift = 6), 2)
+    assertEquals(h.necessarySize_public(b"000000", b"000001", shift = 6), 64)
+    assertEquals(h.necessarySize_public(b"100100", b"100101", shift = 6), 64)
+    assertEquals(h.necessarySize_public(b"100010", b"000001", shift = 12), 2)
+    assertEquals(h.necessarySize_public(b"000000", b"000001", shift = 12), 64)
+    assertEquals(h.necessarySize_public(b"100010", b"000001", shift = 54), 2)
+    assertEquals(h.necessarySize_public(b"000000", b"000001", shift = 54), 64)
+    // the last level (hash width is 4 bits, so max. size is 16):
+    assertEquals(h.necessarySize_public(b"001000", b"000000", shift = 60), 2)
+    assertEquals(h.necessarySize_public(b"001000", b"001100", shift = 60), 4)
+    assertEquals(h.necessarySize_public(b"001110", b"001100", shift = 60), 8)
+    assertEquals(h.necessarySize_public(b"000000", b"000001", shift = 60), 16)
+    // these never actually occur (and the results are invalid):
+    assertEquals(h.necessarySize_public(b"100000", b"000000", shift = 60), Int.MinValue)
+    assertEquals(h.necessarySize_public(b"100000", b"110000", shift = 60), 1)
   }
 
   test("physicalIdx") {
