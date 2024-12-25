@@ -47,4 +47,24 @@ class PackBench { // see HAMT
     if (isBlue) size
     else -size
   }
+
+  @Benchmark
+  def packSizeDiffAndBlue(r: RandomState): Int = {
+    MutHamt_packSizeDiffAndBlue(r.nextIntBounded(2), r.nextBoolean())
+  }
+
+  private[this] final def MutHamt_packSizeDiffAndBlue(sizeDiff: Int, isBlue: Boolean): Int = {
+    val bl = java.lang.Math.abs(java.lang.Boolean.compare(isBlue, false)) << 1
+    bl | sizeDiff
+  }
+
+  @Benchmark
+  def packSizeDiffAndBlueExperimental(r: RandomState): Int = {
+    packSizeDiffAndBlueExperimental(r.nextIntBounded(2), r.nextBoolean())
+  }
+
+  private[this] final def packSizeDiffAndBlueExperimental(sizeDiff: Int, isBlue: Boolean): Int = {
+    val bl = if (isBlue) 2 else 0
+    bl | sizeDiff
+  }
 }
