@@ -446,6 +446,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
 
   /** Index into the imaginary 64-element sparse array */
   private[this] final def logicalIdx(hash: Long, shift: Int): Int = {
+    // Note: this logic is duplicated in `Hamt` and `MemoryLocationOrdering`.
     val mask = START_MASK >>> shift // masks the bits we're interested in
     val sh = java.lang.Long.numberOfTrailingZeros(mask) // we'll shift the masked result
     ((hash & mask) >>> sh).toInt

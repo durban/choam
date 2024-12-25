@@ -31,12 +31,12 @@ private final class MemoryLocationOrdering[A]
   /**
    * We don't really care HOW the `MemoryLocation`s are
    * ordered; we just need a total global order. So we
-   * order them the way they're naturally in the `Hamt`.
+   * order them the way they're naturally in the `Hamt`
+   * or `MutHamt`.
    */
   private[this] final def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
     // We're essentially reimplementing here
-    // how `Hamt` compares hashes:
-    val W = 6
+    // how `Hamt`/`MutHamt` compares hashes:
     val ah = a.id
     val bh = b.id
 
@@ -46,7 +46,7 @@ private final class MemoryLocationOrdering[A]
       if (r != 0) {
         r
       } else {
-        go(shift + W)
+        go(shift + 6)
       }
     }
 

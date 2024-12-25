@@ -401,14 +401,14 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
 
   /** Index into the imaginary 64-element sparse array */
   private[this] final def logicalIdx(hash: Long, shift: Int): Int = {
-    // Note: this logic is duplicated in `MemoryLocationOrdering`.
+    // Note: this logic is duplicated in `MutHamt` and `MemoryLocationOrdering`.
     val mask = START_MASK >>> shift // masks the bits we're interested in
     val sh = java.lang.Long.numberOfTrailingZeros(mask) // we'll shift the masked result
     // we do it this way, because at the end, when `shift` is 60,
     // we don't actually need to shift (i.e., `sh` will be 0),
     // because we just need the 4 lowest bits
     ((hash & mask) >>> sh).toInt
-    // TODO: It it measurably slower this way, than
+    // TODO: It is measurably slower this way, than
     // TODO: just using the lowest bits first (see
     // TODO: `ShiftBench`). We should check if it
     // TODO: really matters.
