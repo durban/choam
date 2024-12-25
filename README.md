@@ -213,7 +213,8 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - `choam-profiler`
   - `choam-docs`
   - (and all unpublished modules)
-- There is no backwards compatibility for "hash" versions (e.g., `0.4-39d987a`; these are not even SemVer compatible).
+- There is no backwards compatibility for "hash" versions (e.g., `0.4-39d987a` or `0.4.3-2-39d987a`;
+  these are not even SemVer compatible).
 
 ### Supported platforms:
 

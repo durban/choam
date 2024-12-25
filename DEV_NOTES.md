@@ -36,7 +36,7 @@ These are the "regular" versions, e.g., `0.4.0` or `0.4.0-RC1`.
 
 ## Release process for "hash" versions
 
-These are "preview" versions, e.g., `0.4-39d987a`.
+These are "preview" versions, e.g., `0.4-39d987a` or `0.4.3-2-39d987a`.
 
 1. Commit every change.
 1. Make sure there are no untracked files in git.
