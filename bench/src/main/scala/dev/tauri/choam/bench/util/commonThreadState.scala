@@ -37,23 +37,26 @@ class RandomState {
   protected def mkXorShift(): XorShift =
     XorShift()
 
-  def nextInt(): Int =
+  final def nextInt(): Int =
     rnd.nextInt()
 
-  def nextIntBounded(bound: Int): Int =
+  final def nextIntBounded(bound: Int): Int =
     remainderUnsigned(rnd.nextInt(), bound)
 
-  def nextLong(): Long =
+  final def nextLong(): Long =
     rnd.nextLong()
 
-  def nextString(): String =
+  final def nextString(): String =
     rnd.nextLong().abs.toString
 
+  final def nextBoolean(): Boolean =
+    (this.nextInt() % 2) == 0
+
   final def nextBooleanIO: IO[Boolean] =
-    IO { (this.nextInt() % 2) == 0 }
+    IO { this.nextBoolean() }
 
   final def nextBooleanZIO: zio.Task[Boolean] =
-    zio.ZIO.attempt { (this.nextInt() % 2) == 0 }
+    zio.ZIO.attempt { this.nextBoolean() }
 }
 
 @State(Scope.Thread)
