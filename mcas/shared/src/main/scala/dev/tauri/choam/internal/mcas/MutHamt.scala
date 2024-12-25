@@ -62,6 +62,10 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
     this.logIdx *= (x << 1) + 1
   }
 
+  private[mcas] final def setIsBlueTree_public(isBlue: Boolean): Unit = {
+    this.isBlueTree = isBlue
+  }
+
   // API (should only be called on a root node!):
 
   final override def size: Int = {

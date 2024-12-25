@@ -786,6 +786,7 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       val rng = new Random(seed)
       val h = mutHamtFromList(rng.shuffle(nums.toList))
       val oldSize = h.size
+      h.setIsBlueTree_public(rng.nextBoolean())
       val oldIsBlue = h.definitelyBlue
       val diff = _diff match {
         case java.lang.Integer.MIN_VALUE =>
@@ -806,6 +807,42 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       assertEquals(h.size, java.lang.Math.addExact(oldSize, diff))
       assertEquals(oldIsBlue, h.definitelyBlue)
     }
+  }
+
+  test("addToSize overflow".ignore) { // TODO: expected falilure
+    val h = mutHamtFromList(Nil)
+    assertEquals(h.size, 0)
+    // val isBlue = ThreadLocalRandom.current().nextBoolean()
+    // h.setIsBlueTree_public(isBlue)
+    assertEquals(h.size, 0)
+    assertEquals(h.definitelyBlue, true)
+    h.addToSize_public(Integer.MAX_VALUE - 1)
+    assertEquals(h.size, Integer.MAX_VALUE - 1)
+    assertEquals(h.definitelyBlue, true)
+    val isBlue2 = ThreadLocalRandom.current().nextBoolean()
+    h.setIsBlueTree_public(isBlue2)
+    try {
+      h.addToSize_public(2)
+      fail("expected an ArithmeticException")
+    } catch {
+      case _: ArithmeticException => // ok
+    }
+    assertEquals(h.size, Integer.MAX_VALUE - 1)
+    assertEquals(h.definitelyBlue, isBlue2)
+    h.addToSize_public(1)
+    assertEquals(h.size, Integer.MAX_VALUE)
+    assertEquals(h.definitelyBlue, isBlue2)
+    try {
+      h.addToSize_public(1)
+      fail("expected an ArithmeticException")
+    } catch {
+      case _: ArithmeticException => // ok
+    }
+    assertEquals(h.size, Integer.MAX_VALUE)
+    assertEquals(h.definitelyBlue, isBlue2)
+    h.addToSize_public(0)
+    assertEquals(h.size, Integer.MAX_VALUE)
+    assertEquals(h.definitelyBlue, isBlue2)
   }
 
   property("repro") {
