@@ -50,10 +50,8 @@ private final class MemoryLocationOrdering[A]
       }
     }
 
-    def logicalIdx(n: Long, shift: Int): Int = {
-      val mask = 0xFC00000000000000L >>> shift
-      val sh = java.lang.Long.numberOfTrailingZeros(mask)
-      ((n & mask) >>> sh).toInt
+    def logicalIdx(hash: Long, shift: Int): Int = {
+      ((hash << shift) >>> 58).toInt
     }
 
     if (a eq b) {

@@ -86,20 +86,6 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
   private val contents: Array[AnyRef],
 ) extends AbstractHamt[K, V, E, T1, T2, H] { this: H =>
 
-  /**
-   * The highest 6 bits set; we start masking
-   * the hash with this, and go to lower bits
-   * as we go down in the tree.
-   *
-   * We use the highest 6 bits first, and
-   * lower ones later, because for a
-   * multiplicative hash (like the Fibonacci
-   * we're using to generate IDs) the low
-   * bits are the "worst quality" ones (see
-   * https://stackoverflow.com/a/11872511).
-   */
-  private[this] final val START_MASK = 0xFC00000000000000L
-
   /** 6 bits for indexing a 64-element array */
   private[this] final val W = 6
 
@@ -402,16 +388,16 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
   /** Index into the imaginary 64-element sparse array */
   private[this] final def logicalIdx(hash: Long, shift: Int): Int = {
     // Note: this logic is duplicated in `MutHamt` and `MemoryLocationOrdering`.
-    val mask = START_MASK >>> shift // masks the bits we're interested in
-    val sh = java.lang.Long.numberOfTrailingZeros(mask) // we'll shift the masked result
-    // we do it this way, because at the end, when `shift` is 60,
-    // we don't actually need to shift (i.e., `sh` will be 0),
-    // because we just need the 4 lowest bits
-    ((hash & mask) >>> sh).toInt
-    // TODO: It is measurably slower this way, than
-    // TODO: just using the lowest bits first (see
-    // TODO: `ShiftBench`). We should check if it
-    // TODO: really matters.
+    // We use the highest 6 bits of the hash first (on the 1st level), and
+    // lower ones later, because for a multiplicative hash (like the Fibonacci
+    // we're using to generate IDs) the low bits are the "worst quality" ones
+    // (see https://stackoverflow.com/a/11872511).
+    // Note: `shift` is 0, 6, 12, ..., 60; at the last level (shift = 60)
+    // this will cause the least significant 2 bits of `logicalIndex` to
+    // always be 0 (i.e., it will be like `0bXXXX00`). But we account for
+    // that when necessary (`MutHamt`). It's not worth making it like `0bXXXX`;
+    // this way it's less complex and faster too.
+    ((hash << shift) >>> 58).toInt
   }
 
   /** For testing only! */

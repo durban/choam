@@ -35,8 +35,6 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
 
   require(contents.length > 0)
 
-  private[this] final val START_MASK = 0xFC00000000000000L
-
   private[this] final val W = 6
 
   private[this] final val OP_UPDATE = 0
@@ -186,7 +184,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
     val contents = this.contents
     val logIdx = logicalIdx(hash, shift)
     val size = contents.length // always a power of 2
-    val physIdx = physicalIdx(logIdx, size, shift = shift)
+    val physIdx = physicalIdx(logIdx, size)
     contents(physIdx)
   }
 
@@ -228,7 +226,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
               case null =>
                 packSizeDiffAndBlue(0, true)
               case newVal =>
-                this.growLevel(newSize = necessarySize(logIdx, nodeLogIdx, shift = shift), shift = shift)
+                this.growLevel(newSize = necessarySize(logIdx, nodeLogIdx), shift = shift)
                 // now we can insert the new value:
                 this.visit(k, hash, tok, visitor, newValue = newVal, modify = modify, shift = shift)
             }
@@ -279,7 +277,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
                 case null =>
                   packSizeDiffAndBlue(0, true)
                 case newVal =>
-                  this.growLevel(newSize = necessarySize(logIdx, logIdxA, shift = shift), shift = shift)
+                  this.growLevel(newSize = necessarySize(logIdx, logIdxA), shift = shift)
                   this.visit(k, hash, tok, visitor, newValue = newVal, modify = modify, shift = shift)
               }
             } else {
@@ -295,7 +293,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
     val contents = this.contents
     val logIdx = logicalIdx(hash, shift)
     val size = contents.length // always a power of 2
-    val physIdx = physicalIdx(logIdx, size, shift = shift)
+    val physIdx = physicalIdx(logIdx, size)
     contents(physIdx) match {
       case null =>
         if (op == OP_UPDATE) {
@@ -317,7 +315,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
             throw new IllegalArgumentException
           } else {
             // we need to grow this level:
-            this.growLevel(newSize = necessarySize(logIdx, nodeLogIdx, shift = shift), shift = shift)
+            this.growLevel(newSize = necessarySize(logIdx, nodeLogIdx), shift = shift)
             // now we'll suceed for sure:
             this.insertOrOverwrite(hash, value, shift, op)
           }
@@ -341,7 +339,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
             val childShift = shift + W
             val childNode = {
               val cArr = new Array[AnyRef](2) // NB: 2 instead of 1
-              cArr(physicalIdx(logicalIdx(oh, childShift), size = 2, shift = childShift)) = ov
+              cArr(physicalIdx(logicalIdx(oh, childShift), size = 2)) = ov
               this.newNode(logIdx, cArr)
             }
             val r = childNode.insertOrOverwrite(hash, value, shift = childShift, op = op)
@@ -355,7 +353,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
               throw new IllegalArgumentException
             } else {
               // grow this level:
-              this.growLevel(newSize = necessarySize(logIdx, oLogIdx, shift = shift), shift = shift)
+              this.growLevel(newSize = necessarySize(logIdx, oLogIdx), shift = shift)
               // now we'll suceed for sure:
               this.insertOrOverwrite(hash, value, shift, op)
             }
@@ -377,11 +375,11 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
           ()
         case node: MutHamt[_, _, _, _, _, _, _] =>
           val logIdx = node.logIdx
-          val newPhysIdx = physicalIdx(logIdx, newSize, shift = shift)
+          val newPhysIdx = physicalIdx(logIdx, newSize)
           newContents(newPhysIdx) = node
         case value =>
           val logIdx = logicalIdx(value.asInstanceOf[V].key.hash, shift)
-          val newPhysIdx = physicalIdx(logIdx, newSize, shift = shift)
+          val newPhysIdx = physicalIdx(logIdx, newSize)
           newContents(newPhysIdx) = value
       }
       idx += 1
@@ -432,44 +430,51 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
     this.newImmutableNode(sizeAndBlue = packSizeAndBlue(size, isBlueSubtree), bitmap = bitmap, contents = arr)
   }
 
-  private[this] final def necessarySize(logIdx1: Int, logIdx2: Int, shift: Int): Int = {
+  /**
+   * The size if the array we'll need to store both logical indices
+   * (considering bit collisions starting from the MSB).
+   */
+  private[this] final def necessarySize(logIdx1: Int, logIdx2: Int): Int = {
     assert(logIdx1 != logIdx2)
     val diff = logIdx1 ^ logIdx2
-    val necessaryBits = java.lang.Integer.numberOfLeadingZeros(diff) - (32 - logIdxWidth(shift)) + 1
+    val necessaryBits = (
+      java.lang.Integer.numberOfLeadingZeros(diff) - // this many bits are the same on the left
+      (32 - 6) + // but we actually have 6-bit integers here instead of 32
+      1 // and we never have a 1-element array (we start from 2 and always double when growing)
+    )
     assert(necessaryBits <= W)
-    1 << necessaryBits
+    1 << necessaryBits // the size of the array which is addressable by this many bits
   }
 
-  private[mcas] final def necessarySize_public(logIdx1: Int, logIdx2: Int, shift: Int): Int = {
-    this.necessarySize(logIdx1, logIdx2, shift = shift)
+  private[mcas] final def necessarySize_public(logIdx1: Int, logIdx2: Int): Int = {
+    this.necessarySize(logIdx1, logIdx2)
   }
 
   /** Index into the imaginary 64-element sparse array */
   private[this] final def logicalIdx(hash: Long, shift: Int): Int = {
     // Note: this logic is duplicated in `Hamt` and `MemoryLocationOrdering`.
-    val mask = START_MASK >>> shift // masks the bits we're interested in
-    val sh = java.lang.Long.numberOfTrailingZeros(mask) // we'll shift the masked result
-    ((hash & mask) >>> sh).toInt
+    ((hash << shift) >>> 58).toInt
   }
 
   private[mcas] final def logicalIdx_public(hash: Long, shift: Int): Int = {
     logicalIdx(hash, shift)
   }
 
-  @inline
-  private[this] final def logIdxWidth(shift: Int): Int = {
-    java.lang.Long.bitCount(START_MASK >>> shift)
+  private[this] final def physicalIdx(logIdx: Int, size: Int): Int = {
+    // size is always a power of 2; we need this many bits to
+    // address a `size`-element array (i.e., the `width` of the
+    // effective part of `logIdx`):
+    val width = java.lang.Integer.numberOfTrailingZeros(size)
+    // and we use as much of the higher bits of the 6-bit
+    // integer as possible (see comment in Hamt#logicalIdx):
+    logIdx >>> (6 - width)
+    // Note, that at the last level, the LSB of `logIdx` is always
+    // 2 zero bits. Here we naturally account for this fact (by
+    // using `numberOfTrailingZeros` above).
   }
 
-  private[this] final def physicalIdx(logIdx: Int, size: Int, shift: Int): Int = {
-    val width = java.lang.Integer.numberOfTrailingZeros(size) // size is always a power of 2
-    val logIdxW = logIdxWidth(shift)
-    val sh = logIdxW - width
-    logIdx >>> sh
-  }
-
-  private[mcas] final def physicalIdx_public(logIdx: Int, size: Int, shift: Int): Int = {
-    physicalIdx(logIdx, size, shift = shift)
+  private[mcas] final def physicalIdx_public(logIdx: Int, size: Int): Int = {
+    physicalIdx(logIdx, size)
   }
 
   private[this] final def packSizeDiffAndBlue(sizeDiff: Int, isBlue: Boolean): Int = {

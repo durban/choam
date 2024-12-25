@@ -57,18 +57,18 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     val h = LongHamt.empty
 
     def testLogicalIdx(n: Long): Unit = {
-      assertEquals(h.logicalIdx_public(n, shift =  0), ( n >>> 58       ).toInt)
-      assertEquals(h.logicalIdx_public(n, shift =  6), ((n >>> 52) & 63L).toInt)
-      assertEquals(h.logicalIdx_public(n, shift = 12), ((n >>> 46) & 63L).toInt)
-      assertEquals(h.logicalIdx_public(n, shift = 18), ((n >>> 40) & 63L).toInt)
-      assertEquals(h.logicalIdx_public(n, shift = 24), ((n >>> 34) & 63L).toInt)
-      assertEquals(h.logicalIdx_public(n, shift = 30), ((n >>> 28) & 63L).toInt)
-      assertEquals(h.logicalIdx_public(n, shift = 36), ((n >>> 22) & 63L).toInt)
-      assertEquals(h.logicalIdx_public(n, shift = 42), ((n >>> 16) & 63L).toInt)
-      assertEquals(h.logicalIdx_public(n, shift = 48), ((n >>> 10) & 63L).toInt)
-      assertEquals(h.logicalIdx_public(n, shift = 54), ((n >>>  4) & 63L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift =  0), ( n >>> 58             ).toInt)
+      assertEquals(h.logicalIdx_public(n, shift =  6), ((n >>> 52) & 63L      ).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 12), ((n >>> 46) & 63L      ).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 18), ((n >>> 40) & 63L      ).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 24), ((n >>> 34) & 63L      ).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 30), ((n >>> 28) & 63L      ).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 36), ((n >>> 22) & 63L      ).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 42), ((n >>> 16) & 63L      ).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 48), ((n >>> 10) & 63L      ).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 54), ((n >>>  4) & 63L      ).toInt)
       // this is the tricky one, the last level:
-      assertEquals(h.logicalIdx_public(n, shift = 60), ( n         & 15L).toInt)
+      assertEquals(h.logicalIdx_public(n, shift = 60), ((n         & 15L) << 2).toInt)
     }
 
     val prop1 = forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { (n: Long) =>
