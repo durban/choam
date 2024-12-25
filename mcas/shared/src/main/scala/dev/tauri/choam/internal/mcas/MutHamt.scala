@@ -479,7 +479,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
 
   private[this] final def packSizeDiffAndBlue(sizeDiff: Int, isBlue: Boolean): Int = {
     assert((sizeDiff == 0) || (sizeDiff == 1))
-    val bl = java.lang.Math.abs(java.lang.Boolean.compare(isBlue, false)) << 1
+    val bl = if (isBlue) 2 else 0
     bl | sizeDiff
   }
 
