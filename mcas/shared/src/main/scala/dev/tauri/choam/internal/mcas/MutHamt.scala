@@ -54,12 +54,13 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
   }
 
   protected final def isBlueTree: Boolean = {
-    this.logIdx >= 0
+    this.logIdx < 0
   }
 
   private[this] final def isBlueTree_=(isBlue: Boolean): Unit = {
-    val x = (-1) * java.lang.Math.abs(java.lang.Boolean.compare(isBlue, this.isBlueTree))
-    this.logIdx *= (x << 1) + 1
+    val logIdx = this.logIdx
+    val bit = if (isBlue) 0x80000000 else 0x0
+    this.logIdx = (logIdx & 0x7fffffff) | bit
   }
 
   private[mcas] final def setIsBlueTree_public(isBlue: Boolean): Unit = {
@@ -70,13 +71,14 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
 
   final override def size: Int = {
     // we abuse the `logIdx` of the root to store the size of the whole tree:
-    java.lang.Math.abs(this.logIdx)
+    this.logIdx & 0x7fffffff
   }
 
   private[this] final def addToSize(s: Int): Unit = {
     val logIdx = this.logIdx
-    val x = -(logIdx >>> 31)
-    this.logIdx = java.lang.Math.addExact(logIdx, ((x << 1) + 1) * s)
+    val newSize = java.lang.Math.addExact(logIdx & 0x7fffffff, s)
+    val bit = logIdx & 0x80000000
+    this.logIdx = newSize | bit
   }
 
   private[mcas] final def addToSize_public(s: Int): Unit = {

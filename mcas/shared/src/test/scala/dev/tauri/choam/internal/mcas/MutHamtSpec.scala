@@ -809,16 +809,16 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     }
   }
 
-  test("addToSize overflow".ignore) { // TODO: expected falilure
+  test("addToSize overflow") { // TODO: make this a property test
     val h = mutHamtFromList(Nil)
     assertEquals(h.size, 0)
-    // val isBlue = ThreadLocalRandom.current().nextBoolean()
-    // h.setIsBlueTree_public(isBlue)
+    val isBlue = ThreadLocalRandom.current().nextBoolean()
+    h.setIsBlueTree_public(isBlue)
     assertEquals(h.size, 0)
-    assertEquals(h.definitelyBlue, true)
+    assertEquals(h.definitelyBlue, isBlue)
     h.addToSize_public(Integer.MAX_VALUE - 1)
     assertEquals(h.size, Integer.MAX_VALUE - 1)
-    assertEquals(h.definitelyBlue, true)
+    assertEquals(h.definitelyBlue, isBlue)
     val isBlue2 = ThreadLocalRandom.current().nextBoolean()
     h.setIsBlueTree_public(isBlue2)
     try {
@@ -875,7 +875,7 @@ object MutHamtSpec {
 
   import HamtSpec.{ Val, LongWr, LongHamt }
 
-  final class LongMutHamt(
+  final class LongMutHamt private (
     logIdx: Int,
     contents: Array[AnyRef],
   ) extends MutHamt[LongWr, Val, Val, Unit, Long, LongHamt, LongMutHamt](logIdx, contents) {
@@ -912,7 +912,7 @@ object MutHamtSpec {
 
   final object LongMutHamt {
     def newEmpty(): LongMutHamt = {
-      new LongMutHamt(logIdx = 0, contents = new Array[AnyRef](1))
+      new LongMutHamt(logIdx = 0x80000000, contents = new Array[AnyRef](1))
     }
   }
 }
