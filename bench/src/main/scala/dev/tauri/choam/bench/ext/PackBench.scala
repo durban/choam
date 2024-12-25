@@ -20,6 +20,7 @@ package bench
 package ext
 
 import org.openjdk.jmh.annotations._
+import org.openjdk.jmh.infra.Blackhole
 
 import util.RandomState
 
@@ -66,5 +67,96 @@ class PackBench { // see HAMT
   private[this] final def packSizeDiffAndBlueExperimental(sizeDiff: Int, isBlue: Boolean): Int = {
     val bl = if (isBlue) 2 else 0
     bl | sizeDiff
+  }
+
+  @Benchmark
+  def mutHamtRootSize(s: PackBench.StRoot, r: RandomState): Unit = {
+    val sz = s.size
+    val d = if (sz > 16777215) {
+      -16777215
+    } else {
+      r.nextInt() % 7
+    }
+    s.addToSize(d)
+  }
+
+  @Benchmark
+  def mutHamtRootIsBlueTree(s: PackBench.StRoot, r: RandomState, bh: Blackhole): Unit = {
+    bh.consume(s.isBlueTree)
+    s.isBlueTree = r.nextBoolean()
+  }
+
+  @Benchmark
+  def mutHamtRootSizeExperimental(s: PackBench.StRootExperimental, r: RandomState): Unit = {
+    val sz = s.size
+    val d = if (sz > 16777215) {
+      -16777215
+    } else {
+      r.nextInt() % 7
+    }
+    s.addToSize(d)
+  }
+
+  @Benchmark
+  def mutHamtRootIsBlueTreeExperimental(s: PackBench.StRootExperimental, r: RandomState, bh: Blackhole): Unit = {
+    bh.consume(s.isBlueTree)
+    s.isBlueTree = r.nextBoolean()
+  }
+}
+
+object PackBench {
+
+  @State(Scope.Thread)
+  class StRoot {
+
+    private var logIdx: Int =
+      0
+
+    final def size: Int = {
+      java.lang.Math.abs(this.logIdx)
+    }
+
+    final def addToSize(s: Int): Unit = {
+      val logIdx = this.logIdx
+      val x = -(logIdx >>> 31)
+      this.logIdx = java.lang.Math.addExact(logIdx, ((x << 1) + 1) * s)
+    }
+
+    final def isBlueTree: Boolean = {
+      this.logIdx >= 0
+    }
+
+    final def isBlueTree_=(isBlue: Boolean): Unit = {
+      val x = (-1) * java.lang.Math.abs(java.lang.Boolean.compare(isBlue, this.isBlueTree))
+      this.logIdx *= (x << 1) + 1
+    }
+  }
+
+  @State(Scope.Thread)
+  class StRootExperimental {
+
+    private var logIdx: Int =
+      0
+
+    final def size: Int = {
+      this.logIdx & 0x7fffffff
+    }
+
+    final def addToSize(s: Int): Unit = {
+      val logIdx = this.logIdx
+      val newSize = java.lang.Math.addExact(logIdx & 0x7fffffff, s)
+      val bit = logIdx & 0x80000000
+      this.logIdx = newSize | bit
+    }
+
+    final def isBlueTree: Boolean = {
+      this.logIdx < 0
+    }
+
+    final def isBlueTree_=(isBlue: Boolean): Unit = {
+      val logIdx = this.logIdx
+      val bit = if (isBlue) 0x80000000 else 0x0
+      this.logIdx = (logIdx & 0x7fffffff) | bit
+    }
   }
 }
