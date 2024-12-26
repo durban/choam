@@ -1147,8 +1147,7 @@ object Rxn extends RxnInstances0 {
           pcAction
         case 5 => // ContAfterPostCommit
           val res = popFinalResult()
-          assert(contK.isEmpty)
-          assert(contT.isEmpty, s"contT is not empty: ${contT.toString}") // TODO: remove logging
+          assert(contK.isEmpty && contT.isEmpty)
           new Done(res)
         case 6 => // ContCommitPostCommit
           a = postCommitResultMarker : Any
