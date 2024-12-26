@@ -615,8 +615,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       }
 
       // just to be safe:
-      assert((mark eq null) || (mark eq weakref.get()))
-      assert(Version.isValid(version))
+      assert(((mark eq null) || (mark eq weakref.get())) && Version.isValid(version))
 
       val wordDescOv = wordDesc.ov
       if (equ(wordDescOv, EmcasDescriptorBase.CLEARED)) {
