@@ -233,21 +233,26 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 `Rxn`s are lock-free by construction, if the following assumptions hold:
 
-- No "inifinite loops" are created (e.g., by recursive `flatMap`s)
+- No "inifinite loops" are created (e.g., by infinitely recursive `flatMap`s)
 - No `unsafe` operations are used (e.g., `Rxn.unsafe.retry` is obviously not lock-free)
 - We assume instances of `FunctionN` to be pure and total
 - We assume that certain JVM operations are lock-free:
   - `VarHandle` operations (e.g., `compareAndSet`)
-    - in practice, this is true only on 64-bit platforms
+    - in practice, this is true on 64-bit platforms
+    - on 32-bit platforms some of these *might* use a lock
   - GC and classloading
-    - in practice, this is *not* true
+    - in practice, the GC sometimes do use locks
+    - and classloaders sometimes also use locks
   - `ThreadLocalRandom`, `ThreadLocal`
 - Certain `Rxn` operations require extra assumptions:
   - `Rxn.secureRandom` and `UUIDGen` use the OS RNG, which may block
     (although we *really* try to use the non-blocking ones)
-  - operations in `F[_]` might not be lock-free (an obvious example is `Promise#get`)
   - in `choam-async` we assume that calling a CE `Async` callback is lock-free
     (in `cats.effect.IO`, as of version 3.5.4, this is not technically true)
 - Executing a `Rxn` with a `Rxn.Strategy` other than `Rxn.Strategy.Spin`
-  is *not* lock-free
+  is not necessarily lock-free
 - Only `Mcas.DefaultMcas` is lock-free, other `Mcas` implementations may not be
+
+Also note, that while `Rxn` operations are lock-free if these assumptions hold,
+operations in an `F[_]` effect might not be lock-free (an obvious example is
+`Promise#get`, which is an `F[A]`, *not* a `Rxn`).
