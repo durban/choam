@@ -24,34 +24,40 @@ import java.util.concurrent.ThreadLocalRandom
 import cats.Monad
 
 import org.openjdk.jmh.annotations._
-import org.openjdk.jmh.infra.Blackhole
 
 import util._
 
-/** Compares the performance of `map`, either called directly or through the `Monad` instance */
+/** Compares the performance of possible `map` and `map2` implementations */
 @Fork(3)
 @Threads(2)
 class MapBench {
 
   @Benchmark
-  def andThenLift(s: MapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
+  def map_andThenLift(s: MapBench.St, k: McasImplState): String = {
+    val idx = Math.abs(k.nextInt()) % MapBench.size
     val r: Axn[String] = s.rsWithAndThenLift(idx)
-    bh.consume(r.unsafePerform((), k.mcasImpl))
+    r.unsafePerform((), k.mcasImpl)
   }
 
   @Benchmark
-  def directMap(s: MapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
-    val r: Axn[String] = s.rsWithMap(idx)
-    bh.consume(r.unsafePerform((), k.mcasImpl))
+  def map_directMap(s: MapBench.St, k: McasImplState): String = {
+    val idx = Math.abs(k.nextInt()) % MapBench.size
+    val r: Axn[String] = s.rsWithMapDirect(idx)
+    r.unsafePerform((), k.mcasImpl)
   }
 
   @Benchmark
-  def monadMap(s: MapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
+  def map_monadMap(s: MapBench.St, k: McasImplState): String = {
+    val idx = Math.abs(k.nextInt()) % MapBench.size
     val r: Axn[String] = s.rsWithMonadMap(idx)
-    bh.consume(r.unsafePerform((), k.mcasImpl))
+    r.unsafePerform((), k.mcasImpl)
+  }
+
+  @Benchmark
+  def map2_andAlsoTupled(s: MapBench.St, k: McasImplState): String = {
+    val idx = Math.abs(k.nextInt()) % MapBench.size
+    val r: Axn[String] = s.rs2WithAndAlsoTupled(idx)
+    r.unsafePerform(null, k.mcasImpl)
   }
 }
 
@@ -61,15 +67,20 @@ object MapBench {
   final val n = 16
 
   sealed abstract class OpType extends Product with Serializable
-  final case object Map extends OpType
+  final case object MapDirect extends OpType
   final case object AndThenLift extends OpType
   final case object MonadMap extends OpType
+  final case object Map2AndAlsoTupled extends OpType
 
   @State(Scope.Benchmark)
   class St {
 
     private[this] val dummy: Function1[String, String] = { s =>
       s.reverse
+    }
+
+    private[this] val take1: Function2[String, String, String] = { (s1, _) =>
+      s1
     }
 
     private[this] val refs = List.fill(size) {
@@ -89,8 +100,8 @@ object MapBench {
       }
     }
 
-    val rsWithMap: List[Axn[String]] =
-      mkReactions(opType = Map)
+    val rsWithMapDirect: List[Axn[String]] =
+      mkReactions(opType = MapDirect)
 
     val rsWithAndThenLift: List[Axn[String]] =
       mkReactions(opType = AndThenLift)
@@ -98,18 +109,23 @@ object MapBench {
     val rsWithMonadMap: List[Axn[String]] =
       mkReactions(opType = MonadMap)
 
+    val rs2WithAndAlsoTupled: List[Axn[String]] =
+      mkReactions(opType = Map2AndAlsoTupled)
+
     private[this] final def buildReaction(n: Int, first: Axn[String], last: Axn[String], opType: OpType): Axn[String] = {
       def go(n: Int, acc: Axn[String]): Axn[String] = {
         if (n < 1) {
           acc
         } else {
           val newAcc = opType match {
-            case Map =>
+            case MapDirect =>
               acc.map(dummy)
             case AndThenLift =>
               acc >>> Rxn.lift(dummy)
             case MonadMap =>
               monadMap(acc, dummy)(Rxn.monadInstance)
+            case Map2AndAlsoTupled =>
+              acc.map2(last)(take1)
           }
           go(n - 1, newAcc)
         }
