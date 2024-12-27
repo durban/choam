@@ -136,7 +136,7 @@ object MapBench {
             case MonadMap =>
               monadMap(acc, dummy)(Rxn.monadInstance)
             case Map2AndAlsoTupled =>
-              acc.map2(last)(take1)
+              map2WithAndAlsoTupled(acc, last)(take1)
             case Map2FlatMapMap =>
               map2WithFlatMap(acc, last)(take1)
           }
@@ -149,6 +149,10 @@ object MapBench {
 
     private[this] final def monadMap[F[_], A, B](fa: F[A], f: A => B)(implicit F: Monad[F]): F[B] = {
       F.map(fa)(f)
+    }
+
+    private[this] final def map2WithAndAlsoTupled[X, A, B, Z](fa: Rxn[X, A], fb: Rxn[X, B])(f: (A, B) => Z): Rxn[X, Z] = {
+      (fa * fb).map(f.tupled)
     }
 
     private[this] final def map2WithFlatMap[X, A, B, Z](fa: Rxn[X, A], fb: Rxn[X, B])(f: (A, B) => Z): Rxn[X, Z] = {
