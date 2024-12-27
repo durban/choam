@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build and Test
+    name: Test
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-14]
@@ -97,9 +97,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     steps:
-      - name: Install sbt
-        uses: sbt/setup-sbt@v1
-
       - name: Ignore line ending differences in git
         if: contains(runner.os, 'windows')
         shell: bash
@@ -109,6 +106,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
 
       - name: Setup Java (temurin@11)
         id: setup-java-temurin-11
@@ -305,7 +305,7 @@ jobs:
     if: github.event.repository.fork == false && github.event_name != 'pull_request'
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-22.04]
         java: [temurin@11]
     runs-on: ${{ matrix.os }}
     permissions:
@@ -322,9 +322,6 @@ jobs:
       security-events: none
       statuses: none
     steps:
-      - name: Install sbt
-        uses: sbt/setup-sbt@v1
-
       - name: Ignore line ending differences in git
         if: contains(runner.os, 'windows')
         run: git config --global core.autocrlf false
@@ -333,6 +330,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
 
       - name: Setup Java (temurin@11)
         id: setup-java-temurin-11
