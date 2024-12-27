@@ -184,7 +184,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   }
 
   final def map2[X <: A, C, D](that: Rxn[X, C])(f: (B, C) => D): Rxn[X, D] =
-    (this * that).map(f.tupled)
+    this.flatMap { b => that.map { c => f(b, c) } }
 
   final def <* [X <: A, C](that: Rxn[X, C]): Rxn[X, B] =
     this.productL(that)
