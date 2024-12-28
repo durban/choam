@@ -66,6 +66,13 @@ class MapBench {
     val r: Axn[String] = s.rs2WithFlatMapMap(idx)
     r.unsafePerform(null, k.mcasImpl)
   }
+
+  @Benchmark
+  def map2_primitive(s: MapBench.St, k: McasImplState): String = {
+    val idx = Math.abs(k.nextInt()) % MapBench.size
+    val r: Axn[String] = s.rs2WithPrimitive(idx)
+    r.unsafePerform(null, k.mcasImpl)
+  }
 }
 
 object MapBench {
@@ -79,6 +86,7 @@ object MapBench {
   final case object MonadMap extends OpType
   final case object Map2AndAlsoTupled extends OpType
   final case object Map2FlatMapMap extends OpType
+  final case object Map2Primitive extends OpType
 
   @State(Scope.Benchmark)
   class St {
@@ -123,6 +131,9 @@ object MapBench {
     val rs2WithFlatMapMap: List[Axn[String]] =
       mkReactions(opType = Map2FlatMapMap)
 
+    val rs2WithPrimitive: List[Axn[String]] =
+      mkReactions(opType = Map2Primitive)
+
     private[this] final def buildReaction(n: Int, first: Axn[String], last: Axn[String], opType: OpType): Axn[String] = {
       def go(n: Int, acc: Axn[String]): Axn[String] = {
         if (n < 1) {
@@ -139,6 +150,8 @@ object MapBench {
               map2WithAndAlsoTupled(acc, last)(take1)
             case Map2FlatMapMap =>
               map2WithFlatMap(acc, last)(take1)
+            case Map2Primitive =>
+              map2WithPrimitive(acc, last)(take1)
           }
           go(n - 1, newAcc)
         }
@@ -157,6 +170,10 @@ object MapBench {
 
     private[this] final def map2WithFlatMap[X, A, B, Z](fa: Rxn[X, A], fb: Rxn[X, B])(f: (A, B) => Z): Rxn[X, Z] = {
       fa.flatMap { a => fb.map { b => f(a, b) } }
+    }
+
+    private[this] final def map2WithPrimitive[X, A, B, Z](fa: Rxn[X, A], fb: Rxn[X, B])(f: (A, B) => Z): Rxn[X, Z] = {
+      fa.map2(fb)(f)
     }
   }
 }

@@ -184,7 +184,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   }
 
   final def map2[X <: A, C, D](that: Rxn[X, C])(f: (B, C) => D): Rxn[X, D] =
-    this.flatMap { b => that.map { c => f(b, c) } }
+    new Map2(this, that, f)
 
   final def <* [X <: A, C](that: Rxn[X, C]): Rxn[X, B] =
     this.productL(that)
@@ -578,6 +578,11 @@ object Rxn extends RxnInstances0 {
   }
 
   // Note: tag = 8 is RefGetAxn
+
+  private final class Map2[A, B, C, D](val left: Rxn[A, B], val right: Rxn[A, C], val f: (B, C) => D) extends Rxn[A, D] {
+    private[core] final override def tag = 9
+    final override def toString: String = s"Map2(${left}, ${right}, <function>)"
+  }
 
   private final class Upd[A, B, X](val ref: MemoryLocation[X], val f: (X, A) => (X, B)) extends Rxn[A, B] {
     private[core] final override def tag = 10
@@ -1185,6 +1190,18 @@ object Rxn extends RxnInstances0 {
           val b = contK.pop().asInstanceOf[Function1[Any, Any]].apply(a)
           a = b
           next()
+        case 13 => // ContMap2Right
+          val savedA = a
+          a = contK.pop()
+          val n = contK.pop().asInstanceOf[Rxn[Any, Any]]
+          contK.push(savedA)
+          n
+        case 14 => // ContMap2Func
+          val leftRes = contK.pop()
+          val rightRes = a
+          val f = contK.pop().asInstanceOf[Function2[Any, Any, Any]]
+          a = f(leftRes, rightRes)
+          next()
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -1463,8 +1480,14 @@ object Rxn extends RxnInstances0 {
             a = hwd2.nv
             loop(next())
           }
-        case 9 => // was GetAndSet
-          sys.error("GetAndSet")
+        case 9 => // Map2
+          val c = curr.asInstanceOf[Map2[_, _, _, _]]
+          contT.push(RxnConsts.ContMap2Func)
+          contK.push(c.f)
+          contT.push(RxnConsts.ContMap2Right)
+          contK.push(c.right)
+          contK.push(a)
+          loop(c.left)
         case 10 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, Any]]
           assert(this._entryHolder eq null) // just to be sure
