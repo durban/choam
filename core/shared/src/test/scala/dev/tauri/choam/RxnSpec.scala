@@ -745,6 +745,20 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("map2") {
+    for {
+      r1 <- Ref("x").run[F]
+      r2 <- Ref("a").run[F]
+      _ <- assertResultF(r1.get.map2(r2.get) { (s1, s2) => s1 + s2 }.run[F], "xa")
+      s1s2 <- r1.upd[String, String] { (ov, s) => (ov + s, s) }.map2(
+        r2.upd[String, String] { (ov, s) => (ov + s, s) }
+      ) { (s1, s2) => (s1, s2) }.apply[F]("z")
+      _ <- assertSameInstanceF(s1s2._1, s1s2._2)
+      _ <- assertEqualsF(s1s2._1, "z")
+      _ <- assertResultF((r1.get * r2.get).run[F], ("xz", "az"))
+    } yield ()
+  }
+
   test("unsafeCas") {
     for {
       r <- Ref[String]("x").run[F]
