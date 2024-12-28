@@ -37,14 +37,21 @@ private final class ByteStack(initSize: Int) {
   }
 
   def push(b: Byte): Unit = {
-    this.growIfNecessary()
-    this.arr(this.size) = b
-    this.size += 1
+    val currSize = this.size
+    val newSize = currSize + 1
+    this.growIfNecessary(sizeNeeded = newSize)
+    this.arr(currSize) = b
+    this.size = newSize
   }
 
   def push2(b1: Byte, b2: Byte): Unit = {
-    push(b1)
-    push(b2)
+    val currSize = this.size
+    val newSize = currSize + 2
+    this.growIfNecessary(sizeNeeded = newSize)
+    val arr = this.arr
+    arr(currSize) = b1
+    arr(currSize + 1) = b2
+    this.size = newSize
   }
 
   def isEmpty(): Boolean = {
@@ -110,15 +117,14 @@ private final class ByteStack(initSize: Int) {
     res
   }
 
-  private[this] def growIfNecessary(): Unit = {
-    if (this.size == this.arr.length) {
-      this.grow()
+  private[this] def growIfNecessary(sizeNeeded: Int): Unit = {
+    if (this.arr.length < sizeNeeded) {
+      this.grow(newSize = nextPowerOf2Internal(sizeNeeded))
     }
   }
 
-  private[this] def grow(): Unit = {
-    val newLength = this.arr.length << 1
-    this.arr = Arrays.copyOf(this.arr, newLength)
+  private[this] def grow(newSize: Int): Unit = {
+    this.arr = Arrays.copyOf(this.arr, newSize)
   }
 }
 
