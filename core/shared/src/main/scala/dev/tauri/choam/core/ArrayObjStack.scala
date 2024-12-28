@@ -18,58 +18,108 @@
 package dev.tauri.choam
 package core
 
+import java.util.Arrays
+
+import internal.mcas.box
+
 private final class ArrayObjStack[A]() extends ObjStack[A] {
 
-  private[this] val arr =
-    new scala.collection.mutable.ArrayDeque[A]
+  private[this] var arr: Array[AnyRef] =
+    new Array[AnyRef](16)
+
+  private[this] var size: Int =
+    0
 
   final override def toString: String = {
-    this.arr.reverse.mkString("ArrayObjStack(", ", ", ")")
+    this.arr.take(this.size).reverse.mkString("ArrayObjStack(", ", ", ")")
   }
 
   final override def push(a: A): Unit = {
-    this.arr.addOne(a)
+    val currSize = this.size
+    val newSize = currSize + 1
+    this.ensureSize(newSize)
+    this.arr(currSize) = box(a)
+    this.size = newSize
   }
 
   final override def push2(a1: A, a2: A): Unit = {
+    val currSize = this.size
+    val newSize = currSize + 2
+    this.ensureSize(newSize)
+    this.arr(currSize) = box(a1)
+    this.arr(currSize + 1) = box(a2)
+    this.size = newSize
+  }
+
+  private[this] final def ensureSize(s: Int): Unit = {
     val arr = this.arr
-    arr.ensureSize(arr.size + 2)
-    arr.addOne(a1)
-    arr.addOne(a2)
+    if (s > arr.length) {
+      val newLength = nextPowerOf2Internal(s)
+      val newArr = Arrays.copyOf(arr, newLength)
+      this.arr = newArr
+    }
+  }
+
+  /**
+   * Computes a power of 2 which is `>= n`.
+   *
+   * Assumes `x` is non-negative (an array length).
+   *
+   * From Hacker's Delight by Henry S. Warren, Jr. (section 3–2).
+   */
+  private[this] def nextPowerOf2Internal(n: Int): Int = { // TODO: this is duplicated with ByteStack
+    var x: Int = n - 1
+    x |= x >> 1
+    x |= x >> 2
+    x |= x >> 4
+    x |= x >> 8
+    x |= x >> 16
+    x + 1
   }
 
   final override def pop(): A = {
-    this.arr.removeLast()
+    val currSize = this.size
+    require(currSize > 0)
+    val newSize = currSize - 1
+    val arr = this.arr
+    val a = arr(newSize)
+    arr(newSize) = null
+    this.size = newSize
+    a.asInstanceOf[A]
   }
 
   final override def peek(): A = {
-    this.arr.last
+    val currSize = this.size
+    require(currSize > 0)
+    this.arr(currSize - 1).asInstanceOf[A]
   }
 
   final override def peekSecond(): A = {
-    val arr = this.arr
-    arr.apply(arr.length - 2)
+    val currSize = this.size
+    require(currSize > 1)
+    this.arr(currSize - 2).asInstanceOf[A]
   }
 
   final override def clear(): Unit = {
-    this.arr.clear()
+    Arrays.fill(this.arr, null)
+    this.size = 0
   }
 
   final override def isEmpty(): Boolean = {
-    this.arr.isEmpty
+    this.size == 0
   }
 
   final override def nonEmpty(): Boolean = {
-    this.arr.nonEmpty
+    this.size != 0
   }
 
   final def toListObjStack(): ListObjStack[A] = {
     val arr = this.arr
     var lst = ListObjStack.Lst.empty[A]
     var idx = 0
-    val len = arr.length
+    val len = this.size
     while (idx < len) {
-      lst = ListObjStack.Lst(head = arr.apply(idx), tail = lst)
+      lst = ListObjStack.Lst(head = arr(idx).asInstanceOf[A], tail = lst)
       idx += 1
     }
     val r = new ListObjStack[A]
