@@ -20,6 +20,8 @@ package core
 
 private final class ListObjStack[A]() extends ObjStack[A] {
 
+  import ListObjStack.Lst
+
   private[this] var lst: ListObjStack.Lst[A] =
     null
 
@@ -29,7 +31,11 @@ private final class ListObjStack[A]() extends ObjStack[A] {
   }
 
   final override def push(a: A): Unit = {
-    this.lst = new ListObjStack.Lst(a, this.lst)
+    this.lst = new Lst(a, this.lst)
+  }
+
+  final override def push2(a1: A, a2: A): Unit = {
+    this.lst = new Lst(a2, new Lst(a1, this.lst))
   }
 
   private[this] final  def assertNonEmpty(): Unit = {

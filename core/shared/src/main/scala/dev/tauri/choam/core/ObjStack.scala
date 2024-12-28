@@ -22,10 +22,7 @@ private abstract class ObjStack[A]() {
 
   def push(a: A): Unit
 
-  def push2(a1: A, a2: A): Unit = {
-    push(a1)
-    push(a2)
-  }
+  def push2(a1: A, a2: A): Unit
 
   def pop(): A
 

@@ -20,11 +20,6 @@ package core
 
 private final class ArrayObjStack[A]() extends ObjStack[A] {
 
-  // TODO: ObjStackBench.pushPop* is faster for ArrayObjStack
-  // TODO: than for ListObjStack. However, InternalStackBench
-  // TODO: is the opposite. Figure out which one of these
-  // TODO: matters more in practice.
-
   private[this] val arr =
     new scala.collection.mutable.ArrayDeque[A]
 
@@ -34,6 +29,13 @@ private final class ArrayObjStack[A]() extends ObjStack[A] {
 
   final override def push(a: A): Unit = {
     this.arr.addOne(a)
+  }
+
+  final override def push2(a1: A, a2: A): Unit = {
+    val arr = this.arr
+    arr.ensureSize(arr.size + 2)
+    arr.addOne(a1)
+    arr.addOne(a2)
   }
 
   final override def pop(): A = {
