@@ -33,7 +33,7 @@ private final class ListObjStack[A]() extends ObjStack[A] {
   }
 
   private[this] final  def assertNonEmpty(): Unit = {
-    if (this.isEmpty) {
+    if (this.isEmpty()) {
       throw new NoSuchElementException
     }
   }
@@ -64,11 +64,11 @@ private final class ListObjStack[A]() extends ObjStack[A] {
     this.lst = null
   }
 
-  final override def isEmpty: Boolean = {
+  final override def isEmpty(): Boolean = {
     this.lst eq null
   }
 
-  final override def nonEmpty: Boolean = {
+  final override def nonEmpty(): Boolean = {
     this.lst ne null
   }
 

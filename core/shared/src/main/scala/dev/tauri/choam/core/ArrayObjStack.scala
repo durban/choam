@@ -53,11 +53,11 @@ private final class ArrayObjStack[A]() extends ObjStack[A] {
     this.arr.clear()
   }
 
-  final override def isEmpty: Boolean = {
+  final override def isEmpty(): Boolean = {
     this.arr.isEmpty
   }
 
-  final override def nonEmpty: Boolean = {
+  final override def nonEmpty(): Boolean = {
     this.arr.nonEmpty
   }
 

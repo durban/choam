@@ -42,6 +42,15 @@ private final class ByteStack(initSize: Int) {
     this.size += 1
   }
 
+  def push2(b1: Byte, b2: Byte): Unit = {
+    push(b1)
+    push(b2)
+  }
+
+  def isEmpty(): Boolean = {
+    this.size == 0
+  }
+
   private[this] def assertNonEmpty(): Unit = {
     if (this.size == 0) {
       throw new NoSuchElementException
@@ -60,12 +69,8 @@ private final class ByteStack(initSize: Int) {
     this.size = 0
   }
 
-  def isEmpty: Boolean = {
-    this.size == 0
-  }
-
-  def nonEmpty: Boolean = {
-    !this.isEmpty
+  def nonEmpty(): Boolean = {
+    !this.isEmpty()
   }
 
   def takeSnapshot(): Array[Byte] = {

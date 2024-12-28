@@ -22,6 +22,11 @@ private abstract class ObjStack[A]() {
 
   def push(a: A): Unit
 
+  def push2(a1: A, a2: A): Unit = {
+    push(a1)
+    push(a2)
+  }
+
   def pop(): A
 
   def peek(): A
@@ -30,9 +35,9 @@ private abstract class ObjStack[A]() {
 
   def clear(): Unit
 
-  def isEmpty: Boolean
+  def isEmpty(): Boolean
 
-  def nonEmpty: Boolean
+  def nonEmpty(): Boolean
 
   final def pushAll(as: Iterable[A]): Unit = {
     val it = as.iterator

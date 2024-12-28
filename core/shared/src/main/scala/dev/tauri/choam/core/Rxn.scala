@@ -1152,7 +1152,7 @@ object Rxn extends RxnInstances0 {
           pcAction
         case 5 => // ContAfterPostCommit
           val res = popFinalResult()
-          assert(contK.isEmpty && contT.isEmpty)
+          assert(contK.isEmpty() && contT.isEmpty())
           new Done(res)
         case 6 => // ContCommitPostCommit
           a = postCommitResultMarker : Any
@@ -1216,7 +1216,7 @@ object Rxn extends RxnInstances0 {
       this.retry(canSuspend = canSuspend, suspendUntilChanged = false)
 
     private[this] final def retry(canSuspend: Boolean, suspendUntilChanged: Boolean): Rxn[Any, Any] = {
-      if (alts.nonEmpty) {
+      if (alts.nonEmpty()) {
         // we're not actually retrying,
         // just going to the other side
         // of a `+` (so we're not
@@ -1415,7 +1415,7 @@ object Rxn extends RxnInstances0 {
               // final result, Done will need it:
               contK.push(res)
             }
-            while (pc.nonEmpty) {
+            while (pc.nonEmpty()) {
               // commits the post-commit action:
               contT.push(RxnConsts.ContCommitPostCommit)
               // the post-commit action itself:
