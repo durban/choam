@@ -38,6 +38,10 @@ private final class ListObjStack[A]() extends ObjStack[A] {
     this.lst = new Lst(a2, new Lst(a1, this.lst))
   }
 
+  final override def push3(a1: A, a2: A, a3: A): Unit = {
+    this.lst = new Lst(a3, new Lst(a2, new Lst(a1, this.lst)))
+  }
+
   private[this] final  def assertNonEmpty(): Unit = {
     if (this.isEmpty()) {
       throw new NoSuchElementException

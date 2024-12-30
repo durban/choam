@@ -51,6 +51,16 @@ private final class ArrayObjStack[A]() extends ObjStack[A] {
     this.size = newSize
   }
 
+  final override def push3(a1: A, a2: A, a3: A): Unit = {
+    val currSize = this.size
+    val newSize = currSize + 3
+    this.ensureSize(newSize)
+    this.arr(currSize) = box(a1)
+    this.arr(currSize + 1) = box(a2)
+    this.arr(currSize + 2) = box(a3)
+    this.size = newSize
+  }
+
   private[this] final def ensureSize(s: Int): Unit = {
     val arr = this.arr
     if (s > arr.length) {

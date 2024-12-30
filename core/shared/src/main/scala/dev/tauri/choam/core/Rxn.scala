@@ -908,8 +908,7 @@ object Rxn extends RxnInstances0 {
     private[this] var contK: ObjStack[Any] = mkInitialContK()
     private[this] val pc: ListObjStack[Rxn[Any, Unit]] = new ListObjStack[Rxn[Any, Unit]]()
     private[this] val commit = commitSingleton
-    contT.push(RxnConsts.ContAfterPostCommit)
-    contT.push(RxnConsts.ContAndThen)
+    contT.push2(RxnConsts.ContAfterPostCommit, RxnConsts.ContAndThen)
 
     private[this] var contTReset: Array[Byte] = contT.takeSnapshot()
     private[this] var contKReset: ListObjStack.Lst[Any] = objStackWithOneCommit
@@ -1071,17 +1070,14 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def saveAlt(k: Rxn[Any, R]): Unit = {
       val alts = this.alts
-      alts.push(_desc match {
+      val descSnap = _desc match {
         case null =>
           null
         case _ =>
           ctx.snapshot(this.descImm)
-      })
-      alts.push(a)
-      alts.push(contT.takeSnapshot())
-      alts.push(contKList.takeSnapshot())
-      alts.push(pc.takeSnapshot())
-      alts.push(k)
+      }
+      alts.push3(descSnap, a, contT.takeSnapshot())
+      alts.push3(contKList.takeSnapshot(), pc.takeSnapshot(), k)
     }
 
     private[this] final def loadAlt(): Rxn[Any, R] = {
@@ -1416,11 +1412,11 @@ object Rxn extends RxnInstances0 {
               contK.push(res)
             }
             while (pc.nonEmpty()) {
-              // commits the post-commit action:
-              contT.push(RxnConsts.ContCommitPostCommit)
-              // the post-commit action itself:
+              contT.push2(
+                RxnConsts.ContCommitPostCommit, // commits the post-commit action
+                RxnConsts.ContPostCommit, // the post-commit action itself
+              )
               contK.push(pc.pop())
-              contT.push(RxnConsts.ContPostCommit)
             }
             loop(next())
           } else {
@@ -1482,11 +1478,8 @@ object Rxn extends RxnInstances0 {
           }
         case 9 => // Map2
           val c = curr.asInstanceOf[Map2[_, _, _, _]]
-          contT.push(RxnConsts.ContMap2Func)
-          contK.push(c.f)
-          contT.push(RxnConsts.ContMap2Right)
-          contK.push(c.right)
-          contK.push(a)
+          contT.push2(RxnConsts.ContMap2Func, RxnConsts.ContMap2Right)
+          contK.push3(c.f, c.right, a)
           loop(c.left)
         case 10 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, Any]]
@@ -1557,12 +1550,8 @@ object Rxn extends RxnInstances0 {
         case 15 => // AndAlso
           val c = curr.asInstanceOf[AndAlso[_, _, _, _]]
           val xp = a.asInstanceOf[Tuple2[_, _]]
-          // join:
-          contT.push(RxnConsts.ContAndAlsoJoin)
-          // right:
-          contT.push(RxnConsts.ContAndAlso)
-          contK.push(c.right)
-          contK.push(xp._2)
+          contT.push2(RxnConsts.ContAndAlsoJoin, RxnConsts.ContAndAlso)
+          contK.push2(c.right, xp._2)
           // left:
           a = xp._1
           loop(c.left)
@@ -1587,8 +1576,7 @@ object Rxn extends RxnInstances0 {
             val axn = c.f(ox, a)
             desc = desc.addOrOverwrite(hwd)
             contT.push(RxnConsts.ContUpdWith)
-            contK.push(c.ref)
-            contK.push(ox)
+            contK.push2(c.ref, ox)
             // TODO: if `axn` writes to the same ref, we'll throw (see above)
             loop(axn)
           }
@@ -1644,8 +1632,7 @@ object Rxn extends RxnInstances0 {
         case 25 => // ProductR
           val c = curr.asInstanceOf[ProductR[Any, Any, Any]]
           contT.push(RxnConsts.ContProductR)
-          contK.push(c.right)
-          contK.push(a)
+          contK.push2(c.right, a)
           loop(c.left)
         case 26 => // FlatMapF
           val c = curr.asInstanceOf[FlatMapF[Any, Any, Any]]
@@ -1655,8 +1642,7 @@ object Rxn extends RxnInstances0 {
         case 27 => // FlatMap
           val c = curr.asInstanceOf[FlatMap[Any, Any, Any]]
           contT.push(RxnConsts.ContFlatMap)
-          contK.push(a)
-          contK.push(c.f)
+          contK.push2(a, c.f)
           loop(c.rxn)
         case 28 => // SuspendUntil
           assert(this.canSuspend)
@@ -1668,8 +1654,7 @@ object Rxn extends RxnInstances0 {
           val f = c.f
           val nxt = f(c.a)
           contT.push(RxnConsts.ContTailRecM)
-          contK.push(f)
-          contK.push(a)
+          contK.push2(f, a)
           loop(nxt)
         case 30 => // Map_
           val c = curr.asInstanceOf[Map_[Any, Any, Any]]

@@ -24,6 +24,8 @@ private abstract class ObjStack[A]() {
 
   def push2(a1: A, a2: A): Unit
 
+  def push3(a1: A, a2: A, a3: A): Unit
+
   def pop(): A
 
   def peek(): A
