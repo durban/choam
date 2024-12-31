@@ -20,12 +20,12 @@ package core
 
 import cats.effect.kernel.Async
 
-private[choam] sealed trait Transactive[F[_]]
-  extends Reactive[F] { // TODO: we probably shouldn't extend Reactive
-
+// Note: not really private, published in dev.tauri.choam.stm
+private[choam] sealed trait Transactive[F[_]] {
   def commit[B](txn: Txn[F, B]): F[B]
 }
 
+// Note: not really private, published in dev.tauri.choam.stm
 private[choam] object Transactive {
 
   final def forAsync[F[_]](implicit F: Async[F]): Transactive[F] = {

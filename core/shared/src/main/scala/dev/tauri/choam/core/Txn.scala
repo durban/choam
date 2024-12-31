@@ -20,6 +20,7 @@ package core
 
 import internal.mcas.Mcas
 
+// Note: not really private, published in dev.tauri.choam.stm
 private[choam] sealed trait Txn[F[_], +B] {
 
   def map[C](f: B => C): Txn[F, C]
@@ -35,6 +36,7 @@ private[choam] sealed trait Txn[F[_], +B] {
   def commit[X >: B](implicit F: Transactive[F]): F[X]
 }
 
+// Note: not really private, published in dev.tauri.choam.stm
 private[choam] object Txn {
 
   private[core] trait UnsealedTxn[F[_], +B] extends Txn[F, B]
