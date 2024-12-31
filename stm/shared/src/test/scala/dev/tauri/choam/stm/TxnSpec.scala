@@ -131,6 +131,19 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     assertResultF(tsk.replicateA(3), List(42, 42, 42))
   }
 
+  test("TRef read twice") {
+    for {
+      r <- TRef[F, Int](1).commit
+      _ <- assertResultF(r.get.flatMap { v1 =>
+        r.set(v1 + 1).flatMap { _ =>
+          r.get.map { v2 =>
+            (v1, v2)
+          }
+        }
+      }.commit, (1, 2))
+    } yield ()
+  }
+
   test("Txn#map2") {
     for {
       r1 <- TRef[F, Int](42).commit
@@ -198,19 +211,6 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this:
       _ <- this.tickAll
       _ <- assertResultF(d.tryGet, Some("4"))
       _ <- fib.joinWithNever
-    } yield ()
-  }
-
-  test("TRef read twice") { // TODO: move this to TxnSpec
-    for {
-      r <- TRef[F, Int](1).commit
-      _ <- assertResultF(r.get.flatMap { v1 =>
-        r.set(v1 + 1).flatMap { _ =>
-          r.get.map { v2 =>
-            (v1, v2)
-          }
-        }
-      }.commit, (1, 2))
     } yield ()
   }
 
