@@ -20,8 +20,6 @@ package core
 
 import java.util.Arrays
 
-import internal.mcas.box
-
 private final class ArrayObjStack[A]() extends ObjStack[A] {
 
   private[this] var arr: Array[AnyRef] =

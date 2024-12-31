@@ -56,6 +56,10 @@ package object choam {
   // and Java static method equivalents (see StaticsBench).
 
   @inline
+  private[choam] final def box[A](a: A): AnyRef =
+    internal.mcas.box[A](a)
+
+  @inline
   private[choam] final def equ[A](x: A, y: A): Boolean =
     internal.mcas.equ(x, y)
 
