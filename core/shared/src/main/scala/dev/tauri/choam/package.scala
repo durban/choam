@@ -74,9 +74,6 @@ package object choam {
   private[choam] final def impossible(s: String): Nothing =
     internal.mcas.impossible(s)
 
-  private[choam] final def requireNonNull[A](a: A): Unit =
-    require(!isNull(a))
-
   private[choam] implicit final class AxnSyntax2[A](private val self: Axn[A]) {
     final def unsafeRun(mcas: internal.mcas.Mcas): A = {
       self.unsafePerform(null : Any, mcas)

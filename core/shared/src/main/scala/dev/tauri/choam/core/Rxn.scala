@@ -897,7 +897,7 @@ object Rxn extends RxnInstances0 {
 
     @inline
     private[this] final def desc_=(d: AbstractDescriptor): Unit = {
-      require(d ne null) // we want to be explicit, see `clearDesc`
+      assert(d ne null) // we want to be explicit, see `clearDesc`
       _desc = d
     }
 
@@ -1314,7 +1314,7 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def revalidateIfNeeded[A](hwd: LogEntry[A]): LogEntry[A] = {
-      require(hwd ne null)
+      assert(hwd ne null)
       if (!desc.isValidHwd(hwd)) {
         if (forceValidate(hwd)) {
           // OK, `desc` was extended
