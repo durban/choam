@@ -291,6 +291,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[MissingTypesProblem]("dev.tauri.choam.refs.StrictRefArray"), // private
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.core.ObjStack.push2"), // private
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.core.ObjStack.push3"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.package.requireNonNull"), // private
     ),
   ).jsSettings(
     mimaBinaryIssueFilters ++= Seq(
