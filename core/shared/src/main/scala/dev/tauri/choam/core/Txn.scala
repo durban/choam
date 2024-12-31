@@ -20,7 +20,7 @@ package core
 
 import internal.mcas.Mcas
 
-private[choam] trait Txn[F[_], +B] { // TODO: sealed
+private[choam] sealed trait Txn[F[_], +B] {
 
   def map[C](f: B => C): Txn[F, C]
 
@@ -34,6 +34,8 @@ private[choam] trait Txn[F[_], +B] { // TODO: sealed
 }
 
 private[choam] object Txn {
+
+  private[core] trait UnsealedTxn[F[_], +B] extends Txn[F, B]
 
   final def pure[F[_], A](a: A): Txn[F, A] =
     Rxn.pure(a).castF[F]

@@ -49,7 +49,7 @@ import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, A
  * `Axn[A] ≡ Rxn[Any, A]`.
  */
 sealed abstract class Rxn[-A, +B] // short for 'reaction'
-  extends Txn[Rxn.Anything, B] {
+  extends Txn.UnsealedTxn[Rxn.Anything, B] {
 
   /*
    * An implementation similar to reagents, described in [Reagents: Expressing and
