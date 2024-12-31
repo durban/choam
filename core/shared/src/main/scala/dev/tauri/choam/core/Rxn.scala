@@ -305,6 +305,10 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     this.flatMapF { b => f(b).impl }
   }
 
+  final override def map2[C, D](that: Txn[Rxn.Anything, C])(f: (B, C) => D): Txn[Rxn.Anything, D] = {
+    this.map2[A, C, D](that.impl)(f)
+  }
+
   final override def orElse[Y >: B](that: Txn[Rxn.Anything, Y]): Txn[Rxn.Anything, Y] = {
     this + that.impl // TODO: orElse/+ semantics
   }

@@ -24,6 +24,8 @@ private[choam] sealed trait Txn[F[_], +B] {
 
   def map[C](f: B => C): Txn[F, C]
 
+  def map2[C, D](that: Txn[F, C])(f: (B, C) => D): Txn[F, D]
+
   def flatMap[C](f: B => Txn[F, C]): Txn[F, C]
 
   def orElse[Y >: B](that: Txn[F, Y]): Txn[F, Y]
