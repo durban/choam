@@ -293,6 +293,11 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.core.ObjStack.push3"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.package.requireNonNull"), // private
     ),
+  ).jvmSettings(
+    mimaBinaryIssueFilters ++= Seq(
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.IOCancel"), // private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.IOCancel$"), // private
+    ),
   ).jsSettings(
     mimaBinaryIssueFilters ++= Seq(
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.refs.RefIdOnly"), // private
@@ -320,6 +325,11 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.WdLike.cleanForGc"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.WdLike.wasFinalized"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasThreadContext.this"),
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap"),
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap$"),
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap$Empty$"),
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap$LogMap1"),
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap$LogMapTree"),
     ),
   )
 
