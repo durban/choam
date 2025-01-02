@@ -19,6 +19,10 @@ package dev.tauri.choam
 package internal
 package mcas
 
+// TODO: Could we use a Bloom filter for fast detection
+// TODO: of read-only status (which could help with
+// TODO: `Rxn`s which "become" read-only)?
+
 private[mcas] final class LogMap2[A] private[mcas] (
   _sizeAndBlue: Int,
   _bitmap: Long,
