@@ -18,15 +18,17 @@
 package dev.tauri.choam
 package internal
 
-package object skiplist extends ChoamUtils {
+// Note: this code is duplicated for (1) Scala 2.13/3, and (2) for tests in `helpers`.
+private[choam] abstract class ChoamUtils {
 
-  private[choam] type tailrec = scala.annotation.tailrec
+  private[choam] inline final val assertionsEnabled =
+    BuildInfo.assertionsEnabled
 
-  @inline
-  private[choam] final def box[A](a: A): AnyRef =
-    a.asInstanceOf[AnyRef]
-
-  @inline
-  private[choam] final def equ[A](x: A, y: A): Boolean =
-    box(x) eq box(y)
+  private[choam] inline final def _assert(inline ok: Boolean): Unit = {
+    inline if (assertionsEnabled) {
+      if (!ok) {
+        throw new AssertionError
+      }
+    }
+  }
 }

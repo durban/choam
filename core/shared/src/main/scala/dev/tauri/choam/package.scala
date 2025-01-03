@@ -17,7 +17,7 @@
 
 package dev.tauri
 
-package object choam {
+package object choam extends internal.ChoamUtils {
 
   private[choam] type tailrec = scala.annotation.tailrec
 

@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package internal
 
-package object mcas {
+package object mcas extends ChoamUtils {
 
   private[mcas] type tailrec = scala.annotation.tailrec
 

@@ -17,16 +17,11 @@
 
 package dev.tauri.choam
 package internal
+package skiplist
 
-package object skiplist extends ChoamUtils {
+final class AssertSpec extends munit.FunSuite {
 
-  private[choam] type tailrec = scala.annotation.tailrec
-
-  @inline
-  private[choam] final def box[A](a: A): AnyRef =
-    a.asInstanceOf[AnyRef]
-
-  @inline
-  private[choam] final def equ[A](x: A, y: A): Boolean =
-    box(x) eq box(y)
+  test("_assert should be enabled during tests (for now)".fail) {
+    _assert(false)
+  }
 }

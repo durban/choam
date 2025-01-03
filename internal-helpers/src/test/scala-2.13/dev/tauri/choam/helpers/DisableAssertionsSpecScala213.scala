@@ -16,17 +16,12 @@
  */
 
 package dev.tauri.choam
-package internal
+package helpers
 
-package object skiplist extends ChoamUtils {
+final class DisableAssertionsSpecScala213 extends BaseSpec {
 
-  private[choam] type tailrec = scala.annotation.tailrec
-
-  @inline
-  private[choam] final def box[A](a: A): AnyRef =
-    a.asInstanceOf[AnyRef]
-
-  @inline
-  private[choam] final def equ[A](x: A, y: A): Boolean =
-    box(x) eq box(y)
+  test("The Scala 2.13 `-Xelide-below` also affects Predef.assert") {
+    Predef.assert(false)
+    Predef.assert(false, "foo")
+  }
 }

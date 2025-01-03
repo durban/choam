@@ -16,17 +16,28 @@
  */
 
 package dev.tauri.choam
-package internal
+package helpers
 
-package object skiplist extends ChoamUtils {
+final class DisableAssertionsSpec extends BaseSpec {
 
-  private[choam] type tailrec = scala.annotation.tailrec
+  test("_assert should have no effect") {
+    _assert(false)
+    _assert({ throw new Exception; false }) : @nowarn("cat=w-flag-dead-code")
+  }
 
-  @inline
-  private[choam] final def box[A](a: A): AnyRef =
-    a.asInstanceOf[AnyRef]
+  test("munit assert should still work".fail) {
+    this.assert(false)
+  }
 
-  @inline
-  private[choam] final def equ[A](x: A, y: A): Boolean =
-    box(x) eq box(y)
+  test("require(Boolean) should still work".fail) {
+    require(false)
+  }
+
+  test("require(Boolean, => Any) should still work".fail) {
+    require(false, "foo")
+  }
+
+  test("impossible should still work".fail) {
+    impossible("foo")
+  }
 }

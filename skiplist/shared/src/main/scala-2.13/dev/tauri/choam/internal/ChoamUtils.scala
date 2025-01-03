@@ -18,15 +18,16 @@
 package dev.tauri.choam
 package internal
 
-package object skiplist extends ChoamUtils {
+import scala.annotation.{ elidable, nowarn }
 
-  private[choam] type tailrec = scala.annotation.tailrec
+// Note: this code is duplicated for (1) Scala 2.13/3, and (2) for tests in `helpers`.
+@nowarn("msg=elidable")
+private[choam] abstract class ChoamUtils {
 
-  @inline
-  private[choam] final def box[A](a: A): AnyRef =
-    a.asInstanceOf[AnyRef]
-
-  @inline
-  private[choam] final def equ[A](x: A, y: A): Boolean =
-    box(x) eq box(y)
+  @elidable(elidable.ASSERTION)
+  private[choam] final def _assert(ok: Boolean): Unit = {
+    if (!ok) {
+      throw new AssertionError
+    }
+  }
 }

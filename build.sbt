@@ -94,6 +94,9 @@ ThisBuild / scalaOrganization := "org.scala-lang"
 ThisBuild / evictionErrorLevel := Level.Warn
 ThisBuild / semanticdbEnabled := true
 
+val assertionsEnabled = settingKey[Boolean]("Whether to compile `_assert` calls")
+ThisBuild / assertionsEnabled := !java.lang.Boolean.getBoolean("dev.tauri.choam.build.disableAssertions")
+
 ThisBuild / tlBaseVersion := "0.4"
 ThisBuild / tlUntaggedAreSnapshots := false // => we get versions like 0.4-39d987a
 ThisBuild / tlJdkRelease := Some(11)
@@ -339,13 +342,17 @@ lazy val skiplist = crossProject(JVMPlatform, JSPlatform)
   .in(file("skiplist"))
   .settings(name := "choam-skiplist")
   .disablePlugins(disabledPlugins: _*)
+  .enablePlugins(BuildInfoPlugin)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
-  .settings(libraryDependencies ++= Seq(
-    dependencies.catsKernel.value,
-    dependencies.catsScalacheck.value % TestInternal,
-  ))
+  .settings(buildInfoSettings(pkg = "dev.tauri.choam.internal"))
+  .settings(
+    libraryDependencies ++= Seq(
+      dependencies.catsKernel.value,
+      dependencies.catsScalacheck.value % TestInternal,
+    ),
+  )
 
 lazy val data = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -445,11 +452,15 @@ lazy val ce = crossProject(JVMPlatform, JSPlatform)
 /** Internal use only; no published project may depend on this */
 lazy val internalHelpers = project.in(file("internal-helpers"))
   .settings(name := "choam-internal-helpers")
-  .enablePlugins(NoPublishPlugin)
+  .enablePlugins(NoPublishPlugin, BuildInfoPlugin)
   .disablePlugins(disabledPlugins: _*)
   .settings(commonSettings)
   .settings(commonSettingsJvm)
+  .settings(buildInfoSettings(pkg = "dev.tauri.choam.helpers"))
   .dependsOn(ce.jvm % "compile->compile;test->test")
+  .settings(
+    assertionsEnabled := false, // so that we can test that they're disabled
+  )
 
 lazy val laws = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -703,7 +714,6 @@ lazy val commonSettingsJs = Seq[Setting[_]](
 lazy val commonSettings = Seq[Setting[_]](
   scalacOptions ++= Seq(
     "-language:higherKinds",
-    // TODO: "-Xelide-below", "INFO",
     // TODO: experiment with -Ydelambdafy:inline for performance
     // TODO: experiment with -Yno-predef and/or -Yno-imports
   ),
@@ -719,7 +729,7 @@ lazy val commonSettings = Seq[Setting[_]](
         "-Xsource:3-cross",
         "-Wnonunit-statement",
         "-Wvalue-discard",
-      )
+      ) ++ (if (assertionsEnabled.value) Nil else List("-Xelide-below", "2001"))
     } else {
       // 3.x:
       List(
@@ -786,6 +796,17 @@ lazy val commonSettings = Seq[Setting[_]](
   inTask(packageSrc)(extraPackagingSettings) ++
   inTask(packageDoc)(extraPackagingSettings)
 ) ++ publishSettings
+
+def buildInfoSettings(pkg: String): Seq[Setting[_]] = Seq(
+  buildInfoPackage := pkg,
+  buildInfoKeys := Seq(
+    assertionsEnabled,
+  ),
+  buildInfoOptions ++= Seq(
+    BuildInfoOption.PackagePrivate,
+    BuildInfoOption.ConstantValue,
+  ),
+)
 
 lazy val publishSettings = Seq[Setting[_]](
   organization := "dev.tauri",

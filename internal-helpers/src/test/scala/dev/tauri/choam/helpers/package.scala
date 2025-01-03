@@ -16,17 +16,5 @@
  */
 
 package dev.tauri.choam
-package internal
 
-package object skiplist extends ChoamUtils {
-
-  private[choam] type tailrec = scala.annotation.tailrec
-
-  @inline
-  private[choam] final def box[A](a: A): AnyRef =
-    a.asInstanceOf[AnyRef]
-
-  @inline
-  private[choam] final def equ[A](x: A, y: A): Boolean =
-    box(x) eq box(y)
-}
+package object helpers extends ChoamUtils2
