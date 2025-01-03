@@ -700,7 +700,7 @@ object Rxn extends RxnInstances0 {
 
   private final class SuspendUntilBackoff(val token: Long) extends SuspendUntil {
 
-    assert(!Backoff2.isPauseToken(token))
+    _assert(!Backoff2.isPauseToken(token))
 
     final override def toString: String =
       s"SuspendUntilBackoff(${token.toHexString})"
@@ -841,7 +841,7 @@ object Rxn extends RxnInstances0 {
 
     private[this] val canSuspend: Boolean = {
       val cs = strategy.canSuspend
-      assert( // just to be sure:
+      _assert( // just to be sure:
         ((!cs) == strategy.isInstanceOf[RetryStrategy.Spin]) &&
         (cs || (!isStm))
       )
@@ -887,7 +887,7 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def convertToImmutable(): Unit = {
-      assert(this.mutable)
+      _assert(this.mutable)
       this.mutable = false
       if (this._desc ne null) {
         this.desc = ctx.snapshot(this.desc)
@@ -897,7 +897,7 @@ object Rxn extends RxnInstances0 {
 
     @inline
     private[this] final def desc_=(d: AbstractDescriptor): Unit = {
-      assert(d ne null) // we want to be explicit, see `clearDesc`
+      _assert(d ne null) // we want to be explicit, see `clearDesc`
       _desc = d
     }
 
@@ -979,7 +979,7 @@ object Rxn extends RxnInstances0 {
     }
 
     final override def entryPresent(ref: MemoryLocation[Any], hwd: LogEntry[Any], curr: Rxn[Any, Any]): LogEntry[Any] = {
-      assert(hwd ne null)
+      _assert(hwd ne null)
       val res: LogEntry[Any] = curr match {
         case _: RefGetAxn[_] =>
           hwd
@@ -1106,7 +1106,7 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def popFinalResult(): Any = {
       val r = contK.pop()
-      assert(!equ(r, postCommitResultMarker))
+      _assert(!equ(r, postCommitResultMarker))
       r
     }
 
@@ -1152,7 +1152,7 @@ object Rxn extends RxnInstances0 {
           pcAction
         case 5 => // ContAfterPostCommit
           val res = popFinalResult()
-          assert(contK.isEmpty() && contT.isEmpty())
+          _assert(contK.isEmpty() && contT.isEmpty())
           new Done(res)
         case 6 => // ContCommitPostCommit
           a = postCommitResultMarker : Any
@@ -1162,7 +1162,7 @@ object Rxn extends RxnInstances0 {
           val ref = contK.pop().asInstanceOf[MemoryLocation[Any]]
           val (nx, res) = a.asInstanceOf[Tuple2[_, _]]
           val hwd = desc.getOrElseNull(ref)
-          assert(hwd ne null)
+          _assert(hwd ne null)
           if (equ(hwd.nv, ox)) {
             this.desc = this.desc.overwrite(hwd.withNv(nx))
             a = res
@@ -1267,11 +1267,11 @@ object Rxn extends RxnInstances0 {
           // ok, spinning done, restart:
           this.startRxn
         } else {
-          assert(canSuspend)
+          _assert(canSuspend)
           new SuspendUntilBackoff(token)
         }
       } else { // STM
-        assert(canSuspend && this.isStm)
+        _assert(canSuspend && this.isStm)
         new SuspendUntilChanged(desc)
       }
     }
@@ -1314,7 +1314,7 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def revalidateIfNeeded[A](hwd: LogEntry[A]): LogEntry[A] = {
-      assert(hwd ne null)
+      _assert(hwd ne null)
       if (!desc.isValidHwd(hwd)) {
         if (forceValidate(hwd)) {
           // OK, `desc` was extended
@@ -1444,7 +1444,7 @@ object Rxn extends RxnInstances0 {
           a = () : Any
           loop(nxt)
         case 5 => // RetryWhenChanged (STM)
-          assert(this.canSuspend && this.isStm)
+          _assert(this.canSuspend && this.isStm)
           loop(retry(canSuspend = true, suspendUntilChanged = true))
         case 6 => // Choice
           val c = curr.asInstanceOf[Choice[A, B]]
@@ -1468,13 +1468,13 @@ object Rxn extends RxnInstances0 {
           }
         case 8 => // RefGetAxn
           val ref = curr.asInstanceOf[MemoryLocation[Any] with Rxn[Any, Any]]
-          assert(this._entryHolder eq null) // just to be sure
+          _assert(this._entryHolder eq null) // just to be sure
           desc = desc.computeIfAbsent(ref, tok = ref, visitor = this)
           val hwd = this._entryHolder
           this._entryHolder = null // cleanup
           val hwd2 = revalidateIfNeeded(hwd)
           if (hwd2 eq null) {
-            assert(this._desc eq null)
+            _assert(this._desc eq null)
             loop(retry())
           } else {
             a = hwd2.nv
@@ -1487,7 +1487,7 @@ object Rxn extends RxnInstances0 {
           loop(c.left)
         case 10 => // Upd
           val c = curr.asInstanceOf[Upd[A, B, Any]]
-          assert(this._entryHolder eq null) // just to be sure
+          _assert(this._entryHolder eq null) // just to be sure
           desc = desc.computeOrModify(c.ref, tok = curr.asInstanceOf[Rxn[Any, Any]], visitor = this)
           val hwd = this._entryHolder
           this._entryHolder = null // cleanup
@@ -1501,7 +1501,7 @@ object Rxn extends RxnInstances0 {
               desc = desc.overwrite(hwd.withNv(nx).cast[Any])
               next()
             } else {
-              assert(this._desc eq null)
+              _assert(this._desc eq null)
               retry()
             }
           } else {
@@ -1510,14 +1510,14 @@ object Rxn extends RxnInstances0 {
           loop(nxt)
         case 11 => // TicketWrite
           val c = curr.asInstanceOf[TicketWrite[Any]]
-          assert(this._entryHolder eq null) // just to be sure
+          _assert(this._entryHolder eq null) // just to be sure
           a = () : Any
           desc = desc.computeOrModify(c.hwd.address, tok = c, visitor = this)
           val newHwd = this._entryHolder
           this._entryHolder = null // cleanup
           val newHwd2 = revalidateIfNeeded(newHwd)
           if (newHwd2 eq null) {
-            assert(this._desc eq null)
+            _assert(this._desc eq null)
             loop(retry())
           } else {
             loop(next())
@@ -1649,7 +1649,7 @@ object Rxn extends RxnInstances0 {
           contK.push2(a, c.f)
           loop(c.rxn)
         case 28 => // SuspendUntil
-          assert(this.canSuspend)
+          _assert(this.canSuspend)
           // user code can't access a `SuspendUntil`, so
           // we can abuse `R` and return `SuspendUntil`:
           curr.asInstanceOf[R]
@@ -1683,11 +1683,11 @@ object Rxn extends RxnInstances0 {
           try {
             loop(startRxn) match {
               case s: SuspendUntil =>
-                assert(this._entryHolder eq null)
+                _assert(this._entryHolder eq null)
                 val sus: F[Unit] = s.toF[F](mcas, ctx)
                 F.flatMap(poll(sus)) { _ => step(ctxHint = ctx) }
               case r =>
-                assert(this._entryHolder eq null)
+                _assert(this._entryHolder eq null)
                 F.pure(r)
             }
           } finally {
@@ -1710,11 +1710,11 @@ object Rxn extends RxnInstances0 {
 
     /** This is also called for tests/benchmarks by `unsafePerformInternal` above. */
     final def interpretSyncWithContext(ctx: Mcas.ThreadContext): R = {
-      assert(!canSuspend)
+      _assert(!canSuspend)
       this.ctx = ctx
       try {
         val r = loop(startRxn)
-        assert(this._entryHolder eq null)
+        _assert(this._entryHolder eq null)
         r
       } finally {
         this.saveStats()
