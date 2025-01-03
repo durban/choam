@@ -729,7 +729,7 @@ lazy val commonSettings = Seq[Setting[_]](
         "-Xsource:3-cross",
         "-Wnonunit-statement",
         "-Wvalue-discard",
-      ) ++ (if (assertionsEnabled.value) Nil else List("-Xelide-below", "2001"))
+      ) ++ (if (assertionsEnabled.value) Nil else List("-Xelide-below", "1501"))
     } else {
       // 3.x:
       List(

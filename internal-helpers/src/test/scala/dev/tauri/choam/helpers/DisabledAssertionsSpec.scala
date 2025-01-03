@@ -25,15 +25,23 @@ final class DisableAssertionsSpec extends BaseSpec {
     _assert({ throw new Exception; false }) : @nowarn("cat=w-flag-dead-code")
   }
 
+  test("Predef.assert should still work".fail) {
+    Predef.assert(false)
+  }
+
+  test("Predef.assert should still work (with message)".fail) {
+    Predef.assert(false, "foo")
+  }
+
   test("munit assert should still work".fail) {
     this.assert(false)
   }
 
-  test("require(Boolean) should still work".fail) {
+  test("require should still work".fail) {
     require(false)
   }
 
-  test("require(Boolean, => Any) should still work".fail) {
+  test("require should still work (with message)".fail) {
     require(false, "foo")
   }
 

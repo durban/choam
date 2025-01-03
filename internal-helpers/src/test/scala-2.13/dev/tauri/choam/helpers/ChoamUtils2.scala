@@ -25,7 +25,7 @@ import scala.annotation.{ elidable, nowarn }
 @nowarn("msg=elidable")
 private[choam] abstract class ChoamUtils2 {
 
-  @elidable(elidable.ASSERTION)
+  @elidable(1500)
   private[choam] final def _assert(ok: Boolean): Unit = {
     if (!ok) {
       throw new AssertionError
