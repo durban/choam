@@ -282,8 +282,7 @@ private abstract class RandomBase
         r
       }
       val c: Char = res.toChar
-      assert(c.toInt == res)
-      assert(!isLowSurrogate(c))
+      _assert((c.toInt == res) && (!isLowSurrogate(c)))
       c
     }
   }
@@ -291,7 +290,7 @@ private abstract class RandomBase
   private[this] final def nextLowSurrogate: Axn[Char] = {
     this.nextIntBounded(NumLowSurrogates).map { (r: Int) =>
       val c = (r + MinLowSurrogate).toChar
-      assert(isLowSurrogate(c))
+      _assert(isLowSurrogate(c))
       c
     }
   }
@@ -304,9 +303,7 @@ private abstract class RandomBase
         r
       }
       val c = res.toChar
-      assert(c.toInt == res)
-      assert(!isHighSurrogate(c))
-      assert(!isLowSurrogate(c))
+      _assert((c.toInt == res) && (!isHighSurrogate(c)) && (!isLowSurrogate(c)))
       c
     }
   }

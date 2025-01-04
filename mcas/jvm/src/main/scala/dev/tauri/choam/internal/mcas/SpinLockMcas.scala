@@ -169,7 +169,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
         case h :: tail => h match { case head: LogEntry[a] =>
           val ov = head.address.unsafeGetVersionV()
           val wit = head.address.unsafeCmpxchgVersionV(ov, newVersion)
-          assert(wit == ov)
+          _assert(wit == ov)
           head.address.unsafeSetV(head.nv)
           head.address.unsafeNotifyListeners()
           commit(tail, newVersion)
@@ -197,7 +197,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
         case l @ (_ :: _) =>
           lock(l) match {
             case (Nil, bv) =>
-              assert(bv.isEmpty)
+              _assert(bv.isEmpty)
               commit(l, newVersion)
               McasStatus.Successful
             case (to @ (_ :: _), bv) =>

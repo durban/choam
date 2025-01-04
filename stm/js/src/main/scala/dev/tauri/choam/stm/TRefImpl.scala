@@ -126,7 +126,7 @@ private final class TRefImpl[F[_], A](
   ): Long = {
     val lid = previousListenerId + 1L
     previousListenerId = lid
-    assert(lid != Consts.InvalidListenerId) // detect overflow
+    Predef.assert(lid != Consts.InvalidListenerId) // detect overflow
 
     val currVer = ctx.readVersion(this)
     if (currVer != lastSeenVersion) {

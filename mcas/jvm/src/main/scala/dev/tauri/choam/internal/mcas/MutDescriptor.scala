@@ -129,7 +129,7 @@ final class MutDescriptor private (
         ctx.validate(this) &&
         ((additionalHwd eq null) || ctx.validateHwd(additionalHwd))
       ) {
-        assert((additionalHwd eq null) || (additionalHwd.version <= newValidTs))
+        _assert((additionalHwd eq null) || (additionalHwd.version <= newValidTs))
         this._validTs = currentTs
         this
       } else {

@@ -174,7 +174,7 @@ object Mcas extends McasCompanionPlatform { self =>
         // (and we pass on the null to our caller):
         val res = this.validateAndTryExtend(newLog, hwd = null)
         if (res ne null) {
-          assert(res.isValidHwd(hwd))
+          _assert(res.isValidHwd(hwd))
         }
         res
       } else {
@@ -204,7 +204,7 @@ object Mcas extends McasCompanionPlatform { self =>
       } else {
         val finalDesc = this.addVersionCas(desc)
         val res = this.tryPerformInternal(finalDesc, optimism = optimism)
-        assert((res == McasStatus.Successful) || (res == McasStatus.FailedVal) || (res == Version.Reserved) || Version.isValid(res))
+        _assert((res == McasStatus.Successful) || (res == McasStatus.FailedVal) || (res == Version.Reserved) || Version.isValid(res))
         res
       }
     }
@@ -269,16 +269,16 @@ object Mcas extends McasCompanionPlatform { self =>
      * of a ref without changing its version!
      */
     final def singleCasDirect[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
-      assert(!equ(ov, nv))
+      _assert(!equ(ov, nv))
       val hwd = this.readIntoHwd(ref)
       val d0 = this.start() // do this after reading, so version is deemed valid
-      assert(d0.isValidHwd(hwd))
+      _assert(d0.isValidHwd(hwd))
       if (equ(hwd.ov, ov)) {
         // create a (dangerous) descriptor, which will set
         // the new version to `validTs` (which may equal the
         // old version):
         val d1 = d0.add(hwd.withNv(nv)).withNoNewVersion
-        assert(d1.newVersion == d1.validTs)
+        _assert(d1.newVersion == d1.validTs)
         // we're intentionally NOT having a version-CAS:
         this.tryPerformInternal(d1, optimism = Consts.PESSIMISTIC) == McasStatus.Successful
       } else {
@@ -297,9 +297,9 @@ object Mcas extends McasCompanionPlatform { self =>
       // TODO: this could be optimized (probably)
       val d0 = this.start()
       val d1 = this.readIntoLog(ref, d0)
-      assert(d1 ne null)
+      _assert(d1 ne null)
       val hwd = d1.getOrElseNull(ref)
-      assert(hwd ne null)
+      _assert(hwd ne null)
       if (equ(hwd.ov, ov)) {
         val d2 = d1.overwrite(hwd.withNv(nv))
         this.tryPerform(d2, optimism = Consts.PESSIMISTIC) == McasStatus.Successful

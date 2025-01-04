@@ -113,7 +113,7 @@ private final class ByteStack(initSize: Int) {
   private[core] def nextPowerOf2(n: Int): Int = {
     require(n >= 0)
     val res = nextPowerOf2Internal(n)
-    assert(res >= 0)
+    _assert(res >= 0)
     res
   }
 

@@ -342,7 +342,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     // if another thread starts and finishes another op,
     // we don't overwrite the newer version. (Versions
     // are always monotonically increasing.)
-    assert(currentVersion >= ov.oldVersion)
+    _assert(currentVersion >= ov.oldVersion)
     val currentInRef = ref.unsafeGetVersionV()
     if (currentInRef < currentVersion) {
       val wit = ref.unsafeCmpxchgVersionV(currentInRef, currentVersion)
@@ -357,7 +357,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // Possibly also clean up the weakref:
         cleanWeakRef(ref, weakref)
       } else {
-        assert(wit >= currentVersion)
+        _assert(wit >= currentVersion)
         // concurrent write, no need to replace the
         // descriptor (see the comment below)
       }
@@ -377,7 +377,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
 
   private[this] final def cleanWeakRef[A](ref: MemoryLocation[A], weakref: WeakReference[AnyRef]): Unit = {
     if (weakref ne null) {
-      assert(weakref.get() eq null)
+      _assert(weakref.get() eq null)
       // We also delete the (now empty) `WeakReference`
       // object, to help the GC. If this CAS fails,
       // that means a new op already installed a new
@@ -398,7 +398,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
 
   private[mcas] final def readVersion[A](ref: MemoryLocation[A], ctx: EmcasThreadContext): Long = {
     val v = readVersionInternal(ref, ctx, forMCAS = false, seen = 0L, instRo = false)
-    assert(Version.isValid(v))
+    _assert(Version.isValid(v))
     v
   }
 
@@ -615,7 +615,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       }
 
       // just to be safe:
-      assert(((mark eq null) || (mark eq weakref.get())) && Version.isValid(version))
+      _assert(((mark eq null) || (mark eq weakref.get())) && Version.isValid(version))
 
       val wordDescOv = wordDesc.ov
       if (equ(wordDescOv, EmcasDescriptorBase.CLEARED)) {
@@ -638,12 +638,12 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       } else {
         // before installing our descriptor, make sure a valid mark exists:
         val weakRefOk = if (mark eq null) {
-          assert((weakref eq null) || (weakref.get() eq null))
+          _assert((weakref eq null) || (weakref.get() eq null))
           // there was no old descriptor, or it was already unused;
           // we'll need a new mark:
           mark = ctx.getReusableMarker()
           val weakref2 = ctx.getReusableWeakRef()
-          assert(weakref2.get() eq mark)
+          _assert(weakref2.get() eq mark)
           address.unsafeCasMarkerV(weakref, weakref2)
           // if this fails, we'll retry, see below
         } else {
@@ -681,9 +681,9 @@ private[mcas] final class Emcas extends GlobalContext { global =>
               // thus, we should not continue:
               EmcasStatus.Break
             case wd: EmcasWordDesc[_] =>
-              assert(instRo || (!wd.readOnly))
+              _assert(instRo || (!wd.readOnly))
               val twr = tryWord(wd, newSeen)
-              assert(
+              _assert(
                 (twr == McasStatus.Successful) ||
                 (twr == McasStatus.FailedVal) ||
                 (twr == EmcasStatus.Break) ||
@@ -698,7 +698,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
               // read-only WD, which we don't
               // need to install; continue, but
               // we'll need to revalidate later:
-              assert(wd.readOnly)
+              _assert(wd.readOnly)
               go(words, next = next + 1, len = len, needsValidation = true)
           }
         } else {
@@ -731,7 +731,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
               // this WD have been already installed by `acquire`
               go(words, next = next + 1, len = len)
             case wd: LogEntry[_] =>
-              assert(wd.readOnly)
+              _assert(wd.readOnly)
               // revalidate:
               val currVer = this.readVersionInternal(wd.address, ctx, forMCAS = true, seen = newSeen, instRo = false)
               if (currVer == wd.oldVersion) {
@@ -749,7 +749,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         }
       }
 
-      assert(!instRo)
+      _assert(!instRo)
       if (words ne null) {
         go(words, next = 0, len = words.length)
       } else {
@@ -767,7 +767,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         // (see the long comment below)
         desc.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
       }
-      assert(
+      _assert(
         Version.isValid(result) ||
         (result == McasStatus.FailedVal) ||
         (result == EmcasStatus.CycleDetected)
@@ -807,7 +807,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
       acquire(desc.getWordDescArrOrNull(), seen2)
     }
 
-    assert(
+    _assert(
       (r == McasStatus.Successful) ||
       (r == McasStatus.FailedVal) ||
       (r == EmcasStatus.Break) ||
@@ -857,7 +857,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     } else {
       val r2 = if ((r == McasStatus.Successful) || (r == McasStatus.Active)) {
         val needsValidation = (r == McasStatus.Active)
-        assert((!instRo) || (!needsValidation))
+        _assert((!instRo) || (!needsValidation))
         if (!needsValidation) {
           // successfully installed every descriptor (ACQUIRE)
           // we'll need a new commit-ts, which we will
@@ -869,7 +869,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           // validate our read-set (the read-only
           // descriptors, which were not installed):
           val vr = validate(desc.getWordDescArrOrNull(), newSeen = seen2)
-          assert(
+          _assert(
             (vr == McasStatus.Successful) ||
             (vr == McasStatus.FailedVal) ||
             (vr == EmcasStatus.Break) ||
@@ -899,7 +899,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
         getFinalResultFromHelper()
       } else {
         val finalRes = r2
-        assert(
+        _assert(
           Version.isValid(finalRes) ||
           (finalRes == McasStatus.FailedVal) ||
           (finalRes == EmcasStatus.CycleDetected)
@@ -926,7 +926,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           finalRes
         } else {
           // someone else already finalized the descriptor, we return its status:
-          assert(
+          _assert(
             Version.isValid(witness) ||
             (witness == McasStatus.FailedVal) ||
             (witness == EmcasStatus.CycleDetected)
@@ -983,19 +983,19 @@ private[mcas] final class Emcas extends GlobalContext { global =>
     val ts2 = global.getCommitTs()
     if (ts1 != ts2) {
       // we've observed someone else changing the version:
-      assert(ts2 > ts1)
+      _assert(ts2 > ts1)
       ts2
     } else {
       // we try to increment it:
       val candidate = ts1 + Version.Incr
-      assert(Version.isValid(candidate)) // detect version overflow
+      Predef.assert(Version.isValid(candidate)) // detect version overflow
       val ctsWitness = global.cmpxchgCommitTs(ts1, candidate) // TODO: could this be `getAndAdd`? is it faster?
       if (ctsWitness == ts1) {
         // ok, successful CAS:
         candidate
       } else {
         // failed CAS, but this means that someone else incremented it:
-        assert(ctsWitness > ts1)
+        _assert(ctsWitness > ts1)
         ctsWitness
       }
     }
@@ -1022,7 +1022,7 @@ private[mcas] final class Emcas extends GlobalContext { global =>
 
   private[mcas] final def tryPerformDebug(desc: AbstractDescriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
     if (desc.nonEmpty) {
-      assert(!desc.readOnly)
+      _assert(!desc.readOnly)
       val instRo = (optimism.toInt : @switch) match {
         case 0 => true
         case 1 => false
@@ -1037,24 +1037,24 @@ private[mcas] final class Emcas extends GlobalContext { global =>
           // a constant, to follow the `Mcas` API:
           McasStatus.Successful
         } else if (res == EmcasStatus.CycleDetected) {
-          assert(!instRo)
+          _assert(!instRo)
           // we detected a (possible) cycle, so
           // we'll fall back to the method which
           // is certainly lock free (always installing
           // every WD, even the read-only ones):
           val fallback = fullDesc.fallback
-          assert(fallback.instRo)
+          _assert(fallback.instRo)
           val fbRes = MCAS(fallback, ctx = ctx, seen = 0L)
           if (EmcasStatus.isSuccessful(fbRes)) {
             McasStatus.Successful
           } else {
             // now we can't get CycleDetected for sure
-            assert(fbRes == McasStatus.FailedVal)
+            _assert(fbRes == McasStatus.FailedVal)
             // but we signal, that previously there WAS a cycle:
             Version.Reserved
           }
         } else {
-          assert(res == McasStatus.FailedVal)
+          _assert(res == McasStatus.FailedVal)
           McasStatus.FailedVal
         }
       } else {

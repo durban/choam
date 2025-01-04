@@ -134,7 +134,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
   /** Mustn't already contain the key of `a` */
   final def inserted(a: V): H = {
     val newRoot = this.insertOrOverwrite(a.key.hash, a, 0, OP_INSERT)
-    assert(newRoot ne null)
+    _assert(newRoot ne null)
     newRoot
   }
 
@@ -239,7 +239,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
           case null =>
             nullOf[H]
           case newVal =>
-            assert(newVal.key.hash == hash)
+            _assert(newVal.key.hash == hash)
             // TODO: this will compute physIdx again:
             this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
         }
@@ -250,7 +250,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
           case newNode =>
             val oldSize = this.size
             val newSize = oldSize + (newNode.size - node.size)
-            assert((modify && ((newSize == oldSize) || (newSize == (oldSize + 1)))) || (newSize == (oldSize + 1)))
+            _assert((modify && ((newSize == oldSize) || (newSize == (oldSize + 1)))) || (newSize == (oldSize + 1)))
             val bitmap = this.bitmap
             // TODO: we're computing physIdx twice:
             val physIdx: Int = physicalIdx(bitmap, 1L << logicalIdx(hash, shift))
@@ -265,11 +265,11 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
             if (equ(newEntry, a)) {
               nullOf[H]
             } else {
-              assert(newEntry.key.hash == hashA)
+              _assert(newEntry.key.hash == hashA)
               this.insertOrOverwrite(hashA, newEntry, shift, op = OP_UPDATE)
             }
           } else {
-            assert(equ(newEntry, a))
+            _assert(equ(newEntry, a))
             nullOf[H]
           }
         } else {
@@ -277,7 +277,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
             case null =>
               nullOf[H]
             case newVal =>
-              assert(newVal.key.hash == hash)
+              _assert(newVal.key.hash == hash)
               // TODO: this will compute physIdx again:
               this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
           }

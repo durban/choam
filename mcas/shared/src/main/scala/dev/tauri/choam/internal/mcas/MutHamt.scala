@@ -96,15 +96,13 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
 
   final def update(a: V): Unit = {
     val sdb = this.insertOrOverwrite(a.key.hash, a, shift = 0, op = OP_UPDATE)
-    val sizeDiff = unpackSizeDiff(sdb)
-    assert(sizeDiff == 0)
+    _assert(unpackSizeDiff(sdb) == 0)
     this.isBlueTree &= unpackIsBlue(sdb)
   }
 
   final def insert(a: V): Unit = {
     val sdb = this.insertOrOverwrite(a.key.hash, a, shift = 0, op = OP_INSERT)
-    val sizeDiff = unpackSizeDiff(sdb)
-    assert(sizeDiff == 1)
+    _assert(unpackSizeDiff(sdb) == 1)
     this.addToSize(1)
     this.isBlueTree &= unpackIsBlue(sdb)
   }
@@ -116,7 +114,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
   final def upsert(a: V): Unit = {
     val sdb = this.insertOrOverwrite(a.key.hash, a, shift = 0, op = OP_UPSERT)
     val sizeDiff = unpackSizeDiff(sdb)
-    assert((sizeDiff == 0) || (sizeDiff == 1))
+    _assert((sizeDiff == 0) || (sizeDiff == 1))
     this.addToSize(sizeDiff)
     this.isBlueTree &= unpackIsBlue(sdb)
   }
@@ -124,7 +122,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
   final def computeIfAbsent[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): Unit = {
     val sdb = this.visit(k, k.hash, tok, visitor, newValue = nullOf[V], modify = false, shift = 0)
     val sizeDiff = unpackSizeDiff(sdb)
-    assert((sizeDiff == 0) || (sizeDiff == 1))
+    _assert((sizeDiff == 0) || (sizeDiff == 1))
     this.addToSize(sizeDiff)
     this.isBlueTree &= unpackIsBlue(sdb)
   }
@@ -132,7 +130,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
   final def computeOrModify[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): Unit = {
     val sdb = this.visit(k, k.hash, tok, visitor, newValue = nullOf[V], modify = true, shift = 0)
     val sizeDiff = unpackSizeDiff(sdb)
-    assert((sizeDiff == 0) || (sizeDiff == 1))
+    _assert((sizeDiff == 0) || (sizeDiff == 1))
     this.addToSize(sizeDiff)
     this.isBlueTree &= unpackIsBlue(sdb)
   }
@@ -142,7 +140,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
 
   final def copyToImmutable(): I = {
     val imm = this.copyToImmutableInternal(shift = 0)
-    assert((imm.size == this.size) && ((!this.isBlueTree) || imm.isBlueSubtree))
+    _assert((imm.size == this.size) && ((!this.isBlueTree) || imm.isBlueSubtree))
     imm
   }
 
@@ -215,7 +213,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
           case null =>
             packSizeDiffAndBlue(0, true)
           case newVal =>
-            assert(newVal.key.hash == hash)
+            _assert(newVal.key.hash == hash)
             // TODO: this will compute physIdx again:
             this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
         }
@@ -253,11 +251,11 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
             if (equ(newValue, a)) {
               packSizeDiffAndBlue(0, isBlue(a))
             } else {
-              assert(newVal.key.hash == hashA)
+              _assert(newVal.key.hash == hashA)
               this.insertOrOverwrite(hash, newVal, shift, op = OP_UPDATE)
             }
           } else {
-            assert(equ(newVal, a))
+            _assert(equ(newVal, a))
             packSizeDiffAndBlue(0, true)
           }
         } else {
@@ -274,7 +272,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
               case null =>
                 packSizeDiffAndBlue(0, true)
               case newVal =>
-                assert(newVal.key.hash == hash)
+                _assert(newVal.key.hash == hash)
                 this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
             }
           } else {
@@ -350,7 +348,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
             }
             val r = childNode.insertOrOverwrite(hash, value, shift = childShift, op = op)
             contents(physIdx) = childNode
-            assert(unpackSizeDiff(r) == 1)
+            _assert(unpackSizeDiff(r) == 1)
             r
           } else {
             if (op == OP_UPDATE) {
@@ -369,11 +367,11 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
   }
 
   private[this] final def growLevel(newSize: Int, shift: Int): Unit = {
-    assert((newSize & (newSize - 1)) == 0) // power of 2
+    _assert((newSize & (newSize - 1)) == 0) // power of 2
     val newContents = new Array[AnyRef](newSize)
     val contents = this.contents
     val size = contents.length
-    assert(newSize > size)
+    _assert(newSize > size)
     var idx = 0
     while (idx < size) {
       contents(idx) match {
@@ -441,14 +439,14 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
    * (considering bit collisions starting from the MSB).
    */
   private[this] final def necessarySize(logIdx1: Int, logIdx2: Int): Int = {
-    assert(logIdx1 != logIdx2)
+    _assert(logIdx1 != logIdx2)
     val diff = logIdx1 ^ logIdx2
     val necessaryBits = (
       java.lang.Integer.numberOfLeadingZeros(diff) - // this many bits are the same on the left
       (32 - 6) + // but we actually have 6-bit integers here instead of 32
       1 // and we never have a 1-element array (we start from 2 and always double when growing)
     )
-    assert(necessaryBits <= W)
+    _assert(necessaryBits <= W)
     1 << necessaryBits // the size of the array which is addressable by this many bits
   }
 
@@ -484,7 +482,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
   }
 
   private[this] final def packSizeDiffAndBlue(sizeDiff: Int, isBlue: Boolean): Int = {
-    assert((sizeDiff == 0) || (sizeDiff == 1))
+    _assert((sizeDiff == 0) || (sizeDiff == 1))
     val bl = if (isBlue) 2 else 0
     bl | sizeDiff
   }

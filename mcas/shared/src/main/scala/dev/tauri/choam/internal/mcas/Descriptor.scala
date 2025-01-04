@@ -167,7 +167,7 @@ final class Descriptor private (
         ctx.validate(this) &&
         ((additionalHwd eq null) || ctx.validateHwd(additionalHwd))
       ) {
-        assert((additionalHwd eq null) || (additionalHwd.version <= newValidTs))
+        _assert((additionalHwd eq null) || (additionalHwd.version <= newValidTs))
         new Descriptor(
           map = this.map,
           validTs = newValidTs,
@@ -348,7 +348,7 @@ object Descriptor {
           // we just need to convince scalac
           // that it's type is `Descriptor`:
           val r = extended.toImmutable
-          assert(r eq extended)
+          _assert(r eq extended)
           r
       }
     }

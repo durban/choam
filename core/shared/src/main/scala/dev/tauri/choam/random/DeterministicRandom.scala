@@ -23,7 +23,6 @@ import scala.collection.mutable.ArrayBuffer
 import RandomBase._
 
 // TODO: everything could be optimized to a single `seed.modify { ... }`
-// TODO: remove asserts after a while
 
 private object DeterministicRandom {
   def apply(initialSeed: Long): Axn[SplittableRandom[Axn]] = {
@@ -88,7 +87,7 @@ private final class DeterministicRandom(
     } else {
       z
     }
-    assert((res & 1L) == 1L)
+    _assert((res & 1L) == 1L)
     res
   }
 

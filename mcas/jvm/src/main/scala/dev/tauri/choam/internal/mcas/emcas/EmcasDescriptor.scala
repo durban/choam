@@ -46,7 +46,7 @@ private[mcas] final class EmcasDescriptor private[this] (
   // EMCAS handles the global version
   // separately, so the descriptor must
   // not have a CAS for changing it:
-  assert((half eq null) || (!half.hasVersionCas))
+  _assert((half eq null) || (!half.hasVersionCas))
 
   /*
    * While the status is `Active`, this array
@@ -63,15 +63,15 @@ private[mcas] final class EmcasDescriptor private[this] (
   this.setWordsO(
     if (half ne null) {
       // optimistic/pessimistic mode
-      assert(wordsToCopy eq null)
+      _assert(wordsToCopy eq null)
       val arr = half.toWdArray(this, instRo = instRo).asInstanceOf[Array[WdLike[_]]]
-      assert((arr eq null) || (arr.length > 0))
+      _assert((arr eq null) || (arr.length > 0))
       arr
     } else {
       // we're a fallback
-      assert(instRo && (wordsToCopy ne null))
+      _assert(instRo && (wordsToCopy ne null))
       val len = wordsToCopy.length
-      assert(len > 0)
+      _assert(len > 0)
       val arr = new Array[WdLike[_]](len)
       var idx = 0
       while (idx < len) {
@@ -120,11 +120,11 @@ private[mcas] final class EmcasDescriptor private[this] (
 
   private[emcas] final def wasFinalized(finalResult: Long): Unit = {
     if (finalResult == EmcasStatus.CycleDetected) {
-      assert(!this.instRo)
+      _assert(!this.instRo)
       // create the fallback, we'll need it
       // anyway, no reason to wait for lazy-init:
       val fb = new EmcasDescriptor(this.getWordsO())
-      assert(fb.getWordsP()(0) ne EmcasWordDesc.Invalid)
+      _assert(fb.getWordsP()(0) ne EmcasWordDesc.Invalid)
       // but we have to store it carefully,
       // someone else might've beat us:
       this.getOrInitFallback(fb)
@@ -136,8 +136,7 @@ private[mcas] final class EmcasDescriptor private[this] (
   private[emcas] final def fallback: EmcasDescriptor = {
     val fb = this.getFallbackA()
     if (fb eq null) {
-      assert(this.getStatusA() == EmcasStatus.CycleDetected)
-      assert(!this.instRo)
+      _assert((this.getStatusA() == EmcasStatus.CycleDetected) && (!this.instRo))
       this.getWordsO() match {
         case null =>
           // `wasFinalized` cleared the array, so it already
@@ -169,7 +168,7 @@ private[mcas] final class EmcasDescriptor private[this] (
       case null =>
         // wasn't enough:
         val fb2 = this.cmpxchgFallbackA(null, null)
-        assert(fb2 ne null)
+        _assert(fb2 ne null)
         fb2
       case fb2 =>
         // found it:

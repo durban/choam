@@ -139,7 +139,7 @@ private final class EmcasThreadContext(
 
   final override def readIntoHwd[A](ref: MemoryLocation[A]): LogEntry[A] = {
     val hwd = impl.readIntoHwd(ref, this)
-    assert(hwd.readOnly)
+    _assert(hwd.readOnly)
     hwd
   }
 

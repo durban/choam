@@ -47,7 +47,7 @@ class EmcasTest {
   private[this] val ref2 =
     MemoryLocation.unsafeWithId("x")(21L)
 
-  assert(MemoryLocation.globalCompare(ref1, ref2) > 0) // ref1 > ref2
+  Predef.assert(MemoryLocation.globalCompare(ref1, ref2) > 0) // ref1 > ref2
 
   // LLLLL_Result:
   // r1: k-CAS result (Boolean)

@@ -114,7 +114,7 @@ private final class TRefImpl[F[_], A](
     lastSeenVersion: Long,
   ): Long = {
     val lid = previousListenerId.incrementAndGet() // could be opaque
-    assert(lid != Consts.InvalidListenerId) // detect overflow
+    Predef.assert(lid != Consts.InvalidListenerId) // detect overflow
 
     @tailrec
     def go(ov: LongMap[Null => Unit]): Unit = {
@@ -143,7 +143,7 @@ private final class TRefImpl[F[_], A](
   }
 
   private[choam] final override def unsafeCancelListener(lid: Long): Unit = {
-    assert(lid != Consts.InvalidListenerId)
+    _assert(lid != Consts.InvalidListenerId)
 
     @tailrec
     def go(ov: LongMap[Null => Unit]): Unit = {

@@ -74,7 +74,7 @@ private sealed trait ExchangerImplJvm[A, B]
       case array =>
         array
     }
-    assert(incoming ne null)
+    _assert(incoming ne null)
     // post our message:
     incoming.get(idx) match {
       case null =>
@@ -215,7 +215,7 @@ private sealed trait ExchangerImplJvm[A, B]
     val ok = mergedDesc ne null
     if (ok) debugLog(s"merged logs - thread#${Thread.currentThread().getId()}")
     else debugLog(s"ERROR: Couldn't merge logs - thread#${Thread.currentThread().getId()}")
-    assert(ok, s"Couldn't merge logs: ${selfMsg.desc} and ${other.msg.desc}")
+    Predef.assert(ok, s"Couldn't merge logs: ${selfMsg.desc} and ${other.msg.desc}")
     val resMsg = Msg(
       value = a,
       contK = newContK,

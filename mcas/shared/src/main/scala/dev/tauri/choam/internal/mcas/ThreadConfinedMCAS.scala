@@ -72,11 +72,11 @@ private object ThreadConfinedMCAS extends ThreadConfinedMCASPlatform { self =>
           it.next() match {
             case wd: LogEntry[a] =>
               val old = wd.address.unsafeGetP()
-              assert(equ(old, wd.ov))
+              _assert(equ(old, wd.ov))
               wd.address.unsafeSetP(wd.nv)
               val ov = wd.address.unsafeGetVersionV()
               val wit = wd.address.unsafeCmpxchgVersionV(ov, newVersion)
-              assert(wit == ov)
+              _assert(wit == ov)
               wd.address.unsafeNotifyListeners()
               execute(it, newVersion)
           }

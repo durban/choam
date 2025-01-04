@@ -156,7 +156,7 @@ private final class Ttrie[K, V] private (
   /** Only call if `ref` really contains `End`! */
   private[this] final def unsafeDelRef(k: K, ref: Ref[V], ctx: Mcas.ThreadContext): Unit = {
     // just to be sure:
-    assert(isEnd(ctx.readDirect(ref.loc)))
+    _assert(isEnd(ctx.readDirect(ref.loc)))
     // NB: `TrieMap#remove(K, V)` checks V with
     // universal equality; fortunately, for a
     // ref, reference and univ. eq. are the same.
