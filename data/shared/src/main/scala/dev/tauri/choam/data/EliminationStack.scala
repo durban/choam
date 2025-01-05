@@ -38,19 +38,19 @@ private final class EliminationStack[A] private (
 
 private object EliminationStack {
 
-  def apply[A]: Axn[Stack[A]] = {
-    (TreiberStack[A] * Rxn.unsafe.exchanger[Unit, A]).map {
+  def apply[A](str: Ref.AllocationStrategy): Axn[Stack[A]] = {
+    (TreiberStack[A](str) * Rxn.unsafe.exchanger[Unit, A]).map {
       case (tStack, exc) =>
         new EliminationStack(tStack, exc)
     }
   }
 
-  def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
-    Stack.fromList(this.apply[A])(as)
+  def fromList[F[_], A](as: List[A], str: Ref.AllocationStrategy)(implicit F: Reactive[F]): F[Stack[A]] = {
+    Stack.fromList(this.apply[A](str))(as)
   }
 
   private[data] def debug[A]: Axn[DebugStack[A]] = {
-    (TreiberStack[A] * Rxn.unsafe.exchanger[Unit, A]).map {
+    (TreiberStack[A](Ref.AllocationStrategy.Default) * Rxn.unsafe.exchanger[Unit, A]).map {
       case (tStack, exc) =>
         new DebugStackImpl(tStack, exc)
     }

@@ -23,7 +23,8 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util._
-import data.{ Counter, CounterHelper }
+import data.Counter
+import internal.mcas.Mcas
 
 @Fork(2)
 class CounterBench {
@@ -77,7 +78,7 @@ object CounterBench {
   class ReactSt {
     val reactCtr: Counter = {
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
-      CounterHelper.unsafe(initial = init)
+      Counter.apply(initial = init).unsafeRun(Mcas.Emcas)
     }
   }
 }
@@ -135,7 +136,7 @@ object CounterBenchN {
     def setup(): Unit = {
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
       ctrs = Array.fill(n) {
-        CounterHelper.unsafe(initial = init)
+        Counter.apply(initial = init).unsafeRun(Mcas.Emcas)
       }
       r = ctrs.map(_.add.as(())).reduceLeft { (a, b) => (a * b).as(()) }
     }

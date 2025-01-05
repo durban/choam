@@ -40,9 +40,12 @@ final class Counter private (ref: Ref[Long]) {
 
 object Counter {
 
-  def apply: Axn[Counter] =
-    Ref.padded(0L).map(new Counter(_))
+  final def apply: Axn[Counter] =
+    apply(Ref.AllocationStrategy.Default)
 
-  private[data] def unsafe(initial: Long = 0L): Counter =
-    new Counter(Ref.unsafePadded(initial))
+  final def apply(str: Ref.AllocationStrategy): Axn[Counter] =
+    Ref(0L, str).map(new Counter(_))
+
+  private[choam] final def apply(initial: Long): Axn[Counter] =
+    Ref(initial).map(new Counter(_))
 }

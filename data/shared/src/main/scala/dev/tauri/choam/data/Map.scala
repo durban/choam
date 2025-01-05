@@ -72,10 +72,16 @@ object Map extends MapPlatform {
   private[data] trait UnsealedMapExtra[K, V] extends Map.Extra[K, V]
 
   final override def simpleHashMap[K: Hash, V]: Axn[Extra[K, V]] =
-    SimpleMap[K, V]
+    SimpleMap[K, V](Ref.AllocationStrategy.Default)
+
+  final override def simpleHashMap[K: Hash, V](str: Ref.AllocationStrategy): Axn[Extra[K, V]] =
+    SimpleMap[K, V](str)
 
   final override def simpleOrderedMap[K: Order, V]: Axn[Extra[K, V]] =
-    SimpleOrderedMap[K, V]
+    SimpleOrderedMap[K, V](Ref.AllocationStrategy.Default)
+
+  final override def simpleOrderedMap[K: Order, V](str: Ref.AllocationStrategy): Axn[Extra[K, V]] =
+    SimpleOrderedMap[K, V](str)
 
   private[data] final override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {
     m match {

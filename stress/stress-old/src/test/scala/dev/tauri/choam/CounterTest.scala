@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.JJJ_Result
 
-import data.CounterHelper
+import data.Counter
 
 // @JCStressTest
 @State
@@ -33,8 +33,8 @@ import data.CounterHelper
 ))
 class CounterTest extends StressTestBase {
 
-  private[this] val ctr =
-    CounterHelper.unsafe()
+  private[this] val ctr: Counter =
+    Counter.apply.unsafeRun(this.impl)
 
   private[this] val incr =
     ctr.incr

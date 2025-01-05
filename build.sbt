@@ -379,6 +379,14 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.AbstractMapPlatform.orderedMap"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.Ttrie.skipListBased"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.Ttrie.apply"), // private
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.AbstractMapPlatform.simpleHashMap"), // private
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.AbstractMapPlatform.simpleOrderedMap"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.EliminationStack.fromList"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.EliminationStack.apply"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.SimpleMap.apply"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.SimpleOrderedMap.apply"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.TreiberStack.fromList"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.TreiberStack.apply"), // private
     ),
   )
 

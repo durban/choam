@@ -37,8 +37,11 @@ private[choam] final class EliminationStack2[A](underlying: Stack[A])
 
 private object EliminationStack2 {
 
-  def apply[A]: Axn[EliminationStack2[A]] = {
-    Stack.treiberStack[A].flatMapF { ul =>
+  def apply[A]: Axn[EliminationStack2[A]] =
+    apply(Ref.AllocationStrategy.Default)
+
+  def apply[A](str: Ref.AllocationStrategy): Axn[EliminationStack2[A]] = {
+    Stack.treiberStack[A](str).flatMapF { ul =>
       Axn.unsafe.delay { new EliminationStack2[A](ul) }
     }
   }

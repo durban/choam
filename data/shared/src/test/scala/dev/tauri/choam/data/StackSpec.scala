@@ -37,13 +37,13 @@ final class StackSpec_Elimination2_ThreadConfinedMcas_IO
 
 trait StackSpecTreiber[F[_]] extends StackSpec[F] { this: McasImplSpec =>
   final override def newStack[A](as: A*): F[Stack[A]] = {
-    TreiberStack.fromList(as.toList)
+    TreiberStack.fromList(as.toList, Ref.AllocationStrategy.Default)
   }
 }
 
 trait StackSpecElimination[F[_]] extends StackSpec[F] { this: McasImplSpec =>
   final override def newStack[A](as: A*): F[Stack[A]] = {
-    EliminationStack.fromList(as.toList)
+    EliminationStack.fromList(as.toList, Ref.AllocationStrategy.Default)
   }
 }
 

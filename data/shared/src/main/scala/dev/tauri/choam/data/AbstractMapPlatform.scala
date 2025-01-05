@@ -24,7 +24,9 @@ import cats.kernel.{ Hash, Order }
 
 private abstract class AbstractMapPlatform {
   def simpleHashMap[K: Hash, V]: Axn[Map.Extra[K, V]]
+  def simpleHashMap[K: Hash, V](str: Ref.AllocationStrategy): Axn[Map.Extra[K, V]]
   def simpleOrderedMap[K: Order, V]: Axn[Map.Extra[K, V]]
+  def simpleOrderedMap[K: Order, V](str: Ref.AllocationStrategy): Axn[Map.Extra[K, V]]
   def hashMap[K: Hash, V]: Axn[Map[K, V]]
   def hashMap[K: Hash, V](str: Ref.AllocationStrategy): Axn[Map[K, V]]
   def orderedMap[K: Order, V]: Axn[Map[K, V]]

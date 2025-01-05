@@ -18,11 +18,11 @@
 package dev.tauri.choam
 package data
 
-private final class TreiberStack[A] private () extends Stack[A] {
+private final class TreiberStack[A] private (
+  private[this] val head: Ref[TreiberStack.Lst[A]],
+) extends Stack[A] {
 
   import TreiberStack._
-
-  private[this] val head = Ref.unsafe[Lst[A]](End)
 
   final override val push: Rxn[A, Unit] = head.upd { (as, a) =>
     (Cons(a, as), ())
@@ -39,11 +39,11 @@ private final class TreiberStack[A] private () extends Stack[A] {
 
 private object TreiberStack {
 
-  def apply[A]: Axn[TreiberStack[A]] =
-    Axn.unsafe.delay { new TreiberStack[A] }
+  private[data] final def apply[A](str: Ref.AllocationStrategy): Axn[TreiberStack[A]] =
+    Ref[Lst[A]](End, str).map(new TreiberStack[A](_))
 
-  def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
-    Stack.fromList(this.apply[A])(as)
+  private[data] final def fromList[F[_], A](as: List[A], str: Ref.AllocationStrategy)(implicit F: Reactive[F]): F[Stack[A]] = {
+    Stack.fromList(this.apply[A](str))(as)
   }
 
   private sealed trait Lst[+A] {
