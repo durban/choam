@@ -387,6 +387,8 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.SimpleOrderedMap.apply"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.TreiberStack.fromList"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.TreiberStack.apply"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.Counter.unsafe"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.Counter.unsafe$default$1"), // private
     ),
   )
 
