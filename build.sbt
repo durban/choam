@@ -415,6 +415,11 @@ lazy val stm = crossProject(JVMPlatform, JSPlatform)
   .dependsOn(async % "compile->compile;test->test")
   .settings(
     tlVersionIntroduced := Map("2.13" -> "0.4.1", "3" -> "0.4.1"),
+    mimaBinaryIssueFilters ++= Seq(
+      // there is no backward compat for `choam-stm`:
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.update"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.modify"),
+    ),
   )
 
 lazy val stream = crossProject(JVMPlatform, JSPlatform)

@@ -21,6 +21,8 @@ package stm
 sealed trait TRef[F[_], A] {
   def get: Txn[F, A]
   def set(a: A): Txn[F, Unit]
+  def update(f: A => A): Txn[F, Unit]
+  def modify[B](f: A => (A, B)): Txn[F, B]
 }
 
 object TRef {
