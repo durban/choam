@@ -309,6 +309,22 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     this.map2[A, C, D](that.impl)(f)
   }
 
+  final override def productR[C](that: Txn[Rxn.Anything, C]): Txn[Rxn.Anything, C] = {
+    this.productR(that.impl)
+  }
+
+  final override def *> [C](that: Txn[Rxn.Anything, C]): Txn[Rxn.Anything, C] = {
+    this.productR(that.impl)
+  }
+
+  final override def productL[C](that: Txn[Rxn.Anything, C]): Txn[Rxn.Anything, B] = {
+    this.productL(that.impl)
+  }
+
+  final override def <* [C](that: Txn[Rxn.Anything, C]): Txn[Rxn.Anything, B] = {
+    this.productL(that.impl)
+  }
+
   final override def orElse[Y >: B](that: Txn[Rxn.Anything, Y]): Txn[Rxn.Anything, Y] = {
     this + that.impl // TODO: orElse/+ semantics
   }

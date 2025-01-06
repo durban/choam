@@ -38,10 +38,10 @@ object Ref2 extends Ref2Platform {
   final def p2[A, B](a: A, b: B): Axn[Ref2[A, B]] =
     Rxn.unsafe.delayContext { ctx => unsafeP2(a, b, ctx.refIdGen) }
 
-  final def unsafeP1P1[A, B](a: A, b: B): Ref2[A, B] =
+  final def unsafeP1P1[A, B](a: A, b: B): Ref2[A, B] = // TODO:0.5: make it private
     this.unsafeP1P1(a, b, RefIdGen.global)
 
-  final def unsafeP2[A, B](a: A, b: B): Ref2[A, B] =
+  final def unsafeP2[A, B](a: A, b: B): Ref2[A, B] = // TODO:0.5: make it private
     this.unsafeP2(a, b, RefIdGen.global)
 
   final def unapply[A, B](r: Ref2[A, B]): Some[(Ref[A], Ref[B])] =

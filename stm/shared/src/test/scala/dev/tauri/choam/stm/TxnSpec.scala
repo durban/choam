@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.duration._
 
+import cats.StackSafeMonad
 import cats.effect.{ IO, Deferred }
 import cats.effect.Outcome.{ Canceled, Succeeded, Errored }
 
@@ -152,6 +153,58 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
         r1.get.map2(r2.get) { _ + _ }.commit,
         42 + 99,
       )
+    } yield ()
+  }
+
+  test("Txn#as") {
+    for {
+      r1 <- TRef[F, Int](42).commit
+      _ <- assertResultF(r1.set(99).as(3).commit, 3)
+      _ <- assertResultF(r1.get.commit, 99)
+    } yield ()
+  }
+
+  test("Txn#productR/L") {
+    for {
+      r1 <- TRef[F, Int](42).commit
+      r2 <- TRef[F, Int](99).commit
+      _ <- assertResultF(r1.set(99).productR(r2.get).commit, 99)
+      _ <- assertResultF(r1.get.commit, 99)
+      _ <- assertResultF(r2.get.productL(r1.set(100)).commit, 99)
+      _ <- assertResultF(r1.get.commit, 100)
+    } yield ()
+  }
+
+  test("Txn#*>/<*") {
+    for {
+      r1 <- TRef[F, Int](42).commit
+      r2 <- TRef[F, Int](99).commit
+      _ <- assertResultF((r1.set(99) *> (r2.get)).commit, 99)
+      _ <- assertResultF(r1.get.commit, 99)
+      _ <- assertResultF((r2.get <* r1.set(100)).commit, 99)
+      _ <- assertResultF(r1.get.commit, 100)
+    } yield ()
+  }
+
+  test("Txn.tailRecM") {
+    for {
+      r <- TRef[F, Int](0).commit
+      _ <- assertResultF(Txn.tailRecM[F, Int, Int](0) { a =>
+        if (a > 10) Txn.pure(Right(a))
+        else r.get.flatMap { ov => r.set(ov + 1).as(Left(a + 1)) }
+      }.commit, 11)
+      _ <- assertResultF(r.get.commit, 11)
+    } yield ()
+  }
+
+  test("Monad[Txn[F, *]] instance") {
+    def generic[G[_]](gi1: G[Int], gi2: G[Int])(implicit G: StackSafeMonad[G]): G[Int] = {
+      G.map2(gi1, gi2) { _ + _ }
+    }
+    for {
+      r1 <- TRef[F, Int](42).commit
+      r2 <- TRef[F, Int](99).commit
+      _ <- assertResultF(generic(r1.get, r2.get).commit, 42 + 99)
     } yield ()
   }
 }

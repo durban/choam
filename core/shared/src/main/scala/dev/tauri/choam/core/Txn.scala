@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package core
 
+import cats.StackSafeMonad
+
 import internal.mcas.Mcas
 
 // Note: not really private, published in dev.tauri.choam.stm
@@ -25,7 +27,17 @@ private[choam] sealed trait Txn[F[_], +B] {
 
   def map[C](f: B => C): Txn[F, C]
 
+  def as[C](c: C): Txn[F, C]
+
   def map2[C, D](that: Txn[F, C])(f: (B, C) => D): Txn[F, D]
+
+  def productR[C](that: Txn[F, C]): Txn[F, C]
+
+  def *> [C](that: Txn[F, C]): Txn[F, C]
+
+  def productL[C](that: Txn[F, C]): Txn[F, B]
+
+  def <* [C](that: Txn[F, C]): Txn[F, B]
 
   def flatMap[C](f: B => Txn[F, C]): Txn[F, C]
 
@@ -37,7 +49,7 @@ private[choam] sealed trait Txn[F[_], +B] {
 }
 
 // Note: not really private, published in dev.tauri.choam.stm
-private[choam] object Txn {
+private[choam] object Txn extends TxnInstances0 {
 
   private[core] trait UnsealedTxn[F[_], +B] extends Txn[F, B]
 
@@ -53,6 +65,9 @@ private[choam] object Txn {
   final def check[F[_]](cond: Boolean): Txn[F, Unit] =
     if (cond) unit else retry
 
+  final def tailRecM[F[_], A, B](a: A)(f: A => Txn[F, Either[A, B]]): Txn[F, B] =
+    Rxn.tailRecM(a)(f.asInstanceOf[Function1[A, Axn[Either[A, B]]]]).castF[F]
+
   private[choam] final object unsafe {
 
     private[choam] final def delay[F[_], A](uf: => A): Txn[F, A] =
@@ -60,5 +75,29 @@ private[choam] object Txn {
 
     private[choam] final def delayContext[F[_], A](uf: Mcas.ThreadContext => A): Txn[F, A] =
       Rxn.unsafe.delayContext(uf).castF[F]
+  }
+}
+
+private[core] sealed abstract class TxnInstances0 { this: Txn.type =>
+
+  implicit final def monadInstance[F[_]]: StackSafeMonad[Txn[F, *]] = new StackSafeMonad[Txn[F, *]] {
+    final override def unit: Txn[F, Unit] =
+      Txn.unit
+    final override def pure[A](a: A): Txn[F, A] =
+      Txn.pure(a)
+    final override def point[A](a: A): Txn[F, A] =
+      Txn.pure(a)
+    final override def as[A, B](fa: Txn[F, A], b: B): Txn[F, B] =
+      fa.as(b)
+    final override def map[A, B](fa: Txn[F, A])(f: A => B): Txn[F, B] =
+      fa.map(f)
+    final override def map2[A, B, Z](fa: Txn[F, A], fb: Txn[F, B])(f: (A, B) => Z): Txn[F, Z] =
+      fa.map2(fb)(f)
+    final override def productR[A, B](fa: Txn[F, A])(fb: Txn[F, B]): Txn[F, B] =
+      fa.productR(fb)
+    final override def flatMap[A, B](fa: Txn[F, A])(f: A => Txn[F, B]): Txn[F, B] =
+      fa.flatMap(f)
+    final override def tailRecM[A, B](a: A)(f: A => Txn[F, Either[A, B]]): Txn[F, B] =
+      Txn.tailRecM[F, A, B](a)(f)
   }
 }
