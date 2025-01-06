@@ -23,6 +23,7 @@ sealed trait TRef[F[_], A] {
   def set(a: A): Txn[F, Unit]
   def update(f: A => A): Txn[F, Unit]
   def modify[B](f: A => (A, B)): Txn[F, B]
+  def getAndSet(a: A): Txn[F, A]
 }
 
 object TRef {

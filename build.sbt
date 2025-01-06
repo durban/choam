@@ -419,6 +419,7 @@ lazy val stm = crossProject(JVMPlatform, JSPlatform)
       // there is no backward compat for `choam-stm`:
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.update"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.modify"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.getAndSet"),
     ),
   )
 

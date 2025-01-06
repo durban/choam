@@ -223,6 +223,14 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(r.get.commit, 1)
     } yield ()
   }
+
+  test("TRef#getAndSet") {
+    for {
+      r <- TRef[F, Int](0).commit
+      _ <- assertResultF(r.getAndSet(42).commit, 0)
+      _ <- assertResultF(r.get.commit, 42)
+    } yield ()
+  }
 }
 
 trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this: McasImplSpec =>
