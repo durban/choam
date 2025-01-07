@@ -302,7 +302,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   // STM:
 
   final override def flatMap[C](f: B => Txn[Rxn.Anything, C]): Txn[Rxn.Anything, C] = {
-    this.flatMapF { b => f(b).impl }
+    this.flatMapF(f.asInstanceOf[Function1[B, Axn[C]]])
   }
 
   final override def map2[C, D](that: Txn[Rxn.Anything, C])(f: (B, C) => D): Txn[Rxn.Anything, D] = {
