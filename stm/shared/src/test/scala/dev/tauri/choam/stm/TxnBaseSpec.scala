@@ -20,6 +20,6 @@ package stm
 
 trait TxnBaseSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
-  protected implicit def trF: Transactive[F] =
+  protected implicit val trF: Transactive[F] =
     Transactive.forAsync[F](this.F)
 }
