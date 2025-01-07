@@ -29,9 +29,8 @@ private final class TRefImpl[F[_], A](
   initial: A,
   final override val id: Long,
 ) extends core.RefGetAxn[A]
-  with MemoryLocation[A]
   with MemoryLocation.WithListeners
-  with TRef.UnsealedTRef[F, A] {
+  with TRefImplBase[F, A] {
 
   // TODO: use VarHandles
 
@@ -88,18 +87,6 @@ private final class TRefImpl[F[_], A](
 
   final override def get: Txn[F, A] =
     this.castF[F]
-
-  final override def set(a: A): Txn[F, Unit] =
-    core.Rxn.loc.upd[A, Unit, Unit](this) { (_, _) => (a, ()) }.castF[F]
-
-  final override def update(f: A => A): Txn[F, Unit] =
-    this.modify { ov => (f(ov), ()) }
-
-  final override def modify[B](f: A => (A, B)): Txn[F, B] =
-    core.Rxn.loc.upd[A, Any, B](this) { (ov, _) => f(ov) }.castF[F]
-
-  final override def getAndSet(a: A): Txn[F, A] =
-    this.modify { ov => (a, ov) }
 
   final override def hashCode: Int = {
     // `RefIdGen` generates IDs with
