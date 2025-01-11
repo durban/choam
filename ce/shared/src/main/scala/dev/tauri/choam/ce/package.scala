@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 
+import cats.effect.kernel.Resource
 import cats.effect.{ IO, SyncIO }
 
 import core.Reactive
@@ -24,9 +25,20 @@ import async.AsyncReactive
 
 package object ce {
 
-  implicit def reactiveForSyncIO: Reactive[SyncIO] =
-    Reactive.forSync
+  private[choam] final def reactiveForSyncIO: Resource[SyncIO, Reactive[SyncIO]] =
+    Reactive.forSyncRes
 
-  implicit def asyncReactiveForIO: AsyncReactive[IO] =
-    AsyncReactive.forAsync
+  private[choam] final def asyncReactiveForIO: Resource[IO, AsyncReactive[IO]] =
+    AsyncReactive.forAsyncRes
+
+  /** Only for testing! */
+  @nowarn("cat=deprecation")
+  private[choam] final object unsafeImplicits {
+
+    implicit final def reactiveForSyncIO: Reactive[SyncIO] =
+      Reactive.forSync
+
+    implicit final def asyncReactiveForIO: AsyncReactive[IO] =
+      AsyncReactive.forAsync
+  }
 }

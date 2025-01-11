@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 trait SpecEmcas extends McasImplSpec {
   final override def mcasImpl: internal.mcas.Mcas =
-    internal.mcas.Mcas.Emcas
+    BaseSpec.emcasForTesting
   final override def isEmcas: Boolean =
     true
 }

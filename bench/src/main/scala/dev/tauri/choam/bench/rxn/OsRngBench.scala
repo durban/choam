@@ -23,7 +23,7 @@ import java.security.{ SecureRandom => JSecureRandom }
 
 import org.openjdk.jmh.annotations._
 
-import random.OsRng
+import internal.mcas.OsRng
 
 import OsRngBench._
 

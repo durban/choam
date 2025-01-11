@@ -22,6 +22,7 @@ import com.typesafe.tools.mima.core.{
   DirectMissingMethodProblem,
   ReversedMissingMethodProblem,
   NewMixinForwarderProblem,
+  StaticVirtualMemberProblem,
 }
 
 // Scala versions:
@@ -295,16 +296,25 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.core.ObjStack.push2"), // private
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.core.ObjStack.push3"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.package.requireNonNull"), // private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.AdaptedOsRng"), // private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.OsRng"), // private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.OsRng$"), // private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.OsRngPlatform"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.RxnUuidGen.this"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.SecureRandomRxn.this"), // private
     ),
   ).jvmSettings(
     mimaBinaryIssueFilters ++= Seq(
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.IOCancel"), // private
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.IOCancel$"), // private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.UnixRng"), // private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.WinRng"), // private
     ),
   ).jsSettings(
     mimaBinaryIssueFilters ++= Seq(
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.refs.RefIdOnly"), // private
       ProblemFilters.exclude[MissingTypesProblem]("dev.tauri.choam.refs.RefArray"), //private
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.JsRng"), // private
     ),
   )
 
@@ -333,6 +343,12 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap$Empty$"),
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap$LogMap1"),
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap$LogMapTree"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.Mcas.osRng"),
+      ProblemFilters.exclude[StaticVirtualMemberProblem]("dev.tauri.choam.internal.mcas.ThreadConfinedMCAS.currentContext"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.ThreadConfinedMCAS.isCurrentContext"),
+      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.emcas.Emcas$"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasJmxStatsMBean.getMcasRetryStats"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasJmxStatsMBean.getExchangerStats")
     ),
   )
 
@@ -462,8 +478,16 @@ lazy val ce = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
-  .dependsOn(async % "compile->compile;test->test")
-  .settings(libraryDependencies += dependencies.catsEffectAll.value)
+  .dependsOn(stm % "compile->compile;test->test")
+  .settings(
+    libraryDependencies += dependencies.catsEffectAll.value,
+  )
+  .jvmSettings(
+    Test / fork := true,
+    Test / javaOptions ++= List(
+      "-Dcats.effect.warnOnNonMainThreadDetected=false",
+    ),
+  )
 
 /** Internal use only; no published project may depend on this */
 lazy val internalHelpers = project.in(file("internal-helpers"))
@@ -527,7 +551,7 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .dependsOn(stream % "compile->compile;test->test")
-  .dependsOn(stm % "compile->compile;test->test")
+  .dependsOn(ce % "compile->compile;test->test")
   .jvmSettings(
     Test / fork := true,
     Test / javaOptions ++= List(

@@ -21,15 +21,23 @@ import scala.concurrent.duration._
 
 import munit.{ Location, FunSuite }
 
-import internal.mcas.equ
+import internal.mcas.{ equ, OsRng, Mcas }
 
 trait BaseSpec
   extends FunSuite
   with MUnitUtils {
 
+  protected final def osRngInstance: OsRng =
+    BaseSpec.osRngForTesting
+
+  protected final def defaultMcasInstance: Mcas =
+    BaseSpec.defaultMcasForTesting
+
   override def munitTimeout: Duration =
     super.munitTimeout * 2
 }
+
+object BaseSpec extends BaseSpecCompanionPlatform
 
 trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
 

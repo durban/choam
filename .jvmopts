@@ -1,5 +1,5 @@
 -Xms512M
--Xmx5G
+-Xmx6G
 -Xss2M
 -XX:+UseG1GC
 -Ddev.tauri.choam.stats=true

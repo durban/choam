@@ -28,7 +28,7 @@ import zio.stm.ZSTM
 
 import util._
 import data.{ Queue, QueueHelper }
-import ce._
+import ce.unsafeImplicits._
 
 @Fork(2)
 @Threads(1) // set it to _concurrentOps!

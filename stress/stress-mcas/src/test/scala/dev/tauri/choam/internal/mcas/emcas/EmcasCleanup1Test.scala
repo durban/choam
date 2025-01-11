@@ -37,12 +37,15 @@ import org.openjdk.jcstress.infra.results.ILL_Result
 ))
 class EmcasCleanup1Test {
 
+  private[this] val inst =
+    StressTestBase.emcasInst
+
   private[this] val ref =
     MemoryLocation.unsafe("a")
 
   @Actor
   final def write(r: ILL_Result): Unit = {
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val res = ctx.tryPerformInternal(ctx.addCasFromInitial(ctx.start(), this.ref, "a", "b"), Consts.PESSIMISTIC)
     r.r1 = if (res == McasStatus.Successful) 1 else -1
   }

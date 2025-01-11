@@ -25,10 +25,10 @@ import cats.effect.std.SecureRandom
  * the OS CSPRNG (through `OsRng`). This is as nonblocking
  * as possible on each platform (see `OsRng`).
  */
-private final class SecureRandomRxn(osRng: OsRng)
+private final class SecureRandomRxn
   extends RandomBase with SecureRandom[Axn] {
 
-  final override def nextBytes(n: Int): Axn[Array[Byte]] = Axn.unsafe.delay {
-    osRng.nextBytes(n)
+  final override def nextBytes(n: Int): Axn[Array[Byte]] = Axn.unsafe.delayContext { ctx =>
+    ctx.impl.osRng.nextBytes(n)
   }
 }

@@ -20,7 +20,7 @@ package dev.tauri.choam
 import cats.effect.SyncIO
 
 import data.{ Queue, QueueHelper }
-import ce._
+import ce.unsafeImplicits._
 
 abstract class QueueStressTestBase extends StressTestBase {
   protected def newQueue[A](as: A*): Queue[A]

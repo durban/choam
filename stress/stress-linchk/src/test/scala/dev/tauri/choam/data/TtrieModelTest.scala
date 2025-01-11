@@ -52,7 +52,7 @@ private[data] object TtrieModelTest {
   sealed abstract class AbstractTestState {
 
     protected[this] val emcas: Mcas =
-      Mcas.Emcas
+      BaseLinchkSpec.defaultMcasForTesting
 
     protected[this] val m: Ttrie[String, String]
 

@@ -42,6 +42,9 @@ object NullMcas extends Mcas.UnsealedMcas { self =>
   final override def currentContext(): Mcas.ThreadContext =
     this.ctx
 
+  private[choam] final override def osRng: OsRng =
+    throw new UnsupportedOperationException
+
   private[choam] final override def isThreadSafe: Boolean =
     true
 

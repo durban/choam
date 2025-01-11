@@ -45,7 +45,7 @@ object RxnModelTest {
   class TestState {
 
     private[this] val emcas =
-      internal.mcas.Mcas.Emcas
+      BaseLinchkSpec.defaultMcasForTesting
 
     private[this] val r1 =
       Ref.unsafeUnpadded("a")

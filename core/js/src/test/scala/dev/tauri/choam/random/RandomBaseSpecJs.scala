@@ -18,4 +18,9 @@
 package dev.tauri.choam
 package random
 
-final class RandomBaseSpecJs extends RandomBaseSpec
+import internal.mcas.Mcas
+
+final class RandomBaseSpecJs extends RandomBaseSpec {
+  protected[this] override val mcas: Mcas =
+    Mcas.ThreadConfinedMCAS
+}

@@ -21,8 +21,12 @@ package mcas
 
 private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
 
+  @deprecated("Mcas.DefaultMcas will be removed", since = "0.4.11") // TODO:0.5: remove
   final override def DefaultMcas: Mcas =
     this.ThreadConfinedMCAS
+
+  private[choam] final override def newDefaultMcas(osRng: OsRng): Mcas =
+    new ThreadConfinedMCAS(osRng)
 
   private[choam] final override def unsafeLookup(fqn: String): Mcas =
     super.unsafeLookup(fqn)

@@ -35,6 +35,9 @@ import org.openjdk.jcstress.infra.results.LLLLLL_Result
 ))
 class EmcasZombieTest {
 
+  private[this] val inst =
+    StressTestBase.emcasInst
+
   private[this] val ref1 =
     MemoryLocation.unsafe("a") // -> x
 
@@ -43,7 +46,7 @@ class EmcasZombieTest {
 
   @Actor
   def write(r: LLLLLL_Result): Unit = {
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val d0 = ctx.start()
     val Some((_, d1)) = ctx.readMaybeFromLog(ref1, d0) : @unchecked
     val d2 = d1.overwrite(d1.getOrElseNull(ref1).withNv("x"))
@@ -55,7 +58,7 @@ class EmcasZombieTest {
 
   @Actor
   def read(r: LLLLLL_Result): Unit = {
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val d0 = ctx.start()
     ctx.readMaybeFromLog(ref1, d0) match {
       case None =>
@@ -77,7 +80,7 @@ class EmcasZombieTest {
 
   @Arbiter
   def arbiter(r: LLLLLL_Result): Unit = {
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     r.r5 = ctx.readDirect(ref1)
     r.r6 = ctx.readDirect(ref2)
   }

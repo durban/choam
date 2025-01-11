@@ -19,9 +19,9 @@ package dev.tauri.choam
 package core
 
 import cats.{ ~>, Monad }
-import cats.effect.kernel.Sync
+import cats.effect.kernel.{ Sync, Resource }
 
-import internal.mcas.Mcas
+import internal.mcas.{ Mcas, OsRng }
 
 // TODO: We should have a way to "propagate"
 // TODO: a `Strategy`, because this way a
@@ -45,8 +45,19 @@ object Reactive {
   def apply[F[_]](implicit inst: Reactive[F]): inst.type =
     inst
 
+  @deprecated("Use forSyncRes", since = "0.4.11") // TODO:0.5: remove
   def forSync[F[_]](implicit F: Sync[F]): Reactive[F] =
     new SyncReactive[F](Rxn.DefaultMcas)(F)
+
+  final def forSyncRes[F[_]](implicit F: Sync[F]): Resource[F, Reactive[F]] = { // TODO:0.5: rename to forSync
+    Resource.eval(
+      F.blocking { // `blocking` because:
+        val osRng = OsRng.mkNew() // <- this call may block
+        val mcasImpl = Mcas.newDefaultMcas(osRng)
+        new SyncReactive(mcasImpl)
+      }
+    )
+  }
 
   private[choam] class SyncReactive[F[_]](
     final override val mcasImpl: Mcas

@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import random.OsRng
+import internal.mcas.OsRng
 
 final class EnvironmentSpec extends EnvironmentSpecPlatform {
 

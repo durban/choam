@@ -26,7 +26,7 @@ import org.openjdk.jmh.annotations._
 import util._
 import data.Stack
 import helpers.StackHelper
-import ce._
+import ce.unsafeImplicits._
 
 @Fork(2)
 @Threads(1) // set it to _concurrentOps!

@@ -26,15 +26,21 @@ import scala.collection.concurrent.TrieMap
 
 object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
 
+  private[this] val emcasInst: Emcas =
+    new Emcas(BaseSpec.osRngForTesting)
+
   private[this] val seen =
     new TrieMap[Int, Unit]
+
+  private[choam] final override val osRng: OsRng =
+    BaseSpec.osRngForTesting
 
   def currentContext(): Mcas.ThreadContext = new Mcas.UnsealedThreadContext {
 
     final override type START = MutDescriptor
 
     private[this] val emcasCtx =
-      Emcas.inst.currentContextInternal()
+      emcasInst.currentContextInternal()
 
     final override def impl: Mcas =
       self
@@ -77,7 +83,7 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
   private final def tryPerformInternal(hDesc: AbstractDescriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
     // perform or not the operation based on whether we've already seen it
     if (this.seen.putIfAbsent(hDesc.##, ()).isDefined) {
-      Emcas.inst.tryPerformDebug(desc = hDesc, ctx = ctx, optimism = optimism)
+      emcasInst.tryPerformDebug(desc = hDesc, ctx = ctx, optimism = optimism)
     } else {
       McasStatus.FailedVal // simulate a transient CAS failure to force a retry
     }

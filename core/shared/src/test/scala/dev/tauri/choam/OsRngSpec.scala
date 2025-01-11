@@ -22,7 +22,7 @@ import java.util.Arrays
 import cats.effect.IO
 import cats.effect.instances.spawn.parallelForGenSpawn
 
-import random.OsRng
+import internal.mcas.OsRng
 
 final class OsRngSpecIO
   extends BaseSpecIO

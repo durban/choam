@@ -16,12 +16,14 @@
  */
 
 package dev.tauri.choam
-package random
+package internal
+package mcas
 
+import java.util.concurrent.atomic.AtomicReference
 import java.io.{ FileInputStream, EOFException }
 import java.security.{ SecureRandom => JSecureRandom, NoSuchAlgorithmException }
 
-private[random] abstract class OsRngPlatform {
+private[mcas] abstract class OsRngPlatform {
 
   /**
    * Creates (and initializes) a new `OsRng`
@@ -54,7 +56,7 @@ private[random] abstract class OsRngPlatform {
    *
    * Note: this method may block (e.g., read from
    * `/dev/random`), buf after that, the returned
-   * `OsRng` will (most likely) will not.
+   * `OsRng` will (most likely) not.
    */
   def mkNew(): OsRng = {
     try {
@@ -64,6 +66,12 @@ private[random] abstract class OsRngPlatform {
       case _: NoSuchAlgorithmException =>
         new UnixRng
     }
+  }
+
+  /** This is beacuse of scala-js */
+  @inline
+  protected[this] final def compareAndExchange[A](ref: AtomicReference[A], ov: A, nv: A): A = {
+    ref.compareAndExchange(ov, nv)
   }
 }
 

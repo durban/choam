@@ -17,6 +17,7 @@
 
 package com.example.choamtest
 
+import scala.annotation.nowarn
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
@@ -62,6 +63,7 @@ object MyIO {
     final override def applyAsync[A, B](r: Rxn[A,B], a: A, s: RetryStrategy): MyIO[B] =
       r.perform[MyIO, B](a, this.mcasImpl, s)(asyncForMyIO)
 
+    @nowarn("cat=deprecation")
     final override def mcasImpl: Mcas =
       Mcas.DefaultMcas
 
@@ -150,6 +152,7 @@ object MyIO {
     final def apply[B](fa: MyIO[B]) = fa.impl
   }
 
+  @nowarn("cat=deprecation")
   private def asyncReactiveForIO: AsyncReactive[IO] =
     AsyncReactive.forAsync[IO]
 

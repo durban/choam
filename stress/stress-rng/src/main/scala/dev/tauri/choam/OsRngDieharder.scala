@@ -23,7 +23,7 @@ import java.io.{ PrintStream, IOException }
 import cats.syntax.all._
 import cats.effect.{ IO, IOApp, ExitCode }
 
-import random.OsRng
+import internal.mcas.OsRng
 
 /**
  * Writes data form `OsRng` to stdout in a format
@@ -55,7 +55,7 @@ object OsRngDieharder extends IOApp {
             }
         }
         getN.flatMap { N =>
-          IO.consoleForIO.errorln(s"Starting $N fibers...").flatMap { _ =>
+          IO.consoleForIO.errorln(s"Starting $N fibers...") *> IO.cede.flatMap { _ =>
             (1 to N).toList.parTraverse { idx =>
               writeMany(idx, rng, out)
             }.void.voidError.as(ExitCode.Success)
@@ -76,7 +76,7 @@ object OsRngDieharder extends IOApp {
   }
 
   def writeOne(rng: OsRng, buff: Array[Byte], out: PrintStream, ctr: AtomicLong): IO[Unit] = {
-    IO { rng.nextBytes(buff) } >> IO {
+    IO { rng.nextBytes(buff) } *> IO {
       out.write(buff)
       // `PrintStream` swallows errors, but we need
       // them here, because `dieharder` will close

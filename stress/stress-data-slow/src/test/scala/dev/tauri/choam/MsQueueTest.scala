@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.SyncIO
 
-import ce._
+import ce.unsafeImplicits._
 
 @JCStressTest
 @State

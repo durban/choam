@@ -37,6 +37,9 @@ sealed trait Mcas {
     ctx eq currentContext()
   }
 
+  /** @return an already initialized RNG which reads from the OS */
+  private[choam] def osRng: OsRng
+
   /** True iff `this` can be used to perform concurrent ops on separate threads */
   private[choam] def isThreadSafe: Boolean
 
@@ -469,7 +472,7 @@ object Mcas extends McasCompanionPlatform { self =>
     }
   }
 
-  private[mcas] final object RetryStats {
+  private[choam] final object RetryStats {
     val zero: RetryStats =
       RetryStats(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0)
   }

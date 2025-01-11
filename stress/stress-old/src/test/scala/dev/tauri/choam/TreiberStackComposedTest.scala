@@ -25,7 +25,7 @@ import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
 import helpers.StackHelper
-import ce._
+import ce.unsafeImplicits._
 
 // @JCStressTest
 @State

@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package refs
 
-import internal.mcas.Mcas
-
 final class Ref2SpecP1P1 extends Ref2Spec {
 
   override def mkRef2[A, B](a: A, b: B): Ref2[A, B] =
@@ -63,7 +61,7 @@ abstract class Ref2Spec extends BaseSpec {
 
   test("consistentRead") {
     val rr = mkRef2[String, Int]("a", 42)
-    val (s, i) = rr.consistentRead.unsafePerform((), Mcas.DefaultMcas)
+    val (s, i) = rr.consistentRead.unsafePerform((), this.defaultMcasInstance)
     assert(s eq "a")
     assert(i == 42)
   }

@@ -38,6 +38,11 @@ final class RxnProfilerSpecIO
 trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   def simulateStart(config: String = "debug"): F[RxnProfiler] = F.delay {
+    // Make sure that the `Emcas` instance is
+    // created BEFORE we create the `RxnProfiler`,
+    // because we need to be able to see its
+    // registered JMX MBean:
+    this.mcasImpl
     val p = new RxnProfiler(config)
     p.beforeIteration(null, null)
     p

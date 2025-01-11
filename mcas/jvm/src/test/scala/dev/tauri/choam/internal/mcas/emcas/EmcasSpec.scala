@@ -36,6 +36,9 @@ import munit.{Location, TestOptions}
 
 class EmcasSpec extends BaseSpec {
 
+  private[this] val inst: Emcas =
+    new Emcas(this.osRngInstance)
+
   final override def munitTimeout: Duration =
     5.minutes
 
@@ -52,13 +55,13 @@ class EmcasSpec extends BaseSpec {
   test("EMCAS should allow null as ov or nv") {
     val r1 = MemoryLocation.unsafe[String](null)
     val r2 = MemoryLocation.unsafe[String]("x")
-    val ctx = Emcas.inst.currentContextInternal()
+    val ctx = inst.currentContextInternal()
     val desc = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, null, "x"), r2, "x", null)
     val snap = ctx.snapshot(desc)
-    assertEquals(Emcas.inst.tryPerformInternal(desc, ctx, Consts.OPTIMISTIC), McasStatus.Successful)
+    assertEquals(inst.tryPerformInternal(desc, ctx, Consts.OPTIMISTIC), McasStatus.Successful)
     assert(clue(ctx.readDirect[String](r1)) eq "x")
     assert(ctx.readDirect(r2) eq null)
-    assertEquals(Emcas.inst.tryPerformInternal(snap, ctx, Consts.OPTIMISTIC), McasStatus.FailedVal)
+    assertEquals(inst.tryPerformInternal(snap, ctx, Consts.OPTIMISTIC), McasStatus.FailedVal)
     assert(ctx.readDirect(r1) eq "x")
     assert(ctx.readDirect(r2) eq null)
   }
@@ -66,7 +69,7 @@ class EmcasSpec extends BaseSpec {
   test("EMCAS should clean up finalized descriptors") {
     val r1 = MemoryLocation.unsafe[String]("x")
     val r2 = MemoryLocation.unsafe[String]("y")
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val v11 = ctx.readVersion(r1)
     val v21 = ctx.readVersion(r2)
     val desc = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
@@ -82,8 +85,8 @@ class EmcasSpec extends BaseSpec {
     val v22 = ctx.readVersion(r2)
     assertEquals(v22, newVer)
     assert(v22 > v21)
-    assert(Emcas.inst.spinUntilCleanup(r1) eq "a")
-    assert(Emcas.inst.spinUntilCleanup(r2) eq "b")
+    assert(inst.spinUntilCleanup(r1) eq "a")
+    assert(inst.spinUntilCleanup(r2) eq "b")
     assert(r1.unsafeGetV() eq "a")
     assert(r2.unsafeGetV() eq "b")
     assertEquals(ctx.readVersion(r1), v12)
@@ -96,8 +99,8 @@ class EmcasSpec extends BaseSpec {
     assert(ctx.readDirect(r2) eq "b")
     assertEquals(ctx.readVersion(r1), v12)
     assertEquals(ctx.readVersion(r2), v22)
-    assert(Emcas.inst.spinUntilCleanup(r1) eq "a")
-    assert(Emcas.inst.spinUntilCleanup(r2) eq "b")
+    assert(inst.spinUntilCleanup(r1) eq "a")
+    assert(inst.spinUntilCleanup(r2) eq "b")
     assertEquals(ctx.readVersion(r1), v12)
     assertEquals(ctx.readVersion(r2), v22)
     assert(r1.unsafeGetV() eq "a")
@@ -107,7 +110,7 @@ class EmcasSpec extends BaseSpec {
   test("EMCAS should handle versions correctly on cleanup (after success)") {
     val r1 = MemoryLocation.unsafe[String]("x")
     val r2 = MemoryLocation.unsafe[String]("y")
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val v11 = ctx.readVersion(r1)
     val v21 = ctx.readVersion(r2)
     val d0 = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
@@ -135,8 +138,8 @@ class EmcasSpec extends BaseSpec {
     val v23 = ctx.readVersion(r2)
     assertEquals(v23, v22 + Version.Incr)
     // cleanup:
-    assert(Emcas.inst.spinUntilCleanup(r1) eq "aa")
-    assert(Emcas.inst.spinUntilCleanup(r2) eq "bb")
+    assert(inst.spinUntilCleanup(r1) eq "aa")
+    assert(inst.spinUntilCleanup(r2) eq "bb")
     assertEquals(ctx.readVersion(r1), v13)
     assertEquals(ctx.readVersion(r2), v23)
   }
@@ -144,7 +147,7 @@ class EmcasSpec extends BaseSpec {
   test("EMCAS should handle versions correctly on cleanup (after failure)") {
     val r1 = MemoryLocation.unsafe[String]("x")
     val r2 = MemoryLocation.unsafe[String]("y")
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val v11 = ctx.readVersion(r1)
     val v21 = ctx.readVersion(r2)
     val d0 = ctx.addCasWithVersion(ctx.start(), r1, "x", "a", version = v11)
@@ -173,19 +176,19 @@ class EmcasSpec extends BaseSpec {
     val v23 = ctx.readVersion(r2)
     assertEquals(v23, v22)
     // cleanup:
-    assert(Emcas.inst.spinUntilCleanup(r1) eq "a")
-    assert(Emcas.inst.spinUntilCleanup(r2) eq "b")
+    assert(inst.spinUntilCleanup(r1) eq "a")
+    assert(inst.spinUntilCleanup(r2) eq "b")
     assertEquals(ctx.readVersion(r1), v13)
     assertEquals(ctx.readVersion(r2), v23)
   }
 
   test("EMCAS should not clean up an object referenced from another thread") {
     val ref = MemoryLocation.unsafeUnpadded[String]("s")
-    val ctx = Emcas.inst.currentContextInternal()
+    val ctx = inst.currentContextInternal()
     val hDesc = ctx.addCasFromInitial(ctx.start(), ref, "s", "x")
     var mark: AnyRef = null
     locally {
-      val res = Emcas.inst.tryPerformDebug(desc = hDesc, ctx = ctx, optimism = Consts.OPTIMISTIC)
+      val res = inst.tryPerformDebug(desc = hDesc, ctx = ctx, optimism = Consts.OPTIMISTIC)
       // TODO: if *right now* the GC clears the mark, the assertion below will fail
       mark = ref.unsafeGetMarkerV().get()
       assert(mark ne null)
@@ -220,7 +223,7 @@ class EmcasSpec extends BaseSpec {
     val r2 = MemoryLocation.unsafe[String]("y")
     var ok = false
     val t = new Thread(() => {
-      val ctx = Emcas.inst.currentContext()
+      val ctx = inst.currentContext()
       ok = ctx
         .builder()
         .casRef(r1, "x", "a")
@@ -229,7 +232,7 @@ class EmcasSpec extends BaseSpec {
     })
     @tailrec
     def checkCleanup(ref: MemoryLocation[String], old: String, exp: String): Boolean = {
-      Emcas.inst.spinUntilCleanup(ref) match {
+      inst.spinUntilCleanup(ref) match {
         case s if s == old =>
           // CAS not started yet, retry
           Thread.sleep(ThreadLocalRandom.current().nextLong(32L))
@@ -275,7 +278,7 @@ class EmcasSpec extends BaseSpec {
     val latch2 = new CountDownLatch(1)
     var weakMark: WeakReference[AnyRef] = null
     val t1 = new Thread(() => {
-      val ctx = Emcas.inst.currentContext()
+      val ctx = inst.currentContext()
       val hDesc = ctx.addVersionCas(
         ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
       )
@@ -307,7 +310,7 @@ class EmcasSpec extends BaseSpec {
       }
     }
 
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     if (finishWithAnotherOp) {
       // run another op; this should
       // finalize the previous one:
@@ -324,21 +327,21 @@ class EmcasSpec extends BaseSpec {
     val read1 = ctx.readDirect(r1)
     assert(read1 eq "a")
     assert(ctx.readDirect(r2) eq "b")
-    Emcas.inst.spinUntilCleanup(r1)
-    Emcas.inst.spinUntilCleanup(r2)
+    inst.spinUntilCleanup(r1)
+    inst.spinUntilCleanup(r2)
     assert(clue(r1.unsafeGetV()) eq "a")
     assert(clue(r2.unsafeGetV()) eq "b")
     assert(weakMark.get() eq null)
   }
 
   test("ThreadContext should be collected by the JVM GC if a thread terminates") {
-    Emcas.inst.currentContext()
+    inst.currentContext()
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
     @volatile var error: Throwable = null
     val t = new Thread(() => {
       try {
-        Emcas.inst.currentContext()
+        inst.currentContext()
         // now the thread exits, but the
         // thread context already exists
         latch1.countDown()
@@ -355,7 +358,7 @@ class EmcasSpec extends BaseSpec {
     t.join()
     assert(!t.isAlive())
     assert(error eq null, s"error: ${error}")
-    while (Emcas.inst.threadContextExists(t.getId())) {
+    while (inst.threadContextExists(t.getId())) {
       System.gc()
       Thread.sleep(1L)
     }
@@ -363,7 +366,7 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("Emcas.isCurrentContext") {
-    val impl = Emcas.inst
+    val impl = inst
     val ctx = impl.currentContext()
     assert(impl.isCurrentContext(ctx))
     var same = true
@@ -376,7 +379,7 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("Emcas.isCurrentContext should not call currentContext") {
-    val impl = Emcas.inst
+    val impl = inst
     val ctx = impl.currentContext()
     var ok = false
     val t = new Thread({ () =>
@@ -394,7 +397,7 @@ class EmcasSpec extends BaseSpec {
     val latch2 = new CountDownLatch(1)
     var ok0 = false
     val t1 = new Thread(() => {
-      val ctx = Emcas.inst.currentContext()
+      val ctx = inst.currentContext()
       val hDesc = ctx.addVersionCas(
         ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
       )
@@ -417,7 +420,7 @@ class EmcasSpec extends BaseSpec {
     var ok = false
     val t2 = new Thread(() => {
       // the other thread changes back the values (but first finalizes the active op):
-      val ctx = Emcas.inst.currentContext()
+      val ctx = inst.currentContext()
       val b = {
         ctx.builder().casRef(r2, "b", "y").tryCasRef(r1, "a", "x") match {
           case None =>
@@ -429,9 +432,9 @@ class EmcasSpec extends BaseSpec {
       }
       assert(b.tryPerformOk())
       // wait for descriptors to be collected:
-      assertEquals(clue(Emcas.inst.spinUntilCleanup[String](r2)), "y")
+      assertEquals(clue(inst.spinUntilCleanup[String](r2)), "y")
       // but this one shouldn't be collected, as the other thread holds the mark of `d0`:
-      assert(Emcas.inst.spinUntilCleanup(r1, max = 0x2000L) eq null)
+      assert(inst.spinUntilCleanup(r1, max = 0x2000L) eq null)
       assert(r1.unsafeGetMarkerV().get() ne null)
       ok = true
     })
@@ -443,13 +446,13 @@ class EmcasSpec extends BaseSpec {
     assert(ok0)
 
     // t1 released the mark, now it should be replaced:
-    assertEquals(clue(Emcas.inst.spinUntilCleanup[String](r1)), "x")
+    assertEquals(clue(inst.spinUntilCleanup[String](r1)), "x")
   }
 
   test("EMCAS read should help the other operation") {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L)
     val r2 = MemoryLocation.unsafeWithId("r2")(42L)
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val hOther = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
     val other = EmcasDescriptor.prepare(hOther, instRo = false)
     val d0 = other.getWordIterator().next().asInstanceOf[EmcasWordDesc[String]]
@@ -469,7 +472,7 @@ class EmcasSpec extends BaseSpec {
   test("EMCAS read should roll back the other op if necessary") {
     val r1 = MemoryLocation.unsafeWithId("r1")(0L)
     val r2 = MemoryLocation.unsafeWithId("r2")(99L)
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val hOther = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "zzz", "y")
     val other = EmcasDescriptor.prepare(hOther, instRo = false)
     val d0 = other.getWordIterator().next().asInstanceOf[EmcasWordDesc[String]]
@@ -491,10 +494,10 @@ class EmcasSpec extends BaseSpec {
     val tc1 = new ConcurrentLinkedQueue[EmcasThreadContext]
     val tc2 = new ConcurrentLinkedQueue[EmcasThreadContext]
     val tsk = (tc: ConcurrentLinkedQueue[EmcasThreadContext]) => {
-      tc.offer(Emcas.inst.currentContextInternal())
+      tc.offer(inst.currentContextInternal())
       Thread.sleep(10L)
       for (_ <- 1 to N) {
-        tc.offer(Emcas.inst.currentContextInternal())
+        tc.offer(inst.currentContextInternal())
       }
     }
     val t1 = new Thread(() => { tsk(tc1) })
@@ -522,7 +525,7 @@ class EmcasSpec extends BaseSpec {
     final class TrickyThread(ref: VolatileObjectRef[EmcasThreadContext]) extends Thread {
       final override def getId(): Long = 42L
       final override def run(): Unit = {
-        ref.elem = Emcas.inst.currentContextInternal()
+        ref.elem = inst.currentContextInternal()
       }
     }
     val r1 = VolatileObjectRef.create(nullOf[EmcasThreadContext])
@@ -542,7 +545,7 @@ class EmcasSpec extends BaseSpec {
     val K = 100
     val N = 25 * K
     val task: Runnable = () => {
-      val ctx = Emcas.inst.currentContext()
+      val ctx = inst.currentContext()
       ctx.random.nextInt()
       ()
     }
@@ -554,14 +557,14 @@ class EmcasSpec extends BaseSpec {
         System.gc()
       }
     }
-    assert(Emcas.inst.threadContextCount().toDouble <= (0.75 * N.toDouble))
+    assert(inst.threadContextCount().toDouble <= (0.75 * N.toDouble))
   }
 
   test("Descriptors should be sorted") {
     val r1 = MemoryLocation.unsafeWithId("r1")(1L)
     val r2 = MemoryLocation.unsafeWithId("r2")(2L)
     val r3 = MemoryLocation.unsafeWithId("r3")(3L)
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")
     val d2 = ctx.addCasFromInitial(d1, r3, "r3", "C")
@@ -576,7 +579,7 @@ class EmcasSpec extends BaseSpec {
 
   test("Descriptor toString") {
     for (r1 <- List(MemoryLocation.unsafe("r1"), MemoryLocation.unsafePadded("r1"))) {
-      val ctx = Emcas.inst.currentContext()
+      val ctx = inst.currentContext()
       val d0 = ctx.start()
       val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")
       val ed = EmcasDescriptor.prepare(d1, instRo = false)
@@ -612,7 +615,7 @@ class EmcasSpec extends BaseSpec {
 
   test("Version mismatch, but expected value is the same") {
     val ref = MemoryLocation.unsafe("A")
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     // T1:
     val d0 = ctx.start()
     val Some((ov, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
@@ -620,7 +623,7 @@ class EmcasSpec extends BaseSpec {
     assertEquals(d1.getOrElseNull(ref).version, Version.Start)
     // T2:
     runInNewThread {
-      val ctx = Emcas.inst.currentContext()
+      val ctx = inst.currentContext()
       val oldVer = ctx.start().validTs
       assert(ctx.tryPerformSingleCas(ref, "A", "B"))
       assert(ctx.readVersion(ref) > oldVer)
@@ -628,14 +631,14 @@ class EmcasSpec extends BaseSpec {
     }
     // T3:
     runInNewThread {
-      val ctx = Emcas.inst.currentContext()
+      val ctx = inst.currentContext()
       val oldVer = ctx.start().validTs
       assert(ctx.tryPerformSingleCas(ref, "B", "A"))
       assert(ctx.readVersion(ref) > oldVer)
       assertSameInstance(ctx.readDirect(ref), "A")
     }
     // GC, cleanup:
-    assertSameInstance(Emcas.inst.spinUntilCleanup(ref), "A")
+    assertSameInstance(inst.spinUntilCleanup(ref), "A")
     val ver = ctx.readVersion(ref)
     assert(Version.isValid(ver))
     assert(ver > Version.Start)
@@ -647,7 +650,7 @@ class EmcasSpec extends BaseSpec {
     val ver2 = ctx.readVersion(ref)
     // version mustn't decrease:
     assert(ver2 >= ver, s"${ver2} < ${ver}")
-    assertSameInstance(Emcas.inst.spinUntilCleanup(ref), "A")
+    assertSameInstance(inst.spinUntilCleanup(ref), "A")
     val ver3 = ctx.readVersion(ref)
     assert(ver3 >= ver2, s"${ver3} < ${ver2}")
   }
@@ -655,7 +658,7 @@ class EmcasSpec extends BaseSpec {
   test("There should be no global version-CAS") {
     val r1 = MemoryLocation.unsafeUnpadded[String]("foo")
     val r2 = MemoryLocation.unsafeUnpadded[String]("bar")
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")
     val d2 = ctx.addCasFromInitial(d1, r2, "bar", "foo")
@@ -680,11 +683,11 @@ class EmcasSpec extends BaseSpec {
 
   test("Threads should have different `ThreadLocalRefIdGen`s") {
     val ids = new ConcurrentSkipListSet[Long]
-    val rig1 = Emcas.inst.currentContext().refIdGen
+    val rig1 = inst.currentContext().refIdGen
     ids.add(rig1.nextId())
     var rig2: RefIdGen = null
     val t = new Thread(() => {
-      val r = Emcas.inst.currentContext().refIdGen
+      val r = inst.currentContext().refIdGen
       ids.add(r.nextId())
       ids.add(r.nextId())
       ids.add(r.nextId())
@@ -706,7 +709,7 @@ class EmcasSpec extends BaseSpec {
   test("EmcasDescriptor#instRo") {
     val ref = MemoryLocation.unsafeWithId[String]("foo")(1L)
     val ref2 = MemoryLocation.unsafeWithId[String]("foo")(2L)
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)), instRo = false)
     assert(!ed1.instRo)
     val arr1 = ed1.getWordsO()
@@ -729,7 +732,7 @@ class EmcasSpec extends BaseSpec {
 
   test("EmcasDescriptor#fallback") {
     val ref = MemoryLocation.unsafeUnpadded[String]("foo")
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)), instRo = false)
     assert(!ed1.instRo)
     assertEquals(ed1.cmpxchgStatus(McasStatus.Active, EmcasStatus.CycleDetected), McasStatus.Active)
@@ -746,7 +749,7 @@ class EmcasSpec extends BaseSpec {
 
   test("EmcasDescriptor#fallback call before wasFinalized call") {
     val ref = MemoryLocation.unsafeUnpadded[String]("foo")
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)), instRo = false)
     assert(!ed1.instRo)
     assertEquals(ed1.cmpxchgStatus(McasStatus.Active, EmcasStatus.CycleDetected), McasStatus.Active)
@@ -764,7 +767,7 @@ class EmcasSpec extends BaseSpec {
   test("There should be no EmcasWordDesc created for RO HWDs (the first time; in optimistic mode)") {
     val ref1 = MemoryLocation.unsafeUnpadded[String]("foo")
     val ref2 = MemoryLocation.unsafeUnpadded[String]("x")
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val desc = ctx
       .start()
       .add(LogEntry(ref1, "foo", "bar", Version.Start)) // RW
@@ -799,7 +802,7 @@ class EmcasSpec extends BaseSpec {
   test("In pessimistic mode, even RO HWDs must have WDs created") {
     val ref1 = MemoryLocation.unsafeUnpadded[String]("foo")
     val ref2 = MemoryLocation.unsafeUnpadded[String]("x")
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val desc = ctx
       .start()
       .add(LogEntry(ref1, "foo", "bar", Version.Start)) // RW
@@ -818,7 +821,7 @@ class EmcasSpec extends BaseSpec {
   test("AbstractDescriptor#readOnly is false, but in fact it is read-only") {
     val ref1 = MemoryLocation.unsafeUnpadded[String]("a")
     val ref2 = MemoryLocation.unsafeUnpadded[String]("x")
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val dRw = ctx
       .start()
       .add(LogEntry(ref1, "a", "b", Version.Start)) // RW

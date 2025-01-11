@@ -41,6 +41,9 @@ import org.openjdk.jcstress.infra.results.LLLLL_Result
 ))
 class EmcasTest {
 
+  private[this] val inst =
+    StressTestBase.emcasInst
+
   private[this] val ref1 =
     MemoryLocation.unsafeWithId("a")(42L)
 
@@ -58,7 +61,7 @@ class EmcasTest {
 
   @Actor
   def write(r: LLLLL_Result): Unit = {
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val res = ctx.tryPerformInternal(
       ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), this.ref1, "a", "b"), this.ref2, "x", "y"),
       Consts.OPTIMISTIC
@@ -142,7 +145,7 @@ class EmcasTest {
 
   @Arbiter
   def arbiter(r: LLLLL_Result): Unit = {
-    val ctx = Emcas.inst.currentContext()
+    val ctx = inst.currentContext()
     val v1 = ctx.readDirect(this.ref1)
     val v2 = ctx.readDirect(this.ref2)
     if (v1 ne "b") {

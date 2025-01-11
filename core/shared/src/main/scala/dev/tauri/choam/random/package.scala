@@ -21,14 +21,14 @@ import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
 package object random {
 
-  private[choam] final def uuidGen[X](rng: OsRng): UUIDGen[Rxn[X, *]] =
-    new RxnUuidGen[X](rng)
+  private[choam] final def uuidGen[X]: UUIDGen[Rxn[X, *]] =
+    new RxnUuidGen[X]
 
   private[choam] final def newFastRandom: Random[Axn] =
     new RxnThreadLocalRandom
 
-  private[choam] final def newSecureRandom(rng: OsRng): SecureRandom[Axn] =
-    new SecureRandomRxn(rng)
+  private[choam] final def newSecureRandom: SecureRandom[Axn] =
+    new SecureRandomRxn
 
   @deprecated("Don't use secureRandomWrapper, because it may block", since = "0.4")
   private[choam] final def secureRandomWrapper: Axn[SecureRandom[Axn]] =

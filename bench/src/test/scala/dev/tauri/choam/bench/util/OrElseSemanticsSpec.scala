@@ -32,7 +32,7 @@ import munit.CatsEffectSuite
 import io.github.timwspence.cats.stm.STM
 import zio.{ stm => zstm }
 
-import ce._
+import ce.unsafeImplicits._
 
 /**
  * This test shows that the current semantics of

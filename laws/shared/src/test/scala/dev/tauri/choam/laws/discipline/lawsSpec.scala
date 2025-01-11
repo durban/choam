@@ -49,13 +49,19 @@ trait LawsSpec
   implicit val ticker: Ticker =
     Ticker(tc)
 
+  private[this] implicit val reactiveSyncIOInstance: Reactive[SyncIO] =
+    new Reactive.SyncReactive(this.mcasImpl)
+
+  private[this] implicit val asyncReactiveIOInstance: AsyncReactive[IO] =
+    new AsyncReactive.AsyncReactiveImpl(this.mcasImpl)
+
   checkAll("Rxn", new RxnLawTests.UnsealedRxnLawTests with TestInstances {
     override def mcasImpl: Mcas = self.mcasImpl
   }.rxn[String, Int, Float, Double, Boolean, Long])
 
   checkAll("Ref", RefLawTests(self).ref[String, Int, Float])
-  checkAll("Reactive", ReactiveLawTests[SyncIO](Reactive.forSync).reactive[String, Int])
-  checkAll("AsyncReactive", AsyncReactiveLawTests[IO](AsyncReactive.forAsync).asyncReactive[String, Int])
+  checkAll("Reactive", ReactiveLawTests[SyncIO].reactive[String, Int])
+  checkAll("AsyncReactive", AsyncReactiveLawTests[IO].asyncReactive[String, Int])
 
   checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
   checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])

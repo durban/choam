@@ -26,7 +26,7 @@ import cats.effect.IO
 import cats.effect.std.{ Queue => CatsQueue }
 
 import _root_.dev.tauri.choam.bench.BenchUtils
-import ce._
+import ce.unsafeImplicits._
 
 @Fork(2)
 @Threads(1)

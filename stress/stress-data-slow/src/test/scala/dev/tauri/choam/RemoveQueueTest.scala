@@ -26,7 +26,7 @@ import cats.syntax.all._
 import cats.effect.SyncIO
 
 import data.Queue
-import ce._
+import ce.unsafeImplicits._
 
 @JCStressTest
 @State

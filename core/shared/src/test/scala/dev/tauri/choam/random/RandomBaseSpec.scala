@@ -22,8 +22,11 @@ import java.util.{ Arrays, UUID }
 import java.nio.{ ByteBuffer, ByteOrder }
 
 import internal.mcas.Mcas
+import dev.tauri.choam.AxnSyntax2
 
-abstract class RandomBaseSpec extends munit.FunSuite {
+abstract class RandomBaseSpec extends BaseSpec {
+
+  protected[this] def mcas: Mcas
 
   test("byteArrayViewVarHandle") {
     final class DummyRng(const: Array[Byte]) extends RandomBase {
@@ -35,9 +38,9 @@ abstract class RandomBaseSpec extends munit.FunSuite {
       }
     }
     val rng1 = new DummyRng(Array.fill(8)(0x01.toByte))
-    assertEquals(rng1.nextLong.unsafeRun(Mcas.DefaultMcas), 0x0101010101010101L)
+    assertEquals(rng1.nextLong.unsafeRun(this.mcas), 0x0101010101010101L)
     val rng2 = new DummyRng({ val arr = Array.fill(8)(0x01.toByte); arr(0) = 0xff.toByte; arr })
-    assertEquals(rng2.nextLong.unsafeRun(Mcas.DefaultMcas), 0x01010101010101ffL)
+    assertEquals(rng2.nextLong.unsafeRun(this.mcas), 0x01010101010101ffL)
   }
 
   test("ByteBuffer endianness") {
@@ -53,8 +56,11 @@ abstract class RandomBaseSpec extends munit.FunSuite {
   }
 
   test("RxnUuidGen") {
-    val gen = new RxnUuidGen[Any](OsRng.mkNew())
-    val first = gen.unsafeRandomUuid()
+    val gen = new RxnUuidGen[Any]
+    def unsafeRandomUuid(): UUID = {
+      gen.randomUUID.unsafeRun(this.mcas)
+    }
+    val first = unsafeRandomUuid()
     def checkUuid(u: UUID): Unit = {
       assertEquals(u.variant, 2)
       assertEquals(u.version, 4)
@@ -65,7 +71,7 @@ abstract class RandomBaseSpec extends munit.FunSuite {
     }
     for (_ <- 1 to 1024) {
       // at most 2**-50 chance of accidental failure
-      checkUuid(gen.unsafeRandomUuid())
+      checkUuid(unsafeRandomUuid())
     }
     checkUuid(gen.uuidFromRandomBytes(Array.fill[Byte](16)(0x00.toByte)))
     checkUuid(gen.uuidFromRandomBytes(Array.fill[Byte](16)(0xff.toByte)))

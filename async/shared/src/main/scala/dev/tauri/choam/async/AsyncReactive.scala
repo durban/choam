@@ -19,9 +19,9 @@ package dev.tauri.choam
 package async
 
 import cats.{ ~>, Monad }
-import cats.effect.kernel.Async
+import cats.effect.kernel.{ Async, Resource }
 
-import internal.mcas.Mcas
+import internal.mcas.{ Mcas, OsRng }
 import core.RetryStrategy
 
 trait AsyncReactive[F[_]] extends Reactive[F] { self => // TODO:0.5: make it sealed
@@ -48,10 +48,21 @@ object AsyncReactive {
   def apply[F[_]](implicit inst: AsyncReactive[F]): inst.type =
     inst
 
+  @deprecated("Use forAsyncRes", since = "0.4.11") // TODO:0.5: remove
   def forAsync[F[_]](implicit F: Async[F]): AsyncReactive[F] =
     new AsyncReactiveImpl[F](Rxn.DefaultMcas)(F)
 
-  private[async] class AsyncReactiveImpl[F[_]](mi: Mcas)(implicit F: Async[F])
+  final def forAsyncRes[F[_]](implicit F: Async[F]): Resource[F, AsyncReactive[F]] = { // TODO:0.5: rename to forAsync
+    Resource.eval(
+      F.blocking { // `blocking` because:
+        val osRng = OsRng.mkNew() // <- this call may block
+        val mcasImpl = Mcas.newDefaultMcas(osRng)
+        new AsyncReactiveImpl(mcasImpl)
+      }
+    )
+  }
+
+  private[choam] class AsyncReactiveImpl[F[_]](mi: Mcas)(implicit F: Async[F])
     extends Reactive.SyncReactive[F](mi)
     with AsyncReactive[F] {
 

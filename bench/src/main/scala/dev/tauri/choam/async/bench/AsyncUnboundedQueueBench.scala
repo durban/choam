@@ -25,7 +25,7 @@ import cats.syntax.all._
 import cats.effect.IO
 
 import _root_.dev.tauri.choam.bench.BenchUtils
-import ce._
+import ce.unsafeImplicits._
 
 @Fork(2)
 @Threads(1)

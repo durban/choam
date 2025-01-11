@@ -23,7 +23,7 @@ import munit.{ Location, CatsEffectSuite }
 
 import dev.tauri.choam.internal.mcas.Mcas
 import dev.tauri.choam.async.AsyncReactive
-import dev.tauri.choam.{ BaseSpecAsyncF, McasImplSpec }
+import dev.tauri.choam.{ BaseSpec, BaseSpecAsyncF, McasImplSpec }
 
 abstract class BaseSpecMyIO
   extends CatsEffectSuite
@@ -46,7 +46,7 @@ abstract class BaseSpecMyIO
   }
 
   override protected def mcasImpl: Mcas =
-    Mcas.DefaultMcas
+    BaseSpec.defaultMcasForTesting
 
   override def munitValueTransforms: List[ValueTransform] = {
     new ValueTransform(

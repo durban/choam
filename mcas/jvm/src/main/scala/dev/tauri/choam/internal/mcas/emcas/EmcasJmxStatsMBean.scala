@@ -26,7 +26,9 @@ import java.util.concurrent.atomic.AtomicReference
 // the MBean is registered in the `Emcas`
 // constructor (if enabled).
 
-private sealed trait EmcasJmxStatsMBean {
+private[choam] sealed trait EmcasJmxStatsMBean {
+
+  // Attributes:
   def getCommits(): Long
   def getRetries(): Long
   def getExtensions(): Long
@@ -44,10 +46,15 @@ private sealed trait EmcasJmxStatsMBean {
   def getThreadContextCount(): Int
   def getMaxReusedWeakRefs(): Int
 
+  // Attributes, but TODO: they use non-standard types
+  def getMcasRetryStats(): Mcas.RetryStats
+  def getExchangerStats(): Map[Long, Map[AnyRef, AnyRef]]
+
+  // Operations:
   def checkConsistency(): String
 }
 
-private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
+private[choam] final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
 
   private[this] final val cacheTimeoutNanos =
     10000000L // 10ms
@@ -70,7 +77,7 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
   }
 
   private[this] final def collectAndSaveStats(ov: (Mcas.RetryStats, Long)): Mcas.RetryStats = {
-    val s = this.impl.getRetryStats()
+    val s = this.getMcasRetryStats()
     val ts = System.nanoTime()
     val tup = (s, ts)
     val wit = this._cachedStats.compareAndExchange(ov, tup)
@@ -79,6 +86,14 @@ private final class EmcasJmxStats(impl: Emcas) extends EmcasJmxStatsMBean {
     } else {
       wit._1
     }
+  }
+
+  final override def getMcasRetryStats(): Mcas.RetryStats = {
+    this.impl.getRetryStats()
+  }
+
+  final override def getExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
+    this.impl.collectExchangerStats()
   }
 
   final override def checkConsistency(): String = {

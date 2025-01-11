@@ -64,16 +64,17 @@ It can be executed with (for example) Cats Effect like this:
 import cats.effect.IO
 import dev.tauri.choam.Reactive
 
-implicit val reactiveForIo: Reactive[IO] =
-  Reactive.forSync[IO]
-
-val myTask: IO[Unit] = for {
+def myTask(implicit r: Reactive[IO]): IO[Unit] = for {
   // create two refs:
   x <- Ref.unpadded(0).run[IO]
   y <- Ref.unpadded(42).run[IO]
   // increment their values atomically:
   _ <- incrBoth(x, y).run[IO]
 } yield ()
+
+Reactive.forSyncRes[IO].use { implicit r =>
+  myTask
+}
 ```
 
 ## Modules

@@ -18,7 +18,9 @@
 package dev.tauri.choam
 package core
 
-import cats.effect.kernel.Async
+import cats.effect.kernel.{ Async, Resource }
+
+import internal.mcas.{ Mcas, OsRng }
 
 // Note: not really private, published in dev.tauri.choam.stm
 private[choam] sealed trait Transactive[F[_]] {
@@ -28,11 +30,29 @@ private[choam] sealed trait Transactive[F[_]] {
 // Note: not really private, published in dev.tauri.choam.stm
 private[choam] object Transactive {
 
+  @deprecated("Use forAsyncRes", since = "0.4.11") // TODO:0.5: remove
   final def forAsync[F[_]](implicit F: Async[F]): Transactive[F] = {
-    new Reactive.SyncReactive[F](Rxn.DefaultMcas) with Transactive[F] {
-      final override def commit[B](txn: Txn[F, B]): F[B] = {
-        txn.impl.performStm[F, B](null, this.mcasImpl)
+    new TransactiveImpl(Rxn.DefaultMcas)
+  }
+
+  final def forAsyncRes[F[_]](implicit F: Async[F]): Resource[F, Transactive[F]] = { // TODO:0.5: rename to `forAsync`
+    Resource.eval(
+      F.blocking { // `blocking` because:
+        val osRng = OsRng.mkNew() // <- this call may block
+        val mcasImpl = Mcas.newDefaultMcas(osRng)
+        new TransactiveImpl(mcasImpl)
       }
+    )
+  }
+
+  final def forReactive[F[_]](implicit F: Async[F], r: Reactive[F]): Resource[F, Transactive[F]] = {
+    Resource.eval(F.delay { new TransactiveImpl[F](r.mcasImpl) })
+  }
+
+  private[choam] final class TransactiveImpl[F[_] : Async](m: Mcas)
+    extends Reactive.SyncReactive[F](m) with Transactive[F] {
+    final override def commit[B](txn: Txn[F, B]): F[B] = {
+      txn.impl.performStm[F, B](null, this.mcasImpl)
     }
   }
 }

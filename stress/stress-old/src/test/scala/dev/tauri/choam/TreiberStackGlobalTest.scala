@@ -30,7 +30,7 @@ import org.openjdk.jcstress.infra.results.ZZZ_Result
 
 import data.Stack
 import helpers.StackHelper
-import ce._
+import ce.unsafeImplicits._
 import internal.mcas.Mcas
 
 // @JCStressTest

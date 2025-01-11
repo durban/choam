@@ -16,31 +16,14 @@
  */
 
 package dev.tauri.choam
-package random
 
-import java.security.{ SecureRandom => JSecureRandom }
+import internal.mcas.{ Mcas, OsRng }
 
-private[choam] object OsRng extends OsRngPlatform
+private[choam] abstract class BaseSpecCompanionPlatform { this: BaseSpec.type =>
 
-private[choam] abstract class OsRng {
+  val osRngForTesting: OsRng =
+    OsRng.globalLazyInit()
 
-  def nextBytes(dest: Array[Byte]): Unit
-
-  def nextBytes(n: Int): Array[Byte] = {
-    require(n >= 0)
-    val dest = new Array[Byte](n)
-    if (n > 0) {
-      nextBytes(dest)
-    }
-    dest
-  }
-}
-
-private class AdaptedOsRng(underlying: JSecureRandom) extends OsRng {
-
-  final override def nextBytes(dest: Array[Byte]): Unit = {
-    if (dest.length > 0) {
-      underlying.nextBytes(dest)
-    }
-  }
+  val defaultMcasForTesting: Mcas =
+    Mcas.newDefaultMcas(osRngForTesting)
 }

@@ -24,13 +24,11 @@ import cats.syntax.all._
 import cats.effect.{ IO, IOApp }
 import cats.effect.instances.all._
 
-import dev.tauri.choam.{ Ref, Reactive, Axn }
+import dev.tauri.choam.{ Ref, Axn }
+import dev.tauri.choam.ce.RxnAppMixin
 
 /** Simple program to interactively try the JMX MBean (with visualvm, or jconsole, or similar) */
-object JmxDemo extends IOApp.Simple {
-
-  implicit def reactive: Reactive[IO] =
-    Reactive.forSync[IO]
+object JmxDemo extends IOApp.Simple with RxnAppMixin {
 
   private final val N = 1024
 
@@ -48,7 +46,7 @@ object JmxDemo extends IOApp.Simple {
       ta2 = trickyAxn(r2, r1)
       runTricky = IO.both(ta1.run[IO], ta2.run[IO])
       _ <- (runTricky *> IO.sleep(0.01.second)).foreverM.background.use { _ =>
-        (IO.sleep(1.second) *> Ref.swap(arr.unsafeGet(1), arr.unsafeGet(2)).run[IO]).replicateA_(60)
+        (IO.sleep(1.second) *> Ref.swap(arr.unsafeGet(1), arr.unsafeGet(2)).run[IO]).replicateA_(120)
       }
       _ <- IO { checkConsistency() }
     } yield ()

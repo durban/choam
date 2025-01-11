@@ -22,17 +22,15 @@ package emcas
 
 import java.lang.ref.{ Reference, WeakReference }
 
-private[mcas] object Emcas {
-  /** For testing */
-  val inst: Emcas =
-    Mcas.internalEmcas
-}
-
 /**
  * Efficient Multi-word Compare and Swap (EMCAS):
  * https://arxiv.org/pdf/2008.02527.pdf
  */
-private[mcas] final class Emcas extends GlobalContext { global =>
+private[mcas] final class Emcas(
+  private[choam] final override val osRng: OsRng,
+) extends GlobalContext { global =>
+
+  require(osRng ne null)
 
   /*
    * This implementation has a few important

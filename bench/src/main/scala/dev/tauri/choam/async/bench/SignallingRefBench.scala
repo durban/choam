@@ -25,7 +25,7 @@ import cats.effect.IO
 import fs2.concurrent.SignallingRef
 
 import _root_.dev.tauri.choam.bench.BenchUtils
-import ce._
+import ce.unsafeImplicits._
 import internal.mcas.Mcas
 
 @Fork(2)

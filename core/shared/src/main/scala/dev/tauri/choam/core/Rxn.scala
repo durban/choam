@@ -375,6 +375,7 @@ object Rxn extends RxnInstances0 {
     16384
 
   /** This is just exporting `DefaultMcas`, because that's in an internal package */
+  @deprecated("Rxn.DefaultMcas will be removed", since = "0.4.11") // TODO:0.5: remove
   final def DefaultMcas: Mcas =
     Mcas.DefaultMcas
 
@@ -417,26 +418,11 @@ object Rxn extends RxnInstances0 {
 
   // Utilities:
 
-  private[this] val _osRng: random.OsRng = {
-    // Under certain circumstances (e.g.,
-    // Linux right after boot in a
-    // fresh VM), this call might block.
-    // We really can't do anything about
-    // it, but at least it's not during
-    // executing a `Rxn` (it happens when
-    // the very first `Rxn` is *created*,
-    // and the `Rxn` class is loaded).
-    random.OsRng.mkNew()
-  }
-
-  private[core] final def osRng: random.OsRng =
-    _osRng
-
   private[this] val _fastRandom: Random[Axn] =
     random.newFastRandom
 
   private[this] val _secureRandom: SecureRandom[Axn] =
-    random.newSecureRandom(_osRng)
+    random.newSecureRandom
 
   final def unique: Axn[Unique.Token] =
     Axn.unsafe.delay { new Unique.Token() }
@@ -1910,8 +1896,11 @@ private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.ty
 
 private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
 
+  private[this] val _uuidGen: UUIDGen[Axn] =
+    random.uuidGen[Any]
+
   implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] =
-    random.uuidGen(self.osRng)
+    this._uuidGen.asInstanceOf[UUIDGen[Rxn[X, *]]]
 
   @deprecated("Don't use uuidGenWrapper, because it may block", since = "0.4") // TODO:0.5: remove this
   private[choam] final def uuidGenWrapper[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {

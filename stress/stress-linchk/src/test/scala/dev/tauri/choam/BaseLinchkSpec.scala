@@ -21,6 +21,8 @@ import scala.concurrent.duration._
 
 import munit.{ FunSuite, BaseFunSuite, Location, TestOptions }
 
+import internal.mcas.{ Mcas, OsRng }
+
 trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { this: FunSuite =>
 
   override def munitTimeout: Duration =
@@ -41,4 +43,9 @@ trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { thi
       body
     } (loc)
   }
+}
+
+object BaseLinchkSpec {
+  val defaultMcasForTesting: Mcas =
+    Mcas.newDefaultMcas(OsRng.globalLazyInit())
 }

@@ -21,6 +21,9 @@ package profiler
 import java.{ util => ju }
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.LongAdder
+import javax.management.ObjectName
+
+import scala.collection.mutable.{ LinkedHashMap => MutLinkedHashMap }
 
 import cats.syntax.all._
 
@@ -34,7 +37,8 @@ import com.monovore.decline.{ Opts, Command }
 import core.Exchanger
 
 import internal.mcas.Consts
-import internal.mcas.Mcas.{ Emcas, RetryStats }
+import internal.mcas.Mcas.RetryStats
+import internal.mcas.emcas.EmcasJmxStatsMBean
 
 /**
  * JMH profiler "plugin" for `Rxn` statistics/measurements.
@@ -156,6 +160,54 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     }
   }
 
+  private[this] val _mbeanServer =
+    java.lang.management.ManagementFactory.getPlatformMBeanServer()
+
+  private[this] val _objectName = // TODO: this name constant is duplicated with `GlobalContextBase`
+    new javax.management.ObjectName("dev.tauri.choam.stats:type=EmcasJmxStats*")
+
+  private[this] val _emcasJmxStatsInstances: MutLinkedHashMap[ObjectName, EmcasJmxStatsMBean] =
+    MutLinkedHashMap.empty
+
+  private[this] final def emcasJmxStatsInstances: List[EmcasJmxStatsMBean] = {
+    _emcasJmxStatsInstances.valuesIterator.toList
+  }
+
+  private[this] final def refreshEmcasJmxStatsInstances(): Unit = {
+    val names = _mbeanServer.queryNames(_objectName, null)
+    names.forEach { objectName =>
+      if (!_emcasJmxStatsInstances.contains(objectName)) {
+        val prox = javax.management.JMX.newMBeanProxy(_mbeanServer, objectName, classOf[EmcasJmxStatsMBean])
+        val ov = _emcasJmxStatsInstances.put(objectName, prox)
+        Predef.assert(ov.isEmpty)
+      }
+    }
+  }
+
+  private[this] final def getRetryStats(): RetryStats = {
+    this.emcasJmxStatsInstances.foldLeft(RetryStats.zero) { (acc, prox) =>
+      acc + prox.getMcasRetryStats()
+    }
+  }
+
+  private[this] final def maxReusedWeakRefs(): Double = {
+    this.emcasJmxStatsInstances.foldLeft(0) { (max, prox) =>
+      val mrwr = prox.getMaxReusedWeakRefs()
+      java.lang.Math.max(max, mrwr)
+    }.toDouble
+  }
+
+  private[this] final def collectExchangerStats(): StatsResult = {
+    this.emcasJmxStatsInstances.foldLeft(new StatsResult(Nil)) { (statsResult, m) =>
+      val stats = m
+        .getExchangerStats()
+        .view
+        .mapValues { m => m.filter(kv => kv._1 ne Exchanger.paramsKey) }
+        .toMap
+      statsResult.add(new StatsResult(stats :: Nil))
+    }
+  }
+
   final override def getDescription(): String =
     "RxnProfiler"
 
@@ -163,8 +215,9 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     bp: BenchmarkParams,
     ip: IterationParams
   ): Unit = {
+    this.refreshEmcasJmxStatsInstances()
     if (config.commitsPerSecond || config.retriesPerCommit) {
-      this.statsBefore = Emcas.getRetryStats()
+      this.statsBefore = getRetryStats()
     }
     if (config.measureExchanges) {
       this.exchangesBefore = RxnProfiler.exchangeCounter.sum()
@@ -182,7 +235,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     val res = new ju.ArrayList[Result[_]]
     this.timeAfter = System.nanoTime()
     this.elapsedSeconds = getElapsedSeconds()
-    this.statsAfter = Emcas.getRetryStats()
+    this.statsAfter = getRetryStats()
     if (config.commitsPerSecond) {
       res.addAll(countCommitsPerSecond())
     }
@@ -207,7 +260,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     if (config.reusedWeakRefs) {
       res.add(new ScalarResult(
         RxnProfiler.ReusedWeakRefs,
-        Emcas.maxReusedWeakRefs().toDouble,
+        maxReusedWeakRefs(),
         RxnProfiler.UnitCount,
         AggregationPolicy.MAX,
       ))
@@ -316,14 +369,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
       )
     }
     if (config.exchangerStats) {
-      val stats = Emcas
-        .collectExchangerStats()
-        .view
-        .mapValues { m => m.filter(kv => kv._1 ne Exchanger.paramsKey) }
-        .toMap
-      res.add(
-        new StatsResult(stats :: Nil)
-      )
+      res.add(collectExchangerStats())
     }
     res
   }
@@ -342,6 +388,10 @@ private final class StatsResult(
 
   def this(threadId: Long, s: Map[AnyRef, AnyRef]) =
     this(List(Map(threadId -> s)))
+
+  def add(that: StatsResult): StatsResult = {
+    new StatsResult(this.stats ++ that.stats)
+  }
 
   override def getThreadAggregator(): Aggregator[StatsResult] = { coll =>
     val lb = List.newBuilder[Map[Long, Map[AnyRef, AnyRef]]]

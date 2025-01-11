@@ -22,7 +22,9 @@ import java.util.UUID
 
 import cats.effect.std.UUIDGen
 
-private final class RxnUuidGen[X](rng: OsRng) extends RxnUuidGenBase with UUIDGen[Rxn[X, *]] {
+import internal.mcas.Mcas
+
+private final class RxnUuidGen[X] extends RxnUuidGenBase with UUIDGen[Rxn[X, *]] {
 
   private[this] final val versionNegMask =
     0xffffffffffff0fffL
@@ -36,18 +38,14 @@ private final class RxnUuidGen[X](rng: OsRng) extends RxnUuidGenBase with UUIDGe
   private[this] final val variant =
     0x8000000000000000L
 
-  final override def randomUUID: Rxn[X, UUID] = Rxn.unsafe.delay { _ =>
-    unsafeRandomUuidInternal()
-  }
+  final override def randomUUID: Rxn[X, UUID] =
+    Rxn.unsafe.delayContext(unsafeRandomUuidInternal)
 
-  private[this] final def unsafeRandomUuidInternal(): UUID = {
+  private[this] final def unsafeRandomUuidInternal(ctx: Mcas.ThreadContext): UUID = {
     val buff = new Array[Byte](16) // TODO: don't allocate (use a thread-local buffer)
-    rng.nextBytes(buff)
+    ctx.impl.osRng.nextBytes(buff)
     uuidFromRandomBytesInternal(buff)
   }
-
-  private[choam] final def unsafeRandomUuid(): UUID =
-    unsafeRandomUuidInternal()
 
   private[this] final def uuidFromRandomBytesInternal(buff: Array[Byte]): UUID = {
     var msbs = getLongAtP(buff, 0)

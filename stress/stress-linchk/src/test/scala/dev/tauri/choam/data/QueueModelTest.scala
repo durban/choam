@@ -47,7 +47,7 @@ private[data] object QueueModelTest {
   sealed abstract class AbstractTestState {
 
     protected[this] val emcas: Mcas =
-      Mcas.Emcas
+      BaseLinchkSpec.defaultMcasForTesting
 
     protected[this] val q: Queue[String]
 
