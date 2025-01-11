@@ -302,6 +302,9 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.OsRngPlatform"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.RxnUuidGen.this"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.SecureRandomRxn.this"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Rxn.osRng"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.package.newSecureRandom"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.package.uuidGen"), // private
     ),
   ).jvmSettings(
     mimaBinaryIssueFilters ++= Seq(
@@ -348,7 +351,8 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.ThreadConfinedMCAS.isCurrentContext"),
       ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.emcas.Emcas$"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasJmxStatsMBean.getMcasRetryStats"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasJmxStatsMBean.getExchangerStats")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasJmxStatsMBean.getExchangerStats"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.Mcas.internalEmcas"),
     ),
   )
 
