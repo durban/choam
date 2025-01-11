@@ -356,7 +356,7 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
     ),
   )
 
-lazy val skiplist = crossProject(JVMPlatform, JSPlatform)
+lazy val skiplist = crossProject(JVMPlatform, JSPlatform) // TODO:0.5: rename to `internal`
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
   .in(file("skiplist"))
@@ -472,12 +472,12 @@ lazy val profiler = project.in(file("profiler"))
     ),
   )
 
-lazy val ce = crossProject(JVMPlatform, JSPlatform)
+lazy val ce = crossProject(JVMPlatform, JSPlatform) // TODO: better name
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
   .in(file("ce"))
   .settings(name := "choam-ce")
-  .enablePlugins(NoPublishPlugin) // TODO: maybe publish it?
+  .enablePlugins(NoPublishPlugin) // TODO: publish it
   .disablePlugins(disabledPlugins: _*)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)

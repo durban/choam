@@ -33,8 +33,8 @@ final class ReadmeSpec extends BaseSpec {
 
     def myTask(implicit r: Reactive[IO]): IO[Unit] = for {
       // create two refs:
-      x <- Ref.unpadded(0).run[IO]
-      y <- Ref.unpadded(42).run[IO]
+      x <- Ref(0).run[IO]
+      y <- Ref(42).run[IO]
       // increment their values atomically:
       _ <- incrBoth(x, y).run[IO]
     } yield ()

@@ -182,8 +182,8 @@ object Ref extends RefInstances0 {
       s"Ref.Array[0]@${java.lang.Long.toHexString(0L)}"
   }
 
-  private[choam] final def apply[A](initial: A): Axn[Ref[A]] =
-    padded(initial)
+  final def apply[A](initial: A): Axn[Ref[A]] =
+    apply(initial, Ref.AllocationStrategy.Default)
 
   final def apply[A](initial: A, str: Ref.AllocationStrategy): Axn[Ref[A]] = {
     if (str.padded) padded(initial)
