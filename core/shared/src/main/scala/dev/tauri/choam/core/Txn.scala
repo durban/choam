@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package core
 
-import cats.{ Applicative, StackSafeMonad }
+import cats.{ Applicative, Defer, StackSafeMonad }
 import cats.effect.kernel.Unique
 
 import internal.mcas.Mcas
@@ -71,6 +71,9 @@ private[choam] object Txn extends TxnInstances0 {
   final def tailRecM[F[_], A, B](a: A)(f: A => Txn[F, Either[A, B]]): Txn[F, B] =
     Rxn.tailRecM(a)(f.asInstanceOf[Function1[A, Axn[Either[A, B]]]]).castF[F]
 
+  final def defer[F[_], A](fa: => Txn[F, A]): Txn[F, A] =
+    Axn.unsafe.suspend { fa.impl }.castF[F]
+
   final def unique[F[_]]: Txn[F, Unique.Token] =
     Rxn.unique.castF[F]
 
@@ -84,7 +87,7 @@ private[choam] object Txn extends TxnInstances0 {
   }
 }
 
-private[core] sealed abstract class TxnInstances0 { self: Txn.type =>
+private[core] sealed abstract class TxnInstances0 extends TxnCompanionPlatform { self: Txn.type =>
 
   implicit final def monadInstance[F[_]]: StackSafeMonad[Txn[F, *]] = new StackSafeMonad[Txn[F, *]] {
     final override def unit: Txn[F, Unit] =
@@ -107,6 +110,21 @@ private[core] sealed abstract class TxnInstances0 { self: Txn.type =>
       fa.flatMap(f)
     final override def tailRecM[A, B](a: A)(f: A => Txn[F, Either[A, B]]): Txn[F, B] =
       Txn.tailRecM[F, A, B](a)(f)
+  }
+
+  implicit final def deferInstance[F[_]]: Defer[Txn[F, *]] = new Defer[Txn[F, *]] {
+    final override def defer[A](fa: => Txn[F, A]): Txn[F, A] =
+      Txn.defer(fa)
+    final override def fix[A](fn: Txn[F, A] => Txn[F, A]): Txn[F, A] = {
+      // Note/TODO: see comment in Rxn.deferInstance
+      val ref = new scala.runtime.ObjectRef[Txn[F, A]](null)
+      ref.elem = fn(defer {
+        self.acquireFence()
+        ref.elem
+      })
+      self.releaseFence()
+      ref.elem
+    }
   }
 
   implicit final def uniqueInstance[F[_]]: Unique[Txn[F, *]] = new Unique[Txn[F, *]] {

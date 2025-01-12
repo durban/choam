@@ -18,11 +18,11 @@
 package dev.tauri.choam
 package stm
 
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 
 import scala.concurrent.duration._
 
-import cats.StackSafeMonad
+import cats.{ Defer, Monad, StackSafeMonad }
 import cats.effect.kernel.Unique
 import cats.effect.{ IO, Deferred }
 import cats.effect.Outcome.{ Canceled, Succeeded, Errored }
@@ -206,6 +206,20 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Txn.defer") {
+    for {
+      flag <- F.delay(new AtomicBoolean)
+      r <- TRef[F, Int](0).commit
+      txn = Txn.defer {
+        flag.set(true)
+        r.get
+      }
+      _ <- assertResultF(F.delay(flag.get()), false)
+      _ <- assertResultF(txn.commit, 0)
+      _ <- assertResultF(F.delay(flag.get()), true)
+    } yield ()
+  }
+
   test("Txn.unique") {
     for {
       t1 <- Txn.unique[F].commit
@@ -223,6 +237,23 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       r1 <- TRef[F, Int](42).commit
       r2 <- TRef[F, Int](99).commit
       _ <- assertResultF(generic(r1.get, r2.get).commit, 42 + 99)
+    } yield ()
+  }
+
+  test("Defer[Txn[F, *]] instance") {
+    def generic[G[_]](getAndIncrement: G[Int])(implicit G: Defer[G], GM: Monad[G]): G[Int] = {
+      G.fix[Int] { rec =>
+        getAndIncrement.flatMap { i =>
+          if (i > 4) GM.pure(i)
+          else rec
+        }
+      }
+    }
+    for {
+      r <- TRef[F, Int](0).commit
+      i <- generic[Txn[F, *]](r.getAndUpdate(_ + 1)).commit
+      _ <- assertEqualsF(i, 5)
+      _ <- assertResultF(r.get.commit, 6)
     } yield ()
   }
 

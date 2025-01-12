@@ -16,25 +16,17 @@
  */
 
 package dev.tauri.choam
-package stm
+package core
 
-sealed trait TRef[F[_], A] {
-  def get: Txn[F, A]
-  def set(a: A): Txn[F, Unit]
-  def update(f: A => A): Txn[F, Unit]
-  def modify[B](f: A => (A, B)): Txn[F, B]
-  def getAndSet(a: A): Txn[F, A]
-  def getAndUpdate(f: A => A): Txn[F, A]
-}
+import java.lang.invoke.VarHandle
 
-object TRef {
+private abstract class TxnCompanionPlatform { this: Txn.type =>
 
-  private[choam] trait UnsealedTRef[F[_], A] extends TRef[F, A]
+  @inline
+  protected[this] final def releaseFence(): Unit = {
+  }
 
-  def apply[F[_], A](a: A): Txn[F, TRef[F, A]] = {
-    core.Rxn.unsafe.delayContext { ctx =>
-      val id = ctx.refIdGen.nextId()
-      new TRefImpl[F, A](a, id)
-    }.castF[F]
+  @inline
+  protected[this] final def acquireFence(): Unit = {
   }
 }
