@@ -29,6 +29,8 @@ private[choam] sealed trait Txn[F[_], +B] {
 
   def as[C](c: C): Txn[F, C]
 
+  def void: Txn[F, Unit]
+
   def map2[C, D](that: Txn[F, C])(f: (B, C) => D): Txn[F, D]
 
   def productR[C](that: Txn[F, C]): Txn[F, C]
@@ -89,6 +91,8 @@ private[core] sealed abstract class TxnInstances0 { this: Txn.type =>
       Txn.pure(a)
     final override def as[A, B](fa: Txn[F, A], b: B): Txn[F, B] =
       fa.as(b)
+    final override def void[A](fa: Txn[F, A]): Txn[F, Unit] =
+      fa.void
     final override def map[A, B](fa: Txn[F, A])(f: A => B): Txn[F, B] =
       fa.map(f)
     final override def map2[A, B, Z](fa: Txn[F, A], fb: Txn[F, B])(f: (A, B) => Z): Txn[F, Z] =

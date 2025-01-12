@@ -1794,6 +1794,8 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
       Rxn.pure(a)
     final override def as[A, B](fa: Rxn[X, A], b: B): Rxn[X, B] =
       fa.as(b)
+    final override def void[A](fa: Rxn[X, A]): Rxn[X, Unit] =
+      fa.void
     final override def map[A, B](fa: Rxn[X, A])(f: A => B): Rxn[X, B] =
       fa.map(f)
     final override def map2[A, B, Z](fa: Rxn[X, A], fb: Rxn[X, B])(f: (A, B) => Z): Rxn[X, Z] =
