@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package core
 
-import java.lang.invoke.VarHandle
-
 private abstract class TxnCompanionPlatform { this: Txn.type =>
 
   @inline
