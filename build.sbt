@@ -247,6 +247,7 @@ lazy val choam = project.in(file("."))
     stream.jvm, stream.js,
     profiler, // JVM
     ce.jvm, ce.js,
+    zi.jvm, zi.js,
     internalHelpers, // JVM
     laws.jvm, laws.js,
     unidocs,
@@ -486,11 +487,23 @@ lazy val ce = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies += dependencies.catsEffectAll.value,
     tlVersionIntroduced := Map("2.13" -> "0.4.11", "3" -> "0.4.11"),
   )
-  .jvmSettings(
-    Test / fork := true,
-    Test / javaOptions ++= List(
-      "-Dcats.effect.warnOnNonMainThreadDetected=false",
+
+lazy val zi = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("zi"))
+  .settings(name := "choam-zi")
+  .disablePlugins(disabledPlugins: _*)
+  .settings(commonSettings)
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
+  .dependsOn(stm % "compile->compile;test->test")
+  .settings(
+    libraryDependencies ++= dependencies.zioEverything.value,
+    libraryDependencies ++= Seq(
+      dependencies.scalaJsTime.value % TestInternal,
     ),
+    tlVersionIntroduced := Map("2.13" -> "0.4.11", "3" -> "0.4.11"),
   )
 
 /** Internal use only; no published project may depend on this */
@@ -540,6 +553,7 @@ lazy val unidocs = project
       stream.jvm,
       laws.jvm,
       ce.jvm,
+      zi.jvm,
       profiler,
     ),
     bspEnabled := false,
@@ -917,6 +931,8 @@ lazy val dependencies = new {
   val jmhVersion = "1.37" // https://github.com/openjdk/jmh
   val jolVersion = "0.17" // https://github.com/openjdk/jol
   val scalaJsLocaleVersion = "1.5.4" // https://github.com/cquiroz/scala-java-locales
+  val scalaJsTimeVersion = "2.6.0" // https://github.com/cquiroz/scala-java-time
+  val zioVersion = "2.1.14" // https://github.com/zio/zio
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
   val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
@@ -945,12 +961,18 @@ lazy val dependencies = new {
     "io.github.cquiroz" %%% "scala-java-locales" % scalaJsLocaleVersion,
     "io.github.cquiroz" %%% "locales-minimal-en-db" % scalaJsLocaleVersion,
   ))
+  val scalaJsTime = Def.setting[ModuleID]("io.github.cquiroz" %%% "scala-java-time" % scalaJsTimeVersion)
   val scalaJsSecRnd = Def.setting(("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13)) // https://github.com/scala-js/scala-js-java-securerandom
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1") // https://github.com/scala-stm/scala-stm
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.4") // https://github.com/TimWSpence/cats-stm
   val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.3")
-  val zioStm = Def.setting("dev.zio" %%% "zio" % "2.1.13")
+  val zioStm = Def.setting("dev.zio" %%% "zio" % zioVersion)
+  val zioEverything = Def.setting[Seq[ModuleID]](Seq(
+    zioCats.value,
+    zioStm.value,
+    "dev.zio" %%% "zio-managed" % zioVersion,
+  ))
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(

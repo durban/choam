@@ -114,6 +114,8 @@ Reactive.forSyncRes[IO].use { implicit r =>
   integration with [FS2](https://github.com/typelevel/fs2) `Stream`s
 - [`choam-ce`](ce/shared/src/main/scala/dev/tauri/choam/ce/):
   integration with `cats.effect.IOApp`
+- [`choam-zi`](zi/shared/src/main/scala/dev/tauri/choam/zi/):
+  integration with `zio.ZIOApp`
 - [`choam-laws`](laws/shared/src/main/scala/dev/tauri/choam/laws/):
   properties fulfilled by the various `Rxn` combinators
 - [`choam-profiler`](profiler/src/main/scala/dev/tauri/choam/profiler/):
@@ -208,8 +210,9 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - using `*.internal.*` packages (e.g., `dev.tauri.choam.internal.mcas`);
   - using `unsafe*` APIs (e.g., `Rxn.unsafe.retry` or `Ref#unsafeCas`).
 - There is no backwards compatibility for these modules:
-  - `choam-ce`
   - `choam-stm`
+  - `choam-ce`
+  - `choam-zi`
   - `choam-mcas`
   - `choam-skiplist`
   - `choam-laws`
