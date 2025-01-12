@@ -112,6 +112,8 @@ Reactive.forSyncRes[IO].use { implicit r =>
     - `CountDownLatch`
 - [`choam-stream`](stream/shared/src/main/scala/dev/tauri/choam/stream/):
   integration with [FS2](https://github.com/typelevel/fs2) `Stream`s
+- [`choam-ce`](ce/shared/src/main/scala/dev/tauri/choam/ce/):
+  integration with `cats.effect.IOApp`
 - [`choam-laws`](laws/shared/src/main/scala/dev/tauri/choam/laws/):
   properties fulfilled by the various `Rxn` combinators
 - [`choam-profiler`](profiler/src/main/scala/dev/tauri/choam/profiler/):
@@ -206,6 +208,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - using `*.internal.*` packages (e.g., `dev.tauri.choam.internal.mcas`);
   - using `unsafe*` APIs (e.g., `Rxn.unsafe.retry` or `Ref#unsafeCas`).
 - There is no backwards compatibility for these modules:
+  - `choam-ce`
   - `choam-stm`
   - `choam-mcas`
   - `choam-skiplist`
@@ -223,11 +226,13 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - JVM:
     - versions ⩾ 11
     - tested on OpenJDK, Graal, and OpenJ9 (but should work on others)
-    - `Rxn.secureRandom` and `UUIDGen` both need either the `Windows-PRNG`
-      or (`/dev/random` and `/dev/urandom`) to be available
+    - for secure random number generation, either the `Windows-PRNG`
+      or (`/dev/random` and `/dev/urandom`) need to be available
   - Scala.js:
     - works, but not really useful (we assume no multithreading)
     - provided to ease cross-compiling
+    - for secure random number generation, a `java.security.SecureRandom`
+      implementation needs to be available (see [here](https://github.com/scala-js/scala-js-java-securerandom))
 - Scala versions: cross-compiled for 2.13 and 3.3
 
 ### Lock-freedom
@@ -243,16 +248,16 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
     - on 32-bit platforms some of these *might* use a lock
   - GC and classloading
     - in practice, the GC sometimes do use locks
-    - and classloaders sometimes also use locks
+    - and classloaders sometimes also might use locks
   - `ThreadLocalRandom`, `ThreadLocal`
 - Certain `Rxn` operations require extra assumptions:
-  - `Rxn.secureRandom` and `UUIDGen` use the OS RNG, which may block
+  - `Rxn.secureRandom` and `UUIDGen` use the OS RNG, which might block
     (although we *really* try to use the non-blocking ones)
   - in `choam-async` we assume that calling a CE `Async` callback is lock-free
-    (in `cats.effect.IO`, as of version 3.5.4, this is not technically true)
+    (in `cats.effect.IO`, as of version 3.5.7, this is not technically true)
 - Executing a `Rxn` with a `Rxn.Strategy` other than `Rxn.Strategy.Spin`
   is not necessarily lock-free
-- Only `Mcas.DefaultMcas` is lock-free, other `Mcas` implementations may not be
+- Only the default `Mcas` is lock-free, other `Mcas` implementations may not be
 
 Also note, that while `Rxn` operations are lock-free if these assumptions hold,
 operations in an `F[_]` effect might not be lock-free (an obvious example is

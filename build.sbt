@@ -472,12 +472,11 @@ lazy val profiler = project.in(file("profiler"))
     ),
   )
 
-lazy val ce = crossProject(JVMPlatform, JSPlatform) // TODO: better name
+lazy val ce = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
   .in(file("ce"))
   .settings(name := "choam-ce")
-  .enablePlugins(NoPublishPlugin) // TODO: publish it
   .disablePlugins(disabledPlugins: _*)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
@@ -485,6 +484,7 @@ lazy val ce = crossProject(JVMPlatform, JSPlatform) // TODO: better name
   .dependsOn(stm % "compile->compile;test->test")
   .settings(
     libraryDependencies += dependencies.catsEffectAll.value,
+    tlVersionIntroduced := Map("2.13" -> "0.4.11", "3" -> "0.4.11"),
   )
   .jvmSettings(
     Test / fork := true,
@@ -539,6 +539,7 @@ lazy val unidocs = project
       stm.jvm,
       stream.jvm,
       laws.jvm,
+      ce.jvm,
       profiler,
     ),
     bspEnabled := false,
