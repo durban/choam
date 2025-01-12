@@ -159,7 +159,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   private[choam] final def asOld[C](c: C): Rxn[A, C] =
     this.map(_ => c)
 
-  final def void: Rxn[A, Unit] =
+  final override def void: Rxn[A, Unit] =
     this.as(())
 
   // FIXME: do we need this?

@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 
 import cats.StackSafeMonad
+import cats.effect.kernel.Unique
 import cats.effect.{ IO, Deferred }
 import cats.effect.Outcome.{ Canceled, Succeeded, Errored }
 
@@ -164,6 +165,14 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Txn#void") {
+    for {
+      r1 <- TRef[F, Int](42).commit
+      _ <- assertResultF(r1.set(99).void.commit, ())
+      _ <- assertResultF(r1.get.commit, 99)
+    } yield ()
+  }
+
   test("Txn#productR/L") {
     for {
       r1 <- TRef[F, Int](42).commit
@@ -197,6 +206,15 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Txn.unique") {
+    for {
+      t1 <- Txn.unique[F].commit
+      t23 <- (Txn.unique[F], Txn.unique[F]).tupled.commit
+      (t2, t3) = t23
+      _ <- assertEqualsF(Set(t1, t2, t3).size, 3)
+    } yield ()
+  }
+
   test("Monad[Txn[F, *]] instance") {
     def generic[G[_]](gi1: G[Int], gi2: G[Int])(implicit G: StackSafeMonad[G]): G[Int] = {
       G.map2(gi1, gi2) { _ + _ }
@@ -205,6 +223,17 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       r1 <- TRef[F, Int](42).commit
       r2 <- TRef[F, Int](99).commit
       _ <- assertResultF(generic(r1.get, r2.get).commit, 42 + 99)
+    } yield ()
+  }
+
+  test("Unique[Txn[F, *]] instance") {
+    def generic[G[_]](implicit G: Unique[G]): G[(Unique.Token, Unique.Token)] = {
+      G.applicative.map2(G.unique, G.unique)(Tuple2.apply)
+    }
+    for {
+      t12 <- generic[Txn[F, *]].commit
+      (t1, t2) = t12
+      _ <- assertNotEqualsF(t1, t2)
     } yield ()
   }
 
