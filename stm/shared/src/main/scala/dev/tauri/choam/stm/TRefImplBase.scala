@@ -36,4 +36,11 @@ private trait TRefImplBase[F[_], A] extends MemoryLocation[A] with TRef.Unsealed
 
   final override def getAndUpdate(f: A => A): Txn[F, A] =
     this.modify { ov => (f(ov), ov) }
+
+  final override def updateAndGet(f: A => A): Txn[F, A] = {
+    this.modify { ov =>
+      val nv = f(ov)
+      (nv, nv)
+    }
+  }
 }

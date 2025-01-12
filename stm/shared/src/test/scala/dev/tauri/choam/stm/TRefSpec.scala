@@ -18,24 +18,23 @@
 package dev.tauri.choam
 package stm
 
-sealed trait TRef[F[_], A] {
-  def get: Txn[F, A]
-  def set(a: A): Txn[F, Unit]
-  def update(f: A => A): Txn[F, Unit]
-  def modify[B](f: A => (A, B)): Txn[F, B]
-  def getAndSet(a: A): Txn[F, A]
-  def getAndUpdate(f: A => A): Txn[F, A]
-  def updateAndGet(f: A => A): Txn[F, A]
-}
+import cats.effect.IO
 
-object TRef {
+final class TRefSpec_ThreadConfinedMcas_IO
+  extends BaseSpecIO
+  with SpecThreadConfinedMcas
+  with TRefSpec[IO]
 
-  private[choam] trait UnsealedTRef[F[_], A] extends TRef[F, A]
+trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
 
-  def apply[F[_], A](a: A): Txn[F, TRef[F, A]] = {
-    core.Rxn.unsafe.delayContext { ctx =>
-      val id = ctx.refIdGen.nextId()
-      new TRefImpl[F, A](a, id)
-    }.castF[F]
+  protected def newTRef[A](initial: A): F[TRef[F, A]] =
+    TRef[F, A](initial).commit
+
+  test("TRef#updateAndGet") {
+    for {
+      ref <- newTRef(42)
+      _ <- assertResultF(ref.updateAndGet(_ + 1).commit, 43)
+      _ <- assertResultF(ref.get.commit, 43)
+    } yield ()
   }
 }

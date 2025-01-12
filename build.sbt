@@ -442,6 +442,7 @@ lazy val stm = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.modify"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.getAndSet"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.getAndUpdate"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.updateAndGet"),
     ),
   )
 
