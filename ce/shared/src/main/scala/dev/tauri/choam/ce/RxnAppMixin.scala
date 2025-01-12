@@ -27,6 +27,6 @@ trait RxnAppMixin extends BaseMixin { this: IOApp =>
   private[this] final val _asyncReactiveForIO: AsyncReactive[IO] =
     new AsyncReactive.AsyncReactiveImpl[IO](this._mcasImpl)
 
-  implicit protected final def asyncReactiveForIO: AsyncReactive[IO] =
+  implicit protected[this] final def asyncReactiveForIO: AsyncReactive[IO] =
     this._asyncReactiveForIO
 }

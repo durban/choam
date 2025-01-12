@@ -24,31 +24,38 @@ import cats.effect.{ IO, IOApp }
 
 import stm.TRef
 
-// TODO: fix running these tests on JS
-final class MixinSpec extends munit.FunSuite {
+final class MixinSpec extends munit.CatsEffectSuite {
 
   test("RxnAppMixin") {
-    assertEquals(MainWithRxnAppMixin.globalInt.get(), 0)
-    MainWithRxnAppMixin.main(new Array[String](0))
-    assertEquals(MainWithRxnAppMixin.globalInt.get(), 43)
+    for {
+      _ <- IO(assertEquals(MainWithRxnAppMixin.globalInt.get(), 0))
+      _ <- MainWithRxnAppMixin.run(List.empty)
+      _ <- IO(assertEquals(MainWithRxnAppMixin.globalInt.get(), 43))
+    } yield ()
   }
 
   test("TxnAppMixin") {
-    assertEquals(MainWithTxnAppMixin.globalInt.get(), 0)
-    MainWithTxnAppMixin.main(new Array[String](0))
-    assertEquals(MainWithTxnAppMixin.globalInt.get(), 44)
+    for {
+      _ <- IO(assertEquals(MainWithTxnAppMixin.globalInt.get(), 0))
+      _ <- MainWithTxnAppMixin.run(List.empty)
+      _ <- IO(assertEquals(MainWithTxnAppMixin.globalInt.get(), 44))
+    } yield ()
   }
 
   test("Both (1)") {
-    assertEquals(MainWithBoth1.globalInt.get(), 0)
-    MainWithBoth1.main(new Array[String](0))
-    assertEquals(MainWithBoth1.globalInt.get(), 43 + 100)
+    for {
+      _ <- IO(assertEquals(MainWithBoth1.globalInt.get(), 0))
+      _ <- MainWithBoth1.run(List.empty)
+      _ <- IO(assertEquals(MainWithBoth1.globalInt.get(), 43 + 100))
+    } yield ()
   }
 
   test("Both (2)") {
-    assertEquals(MainWithBoth2.globalInt.get(), 0)
-    MainWithBoth2.main(new Array[String](0))
-    assertEquals(MainWithBoth2.globalInt.get(), 44 + 101)
+    for {
+      _ <- IO(assertEquals(MainWithBoth2.globalInt.get(), 0))
+      _ <- MainWithBoth2.run(List.empty)
+      _ <- IO(assertEquals(MainWithBoth2.globalInt.get(), 44 + 101))
+    } yield ()
   }
 }
 

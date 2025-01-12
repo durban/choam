@@ -27,6 +27,6 @@ trait TxnAppMixin extends BaseMixin { this: IOApp =>
   private[this] final val _transactiveForIO: Transactive[IO] =
     new Transactive.TransactiveImpl[IO](this._mcasImpl)
 
-  implicit protected final def transactiveForIO: Transactive[IO] =
+  implicit protected[this] final def transactiveForIO: Transactive[IO] =
     this._transactiveForIO
 }
