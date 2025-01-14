@@ -202,7 +202,11 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
     modify: Boolean,
     shift: Int,
   ): Int = {
-    this.getValueOrNodeOrNull(hash, shift) match {
+    val contents = this.contents
+    val size = contents.length // always a power of 2
+    val logIdx = logicalIdx(hash, shift)
+    val physIdx = physicalIdx(logIdx, size)
+    contents(physIdx) match {
       case null =>
         val newVal = if (isNull(newValue)) {
           visitor.entryAbsent(k, tok)
@@ -214,11 +218,9 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
             packSizeDiffAndBlue(0, true)
           case newVal =>
             _assert(newVal.key.hash == hash)
-            // TODO: this will compute physIdx again:
-            this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
+            this.insertOrOverwriteKnownIndex(logIdx, physIdx, hash, newVal, shift, op = OP_INSERT)
         }
       case node: MutHamt[_, _, _, _, _, _, _] =>
-        val logIdx = logicalIdx(hash, shift)
         val nodeLogIdx = node.logIdx
         if (logIdx == nodeLogIdx) {
           node.asInstanceOf[H].visit(k, hash, tok, visitor, newValue = newValue, modify = modify, shift = shift + W)
@@ -235,7 +237,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
                 this.visit(k, hash, tok, visitor, newValue = newVal, modify = modify, shift = shift)
             }
           } else {
-            this.insertOrOverwrite(hash, newValue, shift, op = OP_INSERT)
+            this.insertOrOverwriteKnownIndex(logIdx, physIdx, hash, newValue, shift, op = OP_INSERT)
           }
         }
       case value =>
@@ -252,14 +254,13 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
               packSizeDiffAndBlue(0, isBlue(a))
             } else {
               _assert(newVal.key.hash == hashA)
-              this.insertOrOverwrite(hash, newVal, shift, op = OP_UPDATE)
+              this.insertOrOverwriteKnownIndex(logIdx, physIdx, hash, newVal, shift, op = OP_UPDATE)
             }
           } else {
             _assert(equ(newVal, a))
             packSizeDiffAndBlue(0, true)
           }
         } else {
-          val logIdx = logicalIdx(hash, shift)
           val logIdxA = logicalIdx(hashA, shift)
           if (logIdx == logIdxA) {
             // hash collision at this level
@@ -273,7 +274,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
                 packSizeDiffAndBlue(0, true)
               case newVal =>
                 _assert(newVal.key.hash == hash)
-                this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
+                this.insertOrOverwriteKnownIndex(logIdxA, physIdx, hash, newVal, shift, op = OP_INSERT)
             }
           } else {
             if (isNull(newValue)) {
@@ -285,19 +286,31 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
                   this.visit(k, hash, tok, visitor, newValue = newVal, modify = modify, shift = shift)
               }
             } else {
-              this.insertOrOverwrite(hash, newValue, shift, op = OP_INSERT)
+              this.insertOrOverwriteKnownIndex(logIdx, physIdx, hash, newValue, shift, op = OP_INSERT)
             }
           }
         }
     }
   }
 
-  /** Returns the increase in size and isBlue */
   private final def insertOrOverwrite(hash: Long, value: V, shift: Int, op: Int): Int = {
     val contents = this.contents
-    val logIdx = logicalIdx(hash, shift)
     val size = contents.length // always a power of 2
+    val logIdx = logicalIdx(hash, shift)
     val physIdx = physicalIdx(logIdx, size)
+    insertOrOverwriteKnownIndex(logIdx = logIdx, physIdx = physIdx, hash = hash, value = value, shift = shift, op = op)
+  }
+
+  /** Returns the increase in size and isBlue */
+  private[this] final def insertOrOverwriteKnownIndex(
+    logIdx: Int,
+    physIdx: Int,
+    hash: Long,
+    value: V,
+    shift: Int,
+    op: Int
+  ): Int = {
+    val contents = this.contents
     contents(physIdx) match {
       case null =>
         if (op == OP_UPDATE) {
@@ -319,9 +332,10 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
             throw new IllegalArgumentException
           } else {
             // we need to grow this level:
-            this.growLevel(newSize = necessarySize(logIdx, nodeLogIdx), shift = shift)
+            val newSize = necessarySize(logIdx, nodeLogIdx)
+            this.growLevel(newSize = newSize, shift = shift)
             // now we'll suceed for sure:
-            this.insertOrOverwrite(hash, value, shift, op)
+            this.insertOrOverwriteKnownIndex(logIdx, physicalIdx(logIdx, newSize), hash, value, shift, op)
           }
         }
       case ov =>
@@ -357,9 +371,10 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
               throw new IllegalArgumentException
             } else {
               // grow this level:
-              this.growLevel(newSize = necessarySize(logIdx, oLogIdx), shift = shift)
+              val newSize = necessarySize(logIdx, oLogIdx)
+              this.growLevel(newSize = newSize, shift = shift)
               // now we'll suceed for sure:
-              this.insertOrOverwrite(hash, value, shift, op)
+              this.insertOrOverwriteKnownIndex(logIdx, physicalIdx(logIdx, newSize), hash, value, shift, op)
             }
           }
         }
