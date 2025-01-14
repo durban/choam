@@ -55,7 +55,9 @@ private[choam] abstract class OsRng {
 
   def nextBytes(dest: Array[Byte]): Unit
 
-  def nextBytes(n: Int): Array[Byte] = {
+  def close(): Unit
+
+  final def nextBytes(n: Int): Array[Byte] = {
     require(n >= 0)
     val dest = new Array[Byte](n)
     if (n > 0) {
@@ -65,11 +67,14 @@ private[choam] abstract class OsRng {
   }
 }
 
-private class AdaptedOsRng(underlying: JSecureRandom) extends OsRng {
+private abstract class AdaptedOsRng(underlying: JSecureRandom) extends OsRng {
 
   final override def nextBytes(dest: Array[Byte]): Unit = {
     if (dest.length > 0) {
       underlying.nextBytes(dest)
     }
+  }
+
+  final override def close(): Unit = {
   }
 }

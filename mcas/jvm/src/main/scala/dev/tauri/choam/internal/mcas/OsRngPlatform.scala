@@ -94,6 +94,10 @@ private final class UnixRng extends OsRng {
     new FileInputStream("/dev/urandom")
   }
 
+  final override def close(): Unit = {
+    stream.close()
+  }
+
   final override def nextBytes(dest: Array[Byte]): Unit = {
     readFrom(stream, dest)
   }
