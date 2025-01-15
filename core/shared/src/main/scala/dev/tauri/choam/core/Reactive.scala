@@ -50,7 +50,10 @@ object Reactive {
     new SyncReactive[F](Rxn.DefaultMcas)(F)
 
   final def forSyncRes[F[_]](implicit F: Sync[F]): Resource[F, Reactive[F]] = // TODO:0.5: rename to forSync
-    defaultMcasResource[F].map(new SyncReactive(_))
+    forSyncResIn[F, F]
+
+  final def forSyncResIn[G[_], F[_]](implicit G: Sync[G], F: Sync[F]): Resource[G, Reactive[F]] = // TODO:0.5: rename to forSyncIn
+    defaultMcasResource[G].map(new SyncReactive(_))
 
   // TODO: this needs a better place:
   private[choam] final def defaultMcasResource[F[_]](implicit F: Sync[F]): Resource[F, Mcas] = {

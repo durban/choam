@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package core
 
-import cats.effect.kernel.{ Async, Resource }
+import cats.effect.kernel.{ Async, Sync, Resource }
 
 import internal.mcas.Mcas
 
@@ -36,7 +36,10 @@ private[choam] object Transactive {
   }
 
   final def forAsyncRes[F[_]](implicit F: Async[F]): Resource[F, Transactive[F]] = // TODO:0.5: rename to `forAsync`
-    Reactive.defaultMcasResource[F].map(new TransactiveImpl(_))
+    forAsyncResIn[F, F]
+
+  final def forAsyncResIn[G[_], F[_]](implicit G: Sync[G], F: Async[F]): Resource[G, Transactive[F]] = // TODO:0.5: rename to `forAsyncIn`
+    Reactive.defaultMcasResource[G].map(new TransactiveImpl(_))
 
   /** This allows a `Reactive` and a `Transactive` to share some of their underlying resources */
   final def forReactive[F[_]](implicit F: Async[F], r: Reactive[F]): Resource[F, Transactive[F]] =

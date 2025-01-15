@@ -19,7 +19,7 @@ package dev.tauri.choam
 package async
 
 import cats.{ ~>, Monad }
-import cats.effect.kernel.{ Async, Resource }
+import cats.effect.kernel.{ Async, Sync, Resource }
 
 import internal.mcas.Mcas
 import core.RetryStrategy
@@ -53,7 +53,10 @@ object AsyncReactive {
     new AsyncReactiveImpl[F](Rxn.DefaultMcas)(F)
 
   final def forAsyncRes[F[_]](implicit F: Async[F]): Resource[F, AsyncReactive[F]] = // TODO:0.5: rename to forAsync
-    Reactive.defaultMcasResource[F].map(new AsyncReactiveImpl(_))
+    forAsyncResIn[F, F]
+
+  final def forAsyncResIn[G[_], F[_]](implicit G: Sync[G], F: Async[F]): Resource[G, AsyncReactive[F]] = // TODO:0.5: rename to forAsyncIn
+    Reactive.defaultMcasResource[G].map(new AsyncReactiveImpl(_))
 
   private[choam] class AsyncReactiveImpl[F[_]](mi: Mcas)(implicit F: Async[F])
     extends Reactive.SyncReactive[F](mi)
