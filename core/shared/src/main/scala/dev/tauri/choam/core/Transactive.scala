@@ -20,7 +20,7 @@ package core
 
 import cats.effect.kernel.{ Async, Resource }
 
-import internal.mcas.{ Mcas, OsRng }
+import internal.mcas.Mcas
 
 // Note: not really private, published in dev.tauri.choam.stm
 private[choam] sealed trait Transactive[F[_]] {
@@ -35,19 +35,12 @@ private[choam] object Transactive {
     new TransactiveImpl(Rxn.DefaultMcas)
   }
 
-  final def forAsyncRes[F[_]](implicit F: Async[F]): Resource[F, Transactive[F]] = { // TODO:0.5: rename to `forAsync`
-    Resource.eval(
-      F.blocking { // `blocking` because:
-        val osRng = OsRng.mkNew() // <- this call may block
-        val mcasImpl = Mcas.newDefaultMcas(osRng)
-        new TransactiveImpl(mcasImpl)
-      }
-    )
-  }
+  final def forAsyncRes[F[_]](implicit F: Async[F]): Resource[F, Transactive[F]] = // TODO:0.5: rename to `forAsync`
+    Reactive.defaultMcasResource[F].map(new TransactiveImpl(_))
 
-  final def forReactive[F[_]](implicit F: Async[F], r: Reactive[F]): Resource[F, Transactive[F]] = {
-    Resource.eval(F.delay { new TransactiveImpl[F](r.mcasImpl) })
-  }
+  /** This allows a `Reactive` and a `Transactive` to share some of their underlying resources */
+  final def forReactive[F[_]](implicit F: Async[F], r: Reactive[F]): Resource[F, Transactive[F]] =
+    Resource.eval(F.pure(new TransactiveImpl[F](r.mcasImpl)))
 
   private[choam] final class TransactiveImpl[F[_] : Async](m: Mcas)
     extends Reactive.SyncReactive[F](m) with Transactive[F] {

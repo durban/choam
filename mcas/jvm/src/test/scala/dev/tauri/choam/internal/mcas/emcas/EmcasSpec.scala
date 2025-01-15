@@ -28,7 +28,7 @@ import scala.runtime.VolatileObjectRef
 
 import cats.syntax.all._
 
-import munit.{Location, TestOptions}
+import munit.{ Location, TestOptions }
 
 // TODO: all tests in `choam-mcas` are executed with
 // TODO: `SimpleMemoryLocation`; we should run them
@@ -38,6 +38,11 @@ class EmcasSpec extends BaseSpec {
 
   private[this] val inst: Emcas =
     new Emcas(this.osRngInstance)
+
+  final override def afterAll(): Unit = {
+    this.inst.close()
+    super.afterAll()
+  }
 
   final override def munitTimeout: Duration =
     5.minutes

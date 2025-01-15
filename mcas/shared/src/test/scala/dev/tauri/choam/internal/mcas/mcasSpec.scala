@@ -180,7 +180,12 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
   }
 
   test("Platform default must be thread-safe") {
-    assert(Mcas.newDefaultMcas(this.osRngInstance).isThreadSafe)
+    val inst = Mcas.newDefaultMcas(this.osRngInstance)
+    try {
+      assert(inst.isThreadSafe)
+    } finally {
+      inst.close()
+    }
   }
 
   test("A successful k-CAS should increase the version of the refs") {

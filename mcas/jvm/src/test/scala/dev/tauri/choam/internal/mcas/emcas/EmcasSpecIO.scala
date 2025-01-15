@@ -42,6 +42,11 @@ abstract class EmcasSpecF[F[_]] extends BaseSpec {
   protected[this] val inst: Emcas =
     new Emcas(this.osRngInstance)
 
+  final override def afterAll(): Unit = {
+    this.inst.close()
+    super.afterAll()
+  }
+
   protected def testF(name: String)(body: Async[F] => F[Any])(implicit loc: munit.Location): Unit
 
   private[this] def sub(s: String): String =

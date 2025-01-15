@@ -37,6 +37,10 @@ sealed trait Mcas {
     ctx eq currentContext()
   }
 
+  private[choam] def close(): Unit = {
+    // subclasses should override
+  }
+
   /** @return an already initialized RNG which reads from the OS */
   private[choam] def osRng: OsRng
 

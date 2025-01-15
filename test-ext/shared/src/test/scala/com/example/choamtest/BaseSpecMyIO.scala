@@ -45,8 +45,13 @@ abstract class BaseSpecMyIO
     })
   }
 
-  override protected def mcasImpl: Mcas =
-    BaseSpec.defaultMcasForTesting
+  override protected val mcasImpl: Mcas =
+    BaseSpec.newDefaultMcasForTesting()
+
+  override def afterAll(): Unit = {
+    BaseSpec.closeMcas(this.mcasImpl)
+    super.afterAll()
+  }
 
   override def munitValueTransforms: List[ValueTransform] = {
     new ValueTransform(

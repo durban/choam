@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 import scala.collection.concurrent.TrieMap
 
-object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
+final class FlakyEMCAS extends Mcas.UnsealedMcas { self =>
 
   private[this] val emcasInst: Emcas =
     new Emcas(BaseSpec.osRngForTesting)
@@ -34,6 +34,10 @@ object FlakyEMCAS extends Mcas.UnsealedMcas { self =>
 
   private[choam] final override val osRng: OsRng =
     BaseSpec.osRngForTesting
+
+  private[choam] final override def close(): Unit = {
+    this.emcasInst.close()
+  }
 
   def currentContext(): Mcas.ThreadContext = new Mcas.UnsealedThreadContext {
 

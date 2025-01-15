@@ -24,6 +24,6 @@ private[choam] abstract class BaseSpecCompanionPlatform { this: BaseSpec.type =>
   val osRngForTesting: OsRng =
     OsRng.globalLazyInit()
 
-  val defaultMcasForTesting: Mcas =
+  final def newDefaultMcasForTesting(): Mcas =
     Mcas.newDefaultMcas(osRngForTesting)
 }

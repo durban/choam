@@ -27,17 +27,30 @@ trait BaseSpec
   extends FunSuite
   with MUnitUtils {
 
+  private[this] val _defaultMcasInstance: Mcas =
+    Mcas.newDefaultMcas(this.osRngInstance)
+
   protected final def osRngInstance: OsRng =
     BaseSpec.osRngForTesting
 
   protected final def defaultMcasInstance: Mcas =
-    BaseSpec.defaultMcasForTesting
+    _defaultMcasInstance
+
+  override def afterAll(): Unit = {
+    _defaultMcasInstance.close()
+    super.afterAll()
+  }
 
   override def munitTimeout: Duration =
     super.munitTimeout * 2
 }
 
-object BaseSpec extends BaseSpecCompanionPlatform
+object BaseSpec extends BaseSpecCompanionPlatform {
+
+  final def closeMcas(mcasImpl: Mcas): Unit = {
+    mcasImpl.close()
+  }
+}
 
 trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
 

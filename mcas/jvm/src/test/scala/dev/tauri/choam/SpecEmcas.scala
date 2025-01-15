@@ -17,16 +17,37 @@
 
 package dev.tauri.choam
 
-trait SpecEmcas extends McasImplSpec {
-  final override def mcasImpl: internal.mcas.Mcas =
-    BaseSpec.emcasForTesting
+import internal.mcas.Mcas
+
+import munit.Suite
+
+trait SpecEmcas extends Suite with McasImplSpec {
+
+  private[this] val _mcasImpl: Mcas =
+    Mcas.newEmcas(BaseSpec.osRngForTesting)
+
+  override def afterAll(): Unit = {
+    this._mcasImpl.close()
+    super.afterAll()
+  }
+
+  final override def mcasImpl: Mcas =
+    this._mcasImpl
+
   final override def isEmcas: Boolean =
     true
 }
 
-trait SpecFlakyEMCAS extends McasImplSpec {
-  final override def mcasImpl: internal.mcas.Mcas =
-    internal.mcas.emcas.FlakyEMCAS
+trait SpecFlakyEMCAS extends Suite with McasImplSpec {
+
+  final override val mcasImpl: Mcas =
+    new internal.mcas.emcas.FlakyEMCAS
+
   final override def isEmcas: Boolean =
     true
+
+  override def afterAll(): Unit = {
+    this.mcasImpl.close()
+    super.afterAll()
+  }
 }

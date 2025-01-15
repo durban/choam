@@ -23,8 +23,17 @@ final class OsRngLazinessSpec extends munit.FunSuite {
 
   // TODO: this fails due to `_deprecatedEmcas`
   test("Using EMCAS mustn't create a global OsRng".fail) {
-    val inst = Mcas.newEmcas(OsRng.mkNew())
-    val _: Int = Rxn.secureRandom.nextInt.unsafeRun(inst)
-    assert(OsRng.globalUnsafe() eq null)
+    val osRng = OsRng.mkNew()
+    try {
+      val inst = Mcas.newEmcas(osRng)
+      try {
+        val _: Int = Rxn.secureRandom.nextInt.unsafeRun(inst)
+        assert(OsRng.globalUnsafe() eq null)
+      } finally {
+        inst.close()
+      }
+    } finally {
+      osRng.close()
+    }
   }
 }

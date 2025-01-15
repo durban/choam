@@ -49,12 +49,43 @@ object Reactive {
   def forSync[F[_]](implicit F: Sync[F]): Reactive[F] =
     new SyncReactive[F](Rxn.DefaultMcas)(F)
 
-  final def forSyncRes[F[_]](implicit F: Sync[F]): Resource[F, Reactive[F]] = { // TODO:0.5: rename to forSync
-    Resource.eval(
-      F.blocking { // `blocking` because:
-        val osRng = OsRng.mkNew() // <- this call may block
-        val mcasImpl = Mcas.newDefaultMcas(osRng)
-        new SyncReactive(mcasImpl)
+  final def forSyncRes[F[_]](implicit F: Sync[F]): Resource[F, Reactive[F]] = // TODO:0.5: rename to forSync
+    defaultMcasResource[F].map(new SyncReactive(_))
+
+  // TODO: this needs a better place:
+  private[choam] final def defaultMcasResource[F[_]](implicit F: Sync[F]): Resource[F, Mcas] = {
+    osRngResource[F].flatMap { osRng =>
+      Resource.make(
+        acquire = F.blocking { // `blocking` because:
+          // who knows what JMX is doing
+          // when we're registering the mbean
+          Mcas.newDefaultMcas(osRng)
+         }
+      )(
+        release = { mcasImpl =>
+          F.blocking { // `blocking` because:
+            // who knows what JMX is doing
+            // when we're unregistering the mbean
+            mcasImpl.close()
+          }
+        }
+      )
+    }
+  }
+
+  // TODO: this needs a better place:
+  private[choam] final def osRngResource[F[_]](implicit F: Sync[F]): Resource[F, OsRng] = {
+    Resource.make(
+      acquire = F.blocking { // `blocking` because:
+        OsRng.mkNew() // <- this call may block
+      }
+    )(
+      release = { osRng =>
+        F.blocking {  // `blocking` because:
+          // closing the FileInputStream of
+          // the OsRng involves a lock
+          osRng.close()
+        }
       }
     )
   }
