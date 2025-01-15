@@ -24,6 +24,14 @@ import rxn.ChoiceCombinatorBench
 
 final class ChoiceCombinatorBenchSpec extends BaseSpec {
 
+  private[this] val mcasImpl: Mcas =
+    Mcas.newEmcas(BaseSpec.osRngForTesting)
+
+  override def afterAll(): Unit = {
+    this.mcasImpl.close()
+    super.afterAll()
+  }
+
   test("ChoiceCombinatorBench") {
     val b = new ChoiceCombinatorBench
     val s = new ChoiceCombinatorBench.CASChoice
@@ -34,7 +42,7 @@ final class ChoiceCombinatorBenchSpec extends BaseSpec {
     k.setupMcasImpl()
     b.doChoiceCAS(s, k)
     // check that the reaction happened:
-    val ctx = Mcas.Emcas.currentContext()
+    val ctx = this.mcasImpl.currentContext()
     assertEquals(ctx.readDirect(s.ref.loc), "bar")
     for (r <- s.refs) {
       val v = ctx.readDirect(r.loc)
