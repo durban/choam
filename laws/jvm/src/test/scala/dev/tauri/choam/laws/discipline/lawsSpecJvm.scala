@@ -21,8 +21,14 @@ package discipline
 
 final class LawsSpecEmcas
   extends LawsSpec
-  with SpecEmcas
+  with SpecEmcas {
+
+  this.registerLaws()
+}
 
 final class LawsSpecSpinLockMcas
   extends LawsSpec
-  with SpecSpinLockMcas
+  with SpecSpinLockMcas {
+
+  this.registerLaws()
+}

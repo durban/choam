@@ -36,7 +36,10 @@ import async.AsyncReactive
 
 final class LawsSpecThreadConfinedMcas
   extends LawsSpec
-  with SpecThreadConfinedMcas
+  with SpecThreadConfinedMcas {
+
+  this.registerLaws()
+}
 
 trait LawsSpec
   extends DisciplineSuite
@@ -49,35 +52,44 @@ trait LawsSpec
   implicit val ticker: Ticker =
     Ticker(tc)
 
-  private[this] implicit val reactiveSyncIOInstance: Reactive[SyncIO] =
+  private[this] implicit lazy val reactiveSyncIOInstance: Reactive[SyncIO] =
     new Reactive.SyncReactive(this.mcasImpl)
 
-  private[this] implicit val asyncReactiveIOInstance: AsyncReactive[IO] =
+  private[this] implicit lazy val asyncReactiveIOInstance: AsyncReactive[IO] =
     new AsyncReactive.AsyncReactiveImpl(this.mcasImpl)
 
-  checkAll("Rxn", new RxnLawTests.UnsealedRxnLawTests with TestInstances {
-    override def mcasImpl: Mcas = self.mcasImpl
-  }.rxn[String, Int, Float, Double, Boolean, Long])
+  /**
+   * This ugly indirection is necessary because if we
+   * call `checkAll` in our constructor, it won't work,
+   * since `this.mcasImpl` is initialized in the ctor
+   * of one of our subclasses. So... our every (concrete)
+   * subclass must call `registerLaws` in its ctor...
+   */
+  protected final def registerLaws(): Unit = {
+    checkAll("Rxn", new RxnLawTests.UnsealedRxnLawTests with TestInstances {
+      override def mcasImpl: Mcas = self.mcasImpl
+    }.rxn[String, Int, Float, Double, Boolean, Long])
 
-  checkAll("Ref", RefLawTests(self).ref[String, Int, Float])
-  checkAll("Reactive", ReactiveLawTests[SyncIO].reactive[String, Int])
-  checkAll("AsyncReactive", AsyncReactiveLawTests[IO].asyncReactive[String, Int])
+    checkAll("Ref", RefLawTests(self).ref[String, Int, Float])
+    checkAll("Reactive", ReactiveLawTests[SyncIO].reactive[String, Int])
+    checkAll("AsyncReactive", AsyncReactiveLawTests[IO].asyncReactive[String, Int])
 
-  checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
-  checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])
-  checkAll("Monad[Rxn]", MonadTests[Rxn[String, *]].monad[Int, String, Int])
-  checkAll("Unique[Rxn]", UniqueTests[Rxn[Any, *]].unique { (act: Axn[Boolean]) =>
-    Prop(act.unsafeRun(self.mcasImpl))
-  })
-  checkAll("MonoidK[Rxn]", MonoidKTests[λ[a => Rxn[a, a]]].monoidK[String])
-  checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[String, Int]](Rxn.choiceSemigroup).semigroup)
-  checkAll("Monoid[Rxn]", MonoidTests[Rxn[String, Int]](Rxn.monoidInstance).monoid)
-  checkAll("Defer[Rxn]", DeferTests[Rxn[String, *]].defer[Int])
-  checkAll("Align[Rxn]", AlignTests[Rxn[String, *]].align[Int, Float, Double, Long])
-  checkAll("Clock[Rxn]", ClockTests[Rxn[String, *]].clock { (act: Rxn[String, Boolean]) =>
-    Prop(act.unsafePerform(null : String, self.mcasImpl))
-  })
+    checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
+    checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])
+    checkAll("Monad[Rxn]", MonadTests[Rxn[String, *]].monad[Int, String, Int])
+    checkAll("Unique[Rxn]", UniqueTests[Rxn[Any, *]].unique { (act: Axn[Boolean]) =>
+      Prop(act.unsafeRun(self.mcasImpl))
+    })
+    checkAll("MonoidK[Rxn]", MonoidKTests[λ[a => Rxn[a, a]]].monoidK[String])
+    checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[String, Int]](Rxn.choiceSemigroup).semigroup)
+    checkAll("Monoid[Rxn]", MonoidTests[Rxn[String, Int]](Rxn.monoidInstance).monoid)
+    checkAll("Defer[Rxn]", DeferTests[Rxn[String, *]].defer[Int])
+    checkAll("Align[Rxn]", AlignTests[Rxn[String, *]].align[Int, Float, Double, Long])
+    checkAll("Clock[Rxn]", ClockTests[Rxn[String, *]].clock { (act: Rxn[String, Boolean]) =>
+      Prop(act.unsafePerform(null : String, self.mcasImpl))
+    })
 
-  checkAll("Order[Ref[Int]]", OrderTests[Ref[Int]].order)
-  checkAll("Hash[Ref[Int]]", HashTests[Ref[Int]].hash)
+    checkAll("Order[Ref[Int]]", OrderTests[Ref[Int]].order)
+    checkAll("Hash[Ref[Int]]", HashTests[Ref[Int]].hash)
+  }
 }
