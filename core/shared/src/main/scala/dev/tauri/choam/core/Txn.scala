@@ -84,6 +84,10 @@ private[choam] object Txn extends TxnInstances0 {
 
     private[choam] final def delayContext[F[_], A](uf: Mcas.ThreadContext => A): Txn[F, A] =
       Rxn.unsafe.delayContext(uf).castF[F]
+
+    /** Only for testing! */
+    private[choam] final def retryUnconditionally[F[_], A]: Txn[F, A] =
+      Rxn.unsafe.retry[Any, A].castF[F]
   }
 }
 

@@ -44,7 +44,7 @@ val jvmOpenj9Latest = JavaSpec.semeru("23")
 val jvmOpenj9s = List(jvmOpenj9Oldest, jvmOpenj9Lts, jvmOpenj9Latest)
 
 // CI OS versions:
-val linux = "ubuntu-latest"
+val linux = "ubuntu-latest" // TODO: ubuntu-24.04-arm
 val windows = "windows-latest"
 val macos = "macos-14"
 
