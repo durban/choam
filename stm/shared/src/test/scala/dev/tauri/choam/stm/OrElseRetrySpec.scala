@@ -67,7 +67,7 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { thi
   // Note: this semantics is probably better for STM,
   // because this way trying `t2` means for sure that
   // `t1` executed a `Txn.retry`.
-  test("Txn - `t1 orElse t2`: `t1` transient failure -> retry `t1`".fail) { // TODO: expected failure for now
+  test("Txn - `t1 orElse t2`: `t1` transient failure -> retry `t1`") {
     log("Txn - `t1 orElse t2`: `t1` transient failure")
     val t1: Txn[F, Int] = transientFailureOnceThenSucceedWith("t1", 1)
     val t2: Txn[F, Int] = succeedWith("t2", 2)
@@ -88,7 +88,7 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { thi
 
   // Note: this semantics is probably better for STM,
   // because see above.
-  test("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` transient failure -> retry `t1`".fail) { // TODO: expected failure for now
+  test("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` transient failure -> retry `t1`") {
     log("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` transient failure")
     val t1: Txn[F, Int] = succeedWith("t1", 1)
     val t2: Txn[F, Int] = succeedWith("t2", 2)
@@ -113,6 +113,33 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { thi
         _ <- this.tickAll
         _ <- assertResultF(fib.joinWithNever, 1)
       } yield ()
+    }
+  }
+
+  // Combined tests:
+
+  private[this] final def plus[A](t1: Txn[F, A], t2: Txn[F, A]): Txn[F, A] = {
+    (t1.asInstanceOf[Axn[A]] + t2.asInstanceOf[Axn[A]]).castF[F]
+  }
+
+  test("Txn - `(t1 orElse t2) + t3`: `t1` transient failure -> try `t3` (NOT `t2`)") {
+    log("Txn - `(t1 orElse t2) + t3`: `t1` transient failure")
+    val t1: Txn[F, Int] = transientFailureOnceThenSucceedWith("t1", 1)
+    val t2: Txn[F, Int] = succeedWith("t2", 2)
+    val t3: Txn[F, Int] = succeedWith("t3", 3)
+    val txn: Txn[F, Int] = plus(t1 orElse t2, t3)
+    assertResultF(txn.commit, 3)
+  }
+
+  test("Txn - `(t1 + t2) orElse (t3 + t4)`") {
+    log("Txn - `(t1 + t2) orElse (t3 + t4)`")
+    TRef[F, Int](0).commit.flatMap { ref =>
+      val t1: Txn[F, Int] = transientFailureOnceThenSucceedWith("t1", 1)
+      val t2: Txn[F, Int] = succeedIfPositive("t2", ref, 2)
+      val t3: Txn[F, Int] = transientFailureOnceThenSucceedWith("t3", 3)
+      val t4: Txn[F, Int] = succeedWith("t4", 4)
+      val txn: Txn[F, Int] = plus(t1, t2) orElse plus(t3, t4)
+      assertResultF(txn.commit, 4)
     }
   }
 }

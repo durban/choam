@@ -333,7 +333,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   }
 
   final override def orElse[Y >: B](that: Txn[Rxn.Anything, Y]): Txn[Rxn.Anything, Y] = {
-    this + that.impl // TODO: orElse/+ semantics
+    new OrElse(this, that.impl)
   }
 
   final override def commit[X >: B](implicit F: Transactive[Rxn.Anything]): Rxn.Anything[X] = {
@@ -813,11 +813,19 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Map_(${rxn}, <function>)"
   }
 
+  private final class OrElse[A, B](val left: Rxn[A, B], val right: Rxn[A, B]) extends Rxn[A, B] { // STM
+    private[core] final override def tag = 31
+    final override def toString: String = s"OrElse(${left}, ${right})"
+  }
+
   // Interpreter:
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
   private[this] final val postCommitResultMarker =
     new PostCommitResultMarker
+
+  private[this] final val onlyForPermanentFailureMarker: AnyRef =
+    new AnyRef
 
   private[core] final val commitSingleton: Rxn[Any, Any] = // TODO: make this a java enum?
     new Commit[Any]
@@ -1081,7 +1089,7 @@ object Rxn extends RxnInstances0 {
       alts.clear()
     }
 
-    private[this] final def saveAlt(k: Rxn[Any, R]): Unit = {
+    private[this] final def saveAlt(k: Rxn[Any, R], onlyForPermanentFailure: Boolean): Unit = {
       val alts = this.alts
       val descSnap = _desc match {
         case null =>
@@ -1091,17 +1099,43 @@ object Rxn extends RxnInstances0 {
       }
       alts.push3(descSnap, a, contT.takeSnapshot())
       alts.push3(contKList.takeSnapshot(), pc.takeSnapshot(), k)
+      if (onlyForPermanentFailure) {
+        _assert(this.isStm)
+        alts.push(onlyForPermanentFailureMarker)
+      }
     }
 
-    private[this] final def loadAlt(): Rxn[Any, R] = {
+    @tailrec
+    private[this] final def tryLoadAlt(isPermanentFailure: Boolean): Rxn[Any, R] = {
       val alts = this.alts
-      val res = alts.pop().asInstanceOf[Rxn[Any, R]]
+      if (alts.nonEmpty()) {
+        val top = alts.pop()
+        if (equ(top, onlyForPermanentFailureMarker)) {
+          _assert(this.isStm)
+          if (!isPermanentFailure) {
+            alts.popAndDiscard(6)
+            tryLoadAlt(isPermanentFailure) // retry after discarding
+          } else {
+            val res = alts.pop().asInstanceOf[Rxn[Any, R]]
+            this._loadRestOfAlt()
+            res
+          }
+        } else {
+          val res = top.asInstanceOf[Rxn[Any, R]]
+          this._loadRestOfAlt()
+          res
+        }
+      } else {
+        null
+      }
+    }
+
+    private[this] final def _loadRestOfAlt(): Unit = {
       pc.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Rxn[Any, Unit]]])
       contKList.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
       _desc = alts.pop().asInstanceOf[Descriptor]
-      res
     }
 
     private[this] final def loadAltFrom(msg: Exchanger.Msg): Rxn[Any, R] = {
@@ -1222,15 +1256,17 @@ object Rxn extends RxnInstances0 {
       this.retry(canSuspend = this.canSuspend)
 
     private[this] final def retry(canSuspend: Boolean): Rxn[Any, Any] =
-      this.retry(canSuspend = canSuspend, suspendUntilChanged = false)
+      this.retry(canSuspend = canSuspend, permanent = false)
 
-    private[this] final def retry(canSuspend: Boolean, suspendUntilChanged: Boolean): Rxn[Any, Any] = {
-      if (alts.nonEmpty()) {
+    private[this] final def retry(canSuspend: Boolean, permanent: Boolean): Rxn[Any, Any] = {
+      _assert((!permanent) || this.isStm)
+      val alt = tryLoadAlt(isPermanentFailure = permanent)
+      if (alt ne null) {
         // we're not actually retrying,
         // just going to the other side
         // of a `+` (so we're not
         // incrementing `retries`):
-        loadAlt()
+        alt
       } else {
         // really retrying:
         val retriesNow = this.retries + 1
@@ -1254,7 +1290,7 @@ object Rxn extends RxnInstances0 {
         backoffAndNext(
           retriesNow,
           canSuspend = canSuspend,
-          suspendUntilChanged = suspendUntilChanged,
+          suspendUntilChanged = permanent,
           desc = d,
         )
       }
@@ -1280,7 +1316,7 @@ object Rxn extends RxnInstances0 {
           new SuspendUntilBackoff(token)
         }
       } else { // STM
-        _assert(canSuspend && this.isStm)
+        _assert(canSuspend && this.isStm && (desc ne null))
         new SuspendUntilChanged(desc)
       }
     }
@@ -1454,10 +1490,10 @@ object Rxn extends RxnInstances0 {
           loop(nxt)
         case 5 => // RetryWhenChanged (STM)
           _assert(this.canSuspend && this.isStm)
-          loop(retry(canSuspend = true, suspendUntilChanged = true))
+          loop(retry(canSuspend = true, permanent = true))
         case 6 => // Choice
-          val c = curr.asInstanceOf[Choice[A, B]]
-          saveAlt(c.right.asInstanceOf[Rxn[Any, R]])
+          val c = curr.asInstanceOf[Choice[Any, R]]
+          saveAlt(c.right, onlyForPermanentFailure = false)
           loop(c.left)
         case 7 => // Cas
           val c = curr.asInstanceOf[Cas[Any]]
@@ -1674,6 +1710,10 @@ object Rxn extends RxnInstances0 {
           contT.push(RxnConsts.ContMap)
           contK.push(c.f)
           loop(c.rxn)
+        case 31 => // OrElse (STM)
+          val c = curr.asInstanceOf[OrElse[Any, R]]
+          saveAlt(c.right, onlyForPermanentFailure = true)
+          loop(c.left)
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }
