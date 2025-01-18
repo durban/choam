@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 
 import scala.concurrent.duration._
 
+import cats.kernel.Monoid
 import cats.{ Defer, Monad, StackSafeMonad }
 import cats.effect.kernel.Unique
 import cats.effect.{ IO, Deferred }
@@ -238,6 +239,13 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       r2 <- TRef[F, Int](99).commit
       _ <- assertResultF(generic(r1.get, r2.get).commit, 42 + 99)
     } yield ()
+  }
+
+  test("Monoid instance") {
+    def generic[G: Monoid](g1: G, g2: G): G =
+      Monoid[G].combine(g1, g2)
+
+    assertResultF(generic[Txn[F, String]](Txn.pure("a"), Txn.pure("b")).commit, "ab")
   }
 
   test("Defer[Txn[F, *]] instance") {

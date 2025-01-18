@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package core
 
+import cats.kernel.Monoid
 import cats.{ Applicative, Defer, StackSafeMonad }
 import cats.effect.kernel.Unique
 
@@ -41,6 +42,8 @@ private[choam] sealed trait Txn[F[_], +B] {
   def productL[C](that: Txn[F, C]): Txn[F, B]
 
   def <* [C](that: Txn[F, C]): Txn[F, B]
+
+  def product [C](that: Txn[F, C]): Txn[F, (B, C)]
 
   def flatMap[C](f: B => Txn[F, C]): Txn[F, C]
 
@@ -91,7 +94,7 @@ private[choam] object Txn extends TxnInstances0 {
   }
 }
 
-private[core] sealed abstract class TxnInstances0 extends TxnCompanionPlatform { self: Txn.type =>
+private[core] sealed abstract class TxnInstances0 extends TxnInstances1 { self: Txn.type =>
 
   implicit final def monadInstance[F[_]]: StackSafeMonad[Txn[F, *]] = new StackSafeMonad[Txn[F, *]] {
     final override def unit: Txn[F, Unit] =
@@ -110,6 +113,8 @@ private[core] sealed abstract class TxnInstances0 extends TxnCompanionPlatform {
       fa.map2(fb)(f)
     final override def productR[A, B](fa: Txn[F, A])(fb: Txn[F, B]): Txn[F, B] =
       fa.productR(fb)
+    final override def product[A, B](fa: Txn[F, A], fb: Txn[F, B]): Txn[F, (A, B)] =
+      fa product fb
     final override def flatMap[A, B](fa: Txn[F, A])(f: A => Txn[F, B]): Txn[F, B] =
       fa.flatMap(f)
     final override def tailRecM[A, B](a: A)(f: A => Txn[F, Either[A, B]]): Txn[F, B] =
@@ -136,5 +141,15 @@ private[core] sealed abstract class TxnInstances0 extends TxnCompanionPlatform {
       self.monadInstance
     final override def unique: Txn[F, Unique.Token] =
       Txn.unique[F]
+  }
+}
+
+private[core] sealed abstract class TxnInstances1 extends TxnCompanionPlatform { self: Txn.type =>
+
+  implicit final def monoidInstance[F[_], B](implicit B: Monoid[B]): Monoid[Txn[F, B]] = new Monoid[Txn[F, B]] {
+    final override def combine(x: Txn[F, B], y: Txn[F, B]): Txn[F, B] =
+      x.map2(y) { (b1, b2) => B.combine(b1, b2) }
+    final override def empty: Txn[F, B] =
+      Txn.pure(B.empty)
   }
 }

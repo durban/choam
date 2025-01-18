@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.duration._
 
+import cats.kernel.Monoid
 import cats.{ Applicative, Monad, StackSafeMonad, Align, Defer }
 import cats.arrow.{ ArrowChoice, FunctionK }
 import cats.data.Ior
@@ -1030,6 +1031,13 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       foo[Rxn](Rxn.lift(_.toString), Rxn.lift(_ + 1)).apply[F](42),
       ("42", 43)
     )
+  }
+
+  test("Monoid instance") {
+    def foo[G: Monoid](g1: G, g2: G): G =
+      Monoid[G].combine(g1, g2)
+
+    assertResultF(foo[Axn[String]](Axn.pure("a"), Axn.pure("b")).run[F], "ab")
   }
 
   test("Local instance") {

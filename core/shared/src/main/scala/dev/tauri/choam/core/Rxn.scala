@@ -140,6 +140,9 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   final def * [X <: A, C](that: Rxn[X, C]): Rxn[X, (B, C)] =
     (this × that).contramap[X](x => (x, x))
 
+  final def product[X <: A, C](that: Rxn[X, C]): Rxn[X, (B, C)] =
+    this * that
+
   final def ? : Rxn[A, Option[B]] =
     this.attempt
 
@@ -325,6 +328,10 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     this.productL(that.impl)
   }
 
+  final override def product[C](that: Txn[Rxn.Anything, C]): Txn[Rxn.Anything, (B, C)] = {
+    this * that.impl
+  }
+
   final override def orElse[Y >: B](that: Txn[Rxn.Anything, Y]): Txn[Rxn.Anything, Y] = {
     this + that.impl // TODO: orElse/+ semantics
   }
@@ -501,7 +508,7 @@ object Rxn extends RxnInstances0 {
     private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       this.delayContext(uf).flatten // TODO: optimize
 
-    final def exchanger[A, B]: Axn[Exchanger[A, B]] =
+    final def exchanger[A, B]: Axn[Exchanger[A, B]] = // TODO:0.5: make it private
       Exchanger.apply[A, B]
 
     private[choam] final def exchange[A, B](ex: Exchanger[A, B]): Rxn[A, B] =
@@ -1802,6 +1809,8 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
       fa.map2(fb)(f)
     final override def productR[A, B](fa: Rxn[X, A])(fb: Rxn[X, B]): Rxn[X, B] =
       fa.productR(fb)
+    final override def product[A, B](fa: Rxn[X, A], fb: Rxn[X, B]): Rxn[X, (A, B)] =
+      fa product fb
     final override def flatMap[A, B](fa: Rxn[X, A])(f: A => Rxn[X, B]): Rxn[X, B] =
       fa.flatMap(f)
     final override def tailRecM[A, B](a: A)(f: A => Rxn[X, Either[A, B]]): Rxn[X, B] =
@@ -1839,10 +1848,9 @@ private sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.ty
   }
 
   implicit final def monoidInstance[A, B](implicit B: Monoid[B]): Monoid[Rxn[A, B]] = new Monoid[Rxn[A, B]] {
-    override def combine(x: Rxn[A, B], y: Rxn[A, B]): Rxn[A, B] = {
-      (x * y).map { bb => B.combine(bb._1, bb._2) }
-    }
-    override def empty: Rxn[A, B] =
+    final override def combine(x: Rxn[A, B], y: Rxn[A, B]): Rxn[A, B] =
+      x.map2(y) { (b1, b2) => B.combine(b1, b2) }
+    final override def empty: Rxn[A, B] =
       Rxn.pure(B.empty)
   }
 }
