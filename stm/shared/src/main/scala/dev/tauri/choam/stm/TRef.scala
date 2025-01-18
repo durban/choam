@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package stm
 
+import internal.mcas.Mcas
+
 sealed trait TRef[F[_], A] {
   def get: Txn[F, A]
   def set(a: A): Txn[F, Unit]
@@ -32,10 +34,11 @@ object TRef {
 
   private[choam] trait UnsealedTRef[F[_], A] extends TRef[F, A]
 
-  def apply[F[_], A](a: A): Txn[F, TRef[F, A]] = {
-    core.Rxn.unsafe.delayContext { ctx =>
-      val id = ctx.refIdGen.nextId()
-      new TRefImpl[F, A](a, id)
-    }.castF[F]
+  final def apply[F[_], A](a: A): Txn[F, TRef[F, A]] =
+    core.Rxn.unsafe.delayContext(unsafe[F, A](a)).castF[F]
+
+  private[choam] final def unsafe[F[_], A](a: A)(ctx: Mcas.ThreadContext): TRef[F, A] = {
+    val id = ctx.refIdGen.nextId()
+    new TRefImpl[F, A](a, id)
   }
 }
