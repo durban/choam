@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package stm
 
+import cats.effect.kernel.{ Ref => CatsRef }
 import cats.effect.IO
 
 final class TPromiseSpecTicked_DefaultMcas_IO
@@ -54,7 +55,7 @@ trait TPromiseSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { 
     } yield ()
   }
 
-  test("get on left side of orElse".fail) { // TODO: expected failure
+  test("complete left side of orElse".fail) { // TODO: expected failure
     for {
       p1 <- TPromise[F, Int].commit
       p2 <- TPromise[F, Int].commit
@@ -67,6 +68,49 @@ trait TPromiseSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { 
       _ <- assertResultF(p1.tryGet.commit, Some(42))
       _ <- assertResultF(p2.tryGet.commit, None)
       _ <- assertResultF(fib.joinWithNever, 42)
+    } yield ()
+  }
+
+  test("complete right side of orElse") {
+    for {
+      p1 <- TPromise[F, Int].commit
+      p2 <- TPromise[F, Int].commit
+      fib <- (p1.get orElse p2.get).commit.start
+      _ <- this.tickAll
+      _ <- assertResultF(p1.tryGet.commit, None)
+      _ <- assertResultF(p2.tryGet.commit, None)
+      _ <- assertResultF(p2.complete(99).commit, true)
+      _ <- this.tickAll
+      _ <- assertResultF(p1.tryGet.commit, None)
+      _ <- assertResultF(p2.tryGet.commit, Some(99))
+      _ <- assertResultF(fib.joinWithNever, 99)
+    } yield ()
+  }
+
+  test("multiple readers") {
+    def writeIntoCatsRef(p: TPromise[F, Int], ref: CatsRef[F, Int]): F[Unit] = {
+      p.get.commit.flatMap(ref.set)
+    }
+    for {
+      p <- TPromise[F, Int].commit
+      r1 <- CatsRef.of(0)
+      r2 <- CatsRef.of(0)
+      r3 <- CatsRef.of(0)
+      fib1 <- writeIntoCatsRef(p, r1).start
+      fib2 <- writeIntoCatsRef(p, r2).start
+      fib3 <- writeIntoCatsRef(p, r3).start
+      _ <- this.tickAll
+      _ <- assertResultF(r1.get, 0)
+      _ <- assertResultF(r2.get, 0)
+      _ <- assertResultF(r3.get, 0)
+      _ <- assertResultF(p.complete(42).commit, true)
+      _ <- this.tickAll
+      _ <- assertResultF(r1.get, 42)
+      _ <- assertResultF(r2.get, 42)
+      _ <- assertResultF(r3.get, 42)
+      _ <- fib1.joinWithNever
+      _ <- fib2.joinWithNever
+      _ <- fib3.joinWithNever
     } yield ()
   }
 }
