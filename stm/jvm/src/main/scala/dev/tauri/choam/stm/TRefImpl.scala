@@ -155,6 +155,10 @@ private final class TRefImpl[F[_], A](
     go(listeners.get())
   }
 
+  private[choam] final override def unsafeNumberOfListeners(): Int = {
+    listeners.get().size
+  }
+
   private[choam] final override def unsafeNotifyListeners(): Unit = {
     // TODO: If there are A LOT of listeners, calling all
     // TODO: these async callbacks could take a while;

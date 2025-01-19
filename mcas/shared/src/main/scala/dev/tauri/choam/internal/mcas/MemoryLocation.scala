@@ -128,6 +128,8 @@ object MemoryLocation extends MemoryLocationInstances0 {
     ): Long
 
     private[choam] def unsafeCancelListener(lid: Long): Unit
+
+    private[choam] def unsafeNumberOfListeners(): Int
   }
 
   def unsafe[A](initial: A): MemoryLocation[A] = // TODO: remove this

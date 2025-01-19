@@ -24,7 +24,7 @@ import cats.{ ~>, Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, Mo
 import cats.arrow.ArrowChoice
 import cats.data.{ Ior, State }
 import cats.mtl.Local
-import cats.effect.kernel.{ Async, Clock, Unique, Ref => CatsRef }
+import cats.effect.kernel.{ Async, Clock, Cont, Unique, MonadCancel, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
 import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, AbstractDescriptor, Consts, Hamt, Version }
@@ -731,32 +731,36 @@ object Rxn extends RxnInstances0 {
       mcasCtx: Mcas.ThreadContext,
     )(implicit F: Async[F]): F[Unit] = {
       if (desc ne null) {
-        F.asyncCheckAttempt[Unit] { cb =>
-          F.delay {
-            val rightUnit = Right(())
-            val cb2 = { (_: Null) =>
-              cb(rightUnit)
-            }
-            val (refs, cancelIds) = subscribe(mcasImpl, mcasCtx, cb2)
-            if (cancelIds eq null) {
-              // some ref already changed, we're done:
-              rightUnit
-            } else {
-              val cancelTsk = F.delay {
-                var idx = 0
-                while (idx < refs.length) {
-                  refs(idx).unsafeCancelListener(cancelIds(idx))
-                  idx += 1
-                }
+        F.cont(new Cont[F, Unit, Unit] {
+          final override def apply[G[_]](implicit G: MonadCancel[G, Throwable]) = { (resume, get, lift) =>
+            G.uncancelable[Unit] { poll =>
+              G.flatten {
+                lift(F.delay[G[Unit]] {
+                  val rightUnit = Right(())
+                  val cb2 = { (_: Null) =>
+                    resume(rightUnit)
+                  }
+                  val (refs, cancelIds) = subscribe(mcasImpl, mcasCtx, cb2)
+                  if (cancelIds eq null) {
+                    // some ref already changed, we're done:
+                    G.unit
+                  } else {
+                    val unsubscribe: F[Unit] = F.delay {
+                      var idx = 0
+                      while (idx < refs.length) {
+                        refs(idx).unsafeCancelListener(cancelIds(idx))
+                        idx += 1
+                      }
+                    }
+                    G.guarantee(poll(get), lift(unsubscribe))
+                  }
+                })
               }
-              Left(Some(cancelTsk))
-              // TODO: if one of the Refs wakes us, we still have to
-              // TODO: cancel all the other subscriptions (to not leak memory)
             }
           }
-        }
+        })
       } else {
-        F.never
+        F.never // TODO: should we just throw an error?
       }
     }
 

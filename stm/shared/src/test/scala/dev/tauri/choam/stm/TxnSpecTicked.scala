@@ -22,6 +22,8 @@ import cats.effect.kernel.Deferred
 import cats.effect.Outcome.{ Canceled, Succeeded, Errored }
 import cats.effect.IO
 
+import internal.mcas.MemoryLocation
+
 final class TxnSpecTicked_DefaultMcas_IO
   extends BaseSpecTickedIO
   with SpecDefaultMcas
@@ -95,7 +97,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this:
     } yield ()
   }
 
-  test("Txn.retry should retry if a TRef read in any alt changes".ignore) { // TODO: expected failure
+  test("Txn.retry should retry if a TRef read in any alt changes".fail) { // TODO: expected failure
     for {
       r1 <- TRef[F, Int](-1).commit
       r2 <- TRef[F, Int](-1).commit
@@ -121,6 +123,48 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this:
       _ <- this.tickAll
       _ <- assertResultF(d2.tryGet, Some("1")) // TODO: this fails
       _ <- fib2.joinWithNever
+    } yield ()
+  }
+
+  private final def numberOfListeners[A](ref: TRef[F, A]): F[Int] = F.delay {
+    ref.asInstanceOf[MemoryLocation.WithListeners].unsafeNumberOfListeners()
+  }
+
+  test("Txn.retry should unsubscribe from TRefs when cancelled") {
+    for {
+      r0 <- TRef[F, Int](0).commit
+      r1 <- TRef[F, Int](0).commit
+      r2 <- TRef[F, Int](0).commit
+      fib <- (r0.get *> (r1.get.flatMap(v1 => Txn.check(v1 > 0)) orElse r2.get.flatMap(v2 => Txn.check(v2 > 0)))).commit.start
+      _ <- this.tickAll
+      _ <- assertResultF(numberOfListeners(r0), 1)
+      // _ <- assertResultF(numberOfListeners(r1), 1) // TODO: this fails
+      _ <- assertResultF(numberOfListeners(r2), 1)
+      _ <- fib.cancel
+      _ <- assertResultF(fib.join, Canceled[F, Throwable, Unit]())
+      _ <- this.tickAll
+      _ <- assertResultF(numberOfListeners(r0), 0)
+      _ <- assertResultF(numberOfListeners(r1), 0)
+      _ <- assertResultF(numberOfListeners(r2), 0)
+    } yield ()
+  }
+
+  test("Txn.retry should unsubscribe from TRefs when completed") {
+    for {
+      r0 <- TRef[F, Int](0).commit
+      r1 <- TRef[F, Int](0).commit
+      r2 <- TRef[F, Int](0).commit
+      fib <- (r0.get *> (r1.get.flatMap(v1 => Txn.check(v1 > 0)) orElse r2.get.flatMap(v2 => Txn.check(v2 > 0)))).commit.start
+      _ <- this.tickAll
+      _ <- assertResultF(numberOfListeners(r0), 1)
+      // _ <- assertResultF(numberOfListeners(r1), 1) // TODO: this fails
+      _ <- assertResultF(numberOfListeners(r2), 1)
+      _ <- r2.set(1).commit
+      _ <- this.tickAll
+      _ <- assertResultF(fib.joinWithNever, ())
+      _ <- assertResultF(numberOfListeners(r0), 0)
+      _ <- assertResultF(numberOfListeners(r1), 0)
+      _ <- assertResultF(numberOfListeners(r2), 0)
     } yield ()
   }
 }

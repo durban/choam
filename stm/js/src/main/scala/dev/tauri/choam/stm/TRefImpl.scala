@@ -138,6 +138,10 @@ private final class TRefImpl[F[_], A](
     listeners.remove(lid) : Unit
   }
 
+  private[choam] final override def unsafeNumberOfListeners(): Int = {
+    listeners.size
+  }
+
   private[choam] final override def unsafeNotifyListeners(): Unit = {
     val itr = listeners.valuesIterator
     while (itr.hasNext) {
