@@ -16,27 +16,18 @@
  */
 
 package dev.tauri.choam
-package stm
 
-import cats.effect.IO
+import munit.Location
 
-final class TxnSpecJvm_Emcas_IO
-  extends BaseSpecIO
-  with SpecEmcas
-  with TxnSpecJvm[IO]
+trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with McasImplSpec =>
 
-final class TxnSpecJvmTicked_Emcas_IO
-  extends BaseSpecTickedIO
-  with SpecEmcas
-  with TxnSpecJvmTicked[IO]
+  final override def assertResultF[A, B](obtained: zio.Task[A], expected: B, clue: String = "values are not the same")(
+    implicit loc: Location, ev: B <:< A
+  ): zio.Task[Unit] = {
+    obtained.flatMap(ob => zio.ZIO.attempt { this.assertEquals(ob, expected, clue) })
+  }
 
-final class TxnSpecJvm_Emcas_ZIO
-  extends BaseSpecZIO
-  with SpecEmcas
-  with TxnSpecJvm[zio.Task]
-
-trait TxnSpecJvm[F[_]] extends TxnSpec[F] { this: McasImplSpec =>
-}
-
-trait TxnSpecJvmTicked[F[_]] extends TxnSpecTicked[F] { this: McasImplSpec =>
+  final override def assumeNotZio: zio.Task[Unit] = {
+    this.assumeF(false)
+  }
 }

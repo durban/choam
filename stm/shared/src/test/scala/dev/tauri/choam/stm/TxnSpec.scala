@@ -31,14 +31,19 @@ import cats.effect.Outcome.{ Canceled, Succeeded, Errored }
 import internal.mcas.MemoryLocation
 import internal.mcas.Consts
 
-final class TxnSpec_ThreadConfinedMcas_IO
+final class TxnSpec_DefaultMcas_IO
   extends BaseSpecIO
-  with SpecThreadConfinedMcas
+  with SpecDefaultMcas
   with TxnSpec[IO]
 
-final class TxnSpecTicked_ThreadConfinedMcas_IO
+final class TxnSpec_DefaultMcas_ZIO
+  extends BaseSpecZIO
+  with SpecDefaultMcas
+  with TxnSpec[zio.Task]
+
+final class TxnSpecTicked_DefaultMcas_IO
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMcas
+  with SpecDefaultMcas
   with TxnSpecTicked[IO]
 
 trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>

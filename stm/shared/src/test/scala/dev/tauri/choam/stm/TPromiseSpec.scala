@@ -20,9 +20,9 @@ package stm
 
 import cats.effect.IO
 
-final class TPromiseSpecTicked_ThreadConfinedMcas_IO
+final class TPromiseSpecTicked_DefaultMcas_IO
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMcas
+  with SpecDefaultMcas
   with TPromiseSpecTicked[IO]
 
 trait TPromiseSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this: McasImplSpec =>

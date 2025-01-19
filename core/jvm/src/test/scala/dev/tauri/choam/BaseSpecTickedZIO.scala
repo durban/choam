@@ -29,61 +29,7 @@ import scala.concurrent.ExecutionContext
 import cats.effect.kernel.Async
 import cats.effect.kernel.testkit.TestContext
 
-import munit.{ CatsEffectSuite, Location }
-
-trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with McasImplSpec =>
-
-  final override def assertResultF[A, B](obtained: zio.Task[A], expected: B, clue: String = "values are not the same")(
-    implicit loc: Location, ev: B <:< A
-  ): zio.Task[Unit] = {
-    obtained.flatMap(ob => zio.ZIO.attempt { this.assertEquals(ob, expected, clue) })
-  }
-
-  final override def assumeNotZio: zio.Task[Unit] = {
-    this.assumeF(false)
-  }
-}
-
-abstract class BaseSpecZIO
-  extends CatsEffectSuite
-  with BaseSpecAsyncF[zio.Task]
-  with UtilsForZIO { this: McasImplSpec =>
-
-  private[this] val runtime =
-    zio.Runtime.default
-
-  final override def F: Async[zio.Task] =
-    zio.interop.catz.asyncInstance
-
-  protected final override def absolutelyUnsafeRunSync[A](fa: zio.Task[A]): A = {
-    zio.Unsafe.unsafe { implicit u =>
-      this.runtime.unsafe.run(fa).getOrThrow()
-    }
-  }
-
-  private def transformZIO: ValueTransform = {
-    new this.ValueTransform(
-      "ZIO",
-      { case x: zio.ZIO[_, _, _] =>
-        val tsk = x.asInstanceOf[zio.Task[_]]
-        val tskWithLogCfg = zio.ZIO.scopedWith { scope =>
-          zio.Runtime.setUnhandledErrorLogLevel(zio.LogLevel.Info).build(scope) *> tsk
-        }
-        zio.Unsafe.unsafe { implicit u =>
-          this.runtime.unsafe.runToFuture(tskWithLogCfg)
-        }
-      }
-    )
-  }
-
-  override def munitValueTransforms: List[this.ValueTransform] = {
-    super.munitValueTransforms :+ this.transformZIO
-  }
-
-  override def munitIgnore: Boolean = {
-    super.munitIgnore || this.isOpenJ9()
-  }
-}
+import munit.CatsEffectSuite
 
 abstract class BaseSpecTickedZIO
   extends CatsEffectSuite

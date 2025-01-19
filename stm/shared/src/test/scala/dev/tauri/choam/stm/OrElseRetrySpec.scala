@@ -22,9 +22,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import cats.effect.IO
 
-final class OrElseRetrySpec_ThreadConfinedMcas_IO
+final class OrElseRetrySpec_DefaultMcas_IO
   extends BaseSpecTickedIO
-  with SpecThreadConfinedMcas
+  with SpecDefaultMcas
   with OrElseRetrySpec[IO]
 
 trait OrElseRetrySpec[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this: McasImplSpec =>

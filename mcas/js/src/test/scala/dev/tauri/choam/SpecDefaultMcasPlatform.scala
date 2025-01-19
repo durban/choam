@@ -16,30 +16,8 @@
  */
 
 package dev.tauri.choam
-package stm
 
-import cats.effect.IO
-
-final class TRefSpec_DefaultMcas_IO
-  extends BaseSpecIO
-  with SpecDefaultMcas
-  with TRefSpec[IO]
-
-final class TRefSpec_DefaultMcas_ZIO
-  extends BaseSpecZIO
-  with SpecDefaultMcas
-  with TRefSpec[zio.Task]
-
-trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
-
-  protected def newTRef[A](initial: A): F[TRef[F, A]] =
-    TRef[F, A](initial).commit
-
-  test("TRef#updateAndGet") {
-    for {
-      ref <- newTRef(42)
-      _ <- assertResultF(ref.updateAndGet(_ + 1).commit, 43)
-      _ <- assertResultF(ref.get.commit, 43)
-    } yield ()
-  }
+trait SpecDefaultMcasPlatform extends McasImplSpec {
+  final override def isEmcas: Boolean =
+    false
 }

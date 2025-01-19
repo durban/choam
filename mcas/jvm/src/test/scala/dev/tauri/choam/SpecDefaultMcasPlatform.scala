@@ -16,19 +16,8 @@
  */
 
 package dev.tauri.choam
-package stm
 
-import cats.effect.IO
-
-final class TRefSpecJvm_Emcas_IO
-  extends BaseSpecIO
-  with SpecEmcas
-  with TRefSpecJvm[IO]
-
-final class TRefSpecJvm_Emcas_ZIO
-  extends BaseSpecZIO
-  with SpecEmcas
-  with TRefSpecJvm[zio.Task]
-
-trait TRefSpecJvm[F[_]] extends TRefSpec[F] { this: McasImplSpec =>
+trait SpecDefaultMcasPlatform extends McasImplSpec {
+  final override def isEmcas: Boolean =
+    true
 }

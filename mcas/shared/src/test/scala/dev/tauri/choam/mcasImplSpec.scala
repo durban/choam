@@ -25,6 +25,20 @@ trait McasImplSpec {
     false
 }
 
+trait SpecDefaultMcas extends munit.Suite with SpecDefaultMcasPlatform {
+
+  private[this] val _mcasImpl: Mcas =
+    Mcas.newDefaultMcas(BaseSpec.osRngForTesting)
+
+  override def afterAll(): Unit = {
+    this._mcasImpl.close()
+    super.afterAll()
+  }
+
+  final override def mcasImpl: Mcas =
+    this._mcasImpl
+}
+
 trait SpecThreadConfinedMcas extends McasImplSpec {
   final override def mcasImpl: Mcas =
     Mcas.ThreadConfinedMCAS

@@ -502,9 +502,6 @@ lazy val zi = crossProject(JVMPlatform, JSPlatform)
   .dependsOn(stm % "compile->compile;test->test")
   .settings(
     libraryDependencies ++= dependencies.zioEverything.value,
-    libraryDependencies ++= Seq(
-      dependencies.scalaJsTime.value % TestInternal,
-    ),
     tlVersionIntroduced := Map("2.13" -> "0.4.11", "3" -> "0.4.11"),
   )
 
@@ -991,9 +988,8 @@ lazy val dependencies = new {
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
       "org.typelevel" %%% "discipline-munit" % "2.0.0", // https://github.com/typelevel/discipline-munit
-      zioCats.value,
-      zioStm.value,
-    )
+      scalaJsTime.value,
+    ) ++ zioEverything.value
   }
 
   val catsScalacheck = Def.setting("io.chrisdavenport" %%% "cats-scalacheck" % "0.3.2") // https://github.com/davenverse/cats-scalacheck
