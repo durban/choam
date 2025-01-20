@@ -746,8 +746,9 @@ object Rxn extends RxnInstances0 {
                     G.unit
                   } else {
                     val unsubscribe: F[Unit] = F.delay {
+                      val len = refs.length
                       var idx = 0
-                      while (idx < refs.length) {
+                      while (idx < len) {
                         refs(idx).unsafeCancelListener(cancelIds(idx))
                         idx += 1
                       }
