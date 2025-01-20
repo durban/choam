@@ -730,7 +730,7 @@ object Rxn extends RxnInstances0 {
       mcasImpl: Mcas,
       mcasCtx: Mcas.ThreadContext,
     )(implicit F: Async[F]): F[Unit] = {
-      if (desc ne null) {
+      if ((desc ne null) && desc.nonEmpty) {
         F.cont(new Cont[F, Unit, Unit] {
           final override def apply[G[_]](implicit G: MonadCancel[G, Throwable]) = { (resume, get, lift) =>
             G.uncancelable[Unit] { poll =>
@@ -1321,7 +1321,7 @@ object Rxn extends RxnInstances0 {
           new SuspendUntilBackoff(token)
         }
       } else { // STM
-        _assert(canSuspend && this.isStm && (desc ne null))
+        _assert(canSuspend && this.isStm)
         new SuspendUntilChanged(desc)
       }
     }

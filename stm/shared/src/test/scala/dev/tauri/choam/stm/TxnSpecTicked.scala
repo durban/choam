@@ -73,6 +73,18 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this:
     } yield ()
   }
 
+  test("Txn.retry with no refs read") {
+    for {
+      d <- Deferred[F, String]
+      fib <- txnToDef(Txn.retry[F, String], d).start
+      _ <- this.tickAll
+      _ <- assertResultF(d.tryGet, None)
+      _ <- fib.cancel
+      _ <- this.tickAll
+      _ <- assertResultF(d.tryGet, Some("cancelled"))
+    } yield ()
+  }
+
   test("Txn.check") {
     for {
       r <- TRef[F, Int](1).commit

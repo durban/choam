@@ -43,7 +43,7 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   protected def hamt: AbstractHamt[_, _, _, _, _, _]
 
-  private[mcas] final def nonEmpty: Boolean =
+  private[choam] final def nonEmpty: Boolean =
     this.size > 0
 
   private[mcas] def hasVersionCas: Boolean
