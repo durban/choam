@@ -23,7 +23,7 @@ import scala.util.Try
 final class InternalStackSpec extends BaseSpec {
 
   test("ArrayObjStack") {
-    val s = new ArrayObjStack[String]
+    val s = new ArrayObjStack[String](initSize = 2)
     assert(s.isEmpty())
     assert(!s.nonEmpty())
     assertEquals(s.toListObjStack().toString, "ListObjStack()")

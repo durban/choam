@@ -842,7 +842,7 @@ object Rxn extends RxnInstances0 {
   }
 
   private[this] final def mkInitialContK(): ObjStack[Any] = {
-    val ck = new ArrayObjStack[Any]()
+    val ck = new ArrayObjStack[Any](initSize = 16)
     ck.push(commitSingleton)
     ck
   }
@@ -928,7 +928,7 @@ object Rxn extends RxnInstances0 {
       _desc = null
     }
 
-    private[this] val alts: ArrayObjStack[Any] = new ArrayObjStack[Any]()
+    private[this] val alts: ArrayObjStack[Any] = new ArrayObjStack[Any](initSize = 8)
 
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
     private[this] var contK: ObjStack[Any] = mkInitialContK()

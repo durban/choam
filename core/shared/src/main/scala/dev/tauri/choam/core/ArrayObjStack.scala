@@ -20,10 +20,12 @@ package core
 
 import java.util.Arrays
 
-private final class ArrayObjStack[A]() extends ObjStack[A] {
+private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
+
+  require((initSize > 0) && ((initSize & (initSize - 1)) == 0)) // power of 2
 
   private[this] var arr: Array[AnyRef] =
-    new Array[AnyRef](16)
+    new Array[AnyRef](initSize)
 
   private[this] var size: Int =
     0
