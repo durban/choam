@@ -1739,7 +1739,7 @@ object Rxn extends RxnInstances0 {
               case s: SuspendUntil =>
                 _assert(this._entryHolder eq null)
                 val sus: F[Unit] = s.toF[F](mcas, ctx)
-                F.flatMap(poll(sus)) { _ => step(ctxHint = ctx) }
+                F.productR(poll(sus))(step(ctxHint = ctx))
               case r =>
                 _assert(this._entryHolder eq null)
                 F.pure(r)
