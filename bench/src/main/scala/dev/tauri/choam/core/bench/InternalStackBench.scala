@@ -204,7 +204,7 @@ private object InternalStackBench {
       this.arrayObjStack
 
     val arrayObjStack: ArrayObjStack[String] = {
-      val s = new ArrayObjStack[String]
+      val s = new ArrayObjStack[String](initSize = initSize)
       for (i <- 1 to initSize) {
         s.push(i.toString())
       }
