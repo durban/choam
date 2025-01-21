@@ -109,7 +109,7 @@ private final class ArrayObjStack[A]() extends ObjStack[A] {
   }
 
   final override def clear(): Unit = {
-    Arrays.fill(this.arr, null)
+    Arrays.fill(this.arr, 0, this.size, null)
     this.size = 0
   }
 

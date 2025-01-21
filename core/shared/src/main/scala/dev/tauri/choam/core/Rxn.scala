@@ -928,7 +928,7 @@ object Rxn extends RxnInstances0 {
       _desc = null
     }
 
-    private[this] val alts: ListObjStack[Any] = new ListObjStack[Any]()
+    private[this] val alts: ArrayObjStack[Any] = new ArrayObjStack[Any]()
 
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
     private[this] var contK: ObjStack[Any] = mkInitialContK()

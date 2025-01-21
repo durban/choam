@@ -38,6 +38,16 @@ private abstract class ObjStack[A]() {
 
   def nonEmpty(): Boolean
 
+  @tailrec
+  final def popAndDiscard(n: Int): Unit = { // TODO: optimize
+    if (n > 0) {
+      this.pop() : Unit
+      this.popAndDiscard(n - 1)
+    } else {
+      ()
+    }
+  }
+
   final def pushAll(as: Iterable[A]): Unit = {
     val it = as.iterator
     while (it.hasNext) {

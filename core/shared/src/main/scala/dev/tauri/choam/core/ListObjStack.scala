@@ -55,16 +55,6 @@ private final class ListObjStack[A]() extends ObjStack[A] {
     r
   }
 
-  @tailrec
-  final def popAndDiscard(n: Int): Unit = { // TODO: optimize
-    if (n > 0) {
-      this.pop() : Unit
-      this.popAndDiscard(n - 1)
-    } else {
-      ()
-    }
-  }
-
   final override def peek(): A = {
     assertNonEmpty()
     this.lst.head
