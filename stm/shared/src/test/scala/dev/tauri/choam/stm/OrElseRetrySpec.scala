@@ -105,7 +105,7 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { thi
   }
 
   // Note: we probably need this semantics because apparently STMs work like this.
-  test("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` permanent failure -> retry `t1`".fail) { // TODO: fix it
+  test("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` permanent failure -> retry `t1`") {
     log("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` permanent failure")
     TRef[F, Int](0).commit.flatMap { ref =>
       val t1: Txn[F, Int] = succeedWith("t1", 1)

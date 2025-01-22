@@ -34,4 +34,5 @@ class RxnConsts {
   static final byte ContMap = 12;
   static final byte ContMap2Right = 13;
   static final byte ContMap2Func = 14;
+  static final byte ContOrElse = 15;
 }

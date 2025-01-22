@@ -829,9 +829,6 @@ object Rxn extends RxnInstances0 {
   private[this] final val postCommitResultMarker =
     new PostCommitResultMarker
 
-  private[this] final val onlyForPermanentFailureMarker: AnyRef =
-    new AnyRef
-
   private[core] final val commitSingleton: Rxn[Any, Any] = // TODO: make this a java enum?
     new Commit[Any]
 
@@ -929,6 +926,11 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] val alts: ArrayObjStack[Any] = new ArrayObjStack[Any](initSize = 8)
+    private[this] val stmAlts: ArrayObjStack[Any] = if (isStm) {
+      new ArrayObjStack[Any](initSize = 8)
+    } else {
+      null
+    }
 
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
     private[this] var contK: ObjStack[Any] = mkInitialContK()
@@ -1094,8 +1096,16 @@ object Rxn extends RxnInstances0 {
       alts.clear()
     }
 
-    private[this] final def saveAlt(k: Rxn[Any, R], onlyForPermanentFailure: Boolean): Unit = {
-      val alts = this.alts
+    private[this] final def saveAlt(k: Rxn[Any, R]): Unit = {
+      _saveAlt(this.alts, k)
+    }
+
+    private[this] final def saveStmAlt(k: Rxn[Any, R]): Unit = {
+      _assert(this.isStm)
+      _saveAlt(this.stmAlts, k)
+    }
+
+    private[this] final def _saveAlt(alts: ArrayObjStack[Any], k: Rxn[Any, R]): Unit = {
       val descSnap = _desc match {
         case null =>
           null
@@ -1104,38 +1114,32 @@ object Rxn extends RxnInstances0 {
       }
       alts.push3(descSnap, a, contT.takeSnapshot())
       alts.push3(contKList.takeSnapshot(), pc.takeSnapshot(), k)
-      if (onlyForPermanentFailure) {
+    }
+
+    private[this] final def tryLoadAlt(isPermanentFailure: Boolean): Rxn[Any, R] = {
+      if (isPermanentFailure) {
         _assert(this.isStm)
-        alts.push(onlyForPermanentFailureMarker)
+        _tryLoadAlt(this.stmAlts)
+      } else {
+        _tryLoadAlt(this.alts)
       }
     }
 
-    @tailrec
-    private[this] final def tryLoadAlt(isPermanentFailure: Boolean): Rxn[Any, R] = {
-      val alts = this.alts
+    private[this] final def discardStmAlt(): Unit = {
+      this.stmAlts.popAndDiscard(6)
+    }
+
+    private[this] final def _tryLoadAlt(alts: ArrayObjStack[Any]): Rxn[Any, R] = {
       if (alts.nonEmpty()) {
-        val top = alts.pop()
-        if (equ(top, onlyForPermanentFailureMarker)) {
-          _assert(this.isStm)
-          if (!isPermanentFailure) {
-            alts.popAndDiscard(6)
-            tryLoadAlt(isPermanentFailure) // retry after discarding
-          } else {
-            val res = alts.pop().asInstanceOf[Rxn[Any, R]]
-            this._loadRestOfAlt()
-            res
-          }
-        } else {
-          val res = top.asInstanceOf[Rxn[Any, R]]
-          this._loadRestOfAlt()
-          res
-        }
+        val res = alts.pop().asInstanceOf[Rxn[Any, R]]
+        this._loadRestOfAlt(alts)
+        res
       } else {
         null
       }
     }
 
-    private[this] final def _loadRestOfAlt(): Unit = {
+    private[this] final def _loadRestOfAlt(alts: ArrayObjStack[Any]): Unit = {
       pc.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Rxn[Any, Unit]]])
       contKList.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
@@ -1249,6 +1253,9 @@ object Rxn extends RxnInstances0 {
           val rightRes = a
           val f = contK.pop().asInstanceOf[Function2[Any, Any, Any]]
           a = f(leftRes, rightRes)
+          next()
+        case 15 => // ContOrElse
+          discardStmAlt()
           next()
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
@@ -1498,7 +1505,7 @@ object Rxn extends RxnInstances0 {
           loop(retry(canSuspend = true, permanent = true))
         case 6 => // Choice
           val c = curr.asInstanceOf[Choice[Any, R]]
-          saveAlt(c.right, onlyForPermanentFailure = false)
+          saveAlt(c.right)
           loop(c.left)
         case 7 => // Cas
           val c = curr.asInstanceOf[Cas[Any]]
@@ -1717,7 +1724,8 @@ object Rxn extends RxnInstances0 {
           loop(c.rxn)
         case 31 => // OrElse (STM)
           val c = curr.asInstanceOf[OrElse[Any, R]]
-          saveAlt(c.right, onlyForPermanentFailure = true)
+          saveStmAlt(c.right)
+          contT.push(RxnConsts.ContOrElse)
           loop(c.left)
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
