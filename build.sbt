@@ -334,7 +334,6 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .jsSettings(commonSettingsJs)
   .dependsOn(skiplist % "compile->compile;test->test")
   .settings(
-    libraryDependencies += dependencies.catsKernel.value, // TODO: we only need this due to `Order`
     mimaBinaryIssueFilters ++= Seq(
       // there is no backward compat for `choam-mcas`:
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.Descriptor.versionCas"),
@@ -921,7 +920,7 @@ lazy val consts = new {
 
 lazy val dependencies = new {
 
-  val catsVersion = "2.12.0" // https://github.com/typelevel/cats
+  val catsVersion = "2.13.0" // https://github.com/typelevel/cats
   val catsEffectVersion = "3.5.7" // https://github.com/typelevel/cats-effect
   val catsMtlVersion = "1.5.0" // https://github.com/typelevel/cats-mtl
   val catsCollectionsVersion = "0.9.9" // https://github.com/typelevel/cats-collections
