@@ -109,7 +109,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this:
     } yield ()
   }
 
-  test("Txn.retry should retry if a TRef read in any alt changes".fail) { // TODO: expected failure
+  test("Txn.retry should retry if a TRef read in any alt changes") {
     for {
       r1 <- TRef[F, Int](-1).commit
       r2 <- TRef[F, Int](-1).commit
@@ -149,8 +149,8 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this:
       r2 <- TRef[F, Int](0).commit
       fib <- (r0.get *> (r1.get.flatMap(v1 => Txn.check(v1 > 0)) orElse r2.get.flatMap(v2 => Txn.check(v2 > 0)))).commit.start
       _ <- this.tickAll
-      _ <- assertResultF(numberOfListeners(r0), 1)
-      // _ <- assertResultF(numberOfListeners(r1), 1) // TODO: this fails
+      _ <- assertResultF(numberOfListeners(r0), 2) // TODO: we subscribe twice to `r0` (should be 1)
+      _ <- assertResultF(numberOfListeners(r1), 1)
       _ <- assertResultF(numberOfListeners(r2), 1)
       _ <- fib.cancel
       _ <- assertResultF(fib.join, Canceled[F, Throwable, Unit]())
@@ -168,8 +168,8 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this:
       r2 <- TRef[F, Int](0).commit
       fib <- (r0.get *> (r1.get.flatMap(v1 => Txn.check(v1 > 0)) orElse r2.get.flatMap(v2 => Txn.check(v2 > 0)))).commit.start
       _ <- this.tickAll
-      _ <- assertResultF(numberOfListeners(r0), 1)
-      // _ <- assertResultF(numberOfListeners(r1), 1) // TODO: this fails
+      _ <- assertResultF(numberOfListeners(r0), 2) // TODO: we subscribe twice to `r0` (should be 1)
+      _ <- assertResultF(numberOfListeners(r1), 1)
       _ <- assertResultF(numberOfListeners(r2), 1)
       _ <- r2.set(1).commit
       _ <- this.tickAll

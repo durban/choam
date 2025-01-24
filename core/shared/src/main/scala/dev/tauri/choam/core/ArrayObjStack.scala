@@ -30,6 +30,9 @@ private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
   private[this] var size: Int =
     0
 
+  final def length: Int =
+    this.size
+
   final override def toString: String = {
     this.arr.take(this.size).reverse.mkString("ArrayObjStack(", ", ", ")")
   }

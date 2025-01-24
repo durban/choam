@@ -721,16 +721,19 @@ object Rxn extends RxnInstances0 {
       Backoff2.tokenToF[F](token)
   }
 
-  private final class SuspendUntilChanged(desc: AbstractDescriptor) extends SuspendUntil {
+  private final class SuspendUntilChanged(
+    descs: Array[AbstractDescriptor],
+    totalSize: Int,
+  ) extends SuspendUntil {
 
     final override def toString: String =
-      s"SuspendUntilChanged(${desc})"
+      s"SuspendUntilChanged(${descs.mkString("[", ", ", "]")}, ${totalSize})"
 
     final override def toF[F[_]](
       mcasImpl: Mcas,
       mcasCtx: Mcas.ThreadContext,
     )(implicit F: Async[F]): F[Unit] = {
-      if ((desc ne null) && desc.nonEmpty) {
+      if (totalSize > 0) {
         F.cont(new Cont[F, Unit, Unit] {
           final override def apply[G[_]](implicit G: MonadCancel[G, Throwable]) = { (resume, get, lift) =>
             G.uncancelable[Unit] { poll =>
@@ -740,12 +743,13 @@ object Rxn extends RxnInstances0 {
                   val cb2 = { (_: Null) =>
                     resume(rightUnit)
                   }
-                  val (refs, cancelIds) = subscribe(mcasImpl, mcasCtx, cb2)
-                  if (cancelIds eq null) {
+                  val refsAndCancelIds = subscribe(mcasImpl, mcasCtx, cb2)
+                  if (refsAndCancelIds eq null) {
                     // some ref already changed, we're done:
                     G.unit
                   } else {
                     val unsubscribe: F[Unit] = F.delay {
+                      val (refs, cancelIds) = refsAndCancelIds
                       val len = refs.length
                       var idx = 0
                       while (idx < len) {
@@ -775,24 +779,47 @@ object Rxn extends RxnInstances0 {
       } else {
         mcasImpl.currentContext()
       }
-      val refs = new Array[MemoryLocation.WithListeners](desc.size)
-      val cancelIds = new Array[Long](desc.size)
-      val itr = desc.hwdIterator
+      val size = this.totalSize
+      val refs = new Array[MemoryLocation.WithListeners](size)
+      val cancelIds = new Array[Long](size)
       var idx = 0
+      val it = this.descs.iterator
+      while (it.hasNext) {
+        val d = it.next()
+        idx = subscribeToDesc(ctx, cb, d, refs, cancelIds, idx)
+        if (idx == -1) {
+          return null // scalafix:ok
+        }
+      }
+
+      _assert(idx == size)
+      (refs, cancelIds)
+    }
+
+    private[this] final def subscribeToDesc(
+      ctx: Mcas.ThreadContext,
+      cb: Null => Unit,
+      desc: AbstractDescriptor,
+      refs: Array[MemoryLocation.WithListeners],
+      cancelIds: Array[Long],
+      startIdx: Int,
+    ): Int = {
+      val itr = desc.hwdIterator
+      var idx = startIdx
       while (itr.hasNext) {
         val hwd = itr.next()
         val loc = hwd.address.withListeners
         val cancelId = loc.unsafeRegisterListener(ctx, cb, hwd.oldVersion)
         if (cancelId == Consts.InvalidListenerId) {
           this.undoSubscribe(idx, refs, cancelIds)
-          return (null, null) // scalafix:ok
+          return -1 // scalafix:ok
         }
         refs(idx) = loc
         cancelIds(idx) = cancelId
         idx += 1
       }
 
-      (refs, cancelIds)
+      idx
     }
 
     private[this] final def undoSubscribe(
@@ -928,6 +955,11 @@ object Rxn extends RxnInstances0 {
     private[this] val alts: ArrayObjStack[Any] = new ArrayObjStack[Any](initSize = 8)
     private[this] val stmAlts: ArrayObjStack[Any] = if (isStm) {
       new ArrayObjStack[Any](initSize = 8)
+    } else {
+      null
+    }
+    private[this] val discardedDescs: ArrayObjStack[AbstractDescriptor] = if (isStm) {
+      new ArrayObjStack(initSize = 16)
     } else {
       null
     }
@@ -1139,11 +1171,21 @@ object Rxn extends RxnInstances0 {
       }
     }
 
+    private[this] final def saveDescForStm(): Unit = {
+      if (this.isStm) {
+        val discarded = _desc
+        if ((discarded ne null) && discarded.nonEmpty) {
+          this.discardedDescs.push(discarded)
+        }
+      }
+    }
+
     private[this] final def _loadRestOfAlt(alts: ArrayObjStack[Any]): Unit = {
       pc.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Rxn[Any, Unit]]])
       contKList.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
+      this.saveDescForStm()
       _desc = alts.pop().asInstanceOf[Descriptor]
     }
 
@@ -1152,6 +1194,7 @@ object Rxn extends RxnInstances0 {
       contKList.loadSnapshot(msg.contK)
       contT.loadSnapshot(msg.contT)
       a = msg.value
+      this.saveDescForStm() // TODO: write a test for this (exchange + STM)
       desc = msg.desc
       next().asInstanceOf[Rxn[Any, R]]
     }
@@ -1329,7 +1372,25 @@ object Rxn extends RxnInstances0 {
         }
       } else { // STM
         _assert(canSuspend && this.isStm)
-        new SuspendUntilChanged(desc)
+        val discardedDescs = this.discardedDescs
+        val hasExtraDesc = (desc ne null) && desc.nonEmpty
+        val len = discardedDescs.length + (if (hasExtraDesc) 1 else 0)
+        val descs: Array[AbstractDescriptor] = new Array[AbstractDescriptor](len)
+        var totalSize = 0
+        var idx = 0
+        if (hasExtraDesc) {
+          descs(0) = desc
+          totalSize += desc.size
+          idx += 1
+        }
+        while (idx < len) {
+          val d = discardedDescs.pop()
+          descs(idx) = d
+          totalSize += d.size
+          idx += 1
+        }
+        _assert(discardedDescs.isEmpty())
+        new SuspendUntilChanged(descs, totalSize)
       }
     }
 

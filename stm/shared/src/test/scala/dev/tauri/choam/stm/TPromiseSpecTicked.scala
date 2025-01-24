@@ -55,7 +55,7 @@ trait TPromiseSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { 
     } yield ()
   }
 
-  test("complete left side of orElse".fail) { // TODO: expected failure
+  test("complete left side of orElse") {
     for {
       p1 <- TPromise[F, Int].commit
       p2 <- TPromise[F, Int].commit

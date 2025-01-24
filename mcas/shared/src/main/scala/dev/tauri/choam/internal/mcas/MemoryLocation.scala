@@ -129,6 +129,7 @@ object MemoryLocation extends MemoryLocationInstances0 {
 
     private[choam] def unsafeCancelListener(lid: Long): Unit
 
+    /** Only for testing! */
     private[choam] def unsafeNumberOfListeners(): Int
   }
 
