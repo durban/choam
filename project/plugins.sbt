@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-val sbtTypelevelVersion = "0.7.6" // https://github.com/typelevel/sbt-typelevel
+val sbtTypelevelVersion = "0.7.7" // https://github.com/typelevel/sbt-typelevel
 
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.7") // https://github.com/sbt/sbt-jmh
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
@@ -34,7 +34,7 @@ addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.4") // https://github.com/s
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.10.0") // https://github.com/sbt/sbt-header
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.0") // https://github.com/scalacenter/sbt-scalafix
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.2") // https://github.com/portable-scala/sbt-crossproject
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.17.0") // https://www.scala-js.org/
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.18.2") // https://www.scala-js.org/
 addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1") // https://github.com/raboof/sbt-strict-scala-versions
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.0") // https://github.com/sbt/sbt-native-packager
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.13.1") // https://github.com/sbt/sbt-buildinfo
