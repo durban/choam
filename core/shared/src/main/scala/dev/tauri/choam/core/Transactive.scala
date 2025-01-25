@@ -24,11 +24,18 @@ import internal.mcas.Mcas
 
 // Note: not really private, published in dev.tauri.choam.stm
 private[choam] sealed trait Transactive[F[_]] {
-  def commit[B](txn: Txn[F, B]): F[B]
+
+  final def commit[B](txn: Txn[F, B]): F[B] =
+    this.commit(txn, RetryStrategy.DefaultSleep)
+
+  private[choam] def commit[B](txn: Txn[F, B], str: RetryStrategy): F[B]
 }
 
 // Note: not really private, published in dev.tauri.choam.stm
 private[choam] object Transactive {
+
+  final def apply[F[_]](implicit F: Transactive[F]): F.type =
+    F
 
   @deprecated("Use forAsyncRes", since = "0.4.11") // TODO:0.5: remove
   final def forAsync[F[_]](implicit F: Async[F]): Transactive[F] = {
@@ -47,8 +54,8 @@ private[choam] object Transactive {
 
   private[choam] final class TransactiveImpl[F[_] : Async](m: Mcas)
     extends Reactive.SyncReactive[F](m) with Transactive[F] {
-    final override def commit[B](txn: Txn[F, B]): F[B] = {
-      txn.impl.performStm[F, B](null, this.mcasImpl)
+    final override def commit[B](txn: Txn[F, B], str: RetryStrategy): F[B] = {
+      txn.impl.performStm[F, B](null, this.mcasImpl, str)
     }
   }
 }

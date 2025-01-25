@@ -349,14 +349,16 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   private[choam] final def performStm[F[_], X >: B](
     a: A,
     mcas: Mcas,
+    strategy: RetryStrategy,
   )(implicit F: Async[F]): F[X] = {
+    require(strategy.canSuspend)
     F.uncancelable { poll =>
       F.defer {
         new InterpreterState[A, X](
           this,
           a,
           mcas = mcas,
-          strategy = RetryStrategy.sleep(),
+          strategy = strategy,
           isStm = true,
         ).interpretAsync(poll)(F)
       }

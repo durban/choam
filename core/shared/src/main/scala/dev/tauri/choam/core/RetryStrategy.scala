@@ -393,6 +393,9 @@ object RetryStrategy {
   final val Default: Spin =
     this.spin()
 
+  private[choam] final val DefaultSleep: RetryStrategy =
+    this.sleep()
+
   final def spin(
     maxRetries: Option[Int] = None,
     maxSpin: Int = BackoffPlatform.maxPauseDefault,

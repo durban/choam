@@ -25,6 +25,8 @@ import cats.{ Defer, Monad, StackSafeMonad }
 import cats.effect.kernel.Unique
 import cats.effect.IO
 
+import core.RetryStrategy
+
 final class TxnSpec_DefaultMcas_IO
   extends BaseSpecIO
   with SpecDefaultMcas
@@ -56,6 +58,10 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       Txn.pure(42)
     val tsk = t.commit
     assertResultF(tsk.replicateA(3), List(42, 42, 42))
+  }
+
+  test("Commit with RetryStrategy") {
+    assertResultF(Transactive[F].commit(Txn.pure(42), RetryStrategy.cede()), 42)
   }
 
   test("TRef read twice") {
