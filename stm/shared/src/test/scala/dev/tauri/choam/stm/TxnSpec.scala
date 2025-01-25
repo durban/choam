@@ -20,13 +20,10 @@ package stm
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import scala.concurrent.duration._
-
 import cats.kernel.Monoid
 import cats.{ Defer, Monad, StackSafeMonad }
 import cats.effect.kernel.Unique
-import cats.effect.{ IO, Deferred }
-import cats.effect.Outcome.{ Canceled, Succeeded, Errored }
+import cats.effect.IO
 
 final class TxnSpec_DefaultMcas_IO
   extends BaseSpecIO
@@ -51,35 +48,6 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       r <- TRef[F, Int](42).commit
       _ <- assertResultF(txn(r).commit, (42, 99))
       _ <- assertResultF(r.get.commit, 99)
-    } yield ()
-  }
-
-  test("Txn.retry") {
-    def txn1(r: TRef[F, Int]): Txn[F, String] = {
-      r.get.flatMap {
-        case i if i < 0 => Txn.retry
-        case i => Txn.pure(i.toString)
-      }
-    }
-
-    for {
-      r <- TRef[F, Int](0).commit
-      _ <- assertResultF(txn1(r).commit, "0")
-      _ <- r.set(-1).commit
-      d <- Deferred[F, String]
-      fib <- txn1(r).commit.guaranteeCase {
-        case Canceled() =>
-          d.complete("cancelled").void
-        case Succeeded(fa) =>
-          fa.flatMap(a => d.complete(a).void)
-        case Errored(_) =>
-          d.complete("errored").void
-      }.start
-      _ <- F.sleep(0.1.second)
-      _ <- assertResultF(d.tryGet, None)
-      _ <- r.set(1).commit
-      _ <- assertResultF(d.get, "1")
-      _ <- fib.joinWithNever
     } yield ()
   }
 

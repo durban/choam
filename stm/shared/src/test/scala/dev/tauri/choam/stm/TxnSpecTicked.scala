@@ -68,6 +68,8 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this:
       _ <- this.tickAll
       _ <- assertResultF(d.tryGet, None)
       _ <- r.set(1).commit
+      _ <- this.tickAll
+      _ <- assertResultF(d.tryGet, Some("1"))
       _ <- assertResultF(d.get, "1")
       _ <- fib.joinWithNever
     } yield ()
