@@ -24,6 +24,7 @@ import cats.{ ~>, Show }
 import cats.syntax.all._
 import cats.effect.kernel.{ Async, Ref, Deferred }
 
+// TODO:0.5: these shouldn't be case classes
 sealed abstract class RetryStrategy extends Product with Serializable {
 
   // SPIN:
@@ -461,16 +462,23 @@ object RetryStrategy {
   private[choam] final object Internal {
 
     final def stepper[F[_]](implicit F: Async[F]): F[Stepper[F]] = {
-      F.ref[Deferred[F, Unit]](null).map { state =>
-        new Stepper[F](state)
+      Stepper[F]
+    }
+
+    private final object Stepper {
+      final def apply[F[_]](implicit F: Async[F]): F[Stepper[F]] = {
+        F.ref[Deferred[F, Unit]](null).map { state =>
+          new Stepper[F](state, F)
+        }
       }
     }
 
-    final class Stepper[F[_]](
+    final case class Stepper[F[_]] private (
       private val state: Ref[F, Deferred[F, Unit]],
-    )(implicit F: Async[F]) extends RetryStrategy {
+      private val F: Async[F],
+    ) extends RetryStrategy {
 
-      final def asyncF: Async[F] =
+      implicit final def asyncF: Async[F] =
         F
 
       final def newSuspension: F[F[Unit]] = {
@@ -512,26 +520,8 @@ object RetryStrategy {
         }
       }
 
-      final override def canEqual(that: Any): Boolean = that match {
-        case _: Stepper[_] => true
-        case _ => false
-      }
-
       private[core] final override def isDebug: Boolean =
         true
-
-      final override def equals(that: Any): Boolean = that match {
-        case that: Stepper[_] =>
-          this.state eq that.state
-        case _ =>
-          false
-      }
-
-      final override def productArity: Int =
-        0
-
-      final override def productElement(n: Int): Any =
-        throw new IndexOutOfBoundsException
 
       private[core] final override def canSuspend: Boolean =
         true
