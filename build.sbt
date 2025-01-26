@@ -308,6 +308,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.package.uuidGen"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.ArrayObjStack.this"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Rxn#SuspendUntilChanged.this"), // private
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.core.RetryStrategy.isDebug"), // sealed
     ),
   ).jvmSettings(
     mimaBinaryIssueFilters ++= Seq(

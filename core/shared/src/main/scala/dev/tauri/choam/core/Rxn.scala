@@ -351,6 +351,26 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     mcas: Mcas,
     strategy: RetryStrategy,
   )(implicit F: Async[F]): F[X] = {
+    // It is unsafe to accept a `Stepper` through
+    // this method, since it could be a `Stepper[G]`,
+    // where `G` is different form `F`:
+    require(!strategy.isDebug)
+    this.performStmInternal[F, X](a, mcas, strategy)
+  }
+
+  private[choam] final def performStmWithStepper[F[_], X >: B](
+    a: A,
+    mcas: Mcas,
+    stepper: RetryStrategy.Internal.Stepper[F],
+  )(implicit F: Async[F]): F[X] = {
+    this.performStmInternal[F, X](a, mcas, stepper)
+  }
+
+  private[this] final def performStmInternal[F[_], X >: B](
+    a: A,
+    mcas: Mcas,
+    strategy: RetryStrategy,
+  )(implicit F: Async[F]): F[X] = {
     require(strategy.canSuspend)
     F.uncancelable { poll =>
       F.defer {
@@ -706,7 +726,7 @@ object Rxn extends RxnInstances0 {
     def toF[F[_]](
       mcasImpl: Mcas,
       mcasCtx: Mcas.ThreadContext,
-    )(implicit F: Async[F]): F[Unit]
+    )(implicit F: Async[F]): F[Rxn[Any, Any]]
   }
 
   private final class SuspendUntilBackoff(val token: Long) extends SuspendUntil {
@@ -719,8 +739,26 @@ object Rxn extends RxnInstances0 {
     final override def toF[F[_]](
       mcasImpl: Mcas,
       mcasCtx: Mcas.ThreadContext,
-    )(implicit F: Async[F]): F[Unit] =
-      Backoff2.tokenToF[F](token)
+    )(implicit F: Async[F]): F[Rxn[Any, Any]] =
+      F.as(Backoff2.tokenToF[F](token), null)
+  }
+
+  private final class SuspendWithStepper[F[_]](
+    stepper: RetryStrategy.Internal.Stepper[F],
+    nextRxn: F[Rxn[Any, Any]],
+  ) extends SuspendUntil {
+
+    final override def toString: String =
+      s"SuspendWithStepper(...)"
+
+    final override def toF[G[_]](
+      mcasImpl: Mcas,
+      mcasCtx: Mcas.ThreadContext,
+    )(implicit G: Async[G]): G[Rxn[Any, Any]] = {
+      // Note: these casts are "safe", since `performStmWithStepper`
+      // sets things up so that `F` and `G` are the same.
+      G.productR(G.flatten(stepper.newSuspension.asInstanceOf[G[G[Unit]]]))(nextRxn.asInstanceOf[G[Rxn[Any, Any]]])
+    }
   }
 
   private final class SuspendUntilChanged(
@@ -734,21 +772,21 @@ object Rxn extends RxnInstances0 {
     final override def toF[F[_]](
       mcasImpl: Mcas,
       mcasCtx: Mcas.ThreadContext,
-    )(implicit F: Async[F]): F[Unit] = {
+    )(implicit F: Async[F]): F[Rxn[Any, Any]] = {
       if (totalSize > 0) {
-        F.cont(new Cont[F, Unit, Unit] {
+        F.cont(new Cont[F, Rxn[Any, Any], Rxn[Any, Any]] {
           final override def apply[G[_]](implicit G: MonadCancel[G, Throwable]) = { (resume, get, lift) =>
-            G.uncancelable[Unit] { poll =>
+            G.uncancelable[Rxn[Any, Any]] { poll =>
               G.flatten {
-                lift(F.delay[G[Unit]] {
-                  val rightUnit = Right(())
+                lift(F.delay[G[Rxn[Any, Any]]] {
+                  val rightNull: Either[Throwable, Rxn[Any, Any]] = Right(null)
                   val cb2 = { (_: Null) =>
-                    resume(rightUnit)
+                    resume(rightNull)
                   }
                   val refsAndCancelIds = subscribe(mcasImpl, mcasCtx, cb2)
                   if (refsAndCancelIds eq null) {
                     // some ref already changed, we're done:
-                    G.unit
+                    G.pure(null)
                   } else {
                     val unsubscribe: F[Unit] = F.delay {
                       val (refs, cancelIds) = refsAndCancelIds
@@ -834,6 +872,14 @@ object Rxn extends RxnInstances0 {
         refs(idx).unsafeCancelListener(cancelIds(idx))
         idx += 1
       }
+      _assert({
+        val len = refs.length
+        var ok = true
+        while (idx < len) {
+          ok &= ((refs(idx) eq null) && (cancelIds(idx) == 0L))
+        }
+        ok
+      })
     }
   }
 
@@ -1310,13 +1356,27 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def retry(): Rxn[Any, Any] =
-      this.retry(canSuspend = this.canSuspend)
+      this.retry(canSuspend = this.canSuspend, permanent = false, noDebug = false)
 
     private[this] final def retry(canSuspend: Boolean): Rxn[Any, Any] =
-      this.retry(canSuspend = canSuspend, permanent = false)
+      this.retry(canSuspend = canSuspend, permanent = false, noDebug = false)
 
-    private[this] final def retry(canSuspend: Boolean, permanent: Boolean): Rxn[Any, Any] = {
+    private[this] final def retry(canSuspend: Boolean, permanent: Boolean): Rxn[Any, Any] =
+      this.retry(canSuspend = canSuspend, permanent = permanent, noDebug = false)
+
+    private[this] final def retry(canSuspend: Boolean, permanent: Boolean, noDebug: Boolean): Rxn[Any, Any] = {
       _assert((!permanent) || this.isStm)
+      if (this.strategy.isDebug && (!noDebug)) {
+        this.strategy match {
+          case str @ ((_: RetryStrategy.Spin) | (_: RetryStrategy.StrategyFull)) =>
+            impossible(s"$str returned isDebug == true")
+          case stepper: RetryStrategy.Internal.Stepper[_] =>
+            _assert(this.isStm)
+            return new SuspendWithStepper(stepper, stepper.asyncF.delay { // scalafix:ok
+              this.retry(canSuspend, permanent, noDebug = true)
+            })
+        }
+      }
       val alt = tryLoadAlt(isPermanentFailure = permanent)
       if (alt ne null) {
         // we're not actually retrying,
@@ -1338,7 +1398,6 @@ object Rxn extends RxnInstances0 {
         }
         // STM might still need these:
         val d = if (this.isStm) this._desc else null
-        // TODO: we should also subscribe to refs we've read in *previous alts*
         // restart everything:
         clearDesc()
         a = startA
@@ -1798,7 +1857,7 @@ object Rxn extends RxnInstances0 {
     final def interpretAsync[F[_]](poll: F ~> F)(implicit F: Async[F]): F[R] = {
       if (this.canSuspend) {
         // cede or sleep strategy:
-        def step(ctxHint: Mcas.ThreadContext): F[R] = F.defer {
+        def step(ctxHint: Mcas.ThreadContext, debugNext: Rxn[Any, Any]): F[R] = F.defer {
           val ctx = if ((ctxHint ne null) && mcas.isCurrentContext(ctxHint)) {
             ctxHint
           } else {
@@ -1806,11 +1865,11 @@ object Rxn extends RxnInstances0 {
           }
           this.ctx = ctx
           try {
-            loop(startRxn) match {
+            loop(if (debugNext eq null) startRxn else debugNext) match {
               case s: SuspendUntil =>
                 _assert(this._entryHolder eq null)
-                val sus: F[Unit] = s.toF[F](mcas, ctx)
-                F.productR(poll(sus))(step(ctxHint = ctx))
+                val sus: F[Rxn[Any, Any]] = s.toF[F](mcas, ctx)
+                F.flatMap(poll(sus)) { nxt => step(ctxHint = ctx, debugNext = nxt) }
               case r =>
                 _assert(this._entryHolder eq null)
                 F.pure(r)
@@ -1820,7 +1879,7 @@ object Rxn extends RxnInstances0 {
             this.invalidateCtx()
           }
         }
-        step(ctxHint = null)
+        step(ctxHint = null, debugNext = null)
       } else {
         // spin strategy, so not really async:
         F.delay {

@@ -20,7 +20,9 @@ package core
 
 import scala.concurrent.duration._
 
-import cats.Show
+import cats.{ ~>, Show }
+import cats.syntax.all._
+import cats.effect.kernel.{ Async, Ref, Deferred }
 
 sealed abstract class RetryStrategy extends Product with Serializable {
 
@@ -83,6 +85,8 @@ sealed abstract class RetryStrategy extends Product with Serializable {
   // MISC.:
 
   private[core] def canSuspend: Boolean
+
+  private[core] def isDebug: Boolean
 }
 
 object RetryStrategy {
@@ -98,15 +102,19 @@ object RetryStrategy {
 
     private[core] final override def canSuspend: Boolean =
       false
+
+    private[core] final override def isDebug: Boolean =
+      false
   }
 
   implicit val showForRetryStrategy: Show[RetryStrategy] = {
     // these have proper `toString`:
     case full: StrategyFull => full.toString
     case spin: StrategySpin => spin.toString
+    case _: Internal.Stepper[_] => "Stepper()"
   }
 
-  private final case class StrategyFull(
+  private[core] final case class StrategyFull(
     maxRetries: Option[Int],
     maxSpin: Int,
     randomizeSpin: Boolean,
@@ -249,6 +257,9 @@ object RetryStrategy {
 
     private[core] final override def canSuspend: Boolean =
       true
+
+    private[core] final override def isDebug: Boolean =
+      false
   }
 
   private final case class StrategySpin(
@@ -445,5 +456,157 @@ object RetryStrategy {
       maxSleep = maxSleep,
       randomizeSleep = randomizeSleep,
     )
+  }
+
+  private[choam] final object Internal {
+
+    final def stepper[F[_]](implicit F: Async[F]): F[Stepper[F]] = {
+      F.ref[Deferred[F, Unit]](null).map { state =>
+        new Stepper[F](state)
+      }
+    }
+
+    final class Stepper[F[_]](
+      private val state: Ref[F, Deferred[F, Unit]],
+    )(implicit F: Async[F]) extends RetryStrategy {
+
+      final def asyncF: Async[F] =
+        F
+
+      final def newSuspension: F[F[Unit]] = {
+        F.deferred[Unit].flatMap { newDef =>
+
+          def go(poll: F ~> F): F[F[Unit]] = state.access.flatMap {
+            case (oldDef, trySet) =>
+              if (oldDef eq null) {
+                trySet(newDef).flatMap { ok =>
+                  if (ok) F.pure(poll(newDef.get))
+                  else go(poll) // retry
+                }
+              } else {
+                oldDef.tryGet.flatMap {
+                  case None =>
+                    F.raiseError(new IllegalStateException)
+                  case Some(_) =>
+                    trySet(newDef).flatMap { ok =>
+                      if (ok) F.pure(poll(newDef.get))
+                      else go(poll) // retry
+                    }
+                }
+              }
+          }
+
+          F.uncancelable(go)
+        }
+      }
+
+      final def step: F[Unit] = F.uncancelable { _ =>
+        state.get.flatMap {
+          case null =>
+            F.raiseError(new IllegalStateException)
+          case d =>
+            d.complete(()).flatMap { ok =>
+              if (ok) F.unit
+              else F.raiseError(new IllegalStateException)
+            }
+        }
+      }
+
+      final override def canEqual(that: Any): Boolean = that match {
+        case _: Stepper[_] => true
+        case _ => false
+      }
+
+      private[core] final override def isDebug: Boolean =
+        true
+
+      final override def equals(that: Any): Boolean = that match {
+        case that: Stepper[_] =>
+          this.state eq that.state
+        case _ =>
+          false
+      }
+
+      final override def productArity: Int =
+        0
+
+      final override def productElement(n: Int): Any =
+        throw new IndexOutOfBoundsException
+
+      private[core] final override def canSuspend: Boolean =
+        true
+
+      final override def maxCede: Int =
+        1
+
+      final override def maxRetries: Option[Int] =
+        None
+
+      private[core] final override def maxRetriesInt: Int =
+        -1
+
+      final override def maxSleep: FiniteDuration =
+        0.seconds
+
+      private[core] final override def maxSleepNanos: Long =
+        0
+
+      final override def maxSpin: Int =
+        1
+
+      final override def randomizeCede: Boolean =
+        false
+
+      final override def randomizeSleep: Boolean =
+        false
+
+      final override def randomizeSpin: Boolean =
+        false
+
+      final override def withCede(cede: Boolean): RetryStrategy = {
+        require(cede)
+        this
+      }
+
+      final override def withMaxCede(maxCede: Int): RetryStrategy = {
+        require(maxCede == 1)
+        this
+      }
+
+      final override def withMaxRetries(maxRetries: Option[Int]): RetryStrategy = {
+        require(maxRetries.isEmpty)
+        this
+      }
+
+      final override def withMaxSleep(maxSleep: FiniteDuration): RetryStrategy = {
+        require(maxSleep.toNanos == 0)
+        this
+      }
+
+      final override def withMaxSpin(maxSpin: Int): RetryStrategy = {
+        require(maxSpin == 1)
+        this
+      }
+
+      final override def withRandomizeCede(randomizeCede: Boolean): RetryStrategy = {
+        require(!randomizeCede)
+        this
+      }
+
+      final override def withRandomizeSleep(randomizeSleep: Boolean): RetryStrategy = {
+        require(!randomizeSleep)
+        this
+      }
+
+      final override def withRandomizeSpin(randomizeSpin: Boolean): RetryStrategy = {
+        require(!randomizeSpin)
+        this
+      }
+
+      final override def withSleep(sleep: Boolean): RetryStrategy = {
+        require(!sleep)
+        this
+      }
+    }
   }
 }

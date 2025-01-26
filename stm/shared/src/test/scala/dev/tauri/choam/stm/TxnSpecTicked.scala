@@ -18,11 +18,14 @@
 package dev.tauri.choam
 package stm
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import cats.effect.kernel.Deferred
 import cats.effect.Outcome.{ Canceled, Succeeded, Errored }
 import cats.effect.IO
 
 import internal.mcas.MemoryLocation
+import core.RetryStrategy
 
 final class TxnSpecTicked_DefaultMcas_IO
   extends BaseSpecTickedIO
@@ -179,6 +182,68 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this:
       _ <- assertResultF(numberOfListeners(r0), 0)
       _ <- assertResultF(numberOfListeners(r1), 0)
       _ <- assertResultF(numberOfListeners(r2), 0)
+    } yield ()
+  }
+
+  test("Run with Stepper") {
+    def checkPositive(ref: TRef[F, Int], ctr: AtomicInteger): Txn[F, Unit] =
+      Txn.unsafe.delay { ctr.incrementAndGet() } *> ref.get.flatMap { v => Txn.check(v > 0) }
+    def step(stepper: RetryStrategy.Internal.Stepper[F]): F[Unit] =
+      stepper.step *> this.tickAll
+    for {
+      d <- F.deferred[Unit]
+      c1 <- F.delay(new AtomicInteger)
+      r1 <- TRef[F, Int](0).commit
+      c2 <- F.delay(new AtomicInteger)
+      r2 <- TRef[F, Int](0).commit
+      c3 <- F.delay(new AtomicInteger)
+      r3 <- TRef[F, Int](0).commit
+      c4 <- F.delay(new AtomicInteger)
+      r4 <- TRef[F, Int](0).commit
+      txn = checkPositive(r1, c1) orElse checkPositive(r2, c2) orElse checkPositive(r3, c3) orElse checkPositive(r4, c4)
+      stepper <- RetryStrategy.Internal.stepper[F](this.F)
+      fib <- Transactive[F].commitWithStepper(txn, stepper).guarantee(d.complete(()).void).start
+      _ <- this.tickAll
+      _ <- assertResultF(d.tryGet, None)
+      _ <- assertResultF(F.delay(c1.get()), 1)
+      _ <- assertResultF(F.delay(c2.get()), 0)
+      _ <- assertResultF(F.delay(c3.get()), 0)
+      _ <- assertResultF(F.delay(c4.get()), 0)
+      _ <- step(stepper)
+      _ <- assertResultF(d.tryGet, None)
+      _ <- assertResultF(F.delay(c1.get()), 1)
+      _ <- assertResultF(F.delay(c2.get()), 1)
+      _ <- assertResultF(F.delay(c3.get()), 0)
+      _ <- assertResultF(F.delay(c4.get()), 0)
+      _ <- step(stepper)
+      _ <- assertResultF(d.tryGet, None)
+      _ <- assertResultF(F.delay(c1.get()), 1)
+      _ <- assertResultF(F.delay(c2.get()), 1)
+      _ <- assertResultF(F.delay(c3.get()), 1)
+      _ <- assertResultF(F.delay(c4.get()), 0)
+      _ <- step(stepper)
+      _ <- assertResultF(d.tryGet, None)
+      _ <- assertResultF(F.delay(c1.get()), 1)
+      _ <- assertResultF(F.delay(c2.get()), 1)
+      _ <- assertResultF(F.delay(c3.get()), 1)
+      _ <- assertResultF(F.delay(c4.get()), 1)
+      _ <- step(stepper) // suspends until changed
+      _ <- assertResultF(step(stepper).attempt.map(_.isLeft), true)
+      _ <- assertResultF(step(stepper).attempt.map(_.isLeft), true)
+      _ <- r2.set(1).commit
+      _ <- this.tickAll
+      _ <- assertResultF(d.tryGet, None)
+      _ <- assertResultF(F.delay(c1.get()), 2)
+      _ <- assertResultF(F.delay(c2.get()), 1)
+      _ <- assertResultF(F.delay(c3.get()), 1)
+      _ <- assertResultF(F.delay(c4.get()), 1)
+      _ <- step(stepper)
+      _ <- assertResultF(d.tryGet, Some(()))
+      _ <- assertResultF(F.delay(c1.get()), 2)
+      _ <- assertResultF(F.delay(c2.get()), 2)
+      _ <- assertResultF(F.delay(c3.get()), 1)
+      _ <- assertResultF(F.delay(c4.get()), 1)
+      _ <- fib.joinWithNever
     } yield ()
   }
 }

@@ -60,7 +60,7 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     assertResultF(tsk.replicateA(3), List(42, 42, 42))
   }
 
-  test("Commit with RetryStrategy") {
+  test("Run with custom RetryStrategy") {
     assertResultF(Transactive[F].commit(Txn.pure(42), RetryStrategy.cede()), 42)
   }
 
