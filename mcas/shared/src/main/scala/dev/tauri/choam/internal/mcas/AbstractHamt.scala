@@ -103,8 +103,14 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
               this.arrays(newDepth) = node.contentsArr
               this.loadNext()
             case a =>
-              // found it:
-              this.loadedNext = a.asInstanceOf[V]
+              val av = a.asInstanceOf[V]
+              if (av.isTomb) {
+                // skip empty slot:
+                this.loadNext()
+              } else {
+                // found it:
+                this.loadedNext = av
+              }
           }
         } else {
           // ascend:
@@ -151,18 +157,21 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
           arrIdx = unpackSize(arrIdxAndBlue)
           isBlueSt &= unpackBlue(arrIdxAndBlue)
         case a =>
-          // temporary assertion to diagnose a bug here:
-          if (arrIdx >= arr.length) {
-            throw new AssertionError(
-              s"indexing array of length ${arr.length} with index ${arrIdx} (" +
-              s"a = ${a}; arr = ${arr.mkString("[", ", ", "]")}; " +
-              s"contents = ${contents.mkString("[", ", ", "]")})"
-            )
+          val av = a.asInstanceOf[V]
+          if (!av.isTomb) {
+            // temporary assertion to diagnose a bug here:
+            if (arrIdx >= arr.length) {
+              throw new AssertionError(
+                s"indexing array of length ${arr.length} with index ${arrIdx} (" +
+                s"a = ${a}; arr = ${arr.mkString("[", ", ", "]")}; " +
+                s"contents = ${contents.mkString("[", ", ", "]")})"
+              )
+            }
+            // end of temporary assertion
+            arr(arrIdx) = convertForArray(av, tok, flag = flag)
+            arrIdx += 1
+            isBlueSt &= isBlue(av)
           }
-          // end of temporary assertion
-          arr(arrIdx) = convertForArray(a.asInstanceOf[V], tok, flag = flag)
-          arrIdx += 1
-          isBlueSt &= isBlue(a.asInstanceOf[V])
       }
       i += 1
     }
@@ -181,7 +190,10 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
         case node: AbstractHamt[_, _, _, _, _, _] =>
           curr = node.insertIntoHamt(curr)
         case a =>
-          curr = curr.asInstanceOf[H].insertInternal(a.asInstanceOf[V])
+          val av = a.asInstanceOf[V]
+          if (!av.isTomb) {
+            curr = curr.asInstanceOf[H].insertInternal(av)
+          }
       }
       i += 1
     }
@@ -201,8 +213,11 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
             return false // scalafix:ok
           }
         case a =>
-          if (!this.predicateForForAll(a.asInstanceOf[V], tok)) {
-            return false // scalafix:ok
+          val av = a.asInstanceOf[V]
+          if (!av.isTomb) {
+            if (!this.predicateForForAll(av, tok)) {
+              return false // scalafix:ok
+            }
           }
       }
       i += 1
@@ -212,46 +227,24 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
   }
 
   protected def equalsInternal(that: AbstractHamt[_, _, _, _, _, _]): Boolean = {
-    // Insertions are not order-dependent, and
-    // there is no deletion, so HAMTs with the
-    // same values always have the same tree
-    // structure. So we can just traverse the
-    // 2 trees at the same time.
-    val thisContents = this.contentsArr
-    val thatContents = that.contentsArr
-    val thisLen = thisContents.length
-    val thatLen = thatContents.length
-    if (thisLen == thatLen) {
-      var i = 0
-      while (i < thisLen) {
-        val iOk = thisContents(i) match {
-          case null =>
-            thatContents(i) eq null
-          case thisNode: AbstractHamt[_, _, _, _, _, _] =>
-            thatContents(i) match {
-              case thatNode: AbstractHamt[_, _, _, _, _, _] =>
-                thisNode.equalsInternal(thatNode)
-              case _ => // including null
-                false
-            }
-          case thisValue =>
-            thatContents(i) match {
-              case null | (_: Hamt[_, _, _, _, _, _]) =>
-                false
-              case thatValue =>
-                thisValue == thatValue
-            }
-        }
-        if (iOk) {
-          i += 1
-        } else {
+    // Due to tombstones, HAMTs with the same
+    // values (tombstones are not values) doesn't
+    // necessarily have the same tree structure.
+    // However, traversing them should yield the
+    // same values in the same order. For that,
+    // we need to use the iterators:
+    val thisItr = this.valuesIterator
+    val thatItr = that.valuesIterator
+    while (thisItr.hasNext) {
+      if (thatItr.hasNext) {
+        if (thisItr.next() != thatItr.next()) {
           return false // scalafix:ok
         }
+      } else {
+        return false // scalafix:ok
       }
-      true
-    } else {
-      false
     }
+    !thatItr.hasNext
   }
 
   protected final def hashCodeInternal(s: Int): Int = {
@@ -266,8 +259,11 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
         case node: AbstractHamt[_, _, _, _, _, _] =>
           curr = node.hashCodeInternal(curr)
         case a =>
-          curr = MurmurHash3.mix(curr, (a.asInstanceOf[V].key.hash >>> 32).toInt)
-          curr = MurmurHash3.mix(curr, a.##)
+          val av = a.asInstanceOf[V]
+          if (!av.isTomb) {
+            curr = MurmurHash3.mix(curr, (av.key.hash >>> 32).toInt)
+            curr = MurmurHash3.mix(curr, a.##)
+          }
       }
       i += 1
     }
@@ -286,12 +282,14 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
         case node: AbstractHamt[_, _, _, _, _, _] =>
           fst = node.toStringInternal(sb, fst)
         case a =>
-          if (!fst) {
-            sb.append(", ")
-          } else {
-            fst = false
+          if (!a.asInstanceOf[V].isTomb) {
+            if (!fst) {
+              sb.append(", ")
+            } else {
+              fst = false
+            }
+            sb.append(a.toString)
           }
-          sb.append(a.toString)
       }
       i += 1
     }

@@ -509,6 +509,9 @@ object Rxn extends RxnInstances0 {
     final def ticketRead[A](r: Ref[A]): Axn[unsafe.Ticket[A]] =
       new TicketRead[A](r.loc)
 
+    final def unread[A](r: Ref[A]): Axn[Unit] =
+      new Unread(r)
+
     private[choam] final def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
       new Cas[A](r.loc, ov, nv)
 
@@ -896,6 +899,11 @@ object Rxn extends RxnInstances0 {
   private final class OrElse[A, B](val left: Rxn[A, B], val right: Rxn[A, B]) extends Rxn[A, B] { // STM
     private[core] final override def tag = 31
     final override def toString: String = s"OrElse(${left}, ${right})"
+  }
+
+  private final class Unread[A](val ref: Ref[A]) extends Rxn[Any, Unit] {
+    private[core] final override def tag = 32
+    final override def toString: String = s"Unread(${ref})"
   }
 
   // Interpreter:
@@ -1849,6 +1857,18 @@ object Rxn extends RxnInstances0 {
           saveStmAlt(c.right)
           contT.push(RxnConsts.ContOrElse)
           loop(c.left)
+        case 32 => // Unread
+          val c = curr.asInstanceOf[Unread[_]]
+          val hwd = desc.getOrElseNull(c.ref.loc)
+          if (hwd ne null) {
+            if (hwd.readOnly) {
+              ??? // OK, remove it
+            } else {
+              throw new IllegalStateException(s"${c.ref} is not read-only")
+            }
+          } // else: not in readset, nothing to do
+          a = ()
+          loop(next())
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }

@@ -30,6 +30,9 @@ sealed abstract class WdLike[A] extends Hamt.HasKey[MemoryLocation[A]] {
 
   final override def key: MemoryLocation[A] =
     this.address
+
+  final override def isTomb: Boolean =
+    false
 }
 
 final class LogEntry[A] private ( // formerly called HWD

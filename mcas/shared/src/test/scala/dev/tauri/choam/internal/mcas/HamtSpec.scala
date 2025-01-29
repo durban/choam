@@ -670,6 +670,9 @@ object HamtSpec {
     final override val key: LongWr =
       LongWr(value)
 
+    final override def isTomb: Boolean =
+      false
+
     override def equals(that: Any): Boolean = {
       if (that.isInstanceOf[SpecVal]) {
         that.equals(this)
