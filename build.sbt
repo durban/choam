@@ -27,7 +27,7 @@ import com.typesafe.tools.mima.core.{
 
 // Scala versions:
 val scala2 = "2.13.16"
-val scala3 = "3.3.4"
+val scala3 = "3.3.5"
 
 // CI JVM versions:
 val jvmOldest = JavaSpec.temurin("11")
