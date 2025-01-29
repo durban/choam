@@ -25,14 +25,13 @@ import cats.effect.Outcome.{ Canceled, Succeeded, Errored }
 import cats.effect.IO
 
 import internal.mcas.MemoryLocation
-import core.RetryStrategy
 
 final class TxnSpecTicked_DefaultMcas_IO
   extends BaseSpecTickedIO
   with SpecDefaultMcas
   with TxnSpecTicked[IO]
 
-trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this: McasImplSpec =>
+trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   private def txn1(r: TRef[F, Int]): Txn[F, String] = {
     r.get.flatMap {
@@ -188,8 +187,6 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this:
   test("Run with Stepper") {
     def checkPositive(ref: TRef[F, Int], ctr: AtomicInteger): Txn[F, Unit] =
       Txn.unsafe.delay { ctr.incrementAndGet() } *> ref.get.flatMap { v => Txn.check(v > 0) }
-    def step(stepper: RetryStrategy.Internal.Stepper[F]): F[Unit] =
-      stepper.step *> this.tickAll
     for {
       d <- F.deferred[Unit]
       c1 <- F.delay(new AtomicInteger)
@@ -201,35 +198,35 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this:
       c4 <- F.delay(new AtomicInteger)
       r4 <- TRef[F, Int](0).commit
       txn = checkPositive(r1, c1) orElse checkPositive(r2, c2) orElse checkPositive(r3, c3) orElse checkPositive(r4, c4)
-      stepper <- RetryStrategy.Internal.stepper[F](this.F)
-      fib <- Transactive[F].commitWithStepper(txn, stepper).guarantee(d.complete(()).void).start
+      stepper <- mkStepper
+      fib <- stepper.commit(txn).guarantee(d.complete(()).void).start
       _ <- this.tickAll
       _ <- assertResultF(d.tryGet, None)
       _ <- assertResultF(F.delay(c1.get()), 1)
       _ <- assertResultF(F.delay(c2.get()), 0)
       _ <- assertResultF(F.delay(c3.get()), 0)
       _ <- assertResultF(F.delay(c4.get()), 0)
-      _ <- step(stepper)
+      _ <- stepper.stepAndTickAll
       _ <- assertResultF(d.tryGet, None)
       _ <- assertResultF(F.delay(c1.get()), 1)
       _ <- assertResultF(F.delay(c2.get()), 1)
       _ <- assertResultF(F.delay(c3.get()), 0)
       _ <- assertResultF(F.delay(c4.get()), 0)
-      _ <- step(stepper)
+      _ <- stepper.stepAndTickAll
       _ <- assertResultF(d.tryGet, None)
       _ <- assertResultF(F.delay(c1.get()), 1)
       _ <- assertResultF(F.delay(c2.get()), 1)
       _ <- assertResultF(F.delay(c3.get()), 1)
       _ <- assertResultF(F.delay(c4.get()), 0)
-      _ <- step(stepper)
+      _ <- stepper.stepAndTickAll
       _ <- assertResultF(d.tryGet, None)
       _ <- assertResultF(F.delay(c1.get()), 1)
       _ <- assertResultF(F.delay(c2.get()), 1)
       _ <- assertResultF(F.delay(c3.get()), 1)
       _ <- assertResultF(F.delay(c4.get()), 1)
-      _ <- step(stepper) // suspends until changed
-      _ <- assertResultF(step(stepper).attempt.map(_.isLeft), true)
-      _ <- assertResultF(step(stepper).attempt.map(_.isLeft), true)
+      _ <- stepper.stepAndTickAll // suspends until changed
+      _ <- assertResultF(stepper.stepAndTickAll.attempt.map(_.isLeft), true)
+      _ <- assertResultF(stepper.stepAndTickAll.attempt.map(_.isLeft), true)
       _ <- r2.set(1).commit
       _ <- this.tickAll
       _ <- assertResultF(d.tryGet, None)
@@ -237,7 +234,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this:
       _ <- assertResultF(F.delay(c2.get()), 1)
       _ <- assertResultF(F.delay(c3.get()), 1)
       _ <- assertResultF(F.delay(c4.get()), 1)
-      _ <- step(stepper)
+      _ <- stepper.stepAndTickAll
       _ <- assertResultF(d.tryGet, Some(()))
       _ <- assertResultF(F.delay(c1.get()), 2)
       _ <- assertResultF(F.delay(c2.get()), 2)

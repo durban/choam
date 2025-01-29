@@ -27,7 +27,7 @@ final class OrElseRetrySpec_DefaultMcas_IO
   with SpecDefaultMcas
   with OrElseRetrySpec[IO]
 
-trait OrElseRetrySpec[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this: McasImplSpec =>
+trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   private[this] final def log(msg: String): Unit =
     println(msg)
