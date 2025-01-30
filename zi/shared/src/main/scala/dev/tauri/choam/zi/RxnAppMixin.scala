@@ -23,6 +23,18 @@ import zio.interop.catz.asyncInstance
 
 import async.AsyncReactive
 
+/**
+ * Mixin for convenient access to an `AsyncReactive[Task]`
+ *
+ * This trait is intended to be mixed into
+ * an object extending [[zio.ZIOApp]].
+ * It provides an implicit `AsyncReactive[Task]`.
+ * instance. The resources needed by this
+ * instance are acquired in the constructor, and
+ * are never released. Thus, use only if the
+ * `AsyncReactive` is needed for the duration of
+ * the whole `ZIOApp` program.
+ */
 trait RxnAppMixin extends BaseMixin { this: ZIOApp =>
 
   private[this] final val _asyncReactiveForZIO: AsyncReactive[Task] =
