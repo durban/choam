@@ -184,6 +184,27 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Txn.retry should unsubscribe from TRefs when it doesn't suspend (due to concurrent change)") {
+    for {
+      d <- F.deferred[Unit]
+      r0 <- TRef[F, Int](0).commit
+      r1 <- TRef[F, Int](0).commit
+      stepper <- mkStepper
+      txn = (r0.get *> (r1.get.flatMap(v1 => Txn.check(v1 > 0)) orElse r1.get.flatMap(v1 => Txn.check(v1 < 0))))
+      fib <- stepper.commit(txn).guarantee(d.complete(()).void).start
+      _ <- this.tickAll // we're stopping at the `v1 > 0` retry
+      // another transaction changes `r1`:
+      _ <- r1.set(1).commit
+      _ <- stepper.stepAndTickAll // we're stopping at the `v1 < 0` retry
+      _ <- assertResultF(d.tryGet, None)
+      _ <- stepper.stepAndTickAll // mustn't suspend
+      _ <- assertResultF(d.tryGet, Some(()))
+      _ <- fib.joinWithNever
+      _ <- assertResultF(numberOfListeners(r0), 0)
+      _ <- assertResultF(numberOfListeners(r1), 0)
+    } yield ()
+  }
+
   test("Run with Stepper") {
     def checkPositive(ref: TRef[F, Int], ctr: AtomicInteger): Txn[F, Unit] =
       Txn.unsafe.delay { ctr.incrementAndGet() } *> ref.get.flatMap { v => Txn.check(v > 0) }
