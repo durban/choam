@@ -20,7 +20,7 @@ package stm
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import cats.effect.IO
+import cats.effect.{ IO, Deferred }
 
 final class OrElseRetrySpec_DefaultMcas_IO
   extends BaseSpecTickedIO
@@ -64,8 +64,16 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   }
 
   private def succeedIfPositive[A](name: String, ref: TRef[F, Int], result: A): Txn[F, A] = {
+    succeedIf(name, ref, result, _ > 0)
+  }
+
+  private def succeedIfNegative[A](name: String, ref: TRef[F, Int], result: A): Txn[F, A] = {
+    succeedIf(name, ref, result, _ < 0)
+  }
+
+  private def succeedIf[A](name: String, ref: TRef[F, Int], result: A, predicate: Int => Boolean): Txn[F, A] = {
     ref.get.flatMap { i =>
-      if (i > 0) {
+      if (predicate(i)) {
         tlog(s" $name succeeding with $result") *> Txn.pure(result)
       } else {
         tlog(s" $name retrying") *> Txn.retry
@@ -154,6 +162,35 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
         val t4: Txn[F, Int] = succeedWith("t4", 4)
         val txn: Txn[F, Int] = plus(t1, t2) orElse plus(t3, t4)
         assertResultF(txn.commit, 4)
+      }
+    }
+  }
+
+  // Race conditions:
+
+  test("Txn - `t1 orElse t2`: `t1` permanent failure; `t2` reads the same ref, but it changed since") {
+    log("Txn - race1") *> {
+      TRef[F, Int](0).commit.flatMap { ref =>
+        val t1: Txn[F, Int] = succeedIfPositive("t1", ref, 1)
+        val t2: Txn[F, Int] = succeedIfNegative("t2", ref, 2)
+        val txn: Txn[F, Int] = t1 orElse t2
+        for {
+          d <- Deferred[F, Unit]
+          stepper <- mkStepper
+          fib <- stepper.commit(txn).guarantee(d.complete(()).void).start
+          _ <- this.tickAll // we're stopping at the `t1` retry
+          // another transaction changes `ref`:
+          _ <- ref.set(1).commit
+          // now try `t2`, which will retry:
+          _ <- stepper.stepAndTickAll // we're stopping at the `t2` retry
+          _ <- assertResultF(d.tryGet, None)
+          // now `txn` tries to suspend with subscribing to `ref`;
+          // however, it changed since `t1` have seen it, so `txn`
+          // mustn't suspend at all:
+          _ <- stepper.stepAndTickAll
+          _ <- assertResultF(d.tryGet, Some(()))
+          _ <- assertResultF(fib.joinWithNever, 1)
+        } yield ()
       }
     }
   }

@@ -785,7 +785,7 @@ object Rxn extends RxnInstances0 {
                   }
                   val refsAndCancelIds = subscribe(mcasImpl, mcasCtx, cb2)
                   if (refsAndCancelIds eq null) {
-                    // some ref already changed, we're done:
+                    // some ref already changed, don't suspend:
                     G.pure(null)
                   } else {
                     val unsubscribe: F[Unit] = F.delay {
@@ -851,6 +851,7 @@ object Rxn extends RxnInstances0 {
         val loc = hwd.address.withListeners
         val cancelId = loc.unsafeRegisterListener(ctx, cb, hwd.oldVersion)
         if (cancelId == Consts.InvalidListenerId) {
+          // changed since we've seen it, we won't suspend:
           this.undoSubscribe(idx, refs, cancelIds)
           return -1 // scalafix:ok
         }
@@ -877,6 +878,7 @@ object Rxn extends RxnInstances0 {
         var ok = true
         while (idx < len) {
           ok &= ((refs(idx) eq null) && (cancelIds(idx) == 0L))
+          idx += 1
         }
         ok
       })
