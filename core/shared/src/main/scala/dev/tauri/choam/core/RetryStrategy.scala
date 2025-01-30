@@ -461,11 +461,8 @@ object RetryStrategy {
 
   private[choam] final object Internal {
 
-    final def stepper[F[_]](implicit F: Async[F]): F[Stepper[F]] = {
-      Stepper[F]
-    }
+    final object Stepper {
 
-    private final object Stepper {
       final def apply[F[_]](implicit F: Async[F]): F[Stepper[F]] = {
         F.ref[Deferred[F, Unit]](null).map { state =>
           new Stepper[F](state, F)

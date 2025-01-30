@@ -22,17 +22,10 @@ import core.RetryStrategy.Internal.Stepper
 
 trait TxnBaseSpecTicked[F[_]] extends TxnBaseSpec[F]  with TestContextSpec[F] { self: McasImplSpec =>
 
-  final def mkStepper: F[Stepper[F]] =
-    core.RetryStrategy.Internal.stepper[F](F)
-
-  implicit final class StepperSyntax(stepper: Stepper[F]) {
+  implicit final class StepperSyntaxForTxn(stepper: Stepper[F]) {
 
     final def commit[A](txn: Txn[F, A]): F[A] = {
       Transactive[F].commitWithStepper(txn, stepper)
-    }
-
-    final def stepAndTickAll: F[Unit] = {
-      stepper.step *> self.tickAll
     }
   }
 }

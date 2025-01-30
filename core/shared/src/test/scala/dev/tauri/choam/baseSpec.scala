@@ -27,6 +27,8 @@ import cats.effect.kernel.Outcome
 import cats.effect.kernel.testkit.TestContext
 import cats.effect.unsafe.{ IORuntime, IORuntimeConfig, Scheduler }
 
+import core.RetryStrategy.Internal.Stepper
+
 import munit.{ CatsEffectSuite, Location, FunSuite, FailException }
 
 trait BaseSpecF[F[_]]
@@ -283,11 +285,27 @@ abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO]
   }
 }
 
-trait TestContextSpec[F[_]] { this: BaseSpecAsyncF[F] with McasImplSpec =>
+trait TestContextSpec[F[_]] { self: BaseSpecAsyncF[F] with McasImplSpec =>
 
   protected def testContext: TestContext
 
-  def tickAll: F[Unit] = F.delay {
+  final def tickAll: F[Unit] = F.delay {
     this.testContext.tickAll()
+  }
+
+  final def mkStepper: F[Stepper[F]] = {
+    Stepper[F](F)
+  }
+
+  implicit final class StepperSyntax(stepper: Stepper[F]) {
+
+    final def stepAndTickAll: F[Unit] = {
+      stepper.step *> self.tickAll
+    }
+
+    final def run[A, B](r: Rxn[A, B], a: A): F[B] = {
+      // TODO: we're running an Rxn with isStm=true; we should do it properly
+      r.performStmWithStepper(a, self.mcasImpl, stepper)(F)
+    }
   }
 }
