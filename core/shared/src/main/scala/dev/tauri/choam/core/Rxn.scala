@@ -512,7 +512,7 @@ object Rxn extends RxnInstances0 {
     private[choam] final def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
       new Cas[A](r.loc, ov, nv)
 
-    final def retry[A, B]: Rxn[A, B] =
+    private[choam] final def retry[A, B]: Rxn[A, B] =
       _AlwaysRetry.asInstanceOf[Rxn[A, B]]
 
     private[choam] final def delay[A, B](uf: A => B): Rxn[A, B] =
