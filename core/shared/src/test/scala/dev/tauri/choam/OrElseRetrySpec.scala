@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import cats.effect.{ IO, Deferred }
+import cats.effect.IO
 
 final class OrElseRetrySpec_DefaultMcas_IO
   extends BaseSpecTickedIO
@@ -31,7 +31,7 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
   private[this] final def ulog(msg: String): Unit =
     println(msg)
 
-  private[this] final def log(msg: String): F[Unit] =
+  private[this] final def log(msg: String): F[Unit] = // TODO: use this (instead of ulog) where possible
     F.delay { ulog(msg) }
 
   private[this] final def rlog(msg: String): Axn[Unit] =
@@ -60,20 +60,6 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
     }
   }
 
-  private def succeedIfPositive[A](name: String, ref: Ref[Int], result: A): Axn[A] = {
-    succeedIf(name, ref, result, _ > 0)
-  }
-
-  private def succeedIf[A](name: String, ref: Ref[Int], result: A, predicate: Int => Boolean): Axn[A] = {
-    ref.get.flatMap { i =>
-      if (predicate(i)) {
-        rlog(s" $name succeeding with $result") *> Rxn.pure(result)
-      } else {
-        rlog(s" $name retrying") *> Rxn.unsafe.retry
-      }
-    }
-  }
-
   // Note: we NEED this semantics for elimination.
   test("Rxn - `t1 + t2`: `t1` transient failure -> try `t2`") {
     ulog("Rxn - `t1 + t2`: `t1` transient failure")
@@ -91,30 +77,5 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
     val t3: Axn[Int] = retryOnceThenSucceedWith("t3", 3)
     val rxn: Axn[Int] = (t1 + t2) <* t3
     assertEquals(rxn.unsafeRun(this.mcasImpl), 2)
-  }
-
-  test("Rxn - consistency of 2 sides of `+`".fail) { // TODO: expected failure
-    log("Rxn - consistency of 2 sides of `+`") *> {
-      Ref[Int](0).run.flatMap { ref =>
-        val t1: Axn[Int] = succeedIfPositive("t1", ref, 1)
-        val t2: Axn[Int] = succeedIfPositive("t2", ref, 2)
-        val rxn: Axn[Int] = t1 + t2
-        for {
-          d <- Deferred[F, Unit]
-          stepper <- mkStepper
-          fib <- stepper.run(rxn, null).guarantee(d.complete(()).void).start
-          _ <- this.tickAll // we're stopping at the `t1` retry (because it read 0)
-          // another transaction changes `ref`:
-          _ <- ref.set0(1).run
-          // now try `t2`, which MUST read the same 0, and retry:
-          _ <- stepper.stepAndTickAll
-          _ <- assertResultF(d.tryGet, None) // TODO: this fails
-          // now complete restart, `t1` re-reads, it's 1, so it succeeds:
-          _ <- stepper.stepAndTickAll
-          _ <- assertResultF(d.tryGet, Some(()))
-          _ <- assertResultF(fib.joinWithNever, 1)
-        } yield ()
-      }
-    }
   }
 }

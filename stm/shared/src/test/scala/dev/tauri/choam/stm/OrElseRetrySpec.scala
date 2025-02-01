@@ -194,4 +194,29 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       }
     }
   }
+
+  test("Rxn - consistency of 2 sides of `+`".fail) { // TODO: expected failure
+    log("Rxn - race2") *> {
+      TRef[F, Int](0).commit.flatMap { ref =>
+        val t1: Txn[F, Int] = succeedIfPositive("t1", ref, 1)
+        val t2: Txn[F, Int] = succeedIfPositive("t2", ref, 2)
+        val txn: Txn[F, Int] = t1 orElse t2
+        for {
+          d <- Deferred[F, Unit]
+          stepper <- mkStepper
+          fib <- stepper.commit(txn).guarantee(d.complete(()).void).start
+          _ <- this.tickAll // we're stopping at the `t1` retry (because it read 0)
+          // another transaction changes `ref`:
+          _ <- ref.set(1).commit
+          // now try `t2`, which MUST read the same 0, and retry:
+          _ <- stepper.stepAndTickAll
+          _ <- assertResultF(d.tryGet, None) // TODO: this fails
+          // now complete restart, `t1` re-reads, it's 1, so it succeeds:
+          _ <- stepper.stepAndTickAll
+          _ <- assertResultF(d.tryGet, Some(()))
+          _ <- assertResultF(fib.joinWithNever, 1)
+        } yield ()
+      }
+    }
+  }
 }
