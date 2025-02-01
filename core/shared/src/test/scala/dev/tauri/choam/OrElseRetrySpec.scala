@@ -31,7 +31,7 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
   private[this] final def ulog(msg: String): Unit =
     println(msg)
 
-  private[this] final def log(msg: String): F[Unit] = // TODO: use this (instead of ulog) where possible
+  private[this] final def log(msg: String): F[Unit] =
     F.delay { ulog(msg) }
 
   private[this] final def rlog(msg: String): Axn[Unit] =
@@ -62,20 +62,22 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
 
   // Note: we NEED this semantics for elimination.
   test("Rxn - `t1 + t2`: `t1` transient failure -> try `t2`") {
-    ulog("Rxn - `t1 + t2`: `t1` transient failure")
-    val t1: Axn[Int] = retryOnceThenSucceedWith("t1", 1)
-    val t2: Axn[Int] = succeedWith("t2", 2)
-    val rxn: Axn[Int] = t1 + t2
-    assertEquals(rxn.unsafeRun(this.mcasImpl), 2)
+    log("Rxn - `t1 + t2`: `t1` transient failure") *> {
+      val t1: Axn[Int] = retryOnceThenSucceedWith("t1", 1)
+      val t2: Axn[Int] = succeedWith("t2", 2)
+      val rxn: Axn[Int] = t1 + t2
+      assertResultF(rxn.run, 2)
+    }
   }
 
   // Note: we NEED this semantics for elimination.
   test("Rxn - `(t1 + t2) <* t3`: `t1` succeeds, `t3` transient failure -> try `t2`") {
-    ulog("Rxn - `(t1 + t2) <* t3`: `t1` succeeds, `t3` transient failure")
-    val t1: Axn[Int] = succeedWith("t1", 1)
-    val t2: Axn[Int] = succeedWith("t2", 2)
-    val t3: Axn[Int] = retryOnceThenSucceedWith("t3", 3)
-    val rxn: Axn[Int] = (t1 + t2) <* t3
-    assertEquals(rxn.unsafeRun(this.mcasImpl), 2)
+    log("Rxn - `(t1 + t2) <* t3`: `t1` succeeds, `t3` transient failure") *> {
+      val t1: Axn[Int] = succeedWith("t1", 1)
+      val t2: Axn[Int] = succeedWith("t2", 2)
+      val t3: Axn[Int] = retryOnceThenSucceedWith("t3", 3)
+      val rxn: Axn[Int] = (t1 + t2) <* t3
+      assertResultF(rxn.run, 2)
+    }
   }
 }
