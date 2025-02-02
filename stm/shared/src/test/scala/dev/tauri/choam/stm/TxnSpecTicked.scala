@@ -106,10 +106,13 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   test("Txn.retry should be cancellable") {
     for {
       r <- TRef[F, Int](-1).commit
-      fib <- txn1(r).commit.start
+      d <- F.deferred[Unit]
+      fib <- txn1(r).commit.guarantee(d.complete(()).void).start
       _ <- this.tickAll
+      _ <- assertResultF(d.tryGet, None)
       _ <- fib.cancel
       _ <- assertResultF(fib.join, Canceled[F, Throwable, String]())
+      _ <- assertResultF(d.tryGet, Some(()))
     } yield ()
   }
 
@@ -137,7 +140,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- assertResultF(d2.tryGet, None)
       _ <- r1.set(1).commit
       _ <- this.tickAll
-      _ <- assertResultF(d2.tryGet, Some("1")) // TODO: this fails
+      _ <- assertResultF(d2.tryGet, Some("1"))
       _ <- fib2.joinWithNever
     } yield ()
   }
@@ -153,7 +156,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       r2 <- TRef[F, Int](0).commit
       fib <- (r0.get *> (r1.get.flatMap(v1 => Txn.check(v1 > 0)) orElse r2.get.flatMap(v2 => Txn.check(v2 > 0)))).commit.start
       _ <- this.tickAll
-      _ <- assertResultF(numberOfListeners(r0), 2) // TODO: we subscribe twice to `r0` (should be 1)
+      _ <- assertResultF(numberOfListeners(r0), 1)
       _ <- assertResultF(numberOfListeners(r1), 1)
       _ <- assertResultF(numberOfListeners(r2), 1)
       _ <- fib.cancel
@@ -172,7 +175,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       r2 <- TRef[F, Int](0).commit
       fib <- (r0.get *> (r1.get.flatMap(v1 => Txn.check(v1 > 0)) orElse r2.get.flatMap(v2 => Txn.check(v2 > 0)))).commit.start
       _ <- this.tickAll
-      _ <- assertResultF(numberOfListeners(r0), 2) // TODO: we subscribe twice to `r0` (should be 1)
+      _ <- assertResultF(numberOfListeners(r0), 1)
       _ <- assertResultF(numberOfListeners(r1), 1)
       _ <- assertResultF(numberOfListeners(r2), 1)
       _ <- r2.set(1).commit
@@ -190,7 +193,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       r0 <- TRef[F, Int](0).commit
       r1 <- TRef[F, Int](0).commit
       stepper <- mkStepper
-      txn = (r0.get *> (r1.get.flatMap(v1 => Txn.check(v1 > 0)) orElse r1.get.flatMap(v1 => Txn.check(v1 < 0))))
+      txn = (r0.get *> (r1.get.flatMap { v1 => Txn.check(v1 > 0) } orElse r1.get.flatMap { v1 => Txn.check(v1 < 0) }))
       fib <- stepper.commit(txn).guarantee(d.complete(()).void).start
       _ <- this.tickAll // we're stopping at the `v1 > 0` retry
       // another transaction changes `r1`:

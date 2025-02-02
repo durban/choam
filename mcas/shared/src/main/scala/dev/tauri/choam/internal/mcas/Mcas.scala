@@ -180,9 +180,7 @@ object Mcas extends McasCompanionPlatform { self =>
         // this returns null if we need to roll back
         // (and we pass on the null to our caller):
         val res = this.validateAndTryExtend(newLog, hwd = null)
-        if (res ne null) {
-          _assert(res.isValidHwd(hwd))
-        }
+        _assert((res eq null) || res.isValidHwd(hwd))
         res
       } else {
         newLog
@@ -320,6 +318,11 @@ object Mcas extends McasCompanionPlatform { self =>
     /** Only for testing */
     private[mcas] final def builder(): Builder = {
       new Builder(this, this.start())
+    }
+
+    /** Only for testing */
+    private[mcas] final def builder(start: AbstractDescriptor): Builder = {
+      new Builder(this, start)
     }
 
     /** Only for testing/benchmarking */
@@ -487,6 +490,10 @@ object Mcas extends McasCompanionPlatform { self =>
     private[this] val desc: AbstractDescriptor,
   ) {
 
+    final def readRef[A](ref: MemoryLocation[A]): Builder = {
+      this.updateRef[A](ref, a => a)
+    }
+
     final def updateRef[A](ref: MemoryLocation[A], f: A => A): Builder = {
       this.ctx.readMaybeFromLog(ref, this.desc) match {
         case Some((ov, newDesc)) =>
@@ -526,6 +533,10 @@ object Mcas extends McasCompanionPlatform { self =>
 
     final def tryPerformOk(optimism: Long): Boolean = {
       this.ctx.tryPerformOk(this.desc, optimism)
+    }
+
+    final def result(): AbstractDescriptor = {
+      this.desc
     }
   }
 }

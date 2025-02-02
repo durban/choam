@@ -762,18 +762,17 @@ object Rxn extends RxnInstances0 {
   }
 
   private final class SuspendUntilChanged(
-    descs: Array[AbstractDescriptor],
-    totalSize: Int,
+    desc: AbstractDescriptor,
   ) extends SuspendUntil {
 
     final override def toString: String =
-      s"SuspendUntilChanged(${descs.mkString("[", ", ", "]")}, ${totalSize})"
+      s"SuspendUntilChanged($desc)"
 
     final override def toF[F[_]](
       mcasImpl: Mcas,
       mcasCtx: Mcas.ThreadContext,
     )(implicit F: Async[F]): F[Rxn[Any, Any]] = {
-      if (totalSize > 0) {
+      if ((desc ne null) && (desc.size > 0)) {
         F.cont(new Cont[F, Rxn[Any, Any], Rxn[Any, Any]] {
           final override def apply[G[_]](implicit G: MonadCancel[G, Throwable]) = { (resume, get, lift) =>
             G.uncancelable[Rxn[Any, Any]] { poll =>
@@ -819,19 +818,14 @@ object Rxn extends RxnInstances0 {
       } else {
         mcasImpl.currentContext()
       }
-      val size = this.totalSize
+      val size = this.desc.size
       val refs = new Array[MemoryLocation.WithListeners](size)
       val cancelIds = new Array[Long](size)
       var idx = 0
-      val it = this.descs.iterator
-      while (it.hasNext) {
-        val d = it.next()
-        idx = subscribeToDesc(ctx, cb, d, refs, cancelIds, idx)
-        if (idx == -1) {
-          return null // scalafix:ok
-        }
+      idx = subscribeToDesc(ctx, cb, this.desc, refs, cancelIds, idx)
+      if (idx == -1) {
+        return null // scalafix:ok
       }
-
       _assert(idx == size)
       (refs, cancelIds)
     }
@@ -1005,11 +999,6 @@ object Rxn extends RxnInstances0 {
     private[this] val alts: ArrayObjStack[Any] = new ArrayObjStack[Any](initSize = 8)
     private[this] val stmAlts: ArrayObjStack[Any] = if (isStm) {
       new ArrayObjStack[Any](initSize = 8)
-    } else {
-      null
-    }
-    private[this] val discardedDescs: ArrayObjStack[AbstractDescriptor] = if (isStm) {
-      new ArrayObjStack(initSize = 16)
     } else {
       null
     }
@@ -1208,6 +1197,7 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def discardStmAlt(): Unit = {
+      _assert(this.isStm)
       this.stmAlts.popAndDiscard(6)
     }
 
@@ -1221,12 +1211,16 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    private[this] final def saveDescForStm(): Unit = {
+    private[this] final def maybeMergeDescForStm(newDesc: Descriptor): Descriptor = {
       if (this.isStm) {
         val discarded = _desc
         if ((discarded ne null) && discarded.nonEmpty) {
-          this.discardedDescs.push(discarded)
+          Descriptor.mergeReadsInto(newDesc, discarded)
+        } else {
+          newDesc
         }
+      } else {
+        newDesc
       }
     }
 
@@ -1235,8 +1229,7 @@ object Rxn extends RxnInstances0 {
       contKList.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
-      this.saveDescForStm()
-      _desc = alts.pop().asInstanceOf[Descriptor]
+      _desc = this.maybeMergeDescForStm(alts.pop().asInstanceOf[Descriptor])
     }
 
     private[this] final def loadAltFrom(msg: Exchanger.Msg): Rxn[Any, R] = {
@@ -1244,8 +1237,8 @@ object Rxn extends RxnInstances0 {
       contKList.loadSnapshot(msg.contK)
       contT.loadSnapshot(msg.contT)
       a = msg.value
-      this.saveDescForStm() // TODO: write a test for this (exchange + STM)
-      desc = msg.desc
+      // TODO: write a test for this (exchange + STM)
+      desc = this.maybeMergeDescForStm(msg.desc)
       next().asInstanceOf[Rxn[Any, R]]
     }
 
@@ -1435,25 +1428,7 @@ object Rxn extends RxnInstances0 {
         }
       } else { // STM
         _assert(canSuspend && this.isStm)
-        val discardedDescs = this.discardedDescs
-        val hasExtraDesc = (desc ne null) && desc.nonEmpty
-        val len = discardedDescs.length + (if (hasExtraDesc) 1 else 0)
-        val descs: Array[AbstractDescriptor] = new Array[AbstractDescriptor](len)
-        var totalSize = 0
-        var idx = 0
-        if (hasExtraDesc) {
-          descs(0) = desc
-          totalSize += desc.size
-          idx += 1
-        }
-        while (idx < len) {
-          val d = discardedDescs.pop()
-          descs(idx) = d
-          totalSize += d.size
-          idx += 1
-        }
-        _assert(discardedDescs.isEmpty())
-        new SuspendUntilChanged(descs, totalSize)
+        new SuspendUntilChanged(desc)
       }
     }
 

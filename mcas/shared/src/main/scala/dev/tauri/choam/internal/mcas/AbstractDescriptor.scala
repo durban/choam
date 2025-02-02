@@ -34,6 +34,8 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   def validTs: Long
 
+  def validTsBoxed: java.lang.Long
+
   def versionIncr: Long
 
   def toImmutable: Descriptor

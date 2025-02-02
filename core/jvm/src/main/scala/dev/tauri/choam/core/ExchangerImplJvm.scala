@@ -213,6 +213,7 @@ private sealed trait ExchangerImplJvm[A, B]
         throw ex
     }
     val ok = mergedDesc ne null
+    // TODO: mergedDesc can be null also if we couldn't extend!!!
     if (ok) debugLog(s"merged logs - thread#${Thread.currentThread().getId()}")
     else debugLog(s"ERROR: Couldn't merge logs - thread#${Thread.currentThread().getId()}")
     Predef.assert(ok, s"Couldn't merge logs: ${selfMsg.desc} and ${other.msg.desc}")
