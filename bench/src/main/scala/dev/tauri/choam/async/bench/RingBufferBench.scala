@@ -25,9 +25,8 @@ import org.openjdk.jmh.infra.Blackhole
 import cats.effect.IO
 import cats.effect.std.{ Queue => CatsQueue }
 
-import _root_.dev.tauri.choam.bench.BenchUtils
+import dev.tauri.choam.bench.BenchUtils
 import ce.unsafeImplicits._
-import internal.mcas.Mcas
 
 @Fork(2)
 @Threads(1)
@@ -75,8 +74,8 @@ object RingBufferBench {
     val catsQ: CatsQueue[IO, String] =
       CatsQueue.circularBuffer[IO, String](Capacity).unsafeRunSync()(runtime)
     val rxnQStrict: CatsQueue[IO, String] =
-      OverflowQueue.ringBuffer[IO, String](Capacity).unsafeRun(Mcas.Emcas).toCats
+      OverflowQueue.ringBuffer[IO, String](Capacity).unsafeRun(asyncReactiveForIO.mcasImpl).toCats
     val rxnQLazy: CatsQueue[IO, String] =
-      OverflowQueue.lazyRingBuffer[IO, String](Capacity).unsafeRun(Mcas.Emcas).toCats
+      OverflowQueue.lazyRingBuffer[IO, String](Capacity).unsafeRun(asyncReactiveForIO.mcasImpl).toCats
   }
 }

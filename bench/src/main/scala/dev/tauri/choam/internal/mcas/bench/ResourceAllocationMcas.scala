@@ -23,7 +23,7 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import _root_.dev.tauri.choam.bench.util.McasImplState
+import dev.tauri.choam.bench.util.McasImplState
 
 /**
  * Resource allocation scenario, described in [Software transactional memory](

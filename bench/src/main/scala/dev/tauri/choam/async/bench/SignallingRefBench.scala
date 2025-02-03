@@ -24,9 +24,8 @@ import org.openjdk.jmh.annotations._
 import cats.effect.IO
 import fs2.concurrent.SignallingRef
 
-import _root_.dev.tauri.choam.bench.BenchUtils
+import dev.tauri.choam.bench.BenchUtils
 import ce.unsafeImplicits._
-import internal.mcas.Mcas
 
 @Fork(2)
 @Threads(1) // because it run on the CE compute pool
@@ -74,7 +73,7 @@ object SignallingRefBench {
     val fs2Reset: IO[Unit] =
       reset(fs2)
     val rxn: SignallingRef[IO, String] =
-      stream.signallingRef[IO, String]("initial").unsafeRun(Mcas.Emcas)
+      stream.signallingRef[IO, String]("initial").unsafeRun(asyncReactiveForIO.mcasImpl)
     val rxnReset: IO[Unit] =
       reset(rxn)
 
