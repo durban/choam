@@ -262,7 +262,6 @@ lazy val choam = project.in(file("."))
     stressAsync, // JVM
     stressExperiments, // JVM
     stressLinchk, // JVM
-    stressLinchkAgent, // JVM
     stressRng, // JVM
     layout, // JVM
   )
@@ -696,33 +695,6 @@ lazy val stressLinchk = project.in(file("stress") / "stress-linchk")
   .settings(
     libraryDependencies += dependencies.lincheck.value,
     Test / fork := true, // otherwise the bytecode transformers won't work
-    Test / test := {
-      // we'll need the agent JAR to run the tests:
-      (stressLinchkAgent / Compile / packageBin).value.##
-      (Test / test).value
-    },
-    Test / testOnly := {
-      // we'll need the agent JAR to run the tests:
-      (stressLinchkAgent / Compile / packageBin).value.##
-      (Test / testOnly).evaluated
-    },
-    Test / javaOptions ++= List(
-      s"-javaagent:${(stressLinchkAgent / Compile / packageBin / artifactPath).value}",
-      // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:8000",
-    ),
-  )
-
-lazy val stressLinchkAgent = project.in(file("stress") / "stress-linchk-agent")
-  .settings(name := "choam-stress-linchk-agent")
-  .settings(commonSettings)
-  .settings(commonSettingsJvm)
-  .disablePlugins(disabledPlugins: _*)
-  .enablePlugins(NoPublishPlugin)
-  .settings(
-    libraryDependencies += dependencies.asm.value,
-    packageOptions += Package.ManifestAttributes(
-      "Premain-Class" -> "dev.tauri.choam.lcagent.Premain",
-    ),
   )
 
 lazy val stressRng = project.in(file("stress") / "stress-rng")
