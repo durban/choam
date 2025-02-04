@@ -26,7 +26,7 @@ final class TPromiseSpecTicked_DefaultMcas_IO
   with SpecDefaultMcas
   with TPromiseSpecTicked[IO]
 
-trait TPromiseSpecTicked[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this: McasImplSpec =>
+trait TPromiseSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   test("get after complete") {
     for {

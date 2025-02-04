@@ -43,4 +43,19 @@ abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuit
       F.delay { assertEquals(v, 42) }
     }.guarantee(close.to[F])
   }
+
+  test("Working on a Ref with 2 different MCAS impls") {
+    // this should never happen!
+    Reactive.forSyncRes[F].use { reactive1 =>
+      Reactive.forSyncRes[F].use { reactive2 =>
+        for {
+          ref <- reactive1(Ref(42))
+          v <- reactive1(ref.updateAndGet(_ + 1))
+          _ <- F.delay(assertEquals(v, 43))
+          r <- reactive2(ref.updateAndGet(_ + 1)).attempt
+          _ <- F.delay(assert(r.isLeft)) // IllegalArgumentException from MutDescriptor
+        } yield ()
+      }
+    }
+  }
 }

@@ -21,19 +21,26 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import cats.effect.IO
 
-final class OrElseRetrySpec_ThreadConfinedMcas_IO
-  extends BaseSpecIO
-  with SpecThreadConfinedMcas
+final class OrElseRetrySpec_DefaultMcas_IO
+  extends BaseSpecTickedIO
+  with SpecDefaultMcas
   with OrElseRetrySpec[IO]
 
-trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
+trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { this: McasImplSpec =>
 
-  private[this] final def log(msg: String): Unit =
+  private[this] final def ulog(msg: String): Unit =
     println(msg)
+
+  private[this] final def log(msg: String): F[Unit] =
+    F.delay { ulog(msg) }
+
+  private[this] final def rlog(msg: String): Axn[Unit] =
+    Axn.unsafe.delay { ulog(msg) }
+
 
   private def succeedWith[A](name: String, result: A): Axn[A] = {
     Axn.unsafe.delay {
-      log(s" $name succeeding with $result")
+      ulog(s" $name succeeding with $result")
       result
     }
   }
@@ -46,31 +53,31 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         // with an unconditional retry here
         // (note: for Rxn, we don't have
         // permanent failures)
-        log(s" $name retrying")
-        Rxn.unsafe.retry
+        rlog(s" $name retrying") *> Rxn.unsafe.retry
       } else {
-        log(s" $name succeeding with $result")
-        Axn.pure(result)
+        rlog(s" $name succeeding with $result") *> Axn.pure(result)
       }
     }
   }
 
   // Note: we NEED this semantics for elimination.
   test("Rxn - `t1 + t2`: `t1` transient failure -> try `t2`") {
-    log("Rxn - `t1 + t2`: `t1` transient failure")
-    val t1: Axn[Int] = retryOnceThenSucceedWith("t1", 1)
-    val t2: Axn[Int] = succeedWith("t2", 2)
-    val rxn: Axn[Int] = t1 + t2
-    assertEquals(rxn.unsafeRun(this.mcasImpl), 2)
+    log("Rxn - `t1 + t2`: `t1` transient failure") *> {
+      val t1: Axn[Int] = retryOnceThenSucceedWith("t1", 1)
+      val t2: Axn[Int] = succeedWith("t2", 2)
+      val rxn: Axn[Int] = t1 + t2
+      assertResultF(rxn.run, 2)
+    }
   }
 
   // Note: we NEED this semantics for elimination.
   test("Rxn - `(t1 + t2) <* t3`: `t1` succeeds, `t3` transient failure -> try `t2`") {
-    log("Rxn - `(t1 + t2) <* t3`: `t1` succeeds, `t3` transient failure")
-    val t1: Axn[Int] = succeedWith("t1", 1)
-    val t2: Axn[Int] = succeedWith("t2", 2)
-    val t3: Axn[Int] = retryOnceThenSucceedWith("t3", 3)
-    val rxn: Axn[Int] = (t1 + t2) <* t3
-    assertEquals(rxn.unsafeRun(this.mcasImpl), 2)
+    log("Rxn - `(t1 + t2) <* t3`: `t1` succeeds, `t3` transient failure") *> {
+      val t1: Axn[Int] = succeedWith("t1", 1)
+      val t2: Axn[Int] = succeedWith("t2", 2)
+      val t3: Axn[Int] = retryOnceThenSucceedWith("t3", 3)
+      val rxn: Axn[Int] = (t1 + t2) <* t3
+      assertResultF(rxn.run, 2)
+    }
   }
 }

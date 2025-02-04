@@ -23,6 +23,18 @@ import zio.interop.catz.asyncInstance
 
 import stm.Transactive
 
+/**
+ * Mixin for convenient access to a `Transactive[Task]`
+ *
+ * This trait is intended to be mixed into
+ * an object extending [[zio.ZIOApp]].
+ * It provides an implicit `Transactive[Task]`.
+ * instance. The resources needed by this
+ * instance are acquired in the constructor, and
+ * are never released. Thus, use only if the
+ * `Transactive` is needed for the duration of
+ * the whole `ZIOApp` program.
+ */
 trait TxnAppMixin extends BaseMixin { this: ZIOApp =>
 
   private[this] final val _transactiveForZIO: Transactive[Task] =

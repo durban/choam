@@ -20,28 +20,34 @@ package stm
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import cats.effect.IO
+import cats.effect.{ IO, Deferred }
 
 final class OrElseRetrySpec_DefaultMcas_IO
   extends BaseSpecTickedIO
   with SpecDefaultMcas
   with OrElseRetrySpec[IO]
 
-trait OrElseRetrySpec[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { this: McasImplSpec =>
+trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
-  private[this] final def log(msg: String): Unit =
+  private[this] final def log(msg: String): F[Unit] =
+    F.delay { ulog(msg) }
+
+  private[this] final def tlog(msg: String): Txn[F, Unit] =
+    Txn.unsafe.delay { ulog(msg) }
+
+  private[this] final def ulog(msg: String): Unit =
     println(msg)
 
   private def succeedWith[A](name: String, result: A): Txn[F, A] = {
     Txn.unsafe.delay {
-      log(s" $name succeeding with $result")
+      ulog(s" $name succeeding with $result")
       result
     }
   }
 
   private def failWith[A](name: String, ex: Throwable): Txn[F, A] = {
     Txn.unsafe.delay {
-      log(s" $name throwing $ex")
+      ulog(s" $name throwing $ex")
       throw ex
     }
   }
@@ -50,23 +56,27 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { thi
     val flag = new AtomicBoolean(true)
     Txn.unsafe.delay { flag.getAndSet(false) }.flatMap { doRetry =>
       if (doRetry) {
-        log(s" $name retrying")
-        Txn.unsafe.retryUnconditionally
+        tlog(s" $name retrying") *> Txn.unsafe.retryUnconditionally
       } else {
-        log(s" $name succeeding with $result")
-        Txn.pure(result)
+        tlog(s" $name succeeding with $result") *> Txn.pure(result)
       }
     }
   }
 
   private def succeedIfPositive[A](name: String, ref: TRef[F, Int], result: A): Txn[F, A] = {
+    succeedIf(name, ref, result, _ > 0)
+  }
+
+  private def succeedIfNegative[A](name: String, ref: TRef[F, Int], result: A): Txn[F, A] = {
+    succeedIf(name, ref, result, _ < 0)
+  }
+
+  private def succeedIf[A](name: String, ref: TRef[F, Int], result: A, predicate: Int => Boolean): Txn[F, A] = {
     ref.get.flatMap { i =>
-      if (i > 0) {
-        log(s" $name succeeding with $result")
-        Txn.pure(result)
+      if (predicate(i)) {
+        tlog(s" $name succeeding with $result") *> Txn.pure(result)
       } else {
-        log(s" $name retrying")
-        Txn.retry
+        tlog(s" $name retrying") *> Txn.retry
       }
     }
   }
@@ -75,51 +85,55 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { thi
   // because this way trying `t2` means for sure that
   // `t1` executed a `Txn.retry`.
   test("Txn - `t1 orElse t2`: `t1` transient failure -> retry `t1`") {
-    log("Txn - `t1 orElse t2`: `t1` transient failure")
-    val t1: Txn[F, Int] = transientFailureOnceThenSucceedWith("t1", 1)
-    val t2: Txn[F, Int] = succeedWith("t2", 2)
-    val txn: Txn[F, Int] = t1 orElse t2
-    assertResultF(txn.commit, 1)
+    log("Txn - `t1 orElse t2`: `t1` transient failure") *> {
+      val t1: Txn[F, Int] = transientFailureOnceThenSucceedWith("t1", 1)
+      val t2: Txn[F, Int] = succeedWith("t2", 2)
+      val txn: Txn[F, Int] = t1 orElse t2
+      assertResultF(txn.commit, 1)
+    }
   }
 
   // Note: we NEED this semantics for STM `retry`.
   test("Txn - `t1 orElse t2`: `t1` permanent failure -> try `t2`") {
-    log("Txn - `t1 orElse t2`: `t1` permanent failure")
-    TRef[F, Int](0).commit.flatMap { ref =>
-      val t1: Txn[F, Int] = succeedIfPositive("t1", ref, 1)
-      val t2: Txn[F, Int] = succeedWith("t2", 2)
-      val txn: Txn[F, Int] = t1 orElse t2
-      assertResultF(txn.commit, 2)
+    log("Txn - `t1 orElse t2`: `t1` permanent failure") *> {
+      TRef[F, Int](0).commit.flatMap { ref =>
+        val t1: Txn[F, Int] = succeedIfPositive("t1", ref, 1)
+        val t2: Txn[F, Int] = succeedWith("t2", 2)
+        val txn: Txn[F, Int] = t1 orElse t2
+        assertResultF(txn.commit, 2)
+      }
     }
   }
 
   // Note: this semantics is probably better for STM,
   // because see above.
   test("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` transient failure -> retry `t1`") {
-    log("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` transient failure")
-    val t1: Txn[F, Int] = succeedWith("t1", 1)
-    val t2: Txn[F, Int] = failWith("t2", new Exception("t2 error"))
-    val t3: Txn[F, Int] = transientFailureOnceThenSucceedWith("t3", 3)
-    val txn: Txn[F, Int] = (t1 orElse t2) <* t3
-    assertResultF(txn.commit, 1)
+    log("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` transient failure") *> {
+      val t1: Txn[F, Int] = succeedWith("t1", 1)
+      val t2: Txn[F, Int] = failWith("t2", new Exception("t2 error"))
+      val t3: Txn[F, Int] = transientFailureOnceThenSucceedWith("t3", 3)
+      val txn: Txn[F, Int] = (t1 orElse t2) <* t3
+      assertResultF(txn.commit, 1)
+    }
   }
 
   // Note: we probably need this semantics because apparently STMs work like this.
   test("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` permanent failure -> retry `t1`") {
-    log("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` permanent failure")
-    TRef[F, Int](0).commit.flatMap { ref =>
-      val t1: Txn[F, Int] = succeedWith("t1", 1)
-      val t2: Txn[F, Int] = failWith("t2", new Exception("t2 error"))
-      val t3: Txn[F, Int] = succeedIfPositive("t3", ref, 3)
-      val txn = (t1 orElse t2) <* t3
-      for {
-        fib <- txn.commit.start
-        _ <- this.tickAll
-        _ <- F.delay(log(" setting ref"))
-        _ <- ref.set(1).commit
-        _ <- this.tickAll
-        _ <- assertResultF(fib.joinWithNever, 1)
-      } yield ()
+    log("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` permanent failure") *> {
+      TRef[F, Int](0).commit.flatMap { ref =>
+        val t1: Txn[F, Int] = succeedWith("t1", 1)
+        val t2: Txn[F, Int] = failWith("t2", new Exception("t2 error"))
+        val t3: Txn[F, Int] = succeedIfPositive("t3", ref, 3)
+        val txn = (t1 orElse t2) <* t3
+        for {
+          fib <- txn.commit.start
+          _ <- this.tickAll
+          _ <- log(" setting ref")
+          _ <- ref.set(1).commit
+          _ <- this.tickAll
+          _ <- assertResultF(fib.joinWithNever, 1)
+        } yield ()
+      }
     }
   }
 
@@ -130,23 +144,79 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpec[F] with TestContextSpec[F] { thi
   }
 
   test("Txn - `(t1 orElse t2) + t3`: `t1` transient failure -> try `t3` (NOT `t2`)") {
-    log("Txn - `(t1 orElse t2) + t3`: `t1` transient failure")
-    val t1: Txn[F, Int] = transientFailureOnceThenSucceedWith("t1", 1)
-    val t2: Txn[F, Int] = succeedWith("t2", 2)
-    val t3: Txn[F, Int] = succeedWith("t3", 3)
-    val txn: Txn[F, Int] = plus(t1 orElse t2, t3)
-    assertResultF(txn.commit, 3)
+    log("Txn - `(t1 orElse t2) + t3`: `t1` transient failure") *> {
+      val t1: Txn[F, Int] = transientFailureOnceThenSucceedWith("t1", 1)
+      val t2: Txn[F, Int] = succeedWith("t2", 2)
+      val t3: Txn[F, Int] = succeedWith("t3", 3)
+      val txn: Txn[F, Int] = plus(t1 orElse t2, t3)
+      assertResultF(txn.commit, 3)
+    }
   }
 
   test("Txn - `(t1 + t2) orElse (t3 + t4)`") {
-    log("Txn - `(t1 + t2) orElse (t3 + t4)`")
-    TRef[F, Int](0).commit.flatMap { ref =>
-      val t1: Txn[F, Int] = transientFailureOnceThenSucceedWith("t1", 1)
-      val t2: Txn[F, Int] = succeedIfPositive("t2", ref, 2)
-      val t3: Txn[F, Int] = transientFailureOnceThenSucceedWith("t3", 3)
-      val t4: Txn[F, Int] = succeedWith("t4", 4)
-      val txn: Txn[F, Int] = plus(t1, t2) orElse plus(t3, t4)
-      assertResultF(txn.commit, 4)
+    log("Txn - `(t1 + t2) orElse (t3 + t4)`") *> {
+      TRef[F, Int](0).commit.flatMap { ref =>
+        val t1: Txn[F, Int] = transientFailureOnceThenSucceedWith("t1", 1)
+        val t2: Txn[F, Int] = succeedIfPositive("t2", ref, 2)
+        val t3: Txn[F, Int] = transientFailureOnceThenSucceedWith("t3", 3)
+        val t4: Txn[F, Int] = succeedWith("t4", 4)
+        val txn: Txn[F, Int] = plus(t1, t2) orElse plus(t3, t4)
+        assertResultF(txn.commit, 4)
+      }
+    }
+  }
+
+  // Race conditions:
+
+  test("Txn - `t1 orElse t2`: `t1` permanent failure; `t2` reads the same ref, but it changed since") {
+    log("Txn - race1") *> {
+      TRef[F, Int](0).commit.flatMap { ref =>
+        val t1: Txn[F, Int] = succeedIfPositive("t1", ref, 1)
+        val t2: Txn[F, Int] = succeedIfNegative("t2", ref, 2)
+        val txn: Txn[F, Int] = t1 orElse t2
+        for {
+          d <- Deferred[F, Unit]
+          stepper <- mkStepper
+          fib <- stepper.commit(txn).guarantee(d.complete(()).void).start
+          _ <- this.tickAll // we're stopping at the `t1` retry
+          // another transaction changes `ref`:
+          _ <- ref.set(1).commit
+          // now try `t2`, which will retry:
+          _ <- stepper.stepAndTickAll // we're stopping at the `t2` retry
+          _ <- assertResultF(d.tryGet, None)
+          // now `txn` tries to suspend with subscribing to `ref`;
+          // however, it changed since `t1` have seen it, so `txn`
+          // mustn't suspend at all:
+          _ <- stepper.stepAndTickAll
+          _ <- assertResultF(d.tryGet, Some(()))
+          _ <- assertResultF(fib.joinWithNever, 1)
+        } yield ()
+      }
+    }
+  }
+
+  test("Rxn - consistency of 2 sides of `+`") {
+    log("Rxn - race2") *> {
+      TRef[F, Int](0).commit.flatMap { ref =>
+        val t1: Txn[F, Int] = succeedIfPositive("t1", ref, 1)
+        val t2: Txn[F, Int] = succeedIfPositive("t2", ref, 2)
+        val txn: Txn[F, Int] = t1 orElse t2
+        for {
+          d <- Deferred[F, Unit]
+          stepper <- mkStepper
+          fib <- stepper.commit(txn).guarantee(d.complete(()).void).start
+          _ <- this.tickAll // we're stopping at the `t1` retry (because it read 0)
+          // another transaction changes `ref`:
+          _ <- ref.set(1).commit
+          // now try `t2`, which MUST read the same 0, and retry:
+          _ <- stepper.stepAndTickAll
+          _ <- assertResultF(d.tryGet, None)
+          // now complete restart, `t1` re-reads, it's 1, so it succeeds:
+          _ <- stepper.stepAndTickAll
+          _ <- assertResultF(d.tryGet, Some(()))
+          _ <- assertResultF(fib.joinWithNever, 1)
+        } yield ()
+      }
     }
   }
 }

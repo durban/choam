@@ -37,6 +37,9 @@ final class MutDescriptor private (
   final override def validTs: Long =
     this._validTs
 
+  final override def validTsBoxed: java.lang.Long =
+    null
+
   final override def versionIncr: Long =
     this._versionIncr
 

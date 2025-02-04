@@ -22,6 +22,18 @@ import cats.effect.{ IO, IOApp }
 
 import stm.Transactive
 
+/**
+ * Mixin for convenient access to a `Transactive[IO]`
+ *
+ * This trait is intended to be mixed into
+ * an object extending [[cats.effect.IOApp]].
+ * It provides an implicit `Transactive[IO]`.
+ * instance. The resources needed by this
+ * instance are acquired in the constructor, and
+ * are never released. Thus, use only if the
+ * `Transactive` is needed for the duration of
+ * the whole `IOApp` program.
+ */
 trait TxnAppMixin extends BaseMixin { this: IOApp =>
 
   private[this] final val _transactiveForIO: Transactive[IO] =

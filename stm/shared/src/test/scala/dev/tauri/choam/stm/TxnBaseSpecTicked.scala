@@ -15,14 +15,17 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.lcagent;
+package dev.tauri.choam
+package stm
 
-import java.lang.instrument.Instrumentation;
+import core.RetryStrategy.Internal.Stepper
 
-final class Premain {
+trait TxnBaseSpecTicked[F[_]] extends TxnBaseSpec[F]  with TestContextSpec[F] { self: McasImplSpec =>
 
-  public static final void premain(String agentArgs, Instrumentation inst) {
-    // We (probably) don't need any transformation since Lincheck 2.30:
-    // inst.addTransformer(new TclTransformer());
+  implicit final class StepperSyntaxForTxn(stepper: Stepper[F]) {
+
+    final def commit[A](txn: Txn[F, A]): F[A] = {
+      Transactive[F].commitWithStepper(txn, stepper)
+    }
   }
 }

@@ -27,7 +27,7 @@ import com.typesafe.tools.mima.core.{
 
 // Scala versions:
 val scala2 = "2.13.16"
-val scala3 = "3.3.4"
+val scala3 = "3.3.5"
 
 // CI JVM versions:
 val jvmOldest = JavaSpec.temurin("11")
@@ -262,7 +262,6 @@ lazy val choam = project.in(file("."))
     stressAsync, // JVM
     stressExperiments, // JVM
     stressLinchk, // JVM
-    stressLinchkAgent, // JVM
     stressRng, // JVM
     layout, // JVM
   )
@@ -356,6 +355,7 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasJmxStatsMBean.getMcasRetryStats"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasJmxStatsMBean.getExchangerStats"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.Mcas.internalEmcas"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.AbstractDescriptor.validTsBoxed"),
     ),
   )
 
@@ -691,37 +691,10 @@ lazy val stressLinchk = project.in(file("stress") / "stress-linchk")
   .settings(commonSettingsJvm)
   .disablePlugins(disabledPlugins: _*)
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(async.jvm % "compile->compile;test->test")
+  .dependsOn(stm.jvm % "compile->compile;test->test")
   .settings(
     libraryDependencies += dependencies.lincheck.value,
     Test / fork := true, // otherwise the bytecode transformers won't work
-    Test / test := {
-      // we'll need the agent JAR to run the tests:
-      (stressLinchkAgent / Compile / packageBin).value.##
-      (Test / test).value
-    },
-    Test / testOnly := {
-      // we'll need the agent JAR to run the tests:
-      (stressLinchkAgent / Compile / packageBin).value.##
-      (Test / testOnly).evaluated
-    },
-    Test / javaOptions ++= List(
-      s"-javaagent:${(stressLinchkAgent / Compile / packageBin / artifactPath).value}",
-      // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:8000",
-    ),
-  )
-
-lazy val stressLinchkAgent = project.in(file("stress") / "stress-linchk-agent")
-  .settings(name := "choam-stress-linchk-agent")
-  .settings(commonSettings)
-  .settings(commonSettingsJvm)
-  .disablePlugins(disabledPlugins: _*)
-  .enablePlugins(NoPublishPlugin)
-  .settings(
-    libraryDependencies += dependencies.asm.value,
-    packageOptions += Package.ManifestAttributes(
-      "Premain-Class" -> "dev.tauri.choam.lcagent.Premain",
-    ),
   )
 
 lazy val stressRng = project.in(file("stress") / "stress-rng")
@@ -954,7 +927,7 @@ lazy val dependencies = new {
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % jolVersion)
   val jmh = Def.setting("org.openjdk.jmh" % "jmh-core" % jmhVersion)
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.5") // https://github.com/JCTools/JCTools
-  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.34") // https://github.com/JetBrains/lincheck
+  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.35") // https://github.com/JetBrains/lincheck
   val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.7.1") // https://asm.ow2.io/
 
   // JS:

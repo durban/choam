@@ -22,6 +22,18 @@ import cats.effect.{ IO, IOApp }
 
 import async.AsyncReactive
 
+/**
+ * Mixin for convenient access to an `AsyncReactive[IO]`
+ *
+ * This trait is intended to be mixed into
+ * an object extending [[cats.effect.IOApp]].
+ * It provides an implicit `AsyncReactive[IO]`.
+ * instance. The resources needed by this
+ * instance are acquired in the constructor, and
+ * are never released. Thus, use only if the
+ * `AsyncReactive` is needed for the duration of
+ * the whole `IOApp` program.
+ */
 trait RxnAppMixin extends BaseMixin { this: IOApp =>
 
   private[this] final val _asyncReactiveForIO: AsyncReactive[IO] =

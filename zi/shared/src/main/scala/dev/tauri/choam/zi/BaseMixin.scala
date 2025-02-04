@@ -25,6 +25,12 @@ import internal.mcas.{ Mcas, OsRng }
 private[zi] trait BaseMixin { this: ZIOApp =>
 
   private[this] final val __mcasImpl: Mcas = {
+    // This might block, but as we're in the
+    // constructor of an `ZIOApp`, it's probably
+    // not a big deal (there is likely other
+    // similar initialization going on anyway);
+    // also, we're sure there is no `Rxn`
+    // running yet.
     val osRng = OsRng.mkNew()
     Mcas.newDefaultMcas(osRng)
   }
