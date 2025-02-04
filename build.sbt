@@ -691,7 +691,7 @@ lazy val stressLinchk = project.in(file("stress") / "stress-linchk")
   .settings(commonSettingsJvm)
   .disablePlugins(disabledPlugins: _*)
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(async.jvm % "compile->compile;test->test")
+  .dependsOn(stm.jvm % "compile->compile;test->test")
   .settings(
     libraryDependencies += dependencies.lincheck.value,
     Test / fork := true, // otherwise the bytecode transformers won't work
