@@ -299,6 +299,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     for (n <- rng.shuffle(nums)) {
       hamt = hamt.removed(LongWr(n))
     }
+    assertEquals(hamt.size, 0)
     hamt = _insertWithComputeIfAbsent(hamt, nums)
     assertEquals(hamt.size, nums.size)
   }
@@ -344,38 +345,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     val rng = new Random(seed)
     val nums = rng.shuffle(_nums.toList)
     var hamt = LongHamt.empty
-    val token1 = new AnyRef
-    for (n <- nums) {
-      val v = Val(n)
-      var count = 0
-      val nullVis = new Hamt.EntryVisitor[LongWr, Val, AnyRef] {
-        override def entryPresent(k: LongWr, a: Val, tok: AnyRef): Val =
-          fail("present called")
-        override def entryAbsent(k: LongWr, tok: AnyRef): Val = {
-          assertEquals(k.n, n)
-          assertSameInstance(tok, token1)
-          count += 1
-          null
-        }
-      }
-      val newHamt = hamt.computeOrModify(LongWr(n), token1, nullVis)
-      assertEquals(count, 1)
-      assertSameInstance(newHamt, hamt)
-      val token2 = new AnyRef
-      val vis = new Hamt.EntryVisitor[LongWr, Val, AnyRef] {
-        override def entryPresent(k: LongWr, a: Val, tok: AnyRef): Val =
-          fail("present called")
-        override def entryAbsent(k: LongWr, tok: AnyRef): Val = {
-          assertEquals(k.n, n)
-          assertSameInstance(tok, token2)
-          count += 1
-          v
-        }
-      }
-      hamt = hamt.computeOrModify(LongWr(n), token2, vis)
-      assertEquals(count, 2)
-      assertEquals(hamt.getOrElse(n, null), v)
-    }
+    hamt = _insertWithComputeOrModify(hamt, nums)
     for (n <- rng.shuffle(nums)) {
       var e: Val = null
       var count = 0
@@ -412,6 +382,50 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
       assertEquals(newHamt.getOrElse(n, Val(42L)), Val(n, "foo"))
       hamt = newHamt
     }
+    // remove everything in random order, and run the insertion test again:
+    for (n <- rng.shuffle(nums)) {
+      hamt = hamt.removed(LongWr(n))
+    }
+    assertEquals(hamt.size, 0)
+    hamt = _insertWithComputeOrModify(hamt, nums)
+    assertEquals(hamt.size, nums.size)
+  }
+
+  private def _insertWithComputeOrModify(hamt0: LongHamt, nums: List[Long]): LongHamt = {
+    var hamt = hamt0
+    val token1 = new AnyRef
+    for (n <- nums) {
+      val v = Val(n)
+      var count = 0
+      val nullVis = new Hamt.EntryVisitor[LongWr, Val, AnyRef] {
+        override def entryPresent(k: LongWr, a: Val, tok: AnyRef): Val =
+          fail("present called")
+        override def entryAbsent(k: LongWr, tok: AnyRef): Val = {
+          assertEquals(k.n, n)
+          assertSameInstance(tok, token1)
+          count += 1
+          null
+        }
+      }
+      val newHamt = hamt.computeOrModify(LongWr(n), token1, nullVis)
+      assertEquals(count, 1)
+      assertSameInstance(newHamt, hamt)
+      val token2 = new AnyRef
+      val vis = new Hamt.EntryVisitor[LongWr, Val, AnyRef] {
+        override def entryPresent(k: LongWr, a: Val, tok: AnyRef): Val =
+          fail("present called")
+        override def entryAbsent(k: LongWr, tok: AnyRef): Val = {
+          assertEquals(k.n, n)
+          assertSameInstance(tok, token2)
+          count += 1
+          v
+        }
+      }
+      hamt = hamt.computeOrModify(LongWr(n), token2, vis)
+      assertEquals(count, 2)
+      assertEquals(hamt.getOrElse(n, null), v)
+    }
+    hamt
   }
 
   private def assertSameMaps(hamt: LongHamt, shadow: LongMap[Val]): Unit = {
@@ -441,6 +455,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
 
   private def testInsertionOrder(seed: Long, nums: Set[Long]): Unit = {
     val rng = new Random(seed)
+    // insert in 2 different orders:
     val nums1 = rng.shuffle(nums.toList)
     val nums2 = rng.shuffle(nums1)
     val hamt1 = hamtFromList(nums1)
@@ -448,6 +463,23 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     assertEquals(hamt1.toArray.toList, hamt2.toArray.toList)
     assertEquals(hamt1.size, nums.size)
     assertEquals(hamt2.size, nums.size)
+    // remove half of the items:
+    val toRemoveSize = Math.ceil(nums.size.toDouble / 2.0).toInt
+    val toRemove1 = rng.shuffle(nums2).take(toRemoveSize)
+    val hamtRem1 = toRemove1.foldLeft(hamt1) { (hamt, n) => hamt.removed(LongWr(n)) }
+    assertEquals(hamtRem1.size, nums.size - toRemoveSize)
+    val toRemove2 = rng.shuffle(toRemove1)
+    val hamtRem2 = toRemove2.foldLeft(hamt2) { (hamt, n) => hamt.removed(LongWr(n)) }
+    assertEquals(hamtRem2.size, nums.size - toRemoveSize)
+    assertEquals(hamtRem1.toArray.toList, hamtRem2.toArray.toList)
+    // reinsert them:
+    val toReinsert1 = rng.shuffle(toRemove1)
+    val hamtRei1 = toReinsert1.foldLeft(hamtRem1) { (hamt, n) => hamt.inserted(Val(n)) }
+    assertEquals(hamtRei1.size, hamt1.size)
+    val toReinsert2 = rng.shuffle(toReinsert1)
+    val hamtRei2 = toReinsert2.foldLeft(hamtRem2) { (hamt, n) => hamt.inserted(Val(n)) }
+    assertEquals(hamtRei2.size, hamt2.size)
+    assertEquals(hamtRei1.toArray.toList, hamtRei2.toArray.toList)
   }
 
   property("Ordering should be independent of elements") {
@@ -482,13 +514,24 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     val lst = List(42L, 99L, 1024L, Long.MinValue, Long.MaxValue)
     var i = 0
     var hamt = LongHamt.empty
+    var toRemove = Set.empty[Long]
     while (i < N) {
-      hamt = hamt.upserted(Val(ThreadLocalRandom.current().nextLong()))
+      val n = ThreadLocalRandom.current().nextLong()
+      hamt = hamt.upserted(Val(n))
+      if ((i % 2) == 0) {
+        toRemove = toRemove + n
+      }
       i += 1
     }
     hamt = addAll(hamt, lst)
     for (n <- lst) {
-      assertEquals(hamt.getOrElse(n, Val(0L)), Val(n))
+      assertEquals(hamt.getOrElse(n, null), Val(n))
+    }
+    for (r <- toRemove) {
+      hamt = hamt.removed(LongWr(r))
+    }
+    for (n <- lst) {
+      assertEquals(hamt.getOrElse(n, null), Val(n))
     }
   }
 
