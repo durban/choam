@@ -328,7 +328,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
               if (equ(ovv, value)) {
                 nullOf[H] // nothing to do
               } else {
-                this.withValue(bitmap, value, physIdx)
+                this.withValue(bitmap, oldValue = ovv, newValue = value, physIdx = physIdx)
               }
             } else {
               // hash collision at this level,
@@ -389,12 +389,19 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
     value.isTomb || this.isBlue(value)
   }
 
-  private[this] final def withValue(bitmap: Long, value: V, physIdx: Int): H = {
-    val sizeDiff = if (value.isTomb) -1 else 0 // NB: we never overwrite a tombstone with a tombstone
+  private[this] final def withValue(bitmap: Long, oldValue: V, newValue: V, physIdx: Int): H = {
+    // NB: we never overwrite a tombstone with a tombstone
+    val sizeDiff = if (newValue.isTomb) {
+      -1
+    } else if (oldValue.isTomb) {
+      1
+    } else {
+      0
+    }
     this.newNode(
-      sizeAndBlue = packSizeAndBlueInternal(this.size + sizeDiff, this.isBlueSubtree && isBlueOrTomb(value)),
+      sizeAndBlue = packSizeAndBlueInternal(this.size + sizeDiff, this.isBlueSubtree && isBlueOrTomb(newValue)),
       bitmap = bitmap,
-      contents = arrReplacedValue(this.contents, value, physIdx),
+      contents = arrReplacedValue(this.contents, newValue, physIdx),
     )
   }
 

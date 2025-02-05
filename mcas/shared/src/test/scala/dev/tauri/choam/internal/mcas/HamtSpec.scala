@@ -151,6 +151,23 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     assertEquals(h5.getOrElse(c2, Val(42L)), Val(c2))
     assertEquals(h5.getOrElse(c3, Val(42L)), Val(c3))
     assertEquals(h5.getOrElse(c4, Val(42L)), Val(c4))
+    // removal:
+    val h6: LongHamt = h5.removed(LongWr(c4))
+    assertEquals(h6.size, 4)
+    assertEquals(h6.toArray.toList, List(c0, c3, c2, c1).map(Val(_)))
+    assertEquals(h6, h4)
+    assertEquals(h6, h6)
+    val h6b = h6.removed(LongWr(c4))
+    assertSameInstance(h6b, h6)
+    val h7 = h6.removed(LongWr(c1))
+    assertEquals(h7.size, 3)
+    assertEquals(h7.toArray.toList, List(c0, c3, c2).map(Val(_)))
+    val h8 = h7.removed(LongWr(c2))
+    assertEquals(h8.size, 2)
+    assertEquals(h8.toArray.toList, List(c0, c3).map(Val(_)))
+    val h9 = h8.inserted(Val(c1))
+    assertEquals(h9.size, 3)
+    assertEquals(h9.toArray.toList, List(c0, c3, c1).map(Val(_)))
   }
 
   property("HAMT lookup/upsert/toArray (default generator)") {
