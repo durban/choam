@@ -1835,15 +1835,20 @@ object Rxn extends RxnInstances0 {
           contT.push(RxnConsts.ContOrElse)
           loop(c.left)
         case 32 => // Unread
-          val c = curr.asInstanceOf[Unread[_]]
-          val hwd = desc.getOrElseNull(c.ref.loc)
-          if (hwd ne null) {
-            if (hwd.readOnly) {
-              ??? // OK, remove it
-            } else {
-              throw new IllegalStateException(s"${c.ref} is not read-only")
-            }
-          } // else: not in readset, nothing to do
+          if ((_desc ne null) && desc.nonEmpty) {
+            val c = curr.asInstanceOf[Unread[_]]
+            val loc = c.ref.loc
+            val hwd = desc.getOrElseNull(loc)
+            // TODO: instead of lookup-then-remove, do a `removeIfReadOnly`
+            if (hwd ne null) {
+              if (hwd.readOnly) {
+                // OK, remove it
+                desc = desc.remove(loc)
+              } else {
+                throw new IllegalStateException(s"${c.ref} is not read-only")
+              }
+            } // else: not in readset, nothing to do
+          } // else: empty log, nothing to do
           a = ()
           loop(next())
         case t => // mustn't happen
