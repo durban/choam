@@ -333,15 +333,15 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
             } else {
               // hash collision at this level,
               // so we go down one level:
-              val childNode = {
+              val childNode1Size = if (ovv.isTomb) 0 else 1
+              val childNode1 = {
                 val cArr = new Array[AnyRef](1)
                 cArr(0) = ovv
                 val oFlag = 1L << logicalIdx(oh, shift + W)
-                val cSize = if (ovv.isTomb) 0 else 1
-                this.newNode(sizeAndBlue = packSizeAndBlueInternal(cSize, isBlueOrTomb(ovv)), bitmap = oFlag, contents = cArr)
+                this.newNode(sizeAndBlue = packSizeAndBlueInternal(childNode1Size, isBlueOrTomb(ovv)), bitmap = oFlag, contents = cArr)
               }
-              val childNode2 = childNode.insertOrOverwrite(hash, value, shift + W, op)
-              this.withNode(this.size + (childNode2.size - 1), bitmap, childNode2, physIdx)
+              val childNode2 = childNode1.insertOrOverwrite(hash, value, shift + W, op)
+              this.withNode(this.size + (childNode2.size - childNode1Size), bitmap, childNode2, physIdx)
             }
         }
       } else {
@@ -390,8 +390,9 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
   }
 
   private[this] final def withValue(bitmap: Long, oldValue: V, newValue: V, physIdx: Int): H = {
-    // NB: we never overwrite a tombstone with a tombstone
     val sizeDiff = if (newValue.isTomb) {
+      // NB: we never overwrite a tombstone with a tombstone
+      _assert(!oldValue.isTomb)
       -1
     } else if (oldValue.isTomb) {
       1

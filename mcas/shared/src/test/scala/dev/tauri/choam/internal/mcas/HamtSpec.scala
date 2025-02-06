@@ -554,6 +554,43 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     }
   }
 
+  test("Merging HAMTs after removal (example)") {
+    val hamt1 = LongHamt.empty.inserted(Val(-30L)).removed(LongWr(-30L))
+    assertEquals(hamt1.size, 0)
+    val hamt2 = LongHamt.empty.inserted(Val(-3L)).inserted(Val(-30L)).removed(LongWr(-30L))
+    assertEquals(hamt2.size, 1)
+    val merged = hamt1.insertedAllFrom(hamt2)
+    assertEquals(merged.size, 1)
+    assertEquals(merged.toArray.toList, List(Val(-3L)))
+  }
+
+  property("Merging HAMTs after removal") {
+    forAll { (seed: Long, nums1: Set[Long], _nums2: Set[Long], common: Set[Long]) =>
+      val rng = new Random(seed)
+      val nums2 = _nums2 -- nums1
+      var hamt1 = hamtFromList(rng.shuffle(nums1.toList ++ common.toList))
+      var hamt2 = hamtFromList(rng.shuffle(nums2.toList ++ common.toList))
+      for (r <- rng.shuffle(common.toList)) {
+        hamt1 = hamt1.removed(LongWr(r))
+      }
+      for (r <- rng.shuffle(common.toList)) {
+        hamt2 = hamt2.removed(LongWr(r))
+      }
+      val merged1 = hamt1.insertedAllFrom(hamt2)
+      val merged2 = hamt2.insertedAllFrom(hamt1)
+      val expected = hamtFromList(
+        rng.shuffle(((nums1 union nums2) -- common).toList)
+      )
+      val expLst = expected.toArray.toList
+      val expSize = ((nums1 union nums2) -- common).size
+      assertEquals(expLst.size, expSize)
+      assertEquals(merged1.size, expSize)
+      assertEquals(merged1.toArray.toList, expLst)
+      assertEquals(merged2.size, expSize)
+      assertEquals(merged2.toArray.toList, expLst)
+    }
+  }
+
   property("HAMT equals/hashCode") {
     forAll { (seed: Long, nums: Set[Long], num: Long) =>
       val rng = new Random(seed)
