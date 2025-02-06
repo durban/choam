@@ -675,20 +675,37 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
   test("HAMT toString") {
     val h0 = LongHamt.empty
     assertEquals(h0.toString, "Hamt()")
-    val h1 = h0.inserted(Val(0x000000ffff000000L))
-    assertEquals(h1.toString, "Hamt(Val(1099494850560,fortytwo,true))")
-    val h2 = h1.inserted(Val(0xffffff0000ffffffL))
-    assertEquals(h2.toString, "Hamt(Val(1099494850560,fortytwo,true), Val(-1099494850561,fortytwo,true))")
+    val v1 = 0x000000ffff000000L
+    val h1 = h0.inserted(Val(v1))
+    assertEquals(h1.toString, s"Hamt(Val(${v1},fortytwo,true))")
+    val v2 = 0xffffff0000ffffffL
+    val h2 = h1.inserted(Val(v2))
+    assertEquals(h2.toString, s"Hamt(Val(${v1},fortytwo,true), Val(${v2},fortytwo,true))")
+    val h3 = h2.removed(LongWr(v1))
+    assertEquals(h3.toString, s"Hamt(Val(${v2},fortytwo,true))")
+    val h4 = h3.removed(LongWr(v2))
+    assertEquals(h4.toString, "Hamt()")
   }
 
   property("forAll") {
     // the predicate in `LongHamt` is `>`
     forAll { (seed: Long, nums: Set[Long]) =>
       val rng = new Random(seed)
-      val hamt1 = hamtFromList(rng.shuffle(nums.toList.filter(_ > 42L)))
+      val nums1 = rng.shuffle(nums.toList.filter(_ > 42L))
+      val hamt1 = hamtFromList(nums1)
       assert(hamt1.forAll(42L))
+      if (nums1.nonEmpty) {
+        val hamt1r = hamt1.removed(LongWr(nums1.head))
+        assert(hamt1r.forAll(42L))
+      }
       val hamt1b = hamt1.upserted(Val(1024L))
       assert(!hamt1b.forAll(1024L))
+      if (nums1.nonEmpty) {
+        val hamt1br = hamt1b.removed(LongWr(nums1.head))
+        assert(!hamt1br.forAll(1024L))
+      }
+      val hamt1back = hamt1b.removed(LongWr(1024L))
+      assert(hamt1back.forAll(42L))
       val nums2 = rng.shuffle(nums.toList.filter(_ <= 42L)) match {
         case Nil => List(42L)
         case lst => lst
@@ -697,6 +714,10 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
         h.inserted(Val(n))
       }
       assert(!hamt2.forAll(42L))
+      if (nums1.nonEmpty) {
+        val hamt2r = hamt2.removed(LongWr(nums1.head))
+        assert(!hamt2r.forAll(42L))
+      }
     }
   }
 
