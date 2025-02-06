@@ -746,6 +746,15 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
       assert(hamt.definitelyBlue)
       assertEquals(hamt.size, size)
     }
+    var hamtr = hamt
+    var sizer = size
+    for (n <- evenNums) {
+      hamtr = hamtr.removed(LongWr(n))
+      sizer -= 1
+      assert(hamtr.definitelyBlue)
+      assertEquals(hamtr.size, sizer)
+    }
+    assertEquals(hamtr, LongHamt.empty)
     for (k <- oddNums) {
       hamt = hamt.inserted(Val(k, isBlue = false))
       size += 1
@@ -763,6 +772,15 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     }
     // but copying to an array detects it:
     assertEquals(hamt.toArray((), flag = false, nullIfBlue = true), null)
+    // removing also doesn't change it:
+    for (k <- oddNums) {
+      hamt = hamt.removed(LongWr(k))
+      size -= 1
+      assertEquals(hamt.size, size)
+      if (size > 0) {
+        assert(!hamt.definitelyBlue)
+      }
+    }
   }
 
   test("valuesIterator examples") {
@@ -772,7 +790,10 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     val it00 = h0.valuesIterator
     assert(!it00.hasNext)
     assert(!it00.hasNext)
-    try it00.next() catch { case _: NoSuchElementException => () }
+    try {
+      it00.next()
+      fail("expected an exception")
+    } catch { case _: NoSuchElementException => () }
     val it01 = h0.valuesIterator
     val it02 = h0.valuesIterator
     assert(!it01.hasNext)
@@ -808,6 +829,39 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     assert(!it20.hasNext)
     assert(!it21.hasNext)
     assert(!it21.hasNext)
+    // removal:
+    val h3 = h2.removed(LongWr(c0))
+    val it30 = h3.valuesIterator
+    val it31 = h3.valuesIterator
+    assert(it30.hasNext)
+    assert(it31.hasNext)
+    assertEquals(it30.next(), Val(c1))
+    assert(!it30.hasNext)
+    assert(it31.hasNext)
+    assertEquals(it31.next(), Val(c1))
+    assert(!it30.hasNext)
+    assert(!it31.hasNext)
+    try {
+      it30.next()
+      fail("expected an exception")
+    } catch { case _: NoSuchElementException => () }
+    try {
+      it31.next()
+      fail("expected an exception")
+    } catch { case _: NoSuchElementException => () }
+    val h4 = h3.removed(LongWr(c1))
+    val it40 = h4.valuesIterator
+    val it41 = h4.valuesIterator
+    assert(!it40.hasNext)
+    assert(!it41.hasNext)
+    try {
+      it40.next()
+      fail("expected an exception")
+    } catch { case _: NoSuchElementException => () }
+    try {
+      it41.next()
+      fail("expected an exception")
+    } catch { case _: NoSuchElementException => () }
   }
 
   property("valuesIterator (default generator)") {
@@ -822,12 +876,22 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     }
   }
 
-  private def testValuesIterator(seed: Long, nums: Set[Long]): Unit = {
+  private def testValuesIterator(seed: Long, _nums: Set[Long]): Unit = {
     val rng = new Random(seed)
-    val h = hamtFromList(rng.shuffle(nums.toList))
+    val nums = rng.shuffle(_nums.toList)
+    val h = hamtFromList(nums)
     val expected = h.toArray.toList
     val actual = h.valuesIterator.toList
     assertEquals(actual, expected)
+    // removal:
+    val toRemoveSize = Math.ceil(nums.size.toDouble / 2.0).toInt
+    val toRemove = nums.take(toRemoveSize)
+    val hr = toRemove.foldLeft(h) { (hamt, n) => hamt.removed(LongWr(n)) }
+    assertEquals(hr.size, nums.size - toRemoveSize)
+    val expected2 = hr.toArray.toList
+    val actual2 = hr.valuesIterator.toList
+    assertEquals(expected2.size, hr.size)
+    assertEquals(actual2, expected2)
   }
 
   property("packSizeAndBlue") {
