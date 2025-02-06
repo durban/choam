@@ -376,15 +376,6 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
     }
   }
 
-  protected override def equalsInternal(that: AbstractHamt[_, _, _, _, _, _]): Boolean = {
-    if (this.bitmap == that.asInstanceOf[H].bitmap) {
-      super.equalsInternal(that)
-    } else {
-      // fast path:
-      false
-    }
-  }
-
   private[this] final def isBlueOrTomb(value: V): Boolean = {
     value.isTomb || this.isBlue(value)
   }

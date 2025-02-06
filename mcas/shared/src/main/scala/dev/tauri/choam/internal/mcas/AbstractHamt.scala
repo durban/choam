@@ -226,25 +226,30 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
     true
   }
 
-  protected def equalsInternal(that: AbstractHamt[_, _, _, _, _, _]): Boolean = {
-    // Due to tombstones, HAMTs with the same
-    // values (tombstones are not values) doesn't
-    // necessarily have the same tree structure.
-    // However, traversing them should yield the
-    // same values in the same order. For that,
-    // we need to use the iterators:
-    val thisItr = this.valuesIterator
-    val thatItr = that.valuesIterator
-    while (thisItr.hasNext) {
-      if (thatItr.hasNext) {
-        if (thisItr.next() != thatItr.next()) {
+  protected final def equalsInternal(that: AbstractHamt[_, _, _, _, _, _]): Boolean = {
+    if (this.size == that.size) {
+      // Due to tombstones, HAMTs with the same
+      // values (tombstones are not values) doesn't
+      // necessarily have the same tree structure.
+      // However, traversing them should yield the
+      // same values in the same order. For that,
+      // we need to use the iterators:
+      val thisItr = this.valuesIterator
+      val thatItr = that.valuesIterator
+      while (thisItr.hasNext) {
+        if (thatItr.hasNext) {
+          if (thisItr.next() != thatItr.next()) {
+            return false // scalafix:ok
+          }
+        } else {
           return false // scalafix:ok
         }
-      } else {
-        return false // scalafix:ok
       }
+      _assert(!thatItr.hasNext)
+      true
+    } else {
+      false
     }
-    !thatItr.hasNext
   }
 
   protected final def hashCodeInternal(s: Int): Int = {

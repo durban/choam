@@ -592,40 +592,83 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
   }
 
   property("HAMT equals/hashCode") {
-    forAll { (seed: Long, nums: Set[Long], num: Long) =>
+    forAll { (seed: Long, nums: Set[Long], num: Long, num2: Long) =>
       val rng = new Random(seed)
-      val l1 = rng.shuffle((nums - num).toList)
+      val l1 = rng.shuffle(((nums - num) - num2).toList)
       val hamt1 = hamtFromList(l1)
       val hamt2 = hamtFromList(rng.shuffle(l1))
       val hamt3 = hamtFromList(l1.reverse)
+      val hamt4 = hamt1.inserted(Val(num2)).removed(LongWr(num2))
       assert(hamt1 == hamt1)
       assert(hamt1 == hamt2)
       assert(hamt1 == hamt3)
+      assertEquals(hamt1.getOrElse(num2, null), null)
+      assert(hamt1 == hamt4)
       assert(hamt2 == hamt1)
       assert(hamt2 == hamt2)
       assert(hamt2 == hamt3)
+      assert(hamt2 == hamt4)
       assert(hamt3 == hamt1)
       assert(hamt3 == hamt2)
       assert(hamt3 == hamt3)
+      assert(hamt3 == hamt4)
+      assert(hamt4 == hamt1)
+      assert(hamt4 == hamt2)
+      assert(hamt4 == hamt3)
+      assert(hamt4 == hamt4)
       val h1 = hamt1.##
       val h2 = hamt2.##
       val h3 = hamt3.##
+      val h4 = hamt4.##
       assertEquals(h1, h2)
       assertEquals(h1, h3)
+      assertEquals(h1, h4)
       val hamt2b = hamt2.inserted(Val(num))
       assert(hamt2b != hamt1)
       assert(hamt2b != hamt2)
       assert(hamt2b != hamt3)
+      assert(hamt2b != hamt4)
       assert(hamt1 != hamt2b)
       assert(hamt2 != hamt2b)
       assert(hamt3 != hamt2b)
+      assert(hamt4 != hamt2b)
+      val hamt4b = hamt4.inserted(Val(num))
+      assert(hamt4b == hamt2b)
+      assert(hamt2b == hamt4b)
+      assert(hamt4b != hamt1)
+      assert(hamt4b != hamt2)
+      assert(hamt4b != hamt3)
+      assert(hamt4b != hamt4)
+      assert(hamt1 != hamt4b)
+      assert(hamt2 != hamt4b)
+      assert(hamt3 != hamt4b)
+      assert(hamt4 != hamt4b)
       val h2b = hamt2b.##
+      val h4b = hamt4b.##
       assertNotEquals(h2b, h1) // with high probability
+      assertNotEquals(h4b, h1) // with high probability
       val hamt2c = hamt2b.updated(new SpecVal(num)) // has identity equals
       assert(hamt2c != hamt2b)
       assert(hamt2b != hamt2c)
       val h2c = hamt2c.##
       assertEquals(h2c, h2b)
+      val hamt2br = hamt2b.removed(LongWr(num))
+      assert(hamt2br == hamt2)
+      assert(hamt2 == hamt2br)
+      val hamt4br = hamt4b.removed(LongWr(num))
+      assert(hamt4br == hamt2br)
+      assert(hamt2 == hamt4br)
+      val empty = l1.foldLeft(hamt4br) { (hamt, n) => hamt.removed(LongWr(n)) }
+      assertEquals(empty.size, 0)
+      assert(empty == LongHamt.empty)
+      assert(LongHamt.empty == empty)
+      if (l1.nonEmpty) {
+        assert(empty != hamt1)
+        assert(hamt1 != empty)
+        val eh = empty.##
+        assertEquals(eh, LongHamt.empty.##)
+        assertNotEquals(eh, h1) // with high probability
+      }
     }
   }
 
