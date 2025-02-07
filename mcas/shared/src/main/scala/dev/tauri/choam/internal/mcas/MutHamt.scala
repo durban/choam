@@ -135,8 +135,13 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
     this.isBlueTree &= unpackIsBlue(sdb)
   }
 
-  final def copyToArray(tok: T1, flag: Boolean, nullIfBlue: Boolean): Array[E] =
+  final def remove(k: K): Unit = {
+    this.computeOrModify(k, null, Hamt.tombingVisitor[K, V])
+  }
+
+  final def copyToArray(tok: T1, flag: Boolean, nullIfBlue: Boolean): Array[E] = {
     this.copyToArrayInternal(tok, flag = flag, nullIfBlue = nullIfBlue)
+  }
 
   final def copyToImmutable(): I = {
     val imm = this.copyToImmutableInternal(shift = 0)
@@ -168,15 +173,14 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
   // Internal:
 
   private final def lookupOrNull(hash: Long, shift: Int): V = {
-    this.getValueOrNodeOrNull(hash, shift) match {
+    this.getValueOrNodeOrNullOrTombstone(hash, shift) match {
       case null =>
         nullOf[V]
       case node: MutHamt[_, _, _, _, _, _, _] =>
         node.lookupOrNull(hash, shift + W).asInstanceOf[V]
       case value =>
         val a = value.asInstanceOf[V]
-        val hashA = a.key.hash
-        if (hash == hashA) {
+        if ((!a.isTomb) && (hash == a.key.hash)) {
           a
         } else {
           nullOf[V]
@@ -184,7 +188,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
     }
   }
 
-  private[this] final def getValueOrNodeOrNull(hash: Long, shift: Int): AnyRef = {
+  private[this] final def getValueOrNodeOrNullOrTombstone(hash: Long, shift: Int): AnyRef = {
     val contents = this.contents
     val logIdx = logicalIdx(hash, shift)
     val size = contents.length // always a power of 2
@@ -208,18 +212,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
     val physIdx = physicalIdx(logIdx, size)
     contents(physIdx) match {
       case null =>
-        val newVal = if (isNull(newValue)) {
-          visitor.entryAbsent(k, tok)
-        } else {
-          newValue
-        }
-        newVal match {
-          case null =>
-            packSizeDiffAndBlue(0, true)
-          case newVal =>
-            _assert(newVal.key.hash == hash)
-            this.insertOrOverwriteKnownIndex(logIdx, physIdx, hash, newVal, shift, op = OP_INSERT)
-        }
+        this.visitEntryAbsent[T](k, hash, logIdx, physIdx, tok, visitor, newValue, shift = shift)
       case node: MutHamt[_, _, _, _, _, _, _] =>
         val nodeLogIdx = node.logIdx
         if (logIdx == nodeLogIdx) {
@@ -244,38 +237,31 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
         val a = value.asInstanceOf[V]
         val hashA = a.key.hash
         if (hash == hashA) {
-          val newVal = if (isNull(newValue)) {
-            visitor.entryPresent(k, a, tok)
-          } else {
-            newValue
-          }
-          if (modify) {
-            if (equ(newValue, a)) {
-              packSizeDiffAndBlue(0, isBlue(a))
+          if (!a.isTomb) {
+            val newVal = if (isNull(newValue)) {
+              visitor.entryPresent(k, a, tok)
             } else {
-              _assert(newVal.key.hash == hashA)
-              this.insertOrOverwriteKnownIndex(logIdx, physIdx, hash, newVal, shift, op = OP_UPDATE)
+              newValue
+            }
+            if (modify) {
+              if (equ(newValue, a)) {
+                packSizeDiffAndBlue(0, isBlue(a))
+              } else {
+                _assert(newVal.key.hash == hashA)
+                this.insertOrOverwriteKnownIndex(logIdx, physIdx, hash, newVal, shift, op = OP_UPDATE)
+              }
+            } else {
+              _assert(equ(newVal, a))
+              packSizeDiffAndBlue(0, true)
             }
           } else {
-            _assert(equ(newVal, a))
-            packSizeDiffAndBlue(0, true)
+            this.visitEntryAbsent[T](k, hash, logIdx, physIdx, tok, visitor, newValue, shift = shift)
           }
         } else {
           val logIdxA = logicalIdx(hashA, shift)
           if (logIdx == logIdxA) {
             // hash collision at this level
-            val newVal = if (isNull(newValue)) {
-              visitor.entryAbsent(k, tok)
-            } else {
-              newValue
-            }
-            newVal match {
-              case null =>
-                packSizeDiffAndBlue(0, true)
-              case newVal =>
-                _assert(newVal.key.hash == hash)
-                this.insertOrOverwriteKnownIndex(logIdxA, physIdx, hash, newVal, shift, op = OP_INSERT)
-            }
+            this.visitEntryAbsent[T](k, hash, logIdx, physIdx, tok, visitor, newValue, shift = shift)
           } else {
             if (isNull(newValue)) {
               visitor.entryAbsent(k, tok) match {
@@ -290,6 +276,30 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
             }
           }
         }
+    }
+  }
+
+  private[this] final def visitEntryAbsent[T](
+    k: K,
+    hash: Long,
+    logIdx: Int,
+    physIdx: Int,
+    tok: T,
+    visitor: Hamt.EntryVisitor[K, V, T], // only call if `newVal` is null
+    newValue: V, // or null, to call `visitor`
+    shift: Int,
+  ): Int = {
+    val newVal = if (isNull(newValue)) {
+      visitor.entryAbsent(k, tok)
+    } else {
+      newValue
+    }
+    newVal match {
+      case null =>
+        packSizeDiffAndBlue(0, true)
+      case newVal =>
+        _assert(newVal.key.hash == hash)
+        this.insertOrOverwriteKnownIndex(logIdx, physIdx, hash, newVal, shift = shift, op = OP_INSERT)
     }
   }
 
@@ -316,7 +326,8 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
         if (op == OP_UPDATE) {
           throw new IllegalArgumentException
         } else {
-          contents(physIdx) = box(value)
+          _assert(!value.isTomb)
+          contents(physIdx) = value
           packSizeDiffAndBlue(1, isBlue(value))
         }
       case node: MutHamt[_, _, _, _, _, _, _] =>
@@ -339,16 +350,32 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
           }
         }
       case ov =>
-        val oh = ov.asInstanceOf[V].key.hash
+        val ovv = ov.asInstanceOf[V]
+        val oh = ovv.key.hash
         if (hash == oh) {
-          if (op == OP_INSERT) {
-            throw new IllegalArgumentException
-          } else if (!equ(ov, value)) {
-            contents(physIdx) = box(value)
-            packSizeDiffAndBlue(0, isBlue(value))
+          if (ovv.isTomb) {
+            if (op == OP_UPDATE) {
+              throw new IllegalArgumentException
+            }
           } else {
-            packSizeDiffAndBlue(0, isBlue(value))
+            if (op == OP_INSERT) {
+              throw new IllegalArgumentException
+            }
           }
+          // ok, checked for errors, now do the thing:
+          if (!equ(ov, value)) {
+            contents(physIdx) = value
+          }
+          val sizeDiff = if (value.isTomb) {
+            // NB: we never overwrite a tombstone with a tombstone
+            _assert(!ovv.isTomb)
+            -1
+          } else if (ovv.isTomb) {
+            1
+          } else {
+            0
+          }
+          packSizeDiffAndBlue(sizeDiff, isBlueOrTomb(value))
         } else {
           val oLogIdx = logicalIdx(oh, shift)
           if (logIdx == oLogIdx) {
@@ -357,12 +384,12 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
             val childShift = shift + W
             val childNode = {
               val cArr = new Array[AnyRef](2) // NB: 2 instead of 1
-              cArr(physicalIdx(logicalIdx(oh, childShift), size = 2)) = ov
+              cArr(physicalIdx(logicalIdx(oh, childShift), size = 2)) = ovv
               this.newNode(logIdx, cArr)
             }
             val r = childNode.insertOrOverwrite(hash, value, shift = childShift, op = op)
             contents(physIdx) = childNode
-            _assert(unpackSizeDiff(r) == 1)
+            _assert(unpackSizeDiff(r) == (if (value.isTomb) -1 else 1))
             r
           } else {
             if (op == OP_UPDATE) {
@@ -379,6 +406,10 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
           }
         }
     }
+  }
+
+  private[this] final def isBlueOrTomb(value: V): Boolean = {
+    value.isTomb || this.isBlue(value)
   }
 
   private[this] final def growLevel(newSize: Int, shift: Int): Unit = {
@@ -436,10 +467,11 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
           arr(arity) = box(child)
           arity += 1
         case value =>
+          // TODO: we're also copying tombstones; we should probably do it in a smarter way (NB: prescan above)
           val v: V = value.asInstanceOf[V]
           bitmap |= (1L << logicalIdx(v.key.hash, shift = shift))
           size += 1
-          isBlueSubtree &= isBlue(v)
+          isBlueSubtree &= isBlueOrTomb(v)
           arr(arity) = value
           arity += 1
       }

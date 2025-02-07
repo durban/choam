@@ -165,13 +165,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
   }
 
   final def removed(k: K): H = {
-    // TODO: avoid always allocating a new EntryVisitor here:
-    this.computeOrModify(k, null, new Hamt.EntryVisitor[K, V, Any] {
-      final override def entryPresent(k: K, v: V, tok: Any): V =
-        new Hamt.Tombstone(k.hash).asInstanceOf[V]
-      final override def entryAbsent(k: K, tok: Any): V =
-        nullOf[V] // OK, nothing to delete
-    })
+    this.computeOrModify(k, null, Hamt.tombingVisitor[K, V])
   }
 
   /**
@@ -459,14 +453,27 @@ private[choam] object Hamt {
     def entryAbsent(k: K, tok: T): V
   }
 
-  final class Tombstone(final override val hash: Long)
-    extends HasKey[Tombstone]
+  private[this] final class Tombstone(final override val hash: Long)
+    extends HasKey[HasHash]
     with HasHash {
 
-    final override def key: Tombstone =
+    final override def key: HasHash =
       this
 
     final override def isTomb: Boolean =
       true
+  }
+
+  private[mcas] final def tombingVisitor[K <: HasHash, V <: HasKey[K]]: EntryVisitor[K, V, Any] = {
+    _tombingVisitor.asInstanceOf[EntryVisitor[K, V, Any]]
+  }
+
+  private[this] val _tombingVisitor: EntryVisitor[HasHash, HasKey[HasHash], Any] = {
+    new EntryVisitor[HasHash, HasKey[HasHash], Any] {
+      final override def entryPresent(k: HasHash, v: HasKey[HasHash], tok: Any): HasKey[HasHash] =
+        new Tombstone(k.hash)
+      final override def entryAbsent(k: HasHash, tok: Any): HasKey[HasHash] =
+        null // OK, nothing to delete
+    }
   }
 }
