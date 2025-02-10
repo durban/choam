@@ -262,6 +262,10 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     mutable.insert(Val(k3))
     val immutable2 = immutable1.inserted(Val(k3))
     assertEquals(mutable.toArray.toList, immutable2.toArray.toList)
+    // removal:
+    mutable.remove(LongWr(k2))
+    val immutable3 = immutable2.removed(LongWr(k2))
+    assertEquals(mutable.toArray.toList, immutable3.toArray.toList)
   }
 
   test("HAMT examples (3)") {
@@ -272,8 +276,12 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     mutable.insert(Val(k0))
     mutable.insert(Val(k1))
     mutable.insert(Val(k2))
-    val immutable = HamtSpec.LongHamt.empty.inserted(Val(k0)).inserted(Val(k1)).inserted(Val(k2))
-    assertEquals(mutable.toArray.toList, immutable.toArray.toList)
+    val immutable0 = HamtSpec.LongHamt.empty.inserted(Val(k0)).inserted(Val(k1)).inserted(Val(k2))
+    assertEquals(mutable.toArray.toList, immutable0.toArray.toList)
+    // removal:
+    mutable.remove(LongWr(k1))
+    val immutable1 = immutable0.removed(LongWr(k1))
+    assertEquals(mutable.toArray.toList, immutable1.toArray.toList)
   }
 
   property("HAMT lookup/upsert/toArray (default generator)") {
@@ -317,6 +325,17 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       assert(hamt.getOrElse(n, null) eq nv)
       assertSameMaps(hamt, shadow)
     }
+    for (n <- rng.shuffle(nums)) {
+      hamt.remove(LongWr(n))
+      shadow = shadow.removed(n)
+      assert(hamt.getOrElse(n, null) eq null)
+      assertSameMaps(hamt, shadow)
+      assert(Either.catchOnly[IllegalArgumentException](hamt.update(Val(n))).isLeft)
+      assert(hamt.getOrElse(n, null) eq null)
+      assertSameMaps(hamt, shadow)
+    }
+    assertEquals(hamt.size, 0)
+    assertEquals(shadow.size, 0)
   }
 
   property("HAMT computeIfAbsent (default generator)") {
