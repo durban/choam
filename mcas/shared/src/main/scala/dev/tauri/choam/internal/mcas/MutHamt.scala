@@ -130,7 +130,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
   final def computeOrModify[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): Unit = {
     val sdb = this.visit(k, k.hash, tok, visitor, newValue = nullOf[V], modify = true, shift = 0)
     val sizeDiff = unpackSizeDiff(sdb)
-    _assert((sizeDiff == 0) || (sizeDiff == 1))
+    _assert((sizeDiff == 0) || (sizeDiff == 1) || ((sizeDiff == -1) && (visitor eq Hamt.tombingVisitor[Hamt.HasHash, Hamt.HasKey[Hamt.HasHash]])))
     this.addToSize(sizeDiff)
     this.isBlueTree &= unpackIsBlue(sdb)
   }
@@ -529,18 +529,31 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
   }
 
   private[this] final def packSizeDiffAndBlue(sizeDiff: Int, isBlue: Boolean): Int = {
-    _assert((sizeDiff == 0) || (sizeDiff == 1))
-    val bl = if (isBlue) 2 else 0
-    bl | sizeDiff
+    _assert((sizeDiff == 0) || (sizeDiff == 1) || (sizeDiff == -1))
+    val sd = sizeDiff + 1
+    val bl = if (isBlue) 4 else 0
+    bl | sd
+  }
+
+  private[mcas] final def packSizeDiffAndBlue_public(sizeDiff: Int, isBlue: Boolean): Int = {
+    packSizeDiffAndBlue(sizeDiff, isBlue)
   }
 
   @inline
   private[this] final def unpackSizeDiff(sdb: Int): Int = {
-    sdb & 1
+    (sdb & 3) - 1
+  }
+
+  private[mcas] final def unpackSizeDiff_public(sdb: Int): Int = {
+    unpackSizeDiff(sdb)
   }
 
   @inline
   private[this] final def unpackIsBlue(sdb: Int): Boolean = {
-    (sdb & 2) != 0
+    (sdb & 4) != 0
+  }
+
+  private[mcas] final def unpackIsBlue_public(sdb: Int): Boolean = {
+    unpackIsBlue(sdb)
   }
 }

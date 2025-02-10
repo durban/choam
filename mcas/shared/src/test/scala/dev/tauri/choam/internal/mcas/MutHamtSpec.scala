@@ -130,6 +130,22 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     }
   }
 
+  test("packSizeDiffAndBlue") {
+    val h = LongMutHamt.newEmpty()
+    val sds = List(-1, 0, 1)
+    val bs = List(true, false)
+    for {
+      sd <- sds
+      b <- bs
+    } {
+      val packed = h.packSizeDiffAndBlue_public(sd, b)
+      val usd = h.unpackSizeDiff_public(packed)
+      val ub = h.unpackIsBlue_public(packed)
+      assertEquals(usd, sd)
+      assertEquals(ub, b)
+    }
+  }
+
   test("HAMT examples (1)") {
     val c0 = 0x0L
     val c1 = 0x8000000000000000L
@@ -204,6 +220,34 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     assertEquals(h.getOrElse(c2, Val(42L)), Val(c2))
     assertEquals(h.getOrElse(c3, Val(42L)), Val(c3))
     assertEquals(h.getOrElse(c4, Val(42L)), Val(c4))
+    // removal:
+    h.remove(LongWr(c4))
+    assertEquals(h.size, 4)
+    assertEquals(h.toArray.toList, List(c0, c3, c2, c1).map(Val(_)))
+    assertEquals(h, h)
+    h.remove(LongWr(c4))
+    assertEquals(h.size, 4)
+    assertEquals(h.toArray.toList, List(c0, c3, c2, c1).map(Val(_)))
+    assertEquals(h, h)
+    h.remove(LongWr(c1))
+    assertEquals(h.size, 3)
+    assertEquals(h.toArray.toList, List(c0, c3, c2).map(Val(_)))
+    h.remove(LongWr(c2))
+    assertEquals(h.size, 2)
+    assertEquals(h.toArray.toList, List(c0, c3).map(Val(_)))
+    h.insert(Val(c1))
+    assertEquals(h.size, 3)
+    assertEquals(h.toArray.toList, List(c0, c3, c1).map(Val(_)))
+    h.insert(Val(c4))
+    assertEquals(h.size, 4)
+    assertEquals(h.toArray.toList, List(c0, c3, c4, c1).map(Val(_)))
+    h.remove(LongWr(c0))
+    assertEquals(h.size, 3)
+    assertEquals(h.toArray.toList, List(c3, c4, c1).map(Val(_)))
+    val svc1 = new SpecVal(c1)
+    h.update(svc1)
+    assertEquals(h.size, 3)
+    assertEquals(h.toArray.toList, List(Val(c3), Val(c4), svc1))
   }
 
   test("HAMT examples (2)") {
