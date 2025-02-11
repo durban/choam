@@ -657,13 +657,24 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     val lst = List(42L, 99L, 1024L, Long.MinValue, Long.MaxValue)
     var i = 0
     val hamt = LongMutHamt.newEmpty()
+    var toRemove = Set.empty[Long]
     while (i < N) {
-      hamt.upsert(Val(ThreadLocalRandom.current().nextLong()))
+      val n = ThreadLocalRandom.current().nextLong()
+      hamt.upsert(Val(n))
+      if ((i % 2) == 0) {
+        toRemove = toRemove + n
+      }
       i += 1
     }
     addAllMut(hamt, lst)
     for (n <- lst) {
       assertEquals(hamt.getOrElse(n, Val(0L)), Val(n))
+    }
+    for (r <- toRemove) {
+      hamt.remove(LongWr(r))
+    }
+    for (n <- lst) {
+      assertEquals(hamt.getOrElse(n, null), Val(n))
     }
   }
 
@@ -683,6 +694,45 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       // hamt2 should remain unmodified:
       assertEquals(hamt2.toArray.toList, hamtFromList(nums2.toList).toArray.toList)
       assertEquals(hamt2.size, nums2.size)
+    }
+  }
+
+  test("Merging HAMTs after removal (example)") {
+    val hamt1 = LongMutHamt.newEmpty()
+    hamt1.insert(Val(-30L))
+    hamt1.remove(LongWr(-30L))
+    assertEquals(hamt1.size, 0)
+    val hamt2 = LongMutHamt.newEmpty()
+    hamt2.insert(Val(-3L))
+    hamt2.insert(Val(-30L))
+    hamt2.remove(LongWr(-30L))
+    assertEquals(hamt2.size, 1)
+    hamt1.insertAllFrom(hamt2)
+    assertEquals(hamt1.size, 1)
+    assertEquals(hamt1.toArray.toList, List(Val(-3L)))
+  }
+
+  property("Merging HAMTs after removal") {
+    forAll { (seed: Long, nums1: Set[Long], _nums2: Set[Long], common: Set[Long]) =>
+      val rng = new Random(seed)
+      val nums2 = _nums2 -- nums1
+      val hamt1 = mutHamtFromList(rng.shuffle(nums1.toList ++ common.toList))
+      val hamt2 = mutHamtFromList(rng.shuffle(nums2.toList ++ common.toList))
+      for (r <- rng.shuffle(common.toList)) {
+        hamt1.remove(LongWr(r))
+      }
+      for (r <- rng.shuffle(common.toList)) {
+        hamt2.remove(LongWr(r))
+      }
+      hamt1.insertAllFrom(hamt2)
+      val expected = hamtFromList(
+        rng.shuffle(((nums1 union nums2) -- common).toList)
+      )
+      val expLst = expected.toArray.toList
+      val expSize = ((nums1 union nums2) -- common).size
+      assertEquals(expLst.size, expSize)
+      assertEquals(hamt1.size, expSize)
+      assertEquals(hamt1.toArray.toList, expLst)
     }
   }
 
@@ -727,16 +777,26 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       hamt2.update(new SpecVal(num)) // has identity equals
       val h2c = hamt2.##
       assertEquals(h2c, h2b)
+      hamt2.remove(LongWr(num))
+      assert(hamt1 == hamt2)
+      assert(hamt2 == hamt2)
+      assertEquals(hamt2.##, h2)
     }
   }
 
   test("HAMT toString") {
+    val v1 = 0x000000ffff000000L
+    val v2 = 0xffffff0000ffffffL
     val h = LongMutHamt.newEmpty()
     assertEquals(h.toString, "MutHamt()")
-    h.insert(Val(0x000000ffff000000L))
-    assertEquals(h.toString, "MutHamt(Val(1099494850560,fortytwo,true))")
-    h.insert(Val(0xffffff0000ffffffL))
-    assertEquals(h.toString, "MutHamt(Val(1099494850560,fortytwo,true), Val(-1099494850561,fortytwo,true))")
+    h.insert(Val(v1))
+    assertEquals(h.toString, s"MutHamt(Val($v1,fortytwo,true))")
+    h.insert(Val(v2))
+    assertEquals(h.toString, s"MutHamt(Val($v1,fortytwo,true), Val($v2,fortytwo,true))")
+    h.remove(LongWr(v1))
+    assertEquals(h.toString, s"MutHamt(Val($v2,fortytwo,true))")
+    h.remove(LongWr(v2))
+    assertEquals(h.toString, "MutHamt()")
   }
 
   property("forAll") {
