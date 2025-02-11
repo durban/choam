@@ -74,7 +74,8 @@ final class MutDescriptor private (
   }
 
   private[choam] final override def remove[A](ref: MemoryLocation[A]): AbstractDescriptor.Aux[MutDescriptor] = {
-    sys.error("TODO: MutDescriptor#remove")
+    this.map.remove(ref.cast[Any])
+    this
   }
 
   private[choam] final override def overwrite[A](desc: LogEntry[A]): AbstractDescriptor.Aux[MutDescriptor] = {
