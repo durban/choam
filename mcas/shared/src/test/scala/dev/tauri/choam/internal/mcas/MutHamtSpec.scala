@@ -943,7 +943,10 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     val it00 = h.valuesIterator
     assert(!it00.hasNext)
     assert(!it00.hasNext)
-    try it00.next() catch { case _: NoSuchElementException => () }
+    try {
+      it00.next()
+      fail("expected an exception")
+    } catch { case _: NoSuchElementException => () }
     val it01 = h.valuesIterator
     val it02 = h.valuesIterator
     assert(!it01.hasNext)
@@ -979,6 +982,39 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     assert(!it20.hasNext)
     assert(!it21.hasNext)
     assert(!it21.hasNext)
+    // removal:
+    h.remove(LongWr(c0))
+    val it30 = h.valuesIterator
+    val it31 = h.valuesIterator
+    assert(it30.hasNext)
+    assert(it31.hasNext)
+    assertEquals(it30.next(), Val(c1))
+    assert(!it30.hasNext)
+    assert(it31.hasNext)
+    assertEquals(it31.next(), Val(c1))
+    assert(!it30.hasNext)
+    assert(!it31.hasNext)
+    try {
+      it30.next()
+      fail("expected an exception")
+    } catch { case _: NoSuchElementException => () }
+    try {
+      it31.next()
+      fail("expected an exception")
+    } catch { case _: NoSuchElementException => () }
+    h.remove(LongWr(c1))
+    val it40 = h.valuesIterator
+    val it41 = h.valuesIterator
+    assert(!it40.hasNext)
+    assert(!it41.hasNext)
+    try {
+      it40.next()
+      fail("expected an exception")
+    } catch { case _: NoSuchElementException => () }
+    try {
+      it41.next()
+      fail("expected an exception")
+    } catch { case _: NoSuchElementException => () }
   }
 
   property("valuesIterator (default generator)") {
@@ -993,12 +1029,22 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     }
   }
 
-  private def testValuesIterator(seed: Long, nums: Set[Long]): Unit = {
+  private def testValuesIterator(seed: Long, _nums: Set[Long]): Unit = {
     val rng = new Random(seed)
-    val h = mutHamtFromList(rng.shuffle(nums.toList))
+    val nums = rng.shuffle(_nums.toList)
+    val h = mutHamtFromList(nums)
     val expected = h.toArray.toList
     val actual = h.valuesIterator.toList
     assertEquals(actual, expected)
+    // removal:
+    val toRemoveSize = Math.ceil(nums.size.toDouble / 2.0).toInt
+    val toRemove = nums.take(toRemoveSize)
+    toRemove.foreach { n => h.remove(LongWr(n)) }
+    assertEquals(h.size, nums.size - toRemoveSize)
+    val expected2 = h.toArray.toList
+    val actual2 = h.valuesIterator.toList
+    assertEquals(expected2.size, h.size)
+    assertEquals(actual2, expected2)
   }
 
   property("addToSize") {
