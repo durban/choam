@@ -803,10 +803,33 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     // the predicate in `LongMutHamt` is `>`
     forAll { (seed: Long, nums: Set[Long]) =>
       val rng = new Random(seed)
-      val hamt = mutHamtFromList(rng.shuffle(nums.toList.filter(_ > 42L)))
+      val nums1 = rng.shuffle(nums.toList.filter(_ > 42L))
+      val hamt = mutHamtFromList(nums1)
       assert(hamt.forAll(42L))
+      if (nums1.nonEmpty) {
+        hamt.remove(LongWr(nums1.head))
+        assert(hamt.forAll(42L))
+        hamt.insert(Val(nums1.head))
+      }
       hamt.upsert(Val(1024L))
       assert(!hamt.forAll(1024L))
+      if (nums1.nonEmpty) {
+        hamt.remove(LongWr(nums1.head))
+        assert(!hamt.forAll(1024L))
+        hamt.insert(Val(nums1.head))
+      }
+      hamt.remove(LongWr(1024L))
+      assert(hamt.forAll(42L))
+      val nums2 = rng.shuffle(nums.toList.filter(_ <= 42L)) match {
+        case Nil => List(42L)
+        case lst => lst
+      }
+      nums2.foreach { n => hamt.insert(Val(n)) }
+      assert(!hamt.forAll(42L))
+      if (nums1.nonEmpty) {
+        hamt.remove(LongWr(nums1.head))
+        assert(!hamt.forAll(42L))
+      }
     }
   }
 
@@ -837,6 +860,17 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       assert(hamt.copyToImmutable().definitelyBlue)
       assertEquals(hamt.size, size)
     }
+    for (n <- evenNums) {
+      hamt.remove(LongWr(n))
+      size -= 1
+      assert(hamt.definitelyBlue)
+      assertEquals(hamt.size, size)
+    }
+    assertEquals(hamt, LongMutHamt.newEmpty())
+    for (n <- evenNums) {
+      hamt.insert(Val(n, isBlue = true))
+      size += 1
+    }
     for (k <- oddNums) {
       hamt.insert(Val(k, isBlue = false))
       size += 1
@@ -857,6 +891,15 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     assert(hamt.copyToImmutable().definitelyBlue)
     // copying to an array also detects it:
     assertEquals(hamt.copyToArray((), flag = false, nullIfBlue = true), null)
+    // removing also doesn't change it:
+    for (k <- oddNums) {
+      hamt.remove(LongWr(k))
+      size -= 1
+      assertEquals(hamt.size, size)
+      if (size > 0) {
+        assert(!hamt.definitelyBlue)
+      }
+    }
   }
 
   property("copyToImmutable (default generator)") {
@@ -875,11 +918,22 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     val rng = new Random(seed)
     val nums1 = rng.shuffle(nums.toList)
     val mutable = mutHamtFromList(nums1)
-    val immutableExp = hamtFromList(rng.shuffle(nums1))
+    val nums2 = rng.shuffle(nums1)
+    val immutableExp = hamtFromList(nums2)
     val immutableAct = mutable.copyToImmutable()
     assertEquals(immutableAct, immutableExp)
     assertEquals(immutableAct.size, immutableExp.size)
     assertEquals(immutableAct.toArray.toList, immutableExp.toArray.toList)
+    // removal:
+    val toRemoveSize = Math.ceil(nums.size.toDouble / 2.0).toInt
+    val toRemoveMutable = nums1.take(toRemoveSize)
+    toRemoveMutable.foreach { n => mutable.remove(LongWr(n)) }
+    val toRemoveImmutable = rng.shuffle(toRemoveMutable)
+    val immutableExp2 = toRemoveImmutable.foldLeft(immutableExp) { (h, n) => h.removed(LongWr(n)) }
+    val immutableAct2 = mutable.copyToImmutable()
+    assertEquals(immutableAct2, immutableExp2)
+    assertEquals(immutableAct2.size, immutableExp2.size)
+    assertEquals(immutableAct2.toArray.toList, immutableExp2.toArray.toList)
   }
 
   test("valuesIterator examples") {

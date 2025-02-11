@@ -470,7 +470,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
           // TODO: we're also copying tombstones; we should probably do it in a smarter way (NB: prescan above)
           val v: V = value.asInstanceOf[V]
           bitmap |= (1L << logicalIdx(v.key.hash, shift = shift))
-          size += 1
+          size += (if (v.isTomb) 0 else 1)
           isBlueSubtree &= isBlueOrTomb(v)
           arr(arity) = value
           arity += 1
