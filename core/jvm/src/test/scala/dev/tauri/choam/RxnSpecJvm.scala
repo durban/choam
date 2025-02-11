@@ -252,6 +252,40 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("unsafe.unread should make a conflict disappear") {
+    def withoutUnread(r1: Ref[String], r2: Ref[String]): Axn[Int] = {
+      // without unread, this will sometimes retry if
+      // there is a concurrent change to `r1`, and will
+      // return `2`:
+      (r1.get *> r2.update(_ + "x").as(1)) + Axn.pure(2)
+    }
+    def withUnread(r1: Ref[String], r2: Ref[String]): Axn[Int] = {
+      // with unread, this must never retry, so must
+      // always return `1`:
+      (r1.get *> r2.update(_ + "x").as(1) <* Rxn.unsafe.unread(r1)) + Axn.pure(2)
+    }
+    def tst(withOrWithout: (Ref[String], Ref[String]) => Axn[Int]): F[Int] = for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("b").run[F]
+      r <- F.both(
+        withOrWithout(r1, r2).run[F], // txn1
+        r1.update(_ + "x").run[F], // txn2
+        // if txn1 unreads r1, then txn1 and
+        // txn2 are disjoint transactions
+      ).map(_._1)
+    } yield r
+    for {
+      _ <- assertResultF(tst(withoutUnread).replicateA(5000).map(_.toSet), Set(1, 2))
+      // MCAS impls other than EMCAS have a
+      // global-version-CAS, so the 2 txns
+      // are not really disjoint, so they
+      // can have a conflict even when
+      // using unread:
+      expWithUnread = if (this.isEmcas) Set(1) else Set(1, 2)
+      _ <- assertResultF(tst(withUnread).replicateA(5000).map(_.toSet), expWithUnread)
+    } yield ()
+  }
+
   test("unsafe.forceValidate (concurrent unrelated change)") {
     for {
       r1 <- Ref("a").run[F]
