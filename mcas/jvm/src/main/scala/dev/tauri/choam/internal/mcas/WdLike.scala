@@ -30,6 +30,9 @@ sealed trait WdLike[A] extends Hamt.HasKey[MemoryLocation[A]] {
 
   final override def key: MemoryLocation[A] =
     this.address
+
+  final override def isTomb: Boolean =
+    false
 }
 
 // TODO: this is duplicated on JS

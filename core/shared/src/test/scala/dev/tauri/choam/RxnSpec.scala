@@ -947,6 +947,43 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("unsafe.unread (empty log)") {
+    for {
+      r1 <- Ref("a").run[F]
+      _ <- assertResultF(Rxn.unsafe.unread(r1).run, ())
+    } yield ()
+  }
+
+  test("unsafe.unread (not in log)") {
+    for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("b").run[F]
+      _ <- assertResultF((r1.update(_ + "x") *> Rxn.unsafe.unread(r2)).run, ())
+      _ <- assertResultF(r1.get.run, "ax")
+      _ <- assertResultF(r2.get.run, "b")
+    } yield ()
+  }
+
+  test("unsafe.unread (read-only)") {
+    for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("b").run[F]
+      _ <- assertResultF((r1.get *> r2.update(_ + "x") *> Rxn.unsafe.unread(r1)).run, ())
+      _ <- assertResultF(r1.get.run, "a")
+      _ <- assertResultF(r2.get.run, "bx")
+    } yield ()
+  }
+
+  test("unsafe.unread (read-write => exception)") {
+    for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("b").run[F]
+      _ <- assertResultF((r1.get *> r2.update(_ + "x") *> Rxn.unsafe.unread(r2)).run.attempt.map(_.isLeft), true)
+      _ <- assertResultF(r1.get.run, "a")
+      _ <- assertResultF(r2.get.run, "b")
+    } yield ()
+  }
+
   // This tests an implementation detail,
   // because we depend on this implementation
   // detail in some of our tests:

@@ -80,6 +80,11 @@ final class Descriptor private (
     this.withLogMap(newMap)
   }
 
+  private[choam] final override def remove[A](ref: MemoryLocation[A]): Descriptor = {
+    val newMap = this.map.removed(ref.cast[Any])
+    this.withLogMap(newMap)
+  }
+
   private[choam] final override def overwrite[A](desc: LogEntry[A]): Descriptor = {
     require(desc.version <= this.validTs)
     val newMap = this.map.updated(desc.cast[Any])

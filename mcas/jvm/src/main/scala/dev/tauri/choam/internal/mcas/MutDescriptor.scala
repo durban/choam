@@ -73,6 +73,11 @@ final class MutDescriptor private (
     this
   }
 
+  private[choam] final override def remove[A](ref: MemoryLocation[A]): AbstractDescriptor.Aux[MutDescriptor] = {
+    this.map.remove(ref.cast[Any])
+    this
+  }
+
   private[choam] final override def overwrite[A](desc: LogEntry[A]): AbstractDescriptor.Aux[MutDescriptor] = {
     require(desc.version <= this.validTs)
     this.map.update(desc.cast[Any])

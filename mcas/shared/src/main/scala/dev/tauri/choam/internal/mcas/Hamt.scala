@@ -74,7 +74,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
 
   /**
    * Contains 1 bits in exactly the places where the imaginary 64-element
-   * sparse array has "something" (either a value or a sub-node).
+   * sparse array has "something" (either a value, a sub-node, or a tombstone).
    */
   private val bitmap: Long,
 
@@ -164,6 +164,10 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
     }
   }
 
+  final def removed(k: K): H = {
+    this.computeOrModify(k, null, Hamt.tombingVisitor[K, V])
+  }
+
   /**
    * Converts all values with `convertForArray`
    * (implemented in a subclass), and copies the
@@ -198,15 +202,14 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
 
   // @tailrec
   private final def lookupOrNull(hash: Long, shift: Int): V = {
-    this.getValueOrNodeOrNull(hash, shift) match {
+    this.getValueOrNodeOrNullOrTombstone(hash, shift) match {
       case null =>
         nullOf[V]
       case node: Hamt[_, _, _, _, _, _] =>
         node.lookupOrNull(hash, shift + W).asInstanceOf[V]
       case value =>
         val a = value.asInstanceOf[V]
-        val hashA = a.key.hash
-        if (hash == hashA) {
+        if ((!a.isTomb) && (hash == a.key.hash)) {
           a
         } else {
           nullOf[V]
@@ -214,7 +217,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
     }
   }
 
-  private[this] final def getValueOrNodeOrNull(hash: Long, shift: Int): AnyRef = {
+  private[this] final def getValueOrNodeOrNullOrTombstone(hash: Long, shift: Int): AnyRef = {
     val bitmap = this.bitmap
     if (bitmap != 0L) {
       val flag: Long = 1L << logicalIdx(hash, shift) // only 1 bit set, at the position in bitmap
@@ -233,16 +236,9 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
   }
 
   private final def visit[T](k: K, hash: Long, tok: T, visitor: Hamt.EntryVisitor[K, V, T], modify: Boolean, shift: Int): H = {
-    this.getValueOrNodeOrNull(hash, shift) match {
+    this.getValueOrNodeOrNullOrTombstone(hash, shift) match {
       case null =>
-        visitor.entryAbsent(k, tok) match {
-          case null =>
-            nullOf[H]
-          case newVal =>
-            _assert(newVal.key.hash == hash)
-            // TODO: this will compute physIdx again:
-            this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
-        }
+        this.visitEntryAbsent(k, hash, tok, visitor, shift = shift)
       case node: Hamt[_, _, _, _, _, _] =>
         node.asInstanceOf[H].visit(k, hash, tok, visitor, modify = modify, shift = shift + W) match {
           case null =>
@@ -250,7 +246,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
           case newNode =>
             val oldSize = this.size
             val newSize = oldSize + (newNode.size - node.size)
-            _assert((modify && ((newSize == oldSize) || (newSize == (oldSize + 1)))) || (newSize == (oldSize + 1)))
+            _assert((modify && ((newSize >= (oldSize - 1)) && (newSize <= (oldSize + 1)))) || (newSize == (oldSize + 1)))
             val bitmap = this.bitmap
             // TODO: we're computing physIdx twice:
             val physIdx: Int = physicalIdx(bitmap, 1L << logicalIdx(hash, shift))
@@ -260,28 +256,36 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
         val a = value.asInstanceOf[V]
         val hashA = a.key.hash
         if (hash == hashA) {
-          val newEntry = visitor.entryPresent(k, a, tok)
-          if (modify) {
-            if (equ(newEntry, a)) {
-              nullOf[H]
+          if (!a.isTomb) {
+            val newEntry = visitor.entryPresent(k, a, tok)
+            if (modify) {
+              if (equ(newEntry, a)) {
+                nullOf[H]
+              } else {
+                _assert(newEntry.key.hash == hashA)
+                this.insertOrOverwrite(hashA, newEntry, shift, op = OP_UPDATE)
+              }
             } else {
-              _assert(newEntry.key.hash == hashA)
-              this.insertOrOverwrite(hashA, newEntry, shift, op = OP_UPDATE)
+              _assert(equ(newEntry, a))
+              nullOf[H]
             }
           } else {
-            _assert(equ(newEntry, a))
-            nullOf[H]
+            this.visitEntryAbsent(k, hash, tok, visitor, shift = shift)
           }
         } else {
-          visitor.entryAbsent(k, tok) match {
-            case null =>
-              nullOf[H]
-            case newVal =>
-              _assert(newVal.key.hash == hash)
-              // TODO: this will compute physIdx again:
-              this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
-          }
+          this.visitEntryAbsent(k, hash, tok, visitor, shift = shift)
         }
+    }
+  }
+
+  private[this] final def visitEntryAbsent[T](k: K, hash: Long, tok: T, visitor: Hamt.EntryVisitor[K, V, T], shift: Int): H = {
+    visitor.entryAbsent(k, tok) match {
+      case null =>
+        nullOf[H]
+      case newVal =>
+        _assert(newVal.key.hash == hash)
+        // TODO: this will compute physIdx again:
+        this.insertOrOverwrite(hash, newVal, shift, op = OP_INSERT)
     }
   }
 
@@ -301,27 +305,37 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
               case newNode =>
                 this.withNode(this.size + (newNode.size - node.size), bitmap, newNode, physIdx)
             }
-          case ov =>
-            val oh = ov.asInstanceOf[V].key.hash
+          case ov => // or Tombstone
+            val ovv = ov.asInstanceOf[V]
+            val oh = ovv.key.hash
             if (hash == oh) {
-              if (op == OP_INSERT) {
-                throw new IllegalArgumentException
-              } else if (equ(ov, value)) {
-                nullOf[H]
+              if (ovv.isTomb) {
+                if (op == OP_UPDATE) {
+                  throw new IllegalArgumentException
+                }
               } else {
-                this.withValue(bitmap, value, physIdx)
+                if (op == OP_INSERT) {
+                  throw new IllegalArgumentException
+                }
+              }
+              // ok, checked for errors, now do the thing:
+              if (equ(ovv, value)) {
+                nullOf[H] // nothing to do
+              } else {
+                this.withValue(bitmap, oldValue = ovv, newValue = value, physIdx = physIdx)
               }
             } else {
               // hash collision at this level,
               // so we go down one level:
-              val childNode = {
+              val childNode1Size = if (ovv.isTomb) 0 else 1
+              val childNode1 = {
                 val cArr = new Array[AnyRef](1)
-                cArr(0) = ov
+                cArr(0) = ovv
                 val oFlag = 1L << logicalIdx(oh, shift + W)
-                this.newNode(sizeAndBlue = packSizeAndBlueInternal(1, isBlue(ov.asInstanceOf[V])), bitmap = oFlag, contents = cArr)
+                this.newNode(sizeAndBlue = packSizeAndBlueInternal(childNode1Size, isBlueOrTomb(ovv)), bitmap = oFlag, contents = cArr)
               }
-              val childNode2 = childNode.insertOrOverwrite(hash, value, shift + W, op)
-              this.withNode(this.size + (childNode2.size - 1), bitmap, childNode2, physIdx)
+              val childNode2 = childNode1.insertOrOverwrite(hash, value, shift + W, op)
+              this.withNode(this.size + (childNode2.size - childNode1Size), bitmap, childNode2, physIdx)
             }
         }
       } else {
@@ -333,8 +347,9 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
           val len = contents.length
           val newArr = new Array[AnyRef](len + 1)
           System.arraycopy(contents, 0, newArr, 0, physIdx)
-          newArr(physIdx) = box(value)
+          newArr(physIdx) = value
           System.arraycopy(contents, physIdx, newArr, physIdx + 1, len - physIdx)
+          _assert(!value.isTomb)
           this.newNode(
             sizeAndBlue = packSizeAndBlueInternal(this.size + 1, this.isBlueSubtree && isBlue(value)),
             bitmap = newBitmap,
@@ -348,26 +363,31 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
         throw new IllegalArgumentException
       } else {
         val newArr = new Array[AnyRef](1)
-        newArr(0) = box(value)
+        newArr(0) = value
+        _assert(!value.isTomb)
         this.newNode(packSizeAndBlueInternal(1, isBlue(value)), flag, newArr)
       }
     }
   }
 
-  protected override def equalsInternal(that: AbstractHamt[_, _, _, _, _, _]): Boolean = {
-    if (this.bitmap == that.asInstanceOf[H].bitmap) {
-      super.equalsInternal(that)
-    } else {
-      // fast path:
-      false
-    }
+  private[this] final def isBlueOrTomb(value: V): Boolean = {
+    value.isTomb || this.isBlue(value)
   }
 
-  private[this] final def withValue(bitmap: Long, value: V, physIdx: Int): H = {
+  private[this] final def withValue(bitmap: Long, oldValue: V, newValue: V, physIdx: Int): H = {
+    val sizeDiff = if (newValue.isTomb) {
+      // NB: we never overwrite a tombstone with a tombstone
+      _assert(!oldValue.isTomb)
+      -1
+    } else if (oldValue.isTomb) {
+      1
+    } else {
+      0
+    }
     this.newNode(
-      sizeAndBlue = packSizeAndBlueInternal(this.size, this.isBlueSubtree && isBlue(value)),
+      sizeAndBlue = packSizeAndBlueInternal(this.size + sizeDiff, this.isBlueSubtree && isBlueOrTomb(newValue)),
       bitmap = bitmap,
-      contents = arrReplacedValue(this.contents, box(value), physIdx),
+      contents = arrReplacedValue(this.contents, newValue, physIdx),
     )
   }
 
@@ -421,6 +441,7 @@ private[choam] object Hamt {
 
   trait HasKey[K <: HasHash] {
     def key: K
+    def isTomb: Boolean
   }
 
   trait HasHash {
@@ -430,5 +451,29 @@ private[choam] object Hamt {
   trait EntryVisitor[K, V, T] {
     def entryPresent(k: K, v: V, tok: T): V
     def entryAbsent(k: K, tok: T): V
+  }
+
+  private[this] final class Tombstone(final override val hash: Long)
+    extends HasKey[HasHash]
+    with HasHash {
+
+    final override def key: HasHash =
+      this
+
+    final override def isTomb: Boolean =
+      true
+  }
+
+  private[mcas] final def tombingVisitor[K <: HasHash, V <: HasKey[K]]: EntryVisitor[K, V, Any] = {
+    _tombingVisitor.asInstanceOf[EntryVisitor[K, V, Any]]
+  }
+
+  private[this] val _tombingVisitor: EntryVisitor[HasHash, HasKey[HasHash], Any] = {
+    new EntryVisitor[HasHash, HasKey[HasHash], Any] {
+      final override def entryPresent(k: HasHash, v: HasKey[HasHash], tok: Any): HasKey[HasHash] =
+        new Tombstone(k.hash)
+      final override def entryAbsent(k: HasHash, tok: Any): HasKey[HasHash] =
+        null // OK, nothing to delete
+    }
   }
 }
