@@ -253,6 +253,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
   }
 
   test("unsafe.unread should make a conflict disappear") {
+    val N = 10000
     def withoutUnread(r1: Ref[String], r2: Ref[String]): Axn[Int] = {
       // without unread, this will sometimes retry if
       // there is a concurrent change to `r1`, and will
@@ -275,14 +276,14 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ).map(_._1)
     } yield r
     for {
-      _ <- assertResultF(tst(withoutUnread).replicateA(5000).map(_.toSet), Set(1, 2))
+      _ <- assertResultF(tst(withoutUnread).replicateA(N).map(_.toSet), Set(1, 2))
       // MCAS impls other than EMCAS have a
       // global-version-CAS, so the 2 txns
       // are not really disjoint, so they
       // can have a conflict even when
       // using unread:
       expWithUnread = if (this.isEmcas) Set(1) else Set(1, 2)
-      _ <- assertResultF(tst(withUnread).replicateA(5000).map(_.toSet), expWithUnread)
+      _ <- assertResultF(tst(withUnread).replicateA(N).map(_.toSet), expWithUnread)
     } yield ()
   }
 
