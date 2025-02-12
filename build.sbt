@@ -756,8 +756,7 @@ lazy val commonSettings = Seq[Setting[_]](
       List(
         "-Xverify",
         "-Wconf:any:warning-verbose",
-        "-opt:l:inline",
-        "-opt-inline-from:<sources>",
+        "-opt:inline:<sources>",
         "-Wperformance",
         "-Xsource:3-cross",
         "-Wnonunit-statement",
