@@ -287,6 +287,22 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("read, then unsafe.unread, then 2 reads (only last 2 must be consistent)") {
+    val t = for {
+      r1 <- Ref(0).run[F]
+      r <- F.both(
+        F.cede *> r1.get.flatMapF { v0 =>
+          Rxn.unsafe.unread(r1) *> r1.get.flatMapF { v1 =>
+            r1.get.map { v2 => (v0, v1, v2) }
+          }
+        }.run,
+        F.cede *> r1.update(_ + 1).run *> r1.update(_ + 1).run,
+      ).map(_._1)
+      _ <- assertEqualsF(r._2, r._3) // r._1 is allowed to be different
+    } yield ()
+    t.replicateA_(20000)
+  }
+
   test("unsafe.forceValidate (concurrent unrelated change)") {
     for {
       r1 <- Ref("a").run[F]
