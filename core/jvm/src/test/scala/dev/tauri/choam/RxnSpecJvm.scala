@@ -269,8 +269,8 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       r1 <- Ref("a").run[F]
       r2 <- Ref("b").run[F]
       r <- F.both(
-        withOrWithout(r1, r2).run[F], // txn1
-        r1.update(_ + "x").run[F], // txn2
+        F.cede *> withOrWithout(r1, r2).run[F], // txn1
+        F.cede *> r1.update(_ + "x").run[F], // txn2
         // if txn1 unreads r1, then txn1 and
         // txn2 are disjoint transactions
       ).map(_._1)
