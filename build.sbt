@@ -758,8 +758,7 @@ lazy val commonSettings = Seq[Setting[_]](
       List(
         "-Xverify",
         "-Wconf:any:warning-verbose",
-        "-opt:l:inline",
-        "-opt-inline-from:<sources>",
+        "-opt:inline:<sources>",
         "-Wperformance",
         "-Xsource:3-cross",
         "-Wnonunit-statement",
@@ -908,7 +907,7 @@ lazy val dependencies = new {
   val jolVersion = "0.17" // https://github.com/openjdk/jol
   val scalaJsLocaleVersion = "1.5.4" // https://github.com/cquiroz/scala-java-locales
   val scalaJsTimeVersion = "2.6.0" // https://github.com/cquiroz/scala-java-time
-  val zioVersion = "2.1.14" // https://github.com/zio/zio
+  val zioVersion = "2.1.15" // https://github.com/zio/zio
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
   val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
