@@ -25,6 +25,7 @@ import stm.Transactive
 
 /**
  * Mixin for convenient access to a `Transactive[Task]`
+ * instance
  *
  * This trait is intended to be mixed into
  * an object extending [[zio.ZIOApp]].
@@ -34,6 +35,11 @@ import stm.Transactive
  * are never released. Thus, use only if the
  * `Transactive` is needed for the duration of
  * the whole `ZIOApp` program.
+ *
+ * @see [[dev.tauri.choam.stm.Transactive#forAsyncRes]]
+ *      for more control over resource acquisition and release,
+ *      and for any generic `F[_]` with a [[cats.effect.kernel.Async]]
+ *      instance.
  */
 trait TxnAppMixin extends BaseMixin { this: ZIOApp =>
 

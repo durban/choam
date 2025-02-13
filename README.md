@@ -76,10 +76,6 @@ object MyMain extends IOApp.Simple with RxnAppMixin {
 }
 ```
 
-For more control over initializing (and closing) the runtime,
-see `dev.tauri.choam.Reactive.forSyncRes` (in the `choam-core`
-module), which returns a `cats.effect.Resource`.
-
 ## Modules
 
 - [`choam-core`](core/shared/src/main/scala/dev/tauri/choam/):

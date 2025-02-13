@@ -24,6 +24,7 @@ import async.AsyncReactive
 
 /**
  * Mixin for convenient access to an `AsyncReactive[IO]`
+ * instance
  *
  * This trait is intended to be mixed into
  * an object extending [[cats.effect.IOApp]].
@@ -33,6 +34,14 @@ import async.AsyncReactive
  * are never released. Thus, use only if the
  * `AsyncReactive` is needed for the duration of
  * the whole `IOApp` program.
+ *
+ * @see [[dev.tauri.choam.async.AsyncReactive#forAsyncRes]]
+ *      for more control over resource acquisition and release,
+ *      and for any generic `F[_]` with a [[cats.effect.kernel.Async]]
+ *      instance.
+ * @see [[dev.tauri.choam.core.Reactive#forSyncRes]] for a
+ *      version which only requires a [[cats.effect.kernel.Sync]]
+ *      instance.
  */
 trait RxnAppMixin extends BaseMixin { this: IOApp =>
 
