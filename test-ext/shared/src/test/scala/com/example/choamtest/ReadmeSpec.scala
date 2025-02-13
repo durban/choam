@@ -21,26 +21,28 @@ import dev.tauri.choam.BaseSpec
 
 final class ReadmeSpec extends BaseSpec {
 
-  test("Example in README.md") {
-    import dev.tauri.choam.{ Ref, Rxn }
+  ////////////////////////////////
+  import dev.tauri.choam.{ Ref, Rxn }
 
-    def incrBoth(x: Ref[Int], y: Ref[Int]): Rxn[Any, Unit] = {
-      x.update(_ + 1) *> y.update(_ + 1)
-    }
+  def incrBoth(x: Ref[Int], y: Ref[Int]): Rxn[Any, Unit] = {
+    x.update(_ + 1) *> y.update(_ + 1)
+  }
+  ////////////////////////////////
+  import cats.effect.{ IO, IOApp }
+  import dev.tauri.choam.ce.RxnAppMixin
 
-    import cats.effect.IO
-    import dev.tauri.choam.Reactive
-
-    def myTask(implicit r: Reactive[IO]): IO[Unit] = for {
+  object MyMain extends IOApp.Simple with RxnAppMixin {
+    override def run: IO[Unit] = for {
       // create two refs:
       x <- Ref(0).run[IO]
       y <- Ref(42).run[IO]
       // increment their values atomically:
       _ <- incrBoth(x, y).run[IO]
     } yield ()
+  }
+  ////////////////////////////////
 
-    Reactive.forSyncRes[IO].use { implicit r =>
-      myTask
-    }
+  test("Example in README.md") {
+    MyMain.run
   }
 }

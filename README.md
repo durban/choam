@@ -58,24 +58,27 @@ def incrBoth(x: Ref[Int], y: Ref[Int]): Rxn[Any, Unit] = {
 }
 ```
 
-It can be executed with (for example) Cats Effect like this:
+It can be executed with (for example) Cats Effect IO like this
+(the `choam-ce` module is also needed):
 
 ```scala
-import cats.effect.IO
-import dev.tauri.choam.Reactive
+import cats.effect.{ IO, IOApp }
+import dev.tauri.choam.ce.RxnAppMixin
 
-def myTask(implicit r: Reactive[IO]): IO[Unit] = for {
-  // create two refs:
-  x <- Ref(0).run[IO]
-  y <- Ref(42).run[IO]
-  // increment their values atomically:
-  _ <- incrBoth(x, y).run[IO]
-} yield ()
-
-Reactive.forSyncRes[IO].use { implicit r =>
-  myTask
+object MyMain extends IOApp.Simple with RxnAppMixin {
+  override def run: IO[Unit] = for {
+    // create two refs:
+    x <- Ref(0).run[IO]
+    y <- Ref(42).run[IO]
+    // increment their values atomically:
+    _ <- incrBoth(x, y).run[IO]
+  } yield ()
 }
 ```
+
+For more control over initializing (and closing) the runtime,
+see `dev.tauri.choam.Reactive.forSyncRes` (in the `choam-core`
+module), which returns a `cats.effect.Resource`.
 
 ## Modules
 

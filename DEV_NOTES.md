@@ -30,7 +30,12 @@ These are the "regular" versions, e.g., `0.4.0` or `0.4.0-RC1`.
 1. Push any new commits.
 1. Wait for CI to become green.
 1. Tag the release (e.g., `git tag -s "v1.2.3"`), but don't push the new tag.
-1. In `sbt`, call `release` (requires Sonatype credentials).
+1. Start `sbt`, and:
+   - `clean`
+   - `;staticAnalysis;++3.3.5;staticAnalysis` (precompile seems to help publish faster)
+   - `exit`
+1. In a new `sbt` shell:
+   - `release` (this step requires Sonatype credentials)
 1. If everything looks right, push the new tag (`git push --tags`).
 1. Create a "release" on github for the new tag.
 
