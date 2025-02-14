@@ -53,7 +53,7 @@ sealed trait Ref[A] extends RefLike[A] { this: MemoryLocation[A] with core.RefGe
   final def unsafeTicketRead: Axn[Rxn.unsafe.Ticket[A]] =
     Rxn.unsafe.ticketRead(this)
 
-  final def unsafeCas(ov: A, nv: A): Axn[Unit] =
+  private[choam] final def unsafeCas(ov: A, nv: A): Axn[Unit] =
     Rxn.unsafe.cas(this, ov, nv)
 
   final override def toCats[F[_]](implicit F: core.Reactive[F]): CatsRef[F, A] =
