@@ -207,7 +207,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - using APIs which are non-public in Scala (even though some of these are public in the bytecode);
   - inheriting `sealed` classes/traits (even though this may not be enforced by the bytecode);
   - using `*.internal.*` packages (e.g., `dev.tauri.choam.internal.mcas`);
-  - using `unsafe*` APIs (e.g., `Rxn.unsafe.retry` or `Ref#unsafeCas`).
+  - using `unsafe*` APIs (e.g., `Rxn.unsafe.retry`).
 - There is no backwards compatibility for these modules:
   - `choam-stm`
   - `choam-ce`
