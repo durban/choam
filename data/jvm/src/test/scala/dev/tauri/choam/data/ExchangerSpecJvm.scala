@@ -42,6 +42,7 @@ final class ExchangerSpecJvm_Emcas_IO
   with SpecEmcas
   with ExchangerSpecJvm[IO]
 
+@nowarn("cat=deprecation")
 trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   final val iterations = 8

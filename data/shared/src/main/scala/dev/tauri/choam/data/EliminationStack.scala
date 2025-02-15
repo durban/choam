@@ -21,6 +21,7 @@ package data
 import core.Exchanger
 
 // Note: this logic is duplicated below in `DebugStackImpl`
+@nowarn("cat=deprecation")
 private final class EliminationStack[A] private (
   primary: TreiberStack[A],
   elimination: Exchanger[Unit, A],
@@ -36,6 +37,7 @@ private final class EliminationStack[A] private (
     primary.size
 }
 
+@nowarn("cat=deprecation")
 private object EliminationStack {
 
   def apply[A](str: Ref.AllocationStrategy): Axn[Stack[A]] = {

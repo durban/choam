@@ -20,12 +20,14 @@ package core
 
 import java.util.concurrent.atomic.LongAdder
 
+@deprecated("Exchanger will be removed; use Eliminator instead", since = "0.4.12")
 sealed trait Exchanger[A, B] {
   def exchange: Rxn[A, B]
   def dual: Exchanger[B, A]
   private[core] def key: Exchanger.Key
 }
 
+@deprecated("Exchanger will be removed; use Eliminator instead", since = "0.4.12")
 private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: should be private[core]
 
   private[core] def apply[A, B]: Axn[Exchanger[A, B]] =

@@ -27,6 +27,7 @@ final class NullMcasRxnSpecIO
   with NullMcasRxnSpec[IO]
   with SpecNullMcas
 
+@nowarn("cat=deprecation")
 trait NullMcasRxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: SpecNullMcas =>
 
   test("NullMcas must be able to run a create-only Rxn") {

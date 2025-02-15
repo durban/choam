@@ -533,9 +533,11 @@ object Rxn extends RxnInstances0 {
     private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       this.delayContext(uf).flatten // TODO: optimize
 
+    @deprecated("Rxn.unsafe.exchanger will be removed; use Eliminator instead", since = "0.4.12")
     final def exchanger[A, B]: Axn[Exchanger[A, B]] = // TODO:0.5: make it private
       Exchanger.apply[A, B]
 
+    @nowarn("cat=deprecation")
     private[choam] final def exchange[A, B](ex: Exchanger[A, B]): Rxn[A, B] =
       ex.exchange
 
@@ -1130,6 +1132,7 @@ object Rxn extends RxnInstances0 {
     private[this] var _exParams: Exchanger.Params =
       null
 
+    @nowarn("cat=deprecation")
     private[this] final def exParams: Exchanger.Params = {
       val ep = this._exParams
       if (ep eq null) {
@@ -1699,7 +1702,7 @@ object Rxn extends RxnInstances0 {
             desc = this.descImm, // TODO: could we just call `toImmutable`?
             postCommit = pc.takeSnapshot(),
             exchangerData = stats,
-          )
+          ) : @nowarn("cat=deprecation")
           c.exchanger.tryExchange(msg = msg, params = exParams, ctx = ctx) match {
             case Left(newStats) =>
               _stats = newStats

@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray
 import internal.mcas.Mcas
 import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx, Params }
 
+@nowarn("cat=deprecation")
 private sealed trait ExchangerImplJvm[A, B]
   extends Exchanger.UnsealedExchanger[A, B] {
 
@@ -294,6 +295,7 @@ private final class DualExchangerImplJvm[A, B](
     dual.initializeIfNeeded(!retInc)
 }
 
+@nowarn("cat=deprecation")
 private final class PrimaryExchangerImplJvm[A, B] private[core] (
 ) extends PrimaryExchangerImplJvmBase
   with ExchangerImplJvm[A, B] {
@@ -337,6 +339,7 @@ private final class PrimaryExchangerImplJvm[A, B] private[core] (
 
 private object ExchangerImplJvm {
 
+  @nowarn("cat=deprecation")
   private[core] def unsafe[A, B]: Exchanger[A, B] = {
     new PrimaryExchangerImplJvm[A, B]()
   }
