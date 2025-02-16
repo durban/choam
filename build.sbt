@@ -311,6 +311,10 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.core.RetryStrategy.isDebug"), // sealed
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.MinimalRandom.unsafe1"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.MinimalRandom.unsafe2"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.refs.Ref.unsafe"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.refs.Ref.unsafeArray"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.refs.Ref.unsafePadded"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.refs.Ref.unsafeUnpadded"), // private
     ),
   ).jvmSettings(
     mimaBinaryIssueFilters ++= Seq(
