@@ -21,16 +21,16 @@ package refs
 final class Ref2SpecP1P1 extends Ref2Spec {
 
   override def mkRef2[A, B](a: A, b: B): Ref2[A, B] =
-    Ref2.unsafeP1P1(a, b)
+    Ref2.p1p1(a, b).unsafeRun(this.mcasImpl)
 }
 
 final class Ref2SpecP2 extends Ref2Spec {
 
   override def mkRef2[A, B](a: A, b: B): Ref2[A, B] =
-    Ref2.unsafeP2(a, b)
+    Ref2.p2(a, b).unsafeRun(this.mcasImpl)
 }
 
-abstract class Ref2Spec extends BaseSpec {
+abstract class Ref2Spec extends BaseSpec with SpecDefaultMcas {
 
   def mkRef2[A, B](a: A, b: B): Ref2[A, B]
 

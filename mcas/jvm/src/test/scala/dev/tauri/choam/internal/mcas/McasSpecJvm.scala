@@ -35,8 +35,8 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
 
   test("readIntoLog should work (version conflict)") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("a")
-    val r2 = MemoryLocation.unsafe("b")
+    val r1 = MemoryLocation.unsafeUnpadded("a", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded("b", this.rigInstance)
     val d0 = ctx.start()
     // read from r1 (not in the log):
     val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
@@ -96,8 +96,8 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
 
   test("readIntoLog should work (real conflict)") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("a")
-    val r2 = MemoryLocation.unsafe("b")
+    val r1 = MemoryLocation.unsafeUnpadded("a", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded("b", this.rigInstance)
     val d0 = ctx.start()
     // read from r1 (not in the log):
     val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
@@ -137,8 +137,8 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
 
   test("tryPerform2 should work (read-only, concurrent commit)") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("a")
-    val r2 = MemoryLocation.unsafe("b")
+    val r1 = MemoryLocation.unsafeUnpadded("a", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded("b", this.rigInstance)
     val d0 = ctx.start()
     val startTs = d0.validTs
     // read both:
@@ -174,9 +174,9 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
 
   test("tryPerform2 should work (read-write, concurrent commit)") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("a")
-    val r2 = MemoryLocation.unsafe("b")
-    val r3 = MemoryLocation.unsafe("c")
+    val r1 = MemoryLocation.unsafeUnpadded("a", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded("b", this.rigInstance)
+    val r3 = MemoryLocation.unsafeUnpadded("c", this.rigInstance)
     val d0 = ctx.start()
     val startTs = d0.validTs
     val v1 = ctx.readVersion(r1)
@@ -235,8 +235,8 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
 
   test("Merging must detect if the logs are inconsistent") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("a")
-    val r2 = MemoryLocation.unsafe("b")
+    val r1 = MemoryLocation.unsafeUnpadded("a", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded("b", this.rigInstance)
     val d0 = ctx.start()
     val startTs = d0.validTs
     // one side:
@@ -269,8 +269,8 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
 
   test("CommitTs ref must be the first (JVM)") {
     assume(!this.isEmcas)
-    val r1 = MemoryLocation.unsafe[String]("foo")
-    val r2 = MemoryLocation.unsafe[String]("bar")
+    val r1 = MemoryLocation.unsafeUnpadded[String]("foo", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded[String]("bar", this.rigInstance)
     val ctx = this.mcasImpl.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")

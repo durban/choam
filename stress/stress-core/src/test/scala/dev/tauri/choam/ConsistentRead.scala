@@ -32,10 +32,10 @@ import org.openjdk.jcstress.infra.results.LL_Result
 class ConsistentRead extends StressTestBase {
 
   private[this] val ref1 =
-    Ref.unsafe("-")
+    Ref.unsafePadded("-", this.rig)
 
   private[this] val ref2 =
-    Ref.unsafe("y")
+    Ref.unsafePadded("y", this.rig)
 
   private[this] val upd: Axn[Unit] =
     ref1.update(_ + "1") >>> ref2.update(_ + "1")

@@ -36,10 +36,10 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 class ZombieTest extends StressTestBase {
 
   private[this] val ref1 =
-    Ref.unsafe("a")
+    Ref.unsafePadded("a", this.rig)
 
   private[this] val ref2 =
-    Ref.unsafe("a")
+    Ref.unsafePadded("a", this.rig)
 
   // a 2-CAS, setting both atomically "a" -> "b":
   private[this] val upd: Axn[Unit] =

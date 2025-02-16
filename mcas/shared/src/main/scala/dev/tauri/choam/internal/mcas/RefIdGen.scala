@@ -71,8 +71,14 @@ private[choam] sealed trait RefIdGen {
 
 private[choam] object RefIdGen {
 
-  val global: GlobalRefIdGen = // TODO: instead of this, have a proper acq/rel Runtime
+  private[mcas] final def newGlobal(): GlobalRefIdGen = {
     new GlobalRefIdGen
+  }
+
+  /** Only for testing! */
+  private[choam] final def newGlobal_public(): GlobalRefIdGen = {
+    newGlobal()
+  }
 
   /** The computed ID must've been already allocated in a block! */
   final def compute(base: Long, offset: Int): Long = {

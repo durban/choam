@@ -53,7 +53,7 @@ object JolSpec {
   ).union(id47)
 }
 
-class JolSpec extends BaseSpec {
+final class JolSpec extends BaseSpec with SpecDefaultMcas {
 
   import JolSpec.targetSize
 
@@ -89,8 +89,8 @@ class JolSpec extends BaseSpec {
     assumeOpenJdk()
     assumeNotMac()
     val refs = List[MemoryLocation[String]](
-      Ref.unsafe("foo").loc,
-      MemoryLocation.unsafePadded("foo"),
+      Ref.unsafePadded("foo", this.rigInstance).loc,
+      MemoryLocation.unsafePadded("foo", this.rigInstance),
     )
     for (ref <- refs) {
       val (left, right) = getLeftRightPaddedSize(ref)
@@ -102,8 +102,8 @@ class JolSpec extends BaseSpec {
     assumeOpenJdk()
     assumeNotMac()
     val refs = List[MemoryLocation[String]](
-      Ref.unsafeUnpadded("bar").loc,
-      MemoryLocation.unsafeUnpadded("bar"),
+      Ref.unsafeUnpadded("bar", this.rigInstance).loc,
+      MemoryLocation.unsafeUnpadded("bar", this.rigInstance),
     )
     for (ref <- refs) {
       assert(clue(ClassLayout.parseInstance(ref).instanceSize()) < targetSize)
@@ -113,7 +113,7 @@ class JolSpec extends BaseSpec {
   test("Ref2 P1P1 should be double-padded") {
     assumeOpenJdk()
     assumeNotMac()
-    val ref: Ref2[_, _] = Ref2.unsafeP1P1[String, Object]("bar", new AnyRef)
+    val ref: Ref2[_, _] = Ref2.p1p1[String, Object]("bar", new AnyRef).unsafeRun(this.mcasImpl)
     val (left1, _) = getLeftRightPaddedSize(ref, JolSpec.fieldNamesA)
     val (left2, _) = getLeftRightPaddedSize(ref, JolSpec.fieldNamesB)
     assert(clue(left2) >= (clue(left1) + 256))

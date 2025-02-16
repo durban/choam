@@ -32,7 +32,7 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 class MultipleWriteInRxn extends StressTestBase {
 
   private[this] val ref: Ref[String] =
-    Ref.unsafe("a")
+    Ref.unsafePadded("a", this.rig)
 
   private[this] val write: Axn[String] =
     ref.update(_ => "b") >>> ref.modify(b => ("c", b))

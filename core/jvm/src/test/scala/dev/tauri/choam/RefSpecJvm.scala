@@ -70,11 +70,12 @@ trait RefLikeSpecJvm[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     val p1p1 = Ref.refP1P1("a", "a").unsafeRun(this.mcasImpl)
     val p2 = Ref.refP2("a", "a").unsafeRun(this.mcasImpl)
     val arr = Ref.array(size = 3, initial = "a").unsafeRun(this.mcasImpl)
+    val rig = this.mcasImpl.currentContext().refIdGen
     val refs = List[MemoryLocation[String]](
-      MemoryLocation.unsafePadded("a"),
-      MemoryLocation.unsafeUnpadded("a"),
-      Ref.unsafePadded("a").loc,
-      Ref.unsafeUnpadded("a").loc,
+      MemoryLocation.unsafePadded("a", rig),
+      MemoryLocation.unsafeUnpadded("a", rig),
+      Ref.unsafePadded("a", rig).loc,
+      Ref.unsafeUnpadded("a", rig).loc,
       p1p1._1.loc,
       p1p1._2.loc,
       p2._1.loc,

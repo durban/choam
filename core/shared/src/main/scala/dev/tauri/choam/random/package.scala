@@ -31,7 +31,7 @@ package object random {
     new SecureRandomRxn
 
   @deprecated("Don't use secureRandomWrapper, because it may block", since = "0.4")
-  private[choam] final def secureRandomWrapper: Axn[SecureRandom[Axn]] =
+  private[choam] final def secureRandomWrapper: Axn[SecureRandom[Axn]] = // TODO:0.5: remove
     Axn.unsafe.delay { SecureRandomWrapper.unsafe() }
 
   private[choam] final def deterministicRandom(initialSeed: Long): Axn[SplittableRandom[Axn]] =
@@ -39,9 +39,9 @@ package object random {
 
   // TODO: do we need this?
   private[choam] def minimalRandom1(initialSeed: Long): Axn[Random[Axn]] =
-    Axn.unsafe.delay { MinimalRandom.unsafe1(initialSeed) }
+    Axn.unsafe.delayContext { ctx => MinimalRandom.unsafe1(initialSeed, ctx.refIdGen) }
 
   // TODO: do we need this?
   private[choam] def minimalRandom2(initialSeed: Long): Axn[Random[Axn]] =
-    Axn.unsafe.delay { MinimalRandom.unsafe2(initialSeed) }
+    Axn.unsafe.delayContext { ctx => MinimalRandom.unsafe2(initialSeed, ctx.refIdGen) }
 }

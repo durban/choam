@@ -34,10 +34,10 @@ import org.openjdk.jcstress.infra.results.LLZ_Result
 class DirectReadTest extends StressTestBase {
 
   private[this] val ref1: Ref[String] =
-    Ref.unsafe("a")
+    Ref.unsafePadded("a", this.rig)
 
   private[this] val ref2: Ref[String] =
-    Ref.unsafe("x")
+    Ref.unsafePadded("x", this.rig)
 
   private[this] val read1: Axn[String] =
     ref1.unsafeDirectRead

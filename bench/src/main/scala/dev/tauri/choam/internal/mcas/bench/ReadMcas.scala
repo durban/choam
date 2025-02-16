@@ -23,7 +23,7 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import _root_.dev.tauri.choam.bench.util.McasImplState
+import _root_.dev.tauri.choam.bench.util.{ McasImplStateBase, McasImplState, RandomState }
 
 /**
  * Benchmark for reading with different MCAS implementations.
@@ -45,9 +45,9 @@ class ReadMcas {
 
   @Benchmark
   @Group("ReadMcas")
-  def change(s: RefSt, t: ThSt): Unit = {
-    val next1 = t.nextString()
-    val next2 = t.nextString()
+  def change(s: RefSt, t: ThSt, rnd: RandomState): Unit = {
+    val next1 = rnd.nextString()
+    val next2 = rnd.nextString()
     val success = {
       val d0: AbstractDescriptor = t.mcasCtx.start()
       val Some((_, d1: AbstractDescriptor)) = t.mcasCtx.readMaybeFromLog(s.ref1, d0) : @unchecked
@@ -70,9 +70,9 @@ object ReadMcas {
   final val tokens = 4096L
 
   @State(Scope.Benchmark)
-  class RefSt {
-    val ref1: MemoryLocation[String] = Ref.unsafe("1").loc
-    val ref2: MemoryLocation[String] = Ref.unsafe("2").loc
+  class RefSt extends McasImplStateBase {
+    val ref1: MemoryLocation[String] = Ref.unsafePadded("1", this.mcasImpl.currentContext().refIdGen).loc
+    val ref2: MemoryLocation[String] = Ref.unsafePadded("2", this.mcasImpl.currentContext().refIdGen).loc
   }
 
   @State(Scope.Thread)

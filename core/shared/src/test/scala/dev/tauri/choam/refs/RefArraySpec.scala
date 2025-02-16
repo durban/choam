@@ -24,30 +24,31 @@ import cats.syntax.all._
 
 import munit.Location
 
+import internal.mcas.Mcas
 import internal.mcas.RefIdGenBase.GAMMA
 
 final class RefArraySpec_Strict extends RefArraySpecIds {
 
-  final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
-    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false))
+  final override def mkRefArray[A](a: A, size: Int, ctx: Mcas.ThreadContext): Ref.Array[A] =
+    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false), rig = ctx.refIdGen)
 }
 
 final class RefArraySpec_Lazy extends RefArraySpecIds {
 
-  final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
-    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false))
+  final override def mkRefArray[A](a: A, size: Int, ctx: Mcas.ThreadContext): Ref.Array[A] =
+    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false), rig = ctx.refIdGen)
 }
 
 final class RefArraySpec_StrictArrayOfRefs extends RefArraySpec {
 
-  final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
-    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false))
+  final override def mkRefArray[A](a: A, size: Int, ctx: Mcas.ThreadContext): Ref.Array[A] =
+    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false), rig = ctx.refIdGen)
 }
 
 final class RefArraySpec_LazyArrayOfRefs extends RefArraySpec {
 
-  final override def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
-    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false))
+  final override def mkRefArray[A](a: A, size: Int, ctx: Mcas.ThreadContext): Ref.Array[A] =
+    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false), rig = ctx.refIdGen)
 }
 
 trait RefArraySpecIds extends RefArraySpec {
@@ -89,11 +90,14 @@ trait RefArraySpecIds extends RefArraySpec {
   }
 }
 
-trait RefArraySpec extends BaseSpec {
+trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
 
   final val N = 4
 
-  def mkRefArray[A](a: A, size: Int = N): Ref.Array[A]
+  def mkRefArray[A](a: A, size: Int, ctx: Mcas.ThreadContext): Ref.Array[A]
+
+  final def mkRefArray[A](a: A, size: Int = N): Ref.Array[A] =
+    this.mkRefArray(a, size, ctx = this.mcasImpl.currentContext())
 
   test("array creation") {
     val str0 = Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false)
@@ -114,8 +118,8 @@ trait RefArraySpec extends BaseSpec {
     assert(Either.catchOnly[IllegalArgumentException] {
       Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = true) // 7
     }.isLeft)
-    assert(Ref.unsafeArray(N, "", Ref.Array.AllocationStrategy.SparseFlat).isInstanceOf[SparseRefArray[_]])
-    assert(Ref.unsafeArray(N, "", Ref.Array.AllocationStrategy.Default).isInstanceOf[StrictRefArray[_]])
+    assert(Ref.unsafeArray(N, "", Ref.Array.AllocationStrategy.SparseFlat, this.mcasImpl.currentContext().refIdGen).isInstanceOf[SparseRefArray[_]])
+    assert(Ref.unsafeArray(N, "", Ref.Array.AllocationStrategy.Default, this.mcasImpl.currentContext().refIdGen).isInstanceOf[StrictRefArray[_]])
   }
 
   test("empty array") {

@@ -21,18 +21,18 @@ package rxn
 
 import org.openjdk.jmh.annotations._
 
-import internal.mcas.RefIdGen
+import internal.mcas.{ RefIdGen, GlobalRefIdGen }
 
 import util.McasImplState
-import RefIdGenBench.ArraySt
+import RefIdGenBench.{ ArraySt, GlobalSt }
 
 @Fork(3)
 @Threads(2) // 4, 6, 8, ...
 class RefIdGenBench {
 
   @Benchmark
-  def global(): Long = {
-    RefIdGen.global.nextId()
+  def global(g: GlobalSt): Long = {
+    g.global.nextId()
   }
 
   @Benchmark
@@ -46,13 +46,13 @@ class RefIdGenBench {
   }
 
   @Benchmark
-  def createThreadLocal(): Long = {
-    RefIdGen.global.newThreadLocal().nextId()
+  def createThreadLocal(g: GlobalSt): Long = {
+    g.global.newThreadLocal().nextId()
   }
 
   @Benchmark
-  def arrayGlobal(s: ArraySt): Long = {
-    RefIdGen.global.nextArrayIdBase(s.size)
+  def arrayGlobal(s: ArraySt, g: GlobalSt): Long = {
+    g.global.nextArrayIdBase(s.size)
   }
 
   @Benchmark
@@ -66,8 +66,8 @@ class RefIdGenBench {
   }
 
   @Benchmark
-  def arrayCreateThreadLocal(s: ArraySt): Long = {
-    RefIdGen.global.newThreadLocal().nextArrayIdBase(s.size)
+  def arrayCreateThreadLocal(s: ArraySt, g: GlobalSt): Long = {
+    g.global.newThreadLocal().nextArrayIdBase(s.size)
   }
 }
 
@@ -77,5 +77,10 @@ object RefIdGenBench {
   class ArraySt {
     @Param(Array("2", "16", "1024"))
     var size: Int = -1
+  }
+
+  @State(Scope.Benchmark)
+  class GlobalSt {
+    val global: GlobalRefIdGen = RefIdGen.newGlobal_public()
   }
 }

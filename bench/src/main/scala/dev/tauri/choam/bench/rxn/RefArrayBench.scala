@@ -23,8 +23,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 import org.openjdk.jmh.annotations._
 
-import internal.mcas.Mcas
-import bench.util.RandomState
+import bench.util.{ McasImplStateBase, RandomState }
 import RefArrayBench._
 
 @Fork(2)
@@ -77,10 +76,7 @@ object RefArrayBench {
   private[this] final val INIT = "foobar"
 
   @State(Scope.Benchmark)
-  abstract class BaseState {
-
-    protected final val emcas: Mcas =
-      Mcas.Emcas
+  abstract class BaseState extends McasImplStateBase {
 
     private[this] var _arr: Ref.Array[String] =
       null
@@ -100,13 +96,13 @@ object RefArrayBench {
       (0 until this.size).foreach { idx =>
         a.unsafeGet(idx).set.provide(
           ThreadLocalRandom.current().nextInt().toString
-        ).unsafePerform(null, this.emcas)
+        ).unsafePerform(null, this.mcasImpl)
       }
       this._arr = a
     }
 
     final def foldSparse(r: RandomState): Int = {
-      this.foldSparseAxn(r).unsafePerform(null, this.emcas)
+      this.foldSparseAxn(r).unsafePerform(null, this.mcasImpl)
     }
 
     final def foldSparseAxn(r: RandomState): Axn[Int] = {
@@ -125,7 +121,7 @@ object RefArrayBench {
 
     final def swapAndGet(r: RandomState): String = {
       val len = this.size
-      swapAndGetAxn(r.nextIntBounded(len), r.nextIntBounded(len), r.nextIntBounded(len)).unsafePerform(null, this.emcas)
+      swapAndGetAxn(r.nextIntBounded(len), r.nextIntBounded(len), r.nextIntBounded(len)).unsafePerform(null, this.mcasImpl)
     }
 
     final def swapAndGetAxn(idx1: Int, idx2: Int, idx3: Int): Axn[String] = {
@@ -141,7 +137,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false),
-      ).unsafeRun(this.emcas)
+      ).unsafeRun(this.mcasImpl)
     }
   }
 
@@ -152,7 +148,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false),
-      ).unsafeRun(this.emcas)
+      ).unsafeRun(this.mcasImpl)
     }
   }
 
@@ -163,7 +159,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false),
-      ).unsafeRun(this.emcas)
+      ).unsafeRun(this.mcasImpl)
     }
   }
 
@@ -174,7 +170,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false),
-      ).unsafeRun(this.emcas)
+      ).unsafeRun(this.mcasImpl)
     }
   }
 }

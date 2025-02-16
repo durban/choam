@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package refs
 
-import internal.mcas.RefIdGen
-
 trait Ref2[A, B] {
 
   def _1: Ref[A]
@@ -38,11 +36,13 @@ object Ref2 extends Ref2Platform {
   final def p2[A, B](a: A, b: B): Axn[Ref2[A, B]] =
     Rxn.unsafe.delayContext { ctx => unsafeP2(a, b, ctx.refIdGen) }
 
-  final def unsafeP1P1[A, B](a: A, b: B): Ref2[A, B] = // TODO:0.5: make it private
-    this.unsafeP1P1(a, b, RefIdGen.global)
+  @deprecated("Use p1p1", since = "0.4.12")
+  final def unsafeP1P1[A, B](a: A, b: B): Ref2[A, B] = // TODO:0.5: remove
+    sys.error("Use p1p1")
 
-  final def unsafeP2[A, B](a: A, b: B): Ref2[A, B] = // TODO:0.5: make it private
-    this.unsafeP2(a, b, RefIdGen.global)
+  @deprecated("Use p2", since = "0.4.12")
+  final def unsafeP2[A, B](a: A, b: B): Ref2[A, B] = // TODO:0.5: remove
+    sys.error("Use p2")
 
   final def unapply[A, B](r: Ref2[A, B]): Some[(Ref[A], Ref[B])] =
     Some((r._1, r._2))

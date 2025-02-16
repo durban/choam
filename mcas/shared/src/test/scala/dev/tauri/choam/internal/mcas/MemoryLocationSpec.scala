@@ -19,12 +19,12 @@ package dev.tauri.choam
 package internal
 package mcas
 
-final class MemoryLocationSpec extends BaseSpec {
+final class MemoryLocationSpec extends BaseSpec with SpecDefaultMcas {
 
   def mkTestRefs(): List[MemoryLocation[String]] = {
     List(
-      MemoryLocation.unsafeUnpadded("foo"),
-      MemoryLocation.unsafePadded("foo"),
+      MemoryLocation.unsafeUnpadded("foo", this.rigInstance),
+      MemoryLocation.unsafePadded("foo", this.rigInstance),
     )
   }
 
@@ -40,9 +40,9 @@ final class MemoryLocationSpec extends BaseSpec {
   }
 
   test("MemoryLocation hashCode and equals") {
-    val l1 = MemoryLocation.unsafeUnpadded("foo")
+    val l1 = MemoryLocation.unsafeUnpadded("foo", this.rigInstance)
     assertEquals(l1.##, l1.id.toInt)
-    val l2 = MemoryLocation.unsafePadded("foo")
+    val l2 = MemoryLocation.unsafePadded("foo", this.rigInstance)
     assertEquals(l2.##, l2.id.toInt)
   }
 }

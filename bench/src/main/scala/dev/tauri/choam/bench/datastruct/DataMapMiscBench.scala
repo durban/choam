@@ -31,34 +31,34 @@ import DataMapBench.DummySt
 class DataMapMiscBench {
 
   @Benchmark
-  def hashKeyJava(s: DummySt, bh: Blackhole, k: McasImplState): Unit = {
+  def hashKeyJava(s: DummySt, bh: Blackhole, rnd: RandomState): Unit = {
     val keys = s.keys
-    val key: AnyRef = keys(k.nextIntBounded(keys.length))
+    val key: AnyRef = keys(rnd.nextIntBounded(keys.length))
     bh.consume(key.hashCode())
   }
 
   @Benchmark
-  def hashKeyScala(s: DummySt, bh: Blackhole, k: McasImplState): Unit = {
+  def hashKeyScala(s: DummySt, bh: Blackhole, rnd: RandomState): Unit = {
     val keys = s.keys
-    val key: String = keys(k.nextIntBounded(keys.length))
+    val key: String = keys(rnd.nextIntBounded(keys.length))
     bh.consume(s.hash.hash(key))
   }
 
   @Benchmark
-  def compareKeyJava(s: DummySt, bh: Blackhole, k: McasImplState): Unit = {
+  def compareKeyJava(s: DummySt, bh: Blackhole, rnd: RandomState): Unit = {
     val keys = s.keys
-    val key1: AnyRef = keys(k.nextIntBounded(keys.length))
+    val key1: AnyRef = keys(rnd.nextIntBounded(keys.length))
     val dummyKeys = s.dummyKeys
-    val key2: AnyRef = dummyKeys(k.nextIntBounded(dummyKeys.length))
+    val key2: AnyRef = dummyKeys(rnd.nextIntBounded(dummyKeys.length))
     bh.consume(key1.asInstanceOf[java.lang.Comparable[AnyRef]].compareTo(key2))
   }
 
   @Benchmark
-  def compareKeyScala(s: DummySt, bh: Blackhole, k: McasImplState): Unit = {
+  def compareKeyScala(s: DummySt, bh: Blackhole, rnd: RandomState): Unit = {
     val keys = s.keys
-    val key1: String = keys(k.nextIntBounded(keys.length))
+    val key1: String = keys(rnd.nextIntBounded(keys.length))
     val dummyKeys = s.dummyKeys
-    val key2: String = dummyKeys(k.nextIntBounded(dummyKeys.length))
+    val key2: String = dummyKeys(rnd.nextIntBounded(dummyKeys.length))
     bh.consume(s.order.compare(key1, key2))
   }
 }

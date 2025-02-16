@@ -32,7 +32,7 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 class WriteAfterGet extends StressTestBase {
 
   private[this] val ref: Ref[String] =
-    Ref.unsafe("a")
+    Ref.unsafePadded("a", this.rig)
 
   private[this] val write1: Axn[String] = {
     ref.get >>> ref.upd { (old, input) =>

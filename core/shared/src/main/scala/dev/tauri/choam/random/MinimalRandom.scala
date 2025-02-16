@@ -20,6 +20,8 @@ package random
 
 import cats.effect.std.Random
 
+import internal.mcas.RefIdGen
+
 /**
  * Uses `RandomBase` for everything, implements
  * only the absolutely necessary methods. (For
@@ -27,12 +29,12 @@ import cats.effect.std.Random
  */
 private object MinimalRandom {
 
-  def unsafe1(initialSeed: Long): Random[Axn] = {
-    new MinimalRandom1(Ref.unsafePadded(initialSeed), RandomBase.GoldenGamma)
+  def unsafe1(initialSeed: Long, rig: RefIdGen): Random[Axn] = {
+    new MinimalRandom1(Ref.unsafePadded(initialSeed, rig), RandomBase.GoldenGamma)
   }
 
-  def unsafe2(initialSeed: Long): Random[Axn] = {
-    new MinimalRandom2(Ref.unsafePadded(initialSeed), RandomBase.GoldenGamma)
+  def unsafe2(initialSeed: Long, rig: RefIdGen): Random[Axn] = {
+    new MinimalRandom2(Ref.unsafePadded(initialSeed, rig), RandomBase.GoldenGamma)
   }
 }
 

@@ -26,7 +26,7 @@ private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanion
     this.ThreadConfinedMCAS
 
   private[choam] final override def newDefaultMcas(osRng: OsRng): Mcas =
-    new ThreadConfinedMCAS(osRng)
+    new ThreadConfinedMCAS(osRng, RefIdGen.newGlobal())
 
   private[choam] final override def unsafeLookup(fqn: String): Mcas =
     super.unsafeLookup(fqn)

@@ -17,12 +17,17 @@
 
 package dev.tauri.choam
 
-import internal.mcas.Mcas
+import internal.mcas.{ Mcas, RefIdGen }
 
 trait McasImplSpec {
+
   protected def mcasImpl: Mcas
+
+  protected final def rigInstance: RefIdGen =
+    this.mcasImpl.currentContext().refIdGen
+
   protected def isEmcas: Boolean =
-    false
+    false // EMCAS must override
 }
 
 trait SpecDefaultMcas extends munit.Suite with SpecDefaultMcasPlatform {

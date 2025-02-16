@@ -68,6 +68,7 @@ trait LawsSpec
   protected final def registerLaws(): Unit = {
     checkAll("Rxn", new RxnLawTests.UnsealedRxnLawTests with TestInstances {
       override def mcasImpl: Mcas = self.mcasImpl
+      override protected def rigInstance = this.mcasImpl.currentContext().refIdGen
     }.rxn[String, Int, Float, Double, Boolean, Long])
 
     checkAll("Ref", RefLawTests(self).ref[String, Int, Float])

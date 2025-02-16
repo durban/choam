@@ -33,11 +33,14 @@ import java.util.concurrent.ThreadLocalRandom
  */
 object NullMcas extends Mcas.UnsealedMcas { self =>
 
+  private[this] val rig: RefIdGen =
+    RefIdGen.newGlobal()
+
   private[this] val ctx =
     new NullContext
 
   private[this] val globalVersion =
-    MemoryLocation.unsafeUnpadded[Long](Version.Start)
+    MemoryLocation.unsafeUnpadded[Long](Version.Start, this.rig)
 
   final override def currentContext(): Mcas.ThreadContext =
     this.ctx
@@ -96,6 +99,6 @@ object NullMcas extends Mcas.UnsealedMcas { self =>
       ThreadLocalRandom.current()
 
     final override def refIdGen: RefIdGen =
-      RefIdGen.global
+      self.rig
   }
 }

@@ -34,26 +34,26 @@ class InterpreterBench {
   // TODO: - read-only Rxn
 
   @Benchmark
-  def rxnNew(s: St, k: McasImplState): String = {
-    val x = k.nextInt()
+  def rxnNew(s: St, k: McasImplState, rnd: RandomState): String = {
+    val x = rnd.nextInt()
     s.rxn.unsafePerform(x, k.mcasImpl)
   }
 
   @Benchmark
-  def rxnNewDisjoint(s: DisjointSt, k: McasImplState): String = {
-    val x = k.nextInt()
+  def rxnNewDisjoint(s: DisjointSt, k: McasImplState, rnd: RandomState): String = {
+    val x = rnd.nextInt()
     s.rxn.unsafePerform(x, k.mcasImpl)
   }
 
   @Benchmark
-  def readHeavy(s: St, k: McasImplState): String = {
-    val x = k.nextInt()
+  def readHeavy(s: St, k: McasImplState, rnd: RandomState): String = {
+    val x = rnd.nextInt()
     s.rhRxn.unsafePerform(x, k.mcasImpl)
   }
 
   @Benchmark
-  def readHeavyDisjoint(s: DisjointSt, k: McasImplState): String = {
-    val x = k.nextInt()
+  def readHeavyDisjoint(s: DisjointSt, k: McasImplState, rnd: RandomState): String = {
+    val x = rnd.nextInt()
     s.rhRxn.unsafePerform(x, k.mcasImpl)
   }
 }
@@ -62,34 +62,34 @@ object InterpreterBench {
 
   final val N = 4
 
-  abstract class BaseSt {
+  abstract class BaseSt extends McasImplStateBase {
 
     private[this] val ref1s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("1") }
+      Array.fill(N) { Ref.unsafePadded("1", this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref2s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("2") }
+      Array.fill(N) { Ref.unsafePadded("2", this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref3s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("3") }
+      Array.fill(N) { Ref.unsafePadded("3", this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref4s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("4") }
+      Array.fill(N) { Ref.unsafePadded("4", this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref5s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("5") }
+      Array.fill(N) { Ref.unsafePadded("5", this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref6s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("6") }
+      Array.fill(N) { Ref.unsafePadded("6", this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref7s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("7") }
+      Array.fill(N) { Ref.unsafePadded("7", this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref8s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("8") }
+      Array.fill(N) { Ref.unsafePadded("8", this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val cnt: Ref[Long] =
-      Ref.unsafePadded(0L)
+      Ref.unsafePadded(0L, this.mcasImpl.currentContext().refIdGen)
 
     private[InterpreterBench] val rxn: Rxn[Int, String] = {
       val rxn1 = (0 until N).map { idx =>

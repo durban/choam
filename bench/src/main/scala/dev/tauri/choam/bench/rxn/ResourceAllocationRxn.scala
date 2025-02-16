@@ -22,8 +22,7 @@ package rxn
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import internal.mcas.Mcas
-import util.McasImplState
+import util.{ McasImplStateBase, RandomState }
 
 /**
  * A variant of `dev.tauri.choam.mcas.bench.ResourceAllocationMcas`,
@@ -35,9 +34,9 @@ class ResourceAllocationRxn {
   import ResourceAllocationRxn._
 
   @Benchmark
-  def bench(s: ResAllocSt, t: ThreadSt): Unit = {
+  def bench(s: ResAllocSt, t: ThreadSt, rnd: RandomState): Unit = {
     val n = t.allocSize
-    val rss = t.selectResources(s.rss)
+    val rss = t.selectResources(s.rss, rnd)
 
     @tailrec
     def read(i: Int, rea: Axn[Array[String]]): Axn[Array[String]] = {
@@ -77,17 +76,17 @@ object ResourceAllocationRxn {
   private[this] final val nRes = 60
 
   @State(Scope.Benchmark)
-  class ResAllocSt {
+  class ResAllocSt extends McasImplStateBase {
 
     private[this] val initialValues =
       Vector.fill(nRes)(scala.util.Random.nextString(10))
 
     val rss: Array[Ref[String]] =
-      initialValues.map(Ref.unsafe(_)).toArray
+      initialValues.map(Ref.unsafePadded(_, this.mcasImpl.currentContext().refIdGen)).toArray
 
     @TearDown
     def checkResults(): Unit = {
-      val ctx = Mcas.DefaultMcas.currentContext()
+      val ctx = this.mcasImpl.currentContext()
       val currentValues = rss.map(ref => ctx.readDirect(ref.loc)).toVector
       if (currentValues == initialValues) {
         throw new Exception(s"Unchanged results")
@@ -101,7 +100,7 @@ object ResourceAllocationRxn {
   }
 
   @State(Scope.Thread)
-  class ThreadSt extends McasImplState {
+  class ThreadSt extends McasImplStateBase {
 
     final val tokens = 128L
 
@@ -124,7 +123,7 @@ object ResourceAllocationRxn {
     }
 
     /** Select `allocSize` refs randomly */
-    def selectResources(rss: Array[Ref[String]]): Array[Ref[String]] = {
+    def selectResources(rss: Array[Ref[String]], rs: RandomState): Array[Ref[String]] = {
       val bucketSize = nRes / allocSize
 
       @tailrec
@@ -132,7 +131,7 @@ object ResourceAllocationRxn {
         if (dest >= allocSize) {
           ()
         } else {
-          val rnd = (nextInt() % bucketSize).abs
+          val rnd = java.lang.Math.abs(rs.nextInt() % bucketSize)
           selectedRss(dest) = rss(off + rnd)
           next(off + bucketSize, dest + 1)
         }

@@ -29,11 +29,11 @@ import munit.ScalaCheckSuite
 import org.scalacheck.{ Arbitrary, Gen }
 import org.scalacheck.Prop.forAll
 
-final class LogMap2Spec extends ScalaCheckSuite { self =>
+final class LogMap2Spec extends ScalaCheckSuite with SpecDefaultMcas { self =>
 
   implicit def arbMemLoc[A](implicit arbA: Arbitrary[A]): Arbitrary[MemoryLocation[A]] = Arbitrary {
     arbA.arbitrary.flatMap { a =>
-      Gen.delay { MemoryLocation.unsafe[A](a) }
+      Gen.delay { MemoryLocation.unsafeUnpadded[A](a, this.rigInstance) }
     }
   }
 
@@ -100,14 +100,14 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
   }
 
   test("LogMap2#size") {
-    val r1 = MemoryLocation.unsafeUnpadded("1")
+    val r1 = MemoryLocation.unsafeUnpadded("1", this.rigInstance)
     val h1 = LogEntry(r1, "1", "x", 42L)
-    val r2 = MemoryLocation.unsafeUnpadded("2")
+    val r2 = MemoryLocation.unsafeUnpadded("2", this.rigInstance)
     val h2 = LogEntry(r2, "2", "x", 42L)
-    val r3 = MemoryLocation.unsafeUnpadded("3")
+    val r3 = MemoryLocation.unsafeUnpadded("3", this.rigInstance)
     val h31 = LogEntry(r3, "3", "x", 42L)
     val h32 = LogEntry(r3, "3", "y", 42L)
-    val r4 = MemoryLocation.unsafeUnpadded("4")
+    val r4 = MemoryLocation.unsafeUnpadded("4", this.rigInstance)
     val h4 = LogEntry(r4, "4", "x", 42L)
     val lm0 = LogMap2.empty[String]
     assertEquals(lm0.size, 0)
@@ -128,9 +128,9 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
   }
 
   test("LogMap2#revalidate") {
-    val r1 = MemoryLocation.unsafeUnpadded("1")
+    val r1 = MemoryLocation.unsafeUnpadded("1", this.rigInstance)
     val h1 = LogEntry(r1, "1", "x", 42L)
-    val r2 = MemoryLocation.unsafeUnpadded("2")
+    val r2 = MemoryLocation.unsafeUnpadded("2", this.rigInstance)
     val h2 = LogEntry(r2, "2", "x", 42L)
     val lm = LogMap2
       .empty[String]
@@ -153,7 +153,7 @@ final class LogMap2Spec extends ScalaCheckSuite { self =>
       private[choam] def readVersion[A](ref: MemoryLocation[A]): Long =
         if (ref eq r1) r1Version else 42L // we simulate one of the refs changing version
       def refIdGen: RefIdGen =
-        RefIdGen.global
+        self.rigInstance
       def start(): Descriptor =
         self.fail("not implemented")
       private[mcas] def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long =

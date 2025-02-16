@@ -158,10 +158,6 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   final def as[C](c: C): Rxn[A, C] =
     new As(this, c)
 
-  // old implementation with map:
-  private[choam] final def asOld[C](c: C): Rxn[A, C] =
-    this.map(_ => c)
-
   final override def void: Rxn[A, Unit] =
     this.as(())
 
@@ -530,6 +526,8 @@ object Rxn extends RxnInstances0 {
     private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
       new Ctx[A](uf)
 
+    // TODO:0.5: suspendContext[A, B](uf: (A, ThreadContext) => Axn[B]): Rxn[A, B]
+    // TODO:0.5: and use it in MsQueue
     private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       this.delayContext(uf).flatten // TODO: optimize
 

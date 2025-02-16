@@ -42,6 +42,9 @@ abstract class EmcasSpecF[F[_]] extends BaseSpec {
   protected[this] val inst: Emcas =
     new Emcas(this.osRngInstance)
 
+  private[this] def rigInstance: RefIdGen =
+    this.inst.currentContext().refIdGen
+
   final override def afterAll(): Unit = {
     this.inst.close()
     super.afterAll()
@@ -54,10 +57,10 @@ abstract class EmcasSpecF[F[_]] extends BaseSpec {
 
   testF("EMCAS sharing commit-ts (disjoint)") { implicit F =>
     for {
-      r1 <- F.delay(MemoryLocation.unsafe("-a"))
-      r2 <- F.delay(MemoryLocation.unsafe("-b"))
-      r3 <- F.delay(MemoryLocation.unsafe("-c"))
-      r4 <- F.delay(MemoryLocation.unsafe("-d"))
+      r1 <- F.delay(MemoryLocation.unsafeUnpadded("-a", this.rigInstance))
+      r2 <- F.delay(MemoryLocation.unsafeUnpadded("-b", this.rigInstance))
+      r3 <- F.delay(MemoryLocation.unsafeUnpadded("-c", this.rigInstance))
+      r4 <- F.delay(MemoryLocation.unsafeUnpadded("-d", this.rigInstance))
       // initialize them (a, b, c, d):
       _ <- F.delay {
         val ok = inst
@@ -114,9 +117,9 @@ abstract class EmcasSpecF[F[_]] extends BaseSpec {
 
   testF("EMCAS sharing commit-ts (real conflict)") { implicit F =>
     for {
-      r1 <- F.delay(MemoryLocation.unsafe("-a"))
-      r2 <- F.delay(MemoryLocation.unsafe("-b"))
-      r3 <- F.delay(MemoryLocation.unsafe("-c"))
+      r1 <- F.delay(MemoryLocation.unsafeUnpadded("-a", this.rigInstance))
+      r2 <- F.delay(MemoryLocation.unsafeUnpadded("-b", this.rigInstance))
+      r3 <- F.delay(MemoryLocation.unsafeUnpadded("-c", this.rigInstance))
       // initialize them (a, b, c):
       _ <- F.delay {
         val ok = inst

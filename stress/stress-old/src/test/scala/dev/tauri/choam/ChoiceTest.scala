@@ -32,13 +32,13 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 class ChoiceTest extends StressTestBase {
 
   private[this] val ref0 =
-    Ref.unsafe("b")
+    Ref.unsafePadded("b", this.rig)
 
   private[this] val ref1 =
-    Ref.unsafe("foo")
+    Ref.unsafePadded("foo", this.rig)
 
   private[this] val ref2 =
-    Ref.unsafe("bar")
+    Ref.unsafePadded("bar", this.rig)
 
   private[this] val choice: Axn[(String, String)] = {
     val mod1 = ref0.getAndUpdate { s => (s(0) + 1).toChar.toString }

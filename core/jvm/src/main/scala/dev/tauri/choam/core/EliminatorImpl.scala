@@ -23,6 +23,7 @@ package core
  *
  * Note: this is duplicated on JS (where it doesn't do anything).
  */
+@nowarn("cat=deprecation")
 private[choam] abstract class EliminatorImpl[-A, +B, -C, +D] private[choam] (
   underlyingLeft: A =#> B,
   transformLeft: A => D,

@@ -26,6 +26,7 @@ import java.util.concurrent.ThreadLocalRandom
 /** Ctor must be called on the thread of the new instance! */
 private final class EmcasThreadContext(
   final override val impl: Emcas,
+  final override val refIdGen: RefIdGen, // NB: it is a `val`, not a `def`
 ) extends EmcasThreadContextBase
   with Mcas.UnsealedThreadContext {
 
@@ -40,10 +41,6 @@ private final class EmcasThreadContext(
   // NB: it is a `val`, not a `def`
   final override val random: ThreadLocalRandom =
     ThreadLocalRandom.current()
-
-  // NB: it is a `val`, not a `def`
-  final override val refIdGen: RefIdGen =
-    RefIdGen.global.newThreadLocal()
 
   private[this] var markerUsedCount: Int =
     0

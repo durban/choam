@@ -26,7 +26,7 @@ import cats.effect.IO
 import org.openjdk.jmh.annotations._
 
 import core.RetryStrategy
-import util.McasImplState
+import util.McasImplStateBase
 
 @Threads(1)
 @BenchmarkMode(Array(Mode.AverageTime))
@@ -59,7 +59,7 @@ object RetryBench {
   final val R = 100
 
   @State(Scope.Thread)
-  class StDont extends McasImplState {
+  class StDont extends McasImplStateBase {
 
     private[this] var ctr: Int =
       0
@@ -87,7 +87,7 @@ object RetryBench {
   class St100k extends St(100000)
 
   @State(Scope.Thread)
-  abstract class St(N: Int) extends McasImplState {
+  abstract class St(N: Int) extends McasImplStateBase {
 
     val rxn: Rxn[AtomicInteger, String] = Rxn.computed { ctr =>
       Axn.unsafe.delay { ctr.incrementAndGet() }.flatMapF { c =>

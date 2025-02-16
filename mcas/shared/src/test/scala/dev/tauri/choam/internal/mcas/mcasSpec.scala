@@ -34,6 +34,10 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   import McasSpec._
 
+  private[this] final def unsafe[A](a: A): MemoryLocation[A] = {
+    MemoryLocation.unsafeUnpadded(a, this.rigInstance)
+  }
+
   private final def tryPerformBatch(ops: List[CASD[_]]): Boolean = {
     val ctx = mcasImpl.currentContext()
     val builder = ops.foldLeft(ctx.builder()) { (b, op) =>
@@ -46,9 +50,9 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
   }
 
   test("k-CAS should succeed if old values match, and there is no contention") {
-    val r1 = MemoryLocation.unsafe("r1")
-    val r2 = MemoryLocation.unsafe("r2")
-    val r3 = MemoryLocation.unsafe("r3")
+    val r1 = unsafe("r1")
+    val r2 = unsafe("r2")
+    val r3 = unsafe("r3")
     val succ = tryPerformBatch(List(
       CASD(r1, "r1", "x"),
       CASD(r2, "r2", "y"),
@@ -62,9 +66,9 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
   }
 
   test("k-CAS should fail if any of the old values doesn't match") {
-    val r1 = MemoryLocation.unsafe("r1")
-    val r2 = MemoryLocation.unsafe("r2")
-    val r3 = MemoryLocation.unsafe("r3")
+    val r1 = unsafe("r1")
+    val r2 = unsafe("r2")
+    val r3 = unsafe("r3")
 
     def go(): Boolean = {
       tryPerformBatch(List(
@@ -106,9 +110,9 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
   }
 
   test("k-CAS should be able to succeed after one successful operation") {
-    val r1 = MemoryLocation.unsafe("r1")
-    val r2 = MemoryLocation.unsafe("r2")
-    val r3 = MemoryLocation.unsafe("r3")
+    val r1 = unsafe("r1")
+    val r2 = unsafe("r2")
+    val r3 = unsafe("r3")
 
     assert(tryPerformBatch(List(
       CASD(r1, "r1", "x"),
@@ -135,9 +139,9 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
   }
 
   test("Snapshotting should work") {
-    val r1 = MemoryLocation.unsafe("r1")
-    val r2 = MemoryLocation.unsafe("r2")
-    val r3 = MemoryLocation.unsafe("r3")
+    val r1 = unsafe("r1")
+    val r2 = unsafe("r2")
+    val r3 = unsafe("r3")
     val ctx = mcasImpl.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "r1", "r1x")
@@ -156,9 +160,9 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
   }
 
   test("Snapshotting should work when cancelling") {
-    val r1 = MemoryLocation.unsafe("r1")
-    val r2 = MemoryLocation.unsafe("r2")
-    val r3 = MemoryLocation.unsafe("r3")
+    val r1 = unsafe("r1")
+    val r2 = unsafe("r2")
+    val r3 = unsafe("r3")
     val ctx = mcasImpl.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "r1", "r1x")
@@ -175,7 +179,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
   }
 
   test("read should be able to read from a fresh ref") {
-    val r = MemoryLocation.unsafe[String]("x")
+    val r = unsafe[String]("x")
     assertEquals(mcasImpl.currentContext().readDirect(r), "x")
   }
 
@@ -190,8 +194,8 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("A successful k-CAS should increase the version of the refs") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("r1")
-    val r2 = MemoryLocation.unsafe("r2")
+    val r1 = unsafe("r1")
+    val r2 = unsafe("r2")
     val v11 = ctx.readVersion(r1)
     val v21 = ctx.readVersion(r2)
     val d0 = ctx.start()
@@ -208,8 +212,8 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("A failed k-CAS should not increase the version of the refs") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("r1")
-    val r2 = MemoryLocation.unsafe("r2")
+    val r1 = unsafe("r1")
+    val r2 = unsafe("r2")
     val v11 = ctx.readVersion(r1)
     val v21 = ctx.readVersion(r2)
     val d0 = ctx.start()
@@ -224,8 +228,8 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("Version.None must not be stored") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("r1")
-    val r2 = MemoryLocation.unsafe("r2")
+    val r1 = unsafe("r1")
+    val r2 = unsafe("r2")
     val v11 = ctx.readVersion(r1)
     val v21 = ctx.readVersion(r2)
     val d0 = ctx.start()
@@ -240,8 +244,8 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("readIntoLog should work (no conflict)") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("a")
-    val r2 = MemoryLocation.unsafe("b")
+    val r1 = unsafe("a")
+    val r2 = unsafe("b")
     val d0 = ctx.start()
     // read from r1 (not in the log):
     val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
@@ -287,8 +291,8 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("tryPerform2 should work (read-only)") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("a")
-    val r2 = MemoryLocation.unsafe("b")
+    val r1 = unsafe("a")
+    val r2 = unsafe("b")
     val d0 = ctx.start()
     val v1 = ctx.readVersion(r1)
     val v2 = ctx.readVersion(r2)
@@ -311,8 +315,8 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("tryPerform2 should work (read-write)") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("a")
-    val r2 = MemoryLocation.unsafe("b")
+    val r1 = unsafe("a")
+    val r2 = unsafe("b")
     val d0 = ctx.start()
     val startTs = d0.validTs
     // swap contents:
@@ -337,8 +341,8 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("tryPerform2 should work (FailedVal)") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("a")
-    val r2 = MemoryLocation.unsafe("b")
+    val r1 = unsafe("a")
+    val r2 = unsafe("b")
     val d0 = ctx.start()
     val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
     assertSameInstance(ov1, "a")
@@ -367,7 +371,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
   test("singleCasDirect should work without changing the global commitTs") {
     assume(!this.isEmcas)
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("a")
+    val r1 = unsafe("a")
     val startTs = ctx.start().validTs
     // successful:
     assert(ctx.singleCasDirect(r1, "a", "b"))
@@ -383,9 +387,9 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("Merging disjoint descriptors should work") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("a")
-    val r2 = MemoryLocation.unsafe("b")
-    val r3 = MemoryLocation.unsafe("x")
+    val r1 = unsafe("a")
+    val r2 = unsafe("b")
+    val r3 = unsafe("x")
     val d0 = ctx.start()
     val startTs = d0.validTs
     // one side:
@@ -415,8 +419,8 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("Merging overlapping descriptors does not work") {
     val ctx = mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("a")
-    val r2 = MemoryLocation.unsafe("b")
+    val r1 = unsafe("a")
+    val r2 = unsafe("b")
     val d0 = ctx.start()
     // one side:
     val Some((ov1, d1a)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
@@ -438,8 +442,8 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("mcas.Descriptor iterator") {
     val ctx = this.mcasImpl.currentContext()
-    val r1 = MemoryLocation.unsafe("foo")
-    val r2 = MemoryLocation.unsafe("foo")
+    val r1 = unsafe("foo")
+    val r2 = unsafe("foo")
     val d0 = ctx.start()
     assertEquals(d0.size, 0)
     assertEquals(d0.hwdIterator.toList, Nil)
@@ -480,8 +484,8 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
   test("equals/hashCode/toString for descriptors") {
     val ctx = this.mcasImpl.currentContext()
     val d1 = ctx.start()
-    val r1 = MemoryLocation.unsafeUnpadded("foo")
-    val r2 = MemoryLocation.unsafeUnpadded("foo")
+    val r1 = unsafe("foo")
+    val r2 = unsafe("foo")
     // hwd:
     val hwd1 = LogEntry[String](r1, "foo", "bar", d1.validTs)
     assertEquals(hwd1, hwd1)
@@ -522,8 +526,8 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
   }
 
   test("readOnly for descriptors") {
-    val r1 = MemoryLocation.unsafeUnpadded("foo")
-    val r2 = MemoryLocation.unsafeUnpadded("foo")
+    val r1 = unsafe("foo")
+    val r2 = unsafe("foo")
     val ctx = this.mcasImpl.currentContext()
     val d0 = ctx.start()
     assert(d0.readOnly)
@@ -566,7 +570,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   test("Expected version must also be checked") {
     val ctx = this.mcasImpl.currentContext()
-    val ref = MemoryLocation.unsafe("A")
+    val ref = unsafe("A")
     assert(ctx.tryPerformSingleCas(ref, "A", "B"))
     val d0 = ctx.start()
     val Some((ov, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked

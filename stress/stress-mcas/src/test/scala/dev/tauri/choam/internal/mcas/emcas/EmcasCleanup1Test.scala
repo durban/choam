@@ -41,7 +41,7 @@ class EmcasCleanup1Test {
     StressTestBase.emcasInst
 
   private[this] val ref =
-    MemoryLocation.unsafe("a")
+    MemoryLocation.unsafePadded("a", inst.currentContext().refIdGen)
 
   @Actor
   final def write(r: ILL_Result): Unit = {

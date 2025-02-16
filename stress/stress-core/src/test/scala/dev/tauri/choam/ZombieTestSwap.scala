@@ -32,10 +32,10 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 class ZombieTestSwap extends StressTestBase {
 
   private[this] val ref1 =
-    Ref.unsafe("a")
+    Ref.unsafePadded("a", this.rig)
 
   private[this] val ref2 =
-    Ref.unsafe("b")
+    Ref.unsafePadded("b", this.rig)
 
   // atomically swap the contents of the refs:
   private[this] val swap: Axn[Unit] =

@@ -39,10 +39,10 @@ class EmcasZombieTest {
     StressTestBase.emcasInst
 
   private[this] val ref1 =
-    MemoryLocation.unsafe("a") // -> x
+    MemoryLocation.unsafePadded("a", inst.currentContext().refIdGen) // -> x
 
   private[this] val ref2 =
-    MemoryLocation.unsafe("b") // -> y
+    MemoryLocation.unsafePadded("b", inst.currentContext().refIdGen) // -> y
 
   @Actor
   def write(r: LLLLLL_Result): Unit = {

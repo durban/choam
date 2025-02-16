@@ -35,39 +35,39 @@ import util._
 class RandomBench {
 
   @Benchmark
-  def baseline(s: RandomBench.St, k: McasImplState): Long = {
-    s.baseline(s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
+  def baseline(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
+    s.baseline(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
   }
 
   @Benchmark
-  def rndThreadLocal(s: RandomBench.St, k: McasImplState): Long = {
-    s.rndThreadLocal.nextLongBounded(s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
+  def rndThreadLocal(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
+    s.rndThreadLocal.nextLongBounded(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
   }
 
   @Benchmark
-  def rndDeterministic(s: RandomBench.St, k: McasImplState): Long = {
-    s.rndDeterministic.nextLongBounded(s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
+  def rndDeterministic(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
+    s.rndDeterministic.nextLongBounded(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
   }
 
   @Benchmark
-  def rndMinimal1(s: RandomBench.St, k: McasImplState): Long = {
-    s.rndMinimal1.nextLongBounded(s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
+  def rndMinimal1(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
+    s.rndMinimal1.nextLongBounded(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
   }
 
   @Benchmark
-  def rndMinimal2(s: RandomBench.St, k: McasImplState): Long = {
-    s.rndMinimal2.nextLongBounded(s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
+  def rndMinimal2(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
+    s.rndMinimal2.nextLongBounded(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
   }
 
   @Benchmark
-  def rndSecureRxn(s: RandomBench.St, k: McasImplState): Long = {
-    s.rndSecureRxn.nextLongBounded(s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
+  def rndSecureRxn(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
+    s.rndSecureRxn.nextLongBounded(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
   }
 
   @Benchmark
   @deprecated("so that we can call secureRandomWrapper", since = "0.4")
-  def rndSecureWrapper(s: RandomBench.St, k: McasImplState): Long = {
-    s.rndSecureWrapper.nextLongBounded(s.bound(k)).unsafePerformInternal(null, k.mcasCtx)
+  def rndSecureWrapper(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
+    s.rndSecureWrapper.nextLongBounded(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
   }
 
   @Benchmark

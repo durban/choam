@@ -36,10 +36,10 @@ import org.openjdk.jcstress.infra.results.ZZZZ_Result
 class CAS2Test extends StressTestBase {
 
   private[this] val ref1: MemoryLocation[String] =
-    MemoryLocation.unsafe("ov1")
+    MemoryLocation.unsafePadded("ov1", impl.currentContext().refIdGen)
 
   private[this] val ref2: MemoryLocation[String] =
-    MemoryLocation.unsafe("ov2")
+    MemoryLocation.unsafePadded("ov2", impl.currentContext().refIdGen)
 
   @Actor
   def writer1(r: ZZZZ_Result): Unit = {

@@ -40,9 +40,9 @@ class SyncUnboundedQueueBench extends BenchUtils {
 
   /** MS-Queue implemented with `Rxn` */
   @Benchmark
-  def msQueue(s: MsSt, t: McasImplState): Unit = {
-    val tsk = t.nextBooleanIO.flatMap { enq =>
-      if (enq) s.michaelScottQueue.enqueue[IO](t.nextString())(t.reactive)
+  def msQueue(s: MsSt, t: McasImplState, rnd: RandomState): Unit = {
+    val tsk = rnd.nextBooleanIO.flatMap { enq =>
+      if (enq) s.michaelScottQueue.enqueue[IO](rnd.nextString())(t.reactive)
       else s.michaelScottQueue.tryDeque.run[IO](t.reactive)
     }
     runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
@@ -50,9 +50,9 @@ class SyncUnboundedQueueBench extends BenchUtils {
 
   /** MS-Queue (+ interior deletion) implemented with `Rxn` */
   @Benchmark
-  def msQueueWithRemove(s: RmSt, t: McasImplState): Unit = {
-    val tsk = t.nextBooleanIO.flatMap { enq =>
-      if (enq) s.removeQueue.enqueue[IO](t.nextString())(t.reactive)
+  def msQueueWithRemove(s: RmSt, t: McasImplState, rnd: RandomState): Unit = {
+    val tsk = rnd.nextBooleanIO.flatMap { enq =>
+      if (enq) s.removeQueue.enqueue[IO](rnd.nextString())(t.reactive)
       else s.removeQueue.tryDeque.run[IO](t.reactive)
     }
     runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)

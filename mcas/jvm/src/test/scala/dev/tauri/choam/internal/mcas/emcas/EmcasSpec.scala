@@ -39,6 +39,9 @@ class EmcasSpec extends BaseSpec {
   private[this] val inst: Emcas =
     new Emcas(this.osRngInstance)
 
+  private[this] def rigInstance: RefIdGen =
+    this.inst.currentContext().refIdGen
+
   final override def afterAll(): Unit = {
     this.inst.close()
     super.afterAll()
@@ -58,8 +61,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should allow null as ov or nv") {
-    val r1 = MemoryLocation.unsafe[String](null)
-    val r2 = MemoryLocation.unsafe[String]("x")
+    val r1 = MemoryLocation.unsafeUnpadded[String](null, this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
     val ctx = inst.currentContextInternal()
     val desc = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, null, "x"), r2, "x", null)
     val snap = ctx.snapshot(desc)
@@ -72,8 +75,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should clean up finalized descriptors") {
-    val r1 = MemoryLocation.unsafe[String]("x")
-    val r2 = MemoryLocation.unsafe[String]("y")
+    val r1 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded[String]("y", this.rigInstance)
     val ctx = inst.currentContext()
     val v11 = ctx.readVersion(r1)
     val v21 = ctx.readVersion(r2)
@@ -113,8 +116,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should handle versions correctly on cleanup (after success)") {
-    val r1 = MemoryLocation.unsafe[String]("x")
-    val r2 = MemoryLocation.unsafe[String]("y")
+    val r1 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded[String]("y", this.rigInstance)
     val ctx = inst.currentContext()
     val v11 = ctx.readVersion(r1)
     val v21 = ctx.readVersion(r2)
@@ -150,8 +153,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should handle versions correctly on cleanup (after failure)") {
-    val r1 = MemoryLocation.unsafe[String]("x")
-    val r2 = MemoryLocation.unsafe[String]("y")
+    val r1 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded[String]("y", this.rigInstance)
     val ctx = inst.currentContext()
     val v11 = ctx.readVersion(r1)
     val v21 = ctx.readVersion(r2)
@@ -188,7 +191,7 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should not clean up an object referenced from another thread") {
-    val ref = MemoryLocation.unsafeUnpadded[String]("s")
+    val ref = MemoryLocation.unsafeUnpadded[String]("s", this.rigInstance)
     val ctx = inst.currentContextInternal()
     val hDesc = ctx.addCasFromInitial(ctx.start(), ref, "s", "x")
     var mark: AnyRef = null
@@ -224,8 +227,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should clean up finalized descriptors if the original thread releases them") {
-    val r1 = MemoryLocation.unsafe[String]("x")
-    val r2 = MemoryLocation.unsafe[String]("y")
+    val r1 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded[String]("y", this.rigInstance)
     var ok = false
     val t = new Thread(() => {
       val ctx = inst.currentContext()
@@ -583,7 +586,7 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("Descriptor toString") {
-    for (r1 <- List(MemoryLocation.unsafe("r1"), MemoryLocation.unsafePadded("r1"))) {
+    for (r1 <- List(MemoryLocation.unsafeUnpadded("r1", this.rigInstance), MemoryLocation.unsafePadded("r1", this.rigInstance))) {
       val ctx = inst.currentContext()
       val d0 = ctx.start()
       val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")
@@ -619,7 +622,7 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("Version mismatch, but expected value is the same") {
-    val ref = MemoryLocation.unsafe("A")
+    val ref = MemoryLocation.unsafeUnpadded("A", this.rigInstance)
     val ctx = inst.currentContext()
     // T1:
     val d0 = ctx.start()
@@ -661,8 +664,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("There should be no global version-CAS") {
-    val r1 = MemoryLocation.unsafeUnpadded[String]("foo")
-    val r2 = MemoryLocation.unsafeUnpadded[String]("bar")
+    val r1 = MemoryLocation.unsafeUnpadded[String]("foo", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded[String]("bar", this.rigInstance)
     val ctx = inst.currentContext()
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")
@@ -736,7 +739,7 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EmcasDescriptor#fallback") {
-    val ref = MemoryLocation.unsafeUnpadded[String]("foo")
+    val ref = MemoryLocation.unsafeUnpadded[String]("foo", this.rigInstance)
     val ctx = inst.currentContext()
     val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)), instRo = false)
     assert(!ed1.instRo)
@@ -753,7 +756,7 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EmcasDescriptor#fallback call before wasFinalized call") {
-    val ref = MemoryLocation.unsafeUnpadded[String]("foo")
+    val ref = MemoryLocation.unsafeUnpadded[String]("foo", this.rigInstance)
     val ctx = inst.currentContext()
     val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)), instRo = false)
     assert(!ed1.instRo)
@@ -770,8 +773,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("There should be no EmcasWordDesc created for RO HWDs (the first time; in optimistic mode)") {
-    val ref1 = MemoryLocation.unsafeUnpadded[String]("foo")
-    val ref2 = MemoryLocation.unsafeUnpadded[String]("x")
+    val ref1 = MemoryLocation.unsafeUnpadded[String]("foo", this.rigInstance)
+    val ref2 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
     val ctx = inst.currentContext()
     val desc = ctx
       .start()
@@ -805,8 +808,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("In pessimistic mode, even RO HWDs must have WDs created") {
-    val ref1 = MemoryLocation.unsafeUnpadded[String]("foo")
-    val ref2 = MemoryLocation.unsafeUnpadded[String]("x")
+    val ref1 = MemoryLocation.unsafeUnpadded[String]("foo", this.rigInstance)
+    val ref2 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
     val ctx = inst.currentContext()
     val desc = ctx
       .start()
@@ -824,8 +827,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("AbstractDescriptor#readOnly is false, but in fact it is read-only") {
-    val ref1 = MemoryLocation.unsafeUnpadded[String]("a")
-    val ref2 = MemoryLocation.unsafeUnpadded[String]("x")
+    val ref1 = MemoryLocation.unsafeUnpadded[String]("a", this.rigInstance)
+    val ref2 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
     val ctx = inst.currentContext()
     val dRw = ctx
       .start()

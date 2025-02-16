@@ -133,31 +133,22 @@ object MemoryLocation extends MemoryLocationInstances0 {
     private[choam] def unsafeNumberOfListeners(): Int
   }
 
-  def unsafe[A](initial: A): MemoryLocation[A] = // TODO: remove this
-    unsafeUnpadded[A](initial)
-
-  def unsafeUnpadded[A](initial: A): MemoryLocation[A] =
-    this.unsafeUnpadded(initial, RefIdGen.global)
-
-  def unsafeUnpadded[A](initial: A, rig: RefIdGen): MemoryLocation[A] = {
+  final def unsafeUnpadded[A](initial: A, rig: RefIdGen): MemoryLocation[A] = {
     unsafeUnpaddedWithId(initial)(rig.nextId())
   }
 
-  def unsafePadded[A](initial: A): MemoryLocation[A] =
-    this.unsafePadded(initial, RefIdGen.global)
-
-  def unsafePadded[A](initial: A, rig: RefIdGen): MemoryLocation[A] = {
+  final def unsafePadded[A](initial: A, rig: RefIdGen): MemoryLocation[A] = {
     unsafePaddedWithId(initial)(rig.nextId())
   }
 
-  private[mcas] def unsafeWithId[A](initial: A)(i0: Long): MemoryLocation[A] =
+  private[mcas] final def unsafeWithId[A](initial: A)(i0: Long): MemoryLocation[A] =
     unsafeUnpaddedWithId(initial)(i0)
 
-  private[mcas] def unsafeUnpaddedWithId[A](initial: A)(i0: Long): MemoryLocation[A] = {
+  private[mcas] final def unsafeUnpaddedWithId[A](initial: A)(i0: Long): MemoryLocation[A] = {
     new SimpleMemoryLocation[A](initial)(i0)
   }
 
-  private[this] def unsafePaddedWithId[A](initial: A)(id: Long): MemoryLocation[A] = {
+  private[this] final def unsafePaddedWithId[A](initial: A)(id: Long): MemoryLocation[A] = {
     new PaddedMemoryLocation[A](initial, id)
   }
 
@@ -171,7 +162,7 @@ private[mcas] sealed abstract class MemoryLocationInstances0 extends MemoryLocat
   private[mcas] val memoryLocationOrdering =
     new MemoryLocationOrdering[Any]
 
-  implicit def orderingInstance[A]: Ordering[MemoryLocation[A]] =
+  implicit final def orderingInstance[A]: Ordering[MemoryLocation[A]] =
     memoryLocationOrdering.asInstanceOf[Ordering[MemoryLocation[A]]]
 }
 
@@ -182,6 +173,6 @@ private[mcas] sealed abstract class MemoryLocationInstances1 { self: MemoryLocat
       self.globalCompare(x, y)
   }
 
-  implicit def orderInstance[A]: Order[MemoryLocation[A]] =
+  implicit final def orderInstance[A]: Order[MemoryLocation[A]] =
     _orderInstance.asInstanceOf[Order[MemoryLocation[A]]]
 }

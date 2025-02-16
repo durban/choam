@@ -49,13 +49,13 @@ object BloomFilterSpec {
   }
 }
 
-final class BloomFilterSpec extends ScalaCheckSuite {
+final class BloomFilterSpec extends ScalaCheckSuite with SpecDefaultMcas {
 
   import BloomFilterSpec._
 
   implicit def arbMemLoc[A](implicit arbA: Arbitrary[A]): Arbitrary[MemoryLocation[A]] = Arbitrary {
     arbA.arbitrary.flatMap { a =>
-      Gen.delay { MemoryLocation.unsafe[A](a) }
+      Gen.delay { MemoryLocation.unsafeUnpadded[A](a, this.rigInstance) }
     }
   }
 

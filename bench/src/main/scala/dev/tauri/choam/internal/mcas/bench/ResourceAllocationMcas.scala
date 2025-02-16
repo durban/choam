@@ -23,7 +23,7 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import dev.tauri.choam.bench.util.McasImplState
+import dev.tauri.choam.bench.util.{ McasImplStateBase, McasImplState, RandomState }
 
 /**
  * Resource allocation scenario, described in [Software transactional memory](
@@ -36,10 +36,10 @@ class ResourceAllocationMcas {
   import ResourceAllocationMcas._
 
   @Benchmark
-  def bench(s: RaSt, t: ThSt): Unit = {
+  def bench(s: RaSt, t: ThSt, rnd: RandomState): Unit = {
     val n = t.allocSize
     val ctx = t.mcasCtx
-    val rss = t.selectResources(s.rss)
+    val rss = t.selectResources(s.rss, rnd)
     t.desc = ctx.start()
 
     @tailrec
@@ -82,17 +82,17 @@ object ResourceAllocationMcas {
   private[this] final val nRes = 60
 
   @State(Scope.Benchmark)
-  class RaSt {
+  class RaSt extends McasImplStateBase {
 
     private[this] val initialValues =
       Vector.fill(nRes)(scala.util.Random.nextString(10))
 
     val rss: Array[MemoryLocation[String]] =
-      initialValues.map(Ref.unsafe(_).loc).toArray
+      initialValues.map(Ref.unsafePadded(_, this.mcasImpl.currentContext().refIdGen).loc).toArray
 
     @TearDown
     def checkResults(): Unit = {
-      val ctx = Mcas.DefaultMcas.currentContext()
+      val ctx = this.mcasImpl.currentContext()
       val currentValues = rss.map { ref =>
         ctx.readDirect(ref)
       }.toVector
@@ -129,7 +129,7 @@ object ResourceAllocationMcas {
     }
 
     /** Select `allocSize` refs randomly */
-    def selectResources(rss: Array[MemoryLocation[String]]): Array[MemoryLocation[String]] = {
+    def selectResources(rss: Array[MemoryLocation[String]], rs: RandomState): Array[MemoryLocation[String]] = {
       val bucketSize = nRes / allocSize
 
       @tailrec
@@ -137,7 +137,7 @@ object ResourceAllocationMcas {
         if (dest >= allocSize) {
           ()
         } else {
-          val rnd = (nextInt() % bucketSize).abs
+          val rnd = java.lang.Math.abs(rs.nextInt() % bucketSize)
           selectedRss(dest) = rss(off + rnd)
           next(off + bucketSize, dest + 1)
         }

@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package data
 
+import internal.mcas.RefIdGen
 import GcHostileMsQueue._
 
 /**
@@ -32,14 +33,14 @@ import GcHostileMsQueue._
  * It also lacks other optimizations present in
  * `MsQueue` (see there).
  */
-private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A])
+private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRig: RefIdGen)
   extends Queue[A] {
 
-  private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel)
-  private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel)
+  private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
 
-  private def this() =
-    this(Node(nullOf[A], Ref.unsafePadded(End[A]())))
+  private def this(initRig: RefIdGen) =
+    this(Node(nullOf[A], Ref.unsafePadded(End[A](), initRig)), initRig)
 
   override val tryDeque: Axn[Option[A]] = {
     head.modifyWith { node =>
@@ -85,7 +86,7 @@ private object GcHostileMsQueue {
   private final case class End[A]() extends Elem[A]
 
   def apply[A]: Axn[GcHostileMsQueue[A]] =
-    Axn.unsafe.delay { new GcHostileMsQueue[A] }
+    Axn.unsafe.delayContext { ctx => new GcHostileMsQueue[A](ctx.refIdGen) }
 
   def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[GcHostileMsQueue[A]] = {
     Queue.fromList[F, GcHostileMsQueue, A](this.apply[A])(as)

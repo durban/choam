@@ -24,6 +24,7 @@ final class ExchangerSpecJs_ThreadConfinedMcas_IO
   with SpecThreadConfinedMcas
   with ExchangerSpecJs[IO]
 
+@nowarn("cat=deprecation")
 trait ExchangerSpecJs[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   final val iterations = 10

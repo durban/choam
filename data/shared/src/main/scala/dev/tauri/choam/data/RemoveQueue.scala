@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package data
 
+import internal.mcas.RefIdGen
 import RemoveQueue.{ Elem, Node, End, tombstone, isTombstone }
 
 /**
@@ -27,16 +28,16 @@ import RemoveQueue.{ Elem, Node, End, tombstone, isTombstone }
  *
  * TODO: also unlink removed nodes (instead of just tombing them).
  */
-private final class RemoveQueue[A] private[this] (sentinel: Node[A])
+private final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: RefIdGen)
   extends Queue.WithRemove[A] {
 
   // TODO: do the optimization with ticketRead (like in `MsQueue`)
 
-  private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel)
-  private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel)
+  private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
 
-  def this() =
-    this(Node(nullOf[Ref[A]], Ref.unsafeUnpadded(End[A]())))
+  def this(initRig: RefIdGen) =
+    this(Node(nullOf[Ref[A]], Ref.unsafeUnpadded(End[A](), initRig)), initRig = initRig)
 
   override val tryDeque: Axn[Option[A]] = {
     head.modifyWith { node =>
@@ -136,7 +137,7 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A])
 private object RemoveQueue {
 
   def apply[A]: Axn[RemoveQueue[A]] =
-    Axn.unsafe.delay { new RemoveQueue }
+    Axn.unsafe.delayContext { ctx => new RemoveQueue(ctx.refIdGen) }
 
   private sealed trait Elem[A]
 

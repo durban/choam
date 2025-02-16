@@ -37,10 +37,10 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 class ComputedTest extends StressTestBase {
 
   private[this] val r1 =
-    Ref.unsafe("foo")
+    Ref.unsafePadded("foo", this.rig)
 
   private[this] val r2 =
-    Ref.unsafe("bar")
+    Ref.unsafePadded("bar", this.rig)
 
   private[this] val write =
     r1.getAndSet

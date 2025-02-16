@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package data
 
+import internal.mcas.{ Mcas, RefIdGen }
 import MsQueue._
 
 /**
@@ -32,13 +33,14 @@ import MsQueue._
 private final class MsQueue[A] private[this] (
   sentinel: Node[A],
   padded: Boolean,
+  initRig: RefIdGen,
 ) extends Queue[A] {
 
-  private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel)
-  private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel)
+  private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
 
-  private def this(padded: Boolean) =
-    this(Node(nullOf[A], if (padded) Ref.unsafePadded(End[A]()) else Ref.unsafeUnpadded(End[A]())), padded = padded)
+  private def this(padded: Boolean, initRig: RefIdGen) =
+    this(Node(nullOf[A], if (padded) Ref.unsafePadded(End[A](), initRig) else Ref.unsafeUnpadded(End[A](), initRig)), padded = padded, initRig = initRig)
 
   override val tryDeque: Axn[Option[A]] = {
     head.modifyWith { node =>
@@ -68,18 +70,20 @@ private final class MsQueue[A] private[this] (
     }
   }
 
-  override val enqueue: Rxn[A, Unit] = Rxn.unsafe.suspend { (a: A) =>
-    findAndEnqueue(newNode(a))
+  override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
+    Rxn.unsafe.suspendContext { ctx =>
+      findAndEnqueue(newNode(a, ctx))
+    }
   }
 
   final override def tryEnqueue: Rxn[A, Boolean] =
     this.enqueue.as(true)
 
-  private[this] def newNode(a: A): Node[A] = {
+  private[this] def newNode(a: A, ctx: Mcas.ThreadContext): Node[A] = {
     val newRef: Ref[Elem[A]] = if (this.padded) {
-      Ref.unsafePadded(End[A]()) // TODO: optimize with RIG
+      Ref.unsafePadded(End[A](), ctx.refIdGen)
     } else {
-      Ref.unsafeUnpadded(End[A]()) // TODO: optimize with RIG
+      Ref.unsafeUnpadded(End[A](), ctx.refIdGen)
     }
     Node(a, newRef)
   }
@@ -155,5 +159,5 @@ private object MsQueue {
   }
 
   private[this] def applyInternal[A](padded: Boolean): Axn[MsQueue[A]] =
-    Axn.unsafe.delay { new MsQueue(padded = padded) }
+    Axn.unsafe.delayContext { ctx => new MsQueue(padded = padded, initRig = ctx.refIdGen) }
 }

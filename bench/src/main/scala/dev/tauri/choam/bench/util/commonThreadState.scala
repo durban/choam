@@ -21,9 +21,9 @@ package util
 
 import java.lang.Integer.remainderUnsigned
 
-import org.openjdk.jmh.annotations.{ State, Param, Setup, Scope }
+import org.openjdk.jmh.annotations.{ State, Setup, Scope }
 
-import cats.effect.IO
+import cats.effect.{ IO, SyncIO }
 
 import async.AsyncReactive
 import internal.mcas.Mcas
@@ -60,26 +60,34 @@ class RandomState {
 }
 
 @State(Scope.Thread)
-class McasImplState extends RandomState {
+class McasImplState extends McasImplStateBase {
 
-  @Param(Array(Mcas.fqns.Emcas))
-  private[choam] var mcasName: String = _
-
-  private[choam] var mcasImpl: Mcas = _
-
-  private[choam] var mcasCtx: Mcas.ThreadContext = _
-
-  private[choam] var reactive: Reactive[IO] = _
+  private[choam] var mcasCtx: Mcas.ThreadContext =
+    _
 
   @Setup
   def setupMcasImpl(): Unit = {
-    this.mcasImpl = Mcas.unsafeLookup(mcasName)
     this.mcasCtx = this.mcasImpl.currentContext()
-    this.reactive = {
-      val ar = AsyncReactive.forAsync[IO](IO.asyncForIO)
-      assert(ar.mcasImpl eq this.mcasImpl)
-      ar
-    }
     java.lang.invoke.VarHandle.releaseFence()
+  }
+}
+
+abstract class McasImplStateBase {
+
+  private[choam] val reactive: Reactive[IO] =
+    McasImplStateBase._reactive
+
+  private[choam] val mcasImpl: Mcas =
+    McasImplStateBase._mcasImpl
+}
+
+private object McasImplStateBase {
+
+  private val _reactive: Reactive[IO] = {
+    AsyncReactive.forAsyncResIn[SyncIO, IO].allocated.unsafeRunSync()._1
+  }
+
+  private val _mcasImpl: Mcas = {
+    this._reactive.mcasImpl
   }
 }

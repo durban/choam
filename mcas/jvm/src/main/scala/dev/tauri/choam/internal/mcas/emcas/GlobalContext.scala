@@ -30,6 +30,9 @@ private[mcas] abstract class GlobalContext
   extends GlobalContextBase
   with Mcas.UnsealedMcas { this: Emcas =>
 
+  private[this] val globalRig: GlobalRefIdGen =
+    RefIdGen.newGlobal()
+
   /**
    * `ThreadContext`s of all the (active) threads
    *
@@ -51,7 +54,7 @@ private[mcas] abstract class GlobalContext
     new ThreadLocal[EmcasThreadContext]()
 
   private[this] final def newThreadContext(): EmcasThreadContext =
-    new EmcasThreadContext(this)
+    new EmcasThreadContext(this, this.globalRig.newThreadLocal())
 
   /** Gets or creates the context for the current thread */
   private[emcas] final def currentContextInternal(): EmcasThreadContext = {

@@ -17,12 +17,15 @@
 
 package dev.tauri.choam
 
-import internal.mcas.{ Mcas, OsRng }
+import internal.mcas.{ Mcas, OsRng, RefIdGen }
 
 abstract class StressTestBase {
 
   protected val impl: Mcas =
     StressTestBase.emcasInst
+
+  protected def rig: RefIdGen =
+    this.impl.currentContext().refIdGen
 }
 
 object StressTestBase {

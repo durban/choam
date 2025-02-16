@@ -42,19 +42,20 @@ import org.openjdk.jcstress.infra.results._
   new Outcome(id = Array("Some(r), Some(l), (1,2), (2,2)"), expect = ACCEPTABLE_INTERESTING, desc = "Successful exchange, reader after other postCommit"),
   new Outcome(id = Array("Some(r), Some(l), (2,2), (2,2)"), expect = ACCEPTABLE_INTERESTING, desc = "Successful exchange, reader after both postCommits"),
 ))
+@nowarn("cat=deprecation")
 class ExchangerTest3 extends StressTestBase {
 
   private[this] val ex: Exchanger[String, String] =
     Exchanger.unsafe[String, String]
 
   private[this] val leftCtr =
-    Ref.unsafe(0)
+    Ref.unsafePadded(0, this.rig)
 
   private[this] val left: Rxn[String, Option[String]] =
     (ex.exchange.? <* leftCtr.update(_ + 1)).postCommit(leftCtr.update(_ + 1))
 
   private[this] val rightCtr =
-    Ref.unsafe(0)
+    Ref.unsafePadded(0, this.rig)
 
   private[this] val right: Rxn[String, Option[String]] =
     (ex.dual.exchange.? <* rightCtr.update(_ + 1)).postCommit(rightCtr.update(_ + 1))

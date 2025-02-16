@@ -34,7 +34,7 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 class CAS1Test extends StressTestBase {
 
   private[this] val ref: MemoryLocation[String] =
-    MemoryLocation.unsafe("ov")
+    MemoryLocation.unsafePadded("ov", impl.currentContext().refIdGen)
 
   @Actor
   def writer1(r: ZZL_Result): Unit = {

@@ -22,15 +22,16 @@ package bench
 
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
+import dev.tauri.choam.bench.util.McasImplState
 
 @Fork(6)
 @BenchmarkMode(Array(Mode.AverageTime))
 class GlobalCompareBench {
 
   @Benchmark
-  def baseline(bh: Blackhole): Unit = {
-    val r1 = Ref.unsafe("a").loc
-    val r2 = Ref.unsafe("a").loc
+  def baseline(bh: Blackhole, k: McasImplState): Unit = {
+    val r1 = Ref.unsafeUnpadded("a", k.mcasCtx.refIdGen).loc
+    val r2 = Ref.unsafeUnpadded("a", k.mcasCtx.refIdGen).loc
     bh.consume(r1)
     bh.consume(r2)
   }
@@ -41,27 +42,27 @@ class GlobalCompareBench {
   // TODO: measurement on already existing Refs
 
   @Benchmark
-  def benchIdHash(bh: Blackhole): Unit = {
-    val r1 = Ref.unsafe("a").loc
-    val r2 = Ref.unsafe("a").loc
+  def benchIdHash(bh: Blackhole, k: McasImplState): Unit = {
+    val r1 = Ref.unsafeUnpadded("a", k.mcasCtx.refIdGen).loc
+    val r2 = Ref.unsafeUnpadded("a", k.mcasCtx.refIdGen).loc
     bh.consume(r1)
     bh.consume(r2)
     bh.consume(System.identityHashCode(r1) - System.identityHashCode(r2))
   }
 
   @Benchmark
-  def benchHash(bh: Blackhole): Unit = {
-    val r1 = Ref.unsafe("a").loc
-    val r2 = Ref.unsafe("a").loc
+  def benchHash(bh: Blackhole, k: McasImplState): Unit = {
+    val r1 = Ref.unsafeUnpadded("a", k.mcasCtx.refIdGen).loc
+    val r2 = Ref.unsafeUnpadded("a", k.mcasCtx.refIdGen).loc
     bh.consume(r1)
     bh.consume(r2)
     bh.consume(r1.## - r2.##)
   }
 
   @Benchmark
-  def bench0(bh: Blackhole): Unit = {
-    val r1 = Ref.unsafe("a").loc
-    val r2 = Ref.unsafe("a").loc
+  def bench0(bh: Blackhole, k: McasImplState): Unit = {
+    val r1 = Ref.unsafeUnpadded("a", k.mcasCtx.refIdGen).loc
+    val r2 = Ref.unsafeUnpadded("a", k.mcasCtx.refIdGen).loc
     bh.consume(r1)
     bh.consume(r2)
     bh.consume(MemoryLocation.globalCompare(r1, r2))

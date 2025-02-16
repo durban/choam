@@ -30,21 +30,21 @@ import util._
 class ArrowBench {
 
   @Benchmark
-  def onlyComputed(s: ArrowBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val ref = s.refs(Math.abs(k.nextInt()) % ArrowBench.size)
+  def onlyComputed(s: ArrowBench.St, bh: Blackhole, k: McasImplState, r: RandomState): Unit = {
+    val ref = s.refs(Math.abs(r.nextInt()) % ArrowBench.size)
     bh.consume(s.rOnlyComputed(ref).unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
-  def withoutComputed(s: ArrowBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val ref = s.refs(Math.abs(k.nextInt()) % ArrowBench.size)
+  def withoutComputed(s: ArrowBench.St, bh: Blackhole, k: McasImplState, r: RandomState): Unit = {
+    val ref = s.refs(Math.abs(r.nextInt()) % ArrowBench.size)
     bh.consume(s.rWithoutComputed(ref).unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
-  def updPrimitive(s: ArrowBench.USt, bh: Blackhole, k: McasImplState): Unit = {
-    val r = s.updPrimitive(s.refs(Math.abs(k.nextInt()) % ArrowBench.size))
-    bh.consume(r.unsafePerform(k.nextString(), k.mcasImpl))
+  def updPrimitive(s: ArrowBench.USt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    val r = s.updPrimitive(s.refs(Math.abs(rnd.nextInt()) % ArrowBench.size))
+    bh.consume(r.unsafePerform(rnd.nextString(), k.mcasImpl))
   }
 }
 
@@ -53,10 +53,13 @@ object ArrowBench {
   final val size = 8
 
   @State(Scope.Benchmark)
-  class St {
+  class St extends McasImplStateBase {
 
     val refs: List[Ref[String]] = List.fill(size) {
-      Ref.unsafe[String](ThreadLocalRandom.current().nextInt().toString)
+      Ref.unsafePadded[String](
+        ThreadLocalRandom.current().nextInt().toString,
+        this.mcasImpl.currentContext().refIdGen,
+      )
     }
 
     def rWithoutComputed(ref: Ref[String]): Axn[Int] =
@@ -74,10 +77,13 @@ object ArrowBench {
   }
 
   @State(Scope.Benchmark)
-  class USt {
+  class USt extends McasImplStateBase {
 
     val refs: List[Ref[Long]] = List.fill(size) {
-      Ref.unsafe[Long](ThreadLocalRandom.current().nextLong())
+      Ref.unsafePadded[Long](
+        ThreadLocalRandom.current().nextLong(),
+        this.mcasImpl.currentContext().refIdGen,
+      )
     }
 
     def updPrimitive(ref: Ref[Long]): Rxn[String, Long] = {

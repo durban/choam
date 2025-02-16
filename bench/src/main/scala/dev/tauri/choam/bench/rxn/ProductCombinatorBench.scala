@@ -46,7 +46,13 @@ class ProductCombinatorBench {
 object ProductCombinatorBench {
 
   @State(Scope.Thread)
-  class DummyProduct extends ChoiceCombinatorBench.BaseState {
+  abstract class BaseState extends McasImplStateBase {
+    @Param(Array("8", "16", "32"))
+    var size: Int = _
+  }
+
+  @State(Scope.Thread)
+  class DummyProduct extends BaseState {
 
     var prod: Axn[Unit] = _
 
@@ -59,7 +65,7 @@ object ProductCombinatorBench {
   }
 
   @State(Scope.Thread)
-  class CASProduct extends ChoiceCombinatorBench.BaseState {
+  class CASProduct extends BaseState {
 
     var prod: Axn[Unit] = _
 
@@ -69,7 +75,7 @@ object ProductCombinatorBench {
 
     @Setup
     def setup(): Unit = {
-      this.refs = Array.fill(size)(Ref.unsafe("foo"))
+      this.refs = Array.fill(size)(Ref.unsafePadded("foo", this.mcasImpl.currentContext().refIdGen))
       this.reset = new Reset("foo", ArraySeq.unsafeWrapArray(this.refs): _*)
       this.prod = (0 until size).foldLeft[Axn[Unit]](Rxn.unit) { (r, idx) =>
         (r * refs(idx).unsafeCas("foo", "bar")).void

@@ -23,6 +23,7 @@ import org.openjdk.jmh.annotations._
 
 import internal.mcas.Mcas
 import internal.mcas.Consts
+import util.McasImplStateBase
 import EmcasBench._
 
 @Fork(3)
@@ -42,7 +43,7 @@ class EmcasBench {
 
 object EmcasBench {
 
-  abstract class BaseSt {
+  abstract class BaseSt extends McasImplStateBase {
 
     private[this] final val N = 8
 
@@ -125,7 +126,7 @@ object EmcasBench {
 
     @Setup
     def setup(): Unit = {
-      this._ctx = Mcas.Emcas.currentContext()
+      this._ctx = this.mcasImpl.currentContext()
     }
   }
 }

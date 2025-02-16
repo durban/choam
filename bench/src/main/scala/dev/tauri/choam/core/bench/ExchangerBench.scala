@@ -54,6 +54,7 @@ class ExchangerBench {
 object ExchangerBench {
 
   @State(Scope.Benchmark)
+  @nowarn("cat=deprecation")
   class St {
 
     private[this] val exchanger: Exchanger[String, String] =

@@ -27,6 +27,7 @@ import org.openjdk.jmh.annotations._
 
 import cats.syntax.all._
 import cats.effect.IO
+import dev.tauri.choam.bench.util.McasImplStateBase
 
 /** This benchmark can only run on JVM >= 21, because it tests virtual threads */
 @Fork(1)
@@ -66,16 +67,16 @@ object VirtualThreadsBench {
   final val K = 32
 
   @State(Scope.Benchmark)
-  abstract class AbstractSt {
+  abstract class AbstractSt extends McasImplStateBase {
 
-    implicit val reactive: Reactive[IO] =
-      Reactive.forSync[IO]
+    implicit final def reactiveImplicit: Reactive[IO] =
+      this.reactive
 
     val runtime =
       cats.effect.unsafe.IORuntime.global
 
     private val refs = Array.fill(K) {
-      Ref.unsafePadded(ThreadLocalRandom.current().nextInt().toString)
+      Ref.unsafePadded(ThreadLocalRandom.current().nextInt().toString, reactive.mcasImpl.currentContext().refIdGen)
     }
 
     def selectRndRef: Axn[Ref[String]] = {

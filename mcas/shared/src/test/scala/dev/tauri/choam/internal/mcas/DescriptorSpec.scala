@@ -26,13 +26,13 @@ final class DescriptorSpec_DefaultMcas
 trait DescriptorSpec extends BaseSpec { this: McasImplSpec =>
 
   test("Descriptor.mergeReads") {
-    val r1 = MemoryLocation.unsafe("r1")
-    val r2 = MemoryLocation.unsafe("r2")
-    val r3 = MemoryLocation.unsafe("r3")
-    val r4 = MemoryLocation.unsafe("r4")
-    val r5 = MemoryLocation.unsafe("r5x")
-    val r6 = MemoryLocation.unsafe("r6")
-    val r7 = MemoryLocation.unsafe("r7")
+    val r1 = MemoryLocation.unsafeUnpadded("r1", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded("r2", this.rigInstance)
+    val r3 = MemoryLocation.unsafeUnpadded("r3", this.rigInstance)
+    val r4 = MemoryLocation.unsafeUnpadded("r4", this.rigInstance)
+    val r5 = MemoryLocation.unsafeUnpadded("r5x", this.rigInstance)
+    val r6 = MemoryLocation.unsafeUnpadded("r6", this.rigInstance)
+    val r7 = MemoryLocation.unsafeUnpadded("r7", this.rigInstance)
     val ctx = this.mcasImpl.currentContext()
     val desc: AbstractDescriptor = ctx
       .builder()

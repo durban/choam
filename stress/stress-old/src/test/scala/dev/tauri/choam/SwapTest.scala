@@ -32,10 +32,10 @@ import org.openjdk.jcstress.infra.results.LL_Result
 class SwapTest extends StressTestBase {
 
   private[this] val ref1 =
-    Ref.unsafe("x")
+    Ref.unsafePadded("x", this.rig)
 
   private[this] val ref2 =
-    Ref.unsafe("y")
+    Ref.unsafePadded("y", this.rig)
 
   private[this] val sw: Axn[Unit] =
     Ref.swap(ref1, ref2)

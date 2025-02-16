@@ -36,13 +36,14 @@ import org.openjdk.jcstress.infra.results._
   new Outcome(id = Array("lx, rx, l0, lp"), expect = FORBIDDEN, desc = "Exchange, reader sees partial values"),
   new Outcome(id = Array("lx, rx, rp, r0"), expect = FORBIDDEN, desc = "Exchange, reader sees partial values"),
 ))
+@nowarn("cat=deprecation")
 class ExchangerTest2 extends StressTestBase {
 
   private[this] val ex: Exchanger[String, String] =
     Exchanger.unsafe[String, String]
 
   private[this] val rl: Ref[String] =
-    Ref.unsafe("l0")
+    Ref.unsafePadded("l0", this.rig)
 
   private[this] val left: Rxn[String, String] = {
     ex.exchange.?.flatMapF {
@@ -52,7 +53,7 @@ class ExchangerTest2 extends StressTestBase {
   }
 
   private[this] val rr: Ref[String] =
-    Ref.unsafe("r0")
+    Ref.unsafePadded("r0", this.rig)
 
   private[this] val right: Rxn[String, String] = {
     ex.dual.exchange.?.flatMapF {

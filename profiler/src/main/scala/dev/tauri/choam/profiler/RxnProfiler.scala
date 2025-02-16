@@ -197,6 +197,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     }.toDouble
   }
 
+  @nowarn("cat=deprecation")
   private[this] final def collectExchangerStats(): StatsResult = {
     this.emcasJmxStatsInstances.foldLeft(new StatsResult(Nil)) { (statsResult, m) =>
       val stats = m
@@ -499,6 +500,7 @@ object RxnProfiler {
   final val ExchangeCount = "rxn.exchangeCount"
   final val ExchangerStats = "rxn.exchangerStats"
 
+  @nowarn("cat=deprecation")
   final def profiledExchanger[A, B]: Axn[Exchanger[A, B]] =
     Exchanger.profiled[A, B](this.exchangeCounter)
 

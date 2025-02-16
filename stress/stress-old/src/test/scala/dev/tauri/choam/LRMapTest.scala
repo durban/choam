@@ -31,10 +31,10 @@ import org.openjdk.jcstress.infra.results.LLLLLL_Result
 class LRMapTest extends StressTestBase {
 
   private[this] val ref1: Ref[String] =
-    Ref.unsafe("a")
+    Ref.unsafePadded("a", this.rig)
 
   private[this] val ref2: Ref[String] =
-    Ref.unsafe("x")
+    Ref.unsafePadded("x", this.rig)
 
   private[this] def rxn1(r: LLLLLL_Result): Axn[String] = {
     ref1.getAndUpdate(_ + "b").map { s =>

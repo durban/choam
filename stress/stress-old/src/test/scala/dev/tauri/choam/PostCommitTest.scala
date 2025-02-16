@@ -34,10 +34,10 @@ import org.openjdk.jcstress.infra.results.LLLLL_Result
 class PostCommitTest extends StressTestBase {
 
   private[this] val r1 =
-    Ref.unsafe("foo")
+    Ref.unsafePadded("foo", this.rig)
 
   private[this] val r2 =
-    Ref.unsafe("bar")
+    Ref.unsafePadded("bar", this.rig)
 
   private[this] val upd: Rxn[String, (String, String)] =
     r1.upd[String, String] { (ov, nv) => (nv, ov) } * r2.upd[String, String] { (ov, nv) => (nv, ov) }

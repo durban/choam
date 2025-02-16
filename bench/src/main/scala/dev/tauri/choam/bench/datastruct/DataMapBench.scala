@@ -26,7 +26,6 @@ import cats.kernel.{ Order, Hash }
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import internal.mcas.Mcas
 import data.Map
 import util._
 
@@ -39,64 +38,64 @@ class DataMapBench {
   // lookup (successful and not), insert, remove:
 
   @Benchmark
-  def hash_jucCM(s: ChmSt, bh: Blackhole, k: McasImplState): Unit = {
-    cmTask(s, bh, k)
+  def hash_jucCM(s: ChmSt, bh: Blackhole, rnd: RandomState): Unit = {
+    cmTask(s, bh, rnd)
   }
 
   @Benchmark
-  def ordered_jucCSLM(s: CslmSt, bh:Blackhole, k: McasImplState): Unit = {
-    cmTask(s, bh, k)
+  def ordered_jucCSLM(s: CslmSt, bh:Blackhole, rnd: RandomState): Unit = {
+    cmTask(s, bh, rnd)
   }
 
   @Benchmark
-  def hash_sccTrieMap(s: TmSt, bh:Blackhole, k: McasImplState): Unit = {
-    tmTask(s, bh, k)
+  def hash_sccTrieMap(s: TmSt, bh:Blackhole, rnd: RandomState): Unit = {
+    tmTask(s, bh, rnd)
   }
 
   @Benchmark
-  def hash_scalaStm(s: ScalaStmSt, bh: Blackhole, k: McasImplState): Unit = {
-    scalaStmTask(s, bh, k)
+  def hash_scalaStm(s: ScalaStmSt, bh: Blackhole, rnd: RandomState): Unit = {
+    scalaStmTask(s, bh, rnd)
   }
 
   @Benchmark
-  def hash_rxnSimple(s: SimpleHashSt, bh: Blackhole, k: McasImplState): Unit = {
-    rxnTask(s, bh, k)
+  def hash_rxnSimple(s: SimpleHashSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    rxnTask(s, bh, k, rnd)
   }
 
   @Benchmark
-  def ordered_rxnSimple(s: SimpleOrderedSt, bh: Blackhole, k: McasImplState): Unit = {
-    rxnTask(s, bh, k)
+  def ordered_rxnSimple(s: SimpleOrderedSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    rxnTask(s, bh, k, rnd)
   }
 
   @Benchmark
-  def hash_rxn(s: TMapHashSt, bh: Blackhole, k: McasImplState): Unit = {
-    rxnTask(s, bh, k)
+  def hash_rxn(s: TMapHashSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    rxnTask(s, bh, k, rnd)
   }
 
   @Benchmark
-  def ordered_rxn(s: TMapOrderedSt, bh: Blackhole, k: McasImplState): Unit = {
-    rxnTask(s, bh, k)
+  def ordered_rxn(s: TMapOrderedSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    rxnTask(s, bh, k, rnd)
   }
 
-  private[this] final def rxnTask(s: RxnMapSt, bh: Blackhole, k: McasImplState): Unit = {
+  private[this] final def rxnTask(s: RxnMapSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     val mcasCtx = k.mcasCtx
     val map = s.map
-    k.nextIntBounded(4) match {
+    rnd.nextIntBounded(4) match {
       case n @ (0 | 1) =>
         val key = if (n == 0) {
           // successful lookup:
           val keys = s.keys
-          keys(k.nextIntBounded(keys.length))
+          keys(rnd.nextIntBounded(keys.length))
         } else {
           // unsuccessful lookup:
           val dummyKeys = s.dummyKeys
-          dummyKeys(k.nextIntBounded(dummyKeys.length))
+          dummyKeys(rnd.nextIntBounded(dummyKeys.length))
         }
         val res: Option[String] = map.get.unsafePerformInternal(key, mcasCtx)
         bh.consume(res)
       case n @ (2 | 3) =>
         val delInsKeys = s.delInsKeys
-        val key = delInsKeys(k.nextIntBounded(delInsKeys.length))
+        val key = delInsKeys(rnd.nextIntBounded(delInsKeys.length))
         if (n == 2) {
           // insert:
           val res: Option[String] = map.put.unsafePerformInternal((key, s.constValue), mcasCtx)
@@ -111,19 +110,19 @@ class DataMapBench {
     }
   }
 
-  private[this] final def scalaStmTask(s: ScalaStmSt, bh: Blackhole, k: McasImplState): Unit = {
+  private[this] final def scalaStmTask(s: ScalaStmSt, bh: Blackhole, rnd: RandomState): Unit = {
     import scala.concurrent.stm.atomic
     val tmap = s.tmap
-    k.nextIntBounded(4) match {
+    rnd.nextIntBounded(4) match {
       case n @ (0 | 1) =>
         val key = if (n == 0) {
           // successful lookup:
           val keys = s.keys
-          keys(k.nextIntBounded(keys.length))
+          keys(rnd.nextIntBounded(keys.length))
         } else {
           // unsuccessful lookup:
           val dummyKeys = s.dummyKeys
-          dummyKeys(k.nextIntBounded(dummyKeys.length))
+          dummyKeys(rnd.nextIntBounded(dummyKeys.length))
         }
         val res: Option[String] = atomic { implicit txn =>
           tmap.get(key)
@@ -131,7 +130,7 @@ class DataMapBench {
         bh.consume(res)
       case n @ (2 | 3) =>
         val delInsKeys = s.delInsKeys
-        val key = delInsKeys(k.nextIntBounded(delInsKeys.length))
+        val key = delInsKeys(rnd.nextIntBounded(delInsKeys.length))
         if (n == 2) {
           // insert:
           val res: Option[String] = atomic { implicit txn =>
@@ -150,24 +149,24 @@ class DataMapBench {
     }
   }
 
-  private[this] final def cmTask(s: JucCmSt, bh: Blackhole, k: McasImplState): Unit = {
+  private[this] final def cmTask(s: JucCmSt, bh: Blackhole, rnd: RandomState): Unit = {
     val cm = s.cm
-    k.nextIntBounded(4) match {
+    rnd.nextIntBounded(4) match {
       case n @ (0 | 1) =>
         val key = if (n == 0) {
           // successful lookup:
           val keys = s.keys
-          keys(k.nextIntBounded(keys.length))
+          keys(rnd.nextIntBounded(keys.length))
         } else {
           // unsuccessful lookup:
           val dummyKeys = s.dummyKeys
-          dummyKeys(k.nextIntBounded(dummyKeys.length))
+          dummyKeys(rnd.nextIntBounded(dummyKeys.length))
         }
         val res: Option[String] = Option(cm.get(key))
         bh.consume(res)
       case n @ (2 | 3) =>
         val delInsKeys = s.delInsKeys
-        val key = delInsKeys(k.nextIntBounded(delInsKeys.length))
+        val key = delInsKeys(rnd.nextIntBounded(delInsKeys.length))
         if (n == 2) {
           // insert:
           val res: Option[String] = Option(cm.put(key, s.constValue))
@@ -182,24 +181,24 @@ class DataMapBench {
     }
   }
 
-  private[this] final def tmTask(s: TmSt, bh: Blackhole, k: McasImplState): Unit = {
+  private[this] final def tmTask(s: TmSt, bh: Blackhole, rnd: RandomState): Unit = {
     val tm = s.tm
-    k.nextIntBounded(4) match {
+    rnd.nextIntBounded(4) match {
       case n @ (0 | 1) =>
         val key = if (n == 0) {
           // successful lookup:
           val keys = s.keys
-          keys(k.nextIntBounded(keys.length))
+          keys(rnd.nextIntBounded(keys.length))
         } else {
           // unsuccessful lookup:
           val dummyKeys = s.dummyKeys
-          dummyKeys(k.nextIntBounded(dummyKeys.length))
+          dummyKeys(rnd.nextIntBounded(dummyKeys.length))
         }
         val res: Option[String] = tm.get(key)
         bh.consume(res)
       case n @ (2 | 3) =>
         val delInsKeys = s.delInsKeys
-        val key = delInsKeys(k.nextIntBounded(delInsKeys.length))
+        val key = delInsKeys(rnd.nextIntBounded(delInsKeys.length))
         if (n == 2) {
           // insert:
           val res: Option[String] = tm.put(key, s.constValue)
@@ -217,30 +216,30 @@ class DataMapBench {
   // replace:
 
   @Benchmark
-  def replace_hash_rxnSimple(s: SimpleHashSt, bh: Blackhole, k: McasImplState): Unit = {
-    rxnReplaceTask(s, bh, k)
+  def replace_hash_rxnSimple(s: SimpleHashSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    rxnReplaceTask(s, bh, k, rnd)
   }
 
   @Benchmark
-  def replace_ordered_rxnSimple(s: SimpleOrderedSt, bh: Blackhole, k: McasImplState): Unit = {
-    rxnReplaceTask(s, bh, k)
+  def replace_ordered_rxnSimple(s: SimpleOrderedSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    rxnReplaceTask(s, bh, k, rnd)
   }
 
   @Benchmark
-  def replace_hash_rxn(s: TMapHashSt, bh: Blackhole, k: McasImplState): Unit = {
-    rxnReplaceTask(s, bh, k)
+  def replace_hash_rxn(s: TMapHashSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    rxnReplaceTask(s, bh, k, rnd)
   }
 
   @Benchmark
-  def replace_ordered_rxn(s: TMapOrderedSt, bh: Blackhole, k: McasImplState): Unit = {
-    rxnReplaceTask(s, bh, k)
+  def replace_ordered_rxn(s: TMapOrderedSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    rxnReplaceTask(s, bh, k, rnd)
   }
 
-  private[this] final def rxnReplaceTask(s: RxnMapSt, bh: Blackhole, k: McasImplState): Unit = {
+  private[this] final def rxnReplaceTask(s: RxnMapSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     val mcasCtx = k.mcasCtx
     val map = s.map
     val keys = s.keys
-    val key = keys(k.nextIntBounded(keys.length))
+    val key = keys(rnd.nextIntBounded(keys.length))
     val res: Boolean = map.replace.unsafePerformInternal((key, s.constValue, s.constValue2), mcasCtx)
     bh.consume(res)
   }
@@ -250,11 +249,8 @@ object DataMapBench {
 
   final val size = 8
 
-  private[this] final def initMcas: Mcas =
-    Mcas.Emcas
-
   @State(Scope.Benchmark)
-  abstract class AbstractSt {
+  abstract class AbstractSt extends McasImplStateBase {
 
     final val constValue =
       "abcde"
@@ -358,14 +354,14 @@ object DataMapBench {
       while (idx < delInsKeys.length) {
         val key = delInsKeys(idx)
         assert(key ne null)
-        assert(this.map.put.unsafePerform(key -> constValue, initMcas).isEmpty)
+        assert(this.map.put.unsafePerform(key -> constValue, this.mcasImpl).isEmpty)
         idx += 1
       }
       idx = 0
       while (idx < keys.length) {
         val key = keys(idx)
         assert(key ne null)
-        assert(this.map.put.unsafePerform(key -> constValue, initMcas).isEmpty)
+        assert(this.map.put.unsafePerform(key -> constValue, this.mcasImpl).isEmpty)
         idx += 1
       }
     }
@@ -375,7 +371,7 @@ object DataMapBench {
   class SimpleHashSt extends RxnMapSt {
 
     private[this] val simple: Map[String, String] =
-      Map.simpleHashMap[String, String].unsafeRun(initMcas)
+      Map.simpleHashMap[String, String].unsafeRun(this.mcasImpl)
 
     final def map: Map[String, String] =
       simple
@@ -385,7 +381,7 @@ object DataMapBench {
   class SimpleOrderedSt extends RxnMapSt {
 
     private[this] val simple: Map[String, String] =
-      Map.simpleOrderedMap[String, String].unsafeRun(initMcas)
+      Map.simpleOrderedMap[String, String].unsafeRun(this.mcasImpl)
 
     final def map: Map[String, String] =
       simple
@@ -395,7 +391,7 @@ object DataMapBench {
   class TMapHashSt extends RxnMapSt {
 
     private[this] val m: Map[String, String] =
-      Map.hashMap[String, String].unsafeRun(initMcas)
+      Map.hashMap[String, String].unsafeRun(this.mcasImpl)
 
     final def map: Map[String, String] =
       m
@@ -405,7 +401,7 @@ object DataMapBench {
   class TMapOrderedSt extends RxnMapSt {
 
     private[this] val m: Map[String, String] =
-      Map.orderedMap[String, String].unsafeRun(initMcas)
+      Map.orderedMap[String, String].unsafeRun(this.mcasImpl)
 
     final def map: Map[String, String] =
       m

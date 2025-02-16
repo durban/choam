@@ -32,7 +32,7 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 class RxnCASTest extends StressTestBase {
 
   private[this] val ref: Ref[String] =
-    Ref.unsafe("ov")
+    Ref.unsafePadded("ov", this.rig)
 
   private[this] val cas =
     Rxn.computed { (nv: String) => Rxn.unsafe.cas(ref, "ov", nv) }.?

@@ -25,24 +25,15 @@ import org.openjdk.jmh.annotations._
 
 import util.McasImplState
 import RefIdBench._
+import dev.tauri.choam.bench.util.McasImplStateBase
 
 @Fork(3)
 @Threads(4)
 class RefIdBench {
 
   @Benchmark
-  def createPadded(): Ref[String] = {
-    Ref.unsafePadded("")
-  }
-
-  @Benchmark
   def createPaddedCtx(k: McasImplState): Ref[String] = {
     Ref.unsafePadded("", k.mcasCtx.refIdGen)
-  }
-
-  @Benchmark
-  def createUnpadded(): Ref[String] = {
-    Ref.unsafeUnpadded("")
   }
 
   @Benchmark
@@ -77,12 +68,12 @@ object RefIdBench {
   final val N = 1024
 
   @State(Scope.Thread)
-  class PaddedSt {
-    val refs = Array.fill(N)(Ref.unsafePadded(""))
+  class PaddedSt extends McasImplStateBase {
+    val refs = Array.fill(N)(Ref.unsafePadded("", this.mcasImpl.currentContext().refIdGen))
   }
 
   @State(Scope.Thread)
-  class UnpaddedSt {
-    val refs = Array.fill(N)(Ref.unsafeUnpadded(""))
+  class UnpaddedSt extends McasImplStateBase {
+    val refs = Array.fill(N)(Ref.unsafeUnpadded("", this.mcasImpl.currentContext().refIdGen))
   }
 }

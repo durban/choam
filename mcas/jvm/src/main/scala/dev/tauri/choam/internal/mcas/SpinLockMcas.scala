@@ -34,6 +34,9 @@ import java.util.concurrent.ThreadLocalRandom
  */
 private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
 
+  private[this] val rig: RefIdGen =
+    RefIdGen.newGlobal()
+
   final override def currentContext(): Mcas.ThreadContext =
     dummyContext
 
@@ -44,7 +47,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
     true
 
   private[this] val commitTs: MemoryLocation[Long] =
-    MemoryLocation.unsafePadded(Version.Start)
+    MemoryLocation.unsafePadded(Version.Start, this.rig)
 
   private[this] val dummyContext = new Mcas.UnsealedThreadContext {
 
@@ -58,7 +61,7 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
       ThreadLocalRandom.current()
 
     final override def refIdGen =
-      RefIdGen.global
+      self.rig
 
     final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long = {
       val ops = desc.hwdIterator.toList

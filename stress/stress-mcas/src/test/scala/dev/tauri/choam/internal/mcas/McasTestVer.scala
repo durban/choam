@@ -34,13 +34,13 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 class McasTestVer extends StressTestBase {
 
   private[this] val refs: Array[MemoryLocation[String]] = Array(
-    MemoryLocation.unsafe("ov"),
-    MemoryLocation.unsafe("ov"),
-    MemoryLocation.unsafe("-"),
-    MemoryLocation.unsafe("-"),
-    MemoryLocation.unsafe("-"),
-    MemoryLocation.unsafe("-"),
-    MemoryLocation.unsafe("-"),
+    MemoryLocation.unsafePadded("ov", impl.currentContext().refIdGen),
+    MemoryLocation.unsafePadded("ov", impl.currentContext().refIdGen),
+    MemoryLocation.unsafePadded("-", impl.currentContext().refIdGen),
+    MemoryLocation.unsafePadded("-", impl.currentContext().refIdGen),
+    MemoryLocation.unsafePadded("-", impl.currentContext().refIdGen),
+    MemoryLocation.unsafePadded("-", impl.currentContext().refIdGen),
+    MemoryLocation.unsafePadded("-", impl.currentContext().refIdGen),
   )
 
   this.init()

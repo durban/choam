@@ -24,7 +24,6 @@ import org.openjdk.jmh.infra.Blackhole
 
 import util._
 import data.Counter
-import internal.mcas.Mcas
 
 @Fork(2)
 class CounterBench {
@@ -46,8 +45,8 @@ class CounterBench {
   }
 
   @Benchmark
-  def react(s: ReactSt, k: McasImplState, bh: Blackhole): Unit = {
-    bh.consume(s.reactCtr.add.unsafePerform(k.nextLong(), k.mcasImpl))
+  def react(s: ReactSt, k: McasImplState, bh: Blackhole, rnd: RandomState): Unit = {
+    bh.consume(s.reactCtr.add.unsafePerform(rnd.nextLong(), k.mcasImpl))
     Blackhole.consumeCPU(waitTime)
   }
 }
@@ -75,10 +74,10 @@ object CounterBench {
   }
 
   @State(Scope.Benchmark)
-  class ReactSt {
+  class ReactSt extends McasImplStateBase {
     val reactCtr: Counter = {
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
-      Counter.apply(initial = init).unsafeRun(Mcas.Emcas)
+      Counter.apply(initial = init).unsafeRun(this.mcasImpl)
     }
   }
 }
@@ -97,8 +96,8 @@ class CounterBenchN {
   }
 
   @Benchmark
-  def reactN(s: ReactStN, k: McasImplState, bh: Blackhole): Unit = {
-    bh.consume(s.r.unsafePerform(k.nextLong(), k.mcasImpl))
+  def reactN(s: ReactStN, k: McasImplState, bh: Blackhole, rnd: RandomState): Unit = {
+    bh.consume(s.r.unsafePerform(rnd.nextLong(), k.mcasImpl))
     Blackhole.consumeCPU(waitTime)
   }
 }
@@ -123,7 +122,7 @@ object CounterBenchN {
   }
 
   @State(Scope.Benchmark)
-  class ReactStN {
+  class ReactStN extends McasImplStateBase {
 
     private[this] final val n = 8
 
@@ -136,7 +135,7 @@ object CounterBenchN {
     def setup(): Unit = {
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
       ctrs = Array.fill(n) {
-        Counter.apply(initial = init).unsafeRun(Mcas.Emcas)
+        Counter.apply(initial = init).unsafeRun(this.mcasImpl)
       }
       r = ctrs.map(_.add.as(())).reduceLeft { (a, b) => (a * b).as(()) }
     }

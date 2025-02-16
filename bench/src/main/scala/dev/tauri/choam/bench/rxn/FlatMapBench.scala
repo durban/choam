@@ -32,36 +32,36 @@ import util._
 class FlatMapBench {
 
   @Benchmark
-  def withFlatMap(s: FlatMapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
+  def withFlatMap(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
     val r: Axn[String] = s.rsWithFlatMap(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
-  def withFlatMapOld(s: FlatMapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
+  def withFlatMapOld(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
     val r: Axn[String] = s.rsWithFlatMapOld(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
-  def withFlatMapF(s: FlatMapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
+  def withFlatMapF(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
     val r: Axn[String] = s.rsWithFlatMapF(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
-  def withFlatMapFOld(s: FlatMapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
+  def withFlatMapFOld(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
     val r: Axn[String] = s.rsWithFlatMapFOld(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
-  def withStarGreater(s: FlatMapBench.St, bh: Blackhole, k: McasImplState): Unit = {
-    val idx = Math.abs(k.nextInt()) % FlatMapBench.size
+  def withStarGreater(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
     val r: Axn[String] = s.rsWithStarGreater(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
@@ -80,13 +80,16 @@ object FlatMapBench {
   final case object StarGreater extends OpType
 
   @State(Scope.Benchmark)
-  class St {
+  class St extends McasImplStateBase {
 
     private[this] val dummy: Axn[Unit] =
       Rxn.unsafe.delay { _ => () }
 
     private[this] val refs = List.fill(size) {
-      Ref.unsafe[String](ThreadLocalRandom.current().nextInt().toString)
+      Ref.unsafePadded[String](
+        ThreadLocalRandom.current().nextInt().toString,
+        this.mcasImpl.currentContext().refIdGen,
+      )
     }
 
     private[this] val addXs: List[Axn[Unit]] =

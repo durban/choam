@@ -23,31 +23,33 @@ import cats.data.Ior
 
 import org.scalacheck.{ Gen, Arbitrary, Cogen }
 
-import internal.mcas.Mcas
+import internal.mcas.{ Mcas, RefIdGen }
 
 trait TestInstances extends TestInstancesLowPrio0 { self =>
 
   def mcasImpl: Mcas
+
+  protected def rigInstance: RefIdGen
 
   implicit def arbRef[A](implicit arbA: Arbitrary[A]): Arbitrary[Ref[A]] = Arbitrary {
     import refs.Ref2
     arbA.arbitrary.flatMap { a =>
       Gen.oneOf(
         Gen.oneOf(
-          Gen.delay(Ref.unsafeUnpadded(a)),
-          Gen.delay(Ref.unsafePadded(a)),
+          Gen.delay(Ref.unsafeUnpadded(a, this.rigInstance)),
+          Gen.delay(Ref.unsafePadded(a, this.rigInstance)),
         ),
         Gen.oneOf(
-          Gen.delay(Ref2.unsafeP1P1[A, String](a, "foo")._1),
-          Gen.delay(Ref2.unsafeP1P1[String, A]("foo", a)._2),
-          Gen.delay(Ref2.unsafeP2[A, String](a, "foo")._1),
-          Gen.delay(Ref2.unsafeP2[String, A]("foo", a)._2),
+          Gen.delay(Ref2.p1p1[A, String](a, "foo").unsafeRun(this.mcasImpl)._1),
+          Gen.delay(Ref2.p1p1[String, A]("foo", a).unsafeRun(this.mcasImpl)._2),
+          Gen.delay(Ref2.p2[A, String](a, "foo").unsafeRun(this.mcasImpl)._1),
+          Gen.delay(Ref2.p2[String, A]("foo", a).unsafeRun(this.mcasImpl)._2),
         ),
         Gen.choose(1, 8).flatMap { s =>
           Arbitrary.arbBool.arbitrary.flatMap { sparse =>
             Arbitrary.arbBool.arbitrary.flatMap { flat =>
               val str = Ref.Array.AllocationStrategy(sparse = sparse, flat = flat, padded = false)
-              Gen.delay { Ref.unsafeArray[A](size = s, initial = a, strategy = str) }.flatMap { arr =>
+              Gen.delay { Ref.unsafeArray[A](size = s, initial = a, strategy = str, rig = this.rigInstance) }.flatMap { arr =>
                 Gen.oneOf(Gen.const(0), Gen.choose(0, s - 1)).flatMap { idx =>
                   Gen.delay { arr.unsafeGet(idx) }
                 }
@@ -160,14 +162,14 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
       },
       arbB.arbitrary.flatMap { b =>
         Gen.delay {
-          val ref = Ref.unsafe(b)
+          val ref = Ref.unsafePadded(b, this.rigInstance)
           ResetRxn(ref.unsafeDirectRead, Set(ResetRef(ref, b)))
         }
       },
       for {
         ab <- arbAB.arbitrary
         a0 <- arbA.arbitrary
-        ref <- Gen.delay { Ref.unsafe(a0) }
+        ref <- Gen.delay { Ref.unsafePadded(a0, this.rigInstance) }
       } yield {
         val rxn = ref.upd[A, B] { (aOld, aInput) => (aInput, ab(aOld)) }
         ResetRxn(rxn, Set(ResetRef(ref, a0)))
@@ -190,7 +192,7 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
           r <- arbResetRxn[A, B].arbitrary
           b <- arbB.arbitrary
           b2 <- arbB.arbitrary
-          ref <- Gen.delay { Ref.unsafe[B](b) }
+          ref <- Gen.delay { Ref.unsafePadded[B](b, this.rigInstance) }
         } yield {
           ResetRxn(
             r.rxn.postCommit(ref.upd[B, Unit] { case (_, _) => (b2, ()) }),
