@@ -23,6 +23,7 @@ import com.typesafe.tools.mima.core.{
   ReversedMissingMethodProblem,
   NewMixinForwarderProblem,
   StaticVirtualMemberProblem,
+  IncompatibleMethTypeProblem,
 }
 
 // Scala versions:
@@ -308,6 +309,8 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.ArrayObjStack.this"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Rxn#SuspendUntilChanged.this"), // private
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.core.RetryStrategy.isDebug"), // sealed
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.MinimalRandom.unsafe1"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.MinimalRandom.unsafe2"), // private
     ),
   ).jvmSettings(
     mimaBinaryIssueFilters ++= Seq(
@@ -358,6 +361,11 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.AbstractDescriptor.validTsBoxed"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.AbstractDescriptor.remove"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.Hamt#HasKey.isTomb"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.MemoryLocation.unsafe"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.MemoryLocation.unsafePadded"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.MemoryLocation.unsafeUnpadded"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasThreadContext.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.ThreadConfinedMCAS.this"),
     ),
   )
 
@@ -414,6 +422,9 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.TreiberStack.apply"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.Counter.unsafe"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.Counter.unsafe$default$1"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.MsQueue.this"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.RemoveQueue.this"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.GcHostileMsQueue.this"), // private
     ),
   )
 
@@ -532,11 +543,17 @@ lazy val laws = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .dependsOn(async % "compile->compile;test->test")
-  .settings(libraryDependencies ++= Seq(
-    dependencies.catsLaws.value,
-    dependencies.catsEffectLaws.value,
-    dependencies.catsEffectTestkit.value % TestInternal,
-  ))
+  .settings(
+    libraryDependencies ++= Seq(
+      dependencies.catsLaws.value,
+      dependencies.catsEffectLaws.value,
+      dependencies.catsEffectTestkit.value % TestInternal,
+    ),
+    // there is no backward compat for `choam-laws`:
+    mimaBinaryIssueFilters ++= Seq(
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.laws.TestInstances.rigInstance"),
+    )
+  )
 
 lazy val unidocs = project
   .in(file("unidocs"))
