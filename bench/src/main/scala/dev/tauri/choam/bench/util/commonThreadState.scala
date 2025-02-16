@@ -62,8 +62,7 @@ class RandomState {
 @State(Scope.Thread)
 class McasImplState extends McasImplStateBase {
 
-  private[choam] var mcasCtx: Mcas.ThreadContext =
-    _
+  private[choam] var mcasCtx: Mcas.ThreadContext = _
 
   @Setup
   def setupMcasImpl(): Unit = {
