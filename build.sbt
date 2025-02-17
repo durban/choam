@@ -788,12 +788,11 @@ lazy val commonSettings = Seq[Setting[_]](
     } else {
       // 3.x:
       List(
-        "-source:3.3",
         "-no-indent",
         "-Xverify-signatures",
         // we disable warnings for `final object`, because Scala 2 doesn't always makes them final;
         // and for "value discard", because Scala 3 does't allow silencing them with `: Unit`
-        "-Wconf:id=E147:s,id=E175:s,any:v",
+        "-Wconf:any:v,id=E147:s,id=E175:s",
         "-Wunused:all",
         // TODO: "-Ysafe-init", // https://github.com/lampepfl/dotty/issues/17997
         "-Ycheck-all-patmat",
