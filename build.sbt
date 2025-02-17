@@ -791,12 +791,14 @@ lazy val commonSettings = Seq[Setting[_]](
         "-no-indent",
         "-Xverify-signatures",
         // we disable warnings for `final object`, because Scala 2 doesn't always makes them final;
-        // and for "value discard", because Scala 3 does't allow silencing them with `: Unit`
-        "-Wconf:any:v,id=E147:s,id=E175:s",
+        // and for "value discard", because Scala 3 doesn't allow silencing them with `: Unit`;
+        // and for deprecations, because there are a lot (and they're internal)
+        "-Wconf:any:v,cat=deprecation:s,id=E147:s,id=E175:s",
         "-Wunused:all",
         // TODO: "-Ysafe-init", // https://github.com/lampepfl/dotty/issues/17997
         "-Ycheck-all-patmat",
         // TODO: "-Ycheck-reentrant",
+        // TODO: "-Ylog:checkReentrant",
         // TODO: "-Yexplicit-nulls",
         // TODO: "-Yrequire-targetName",
       )
@@ -811,7 +813,7 @@ lazy val commonSettings = Seq[Setting[_]](
   Test / scalacOptions --= Seq(
     // we don't care about this in tests:
     "-Wperformance",
-    // and these are to noisy in tests:
+    // and these are too noisy in tests:
     "-Wnonunit-statement",
     "-Wvalue-discard",
   ),

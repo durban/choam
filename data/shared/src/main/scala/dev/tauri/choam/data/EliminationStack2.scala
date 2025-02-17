@@ -19,7 +19,6 @@ package dev.tauri.choam
 package data
 
 import core.EliminatorImpl
-import data.Stack
 
 // TODO:0.5: make this implement `Stack`; make it private
 private[choam] final class EliminationStack2[A](underlying: Stack[A])
