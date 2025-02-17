@@ -789,6 +789,7 @@ lazy val commonSettings = Seq[Setting[_]](
       // 3.x:
       List(
         "-source:3.3",
+        "-no-indent",
         "-Xverify-signatures",
         // we disable warnings for `final object`, because Scala 2 doesn't always makes them final;
         // and for "value discard", because Scala 3 does't allow silencing them with `: Unit`
