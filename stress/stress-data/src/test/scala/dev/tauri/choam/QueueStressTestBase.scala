@@ -19,11 +19,30 @@ package dev.tauri.choam
 
 import cats.effect.SyncIO
 
+import internal.mcas.Mcas
+import core.Reactive
 import data.{ Queue, QueueHelper }
-import ce.unsafeImplicits._
 
 abstract class QueueStressTestBase extends StressTestBase {
+
   protected def newQueue[A](as: A*): Queue[A]
+
+  protected final override def impl: Mcas =
+    QueueStressTestBase._mcasImpl
+
+  protected final implicit def reactive: Reactive[SyncIO] =
+    QueueStressTestBase._reactiveForSyncIo
+}
+
+private object QueueStressTestBase {
+
+  private val _reactiveForSyncIo: Reactive[SyncIO] = {
+    Reactive.forSyncResIn[SyncIO, SyncIO].allocated.unsafeRunSync()._1
+  }
+
+  private val _mcasImpl: Mcas = {
+    this._reactiveForSyncIo.mcasImpl
+  }
 }
 
 abstract class MsQueueStressTestBase extends QueueStressTestBase {

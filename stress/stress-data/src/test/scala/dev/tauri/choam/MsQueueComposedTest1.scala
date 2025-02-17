@@ -24,8 +24,6 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.SyncIO
 
-import ce.unsafeImplicits._
-
 @JCStressTest
 @State
 @Description("MsQueue enq/deq should be composable")

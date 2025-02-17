@@ -21,7 +21,7 @@ import internal.mcas.{ Mcas, OsRng, RefIdGen }
 
 abstract class StressTestBase {
 
-  protected val impl: Mcas =
+  protected def impl: Mcas =
     StressTestBase.emcasInst
 
   protected def rig: RefIdGen =
