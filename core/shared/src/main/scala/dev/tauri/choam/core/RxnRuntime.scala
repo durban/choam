@@ -23,52 +23,35 @@ import cats.effect.kernel.{ Sync, Resource }
 import internal.mcas.{ Mcas, OsRng }
 
 sealed trait RxnRuntime { // TODO: maybe call it `ChoamRuntime`?
+
   private[choam] def mcasImpl: Mcas
+
+  private[choam] def unsafeCloseBlocking(): Unit
 }
 
 object RxnRuntime {
 
   private[this] final class RxnRuntimeImpl private[RxnRuntime] (
     private[choam] final override val mcasImpl: Mcas,
-  ) extends RxnRuntime
+    osRng: OsRng,
+  ) extends RxnRuntime {
 
-  final def apply[F[_]](implicit F: Sync[F]): Resource[F, RxnRuntime] = {
-    defaultMcasResource[F].map(new RxnRuntimeImpl(_))
-  }
-
-  private[this] final def defaultMcasResource[F[_]](implicit F: Sync[F]): Resource[F, Mcas] = {
-    osRngResource[F].flatMap { osRng =>
-      Resource.make(
-        acquire = F.blocking { // `blocking` because:
-          // who knows what JMX is doing
-          // when we're registering the mbean
-          Mcas.newDefaultMcas(osRng)
-         }
-      )(
-        release = { mcasImpl =>
-          F.blocking { // `blocking` because:
-            // who knows what JMX is doing
-            // when we're unregistering the mbean
-            mcasImpl.close()
-          }
-        }
-      )
+    private[choam] final override def unsafeCloseBlocking(): Unit = {
+      this.mcasImpl.close()
+      this.osRng.close()
     }
   }
 
-  private[this] final def osRngResource[F[_]](implicit F: Sync[F]): Resource[F, OsRng] = {
-    Resource.make(
-      acquire = F.blocking { // `blocking` because:
-        OsRng.mkNew() // <- this call may block
-      }
-    )(
-      release = { osRng =>
-        F.blocking {  // `blocking` because:
-          // closing the FileInputStream of
-          // the OsRng involves a lock
-          osRng.close()
-        }
-      }
-    )
+  final def apply[F[_]](implicit F: Sync[F]): Resource[F, RxnRuntime] = {
+    Resource.make(F.blocking { this.unsafeBlocking() }) { rt =>
+      F.blocking { rt.unsafeCloseBlocking() }
+    }
+  }
+
+  /** Acquires resources, allocates a new runtime; may block! */
+  private[choam] final def unsafeBlocking(): RxnRuntime = {
+    val o = OsRng.mkNew() // may block due to /dev/random
+    val m = Mcas.newDefaultMcas(o) // may block due to JMX
+    new RxnRuntimeImpl(m, o)
   }
 }
