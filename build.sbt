@@ -315,6 +315,8 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.refs.Ref.unsafeArray"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.refs.Ref.unsafePadded"), // private
       ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.refs.Ref.unsafeUnpadded"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Reactive.defaultMcasResource"), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Reactive.osRngResource"), // private
     ),
   ).jvmSettings(
     mimaBinaryIssueFilters ++= Seq(
