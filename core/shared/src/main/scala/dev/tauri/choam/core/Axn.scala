@@ -31,14 +31,16 @@ object Axn {
   final def unit: Axn[Unit] =
     pure(())
 
-  final object unsafe {
-    final def delay[A](da: => A): Axn[A] =
+  // TODO: final def panic[A](ex: Throwable): Axn[A]
+
+  private[choam] final object unsafe {
+    private[choam] final def delay[A](da: => A): Axn[A] =
       Rxn.unsafe.delay[Any, A](_ => da)
-    final def suspend[A](daa: => Axn[A]): Axn[A] = // TODO: optimize
+    private[choam] final def suspend[A](daa: => Axn[A]): Axn[A] = // TODO: optimize
       this.delay(daa).flatten
-    final def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
+    private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
       Rxn.unsafe.delayContext(uf)
-    final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
+    private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       Rxn.unsafe.suspendContext(uf)
   }
 }

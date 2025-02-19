@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong
 abstract class RefIdGenBase {
 
   private[this] val ctr =
-    new AtomicLong(Long.MinValue)
+    new AtomicLong(Long.MinValue) // TODO: start from something more "random"
 
   protected final def getAndAddCtrO(x: Long): Long = {
     this.ctr.getAndAdd(x)

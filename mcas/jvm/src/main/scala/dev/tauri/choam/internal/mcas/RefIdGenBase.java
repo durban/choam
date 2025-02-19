@@ -39,7 +39,7 @@ public abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
   }
 
   private volatile long ctr =
-    Long.MIN_VALUE;
+    Long.MIN_VALUE; // TODO: start from something more "random"
 
   /**
    * Next power of 2 which is `>= x`.

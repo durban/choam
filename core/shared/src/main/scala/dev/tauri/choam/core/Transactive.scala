@@ -39,6 +39,12 @@ private[choam] object Transactive {
   final def apply[F[_]](implicit F: Transactive[F]): F.type =
     F
 
+  final def from[F[_]](rt: RxnRuntime)(implicit F: Async[F]): Resource[F, Transactive[F]] =
+    fromIn[F, F](rt)
+
+  final def fromIn[G[_], F[_]](rt: RxnRuntime)(implicit @unused G: Sync[G], F: Async[F]): Resource[G, Transactive[F]] =
+    Resource.pure(new TransactiveImpl(rt.mcasImpl))
+
   @deprecated("Use forAsyncRes", since = "0.4.11") // TODO:0.5: remove
   final def forAsync[F[_]](implicit F: Async[F]): Transactive[F] = {
     new TransactiveImpl(Rxn.DefaultMcas)
@@ -48,11 +54,11 @@ private[choam] object Transactive {
     forAsyncResIn[F, F]
 
   final def forAsyncResIn[G[_], F[_]](implicit G: Sync[G], F: Async[F]): Resource[G, Transactive[F]] = // TODO:0.5: rename to `forAsyncIn`
-    Reactive.defaultMcasResource[G].map(new TransactiveImpl(_))
+    RxnRuntime[G].flatMap(rt => fromIn(rt))
 
   /** This allows a `Reactive` and a `Transactive` to share some of their underlying resources */
-  final def forReactive[F[_]](implicit F: Async[F], r: Reactive[F]): Resource[F, Transactive[F]] =
-    Resource.eval(F.pure(new TransactiveImpl[F](r.mcasImpl)))
+  final def forReactive[F[_]](implicit F: Async[F], r: Reactive[F]): Resource[F, Transactive[F]] = // TODO:0.5: remove
+    Resource.pure(new TransactiveImpl[F](r.mcasImpl))
 
   private[choam] final class TransactiveImpl[F[_] : Async](m: Mcas)
     extends Reactive.SyncReactive[F](m) with Transactive[F] {

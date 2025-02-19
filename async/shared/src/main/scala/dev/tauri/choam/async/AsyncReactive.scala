@@ -22,7 +22,7 @@ import cats.{ ~>, Monad }
 import cats.effect.kernel.{ Async, Sync, Resource }
 
 import internal.mcas.Mcas
-import core.RetryStrategy
+import core.{ RxnRuntime, RetryStrategy }
 
 trait AsyncReactive[F[_]] extends Reactive[F] { self => // TODO:0.5: make it sealed
   def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B]
@@ -48,6 +48,12 @@ object AsyncReactive {
   def apply[F[_]](implicit inst: AsyncReactive[F]): inst.type =
     inst
 
+  final def from[F[_]](rt: RxnRuntime)(implicit F: Async[F]): Resource[F, AsyncReactive[F]] =
+    fromIn[F, F](rt)
+
+  final def fromIn[G[_], F[_]](rt: RxnRuntime)(implicit @unused G: Sync[G], F: Async[F]): Resource[G, AsyncReactive[F]] =
+    Resource.pure(new AsyncReactiveImpl(rt.mcasImpl))
+
   @deprecated("Use forAsyncRes", since = "0.4.11") // TODO:0.5: remove
   def forAsync[F[_]](implicit F: Async[F]): AsyncReactive[F] =
     new AsyncReactiveImpl[F](Rxn.DefaultMcas)(F)
@@ -56,12 +62,13 @@ object AsyncReactive {
     forAsyncResIn[F, F]
 
   final def forAsyncResIn[G[_], F[_]](implicit G: Sync[G], F: Async[F]): Resource[G, AsyncReactive[F]] = // TODO:0.5: rename to forAsyncIn
-    Reactive.defaultMcasResource[G].map(new AsyncReactiveImpl(_))
+    core.RxnRuntime[G].flatMap(rt => fromIn(rt))
 
   private[choam] class AsyncReactiveImpl[F[_]](mi: Mcas)(implicit F: Async[F])
     extends Reactive.SyncReactive[F](mi)
     with AsyncReactive[F] {
 
+    @nowarn("cat=deprecation")
     final override def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B] =
       r.perform[F, B](a, this.mcasImpl, s)(F)
 

@@ -239,11 +239,32 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
    * This method is `unsafe` because it performs side-effects.
    *
    * @param a the input to the [[Rxn]].
-   * @param mcas the [[internal.mcas.Mcas]] implementation to use.
+   * @param rt the [[RxnRuntime]] which will run the [[Rxn]].
+   * @return the result of the executed [[Rxn]].
+   */
+  final def unsafePerform(
+    a: A,
+    rt: RxnRuntime,
+  ): B = this.unsafePerform(a, rt.mcasImpl, RetryStrategy.Default) : @nowarn("cat=deprecation")
+
+  /**
+   * Execute the [[Rxn]] with the specified input `a`.
+   *
+   * This method is `unsafe` because it performs side-effects.
+   *
+   * @param a the input to the [[Rxn]].
+   * @param rt the [[RxnRuntime]] which will run the [[Rxn]].
    * @param strategy the retry strategy to use.
    * @return the result of the executed [[Rxn]].
    */
   final def unsafePerform(
+    a: A,
+    rt: RxnRuntime,
+    strategy: RetryStrategy.Spin,
+  ): B = this.unsafePerform(a, rt.mcasImpl, strategy) : @nowarn("cat=deprecation")
+
+  @deprecated("Use an overload which accepts a RxnRuntime", since = "0.4.12")
+  final def unsafePerform( // TODO:0.5: make it private
     a: A,
     mcas: Mcas,
     strategy: RetryStrategy.Spin = RetryStrategy.Default,
@@ -258,6 +279,18 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   }
 
   final def perform[F[_], X >: B](
+    a: A,
+    rt: RxnRuntime,
+  )(implicit F: Async[F]): F[X] = this.perform(a, rt, RetryStrategy.Default)
+
+  final def perform[F[_], X >: B](
+    a: A,
+    rt: RxnRuntime,
+    strategy: RetryStrategy,
+  )(implicit F: Async[F]): F[X] = this.perform(a, rt.mcasImpl, strategy) : @nowarn("cat=deprecation")
+
+  @deprecated("Use an overload which accepts a RxnRuntime", since = "0.4.12")
+  final def perform[F[_], X >: B]( // TODO:0.5: make it private
     a: A,
     mcas: Mcas,
     strategy: RetryStrategy = RetryStrategy.Default,
@@ -399,7 +432,6 @@ object Rxn extends RxnInstances0 {
   private[this] final val interruptCheckPeriod =
     16384
 
-  /** This is just exporting `DefaultMcas`, because that's in an internal package */
   @deprecated("Rxn.DefaultMcas will be removed", since = "0.4.11") // TODO:0.5: remove
   final def DefaultMcas: Mcas =
     Mcas.DefaultMcas

@@ -24,6 +24,8 @@ import internal.mcas.{ Mcas, OsRng }
 
 private[ce] trait BaseMixin { this: IOApp =>
 
+  // TODO: add a RxnRuntime
+
   private[this] final val __mcasImpl: Mcas = {
     // This might block, but as we're in the
     // constructor of an `IOApp`, it's probably

@@ -21,7 +21,7 @@ package core
 import cats.{ ~>, Monad }
 import cats.effect.kernel.{ Sync, Resource }
 
-import internal.mcas.{ Mcas, OsRng }
+import internal.mcas.Mcas
 
 // TODO: We should have a way to "propagate"
 // TODO: a `Strategy`, because this way a
@@ -30,7 +30,7 @@ import internal.mcas.{ Mcas, OsRng }
 
 trait Reactive[F[_]] extends ~>[Axn, F] { self => // TODO:0.5: make it sealed
   def apply[A, B](r: Rxn[A, B], a: A, s: RetryStrategy.Spin = RetryStrategy.Default): F[B]
-  def mcasImpl: Mcas
+  private[choam] def mcasImpl: Mcas
   def monad: Monad[F]
   def mapK[G[_]](t: F ~> G)(implicit G: Monad[G]): Reactive[G] =
     new Reactive.TransformedReactive[F, G](self, t)
@@ -42,8 +42,14 @@ trait Reactive[F[_]] extends ~>[Axn, F] { self => // TODO:0.5: make it sealed
 
 object Reactive {
 
-  def apply[F[_]](implicit inst: Reactive[F]): inst.type =
+  final def apply[F[_]](implicit inst: Reactive[F]): inst.type =
     inst
+
+  final def from[F[_]](rt: RxnRuntime)(implicit F: Sync[F]): Resource[F, Reactive[F]] =
+    fromIn[F, F](rt)
+
+  final def fromIn[G[_], F[_]](rt: RxnRuntime)(implicit @unused G: Sync[G], F: Sync[F]): Resource[G, Reactive[F]] =
+    Resource.pure(new SyncReactive(rt.mcasImpl))
 
   @deprecated("Use forSyncRes", since = "0.4.11") // TODO:0.5: remove
   def forSync[F[_]](implicit F: Sync[F]): Reactive[F] =
@@ -53,50 +59,13 @@ object Reactive {
     forSyncResIn[F, F]
 
   final def forSyncResIn[G[_], F[_]](implicit G: Sync[G], F: Sync[F]): Resource[G, Reactive[F]] = // TODO:0.5: rename to forSyncIn
-    defaultMcasResource[G].map(new SyncReactive(_))
-
-  // TODO: this needs a better place:
-  private[choam] final def defaultMcasResource[F[_]](implicit F: Sync[F]): Resource[F, Mcas] = {
-    osRngResource[F].flatMap { osRng =>
-      Resource.make(
-        acquire = F.blocking { // `blocking` because:
-          // who knows what JMX is doing
-          // when we're registering the mbean
-          Mcas.newDefaultMcas(osRng)
-         }
-      )(
-        release = { mcasImpl =>
-          F.blocking { // `blocking` because:
-            // who knows what JMX is doing
-            // when we're unregistering the mbean
-            mcasImpl.close()
-          }
-        }
-      )
-    }
-  }
-
-  // TODO: this needs a better place:
-  private[choam] final def osRngResource[F[_]](implicit F: Sync[F]): Resource[F, OsRng] = {
-    Resource.make(
-      acquire = F.blocking { // `blocking` because:
-        OsRng.mkNew() // <- this call may block
-      }
-    )(
-      release = { osRng =>
-        F.blocking {  // `blocking` because:
-          // closing the FileInputStream of
-          // the OsRng involves a lock
-          osRng.close()
-        }
-      }
-    )
-  }
+    RxnRuntime[G].flatMap(rt => fromIn(rt))
 
   private[choam] class SyncReactive[F[_]](
-    final override val mcasImpl: Mcas
+    final override val mcasImpl: Mcas,
   )(implicit F: Sync[F]) extends Reactive[F] {
 
+    @nowarn("cat=deprecation")
     final override def apply[A, B](r: Rxn[A, B], a: A, s: RetryStrategy.Spin): F[B] = {
       F.delay { r.unsafePerform(a = a, mcas = this.mcasImpl, strategy = s) }
     }
