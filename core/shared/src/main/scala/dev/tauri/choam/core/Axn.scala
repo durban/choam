@@ -31,7 +31,8 @@ object Axn {
   final def unit: Axn[Unit] =
     pure(())
 
-  // TODO: final def panic[A](ex: Throwable): Axn[A]
+  final def panic[A](ex: Throwable): Axn[A] =
+    Rxn.panic(ex)
 
   private[choam] final object unsafe {
     private[choam] final def delay[A](da: => A): Axn[A] =

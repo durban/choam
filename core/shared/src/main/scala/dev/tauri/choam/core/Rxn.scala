@@ -457,6 +457,9 @@ object Rxn extends RxnInstances0 {
   final def unit[A]: Rxn[A, Unit] =
     _unit
 
+  final def panic[A](ex: Throwable): Axn[A] =
+    unsafe.delay[Any, A] { _ => throw ex }
+
   final def computed[A, B](f: A => Axn[B]): Rxn[A, B] =
     new Computed(f)
 
@@ -543,7 +546,7 @@ object Rxn extends RxnInstances0 {
     private[choam] final def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
       new Cas[A](r.loc, ov, nv)
 
-    private[choam] final def retry[A, B]: Rxn[A, B] =
+    private[choam] final def retry[A, B]: Rxn[A, B] = // TODO:0.5: this should be `Axn[B]`
       _AlwaysRetry.asInstanceOf[Rxn[A, B]]
 
     private[choam] final def delay[A, B](uf: A => B): Rxn[A, B] =

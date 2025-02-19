@@ -984,12 +984,32 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("panic") {
+    // TODO: test panic with Exchanger
+    val exc = new RxnSpec.MyException
+    for {
+      _ <- assertResultF(Rxn.panic(exc).run[F].attempt, Left(exc))
+      _ <- assertResultF(Axn.panic(exc).run[F].attempt, Left(exc))
+      _ <- assertResultF((Rxn.panic(exc) *> Rxn.unsafe.retry).run[F].attempt, Left(exc))
+      _ <- assertResultF((Axn.panic(exc) *> Rxn.unsafe.retry).run[F].attempt, Left(exc))
+      _ <- assertResultF((Rxn.panic(exc) + Axn.pure(42)).run[F].attempt, Left(exc))
+      _ <- assertResultF((Axn.panic(exc) + Axn.pure(42)).run[F].attempt, Left(exc))
+      _ <- assertResultF((Rxn.unsafe.retry[Any, Int] + Rxn.panic[Int](exc)).run[F].attempt, Left(exc))
+      _ <- assertResultF((Rxn.unsafe.retry[Any, Int] + Axn.panic[Int](exc)).run[F].attempt, Left(exc))
+      _ <- assertResultF(F.delay {
+        Rxn.panic[Int](exc).unsafeRun(this.mcasImpl)
+      }.attempt, Left(exc))
+      _ <- assertResultF(F.delay {
+        Axn.panic[Int](exc).unsafeRun(this.mcasImpl)
+      }.attempt, Left(exc))
+    } yield ()
+  }
+
   // This tests an implementation detail,
   // because we depend on this implementation
-  // detail in some of our tests:
+  // detail when implementing `Rxn.panic`:
   test("unsafe.delay(throw)") {
-    final class MyException extends Exception
-    val exc = new MyException
+    val exc = new RxnSpec.MyException
     def attemptRun[A](axn: Axn[A]): F[Either[Throwable, A]] = {
       rF.run(axn).attempt
     }
