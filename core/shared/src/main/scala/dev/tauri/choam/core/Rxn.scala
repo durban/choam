@@ -484,8 +484,11 @@ object Rxn extends RxnInstances0 {
   private[this] val _secureRandom: SecureRandom[Axn] =
     random.newSecureRandom
 
-  final def unique: Axn[Unique.Token] =
+  private[this] val _unique: Axn[Unique.Token] =
     Axn.unsafe.delay { new Unique.Token() }
+
+  final def unique: Axn[Unique.Token] =
+    _unique
 
   final def fastRandom: Random[Axn] =
     _fastRandom
@@ -1951,7 +1954,10 @@ object Rxn extends RxnInstances0 {
 
 private[core] sealed abstract class RxnInstances0 extends RxnInstances1 { this: Rxn.type =>
 
-  implicit final def arrowChoiceInstance: ArrowChoice[Rxn] = new ArrowChoice[Rxn] {
+  implicit final def arrowChoiceInstance: ArrowChoice[Rxn] =
+    _arrowChoiceInstance
+
+  private[this] val _arrowChoiceInstance: ArrowChoice[Rxn] = new ArrowChoice[Rxn] {
 
     final override def compose[A, B, C](f: Rxn[B, C], g: Rxn[A, B]): Rxn[A, C] =
       g >>> f
@@ -1992,12 +1998,15 @@ private[core] sealed abstract class RxnInstances0 extends RxnInstances1 { this: 
 
 private sealed abstract class RxnInstances1 extends RxnInstances2 { self: Rxn.type =>
 
-  implicit final def localInstance[E]: Local[Rxn[E, *], E] = new Local[Rxn[E, *], E] {
-    final override def applicative: Applicative[Rxn[E, *]] =
-      self.monadInstance[E]
-    final override def ask[E2 >: E]: Rxn[E, E2] =
-      Rxn.identity[E]
-    final override def local[A](fa: Rxn[E, A])(f: E => E): Rxn[E, A] =
+  implicit final def localInstance[E]: Local[Rxn[E, *], E] =
+    _localInstance.asInstanceOf[Local[Rxn[E, *], E]]
+
+  private[this] val _localInstance: Local[Rxn[Any, *], Any] = new Local[Rxn[Any, *], Any] {
+    final override def applicative: Applicative[Rxn[Any, *]] =
+      self.monadInstance[Any]
+    final override def ask[E2 >: Any]: Rxn[Any, E2] =
+      Rxn.identity[Any]
+    final override def local[A](fa: Rxn[Any, A])(f: Any => Any): Rxn[Any, A] =
       fa.contramap(f)
   }
 }
@@ -2008,44 +2017,54 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
   // inherit `StackSafeMonad`, in case someone
   // somewhere uses that as a marker or even a
   // typeclass:
-  implicit final def monadInstance[X]: StackSafeMonad[Rxn[X, *]] = new StackSafeMonad[Rxn[X, *]] {
-    final override def unit: Rxn[X, Unit] =
+  implicit final def monadInstance[X]: StackSafeMonad[Rxn[X, *]] =
+    _monadInstance.asInstanceOf[StackSafeMonad[Rxn[X, *]]]
+
+  private[this] val _monadInstance: StackSafeMonad[Rxn[Any, *]] = new StackSafeMonad[Rxn[Any, *]] {
+    final override def unit: Rxn[Any, Unit] =
       Rxn.unit
-    final override def pure[A](a: A): Rxn[X, A] =
+    final override def pure[A](a: A): Rxn[Any, A] =
       Rxn.pure(a)
-    final override def point[A](a: A): Rxn[X, A] =
+    final override def point[A](a: A): Rxn[Any, A] =
       Rxn.pure(a)
-    final override def as[A, B](fa: Rxn[X, A], b: B): Rxn[X, B] =
+    final override def as[A, B](fa: Rxn[Any, A], b: B): Rxn[Any, B] =
       fa.as(b)
-    final override def void[A](fa: Rxn[X, A]): Rxn[X, Unit] =
+    final override def void[A](fa: Rxn[Any, A]): Rxn[Any, Unit] =
       fa.void
-    final override def map[A, B](fa: Rxn[X, A])(f: A => B): Rxn[X, B] =
+    final override def map[A, B](fa: Rxn[Any, A])(f: A => B): Rxn[Any, B] =
       fa.map(f)
-    final override def map2[A, B, Z](fa: Rxn[X, A], fb: Rxn[X, B])(f: (A, B) => Z): Rxn[X, Z] =
+    final override def map2[A, B, Z](fa: Rxn[Any, A], fb: Rxn[Any, B])(f: (A, B) => Z): Rxn[Any, Z] =
       fa.map2(fb)(f)
-    final override def productR[A, B](fa: Rxn[X, A])(fb: Rxn[X, B]): Rxn[X, B] =
+    final override def productR[A, B](fa: Rxn[Any, A])(fb: Rxn[Any, B]): Rxn[Any, B] =
       fa.productR(fb)
-    final override def product[A, B](fa: Rxn[X, A], fb: Rxn[X, B]): Rxn[X, (A, B)] =
+    final override def product[A, B](fa: Rxn[Any, A], fb: Rxn[Any, B]): Rxn[Any, (A, B)] =
       fa product fb
-    final override def flatMap[A, B](fa: Rxn[X, A])(f: A => Rxn[X, B]): Rxn[X, B] =
+    final override def flatMap[A, B](fa: Rxn[Any, A])(f: A => Rxn[Any, B]): Rxn[Any, B] =
       fa.flatMap(f)
-    final override def tailRecM[A, B](a: A)(f: A => Rxn[X, Either[A, B]]): Rxn[X, B] =
-      Rxn.tailRecM[X, A, B](a)(f)
+    final override def tailRecM[A, B](a: A)(f: A => Rxn[Any, Either[A, B]]): Rxn[Any, B] =
+      Rxn.tailRecM[Any, A, B](a)(f)
   }
 }
 
 private sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.type =>
 
-  implicit final def uniqueInstance[X]: Unique[Rxn[X, *]] = new Unique[Rxn[X, *]] {
-    final override def applicative: Applicative[Rxn[X, *]] =
-      self.monadInstance[X]
-    final override def unique: Rxn[X, Unique.Token] =
+  implicit final def uniqueInstance[X]: Unique[Rxn[X, *]] =
+    _uniqueInstance.asInstanceOf[Unique[Rxn[X, *]]]
+
+  private[this] val _uniqueInstance: Unique[Rxn[Any, *]] = new Unique[Rxn[Any, *]] {
+    final override def applicative: Applicative[Rxn[Any, *]] =
+      self.monadInstance[Any]
+    final override def unique: Rxn[Any, Unique.Token] =
       self.unique
   }
 }
 
 private sealed abstract class RxnInstances4 extends RxnInstances5 { this: Rxn.type =>
-  implicit final def monoidKInstance: MonoidK[λ[a => Rxn[a, a]]] = {
+
+  implicit final def monoidKInstance: MonoidK[λ[a => Rxn[a, a]]] =
+    _monoidKInstance
+
+  private[this] val _monoidKInstance: MonoidK[λ[a => Rxn[a, a]]] = {
     new MonoidK[λ[a => Rxn[a, a]]] {
       final override def combineK[A](x: Rxn[A, A], y: Rxn[A, A]): Rxn[A, A] =
         x >>> y
@@ -2058,8 +2077,11 @@ private sealed abstract class RxnInstances4 extends RxnInstances5 { this: Rxn.ty
 private sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.type =>
 
   /** Not implicit, because it would conflict with [[monoidInstance]]. */
-  final def choiceSemigroup[A, B]: Semigroup[Rxn[A, B]] = new Semigroup[Rxn[A, B]] {
-    final override def combine(x: Rxn[A, B], y: Rxn[A, B]): Rxn[A, B] =
+  final def choiceSemigroup[A, B]: Semigroup[Rxn[A, B]] =
+    _choiceSemigroup.asInstanceOf[Semigroup[Rxn[A, B]]]
+
+  private[this] val _choiceSemigroup: Semigroup[Rxn[Any, Any]] = new Semigroup[Rxn[Any, Any]] {
+    final override def combine(x: Rxn[Any, Any], y: Rxn[Any, Any]): Rxn[Any, Any] =
       x + y
   }
 
@@ -2072,10 +2094,14 @@ private sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.ty
 }
 
 private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.type =>
-  implicit final def deferInstance[X]: Defer[Rxn[X, *]] = new Defer[Rxn[X, *]] {
-    final override def defer[A](fa: => Rxn[X, A]): Rxn[X, A] =
-      self.computed[X, A] { x => fa.provide(x) }
-    final override def fix[A](fn: Rxn[X, A] => Rxn[X, A]): Rxn[X, A] = {
+
+  implicit final def deferInstance[X]: Defer[Rxn[X, *]] =
+    _deferInstance.asInstanceOf[Defer[Rxn[X, *]]]
+
+  private[this] val _deferInstance: Defer[Rxn[Any, *]] = new Defer[Rxn[Any, *]] {
+    final override def defer[A](fa: => Rxn[Any, A]): Rxn[Any, A] =
+      self.computed[Any, A] { x => fa.provide(x) }
+    final override def fix[A](fn: Rxn[Any, A] => Rxn[Any, A]): Rxn[Any, A] = {
       // Instead of a `lazy val` (like in the superclass), we just
       // do a rel/acq here, because we know exactly how `defer`
       // works, and know that `.elem` will be initialized before
@@ -2089,7 +2115,7 @@ private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.ty
       // TODO: faster than a `lazy val`, and also, it could
       // TODO: be that in this specific case, a `lazy val`
       // TODO: also woudn't block.
-      val ref = new scala.runtime.ObjectRef[Rxn[X, A]](null)
+      val ref = new scala.runtime.ObjectRef[Rxn[Any, A]](null)
       ref.elem = fn(defer {
         self.acquireFence()
         ref.elem
@@ -2101,15 +2127,31 @@ private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.ty
 }
 
 private sealed abstract class RxnInstances7 extends RxnInstances8 { self: Rxn.type =>
+
   implicit final def showInstance[A, B]: Show[Rxn[A, B]] =
-    Show.fromToString
+    _showInstance.asInstanceOf[Show[Rxn[A, B]]]
+
+  private[this] val _showInstance: Show[Rxn[Any, Any]] = new Show[Rxn[Any, Any]] {
+    final override def show(rxn: Rxn[Any, Any]): String = rxn match {
+      case rg: RefGetAxn[_] =>
+        // this would have the .toString of a Ref, so we're cheating:
+        s"RefGetAxn(${rg})"
+      case _ =>
+        // all the others have a proper .toString:
+        rxn.toString
+    }
+  }
 }
 
 private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.type =>
-  implicit final def alignInstance[X]: Align[Rxn[X, *]] = new Align[Rxn[X, *]] {
-    final override def functor: Functor[Rxn[X, *]] =
-      self.monadInstance[X]
-    final override def align[A, B](fa: Rxn[X, A], fb: Rxn[X, B]): Rxn[X, Ior[A, B]] = {
+
+  implicit final def alignInstance[X]: Align[Rxn[X, *]] =
+    _alignInstance.asInstanceOf[Align[Rxn[X, *]]]
+
+  private[this] val _alignInstance: Align[Rxn[Any, *]] = new Align[Rxn[Any, *]] {
+    final override def functor: Functor[Rxn[Any, *]] =
+      self.monadInstance[Any]
+    final override def align[A, B](fa: Rxn[Any, A], fb: Rxn[Any, B]): Rxn[Any, Ior[A, B]] = {
       val leftOrBoth = (fa * fb.?).map {
         case (a, Some(b)) => Ior.both(a, b)
         case (a, None) => Ior.left(a)
@@ -2126,7 +2168,7 @@ private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.t
     random.uuidGen[Any]
 
   implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] =
-    this._uuidGen.asInstanceOf[UUIDGen[Rxn[X, *]]]
+    _uuidGen.asInstanceOf[UUIDGen[Rxn[X, *]]]
 
   @deprecated("Don't use uuidGenWrapper, because it may block", since = "0.4") // TODO:0.5: remove this
   private[choam] final def uuidGenWrapper[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {
@@ -2135,26 +2177,34 @@ private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.t
 }
 
 private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.type =>
-  implicit final def clockInstance[X]: Clock[Rxn[X, *]] = new Clock[Rxn[X, *]] {
-    final override def applicative: Applicative[Rxn[X, *]] =
-      self.monadInstance[X]
-    final override def monotonic: Rxn[X, FiniteDuration] =
+
+  implicit final def clockInstance[X]: Clock[Rxn[X, *]] =
+    _clockInstance.asInstanceOf[Clock[Rxn[X, *]]]
+
+  private[this] val _clockInstance: Clock[Rxn[Any, *]] = new Clock[Rxn[Any, *]] {
+    final override def applicative: Applicative[Rxn[Any, *]] =
+      self.monadInstance[Any]
+    final override def monotonic: Rxn[Any, FiniteDuration] =
       Axn.unsafe.delay { System.nanoTime().nanoseconds }
-    final override def realTime: Rxn[X, FiniteDuration] =
+    final override def realTime: Rxn[Any, FiniteDuration] =
       Axn.unsafe.delay { System.currentTimeMillis().milliseconds }
   }
 }
 
 private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type =>
-  implicit final def catsRefMakeInstance[X]: CatsRef.Make[Rxn[X, *]] = new CatsRef.Make[Rxn[X, *]] {
-    final override def refOf[A](a: A): Rxn[X, CatsRef[Rxn[X, *], A]] = {
+
+  implicit final def catsRefMakeInstance[X]: CatsRef.Make[Rxn[X, *]] =
+    _catsRefMakeInstance.asInstanceOf[CatsRef.Make[Rxn[X, *]]]
+
+  private[this] val _catsRefMakeInstance: CatsRef.Make[Rxn[Any, *]] = new CatsRef.Make[Rxn[Any, *]] {
+    final override def refOf[A](a: A): Rxn[Any, CatsRef[Rxn[Any, *], A]] = {
       refs.Ref.unpadded(initial = a).map { underlying =>
-        new CatsRef[Rxn[X, *], A] {
-          final override def get: Rxn[X, A] =
+        new CatsRef[Rxn[Any, *], A] {
+          final override def get: Rxn[Any, A] =
             underlying.get
-          final override def set(a: A): Rxn[X, Unit] =
+          final override def set(a: A): Rxn[Any, Unit] =
             underlying.set.provide(a)
-          final override def access: Rxn[X, (A, A => Rxn[X, Boolean])] = {
+          final override def access: Rxn[Any, (A, A => Rxn[Any, Boolean])] = {
             underlying.get.map { ov =>
               val setter = { (nv: A) =>
                 // TODO: can we relax this? Would `ticketRead` be safe?
@@ -2163,17 +2213,17 @@ private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type
               (ov, setter)
             }
           }
-          final override def tryUpdate(f: A => A): Rxn[X, Boolean] =
+          final override def tryUpdate(f: A => A): Rxn[Any, Boolean] =
             this.update(f).maybe
-          final override def tryModify[B](f: A => (A, B)): Rxn[X, Option[B]] =
+          final override def tryModify[B](f: A => (A, B)): Rxn[Any, Option[B]] =
             this.modify(f).attempt
-          final override def update(f: A => A): Rxn[X, Unit] =
+          final override def update(f: A => A): Rxn[Any, Unit] =
             underlying.update(f)
-          final override def modify[B](f: A => (A, B)): Rxn[X, B] =
+          final override def modify[B](f: A => (A, B)): Rxn[Any, B] =
             underlying.modify(f)
-          final override def tryModifyState[B](state: State[A, B]): Rxn[X, Option[B]] =
+          final override def tryModifyState[B](state: State[A, B]): Rxn[Any, Option[B]] =
             underlying.tryModify { a => state.runF.flatMap(_(a)).value }
-          final override def modifyState[B](state: State[A, B]): Rxn[X, B] =
+          final override def modifyState[B](state: State[A, B]): Rxn[Any, B] =
             underlying.modify { a => state.runF.flatMap(_(a)).value }
         }
       }
