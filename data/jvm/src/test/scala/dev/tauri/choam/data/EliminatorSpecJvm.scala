@@ -39,47 +39,72 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
   final override def munitTimeout: Duration =
     super.munitTimeout * 2
 
-  test("EliminationStackForTesting (elimination)") {
+  private def concurrentPushPopTest(
+    tryPopRxn: Axn[Option[Int]],
+    pushRxn: Rxn[Int, Unit],
+  ): F[Unit] = {
     val k = 4
-    val t = for {
+    for {
       _ <- F.cede
-      s <- EliminationStackForTesting[Int].run[F]
-      _ <- s.push[F](0)
+      _ <- pushRxn[F](0)
       res <- F.both(
-        List.fill(k)(s.tryPop.run[F]).parSequence,
-        List.tabulate(k)(idx => s.push[F](idx + 1)).parSequence_,
+        List.fill(k)(tryPopRxn.run[F]).parSequence,
+        List.tabulate(k)(idx => pushRxn[F](idx + 1)).parSequence_,
       )
       popped = res._1.collect { case Some(i) => i }
       remaining = (k + 1) - popped.size
-      maybePopped2 <- s.tryPop.run[F].replicateA(remaining)
+      maybePopped2 <- tryPopRxn.run[F].replicateA(remaining)
       popped2 = maybePopped2.collect { case Some(i) => i}
       _ <- assertEqualsF(popped2.size, maybePopped2.size)
       set = (popped ++ popped2).toSet
       _ <- assertEqualsF(set.size, popped.size + popped2.size)
       _ <- assertEqualsF(set, (0 to k).toSet)
+    } yield ()
+  }
+
+  test("EliminationStackForTesting (elimination)") {
+    val t = for {
+      s <- EliminationStackForTesting[Int].run[F]
+      _ <- concurrentPushPopTest(s.tryPop, s.push)
     } yield ()
     t.replicateA_(50000)
   }
 
-  test("EliminationStack2 (elimination)") {
-    val k = 4
-    val t = for {
-      _ <- F.cede
-      s <- EliminationStack2[Int].run[F]
-      _ <- s.push[F](0)
-      res <- F.both(
-        List.fill(k)(s.tryPop.run[F]).parSequence,
-        List.tabulate(k)(idx => s.push[F](idx + 1)).parSequence_,
+  test("EliminationStackForTesting (overlapping descriptors)") {
+    for {
+      s <- EliminationStackForTesting[Int].run[F]
+      ref <- Ref(0).run[F]
+      _ <- concurrentPushPopTest(
+        // these 2 operations can never exchange
+        // with each other, since they both touch
+        // `ref` before trying to exchange; but
+        // the stack should work correctly nevertheless:
+        ref.update(_ + 1) *> s.tryPop,
+        (ref.update(_ + 1) × s.push).contramap[Int](i => ((), i)).map(_._2),
       )
-      popped = res._1.collect { case Some(i) => i }
-      remaining = (k + 1) - popped.size
-      maybePopped2 <- s.tryPop.run[F].replicateA(remaining)
-      popped2 = maybePopped2.collect { case Some(i) => i}
-      _ <- assertEqualsF(popped2.size, maybePopped2.size)
-      set = (popped ++ popped2).toSet
-      _ <- assertEqualsF(set.size, popped.size + popped2.size)
-      _ <- assertEqualsF(set, (0 to k).toSet)
+    } yield ()
+  }
+
+  test("EliminationStack2 (elimination)") {
+    val t = for {
+      s <- EliminationStack2[Int].run[F]
+      _ <- concurrentPushPopTest(s.tryPop, s.push)
     } yield ()
     t.replicateA_(50000)
+  }
+
+  test("EliminationStack2 (overlapping descriptors)") {
+    for {
+      s <- EliminationStack2[Int].run[F]
+      ref <- Ref(0).run[F]
+      _ <- concurrentPushPopTest(
+        // these 2 operations can never exchange
+        // with each other, since they both touch
+        // `ref` before trying to exchange; but
+        // the stack should work correctly nevertheless:
+        ref.update(_ + 1) *> s.tryPop,
+        (ref.update(_ + 1) × s.push).contramap[Int](i => ((), i)).map(_._2),
+      )
+    } yield ()
   }
 }

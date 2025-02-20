@@ -311,11 +311,11 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
             if (hash == oh) {
               if (ovv.isTomb) {
                 if (op == OP_UPDATE) {
-                  throw new IllegalArgumentException
+                  throwIllegalUpdate(value)
                 }
               } else {
                 if (op == OP_INSERT) {
-                  throw new IllegalArgumentException
+                  throwIllegalInsert(value)
                 }
               }
               // ok, checked for errors, now do the thing:
@@ -341,7 +341,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
       } else {
         // no entry for this hash:
         if (op == OP_UPDATE) {
-          throw new IllegalArgumentException
+          throwIllegalUpdate(value)
         } else {
           val newBitmap: Long = bitmap | flag
           val len = contents.length
@@ -360,7 +360,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
     } else {
       // empty node
       if (op == OP_UPDATE) {
-        throw new IllegalArgumentException
+        throwIllegalUpdate(value)
       } else {
         val newArr = new Array[AnyRef](1)
         newArr(0) = value
@@ -368,6 +368,14 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
         this.newNode(packSizeAndBlueInternal(1, isBlue(value)), flag, newArr)
       }
     }
+  }
+
+  private[this] final def throwIllegalInsert(value: V): Nothing = {
+    throw new Hamt.IllegalInsertException(value.key)
+  }
+
+  private[this] final def throwIllegalUpdate(value: V): Nothing = {
+    throw new Hamt.IllegalUpdateException(value.key)
   }
 
   private[this] final def isBlueOrTomb(value: V): Boolean = {
@@ -452,6 +460,22 @@ private[choam] object Hamt {
     def entryPresent(k: K, v: V, tok: T): V
     def entryAbsent(k: K, tok: T): V
   }
+
+  sealed abstract class IllegalOperationException(msg: String)
+    extends IllegalArgumentException(msg) {
+
+    final override def fillInStackTrace(): Throwable =
+      this
+
+    final override def initCause(cause: Throwable): Throwable =
+      throw new IllegalStateException
+  }
+
+  final class IllegalInsertException(key: HasHash)
+    extends IllegalOperationException(s"illegal INSERT operation for key: ${key}")
+
+  final class IllegalUpdateException(key: HasHash)
+    extends IllegalOperationException(s"illegal UPDATE operation for key: ${key}")
 
   private[this] final class Tombstone(final override val hash: Long)
     extends HasKey[HasHash]

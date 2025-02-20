@@ -324,7 +324,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
     contents(physIdx) match {
       case null =>
         if (op == OP_UPDATE) {
-          throw new IllegalArgumentException
+          throwIllegalUpdate(value)
         } else {
           _assert(!value.isTomb)
           contents(physIdx) = value
@@ -340,7 +340,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
           if (op == OP_UPDATE) {
             // there is no chance that we'll be able to
             // update (even after growing):
-            throw new IllegalArgumentException
+            throwIllegalUpdate(value)
           } else {
             // we need to grow this level:
             val newSize = necessarySize(logIdx, nodeLogIdx)
@@ -355,11 +355,11 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
         if (hash == oh) {
           if (ovv.isTomb) {
             if (op == OP_UPDATE) {
-              throw new IllegalArgumentException
+              throwIllegalUpdate(value)
             }
           } else {
             if (op == OP_INSERT) {
-              throw new IllegalArgumentException
+              throwIllegalInsert(value)
             }
           }
           // ok, checked for errors, now do the thing:
@@ -395,7 +395,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
             if (op == OP_UPDATE) {
               // there is no chance that we'll be able to
               // update (even after growing):
-              throw new IllegalArgumentException
+              throwIllegalUpdate(value)
             } else {
               // grow this level:
               val newSize = necessarySize(logIdx, oLogIdx)
@@ -406,6 +406,14 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
           }
         }
     }
+  }
+
+  private[this] final def throwIllegalInsert(value: V): Nothing = {
+    throw new Hamt.IllegalInsertException(value.key)
+  }
+
+  private[this] final def throwIllegalUpdate(value: V): Nothing = {
+    throw new Hamt.IllegalUpdateException(value.key)
   }
 
   private[this] final def isBlueOrTomb(value: V): Boolean = {

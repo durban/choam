@@ -436,7 +436,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
       ctx.addAll(d2a.toImmutable, d2b.toImmutable)
       fail("expected exception thrown")
     } catch {
-      case _: IllegalArgumentException => // OK
+      case _: Hamt.IllegalInsertException => // OK
     }
   }
 

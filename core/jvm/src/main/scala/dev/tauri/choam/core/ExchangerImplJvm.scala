@@ -45,7 +45,7 @@ private sealed trait ExchangerImplJvm[A, B]
   private[this] final val isDebug =
     false
 
-  private[this] final def debugLog(msg: => String): Unit = {
+  private[this] final def debugLog(msg: => String): Unit = { // TODO: make this "elidable"
     if (this.isDebug) {
       println(msg)
     }
@@ -193,7 +193,7 @@ private sealed trait ExchangerImplJvm[A, B]
     stats: Statistics,
     params: Params,
     ctx: Mcas.ThreadContext,
-  ): Right[Statistics, Msg] = {
+  ): Either[Statistics, Msg] = {
     val a: A = selfMsg.value.asInstanceOf[A]
     val b: B = other.msg.value.asInstanceOf[B]
     debugLog(s"fulfillClaimedOffer: selfMsg.value = ${a}; other.msg.value = ${b} - thread#${Thread.currentThread().getId()}")
@@ -207,28 +207,48 @@ private sealed trait ExchangerImplJvm[A, B]
     )
     debugLog(s"merged conts: newContT = ${java.util.Arrays.toString(newContT)}; newContK = [${ListObjStack.Lst.mkString(newContK)}] - thread#${Thread.currentThread().getId()}")
     val mergedDesc = try {
-      ctx.addAll(selfMsg.desc, other.msg.desc)
+      ctx.addAll(selfMsg.desc, other.msg.desc) // returns null if we can't extend
     } catch {
-      case ex: Exception =>
-        debugLog(s"ERROR: ${ex}")
-        throw ex
+      case _: internal.mcas.Hamt.IllegalInsertException =>
+        debugLog("can't merge overlapping descriptors")
+        null
     }
-    val ok = mergedDesc ne null
-    // TODO: mergedDesc can be null also if we couldn't extend!!!
-    if (ok) debugLog(s"merged logs - thread#${Thread.currentThread().getId()}")
-    else debugLog(s"ERROR: Couldn't merge logs - thread#${Thread.currentThread().getId()}")
-    Predef.assert(ok, s"Couldn't merge logs: ${selfMsg.desc} and ${other.msg.desc}")
-    val resMsg = Msg(
-      value = a,
-      contK = newContK,
-      contT = newContT,
-      desc = mergedDesc,
-      postCommit = ListObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit),
-      // this thread will continue, so we use (and update) our data:
-      exchangerData = selfMsg.exchangerData.updated(this.key, Statistics.exchanged(stats, params))
-    )
-    debugLog(s"merged postCommit: ${ListObjStack.Lst.mkString(resMsg.postCommit)} - thread#${Thread.currentThread().getId()}")
-    Right(resMsg)
+    if (mergedDesc ne null) {
+      debugLog(s"merged logs - thread#${Thread.currentThread().getId()}")
+      val resMsg = Msg(
+        value = a,
+        contK = newContK,
+        contT = newContT,
+        desc = mergedDesc,
+        postCommit = ListObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit),
+        // this thread will continue, so we use (and update) our data:
+        exchangerData = selfMsg.exchangerData.updated(this.key, Statistics.exchanged(stats, params))
+      )
+      debugLog(s"merged postCommit: ${ListObjStack.Lst.mkString(resMsg.postCommit)} - thread#${Thread.currentThread().getId()}")
+      Right(resMsg)
+    } else {
+      debugLog(s"Couldn't merge logs (or can't extend) - thread#${Thread.currentThread().getId()}")
+      // from the point of view of the Exchanger, this is a
+      // "successful" exchange -- there reason we'll have to
+      // retry is due to the incompatible descriptors, so we
+      // count this as an exchange in the stats:
+      Left(Statistics.exchanged(stats, params))
+      // Note, that while this may seem like an "unconditional"
+      // retry (and thus, not lock-free), there are 2 cases:
+      // - The reason for retry is we can't extend; this means
+      //   some other thread committed, so we're fine.
+      // - The reason for retry is that the 2 descriptors
+      //   were overlapping (i.e., contained at least one ref
+      //   which was common between them). In this case there
+      //   really are no "progress"; however, the whole `Exchanger`
+      //   mechanism is really just an optimization for adding
+      //   "elimination" to try to increase performance of otherwise
+      //   lock-free operations. This is the reason `Exchanger`
+      //   by itself is `unsafe` (and deprecated in the public
+      //   API). So if the original operation is lock-free, then
+      //   the exchange "failing" here and retrying _preserves_
+      //   lock-freedom. And that's enough for us here.
+    }
   }
 
   private[this] final def mergeConts[D](
@@ -492,7 +512,7 @@ private object ExchangerImplJvm {
   )
 
   private[core] def mkArray(): AtomicReferenceArray[ExchangerNode[_]] = {
-    // TODO: use padded references
+    // TODO: use padded references (or: make it configurable)
     new AtomicReferenceArray[ExchangerNode[_]](this.size)
   }
 }

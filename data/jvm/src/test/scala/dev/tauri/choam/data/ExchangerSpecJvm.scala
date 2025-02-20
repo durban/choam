@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import scala.util.Try
+import scala.concurrent.duration._
 
 import cats.effect.{ IO, Outcome }
 
@@ -202,29 +202,60 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     tsk.replicateA(iterations)
   }
 
-  test("Merging of non-disjoint logs must be detected") {
+  test("Merging of non-disjoint logs must be detected, and cause a retry") {
+    def runWithCede[A](rxn: Axn[A]): F[A] = {
+      // we'll run the `Rxn`s with CEDE strategy, because otherwise
+      // the retrying in a tight loop could cause the timer not to
+      // fire, and thus the fallbacks wouldn't start:
+      rxn.perform(null, this.mcasImpl, core.RetryStrategy.cede())(F)
+    }
     val tsk = for {
       ref <- Ref("abc").run[F]
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      d1 <- F.deferred[Int]
+      d2 <- F.deferred[String]
+      // these 2 can never exchange with each other,
+      // and would retry forever:
       rxn1 = (ref.update(_ + "d") >>> ex.exchange.provide("foo"))
       rxn2 = (ref.update(_ + "x") >>> ex.dual.exchange.provide(42))
-      tsk1 = F.interruptible { Try(rxn1.unsafeRun(this.mcasImpl)) }.map(_.map(_ => ()))
-      tsk2 = F.interruptible { Try(rxn2.unsafeRun(this.mcasImpl)) }.map(_.map(_ => ()))
-      // one of them must fail, the other one unfortunately
-      // will retry forever, so we need to interrupt it:
-      r <- F.uncancelable { poll =>
-        poll(F.racePair(tsk1, tsk2)).flatMap {
-          case Left((oc1, fib)) =>
-            fib.cancel *> fib.join.map { oc2 => (oc1, oc2) }
-          case Right((fib, oc2)) =>
-            fib.cancel *> fib.join.map { oc1 => (oc2, oc1) }
-        }
+      tsk1 = runWithCede(rxn1).guaranteeCase { oc =>
+        oc.fold(canceled = d1.complete(-1), errored = _ => d1.complete(-2), completed = _.flatMap(d1.complete)).void
       }
-      (ocWinner, ocLoser) = r
-      _ <- assertF(ocWinner.isSuccess)
-      _ <- ocWinner.fold(assertF(false), _ => assertF(false), _.flatMap(r => assertF(r.isFailure)))
-      _ <- assertF(ocLoser.isCanceled)
-      _ <- assertResultF(ref.unsafeDirectRead.run[F], "abc")
+      tsk2 = runWithCede(rxn2).guaranteeCase { oc =>
+        oc.fold(canceled = d2.complete("canceled"), errored = _ => d2.complete("errored"), completed = _.flatMap(d2.complete)).void
+      }
+      // so after a while, we'll start 2 fallbacks,
+      // which can exchange with the forever retrying
+      // ones, thus making them able to finish:
+      fallback1 = ex.dual.exchange.provide(99) // will exchange with `rxn1`
+      fallback2 = ex.exchange.provide("bar") // will exchange with `rxn2`
+      _ <- F.cede
+      results <- F.uncancelable { poll =>
+        for {
+          tasks <- F.both(tsk1, tsk2).start
+          _ <- F.sleep(0.4.second)
+          d1During <- d1.tryGet
+          d2During <- d2.tryGet
+          // ok, let's start the fallbacks; we have to
+          // start them one-by-one, otherwise they could
+          // exchange with each other, and leave the original
+          // tasks running forever:
+          fb1Result <- runWithCede(fallback1)
+          fb2Result <- runWithCede(fallback2)
+          fbResults = (fb1Result, fb2Result)
+          // by now, tasks should also be able to finish:
+          taskResults <- poll(tasks.joinWithNever)
+        } yield (d1During, d2During, fbResults, taskResults)
+      }
+      (d1During, d2During, fbResults, taskResults) = results
+      _ <- assertEqualsF(d1During, None)
+      _ <- assertEqualsF(d2During, None)
+      _ <- assertEqualsF(fbResults._1, "foo") // value from `rxn1`
+      _ <- assertEqualsF(fbResults._2, 42) // value from `rxn2`
+      _ <- assertEqualsF(taskResults._1, 99) // value from `fallback1`
+      _ <- assertEqualsF(taskResults._2, "bar") // value from `fallback2`
+      _ <- assertResultF(d1.get, 99)
+      _ <- assertResultF(d2.get, "bar")
     } yield ()
     tsk.replicateA(iterations)
   }

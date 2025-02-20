@@ -27,8 +27,9 @@
   - if a suspended operation (e.g., a stack `pop`) is cancelled, this can cause lost items
   - it's unclear if we can fix this with the current CE API
   - and even if we would know that the wakeup is lost, it's already too late: the `Rxn` have been already committed
-- `data.Stack.eliminationStack` uses `Exchanger`, which has a number of problems
-  - see `StackSpecJvm.scala`
+- `data.Stack.eliminationStack` uses `Exchanger`, which has a number of problems (see `StackSpecJvm.scala`)
+  - the problem "conflict before the elimination" have been fixed (it'll retry)
+  - the other one ("conflict after") still exists!
 
 ## Other improvements
 

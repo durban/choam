@@ -67,7 +67,7 @@ trait StackSpecTreiberJvm[F[_]]
 trait StackSpecElimination12Jvm[F[_]]
   extends StackSpecJvm[F] { this: StackSpec[F] with McasImplSpec =>
 
-  test("Elimination stack conflict before the elimination".fail) { // TODO: expected failure
+  test("Elimination stack conflict before the elimination") {
     val randomSleep: F[Unit] = F.delay(ThreadLocalRandom.current().nextInt(10)).flatMap { x =>
       F.sleep(x.millis)
     }

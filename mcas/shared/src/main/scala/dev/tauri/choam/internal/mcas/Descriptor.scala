@@ -329,17 +329,8 @@ object Descriptor {
     ctx: Mcas.ThreadContext,
   ): Descriptor = {
     _assert((a.versionCas eq null) && (b.versionCas eq null) && (a.versionIncr == b.versionIncr))
-    // TODO: It is unclear, how should an exchange work when
-    // TODO: both sides already touched the same refs;
-    // TODO: for now, we only allow disjoint logs.
-    // TODO: (This seems to make exchanges fundamentally
-    // TODO: non-composable. Unless a solution is found
-    // TODO: to this problem, an elimination stack (e.g.)
-    // TODO: cannot be used in bigger `Rxn`s, because
-    // TODO: by the time the elimination happens, the
-    // TODO: two bigger `Rxn`s might've already touched
-    // TODO: the same ref.)
-    val mergedMap = a.map.insertedAllFrom(b.map) // throws in case of conflict
+    // throws `Hamt.IllegalInsertException` in case of conflict:
+    val mergedMap = a.map.insertedAllFrom(b.map)
 
     // we temporarily choose the older `validTs`,
     // but will extend if they're not equal:

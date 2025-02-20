@@ -1397,9 +1397,6 @@ object Rxn extends RxnInstances0 {
     private[this] final def retry(): Rxn[Any, Any] =
       this.retry(canSuspend = this.canSuspend, permanent = false, noDebug = false)
 
-    private[this] final def retry(canSuspend: Boolean): Rxn[Any, Any] =
-      this.retry(canSuspend = canSuspend, permanent = false, noDebug = false)
-
     private[this] final def retry(canSuspend: Boolean, permanent: Boolean): Rxn[Any, Any] =
       this.retry(canSuspend = canSuspend, permanent = permanent, noDebug = false)
 
@@ -1739,9 +1736,15 @@ object Rxn extends RxnInstances0 {
           c.exchanger.tryExchange(msg = msg, params = exParams, ctx = ctx) match {
             case Left(newStats) =>
               _stats = newStats
-              // we're never suspending with exchanger, because
-              // the other side may not be allowed to suspend:
-              loop(retry(canSuspend = false))
+              // Couldn't exchange, because:
+              // - didn't find a partner in time; or
+              // - found a partner, but it didn't fulfilled our offer in time; or
+              // - found a partner, but it rescinded before we could've fulfilled its offer; or
+              // - found a partner, but the merged descriptor can't be extended; or
+              // - found a partner with an overlapping descriptor.
+              // In any case we'll retry (since `Exchanger` is supposed to be
+              // used through `Eliminator`, we'll probably retry the primary op).
+              loop(retry())
             case Right(contMsg) =>
               _stats = contMsg.exchangerData
               loop(loadAltFrom(contMsg))
