@@ -71,6 +71,9 @@ private[choam] object Txn extends TxnInstances0 {
   final def check[F[_]](cond: Boolean): Txn[F, Unit] =
     if (cond) unit else retry
 
+  final def panic[F[_], A](ex: Throwable): Txn[F, A] =
+    Rxn.panic(ex).castF[F]
+
   final def tailRecM[F[_], A, B](a: A)(f: A => Txn[F, Either[A, B]]): Txn[F, B] =
     Rxn.tailRecM(a)(f.asInstanceOf[Function1[A, Axn[Either[A, B]]]]).castF[F]
 

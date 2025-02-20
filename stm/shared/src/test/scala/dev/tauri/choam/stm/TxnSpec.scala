@@ -39,6 +39,8 @@ final class TxnSpec_DefaultMcas_ZIO
 
 trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
 
+  final class MyException extends Exception
+
   test("Hello World") {
     def txn(r: TRef[F, Int]): Txn[F, (Int, Int)] = for {
       v0 <- r.get
@@ -148,6 +150,18 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(F.delay(flag.get()), false)
       _ <- assertResultF(txn.commit, 0)
       _ <- assertResultF(F.delay(flag.get()), true)
+    } yield ()
+  }
+
+  test("Txn.panic") {
+    val exc = new MyException
+    for {
+      _ <- assertResultF(Txn.panic(exc).commit.attempt, Left(exc))
+      _ <- assertResultF((Txn.panic(exc) orElse Txn.pure[F, Int](42)).commit.attempt, Left(exc))
+      _ <- assertResultF((Txn.retry orElse Txn.panic(exc)).commit.attempt, Left(exc))
+      ref <- TRef[F, Int](0).commit
+      _ <- assertResultF((ref.update(_ + 1) *> Txn.panic(exc)).commit.attempt, Left(exc))
+      _ <- assertResultF(ref.get.commit, 0)
     } yield ()
   }
 
