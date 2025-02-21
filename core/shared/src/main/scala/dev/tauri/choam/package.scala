@@ -19,14 +19,6 @@ package dev.tauri
 
 package object choam extends internal.ChoamUtils {
 
-  private[choam] type tailrec = scala.annotation.tailrec
-
-  private[choam] type switch = scala.annotation.switch
-
-  private[choam] type unused = scala.annotation.unused
-
-  private[choam] type nowarn = scala.annotation.nowarn
-
   final type Rxn[-A, +B] = core.Rxn[A, B]
 
   final type =#>[-A, +B] = core.Rxn[A, B]
@@ -48,31 +40,6 @@ package object choam extends internal.ChoamUtils {
   final type RefLike[A] = refs.RefLike[A]
 
   final val RefLike: refs.RefLike.type = refs.RefLike
-
-  // Note: using these always leaves a check for
-  // the package object in the bytecode (getstatic
-  // and a null check). However, microbenchmarks
-  // couldn't show a difference between these methods
-  // and Java static method equivalents (see StaticsBench).
-
-  @inline
-  private[choam] final def box[A](a: A): AnyRef =
-    internal.mcas.box[A](a)
-
-  @inline
-  private[choam] final def equ[A](x: A, y: A): Boolean =
-    internal.mcas.equ(x, y)
-
-  @inline
-  private[choam] final def isNull[A](a: A): Boolean =
-    internal.mcas.isNull(a)
-
-  @inline
-  private[choam] final def nullOf[A]: A =
-    internal.mcas.nullOf[A]
-
-  private[choam] final def impossible(s: String): Nothing =
-    internal.mcas.impossible(s)
 
   private[choam] implicit final class AxnSyntax2[A](private val self: Axn[A]) {
 

@@ -33,9 +33,6 @@ private final class AtomicReferenceArray[A](size: Int) {
   private[this] val arr: Array[AnyRef] =
     new Array[AnyRef](size)
 
-  private[this] def box(a: A): AnyRef =
-    a.asInstanceOf[AnyRef]
-
   final def get(i: Int): A = {
     checkArrayIndexIfScalaJs(i, size)
     this.arr(i).asInstanceOf[A]

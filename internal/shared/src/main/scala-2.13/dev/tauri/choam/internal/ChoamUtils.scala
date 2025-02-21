@@ -18,11 +18,11 @@
 package dev.tauri.choam
 package internal
 
-import scala.annotation.{ elidable, nowarn }
+import scala.annotation.elidable
 
 // Note: this code is duplicated for (1) Scala 2.13/3, and (2) for tests in `helpers`.
 @nowarn("msg=elidable")
-private[choam] abstract class ChoamUtils {
+private[choam] abstract class ChoamUtils extends ChoamUtilsBase {
 
   @elidable(1500)
   private[choam] final def _assert(ok: Boolean): Unit = {

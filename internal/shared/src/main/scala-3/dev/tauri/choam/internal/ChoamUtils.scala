@@ -19,7 +19,7 @@ package dev.tauri.choam
 package internal
 
 // Note: this code is duplicated for (1) Scala 2.13/3, and (2) for tests in `helpers`.
-private[choam] abstract class ChoamUtils {
+private[choam] abstract class ChoamUtils extends ChoamUtilsBase {
 
   private[choam] inline final val assertionsEnabled =
     BuildInfo.assertionsEnabled

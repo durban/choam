@@ -18,34 +18,7 @@
 package dev.tauri.choam
 package internal
 
-package object mcas extends ChoamUtils {
-
-  private[mcas] type tailrec = scala.annotation.tailrec
-
-  private[mcas] type switch = scala.annotation.switch
-
-  private[mcas] type unused = scala.annotation.unused
-
-  private[mcas] type nowarn = scala.annotation.nowarn
-
-  @inline
-  private[choam] final def box[A](a: A): AnyRef =
-    skiplist.box(a)
-
-  @inline
-  private[choam] final def nullOf[A]: A =
-    null.asInstanceOf[A]
-
-  @inline
-  private[choam] final def isNull[A](a: A): Boolean =
-    box(a) eq null
-
-  @inline
-  private[choam] final def equ[A](x: A, y: A): Boolean =
-    skiplist.equ(x, y)
-
-  private[choam] final def impossible(s: String): Nothing =
-    throw new AssertionError(s)
+package object mcas {
 
   private[choam] final def refHashString(
     id: Long,
