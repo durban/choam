@@ -22,7 +22,13 @@ package mcas
 import java.util.concurrent.ThreadLocalRandom
 
 private object ThreadConfinedMCAS // TODO:0.5: remove
-  extends ThreadConfinedMCAS(OsRng.globalLazyInit(), RefIdGen.newGlobal())
+  extends ThreadConfinedMCAS(OsRng.mkNew(), RefIdGen.newGlobal()) {
+
+  final override def close(): Unit = {
+    this.osRng.close()
+    super.close()
+  }
+}
 
 private class ThreadConfinedMCAS( // TODO:0.5: make it final
   private[choam] final override val osRng: OsRng,

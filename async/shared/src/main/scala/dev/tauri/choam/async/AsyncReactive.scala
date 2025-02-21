@@ -24,7 +24,7 @@ import cats.effect.kernel.{ Async, Sync, Resource }
 import internal.mcas.Mcas
 import core.{ RxnRuntime, RetryStrategy }
 
-sealed trait AsyncReactive[F[_]] extends Reactive[F] { self =>
+sealed trait AsyncReactive[F[_]] extends Reactive.UnsealedReactive[F] { self =>
   def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B]
   def promise[A]: Axn[Promise[F, A]]
   def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[F, A]]
@@ -54,10 +54,10 @@ object AsyncReactive {
   final def fromIn[G[_], F[_]](rt: RxnRuntime)(implicit @unused G: Sync[G], F: Async[F]): Resource[G, AsyncReactive[F]] =
     Resource.pure(new AsyncReactiveImpl(rt.mcasImpl))
 
-  final def forAsyncRes[F[_]](implicit F: Async[F]): Resource[F, AsyncReactive[F]] = // TODO:0.5: rename to forAsync
-    forAsyncResIn[F, F]
+  final def forAsync[F[_]](implicit F: Async[F]): Resource[F, AsyncReactive[F]] =
+    forAsyncIn[F, F]
 
-  final def forAsyncResIn[G[_], F[_]](implicit G: Sync[G], F: Async[F]): Resource[G, AsyncReactive[F]] = // TODO:0.5: rename to forAsyncIn
+  final def forAsyncIn[G[_], F[_]](implicit G: Sync[G], F: Async[F]): Resource[G, AsyncReactive[F]] =
     core.RxnRuntime[G].flatMap(rt => fromIn(rt))
 
   private[choam] class AsyncReactiveImpl[F[_]](mi: Mcas)(implicit F: Async[F])

@@ -60,19 +60,6 @@ final class RxnRuntimeSpec extends munit.CatsEffectSuite {
     IO(assertNotEquals(r1.##, r2.##))
   }
 
-  test("It should be possible to create a Reactive and Transactive sharing the same runtime (forReactive)") {
-    val res: Resource[IO, (Reactive[IO], Transactive[IO])] = {
-      Reactive.forSyncRes[IO].flatMap { implicit r =>
-        Transactive.forReactive[IO].map { t => (r, t) } // NB: forAsyncRes would be incorrect here
-      }
-    }
-    res.use { rt =>
-      (checkReactive(rt._1, IO.asyncForIO), checkTransactive(rt._2, IO.asyncForIO)).flatMapN { (r1, r2) =>
-        checkSameRt(r1, r2)
-      }
-    }
-  }
-
   test("It should be possible to create a Reactive and Transactive sharing the same runtime (directly)") {
     val res: Resource[IO, (Reactive[IO], Transactive[IO])] = {
       RxnRuntime[IO].flatMap { rt =>
@@ -81,19 +68,6 @@ final class RxnRuntimeSpec extends munit.CatsEffectSuite {
             (r, t)
           }
         }
-      }
-    }
-    res.use { rt =>
-      (checkReactive(rt._1, IO.asyncForIO), checkTransactive(rt._2, IO.asyncForIO)).flatMapN { (r1, r2) =>
-        checkSameRt(r1, r2)
-      }
-    }
-  }
-
-  test("It should be possible to create an AsyncReactive and Transactive sharing the same runtime (forReactive)") {
-    val res: Resource[IO, (AsyncReactive[IO], Transactive[IO])] = {
-      AsyncReactive.forAsyncRes[IO].flatMap { implicit r =>
-        Transactive.forReactive[IO].map { t => (r, t) } // NB: forAsyncRes would be incorrect here
       }
     }
     res.use { rt =>

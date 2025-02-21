@@ -31,7 +31,7 @@ final class ResourceSpecIO extends ResourceSpec[IO]
 abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuite with BaseSpec {
 
   test("Transactive.forAsyncRes") {
-    Transactive.forAsyncRes[F].use { transactive =>
+    Transactive.forAsync[F].use { transactive =>
       transactive.commit(Txn.pure(42)).flatMap { v =>
         F.delay { assertEquals(v, 42) }
       }
@@ -39,7 +39,7 @@ abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuit
   }
 
   test("Transactive.forAsyncResIn") {
-    val (transactive, close) = Transactive.forAsyncResIn[SyncIO, F].allocated.unsafeRunSync()
+    val (transactive, close) = Transactive.forAsyncIn[SyncIO, F].allocated.unsafeRunSync()
     transactive.commit(Txn.pure(42)).flatMap { v =>
       F.delay { assertEquals(v, 42) }
     }.guarantee(close.to[F])
@@ -47,8 +47,8 @@ abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuit
 
   test("Working on a TRef with 2 different MCAS impls") {
     // this should never happen!
-    Transactive.forAsyncRes[F].use { transactive1 =>
-      Transactive.forAsyncRes[F].use { transactive2 =>
+    Transactive.forAsync[F].use { transactive1 =>
+      Transactive.forAsync[F].use { transactive2 =>
         for {
           ref <- transactive1.commit(TRef(42))
           v <- transactive1.commit(ref.updateAndGet(_ + 1))

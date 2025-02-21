@@ -47,5 +47,5 @@ trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { thi
 
 object BaseLinchkSpec {
   val defaultMcasForTesting: Mcas =
-    Mcas.newDefaultMcas(OsRng.globalLazyInit())
+    Mcas.newDefaultMcas(OsRng.mkNew())
 }

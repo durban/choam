@@ -28,7 +28,7 @@ import internal.mcas.Mcas
 // TODO: data structure might just run things
 // TODO: with the `Default` (e.g., CDL#toCats).
 
-trait Reactive[F[_]] extends ~>[Axn, F] { self => // TODO:0.5: make it sealed
+sealed trait Reactive[F[_]] extends ~>[Axn, F] { self =>
   def apply[A, B](r: Rxn[A, B], a: A, s: RetryStrategy.Spin = RetryStrategy.Default): F[B]
   private[choam] def mcasImpl: Mcas
   def monad: Monad[F]
@@ -42,6 +42,8 @@ trait Reactive[F[_]] extends ~>[Axn, F] { self => // TODO:0.5: make it sealed
 
 object Reactive {
 
+  private[choam] trait UnsealedReactive[F[_]] extends Reactive[F]
+
   final def apply[F[_]](implicit inst: Reactive[F]): inst.type =
     inst
 
@@ -51,10 +53,10 @@ object Reactive {
   final def fromIn[G[_], F[_]](rt: RxnRuntime)(implicit @unused G: Sync[G], F: Sync[F]): Resource[G, Reactive[F]] =
     Resource.pure(new SyncReactive(rt.mcasImpl))
 
-  final def forSyncRes[F[_]](implicit F: Sync[F]): Resource[F, Reactive[F]] = // TODO:0.5: rename to forSync
-    forSyncResIn[F, F]
+  final def forSync[F[_]](implicit F: Sync[F]): Resource[F, Reactive[F]] =
+    forSyncIn[F, F]
 
-  final def forSyncResIn[G[_], F[_]](implicit G: Sync[G], F: Sync[F]): Resource[G, Reactive[F]] = // TODO:0.5: rename to forSyncIn
+  final def forSyncIn[G[_], F[_]](implicit G: Sync[G], F: Sync[F]): Resource[G, Reactive[F]] =
     RxnRuntime[G].flatMap(rt => fromIn(rt))
 
   private[choam] class SyncReactive[F[_]](

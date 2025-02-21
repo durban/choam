@@ -22,7 +22,7 @@ import internal.mcas.{ Mcas, OsRng }
 private[choam] abstract class BaseSpecCompanionPlatform { this: BaseSpec.type =>
 
   val osRngForTesting: OsRng =
-    OsRng.globalLazyInit()
+    OsRng.mkNew()
 
   final def newDefaultMcasForTesting(): Mcas =
     Mcas.newDefaultMcas(osRngForTesting)

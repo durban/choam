@@ -84,7 +84,7 @@ abstract class McasImplStateBase {
 private object McasImplStateBase {
 
   private val _reactive: Reactive[IO] = {
-    AsyncReactive.forAsyncResIn[SyncIO, IO].allocated.unsafeRunSync()._1
+    AsyncReactive.forAsyncIn[SyncIO, IO].allocated.unsafeRunSync()._1
   }
 
   private val _mcasImpl: Mcas = {

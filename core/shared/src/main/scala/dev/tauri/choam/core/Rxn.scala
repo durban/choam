@@ -420,9 +420,6 @@ private[choam] abstract class RefGetAxn[B] extends Rxn[Any, B] {
   private[core] final override def tag = 8
 }
 
-/** Bincompat stub */
-private[core] final abstract class Rxn$Anything // TODO:0.5: remove this
-
 object Rxn extends RxnInstances0 {
 
   type Anything[A]

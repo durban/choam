@@ -40,8 +40,8 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
   final override def currentContext(): Mcas.ThreadContext =
     dummyContext
 
-  private[choam] final override def osRng: OsRng =
-    OsRng.globalLazyInit()
+  private[choam] final override val osRng: OsRng =
+    OsRng.mkNew()
 
   private[choam] final override def isThreadSafe =
     true

@@ -287,7 +287,10 @@ private final class Ttrie[K, V] private (
     final def get: Axn[V] =
       self.get.provide(key).map(_.getOrElse(default))
 
-    // TODO: maybe override `upd` and/or `getAndSet` if we can make it faster than the default impl.
+    // TODO: maybe override `getAndSet` if we can make it faster than the default impl.
+
+    final def upd[B, C](f: (V, B) => (V, C)): Rxn[B, C] = // TODO: optimize this
+      this.updWith { (v, b) => Rxn.pure(f(v, b)) }
 
     final def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
       getRefWithKey(key).flatMap { ref =>

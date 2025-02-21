@@ -29,16 +29,16 @@ final class ResourceSpecIO extends ResourceSpec[IO]
 
 abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuite with BaseSpec {
 
-  test("AsyncReactive.forAsyncRes") {
-    AsyncReactive.forAsyncRes[F].use { reactive =>
+  test("AsyncReactive.forAsync") {
+    AsyncReactive.forAsync[F].use { reactive =>
       reactive.applyAsync(Axn.pure(42), null).flatMap { v =>
         F.delay { assertEquals(v, 42) }
       }
     }
   }
 
-  test("AsyncReactive.forAsyncResIn") {
-    val (reactive, close) = AsyncReactive.forAsyncResIn[SyncIO, F].allocated.unsafeRunSync()
+  test("AsyncReactive.forAsyncIn") {
+    val (reactive, close) = AsyncReactive.forAsyncIn[SyncIO, F].allocated.unsafeRunSync()
     reactive.applyAsync(Axn.pure(42), null).flatMap { v =>
       F.delay { assertEquals(v, 42) }
     }.guarantee(close.to[F])

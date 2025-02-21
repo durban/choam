@@ -26,10 +26,10 @@ import async.AsyncReactive
 package object ce {
 
   private[choam] final def reactiveForSyncIO: Resource[SyncIO, Reactive[SyncIO]] =
-    Reactive.forSyncRes
+    Reactive.forSync
 
   private[choam] final def asyncReactiveForIO: Resource[IO, AsyncReactive[IO]] =
-    AsyncReactive.forAsyncRes
+    AsyncReactive.forAsync
 
   /** Only for testing! */
   private[choam] final object unsafeImplicits {

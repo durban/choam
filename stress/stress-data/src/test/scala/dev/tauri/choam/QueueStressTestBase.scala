@@ -37,7 +37,7 @@ abstract class QueueStressTestBase extends StressTestBase {
 private object QueueStressTestBase {
 
   private val _reactiveForSyncIo: Reactive[SyncIO] = {
-    Reactive.forSyncResIn[SyncIO, SyncIO].allocated.unsafeRunSync()._1
+    Reactive.forSyncIn[SyncIO, SyncIO].allocated.unsafeRunSync()._1
   }
 
   private val _mcasImpl: Mcas = {

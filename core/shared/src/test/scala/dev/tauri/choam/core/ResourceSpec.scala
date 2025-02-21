@@ -30,7 +30,7 @@ final class ResourceSpecIO extends ResourceSpec[IO]
 abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuite with BaseSpec {
 
   test("Reactive.forSyncRes") {
-    Reactive.forSyncRes[F].use { reactive =>
+    Reactive.forSync[F].use { reactive =>
       reactive(Axn.pure(42)).flatMap { v =>
         F.delay { assertEquals(v, 42) }
       }
@@ -38,7 +38,7 @@ abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuit
   }
 
   test("Reactive.forSyncResIn") {
-    val (reactive, close) = Reactive.forSyncResIn[SyncIO, F].allocated.unsafeRunSync()
+    val (reactive, close) = Reactive.forSyncIn[SyncIO, F].allocated.unsafeRunSync()
     reactive(Axn.pure(42)).flatMap { v =>
       F.delay { assertEquals(v, 42) }
     }.guarantee(close.to[F])
@@ -46,8 +46,8 @@ abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuit
 
   test("Working on a Ref with 2 different MCAS impls") {
     // this should never happen!
-    Reactive.forSyncRes[F].use { reactive1 =>
-      Reactive.forSyncRes[F].use { reactive2 =>
+    Reactive.forSync[F].use { reactive1 =>
+      Reactive.forSync[F].use { reactive2 =>
         for {
           ref <- reactive1(Ref(42))
           v <- reactive1(ref.updateAndGet(_ + 1))
