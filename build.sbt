@@ -242,7 +242,7 @@ lazy val choam = project.in(file("."))
     mcas.jvm, mcas.js,
     core.jvm, core.js,
     data.jvm, data.js,
-    skiplist.jvm, skiplist.js,
+    internal.jvm, internal.js,
     async.jvm, async.js,
     stm.jvm, stm.js,
     stream.jvm, stream.js,
@@ -304,18 +304,18 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
-  .dependsOn(skiplist % "compile->compile;test->test")
+  .dependsOn(internal % "compile->compile;test->test")
   .settings(
     mimaBinaryIssueFilters ++= Seq(
       // there is no backward compat for `choam-mcas`:
     ),
   )
 
-lazy val skiplist = crossProject(JVMPlatform, JSPlatform) // TODO:0.5: rename to `internal`
+lazy val internal = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
-  .in(file("skiplist"))
-  .settings(name := "choam-skiplist")
+  .in(file("internal"))
+  .settings(name := "choam-internal")
   .disablePlugins(disabledPlugins: _*)
   .enablePlugins(BuildInfoPlugin)
   .settings(commonSettings)
@@ -477,7 +477,7 @@ lazy val unidocs = project
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(
       core.jvm,
       mcas.jvm,
-      skiplist.jvm,
+      internal.jvm,
       data.jvm,
       async.jvm,
       stm.jvm,

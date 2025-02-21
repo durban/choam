@@ -123,8 +123,8 @@ object MyMain extends IOApp.Simple with RxnAppMixin {
 - Internal modules (don't use them directly):
   - [`choam-mcas`](mcas/shared/src/main/scala/dev/tauri/choam/mcas/):
     low-level multi-word compare-and-swap (MCAS/*k*-CAS) implementations
-  - [`choam-skiplist`](skiplist/jvm/src/main/scala/dev/tauri/choam/skiplist/):
-    a concurrent skip list map for internal use
+  - [`choam-internal`](internal/jvm/src/main/scala/dev/tauri/choam/skiplist/):
+    a concurrent skip list map and other utilities for internal use
 
 JARs are on Maven Central. Browsable Scaladoc is available [here](
 https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
@@ -213,7 +213,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - `choam-ce`
   - `choam-zi`
   - `choam-mcas`
-  - `choam-skiplist`
+  - `choam-internal`
   - `choam-laws`
   - `choam-stream`
   - `choam-profiler`
