@@ -241,7 +241,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 `Rxn`s are lock-free by construction, if the following assumptions hold:
 
-- No "inifinite loops" are created (e.g., by infinitely recursive `flatMap`s)
+- No "infinite loops" are created (e.g., by infinitely recursive `flatMap`s)
 - No `unsafe` operations are used (e.g., `Rxn.unsafe.retry` is obviously not lock-free)
 - We assume instances of `FunctionN` to be pure and total
 - We assume that certain JVM operations are lock-free:
