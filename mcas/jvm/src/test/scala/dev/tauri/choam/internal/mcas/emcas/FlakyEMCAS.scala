@@ -33,10 +33,11 @@ final class FlakyEMCAS extends Mcas.UnsealedMcas { self =>
     new TrieMap[Int, Unit]
 
   private[choam] final override val osRng: OsRng =
-    BaseSpec.osRngForTesting
+    OsRng.mkNew()
 
   private[choam] final override def close(): Unit = {
     this.emcasInst.close()
+    this.osRng.close()
   }
 
   def currentContext(): Mcas.ThreadContext = new Mcas.UnsealedThreadContext {

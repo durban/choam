@@ -21,32 +21,14 @@ package mcas
 
 private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
 
-  private[this] val _deprecatedEmcas: Mcas = // TODO:0.5: remove
-    this.newEmcas(OsRng.globalLazyInit())
-
   private[choam] final override def newDefaultMcas(osRng: OsRng): Mcas =
     this.newEmcas(osRng)
-
-  @deprecated("Emcas singleton will be removed", since = "0.4.11") // TODO:0.5: remove
-  final def Emcas: Mcas =
-    _deprecatedEmcas
 
   private[choam] final def newEmcas(osRng: OsRng): Mcas =
     new emcas.Emcas(osRng)
 
   final def SpinLockMcas: Mcas =
     mcas.SpinLockMcas
-
-  /** Benchmark infra */
-  @nowarn("cat=deprecation")
-  private[choam] final override def unsafeLookup(fqn: String): Mcas = fqn match {
-    case fqns.SpinLockMCAS =>
-      mcas.SpinLockMcas
-    case fqns.Emcas =>
-      this.Emcas
-    case x =>
-      super.unsafeLookup(x)
-  }
 
   /** Benchmark infra */
   private[choam] object fqns {
