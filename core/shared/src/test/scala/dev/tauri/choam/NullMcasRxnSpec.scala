@@ -27,7 +27,6 @@ final class NullMcasRxnSpecIO
   with NullMcasRxnSpec[IO]
   with SpecNullMcas
 
-@nowarn("cat=deprecation")
 trait NullMcasRxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: SpecNullMcas =>
 
   test("NullMcas must be able to run a create-only Rxn") {
@@ -40,7 +39,7 @@ trait NullMcasRxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: SpecNullMcas =>
       refArr <- Ref.array(42, "init").run[F]
       _ = (refArr: Ref.Array[String])
       _ = (refArr.unsafeGet(0): Ref[String])
-      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      ex <- Exchanger[String, Int].run[F]
       _ = (ex: Exchanger[String, Int])
     } yield ()
   }

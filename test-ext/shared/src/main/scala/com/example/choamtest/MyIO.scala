@@ -17,18 +17,17 @@
 
 package com.example.choamtest
 
-import scala.annotation.nowarn
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 import cats.~>
-import cats.Monad
 import cats.effect.IO
 import cats.effect.kernel.{
   MonadCancel,
   Async,
   Sync,
   Poll,
+  Resource,
   Fiber,
   Cont,
   Deferred,
@@ -36,10 +35,8 @@ import cats.effect.kernel.{
   Outcome,
 }
 
-import dev.tauri.choam.internal.mcas.Mcas
-import dev.tauri.choam.{ Rxn, Axn, Reactive, =#> }
-import dev.tauri.choam.core.RetryStrategy
-import dev.tauri.choam.async.{ AsyncReactive, Promise, GenWaitList, WaitList }
+import dev.tauri.choam.core.RxnRuntime
+import dev.tauri.choam.async.AsyncReactive
 
 final case class MyIO[+A](val impl: IO[A]) {
 
@@ -55,39 +52,10 @@ object MyIO {
   def pure[A](a: A): MyIO[A] =
     MyIO(IO.pure(a))
 
-  implicit def asyncReactiveForMyIO: AsyncReactive[MyIO] = new AsyncReactive[MyIO] {
+  def asyncReactiveForMyIO[F[_]](rt: RxnRuntime)(implicit F: Sync[F]): Resource[F, AsyncReactive[MyIO]] =
+    AsyncReactive.fromIn[F, MyIO](rt)
 
-    final override def apply[A, B](r: Rxn[A,B], a: A, s: RetryStrategy.Spin): MyIO[B] =
-      MyIO(IO.delay { r.unsafePerform(a, this.mcasImpl, s) })
-
-    final override def applyAsync[A, B](r: Rxn[A,B], a: A, s: RetryStrategy): MyIO[B] =
-      r.perform[MyIO, B](a, this.mcasImpl, s)(asyncForMyIO)
-
-    @nowarn("cat=deprecation")
-    final override def mcasImpl: Mcas =
-      Mcas.DefaultMcas
-
-    final override def monad: Monad[MyIO] =
-      asyncForMyIO
-
-    final override def promise[A]: Axn[Promise[MyIO, A]] =
-      Promise.forAsync[MyIO, A](this, asyncForMyIO)
-
-    final override def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[MyIO, A]] = {
-      asyncReactiveForIO.waitList[A](syncGet, syncSet).map { wl =>
-        new WaitListForMyIO[A](wl)
-      }
-    }
-
-    final override def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean): Axn[GenWaitList[MyIO, A]] = {
-      asyncReactiveForIO.genWaitList[A](tryGet, trySet).map { gwl =>
-        new GenWaitListForMyIO[A](gwl)
-      }
-    }
-  }
-
-  // non-implicit!
-  def asyncForMyIO: Async[MyIO] = new Async[MyIO] {
+  implicit def asyncForMyIO: Async[MyIO] = new Async[MyIO] {
     override def start[A](fa: MyIO[A]): MyIO[Fiber[MyIO, Throwable, A]] = {
       MyIO(fa.impl.start.map { fio =>
         new Fiber[MyIO, Throwable, A] {
@@ -150,49 +118,5 @@ object MyIO {
 
   private def ioFromMyIO: MyIO ~> IO = new ~>[MyIO, IO] {
     final def apply[B](fa: MyIO[B]) = fa.impl
-  }
-
-  @nowarn("cat=deprecation")
-  private def asyncReactiveForIO: AsyncReactive[IO] =
-    AsyncReactive.forAsync[IO]
-
-  private final class WaitListForMyIO[A](
-    underlying: WaitList[IO, A],
-  ) extends WaitList[MyIO, A] {
-
-    override def tryGet: Axn[Option[A]] =
-      underlying.tryGet
-
-    override def asyncSet(a: A): MyIO[Unit] =
-      MyIO(underlying.asyncSet(a))
-
-    override def asyncGet: MyIO[A] =
-      MyIO(underlying.asyncGet)
-
-    override def set: A =#> Unit =
-      underlying.set
-
-    override def mapK[G[_]](t: MyIO ~> G)(implicit G: Reactive[G]): WaitList[G, A] =
-      underlying.mapK(myIOFromIO.andThen(t))
-  }
-
-  private final class GenWaitListForMyIO[A](
-    underlying: GenWaitList[IO, A],
-  ) extends GenWaitList[MyIO, A] {
-
-    override def trySet: A =#> Boolean =
-      underlying.trySet
-
-    override def tryGet: Axn[Option[A]] =
-      underlying.tryGet
-
-    override def asyncSet(a: A): MyIO[Unit] =
-      MyIO(underlying.asyncSet(a))
-
-    override def asyncGet: MyIO[A] =
-      MyIO(underlying.asyncGet)
-
-    override def mapK[G[_]](t: MyIO ~> G)(implicit G: Reactive[G]): GenWaitList[G, A] =
-      underlying.mapK(myIOFromIO.andThen(t))
   }
 }

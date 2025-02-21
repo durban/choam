@@ -51,10 +51,6 @@ object Reactive {
   final def fromIn[G[_], F[_]](rt: RxnRuntime)(implicit @unused G: Sync[G], F: Sync[F]): Resource[G, Reactive[F]] =
     Resource.pure(new SyncReactive(rt.mcasImpl))
 
-  @deprecated("Use forSyncRes", since = "0.4.11") // TODO:0.5: remove
-  def forSync[F[_]](implicit F: Sync[F]): Reactive[F] =
-    new SyncReactive[F](Rxn.DefaultMcas)(F)
-
   final def forSyncRes[F[_]](implicit F: Sync[F]): Resource[F, Reactive[F]] = // TODO:0.5: rename to forSync
     forSyncResIn[F, F]
 
@@ -65,7 +61,6 @@ object Reactive {
     final override val mcasImpl: Mcas,
   )(implicit F: Sync[F]) extends Reactive[F] {
 
-    @nowarn("cat=deprecation")
     final override def apply[A, B](r: Rxn[A, B], a: A, s: RetryStrategy.Spin): F[B] = {
       F.delay { r.unsafePerform(a = a, mcas = this.mcasImpl, strategy = s) }
     }

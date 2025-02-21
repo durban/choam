@@ -24,7 +24,7 @@ import cats.effect.kernel.{ Async, Sync, Resource }
 import internal.mcas.Mcas
 import core.{ RxnRuntime, RetryStrategy }
 
-trait AsyncReactive[F[_]] extends Reactive[F] { self => // TODO:0.5: make it sealed
+sealed trait AsyncReactive[F[_]] extends Reactive[F] { self =>
   def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B]
   def promise[A]: Axn[Promise[F, A]]
   def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[F, A]]
@@ -54,10 +54,6 @@ object AsyncReactive {
   final def fromIn[G[_], F[_]](rt: RxnRuntime)(implicit @unused G: Sync[G], F: Async[F]): Resource[G, AsyncReactive[F]] =
     Resource.pure(new AsyncReactiveImpl(rt.mcasImpl))
 
-  @deprecated("Use forAsyncRes", since = "0.4.11") // TODO:0.5: remove
-  def forAsync[F[_]](implicit F: Async[F]): AsyncReactive[F] =
-    new AsyncReactiveImpl[F](Rxn.DefaultMcas)(F)
-
   final def forAsyncRes[F[_]](implicit F: Async[F]): Resource[F, AsyncReactive[F]] = // TODO:0.5: rename to forAsync
     forAsyncResIn[F, F]
 
@@ -68,7 +64,6 @@ object AsyncReactive {
     extends Reactive.SyncReactive[F](mi)
     with AsyncReactive[F] {
 
-    @nowarn("cat=deprecation")
     final override def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B] =
       r.perform[F, B](a, this.mcasImpl, s)(F)
 

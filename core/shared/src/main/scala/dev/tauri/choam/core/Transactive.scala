@@ -45,11 +45,6 @@ private[choam] object Transactive {
   final def fromIn[G[_], F[_]](rt: RxnRuntime)(implicit @unused G: Sync[G], F: Async[F]): Resource[G, Transactive[F]] =
     Resource.pure(new TransactiveImpl(rt.mcasImpl))
 
-  @deprecated("Use forAsyncRes", since = "0.4.11") // TODO:0.5: remove
-  final def forAsync[F[_]](implicit F: Async[F]): Transactive[F] = {
-    new TransactiveImpl(Rxn.DefaultMcas)
-  }
-
   final def forAsyncRes[F[_]](implicit F: Async[F]): Resource[F, Transactive[F]] = // TODO:0.5: rename to `forAsync`
     forAsyncResIn[F, F]
 

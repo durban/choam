@@ -30,10 +30,6 @@ package object random {
   private[choam] final def newSecureRandom: SecureRandom[Axn] =
     new SecureRandomRxn
 
-  @deprecated("Don't use secureRandomWrapper, because it may block", since = "0.4")
-  private[choam] final def secureRandomWrapper: Axn[SecureRandom[Axn]] = // TODO:0.5: remove
-    Axn.unsafe.delay { SecureRandomWrapper.unsafe() }
-
   private[choam] final def deterministicRandom(initialSeed: Long): Axn[SplittableRandom[Axn]] =
     DeterministicRandom(initialSeed)
 

@@ -32,13 +32,21 @@ package object ce {
     AsyncReactive.forAsyncRes
 
   /** Only for testing! */
-  @nowarn("cat=deprecation")
   private[choam] final object unsafeImplicits {
 
+    private[this] val _rt =
+      core.RxnRuntime.unsafeBlocking()
+
+    private[this] val _reactiveSyncIo =
+      Reactive.fromIn[SyncIO, SyncIO](_rt).allocated.unsafeRunSync()._1
+
+    private[this] val _asyncReactiveIo =
+      AsyncReactive.fromIn[SyncIO, IO](_rt).allocated.unsafeRunSync()._1
+
     implicit final def reactiveForSyncIO: Reactive[SyncIO] =
-      Reactive.forSync
+      _reactiveSyncIo
 
     implicit final def asyncReactiveForIO: AsyncReactive[IO] =
-      AsyncReactive.forAsync
+      _asyncReactiveIo
   }
 }

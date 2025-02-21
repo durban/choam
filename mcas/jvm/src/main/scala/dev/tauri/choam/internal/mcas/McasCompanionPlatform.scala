@@ -24,15 +24,6 @@ private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanion
   private[this] val _deprecatedEmcas: Mcas = // TODO:0.5: remove
     this.newEmcas(OsRng.globalLazyInit())
 
-  /**
-   * The default MCAS implementation of the platform
-   *
-   * Guaranteed to exist (and be thread-safe) on every platform.
-   */
-  @deprecated("Mcas.DefaultMcas will be removed", since = "0.4.11") // TODO:0.5: remove
-  final override def DefaultMcas: Mcas =
-    this.Emcas
-
   private[choam] final override def newDefaultMcas(osRng: OsRng): Mcas =
     this.newEmcas(osRng)
 

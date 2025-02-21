@@ -21,9 +21,6 @@ package mcas
 
 private[mcas] abstract class AbstractMcasCompanionPlatform {
 
-  @deprecated("Mcas.DefaultMcas will be removed", since = "0.4.11") // TODO:0.5: remove
-  def DefaultMcas: Mcas
-
   private[choam] def newDefaultMcas(osRng: OsRng): Mcas
 
   final def ThreadConfinedMCAS: Mcas =

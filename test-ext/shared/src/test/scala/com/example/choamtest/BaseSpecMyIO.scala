@@ -17,21 +17,28 @@
 
 package com.example.choamtest
 
-import cats.effect.{ Async, IO }
+import cats.effect.{ Async, IO, SyncIO }
 
 import munit.{ Location, CatsEffectSuite }
 
 import dev.tauri.choam.internal.mcas.Mcas
 import dev.tauri.choam.async.AsyncReactive
 import dev.tauri.choam.{ BaseSpec, BaseSpecAsyncF, McasImplSpec }
+import dev.tauri.choam.core.RxnRuntime
 
 abstract class BaseSpecMyIO
   extends CatsEffectSuite
-  with BaseSpecAsyncF[MyIO]
-  with McasImplSpec {
+  with McasImplSpec
+  with BaseSpecAsyncF[MyIO] {
 
-  override implicit def rF: AsyncReactive[MyIO] =
-    MyIO.asyncReactiveForMyIO
+  private[this] val rtAndClose =
+    RxnRuntime[SyncIO].allocated.unsafeRunSync()
+
+  private[this] val arAndClose =
+    MyIO.asyncReactiveForMyIO[SyncIO](rtAndClose._1).allocated.unsafeRunSync()
+
+  override implicit val rF: AsyncReactive[MyIO] =
+    arAndClose._1
 
   override def F: Async[MyIO] =
     MyIO.asyncForMyIO
@@ -49,6 +56,8 @@ abstract class BaseSpecMyIO
     BaseSpec.newDefaultMcasForTesting()
 
   override def afterAll(): Unit = {
+    arAndClose._2.unsafeRunSync()
+    rtAndClose._2.unsafeRunSync()
     BaseSpec.closeMcas(this.mcasImpl)
     super.afterAll()
   }

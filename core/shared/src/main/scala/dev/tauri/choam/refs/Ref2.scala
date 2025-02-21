@@ -36,14 +36,6 @@ object Ref2 extends Ref2Platform {
   final def p2[A, B](a: A, b: B): Axn[Ref2[A, B]] =
     Rxn.unsafe.delayContext { ctx => unsafeP2(a, b, ctx.refIdGen) }
 
-  @deprecated("Use p1p1", since = "0.4.12")
-  final def unsafeP1P1[A, B](a: A, b: B): Ref2[A, B] = // TODO:0.5: remove
-    sys.error("Use p1p1")
-
-  @deprecated("Use p2", since = "0.4.12")
-  final def unsafeP2[A, B](a: A, b: B): Ref2[A, B] = // TODO:0.5: remove
-    sys.error("Use p2")
-
   final def unapply[A, B](r: Ref2[A, B]): Some[(Ref[A], Ref[B])] =
     Some((r._1, r._2))
 }

@@ -65,20 +65,8 @@ class RandomBench {
   }
 
   @Benchmark
-  @deprecated("so that we can call secureRandomWrapper", since = "0.4")
-  def rndSecureWrapper(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
-    s.rndSecureWrapper.nextLongBounded(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
-  }
-
-  @Benchmark
   def uuidRxn(s: RandomBench.St, k: McasImplState): UUID = {
     s.uuidRxn.randomUUID.unsafePerformInternal(null, k.mcasCtx)
-  }
-
-  @Benchmark
-  @deprecated("so that we can call uuidGenWrapper", since = "0.4")
-  def uuidWrapper(s: RandomBench.St, k: McasImplState): UUID = {
-    s.uuidWrapper.randomUUID.unsafePerformInternal(null, k.mcasCtx)
   }
 }
 
@@ -102,13 +90,7 @@ object RandomBench {
       random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafeRun(Mcas.NullMcas)
     val rndSecureRxn: SecureRandom[Axn] =
       Rxn.secureRandom
-    @deprecated("so that we can call secureRandomWrapper", since = "0.4")
-    val rndSecureWrapper: SecureRandom[Axn] =
-      random.secureRandomWrapper.unsafeRun(Mcas.NullMcas)
     val uuidRxn: UUIDGen[Axn] =
       Rxn.uuidGenInstance
-    @deprecated("so that we can call uuidGenWrapper", since = "0.4")
-    val uuidWrapper: UUIDGen[Axn] =
-      Rxn.uuidGenWrapper
   }
 }

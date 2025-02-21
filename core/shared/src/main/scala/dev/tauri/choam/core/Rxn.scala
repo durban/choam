@@ -245,7 +245,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   final def unsafePerform(
     a: A,
     rt: RxnRuntime,
-  ): B = this.unsafePerform(a, rt.mcasImpl, RetryStrategy.Default) : @nowarn("cat=deprecation")
+  ): B = this.unsafePerform(a, rt.mcasImpl, RetryStrategy.Default)
 
   /**
    * Execute the [[Rxn]] with the specified input `a`.
@@ -261,10 +261,9 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     a: A,
     rt: RxnRuntime,
     strategy: RetryStrategy.Spin,
-  ): B = this.unsafePerform(a, rt.mcasImpl, strategy) : @nowarn("cat=deprecation")
+  ): B = this.unsafePerform(a, rt.mcasImpl, strategy)
 
-  @deprecated("Use an overload which accepts a RxnRuntime", since = "0.4.12")
-  final def unsafePerform( // TODO:0.5: make it private
+  private[choam] final def unsafePerform(
     a: A,
     mcas: Mcas,
     strategy: RetryStrategy.Spin = RetryStrategy.Default,
@@ -287,10 +286,9 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     a: A,
     rt: RxnRuntime,
     strategy: RetryStrategy,
-  )(implicit F: Async[F]): F[X] = this.perform(a, rt.mcasImpl, strategy) : @nowarn("cat=deprecation")
+  )(implicit F: Async[F]): F[X] = this.perform(a, rt.mcasImpl, strategy)
 
-  @deprecated("Use an overload which accepts a RxnRuntime", since = "0.4.12")
-  final def perform[F[_], X >: B]( // TODO:0.5: make it private
+  private[choam] final def perform[F[_], X >: B](
     a: A,
     mcas: Mcas,
     strategy: RetryStrategy = RetryStrategy.Default,
@@ -432,10 +430,6 @@ object Rxn extends RxnInstances0 {
   private[this] final val interruptCheckPeriod =
     16384
 
-  @deprecated("Rxn.DefaultMcas will be removed", since = "0.4.11") // TODO:0.5: remove
-  final def DefaultMcas: Mcas =
-    Mcas.DefaultMcas
-
   // API:
 
   final def pure[A](a: A): Axn[A] =
@@ -569,13 +563,8 @@ object Rxn extends RxnInstances0 {
     private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       this.delayContext(uf).flatten // TODO: optimize
 
-    @deprecated("Rxn.unsafe.exchanger will be removed; use Eliminator instead", since = "0.4.12")
-    final def exchanger[A, B]: Axn[Exchanger[A, B]] = // TODO:0.5: make it private
+    private[choam] final def exchanger[A, B]: Axn[Exchanger[A, B]] =
       Exchanger.apply[A, B]
-
-    @nowarn("cat=deprecation")
-    private[choam] final def exchange[A, B](ex: Exchanger[A, B]): Rxn[A, B] =
-      ex.exchange
 
     /**
      * This is not unsafe by itself, but it is only useful
@@ -1168,7 +1157,6 @@ object Rxn extends RxnInstances0 {
     private[this] var _exParams: Exchanger.Params =
       null
 
-    @nowarn("cat=deprecation")
     private[this] final def exParams: Exchanger.Params = {
       val ep = this._exParams
       if (ep eq null) {
@@ -1735,7 +1723,7 @@ object Rxn extends RxnInstances0 {
             desc = this.descImm, // TODO: could we just call `toImmutable`?
             postCommit = pc.takeSnapshot(),
             exchangerData = stats,
-          ) : @nowarn("cat=deprecation")
+          )
           c.exchanger.tryExchange(msg = msg, params = exParams, ctx = ctx) match {
             case Left(newStats) =>
               _stats = newStats
@@ -2169,11 +2157,6 @@ private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.t
 
   implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] =
     _uuidGen.asInstanceOf[UUIDGen[Rxn[X, *]]]
-
-  @deprecated("Don't use uuidGenWrapper, because it may block", since = "0.4") // TODO:0.5: remove this
-  private[choam] final def uuidGenWrapper[X]: UUIDGen[Rxn[X, *]] = new UUIDGen[Rxn[X, *]] {
-    final override def randomUUID = Axn.unsafe.delay { java.util.UUID.randomUUID() }
-  }
 }
 
 private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.type =>
