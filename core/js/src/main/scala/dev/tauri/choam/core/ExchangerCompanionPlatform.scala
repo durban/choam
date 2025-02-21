@@ -18,7 +18,6 @@
 package dev.tauri.choam
 package core
 
-@nowarn("cat=deprecation")
 private[choam] abstract class ExchangerCompanionPlatform { // TODO: should be private[core]
 
   private[core] def unsafe[A, B]: Exchanger[A, B] =

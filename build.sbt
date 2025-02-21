@@ -286,50 +286,12 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       // "eu.timepit" %%% "refined" % "0.11.1",
     ),
     mimaBinaryIssueFilters ++= Seq(
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.Rxn$Suspend"), // private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.Rxn$GetAndSet"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Rxn#InterpreterState.this"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Rxn#InterpreterState.interpretAsync"), // private
-      ProblemFilters.exclude[NewMixinForwarderProblem]("dev.tauri.choam.refs.Ref.getAndSet"), // Ref is sealed
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.Rxn$Read"), // private
-      ProblemFilters.exclude[MissingTypesProblem]("dev.tauri.choam.refs.SparseRefArray"), // private
-      ProblemFilters.exclude[MissingTypesProblem]("dev.tauri.choam.refs.StrictRefArray"), // private
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.core.ObjStack.push2"), // private
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.core.ObjStack.push3"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.package.requireNonNull"), // private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.AdaptedOsRng"), // private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.OsRng"), // private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.OsRng$"), // private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.OsRngPlatform"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.RxnUuidGen.this"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.SecureRandomRxn.this"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Rxn.osRng"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.package.newSecureRandom"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.package.uuidGen"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.ArrayObjStack.this"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Rxn#SuspendUntilChanged.this"), // private
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.core.RetryStrategy.isDebug"), // sealed
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.MinimalRandom.unsafe1"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.random.MinimalRandom.unsafe2"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.refs.Ref.unsafe"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.refs.Ref.unsafeArray"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.refs.Ref.unsafePadded"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.refs.Ref.unsafeUnpadded"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Reactive.defaultMcasResource"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.core.Reactive.osRngResource"), // private
     ),
   ).jvmSettings(
     mimaBinaryIssueFilters ++= Seq(
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.IOCancel"), // private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.core.IOCancel$"), // private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.UnixRng"), // private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.WinRng"), // private
     ),
   ).jsSettings(
     mimaBinaryIssueFilters ++= Seq(
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.refs.RefIdOnly"), // private
-      ProblemFilters.exclude[MissingTypesProblem]("dev.tauri.choam.refs.RefArray"), //private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.random.JsRng"), // private
     ),
   )
 
@@ -346,32 +308,6 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .settings(
     mimaBinaryIssueFilters ++= Seq(
       // there is no backward compat for `choam-mcas`:
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.Descriptor.versionCas"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.AbstractDescriptor.hwdIterator"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.LogEntry.cleanForGc"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.WdLike.cleanForGc"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.WdLike.wasFinalized"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasThreadContext.this"),
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap"),
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap$"),
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap$Empty$"),
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap$LogMap1"),
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.LogMap$LogMapTree"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.Mcas.osRng"),
-      ProblemFilters.exclude[StaticVirtualMemberProblem]("dev.tauri.choam.internal.mcas.ThreadConfinedMCAS.currentContext"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.ThreadConfinedMCAS.isCurrentContext"),
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.internal.mcas.emcas.Emcas$"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasJmxStatsMBean.getMcasRetryStats"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasJmxStatsMBean.getExchangerStats"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.Mcas.internalEmcas"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.AbstractDescriptor.validTsBoxed"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.AbstractDescriptor.remove"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.internal.mcas.Hamt#HasKey.isTomb"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.MemoryLocation.unsafe"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.MemoryLocation.unsafePadded"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.MemoryLocation.unsafeUnpadded"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem]("dev.tauri.choam.internal.mcas.emcas.EmcasThreadContext.this"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.internal.mcas.ThreadConfinedMCAS.this"),
     ),
   )
 
@@ -406,31 +342,6 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
   .settings(
     libraryDependencies += dependencies.catsCollections.value,
     mimaBinaryIssueFilters ++= Seq(
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$End$"), // private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$Init$"), // private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$State"), // private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$Value"), // private
-      ProblemFilters.exclude[MissingClassProblem]("dev.tauri.choam.data.Ttrie$Value$"), // private
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.Map#Extra.keys"), // sealed
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.Map#Extra.valuesUnsorted"), // sealed
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.Map#Extra.items"), // sealed
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.AbstractMapPlatform.hashMap"), //private
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.AbstractMapPlatform.orderedMap"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.Ttrie.skipListBased"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.Ttrie.apply"), // private
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.AbstractMapPlatform.simpleHashMap"), // private
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.data.AbstractMapPlatform.simpleOrderedMap"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.EliminationStack.fromList"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.EliminationStack.apply"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.SimpleMap.apply"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.SimpleOrderedMap.apply"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.TreiberStack.fromList"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.TreiberStack.apply"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.Counter.unsafe"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.Counter.unsafe$default$1"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.MsQueue.this"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.RemoveQueue.this"), // private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("dev.tauri.choam.data.GcHostileMsQueue.this"), // private
     ),
   )
 
@@ -459,11 +370,6 @@ lazy val stm = crossProject(JVMPlatform, JSPlatform)
     tlVersionIntroduced := Map("2.13" -> "0.4.1", "3" -> "0.4.1"),
     mimaBinaryIssueFilters ++= Seq(
       // there is no backward compat for `choam-stm`:
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.update"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.modify"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.getAndSet"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.getAndUpdate"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.stm.TRef.updateAndGet"),
     ),
   )
 
@@ -555,9 +461,8 @@ lazy val laws = crossProject(JVMPlatform, JSPlatform)
       dependencies.catsEffectLaws.value,
       dependencies.catsEffectTestkit.value % TestInternal,
     ),
-    // there is no backward compat for `choam-laws`:
     mimaBinaryIssueFilters ++= Seq(
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("dev.tauri.choam.laws.TestInstances.rigInstance"),
+      // there is no backward compat for `choam-laws`:
     )
   )
 

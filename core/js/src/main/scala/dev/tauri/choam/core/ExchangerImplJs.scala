@@ -20,7 +20,6 @@ package core
 
 import internal.mcas.Mcas
 
-@nowarn("cat=deprecation")
 private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
   extends Exchanger.UnsealedExchanger[A, B] {
 
