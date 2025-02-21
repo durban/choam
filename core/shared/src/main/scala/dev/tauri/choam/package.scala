@@ -75,7 +75,7 @@ package object choam extends internal.ChoamUtils {
     internal.mcas.impossible(s)
 
   private[choam] implicit final class AxnSyntax2[A](private val self: Axn[A]) {
-    @nowarn("cat=deprecation")
+
     private[choam] final def unsafeRun(mcas: internal.mcas.Mcas): A = {
       self.unsafePerform(null : Any, mcas)
     }

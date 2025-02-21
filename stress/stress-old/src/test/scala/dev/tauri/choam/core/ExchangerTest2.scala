@@ -36,7 +36,6 @@ import org.openjdk.jcstress.infra.results._
   new Outcome(id = Array("lx, rx, l0, lp"), expect = FORBIDDEN, desc = "Exchange, reader sees partial values"),
   new Outcome(id = Array("lx, rx, rp, r0"), expect = FORBIDDEN, desc = "Exchange, reader sees partial values"),
 ))
-@nowarn("cat=deprecation")
 class ExchangerTest2 extends StressTestBase {
 
   private[this] val ex: Exchanger[String, String] =

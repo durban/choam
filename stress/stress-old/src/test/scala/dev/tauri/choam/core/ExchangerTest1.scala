@@ -33,7 +33,6 @@ import org.openjdk.jcstress.infra.results._
   new Outcome(id = Array("None, None"), expect = ACCEPTABLE, desc = "No exchange"),
   new Outcome(id = Array("Some(r), Some(l)"), expect = ACCEPTABLE_INTERESTING, desc = "Successful exchange")
 ))
-@nowarn("cat=deprecation")
 class ExchangerTest1 extends StressTestBase {
 
   private[this] val ex: Exchanger[String, String] =

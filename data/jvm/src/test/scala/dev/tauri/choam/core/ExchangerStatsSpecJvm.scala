@@ -38,7 +38,6 @@ final class ExchangerStatsSpecJvm_Emcas_IO
   with SpecEmcas
   with ExchangerStatsSpecJvm[IO]
 
-@nowarn("cat=deprecation")
 trait ExchangerStatsSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   final override def munitTimeout: Duration =

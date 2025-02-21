@@ -20,7 +20,6 @@ package core
 
 private[choam] abstract class ExchangerCompanionPlatform { // TODO: should be private[core]
 
-  @nowarn("cat=deprecation")
   private[core] def unsafe[A, B]: Exchanger[A, B] =
     ExchangerImplJvm.unsafe[A, B]
 }
