@@ -99,43 +99,45 @@ private[choam] object Txn extends TxnInstances0 {
 
 private[core] sealed abstract class TxnInstances0 extends TxnInstances1 { self: Txn.type =>
 
+  import Rxn.Anything
+
   implicit final def monadInstance[F[_]]: StackSafeMonad[Txn[F, *]] =
     _monadInstance.asInstanceOf[StackSafeMonad[Txn[F, *]]]
 
-  private[this] val _monadInstance: StackSafeMonad[Txn[Any, *]] = new StackSafeMonad[Txn[Any, *]] {
-    final override def unit: Txn[Any, Unit] =
+  private[this] val _monadInstance: StackSafeMonad[Txn[Anything, *]] = new StackSafeMonad[Txn[Anything, *]] {
+    final override def unit: Txn[Anything, Unit] =
       Txn.unit
-    final override def pure[A](a: A): Txn[Any, A] =
+    final override def pure[A](a: A): Txn[Anything, A] =
       Txn.pure(a)
-    final override def point[A](a: A): Txn[Any, A] =
+    final override def point[A](a: A): Txn[Anything, A] =
       Txn.pure(a)
-    final override def as[A, B](fa: Txn[Any, A], b: B): Txn[Any, B] =
+    final override def as[A, B](fa: Txn[Anything, A], b: B): Txn[Anything, B] =
       fa.as(b)
-    final override def void[A](fa: Txn[Any, A]): Txn[Any, Unit] =
+    final override def void[A](fa: Txn[Anything, A]): Txn[Anything, Unit] =
       fa.void
-    final override def map[A, B](fa: Txn[Any, A])(f: A => B): Txn[Any, B] =
+    final override def map[A, B](fa: Txn[Anything, A])(f: A => B): Txn[Anything, B] =
       fa.map(f)
-    final override def map2[A, B, Z](fa: Txn[Any, A], fb: Txn[Any, B])(f: (A, B) => Z): Txn[Any, Z] =
+    final override def map2[A, B, Z](fa: Txn[Anything, A], fb: Txn[Anything, B])(f: (A, B) => Z): Txn[Anything, Z] =
       fa.map2(fb)(f)
-    final override def productR[A, B](fa: Txn[Any, A])(fb: Txn[Any, B]): Txn[Any, B] =
+    final override def productR[A, B](fa: Txn[Anything, A])(fb: Txn[Anything, B]): Txn[Anything, B] =
       fa.productR(fb)
-    final override def product[A, B](fa: Txn[Any, A], fb: Txn[Any, B]): Txn[Any, (A, B)] =
+    final override def product[A, B](fa: Txn[Anything, A], fb: Txn[Anything, B]): Txn[Anything, (A, B)] =
       fa product fb
-    final override def flatMap[A, B](fa: Txn[Any, A])(f: A => Txn[Any, B]): Txn[Any, B] =
+    final override def flatMap[A, B](fa: Txn[Anything, A])(f: A => Txn[Anything, B]): Txn[Anything, B] =
       fa.flatMap(f)
-    final override def tailRecM[A, B](a: A)(f: A => Txn[Any, Either[A, B]]): Txn[Any, B] =
-      Txn.tailRecM[Any, A, B](a)(f)
+    final override def tailRecM[A, B](a: A)(f: A => Txn[Anything, Either[A, B]]): Txn[Anything, B] =
+      Txn.tailRecM[Anything, A, B](a)(f)
   }
 
   implicit final def deferInstance[F[_]]: Defer[Txn[F, *]] =
     _deferInstance.asInstanceOf[Defer[Txn[F, *]]]
 
-  private[this] val _deferInstance: Defer[Txn[Any, *]] = new Defer[Txn[Any, *]] {
-    final override def defer[A](fa: => Txn[Any, A]): Txn[Any, A] =
+  private[this] val _deferInstance: Defer[Txn[Anything, *]] = new Defer[Txn[Anything, *]] {
+    final override def defer[A](fa: => Txn[Anything, A]): Txn[Anything, A] =
       Txn.defer(fa)
-    final override def fix[A](fn: Txn[Any, A] => Txn[Any, A]): Txn[Any, A] = {
+    final override def fix[A](fn: Txn[Anything, A] => Txn[Anything, A]): Txn[Anything, A] = {
       // Note/TODO: see comment in Rxn.deferInstance
-      val ref = new scala.runtime.ObjectRef[Txn[Any, A]](null)
+      val ref = new scala.runtime.ObjectRef[Txn[Anything, A]](null)
       ref.elem = fn(defer {
         self.acquireFence()
         ref.elem
@@ -148,11 +150,11 @@ private[core] sealed abstract class TxnInstances0 extends TxnInstances1 { self: 
   implicit final def uniqueInstance[F[_]]: Unique[Txn[F, *]] =
     _uniqueInstance.asInstanceOf[Unique[Txn[F, *]]]
 
-  private[this] val _uniqueInstance: Unique[Txn[Any, *]] = new Unique[Txn[Any, *]] {
-    final override def applicative: Applicative[Txn[Any, *]] =
+  private[this] val _uniqueInstance: Unique[Txn[Anything, *]] = new Unique[Txn[Anything, *]] {
+    final override def applicative: Applicative[Txn[Anything, *]] =
       self.monadInstance
-    final override def unique: Txn[Any, Unique.Token] =
-      Txn.unique[Any]
+    final override def unique: Txn[Anything, Unique.Token] =
+      Txn.unique[Anything]
   }
 }
 
