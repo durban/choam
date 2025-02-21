@@ -99,7 +99,7 @@ ThisBuild / semanticdbEnabled := true
 val assertionsEnabled = settingKey[Boolean]("Whether to compile `_assert` calls")
 ThisBuild / assertionsEnabled := !java.lang.Boolean.getBoolean("dev.tauri.choam.build.disableAssertions")
 
-ThisBuild / tlBaseVersion := "0.4"
+ThisBuild / tlBaseVersion := "0.5"
 ThisBuild / tlUntaggedAreSnapshots := false // => we get versions like 0.4-39d987a
 ThisBuild / tlJdkRelease := Some(11)
 ThisBuild / sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeLegacy
