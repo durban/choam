@@ -202,7 +202,7 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
       },
       Gen.lzy {
         arbResetRxn[A, B].arbitrary.map { rxn =>
-          ResetRxn(Rxn.unsafe.retry[A, B]) + rxn
+          ResetRxn(Rxn.unsafe.retry[B]) + rxn
         }
       },
       Gen.lzy {

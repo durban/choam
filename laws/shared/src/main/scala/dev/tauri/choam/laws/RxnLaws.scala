@@ -93,11 +93,11 @@ sealed trait RxnLaws {
 
   // TODO: does this always hold?
   def choiceRetryNeutralRight[A, B](x: A =#> B) =
-    (x + retry[A, B]) <-> x
+    (x + retry[B]) <-> x
 
   // TODO: does this always hold?
   def choiceRetryNeutralLeft[A, B](x: A =#> B) =
-    (retry[A, B] + x) <-> x
+    (retry[B] + x) <-> x
 
   // TODO: do these make a monoid with `+`?
 }

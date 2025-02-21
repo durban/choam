@@ -93,7 +93,7 @@ private[choam] object Txn extends TxnInstances0 {
 
     /** Only for testing! */
     private[choam] final def retryUnconditionally[F[_], A]: Txn[F, A] =
-      Rxn.unsafe.retry[Any, A].castF[F]
+      Rxn.unsafe.retry[A].castF[F]
   }
 }
 

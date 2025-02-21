@@ -994,8 +994,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF((Axn.panic(exc) *> Rxn.unsafe.retry).run[F].attempt, Left(exc))
       _ <- assertResultF((Rxn.panic(exc) + Axn.pure(42)).run[F].attempt, Left(exc))
       _ <- assertResultF((Axn.panic(exc) + Axn.pure(42)).run[F].attempt, Left(exc))
-      _ <- assertResultF((Rxn.unsafe.retry[Any, Int] + Rxn.panic[Int](exc)).run[F].attempt, Left(exc))
-      _ <- assertResultF((Rxn.unsafe.retry[Any, Int] + Axn.panic[Int](exc)).run[F].attempt, Left(exc))
+      _ <- assertResultF((Rxn.unsafe.retry[Int] + Rxn.panic[Int](exc)).run[F].attempt, Left(exc))
+      _ <- assertResultF((Rxn.unsafe.retry[Int] + Axn.panic[Int](exc)).run[F].attempt, Left(exc))
       _ <- assertResultF(F.delay {
         Rxn.panic[Int](exc).unsafeRun(this.mcasImpl)
       }.attempt, Left(exc))
@@ -1116,9 +1116,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Align instance") {
     val inst = Align[Rxn[Int, *]]
     for {
-      res1 <- inst.align(Rxn.unsafe.retry[Int, Int], Rxn.ret[Long](42L)).apply[F](0)
+      res1 <- inst.align(Rxn.unsafe.retry[Int], Rxn.ret[Long](42L)).apply[F](0)
       _ <- assertEqualsF(res1, Ior.right(42L))
-      res2 <- inst.align(Rxn.ret[Int](42), Rxn.unsafe.retry[Int, Long]).apply[F](0)
+      res2 <- inst.align(Rxn.ret[Int](42), Rxn.unsafe.retry[Long]).apply[F](0)
       _ <- assertEqualsF(res2, Ior.left(42))
       res3 <- inst.align(Rxn.ret[Int](42), Rxn.ret[Long](23L)).apply[F](0)
       _ <- assertEqualsF(res3, Ior.both(42, 23L))
@@ -1187,16 +1187,16 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     Reactive[F] : FunctionK[Axn, F]
   }
 
-  val never = Rxn.unsafe.retry[Any, Int]
+  val never = Rxn.unsafe.retry[Int]
 
   test("maxRetries") {
     def countTries(ctr: AtomicInteger) = {
-      Axn.unsafe.delay { ctr.getAndIncrement() } *> Rxn.unsafe.retry[Any, Int]
+      Axn.unsafe.delay { ctr.getAndIncrement() } *> Rxn.unsafe.retry[Int]
     }
     def succeedsOn3rdRetry(ctr: AtomicInteger) = {
       Axn.unsafe.delay { ctr.getAndIncrement() }.flatMapF { retries =>
         if (retries == 3) Axn.pure("foo")
-        else Rxn.unsafe.retry[Any, String]
+        else Rxn.unsafe.retry[String]
       }
     }
     def maxRetries(mr: Option[Int]): RetryStrategy.Spin =

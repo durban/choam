@@ -125,7 +125,7 @@ trait RandomSpec[F[_]]
         ref <- F.delay(new AtomicLong)
         rxn = dr1.nextLong.flatMapF { n =>
           ref.set(n)
-          Rxn.unsafe.retry[Any, Int]
+          Rxn.unsafe.retry[Int]
         }.?
         _ <- assertResultF(rxn.run[F], None)
         n <- dr1.nextLong.run[F]

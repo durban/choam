@@ -24,7 +24,7 @@ private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
   extends Exchanger.UnsealedExchanger[A, B] {
 
     final override def exchange: Rxn[A, B] =
-      Rxn.unsafe.retry[A, B]
+      Rxn.unsafe.retry[B]
 
     // NB: this MUST be initialized before `dual`,
     // otherwise it could remain uninitialized (null).

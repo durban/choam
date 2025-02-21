@@ -83,7 +83,7 @@ trait RxnSpecJvm_Emcas[F[_]] extends RxnSpecJvm[F] with SpecEmcas {
 trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
 
   test("Thread interruption in infinite retry") {
-    val never = Rxn.unsafe.retry[Any, Unit]
+    val never = Rxn.unsafe.retry[Unit]
     @volatile var exception = Option.empty[Throwable]
     F.blocking {
       val cdl = new CountDownLatch(1)
