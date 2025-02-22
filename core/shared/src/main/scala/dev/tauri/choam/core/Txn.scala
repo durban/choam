@@ -19,7 +19,8 @@ package dev.tauri.choam
 package core
 
 import cats.kernel.Monoid
-import cats.{ Applicative, Defer, StackSafeMonad }
+import cats.arrow.FunctionK
+import cats.{ ~>, Applicative, Defer, StackSafeMonad }
 import cats.effect.kernel.Unique
 
 import internal.mcas.Mcas
@@ -56,6 +57,23 @@ private[choam] sealed trait Txn[F[_], +B] {
 
 // Note: not really private, published in dev.tauri.choam.stm
 private[choam] object Txn extends TxnInstances0 {
+
+  final class Local[G[_], A] private[Txn] (private[this] var a: A) {
+    final def get: Txn[G, A] = unsafe.delay { this.a }
+    final def set(a: A): Txn[G, Unit] = unsafe.delay { this.a = a }
+    final def update(f: A => A): Txn[G, Unit] = unsafe.delay { this.a = f(this.a) }
+  }
+
+  trait WithLocal[F[_], A, R] {
+    def apply[G[_]]: (Local[G, A], Txn[F, *] ~> Txn[G, *]) => Txn[G, R]
+  }
+
+  final def withLocal[F[_], A, R](initial: A, body: WithLocal[F, A, R]): Txn[F, R] = {
+    unsafe.delay {
+      val local = new Local[F, A](initial)
+      body[F].apply(local, FunctionK.id)
+    }.flatMap { x => x }
+  }
 
   private[core] trait UnsealedTxn[F[_], +B] extends Txn[F, B]
 

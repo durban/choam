@@ -21,7 +21,7 @@ package stm
 import java.util.concurrent.atomic.AtomicBoolean
 
 import cats.kernel.Monoid
-import cats.{ Defer, Monad, StackSafeMonad }
+import cats.{ ~>, Defer, Monad, StackSafeMonad }
 import cats.effect.kernel.Unique
 import cats.effect.IO
 
@@ -40,6 +40,40 @@ final class TxnSpec_DefaultMcas_ZIO
 trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
 
   final class MyException extends Exception
+
+  test("Txn.Local 1") {
+    for {
+      ref <- TRef[F, Int](0).commit
+      txn1 = Txn.withLocal(42, new Txn.WithLocal[F, Int, String] {
+        final override def apply[G[_]] = { (local: Txn.Local[G, Int], lift: Txn[F, *] ~> Txn[G, *]) =>
+          local.get.flatMap { ov =>
+            lift(ref.set(ov)) *> local.set(99).as("foo")
+          }
+        }
+      })
+      _ <- assertResultF(txn1.map(_ + "bar").commit, "foobar")
+      _ <- assertResultF(ref.get.commit, 42)
+    } yield ()
+  }
+
+  test("Txn.Local 2") {
+    val txn: Txn[F, (String, Int)] = for {
+      ref <- TRef[F, Int](0)
+      s <- Txn.withLocal(42, new Txn.WithLocal[F, Int, String] {
+        final override def apply[G[_]] = { (scratch: Txn.Local[G, Int], lift: Txn[F, *] ~> Txn[G, *]) =>
+          for {
+            i <- lift(ref.get)
+            _ <- scratch.set(i)
+            _ <- scratch.update(_ + 1)
+            v <- scratch.get
+            _ <- lift(ref.set(v))
+          } yield ""
+        }
+      })
+      v <- ref.get
+    } yield (s, v)
+    assertResultF(txn.commit, ("", 1))
+  }
 
   test("Hello World") {
     def txn(r: TRef[F, Int]): Txn[F, (Int, Int)] = for {
