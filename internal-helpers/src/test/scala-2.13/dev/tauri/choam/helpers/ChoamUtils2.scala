@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package helpers
 
-import scala.annotation.{ elidable, nowarn }
+import scala.annotation.elidable
 
 // Note: this is duplicated from `ChoamUtils`,
 // so that we can test disabling `_assert`.
