@@ -30,7 +30,7 @@ import cats.effect.kernel.{ Ref => CatsRef }
 import cats.mtl.Local
 
 import internal.mcas.Mcas
-import core.RetryStrategy
+import core.{ RetryStrategy, RxnLocal }
 
 final class RxnSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
@@ -884,6 +884,46 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r = r1.unsafeCas("x", "y").maybe * r2.unsafeCas("a", "b").maybe
       _ <- assertResultF(r.run[F], (false, true))
     } yield ()
+  }
+
+  test("RxnLocal (simple)") {
+    for {
+      ref <- Ref[Int](0).run[F]
+      rxn1 = Rxn.withLocal(42, new Rxn.WithLocal[Int, Float, String] {
+        final override def apply[G[_, _]](local: RxnLocal[G, Int], lift: RxnLocal.Lift[Rxn, G], inst: RxnLocal.Instances[G]) = {
+          import inst._
+          local.get.flatMap { ov =>
+            lift(ref.set0(ov)) *> local.set(99).as("foo")
+          }.lmap[Float](f => f)
+        }
+      })
+      _ <- assertResultF(rxn1.map(_ + "bar").apply(0.4f), "foobar")
+      _ <- assertResultF(ref.get.run[F], 42)
+    } yield ()
+  }
+
+  test("RxnLocal (compose with Rxn)") {
+    val rxn: Rxn[Any, (String, Int)] = for {
+      ref <- Ref[Int](0)
+      s <- Rxn.withLocal(42, new Rxn.WithLocal[Int, Any, String] {
+        final override def apply[G[_, _]](
+          scratch: RxnLocal[G, Int],
+          lift: RxnLocal.Lift[Rxn, G],
+          inst: RxnLocal.Instances[G],
+        ) = {
+          import inst._
+          for {
+            i <- lift(ref.get)
+            _ <- scratch.set(i)
+            _ <- scratch.update(_ + 1)
+            v <- scratch.get
+            _ <- lift(ref.set0(v))
+          } yield ""
+        }
+      })
+      v <- ref.get
+    } yield (s, v)
+    assertResultF(rxn.run[F], ("", 1))
   }
 
   test("unsafe.delayContext") {

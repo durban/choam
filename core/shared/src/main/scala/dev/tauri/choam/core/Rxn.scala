@@ -469,6 +469,17 @@ object Rxn extends RxnInstances0 {
 
   // Utilities:
 
+  trait WithLocal[A, I, R] {
+    def apply[G[_, _]](
+      local: RxnLocal[G, A],
+      lift: RxnLocal.Lift[Rxn, G],
+      instances: RxnLocal.Instances[G],
+    ): G[I, R]
+  }
+
+  final def withLocal[A, I, R](initial: A, body: WithLocal[A, I, R]): Rxn[I, R] =
+    RxnLocal.withLocal(initial, body)
+
   private[this] val _fastRandom: Random[Axn] =
     random.newFastRandom
 
@@ -548,6 +559,9 @@ object Rxn extends RxnInstances0 {
 
     private[choam] final def suspend[A, B](uf: A => Axn[B]): Rxn[A, B] =
       delay(uf).flatten // TODO: optimize
+
+    private[choam] final def suspend[A, B](uf: => Rxn[A, B]): Rxn[A, B] =
+      Axn.unsafe.delay(uf).flatMap { x => x } // TODO: optimize
 
     // TODO: Calling `unsafePerform` (or similar) inside
     // TODO: `uf` is dangerous; currently it only messes
