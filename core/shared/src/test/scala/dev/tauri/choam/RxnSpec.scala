@@ -889,7 +889,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("RxnLocal (simple)") {
     for {
       ref <- Ref[Int](0).run[F]
-      rxn1 = Rxn.withLocal(42, new Rxn.WithLocal[Int, Float, String] {
+      rxn1 = Rxn.unsafe.withLocal(42, new Rxn.unsafe.WithLocal[Int, Float, String] {
         final override def apply[G[_, _]](local: RxnLocal[G, Int], lift: RxnLocal.Lift[Rxn, G], inst: RxnLocal.Instances[G]) = {
           import inst._
           local.get.flatMap { ov =>
@@ -905,7 +905,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("RxnLocal (compose with Rxn)") {
     val rxn: Rxn[Any, (String, Int)] = for {
       ref <- Ref[Int](0)
-      s <- Rxn.withLocal(42, new Rxn.WithLocal[Int, Any, String] {
+      s <- Rxn.unsafe.withLocal(42, new Rxn.unsafe.WithLocal[Int, Any, String] {
         final override def apply[G[_, _]](
           scratch: RxnLocal[G, Int],
           lift: RxnLocal.Lift[Rxn, G],
@@ -929,7 +929,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("RxnLocal (rollback)") { // TODO: this must work better (see below)
     for {
       ref <- Ref[Int](0).run[F]
-      v <- Rxn.withLocal(0, new Rxn.WithLocal[Int, Any, Int] {
+      v <- Rxn.unsafe.withLocal(0, new Rxn.unsafe.WithLocal[Int, Any, Int] {
         final override def apply[G[_, _]](
           local: RxnLocal[G, Int],
           lift: RxnLocal.Lift[Rxn, G],

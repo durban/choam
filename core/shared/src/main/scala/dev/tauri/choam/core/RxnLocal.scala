@@ -50,7 +50,7 @@ object RxnLocal {
     final override def apply[A, B](r: Rxn[A, B]): Rxn[A, B] = r
   }
 
-  private[core] final def withLocal[A, I, R](initial: A, body: Rxn.WithLocal[A, I, R]): Rxn[I, R] = {
+  private[core] final def withLocal[A, I, R](initial: A, body: Rxn.unsafe.WithLocal[A, I, R]): Rxn[I, R] = {
     Rxn.unsafe.suspend {
       val local = new RxnLocalImpl[A](initial)
       body[Rxn](local, _idLift, _inst)
