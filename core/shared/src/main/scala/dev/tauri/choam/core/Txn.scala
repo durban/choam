@@ -64,17 +64,6 @@ private[choam] object Txn extends TxnInstances0 {
     final def update(f: A => A): Txn[G, Unit] = unsafe.delay { this.a = f(this.a) }
   }
 
-  trait WithLocal[F[_], A, R] {
-    def apply[G[_]]: (Local[G, A], Txn[F, *] ~> Txn[G, *]) => Txn[G, R]
-  }
-
-  final def withLocal[F[_], A, R](initial: A, body: WithLocal[F, A, R]): Txn[F, R] = {
-    unsafe.delay {
-      val local = new Local[F, A](initial)
-      body[F].apply(local, FunctionK.id)
-    }.flatMap { x => x }
-  }
-
   private[core] trait UnsealedTxn[F[_], +B] extends Txn[F, B]
 
   final def pure[F[_], A](a: A): Txn[F, A] =
@@ -102,6 +91,17 @@ private[choam] object Txn extends TxnInstances0 {
     Rxn.unique.castF[F]
 
   private[choam] final object unsafe {
+
+    trait WithLocal[F[_], A, R] {
+      def apply[G[_]]: (Local[G, A], Txn[F, *] ~> Txn[G, *]) => Txn[G, R]
+    }
+
+    final def withLocal[F[_], A, R](initial: A, body: WithLocal[F, A, R]): Txn[F, R] = {
+      unsafe.delay {
+        val local = new Local[F, A](initial)
+        body[F].apply(local, FunctionK.id)
+      }.flatMap { x => x }
+    }
 
     private[choam] final def delay[F[_], A](uf: => A): Txn[F, A] =
       Axn.unsafe.delay[A](uf).castF[F]
