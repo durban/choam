@@ -26,7 +26,7 @@ import cats.effect.kernel.Unique
 import internal.mcas.Mcas
 
 // Note: not really private, published in dev.tauri.choam.stm
-private[choam] sealed trait Txn[F[_], +B] {
+private[choam] sealed trait Txn[F[_], +B] { // TODO:0.5: get rid of the F[_] type param
 
   def map[C](f: B => C): Txn[F, C]
 

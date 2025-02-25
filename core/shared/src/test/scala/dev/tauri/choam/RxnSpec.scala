@@ -926,6 +926,30 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     assertResultF(rxn.run[F], ("", 1))
   }
 
+  test("RxnLocal (rollback)") { // TODO: this must work better (see below)
+    for {
+      ref <- Ref[Int](0).run[F]
+      v <- Rxn.withLocal(0, new Rxn.WithLocal[Int, Any, Int] {
+        final override def apply[G[_, _]](
+          local: RxnLocal[G, Int],
+          lift: RxnLocal.Lift[Rxn, G],
+          inst: RxnLocal.Instances[G],
+        ) = {
+          import inst._
+          // TODO: this interaction between `RxnLocal` and `+` is very unintuitive
+          lift(Rxn.pure(0) + Rxn.pure(1)) *> {
+            lift(ref.update(_ + 1)) *> local.getAndUpdate(_ + 1).flatMap { ov =>
+              if (ov > 0) monadInstance.pure(ov)
+              else lift(Rxn.unsafe.retry)
+            }
+          }
+        }
+      }).run[F]
+      _ <- assertEqualsF(v, 1)
+      _ <- assertResultF(ref.get.run[F], 1)
+    } yield ()
+  }
+
   test("unsafe.delayContext") {
     Rxn.unsafe.delayContext { (tc: Mcas.ThreadContext) =>
       tc eq this.mcasImpl.currentContext()

@@ -25,6 +25,7 @@ sealed abstract class RxnLocal[G[_, _], A] private () {
   def get: G[Any, A]
   def set(a: A): G[Any, Unit]
   def update(f: A => A): G[Any, Unit]
+  def getAndUpdate(f: A => A): G[Any, A]
 }
 
 object RxnLocal {
@@ -60,5 +61,10 @@ object RxnLocal {
     final override def get: Rxn[Any, A] = Axn.unsafe.delay { this.a }
     final override def set(a: A): Rxn[Any, Unit] = Axn.unsafe.delay { this.a = a }
     final override def update(f: A => A): Rxn[Any, Unit] = Axn.unsafe.delay { this.a = f(this.a) }
+    final override def getAndUpdate(f: A => A): Rxn[Any, A] = Axn.unsafe.delay {
+      val ov = this.a
+      this.a = f(ov)
+      ov
+    }
   }
 }
