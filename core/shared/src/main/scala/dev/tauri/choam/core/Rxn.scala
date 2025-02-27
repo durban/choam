@@ -101,8 +101,6 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
    * TODO: maybe we could optimize `flatMap`.
    */
 
-  import Rxn._
-
   /**
    * Tag for the interpreter (see `interpreter`)
    *
@@ -129,13 +127,13 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   private[core] def tag: Byte
 
   final def + [X <: A, Y >: B](that: Rxn[X, Y]): Rxn[X, Y] =
-    new Choice[X, Y](this, that)
+    new Rxn.Choice[X, Y](this, that)
 
   final def >>> [C](that: Rxn[B, C]): Rxn[A, C] =
-    new AndThen[A, B, C](this, that)
+    new Rxn.AndThen[A, B, C](this, that)
 
   final def × [C, D](that: Rxn[C, D]): Rxn[(A, C), (B, D)] =
-    new AndAlso[A, B, C, D](this, that)
+    new Rxn.AndAlso[A, B, C, D](this, that)
 
   final def * [X <: A, C](that: Rxn[X, C]): Rxn[X, (B, C)] =
     (this × that).contramap[X](x => (x, x))
@@ -147,16 +145,16 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     this.attempt
 
   final def attempt: Rxn[A, Option[B]] =
-    this.map(Some(_)) + pure[Option[B]](None)
+    this.map(Some(_)) + Rxn.pure[Option[B]](None)
 
   final def maybe: Rxn[A, Boolean] =
-    this.as(true) + pure(false)
+    this.as(true) + Rxn.pure(false)
 
   final def map[C](f: B => C): Rxn[A, C] =
-    new Map_(this, f)
+    new Rxn.Map_(this, f)
 
   final def as[C](c: C): Rxn[A, C] =
-    new As(this, c)
+    new Rxn.As(this, c)
 
   final override def void: Rxn[A, Unit] =
     this.as(())
@@ -166,10 +164,10 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     this.map { b => (b, b) }
 
   final def contramap[C](f: C => A): Rxn[C, B] =
-    lift(f) >>> this
+    Rxn.lift(f) >>> this
 
   final def provide(a: A): Axn[B] =
-    new Provide[A, B](this, a)
+    new Rxn.Provide[A, B](this, a)
 
   // old implementation with contramap:
   private[choam] final def provideOld(a: A): Axn[B] =
@@ -183,7 +181,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   }
 
   final def map2[X <: A, C, D](that: Rxn[X, C])(f: (B, C) => D): Rxn[X, D] =
-    new Map2(this, that, f)
+    new Rxn.Map2(this, that, f)
 
   final def <* [X <: A, C](that: Rxn[X, C]): Rxn[X, B] =
     this.productL(that)
@@ -195,30 +193,30 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     this.productR(that)
 
   final def productR[X <: A, C](that: Rxn[X, C]): Rxn[X, C] =
-    new ProductR[X, B, C](this, that)
+    new Rxn.ProductR[X, B, C](this, that)
 
   final def first[C]: Rxn[(A, C), (B, C)] =
-    this × identity[C]
+    this × Rxn.identity[C]
 
   final def second[C]: Rxn[(C, A), (C, B)] =
-    identity[C] × this
+    Rxn.identity[C] × this
 
   final def flatMap[X <: A, C](f: B => Rxn[X, C]): Rxn[X, C] =
-    new FlatMap(this, f)
+    new Rxn.FlatMap(this, f)
 
   // TODO: Unoptimized impl.:
   private[choam] final def flatMapOld[X <: A, C](f: B => Rxn[X, C]): Rxn[X, C] = {
     val self: Rxn[X, (X, B)] = this.second[X].contramap[X](x => (x, x))
-    val comp: Rxn[(X, B), C] = computed[(X, B), C](xb => f(xb._2).provide(xb._1))
+    val comp: Rxn[(X, B), C] = Rxn.computed[(X, B), C](xb => f(xb._2).provide(xb._1))
     self >>> comp
   }
 
   final def flatMapF[C](f: B => Axn[C]): Rxn[A, C] =
-    new FlatMapF(this, f)
+    new Rxn.FlatMapF(this, f)
 
   // TODO: Unoptimized impl.:
   private[choam] final def flatMapFOld[C](f: B => Axn[C]): Rxn[A, C] =
-    this >>> computed(f)
+    this >>> Rxn.computed(f)
 
   // TODO: optimize
   final def >> [X <: A, C](that: => Rxn[X, C]): Rxn[X, C] =
@@ -268,7 +266,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     mcas: Mcas,
     strategy: RetryStrategy.Spin = RetryStrategy.Default,
   ): B = {
-    new InterpreterState[A, B](
+    new Rxn.InterpreterState[A, B](
       rxn = this,
       x = a,
       mcas = mcas,
@@ -295,7 +293,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   )(implicit F: Async[F]): F[X] = {
     F.uncancelable { poll =>
       F.defer {
-        new InterpreterState[A, X](
+        new Rxn.InterpreterState[A, X](
           this,
           a,
           mcas = mcas,
@@ -318,7 +316,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
       .Default
       .withMaxSpin(maxBackoff)
       .withRandomizeSpin(randomizeBackoff)
-    new InterpreterState[A, B](
+    new Rxn.InterpreterState[A, B](
       this,
       a,
       ctx.impl,
@@ -360,7 +358,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   }
 
   final override def orElse[Y >: B](that: Txn[Rxn.Anything, Y]): Txn[Rxn.Anything, Y] = {
-    new OrElse(this, that.impl)
+    new Rxn.OrElse(this, that.impl)
   }
 
   final override def commit[X >: B](implicit F: Transactive[Rxn.Anything]): Rxn.Anything[X] = {
@@ -401,7 +399,7 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
     require(strategy.canSuspend)
     F.uncancelable { poll =>
       F.defer {
-        new InterpreterState[A, X](
+        new Rxn.InterpreterState[A, X](
           this,
           a,
           mcas = mcas,
@@ -448,7 +446,7 @@ object Rxn extends RxnInstances0 {
   final def unit[A]: Rxn[A, Unit] =
     _unit
 
-  final def panic[A](ex: Throwable): Axn[A] =
+  final def panic[A](ex: Throwable): Axn[A] = // TODO:0.5: should this be in `unsafe`?
     unsafe.delay[Any, A] { _ => throw ex }
 
   final def computed[A, B](f: A => Axn[B]): Rxn[A, B] =
