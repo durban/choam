@@ -587,6 +587,7 @@ object Rxn extends RxnInstances0 {
   }
 
   private[choam] final object StmImpl {
+
     private[choam] final def retryWhenChanged[A]: Axn[A] =
       _RetryWhenChanged.asInstanceOf[Rxn[Any, A]]
   }
@@ -640,7 +641,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Cas(${ref}, ${ov}, ${nv})"
   }
 
-  // Note: tag = 8 is RefGetAxn
+  // Note: tag = 8 is RefGetAxn (above)
 
   private final class Map2[A, B, C, D](val left: Rxn[A, B], val right: Rxn[A, C], val f: (B, C) => D) extends Rxn[A, D] {
     private[core] final override def tag = 9
@@ -2213,6 +2214,7 @@ private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type
 }
 
 private sealed abstract class RxnSyntax0 extends RxnSyntax1 { this: Rxn.type =>
+
   implicit final class InvariantSyntax[A, B](private val self: Rxn[A, B]) {
     final def apply[F[_]](a: A)(implicit F: Reactive[F]): F[B] =
       F.apply(self, a)
