@@ -39,23 +39,9 @@ class FlatMapBench {
   }
 
   @Benchmark
-  def withFlatMapOld(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
-    val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
-    val r: Axn[String] = s.rsWithFlatMapOld(idx)
-    bh.consume(r.unsafePerform((), k.mcasImpl))
-  }
-
-  @Benchmark
   def withFlatMapF(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
     val r: Axn[String] = s.rsWithFlatMapF(idx)
-    bh.consume(r.unsafePerform((), k.mcasImpl))
-  }
-
-  @Benchmark
-  def withFlatMapFOld(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
-    val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
-    val r: Axn[String] = s.rsWithFlatMapFOld(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 
@@ -74,9 +60,7 @@ object FlatMapBench {
 
   sealed abstract class OpType extends Product with Serializable
   final case object FlatMap extends OpType
-  final case object FlatMapOld extends OpType
   final case object FlatMapF extends OpType
-  final case object FlatMapFOld extends OpType
   final case object StarGreater extends OpType
 
   @State(Scope.Benchmark)
@@ -108,14 +92,8 @@ object FlatMapBench {
     val rsWithFlatMap: List[Axn[String]] =
       mkReactions(opType = FlatMap)
 
-    val rsWithFlatMapOld: List[Axn[String]] =
-      mkReactions(opType = FlatMapOld)
-
     val rsWithFlatMapF: List[Axn[String]] =
       mkReactions(opType = FlatMapF)
-
-    val rsWithFlatMapFOld: List[Axn[String]] =
-      mkReactions(opType = FlatMapFOld)
 
     val rsWithStarGreater: List[Axn[String]] =
       mkReactions(opType = StarGreater)
@@ -127,9 +105,7 @@ object FlatMapBench {
         } else {
           val newAcc = opType match {
             case FlatMap => acc.flatMap { _ => dummy }
-            case FlatMapOld => acc.flatMapOld { _ => dummy }
             case FlatMapF => acc.flatMapF { _ => dummy }
-            case FlatMapFOld => acc.flatMapFOld { _ => dummy }
             case StarGreater => acc *> dummy
           }
           go(n - 1, newAcc)
@@ -138,9 +114,7 @@ object FlatMapBench {
 
       opType match {
         case FlatMap => go(n, first).flatMap { _ => last }
-        case FlatMapOld => go(n, first).flatMapOld { _ => last }
         case FlatMapF => go(n, first).flatMapF { _ => last }
-        case FlatMapFOld => go(n, first).flatMapFOld { _ => last }
         case StarGreater => go(n, first) *> last
       }
     }

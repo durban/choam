@@ -204,19 +204,8 @@ sealed abstract class Rxn[-A, +B] // short for 'reaction'
   final def flatMap[X <: A, C](f: B => Rxn[X, C]): Rxn[X, C] =
     new Rxn.FlatMap(this, f)
 
-  // TODO: Unoptimized impl.:
-  private[choam] final def flatMapOld[X <: A, C](f: B => Rxn[X, C]): Rxn[X, C] = {
-    val self: Rxn[X, (X, B)] = this.second[X].contramap[X](x => (x, x))
-    val comp: Rxn[(X, B), C] = Rxn.computed[(X, B), C](xb => f(xb._2).provide(xb._1))
-    self >>> comp
-  }
-
   final def flatMapF[C](f: B => Axn[C]): Rxn[A, C] =
     new Rxn.FlatMapF(this, f)
-
-  // TODO: Unoptimized impl.:
-  private[choam] final def flatMapFOld[C](f: B => Axn[C]): Rxn[A, C] =
-    this >>> Rxn.computed(f)
 
   // TODO: optimize
   final def >> [X <: A, C](that: => Rxn[X, C]): Rxn[X, C] =
