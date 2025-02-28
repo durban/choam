@@ -827,7 +827,7 @@ lazy val consts = new {
 lazy val dependencies = new {
 
   val catsVersion = "2.13.0" // https://github.com/typelevel/cats
-  val catsEffectVersion = "3.5.7" // https://github.com/typelevel/cats-effect
+  val catsEffectVersion = "3.6.0-RC2" // https://github.com/typelevel/cats-effect // TODO:0.5: we mustn't depend on an RC
   val catsMtlVersion = "1.5.0" // https://github.com/typelevel/cats-mtl
   val catsCollectionsVersion = "0.9.9" // https://github.com/typelevel/cats-collections
   val fs2Version = "3.11.0" // https://github.com/typelevel/fs2

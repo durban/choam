@@ -258,7 +258,7 @@ object BackoffBenchIo {
   private[this] final def getRuntime(): IORuntime = {
     ceRuntime.get() match {
       case null =>
-        val (wstp, shutdown) = IORuntime.createWorkStealingComputeThreadPool(threads = wstpSize)
+        val (wstp, _, shutdown) = IORuntime.createWorkStealingComputeThreadPool(threads = wstpSize)
         val rt = IORuntimeBuilder().setCompute(wstp, shutdown).build()
         val wit = ceRuntime.compareAndExchange(null, rt)
         if (wit eq null) {

@@ -22,7 +22,6 @@ import scala.util.hashing.byteswap32
 
 import cats.syntax.all._
 import cats.effect.{ IO, IOApp }
-import cats.effect.instances.all._
 
 import dev.tauri.choam.{ Ref, Axn }
 import dev.tauri.choam.ce.RxnAppMixin
