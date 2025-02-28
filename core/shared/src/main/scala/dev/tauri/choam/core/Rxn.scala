@@ -474,6 +474,7 @@ object Rxn extends RxnInstances0 {
 
   // API:
 
+  @inline
   final def pure[A](a: A): Axn[A] =
     pureImpl(a)
 
@@ -487,6 +488,7 @@ object Rxn extends RxnInstances0 {
   final def identity[A]: Rxn[A, A] =
     lift(a => a)
 
+  @inline
   final def lift[A, B](f: A => B): Rxn[A, B] =
     liftImpl(f)
 
@@ -496,12 +498,14 @@ object Rxn extends RxnInstances0 {
   private[this] val _unit: RxnImpl[Any, Unit] =
     pureImpl(())
 
+  @inline
   final def unit[A]: Rxn[A, Unit] =
     unitImpl[A]
 
   private[core] final def unitImpl[A]: RxnImpl[A, Unit] =
     _unit
 
+  @inline
   final def panic[A](ex: Throwable): Axn[A] = // TODO:0.5: should this be in `unsafe`?
     panicImpl(ex)
 
@@ -514,6 +518,7 @@ object Rxn extends RxnInstances0 {
   final def postCommit[A](pc: Rxn[A, Unit]): Rxn[A, A] =
     new Rxn.PostCommit[A](pc)
 
+  @inline
   final def tailRecM[X, A, B](a: A)(f: A => Rxn[X, Either[A, B]]): Rxn[X, B] =
     tailRecMImpl(a)(f)
 
@@ -531,6 +536,7 @@ object Rxn extends RxnInstances0 {
   private[this] val _unique: RxnImpl[Any, Unique.Token] =
     Axn.unsafe.delayImpl { new Unique.Token() }
 
+  @inline
   final def unique: Axn[Unique.Token] =
     uniqueImpl
 
@@ -607,15 +613,18 @@ object Rxn extends RxnInstances0 {
     private[choam] final def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
       new Rxn.Cas[A](r.loc, ov, nv)
 
+    @inline
     private[choam] final def retry[A]: Axn[A] =
       retryImpl[A]
 
     private[core] final def retryImpl[A]: RxnImpl[Any, A] =
       Rxn._AlwaysRetry.asInstanceOf[RxnImpl[Any, A]]
 
+    @inline
     private[choam] final def delay[A, B](uf: A => B): Rxn[A, B] =
       delayImpl(uf)
 
+    @inline
     private[choam] final def delayImpl[A, B](uf: A => B): RxnImpl[A, B] =
       liftImpl(uf)
 
@@ -628,6 +637,7 @@ object Rxn extends RxnInstances0 {
     // TODO: Calling `unsafePerform` (or similar) inside
     // TODO: `uf` is dangerous; currently it only messes
     // TODO: up exchanger statistics; in the future, who knows...
+    @inline
     private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
       delayContextImpl(uf)
 
