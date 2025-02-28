@@ -35,12 +35,22 @@ object Axn {
     Rxn.panic(ex)
 
   private[choam] final object unsafe {
+
     private[choam] final def delay[A](da: => A): Axn[A] =
-      Rxn.unsafe.delay[Any, A](_ => da)
-    private[choam] final def suspend[A](daa: => Axn[A]): Axn[A] = // TODO: optimize
-      this.delay(daa).flatten
+      delayImpl(da)
+
+    private[core] final def delayImpl[A](da: => A): RxnImpl[Any, A] =
+      Rxn.unsafe.delayImpl[Any, A](_ => da)
+
+    private[choam] final def suspend[A](daa: => Axn[A]): Axn[A] =
+      suspendImpl(daa)
+
+    private[core] final def suspendImpl[A](daa: => Axn[A]): RxnImpl[Any, A] = // TODO: optimize
+      this.delayImpl(daa).flatten
+
     private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
       Rxn.unsafe.delayContext(uf)
+
     private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       Rxn.unsafe.suspendContext(uf)
   }

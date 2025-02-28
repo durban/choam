@@ -50,7 +50,7 @@ private[choam] sealed trait Txn[F[_], +B] { // TODO:0.5: get rid of the F[_] typ
 
   def orElse[Y >: B](that: Txn[F, Y]): Txn[F, Y]
 
-  private[core] def impl: Axn[B]
+  private[core] def impl: RxnImpl[Any, B]
 
   def commit[X >: B](implicit F: Transactive[F]): F[X]
 }
@@ -67,10 +67,10 @@ private[choam] object Txn extends TxnInstances0 {
   private[core] trait UnsealedTxn[F[_], +B] extends Txn[F, B]
 
   final def pure[F[_], A](a: A): Txn[F, A] =
-    Rxn.pure(a).castF[F]
+    Rxn.pureImpl(a).castF[F]
 
   final def unit[F[_]]: Txn[F, Unit] =
-    Rxn.unit[Any].castF[F]
+    Rxn.unitImpl[Any].castF[F]
 
   final def retry[F[_], A]: Txn[F, A] =
     Rxn.StmImpl.retryWhenChanged[A].castF[F]
@@ -79,16 +79,16 @@ private[choam] object Txn extends TxnInstances0 {
     if (cond) unit else retry
 
   final def panic[F[_], A](ex: Throwable): Txn[F, A] =
-    Rxn.panic(ex).castF[F]
+    Rxn.panicImpl(ex).castF[F]
 
   final def tailRecM[F[_], A, B](a: A)(f: A => Txn[F, Either[A, B]]): Txn[F, B] =
-    Rxn.tailRecM(a)(f.asInstanceOf[Function1[A, Axn[Either[A, B]]]]).castF[F]
+    Rxn.tailRecMImpl(a)(f.asInstanceOf[Function1[A, Axn[Either[A, B]]]]).castF[F]
 
   final def defer[F[_], A](fa: => Txn[F, A]): Txn[F, A] =
-    Axn.unsafe.suspend { fa.impl }.castF[F]
+    Axn.unsafe.suspendImpl { fa.impl }.castF[F]
 
   final def unique[F[_]]: Txn[F, Unique.Token] =
-    Rxn.unique.castF[F]
+    Rxn.uniqueImpl.castF[F]
 
   private[choam] final object unsafe {
 
@@ -104,14 +104,14 @@ private[choam] object Txn extends TxnInstances0 {
     }
 
     private[choam] final def delay[F[_], A](uf: => A): Txn[F, A] =
-      Axn.unsafe.delay[A](uf).castF[F]
+      Axn.unsafe.delayImpl[A](uf).castF[F]
 
     private[choam] final def delayContext[F[_], A](uf: Mcas.ThreadContext => A): Txn[F, A] =
-      Rxn.unsafe.delayContext(uf).castF[F]
+      Rxn.unsafe.delayContextImpl(uf).castF[F]
 
     /** Only for testing! */
     private[choam] final def retryUnconditionally[F[_], A]: Txn[F, A] =
-      Rxn.unsafe.retry[A].castF[F]
+      Rxn.unsafe.retryImpl[A].castF[F]
   }
 }
 

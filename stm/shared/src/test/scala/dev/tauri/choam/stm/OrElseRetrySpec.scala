@@ -140,7 +140,7 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   // Combined tests:
 
   private[this] final def plus[A](t1: Txn[F, A], t2: Txn[F, A]): Txn[F, A] = {
-    (t1.asInstanceOf[Axn[A]] + t2.asInstanceOf[Axn[A]]).castF[F]
+    (t1.asInstanceOf[core.RxnImpl[Any, A]] + t2.asInstanceOf[core.RxnImpl[Any, A]]).castF[F]
   }
 
   test("Txn - `(t1 orElse t2) + t3`: `t1` transient failure -> try `t3` (NOT `t2`)") {
