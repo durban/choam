@@ -19,143 +19,134 @@ package dev.tauri.choam
 package core
 
 import cats.kernel.Monoid
-import cats.arrow.FunctionK
 import cats.{ ~>, Applicative, Defer, StackSafeMonad }
 import cats.effect.kernel.Unique
 
 import internal.mcas.Mcas
 
 // Note: not really private, published in dev.tauri.choam.stm
-private[choam] sealed trait Txn[F[_], +B] { // TODO:0.5: get rid of the F[_] type param
+private[choam] sealed trait Txn[+B] {
 
-  def map[C](f: B => C): Txn[F, C]
+  def map[C](f: B => C): Txn[C]
 
-  def as[C](c: C): Txn[F, C]
+  def as[C](c: C): Txn[C]
 
-  def void: Txn[F, Unit]
+  def void: Txn[Unit]
 
-  def map2[C, D](that: Txn[F, C])(f: (B, C) => D): Txn[F, D]
+  def map2[C, D](that: Txn[C])(f: (B, C) => D): Txn[D]
 
-  def productR[C](that: Txn[F, C]): Txn[F, C]
+  def productR[C](that: Txn[C]): Txn[C]
 
-  def *> [C](that: Txn[F, C]): Txn[F, C]
+  def *> [C](that: Txn[C]): Txn[C]
 
-  def productL[C](that: Txn[F, C]): Txn[F, B]
+  def productL[C](that: Txn[C]): Txn[B]
 
-  def <* [C](that: Txn[F, C]): Txn[F, B]
+  def <* [C](that: Txn[C]): Txn[B]
 
-  def product [C](that: Txn[F, C]): Txn[F, (B, C)]
+  def product [C](that: Txn[C]): Txn[(B, C)]
 
-  def flatMap[C](f: B => Txn[F, C]): Txn[F, C]
+  def flatMap[C](f: B => Txn[C]): Txn[C]
 
-  def orElse[Y >: B](that: Txn[F, Y]): Txn[F, Y]
+  def orElse[Y >: B](that: Txn[Y]): Txn[Y]
 
   private[core] def impl: RxnImpl[Any, B]
 
-  def commit[X >: B](implicit F: Transactive[F]): F[X]
+  def commit[F[_], X >: B](implicit F: Transactive[F]): F[X]
 }
 
 // Note: not really private, published in dev.tauri.choam.stm
 private[choam] object Txn extends TxnInstances0 {
 
-  final class Local[G[_], A] private[Txn] (private[this] var a: A) {
-    final def get: Txn[G, A] = unsafe.delay { this.a }
-    final def set(a: A): Txn[G, Unit] = unsafe.delay { this.a = a }
-    final def update(f: A => A): Txn[G, Unit] = unsafe.delay { this.a = f(this.a) }
-  }
+  private[core] trait UnsealedTxn[+B] extends Txn[B]
 
-  private[core] trait UnsealedTxn[F[_], +B] extends Txn[F, B]
+  final def pure[A](a: A): Txn[A] =
+    Rxn.pureImpl(a)
 
-  final def pure[F[_], A](a: A): Txn[F, A] =
-    Rxn.pureImpl(a).castF[F]
+  final def unit: Txn[Unit] =
+    Rxn.unitImpl[Any]
 
-  final def unit[F[_]]: Txn[F, Unit] =
-    Rxn.unitImpl[Any].castF[F]
+  final def retry[A]: Txn[A] =
+    Rxn.StmImpl.retryWhenChanged[A]
 
-  final def retry[F[_], A]: Txn[F, A] =
-    Rxn.StmImpl.retryWhenChanged[A].castF[F]
-
-  final def check[F[_]](cond: Boolean): Txn[F, Unit] =
+  final def check(cond: Boolean): Txn[Unit] =
     if (cond) unit else retry
 
-  final def panic[F[_], A](ex: Throwable): Txn[F, A] =
-    Rxn.panicImpl(ex).castF[F]
+  final def panic[A](ex: Throwable): Txn[A] =
+    Rxn.panicImpl(ex)
 
-  final def tailRecM[F[_], A, B](a: A)(f: A => Txn[F, Either[A, B]]): Txn[F, B] =
-    Rxn.tailRecMImpl(a)(f.asInstanceOf[Function1[A, Axn[Either[A, B]]]]).castF[F]
+  final def tailRecM[A, B](a: A)(f: A => Txn[Either[A, B]]): Txn[B] =
+    Rxn.tailRecMImpl(a)(f.asInstanceOf[Function1[A, Axn[Either[A, B]]]])
 
-  final def defer[F[_], A](fa: => Txn[F, A]): Txn[F, A] =
-    Axn.unsafe.suspendImpl { fa.impl }.castF[F]
+  final def defer[A](fa: => Txn[A]): Txn[A] =
+    Axn.unsafe.suspendImpl { fa.impl }
 
-  final def unique[F[_]]: Txn[F, Unique.Token] =
-    Rxn.uniqueImpl.castF[F]
+  final def unique: Txn[Unique.Token] =
+    Rxn.uniqueImpl
 
   private[choam] final object unsafe {
 
     trait WithLocal[F[_], A, R] {
-      def apply[G[_]]: (Local[G, A], Txn[F, *] ~> Txn[G, *]) => Txn[G, R]
+      def apply[G[_]](local: TxnLocal[G, A], lift: Txn ~> G, inst: TxnLocal.Instances[G]): G[R]
     }
 
-    final def withLocal[F[_], A, R](initial: A, body: WithLocal[F, A, R]): Txn[F, R] = {
-      unsafe.delay {
-        val local = new Local[F, A](initial)
-        body[F].apply(local, FunctionK.id)
-      }.flatMap { x => x }
+    final def withLocal[F[_], A, R](initial: A, body: WithLocal[F, A, R]): Txn[R] = {
+      TxnLocal.withLocal(initial, body)
     }
 
-    private[choam] final def delay[F[_], A](uf: => A): Txn[F, A] =
-      Axn.unsafe.delayImpl[A](uf).castF[F]
+    private[choam] final def delay[A](uf: => A): Txn[A] =
+      Axn.unsafe.delayImpl[A](uf)
 
-    private[choam] final def delayContext[F[_], A](uf: Mcas.ThreadContext => A): Txn[F, A] =
-      Rxn.unsafe.delayContextImpl(uf).castF[F]
+    private[choam] final def suspend[A](uf: => Txn[A]): Txn[A] =
+      delay(uf).flatMap { x => x }
+
+    private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Txn[A] =
+      Rxn.unsafe.delayContextImpl(uf)
 
     /** Only for testing! */
-    private[choam] final def retryUnconditionally[F[_], A]: Txn[F, A] =
-      Rxn.unsafe.retryImpl[A].castF[F]
+    private[choam] final def retryUnconditionally[A]: Txn[A] =
+      Rxn.unsafe.retryImpl[A]
   }
 }
 
 private[core] sealed abstract class TxnInstances0 extends TxnInstances1 { self: Txn.type =>
 
-  import Rxn.Anything
+  implicit final def monadInstance: StackSafeMonad[Txn] =
+    _monadInstance
 
-  implicit final def monadInstance[F[_]]: StackSafeMonad[Txn[F, *]] =
-    _monadInstance.asInstanceOf[StackSafeMonad[Txn[F, *]]]
-
-  private[this] val _monadInstance: StackSafeMonad[Txn[Anything, *]] = new StackSafeMonad[Txn[Anything, *]] {
-    final override def unit: Txn[Anything, Unit] =
+  private[this] val _monadInstance: StackSafeMonad[Txn] = new StackSafeMonad[Txn] {
+    final override def unit: Txn[Unit] =
       Txn.unit
-    final override def pure[A](a: A): Txn[Anything, A] =
+    final override def pure[A](a: A): Txn[A] =
       Txn.pure(a)
-    final override def point[A](a: A): Txn[Anything, A] =
+    final override def point[A](a: A): Txn[A] =
       Txn.pure(a)
-    final override def as[A, B](fa: Txn[Anything, A], b: B): Txn[Anything, B] =
+    final override def as[A, B](fa: Txn[A], b: B): Txn[B] =
       fa.as(b)
-    final override def void[A](fa: Txn[Anything, A]): Txn[Anything, Unit] =
+    final override def void[A](fa: Txn[A]): Txn[Unit] =
       fa.void
-    final override def map[A, B](fa: Txn[Anything, A])(f: A => B): Txn[Anything, B] =
+    final override def map[A, B](fa: Txn[A])(f: A => B): Txn[B] =
       fa.map(f)
-    final override def map2[A, B, Z](fa: Txn[Anything, A], fb: Txn[Anything, B])(f: (A, B) => Z): Txn[Anything, Z] =
+    final override def map2[A, B, Z](fa: Txn[A], fb: Txn[B])(f: (A, B) => Z): Txn[Z] =
       fa.map2(fb)(f)
-    final override def productR[A, B](fa: Txn[Anything, A])(fb: Txn[Anything, B]): Txn[Anything, B] =
+    final override def productR[A, B](fa: Txn[A])(fb: Txn[B]): Txn[B] =
       fa.productR(fb)
-    final override def product[A, B](fa: Txn[Anything, A], fb: Txn[Anything, B]): Txn[Anything, (A, B)] =
+    final override def product[A, B](fa: Txn[A], fb: Txn[B]): Txn[(A, B)] =
       fa product fb
-    final override def flatMap[A, B](fa: Txn[Anything, A])(f: A => Txn[Anything, B]): Txn[Anything, B] =
+    final override def flatMap[A, B](fa: Txn[A])(f: A => Txn[B]): Txn[B] =
       fa.flatMap(f)
-    final override def tailRecM[A, B](a: A)(f: A => Txn[Anything, Either[A, B]]): Txn[Anything, B] =
-      Txn.tailRecM[Anything, A, B](a)(f)
+    final override def tailRecM[A, B](a: A)(f: A => Txn[Either[A, B]]): Txn[B] =
+      Txn.tailRecM[A, B](a)(f)
   }
 
-  implicit final def deferInstance[F[_]]: Defer[Txn[F, *]] =
-    _deferInstance.asInstanceOf[Defer[Txn[F, *]]]
+  implicit final def deferInstance: Defer[Txn] =
+    _deferInstance
 
-  private[this] val _deferInstance: Defer[Txn[Anything, *]] = new Defer[Txn[Anything, *]] {
-    final override def defer[A](fa: => Txn[Anything, A]): Txn[Anything, A] =
+  private[this] val _deferInstance: Defer[Txn] = new Defer[Txn] {
+    final override def defer[A](fa: => Txn[A]): Txn[A] =
       Txn.defer(fa)
-    final override def fix[A](fn: Txn[Anything, A] => Txn[Anything, A]): Txn[Anything, A] = {
+    final override def fix[A](fn: Txn[A] => Txn[A]): Txn[A] = {
       // Note/TODO: see comment in Rxn.deferInstance
-      val ref = new scala.runtime.ObjectRef[Txn[Anything, A]](null)
+      val ref = new scala.runtime.ObjectRef[Txn[A]](null)
       ref.elem = fn(defer {
         self.acquireFence()
         ref.elem
@@ -165,23 +156,23 @@ private[core] sealed abstract class TxnInstances0 extends TxnInstances1 { self: 
     }
   }
 
-  implicit final def uniqueInstance[F[_]]: Unique[Txn[F, *]] =
-    _uniqueInstance.asInstanceOf[Unique[Txn[F, *]]]
+  implicit final def uniqueInstance: Unique[Txn] =
+    _uniqueInstance
 
-  private[this] val _uniqueInstance: Unique[Txn[Anything, *]] = new Unique[Txn[Anything, *]] {
-    final override def applicative: Applicative[Txn[Anything, *]] =
+  private[this] val _uniqueInstance: Unique[Txn] = new Unique[Txn] {
+    final override def applicative: Applicative[Txn] =
       self.monadInstance
-    final override def unique: Txn[Anything, Unique.Token] =
-      Txn.unique[Anything]
+    final override def unique: Txn[Unique.Token] =
+      Txn.unique
   }
 }
 
 private[core] sealed abstract class TxnInstances1 extends TxnCompanionPlatform { self: Txn.type =>
 
-  implicit final def monoidInstance[F[_], B](implicit B: Monoid[B]): Monoid[Txn[F, B]] = new Monoid[Txn[F, B]] {
-    final override def combine(x: Txn[F, B], y: Txn[F, B]): Txn[F, B] =
+  implicit final def monoidInstance[B](implicit B: Monoid[B]): Monoid[Txn[B]] = new Monoid[Txn[B]] {
+    final override def combine(x: Txn[B], y: Txn[B]): Txn[B] =
       x.map2(y) { (b1, b2) => B.combine(b1, b2) }
-    final override def empty: Txn[F, B] =
+    final override def empty: Txn[B] =
       Txn.pure(B.empty)
   }
 }

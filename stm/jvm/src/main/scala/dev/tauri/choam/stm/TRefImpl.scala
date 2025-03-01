@@ -25,12 +25,12 @@ import scala.collection.immutable.LongMap
 
 import internal.mcas.{ Mcas, MemoryLocation, Consts }
 
-private final class TRefImpl[F[_], A](
+private final class TRefImpl[A](
   initial: A,
   final override val id: Long,
 ) extends core.RefGetAxn[A]
   with MemoryLocation.WithListeners
-  with TRefImplBase[F, A] {
+  with TRefImplBase[A] {
 
   // TODO: use VarHandles
 
@@ -85,8 +85,8 @@ private final class TRefImpl[F[_], A](
   final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
     marker.compareAndExchangeRelease(ov, nv)
 
-  final override def get: Txn[F, A] =
-    this.castF[F]
+  final override def get: Txn[A] =
+    this
 
   final override def hashCode: Int = {
     // `RefIdGen` generates IDs with

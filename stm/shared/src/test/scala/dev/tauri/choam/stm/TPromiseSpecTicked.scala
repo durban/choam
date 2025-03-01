@@ -30,7 +30,7 @@ trait TPromiseSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec
 
   test("get after complete") {
     for {
-      p <- TPromise[F, Int].commit
+      p <- TPromise[Int].commit
       _ <- assertResultF(p.complete(42).commit, true)
       _ <- assertResultF(p.complete(99).commit, false)
       _ <- assertResultF(p.get.commit, 42)
@@ -42,7 +42,7 @@ trait TPromiseSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec
 
   test("get before complete") {
     for {
-      p <- TPromise[F, Int].commit
+      p <- TPromise[Int].commit
       fib <- p.get.commit.start
       _ <- this.tickAll
       _ <- assertResultF(p.tryGet.commit, None)
@@ -57,8 +57,8 @@ trait TPromiseSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec
 
   test("complete left side of orElse") {
     for {
-      p1 <- TPromise[F, Int].commit
-      p2 <- TPromise[F, Int].commit
+      p1 <- TPromise[Int].commit
+      p2 <- TPromise[Int].commit
       fib <- (p1.get orElse p2.get).commit.start
       _ <- this.tickAll
       _ <- assertResultF(p1.tryGet.commit, None)
@@ -73,8 +73,8 @@ trait TPromiseSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec
 
   test("complete right side of orElse") {
     for {
-      p1 <- TPromise[F, Int].commit
-      p2 <- TPromise[F, Int].commit
+      p1 <- TPromise[Int].commit
+      p2 <- TPromise[Int].commit
       fib <- (p1.get orElse p2.get).commit.start
       _ <- this.tickAll
       _ <- assertResultF(p1.tryGet.commit, None)
@@ -88,11 +88,11 @@ trait TPromiseSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec
   }
 
   test("multiple readers") {
-    def writeIntoCatsRef(p: TPromise[F, Int], ref: CatsRef[F, Int]): F[Unit] = {
+    def writeIntoCatsRef(p: TPromise[Int], ref: CatsRef[F, Int]): F[Unit] = {
       p.get.commit.flatMap(ref.set)
     }
     for {
-      p <- TPromise[F, Int].commit
+      p <- TPromise[Int].commit
       r1 <- CatsRef.of(0)
       r2 <- CatsRef.of(0)
       r3 <- CatsRef.of(0)

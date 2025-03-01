@@ -19,9 +19,13 @@ package dev.tauri.choam
 
 package object stm {
 
-  final type Txn[F[_], +B] = core.Txn[F, B]
+  final type Txn[+B] = core.Txn[B]
 
   final val Txn: core.Txn.type = core.Txn
+
+  final type TxnLocal[G[_], A] = core.TxnLocal[G, A]
+
+  final val TxnLocal: core.TxnLocal.type = core.TxnLocal
 
   final type Transactive[F[_]] = core.Transactive[F]
 

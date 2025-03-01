@@ -20,24 +20,24 @@ package stm
 
 import internal.mcas.MemoryLocation
 
-private trait TRefImplBase[F[_], A] extends MemoryLocation[A] with TRef.UnsealedTRef[F, A] {
+private trait TRefImplBase[A] extends MemoryLocation[A] with TRef.UnsealedTRef[A] {
 
-  final override def set(a: A): Txn[F, Unit] =
-    core.Rxn.loc.upd[A, Unit, Unit](this) { (_, _) => (a, ()) }.castF[F]
+  final override def set(a: A): Txn[Unit] =
+    core.Rxn.loc.upd[A, Unit, Unit](this) { (_, _) => (a, ()) }
 
-  final override def update(f: A => A): Txn[F, Unit] =
+  final override def update(f: A => A): Txn[Unit] =
     this.modify { ov => (f(ov), ()) }
 
-  final override def modify[B](f: A => (A, B)): Txn[F, B] =
-    core.Rxn.loc.upd[A, Any, B](this) { (ov, _) => f(ov) }.castF[F]
+  final override def modify[B](f: A => (A, B)): Txn[B] =
+    core.Rxn.loc.upd[A, Any, B](this) { (ov, _) => f(ov) }
 
-  final override def getAndSet(a: A): Txn[F, A] =
+  final override def getAndSet(a: A): Txn[A] =
     this.modify { ov => (a, ov) }
 
-  final override def getAndUpdate(f: A => A): Txn[F, A] =
+  final override def getAndUpdate(f: A => A): Txn[A] =
     this.modify { ov => (f(ov), ov) }
 
-  final override def updateAndGet(f: A => A): Txn[F, A] = {
+  final override def updateAndGet(f: A => A): Txn[A] = {
     this.modify { ov =>
       val nv = f(ov)
       (nv, nv)

@@ -20,25 +20,25 @@ package stm
 
 import internal.mcas.Mcas
 
-sealed trait TRef[F[_], A] {
-  def get: Txn[F, A]
-  def set(a: A): Txn[F, Unit]
-  def update(f: A => A): Txn[F, Unit]
-  def modify[B](f: A => (A, B)): Txn[F, B]
-  def getAndSet(a: A): Txn[F, A]
-  def getAndUpdate(f: A => A): Txn[F, A]
-  def updateAndGet(f: A => A): Txn[F, A]
+sealed trait TRef[A] {
+  def get: Txn[A]
+  def set(a: A): Txn[Unit]
+  def update(f: A => A): Txn[Unit]
+  def modify[B](f: A => (A, B)): Txn[B]
+  def getAndSet(a: A): Txn[A]
+  def getAndUpdate(f: A => A): Txn[A]
+  def updateAndGet(f: A => A): Txn[A]
 }
 
 object TRef {
 
-  private[choam] trait UnsealedTRef[F[_], A] extends TRef[F, A]
+  private[choam] trait UnsealedTRef[A] extends TRef[A]
 
-  final def apply[F[_], A](a: A): Txn[F, TRef[F, A]] =
-    core.Rxn.unsafe.delayContextImpl(unsafe[F, A](a)).castF[F]
+  final def apply[A](a: A): Txn[TRef[A]] =
+    core.Rxn.unsafe.delayContextImpl(unsafe[A](a))
 
-  private[choam] final def unsafe[F[_], A](a: A)(ctx: Mcas.ThreadContext): TRef[F, A] = {
+  private[choam] final def unsafe[A](a: A)(ctx: Mcas.ThreadContext): TRef[A] = {
     val id = ctx.refIdGen.nextId()
-    new TRefImpl[F, A](a, id)
+    new TRefImpl[A](a, id)
   }
 }

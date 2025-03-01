@@ -95,7 +95,7 @@ object MainWithTxnAppMixin extends ZIOAppDefault with TxnAppMixin {
     new AtomicInteger
 
   def run: Task[Unit] = for {
-    tref <- TRef[Task, Int](42).commit
+    tref <- TRef[Int](42).commit
     _ <- tref.update(_ + 2).commit
     x <- tref.get.commit
     _ <- ZIO.attempt { globalInt.set(x) }
@@ -109,7 +109,7 @@ object MainWithBoth1 extends ZIOAppDefault with RxnAppMixin with TxnAppMixin {
 
   def run: Task[Unit] = for {
     ref <- Ref[Int](42).run
-    tref <- TRef[Task, Int](99).commit
+    tref <- TRef[Int](99).commit
     x <- ref.updateAndGet(_ + 1).run
     _ <- tref.update(_ + 1).commit
     y <- tref.get.commit
@@ -124,7 +124,7 @@ object MainWithBoth2 extends ZIOAppDefault with TxnAppMixin with RxnAppMixin {
 
   def run: Task[Unit] = for {
     ref <- Ref[Int](42).run
-    tref <- TRef[Task, Int](99).commit
+    tref <- TRef[Int](99).commit
     x <- ref.updateAndGet(_ + 2).run
     _ <- tref.update(_ + 2).commit
     y <- tref.get.commit

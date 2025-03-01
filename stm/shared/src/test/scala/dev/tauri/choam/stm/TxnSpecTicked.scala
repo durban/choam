@@ -33,25 +33,25 @@ final class TxnSpecTicked_DefaultMcas_IO
 
 trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
-  private def txn1(r: TRef[F, Int]): Txn[F, String] = {
+  private def txn1(r: TRef[Int]): Txn[String] = {
     r.get.flatMap {
       case i if i < 0 => Txn.retry
       case i => Txn.pure(i.toString)
     }
   }
 
-  private def txn1Def(r: TRef[F, Int], d: Deferred[F, String]): F[String] = {
+  private def txn1Def(r: TRef[Int], d: Deferred[F, String]): F[String] = {
     txnToDef(txn1(r), d)
   }
 
-  private def getEven(r: TRef[F, Int]): Txn[F, String] = {
+  private def getEven(r: TRef[Int]): Txn[String] = {
     for {
       v <- r.get
       _ <- Txn.check((v % 2) == 0)
     } yield v.toString
   }
 
-  private def txnToDef(txn: Txn[F, String], d: Deferred[F, String]): F[String] = {
+  private def txnToDef(txn: Txn[String], d: Deferred[F, String]): F[String] = {
     txn.commit.guaranteeCase {
       case Canceled() =>
         d.complete("cancelled").void
@@ -64,7 +64,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   test("Txn.retry") {
     for {
-      r <- TRef[F, Int](-1).commit
+      r <- TRef[Int](-1).commit
       d <- Deferred[F, String]
       fib <- txn1Def(r, d).start
       _ <- this.tickAll
@@ -80,7 +80,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   test("Txn.retry with no refs read") {
     for {
       d <- Deferred[F, String]
-      fib <- txnToDef(Txn.retry[F, String], d).start
+      fib <- txnToDef(Txn.retry[String], d).start
       _ <- this.tickAll
       _ <- assertResultF(d.tryGet, None)
       _ <- fib.cancel
@@ -91,7 +91,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   test("Txn.check") {
     for {
-      r <- TRef[F, Int](1).commit
+      r <- TRef[Int](1).commit
       d <- Deferred[F, String]
       fib <- txnToDef(getEven(r), d).start
       _ <- this.tickAll
@@ -105,7 +105,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   test("Txn.retry should be cancellable") {
     for {
-      r <- TRef[F, Int](-1).commit
+      r <- TRef[Int](-1).commit
       d <- F.deferred[Unit]
       fib <- txn1(r).commit.guarantee(d.complete(()).void).start
       _ <- this.tickAll
@@ -118,8 +118,8 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   test("Txn.retry should retry if a TRef read in any alt changes") {
     for {
-      r1 <- TRef[F, Int](-1).commit
-      r2 <- TRef[F, Int](-1).commit
+      r1 <- TRef[Int](-1).commit
+      r2 <- TRef[Int](-1).commit
       d1 <- Deferred[F, String]
       d2 <- Deferred[F, String]
       tsk1 = txnToDef(txn1(r1) orElse txn1(r2), d1)
@@ -145,15 +145,15 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  private final def numberOfListeners[A](ref: TRef[F, A]): F[Int] = F.delay {
+  private final def numberOfListeners[A](ref: TRef[A]): F[Int] = F.delay {
     ref.asInstanceOf[MemoryLocation.WithListeners].unsafeNumberOfListeners()
   }
 
   test("Txn.retry should unsubscribe from TRefs when cancelled") {
     for {
-      r0 <- TRef[F, Int](0).commit
-      r1 <- TRef[F, Int](0).commit
-      r2 <- TRef[F, Int](0).commit
+      r0 <- TRef[Int](0).commit
+      r1 <- TRef[Int](0).commit
+      r2 <- TRef[Int](0).commit
       fib <- (r0.get *> (r1.get.flatMap(v1 => Txn.check(v1 > 0)) orElse r2.get.flatMap(v2 => Txn.check(v2 > 0)))).commit.start
       _ <- this.tickAll
       _ <- assertResultF(numberOfListeners(r0), 1)
@@ -170,9 +170,9 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   test("Txn.retry should unsubscribe from TRefs when completed") {
     for {
-      r0 <- TRef[F, Int](0).commit
-      r1 <- TRef[F, Int](0).commit
-      r2 <- TRef[F, Int](0).commit
+      r0 <- TRef[Int](0).commit
+      r1 <- TRef[Int](0).commit
+      r2 <- TRef[Int](0).commit
       fib <- (r0.get *> (r1.get.flatMap(v1 => Txn.check(v1 > 0)) orElse r2.get.flatMap(v2 => Txn.check(v2 > 0)))).commit.start
       _ <- this.tickAll
       _ <- assertResultF(numberOfListeners(r0), 1)
@@ -190,8 +190,8 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   test("Txn.retry should unsubscribe from TRefs when it doesn't suspend (due to concurrent change)") {
     for {
       d <- F.deferred[Unit]
-      r0 <- TRef[F, Int](0).commit
-      r1 <- TRef[F, Int](0).commit
+      r0 <- TRef[Int](0).commit
+      r1 <- TRef[Int](0).commit
       stepper <- mkStepper
       txn = (r0.get *> (r1.get.flatMap { v1 => Txn.check(v1 > 0) } orElse r1.get.flatMap { v1 => Txn.check(v1 < 0) }))
       fib <- stepper.commit(txn).guarantee(d.complete(()).void).start
@@ -209,18 +209,18 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   }
 
   test("Run with Stepper") {
-    def checkPositive(ref: TRef[F, Int], ctr: AtomicInteger): Txn[F, Unit] =
+    def checkPositive(ref: TRef[Int], ctr: AtomicInteger): Txn[Unit] =
       Txn.unsafe.delay { ctr.incrementAndGet() } *> ref.get.flatMap { v => Txn.check(v > 0) }
     for {
       d <- F.deferred[Unit]
       c1 <- F.delay(new AtomicInteger)
-      r1 <- TRef[F, Int](0).commit
+      r1 <- TRef[Int](0).commit
       c2 <- F.delay(new AtomicInteger)
-      r2 <- TRef[F, Int](0).commit
+      r2 <- TRef[Int](0).commit
       c3 <- F.delay(new AtomicInteger)
-      r3 <- TRef[F, Int](0).commit
+      r3 <- TRef[Int](0).commit
       c4 <- F.delay(new AtomicInteger)
-      r4 <- TRef[F, Int](0).commit
+      r4 <- TRef[Int](0).commit
       txn = checkPositive(r1, c1) orElse checkPositive(r2, c2) orElse checkPositive(r3, c3) orElse checkPositive(r4, c4)
       stepper <- mkStepper
       fib <- stepper.commit(txn).guarantee(d.complete(()).void).start

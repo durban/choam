@@ -20,38 +20,38 @@ package stm
 
 import internal.mcas.Mcas
 
-sealed trait TPromise[F[_], A] { // TODO: separate read and write side
-  def get: Txn[F, A]
-  def tryGet: Txn[F, Option[A]]
-  def complete(a: A): Txn[F, Boolean]
+sealed trait TPromise[A] { // TODO: separate read and write side
+  def get: Txn[A]
+  def tryGet: Txn[Option[A]]
+  def complete(a: A): Txn[Boolean]
 }
 
 object TPromise {
 
-  final def apply[F[_], A]: Txn[F, TPromise[F, A]] =
-    Txn.unsafe.delayContext(unsafe[F, A])
+  final def apply[A]: Txn[TPromise[A]] =
+    Txn.unsafe.delayContext(unsafe[A])
 
-  private[choam] final def unsafe[F[_], A](ctx: Mcas.ThreadContext): TPromise[F, A] = {
-    val ref = TRef.unsafe[F, Option[A]](None)(ctx)
-    new TPromiseImpl[F, A](ref)
+  private[choam] final def unsafe[A](ctx: Mcas.ThreadContext): TPromise[A] = {
+    val ref = TRef.unsafe[Option[A]](None)(ctx)
+    new TPromiseImpl[A](ref)
   }
 
-  private final class TPromiseImpl[F[_], A](
-    ref: TRef[F, Option[A]],
-  ) extends TPromise[F, A] {
+  private final class TPromiseImpl[A](
+    ref: TRef[Option[A]],
+  ) extends TPromise[A] {
 
-    final override val get: Txn[F, A] = {
+    final override val get: Txn[A] = {
       ref.get.flatMap {
         case None => Txn.retry
         case Some(a) => Txn.pure(a)
       }
     }
 
-    final override def tryGet: Txn[F, Option[A]] = {
+    final override def tryGet: Txn[Option[A]] = {
       ref.get
     }
 
-    final override def complete(a: A): Txn[F, Boolean] = {
+    final override def complete(a: A): Txn[Boolean] = {
       ref.modify {
         case None => (Some(a), true)
         case s @ Some(_) => (s, false)

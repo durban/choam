@@ -321,7 +321,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 }
 
 private[choam] sealed abstract class RxnImpl[-A, +B]
-  extends Rxn[A, B] with Txn.UnsealedTxn[Rxn.Anything, B] {
+  extends Rxn[A, B] with Txn.UnsealedTxn[B] {
 
   final override def + [X <: A, Y >: B](that: Rxn[X, Y]): RxnImpl[X, Y] =
     new Rxn.Choice[X, Y](this, that)
@@ -415,44 +415,44 @@ private[choam] sealed abstract class RxnImpl[-A, +B]
 
   // STM:
 
-  final override def flatMap[C](f: B => Txn[Rxn.Anything, C]): Txn[Rxn.Anything, C] = {
+  final override def flatMap[C](f: B => Txn[C]): Txn[C] = {
     this.flatMapF(f.asInstanceOf[Function1[B, Axn[C]]])
   }
 
-  final override def map2[C, D](that: Txn[Rxn.Anything, C])(f: (B, C) => D): Txn[Rxn.Anything, D] = {
+  final override def map2[C, D](that: Txn[C])(f: (B, C) => D): Txn[D] = {
     this.map2[A, C, D](that.impl)(f)
   }
 
-  final override def productR[C](that: Txn[Rxn.Anything, C]): Txn[Rxn.Anything, C] = {
+  final override def productR[C](that: Txn[C]): Txn[C] = {
     this.productR[A, C](that.impl)
   }
 
-  final override def *> [C](that: Txn[Rxn.Anything, C]): Txn[Rxn.Anything, C] = {
+  final override def *> [C](that: Txn[C]): Txn[C] = {
     this.productR[A, C](that.impl)
   }
 
-  final override def productL[C](that: Txn[Rxn.Anything, C]): Txn[Rxn.Anything, B] = {
+  final override def productL[C](that: Txn[C]): Txn[B] = {
     this.productL[A, C](that.impl)
   }
 
-  final override def <* [C](that: Txn[Rxn.Anything, C]): Txn[Rxn.Anything, B] = {
+  final override def <* [C](that: Txn[C]): Txn[B] = {
     this.productL[A, C](that.impl)
   }
 
-  final override def product[C](that: Txn[Rxn.Anything, C]): Txn[Rxn.Anything, (B, C)] = {
+  final override def product[C](that: Txn[C]): Txn[(B, C)] = {
     this * that.impl
   }
 
-  final override def orElse[Y >: B](that: Txn[Rxn.Anything, Y]): Txn[Rxn.Anything, Y] = {
+  final override def orElse[Y >: B](that: Txn[Y]): Txn[Y] = {
     new Rxn.OrElse(this, that.impl)
   }
 
-  final override def commit[X >: B](implicit F: Transactive[Rxn.Anything]): Rxn.Anything[X] = {
+  final override def commit[F[_], X >: B](implicit F: Transactive[F]): F[X] = {
     F.commit(this)
   }
 
-  private[choam] final def castF[F[_]]: Txn[F, B] =
-    this.asInstanceOf[Txn[F, B]]
+  private[choam] final def castF[F[_]]: Txn[B] =
+    this.asInstanceOf[Txn[B]]
 
   private[core] final override def impl: RxnImpl[Any, B] =
     this.asInstanceOf[RxnImpl[Any, B]] // Note: this is unsafe in general, we must take care to only use it on Txns

@@ -37,9 +37,9 @@ final class RxnRuntimeSpec extends munit.CatsEffectSuite {
     } yield ref
   }
 
-  private def checkTransactive[F[_]](implicit t: Transactive[F], F: Sync[F]): F[TRef[F, Int]] = {
+  private def checkTransactive[F[_]](implicit t: Transactive[F], F: Sync[F]): F[TRef[Int]] = {
     for {
-      tref <- TRef[F, Int](0).commit
+      tref <- TRef[Int](0).commit
       _ <- tref.update(_ + 1).commit
       act <- tref.get.commit
       _ <- F.delay(assertEquals(act, 1))
@@ -53,7 +53,7 @@ final class RxnRuntimeSpec extends munit.CatsEffectSuite {
     IO(assertNotEquals(r1.##, r2.##))
   }
 
-  private def checkSameRt[F[_], A, B](r1: Ref[A], r2: TRef[F, B]): IO[Unit] = {
+  private def checkSameRt[F[_], A, B](r1: Ref[A], r2: TRef[B]): IO[Unit] = {
     // if they have different runtimes,
     // their hashCode would very likely
     // be the same:

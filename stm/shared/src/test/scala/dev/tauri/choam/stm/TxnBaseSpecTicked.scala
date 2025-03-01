@@ -24,7 +24,7 @@ trait TxnBaseSpecTicked[F[_]] extends TxnBaseSpec[F]  with TestContextSpec[F] { 
 
   implicit final class StepperSyntaxForTxn(stepper: Stepper[F]) {
 
-    final def commit[A](txn: Txn[F, A]): F[A] = {
+    final def commit[A](txn: Txn[A]): F[A] = {
       Transactive[F].commitWithStepper(txn, stepper)
     }
   }

@@ -32,27 +32,27 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   private[this] final def log(msg: String): F[Unit] =
     F.delay { ulog(msg) }
 
-  private[this] final def tlog(msg: String): Txn[F, Unit] =
+  private[this] final def tlog(msg: String): Txn[Unit] =
     Txn.unsafe.delay { ulog(msg) }
 
   private[this] final def ulog(msg: String): Unit =
     println(msg)
 
-  private def succeedWith[A](name: String, result: A): Txn[F, A] = {
+  private def succeedWith[A](name: String, result: A): Txn[A] = {
     Txn.unsafe.delay {
       ulog(s" $name succeeding with $result")
       result
     }
   }
 
-  private def failWith[A](name: String, ex: Throwable): Txn[F, A] = {
+  private def failWith[A](name: String, ex: Throwable): Txn[A] = {
     Txn.unsafe.delay {
       ulog(s" $name throwing $ex")
       throw ex
     }
   }
 
-  private def transientFailureOnceThenSucceedWith[A](name: String, result: A): Txn[F, A] = {
+  private def transientFailureOnceThenSucceedWith[A](name: String, result: A): Txn[A] = {
     val flag = new AtomicBoolean(true)
     Txn.unsafe.delay { flag.getAndSet(false) }.flatMap { doRetry =>
       if (doRetry) {
@@ -63,15 +63,15 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
     }
   }
 
-  private def succeedIfPositive[A](name: String, ref: TRef[F, Int], result: A): Txn[F, A] = {
+  private def succeedIfPositive[A](name: String, ref: TRef[Int], result: A): Txn[A] = {
     succeedIf(name, ref, result, _ > 0)
   }
 
-  private def succeedIfNegative[A](name: String, ref: TRef[F, Int], result: A): Txn[F, A] = {
+  private def succeedIfNegative[A](name: String, ref: TRef[Int], result: A): Txn[A] = {
     succeedIf(name, ref, result, _ < 0)
   }
 
-  private def succeedIf[A](name: String, ref: TRef[F, Int], result: A, predicate: Int => Boolean): Txn[F, A] = {
+  private def succeedIf[A](name: String, ref: TRef[Int], result: A, predicate: Int => Boolean): Txn[A] = {
     ref.get.flatMap { i =>
       if (predicate(i)) {
         tlog(s" $name succeeding with $result") *> Txn.pure(result)
@@ -86,9 +86,9 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   // `t1` executed a `Txn.retry`.
   test("Txn - `t1 orElse t2`: `t1` transient failure -> retry `t1`") {
     log("Txn - `t1 orElse t2`: `t1` transient failure") *> {
-      val t1: Txn[F, Int] = transientFailureOnceThenSucceedWith("t1", 1)
-      val t2: Txn[F, Int] = succeedWith("t2", 2)
-      val txn: Txn[F, Int] = t1 orElse t2
+      val t1: Txn[Int] = transientFailureOnceThenSucceedWith("t1", 1)
+      val t2: Txn[Int] = succeedWith("t2", 2)
+      val txn: Txn[Int] = t1 orElse t2
       assertResultF(txn.commit, 1)
     }
   }
@@ -96,10 +96,10 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   // Note: we NEED this semantics for STM `retry`.
   test("Txn - `t1 orElse t2`: `t1` permanent failure -> try `t2`") {
     log("Txn - `t1 orElse t2`: `t1` permanent failure") *> {
-      TRef[F, Int](0).commit.flatMap { ref =>
-        val t1: Txn[F, Int] = succeedIfPositive("t1", ref, 1)
-        val t2: Txn[F, Int] = succeedWith("t2", 2)
-        val txn: Txn[F, Int] = t1 orElse t2
+      TRef[Int](0).commit.flatMap { ref =>
+        val t1: Txn[Int] = succeedIfPositive("t1", ref, 1)
+        val t2: Txn[Int] = succeedWith("t2", 2)
+        val txn: Txn[Int] = t1 orElse t2
         assertResultF(txn.commit, 2)
       }
     }
@@ -109,10 +109,10 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   // because see above.
   test("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` transient failure -> retry `t1`") {
     log("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` transient failure") *> {
-      val t1: Txn[F, Int] = succeedWith("t1", 1)
-      val t2: Txn[F, Int] = failWith("t2", new Exception("t2 error"))
-      val t3: Txn[F, Int] = transientFailureOnceThenSucceedWith("t3", 3)
-      val txn: Txn[F, Int] = (t1 orElse t2) <* t3
+      val t1: Txn[Int] = succeedWith("t1", 1)
+      val t2: Txn[Int] = failWith("t2", new Exception("t2 error"))
+      val t3: Txn[Int] = transientFailureOnceThenSucceedWith("t3", 3)
+      val txn: Txn[Int] = (t1 orElse t2) <* t3
       assertResultF(txn.commit, 1)
     }
   }
@@ -120,10 +120,10 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   // Note: we probably need this semantics because apparently STMs work like this.
   test("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` permanent failure -> retry `t1`") {
     log("Txn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` permanent failure") *> {
-      TRef[F, Int](0).commit.flatMap { ref =>
-        val t1: Txn[F, Int] = succeedWith("t1", 1)
-        val t2: Txn[F, Int] = failWith("t2", new Exception("t2 error"))
-        val t3: Txn[F, Int] = succeedIfPositive("t3", ref, 3)
+      TRef[Int](0).commit.flatMap { ref =>
+        val t1: Txn[Int] = succeedWith("t1", 1)
+        val t2: Txn[Int] = failWith("t2", new Exception("t2 error"))
+        val t3: Txn[Int] = succeedIfPositive("t3", ref, 3)
         val txn = (t1 orElse t2) <* t3
         for {
           fib <- txn.commit.start
@@ -139,28 +139,28 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   // Combined tests:
 
-  private[this] final def plus[A](t1: Txn[F, A], t2: Txn[F, A]): Txn[F, A] = {
+  private[this] final def plus[A](t1: Txn[A], t2: Txn[A]): Txn[A] = {
     (t1.asInstanceOf[core.RxnImpl[Any, A]] + t2.asInstanceOf[core.RxnImpl[Any, A]]).castF[F]
   }
 
   test("Txn - `(t1 orElse t2) + t3`: `t1` transient failure -> try `t3` (NOT `t2`)") {
     log("Txn - `(t1 orElse t2) + t3`: `t1` transient failure") *> {
-      val t1: Txn[F, Int] = transientFailureOnceThenSucceedWith("t1", 1)
-      val t2: Txn[F, Int] = succeedWith("t2", 2)
-      val t3: Txn[F, Int] = succeedWith("t3", 3)
-      val txn: Txn[F, Int] = plus(t1 orElse t2, t3)
+      val t1: Txn[Int] = transientFailureOnceThenSucceedWith("t1", 1)
+      val t2: Txn[Int] = succeedWith("t2", 2)
+      val t3: Txn[Int] = succeedWith("t3", 3)
+      val txn: Txn[Int] = plus(t1 orElse t2, t3)
       assertResultF(txn.commit, 3)
     }
   }
 
   test("Txn - `(t1 + t2) orElse (t3 + t4)`") {
     log("Txn - `(t1 + t2) orElse (t3 + t4)`") *> {
-      TRef[F, Int](0).commit.flatMap { ref =>
-        val t1: Txn[F, Int] = transientFailureOnceThenSucceedWith("t1", 1)
-        val t2: Txn[F, Int] = succeedIfPositive("t2", ref, 2)
-        val t3: Txn[F, Int] = transientFailureOnceThenSucceedWith("t3", 3)
-        val t4: Txn[F, Int] = succeedWith("t4", 4)
-        val txn: Txn[F, Int] = plus(t1, t2) orElse plus(t3, t4)
+      TRef[Int](0).commit.flatMap { ref =>
+        val t1: Txn[Int] = transientFailureOnceThenSucceedWith("t1", 1)
+        val t2: Txn[Int] = succeedIfPositive("t2", ref, 2)
+        val t3: Txn[Int] = transientFailureOnceThenSucceedWith("t3", 3)
+        val t4: Txn[Int] = succeedWith("t4", 4)
+        val txn: Txn[Int] = plus(t1, t2) orElse plus(t3, t4)
         assertResultF(txn.commit, 4)
       }
     }
@@ -170,10 +170,10 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   test("Txn - `t1 orElse t2`: `t1` permanent failure; `t2` reads the same ref, but it changed since") {
     log("Txn - race1") *> {
-      TRef[F, Int](0).commit.flatMap { ref =>
-        val t1: Txn[F, Int] = succeedIfPositive("t1", ref, 1)
-        val t2: Txn[F, Int] = succeedIfNegative("t2", ref, 2)
-        val txn: Txn[F, Int] = t1 orElse t2
+      TRef[Int](0).commit.flatMap { ref =>
+        val t1: Txn[Int] = succeedIfPositive("t1", ref, 1)
+        val t2: Txn[Int] = succeedIfNegative("t2", ref, 2)
+        val txn: Txn[Int] = t1 orElse t2
         for {
           d <- Deferred[F, Unit]
           stepper <- mkStepper
@@ -197,10 +197,10 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   test("Rxn - consistency of 2 sides of `+`") {
     log("Rxn - race2") *> {
-      TRef[F, Int](0).commit.flatMap { ref =>
-        val t1: Txn[F, Int] = succeedIfPositive("t1", ref, 1)
-        val t2: Txn[F, Int] = succeedIfPositive("t2", ref, 2)
-        val txn: Txn[F, Int] = t1 orElse t2
+      TRef[Int](0).commit.flatMap { ref =>
+        val t1: Txn[Int] = succeedIfPositive("t1", ref, 1)
+        val t2: Txn[Int] = succeedIfPositive("t2", ref, 2)
+        val txn: Txn[Int] = t1 orElse t2
         for {
           d <- Deferred[F, Unit]
           stepper <- mkStepper

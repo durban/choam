@@ -36,8 +36,8 @@ final class TRefSpec_DefaultMcas_ZIO
 
 trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
 
-  protected def newTRef[A](initial: A): F[TRef[F, A]] =
-    TRef[F, A](initial).commit
+  protected def newTRef[A](initial: A): F[TRef[A]] =
+    TRef[A](initial).commit
 
   test("TRef#update") {
     for {
@@ -72,13 +72,13 @@ trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
   }
 
   test("TRef should have .withListeners") {
-    def incr(ref: TRef[F, Int]): F[Unit] =
+    def incr(ref: TRef[Int]): F[Unit] =
       ref.get.flatMap { ov => ref.set(ov + 1) }.commit
     def getVersion(loc: MemoryLocation[Int]): F[Long] =
       Txn.unsafe.delayContext { ctx => ctx.readIntoHwd(loc).version }.commit
     def regListener(wl: MemoryLocation.WithListeners, cb: Null => Unit, lastSeenVersion: Long): F[Long] =
       Txn.unsafe.delayContext { ctx => wl.unsafeRegisterListener(ctx, cb, lastSeenVersion) }.commit
-    def check(ref: TRef[F, Int]): F[Unit] = for {
+    def check(ref: TRef[Int]): F[Unit] = for {
       loc <- F.delay(ref.asInstanceOf[MemoryLocation[Int]])
       wl <- F.delay(loc.withListeners)
       ctr <- F.delay(new AtomicInteger(0))

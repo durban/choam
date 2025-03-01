@@ -77,7 +77,7 @@ object MainWithTxnAppMixin extends IOApp.Simple with TxnAppMixin {
     new AtomicInteger
 
   def run: IO[Unit] = for {
-    tref <- TRef[IO, Int](42).commit
+    tref <- TRef[Int](42).commit
     _ <- tref.update(_ + 2).commit
     x <- tref.get.commit
     _ <- IO { globalInt.set(x) }
@@ -91,7 +91,7 @@ object MainWithBoth1 extends IOApp.Simple with RxnAppMixin with TxnAppMixin {
 
   def run: IO[Unit] = for {
     ref <- Ref[Int](42).run
-    tref <- TRef[IO, Int](99).commit
+    tref <- TRef[Int](99).commit
     x <- ref.updateAndGet(_ + 1).run
     _ <- tref.update(_ + 1).commit
     y <- tref.get.commit
@@ -106,7 +106,7 @@ object MainWithBoth2 extends IOApp.Simple with TxnAppMixin with RxnAppMixin {
 
   def run: IO[Unit] = for {
     ref <- Ref[Int](42).run
-    tref <- TRef[IO, Int](99).commit
+    tref <- TRef[Int](99).commit
     x <- ref.updateAndGet(_ + 2).run
     _ <- tref.update(_ + 2).commit
     y <- tref.get.commit
