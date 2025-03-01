@@ -177,7 +177,7 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
   test("TxnLocal (simple)") {
     for {
       ref <- TRef[Int](0).commit
-      txn1 = Txn.unsafe.withLocal(42, new Txn.unsafe.WithLocal[F, Int, String] {
+      txn1 = Txn.unsafe.withLocal(42, new Txn.unsafe.WithLocal[Int, String] {
         final override def apply[G[_]](local: TxnLocal[G, Int], lift: Txn ~> G, inst: TxnLocal.Instances[G]) = {
           import inst._
           local.get.flatMap { ov =>
@@ -193,7 +193,7 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
   test("Txn.Local (compose with Txn)") {
     val txn: Txn[(String, Int)] = for {
       ref <- TRef[Int](0)
-      s <- Txn.unsafe.withLocal(42, new Txn.unsafe.WithLocal[F, Int, String] {
+      s <- Txn.unsafe.withLocal(42, new Txn.unsafe.WithLocal[Int, String] {
         final override def apply[G[_]](scratch: TxnLocal[G, Int], lift: Txn ~> G, inst: TxnLocal.Instances[G]) = {
           import inst.monadInstance
           for {

@@ -41,7 +41,7 @@ object TxnLocal {
   private[this] val _idLift: Txn ~> Txn =
     cats.arrow.FunctionK.id
 
-  private[core] final def withLocal[F[_], A, R](initial: A, body: Txn.unsafe.WithLocal[F, A, R]): Txn[R] = {
+  private[core] final def withLocal[A, R](initial: A, body: Txn.unsafe.WithLocal[A, R]): Txn[R] = {
     Txn.unsafe.suspend {
       val local = new TxnLocalImpl(initial)
       body[Txn](local, _idLift, _inst)

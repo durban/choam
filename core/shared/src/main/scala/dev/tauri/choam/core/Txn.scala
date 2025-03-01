@@ -85,11 +85,11 @@ private[choam] object Txn extends TxnInstances0 {
 
   private[choam] final object unsafe {
 
-    trait WithLocal[F[_], A, R] {
+    trait WithLocal[A, R] {
       def apply[G[_]](local: TxnLocal[G, A], lift: Txn ~> G, inst: TxnLocal.Instances[G]): G[R]
     }
 
-    final def withLocal[F[_], A, R](initial: A, body: WithLocal[F, A, R]): Txn[R] = {
+    final def withLocal[A, R](initial: A, body: WithLocal[A, R]): Txn[R] = {
       TxnLocal.withLocal(initial, body)
     }
 

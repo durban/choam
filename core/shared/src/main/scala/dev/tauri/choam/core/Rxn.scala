@@ -451,9 +451,6 @@ private[choam] sealed abstract class RxnImpl[-A, +B]
     F.commit(this)
   }
 
-  private[choam] final def castF[F[_]]: Txn[B] =
-    this.asInstanceOf[Txn[B]]
-
   private[core] final override def impl: RxnImpl[Any, B] =
     this.asInstanceOf[RxnImpl[Any, B]] // Note: this is unsafe in general, we must take care to only use it on Txns
 
