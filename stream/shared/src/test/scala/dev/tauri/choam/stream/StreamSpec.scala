@@ -114,7 +114,7 @@ trait StreamSpec[F[_]]
     val one = 0.1.second
     val many = one * N
     for {
-      p <- Promise[F, Either[Throwable, Unit]].run[F]
+      p <- Promise[Either[Throwable, Unit]].run[F]
       fib <- Stream
         .awakeEvery(one)
         .zip(Stream.iterate(0)(_ + 1))

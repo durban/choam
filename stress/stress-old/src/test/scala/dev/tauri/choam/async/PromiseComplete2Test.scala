@@ -23,7 +23,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZLL_Result
 
-import cats.effect.{ IO, SyncIO }
+import cats.effect.SyncIO
 
 import ce.unsafeImplicits._
 
@@ -36,11 +36,11 @@ import ce.unsafeImplicits._
 ))
 class PromiseComplete2Test {
 
-  private[this] val p1: Promise[IO, String] =
-    Promise[IO, String].run[SyncIO].unsafeRunSync()
+  private[this] val p1: Promise[String] =
+    Promise[String].run[SyncIO].unsafeRunSync()
 
-  private[this] val p2: Promise[IO, String] =
-    Promise[IO, String].run[SyncIO].unsafeRunSync()
+  private[this] val p2: Promise[String] =
+    Promise[String].run[SyncIO].unsafeRunSync()
 
   private[this] val completeBoth: Rxn[(String, String), (Boolean, Boolean)] =
     p1.complete × p2.complete

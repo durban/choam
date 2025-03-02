@@ -97,7 +97,7 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
       listeners.del.void
 
     def nextElement(ref: Ref[Listener[F, A]]): F[A] = {
-      val rxn = Promise[F, A] >>> ref.upd { (l, p) =>
+      val rxn = Promise[A] >>> ref.upd { (l, p) =>
         l match {
           case Full(a) =>
             (Empty(), F.monad.pure(a))
@@ -161,7 +161,7 @@ private[stream] object Fs2SignallingRefWrapper {
   sealed abstract class Listener[F[_], A]
 
   /** The listener is waiting for an item with this `Promise` */
-  final case class Waiting[F[_], A](next: Promise[F, A])
+  final case class Waiting[F[_], A](next: Promise[A])
     extends Listener[F, A]
 
   /** An item is ready to be taken by the listener */

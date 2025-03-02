@@ -71,7 +71,7 @@ trait PromiseSpecJvm[F[_]] extends PromiseSpec[F] { this: McasImplSpec =>
     val spinCount = new AtomicLong(1L << 24)
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
-      p <- Promise[F, Int].run[F]
+      p <- Promise[Int].run[F]
       // subscribe for the promise on another fiber:
       f <- p.get.map { v =>
         // we block this thread (until `stop`):

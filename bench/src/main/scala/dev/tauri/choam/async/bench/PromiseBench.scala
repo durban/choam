@@ -41,17 +41,17 @@ class PromiseBench extends BenchUtils {
   }
 
   private[this] def optimized(s: PromiseSt, waiters: Int): Unit = {
-    val tsk = Promise[IO, String].run[IO].flatMap(task(waiters))
+    val tsk = Promise[String].run[IO].flatMap(task(waiters))
     run(s.runtime, tsk, size = size)
   }
 
   @Benchmark
   def promiseOptimizedSingle(s: PromiseSt): Unit = {
-    val tsk = Promise[IO, String].run[IO].flatMap(taskSingle)
+    val tsk = Promise[String].run[IO].flatMap(taskSingle)
     run(s.runtime, tsk, size = size)
   }
 
-  private[this] def task(waiters: Int)(p: Promise[IO, String]): IO[Unit] = {
+  private[this] def task(waiters: Int)(p: Promise[String]): IO[Unit] = {
     for {
       fibs <- p.get.start.replicateA(waiters)
       _ <- IO.race(p.complete[IO]("left"), p.complete[IO]("right"))
@@ -59,7 +59,7 @@ class PromiseBench extends BenchUtils {
     } yield ()
   }
 
-  private[this] def taskSingle(p: Promise[IO, String]): IO[Unit] = {
+  private[this] def taskSingle(p: Promise[String]): IO[Unit] = {
     p.get.start.flatMap { fib =>
       IO.race(p.complete[IO]("left"), p.complete[IO]("right")) >> (
         fib.joinWithNever

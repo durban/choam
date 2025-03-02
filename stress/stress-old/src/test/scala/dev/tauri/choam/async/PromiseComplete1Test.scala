@@ -39,8 +39,8 @@ class PromiseComplete1Test {
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  private[this] val p: Promise[IO, String] =
-    Promise[IO, String].run[SyncIO].unsafeRunSync()
+  private[this] val p: Promise[String] =
+    Promise[String].run[SyncIO].unsafeRunSync()
 
   private[this] val getter: Fiber[IO, Throwable, String] =
     this.p.get.start.unsafeRunSync()(this.runtime)

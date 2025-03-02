@@ -41,8 +41,8 @@ class PromiseTest {
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  private[this] val p: Promise[IO, String] =
-    Promise[IO, String].run[SyncIO].unsafeRunSync()
+  private[this] val p: Promise[String] =
+    Promise[String].run[SyncIO].unsafeRunSync()
 
   private[this] val winner =
     new AtomicInteger(0)

@@ -32,8 +32,6 @@ sealed trait Reactive[F[_]] extends ~>[Axn, F] { self =>
   def apply[A, B](r: Rxn[A, B], a: A, s: RetryStrategy.Spin = RetryStrategy.Default): F[B]
   private[choam] def mcasImpl: Mcas
   def monad: Monad[F]
-  def mapK[G[_]](t: F ~> G)(implicit G: Monad[G]): Reactive[G] =
-    new Reactive.TransformedReactive[F, G](self, t)
   final def run[A](a: Axn[A], s: RetryStrategy.Spin = RetryStrategy.Default): F[A] =
     this.apply[Any, A](a, null: Any, s)
   final override def apply[A](a: Axn[A]): F[A] =

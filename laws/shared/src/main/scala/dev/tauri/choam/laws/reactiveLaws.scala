@@ -23,7 +23,7 @@ import cats.laws.IsEq
 import cats.laws.IsEqArrow
 import cats.syntax.all._
 
-import async.AsyncReactive
+import async.{ AsyncReactive, Promise }
 
 sealed trait ReactiveLaws[F[_]] {
 
@@ -54,7 +54,7 @@ sealed trait AsyncReactiveLaws[F[_]] extends ReactiveLaws[F] {
 
   def promiseCompleteAndGet[A](a: A): IsEq[F[(Boolean, A)]] = {
     val completeAndGet = for {
-      p <- reactive.run(reactive.promise[A])
+      p <- reactive.run(Promise[A])
       ok <- reactive.apply(p.complete, a)
       res <- p.get
     } yield (ok, res)

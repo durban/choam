@@ -20,7 +20,7 @@ package async
 
 import java.util.concurrent.atomic.AtomicLong
 
-import cats.{ ~>, Functor, Invariant, Contravariant }
+import cats.{ Functor, Invariant, Contravariant }
 import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.Outcome
@@ -41,7 +41,7 @@ trait PromiseSpecTicked[F[_]]
 
   test("Completing an empty promise should call all registered callbacks") {
     for {
-      p <- Promise[F, Int].run[F]
+      p <- Promise[Int].run[F]
       act = p.get
       fib1 <- act.start
       fib2 <- act.start
@@ -59,7 +59,7 @@ trait PromiseSpecTicked[F[_]]
     @volatile var flag1 = false
     @volatile var flag2 = false
     for {
-      p <- Promise[F, Int].run[F]
+      p <- Promise[Int].run[F]
       f1 <- F.uncancelable { poll => poll(p.get).flatTap(_ => F.delay { flag1 = true }) }.start
       f2 <- F.uncancelable { poll => poll(p.get).flatTap(_ => F.delay { flag2 = true }) }.start
       _ <- this.tickAll
@@ -80,7 +80,7 @@ trait PromiseSpec[F[_]]
 
   test("Completing a fulfilled promise should not be possible") {
     for {
-      p <- Promise[F, Int].run[F]
+      p <- Promise[Int].run[F]
       _ <- assertResultF(p.complete[F](42), true)
       _ <- assertResultF(p.complete[F](42), false)
       _ <- assertResultF(p.complete[F](99), false)
@@ -89,7 +89,7 @@ trait PromiseSpec[F[_]]
 
   test("Completing a fulfilled promise should not call any callbacks") {
     for {
-      p <- Promise[F, Int].run[F]
+      p <- Promise[Int].run[F]
       _ <- assertResultF(p.complete[F](42), true)
       cnt <- F.delay { new AtomicLong(0L) }
       act = p.get.map { x =>
@@ -109,7 +109,7 @@ trait PromiseSpec[F[_]]
   test("Promise#get should be rerunnable") {
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
-      p <- Promise[F, Int].run[F]
+      p <- Promise[Int].run[F]
       l1 <- CountDownLatch[F](1)
       l2 <- CountDownLatch[F](1)
       g = p.get
@@ -128,7 +128,7 @@ trait PromiseSpec[F[_]]
 
   test("Promise#tryGet should work") {
     for {
-      p <- Promise[F, Int].run[F]
+      p <- Promise[Int].run[F]
       _ <- assertResultF(p.tryGet.run[F], None)
       _ <- assertResultF(p.complete[F](42), true)
       _ <- assertResultF(p.tryGet.run[F], Some(42))
@@ -139,8 +139,8 @@ trait PromiseSpec[F[_]]
   test("Invariant functor instance") {
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
-      p <- Promise[F, Int].run[F]
-      p2 = Invariant[Promise[F, *]].imap(p)(_ * 2)(_ / 2)
+      p <- Promise[Int].run[F]
+      p2 = Invariant[Promise].imap(p)(_ * 2)(_ / 2)
       f <- p.get.start
       _ <- p2.complete[F](42)
       _ <- assertResultF(f.joinWithNever, 21)
@@ -150,7 +150,7 @@ trait PromiseSpec[F[_]]
   test("Contravariant functor instance") {
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
-      p <- Promise[F, Int].run[F]
+      p <- Promise[Int].run[F]
       pw = (p : PromiseWrite[Int])
       p2 = Contravariant[PromiseWrite[*]].contramap[Int, Int](pw)(_ / 2)
       f <- p.get.start
@@ -162,47 +162,11 @@ trait PromiseSpec[F[_]]
   test("Covariant functor instance") {
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
-      p <- Promise[F, Int].run[F]
-      pr = (p : PromiseRead[F, Int])
-      p2 = Functor[PromiseRead[F, *]].map(pr)(_ * 2)
+      p <- Promise[Int].run[F]
+      pr = (p : PromiseRead[Int])
+      p2 = Functor[PromiseRead].map(pr)(_ * 2)
       f <- p2.get.start
       _ <- p.complete[F](21)
-      _ <- assertResultF(f.joinWithNever, 42)
-    } yield ()
-  }
-
-  test("Promise#mapK") {
-    val raForIo: AsyncReactive[IO] = new AsyncReactive.AsyncReactiveImpl[IO](this.mcasImpl)
-    for {
-      _ <- assumeF(this.mcasImpl.isThreadSafe)
-      p <- Promise.apply[IO, Int](raForIo).run[F]
-      pp = p.mapK[F](new ~>[IO, F] {
-        final override def apply[A](fa: IO[A]): F[A] = {
-          F.async_[A] { cb =>
-            fa.unsafeRunAsync(cb)(cats.effect.unsafe.IORuntime.global)
-          }
-        }
-      })
-      f <- pp.get.start
-      _ <- p.complete[F](42)
-      _ <- assertResultF(f.joinWithNever, 42)
-    } yield ()
-  }
-
-  test("PromiseRead#mapK") {
-    val raForIo: AsyncReactive[IO] = new AsyncReactive.AsyncReactiveImpl[IO](this.mcasImpl)
-    for {
-      _ <- assumeF(this.mcasImpl.isThreadSafe)
-      p <- Promise.apply[IO, Int](raForIo).run[F]
-      pp = (p : PromiseRead[IO, Int]).mapK[F](new ~>[IO, F] {
-        final override def apply[A](fa: IO[A]): F[A] = {
-          F.async_[A] { cb =>
-            fa.unsafeRunAsync(cb)(cats.effect.unsafe.IORuntime.global)
-          }
-        }
-      })
-      f <- pp.get.start
-      _ <- p.complete[F](42)
       _ <- assertResultF(f.joinWithNever, 42)
     } yield ()
   }
@@ -210,12 +174,12 @@ trait PromiseSpec[F[_]]
   test("Promise#toCats") {
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
-      p1 <- Promise[F, Int].run[F]
+      p1 <- Promise[Int].run[F]
       d1 = p1.toCats
       fib1 <- d1.get.start
       _ <- p1.complete[F](42)
       _ <- assertResultF(fib1.joinWithNever, 42)
-      p2 <- Promise[F, Int].run[F]
+      p2 <- Promise[Int].run[F]
       d2 = p2.toCats
       fib2 <- p2.get.start
       _ <- d2.complete(21)

@@ -18,6 +18,7 @@
 package com.example.choamtest
 
 import dev.tauri.choam.Ref
+import dev.tauri.choam.async.Promise
 
 final class AsyncReactiveImplSpec extends BaseSpecMyIO {
 
@@ -30,7 +31,7 @@ final class AsyncReactiveImplSpec extends BaseSpecMyIO {
 
   test("Promise") {
     for {
-      p <- rF.promise[String].run[MyIO]
+      p <- Promise[String].run[MyIO]
       fib <- p.get.start
       _ <- assertResultF(p.complete[MyIO]("foo"), true)
       _ <- assertResultF(fib.joinWithNever, "foo")

@@ -18,7 +18,6 @@
 package dev.tauri.choam
 package async
 
-import cats.{ ~>, Monad }
 import cats.effect.kernel.{ Async, Sync, Resource }
 
 import internal.mcas.Mcas
@@ -26,21 +25,9 @@ import core.{ RxnRuntime, RetryStrategy }
 
 sealed trait AsyncReactive[F[_]] extends Reactive.UnsealedReactive[F] { self =>
   def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B]
-  def promise[A]: Axn[Promise[F, A]]
   def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[F, A]]
   def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean): Axn[GenWaitList[F, A]]
-  final override def mapK[G[_]](t: F ~> G)(implicit G: Monad[G]): AsyncReactive[G] = {
-    new Reactive.TransformedReactive[F, G](self, t) with AsyncReactive[G] {
-      final override def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): G[B] =
-        t(self.applyAsync(r, a, s))
-      final override def promise[A]: Axn[Promise[G, A]] =
-        self.promise[A].map(_.mapK(t))
-      final override def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit) =
-        self.waitList[A](syncGet, syncSet).map(_.mapK(t)(this))
-      final override def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean) =
-        self.genWaitList(tryGet, trySet).map(_.mapK(t)(this))
-    }
-  }
+  private[choam] def asyncInst: Async[F]
 }
 
 object AsyncReactive {
@@ -73,7 +60,7 @@ object AsyncReactive {
     final override def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[F, A]] =
       GenWaitList.waitListForAsync(syncGet, syncSet)(F, this)
 
-    final override def promise[A]: Axn[Promise[F, A]] =
-      Promise.forAsync[F, A](this, F)
+    private[choam] final override def asyncInst =
+      F
   }
 }
