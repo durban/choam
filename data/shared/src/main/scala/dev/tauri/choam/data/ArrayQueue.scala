@@ -58,7 +58,7 @@ private abstract class ArrayQueue[A](
       ref.get.flatMapF { oldVal =>
         if (isEmpty(oldVal)) {
           // ok, we can enqueue:
-          ref.set.provide(newVal) *> tail.set.provide(incrIdx(idx)).as(true)
+          ref.set1(newVal) *> tail.set1(incrIdx(idx)).as(true)
         } else {
           // queue is full:
           Rxn.pure(false)

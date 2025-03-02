@@ -69,7 +69,7 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
       n.next.get.flatMapF {
         case End() =>
           // found true tail; will update, and adjust the tail ref:
-          n.next.set.provide(node) >>> tail.set.provide(node)
+          n.next.set1(node) >>> tail.set1(node)
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and continue:
           go(n = nv)

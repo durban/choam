@@ -23,7 +23,7 @@ import cats.effect.kernel.Async
 
 trait GenWaitList[F[_], A] { self =>
 
-  def trySet: A =#> Boolean
+  def trySet0: A =#> Boolean
 
   def tryGet: Axn[Option[A]]
 
@@ -36,10 +36,10 @@ trait GenWaitList[F[_], A] { self =>
 
 trait WaitList[F[_], A] extends GenWaitList[F, A] { self =>
 
-  def set: A =#> Unit
+  def set0: A =#> Unit
 
-  final override def trySet: A =#> Boolean =
-    this.set.as(true)
+  final override def trySet0: A =#> Boolean =
+    this.set0.as(true)
 
   override def mapK[G[_]](t: F ~> G)(implicit G: Reactive[G]): WaitList[G, A]
 }
@@ -77,8 +77,8 @@ object GenWaitList {
 
     def mapK[G[_]](t: F ~> G)(implicit G: Reactive[G]): GenWaitList[G, A] = {
       new GenWaitListCommon[G, A] {
-        override def trySet =
-          self.trySet
+        override def trySet0 =
+          self.trySet0
         override def tryGet =
           self.tryGet
         override def asyncSet(a: A): G[Unit] =
@@ -105,7 +105,7 @@ object GenWaitList {
     private[this] val rightUnit: Either[Nothing, Unit] =
       RightUnit
 
-    override def trySet: A =#> Boolean = {
+    override def trySet0: A =#> Boolean = {
       getters.tryDeque.flatMap {
         case Some(cb) =>
           callCb(cb).as(true)
@@ -182,10 +182,10 @@ object GenWaitList {
 
     final override def mapK[G[_]](t: F ~> G)(implicit G: Reactive[G]): WaitList[G, A] = {
       new WaitListCommon[G, A] with WaitList[G, A] {
-        override def set =
-          self.set
+        override def set0 =
+          self.set0
         final override def asyncSet(a: A): G[Unit] =
-          G.apply(this.set, a)
+          G.apply(this.set0, a)
         override def asyncGet =
           t(self.asyncGet)
         override def tryGet =
@@ -196,21 +196,21 @@ object GenWaitList {
 
   private final class AsyncWaitList[F[_], A](
     val tryGet: Axn[Option[A]],
-    val syncSet: A =#> Unit,
+    val syncSet0: A =#> Unit,
     waiters: data.Queue.WithRemove[Callback[A]],
   )(implicit F: Async[F], arF: AsyncReactive[F]) extends WaitListCommon[F, A] { self =>
 
-    final def set: A =#> Unit = {
+    final def set0: A =#> Unit = {
       this.waiters.tryDeque.flatMap {
         case None =>
-          this.syncSet
+          this.syncSet0
         case Some(cb) =>
           callCb(cb)
       }
     }
 
     final def asyncSet(a: A): F[Unit] = {
-      arF.apply(this.set, a)
+      arF.apply(this.set0, a)
     }
 
     final def asyncGet: F[A] = {

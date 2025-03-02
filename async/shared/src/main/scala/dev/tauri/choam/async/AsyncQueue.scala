@@ -53,7 +53,7 @@ object AsyncQueue {
         final def deque[AA >: A]: F[AA] =
           F.monad.widen(gwl.asyncGet)
         final def tryEnqueue: Rxn[A, Boolean] =
-          gwl.trySet
+          gwl.trySet0
         final def enqueue(a: A): F[Unit] =
           gwl.asyncSet(a)
         final def bound: Int =

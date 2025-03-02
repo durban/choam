@@ -37,13 +37,14 @@ class NewRefConsistency extends StressTestBase {
     Ref("a").unsafePerform(null, this.impl)
 
   private[this] val _createNewRef: Axn[Unit] =
-    existingRef.update(_ + "b") *> Ref("x") >>> holder.set
+    existingRef.update(_ + "b") *> Ref("x") >>> holder.set0
 
-  private[this] val _readNewRef: Axn[(String, String)] =
+  private[this] val _readNewRef: Axn[(String, String)] = {
     existingRef.get * holder.get.flatMapF {
       case null => Rxn.unsafe.retry
       case newRef => newRef.get
     }
+  }
 
   @Actor
   def createNewRef(): Unit = {

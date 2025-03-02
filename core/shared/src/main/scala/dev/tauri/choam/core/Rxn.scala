@@ -2268,7 +2268,7 @@ private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type
           final override def get: Rxn[Any, A] =
             underlying.get
           final override def set(a: A): Rxn[Any, Unit] =
-            underlying.set.provide(a)
+            underlying.set1(a)
           final override def access: Rxn[Any, (A, A => Rxn[Any, Boolean])] = {
             underlying.get.map { ov =>
               val setter = { (nv: A) =>

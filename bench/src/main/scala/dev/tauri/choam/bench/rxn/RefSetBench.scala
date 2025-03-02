@@ -47,7 +47,7 @@ class RefSetBench {
   @Benchmark
   def setProvide(s: RefSetBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
-    val r: Axn[Unit] = s.refs(idx).set.provide(rnd.nextString())
+    val r: Axn[Unit] = s.refs(idx).set0.provide(rnd.nextString())
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 

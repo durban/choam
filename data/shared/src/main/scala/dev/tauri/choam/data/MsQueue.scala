@@ -98,7 +98,7 @@ private final class MsQueue[A] private[this] (
           case End() =>
             // found true tail; will update, and adjust the tail ref:
             // TODO: we could allow tail to lag by a constant
-            ticket.unsafeSet(node) >>> tail.set.provide(node)
+            ticket.unsafeSet(node) >>> tail.set1(node)
           case nv @ Node(_, _) =>
             // not the true tail, continue;
             // no need to validate `n.next`

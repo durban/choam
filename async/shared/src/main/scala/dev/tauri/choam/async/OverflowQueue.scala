@@ -71,7 +71,7 @@ object OverflowQueue {
       this.enqueue.as(true)
 
     final override def enqueue: Rxn[A, Unit] =
-      wl.set
+      wl.set0
 
     final override def tryDeque: Axn[Option[A]] =
       wl.tryGet
@@ -93,7 +93,7 @@ object OverflowQueue {
       new AsyncQueue.CatsQueueAdapter(this)
 
     final def tryEnqueue: Rxn[A, Boolean] =
-      gwl.trySet
+      gwl.trySet0
 
     final def enqueue: Rxn[A, Unit] =
       this.tryEnqueue.void

@@ -80,7 +80,7 @@ object BoundedQueue {
       F.monad.widen(gwl.asyncGet)
 
     override def tryEnqueue: Rxn[A, Boolean] =
-      gwl.trySet
+      gwl.trySet0
 
     override def enqueue(a: A): F[Unit] =
       gwl.asyncSet(a)
@@ -109,7 +109,7 @@ object BoundedQueue {
       F.monad.widen(gwl.asyncGet)
 
     override def tryEnqueue: Rxn[A, Boolean] =
-      gwl.trySet
+      gwl.trySet0
 
     override def enqueue(a: A): F[Unit] =
       gwl.asyncSet(a)

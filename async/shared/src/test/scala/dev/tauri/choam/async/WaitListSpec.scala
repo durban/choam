@@ -41,9 +41,9 @@ trait WaitListSpec[F[_]]
       f1 <- wl.asyncGet.start
       _ <- this.tickAll
       f2 <- wl.asyncGet.start
-      _ <- wl.set[F](42)
+      _ <- wl.set0[F](42)
       _ <- assertResultF(f1.joinWithNever, 42)
-      _ <- wl.set[F](21)
+      _ <- wl.set0[F](21)
       _ <- assertResultF(f2.joinWithNever, 21)
     } yield ()
   }

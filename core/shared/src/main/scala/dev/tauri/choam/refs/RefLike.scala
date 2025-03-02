@@ -35,10 +35,12 @@ trait RefLike[A] {
 
   // derived:
 
-  final def set: Rxn[A, Unit] = // TODO:0.5: rename (maybe to `set1`)
+  // TODO: create a `set` alias
+
+  final def set0: Rxn[A, Unit] =
     getAndSet.void
 
-  final def set0(a: A): Axn[Unit] = // TODO: make this a primitive
+  final def set1(a: A): Axn[Unit] = // TODO: make this a primitive
     update { _ => a }
 
   final def getAndSet: Rxn[A, A] =
@@ -98,7 +100,7 @@ object RefLike {
       self.get.run[F]
 
     override def set(a: A): F[Unit] =
-      self.set[F](a)
+      self.set0[F](a)
 
     override def access: F[(A, A => F[Boolean])] = {
       F.monad.map(this.get) { ov =>

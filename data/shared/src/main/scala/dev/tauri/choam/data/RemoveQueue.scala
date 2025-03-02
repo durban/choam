@@ -93,7 +93,7 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: Re
       n.next.get.flatMapF {
         case End() =>
           // found true tail; will update, and adjust the tail ref:
-          n.next.set.provide(node) >>> tail.set.provide(node)
+          n.next.set1(node) >>> tail.set1(node)
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and continue:
           go(n = nv)
@@ -122,7 +122,7 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: Re
         dataRef.get.flatMapF { a =>
           if (equ(a, item)) {
             // found it
-            dataRef.set.provide(tombstone[A]).as(true)
+            dataRef.set1(tombstone[A]).as(true)
           } else {
             // continue search:
             findAndTomb(item, nextRef)
@@ -154,7 +154,7 @@ private object RemoveQueue {
     // we can't be sure that the queue
     // even contains the thing we're removing.
     final def remover: Axn[Unit] = {
-      this.data.set.provide(tombstone[A])
+      this.data.set1(tombstone[A])
     }
   }
 

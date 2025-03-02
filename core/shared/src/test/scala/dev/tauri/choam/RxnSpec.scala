@@ -893,7 +893,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         final override def apply[G[_, _]](local: RxnLocal[G, Int], lift: RxnLocal.Lift[Rxn, G], inst: RxnLocal.Instances[G]) = {
           import inst._
           local.get.flatMap { ov =>
-            lift(ref.set0(ov)) *> local.set(99).as("foo")
+            lift(ref.set1(ov)) *> local.set(99).as("foo")
           }.lmap[Float](f => f)
         }
       })
@@ -917,7 +917,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
             _ <- scratch.set(i)
             _ <- scratch.update(_ + 1)
             v <- scratch.get
-            _ <- lift(ref.set0(v))
+            _ <- lift(ref.set1(v))
           } yield ""
         }
       })

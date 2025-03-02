@@ -236,7 +236,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(r.getAndSet[F]("b"), "a")
       _ <- assertResultF(r.get.run[F], "b")
       rxn = r.get.flatMapF { v1 =>
-        r.set.provide("x").flatMapF { _ =>
+        r.set0.provide("x").flatMapF { _ =>
           r.getAndSet.provide("y").map { v2 => (v1, v2) }
         }
       }
@@ -245,18 +245,18 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Ref#set0") {
+  test("Ref#set1") {
     for {
       r <- newRef("a")
-      s0b = r.set0("b")
-      s0c = r.set0("c")
+      s0b = r.set1("b")
+      s0c = r.set1("c")
       _ <- assertResultF(s0b[F](42), ())
       _ <- assertResultF(r.get.run[F], "b")
       _ <- assertResultF(s0c.run[F], ())
       _ <- assertResultF(r.get.run[F], "c")
       _ <- assertResultF(s0b.run[F], ())
       _ <- assertResultF(r.get.run[F], "b")
-      _ <- assertResultF(r.set0("d").run[F], ())
+      _ <- assertResultF(r.set1("d").run[F], ())
       _ <- assertResultF(r.get.run[F], "d")
     } yield ()
   }
