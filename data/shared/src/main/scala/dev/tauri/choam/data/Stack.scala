@@ -21,7 +21,7 @@ package data
 import cats.Monad
 import cats.syntax.all._
 
-abstract class Stack[A] { // TODO:0.5: make it a sealed trait
+sealed trait Stack[A] {
   def push: Rxn[A, Unit]
   def tryPop: Axn[Option[A]]
   def size: Axn[Int]
@@ -29,24 +29,21 @@ abstract class Stack[A] { // TODO:0.5: make it a sealed trait
 
 object Stack {
 
-  def treiberStack[A]: Axn[Stack[A]] =
+  private[choam] trait UnsealedStack[A]
+    extends Stack[A]
+
+  final def treiberStack[A]: Axn[Stack[A]] =
     treiberStack[A](Ref.AllocationStrategy.Default)
 
-  def treiberStack[A](str: Ref.AllocationStrategy): Axn[Stack[A]] =
+  final def treiberStack[A](str: Ref.AllocationStrategy): Axn[Stack[A]] =
     TreiberStack[A](str)
 
-  def eliminationStack[A]: Axn[Stack[A]] =
+  final def eliminationStack[A]: Axn[Stack[A]] =
     eliminationStack(Ref.AllocationStrategy.Default)
 
   // TODO: on JS, we could just return a TreiberStack
-  def eliminationStack[A](str: Ref.AllocationStrategy): Axn[Stack[A]] =
-    EliminationStack(str)
-
-  private[choam] def eliminationStack2[A]: Axn[EliminationStack2[A]] =
-    eliminationStack2(Ref.AllocationStrategy.Default)
-
-  private[choam] def eliminationStack2[A](str: Ref.AllocationStrategy): Axn[EliminationStack2[A]] =
-    EliminationStack2[A](str)
+  final def eliminationStack[A](str: Ref.AllocationStrategy): Axn[Stack[A]] =
+    EliminationStack2(str)
 
   private[choam] def fromList[F[_], A](mkEmpty: Axn[Stack[A]])(as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
     implicit val monadF: Monad[F] = F.monad

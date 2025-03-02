@@ -67,18 +67,6 @@ class SyncStackBench extends BenchUtils {
   }
 
   @Benchmark
-  def rxnEliminationStack2(s: Elimination2St, ct: McasImplState): Unit = {
-    val tsk = for {
-      _ <- ct.reactive.apply(s.eliminationStack2.push, "foo")
-      pr <- ct.reactive.run(s.eliminationStack2.tryPop)
-      _ <- if (pr eq None) {
-        IO.raiseError(Errors.EmptyStack)
-      } else IO.unit
-    } yield ()
-    runRepl(s.runtime, tsk, size = N, parallelism = s.concurrentOps)
-  }
-
-  @Benchmark
   def compareAndSetTreiberStack(s: ReferenceSt): Unit = {
     val tsk = IO {
       s.referenceStack.push("foo")
@@ -163,23 +151,6 @@ object SyncStackBench {
       cats.effect.unsafe.IORuntime.global
     val eliminationStack: Stack[String] =
       StackHelper.eliminationStackFromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
-  }
-
-  @State(Scope.Benchmark)
-  class Elimination2St extends BaseSt {
-
-    import cats.syntax.all._
-
-    val runtime =
-      cats.effect.unsafe.IORuntime.global
-
-    val eliminationStack2: data.EliminationStack2[String] = {
-      Stack.eliminationStack2[String].run[SyncIO].flatMap { es2 =>
-        Prefill.prefill().traverse { a =>
-          es2.push[SyncIO](a)
-        }.as(es2)
-      }.unsafeRunSync()
-    }
   }
 
   @State(Scope.Benchmark)

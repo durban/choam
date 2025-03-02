@@ -29,7 +29,7 @@ import core.Eliminator
 final class EliminationStackForTesting[A] private (
   underlying: TreiberStack[A],
   eliminator: Eliminator[A, Unit, Any, Option[A]],
-) extends Stack[A] {
+) extends Stack.UnsealedStack[A] {
 
   override def push: Rxn[A, Unit] =
     eliminator.leftOp

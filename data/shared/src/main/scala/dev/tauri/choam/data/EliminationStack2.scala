@@ -20,9 +20,9 @@ package data
 
 import core.EliminatorImpl
 
-// TODO:0.5: make this implement `Stack`; make it private
-private[choam] final class EliminationStack2[A](underlying: Stack[A])
-  extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), underlying.tryPop, _ => ()) {
+private final class EliminationStack2[A](underlying: Stack[A])
+  extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), underlying.tryPop, _ => ())
+  with Stack.UnsealedStack[A] {
 
   final def push: Rxn[A, Unit] =
     this.leftOp

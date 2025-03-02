@@ -258,38 +258,4 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
     tsk.replicateA(iterations)
   }
-
-  test("Elimination") {
-    import cats.effect.implicits.parallelForGenSpawn
-    import EliminationStack.{ FromStack, Exchanged }
-    val N = 512
-    val tsk = for {
-      elst <- EliminationStack.debug[String].run[F]
-      f1 <- List.fill(N)("a").parTraverse { s =>
-        elst.pushDebug[F](s)
-      }.start
-      f2 <- List.fill(N)(elst.tryPopDebug.run[F]).parSequence.start
-      pushResults <- f1.joinWithNever
-      options <- f2.joinWithNever
-      successes = options.count(_.isDefined)
-      stackLen <- elst.size.run[F]
-      _ <- assertEqualsF(clue(successes) + clue(stackLen), N)
-      popResults = options.collect { case Some(r) => r }
-      pushExchangeCount <- {
-        val pushExchangeCount = pushResults.count {
-          case FromStack(_) => false
-          case Exchanged(_) => true
-        }
-        val popExchangeCount = popResults.count {
-          case FromStack(_) => false
-          case Exchanged(_) => true
-        }
-        assertEqualsF(pushExchangeCount, popExchangeCount).as(pushExchangeCount)
-      }
-      _ <- F.delay { println(s"Counted ${pushExchangeCount} exchanges (out of ${N})") }
-    } yield pushExchangeCount
-    tsk.replicateA(iterations).flatMap { rss =>
-      F.delay { println(s"Exchanges: ${rss.sum} / ${N * iterations}") }
-    }
-  }
 }
