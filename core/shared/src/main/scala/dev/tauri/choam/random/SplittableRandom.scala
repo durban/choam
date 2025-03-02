@@ -21,6 +21,12 @@ package random
 import cats.effect.std.Random
 
 /** A splittable variant of [[cats.effect.std.Random]]. */
-trait SplittableRandom[F[_]] extends Random[F] {
+sealed trait SplittableRandom[F[_]] extends Random[F] {
   def split: F[SplittableRandom[F]]
+}
+
+private object SplittableRandom {
+
+  private[random] trait UnsealedSplittableRandom[F[_]]
+    extends SplittableRandom[F]
 }

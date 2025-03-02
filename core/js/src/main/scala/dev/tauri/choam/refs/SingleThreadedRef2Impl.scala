@@ -21,7 +21,7 @@ package refs
 private final class SingleThreadedRef2Impl[A, B](a: A, b: B)(
   i0: Long,
   i1: Long,
-) extends Ref2[A, B] {
+) extends UnsealedRef2[A, B] {
 
   final override val _1: Ref[A] =
     new SingleThreadedRefImpl(a)(i0)

@@ -34,7 +34,7 @@ import CompatPlatform.AtomicReferenceArray
  * or [[cats.effect.kernel.Ref]], but its operations are [[Rxn]]s.
  * Thus, operations on a `Ref` are composable with other [[Rxn]]s.
  */
-sealed trait Ref[A] extends RefLike[A] { this: MemoryLocation[A] with core.RefGetAxn[A] =>
+sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A] with core.RefGetAxn[A] =>
 
   final override def get: Axn[A] =
     this

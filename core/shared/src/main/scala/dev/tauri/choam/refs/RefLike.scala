@@ -21,7 +21,7 @@ package refs
 import cats.data.State
 import cats.effect.kernel.{ Ref => CatsRef }
 
-trait RefLike[A] {
+sealed trait RefLike[A] {
 
   // primitive:
 
@@ -88,7 +88,10 @@ trait RefLike[A] {
     new RefLike.CatsRefFromRefLike[F, A](this) {}
 }
 
-object RefLike {
+private[choam] object RefLike {
+
+  private[choam] trait UnsealedRefLike[A]
+    extends RefLike[A]
 
   private[choam] final def catsRefFromRefLike[F[_] : Reactive, A](ref: RefLike[A]): CatsRef[F, A] =
     new CatsRefFromRefLike[F, A](ref) {}

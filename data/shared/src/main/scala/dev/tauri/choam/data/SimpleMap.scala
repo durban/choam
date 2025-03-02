@@ -117,7 +117,7 @@ private final class SimpleMap[K, V] private (
     }
   }
 
-  override def refLike(key: K, default: V): RefLike[V] = new RefLike[V] {
+  final override def refLike(key: K, default: V): RefLike[V] = new RefLike.UnsealedRefLike[V] {
 
     final def get: Axn[V] =
       self.get.provide(key).map(_.getOrElse(default))

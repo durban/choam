@@ -40,7 +40,7 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
   def refLike: RefLike[A] =
     _refLike
 
-  private[this] val _refLike: RefLike[A] = new RefLike[A] {
+  private[this] val _refLike: RefLike[A] = new RefLike.UnsealedRefLike[A] {
 
     final override def get: Axn[A] =
       underlying.get

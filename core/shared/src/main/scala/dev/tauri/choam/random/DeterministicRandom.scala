@@ -54,7 +54,7 @@ private final class DeterministicRandom(
   seed: Ref[Long],
   gamma: Long,
 ) extends RandomBase
-  with SplittableRandom[Axn] {
+  with SplittableRandom.UnsealedSplittableRandom[Axn] {
 
   private[this] val nextSeed: Axn[Long] =
     seed.updateAndGet(_ + gamma)

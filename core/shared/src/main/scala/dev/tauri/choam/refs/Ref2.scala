@@ -18,15 +18,18 @@
 package dev.tauri.choam
 package refs
 
-trait Ref2[A, B] {
+sealed trait Ref2[A, B] {
 
   def _1: Ref[A]
 
   def _2: Ref[B]
 
-  def consistentRead: Axn[(A, B)] =
+  final def consistentRead: Axn[(A, B)] =
     Ref.consistentRead(this._1, this._2)
 }
+
+private trait UnsealedRef2[A, B]
+  extends Ref2[A, B]
 
 object Ref2 extends Ref2Platform {
 
