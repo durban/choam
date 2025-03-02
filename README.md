@@ -96,9 +96,9 @@ object MyMain extends IOApp.Simple with RxnAppMixin {
     - The main integration point is a `Promise`, which can be
       completed as a `Rxn`, and can be waited on as an async `F[_]`:
       ```scala
-      trait Promise[F[_], A] {
+      trait Promise[A] {
         def complete: Rxn[A, Boolean]
-        def get: F[A]
+        def get[F[_]]: F[A]
       }
       ```
     - Asynchronous (dual) data structures can be built on this primitive
