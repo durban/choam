@@ -21,7 +21,7 @@ package data
 import cats.Monad
 import cats.syntax.all._
 
-trait QueueSource[+A] {
+sealed trait QueueSource[+A] {
 
   def tryDeque: Axn[Option[A]]
 
@@ -35,55 +35,73 @@ trait QueueSource[+A] {
   }
 }
 
-trait QueueSink[-A] {
+sealed trait QueueSink[-A] {
   def tryEnqueue: Rxn[A, Boolean]
 }
 
-trait QueueSourceSink[A]
+sealed trait QueueSourceSink[A]
   extends QueueSource[A]
   with  QueueSink[A]
 
-trait UnboundedQueueSink[-A] extends QueueSink[A] {
+sealed trait UnboundedQueueSink[-A] extends QueueSink[A] {
   def enqueue: Rxn[A, Unit]
 }
 
-trait Queue[A]
+sealed trait Queue[A]
   extends QueueSourceSink[A]
   with UnboundedQueueSink[A]
 
 object Queue {
 
+  private[choam] trait UnsealedQueueSource[+A]
+    extends QueueSource[A]
+
+  private[choam] trait UnsealedQueueSink[-A]
+    extends QueueSink[A]
+
+  private[choam] trait UnsealedQueueSourceSink[A]
+    extends QueueSourceSink[A]
+
+  private[choam] trait UnsealedQueue[A]
+    extends Queue[A]
+
   type Remover =
     Axn[Unit]
 
-  abstract class WithRemove[A] extends Queue[A] {
+  sealed abstract class WithRemove[A] extends Queue[A] {
     def enqueueWithRemover: Rxn[A, Remover]
   }
 
-  trait WithSize[A] extends Queue[A] {
+  private[choam] abstract class UnsealedWithRemove[A]
+    extends WithRemove[A]
+
+  sealed trait WithSize[A] extends Queue[A] {
     def size: Axn[Int]
   }
 
-  def unbounded[A]: Axn[Queue[A]] =
+  private[choam] trait UnsealedWithSize[A]
+    extends WithSize[A]
+
+  final def unbounded[A]: Axn[Queue[A]] =
     MsQueue[A]
 
-  def unboundedWithRemove[A]: Axn[Queue.WithRemove[A]] =
+  final def unboundedWithRemove[A]: Axn[Queue.WithRemove[A]] =
     RemoveQueue.apply[A]
 
-  def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
+  final def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
     dropping(bound)
 
-  def dropping[A](capacity: Int): Axn[Queue.WithSize[A]] =
+  final def dropping[A](capacity: Int): Axn[Queue.WithSize[A]] =
     DroppingQueue.apply[A](capacity)
 
-  def ringBuffer[A](capacity: Int): Axn[Queue.WithSize[A]] =
+  final def ringBuffer[A](capacity: Int): Axn[Queue.WithSize[A]] =
     RingBuffer.apply[A](capacity)
 
   // TODO: do we need this?
   private[choam] def lazyRingBuffer[A](capacity: Int): Axn[Queue.WithSize[A]] =
     RingBuffer.lazyRingBuffer[A](capacity)
 
-  def unboundedWithSize[A]: Axn[Queue.WithSize[A]] = {
+  final def unboundedWithSize[A]: Axn[Queue.WithSize[A]] = {
     Queue.unbounded[A].flatMapF { q =>
       Ref.unpadded[Int](0).map { s =>
         new WithSize[A] {
@@ -108,10 +126,10 @@ object Queue {
     }
   }
 
-  private[data] def unpadded[A]: Axn[Queue[A]] =
+  private[data] final def unpadded[A]: Axn[Queue[A]] =
     MsQueue.unpadded[A]
 
-  private[data] def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
+  private[data] final def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
     implicit val m: Monad[F] = Reactive[F].monad
     mkEmpty.run[F].flatMap { q =>
       as.traverse(a => q.enqueue[F](a)).as(q)

@@ -25,19 +25,19 @@ import async.{ UnboundedQueue, AsyncReactive }
 
 package object stream {
 
-  def signallingRef[F[_] : AsyncReactive, A](initial: A): Axn[RxnSignallingRef[F, A]] =
+  final def signallingRef[F[_] : AsyncReactive, A](initial: A): Axn[RxnSignallingRef[F, A]] =
     RxnSignallingRef[F, A](initial)
 
-  def fromQueueUnterminated[F[_], A](q: UnboundedQueue[F, A], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
+  final def fromQueueUnterminated[F[_], A](q: UnboundedQueue[F, A], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueUnterminated(new Fs2QueueWrapper(q), limit = limit)(F.monad)
 
-  def fromQueueUnterminatedChunk[F[_], A](q: UnboundedQueue[F, Chunk[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
+  final def fromQueueUnterminatedChunk[F[_], A](q: UnboundedQueue[F, Chunk[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueUnterminatedChunk(new Fs2QueueWrapper(q), limit = limit)(F.monad)
 
-  def fromQueueNoneTerminated[F[_], A](q: UnboundedQueue[F, Option[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
+  final def fromQueueNoneTerminated[F[_], A](q: UnboundedQueue[F, Option[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueNoneTerminated(new Fs2QueueWrapper(q), limit = limit)(F.monad)
 
-  def fromQueueNoneTerminatedChunk[F[_], A](q: UnboundedQueue[F, Option[Chunk[A]]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
+  final def fromQueueNoneTerminatedChunk[F[_], A](q: UnboundedQueue[F, Option[Chunk[A]]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueNoneTerminatedChunk(new Fs2QueueWrapper(q), limit = limit)
 
   // TODO: this could work with BoundedQueue too

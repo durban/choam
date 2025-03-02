@@ -24,7 +24,7 @@ import cats.{ ~>, Functor, Invariant, Contravariant, Monad }
 import cats.syntax.all._
 import cats.effect.kernel.{ Async, Deferred, DeferredSink, DeferredSource }
 
-trait PromiseRead[F[_], A] { self =>
+sealed trait PromiseRead[F[_], A] { self =>
   def get: F[A]
   def tryGet: Axn[Option[A]]
   def map[B](f: A => B): PromiseRead[F, B]
@@ -34,7 +34,7 @@ trait PromiseRead[F[_], A] { self =>
 
 object PromiseRead {
 
-  implicit def covariantFunctorForPromiseRead[F[_]]: Functor[PromiseRead[F, *]] = {
+  implicit final def covariantFunctorForPromiseRead[F[_]]: Functor[PromiseRead[F, *]] = {
     new Functor[PromiseRead[F, *]] {
       final override def map[A, B](p: PromiseRead[F, A])(f: A => B): PromiseRead[F, B] =
         p.map(f)
@@ -42,7 +42,7 @@ object PromiseRead {
   }
 }
 
-trait PromiseWrite[A] { self =>
+sealed trait PromiseWrite[A] { self =>
 
   def complete: A =#> Boolean
 
@@ -73,7 +73,7 @@ object PromiseWrite {
 // TODO: `Promise.padded` and `Promise.unpadded` without bloating
 // TODO: the AsyncReactive typeclass.
 
-trait Promise[F[_], A] extends PromiseRead[F, A] with PromiseWrite[A] {
+sealed trait Promise[F[_], A] extends PromiseRead[F, A] with PromiseWrite[A] {
   def imap[B](f: A => B)(g: B => A): Promise[F, B]
   override def mapK[G[_] : Monad](t: F ~> G): Promise[G, A]
   override def toCats: Deferred[F, A]
@@ -81,17 +81,17 @@ trait Promise[F[_], A] extends PromiseRead[F, A] with PromiseWrite[A] {
 
 object Promise {
 
-  def apply[F[_], A](implicit F: AsyncReactive[F]): Axn[Promise[F, A]] =
+  final def apply[F[_], A](implicit F: AsyncReactive[F]): Axn[Promise[F, A]] =
     F.promise[A]
 
   // TODO: there should be a way to make an unpadded Promise
-  def forAsync[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] = {
+  final def forAsync[F[_], A](implicit rF: Reactive[F], F: Async[F]): Axn[Promise[F, A]] = {
     Axn.unsafe.delayContext { ctx =>
       new PromiseImpl[F, A](Ref.unsafePadded[State[A]](Waiting(LongMap.empty, 0L), ctx.refIdGen))
     }
   }
 
-  implicit def invariantFunctorForPromise[F[_]]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
+  implicit final def invariantFunctorForPromise[F[_]]: Invariant[Promise[F, *]] = new Invariant[Promise[F, *]] {
     final override def imap[A, B](fa: Promise[F, A])(f: A => B)(g: B => A): Promise[F, B] =
       fa.imap(f)(g)
   }

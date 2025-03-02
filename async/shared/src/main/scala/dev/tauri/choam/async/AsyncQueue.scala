@@ -20,34 +20,40 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-trait AsyncQueueSource[F[_], +A] extends data.QueueSource[A] {
+sealed trait AsyncQueueSource[F[_], +A] extends data.Queue.UnsealedQueueSource[A] {
   def deque[AA >: A]: F[AA]
 }
 
-trait BoundedQueueSink[F[_], -A] extends data.QueueSink[A] {
+sealed trait BoundedQueueSink[F[_], -A] extends data.Queue.UnsealedQueueSink[A] {
   def enqueue(a: A): F[Unit]
 }
 
 object AsyncQueue {
 
-  def unbounded[F[_] : AsyncReactive, A]: Axn[UnboundedQueue[F, A]] =
+  private[choam] trait UnsealedAsyncQueueSource[F[_], +A]
+    extends AsyncQueueSource[F, A]
+
+  private[choam] trait UnsealedBoundedQueueSink[F[_], -A]
+    extends BoundedQueueSink[F, A]
+
+  final def unbounded[F[_] : AsyncReactive, A]: Axn[UnboundedQueue[F, A]] =
     UnboundedQueue[F, A]
 
-  def bounded[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] =
+  final def bounded[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] =
     BoundedQueue.array[F, A](bound)
 
-  def dropping[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] =
+  final def dropping[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] =
     OverflowQueue.droppingQueue[F, A](capacity)
 
-  def ringBuffer[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] =
+  final def ringBuffer[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] =
     OverflowQueue.ringBuffer[F, A](capacity)
 
-  def unboundedWithSize[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue.WithSize[F, A]] =
+  final def unboundedWithSize[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue.WithSize[F, A]] =
     UnboundedQueue.withSize[F, A]
 
-  def synchronous[F[_], A](implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
+  final def synchronous[F[_], A](implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
     F.genWaitList[A](tryGet = Rxn.pure(None), trySet = Rxn.ret(false)).map { gwl =>
-      new BoundedQueue[F, A] {
+      new BoundedQueue.UnsealedBoundedQueue[F, A] {
         final def tryDeque: Axn[Option[A]] =
           gwl.tryGet
         final def deque[AA >: A]: F[AA] =

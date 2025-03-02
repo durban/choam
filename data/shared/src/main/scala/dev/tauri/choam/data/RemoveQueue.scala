@@ -29,7 +29,7 @@ import RemoveQueue.{ Elem, Node, End, tombstone, isTombstone }
  * TODO: also unlink removed nodes (instead of just tombing them).
  */
 private final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: RefIdGen)
-  extends Queue.WithRemove[A] {
+  extends Queue.UnsealedWithRemove[A] {
 
   // TODO: do the optimization with ticketRead (like in `MsQueue`)
 

@@ -44,7 +44,7 @@ sealed abstract class CountDownLatch[F[_]] { self =>
 
 object CountDownLatch {
 
-  def apply[F[_]](count: Int)(implicit F: AsyncReactive[F]): Axn[CountDownLatch[F]] = {
+  final def apply[F[_]](count: Int)(implicit F: AsyncReactive[F]): Axn[CountDownLatch[F]] = {
     (Ref.padded(count), Promise.apply[F, Unit]).mapN { (c, p) =>
       new CountDownLatch[F] { self =>
         final val release: Axn[Unit] = {

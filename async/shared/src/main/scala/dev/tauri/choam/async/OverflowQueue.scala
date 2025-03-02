@@ -20,21 +20,21 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-abstract class OverflowQueue[F[_], A]
-  extends UnboundedQueue.WithSize[F, A] {
+sealed trait OverflowQueue[F[_], A]
+  extends UnboundedQueue.UnsealedWithSize[F, A] {
 
   def capacity: Int
 }
 
 object OverflowQueue {
 
-  def ringBuffer[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] = {
+  final def ringBuffer[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] = {
     data.Queue.ringBuffer[A](capacity).flatMapF { rb =>
       makeRingBuffer(capacity, rb)
     }
   }
 
-  def droppingQueue[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] = {
+  final def droppingQueue[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] = {
     data.Queue.dropping[A](capacity).flatMapF { dq =>
       F.genWaitList[A](tryGet = dq.tryDeque, trySet = dq.tryEnqueue).map { gwl =>
         new DroppingQueue[F, A](capacity, dq, gwl)
@@ -43,13 +43,13 @@ object OverflowQueue {
   }
 
   // TODO: do we need this?
-  private[choam] def lazyRingBuffer[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] = {
+  private[choam] final def lazyRingBuffer[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] = {
     data.Queue.lazyRingBuffer[A](capacity).flatMapF { rb =>
       makeRingBuffer(capacity, rb)
     }
   }
 
-  private[this] def makeRingBuffer[F[_], A](capacity: Int, underlying: data.Queue.WithSize[A])(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] = {
+  private[this] final def makeRingBuffer[F[_], A](capacity: Int, underlying: data.Queue.WithSize[A])(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] = {
     F.waitList(syncGet = underlying.tryDeque, syncSet = underlying.enqueue).map { wl =>
       new RingBuffer(capacity, underlying, wl)
     }

@@ -20,7 +20,7 @@ package async
 
 import data.Stack
 
-abstract class AsyncStack[F[_], A] {
+sealed trait AsyncStack[F[_], A] {
   def push: Rxn[A, Unit]
   def pop: F[A]
   def tryPop: Axn[Option[A]]

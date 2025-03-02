@@ -34,7 +34,7 @@ private final class MsQueue[A] private[this] (
   sentinel: Node[A],
   padded: Boolean,
   initRig: RefIdGen,
-) extends Queue[A] {
+) extends Queue.UnsealedQueue[A] {
 
   private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
   private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)

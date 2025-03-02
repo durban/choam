@@ -28,13 +28,16 @@ import async.AsyncReactive
  * of [[dev.tauri.choam.Rxn]] (i.e., it is a
  * [[dev.tauri.choam.RefLike]]).
  */
-abstract class RxnSignallingRef[F[_], A]
+sealed abstract class RxnSignallingRef[F[_], A]
   extends SignallingRef[F, A] {
 
   def refLike: RefLike[A]
 }
 
 object RxnSignallingRef {
+
+  private[choam] abstract class UnsealedRxnSignallingRef[F[_], A]
+    extends RxnSignallingRef[F, A]
 
   def apply[F[_] : AsyncReactive, A](initial: A): Axn[RxnSignallingRef[F, A]] =
     Fs2SignallingRefWrapper[F, A](initial)

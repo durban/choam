@@ -20,12 +20,12 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import data.{ Queue, QueueSourceSink }
+import data.Queue
 
-abstract class BoundedQueue[F[_], A]
-  extends AsyncQueueSource[F, A]
-  with BoundedQueueSink[F, A]
-  with QueueSourceSink[A] {
+sealed trait BoundedQueue[F[_], A]
+  extends AsyncQueue.UnsealedAsyncQueueSource[F, A]
+  with AsyncQueue.UnsealedBoundedQueueSink[F, A]
+  with Queue.UnsealedQueueSourceSink[A] {
 
   def bound: Int
 
@@ -36,7 +36,10 @@ abstract class BoundedQueue[F[_], A]
 
 object BoundedQueue {
 
-  def linked[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
+  private[choam] trait UnsealedBoundedQueue[F[_], A]
+    extends BoundedQueue[F, A]
+
+  final def linked[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
     require(bound > 0)
     (Queue.unbounded[A] * Ref.unpadded[Int](0)).flatMapF {
       case (q, size) =>
@@ -55,7 +58,7 @@ object BoundedQueue {
     }
   }
 
-  def array[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
+  final def array[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
     require(bound > 0)
     Queue.dropping[A](bound).flatMapF { q =>
       F.genWaitList[A](

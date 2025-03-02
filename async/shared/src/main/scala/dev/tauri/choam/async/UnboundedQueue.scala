@@ -20,20 +20,23 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-abstract class UnboundedQueue[F[_], A]
-  extends data.Queue[A]
-  with AsyncQueueSource[F, A]
+sealed trait UnboundedQueue[F[_], A]
+  extends data.Queue.UnsealedQueue[A]
+  with AsyncQueue.UnsealedAsyncQueueSource[F, A]
 
 object UnboundedQueue {
 
-  abstract class WithSize[F[_], A] extends UnboundedQueue[F, A] {
+  sealed trait WithSize[F[_], A] extends UnboundedQueue[F, A] {
 
     def size: F[Int]
 
     def toCats: CatsQueue[F, A]
   }
 
-  def apply[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue[F, A]] = {
+  private[choam] trait UnsealedWithSize[F[_], A]
+    extends WithSize[F, A]
+
+  final def apply[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue[F, A]] = {
     data.Queue.unbounded[A].flatMapF { q =>
       F.waitList[A](syncGet = q.tryDeque, syncSet = q.enqueue).map { wl =>
         new UnboundedQueue[F, A] {
@@ -50,7 +53,7 @@ object UnboundedQueue {
     }
   }
 
-  def withSize[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue.WithSize[F, A]] = {
+  final def withSize[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue.WithSize[F, A]] = {
     data.Queue.unboundedWithSize[A].flatMapF { q =>
       F.waitList[A](syncGet = q.tryDeque, syncSet = q.enqueue).map { wl =>
         new UnboundedQueue.WithSize[F, A] {

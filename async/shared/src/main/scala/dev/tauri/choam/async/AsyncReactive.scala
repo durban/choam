@@ -45,7 +45,7 @@ sealed trait AsyncReactive[F[_]] extends Reactive.UnsealedReactive[F] { self =>
 
 object AsyncReactive {
 
-  def apply[F[_]](implicit inst: AsyncReactive[F]): inst.type =
+  final def apply[F[_]](implicit inst: AsyncReactive[F]): inst.type =
     inst
 
   final def from[F[_]](rt: RxnRuntime)(implicit F: Async[F]): Resource[F, AsyncReactive[F]] =

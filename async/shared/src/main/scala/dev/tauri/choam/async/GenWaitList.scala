@@ -21,7 +21,7 @@ package async
 import cats.~>
 import cats.effect.kernel.Async
 
-trait GenWaitList[F[_], A] { self =>
+sealed trait GenWaitList[F[_], A] { self =>
 
   def trySet0: A =#> Boolean
 
@@ -34,7 +34,7 @@ trait GenWaitList[F[_], A] { self =>
   def mapK[G[_]](t: F ~> G)(implicit G: Reactive[G]): GenWaitList[G, A]
 }
 
-trait WaitList[F[_], A] extends GenWaitList[F, A] { self =>
+sealed trait WaitList[F[_], A] extends GenWaitList[F, A] { self =>
 
   def set0: A =#> Unit
 
@@ -52,7 +52,7 @@ object GenWaitList {
   private[this] final val RightUnit: Either[Nothing, Unit] =
     Right(())
 
-  def genWaitListForAsync[F[_], A](
+  final def genWaitListForAsync[F[_], A](
     tryGet: Axn[Option[A]],
     trySet: A =#> Boolean,
   )(implicit F: Async[F], rF: AsyncReactive[F]): Axn[GenWaitList[F, A]] = {
@@ -63,7 +63,7 @@ object GenWaitList {
     }
   }
 
-  def waitListForAsync[F[_], A](
+  final def waitListForAsync[F[_], A](
     tryGet: Axn[Option[A]],
     syncSet: A =#> Unit
   )(implicit F: Async[F], rF: AsyncReactive[F]): Axn[WaitList[F, A]] = {

@@ -34,7 +34,7 @@ import GcHostileMsQueue._
  * `MsQueue` (see there).
  */
 private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRig: RefIdGen)
-  extends Queue[A] {
+  extends Queue.UnsealedQueue[A] {
 
   private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
   private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
