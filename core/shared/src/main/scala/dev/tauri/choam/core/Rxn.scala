@@ -464,8 +464,6 @@ private[choam] abstract class RefGetAxn[B] extends RxnImpl[Any, B] {
 
 object Rxn extends RxnInstances0 {
 
-  type Anything[A]
-
   private[this] final val interruptCheckPeriod =
     16384
 

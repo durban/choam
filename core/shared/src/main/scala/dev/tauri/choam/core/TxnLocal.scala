@@ -20,14 +20,16 @@ package core
 
 import cats.{ ~>, Monad }
 
-sealed abstract class TxnLocal[G[_], A] private () {
+// Note: not really private, published in dev.tauri.choam.stm
+private[choam] sealed abstract class TxnLocal[G[_], A] private () {
   def get: G[A]
   def set(a: A): G[Unit]
   def update(f: A => A): G[Unit]
   def getAndUpdate(f: A => A): G[A]
 }
 
-object TxnLocal {
+// Note: not really private, published in dev.tauri.choam.stm
+private[choam] object TxnLocal {
 
   sealed trait Instances[G[_]] {
     implicit def monadInstance: Monad[G]
