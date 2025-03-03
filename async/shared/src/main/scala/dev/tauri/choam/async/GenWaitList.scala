@@ -18,30 +18,33 @@
 package dev.tauri.choam
 package async
 
-import cats.~>
-import cats.effect.kernel.Async
-
-sealed trait GenWaitList[F[_], A] { self =>
+sealed trait GenWaitList[A] { self =>
 
   def trySet0: A =#> Boolean
 
   def tryGet: Axn[Option[A]]
 
-  def asyncSet(a: A): F[Unit]
+  def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
 
-  def asyncGet: F[A]
-
-  def mapK[G[_]](t: F ~> G)(implicit G: Reactive[G]): GenWaitList[G, A]
+  def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A]
 }
 
-sealed trait WaitList[F[_], A] extends GenWaitList[F, A] { self =>
+sealed trait WaitList[A] extends GenWaitList[A] { self =>
 
   def set0: A =#> Unit
 
   final override def trySet0: A =#> Boolean =
     this.set0.as(true)
+}
 
-  override def mapK[G[_]](t: F ~> G)(implicit G: Reactive[G]): WaitList[G, A]
+object WaitList {
+
+  final def apply[A](
+    tryGet: Axn[Option[A]],
+    syncSet: A =#> Unit
+  ): Axn[WaitList[A]] = {
+    GenWaitList.waitListForAsync[A](tryGet, syncSet)
+  }
 }
 
 object GenWaitList {
@@ -52,41 +55,28 @@ object GenWaitList {
   private[this] final val RightUnit: Either[Nothing, Unit] =
     Right(())
 
-  final def genWaitListForAsync[F[_], A](
+  final def apply[A](
     tryGet: Axn[Option[A]],
     trySet: A =#> Boolean,
-  )(implicit F: Async[F], rF: AsyncReactive[F]): Axn[GenWaitList[F, A]] = {
+  ): Axn[GenWaitList[A]] = {
     data.Queue.unboundedWithRemove[Callback[A]].flatMapF { getters =>
       data.Queue.unboundedWithRemove[(A, Callback[Unit])].map { setters =>
-        new AsyncGenWaitList[F, A](tryGet, trySet, getters, setters)
+        new AsyncGenWaitList[A](tryGet, trySet, getters, setters)
       }
     }
   }
 
-  final def waitListForAsync[F[_], A](
+  private[async] final def waitListForAsync[A](
     tryGet: Axn[Option[A]],
     syncSet: A =#> Unit
-  )(implicit F: Async[F], rF: AsyncReactive[F]): Axn[WaitList[F, A]] = {
+  ): Axn[WaitList[A]] = {
     data.Queue.unboundedWithRemove[Callback[A]].map { waiters =>
-      new AsyncWaitList[F, A](tryGet, syncSet, waiters)
+      new AsyncWaitList[A](tryGet, syncSet, waiters)
     }
   }
 
-  private abstract class GenWaitListCommon[F[_], A]
-    extends GenWaitList[F, A] { self =>
-
-    def mapK[G[_]](t: F ~> G)(implicit G: Reactive[G]): GenWaitList[G, A] = {
-      new GenWaitListCommon[G, A] {
-        override def trySet0 =
-          self.trySet0
-        override def tryGet =
-          self.tryGet
-        override def asyncSet(a: A): G[Unit] =
-          t(self.asyncSet(a))
-        override def asyncGet: G[A] =
-          t(self.asyncGet)
-      }
-    }
+  private abstract class GenWaitListCommon[A]
+    extends GenWaitList[A] { self =>
 
     protected[this] final def callCb[B](cb: Callback[B]): Rxn[B, Unit] = {
       Rxn.postCommit[B](Rxn.unsafe.delay { (b: B) =>
@@ -95,17 +85,17 @@ object GenWaitList {
     }
   }
 
-  private final class AsyncGenWaitList[F[_], A](
+  private final class AsyncGenWaitList[A](
     _tryGet: Axn[Option[A]],
     _trySet: A =#> Boolean,
     getters: data.Queue.WithRemove[Callback[A]],
     setters: data.Queue.WithRemove[(A, Callback[Unit])],
-  )(implicit F: Async[F], rF: AsyncReactive[F]) extends GenWaitListCommon[F, A] {
+  ) extends GenWaitListCommon[A] {
 
     private[this] val rightUnit: Either[Nothing, Unit] =
       RightUnit
 
-    override def trySet0: A =#> Boolean = {
+    final override def trySet0: A =#> Boolean = {
       getters.tryDeque.flatMap {
         case Some(cb) =>
           callCb(cb).as(true)
@@ -114,7 +104,7 @@ object GenWaitList {
       }
     }
 
-    override def tryGet: Axn[Option[A]] = {
+    final override def tryGet: Axn[Option[A]] = {
       _tryGet.flatMapF {
         case s @ Some(_) =>
           // success, try to unblock a setter:
@@ -141,16 +131,16 @@ object GenWaitList {
       }
     }
 
-    override def asyncSet(a: A): F[Unit] = {
-      F.asyncCheckAttempt { cb =>
-        rF.apply(
+    final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = {
+      F.asyncInst.asyncCheckAttempt { cb =>
+        F.apply(
           getters.tryDeque.flatMap {
             case Some(getterCb) =>
               callCb(getterCb).as(rightUnit)
             case None =>
               _trySet.flatMapF { ok =>
                 if (ok) Rxn.pure(rightUnit)
-                else setters.enqueueWithRemover.provide((a, cb)).map { remover => Left(Some(rF.run(remover))) }
+                else setters.enqueueWithRemover.provide((a, cb)).map { remover => Left(Some(F.run(remover))) }
               }
           },
           a
@@ -158,14 +148,14 @@ object GenWaitList {
       }
     }
 
-    override def asyncGet: F[A] = {
-      F.asyncCheckAttempt { cb =>
-        rF.run(
+    final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = {
+      F.asyncInst.asyncCheckAttempt { cb =>
+        F.run(
           this.tryGet.flatMapF {
             case Some(a) =>
               Rxn.pure(Right(a))
             case None =>
-              getters.enqueueWithRemover.provide(cb).map { remover => Left(Some(rF.run(remover))) }
+              getters.enqueueWithRemover.provide(cb).map { remover => Left(Some(F.run(remover))) }
           }
         )
       }
@@ -176,31 +166,18 @@ object GenWaitList {
     }
   }
 
-  private abstract class WaitListCommon[F[_], A]
-    extends GenWaitListCommon[F, A]
-    with WaitList[F, A] { self =>
-
-    final override def mapK[G[_]](t: F ~> G)(implicit G: Reactive[G]): WaitList[G, A] = {
-      new WaitListCommon[G, A] with WaitList[G, A] {
-        override def set0 =
-          self.set0
-        final override def asyncSet(a: A): G[Unit] =
-          G.apply(this.set0, a)
-        override def asyncGet =
-          t(self.asyncGet)
-        override def tryGet =
-          self.tryGet
-      }
-    }
+  private abstract class WaitListCommon[A] // TODO: remove this
+    extends GenWaitListCommon[A]
+    with WaitList[A] { self =>
   }
 
-  private final class AsyncWaitList[F[_], A](
+  private final class AsyncWaitList[A](
     val tryGet: Axn[Option[A]],
     val syncSet0: A =#> Unit,
     waiters: data.Queue.WithRemove[Callback[A]],
-  )(implicit F: Async[F], arF: AsyncReactive[F]) extends WaitListCommon[F, A] { self =>
+  ) extends WaitListCommon[A] { self =>
 
-    final def set0: A =#> Unit = {
+    final override def set0: A =#> Unit = {
       this.waiters.tryDeque.flatMap {
         case None =>
           this.syncSet0
@@ -209,21 +186,21 @@ object GenWaitList {
       }
     }
 
-    final def asyncSet(a: A): F[Unit] = {
-      arF.apply(this.set0, a)
+    final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = {
+      F.apply(this.set0, a)
     }
 
-    final def asyncGet: F[A] = {
-      F.asyncCheckAttempt { cb =>
+    final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = {
+      F.asyncInst.asyncCheckAttempt { cb =>
         val rxn: Axn[Either[Some[F[Unit]], A]] = this.tryGet.flatMapF {
           case Some(a) =>
             Rxn.pure(Right(a))
           case None =>
             this.waiters.enqueueWithRemover.provide(cb).map { remover =>
-              Left(Some(arF.run(remover)))
+              Left(Some(F.run(remover)))
             }
         }
-        arF.run(rxn)
+        F.run(rxn)
       }
     }
   }

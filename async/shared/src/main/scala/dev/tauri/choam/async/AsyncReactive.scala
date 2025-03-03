@@ -25,8 +25,6 @@ import core.{ RxnRuntime, RetryStrategy }
 
 sealed trait AsyncReactive[F[_]] extends Reactive.UnsealedReactive[F] { self =>
   def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B]
-  def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[F, A]]
-  def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean): Axn[GenWaitList[F, A]]
   private[choam] def asyncInst: Async[F]
 }
 
@@ -53,12 +51,6 @@ object AsyncReactive {
 
     final override def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B] =
       r.perform[F, B](a, this.mcasImpl, s)(F)
-
-    final override def genWaitList[A](tryGet: Axn[Option[A]], trySet: A =#> Boolean) =
-      GenWaitList.genWaitListForAsync[F, A](tryGet, trySet)(F, this)
-
-    final override def waitList[A](syncGet: Axn[Option[A]], syncSet: A =#> Unit): Axn[WaitList[F, A]] =
-      GenWaitList.waitListForAsync(syncGet, syncSet)(F, this)
 
     private[choam] final override def asyncInst =
       F

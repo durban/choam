@@ -52,7 +52,7 @@ object AsyncQueue {
     UnboundedQueue.withSize[F, A]
 
   final def synchronous[F[_], A](implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
-    F.genWaitList[A](tryGet = Rxn.pure(None), trySet = Rxn.ret(false)).map { gwl =>
+    GenWaitList[A](tryGet = Rxn.pure(None), trySet = Rxn.ret(false)).map { gwl =>
       new BoundedQueue.UnsealedBoundedQueue[F, A] {
         final def tryDeque: Axn[Option[A]] =
           gwl.tryGet

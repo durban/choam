@@ -34,7 +34,7 @@ trait WaitListSpec[F[_]]
   test("WaitList around a Ref") {
     for {
       ref <- Ref[Option[Int]](None).run[F]
-      wl <- rF.waitList[Int](
+      wl <- WaitList[Int](
         ref.get,
         ref.getAndSet.contramap[Int](Some(_)).void
       ).run[F]

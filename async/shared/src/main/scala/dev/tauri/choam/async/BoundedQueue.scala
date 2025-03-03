@@ -43,7 +43,7 @@ object BoundedQueue {
     require(bound > 0)
     (Queue.unbounded[A] * Ref.unpadded[Int](0)).flatMapF {
       case (q, size) =>
-        F.genWaitList[A](
+        GenWaitList[A](
           tryGet = q.tryDeque.flatMapF { res =>
             if (res.nonEmpty) size.update(_ - 1).as(res)
             else Rxn.pure(res)
@@ -61,7 +61,7 @@ object BoundedQueue {
   final def array[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
     require(bound > 0)
     Queue.dropping[A](bound).flatMapF { q =>
-      F.genWaitList[A](
+      GenWaitList[A](
         tryGet = q.tryDeque,
         trySet = q.tryEnqueue,
       ).map { gwl =>
@@ -73,7 +73,7 @@ object BoundedQueue {
   private final class LinkedBoundedQueue[F[_], A](
     _bound: Int,
     s: Ref[Int], // current size
-    gwl: GenWaitList[F, A],
+    gwl: GenWaitList[A],
   )(implicit F: AsyncReactive[F]) extends BoundedQueue[F, A] {
 
     override def tryDeque: Axn[Option[A]] =
@@ -102,7 +102,7 @@ object BoundedQueue {
   private final class ArrayBoundedQueue[F[_], A](
     _bound: Int,
     q: Queue.WithSize[A],
-    gwl: GenWaitList[F, A],
+    gwl: GenWaitList[A],
   )(implicit F: AsyncReactive[F]) extends BoundedQueue[F, A] { self =>
 
     override def tryDeque: Axn[Option[A]] =

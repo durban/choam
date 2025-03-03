@@ -35,8 +35,8 @@ object AsyncStack {
     Stack.eliminationStack[A].flatMapF(fromSyncStack[F, A])
 
   private[this] final def fromSyncStack[F[_], A](stack: Stack[A])(implicit F: AsyncReactive[F]): Axn[AsyncStack[F, A]] = {
-    F.waitList(
-      syncGet = stack.tryPop,
+    WaitList(
+      tryGet = stack.tryPop,
       syncSet = stack.push
     ).map { wl =>
       new AsyncStack[F, A] {
