@@ -22,19 +22,19 @@ import cats.effect.kernel.{ Sync, Resource }
 
 import internal.mcas.{ Mcas, OsRng }
 
-sealed trait RxnRuntime { // TODO: maybe call it `ChoamRuntime`?
+sealed trait ChoamRuntime {
 
   private[choam] def mcasImpl: Mcas
 
   private[choam] def unsafeCloseBlocking(): Unit
 }
 
-object RxnRuntime {
+object ChoamRuntime {
 
-  private[this] final class RxnRuntimeImpl private[RxnRuntime] (
+  private[this] final class ChoamRuntimeImpl private[ChoamRuntime] (
     private[choam] final override val mcasImpl: Mcas,
     osRng: OsRng,
-  ) extends RxnRuntime {
+  ) extends ChoamRuntime {
 
     private[choam] final override def unsafeCloseBlocking(): Unit = {
       this.mcasImpl.close()
@@ -42,16 +42,16 @@ object RxnRuntime {
     }
   }
 
-  final def apply[F[_]](implicit F: Sync[F]): Resource[F, RxnRuntime] = {
+  final def apply[F[_]](implicit F: Sync[F]): Resource[F, ChoamRuntime] = {
     Resource.make(F.blocking { this.unsafeBlocking() }) { rt =>
       F.blocking { rt.unsafeCloseBlocking() }
     }
   }
 
   /** Acquires resources, allocates a new runtime; may block! */
-  private[choam] final def unsafeBlocking(): RxnRuntime = {
+  private[choam] final def unsafeBlocking(): ChoamRuntime = {
     val o = OsRng.mkNew() // may block due to /dev/random
     val m = Mcas.newDefaultMcas(o) // may block due to JMX
-    new RxnRuntimeImpl(m, o)
+    new ChoamRuntimeImpl(m, o)
   }
 }

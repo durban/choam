@@ -22,11 +22,11 @@ import cats.effect.kernel.Sync
 import cats.effect.{ IO, SyncIO, Resource }
 
 import dev.tauri.choam.{ Reactive, Ref }
-import dev.tauri.choam.core.RxnRuntime
+import dev.tauri.choam.core.ChoamRuntime
 import dev.tauri.choam.async.AsyncReactive
 import dev.tauri.choam.stm.{ Transactive, TRef }
 
-final class RxnRuntimeSpec extends munit.CatsEffectSuite {
+final class ChoamRuntimeSpec extends munit.CatsEffectSuite {
 
   private def checkReactive[F[_]](implicit r: Reactive[F], F: Sync[F]): F[Ref[Int]] = {
     for {
@@ -62,7 +62,7 @@ final class RxnRuntimeSpec extends munit.CatsEffectSuite {
 
   test("It should be possible to create a Reactive and Transactive sharing the same runtime (directly)") {
     val res: Resource[IO, (Reactive[IO], Transactive[IO])] = {
-      RxnRuntime[IO].flatMap { rt =>
+      ChoamRuntime[IO].flatMap { rt =>
         Reactive.from[IO](rt).flatMap { r =>
           Transactive.from[IO](rt).map { t =>
             (r, t)
@@ -79,7 +79,7 @@ final class RxnRuntimeSpec extends munit.CatsEffectSuite {
 
   test("It should be possible to create an AsyncReactive and Transactive sharing the same runtime (directly)") {
     val res: Resource[IO, (AsyncReactive[IO], Transactive[IO])] = {
-      RxnRuntime[IO].flatMap { rt =>
+      ChoamRuntime[IO].flatMap { rt =>
         AsyncReactive.from[IO](rt).flatMap { r =>
           Transactive.from[IO](rt).map { t =>
             (r, t)
@@ -96,7 +96,7 @@ final class RxnRuntimeSpec extends munit.CatsEffectSuite {
 
   test("It should be possible to create a Reactive[IO] and a Reactive[SyncIO] sharing the same runtime") {
     val res: Resource[IO, (Reactive[IO], Reactive[SyncIO])] = {
-      RxnRuntime[IO].flatMap { rt =>
+      ChoamRuntime[IO].flatMap { rt =>
         Reactive.from[IO](rt).flatMap { rIo =>
           Reactive.fromIn[IO, SyncIO](rt).map { rSyncIo =>
             (rIo, rSyncIo)

@@ -190,12 +190,12 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * This method is `unsafe` because it performs side-effects.
    *
    * @param a the input to the [[Rxn]].
-   * @param rt the [[RxnRuntime]] which will run the [[Rxn]].
+   * @param rt the [[ChoamRuntime]] which will run the [[Rxn]].
    * @return the result of the executed [[Rxn]].
    */
   final def unsafePerform(
     a: A,
-    rt: RxnRuntime,
+    rt: ChoamRuntime,
   ): B = this.unsafePerform(a, rt.mcasImpl, RetryStrategy.Default)
 
   /**
@@ -204,13 +204,13 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * This method is `unsafe` because it performs side-effects.
    *
    * @param a the input to the [[Rxn]].
-   * @param rt the [[RxnRuntime]] which will run the [[Rxn]].
+   * @param rt the [[ChoamRuntime]] which will run the [[Rxn]].
    * @param strategy the retry strategy to use.
    * @return the result of the executed [[Rxn]].
    */
   final def unsafePerform(
     a: A,
-    rt: RxnRuntime,
+    rt: ChoamRuntime,
     strategy: RetryStrategy.Spin,
   ): B = this.unsafePerform(a, rt.mcasImpl, strategy)
 
@@ -230,12 +230,12 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
   final def perform[F[_], X >: B](
     a: A,
-    rt: RxnRuntime,
+    rt: ChoamRuntime,
   )(implicit F: Async[F]): F[X] = this.perform(a, rt, RetryStrategy.Default)
 
   final def perform[F[_], X >: B](
     a: A,
-    rt: RxnRuntime,
+    rt: ChoamRuntime,
     strategy: RetryStrategy,
   )(implicit F: Async[F]): F[X] = this.perform(a, rt.mcasImpl, strategy)
 

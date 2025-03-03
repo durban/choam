@@ -35,7 +35,7 @@ import cats.effect.kernel.{
   Outcome,
 }
 
-import dev.tauri.choam.core.RxnRuntime
+import dev.tauri.choam.core.ChoamRuntime
 import dev.tauri.choam.async.AsyncReactive
 
 final case class MyIO[+A](val impl: IO[A]) {
@@ -52,7 +52,7 @@ object MyIO {
   def pure[A](a: A): MyIO[A] =
     MyIO(IO.pure(a))
 
-  def asyncReactiveForMyIO[F[_]](rt: RxnRuntime)(implicit F: Sync[F]): Resource[F, AsyncReactive[MyIO]] =
+  def asyncReactiveForMyIO[F[_]](rt: ChoamRuntime)(implicit F: Sync[F]): Resource[F, AsyncReactive[MyIO]] =
     AsyncReactive.fromIn[F, MyIO](rt)
 
   implicit def asyncForMyIO: Async[MyIO] = new Async[MyIO] {

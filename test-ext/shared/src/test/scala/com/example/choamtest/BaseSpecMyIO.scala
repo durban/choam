@@ -24,7 +24,7 @@ import munit.{ Location, CatsEffectSuite }
 import dev.tauri.choam.internal.mcas.Mcas
 import dev.tauri.choam.async.AsyncReactive
 import dev.tauri.choam.{ BaseSpec, BaseSpecAsyncF, McasImplSpec }
-import dev.tauri.choam.core.RxnRuntime
+import dev.tauri.choam.core.ChoamRuntime
 
 abstract class BaseSpecMyIO
   extends CatsEffectSuite
@@ -32,7 +32,7 @@ abstract class BaseSpecMyIO
   with BaseSpecAsyncF[MyIO] {
 
   private[this] val rtAndClose =
-    RxnRuntime[SyncIO].allocated.unsafeRunSync()
+    ChoamRuntime[SyncIO].allocated.unsafeRunSync()
 
   private[this] val arAndClose =
     MyIO.asyncReactiveForMyIO[SyncIO](rtAndClose._1).allocated.unsafeRunSync()
