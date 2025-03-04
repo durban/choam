@@ -18,36 +18,24 @@
 package dev.tauri.choam
 package async
 
-import cats.~>
 import cats.syntax.all._
 import cats.effect.std.{ CountDownLatch => CatsCountDownLatch }
 
-sealed abstract class CountDownLatch[F[_]] { self =>
+sealed abstract class CountDownLatch private () { self =>
 
   def release: Axn[Unit]
 
-  def await: F[Unit]
+  def await[F[_]](implicit F: AsyncReactive[F]): F[Unit]
 
-  def toCats: CatsCountDownLatch[F]
-
-  def mapK[G[_]](f: F ~> G): CountDownLatch[G] = {
-    new CountDownLatch[G] {
-      final def release: Axn[Unit] =
-        self.release
-      final def await: G[Unit] =
-        f(self.await)
-      final def toCats: CatsCountDownLatch[G] =
-        self.toCats.mapK(f)
-    }
-  }
+  def toCats[F[_]](implicit F: AsyncReactive[F]): CatsCountDownLatch[F]
 }
 
 object CountDownLatch {
 
-  final def apply[F[_]](count: Int)(implicit F: AsyncReactive[F]): Axn[CountDownLatch[F]] = {
+  final def apply(count: Int): Axn[CountDownLatch] = {
     (Ref.padded(count), Promise.apply[Unit]).mapN { (c, p) =>
-      new CountDownLatch[F] { self =>
-        final val release: Axn[Unit] = {
+      new CountDownLatch { self =>
+        final override val release: Axn[Unit] = {
           c.getAndUpdate { ov =>
             if (ov > 0) ov - 1
             else ov
@@ -56,15 +44,15 @@ object CountDownLatch {
             else Axn.unit
           }
         }
-        final def await: F[Unit] = {
-          p.get
+        final override def await[F[_]](implicit F: AsyncReactive[F]): F[Unit] = {
+          p.get[F]
         }
-        final def toCats: CatsCountDownLatch[F] = {
+        final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsCountDownLatch[F] = {
           new CatsCountDownLatch[F] {
             final def release: F[Unit] =
               F.run(self.release)
             final def await: F[Unit] =
-              self.await
+              self.await[F]
           }
         }
       }

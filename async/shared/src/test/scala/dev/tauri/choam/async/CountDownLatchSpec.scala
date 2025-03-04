@@ -18,10 +18,8 @@
 package dev.tauri.choam
 package async
 
-import cats.~>
-import cats.arrow.FunctionK
 import cats.effect.IO
-import cats.effect.kernel.{ Outcome, Concurrent }
+import cats.effect.kernel.Outcome
 
 final class CountDownLatchSpec_ThreadConfinedMcas_IO_Real
   extends BaseSpecIO
@@ -39,7 +37,7 @@ trait CountDownLatchSpecTicked[F[_]]
 
   test("Reaching 0 should call all registered `await`s") {
     for {
-      cdl <- CountDownLatch[F](2).run[F]
+      cdl <- CountDownLatch(2).run[F]
       fib1 <- cdl.await.start
       fib2 <- cdl.await.start
       _ <- this.tickAll
@@ -53,7 +51,7 @@ trait CountDownLatchSpecTicked[F[_]]
     @volatile var flag1 = false
     @volatile var flag2 = false
     for {
-      cdl <- CountDownLatch[F](2).run[F]
+      cdl <- CountDownLatch(2).run[F]
       f1 <- F.uncancelable { poll => poll(cdl.await).flatTap(_ => F.delay { flag1 = true }) }.start
       f2 <- F.uncancelable { poll => poll(cdl.await).flatTap(_ => F.delay { flag2 = true }) }.start
       _ <- this.tickAll
@@ -73,7 +71,7 @@ trait CountDownLatchSpec[F[_]]
 
   test("Release race") {
     val tsk = for {
-      cdl <- CountDownLatch[F](2).run[F]
+      cdl <- CountDownLatch(2).run[F]
       fibs <- cdl.await.start.replicateA(3)
       relTask = cdl.release.run[F]
       _ <- F.both(F.both(relTask, relTask), F.both(relTask, relTask))
@@ -87,7 +85,7 @@ trait CountDownLatchSpec[F[_]]
 
   test("Releasing a completed CDL should not be a no-op") {
     for {
-      cdl <- CountDownLatch[F](2).run[F]
+      cdl <- CountDownLatch(2).run[F]
       _ <- cdl.release.run[F]
       _ <- cdl.release.run[F]
       _ <- cdl.await
@@ -98,29 +96,15 @@ trait CountDownLatchSpec[F[_]]
     } yield ()
   }
 
-  test("CountDownLatch#mapK") {
-    def tsk[G[_]](f: F ~> G)(implicit rG: Reactive[G], cG: Concurrent[G]): G[Unit] = {
-      for {
-        cdlF <- CountDownLatch[F](2).run[G]
-        cdlG = cdlF.mapK(f)
-        fib <- cdlG.await.start
-        _ <- cG.both(cdlG.release.run[G], cdlG.release.run[G])
-        _ <- fib.joinWithNever
-      } yield ()
-    }
-
-    assumeF(this.mcasImpl.isThreadSafe) *> tsk[F](FunctionK.id[F])
-  }
-
   test("CountDownLatch#toCats") {
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
-      cdl1 <- CountDownLatch[F](2).run[F]
+      cdl1 <- CountDownLatch(2).run[F]
       ccdl1 = cdl1.toCats
       fib1 <- ccdl1.await.start
       _ <- F.both(cdl1.release.run[F], cdl1.release.run[F])
       _ <- fib1.joinWithNever
-      cdl2 <- CountDownLatch[F](2).run[F]
+      cdl2 <- CountDownLatch(2).run[F]
       ccdl2 = cdl2.toCats
       fib2 <- cdl2.await.start
       _ <- F.both(ccdl2.release, ccdl2.release)
