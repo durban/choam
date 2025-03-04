@@ -39,8 +39,8 @@ class AsyncStackPopTest {
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  private[this] val stack: AsyncStack[IO, String] = {
-    val s = AsyncStack.treiberStack[IO, String].run[SyncIO].unsafeRunSync()
+  private[this] val stack: AsyncStack[String] = {
+    val s = AsyncStack.treiberStack[String].run[SyncIO].unsafeRunSync()
     (s.push[IO]("a") *> s.push[IO]("b")).unsafeRunSync()(this.runtime)
     s
   }

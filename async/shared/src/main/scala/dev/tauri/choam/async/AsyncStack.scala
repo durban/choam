@@ -20,29 +20,29 @@ package async
 
 import data.Stack
 
-sealed trait AsyncStack[F[_], A] {
+sealed trait AsyncStack[A] {
   def push: Rxn[A, Unit]
-  def pop: F[A]
+  def pop[F[_]](implicit F: AsyncReactive[F]): F[A]
   def tryPop: Axn[Option[A]]
 }
 
 object AsyncStack {
 
-  final def treiberStack[F[_], A](implicit F: AsyncReactive[F]): Axn[AsyncStack[F, A]] =
-    Stack.treiberStack[A].flatMapF(fromSyncStack[F, A])
+  final def treiberStack[A]: Axn[AsyncStack[A]] =
+    Stack.treiberStack[A].flatMapF(fromSyncStack[A])
 
-  final def eliminationStack[F[_], A](implicit F: AsyncReactive[F]): Axn[AsyncStack[F, A]] =
-    Stack.eliminationStack[A].flatMapF(fromSyncStack[F, A])
+  final def eliminationStack[A]: Axn[AsyncStack[A]] =
+    Stack.eliminationStack[A].flatMapF(fromSyncStack[A])
 
-  private[this] final def fromSyncStack[F[_], A](stack: Stack[A])(implicit F: AsyncReactive[F]): Axn[AsyncStack[F, A]] = {
+  private[this] final def fromSyncStack[A](stack: Stack[A]): Axn[AsyncStack[A]] = {
     WaitList(
       tryGet = stack.tryPop,
       syncSet = stack.push
     ).map { wl =>
-      new AsyncStack[F, A] {
+      new AsyncStack[A] {
         final override def push: A =#> Unit =
           wl.set0
-        final override def pop: F[A] =
+        final override def pop[F[_]](implicit F: AsyncReactive[F]): F[A] =
           wl.asyncGet
         final override def tryPop: Axn[Option[A]] =
           stack.tryPop

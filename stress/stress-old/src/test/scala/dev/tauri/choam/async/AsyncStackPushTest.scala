@@ -39,8 +39,8 @@ class AsyncStackPushTest {
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  private[this] val stack: AsyncStack[IO, String] =
-    AsyncStack.treiberStack[IO, String].run[SyncIO].unsafeRunSync()
+  private[this] val stack: AsyncStack[String] =
+    AsyncStack.treiberStack[String].run[SyncIO].unsafeRunSync()
 
   @Actor
   def push1(): Unit = {

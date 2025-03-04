@@ -33,22 +33,22 @@ final class AsyncStackSpec_Elimination_ThreadConfinedMcas_IO
 trait AsyncStackSpec_Treiber[F[_]]
   extends AsyncStackSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
-  protected final override def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[G, A]] =
-    AsyncStack.treiberStack[G, A].run[G]
+  protected final override def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[A]] =
+    AsyncStack.treiberStack[A].run[G]
 }
 
 trait AsyncStackSpec_Elimination[F[_]]
   extends AsyncStackSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
-  protected final override def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[G, A]] =
-    AsyncStack.eliminationStack[G, A].run[G]
+  protected final override def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[A]] =
+    AsyncStack.eliminationStack[A].run[G]
 }
 
 trait AsyncStackSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
-  protected def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[G, A]]
+  protected def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[A]]
 
   test("pop on a non-empty stack should work like on Treiber stack") {
     for {

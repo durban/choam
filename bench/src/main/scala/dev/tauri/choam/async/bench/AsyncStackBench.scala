@@ -54,7 +54,7 @@ class AsyncStackBench extends BenchUtils {
     run(s.runtime, tsk, size = size)
   }
 
-  private[this] def push(s: AsyncStack[IO, String]): IO[Unit] = {
+  private[this] def push(s: AsyncStack[String]): IO[Unit] = {
     def go(left: Int): IO[Unit] = {
       if (left > 0) s.push[IO]("foo") >> go(left - 1)
       else IO.unit
@@ -62,7 +62,7 @@ class AsyncStackBench extends BenchUtils {
     go(stackSize * multiplier)
   }
 
-  private[this] def pop(s: AsyncStack[IO, String]): IO[Unit] = {
+  private[this] def pop(s: AsyncStack[String]): IO[Unit] = {
     def go(left: Int): IO[Unit] = {
       if (left > 0) s.pop >> go(left - 1)
       else IO.unit
@@ -78,7 +78,7 @@ class AsyncStackBench extends BenchUtils {
     run(s.runtime, tsk, size = size)
   }
 
-  private[this] def task(s: AsyncStack[IO, String]): IO[Unit] = {
+  private[this] def task(s: AsyncStack[String]): IO[Unit] = {
     for {
       fibs <- s.pop.start.replicateA(stackSize)
       _ <- fibs.take(stackSize / 2).traverse(_.cancel)
@@ -92,6 +92,6 @@ object AsyncStackBench {
   @State(Scope.Benchmark)
   class StackSt {
     val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
-    val stack3: AsyncStack[IO, String] = AsyncStack.treiberStack[IO, String].run[SyncIO].unsafeRunSync()
+    val stack3: AsyncStack[String] = AsyncStack.treiberStack[String].run[SyncIO].unsafeRunSync()
   }
 }
