@@ -38,17 +38,17 @@ class AsyncUnboundedQueueBench extends BenchUtils {
 
   @Benchmark
   def unboundedQueueSimple(s: St): Unit = {
-    val tsk = UnboundedQueue[IO, String].run[IO].flatMap(task)
+    val tsk = UnboundedQueue[String].run[IO].flatMap(task)
     run(s.runtime, tsk, size = size)
   }
 
   @Benchmark
   def unboundedQueueWithSize(s: St): Unit = {
-    val tsk = UnboundedQueue.withSize[IO, String].run[IO].flatMap(task)
+    val tsk = UnboundedQueue.withSize[String].run[IO].flatMap(task)
     run(s.runtime, tsk, size = size)
   }
 
-  private[this] def task(q: UnboundedQueue[IO, String]): IO[Unit] = {
+  private[this] def task(q: UnboundedQueue[String]): IO[Unit] = {
     for {
       fibs <- q.deque.start.replicateA(queueSize)
       _ <- fibs.take(queueSize / 2).traverse(_.cancel)

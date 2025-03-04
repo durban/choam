@@ -51,7 +51,7 @@ trait WaitListSpec[F[_]]
   test("AsyncQueue.synchronous") {
     object Cancelled extends Exception
     for {
-      q <- AsyncQueue.synchronous[F, Int].run[F]
+      q <- AsyncQueue.synchronous[Int].run[F]
       _ <- assertResultF(q.tryEnqueue[F](1), false)
       _ <- assertResultF(q.tryDeque.run[F], None)
       f1 <- q.enqueue(2).attempt.start
@@ -83,7 +83,7 @@ trait WaitListSpec[F[_]]
 
   test("AsyncQueue.synchronous both empty and full") {
     for {
-      q <- AsyncQueue.synchronous[F, Int].run[F]
+      q <- AsyncQueue.synchronous[Int].run[F]
       // a setter is waiting:
       f1 <- q.enqueue(1).start
       _ <- this.tickAll

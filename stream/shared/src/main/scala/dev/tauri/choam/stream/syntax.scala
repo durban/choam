@@ -29,49 +29,49 @@ object syntax extends StreamSyntax
 trait StreamSyntax extends StreamSyntax0
 
 private[stream] sealed trait StreamSyntax0 extends StreamSyntax1 {
-  implicit def asyncQueueChunkNoneTerminatedSyntax[F[_], A](q: UnboundedQueue[F, Option[Chunk[A]]]): AsyncQueueChunkNoneTerminatedSyntax[F, A] =
+  implicit def asyncQueueChunkNoneTerminatedSyntax[A](q: UnboundedQueue[Option[Chunk[A]]]): AsyncQueueChunkNoneTerminatedSyntax[A] =
     new AsyncQueueChunkNoneTerminatedSyntax(q)
 }
 
 private[stream] sealed trait StreamSyntax1 extends StreamSyntax2 {
-  implicit def asyncQueueChunkSyntax[F[_], A](q: UnboundedQueue[F, Chunk[A]]): AsyncQueueChunkSyntax[F, A] =
+  implicit def asyncQueueChunkSyntax[A](q: UnboundedQueue[Chunk[A]]): AsyncQueueChunkSyntax[A] =
     new AsyncQueueChunkSyntax(q)
 }
 
 private[stream] sealed trait StreamSyntax2 extends StreamSyntax3 {
-  implicit def asyncQueueNoneTerminatedSyntax[F[_], A](q: UnboundedQueue[F, Option[A]]): AsyncQueueNoneTerminatedSyntax[F, A] =
+  implicit def asyncQueueNoneTerminatedSyntax[A](q: UnboundedQueue[Option[A]]): AsyncQueueNoneTerminatedSyntax[A] =
     new AsyncQueueNoneTerminatedSyntax(q)
 }
 
 private[stream] sealed trait StreamSyntax3 {
-  implicit def asyncQueueSyntax[F[_], A](q: UnboundedQueue[F, A]): AsyncQueueSyntax[F, A] =
+  implicit def asyncQueueSyntax[A](q: UnboundedQueue[A]): AsyncQueueSyntax[A] =
     new AsyncQueueSyntax(q)
 }
 
-final class AsyncQueueSyntax[F[_], A](private val self: UnboundedQueue[F, A])
+final class AsyncQueueSyntax[A](private val self: UnboundedQueue[A])
   extends AnyVal {
 
-  final def stream(implicit F: AsyncReactive[F]): Stream[F, A] =
+  final def stream[F[_]](implicit F: AsyncReactive[F]): Stream[F, A] =
     fromQueueUnterminated(self)
 }
 
-final class AsyncQueueChunkSyntax[F[_], A](private val self: UnboundedQueue[F, Chunk[A]])
+final class AsyncQueueChunkSyntax[A](private val self: UnboundedQueue[Chunk[A]])
   extends AnyVal {
 
-  final def streamFromChunks(implicit F: AsyncReactive[F]): Stream[F, A] =
+  final def streamFromChunks[F[_]](implicit F: AsyncReactive[F]): Stream[F, A] =
     fromQueueUnterminatedChunk(self)
 }
 
-final class AsyncQueueNoneTerminatedSyntax[F[_], A](private val self: UnboundedQueue[F, Option[A]])
+final class AsyncQueueNoneTerminatedSyntax[A](private val self: UnboundedQueue[Option[A]])
   extends AnyVal {
 
-  final def streamNoneTerminated(implicit F: AsyncReactive[F]): Stream[F, A] =
+  final def streamNoneTerminated[F[_]](implicit F: AsyncReactive[F]): Stream[F, A] =
     fromQueueNoneTerminated(self)
 }
 
-final class AsyncQueueChunkNoneTerminatedSyntax[F[_], A](private val self: UnboundedQueue[F, Option[Chunk[A]]])
+final class AsyncQueueChunkNoneTerminatedSyntax[A](private val self: UnboundedQueue[Option[Chunk[A]]])
   extends AnyVal {
 
-  final def streamFromChunksNoneTerminated(implicit F: AsyncReactive[F]): Stream[F, A] =
+  final def streamFromChunksNoneTerminated[F[_]](implicit F: AsyncReactive[F]): Stream[F, A] =
     fromQueueNoneTerminatedChunk(self)
 }

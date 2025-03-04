@@ -31,17 +31,17 @@ final class UnboundedQueueSpec_WithSize_ThreadConfinedMcas_IO
   with UnboundedQueueImplWithSize[IO]
 
 trait UnboundedQueueImplSimple[F[_]] extends UnboundedQueueSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
-  final override type Q[G[_], A] = UnboundedQueue[G, A]
+  final override type Q[G[_], A] = UnboundedQueue[A]
   protected final override def newQueue[G[_] : AsyncReactive, A] =
-    UnboundedQueue[G, A].run[G]
+    UnboundedQueue[A].run[G]
 }
 
 trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
-  final override type Q[G[_], A] = UnboundedQueue.WithSize[G, A]
+  final override type Q[G[_], A] = UnboundedQueue.WithSize[A]
 
   protected final override def newQueue[G[_] : AsyncReactive, A] =
-    UnboundedQueue.withSize[G, A].run[G]
+    UnboundedQueue.withSize[A].run[G]
 
   test("UnboundedQueue.WithSize#toCats") {
     for {
@@ -70,7 +70,7 @@ trait UnboundedQueueSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
-  type Q[G[_], A] <: UnboundedQueue[G, A]
+  type Q[G[_], A] <: UnboundedQueue[A]
 
   protected def newQueue[G[_] : AsyncReactive, A]: G[Q[G, A]]
 

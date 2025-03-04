@@ -35,22 +35,22 @@ final class BoundedQueueSpecArray_ThreadConfinedMcas_IO
 trait BoundedQueueSpecLinked[F[_]]
   extends BoundedQueueSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
-  def newQueue[A](bound: Int): F[BoundedQueue[F, A]] =
-    BoundedQueue.linked[F, A](bound).run[F]
+  def newQueue[A](bound: Int): F[BoundedQueue[A]] =
+    BoundedQueue.linked[A](bound).run[F]
 }
 
 trait BoundedQueueSpecArray[F[_]]
   extends BoundedQueueSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
-  def newQueue[A](bound: Int): F[BoundedQueue[F, A]] =
-    BoundedQueue.array[F, A](bound).run[F]
+  def newQueue[A](bound: Int): F[BoundedQueue[A]] =
+    BoundedQueue.array[A](bound).run[F]
 }
 
 trait BoundedQueueSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
-  def newQueue[A](bound: Int): F[BoundedQueue[F, A]]
+  def newQueue[A](bound: Int): F[BoundedQueue[A]]
 
   test("BoundedQueue bound") {
     (1 to 1024).toList.traverse { b =>

@@ -111,8 +111,8 @@ object BoundedQueueBench {
     val catsQ: CatsQueue[IO, String] =
       CatsQueue.bounded[IO, String](Bound).unsafeRunSync()(runtime)
     val rxnLinkedQ: CatsQueue[IO, String] =
-      BoundedQueue.linked[IO, String](Bound).unsafeRun(asyncReactiveForIO.mcasImpl).toCats
+      BoundedQueue.linked[String](Bound).unsafeRun(asyncReactiveForIO.mcasImpl).toCats[IO]
     val rxnArrayQ: CatsQueue[IO, String] =
-      BoundedQueue.array[IO, String](Bound).unsafeRun(asyncReactiveForIO.mcasImpl).toCats
+      BoundedQueue.array[String](Bound).unsafeRun(asyncReactiveForIO.mcasImpl).toCats[IO]
   }
 }

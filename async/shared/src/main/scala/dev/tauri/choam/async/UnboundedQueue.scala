@@ -20,54 +20,54 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-sealed trait UnboundedQueue[F[_], A]
+sealed trait UnboundedQueue[A]
   extends data.Queue.UnsealedQueue[A]
-  with AsyncQueue.UnsealedAsyncQueueSource[F, A]
+  with AsyncQueue.UnsealedAsyncQueueSource[A]
 
 object UnboundedQueue {
 
-  sealed trait WithSize[F[_], A] extends UnboundedQueue[F, A] {
+  sealed trait WithSize[A] extends UnboundedQueue[A] {
 
-    def size: F[Int]
+    def size: Axn[Int]
 
-    def toCats: CatsQueue[F, A]
+    def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
   }
 
-  private[choam] trait UnsealedWithSize[F[_], A]
-    extends WithSize[F, A]
+  private[choam] trait UnsealedWithSize[A]
+    extends WithSize[A]
 
-  final def apply[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue[F, A]] = {
+  final def apply[A]: Axn[UnboundedQueue[A]] = {
     data.Queue.unbounded[A].flatMapF { q =>
       WaitList[A](tryGet = q.tryDeque, syncSet = q.enqueue).map { wl =>
-        new UnboundedQueue[F, A] {
+        new UnboundedQueue[A] {
           final override def tryEnqueue: A =#> Boolean =
             this.enqueue.as(true)
           final override def enqueue: A =#> Unit =
             wl.set0
           final override def tryDeque: Axn[Option[A]] =
             q.tryDeque
-          final override def deque[AA >: A]: F[AA] =
+          final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
             F.monad.widen(wl.asyncGet)
         }
       }
     }
   }
 
-  final def withSize[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue.WithSize[F, A]] = {
+  final def withSize[A]: Axn[UnboundedQueue.WithSize[A]] = {
     data.Queue.unboundedWithSize[A].flatMapF { q =>
       WaitList[A](tryGet = q.tryDeque, syncSet = q.enqueue).map { wl =>
-        new UnboundedQueue.WithSize[F, A] {
+        new UnboundedQueue.WithSize[A] {
           final override def tryEnqueue: A =#> Boolean =
             this.enqueue.as(true)
           final override def enqueue: A =#> Unit =
             wl.set0
           final override def tryDeque: Axn[Option[A]] =
             q.tryDeque
-          final override def deque[AA >: A]: F[AA] =
+          final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
             F.monad.widen(wl.asyncGet)
-          final override def size: F[Int] =
-            q.size.run[F]
-          final override def toCats: CatsQueue[F, A] =
+          final override def size: Axn[Int] =
+            q.size
+          final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
             new AsyncQueue.CatsQueueAdapter(this)
         }
       }

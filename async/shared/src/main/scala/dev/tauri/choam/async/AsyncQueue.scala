@@ -20,59 +20,59 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-sealed trait AsyncQueueSource[F[_], +A] extends data.Queue.UnsealedQueueSource[A] {
-  def deque[AA >: A]: F[AA]
+sealed trait AsyncQueueSource[+A] extends data.Queue.UnsealedQueueSource[A] {
+  def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]
 }
 
-sealed trait BoundedQueueSink[F[_], -A] extends data.Queue.UnsealedQueueSink[A] {
-  def enqueue(a: A): F[Unit]
+sealed trait BoundedQueueSink[-A] extends data.Queue.UnsealedQueueSink[A] {
+  def enqueue[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
 }
 
 object AsyncQueue {
 
-  private[choam] trait UnsealedAsyncQueueSource[F[_], +A]
-    extends AsyncQueueSource[F, A]
+  private[choam] trait UnsealedAsyncQueueSource[+A]
+    extends AsyncQueueSource[A]
 
-  private[choam] trait UnsealedBoundedQueueSink[F[_], -A]
-    extends BoundedQueueSink[F, A]
+  private[choam] trait UnsealedBoundedQueueSink[-A]
+    extends BoundedQueueSink[A]
 
-  final def unbounded[F[_] : AsyncReactive, A]: Axn[UnboundedQueue[F, A]] =
-    UnboundedQueue[F, A]
+  final def unbounded[A]: Axn[UnboundedQueue[A]] =
+    UnboundedQueue[A]
 
-  final def bounded[F[_], A](bound: Int)(implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] =
-    BoundedQueue.array[F, A](bound)
+  final def bounded[A](bound: Int): Axn[BoundedQueue[A]] =
+    BoundedQueue.array[A](bound)
 
-  final def dropping[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] =
-    OverflowQueue.droppingQueue[F, A](capacity)
+  final def dropping[A](capacity: Int): Axn[OverflowQueue[A]] =
+    OverflowQueue.droppingQueue[A](capacity)
 
-  final def ringBuffer[F[_], A](capacity: Int)(implicit F: AsyncReactive[F]): Axn[OverflowQueue[F, A]] =
-    OverflowQueue.ringBuffer[F, A](capacity)
+  final def ringBuffer[A](capacity: Int): Axn[OverflowQueue[A]] =
+    OverflowQueue.ringBuffer[A](capacity)
 
-  final def unboundedWithSize[F[_], A](implicit F: AsyncReactive[F]): Axn[UnboundedQueue.WithSize[F, A]] =
-    UnboundedQueue.withSize[F, A]
+  final def unboundedWithSize[A]: Axn[UnboundedQueue.WithSize[A]] =
+    UnboundedQueue.withSize[A]
 
-  final def synchronous[F[_], A](implicit F: AsyncReactive[F]): Axn[BoundedQueue[F, A]] = {
+  final def synchronous[A]: Axn[BoundedQueue[A]] = {
     GenWaitList[A](tryGet = Rxn.pure(None), trySet = Rxn.ret(false)).map { gwl =>
-      new BoundedQueue.UnsealedBoundedQueue[F, A] {
-        final def tryDeque: Axn[Option[A]] =
+      new BoundedQueue.UnsealedBoundedQueue[A] {
+        final override def tryDeque: Axn[Option[A]] =
           gwl.tryGet
-        final def deque[AA >: A]: F[AA] =
+        final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
           F.monad.widen(gwl.asyncGet)
-        final def tryEnqueue: Rxn[A, Boolean] =
+        final override def tryEnqueue: Rxn[A, Boolean] =
           gwl.trySet0
-        final def enqueue(a: A): F[Unit] =
+        final override def enqueue[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
           gwl.asyncSet(a)
-        final def bound: Int =
+        final override def bound: Int =
           0
-        final def toCats: CatsQueue[F, A] =
+        final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
           new BoundedQueue.CatsQueueFromBoundedQueue[F, A](this)
-        final def size: Axn[Int] =
+        final override def size: Axn[Int] =
           Rxn.pure(0)
       }
     }
   }
 
-  private[async] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: UnboundedQueue.WithSize[F, A])
+  private[async] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: UnboundedQueue.WithSize[A])
     extends CatsQueue[F, A] {
 
     final override def take: F[A] =
@@ -80,7 +80,7 @@ object AsyncQueue {
     final override def tryTake: F[Option[A]] =
       self.tryDeque.run[F]
     final override def size: F[Int] =
-      self.size
+      self.size.run
     final override def offer(a: A): F[Unit] =
       self.enqueue[F](a)
     final override def tryOffer(a: A): F[Boolean] =
