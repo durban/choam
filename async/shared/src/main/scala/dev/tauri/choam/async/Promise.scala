@@ -21,8 +21,9 @@ package async
 import scala.collection.immutable.LongMap
 
 import cats.{ Functor, Invariant, Contravariant }
-import cats.syntax.all._
 import cats.effect.kernel.{ Deferred, DeferredSink, DeferredSource }
+
+import Ref.AllocationStrategy
 
 sealed trait PromiseRead[A] { self =>
   def get[F[_]](implicit F: AsyncReactive[F]): F[A]
@@ -85,10 +86,12 @@ sealed trait Promise[A] extends PromiseRead[A] with PromiseWrite[A] {
 
 object Promise {
 
-  // TODO: there should be a way to make an unpadded Promise
-  final def apply[A]: Axn[Promise[A]] = {
+  final def apply[A]: Axn[Promise[A]] =
+    apply[A](AllocationStrategy.Default)
+
+  final def apply[A](str: AllocationStrategy): Axn[Promise[A]] = {
     Axn.unsafe.delayContext { ctx =>
-      new PromiseImpl[A](Ref.unsafePadded[State[A]](Waiting(LongMap.empty, 0L), ctx.refIdGen))
+      new PromiseImpl[A](Ref.unsafe[State[A]](Waiting(LongMap.empty, 0L), str, ctx.refIdGen))
     }
   }
 
@@ -138,7 +141,7 @@ object Promise {
 
     final def imap[B](f: A => B)(g: B => A): Promise[B] = new PromiseImplBase[B] {
       final override def complete: Rxn[B, Boolean] =
-        self.complete.lmap(g)
+        self.complete.contramap(g)
       final override def tryGet: Axn[Option[B]] =
         self.tryGet.map(_.map(f))
       final override def get[F[_]](implicit F: AsyncReactive[F]): F[B] =
@@ -171,7 +174,7 @@ object Promise {
     ref: Ref[State[A]]
   ) extends AbstractPromise[A] {
 
-    final def complete: A =#> Boolean = {
+    final override def complete: A =#> Boolean = {
       ref.updWith[A, Boolean] { (state, a) =>
         state match {
           case Waiting(cbs, _) =>
@@ -184,14 +187,14 @@ object Promise {
       }
     }
 
-    final def tryGet: Axn[Option[A]] = {
+    final override def tryGet: Axn[Option[A]] = {
       ref.get.map {
         case Done(a) => Some(a)
         case Waiting(_, _) => None
       }
     }
 
-    final def get[F[_]](implicit F: AsyncReactive[F]): F[A] = {
+    final override def get[F[_]](implicit F: AsyncReactive[F]): F[A] = {
       F.monad.flatMap(ref.unsafeDirectRead.run[F]) {
         case Waiting(_, _) =>
           F.asyncInst.asyncCheckAttempt { cb =>
@@ -210,7 +213,7 @@ object Promise {
     private[this] final def insertCallback(cb: Either[Throwable, A] => Unit): Axn[Either[Long, A]] = {
       val rcb = { (a: A) => cb(Right(a)) }
       ref.getAndUpdate {
-        case Waiting(cbs, nid) => Waiting(cbs + (nid -> rcb), nid + 1)
+        case Waiting(cbs, nid) => Waiting(cbs.updated(nid, rcb), nid + 1)
         case d @ Done(_) => d
       }.map {
         case Waiting(_, nid) => Left(nid)
@@ -220,7 +223,7 @@ object Promise {
 
     private[this] final def removeCallback[F[_]](id: Long)(implicit F: AsyncReactive[F]): F[Unit] = {
       ref.update {
-        case Waiting(cbs, nid) => Waiting(cbs - id, nid)
+        case Waiting(cbs, nid) => Waiting(cbs.removed(id), nid)
         case d @ Done(_) => d
       }.run[F]
     }
