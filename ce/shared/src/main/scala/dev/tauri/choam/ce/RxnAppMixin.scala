@@ -46,7 +46,7 @@ import async.AsyncReactive
 trait RxnAppMixin extends BaseMixin { this: IOApp =>
 
   private[this] final val _asyncReactiveForIO: AsyncReactive[IO] =
-    new AsyncReactive.AsyncReactiveImpl[IO](this._mcasImpl)
+    new AsyncReactive.AsyncReactiveImpl[IO](this.choamRuntime.mcasImpl)
 
   implicit protected[this] final def asyncReactiveForIO: AsyncReactive[IO] =
     this._asyncReactiveForIO

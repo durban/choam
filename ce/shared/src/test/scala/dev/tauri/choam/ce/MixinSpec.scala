@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import cats.effect.{ IO, IOApp }
 
+import core.ChoamRuntime
 import stm.TRef
 
 final class MixinSpec extends munit.CatsEffectSuite {
@@ -31,6 +32,7 @@ final class MixinSpec extends munit.CatsEffectSuite {
       _ <- IO(assertEquals(MainWithRxnAppMixin.globalInt.get(), 0))
       _ <- MainWithRxnAppMixin.run(List.empty)
       _ <- IO(assertEquals(MainWithRxnAppMixin.globalInt.get(), 43))
+      _ <- IO(assertNotEquals(MainWithRxnAppMixin.rt, null))
     } yield ()
   }
 
@@ -39,6 +41,7 @@ final class MixinSpec extends munit.CatsEffectSuite {
       _ <- IO(assertEquals(MainWithTxnAppMixin.globalInt.get(), 0))
       _ <- MainWithTxnAppMixin.run(List.empty)
       _ <- IO(assertEquals(MainWithTxnAppMixin.globalInt.get(), 44))
+      _ <- IO(assertNotEquals(MainWithTxnAppMixin.rt, null))
     } yield ()
   }
 
@@ -47,6 +50,7 @@ final class MixinSpec extends munit.CatsEffectSuite {
       _ <- IO(assertEquals(MainWithBoth1.globalInt.get(), 0))
       _ <- MainWithBoth1.run(List.empty)
       _ <- IO(assertEquals(MainWithBoth1.globalInt.get(), 43 + 100))
+      _ <- IO(assertNotEquals(MainWithBoth1.rt, null))
     } yield ()
   }
 
@@ -55,6 +59,7 @@ final class MixinSpec extends munit.CatsEffectSuite {
       _ <- IO(assertEquals(MainWithBoth2.globalInt.get(), 0))
       _ <- MainWithBoth2.run(List.empty)
       _ <- IO(assertEquals(MainWithBoth2.globalInt.get(), 44 + 101))
+      _ <- IO(assertNotEquals(MainWithBoth2.rt, null))
     } yield ()
   }
 }
@@ -63,6 +68,9 @@ object MainWithRxnAppMixin extends IOApp.Simple with RxnAppMixin {
 
   val globalInt =
     new AtomicInteger
+
+  val rt: ChoamRuntime =
+    this.choamRuntime
 
   def run: IO[Unit] = for {
     ref <- Ref[Int](42).run
@@ -76,6 +84,9 @@ object MainWithTxnAppMixin extends IOApp.Simple with TxnAppMixin {
   val globalInt =
     new AtomicInteger
 
+  val rt: ChoamRuntime =
+    this.choamRuntime
+
   def run: IO[Unit] = for {
     tref <- TRef[Int](42).commit
     _ <- tref.update(_ + 2).commit
@@ -88,6 +99,9 @@ object MainWithBoth1 extends IOApp.Simple with RxnAppMixin with TxnAppMixin {
 
   val globalInt =
     new AtomicInteger
+
+  val rt: ChoamRuntime =
+    this.choamRuntime
 
   def run: IO[Unit] = for {
     ref <- Ref[Int](42).run
@@ -103,6 +117,9 @@ object MainWithBoth2 extends IOApp.Simple with TxnAppMixin with RxnAppMixin {
 
   val globalInt =
     new AtomicInteger
+
+  val rt: ChoamRuntime =
+    this.choamRuntime
 
   def run: IO[Unit] = for {
     ref <- Ref[Int](42).run

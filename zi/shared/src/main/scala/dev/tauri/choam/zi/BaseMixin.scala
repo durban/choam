@@ -20,24 +20,21 @@ package zi
 
 import zio.ZIOApp
 
-import internal.mcas.{ Mcas, OsRng }
+import core.ChoamRuntime
 
 private[zi] trait BaseMixin { this: ZIOApp =>
 
-  // TODO: add a RxnRuntime
-
-  private[this] final val __mcasImpl: Mcas = {
+  private[this] final val _choamRuntime: ChoamRuntime = {
     // This might block, but as we're in the
     // constructor of an `ZIOApp`, it's probably
     // not a big deal (there is likely other
     // similar initialization going on anyway);
     // also, we're sure there is no `Rxn`
     // running yet.
-    val osRng = OsRng.mkNew()
-    Mcas.newDefaultMcas(osRng)
+    ChoamRuntime.unsafeBlocking()
   }
 
-  private[zi] final def _mcasImpl: Mcas = {
-    this.__mcasImpl
+  protected[this] final def choamRuntime: ChoamRuntime = {
+    this._choamRuntime
   }
 }

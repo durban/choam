@@ -20,24 +20,21 @@ package ce
 
 import cats.effect.IOApp
 
-import internal.mcas.{ Mcas, OsRng }
+import core.ChoamRuntime
 
 private[ce] trait BaseMixin { this: IOApp =>
 
-  // TODO: add a RxnRuntime
-
-  private[this] final val __mcasImpl: Mcas = {
+  private[this] final val _choamRuntime: ChoamRuntime = {
     // This might block, but as we're in the
     // constructor of an `IOApp`, it's probably
     // not a big deal (there is likely other
     // similar initialization going on anyway);
     // also, we're sure there is no `Rxn`
     // running yet.
-    val osRng = OsRng.mkNew()
-    Mcas.newDefaultMcas(osRng)
+    ChoamRuntime.unsafeBlocking()
   }
 
-  private[ce] final def _mcasImpl: Mcas = {
-    this.__mcasImpl
+  protected[this] final def choamRuntime: ChoamRuntime = {
+    this._choamRuntime
   }
 }

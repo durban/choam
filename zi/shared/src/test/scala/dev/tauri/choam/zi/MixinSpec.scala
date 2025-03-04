@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import zio.{ RIO, Task, ZIO, ZIOAppDefault, ZLayer }
 
+import core.ChoamRuntime
 import stm.TRef
 
 import munit.{ FunSuite, TestOptions, Location }
@@ -43,6 +44,7 @@ final class MixinSpec extends FunSuite {
       _ <- ZIO.attempt(assertEquals(MainWithRxnAppMixin.globalInt.get(), 0))
       _ <- MainWithRxnAppMixin.run
       _ <- ZIO.attempt(assertEquals(MainWithRxnAppMixin.globalInt.get(), 43))
+      _ <- ZIO.attempt(assertNotEquals(MainWithRxnAppMixin.rt, null))
     } yield ()
   }
 
@@ -51,6 +53,7 @@ final class MixinSpec extends FunSuite {
       _ <- ZIO.attempt(assertEquals(MainWithTxnAppMixin.globalInt.get(), 0))
       _ <- MainWithTxnAppMixin.run
       _ <- ZIO.attempt(assertEquals(MainWithTxnAppMixin.globalInt.get(), 44))
+      _ <- ZIO.attempt(assertNotEquals(MainWithTxnAppMixin.rt, null))
     } yield ()
   }
 
@@ -59,6 +62,7 @@ final class MixinSpec extends FunSuite {
       _ <- ZIO.attempt(assertEquals(MainWithBoth1.globalInt.get(), 0))
       _ <- MainWithBoth1.run
       _ <- ZIO.attempt(assertEquals(MainWithBoth1.globalInt.get(), 43 + 100))
+      _ <- ZIO.attempt(assertNotEquals(MainWithBoth1.rt, null))
     } yield ()
   }
 
@@ -67,6 +71,7 @@ final class MixinSpec extends FunSuite {
       _ <- ZIO.attempt(assertEquals(MainWithBoth2.globalInt.get(), 0))
       _ <- MainWithBoth2.run
       _ <- ZIO.attempt(assertEquals(MainWithBoth2.globalInt.get(), 44 + 101))
+      _ <- ZIO.attempt(assertNotEquals(MainWithBoth2.rt, null))
     } yield ()
   }
 }
@@ -75,6 +80,9 @@ object MainWithRxnAppMixin extends ZIOAppDefault with RxnAppMixin {
 
   val globalInt =
     new AtomicInteger
+
+  val rt: ChoamRuntime =
+    this.choamRuntime
 
   def run: Task[Unit] = for {
     ref <- Ref[Int](42).run
@@ -94,6 +102,9 @@ object MainWithTxnAppMixin extends ZIOAppDefault with TxnAppMixin {
   val globalInt =
     new AtomicInteger
 
+  val rt: ChoamRuntime =
+    this.choamRuntime
+
   def run: Task[Unit] = for {
     tref <- TRef[Int](42).commit
     _ <- tref.update(_ + 2).commit
@@ -106,6 +117,9 @@ object MainWithBoth1 extends ZIOAppDefault with RxnAppMixin with TxnAppMixin {
 
   val globalInt =
     new AtomicInteger
+
+  val rt: ChoamRuntime =
+    this.choamRuntime
 
   def run: Task[Unit] = for {
     ref <- Ref[Int](42).run
@@ -121,6 +135,9 @@ object MainWithBoth2 extends ZIOAppDefault with TxnAppMixin with RxnAppMixin {
 
   val globalInt =
     new AtomicInteger
+
+  val rt: ChoamRuntime =
+    this.choamRuntime
 
   def run: Task[Unit] = for {
     ref <- Ref[Int](42).run

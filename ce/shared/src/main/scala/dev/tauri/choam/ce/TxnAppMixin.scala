@@ -43,7 +43,7 @@ import stm.Transactive
 trait TxnAppMixin extends BaseMixin { this: IOApp =>
 
   private[this] final val _transactiveForIO: Transactive[IO] =
-    new Transactive.TransactiveImpl[IO](this._mcasImpl)
+    new Transactive.TransactiveImpl[IO](this.choamRuntime.mcasImpl)
 
   implicit protected[this] final def transactiveForIO: Transactive[IO] =
     this._transactiveForIO
