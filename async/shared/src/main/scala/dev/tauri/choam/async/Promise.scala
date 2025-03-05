@@ -158,21 +158,9 @@ object Promise {
     }
   }
 
-  /**
-   * Abstract base class for a minimal implementation of `Promise`.
-   */
-  private[this] abstract class AbstractPromise[A] extends PromiseImplBase[A] {
-
-    def complete: A =#> Boolean
-
-    def tryGet: Axn[Option[A]]
-
-    def get[F[_]](implicit F: AsyncReactive[F]): F[A]
-  }
-
   private[this] final class PromiseImpl[A](
     ref: Ref[State[A]]
-  ) extends AbstractPromise[A] {
+  ) extends PromiseImplBase[A] {
 
     final override def complete: A =#> Boolean = {
       ref.updWith[A, Boolean] { (state, a) =>

@@ -110,7 +110,7 @@ object MyMain extends IOApp.Simple with RxnAppMixin {
     - stacks
     - `CountDownLatch`
 - [`choam-stream`](stream/shared/src/main/scala/dev/tauri/choam/stream/):
-  integration with [FS2](https://github.com/typelevel/fs2) `Stream`s
+  integration with `fs2.Stream`s
 - [`choam-ce`](ce/shared/src/main/scala/dev/tauri/choam/ce/):
   integration with `cats.effect.IOApp`
 - [`choam-zi`](zi/shared/src/main/scala/dev/tauri/choam/zi/):
