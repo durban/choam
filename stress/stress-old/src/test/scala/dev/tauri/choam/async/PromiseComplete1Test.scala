@@ -47,12 +47,12 @@ class PromiseComplete1Test {
 
   @Actor
   def complete1(r: ZZL_Result): Unit = {
-    r.r1 = this.p.complete[IO]("1").unsafeRunSync()(this.runtime)
+    r.r1 = this.p.complete0[IO]("1").unsafeRunSync()(this.runtime)
   }
 
   @Actor
   def complete2(r: ZZL_Result): Unit = {
-    r.r2 = this.p.complete[IO]("2").unsafeRunSync()(this.runtime)
+    r.r2 = this.p.complete0[IO]("2").unsafeRunSync()(this.runtime)
   }
 
   @Arbiter

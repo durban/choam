@@ -54,14 +54,14 @@ class PromiseBench extends BenchUtils {
   private[this] def task(waiters: Int)(p: Promise[String]): IO[Unit] = {
     for {
       fibs <- p.get.start.replicateA(waiters)
-      _ <- IO.race(p.complete[IO]("left"), p.complete[IO]("right"))
+      _ <- IO.race(p.complete0[IO]("left"), p.complete0[IO]("right"))
       _ <- fibs.traverse(_.joinWithNever)
     } yield ()
   }
 
   private[this] def taskSingle(p: Promise[String]): IO[Unit] = {
     p.get.start.flatMap { fib =>
-      IO.race(p.complete[IO]("left"), p.complete[IO]("right")) >> (
+      IO.race(p.complete0[IO]("left"), p.complete0[IO]("right")) >> (
         fib.joinWithNever
       )
     }.void

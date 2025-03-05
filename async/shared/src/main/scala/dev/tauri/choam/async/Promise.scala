@@ -47,16 +47,20 @@ object PromiseRead {
 
 sealed trait PromiseWrite[A] { self =>
 
-  def complete: A =#> Boolean
+  def complete0: A =#> Boolean
+
+  def complete1(a: A): Axn[Boolean]
 
   final def contramap[B](f: B => A): PromiseWrite[B] = new PromiseWrite[B] {
-    final override def complete: Rxn[B, Boolean] =
-      self.complete.contramap(f)
+    final override def complete0: Rxn[B, Boolean] =
+      self.complete0.contramap(f)
+    final override def complete1(b: B): Axn[Boolean] =
+      self.complete1(f(b))
   }
 
   final def toCats[F[_]](implicit F: Reactive[F]): DeferredSink[F, A] = new DeferredSink[F, A] {
     final override def complete(a: A): F[Boolean] =
-      self.complete[F](a)
+      self.complete0[F](a)
   }
 }
 
@@ -140,8 +144,10 @@ object Promise {
     with Promise[A] { self =>
 
     final def imap[B](f: A => B)(g: B => A): Promise[B] = new PromiseImplBase[B] {
-      final override def complete: Rxn[B, Boolean] =
-        self.complete.contramap(g)
+      final override def complete0: Rxn[B, Boolean] =
+        self.complete0.contramap(g)
+      final override def complete1(b: B): Axn[Boolean] =
+        self.complete1(g(b))
       final override def tryGet: Axn[Option[B]] =
         self.tryGet.map(_.map(f))
       final override def get[F[_]](implicit F: AsyncReactive[F]): F[B] =
@@ -154,7 +160,7 @@ object Promise {
       final override def tryGet: F[Option[A]] =
         F.run(self.tryGet)
       final override def complete(a: A): F[Boolean] =
-        F.apply(self.complete, a)
+        F.apply(self.complete0, a)
     }
   }
 
@@ -162,16 +168,29 @@ object Promise {
     ref: Ref[State[A]]
   ) extends PromiseImplBase[A] {
 
-    final override def complete: A =#> Boolean = {
+    private[this] final def callCbs(cbs: LongMap[A => Unit], a: A): Axn[Unit] = {
+      Axn.unsafe.delay {
+        cbs.valuesIterator.foreach(_(a))
+      }
+    }
+
+    final override def complete0: A =#> Boolean = {
       ref.updWith[A, Boolean] { (state, a) =>
         state match {
           case Waiting(cbs, _) =>
-            Rxn.postCommit[Any](Axn.unsafe.delay {
-              cbs.valuesIterator.foreach(_(a))
-            }).as((Done(a), true))
+            Rxn.postCommit[Any](callCbs(cbs, a)).as((Done(a), true))
           case d @ Done(_) =>
             Rxn.pure((d, false))
         }
+      }
+    }
+
+    final override def complete1(a: A): Axn[Boolean] = {
+      ref.get.flatMapF {
+        case Waiting(cbs, _) =>
+          ref.set1(Done(a)).postCommit(callCbs(cbs, a)).as(true)
+        case Done(_) =>
+          Rxn.pure(false)
       }
     }
 

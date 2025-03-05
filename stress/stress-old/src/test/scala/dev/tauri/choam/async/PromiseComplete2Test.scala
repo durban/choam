@@ -43,7 +43,7 @@ class PromiseComplete2Test {
     Promise[String].run[SyncIO].unsafeRunSync()
 
   private[this] val completeBoth: Rxn[(String, String), (Boolean, Boolean)] =
-    p1.complete × p2.complete
+    p1.complete0 × p2.complete0
 
   private[this] val tryGetBoth: Axn[(Option[String], Option[String])] =
     p1.tryGet * p2.tryGet

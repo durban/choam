@@ -62,7 +62,7 @@ class PromiseTest {
 
   @Actor
   def complete(r: LLLL_Result): Unit = {
-    r.r1 = this.p.complete[SyncIO]("s").unsafeRunSync()
+    r.r1 = this.p.complete0[SyncIO]("s").unsafeRunSync()
   }
 
   @Arbiter

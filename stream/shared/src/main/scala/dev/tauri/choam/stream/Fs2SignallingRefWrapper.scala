@@ -67,7 +67,7 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
           case Full(_) => (Full(newVal), None)
           case Empty() => (Full(newVal), None)
         }.flatMapF {
-          case Some(next) => next.complete.provide(newVal).void
+          case Some(next) => next.complete1(newVal).void
           case None => Rxn.unit
         }
       }.void)

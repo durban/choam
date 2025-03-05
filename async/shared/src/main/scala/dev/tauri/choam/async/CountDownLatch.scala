@@ -40,7 +40,7 @@ object CountDownLatch {
             if (ov > 0) ov - 1
             else ov
           }.flatMapF { ov =>
-            if (ov == 1) p.complete.provide(()).void
+            if (ov == 1) p.complete1(()).void
             else Axn.unit
           }
         }
