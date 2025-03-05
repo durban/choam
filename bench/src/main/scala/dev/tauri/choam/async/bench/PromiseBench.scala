@@ -25,7 +25,6 @@ import cats.syntax.all._
 import cats.effect.IO
 
 import _root_.dev.tauri.choam.bench.BenchUtils
-import ce.unsafeImplicits._
 
 @Fork(2)
 @Threads(1) // because it runs on the IO compute pool
@@ -36,35 +35,63 @@ class PromiseBench extends BenchUtils {
   final val size = 2048
 
   @Benchmark
-  def promiseOptimized(s: PromiseSt): Unit = {
-    optimized(s, s.numWaiters)
-  }
-
-  private[this] def optimized(s: PromiseSt, waiters: Int): Unit = {
-    val tsk = Promise[String].run[IO].flatMap(task(waiters))
+  def completeRxn0(s: PromiseSt): Unit = {
+    val tsk = s.ar(Promise[String]).flatMap(taskRxn0(s.numWaiters, s.ar))
     run(s.runtime, tsk, size = size)
   }
 
-  @Benchmark
-  def promiseOptimizedSingle(s: PromiseSt): Unit = {
-    val tsk = Promise[String].run[IO].flatMap(taskSingle)
-    run(s.runtime, tsk, size = size)
-  }
-
-  private[this] def task(waiters: Int)(p: Promise[String]): IO[Unit] = {
+  private[this] def taskRxn0(waiters: Int, ar: AsyncReactive[IO])(p: Promise[String]): IO[Unit] = {
     for {
-      fibs <- p.get.start.replicateA(waiters)
-      _ <- IO.race(p.complete0[IO]("left"), p.complete0[IO]("right"))
+      fibs <- p.get[IO](ar).start.replicateA(waiters)
+      _ <- IO.cede
+      _ <- IO.race(ar(p.complete0, "left"), ar(p.complete0, "right"))
       _ <- fibs.traverse(_.joinWithNever)
     } yield ()
   }
 
-  private[this] def taskSingle(p: Promise[String]): IO[Unit] = {
-    p.get.start.flatMap { fib =>
-      IO.race(p.complete0[IO]("left"), p.complete0[IO]("right")) >> (
-        fib.joinWithNever
-      )
-    }.void
+  @Benchmark
+  def completeRxn1(s: PromiseSt): Unit = {
+    val tsk = s.ar(Promise[String]).flatMap(taskRxn1(s.numWaiters, s.ar))
+    run(s.runtime, tsk, size = size)
+  }
+
+  private[this] def taskRxn1(waiters: Int, ar: AsyncReactive[IO])(p: Promise[String]): IO[Unit] = {
+    for {
+      fibs <- p.get[IO](ar).start.replicateA(waiters)
+      _ <- IO.cede
+      _ <- IO.race(ar(Rxn.computed(p.complete1), "left"), ar(Rxn.computed(p.complete1), "right"))
+      _ <- fibs.traverse(_.joinWithNever)
+    } yield ()
+  }
+
+  @Benchmark
+  def completeAxn0(s: PromiseSt): Unit = {
+    val tsk = s.ar(Promise[String]).flatMap(taskAxn0(s.numWaiters, s.ar))
+    run(s.runtime, tsk, size = size)
+  }
+
+  private[this] def taskAxn0(waiters: Int, ar: AsyncReactive[IO])(p: Promise[String]): IO[Unit] = {
+    for {
+      fibs <- p.get[IO](ar).start.replicateA(waiters)
+      _ <- IO.cede
+      _ <- IO.race(ar(p.complete0.provide("left")), ar(p.complete0.provide("right")))
+      _ <- fibs.traverse(_.joinWithNever)
+    } yield ()
+  }
+
+  @Benchmark
+  def completeAxn1(s: PromiseSt): Unit = {
+    val tsk = s.ar(Promise[String]).flatMap(taskAxn1(s.numWaiters, s.ar))
+    run(s.runtime, tsk, size = size)
+  }
+
+  private[this] def taskAxn1(waiters: Int, ar: AsyncReactive[IO])(p: Promise[String]): IO[Unit] = {
+    for {
+      fibs <- p.get[IO](ar).start.replicateA(waiters)
+      _ <- IO.cede
+      _ <- IO.race(ar(p.complete1("left")), ar(p.complete1("right")))
+      _ <- fibs.traverse(_.joinWithNever)
+    } yield ()
   }
 }
 
@@ -73,12 +100,17 @@ object PromiseBench {
   @State(Scope.Benchmark)
   class PromiseSt {
 
-    val runtime = cats.effect.unsafe.IORuntime.global
+    val runtime =
+      cats.effect.unsafe.IORuntime.global
 
-    @Param(Array("2", "4", "6", "8", "64", "128"))
-    private[choam] var _numWaiters: Int = 2
+    @Param(Array("1", "2", "8", "64", "1024"))
+    private[choam] var _numWaiters: Int =
+      1
 
     def numWaiters: Int =
       this._numWaiters
+
+    val ar: AsyncReactive[IO] =
+      ce.unsafeImplicits.asyncReactiveForIO
   }
 }
