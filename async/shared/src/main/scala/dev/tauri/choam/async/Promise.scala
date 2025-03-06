@@ -109,6 +109,8 @@ object Promise {
 
   private[this] sealed abstract class State[A] extends Product with Serializable
 
+  private[this] sealed trait InsertRes[+A] extends Product with Serializable
+
   /**
    * We store the callbacks in a `LongMap`, because apparently
    * it is faster this way. Benchmarks show that it is measurably
@@ -117,9 +119,11 @@ object Promise {
    *
    * The idea is from here: https://github.com/typelevel/cats-effect/pull/1128.
    */
-  private[this] final case class Waiting[A](cbs: LongMap[A => Unit], nextId: Long) extends State[A]
+  private[this] final case class Waiting[A](cbs: LongMap[Right[Throwable, A] => Unit], nextId: Long) extends State[A]
 
-  private[this] final case class Done[A](a: A) extends State[A]
+  private[this] final case class Done[A](a: A) extends State[A] with InsertRes[A]
+
+  private[this] final case class CancelId(id: Long) extends InsertRes[Nothing]
 
   private[this] abstract class PromiseReadImpl[A]
     extends PromiseRead[A] { self =>
@@ -168,9 +172,13 @@ object Promise {
     ref: Ref[State[A]]
   ) extends PromiseImplBase[A] {
 
-    private[this] final def callCbs(cbs: LongMap[A => Unit], a: A): Axn[Unit] = {
+    private[this] final def callCbs(cbs: LongMap[Right[Throwable, A] => Unit], a: A): Axn[Unit] = {
       Axn.unsafe.delay {
-        cbs.valuesIterator.foreach(_(a))
+        val ra = Right(a)
+        val itr = cbs.valuesIterator
+        while (itr.hasNext) {
+          itr.next()(ra)
+        }
       }
     }
 
@@ -186,7 +194,7 @@ object Promise {
     }
 
     final override def complete1(a: A): Axn[Boolean] = {
-      ref.upd[Any, LongMap[A => Unit]] { (state, _) =>
+      ref.upd[Any, LongMap[Right[Throwable, A] => Unit]] { (state, _) =>
         state match {
           case Waiting(cbs, _) =>
             (Done(a), cbs)
@@ -214,9 +222,9 @@ object Promise {
         case Waiting(_, _) =>
           F.asyncInst.asyncCheckAttempt { cb =>
             F.monad.map(insertCallback(cb).run[F]) {
-              case Left(id) =>
+              case CancelId(id) =>
                 Left(Some(removeCallback(id)))
-              case Right(a) =>
+              case Done(a) =>
                 Right(a)
             }
           }
@@ -225,14 +233,13 @@ object Promise {
       }
     }
 
-    private[this] final def insertCallback(cb: Either[Throwable, A] => Unit): Axn[Either[Long, A]] = {
-      val rcb = { (a: A) => cb(Right(a)) }
+    private[this] final def insertCallback(cb: Either[Throwable, A] => Unit): Axn[InsertRes[A]] = {
       ref.getAndUpdate {
-        case Waiting(cbs, nid) => Waiting(cbs.updated(nid, rcb), nid + 1)
+        case Waiting(cbs, nid) => Waiting(cbs.updated(nid, cb), nid + 1)
         case d @ Done(_) => d
       }.map {
-        case Waiting(_, nid) => Left(nid)
-        case Done(a) => Right(a)
+        case Waiting(_, nid) => CancelId(nid)
+        case d @ Done(a) => d
       }
     }
 
