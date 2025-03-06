@@ -186,11 +186,19 @@ object Promise {
     }
 
     final override def complete1(a: A): Axn[Boolean] = {
-      ref.get.flatMapF {
-        case Waiting(cbs, _) =>
-          ref.set1(Done(a)).postCommit(callCbs(cbs, a)).as(true)
-        case Done(_) =>
+      ref.upd[Any, LongMap[A => Unit]] { (state, _) =>
+        state match {
+          case Waiting(cbs, _) =>
+            (Done(a), cbs)
+          case d @ Done(_) =>
+            (d, null)
+        }
+      }.flatMapF { cbs =>
+        if (cbs ne null) {
+          Rxn.pure(true).postCommit(callCbs(cbs, a))
+        } else {
           Rxn.pure(false)
+        }
       }
     }
 
