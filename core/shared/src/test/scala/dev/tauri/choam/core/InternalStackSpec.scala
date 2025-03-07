@@ -241,6 +241,7 @@ final class InternalStackSpec extends BaseSpec {
 
   test("ArrayObjStack nextPowerOf2 overflow") {
     assume(!this.isJs()) // JavaScript heap out of memory
+    assume(!this.isGraal()) // java.lang.OutOfMemoryError: Java heap space
     val bs = new ArrayObjStack[String](initSize = 1 << 30)
     var idx = 0
     while (idx < (1 << 30)) {
