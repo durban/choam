@@ -23,6 +23,7 @@ import java.nio.{ ByteBuffer, ByteOrder }
 
 import internal.mcas.Mcas
 import dev.tauri.choam.AxnSyntax2
+import dev.tauri.choam.random.{ newUuidImpl, uuidFromRandomBytes }
 
 abstract class RandomBaseSpec extends BaseSpec {
 
@@ -56,9 +57,8 @@ abstract class RandomBaseSpec extends BaseSpec {
   }
 
   test("RxnUuidGen") {
-    val gen = new RxnUuidGen[Any]
     def unsafeRandomUuid(): UUID = {
-      gen.randomUUID.unsafeRun(this.mcas)
+      newUuidImpl.unsafeRun(this.mcas)
     }
     val first = unsafeRandomUuid()
     def checkUuid(u: UUID): Unit = {
@@ -73,10 +73,10 @@ abstract class RandomBaseSpec extends BaseSpec {
       // at most 2**-50 chance of accidental failure
       checkUuid(unsafeRandomUuid())
     }
-    checkUuid(gen.uuidFromRandomBytes(Array.fill[Byte](16)(0x00.toByte)))
-    checkUuid(gen.uuidFromRandomBytes(Array.fill[Byte](16)(0xff.toByte)))
-    checkUuid(gen.uuidFromRandomBytes(Array.fill[Byte](16)(0x55.toByte)))
-    val aa = gen.uuidFromRandomBytes(Array.fill[Byte](16)(0xaa.toByte))
+    checkUuid(uuidFromRandomBytes(Array.fill[Byte](16)(0x00.toByte)))
+    checkUuid(uuidFromRandomBytes(Array.fill[Byte](16)(0xff.toByte)))
+    checkUuid(uuidFromRandomBytes(Array.fill[Byte](16)(0x55.toByte)))
+    val aa = uuidFromRandomBytes(Array.fill[Byte](16)(0xaa.toByte))
     checkUuid(aa)
     assertEquals(aa.toString, "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa")
   }

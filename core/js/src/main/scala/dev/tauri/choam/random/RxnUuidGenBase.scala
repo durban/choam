@@ -15,13 +15,50 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.random
+package dev.tauri.choam
+package random
 
+import java.util.UUID
 import java.nio.{ ByteBuffer, ByteOrder }
 
-private abstract class RxnUuidGenBase {
+import internal.mcas.Mcas
 
-  protected final def getLongAtP(arr: Array[Byte], offset: Int): Long = {
+// Note: this class/object is duplicated for JVM/JS
+private object RxnUuidGenBase {
+
+  private[this] final val versionNegMask =
+    0xffffffffffff0fffL
+
+  private[this] final val version =
+    0x0000000000004000L
+
+  private[this] final val variantNegMask =
+    0x3fffffffffffffffL
+
+  private[this] final val variant =
+    0x8000000000000000L
+
+  final def unsafeRandomUuidInternal(ctx: Mcas.ThreadContext): UUID = {
+    val buff = new Array[Byte](16) // TODO: don't allocate (use a thread-local buffer)
+    ctx.impl.osRng.nextBytes(buff)
+    uuidFromRandomBytesInternal(buff)
+  }
+
+  final def uuidFromRandomBytes(buff: Array[Byte]): UUID = {
+    uuidFromRandomBytesInternal(buff)
+  }
+
+  private[this] final def uuidFromRandomBytesInternal(buff: Array[Byte]): UUID = {
+    var msbs = getLongAtP(buff, 0)
+    var lsbs = getLongAtP(buff, 8)
+    msbs &= versionNegMask
+    msbs |= version
+    lsbs &= variantNegMask
+    lsbs |= variant
+    new UUID(msbs, lsbs)
+  }
+
+  private[this] final def getLongAtP(arr: Array[Byte], offset: Int): Long = {
     ByteBuffer.wrap(arr, offset, 8).order(ByteOrder.BIG_ENDIAN).getLong()
   }
 }

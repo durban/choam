@@ -17,12 +17,19 @@
 
 package dev.tauri.choam
 
-import cats.effect.std.{ Random, SecureRandom, UUIDGen }
+import java.util.UUID
+
+import cats.effect.std.{ Random, SecureRandom }
 
 package object random {
 
-  private[choam] final def uuidGen[X]: UUIDGen[Rxn[X, *]] =
-    new RxnUuidGen[X]
+  private[choam] final def newUuidImpl: core.RxnImpl[Any, UUID] = {
+    core.Rxn.unsafe.delayContextImpl(RxnUuidGenBase.unsafeRandomUuidInternal)
+  }
+
+  private[random] def uuidFromRandomBytes(buff: Array[Byte]): UUID = {
+    RxnUuidGenBase.uuidFromRandomBytes(buff)
+  }
 
   private[choam] final def newFastRandom: Random[Axn] =
     new RxnThreadLocalRandom

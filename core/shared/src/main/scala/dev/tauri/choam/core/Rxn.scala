@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package core
 
+import java.util.UUID
+
 import scala.concurrent.duration._
 
 import cats.{ ~>, Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, MonoidK, Semigroup, Show }
@@ -537,6 +539,13 @@ object Rxn extends RxnInstances0 {
 
   private[core] final def uniqueImpl: RxnImpl[Any, Unique.Token] =
     _unique
+
+  @inline
+  final def uuid: Axn[UUID] =
+    uuidImpl
+
+  private[core] final val uuidImpl: RxnImpl[Any, UUID] =
+    random.newUuidImpl
 
   final def fastRandom: Random[Axn] =
     _fastRandom
@@ -2234,11 +2243,13 @@ private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.ty
 
 private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
 
-  private[this] val _uuidGen: UUIDGen[Axn] =
-    random.uuidGen[Any]
-
   implicit final def uuidGenInstance[X]: UUIDGen[Rxn[X, *]] =
-    _uuidGen.asInstanceOf[UUIDGen[Rxn[X, *]]]
+    self._uuidGen.asInstanceOf[UUIDGen[Rxn[X, *]]]
+
+  private[this] val _uuidGen: UUIDGen[Rxn[Any, *]] = new UUIDGen[Rxn[Any, *]] {
+    final override def randomUUID: Rxn[Any, UUID] =
+      uuidImpl
+  }
 }
 
 private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.type =>

@@ -17,14 +17,31 @@
 
 package dev.tauri.choam.random;
 
-
+import java.util.UUID;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 
 import dev.tauri.choam.internal.VarHandleHelper;
+import dev.tauri.choam.internal.mcas.Mcas;
 
-abstract class RxnUuidGenBase {
+// Note: this class/object is duplicated for JVM/JS
+final class RxnUuidGenBase {
+
+  private RxnUuidGenBase() {}
+
+  private static final long versionNegMask =
+    0xffffffffffff0fffL;
+
+  private static final long version =
+    0x0000000000004000L;
+
+  private static final long variantNegMask =
+    0x3fffffffffffffffL;
+
+  private static final long variant =
+    0x8000000000000000L;
+
   private static final VarHandle BYTE_ARRAY_VIEW;
 
   static {
@@ -33,7 +50,27 @@ abstract class RxnUuidGenBase {
     );
   }
 
-  protected final long getLongAtP(byte[] arr, int offset) {
+  static final UUID unsafeRandomUuidInternal(Mcas.ThreadContext ctx) {
+    var buff = new byte[16]; // TODO: don't allocate (use a thread-local buffer)
+    ctx.impl().osRng().nextBytes(buff);
+    return uuidFromRandomBytesInternal(buff);
+  }
+
+  static final UUID uuidFromRandomBytes(byte[] buff) {
+    return uuidFromRandomBytesInternal(buff);
+  }
+
+  private static final UUID uuidFromRandomBytesInternal(byte[] buff) {
+    var msbs = getLongAtP(buff, 0);
+    var lsbs = getLongAtP(buff, 8);
+    msbs &= versionNegMask;
+    msbs |= version;
+    lsbs &= variantNegMask;
+    lsbs |= variant;
+    return new UUID(msbs, lsbs);
+  }
+
+  private static final long getLongAtP(byte[] arr, int offset) {
     return (long) BYTE_ARRAY_VIEW.get(arr, offset);
   }
 }
