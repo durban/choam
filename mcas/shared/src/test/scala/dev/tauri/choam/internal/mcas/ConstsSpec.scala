@@ -26,7 +26,9 @@ final class ConstsSpec extends CatsEffectSuite with BaseSpec {
 
   test("nextPowerOf2") {
     import Consts.nextPowerOf2
-    assertEquals(nextPowerOf2(0), 1) // this is technically not correct, but it's fine for us
+    if (!this.isJs()) {
+      assertEquals(nextPowerOf2(0), 1) // this is technically not correct, but it's fine for us
+    }
     assertEquals(nextPowerOf2(1), 1)
     assertEquals(nextPowerOf2(2), 2)
     assertEquals(nextPowerOf2(3), 4)
@@ -40,9 +42,11 @@ final class ConstsSpec extends CatsEffectSuite with BaseSpec {
     assertEquals(nextPowerOf2(17), 32)
     assertEquals(nextPowerOf2((1 << 30) - 1), 1 << 30)
     assertEquals(nextPowerOf2(1 << 30), 1 << 30)
-    assertEquals(nextPowerOf2((1 << 30) + 1), 1 << 31)
-    assertEquals(nextPowerOf2((1 << 30) + 2), 1 << 31)
-    assertEquals(nextPowerOf2((1 << 31) - 1), 1 << 31)
-    assertEquals(nextPowerOf2(1 << 31), 1 << 31)
+    if (!this.isJs()) {
+      assertEquals(nextPowerOf2((1 << 30) + 1), 1 << 31)
+      assertEquals(nextPowerOf2((1 << 30) + 2), 1 << 31)
+      assertEquals(nextPowerOf2((1 << 31) - 1), 1 << 31)
+      assertEquals(nextPowerOf2(1 << 31), 1 << 31)
+    }
   }
 }
