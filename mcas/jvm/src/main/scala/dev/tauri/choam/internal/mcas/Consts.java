@@ -34,4 +34,14 @@ public final class Consts {
 
   public static final boolean statsEnabled =
     Boolean.getBoolean(statsEnabledProp);
+
+  /**
+   * Next power of 2 which is `>= x`.
+   *
+   * `clp2` from Hacker's Delight by Henry S. Warren, Jr. (section 3–2).
+   */
+  public static final int nextPowerOf2(int x) {
+    // assert (x > 0) && (x <= (1 << 30));
+    return 0x80000000 >>> (Integer.numberOfLeadingZeros(x - 1) - 1);
+  }
 }

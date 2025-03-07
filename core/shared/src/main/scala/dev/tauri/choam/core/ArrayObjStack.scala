@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package core
 
+import internal.mcas.Consts
+
 import java.util.Arrays
 
 private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
@@ -67,27 +69,10 @@ private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
   private[this] final def ensureSize(s: Int): Unit = {
     val arr = this.arr
     if (s > arr.length) {
-      val newLength = nextPowerOf2Internal(s)
+      val newLength = Consts.nextPowerOf2(s)
       val newArr = Arrays.copyOf(arr, newLength)
       this.arr = newArr
     }
-  }
-
-  /**
-   * Computes a power of 2 which is `>= n`.
-   *
-   * Assumes `x` is non-negative (an array length).
-   *
-   * From Hacker's Delight by Henry S. Warren, Jr. (section 3–2).
-   */
-  private[this] def nextPowerOf2Internal(n: Int): Int = { // TODO: this is duplicated with ByteStack
-    var x: Int = n - 1
-    x |= x >> 1
-    x |= x >> 2
-    x |= x >> 4
-    x |= x >> 8
-    x |= x >> 16
-    x + 1
   }
 
   final override def pop(): A = {

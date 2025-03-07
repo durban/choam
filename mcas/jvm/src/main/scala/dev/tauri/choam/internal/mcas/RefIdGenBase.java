@@ -41,16 +41,6 @@ public abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
   private volatile long ctr =
     Long.MIN_VALUE; // TODO: start from something more "random"
 
-  /**
-   * Next power of 2 which is `>= x`.
-   *
-   * `clp2` from Hacker's Delight by Henry S. Warren, Jr. (section 3–2).
-   */
-  static final int nextPowerOf2(int x) {
-    assert (x > 0) && (x <= (1 << 30));
-    return 0x80000000 >>> (Integer.numberOfLeadingZeros(x - 1) - 1);
-  }
-
   final long getAndAddCtrO(long x) {
     // VarHandle doesn't have opaque FAA,
     // so we just approximate it with this:

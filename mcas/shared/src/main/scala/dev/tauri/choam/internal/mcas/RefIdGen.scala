@@ -142,7 +142,7 @@ private[mcas] object GlobalRefIdGen {
     private[this] var nextBlockSize: Int,
   ) extends RefIdGen {
 
-    private[this] final val maxBlockSize =
+    private[this] final val maxBlockSize = // must be <= (1 << 30), otherwise `nextPowerOf2` overflows
       1 << 30
 
     @tailrec
@@ -194,7 +194,7 @@ private[mcas] object GlobalRefIdGen {
     }
 
     private[this] final def allocateBlockForArray(arraySize: Int): Unit = {
-      val abs = RefIdGenBase.nextPowerOf2(arraySize)
+      val abs = Consts.nextPowerOf2(arraySize)
       val nbs = this.nextBlockSize
       val s = java.lang.Math.max(abs, nbs)
       this.next = this.parent.allocateThreadLocalBlock(s)

@@ -20,6 +20,8 @@ package core
 
 import scala.util.Try
 
+import cats.syntax.all._
+
 final class InternalStackSpec extends BaseSpec {
 
   test("ArrayObjStack") {
@@ -215,24 +217,36 @@ final class InternalStackSpec extends BaseSpec {
     assertEquals(ByteStack.push(bs, 9.toByte).toList, List[Byte](1, 2, 3, 4, 9))
   }
 
-  test("ByteStack.nextPowerOf2") {
+  test("ByteStack nextPowerOf2 underflow") {
     val bs = new ByteStack(8)
-    assertEquals(bs.nextPowerOf2(0), 0)
-    assertEquals(bs.nextPowerOf2(1), 1)
-    assertEquals(bs.nextPowerOf2(2), 2)
-    assertEquals(bs.nextPowerOf2(3), 4)
-    assertEquals(bs.nextPowerOf2(4), 4)
-    assertEquals(bs.nextPowerOf2(5), 8)
-    assertEquals(bs.nextPowerOf2(6), 8)
-    assertEquals(bs.nextPowerOf2(7), 8)
-    assertEquals(bs.nextPowerOf2(8), 8)
-    assertEquals(bs.nextPowerOf2(9), 16)
-    assertEquals(bs.nextPowerOf2(15), 16)
-    assertEquals(bs.nextPowerOf2(2049), 4096)
-    assertEquals(bs.nextPowerOf2(4096), 4096)
-    val x = 536870912 // 2**29
-    val y = 1073741824 // 2**30
-    assertEquals(bs.nextPowerOf2(x + 1), y)
-    assertEquals(bs.nextPowerOf2(y), y)
+    bs.loadSnapshot(new Array[Byte](0))
+    assert(Either.catchOnly[NoSuchElementException] { bs.pop() }.isLeft)
+    bs.push(42.toByte)
+    assertEquals(bs.pop(), 42.toByte)
+  }
+
+  test("ByteStack nextPowerOf2 overflow") {
+    val bs = new ByteStack(initSize = 1 << 30)
+    var idx = 0
+    while (idx < (1 << 30)) {
+      bs.push(42.toByte)
+      idx += 1
+    }
+    if (this.isJs()) {
+      assert(Either.catchOnly[AssertionError] { bs.push(99.toByte) }.isLeft)
+    } else {
+      assert(Either.catchOnly[NegativeArraySizeException] { bs.push(99.toByte) }.isLeft)
+    }
+  }
+
+  test("ArrayObjStack nextPowerOf2 overflow") {
+    assume(!this.isJs()) // JavaScript heap out of memory
+    val bs = new ArrayObjStack[String](initSize = 1 << 30)
+    var idx = 0
+    while (idx < (1 << 30)) {
+      bs.push("")
+      idx += 1
+    }
+    assert(Either.catchOnly[NegativeArraySizeException] { bs.push("err") }.isLeft)
   }
 }

@@ -22,6 +22,8 @@ import java.util.Arrays
 
 import scala.collection.immutable.ArraySeq
 
+import internal.mcas.Consts
+
 private final class ByteStack(initSize: Int) {
 
   require((initSize > 0) && ((initSize & (initSize - 1)) == 0)) // power of 2
@@ -87,39 +89,18 @@ private final class ByteStack(initSize: Int) {
   /** Note: we treat `snapshot` as if it's immutable */
   def loadSnapshot(snapshot: Array[Byte]): Unit = {
     val snapLength = snapshot.length
-    val newLength = nextPowerOf2Internal(snapLength)
-    this.arr = Arrays.copyOf(snapshot, newLength)
-    this.size = snapLength
-  }
-
-  /**
-   * Computes a power of 2 which is `>= n`.
-   *
-   * Assumes `x` is non-negative (an array length).
-   *
-   * From Hacker's Delight by Henry S. Warren, Jr. (section 3–2).
-   */
-  private[this] def nextPowerOf2Internal(n: Int): Int = {
-    var x: Int = n - 1
-    x |= x >> 1
-    x |= x >> 2
-    x |= x >> 4
-    x |= x >> 8
-    x |= x >> 16
-    x + 1
-  }
-
-  /** For testing */
-  private[core] def nextPowerOf2(n: Int): Int = {
-    require(n >= 0)
-    val res = nextPowerOf2Internal(n)
-    _assert(res >= 0)
-    res
+    if (snapLength == 0) {
+      this.clear()
+    } else {
+      val newLength = Consts.nextPowerOf2(snapLength)
+      this.arr = Arrays.copyOf(snapshot, newLength)
+      this.size = snapLength
+    }
   }
 
   private[this] def growIfNecessary(sizeNeeded: Int): Unit = {
     if (this.arr.length < sizeNeeded) {
-      this.grow(newSize = nextPowerOf2Internal(sizeNeeded))
+      this.grow(newSize = Consts.nextPowerOf2(sizeNeeded))
     }
   }
 

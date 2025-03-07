@@ -26,7 +26,7 @@ import munit.CatsEffectSuite
 
 import RefIdGenBase.GAMMA
 
-@nowarn("cat=lint-constant") // yes, we have long overflows
+@nowarn("cat=lint-constant") // yes, we have overflows
 final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
 
   private val M = if (isJvm()) {
@@ -175,20 +175,10 @@ final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
     assertEquals(rig.nextIdGlobal() - last, 2L * GAMMA)
   }
 
-  test("nextPowerOf2") {
-    import RefIdGenBase.nextPowerOf2
-    assertEquals(nextPowerOf2(1), 1)
-    assertEquals(nextPowerOf2(2), 2)
-    assertEquals(nextPowerOf2(3), 4)
-    assertEquals(nextPowerOf2(4), 4)
-    assertEquals(nextPowerOf2(5), 8)
-    assertEquals(nextPowerOf2(6), 8)
-    assertEquals(nextPowerOf2(8), 8)
-    assertEquals(nextPowerOf2(9), 16)
-    assertEquals(nextPowerOf2(15), 16)
-    assertEquals(nextPowerOf2(16), 16)
-    assertEquals(nextPowerOf2(17), 32)
-    assertEquals(nextPowerOf2((1 << 30) - 1), 1 << 30)
-    assertEquals(nextPowerOf2(1 << 30), 1 << 30)
+  test("nextPowerOf2 underflow") {
+    val glo = new GlobalRefIdGen
+    val loc = glo.newThreadLocal()
+    assert(Either.catchOnly[IllegalArgumentException] { glo.nextArrayIdBase(0) }.isLeft)
+    assert(Either.catchOnly[IllegalArgumentException] { loc.nextArrayIdBase(0) }.isLeft)
   }
 }

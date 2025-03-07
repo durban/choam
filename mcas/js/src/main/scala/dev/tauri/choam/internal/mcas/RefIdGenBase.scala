@@ -35,14 +35,4 @@ object RefIdGenBase {
 
   @inline final val GAMMA =
     0x9e3779b97f4a7c15L;
-
-  /**
-   * Next power of 2 which is `>= x`.
-   *
-   * `clp2` from Hacker's Delight by Henry S. Warren, Jr. (section 3–2).
-   */
-  @inline final def nextPowerOf2(x: Int): Int = {
-    assert((x > 0) && (x <= (1 << 30)))
-    0x80000000 >>> (Integer.numberOfLeadingZeros(x - 1) - 1)
-  }
 }
