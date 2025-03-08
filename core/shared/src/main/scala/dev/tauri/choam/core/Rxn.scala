@@ -541,7 +541,7 @@ object Rxn extends RxnInstances0 {
     _unique
 
   @inline
-  final def uuid: Axn[UUID] =
+  final def uuid: Axn[UUID] = // TODO: -> newUuid
     uuidImpl
 
   private[core] final val uuidImpl: RxnImpl[Any, UUID] =
