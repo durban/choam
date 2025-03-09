@@ -22,7 +22,6 @@ import java.util.{ Arrays, UUID }
 import java.nio.{ ByteBuffer, ByteOrder }
 
 import internal.mcas.Mcas
-import dev.tauri.choam.AxnSyntax2
 import dev.tauri.choam.random.{ newUuidImpl, uuidFromRandomBytes }
 
 abstract class RandomBaseSpec extends BaseSpec {
