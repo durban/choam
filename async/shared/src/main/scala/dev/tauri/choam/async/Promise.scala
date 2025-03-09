@@ -77,12 +77,6 @@ object PromiseWrite {
     _contravariantFunctorForPromiseWrite
 }
 
-// TODO: Can we make a `Promise[A]`?
-// TODO: (With `def get[F[_]](implicit F: AsyncReactive[F]): F[A]`)
-// TODO: If yes, that would make it possible to have
-// TODO: `Promise.padded` and `Promise.unpadded` without bloating
-// TODO: the AsyncReactive typeclass.
-
 sealed trait Promise[A] extends PromiseRead[A] with PromiseWrite[A] {
   def imap[B](f: A => B)(g: B => A): Promise[B]
   override def toCats[F[_]](implicit F: AsyncReactive[F]): Deferred[F, A]
@@ -99,7 +93,7 @@ object Promise {
     }
   }
 
-  implicit final def invariantFunctorForPromise[F[_]]: Invariant[Promise] =
+  implicit final def invariantFunctorForPromise: Invariant[Promise] =
     _invariantFunctorForPromise
 
   private[this] val _invariantFunctorForPromise = new Invariant[Promise] {
