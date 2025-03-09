@@ -20,8 +20,6 @@ package core
 
 import java.util.UUID
 
-import scala.concurrent.duration._
-
 import cats.{ ~>, Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, MonoidK, Semigroup, Show }
 import cats.arrow.ArrowChoice
 import cats.data.{ Ior, State }
@@ -541,10 +539,10 @@ object Rxn extends RxnInstances0 {
     _unique
 
   @inline
-  final def uuid: Axn[UUID] = // TODO: -> newUuid
-    uuidImpl
+  final def newUuid: Axn[UUID] =
+    newUuidImpl
 
-  private[core] final val uuidImpl: RxnImpl[Any, UUID] =
+  private[core] final val newUuidImpl: RxnImpl[Any, UUID] =
     random.newUuidImpl
 
   final def fastRandom: Random[Axn] =
@@ -2248,22 +2246,24 @@ private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.t
 
   private[this] val _uuidGen: UUIDGen[Rxn[Any, *]] = new UUIDGen[Rxn[Any, *]] {
     final override def randomUUID: Rxn[Any, UUID] =
-      uuidImpl
+      newUuidImpl
   }
 }
 
 private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.type =>
+
+  import scala.concurrent.duration.{ FiniteDuration, NANOSECONDS, MILLISECONDS }
 
   implicit final def clockInstance[X]: Clock[Rxn[X, *]] =
     _clockInstance.asInstanceOf[Clock[Rxn[X, *]]]
 
   private[this] val _clockInstance: Clock[Rxn[Any, *]] = new Clock[Rxn[Any, *]] {
     final override def applicative: Applicative[Rxn[Any, *]] =
-      self.monadInstance[Any]
+      Rxn.monadInstance[Any]
     final override def monotonic: Rxn[Any, FiniteDuration] =
-      Axn.unsafe.delay { System.nanoTime().nanoseconds }
+      Axn.unsafe.delay { FiniteDuration(System.nanoTime(), NANOSECONDS) }
     final override def realTime: Rxn[Any, FiniteDuration] =
-      Axn.unsafe.delay { System.currentTimeMillis().milliseconds }
+      Axn.unsafe.delay { FiniteDuration(System.currentTimeMillis(), MILLISECONDS) }
   }
 }
 
