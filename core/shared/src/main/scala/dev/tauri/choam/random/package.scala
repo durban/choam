@@ -24,11 +24,11 @@ import cats.effect.std.{ Random, SecureRandom }
 package object random {
 
   private[choam] final def newUuidImpl: core.RxnImpl[Any, UUID] = {
-    core.Rxn.unsafe.delayContextImpl(RxnUuidGenBase.unsafeRandomUuidInternal)
+    core.Rxn.unsafe.delayContextImpl(RxnUuidGen.unsafeRandomUuidInternal)
   }
 
   private[random] def uuidFromRandomBytes(buff: Array[Byte]): UUID = {
-    RxnUuidGenBase.uuidFromRandomBytes(buff)
+    RxnUuidGen.uuidFromRandomBytes(buff)
   }
 
   private[choam] final def newFastRandom: Random[Axn] =

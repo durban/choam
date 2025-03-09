@@ -24,17 +24,21 @@ import java.nio.{ ByteBuffer, ByteOrder }
 import internal.mcas.Mcas
 
 // Note: this class/object is duplicated for JVM/JS
-private object RxnUuidGenBase {
+private object RxnUuidGen {
 
+  @inline
   private[this] final val versionNegMask =
     0xffffffffffff0fffL
 
+  @inline
   private[this] final val version =
     0x0000000000004000L
 
+  @inline
   private[this] final val variantNegMask =
     0x3fffffffffffffffL
 
+  @inline
   private[this] final val variant =
     0x8000000000000000L
 

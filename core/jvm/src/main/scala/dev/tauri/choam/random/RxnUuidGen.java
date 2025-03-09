@@ -26,9 +26,9 @@ import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.Mcas;
 
 // Note: this class/object is duplicated for JVM/JS
-final class RxnUuidGenBase {
+final class RxnUuidGen {
 
-  private RxnUuidGenBase() {}
+  private RxnUuidGen() {}
 
   private static final long versionNegMask =
     0xffffffffffff0fffL;
