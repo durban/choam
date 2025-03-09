@@ -1018,6 +1018,27 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Unread(${ref})"
   }
 
+  // Syntax helpers:
+
+  final class InvariantSyntax[A, B](private val self: Rxn[A, B]) extends AnyVal {
+    final def apply[F[_]](a: A)(implicit F: Reactive[F]): F[B] =
+      F.apply(self, a)
+  }
+
+  final class AxnSyntax[A](private val self: Axn[A]) extends AnyVal {
+    final def run[F[_]](implicit F: Reactive[F]): F[A] =
+      F.run(self)
+  }
+
+  final class Tuple2RxnSyntax[A, B, C](private val self: Rxn[A, (B, C)]) extends AnyVal {
+    final def left: Rxn[A, B] =
+      self.map(_._1)
+    final def right: Rxn[A, C] =
+      self.map(_._2)
+    final def split[X, Y](left: Rxn[B, X], right: Rxn[C, Y]): Rxn[A, (X, Y)] =
+      self >>> (left × right)
+  }
+
   // Interpreter:
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
@@ -2309,29 +2330,24 @@ private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type
 
 private sealed abstract class RxnSyntax0 extends RxnSyntax1 { this: Rxn.type =>
 
-  implicit final class InvariantSyntax[A, B](private val self: Rxn[A, B]) {
-    final def apply[F[_]](a: A)(implicit F: Reactive[F]): F[B] =
-      F.apply(self, a)
-  }
+  import scala.language.implicitConversions
+
+  implicit final def rxnInvariantSyntax[A, B](self: Rxn[A, B]): Rxn.InvariantSyntax[A, B] =
+    new Rxn.InvariantSyntax(self)
 }
 
 private sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.type =>
 
-  implicit final class AxnSyntax[A](private val self: Axn[A]) {
-    final def run[F[_]](implicit F: Reactive[F]): F[A] =
-      F.run(self)
-  }
+  import scala.language.implicitConversions
+
+  implicit final def rxnAxnSyntax[A](self: Axn[A]): Rxn.AxnSyntax[A] =
+    new Rxn.AxnSyntax(self)
 }
 
 private sealed abstract class RxnSyntax2 extends RxnCompanionPlatform { this: Rxn.type =>
 
-  // FIXME: do we need this?
-  implicit final class Tuple2RxnSyntax[A, B, C](private val self: Rxn[A, (B, C)]) {
-    def left: Rxn[A, B] =
-      self.map(_._1)
-    def right: Rxn[A, C] =
-      self.map(_._2)
-    def split[X, Y](left: Rxn[B, X], right: Rxn[C, Y]): Rxn[A, (X, Y)] =
-      self >>> (left × right)
-  }
+  import scala.language.implicitConversions
+
+  implicit final def rxnTuple2RxnSyntax[A, B, C](self: Rxn[A, (B, C)]): Rxn.Tuple2RxnSyntax[A, B, C] =
+    new Rxn.Tuple2RxnSyntax(self)
 }
