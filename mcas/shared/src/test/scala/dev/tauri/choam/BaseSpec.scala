@@ -46,7 +46,13 @@ trait BaseSpec
     super.munitTimeout * 2
 }
 
-object BaseSpec extends BaseSpecCompanionPlatform {
+object BaseSpec {
+
+  final val osRngForTesting: OsRng =
+    OsRng.mkNew()
+
+  final def newDefaultMcasForTesting(): Mcas =
+    Mcas.newDefaultMcas(osRngForTesting)
 
   final def closeMcas(mcasImpl: Mcas): Unit = {
     mcasImpl.close()
