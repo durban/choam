@@ -19,6 +19,7 @@ package dev.tauri.choam
 
 import java.util.Arrays
 
+import cats.effect.kernel.Resource
 import cats.effect.IO
 import cats.effect.instances.spawn.parallelForGenSpawn
 
@@ -29,20 +30,29 @@ final class OsRngSpecIO
   with OsRngSpec[IO]
   with SpecNoMcas
 
+final class OsRngSpecZIO
+  extends BaseSpecZIO
+  with OsRngSpec[zio.Task]
+  with SpecNoMcas
+
 trait OsRngSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("OsRng#nextBytes") {
     val rng = OsRng.mkNew()
-    assert(Either.catchOnly[IllegalArgumentException] { rng.nextBytes(-1) }.isLeft)
-    assert(Either.catchOnly[IllegalArgumentException] { rng.nextBytes(-1000) }.isLeft)
-    assert(Either.catchOnly[IllegalArgumentException] { rng.nextBytes(Int.MinValue) }.isLeft)
-    checkNextBytes(rng, size = 0)
-    checkNextBytes(rng, size = 1)
-    checkNextBytes(rng, size = 256)
-    checkNextBytes(rng, size = 257)
-    checkNextBytes(rng, size = 4096)
-    checkNextBytes(rng, size = 32768)
-    assert(rng.nextBytes(4).exists(_ != 0.toByte))
+    try {
+      assert(Either.catchOnly[IllegalArgumentException] { rng.nextBytes(-1) }.isLeft)
+      assert(Either.catchOnly[IllegalArgumentException] { rng.nextBytes(-1000) }.isLeft)
+      assert(Either.catchOnly[IllegalArgumentException] { rng.nextBytes(Int.MinValue) }.isLeft)
+      checkNextBytes(rng, size = 0)
+      checkNextBytes(rng, size = 1)
+      checkNextBytes(rng, size = 256)
+      checkNextBytes(rng, size = 257)
+      checkNextBytes(rng, size = 4096)
+      checkNextBytes(rng, size = 32768)
+      assert(rng.nextBytes(4).exists(_ != 0.toByte))
+    } finally {
+      rng.close()
+    }
   }
 
   private def checkNextBytes(rng: OsRng, size: Int): Unit = {
@@ -60,13 +70,20 @@ trait OsRngSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   val full0 = new Array[Byte](N)
 
+  private val osRngResource: Resource[F, OsRng] = {
+    Resource.make(F.blocking { OsRng.mkNew() })(osRng => F.blocking { osRng.close() })
+  }
+
   test("Multi-threaded use") {
-    val rng = OsRng.mkNew()
-    useInParallel(List.fill(4)(rng))
+    osRngResource.use { rng =>
+      useInParallel(List.fill(4)(rng))
+    }
   }
 
   test("Use different RNGs") {
-    useInParallel(List.fill(4) { OsRng.mkNew() })
+    osRngResource.replicateA(4).use { rngs =>
+      useInParallel(rngs)
+    }
   }
 
   private def useInParallel(rngs: List[OsRng]): F[Unit] = {

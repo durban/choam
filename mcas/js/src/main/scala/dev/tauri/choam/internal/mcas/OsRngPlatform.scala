@@ -19,7 +19,6 @@ package dev.tauri.choam
 package internal
 package mcas
 
-import java.util.concurrent.atomic.AtomicReference
 import java.security.{ SecureRandom => JSecureRandom }
 
 private[mcas] abstract class OsRngPlatform {
@@ -39,17 +38,8 @@ private[mcas] abstract class OsRngPlatform {
    *   `crypto.getRandomValues` or the Node.js
    *   `crypto` module).
    */
-  def mkNew(): OsRng = {
+  final def mkNew(): OsRng = {
     new JsRng
-  }
-
-  protected[this] final def compareAndExchange[A](ref: AtomicReference[A], ov: A, nv: A): A = {
-    // this is JS...
-    if (ref.compareAndSet(ov, nv)) {
-      ov
-    } else {
-      ref.get()
-    }
   }
 }
 

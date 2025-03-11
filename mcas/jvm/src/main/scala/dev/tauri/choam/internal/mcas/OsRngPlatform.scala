@@ -19,7 +19,6 @@ package dev.tauri.choam
 package internal
 package mcas
 
-import java.util.concurrent.atomic.AtomicReference
 import java.io.{ FileInputStream, EOFException }
 import java.security.{ SecureRandom => JSecureRandom, NoSuchAlgorithmException }
 
@@ -58,7 +57,7 @@ private[mcas] abstract class OsRngPlatform {
    * `/dev/random`), buf after that, the returned
    * `OsRng` will (most likely) not.
    */
-  def mkNew(): OsRng = {
+  final def mkNew(): OsRng = {
     try {
       val wprng = JSecureRandom.getInstance("Windows-PRNG")
       new WinRng(wprng)
@@ -66,12 +65,6 @@ private[mcas] abstract class OsRngPlatform {
       case _: NoSuchAlgorithmException =>
         new UnixRng
     }
-  }
-
-  /** This is beacuse of scala-js */
-  @inline
-  protected[this] final def compareAndExchange[A](ref: AtomicReference[A], ov: A, nv: A): A = {
-    ref.compareAndExchange(ov, nv)
   }
 }
 
@@ -84,14 +77,24 @@ private final class WinRng(sr: JSecureRandom)
 private final class UnixRng extends OsRng {
 
   private[this] val stream: FileInputStream = {
+    val tmp = new Array[Byte](8)
     val random = new FileInputStream("/dev/random")
     try {
-      val tmp = new Array[Byte](8)
+      // make sure the kernel RNG is initialized:
       readFrom(random, tmp)
     } finally {
       random.close()
     }
-    new FileInputStream("/dev/urandom")
+    val urandom = new FileInputStream("/dev/urandom")
+    try {
+      // make sure we can actually read the file:
+      readFrom(urandom, tmp)
+    } catch {
+      case ex: Throwable =>
+        urandom.close()
+        throw ex
+    }
+    urandom
   }
 
   final override def close(): Unit = {
