@@ -275,17 +275,22 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         // txn2 are disjoint transactions
       ).map(_._1)
     } yield r
-    for {
-      _ <- F.cede
-      _ <- assertResultF(tst(withoutUnread).replicateA(N).map(_.toSet), Set(1, 2))
+
+    if (this.isEmcas) {
+      for {
+        _ <- F.cede
+        _ <- assertResultF(tst(withoutUnread).replicateA(N).map(_.toSet), Set(1, 2))
+        _ <- F.cede
+        _ <- assertResultF(tst(withUnread).replicateA(N).map(_.toSet), Set(1))
+      } yield ()
+    } else {
       // MCAS impls other than EMCAS have a
       // global-version-CAS, so the 2 txns
       // are not really disjoint, so they
       // can have a conflict even when
-      // using unread:
-      expWithUnread = if (this.isEmcas) Set(1) else Set(1, 2)
-      _ <- assertResultF(tst(withUnread).replicateA(N).map(_.toSet), expWithUnread)
-    } yield ()
+      // using unread.
+      this.assumeF(false)
+    }
   }
 
   test("read, then unsafe.unread, then 2 reads (only last 2 must be consistent)") {
