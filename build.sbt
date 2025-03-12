@@ -253,6 +253,7 @@ lazy val choam = project.in(file("."))
     laws.jvm, laws.js,
     unidocs,
     testExt.jvm, testExt.js,
+    graalNiExample, // JVM
     bench, // JVM
     stressOld, // JVM
     stressMcas, // JVM
@@ -507,6 +508,18 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform)
     Test / javaOptions ++= List(
       "-Ddev.tauri.choam.stats=true",
     ),
+  )
+
+lazy val graalNiExample = project.in(file("graal-ni-example"))
+  .settings(name := "choam-graal-ni-example")
+  .enablePlugins(NoPublishPlugin)
+  .enablePlugins(GraalVMNativeImagePlugin)
+  .disablePlugins(disabledPlugins: _*)
+  .settings(commonSettings)
+  .dependsOn(ce.jvm)
+  .settings(
+    GraalVMNativeImage / containerBuildImage := Some("ghcr.io/graalvm/native-image-community:23.0.2-ol8"),
+    GraalVMNativeImage / graalVMNativeImageOptions ++= Seq("--verbose"),
   )
 
 lazy val bench = project.in(file("bench"))
