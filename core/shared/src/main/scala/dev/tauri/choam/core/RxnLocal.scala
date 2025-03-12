@@ -53,11 +53,13 @@ object RxnLocal {
   private[core] final def withLocal[A, I, R](initial: A, body: Rxn.unsafe.WithLocal[A, I, R]): Rxn[I, R] = {
     Rxn.unsafe.suspend {
       val local = new RxnLocalImpl[A](initial)
-      body[Rxn](local, _idLift, _inst)
+      Rxn.internal.newLocal(local) *> body[Rxn](local, _idLift, _inst) <* Rxn.internal.endLocal(local)
     }
   }
 
-  private[this] final class RxnLocalImpl[A](private[this] var a: A) extends RxnLocal[Rxn, A] {
+  private[this] final class RxnLocalImpl[A](private[this] var a: A)
+    extends RxnLocal[Rxn, A]
+    with InternalLocal {
     final override def get: Rxn[Any, A] = Axn.unsafe.delay { this.a }
     final override def set(a: A): Rxn[Any, Unit] = Axn.unsafe.delay { this.a = a }
     final override def update(f: A => A): Rxn[Any, Unit] = Axn.unsafe.delay { this.a = f(this.a) }
@@ -65,6 +67,10 @@ object RxnLocal {
       val ov = this.a
       this.a = f(ov)
       ov
+    }
+    final override def takeSnapshot(): AnyRef = box(this.a)
+    final override def loadSnapshot(snap: AnyRef): Unit = {
+      this.a = snap.asInstanceOf[A]
     }
   }
 }

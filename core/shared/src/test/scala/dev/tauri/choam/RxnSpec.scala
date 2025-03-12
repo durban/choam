@@ -926,7 +926,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     assertResultF(rxn.run[F], ("", 1))
   }
 
-  test("RxnLocal (rollback)") { // TODO: this must work better (see below)
+  test("RxnLocal (rollback)") {
     for {
       ref <- Ref[Int](0).run[F]
       v <- Rxn.unsafe.withLocal(0, new Rxn.unsafe.WithLocal[Int, Any, Int] {
@@ -936,11 +936,21 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           inst: RxnLocal.Instances[G],
         ) = {
           import inst._
-          // TODO: this interaction between `RxnLocal` and `+` is very unintuitive
-          lift(Rxn.pure(0) + Rxn.pure(1)) *> {
+          lift(Rxn.pure(0) + Rxn.pure(1)).flatMap { leftOrRight =>
             lift(ref.update(_ + 1)) *> local.getAndUpdate(_ + 1).flatMap { ov =>
-              if (ov > 0) monadInstance.pure(ov)
-              else lift(Rxn.unsafe.retry)
+              if (leftOrRight == 0) { // left
+                if (ov == 0) { // ok
+                  lift(Rxn.unsafe.retry) // go to right
+                } else {
+                  lift(Rxn.panic(new AssertionError))
+                }
+              } else { // right
+                if (ov == 0) { // ok
+                  lift(ref.get)
+                } else {
+                  lift(Rxn.panic(new AssertionError))
+                }
+              }
             }
           }
         }

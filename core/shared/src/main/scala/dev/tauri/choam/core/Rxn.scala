@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package core
 
-import java.util.UUID
+import java.util.{ UUID, IdentityHashMap }
 
 import cats.{ ~>, Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, MonoidK, Semigroup, Show }
 import cats.arrow.ArrowChoice
@@ -674,6 +674,12 @@ object Rxn extends RxnInstances0 {
       restOtherContK: ListObjStack.Lst[Any],
       lenSelfContT: Int,
     ): Rxn[D, Unit] = new Rxn.FinishExchange(hole, restOtherContK, lenSelfContT)
+
+    final def newLocal(local: InternalLocal): Axn[Unit] =
+      new Rxn.LocalNewEnd(local, isEnd = false)
+
+    final def endLocal(local: InternalLocal): Axn[Unit] =
+      new Rxn.LocalNewEnd(local, isEnd = true)
   }
 
   private[choam] final object StmImpl {
@@ -1018,6 +1024,11 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Unread(${ref})"
   }
 
+  private final class LocalNewEnd(val local: InternalLocal, val isEnd: Boolean) extends RxnImpl[Any, Unit] {
+    private[core] final override def tag = 33
+    final override def toString: String = s"LocalNewEnd(${local}, ${isEnd})"
+  }
+
   // Syntax helpers:
 
   final class InvariantSyntax[A, B](private val self: Rxn[A, B]) extends AnyVal {
@@ -1147,6 +1158,9 @@ object Rxn extends RxnInstances0 {
     } else {
       null
     }
+
+    private[this] var locals: IdentityHashMap[InternalLocal, AnyRef] =
+      null
 
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
     private[this] var contK: ObjStack[Any] = mkInitialContK()
@@ -1322,6 +1336,7 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def _saveAlt(alts: ArrayObjStack[Any], k: Rxn[Any, R]): Unit = {
+      alts.push(takeLocalsSnapshot(this.locals))
       val descSnap = _desc match {
         case null =>
           null
@@ -1330,6 +1345,45 @@ object Rxn extends RxnInstances0 {
       }
       alts.push3(descSnap, a, contT.takeSnapshot())
       alts.push3(contKList.takeSnapshot(), pc.takeSnapshot(), k)
+    }
+
+    private[this] final def takeLocalsSnapshot(locals: IdentityHashMap[InternalLocal, AnyRef]): AnyRef = {
+      if (locals eq null) {
+        null
+      } else {
+        val snapshot = new IdentityHashMap[InternalLocal, AnyRef](locals.size())
+        locals.forEach(new java.util.function.BiConsumer[InternalLocal, AnyRef] {
+          final override def accept(k: InternalLocal, v: AnyRef): Unit = {
+            val ov = snapshot.put(k, k.takeSnapshot())
+            _assert(ov eq null)
+          }
+        })
+        snapshot
+      }
+    }
+
+    private[this] final def loadLocalsSnapshot(snap: AnyRef): Unit = {
+      if (snap eq null) {
+        this.locals match {
+          case null => ()
+          case locals => locals.clear()
+        }
+      } else {
+        val snapshot = snap.asInstanceOf[IdentityHashMap[InternalLocal, AnyRef]]
+        val locals = this.locals match {
+          case null => new IdentityHashMap[InternalLocal, AnyRef](snapshot.size())
+          case locals => locals
+        }
+        locals.clear()
+        snapshot.forEach(new java.util.function.BiConsumer[InternalLocal, AnyRef] {
+          final override def accept(k: InternalLocal, v: AnyRef): Unit = {
+            k.loadSnapshot(v)
+            val ov = locals.put(k, null)
+            _assert(ov eq null)
+          }
+        })
+        this.locals = locals
+      }
     }
 
     private[this] final def tryLoadAlt(isPermanentFailure: Boolean): Rxn[Any, R] = {
@@ -1343,7 +1397,7 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def discardStmAlt(): Unit = {
       _assert(this.isStm)
-      this.stmAlts.popAndDiscard(6)
+      this.stmAlts.popAndDiscard(7)
     }
 
     private[this] final def _tryLoadAlt(alts: ArrayObjStack[Any]): Rxn[Any, R] = {
@@ -1375,6 +1429,7 @@ object Rxn extends RxnInstances0 {
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
       _desc = this.maybeMergeDescForStm(alts.pop().asInstanceOf[Descriptor])
+      loadLocalsSnapshot(alts.pop().asInstanceOf[AnyRef])
     }
 
     private[this] final def loadAltFrom(msg: Exchanger.Msg): Rxn[Any, R] = {
@@ -1991,6 +2046,23 @@ object Rxn extends RxnInstances0 {
           } // else: empty log, nothing to do
           a = ()
           loop(next())
+        case 33 => // LocalNewEnd
+          val c = curr.asInstanceOf[LocalNewEnd]
+          val locals = this.locals match {
+            case null =>
+              val nl = new IdentityHashMap[InternalLocal, AnyRef]
+              this.locals = nl
+              nl
+            case locals =>
+              locals
+          }
+          if (!c.isEnd) {
+            locals.put(c.local, null)
+          } else {
+            val ok = locals.remove(c.local, null)
+            _assert(ok)
+          }
+          loop(next())
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }
@@ -2013,7 +2085,10 @@ object Rxn extends RxnInstances0 {
                 val sus: F[Rxn[Any, Any]] = s.toF[F](mcas, ctx)
                 F.flatMap(poll(sus)) { nxt => step(ctxHint = ctx, debugNext = nxt) }
               case r =>
-                _assert(this._entryHolder eq null)
+                _assert(
+                  (this._entryHolder eq null) &&
+                  ((this.locals eq null) || this.locals.isEmpty())
+                )
                 F.pure(r)
             }
           } finally {
