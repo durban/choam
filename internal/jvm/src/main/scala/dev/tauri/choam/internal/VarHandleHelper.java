@@ -23,6 +23,8 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 
+// Note: this class needs to be registered to be
+// --initialize-at-build-time (in native-image.properties)
 public final class VarHandleHelper {
 
   private static final MethodHandle WITH_INVOKE_EXACT_BEHAVIOR;

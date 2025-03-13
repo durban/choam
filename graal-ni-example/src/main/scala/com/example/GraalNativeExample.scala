@@ -22,20 +22,31 @@ import scala.concurrent.duration._
 import cats.effect.{ IO, IOApp }
 
 import dev.tauri.choam.core.Axn
-import dev.tauri.choam.refs.Ref
-import dev.tauri.choam.ce.RxnAppMixin
+import dev.tauri.choam.data.Map
+import dev.tauri.choam.stm.{ Txn, TRef }
+import dev.tauri.choam.ce.{ RxnAppMixin, TxnAppMixin }
 
-object Main extends IOApp.Simple with RxnAppMixin {
+object GraalNativeExample extends IOApp.Simple with RxnAppMixin with TxnAppMixin {
 
-  private final def rxn(ref: Ref[String], s: String): Axn[String] =
+  private final def rxn(map: Map[String, Int], i: Int): Axn[Int] =
+    map.putIfAbsent.provide("foo" -> i).map(_.getOrElse(0))
+
+  private final def txn(ref: TRef[String], s: String): Txn[String] =
     ref.getAndUpdate(_ => s)
 
   private val tsk = for {
     _ <- IO.println("Starting...")
-    ref <- Ref("a").run[IO]
+    map <- Map.hashMap[String, Int].run[IO]
+    ref <- TRef("a").commit
     vs <- IO.both(
-      IO.cede *> rxn(ref, "v1").run[IO],
-      IO.cede *> rxn(ref, "v2").run[IO],
+      IO.cede *> IO.both(
+        IO.cede *> txn(ref, "v1").commit,
+        IO.cede *> txn(ref, "v2").commit,
+      ),
+      IO.cede *> IO.both(
+        IO.cede *> rxn(map, 1).run[IO],
+        IO.cede *> rxn(map, 2).run[IO],
+      ),
     )
     _ <- IO.println(s"Got: $vs")
     _ <- IO.println("Sleeping...")

@@ -522,6 +522,7 @@ lazy val graalNiExample = project.in(file("graal-ni-example"))
     GraalVMNativeImage / containerBuildImage := Some("ghcr.io/graalvm/native-image-community:23.0.2-ol8"),
     GraalVMNativeImage / graalVMNativeImageOptions ++= Seq(
       "--verbose",
+      "--exact-reachability-metadata",
       "--install-exit-handlers",
       "--static-nolibc",
       // "--static", "--libc=musl", // needs musl, but it isn't in the container image
