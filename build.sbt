@@ -518,8 +518,14 @@ lazy val graalNiExample = project.in(file("graal-ni-example"))
   .settings(commonSettings)
   .dependsOn(ce.jvm)
   .settings(
+    Compile / run / fork := true,
     GraalVMNativeImage / containerBuildImage := Some("ghcr.io/graalvm/native-image-community:23.0.2-ol8"),
-    GraalVMNativeImage / graalVMNativeImageOptions ++= Seq("--verbose"),
+    GraalVMNativeImage / graalVMNativeImageOptions ++= Seq(
+      "--verbose",
+      "--install-exit-handlers",
+      "--static-nolibc",
+      // "--static", "--libc=musl", // needs musl, but it isn't in the container image
+    ),
   )
 
 lazy val bench = project.in(file("bench"))

@@ -17,6 +17,8 @@
 
 package com.example
 
+import scala.concurrent.duration._
+
 import cats.effect.{ IO, IOApp }
 
 import dev.tauri.choam.core.Axn
@@ -25,10 +27,10 @@ import dev.tauri.choam.ce.RxnAppMixin
 
 object Main extends IOApp.Simple with RxnAppMixin {
 
-  final def rxn(ref: Ref[String], s: String): Axn[String] =
+  private final def rxn(ref: Ref[String], s: String): Axn[String] =
     ref.getAndUpdate(_ => s)
 
-  final override val run: IO[Unit] = for {
+  private val tsk = for {
     _ <- IO.println("Starting...")
     ref <- Ref("a").run[IO]
     vs <- IO.both(
@@ -36,6 +38,14 @@ object Main extends IOApp.Simple with RxnAppMixin {
       IO.cede *> rxn(ref, "v2").run[IO],
     )
     _ <- IO.println(s"Got: $vs")
+    _ <- IO.println("Sleeping...")
+    _ <- IO.sleep(5.seconds)
     _ <- IO.println("Done.")
   } yield ()
+
+  final override val run: IO[Unit] = {
+    tsk.guaranteeCase { oc =>
+      IO.println(s"Outcome: $oc")
+    }
+  }
 }
