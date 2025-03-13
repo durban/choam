@@ -35,11 +35,11 @@ import async.AsyncReactive
  * `AsyncReactive` is needed for the duration of
  * the whole `IOApp` program.
  *
- * @see [[dev.tauri.choam.async.AsyncReactive#forAsyncRes]]
+ * @see [[dev.tauri.choam.async.AsyncReactive#forAsync]]
  *      for more control over resource acquisition and release,
  *      and for any generic `F[_]` with a [[cats.effect.kernel.Async]]
  *      instance.
- * @see [[dev.tauri.choam.core.Reactive#forSyncRes]] for a
+ * @see [[dev.tauri.choam.core.Reactive#forSync]] for a
  *      version which only requires a [[cats.effect.kernel.Sync]]
  *      instance.
  */

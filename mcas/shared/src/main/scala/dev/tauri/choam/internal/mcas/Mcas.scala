@@ -370,27 +370,27 @@ object Mcas extends McasCompanionPlatform { self =>
   }
 
   private[choam] final case class RetryStats(
-    /** The number of successfully committed `Rxn`s */
+    /* The number of successfully committed `Rxn`s */
     commits: Long,
-    /** The number of retries overall */
+    /* The number of retries overall */
     retries: Long,
-    /** The number of times a `Descriptor` was revalidated and extended successfully */
+    /* The number of times a `Descriptor` was revalidated and extended successfully */
     extensions: Long,
-    /**
+    /*
      * The number of internal `Mcas` attempts (can be more
      * than the `tryPerform` calls, e.g., `Emcas` makes up to
      * two internal attempts).
      */
     mcasAttempts: Long,
-    /** The sum of the number of `Ref`s the committed `Rxn`s touched */
+    /* The sum of the number of `Ref`s the committed `Rxn`s touched */
     committedRefs: Long,
-    /** The number of times cycles were detected when helping */
+    /* The number of times cycles were detected when helping */
     cyclesDetected: Long,
-    /** The highest number of retries one `Rxn` had to perform */
+    /* The highest number of retries one `Rxn` had to perform */
     maxRetries: Long,
-    /** The size (touched `Ref`s) of the biggest `Rxn` that committed */
+    /* The size (touched `Ref`s) of the biggest `Rxn` that committed */
     maxCommittedRefs: Int,
-    /** The (estimated) maximum observed size of the cycle detection Bloom filter */
+    /* The (estimated) maximum observed size of the cycle detection Bloom filter */
     maxBloomFilterSize: Int,
   ) {
 

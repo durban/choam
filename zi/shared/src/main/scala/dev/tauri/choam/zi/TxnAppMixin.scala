@@ -36,7 +36,7 @@ import stm.Transactive
  * `Transactive` is needed for the duration of
  * the whole `ZIOApp` program.
  *
- * @see [[dev.tauri.choam.stm.Transactive#forAsyncRes]]
+ * @see [[dev.tauri.choam.stm.Transactive#forAsync]]
  *      for more control over resource acquisition and release,
  *      and for any generic `F[_]` with a [[cats.effect.kernel.Async]]
  *      instance.

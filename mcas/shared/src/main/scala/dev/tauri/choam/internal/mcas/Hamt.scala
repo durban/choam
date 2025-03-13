@@ -72,13 +72,13 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
 
   private val sizeAndBlue: Int,
 
-  /**
+  /*
    * Contains 1 bits in exactly the places where the imaginary 64-element
    * sparse array has "something" (either a value, a sub-node, or a tombstone).
    */
   private val bitmap: Long,
 
-  /**
+  /*
    * The dense array containing the values and/or sub-nodes. At most
    * 64-element long, but shorter for a "not full" node. Can be a
    * zero-element array (only for the root node of an empty tree).
