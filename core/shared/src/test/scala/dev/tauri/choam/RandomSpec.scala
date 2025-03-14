@@ -196,19 +196,18 @@ trait RandomSpec[F[_]]
     )
   }
 
-  def checkRandom(
+  private def checkRandom(
     name: String,
     mk: Long => F[Random[Axn]],
-    isBuggy: Boolean = false,
   ): Unit = {
     test(s"${name} nextDouble") {
       checkNextDouble(mk)
     }
     test(s"${name} betweenDouble") {
-      checkBetweenDouble(isBuggy)(mk)
+      checkBetweenDouble(mk)
     }
     test(s"${name} betweenFloat") {
-      checkBetweenFloat(isBuggy)(mk)
+      checkBetweenFloat(mk)
     }
     test(s"${name} nextLong") {
       checkNextLong(mk)
@@ -233,7 +232,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def assertSameResult[A](fa1: F[A], fa2: F[A], clue: String = "values are not the same"): F[Unit] = {
+  private def assertSameResult[A](fa1: F[A], fa2: F[A], clue: String): F[Unit] = {
     fa1.flatMap { r1 =>
       fa2.flatMap { r2 =>
         (r1, r2) match {
@@ -248,14 +247,14 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def assertSameRng[A](rng1: Random[Axn], rng2: Random[Axn], f: Random[Axn] => Axn[A], clue: String = "different results"): F[Unit] = {
+  private def assertSameRng[A](rng1: Random[Axn], rng2: Random[Axn], f: Random[Axn] => Axn[A], clue: String): F[Unit] = {
     val fa1 = f(rng1).run[F]
     val fa2 = f(rng2).run[F]
     assertSameResult(fa1, fa2, clue = clue)
   }
 
   /** Checks that `rnd1` and `rnd2` generates the same numbers */
-  def checkSame(mkRnd1: Long => Axn[Random[Axn]], mkRnd2: Long => Axn[Random[Axn]]): PropF[F] = {
+  private def checkSame(mkRnd1: Long => Axn[Random[Axn]], mkRnd2: Long => Axn[Random[Axn]]): PropF[F] = {
     PropF.forAllF { (seed: Long, lst: List[Int], bound: Int) =>
       (mkRnd1(seed) * mkRnd2(seed)).run[F].flatMap {
         case (rnd1, rnd2) =>
@@ -289,7 +288,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def checkNextDouble(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkNextDouble(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
     PropF.forAllF { (seed: Long) =>
       mkRnd(seed).flatMap { rnd =>
         (rnd.nextDouble.run[F], rnd.nextDouble.run[F]).tupled.flatMap { dd =>
@@ -303,7 +302,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def checkBetweenDouble(isBuggy: Boolean)(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkBetweenDouble(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
     PropF.forAllF { (seed: Long, d1: Double, d2: Double) =>
       for {
         rnd <- mkRnd(seed)
@@ -315,18 +314,16 @@ trait RandomSpec[F[_]]
             assertF((clue(d) >= clue(d1)) && (d < (clue(d1 + d2))))
           }
         } else F.unit
-        _ <- if (!isBuggy) {
-          val origin: Double = -1.0000000000000002 // -0x1.0000000000001p0
-          val bound: Double = -1.0 // -0x1.0p0
-          rnd.betweenDouble(origin, bound).run[F].flatMap { d =>
-            assertF((clue(d) >= clue(origin)) && (d < (clue(bound))))
-          }
-        } else F.unit
+        origin = -1.0000000000000002 // -0x1.0000000000001p0
+        bound = -1.0 // -0x1.0p0
+        _ <- rnd.betweenDouble(origin, bound).run[F].flatMap { d =>
+          assertF((clue(d) >= clue(origin)) && (d < (clue(bound))))
+        }
       } yield ()
     }
   }
 
-  def checkBetweenFloat(isBuggy: Boolean)(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkBetweenFloat(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
     PropF.forAllF { (seed: Long, f1: Float, f2: Float) =>
       for {
         rnd <- mkRnd(seed)
@@ -338,18 +335,16 @@ trait RandomSpec[F[_]]
             assertF((clue(f) >= clue(f1)) && (f < (clue(f1 + f2))))
           }
         } else F.unit
-        _ <- if (!isBuggy) {
-          val origin: Float = -1.000001f // -0x1.00001p0
-          val bound: Float = -1.0f // -0x1.0p0
-          rnd.betweenFloat(origin, bound).run[F].flatMap { f =>
-            assertF((clue(f) >= clue(origin)) && (f < (clue(bound))))
-          }
-        } else F.unit
+        origin = -1.000001f // -0x1.00001p0
+        bound = -1.0f // -0x1.0p0
+        _ <- rnd.betweenFloat(origin, bound).run[F].flatMap { f =>
+          assertF((clue(f) >= clue(origin)) && (f < (clue(bound))))
+        }
       } yield ()
     }
   }
 
-  def checkNextLong(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkNextLong(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
     PropF.forAllF { (seed: Long) =>
       mkRnd(seed).flatMap { rnd =>
         (rnd.nextLong.run[F], rnd.nextLong.run[F]).tupled.flatMap { nn =>
@@ -359,7 +354,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def checkNextLongBounded(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkNextLongBounded(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
     PropF.forAllF { (seed: Long, n: Long) =>
       val bound = if (n > 0L) {
         n
@@ -378,7 +373,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def checkShuffle(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkShuffle(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
     PropF.forAllF { (seed: Long, lst: List[Int]) =>
       mkRnd(seed).flatMap { rnd =>
         (rnd.shuffleList(lst).run[F], rnd.shuffleVector(lst.toVector).run[F]).mapN(Tuple2(_, _)).flatMap { lv =>
@@ -392,7 +387,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def checkGaussian(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkGaussian(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
     PropF.forAllF { (seed: Long) =>
       mkRnd(seed).flatMap { rnd =>
         (rnd.nextGaussian.run[F], rnd.nextGaussian.run[F]).tupled.flatMap {
@@ -409,7 +404,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def checkPrintableChar(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkPrintableChar(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
     PropF.forAllF { (seed: Long) =>
       mkRnd(seed).flatMap { rnd =>
         rnd.nextPrintableChar.run[F].flatMap { chr =>
@@ -419,7 +414,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def checkNextAlphaNumeric(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkNextAlphaNumeric(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
     PropF.forAllF { (seed: Long) =>
       mkRnd(seed).flatMap { rnd =>
         rnd.nextAlphaNumeric.run[F].flatMap { alnum =>
@@ -444,7 +439,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  def checkNextString(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkNextString(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
     PropF.forAllF { (length: Int, seed: Long) =>
       if ((length >= 0) && (length <= (1024*1024))) {
         mkRnd(seed).flatMap { rnd =>
