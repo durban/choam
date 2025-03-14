@@ -32,6 +32,8 @@ public final class Consts {
   public static final String statsEnabledProp =
     "dev.tauri.choam.stats";
 
+  // Note: this is configured to be false
+  // unconditionally in native-image.properties
   public static final boolean statsEnabled =
     Boolean.getBoolean(statsEnabledProp);
 
