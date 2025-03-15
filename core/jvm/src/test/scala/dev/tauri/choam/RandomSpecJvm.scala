@@ -82,6 +82,15 @@ trait RandomSpecJvm[F[_]] extends RandomSpec[F] { this: McasImplSpec =>
         _ <- assertResultF(dr.nextDouble.run[F], d2)
         d3 <- F.delay(sr.nextDouble(-6534.987, 9853.678))
         _ <- assertResultF(dr.betweenDouble(-6534.987, 9853.678).run[F], d3)
+        d4 <- F.delay(sr.nextDouble(-1.0000000000000002, 1.0000000000000002))
+        _ <- assertResultF(dr.betweenDouble(-1.0000000000000002, 1.0000000000000002).run[F], d4)
+        _ <- if (this.getJvmVersion() >= 19) {
+          F.delay(sr.nextDouble(Double.MinValue, Double.MaxValue / 3.0)).flatMap { d5 =>
+            assertResultF(dr.betweenDouble(Double.MinValue, Double.MaxValue / 3.0).run[F], d5)
+          }
+        } else {
+          F.unit // throws IllegalArgumentException on older JVMs
+        }
       } yield ()
       def checkBoolean(sr: JSplittableRandom, dr: Random[Axn]): F[Unit] = for {
         b1 <- F.delay(sr.nextBoolean())

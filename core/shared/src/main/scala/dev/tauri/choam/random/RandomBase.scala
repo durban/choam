@@ -169,7 +169,11 @@ private abstract class RandomBase
     import java.lang.Double.{ doubleToLongBits, longBitsToDouble }
     require(minInclusive < maxExclusive)
     this.nextDouble.map { (d: Double) =>
-      val r: Double = (d * (maxExclusive - minInclusive)) + minInclusive
+      // `maxExclusive - minInclusive` could overflow, so
+      // we're scaling down, then up by 2.0:
+      val maxHalf = maxExclusive / 2.0
+      val minHalf = minInclusive / 2.0
+      val r: Double = ((d * (maxHalf - minHalf)) + minHalf) * 2.0
       if (r >= maxExclusive) { // this can happen due to rounding
         val correction = if (maxExclusive < 0.0) 1L else -1L
         longBitsToDouble(doubleToLongBits(maxExclusive) + correction)
@@ -208,7 +212,11 @@ private abstract class RandomBase
     import java.lang.Float.{ floatToIntBits, intBitsToFloat }
     require(minInclusive < maxExclusive)
     nextFloat.map { (f: Float) =>
-      val r: Float = (f * (maxExclusive - minInclusive)) + minInclusive
+      // `maxExclusive - minInclusive` could overflow, so
+      // we're scaling down, then up by 2.0f:
+      val maxHalf = maxExclusive / 2.0f
+      val minHalf = minInclusive / 2.0f
+      val r: Float = ((f * (maxHalf - minHalf)) + minHalf) * 2.0f
       if (r >= maxExclusive) { // this can happen due to rounding
         val correction = if (maxExclusive < 0.0f) 1 else -1
         intBitsToFloat(floatToIntBits(maxExclusive) + correction)
