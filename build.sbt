@@ -744,6 +744,7 @@ lazy val commonSettings = Seq[Setting[_]](
     "-Wnonunit-statement",
     "-Wvalue-discard",
   ),
+  // Test / fork := true,
   // Somewhat counter-intuitively, to really run
   // tests sequentially, we need to set this to true:
   Test / parallelExecution := true,

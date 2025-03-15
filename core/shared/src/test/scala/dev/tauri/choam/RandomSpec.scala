@@ -303,43 +303,93 @@ trait RandomSpec[F[_]]
   }
 
   private def checkBetweenDouble(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
-    PropF.forAllF { (seed: Long, d1: Double, d2: Double) =>
+    def checkOne(rnd: Random[Axn], minIncl: Double, maxExcl: Double): F[Double] = {
+      rnd.betweenDouble(minIncl, maxExcl).run[F].flatMap { d =>
+        assertF((clue(d) >= clue(minIncl)) && (d < (clue(maxExcl)))).as(d)
+      }
+    }
+    PropF.forAllNoShrinkF { (seed: Long, d1: Double, d2: Double) =>
       for {
         rnd <- mkRnd(seed)
+        // invalid arguments:
         _ <- F.delay(rnd.betweenDouble(d1, d1)).flatMap(_.run[F]).attempt.flatMap { x =>
           assertF(x.isLeft)
         }
-        _ <- if ((d1 + d2) > d1) {
-          rnd.betweenDouble(d1, d1 + d2).run[F].flatMap { d =>
-            assertF((clue(d) >= clue(d1)) && (d < (clue(d1 + d2))))
-          }
-        } else F.unit
+        _ <- F.delay(rnd.betweenDouble(d1, Double.NaN)).flatMap(_.run[F]).attempt.flatMap { x =>
+          assertF(x.isLeft)
+        }
+        _ <- F.delay(rnd.betweenDouble(Double.NaN, d1)).flatMap(_.run[F]).attempt.flatMap { x =>
+          assertF(x.isLeft)
+        }
+        _ <- F.delay(rnd.betweenDouble(Double.NaN, Double.NaN)).flatMap(_.run[F]).attempt.flatMap { x =>
+          assertF(x.isLeft)
+        }
+        // generated arguments:
+        minmax = if (d1 < d2) {
+          (d1, d2)
+        } else if (d2 < d1) {
+          (d2, d1)
+        } else if ((d1 + d2) > d1) {
+          (d1, d1 + d2)
+        } else { // really unlikely
+          (42.0, 99.0)
+        }
+        (minIncl, maxExcl) = minmax
+        _ <- checkOne(rnd, minIncl, maxExcl)
+        // hard problem #1 (rounding):
         origin = -1.0000000000000002 // -0x1.0000000000001p0
         bound = -1.0 // -0x1.0p0
-        _ <- rnd.betweenDouble(origin, bound).run[F].flatMap { d =>
-          assertF((clue(d) >= clue(origin)) && (d < (clue(bound))))
-        }
+        _ <- checkOne(rnd, origin, bound)
+        // hard problem #2 (overflow):
+        d <- checkOne(rnd, Double.MinValue, Double.MaxValue)
+        // this specific value means there was an unhandled overflow:
+        _ <- assertNotEqualsF(d, 1.7976931348623155E308)
       } yield ()
     }
   }
 
   private def checkBetweenFloat(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
-    PropF.forAllF { (seed: Long, f1: Float, f2: Float) =>
+    def checkOne(rnd: Random[Axn], minIncl: Float, maxExcl: Float): F[Float] = {
+      rnd.betweenFloat(minIncl, maxExcl).run[F].flatMap { d =>
+        assertF((clue(d) >= clue(minIncl)) && (d < (clue(maxExcl)))).as(d)
+      }
+    }
+    PropF.forAllNoShrinkF { (seed: Long, f1: Float, f2: Float) =>
       for {
         rnd <- mkRnd(seed)
+        // invalid arguments:
         _ <- F.delay(rnd.betweenFloat(f1, f1)).flatMap(_.run[F]).attempt.flatMap { x =>
           assertF(x.isLeft)
         }
-        _ <- if ((f1 + f2) > f1) {
-          rnd.betweenFloat(f1, f1 + f2).run[F].flatMap { f =>
-            assertF((clue(f) >= clue(f1)) && (f < (clue(f1 + f2))))
-          }
-        } else F.unit
+        _ <- F.delay(rnd.betweenFloat(f1, Float.NaN)).flatMap(_.run[F]).attempt.flatMap { x =>
+          assertF(x.isLeft)
+        }
+        _ <- F.delay(rnd.betweenFloat(Float.NaN, f1)).flatMap(_.run[F]).attempt.flatMap { x =>
+          assertF(x.isLeft)
+        }
+        _ <- F.delay(rnd.betweenFloat(Float.NaN, Float.NaN)).flatMap(_.run[F]).attempt.flatMap { x =>
+          assertF(x.isLeft)
+        }
+        // generated arguments:
+        minmax = if (f1 < f2) {
+          (f1, f2)
+        } else if (f2 < f1) {
+          (f2, f1)
+        } else if ((f1 + f2) > f1) {
+          (f1, f1 + f2)
+        } else { // really unlikely
+          (42.0f, 99.0f)
+        }
+        (minIncl, maxExcl) = minmax
+        _ <- checkOne(rnd, minIncl, maxExcl)
+        // hard problem #1 (rounding):
         origin = -1.000001f // -0x1.00001p0
         bound = -1.0f // -0x1.0p0
-        _ <- rnd.betweenFloat(origin, bound).run[F].flatMap { f =>
-          assertF((clue(f) >= clue(origin)) && (f < (clue(bound))))
-        }
+        _ <- checkOne(rnd, origin, bound)
+        // hard problem #2 (overflow):
+        f <- checkOne(rnd, Float.MinValue, Float.MaxValue)
+        // this specific value means there was an unhandled overflow:
+        _ <- assertNotEqualsF(f, 3.4028233E38f)
       } yield ()
     }
   }
