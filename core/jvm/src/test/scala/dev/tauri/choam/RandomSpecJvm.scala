@@ -91,6 +91,8 @@ trait RandomSpecJvm[F[_]] extends RandomSpec[F] { this: McasImplSpec =>
         } else {
           F.unit // throws IllegalArgumentException on older JVMs
         }
+        d6 <- F.delay(sr.nextDouble(java.lang.Double.MIN_VALUE, java.lang.Math.nextUp(java.lang.Double.MIN_VALUE)))
+        _ <- assertResultF(dr.betweenDouble(java.lang.Double.MIN_VALUE, java.lang.Math.nextUp(java.lang.Double.MIN_VALUE)).run[F], d6)
       } yield ()
       def checkBoolean(sr: JSplittableRandom, dr: Random[Axn]): F[Unit] = for {
         b1 <- F.delay(sr.nextBoolean())

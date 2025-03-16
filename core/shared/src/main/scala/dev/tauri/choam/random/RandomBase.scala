@@ -168,11 +168,17 @@ private abstract class RandomBase
   final def betweenDouble(minInclusive: Double, maxExclusive: Double): Axn[Double] = {
     require(minInclusive < maxExclusive)
     this.nextDouble.map { (d: Double) =>
-      // `maxExclusive - minInclusive` could overflow, so
-      // we're scaling down, then up by 2.0:
-      val maxHalf = maxExclusive / 2.0
-      val minHalf = minInclusive / 2.0
-      val r: Double = ((d * (maxHalf - minHalf)) + minHalf) * 2.0
+      val diff: Double = maxExclusive - minInclusive
+      val r: Double = if (diff != java.lang.Double.POSITIVE_INFINITY) {
+        // ok, no overflow:
+        (d * (maxExclusive - minInclusive)) + minInclusive
+      } else {
+        // there was an overflow, so we're
+        // scaling down, then up by 2.0:
+        val maxHalf = maxExclusive / 2.0
+        val minHalf = minInclusive / 2.0
+        ((d * (maxHalf - minHalf)) + minHalf) * 2.0
+      }
       if (r >= maxExclusive) { // this can happen due to rounding
         java.lang.Math.nextDown(maxExclusive)
       } else {
@@ -209,11 +215,17 @@ private abstract class RandomBase
   final def betweenFloat(minInclusive: Float, maxExclusive: Float): Axn[Float] = {
     require(minInclusive < maxExclusive)
     nextFloat.map { (f: Float) =>
-      // `maxExclusive - minInclusive` could overflow, so
-      // we're scaling down, then up by 2.0f:
-      val maxHalf = maxExclusive / 2.0f
-      val minHalf = minInclusive / 2.0f
-      val r: Float = ((f * (maxHalf - minHalf)) + minHalf) * 2.0f
+      val diff: Float = maxExclusive - minInclusive
+      val r: Float = if (diff != java.lang.Float.POSITIVE_INFINITY) {
+        // ok, no overflow:
+        (f * (maxExclusive - minInclusive)) + minInclusive
+      } else {
+        // there was an overflow, so we're
+        // scaling down, then up by 2.0f:
+        val maxHalf = maxExclusive / 2.0f
+        val minHalf = minInclusive / 2.0f
+        ((f * (maxHalf - minHalf)) + minHalf) * 2.0f
+      }
       if (r >= maxExclusive) { // this can happen due to rounding
         java.lang.Math.nextDown(maxExclusive)
       } else {

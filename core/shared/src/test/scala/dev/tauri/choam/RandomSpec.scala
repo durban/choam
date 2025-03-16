@@ -344,6 +344,8 @@ trait RandomSpec[F[_]]
         d <- checkOne(rnd, Double.MinValue, Double.MaxValue)
         // this specific value means there was an unhandled overflow:
         _ <- assertNotEqualsF(d, 1.7976931348623155E308)
+        // hard problem #3 (underflow in `/ 2.0`):
+        _ <- checkOne(rnd, java.lang.Double.MIN_VALUE, java.lang.Math.nextUp(java.lang.Double.MIN_VALUE))
       } yield ()
     }
   }
@@ -390,6 +392,8 @@ trait RandomSpec[F[_]]
         f <- checkOne(rnd, Float.MinValue, Float.MaxValue)
         // this specific value means there was an unhandled overflow:
         _ <- assertNotEqualsF(f, 3.4028233E38f)
+        // hard problem #3 (underflow in `/ 2.0f`):
+        _ <- checkOne(rnd, java.lang.Float.MIN_VALUE, java.lang.Math.nextUp(java.lang.Float.MIN_VALUE))
       } yield ()
     }
   }
