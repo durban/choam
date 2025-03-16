@@ -171,7 +171,7 @@ private abstract class RandomBase
       val diff: Double = maxExclusive - minInclusive
       val r: Double = if (diff != java.lang.Double.POSITIVE_INFINITY) {
         // ok, no overflow:
-        (d * (maxExclusive - minInclusive)) + minInclusive
+        (d * diff) + minInclusive
       } else {
         // there was an overflow, so we're
         // scaling down, then up by 2.0:
@@ -218,7 +218,7 @@ private abstract class RandomBase
       val diff: Float = maxExclusive - minInclusive
       val r: Float = if (diff != java.lang.Float.POSITIVE_INFINITY) {
         // ok, no overflow:
-        (f * (maxExclusive - minInclusive)) + minInclusive
+        (f * diff) + minInclusive
       } else {
         // there was an overflow, so we're
         // scaling down, then up by 2.0f:
