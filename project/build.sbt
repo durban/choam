@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-val circeVersion = "0.14.11"
+val circeVersion = "0.14.12"
 val kindProjectorVersion = "0.13.3"
 val macroParadiseVersion = "2.1.1"
 
