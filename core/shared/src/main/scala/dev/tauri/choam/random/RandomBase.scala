@@ -166,7 +166,6 @@ private abstract class RandomBase
     (n >>> 11) * DoubleUlp
 
   final def betweenDouble(minInclusive: Double, maxExclusive: Double): Axn[Double] = {
-    import java.lang.Double.{ doubleToLongBits, longBitsToDouble }
     require(minInclusive < maxExclusive)
     this.nextDouble.map { (d: Double) =>
       // `maxExclusive - minInclusive` could overflow, so
@@ -175,8 +174,7 @@ private abstract class RandomBase
       val minHalf = minInclusive / 2.0
       val r: Double = ((d * (maxHalf - minHalf)) + minHalf) * 2.0
       if (r >= maxExclusive) { // this can happen due to rounding
-        val correction = if (maxExclusive < 0.0) 1L else -1L
-        longBitsToDouble(doubleToLongBits(maxExclusive) + correction)
+        java.lang.Math.nextDown(maxExclusive)
       } else {
         r
       }
@@ -209,7 +207,6 @@ private abstract class RandomBase
     nextInt.map { n => (n >>> 8) * FloatUlp }
 
   final def betweenFloat(minInclusive: Float, maxExclusive: Float): Axn[Float] = {
-    import java.lang.Float.{ floatToIntBits, intBitsToFloat }
     require(minInclusive < maxExclusive)
     nextFloat.map { (f: Float) =>
       // `maxExclusive - minInclusive` could overflow, so
@@ -218,8 +215,7 @@ private abstract class RandomBase
       val minHalf = minInclusive / 2.0f
       val r: Float = ((f * (maxHalf - minHalf)) + minHalf) * 2.0f
       if (r >= maxExclusive) { // this can happen due to rounding
-        val correction = if (maxExclusive < 0.0f) 1 else -1
-        intBitsToFloat(floatToIntBits(maxExclusive) + correction)
+        java.lang.Math.nextDown(maxExclusive)
       } else {
         r
       }
