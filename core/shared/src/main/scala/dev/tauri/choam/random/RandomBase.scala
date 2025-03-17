@@ -365,6 +365,26 @@ private abstract class RandomBase
     }
     go(arr.length - 1)
   }
+
+  protected[this] final def staffordMix13(s: Long): Long = {
+    var n: Long = s
+    n ^= (n >>> 30)
+    n *= 0xbf58476d1ce4e5b9L
+    n ^= (n >>> 27)
+    n *= 0x94d049bb133111ebL
+    n ^= (n >>> 31)
+    n
+  }
+
+  protected[this] final def staffordMix04(s: Long): Long = {
+    var n: Long = s
+    n ^= (n >>> 33)
+    n *= 0x62a9d9ed799705f5L
+    n ^= (n >>> 28)
+    n *= 0xcb24d0a5c88c35b3L
+    n ^= (n >>> 32)
+    n
+  }
 }
 
 private object RandomBase {
