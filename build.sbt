@@ -471,6 +471,7 @@ lazy val unidocs = project
   .in(file("unidocs"))
   .disablePlugins(disabledPlugins: _*)
   .settings(commonSettings)
+  .settings(commonSettingsJvm)
   .settings(publishSettings)
   .enablePlugins(TypelevelUnidocPlugin)
   .settings(
@@ -516,6 +517,7 @@ lazy val graalNiExample = project.in(file("graal-ni-example"))
   .enablePlugins(GraalVMNativeImagePlugin)
   .disablePlugins(disabledPlugins: _*)
   .settings(commonSettings)
+  .settings(commonSettingsJvm)
   .dependsOn(ce.jvm)
   .settings(
     Compile / run / fork := true,
@@ -534,6 +536,7 @@ lazy val bench = project.in(file("bench"))
   .enablePlugins(NoPublishPlugin)
   .disablePlugins(disabledPlugins: _*)
   .settings(commonSettings)
+  .settings(commonSettingsJvm)
   .settings(
     libraryDependencies ++= Seq(
       dependencies.scalaStm.value,
@@ -663,6 +666,7 @@ lazy val stressRng = project.in(file("stress") / "stress-rng")
 lazy val stressOld = project.in(file("stress") / "stress-old")
   .settings(name := "choam-stress-old")
   .settings(commonSettings)
+  .settings(commonSettingsJvm)
   .settings(stressSettings)
   .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
   .settings(libraryDependencies += dependencies.zioStm.value) // TODO: temporary
@@ -677,6 +681,7 @@ lazy val layout = project.in(file("layout"))
   .disablePlugins(disabledPlugins.filter(_ ne JolPlugin): _*)
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
+  .settings(commonSettingsJvm)
   .settings(
     libraryDependencies += dependencies.jol.value % TestInternal,
     Jol / version := dependencies.jolVersion,
