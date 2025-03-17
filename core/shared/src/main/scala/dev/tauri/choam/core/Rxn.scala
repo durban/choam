@@ -507,6 +507,9 @@ object Rxn extends RxnInstances0 {
   private[core] final def panicImpl[A](ex: Throwable): RxnImpl[Any, A] =
     unsafe.delayImpl[Any, A] { _ => throw ex }
 
+  private[choam] final def assert(cond: Boolean): Axn[Unit] =
+    if (cond) unit[Any] else panic[Unit](new AssertionError)
+
   final def computed[A, B](f: A => Axn[B]): Rxn[A, B] =
     new Rxn.Computed(f)
 

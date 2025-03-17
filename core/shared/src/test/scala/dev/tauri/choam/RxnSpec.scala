@@ -960,6 +960,43 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("RxnLocal (nested)") {
+    for {
+      ref1 <- Ref[Int](0).run[F]
+      ref2 <- Ref[Int](0).run[F]
+      rxn1 = Rxn.unsafe.withLocal(42, new Rxn.unsafe.WithLocal[Int, Float, String] {
+        final override def apply[G[_, _]](local1: RxnLocal[G, Int], lift1: RxnLocal.Lift[Rxn, G], inst1: RxnLocal.Instances[G]) = {
+          import inst1._
+          local1.get.flatMap { ov1 =>
+            lift1(Rxn.assert(ov1 == 42) *> Rxn.unsafe.withLocal(99, new Rxn.unsafe.WithLocal[Int, Any, Float] {
+              final override def apply[GG[_, _]](
+                local2: RxnLocal[GG, Int],
+                lift2: RxnLocal.Lift[Rxn, GG],
+                inst2: RxnLocal.Instances[GG],
+              ) = {
+                import inst2._
+                local2.get.flatMap { ov2 =>
+                  lift2(Rxn.assert(ov2 == 99)).as(45.0f) <* local2.set(42)
+                } <* {
+                  lift2(Rxn.fastRandom.nextBoolean.flatMapF { retry =>
+                    if (retry) Rxn.unsafe.retry[Unit] else Rxn.unit
+                  }) *> local2.get.flatMap(v2 => lift2(ref2.set1(v2)))
+                }
+              }
+            })).flatMap { r2 =>
+              lift1(Rxn.assert(r2 == 45.0f) *> ref1.set1(ov1)) *> local1.set(99).as("foo")
+            }.flatMap { _ =>
+              local1.get.map(_.toString)
+            }
+          }.lmap[Float](f => f)
+        }
+      })
+      _ <- assertResultF(rxn1.apply(0.4f), "99")
+      _ <- assertResultF(ref1.get.run[F], 42)
+      _ <- assertResultF(ref2.get.run[F], 42)
+    } yield ()
+  }
+
   test("unsafe.delayContext") {
     Rxn.unsafe.delayContext { (tc: Mcas.ThreadContext) =>
       tc eq this.mcasImpl.currentContext()
@@ -1100,6 +1137,13 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         attemptRun[Int](Rxn.unsafe.delay[Any, Int] { _ => throw exc } >>> Rxn.unsafe.retry),
         Left(exc),
       )
+    } yield ()
+  }
+
+  test("Rxn.assert") {
+    for {
+      _ <- assertResultF(Rxn.assert(true).run[F], ())
+      _ <- assertResultF(Rxn.assert(false).run[F].attempt.map(_.isLeft), true)
     } yield ()
   }
 
