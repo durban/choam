@@ -86,10 +86,10 @@ private abstract class RandomBase
       }
     }
 
-    Axn.unsafe.delay {
+    Axn.unsafe.suspend {
       val arr = new Array[Byte](n)
       go(arr, 0).as(arr)
-    }.flatten
+    }
   }
 
   def nextLongBounded(bound: Long): Axn[Long] = {
@@ -256,7 +256,7 @@ private abstract class RandomBase
     if (length == 0) {
       Rxn.pure("")
     } else {
-      Axn.unsafe.delay {
+      Axn.unsafe.suspend {
         val arr = new Array[Char](length)
         def write(idx: Int, value: Char): Axn[Unit] =
           Axn.unsafe.delay { arr(idx) = value }
@@ -285,7 +285,7 @@ private abstract class RandomBase
           }
         }
         go(0).flatMapF(_ => Axn.unsafe.delay(new String(arr)))
-      }.flatten
+      }
     }
   }
 
@@ -326,10 +326,10 @@ private abstract class RandomBase
 
   def shuffleList[A](l: List[A]): Axn[List[A]] = {
     if (l.length > 1) {
-      Axn.unsafe.delay {
+      Axn.unsafe.suspend {
         val arr = ArrayBuffer.from(l)
         shuffleArray(arr) *> Axn.unsafe.delay(arr.toList)
-      }.flatten
+      }
     } else {
       Rxn.pure(l)
     }
@@ -337,10 +337,10 @@ private abstract class RandomBase
 
   def shuffleVector[A](v: Vector[A]): Axn[Vector[A]] = {
     if (v.length > 1) {
-      Axn.unsafe.delay {
+      Axn.unsafe.suspend {
         val arr = ArrayBuffer.from(v)
         shuffleArray(arr) *> Axn.unsafe.delay(arr.toVector)
-      }.flatten
+      }
     } else {
       Rxn.pure(v)
     }
