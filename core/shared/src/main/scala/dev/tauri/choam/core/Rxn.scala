@@ -555,7 +555,10 @@ object Rxn extends RxnInstances0 {
     _secureRandom
 
   final def deterministicRandom(initialSeed: Long): Axn[random.SplittableRandom[Axn]] =
-    random.deterministicRandom(initialSeed)
+    deterministicRandom(initialSeed, Ref.AllocationStrategy.Default)
+
+  final def deterministicRandom(initialSeed: Long, str: Ref.AllocationStrategy): Axn[random.SplittableRandom[Axn]] =
+    random.deterministicRandom(initialSeed, str)
 
   private[choam] final object ref {
 

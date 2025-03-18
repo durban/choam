@@ -25,9 +25,9 @@ import RandomBase._
 // TODO: everything could be optimized to a single `seed.modify { ... }`
 
 private object DeterministicRandom {
-  def apply(initialSeed: Long): Axn[SplittableRandom[Axn]] = {
-    Ref.padded(initialSeed).map { (seed: Ref[Long]) =>
-      new DeterministicRandom(seed, GoldenGamma)
+  def apply(initialSeed: Long, str: Ref.AllocationStrategy): Axn[SplittableRandom[Axn]] = {
+    Ref(initialSeed, str).map { (seed: Ref[Long]) =>
+      new DeterministicRandom(seed, GoldenGamma, str)
     }
   }
 }
@@ -53,6 +53,7 @@ private object DeterministicRandom {
 private final class DeterministicRandom(
   seed: Ref[Long],
   gamma: Long,
+  str: Ref.AllocationStrategy,
 ) extends RandomBase
   with SplittableRandom.UnsealedSplittableRandom[Axn] {
 
@@ -107,8 +108,8 @@ private final class DeterministicRandom(
       val otherSeed: Long = mix64(s1)
       val s2 = s1 + gamma
       val otherGamma: Long = mixGamma(s2)
-      Ref.padded[Long](otherSeed).map { otherSeed =>
-        (s2, new DeterministicRandom(otherSeed, otherGamma))
+      Ref[Long](otherSeed, str).map { otherSeedRef =>
+        (s2, new DeterministicRandom(otherSeedRef, otherGamma, str))
       }
     }
   }

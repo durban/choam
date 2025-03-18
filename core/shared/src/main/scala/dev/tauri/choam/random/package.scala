@@ -37,8 +37,8 @@ package object random {
   private[choam] final def newSecureRandom: SecureRandom[Axn] =
     new SecureRandomRxn
 
-  private[choam] final def deterministicRandom(initialSeed: Long): Axn[SplittableRandom[Axn]] =
-    DeterministicRandom(initialSeed)
+  private[choam] final def deterministicRandom(initialSeed: Long, str: Ref.AllocationStrategy): Axn[SplittableRandom[Axn]] =
+    DeterministicRandom(initialSeed, str)
 
   // TODO: do we need this?
   private[choam] def minimalRandom1(initialSeed: Long): Axn[Random[Axn]] =
