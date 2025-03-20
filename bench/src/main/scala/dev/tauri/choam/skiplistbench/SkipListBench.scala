@@ -34,7 +34,7 @@ class SkipListBench {
 
   @Benchmark
   def insertRemoveJucConcurrentSkipListMap(s: CslmState, bh: Blackhole): Unit = {
-    val k = s.nextKey(ThreadLocalRandom.current())
+    val k = s.randomNewKey(ThreadLocalRandom.current())
     val m = s.cslm
     bh.consume(m.put(k, "FOO"))
     bh.consume(m.remove(k))
@@ -42,7 +42,7 @@ class SkipListBench {
 
   @Benchmark
   def insertRemoveSkipListMap(s: SlmState, bh: Blackhole): Unit = {
-    val k = s.nextKey(ThreadLocalRandom.current())
+    val k = s.randomNewKey(ThreadLocalRandom.current())
     val m = s.slm
     bh.consume(m.put(k, "FOO"))
     bh.consume(m.del(k))
@@ -53,14 +53,23 @@ object SkipListBench {
 
   final val size = 1024 * 1024
 
+  final val newKeysSize = 1024
+
   final val foo = "FOO"
 
   @State(Scope.Benchmark)
   sealed abstract class AbstractState {
 
-    final def nextKey(tlr: ThreadLocalRandom): Long = {
+    protected[this] def newKeys: Array[Long]
+
+    protected[this] final def nextKey(tlr: ThreadLocalRandom): Long = {
       val n = tlr.nextLong(MAX_VALUE >> 2)
-      if (n < 0) -n else n
+      java.lang.Math.abs(n)
+    }
+
+    final def randomNewKey(tlr: ThreadLocalRandom): Long = {
+      val idx = tlr.nextInt(newKeysSize)
+      newKeys(idx)
     }
   }
 
@@ -73,8 +82,30 @@ object SkipListBench {
       for (_ <- 0 until size) {
         m.put(nextKey(tlr), foo)
       }
-      assert(m.size() >= size / 2)
+      while (m.size() < size) {
+        m.put(nextKey(tlr), foo)
+      }
+      assert(m.size() == size)
       m
+    }
+
+    private[this] val _newKeys: Array[Long] = {
+      val tlr = ThreadLocalRandom.current()
+      val arr = new Array[Long](newKeysSize)
+      var idx = 0
+      while (idx < newKeysSize) {
+        var newKey = nextKey(tlr)
+        while (cslm.containsKey(newKey)) {
+          newKey = nextKey(tlr)
+        }
+        arr(idx) = newKey
+        idx += 1
+      }
+      arr
+    }
+
+    protected[this] final override def newKeys: Array[Long] = {
+      _newKeys
     }
   }
 
@@ -87,8 +118,30 @@ object SkipListBench {
       for (_ <- 0 until size) {
         m.put(key = nextKey(tlr), value = foo)
       }
-      assert(m.size >= size / 2)
+      while (m.size < size) {
+        m.put(key = nextKey(tlr), value = foo) : Unit
+      }
+      assert(m.size == size)
       m
+    }
+
+    private[this] val _newKeys: Array[Long] = {
+      val tlr = ThreadLocalRandom.current()
+      val arr = new Array[Long](newKeysSize)
+      var idx = 0
+      while (idx < newKeysSize) {
+        var newKey = nextKey(tlr)
+        while (slm.contains(newKey)) {
+          newKey = nextKey(tlr)
+        }
+        arr(idx) = newKey
+        idx += 1
+      }
+      arr
+    }
+
+    protected[this] final override def newKeys: Array[Long] = {
+      _newKeys
     }
   }
 }

@@ -959,6 +959,6 @@ addCommandAlias("release", ";reload;tlRelease") // TODO: +versionPolicyReportDep
 addCommandAlias("releaseHash", ";reload;tlRelease")
 
 // profiling: `-prof jfr`
-addCommandAlias("measurePerformance", "bench/jmh:run -foe true -rf json -rff results.json .*")
-addCommandAlias("measureExchanger", "bench/jmh:run -foe true -rf json -rff results_exchanger.json -prof dev.tauri.choam.profiler.RxnProfiler:debug .*ExchangerBench")
-addCommandAlias("quickBenchmark", "bench/jmh:run -foe true -rf json -rff results_quick.json -p size=16 .*(InterpreterBench|ChoiceCombinatorBench)")
+addCommandAlias("measurePerformance", "bench/Jmh/run -foe true -rf json -rff results.json")
+addCommandAlias("measureExchanger", "bench/Jmh/run -foe true -rf json -rff results_exchanger.json -prof dev.tauri.choam.profiler.RxnProfiler:debug .*ExchangerBench")
+addCommandAlias("quickBenchmark", "bench/Jmh/run -foe true -rf json -rff results_quick.json -p size=16 .*(InterpreterBench|ChoiceCombinatorBench)")
