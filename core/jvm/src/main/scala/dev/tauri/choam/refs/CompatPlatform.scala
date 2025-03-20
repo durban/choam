@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package refs
 
-private object CompatPlatform {
+private[choam] object CompatPlatform {
 
   final type AtomicReferenceArray[A] =
     _root_.java.util.concurrent.atomic.AtomicReferenceArray[A]

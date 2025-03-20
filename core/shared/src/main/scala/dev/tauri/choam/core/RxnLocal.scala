@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package core
 
+import java.util.Arrays
+
 import cats.arrow.ArrowChoice
 import cats.Monad
 
@@ -29,6 +31,12 @@ sealed abstract class RxnLocal[G[_, _], A] private () {
 }
 
 object RxnLocal {
+
+  sealed abstract class Array[G[_, _], A] {
+    def size: Int
+    def unsafeGet(idx: Int): G[Any, A]
+    def unsafeSet(idx: Int, nv: A): G[Any, Unit]
+  }
 
   sealed trait Instances[G[_, _]] {
     implicit def monadInstance[X]: Monad[G[X, *]]
@@ -57,6 +65,15 @@ object RxnLocal {
     }
   }
 
+  private[core] final def withLocalArray[A, I, R](size: Int, initial: A, body: Rxn.unsafe.WithLocalArray[A, I, R]): Rxn[I, R] = {
+    Rxn.unsafe.suspend {
+      val arr = new scala.Array[AnyRef](size)
+      Arrays.fill(arr, box(initial))
+      val locArr = new RxnLocalArrayImpl[A](arr)
+      Rxn.internal.newLocal(locArr) *> body[Rxn](locArr, _idLift, _inst) <* Rxn.internal.endLocal(locArr)
+    }
+  }
+
   private[this] final class RxnLocalImpl[A](private[this] var a: A)
     extends RxnLocal[Rxn, A]
     with InternalLocal {
@@ -71,6 +88,39 @@ object RxnLocal {
     final override def takeSnapshot(): AnyRef = box(this.a)
     final override def loadSnapshot(snap: AnyRef): Unit = {
       this.a = snap.asInstanceOf[A]
+    }
+  }
+
+  private[this] final class RxnLocalArrayImpl[A](arr: scala.Array[AnyRef])
+    extends RxnLocal.Array[Rxn, A]
+    with InternalLocal {
+
+    final override def size: Int =
+      arr.length
+
+    final override def unsafeGet(idx: Int): Rxn[Any, A] = {
+      val arr = this.arr
+      refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
+      Axn.unsafe.delay { arr(idx).asInstanceOf[A] }
+    }
+
+    final override def unsafeSet(idx: Int, nv: A): Rxn[Any, Unit] = {
+      val arr = this.arr
+      refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
+      Axn.unsafe.delay { arr(idx) = box(nv) }
+    }
+
+    final override def takeSnapshot(): AnyRef = {
+      val arr = this.arr
+      Arrays.copyOf(arr, arr.length)
+    }
+
+    final override def loadSnapshot(snap: AnyRef): Unit = {
+      val snapArr = snap.asInstanceOf[scala.Array[AnyRef]]
+      val arr = this.arr
+      val len = arr.length
+      _assert(snapArr.length == len)
+      System.arraycopy(snapArr, 0, arr, 0, len)
     }
   }
 }

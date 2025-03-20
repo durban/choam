@@ -18,9 +18,9 @@
 package dev.tauri.choam
 package refs
 
-private object CompatPlatform {
+private[choam] object CompatPlatform {
 
-  final type AtomicReferenceArray[A] =
+  private[refs] final type AtomicReferenceArray[A] =
     _root_.dev.tauri.choam.refs.AtomicReferenceArray[A]
 
   final def checkArrayIndexIfScalaJs(idx: Int, length: Int): Unit = {

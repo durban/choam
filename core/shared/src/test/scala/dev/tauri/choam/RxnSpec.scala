@@ -902,6 +902,30 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("RxnLocal.Array") {
+    for {
+      ref <- Ref[(Int, Int, Int)]((0, 0, 0)).run[F]
+      ref2 <- Ref[Int](0).run[F]
+      rxn1 = Rxn.unsafe.withLocalArray(size = 3, initial = 42, new Rxn.unsafe.WithLocalArray[Int, Float, String] {
+        final override def apply[G[_, _]](arr: RxnLocal.Array[G, Int], lift: RxnLocal.Lift[Rxn, G], inst: RxnLocal.Instances[G]) = {
+          import inst._
+          arr.unsafeGet(0).flatMap { ov0 =>
+            arr.unsafeGet(1).flatMap { ov1 =>
+              arr.unsafeGet(2).flatMap { ov2 =>
+                lift(ref.set1((ov0, ov1, ov2))) *> arr.unsafeSet(1, 99).as("foo")
+              }
+            } <* arr.unsafeGet(1).flatMap { nv =>
+              lift(ref2.set1(nv))
+            }
+          }.lmap[Float](f => f)
+        }
+      })
+      _ <- assertResultF(rxn1.map(_ + "bar").apply(0.4f), "foobar")
+      _ <- assertResultF(ref.get.run[F], (42, 42, 42))
+      _ <- assertResultF(ref2.get.run[F], 99)
+    } yield ()
+  }
+
   test("RxnLocal (compose with Rxn)") {
     val rxn: Rxn[Any, (String, Int)] = for {
       ref <- Ref[Int](0)

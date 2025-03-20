@@ -585,8 +585,21 @@ object Rxn extends RxnInstances0 {
       ): G[I, R]
     }
 
+    trait WithLocalArray[A, I, R] {
+      def apply[G[_, _]](
+        arr: RxnLocal.Array[G, A],
+        lift: RxnLocal.Lift[Rxn, G],
+        instances: RxnLocal.Instances[G],
+      ): G[I, R]
+    }
+
+    @inline
     final def withLocal[A, I, R](initial: A, body: WithLocal[A, I, R]): Rxn[I, R] =
       RxnLocal.withLocal(initial, body)
+
+    @inline
+    final def withLocalArray[A, I, R](size: Int, initial: A, body: WithLocalArray[A, I, R]): Rxn[I, R] =
+      RxnLocal.withLocalArray(size, initial, body)
 
     sealed abstract class Ticket[A] {
       def unsafePeek: A
