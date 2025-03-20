@@ -26,12 +26,12 @@ import util.{ McasImplStateBase, RandomState }
 
 /**
  * A variant of `dev.tauri.choam.mcas.bench.ResourceAllocationMcas`,
- * implemented with reagents.
+ * implemented with `Rxn`.
  */
 @Fork(2)
 class ResourceAllocationRxn {
 
-  import ResourceAllocationRxn._
+  import ResourceAllocationRxn.{ ResAllocSt, ThreadSt }
 
   @Benchmark
   def bench(s: ResAllocSt, t: ThreadSt, rnd: RandomState): Unit = {
@@ -73,7 +73,7 @@ class ResourceAllocationRxn {
 
 object ResourceAllocationRxn {
 
-  private[this] final val nRes = 60
+  private[this] final val nRes = 96
 
   @State(Scope.Benchmark)
   class ResAllocSt extends McasImplStateBase {
@@ -81,11 +81,11 @@ object ResourceAllocationRxn {
     private[this] val initialValues =
       Vector.fill(nRes)(scala.util.Random.nextString(10))
 
-    val rss: Array[Ref[String]] =
+    final val rss: Array[Ref[String]] =
       initialValues.map(Ref.unsafePadded(_, this.mcasImpl.currentContext().refIdGen)).toArray
 
     @TearDown
-    def checkResults(): Unit = {
+    final def checkResults(): Unit = {
       val ctx = this.mcasImpl.currentContext()
       val currentValues = rss.map(ref => ctx.readDirect(ref.loc)).toVector
       if (currentValues == initialValues) {
@@ -106,25 +106,26 @@ object ResourceAllocationRxn {
 
     private[this] var selectedRss: Array[Ref[String]] = _
 
-    var ovs: Array[String] = _
+    final var ovs: Array[String] = _
 
     @Param(Array("2", "4", "6"))
     @nowarn("cat=unused-privates")
     private[this] var dAllocSize: Int = _
 
-    def allocSize: Int =
+    final def allocSize: Int =
       dAllocSize
 
     @Setup
-    def setupSelRes(): Unit = {
-      selectedRss = Array.ofDim(allocSize)
-      ovs = Array.ofDim(allocSize)
+    final def setupSelRes(): Unit = {
+      selectedRss = new Array[Ref[String]](allocSize)
+      ovs = new Array[String](allocSize)
       java.lang.invoke.VarHandle.releaseFence()
     }
 
     /** Select `allocSize` refs randomly */
-    def selectResources(rss: Array[Ref[String]], rs: RandomState): Array[Ref[String]] = {
+    final def selectResources(rss: Array[Ref[String]], rs: RandomState): Array[Ref[String]] = {
       val bucketSize = nRes / allocSize
+      assert((allocSize * bucketSize) == nRes)
 
       @tailrec
       def next(off: Int, dest: Int): Unit = {
