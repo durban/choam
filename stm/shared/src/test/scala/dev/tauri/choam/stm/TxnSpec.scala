@@ -210,6 +210,40 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     assertResultF(txn.commit, ("", 1))
   }
 
+  test("TxnLocal (rollback)") {
+    for {
+      ref <- TRef[Int](0).commit
+      v <- Txn.unsafe.withLocal(0, new Txn.unsafe.WithLocal[Int, Int] {
+        final override def apply[G[_]](
+          local: TxnLocal[G, Int],
+          lift: Txn ~> G,
+          inst: TxnLocal.Instances[G],
+        ) = {
+          import inst.monadInstance
+          lift(Txn.unsafe.plus(Txn.pure(0), Txn.pure(1))).flatMap { leftOrRight =>
+            lift(ref.update(_ + 1)) *> local.getAndUpdate(_ + 1).flatMap { ov =>
+              if (leftOrRight == 0) { // left
+                if (ov == 0) { // ok
+                  lift(Txn.unsafe.retryUnconditionally) // go to right
+                } else {
+                  lift(Txn.panic(new AssertionError))
+                }
+              } else { // right
+                if (ov == 0) { // ok
+                  lift(ref.get)
+                } else {
+                  lift(Txn.panic(new AssertionError))
+                }
+              }
+            }
+          }
+        }
+      }).commit
+      _ <- assertEqualsF(v, 1)
+      _ <- assertResultF(ref.get.commit, 1)
+    } yield ()
+  }
+
   test("Monad[Txn[F, *]] instance") {
     def generic[G[_]](gi1: G[Int], gi2: G[Int])(implicit G: StackSafeMonad[G]): G[Int] = {
       G.map2(gi1, gi2) { _ + _ }

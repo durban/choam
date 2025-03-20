@@ -139,16 +139,12 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   // Combined tests:
 
-  private[this] final def plus[A](t1: Txn[A], t2: Txn[A]): Txn[A] = {
-    t1.asInstanceOf[core.RxnImpl[Any, A]] + t2.asInstanceOf[core.RxnImpl[Any, A]]
-  }
-
   test("Txn - `(t1 orElse t2) + t3`: `t1` transient failure -> try `t3` (NOT `t2`)") {
     log("Txn - `(t1 orElse t2) + t3`: `t1` transient failure") *> {
       val t1: Txn[Int] = transientFailureOnceThenSucceedWith("t1", 1)
       val t2: Txn[Int] = succeedWith("t2", 2)
       val t3: Txn[Int] = succeedWith("t3", 3)
-      val txn: Txn[Int] = plus(t1 orElse t2, t3)
+      val txn: Txn[Int] = Txn.unsafe.plus(t1 orElse t2, t3)
       assertResultF(txn.commit, 3)
     }
   }
@@ -160,7 +156,7 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
         val t2: Txn[Int] = succeedIfPositive("t2", ref, 2)
         val t3: Txn[Int] = transientFailureOnceThenSucceedWith("t3", 3)
         val t4: Txn[Int] = succeedWith("t4", 4)
-        val txn: Txn[Int] = plus(t1, t2) orElse plus(t3, t4)
+        val txn: Txn[Int] = Txn.unsafe.plus(t1, t2) orElse Txn.unsafe.plus(t3, t4)
         assertResultF(txn.commit, 4)
       }
     }

@@ -681,10 +681,10 @@ object Rxn extends RxnInstances0 {
       lenSelfContT: Int,
     ): Rxn[D, Unit] = new Rxn.FinishExchange(hole, restOtherContK, lenSelfContT)
 
-    final def newLocal(local: InternalLocal): Axn[Unit] =
+    final def newLocal(local: InternalLocal): RxnImpl[Any, Unit] =
       new Rxn.LocalNewEnd(local, isEnd = false)
 
-    final def endLocal(local: InternalLocal): Axn[Unit] =
+    final def endLocal(local: InternalLocal): RxnImpl[Any, Unit] =
       new Rxn.LocalNewEnd(local, isEnd = true)
   }
 

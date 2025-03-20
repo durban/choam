@@ -46,11 +46,13 @@ private[choam] object TxnLocal {
   private[core] final def withLocal[A, R](initial: A, body: Txn.unsafe.WithLocal[A, R]): Txn[R] = {
     Txn.unsafe.suspend {
       val local = new TxnLocalImpl(initial)
-      body[Txn](local, _idLift, _inst)
+      Rxn.internal.newLocal(local) *> body[Txn](local, _idLift, _inst) <* Rxn.internal.endLocal(local)
     }
   }
 
-  private[this] final class TxnLocalImpl[A](private[this] var a: A) extends TxnLocal[Txn, A] {
+  private[this] final class TxnLocalImpl[A](private[this] var a: A)
+    extends TxnLocal[Txn, A]
+    with InternalLocal {
     final override def get: Txn[A] = Txn.unsafe.delay { this.a }
     final override def set(a: A): Txn[Unit] = Txn.unsafe.delay { this.a = a }
     final override def update(f: A => A): Txn[Unit] = Txn.unsafe.delay { this.a = f(this.a) }
@@ -59,6 +61,10 @@ private[choam] object TxnLocal {
       val ov = this.a
       this.a = f(ov)
       ov
+    }
+    final override def takeSnapshot(): AnyRef = box(this.a)
+    final override def loadSnapshot(snap: AnyRef): Unit = {
+      this.a = snap.asInstanceOf[A]
     }
   }
 }

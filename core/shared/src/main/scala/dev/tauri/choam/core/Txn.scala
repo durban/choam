@@ -105,6 +105,11 @@ private[choam] object Txn extends TxnInstances0 {
     /** Only for testing! */
     private[choam] final def retryUnconditionally[A]: Txn[A] =
       Rxn.unsafe.retryImpl[A]
+
+    /** Only for testing! */
+    private[choam] final def plus[A](t1: Txn[A], t2: Txn[A]): Txn[A] = {
+      t1.asInstanceOf[RxnImpl[Any, A]] + t2.asInstanceOf[RxnImpl[Any, A]]
+    }
   }
 }
 
