@@ -75,19 +75,19 @@ class McasImplState extends McasImplStateBase {
 abstract class McasImplStateBase {
 
   private[choam] val reactive: Reactive[IO] =
-    McasImplStateBase._reactive
+    McasImplStateBase.reactiveIO
 
   private[choam] val mcasImpl: Mcas =
-    McasImplStateBase._mcasImpl
+    McasImplStateBase.mcasImpl
 }
 
-private object McasImplStateBase {
+private[bench] object McasImplStateBase {
 
-  private val _reactive: Reactive[IO] = {
+  private[bench] val reactiveIO: Reactive[IO] = {
     AsyncReactive.forAsyncIn[SyncIO, IO].allocated.unsafeRunSync()._1
   }
 
-  private val _mcasImpl: Mcas = {
-    this._reactive.mcasImpl
+  private[bench] val mcasImpl: Mcas = {
+    this.reactiveIO.mcasImpl
   }
 }
