@@ -1370,10 +1370,7 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def loadLocalsSnapshot(snap: AnyRef): Unit = {
       if (snap eq null) {
-        this.locals match {
-          case null => ()
-          case locals => locals.clear()
-        }
+        clearLocals()
       } else {
         val snapshot = snap.asInstanceOf[IdentityHashMap[InternalLocal, AnyRef]]
         val locals = this.locals match {
@@ -1389,6 +1386,13 @@ object Rxn extends RxnInstances0 {
           }
         })
         this.locals = locals
+      }
+    }
+
+    private[this] final def clearLocals(): Unit = {
+      this.locals match {
+        case null => ()
+        case locals => locals.clear()
       }
     }
 
@@ -1601,6 +1605,7 @@ object Rxn extends RxnInstances0 {
         a = startA
         resetConts()
         pc.clear()
+        clearLocals()
         backoffAndNext(
           retriesNow,
           canSuspend = canSuspend,
