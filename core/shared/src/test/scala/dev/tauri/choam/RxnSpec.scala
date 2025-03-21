@@ -902,7 +902,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("RxnLocal.Array") {
+  test("RxnLocal.Array (simple)") {
     for {
       ref <- Ref[(Int, Int, Int)]((0, 0, 0)).run[F]
       ref2 <- Ref[Int](0).run[F]
@@ -973,6 +973,42 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
                   lift(ref.get)
                 } else {
                   lift(Rxn.panic(new AssertionError))
+                }
+              }
+            }
+          }
+        }
+      }).run[F]
+      _ <- assertEqualsF(v, 1)
+      _ <- assertResultF(ref.get.run[F], 1)
+    } yield ()
+  }
+
+  test("RxnLocal.Array (rollback)") {
+    for {
+      ref <- Ref[Int](0).run[F]
+      v <- Rxn.unsafe.withLocalArray(size = 3, initial = 0, new Rxn.unsafe.WithLocalArray[Int, Any, Int] {
+        final override def apply[G[_, _]](
+          arr: RxnLocal.Array[G, Int],
+          lift: RxnLocal.Lift[Rxn, G],
+          inst: RxnLocal.Instances[G],
+        ) = {
+          import inst._
+          lift(Rxn.pure(0) + Rxn.pure(1)).flatMap { leftOrRight =>
+            lift(ref.update(_ + 1)) *> arr.unsafeGet(1).flatMap { ov =>
+              arr.unsafeSet(1, ov + 1) *> {
+                if (leftOrRight == 0) { // left
+                  if (ov == 0) { // ok
+                    lift(Rxn.unsafe.retry) // go to right
+                  } else {
+                    lift(Rxn.panic(new AssertionError))
+                  }
+                } else { // right
+                  if (ov == 0) { // ok
+                    lift(ref.get)
+                  } else {
+                    lift(Rxn.panic(new AssertionError))
+                  }
                 }
               }
             }

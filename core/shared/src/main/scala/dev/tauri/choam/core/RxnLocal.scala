@@ -34,6 +34,8 @@ object RxnLocal {
 
   sealed abstract class Array[G[_, _], A] {
     def size: Int
+    // TODO: def get(idx: Int): G[Any, Option[A]]
+    // TODO: def set(idx: Int, nv: A): G[Any, Boolean]
     def unsafeGet(idx: Int): G[Any, A]
     def unsafeSet(idx: Int, nv: A): G[Any, Unit]
   }
