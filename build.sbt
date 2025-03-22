@@ -35,10 +35,9 @@ val jvmOldest = JavaSpec.temurin("11")
 val jvmLts = JavaSpec.temurin("21")
 val jvmLatest = JavaSpec.temurin("23")
 val jvmTemurins = List(jvmOldest, jvmLts, jvmLatest)
-val jvmGraalOldest = JavaSpec(JavaSpec.Distribution.GraalVM("22.3.3"), "11")
 val jvmGraalLts = JavaSpec.graalvm("21")
-val jvmGraalLatest = JavaSpec.graalvm("23")
-val jvmGraals = List(jvmGraalOldest, jvmGraalLts, jvmGraalLatest)
+val jvmGraalLatest = JavaSpec.graalvm("24")
+val jvmGraals = List(jvmGraalLts, jvmGraalLatest)
 val jvmOpenj9Oldest = JavaSpec.semeru("11")
 val jvmOpenj9Lts = JavaSpec.semeru("21")
 val jvmOpenj9Latest = JavaSpec.semeru("23")
@@ -189,7 +188,6 @@ ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   jvmTemurins.map { j => MatrixExclude(Map("os" -> windows, "java" -> j.render)) }, // but see inclusions
   Seq(
     MatrixExclude(Map("os" -> linux, "java" -> jvmOpenj9Oldest.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
-    MatrixExclude(Map("os" -> linux, "java" -> jvmGraalOldest.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
   ),
 ).flatten
 ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.flatMap { scalaVer =>
