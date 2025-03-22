@@ -45,6 +45,7 @@ val jvmOpenj9s = List(jvmOpenj9Oldest, jvmOpenj9Lts, jvmOpenj9Latest)
 
 // CI OS versions:
 val linux = "ubuntu-24.04-arm"
+val linux86 = "ubuntu-latest"
 val windows = "windows-latest"
 val macos = "macos-14"
 
@@ -176,7 +177,7 @@ ThisBuild / githubWorkflowBuild := List(
   ),
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(jvmTemurins, jvmGraals, jvmOpenj9s).flatten
-ThisBuild / githubWorkflowOSes := Seq(linux, windows, macos)
+ThisBuild / githubWorkflowOSes := Seq(linux, linux86, windows, macos)
 ThisBuild / githubWorkflowSbtCommand := "sbt -v"
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   jvmGraals.map { gr => MatrixExclude(Map("os" -> windows, "java" -> gr.render)) }, // win+graal seems unstable
@@ -187,6 +188,7 @@ ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   jvmTemurins.map { j => MatrixExclude(Map("os" -> macos, "java" -> j.render)) }, // but see inclusions
   jvmTemurins.map { j => MatrixExclude(Map("os" -> windows, "java" -> j.render)) }, // but see inclusions
   Seq(
+    MatrixExclude(Map("os" -> linux86)), // but see inclusions
     MatrixExclude(Map("os" -> linux, "java" -> jvmOpenj9Oldest.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
   ),
 ).flatten
@@ -195,6 +197,7 @@ ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.fla
   Seq(
     MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
     MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
+    MatrixInclude(matching = Map("os" -> linux86, "java" -> jvmLatest.render), additions = Map.empty),
   )
 }
 ThisBuild / githubWorkflowAddedJobs ~= { jobs =>
