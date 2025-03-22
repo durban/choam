@@ -44,7 +44,7 @@ val jvmOpenj9s = List(jvmOpenj9Lts, jvmOpenj9Latest)
 
 // CI OS versions:
 val linux = "ubuntu-24.04-arm"
-val linux86 = "ubuntu-latest"
+val linux86 = "ubuntu-24.04"
 val windows = "windows-latest"
 val macos = "macos-14"
 
