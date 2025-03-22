@@ -38,10 +38,9 @@ val jvmTemurins = List(jvmOldest, jvmLts, jvmLatest)
 val jvmGraalLts = JavaSpec.graalvm("21")
 val jvmGraalLatest = JavaSpec.graalvm("24")
 val jvmGraals = List(jvmGraalLts, jvmGraalLatest)
-val jvmOpenj9Oldest = JavaSpec.semeru("11")
 val jvmOpenj9Lts = JavaSpec.semeru("21")
 val jvmOpenj9Latest = JavaSpec.semeru("23")
-val jvmOpenj9s = List(jvmOpenj9Oldest, jvmOpenj9Lts, jvmOpenj9Latest)
+val jvmOpenj9s = List(jvmOpenj9Lts, jvmOpenj9Latest)
 
 // CI OS versions:
 val linux = "ubuntu-24.04-arm"
@@ -189,7 +188,6 @@ ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   jvmTemurins.map { j => MatrixExclude(Map("os" -> windows, "java" -> j.render)) }, // but see inclusions
   Seq(
     MatrixExclude(Map("os" -> linux86)), // but see inclusions
-    MatrixExclude(Map("os" -> linux, "java" -> jvmOpenj9Oldest.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
   ),
 ).flatten
 ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.flatMap { scalaVer =>

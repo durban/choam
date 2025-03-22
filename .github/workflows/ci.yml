@@ -38,7 +38,6 @@ jobs:
           - temurin@23
           - graalvm@21
           - graalvm@24
-          - semeru@11
           - semeru@21
           - semeru@23
         include:
@@ -64,8 +63,6 @@ jobs:
           - os: windows-latest
             java: graalvm@24
           - os: windows-latest
-            java: semeru@11
-          - os: windows-latest
             java: semeru@21
           - os: windows-latest
             java: semeru@23
@@ -73,8 +70,6 @@ jobs:
             java: graalvm@21
           - os: macos-14
             java: graalvm@24
-          - os: macos-14
-            java: semeru@11
           - os: macos-14
             java: semeru@21
           - os: macos-14
@@ -92,9 +87,6 @@ jobs:
           - os: windows-latest
             java: temurin@23
           - os: ubuntu-latest
-          - os: ubuntu-24.04-arm
-            java: semeru@11
-            scala: 3
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     steps:
@@ -181,20 +173,6 @@ jobs:
         shell: bash
         run: sbt -v +update
 
-      - name: Setup Java (semeru@11)
-        id: setup-java-semeru-11
-        if: matrix.java == 'semeru@11'
-        uses: actions/setup-java@v4
-        with:
-          distribution: semeru
-          java-version: 11
-          cache: sbt
-
-      - name: sbt update
-        if: matrix.java == 'semeru@11' && steps.setup-java-semeru-11.outputs.cache-hit == 'false'
-        shell: bash
-        run: sbt -v +update
-
       - name: Setup Java (semeru@21)
         id: setup-java-semeru-21
         if: matrix.java == 'semeru@21'
@@ -227,19 +205,19 @@ jobs:
         shell: bash
         run: sbt -v githubWorkflowCheck
 
-      - if: (!((matrix.java == 'semeru@11') || (matrix.java == 'semeru@21') || (matrix.java == 'semeru@23'))) && (!(contains(github.event.head_commit.message, 'full CI')))
+      - if: (!((matrix.java == 'semeru@21') || (matrix.java == 'semeru@23'))) && (!(contains(github.event.head_commit.message, 'full CI')))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' ci
 
-      - if: (!((matrix.java == 'semeru@11') || (matrix.java == 'semeru@21') || (matrix.java == 'semeru@23'))) && (contains(github.event.head_commit.message, 'full CI'))
+      - if: (!((matrix.java == 'semeru@21') || (matrix.java == 'semeru@23'))) && (contains(github.event.head_commit.message, 'full CI'))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' ciFull
 
-      - if: ((matrix.java == 'semeru@11') || (matrix.java == 'semeru@21') || (matrix.java == 'semeru@23')) && (!(contains(github.event.head_commit.message, 'full CI')))
+      - if: ((matrix.java == 'semeru@21') || (matrix.java == 'semeru@23')) && (!(contains(github.event.head_commit.message, 'full CI')))
         shell: bash
         run: 'sbt -v ''++ ${{ matrix.scala }}'' -J-Xgcpolicy:balanced ci'
 
-      - if: ((matrix.java == 'semeru@11') || (matrix.java == 'semeru@21') || (matrix.java == 'semeru@23')) && (contains(github.event.head_commit.message, 'full CI'))
+      - if: ((matrix.java == 'semeru@21') || (matrix.java == 'semeru@23')) && (contains(github.event.head_commit.message, 'full CI'))
         shell: bash
         run: 'sbt -v ''++ ${{ matrix.scala }}'' -J-Xgcpolicy:balanced ciFull'
 
@@ -384,19 +362,6 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'graalvm@24' && steps.setup-java-graalvm-24.outputs.cache-hit == 'false'
-        run: sbt -v +update
-
-      - name: Setup Java (semeru@11)
-        id: setup-java-semeru-11
-        if: matrix.java == 'semeru@11'
-        uses: actions/setup-java@v4
-        with:
-          distribution: semeru
-          java-version: 11
-          cache: sbt
-
-      - name: sbt update
-        if: matrix.java == 'semeru@11' && steps.setup-java-semeru-11.outputs.cache-hit == 'false'
         run: sbt -v +update
 
       - name: Setup Java (semeru@21)
