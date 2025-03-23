@@ -132,8 +132,8 @@ ThisBuild / githubWorkflowBuild := List(
     List(openJ9Options, ciFullCommand),
     cond = Some(s"($isOpenJ9Cond) && ($fullCiCond)"),
   ),
-  // Static analysis (doesn't work on Scala 3):
-  // TODO: WorkflowStep.Sbt(List("checkScalafix"), cond = Some(s"matrix.scala != '${CrossVersion.binaryScalaVersion(scala3)}'")),
+  // Static analysis:
+  WorkflowStep.Sbt(List("checkScalafix")),
 ) ++ List(
   // Lincheck tests (they only run if commit msg contains 'full CI' or 'stressLinchk'):
   WorkflowStep.Sbt(
