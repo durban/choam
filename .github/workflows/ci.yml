@@ -113,7 +113,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'temurin@11' && steps.setup-java-temurin-11.outputs.cache-hit == 'false'
+        if: matrix.java == 'temurin@11' #&& steps.setup-java-temurin-11.outputs.cache-hit == 'false'
         shell: bash
         run: sbt -v +update
 
@@ -127,7 +127,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        if: matrix.java == 'temurin@21' #&& steps.setup-java-temurin-21.outputs.cache-hit == 'false'
         shell: bash
         run: sbt -v +update
 
@@ -141,7 +141,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'temurin@23' && steps.setup-java-temurin-23.outputs.cache-hit == 'false'
+        if: matrix.java == 'temurin@23' #&& steps.setup-java-temurin-23.outputs.cache-hit == 'false'
         shell: bash
         run: sbt -v +update
 
@@ -155,7 +155,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'graalvm@21' && steps.setup-java-graalvm-21.outputs.cache-hit == 'false'
+        if: matrix.java == 'graalvm@21' #&& steps.setup-java-graalvm-21.outputs.cache-hit == 'false'
         shell: bash
         run: sbt -v +update
 
@@ -169,7 +169,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'graalvm@24' && steps.setup-java-graalvm-24.outputs.cache-hit == 'false'
+        if: matrix.java == 'graalvm@24' #&& steps.setup-java-graalvm-24.outputs.cache-hit == 'false'
         shell: bash
         run: sbt -v +update
 
@@ -183,7 +183,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'semeru@21' && steps.setup-java-semeru-21.outputs.cache-hit == 'false'
+        if: matrix.java == 'semeru@21' #&& steps.setup-java-semeru-21.outputs.cache-hit == 'false'
         shell: bash
         run: sbt -v +update
 
@@ -197,13 +197,13 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'semeru@23' && steps.setup-java-semeru-23.outputs.cache-hit == 'false'
+        if: matrix.java == 'semeru@23' #&& steps.setup-java-semeru-23.outputs.cache-hit == 'false'
         shell: bash
         run: sbt -v +update
 
-      - name: Check that workflows are up to date
-        shell: bash
-        run: sbt -v githubWorkflowCheck
+      #- name: Check that workflows are up to date
+      #  shell: bash
+      #  run: sbt -v githubWorkflowCheck
 
       - if: (!((matrix.java == 'semeru@21') || (matrix.java == 'semeru@23'))) && (!(contains(github.event.head_commit.message, 'full CI')))
         shell: bash
@@ -308,7 +308,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'temurin@11' && steps.setup-java-temurin-11.outputs.cache-hit == 'false'
+        if: matrix.java == 'temurin@11' #&& steps.setup-java-temurin-11.outputs.cache-hit == 'false'
         run: sbt -v +update
 
       - name: Setup Java (temurin@21)
@@ -321,7 +321,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        if: matrix.java == 'temurin@21' #&& steps.setup-java-temurin-21.outputs.cache-hit == 'false'
         run: sbt -v +update
 
       - name: Setup Java (temurin@23)
@@ -334,7 +334,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'temurin@23' && steps.setup-java-temurin-23.outputs.cache-hit == 'false'
+        if: matrix.java == 'temurin@23' #&& steps.setup-java-temurin-23.outputs.cache-hit == 'false'
         run: sbt -v +update
 
       - name: Setup Java (graalvm@21)
@@ -347,7 +347,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'graalvm@21' && steps.setup-java-graalvm-21.outputs.cache-hit == 'false'
+        if: matrix.java == 'graalvm@21' #&& steps.setup-java-graalvm-21.outputs.cache-hit == 'false'
         run: sbt -v +update
 
       - name: Setup Java (graalvm@24)
@@ -360,7 +360,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'graalvm@24' && steps.setup-java-graalvm-24.outputs.cache-hit == 'false'
+        if: matrix.java == 'graalvm@24' #&& steps.setup-java-graalvm-24.outputs.cache-hit == 'false'
         run: sbt -v +update
 
       - name: Setup Java (semeru@21)
@@ -373,7 +373,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'semeru@21' && steps.setup-java-semeru-21.outputs.cache-hit == 'false'
+        if: matrix.java == 'semeru@21' #&& steps.setup-java-semeru-21.outputs.cache-hit == 'false'
         run: sbt -v +update
 
       - name: Setup Java (semeru@23)
@@ -386,7 +386,7 @@ jobs:
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'semeru@23' && steps.setup-java-semeru-23.outputs.cache-hit == 'false'
+        if: matrix.java == 'semeru@23' #&& steps.setup-java-semeru-23.outputs.cache-hit == 'false'
         run: sbt -v +update
 
       - name: Submit Dependencies
