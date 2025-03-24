@@ -523,11 +523,13 @@ lazy val graalNiExample = project.in(file("graal-ni-example"))
   .dependsOn(ce.jvm)
   .settings(
     Compile / run / fork := true,
-    GraalVMNativeImage / containerBuildImage := Some("ghcr.io/graalvm/native-image-community:23.0.2-ol8"),
+    GraalVMNativeImage / containerBuildImage := Some("ghcr.io/graalvm/native-image-community:24.0.0-ol8"),
     GraalVMNativeImage / graalVMNativeImageOptions ++= Seq(
       "--verbose",
+      "--no-fallback",
       "--exact-reachability-metadata",
       "--install-exit-handlers",
+      // "--enable-monitoring=jvmstat,jmxserver",
       "--static-nolibc",
       // "--static", "--libc=musl", // needs musl, but it isn't in the container image
     ),
@@ -858,7 +860,7 @@ lazy val dependencies = new {
   val catsEffectVersion = "3.6.0" // https://github.com/typelevel/cats-effect
   val catsMtlVersion = "1.5.0" // https://github.com/typelevel/cats-mtl
   val catsCollectionsVersion = "0.9.9" // https://github.com/typelevel/cats-collections
-  val fs2Version = "3.12.0-RC2" // https://github.com/typelevel/fs2 // TODO:0.5: we mustn't depend on an RC
+  val fs2Version = "3.12.0" // https://github.com/typelevel/fs2
   val scalacheckEffectVersion = "2.0.0-M2" // https://github.com/typelevel/scalacheck-effect
   val jcstressVersion = "0.16" // https://github.com/openjdk/jcstress
   val jmhVersion = "1.37" // https://github.com/openjdk/jmh
