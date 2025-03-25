@@ -232,6 +232,43 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     assertEquals(shadow.size, 0)
   }
 
+  property("HAMT removedIfBlue (default generator)") {
+    forAll { (seed: Long, _nums: Set[Long]) =>
+      testRemovedIfBlue(seed, _nums)
+    }
+  }
+
+  property("HAMT removedIfBlue (RIG generator)") {
+    myForAll { (seed: Long, _nums: Set[Long]) =>
+      testRemovedIfBlue(seed, _nums)
+    }
+  }
+
+  private def testRemovedIfBlue(seed: Long, _nums: Set[Long]): Unit = {
+    val rng = new Random(seed)
+    val nums = rng.shuffle(_nums.toList)
+    nums match {
+      case Nil =>
+        assertSameInstance(LongHamt.empty, LongHamt.empty.removedIfBlue(LongWr(seed)))
+      case h :: t =>
+        val hamt0 = hamtFromList(t).inserted(Val(h, isBlue = false))
+        t match {
+          case Nil =>
+            val hamt1 = hamt0.removedIfBlue(LongWr(h))
+            assertSameInstance(hamt1, hamt0)
+          case hh :: _ =>
+            val order = rng.nextBoolean()
+            val hamt1 = if (order) {
+              hamt0.removedIfBlue(LongWr(h)).removedIfBlue(LongWr(hh))
+            } else {
+              hamt0.removedIfBlue(LongWr(hh)).removedIfBlue(LongWr(h))
+            }
+            assertEquals(hamt1, hamt0.removed(LongWr(hh)))
+            assertSameInstance(hamt1, hamt1.removedIfBlue(LongWr(hh)))
+        }
+    }
+  }
+
   property("HAMT computeIfAbsent (default generator)") {
     forAll { (seed: Long, _nums: Set[Long]) =>
       testComputeIfAbsent(seed, _nums)
@@ -740,6 +777,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     var hamt = LongHamt.empty
     var size = 0
     assert(hamt.definitelyBlue)
+    assertSameInstance(hamt, hamt.removedIfBlue(LongWr(seed)))
     for (n <- evenNums) {
       hamt = hamt.inserted(Val(n, isBlue = true))
       size += 1
@@ -749,7 +787,9 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     var hamtr = hamt
     var sizer = size
     for (n <- evenNums) {
-      hamtr = hamtr.removed(LongWr(n))
+      val b = rng.nextBoolean()
+      hamtr = if (b) hamtr.removed(LongWr(n)) else hamtr.removedIfBlue(LongWr(n))
+      assertEquals(hamtr.getOrElseNull(n), null)
       sizer -= 1
       assert(hamtr.definitelyBlue)
       assertEquals(hamtr.size, sizer)
@@ -757,6 +797,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
     assertEquals(hamtr, LongHamt.empty)
     for (k <- oddNums) {
       hamt = hamt.inserted(Val(k, isBlue = false))
+      assertSameInstance(hamt, hamt.removedIfBlue(LongWr(k)))
       size += 1
       assert(!hamt.definitelyBlue)
       assertEquals(hamt.size, size)
