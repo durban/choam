@@ -130,13 +130,24 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
   final def computeOrModify[T](k: K, tok: T, visitor: Hamt.EntryVisitor[K, V, T]): Unit = {
     val sdb = this.visit(k, k.hash, tok, visitor, newValue = nullOf[V], modify = true, shift = 0)
     val sizeDiff = unpackSizeDiff(sdb)
-    _assert((sizeDiff == 0) || (sizeDiff == 1) || ((sizeDiff == -1) && (visitor eq Hamt.tombingVisitor[Hamt.HasHash, Hamt.HasKey[Hamt.HasHash]])))
+    _assert(
+      (sizeDiff == 0) ||
+      (sizeDiff == 1) ||
+      (
+        (sizeDiff == -1) &&
+        ((visitor eq Hamt.tombingVisitor) || (visitor eq AbstractHamt.tombingIfBlueVisitor))
+      )
+    )
     this.addToSize(sizeDiff)
     this.isBlueTree &= unpackIsBlue(sdb)
   }
 
   final def remove(k: K): Unit = {
     this.computeOrModify(k, null, Hamt.tombingVisitor[K, V])
+  }
+
+  final def removeIfBlue(k: K): Unit = {
+    this.computeOrModify(k, this, AbstractHamt.tombingIfBlueVisitor[K, V, H])
   }
 
   final def copyToArray(tok: T1, flag: Boolean, nullIfBlue: Boolean): Array[E] = {

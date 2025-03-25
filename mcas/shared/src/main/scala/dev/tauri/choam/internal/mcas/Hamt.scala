@@ -169,7 +169,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
   }
 
   final def removedIfBlue(k: K): H = {
-    this.computeOrModify(k, this, Hamt.tombingIfBlueVisitor[K, V, H])
+    this.computeOrModify(k, this, AbstractHamt.tombingIfBlueVisitor[K, V, H])
   }
 
   /**
@@ -492,6 +492,9 @@ private[choam] object Hamt {
       true
   }
 
+  private[mcas] final def newTombstone(hash: Long): HasKey[HasHash] with HasHash =
+    new Tombstone(hash)
+
   private[mcas] final def tombingVisitor[K <: HasHash, V <: HasKey[K]]: EntryVisitor[K, V, Any] = {
     _tombingVisitor.asInstanceOf[EntryVisitor[K, V, Any]]
   }
@@ -501,19 +504,6 @@ private[choam] object Hamt {
       final override def entryPresent(k: HasHash, v: HasKey[HasHash], tok: Any): HasKey[HasHash] =
         new Tombstone(k.hash)
       final override def entryAbsent(k: HasHash, tok: Any): HasKey[HasHash] =
-        null // OK, nothing to delete
-    }
-  }
-
-  private[mcas] final def tombingIfBlueVisitor[K <: HasHash, V <: HasKey[K], H <: Hamt[K, V, _, _, _, H]]: EntryVisitor[K, V, H] = {
-    _tombingIfBlueVisitor.asInstanceOf[EntryVisitor[K, V, H]]
-  }
-
-  private[this] val _tombingIfBlueVisitor: EntryVisitor[HasHash, HasKey[HasHash], Hamt[_, HasKey[HasHash], _, _, _, _]] = {
-    new EntryVisitor[HasHash, HasKey[HasHash], Hamt[_, HasKey[HasHash], _, _, _, _]] {
-      final override def entryPresent(k: HasHash, v: HasKey[HasHash], tok: Hamt[_, HasKey[HasHash], _, _, _, _]): HasKey[HasHash] =
-        if (tok.isBlue(v)) new Tombstone(k.hash) else v
-      final override def entryAbsent(k: HasHash, tok: Hamt[_, HasKey[HasHash], _, _, _, _]): HasKey[HasHash] =
         null // OK, nothing to delete
     }
   }

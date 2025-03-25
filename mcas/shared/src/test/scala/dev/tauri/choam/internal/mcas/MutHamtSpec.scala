@@ -338,6 +338,55 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     assertEquals(shadow.size, 0)
   }
 
+  property("HAMT removeIfBlue (default generator)") {
+    forAll { (seed: Long, _nums: Set[Long]) =>
+      testRemoveIfBlue(seed, _nums)
+    }
+  }
+
+  property("HAMT removeIfBlue (RIG generator)") {
+    myForAll { (seed: Long, _nums: Set[Long]) =>
+      testRemoveIfBlue(seed, _nums)
+    }
+  }
+
+  private def testRemoveIfBlue(seed: Long, _nums: Set[Long]): Unit = {
+    val rng = new Random(seed)
+    val nums = rng.shuffle(_nums.toList)
+    nums match {
+      case Nil =>
+        val hamt = LongMutHamt.newEmpty()
+        hamt.removeIfBlue(LongWr(seed))
+        assertEquals(hamt.size, 0)
+        assertEquals(hamt, LongMutHamt.newEmpty())
+      case h :: t =>
+        val hamt = mutHamtFromList(t)
+        hamt.insert(Val(h, isBlue = false))
+        t match {
+          case Nil =>
+            hamt.removeIfBlue(LongWr(h))
+            val exp = LongMutHamt.newEmpty()
+            exp.insert(Val(h, isBlue = false))
+            assertEquals(hamt, exp)
+          case hh :: tt =>
+            val order = rng.nextBoolean()
+            if (order) {
+              hamt.removeIfBlue(LongWr(h))
+              hamt.removeIfBlue(LongWr(hh))
+            } else {
+              hamt.removeIfBlue(LongWr(hh))
+              hamt.removeIfBlue(LongWr(h))
+            }
+            val exp = LongMutHamt.newEmpty()
+            exp.insert(Val(h, isBlue = false))
+            tt.foreach(n => exp.insert(Val(n)))
+            assertEquals(hamt, exp)
+            hamt.removeIfBlue(LongWr(hh))
+            assertEquals(hamt, exp)
+        }
+    }
+  }
+
   property("HAMT computeIfAbsent (default generator)") {
     forAll { (seed: Long, _nums: Set[Long]) =>
       testComputeIfAbsent(seed, _nums)
@@ -853,6 +902,10 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     var size = 0
     assert(hamt.definitelyBlue)
     assert(hamt.copyToImmutable().definitelyBlue)
+    hamt.removeIfBlue(LongWr(seed))
+    assertEquals(hamt.size, 0)
+    assert(hamt.definitelyBlue)
+    assert(hamt.copyToImmutable().definitelyBlue)
     for (n <- evenNums) {
       hamt.insert(Val(n, isBlue = true))
       size += 1
@@ -861,7 +914,13 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       assertEquals(hamt.size, size)
     }
     for (n <- evenNums) {
-      hamt.remove(LongWr(n))
+      val b = rng.nextBoolean()
+      if (b) {
+        hamt.remove(LongWr(n))
+      } else {
+        hamt.removeIfBlue(LongWr(n))
+      }
+      assertEquals(hamt.getOrElseNull(n), null)
       size -= 1
       assert(hamt.definitelyBlue)
       assertEquals(hamt.size, size)
@@ -893,7 +952,13 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     assertEquals(hamt.copyToArray((), flag = false, nullIfBlue = true), null)
     // removing also doesn't change it:
     for (k <- oddNums) {
-      hamt.remove(LongWr(k))
+      val b = rng.nextBoolean()
+      if (b) {
+        hamt.remove(LongWr(k))
+      } else {
+        hamt.removeIfBlue(LongWr(k))
+      }
+      assertEquals(hamt.getOrElseNull(k), null)
       size -= 1
       assertEquals(hamt.size, size)
       if (size > 0) {
