@@ -61,7 +61,8 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   private[choam] def add[A](desc: LogEntry[A]): AbstractDescriptor.Aux[D]
 
-  private[choam] def remove[A](ref: MemoryLocation[A]): AbstractDescriptor.Aux[D]
+  @throws[IllegalArgumentException]("if the ref is not in fact read-only")
+  private[choam] def removeReadOnlyRef[A](ref: MemoryLocation[A]): AbstractDescriptor.Aux[D]
 
   private[choam] def overwrite[A](desc: LogEntry[A]): AbstractDescriptor.Aux[D]
 

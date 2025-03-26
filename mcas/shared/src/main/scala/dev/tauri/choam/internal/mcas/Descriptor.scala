@@ -80,8 +80,9 @@ final class Descriptor private (
     this.withLogMap(newMap)
   }
 
-  private[choam] final override def remove[A](ref: MemoryLocation[A]): Descriptor = {
-    val newMap = this.map.removed(ref.cast[Any])
+  @throws[IllegalArgumentException]("if the ref is not in fact read-only")
+  private[choam] final override def removeReadOnlyRef[A](ref: MemoryLocation[A]): Descriptor = {
+    val newMap = this.map.withoutBlueValue(ref.cast[Any])
     this.withLogMap(newMap)
   }
 

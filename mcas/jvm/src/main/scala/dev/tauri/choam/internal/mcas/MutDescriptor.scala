@@ -73,8 +73,9 @@ final class MutDescriptor private (
     this
   }
 
-  private[choam] final override def remove[A](ref: MemoryLocation[A]): AbstractDescriptor.Aux[MutDescriptor] = {
-    this.map.remove(ref.cast[Any])
+  @throws[IllegalArgumentException]("if the ref is not in fact read-only")
+  private[choam] final override def removeReadOnlyRef[A](ref: MemoryLocation[A]): AbstractDescriptor.Aux[MutDescriptor] = {
+    this.map.removeBlueValue(ref.cast[Any])
     this
   }
 
