@@ -168,7 +168,8 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
     this.computeOrModify(k, null, Hamt.tombingVisitor[K, V])
   }
 
-  final def removedIfBlue(k: K): H = {
+  @throws[Hamt.IllegalRemovalException]("if the value is not blue")
+  final def withoutBlueValue(k: K): H = {
     this.computeOrModify(k, this, AbstractHamt.tombingIfBlueVisitor[K, V, H])
   }
 
@@ -475,11 +476,14 @@ private[choam] object Hamt {
       throw new IllegalStateException
   }
 
-  final class IllegalInsertException(key: HasHash)
+  final class IllegalInsertException private[mcas] (key: HasHash)
     extends IllegalOperationException(s"illegal INSERT operation for key: ${key}")
 
-  final class IllegalUpdateException(key: HasHash)
+  final class IllegalUpdateException private[mcas] (key: HasHash)
     extends IllegalOperationException(s"illegal UPDATE operation for key: ${key}")
+
+  final class IllegalRemovalException private[mcas] (key: HasHash)
+    extends IllegalOperationException(s"illegal removal operation for key: ${key} (value is not blue)")
 
   private[this] final class Tombstone(final override val hash: Long)
     extends HasKey[HasHash]

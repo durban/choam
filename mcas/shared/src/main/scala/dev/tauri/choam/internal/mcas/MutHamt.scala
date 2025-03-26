@@ -146,7 +146,8 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
     this.computeOrModify(k, null, Hamt.tombingVisitor[K, V])
   }
 
-  final def removeIfBlue(k: K): Unit = {
+  @throws[Hamt.IllegalRemovalException]("if the value is not blue")
+  final def removeBlueValue(k: K): Unit = {
     this.computeOrModify(k, this, AbstractHamt.tombingIfBlueVisitor[K, V, H])
   }
 

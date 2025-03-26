@@ -356,7 +356,7 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     nums match {
       case Nil =>
         val hamt = LongMutHamt.newEmpty()
-        hamt.removeIfBlue(LongWr(seed))
+        hamt.removeBlueValue(LongWr(seed))
         assertEquals(hamt.size, 0)
         assertEquals(hamt, LongMutHamt.newEmpty())
       case h :: t =>
@@ -364,24 +364,16 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
         hamt.insert(Val(h, isBlue = false))
         t match {
           case Nil =>
-            hamt.removeIfBlue(LongWr(h))
-            val exp = LongMutHamt.newEmpty()
-            exp.insert(Val(h, isBlue = false))
-            assertEquals(hamt, exp)
+            assert(Either.catchOnly[Hamt.IllegalRemovalException](hamt.removeBlueValue(LongWr(h))).isLeft)
           case hh :: tt =>
-            val order = rng.nextBoolean()
-            if (order) {
-              hamt.removeIfBlue(LongWr(h))
-              hamt.removeIfBlue(LongWr(hh))
-            } else {
-              hamt.removeIfBlue(LongWr(hh))
-              hamt.removeIfBlue(LongWr(h))
-            }
+            hamt.removeBlueValue(LongWr(hh))
+            assertEquals(hamt.getOrElseNull(hh), null)
+            assert(Either.catchOnly[Hamt.IllegalRemovalException](hamt.removeBlueValue(LongWr(h))).isLeft)
             val exp = LongMutHamt.newEmpty()
             exp.insert(Val(h, isBlue = false))
             tt.foreach(n => exp.insert(Val(n)))
             assertEquals(hamt, exp)
-            hamt.removeIfBlue(LongWr(hh))
+            hamt.removeBlueValue(LongWr(hh))
             assertEquals(hamt, exp)
         }
     }
@@ -902,7 +894,7 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
     var size = 0
     assert(hamt.definitelyBlue)
     assert(hamt.copyToImmutable().definitelyBlue)
-    hamt.removeIfBlue(LongWr(seed))
+    hamt.removeBlueValue(LongWr(seed))
     assertEquals(hamt.size, 0)
     assert(hamt.definitelyBlue)
     assert(hamt.copyToImmutable().definitelyBlue)
@@ -918,7 +910,7 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       if (b) {
         hamt.remove(LongWr(n))
       } else {
-        hamt.removeIfBlue(LongWr(n))
+        hamt.removeBlueValue(LongWr(n))
       }
       assertEquals(hamt.getOrElseNull(n), null)
       size -= 1
@@ -956,7 +948,7 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       if (b) {
         hamt.remove(LongWr(k))
       } else {
-        hamt.removeIfBlue(LongWr(k))
+        hamt.removeBlueValue(LongWr(k))
       }
       assertEquals(hamt.getOrElseNull(k), null)
       size -= 1
