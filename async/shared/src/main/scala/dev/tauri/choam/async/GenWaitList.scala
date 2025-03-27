@@ -78,10 +78,10 @@ object GenWaitList {
   private abstract class GenWaitListCommon[A]
     extends GenWaitList[A] { self =>
 
-    protected[this] final def callCb[B](cb: Callback[B]): Rxn[B, Unit] = {
+    protected[this] final def callCb[B](cb: Callback[B]): Rxn[B, B] = {
       Rxn.postCommit[B](Rxn.unsafe.delay { (b: B) =>
         cb(Right(b))
-      }).void
+      })
     }
   }
 
@@ -182,7 +182,7 @@ object GenWaitList {
         case None =>
           this.syncSet0
         case Some(cb) =>
-          callCb(cb)
+          callCb(cb).void
       }
     }
 
