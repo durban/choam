@@ -889,7 +889,6 @@ lazy val dependencies = new {
   val jmh = Def.setting("org.openjdk.jmh" % "jmh-core" % jmhVersion)
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.5") // https://github.com/JCTools/JCTools
   val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.38") // https://github.com/JetBrains/lincheck
-  val asm = Def.setting("org.ow2.asm" % "asm-commons" % "9.7.1") // https://asm.ow2.io/
 
   // JS:
   val scalaJsLocale = Def.setting[Seq[ModuleID]](Seq(
@@ -921,7 +920,7 @@ lazy val dependencies = new {
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
       catsMtlLaws.value,
       "org.scalameta" %%% "munit" % "1.1.0", // https://github.com/scalameta/munit
-      "org.typelevel" %%% "munit-cats-effect" % "2.0.0", // https://github.com/typelevel/munit-cats-effect
+      "org.typelevel" %%% "munit-cats-effect" % "2.1.0", // https://github.com/typelevel/munit-cats-effect
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
       "org.typelevel" %%% "discipline-munit" % "2.0.0", // https://github.com/typelevel/discipline-munit
