@@ -21,6 +21,10 @@ import munit.Location
 
 trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with McasImplSpec =>
 
+  /** Subclasses may raise this to INFO, if they're interested */
+  protected def zioUnhandledErrorLogLevel: zio.LogLevel =
+    zio.LogLevel.Debug
+
   final override def assertResultF[A, B](obtained: zio.Task[A], expected: B, clue: String = "values are not the same")(
     implicit loc: Location, ev: B <:< A
   ): zio.Task[Unit] = {

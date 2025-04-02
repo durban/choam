@@ -21,6 +21,31 @@ import cats.effect.kernel.Async
 
 import munit.CatsEffectSuite
 
+final class BaseSpecZIOSpec
+  extends BaseSpecZIO
+  with SpecDefaultMcas {
+
+  import zio.ZIO
+
+  test("Test success") {
+    ZIO.attempt { () }
+  }
+
+  test("Test ignore".ignore) {
+    ZIO.attempt { throw new AssertionError }
+  }
+
+  test("Test expected failure (exception)".fail) {
+    ZIO.attempt { throw new AssertionError }
+  }
+
+  test("Test expected failure (forked exception)".fail) {
+    ZIO.attempt { throw new AssertionError }.forkDaemon.flatMap { fiber =>
+      fiber.join
+    }
+  }
+}
+
 abstract class BaseSpecZIO
   extends CatsEffectSuite
   with BaseSpecAsyncF[zio.Task]
@@ -44,7 +69,7 @@ abstract class BaseSpecZIO
       { case x: zio.ZIO[_, _, _] =>
         val tsk = x.asInstanceOf[zio.Task[_]]
         val tskWithLogCfg = zio.ZIO.scopedWith { scope =>
-          zio.Runtime.setUnhandledErrorLogLevel(zio.LogLevel.Info).build(scope) *> tsk
+          zio.Runtime.setUnhandledErrorLogLevel(this.zioUnhandledErrorLogLevel).build(scope) *> tsk
         }
         zio.Unsafe.unsafe { implicit u =>
           this.runtime.unsafe.runToFuture(tskWithLogCfg)

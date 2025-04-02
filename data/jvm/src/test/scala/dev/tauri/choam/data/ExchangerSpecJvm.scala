@@ -35,7 +35,11 @@ final class ExchangerSpecCommon_Emcas_IO
 final class ExchangerSpecJvm_Emcas_ZIO
   extends BaseSpecZIO
   with SpecEmcas
-  with ExchangerSpecJvm[zio.Task]
+  with ExchangerSpecJvm[zio.Task] {
+
+  final override def zioUnhandledErrorLogLevel =
+    zio.LogLevel.Info
+}
 
 final class ExchangerSpecJvm_Emcas_IO
   extends BaseSpecIO

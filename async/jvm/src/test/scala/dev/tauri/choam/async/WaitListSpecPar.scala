@@ -29,10 +29,10 @@ final class WaitListSpecPar_DefaultMcas_IO
   with SpecDefaultMcas
   with WaitListSpecPar[IO]
 
-// final class WaitListSpecPar_DefaultMcas_ZIO // TODO: figure out why this doesn't work
-//   extends BaseSpecZIO
-//   with SpecDefaultMcas
-//   with WaitListSpecPar[zio.Task]
+final class WaitListSpecPar_DefaultMcas_ZIO
+  extends BaseSpecZIO
+  with SpecDefaultMcas
+  with WaitListSpecPar[zio.Task]
 
 trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] { this: McasImplSpec =>
 
@@ -61,7 +61,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
         q <- newEmptyQ
         r <- F.ref("")
         fib <- deqAndSave(q, r).start
-        _ <- F.sleep(0.1.seconds)
+        _ <- F.sleep(0.01.seconds)
         _ <- F.both(fib.cancel, q.enqueue("foo"))
         _ <- fib.join
         s <- r.get
@@ -114,6 +114,8 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
       }
     }
 
+    // TODO: in theory these can fail, but in practice, they doesn't seem to...
+
     test(s"$name: enqueue cancel race (1 waiter; bound = $bound)") {
       val t = for {
         _ <- assertF(bound > 0)
@@ -122,7 +124,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
         r <- F.ref(false)
         d <- F.deferred[String]
         enqFib <- enqAndSave(q, r, "foo").start
-        _ <- F.sleep(0.1.seconds)
+        _ <- F.sleep(0.01.seconds)
         _ <- F.both(enqFib.cancel, deqIntoDeferred(q, d).start)
         _ <- enqFib.join
         flag <- r.get
@@ -134,7 +136,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
           assertResultF(q.tryDeque.run[F], None, "item duplicated")
         }
       } yield ()
-      t.parReplicateA_(1000)
+      t.parReplicateA_(50000)
     }
 
     test(s"$name: enqueue cancel race (2 waiters; bound = $bound)") {
@@ -147,7 +149,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
         d <- F.deferred[String]
         enqFib1 <- enqAndSave(q, r1, "foo1").start
         enqFib2 <- enqAndSave(q, r2, "foo2").start
-        _ <- F.sleep(0.1.seconds)
+        _ <- F.sleep(0.01.seconds)
         _ <- F.both(enqFib1.cancel, deqIntoDeferred(q, d).start)
         _ <- enqFib1.join
         flag <- r1.get
@@ -165,7 +167,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
           assertResultF(q.deque, "foo2") *> enqFib2.joinWithNever
         }
       } yield ()
-      t.parReplicateA_(1000)
+      t.parReplicateA_(50000)
     }
   }
 }
