@@ -23,6 +23,11 @@ import cats.effect.std.{ Queue => CatsQueue }
 sealed trait UnboundedQueue[A]
   extends data.Queue.UnsealedQueue[A]
   with AsyncQueue.UnsealedAsyncQueueSource[A]
+  with AsyncQueue.UnsealedBoundedQueueSink[A] {
+
+  final override def enqueue[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
+    F.apply(this.enqueue, a)
+}
 
 object UnboundedQueue {
 
