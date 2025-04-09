@@ -900,7 +900,7 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1") // https://github.com/scala-stm/scala-stm
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.4") // https://github.com/TimWSpence/cats-stm
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.3")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.5")
   val zioStm = Def.setting("dev.zio" %%% "zio" % zioVersion)
   val zioEverything = Def.setting[Seq[ModuleID]](Seq(
     zioCats.value,
