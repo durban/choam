@@ -89,7 +89,7 @@ object Promise {
 
   final def apply[A](str: AllocationStrategy): Axn[Promise[A]] = {
     Axn.unsafe.delayContext { ctx =>
-      new PromiseImpl[A](Ref.unsafe[State[A]](Waiting(LongMap.empty, 0L), str, ctx.refIdGen))
+      new PromiseImpl[A](Ref.unsafe[State[A]](Waiting.empty, str, ctx.refIdGen))
     }
   }
 
@@ -101,9 +101,9 @@ object Promise {
       fa.imap(f)(g)
   }
 
-  private[this] sealed abstract class State[A] extends Product with Serializable
+  private[this] sealed abstract class State[A]
 
-  private[this] sealed trait InsertRes[+A] extends Product with Serializable
+  private[this] sealed trait InsertRes[+A]
 
   /**
    * We store the callbacks in a `LongMap`, because apparently
@@ -113,11 +113,23 @@ object Promise {
    *
    * The idea is from here: https://github.com/typelevel/cats-effect/pull/1128.
    */
-  private[this] final case class Waiting[A](cbs: LongMap[Right[Throwable, A] => Unit], nextId: Long) extends State[A]
+  private[this] final class Waiting[A](
+    val cbs: LongMap[Right[Throwable, A] => Unit],
+    val nextId: Long
+  ) extends State[A]
 
-  private[this] final case class Done[A](a: A) extends State[A] with InsertRes[A]
+  private[this] final object Waiting {
 
-  private[this] final case class CancelId(id: Long) extends InsertRes[Nothing]
+    private[this] val _empty: Waiting[Any] =
+      new Waiting(LongMap.empty, 0L)
+
+    final def empty[A]: Waiting[A] =
+      _empty.asInstanceOf[Waiting[A]]
+  }
+
+  private[this] final class Done[A](val a: A) extends State[A] with InsertRes[A]
+
+  private[this] final class CancelId(val id: Long) extends InsertRes[Nothing]
 
   private[this] abstract class PromiseReadImpl[A]
     extends PromiseRead[A] { self =>
@@ -179,9 +191,9 @@ object Promise {
     final override def complete0: A =#> Boolean = {
       ref.updWith[A, Boolean] { (state, a) =>
         state match {
-          case Waiting(cbs, _) =>
-            Rxn.postCommit[Any](callCbs(cbs, a)).as((Done(a), true))
-          case d @ Done(_) =>
+          case w: Waiting[_] =>
+            Rxn.postCommit[Any](callCbs(w.cbs, a)).as((new Done(a), true))
+          case d: Done[_] =>
             Rxn.pure((d, false))
         }
       }
@@ -190,9 +202,9 @@ object Promise {
     final override def complete1(a: A): Axn[Boolean] = {
       ref.upd[Any, LongMap[Right[Throwable, A] => Unit]] { (state, _) =>
         state match {
-          case Waiting(cbs, _) =>
-            (Done(a), cbs)
-          case d @ Done(_) =>
+          case w: Waiting[_] =>
+            (new Done(a), w.cbs)
+          case d: Done[_] =>
             (d, null)
         }
       }.flatMapF { cbs =>
@@ -206,41 +218,44 @@ object Promise {
 
     final override def tryGet: Axn[Option[A]] = {
       ref.get.map {
-        case Done(a) => Some(a)
-        case Waiting(_, _) => None
+        case d: Done[_] => Some(d.a)
+        case _: Waiting[_] => None
       }
     }
 
     final override def get[F[_]](implicit F: AsyncReactive[F]): F[A] = {
       F.monad.flatMap(ref.unsafeDirectRead.run[F]) {
-        case Waiting(_, _) =>
+        case _: Waiting[_] =>
           F.asyncInst.asyncCheckAttempt { cb =>
             F.monad.map(insertCallback(cb).run[F]) {
-              case CancelId(id) =>
-                Left(Some(removeCallback(id)))
-              case Done(a) =>
-                Right(a)
+              case cid: CancelId =>
+                Left(Some(removeCallback(cid.id)))
+              case d: Done[_] =>
+                Right(d.a)
             }
           }
-        case Done(a) =>
-          F.monad.pure(a)
+        case d: Done[_] =>
+          F.monad.pure(d.a)
       }
     }
 
     private[this] final def insertCallback(cb: Either[Throwable, A] => Unit): Axn[InsertRes[A]] = {
       ref.getAndUpdate {
-        case Waiting(cbs, nid) => Waiting(cbs.updated(nid, cb), nid + 1)
-        case d @ Done(_) => d
+        case w: Waiting[_] =>
+          val nid = w.nextId
+          new Waiting(w.cbs.updated(nid, cb), nid + 1)
+        case d: Done[_] =>
+          d
       }.map {
-        case Waiting(_, nid) => CancelId(nid)
-        case d @ Done(a) => d
+        case w: Waiting[_] => new CancelId(w.nextId)
+        case d: Done[_] => d
       }
     }
 
     private[this] final def removeCallback[F[_]](id: Long)(implicit F: AsyncReactive[F]): F[Unit] = {
       ref.update {
-        case Waiting(cbs, nid) => Waiting(cbs.removed(id), nid)
-        case d @ Done(_) => d
+        case w: Waiting[_] => new Waiting(w.cbs.removed(id), w.nextId)
+        case d: Done[_] => d
       }.run[F]
     }
   }

@@ -43,8 +43,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
     }
   }
 
-  private[core] final class Key
-    extends Serializable {
+  private[core] final class Key {
 
     final override def toString: String =
       s"Key@${this.hashCode.toHexString}"

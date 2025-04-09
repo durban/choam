@@ -19,13 +19,13 @@ package dev.tauri.choam
 package core
 
 import scala.concurrent.duration._
+import scala.util.hashing.MurmurHash3
 
-import cats.{ ~>, Show }
+import cats.{ ~>, Hash, Show }
 import cats.syntax.all._
 import cats.effect.kernel.{ Async, Ref, Deferred }
 
-// TODO:0.5: these shouldn't be case classes
-sealed abstract class RetryStrategy extends Product with Serializable {
+sealed abstract class RetryStrategy {
 
   // SPIN:
 
@@ -112,17 +112,22 @@ object RetryStrategy {
     // these have proper `toString`:
     case full: StrategyFull => full.toString
     case spin: StrategySpin => spin.toString
+    // this one doesn't:
     case _: Internal.Stepper[_] => "Stepper()"
   }
 
-  private[core] final case class StrategyFull(
-    maxRetries: Option[Int],
-    maxSpin: Int,
-    randomizeSpin: Boolean,
-    maxCede: Int,
-    randomizeCede: Boolean,
-    maxSleep: FiniteDuration,
-    randomizeSleep: Boolean,
+  implicit val hashForRetryStrategy: Hash[RetryStrategy] = {
+    Hash.fromUniversalHashCode[RetryStrategy]
+  }
+
+  private[core] final class StrategyFull private (
+    override val maxRetries: Option[Int],
+    override val maxSpin: Int,
+    override val randomizeSpin: Boolean,
+    override val maxCede: Int,
+    override val randomizeCede: Boolean,
+    override val maxSleep: FiniteDuration,
+    override val randomizeSleep: Boolean,
   ) extends RetryStrategy {
 
     require(maxRetries.forall{ mr => (mr >= 0) && (mr < Integer.MAX_VALUE) })
@@ -132,6 +137,50 @@ object RetryStrategy {
     require(maxSleep >= Duration.Zero)
     require(!((maxSleep == Duration.Zero) && randomizeSleep))
     require((maxCede > 0) || (maxSleep > Duration.Zero)) // otherwise it should be SPIN
+
+    private final def copy(
+      maxRetries: Option[Int] = this.maxRetries,
+      maxSpin: Int = this.maxSpin,
+      randomizeSpin: Boolean = this.randomizeSpin,
+      maxCede: Int = this.maxCede,
+      randomizeCede: Boolean = this.randomizeCede,
+      maxSleep: FiniteDuration = this.maxSleep,
+      randomizeSleep: Boolean = this.randomizeSleep,
+    ): StrategyFull = StrategyFull(
+      maxRetries = maxRetries,
+      maxSpin = maxSpin,
+      randomizeSpin = randomizeSpin,
+      maxCede = maxCede,
+      randomizeCede = randomizeCede,
+      maxSleep = maxSleep,
+      randomizeSleep = randomizeSleep,
+    )
+
+    final override def equals(that: Any): Boolean = {
+      that match {
+        case that: StrategyFull =>
+          (this.maxRetries == that.maxRetries) &&
+          (this.maxSpin == that.maxSpin) &&
+          (this.randomizeSpin == that.randomizeSpin) &&
+          (this.maxCede == that.maxCede) &&
+          (this.randomizeCede == that.randomizeCede) &&
+          (this.maxSleep == that.maxSleep) &&
+          (this.randomizeSleep == that.randomizeSleep)
+        case _ =>
+          false
+      }
+    }
+
+    final override def hashCode: Int = {
+      var h = MurmurHash3.mix(0x25c6e9f6, this.maxRetries.##)
+      h = MurmurHash3.mix(h, this.maxSpin.##)
+      h = MurmurHash3.mix(h, this.randomizeSpin.##)
+      h = MurmurHash3.mix(h, this.maxCede.##)
+      h = MurmurHash3.mix(h, this.randomizeCede.##)
+      h = MurmurHash3.mix(h, this.maxSleep.##)
+      h = MurmurHash3.mixLast(h, this.randomizeSleep.##)
+      MurmurHash3.finalizeHash(h, 7)
+    }
 
     final override def toString: String = {
       val mr = maxRetries match {
@@ -263,22 +312,70 @@ object RetryStrategy {
       false
   }
 
-  private final case class StrategySpin(
-    maxRetries: Option[Int],
-    maxSpin: Int,
-    randomizeSpin: Boolean,
+  private final object StrategyFull {
+
+    final def apply(
+      maxRetries: Option[Int],
+      maxSpin: Int,
+      randomizeSpin: Boolean,
+      maxCede: Int,
+      randomizeCede: Boolean,
+      maxSleep: FiniteDuration ,
+      randomizeSleep: Boolean,
+    ): StrategyFull = new StrategyFull(
+      maxRetries = maxRetries,
+      maxSpin = maxSpin,
+      randomizeSpin = randomizeSpin,
+      maxCede = maxCede,
+      randomizeCede = randomizeCede,
+      maxSleep = maxSleep,
+      randomizeSleep = randomizeSleep,
+    )
+  }
+
+  private final class StrategySpin private (
+    override val maxRetries: Option[Int],
+    override val maxSpin: Int,
+    override val randomizeSpin: Boolean,
   ) extends Spin {
 
     require(maxRetries.forall{ mr => (mr >= 0) && (mr < Integer.MAX_VALUE) })
     require(maxSpin > 0)
+
+    private final def copy(
+      maxRetries: Option[Int] = this.maxRetries,
+      maxSpin: Int = this.maxSpin,
+      randomizeSpin: Boolean = this.randomizeSpin,
+    ): StrategySpin = StrategySpin(
+      maxRetries = maxRetries,
+      maxSpin = maxSpin,
+      randomizeSpin = randomizeSpin,
+    )
+
+    final override def equals(that: Any): Boolean = {
+      that match {
+        case that: StrategySpin =>
+          (this.maxRetries == that.maxRetries) &&
+          (this.maxSpin == that.maxSpin) &&
+          (this.randomizeSpin == that.randomizeSpin)
+        case _ =>
+          false
+      }
+    }
+
+    final override def hashCode: Int = {
+      var h = MurmurHash3.mix(0x5a7e3d8a, this.maxRetries.##)
+      h = MurmurHash3.mix(h, this.maxSpin.##)
+      h = MurmurHash3.mixLast(h, this.randomizeSpin.##)
+      MurmurHash3.finalizeHash(h, 3)
+    }
 
     final override def toString: String = {
       val mr = maxRetries match {
         case None => "∞"
         case Some(mr) => mr.toString
       }
-      val die = "⚄"
-      val sRand = if (randomizeSpin) die else ""
+      val sRand = if (randomizeSpin) "⚄" else ""
       s"RetryStrategy.Spin(maxRetries=${mr}, spin=..${maxSpin}${sRand})"
     }
 
@@ -400,6 +497,19 @@ object RetryStrategy {
 
     final override def randomizeSleep: Boolean =
       false
+  }
+
+  private final object StrategySpin {
+
+    final def apply(
+      maxRetries: Option[Int],
+      maxSpin: Int,
+      randomizeSpin: Boolean,
+    ): StrategySpin = new StrategySpin(
+      maxRetries = maxRetries,
+      maxSpin = maxSpin,
+      randomizeSpin = randomizeSpin,
+    )
   }
 
   final val Default: Spin =
