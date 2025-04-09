@@ -18,7 +18,10 @@
 package dev.tauri.choam
 package zi
 
+import cats.effect.kernel.Async
+
 import zio.ZIOApp
+import zio.interop.CatsEffectInstances
 
 import core.ChoamRuntime
 
@@ -34,7 +37,15 @@ private[zi] trait BaseMixin { this: ZIOApp =>
     ChoamRuntime.unsafeBlocking()
   }
 
+  private[this] final val _zioCatsEffectInstances: CatsEffectInstances = {
+    new CatsEffectInstances {}
+  }
+
   protected[this] final def choamRuntime: ChoamRuntime = {
     this._choamRuntime
+  }
+
+  private[zi] final def asyncInstanceForZioTask: Async[zio.Task] = {
+    this._zioCatsEffectInstances.asyncInstance[Any]
   }
 }

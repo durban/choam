@@ -40,7 +40,7 @@ abstract class BaseSpecTickedZIO
   import zio._
 
   final override def F: Async[zio.Task] =
-    zio.interop.catz.asyncInstance
+    UtilsForZIO.asyncInstanceForZioTask
 
   protected final override def absolutelyUnsafeRunSync[A](fa: zio.Task[A]): A = {
     zio.Unsafe.unsafe { implicit u =>

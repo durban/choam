@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import cats.effect.kernel.Async
+
 import munit.Location
 
 trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with McasImplSpec =>
@@ -34,4 +36,13 @@ trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with McasImplSpec =>
   final override def assumeNotZio: zio.Task[Unit] = {
     this.assumeF(false)
   }
+}
+
+object UtilsForZIO {
+
+  implicit def asyncInstanceForZioTask: Async[zio.Task] =
+    _catsEffectZioInstances.asyncInstance[Any]
+
+  private[this] val _catsEffectZioInstances =
+    new zio.interop.CatsEffectInstances {}
 }

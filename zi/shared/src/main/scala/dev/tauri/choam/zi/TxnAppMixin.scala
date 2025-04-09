@@ -19,7 +19,6 @@ package dev.tauri.choam
 package zi
 
 import zio.{ Task, ZIOApp }
-import zio.interop.catz.asyncInstance
 
 import stm.Transactive
 
@@ -44,7 +43,7 @@ import stm.Transactive
 trait TxnAppMixin extends BaseMixin { this: ZIOApp =>
 
   private[this] final val _transactiveForZIO: Transactive[Task] =
-    new Transactive.TransactiveImpl[Task](this.choamRuntime.mcasImpl)
+    new Transactive.TransactiveImpl[Task](this.choamRuntime.mcasImpl)(this.asyncInstanceForZioTask)
 
   implicit protected[this] final def transactiveForZIO: Transactive[Task] =
     this._transactiveForZIO

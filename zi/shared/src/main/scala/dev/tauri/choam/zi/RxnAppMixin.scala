@@ -19,7 +19,6 @@ package dev.tauri.choam
 package zi
 
 import zio.{ Task, ZIOApp }
-import zio.interop.catz.asyncInstance
 
 import async.AsyncReactive
 
@@ -47,7 +46,7 @@ import async.AsyncReactive
 trait RxnAppMixin extends BaseMixin { this: ZIOApp =>
 
   private[this] final val _asyncReactiveForZIO: AsyncReactive[Task] =
-    new AsyncReactive.AsyncReactiveImpl[Task](this.choamRuntime.mcasImpl)
+    new AsyncReactive.AsyncReactiveImpl[Task](this.choamRuntime.mcasImpl)(this.asyncInstanceForZioTask)
 
   implicit protected[this] final def asyncReactiveForZIO: AsyncReactive[Task] =
     this._asyncReactiveForZIO

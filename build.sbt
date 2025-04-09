@@ -905,10 +905,6 @@ lazy val dependencies = new {
   val zioEverything = Def.setting[Seq[ModuleID]](Seq(
     zioCats.value,
     zioStm.value,
-    // Technically we don't need this, but it's a
-    // transitive dependency through zio-interop-cats,
-    // which would pull in the wrong version:
-    "dev.zio" %%% "zio-managed" % zioVersion,
   ))
 
   val test = Def.setting[Seq[ModuleID]] {
