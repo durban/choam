@@ -198,7 +198,7 @@ ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.fla
   Seq(
     MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
     MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
-    MatrixInclude(matching = Map("os" -> linux86, "java" -> jvmLatest.render), additions = Map.empty),
+    MatrixInclude(matching = Map("os" -> linux86, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
   )
 }
 ThisBuild / githubWorkflowAddedJobs ~= { jobs =>
