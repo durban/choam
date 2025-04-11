@@ -125,12 +125,7 @@ ThisBuild / githubWorkflowBuild := List(
   // Tests on OpenJ9 only:
   WorkflowStep.Sbt(
     List(openJ9Options, ciCommand),
-    cond = Some(s"($isOpenJ9Cond) && ($quickCiCond)"),
-  ),
-  // Full tests on OpenJ9 only:
-  WorkflowStep.Sbt(
-    List(openJ9Options, ciFullCommand),
-    cond = Some(s"($isOpenJ9Cond) && ($fullCiCond)"),
+    cond = Some(s"($isOpenJ9Cond)"),
   ),
   // Static analysis:
   WorkflowStep.Sbt(

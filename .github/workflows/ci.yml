@@ -215,13 +215,9 @@ jobs:
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' ciFull
 
-      - if: ((matrix.java == 'semeru@21') || (matrix.java == 'semeru@23')) && (!(contains(github.event.head_commit.message, 'full CI')))
+      - if: ((matrix.java == 'semeru@21') || (matrix.java == 'semeru@23'))
         shell: bash
         run: 'sbt -v ''++ ${{ matrix.scala }}'' -J-Xgcpolicy:balanced ci'
-
-      - if: ((matrix.java == 'semeru@21') || (matrix.java == 'semeru@23')) && (contains(github.event.head_commit.message, 'full CI'))
-        shell: bash
-        run: 'sbt -v ''++ ${{ matrix.scala }}'' -J-Xgcpolicy:balanced ciFull'
 
       - if: (matrix.os == 'ubuntu-24.04-arm') && (matrix.java == 'temurin@24') && (matrix.scala == '2.13.16')
         shell: bash
