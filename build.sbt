@@ -52,7 +52,7 @@ val TestInternal = "test-internal"
 val ciCommand = "ci"
 val ciFullCommand = "ciFull"
 
-def openJ9Options: String = {
+val openJ9Options: String = {
   val opts = List("-Xgcpolicy:balanced")
   opts.map(opt => s"-J${opt}").mkString(" ")
 }
@@ -86,8 +86,12 @@ val quickCiCond: String =
   s"!(${fullCiCond})"
 
 /** Where to run JCStress and Lincheck tests (need more CPUs) */
-val stressCond: String =
-  s"(matrix.os == '${macos}') || ((matrix.os == '${linux}') && (matrix.java == '${jvmLatest.render}'))"
+val stressCond: String = {
+  s"((matrix.os == '${macos}') || " +
+  s"(matrix.os == '${linux}') || " +
+  s"(matrix.os == '${linux86}')) && " +
+  s"(matrix.java == '${jvmLatest.render}')"
+}
 
 ThisBuild / crossScalaVersions := Seq(scala2, scala3)
 ThisBuild / scalaVersion := crossScalaVersions.value.head
