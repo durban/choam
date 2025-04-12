@@ -19,10 +19,13 @@ import org.typelevel.sbt.gha.UseRef
 
 object GhActions {
 
+  val uploadArtifactV4: UseRef.Public =
+    UseRef.Public("actions", "upload-artifact", "ea165f8d65b6e75b540449e92b4886f43607fa02")
+
   val refVersionMapping: Map[(String, String), String] = Map(
     ("actions", "checkout") -> "11bd71901bbe5b1630ceea73d27597364c9af683", // 4.2.2
     ("actions", "setup-java") -> "c5195efecf7bdfc987ee8bae7a71cb8b11521c00", // 4.7.1
-    ("actions", "upload-artifact") -> "ea165f8d65b6e75b540449e92b4886f43607fa02", // 4.6.2
+    (uploadArtifactV4.owner, uploadArtifactV4.repo) -> uploadArtifactV4.ref, // 4.6.2
     ("scalacenter", "sbt-dependency-submission") -> "f3c0455a87097de07b66c3dc1b8619b5976c1c89", // 2.3.1
     ("sbt", "setup-sbt") -> "26ab4b0fa1c47fa62fc1f6e51823a658fb6c760c", // 1.1.7
   )

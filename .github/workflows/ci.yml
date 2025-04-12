@@ -245,7 +245,7 @@ jobs:
 
       - name: Upload JCStress results
         if: (success() || failure()) && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && (contains(github.event.head_commit.message, 'full CI') || (contains(github.event.head_commit.message, 'stressMcas') || contains(github.event.head_commit.message, 'stressCore') || contains(github.event.head_commit.message, 'stressData') || contains(github.event.head_commit.message, 'stressExperiments')))
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: jcstress-results-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
           path: results/
@@ -257,7 +257,7 @@ jobs:
 
       - name: Upload Graal dumps
         if: (success() || failure()) && (matrix.os == 'ubuntu-24.04-arm') && (matrix.java == 'graalvm@24')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: graal-dumps-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
           path: graal_dumps.zip
