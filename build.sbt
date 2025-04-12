@@ -129,7 +129,7 @@ ThisBuild / versionPolicyIgnoredInternalDependencyVersions := Some("^\\d+\\.\\d+
 ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
 
 ThisBuild / githubWorkflowUseSbtThinClient := false
-ThisBuild / githubWorkflowBuildTimeoutMinutes := Some(180)
+ThisBuild / githubWorkflowBuildTimeoutMinutes := Some(240)
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowBuild := List(
   // Tests on non-OpenJ9:
