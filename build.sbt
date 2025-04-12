@@ -38,9 +38,8 @@ val jvmTemurins = List(jvmOldest, jvmLts, jvmLatest)
 val jvmGraalLts = JavaSpec.graalvm("21")
 val jvmGraalLatest = JavaSpec.graalvm("24")
 val jvmGraals = List(jvmGraalLts, jvmGraalLatest)
-val jvmOpenj9Lts = JavaSpec.semeru("21")
 val jvmOpenj9Latest = JavaSpec.semeru("23")
-val jvmOpenj9s = List(jvmOpenj9Lts, jvmOpenj9Latest)
+val jvmOpenj9s = List(jvmOpenj9Latest)
 
 // CI OS versions:
 val linux = "ubuntu-24.04-arm"
