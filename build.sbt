@@ -93,6 +93,22 @@ val stressCond: String = {
   s"(matrix.java == '${jvmLatest.render}')"
 }
 
+def transformWorkflowStep(step: WorkflowStep): WorkflowStep = {
+  step match {
+    case step: WorkflowStep.Use =>
+      val newRef = step.ref match {
+        case r: UseRef.Public =>
+          val newRefVersion = GhActions.refVersionMapping(r)
+          r.copy(ref = newRefVersion)
+        case r =>
+          throw new AssertionError(s"${r.getClass().getName()} is disabled")
+      }
+      step.withRef(newRef)
+    case _ =>
+      step
+  }
+}
+
 ThisBuild / crossScalaVersions := Seq(scala2, scala3)
 ThisBuild / scalaVersion := crossScalaVersions.value.head
 ThisBuild / scalaOrganization := "org.scala-lang"
@@ -202,10 +218,11 @@ ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.fla
 }
 ThisBuild / githubWorkflowAddedJobs ~= { jobs =>
   import org.typelevel.sbt.gha.{ Permissions, PermissionValue }
-  val (newJobs, ok) = jobs.foldLeft((List.empty[WorkflowJob], false)) { (st, job) =>
-    val (acc, ok) = st
-    if (job.id == "dependency-submission") {
-      (job.withPermissions(Some(Permissions.Specify(
+  val (newJobs, foundDepSubmission) = jobs.foldLeft((List.empty[WorkflowJob], false)) { (st, job) =>
+    val (acc, foundDepSubmission) = st
+    val trJob = job.withSteps(job.steps.map(transformWorkflowStep))
+    if (trJob.id == "dependency-submission") {
+      (trJob.withPermissions(Some(Permissions.Specify(
         actions = PermissionValue.None,
         checks = PermissionValue.None,
         contents = PermissionValue.Write,
@@ -220,10 +237,10 @@ ThisBuild / githubWorkflowAddedJobs ~= { jobs =>
         statuses = PermissionValue.None,
       ))) :: acc, true)
     } else {
-      (job :: acc, ok)
+      (trJob :: acc, foundDepSubmission)
     }
   }
-  assert(ok)
+  assert(foundDepSubmission)
   newJobs
 }
 
