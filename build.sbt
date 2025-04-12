@@ -98,7 +98,7 @@ def transformWorkflowStep(step: WorkflowStep): WorkflowStep = {
     case step: WorkflowStep.Use =>
       val newRef = step.ref match {
         case r: UseRef.Public =>
-          val newRefVersion = GhActions.refVersionMapping(r)
+          val newRefVersion = GhActions.refVersionMapping(r.owner -> r.repo)
           r.copy(ref = newRefVersion)
         case r =>
           throw new AssertionError(s"${r.getClass().getName()} is disabled")
@@ -215,6 +215,9 @@ ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.fla
     MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
     MatrixInclude(matching = Map("os" -> linux86, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
   )
+}
+ThisBuild / githubWorkflowJobSetup ~= { steps =>
+  steps.map(transformWorkflowStep)
 }
 ThisBuild / githubWorkflowAddedJobs ~= { jobs =>
   import org.typelevel.sbt.gha.{ Permissions, PermissionValue }
