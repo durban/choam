@@ -200,12 +200,11 @@ ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   jvmGraals.map { gr => MatrixExclude(Map("os" -> windows, "java" -> gr.render)) }, // win+graal seems unstable
   jvmOpenj9s.map { j9 => MatrixExclude(Map("os" -> windows, "java" -> j9.render)) }, // win+openJ9 seems unstable
   // these are excluded so that we don't have too much jobs:
-  List(macos, macosIntel).map { macos =>
-    MatrixExclude(Map("os" -> macos)), // but see inclusions
-  },
+  List(macos, macosIntel).map { macos => MatrixExclude(Map("os" -> macos)) }, // but see inclusions
   jvmTemurins.map { j => MatrixExclude(Map("os" -> windows, "java" -> j.render)) }, // but see inclusions
   Seq(
     MatrixExclude(Map("os" -> linux86)), // but see inclusions
+    MatrixExclude(Map("java" -> jvmGraalLts.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
   ),
 ).flatten
 ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.flatMap { scalaVer =>

@@ -81,6 +81,8 @@ jobs:
           - os: windows-2025
             java: temurin@24
           - os: ubuntu-24.04
+          - java: graalvm@21
+            scala: 3
     runs-on: ${{ matrix.os }}
     timeout-minutes: 240
     steps:
