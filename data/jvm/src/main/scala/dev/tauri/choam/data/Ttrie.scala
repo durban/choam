@@ -78,6 +78,7 @@ private final class Ttrie[K, V] private (
   // TODO: See if these could be useful:
   // TODO: http://aleksandar-prokopec.com/resources/docs/p137-prokopec.pdf
   // TODO: http://aleksandar-prokopec.com/resources/docs/cachetrie-remove.pdf
+  // TODO: https://hackage.haskell.org/package/stm-containers
 
   /**
    * Based on `getTVar` in the paper, but
