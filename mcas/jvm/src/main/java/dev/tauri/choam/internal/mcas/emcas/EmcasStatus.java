@@ -71,16 +71,4 @@ final class EmcasStatus {
   static final boolean isSuccessful(long s) {
     return Version.isValid(s);
   }
-
-  static final String toString(long s) {
-    if (s == McasStatus.Active) {
-      return "ACTIVE";
-    } else if (s == McasStatus.FailedVal) {
-      return "FAILED";
-    } else if (EmcasStatus.isSuccessful(s)) {
-      return "SUCCESSFUL";
-    } else {
-      throw new IllegalArgumentException("invalid EMCAS status: " + Long.toString(s));
-    }
-  }
 }
