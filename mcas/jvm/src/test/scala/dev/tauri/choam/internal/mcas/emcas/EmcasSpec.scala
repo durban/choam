@@ -472,7 +472,7 @@ class EmcasSpec extends BaseSpec {
     assertEquals(res, "x")
     assertEquals(ctx.readDirect(r1), "x")
     assertEquals(ctx.readDirect(r2), "y")
-    assert(EmcasStatus.isSuccessful(other.getStatusV()))
+    assert(EmcasStatusFunctions.isSuccessful(other.getStatusV()))
     // we hold a strong ref, since we're pretending we're another op
     Reference.reachabilityFence(mark)
   }

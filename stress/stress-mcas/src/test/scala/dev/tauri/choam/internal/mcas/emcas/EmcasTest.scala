@@ -157,7 +157,7 @@ class EmcasTest {
     r.r4 match {
       case v: Long =>
         r.r4 = v match {
-          case v if EmcasStatus.isSuccessful(v) => "SUCCESSFUL"
+          case v if EmcasStatusFunctions.isSuccessful(v) => "SUCCESSFUL"
           case McasStatus.Active => "ACTIVE"
           case McasStatus.Successful => "error: McasStatus.Successful"
           case McasStatus.FailedVal => "FAILED"

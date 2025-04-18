@@ -1029,7 +1029,7 @@ private[mcas] final class Emcas(
       val fullDesc = new EmcasDescriptor(desc, instRo = instRo)
       if (fullDesc.getWordsP() ne null) {
         val res = MCAS(desc = fullDesc, ctx = ctx, seen = 0L)
-        if (EmcasStatus.isSuccessful(res)) {
+        if (EmcasStatusFunctions.isSuccessful(res)) {
           // `Emcas` stores a version in the descriptor,
           // to signify success; however, here we return
           // a constant, to follow the `Mcas` API:
@@ -1043,7 +1043,7 @@ private[mcas] final class Emcas(
           val fallback = fullDesc.fallback
           _assert(fallback.instRo)
           val fbRes = MCAS(fallback, ctx = ctx, seen = 0L)
-          if (EmcasStatus.isSuccessful(fbRes)) {
+          if (EmcasStatusFunctions.isSuccessful(fbRes)) {
             McasStatus.Successful
           } else {
             // now we can't get CycleDetected for sure

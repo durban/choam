@@ -81,7 +81,7 @@ class EmcasCleanup1Test {
     r.r3 match {
       case v: Long =>
         r.r3 = v match {
-          case v if EmcasStatus.isSuccessful(v) => "SUCCESSFUL"
+          case v if EmcasStatusFunctions.isSuccessful(v) => "SUCCESSFUL"
           case McasStatus.Active => "ACTIVE"
           case McasStatus.Successful => "error: McasStatus.Successful"
           case McasStatus.FailedVal => "FAILED"

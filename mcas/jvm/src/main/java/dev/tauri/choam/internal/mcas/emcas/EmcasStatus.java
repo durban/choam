@@ -18,7 +18,6 @@
 package dev.tauri.choam.internal.mcas.emcas;
 
 import dev.tauri.choam.internal.mcas.Version;
-import dev.tauri.choam.internal.mcas.McasStatus;
 
 /**
  * The status of an EMCAS-operation (and its
@@ -66,9 +65,5 @@ final class EmcasStatus {
 
   private EmcasStatus() {
     throw new UnsupportedOperationException();
-  }
-
-  static final boolean isSuccessful(long s) {
-    return Version.isValid(s);
   }
 }

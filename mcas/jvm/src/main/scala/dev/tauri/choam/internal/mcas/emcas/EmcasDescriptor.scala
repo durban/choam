@@ -130,7 +130,7 @@ private[mcas] final class EmcasDescriptor private[this] (
       this.getOrInitFallback(fb)
     }
 
-    this.wasFinalized(EmcasStatus.isSuccessful(finalResult))
+    this.wasFinalized(EmcasStatusFunctions.isSuccessful(finalResult))
   }
 
   private[emcas] final def fallback: EmcasDescriptor = {
