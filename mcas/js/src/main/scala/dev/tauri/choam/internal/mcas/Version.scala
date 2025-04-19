@@ -32,8 +32,4 @@ object Version {
   final val FailedVal = None - 3L
   final val Reserved = None - 4L
   // FailedVer = any valid version
-
-  final def isValid(ver: Long): Boolean = {
-    (ver >= Start) && (ver < Reserved)
-  }
 }

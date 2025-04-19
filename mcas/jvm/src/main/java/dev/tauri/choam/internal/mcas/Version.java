@@ -36,14 +36,6 @@ public final class Version {
   public static final long Reserved = None - 4L;
   // FailedVer = any valid version
 
-  /**
-   * @return true, iff `ver` is a "real" version, and
-   *         not a constant with a special meaning.
-   */
-  public static final boolean isValid(long ver) {
-    return (ver >= Start) && (ver < Reserved);
-  }
-
   private Version() {
     throw new UnsupportedOperationException();
   }

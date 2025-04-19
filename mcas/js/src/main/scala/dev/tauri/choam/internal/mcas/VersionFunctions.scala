@@ -15,17 +15,12 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.internal.mcas.emcas;
+package dev.tauri.choam.internal.mcas
 
-import dev.tauri.choam.internal.mcas.VersionFunctions;
+// Note: this class/object is duplicated for JVM/JS
+object VersionFunctions {
 
-final class EmcasStatusFunctions {
-
-  private EmcasStatusFunctions() {
-    throw new UnsupportedOperationException();
-  }
-
-  static final boolean isSuccessful(long s) {
-    return VersionFunctions.isValid(s);
+  final def isValid(ver: Long): Boolean = {
+    (ver >= Version.Start) && (ver < Version.Reserved)
   }
 }

@@ -396,7 +396,7 @@ private[mcas] final class Emcas(
 
   private[mcas] final def readVersion[A](ref: MemoryLocation[A], ctx: EmcasThreadContext): Long = {
     val v = readVersionInternal(ref, ctx, forMCAS = false, seen = 0L, instRo = false)
-    _assert(Version.isValid(v))
+    _assert(VersionFunctions.isValid(v))
     v
   }
 
@@ -613,7 +613,7 @@ private[mcas] final class Emcas(
       }
 
       // just to be safe:
-      _assert(((mark eq null) || (mark eq weakref.get())) && Version.isValid(version))
+      _assert(((mark eq null) || (mark eq weakref.get())) && VersionFunctions.isValid(version))
 
       val wordDescOv = wordDesc.ov
       if (equ(wordDescOv, EmcasDescriptorBase.CLEARED)) {
@@ -766,7 +766,7 @@ private[mcas] final class Emcas(
         desc.cmpxchgStatus(McasStatus.Active, McasStatus.FailedVal)
       }
       _assert(
-        Version.isValid(result) ||
+        VersionFunctions.isValid(result) ||
         (result == McasStatus.FailedVal) ||
         (result == EmcasStatus.CycleDetected)
       )
@@ -898,7 +898,7 @@ private[mcas] final class Emcas(
       } else {
         val finalRes = r2
         _assert(
-          Version.isValid(finalRes) ||
+          VersionFunctions.isValid(finalRes) ||
           (finalRes == McasStatus.FailedVal) ||
           (finalRes == EmcasStatus.CycleDetected)
         )
@@ -925,7 +925,7 @@ private[mcas] final class Emcas(
         } else {
           // someone else already finalized the descriptor, we return its status:
           _assert(
-            Version.isValid(witness) ||
+            VersionFunctions.isValid(witness) ||
             (witness == McasStatus.FailedVal) ||
             (witness == EmcasStatus.CycleDetected)
           )
@@ -986,7 +986,7 @@ private[mcas] final class Emcas(
     } else {
       // we try to increment it:
       val candidate = ts1 + Version.Incr
-      Predef.assert(Version.isValid(candidate)) // detect version overflow
+      Predef.assert(VersionFunctions.isValid(candidate)) // detect version overflow
       val ctsWitness = global.cmpxchgCommitTs(ts1, candidate) // TODO: could this be `getAndAdd`? is it faster?
       if (ctsWitness == ts1) {
         // ok, successful CAS:

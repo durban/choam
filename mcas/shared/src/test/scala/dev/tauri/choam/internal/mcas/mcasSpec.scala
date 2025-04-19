@@ -558,14 +558,14 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
       Version.FailedVal,
     )
     assertEquals(clue(set).size, 5)
-    assert(Version.isValid(Version.Start))
-    assert(Version.isValid(Version.Start + Version.Incr))
-    assert(Version.isValid(Version.Start + (2 * Version.Incr)))
-    assert(Version.isValid(Version.Start + (3 * Version.Incr)))
-    assert(!Version.isValid(Version.None))
-    assert(!Version.isValid(Version.Active))
-    assert(!Version.isValid(Version.Successful))
-    assert(!Version.isValid(Version.FailedVal))
+    assert(VersionFunctions.isValid(Version.Start))
+    assert(VersionFunctions.isValid(Version.Start + Version.Incr))
+    assert(VersionFunctions.isValid(Version.Start + (2 * Version.Incr)))
+    assert(VersionFunctions.isValid(Version.Start + (3 * Version.Incr)))
+    assert(!VersionFunctions.isValid(Version.None))
+    assert(!VersionFunctions.isValid(Version.Active))
+    assert(!VersionFunctions.isValid(Version.Successful))
+    assert(!VersionFunctions.isValid(Version.FailedVal))
   }
 
   test("Expected version must also be checked") {

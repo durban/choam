@@ -222,7 +222,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
       assertEquals(ctx.readVersion(r3), endTs - Version.Incr)
     } else {
       assertEquals(res, newVer)
-      assert(Version.isValid(res))
+      assert(VersionFunctions.isValid(res))
       assertEquals(endTs, startTs + Version.Incr)
       assertSameInstance(ctx.readDirect(r1), "a")
       assertEquals(ctx.readVersion(r1), v1)

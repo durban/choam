@@ -42,7 +42,7 @@ final class LogEntry[A] private ( // formerly called HWD
   final override val oldVersion: Long,
 ) extends WdLike[A] {
 
-  require(Version.isValid(oldVersion))
+  require(VersionFunctions.isValid(oldVersion))
 
   private[choam] final def cast[B]: LogEntry[B] =
     this.asInstanceOf[LogEntry[B]]

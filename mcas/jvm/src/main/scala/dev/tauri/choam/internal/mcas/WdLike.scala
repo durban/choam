@@ -43,7 +43,7 @@ final class LogEntry[A] private ( // formerly called HWD
   final override val oldVersion: Long,
 ) extends WdLike[A] {
 
-  require(Version.isValid(oldVersion))
+  require(VersionFunctions.isValid(oldVersion))
 
   final override def wasFinalized(wasSuccessful: Boolean, sentinel: A): Unit = {
     if (wasSuccessful) {

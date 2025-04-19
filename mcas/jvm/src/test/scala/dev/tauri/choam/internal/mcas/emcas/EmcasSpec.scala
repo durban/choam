@@ -648,7 +648,7 @@ class EmcasSpec extends BaseSpec {
     // GC, cleanup:
     assertSameInstance(inst.spinUntilCleanup(ref), "A")
     val ver = ctx.readVersion(ref)
-    assert(Version.isValid(ver))
+    assert(VersionFunctions.isValid(ver))
     assert(ver > Version.Start)
     assertSameInstance(ref.unsafeGetV(), "A")
     // T1 continues:

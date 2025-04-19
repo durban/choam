@@ -209,7 +209,12 @@ object Mcas extends McasCompanionPlatform { self =>
       } else {
         val finalDesc = this.addVersionCas(desc)
         val res = this.tryPerformInternal(finalDesc, optimism = optimism)
-        _assert((res == McasStatus.Successful) || (res == McasStatus.FailedVal) || (res == Version.Reserved) || Version.isValid(res))
+        _assert(
+          (res == McasStatus.Successful) ||
+          (res == McasStatus.FailedVal) ||
+          (res == Version.Reserved) ||
+          VersionFunctions.isValid(res)
+        )
         res
       }
     }
