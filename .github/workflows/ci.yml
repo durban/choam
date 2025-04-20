@@ -52,7 +52,7 @@ jobs:
             java: temurin@24
             scala: 2.13
           - os: windows-11-arm
-            java: temurin@24
+            java: temurin@21
             scala: 2.13
           - os: ubuntu-24.04
             java: temurin@24
@@ -67,7 +67,7 @@ jobs:
             java: temurin@24
             scala: 3
           - os: windows-11-arm
-            java: temurin@24
+            java: temurin@21
             scala: 3
           - os: ubuntu-24.04
             java: temurin@24

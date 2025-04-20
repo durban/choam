@@ -213,7 +213,7 @@ ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.fla
     MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
     MatrixInclude(matching = Map("os" -> macosIntel, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
     MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
-    MatrixInclude(matching = Map("os" -> windowsArm, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
+    MatrixInclude(matching = Map("os" -> windowsArm, "java" -> jvmLts.render, "scala" -> binVer), additions = Map.empty),
     MatrixInclude(matching = Map("os" -> linux86, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
   )
 }
