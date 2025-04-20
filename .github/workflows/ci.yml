@@ -30,6 +30,7 @@ jobs:
           - ubuntu-24.04-arm
           - ubuntu-24.04
           - windows-2025
+          - windows-11-arm
           - macos-15
           - macos-13
         scala: [2.13, 3]
@@ -50,6 +51,9 @@ jobs:
           - os: windows-2025
             java: temurin@24
             scala: 2.13
+          - os: windows-11-arm
+            java: temurin@24
+            scala: 2.13
           - os: ubuntu-24.04
             java: temurin@24
             scala: 2.13
@@ -62,27 +66,24 @@ jobs:
           - os: windows-2025
             java: temurin@24
             scala: 3
+          - os: windows-11-arm
+            java: temurin@24
+            scala: 3
           - os: ubuntu-24.04
             java: temurin@24
             scala: 3
         exclude:
           - os: windows-2025
-            java: graalvm@21
-          - os: windows-2025
-            java: graalvm@24
-          - os: windows-2025
-            java: semeru@23
+          - os: windows-11-arm
           - os: macos-15
           - os: macos-13
-          - os: windows-2025
-            java: temurin@11
-          - os: windows-2025
-            java: temurin@21
-          - os: windows-2025
-            java: temurin@24
           - os: ubuntu-24.04
           - java: graalvm@21
             scala: 3
+          - java: temurin@21
+            scala: 3
+          - java: temurin@24
+            scala: 2.13
     runs-on: ${{ matrix.os }}
     timeout-minutes: 240
     steps:

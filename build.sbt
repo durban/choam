@@ -45,6 +45,7 @@ val jvmOpenj9s = List(jvmOpenj9Latest)
 val linux = "ubuntu-24.04-arm" // ARM64
 val linux86 = "ubuntu-24.04" // x86_64
 val windows = "windows-2025" // x86_64
+val windowsArm = "windows-11-arm" // ARM64
 val macos = "macos-15" // ARM64
 val macosIntel = "macos-13" // x86_64
 
@@ -194,17 +195,16 @@ ThisBuild / githubWorkflowBuild := List(
   ),
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(jvmTemurins, jvmGraals, jvmOpenj9s).flatten
-ThisBuild / githubWorkflowOSes := Seq(linux, linux86, windows, macos, macosIntel)
+ThisBuild / githubWorkflowOSes := Seq(linux, linux86, windows, windowsArm, macos, macosIntel)
 ThisBuild / githubWorkflowSbtCommand := "sbt -v"
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
-  jvmGraals.map { gr => MatrixExclude(Map("os" -> windows, "java" -> gr.render)) }, // win+graal seems unstable
-  jvmOpenj9s.map { j9 => MatrixExclude(Map("os" -> windows, "java" -> j9.render)) }, // win+openJ9 seems unstable
-  // these are excluded so that we don't have too much jobs:
+  List(windows, windowsArm).map { win => MatrixExclude(Map("os" -> win)) }, // but see inclusions
   List(macos, macosIntel).map { macos => MatrixExclude(Map("os" -> macos)) }, // but see inclusions
-  jvmTemurins.map { j => MatrixExclude(Map("os" -> windows, "java" -> j.render)) }, // but see inclusions
   Seq(
     MatrixExclude(Map("os" -> linux86)), // but see inclusions
     MatrixExclude(Map("java" -> jvmGraalLts.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
+    MatrixExclude(Map("java" -> jvmLts.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
+    MatrixExclude(Map("java" -> jvmLatest.render, "scala" -> CrossVersion.binaryScalaVersion(scala2))),
   ),
 ).flatten
 ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.flatMap { scalaVer =>
@@ -213,6 +213,7 @@ ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.fla
     MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
     MatrixInclude(matching = Map("os" -> macosIntel, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
     MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
+    MatrixInclude(matching = Map("os" -> windowsArm, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
     MatrixInclude(matching = Map("os" -> linux86, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
   )
 }
