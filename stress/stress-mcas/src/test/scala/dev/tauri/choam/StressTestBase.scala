@@ -24,11 +24,12 @@ abstract class StressTestBase {
   protected def impl: Mcas =
     StressTestBase.emcasInst
 
-  protected def rig: RefIdGen =
+  protected final def rig: RefIdGen =
     this.impl.currentContext().refIdGen
 }
 
 object StressTestBase {
+
   val emcasInst: Mcas =
     Mcas.newEmcas(OsRng.mkNew())
 }
