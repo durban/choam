@@ -22,9 +22,8 @@ package bench
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import internal.mcas.Mcas
 import profiler.RxnProfiler
-import dev.tauri.choam.bench.util.McasImplState
+import dev.tauri.choam.bench.util.{ McasImplState, McasImplStateBase }
 
 @Fork(3)
 @Threads(2) // 4, 6, 8, ...
@@ -54,10 +53,10 @@ class ExchangerBench {
 object ExchangerBench {
 
   @State(Scope.Benchmark)
-  class St {
+  class St extends McasImplStateBase {
 
     private[this] val exchanger: Exchanger[String, String] =
-      RxnProfiler.profiledExchanger[String, String].unsafePerform((), Mcas.NullMcas)
+      RxnProfiler.profiledExchanger[String, String].unsafePerform((), this.mcasImpl)
 
     val left: Rxn[String, Option[String]] =
       exchanger.exchange.?

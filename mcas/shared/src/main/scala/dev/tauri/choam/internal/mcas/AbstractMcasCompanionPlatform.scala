@@ -25,7 +25,4 @@ private[mcas] abstract class AbstractMcasCompanionPlatform {
 
   private[choam] final def newThreadConfinedMcas(osRng: OsRng): Mcas =
     new ThreadConfinedMcas(osRng)
-
-  private[choam] final def NullMcas: Mcas =
-    mcas.NullMcas
 }

@@ -58,11 +58,6 @@ trait SpecThreadConfinedMcas extends munit.Suite with McasImplSpec {
     this._mcasImpl
 }
 
-trait SpecNullMcas extends McasImplSpec {
-  final override def mcasImpl: Mcas =
-    Mcas.NullMcas
-}
-
 trait SpecNoMcas extends McasImplSpec {
   final override def mcasImpl: Nothing =
     sys.error("No MCAS here")
