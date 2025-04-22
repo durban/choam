@@ -21,9 +21,9 @@ package mcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-private final class ThreadConfinedMCAS(
+private final class ThreadConfinedMcas(
   private[choam] final override val osRng: OsRng,
-) extends ThreadConfinedMCASPlatform { self =>
+) extends ThreadConfinedMcasPlatform { self =>
 
   final override def currentContext(): Mcas.ThreadContext =
     _ctx

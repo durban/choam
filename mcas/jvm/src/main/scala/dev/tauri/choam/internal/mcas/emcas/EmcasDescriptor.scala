@@ -178,8 +178,8 @@ private[mcas] final class EmcasDescriptor private[this] (
 
   final override def toString: String = {
     this.getWordsO() match {
-      case null => "EMCASDescriptor(-)"
-      case words => s"EMCASDescriptor(size = ${words.length})"
+      case null => "EmcasDescriptor(-)"
+      case words => s"EmcasDescriptor(size = ${words.length})"
     }
   }
 }
