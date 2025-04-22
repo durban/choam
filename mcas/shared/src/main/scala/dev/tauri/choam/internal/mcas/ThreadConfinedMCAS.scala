@@ -21,18 +21,8 @@ package mcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-private object ThreadConfinedMCAS // TODO:0.5: remove
-  extends ThreadConfinedMCAS(OsRng.mkNew(), RefIdGen.newGlobal()) {
-
-  final override def close(): Unit = {
-    this.osRng.close()
-    super.close()
-  }
-}
-
-private class ThreadConfinedMCAS( // TODO:0.5: make it final
+private final class ThreadConfinedMCAS(
   private[choam] final override val osRng: OsRng,
-  globalRig: GlobalRefIdGen,
 ) extends ThreadConfinedMCASPlatform { self =>
 
   final override def currentContext(): Mcas.ThreadContext =
@@ -121,7 +111,7 @@ private class ThreadConfinedMCAS( // TODO:0.5: make it final
       ThreadLocalRandom.current()
 
     final override val refIdGen =
-      self.globalRig.newThreadLocal()
+      RefIdGen.newGlobal().newThreadLocal()
   }
 
   private[this] val _commitTs: MemoryLocation[Long] =

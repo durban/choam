@@ -18,19 +18,9 @@
 package dev.tauri.choam
 package random
 
-import internal.mcas.Mcas
-
 final class RandomBaseSpecJvm extends RandomBaseSpec {
 
   private object VarHandleAccess extends RandomBase
-
-  protected[this] override val mcas: Mcas =
-    Mcas.newEmcas(this.osRngInstance)
-
-  final override def afterAll(): Unit = {
-    this.mcas.close()
-    super.afterAll()
-  }
 
   test("VarHandle endianness") {
     val arr = new Array[Byte](8)

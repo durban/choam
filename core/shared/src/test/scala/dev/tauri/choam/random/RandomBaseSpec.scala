@@ -26,7 +26,8 @@ import dev.tauri.choam.random.{ newUuidImpl, uuidFromRandomBytes }
 
 abstract class RandomBaseSpec extends BaseSpec {
 
-  protected[this] def mcas: Mcas
+  protected[this] final def mcas: Mcas =
+    this.defaultMcasInstance
 
   test("byteArrayViewVarHandle") {
     final class DummyRng(const: Array[Byte]) extends RandomBase {

@@ -20,7 +20,4 @@ package random
 
 import internal.mcas.Mcas
 
-final class RandomBaseSpecJs extends RandomBaseSpec {
-  protected[this] override val mcas: Mcas =
-    Mcas.ThreadConfinedMCAS
-}
+final class RandomBaseSpecJs extends RandomBaseSpec

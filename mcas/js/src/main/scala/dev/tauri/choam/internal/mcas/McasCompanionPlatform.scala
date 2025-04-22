@@ -22,5 +22,5 @@ package mcas
 private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
 
   private[choam] final override def newDefaultMcas(osRng: OsRng): Mcas =
-    new ThreadConfinedMCAS(osRng, RefIdGen.newGlobal())
+    this.newThreadConfinedMcas(osRng)
 }
