@@ -18,6 +18,4 @@
 package dev.tauri.choam
 package random
 
-import internal.mcas.Mcas
-
 final class RandomBaseSpecJs extends RandomBaseSpec
