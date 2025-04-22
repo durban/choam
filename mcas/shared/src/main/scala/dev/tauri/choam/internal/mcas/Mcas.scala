@@ -69,7 +69,7 @@ sealed trait Mcas {
   }
 }
 
-object Mcas extends McasCompanionPlatform { self =>
+object Mcas extends McasCompanionPlatform {
 
   private[mcas] trait UnsealedMcas extends Mcas
 

@@ -29,12 +29,4 @@ private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanion
 
   final def SpinLockMcas: Mcas =
     mcas.SpinLockMcas
-
-  /** Benchmark infra */
-  private[choam] object fqns {
-    final val SpinLockMCAS =
-      "dev.tauri.choam.mcas.SpinLockMcas"
-    final val Emcas =
-      "dev.tauri.choam.mcas.emcas.Emcas"
-  }
 }
