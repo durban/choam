@@ -23,7 +23,7 @@ private[mcas] abstract class DescriptorPlatform extends AbstractDescriptor {
 
   protected def map: LogMap2[Any]
 
-  /** This only exists on the JVM, and used by EMCAS instead of the above */
+  /** This only exists on the JVM, and used by EMCAS instead of `hwdIterator` */
   private[mcas] final override def toWdArray(parent: emcas.EmcasDescriptor, instRo: Boolean): Array[WdLike[Any]] = {
     this.map.toArray(parent, flag = instRo, nullIfBlue = true)
   }
