@@ -17,9 +17,9 @@
 
 package com.example.choamtest
 
-import dev.tauri.choam.BaseSpec
+import munit.CatsEffectSuite
 
-final class ReadmeSpec extends BaseSpec {
+final class ReadmeSpec extends CatsEffectSuite {
 
   ////////////////////////////////
   import dev.tauri.choam.{ Ref, Rxn }
@@ -38,6 +38,12 @@ final class ReadmeSpec extends BaseSpec {
       y <- Ref(42).run[IO]
       // increment their values atomically:
       _ <- incrBoth(x, y).run[IO]
+      xValue <- x.get.run[IO]
+      yValue <- y.get.run[IO]
+      _ <- IO {
+        assert(xValue == 1)
+        assert(yValue == 43)
+      }
     } yield ()
   }
   ////////////////////////////////

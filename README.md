@@ -50,6 +50,7 @@ For more modules, see [below](#modules).
 The complete version of the example [above](#overview), which increments the value of
 two `Ref`s is as follows:
 
+<!-- Note: this needs to be kept in sync with `ReadmeSpec`! -->
 ```scala
 import dev.tauri.choam.{ Ref, Rxn }
 
@@ -61,6 +62,7 @@ def incrBoth(x: Ref[Int], y: Ref[Int]): Rxn[Any, Unit] = {
 It can be executed with (for example) Cats Effect IO like this
 (the `choam-ce` module is also needed):
 
+<!-- Note: this needs to be kept in sync with `ReadmeSpec`! -->
 ```scala
 import cats.effect.{ IO, IOApp }
 import dev.tauri.choam.ce.RxnAppMixin
@@ -72,6 +74,12 @@ object MyMain extends IOApp.Simple with RxnAppMixin {
     y <- Ref(42).run[IO]
     // increment their values atomically:
     _ <- incrBoth(x, y).run[IO]
+    xValue <- x.get.run[IO]
+    yValue <- y.get.run[IO]
+    _ <- IO {
+      assert(xValue == 1)
+      assert(yValue == 43)
+    }
   } yield ()
 }
 ```
