@@ -574,6 +574,9 @@ object Rxn extends RxnInstances0 {
   final def deterministicRandom(initialSeed: Long, str: Ref.AllocationStrategy): Axn[random.SplittableRandom[Axn]] =
     random.deterministicRandom(initialSeed, str)
 
+  final def memoize[A](axn: Axn[A], str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[Memo[A]] =
+    Memo(axn, str)
+
   private[choam] final object ref {
 
     private[choam] final def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
