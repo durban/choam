@@ -253,7 +253,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
   }
 
   test("unsafe.unread should make a conflict disappear") {
-    val N = 30000
+    val N = 40000
     def withoutUnread(r1: Ref[String], r2: Ref[String]): Axn[Int] = {
       // without unread, this will sometimes retry if
       // there is a concurrent change to `r1`, and will
