@@ -19,75 +19,87 @@ package dev.tauri.choam
 package bench
 package rxn
 
-import java.util.concurrent.ThreadLocalRandom
-
 import org.openjdk.jmh.annotations._
-import org.openjdk.jmh.infra.Blackhole
+
+import async.Promise
 
 import util._
 
+/**
+ * Benchmarks to determine whether `Rxn` being an arrow (i.e.,
+ * `Rxn[-A, +B]`) has performance advantages in realistic situations
+ * over just being a monad (i.e., a hypothetical `Rxn[+B]`).
+ *
+ * The main functionality we get from having an arrow is directly
+ * "piping" the result of one `Rxn` into another (with `>>>`). That is,
+ * we can do this:
+ *
+ * ```
+ * val rxn1: Rxn[A, B] = ???
+ * val rxn2: Rxn[B, C] = ???
+ * rxn1 >>> rxn2
+ * ```
+ *
+ * instead of the obvious monad-like composition:
+ *
+ * ```
+ * val rxn1: Axn[B] = ???
+ * def rxn2(b: B): Axn[C] = ???
+ * rxn1.flatMapF(b => rxn2(b))
+ * ```
+ *
+ * In theory, by using `>>>` we avoid at least a closure allocation.
+ * But does that matters in semi-realistic situations? That's the
+ * question that this benchmark tries to answer.
+ */
 @Fork(3)
+@Threads(2)
 class ArrowBench {
 
+  import ArrowBench.{ SharedSt, ThreadSt, N }
+
   @Benchmark
-  def onlyComputed(s: ArrowBench.St, bh: Blackhole, k: McasImplState, r: RandomState): Unit = {
-    val ref = s.refs(Math.abs(r.nextInt()) % ArrowBench.size)
-    bh.consume(s.rOnlyComputed(ref).unsafePerform((), k.mcasImpl))
+  def arrow(s: SharedSt, k: ThreadSt, r: RandomState): Boolean = {
+    val ref = s.refs(r.nextIntBounded(N))
+    s.replaceAndCompleteWithArrow(ref, "foo").unsafePerformInternal0(null, k.mcasCtx)
   }
 
   @Benchmark
-  def withoutComputed(s: ArrowBench.St, bh: Blackhole, k: McasImplState, r: RandomState): Unit = {
-    val ref = s.refs(Math.abs(r.nextInt()) % ArrowBench.size)
-    bh.consume(s.rWithoutComputed(ref).unsafePerform((), k.mcasImpl))
-  }
-
-  @Benchmark
-  def updPrimitive(s: ArrowBench.USt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
-    val r = s.updPrimitive(s.refs(Math.abs(rnd.nextInt()) % ArrowBench.size))
-    bh.consume(r.unsafePerform(rnd.nextString(), k.mcasImpl))
+  def monad(s: SharedSt, k: ThreadSt, r: RandomState): Boolean = {
+    val ref = s.refs(r.nextIntBounded(N))
+    s.replaceAndCompleteWithMonad(ref, "foo").unsafePerformInternal0(null, k.mcasCtx)
   }
 }
 
 object ArrowBench {
 
-  final val size = 8
+  final val N = 32
+
+  @State(Scope.Thread)
+  class ThreadSt extends McasImplState
 
   @State(Scope.Benchmark)
-  class St extends McasImplStateBase {
+  class SharedSt extends McasImplStateBase {
 
-    val refs: List[Ref[String]] = List.fill(size) {
-      Ref.unsafePadded[String](
-        ThreadLocalRandom.current().nextInt().toString,
+    val refs: Array[Ref[Promise[String]]] = Array.fill(N) {
+      Ref.unsafePadded[Promise[String]](
+        null : Promise[String],
         this.mcasImpl.currentContext().refIdGen,
       )
     }
 
-    def rWithoutComputed(ref: Ref[String]): Axn[Int] =
-      ref.get.map(_.toUpperCase).map(_.trim).map(_.length)
-
-    def rOnlyComputed(ref: Ref[String]): Axn[Int] = {
-      ref.get.flatMap { s =>
-        Rxn.ret(s.toUpperCase).flatMap { u =>
-          Rxn.ret(u.trim).flatMap { t =>
-            Rxn.ret(t.length)
-          }
-        }
+    final def replaceAndCompleteWithArrow(ref: Ref[Promise[String]], str: String): Rxn[Any, Boolean] = {
+      Promise[String] >>> ref.getAndSet.flatMapF { ov =>
+        if (ov ne null) ov.complete1(str) else Rxn.pure(true)
       }
     }
-  }
 
-  @State(Scope.Benchmark)
-  class USt extends McasImplStateBase {
-
-    val refs: List[Ref[Long]] = List.fill(size) {
-      Ref.unsafePadded[Long](
-        ThreadLocalRandom.current().nextLong(),
-        this.mcasImpl.currentContext().refIdGen,
-      )
-    }
-
-    def updPrimitive(ref: Ref[Long]): Rxn[String, Long] = {
-      Rxn.ref.upd[Long, String, Long](ref) { (i, s) => (i + 1, s.length.toLong) }
+    final def replaceAndCompleteWithMonad(ref: Ref[Promise[String]], str: String): Rxn[Any, Boolean] = {
+      Promise[String].flatMapF { p =>
+        ref.getAndUpdate { _ => p }.flatMapF { ov =>
+          if (ov ne null) ov.complete1(str) else Rxn.pure(true)
+        }
+      }
     }
   }
 }

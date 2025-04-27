@@ -258,6 +258,20 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
   }
 
   /** Only for tests/benchmarks */
+  private[choam] final def unsafePerformInternal0(
+    a: A,
+    ctx: Mcas.ThreadContext,
+  ): B = {
+    new Rxn.InterpreterState[A, B](
+      this,
+      a,
+      ctx.impl,
+      strategy = RetryStrategy.Default,
+      isStm = false,
+    ).interpretSyncWithContext(ctx)
+  }
+
+  /** Only for tests/benchmarks */
   private[choam] final def unsafePerformInternal(
     a: A,
     ctx: Mcas.ThreadContext,
