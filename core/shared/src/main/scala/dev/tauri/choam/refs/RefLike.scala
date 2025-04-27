@@ -64,6 +64,7 @@ sealed trait RefLike[A] {
   final def getAndUpd[B](f: (A, B) => A): Rxn[B, A] = // TODO: optimize
     upd[B, A] { (oa, b) => (f(oa, b), oa) }
 
+    /** Returns previous value */
   final def getAndUpdateWith(f: A => Axn[A]): Axn[A] =
     updWith[Any, A] { (oa, _) => f(oa).map(na => (na, oa)) }
 
@@ -83,7 +84,12 @@ sealed trait RefLike[A] {
     }
   }
 
-  // TODO: updateAndGetWith OR updateWithAndGet ?
+  /** Returns new value */
+  final def updateAndGetWith(f: A => Axn[A]): Axn[A] = { // TODO: optimize
+    updWith[Any, A] { (oa, _) =>
+      f(oa).map { na => (na, na) }
+    }
+  }
 
   final def modify[B](f: A => (A, B)): Axn[B] =
     upd[Any, B] { (a, _) => f(a) }
