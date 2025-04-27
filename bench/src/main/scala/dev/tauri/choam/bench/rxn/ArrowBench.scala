@@ -35,16 +35,16 @@ import util._
  * we can do this:
  *
  * ```
- * val rxn1: Rxn[A, B] = ???
- * val rxn2: Rxn[B, C] = ???
+ * val rxn1: Rxn[A, B] = ...
+ * val rxn2: Rxn[B, C] = ...
  * rxn1 >>> rxn2
  * ```
  *
  * instead of the obvious monad-like composition:
  *
  * ```
- * val rxn1: Axn[B] = ???
- * def rxn2(b: B): Axn[C] = ???
+ * val rxn1: Axn[B] = ...
+ * def rxn2(b: B): Axn[C] = ...
  * rxn1.flatMapF(b => rxn2(b))
  * ```
  *
