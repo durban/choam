@@ -46,8 +46,11 @@ private[mcas] abstract class GlobalContext
    * affect safety, because a dead thread will never
    * continue its current op (if any).
    */
-  private[this] val _threadContexts =
+  private[this] val _threadContexts = if (Consts.statsEnabled) {
     new SkipListMap[GlobalContext.TCtxWeakRef, Unit]
+  } else {
+    null
+  }
 
   /** Holds the context for each (active) thread */
   private[this] val threadContextKey =
@@ -84,29 +87,35 @@ private[mcas] abstract class GlobalContext
   private[choam] final override def getRetryStats(): Mcas.RetryStats = {
     // allocating this builder is still cheaper than using an iterator (tuples):
     val b = new GlobalContext.StatsBuilder()
-    this._threadContexts.foreachAndSum { (wr, _) =>
-      val tctx = wr.get()
-      if (tctx ne null) {
-        b += tctx.getRetryStats()
-      } else {
-        this._threadContexts.del(wr) : Unit // clean empty weakref
-      }
-      0
-    } : Unit
+    val tcs = this._threadContexts
+    if (tcs ne null) {
+      tcs.foreachAndSum { (wr, _) =>
+        val tctx = wr.get()
+        if (tctx ne null) {
+          b += tctx.getRetryStats()
+        } else {
+          tcs.del(wr) : Unit // clean empty weakref
+        }
+        0
+      } : Unit
+    }
     b.build()
   }
 
   private[choam] final override def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
     val mb = Map.newBuilder[Long, Map[AnyRef, AnyRef]]
-    this._threadContexts.foreachAndSum { (wr, _) =>
-      val tc = wr.get()
-      if (tc ne null) {
-        mb += ((wr.tid, tc.getStatisticsO()))
-      } else {
-        this._threadContexts.del(wr) : Unit // clean empty weakref
-      }
-      0
-    } : Unit
+    val tcs = this._threadContexts
+    if (tcs ne null) {
+      tcs.foreachAndSum { (wr, _) =>
+        val tc = wr.get()
+        if (tc ne null) {
+          mb += ((wr.tid, tc.getStatisticsO()))
+        } else {
+          tcs.del(wr) : Unit // clean empty weakref
+        }
+        0
+      } : Unit
+    }
     mb.result()
   }
 
@@ -114,45 +123,57 @@ private[mcas] abstract class GlobalContext
     // An `IntRef` is still cheaper than using an iterator (tuples):
     @nowarn("cat=lint-performance")
     var max = 0
-    this._threadContexts.foreachAndSum { (wr, _) =>
-      val tc = wr.get()
-      if (tc ne null) {
-        val n = tc.maxReusedWeakRefs()
-        if (n > max) {
-          max = n
+    val tcs = this._threadContexts
+    if (tcs ne null) {
+      tcs.foreachAndSum { (wr, _) =>
+        val tc = wr.get()
+        if (tc ne null) {
+          val n = tc.maxReusedWeakRefs()
+          if (n > max) {
+            max = n
+          }
+        } else {
+          tcs.del(wr) : Unit // clean empty weakref
         }
-      } else {
-        this._threadContexts.del(wr) : Unit // clean empty weakref
-      }
-      0
-    } : Unit
+        0
+      } : Unit
+    }
     max
   }
 
   /** For testing. */
   private[emcas] final def threadContextExists(threadId: Long): Boolean = {
-    val sum = this._threadContexts.foreachAndSum { (wr, _) =>
-      if (wr.get() eq null) {
-        this._threadContexts.del(wr) : Unit // clean empty weakref
-        0
-      } else if (wr.tid == threadId) {
-        1
-      } else {
-        0
+    val tcs = this._threadContexts
+    if (tcs ne null) {
+      val sum = tcs.foreachAndSum { (wr, _) =>
+        if (wr.get() eq null) {
+          tcs.del(wr) : Unit // clean empty weakref
+          0
+        } else if (wr.tid == threadId) {
+          1
+        } else {
+          0
+        }
       }
+      (sum != 0)
+    } else {
+      throw new AssertionError("_threadContexts is null")
     }
-
-    (sum != 0)
   }
 
   private[emcas] final def threadContextCount(): Int = {
-    this._threadContexts.foreachAndSum { (wr, _) =>
-      if (wr.get() eq null) {
-        this._threadContexts.del(wr) : Unit // clean empty weakref
-        0
-      } else {
-        1
+    val tcs = this._threadContexts
+    if (tcs ne null) {
+      tcs.foreachAndSum { (wr, _) =>
+        if (wr.get() eq null) {
+          tcs.del(wr) : Unit // clean empty weakref
+          0
+        } else {
+          1
+        }
       }
+    } else {
+      0 // we don't know
     }
   }
 
