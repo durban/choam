@@ -25,8 +25,9 @@ import async.AsyncReactive
 /**
  * An [[fs2.concurrent.SignallingRef]], which
  * is also readable/writable in the context
- * of [[dev.tauri.choam.Rxn]] (i.e., it is a
- * [[dev.tauri.choam.RefLike]]).
+ * of [[dev.tauri.choam.Rxn]] (i.e., it has
+ * an associated [[dev.tauri.choam.RefLike]],
+ * accessible through the `refLike` method).
  */
 sealed abstract class RxnSignallingRef[F[_], A]
   extends SignallingRef[F, A] {
@@ -39,6 +40,6 @@ object RxnSignallingRef {
   private[choam] abstract class UnsealedRxnSignallingRef[F[_], A]
     extends RxnSignallingRef[F, A]
 
-  def apply[F[_] : AsyncReactive, A](initial: A): Axn[RxnSignallingRef[F, A]] =
+  final def apply[F[_] : AsyncReactive, A](initial: A): Axn[RxnSignallingRef[F, A]] =
     Fs2SignallingRefWrapper[F, A](initial)
 }

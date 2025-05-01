@@ -25,6 +25,8 @@ import async.{ UnboundedQueue, AsyncReactive }
 
 package object stream {
 
+  // TODO: also consider implementing fs2.concurrent.Channel
+
   final def signallingRef[F[_] : AsyncReactive, A](initial: A): Axn[RxnSignallingRef[F, A]] =
     RxnSignallingRef[F, A](initial)
 

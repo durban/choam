@@ -24,27 +24,24 @@ import org.openjdk.jmh.annotations._
 import cats.effect.IO
 import fs2.concurrent.SignallingRef
 
-import dev.tauri.choam.bench.BenchUtils
 import ce.unsafeImplicits._
+import dev.tauri.choam.bench.CeRuntime
 
 @Fork(2)
 @Threads(1) // because it run on the CE compute pool
-class SignallingRefBench extends BenchUtils {
+class SignallingRefBench {
 
-  final val N = 1024 * 1024
-  final val End = "END"
-
-  protected override def waitTime: Long =
-    0L
+  private[this] final val N = 1024 * 256
+  private[this] final val End = "END"
 
   @Benchmark
   def rxnSignallingRef(s: SignallingRefBench.St): Unit = {
-    this.run(s.runtime, tsk(s.rxn, s.rxnReset, N), 1)
+    tsk(s.rxn, s.rxnReset, N).unsafeRunSync()(s.runtime)
   }
 
   @Benchmark
   def fs2SignallingRef(s: SignallingRefBench.St): Unit = {
-    this.run(s.runtime, tsk(s.fs2, s.fs2Reset, N), 1)
+    tsk(s.fs2, s.fs2Reset, N).unsafeRunSync()(s.runtime)
   }
 
   def tsk(r: SignallingRef[IO, String], reset: IO[Unit], size: Int): IO[Unit] = {
@@ -57,7 +54,7 @@ class SignallingRefBench extends BenchUtils {
     }
     IO.both(
       produce(size),
-      IO.both(consume, consume).void
+      consume.parReplicateA_(4)
     ).void.guarantee(reset)
   }
 }
@@ -67,7 +64,8 @@ object SignallingRefBench {
   class St {
 
     val runtime =
-      cats.effect.unsafe.IORuntime.global
+      CeRuntime.forBenchmarks
+
     val fs2: SignallingRef[IO, String] =
       SignallingRef.of[IO, String]("initial").unsafeRunSync()(runtime)
     val fs2Reset: IO[Unit] =

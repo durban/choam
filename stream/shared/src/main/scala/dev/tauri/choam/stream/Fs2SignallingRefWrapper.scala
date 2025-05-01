@@ -27,9 +27,8 @@ import fs2.Stream
 import data.Map
 import async.{ AsyncReactive, Promise }
 
-import Fs2SignallingRefWrapper._
+import Fs2SignallingRefWrapper.{ Listener, Waiting, Full, Empty }
 
-// TODO: also consider fs2.concurrent.Channel
 private[stream] final class Fs2SignallingRefWrapper[F[_], A](
   underlying: Ref[A],
   val listeners: Map.Extra[Unique.Token, Ref[Listener[F, A]]],
@@ -37,7 +36,7 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
 
   // Rxn API:
 
-  def refLike: RefLike[A] =
+  final override def refLike: RefLike[A] =
     _refLike
 
   private[this] val _refLike: RefLike[A] = new RefLike.UnsealedRefLike[A] {
