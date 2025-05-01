@@ -116,6 +116,9 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
   private[this] var elapsedSeconds: Double =
     0.0
 
+  // TODO: measure "global version sharing"
+  // TODO: i.e., how many commits have the same global version (on average)
+
   private[this] val config: Config = {
     val p = Command("rxn", "RxnProfiler") {
       val debug = Opts.flag("debug", short = "d", help = "debug mode").orFalse

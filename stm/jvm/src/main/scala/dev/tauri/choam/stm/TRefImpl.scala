@@ -109,7 +109,7 @@ private final class TRefImpl[A](
     listener: Null => Unit,
     lastSeenVersion: Long,
   ): Long = {
-    val lid = previousListenerId.incrementAndGet() // could be opaque
+    val lid = previousListenerId.incrementAndGet() // TODO: could be opaque; use VarHandle#getAndAddAcquire
     Predef.assert(lid != Consts.InvalidListenerId) // detect overflow
 
     @tailrec

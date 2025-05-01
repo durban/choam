@@ -45,7 +45,9 @@ abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuit
   }
 
   test("Working on a Ref with 2 different MCAS impls") {
-    // this should never happen!
+    // This should never happen in normal code!
+    // This test is testing that if it happens,
+    // there is (likely) at least an exception.
     Reactive.forSync[F].use { reactive1 =>
       Reactive.forSync[F].use { reactive2 =>
         for {
