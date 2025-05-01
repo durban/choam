@@ -47,14 +47,14 @@ class SignallingRefBench {
   def tsk(r: SignallingRef[IO, String], reset: IO[Unit], size: Int): IO[Unit] = {
     def produce(size: Int): IO[Unit] = {
       if (size > 0) r.set("foo") >> produce(size - 1)
-      else r.set(End)
+      else IO.unit
     }
     def consume: IO[Unit] = {
       r.discrete.takeWhile(_ ne End).compile.drain
     }
     IO.both(
-      produce(size),
-      consume.parReplicateA_(4)
+      produce(size).parReplicateA_(4).guarantee(r.set(End)),
+      consume.parReplicateA_(4),
     ).void.guarantee(reset)
   }
 }
