@@ -63,7 +63,7 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
       listeners.values.flatMapF(_.traverse { lRef =>
         lRef.modify {
           case Waiting(next) => (Empty(), Some(next))
-          case Full(_) => (Full(newVal), None)
+          case Full(_) => (Full(newVal), None) // TODO:0.5: here we lose a value
           case Empty() => (Full(newVal), None)
         }.flatMapF {
           case Some(next) => next.complete1(newVal).void
