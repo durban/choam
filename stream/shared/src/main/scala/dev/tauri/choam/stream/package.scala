@@ -17,16 +17,16 @@
 
 package dev.tauri.choam
 
-import cats.effect.std.{ Queue => CatsQueue }
-
 import fs2.{ Chunk, Stream }
 
 import async.{ UnboundedQueue, AsyncReactive }
 
 package object stream {
 
-  // TODO: also consider implementing fs2.concurrent.Channel
-  // TODO: also consider implementing fs2.concurrent.SignallingMapRef
+  // TODO: Channel
+  // TODO: SignallingRef
+  // TODO: SignallingMapRef
+  // TODO: Topic
 
   final def signallingRef[F[_] : AsyncReactive, A](initial: A): Axn[RxnSignallingRef[F, A]] =
     RxnSignallingRef[F, A](initial)
@@ -42,21 +42,4 @@ package object stream {
 
   final def fromQueueNoneTerminatedChunk[F[_], A](q: UnboundedQueue[Option[Chunk[A]]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueNoneTerminatedChunk(new Fs2QueueWrapper(q), limit = limit)
-
-  // TODO: this could work with BoundedQueue too
-  @nowarn
-  private final class Fs2QueueWrapper[F[_], A](
-    self: UnboundedQueue[A]
-  )(implicit F: AsyncReactive[F]) extends CatsQueue[F, A] {
-    final override def take: F[A] =
-      self.deque
-    final override def tryTake: F[Option[A]] =
-      self.tryDeque.run[F]
-    final override def size: F[Int] =
-      F.monad.pure(0) // FS2 doesn't really need `size`, so we cheat
-    final override def offer(a: A): F[Unit] =
-      self.enqueue[F](a)
-    final override def tryOffer(a: A): F[Boolean] =
-      self.enqueue.as(true).apply[F](a)
-  }
 }
