@@ -50,7 +50,7 @@ trait PubSubSpec[F[_]]
         _ <- assertResultF(hub.publish(4).run[F], PubSub.Success)
         _ <- assertResultF(hub.publishChunk(Chunk(5, 6)).run[F], PubSub.Success)
         _ <- hub.close.run[F]
-        _ <- assertResultF(f1.joinWithNever, Vector(1, 2, 3, 4, 5, 6)) ///
+        _ <- assertResultF(f1.joinWithNever, Vector(1, 2, 3, 4, 5, 6))
         _ <- assertResultF(f3.joinWithNever, Vector(2, 3, 4, 5, 6, 7))
       } yield ()
     }

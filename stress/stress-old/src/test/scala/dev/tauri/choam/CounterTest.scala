@@ -34,7 +34,7 @@ import data.Counter
 class CounterTest extends StressTestBase {
 
   private[this] val ctr: Counter =
-    Counter.apply.unsafeRun(this.impl)
+    Counter.simple.unsafeRun(this.impl)
 
   private[this] val incr =
     ctr.incr

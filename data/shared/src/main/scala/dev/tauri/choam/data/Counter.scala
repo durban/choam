@@ -22,30 +22,41 @@ package data
 // TODO: something like LongAdder (no atomic `get`, but fast)
 // TODO: do some benchmarks (`val`s may not worth it)
 
-final class Counter private (ref: Ref[Long]) {
+sealed abstract class Counter {
 
-  val add: Rxn[Long, Long] = ref.upd[Long, Long] { (cnt, n) =>
-    (cnt + n, cnt)
-  }
+  def add: Rxn[Long, Long]
 
-  val incr: Axn[Long] =
-    add.provide(1L)
+  def incr: Axn[Long]
 
-  val decr: Axn[Long] =
-    add.provide(-1L)
+  def decr: Axn[Long]
 
-  val count: Axn[Long] =
-    ref.get
+  def count: Axn[Long]
 }
 
 object Counter {
 
-  final def apply: Axn[Counter] =
-    apply(Ref.AllocationStrategy.Default)
+  final def simple: Axn[Counter] =
+    simple(Ref.AllocationStrategy.Default)
 
-  final def apply(str: Ref.AllocationStrategy): Axn[Counter] =
-    Ref(0L, str).map(new Counter(_))
+  final def simple(str: Ref.AllocationStrategy): Axn[Counter] =
+    Ref(0L, str).map(new SimpleCounter(_))
 
   private[choam] final def apply(initial: Long): Axn[Counter] =
-    Ref(initial).map(new Counter(_))
+    Ref(initial).map(new SimpleCounter(_))
+
+  private[this] final class SimpleCounter(ref: Ref[Long]) extends Counter {
+
+    final override val add: Rxn[Long, Long] = ref.upd[Long, Long] { (cnt, n) =>
+      (cnt + n, cnt)
+    }
+
+    final override val incr: Axn[Long] =
+      add.provide(1L)
+
+    final override val decr: Axn[Long] =
+      add.provide(-1L)
+
+    final override val count: Axn[Long] =
+      ref.get
+  }
 }
