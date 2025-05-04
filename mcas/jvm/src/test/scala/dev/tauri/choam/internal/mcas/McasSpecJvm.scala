@@ -19,6 +19,8 @@ package dev.tauri.choam
 package internal
 package mcas
 
+import scala.collection.concurrent.TrieMap
+
 final class McasSpecJvmEmcas
   extends McasSpecJvm
   with SpecEmcas
@@ -287,5 +289,32 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     assert((lst(2) eq r1) || (lst(2) eq r2))
     assert(lst(0) ne r1)
     assert(lst(0) ne r2)
+  }
+
+  test("Stripes multithreaded") {
+    val N = 64
+    val ctx0 = this.mcasImpl.currentContext()
+    val stripes = new TrieMap[Int, Unit]
+    val stripeIds = new TrieMap[Int, Unit]
+    val threads = Vector.fill(N) {
+      new Thread(() => {
+        val ctx1 = this.mcasImpl.currentContext()
+        stripes.put(ctx1.stripes, ())
+        stripeIds.put(ctx1.stripeId, ())
+        ()
+      })
+    }
+    threads.foreach(_.start())
+    stripes.put(ctx0.stripes, ())
+    stripeIds.put(ctx0.stripeId, ())
+    threads.foreach(_.join())
+    assertEquals(stripes.size, 1)
+    val stripeCount = stripes.keysIterator.next()
+    assert(stripeCount > 0)
+    assertEquals(stripeIds.size, java.lang.Runtime.getRuntime().availableProcessors())
+    stripeIds.foreachEntry { (k, _) =>
+      assert(k < stripeCount)
+      assert(k >= 0)
+    }
   }
 }

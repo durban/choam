@@ -75,6 +75,9 @@ object Mcas extends McasCompanionPlatform {
 
   private[mcas] trait UnsealedThreadContext extends ThreadContext
 
+  private[this] final val _numCpu =
+    java.lang.Runtime.getRuntime().availableProcessors()
+
   sealed trait ThreadContext {
 
     type START <: AbstractDescriptor.Aux[START]
@@ -153,6 +156,12 @@ object Mcas extends McasCompanionPlatform {
     def refIdGen: RefIdGen
 
     // concrete:
+
+    private[choam] final def stripes: Int =
+      _numCpu
+
+    private[choam] def stripeId: Int =
+      java.lang.Long.remainderUnsigned(Consts.staffordMix13(Thread.currentThread().getId()), stripes.toLong).toInt
 
     /** Utility to first try to read from the log, and only from the ref if not found */
     final def readMaybeFromLog[A](ref: MemoryLocation[A], log: AbstractDescriptor): Option[(A, AbstractDescriptor.Aux[log.D])] = {

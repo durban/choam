@@ -367,13 +367,7 @@ private abstract class RandomBase
   }
 
   protected[this] final def staffordMix13(s: Long): Long = {
-    var n: Long = s
-    n ^= (n >>> 30)
-    n *= 0xbf58476d1ce4e5b9L
-    n ^= (n >>> 27)
-    n *= 0x94d049bb133111ebL
-    n ^= (n >>> 31)
-    n
+    internal.mcas.Consts.staffordMix13(s)
   }
 
   protected[this] final def staffordMix04(s: Long): Long = {

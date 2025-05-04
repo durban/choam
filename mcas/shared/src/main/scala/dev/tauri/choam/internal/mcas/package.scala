@@ -37,17 +37,6 @@ package object mcas {
   }
 
   private[this] final def refShortHash(id: Long): Long = {
-    mix64_13(id) // TODO: when we have pre-hashed IDs, remove this (except for idBase in arrays)
-  }
-
-  /** https://zimbry.blogspot.com/2011/09/better-bit-mixing-improving-on.html */
-  private[this] final def mix64_13(s: Long): Long = {
-    var n: Long = s
-    n ^= (n >>> 30)
-    n *= 0xbf58476d1ce4e5b9L
-    n ^= (n >>> 27)
-    n *= 0x94d049bb133111ebL
-    n ^= (n >>> 31)
-    n
+    Consts.staffordMix13(id) // TODO: when we have pre-hashed IDs, remove this (except for idBase in arrays)
   }
 }

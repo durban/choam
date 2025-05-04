@@ -51,4 +51,15 @@ object Consts {
     Predef.assert((x > 0) && (x <= (1 << 30))) // scala-js is sometimes weird with arrays, so we leave this here
     0x80000000 >>> (Integer.numberOfLeadingZeros(x - 1) - 1)
   }
+
+  /** https://zimbry.blogspot.com/2011/09/better-bit-mixing-improving-on.html */
+  final def staffordMix13(s: Long): Long = {
+    var n: Long = s
+    n ^= (n >>> 30)
+    n *= 0xbf58476d1ce4e5b9L
+    n ^= (n >>> 27)
+    n *= 0x94d049bb133111ebL
+    n ^= (n >>> 31)
+    n
+  }
 }

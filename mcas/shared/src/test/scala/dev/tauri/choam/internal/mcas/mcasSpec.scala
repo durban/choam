@@ -632,4 +632,13 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val ctx = impl.currentContext()
     assert(impl.isCurrentContext(ctx))
   }
+
+  test("Stripes") {
+    val ctx0 = this.mcasImpl.currentContext()
+    val stripes0 = ctx0.stripes
+    assert(stripes0 > 0)
+    val stripeId0 = ctx0.stripeId
+    assert(stripeId0 >= 0)
+    assert(stripeId0 < stripes0)
+  }
 }
