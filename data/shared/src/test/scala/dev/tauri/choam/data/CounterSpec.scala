@@ -27,7 +27,7 @@ final class CounterSpecSimple_ThreadConfinedMcas_IO
 
 trait CounterSpecSimple[F[_]] extends CounterSpec[F] { this: McasImplSpec =>
   final override def mkCounter(initial: Long): F[Counter] =
-    Counter(initial).run[F]
+    Counter.simple(initial).run[F]
 }
 
 trait CounterSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>

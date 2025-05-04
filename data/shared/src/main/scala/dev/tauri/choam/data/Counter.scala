@@ -41,7 +41,7 @@ object Counter {
   final def simple(str: Ref.AllocationStrategy): Axn[Counter] =
     Ref(0L, str).map(new SimpleCounter(_))
 
-  private[choam] final def apply(initial: Long): Axn[Counter] =
+  private[choam] final def simple(initial: Long): Axn[Counter] =
     Ref(initial).map(new SimpleCounter(_))
 
   private[this] final class SimpleCounter(ref: Ref[Long]) extends Counter {

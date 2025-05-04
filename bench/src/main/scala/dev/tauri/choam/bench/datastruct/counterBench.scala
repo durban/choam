@@ -77,7 +77,7 @@ object CounterBench {
   class ReactSt extends McasImplStateBase {
     val reactCtr: Counter = {
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
-      Counter.apply(initial = init).unsafeRun(this.mcasImpl)
+      Counter.simple(initial = init).unsafeRun(this.mcasImpl)
     }
   }
 }
@@ -135,7 +135,7 @@ object CounterBenchN {
     def setup(): Unit = {
       val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
       ctrs = Array.fill(n) {
-        Counter.apply(initial = init).unsafeRun(this.mcasImpl)
+        Counter.simple(initial = init).unsafeRun(this.mcasImpl)
       }
       r = ctrs.map(_.add.as(())).reduceLeft { (a, b) => (a * b).as(()) }
     }
