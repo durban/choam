@@ -86,6 +86,9 @@ object Ref extends RefInstances0 {
 
     final def apply(padded: Boolean): AllocationStrategy =
       new AllocationStrategy(padded = padded)
+
+    private[choam] final val Padded: AllocationStrategy =
+      new AllocationStrategy(padded = true)
   }
 
   sealed trait Array[A] {

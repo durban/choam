@@ -25,9 +25,19 @@ final class CounterSpecSimple_ThreadConfinedMcas_IO
   with SpecThreadConfinedMcas
   with CounterSpecSimple[IO]
 
+final class CounterSpecStriped_ThreadConfinedMcas_IO
+  extends BaseSpecIO
+  with SpecThreadConfinedMcas
+  with CounterSpecStriped[IO]
+
 trait CounterSpecSimple[F[_]] extends CounterSpec[F] { this: McasImplSpec =>
   final override def mkCounter(initial: Long): F[Counter] =
     Counter.simple(initial).run[F]
+}
+
+trait CounterSpecStriped[F[_]] extends CounterSpec[F] { this: McasImplSpec =>
+  final override def mkCounter(initial: Long): F[Counter] =
+    Counter.striped.flatMapF(ctr => ctr.add.provide(initial).as(ctr)).run[F]
 }
 
 trait CounterSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
