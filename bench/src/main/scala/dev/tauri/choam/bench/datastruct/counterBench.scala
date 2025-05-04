@@ -26,28 +26,29 @@ import util._
 import data.Counter
 
 @Fork(2)
+@Threads(4)
 class CounterBench {
 
   import CounterBench._
 
-  final val waitTime = 128L
-
   @Benchmark
-  def reference(s: ReferenceSt, t: RandomState, bh: Blackhole): Unit = {
+  def atomicReference(s: ReferenceSt, t: RandomState, bh: Blackhole): Unit = {
     bh.consume(s.referenceCtr.add(t.nextLong()))
-    Blackhole.consumeCPU(waitTime)
   }
 
   @Benchmark
-  def locked(s: LockedSt, t: RandomState, bh: Blackhole): Unit = {
-    bh.consume(s.lockedCtr.add(t.nextLong()))
-    Blackhole.consumeCPU(waitTime)
+  def rxnSimpleUnpadded(s: ReactSt, k: McasImplState): Unit = {
+    s.rxnSimpleUnpadded.incr.unsafePerform(null, k.mcasImpl)
   }
 
   @Benchmark
-  def react(s: ReactSt, k: McasImplState, bh: Blackhole, rnd: RandomState): Unit = {
-    bh.consume(s.reactCtr.add.unsafePerform(rnd.nextLong(), k.mcasImpl))
-    Blackhole.consumeCPU(waitTime)
+  def rxnSimplePadded(s: ReactSt, k: McasImplState): Unit = {
+    s.rxnSimplePadded.incr.unsafePerform(null, k.mcasImpl)
+  }
+
+  @Benchmark
+  def rxnStripedPadded(s: ReactSt, k: McasImplState): Unit = {
+    s.rxnStripedPadded.incr.unsafePerform(null, k.mcasImpl)
   }
 }
 
@@ -64,80 +65,12 @@ object CounterBench {
   }
 
   @State(Scope.Benchmark)
-  class LockedSt {
-    val lockedCtr: LockedCounter = {
-      val ctr = new LockedCounter
-      val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
-      ctr.add(init) : Unit
-      ctr
-    }
-  }
-
-  @State(Scope.Benchmark)
   class ReactSt extends McasImplStateBase {
-    val reactCtr: Counter = {
-      val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
-      Counter.simple(initial = init).unsafeRun(this.mcasImpl)
-    }
-  }
-}
-
-@Fork(2)
-class CounterBenchN {
-
-  import CounterBenchN._
-
-  final val waitTime = 128L
-
-  @Benchmark
-  def lockedN(s: LockedStN, t: RandomState, bh: Blackhole): Unit = {
-    bh.consume(s.lockedCtrN.add(t.nextLong()))
-    Blackhole.consumeCPU(waitTime)
-  }
-
-  @Benchmark
-  def reactN(s: ReactStN, k: McasImplState, bh: Blackhole, rnd: RandomState): Unit = {
-    bh.consume(s.r.unsafePerform(rnd.nextLong(), k.mcasImpl))
-    Blackhole.consumeCPU(waitTime)
-  }
-}
-
-object CounterBenchN {
-
-  @State(Scope.Benchmark)
-  class LockedStN {
-
-    private[this] final val n = 8
-
-    @volatile
-    var lockedCtrN: LockedCounterN = _
-
-    @Setup
-    def setup(): Unit = {
-      val ctr = new LockedCounterN(n)
-      val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
-      ctr.add(init)
-      lockedCtrN = ctr
-    }
-  }
-
-  @State(Scope.Benchmark)
-  class ReactStN extends McasImplStateBase {
-
-    private[this] final val n = 8
-
-    private[this] var ctrs: Array[Counter] = _
-
-    @volatile
-    var r: Rxn[Long, Unit] = _
-
-    @Setup
-    def setup(): Unit = {
-      val init = java.util.concurrent.ThreadLocalRandom.current().nextLong()
-      ctrs = Array.fill(n) {
-        Counter.simple(initial = init).unsafeRun(this.mcasImpl)
-      }
-      r = ctrs.map(_.add.as(())).reduceLeft { (a, b) => (a * b).as(()) }
-    }
+    val rxnSimpleUnpadded: Counter =
+      Counter.simple(Ref.AllocationStrategy(padded = false)).unsafeRun(this.mcasImpl)
+    val rxnSimplePadded: Counter =
+      Counter.simple(Ref.AllocationStrategy(padded = true)).unsafeRun(this.mcasImpl)
+    val rxnStripedPadded: Counter =
+      Counter.striped(Ref.AllocationStrategy.Padded).unsafeRun(this.mcasImpl)
   }
 }
