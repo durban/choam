@@ -44,7 +44,7 @@ final class RxnSpecJvm_Emcas_ZIO
 
 trait RxnSpecJvm_Emcas[F[_]] extends RxnSpecJvm[F] with SpecEmcas {
 
-  final override def munitTimeout =
+  final override def munitTimeout: Duration =
     super.munitTimeout * 2
 
   test("Commit retry due to version") {
