@@ -21,12 +21,12 @@ package stream
 import cats.effect.IO
 import fs2.Chunk
 
-final class PubSubSpec_DefaultMcas_IO
+final class PubSubSpecTicked_DefaultMcas_IO
   extends BaseSpecTickedIO
   with SpecDefaultMcas
-  with PubSubSpec[IO]
+  with PubSubSpecTicked[IO]
 
-trait PubSubSpec[F[_]]
+trait PubSubSpecTicked[F[_]]
   extends BaseSpecAsyncF[F]
   with async.AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
