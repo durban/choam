@@ -31,7 +31,9 @@ trait PubSubSpec[F[_]]
   with async.AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
   commonTests("DropOldest", PubSub.OverflowStrategy.DropOldest(64))
+  droppingTests("DropOldest", PubSub.OverflowStrategy.DropOldest(4))
   commonTests("DropNewest", PubSub.OverflowStrategy.DropNewest(64))
+  droppingTests("DropNewest", PubSub.OverflowStrategy.DropNewest(4))
   commonTests("Backpressure", PubSub.OverflowStrategy.Backpressure(64))
   commonTests("Unbounded", PubSub.OverflowStrategy.Unbounded)
 
@@ -52,6 +54,23 @@ trait PubSubSpec[F[_]]
         _ <- hub.close.run[F]
         _ <- assertResultF(f1.joinWithNever, Vector(1, 2, 3, 4, 5, 6))
         _ <- assertResultF(f3.joinWithNever, Vector(2, 3, 4, 5, 6, 7))
+      } yield ()
+    }
+  }
+
+  private def droppingTests(name: String, str: PubSub.OverflowStrategy.Bounded): Unit = {
+
+    test(s"$name - closing mustn't conflict with item dropping") {
+      for {
+        _ <- assertF(str.bufferSize > 2)
+        hub <- PubSub[F, Int](str).run[F]
+        fib <- hub.subscribe.compile.toVector.start
+        _ <- this.tickAll // wait for subscription to happen
+        rss <- (1 to str.bufferSize).toList.traverse(i => hub.publish(i).run[F]) // fill the queue
+        _ <- assertF(rss.forall(_ == PubSub.Success))
+        _ <- hub.close.run[F]
+        vec <- fib.joinWithNever
+        _ <- assertEqualsF(vec, (1 to str.bufferSize).toVector)
       } yield ()
     }
   }
