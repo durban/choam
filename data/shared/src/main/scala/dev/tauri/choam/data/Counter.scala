@@ -80,9 +80,13 @@ object Counter {
 
   private[this] final class StripedCounter(arr: Ref.Array[Long]) extends Counter {
 
-    private[this] final def getStripeId: Axn[Int] = Axn.unsafe.delayContext { ctx =>
-      ctx.stripeId
-    }
+    // TODO: Create a reusable "striped ref array"
+    // TODO: data type (and use it here).
+    // TODO: Look at java.util.concurrent.atomic.Striped64,
+    // TODO: which seems similar.
+
+    private[this] final def getStripeId: Axn[Int] =
+      Axn.unsafe.delayContext(_.stripeId)
 
     final override val add: Rxn[Long, Unit] = getStripeId.flatMap { stripeId =>
       val ref = arr.unsafeGet(stripeId)
