@@ -31,11 +31,17 @@ trait PubSubSpecTicked[F[_]]
   with async.AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
   commonTests("DropOldest", PubSub.OverflowStrategy.DropOldest(64))
-  droppingTests("DropOldest", PubSub.OverflowStrategy.DropOldest(4))
+  droppingTests("DropOldest", PubSub.OverflowStrategy.DropOldest(4), 4)
+  noBackpressureTests("DropOldest", PubSub.OverflowStrategy.DropOldest(64))
+
   commonTests("DropNewest", PubSub.OverflowStrategy.DropNewest(64))
-  droppingTests("DropNewest", PubSub.OverflowStrategy.DropNewest(4))
-  commonTests("Backpressure", PubSub.OverflowStrategy.Backpressure(64))
+  droppingTests("DropNewest", PubSub.OverflowStrategy.DropNewest(4), 4)
+  noBackpressureTests("DropNewest", PubSub.OverflowStrategy.DropNewest(64))
+
   commonTests("Unbounded", PubSub.OverflowStrategy.Unbounded)
+  noBackpressureTests("Unbounded", PubSub.OverflowStrategy.Unbounded)
+
+  commonTests("Backpressure", PubSub.OverflowStrategy.Backpressure(64))
 
   private def commonTests(name: String, str: PubSub.OverflowStrategy): Unit = {
 
@@ -58,19 +64,38 @@ trait PubSubSpecTicked[F[_]]
     }
   }
 
-  private def droppingTests(name: String, str: PubSub.OverflowStrategy.Bounded): Unit = {
+  private def droppingTests(
+    name: String,
+    str: PubSub.OverflowStrategy.NoBackpressure,
+    bufferSize: Int,
+  ): Unit = {
 
     test(s"$name - closing mustn't conflict with item dropping") {
       for {
-        _ <- assertF(str.bufferSize > 2)
+        _ <- assertF(bufferSize > 2)
         hub <- PubSub[F, Int](str).run[F]
         fib <- hub.subscribe.compile.toVector.start
         _ <- this.tickAll // wait for subscription to happen
-        rss <- (1 to str.bufferSize).toList.traverse(i => hub.publish(i).run[F]) // fill the queue
+        rss <- (1 to bufferSize).toList.traverse(i => hub.publish(i).run[F]) // fill the queue
         _ <- assertF(rss.forall(_ == PubSub.Success))
         _ <- hub.close.run[F]
         vec <- fib.joinWithNever
-        _ <- assertEqualsF(vec, (1 to str.bufferSize).toVector)
+        _ <- assertEqualsF(vec, (1 to bufferSize).toVector)
+      } yield ()
+    }
+  }
+
+  private def noBackpressureTests(name: String, str: PubSub.OverflowStrategy.NoBackpressure): Unit = {
+
+    test(s"$name - should never backpressure") {
+      for {
+        hub <- PubSub[F, Int](str).run[F]
+        fib <- hub.subscribe.evalMap(_ => F.never[Int]).compile.toVector.start // infinitely slow subscriber
+        _ <- this.tickAll // wait for subscription to happen
+        pub = (hub.publish _ : (Int => Axn[PubSub.ClosedOrSuccess]))
+        _ <- (1 to (1024 * 256)).toList.traverse(i => assertResultF(pub(i).run[F], PubSub.Success))
+        _ <- hub.close.run[F]
+        _ <- fib.cancel
       } yield ()
     }
   }
