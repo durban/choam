@@ -179,12 +179,25 @@ object PubSub {
 
     final override def subscribe: Stream[F, A] = {
       val acqSubs = FF.delay(nextId.getAndIncrement()).flatMap { id =>
-        F.apply(mkQueue.flatMapF { queue =>
-          val subs = new Subscription[F, R, A](id, queue, this)
-          subscriptions.update(_.updated(id, subs)).as(subs)
-        })
+        val act: Axn[Subscription[F, R, A]] = isClosed.get.flatMapF { isClosed =>
+          if (isClosed) {
+            Axn.pure(null : Subscription[F, R, A])
+          } else {
+            mkQueue.flatMapF { queue =>
+              val subs = new Subscription[F, R, A](id, queue, this)
+              subscriptions.update(_.updated(id, subs)).as(subs)
+            }
+          }
+        }
+        F.apply(act)
       }
-      Stream.bracket(acqSubs)(_.close.run[F]).flatMap(_.stream)
+      Stream.bracket(acqSubs) { subs =>
+        if (subs eq null) FF.unit
+        else subs.close.run[F]
+      }.flatMap { subs =>
+        if (subs eq null) Stream.empty
+        else subs.stream
+      }
     }
 
     final override def publish(a: A): Axn[R] = {

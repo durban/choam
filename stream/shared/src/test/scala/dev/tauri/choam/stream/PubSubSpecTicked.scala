@@ -62,6 +62,27 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(f3.joinWithNever, Vector(2, 3, 4, 5, 6, 7))
       } yield ()
     }
+
+    test(s"$name - closing") {
+      for {
+        hub <- PubSub[F, Int](str).run[F]
+        f1 <- hub.subscribe.compile.toVector.start
+        f2 <- hub.subscribe.take(3).compile.toVector.start
+        f3 <- hub.subscribe.map(_ + 1).compile.toVector.start
+        _ <- this.tickAll // wait for subscriptions to happen
+        _ <- assertResultF(hub.publish(1).run[F], PubSub.Success)
+        _ <- this.tickAll
+        _ <- assertResultF(hub.close.run[F], PubSub.Success)
+        _ <- assertResultF(hub.subscribe.compile.toVector, Vector.empty)
+        _ <- assertResultF(hub.publish(2).run[F], PubSub.Closed)
+        _ <- assertResultF(hub.publishChunk(Chunk(2)).run[F], PubSub.Closed)
+        _ <- assertResultF(f1.joinWithNever, Vector(1))
+        _ <- assertResultF(f2.joinWithNever, Vector(1))
+        _ <- assertResultF(f3.joinWithNever, Vector(2))
+        _ <- assertResultF(hub.close.run[F], PubSub.Closed)
+        _ <- assertResultF(hub.subscribe.compile.toVector, Vector.empty)
+      } yield ()
+    }
   }
 
   private def droppingTests(
