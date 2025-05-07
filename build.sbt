@@ -737,7 +737,7 @@ lazy val layout = project.in(file("layout"))
   .dependsOn(core.jvm % "compile->compile;test->test")
 
 lazy val commonSettingsJvm = Seq[Setting[_]](
-  Test / fork := true,
+  // Test / fork := true, // Note: forked JVM doesn't seem to use the .jvmopts file
 )
 
 lazy val commonSettingsJs = Seq[Setting[_]](
