@@ -737,6 +737,7 @@ lazy val layout = project.in(file("layout"))
   .dependsOn(core.jvm % "compile->compile;test->test")
 
 lazy val commonSettingsJvm = Seq[Setting[_]](
+  Test / fork := true,
 )
 
 lazy val commonSettingsJs = Seq[Setting[_]](
@@ -796,7 +797,6 @@ lazy val commonSettings = Seq[Setting[_]](
     "-Wnonunit-statement",
     "-Wvalue-discard",
   ),
-  // Test / fork := true,
   // Somewhat counter-intuitively, to really run
   // tests sequentially, we need to set this to true:
   Test / parallelExecution := true,

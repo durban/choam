@@ -60,7 +60,7 @@ object PubSub {
 
     type R >: ClosedOrSuccess <: Result
 
-    private[stream] def newPubSubImpl[F[_] : AsyncReactive, A](
+    private[PubSub] def newPubSubImpl[F[_] : AsyncReactive, A](
       nextId: AtomicLong,
       subscriptions: Ref[LongMap[Subscription[F, R, A]]],
       isClosed: Ref[Boolean],
@@ -75,7 +75,7 @@ object PubSub {
 
       require(bufferSize > 0)
 
-      private[stream] final override def newPubSubImpl[F[_] : AsyncReactive, A](
+      private[PubSub] final override def newPubSubImpl[F[_] : AsyncReactive, A](
         nextId: AtomicLong,
         subscriptions: Ref[LongMap[Subscription[F, Result, A]]],
         isClosed: Ref[Boolean],
@@ -92,7 +92,7 @@ object PubSub {
 
       final override type R = ClosedOrSuccess
 
-      private[stream] final override def newPubSubImpl[F[_] : AsyncReactive, A](
+      private[PubSub] final override def newPubSubImpl[F[_] : AsyncReactive, A](
         nextId: AtomicLong,
         subscriptions: Ref[LongMap[Subscription[F, ClosedOrSuccess, A]]],
         isClosed: Ref[Boolean],
