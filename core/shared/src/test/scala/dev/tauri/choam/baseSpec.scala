@@ -304,8 +304,7 @@ trait TestContextSpec[F[_]] { self: BaseSpecAsyncF[F] with McasImplSpec =>
     }
 
     final def run[A, B](r: Rxn[A, B], a: A): F[B] = {
-      // TODO: we're running an Rxn with isStm=true; we should do it properly
-      r.performStmWithStepper(a, self.mcasImpl, stepper)(F)
+      r.performWithStepper(a, self.mcasImpl, stepper)(F)
     }
   }
 }

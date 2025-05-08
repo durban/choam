@@ -191,8 +191,8 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
     }
   }
 
-  test("Rxn - consistency of 2 sides of `+`") {
-    log("Rxn - race2") *> {
+  test("Txn - consistency of 2 sides of `orElse`") {
+    log("Txn - race2") *> {
       TRef[Int](0).commit.flatMap { ref =>
         val t1: Txn[Int] = succeedIfPositive("t1", ref, 1)
         val t2: Txn[Int] = succeedIfPositive("t2", ref, 2)

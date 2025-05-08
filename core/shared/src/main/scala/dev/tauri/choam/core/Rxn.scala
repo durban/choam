@@ -244,6 +244,26 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     mcas: Mcas,
     strategy: RetryStrategy = RetryStrategy.Default,
   )(implicit F: Async[F]): F[X] = {
+    // It is unsafe to accept a `Stepper` through
+    // this method, since it could be a `Stepper[G]`,
+    // where `G` is different form `F`:
+    require(!strategy.isDebug)
+    performInternal[F, X](a = a, mcas = mcas, strategy = strategy)
+  }
+
+  private[choam] final def performWithStepper[F[_], X >: B](
+    a: A,
+    mcas: Mcas,
+    stepper: RetryStrategy.Internal.Stepper[F],
+  )(implicit F: Async[F]): F[X] = {
+    performInternal[F, X](a = a, mcas = mcas, strategy = stepper)
+  }
+
+  private[this] final def performInternal[F[_], X >: B](
+    a: A,
+    mcas: Mcas,
+    strategy: RetryStrategy,
+  )(implicit F: Async[F]): F[X] = {
     F.uncancelable { poll =>
       F.defer {
         new Rxn.InterpreterState[A, X](
@@ -937,7 +957,7 @@ object Rxn extends RxnInstances0 {
       mcasImpl: Mcas,
       mcasCtx: Mcas.ThreadContext,
     )(implicit G: Async[G]): G[Rxn[Any, Any]] = {
-      // Note: these casts are "safe", since `performStmWithStepper`
+      // Note: these casts are "safe", since `perform[Stm]WithStepper`
       // sets things up so that `F` and `G` are the same.
       G.productR(G.flatten(stepper.newSuspension.asInstanceOf[G[G[Unit]]]))(nextRxn.asInstanceOf[G[Rxn[Any, Any]]])
     }
@@ -1444,9 +1464,9 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def tryLoadAlt(isPermanentFailure: Boolean): Rxn[Any, R] = {
       if (isPermanentFailure) {
-        _tryLoadAlt(this.stmAlts)
+        _tryLoadAlt(this.stmAlts, isPermanentFailure)
       } else {
-        _tryLoadAlt(this.alts)
+        _tryLoadAlt(this.alts, isPermanentFailure)
       }
     }
 
@@ -1454,18 +1474,18 @@ object Rxn extends RxnInstances0 {
       this.stmAlts.popAndDiscard(7)
     }
 
-    private[this] final def _tryLoadAlt(alts: ArrayObjStack[Any]): Rxn[Any, R] = {
+    private[this] final def _tryLoadAlt(alts: ArrayObjStack[Any], isPermanentFailure: Boolean): Rxn[Any, R] = {
       if (alts.nonEmpty()) {
         val res = alts.pop().asInstanceOf[Rxn[Any, R]]
-        this._loadRestOfAlt(alts)
+        this._loadRestOfAlt(alts, isPermanentFailure = isPermanentFailure)
         res
       } else {
         null
       }
     }
 
-    private[this] final def maybeMergeDescForStm(newDesc: Descriptor): Descriptor = {
-      if (this.isStm) {
+    private[this] final def mergeDescForOrElse(newDesc: Descriptor, isPermanentFailure: Boolean): Descriptor = {
+      if (isPermanentFailure) {
         val discarded = _desc
         if ((discarded ne null) && discarded.nonEmpty) {
           Descriptor.mergeReadsInto(newDesc, discarded)
@@ -1473,18 +1493,17 @@ object Rxn extends RxnInstances0 {
           newDesc
         }
       } else {
-        // TODO: Since now `Rxn.unsafe.orElse` exists,
-        // TODO: we should probably do something here...
+        // it is not an `orElse`, but a `+`
         newDesc
       }
     }
 
-    private[this] final def _loadRestOfAlt(alts: ArrayObjStack[Any]): Unit = {
+    private[this] final def _loadRestOfAlt(alts: ArrayObjStack[Any], isPermanentFailure: Boolean): Unit = {
       pc.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Rxn[Any, Unit]]])
       contKList.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
-      _desc = this.maybeMergeDescForStm(alts.pop().asInstanceOf[Descriptor])
+      _desc = this.mergeDescForOrElse(alts.pop().asInstanceOf[Descriptor], isPermanentFailure = isPermanentFailure)
       loadLocalsSnapshot(alts.pop().asInstanceOf[AnyRef])
     }
 
@@ -1494,7 +1513,7 @@ object Rxn extends RxnInstances0 {
       contT.loadSnapshot(msg.contT)
       a = msg.value
       // TODO: write a test for this (exchange + STM)
-      desc = this.maybeMergeDescForStm(msg.desc)
+      desc = this.mergeDescForOrElse(msg.desc, isPermanentFailure = false) // TODO: is `false` correct here?
       next().asInstanceOf[Rxn[Any, R]]
     }
 
@@ -1618,7 +1637,6 @@ object Rxn extends RxnInstances0 {
           case str @ ((_: RetryStrategy.Spin) | (_: RetryStrategy.StrategyFull)) =>
             impossible(s"$str returned isDebug == true")
           case stepper: RetryStrategy.Internal.Stepper[_] =>
-            _assert(this.isStm)
             return new SuspendWithStepper(stepper, stepper.asyncF.delay { // scalafix:ok
               this.retry(canSuspend, permanent, noDebug = true)
             })

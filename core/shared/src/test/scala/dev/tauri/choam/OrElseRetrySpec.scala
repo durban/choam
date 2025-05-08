@@ -169,5 +169,35 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
     }
   }
 
-  // TODO: also port "race condition" tests from stm
+  // TODO: also port this:
+  // TODO: test("Txn - `t1 orElse t2`: `t1` permanent failure; `t2` reads the same ref, but it changed since")
+
+  // Note: this is primarily for STM, but also
+  // available through `Rxn.unsafe.orElse` and
+  // `Rxn.unsafe.retryWhenChanged`.
+  test("Rxn - consistency of 2 sides of `orElse`") {
+    log("Rxn - race2") *> {
+      Ref[Int](0).run[F].flatMap { ref =>
+        val t1: Axn[Int] = succeedIfPositive("t1", ref, 1)
+        val t2: Axn[Int] = succeedIfPositive("t2", ref, 2)
+        val t3: Axn[Int] = succeedWith("t3", 3)
+        val rxn: Axn[Int] = Rxn.unsafe.orElse(Rxn.unsafe.orElse(t1, t2), t3)
+        for {
+          d <- F.deferred[Unit]
+          stepper <- mkStepper
+          fib <- stepper.run(rxn, ()).guarantee(d.complete(()).void).start
+          _ <- this.tickAll // we're stopping at the `t1` retry (because it read 0)
+          // another transaction changes `ref`:
+          _ <- ref.set0[F](1)
+          // now try `t2`, which MUST read the same 0, and retry:
+          _ <- stepper.stepAndTickAll
+          _ <- assertResultF(d.tryGet, None)
+          // now try `t3`, which succeeds:
+          _ <- stepper.stepAndTickAll
+          _ <- assertResultF(d.tryGet, Some(()))
+          _ <- assertResultF(fib.joinWithNever, 3)
+        } yield ()
+      }
+    }
+  }
 }
