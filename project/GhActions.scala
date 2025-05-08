@@ -19,6 +19,9 @@ import org.typelevel.sbt.gha.UseRef
 
 object GhActions {
 
+  // TODO: setup-sbt depends on actions/cache@v4,
+  // TODO: so we need to allow that mutable tag.
+
   val uploadArtifactV4: UseRef.Public =
     UseRef.Public("actions", "upload-artifact", "ea165f8d65b6e75b540449e92b4886f43607fa02")
 
