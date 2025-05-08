@@ -32,7 +32,7 @@ addSbtPlugin("org.typelevel" % "sbt-typelevel-github-actions" % sbtTypelevelVers
 addSbtPlugin("org.typelevel" % "sbt-typelevel-ci" % sbtTypelevelVersion)
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.4") // https://github.com/scalameta/sbt-scalafmt
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.10.0") // https://github.com/sbt/sbt-header
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.2") // https://github.com/scalacenter/sbt-scalafix
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.3") // https://github.com/scalacenter/sbt-scalafix
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.2") // https://github.com/portable-scala/sbt-crossproject
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.19.0") // https://www.scala-js.org/
 addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1") // https://github.com/raboof/sbt-strict-scala-versions
