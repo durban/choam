@@ -137,7 +137,7 @@ trait OrElseRetrySpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
     }
   }
 
-  // Combined tests:
+  // Combined tests (it is only possible to combine `orElse` and `+` by  using `unsafe`):
 
   test("Txn - `(t1 orElse t2) + t3`: `t1` transient failure -> try `t3` (NOT `t2`)") {
     log("Txn - `(t1 orElse t2) + t3`: `t1` transient failure") *> {

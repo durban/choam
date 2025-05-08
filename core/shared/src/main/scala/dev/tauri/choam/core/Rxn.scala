@@ -658,6 +658,27 @@ object Rxn extends RxnInstances0 {
     private[core] final def retryImpl[A]: RxnImpl[Any, A] =
       Rxn._AlwaysRetry.asInstanceOf[RxnImpl[Any, A]]
 
+    /**
+     * This is primarily for STM to use, so be very careful!
+     *
+     * If this finds no `orElse` alternatives, it would try to suspend
+     * until a ref in the log changes. That won't work for an `Rxn`.
+     *
+     * The only way to use this safely is to guarantee that an alt exists:
+     * `(... *> retryWhenChanged) orElse (<someting which doesn't retry>)`.
+     */
+    @inline
+    private[choam] final def retryWhenChanged[A]: Axn[A] =
+      StmImpl.retryWhenChanged[A]
+
+    /**
+     * This is primarily for STM to use, so be very careful!
+     *
+     * See the comment for `retryWhenChanged`.
+     */
+    private[choam] final def orElse[A, B](left: Rxn[A, B], right: Rxn[A, B]): Rxn[A, B] =
+      new OrElse(left, right)
+
     @inline
     private[choam] final def delay[A, B](uf: A => B): Rxn[A, B] =
       delayImpl(uf)
@@ -1189,11 +1210,7 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] val alts: ArrayObjStack[Any] = new ArrayObjStack[Any](initSize = 8)
-    private[this] val stmAlts: ArrayObjStack[Any] = if (isStm) {
-      new ArrayObjStack[Any](initSize = 8)
-    } else {
-      null
-    }
+    private[this] val stmAlts: ArrayObjStack[Any] = new ArrayObjStack[Any](initSize = 2)
 
     private[this] var locals: IdentityHashMap[InternalLocal, AnyRef] =
       null
@@ -1367,7 +1384,6 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def saveStmAlt(k: Rxn[Any, R]): Unit = {
-      _assert(this.isStm)
       _saveAlt(this.stmAlts, k)
     }
 
@@ -1428,7 +1444,6 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def tryLoadAlt(isPermanentFailure: Boolean): Rxn[Any, R] = {
       if (isPermanentFailure) {
-        _assert(this.isStm)
         _tryLoadAlt(this.stmAlts)
       } else {
         _tryLoadAlt(this.alts)
@@ -1436,7 +1451,6 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def discardStmAlt(): Unit = {
-      _assert(this.isStm)
       this.stmAlts.popAndDiscard(7)
     }
 
@@ -1459,6 +1473,8 @@ object Rxn extends RxnInstances0 {
           newDesc
         }
       } else {
+        // TODO: Since now `Rxn.unsafe.orElse` exists,
+        // TODO: we should probably do something here...
         newDesc
       }
     }
@@ -1597,7 +1613,6 @@ object Rxn extends RxnInstances0 {
       this.retry(canSuspend = canSuspend, permanent = permanent, noDebug = false)
 
     private[this] final def retry(canSuspend: Boolean, permanent: Boolean, noDebug: Boolean): Rxn[Any, Any] = {
-      _assert((!permanent) || this.isStm)
       if (this.strategy.isDebug && (!noDebug)) {
         this.strategy match {
           case str @ ((_: RetryStrategy.Spin) | (_: RetryStrategy.StrategyFull)) =>
@@ -1613,10 +1628,11 @@ object Rxn extends RxnInstances0 {
       if (alt ne null) {
         // we're not actually retrying,
         // just going to the other side
-        // of a `+` (so we're not
-        // incrementing `retries`):
+        // of a `+` or `orElse`, so we're
+        // not incrementing `retries`:
         alt
       } else {
+        _assert((!permanent) || this.isStm) // otherwise it is a misused `Rxn.unsafe.retryWhenChanged`
         // really retrying:
         val retriesNow = this.retries + 1
         this.retries = retriesNow
@@ -1838,8 +1854,7 @@ object Rxn extends RxnInstances0 {
           a = () : Any
           loop(nxt)
         case 5 => // RetryWhenChanged (STM)
-          _assert(this.canSuspend && this.isStm)
-          loop(retry(canSuspend = true, permanent = true))
+          loop(retry(canSuspend = this.canSuspend, permanent = true))
         case 6 => // Choice
           val c = curr.asInstanceOf[Choice[Any, R]]
           saveAlt(c.right)
