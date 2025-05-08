@@ -127,7 +127,12 @@ def transformWorkflowStep(step: WorkflowStep): WorkflowStep = {
         case r =>
           throw new AssertionError(s"${r.getClass().getName()} is disabled")
       }
-      step.withRef(newRef)
+      val step2 = step.withRef(newRef)
+      GhActions.additionalParams.get(newRef.owner -> newRef.repo) match {
+        case Some(addParams) => step2.withParams(step2.params ++ addParams)
+        case None => step2
+      }
+
     case _ =>
       step
   }

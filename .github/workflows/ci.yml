@@ -96,6 +96,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup sbt
         uses: sbt/setup-sbt@26ab4b0fa1c47fa62fc1f6e51823a658fb6c760c
@@ -274,6 +275,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup sbt
         uses: sbt/setup-sbt@26ab4b0fa1c47fa62fc1f6e51823a658fb6c760c

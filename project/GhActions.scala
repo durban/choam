@@ -22,6 +22,10 @@ object GhActions {
   val uploadArtifactV4: UseRef.Public =
     UseRef.Public("actions", "upload-artifact", "ea165f8d65b6e75b540449e92b4886f43607fa02")
 
+  val additionalParams: Map[(String, String), Map[String, String]] = Map(
+    ("actions", "checkout") -> Map("persist-credentials" -> "false"),
+  )
+
   val refVersionMapping: Map[(String, String), String] = Map(
     ("actions", "checkout") -> "11bd71901bbe5b1630ceea73d27597364c9af683", // 4.2.2
     ("actions", "setup-java") -> "c5195efecf7bdfc987ee8bae7a71cb8b11521c00", // 4.7.1
