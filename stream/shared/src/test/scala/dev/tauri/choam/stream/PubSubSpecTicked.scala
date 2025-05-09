@@ -18,6 +18,9 @@
 package dev.tauri.choam
 package stream
 
+import scala.concurrent.duration._
+
+import cats.effect.kernel.Outcome
 import cats.effect.IO
 import fs2.Chunk
 
@@ -57,7 +60,7 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(f2.joinWithNever, Vector(1, 2, 3))
         _ <- assertResultF(hub.publish(4).run[F], PubSub.Success)
         _ <- assertResultF(hub.publishChunk(Chunk(5, 6)).run[F], PubSub.Success)
-        _ <- hub.close.run[F]
+        _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         _ <- assertResultF(f1.joinWithNever, Vector(1, 2, 3, 4, 5, 6))
         _ <- assertResultF(f3.joinWithNever, Vector(2, 3, 4, 5, 6, 7))
       } yield ()
@@ -72,7 +75,7 @@ trait PubSubSpecTicked[F[_]]
         _ <- this.tickAll // wait for subscriptions to happen
         _ <- assertResultF(hub.publish(1).run[F], PubSub.Success)
         _ <- this.tickAll
-        _ <- assertResultF(hub.close.run[F], PubSub.Success)
+        _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         _ <- assertResultF(hub.subscribe.compile.toVector, Vector.empty)
         _ <- assertResultF(hub.publish(2).run[F], PubSub.Closed)
         _ <- assertResultF(hub.publishChunk(Chunk(2)).run[F], PubSub.Closed)
@@ -92,14 +95,37 @@ trait PubSubSpecTicked[F[_]]
         _ <- this.tickAll // wait for subscriptions to happen
         _ <- assertResultF(hub.publish(1).run[F], PubSub.Success)
         _ <- assertResultF(hub.publishChunk(Chunk(2, 3)).run[F], PubSub.Success)
-        _ <- assertResultF(f1.joinWithNever, Vector(1))
-        _ <- assertResultF(f2.joinWithNever, Vector(1, 2, 3))
         _ <- this.tickAll
         _ <- assertResultF(hub.close.run[F], PubSub.Success)
+        _ <- assertResultF(f1.joinWithNever, Vector(1))
+        _ <- assertResultF(f2.joinWithNever, Vector(1, 2, 3))
         _ <- assertResultF(hub.publish(2).run[F], PubSub.Closed)
         _ <- assertResultF(hub.subscribe.compile.toVector, Vector.empty)
         _ <- assertResultF(hub.publish(2).run[F], PubSub.Closed)
         _ <- assertResultF(hub.publishChunk(Chunk(2)).run[F], PubSub.Closed)
+        _ <- assertResultF(hub.close.run[F], PubSub.Closed)
+      } yield ()
+    }
+
+    test(s"$name - awaitShutdown") {
+      for {
+        hub <- PubSub[F, Int](str).run[F]
+        ctr <- F.ref[Int](0)
+        f1 <- hub.subscribe.take(4).evalTap(_ => ctr.update(_ + 1)).compile.toVector.start
+        f2 <- hub.subscribe.evalTap(_ => ctr.update(_ + 1)).compile.toVector.start
+        f3 <- hub.subscribe.evalTap(_ => F.sleep(1.second) *> ctr.update(_ + 1)).compile.toVector.start
+        _ <- this.tickAll // wait for subscriptions to happen
+        _ <- assertResultF(hub.publish(1).run[F], PubSub.Success)
+        _ <- assertResultF(hub.publish(2).run[F], PubSub.Success)
+        _ <- assertResultF(hub.publishChunk(Chunk(3, 4)).run[F], PubSub.Success)
+        _ <- assertResultF(hub.publish(5).run[F], PubSub.Success)
+        _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
+        _ <- assertResultF(hub.close.run[F], PubSub.Closed)
+        _ <- hub.awaitShutdown
+        _ <- assertResultF(ctr.get, 4 + (2 * 5))
+        _ <- assertResultF(f1.joinWithNever, Vector(1, 2, 3, 4))
+        _ <- assertResultF(f2.joinWithNever, Vector(1, 2, 3, 4, 5))
+        _ <- assertResultF(f3.joinWithNever, Vector(1, 2, 3, 4, 5))
         _ <- assertResultF(hub.close.run[F], PubSub.Closed)
       } yield ()
     }
@@ -119,7 +145,7 @@ trait PubSubSpecTicked[F[_]]
         _ <- this.tickAll // wait for subscription to happen
         rss <- (1 to bufferSize).toList.traverse(i => hub.publish(i).run[F]) // fill the queue
         _ <- assertF(rss.forall(_ == PubSub.Success))
-        _ <- hub.close.run[F]
+        _ <-assertResultF(hub.close.run[F], PubSub.Backpressured)
         vec <- fib.joinWithNever
         _ <- assertEqualsF(vec, (1 to bufferSize).toVector)
       } yield ()
@@ -135,8 +161,9 @@ trait PubSubSpecTicked[F[_]]
         _ <- this.tickAll // wait for subscription to happen
         pub = (hub.publish _ : (Int => Axn[PubSub.ClosedOrSuccess]))
         _ <- (1 to (1024 * 256)).toList.traverse(i => assertResultF(pub(i).run[F], PubSub.Success))
-        _ <- hub.close.run[F]
+        _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         _ <- fib.cancel
+        _ <- assertResultF(fib.join, Outcome.canceled[F, Throwable, Vector[Int]])
       } yield ()
     }
   }

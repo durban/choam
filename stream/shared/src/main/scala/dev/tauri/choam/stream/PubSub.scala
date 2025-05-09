@@ -23,10 +23,11 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.collection.immutable.LongMap
 
 import cats.syntax.all._
-import cats.effect.kernel.Async
+import cats.effect.kernel.{ Async, Deferred }
+import cats.effect.syntax.all._
 import fs2.{ Stream, Chunk, Pull }
 
-import async.{ AsyncReactive, AsyncQueue, AsyncQueueSource, BoundedQueue, OverflowQueue }
+import async.{ AsyncReactive, AsyncQueue, AsyncQueueSource, BoundedQueue, OverflowQueue, Promise }
 import data.QueueSink
 
 sealed abstract class PubSub[F[_], R <: PubSub.Result, A] { // TODO:0.5: finish this
@@ -37,7 +38,7 @@ sealed abstract class PubSub[F[_], R <: PubSub.Result, A] { // TODO:0.5: finish 
 
   def publishChunk(ch: Chunk[A]): Axn[R]
 
-  def close: Axn[R]
+  def close: Axn[PubSub.Result]
 
   def awaitShutdown: F[Unit]
 }
@@ -64,6 +65,7 @@ object PubSub {
       nextId: AtomicLong,
       subscriptions: Ref[LongMap[Subscription[F, R, A]]],
       isClosed: Ref[Boolean],
+      awaitClosed: Promise[Unit],
     ): PubSub[F, R, A]
   }
 
@@ -79,8 +81,10 @@ object PubSub {
         nextId: AtomicLong,
         subscriptions: Ref[LongMap[Subscription[F, Result, A]]],
         isClosed: Ref[Boolean],
+        awaitClosed: Promise[Unit],
       ): PubSub[F, Result, A] = {
-        new BackpressurePubSubImpl[F, A](nextId, subscriptions, BoundedQueue.array[Chunk[A]](bufferSize), isClosed)
+        val mkQueue = BoundedQueue.array[Chunk[A]](bufferSize)
+        new BackpressurePubSubImpl[F, A](nextId, subscriptions, mkQueue, isClosed, awaitClosed)
       }
     }
 
@@ -96,13 +100,14 @@ object PubSub {
         nextId: AtomicLong,
         subscriptions: Ref[LongMap[Subscription[F, ClosedOrSuccess, A]]],
         isClosed: Ref[Boolean],
+        awaitClosed: Promise[Unit],
       ): PubSub[F, ClosedOrSuccess, A] = {
         val mkQueue = this match {
           case str: OverflowStrategy.DropOldest => OverflowQueue.ringBuffer[Chunk[A]](str.bufferSize)
           case str: OverflowStrategy.DropNewest => OverflowQueue.droppingQueue[Chunk[A]](str.bufferSize)
           case Unbounded => AsyncQueue.unbounded[Chunk[A]]
         }
-        new NoBackpressurePubSubImpl[F, A](nextId, subscriptions, mkQueue, isClosed)
+        new NoBackpressurePubSubImpl[F, A](nextId, subscriptions, mkQueue, isClosed, awaitClosed)
       }
     }
 
@@ -128,8 +133,10 @@ object PubSub {
   final def apply[F[_] : AsyncReactive, A](str: OverflowStrategy): Axn[PubSub[F, str.R, A]] = {
     Axn.unsafe.delay { new AtomicLong }.flatMapF { nextId =>
       Ref(LongMap.empty[Subscription[F, str.R, A]]).flatMapF { subscriptions =>
-        Ref(false).map { isClosed =>
-          str.newPubSubImpl(nextId, subscriptions, isClosed)
+        Ref(false).flatMapF { isClosed =>
+          Promise[Unit].map { awaitClosed =>
+            str.newPubSubImpl(nextId, subscriptions, isClosed, awaitClosed)
+          }
         }
       }
     }
@@ -140,7 +147,8 @@ object PubSub {
     subscriptions: Ref[LongMap[Subscription[F, ClosedOrSuccess, A]]],
     mkQueue: Axn[AsyncQueueSource[Chunk[A]] with QueueSink[Chunk[A]]], // NB: must have capacity > 0
     isClosed: Ref[Boolean],
-  )(implicit F: AsyncReactive[F]) extends PubSubImpl[F, ClosedOrSuccess, A](nextId, subscriptions, mkQueue, isClosed) {
+    awaitClosed: Promise[Unit],
+  )(implicit F: AsyncReactive[F]) extends PubSubImpl[F, ClosedOrSuccess, A](nextId, subscriptions, mkQueue, isClosed, awaitClosed) {
 
     protected[this] final override def fallbackBackpressured(acc: Axn[Success.type]): Axn[ClosedOrSuccess] =
       acc
@@ -154,7 +162,8 @@ object PubSub {
     subscriptions: Ref[LongMap[Subscription[F, Result, A]]],
     mkQueue: Axn[AsyncQueueSource[Chunk[A]] with QueueSink[Chunk[A]]], // NB: must have capacity > 0
     isClosed: Ref[Boolean],
-  )(implicit F: AsyncReactive[F]) extends PubSubImpl[F, Result, A](nextId, subscriptions, mkQueue, isClosed) {
+    awaitClosed: Promise[Unit],
+  )(implicit F: AsyncReactive[F]) extends PubSubImpl[F, Result, A](nextId, subscriptions, mkQueue, isClosed, awaitClosed) {
 
     protected[this] final override def fallbackBackpressured(acc: Axn[Success.type]): Axn[Result] =
       Rxn.unsafe.orElse(acc, _axnBackpressured)
@@ -168,6 +177,7 @@ object PubSub {
     val subscriptions: Ref[LongMap[Subscription[F, R, A]]],
     mkQueue: Axn[AsyncQueueSource[Chunk[A]] with QueueSink[Chunk[A]]], // NB: must have capacity > 0
     val isClosed: Ref[Boolean],
+    awaitClosed: Promise[Unit],
   )(implicit F: AsyncReactive[F]) extends PubSub[F, R, A] {
 
     protected[this] def fallbackBackpressured(acc: Axn[Success.type]): Axn[R]
@@ -179,21 +189,23 @@ object PubSub {
 
     final override def subscribe: Stream[F, A] = {
       val acqSubs = FF.delay(nextId.getAndIncrement()).flatMap { id =>
-        val act: Axn[Subscription[F, R, A]] = isClosed.get.flatMapF { isClosed =>
-          if (isClosed) {
-            Axn.pure(null : Subscription[F, R, A])
-          } else {
-            mkQueue.flatMapF { queue =>
-              val subs = new Subscription[F, R, A](id, queue, this)
-              subscriptions.update(_.updated(id, subs)).as(subs)
+        FF.deferred[Unit].flatMap { sd =>
+          val act: Axn[Subscription[F, R, A]] = isClosed.get.flatMapF { isClosed =>
+            if (isClosed) {
+              Axn.pure(null : Subscription[F, R, A])
+            } else {
+              mkQueue.flatMapF { queue =>
+                val subs = new Subscription[F, R, A](id, queue, sd, this)
+                subscriptions.update(_.updated(id, subs)).as(subs)
+              }
             }
           }
+          F.apply(act)
         }
-        F.apply(act)
       }
       Stream.bracket(acqSubs) { subs =>
         if (subs eq null) FF.unit
-        else subs.close.run[F]
+        else subs.closeInternal
       }.flatMap { subs =>
         if (subs eq null) Stream.empty
         else subs.stream
@@ -222,32 +234,48 @@ object PubSub {
       }
     }
 
-    final override def close: Axn[R] = {
+    final override def close: Axn[Result] = {
       isClosed.getAndUpdate(_ => true).flatMapF { wasClosed =>
         if (wasClosed) {
           _axnClosed
         } else {
-          subscriptions.get.flatMapF { subsMap =>
+          awaitClosed.complete1(()) *> subscriptions.get.flatMapF { subsMap =>
             val itr = subsMap.valuesIterator
             var acc = Axn.unit
+            var cnt = 0L
             while (itr.hasNext) {
+              cnt += 1L
               val subs = itr.next()
-              acc = acc *> subs.close
+              acc = acc >>> subs.closeExternal
             }
-            acc.as(Success) // TODO
+            acc.as(if (cnt > 0L) Backpressured else Success)
           }
         }
       }
     }
 
     final override def awaitShutdown: F[Unit] = {
-      sys.error("TODO")
+      awaitClosed.get[F] *> {
+        def go: F[Unit] = {
+          F.apply(subscriptions.get).flatMap { subscriptions =>
+            val itr = subscriptions.valuesIterator
+            if (itr.hasNext) {
+              itr.next().awaitShutdown.get *> go // there could be others
+            } else {
+              FF.unit // we're done
+            }
+          }
+        }
+
+        go
+      }
     }
   }
 
   private[this] final class Subscription[F[_], R >: ClosedOrSuccess <: Result, A](
     id: Long,
     queue: AsyncQueueSource[Chunk[A]] with QueueSink[Chunk[A]],
+    val awaitShutdown: Deferred[F, Unit],
     hub: PubSubImpl[F, R, A],
   )(implicit F: AsyncReactive[F]) {
 
@@ -298,10 +326,16 @@ object PubSub {
       }
     }
 
-    final def close: Axn[Unit] = {
+    final def closeExternal: Axn[Unit] = {
       // Note: if `tryEnqueue` fails the queue is full, so `consume`
       // will check `isClosed`, so it will realize that we're closed.
-      queue.tryEnqueue.provide(null : Chunk[A]) >>> hub.subscriptions.update(_.removed(this.id))
+      queue.tryEnqueue.provide(null : Chunk[A]).void
+    }
+
+    final def closeInternal: F[Unit] = {
+      F.apply(hub.subscriptions.update(_.removed(this.id))).guarantee(
+        awaitShutdown.complete(()).void
+      )
     }
   }
 }
