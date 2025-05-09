@@ -157,10 +157,10 @@ object PubSub {
   )(implicit F: AsyncReactive[F]) extends PubSubImpl[F, Result, A](nextId, subscriptions, mkQueue, isClosed) {
 
     protected[this] final override def fallbackBackpressured(acc: Axn[Success.type]): Axn[Result] =
-      acc + _axnBackpressured
+      Rxn.unsafe.orElse(acc, _axnBackpressured)
 
     final override def retryIfNeedsBackpressure(enqResult: Boolean): Axn[Success.type] =
-      if (enqResult) _axnSuccess else Rxn.unsafe.retry
+      if (enqResult) _axnSuccess else Rxn.unsafe.retryWhenChanged
   }
 
   private[this] sealed abstract class PubSubImpl[F[_], R >: ClosedOrSuccess <: Result, A](
