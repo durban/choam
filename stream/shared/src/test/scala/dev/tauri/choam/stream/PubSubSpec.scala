@@ -51,12 +51,12 @@ trait PubSubSpec[F[_]]
       val expSet = (nums.toSet ++ nums.map(-_).toSet)
       val succVec = Vector.fill(N)(PubSub.Success)
       def checkOrder(v: Vector[Int]): F[Unit] = F.delay {
-        val pos = v.drop(1).filter(_ > 0)
+        val pos = v.filter(_ > 0)
         pos.sliding(2).foreach {
           case Vector(i, j) => assert(i < j)
           case x => fail(s"unexpected: $x")
         }
-        val neg = v.drop(1).filter(_ < 0)
+        val neg = v.filter(_ < 0)
         neg.sliding(2).foreach {
           case Vector(i, j) => assert(i > j)
           case x => fail(s"unexpected: $x")

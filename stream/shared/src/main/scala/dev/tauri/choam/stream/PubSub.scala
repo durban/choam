@@ -30,7 +30,7 @@ import fs2.{ Stream, Chunk, Pull }
 import async.{ AsyncReactive, AsyncQueue, AsyncQueueSource, BoundedQueue, OverflowQueue, Promise }
 import data.QueueSink
 
-sealed abstract class PubSub[F[_], R <: PubSub.Result, A] { // TODO:0.5: finish this
+sealed abstract class PubSub[F[_], R <: PubSub.Result, A] {
 
   def subscribe: Stream[F, A]
 
