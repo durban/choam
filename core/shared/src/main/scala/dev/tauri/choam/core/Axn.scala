@@ -31,6 +31,12 @@ object Axn {
   final def unit: Axn[Unit] =
     pure(())
 
+  private[this] final val _none: Axn[Option[Nothing]] =
+    pure(None)
+
+  private[choam] final def none[A]: Axn[Option[A]] =
+    _none
+
   final def panic[A](ex: Throwable): Axn[A] =
     Rxn.panic(ex)
 
