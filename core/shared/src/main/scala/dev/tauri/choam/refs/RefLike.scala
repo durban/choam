@@ -35,13 +35,13 @@ sealed trait RefLike[A] {
 
   // derived:
 
-  // TODO: create a `set` alias
+  // TODO: create a `set` alias(?)
 
-  final def set0: Rxn[A, Unit] =
-    getAndSet.void
+  final def set0: Rxn[A, Unit] = // TODO: make this a primitive
+    upd[A, Unit] { (_, na) => (na, ()) }
 
   final def set1(a: A): Axn[Unit] = // TODO: make this a primitive
-    update { _ => a }
+    upd[Any, Unit] { (_, _) => (a, ()) }
 
   final def getAndSet: Rxn[A, A] =
     upd[A, A] { (oa, na) => (na, oa) }
