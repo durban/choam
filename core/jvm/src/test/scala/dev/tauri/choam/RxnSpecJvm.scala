@@ -387,6 +387,31 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Opacity with simple .get instead of unsafe.tentativeRead") {
+    for {
+      r1 <- Ref(0).run[F]
+      r2 <- Ref(0).run[F]
+      ctr <- F.delay(new AtomicInteger(0))
+      latch1 <- F.delay(new CountDownLatch(1))
+      latch2 <- F.delay(new CountDownLatch(1))
+      rxn1 = r1.get.flatMapF { v1 =>
+        ctr.incrementAndGet()
+        latch1.countDown()
+        // concurrent change to r2
+        latch2.await()
+        // this will NOT need to retry, because we can extend the log:
+        r2.get.flatMapF { v2 =>
+          r2.set1(99).as((v1, v2))
+        }
+      }
+      rxn2Task = F.delay(latch1.await()) *> r2.update(_ + 1).run[F] *> F.delay(latch2.countDown())
+      _ <- assertResultF(F.both(rxn1.run[F], rxn2Task).map(_._1), (0, 1))
+      _ <- assertResultF(r1.get.run[F], 0)
+      _ <- assertResultF(r2.get.run[F], 99)
+      _ <- assertResultF(F.delay(ctr.get()), 1)
+    } yield ()
+  }
+
   test("read-write conflict cycle") {
     val t = for {
       r1 <- Ref("a").run[F]
