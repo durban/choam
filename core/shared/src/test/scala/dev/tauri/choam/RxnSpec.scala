@@ -1105,6 +1105,48 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("unsafe.tentativeRead") {
+    for {
+      r1 <- Ref("a").run[F]
+      r2 <- Ref("a").run[F]
+      r = Rxn.unsafe.tentativeRead(r2).flatMapF { ticket =>
+        r1.getAndUpdate(_ + ticket.unsafePeek).flatMapF { ov =>
+          if (ov === "aa") {
+            Rxn.unit
+          } else {
+            ticket.unsafeSet(ticket.unsafePeek + "x")
+          }
+        }
+      }
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(r1.get.run[F], "aa")
+      _ <- assertResultF(r2.get.run[F], "ax")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(r1.get.run[F], "aaax")
+      _ <- assertResultF(r2.get.run[F], "ax")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(r1.get.run[F], "aaaxax")
+      _ <- assertResultF(r2.get.run[F], "axx")
+    } yield ()
+  }
+
+  test("unsafe.tentativeRead (already in log)") {
+    for {
+      r2 <- Ref("a").run[F]
+      r = r2.update(_ + "b").flatMapF { _ =>
+        Rxn.unsafe.tentativeRead(r2).flatMapF { ticket =>
+          ticket.unsafeSet(ticket.unsafePeek + "x")
+        }
+      }
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(r2.get.run[F], "abx")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(r2.get.run[F], "abxbx")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(r2.get.run[F], "abxbxbx")
+    } yield ()
+  }
+
   test("unsafe.forceValidate (dummy)") {
     for {
       r1 <- Ref("a").run[F]

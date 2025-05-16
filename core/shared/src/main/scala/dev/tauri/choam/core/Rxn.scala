@@ -642,21 +642,39 @@ object Rxn extends RxnInstances0 {
       def unsafePeek: A
       def unsafeSet(nv: A): Axn[Unit]
       def unsafeIsReadOnly: Boolean
-      final def unsafeValidate: Axn[Unit] =
+      def unsafeValidate: Axn[Unit]
+    }
+
+    private[Rxn] final class TicketForTicketRead[A](hwd: LogEntry[A])
+      extends Ticket[A] {
+
+      final override def unsafePeek: A =
+        hwd.nv
+
+      final override def unsafeSet(nv: A): Axn[Unit] =
+        new Rxn.TicketWrite(hwd, nv)
+
+      final override def unsafeIsReadOnly: Boolean =
+        hwd.readOnly
+
+      final override def unsafeValidate: Axn[Unit] =
         this.unsafeSet(this.unsafePeek)
     }
 
-    private[Rxn] final class TicketImpl[A](hwd: LogEntry[A])
+    private[Rxn] final class TicketForTentativeRead[A](hwd: LogEntry[A])
       extends Ticket[A] {
 
-      final def unsafePeek: A =
+      final override def unsafePeek: A =
         hwd.nv
 
-      final def unsafeSet(nv: A): Axn[Unit] =
+      final override def unsafeSet(nv: A): Axn[Unit] =
         new Rxn.TicketWrite(hwd, nv)
 
-      final def unsafeIsReadOnly: Boolean =
-        hwd.readOnly
+      final override def unsafeIsReadOnly: Boolean =
+        throw new UnsupportedOperationException
+
+      final override def unsafeValidate: Axn[Unit] =
+        throw new UnsupportedOperationException
     }
 
     private[choam] final def directRead[A](r: Ref[A]): Axn[A] =
@@ -664,6 +682,16 @@ object Rxn extends RxnInstances0 {
 
     final def ticketRead[A](r: Ref[A]): Axn[unsafe.Ticket[A]] =
       new Rxn.TicketRead[A](r.loc)
+
+    /**
+     * Reads from `r`, but without putting it into the log.
+     *
+     * Preserves opacity (i.e., automatically retries if needed),
+     * so it is safer than `ticketRead`; but makes it impossible
+     * to do a log extension later.
+     */
+    final def tentativeRead[A](r: Ref[A]): Axn[Ticket[A]] = // TODO: create, e.g., a `SaferTicket` type
+      new Rxn.TentativeRead[A](r.loc)
 
     final def unread[A](r: Ref[A]): Axn[Unit] =
       new Rxn.Unread(r)
@@ -1106,6 +1134,11 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"LocalNewEnd(${local}, ${isEnd})"
   }
 
+  private final class TentativeRead[A](val loc: MemoryLocation[A]) extends RxnImpl[Any, unsafe.Ticket[A]] {
+    private[core] final override def tag = 34
+    final override def toString: String = s"TentativeRead(${loc})"
+  }
+
   // Syntax helpers:
 
   final class InvariantSyntax[A, B](private val self: Rxn[A, B]) extends AnyVal {
@@ -1263,6 +1296,15 @@ object Rxn extends RxnInstances0 {
       true
 
     // TODO: this makes it slower if there is `+`! (See `InterpreterBench`.)
+
+    /**
+     * Becomes `true` when the first `tentativeRead` is executed.
+     * If `true`, instead of a possible log extension we just
+     * retry (because in the presence of a `tentativeRead` we can't
+     * revalidate the log).
+     */
+    private[this] var hasTentativeRead: Boolean =
+      false
 
     @tailrec
     private[this] final def contKList: ListObjStack[Any] = {
@@ -1757,16 +1799,23 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def forceValidate(optHwd: LogEntry[_]): Boolean = {
-      ctx.validateAndTryExtend(desc, hwd = optHwd) match {
-        case null =>
-          // need to roll back
-          clearDesc()
-          false
-        case newDesc =>
-          // OK, it was extended
-          this.descExtensions += 1
-          desc = newDesc
-          true
+      if (this.hasTentativeRead) {
+        // can't revalidate and extend the log (safely),
+        // because a `tentativeRead` was previously
+        // executed (and those aren't in the log):
+        false // need to roll back
+      } else {
+        ctx.validateAndTryExtend(desc, hwd = optHwd) match {
+          case null =>
+            // need to roll back
+            clearDesc()
+            false
+          case newDesc =>
+            // OK, it was extended
+            this.descExtensions += 1
+            desc = newDesc
+            true
+        }
       }
     }
 
@@ -2052,7 +2101,7 @@ object Rxn extends RxnInstances0 {
           if (hwd eq null) {
             loop(retry())
           } else {
-            a = new unsafe.TicketImpl[Any](hwd)
+            a = new unsafe.TicketForTicketRead[Any](hwd)
             loop(next())
           }
         case 23 => // ForceValidate
@@ -2128,6 +2177,21 @@ object Rxn extends RxnInstances0 {
             _assert(ok)
           }
           loop(next())
+        case 34 => // TentativeRead
+          val c = curr.asInstanceOf[TentativeRead[_]]
+          val hwd = readMaybeFromLog(c.loc)
+          // `desc` must be initialized (at the latest) when we
+          // execute the first `tentativeRead`, because for
+          // those, opacity is solely based on version numbers
+          // (so we need an initialized `validTs`):
+          _assert(_desc ne null)
+          if (hwd eq null) {
+            loop(retry())
+          } else {
+            this.hasTentativeRead = true
+            a = new unsafe.TicketForTentativeRead(hwd)
+            loop(next())
+          }
         case t => // mustn't happen
           impossible(s"Unknown tag ${t} for ${curr}")
       }
