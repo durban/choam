@@ -389,6 +389,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
 
   test("unsafe.tentativeRead can commit while depending on inconsistent state (so it's unsafe)") {
     for {
+      _ <- this.assumeF(this.isEmcas)
       r1 <- Ref(0).run[F]
       r2 <- Ref(0).run[F]
       ctr <- F.delay(new AtomicInteger(0))
