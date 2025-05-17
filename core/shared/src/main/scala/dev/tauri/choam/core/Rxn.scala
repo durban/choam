@@ -1977,7 +1977,7 @@ object Rxn extends RxnInstances0 {
               desc = desc.overwrite(hwd.withNv(nx).cast[Any])
               next()
             } else {
-              _assert(this._desc eq null)
+              _assert((this._desc eq null) || this.hasTentativeRead)
               retry()
             }
           } else {
