@@ -249,7 +249,7 @@ trait MapSpec[F[_]]
     val myOrder: Order[Int] =
       Order.by[Int, Int](_ % 8)
     for {
-      m <- mkEmptyMap[Int, String](myHash, myOrder)
+      m <- mkEmptyMap[Int, String](using myHash, myOrder)
       _ <- (Rxn.pure(0 -> "0") >>> m.put).run[F]
       _ <- (Rxn.pure(1 -> "1") >>> m.put).run[F]
       _ <- (Rxn.pure(4 -> "4") >>> m.put).run[F]
@@ -327,7 +327,7 @@ trait MapSpec[F[_]]
     val myOrder =
       Order.by[Int, Int](_ % 8)
     for {
-      m <- mkEmptyMap[Int, String](myHash, myOrder)
+      m <- mkEmptyMap[Int, String](using myHash, myOrder)
       _ <- m.put[F](0 -> "0")
       _ <- assertResultF(m.get(0), Some("0"))
       _ <- assertResultF(m.get(8), Some("0"))
@@ -372,7 +372,7 @@ trait MapSpec[F[_]]
     }
     PropF.forAllF { (ks: ScalaSet[Int], x: Int) =>
       for {
-        m <- mkEmptyMap[Int, String](myHash, Order[Int])
+        m <- mkEmptyMap[Int, String](using myHash, Order[Int])
         _ <- m.put[F](x -> x.toString)
         _ <- assertResultF(m.get(x), Some(x.toString))
         _ <- m.put(x + 8 -> (x + 8).toString)
@@ -484,7 +484,7 @@ trait MapSpec[F[_]]
       val ks = _ks.filter(k => (k ne null) && (k != k0))
       val v = if (_v ne null) _v else "bar"
       for {
-        m <- mkEmptyMap[String, String](nullTolerantStringHash, nullTolerantStringOrder)
+        m <- mkEmptyMap[String, String](using nullTolerantStringHash, nullTolerantStringOrder)
         _ <- assertResultF(m.get(null), None)
         _ <- ks.traverse_ { k =>
           m.put[F]((k, v))

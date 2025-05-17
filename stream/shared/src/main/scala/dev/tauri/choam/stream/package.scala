@@ -32,13 +32,13 @@ package object stream {
     RxnSignallingRef[F, A](initial)
 
   final def fromQueueUnterminated[F[_], A](q: UnboundedQueue[A], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
-    Stream.fromQueueUnterminated(new Fs2QueueWrapper(q), limit = limit)(F.monad)
+    Stream.fromQueueUnterminated(new Fs2QueueWrapper(q), limit = limit)(using F.monad)
 
   final def fromQueueUnterminatedChunk[F[_], A](q: UnboundedQueue[Chunk[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
-    Stream.fromQueueUnterminatedChunk(new Fs2QueueWrapper(q), limit = limit)(F.monad)
+    Stream.fromQueueUnterminatedChunk(new Fs2QueueWrapper(q), limit = limit)(using F.monad)
 
   final def fromQueueNoneTerminated[F[_], A](q: UnboundedQueue[Option[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
-    Stream.fromQueueNoneTerminated(new Fs2QueueWrapper(q), limit = limit)(F.monad)
+    Stream.fromQueueNoneTerminated(new Fs2QueueWrapper(q), limit = limit)(using F.monad)
 
   final def fromQueueNoneTerminatedChunk[F[_], A](q: UnboundedQueue[Option[Chunk[A]]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueNoneTerminatedChunk(new Fs2QueueWrapper(q), limit = limit)

@@ -82,8 +82,8 @@ trait LawsSpec
       Prop(act.unsafeRun(self.mcasImpl))
     })
     checkAll("MonoidK[Rxn]", MonoidKTests[λ[a => Rxn[a, a]]].monoidK[String])
-    checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[String, Int]](Rxn.choiceSemigroup).semigroup)
-    checkAll("Monoid[Rxn]", MonoidTests[Rxn[String, Int]](Rxn.monoidInstance).monoid)
+    checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[String, Int]](using Rxn.choiceSemigroup).semigroup)
+    checkAll("Monoid[Rxn]", MonoidTests[Rxn[String, Int]](using Rxn.monoidInstance).monoid)
     checkAll("Defer[Rxn]", DeferTests[Rxn[String, *]].defer[Int])
     checkAll("Align[Rxn]", AlignTests[Rxn[String, *]].align[Int, Float, Double, Long])
     checkAll("Clock[Rxn]", ClockTests[Rxn[String, *]].clock { (act: Rxn[String, Boolean]) =>

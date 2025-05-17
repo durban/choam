@@ -21,5 +21,5 @@ package stm
 trait TxnBaseSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   protected implicit val trF: Transactive[F] =
-    new Transactive.TransactiveImpl(this.mcasImpl)(this.F)
+    new Transactive.TransactiveImpl(this.mcasImpl)(using this.F)
 }
