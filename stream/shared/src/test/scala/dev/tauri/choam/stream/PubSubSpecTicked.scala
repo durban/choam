@@ -39,6 +39,7 @@ trait PubSubSpecTicked[F[_]]
   commonTests("DropOldest", dropOldest(64))
   droppingTests("DropOldest", dropOldest(4), 4)
   noBackpressureTests("DropOldest", dropOldest(64))
+  singleElementBufferTests("DropOldest", dropOldest(1))
 
   test("DropOldest - should drop oldest elements") {
       for {
@@ -62,6 +63,7 @@ trait PubSubSpecTicked[F[_]]
   commonTests("DropNewest", dropNewest(64))
   droppingTests("DropNewest", dropNewest(4), 4)
   noBackpressureTests("DropNewest", dropNewest(64))
+  singleElementBufferTests("DropNewest", dropNewest(1))
 
   test("DropNewest - should drop newest elements") {
       for {
@@ -86,6 +88,7 @@ trait PubSubSpecTicked[F[_]]
   noBackpressureTests("Unbounded", unbounded)
 
   commonTests("Backpressure", backpressure(64))
+  singleElementBufferTests("Backpressure", backpressure(1))
 
   private def commonTests(name: String, str: OverflowStrategy): Unit = {
 
@@ -205,6 +208,30 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         _ <- fib.cancel
         _ <- assertResultF(fib.join, Outcome.canceled[F, Throwable, Vector[Int]])
+      } yield ()
+    }
+  }
+
+  private def singleElementBufferTests(
+    name: String,
+    str: PubSub.OverflowStrategy,
+  ): Unit = {
+
+    test(s"$name - single element buffer") {
+      for {
+        hub <- PubSub[F, Int](str).run[F]
+        fib1 <- hub.subscribe.compile.toVector.start
+        fib2 <- hub.subscribe.take(2).compile.toVector.start
+        _ <- this.tickAll // wait for subscription to happen
+        _ <- hub.publish(1).run[F]
+        _ <- this.tickAll
+        _ <- hub.publish(2).run[F]
+        _ <- this.tickAll
+        _ <- hub.publish(3).run[F]
+        _ <- this.tickAll
+        _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
+        _ <- assertResultF(fib1.joinWithNever, Vector(1, 2, 3))
+        _ <- assertResultF(fib2.joinWithNever, Vector(1, 2))
       } yield ()
     }
   }

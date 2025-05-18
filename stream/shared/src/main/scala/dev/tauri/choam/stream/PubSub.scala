@@ -389,10 +389,6 @@ object PubSub {
               consume(Chunk.empty)
             } else {
               // suspend waiting for more in the queue:
-              // TODO: There may be a race here: when preparing to
-              // TODO: suspend, the queue can become *full*,
-              // TODO: and then the `null` can't be enqueued
-              // TODO: by `close`, and then we suspend...
               Pull.eval(queue.dequeue).flatMap { chunk =>
                 if (chunk eq null) {
                   // `close` is signalling us that we're done:
