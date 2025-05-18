@@ -71,7 +71,7 @@ object OverflowQueue {
       this.enqueue.as(true)
 
     final override def enqueue: Rxn[A, Unit] =
-      wl.set0
+      wl.set0.void
 
     final override def tryDeque: Axn[Option[A]] =
       wl.tryGet

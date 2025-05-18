@@ -297,8 +297,8 @@ trait TestContextSpec[F[_]] { self: BaseSpecAsyncF[F] with McasImplSpec =>
     this.testContext.tick()
   }
 
-  final def advance(d: FiniteDuration): F[Unit] = F.delay {
-    this.testContext.advance(d)
+  final def advanceAndTick(d: FiniteDuration): F[Unit] = F.delay {
+    this.testContext.advanceAndTick(d)
   }
 
   final def mkStepper: F[Stepper[F]] = {

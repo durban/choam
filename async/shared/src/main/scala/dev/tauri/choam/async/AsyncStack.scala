@@ -41,7 +41,7 @@ object AsyncStack {
     ).map { wl =>
       new AsyncStack[A] {
         final override def push: A =#> Unit =
-          wl.set0
+          wl.set0.void
         final override def pop[F[_]](implicit F: AsyncReactive[F]): F[A] =
           wl.asyncGet
         final override def tryPop: Axn[Option[A]] =

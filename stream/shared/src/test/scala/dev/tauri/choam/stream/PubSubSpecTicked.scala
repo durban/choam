@@ -24,6 +24,9 @@ import cats.effect.kernel.Outcome
 import cats.effect.IO
 import fs2.Chunk
 
+import PubSub.OverflowStrategy
+import PubSub.OverflowStrategy.{ dropOldest, dropNewest, backpressure, unbounded }
+
 final class PubSubSpecTicked_DefaultMcas_IO
   extends BaseSpecTickedIO
   with SpecDefaultMcas
@@ -33,20 +36,40 @@ trait PubSubSpecTicked[F[_]]
   extends BaseSpecAsyncF[F]
   with async.AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
 
-  commonTests("DropOldest", PubSub.OverflowStrategy.DropOldest(64))
-  droppingTests("DropOldest", PubSub.OverflowStrategy.DropOldest(4), 4)
-  noBackpressureTests("DropOldest", PubSub.OverflowStrategy.DropOldest(64))
+  commonTests("DropOldest", dropOldest(64))
+  droppingTests("DropOldest", dropOldest(4), 4)
+  noBackpressureTests("DropOldest", dropOldest(64))
 
-  commonTests("DropNewest", PubSub.OverflowStrategy.DropNewest(64))
-  droppingTests("DropNewest", PubSub.OverflowStrategy.DropNewest(4), 4)
-  noBackpressureTests("DropNewest", PubSub.OverflowStrategy.DropNewest(64))
+  test("DropOldest - should drop oldest elements") {
+      for {
+        hub <- PubSub[F, Int](dropOldest(3)).run[F]
+        fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
+        slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
+        _ <- this.tickAll // wait for subscriptions to happen
+        _ <- assertResultF(hub.publish(1).run, PubSub.Success)
+        _ <- this.tick // make sure they receive the 1st, and then start to sleep
+        _ <- assertResultF(hub.publish(2).run, PubSub.Success)
+        _ <- assertResultF(hub.publish(3).run, PubSub.Success)
+        _ <- assertResultF(hub.publish(4).run, PubSub.Success) // buffers full
+        _ <- assertResultF(hub.publish(5).run, PubSub.Success)
+        _ <- this.advanceAndTick(0.1.second) // `fast` can receive one
+        _ <- assertResultF(hub.publish(6).run, PubSub.Success)
+        _ <- assertResultF(hub.close.run, PubSub.Backpressured)
+        _ <- assertResultF(fast.joinWithNever, Vector(1, 3, 4, 5, 6))
+        _ <- assertResultF(slow.joinWithNever, Vector(1, 4, 5, 6))
+      } yield ()
+  }
 
-  commonTests("Unbounded", PubSub.OverflowStrategy.Unbounded)
-  noBackpressureTests("Unbounded", PubSub.OverflowStrategy.Unbounded)
+  commonTests("DropNewest", dropNewest(64))
+  droppingTests("DropNewest", dropNewest(4), 4)
+  noBackpressureTests("DropNewest", dropNewest(64))
 
-  commonTests("Backpressure", PubSub.OverflowStrategy.Backpressure(64))
+  commonTests("Unbounded", unbounded)
+  noBackpressureTests("Unbounded", unbounded)
 
-  private def commonTests(name: String, str: PubSub.OverflowStrategy): Unit = {
+  commonTests("Backpressure", backpressure(64))
+
+  private def commonTests(name: String, str: OverflowStrategy): Unit = {
 
     test(s"$name - basics") {
       for {
@@ -133,7 +156,7 @@ trait PubSubSpecTicked[F[_]]
 
   private def droppingTests(
     name: String,
-    str: PubSub.OverflowStrategy.NoBackpressure,
+    str: PubSub.OverflowStrategy,
     bufferSize: Int,
   ): Unit = {
 
@@ -152,14 +175,14 @@ trait PubSubSpecTicked[F[_]]
     }
   }
 
-  private def noBackpressureTests(name: String, str: PubSub.OverflowStrategy.NoBackpressure): Unit = {
+  private def noBackpressureTests(name: String, str: PubSub.OverflowStrategy): Unit = {
 
     test(s"$name - should never backpressure") {
       for {
         hub <- PubSub[F, Int](str).run[F]
         fib <- hub.subscribe.evalMap(_ => F.never[Int]).compile.toVector.start // infinitely slow subscriber
         _ <- this.tickAll // wait for subscription to happen
-        pub = (hub.publish _ : (Int => Axn[PubSub.ClosedOrSuccess]))
+        pub = (hub.publish _ : (Int => Axn[PubSub.Result]))
         _ <- (1 to (1024 * 256)).toList.traverse(i => assertResultF(pub(i).run[F], PubSub.Success))
         _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         _ <- fib.cancel

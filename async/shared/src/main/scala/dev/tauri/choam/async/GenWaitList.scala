@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package async
 
+// TODO:0.5: make these private[choam]
+
 sealed trait GenWaitList[A] { self =>
 
   def trySet0: A =#> Boolean
@@ -31,7 +33,8 @@ sealed trait GenWaitList[A] { self =>
 
 sealed trait WaitList[A] extends GenWaitList[A] { self =>
 
-  def set0: A =#> Unit
+  /** Returns `true` for a "normal" set, and `false` for waking a waiting getter. */
+  def set0: A =#> Boolean
 
   final override def trySet0: A =#> Boolean =
     this.set0.as(true)
@@ -177,17 +180,17 @@ object GenWaitList {
     waiters: data.Queue.WithRemove[Callback[A]],
   ) extends WaitListCommon[A] { self =>
 
-    final override def set0: A =#> Unit = {
+    final override def set0: A =#> Boolean = {
       this.waiters.tryDeque.flatMap {
         case None =>
-          this.syncSet0
+          this.syncSet0.as(true)
         case Some(cb) =>
-          callCb(cb).void
+          callCb(cb).as(false)
       }
     }
 
     final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = {
-      F.apply(this.set0, a)
+      F.asyncInst.void(F.apply(this.set0, a))
     }
 
     final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = {

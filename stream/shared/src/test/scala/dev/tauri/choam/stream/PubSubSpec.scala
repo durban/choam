@@ -38,10 +38,10 @@ trait PubSubSpec[F[_]]
 
   private[this] final val BS = 1024
 
-  commonTests("DropOldest", PubSub.OverflowStrategy.DropOldest(BS))
-  commonTests("DropNewest", PubSub.OverflowStrategy.DropNewest(BS))
-  commonTests("Unbounded", PubSub.OverflowStrategy.Unbounded)
-  commonTests("Backpressure", PubSub.OverflowStrategy.Backpressure(BS))
+  commonTests("DropOldest", PubSub.OverflowStrategy.dropOldest(BS))
+  commonTests("DropNewest", PubSub.OverflowStrategy.dropNewest(BS))
+  commonTests("Unbounded", PubSub.OverflowStrategy.unbounded)
+  commonTests("Backpressure", PubSub.OverflowStrategy.backpressure(BS))
 
   private def commonTests(name: String, str: PubSub.OverflowStrategy): Unit = {
 

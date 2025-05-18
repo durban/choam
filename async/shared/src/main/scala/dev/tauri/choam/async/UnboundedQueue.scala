@@ -48,7 +48,7 @@ object UnboundedQueue {
           final override def tryEnqueue: A =#> Boolean =
             this.enqueue.as(true)
           final override def enqueue: A =#> Unit =
-            wl.set0
+            wl.set0.void
           final override def tryDeque: Axn[Option[A]] =
             q.tryDeque
           final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
@@ -65,7 +65,7 @@ object UnboundedQueue {
           final override def tryEnqueue: A =#> Boolean =
             this.enqueue.as(true)
           final override def enqueue: A =#> Unit =
-            wl.set0
+            wl.set0.void
           final override def tryDeque: Axn[Option[A]] =
             q.tryDeque
           final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
