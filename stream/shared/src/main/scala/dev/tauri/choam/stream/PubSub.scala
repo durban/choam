@@ -199,8 +199,7 @@ object PubSub {
                                   if (chunkSize < n) {
                                     dropOldestN(n - chunkSize)
                                   } else if (chunkSize > n) {
-                                    val keep = chunkSize - n
-                                    val putItBack = chunk.take(keep)
+                                    val putItBack = chunk.drop(n)
                                     underlying.addLast(putItBack)
                                   } else { // chunkSize == n
                                     Axn.unit

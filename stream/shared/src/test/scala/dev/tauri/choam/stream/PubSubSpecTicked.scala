@@ -48,8 +48,7 @@ trait PubSubSpecTicked[F[_]]
         _ <- this.tickAll // wait for subscriptions to happen
         _ <- assertResultF(hub.publish(1).run, PubSub.Success)
         _ <- this.tick // make sure they receive the 1st, and then start to sleep
-        _ <- assertResultF(hub.publish(2).run, PubSub.Success)
-        _ <- assertResultF(hub.publish(3).run, PubSub.Success)
+        _ <- assertResultF(hub.publishChunk(Chunk(2, 3)).run, PubSub.Success)
         _ <- assertResultF(hub.publish(4).run, PubSub.Success) // buffers full
         _ <- assertResultF(hub.publish(5).run, PubSub.Success)
         _ <- this.advanceAndTick(0.1.second) // `fast` can receive one
