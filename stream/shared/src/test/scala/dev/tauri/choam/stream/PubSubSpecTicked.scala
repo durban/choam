@@ -51,7 +51,7 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(hub.publishChunk(Chunk(2, 3)).run, PubSub.Success)
         _ <- assertResultF(hub.publish(4).run, PubSub.Success) // buffers full
         _ <- assertResultF(hub.publish(5).run, PubSub.Success)
-        _ <- this.advanceAndTick(0.1.second) // `fast` can receive one
+        _ <- this.advanceAndTick(0.1.second) // `fast` can dequeue
         _ <- assertResultF(hub.publish(6).run, PubSub.Success)
         _ <- assertResultF(hub.close.run, PubSub.Backpressured)
         _ <- assertResultF(fast.joinWithNever, Vector(1, 3, 4, 5, 6))
@@ -62,6 +62,25 @@ trait PubSubSpecTicked[F[_]]
   commonTests("DropNewest", dropNewest(64))
   droppingTests("DropNewest", dropNewest(4), 4)
   noBackpressureTests("DropNewest", dropNewest(64))
+
+  test("DropNewest - should drop newest elements") {
+      for {
+        hub <- PubSub[F, Int](dropNewest(3)).run[F]
+        fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
+        slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
+        _ <- this.tickAll // wait for subscriptions to happen
+        _ <- assertResultF(hub.publish(1).run, PubSub.Success)
+        _ <- this.tick // make sure they receive the 1st, and then start to sleep
+        _ <- assertResultF(hub.publishChunk(Chunk(2, 3)).run, PubSub.Success)
+        _ <- assertResultF(hub.publish(4).run, PubSub.Success) // buffers full
+        _ <- assertResultF(hub.publish(5).run, PubSub.Success) // this is dropped
+        _ <- this.advanceAndTick(0.1.second) // `fast` can dequeue
+        _ <- assertResultF(hub.publishChunk(Chunk(6, 7)).run, PubSub.Success) // this is dropped
+        _ <- assertResultF(hub.close.run, PubSub.Backpressured)
+        _ <- assertResultF(fast.joinWithNever, Vector(1, 2, 3, 4, 6, 7))
+        _ <- assertResultF(slow.joinWithNever, Vector(1, 2, 3, 4))
+      } yield ()
+  }
 
   commonTests("Unbounded", unbounded)
   noBackpressureTests("Unbounded", unbounded)
@@ -167,7 +186,7 @@ trait PubSubSpecTicked[F[_]]
         _ <- this.tickAll // wait for subscription to happen
         rss <- (1 to bufferSize).toList.traverse(i => hub.publish(i).run[F]) // fill the queue
         _ <- assertF(rss.forall(_ == PubSub.Success))
-        _ <-assertResultF(hub.close.run[F], PubSub.Backpressured)
+        _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         vec <- fib.joinWithNever
         _ <- assertEqualsF(vec, (1 to bufferSize).toVector)
       } yield ()
