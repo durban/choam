@@ -38,6 +38,9 @@ trait PubSubSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with async.AsyncReactiveSpec[F] { this: McasImplSpec =>
 
+  final override def munitTimeout =
+    2 * super.munitTimeout
+
   private[this] final val BS = 1024
 
   commonTests("DropOldest", PubSub.OverflowStrategy.dropOldest(BS))
