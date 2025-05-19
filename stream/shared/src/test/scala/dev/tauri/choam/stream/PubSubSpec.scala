@@ -24,6 +24,8 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
+import PubSub.OverflowStrategy
+
 final class PubSubSpec_DefaultMcas_IO
   extends BaseSpecIO
   with SpecDefaultMcas
@@ -50,19 +52,6 @@ trait PubSubSpec[F[_]]
 
   private def commonTests(name: String, str: PubSub.OverflowStrategy): Unit = {
 
-    def checkOrder(v: Vector[Int]): F[Unit] = F.delay {
-      val pos = v.filter(_ > 0)
-      pos.sliding(2).foreach {
-        case Vector(i, j) => assert(i < j)
-        case x => fail(s"unexpected: $x")
-      }
-      val neg = v.filter(_ < 0)
-      neg.sliding(2).foreach {
-        case Vector(i, j) => assert(i > j)
-        case x => fail(s"unexpected: $x")
-      }
-    }
-
     test(s"$name - racing publishers (bufferSize = $BS)") {
       val N = BS / 2
       val nums = (1 to N).toVector
@@ -84,7 +73,7 @@ trait PubSubSpec[F[_]]
         v2 <- f2.joinWithNever
         _ <- assertEqualsF(v1, v2)
         _ <- assertEqualsF(v1.toSet, expSet)
-        _ <- checkOrder(v1)
+        _ <- checkOrder(v1, str)
       } yield ()
       t.replicateA_(if (isJs()) 1 else 5)
     }
@@ -92,9 +81,15 @@ trait PubSubSpec[F[_]]
     test(s"$name - racing publishers (bufferSize = 1)") {
       val N = 512
       val nums = (1 to N).toVector
+      val str2 = str.fold(
+        unbounded = str, // can't set buffer size
+        backpressure = _ => OverflowStrategy.backpressure(1),
+        dropOldest = _ => OverflowStrategy.dropOldest(1),
+        dropNewest = _ => OverflowStrategy.dropNewest(1),
+      )
       val t = for {
-        hub <- PubSub[F, Int](str).run[F]
-        f1 <- hub.subscribe.evalTap { _ => if (ThreadLocalRandom.current().nextBoolean()) F.sleep(1.milli) else F.unit }.compile.toVector.start
+        hub <- PubSub[F, Int](str2).run[F]
+        f1 <- hub.subscribe.evalTap { _ => if (ThreadLocalRandom.current().nextBoolean()) F.cede else F.unit }.compile.toVector.start
         f2 <- hub.subscribe.compile.toVector.start
         _ <- F.sleep(1.second) // wait for subscription to happen
         _ <- F.both(
@@ -105,10 +100,34 @@ trait PubSubSpec[F[_]]
         _ <- assertF((closeRes eq PubSub.Backpressured) || (closeRes eq PubSub.Success))
         v1 <- f1.joinWithNever
         v2 <- f2.joinWithNever
-        _ <- assertEqualsF(v1, v2) // publish is all or nothing => subscribers must see the same items
-        _ <- checkOrder(v1) // we may lose items, but the order must be correct
+        _ <- str2.fold(
+          unbounded = assertEqualsF(v1, v2), // we never lose items
+          backpressure = _ => assertEqualsF(v1, v2), // if we lose an item, neither of them sees it
+          dropOldest = _ => F.unit, // they might see different items (depending on scheduling)
+          dropNewest = _ => F.unit, // they might see different items (depending on scheduling)
+        )
+        _ <- checkOrder(v1, str2) // we may lose items, but the order must be correct
       } yield ()
       t.replicateA_(if (isJs()) 1 else 5)
+    }
+  }
+
+  private def checkOrder(v: Vector[Int], str2: PubSub.OverflowStrategy): F[Unit] = F.delay {
+    val canLoseItems = str2.fold(
+      unbounded = false,
+      backpressure = { _ < BS },
+      dropOldest = { _ < BS },
+      dropNewest = { _ < BS },
+    )
+    val pos = v.filter(_ > 0)
+    pos.sliding(2).foreach {
+      case Vector(i, j) => assert(i < j)
+      case _ => assert(canLoseItems)
+    }
+    val neg = v.filter(_ < 0)
+    neg.sliding(2).foreach {
+      case Vector(i, j) => assert(i > j)
+      case _ => assert(canLoseItems)
     }
   }
 }

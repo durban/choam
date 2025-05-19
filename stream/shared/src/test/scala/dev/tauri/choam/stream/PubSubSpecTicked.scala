@@ -186,7 +186,7 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(hub.publish(3).run[F], PubSub.Success)
         _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         _ <- f1.joinWithNever
-        // whatever `f1` does, `f2` must use `dropOldest`:
+        // whatever `f1` does, `f2` must use `dropOldest(1)`:
         _ <- assertResultF(f2.joinWithNever, Vector(1, 3))
       } yield ()
     }

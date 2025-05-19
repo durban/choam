@@ -73,6 +73,18 @@ object PubSub {
 
     // TODO: type R >: ClosedOrSuccess <: Result
 
+    private[stream] final def fold[A](
+      unbounded: A,
+      backpressure: Int => A,
+      dropOldest: Int => A,
+      dropNewest: Int => A,
+    ): A = this match {
+      case OverflowStrategy.Unbounded => unbounded
+      case bp: OverflowStrategy.Backpressure => backpressure(bp.bufferSize)
+      case dro: OverflowStrategy.DropOldest => dropOldest(dro.bufferSize)
+      case drn: OverflowStrategy.DropNewest => dropNewest(drn.bufferSize)
+    }
+
     private[PubSub] def newBuffer[F[_] : AsyncReactive, A]: Axn[PubSubBuffer[F, A]]
 
     protected[this] final def mkWaitList[A](underlying: UnboundedDeque[Chunk[A]], size: Ref[Int]): Axn[WaitList[Chunk[A]]] = {
@@ -91,11 +103,11 @@ object PubSub {
 
   final object OverflowStrategy {
 
-    final def backpressure(bufferSize: Int): OverflowStrategy =
-      new Backpressure(bufferSize)
-
     final def unbounded: OverflowStrategy =
       Unbounded
+
+    final def backpressure(bufferSize: Int): OverflowStrategy =
+      new Backpressure(bufferSize)
 
     final def dropOldest(bufferSize: Int): OverflowStrategy =
       new DropOldest(bufferSize)
@@ -122,6 +134,7 @@ object PubSub {
     }
 
     private final object Unbounded extends OverflowStrategy {
+
       private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Axn[PubSubBuffer[F, A]] = {
         UnboundedDeque[Chunk[A]].flatMapF { underlying =>
           Ref[Int](0).flatMapF { size =>
