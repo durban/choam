@@ -173,6 +173,23 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(hub.close.run[F], PubSub.Closed)
       } yield ()
     }
+
+    test(s"$name - subscribe with non-default strategy") {
+      for {
+        hub <- PubSub[F, Int](str).run[F]
+        f1 <- hub.subscribe.compile.toVector.start
+        f2 <- hub.subscribe(dropOldest(1)).evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
+        _ <- this.tickAll // wait for subscriptions to happen
+        _ <- assertResultF(hub.publish(1).run[F], PubSub.Success)
+        _ <- this.tick // make sure they receive the 1st, and then `f2` starts to sleep
+        _ <- assertResultF(hub.publish(2).run[F], PubSub.Success)
+        _ <- assertResultF(hub.publish(3).run[F], PubSub.Success)
+        _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
+        _ <- f1.joinWithNever
+        // whatever `f1` does, `f2` must use `dropOldest`:
+        _ <- assertResultF(f2.joinWithNever, Vector(1, 3))
+      } yield ()
+    }
   }
 
   private def droppingTests(
