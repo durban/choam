@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.Rxn
+import core.{ Rxn, Axn }
 import internal.mcas.{ Mcas, RefIdGen }
 import MsQueue._
 

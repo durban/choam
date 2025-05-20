@@ -20,6 +20,8 @@ package data
 
 import cats.kernel.Hash
 
+import core.Axn
+
 /**
  * Public access to package-private utilities
  * (for the purposes of testing/benchmarking)

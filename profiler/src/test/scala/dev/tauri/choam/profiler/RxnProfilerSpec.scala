@@ -28,7 +28,7 @@ import munit.CatsEffectSuite
 
 import org.openjdk.jmh.results.Result
 
-import core.Rxn
+import core.{ Rxn, Axn }
 import internal.mcas.Consts
 
 final class RxnProfilerSpecIO

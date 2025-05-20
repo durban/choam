@@ -22,6 +22,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLZ_Result
 
+import core.Axn
+
 @JCStressTest
 @State
 @Description("Direct read may see intermediate values, but not descriptors")

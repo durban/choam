@@ -20,6 +20,7 @@ package stream
 
 import fs2.concurrent.SignallingRef
 
+import core.Axn
 import async.AsyncReactive
 
 /**

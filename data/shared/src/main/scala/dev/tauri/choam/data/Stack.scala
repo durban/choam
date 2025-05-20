@@ -21,7 +21,7 @@ package data
 import cats.Monad
 import cats.syntax.all._
 
-import core.Rxn
+import core.{ Rxn, Axn }
 
 sealed trait Stack[A] {
   def push: Rxn[A, Unit]

@@ -25,6 +25,8 @@ import cats.effect.syntax.all._
 
 import munit.CatsEffectSuite
 
+import core.Axn
+
 final class ResourceSpecIO extends ResourceSpec[IO]
 
 abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuite with BaseSpec {

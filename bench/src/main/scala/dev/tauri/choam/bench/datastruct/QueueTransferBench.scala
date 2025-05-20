@@ -27,6 +27,7 @@ import io.github.timwspence.cats.stm.STM
 import zio.stm.ZSTM
 
 import util._
+import core.Axn
 import data.{ Queue, QueueHelper }
 import ce.unsafeImplicits._
 

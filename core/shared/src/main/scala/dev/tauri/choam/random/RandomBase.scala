@@ -24,7 +24,7 @@ import scala.collection.mutable.ArrayBuffer
 
 import cats.effect.std.Random
 
-import core.Rxn
+import core.{ Rxn, Axn }
 
 /**
  * Common implementations of derived RNG methods.

@@ -21,8 +21,8 @@ package random
 import java.util.{ Arrays, UUID }
 import java.nio.{ ByteBuffer, ByteOrder }
 
+import core.Axn
 import internal.mcas.Mcas
-import dev.tauri.choam.random.{ newUuidImpl, uuidFromRandomBytes }
 
 abstract class RandomBaseSpec extends BaseSpec {
 

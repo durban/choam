@@ -21,7 +21,7 @@ package rxn
 
 import org.openjdk.jmh.annotations._
 
-import core.Rxn
+import core.{ Rxn, Axn }
 import async.Promise
 
 import util._

@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.Rxn
+import core.{ Rxn, Axn }
 
 // TODO: elimination counter (what do with different add values?)
 // TODO: do some benchmarks (`val`s may not worth it)

@@ -21,6 +21,8 @@ package async
 import cats.syntax.all._
 import cats.effect.std.{ CountDownLatch => CatsCountDownLatch }
 
+import core.Axn
+
 sealed abstract class CountDownLatch private () { self =>
 
   def release: Axn[Unit]

@@ -21,7 +21,7 @@ package laws
 import cats.laws.IsEq
 import cats.laws.IsEqArrow
 
-import core.Rxn
+import core.{ Rxn, Axn }
 import core.Rxn.{ pure, ret, lift, computed }
 import core.Rxn.unsafe.retry
 

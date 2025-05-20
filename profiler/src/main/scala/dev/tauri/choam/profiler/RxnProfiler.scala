@@ -34,7 +34,7 @@ import org.openjdk.jmh.util.SingletonStatistics
 
 import com.monovore.decline.{ Opts, Command }
 
-import core.Exchanger
+import core.{ Axn, Exchanger }
 
 import internal.mcas.Consts
 import internal.mcas.Mcas.RetryStats

@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package data
 
+import core.Axn
+
 /**
  * Public access to package-private utilities
  * (for the purposes of testing/benchmarking)

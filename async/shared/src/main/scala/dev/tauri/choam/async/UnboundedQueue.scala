@@ -20,6 +20,8 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
+import core.Axn
+
 sealed trait UnboundedQueue[A]
   extends data.Queue.UnsealedQueue[A]
   with AsyncQueue.UnsealedAsyncQueueSource[A]

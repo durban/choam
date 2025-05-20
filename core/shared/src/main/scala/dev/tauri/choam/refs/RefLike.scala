@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package refs
 
-import core.Rxn
+import core.{ Rxn, Axn }
 
 import cats.data.State
 import cats.effect.kernel.{ Ref => CatsRef }

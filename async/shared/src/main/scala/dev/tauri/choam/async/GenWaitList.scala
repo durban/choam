@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package async
 
-import core.Rxn
+import core.{ Rxn, Axn }
 
 // TODO:0.5: make these private[choam]
 

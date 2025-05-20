@@ -20,7 +20,7 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import core.Rxn
+import core.{ Rxn, Axn }
 import data.Queue
 
 sealed trait BoundedQueue[A]

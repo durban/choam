@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package data
 
+import core.Axn
+
 private[choam] sealed abstract class UnboundedDeque[A] { // TODO: consider making it public
 
   def addFirst(a: A): Axn[Unit]

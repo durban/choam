@@ -20,6 +20,8 @@ package data
 
 import cats.kernel.{ Hash, Order }
 
+import core.Axn
+
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
   final override def hashMap[K: Hash, V]: Axn[Map[K, V]] =

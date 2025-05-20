@@ -22,7 +22,7 @@ package rxn
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import core.Rxn
+import core.{ Rxn, Axn }
 import util.{ McasImplStateBase, RandomState }
 
 /**

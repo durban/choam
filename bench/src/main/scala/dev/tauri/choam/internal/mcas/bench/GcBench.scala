@@ -22,6 +22,7 @@ package bench
 
 import org.openjdk.jmh.annotations._
 
+import core.Axn
 import data.{ Queue, QueueHelper }
 import dev.tauri.choam.bench.util.{ Prefill, McasImplState }
 import ce.unsafeImplicits._

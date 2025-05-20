@@ -25,7 +25,7 @@ import cats.Monad
 
 import org.openjdk.jmh.annotations._
 
-import core.Rxn
+import core.{ Rxn, Axn }
 import util._
 
 /** Compares the performance of possible `map` and `map2` implementations */

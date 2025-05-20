@@ -31,7 +31,7 @@ import cats.mtl.laws.discipline.LocalTests
 import org.scalacheck.Prop
 import munit.DisciplineSuite
 
-import core.Rxn
+import core.{ Rxn, Axn }
 import internal.mcas.Mcas
 import async.AsyncReactive
 

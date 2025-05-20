@@ -25,6 +25,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util._
+import core.Axn
 import data.Stack
 import helpers.StackHelper
 import ce.unsafeImplicits._

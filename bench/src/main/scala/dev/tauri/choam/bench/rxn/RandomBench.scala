@@ -26,7 +26,7 @@ import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
 import org.openjdk.jmh.annotations._
 
-import core.Rxn
+import core.{ Rxn, Axn }
 import util._
 
 @Fork(3)

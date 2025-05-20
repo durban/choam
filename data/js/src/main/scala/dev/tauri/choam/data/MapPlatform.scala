@@ -19,7 +19,8 @@ package dev.tauri.choam
 package data
 
 import cats.kernel.{ Hash, Order }
-import dev.tauri.choam.Axn
+
+import core.Axn
 
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 

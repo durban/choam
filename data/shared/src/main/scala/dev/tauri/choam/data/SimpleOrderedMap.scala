@@ -24,7 +24,7 @@ import cats.kernel.Order
 import cats.data.Chain
 import cats.collections.AvlMap
 
-import core.Rxn
+import core.{ Rxn, Axn }
 
 private final class SimpleOrderedMap[K, V] private (
   repr: Ref[AvlMap[K, V]]

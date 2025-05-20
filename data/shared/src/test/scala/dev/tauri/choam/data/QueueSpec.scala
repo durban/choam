@@ -20,7 +20,7 @@ package data
 
 import cats.effect.IO
 
-import core.Rxn
+import core.{ Rxn, Axn }
 
 final class QueueMsSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO

@@ -20,6 +20,8 @@ package random
 
 import cats.effect.std.SecureRandom
 
+import core.Axn
+
 /**
  * Implements [[cats.effect.std.SecureRandom]] by using
  * the OS CSPRNG (through `OsRng`). This is as nonblocking

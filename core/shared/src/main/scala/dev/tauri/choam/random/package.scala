@@ -21,6 +21,8 @@ import java.util.UUID
 
 import cats.effect.std.{ Random, SecureRandom }
 
+import core.Axn
+
 package object random {
 
   private[choam] final def newUuidImpl: core.RxnImpl[Any, UUID] = {

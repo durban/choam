@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, EliminatorImpl }
+import core.{ Rxn, Axn, EliminatorImpl }
 
 private final class EliminationStack2[A](underlying: Stack[A])
   extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), underlying.tryPop, _ => ())

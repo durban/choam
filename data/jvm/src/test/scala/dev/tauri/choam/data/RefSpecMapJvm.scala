@@ -24,8 +24,6 @@ import cats.kernel.{ Hash, Order }
 import cats.Applicative
 import cats.effect.IO
 
-import core.Rxn
-
 final class RefSpec_Map_TtrieHash_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with SpecThreadConfinedMcas

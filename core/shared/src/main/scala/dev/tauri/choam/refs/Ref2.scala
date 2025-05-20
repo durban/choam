@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package refs
 
-import core.Rxn
+import core.{ Rxn, Axn }
 
 sealed trait Ref2[A, B] {
 

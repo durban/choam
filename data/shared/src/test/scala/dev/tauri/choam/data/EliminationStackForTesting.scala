@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Eliminator }
+import core.{ Rxn, Axn, Eliminator }
 
 /**
  * This is like `EliminationStack2`, but:

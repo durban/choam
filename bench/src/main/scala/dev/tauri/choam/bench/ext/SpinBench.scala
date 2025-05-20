@@ -23,6 +23,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util.McasImplStateBase
+import core.Axn
 import SpinBench._
 
 @Fork(3)

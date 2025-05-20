@@ -19,6 +19,7 @@ package dev.tauri.choam
 
 import fs2.{ Chunk, Stream }
 
+import core.Axn
 import async.{ UnboundedQueue, AsyncReactive }
 
 package object stream {

@@ -21,10 +21,6 @@ package object choam extends internal.ChoamUtils {
 
   final type =#>[-A, +B] = core.Rxn[A, B]
 
-  final type Axn[+A] = core.Axn[A]
-
-  final val Axn: core.Axn.type = core.Axn
-
   final type Reactive[F[_]] = core.Reactive[F]
 
   final val Reactive: core.Reactive.type = core.Reactive
@@ -37,7 +33,7 @@ package object choam extends internal.ChoamUtils {
 
   final val RefLike: refs.RefLike.type = refs.RefLike
 
-  private[choam] implicit final class AxnSyntax2[A](private val self: Axn[A]) extends AnyVal {
+  private[choam] implicit final class AxnSyntax2[A](private val self: core.Axn[A]) extends AnyVal {
 
     private[choam] final def unsafeRun(mcas: internal.mcas.Mcas): A = {
       self.unsafePerform(null : Any, mcas)

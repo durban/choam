@@ -20,6 +20,8 @@ package data
 
 import cats.kernel.{ Hash, Order }
 
+import core.Axn
+
 sealed trait Set[A] {
 
   def contains: A =#> Boolean

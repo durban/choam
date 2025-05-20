@@ -20,7 +20,7 @@ package random
 
 import java.util.concurrent.ThreadLocalRandom
 
-import core.Rxn
+import core.{ Rxn, Axn }
 
 private final class RxnThreadLocalRandom
   extends RandomBase {

@@ -26,7 +26,7 @@ import org.scalacheck.{ Arbitrary, Cogen }
 import org.scalacheck.Prop.forAll
 import org.typelevel.discipline.Laws
 
-import core.Rxn
+import core.{ Rxn, Axn }
 
 object RefLawTests {
 

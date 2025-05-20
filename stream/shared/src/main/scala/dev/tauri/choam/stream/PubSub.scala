@@ -27,7 +27,7 @@ import cats.effect.kernel.{ Async, Deferred }
 import cats.effect.syntax.all._
 import fs2.{ Stream, Chunk, Pull }
 
-import core.Rxn
+import core.{ Rxn, Axn }
 import async.{ AsyncReactive, Promise, WaitList }
 import data.UnboundedDeque
 

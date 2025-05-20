@@ -24,7 +24,7 @@ import cats.syntax.all._
 import cats.effect.IO
 import cats.effect.instances.spawn.parallelForGenSpawn
 
-import core.Rxn
+import core.{ Rxn, Axn }
 
 final class EliminatorSpecJvm_Emcas_ZIO
   extends BaseSpecZIO
