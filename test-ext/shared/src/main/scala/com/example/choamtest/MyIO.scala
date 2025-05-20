@@ -35,7 +35,7 @@ import cats.effect.kernel.{
   Outcome,
 }
 
-import dev.tauri.choam.core.ChoamRuntime
+import dev.tauri.choam.ChoamRuntime
 import dev.tauri.choam.async.AsyncReactive
 
 final case class MyIO[+A](val impl: IO[A]) {

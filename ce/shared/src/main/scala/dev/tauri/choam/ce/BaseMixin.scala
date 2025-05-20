@@ -20,8 +20,6 @@ package ce
 
 import cats.effect.IOApp
 
-import core.ChoamRuntime
-
 private[ce] trait BaseMixin { this: IOApp =>
 
   private[this] final val _choamRuntime: ChoamRuntime = {

@@ -23,8 +23,6 @@ import cats.effect.kernel.Async
 import zio.ZIOApp
 import zio.interop.CatsEffectInstances
 
-import core.ChoamRuntime
-
 private[zi] trait BaseMixin { this: ZIOApp =>
 
   private[this] final val _choamRuntime: ChoamRuntime = {

@@ -35,7 +35,7 @@ package object ce {
   private[choam] final object unsafeImplicits {
 
     private[this] val _rt =
-      core.ChoamRuntime.unsafeBlocking()
+      ChoamRuntime.unsafeBlocking()
 
     private[this] val _reactiveSyncIo =
       Reactive.fromIn[SyncIO, SyncIO](_rt).allocated.unsafeRunSync()._1

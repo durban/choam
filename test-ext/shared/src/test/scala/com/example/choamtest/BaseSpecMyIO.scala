@@ -24,7 +24,7 @@ import munit.{ Location, CatsEffectSuite }
 import dev.tauri.choam.internal.mcas.Mcas
 import dev.tauri.choam.async.AsyncReactive
 import dev.tauri.choam.{ BaseSpec, BaseSpecAsyncF, McasImplSpec }
-import dev.tauri.choam.core.ChoamRuntime
+import dev.tauri.choam.ChoamRuntime
 
 abstract class BaseSpecMyIO
   extends CatsEffectSuite

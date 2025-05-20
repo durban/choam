@@ -21,7 +21,7 @@ package async
 import cats.effect.kernel.{ Async, Sync, Resource }
 
 import internal.mcas.Mcas
-import core.{ Rxn, ChoamRuntime, RetryStrategy }
+import core.{ Rxn, RetryStrategy }
 
 sealed trait AsyncReactive[F[_]] extends Reactive.UnsealedReactive[F] { self =>
   def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B]
@@ -43,7 +43,7 @@ object AsyncReactive {
     forAsyncIn[F, F]
 
   final def forAsyncIn[G[_], F[_]](implicit G: Sync[G], F: Async[F]): Resource[G, AsyncReactive[F]] =
-    core.ChoamRuntime[G].flatMap(rt => fromIn(rt))
+    ChoamRuntime[G].flatMap(rt => fromIn(rt))
 
   private[choam] class AsyncReactiveImpl[F[_]](mi: Mcas)(implicit F: Async[F])
     extends Reactive.SyncReactive[F](mi)

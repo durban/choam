@@ -22,7 +22,6 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import cats.effect.{ IO, IOApp }
 
-import core.ChoamRuntime
 import stm.TRef
 
 final class MixinSpec extends munit.CatsEffectSuite {
