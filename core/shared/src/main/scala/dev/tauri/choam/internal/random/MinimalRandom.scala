@@ -16,12 +16,13 @@
  */
 
 package dev.tauri.choam
+package internal
 package random
 
 import cats.effect.std.Random
 
 import core.Axn
-import internal.mcas.RefIdGen
+import mcas.RefIdGen
 
 /**
  * Uses `RandomBase` for everything, implements

@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package internal
 package random
 
 import scala.collection.mutable.ArrayBuffer

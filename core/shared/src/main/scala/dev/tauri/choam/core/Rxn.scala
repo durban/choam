@@ -28,6 +28,7 @@ import cats.effect.kernel.{ Async, Clock, Cont, Unique, MonadCancel, Ref => Cats
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
 import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, AbstractDescriptor, Consts, Hamt, Version }
+import internal.random
 
 /**
  * An effectful function from `A` to `B`; when executed,

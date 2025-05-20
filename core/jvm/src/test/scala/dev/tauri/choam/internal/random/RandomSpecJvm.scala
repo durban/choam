@@ -16,7 +16,8 @@
  */
 
 package dev.tauri.choam
-package core
+package internal
+package random
 
 import java.util.{ SplittableRandom => JSplittableRandom }
 import java.security.SecureRandom
@@ -26,7 +27,7 @@ import cats.effect.std.Random
 
 import org.scalacheck.effect.PropF
 
-import random.SplittableRandom
+import core.{ Rxn, Axn }
 
 final class RandomSpecJvm_Emcas_SyncIO
   extends BaseSpecSyncIO

@@ -85,9 +85,9 @@ object RandomBench {
     val rndDeterministic: Random[Axn] =
       Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(McasImplStateBase.mcasImpl)
     val rndMinimal1: Random[Axn] =
-      random.minimalRandom1(ThreadLocalRandom.current().nextLong()).unsafeRun(McasImplStateBase.mcasImpl)
+      internal.random.minimalRandom1(ThreadLocalRandom.current().nextLong()).unsafeRun(McasImplStateBase.mcasImpl)
     val rndMinimal2: Random[Axn] =
-      random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafeRun(McasImplStateBase.mcasImpl)
+      internal.random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafeRun(McasImplStateBase.mcasImpl)
     val rndSecure: SecureRandom[Axn] =
       Rxn.secureRandom
     val uuidGen: UUIDGen[Axn] =

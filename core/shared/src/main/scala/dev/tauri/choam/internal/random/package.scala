@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package internal
 
 import java.util.UUID
 

@@ -16,7 +16,8 @@
  */
 
 package dev.tauri.choam
-package core
+package internal
+package random
 
 import java.lang.Integer.remainderUnsigned
 import java.lang.Character.{ isHighSurrogate, isLowSurrogate }
@@ -29,6 +30,8 @@ import cats.effect.std.{ UUIDGen, Random, SecureRandom }
 
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.effect.PropF
+
+import core.{ Rxn, Axn }
 
 final class RandomSpec_ThreadConfinedMcas_SyncIO
   extends BaseSpecSyncIO

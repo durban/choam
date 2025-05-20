@@ -16,24 +16,22 @@
  */
 
 package dev.tauri.choam
-package core
+package internal
+package random
 
-import cats.effect.SyncIO
+import cats.effect.std.SecureRandom
 
-import java.security.SecureRandom
+import core.Axn
 
-final class RandomSpecJs_ThreadConfinedMcas_SyncIO
-  extends BaseSpecSyncIO
-  with SpecThreadConfinedMcas
-  with RandomSpecJs[SyncIO]
+/**
+ * Implements [[cats.effect.std.SecureRandom]] by using
+ * the OS CSPRNG (through `OsRng`). This is as nonblocking
+ * as possible on each platform (see `OsRng`).
+ */
+private final class SecureRandomRxn
+  extends RandomBase with SecureRandom[Axn] {
 
-trait RandomSpecJs[F[_]] extends RandomSpec[F] { this: McasImplSpec =>
-
-  test("SecureRandom (JS)") {
-    val bt = System.nanoTime()
-    val s = new SecureRandom()
-    s.nextBytes(new Array[Byte](20)) // force seed
-    val at = System.nanoTime()
-    println(s"Default SecureRandom: ${s.toString} (in ${at - bt}ns)")
+  final override def nextBytes(n: Int): Axn[Array[Byte]] = Axn.unsafe.delayContext { ctx =>
+    ctx.impl.osRng.nextBytes(n)
   }
 }

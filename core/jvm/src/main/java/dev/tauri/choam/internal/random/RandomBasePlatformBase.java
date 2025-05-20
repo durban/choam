@@ -15,7 +15,29 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam
-package random
+package dev.tauri.choam.internal.random;
 
-final class RandomBaseSpecJs extends RandomBaseSpec
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.nio.ByteOrder;
+
+import dev.tauri.choam.internal.VarHandleHelper;
+
+abstract class RandomBasePlatformBase {
+
+  private static final VarHandle BYTE_ARRAY_VIEW;
+
+  static {
+    BYTE_ARRAY_VIEW = VarHandleHelper.withInvokeExactBehavior(
+      MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN)
+    );
+  }
+
+  final long getLongAt0P(byte[] arr) {
+    return (long) BYTE_ARRAY_VIEW.get(arr, 0);
+  }
+
+  final void putLongAtIdxP(byte[] arr, int idx, long nv) {
+    BYTE_ARRAY_VIEW.set(arr, idx, nv);
+  }
+}

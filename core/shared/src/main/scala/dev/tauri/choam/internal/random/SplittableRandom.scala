@@ -16,21 +16,18 @@
  */
 
 package dev.tauri.choam
+package internal
 package random
 
-import cats.effect.std.SecureRandom
+import cats.effect.std.Random
 
-import core.Axn
+/** A splittable variant of [[cats.effect.std.Random]]. */
+sealed trait SplittableRandom[F[_]] extends Random[F] { // TODO: move this somewhere non-internal
+  def split: F[SplittableRandom[F]]
+}
 
-/**
- * Implements [[cats.effect.std.SecureRandom]] by using
- * the OS CSPRNG (through `OsRng`). This is as nonblocking
- * as possible on each platform (see `OsRng`).
- */
-private final class SecureRandomRxn
-  extends RandomBase with SecureRandom[Axn] {
+private object SplittableRandom {
 
-  final override def nextBytes(n: Int): Axn[Array[Byte]] = Axn.unsafe.delayContext { ctx =>
-    ctx.impl.osRng.nextBytes(n)
-  }
+  private[random] trait UnsealedSplittableRandom[F[_]]
+    extends SplittableRandom[F]
 }

@@ -16,17 +16,25 @@
  */
 
 package dev.tauri.choam
+package internal
 package random
 
-import cats.effect.std.Random
+import cats.effect.SyncIO
 
-/** A splittable variant of [[cats.effect.std.Random]]. */
-sealed trait SplittableRandom[F[_]] extends Random[F] {
-  def split: F[SplittableRandom[F]]
-}
+import java.security.SecureRandom
 
-private object SplittableRandom {
+final class RandomSpecJs_ThreadConfinedMcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecThreadConfinedMcas
+  with RandomSpecJs[SyncIO]
 
-  private[random] trait UnsealedSplittableRandom[F[_]]
-    extends SplittableRandom[F]
+trait RandomSpecJs[F[_]] extends RandomSpec[F] { this: McasImplSpec =>
+
+  test("SecureRandom (JS)") {
+    val bt = System.nanoTime()
+    val s = new SecureRandom()
+    s.nextBytes(new Array[Byte](20)) // force seed
+    val at = System.nanoTime()
+    println(s"Default SecureRandom: ${s.toString} (in ${at - bt}ns)")
+  }
 }

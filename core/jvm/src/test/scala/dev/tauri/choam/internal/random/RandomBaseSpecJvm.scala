@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package internal
 package random
 
 final class RandomBaseSpecJvm extends RandomBaseSpec {

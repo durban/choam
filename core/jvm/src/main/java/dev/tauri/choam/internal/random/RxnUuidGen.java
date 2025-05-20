@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.random;
+package dev.tauri.choam.internal.random;
 
 import java.util.UUID;
 import java.lang.invoke.MethodHandles;

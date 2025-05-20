@@ -16,28 +16,17 @@
  */
 
 package dev.tauri.choam
+package internal
 package random
 
-import java.nio.{ ByteBuffer, ByteOrder }
+/** We need this on the JVM too (because Scala.js doesn't have StrictMath) */
+private abstract class RandomBasePlatform extends RandomBasePlatformBase {
 
-/** Beause Scala.js doesn't have StrictMath/VarHandle */
-private abstract class RandomBasePlatform {
-
+  @inline
   protected final def strictMathSqrt(a: Double): Double =
-    Math.sqrt(a) // ¯\_(ツ)_/¯
+    StrictMath.sqrt(a)
 
+  @inline
   protected final def strictMathLog(a: Double): Double =
-    Math.log(a) // ¯\_(ツ)_/¯
-
-  // TODO: These ByteBuffers are probably pretty
-  // TODO: bad for performance, but this is JS.
-
-  protected final def getLongAt0P(arr: Array[Byte]): Long = {
-    ByteBuffer.wrap(arr, 0, 8).order(ByteOrder.LITTLE_ENDIAN).getLong()
-  }
-
-  protected final def putLongAtIdxP(arr: Array[Byte], idx: Int, nv: Long): Unit = {
-    ByteBuffer.wrap(arr, idx, 8).order(ByteOrder.LITTLE_ENDIAN).putLong(nv)
-    ()
-  }
+    StrictMath.log(a)
 }
