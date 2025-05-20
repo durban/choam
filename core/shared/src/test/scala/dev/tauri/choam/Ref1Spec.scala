@@ -18,25 +18,24 @@
 package dev.tauri.choam
 
 import internal.mcas.Mcas
-import refs.Ref1
 
 final class Ref1SpecP1 extends Ref1Spec {
 
-  override def mkRef1[A](a: A, ctx: Mcas.ThreadContext): Ref1[A] =
-    Ref1.unsafeUnpadded(a, ctx.refIdGen)
+  override def mkRef1[A](a: A, ctx: Mcas.ThreadContext): Ref[A] =
+    Ref.unsafeUnpadded(a, ctx.refIdGen)
 }
 
 final class Ref1SpecU1 extends Ref1Spec {
 
-  override def mkRef1[A](a: A, ctx: Mcas.ThreadContext): Ref1[A] =
-    Ref1.unsafeUnpadded(a, ctx.refIdGen)
+  override def mkRef1[A](a: A, ctx: Mcas.ThreadContext): Ref[A] =
+    Ref.unsafeUnpadded(a, ctx.refIdGen)
 }
 
 abstract class Ref1Spec extends BaseSpec with SpecDefaultMcas {
 
-  def mkRef1[A](a: A, ctx: Mcas.ThreadContext): Ref1[A]
+  def mkRef1[A](a: A, ctx: Mcas.ThreadContext): Ref[A]
 
-  final def mkRef1[A](a: A): Ref1[A] =
+  final def mkRef1[A](a: A): Ref[A] =
     this.mkRef1(a, this.mcasImpl.currentContext())
 
   test("toString format") {

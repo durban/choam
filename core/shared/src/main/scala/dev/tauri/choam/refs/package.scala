@@ -19,9 +19,6 @@ package dev.tauri.choam
 
 package object refs {
 
-  type Ref1[A] = Ref[A]
-  val Ref1: Ref.type = Ref
-
   private[choam] def unsafeNewRefU1[A](initial: A)(i: Long): Ref[A] =
     RefsPlatform.unsafeNewRefU1[A](initial, i)
 
