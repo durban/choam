@@ -21,8 +21,9 @@ package laws
 import cats.laws.IsEq
 import cats.laws.IsEqArrow
 
-import Rxn.{ pure, ret, lift, computed }
-import Rxn.unsafe.retry
+import core.Rxn
+import core.Rxn.{ pure, ret, lift, computed }
+import core.Rxn.unsafe.retry
 
 sealed trait RxnLaws {
 

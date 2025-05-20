@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package refs
 
+import core.Rxn
+
 sealed trait Ref2[A, B] {
 
   def _1: Ref[A]

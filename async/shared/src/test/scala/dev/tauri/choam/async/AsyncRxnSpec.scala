@@ -22,8 +22,8 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-import core.RetryStrategy
-import RxnSpec.{ MyException, throwingRxns }
+import core.{ Rxn, RetryStrategy }
+import core.RxnSpec.{ MyException, throwingRxns }
 
 final class AsyncRxnSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO

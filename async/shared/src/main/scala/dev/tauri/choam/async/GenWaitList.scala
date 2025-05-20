@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package async
 
+import core.Rxn
+
 // TODO:0.5: make these private[choam]
 
 sealed trait GenWaitList[A] { self =>

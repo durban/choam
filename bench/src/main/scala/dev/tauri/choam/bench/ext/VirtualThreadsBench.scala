@@ -27,6 +27,8 @@ import org.openjdk.jmh.annotations._
 
 import cats.syntax.all._
 import cats.effect.IO
+
+import core.Rxn
 import dev.tauri.choam.bench.util.McasImplStateBase
 
 /** This benchmark can only run on JVM >= 21, because it tests virtual threads */

@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package core
 
 import cats.effect.IO
 import cats.effect.instances.all._

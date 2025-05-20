@@ -23,9 +23,8 @@ import scala.collection.immutable.{ Map => ScalaMap }
 import cats.kernel.Order
 import cats.data.Chain
 import cats.collections.AvlMap
-import dev.tauri.choam.Rxn
-import dev.tauri.choam.RefLike
-import dev.tauri.choam.Axn
+
+import core.Rxn
 
 private final class SimpleOrderedMap[K, V] private (
   repr: Ref[AvlMap[K, V]]

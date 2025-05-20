@@ -24,6 +24,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
+import core.Rxn
 import internal.mcas.Mcas
 import data.{ Map, MapHelper }
 

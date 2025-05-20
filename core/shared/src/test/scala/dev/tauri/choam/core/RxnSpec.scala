@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package core
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -1407,7 +1408,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     Reactive[F] : FunctionK[Axn, F]
   }
 
-  val never = Rxn.unsafe.retry[Int]
+  private val never = Rxn.unsafe.retry[Int]
 
   test("maxRetries") {
     def countTries(ctr: AtomicInteger) = {

@@ -25,6 +25,8 @@ import scala.concurrent.duration._
 import cats.effect.IO
 import cats.effect.instances.spawn.parallelForGenSpawn
 
+import core.Rxn
+
 final class StackSpec_Treiber_Emcas_IO
   extends BaseSpecIO
   with SpecEmcas

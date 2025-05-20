@@ -25,6 +25,7 @@ import org.openjdk.jcstress.infra.results.ZLL_Result
 
 import cats.effect.SyncIO
 
+import core.Rxn
 import ce.unsafeImplicits._
 
 @JCStressTest

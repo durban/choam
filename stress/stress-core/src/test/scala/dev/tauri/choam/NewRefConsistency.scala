@@ -22,6 +22,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
+import core.Rxn
+
 @JCStressTest
 @State
 @Description("New Ref must be consistent with previously read value")

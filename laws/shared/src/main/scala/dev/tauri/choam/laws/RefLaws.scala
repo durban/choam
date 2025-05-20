@@ -23,6 +23,8 @@ import cats.laws.IsEq
 import cats.laws.IsEqArrow
 import cats.syntax.all._
 
+import core.Rxn
+
 sealed trait RefLaws {
 
   def equalsItself[A](r: Ref[A]): IsEq[Boolean] =

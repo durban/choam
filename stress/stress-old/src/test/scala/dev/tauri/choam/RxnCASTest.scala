@@ -22,6 +22,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZL_Result
 
+import core.Rxn
+
 // @JCStressTest
 @State
 @Description("Rxn.unsafe.cas should be a simple CAS")

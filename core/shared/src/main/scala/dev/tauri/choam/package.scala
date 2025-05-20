@@ -19,11 +19,7 @@ package dev.tauri
 
 package object choam extends internal.ChoamUtils {
 
-  final type Rxn[-A, +B] = core.Rxn[A, B]
-
   final type =#>[-A, +B] = core.Rxn[A, B]
-
-  final val Rxn: core.Rxn.type = core.Rxn
 
   final type Axn[+A] = core.Axn[A]
 

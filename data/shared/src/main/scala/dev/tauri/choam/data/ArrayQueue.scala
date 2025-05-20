@@ -22,6 +22,7 @@ import java.lang.Integer.remainderUnsigned
 
 import cats.syntax.all._
 
+import core.Rxn
 import ArrayQueue.{ empty, isEmpty }
 
 /** Common functionality for array-based queues */

@@ -52,7 +52,8 @@ two `Ref`s is as follows:
 
 <!-- Note: this needs to be kept in sync with `ReadmeSpec`! -->
 ```scala
-import dev.tauri.choam.{ Ref, Rxn }
+import dev.tauri.choam.Ref
+import dev.tauri.choam.core.Rxn
 
 def incrBoth(x: Ref[Int], y: Ref[Int]): Rxn[Any, Unit] = {
   x.update(_ + 1) *> y.update(_ + 1)

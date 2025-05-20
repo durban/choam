@@ -26,6 +26,8 @@ import org.scalacheck.{ Arbitrary, Cogen }
 import org.scalacheck.Prop.forAll
 import org.typelevel.discipline.Laws
 
+import core.Rxn
+
 object RefLawTests {
 
   def apply(ti: TestInstances): RefLawTests = new RefLawTests {

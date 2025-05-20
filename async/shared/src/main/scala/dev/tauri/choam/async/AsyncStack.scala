@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package async
 
+import core.Rxn
 import data.Stack
 
 sealed trait AsyncStack[A] {

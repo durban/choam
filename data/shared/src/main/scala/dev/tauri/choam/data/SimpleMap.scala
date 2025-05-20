@@ -24,6 +24,8 @@ import cats.kernel.{ Hash, Order }
 import cats.data.Chain
 import cats.collections.HashMap
 
+import core.Rxn
+
 private final class SimpleMap[K, V] private (
   repr: Ref[HashMap[K, V]],
 )(implicit K: Hash[K]) extends Map.UnsealedMapExtra[K, V] { self =>

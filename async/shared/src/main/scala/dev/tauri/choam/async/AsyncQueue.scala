@@ -20,6 +20,8 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
+import core.Rxn
+
 sealed trait AsyncQueueSource[+A] extends data.Queue.UnsealedQueueSource[A] {
   def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]
 }

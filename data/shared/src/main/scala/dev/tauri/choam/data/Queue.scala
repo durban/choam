@@ -21,6 +21,8 @@ package data
 import cats.Monad
 import cats.syntax.all._
 
+import core.Rxn
+
 sealed trait QueueSource[+A] {
 
   def tryDeque: Axn[Option[A]]

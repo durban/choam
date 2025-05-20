@@ -27,6 +27,8 @@ import cats.effect.SyncIO
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
+import core.Rxn
+
 final class MapSpec_SimpleHash_ThreadConfinedMcas_SyncIO
   extends BaseSpecSyncIO
   with SpecThreadConfinedMcas

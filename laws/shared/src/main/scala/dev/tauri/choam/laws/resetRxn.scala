@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package laws
 
+import core.Rxn
+
 private final case class ResetRxn[-A, +B](
   rxn: Rxn[A, B],
   refs: Set[ResetRef[_]] = Set.empty,

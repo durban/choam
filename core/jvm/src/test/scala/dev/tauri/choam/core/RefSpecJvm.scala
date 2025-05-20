@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package core
 
 import cats.effect.IO
 import dev.tauri.choam.internal.mcas.{ MemoryLocation, Version }

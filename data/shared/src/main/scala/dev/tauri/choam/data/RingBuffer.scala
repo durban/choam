@@ -20,6 +20,7 @@ package data
 
 import cats.syntax.all._
 
+import core.Rxn
 import ArrayQueue.{ empty, isEmpty }
 
 /**

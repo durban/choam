@@ -20,7 +20,7 @@ package data
 
 import cats.effect.IO
 
-import core.Eliminator
+import core.{ Rxn, Eliminator }
 
 final class EliminatorSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO

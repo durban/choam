@@ -27,6 +27,7 @@ import cats.effect.kernel.Outcome
 import cats.effect.kernel.testkit.TestContext
 import cats.effect.unsafe.{ IORuntime, IORuntimeConfig, Scheduler }
 
+import core.Rxn
 import core.RetryStrategy.Internal.Stepper
 
 import munit.{ CatsEffectSuite, Location, FunSuite, FailException }

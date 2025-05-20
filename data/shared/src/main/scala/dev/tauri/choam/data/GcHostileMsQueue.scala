@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package data
 
+import core.Rxn
 import internal.mcas.RefIdGen
 import GcHostileMsQueue._
 

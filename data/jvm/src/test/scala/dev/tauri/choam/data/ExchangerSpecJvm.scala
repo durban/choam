@@ -22,6 +22,8 @@ import scala.concurrent.duration._
 
 import cats.effect.{ IO, Outcome }
 
+import core.Rxn
+
 final class ExchangerSpecCommon_Emcas_ZIO
   extends BaseSpecZIO
   with SpecEmcas

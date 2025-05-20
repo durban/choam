@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package core
 
 import java.lang.Integer.remainderUnsigned
 import java.lang.Character.{ isHighSurrogate, isLowSurrogate }

@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package core
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.{ AtomicReference, AtomicInteger, AtomicBoolean }

@@ -19,6 +19,8 @@ package dev.tauri.choam
 
 import cats.effect.IO
 
+import core.Rxn
+
 final class ExchangerSpecJs_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with SpecThreadConfinedMcas

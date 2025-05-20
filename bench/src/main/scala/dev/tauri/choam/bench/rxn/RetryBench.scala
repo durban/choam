@@ -25,7 +25,7 @@ import cats.effect.IO
 
 import org.openjdk.jmh.annotations._
 
-import core.RetryStrategy
+import core.{ Rxn, RetryStrategy }
 import util.McasImplStateBase
 
 @Threads(1)

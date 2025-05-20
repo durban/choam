@@ -20,6 +20,8 @@ package data
 
 import cats.effect.IO
 
+import core.Rxn
+
 final class QueueMsSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with QueueMsSpec[IO]

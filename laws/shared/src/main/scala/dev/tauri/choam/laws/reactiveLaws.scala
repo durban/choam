@@ -23,6 +23,7 @@ import cats.laws.IsEq
 import cats.laws.IsEqArrow
 import cats.syntax.all._
 
+import core.Rxn
 import async.{ AsyncReactive, Promise }
 
 sealed trait ReactiveLaws[F[_]] {

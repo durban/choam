@@ -20,6 +20,8 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
+import core.Rxn
+
 sealed trait OverflowQueue[A]
   extends UnboundedQueue.UnsealedWithSize[A] {
 

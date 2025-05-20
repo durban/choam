@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package core
 
 import cats.Monad
 import cats.effect.IO

@@ -23,6 +23,7 @@ import scala.math.Ordering
 import cats.kernel.{ Hash, Order }
 import cats.effect.kernel.{ Ref => CatsRef }
 
+import core.Rxn
 import internal.mcas.{ MemoryLocation, RefIdGen }
 import CompatPlatform.AtomicReferenceArray
 

@@ -23,7 +23,7 @@ import cats.data.Chain
 import cats.effect.kernel.{ Ref => CatsRef }
 import cats.effect.std.MapRef
 
-import core.Reactive
+import core.{ Rxn, Reactive }
 
 sealed trait Map[K, V] { self =>
 

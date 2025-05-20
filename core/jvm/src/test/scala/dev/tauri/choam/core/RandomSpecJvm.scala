@@ -16,6 +16,7 @@
  */
 
 package dev.tauri.choam
+package core
 
 import java.util.{ SplittableRandom => JSplittableRandom }
 import java.security.SecureRandom
