@@ -21,7 +21,7 @@ package data
 import cats.Monad
 import cats.syntax.all._
 
-import core.{ Rxn, Axn }
+import core.{ Rxn, Axn, Ref }
 
 sealed trait QueueSource[+A] {
 

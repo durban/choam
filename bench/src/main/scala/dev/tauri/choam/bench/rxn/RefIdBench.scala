@@ -23,9 +23,9 @@ import java.util.concurrent.ThreadLocalRandom
 
 import org.openjdk.jmh.annotations._
 
-import util.McasImplState
+import util.{ McasImplState, McasImplStateBase }
+import core.Ref
 import RefIdBench._
-import dev.tauri.choam.bench.util.McasImplStateBase
 
 @Fork(3)
 @Threads(4)
@@ -69,11 +69,13 @@ object RefIdBench {
 
   @State(Scope.Thread)
   class PaddedSt extends McasImplStateBase {
-    val refs = Array.fill(N)(Ref.unsafePadded("", this.mcasImpl.currentContext().refIdGen))
+    val refs: Array[Ref[String]] =
+      Array.fill(N)(Ref.unsafePadded("", this.mcasImpl.currentContext().refIdGen))
   }
 
   @State(Scope.Thread)
   class UnpaddedSt extends McasImplStateBase {
-    val refs = Array.fill(N)(Ref.unsafeUnpadded("", this.mcasImpl.currentContext().refIdGen))
+    val refs: Array[Ref[String]] =
+      Array.fill(N)(Ref.unsafeUnpadded("", this.mcasImpl.currentContext().refIdGen))
   }
 }

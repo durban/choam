@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import zio.{ RIO, Task, ZIO, ZIOAppDefault, ZLayer }
 
+import core.Ref
 import stm.TRef
 
 import munit.{ FunSuite, TestOptions, Location }

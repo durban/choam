@@ -21,6 +21,7 @@ package rxn
 
 import org.openjdk.jmh.annotations._
 
+import core.Ref
 import internal.mcas.Mcas
 import internal.mcas.Consts
 import util.McasImplStateBase

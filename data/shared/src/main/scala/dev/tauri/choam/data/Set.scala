@@ -20,7 +20,7 @@ package data
 
 import cats.kernel.{ Hash, Order }
 
-import core.Axn
+import core.{ Axn, Ref }
 
 sealed trait Set[A] {
 

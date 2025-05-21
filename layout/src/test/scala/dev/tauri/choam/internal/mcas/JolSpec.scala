@@ -23,7 +23,7 @@ import scala.jdk.CollectionConverters._
 
 import org.openjdk.jol.info.{ ClassLayout, FieldLayout }
 
-import refs.Ref2
+import core.{ Ref, Ref2 }
 
 object JolSpec {
 

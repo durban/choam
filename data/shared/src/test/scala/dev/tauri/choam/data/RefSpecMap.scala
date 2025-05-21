@@ -23,7 +23,7 @@ import scala.collection.immutable.{ Map => ScalaMap, Set => ScalaSet }
 import cats.kernel.{ Hash, Order }
 import cats.effect.IO
 
-import core.RefLikeSpec
+import core.{ RefLike, RefLikeSpec }
 
 final class RefSpec_Map_SimpleHash_ThreadConfinedMcas_IO
   extends BaseSpecIO

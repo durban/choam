@@ -23,6 +23,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util._
+import core.Ref
 import data.Counter
 
 @Fork(2)

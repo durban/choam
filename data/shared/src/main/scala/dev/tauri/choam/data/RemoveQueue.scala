@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Axn }
+import core.{ Rxn, Axn, Ref }
 import internal.mcas.RefIdGen
 import RemoveQueue.{ Elem, Node, End, tombstone, isTombstone }
 

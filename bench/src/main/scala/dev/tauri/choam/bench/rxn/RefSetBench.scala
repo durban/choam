@@ -25,7 +25,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util._
-import core.Axn
+import core.{ Axn, Ref }
 
 @Fork(3)
 @Threads(2)

@@ -32,7 +32,7 @@ import munit.CatsEffectSuite
 import io.github.timwspence.cats.stm.STM
 import zio.{ stm => zstm }
 
-import core.{ Rxn, Axn }
+import core.{ Rxn, Axn, Ref }
 import ce.unsafeImplicits._
 
 /**

@@ -24,6 +24,7 @@ import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
 
 import munit.FunSuite
 
+import core.Ref
 import internal.mcas.Mcas
 
 import TtrieModelTest._

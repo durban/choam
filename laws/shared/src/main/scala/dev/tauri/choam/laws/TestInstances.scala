@@ -23,7 +23,7 @@ import cats.data.Ior
 
 import org.scalacheck.{ Gen, Arbitrary, Cogen }
 
-import core.{ Rxn, Axn }
+import core.{ Rxn, Axn, Ref, Ref2 }
 import internal.mcas.{ Mcas, RefIdGen }
 
 trait TestInstances extends TestInstancesLowPrio0 { self =>
@@ -33,7 +33,6 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
   protected def rigInstance: RefIdGen
 
   implicit def arbRef[A](implicit arbA: Arbitrary[A]): Arbitrary[Ref[A]] = Arbitrary {
-    import refs.Ref2
     arbA.arbitrary.flatMap { a =>
       Gen.oneOf(
         Gen.oneOf(

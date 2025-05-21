@@ -21,7 +21,7 @@ import cats.syntax.all._
 import cats.effect.kernel.Sync
 import cats.effect.{ IO, SyncIO, Resource }
 
-import dev.tauri.choam.{ Reactive, Ref }
+import dev.tauri.choam.core.{ Reactive, Ref }
 import dev.tauri.choam.ChoamRuntime
 import dev.tauri.choam.async.AsyncReactive
 import dev.tauri.choam.stm.{ Transactive, TRef }

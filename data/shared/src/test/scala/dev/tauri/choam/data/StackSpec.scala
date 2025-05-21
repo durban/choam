@@ -20,6 +20,8 @@ package data
 
 import cats.effect.IO
 
+import core.Ref
+
 final class StackSpec_Treiber_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with SpecThreadConfinedMcas

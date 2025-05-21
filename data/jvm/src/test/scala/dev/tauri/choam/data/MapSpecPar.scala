@@ -27,6 +27,8 @@ import cats.effect.instances.all._
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
+import core.Ref
+
 final class MapSpecPar_TtrieHash_SpinLockMcas_IO
   extends BaseSpecIO
   with SpecSpinLockMcas

@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.Axn
+import core.{ Axn, Ref }
 
 private[choam] sealed abstract class UnboundedDeque[A] { // TODO: consider making it public
 

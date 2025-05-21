@@ -17,6 +17,8 @@
 
 package dev.tauri.choam.refs;
 
+import dev.tauri.choam.core.Ref;
+
 final class RefsPlatform {
 
   private RefsPlatform() {}

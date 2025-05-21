@@ -16,16 +16,15 @@
  */
 
 package dev.tauri.choam
-package refs
+package core
 
 import scala.math.Ordering
 
 import cats.kernel.{ Hash, Order }
 import cats.effect.kernel.{ Ref => CatsRef }
 
-import core.{ Rxn, Axn }
 import internal.mcas.{ MemoryLocation, RefIdGen }
-import CompatPlatform.AtomicReferenceArray
+import refs.CompatPlatform.AtomicReferenceArray
 
 /**
  * A mutable memory location with a pure API and
@@ -66,7 +65,7 @@ sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A]
   private[choam] def dummy(v: Byte): Long
 }
 
-private[refs] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] & core.RefGetAxn[A] =>
+private[choam] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] & core.RefGetAxn[A] =>
 }
 
 object Ref extends RefInstances0 {
@@ -157,9 +156,9 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[refs] trait UnsealedArray[A] extends Array[A] { this: RefIdOnlyN =>
+  private[choam] trait UnsealedArray[A] extends Array[A] { this: refs.RefIdOnlyN =>
 
-    protected[refs] final override def refToString(): String = {
+    protected[choam] final override def refToString(): String = {
       val idBase = this.id
       s"Ref.Array[${size}]@${internal.mcas.refHashString(idBase)}"
     }
@@ -260,7 +259,7 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[refs] final class StrictArrayOfRefs[A](
+  private[choam] final class StrictArrayOfRefs[A](
     final override val size: Int,
     initial: A,
     padded: Boolean,
@@ -284,7 +283,7 @@ object Ref extends RefInstances0 {
     }
 
     final override def unsafeGet(idx: Int): Ref[A] = {
-      CompatPlatform.checkArrayIndexIfScalaJs(idx, size) // TODO: check other places where we might need this
+      refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, size) // TODO: check other places where we might need this
       this.arr(idx)
     }
 
@@ -297,7 +296,7 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[refs] final class LazyArrayOfRefs[A](
+  private[choam] final class LazyArrayOfRefs[A](
     final override val size: Int,
     initial: A,
     padded: Boolean,
@@ -344,7 +343,7 @@ object Ref extends RefInstances0 {
   private[choam] final def catsRefFromRef[F[_] : Reactive, A](ref: Ref[A]): CatsRef[F, A] =
     new CatsRefFromRef[F, A](ref) {}
 
-  private[refs] abstract class CatsRefFromRef[F[_], A](self: Ref[A])(implicit F: Reactive[F])
+  private[choam] abstract class CatsRefFromRef[F[_], A](self: Ref[A])(implicit F: Reactive[F])
     extends RefLike.CatsRefFromRefLike[F, A](self)(F) {
 
     override def get: F[A] =
@@ -353,12 +352,12 @@ object Ref extends RefInstances0 {
 
   private[this] final def unsafeStrictArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] = {
     require(size > 0)
-    unsafeNewStrictRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
+    refs.unsafeNewStrictRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
   private[this] final def unsafeLazyArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] = {
     require(size > 0)
-    unsafeNewSparseRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
+    refs.unsafeNewSparseRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
   final def padded[A](initial: A): Axn[Ref[A]] =
@@ -377,7 +376,7 @@ object Ref extends RefInstances0 {
   }
 
   private[this] final def unsafePaddedWithId[A](initial: A, id: Long): Ref[A] = {
-    unsafeNewRefP1(initial)(id)
+    refs.unsafeNewRefP1(initial)(id)
   }
 
   private[choam] final def unsafeUnpadded[A](initial: A, rig: RefIdGen): Ref[A] = {
@@ -385,7 +384,7 @@ object Ref extends RefInstances0 {
   }
 
   private[choam] final def unsafeUnpaddedWithId[A](initial: A, id: Long): Ref[A] = {
-    unsafeNewRefU1(initial)(id)
+    refs.unsafeNewRefU1(initial)(id)
   }
 
   // Ref2:
@@ -419,7 +418,7 @@ object Ref extends RefInstances0 {
   }
 }
 
-private[refs] sealed abstract class RefInstances0 extends RefInstances1 { this: Ref.type =>
+private[core] sealed abstract class RefInstances0 extends RefInstances1 { this: Ref.type =>
 
   private[this] val _orderingInstance: Ordering[Ref[Any]] = new Ordering[Ref[Any]] {
     final override def compare(x: Ref[Any], y: Ref[Any]): Int =

@@ -17,7 +17,9 @@
 
 package dev.tauri.choam
 
-package object refs {
+import core.Ref
+
+package object refs extends RefsPackagePlatform {
 
   private[choam] def unsafeNewRefU1[A](initial: A)(i: Long): Ref[A] =
     RefsPlatform.unsafeNewRefU1[A](initial, i)

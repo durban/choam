@@ -23,7 +23,7 @@ import cats.laws.IsEq
 import cats.laws.IsEqArrow
 import cats.syntax.all._
 
-import core.Rxn
+import core.{ Rxn, Ref }
 
 sealed trait RefLaws {
 

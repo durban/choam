@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package refs
 
+import core.Ref
+
 private object RefsPlatform {
 
   def unsafeNewRefU1[A](initial: A, id: Long): Ref[A] =

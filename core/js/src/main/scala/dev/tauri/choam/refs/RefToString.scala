@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package refs
 
-private abstract class RefToString {
+private[choam] abstract class RefToString {
 
   protected def refToString(): String
 

@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 
+import core.Ref
 import internal.mcas.Mcas
 
 final class Ref1SpecP1 extends Ref1Spec {

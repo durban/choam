@@ -16,7 +16,7 @@
  */
 
 package dev.tauri.choam
-package refs
+package core
 
 import core.{ Rxn, Axn }
 
@@ -119,7 +119,7 @@ private[choam] object RefLike {
   private[choam] final def catsRefFromRefLike[F[_] : Reactive, A](ref: RefLike[A]): CatsRef[F, A] =
     new CatsRefFromRefLike[F, A](ref) {}
 
-  private[refs] abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
+  private[core] abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
     extends CatsRef[F, A] {
 
     def get: F[A] =

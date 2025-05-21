@@ -23,8 +23,7 @@ import scala.util.hashing.byteswap32
 import cats.syntax.all._
 import cats.effect.{ IO, IOApp }
 
-import dev.tauri.choam.core.Axn
-import dev.tauri.choam.Ref
+import dev.tauri.choam.core.{ Axn, Ref }
 import dev.tauri.choam.ce.RxnAppMixin
 
 /** Simple program to interactively try the JMX MBean (with visualvm, or jconsole, or similar) */

@@ -24,6 +24,7 @@ import cats.syntax.all._
 
 import munit.Location
 
+import core.Ref
 import internal.mcas.Mcas
 import internal.mcas.RefIdGenBase.GAMMA
 

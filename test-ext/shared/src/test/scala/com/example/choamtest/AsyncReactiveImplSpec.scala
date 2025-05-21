@@ -17,7 +17,7 @@
 
 package com.example.choamtest
 
-import dev.tauri.choam.Ref
+import dev.tauri.choam.core.Ref
 import dev.tauri.choam.async.Promise
 
 final class AsyncReactiveImplSpec extends BaseSpecMyIO {

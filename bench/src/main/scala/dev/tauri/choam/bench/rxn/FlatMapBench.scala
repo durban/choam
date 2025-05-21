@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import core.{ Rxn, Axn }
+import core.{ Rxn, Axn, Ref }
 import util._
 
 /** Compares the performance of `flatMap`, `flatMapF`, and `*>` */

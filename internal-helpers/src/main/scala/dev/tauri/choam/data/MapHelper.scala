@@ -20,7 +20,7 @@ package data
 
 import cats.kernel.Hash
 
-import core.Axn
+import core.{ Axn, Ref }
 
 /**
  * Public access to package-private utilities

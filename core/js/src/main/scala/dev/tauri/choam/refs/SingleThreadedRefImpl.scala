@@ -20,6 +20,7 @@ package refs
 
 import java.lang.ref.WeakReference
 
+import core.UnsealedRef
 import internal.mcas.{ MemoryLocation, Version }
 
 // This is JS:

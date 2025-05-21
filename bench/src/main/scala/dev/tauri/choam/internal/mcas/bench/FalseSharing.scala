@@ -27,6 +27,7 @@ import org.openjdk.jmh.infra.Blackhole
 
 import _root_.dev.tauri.choam.bench.util.RandomState
 import dev.tauri.choam.bench.util.McasImplStateBase
+import core.Ref
 
 @Fork(4)
 class FalseSharing {

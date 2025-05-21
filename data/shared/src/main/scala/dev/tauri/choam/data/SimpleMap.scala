@@ -24,7 +24,7 @@ import cats.kernel.{ Hash, Order }
 import cats.data.Chain
 import cats.collections.HashMap
 
-import core.{ Rxn, Axn }
+import core.{ Rxn, Axn, Ref, RefLike }
 
 private final class SimpleMap[K, V] private (
   repr: Ref[HashMap[K, V]],

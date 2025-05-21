@@ -24,6 +24,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import dev.tauri.choam.bench.util.{ McasImplStateBase, McasImplState, RandomState }
+import core.Ref
 
 /**
  * Resource allocation scenario, described in [Software transactional memory](

@@ -23,6 +23,7 @@ import java.lang.ref.WeakReference;
 
 import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.Version;
+import dev.tauri.choam.core.Ref;
 
 final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B> {
 

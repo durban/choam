@@ -18,6 +18,6 @@
 package dev.tauri.choam
 package refs
 
-private abstract class RefIdOnlyN private[refs] (
+private[choam] abstract class RefIdOnlyN private[refs] (
   final val id: Long,
 ) extends RefToString

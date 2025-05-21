@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package refs
 
+import core.Ref
+
 private final class SparseRefArray[A](
   __size: Int,
   initial: A,

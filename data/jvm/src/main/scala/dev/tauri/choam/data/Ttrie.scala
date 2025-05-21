@@ -25,7 +25,7 @@ import scala.util.hashing.byteswap32
 import cats.kernel.{ Hash, Order }
 import cats.syntax.all._
 
-import core.{ Rxn, Axn }
+import core.{ Rxn, Axn, Ref, RefLike }
 import internal.skiplist.SkipListMap
 import internal.mcas.Mcas
 import Ttrie._

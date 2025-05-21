@@ -20,6 +20,7 @@ package refs
 
 import java.lang.ref.WeakReference
 
+import core.{ Ref, UnsealedRef }
 import internal.mcas.{ MemoryLocation, Version, RefIdGen }
 import RefArray.RefArrayRef
 

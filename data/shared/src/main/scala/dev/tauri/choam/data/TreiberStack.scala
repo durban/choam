@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Axn }
+import core.{ Rxn, Axn, Ref }
 
 private final class TreiberStack[A] private (
   private[this] val head: Ref[TreiberStack.Lst[A]],

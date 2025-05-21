@@ -22,7 +22,7 @@ import scala.collection.immutable.{ Map => ScalaMap }
 
 import cats.kernel.{ Hash, Order }
 
-import core.Axn
+import core.{ Axn, Ref }
 
 private abstract class AbstractMapPlatform {
   def simpleHashMap[K: Hash, V]: Axn[Map.Extra[K, V]]

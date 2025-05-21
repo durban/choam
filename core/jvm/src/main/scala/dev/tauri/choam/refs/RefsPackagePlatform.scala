@@ -18,17 +18,16 @@
 package dev.tauri.choam
 package refs
 
+import core.Ref2
 import internal.mcas.RefIdGen
 
-private[refs] abstract class Ref2Platform {
+private[refs] abstract class RefsPackagePlatform {
 
-  private[refs] final def unsafeP1P1[A, B](a: A, b: B, rig: RefIdGen): refs.Ref2[A, B] =
-    unsafeRef2(a, b, rig)
+  private[choam] final def unsafeP1P1[A, B](a: A, b: B, rig: RefIdGen): Ref2[A, B] = {
+    new refs.RefP1P1[A, B](a, b, rig.nextId(), rig.nextId())
+  }
 
-  private[refs] final def unsafeP2[A, B](a: A, b: B, rig: RefIdGen): refs.Ref2[A, B] =
-    unsafeRef2(a, b, rig)
-
-  private[this] def unsafeRef2[A, B](a: A, b: B, rig: RefIdGen): refs.Ref2[A, B] = {
-    new SingleThreadedRef2Impl[A, B](a, b)(rig.nextId(), rig.nextId())
+  private[choam] final def unsafeP2[A, B](a: A, b: B, rig: RefIdGen): Ref2[A, B] = {
+    new refs.RefP2[A, B](a, b, rig.nextId(), rig.nextId())
   }
 }

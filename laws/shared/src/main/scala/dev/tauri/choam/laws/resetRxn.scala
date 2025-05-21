@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package laws
 
-import core.Rxn
+import core.{ Rxn, Ref }
 
 private final case class ResetRxn[-A, +B](
   rxn: Rxn[A, B],

@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package refs
 
+import core.Ref
+
 private final class StrictRefArray[A](
   __size: Int,
   initial: A,

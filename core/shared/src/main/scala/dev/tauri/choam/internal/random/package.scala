@@ -22,7 +22,7 @@ import java.util.UUID
 
 import cats.effect.std.{ Random, SecureRandom }
 
-import core.Axn
+import core.{ Axn, Ref }
 
 package object random {
 

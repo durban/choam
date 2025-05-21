@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.Axn
+import core.{ Axn, Ref }
 import ArrayQueue.empty
 
 // TODO: there should be a `BoundedQueue` with `def capacity: Int`

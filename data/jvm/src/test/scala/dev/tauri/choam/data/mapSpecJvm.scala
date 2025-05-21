@@ -21,6 +21,8 @@ package data
 import cats.kernel.{ Hash, Order }
 import cats.effect.SyncIO
 
+import core.Ref
+
 final class MapSpec_SimpleHash_SpinLockMcas_SyncIO
   extends BaseSpecSyncIO
   with SpecSpinLockMcas

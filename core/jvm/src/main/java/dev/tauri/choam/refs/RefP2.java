@@ -23,6 +23,8 @@ import java.lang.ref.WeakReference;
 
 import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.Version;
+import dev.tauri.choam.core.UnsealedRef2;
+import dev.tauri.choam.core.Ref;
 
 final class RefP2<A, B>
   extends RefIdAndPaddingN

@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package refs
 
+import core.{ Ref, UnsealedRef2 }
+
 private final class SingleThreadedRef2Impl[A, B](a: A, b: B)(
   i0: Long,
   i1: Long,

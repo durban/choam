@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 import org.openjdk.jmh.annotations._
 
-import core.Axn
+import core.{ Axn, Ref }
 import bench.util.{ McasImplStateBase, RandomState }
 import RefArrayBench._
 

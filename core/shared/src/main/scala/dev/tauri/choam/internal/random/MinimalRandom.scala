@@ -21,7 +21,7 @@ package random
 
 import cats.effect.std.Random
 
-import core.Axn
+import core.{ Axn, Ref }
 import mcas.RefIdGen
 
 /**
