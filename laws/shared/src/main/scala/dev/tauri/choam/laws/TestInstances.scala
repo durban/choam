@@ -23,7 +23,7 @@ import cats.data.Ior
 
 import org.scalacheck.{ Gen, Arbitrary, Cogen }
 
-import core.{ Rxn, Axn, Ref, Ref2 }
+import core.{ =#>, Rxn, Axn, Ref, Ref2 }
 import internal.mcas.{ Mcas, RefIdGen }
 
 trait TestInstances extends TestInstancesLowPrio0 { self =>

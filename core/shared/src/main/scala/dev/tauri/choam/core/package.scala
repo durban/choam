@@ -19,6 +19,9 @@ package dev.tauri.choam
 
 package object core {
 
+  /** Symbolic alias for `Rxn` */
+  final type =#>[-A, +B] = Rxn[A, B]
+
   /**
    * The description of an effect, which (when executed),
    * results in a value of type `A`; during execution,

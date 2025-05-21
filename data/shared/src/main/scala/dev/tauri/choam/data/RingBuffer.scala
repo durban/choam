@@ -20,7 +20,7 @@ package data
 
 import cats.syntax.all._
 
-import core.{ Rxn, Axn, Ref }
+import core.{ =#>, Rxn, Axn, Ref }
 import ArrayQueue.{ empty, isEmpty }
 
 /**

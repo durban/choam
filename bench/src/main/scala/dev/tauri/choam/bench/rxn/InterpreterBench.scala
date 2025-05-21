@@ -21,7 +21,7 @@ package rxn
 
 import org.openjdk.jmh.annotations._
 
-import core.{ Rxn, Axn, Ref }
+import core.{ =#>, Rxn, Axn, Ref }
 import util._
 import InterpreterBench._
 

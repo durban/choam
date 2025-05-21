@@ -26,7 +26,7 @@ import org.scalacheck.Arbitrary
 import org.scalacheck.Prop.forAll
 import org.typelevel.discipline.Laws
 
-import core.Reactive
+import core.{ =#>, Reactive }
 import async.AsyncReactive
 
 sealed trait ReactiveLawTests[F[_]] extends Laws {
