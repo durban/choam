@@ -67,7 +67,7 @@ object Queue {
   private[choam] trait UnsealedQueue[A]
     extends Queue[A]
 
-  type Remover =
+  final type Remover =
     Axn[Unit]
 
   sealed abstract class WithRemove[A] extends Queue[A] {

@@ -25,6 +25,8 @@ import internal.mcas.Mcas
  */
 object Axn {
 
+  // Note: don't put implicits here, because it is not a real companion object!
+
   final def pure[A](a: A): Axn[A] =
     Rxn.pure(a)
 
