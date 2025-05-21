@@ -15,30 +15,23 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam
-package core
+package dev.tauri.choam.internal.refs;
 
-sealed trait Ref2[A, B] {
+import java.lang.ref.WeakReference;
 
-  def _1: Ref[A]
-
-  def _2: Ref[B]
-
-  final def consistentRead: Axn[(A, B)] =
-    Ref.consistentRead(this._1, this._2)
-}
-
-private[choam] trait UnsealedRef2[A, B]
-  extends Ref2[A, B]
-
-object Ref2 {
-
-  final def p1p1[A, B](a: A, b: B): Axn[Ref2[A, B]] =
-    Rxn.unsafe.delayContext { ctx => internal.refs.unsafeP1P1(a, b, ctx.refIdGen) }
-
-  final def p2[A, B](a: A, b: B): Axn[Ref2[A, B]] =
-    Rxn.unsafe.delayContext { ctx => internal.refs.unsafeP2(a, b, ctx.refIdGen) }
-
-  final def unapply[A, B](r: Ref2[A, B]): Some[(Ref[A], Ref[B])] =
-    Some((r._1, r._2))
+interface Ref2Impl<A, B> {
+  B unsafeGet2V();
+  B unsafeGet2P();
+  boolean unsafeCas2V(B ov, B nv);
+  B unsafeCmpxchg2V(B ov, B nv);
+  B unsafeCmpxchg2R(B ov, B nv);
+  void unsafeSet2V(B nv);
+  void unsafeSet2P(B nv);
+  long unsafeGetVersion2V();
+  long unsafeCmpxchgVersion2V(long ov, long nv);
+  WeakReference<Object> unsafeGetMarker2V();
+  boolean unsafeCasMarker2V(WeakReference<Object> ov, WeakReference<Object> nv);
+  WeakReference<Object> unsafeCmpxchgMarker2R(WeakReference<Object> ov, WeakReference<Object> nv);
+  long id1();
+  long dummyImpl2(byte v);
 }

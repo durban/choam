@@ -102,13 +102,13 @@ object RxnLocal {
 
     final override def unsafeGet(idx: Int): Rxn[Any, A] = {
       val arr = this.arr
-      refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
+      internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
       Axn.unsafe.delay { arr(idx).asInstanceOf[A] }
     }
 
     final override def unsafeSet(idx: Int, nv: A): Rxn[Any, Unit] = {
       val arr = this.arr
-      refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
+      internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
       Axn.unsafe.delay { arr(idx) = box(nv) }
     }
 

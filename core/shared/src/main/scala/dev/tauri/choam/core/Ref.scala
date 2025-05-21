@@ -24,7 +24,7 @@ import cats.kernel.{ Hash, Order }
 import cats.effect.kernel.{ Ref => CatsRef }
 
 import internal.mcas.{ MemoryLocation, RefIdGen }
-import refs.CompatPlatform.AtomicReferenceArray
+import internal.refs.CompatPlatform.AtomicReferenceArray
 
 /**
  * A mutable memory location with a pure API and
@@ -156,7 +156,7 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[choam] trait UnsealedArray[A] extends Array[A] { this: refs.RefIdOnlyN =>
+  private[choam] trait UnsealedArray[A] extends Array[A] { this: internal.refs.RefIdOnlyN =>
 
     protected[choam] final override def refToString(): String = {
       val idBase = this.id
@@ -283,7 +283,7 @@ object Ref extends RefInstances0 {
     }
 
     final override def unsafeGet(idx: Int): Ref[A] = {
-      refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, size) // TODO: check other places where we might need this
+      internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, size) // TODO: check other places where we might need this
       this.arr(idx)
     }
 
@@ -352,12 +352,12 @@ object Ref extends RefInstances0 {
 
   private[this] final def unsafeStrictArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] = {
     require(size > 0)
-    refs.unsafeNewStrictRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
+    internal.refs.unsafeNewStrictRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
   private[this] final def unsafeLazyArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] = {
     require(size > 0)
-    refs.unsafeNewSparseRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
+    internal.refs.unsafeNewSparseRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
   final def padded[A](initial: A): Axn[Ref[A]] =
@@ -376,7 +376,7 @@ object Ref extends RefInstances0 {
   }
 
   private[this] final def unsafePaddedWithId[A](initial: A, id: Long): Ref[A] = {
-    refs.unsafeNewRefP1(initial)(id)
+    internal.refs.unsafeNewRefP1(initial)(id)
   }
 
   private[choam] final def unsafeUnpadded[A](initial: A, rig: RefIdGen): Ref[A] = {
@@ -384,7 +384,7 @@ object Ref extends RefInstances0 {
   }
 
   private[choam] final def unsafeUnpaddedWithId[A](initial: A, id: Long): Ref[A] = {
-    refs.unsafeNewRefU1(initial)(id)
+    internal.refs.unsafeNewRefU1(initial)(id)
   }
 
   // Ref2:

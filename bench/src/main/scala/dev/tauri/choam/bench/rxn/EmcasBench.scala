@@ -50,7 +50,7 @@ object EmcasBench {
 
     private[this] val refs: Array[Ref[String]] = Array.tabulate(N) { idx =>
       val id = idx.toLong << 58 // make sure the HAMT is flat (i.e., a hash table)
-      dev.tauri.choam.refs.unsafeNewRefP1("a")(id)
+      dev.tauri.choam.internal.refs.unsafeNewRefP1("a")(id)
     }
 
     protected def ctx: Mcas.ThreadContext

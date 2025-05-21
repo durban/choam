@@ -67,7 +67,7 @@ object Queue {
   private[choam] trait UnsealedQueue[A]
     extends Queue[A]
 
-  final type Remover =
+  final type Remover = // TODO:0.5: do we need this?
     Axn[Unit]
 
   sealed abstract class WithRemove[A] extends Queue[A] {

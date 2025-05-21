@@ -16,29 +16,21 @@
  */
 
 package dev.tauri.choam
-package core
+package internal
+package refs
 
-sealed trait Ref2[A, B] {
+import core.Ref2
+import internal.mcas.RefIdGen
 
-  def _1: Ref[A]
+private[refs] abstract class RefsPackagePlatform {
 
-  def _2: Ref[B]
+  private[choam] final def unsafeP1P1[A, B](a: A, b: B, rig: RefIdGen): Ref2[A, B] =
+    unsafeRef2(a, b, rig)
 
-  final def consistentRead: Axn[(A, B)] =
-    Ref.consistentRead(this._1, this._2)
-}
+  private[choam] final def unsafeP2[A, B](a: A, b: B, rig: RefIdGen): Ref2[A, B] =
+    unsafeRef2(a, b, rig)
 
-private[choam] trait UnsealedRef2[A, B]
-  extends Ref2[A, B]
-
-object Ref2 {
-
-  final def p1p1[A, B](a: A, b: B): Axn[Ref2[A, B]] =
-    Rxn.unsafe.delayContext { ctx => internal.refs.unsafeP1P1(a, b, ctx.refIdGen) }
-
-  final def p2[A, B](a: A, b: B): Axn[Ref2[A, B]] =
-    Rxn.unsafe.delayContext { ctx => internal.refs.unsafeP2(a, b, ctx.refIdGen) }
-
-  final def unapply[A, B](r: Ref2[A, B]): Some[(Ref[A], Ref[B])] =
-    Some((r._1, r._2))
+  private[this] def unsafeRef2[A, B](a: A, b: B, rig: RefIdGen): Ref2[A, B] = {
+    new SingleThreadedRef2Impl[A, B](a, b)(rig.nextId(), rig.nextId())
+  }
 }
