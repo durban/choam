@@ -16,20 +16,20 @@
  */
 
 package dev.tauri.choam
-package core
+package stm
 
 import cats.{ ~>, Monad }
 
-// Note: not really private, published in dev.tauri.choam.stm
-private[choam] sealed abstract class TxnLocal[G[_], A] private () {
+import core.{ Rxn, InternalLocal }
+
+sealed abstract class TxnLocal[G[_], A] private () {
   def get: G[A]
   def set(a: A): G[Unit]
   def update(f: A => A): G[Unit]
   def getAndUpdate(f: A => A): G[A]
 }
 
-// Note: not really private, published in dev.tauri.choam.stm
-private[choam] object TxnLocal {
+object TxnLocal {
 
   sealed trait Instances[G[_]] {
     implicit def monadInstance: Monad[G]
@@ -43,7 +43,7 @@ private[choam] object TxnLocal {
   private[this] val _idLift: Txn ~> Txn =
     cats.arrow.FunctionK.id
 
-  private[core] final def withLocal[A, R](initial: A, body: Txn.unsafe.WithLocal[A, R]): Txn[R] = {
+  private[stm] final def withLocal[A, R](initial: A, body: Txn.unsafe.WithLocal[A, R]): Txn[R] = {
     Txn.unsafe.suspend {
       val local = new TxnLocalImpl(initial)
       Rxn.internal.newLocal(local) *> body[Txn](local, _idLift, _inst) <* Rxn.internal.endLocal(local)

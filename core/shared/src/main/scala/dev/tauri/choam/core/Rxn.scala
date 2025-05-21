@@ -27,6 +27,7 @@ import cats.mtl.Local
 import cats.effect.kernel.{ Async, Clock, Cont, Unique, MonadCancel, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
+import stm.{ Txn, Transactive }
 import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, AbstractDescriptor, Consts, Hamt, Version }
 import internal.random
 
@@ -486,7 +487,7 @@ private[choam] sealed abstract class RxnImpl[-A, +B]
     F.commit(this)
   }
 
-  private[core] final override def impl: RxnImpl[Any, B] =
+  private[choam] final override def impl: RxnImpl[Any, B] =
     this.asInstanceOf[RxnImpl[Any, B]] // Note: this is unsafe in general, we must take care to only use it on Txns
 
   // /STM
@@ -508,7 +509,7 @@ object Rxn extends RxnInstances0 {
   final def pure[A](a: A): Axn[A] =
     pureImpl(a)
 
-  private[core] final def pureImpl[A](a: A): RxnImpl[Any, A] =
+  private[choam] final def pureImpl[A](a: A): RxnImpl[Any, A] =
     new Rxn.Pure[A](a)
 
   /** Old name of `pure` */
@@ -532,14 +533,14 @@ object Rxn extends RxnInstances0 {
   final def unit[A]: Rxn[A, Unit] =
     unitImpl[A]
 
-  private[core] final def unitImpl[A]: RxnImpl[A, Unit] =
+  private[choam] final def unitImpl[A]: RxnImpl[A, Unit] =
     _unit
 
   @inline
   final def panic[A](ex: Throwable): Axn[A] = // TODO:0.5: should this be in `unsafe`?
     panicImpl(ex)
 
-  private[core] final def panicImpl[A](ex: Throwable): RxnImpl[Any, A] =
+  private[choam] final def panicImpl[A](ex: Throwable): RxnImpl[Any, A] =
     unsafe.delayImpl[Any, A] { _ => throw ex }
 
   private[choam] final def assert(cond: Boolean): Axn[Unit] =
@@ -555,7 +556,7 @@ object Rxn extends RxnInstances0 {
   final def tailRecM[X, A, B](a: A)(f: A => Rxn[X, Either[A, B]]): Rxn[X, B] =
     tailRecMImpl(a)(f)
 
-  private[core] final def tailRecMImpl[X, A, B](a: A)(f: A => Rxn[X, Either[A, B]]): RxnImpl[X, B] =
+  private[choam] final def tailRecMImpl[X, A, B](a: A)(f: A => Rxn[X, Either[A, B]]): RxnImpl[X, B] =
     new Rxn.TailRecM[X, A, B](a, f)
 
   // Utilities:
@@ -573,7 +574,7 @@ object Rxn extends RxnInstances0 {
   final def unique: Axn[Unique.Token] =
     uniqueImpl
 
-  private[core] final def uniqueImpl: RxnImpl[Any, Unique.Token] =
+  private[choam] final def uniqueImpl: RxnImpl[Any, Unique.Token] =
     _unique
 
   @inline
@@ -704,7 +705,7 @@ object Rxn extends RxnInstances0 {
     private[choam] final def retry[A]: Axn[A] =
       retryImpl[A]
 
-    private[core] final def retryImpl[A]: RxnImpl[Any, A] =
+    private[choam] final def retryImpl[A]: RxnImpl[Any, A] =
       Rxn._AlwaysRetry.asInstanceOf[RxnImpl[Any, A]]
 
     /**
@@ -770,7 +771,7 @@ object Rxn extends RxnInstances0 {
       new Rxn.ForceValidate
   }
 
-  private[core] final object internal {
+  private[choam] final object internal {
 
     final def exchange[A, B](ex: ExchangerImpl[A, B]): Rxn[A, B] =
       new Rxn.Exchange[A, B](ex)

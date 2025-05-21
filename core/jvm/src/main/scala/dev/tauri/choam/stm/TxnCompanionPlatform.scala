@@ -16,7 +16,7 @@
  */
 
 package dev.tauri.choam
-package core
+package stm
 
 import java.lang.invoke.VarHandle
 

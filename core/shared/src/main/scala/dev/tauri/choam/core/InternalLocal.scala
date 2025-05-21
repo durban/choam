@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package core
 
-private trait InternalLocal {
+private[choam] trait InternalLocal {
   def takeSnapshot(): AnyRef
   def loadSnapshot(snap: AnyRef): Unit
 }

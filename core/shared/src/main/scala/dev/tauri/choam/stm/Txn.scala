@@ -16,16 +16,16 @@
  */
 
 package dev.tauri.choam
-package core
+package stm
 
 import cats.kernel.Monoid
 import cats.{ ~>, Applicative, Defer, StackSafeMonad }
 import cats.effect.kernel.Unique
 
+import core.{ Rxn, Axn, RxnImpl }
 import internal.mcas.Mcas
 
-// Note: not really private, published in dev.tauri.choam.stm
-private[choam] sealed trait Txn[+B] {
+sealed trait Txn[+B] {
 
   def map[C](f: B => C): Txn[C]
 
@@ -49,7 +49,7 @@ private[choam] sealed trait Txn[+B] {
 
   def orElse[Y >: B](that: Txn[Y]): Txn[Y]
 
-  private[core] def impl: RxnImpl[Any, B]
+  private[choam] def impl: RxnImpl[Any, B]
 
   def commit[F[_], X >: B](implicit F: Transactive[F]): F[X]
 }
@@ -57,7 +57,7 @@ private[choam] sealed trait Txn[+B] {
 // Note: not really private, published in dev.tauri.choam.stm
 private[choam] object Txn extends TxnInstances0 {
 
-  private[core] trait UnsealedTxn[+B] extends Txn[B]
+  private[choam] trait UnsealedTxn[+B] extends Txn[B]
 
   final def pure[A](a: A): Txn[A] =
     Rxn.pureImpl(a)
@@ -113,7 +113,7 @@ private[choam] object Txn extends TxnInstances0 {
   }
 }
 
-private[core] sealed abstract class TxnInstances0 extends TxnInstances1 { self: Txn.type =>
+private[stm] sealed abstract class TxnInstances0 extends TxnInstances1 { self: Txn.type =>
 
   implicit final def monadInstance: StackSafeMonad[Txn] =
     _monadInstance
@@ -172,7 +172,7 @@ private[core] sealed abstract class TxnInstances0 extends TxnInstances1 { self: 
   }
 }
 
-private[core] sealed abstract class TxnInstances1 extends TxnCompanionPlatform { self: Txn.type =>
+private[stm] sealed abstract class TxnInstances1 extends TxnCompanionPlatform { self: Txn.type =>
 
   implicit final def monoidInstance[B](implicit B: Monoid[B]): Monoid[Txn[B]] = new Monoid[Txn[B]] {
     final override def combine(x: Txn[B], y: Txn[B]): Txn[B] =

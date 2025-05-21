@@ -48,14 +48,14 @@ object Axn {
     private[choam] final def delay[A](da: => A): Axn[A] =
       delayImpl(da)
 
-    private[core] final def delayImpl[A](da: => A): RxnImpl[Any, A] =
+    private[choam] final def delayImpl[A](da: => A): RxnImpl[Any, A] =
       Rxn.unsafe.delayImpl[Any, A](_ => da)
 
     @inline
     private[choam] final def suspend[A](daa: => Axn[A]): Axn[A] =
       suspendImpl(daa)
 
-    private[core] final def suspendImpl[A](daa: => Axn[A]): RxnImpl[Any, A] = // TODO: optimize
+    private[choam] final def suspendImpl[A](daa: => Axn[A]): RxnImpl[Any, A] = // TODO: optimize
       this.delayImpl(daa).flatten
 
     @inline

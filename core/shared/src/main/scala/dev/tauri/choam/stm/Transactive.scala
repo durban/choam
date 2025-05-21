@@ -16,14 +16,14 @@
  */
 
 package dev.tauri.choam
-package core
+package stm
 
 import cats.effect.kernel.{ Async, Sync, Resource }
 
+import core.{ Reactive, RetryStrategy }
 import internal.mcas.Mcas
 
-// Note: not really private, published in dev.tauri.choam.stm
-private[choam] sealed trait Transactive[F[_]] {
+sealed trait Transactive[F[_]] {
 
   final def commit[B](txn: Txn[B]): F[B] =
     this.commit(txn, RetryStrategy.DefaultSleep)
@@ -33,8 +33,7 @@ private[choam] sealed trait Transactive[F[_]] {
   private[choam] def commitWithStepper[B](txn: Txn[B], stepper: RetryStrategy.Internal.Stepper[F]): F[B]
 }
 
-// Note: not really private, published in dev.tauri.choam.stm
-private[choam] object Transactive {
+object Transactive {
 
   final def apply[F[_]](implicit F: Transactive[F]): F.type =
     F

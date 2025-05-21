@@ -294,7 +294,6 @@ lazy val choam = project.in(file("."))
     data.jvm, data.js,
     internal.jvm, internal.js,
     async.jvm, async.js,
-    stm.jvm, stm.js,
     stream.jvm, stream.js,
     profiler, // JVM
     ce.jvm, ce.js,
@@ -407,23 +406,6 @@ lazy val async = crossProject(JVMPlatform, JSPlatform)
   .jsSettings(commonSettingsJs)
   .dependsOn(data % "compile->compile;test->test")
 
-lazy val stm = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
-  .withoutSuffixFor(JVMPlatform)
-  .in(file("stm"))
-  .settings(name := "choam-stm")
-  .disablePlugins(disabledPlugins: _*)
-  .settings(commonSettings)
-  .jvmSettings(commonSettingsJvm)
-  .jsSettings(commonSettingsJs)
-  .dependsOn(async % "compile->compile;test->test")
-  .settings(
-    tlVersionIntroduced := Map("2.13" -> "0.4.1", "3" -> "0.4.1"),
-    mimaBinaryIssueFilters ++= Seq(
-      // there is no backward compat for `choam-stm`:
-    ),
-  )
-
 lazy val stream = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
@@ -462,7 +444,7 @@ lazy val ce = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
-  .dependsOn(stm % "compile->compile;test->test")
+  .dependsOn(async % "compile->compile;test->test")
   .settings(
     libraryDependencies += dependencies.catsEffectAll.value,
     tlVersionIntroduced := Map("2.13" -> "0.4.11", "3" -> "0.4.11"),
@@ -477,7 +459,7 @@ lazy val zi = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
-  .dependsOn(stm % "compile->compile;test->test")
+  .dependsOn(async % "compile->compile;test->test")
   .settings(
     libraryDependencies ++= dependencies.zioEverything.value,
     tlVersionIntroduced := Map("2.13" -> "0.4.11", "3" -> "0.4.11"),
@@ -532,7 +514,6 @@ lazy val unidocs = project
       internal.jvm,
       data.jvm,
       async.jvm,
-      stm.jvm,
       stream.jvm,
       laws.jvm,
       ce.jvm,
@@ -603,7 +584,6 @@ lazy val bench = project.in(file("bench"))
   )
   .enablePlugins(JmhPlugin)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
-  .dependsOn(stm.jvm % "compile->compile;compile->test")
   .dependsOn(profiler % "compile->compile")
   .dependsOn(internalHelpers)
   .settings(Jmh / version := dependencies.jmhVersion)
@@ -696,7 +676,7 @@ lazy val stressLinchk = project.in(file("stress") / "stress-linchk")
   .settings(commonSettingsJvm)
   .disablePlugins(disabledPlugins: _*)
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(stm.jvm % "compile->compile;test->test")
+  .dependsOn(async.jvm % "compile->compile;test->test")
   .settings(
     libraryDependencies += dependencies.lincheck.value,
     Test / fork := true, // otherwise the bytecode transformers won't work

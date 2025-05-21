@@ -16,18 +16,15 @@
  */
 
 package dev.tauri.choam
+package stm
 
-package object stm {
+private abstract class TxnCompanionPlatform { this: Txn.type =>
 
-  final type Txn[+B] = core.Txn[B]
+  @inline
+  protected[this] final def releaseFence(): Unit = {
+  }
 
-  final val Txn: core.Txn.type = core.Txn
-
-  final type TxnLocal[G[_], A] = core.TxnLocal[G, A]
-
-  final val TxnLocal: core.TxnLocal.type = core.TxnLocal
-
-  final type Transactive[F[_]] = core.Transactive[F]
-
-  final val Transactive: core.Transactive.type = core.Transactive
+  @inline
+  protected[this] final def acquireFence(): Unit = {
+  }
 }

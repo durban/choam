@@ -216,8 +216,8 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - inheriting `sealed` classes/traits (even though this may not be enforced by the bytecode);
   - using `*.internal.*` packages (e.g., `dev.tauri.choam.internal.mcas`);
   - using `unsafe*` APIs (e.g., `Rxn.unsafe.retry`).
+  - using the contents of the `dev.tauri.choam.stm` package (our STM is experimental for now)
 - There is no backwards compatibility for these modules:
-  - `choam-stm`
   - `choam-ce`
   - `choam-zi`
   - `choam-mcas`
