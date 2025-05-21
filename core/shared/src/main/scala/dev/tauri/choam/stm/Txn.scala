@@ -54,8 +54,7 @@ sealed trait Txn[+B] {
   def commit[F[_], X >: B](implicit F: Transactive[F]): F[X]
 }
 
-// Note: not really private, published in dev.tauri.choam.stm
-private[choam] object Txn extends TxnInstances0 {
+object Txn extends TxnInstances0 {
 
   private[choam] trait UnsealedTxn[+B] extends Txn[B]
 

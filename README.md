@@ -74,15 +74,24 @@ object MyMain extends IOApp.Simple with RxnAppMixin {
     y <- Ref(42).run[IO]
     // increment their values atomically:
     _ <- incrBoth(x, y).run[IO]
-    xValue <- x.get.run[IO]
-    yValue <- y.get.run[IO]
+    // check that it happened:
+    xv <- x.get.run[IO]
+    yv <- y.get.run[IO]
     _ <- IO {
-      assert(xValue == 1)
-      assert(yValue == 43)
+      assert(xv == 1)
+      assert(yv == 43)
     }
   } yield ()
 }
 ```
+
+## Software Transactional Memory (STM) [_work in progress_]
+
+As noted [below](#related-work), `Rxn` is not a full-featured STM implementation (notably,
+it lacks Haskell-style "modular blocking"). However, the `dev.tauri.choam.stm`
+package contains a full-blown STM, built on top of `Rxn`. For now, this package is
+experimental (i.e., no backwards compatibility), and also lacks some features, but it
+_does_ have modular blocking (`Txn.retry`).
 
 ## Modules
 
@@ -92,6 +101,7 @@ object MyMain extends IOApp.Simple with RxnAppMixin {
     [`Ref`](core/shared/src/main/scala/dev/tauri/choam/refs/Ref.scala)
   - integration with synchronous effect types in
     [Cats Effect](https://github.com/typelevel/cats-effect)
+  - _experimental_ software transactional memory (STM) built on `Rxn`
 - [`choam-data`](data/shared/src/main/scala/dev/tauri/choam/data/):
   concurrent data structures:
   - queues

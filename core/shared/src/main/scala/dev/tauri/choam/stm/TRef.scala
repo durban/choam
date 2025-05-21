@@ -32,7 +32,7 @@ sealed trait TRef[A] {
 
 object TRef {
 
-  private[choam] trait UnsealedTRef[A] extends TRef[A]
+  private[stm] trait UnsealedTRef[A] extends TRef[A]
 
   final def apply[A](a: A): Txn[TRef[A]] =
     core.Rxn.unsafe.delayContextImpl(unsafe[A](a))

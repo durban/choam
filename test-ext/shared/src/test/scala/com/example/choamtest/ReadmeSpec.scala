@@ -38,11 +38,12 @@ final class ReadmeSpec extends CatsEffectSuite {
       y <- Ref(42).run[IO]
       // increment their values atomically:
       _ <- incrBoth(x, y).run[IO]
-      xValue <- x.get.run[IO]
-      yValue <- y.get.run[IO]
+      // check that it happened:
+      xv <- x.get.run[IO]
+      yv <- y.get.run[IO]
       _ <- IO {
-        assert(xValue == 1)
-        assert(yValue == 43)
+        assert(xv == 1)
+        assert(yv == 43)
       }
     } yield ()
   }
