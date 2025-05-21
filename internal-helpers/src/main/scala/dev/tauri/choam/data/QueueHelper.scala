@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.Axn
+import core.{ Axn, Reactive }
 
 /**
  * Public access to package-private utilities

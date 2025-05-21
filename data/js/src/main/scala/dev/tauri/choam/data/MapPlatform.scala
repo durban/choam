@@ -20,7 +20,7 @@ package data
 
 import cats.kernel.{ Hash, Order }
 
-import core.{ Axn, Ref }
+import core.{ Axn, Ref, Reactive }
 
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 

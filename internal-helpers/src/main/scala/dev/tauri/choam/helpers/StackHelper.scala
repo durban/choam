@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package helpers
 
+import core.Reactive
 import data.Stack
 
 object StackHelper {
