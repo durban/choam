@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.LLZ_Result
 
 import core.{ Axn, Ref }
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("Direct read may see intermediate values, but not descriptors")
 @Outcomes(Array(

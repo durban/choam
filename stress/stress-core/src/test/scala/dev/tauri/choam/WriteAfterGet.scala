@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 
 import core.{ Axn, Ref }
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("Write after a .get")
 @Outcomes(Array(

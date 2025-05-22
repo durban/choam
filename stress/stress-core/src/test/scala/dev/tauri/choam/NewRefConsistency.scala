@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import core.{ Rxn, Axn, Ref }
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("New Ref must be consistent with previously read value")
 @Outcomes(Array(

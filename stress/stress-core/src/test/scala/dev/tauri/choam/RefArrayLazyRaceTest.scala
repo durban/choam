@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.LLLLL_Result
 
 import core.Ref
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("SparseRefArray Refs should be safely created")
 @Outcomes(Array(

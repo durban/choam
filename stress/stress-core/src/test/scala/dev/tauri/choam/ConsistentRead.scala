@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import core.{ Axn, Ref }
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("Ref#get should be consistent")
 @Outcomes(Array(
