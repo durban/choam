@@ -2447,9 +2447,9 @@ private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.ty
    * This is like `deferInstance.fix`, just without the fences.
    *
    * We need this to conduct an experiment: can we actually
-   * observe a problem without the rel/acq fences? (Theoretically
-   * the problem definitely exists; the question is only if
-   * we can observe it.)
+   * observe a problem without the rel/acq fences?
+   *
+   * The answer is yes (on ARM); see `FixSync`.
    */
   private[choam] final def deferFixWithoutFences[A](fn: Rxn[Any, A] => Rxn[Any, A]): Rxn[Any, A] = {
     val ref = new scala.runtime.ObjectRef[Rxn[Any, A]](null)

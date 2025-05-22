@@ -26,7 +26,7 @@ import core.{ Rxn, Axn, Ref }
 
 @JCStressTest
 @State
-@Description("Defer#fix, but without the fences")
+@Description("Defer#fix acq/rel fences are necessary")
 @Outcomes(Array(
   new Outcome(id = Array("null, null"), expect = ACCEPTABLE_INTERESTING, desc = "ok"),
   new Outcome(id = Array("res, foo"), expect = ACCEPTABLE_INTERESTING, desc = "ok"),
@@ -44,7 +44,12 @@ class FixSync extends StressTestBase {
 
   @Actor
   def writer(): Unit = {
-    val rxn = Rxn.deferFixWithoutFences[String] { rec =>
+    val rxn = Rxn.deferInstance[Any].fix[String] { rec => // Note: if instead of this line,
+    // we do this:
+    //   val rxn = Rxn.deferFixWithoutFences[String] { rec =>
+    // then this test fails on ARM Linux, because a `null`
+    // can be read from `ref.elem` in `fix`. This demonstrates
+    // that the rel/acq fences in `fix` are really necessary.
       this.incrCtr.flatMapF { c =>
         if (c > 0) Axn.pure("foo")
         else rec
