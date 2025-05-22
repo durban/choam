@@ -24,39 +24,43 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import core.{ Rxn, Axn, Ref }
 
-// @JCStressTest
+@JCStressTest
 @State
-@Description("New Ref must be consistent with previously read value")
+@Description("Defer#fix, but without the fences")
 @Outcomes(Array(
-  new Outcome(id = Array("ab, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok"),
+  new Outcome(id = Array("null, null"), expect = ACCEPTABLE_INTERESTING, desc = "ok"),
+  new Outcome(id = Array("res, foo"), expect = ACCEPTABLE_INTERESTING, desc = "ok"),
 ))
-class NewRefConsistency extends StressTestBase {
+class FixSync extends StressTestBase {
 
-  private[this] val holder: Ref[Ref[String]] =
-    Ref[Ref[String]](null).unsafePerform(null, this.impl)
+  private[this] val ctr: Ref[Int] =
+    Ref[Int](0).unsafePerform(null, this.impl)
 
-  private[this] val existingRef: Ref[String] =
-    Ref("a").unsafePerform(null, this.impl)
+  private[this] val incrCtr: Axn[Int] =
+    ctr.getAndUpdate(_ + 1)
 
-  private[this] val _createNewRef: Axn[Unit] =
-    existingRef.update(_ + "b") *> Ref("x") >>> holder.set0
+  private[this] var holder: Rxn[Any, String] =
+    null
 
-  private[this] val _readNewRef: Axn[(String, String)] = {
-    existingRef.get * holder.get.flatMapF {
-      case null => Rxn.unsafe.retry
-      case newRef => newRef.get
+  @Actor
+  def writer(): Unit = {
+    val rxn = Rxn.deferFixWithoutFences[String] { rec =>
+      this.incrCtr.flatMapF { c =>
+        if (c > 0) Axn.pure("foo")
+        else rec
+      }
     }
+    this.holder = rxn // plain write
   }
 
   @Actor
-  def createNewRef(): Unit = {
-    this._createNewRef.unsafePerform(null, this.impl)
-  }
-
-  @Actor
-  def rxn2(r: LL_Result): Unit = {
-    val res = this._readNewRef.unsafePerform(null, this.impl)
-    r.r1 = res._1
-    r.r2 = res._2
+  def reader(r: LL_Result): Unit = {
+    val rxn = this.holder // plain read
+    if (rxn eq null) {
+      () // (null, null)
+    } else {
+      r.r2 = rxn.unsafePerform(null, this.impl)
+      r.r1 = "res"
+    }
   }
 }

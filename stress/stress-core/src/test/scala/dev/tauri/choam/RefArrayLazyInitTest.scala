@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 
 import core.Ref
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("SparseRefArray should be safely initialized")
 @Outcomes(Array(

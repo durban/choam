@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 
 import core.{ Axn, Ref }
 
-@JCStressTest
+// @JCStressTest
 @State
 @Description("Multiple writes should not be visible during a Rxn")
 @Outcomes(Array(

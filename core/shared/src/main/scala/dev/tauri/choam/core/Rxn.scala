@@ -2409,24 +2409,55 @@ private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.ty
       // Instead of a `lazy val` (like in the superclass), we just
       // do a rel/acq here, because we know exactly how `defer`
       // works, and know that `.elem` will be initialized before
-      // we return from this method. However, we still need the
-      // fences, to make sure that if the resulting `Rxn[X, A]`
-      // is published by a race, there is an ordering between
-      // writing `ref.elem` and reading it.
-      // TODO: The point of this whole thing is to avoid a
-      // TODO: `lazy val`, which might block. This way of
-      // TODO: doing it is correct, but it's unclear if it's
-      // TODO: faster than a `lazy val`, and also, it could
-      // TODO: be that in this specific case, a `lazy val`
-      // TODO: also woudn't block.
+      // we return from this method (and we don't want a `lazy val`
+      // to block). However, we still need the fences, to make sure
+      // that if the resulting `Rxn[X, A]` is published by a race,
+      // there is an ordering between writing `ref.elem` and reading
+      // it. More specifically, e.g., this scenario:
+      //
+      // THREAD #1:
+      // val res = fn(...) // creates `Rxn` result
+      // ref.elem = res // plain write (reference)
+      // releaseFence()
+      // ...
+      // x = res // publish it without synchronization
+      //
+      // THREAD #2:
+      // val rxn = x // read it without synchronization
+      // ... // rxn.unsafePerform executes the `fa` in `defer`:
+      // acquireFence()
+      // ref.elem // plain read (reference)
+      //
+      // This way, the releaseFence synchronizes-with
+      // the acquireFence. This causes the write to
+      // `ref.elem` in thread #1 to happen-before the
+      // read of `ref.elem` in thread #2.
       val ref = new scala.runtime.ObjectRef[Rxn[Any, A]](null)
-      ref.elem = fn(defer {
+      val res = fn(defer {
         self.acquireFence()
         ref.elem
       })
+      ref.elem = res
       self.releaseFence()
-      ref.elem
+      res
     }
+  }
+
+  /**
+   * This is like `deferInstance.fix`, just without the fences.
+   *
+   * We need this to conduct an experiment: can we actually
+   * observe a problem without the rel/acq fences? (Theoretically
+   * the problem definitely exists; the question is only if
+   * we can observe it.)
+   */
+  private[choam] final def deferFixWithoutFences[A](fn: Rxn[Any, A] => Rxn[Any, A]): Rxn[Any, A] = {
+    val ref = new scala.runtime.ObjectRef[Rxn[Any, A]](null)
+    val res = fn(deferInstance.defer {
+      ref.elem
+    })
+    ref.elem = res
+    res
   }
 }
 

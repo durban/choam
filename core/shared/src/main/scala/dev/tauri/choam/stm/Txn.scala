@@ -149,14 +149,15 @@ private[stm] sealed abstract class TxnInstances0 extends TxnInstances1 { self: T
     final override def defer[A](fa: => Txn[A]): Txn[A] =
       Txn.defer(fa)
     final override def fix[A](fn: Txn[A] => Txn[A]): Txn[A] = {
-      // Note/TODO: see comment in Rxn.deferInstance
+      // Note: see the long comment in Rxn.deferInstance
       val ref = new scala.runtime.ObjectRef[Txn[A]](null)
-      ref.elem = fn(defer {
+      val res = fn(defer {
         self.acquireFence()
         ref.elem
       })
+      ref.elem = res
       self.releaseFence()
-      ref.elem
+      res
     }
   }
 
