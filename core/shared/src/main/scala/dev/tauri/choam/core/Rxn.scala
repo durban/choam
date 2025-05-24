@@ -102,7 +102,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * TODO: maybe we could optimize `flatMap`.
    */
 
-  /**
+  /*
    * Tag for the interpreter (see `interpreter`)
    *
    * This attempts to be an optimization, inspired by an old optimization in
@@ -125,7 +125,6 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * TODO: Check if it's indeed faster than a simple `match` (apparently "tag"
    * TODO: was removed from the Scala compiler because it was not worth it).
    */
-  private[core] def tag: Byte
 
   def + [X <: A, Y >: B](that: Rxn[X, Y]): Rxn[X, Y]
 
@@ -495,7 +494,6 @@ private[choam] sealed abstract class RxnImpl[-A, +B]
 
 /** This is specifically only for `Ref` to use! */
 private[choam] abstract class RefGetAxn[B] extends RxnImpl[Any, B] {
-  private[core] final override def tag = 8
 }
 
 object Rxn extends RxnInstances0 {
@@ -799,12 +797,10 @@ object Rxn extends RxnInstances0 {
 
   /** Only the interpreter can use this! */
   private final class Commit[A]() extends RxnImpl[A, A] {
-    private[core] final override def tag = 0
     final override def toString: String = "Commit()"
   }
 
   private final class AlwaysRetry[A, B]() extends RxnImpl[A, B] {
-    private[core] final override def tag = 1
     final override def toString: String = "AlwaysRetry()"
   }
 
@@ -812,22 +808,18 @@ object Rxn extends RxnInstances0 {
     new AlwaysRetry
 
   private final class PostCommit[A](val pc: Rxn[A, Unit]) extends RxnImpl[A, A] {
-    private[core] final override def tag = 2
     final override def toString: String = s"PostCommit(${pc})"
   }
 
   private final class Lift[A, B](val func: A => B) extends RxnImpl[A, B] {
-    private[core] final override def tag = 3
     final override def toString: String = "Lift(<function>)"
   }
 
   private final class Computed[A, B](val f: A => Axn[B]) extends RxnImpl[A, B] {
-    private[core] final def tag = 4
     final override def toString: String = "Computed(<function>)"
   }
 
   private[this] final class RetryWhenChanged[A]() extends RxnImpl[Any, A] { // STM
-    private[core] final override def tag = 5
     final override def toString: String = "RetryWhenChanged()"
   }
 
@@ -835,75 +827,61 @@ object Rxn extends RxnInstances0 {
     new RetryWhenChanged[Any]
 
   private[core] final class Choice[A, B](val left: Rxn[A, B], val right: Rxn[A, B]) extends RxnImpl[A, B] {
-    private[core] final override def tag = 6
     final override def toString: String = s"Choice(${left}, ${right})"
   }
 
   private final class Cas[A](val ref: MemoryLocation[A], val ov: A, val nv: A) extends RxnImpl[Any, Unit] {
-    private[core] final override def tag = 7
     final override def toString: String = s"Cas(${ref}, ${ov}, ${nv})"
   }
 
   // Note: tag = 8 is RefGetAxn (above)
 
   private[core] final class Map2[A, B, C, D](val left: Rxn[A, B], val right: Rxn[A, C], val f: (B, C) => D) extends RxnImpl[A, D] {
-    private[core] final override def tag = 9
     final override def toString: String = s"Map2(${left}, ${right}, <function>)"
   }
 
   private final class Upd[A, B, X](val ref: MemoryLocation[X], val f: (X, A) => (X, B)) extends RxnImpl[A, B] {
-    private[core] final override def tag = 10
     final override def toString: String = s"Upd(${ref}, <function>)"
   }
 
   private final class TicketWrite[A](val hwd: LogEntry[A], val newest: A) extends RxnImpl[Any, Unit] {
-    private[core] final override def tag = 11
     final override def toString: String = s"TicketWrite(${hwd}, ${newest})"
   }
 
   private final class DirectRead[A](val ref: MemoryLocation[A]) extends RxnImpl[Any, A] {
-    private[core] final override def tag = 12
     final override def toString: String = s"DirectRead(${ref})"
   }
 
   private final class Exchange[A, B](val exchanger: ExchangerImpl[A, B]) extends RxnImpl[A, B] {
-    private[core] final override def tag = 13
     final override def toString: String = s"Exchange(${exchanger})"
   }
 
   private[core] final class AndThen[A, B, C](val left: Rxn[A, B], val right: Rxn[B, C]) extends RxnImpl[A, C] {
-    private[core] final override def tag = 14
     final override def toString: String = s"AndThen(${left}, ${right})"
   }
 
   private[core] final class AndAlso[A, B, C, D](val left: Rxn[A, B], val right: Rxn[C, D]) extends RxnImpl[(A, C), (B, D)] {
-    private[core] final override def tag = 15
     final override def toString: String = s"AndAlso(${left}, ${right})"
   }
 
   /** Only the interpreter can use this! */
   private final class Done[A](val result: A) extends RxnImpl[Any, A] {
-    private[core] final override def tag = 16
     final override def toString: String = s"Done(${result})"
   }
 
   private final class Ctx[A](val uf: Mcas.ThreadContext => A) extends RxnImpl[Any, A] {
-    private[core] final override def tag = 17
     final override def toString: String = s"Ctx(<block>)"
   }
 
   private[core] final class Provide[A, B](val rxn: Rxn[A, B], val a: A) extends RxnImpl[Any, B] {
-    private[core] final override def tag = 18
     final override def toString: String = s"Provide(${rxn}, ${a})"
   }
 
   private final class UpdWith[A, B, C](val ref: MemoryLocation[A], val f: (A, B) => Axn[(A, C)]) extends RxnImpl[B, C] {
-    private[core] final override def tag = 19
     final override def toString: String = s"UpdWith(${ref}, <function>)"
   }
 
   private[core] final class As[A, B, C](val rxn: Rxn[A, B], val c: C) extends RxnImpl[A, C] {
-    private[core] final override def tag = 20
     final override def toString: String = s"As(${rxn}, ${c})"
   }
 
@@ -913,7 +891,6 @@ object Rxn extends RxnInstances0 {
     val restOtherContK: ListObjStack.Lst[Any],
     val lenSelfContT: Int,
   ) extends RxnImpl[D, Unit] {
-    private[core] final override def tag = 21
     final override def toString: String = {
       val rockLen = ListObjStack.Lst.length(this.restOtherContK)
       s"FinishExchange(${hole}, <ListObjStack.Lst of length ${rockLen}>, ${lenSelfContT})"
@@ -921,39 +898,31 @@ object Rxn extends RxnInstances0 {
   }
 
   private final class TicketRead[A](val ref: MemoryLocation[A]) extends RxnImpl[Any, Rxn.unsafe.Ticket[A]] {
-    private[core] final override def tag = 22
     final override def toString: String = s"TicketRead(${ref})"
   }
 
   private final class ForceValidate() extends RxnImpl[Any, Unit] {
-    private[core] final override def tag = 23
     final override def toString: String = s"ForceValidate()"
   }
 
   private final class Pure[A](val a: A) extends RxnImpl[Any, A] {
-    private[core] final override def tag = 24
     final override def toString: String = s"Pure(${a})"
   }
 
   private[core] final class ProductR[A, B, C](val left: Rxn[A, B], val right: Rxn[A, C]) extends RxnImpl[A, C] {
-    private[core] final override def tag = 25
     final override def toString: String = s"ProductR(${left}, ${right})"
   }
 
   private[core] final class FlatMapF[A, B, C](val rxn: Rxn[A, B], val f: B => Axn[C]) extends RxnImpl[A, C] {
-    private[core] final override def tag = 26
     final override def toString: String = s"FlatMapF(${rxn}, <function>)"
   }
 
   private[core] final class FlatMap[A, B, C](val rxn: Rxn[A, B], val f: B => Rxn[A, C]) extends RxnImpl[A, C] {
-    private[core] final override def tag = 27
     final override def toString: String = s"FlatMap(${rxn}, <function>)"
   }
 
   /** Only the interpreter can use this! */
   private sealed abstract class SuspendUntil extends RxnImpl[Any, Nothing] {
-
-    private[core] final override def tag = 28
 
     def toF[F[_]](
       mcasImpl: Mcas,
@@ -1112,32 +1081,26 @@ object Rxn extends RxnInstances0 {
   }
 
   private final class TailRecM[X, A, B](val a: A, val f: A => Rxn[X, Either[A, B]]) extends RxnImpl[X, B] {
-    private[core] final override def tag = 29
     final override def toString: String = s"TailRecM(${a}, <function>)"
   }
 
   private[core] final class Map_[A, B, C](val rxn: Rxn[A, B], val f: B => C) extends RxnImpl[A, C] {
-    private[core] final override def tag = 30
     final override def toString: String = s"Map_(${rxn}, <function>)"
   }
 
   private[core] final class OrElse[A, B](val left: Rxn[A, B], val right: Rxn[A, B]) extends RxnImpl[A, B] { // STM
-    private[core] final override def tag = 31
     final override def toString: String = s"OrElse(${left}, ${right})"
   }
 
   private final class Unread[A](val ref: Ref[A]) extends RxnImpl[Any, Unit] {
-    private[core] final override def tag = 32
     final override def toString: String = s"Unread(${ref})"
   }
 
   private final class LocalNewEnd(val local: InternalLocal, val isEnd: Boolean) extends RxnImpl[Any, Unit] {
-    private[core] final override def tag = 33
     final override def toString: String = s"LocalNewEnd(${local}, ${isEnd})"
   }
 
   private final class TentativeRead[A](val loc: MemoryLocation[A]) extends RxnImpl[Any, unsafe.Ticket[A]] {
-    private[core] final override def tag = 34
     final override def toString: String = s"TentativeRead(${loc})"
   }
 
@@ -1877,8 +1840,8 @@ object Rxn extends RxnInstances0 {
       // TODO: non-conflicting commit, so we can continue.
       // TODO: (We should benchmark this change with
       // TODO: something with long transactions.)
-      (curr.tag : @switch) match {
-        case 0 => // Commit
+      curr match {
+        case _: Commit[_] => // Commit
           val d = this._desc // we avoid calling `desc` here, in case it's `null`
           this.clearDesc()
           val dSize = if (d ne null) d.size else 0
@@ -1907,29 +1870,24 @@ object Rxn extends RxnInstances0 {
             contT.push(RxnConsts.ContAndThen)
             loop(retry())
           }
-        case 1 => // AlwaysRetry
+        case _: AlwaysRetry[_, _] => // AlwaysRetry
           loop(retry())
-        case 2 => // PostCommit
-          val c = curr.asInstanceOf[PostCommit[A]]
+        case c: PostCommit[_] => // PostCommit
           pc.push(c.pc.provide(a.asInstanceOf[A]))
           loop(next())
-        case 3 => // Lift
-          val c = curr.asInstanceOf[Lift[A, B]]
+        case c: Lift[_, _] => // Lift
           a = c.func(a.asInstanceOf[A])
           loop(next())
-        case 4 => // Computed
-          val c = curr.asInstanceOf[Computed[A, B]]
+        case c: Computed[_, _] => // Computed
           val nxt = c.f(a.asInstanceOf[A])
           a = () : Any
           loop(nxt)
-        case 5 => // RetryWhenChanged (STM)
+        case _: RetryWhenChanged[_] => // RetryWhenChanged (STM)
           loop(retry(canSuspend = this.canSuspend, permanent = true))
-        case 6 => // Choice
-          val c = curr.asInstanceOf[Choice[Any, R]]
-          saveAlt(c.right)
+        case c: Choice[_, _] => // Choice
+          saveAlt(c.right.asInstanceOf[Rxn[Any, R]])
           loop(c.left)
-        case 7 => // Cas
-          val c = curr.asInstanceOf[Cas[Any]]
+        case c: Cas[_] => // Cas
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
             loop(retry())
@@ -1944,10 +1902,9 @@ object Rxn extends RxnInstances0 {
               loop(retry())
             }
           }
-        case 8 => // RefGetAxn
-          val ref = curr.asInstanceOf[MemoryLocation[Any] with Rxn[Any, Any]]
+        case refGet: RefGetAxn[_] => // RefGetAxn
           _assert(this._entryHolder eq null) // just to be sure
-          desc = desc.computeIfAbsent(ref, tok = ref, visitor = this)
+          desc = desc.computeIfAbsent(refGet.asInstanceOf[MemoryLocation[Any]], tok = refGet, visitor = this)
           val hwd = this._entryHolder
           this._entryHolder = null // cleanup
           val hwd2 = revalidateIfNeeded(hwd)
@@ -1958,13 +1915,12 @@ object Rxn extends RxnInstances0 {
             a = hwd2.nv
             loop(next())
           }
-        case 9 => // Map2
-          val c = curr.asInstanceOf[Map2[_, _, _, _]]
+        case c: Map2[_, _, _, _] => // Map2
           contT.push2(RxnConsts.ContMap2Func, RxnConsts.ContMap2Right)
           contK.push3(c.f, c.right, a)
           loop(c.left)
-        case 10 => // Upd
-          val c = curr.asInstanceOf[Upd[A, B, Any]]
+        case c0: Upd[_, _, _] => // Upd
+          val c = c0.asInstanceOf[Upd[A, B, Any]]
           _assert(this._entryHolder eq null) // just to be sure
           desc = desc.computeOrModify(c.ref, tok = curr.asInstanceOf[Rxn[Any, Any]], visitor = this)
           val hwd = this._entryHolder
@@ -1986,11 +1942,10 @@ object Rxn extends RxnInstances0 {
             next()
           }
           loop(nxt)
-        case 11 => // TicketWrite
-          val c = curr.asInstanceOf[TicketWrite[Any]]
+        case c: TicketWrite[_] => // TicketWrite
           _assert(this._entryHolder eq null) // just to be sure
           a = () : Any
-          desc = desc.computeOrModify(c.hwd.address, tok = c, visitor = this)
+          desc = desc.computeOrModify(c.hwd.address.asInstanceOf[MemoryLocation[Any]], tok = c, visitor = this)
           val newHwd = this._entryHolder
           this._entryHolder = null // cleanup
           val newHwd2 = revalidateIfNeeded(newHwd)
@@ -2000,12 +1955,10 @@ object Rxn extends RxnInstances0 {
           } else {
             loop(next())
           }
-        case 12 => // DirectRead
-          val c = curr.asInstanceOf[DirectRead[B]]
+        case c: DirectRead[_] => // DirectRead
           a = ctx.readDirect(c.ref)
           loop(next())
-        case 13 => // Exchange
-          val c = curr.asInstanceOf[Exchange[A, B]]
+        case c: Exchange[_, _] => // Exchange
           val msg = Exchanger.Msg(
             value = a,
             contK = contKList.takeSnapshot(),
@@ -2030,32 +1983,27 @@ object Rxn extends RxnInstances0 {
               _stats = contMsg.exchangerData
               loop(loadAltFrom(contMsg))
           }
-        case 14 => // AndThen
-          val c = curr.asInstanceOf[AndThen[A, _, B]]
+        case c: AndThen[_, _, _] => // AndThen
           contT.push(RxnConsts.ContAndThen)
           contK.push(c.right)
           loop(c.left)
-        case 15 => // AndAlso
-          val c = curr.asInstanceOf[AndAlso[_, _, _, _]]
+        case c: AndAlso[_, _, _, _] => // AndAlso
           val xp = a.asInstanceOf[Tuple2[_, _]]
           contT.push2(RxnConsts.ContAndAlsoJoin, RxnConsts.ContAndAlso)
           contK.push2(c.right, xp._2)
           // left:
           a = xp._1
           loop(c.left)
-        case 16 => // Done
-          val c = curr.asInstanceOf[Done[R]]
-          c.result
-        case 17 => // Ctx
-          val c = curr.asInstanceOf[Ctx[R]]
+        case c: Done[_] => // Done
+          c.result.asInstanceOf[R]
+        case c: Ctx[_] => // Ctx
           a = c.uf(ctx)
           loop(next())
-        case 18 => // Provide
-          val c = curr.asInstanceOf[Provide[A, B]]
+        case c: Provide[_, _] => // Provide
           a = c.a
           loop(c.rxn)
-        case 19 => // UpdWith
-          val c = curr.asInstanceOf[UpdWith[Any, Any, _]]
+        case c0: UpdWith[_, _, _] => // UpdWith
+          val c = c0.asInstanceOf[UpdWith[Any, Any, Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
             loop(retry())
@@ -2068,13 +2016,12 @@ object Rxn extends RxnInstances0 {
             // TODO: if `axn` writes to the same ref, we'll throw (see above)
             loop(axn)
           }
-        case 20 => // As
-          val c = curr.asInstanceOf[As[_, _, _]]
+        case c: As[_, _, _] => // As
           contT.push(RxnConsts.ContAs)
           contK.push(c.c)
           loop(c.rxn)
-        case 21 => // FinishExchange
-          val c = curr.asInstanceOf[FinishExchange[Any]]
+        case c0: FinishExchange[_] => // FinishExchange
+          val c = c0.asInstanceOf[FinishExchange[Any]]
           val currentContT = contT.takeSnapshot()
           //println(s"FinishExchange: currentContT = '${java.util.Arrays.toString(currentContT)}' - thread#${Thread.currentThread().getId()}")
           val (newContT, _otherContT) = ByteStack.splitAt(currentContT, idx = c.lenSelfContT)
@@ -2097,8 +2044,8 @@ object Rxn extends RxnInstances0 {
           a = contK.pop() // the exchanged value we've got from the other thread
           //println(s"FinishExchange: our result is '${a}' - thread#${Thread.currentThread().getId()}")
           loop(next())
-        case 22 => // TicketRead
-          val c = curr.asInstanceOf[TicketRead[Any]]
+        case c0: TicketRead[_] => // TicketRead
+          val c = c0.asInstanceOf[TicketRead[Any]]
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
             loop(retry())
@@ -2106,64 +2053,56 @@ object Rxn extends RxnInstances0 {
             a = new unsafe.TicketForTicketRead[Any](hwd)
             loop(next())
           }
-        case 23 => // ForceValidate
+        case _: ForceValidate => // ForceValidate
           if (forceValidate(optHwd = null)) {
             a = () : Any
             loop(next())
           } else {
             loop(retry())
           }
-        case 24 => // Pure
-          val c = curr.asInstanceOf[Pure[Any]]
+        case c: Pure[_] => // Pure
           a = c.a
           loop(next())
-        case 25 => // ProductR
-          val c = curr.asInstanceOf[ProductR[Any, Any, Any]]
+        case c: ProductR[_, _, _] => // ProductR
           contT.push(RxnConsts.ContProductR)
           contK.push2(c.right, a)
           loop(c.left)
-        case 26 => // FlatMapF
-          val c = curr.asInstanceOf[FlatMapF[Any, Any, Any]]
+        case c: FlatMapF[_, _, _] => // FlatMapF
           contT.push(RxnConsts.ContFlatMapF)
           contK.push(c.f)
           loop(c.rxn)
-        case 27 => // FlatMap
-          val c = curr.asInstanceOf[FlatMap[Any, Any, Any]]
+        case c: FlatMap[_, _, _] => // FlatMap
           contT.push(RxnConsts.ContFlatMap)
           contK.push2(a, c.f)
           loop(c.rxn)
-        case 28 => // SuspendUntil
+        case _: SuspendUntil => // SuspendUntil
           _assert(this.canSuspend)
           // user code can't access a `SuspendUntil`, so
           // we can abuse `R` and return `SuspendUntil`:
           curr.asInstanceOf[R]
-        case 29 => // TailRecM
-          val c = curr.asInstanceOf[TailRecM[Any, Any, Any]]
+        case c: TailRecM[_, _, _] => // TailRecM
           val f = c.f
           val nxt = f(c.a)
           contT.push(RxnConsts.ContTailRecM)
           contK.push2(f, a)
           loop(nxt)
-        case 30 => // Map_
-          val c = curr.asInstanceOf[Map_[Any, Any, Any]]
+        case c: Map_[_, _, _] => // Map_
           contT.push(RxnConsts.ContMap)
           contK.push(c.f)
           loop(c.rxn)
-        case 31 => // OrElse (STM)
-          val c = curr.asInstanceOf[OrElse[Any, R]]
+        case c0: OrElse[_, _] => // OrElse (STM)
+          val c = c0.asInstanceOf[OrElse[Any, R]]
           saveStmAlt(c.right)
           contT.push(RxnConsts.ContOrElse)
           loop(c.left)
-        case 32 => // Unread
+        case c: Unread[_] => // Unread
           if ((_desc ne null) && desc.nonEmpty) {
-            val c = curr.asInstanceOf[Unread[_]]
             val loc = c.ref.loc
             desc = desc.removeReadOnlyRef(loc) // throws if not RO ref; NOP if it doesn't contain the ref
           } // else: empty log, nothing to do
           a = ()
           loop(next())
-        case 33 => // LocalNewEnd
-          val c = curr.asInstanceOf[LocalNewEnd]
+        case c: LocalNewEnd => // LocalNewEnd
           val locals = this.locals match {
             case null =>
               val nl = new IdentityHashMap[InternalLocal, AnyRef]
@@ -2179,8 +2118,7 @@ object Rxn extends RxnInstances0 {
             _assert(ok)
           }
           loop(next())
-        case 34 => // TentativeRead
-          val c = curr.asInstanceOf[TentativeRead[_]]
+        case c: TentativeRead[_] => // TentativeRead
           val hwd = readMaybeFromLog(c.loc)
           // `desc` must be initialized (at the latest) when we
           // execute the first `tentativeRead`, because for
