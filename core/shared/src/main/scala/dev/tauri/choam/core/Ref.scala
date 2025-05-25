@@ -389,10 +389,10 @@ object Ref extends RefInstances0 {
 
   // Ref2:
 
-  def refP1P1[A, B](a: A, b: B): Axn[Ref2[A, B]] =
+  private[choam] final def refP1P1[A, B](a: A, b: B): Axn[Ref2[A, B]] =
     Ref2.p1p1(a, b)
 
-  def refP2[A, B](a: A, b: B): Axn[Ref2[A, B]] =
+  private[choam] final def refP2[A, B](a: A, b: B): Axn[Ref2[A, B]] =
     Ref2.p2(a, b)
 
   // Utilities:
