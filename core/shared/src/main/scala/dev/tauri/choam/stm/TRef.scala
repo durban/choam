@@ -35,7 +35,7 @@ object TRef {
   private[stm] trait UnsealedTRef[A] extends TRef[A]
 
   final def apply[A](a: A): Txn[TRef[A]] =
-    core.Rxn.unsafe.delayContextImpl(unsafe[A](a))
+    Txn.unsafe.delayContext(unsafe[A](a))
 
   private[choam] final def unsafe[A](a: A)(ctx: Mcas.ThreadContext): TRef[A] = {
     val id = ctx.refIdGen.nextId()

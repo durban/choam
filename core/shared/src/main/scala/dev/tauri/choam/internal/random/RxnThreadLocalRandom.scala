@@ -21,12 +21,12 @@ package random
 
 import java.util.concurrent.ThreadLocalRandom
 
-import core.{ Rxn, Axn }
+import core.Axn
 
 private final class RxnThreadLocalRandom
   extends RandomBase {
 
-  import Rxn.unsafe.delayContext
+  import Axn.unsafe.delayContext
 
   // override these, because TLR is faster:
 

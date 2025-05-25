@@ -1058,10 +1058,34 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("unsafe.delayContext") {
-    Rxn.unsafe.delayContext { (tc: Mcas.ThreadContext) =>
+  test("Axn.unsafe.delayContext") {
+    Axn.unsafe.delayContext { (tc: Mcas.ThreadContext) =>
       tc eq this.mcasImpl.currentContext()
     }.run[F].flatMap(ok => assertF(ok))
+  }
+
+  test("Rxn.unsafe.delayContext") {
+    Rxn.unsafe.delayContext[Int, (Int, Boolean)] { (i: Int, tc: Mcas.ThreadContext) =>
+      (i, tc eq this.mcasImpl.currentContext())
+    }.apply[F](42).flatMap {
+      case (i, ok) =>
+        assertEqualsF(i, 42) *> assertF(ok)
+    }
+  }
+
+  test("Axn.unsafe.suspendContext") {
+    Axn.unsafe.suspendContext { ctx =>
+      Axn.pure(ctx eq this.mcasImpl.currentContext())
+    }.run[F].flatMap(ok => assertF(ok))
+  }
+
+  test("Rxn.unsafe.suspendContext") {
+    Rxn.unsafe.suspendContext[Int, (Int, Boolean)] { (i, ctx) =>
+      Axn.pure((i, ctx eq this.mcasImpl.currentContext()))
+    }.apply[F](42).flatMap {
+      case (i, ok) =>
+        assertEqualsF(i, 42) *> assertF(ok)
+    }
   }
 
   test("unsafe.ticketRead") {

@@ -741,20 +741,18 @@ object Rxn extends RxnInstances0 {
     private[choam] final def suspend[A, B](uf: => Rxn[A, B]): Rxn[A, B] =
       Axn.unsafe.delay(uf).flatMap { x => x } // TODO: optimize
 
-    // TODO: Calling `unsafePerform` (or similar) inside
-    // TODO: `uf` is dangerous; currently it only messes
-    // TODO: up exchanger statistics; in the future, who knows...
-    @inline
-    private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
-      delayContextImpl(uf)
+    private[choam] final def delayContext[A, B](uf: (A, Mcas.ThreadContext) => B): Rxn[A, B] =
+      new Rxn.Ctx[A, B](uf)
 
-    private[choam] final def delayContextImpl[A](uf: Mcas.ThreadContext => A): RxnImpl[Any, A] =
-      new Rxn.Ctx[A](uf)
+    private[choam] final def suspendContext[A, B](uf: (A, Mcas.ThreadContext) => Rxn[A, B]): Rxn[A, B] =
+      delayContext(uf).flatMap { x => x }
 
-    // TODO:0.5: suspendContext[A, B](uf: (A, ThreadContext) => Axn[B]): Rxn[A, B]
-    // TODO:0.5: and use it in MsQueue
-    private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
-      this.delayContext(uf).flatten // TODO: optimize
+    /**
+     * Calling `unsafePerform` (or similar) inside
+     * `uf` is dangerous, so handle with care!
+     */
+    private[choam] final def axnDelayContextImpl[A](uf: Mcas.ThreadContext => A): RxnImpl[Any, A] =
+      new Rxn.Ctx[Any, A]({ (_, ctx) => uf(ctx) })
 
     private[choam] final def exchanger[A, B]: Axn[Exchanger[A, B]] =
       Exchanger.apply[A, B]
@@ -869,7 +867,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Done(${result})"
   }
 
-  private final class Ctx[A](val uf: Mcas.ThreadContext => A) extends RxnImpl[Any, A] {
+  private final class Ctx[A, B](val uf: (A, Mcas.ThreadContext) => B) extends RxnImpl[A, B] {
     final override def toString: String = s"Ctx(<block>)"
   }
 
@@ -1996,8 +1994,9 @@ object Rxn extends RxnInstances0 {
           loop(c.left)
         case c: Done[_] => // Done
           c.result.asInstanceOf[R]
-        case c: Ctx[_] => // Ctx
-          a = c.uf(ctx)
+        case c: Ctx[_, _] => // Ctx
+          val b = c.asInstanceOf[Ctx[Any, Any]].uf(a, ctx)
+          a = b
           loop(next())
         case c: Provide[_, _] => // Provide
           a = c.a

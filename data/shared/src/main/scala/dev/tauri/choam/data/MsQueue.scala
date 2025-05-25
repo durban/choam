@@ -71,10 +71,8 @@ private final class MsQueue[A] private[this] (
     }
   }
 
-  override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
-    Rxn.unsafe.suspendContext { ctx =>
-      findAndEnqueue(newNode(a, ctx))
-    }
+  override val enqueue: Rxn[A, Unit] = Rxn.unsafe.suspendContext { (a, ctx) =>
+    findAndEnqueue(newNode(a, ctx))
   }
 
   final override def tryEnqueue: Rxn[A, Boolean] =

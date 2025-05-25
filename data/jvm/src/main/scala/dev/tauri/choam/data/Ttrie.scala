@@ -136,7 +136,7 @@ private final class Ttrie[K, V] private (
           // => it will never change, so ref can be removed,
           //    and we'll retry
           // (NB: in this case, `ref` won't be inserted into the log)
-          Rxn.unsafe.delayContext(unsafeDelRef(k, ref, _)) >>> getRefWithKey(k)
+          Axn.unsafe.delayContext(unsafeDelRef(k, ref, _)) >>> getRefWithKey(k)
         } else {
           // Make sure `ref` is in the log, then force re-validation:
           ticket.unsafeValidate >>> Rxn.unsafe.forceValidate.as(ref)
@@ -174,7 +174,7 @@ private final class Ttrie[K, V] private (
     // might've chaged it back later (in its log):
     ref.unsafeDirectRead.flatMapF { v =>
       if (isEnd[V](v)) { // OK, we can delete it:
-        Rxn.unsafe.delayContext(unsafeDelRef(key, ref, _))
+        Axn.unsafe.delayContext(unsafeDelRef(key, ref, _))
       } else { // oops, don't delete it:
         Rxn.unit
       }

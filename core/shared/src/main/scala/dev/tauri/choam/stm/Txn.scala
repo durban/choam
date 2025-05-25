@@ -99,7 +99,7 @@ object Txn extends TxnInstances0 {
       delay(uf).flatMap { x => x }
 
     private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Txn[A] =
-      Rxn.unsafe.delayContextImpl(uf)
+      Rxn.unsafe.axnDelayContextImpl(uf)
 
     /** Only for testing! */
     private[choam] final def retryUnconditionally[A]: Txn[A] =
