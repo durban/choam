@@ -454,6 +454,10 @@ private[choam] sealed abstract class RxnImpl[-A, +B]
     this.flatMapF(f.asInstanceOf[Function1[B, Axn[C]]])
   }
 
+  final override def flatten[C](implicit ev: B <:< Txn[C]): Txn[C] = {
+    this.flatMap(ev)
+  }
+
   final override def map2[C, D](that: Txn[C])(f: (B, C) => D): Txn[D] = {
     this.map2[A, C, D](that.impl)(f)
   }
@@ -742,7 +746,7 @@ object Rxn extends RxnInstances0 {
       Axn.unsafe.delay(uf).flatMap { x => x } // TODO: optimize
 
     private[choam] final def delayContext[A, B](uf: (A, Mcas.ThreadContext) => B): Rxn[A, B] =
-      new Rxn.Ctx[A, B](uf)
+      new Rxn.Ctx2[A, B](uf)
 
     private[choam] final def suspendContext[A, B](uf: (A, Mcas.ThreadContext) => Rxn[A, B]): Rxn[A, B] =
       delayContext(uf).flatMap { x => x }
@@ -752,7 +756,7 @@ object Rxn extends RxnInstances0 {
      * `uf` is dangerous, so handle with care!
      */
     private[choam] final def axnDelayContextImpl[A](uf: Mcas.ThreadContext => A): RxnImpl[Any, A] =
-      new Rxn.Ctx[Any, A]({ (_, ctx) => uf(ctx) })
+      new Rxn.Ctx1[Any, A](uf)
 
     private[choam] final def exchanger[A, B]: Axn[Exchanger[A, B]] =
       Exchanger.apply[A, B]
@@ -867,8 +871,17 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Done(${result})"
   }
 
-  private final class Ctx[A, B](val uf: (A, Mcas.ThreadContext) => B) extends RxnImpl[A, B] {
+  private sealed abstract class Ctx[A, B] extends RxnImpl[A, B] {
     final override def toString: String = s"Ctx(<block>)"
+    def uf(a: A, ctx: Mcas.ThreadContext): B
+  }
+
+  private final class Ctx2[A, B](_uf: (A, Mcas.ThreadContext) => B) extends Ctx[A, B] {
+    final override def uf(a: A, ctx: Mcas.ThreadContext): B = _uf(a, ctx)
+  }
+
+  private final class Ctx1[A, B](_uf: Mcas.ThreadContext => B) extends Ctx[A, B] {
+    final override def uf(a: A, ctx: Mcas.ThreadContext): B = _uf(ctx)
   }
 
   private[core] final class Provide[A, B](val rxn: Rxn[A, B], val a: A) extends RxnImpl[Any, B] {

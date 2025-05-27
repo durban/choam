@@ -1080,11 +1080,13 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Rxn.unsafe.suspendContext") {
-    Rxn.unsafe.suspendContext[Int, (Int, Boolean)] { (i, ctx) =>
-      Axn.pure((i, ctx eq this.mcasImpl.currentContext()))
+    Rxn.unsafe.suspendContext[Int, (Int, Int, Boolean)] { (i, ctx) =>
+      Rxn.lift[Int, Int](_ + 1).map { j =>
+        (i, j, ctx eq this.mcasImpl.currentContext())
+      }
     }.apply[F](42).flatMap {
-      case (i, ok) =>
-        assertEqualsF(i, 42) *> assertF(ok)
+      case (i, j, ok) =>
+        assertEqualsF(i, 42) *> assertEqualsF(j, 43) *> assertF(ok)
     }
   }
 

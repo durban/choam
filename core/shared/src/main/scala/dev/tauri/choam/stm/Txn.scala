@@ -47,6 +47,8 @@ sealed trait Txn[+B] {
 
   def flatMap[C](f: B => Txn[C]): Txn[C]
 
+  def flatten[C](implicit ev: B <:< Txn[C]): Txn[C]
+
   def orElse[Y >: B](that: Txn[Y]): Txn[Y]
 
   private[choam] def impl: RxnImpl[Any, B]
@@ -92,14 +94,19 @@ object Txn extends TxnInstances0 {
       TxnLocal.withLocal(initial, body)
     }
 
+    @inline
     private[choam] final def delay[A](uf: => A): Txn[A] =
       Axn.unsafe.delayImpl[A](uf)
 
     private[choam] final def suspend[A](uf: => Txn[A]): Txn[A] =
-      delay(uf).flatMap { x => x }
+      delay(uf).flatten
 
+    @inline
     private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Txn[A] =
       Rxn.unsafe.axnDelayContextImpl(uf)
+
+    private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Txn[A]): Txn[A] =
+      delayContext(uf).flatten
 
     /** Only for testing! */
     private[choam] final def retryUnconditionally[A]: Txn[A] =

@@ -79,6 +79,11 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Txn#flatten") {
+    val inner: Txn[Int] = Txn.pure(42)
+    assertResultF(Txn.pure(99).as(inner).flatten.commit, 42)
+  }
+
   test("Txn#map2") {
     for {
       r1 <- TRef[Int](42).commit
@@ -174,6 +179,18 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Txn.unsafe.delayContext") {
+    Txn.unsafe.delayContext { ctx =>
+      ctx eq this.mcasImpl.currentContext()
+    }.commit.flatMap(ok => assertF(ok))
+  }
+
+  test("Txn.unsafe.suspendContext") {
+    Txn.unsafe.suspendContext { ctx =>
+      Txn.pure(ctx eq this.mcasImpl.currentContext())
+    }.commit.flatMap(ok => assertF(ok))
+  }
+
   test("TxnLocal (simple)") {
     for {
       ref <- TRef[Int](0).commit
@@ -190,7 +207,7 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Txn.Local (compose with Txn)") {
+  test("TxnLocal (compose with Txn)") {
     val txn: Txn[(String, Int)] = for {
       ref <- TRef[Int](0)
       s <- Txn.unsafe.withLocal(42, new Txn.unsafe.WithLocal[Int, String] {
