@@ -2502,7 +2502,7 @@ private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type
           final override def tryModify[B](f: A => (A, B)): Rxn[Any, Option[B]] =
             this.modify(f).attempt
           final override def update(f: A => A): Rxn[Any, Unit] =
-            underlying.update(f)
+            underlying.update1(f)
           final override def modify[B](f: A => (A, B)): Rxn[Any, B] =
             underlying.modify(f)
           final override def tryModifyState[B](state: State[A, B]): Rxn[Any, Option[B]] =

@@ -39,19 +39,23 @@ sealed trait RefLike[A] {
 
   // TODO: create a `set` alias(?)
 
-  final def set0: Rxn[A, Unit] = // TODO: make this a primitive
+  final def set0: Rxn[A, Unit] =
     upd[A, Unit] { (_, na) => (na, ()) }
 
-  final def set1(a: A): Axn[Unit] = // TODO: make this a primitive
+  final def set1(a: A): Axn[Unit] =
     upd[Any, Unit] { (_, _) => (a, ()) }
 
   final def getAndSet: Rxn[A, A] =
     upd[A, A] { (oa, na) => (na, oa) }
 
+  @inline
   final def update(f: A => A): Axn[Unit] =
+    update1(f)
+
+  final def update1(f: A => A): Axn[Unit] =
     upd[Any, Unit] { (oa, _) => (f(oa), ()) }
 
-  final def update0[B](f: (A, B) => A): Rxn[B, Unit] = // TODO: optimize; needs better name
+  final def update2[B](f: (A, B) => A): Rxn[B, Unit] =
     upd[B, Unit] { (oa, b) => (f(oa, b), ()) }
 
   final def updateWith(f: A => Axn[A]): Axn[Unit] =
@@ -59,7 +63,7 @@ sealed trait RefLike[A] {
 
   /** Returns `false` iff the update failed */
   final def tryUpdate(f: A => A): Axn[Boolean] =
-    update(f).maybe
+    update1(f).maybe
 
   /** Returns previous value */
   final def getAndUpdate(f: A => A): Axn[A] =
@@ -147,7 +151,7 @@ private[choam] object RefLike {
       self.tryModify(f).run[F]
 
     override def update(f: A => A): F[Unit] =
-      self.update(f).run[F]
+      self.update1(f).run[F]
 
     override def modify[B](f: A => (A, B)): F[B] =
       self.modify(f).run[F]

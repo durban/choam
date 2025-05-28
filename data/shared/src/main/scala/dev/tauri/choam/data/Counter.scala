@@ -66,7 +66,7 @@ object Counter {
 
   private[this] final class SimpleCounter(ref: Ref[Long]) extends Counter {
 
-    final override val add: Rxn[Long, Unit] = ref.update0[Long] { (cnt, n) =>
+    final override val add: Rxn[Long, Unit] = ref.update2[Long] { (cnt, n) =>
       cnt + n
     }
 
@@ -92,7 +92,7 @@ object Counter {
 
     final override val add: Rxn[Long, Unit] = getStripeId.flatMap { stripeId =>
       val ref = arr.unsafeGet(stripeId)
-      ref.update0[Long] { (cnt, n) =>
+      ref.update2[Long] { (cnt, n) =>
         cnt + n
       }
     }
