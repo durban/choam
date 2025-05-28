@@ -54,7 +54,7 @@ class ComputedTest extends StressTestBase {
     r2.getAndUpdate { _ => "y" }
 
   private[this] val computed: Axn[String] = {
-    r1.unsafeDirectRead >>> Rxn.computed[String, String] { a =>
+    Rxn.unsafe.directRead(r1) >>> Rxn.computed[String, String] { a =>
       val w = if (a eq "foo") w1 else w2
       (w * Rxn.unsafe.cas(r1, a, a)).map { _ => a }
     }

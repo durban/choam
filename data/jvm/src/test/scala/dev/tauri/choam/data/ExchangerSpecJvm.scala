@@ -84,8 +84,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       f1 <- logOutcome("f1", ex.exchange[F]("bar")).start
       ref <- Ref("x").run[F]
       r2 = (
-        (ex.dual.exchange * ref.unsafeCas("-", "y")) + // this will fail
-        (ex.dual.exchange * ref.unsafeCas("x", "y")) // this must succeed
+        (ex.dual.exchange * Rxn.unsafe.cas(ref, "-", "y")) + // this will fail
+        (ex.dual.exchange * Rxn.unsafe.cas(ref, "x", "y")) // this must succeed
       ).map(_._1)
       f2 <- logOutcome("f2", r2[F](99)).start
       _ <- assertResultF(f1.joinWithNever, 99)
@@ -100,8 +100,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       f1 <- logOutcome("f1", ex.exchange[F]("baz")).start
       ref <- Ref("x").run[F]
       r2 = (
-        (ex.dual.exchange * ref.unsafeCas("x", "y")) + // this may succeed
-        (ref.unsafeCas("x", "z") * Rxn.unsafe.retry) // no exchange here, but will always fail
+        (ex.dual.exchange * Rxn.unsafe.cas(ref, "x", "y")) + // this may succeed
+        (Rxn.unsafe.cas(ref, "x", "z") * Rxn.unsafe.retry) // no exchange here, but will always fail
       ).map(_._1)
       f2 <- logOutcome("f2", r2[F](64)).start
       _ <- assertResultF(f1.joinWithNever, 64)

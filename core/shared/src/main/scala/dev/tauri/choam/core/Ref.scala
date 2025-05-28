@@ -47,15 +47,6 @@ sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A]
   final override def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
     Rxn.ref.updWith(this)(f)
 
-  final def unsafeDirectRead: Axn[A] =
-    Rxn.unsafe.directRead(this)
-
-  final def unsafeTicketRead: Axn[Rxn.unsafe.Ticket[A]] =
-    Rxn.unsafe.ticketRead(this)
-
-  private[choam] final def unsafeCas(ov: A, nv: A): Axn[Unit] =
-    Rxn.unsafe.cas(this, ov, nv)
-
   final override def toCats[F[_]](implicit F: core.Reactive[F]): CatsRef[F, A] =
     new Ref.CatsRefFromRef[F, A](this) {}
 
@@ -347,7 +338,7 @@ object Ref extends RefInstances0 {
     extends RefLike.CatsRefFromRefLike[F, A](self)(F) {
 
     override def get: F[A] =
-      self.unsafeDirectRead.run[F]
+      Rxn.unsafe.directRead(self).run[F]
   }
 
   private[this] final def unsafeStrictArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] = {

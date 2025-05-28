@@ -50,10 +50,10 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("r1").run[F]
       r2 <- Ref("r2").run[F]
-      rea = r1.unsafeCas("r1", "x") + r2.unsafeCas("r2", "x")
+      rea = Rxn.unsafe.cas(r1, "r1", "x") + Rxn.unsafe.cas(r2, "r2", "x")
       _ <- assertResultF(rea.run, ())
-      _ <- assertResultF(r1.unsafeDirectRead.run, "x")
-      _ <- assertResultF(r2.unsafeDirectRead.run, "r2")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1).run, "x")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2).run, "r2")
     } yield ()
   }
 
@@ -61,15 +61,15 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("z").run[F]
       r2 <- Ref("r2").run[F]
-      rea = r1.unsafeCas("r1", "x") + (r2.unsafeCas("r2", "x") * r1.unsafeCas("z", "r1")).void
+      rea = Rxn.unsafe.cas(r1, "r1", "x") + (Rxn.unsafe.cas(r2, "r2", "x") * Rxn.unsafe.cas(r1, "z", "r1")).void
       // r2: "r2" -> "x" AND r1: "z" -> "r1"
       _ <- rea.run
-      _ <- assertResultF(r2.unsafeDirectRead.run, "x")
-      _ <- assertResultF(r1.unsafeDirectRead.run, "r1")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2).run, "x")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1).run, "r1")
       // r1: "r1" -> "x"
       _ <- rea.run
-      _ <- assertResultF(r1.unsafeDirectRead.run, "x")
-      _ <- assertResultF(r2.unsafeDirectRead.run, "x")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1).run, "x")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2).run, "x")
     } yield ()
   }
 
@@ -77,12 +77,12 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("a").run[F]
-      rea1 = (r1.unsafeCas("-", "b") + r1.unsafeCas("a", "b")) + r1.unsafeCas("a", "c")
-      rea2 = r2.unsafeCas("-", "b") + (r2.unsafeCas("a", "b") + r2.unsafeCas("a", "c"))
+      rea1 = (Rxn.unsafe.cas(r1, "-", "b") + Rxn.unsafe.cas(r1, "a", "b")) + Rxn.unsafe.cas(r1, "a", "c")
+      rea2 = Rxn.unsafe.cas(r2, "-", "b") + (Rxn.unsafe.cas(r2, "a", "b") + Rxn.unsafe.cas(r2, "a", "c"))
       _ <- rea1.run[F]
       _ <- rea2.run[F]
-      _ <- assertResultF(r1.unsafeDirectRead.run, "b")
-      _ <- assertResultF(r2.unsafeDirectRead.run, "b")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1).run, "b")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2).run, "b")
     } yield ()
   }
 
@@ -102,11 +102,11 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         (Rxn.unsafe.cas(p, "p", "pp") >>> Rxn.unsafe.cas(q, "q", "qq"))
       )
       _ <- assertResultF(F.delay { rea.unsafePerform((), this.mcasImpl) }, ())
-      _ <- assertResultF(a.unsafeDirectRead.run, "a")
-      _ <- assertResultF(b.unsafeDirectRead.run, "bb")
-      _ <- assertResultF(y.unsafeDirectRead.run, "yy")
-      _ <- assertResultF(p.unsafeDirectRead.run, "p")
-      _ <- assertResultF(q.unsafeDirectRead.run, "q")
+      _ <- assertResultF(Rxn.unsafe.directRead(a).run, "a")
+      _ <- assertResultF(Rxn.unsafe.directRead(b).run, "bb")
+      _ <- assertResultF(Rxn.unsafe.directRead(y).run, "yy")
+      _ <- assertResultF(Rxn.unsafe.directRead(p).run, "p")
+      _ <- assertResultF(Rxn.unsafe.directRead(q).run, "q")
     } yield ()
   }
 
@@ -119,8 +119,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         (a.getAndUpdate(_ => "x") >>> p.getAndSet)
       )
       _ <- assertResultF(F.delay { rea.unsafePerform((), this.mcasImpl) }, "p")
-      _ <- assertResultF(a.unsafeDirectRead.run, "x")
-      _ <- assertResultF(p.unsafeDirectRead.run, "b")
+      _ <- assertResultF(Rxn.unsafe.directRead(a).run, "x")
+      _ <- assertResultF(Rxn.unsafe.directRead(p).run, "b")
     } yield ()
   }
 
@@ -133,8 +133,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       pc3 <- Ref("").run[F]
       pc4 <- Ref("").run[F]
       rea = (Rxn.postCommit(pc1.update(_ + "pc1")) *> r0.update(_ + "b")) >>> (
-        (Rxn.postCommit(pc2.update(_ + "pc2")).postCommit(pc4.update(_ + "-")) *> r1.unsafeCas("-", "b")) + ( // <- this will fail
-          Rxn.postCommit(pc3.update(_ + "pc3")).postCommit(pc4.update(_ + "pc4")) *> r1.unsafeCas("a", "c")
+        (Rxn.postCommit(pc2.update(_ + "pc2")).postCommit(pc4.update(_ + "-")) *> Rxn.unsafe.cas(r1, "-", "b")) + ( // <- this will fail
+          Rxn.postCommit(pc3.update(_ + "pc3")).postCommit(pc4.update(_ + "pc4")) *> Rxn.unsafe.cas(r1, "a", "c")
         )
       )
       _ <- rea.run
@@ -156,33 +156,33 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r3a <- Ref("3a").run[F]
       r3b <- Ref("3b").run[F]
       rea = {
-        r1a.unsafeCas("1a", "xa") >>>
-        r1b.unsafeCas("1b", "xb") >>>
+        Rxn.unsafe.cas(r1a, "1a", "xa") >>>
+        Rxn.unsafe.cas(r1b, "1b", "xb") >>>
         (
-        (r2a.unsafeCas("2a", "ya") >>> r2b.unsafeCas("2b", "yb")) +
-        (r3a.unsafeCas("3a", "za") >>> r3b.unsafeCas("3b", "zb"))
+          (Rxn.unsafe.cas(r2a, "2a", "ya") >>> Rxn.unsafe.cas(r2b, "2b", "yb")) +
+          (Rxn.unsafe.cas(r3a, "3a", "za") >>> Rxn.unsafe.cas(r3b, "3b", "zb"))
         )
       }
       // 1st choice selected:
       _ <- rea.run
-      _ <- assertResultF(r1a.unsafeDirectRead.run, "xa")
-      _ <- assertResultF(r1b.unsafeDirectRead.run, "xb")
-      _ <- assertResultF(r2a.unsafeDirectRead.run, "ya")
-      _ <- assertResultF(r2b.unsafeDirectRead.run, "yb")
-      _ <- assertResultF(r3a.unsafeDirectRead.run, "3a")
-      _ <- assertResultF(r3b.unsafeDirectRead.run, "3b")
-      _ <- r1a.unsafeCas("xa", "1a").run
-      _ <- r1b.unsafeCas("xb", "1b").run
-      _ <- assertResultF(r1a.unsafeDirectRead.run, "1a")
-      _ <- assertResultF(r1b.unsafeDirectRead.run, "1b")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1a).run, "xa")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1b).run, "xb")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2a).run, "ya")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2b).run, "yb")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3a).run, "3a")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3b).run, "3b")
+      _ <- Rxn.unsafe.cas(r1a, "xa", "1a").run
+      _ <- Rxn.unsafe.cas(r1b, "xb", "1b").run
+      _ <- assertResultF(Rxn.unsafe.directRead(r1a).run, "1a")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1b).run, "1b")
       // 2nd choice selected:
       _ <- rea.run
-      _ <- assertResultF(r1a.unsafeDirectRead.run, "xa")
-      _ <- assertResultF(r1b.unsafeDirectRead.run, "xb")
-      _ <- assertResultF(r2a.unsafeDirectRead.run, "ya")
-      _ <- assertResultF(r2b.unsafeDirectRead.run, "yb")
-      _ <- assertResultF(r3a.unsafeDirectRead.run, "za")
-      _ <- assertResultF(r3b.unsafeDirectRead.run, "zb")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1a).run, "xa")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1b).run, "xb")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2a).run, "ya")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2b).run, "yb")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3a).run, "za")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3b).run, "zb")
     } yield ()
   }
 
@@ -195,58 +195,58 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r3a <- Ref("3a").run[F]
       r3b <- Ref("3b").run[F]
       rea = {
-        r1a.unsafeDirectRead >>>
+        Rxn.unsafe.directRead(r1a) >>>
         Rxn.computed { s =>
           if (s eq "1a") {
-            r1b.unsafeCas("1b", "xb") >>> (r2a.unsafeCas("2a", "ya") + r3a.unsafeCas("3a", "za"))
+            Rxn.unsafe.cas(r1b, "1b", "xb") >>> (Rxn.unsafe.cas(r2a, "2a", "ya") + Rxn.unsafe.cas(r3a, "3a", "za"))
           } else {
-            r1b.unsafeCas("1b", "xx") >>> (r2b.unsafeCas("2b", "yb") + r3b.unsafeCas("3b", "zb"))
+            Rxn.unsafe.cas(r1b, "1b", "xx") >>> (Rxn.unsafe.cas(r2b, "2b", "yb") + Rxn.unsafe.cas(r3b, "3b", "zb"))
           }
         }
       }
 
       // THEN selected, 1st choice selected:
       _ <- rea.run
-      _ <- assertResultF(r1a.unsafeDirectRead.run, "1a")
-      _ <- assertResultF(r1b.unsafeDirectRead.run, "xb")
-      _ <- assertResultF(r2a.unsafeDirectRead.run, "ya")
-      _ <- assertResultF(r2b.unsafeDirectRead.run, "2b")
-      _ <- assertResultF(r3a.unsafeDirectRead.run, "3a")
-      _ <- assertResultF(r3b.unsafeDirectRead.run, "3b")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1a).run, "1a")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1b).run, "xb")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2a).run, "ya")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2b).run, "2b")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3a).run, "3a")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3b).run, "3b")
 
-      _ <- r1b.unsafeCas("xb", "1b").run
+      _ <- Rxn.unsafe.cas(r1b, "xb", "1b").run
 
       // THEN selected, 2nd choice selected:
       _ <- rea.run
-      _ <- assertResultF(r1a.unsafeDirectRead.run, "1a")
-      _ <- assertResultF(r1b.unsafeDirectRead.run, "xb")
-      _ <- assertResultF(r2a.unsafeDirectRead.run, "ya")
-      _ <- assertResultF(r2b.unsafeDirectRead.run, "2b")
-      _ <- assertResultF(r3a.unsafeDirectRead.run, "za")
-      _ <- assertResultF(r3b.unsafeDirectRead.run, "3b")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1a).run, "1a")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1b).run, "xb")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2a).run, "ya")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2b).run, "2b")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3a).run, "za")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3b).run, "3b")
 
-      _ <- r1a.unsafeCas("1a", "xa").run
-      _ <- r1b.unsafeCas("xb", "1b").run
+      _ <- Rxn.unsafe.cas(r1a, "1a", "xa").run
+      _ <- Rxn.unsafe.cas(r1b, "xb", "1b").run
 
       // ELSE selected, 1st choice selected:
       _ <- rea.run
-      _ <- assertResultF(r1a.unsafeDirectRead.run, "xa")
-      _ <- assertResultF(r1b.unsafeDirectRead.run, "xx")
-      _ <- assertResultF(r2a.unsafeDirectRead.run, "ya")
-      _ <- assertResultF(r2b.unsafeDirectRead.run, "yb")
-      _ <- assertResultF(r3a.unsafeDirectRead.run, "za")
-      _ <- assertResultF(r3b.unsafeDirectRead.run, "3b")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1a).run, "xa")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1b).run, "xx")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2a).run, "ya")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2b).run, "yb")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3a).run, "za")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3b).run, "3b")
 
-      _ <- r1b.unsafeCas("xx", "1b").run
+      _ <- Rxn.unsafe.cas(r1b, "xx", "1b").run
 
       // ELSE selected, 2nd choice selected:
       _ <- rea.run
-      _ <- assertResultF(r1a.unsafeDirectRead.run, "xa")
-      _ <- assertResultF(r1b.unsafeDirectRead.run, "xx")
-      _ <- assertResultF(r2a.unsafeDirectRead.run, "ya")
-      _ <- assertResultF(r2b.unsafeDirectRead.run, "yb")
-      _ <- assertResultF(r3a.unsafeDirectRead.run, "za")
-      _ <- assertResultF(r3b.unsafeDirectRead.run, "zb")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1a).run, "xa")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1b).run, "xx")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2a).run, "ya")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2b).run, "yb")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3a).run, "za")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3b).run, "zb")
     } yield ()
   }
 
@@ -254,7 +254,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val n = 16 * 1024
     for {
       ref <- Ref("foo").run[F]
-      successfulCas = ref.unsafeCas("foo", "bar")
+      successfulCas = Rxn.unsafe.cas(ref, "foo", "bar")
       fails = (1 to n).foldLeft[Axn[Unit]](Rxn.unsafe.retry) { (r, _) =>
         r + Rxn.unsafe.retry
       }
@@ -268,12 +268,12 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val n = 16 * 1024
     for {
       ref <- Ref("foo").run[F]
-      successfulCas = ref.unsafeCas("foo", "bar")
+      successfulCas = Rxn.unsafe.cas(ref, "foo", "bar")
       refs <- (1 to n).toList.traverse { _ =>
         Ref("x").run[F]
       }
       fails = refs.foldLeft[Axn[Unit]](Rxn.unsafe.retry) { (r, ref) =>
-        r + ref.unsafeCas("y", "this will never happen")
+        r + Rxn.unsafe.cas(ref, "y", "this will never happen")
       }
       r = fails + successfulCas
       _ <- assertResultF(r.run[F], ())
@@ -331,8 +331,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     okRef3 <- Ref("foo3").run
     okRef4 <- Ref("foo4").run
     failRef <- Ref("fail").run
-    left = ok1 >>> ((ok2 >>> (failRef.unsafeCas("x_fail", "y_fail") + Rxn.unsafe.retry)) + okRef3.unsafeCas("foo3", "bar3"))
-    right = okRef4.unsafeCas("foo4", "bar4")
+    left = ok1 >>> ((ok2 >>> (Rxn.unsafe.cas(failRef, "x_fail", "y_fail") + Rxn.unsafe.retry)) + Rxn.unsafe.cas(okRef3, "foo3", "bar3"))
+    right = Rxn.unsafe.cas(okRef4, "foo4", "bar4")
     r = left + right
     _ <- assertResultF(r.run[F], ())
     _ <- okRefs1.traverse { ref =>
@@ -385,9 +385,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       leafs <- (0 until 16).toList.traverse(idx => Ref(s"foo-${idx}").run[F])
       lr1 <- leafs.grouped(2).toList.traverse[F, (Axn[Unit], F[Unit])] {
         case List(refLeft, refRight) =>
-          refLeft.unsafeDirectRead.run[F].flatMap { ol =>
-            refRight.unsafeDirectRead.run[F].flatMap { or =>
-              oneChoice(refLeft.unsafeCas(ol, s"${ol}-new"), refRight.unsafeCas(or, s"${or}-new"), x, "l1")
+          Rxn.unsafe.directRead(refLeft).run[F].flatMap { ol =>
+            Rxn.unsafe.directRead(refRight).run[F].flatMap { or =>
+              oneChoice(Rxn.unsafe.cas(refLeft, ol, s"${ol}-new"), Rxn.unsafe.cas(refRight, or, s"${or}-new"), x, "l1")
             }
           }
         case _ =>
@@ -424,7 +424,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       checkLeafs = { (expLastNew: Int) =>
         leafs.zipWithIndex.traverse { case (ref, idx) =>
           val expContents = if (idx <= expLastNew) s"foo-${idx}-new" else s"foo-${idx}"
-          assertResultF(ref.unsafeDirectRead.run[F], expContents)
+          assertResultF(Rxn.unsafe.directRead(ref).run[F], expContents)
         }
       }
 
@@ -438,8 +438,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   def mkOkCASes(n: Int, ov: String, nv: String): F[(List[Ref[String]], Axn[Unit])] = for {
     ref0 <- Ref(ov).run[F]
     refs <- Ref(ov).run[F].replicateA(n - 1)
-    r = refs.foldLeft(ref0.unsafeCas(ov, nv)) { (r, ref) =>
-      (r * ref.unsafeCas(ov, nv)).void
+    r = refs.foldLeft(Rxn.unsafe.cas(ref0, ov, nv)) { (r, ref) =>
+      (r * Rxn.unsafe.cas(ref, ov, nv)).void
     }
   } yield (ref0 +: refs, r)
 
@@ -492,14 +492,14 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       pc2 = pc1.postCommit(r3.upd[String, Unit] { case (_, x) => (x, ()) })
 
       _ <- assertResultF(pc1.run[F], "aa")
-      _ <- assertResultF(r1.unsafeDirectRead.run[F], "aa")
-      _ <- assertResultF(r2.unsafeDirectRead.run[F], "aa")
-      _ <- assertResultF(r3.unsafeDirectRead.run[F], "")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1).run[F], "aa")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2).run[F], "aa")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3).run[F], "")
 
       _ <- assertResultF(pc2.run[F], "aaa")
-      _ <- assertResultF(r1.unsafeDirectRead.run[F], "aaa")
-      _ <- assertResultF(r2.unsafeDirectRead.run[F], "aaa")
-      _ <- assertResultF(r3.unsafeDirectRead.run[F], "aaa")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1).run[F], "aaa")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2).run[F], "aaa")
+      _ <- assertResultF(Rxn.unsafe.directRead(r3).run[F], "aaa")
     } yield ()
   }
 
@@ -574,8 +574,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r1 <- Ref("abc").run[F]
       r2 <- Ref("def").run[F]
       _ <- Ref.swap(r1, r2).run[F]
-      _ <- assertResultF(r1.unsafeDirectRead.run[F], "def")
-      _ <- assertResultF(r2.unsafeDirectRead.run[F], "abc")
+      _ <- assertResultF(Rxn.unsafe.directRead(r1).run[F], "def")
+      _ <- assertResultF(Rxn.unsafe.directRead(r2).run[F], "abc")
     } yield ()
   }
 
@@ -583,8 +583,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("x").run[F]
-      _ <- r1.unsafeCas("a", "b").flatMap { _ => r2.unsafeCas("x", "y") }.run[F]
-      _ <- (r1.unsafeCas("b", "c") *> r2.unsafeCas("y", "z")).run[F]
+      _ <- Rxn.unsafe.cas(r1, "a", "b").flatMap { _ => Rxn.unsafe.cas(r2, "x", "y") }.run[F]
+      _ <- (Rxn.unsafe.cas(r1, "b", "c") *> Rxn.unsafe.cas(r2, "y", "z")).run[F]
       _ <- assertResultF(r1.get.run[F], "c")
       _ <- assertResultF(r2.get.run[F], "z")
     } yield ()
@@ -594,8 +594,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("x").run[F]
-      _ <- (r1.unsafeCas("a", "b") *> r2.unsafeCas("x", "y")).run[F]
-      _ <- (r1.unsafeCas("b", "c") >> r2.unsafeCas("y", "z")).run[F]
+      _ <- (Rxn.unsafe.cas(r1, "a", "b") *> Rxn.unsafe.cas(r2, "x", "y")).run[F]
+      _ <- (Rxn.unsafe.cas(r1, "b", "c") >> Rxn.unsafe.cas(r2, "y", "z")).run[F]
       _ <- assertResultF(r1.get.run[F], "c")
       _ <- assertResultF(r2.get.run[F], "z")
     } yield ()
@@ -672,9 +672,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       rxn1 = r.getAndSet.flatMap { x => Rxn.identity[String].map((_, x)) }
       rxn2 = r.getAndSet.flatMapF { x => Rxn.pure(x) }
       _ <- assertResultF(rxn1[F]("X"), ("X", "x"))
-      _ <- assertResultF(r.unsafeDirectRead.run[F], "X")
+      _ <- assertResultF(Rxn.unsafe.directRead(r).run[F], "X")
       _ <- assertResultF(rxn2[F]("y"), "X")
-      _ <- assertResultF(r.unsafeDirectRead.run[F], "y")
+      _ <- assertResultF(Rxn.unsafe.directRead(r).run[F], "y")
     } yield ()
   }
 
@@ -731,7 +731,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       rxn2 = r.getAndSet.contramap[Any](_ => "b")
       _ <- assertResultF(rxn1.run[F], "x")
       _ <- assertResultF(rxn2.run[F], "a")
-      _ <- assertResultF(r.unsafeDirectRead.run[F], "b")
+      _ <- assertResultF(Rxn.unsafe.directRead(r).run[F], "b")
     } yield ()
   }
 
@@ -741,9 +741,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       rxn1 = r.getAndSet.as("foo")
       rxn2 = r.getAndSet.map(_ => "bar")
       _ <- assertResultF(rxn1[F]("X"), "foo")
-      _ <- assertResultF(r.unsafeDirectRead.run[F], "X")
+      _ <- assertResultF(Rxn.unsafe.directRead(r).run[F], "X")
       _ <- assertResultF(rxn2[F]("Y"), "bar")
-      _ <- assertResultF(r.unsafeDirectRead.run[F], "Y")
+      _ <- assertResultF(Rxn.unsafe.directRead(r).run[F], "Y")
     } yield ()
   }
 
@@ -767,7 +767,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("unsafeCas") {
     for {
       r <- Ref[String]("x").run[F]
-      rxn = r.unsafeCas("x", "y")
+      rxn = Rxn.unsafe.cas(r, "x", "y")
       _ <- assertResultF(rxn[F](()), ())
       _ <- assertResultF(r.get.run[F], "y")
       _ <- r.getAndSet[F]("a")
@@ -780,7 +780,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r <- Ref[String]("x").run[F]
       rxn = r.get.flatMapF { ov =>
-        r.unsafeCas(ov, "y")
+        Rxn.unsafe.cas(r, ov, "y")
       }
       _ <- assertResultF(rxn.run[F], ())
       _ <- assertResultF(r.get.run[F], "y")
@@ -794,7 +794,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r <- Ref[String]("x").run[F]
       rxn = r.getAndSet.provide("y").flatMapF { _ =>
-        r.unsafeCas("y", "z")
+        Rxn.unsafe.cas(r, "y", "z")
       }
       _ <- assertResultF(rxn.run[F], ())
       _ <- assertResultF(r.get.run[F], "z")
@@ -873,7 +873,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("a").run[F]
-      r = r1.unsafeCas("x", "y").attempt * r2.unsafeCas("a", "b").?
+      r = Rxn.unsafe.cas(r1, "x", "y").attempt * Rxn.unsafe.cas(r2, "a", "b").?
       _ <- assertResultF(r.run[F], (None, Some(())))
     } yield ()
   }
@@ -882,7 +882,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("a").run[F]
-      r = r1.unsafeCas("x", "y").maybe * r2.unsafeCas("a", "b").maybe
+      r = Rxn.unsafe.cas(r1, "x", "y").maybe * Rxn.unsafe.cas(r2, "a", "b").maybe
       _ <- assertResultF(r.run[F], (false, true))
     } yield ()
   }
@@ -1094,7 +1094,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("a").run[F]
-      r = r2.unsafeTicketRead.flatMapF { ticket =>
+      r = Rxn.unsafe.ticketRead(r2).flatMapF { ticket =>
         r1.getAndUpdate(_ + ticket.unsafePeek).flatMapF { ov =>
           if (ov === "aa") {
             Rxn.unit
@@ -1119,7 +1119,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r2 <- Ref("a").run[F]
       r = r2.update(_ + "b").flatMapF { _ =>
-        r2.unsafeTicketRead.flatMapF { ticket =>
+        Rxn.unsafe.ticketRead(r2).flatMapF { ticket =>
           ticket.unsafeSet(ticket.unsafePeek + "x")
         }
       }
@@ -1293,9 +1293,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- ref.update(_ + 1).run[F]
       _ <- assertResultF(ref.get.run[F], n + 1)
       // `unsafeDirectRead` then `unsafeCas` maybe doesn't:
-      unsafeRxn = ref.unsafeDirectRead.flatMap { v =>
+      unsafeRxn = Rxn.unsafe.directRead(ref).flatMap { v =>
         Rxn.pure(42).flatMap { _ =>
-          ref.unsafeCas(ov = v, nv = v + 1)
+          Rxn.unsafe.cas(ref, ov = v, nv = v + 1)
         }
       }
       res <- F.delay {
@@ -1384,7 +1384,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(rxn0[F](99), "result")
       ref <- Ref.unpadded("-").run[F]
       rxn1 = inst.fix[Int] { rec =>
-        ref.unsafeCas("a", "b").as(42) + (Axn.unsafe.delay {
+        Rxn.unsafe.cas(ref, "a", "b").as(42) + (Axn.unsafe.delay {
           if (!ref.loc.unsafeCasV("-", "a")) { throw new AssertionError }
         } *> Rxn.unsafe.retry) + rec
       }

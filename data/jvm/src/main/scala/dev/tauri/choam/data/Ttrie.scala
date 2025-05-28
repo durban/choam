@@ -127,7 +127,7 @@ private final class Ttrie[K, V] private (
       // Note: we need to read here even if
       // we created the ref, because it's
       // already visible to others.
-      ref.unsafeTicketRead.flatMapF { ticket =>
+      Rxn.unsafe.ticketRead(ref).flatMapF { ticket =>
         val currVal = ticket.unsafePeek
         if (isEnd[V](currVal) && ticket.unsafeIsReadOnly) {
           // ticket `nv eq End` AND `nv eq ov`
@@ -172,7 +172,7 @@ private final class Ttrie[K, V] private (
     // committed (into `ref`), since the Rxn
     // which added us as a post-commit action
     // might've chaged it back later (in its log):
-    ref.unsafeDirectRead.flatMapF { v =>
+    Rxn.unsafe.directRead(ref).flatMapF { v =>
       if (isEnd[V](v)) { // OK, we can delete it:
         Axn.unsafe.delayContext(unsafeDelRef(key, ref, _))
       } else { // oops, don't delete it:

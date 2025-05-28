@@ -164,9 +164,9 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         Rxn.unsafe.cas(b, "bbb", "bbbb").postCommit(Rxn.unsafe.cas(c, "ccc", "cccc"))
       )
       _ <- assertResultF(rea.run[F], ())
-      _ <- assertResultF(a.unsafeDirectRead.run, "aa")
-      _ <- assertResultF(b.unsafeDirectRead.run, "bbbb")
-      _ <- assertResultF(c.unsafeDirectRead.run, "cccc")
+      _ <- assertResultF(Rxn.unsafe.directRead(a).run, "aa")
+      _ <- assertResultF(Rxn.unsafe.directRead(b).run, "bbbb")
+      _ <- assertResultF(Rxn.unsafe.directRead(c).run, "cccc")
     } yield ()
   }
 }

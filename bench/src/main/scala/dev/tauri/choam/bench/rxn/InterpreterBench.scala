@@ -115,7 +115,7 @@ object InterpreterBench {
         } else {
           ref2.getAndUpdate(ov => (ov.toInt - i).toString) >>> ref1.getAndSet
         }) >>> Rxn.computed { (s: String) =>
-          (ref3.unsafeCas(s, (s.toInt + 1).toString) + ref3.update(_.length.toString)).as(s)
+          (Rxn.unsafe.cas(ref3, s, (s.toInt + 1).toString) + ref3.update(_.length.toString)).as(s)
         }
       }.postCommit(cnt.update(_ + 1L))
     }

@@ -225,7 +225,7 @@ object Promise {
     }
 
     final override def get[F[_]](implicit F: AsyncReactive[F]): F[A] = {
-      F.monad.flatMap(ref.unsafeDirectRead.run[F]) {
+      F.monad.flatMap(Rxn.unsafe.directRead(ref).run[F]) {
         case _: Waiting[_] =>
           F.asyncInst.asyncCheckAttempt { cb =>
             F.monad.map(insertCallback(cb).run[F]) {

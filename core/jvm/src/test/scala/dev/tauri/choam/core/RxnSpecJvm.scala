@@ -132,9 +132,9 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       _ <- ref.update(_ + 1).run[F]
       _ <- assertResultF(ref.get.run[F], n + 1)
       // `unsafeDirectRead` then `unsafeCas` doesn't:
-      unsafeRxn = ref.unsafeDirectRead.flatMap { v =>
+      unsafeRxn = Rxn.unsafe.directRead(ref).flatMap { v =>
         Rxn.pure(42).flatMap { _ =>
-          ref.unsafeCas(ov = v, nv = v + 1)
+          Rxn.unsafe.cas(ref, ov = v, nv = v + 1)
         }
       }
       fib <- F.interruptible {
@@ -170,7 +170,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
           ) : Unit
         }
         // read value unsafely:
-        ref2.unsafeDirectRead.flatMap { unsafeValue =>
+        Rxn.unsafe.directRead(ref2).flatMap { unsafeValue =>
           unsafeLog.accumulateAndGet(List((v1, unsafeValue)), (l1, l2) => l1 ++ l2)
           // then we continue with reading (the now
           // changed) `ref2`:

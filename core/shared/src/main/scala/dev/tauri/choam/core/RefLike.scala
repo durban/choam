@@ -51,7 +51,7 @@ sealed trait RefLike[A] {
   final def update(f: A => A): Axn[Unit] =
     upd[Any, Unit] { (oa, _) => (f(oa), ()) }
 
-  final def update0[B](f: (A, B) => A): Rxn[B, Unit] = // TODO: optimize
+  final def update0[B](f: (A, B) => A): Rxn[B, Unit] = // TODO: optimize; needs better name
     upd[B, Unit] { (oa, b) => (f(oa, b), ()) }
 
   final def updateWith(f: A => Axn[A]): Axn[Unit] =

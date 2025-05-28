@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-import core.{ Axn, Ref }
+import core.{ Rxn, Axn, Ref }
 
 @JCStressTest
 @State
@@ -45,7 +45,7 @@ class ZombieTest extends StressTestBase {
 
   // a 2-CAS, setting both atomically "a" -> "b":
   private[this] val upd: Axn[Unit] =
-    ref1.unsafeCas("a", "b") >>> ref2.unsafeCas("a", "b")
+    Rxn.unsafe.cas(ref1, "a", "b") >>> Rxn.unsafe.cas(ref2, "a", "b")
 
   // a consistent read of both:
   private[this] val _get: Axn[(String, String)] =

@@ -44,7 +44,7 @@ class ResourceAllocationRxn {
       if (i >= n) {
         rea
       } else {
-        val r = rss(i).unsafeDirectRead
+        val r = Rxn.unsafe.directRead(rss(i))
         read(i + 1, rea.map2(r) { (arr, s) =>
           arr(i) = s
           arr
@@ -58,7 +58,7 @@ class ResourceAllocationRxn {
         rea
       } else {
         val r = Rxn.computed[Array[String], Unit] { ovs =>
-          rss(i).unsafeCas(ovs(i), ovs((i + 1) % n))
+          Rxn.unsafe.cas(rss(i), ovs(i), ovs((i + 1) % n))
         }
         write(i + 1, (rea * r).void)
       }

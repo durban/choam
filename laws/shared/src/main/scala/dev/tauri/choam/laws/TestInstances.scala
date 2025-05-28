@@ -163,7 +163,7 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
       arbB.arbitrary.flatMap { b =>
         Gen.delay {
           val ref = Ref.unsafePadded(b, this.rigInstance)
-          ResetRxn(ref.unsafeDirectRead, Set(ResetRef(ref, b)))
+          ResetRxn(Rxn.unsafe.directRead(ref), Set(ResetRef(ref, b)))
         }
       },
       for {

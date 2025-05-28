@@ -681,7 +681,7 @@ object Rxn extends RxnInstances0 {
         throw new UnsupportedOperationException
     }
 
-    private[choam] final def directRead[A](r: Ref[A]): Axn[A] =
+    final def directRead[A](r: Ref[A]): Axn[A] =
       new Rxn.DirectRead[A](r.loc)
 
     final def ticketRead[A](r: Ref[A]): Axn[unsafe.Ticket[A]] =
