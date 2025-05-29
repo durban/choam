@@ -124,6 +124,24 @@ private final class SimpleMap[K, V] private (
     final def get: Axn[V] =
       self.get.provide(key).map(_.getOrElse(default))
 
+    final override def set0: Rxn[V, Unit] = {
+      repr.update2[V] { (hm, nv) =>
+        if (equ(nv, default)) {
+          hm.removed(key)
+        } else {
+          hm.updated(key, nv)
+        }
+      }
+    }
+
+    final override def set1(nv: V): Axn[Unit] = {
+      if (equ(nv, default)) {
+        repr.update { hm => hm.removed(key) }
+      } else {
+        repr.update { hm => hm.updated(key, nv) }
+      }
+    }
+
     final override def upd[B, C](f: (V, B) => (V, C)): B =#> C = {
       Rxn.computed[B, C] { (b: B) =>
         repr.modify { hm =>

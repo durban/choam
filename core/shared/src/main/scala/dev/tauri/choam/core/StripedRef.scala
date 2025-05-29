@@ -63,6 +63,16 @@ private[choam] object StripedRef extends StripedRefCompanionPlatform {
       ref.get
     }
 
+    final override def set0: Rxn[A, Unit] = Rxn.unsafe.suspendContext { (nv, ctx) =>
+      val ref = stripes.unsafeGet(ctx.stripeId)
+      ref.set1(nv)
+    }
+
+    final override def set1(a: A): Axn[Unit] = Rxn.unsafe.suspendContext { (_, ctx) =>
+      val ref = stripes.unsafeGet(ctx.stripeId)
+      ref.set1(a)
+    }
+
     final override def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] = Rxn.unsafe.suspendContext { (_, ctx) =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.updWith(f)

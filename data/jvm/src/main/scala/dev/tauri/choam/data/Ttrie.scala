@@ -289,6 +289,20 @@ private final class Ttrie[K, V] private (
     final def get: Axn[V] =
       self.get.provide(key).map(_.getOrElse(default))
 
+    final override def set0: Rxn[V, Unit] = {
+      Rxn.computed[V, Unit] { nv =>
+        this.set1(nv)
+      }
+    }
+
+    final override def set1(nv: V): Axn[Unit] = {
+      if (equ(nv, default)) {
+        self.del.provide(key).void
+      } else {
+        self.put.provide((key, nv)).void
+      }
+    }
+
     // TODO: maybe override `getAndSet` if we can make it faster than the default impl.
 
     final def upd[B, C](f: (V, B) => (V, C)): Rxn[B, C] = // TODO: optimize this

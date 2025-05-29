@@ -35,15 +35,13 @@ sealed trait RefLike[A] {
 
   def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C]
 
-  // derived:
-
   // TODO: create a `set` alias(?)
 
-  final def set0: Rxn[A, Unit] =
-    upd[A, Unit] { (_, na) => (na, ()) }
+  def set0: Rxn[A, Unit]
 
-  final def set1(a: A): Axn[Unit] =
-    upd[Any, Unit] { (_, _) => (a, ()) }
+  def set1(a: A): Axn[Unit]
+
+  // derived:
 
   final def getAndSet: Rxn[A, A] =
     upd[A, A] { (oa, na) => (na, oa) }

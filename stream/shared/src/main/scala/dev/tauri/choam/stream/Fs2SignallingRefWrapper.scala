@@ -45,6 +45,14 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
     final override def get: Axn[A] =
       underlying.get
 
+    final override def set0: Rxn[A, Unit] = {
+      Rxn.computed(set1)
+    }
+
+    final override def set1(a: A): Axn[Unit] = {
+      underlying.set1(a) >>> notifyListeners(a)
+    }
+
     final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] = {
       underlying.updWith[B, C] { (oldVal, b) =>
         val ac = f(oldVal, b)

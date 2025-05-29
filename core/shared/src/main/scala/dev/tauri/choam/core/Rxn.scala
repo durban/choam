@@ -603,8 +603,15 @@ object Rxn extends RxnInstances0 {
 
   private[choam] final object ref {
 
+    @inline
     private[choam] final def upd[A, B, C](r: Ref[A])(f: (A, B) => (A, C)): Rxn[B, C] =
-      new Rxn.Upd(r.loc, f)
+      Rxn.loc.upd(r.loc)(f)
+
+    private[choam] final def updSet0[A](r: Ref[A]): Rxn[A, Unit] =
+      new Rxn.UpdSet0(r.loc)
+
+    private[choam] final def updSet1[A](r: Ref[A], nv: A): Rxn[Any, Unit] =
+      new Rxn.UpdSet1(r.loc, nv)
 
     private[choam] final def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
       new Rxn.UpdWith[A, B, C](r.loc, f)
@@ -613,7 +620,7 @@ object Rxn extends RxnInstances0 {
   private[choam] final object loc {
 
     private[choam] final def upd[A, B, C](r: MemoryLocation[A])(f: (A, B) => (A, C)): RxnImpl[B, C] =
-      new Rxn.Upd(r, f)
+      new Rxn.UpdFull(r, f)
   }
 
   final object unsafe {
@@ -842,8 +849,25 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Map2(${left}, ${right}, <function>)"
   }
 
-  private final class Upd[A, B, X](val ref: MemoryLocation[X], val f: (X, A) => (X, B)) extends RxnImpl[A, B] {
+  private sealed abstract class Upd[A, B, X](val ref: MemoryLocation[X]) extends RxnImpl[A, B] {
     final override def toString: String = s"Upd(${ref}, <function>)"
+    def f(ov: X, a: A): (X, B)
+  }
+
+  private final class UpdFull[A, B, X](ref0: MemoryLocation[X], f0: (X, A) => (X, B))
+    extends Upd[A, B, X](ref0) {
+    final override def f(ov: X, a: A): (X, B) = f0(ov, a)
+  }
+
+  private final class UpdSet0[X](ref0: MemoryLocation[X])
+    extends Upd[X, Unit, X](ref0) {
+    final override def f(ov: X, a: X): (X, Unit) = (a, ()) // TODO: avoid tuple
+  }
+
+  private final class UpdSet1[X](ref0: MemoryLocation[X], nv: X)
+    extends Upd[Any, Unit, X](ref0) {
+    private[this] val tup = (nv, ())
+    final override def f(ov: X, a: Any): (X, Unit) = tup // TODO: avoid tuple
   }
 
   private final class TicketWrite[A](val hwd: LogEntry[A], val newest: A) extends RxnImpl[Any, Unit] {

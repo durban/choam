@@ -166,6 +166,21 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Setting ref to default value should remove from the map") {
+    for {
+      m <- newMap[String, String]
+      ref = m.refLike(key = "foo", default = "")
+      _ <- ref.set1("bar").run[F]
+      _ <- assertResultF(ref.get.run[F], "bar")
+      _ <- ref.set1("").run[F]
+      _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap.empty[String, String])
+      _ <- ref.set0.apply[F]("abc")
+      _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap("foo" -> "abc"))
+      _ <- ref.set0.apply[F]("")
+      _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap.empty[String, String])
+    } yield ()
+  }
+
   test("Map double get with concurrent insert") {
     val S = 1024
     val N = 1024
