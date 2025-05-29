@@ -613,6 +613,9 @@ object Rxn extends RxnInstances0 {
     private[choam] final def updSet1[A](r: Ref[A], nv: A): Rxn[Any, Unit] =
       new Rxn.UpdSet1(r.loc, nv)
 
+    private[choam] final def updUpdate1[A](r: Ref[A])(f: A => A): Axn[Unit] =
+      new Rxn.UpdUpdate1(r.loc, f)
+
     private[choam] final def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
       new Rxn.UpdWith[A, B, C](r.loc, f)
   }
@@ -868,6 +871,11 @@ object Rxn extends RxnInstances0 {
     extends Upd[Any, Unit, X](ref0) {
     private[this] val tup = (nv, ())
     final override def f(ov: X, a: Any): (X, Unit) = tup // TODO: avoid tuple
+  }
+
+  private final class UpdUpdate1[X](ref0: MemoryLocation[X], f0: X => X)
+    extends Upd[Any, Unit, X](ref0) {
+    final override def f(ov: X, a: Any): (X, Unit) = (f0(ov), ()) // TODO: avoid tuple
   }
 
   private final class TicketWrite[A](val hwd: LogEntry[A], val newest: A) extends RxnImpl[Any, Unit] {

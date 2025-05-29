@@ -188,9 +188,16 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  private[this] final def cleanupLaterIfNeeded[A](key: K, ref: Ref[V]): Rxn[ReplaceResult, Unit] = {
+  private[this] final def cleanupLaterIfNeeded(key: K, ref: Ref[V]): Rxn[ReplaceResult, Unit] = {
     Rxn.computed { rr =>
       if (rr.needsCleanup) cleanupLater(key, ref)
+      else Rxn.unit
+    }
+  }
+
+  private[this] final def cleanupLaterIfTrue(key: K, ref: Ref[V]): Rxn[Boolean, Unit] = {
+    Rxn.computed { doCleanup =>
+      if (doCleanup) cleanupLater(key, ref)
       else Rxn.unit
     }
   }
@@ -305,10 +312,31 @@ private final class Ttrie[K, V] private (
 
     // TODO: maybe override `getAndSet` if we can make it faster than the default impl.
 
-    final def upd[B, C](f: (V, B) => (V, C)): Rxn[B, C] = // TODO: optimize this
+    final override def update1(f: V => V): Axn[Unit] = {
+      getRefWithKey(key).flatMapF { ref =>
+        ref.modify { oldVal =>
+          val currVal = if (isInit(oldVal) || isEnd(oldVal)) {
+            default
+          } else {
+            oldVal
+          }
+          val newVal = f(currVal)
+          if (equ(newVal, default)) {
+            // it is possible, that we created
+            // the ref with `Init`, so we must
+            // write `End`, to not leak memory:
+            (End[V], true) // <- needs cleanup
+          } else {
+            (newVal, false) // <- no ned for cleanup
+          }
+        }.postCommit(cleanupLaterIfTrue(key, ref)).void
+      }
+    }
+
+    final override def upd[B, C](f: (V, B) => (V, C)): Rxn[B, C] = // TODO: optimize this
       this.updWith { (v, b) => Rxn.pure(f(v, b)) }
 
-    final def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
+    final override def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
       getRefWithKey(key).flatMap { ref =>
         ref.updWith[B, C] { (oldVal, b) =>
           val currVal = if (isInit(oldVal) || isEnd(oldVal)) {

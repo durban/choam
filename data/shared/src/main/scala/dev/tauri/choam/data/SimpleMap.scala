@@ -142,6 +142,15 @@ private final class SimpleMap[K, V] private (
       }
     }
 
+    final override def update1(f: V => V): Axn[Unit] = {
+      repr.update1 { hm =>
+        val currVal = hm.getOrElse(key, default)
+        val newVal = f(currVal)
+        if (equ(newVal, default)) hm.removed(key)
+        else hm.updated(key, newVal)
+      }
+    }
+
     final override def upd[B, C](f: (V, B) => (V, C)): B =#> C = {
       Rxn.computed[B, C] { (b: B) =>
         repr.modify { hm =>

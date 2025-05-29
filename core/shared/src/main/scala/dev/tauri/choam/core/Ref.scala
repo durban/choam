@@ -45,6 +45,9 @@ sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A]
   final override def set1(a: A): Axn[Unit] =
     Rxn.ref.updSet1(this, a)
 
+  final override def update1(f: A => A): Axn[Unit] =
+    Rxn.ref.updUpdate1(this)(f)
+
   final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
     Rxn.ref.upd(this)(f)
 
