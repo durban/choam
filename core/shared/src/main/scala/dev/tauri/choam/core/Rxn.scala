@@ -1328,7 +1328,8 @@ object Rxn extends RxnInstances0 {
       val res: LogEntry[Any] = curr match {
         case _: RefGetAxn[_] =>
           this.ctx.readIntoHwd(ref)
-        case c: Upd[_, _, _] =>
+        case c0: Upd[_, _, _] =>
+          val c = c0.asInstanceOf[Upd[Any, Any, Any]]
           val hwd = this.ctx.readIntoHwd(c.ref)
           if (this.desc.isValidHwd(hwd)) {
             val ox = hwd.nv
