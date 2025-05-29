@@ -41,6 +41,8 @@ sealed trait RefLike[A] {
 
   def update1(f: A => A): Axn[Unit]
 
+  def update2[B](f: (A, B) => A): Rxn[B, Unit]
+
   // derived:
 
   final def getAndSet: Rxn[A, A] =
@@ -49,9 +51,6 @@ sealed trait RefLike[A] {
   @inline
   final def update(f: A => A): Axn[Unit] =
     update1(f)
-
-  final def update2[B](f: (A, B) => A): Rxn[B, Unit] =
-    upd[B, Unit] { (oa, b) => (f(oa, b), ()) }
 
   final def updateWith(f: A => Axn[A]): Axn[Unit] =
     updWith[Any, Unit] { (oa, _) => f(oa).map(na => (na, ())) }

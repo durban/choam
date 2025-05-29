@@ -333,6 +333,27 @@ private final class Ttrie[K, V] private (
       }
     }
 
+    final override def update2[B](f: (V, B) => V): Rxn[B, Unit] = {
+      getRefWithKey(key).flatMap { ref =>
+        ref.upd[B, Boolean] { (oldVal, b) =>
+          val currVal = if (isInit(oldVal) || isEnd(oldVal)) {
+            default
+          } else {
+            oldVal
+          }
+          val newVal = f(currVal, b)
+          if (equ(newVal, default)) {
+            // it is possible, that we created
+            // the ref with `Init`, so we must
+            // write `End`, to not leak memory:
+            (End[V], true) // <- needs cleanup
+          } else {
+            (newVal, false) // <- no ned for cleanup
+          }
+        }.postCommit(cleanupLaterIfTrue(key, ref)).void
+      }
+    }
+
     final override def upd[B, C](f: (V, B) => (V, C)): Rxn[B, C] = // TODO: optimize this
       this.updWith { (v, b) => Rxn.pure(f(v, b)) }
 
