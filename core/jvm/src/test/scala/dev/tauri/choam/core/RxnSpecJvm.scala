@@ -19,7 +19,7 @@ package dev.tauri.choam
 package core
 
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.atomic.{ AtomicReference, AtomicInteger, AtomicBoolean }
+import java.util.concurrent.atomic.{ AtomicReference, AtomicInteger, AtomicLong, AtomicBoolean }
 
 import scala.concurrent.duration._
 
@@ -44,9 +44,6 @@ final class RxnSpecJvm_Emcas_ZIO
   with RxnSpecJvm_Emcas[zio.Task]
 
 trait RxnSpecJvm_Emcas[F[_]] extends RxnSpecJvm[F] with SpecEmcas {
-
-  final override def munitTimeout: Duration =
-    super.munitTimeout * 2
 
   test("Commit retry due to version") {
     // There used to be a mechanism to retry
@@ -85,6 +82,9 @@ trait RxnSpecJvm_Emcas[F[_]] extends RxnSpecJvm[F] with SpecEmcas {
 }
 
 trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
+
+  final override def munitTimeout: Duration =
+    super.munitTimeout * 2
 
   test("Thread interruption in infinite retry") {
     val never = Rxn.unsafe.retry[Unit]
@@ -198,38 +198,23 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Zombie infinite loop") {
-    val c = new AtomicInteger(0)
-    @tailrec
-    def infiniteLoop(@unused n: Int = 0): Int = {
-      if (Thread.interrupted()) {
-        throw new InterruptedException
-      } else {
-        infiniteLoop(c.incrementAndGet())
-      }
-    }
+  test("Zombie side effect") {
     val tsk = for {
-      ref1 <- Ref("a").run[F]
-      ref2 <- Ref("b").run[F]
-      writer = (ref1.update(_ + "a") *> ref2.update(_ + "b")).run[F]
-      reader = F.interruptible {
-        Ref.consistentRead(ref1, ref2).map { v12 =>
-          if (v12._1.length != v12._2.length) {
-            infiniteLoop().toString() -> "x"
-          } else {
-            v12
-          }
-        }.unsafeRun(this.mcasImpl)
-      }
-      _ <- F.both(F.cede *> writer, F.cede *> reader)
+      ref1 <- Ref(0L).run[F]
+      ref2 <- Ref(0L).run[F]
+      sideChannel <- F.delay(new AtomicLong(0L))
+      writer = (ref1.update(_ + 1L) *> ref2.update(_ + 1L)).run[F]
+      reader = Ref.consistentRead(ref1, ref2).map { v12 =>
+        if (v12._1 != v12._2) {
+          sideChannel.getAndIncrement()
+        }
+        v12
+      }.run[F]
+      v12 <- F.both(F.cede *> writer, F.cede *> reader).map(_._2)
+      _ <- assertEqualsF(v12._1, v12._2)
+      _ <- assertResultF(F.delay(sideChannel.get()), 0L)
     } yield ()
-    // we hard block here, because we don't want the munit timeout:
-    this.absolutelyUnsafeRunSync(
-      F.replicateA(1024, tsk).void.timeoutTo(
-        1.minute,
-        this.failF("infinite loop")
-      )
-    )
+    F.replicateA(10000, tsk)
   }
 
   test("Read-write-read-write") {
