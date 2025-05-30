@@ -69,4 +69,13 @@ package object unsafe {
   final def writeRef[A](ref: Ref[A], nv: A)(implicit ir: InRxn): Unit = {
     ir.writeRef(ref.loc, nv)
   }
+
+  implicit final class RefSyntax[A](private val self: Ref[A]) extends AnyVal {
+
+    final def value(implicit ir: InRxn): A =
+      readRef(self)
+
+    final def value_=(nv: A)(implicit it: InRxn): Unit =
+      writeRef(self, nv)
+  }
 }
