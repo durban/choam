@@ -27,6 +27,7 @@ import cats.mtl.Local
 import cats.effect.kernel.{ Async, Clock, Cont, Unique, MonadCancel, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
+import dev.tauri.choam.{ unsafe => unsafe2 }
 import stm.{ Txn, Transactive }
 import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, AbstractDescriptor, Consts, Hamt, Version }
 import internal.random
@@ -782,6 +783,18 @@ object Rxn extends RxnInstances0 {
      */
     final def forceValidate: Axn[Unit] =
       new Rxn.ForceValidate
+
+    // Unsafe/imperative API (for `atomically`):
+
+    private[choam] final def startImperative(mcasImpl: Mcas): unsafe2.InRxn = {
+      new Rxn.InterpreterState[Null, Any](
+        rxn = null, // TODO
+        x = null,
+        mcas = mcasImpl,
+        strategy = (RetryStrategy.Default : RetryStrategy.Spin),
+        isStm = false,
+      )
+    }
   }
 
   private[choam] final object internal {
@@ -1206,7 +1219,8 @@ object Rxn extends RxnInstances0 {
     mcas: Mcas,
     strategy: RetryStrategy,
     isStm: Boolean,
-  ) extends Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], Rxn[Any, Any]] {
+  ) extends Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], Rxn[Any, Any]]
+    with unsafe2.InRxn.UnsealedInRxn {
 
     private[this] val maxRetries: Int =
       strategy.maxRetriesInt
@@ -2242,6 +2256,80 @@ object Rxn extends RxnInstances0 {
       } finally {
         this.saveStats()
         this.invalidateCtx()
+      }
+    }
+
+    // Unsafe/imperative API (`InRxn`):
+
+    final override def currentContext(): Mcas.ThreadContext = {
+      this.ctx match {
+        case null =>
+          this.mcas.currentContext()
+        case ctx =>
+          ctx
+      }
+    }
+
+    final override def initCtx(): Unit = {
+      this.ctx match {
+        case null =>
+          this.ctx = this.mcas.currentContext()
+        case _ =>
+          throw new IllegalStateException("ctx is already initialized")
+      }
+    }
+
+    final override def rollback(): Unit = {
+      val rxn = this.retry()
+      _assert(rxn eq null)
+    }
+
+    final override def readRef[A](ref: MemoryLocation[A]): A = {
+      _readRef(ref.cast[Any]).asInstanceOf[A]
+    }
+
+    final override def writeRef[A](ref: MemoryLocation[A], nv: A): Unit = {
+      _writeRef(ref.cast[Any], nv)
+    }
+
+    private[this] final def _readRef(ref: MemoryLocation[Any]): Any = {
+      _assert(this._entryHolder eq null) // just to be sure
+      desc = desc.computeIfAbsent(ref, tok = ref.asInstanceOf[Rxn[Any, Any]], visitor = this)
+      val hwd = this._entryHolder
+      this._entryHolder = null // cleanup
+      val hwd2 = revalidateIfNeeded(hwd)
+      if (hwd2 eq null) { // need to roll back
+        _assert(this._desc eq null)
+        throw unsafe2.RetryException.instance
+      } else {
+        hwd2.nv
+      }
+    }
+
+    private[this] final def _writeRef(ref: MemoryLocation[Any], nv: Any): Unit = {
+      // TODO: do the read-write in one step
+      val hwd = readMaybeFromLog(ref)
+      if (hwd eq null) { // need to roll back
+        throw unsafe2.RetryException.instance
+      } else {
+        desc = desc.addOrOverwrite(hwd.withNv(nv))
+      }
+    }
+
+    final override def imperativeCommit(): Boolean = {
+      val d = this._desc // we avoid calling `desc` here, in case it's `null`
+      this.clearDesc()
+      val dSize = if (d ne null) d.size else 0
+      if (performMcas(d)) {
+        if (Consts.statsEnabled) {
+          // save retry statistics:
+          ctx.recordCommit(retries = this.retries, committedRefs = dSize, descExtensions = this.descExtensions)
+        }
+        // imperative API has no post-commit actions (for now)
+        _assert(pc.isEmpty())
+        true // we're done
+      } else {
+        false // need to retry
       }
     }
   }

@@ -113,7 +113,7 @@ trait MemoryLocation[A] extends Hamt.HasHash {
 
   // private utilities:
 
-  private[mcas] final def cast[B]: MemoryLocation[B] =
+  private[choam] final def cast[B]: MemoryLocation[B] =
     this.asInstanceOf[MemoryLocation[B]]
 }
 
