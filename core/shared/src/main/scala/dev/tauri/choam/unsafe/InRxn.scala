@@ -25,6 +25,7 @@ sealed trait InRxn extends MaybeInRxn {
   def rollback(): Unit
   def readRef[A](ref: MemoryLocation[A]): A
   def writeRef[A](ref: MemoryLocation[A], nv: A): Unit
+  def imperativeTentativeRead[A](ref: MemoryLocation[A]): A
   def imperativeCommit(): Boolean
 }
 
@@ -40,7 +41,7 @@ object MaybeInRxn {
 
   private[this] val _fallback: MaybeInRxn = new MaybeInRxn {
     final override def currentContext(): Mcas.ThreadContext =
-      unsafe.runtime.mcasImpl.currentContext()
+      unsafe.unsafeRuntime.mcasImpl.currentContext()
   }
 
   implicit def fallback: MaybeInRxn = {

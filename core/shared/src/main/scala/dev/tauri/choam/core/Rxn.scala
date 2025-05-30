@@ -682,6 +682,9 @@ object Rxn extends RxnInstances0 {
     private[Rxn] final class TicketForTentativeRead[A](hwd: LogEntry[A])
       extends Ticket[A] {
 
+      // TODO: Create, e.g., a `SaferTicket` type, or
+      // TODO: even just return `A` from `tentativeRead`.
+
       final override def unsafePeek: A =
         hwd.nv
 
@@ -708,7 +711,7 @@ object Rxn extends RxnInstances0 {
      * so it is safer than `ticketRead`; but makes it impossible
      * to do a log extension later.
      */
-    final def tentativeRead[A](r: Ref[A]): Axn[Ticket[A]] = // TODO: create, e.g., a `SaferTicket` type
+    final def tentativeRead[A](r: Ref[A]): Axn[Ticket[A]] =
       new Rxn.TentativeRead[A](r.loc)
 
     final def unread[A](r: Ref[A]): Axn[Unit] =
@@ -1799,6 +1802,22 @@ object Rxn extends RxnInstances0 {
     }
 
     /**
+     * Returns `null` if we must retry.
+     */
+    private[this] final def tentativeRead[A](ref: MemoryLocation[A]): LogEntry[A] = {
+      val hwd = readMaybeFromLog(ref)
+      // `desc` must be initialized (at the latest) when we
+      // execute the first `tentativeRead`, because for
+      // those, opacity is solely based on version numbers
+      // (so we need an initialized `validTs`):
+      _assert(_desc ne null)
+      if (hwd ne null) {
+        this.hasTentativeRead = true
+      }
+      hwd
+    }
+
+    /**
      * Specialized variant of `MCAS.ThreadContext#readMaybeFromLog`.
      * Note: doesn't put a fresh HWD into the log!
      * Note: returns `null` if a rollback is required!
@@ -2186,16 +2205,10 @@ object Rxn extends RxnInstances0 {
           }
           loop(next())
         case c: TentativeRead[_] => // TentativeRead
-          val hwd = readMaybeFromLog(c.loc)
-          // `desc` must be initialized (at the latest) when we
-          // execute the first `tentativeRead`, because for
-          // those, opacity is solely based on version numbers
-          // (so we need an initialized `validTs`):
-          _assert(_desc ne null)
+          val hwd = tentativeRead(c.loc)
           if (hwd eq null) {
             loop(retry())
           } else {
-            this.hasTentativeRead = true
             a = new unsafe.TicketForTentativeRead(hwd)
             loop(next())
           }
@@ -2313,6 +2326,15 @@ object Rxn extends RxnInstances0 {
         throw unsafe2.RetryException.instance
       } else {
         desc = desc.addOrOverwrite(hwd.withNv(nv))
+      }
+    }
+
+    final override def imperativeTentativeRead[A](ref: MemoryLocation[A]): A = {
+      val hwd = tentativeRead(ref)
+      if (hwd eq null) {
+        throw unsafe2.RetryException.instance
+      } else {
+        hwd.nv
       }
     }
 

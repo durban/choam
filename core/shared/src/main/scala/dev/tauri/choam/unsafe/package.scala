@@ -24,7 +24,7 @@ package object unsafe {
   private[this] val rt: ChoamRuntime =
     ChoamRuntime.unsafeBlocking()
 
-  final def runtime: ChoamRuntime =
+  final def unsafeRuntime: ChoamRuntime =
     this.rt
 
   final def atomically[A](block: InRxn => A): A = {
@@ -75,6 +75,10 @@ package object unsafe {
     val ov = readRef(ref)
     val nv = f(ov)
     writeRef(ref, nv)
+  }
+
+  final def tentativeRead[A](ref: Ref[A])(implicit ir: InRxn): A = {
+    ir.imperativeTentativeRead(ref.loc)
   }
 
   implicit final class RefSyntax[A](private val self: Ref[A]) extends AnyVal {
