@@ -24,7 +24,7 @@ package object unsafe {
   private[this] val rt: ChoamRuntime =
     ChoamRuntime.unsafeBlocking()
 
-  private[unsafe] final def runtime: ChoamRuntime =
+  final def runtime: ChoamRuntime =
     this.rt
 
   final def atomically[A](block: InRxn => A): A = {
@@ -75,7 +75,15 @@ package object unsafe {
     final def value(implicit ir: InRxn): A =
       readRef(self)
 
-    final def value_=(nv: A)(implicit it: InRxn): Unit =
+    final def value_=(nv: A)(implicit ir: InRxn): Unit =
       writeRef(self, nv)
+  }
+
+  final def newRefArray[A](
+    size: Int,
+    initial: A,
+    strategy: Ref.Array.AllocationStrategy = Ref.Array.AllocationStrategy.Default,
+  )(implicit mir: MaybeInRxn): Ref.Array[A] = {
+    Ref.unsafeArray(size, initial, strategy, mir.currentContext().refIdGen)
   }
 }

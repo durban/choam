@@ -67,4 +67,26 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
       assertEquals(ref.value, 99)
     }
   }
+
+  test("Ref.Array") {
+    val arr1: Ref.Array[String] = newRefArray[String](16, "")
+    val r1 = atomically { implicit ir =>
+      arr1.unsafeGet(3).value = "foo"
+      arr1.unsafeGet(3).value
+    }
+    assertEquals(r1, "foo")
+    val (r2, arr2) = atomically { implicit ir =>
+      val arr2 = newRefArray[String](16, "x")
+      assertEquals(arr2.unsafeGet(4).value, "x")
+      assertEquals(arr1.unsafeGet(4).value, "")
+      assertEquals(arr1.unsafeGet(3).value, "foo")
+      arr2.unsafeGet(5).value = "xyz"
+      (arr2.unsafeGet(5).value, arr2)
+    }
+    assertEquals(r2, "xyz")
+    val r3 = atomically { implicit ir =>
+      arr2.unsafeGet(5).value
+    }
+    assertEquals(r3, "xyz")
+  }
 }
