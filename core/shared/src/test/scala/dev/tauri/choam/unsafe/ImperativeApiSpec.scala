@@ -89,4 +89,27 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
     }
     assertEquals(r3, "xyz")
   }
+
+  private final class MyException(val ref: Ref[Int]) extends Exception
+
+  test("Exception passthrough") {
+    testExcPass()
+  }
+
+  @nowarn("cat=w-flag-dead-code")
+  private def testExcPass(): Unit = {
+    try {
+      val i: Int = atomically { implicit ir =>
+        val ref = newRef(42)
+        ref.value = 99
+        throw new MyException(ref)
+        ref.value
+      }
+      fail(s"Expected an exception, got: $i")
+    } catch {
+      case ex: MyException =>
+        val v = atomically(readRef(ex.ref)(_))
+        assertEquals(v, 42) // the write must be rollbacked
+    }
+  }
 }
