@@ -1835,6 +1835,30 @@ object Rxn extends RxnInstances0 {
       (newHwd2 ne null)
     }
 
+    /** Returns `true` if successful, `false` if retry is needed */
+    private[this] final def handleUpd[A, B, C](c: Upd[A, B, C]): Boolean = {
+      _assert(this._entryHolder eq null) // just to be sure
+      desc = desc.computeOrModify(c.ref.cast[Any], tok = c.asInstanceOf[Rxn[Any, Any]], visitor = this)
+      val hwd = this._entryHolder
+      this._entryHolder = null // cleanup
+      if (!desc.isValidHwd(hwd)) {
+        if (forceValidate(hwd)) {
+          // OK, `desc` was extended;
+          // but need to finish `Upd`:
+          val ox = hwd.cast[C].nv
+          val (nx, b) = c.f(ox, this.a.asInstanceOf[A])
+          this.a = b
+          desc = desc.overwrite(hwd.withNv(nx).cast[Any])
+          true
+        } else {
+          _assert((this._desc eq null) || this.hasTentativeRead)
+          false
+        }
+      } else {
+        true
+      }
+    }
+
     /**
      * Specialized variant of `MCAS.ThreadContext#readMaybeFromLog`.
      * Note: doesn't put a fresh HWD into the log!
@@ -2024,25 +2048,10 @@ object Rxn extends RxnInstances0 {
           loop(c.left)
         case c0: Upd[_, _, _] => // Upd
           val c = c0.asInstanceOf[Upd[A, B, Any]]
-          _assert(this._entryHolder eq null) // just to be sure
-          desc = desc.computeOrModify(c.ref, tok = curr.asInstanceOf[Rxn[Any, Any]], visitor = this)
-          val hwd = this._entryHolder
-          this._entryHolder = null // cleanup
-          val nxt = if (!desc.isValidHwd(hwd)) {
-            if (forceValidate(hwd)) {
-              // OK, `desc` was extended;
-              // but need to finish `Upd`:
-              val ox = hwd.nv
-              val (nx, b) = c.f(ox, this.a.asInstanceOf[A])
-              this.a = b
-              desc = desc.overwrite(hwd.withNv(nx).cast[Any])
-              next()
-            } else {
-              _assert((this._desc eq null) || this.hasTentativeRead)
-              retry()
-            }
-          } else {
+          val nxt = if (handleUpd(c)) {
             next()
+          } else {
+            retry()
           }
           loop(nxt)
         case c: TicketWrite[_] => // TicketWrite
@@ -2313,10 +2322,6 @@ object Rxn extends RxnInstances0 {
       _readRef(ref.cast[Any]).asInstanceOf[A]
     }
 
-    final override def writeRef[A](ref: MemoryLocation[A], nv: A): Unit = {
-      _writeRef(ref.cast[Any], nv)
-    }
-
     private[this] final def _readRef(ref: MemoryLocation[Any]): Any = {
       _assert(this._entryHolder eq null) // just to be sure
       desc = desc.computeIfAbsent(ref, tok = ref.asInstanceOf[Rxn[Any, Any]], visitor = this)
@@ -2331,6 +2336,10 @@ object Rxn extends RxnInstances0 {
       }
     }
 
+    final override def writeRef[A](ref: MemoryLocation[A], nv: A): Unit = {
+      _writeRef(ref.cast[Any], nv)
+    }
+
     private[this] final def _writeRef(ref: MemoryLocation[Any], nv: Any): Unit = {
       // TODO: do the read-write in one step
       val hwd = readMaybeFromLog(ref)
@@ -2338,6 +2347,13 @@ object Rxn extends RxnInstances0 {
         throw unsafe2.RetryException.instance
       } else {
         desc = desc.addOrOverwrite(hwd.withNv(nv))
+      }
+    }
+
+    final override def updateRef[A](ref: MemoryLocation[A], f: A => A): Unit = {
+      val c = new Rxn.UpdUpdate1(ref, f) // TODO: avoid this allocation
+      if (!handleUpd(c)) {
+        throw unsafe2.RetryException.instance
       }
     }
 

@@ -25,6 +25,7 @@ sealed trait InRxn extends MaybeInRxn.UnsealedMaybeInRxn {
   private[choam] def rollback(): Unit
   private[choam] def readRef[A](ref: MemoryLocation[A]): A
   private[choam] def writeRef[A](ref: MemoryLocation[A], nv: A): Unit
+  private[choam] def updateRef[A](ref: MemoryLocation[A], f: A => A): Unit
   private[choam] def imperativeTentativeRead[A](ref: MemoryLocation[A]): A
   private[choam] def imperativeTicketRead[A](ref: MemoryLocation[A]): Ticket[A]
   private[choam] def imperativeTicketWrite[A](hwd: LogEntry[A], newest: A): Unit

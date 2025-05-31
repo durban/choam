@@ -104,10 +104,7 @@ abstract class UnsafeApi(rt: ChoamRuntime) {
 
   /** @see [[dev.tauri.choam.core.Ref.update]] */
   final def updateRef[A](ref: Ref[A])(f: A => A)(implicit ir: InRxn): Unit = {
-    // TODO: optimize:
-    val ov = readRef(ref)
-    val nv = f(ov)
-    writeRef(ref, nv)
+    ir.updateRef(ref.loc, f)
   }
 
   /** @see [[dev.tauri.choam.core.Rxn.unsafe.tentativeRead]] */
