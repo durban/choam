@@ -26,37 +26,53 @@ import core.{ Ref, Reactive }
 
 final class InteropSpec extends CatsEffectSuite with MUnitUtils {
 
-  private[this] val _resAndClose: (Reactive[IO], SyncIO[Unit]) =
-    Reactive.fromIn[SyncIO, IO](unsafeRuntime).allocated.unsafeRunSync()
+  private[this] val _reactiveFromDefaultUnsafeApi: (Reactive[IO], SyncIO[Unit]) =
+    Reactive.fromIn[SyncIO, IO](api.unsafeRuntime).allocated.unsafeRunSync()
 
-  private implicit def F: Reactive[IO] =
-    _resAndClose._1
+  private[this] val _customRuntime =
+    ChoamRuntime.unsafeBlocking()
+
+  private[this] val _reactiveFromCustomRuntime =
+    Reactive.fromIn[SyncIO, IO](_customRuntime).allocated.unsafeRunSync()
+
+  private[this] val _unsafeApiFromCustomRuntime =
+    new UnsafeApi(_customRuntime) {}
 
   final override def afterAll(): Unit = {
-    _resAndClose._2.unsafeRunSync()
+    _reactiveFromDefaultUnsafeApi._2.unsafeRunSync()
+    _reactiveFromCustomRuntime._2.unsafeRunSync()
+    _customRuntime.unsafeCloseBlocking()
     super.afterAll()
   }
 
-  test("Create with Rxn, use imperatively") {
-    Ref(42).run[IO].flatMap { ref =>
-      IO {
-        atomically { implicit ir =>
-          assertEquals(ref.value, 42)
-          ref.value = 99
-          assertEquals(ref.value, 99)
+  interopTests("Default UnsafeApi", api)(using _reactiveFromDefaultUnsafeApi._1)
+  interopTests("Custom UnsafeApi", _unsafeApiFromCustomRuntime)(using _reactiveFromCustomRuntime._1)
+
+  def interopTests(prefix: String, api: UnsafeApi)(implicit F: Reactive[IO]): Unit = {
+
+    import api._
+
+    test(s"$prefix - Create with Rxn, use imperatively") {
+      Ref(42).run[IO].flatMap { ref =>
+        IO {
+          atomically { implicit ir =>
+            assertEquals(ref.value, 42)
+            ref.value = 99
+            assertEquals(ref.value, 99)
+          }
+        } *> ref.get.run[IO].flatMap { v =>
+          IO(assertEquals(v, 99))
         }
-      } *> ref.get.run[IO].flatMap { v =>
-        IO(assertEquals(v, 99))
       }
     }
-  }
 
-  test("Create imperatively, use with Rxn") {
-    IO(newRef(42)).flatMap { ref =>
-      ref.getAndUpdate(_ + 1).run[IO].flatMap { r =>
-        IO(assertEquals(r, 42)) *> ref.get.run[IO].flatMap { v =>
-          IO(assertEquals(v, 43)) *> IO {
-            assertEquals(atomically(readRef(ref)(_)), 43)
+    test(s"$prefix - Create imperatively, use with Rxn") {
+      IO(newRef(42)).flatMap { ref =>
+        ref.getAndUpdate(_ + 1).run[IO].flatMap { r =>
+          IO(assertEquals(r, 42)) *> ref.get.run[IO].flatMap { v =>
+            IO(assertEquals(v, 43)) *> IO {
+              assertEquals(atomically(readRef(ref)(_)), 43)
+            }
           }
         }
       }

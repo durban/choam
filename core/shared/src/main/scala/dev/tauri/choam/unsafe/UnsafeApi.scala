@@ -16,13 +16,25 @@
  */
 
 package dev.tauri.choam
+package unsafe
 
-import core.{ Ref, Rxn }
+import scala.language.implicitConversions
 
-package object unsafe {
+import core.{ Rxn, Ref }
+import internal.mcas.Mcas
 
-  private[this] val rt: ChoamRuntime =
-    ChoamRuntime.unsafeBlocking()
+abstract class UnsafeApi(rt: ChoamRuntime) {
+
+  private[this] val _fallback = new MaybeInRxn.UnsealedMaybeInRxn {
+    private[choam] final override def currentContext(): Mcas.ThreadContext =
+      rt.mcasImpl.currentContext()
+  }
+
+  implicit final def maybeInRxnFallback: MaybeInRxn =
+    _fallback
+
+  implicit final def RefSyntax[A](ref: Ref[A]): RefSyntax[A] =
+    new RefSyntax[A](ref)
 
   final def unsafeRuntime: ChoamRuntime =
     this.rt
@@ -83,15 +95,6 @@ package object unsafe {
 
   final def ticketRead[A](ref: Ref[A])(implicit ir: InRxn): Ticket[A] = {
     ir.imperativeTicketRead(ref.loc)
-  }
-
-  implicit final class RefSyntax[A](private val self: Ref[A]) extends AnyVal {
-
-    final def value(implicit ir: InRxn): A =
-      readRef(self)
-
-    final def value_=(nv: A)(implicit ir: InRxn): Unit =
-      writeRef(self, nv)
   }
 
   final def newRefArray[A](

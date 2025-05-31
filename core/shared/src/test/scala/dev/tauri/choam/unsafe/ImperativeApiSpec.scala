@@ -24,6 +24,8 @@ import core.Ref
 
 final class ImperativeApiSpec extends FunSuite with MUnitUtils {
 
+  import api._
+
   test("Hello, World!") {
 
     def write(ref: Ref[Int])(implicit txn: InRxn): Unit = {

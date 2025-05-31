@@ -30,6 +30,8 @@ import core.Ref
 
 final class ImperativeApiSpecJvm extends FunSuite with MUnitUtils {
 
+  import api._
+
   override def munitTimeout: Duration =
     Duration.Inf
 
