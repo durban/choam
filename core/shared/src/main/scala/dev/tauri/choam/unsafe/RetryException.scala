@@ -20,7 +20,14 @@ package unsafe
 
 import scala.util.control.ControlThrowable
 
-private[choam] final class RetryException private () extends ControlThrowable
+private[choam] final class RetryException private () extends ControlThrowable {
+
+  final override def fillInStackTrace(): Throwable =
+    this
+
+  final override def initCause(cause: Throwable): Throwable =
+    throw new IllegalStateException
+}
 
 private[choam] object RetryException {
 

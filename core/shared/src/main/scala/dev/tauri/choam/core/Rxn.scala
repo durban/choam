@@ -1214,7 +1214,14 @@ object Rxn extends RxnInstances0 {
   }
 
   final class MaxRetriesReached(val maxRetries: Int)
-    extends Exception(s"reached maxRetries of ${maxRetries}")
+    extends Exception(s"reached maxRetries of ${maxRetries}") {
+
+    final override def fillInStackTrace(): Throwable =
+      this
+
+    final override def initCause(cause: Throwable): Throwable =
+      throw new IllegalStateException
+  }
 
   private final class InterpreterState[X, R](
     rxn: Rxn[X, R],
