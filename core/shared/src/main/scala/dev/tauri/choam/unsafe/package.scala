@@ -81,6 +81,10 @@ package object unsafe {
     ir.imperativeTentativeRead(ref.loc)
   }
 
+  final def ticketRead[A](ref: Ref[A])(implicit ir: InRxn): Ticket[A] = {
+    ir.imperativeTicketRead(ref.loc)
+  }
+
   implicit final class RefSyntax[A](private val self: Ref[A]) extends AnyVal {
 
     final def value(implicit ir: InRxn): A =

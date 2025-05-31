@@ -72,6 +72,20 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
     }
   }
 
+  test("ticketRead") {
+    val r1 = newRef(0)
+    val r2 = newRef(0)
+    atomically { implicit ir =>
+      val ticket = ticketRead(r1)
+      assertEquals(ticket.value, 0)
+      updateRef(r2)(_ + 1)
+      ticket.value = 42
+      assertEquals(r1.value, 42)
+    }
+    assertEquals(atomically(readRef(r1)(_)), 42)
+    assertEquals(atomically(readRef(r2)(_)), 1)
+  }
+
   test("RefSyntax") {
     def useRef(ref: Ref[Int])(implicit ir: InRxn): Unit = {
       val v1 = ref.value

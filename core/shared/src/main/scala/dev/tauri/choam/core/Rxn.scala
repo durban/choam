@@ -1817,6 +1817,17 @@ object Rxn extends RxnInstances0 {
       hwd
     }
 
+    /** Returns `true` if successful, `false` if retry is needed */
+    private[this] final def ticketWrite[A](c: TicketWrite[A]): Boolean = {
+      _assert(this._entryHolder eq null) // just to be sure
+      a = () : Any
+      desc = desc.computeOrModify(c.hwd.address.asInstanceOf[MemoryLocation[Any]], tok = c, visitor = this)
+      val newHwd = this._entryHolder
+      this._entryHolder = null // cleanup
+      val newHwd2 = revalidateIfNeeded(newHwd)
+      (newHwd2 ne null)
+    }
+
     /**
      * Specialized variant of `MCAS.ThreadContext#readMaybeFromLog`.
      * Note: doesn't put a fresh HWD into the log!
@@ -2028,17 +2039,11 @@ object Rxn extends RxnInstances0 {
           }
           loop(nxt)
         case c: TicketWrite[_] => // TicketWrite
-          _assert(this._entryHolder eq null) // just to be sure
-          a = () : Any
-          desc = desc.computeOrModify(c.hwd.address.asInstanceOf[MemoryLocation[Any]], tok = c, visitor = this)
-          val newHwd = this._entryHolder
-          this._entryHolder = null // cleanup
-          val newHwd2 = revalidateIfNeeded(newHwd)
-          if (newHwd2 eq null) {
+          if (ticketWrite(c)) {
+            loop(next())
+          } else {
             _assert(this._desc eq null)
             loop(retry())
-          } else {
-            loop(next())
           }
         case c: DirectRead[_] => // DirectRead
           a = ctx.readDirect(c.ref)
@@ -2335,6 +2340,23 @@ object Rxn extends RxnInstances0 {
         throw unsafe2.RetryException.instance
       } else {
         hwd.nv
+      }
+    }
+
+    final override def imperativeTicketRead[A](ref: MemoryLocation[A]): unsafe2.Ticket[A] = {
+      val hwd = readMaybeFromLog(ref)
+      if (hwd eq null) {
+        throw unsafe2.RetryException.instance
+      } else {
+        unsafe2.Ticket[A](hwd)
+      }
+    }
+
+    final override def imperativeTicketWrite[A](hwd: LogEntry[A], newest: A): Unit = {
+      val c = new Rxn.TicketWrite(hwd, newest)
+      if (!ticketWrite(c)) {
+        _assert(this._desc eq null)
+        throw unsafe2.RetryException.instance
       }
     }
 

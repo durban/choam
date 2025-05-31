@@ -18,15 +18,17 @@
 package dev.tauri.choam
 package unsafe
 
-import internal.mcas.{ Mcas, MemoryLocation }
+import internal.mcas.{ Mcas, MemoryLocation, LogEntry }
 
 sealed trait InRxn extends MaybeInRxn {
-  def initCtx(): Unit
-  def rollback(): Unit
-  def readRef[A](ref: MemoryLocation[A]): A
-  def writeRef[A](ref: MemoryLocation[A], nv: A): Unit
-  def imperativeTentativeRead[A](ref: MemoryLocation[A]): A
-  def imperativeCommit(): Boolean
+  private[choam] def initCtx(): Unit
+  private[choam] def rollback(): Unit
+  private[choam] def readRef[A](ref: MemoryLocation[A]): A
+  private[choam] def writeRef[A](ref: MemoryLocation[A], nv: A): Unit
+  private[choam] def imperativeTentativeRead[A](ref: MemoryLocation[A]): A
+  private[choam] def imperativeTicketRead[A](ref: MemoryLocation[A]): Ticket[A]
+  private[choam] def imperativeTicketWrite[A](hwd: LogEntry[A], newest: A): Unit
+  private[choam] def imperativeCommit(): Boolean
 }
 
 object InRxn {
@@ -34,7 +36,7 @@ object InRxn {
 }
 
 sealed trait MaybeInRxn {
-  def currentContext(): Mcas.ThreadContext
+  private[choam] def currentContext(): Mcas.ThreadContext
 }
 
 object MaybeInRxn {
