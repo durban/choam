@@ -1379,12 +1379,12 @@ object Rxn extends RxnInstances0 {
           if (this.desc.isValidHwd(hwd)) {
             val ox = hwd.nv
             val nx = c match {
-              case c: UpdSingle[_, _] =>
-                val nx = c.f(ox, this.a)
+              case c: UpdSingle[a, _] =>
+                val nx = c.f(ox, this.a.asInstanceOf[a])
                 this.a = ()
                 nx
-              case c: UpdTuple[_, _, _] =>
-                val (nx, b) = c.f(ox, this.a)
+              case c: UpdTuple[a, _, _] =>
+                val (nx, b) = c.f(ox, this.a.asInstanceOf[a])
                 this.a = b
                 nx
             }
@@ -1409,12 +1409,12 @@ object Rxn extends RxnInstances0 {
         case c: UpdBase[_, _, x] =>
           val ox = hwd.cast[x].nv
           val nx = c match {
-            case c: UpdSingle[_, _] =>
-              val nx = c.f(ox, this.a)
+            case c: UpdSingle[a, _] =>
+              val nx = c.f(ox, this.a.asInstanceOf[a])
               this.a = ()
               nx
-            case c: UpdTuple[_, _, _] =>
-              val (nx, b) = c.f(ox, this.a)
+            case c: UpdTuple[a, _, _] =>
+              val (nx, b) = c.f(ox, this.a.asInstanceOf[a])
               this.a = b
               nx
           }
