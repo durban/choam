@@ -148,4 +148,37 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
         assertEquals(v, 42) // the write must be rollbacked
     }
   }
+
+  test("Implicit priority") {
+    // if there is an `InRxn` available, it should
+    // be used even if only a `MaybeInRxn` is needed:
+    def assertIsInRxn()(implicit instance: MaybeInRxn): Unit = assert(instance.isInstanceOf[InRxn])
+    def assertNotInRxn()(implicit instance: MaybeInRxn): Unit = assert(!instance.isInstanceOf[InRxn])
+
+    assertNotInRxn()
+
+    val r0 = atomically { implicit ir =>
+      assertIsInRxn()
+      42
+    }
+    assertEquals(r0, 42)
+
+    val r1 = locally {
+      import api._
+      assertNotInRxn()
+      atomically { implicit ir =>
+        assertIsInRxn()
+        99
+      }
+    }
+    assertEquals(r1, 99)
+
+    val r2 = atomically { implicit ir =>
+      import api._
+      val _ = newRef(56) // so that the ._ import above is not unused
+      assertIsInRxn()
+      123
+    }
+    assertEquals(r2, 123)
+  }
 }
