@@ -20,11 +20,18 @@ package unsafe
 
 import core.Ref
 
+/**
+ * Extension methods for more convenient
+ * handling of `Ref`s in an `atomically`
+ * block.
+ */
 final class RefSyntax[A](private val self: Ref[A]) extends AnyVal {
 
+  /** @see [[dev.tauri.choam.core.Ref.get]] */
   final def value(implicit ir: InRxn): A =
     ir.readRef(self.loc)
 
+  /** @see [[dev.tauri.choam.core.Ref.set1]] */
   final def value_=(nv: A)(implicit ir: InRxn): Unit =
     ir.writeRef(self.loc, nv)
 }

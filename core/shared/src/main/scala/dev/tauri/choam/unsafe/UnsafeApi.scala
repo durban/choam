@@ -33,12 +33,23 @@ abstract class UnsafeApi(rt: ChoamRuntime) {
   implicit final def maybeInRxnFallback: MaybeInRxn =
     _fallback
 
+  /**
+   * Extension methods for more convenient
+   * handling of `Ref`s in an `atomically`
+   * block.
+   */
   implicit final def RefSyntax[A](ref: Ref[A]): RefSyntax[A] =
     new RefSyntax[A](ref)
 
   final def unsafeRuntime: ChoamRuntime =
     this.rt
 
+  /**
+   * Note: don't nest calls to `atomically`!
+   *
+   * Instead pass the `InRxn` argument implicitly
+   * to methods called from the `block`.
+   */
   final def atomically[A](block: InRxn => A): A = {
     val state = Rxn.unsafe.startImperative(this.rt.mcasImpl)
     state.initCtx()
@@ -67,6 +78,7 @@ abstract class UnsafeApi(rt: ChoamRuntime) {
     go()
   }
 
+  /** @see [[dev.tauri.choam.core.Ref.apply]] */
   final def newRef[A](
     initial: A,
     strategy: Ref.AllocationStrategy = Ref.AllocationStrategy.Default,
@@ -74,14 +86,23 @@ abstract class UnsafeApi(rt: ChoamRuntime) {
     Ref.unsafe(initial, strategy, mir.currentContext().refIdGen)
   }
 
+  /**
+   * @see [[dev.tauri.choam.core.Ref.get]]
+   * @see [[dev.tauri.choam.unsafe.RefSyntax.value]]
+   */
   final def readRef[A](ref: Ref[A])(implicit ir: InRxn): A = {
     ir.readRef(ref.loc)
   }
 
+  /**
+   * @see [[dev.tauri.choam.core.Ref.set1]]
+   * @see [[dev.tauri.choam.unsafe.RefSyntax.value_=]]
+   */
   final def writeRef[A](ref: Ref[A], nv: A)(implicit ir: InRxn): Unit = {
     ir.writeRef(ref.loc, nv)
   }
 
+  /** @see [[dev.tauri.choam.core.Ref.update]] */
   final def updateRef[A](ref: Ref[A])(f: A => A)(implicit ir: InRxn): Unit = {
     // TODO: optimize:
     val ov = readRef(ref)
@@ -89,14 +110,17 @@ abstract class UnsafeApi(rt: ChoamRuntime) {
     writeRef(ref, nv)
   }
 
+  /** @see [[dev.tauri.choam.core.Rxn.unsafe.tentativeRead]] */
   final def tentativeRead[A](ref: Ref[A])(implicit ir: InRxn): A = {
     ir.imperativeTentativeRead(ref.loc)
   }
 
+  /** @see [[dev.tauri.choam.core.Rxn.unsafe.ticketRead]] */
   final def ticketRead[A](ref: Ref[A])(implicit ir: InRxn): Ticket[A] = {
     ir.imperativeTicketRead(ref.loc)
   }
 
+  /** @see [[dev.tauri.choam.core.Ref.array]] */
   final def newRefArray[A](
     size: Int,
     initial: A,

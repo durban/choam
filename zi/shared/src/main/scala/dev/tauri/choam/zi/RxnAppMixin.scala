@@ -27,7 +27,7 @@ import async.AsyncReactive
  * instance
  *
  * This trait is intended to be mixed into
- * an object extending [[zio.ZIOApp]].
+ * an object extending `zio.ZIOApp`.
  * It provides an implicit `AsyncReactive[Task]`.
  * instance. The resources needed by this
  * instance are acquired in the constructor, and

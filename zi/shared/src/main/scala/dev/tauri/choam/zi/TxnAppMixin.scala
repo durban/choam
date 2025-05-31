@@ -27,7 +27,7 @@ import stm.Transactive
  * instance
  *
  * This trait is intended to be mixed into
- * an object extending [[zio.ZIOApp]].
+ * an object extending `zio.ZIOApp`.
  * It provides an implicit `Transactive[Task]`.
  * instance. The resources needed by this
  * instance are acquired in the constructor, and

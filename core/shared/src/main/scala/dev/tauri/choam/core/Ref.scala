@@ -186,10 +186,7 @@ object Ref extends RefInstances0 {
       s"Ref.Array[0]@${java.lang.Long.toHexString(0L)}"
   }
 
-  final def apply[A](initial: A): Axn[Ref[A]] =
-    apply(initial, Ref.AllocationStrategy.Default)
-
-  final def apply[A](initial: A, str: Ref.AllocationStrategy): Axn[Ref[A]] = {
+  final def apply[A](initial: A, str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[Ref[A]] = {
     if (str.padded) padded(initial)
     else unpadded(initial)
   }
@@ -201,11 +198,11 @@ object Ref extends RefInstances0 {
   // TODO: (Refined? But can we avoid boxing?)
   // TODO: Would implementing Traverse help? Probably not.
 
-  final def array[A](size: Int, initial: A): Axn[Ref.Array[A]] = {
-    safeArray(size = size, initial = initial, strategy = Ref.Array.AllocationStrategy.DefaultInt)
-  }
-
-  final def array[A](size: Int, initial: A, strategy: Ref.Array.AllocationStrategy): Axn[Ref.Array[A]] = {
+  final def array[A](
+    size: Int,
+    initial: A,
+    strategy: Ref.Array.AllocationStrategy = Ref.Array.AllocationStrategy.Default,
+  ): Axn[Ref.Array[A]] = {
     safeArray(size = size, initial = initial, strategy = strategy.toInt)
   }
 
@@ -361,10 +358,10 @@ object Ref extends RefInstances0 {
     internal.refs.unsafeNewSparseRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
-  final def padded[A](initial: A): Axn[Ref[A]] =
+  private[choam] final def padded[A](initial: A): Axn[Ref[A]] =
     Axn.unsafe.delayContext[Ref[A]](ctx => Ref.unsafePadded(initial, ctx.refIdGen))
 
-  final def unpadded[A](initial: A): Axn[Ref[A]] =
+  private[choam] final def unpadded[A](initial: A): Axn[Ref[A]] =
     Axn.unsafe.delayContext[Ref[A]](ctx => Ref.unsafeUnpadded(initial, ctx.refIdGen))
 
   private[choam] final def unsafe[A](initial: A, str: AllocationStrategy, rig: RefIdGen): Ref[A] = {
