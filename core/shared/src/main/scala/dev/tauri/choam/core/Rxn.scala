@@ -871,34 +871,34 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Map2(${left}, ${right}, <function>)"
   }
 
-  private sealed abstract class Upd[A, B, X](val ref: MemoryLocation[X]) extends RxnImpl[A, B] {
+  private sealed abstract class UpdTuple[A, B, X](val ref: MemoryLocation[X]) extends RxnImpl[A, B] {
     final override def toString: String = s"Upd(${ref}, <function>)"
     def f(ov: X, a: A): (X, B)
   }
 
   private final class UpdFull[A, B, X](ref0: MemoryLocation[X], f0: (X, A) => (X, B))
-    extends Upd[A, B, X](ref0) {
+    extends UpdTuple[A, B, X](ref0) {
     final override def f(ov: X, a: A): (X, B) = f0(ov, a)
   }
 
   private final class UpdSet0[X](ref0: MemoryLocation[X])
-    extends Upd[X, Unit, X](ref0) {
+    extends UpdTuple[X, Unit, X](ref0) {
     final override def f(ov: X, a: X): (X, Unit) = (a, ()) // TODO: avoid tuple
   }
 
   private final class UpdSet1[X](ref0: MemoryLocation[X], nv: X)
-    extends Upd[Any, Unit, X](ref0) {
+    extends UpdTuple[Any, Unit, X](ref0) {
     private[this] val tup = (nv, ())
     final override def f(ov: X, a: Any): (X, Unit) = tup // TODO: avoid tuple
   }
 
   private final class UpdUpdate1[X](ref0: MemoryLocation[X], f0: X => X)
-    extends Upd[Any, Unit, X](ref0) {
+    extends UpdTuple[Any, Unit, X](ref0) {
     final override def f(ov: X, a: Any): (X, Unit) = (f0(ov), ()) // TODO: avoid tuple
   }
 
   private final class UpdUpdate2[X, B](ref0: MemoryLocation[X], f0: (X, B) => X)
-    extends Upd[B, Unit, X](ref0) {
+    extends UpdTuple[B, Unit, X](ref0) {
     final override def f(ov: X, b: B): (X, Unit) = (f0(ov, b), ()) // TODO: avoid tuple
   }
 
@@ -1368,8 +1368,8 @@ object Rxn extends RxnInstances0 {
       val res: LogEntry[Any] = curr match {
         case _: RefGetAxn[_] =>
           this.ctx.readIntoHwd(ref)
-        case c0: Upd[_, _, _] =>
-          val c = c0.asInstanceOf[Upd[Any, Any, Any]]
+        case c0: UpdTuple[_, _, _] =>
+          val c = c0.asInstanceOf[UpdTuple[Any, Any, Any]]
           val hwd = this.ctx.readIntoHwd(c.ref)
           if (this.desc.isValidHwd(hwd)) {
             val ox = hwd.nv
@@ -1393,9 +1393,9 @@ object Rxn extends RxnInstances0 {
       val res: LogEntry[Any] = curr match {
         case _: RefGetAxn[_] =>
           hwd
-        case c: Upd[_, _, _] =>
+        case c: UpdTuple[_, _, _] =>
           val ox = hwd.nv
-          val (nx, b) = c.asInstanceOf[Upd[Any, Any, Any]].f(ox, this.a)
+          val (nx, b) = c.asInstanceOf[UpdTuple[Any, Any, Any]].f(ox, this.a)
           this.a = b
           hwd.withNv(nx)
         case c: TicketWrite[_] =>
@@ -1836,7 +1836,7 @@ object Rxn extends RxnInstances0 {
     }
 
     /** Returns `true` if successful, `false` if retry is needed */
-    private[this] final def handleUpd[A, B, C](c: Upd[A, B, C]): Boolean = {
+    private[this] final def handleUpdTuple[A, B, C](c: UpdTuple[A, B, C]): Boolean = {
       _assert(this._entryHolder eq null) // just to be sure
       desc = desc.computeOrModify(c.ref.cast[Any], tok = c.asInstanceOf[Rxn[Any, Any]], visitor = this)
       val hwd = this._entryHolder
@@ -2046,9 +2046,9 @@ object Rxn extends RxnInstances0 {
           contT.push2(RxnConsts.ContMap2Func, RxnConsts.ContMap2Right)
           contK.push3(c.f, c.right, a)
           loop(c.left)
-        case c0: Upd[_, _, _] => // Upd
-          val c = c0.asInstanceOf[Upd[A, B, Any]]
-          val nxt = if (handleUpd(c)) {
+        case c0: UpdTuple[_, _, _] =>
+          val c = c0.asInstanceOf[UpdTuple[A, B, Any]]
+          val nxt = if (handleUpdTuple(c)) {
             next()
           } else {
             retry()
@@ -2352,7 +2352,7 @@ object Rxn extends RxnInstances0 {
 
     final override def updateRef[A](ref: MemoryLocation[A], f: A => A): Unit = {
       val c = new Rxn.UpdUpdate1(ref, f) // TODO: avoid this allocation
-      if (!handleUpd(c)) {
+      if (!handleUpdTuple(c)) {
         throw unsafe2.RetryException.instance
       }
     }
