@@ -39,33 +39,48 @@ class RefSetBench {
   }
 
   @Benchmark
-  def getAndSetProvideVoid(s: RefSetBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+  def getAndSetProvideVoid(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val r: Axn[Unit] = s.refs(idx).getAndSet.provide(rnd.nextString()).void
-    bh.consume(r.unsafePerform((), k.mcasImpl))
+    r.unsafePerform((), k.mcasImpl)
   }
 
   @Benchmark
-  def setProvide(s: RefSetBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+  def set0Provide(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val r: Axn[Unit] = s.refs(idx).set0.provide(rnd.nextString())
-    bh.consume(r.unsafePerform((), k.mcasImpl))
+    r.unsafePerform((), k.mcasImpl)
   }
 
   @Benchmark
-  def upd(s: RefSetBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+  def set1(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
+    val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
+    val r: Axn[Unit] = s.refs(idx).set1(rnd.nextString())
+    r.unsafePerform((), k.mcasImpl)
+  }
+
+  @Benchmark
+  def upd(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val str = rnd.nextString()
     val r: Axn[Unit] = s.refs(idx).upd[Any, Unit] { (_, _) => (str, ()) }
-    bh.consume(r.unsafePerform((), k.mcasImpl))
+    r.unsafePerform((), k.mcasImpl)
   }
 
   @Benchmark
-  def update(s: RefSetBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+  def update1(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val str = rnd.nextString()
-    val r: Axn[Unit] = s.refs(idx).update(_ => str)
-    bh.consume(r.unsafePerform((), k.mcasImpl))
+    val r: Axn[Unit] = s.refs(idx).update1(_ => str)
+    r.unsafePerform((), k.mcasImpl)
+  }
+
+  @Benchmark
+  def update2(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
+    val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
+    val str = rnd.nextString()
+    val r: Axn[Unit] = s.refs(idx).update2 { (_, _) => str }
+    r.unsafePerform((), k.mcasImpl)
   }
 }
 
