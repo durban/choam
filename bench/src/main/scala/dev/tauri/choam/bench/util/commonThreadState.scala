@@ -77,7 +77,7 @@ class McasImplState extends McasImplStateBase {
 class UnsafeApiState extends McasImplState {
 
   val api: unsafe.UnsafeApi =
-    new unsafe.UnsafeApi(McasImplStateBase.rt) {}
+    unsafe.UnsafeApi(McasImplStateBase.rt)
 }
 
 abstract class McasImplStateBase {

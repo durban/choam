@@ -24,6 +24,17 @@ import core.Ref
 
 final class ImperativeApiSpec extends FunSuite with MUnitUtils {
 
+  private[this] val _rt: ChoamRuntime =
+    ChoamRuntime.unsafeBlocking()
+
+  private[this] val api: UnsafeApi =
+    UnsafeApi(_rt)
+
+  final override def afterAll(): Unit = {
+    _rt.unsafeCloseBlocking()
+    super.afterAll()
+  }
+
   import api._
 
   test("Hello, World!") {

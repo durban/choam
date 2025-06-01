@@ -77,7 +77,8 @@ class RefSetBench {
 
   @Benchmark
   def _imperativeDirect(s: RefSetBench.St, k: UnsafeApiState, rnd: RandomState): Unit = {
-    import k.api.{ atomically, writeRef }
+    import k.api.atomically
+    import unsafe.writeRef
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val ref = s.refs(idx)
     val str = rnd.nextString()
@@ -88,7 +89,8 @@ class RefSetBench {
 
   @Benchmark
   def _imperativeSyntax(s: RefSetBench.St, k: UnsafeApiState, rnd: RandomState): Unit = {
-    import k.api.{ atomically, RefSyntax }
+    import k.api.atomically
+    import unsafe.RefSyntax
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val ref = s.refs(idx)
     val str = rnd.nextString()

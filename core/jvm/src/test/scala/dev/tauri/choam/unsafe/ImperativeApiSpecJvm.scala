@@ -20,7 +20,6 @@ package unsafe
 
 import java.util.concurrent.CountDownLatch
 
-import scala.concurrent.duration._
 import scala.concurrent.Future // TODO: use IO instead of this
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -30,10 +29,18 @@ import core.Ref
 
 final class ImperativeApiSpecJvm extends FunSuite with MUnitUtils {
 
-  import api._
+  private[this] val _rt: ChoamRuntime =
+    ChoamRuntime.unsafeBlocking()
 
-  override def munitTimeout: Duration =
-    Duration.Inf
+  private[this] val api: UnsafeApi =
+    UnsafeApi(_rt)
+
+  final override def afterAll(): Unit = {
+    _rt.unsafeCloseBlocking()
+    super.afterAll()
+  }
+
+  import api.atomically
 
   test("Retries") {
     val r1: Ref[Int] = atomically(newRef(0)(_))
