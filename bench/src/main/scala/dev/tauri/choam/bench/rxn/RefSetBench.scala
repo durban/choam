@@ -22,41 +22,33 @@ package rxn
 import java.util.concurrent.ThreadLocalRandom
 
 import org.openjdk.jmh.annotations._
-import org.openjdk.jmh.infra.Blackhole
 
 import util._
-import core.{ Axn, Ref }
+import core.{ Rxn, Axn, Ref }
 
 @Fork(3)
-@Threads(2)
+@Threads(1)
 class RefSetBench {
-
-  @Benchmark
-  def baseline(s: RefSetBench.St, bh: Blackhole, rnd: RandomState): Unit = {
-    val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
-    bh.consume(s.refs(idx))
-    bh.consume(rnd.nextString())
-  }
 
   @Benchmark
   def getAndSetProvideVoid(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
-    val r: Axn[Unit] = s.refs(idx).getAndSet.provide(rnd.nextString()).void
-    r.unsafePerform((), k.mcasImpl)
+    val r: Axn[Unit] = s.getAndSetVoid(idx).provide(rnd.nextString())
+    r.unsafePerform(null, k.mcasImpl)
   }
 
   @Benchmark
   def set0Provide(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
-    val r: Axn[Unit] = s.refs(idx).set0.provide(rnd.nextString())
-    r.unsafePerform((), k.mcasImpl)
+    val r: Axn[Unit] = s.set0(idx).provide(rnd.nextString())
+    r.unsafePerform(null, k.mcasImpl)
   }
 
   @Benchmark
   def set1(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val r: Axn[Unit] = s.refs(idx).set1(rnd.nextString())
-    r.unsafePerform((), k.mcasImpl)
+    r.unsafePerform(null, k.mcasImpl)
   }
 
   @Benchmark
@@ -64,7 +56,7 @@ class RefSetBench {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val str = rnd.nextString()
     val r: Axn[Unit] = s.refs(idx).upd[Any, Unit] { (_, _) => (str, ()) }
-    r.unsafePerform((), k.mcasImpl)
+    r.unsafePerform(null, k.mcasImpl)
   }
 
   @Benchmark
@@ -72,7 +64,7 @@ class RefSetBench {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val str = rnd.nextString()
     val r: Axn[Unit] = s.refs(idx).update1(_ => str)
-    r.unsafePerform((), k.mcasImpl)
+    r.unsafePerform(null, k.mcasImpl)
   }
 
   @Benchmark
@@ -80,7 +72,7 @@ class RefSetBench {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val str = rnd.nextString()
     val r: Axn[Unit] = s.refs(idx).update2 { (_, _) => str }
-    r.unsafePerform((), k.mcasImpl)
+    r.unsafePerform(null, k.mcasImpl)
   }
 }
 
@@ -90,8 +82,13 @@ object RefSetBench {
 
   @State(Scope.Benchmark)
   class St extends McasImplStateBase {
+
     val refs: Array[Ref[String]] = Array.fill(size) {
       Ref.unsafePadded[String](ThreadLocalRandom.current().nextInt().toString, this.mcasImpl.currentContext().refIdGen)
     }
+
+    val getAndSetVoid: Array[Rxn[String, Unit]] = refs.map { _.getAndSet.void }
+
+    val set0: Array[Rxn[String, Unit]] = refs.map { _.set0 }
   }
 }
