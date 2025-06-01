@@ -243,22 +243,23 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
 
   test("unsafe.unread should make a conflict disappear") {
     val N = 40000
-    def withoutUnread(r1: Ref[String], r2: Ref[String]): Axn[Int] = {
+    def withoutUnread(r1: Ref[String], r2: Ref[String], r3: Ref[String]): Axn[Int] = {
       // without unread, this will sometimes retry if
       // there is a concurrent change to `r1`, and will
       // return `2`:
-      (r1.get *> r2.update(_ + "x").as(1)) + Axn.pure(2)
+      (r1.get *> r2.update(_ + "x") *> r3.update(_ + "y")).as(1) + Axn.pure(2)
     }
-    def withUnread(r1: Ref[String], r2: Ref[String]): Axn[Int] = {
+    def withUnread(r1: Ref[String], r2: Ref[String], r3: Ref[String]): Axn[Int] = {
       // with unread, this must never retry, so must
       // always return `1`:
-      (r1.get *> r2.update(_ + "x").as(1) <* Rxn.unsafe.unread(r1)) + Axn.pure(2)
+      (r1.get *> r2.update(_ + "x") *> r3.update(_ + "y") *> Rxn.unsafe.unread(r1)).as(1) + Axn.pure(2)
     }
-    def tst(withOrWithout: (Ref[String], Ref[String]) => Axn[Int]): F[Int] = for {
+    def tst(withOrWithout: (Ref[String], Ref[String], Ref[String]) => Axn[Int]): F[Int] = for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("b").run[F]
+      r3 <- Ref("c").run[F]
       r <- F.both(
-        F.cede *> withOrWithout(r1, r2).run[F], // txn1
+        F.cede *> withOrWithout(r1, r2, r3).run[F], // txn1
         F.cede *> r1.update(_ + "x").run[F], // txn2
         // if txn1 unreads r1, then txn1 and
         // txn2 are disjoint transactions
