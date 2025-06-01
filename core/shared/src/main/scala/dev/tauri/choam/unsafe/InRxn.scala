@@ -18,9 +18,10 @@
 package dev.tauri.choam
 package unsafe
 
-import internal.mcas.{ MemoryLocation, LogEntry }
+import internal.mcas.{ Mcas, MemoryLocation, LogEntry }
 
-sealed trait InRxn extends MaybeInRxn.UnsealedMaybeInRxn {
+sealed trait InRxn  {
+  private[choam] def currentContext(): Mcas.ThreadContext
   private[choam] def initCtx(): Unit
   private[choam] def rollback(): Unit
   private[choam] def readRef[A](ref: MemoryLocation[A]): A

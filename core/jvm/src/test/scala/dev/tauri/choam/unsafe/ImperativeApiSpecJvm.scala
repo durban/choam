@@ -36,8 +36,8 @@ final class ImperativeApiSpecJvm extends FunSuite with MUnitUtils {
     Duration.Inf
 
   test("Retries") {
-    val r1: Ref[Int] = newRef(0)
-    val r2: Ref[Int] = newRef(0)
+    val r1: Ref[Int] = atomically(newRef(0)(_))
+    val r2: Ref[Int] = atomically(newRef(0)(_))
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
 

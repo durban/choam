@@ -21,17 +21,8 @@ package unsafe
 import scala.language.implicitConversions
 
 import core.{ Rxn, Ref }
-import internal.mcas.Mcas
 
 abstract class UnsafeApi(rt: ChoamRuntime) {
-
-  private[this] val _fallback = new MaybeInRxn.UnsealedMaybeInRxn {
-    private[choam] final override def currentContext(): Mcas.ThreadContext =
-      rt.mcasImpl.currentContext()
-  }
-
-  implicit final def maybeInRxnFallback: MaybeInRxn =
-    _fallback
 
   /**
    * Extension methods for more convenient
@@ -82,8 +73,8 @@ abstract class UnsafeApi(rt: ChoamRuntime) {
   final def newRef[A](
     initial: A,
     strategy: Ref.AllocationStrategy = Ref.AllocationStrategy.Default,
-  )(implicit mir: MaybeInRxn): Ref[A] = {
-    Ref.unsafe(initial, strategy, mir.currentContext().refIdGen)
+  )(implicit ir: InRxn): Ref[A] = {
+    Ref.unsafe(initial, strategy, ir.currentContext().refIdGen)
   }
 
   /**
@@ -122,7 +113,7 @@ abstract class UnsafeApi(rt: ChoamRuntime) {
     size: Int,
     initial: A,
     strategy: Ref.Array.AllocationStrategy = Ref.Array.AllocationStrategy.Default,
-  )(implicit mir: MaybeInRxn): Ref.Array[A] = {
-    Ref.unsafeArray(size, initial, strategy, mir.currentContext().refIdGen)
+  )(implicit ir: InRxn): Ref.Array[A] = {
+    Ref.unsafeArray(size, initial, strategy, ir.currentContext().refIdGen)
   }
 }

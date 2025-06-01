@@ -67,7 +67,7 @@ final class InteropSpec extends CatsEffectSuite with MUnitUtils {
     }
 
     test(s"$prefix - Create imperatively, use with Rxn") {
-      IO(newRef(42)).flatMap { ref =>
+      IO(atomically(newRef(42)(_))).flatMap { ref =>
         ref.getAndUpdate(_ + 1).run[IO].flatMap { r =>
           IO(assertEquals(r, 42)) *> ref.get.run[IO].flatMap { v =>
             IO(assertEquals(v, 43)) *> IO {

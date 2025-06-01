@@ -55,7 +55,7 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
   }
 
   test("updateRef") {
-    val r = newRef("foo")
+    val r = atomically(newRef("foo")(_))
     atomically { implicit ir =>
       updateRef(r)(_ + "bar")
     }
@@ -63,8 +63,8 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
   }
 
   test("tentativeRead") {
-    val r1 = newRef(0)
-    val r2 = newRef(0)
+    val r1 = atomically(newRef(0)(_))
+    val r2 = atomically(newRef(0)(_))
     atomically { implicit ir =>
       assertEquals(tentativeRead(r1), 0)
       updateRef(r2)(_ + 1)
@@ -75,8 +75,8 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
   }
 
   test("ticketRead") {
-    val r1 = newRef(0)
-    val r2 = newRef(0)
+    val r1 = atomically(newRef(0)(_))
+    val r2 = atomically(newRef(0)(_))
     atomically { implicit ir =>
       val ticket = ticketRead(r1)
       assertEquals(ticket.value, 0)
@@ -95,7 +95,7 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
       ref.value = 99
       assertEquals(ref.value, 99)
     }
-    val ref = newRef(42)
+    val ref = atomically(newRef(42)(_))
     atomically { implicit ir =>
       useRef(ref)
     }
@@ -105,7 +105,7 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
   }
 
   test("Ref.Array") {
-    val arr1: Ref.Array[String] = newRefArray[String](16, "")
+    val arr1: Ref.Array[String] = atomically(newRefArray[String](16, "")(_))
     val r1 = atomically { implicit ir =>
       arr1.unsafeGet(3).value = "foo"
       arr1.unsafeGet(3).value
@@ -147,38 +147,5 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
         val v = atomically(readRef(ex.ref)(_))
         assertEquals(v, 42) // the write must be rollbacked
     }
-  }
-
-  test("Implicit priority") {
-    // if there is an `InRxn` available, it should
-    // be used even if only a `MaybeInRxn` is needed:
-    def assertIsInRxn()(implicit instance: MaybeInRxn): Unit = assert(instance.isInstanceOf[InRxn])
-    def assertNotInRxn()(implicit instance: MaybeInRxn): Unit = assert(!instance.isInstanceOf[InRxn])
-
-    assertNotInRxn()
-
-    val r0 = atomically { implicit ir =>
-      assertIsInRxn()
-      42
-    }
-    assertEquals(r0, 42)
-
-    val r1 = locally {
-      import api._
-      assertNotInRxn()
-      atomically { implicit ir =>
-        assertIsInRxn()
-        99
-      }
-    }
-    assertEquals(r1, 99)
-
-    val r2 = atomically { implicit ir =>
-      import api._
-      val _ = newRef(56) // so that the ._ import above is not unused
-      assertIsInRxn()
-      123
-    }
-    assertEquals(r2, 123)
   }
 }
