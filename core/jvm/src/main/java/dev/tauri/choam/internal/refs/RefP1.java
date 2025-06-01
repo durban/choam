@@ -83,6 +83,12 @@ final class RefP1<A>
   }
 
   @Override
+  @SuppressWarnings("unchecked")
+  public final <A> MemoryLocation<A> cast() {
+    return (MemoryLocation<A>) this;
+  }
+
+  @Override
   public final A unsafeGetV() {
     return this.value;
   }

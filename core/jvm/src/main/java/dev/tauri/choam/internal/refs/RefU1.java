@@ -81,6 +81,12 @@ final class RefU1<A> extends RefIdOnly<A> implements UnsealedRef<A>, MemoryLocat
   }
 
   @Override
+  @SuppressWarnings("unchecked")
+  public final <A> MemoryLocation<A> cast() {
+    return (MemoryLocation<A>) this;
+  }
+
+  @Override
   public final A unsafeGetV() {
     return this.value;
   }

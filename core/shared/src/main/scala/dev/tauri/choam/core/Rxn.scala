@@ -499,6 +499,7 @@ private[choam] sealed abstract class RxnImpl[-A, +B]
 
 /** This is specifically only for `Ref` to use! */
 private[choam] abstract class RefGetAxn[B] extends RxnImpl[Any, B] {
+  private[choam] def cast[A]: MemoryLocation[A]
 }
 
 object Rxn extends RxnInstances0 {
@@ -1326,6 +1327,11 @@ object Rxn extends RxnInstances0 {
     private[this] var a: Any =
       x
 
+    @inline
+    private[this] final def aCastTo[A]: A = {
+      this.a.asInstanceOf[A]
+    }
+
     private[this] var retries: Int =
       0
 
@@ -1380,11 +1386,11 @@ object Rxn extends RxnInstances0 {
             val ox = hwd.nv
             val nx = c match {
               case c: UpdSingle[a, _] =>
-                val nx = c.f(ox, this.a.asInstanceOf[a])
+                val nx = c.f(ox, this.aCastTo[a])
                 this.a = ()
                 nx
               case c: UpdTuple[a, _, _] =>
-                val (nx, b) = c.f(ox, this.a.asInstanceOf[a])
+                val (nx, b) = c.f(ox, this.aCastTo[a])
                 this.a = b
                 nx
             }
@@ -1410,11 +1416,11 @@ object Rxn extends RxnInstances0 {
           val ox = hwd.cast[x].nv
           val nx = c match {
             case c: UpdSingle[a, _] =>
-              val nx = c.f(ox, this.a.asInstanceOf[a])
+              val nx = c.f(ox, this.aCastTo[a])
               this.a = ()
               nx
             case c: UpdTuple[a, _, _] =>
-              val (nx, b) = c.f(ox, this.a.asInstanceOf[a])
+              val (nx, b) = c.f(ox, this.aCastTo[a])
               this.a = b
               nx
           }
@@ -1503,15 +1509,15 @@ object Rxn extends RxnInstances0 {
       alts.clear()
     }
 
-    private[this] final def saveAlt(k: Rxn[Any, R]): Unit = {
+    private[this] final def saveAlt[A, B](k: Rxn[A, B]): Unit = {
       _saveAlt(this.alts, k)
     }
 
-    private[this] final def saveStmAlt(k: Rxn[Any, R]): Unit = {
+    private[this] final def saveStmAlt[A, B](k: Rxn[A, B]): Unit = {
       _saveAlt(this.stmAlts, k)
     }
 
-    private[this] final def _saveAlt(alts: ArrayObjStack[Any], k: Rxn[Any, R]): Unit = {
+    private[this] final def _saveAlt[A, B](alts: ArrayObjStack[Any], k: Rxn[A, B]): Unit = {
       alts.push(takeLocalsSnapshot(this.locals))
       val descSnap = _desc match {
         case null =>
@@ -1644,7 +1650,7 @@ object Rxn extends RxnInstances0 {
           a = (savedA, a)
           next()
         case 3 => // ContTailRecM
-          val e = a.asInstanceOf[Either[Any, Any]]
+          val e = this.aCastTo[Either[Any, Any]]
           a = contK.peek()
           val f = contK.peekSecond().asInstanceOf[Any => Rxn[Any, Any]]
           e match {
@@ -1677,7 +1683,7 @@ object Rxn extends RxnInstances0 {
         case 7 => // ContUpdWith
           val ox = contK.pop()
           val ref = contK.pop().asInstanceOf[MemoryLocation[Any]]
-          val (nx, res) = a.asInstanceOf[Tuple2[_, _]]
+          val (nx, res) = this.aCastTo[Tuple2[_, _]]
           val hwd = desc.getOrElseNull(ref)
           _assert(hwd ne null)
           if (equ(hwd.nv, ox)) {
@@ -1849,7 +1855,7 @@ object Rxn extends RxnInstances0 {
     private[this] final def ticketWrite[A](c: TicketWrite[A]): Boolean = {
       _assert(this._entryHolder eq null) // just to be sure
       a = () : Any
-      desc = desc.computeOrModify(c.hwd.address.asInstanceOf[MemoryLocation[Any]], tok = c, visitor = this)
+      desc = desc.computeOrModify(c.hwd.cast[Any].address, tok = c, visitor = this)
       val newHwd = this._entryHolder
       this._entryHolder = null // cleanup
       val newHwd2 = revalidateIfNeeded(newHwd)
@@ -1869,11 +1875,11 @@ object Rxn extends RxnInstances0 {
           val ox = hwd.cast[C].nv
           val nx = c match {
             case c: UpdSingle[_, _] =>
-              val nx = c.f(ox, this.a.asInstanceOf[A])
+              val nx = c.f(ox, this.aCastTo[A])
               this.a = ()
               nx
             case c: UpdTuple[_, _, _] =>
-              val (nx, b) = c.f(ox, this.a.asInstanceOf[A])
+              val (nx, b) = c.f(ox, this.aCastTo[A])
               this.a = b
               nx
           }
@@ -2029,19 +2035,19 @@ object Rxn extends RxnInstances0 {
         case _: AlwaysRetry[_, _] => // AlwaysRetry
           loop(retry())
         case c: PostCommit[_] => // PostCommit
-          pc.push(c.pc.provide(a.asInstanceOf[A]))
+          pc.push(c.pc.provide(aCastTo[A]))
           loop(next())
         case c: Lift[_, _] => // Lift
-          a = c.func(a.asInstanceOf[A])
+          a = c.func(aCastTo[A])
           loop(next())
         case c: Computed[_, _] => // Computed
-          val nxt = c.f(a.asInstanceOf[A])
+          val nxt = c.f(aCastTo[A])
           a = () : Any
           loop(nxt)
         case _: RetryWhenChanged[_] => // RetryWhenChanged (STM)
           loop(retry(canSuspend = this.canSuspend, permanent = true))
         case c: Choice[_, _] => // Choice
-          saveAlt(c.right.asInstanceOf[Rxn[Any, R]])
+          saveAlt(c.right)
           loop(c.left)
         case c: Cas[_] => // Cas
           val hwd = readMaybeFromLog(c.ref)
@@ -2060,7 +2066,7 @@ object Rxn extends RxnInstances0 {
           }
         case refGet: RefGetAxn[_] => // RefGetAxn
           _assert(this._entryHolder eq null) // just to be sure
-          desc = desc.computeIfAbsent(refGet.asInstanceOf[MemoryLocation[Any]], tok = refGet, visitor = this)
+          desc = desc.computeIfAbsent(refGet.cast[Any], tok = refGet, visitor = this)
           val hwd = this._entryHolder
           this._entryHolder = null // cleanup
           val hwd2 = revalidateIfNeeded(hwd)
@@ -2122,7 +2128,7 @@ object Rxn extends RxnInstances0 {
           contK.push(c.right)
           loop(c.left)
         case c: AndAlso[_, _, _, _] => // AndAlso
-          val xp = a.asInstanceOf[Tuple2[_, _]]
+          val xp = aCastTo[Tuple2[_, _]]
           contT.push2(RxnConsts.ContAndAlsoJoin, RxnConsts.ContAndAlso)
           contK.push2(c.right, xp._2)
           // left:
@@ -2130,21 +2136,20 @@ object Rxn extends RxnInstances0 {
           loop(c.left)
         case c: Done[_] => // Done
           c.result.asInstanceOf[R]
-        case c: Ctx[_, _] => // Ctx
-          val b = c.asInstanceOf[Ctx[Any, Any]].uf(a, ctx)
+        case c: Ctx[a, _] =>
+          val b = c.uf(aCastTo[a], ctx)
           a = b
           loop(next())
         case c: Provide[_, _] => // Provide
           a = c.a
           loop(c.rxn)
-        case c0: UpdWith[_, _, _] => // UpdWith
-          val c = c0.asInstanceOf[UpdWith[Any, Any, Any]]
+        case c: UpdWith[_, a, _] =>
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
             loop(retry())
           } else {
             val ox = hwd.nv
-            val axn = c.f(ox, a)
+            val axn = c.f(ox, aCastTo[a])
             desc = desc.addOrOverwrite(hwd)
             contT.push(RxnConsts.ContUpdWith)
             contK.push2(c.ref, ox)
@@ -2155,8 +2160,7 @@ object Rxn extends RxnInstances0 {
           contT.push(RxnConsts.ContAs)
           contK.push(c.c)
           loop(c.rxn)
-        case c0: FinishExchange[_] => // FinishExchange
-          val c = c0.asInstanceOf[FinishExchange[Any]]
+        case c: FinishExchange[d] =>
           val currentContT = contT.takeSnapshot()
           //println(s"FinishExchange: currentContT = '${java.util.Arrays.toString(currentContT)}' - thread#${Thread.currentThread().getId()}")
           val (newContT, _otherContT) = ByteStack.splitAt(currentContT, idx = c.lenSelfContT)
@@ -2170,8 +2174,8 @@ object Rxn extends RxnInstances0 {
           //println(s"FinishExchange: passing back result '${a}' - thread#${Thread.currentThread().getId()}")
           //println(s"FinishExchange: passing back contT ${java.util.Arrays.toString(otherContT)} - thread#${Thread.currentThread().getId()}")
           //println(s"FinishExchange: passing back contK ${c.restOtherContK.mkString()} - thread#${Thread.currentThread().getId()}")
-          val fx = new Exchanger.FinishedEx[Any](
-            result = a,
+          val fx = new Exchanger.FinishedEx[d](
+            result = aCastTo[d],
             contK = c.restOtherContK,
             contT = otherContT,
           )
@@ -2179,13 +2183,12 @@ object Rxn extends RxnInstances0 {
           a = contK.pop() // the exchanged value we've got from the other thread
           //println(s"FinishExchange: our result is '${a}' - thread#${Thread.currentThread().getId()}")
           loop(next())
-        case c0: TicketRead[_] => // TicketRead
-          val c = c0.asInstanceOf[TicketRead[Any]]
+        case c: TicketRead[a] =>
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
             loop(retry())
           } else {
-            a = new unsafe.TicketForTicketRead[Any](hwd)
+            a = new unsafe.TicketForTicketRead[a](hwd)
             loop(next())
           }
         case _: ForceValidate => // ForceValidate
@@ -2225,8 +2228,7 @@ object Rxn extends RxnInstances0 {
           contT.push(RxnConsts.ContMap)
           contK.push(c.f)
           loop(c.rxn)
-        case c0: OrElse[_, _] => // OrElse (STM)
-          val c = c0.asInstanceOf[OrElse[Any, R]]
+        case c: OrElse[_, _] => // STM
           saveStmAlt(c.right)
           contT.push(RxnConsts.ContOrElse)
           loop(c.left)
@@ -2345,13 +2347,9 @@ object Rxn extends RxnInstances0 {
     }
 
     final override def readRef[A](ref: MemoryLocation[A]): A = {
-      _readRef(ref.cast[Any]).asInstanceOf[A]
-    }
-
-    private[this] final def _readRef(ref: MemoryLocation[Any]): Any = {
       _assert(this._entryHolder eq null) // just to be sure
-      desc = desc.computeIfAbsent(ref, tok = ref.asInstanceOf[Rxn[Any, Any]], visitor = this)
-      val hwd = this._entryHolder
+      desc = desc.computeIfAbsent(ref.cast[Any], tok = ref.asInstanceOf[Rxn[Any, Any]], visitor = this)
+      val hwd = this._entryHolder.cast[A]
       this._entryHolder = null // cleanup
       val hwd2 = revalidateIfNeeded(hwd)
       if (hwd2 eq null) { // need to roll back
@@ -2363,10 +2361,6 @@ object Rxn extends RxnInstances0 {
     }
 
     final override def writeRef[A](ref: MemoryLocation[A], nv: A): Unit = {
-      _writeRef(ref.cast[Any], nv)
-    }
-
-    private[this] final def _writeRef(ref: MemoryLocation[Any], nv: Any): Unit = {
       // TODO: do the read-write in one step
       val hwd = readMaybeFromLog(ref)
       if (hwd eq null) { // need to roll back

@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package core
 
+import java.util.concurrent.ThreadLocalRandom
+
 import scala.math.Ordering
 
 import cats.{ Monad, ~> }
@@ -59,8 +61,11 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
 
   override type RefType[A] = Ref[A]
 
-  override def newRef[A](initial: A): F[RefType[A]] =
-    Ref(initial).run[F]
+  override def newRef[A](initial: A): F[RefType[A]] = {
+    F.delay(ThreadLocalRandom.current().nextBoolean()).flatMap { padded =>
+      Ref(initial, Ref.AllocationStrategy(padded = padded)).run[F]
+    }
+  }
 
   test("Simple CAS should work as expected") {
     for {
@@ -85,6 +90,23 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       _ <- assertEqualsF(r1.##, r1.loc.id.toInt)
       _ <- assertEqualsF(Set(r1.loc.id, r2.loc.id, r3.loc.id).size, 3)
       _ <- assertF(Set(r1.##, r2.##, r3.##).size >= 2) // with high probability
+    } yield ()
+  }
+
+  test("MemoryLocation#cast") {
+    for {
+      r1 <- newRef("a")
+      r2 <- F.delay {
+        val loc = r1.loc
+        val bad: MemoryLocation[Int] = loc.cast[Int]
+        val back: MemoryLocation[String] = bad.cast[String]
+        back
+      }
+      res <- Rxn.loc.upd[String, Int, Double](r2) { (ov, i) =>
+        (ov + "b", i.toDouble + 0.5)
+      }.apply[F](42)
+      _ <- assertEqualsF(res, 42.5)
+      _ <- assertResultF(r1.get.run[F], "ab")
     } yield ()
   }
 
