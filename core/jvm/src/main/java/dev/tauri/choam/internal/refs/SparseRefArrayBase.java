@@ -46,9 +46,9 @@ abstract class SparseRefArrayBase<A> extends RefArrayBase<A> {
 
   @Override
   protected final long getVersionV(int idx) {
-    long[] vers = (long[]) VERSIONS.getAcquire(this);
+    // volatile, so that even if it's `null`, we still have ordering:
+    long[] vers = (long[]) VERSIONS.getVolatile(this);
     if (vers == null) {
-      // FIXME: in this case, we only had a `getAcquire`, so we're technically NOT `getVersionV`
       return VersionJ.Start;
     } else {
       return (long) VERSIONS_ARR.getVolatile(vers, idx);
