@@ -21,7 +21,7 @@ import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
 import dev.tauri.choam.internal.VarHandleHelper;
-import dev.tauri.choam.internal.mcas.McasStatus;
+import dev.tauri.choam.internal.mcas.VersionJ;
 import dev.tauri.choam.internal.mcas.WdLike;
 
 abstract class EmcasDescriptorBase {
@@ -48,7 +48,7 @@ abstract class EmcasDescriptorBase {
 
   // TODO: padding (although, it might increase GC pressure?)
   private volatile long _status =
-    McasStatus.Active;
+    VersionJ.Active;
 
   private volatile WdLike<?>[] _words; // = null
 

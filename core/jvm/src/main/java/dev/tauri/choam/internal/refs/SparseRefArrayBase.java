@@ -21,7 +21,7 @@ import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
 import dev.tauri.choam.internal.VarHandleHelper;
-import dev.tauri.choam.internal.mcas.Version;
+import dev.tauri.choam.internal.mcas.VersionJ;
 
 abstract class SparseRefArrayBase<A> extends RefArrayBase<A> {
 
@@ -49,7 +49,7 @@ abstract class SparseRefArrayBase<A> extends RefArrayBase<A> {
     long[] vers = (long[]) VERSIONS.getAcquire(this);
     if (vers == null) {
       // FIXME: in this case, we only had a `getAcquire`, so we're technically NOT `getVersionV`
-      return Version.Start;
+      return VersionJ.Start;
     } else {
       return (long) VERSIONS_ARR.getVolatile(vers, idx);
     }

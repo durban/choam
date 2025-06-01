@@ -22,7 +22,7 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
 import dev.tauri.choam.internal.VarHandleHelper;
-import dev.tauri.choam.internal.mcas.Version;
+import dev.tauri.choam.internal.mcas.VersionJ;
 import dev.tauri.choam.core.Ref;
 
 final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B> {
@@ -46,7 +46,7 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
 
   private volatile B valueB;
 
-  private volatile long versionB = Version.Start;
+  private volatile long versionB = VersionJ.Start;
 
   private volatile WeakReference<Object> markerB; // = null
 

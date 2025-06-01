@@ -21,7 +21,7 @@ import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
 import dev.tauri.choam.internal.VarHandleHelper;
-import dev.tauri.choam.internal.mcas.Version;
+import dev.tauri.choam.internal.mcas.VersionJ;
 
 abstract class RefArrayBase<A> extends RefIdOnlyN {
 
@@ -48,7 +48,7 @@ abstract class RefArrayBase<A> extends RefIdOnlyN {
   protected static final long[] initVersions(int size) {
     long[] vers = new long[size];
     for (int i = 0; i < size; i++) {
-      vers[i] = Version.Start;
+      vers[i] = VersionJ.Start;
     }
     return vers;
   }

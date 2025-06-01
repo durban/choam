@@ -22,7 +22,7 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
 import dev.tauri.choam.internal.VarHandleHelper;
-import dev.tauri.choam.internal.mcas.Version;
+import dev.tauri.choam.internal.mcas.VersionJ;
 import dev.tauri.choam.core.UnsealedRef2;
 import dev.tauri.choam.core.Ref;
 
@@ -47,7 +47,7 @@ abstract class RefP1P1Base<A, B>
 
   private volatile A valueA;
 
-  private volatile long versionA = Version.Start;
+  private volatile long versionA = VersionJ.Start;
 
   private volatile WeakReference<Object> markerA; // = null
 

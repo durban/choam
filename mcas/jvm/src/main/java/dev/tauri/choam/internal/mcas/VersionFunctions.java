@@ -29,6 +29,6 @@ public final class VersionFunctions {
    *         not a constant with a special meaning.
    */
   public static final boolean isValid(long ver) {
-    return (ver >= Version.Start) && (ver < Version.Reserved);
+    return (ver >= VersionJ.Start) && (ver < VersionJ.Reserved);
   }
 }

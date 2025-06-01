@@ -15,28 +15,25 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.internal.mcas;
+package dev.tauri.choam
+package internal
+package mcas
 
-// Note: this class/object is duplicated for JVM/JS
-public final class Version {
+object Version {
 
   /** The initial version of every ref */
-  public static final long Start = Long.MIN_VALUE;
+  final val Start = Long.MinValue // Note: this is copied to VersionJ.java
 
-  public static final Long BoxedStart = Long.valueOf(Start);
+  final val BoxedStart: java.lang.Long = java.lang.Long.valueOf(Start)
 
-  public static final long Incr = 1L;
+  final val Incr = 1L
 
   /** An invalid version constant */
-  public static final long None = Long.MAX_VALUE;
+  final val None = Long.MaxValue
 
-  static final long Active = None - 1L;
-  static final long Successful = None - 2L;
-  static final long FailedVal = None - 3L;
-  public static final long Reserved = None - 4L;
+  final val Active = None - 1L // Note: this is copied to VersionJ.java
+  final val Successful = None - 2L
+  final val FailedVal = None - 3L
+  final val Reserved = None - 4L // Note: this is copied to VersionJ.java
   // FailedVer = any valid version
-
-  private Version() {
-    throw new UnsupportedOperationException();
-  }
 }

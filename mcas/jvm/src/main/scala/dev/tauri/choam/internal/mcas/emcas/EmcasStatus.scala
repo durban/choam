@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.internal.mcas.emcas;
-
-import dev.tauri.choam.internal.mcas.Version;
+package dev.tauri.choam
+package internal
+package mcas
+package emcas
 
 /**
  * The status of an EMCAS-operation (and its
@@ -30,7 +31,7 @@ import dev.tauri.choam.internal.mcas.Version;
  *           /  |  \
  *          /   |   \
  *         ↓    |    ↓
- *   FailedVal  |   any `v` where `EmcasStatus.isSuccessful(v)`
+ *   FailedVal  |   any `v` where `EmcasStatusFunctions.isSuccessful(v)`
  *              ↓
  *        CycleDetected
  *
@@ -55,15 +56,11 @@ import dev.tauri.choam.internal.mcas.Version;
  * immediately retry the op with `installRo = true`, which
  * can never get into a cycle.
  */
-final class EmcasStatus {
+object EmcasStatus {
 
   /** Not really a status, used to break from `tryWord` */
-  static final long Break = Version.None;
+  final val Break = Version.None
 
   /** Used to signal that a cycle was detected, need to retry with fallback */
-  static final long CycleDetected = Version.Reserved;
-
-  private EmcasStatus() {
-    throw new UnsupportedOperationException();
-  }
+  final val CycleDetected = Version.Reserved
 }

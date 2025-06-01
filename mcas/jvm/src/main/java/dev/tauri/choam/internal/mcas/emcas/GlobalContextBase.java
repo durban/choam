@@ -23,7 +23,7 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 
 import dev.tauri.choam.internal.VarHandleHelper;
-import dev.tauri.choam.internal.mcas.Version;
+import dev.tauri.choam.internal.mcas.VersionJ;
 import dev.tauri.choam.internal.mcas.PaddedMemoryLocationPadding;
 
 abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
@@ -61,7 +61,7 @@ abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
     }
   }
 
-  private volatile long commitTs = Version.Start;
+  private volatile long commitTs = VersionJ.Start;
   // TODO: add padding between commitTs and threadCtxCount
   private volatile long threadCtxCount;
 

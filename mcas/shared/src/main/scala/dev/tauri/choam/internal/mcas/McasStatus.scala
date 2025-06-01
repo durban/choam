@@ -19,17 +19,24 @@ package dev.tauri.choam
 package internal
 package mcas
 
-// Note: this class/object is duplicated for JVM/JS
-object Version {
+object McasStatus {
 
-  final val Start = Long.MinValue
-  final val BoxedStart: java.lang.Long = java.lang.Long.valueOf(Start)
-  final val Incr = 1L
-  final val None = Long.MaxValue
+  /**
+   * Marker for an op, which already started,
+   * but haven't finished yet.
+   */
+  final val Active = Version.Active
 
-  final val Active = None - 1L
-  final val Successful = None - 2L
-  final val FailedVal = None - 3L
-  final val Reserved = None - 4L
-  // FailedVer = any valid version
+  /**
+   * The MCAS operation finished successfully.
+   */
+  final val Successful = Version.Successful
+
+  /**
+   * The MCAS operation failed, because one
+   * of the expected values (or its version)
+   * was not equal to the witness value (or
+   * the expected version).
+   */
+  final val FailedVal = Version.FailedVal
 }

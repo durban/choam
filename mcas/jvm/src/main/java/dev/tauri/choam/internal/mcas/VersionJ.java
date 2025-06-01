@@ -17,25 +17,15 @@
 
 package dev.tauri.choam.internal.mcas;
 
-// Note: this class/object is duplicated for JVM/JS
-public final class McasStatus {
+public class VersionJ {
 
-  /**
-   * Marker for an op, which already started,
-   * but haven't finished yet.
-   */
-  public static final long Active = Version.Active;
+  public static final long Start = Long.MIN_VALUE; // Note: this is copied from Version.scala
 
-  /**
-   * The MCAS operation finished successfully.
-   */
-  public static final long Successful = Version.Successful;
+  public static final long Active = Long.MAX_VALUE - 1L; // Note: this is copied from Version.scala
 
-  /**
-   * The MCAS operation failed, because one
-   * of the expected values (or its version)
-   * was not equal to the witness value (or
-   * the expected version).
-   */
-  public static final long FailedVal = Version.FailedVal;
+  public static final long Reserved = Long.MAX_VALUE - 4L; // Note: this is copied from Version.scala
+
+  private VersionJ() {
+    throw new UnsupportedOperationException();
+  }
 }
