@@ -18,4 +18,6 @@
 package dev.tauri.choam
 package unsafe
 
-object api extends UnsafeApi(ChoamRuntime.unsafeBlocking())
+object api extends UnsafeApi(ChoamRuntime.unsafeBlocking()) {
+  final def unsafeRuntime: ChoamRuntime = this.rt
+}

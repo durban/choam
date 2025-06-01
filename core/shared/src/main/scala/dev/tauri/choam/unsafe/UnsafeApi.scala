@@ -22,7 +22,7 @@ import scala.language.implicitConversions
 
 import core.{ Rxn, Ref }
 
-abstract class UnsafeApi(rt: ChoamRuntime) {
+abstract class UnsafeApi(protected[this] val rt: ChoamRuntime) {
 
   /**
    * Extension methods for more convenient
@@ -31,9 +31,6 @@ abstract class UnsafeApi(rt: ChoamRuntime) {
    */
   implicit final def RefSyntax[A](ref: Ref[A]): RefSyntax[A] =
     new RefSyntax[A](ref)
-
-  final def unsafeRuntime: ChoamRuntime =
-    this.rt
 
   /**
    * Note: don't nest calls to `atomically`!
