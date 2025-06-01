@@ -2361,17 +2361,14 @@ object Rxn extends RxnInstances0 {
     }
 
     final override def writeRef[A](ref: MemoryLocation[A], nv: A): Unit = {
-      // TODO: do the read-write in one step
-      val hwd = readMaybeFromLog(ref)
-      if (hwd eq null) { // need to roll back
+      val c = new Rxn.UpdSet1(ref, nv)
+      if (!handleUpd(c)) {
         throw unsafe2.RetryException.instance
-      } else {
-        desc = desc.addOrOverwrite(hwd.withNv(nv))
       }
     }
 
     final override def updateRef[A](ref: MemoryLocation[A], f: A => A): Unit = {
-      val c = new Rxn.UpdUpdate1(ref, f) // TODO: avoid this allocation
+      val c = new Rxn.UpdUpdate1(ref, f)
       if (!handleUpd(c)) {
         throw unsafe2.RetryException.instance
       }
