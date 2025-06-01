@@ -73,6 +73,13 @@ class McasImplState extends McasImplStateBase {
   }
 }
 
+@State(Scope.Thread)
+class UnsafeApiState extends McasImplState {
+
+  val api: unsafe.UnsafeApi =
+    new unsafe.UnsafeApi(McasImplStateBase.rt) {}
+}
+
 abstract class McasImplStateBase {
 
   private[choam] val reactive: Reactive[IO] =
@@ -84,11 +91,15 @@ abstract class McasImplStateBase {
 
 private[bench] object McasImplStateBase {
 
+  private[bench] val rt: ChoamRuntime = {
+    ChoamRuntime.unsafeBlocking()
+  }
+
   private[bench] val reactiveIO: Reactive[IO] = {
-    AsyncReactive.forAsyncIn[SyncIO, IO].allocated.unsafeRunSync()._1
+    AsyncReactive.fromIn[SyncIO, IO](this.rt).allocated.unsafeRunSync()._1
   }
 
   private[bench] val mcasImpl: Mcas = {
-    this.reactiveIO.mcasImpl
+    this.rt.mcasImpl
   }
 }

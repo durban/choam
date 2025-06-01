@@ -74,6 +74,17 @@ class RefSetBench {
     val r: Axn[Unit] = s.refs(idx).update2 { (_, _) => str }
     r.unsafePerform(null, k.mcasImpl)
   }
+
+  @Benchmark
+  def _imperative(s: RefSetBench.St, k: UnsafeApiState, rnd: RandomState): Unit = {
+    import k.api.{ atomically, RefSyntax }
+    val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
+    val ref = s.refs(idx)
+    val str = rnd.nextString()
+    atomically { implicit ir =>
+      ref.value = str
+    }
+  }
 }
 
 object RefSetBench {
