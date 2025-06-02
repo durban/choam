@@ -24,6 +24,21 @@ object UnsafeApi {
 
   final def apply(rt: ChoamRuntime): UnsafeApi =
     new UnsafeApi(rt) {}
+
+  private[choam] final def runBlock[A](state: InRxn, block: InRxn => A): A = {
+    var done = false
+    var result: A = nullOf[A]
+    while (!done) {
+      try {
+        result = block(state)
+        done = true
+      } catch {
+        case _: RetryException =>
+          state.rollback()
+      }
+    }
+    result
+  }
 }
 
 sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
@@ -40,22 +55,12 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
 
     @tailrec
     def go(): A = {
-      var done = false
-      var result: A = nullOf[A]
-      while (!done) {
-        try {
-          result = block(state)
-          done = true
-        } catch {
-          case _: RetryException =>
-            state.rollback()
-        }
-      }
+      val result = UnsafeApi.runBlock(state, block)
       if (state.imperativeCommit()) {
         result
       } else {
         state.rollback()
-        go() // retry
+        go()
       }
     }
 

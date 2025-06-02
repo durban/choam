@@ -788,11 +788,18 @@ object Rxn extends RxnInstances0 {
     final def forceValidate: Axn[Unit] =
       new Rxn.ForceValidate
 
-    // Unsafe/imperative API (for `atomically`):
+    // Unsafe/imperative API:
 
+    private[choam] final def embedUnsafe[A](block: unsafe2.InRxn => A): Axn[A] = { // TODO: make it public(?)
+      new Rxn.Ctx3[Any, A]({ (_: Any, ir: unsafe2.InRxn) =>
+        unsafe2.UnsafeApi.runBlock[A](ir, block)
+      })
+    }
+
+    /** Internal API called by `atomically` */
     private[choam] final def startImperative(mcasImpl: Mcas): unsafe2.InRxn = {
       new Rxn.InterpreterState[Null, Any](
-        rxn = null, // TODO
+        rxn = null,
         x = null,
         mcas = mcasImpl,
         strategy = (RetryStrategy.Default : RetryStrategy.Spin),
@@ -936,15 +943,19 @@ object Rxn extends RxnInstances0 {
 
   private sealed abstract class Ctx[A, B] extends RxnImpl[A, B] {
     final override def toString: String = s"Ctx(<block>)"
-    def uf(a: A, ctx: Mcas.ThreadContext): B
-  }
-
-  private final class Ctx2[A, B](_uf: (A, Mcas.ThreadContext) => B) extends Ctx[A, B] {
-    final override def uf(a: A, ctx: Mcas.ThreadContext): B = _uf(a, ctx)
+    def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn): B
   }
 
   private final class Ctx1[A, B](_uf: Mcas.ThreadContext => B) extends Ctx[A, B] {
-    final override def uf(a: A, ctx: Mcas.ThreadContext): B = _uf(ctx)
+    final override def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn): B = _uf(ctx)
+  }
+
+  private final class Ctx2[A, B](_uf: (A, Mcas.ThreadContext) => B) extends Ctx[A, B] {
+    final override def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn): B = _uf(a, ctx)
+  }
+
+  private final class Ctx3[A, B](_uf: (A, unsafe2.InRxn) => B) extends Ctx[A, B] {
+    final override def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn): B = _uf(a, ir)
   }
 
   private[core] final class Provide[A, B](val rxn: Rxn[A, B], val a: A) extends RxnImpl[Any, B] {
@@ -2137,7 +2148,7 @@ object Rxn extends RxnInstances0 {
         case c: Done[_] => // Done
           c.result.asInstanceOf[R]
         case c: Ctx[a, _] =>
-          val b = c.uf(aCastTo[a], ctx)
+          val b = c.uf(aCastTo[a], ctx, this)
           a = b
           loop(next())
         case c: Provide[_, _] => // Provide
