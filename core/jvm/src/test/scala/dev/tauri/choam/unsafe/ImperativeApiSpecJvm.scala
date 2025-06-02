@@ -19,6 +19,7 @@ package dev.tauri.choam
 package unsafe
 
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.Future // TODO: use IO instead of this
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -77,5 +78,47 @@ final class ImperativeApiSpecJvm extends FunSuite with MUnitUtils {
     }
 
     Future.sequence(fut1 :: fut2 :: Nil)
+  }
+
+  test("Ticket#validate") {
+    val ref1: Ref[Int] = atomically(newRef(0)(_))
+    val ref2: Ref[Int] = atomically(newRef(0)(_))
+    val tries = new AtomicInteger(0)
+    val latch1 = new CountDownLatch(1)
+    val latch2 = new CountDownLatch(1)
+    val fut1 = Future {
+      atomically { implicit ir =>
+        tries.getAndIncrement()
+        val ticket = ticketRead(ref1)
+        latch1.countDown()
+        // refs change
+        latch2.await()
+        updateRef(ref2)(_ + 1)
+        val v2 = ref2.value
+        if (ticket.value == 0) {
+          ticket.validate()
+        }
+        (ticket.value, v2)
+      }
+    }
+    val fut2 = Future {
+      latch1.await()
+      atomically { implicit ir =>
+        updateRef(ref1)(_ + 1)
+        updateRef(ref2)(_ + 1)
+      }
+      latch2.countDown()
+      (42, 42)
+    }
+    Future.sequence(fut1 :: fut2 :: Nil).flatMap {
+      case List(res1, res2) =>
+        Future {
+          assertEquals(res1, (1, 2))
+          assertEquals(res2, (42, 42))
+          assertEquals(tries.get(), 2)
+        }
+      case x =>
+        Future(fail(s"unexpected: $x"))
+    }
   }
 }
