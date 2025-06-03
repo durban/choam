@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-val sbtTypelevelVersion = "0.7.7" // https://github.com/typelevel/sbt-typelevel
+val sbtTypelevelVersion = "0.8.0" // https://github.com/typelevel/sbt-typelevel
 
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.7") // https://github.com/sbt/sbt-jmh
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
