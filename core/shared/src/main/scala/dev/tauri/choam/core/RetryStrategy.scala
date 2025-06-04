@@ -85,7 +85,7 @@ sealed abstract class RetryStrategy {
 
   // MISC.:
 
-  private[core] def canSuspend: Boolean
+  private[choam] def canSuspend: Boolean
 
   private[core] def isDebug: Boolean
 }
@@ -101,7 +101,7 @@ object RetryStrategy {
 
     override def withRandomizeSpin(randomizeSpin: Boolean): Spin
 
-    private[core] final override def canSuspend: Boolean =
+    private[choam] final override def canSuspend: Boolean =
       false
 
     private[core] final override def isDebug: Boolean =
@@ -305,7 +305,7 @@ object RetryStrategy {
     private[core] override val maxSleepNanos: Long =
       maxSleep.toNanos
 
-    private[core] final override def canSuspend: Boolean =
+    private[choam] final override def canSuspend: Boolean =
       true
 
     private[core] final override def isDebug: Boolean =
@@ -630,7 +630,7 @@ object RetryStrategy {
       private[core] final override def isDebug: Boolean =
         true
 
-      private[core] final override def canSuspend: Boolean =
+      private[choam] final override def canSuspend: Boolean =
         true
 
       final override def maxCede: Int =

@@ -18,6 +18,7 @@
 package dev.tauri.choam
 
 import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicReference
 
 import scala.concurrent.{ Future, ExecutionContext }
 import scala.concurrent.duration._
@@ -47,6 +48,30 @@ trait BaseSpecF[F[_]]
   def F: Sync[F]
 
   protected def absolutelyUnsafeRunSync[A](fa: F[A]): A
+
+  private[this] val rtHolder: AtomicReference[ChoamRuntime] =
+    new AtomicReference
+
+  /** Lazily initialized `ChoamRuntime` which uses `this.mcasImpl` */
+  protected final def runtime: ChoamRuntime = {
+    rtHolder.get() match {
+      case null =>
+        // Note: we'll never close this runtime, but
+        // that's fine, because `McasImplSpec` will
+        // close the MCAS in `afterAll`, and the
+        // OsRng we use is a global one which lives
+        // forever in the `BaseSpec` companion object.
+        val rt = ChoamRuntime.forTesting(this.mcasImpl)
+        val wit = rtHolder.compareAndExchange(null, rt)
+        if (wit eq null) {
+          rt
+        } else {
+          wit
+        }
+      case rt =>
+        rt
+    }
+  }
 
   def assumeF(cond: => Boolean, clue: String = "assumption failed")(implicit loc: Location): F[Unit] =
     F.delay { this.assume(cond, clue)(loc) }
@@ -100,7 +125,7 @@ trait BaseSpecF[F[_]]
 }
 
 trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] { this: McasImplSpec =>
-  /** Not implicit, so that `rF` is used for sure */
+  /** Not implicit, so that `rF` is used for sure */ // TODO: does this still matter? Could it be implicit?
   override def F: Async[F]
   override implicit def mcF: Temporal[F] =
     this.F

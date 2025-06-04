@@ -53,4 +53,9 @@ object ChoamRuntime {
     val m = Mcas.newDefaultMcas(o) // may block due to JMX
     new ChoamRuntimeImpl(m, o)
   }
+
+  /** Only for testing! */
+  private[choam] final def forTesting(mcasImpl: Mcas): ChoamRuntime = {
+    new ChoamRuntimeImpl(mcasImpl, mcasImpl.osRng)
+  }
 }

@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package unsafe
 
+import java.util.concurrent.atomic.{ AtomicInteger, AtomicBoolean }
+
 import munit.FunSuite
 
 import core.Ref
@@ -158,5 +160,35 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
         val v = atomically(readRef(ex.ref)(_))
         assertEquals(v, 42) // the write must be rollbacked
     }
+  }
+
+  test("Forced retries") {
+    val ctr = new AtomicInteger
+    val ref = atomically(newRef(42)(_))
+    val res = atomically { implicit ir =>
+      updateRef(ref)(_ + 1)
+      if (ctr.incrementAndGet() < 5) {
+        throw RetryException.instance
+      }
+      ref.value
+    }
+    assertEquals(res, 43)
+    assertEquals(atomically(ref.value(_)), 43)
+    assertEquals(ctr.get(), 5)
+  }
+
+  test("null result") {
+    val flag = new AtomicBoolean(true)
+    val ref = atomically(newRef(42)(_))
+    val res = atomically[String] { implicit ir =>
+      ref.value = ref.value + 1
+      if (flag.getAndSet(false)) {
+        throw RetryException.instance
+      }
+      null
+    }
+    assertEquals(res, null)
+    assertEquals(atomically(ref.value(_)), 43)
+    assert(!flag.get())
   }
 }

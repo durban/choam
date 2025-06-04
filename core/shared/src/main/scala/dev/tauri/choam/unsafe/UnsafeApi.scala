@@ -18,30 +18,21 @@
 package dev.tauri.choam
 package unsafe
 
-import core.Rxn
+import cats.~>
+import cats.effect.kernel.Async
+
+import core.{ Rxn, RetryStrategy }
+import internal.mcas.Mcas
 
 object UnsafeApi {
 
   final def apply(rt: ChoamRuntime): UnsafeApi =
     new UnsafeApi(rt) {}
-
-  private[choam] final def runBlock[A](state: InRxn, block: InRxn => A): A = {
-    var done = false
-    var result: A = nullOf[A]
-    while (!done) {
-      try {
-        result = block(state)
-        done = true
-      } catch {
-        case _: RetryException =>
-          state.rollback()
-      }
-    }
-    result
-  }
 }
 
 sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
+
+  // `atomically`: running in fully synchronous mode
 
   /**
    * Note: don't nest calls to `atomically`!
@@ -50,20 +41,115 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
    * to methods called from the `block`.
    */
   final def atomically[A](block: InRxn => A): A = {
-    val state = Rxn.unsafe.startImperative(this.rt.mcasImpl)
-    state.initCtx()
+    val state = Rxn.unsafe.startImperative(this.rt.mcasImpl, RetryStrategy.Default : RetryStrategy.Spin)
+    state.initCtx(this.rt.mcasImpl.currentContext())
 
     @tailrec
     def go(): A = {
-      val result = UnsafeApi.runBlock(state, block)
+      val result = this.runBlock(state, block)
       if (state.imperativeCommit()) {
+        state.beforeResult()
         result
       } else {
-        state.rollback()
+        this.imperativeRetry(state)
         go()
       }
     }
 
-    go()
+    val a = go()
+    // TODO: saveStats
+    state.invalidateCtx()
+    a
+  }
+
+  private[this] final def runBlock[A](state: InRxn, block: InRxn => A): A = {
+    var done = false
+    var result: A = nullOf[A]
+    while (!done) {
+      try {
+        result = block(state)
+        done = true
+      } catch {
+        case _: RetryException =>
+          this.imperativeRetry(state)
+      }
+    }
+    result
+  }
+
+  private[this] final def imperativeRetry(state: InRxn): Unit = {
+    val opt: Option[CanSuspendInF] = state.imperativeRetry()
+    _assert(opt.isEmpty)
+  }
+
+  // `atomicallyAsync`: possibly async retries
+  // TODO: Instead/besides `atomicallyAsync`, we could have a
+  // TODO: coroutine-like API. But which coroutine impl to use?
+
+  /**
+   * Note: don't nest calls to `atomicallyAsync`!
+   *
+   * Instead pass the `InRxn` argument implicitly
+   * to methods called from the `block`.
+   */
+  final def atomicallyAsync[F[_], A](str: RetryStrategy)(block: InRxn => A)(implicit F: Async[F]): F[A] = {
+    F.uncancelable { poll =>
+      F.defer {
+        val state = Rxn.unsafe.startImperative(this.rt.mcasImpl, str)
+        this.runAsync[F, A](state, block, str, poll)
+      }
+    }
+  }
+
+  private[this] final def runAsync[F[_], A](
+    state: InRxn,
+    block: InRxn => A,
+    str: RetryStrategy,
+    poll: F ~> F,
+  )(implicit F: Async[F]): F[A] = {
+    if (str.canSuspend) {
+      // cede or sleep strategy:
+      val mcas = this.rt.mcasImpl
+      def step(ctxHint: Mcas.ThreadContext): F[A] = F.defer {
+        val ctx = if ((ctxHint ne null) && mcas.isCurrentContext(ctxHint)) {
+          ctxHint
+        } else {
+          mcas.currentContext()
+        }
+        state.initCtx(ctx)
+        try {
+          try {
+            val result = block(state)
+            if (state.imperativeCommit()) {
+              state.beforeResult()
+              F.pure(result)
+            } else {
+              step(ctx)
+            }
+          } catch {
+            case _: RetryException =>
+              state.imperativeRetry() match {
+                case None =>
+                  // spinning done, retry immediately:
+                  step(ctx)
+                case Some(canSuspend) =>
+                  // we'll suspend:
+                  state.beforeSuspend()
+                  val sus = canSuspend.suspend[F](mcas, ctx)
+                  F.flatMap(poll(sus)) { _ => step(ctxHint = ctx) }
+              }
+          }
+        } finally {
+          // TODO: this.saveStats()
+          state.invalidateCtx()
+        }
+      }
+      step(ctxHint = null)
+    } else {
+      // spin strategy, so not really async:
+      F.delay {
+        this.atomically(block)
+      }
+    }
   }
 }

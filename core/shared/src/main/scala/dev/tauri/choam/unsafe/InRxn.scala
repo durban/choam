@@ -18,12 +18,23 @@
 package dev.tauri.choam
 package unsafe
 
+import cats.effect.kernel.Async
+
 import internal.mcas.{ Mcas, MemoryLocation, LogEntry }
+
+private[choam] trait CanSuspendInF {
+
+  def suspend[F[_]](
+    mcasImpl: Mcas,
+    mcasCtx: Mcas.ThreadContext,
+  )(implicit F: Async[F]): F[Unit]
+}
 
 sealed trait InRxn  {
   private[choam] def currentContext(): Mcas.ThreadContext
-  private[choam] def initCtx(): Unit
-  private[choam] def rollback(): Unit
+  private[choam] def initCtx(c: Mcas.ThreadContext): Unit
+  private[choam] def invalidateCtx(): Unit
+  private[choam] def imperativeRetry(): Option[CanSuspendInF]
   private[choam] def readRef[A](ref: MemoryLocation[A]): A
   private[choam] def writeRef[A](ref: MemoryLocation[A], nv: A): Unit
   private[choam] def updateRef[A](ref: MemoryLocation[A], f: A => A): Unit
@@ -31,6 +42,8 @@ sealed trait InRxn  {
   private[choam] def imperativeTicketRead[A](ref: MemoryLocation[A]): Ticket[A]
   private[choam] def imperativeTicketWrite[A](hwd: LogEntry[A], newest: A): Unit
   private[choam] def imperativeCommit(): Boolean
+  private[choam] def beforeSuspend(): Unit
+  private[choam] def beforeResult(): Unit
 }
 
 object InRxn {

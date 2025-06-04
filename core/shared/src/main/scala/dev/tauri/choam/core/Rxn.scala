@@ -791,18 +791,23 @@ object Rxn extends RxnInstances0 {
     // Unsafe/imperative API:
 
     private[choam] final def embedUnsafe[A](block: unsafe2.InRxn => A): Axn[A] = { // TODO: make it public(?)
-      new Rxn.Ctx3[Any, A]({ (_: Any, ir: unsafe2.InRxn) =>
-        unsafe2.UnsafeApi.runBlock[A](ir, block)
-      })
+      new Rxn.Ctx3[Any, Axn[A]]({ (_: Any, state: unsafe2.InRxn) =>
+        try {
+          pure[A](block(state))
+        } catch {
+          case _: unsafe2.RetryException =>
+            unsafe.retry[A]
+        }
+      }).flatten
     }
 
     /** Internal API called by `atomically` */
-    private[choam] final def startImperative(mcasImpl: Mcas): unsafe2.InRxn = {
+    private[choam] final def startImperative(mcasImpl: Mcas, str: RetryStrategy): unsafe2.InRxn = {
       new Rxn.InterpreterState[Null, Any](
         rxn = null,
         x = null,
         mcas = mcasImpl,
-        strategy = (RetryStrategy.Default : RetryStrategy.Spin),
+        strategy = str,
         isStm = false,
       )
     }
@@ -1007,12 +1012,26 @@ object Rxn extends RxnInstances0 {
   }
 
   /** Only the interpreter can use this! */
-  private sealed abstract class SuspendUntil extends RxnImpl[Any, Nothing] {
+  private sealed abstract class SuspendUntil
+    extends RxnImpl[Any, Nothing]
+    with unsafe2.CanSuspendInF {
 
     def toF[F[_]](
       mcasImpl: Mcas,
       mcasCtx: Mcas.ThreadContext,
     )(implicit F: Async[F]): F[Rxn[Any, Any]]
+
+    final override def suspend[F[_]](
+      mcasImpl: Mcas,
+      mcasCtx: Mcas.ThreadContext,
+    )(implicit F: Async[F]): F[Unit] = {
+      F.flatMap(this.toF[F](mcasImpl, mcasCtx)) {
+        case null =>
+          F.unit
+        case x =>
+          F.delay(impossible(s"toF returned $x"))
+      }
+    }
   }
 
   private final class SuspendUntilBackoff(val token: Long) extends SuspendUntil {
@@ -1265,7 +1284,7 @@ object Rxn extends RxnInstances0 {
     private[this] var ctx: Mcas.ThreadContext =
       null
 
-    private[this] final def invalidateCtx(): Unit = {
+    private[choam] final override def invalidateCtx(): Unit = {
       this.ctx = null
       this._stats = null
       this._exParams = null
@@ -2290,14 +2309,11 @@ object Rxn extends RxnInstances0 {
           try {
             loop(if (debugNext eq null) startRxn else debugNext) match {
               case s: SuspendUntil =>
-                _assert(this._entryHolder eq null)
+                this.beforeSuspend()
                 val sus: F[Rxn[Any, Any]] = s.toF[F](mcas, ctx)
                 F.flatMap(poll(sus)) { nxt => step(ctxHint = ctx, debugNext = nxt) }
               case r =>
-                _assert(
-                  (this._entryHolder eq null) &&
-                  ((this.locals eq null) || this.locals.isEmpty())
-                )
+                this.beforeResult()
                 F.pure(r)
             }
           } finally {
@@ -2343,18 +2359,25 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    final override def initCtx(): Unit = {
+    final override def initCtx(c: Mcas.ThreadContext): Unit = {
       this.ctx match {
         case null =>
-          this.ctx = this.mcas.currentContext()
+          this.ctx = c
         case _ =>
           throw new IllegalStateException("ctx is already initialized")
       }
     }
 
-    final override def rollback(): Unit = {
-      val rxn = this.retry()
-      _assert(rxn eq null)
+    final override def imperativeRetry(): Option[unsafe2.CanSuspendInF] = {
+      this.retry() match {
+        case null =>
+          None
+        case s: SuspendUntil =>
+          Some(s) // TODO: avoid allocation
+        case xyz =>
+          // this shouldn't happen, because imperativ API has no alts (for now):
+          impossible(s"retry (called in imperativeRetry) returned $xyz")
+      }
     }
 
     final override def readRef[A](ref: MemoryLocation[A]): A = {
@@ -2426,6 +2449,19 @@ object Rxn extends RxnInstances0 {
       } else {
         false // need to retry
       }
+    }
+
+    @inline
+    private[choam] final override def beforeSuspend(): Unit = {
+      _assert(this._entryHolder eq null)
+    }
+
+    @inline
+    private[choam] final override def beforeResult(): Unit = {
+      _assert(
+        (this._entryHolder eq null) &&
+        ((this.locals eq null) || this.locals.isEmpty())
+      )
     }
   }
 }

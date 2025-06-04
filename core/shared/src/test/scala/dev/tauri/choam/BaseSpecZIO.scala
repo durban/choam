@@ -51,7 +51,7 @@ abstract class BaseSpecZIO
   with BaseSpecAsyncF[zio.Task]
   with UtilsForZIO { this: McasImplSpec =>
 
-  private[this] val runtime =
+  private[this] val zioRuntime =
     zio.Runtime.default
 
   final override def F: Async[zio.Task] =
@@ -59,7 +59,7 @@ abstract class BaseSpecZIO
 
   protected final override def absolutelyUnsafeRunSync[A](fa: zio.Task[A]): A = {
     zio.Unsafe.unsafe { implicit u =>
-      this.runtime.unsafe.run(fa).getOrThrow()
+      this.zioRuntime.unsafe.run(fa).getOrThrow()
     }
   }
 
@@ -72,7 +72,7 @@ abstract class BaseSpecZIO
           zio.Runtime.setUnhandledErrorLogLevel(this.zioUnhandledErrorLogLevel).build(scope) *> tsk
         }
         zio.Unsafe.unsafe { implicit u =>
-          this.runtime.unsafe.runToFuture(tskWithLogCfg)
+          this.zioRuntime.unsafe.runToFuture(tskWithLogCfg)
         }
       }
     )
