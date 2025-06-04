@@ -886,7 +886,7 @@ lazy val dependencies = new {
   val catsVersion = "2.13.0" // https://github.com/typelevel/cats
   val catsEffectVersion = "3.6.1" // https://github.com/typelevel/cats-effect
   val catsMtlVersion = "1.5.0" // https://github.com/typelevel/cats-mtl
-  val catsCollectionsVersion = "0.9.9" // https://github.com/typelevel/cats-collections
+  val catsCollectionsVersion = "0.9.10" // https://github.com/typelevel/cats-collections
   val fs2Version = "3.12.0" // https://github.com/typelevel/fs2
   val scalacheckEffectVersion = "2.0.0-M2" // https://github.com/typelevel/scalacheck-effect
   val jcstressVersion = "0.16" // https://github.com/openjdk/jcstress
@@ -894,7 +894,7 @@ lazy val dependencies = new {
   val jolVersion = "0.17" // https://github.com/openjdk/jol
   val scalaJsLocaleVersion = "1.5.4" // https://github.com/cquiroz/scala-java-locales
   val scalaJsTimeVersion = "2.6.0" // https://github.com/cquiroz/scala-java-time
-  val zioVersion = "2.1.18" // https://github.com/zio/zio
+  val zioVersion = "2.1.19" // https://github.com/zio/zio
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
   val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
