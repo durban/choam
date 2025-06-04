@@ -37,7 +37,8 @@ trait BaseSpecF[F[_]]
   extends FunSuite
   with MUnitUtils
   with cats.syntax.AllSyntax
-  with cats.effect.syntax.AllSyntax { this: McasImplSpec =>
+  with cats.effect.syntax.AllSyntax
+  with BaseSpecFPlatform { this: McasImplSpec =>
 
   implicit def rF: Reactive[F]
 
@@ -62,7 +63,7 @@ trait BaseSpecF[F[_]]
         // OsRng we use is a global one which lives
         // forever in the `BaseSpec` companion object.
         val rt = ChoamRuntime.forTesting(this.mcasImpl)
-        val wit = rtHolder.compareAndExchange(null, rt)
+        val wit = this.compareAndExchange(rtHolder, null, rt)
         if (wit eq null) {
           rt
         } else {
