@@ -101,4 +101,65 @@ trait EmbedUnsafeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(F.delay(ctr.get()), 0)
     } yield ()
   }
+
+  test("Nesting") {
+    def layer0(ref1: Ref[Int], ref2: Ref[String], ctr0: AtomicInteger): Axn[(Int, String)] = {
+      Rxn.unsafe.embedUnsafe { implicit ir =>
+        ctr0.getAndIncrement()
+        val ov1 = ref1.value
+        val ov2 = ref2.value
+        ref1.value = ov1 + 1
+        ref2.value = ov2 + "layer0"
+        (ov1, ov2)
+      }
+    }
+    def layer1(ref1: Ref[Int], ref2: Ref[String], ctr0: AtomicInteger, ctr1: AtomicInteger): Axn[(Int, String, Int, String)] = {
+      Rxn.unsafe.embedUnsafe { implicit ir =>
+        ctr1.getAndIncrement()
+        val ov1 = ref1.value
+        val ov2 = ref2.value
+        ref1.value = ov1 + 1
+        ref2.value = ov2 + "layer1"
+        val (eov1, eov2) = Rxn.unsafe.embedAxn(layer0(ref1, ref2, ctr0))
+        assertEquals(eov1, ov1 + 1)
+        assertEquals(eov2, ov2 + "layer1")
+        assertEquals(ref1.value, ov1 + 1 + 1)
+        assertEquals(ref2.value, ov2 + "layer1" + "layer0")
+        updateRef(ref1)(_ + 1)
+        updateRef(ref2)(_ + "layer1again")
+        (ov1, ov2, eov1, eov2)
+      }
+    }
+    def layer2(ctr0: AtomicInteger, ctr1: AtomicInteger): Axn[Int] = {
+      Ref[Int](0).flatMapF { ref1 =>
+        Rxn.unsafe.embedUnsafe { implicit ir =>
+          newRef("")
+        }.flatMapF { ref2 =>
+          ref1.update1(_ + 1) *> ref2.update1(_ + "layer2") *> layer1(ref1, ref2, ctr0, ctr1).flatMapF {
+            case (ov1, ov2, eov1, eov2) =>
+              Axn.unsafe.delay {
+                assertEquals(ov1, 1)
+                assertEquals(ov2, "layer2")
+                assertEquals(eov1, 2)
+                assertEquals(eov2, "layer2layer1")
+                assertEquals(ctr0.get(), 1)
+                assertEquals(ctr1.get(), 1)
+              } *> Rxn.unsafe.embedUnsafe { implicit ir =>
+                assertEquals(ref1.value, 4)
+                assertEquals(ref2.value, "layer2layer1layer0layer1again")
+                42
+              }
+          }
+        }
+      }
+    }
+    for {
+      ctr01 <- F.delay(new AtomicInteger)
+      ctr11 <- F.delay(new AtomicInteger)
+      _ <- assertResultF(layer2(ctr01, ctr11).run[F], 42)
+      ctr02 <- F.delay(new AtomicInteger)
+      ctr12 <- F.delay(new AtomicInteger)
+      _ <- assertResultF(layer2(ctr02, ctr12).run[F], 42)
+    } yield ()
+  }
 }

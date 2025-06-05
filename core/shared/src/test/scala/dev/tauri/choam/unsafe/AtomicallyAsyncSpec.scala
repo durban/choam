@@ -29,6 +29,11 @@ final class AtomicallyAsyncSpec_DefaultMcas_IO
   with SpecDefaultMcas
   with AtomicallyAsyncSpec[IO]
 
+final class AtomicallyAsyncSpec_DefaultMcas_ZIO
+  extends BaseSpecZIO
+  with SpecDefaultMcas
+  with AtomicallyAsyncSpec[zio.Task]
+
 trait AtomicallyAsyncSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private[this] val api: UnsafeApi =
