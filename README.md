@@ -190,8 +190,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       values can encode errors with `Option`, `Either`, or similar).
     - Some STM systems allow access to transactional memory from
       non-transactional code; `Rxn` doesn't support this, the contents of an
-      `r: Ref[A]` can only be accessed from inside a `Rxn` (although there is a
-      read-only almost "escape hatch": `r.unsafeDirectRead`).
+      `r: Ref[A]` can only be accessed from inside a `Rxn`.
   - Similarities between `Rxn`s and STM transactions include the following:
     - atomicity
     - consistency
@@ -225,7 +224,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - using APIs which are non-public in Scala (even though some of these are public in the bytecode);
   - inheriting `sealed` classes/traits (even though this may not be enforced by the bytecode);
   - using `*.internal.*` packages (e.g., `dev.tauri.choam.internal.mcas`);
-  - using `unsafe*` APIs (e.g., `Rxn.unsafe.retry`).
+  - using `unsafe` APIs (e.g., `Rxn.unsafe.retry` or the contents of the `dev.tauri.choam.unsafe` package).
   - using the contents of the `dev.tauri.choam.stm` package (our STM is experimental for now)
 - There is no backwards compatibility for these modules:
   - `choam-ce`
@@ -267,7 +266,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
     - in practice, this is true on 64-bit platforms
     - on 32-bit platforms some of these *might* use a lock
   - GC and classloading
-    - in practice, the GC sometimes do use locks
+    - in practice, the GC sometimes probably uses locks
     - and classloaders sometimes also might use locks
   - `ThreadLocalRandom`, `ThreadLocal`
 - Certain `Rxn` operations require extra assumptions:
