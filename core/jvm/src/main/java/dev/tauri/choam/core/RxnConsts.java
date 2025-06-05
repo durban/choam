@@ -18,7 +18,7 @@
 package dev.tauri.choam.core;
 
 // Note: this class/object is duplicated for JVM/JS
-class RxnConsts {
+class RxnConsts { // TODO: make sure these are inlined
   static final byte ContAndThen = 0;
   static final byte ContAndAlso = 1;
   static final byte ContAndAlsoJoin = 2;
@@ -35,4 +35,5 @@ class RxnConsts {
   static final byte ContMap2Right = 13;
   static final byte ContMap2Func = 14;
   static final byte ContOrElse = 15;
+  static final byte ContEmbedAxn = 16;
 }

@@ -750,7 +750,7 @@ object Rxn extends RxnInstances0 {
       new OrElse(left, right)
 
     @inline
-    private[choam] final def delay[A, B](uf: A => B): Rxn[A, B] =
+    private[choam] final def delay[A, B](uf: A => B): Rxn[A, B] = // TODO: make it public
       delayImpl(uf)
 
     @inline
@@ -790,15 +790,34 @@ object Rxn extends RxnInstances0 {
 
     // Unsafe/imperative API:
 
-    private[choam] final def embedUnsafe[A](block: unsafe2.InRxn => A): Axn[A] = { // TODO: make it public(?)
+    /** Embeds a block of code, which uses the unsafe/imperative API, into an `Axn`. */
+    final def embedUnsafe[A](unsafeBlock: dev.tauri.choam.unsafe.InRxn => A): Axn[A] = {
       new Rxn.Ctx3[Any, Axn[A]]({ (_: Any, state: unsafe2.InRxn) =>
         try {
-          pure[A](block(state))
+          pure[A](unsafeBlock(state))
         } catch {
-          case _: unsafe2.RetryException =>
-            unsafe.retry[A]
+          case ex: unsafe2.RetryException =>
+            ex.sus match {
+              case null => retry[A]
+              case sus => sus.asInstanceOf[Rxn.SuspendUntil]
+            }
         }
       }).flatten
+    }
+
+    /**
+     * Only call from within `embedUnsafe`!
+     *
+     * Mustn't be called from within `atomically` or `atomicallyAsync`.
+     */
+    final def embedAxn[A](axn: Axn[A])(implicit ir: dev.tauri.choam.unsafe.InRxn): A = {
+      val state = ir.asInstanceOf[InterpreterState[_, _]] // safe inside `embedUnsafe`
+      state.interpretEmbedAxn(axn) match {
+        case sus: Rxn.SuspendUntil =>
+          throw unsafe2.RetryException.fromSuspend(sus)
+        case a =>
+          a
+      }
     }
 
     /** Internal API called by `atomically` */
@@ -809,6 +828,7 @@ object Rxn extends RxnInstances0 {
         mcas = mcasImpl,
         strategy = str,
         isStm = false,
+        isUnsafeApi = true,
       )
     }
   }
@@ -1266,6 +1286,7 @@ object Rxn extends RxnInstances0 {
     mcas: Mcas,
     strategy: RetryStrategy,
     isStm: Boolean,
+    isUnsafeApi: Boolean = false,
   ) extends Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], Rxn[Any, Any]]
     with unsafe2.InRxn.UnsealedInRxn {
 
@@ -1758,6 +1779,10 @@ object Rxn extends RxnInstances0 {
         case 15 => // ContOrElse
           discardStmAlt()
           next()
+        case 16 => // ContEmbedAxn
+          val res = a
+          a = ()
+          new Done(res)
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -2016,6 +2041,13 @@ object Rxn extends RxnInstances0 {
       } else {
         true
       }
+    }
+
+    /** May also return `SuspendUntil`! */
+    private[Rxn] final def interpretEmbedAxn[B](axn: Axn[B]): B = {
+      _assert(!this.isUnsafeApi)
+      contT.push(RxnConsts.ContEmbedAxn)
+      loop(axn).asInstanceOf[B]
     }
 
     @tailrec
@@ -2375,7 +2407,7 @@ object Rxn extends RxnInstances0 {
         case s: SuspendUntil =>
           Some(s) // TODO: avoid allocation
         case xyz =>
-          // this shouldn't happen, because imperativ API has no alts (for now):
+          // this shouldn't happen, because imperative API has no alts (for now):
           impossible(s"retry (called in imperativeRetry) returned $xyz")
       }
     }

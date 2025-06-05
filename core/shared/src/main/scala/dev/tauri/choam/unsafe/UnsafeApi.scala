@@ -70,7 +70,8 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
         result = block(state)
         done = true
       } catch {
-        case _: RetryException =>
+        case ex: RetryException =>
+          _assert(ex.sus eq null) // only `embedRxn` has non-null
           this.imperativeRetry(state)
       }
     }
@@ -127,7 +128,8 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
               step(ctx)
             }
           } catch {
-            case _: RetryException =>
+            case ex: RetryException =>
+              _assert(ex.sus eq null) // only `embedRxn` has non-null
               state.imperativeRetry() match {
                 case None =>
                   // spinning done, retry immediately:
