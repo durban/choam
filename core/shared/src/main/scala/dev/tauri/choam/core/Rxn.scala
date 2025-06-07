@@ -798,26 +798,13 @@ object Rxn extends RxnInstances0 {
         } catch {
           case ex: unsafe2.RetryException =>
             ex.sus match {
-              case null => retry[A]
-              case sus => sus.asInstanceOf[Rxn.SuspendUntil]
+              case null =>
+                retry[A]
+              case sus =>
+                sus.asInstanceOf[Rxn.SuspendUntil]
             }
         }
       }).flatten
-    }
-
-    /**
-     * Only call from within `embedUnsafe`!
-     *
-     * Mustn't be called from within `atomically` or `atomicallyAsync`.
-     */
-    final def embedAxn[A](axn: Axn[A])(implicit ir: dev.tauri.choam.unsafe.InRxn): A = {
-      val state = ir.asInstanceOf[InterpreterState[_, _]] // safe inside `embedUnsafe`
-      state.interpretEmbedAxn(axn) match {
-        case sus: Rxn.SuspendUntil =>
-          throw unsafe2.RetryException.fromSuspend(sus)
-        case res =>
-          res
-      }
     }
 
     /** Internal API called by `atomically` */
@@ -828,7 +815,6 @@ object Rxn extends RxnInstances0 {
         mcas = mcasImpl,
         strategy = str,
         isStm = false,
-        isUnsafeApi = true,
       )
     }
   }
@@ -1286,7 +1272,6 @@ object Rxn extends RxnInstances0 {
     mcas: Mcas,
     strategy: RetryStrategy,
     isStm: Boolean,
-    isUnsafeApi: Boolean = false,
   ) extends Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], Rxn[Any, Any]]
     with unsafe2.InRxn.UnsealedInRxn {
 
@@ -1397,9 +1382,6 @@ object Rxn extends RxnInstances0 {
     /** Initially `true`, and if a `+` is encountered, becomes `false` (and then remains `false`) */
     private[this] var mutable: Boolean = // TODO: this makes it slower if there is `+`! (See `InterpreterBench`.)
       true
-
-    private[this] var isInEmbedAxn: Boolean =
-      false
 
     /**
      * Becomes `true` when the first `tentativeRead` is executed.
@@ -1780,15 +1762,6 @@ object Rxn extends RxnInstances0 {
         case 15 => // ContOrElse
           discardStmAlt()
           next()
-        case 16 => // ContEmbedAxn
-          if (this.isInEmbedAxn) {
-            val res = a
-            a = ()
-            new Done(res)
-          } else {
-            // leftover cont tag from a retry during embedAxn, ignore it
-            next()
-          }
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -1796,16 +1769,11 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    private[this] final def retry(): Rxn[Any, Any] =
-      this.retry(canSuspend = this.canSuspend, permanent = false, noDebug = false)
-
-    private[this] final def retry(canSuspend: Boolean, permanent: Boolean): Rxn[Any, Any] =
-      this.retry(canSuspend = canSuspend, permanent = permanent, noDebug = false)
-
-    private[this] final def retry(canSuspend: Boolean, permanent: Boolean, noDebug: Boolean): Rxn[Any, Any] = {
-      if (this.isInEmbedAxn) {
-        throw unsafe2.RetryException.instance
-      }
+    private[this] final def retry(
+      canSuspend: Boolean = this.canSuspend,
+      permanent: Boolean = false,
+      noDebug: Boolean = false,
+    ): Rxn[Any, Any] = {
       if (this.strategy.isDebug && (!noDebug)) {
         this.strategy match {
           case str @ ((_: RetryStrategy.Spin) | (_: RetryStrategy.StrategyFull)) =>
@@ -2049,27 +2017,6 @@ object Rxn extends RxnInstances0 {
         success
       } else {
         true
-      }
-    }
-
-    /** May also return `SuspendUntil`! */
-    private[Rxn] final def interpretEmbedAxn[B](axn: Axn[B]): B = {
-      _assert(!this.isUnsafeApi)
-      isInEmbedAxn = true
-      try {
-        contT.push(RxnConsts.ContEmbedAxn)
-        val b = loop(axn) match {
-          case sus: SuspendUntil =>
-            val tag = contT.pop()
-            _assert(tag == RxnConsts.ContEmbedAxn)
-            sus
-          case result =>
-            _assert(contT.peek() != RxnConsts.ContEmbedAxn)
-            result
-        }
-        b.asInstanceOf[B]
-      } finally {
-        isInEmbedAxn = false
       }
     }
 
@@ -2443,7 +2390,7 @@ object Rxn extends RxnInstances0 {
       val hwd2 = revalidateIfNeeded(hwd)
       if (hwd2 eq null) { // need to roll back
         _assert(this._desc eq null)
-        throw unsafe2.RetryException.instance
+        throw unsafe2.RetryException.notPermanentFailure
       } else {
         hwd2.nv
       }
@@ -2452,21 +2399,21 @@ object Rxn extends RxnInstances0 {
     final override def writeRef[A](ref: MemoryLocation[A], nv: A): Unit = {
       val c = new Rxn.UpdSet1(ref, nv)
       if (!handleUpd(c)) {
-        throw unsafe2.RetryException.instance
+        throw unsafe2.RetryException.notPermanentFailure
       }
     }
 
     final override def updateRef[A](ref: MemoryLocation[A], f: A => A): Unit = {
       val c = new Rxn.UpdUpdate1(ref, f)
       if (!handleUpd(c)) {
-        throw unsafe2.RetryException.instance
+        throw unsafe2.RetryException.notPermanentFailure
       }
     }
 
     final override def imperativeTentativeRead[A](ref: MemoryLocation[A]): A = {
       val hwd = tentativeRead(ref)
       if (hwd eq null) {
-        throw unsafe2.RetryException.instance
+        throw unsafe2.RetryException.notPermanentFailure
       } else {
         hwd.nv
       }
@@ -2475,7 +2422,7 @@ object Rxn extends RxnInstances0 {
     final override def imperativeTicketRead[A](ref: MemoryLocation[A]): unsafe2.Ticket[A] = {
       val hwd = readMaybeFromLog(ref)
       if (hwd eq null) {
-        throw unsafe2.RetryException.instance
+        throw unsafe2.RetryException.notPermanentFailure
       } else {
         unsafe2.Ticket[A](hwd)
       }
@@ -2485,7 +2432,7 @@ object Rxn extends RxnInstances0 {
       val c = new Rxn.TicketWrite(hwd, newest)
       if (!ticketWrite(c)) {
         _assert(this._desc eq null)
-        throw unsafe2.RetryException.instance
+        throw unsafe2.RetryException.notPermanentFailure
       }
     }
 

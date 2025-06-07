@@ -35,5 +35,4 @@ class RxnConsts { // TODO: make sure these are inlined
   static final byte ContMap2Right = 13;
   static final byte ContMap2Func = 14;
   static final byte ContOrElse = 15;
-  static final byte ContEmbedAxn = 16;
 }

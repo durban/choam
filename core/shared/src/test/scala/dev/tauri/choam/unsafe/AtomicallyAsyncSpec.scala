@@ -70,7 +70,7 @@ trait AtomicallyAsyncSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =
       tsk = atomicallyAsync(cede) { implicit ir =>
         updateRef(ref)(_ + 1)
         if (ctr.incrementAndGet() < 5) {
-          throw RetryException.instance
+          alwaysRetry()
         }
         ref.value
       } (F)

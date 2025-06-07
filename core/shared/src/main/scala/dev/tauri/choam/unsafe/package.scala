@@ -85,7 +85,7 @@ package object unsafe {
     ir.imperativeTicketRead(ref.loc)
   }
 
-  private[choam] final def retryNow()(implicit ir: InRxn): Nothing = {
-    throw RetryException.instance
+  private[choam] final def alwaysRetry()(implicit ir: InRxn): Nothing = {
+    throw RetryException.notPermanentFailure
   }
 }

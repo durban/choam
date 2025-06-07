@@ -168,7 +168,7 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
     val res = atomically { implicit ir =>
       updateRef(ref)(_ + 1)
       if (ctr.incrementAndGet() < 5) {
-        retryNow()
+        alwaysRetry()
       }
       ref.value
     }
@@ -183,7 +183,7 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
     val res = atomically[String] { implicit ir =>
       ref.value = ref.value + 1
       if (flag.getAndSet(false)) {
-        retryNow()
+        alwaysRetry()
       }
       null
     }

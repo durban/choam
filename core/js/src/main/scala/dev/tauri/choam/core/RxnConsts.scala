@@ -36,5 +36,4 @@ private[core] object RxnConsts {
   @inline private[core] final val ContMap2Right = 13.toByte
   @inline private[core] final val ContMap2Func = 14.toByte
   @inline private[core] final val ContOrElse = 15.toByte
-  @inline private[core] final val ContEmbedAxn = 16.toByte
 }

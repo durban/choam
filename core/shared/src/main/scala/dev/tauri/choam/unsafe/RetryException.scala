@@ -20,7 +20,9 @@ package unsafe
 
 import scala.util.control.ControlThrowable
 
-private[choam] final class RetryException private (private[choam] val sus: CanSuspendInF) extends ControlThrowable {
+private[choam] final class RetryException private (
+  private[choam] val sus: CanSuspendInF,
+) extends ControlThrowable {
 
   final override def fillInStackTrace(): Throwable =
     this
@@ -31,7 +33,7 @@ private[choam] final class RetryException private (private[choam] val sus: CanSu
 
 private[choam] object RetryException {
 
-  private[choam] val instance: RetryException =
+  private[choam] val notPermanentFailure: RetryException =
     new RetryException(null)
 
   private[choam] final def fromSuspend(sus: CanSuspendInF): RetryException = {
