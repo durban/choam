@@ -796,13 +796,8 @@ object Rxn extends RxnInstances0 {
         try {
           pure[A](unsafeBlock(state))
         } catch {
-          case ex: unsafe2.RetryException =>
-            ex.sus match {
-              case null =>
-                retry[A]
-              case sus =>
-                sus.asInstanceOf[Rxn.SuspendUntil]
-            }
+          case _: unsafe2.RetryException =>
+            retry[A]
         }
       }).flatten
     }
