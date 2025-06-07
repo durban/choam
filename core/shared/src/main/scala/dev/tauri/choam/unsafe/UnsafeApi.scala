@@ -82,17 +82,17 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
     _assert(opt.isEmpty)
   }
 
-  // `atomicallyAsync`: possibly async retries
-  // TODO: Instead/besides `atomicallyAsync`, we could have a
+  // `atomicallyInAsync`: possibly async retries
+  // TODO: Instead/besides `atomicallyInAsync`, we could have a
   // TODO: coroutine-like API. But which coroutine impl to use?
 
   /**
-   * Note: don't nest calls to `atomicallyAsync`!
+   * Note: don't nest calls to `atomicallyInAsync`!
    *
    * Instead pass the `InRxn` argument implicitly
    * to methods called from the `block`.
    */
-  final def atomicallyAsync[F[_], A](str: RetryStrategy)(block: InRxn => A)(implicit F: Async[F]): F[A] = {
+  final def atomicallyInAsync[F[_], A](str: RetryStrategy)(block: InRxn => A)(implicit F: Async[F]): F[A] = {
     F.uncancelable { poll =>
       F.defer {
         val state = Rxn.unsafe.startImperative(this.rt.mcasImpl, str)

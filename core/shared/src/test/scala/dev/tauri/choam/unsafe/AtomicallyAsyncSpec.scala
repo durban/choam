@@ -47,14 +47,14 @@ trait AtomicallyAsyncSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =
   test("Basics") {
     for {
       ref <- Ref(0).run[F]
-      r1 <- atomicallyAsync[F, Int](RetryStrategy.DefaultSleep) { implicit ir =>
+      r1 <- atomicallyInAsync[F, Int](RetryStrategy.DefaultSleep) { implicit ir =>
         val ov = ref.value
         ref.value = ov + 1
         ov
       } (F)
       _ <- assertEqualsF(r1, 0)
       _ <- assertResultF(ref.get.run, 1)
-      r2 <- atomicallyAsync[F, String](cede) { implicit ir =>
+      r2 <- atomicallyInAsync[F, String](cede) { implicit ir =>
         updateRef(ref)(_ + 1)
         null
       } (F)
@@ -66,8 +66,8 @@ trait AtomicallyAsyncSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =
   test("Forced retries") {
     for {
       ctr <- F.delay(new AtomicInteger)
-      ref <- atomicallyAsync(RetryStrategy.Default)(newRef(42)(_))(F)
-      tsk = atomicallyAsync(cede) { implicit ir =>
+      ref <- atomicallyInAsync(RetryStrategy.Default)(newRef(42)(_))(F)
+      tsk = atomicallyInAsync(cede) { implicit ir =>
         updateRef(ref)(_ + 1)
         if (ctr.incrementAndGet() < 5) {
           alwaysRetry()
