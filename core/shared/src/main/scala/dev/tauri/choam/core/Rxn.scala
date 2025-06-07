@@ -815,8 +815,8 @@ object Rxn extends RxnInstances0 {
       state.interpretEmbedAxn(axn) match {
         case sus: Rxn.SuspendUntil =>
           throw unsafe2.RetryException.fromSuspend(sus)
-        case a =>
-          a
+        case res =>
+          res
       }
     }
 
@@ -1395,10 +1395,11 @@ object Rxn extends RxnInstances0 {
       true
 
     /** Initially `true`, and if a `+` is encountered, becomes `false` (and then remains `false`) */
-    private[this] var mutable: Boolean =
+    private[this] var mutable: Boolean = // TODO: this makes it slower if there is `+`! (See `InterpreterBench`.)
       true
 
-    // TODO: this makes it slower if there is `+`! (See `InterpreterBench`.)
+    private[this] var isInEmbedAxn: Boolean =
+      false
 
     /**
      * Becomes `true` when the first `tentativeRead` is executed.
@@ -1780,9 +1781,14 @@ object Rxn extends RxnInstances0 {
           discardStmAlt()
           next()
         case 16 => // ContEmbedAxn
-          val res = a
-          a = ()
-          new Done(res)
+          if (this.isInEmbedAxn) {
+            val res = a
+            a = ()
+            new Done(res)
+          } else {
+            // leftover cont tag from a retry during embedAxn, ignore it
+            next()
+          }
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
             s"Unknown contT: ${ct}"
@@ -1797,6 +1803,9 @@ object Rxn extends RxnInstances0 {
       this.retry(canSuspend = canSuspend, permanent = permanent, noDebug = false)
 
     private[this] final def retry(canSuspend: Boolean, permanent: Boolean, noDebug: Boolean): Rxn[Any, Any] = {
+      if (this.isInEmbedAxn) {
+        throw unsafe2.RetryException.instance
+      }
       if (this.strategy.isDebug && (!noDebug)) {
         this.strategy match {
           case str @ ((_: RetryStrategy.Spin) | (_: RetryStrategy.StrategyFull)) =>
@@ -2046,8 +2055,22 @@ object Rxn extends RxnInstances0 {
     /** May also return `SuspendUntil`! */
     private[Rxn] final def interpretEmbedAxn[B](axn: Axn[B]): B = {
       _assert(!this.isUnsafeApi)
-      contT.push(RxnConsts.ContEmbedAxn)
-      loop(axn).asInstanceOf[B]
+      isInEmbedAxn = true
+      try {
+        contT.push(RxnConsts.ContEmbedAxn)
+        val b = loop(axn) match {
+          case sus: SuspendUntil =>
+            val tag = contT.pop()
+            _assert(tag == RxnConsts.ContEmbedAxn)
+            sus
+          case result =>
+            _assert(contT.peek() != RxnConsts.ContEmbedAxn)
+            result
+        }
+        b.asInstanceOf[B]
+      } finally {
+        isInEmbedAxn = false
+      }
     }
 
     @tailrec

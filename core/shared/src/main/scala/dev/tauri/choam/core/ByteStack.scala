@@ -74,6 +74,11 @@ private final class ByteStack(initSize: Int) {
     this.arr(newSize)
   }
 
+  def peek(): Byte = {
+    assertNonEmpty()
+    this.arr(this.size - 1)
+  }
+
   def clear(): Unit = {
     this.size = 0
   }

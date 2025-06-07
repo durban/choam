@@ -30,6 +30,11 @@ final class EmbedUnsafeSpec_DefaultMcas_IO
   with SpecDefaultMcas
   with EmbedUnsafeSpec[IO]
 
+final class EmbedUnsafeSpec_DefaultMcas_ZIO
+  extends BaseSpecZIO
+  with SpecDefaultMcas
+  with EmbedUnsafeSpec[zio.Task]
+
 trait EmbedUnsafeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("embedUnsafe") {
@@ -160,6 +165,45 @@ trait EmbedUnsafeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       ctr02 <- F.delay(new AtomicInteger)
       ctr12 <- F.delay(new AtomicInteger)
       _ <- assertResultF(layer2(ctr02, ctr12).run[F], 42)
+    } yield ()
+  }
+
+  test("retryNow in embedUsafe") {
+    for {
+      ctr <- F.delay(new AtomicInteger)
+      ref <- Ref(0).run[F]
+      ref2 <- Ref(0).run[F]
+      res <- (ref2.update(_ + 1) *> Rxn.unsafe.embedUnsafe { implicit ir =>
+        updateRef(ref)(_ + 1)
+        if (ctr.incrementAndGet() < 5) {
+          retryNow()
+        } else {
+          ref.value
+        }
+      }).run[F]
+      _ <- assertEqualsF(res, 1)
+      _ <- assertResultF(ref.get.run[F], 1)
+      _ <- assertResultF(ref2.get.run[F], 1)
+      _ <- assertResultF(F.delay(ctr.get()), 5)
+    } yield ()
+  }
+
+  test("retry in embedAxn") {
+    for {
+      ctr <- F.delay(new AtomicInteger)
+      ref <- Ref(0).run[F]
+      ref2 <- Ref(0).run[F]
+      res <- (Rxn.unsafe.embedUnsafe[Int] { implicit ir =>
+        ref2.value = ref2.value + 1
+        Rxn.unsafe.embedAxn(ref.update(_ + 1) *> Axn.unsafe.delay(ctr.incrementAndGet() < 5).flatMapF { cond =>
+          if (cond) Rxn.unsafe.retry
+          else ref.get
+        })
+      }).run[F]
+      _ <- assertEqualsF(res, 1)
+      _ <- assertResultF(ref.get.run[F], 1)
+      _ <- assertResultF(ref2.get.run[F], 1)
+      _ <- assertResultF(F.delay(ctr.get()), 5)
     } yield ()
   }
 }
