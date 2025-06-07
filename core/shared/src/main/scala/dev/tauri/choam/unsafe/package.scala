@@ -84,4 +84,8 @@ package object unsafe {
   final def ticketRead[A](ref: Ref[A])(implicit ir: InRxn): Ticket[A] = {
     ir.imperativeTicketRead(ref.loc)
   }
+
+  private[choam] final def retryNow()(implicit ir: InRxn): Nothing = {
+    throw RetryException.instance
+  }
 }
