@@ -64,4 +64,28 @@ trait EmbedUnsafeSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(F.delay(retryCounter.get()), 1)
     } yield ()
   }
+
+  test("embedUnsafe race") {
+    val N = 8192
+    for {
+      ref1 <- Ref(0).run[F]
+      ref2 <- Ref(0).run[F]
+      rxn1 = ref1.update(_ + 1) *> Rxn.unsafe.embedUnsafe[Unit] { implicit ir =>
+        val ov = ref2.value
+        assertEquals(ref1.value, ov + 1)
+        ref2.value = ov + 1
+      }
+      rxn2 = ref2.update(_ + 1) *> Rxn.unsafe.embedUnsafe[Unit] { implicit ir =>
+        val ov = ref1.value
+        assertEquals(ref2.value, ov + 1)
+        ref1.value = ov + 1
+      }
+      _ <- F.both(
+        F.cede *> rxn1.run[F].replicateA_(N),
+        F.cede *> rxn2.run[F].replicateA_(N),
+      )
+      _ <- assertResultF(ref1.get.run[F], 2 * N)
+      _ <- assertResultF(ref2.get.run[F], 2 * N)
+    } yield ()
+  }
 }
