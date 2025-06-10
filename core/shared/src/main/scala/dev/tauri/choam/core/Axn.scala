@@ -42,10 +42,10 @@ object Axn {
   final def panic[A](ex: Throwable): Axn[A] =
     Rxn.panic(ex)
 
-  private[choam] final object unsafe {
+  final object unsafe {
 
     @inline
-    private[choam] final def delay[A](da: => A): Axn[A] =
+    final def delay[A](da: => A): Axn[A] =
       delayImpl(da)
 
     private[choam] final def delayImpl[A](da: => A): RxnImpl[Any, A] =

@@ -750,7 +750,7 @@ object Rxn extends RxnInstances0 {
       new OrElse(left, right)
 
     @inline
-    private[choam] final def delay[A, B](uf: A => B): Rxn[A, B] = // TODO: make it public
+    final def delay[A, B](uf: A => B): Rxn[A, B] =
       delayImpl(uf)
 
     @inline
