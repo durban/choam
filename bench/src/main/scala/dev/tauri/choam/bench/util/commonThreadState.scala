@@ -25,8 +25,7 @@ import org.openjdk.jmh.annotations.{ State, Setup, Scope }
 
 import cats.effect.{ IO, SyncIO }
 
-import core.Reactive
-import async.AsyncReactive
+import core.{ Reactive, AsyncReactive }
 import internal.mcas.Mcas
 
 @State(Scope.Thread)

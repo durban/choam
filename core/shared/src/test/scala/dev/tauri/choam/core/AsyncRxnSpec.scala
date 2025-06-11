@@ -16,14 +16,13 @@
  */
 
 package dev.tauri.choam
-package async
+package core
 
 import scala.concurrent.duration._
 
 import cats.effect.IO
 
-import core.{ Rxn, RetryStrategy }
-import core.RxnSpec.{ MyException, throwingRxns }
+import RxnSpec.{ MyException, throwingRxns }
 
 final class AsyncRxnSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO

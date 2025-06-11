@@ -20,8 +20,7 @@ package dev.tauri.choam
 import cats.effect.kernel.Resource
 import cats.effect.{ IO, SyncIO }
 
-import core.Reactive
-import async.AsyncReactive
+import core.{ Reactive, AsyncReactive }
 
 package object ce {
 

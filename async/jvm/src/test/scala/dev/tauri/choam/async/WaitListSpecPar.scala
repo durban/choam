@@ -24,6 +24,8 @@ import cats.effect.kernel.{ Ref, Deferred }
 import cats.effect.IO
 import cats.effect.instances.spawn._
 
+import core.AsyncReactiveSpec
+
 final class WaitListSpecPar_DefaultMcas_IO
   extends BaseSpecIO
   with SpecDefaultMcas

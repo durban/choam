@@ -16,12 +16,11 @@
  */
 
 package dev.tauri.choam
-package async
+package core
 
 import cats.effect.kernel.{ Async, Sync, Resource }
 
 import internal.mcas.Mcas
-import core.{ Rxn, RetryStrategy, Reactive }
 
 sealed trait AsyncReactive[F[_]] extends Reactive.UnsealedReactive[F] { self =>
   def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B]

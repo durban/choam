@@ -27,8 +27,8 @@ import cats.effect.kernel.{ Async, Deferred }
 import cats.effect.syntax.all._
 import fs2.{ Stream, Chunk, Pull }
 
-import core.{ Rxn, Axn, Ref }
-import async.{ AsyncReactive, Promise, WaitList }
+import core.{ Rxn, Axn, Ref, AsyncReactive }
+import async.{ Promise, WaitList }
 import data.UnboundedDeque
 
 sealed abstract class PubSub[F[_], A] {

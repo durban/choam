@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-import core.Ref
+import core.{ Ref, AsyncReactiveSpec }
 
 final class WaitListSpec_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO

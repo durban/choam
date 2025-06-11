@@ -20,6 +20,8 @@ package async
 
 import cats.effect.IO
 
+import core.{ AsyncReactive, AsyncReactiveSpec }
+
 final class AsyncStackSpec_Treiber_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
   with SpecThreadConfinedMcas

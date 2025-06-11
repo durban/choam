@@ -22,6 +22,8 @@ import scala.util.Try
 
 import cats.effect.IO
 
+import core.AsyncReactiveSpec
+
 final class BoundedQueueSpecLinked_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
   with SpecThreadConfinedMcas

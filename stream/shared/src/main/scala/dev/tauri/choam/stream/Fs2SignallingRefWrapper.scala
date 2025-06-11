@@ -24,9 +24,9 @@ import cats.syntax.traverse._
 
 import fs2.Stream
 
-import core.{ =#>, Rxn, Axn, Ref, RefLike }
+import core.{ =#>, Rxn, Axn, Ref, RefLike, AsyncReactive }
 import data.Map
-import async.{ AsyncReactive, Promise }
+import async.Promise
 
 import Fs2SignallingRefWrapper.{ Listener, Waiting, Full, Empty }
 

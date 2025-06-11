@@ -21,7 +21,7 @@ package stream
 import cats.effect.IO
 import fs2.Stream
 
-import async.AsyncReactiveSpec
+import core.AsyncReactiveSpec
 
 final class SignallingRefSpec_ThreadConfinedMcas_TickedIO
   extends BaseSpecTickedIO

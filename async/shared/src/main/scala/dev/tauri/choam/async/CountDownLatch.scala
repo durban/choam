@@ -21,7 +21,7 @@ package async
 import cats.syntax.all._
 import cats.effect.std.{ CountDownLatch => CatsCountDownLatch }
 
-import core.{ Axn, Ref }
+import core.{ Axn, Ref, AsyncReactive }
 
 sealed abstract class CountDownLatch private () { self =>
 

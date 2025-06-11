@@ -22,7 +22,8 @@ import scala.language.implicitConversions
 
 import fs2.{ Stream, Chunk }
 
-import async.{ AsyncReactive, UnboundedQueue }
+import core.AsyncReactive
+import async.UnboundedQueue
 
 object syntax extends StreamSyntax
 

@@ -16,7 +16,7 @@
  */
 
 package dev.tauri.choam
-package async
+package core
 
 import cats.effect.IO
 

@@ -25,7 +25,7 @@ import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.Outcome
 
-import core.Rxn
+import core.{ Rxn, AsyncReactiveSpec }
 
 final class PromiseSpec_ThreadConfinedMcas_IO_Real
   extends BaseSpecIO

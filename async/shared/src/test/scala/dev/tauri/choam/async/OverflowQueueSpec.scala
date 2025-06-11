@@ -26,6 +26,8 @@ import cats.effect.std.{ Queue => CatsQueue }
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
+import core.AsyncReactiveSpec
+
 final class OverflowQueueSpec_Strict_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
   with SpecThreadConfinedMcas

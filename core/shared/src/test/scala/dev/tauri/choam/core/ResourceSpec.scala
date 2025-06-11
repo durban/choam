@@ -44,6 +44,21 @@ abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuit
     }.guarantee(close.to[F])
   }
 
+  test("AsyncReactive.forAsync") {
+    AsyncReactive.forAsync[F].use { reactive =>
+      reactive.applyAsync(Axn.pure(42), null).flatMap { v =>
+        F.delay { assertEquals(v, 42) }
+      }
+    }
+  }
+
+  test("AsyncReactive.forAsyncIn") {
+    val (reactive, close) = AsyncReactive.forAsyncIn[SyncIO, F].allocated.unsafeRunSync()
+    reactive.applyAsync(Axn.pure(42), null).flatMap { v =>
+      F.delay { assertEquals(v, 42) }
+    }.guarantee(close.to[F])
+  }
+
   test("Working on a Ref with 2 different MCAS impls") {
     // This should never happen in normal code!
     // This test is testing that if it happens,

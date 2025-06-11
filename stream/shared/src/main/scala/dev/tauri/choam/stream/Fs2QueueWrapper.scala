@@ -20,7 +20,8 @@ package stream
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import async.{ AsyncReactive, AsyncQueueSource, BoundedQueueSink }
+import core.AsyncReactive
+import async.{ AsyncQueueSource, BoundedQueueSink }
 
 private final class Fs2QueueWrapper[F[_], A](
   self: AsyncQueueSource[A] with BoundedQueueSink[A],

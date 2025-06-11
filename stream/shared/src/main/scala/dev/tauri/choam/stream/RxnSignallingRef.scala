@@ -20,8 +20,7 @@ package stream
 
 import fs2.concurrent.SignallingRef
 
-import core.{ Axn, RefLike }
-import async.AsyncReactive
+import core.{ Axn, RefLike, AsyncReactive }
 
 /**
  * An [[fs2.concurrent.SignallingRef]], which

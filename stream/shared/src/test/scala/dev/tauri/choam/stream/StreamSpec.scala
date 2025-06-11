@@ -24,7 +24,8 @@ import cats.effect.IO
 
 import fs2.{ Stream, Chunk }
 
-import async.{ AsyncQueue, UnboundedQueue, BoundedQueue, Promise, AsyncReactiveSpec }
+import core.AsyncReactiveSpec
+import async.{ AsyncQueue, UnboundedQueue, BoundedQueue, Promise }
 import syntax._
 
 final class StreamSpec_ThreadConfinedMcas_IO

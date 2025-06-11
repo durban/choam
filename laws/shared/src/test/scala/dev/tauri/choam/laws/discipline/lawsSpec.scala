@@ -31,9 +31,8 @@ import cats.mtl.laws.discipline.LocalTests
 import org.scalacheck.Prop
 import munit.DisciplineSuite
 
-import core.{ Rxn, Axn, Ref, Reactive }
+import core.{ Rxn, Axn, Ref, Reactive, AsyncReactive }
 import internal.mcas.Mcas
-import async.AsyncReactive
 
 final class LawsSpecThreadConfinedMcas
   extends LawsSpec

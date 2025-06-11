@@ -21,6 +21,8 @@ package async
 import cats.effect.IO
 import cats.effect.kernel.Outcome
 
+import core.AsyncReactiveSpec
+
 final class CountDownLatchSpec_ThreadConfinedMcas_IO_Real
   extends BaseSpecIO
   with SpecThreadConfinedMcas

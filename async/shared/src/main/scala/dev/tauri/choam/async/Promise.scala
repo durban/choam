@@ -23,7 +23,7 @@ import scala.collection.immutable.LongMap
 import cats.{ Functor, Invariant, Contravariant }
 import cats.effect.kernel.{ Deferred, DeferredSink, DeferredSource }
 
-import core.{ =#>, Rxn, Axn, Ref, Reactive }
+import core.{ =#>, Rxn, Axn, Ref, Reactive, AsyncReactive }
 import Ref.AllocationStrategy
 
 sealed trait PromiseRead[A] { self =>

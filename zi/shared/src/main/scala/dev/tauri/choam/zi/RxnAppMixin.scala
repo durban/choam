@@ -20,7 +20,7 @@ package zi
 
 import zio.{ Task, ZIOApp }
 
-import async.AsyncReactive
+import core.AsyncReactive
 
 /**
  * Mixin for convenient access to an `AsyncReactive[Task]`
@@ -35,7 +35,7 @@ import async.AsyncReactive
  * `AsyncReactive` is needed for the duration of
  * the whole `ZIOApp` program.
  *
- * @see [[dev.tauri.choam.async.AsyncReactive#forAsync]]
+ * @see [[dev.tauri.choam.core.AsyncReactive#forAsync]]
  *      for more control over resource acquisition and release,
  *      and for any generic `F[_]` with a [[cats.effect.kernel.Async]]
  *      instance.

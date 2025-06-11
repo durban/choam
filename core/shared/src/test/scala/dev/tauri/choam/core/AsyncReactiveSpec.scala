@@ -16,14 +16,10 @@
  */
 
 package dev.tauri.choam
-package async
+package core
 
-import cats.effect.kernel.Async
+trait AsyncReactiveSpec[F[_]] { this: BaseSpecAsyncF[F] with McasImplSpec =>
 
-import internal.mcas.Mcas
-
-object AsyncReactiveHelper {
-
-  def newAsyncReactiveImpl[F[_]](mcasImpl: Mcas)(implicit F: Async[F]): AsyncReactive[F] =
-    new AsyncReactive.AsyncReactiveImpl[F](mcasImpl)(F)
+  final override implicit def rF: AsyncReactive[F] =
+    new AsyncReactive.AsyncReactiveImpl[F](this.mcasImpl)(this.F)
 }

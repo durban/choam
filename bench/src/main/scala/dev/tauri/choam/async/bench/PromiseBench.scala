@@ -24,7 +24,7 @@ import org.openjdk.jmh.annotations._
 import cats.syntax.all._
 import cats.effect.IO
 
-import core.Rxn
+import core.{ Rxn, AsyncReactive }
 import _root_.dev.tauri.choam.bench.BenchUtils
 
 @Fork(2)
