@@ -541,6 +541,8 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform)
     ),
   )
 
+// Note: run `show graalNiExample/GraalVMNativeImage/packageBin` in sbt
+// to build a native executable (in a container), and print its path.
 lazy val graalNiExample = project.in(file("graal-ni-example"))
   .settings(name := "choam-graal-ni-example")
   .enablePlugins(NoPublishPlugin)
@@ -555,9 +557,9 @@ lazy val graalNiExample = project.in(file("graal-ni-example"))
     GraalVMNativeImage / graalVMNativeImageOptions ++= Seq(
       "--verbose",
       "--no-fallback",
-      "--exact-reachability-metadata",
+      // "--exact-reachability-metadata", // causes problems with CE
       "--install-exit-handlers",
-      // "--enable-monitoring=jvmstat,jmxserver",
+      // "--enable-monitoring=jvmstat,jmxserver", // doesn't seem to work
       "--static-nolibc",
       // "--static", "--libc=musl", // needs musl, but it isn't in the container image
     ),
