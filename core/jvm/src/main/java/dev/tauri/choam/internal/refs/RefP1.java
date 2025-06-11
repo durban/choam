@@ -84,8 +84,8 @@ final class RefP1<A>
 
   @Override
   @SuppressWarnings("unchecked")
-  public final <A> MemoryLocation<A> cast() {
-    return (MemoryLocation<A>) this;
+  public final <B> MemoryLocation<B> cast() {
+    return (MemoryLocation<B>) this;
   }
 
   @Override
