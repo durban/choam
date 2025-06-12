@@ -20,7 +20,7 @@ package data
 
 import core.{ Rxn, Axn, Ref }
 import internal.mcas.RefIdGen
-import RemoveQueue.{ Elem, Node, End, tombstone, isTombstone }
+import RemoveQueue.{ Elem, Node, End, dequeued, isDequeued, isRemoved }
 
 /**
  * Like `MsQueue`, but also has support for interior node deletion
@@ -42,7 +42,7 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: Re
 
   override val tryDeque: Axn[Option[A]] = {
     head.modifyWith { node =>
-      skipTombs(from = node.next).flatMap {
+      skipRemoved(from = node.next).flatMap {
         case None =>
           // empty queue:
           Rxn.ret((node, None))
@@ -53,14 +53,16 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: Re
     }
   }
 
-  private[this] def skipTombs(from: Ref[Elem[A]]): Axn[Option[(A, Node[A])]] = {
+  private[this] def skipRemoved(from: Ref[Elem[A]]): Axn[Option[(A, Node[A])]] = {
     from.get.flatMapF {
       case n @ Node(dataRef, nextRef) =>
         dataRef.get.flatMapF { a =>
-          if (isTombstone(a)) {
-            skipTombs(nextRef)
+          if (isRemoved(a)) {
+            skipRemoved(nextRef)
+          } else if (isDequeued(a)) {
+            impossible("tryDeque found an already dequeued node")
           } else {
-            Rxn.pure(Some((a, n)))
+            dataRef.set1(dequeued[A]).as(Some((a, n)))
           }
         }
       case End() =>
@@ -79,7 +81,7 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: Re
     }
   }
 
-  override val enqueueWithRemover: Rxn[A, Axn[Unit]] = Rxn.computed { (a: A) =>
+  override val enqueueWithRemover: Rxn[A, Axn[Boolean]] = Rxn.computed { (a: A) =>
     Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref.unpadded(a).flatMap { dataRef =>
         val newNode = Node(dataRef, nextRef)
@@ -102,37 +104,6 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: Re
     }
     tail.get.flatMapF(go)
   }
-
-  /**
-   * Removes a single instance of the input
-   *
-   * Note: an item is only removed if it is identical to
-   * (i.e., the same object as) the input. That is, items
-   * are compared by reference equality. (This is why this
-   * operation is not part of the public API.)
-   */
-  private[data] val remove: Rxn[A, Boolean] = Rxn.computed { (a: A) =>
-    head.get.flatMapF { h =>
-      findAndTomb(a, h.next)
-    }
-  }
-
-  private[this] def findAndTomb(item: A, from: Ref[Elem[A]]): Axn[Boolean] = {
-    from.get.flatMapF {
-      case Node(dataRef, nextRef) =>
-        dataRef.get.flatMapF { a =>
-          if (equ(a, item)) {
-            // found it
-            dataRef.set1(tombstone[A]).as(true)
-          } else {
-            // continue search:
-            findAndTomb(item, nextRef)
-          }
-        }
-      case End() =>
-        Rxn.pure(false)
-    }
-  }
 }
 
 private object RemoveQueue {
@@ -149,13 +120,17 @@ private object RemoveQueue {
   private final case class Node[A](data: Ref[A], next: Ref[Elem[A]])
     extends Elem[A] {
 
-    // We don't return a `Boolean` from
-    // the `remover`, because since we're
-    // deleting directly from the `Node`,
-    // we can't be sure that the queue
-    // even contains the thing we're removing.
-    final def remover: Axn[Unit] = {
-      this.data.set1(tombstone[A])
+    final def remover: Axn[Boolean] = {
+      this.data.upd[Any, Boolean] { (ov, _) =>
+        if (isDequeued(ov) || isRemoved(ov)) {
+          // we can't cancel it, because either
+          // it was already dequeued, or someone
+          // else already cancelled it
+          (ov, false)
+        } else {
+          (removed[A], true)
+        }
+      }
     }
   }
 
@@ -171,18 +146,30 @@ private object RemoveQueue {
   }
 
   // Note: it's important, that user code
-  // can never access a `Tombstone`, as we
+  // can never access a sentinel, as we
   // need to be able to reliably distinguish
-  // user data from a tombstone (this is why
+  // user data from a sentinel (this is why
   // we can't simply use `null`).
-  private[this] final object Tombstone {
-    final def as[A]: A =
-      this.asInstanceOf[A]
-  }
 
-  private def tombstone[A]: A =
-    Tombstone.as[A]
+  private[this] val _dequeued: AnyRef =
+    new AnyRef
 
-  private def isTombstone[A](a: A): Boolean =
-    equ(a, tombstone[A])
+  private[this] val _removed: AnyRef =
+    new AnyRef
+
+  @inline
+  private final def dequeued[A]: A =
+    _dequeued.asInstanceOf[A]
+
+  @inline
+  private final def isDequeued[A](a: A): Boolean =
+    equ(a, _dequeued)
+
+  @inline
+  private[this] final def removed[A]: A =
+    _removed.asInstanceOf[A]
+
+  @inline
+  private final def isRemoved[A](a: A): Boolean =
+    equ(a, _removed)
 }

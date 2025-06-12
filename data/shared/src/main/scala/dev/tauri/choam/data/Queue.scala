@@ -69,7 +69,7 @@ object Queue {
 
   /** Internal API, for (Gen)WaitList to use */
   private[choam] sealed abstract class WithRemove[A] extends Queue[A] {
-    def enqueueWithRemover: Rxn[A, Axn[Unit]]
+    def enqueueWithRemover: Rxn[A, Axn[Boolean]]
   }
 
   private[choam] abstract class UnsealedWithRemove[A]

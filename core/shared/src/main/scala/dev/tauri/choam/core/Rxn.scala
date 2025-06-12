@@ -533,6 +533,8 @@ object Rxn extends RxnInstances0 {
   private[this] val _unit: RxnImpl[Any, Unit] =
     pureImpl(())
 
+  // TODO: private[this] val _true: RxnImpl[Any, Boolean] = ... // and _false
+
   @inline
   final def unit[A]: Rxn[A, Unit] =
     unitImpl[A]

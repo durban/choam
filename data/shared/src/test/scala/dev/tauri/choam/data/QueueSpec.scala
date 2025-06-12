@@ -80,56 +80,58 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
   protected override def newQueueFromList[A](as: List[A]): F[this.QueueType[A]] =
     Queue.fromList(RemoveQueue.apply[A])(as)
 
-  test("Queue.WithRemove#remove") {
+  test("Queue.WithRemove removers") {
     for {
-      q <- newQueueFromList(List("a", "b", "c", "d", "e"))
-      _ <- assertResultF(q.remove[F]("a"), true)
-      _ <- assertResultF(q.remove[F]("a"), false)
+      q <- newQueueFromList(List.empty[String])
+      // ("a", "b", "c", "d", "e")
+      remA <- q.enqueueWithRemover[F]("a")
+      _ <- q.enqueueWithRemover[F]("b")
+      remC <- q.enqueueWithRemover[F]("c")
+      remD <- q.enqueueWithRemover[F]("d")
+      _ <- q.enqueueWithRemover[F]("e")
+      _ <- assertResultF(remA.run[F], true)
+      _ <- assertResultF(remA.run[F], false)
       _ <- assertResultF(q.tryDeque.run[F], Some("b"))
-      _ <- assertResultF(q.remove[F]("c"), true)
-      _ <- assertResultF(q.remove[F]("d"), true)
-      _ <- assertResultF(q.remove[F]("d"), false)
+      _ <- assertResultF(remC.run[F], true)
+      _ <- assertResultF(remD.run[F], true)
+      _ <- assertResultF(remD.run[F], false)
       _ <- assertResultF(q.tryDeque.run[F], Some("e"))
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
   }
 
-  test("Queue.WithRemove#remove with enq/deq") {
+  test("Queue.WithRemove removers with enq/deq") {
     for {
-      q <- newQueueFromList(List("a", "b", "c", "d", "e"))
-      _ <- assertResultF(q.remove[F]("a"), true)
-      _ <- assertResultF(q.remove[F]("c"), true)
-      _ <- assertResultF(q.remove[F]("d"), true)
-      _ <- q.enqueue[F]("f")
+      q <- newQueueFromList(List.empty[String])
+      remA <- q.enqueueWithRemover[F]("a")
+      _ <- q.enqueueWithRemover[F]("b")
+      remC <- q.enqueueWithRemover[F]("c")
+      remD <- q.enqueueWithRemover[F]("d")
+      _ <- q.enqueueWithRemover[F]("e")
+      _ <- assertResultF(remA.run[F], true)
+      _ <- assertResultF(remC.run, true)
+      _ <- assertResultF(remD.run, true)
+      remF <- q.enqueueWithRemover[F]("f")
       _ <- assertResultF(q.tryDeque.run[F], Some("b"))
-      _ <- assertResultF(q.remove[F]("f"), true)
-      _ <- assertResultF(q.remove[F]("f"), false)
+      _ <- assertResultF(remF.run, true)
+      _ <- assertResultF(remF.run, false)
       _ <- assertResultF(q.tryDeque.run[F], Some("e"))
-      _ <- q.enqueue[F]("x")
+      _ <- q.enqueueWithRemover[F]("x")
       _ <- assertResultF(q.tryDeque.run[F], Some("x"))
-      _ <- assertResultF(q.tryDeque.run[F], None)
-    } yield ()
-  }
-
-  test("Queue.WithRemove#remove first occurrence") {
-    for {
-      q <- newQueueFromList(List("b", "a", "c", "a"))
-      _ <- assertResultF(q.remove[F]("a"), true)
-      _ <- assertResultF(q.tryDeque.run[F], Some("b"))
-      _ <- assertResultF(q.tryDeque.run[F], Some("c"))
-      _ <- assertResultF(q.tryDeque.run[F], Some("a"))
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
   }
 
   test("Queue.WithRemove enq then remove") {
     for {
-      q <- newQueueFromList(List("a", "b", "c"))
-      _ <- assertResultF(q.remove[F]("x"), false)
+      q <- newQueueFromList(List.empty[String])
+      _ <- q.enqueueWithRemover[F]("a")
+      _ <- q.enqueueWithRemover[F]("b")
+      _ <- q.enqueueWithRemover[F]("c")
       _ <- assertResultF(q.tryDeque.run[F], Some("a"))
-      _ <- q.enqueue[F]("x")
+      remX <- q.enqueueWithRemover[F]("x")
       _ <- assertResultF(q.tryDeque.run[F], Some("b"))
-      _ <- assertResultF(q.remove[F]("x"), true)
+      _ <- assertResultF(remX.run, true)
       _ <- assertResultF(q.tryDeque.run[F], Some("c"))
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
@@ -137,21 +139,28 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
 
   test("Null element") {
     for {
-      q <- newQueueFromList(List("a", "b", "c"))
-      _ <- q.enqueue[F](null : String)
+      q <- newQueueFromList(List.empty[String])
+      _ <- q.enqueueWithRemover[F]("a")
+      _ <- q.enqueueWithRemover[F]("b")
+      _ <- q.enqueueWithRemover[F]("c")
+      remNull1 <- q.enqueueWithRemover[F](null : String)
       _ <- assertResultF(q.drainOnce, List("a", "b", "c", null))
       _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- q.enqueue[F](null : String)
-      _ <- q.enqueue[F]("a")
-      _ <- q.enqueue[F](null : String)
-      _ <- q.enqueue[F]("b")
-      _ <- q.enqueue[F]("a")
+      remNull2 <- q.enqueueWithRemover[F](null : String)
+      remA1 <- q.enqueueWithRemover[F]("a")
+      remNull3 <- q.enqueueWithRemover[F](null : String)
+      _ <- q.enqueueWithRemover[F]("b")
+      _ <- q.enqueueWithRemover[F]("a")
       // null, a, null, b, a
-      _ <- q.remove[F]("a")
+      _ <- assertResultF(remA1.run, true)
+      _ <- assertResultF(remA1.run, false)
       // null, null, b, a
       _ <- assertResultF(q.tryDeque.run[F], Some(null))
       // null, b, a
-      _ <- q.remove[F](null)
+      _ <- assertResultF(remNull1.run, false)
+      _ <- assertResultF(remNull2.run, false)
+      _ <- assertResultF(remNull3.run, true)
+      _ <- assertResultF(remNull3.run, false)
       // b, a
       _ <- assertResultF(q.tryDeque.run[F], Some("b"))
       _ <- assertResultF(q.tryDeque.run[F], Some("a"))
@@ -184,23 +193,19 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
   test("Concurrent removals") {
     val N = 1024
     val P = 128
-    val S = List("a", "b", "c", "d", "e", "f", "g", "h")
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
-      q <- newQueueFromList(S)
-      finderRemovers = S.map { item =>
-        q.remove.provide(item).void
-      }
+      q <- newQueueFromList(List.empty[String])
       directRemovers <- (1 to N).toList.parTraverseN(P) { idx =>
         q.enqueueWithRemover[F](idx.toString).map { remover =>
           // we only want to remove even indices:
           if ((idx % 2) == 0) remover
-          else Rxn.unit
+          else Rxn.pure(true)
         }
       }
       _ <- F.both(
-        finderRemovers.parTraverseN(P >>> 1) { r => r.run[F] },
-        directRemovers.parTraverseN(P >>> 1) { r => r.run[F] },
+        directRemovers.take(N / 2).parTraverseN(P >>> 1) { r => assertResultF(r.run[F], true) },
+        directRemovers.drop(N / 2).parTraverseN(P >>> 1) { r => assertResultF(r.run[F], true) },
       )
       contents <- q.drainOnce
       _ <- assertResultF(q.tryDeque.run[F], None)

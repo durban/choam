@@ -143,7 +143,9 @@ private[choam] object GenWaitList {
             case None =>
               _trySet.flatMapF { ok =>
                 if (ok) Rxn.pure(rightUnit)
-                else setters.enqueueWithRemover.provide((a, cb)).map { remover => Left(Some(F.run(remover))) }
+                else setters.enqueueWithRemover.provide((a, cb)).map { remover =>
+                  Left(Some(F.run(remover.void))) // TODO: don't .void
+                }
               }
           },
           a
@@ -158,7 +160,9 @@ private[choam] object GenWaitList {
             case Some(a) =>
               Rxn.pure(Right(a))
             case None =>
-              getters.enqueueWithRemover.provide(cb).map { remover => Left(Some(F.run(remover))) }
+              getters.enqueueWithRemover.provide(cb).map { remover =>
+                Left(Some(F.run(remover.void))) // TODO: don't .void
+              }
           }
         )
       }
@@ -200,7 +204,7 @@ private[choam] object GenWaitList {
             Rxn.pure(Right(a))
           case None =>
             this.waiters.enqueueWithRemover.provide(cb).map { remover =>
-              Left(Some(F.run(remover)))
+              Left(Some(F.run(remover.void))) // TODO: don't .void
             }
         }
         F.run(rxn)
