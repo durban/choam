@@ -20,9 +20,7 @@ package async
 
 import core.{ =#>, Rxn, Axn, AsyncReactive }
 
-// TODO:0.5: make these private[choam]
-
-sealed trait GenWaitList[A] { self =>
+private[choam] sealed trait GenWaitList[A] { self =>
 
   def trySet0: A =#> Boolean
 
@@ -33,7 +31,7 @@ sealed trait GenWaitList[A] { self =>
   def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A]
 }
 
-sealed trait WaitList[A] extends GenWaitList[A] { self =>
+private[choam] sealed trait WaitList[A] extends GenWaitList[A] { self =>
 
   /** Returns `true` for a "normal" set, and `false` for waking a waiting getter. */
   def set0: A =#> Boolean
@@ -42,7 +40,7 @@ sealed trait WaitList[A] extends GenWaitList[A] { self =>
     this.set0.as(true)
 }
 
-object WaitList {
+private[choam] object WaitList {
 
   final def apply[A](
     tryGet: Axn[Option[A]],
@@ -52,7 +50,7 @@ object WaitList {
   }
 }
 
-object GenWaitList {
+private[choam] object GenWaitList {
 
   private type Callback[A] =
     Either[Throwable, A] => Unit

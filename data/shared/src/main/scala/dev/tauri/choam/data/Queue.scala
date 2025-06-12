@@ -67,11 +67,8 @@ object Queue {
   private[choam] trait UnsealedQueue[A]
     extends Queue[A]
 
-  final type Remover = // TODO:0.5: do we need this?
-    Axn[Unit]
-
-  sealed abstract class WithRemove[A] extends Queue[A] {
-    def enqueueWithRemover: Rxn[A, Remover]
+  private[choam] sealed abstract class WithRemove[A] extends Queue[A] {
+    def enqueueWithRemover: Rxn[A, Axn[Unit]]
   }
 
   private[choam] abstract class UnsealedWithRemove[A]
@@ -87,7 +84,7 @@ object Queue {
   final def unbounded[A]: Axn[Queue[A]] =
     MsQueue[A]
 
-  final def unboundedWithRemove[A]: Axn[Queue.WithRemove[A]] =
+  private[choam] final def unboundedWithRemove[A]: Axn[Queue.WithRemove[A]] =
     RemoveQueue.apply[A]
 
   final def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
