@@ -115,7 +115,7 @@ private[choam] object GenWaitList {
             case Some((setterVal, setterCb)) =>
               _trySet.provide(setterVal).flatMapF { ok =>
                 if (ok) callCbUnit(setterCb).as(s)
-                else throw new IllegalStateException("couldn't _trySet after successful _tryGet")
+                else impossible("couldn't _trySet after successful _tryGet")
               }
             case None =>
               // no setter to unblock:

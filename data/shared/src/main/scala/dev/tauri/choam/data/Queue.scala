@@ -25,7 +25,7 @@ import core.{ Rxn, Axn, Ref, Reactive }
 
 sealed trait QueueSource[+A] {
 
-  def tryDeque: Axn[Option[A]]
+  def tryDeque: Axn[Option[A]] // TODO:0.5: should be called `tryDequeue`
 
   private[choam] final def drainOnce[F[_], AA >: A](implicit F: Reactive[F]): F[List[AA]] = {
     F.monad.tailRecM(List.empty[AA]) { acc =>
@@ -67,6 +67,7 @@ object Queue {
   private[choam] trait UnsealedQueue[A]
     extends Queue[A]
 
+  /** Internal API, for (Gen)WaitList to use */
   private[choam] sealed abstract class WithRemove[A] extends Queue[A] {
     def enqueueWithRemover: Rxn[A, Axn[Unit]]
   }
@@ -84,6 +85,7 @@ object Queue {
   final def unbounded[A]: Axn[Queue[A]] =
     MsQueue[A]
 
+  /** Internal API, for (Gen)WaitList to use */
   private[choam] final def unboundedWithRemove[A]: Axn[Queue.WithRemove[A]] =
     RemoveQueue.apply[A]
 

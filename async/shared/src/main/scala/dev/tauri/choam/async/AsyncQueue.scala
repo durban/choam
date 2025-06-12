@@ -23,7 +23,7 @@ import cats.effect.std.{ Queue => CatsQueue }
 import core.{ Rxn, Axn, AsyncReactive }
 
 sealed trait AsyncQueueSource[+A] extends data.Queue.UnsealedQueueSource[A] {
-  def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]
+  def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] // TODO:0.5: should be called `dequeue`
 }
 
 sealed trait BoundedQueueSink[-A] extends data.Queue.UnsealedQueueSink[A] {
