@@ -31,7 +31,7 @@ import data.Queue
 @State
 @Description("RemoveQueue concurrent deq and remove (with remover)")
 @Outcomes(Array(
-  new Outcome(id = Array("List(x), Some(z), true"), expect = ACCEPTABLE_INTERESTING, desc = "deq wins"),
+  new Outcome(id = Array("List(x), Some(z), false"), expect = ACCEPTABLE_INTERESTING, desc = "deq wins"),
   new Outcome(id = Array("List(), Some(x), true"), expect = ACCEPTABLE, desc = "rem wins"),
 ))
 class RemoveQueueRemoveTest1B extends RemoveQueueStressTestBase {
@@ -59,8 +59,8 @@ class RemoveQueueRemoveTest1B extends RemoveQueueStressTestBase {
 
   @Actor
   def rem(r: LLL_Result): Unit = {
-    val ok: Boolean = remover.unsafePerform(null : Any, this.impl)
-    r.r3 = ok
+    val wasRemoved: Boolean = remover.unsafePerform(null : Any, this.impl)
+    r.r3 = wasRemoved
   }
 
   @Arbiter
