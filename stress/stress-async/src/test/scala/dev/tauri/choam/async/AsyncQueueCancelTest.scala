@@ -21,7 +21,7 @@ package async
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LL_Result
+import org.openjdk.jcstress.infra.results.LLL_Result
 
 import cats.effect.{ IO, SyncIO, Fiber }
 
@@ -29,45 +29,52 @@ import ce.unsafeImplicits._
 
 @JCStressTest
 @State
-@Description("AsyncStack: cancelling pop must not lose items")
+@Description("AsyncQueue: cancelling dequeue must not lose items")
 @Outcomes(Array(
-  new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "cancelled late"),
-  new Outcome(id = Array("null, a"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled"),
-  new Outcome(id = Array("null, b"), expect = FORBIDDEN, desc = "cancelled, item 'a' lost"),
+  new Outcome(id = Array("a, b, completed: a"), expect = ACCEPTABLE, desc = "cancelled late"),
+  new Outcome(id = Array("null, a, cancelled"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled"),
+  new Outcome(id = Array("null, b, .*"), expect = FORBIDDEN, desc = "cancelled, item 'a' lost"),
 ))
-class AsyncStackCancelTest2 {
+class AsyncQueueCancelTest {
 
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  private[this] val stack: AsyncStack[String] =
-    AsyncStack.treiberStack[String].run[SyncIO].unsafeRunSync()
+  private[this] val q: UnboundedQueue[String] =
+    AsyncQueue.unbounded[String].run[SyncIO].unsafeRunSync()
 
   private[this] var result: String =
     null
 
-  private[this] val popper: Fiber[IO, Throwable, String] = {
+  private[this] val taker: Fiber[IO, Throwable, String] = {
     val tsk = IO.uncancelable { poll =>
-      poll(stack.pop).flatTap { s => IO { this.result = s } }
+      poll(q.deque[IO, String]).flatTap { s => IO { this.result = s } }
     }
     tsk.start.unsafeRunSync()(runtime)
   }
 
   @Actor
-  def push(): Unit = {
-    stack.push[IO]("a").unsafeRunSync()(this.runtime)
+  def offer(): Unit = {
+    q.enqueue[IO]("a").unsafeRunSync()(this.runtime)
   }
 
   @Actor
   def cancel(): Unit = {
-    popper.cancel.unsafeRunSync()(runtime)
+    taker.cancel.unsafeRunSync()(runtime)
   }
 
   @Arbiter
-  def arbiter(r: LL_Result): Unit = {
-    popper.join.unsafeRunSync()(this.runtime)
+  def arbiter(r: LLL_Result): Unit = {
+    val oc: String = taker.join.flatMap { oc =>
+      oc.fold(
+        IO.pure("cancelled"),
+        ex => IO.pure("error: " + ex.getClass().getName()),
+        fa => fa.map { result => s"completed: $result" },
+      )
+    }.unsafeRunSync()(this.runtime)
     r.r1 = this.result
-    stack.push[SyncIO]("b").unsafeRunSync()
-    r.r2 = stack.pop.unsafeRunSync()(runtime)
+    q.enqueue[IO]("b").unsafeRunSync()(this.runtime)
+    r.r2 = q.deque[IO, String].unsafeRunSync()(this.runtime)
+    r.r3 = oc
   }
 }

@@ -22,7 +22,9 @@
 ## Bugs
 
 - Can't run benchmarks with Scala 3
-- `GenWaitList#asyncSet` still have a "lost item" problem (`asyncGet` is kinda fixed now, but need to check linearizability)
+- `GenWaitList#asyncSet` still have a "lost item" problem
+  - `asyncGet` "should" be fixed now
+  - but need to check its linearizability
 - `data.Stack.eliminationStack` uses `Exchanger`, which has a number of problems (see `StackSpecJvm.scala`)
   - the problem "conflict before the elimination" have been fixed (it'll retry)
   - the other one ("conflict after") still exists!
