@@ -33,8 +33,7 @@ import ce.unsafeImplicits._
 @Outcomes(Array(
   new Outcome(id = Array("a, b"), expect = ACCEPTABLE, desc = "cancelled late"),
   new Outcome(id = Array("null, a"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled"),
-  // TODO: this should be FORBIDDEN:
-  new Outcome(id = Array("null, b"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled, item 'a' lost"),
+  new Outcome(id = Array("null, b"), expect = FORBIDDEN, desc = "cancelled, item 'a' lost"),
 ))
 class AsyncStackCancelTest2 {
 

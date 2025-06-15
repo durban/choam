@@ -22,11 +22,7 @@
 ## Bugs
 
 - Can't run benchmarks with Scala 3
-- `GenWaitList` doesn't handle lost wakeups
-  - this affects basically all data structures in `choam-async`
-  - if a suspended operation (e.g., a stack `pop`) is cancelled, this can cause lost items
-  - it's unclear if we can fix this with the current CE API
-  - and even if we would know that the wakeup is lost, it's already too late: the `Rxn` have been already committed
+- `GenWaitList#asyncSet` still have a "lost item" problem (`asyncGet` is kinda fixed now, but need to check linearizability)
 - `data.Stack.eliminationStack` uses `Exchanger`, which has a number of problems (see `StackSpecJvm.scala`)
   - the problem "conflict before the elimination" have been fixed (it'll retry)
   - the other one ("conflict after") still exists!

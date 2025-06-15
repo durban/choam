@@ -24,6 +24,8 @@ import cats.effect.kernel.{ Ref, Deferred }
 import cats.effect.IO
 import cats.effect.instances.spawn._
 
+import munit.TestOptions
+
 import core.AsyncReactiveSpec
 
 final class WaitListSpecPar_DefaultMcas_IO
@@ -31,10 +33,13 @@ final class WaitListSpecPar_DefaultMcas_IO
   with SpecDefaultMcas
   with WaitListSpecPar[IO]
 
-final class WaitListSpecPar_DefaultMcas_ZIO
-  extends BaseSpecZIO
-  with SpecDefaultMcas
-  with WaitListSpecPar[zio.Task]
+// Note: these tests can fail unexpectedly with ZIO
+// due to https://github.com/zio/zio/issues/9974.
+//
+// final class WaitListSpecPar_DefaultMcas_ZIO
+//   extends BaseSpecZIO
+//   with SpecDefaultMcas
+//   with WaitListSpecPar[zio.Task]
 
 trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] { this: McasImplSpec =>
 
@@ -44,13 +49,13 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
   testDequeCancel("BoundedQueue.linked", BoundedQueue.linked[String](42).run[F].widen)
   testDequeCancel("AsyncQueue.dropping", AsyncQueue.dropping[String](42).run[F].widen)
   testDequeCancel("AsyncQueue.ringBuffer", AsyncQueue.ringBuffer[String](42).run[F].widen)
-  testDequeCancel("AsyncQueue.synchronous", AsyncQueue.synchronous[String].run[F].widen)
+  testDequeCancel("AsyncQueue.synchronous".fail, AsyncQueue.synchronous[String].run[F].widen) // TODO: expected failure
 
   private def testDequeCancel(
-    name: String,
+    testOpts: TestOptions,
     newEmptyQ: F[AsyncQueueSource[String] with BoundedQueueSink[String]],
   ): Unit = {
-    test(s"$name: deque cancel race".fail) { // TODO: expected failure
+    test(testOpts.withName(s"${testOpts.name}: deque cancel race")) {
       def deqAndSave(q: AsyncQueueSource[String], ref: Ref[F, String]): F[Unit] = {
         F.uncancelable { poll =>
           poll(q.deque).flatMap { s =>

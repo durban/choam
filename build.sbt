@@ -723,6 +723,7 @@ lazy val layout = project.in(file("layout"))
   .dependsOn(core.jvm % "compile->compile;test->test")
 
 lazy val commonSettingsJvm = Seq[Setting[_]](
+  Test / run / fork := true,
   // Test / fork := true, // Note: forked JVM doesn't seem to use the .jvmopts file
 )
 
@@ -960,7 +961,7 @@ lazy val stressTestNames = List[String](
   "stressMcas",
   "stressCore",
   "stressData",
-  // "stressAsync", // TODO: this test is not useful currently
+  "stressAsync",
   "stressExperiments",
 )
 
