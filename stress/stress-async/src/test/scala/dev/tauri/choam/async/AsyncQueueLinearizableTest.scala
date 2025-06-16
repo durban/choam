@@ -34,7 +34,7 @@ import ce.unsafeImplicits._
 @Outcomes(Array(
   new Outcome(id = Array("a, b, None, completed: a"), expect = ACCEPTABLE, desc = "cancelled late"),
   new Outcome(id = Array("null, a, Some(b), cancelled"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled"),
-  new Outcome(id = Array("null, b, Some(a), .*"), expect = FORBIDDEN, desc = "cancelled, but items swapped"),
+  new Outcome(id = Array("null, b, Some(a), cancelled"), expect = FORBIDDEN, desc = "cancelled, but items swapped"),
 ))
 class AsyncQueueLinearizableTest {
 
