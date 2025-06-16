@@ -64,7 +64,7 @@ private abstract class Backoff2 extends BackoffPlatform {
     )
   }
 
-  final def tokenToF[F[_]](token: Long)(implicit F: GenTemporal[F, _]): F[Unit] = {
+  final def tokenToF[F[_]](token: Long)(implicit F: GenTemporal[F, ?]): F[Unit] = {
     val mark = token & (~BackoffPlatform.backoffTokenMask)
     val k = (token & BackoffPlatform.backoffTokenMask).toInt
     if (mark == BackoffPlatform.backoffSpinMark) {

@@ -39,7 +39,7 @@ final class PromiseSpec_ThreadConfinedMcas_IO_Ticked
 
 trait PromiseSpecTicked[F[_]]
   extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+  with AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   test("Completing an empty promise should call all registered callbacks (complete0)") {
     completeEmpty((i, p) => (Rxn.pure(i) >>> p.complete0).run[F])

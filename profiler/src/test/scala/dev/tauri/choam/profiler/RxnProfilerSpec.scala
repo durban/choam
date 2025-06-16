@@ -49,22 +49,22 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     p
   }
 
-  def simulateEnd(p: RxnProfiler): F[Map[String, Result[_]]] = F.delay {
+  def simulateEnd(p: RxnProfiler): F[Map[String, Result[?]]] = F.delay {
     import scala.jdk.CollectionConverters._
     val rss = p.afterIteration(null, null, null)
-    Map[String, Result[_]](rss.asScala.toList.map { r =>
+    Map[String, Result[?]](rss.asScala.toList.map { r =>
       (r.getLabel -> r)
-    }: _*)
+    }*)
   }
 
   def simulateRun[A](use: RxnProfiler => F[A])(
-    check: Map[String, Result[_]] => F[Unit]
+    check: Map[String, Result[?]] => F[Unit]
   ): F[A] = {
     simulateRunConfig(config = "debug")(use = use)(check = check)
   }
 
   def simulateRunConfig[A](config: String)(use: RxnProfiler => F[A])(
-    check: Map[String, Result[_]] => F[Unit]
+    check: Map[String, Result[?]] => F[Unit]
   ): F[A] = {
     F.bracket(acquire = simulateStart(config))(use = use)(release = { p =>
       simulateEnd(p).flatMap { results => check(results) }

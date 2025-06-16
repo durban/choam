@@ -43,7 +43,7 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
   final def size: Int =
     this.hamt.size + (if (this.hasVersionCas) 1 else 0)
 
-  protected def hamt: AbstractHamt[_, _, _, _, _, _]
+  protected def hamt: AbstractHamt[?, ?, ?, ?, ?, ?]
 
   private[choam] final def nonEmpty: Boolean =
     this.size > 0
@@ -95,13 +95,13 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
   private[mcas] def validateAndTryExtend(
     commitTsRef: MemoryLocation[Long],
     ctx: Mcas.ThreadContext,
-    additionalHwd: LogEntry[_], // can be null
+    additionalHwd: LogEntry[?], // can be null
   ): AbstractDescriptor.Aux[D]
 
   private[mcas] def validateAndTryExtendVer(
     currentTs: Long,
     ctx: Mcas.ThreadContext,
-    additionalHwd: LogEntry[_], // can be null
+    additionalHwd: LogEntry[?], // can be null
   ): AbstractDescriptor.Aux[D]
 
   private[mcas] def withNoNewVersion: AbstractDescriptor.Aux[D]

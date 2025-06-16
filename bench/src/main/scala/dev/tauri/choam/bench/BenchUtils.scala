@@ -33,23 +33,23 @@ trait BenchUtils {
     0L
 
   protected final def run(rt: IORuntime, task: IO[Unit], size: Int): Unit = {
-    IO.asyncForIO.replicateA_(size, task).unsafeRunSync()(rt)
+    IO.asyncForIO.replicateA_(size, task).unsafeRunSync()(using rt)
     Blackhole.consumeCPU(waitTime)
   }
 
   protected final def runIdx(rt: IORuntime, task: Int => IO[Unit], size: Int): Unit = {
-    List.tabulate(size) { idx => task(idx) }.sequence.void.unsafeRunSync()(rt)
+    List.tabulate(size) { idx => task(idx) }.sequence.void.unsafeRunSync()(using rt)
     Blackhole.consumeCPU(waitTime)
   }
 
-  protected final def runZ(rt: ZRuntime[_], task: Task[Unit], size: Int): Unit = {
+  protected final def runZ(rt: ZRuntime[?], task: Task[Unit], size: Int): Unit = {
     zio.Unsafe.unsafe { implicit u =>
       rt.unsafe.run(task.repeatN(size - 1)).getOrThrow()
     }
     Blackhole.consumeCPU(waitTime)
   }
 
-  protected final def runIdxZ(rt: ZRuntime[_], task: Int => Task[Unit], size: Int): Unit = {
+  protected final def runIdxZ(rt: ZRuntime[?], task: Int => Task[Unit], size: Int): Unit = {
     zio.Unsafe.unsafe { implicit u =>
       rt.unsafe.run(zio.ZIO.foreachDiscard((0 until size).toList) { idx => task(idx) }).getOrThrow()
     }
@@ -59,10 +59,10 @@ trait BenchUtils {
   protected final def runRepl(rt: IORuntime, task: IO[Unit], size: Int, parallelism: Int): Unit = {
     val n = size / parallelism
     assert((n * parallelism) == size) // avoid rounding error
-    task.replicateA_(n).unsafeRunSync()(rt)
+    task.replicateA_(n).unsafeRunSync()(using rt)
   }
 
-  protected final def runReplZ(rt: ZRuntime[_], task: Task[Unit], size: Int, parallelism: Int): Unit = {
+  protected final def runReplZ(rt: ZRuntime[?], task: Task[Unit], size: Int, parallelism: Int): Unit = {
     val n = size / parallelism
     assert((n * parallelism) == size) // avoid rounding error
     zio.Unsafe.unsafe { implicit u =>

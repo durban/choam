@@ -43,20 +43,20 @@ class PromiseComplete1Test {
     Promise[String].run[SyncIO].unsafeRunSync()
 
   private[this] val getter: Fiber[IO, Throwable, String] =
-    this.p.get.start.unsafeRunSync()(this.runtime)
+    this.p.get.start.unsafeRunSync()(using this.runtime)
 
   @Actor
   def complete1(r: ZZL_Result): Unit = {
-    r.r1 = this.p.complete0[IO]("1").unsafeRunSync()(this.runtime)
+    r.r1 = this.p.complete0[IO]("1").unsafeRunSync()(using this.runtime)
   }
 
   @Actor
   def complete2(r: ZZL_Result): Unit = {
-    r.r2 = this.p.complete0[IO]("2").unsafeRunSync()(this.runtime)
+    r.r2 = this.p.complete0[IO]("2").unsafeRunSync()(using this.runtime)
   }
 
   @Arbiter
   def arbiter(r: ZZL_Result): Unit = {
-    r.r3 = getter.joinWithNever.unsafeRunSync()(runtime)
+    r.r3 = getter.joinWithNever.unsafeRunSync()(using runtime)
   }
 }

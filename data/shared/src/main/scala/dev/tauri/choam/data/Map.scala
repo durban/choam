@@ -88,7 +88,7 @@ object Map extends MapPlatform {
       case m: SimpleOrderedMap[_, _] =>
         m.unsafeSnapshot.run[F]
       case _ =>
-        super.unsafeSnapshot(m)(F)
+        super.unsafeSnapshot(m)(using F)
     }
   }
 }

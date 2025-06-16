@@ -44,8 +44,8 @@ final class ImperativeApiSpecJvm extends FunSuite with MUnitUtils {
   import api.atomically
 
   test("Retries") {
-    val r1: Ref[Int] = atomically(newRef(0)(_))
-    val r2: Ref[Int] = atomically(newRef(0)(_))
+    val r1: Ref[Int] = atomically(newRef(0)(using _))
+    val r2: Ref[Int] = atomically(newRef(0)(using _))
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
 
@@ -81,8 +81,8 @@ final class ImperativeApiSpecJvm extends FunSuite with MUnitUtils {
   }
 
   test("Ticket#validate") {
-    val ref1: Ref[Int] = atomically(newRef(0)(_))
-    val ref2: Ref[Int] = atomically(newRef(0)(_))
+    val ref1: Ref[Int] = atomically(newRef(0)(using _))
+    val ref2: Ref[Int] = atomically(newRef(0)(using _))
     val tries = new AtomicInteger(0)
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)

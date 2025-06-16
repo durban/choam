@@ -51,17 +51,17 @@ class AsyncQueueLinearizableTest {
     val tsk = IO.uncancelable { poll =>
       poll(q.deque[IO, String]).flatTap { s => IO { this.result = s } }
     }
-    tsk.start.unsafeRunSync()(runtime)
+    tsk.start.unsafeRunSync()(using runtime)
   }
 
   @Actor
   def offer2(): Unit = {
-    (q.enqueue[IO]("a") *> q.enqueue[IO]("b")).unsafeRunSync()(this.runtime)
+    (q.enqueue[IO]("a") *> q.enqueue[IO]("b")).unsafeRunSync()(using this.runtime)
   }
 
   @Actor
   def cancel(): Unit = {
-    taker.cancel.unsafeRunSync()(runtime)
+    taker.cancel.unsafeRunSync()(using runtime)
   }
 
   @Arbiter
@@ -72,7 +72,7 @@ class AsyncQueueLinearizableTest {
         ex => IO.pure("error: " + ex.getClass().getName()),
         fa => fa.map { result => s"completed: $result" },
       ).map { oc => (oc, result2) }
-    }.unsafeRunSync()(this.runtime)
+    }.unsafeRunSync()(using this.runtime)
     val oc: String = ocAndResult2._1
     val result2: String = ocAndResult2._2
     r.r1 = this.result

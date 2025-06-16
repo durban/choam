@@ -35,7 +35,7 @@ private final class ByteStack(initSize: Int) {
     new Array[Byte](initSize)
 
   final override def toString: String = {
-    s"ByteStack(${List(ArraySeq.unsafeWrapArray(Arrays.copyOf(this.arr, this.size)): _*).reverse.mkString(", ")})"
+    s"ByteStack(${List(ArraySeq.unsafeWrapArray(Arrays.copyOf(this.arr, this.size))*).reverse.mkString(", ")})"
   }
 
   def push(b: Byte): Unit = {

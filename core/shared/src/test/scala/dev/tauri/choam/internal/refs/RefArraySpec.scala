@@ -103,25 +103,25 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
 
   test("array creation") {
     val str0 = Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false)
-    assert(Ref.array(N, "", str0).unsafeRun(this.defaultMcasInstance).isInstanceOf[Ref.StrictArrayOfRefs[_]])
+    assert(Ref.array(N, "", str0).unsafeRun(this.defaultMcasInstance).isInstanceOf[Ref.StrictArrayOfRefs[?]])
     val str2 = Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false)
-    assert(Ref.array(N, "", str2).unsafeRun(this.defaultMcasInstance).isInstanceOf[StrictRefArray[_]])
+    assert(Ref.array(N, "", str2).unsafeRun(this.defaultMcasInstance).isInstanceOf[StrictRefArray[?]])
     val str4 = Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false)
-    assert(Ref.array(N, "", str4).unsafeRun(this.defaultMcasInstance).isInstanceOf[Ref.LazyArrayOfRefs[_]])
+    assert(Ref.array(N, "", str4).unsafeRun(this.defaultMcasInstance).isInstanceOf[Ref.LazyArrayOfRefs[?]])
     val str6 = Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false)
-    assert(Ref.array(N, "", str6).unsafeRun(this.defaultMcasInstance).isInstanceOf[SparseRefArray[_]])
+    assert(Ref.array(N, "", str6).unsafeRun(this.defaultMcasInstance).isInstanceOf[SparseRefArray[?]])
     val str1 = Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = true)
-    assert(Ref.array(N, "", str1).unsafeRun(this.defaultMcasInstance).isInstanceOf[Ref.StrictArrayOfRefs[_]])
+    assert(Ref.array(N, "", str1).unsafeRun(this.defaultMcasInstance).isInstanceOf[Ref.StrictArrayOfRefs[?]])
     assert(Either.catchOnly[IllegalArgumentException] {
       Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = true) // 3
     }.isLeft)
     val str5 = Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = true)
-    assert(Ref.array(N, "", str5).unsafeRun(this.defaultMcasInstance).isInstanceOf[Ref.LazyArrayOfRefs[_]])
+    assert(Ref.array(N, "", str5).unsafeRun(this.defaultMcasInstance).isInstanceOf[Ref.LazyArrayOfRefs[?]])
     assert(Either.catchOnly[IllegalArgumentException] {
       Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = true) // 7
     }.isLeft)
-    assert(Ref.unsafeArray(N, "", Ref.Array.AllocationStrategy.SparseFlat, this.mcasImpl.currentContext().refIdGen).isInstanceOf[SparseRefArray[_]])
-    assert(Ref.unsafeArray(N, "", Ref.Array.AllocationStrategy.Default, this.mcasImpl.currentContext().refIdGen).isInstanceOf[StrictRefArray[_]])
+    assert(Ref.unsafeArray(N, "", Ref.Array.AllocationStrategy.SparseFlat, this.mcasImpl.currentContext().refIdGen).isInstanceOf[SparseRefArray[?]])
+    assert(Ref.unsafeArray(N, "", Ref.Array.AllocationStrategy.Default, this.mcasImpl.currentContext().refIdGen).isInstanceOf[StrictRefArray[?]])
   }
 
   test("empty array") {
@@ -149,7 +149,7 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
   test("indexing error") {
     def checkError(op: => Ref[String])(implicit loc: Location): Unit = {
       val ok = Try(op).failed.get.isInstanceOf[IndexOutOfBoundsException]
-      assert(ok)(loc)
+      assert(ok)
     }
     val arr1 = mkRefArray("foo", 4) // even
     checkError { arr1.unsafeGet(4) }

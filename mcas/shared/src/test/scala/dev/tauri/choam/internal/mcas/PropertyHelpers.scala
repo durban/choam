@@ -34,7 +34,7 @@ trait PropertyHelpers {
   protected def myForAll(body: (Long, Set[Long]) => Prop): Prop = {
     val genSeed = Gen.choose[Long](Long.MinValue, Long.MaxValue)
     val arbLongWithRig = Arbitrary { genLongWithRig }
-    val genNums = Arbitrary.arbContainer[Set, Long](
+    val genNums = Arbitrary.arbContainer[Set, Long](using
       arbLongWithRig,
       Buildable.buildableFactory,
       c => c

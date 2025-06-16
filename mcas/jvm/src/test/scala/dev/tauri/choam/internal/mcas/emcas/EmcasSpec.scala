@@ -57,7 +57,7 @@ class EmcasSpec extends BaseSpec {
       println(s"Finished '${options.name}'")
       res
     }
-    super.test(options)(wrappedBody())(loc)
+    super.test(options)(wrappedBody())
   }
 
   test("EMCAS should allow null as ov or nv") {
@@ -672,12 +672,12 @@ class EmcasSpec extends BaseSpec {
     val d2 = ctx.addCasFromInitial(d1, r2, "bar", "foo")
     val d3 = ctx.addVersionCas(d2)
     val d = EmcasDescriptor.prepare(d3, instRo = false)
-    val lb = List.newBuilder[MemoryLocation[_]]
+    val lb = List.newBuilder[MemoryLocation[?]]
     val it = d.getWordIterator()
     while (it.hasNext()) {
       lb += it.next().address
     }
-    val lst: List[MemoryLocation[_]] = lb.result()
+    val lst: List[MemoryLocation[?]] = lb.result()
     assertEquals(lst.length, 2)
     assert((lst(0) eq r1) || (lst(0) eq r2))
     assert((lst(1) eq r1) || (lst(1) eq r2))
@@ -721,7 +721,7 @@ class EmcasSpec extends BaseSpec {
     val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)), instRo = false)
     assert(!ed1.instRo)
     val arr1 = ed1.getWordsO()
-    assertSameInstance(arr1(0).asInstanceOf[EmcasWordDesc[_]].parent, ed1)
+    assertSameInstance(arr1(0).asInstanceOf[EmcasWordDesc[?]].parent, ed1)
 
     val entry2 = LogEntry(ref, "foo", "foo", Version.Start)
     val entry3 = LogEntry(ref2, "foo", "bar", Version.Start)
@@ -729,13 +729,13 @@ class EmcasSpec extends BaseSpec {
     assert(!ed2.instRo)
     val arr2 = ed2.getWordsO()
     assertSameInstance(arr2(0), entry2)
-    assertSameInstance(arr2(1).asInstanceOf[EmcasWordDesc[_]].parent, ed2)
+    assertSameInstance(arr2(1).asInstanceOf[EmcasWordDesc[?]].parent, ed2)
 
     val ed3 = new EmcasDescriptor(ctx.start().add(entry2).add(entry3), instRo = true)
     assert(ed3.instRo)
     val arr3 = ed3.getWordsO()
-    assertSameInstance(arr3(0).asInstanceOf[EmcasWordDesc[_]].parent, ed3)
-    assertSameInstance(arr3(1).asInstanceOf[EmcasWordDesc[_]].parent, ed3)
+    assertSameInstance(arr3(0).asInstanceOf[EmcasWordDesc[?]].parent, ed3)
+    assertSameInstance(arr3(1).asInstanceOf[EmcasWordDesc[?]].parent, ed3)
   }
 
   test("EmcasDescriptor#fallback") {
@@ -744,11 +744,11 @@ class EmcasSpec extends BaseSpec {
     val ed1 = new EmcasDescriptor(ctx.start().add(LogEntry(ref, "foo", "bar", Version.Start)), instRo = false)
     assert(!ed1.instRo)
     assertEquals(ed1.cmpxchgStatus(McasStatus.Active, EmcasStatus.CycleDetected), McasStatus.Active)
-    assertSameInstance(ed1.getWordsO()(0).asInstanceOf[EmcasWordDesc[_]].parent, ed1)
+    assertSameInstance(ed1.getWordsO()(0).asInstanceOf[EmcasWordDesc[?]].parent, ed1)
     ed1.wasFinalized(EmcasStatus.CycleDetected)
     assertSameInstance(ed1.getWordsO(), null)
     val ed2 = ed1.fallback
-    assertSameInstance(ed2.getWordsO()(0).asInstanceOf[EmcasWordDesc[_]].parent, ed2)
+    assertSameInstance(ed2.getWordsO()(0).asInstanceOf[EmcasWordDesc[?]].parent, ed2)
     assert(ed2.instRo)
     assertSameInstance(ed1.fallback, ed2)
     assert(Either.catchOnly[AssertionError](ed2.fallback).isLeft)
@@ -762,8 +762,8 @@ class EmcasSpec extends BaseSpec {
     assert(!ed1.instRo)
     assertEquals(ed1.cmpxchgStatus(McasStatus.Active, EmcasStatus.CycleDetected), McasStatus.Active)
     val ed2 = ed1.fallback
-    assertSameInstance(ed1.getWordsO()(0).asInstanceOf[EmcasWordDesc[_]].parent, ed1)
-    assertSameInstance(ed2.getWordsO()(0).asInstanceOf[EmcasWordDesc[_]].parent, ed2)
+    assertSameInstance(ed1.getWordsO()(0).asInstanceOf[EmcasWordDesc[?]].parent, ed1)
+    assertSameInstance(ed2.getWordsO()(0).asInstanceOf[EmcasWordDesc[?]].parent, ed2)
     ed1.wasFinalized(EmcasStatus.CycleDetected)
     assertSameInstance(ed1.getWordsO(), null)
     assert(ed2.instRo)
@@ -788,8 +788,8 @@ class EmcasSpec extends BaseSpec {
     } else {
       (ed1.getWordsO()(1).asInstanceOf[WdLike[Any]], ed1.getWordsO()(0).asInstanceOf[WdLike[Any]])
     }
-    assertSameInstance(wd1.asInstanceOf[EmcasWordDesc[_]].parent, ed1)
-    assert(wd2.isInstanceOf[LogEntry[_]])
+    assertSameInstance(wd1.asInstanceOf[EmcasWordDesc[?]].parent, ed1)
+    assert(wd2.isInstanceOf[LogEntry[?]])
 
     ed1.wasFinalized(EmcasStatus.CycleDetected)
     assertSameInstance(ed1.getWordsO(), null)
@@ -799,8 +799,8 @@ class EmcasSpec extends BaseSpec {
     } else {
       (ed2.getWordsO()(1).asInstanceOf[WdLike[Any]], ed2.getWordsO()(0).asInstanceOf[WdLike[Any]])
     }
-    assertSameInstance(wd21.asInstanceOf[EmcasWordDesc[_]].parent, ed2)
-    assertSameInstance(wd22.asInstanceOf[EmcasWordDesc[_]].parent, ed2)
+    assertSameInstance(wd21.asInstanceOf[EmcasWordDesc[?]].parent, ed2)
+    assertSameInstance(wd22.asInstanceOf[EmcasWordDesc[?]].parent, ed2)
     assert(wd21 ne wd1)
     assert(ed2.instRo)
     assertSameInstance(ed1.fallback, ed2)
@@ -822,8 +822,8 @@ class EmcasSpec extends BaseSpec {
     } else {
       (ed1.getWordsO()(1).asInstanceOf[WdLike[Any]], ed1.getWordsO()(0).asInstanceOf[WdLike[Any]])
     }
-    assertSameInstance(wd1.asInstanceOf[EmcasWordDesc[_]].parent, ed1)
-    assertSameInstance(wd2.asInstanceOf[EmcasWordDesc[_]].parent, ed1)
+    assertSameInstance(wd1.asInstanceOf[EmcasWordDesc[?]].parent, ed1)
+    assertSameInstance(wd2.asInstanceOf[EmcasWordDesc[?]].parent, ed1)
   }
 
   test("AbstractDescriptor#readOnly is false, but in fact it is read-only") {

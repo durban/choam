@@ -34,7 +34,7 @@ final class QueueModelTest extends FunSuite with BaseLinchkSpec {
     queueModelCheck(classOf[MsQueueTestState])
   }
 
-  private def queueModelCheck(cls: Class[_ <: AbstractTestState]): Unit = {
+  private def queueModelCheck(cls: Class[? <: AbstractTestState]): Unit = {
     printFatalErrors {
       LinChecker.check(cls, defaultModelCheckingOptions())
     }

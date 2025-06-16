@@ -18,8 +18,8 @@
 package dev.tauri.choam
 package core
 
-trait AsyncReactiveSpec[F[_]] { this: BaseSpecAsyncF[F] with McasImplSpec =>
+trait AsyncReactiveSpec[F[_]] { this: BaseSpecAsyncF[F] & McasImplSpec =>
 
   final override implicit def rF: AsyncReactive[F] =
-    new AsyncReactive.AsyncReactiveImpl[F](this.mcasImpl)(this.F)
+    new AsyncReactive.AsyncReactiveImpl[F](this.mcasImpl)(using this.F)
 }

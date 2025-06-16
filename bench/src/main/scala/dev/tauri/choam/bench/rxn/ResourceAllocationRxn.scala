@@ -105,13 +105,13 @@ object ResourceAllocationRxn {
 
     final val tokens = 128L
 
-    private[this] var selectedRss: Array[Ref[String]] = _
+    private[this] var selectedRss: Array[Ref[String]] = null
 
-    final var ovs: Array[String] = _
+    final var ovs: Array[String] = null
 
     @Param(Array("2", "4", "6"))
     @nowarn("cat=unused-privates")
-    private[this] var dAllocSize: Int = _
+    private[this] var dAllocSize: Int = 0
 
     final def allocSize: Int =
       dAllocSize

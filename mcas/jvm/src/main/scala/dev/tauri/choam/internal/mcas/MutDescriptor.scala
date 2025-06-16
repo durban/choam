@@ -51,7 +51,7 @@ final class MutDescriptor private (
     )
   }
 
-  protected final override def hamt: AbstractHamt[_, _, _, _, _, _] =
+  protected final override def hamt: AbstractHamt[?, ?, ?, ?, ?, ?] =
     this.map
 
   private[mcas] final override def hasVersionCas: Boolean =
@@ -122,7 +122,7 @@ final class MutDescriptor private (
   private[mcas] final override def validateAndTryExtend(
     commitTsRef: MemoryLocation[Long],
     ctx: Mcas.ThreadContext,
-    additionalHwd: LogEntry[_],
+    additionalHwd: LogEntry[?],
   ): AbstractDescriptor.Aux[MutDescriptor] = {
     impossible("MutDescriptor#validateAndTryExtend")
   }
@@ -130,7 +130,7 @@ final class MutDescriptor private (
   private[mcas] final override def validateAndTryExtendVer(
     currentTs: Long,
     ctx: Mcas.ThreadContext,
-    additionalHwd: LogEntry[_]
+    additionalHwd: LogEntry[?],
   ): AbstractDescriptor.Aux[MutDescriptor] = {
     val newValidTs = currentTs
     if (currentTs > this.validTs) {

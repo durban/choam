@@ -40,7 +40,7 @@ class CatsQueueTest {
     cats.effect.unsafe.IORuntime.global
 
   private[this] val q: Queue[IO, String] =
-    Queue.bounded[IO, String](capacity = 64).unsafeRunSync()(this.runtime)
+    Queue.bounded[IO, String](capacity = 64).unsafeRunSync()(using this.runtime)
 
   private[this] var taken: String =
     null
@@ -51,23 +51,23 @@ class CatsQueueTest {
         IO { this.taken = taken }
       }
     }
-    tsk.start.unsafeRunSync()(this.runtime)
+    tsk.start.unsafeRunSync()(using this.runtime)
   }
 
   @Actor
   def canceller(): Unit = {
-    taker.cancel.unsafeRunSync()(this.runtime)
+    taker.cancel.unsafeRunSync()(using this.runtime)
   }
 
   @Actor
   def offerer(): Unit = {
-    q.offer("foo").unsafeRunSync()(this.runtime)
+    q.offer("foo").unsafeRunSync()(using this.runtime)
   }
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r1 = taker.join.unsafeRunSync()(this.runtime).productPrefix : String
+    r.r1 = taker.join.unsafeRunSync()(using this.runtime).productPrefix : String
     r.r2 = this.taken
-    r.r3 = q.tryTake.unsafeRunSync()(this.runtime)
+    r.r3 = q.tryTake.unsafeRunSync()(using this.runtime)
   }
 }

@@ -42,19 +42,19 @@ class QueueTransferBench extends BenchUtils {
   /** MS-Queues (padded) implemented with `Rxn` */
   @Benchmark
   def michaelScottQueuePadded(s: MsSt, ct: McasImplState): Unit = {
-    runIdx(s.runtime, s.transfer(_).run[IO](ct.reactive), size = size)
+    runIdx(s.runtime, s.transfer(_).run[IO](using ct.reactive), size = size)
   }
 
   /** MS-Queues (unpadded) implemented with `Rxn` */
   @Benchmark
   def michaelScottQueueUnpadded(s: MsuSt, ct: McasImplState): Unit = {
-    runIdx(s.runtime, s.transfer(_).run[IO](ct.reactive), size = size)
+    runIdx(s.runtime, s.transfer(_).run[IO](using ct.reactive), size = size)
   }
 
   /** MS-Queues (+ interior deletion) implemented with `Rxn` */
   @Benchmark
   def michaelScottQueueWithRemove(s: RmSt, ct: McasImplState): Unit = {
-    runIdx(s.runtime, s.transfer(_).run[IO](ct.reactive), size = size)
+    runIdx(s.runtime, s.transfer(_).run[IO](using ct.reactive), size = size)
   }
 
   /** Simple queues protected with reentrant locks */
@@ -89,7 +89,7 @@ object QueueTransferBench {
 
     @Param(Array(/*"2",*/ "4"/*, "6"*/))
     @nowarn("cat=unused-privates")
-    private[this] var _txSize: Int = _
+    private[this] var _txSize: Int = 0
 
     def txSize: Int =
       this._txSize
@@ -112,7 +112,7 @@ object QueueTransferBench {
       this.queues.map(transferOne(_)).reduce(_ *> _)
     }
 
-    var queues: List[List[Queue[String]]] = _
+    var queues: List[List[Queue[String]]] = null
 
     protected def internalSetup(): Unit = {
       this.queues = List.fill(this.txSize) {
@@ -160,7 +160,7 @@ object QueueTransferBench {
 
     val runtime = cats.effect.unsafe.IORuntime.global
 
-    var queues: List[List[LockedQueue[String]]] = _
+    var queues: List[List[LockedQueue[String]]] = null
 
     @Setup
     def setup(): Unit = {
@@ -205,7 +205,7 @@ object QueueTransferBench {
 
     val runtime = cats.effect.unsafe.IORuntime.global
 
-    var queues: List[List[StmQueue[String]]] = _
+    var queues: List[List[StmQueue[String]]] = null
 
     @Setup
     def setup(): Unit = {
@@ -224,7 +224,7 @@ object QueueTransferBench {
         }
 
         for (circle <- this.queues) {
-          transferOne(circle)(txn)
+          transferOne(circle)(using txn)
         }
       }
     }
@@ -234,16 +234,16 @@ object QueueTransferBench {
   class StmCSt extends BaseSt {
 
     val runtime = cats.effect.unsafe.IORuntime.global
-    val s: STM[IO] = STM.runtime[IO].unsafeRunSync()(runtime)
+    val s: STM[IO] = STM.runtime[IO].unsafeRunSync()(using runtime)
     val qu = StmQueueCLike[STM, IO](s) // scalafix:ok
 
-    var queues: List[List[qu.StmQueueC[String]]] = _
+    var queues: List[List[qu.StmQueueC[String]]] = null
 
     @Setup
     def setup(): Unit = {
       this.queues = List.fill(this.txSize) {
         List.fill(this.circleSize) {
-          s.commit(StmQueueC.make(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
+          s.commit(StmQueueC.make(qu)(Prefill.prefill().toList)).unsafeRunSync()(using runtime)
         }
       }
       java.lang.invoke.VarHandle.releaseFence()
@@ -265,7 +265,7 @@ object QueueTransferBench {
 
     val runtime = zio.Runtime.default
 
-    var queues: List[List[StmQueueZ[String]]] = _
+    var queues: List[List[StmQueueZ[String]]] = null
 
     @Setup
     def setup(): Unit = {

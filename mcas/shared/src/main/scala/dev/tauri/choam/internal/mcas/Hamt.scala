@@ -404,7 +404,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
     )
   }
 
-  private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[K, V, E, _, _, _], physIdx: Int): H = {
+  private[this] final def withNode(size: Int, bitmap: Long, node: Hamt[K, V, E, ?, ?, ?], physIdx: Int): H = {
     this.newNode(
       sizeAndBlue = packSizeAndBlueInternal(size, this.isBlueSubtree && node.isBlueSubtree),
       bitmap = bitmap,
@@ -496,7 +496,7 @@ private[choam] object Hamt {
       true
   }
 
-  private[mcas] final def newTombstone(hash: Long): HasKey[HasHash] with HasHash =
+  private[mcas] final def newTombstone(hash: Long): HasKey[HasHash] & HasHash =
     new Tombstone(hash)
 
   private[mcas] final def tombingVisitor[K <: HasHash, V <: HasKey[K]]: EntryVisitor[K, V, Any] = {

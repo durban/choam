@@ -85,7 +85,7 @@ class CatsAsyncTest {
       }
     }
 
-    r.r2 = t.unsafeRunSync()(this.runtime).toString()
+    r.r2 = t.unsafeRunSync()(using this.runtime).toString()
 
     // make sure `complete` will not spin forever:
     if (this.cb.compareAndSet(null, this.dummyCb)) {
@@ -116,7 +116,7 @@ class CatsAsyncTest {
     while (fib eq null) {
       fib = this.fib
     }
-    fib.cancel.unsafeRunSync()(this.runtime)
+    fib.cancel.unsafeRunSync()(using this.runtime)
   }
 }
 
@@ -132,7 +132,7 @@ object CatsAsyncTest {
   }
 
   val dummyFib: Fiber[IO, Throwable, String] =
-    IO.never[String].start.unsafeRunSync()(this.runtime)
+    IO.never[String].start.unsafeRunSync()(using this.runtime)
 
   // def main(args: Array[String]): Unit = {
   //   val obj = new CatsAsyncTest

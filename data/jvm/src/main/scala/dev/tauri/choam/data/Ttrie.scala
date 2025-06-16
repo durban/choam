@@ -482,7 +482,7 @@ private object Ttrie {
 
   def skipListBased[K, V](str: Ref.AllocationStrategy)(implicit K: Order[K]): Axn[Ttrie[K, V]] = {
     Axn.unsafe.delay {
-      val m = new SkipListMap[K, Ref[V]]()(K)
+      val m = new SkipListMap[K, Ref[V]]()
       new Ttrie[K, V](m, str)
     }
   }

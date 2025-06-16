@@ -24,7 +24,7 @@ import core.AsyncReactive
 import async.{ AsyncQueueSource, BoundedQueueSink }
 
 private final class Fs2QueueWrapper[F[_], A](
-  self: AsyncQueueSource[A] with BoundedQueueSink[A],
+  self: AsyncQueueSource[A] & BoundedQueueSink[A],
 )(implicit F: AsyncReactive[F]) extends CatsQueue[F, A] {
   final override def take: F[A] =
     self.deque

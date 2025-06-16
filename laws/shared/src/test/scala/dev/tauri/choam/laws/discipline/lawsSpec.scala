@@ -78,17 +78,17 @@ trait LawsSpec
     checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
     checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])
     checkAll("Monad[Rxn]", MonadTests[Rxn[String, *]].monad[Int, String, Int])
-    checkAll("Unique[Rxn]", UniqueTests[Rxn[Any, *]].unique { (act: Axn[Boolean]) =>
+    checkAll("Unique[Rxn]", UniqueTests[Rxn[Any, *]].unique(using { (act: Axn[Boolean]) =>
       Prop(act.unsafeRun(self.mcasImpl))
-    })
+    }))
     checkAll("MonoidK[Rxn]", MonoidKTests[λ[a => Rxn[a, a]]].monoidK[String])
     checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[String, Int]](using Rxn.choiceSemigroup).semigroup)
     checkAll("Monoid[Rxn]", MonoidTests[Rxn[String, Int]](using Rxn.monoidInstance).monoid)
     checkAll("Defer[Rxn]", DeferTests[Rxn[String, *]].defer[Int])
     checkAll("Align[Rxn]", AlignTests[Rxn[String, *]].align[Int, Float, Double, Long])
-    checkAll("Clock[Rxn]", ClockTests[Rxn[String, *]].clock { (act: Rxn[String, Boolean]) =>
+    checkAll("Clock[Rxn]", ClockTests[Rxn[String, *]].clock(using { (act: Rxn[String, Boolean]) =>
       Prop(act.unsafePerform(null : String, self.mcasImpl))
-    })
+    }))
 
     checkAll("Order[Ref[Int]]", OrderTests[Ref[Int]].order)
     checkAll("Hash[Ref[Int]]", HashTests[Ref[Int]].hash)

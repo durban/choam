@@ -39,7 +39,7 @@ final class Descriptor private (
   final override def toImmutable: Descriptor =
     this
 
-  protected final override def hamt: AbstractHamt[_, _, _, _, _, _] =
+  protected final override def hamt: AbstractHamt[?, ?, ?, ?, ?, ?] =
     this.map
 
   private[mcas] final override def hasVersionCas: Boolean = {
@@ -137,7 +137,7 @@ final class Descriptor private (
   private[mcas] final override def validateAndTryExtend(
     commitTsRef: MemoryLocation[Long],
     ctx: Mcas.ThreadContext,
-    additionalHwd: LogEntry[_], // can be null
+    additionalHwd: LogEntry[?], // can be null
   ): Descriptor = {
     require(this.versionCas eq null)
     // NB: we must read the commitTs *before* the `ctx.validate...`
@@ -149,7 +149,7 @@ final class Descriptor private (
   private[mcas] final def validateAndTryExtendVer(
     currentTs: Long,
     ctx: Mcas.ThreadContext,
-    additionalHwd: LogEntry[_], // can be null
+    additionalHwd: LogEntry[?], // can be null
   ): Descriptor = {
     // We're passing `newValidTsBoxed = null`. This is ugly,
     // but nothing will actually need it (we're doing EMCAS
@@ -167,7 +167,7 @@ final class Descriptor private (
     newValidTs: Long,
     newValidTsBoxed: java.lang.Long, // can be null
     ctx: Mcas.ThreadContext,
-    additionalHwd: LogEntry[_], // can be null
+    additionalHwd: LogEntry[?], // can be null
   ): Descriptor = {
     if (newValidTs > this.validTs) {
       if (

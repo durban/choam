@@ -95,7 +95,7 @@ trait LinchkUtils {
         assumedAtomicClassNames.contains(fullClassName) ||
         fullClassName.startsWith("scala.collection.immutable.")
       }
-      new ManagedStrategyGuarantee.MethodBuilder(KotlinFromScala.function1(assumedAtomicPred _))
+      new ManagedStrategyGuarantee.MethodBuilder(KotlinFromScala.function1(assumedAtomicPred))
         .allMethods()
         .treatAsAtomic()
     }
@@ -105,7 +105,7 @@ trait LinchkUtils {
     // things here):
     val timeoutMs = 10000L // default: 10000L
     type Opts = {
-      def invocationTimeout$lincheck(timeoutMs: Long): org.jetbrains.kotlinx.lincheck.Options[_, _]
+      def invocationTimeout$lincheck(timeoutMs: Long): org.jetbrains.kotlinx.lincheck.Options[?, ?]
     }
     def increaseTimeout(mco: ModelCheckingOptions): ModelCheckingOptions = {
       mco.asInstanceOf[Opts].invocationTimeout$lincheck(timeoutMs).asInstanceOf[ModelCheckingOptions]
@@ -124,18 +124,18 @@ trait LinchkUtils {
 
   private val assumedAtomicClassNames: Set[String] = {
     Set(
-      classOf[ConcurrentSkipListMap[_, _]],
-      classOf[ConcurrentSkipListSet[_]],
-      classOf[ConcurrentHashMap[_, _]],
-      classOf[ConcurrentLinkedQueue[_]],
-      classOf[ConcurrentLinkedDeque[_]],
+      classOf[ConcurrentSkipListMap[?, ?]],
+      classOf[ConcurrentSkipListSet[?]],
+      classOf[ConcurrentHashMap[?, ?]],
+      classOf[ConcurrentLinkedQueue[?]],
+      classOf[ConcurrentLinkedDeque[?]],
       classOf[AtomicBoolean],
       classOf[AtomicInteger],
       classOf[AtomicIntegerArray],
       classOf[AtomicLong],
       classOf[AtomicLongArray],
-      classOf[AtomicReference[_]],
-      classOf[AtomicReferenceArray[_]],
+      classOf[AtomicReference[?]],
+      classOf[AtomicReferenceArray[?]],
     ).map(_.getName())
   }
 }

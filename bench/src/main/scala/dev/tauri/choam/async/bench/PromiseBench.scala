@@ -43,7 +43,7 @@ class PromiseBench extends BenchUtils {
 
   private[this] def taskRxn0(waiters: Int, ar: AsyncReactive[IO])(p: Promise[String]): IO[Unit] = {
     for {
-      fibs <- p.get[IO](ar).start.replicateA(waiters)
+      fibs <- p.get[IO](using ar).start.replicateA(waiters)
       _ <- IO.cede
       _ <- IO.race(ar(p.complete0, "left"), ar(p.complete0, "right"))
       _ <- fibs.traverse(_.joinWithNever)
@@ -58,7 +58,7 @@ class PromiseBench extends BenchUtils {
 
   private[this] def taskRxn1(waiters: Int, ar: AsyncReactive[IO])(p: Promise[String]): IO[Unit] = {
     for {
-      fibs <- p.get[IO](ar).start.replicateA(waiters)
+      fibs <- p.get[IO](using ar).start.replicateA(waiters)
       _ <- IO.cede
       _ <- IO.race(ar(Rxn.computed(p.complete1), "left"), ar(Rxn.computed(p.complete1), "right"))
       _ <- fibs.traverse(_.joinWithNever)
@@ -73,7 +73,7 @@ class PromiseBench extends BenchUtils {
 
   private[this] def taskAxn0(waiters: Int, ar: AsyncReactive[IO])(p: Promise[String]): IO[Unit] = {
     for {
-      fibs <- p.get[IO](ar).start.replicateA(waiters)
+      fibs <- p.get[IO](using ar).start.replicateA(waiters)
       _ <- IO.cede
       _ <- IO.race(ar(p.complete0.provide("left")), ar(p.complete0.provide("right")))
       _ <- fibs.traverse(_.joinWithNever)
@@ -88,7 +88,7 @@ class PromiseBench extends BenchUtils {
 
   private[this] def taskAxn1(waiters: Int, ar: AsyncReactive[IO])(p: Promise[String]): IO[Unit] = {
     for {
-      fibs <- p.get[IO](ar).start.replicateA(waiters)
+      fibs <- p.get[IO](using ar).start.replicateA(waiters)
       _ <- IO.cede
       _ <- IO.race(ar(p.complete1("left")), ar(p.complete1("right")))
       _ <- fibs.traverse(_.joinWithNever)

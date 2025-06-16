@@ -122,7 +122,7 @@ object BoundedQueue {
       _bound
 
     final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] = {
-      new CatsQueueFromBoundedQueue[F, A](this)(F)
+      new CatsQueueFromBoundedQueue[F, A](this)(using F)
     }
 
     final override def size: Axn[Int] =

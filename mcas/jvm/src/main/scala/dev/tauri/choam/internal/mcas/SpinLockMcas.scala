@@ -132,15 +132,15 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
 
     final override def validateAndTryExtend(
       desc: AbstractDescriptor,
-      hwd: LogEntry[_],
+      hwd: LogEntry[?],
     ): AbstractDescriptor.Aux[desc.D] = {
       desc.validateAndTryExtend(commitTs, this, hwd)
     }
 
-    private def perform(ops: List[LogEntry[_]], newVersion: Long): Long = {
+    private def perform(ops: List[LogEntry[?]], newVersion: Long): Long = {
 
       @tailrec
-      def lock(ops: List[LogEntry[_]]): (List[LogEntry[_]], Option[Long]) = ops match {
+      def lock(ops: List[LogEntry[?]]): (List[LogEntry[?]], Option[Long]) = ops match {
         case Nil => (Nil, None)
         case h :: tail => h match {
           case head: LogEntry[a] =>
@@ -170,9 +170,9 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
       }
 
       @tailrec
-      def commit(ops: List[LogEntry[_]], newVersion: Long): Unit = ops match {
+      def commit(ops: List[LogEntry[?]], newVersion: Long): Unit = ops match {
         case Nil => ()
-        case h :: tail => h match { case head: LogEntry[a] =>
+        case h :: tail => h match { case head: LogEntry[_] =>
           val ov = head.address.unsafeGetVersionV()
           val wit = head.address.unsafeCmpxchgVersionV(ov, newVersion)
           _assert(wit == ov)
@@ -183,11 +183,11 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
       }
 
       @tailrec
-      def rollback(from: List[LogEntry[_]], to: List[LogEntry[_]]): Unit = {
+      def rollback(from: List[LogEntry[?]], to: List[LogEntry[?]]): Unit = {
         if (from ne to) {
           from match {
             case Nil => impossible("this is the end")
-            case h :: tail => h match { case head: LogEntry[a] =>
+            case h :: tail => h match { case head: LogEntry[_] =>
               head.address.unsafeSetV(head.ov)
               rollback(tail, to)
             }

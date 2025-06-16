@@ -96,7 +96,7 @@ private final class SimpleOrderedMap[K, V] private (
       b.sizeHint(am.set.size)
       am.foldLeft(b) { (b, kv) =>
         b += kv._2
-      }.result().sortInPlace()(V.toOrdering).toVector
+      }.result().sortInPlace()(using V.toOrdering).toVector
     }
   }
 

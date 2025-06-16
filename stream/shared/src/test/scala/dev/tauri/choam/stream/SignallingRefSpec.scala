@@ -30,7 +30,7 @@ final class SignallingRefSpec_ThreadConfinedMcas_TickedIO
 
 trait SignallingRefSpec[F[_]]
   extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+  with AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   test("RxnSignallingRef".ignore) {
     val N = 1000

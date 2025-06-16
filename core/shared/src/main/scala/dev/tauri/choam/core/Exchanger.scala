@@ -125,7 +125,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
 
   private[core] object Msg {
 
-    def fromFinishedEx(fx: FinishedEx[_], newStats: Rxn.ExStatMap, ctx: Mcas.ThreadContext): Msg = {
+    def fromFinishedEx(fx: FinishedEx[?], newStats: Rxn.ExStatMap, ctx: Mcas.ThreadContext): Msg = {
       Msg(
         value = fx.result,
         contK = fx.contK,

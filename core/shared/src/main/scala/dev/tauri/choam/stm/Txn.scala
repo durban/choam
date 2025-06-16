@@ -142,7 +142,7 @@ private[stm] sealed abstract class TxnInstances0 extends TxnInstances1 { self: T
     final override def productR[A, B](fa: Txn[A])(fb: Txn[B]): Txn[B] =
       fa.productR(fb)
     final override def product[A, B](fa: Txn[A], fb: Txn[B]): Txn[(A, B)] =
-      fa product fb
+      fa.product(fb)
     final override def flatMap[A, B](fa: Txn[A])(f: A => Txn[B]): Txn[B] =
       fa.flatMap(f)
     final override def tailRecM[A, B](a: A)(f: A => Txn[Either[A, B]]): Txn[B] =

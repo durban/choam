@@ -60,7 +60,7 @@ abstract class BaseSpecTickedZIO
     new this.ValueTransform(
       "Ticked ZIO",
       { case x: zio.ZIO[_, _, _] =>
-        val tsk = x.asInstanceOf[zio.Task[_]]
+        val tsk = x.asInstanceOf[zio.Task[?]]
         val fut = zio.Unsafe.unsafe { implicit u =>
           this.zioRuntime.unsafe.runToFuture(tsk)
         }
@@ -122,22 +122,22 @@ abstract class BaseSpecTickedZIO
       override def submit[T <: Object](x: Runnable, y: T): Future[T] =
         testContextExecutor.asExecutionContextExecutorService.submit(x, y)
 
-      override def submit(x: Runnable): Future[_ <: Object] =
+      override def submit(x: Runnable): Future[? <: Object] =
         testContextExecutor.asExecutionContextExecutorService.submit(x)
 
-      override def invokeAll[T <: Object](x: Collection[_ <: Callable[T]]): ju.List[Future[T]] =
+      override def invokeAll[T <: Object](x: Collection[? <: Callable[T]]): ju.List[Future[T]] =
         testContextExecutor.asExecutionContextExecutorService.invokeAll(x)
 
-      override def invokeAll[T <: Object](x: Collection[_ <: Callable[T]], y: Long, z: TimeUnit): ju.List[Future[T]] =
+      override def invokeAll[T <: Object](x: Collection[? <: Callable[T]], y: Long, z: TimeUnit): ju.List[Future[T]] =
         testContextExecutor.asExecutionContextExecutorService.invokeAll(x, y, z)
 
-      override def invokeAny[T <: Object](x: Collection[_ <: Callable[T]]): T =
+      override def invokeAny[T <: Object](x: Collection[? <: Callable[T]]): T =
         testContextExecutor.asExecutionContextExecutorService.invokeAny(x)
 
-      override def invokeAny[T <: Object](x: Collection[_ <: Callable[T]], y: Long, z: TimeUnit): T =
+      override def invokeAny[T <: Object](x: Collection[? <: Callable[T]], y: Long, z: TimeUnit): T =
         testContextExecutor.asExecutionContextExecutorService.invokeAny(x, y, z)
 
-      override def schedule(x: Runnable, y: Long, z: TimeUnit): ScheduledFuture[_ <: Object] = {
+      override def schedule(x: Runnable, y: Long, z: TimeUnit): ScheduledFuture[? <: Object] = {
         throw new NotImplementedError("schedule(Runnable, Long, TimeUnit)")
       }
 
@@ -145,11 +145,11 @@ abstract class BaseSpecTickedZIO
         throw new NotImplementedError("schedule(Callable, Long, TimeUnit)")
       }
 
-      override def scheduleAtFixedRate(x: Runnable, y: Long, z: Long, zz: TimeUnit): ScheduledFuture[_ <: Object] = {
+      override def scheduleAtFixedRate(x: Runnable, y: Long, z: Long, zz: TimeUnit): ScheduledFuture[? <: Object] = {
         throw new NotImplementedError("scheduleAtFixedRate(Runnable, Long, Long, TimeUnit)")
       }
 
-      override def scheduleWithFixedDelay(x: Runnable, y: Long, z: Long, zz: TimeUnit): ScheduledFuture[_ <: Object] = {
+      override def scheduleWithFixedDelay(x: Runnable, y: Long, z: Long, zz: TimeUnit): ScheduledFuture[? <: Object] = {
         throw new NotImplementedError("scheduleWithFixedDelay(Runnable, Long, Long, TimeUnit)")
       }
     })

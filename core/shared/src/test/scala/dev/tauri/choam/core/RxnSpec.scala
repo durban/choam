@@ -1491,7 +1491,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     // TODO: we should test that running it this way is uncancelable
     val r: Rxn[String, Int] =
       Rxn.lift(s => s.length)
-    assertResultF(r.perform[F, Int]("foo", this.mcasImpl, sSpin)(F), 3)
+    assertResultF(r.perform[F, Int]("foo", this.mcasImpl, sSpin)(using F), 3)
   }
 
   private[this] val sCede = RetryStrategy.cede(
@@ -1505,14 +1505,14 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Running with Strategy.cede") {
     val r: Rxn[String, Int] =
       Rxn.lift(s => s.length)
-    assertResultF(r.perform[F, Int]("foo", this.mcasImpl, sCede)(F), 3)
+    assertResultF(r.perform[F, Int]("foo", this.mcasImpl, sCede)(using F), 3)
   }
 
   test("Running with Strategy.cede should be cancellable") {
     val r: Rxn[String, Int] =
       Rxn.unsafe.retry
     val tsk: F[Int] =
-      r.perform[F, Int]("foo", this.mcasImpl, sCede)(F).timeoutTo(0.1.second, F.pure(42))
+      r.perform[F, Int]("foo", this.mcasImpl, sCede)(using F).timeoutTo(0.1.second, F.pure(42))
     assertResultF(tsk, 42)
   }
 
@@ -1529,14 +1529,14 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Running with Strategy.sleep") {
     val r: Rxn[String, Int] =
       Rxn.lift(s => s.length)
-    assertResultF(r.perform[F, Int]("foo", this.mcasImpl, sSleep)(F), 3)
+    assertResultF(r.perform[F, Int]("foo", this.mcasImpl, sSleep)(using F), 3)
   }
 
   test("Running with Strategy.sleep should be cancellable") {
     val r: Rxn[String, Int] =
       Rxn.unsafe.retry
     val tsk: F[Int] =
-      r.perform[F, Int]("foo", this.mcasImpl, sSleep)(F).timeoutTo(0.1.second, F.pure(42))
+      r.perform[F, Int]("foo", this.mcasImpl, sSleep)(using F).timeoutTo(0.1.second, F.pure(42))
     assertResultF(tsk, 42)
   }
 
@@ -1544,7 +1544,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val r: Rxn[Any, Int] =
       Rxn.pure(42)
     val tsk =
-      r.perform[F, Int](null, this.mcasImpl, sCede)(F)
+      r.perform[F, Int](null, this.mcasImpl, sCede)(using F)
     assertResultF(tsk.replicateA(3), List(42, 42, 42))
   }
 

@@ -158,7 +158,7 @@ private final class EmcasThreadContext(
 
   final override def validateAndTryExtend(
     desc: AbstractDescriptor,
-    hwd: LogEntry[_],
+    hwd: LogEntry[?],
   ): AbstractDescriptor.Aux[desc.D] = {
     desc.validateAndTryExtendVer(this.impl.getCommitTs(), this, hwd)
   }

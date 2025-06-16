@@ -46,7 +46,7 @@ final class BoundedQueueSpecArray_EMCAS_ZIO
   with BoundedQueueSpecArray[zio.Task]
   with BoundedQueueSpecJvm[zio.Task]
 
-trait BoundedQueueSpecJvm[F[_]] { this: BoundedQueueSpec[F] with McasImplSpec with TestContextSpec[F] =>
+trait BoundedQueueSpecJvm[F[_]] { this: BoundedQueueSpec[F] & McasImplSpec & TestContextSpec[F] =>
 
   test("BoundedQueue big bound") {
     val n = 9999

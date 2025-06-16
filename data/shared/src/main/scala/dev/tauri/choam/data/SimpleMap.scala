@@ -97,7 +97,7 @@ private final class SimpleMap[K, V] private (
       while (it.hasNext) {
         b += it.next()
       }
-      b.result().sortInPlace()(V.toOrdering).toVector
+      b.result().sortInPlace()(using V.toOrdering).toVector
     }
   }
 

@@ -66,7 +66,7 @@ abstract class BaseSpecMyIO
     new ValueTransform(
       "MyIO",
       {
-        case task: MyIO[a] =>
+        case task: MyIO[_] =>
           task.impl.unsafeToFuture()
       }
     ) +: super.munitValueTransforms

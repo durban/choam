@@ -62,7 +62,7 @@ object StaticsBench {
   @State(Scope.Thread)
   class ThSt {
 
-    var tlr: ThreadLocalRandom = _
+    var tlr: ThreadLocalRandom = null
 
     @Setup
     def setUp(): Unit = {

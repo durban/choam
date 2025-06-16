@@ -390,7 +390,7 @@ final class SkipListSpec extends ScalaCheckSuite with SkipListHelper {
       }
     }
     Prop.forAll { (kvs: Map[String, String]) =>
-      val m = new SkipListMap[String, String]()(nullTolerantStringOrder)
+      val m = new SkipListMap[String, String]()(using nullTolerantStringOrder)
       for ((k, v) <- kvs) {
         m.put(k, v)
       }
@@ -458,7 +458,7 @@ object SkipListSpec {
   final class Shadow[K, V] private (map: MutTreeMap[K, V]) {
 
     def this()(implicit K: Order[K]) = {
-      this(MutTreeMap.empty(K.toOrdering))
+      this(MutTreeMap.empty(using K.toOrdering))
     }
 
     final def put(key: K, value: V): Option[V] = {

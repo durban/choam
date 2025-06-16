@@ -63,21 +63,21 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
 
     assertEquals(v1, 42)
     assertEquals(v2, 99)
-    val v3 = atomically(readRef(ref)(_))
+    val v3 = atomically(readRef(ref)(using _))
     assertEquals(v3, 99)
   }
 
   test("updateRef") {
-    val r = atomically(newRef("foo")(_))
+    val r = atomically(newRef("foo")(using _))
     atomically { implicit ir =>
       updateRef(r)(_ + "bar")
     }
-    assertEquals(atomically(readRef(r)(_)), "foobar")
+    assertEquals(atomically(readRef(r)(using _)), "foobar")
   }
 
   test("tentativeRead") {
-    val r1 = atomically(newRef(0)(_))
-    val r2 = atomically(newRef(0)(_))
+    val r1 = atomically(newRef(0)(using _))
+    val r2 = atomically(newRef(0)(using _))
     atomically { implicit ir =>
       assertEquals(tentativeRead(r1), 0)
       updateRef(r2)(_ + 1)
@@ -88,8 +88,8 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
   }
 
   test("ticketRead") {
-    val r1 = atomically(newRef(0)(_))
-    val r2 = atomically(newRef(0)(_))
+    val r1 = atomically(newRef(0)(using _))
+    val r2 = atomically(newRef(0)(using _))
     atomically { implicit ir =>
       val ticket = ticketRead(r1)
       assertEquals(ticket.value, 0)
@@ -97,8 +97,8 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
       ticket.value = 42
       assertEquals(r1.value, 42)
     }
-    assertEquals(atomically(readRef(r1)(_)), 42)
-    assertEquals(atomically(readRef(r2)(_)), 1)
+    assertEquals(atomically(readRef(r1)(using _)), 42)
+    assertEquals(atomically(readRef(r2)(using _)), 1)
   }
 
   test("RefSyntax") {
@@ -108,7 +108,7 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
       ref.value = 99
       assertEquals(ref.value, 99)
     }
-    val ref = atomically(newRef(42)(_))
+    val ref = atomically(newRef(42)(using _))
     atomically { implicit ir =>
       useRef(ref)
     }
@@ -118,7 +118,7 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
   }
 
   test("Ref.Array") {
-    val arr1: Ref.Array[String] = atomically(newRefArray[String](16, "")(_))
+    val arr1: Ref.Array[String] = atomically(newRefArray[String](16, "")(using _))
     val r1 = atomically { implicit ir =>
       arr1.unsafeGet(3).value = "foo"
       arr1.unsafeGet(3).value
@@ -157,14 +157,14 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
       fail(s"Expected an exception, got: $i")
     } catch {
       case ex: MyException =>
-        val v = atomically(readRef(ex.ref)(_))
+        val v = atomically(readRef(ex.ref)(using _))
         assertEquals(v, 42) // the write must be rollbacked
     }
   }
 
   test("Forced retries") {
     val ctr = new AtomicInteger
-    val ref = atomically(newRef(42)(_))
+    val ref = atomically(newRef(42)(using _))
     val res = atomically { implicit ir =>
       updateRef(ref)(_ + 1)
       if (ctr.incrementAndGet() < 5) {
@@ -173,13 +173,13 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
       ref.value
     }
     assertEquals(res, 43)
-    assertEquals(atomically(ref.value(_)), 43)
+    assertEquals(atomically(ref.value(using _)), 43)
     assertEquals(ctr.get(), 5)
   }
 
   test("null result") {
     val flag = new AtomicBoolean(true)
-    val ref = atomically(newRef(42)(_))
+    val ref = atomically(newRef(42)(using _))
     val res = atomically[String] { implicit ir =>
       ref.value = ref.value + 1
       if (flag.getAndSet(false)) {
@@ -188,7 +188,7 @@ final class ImperativeApiSpec extends FunSuite with MUnitUtils {
       null
     }
     assertEquals(res, null)
-    assertEquals(atomically(ref.value(_)), 43)
+    assertEquals(atomically(ref.value(using _)), 43)
     assert(!flag.get())
   }
 }

@@ -81,7 +81,7 @@ object MyIO {
     override def cont[K, R](body: Cont[MyIO, K, R]): MyIO[R] =
       MyIO(IO.cont[K, R](new Cont[IO, K, R] {
         override def apply[G[_]](implicit G: MonadCancel[G, Throwable]): (Either[Throwable, K] => Unit, G[K], IO ~> G) => G[R] =
-          (cb, get, tr) => body.apply[G](G).apply(cb, get, ioFromMyIO.andThen(tr))
+          (cb, get, tr) => body.apply[G](using G).apply(cb, get, ioFromMyIO.andThen(tr))
       }))
     override def pure[A](x: A): MyIO[A] =
       MyIO(IO.pure(x))

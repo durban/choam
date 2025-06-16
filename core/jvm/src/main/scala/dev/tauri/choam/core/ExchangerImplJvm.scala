@@ -30,13 +30,13 @@ private sealed trait ExchangerImplJvm[A, B]
   import ExchangerImplJvm.{ size => _, _ }
 
   // TODO: could we use a single elimination array?
-  protected def incoming: AtomicReferenceArray[ExchangerNode[_]]
+  protected def incoming: AtomicReferenceArray[ExchangerNode[?]]
 
-  protected def outgoing: AtomicReferenceArray[ExchangerNode[_]]
+  protected def outgoing: AtomicReferenceArray[ExchangerNode[?]]
 
   private[core] def key: Exchanger.Key
 
-  protected def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]]
+  protected def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[?]]
 
   final override def exchange: Rxn[A, B] =
     Rxn.internal.exchange[A, B](this)
@@ -111,7 +111,7 @@ private sealed trait ExchangerImplJvm[A, B]
                   )
                 )
               }
-            case other: ExchangerNode[d] =>
+            case other: ExchangerNode[_] =>
               debugLog(s"found other - thread#${Thread.currentThread().getId()}")
               if (incoming.compareAndSet(idx, self, null)) {
                 // ok, we've rescinded our offer
@@ -310,7 +310,7 @@ private final class DualExchangerImplJvm[A, B](
   private[core] final override def key =
     dual.key
 
-  protected final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]] =
+  protected final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[?]] =
     dual.initializeIfNeeded(!retInc)
 }
 
@@ -324,7 +324,7 @@ private final class PrimaryExchangerImplJvm[A, B] private[core] (
   protected[core] final override val key =
     new Exchanger.Key
 
-  protected[core] final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[_]] = {
+  protected[core] final override def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[?]] = {
     val inc = this.incoming match {
       case null =>
         val newInc = ExchangerImplJvm.mkArray()
@@ -348,10 +348,10 @@ private final class PrimaryExchangerImplJvm[A, B] private[core] (
     if (retInc) inc else out
   }
 
-  protected[core] final override def incoming: AtomicReferenceArray[ExchangerNode[_]] =
+  protected[core] final override def incoming: AtomicReferenceArray[ExchangerNode[?]] =
     this._incoming
 
-  protected[core] final override def outgoing: AtomicReferenceArray[ExchangerNode[_]] =
+  protected[core] final override def outgoing: AtomicReferenceArray[ExchangerNode[?]] =
     this._outgoing
 }
 
@@ -508,8 +508,8 @@ private object ExchangerImplJvm {
     0xFF
   )
 
-  private[core] def mkArray(): AtomicReferenceArray[ExchangerNode[_]] = {
+  private[core] def mkArray(): AtomicReferenceArray[ExchangerNode[?]] = {
     // TODO: use padded references (or: make it configurable)
-    new AtomicReferenceArray[ExchangerNode[_]](this.size)
+    new AtomicReferenceArray[ExchangerNode[?]](this.size)
   }
 }

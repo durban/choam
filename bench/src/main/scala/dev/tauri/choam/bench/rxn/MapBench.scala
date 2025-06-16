@@ -149,7 +149,7 @@ object MapBench {
             case AndThenLift =>
               acc >>> Rxn.lift(dummy)
             case MonadMap =>
-              monadMap(acc, dummy)(Rxn.monadInstance)
+              monadMap(acc, dummy)(using Rxn.monadInstance)
             case Map2AndAlsoTupled =>
               map2WithAndAlsoTupled(acc, last)(take1)
             case Map2FlatMapMap =>

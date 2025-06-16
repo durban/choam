@@ -121,7 +121,7 @@ class BackoffBenchIo extends BackoffBenchBase {
     if (parkJmhThread) {
       dispatcher match {
         case null =>
-          tsk.unsafeRunSync()(runtime)
+          tsk.unsafeRunSync()(using runtime)
         case d =>
           d.unsafeRunSync(tsk)
       }
@@ -140,11 +140,11 @@ class BackoffBenchIo extends BackoffBenchBase {
     if (dispatcher eq null) {
       tsk.unsafeRunAsync { result =>
         resultHolder.set(result)
-      } (runtime)
+      } (using runtime)
     } else {
       dispatcher.unsafeToFuture(tsk).onComplete { resultTry =>
         resultHolder.set(resultTry.toEither)
-      } (pec)
+      } (using pec)
     }
     var result = resultHolder.get()
     while (result eq null) {
@@ -332,7 +332,7 @@ object BackoffBenchIo {
     @Setup
     def setup(): Unit = {
       if (this.useDispatcher) {
-        val (dp, close) = Dispatcher.sequential[IO].allocated.unsafeRunSync()(getRuntime())
+        val (dp, close) = Dispatcher.sequential[IO].allocated.unsafeRunSync()(using getRuntime())
         this.closeDispatcher = close
         this.dispatcher = dp
       }
@@ -344,7 +344,7 @@ object BackoffBenchIo {
         case null =>
           ()
         case close =>
-          close.unsafeRunAndForget()(getRuntime())
+          close.unsafeRunAndForget()(using getRuntime())
       }
     }
   }

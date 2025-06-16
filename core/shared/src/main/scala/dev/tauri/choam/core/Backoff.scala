@@ -41,7 +41,7 @@ private object Backoff extends BackoffPlatform {
     maxSleepRetries: Int,
     randomizeSleep: Boolean,
     random: ThreadLocalRandom,
-  )(implicit F: GenTemporal[F, _]): F[Unit] = {
+  )(implicit F: GenTemporal[F, ?]): F[Unit] = {
     val tok = backoffTokens(
       retries = retries,
       maxSpinRetries = maxSpinRetries,
@@ -118,7 +118,7 @@ private object Backoff extends BackoffPlatform {
     spin(constTokens(retries, maxBackoff))
 
   final def sleepConst[F[_]](retries: Int, maxSleepNanos: Long)(
-    implicit F: GenTemporal[F, _]
+    implicit F: GenTemporal[F, ?]
   ): F[Unit] = {
     val sleepNanos = sleepConstNanos(retries, maxSleepNanos)
     if (sleepNanos > 0L) F.sleep(sleepNanos.nanos)
@@ -186,7 +186,7 @@ private object Backoff extends BackoffPlatform {
     spin(randomTokens(retries, halfMaxBackoff, random))
 
   final def sleepRandom[F[_]](retries: Int, halfMaxSleepNanos: Long, random: ThreadLocalRandom)(
-    implicit F: GenTemporal[F, _]
+    implicit F: GenTemporal[F, ?]
   ): F[Unit] = {
     val sleepNanos = sleepRandomNanos(retries, halfMaxSleepNanos, random)
     if (sleepNanos > 0L) F.sleep(sleepNanos.nanos)

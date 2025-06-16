@@ -67,7 +67,7 @@ abstract class BaseSpecZIO
     new this.ValueTransform(
       "ZIO",
       { case x: zio.ZIO[_, _, _] =>
-        val tsk = x.asInstanceOf[zio.Task[_]]
+        val tsk = x.asInstanceOf[zio.Task[?]]
         val tskWithLogCfg = zio.ZIO.scopedWith { scope =>
           zio.Runtime.setUnhandledErrorLogLevel(this.zioUnhandledErrorLogLevel).build(scope) *> tsk
         }

@@ -91,9 +91,9 @@ object BoundedQueueBench {
 
     // must be divisible by 2 (see below)
     @Param(Array("2", "4", "6"))
-    var producers: Int = _
+    var producers: Int = 0
 
-    var consumers: Int = _
+    var consumers: Int = 0
 
     @Setup
     def setup(): Unit = {
@@ -109,7 +109,7 @@ object BoundedQueueBench {
     val runtime =
       cats.effect.unsafe.IORuntime.global
     val catsQ: CatsQueue[IO, String] =
-      CatsQueue.bounded[IO, String](Bound).unsafeRunSync()(runtime)
+      CatsQueue.bounded[IO, String](Bound).unsafeRunSync()(using runtime)
     val rxnLinkedQ: CatsQueue[IO, String] =
       BoundedQueue.linked[String](Bound).unsafeRun(asyncReactiveForIO.mcasImpl).toCats[IO]
     val rxnArrayQ: CatsQueue[IO, String] =

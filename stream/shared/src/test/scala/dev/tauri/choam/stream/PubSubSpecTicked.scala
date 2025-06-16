@@ -36,7 +36,7 @@ final class PubSubSpecTicked_DefaultMcas_IO
 
 trait PubSubSpecTicked[F[_]]
   extends BaseSpecAsyncF[F]
-  with core.AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+  with core.AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   commonTests("DropOldest", dropOldest(64))
   droppingTests("DropOldest", dropOldest(4), 4)
@@ -222,7 +222,7 @@ trait PubSubSpecTicked[F[_]]
         hub <- PubSub[F, Int](str).run[F]
         fib <- hub.subscribe.evalMap(_ => F.never[Int]).compile.toVector.start // infinitely slow subscriber
         _ <- this.tickAll // wait for subscription to happen
-        pub = (hub.publish _ : (Int => Axn[PubSub.Result]))
+        pub = (hub.publish : (Int => Axn[PubSub.Result]))
         _ <- (1 to (1024 * 256)).toList.traverse(i => assertResultF(pub(i).run[F], PubSub.Success))
         _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         _ <- fib.cancel

@@ -43,21 +43,21 @@ class AsyncStackPushWaitTest {
     AsyncStack.treiberStack[String].run[SyncIO].unsafeRunSync()
 
   private[this] val popper: Fiber[IO, Throwable, String] =
-    stack.pop.start.unsafeRunSync()(runtime)
+    stack.pop.start.unsafeRunSync()(using runtime)
 
   @Actor
   def push1(): Unit = {
-    stack.push[IO]("a").unsafeRunSync()(this.runtime)
+    stack.push[IO]("a").unsafeRunSync()(using this.runtime)
   }
 
   @Actor
   def push2(): Unit = {
-    stack.push[IO]("b").unsafeRunSync()(this.runtime)
+    stack.push[IO]("b").unsafeRunSync()(using this.runtime)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r1 = this.popper.joinWithNever.unsafeRunSync()(this.runtime)
-    r.r2 = this.stack.pop.unsafeRunSync()(this.runtime)
+    r.r1 = this.popper.joinWithNever.unsafeRunSync()(using this.runtime)
+    r.r2 = this.stack.pop.unsafeRunSync()(using this.runtime)
   }
 }

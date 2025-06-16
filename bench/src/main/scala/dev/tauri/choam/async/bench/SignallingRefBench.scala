@@ -36,12 +36,12 @@ class SignallingRefBench {
 
   @Benchmark
   def rxnSignallingRef(s: SignallingRefBench.St): Unit = {
-    tsk(s.rxn, s.rxnReset, N).unsafeRunSync()(s.runtime)
+    tsk(s.rxn, s.rxnReset, N).unsafeRunSync()(using s.runtime)
   }
 
   @Benchmark
   def fs2SignallingRef(s: SignallingRefBench.St): Unit = {
-    tsk(s.fs2, s.fs2Reset, N).unsafeRunSync()(s.runtime)
+    tsk(s.fs2, s.fs2Reset, N).unsafeRunSync()(using s.runtime)
   }
 
   def tsk(r: SignallingRef[IO, String], reset: IO[Unit], size: Int): IO[Unit] = {
@@ -67,7 +67,7 @@ object SignallingRefBench {
       CeRuntime.forBenchmarks
 
     val fs2: SignallingRef[IO, String] =
-      SignallingRef.of[IO, String]("initial").unsafeRunSync()(runtime)
+      SignallingRef.of[IO, String]("initial").unsafeRunSync()(using runtime)
     val fs2Reset: IO[Unit] =
       reset(fs2)
     val rxn: SignallingRef[IO, String] =

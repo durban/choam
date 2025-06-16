@@ -33,7 +33,7 @@ trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { thi
       // lincheck tests seem unstable in CI windows:
       assumeNotWin()
       body
-    } (loc)
+    }
   }
 
   final override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit = {
@@ -41,7 +41,7 @@ trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { thi
       // lincheck tests seem unstable in CI windows:
       assumeNotWin()
       body
-    } (loc)
+    }
   }
 }
 

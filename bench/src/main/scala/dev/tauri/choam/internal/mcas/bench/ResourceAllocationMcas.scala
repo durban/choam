@@ -113,13 +113,13 @@ object ResourceAllocationMcas {
 
     final val tokens = 128L
 
-    private[this] var selectedRss: Array[MemoryLocation[String]] = _
+    private[this] var selectedRss: Array[MemoryLocation[String]] = null
 
-    var desc: mcas.AbstractDescriptor = _
+    var desc: mcas.AbstractDescriptor = null
 
     @Param(Array("2", "4", "6"))
     @nowarn("cat=unused-privates")
-    private[this] var dAllocSize: Int = _
+    private[this] var dAllocSize: Int = 0
 
     def allocSize: Int =
       dAllocSize

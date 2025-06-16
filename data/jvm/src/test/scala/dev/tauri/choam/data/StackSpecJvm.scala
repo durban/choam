@@ -55,7 +55,7 @@ trait StackSpecTreiberJvm[F[_]]
 }
 
 trait StackSpecElimination12Jvm[F[_]]
-  extends StackSpecJvm[F] { this: StackSpec[F] with McasImplSpec =>
+  extends StackSpecJvm[F] { this: StackSpec[F] & McasImplSpec =>
 
   test("Elimination stack conflict before the elimination") {
     val randomSleep: F[Unit] = F.delay(ThreadLocalRandom.current().nextInt(10)).flatMap { x =>
@@ -74,7 +74,7 @@ trait StackSpecElimination12Jvm[F[_]]
   }
 }
 
-trait StackSpecJvm[F[_]] { this: StackSpec[F] with McasImplSpec =>
+trait StackSpecJvm[F[_]] { this: StackSpec[F] & McasImplSpec =>
 
   test("Multiple producers/consumers") {
     val N = 4

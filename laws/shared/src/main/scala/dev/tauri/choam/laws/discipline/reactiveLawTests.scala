@@ -45,9 +45,9 @@ sealed trait ReactiveLawTests[F[_]] extends Laws {
   ): RuleSet = new DefaultRuleSet(
     name = "Reactive",
     parent = None, // TODO: monad
-    "run pure" -> forAll(laws.runPure[A] _),
-    "run lift" -> forAll(laws.runLift[A, B] _),
-    "run toFunction" -> forAll(laws.runToFunction[A, B] _),
+    "run pure" -> forAll(laws.runPure[A]),
+    "run lift" -> forAll(laws.runLift[A, B]),
+    "run toFunction" -> forAll(laws.runToFunction[A, B]),
   )
 }
 
@@ -78,7 +78,7 @@ sealed trait AsyncReactiveLawTests[F[_]] extends ReactiveLawTests[F] {
   ): RuleSet = new DefaultRuleSet(
     name = "Reactive.Async",
     parent = Some(this.reactive[A, B]),
-    "promise complete then get" -> forAll(laws.promiseCompleteAndGet[A] _),
+    "promise complete then get" -> forAll(laws.promiseCompleteAndGet[A]),
   )
 }
 

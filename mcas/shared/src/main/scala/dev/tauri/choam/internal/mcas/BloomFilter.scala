@@ -22,12 +22,12 @@ package mcas
 import java.lang.Integer.{ remainderUnsigned }
 import java.lang.Long.{ hashCode => longHash }
 
-private object BloomFilter extends BloomFilter[MemoryLocation[_]] {
+private object BloomFilter extends BloomFilter[MemoryLocation[?]] {
 
-  protected final def leftHash(a: MemoryLocation[_]): Int =
+  protected final def leftHash(a: MemoryLocation[?]): Int =
     longHash(a.id)
 
-  protected final def rightHash(a: MemoryLocation[_]): Int =
+  protected final def rightHash(a: MemoryLocation[?]): Int =
     longHash(java.lang.Long.rotateLeft(a.id, 32)) // TODO: better hash fn
 }
 

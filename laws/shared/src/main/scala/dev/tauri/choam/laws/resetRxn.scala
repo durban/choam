@@ -22,7 +22,7 @@ import core.{ Rxn, Ref }
 
 private final case class ResetRxn[-A, +B](
   rxn: Rxn[A, B],
-  refs: Set[ResetRef[_]] = Set.empty,
+  refs: Set[ResetRef[?]] = Set.empty,
 ) {
 
   def toRxn: Rxn[A, B] =

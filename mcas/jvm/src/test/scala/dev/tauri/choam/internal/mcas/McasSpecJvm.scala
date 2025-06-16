@@ -278,12 +278,12 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")
     val d2 = ctx.addCasFromInitial(d1, r2, "bar", "foo")
     val d3 = ctx.addVersionCas(d2)
-    val lb = List.newBuilder[MemoryLocation[_]]
+    val lb = List.newBuilder[MemoryLocation[?]]
     val it = d3.hwdIterator
     while (it.hasNext) {
       lb += it.next().address
     }
-    val lst: List[MemoryLocation[_]] = lb.result()
+    val lst: List[MemoryLocation[?]] = lb.result()
     assertEquals(lst.length, 3)
     assert((lst(1) eq r1) || (lst(1) eq r2))
     assert((lst(2) eq r1) || (lst(2) eq r2))

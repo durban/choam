@@ -44,7 +44,7 @@ final class CounterSpecStriped_Emcas_ZIO
   with CounterSpecStriped[zio.Task]
   with CounterSpecJvm[zio.Task]
 
-trait CounterSpecJvm[F[_]] { this: CounterSpec[F] with McasImplSpec =>
+trait CounterSpecJvm[F[_]] { this: CounterSpec[F] & McasImplSpec =>
 
   test("Parallel access") {
     val numCpu = java.lang.Runtime.getRuntime().availableProcessors()

@@ -129,7 +129,7 @@ object Mcas extends McasCompanionPlatform {
 
     def validateAndTryExtend(
       desc: AbstractDescriptor,
-      hwd: LogEntry[_], // may be null
+      hwd: LogEntry[?], // may be null
     ): AbstractDescriptor.Aux[desc.D]
 
     /**

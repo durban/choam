@@ -38,11 +38,11 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     MemoryLocation.unsafeUnpadded(a, this.rigInstance)
   }
 
-  private final def tryPerformBatch(ops: List[CASD[_]]): Boolean = {
+  private final def tryPerformBatch(ops: List[CASD[?]]): Boolean = {
     val ctx = mcasImpl.currentContext()
     val builder = ops.foldLeft(ctx.builder()) { (b, op) =>
       op match {
-        case op: CASD[a] =>
+        case op: CASD[_] =>
           b.casRef(op.address, op.ov, op.nv)
       }
     }
@@ -601,7 +601,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
       }
     }
     val d0 = ctx.start()
-    val Some((ov, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
+    val Some((_, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv(("B")))
     assert(ctx.tryPerformOk(d2))
     assertEquals(ctr.get(), 1)
@@ -618,7 +618,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
       }
     }
     val d0 = ctx.start()
-    val Some((ov, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
+    val Some((_, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
     val e = d1.getOrElseNull(ref)
     val d2 = d1.overwrite(LogEntry(e.address, "X", "B", e.version))
     assert(!ctx.tryPerformOk(d2))

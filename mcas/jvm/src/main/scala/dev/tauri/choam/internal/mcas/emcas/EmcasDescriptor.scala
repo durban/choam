@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 private[mcas] final class EmcasDescriptor private[this] (
   half: AbstractDescriptor,
-  wordsToCopy: Array[WdLike[_]],
+  wordsToCopy: Array[WdLike[?]],
   private[emcas] final val instRo: Boolean,
 ) extends EmcasDescriptorBase { self =>
 
@@ -40,7 +40,7 @@ private[mcas] final class EmcasDescriptor private[this] (
   private[emcas] def this(half: AbstractDescriptor, instRo: Boolean) =
     this(half, null, instRo = instRo)
 
-  private def this(wordsToCopy: Array[WdLike[_]]) =
+  private def this(wordsToCopy: Array[WdLike[?]]) =
     this(null, wordsToCopy, instRo = true)
 
   // EMCAS handles the global version
@@ -64,7 +64,7 @@ private[mcas] final class EmcasDescriptor private[this] (
     if (half ne null) {
       // optimistic/pessimistic mode
       _assert(wordsToCopy eq null)
-      val arr = half.toWdArray(this, instRo = instRo).asInstanceOf[Array[WdLike[_]]]
+      val arr = half.toWdArray(this, instRo = instRo).asInstanceOf[Array[WdLike[?]]]
       _assert((arr eq null) || (arr.length > 0))
       arr
     } else {
@@ -72,7 +72,7 @@ private[mcas] final class EmcasDescriptor private[this] (
       _assert(instRo && (wordsToCopy ne null))
       val len = wordsToCopy.length
       _assert(len > 0)
-      val arr = new Array[WdLike[_]](len)
+      val arr = new Array[WdLike[?]](len)
       var idx = 0
       while (idx < len) {
         wordsToCopy(idx) match {
@@ -95,7 +95,7 @@ private[mcas] final class EmcasDescriptor private[this] (
   )
 
   /** May return `null` for finalized descriptors */
-  private[emcas] final def getWordDescArrOrNull(): Array[WdLike[_]] = {
+  private[emcas] final def getWordDescArrOrNull(): Array[WdLike[?]] = {
     // This is a racy read, but if we get
     // null, the decriptor is finalized, so
     // that's fine, we don't need to continue anyway.
@@ -111,7 +111,7 @@ private[mcas] final class EmcasDescriptor private[this] (
   }
 
   /** Only for testing! */
-  private[emcas] final def getWordIterator(): java.util.Iterator[WdLike[_]] = {
+  private[emcas] final def getWordIterator(): java.util.Iterator[WdLike[?]] = {
     this.getWordsO() match {
       case null => null
       case words => new EmcasDescriptor.Iterator(words)
@@ -190,8 +190,8 @@ private object EmcasDescriptor {
     new EmcasDescriptor(half, instRo = instRo)
   }
 
-  private final class Iterator(words: Array[WdLike[_]])
-    extends java.util.Iterator[WdLike[_]] {
+  private final class Iterator(words: Array[WdLike[?]])
+    extends java.util.Iterator[WdLike[?]] {
 
     private[this] var idx: Int =
       0
@@ -200,7 +200,7 @@ private object EmcasDescriptor {
       this.idx < this.words.length
     }
 
-    final override def next(): WdLike[_] = {
+    final override def next(): WdLike[?] = {
       val idx = this.idx
       val words = this.words
       if (idx < words.length) {

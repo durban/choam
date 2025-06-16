@@ -51,13 +51,13 @@ class PromiseTest {
     null
 
   private[this] val getter1 =
-    (this.p.get.flatMap { r => IO { result1 = r } } *> IO(winner.compareAndSet(0, 1))).start.unsafeRunSync()(this.runtime)
+    (this.p.get.flatMap { r => IO { result1 = r } } *> IO(winner.compareAndSet(0, 1))).start.unsafeRunSync()(using this.runtime)
 
   private[this] var result2: String =
     null
 
   private[this] val getter2 =
-    (this.p.get.flatMap { r => IO { result2 = r } } *> IO(winner.compareAndSet(0, 2))).start.unsafeRunSync()(this.runtime)
+    (this.p.get.flatMap { r => IO { result2 = r } } *> IO(winner.compareAndSet(0, 2))).start.unsafeRunSync()(using this.runtime)
 
 
   @Actor
@@ -67,9 +67,9 @@ class PromiseTest {
 
   @Arbiter
   def arbiter(r: LLLL_Result): Unit = {
-    getter1.join.unsafeRunSync()(runtime)
+    getter1.join.unsafeRunSync()(using runtime)
     r.r2 = result1
-    getter2.join.unsafeRunSync()(runtime)
+    getter2.join.unsafeRunSync()(using runtime)
     r.r3 = result2
     r.r4 = winner.get()
   }

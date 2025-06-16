@@ -212,7 +212,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       // we'll run the `Rxn`s with CEDE strategy, because otherwise
       // the retrying in a tight loop could cause the timer not to
       // fire, and thus the fallbacks wouldn't start:
-      rxn.perform(null, this.mcasImpl, core.RetryStrategy.cede())(F)
+      rxn.perform(null, this.mcasImpl, core.RetryStrategy.cede())(using F)
     }
     val tsk = for {
       ref <- Ref("abc").run[F]

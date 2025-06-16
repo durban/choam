@@ -760,7 +760,7 @@ lazy val commonSettings = Seq[Setting[_]](
         // we disable warnings for `final object`, because Scala 2 doesn't always makes them final;
         // and for "value discard", because Scala 3 doesn't allow silencing them with `: Unit`;
         // and for deprecations, because there are a lot (and they're internal)
-        "-Wconf:any:v,cat=deprecation:s,id=E147:s,id=E175:s",
+        "-Wconf:any:v,cat=deprecation:s,id=E147:s,id=E175:s", // TODO: for Scala 3.7: ,msg=Ignoring \\[this\\] qualifier:s
         "-Wunused:all",
         // TODO: "-Ysafe-init", // https://github.com/lampepfl/dotty/issues/17997
         "-Ycheck-all-patmat",

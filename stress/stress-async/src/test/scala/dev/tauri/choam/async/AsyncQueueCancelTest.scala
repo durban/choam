@@ -50,17 +50,17 @@ class AsyncQueueCancelTest {
     val tsk = IO.uncancelable { poll =>
       poll(q.deque[IO, String]).flatTap { s => IO { this.result = s } }
     }
-    tsk.start.unsafeRunSync()(runtime)
+    tsk.start.unsafeRunSync()(using runtime)
   }
 
   @Actor
   def offer(): Unit = {
-    q.enqueue[IO]("a").unsafeRunSync()(this.runtime)
+    q.enqueue[IO]("a").unsafeRunSync()(using this.runtime)
   }
 
   @Actor
   def cancel(): Unit = {
-    taker.cancel.unsafeRunSync()(runtime)
+    taker.cancel.unsafeRunSync()(using runtime)
   }
 
   @Arbiter
@@ -71,10 +71,10 @@ class AsyncQueueCancelTest {
         ex => IO.pure("error: " + ex.getClass().getName()),
         fa => fa.map { result => s"completed: $result" },
       )
-    }.unsafeRunSync()(this.runtime)
+    }.unsafeRunSync()(using this.runtime)
     r.r1 = this.result
-    q.enqueue[IO]("b").unsafeRunSync()(this.runtime)
-    r.r2 = q.deque[IO, String].unsafeRunSync()(this.runtime)
+    q.enqueue[IO]("b").unsafeRunSync()(using this.runtime)
+    r.r2 = q.deque[IO, String].unsafeRunSync()(using this.runtime)
     r.r3 = oc
   }
 }

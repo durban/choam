@@ -61,11 +61,11 @@ final class InteropSpec extends CatsEffectSuite with MUnitUtils {
   }
 
   test("Create imperatively, use with Rxn") {
-    IO(atomically(newRef(42)(_))).flatMap { ref =>
+    IO(atomically(newRef(42)(using _))).flatMap { ref =>
       ref.getAndUpdate(_ + 1).run[IO].flatMap { r =>
         IO(assertEquals(r, 42)) *> ref.get.run[IO].flatMap { v =>
           IO(assertEquals(v, 43)) *> IO {
-            assertEquals(atomically(readRef(ref)(_)), 43)
+            assertEquals(atomically(readRef(ref)(using _)), 43)
           }
         }
       }

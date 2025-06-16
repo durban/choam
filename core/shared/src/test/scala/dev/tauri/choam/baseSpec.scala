@@ -75,7 +75,7 @@ trait BaseSpecF[F[_]]
   }
 
   def assumeF(cond: => Boolean, clue: String = "assumption failed")(implicit loc: Location): F[Unit] =
-    F.delay { this.assume(cond, clue)(loc) }
+    F.delay { this.assume(cond, clue)(using loc) }
 
   def assertF(cond: => Boolean, clue: String = "assertion failed")(implicit loc: Location): F[Unit] = {
     F.delay { this.assert(cond, clue) }
@@ -98,7 +98,7 @@ trait BaseSpecF[F[_]]
     expected: A,
     clue: String = "objects are not the same instance"
   )(implicit loc: Location): F[Unit] = F.delay {
-    this.assertSameInstance(obtained, expected, clue)(loc)
+    this.assertSameInstance(obtained, expected, clue)(using loc)
   }
 
   def assertResultF[A, B](obtained: F[A], expected: B, clue: String = "values are not the same")(
@@ -131,14 +131,14 @@ trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] { this: McasImplSpec =>
   override implicit def mcF: Temporal[F] =
     this.F
   override implicit def rF: Reactive[F] =
-    new Reactive.SyncReactive[F](this.mcasImpl)(this.F)
+    new Reactive.SyncReactive[F](this.mcasImpl)(using this.F)
 }
 
 trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] { this: McasImplSpec =>
   /** Not implicit, so that `rF` is used for sure */
   override def F: Sync[F]
   override implicit def rF: Reactive[F] =
-    new Reactive.SyncReactive[F](this.mcasImpl)(F)
+    new Reactive.SyncReactive[F](this.mcasImpl)(using F)
 }
 
 /** Yeah, so this indirection exists so dotty doesn't crash... */
@@ -166,7 +166,7 @@ abstract class BaseSpecIO
     new ValueTransform(
       "IO",
       {
-        case task: IO[a] =>
+        case task: IO[_] =>
           // If we're close to `munitTimeout`, we'll
           // be killed soon anyway; so we're printing
           // a fiber dump, which may help diagnosing a
@@ -218,7 +218,7 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
         task
           .flatMap(IO.pure)
           .handleErrorWith(IO.raiseError)
-          .unsafeRunAsyncOutcome({ (outcome) => res = outcome })(this.tickedMunitIoRuntime)
+          .unsafeRunAsyncOutcome({ (outcome) => res = outcome })(using this.tickedMunitIoRuntime)
         testContext.tickAll()
         if (res eq null) {
           Future.failed(new FailException("ticked IO didn't complete", Location.empty))
@@ -312,7 +312,7 @@ abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO]
   }
 }
 
-trait TestContextSpec[F[_]] { self: BaseSpecAsyncF[F] with McasImplSpec =>
+trait TestContextSpec[F[_]] { self: BaseSpecAsyncF[F] & McasImplSpec =>
 
   protected def testContext: TestContext
 
@@ -329,7 +329,7 @@ trait TestContextSpec[F[_]] { self: BaseSpecAsyncF[F] with McasImplSpec =>
   }
 
   final def mkStepper: F[Stepper[F]] = {
-    Stepper[F](F)
+    Stepper[F](using F)
   }
 
   implicit final class StepperSyntax(stepper: Stepper[F]) {
@@ -339,7 +339,7 @@ trait TestContextSpec[F[_]] { self: BaseSpecAsyncF[F] with McasImplSpec =>
     }
 
     final def run[A, B](r: Rxn[A, B], a: A): F[B] = {
-      r.performWithStepper(a, self.mcasImpl, stepper)(F)
+      r.performWithStepper(a, self.mcasImpl, stepper)(using F)
     }
   }
 }

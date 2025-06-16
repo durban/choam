@@ -125,7 +125,7 @@ object SyncStackBench {
 
     @Param(Array("2", "4", "6", "8", "10"))
     @nowarn("cat=unused-privates")
-    private[this] var _concurrentOps: Int = _
+    private[this] var _concurrentOps: Int = 0
 
     def concurrentOps: Int =
       this._concurrentOps
@@ -182,11 +182,11 @@ object SyncStackBench {
     val runtime =
       cats.effect.unsafe.IORuntime.global
     val s: STM[IO] =
-      STM.runtime[IO](128L).unsafeRunSync()(runtime)
+      STM.runtime[IO](128L).unsafeRunSync()(using runtime)
     val st =
       StmStackCLike[STM, IO](s) // scalafix:ok
     val stmCStack: st.StmStackC[String] =
-      s.commit(StmStackC.make(st)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
+      s.commit(StmStackC.make(st)(Prefill.prefill().toList)).unsafeRunSync()(using runtime)
   }
 
   @State(Scope.Benchmark)

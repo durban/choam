@@ -95,7 +95,7 @@ trait QueueMsSpecJvm[F[_]]
   with QueueJvmTests[F] { this: McasImplSpec =>
 }
 
-trait QueueJvmTests[F[_]] { this: McasImplSpec with BaseQueueSpec[F] =>
+trait QueueJvmTests[F[_]] { this: McasImplSpec & BaseQueueSpec[F] =>
 
   test("Queue should allow multiple producers and consumers") {
     val max = 5000

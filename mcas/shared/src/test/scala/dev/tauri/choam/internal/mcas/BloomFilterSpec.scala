@@ -33,14 +33,14 @@ object BloomFilterSpec {
 
     import BloomFilter.{ insertLeft, insertRight }
 
-    final def insert(ref: MemoryLocation[_]): Wrapper = {
+    final def insert(ref: MemoryLocation[?]): Wrapper = {
       Wrapper(left = insertLeft(left, ref), right = insertRight(right, ref))
     }
 
-    final def definitelyNotContains(ref: MemoryLocation[_]): Boolean =
+    final def definitelyNotContains(ref: MemoryLocation[?]): Boolean =
       BloomFilter.definitelyNotContains(left, right, ref)
 
-    final def maybeContains(ref: MemoryLocation[_]): Boolean =
+    final def maybeContains(ref: MemoryLocation[?]): Boolean =
       BloomFilter.maybeContains(left, right, ref)
   }
 

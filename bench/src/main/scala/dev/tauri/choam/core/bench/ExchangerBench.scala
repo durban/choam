@@ -67,22 +67,22 @@ object ExchangerBench {
     // Exchanger params:
 
     @Param(Array("64"))
-    var minMaxMisses: Byte = _
+    var minMaxMisses: Byte = 0
 
     @Param(Array("4"))
-    var minMaxExchanges: Byte = _
+    var minMaxExchanges: Byte = 0
 
     @Param(Array("8"))
-    var maxSizeShift: Byte = _
+    var maxSizeShift: Byte = 0
 
     @Param(Array("1024"))
-    var maxSpin: Int = _
+    var maxSpin: Int = 0
 
     @Param(Array("128"))
-    var defaultSpin: Int = _
+    var defaultSpin: Int = 0
 
     @Param(Array("16"))
-    var maxSpinShift: Byte = _
+    var maxSpinShift: Byte = 0
 
     @Setup
     def setup(): Unit = {

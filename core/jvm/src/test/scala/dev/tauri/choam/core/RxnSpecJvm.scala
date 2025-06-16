@@ -518,7 +518,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     val t = for {
       refs <- Ref(0).run[F].replicateA(N)
       tsk = readMostlyRxn(refs).run[F]
-      _ <- tsk.parReplicateA_(P)(cats.effect.instances.spawn.parallelForGenSpawn)
+      _ <- tsk.parReplicateA_(P)(using cats.effect.instances.spawn.parallelForGenSpawn)
       _ <- assertResultF(refs.traverse(_.get).map(_.sum).run[F], P)
     } yield ()
     t.replicateA_(if (this.isOpenJdk()) 10000 else 1000)

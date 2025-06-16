@@ -49,7 +49,7 @@ private final class ThreadConfinedMcas(
 
     final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long = {
       @tailrec
-      def prepare(it: Iterator[LogEntry[_]]): Long = {
+      def prepare(it: Iterator[LogEntry[?]]): Long = {
         if (it.hasNext) {
           it.next() match {
             case wd: LogEntry[a] =>
@@ -69,10 +69,10 @@ private final class ThreadConfinedMcas(
       }
 
       @tailrec
-      def execute(it: Iterator[LogEntry[_]], newVersion: Long): Unit = {
+      def execute(it: Iterator[LogEntry[?]], newVersion: Long): Unit = {
         if (it.hasNext) {
           it.next() match {
-            case wd: LogEntry[a] =>
+            case wd: LogEntry[_] =>
               val old = wd.address.unsafeGetP()
               _assert(equ(old, wd.ov))
               wd.address.unsafeSetP(wd.nv)
@@ -102,7 +102,7 @@ private final class ThreadConfinedMcas(
 
     def validateAndTryExtend(
       desc: AbstractDescriptor,
-      hwd: LogEntry[_],
+      hwd: LogEntry[?],
     ): AbstractDescriptor.Aux[desc.D] =
       desc.validateAndTryExtend(_commitTs, this, additionalHwd = hwd)
 

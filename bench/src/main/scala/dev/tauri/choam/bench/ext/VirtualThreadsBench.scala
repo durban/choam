@@ -55,12 +55,12 @@ class VirtualThreadsBench {
 
   @Benchmark
   def baseline(st: BaselineSt): Unit = {
-    doThings(st, N).evalOn(st.baselineEc).unsafeRunSync()(st.runtime)
+    doThings(st, N).evalOn(st.baselineEc).unsafeRunSync()(using st.runtime)
   }
 
   @Benchmark
   def virtualThreads(st: VirtThreadSt): Unit = {
-    doThings(st, N).evalOn(st.virtThreadEc).unsafeRunSync()(st.runtime)
+    doThings(st, N).evalOn(st.virtThreadEc).unsafeRunSync()(using st.runtime)
   }
 }
 

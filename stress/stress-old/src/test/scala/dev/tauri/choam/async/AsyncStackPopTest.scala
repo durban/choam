@@ -41,17 +41,17 @@ class AsyncStackPopTest {
 
   private[this] val stack: AsyncStack[String] = {
     val s = AsyncStack.treiberStack[String].run[SyncIO].unsafeRunSync()
-    (s.push[IO]("a") *> s.push[IO]("b")).unsafeRunSync()(this.runtime)
+    (s.push[IO]("a") *> s.push[IO]("b")).unsafeRunSync()(using this.runtime)
     s
   }
 
   @Actor
   def pop1(r: LL_Result): Unit = {
-    r.r1 = this.stack.pop.unsafeRunSync()(this.runtime)
+    r.r1 = this.stack.pop.unsafeRunSync()(using this.runtime)
   }
 
   @Actor
   def pop2(r: LL_Result): Unit = {
-    r.r2 = this.stack.pop.unsafeRunSync()(this.runtime)
+    r.r2 = this.stack.pop.unsafeRunSync()(using this.runtime)
   }
 }

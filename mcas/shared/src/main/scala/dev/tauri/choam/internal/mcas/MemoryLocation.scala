@@ -152,7 +152,7 @@ object MemoryLocation extends MemoryLocationInstances0 {
     new PaddedMemoryLocation[A](initial, id)
   }
 
-  final def globalCompare(a: MemoryLocation[_], b: MemoryLocation[_]): Int = {
+  final def globalCompare(a: MemoryLocation[?], b: MemoryLocation[?]): Int = {
     this.orderingInstance.compare(a.cast[Any], b.cast[Any])
   }
 }

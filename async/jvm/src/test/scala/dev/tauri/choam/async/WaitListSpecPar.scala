@@ -53,7 +53,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
 
   private def testDequeCancel(
     testOpts: TestOptions,
-    newEmptyQ: F[AsyncQueueSource[String] with BoundedQueueSink[String]],
+    newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
   ): Unit = {
     test(testOpts.withName(s"${testOpts.name}: deque cancel race")) {
       def deqAndSave(q: AsyncQueueSource[String], ref: Ref[F, String]): F[Unit] = {
@@ -87,7 +87,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
 
   private def testEnqueueCancelBounded(
     name: String,
-    newEmptyQ: F[AsyncQueueSource[String] with BoundedQueueSink[String]],
+    newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
     bounds: List[Int],
   ): Unit = {
     for (bound <- bounds) {
@@ -97,7 +97,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
 
   private def _testEnqueueCancelBounded(
     name: String,
-    newEmptyQ: F[AsyncQueueSource[String] with BoundedQueueSink[String]],
+    newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
     bound: Int,
   ): Unit = {
 

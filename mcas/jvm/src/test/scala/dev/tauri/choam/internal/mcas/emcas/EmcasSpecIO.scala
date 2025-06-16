@@ -32,7 +32,7 @@ final class EmcasSpecIO extends EmcasSpecF[IO] {
   final def testF(name: String)(body: Async[IO] => IO[Any])(implicit loc: munit.Location): Unit = {
     super.test(name) {
       val tsk: IO[Any] = body.apply(IO.asyncForIO).replicateA_(N)
-      tsk.unsafeRunSync()(cats.effect.unsafe.IORuntime.global)
+      tsk.unsafeRunSync()(using cats.effect.unsafe.IORuntime.global)
     }
   }
 }

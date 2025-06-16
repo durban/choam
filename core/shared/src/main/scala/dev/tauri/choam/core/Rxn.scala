@@ -274,7 +274,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
           mcas = mcas,
           strategy = strategy,
           isStm = false,
-        ).interpretAsync(poll)(F)
+        ).interpretAsync(poll)
       }
     }
   }
@@ -348,7 +348,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
           mcas = mcas,
           strategy = strategy,
           isStm = true,
-        ).interpretAsync(poll)(F)
+        ).interpretAsync(poll)
       }
     }
   }
@@ -1714,7 +1714,7 @@ object Rxn extends RxnInstances0 {
         case 7 => // ContUpdWith
           val ox = contK.pop()
           val ref = contK.pop().asInstanceOf[MemoryLocation[Any]]
-          val (nx, res) = this.aCastTo[Tuple2[_, _]]
+          val (nx, res) = this.aCastTo[Tuple2[?, ?]]
           val hwd = desc.getOrElseNull(ref)
           _assert(hwd ne null)
           if (equ(hwd.nv, ox)) {
@@ -1954,7 +1954,7 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    private[this] final def forceValidate(optHwd: LogEntry[_]): Boolean = {
+    private[this] final def forceValidate(optHwd: LogEntry[?]): Boolean = {
       if (this.hasTentativeRead) {
         // can't revalidate and extend the log (safely),
         // because a `tentativeRead` was previously
@@ -2157,7 +2157,7 @@ object Rxn extends RxnInstances0 {
           contK.push(c.right)
           loop(c.left)
         case c: AndAlso[_, _, _, _] => // AndAlso
-          val xp = aCastTo[Tuple2[_, _]]
+          val xp = aCastTo[Tuple2[?, ?]]
           contT.push2(RxnConsts.ContAndAlsoJoin, RxnConsts.ContAndAlso)
           contK.push2(c.right, xp._2)
           // left:
@@ -2551,7 +2551,7 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
     final override def productR[A, B](fa: Rxn[Any, A])(fb: Rxn[Any, B]): Rxn[Any, B] =
       fa.productR(fb)
     final override def product[A, B](fa: Rxn[Any, A], fb: Rxn[Any, B]): Rxn[Any, (A, B)] =
-      fa product fb
+      fa.product(fb)
     final override def flatMap[A, B](fa: Rxn[Any, A])(f: A => Rxn[Any, B]): Rxn[Any, B] =
       fa.flatMap(f)
     final override def tailRecM[A, B](a: A)(f: A => Rxn[Any, Either[A, B]]): Rxn[Any, B] =

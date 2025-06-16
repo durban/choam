@@ -90,7 +90,7 @@ class EmcasTest {
     go()
   }
 
-  private[this] final def checkWd(d: EmcasWordDesc[_], r: LLLLL_Result): Unit = {
+  private[this] final def checkWd(d: EmcasWordDesc[?], r: LLLLL_Result): Unit = {
     val parent = d.parent
     val it = parent.getWordIterator()
     if (it eq null) {

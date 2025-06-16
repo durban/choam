@@ -39,7 +39,7 @@ final class TtrieModelTest extends FunSuite with BaseLinchkSpec {
     ttrieModelCheck(classOf[SkipListTestState])
   }
 
-  private def ttrieModelCheck(cls: Class[_ <: AbstractTestState]): Unit = {
+  private def ttrieModelCheck(cls: Class[? <: AbstractTestState]): Unit = {
     printFatalErrors {
       LinChecker.check(cls, defaultModelCheckingOptions())
     }

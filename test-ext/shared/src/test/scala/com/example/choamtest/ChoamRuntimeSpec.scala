@@ -70,7 +70,7 @@ final class ChoamRuntimeSpec extends munit.CatsEffectSuite {
       }
     }
     res.use { rt =>
-      (checkReactive(rt._1, IO.asyncForIO), checkTransactive(rt._2, IO.asyncForIO)).flatMapN { (r1, r2) =>
+      (checkReactive(using rt._1, IO.asyncForIO), checkTransactive(using rt._2, IO.asyncForIO)).flatMapN { (r1, r2) =>
         checkSameRt(r1, r2)
       }
     }
@@ -87,7 +87,7 @@ final class ChoamRuntimeSpec extends munit.CatsEffectSuite {
       }
     }
     res.use { rt =>
-      (checkReactive(rt._1, IO.asyncForIO), checkTransactive(rt._2, IO.asyncForIO)).flatMapN { (r1, r2) =>
+      (checkReactive(using rt._1, IO.asyncForIO), checkTransactive(using rt._2, IO.asyncForIO)).flatMapN { (r1, r2) =>
         checkSameRt(r1, r2)
       }
     }
@@ -105,8 +105,8 @@ final class ChoamRuntimeSpec extends munit.CatsEffectSuite {
     }
     res.use { rr =>
       for {
-        r1 <- checkReactive[IO](rr._1, IO.asyncForIO)
-        r2 <- checkReactive[SyncIO](rr._2, SyncIO.syncForSyncIO).to[IO]
+        r1 <- checkReactive[IO](using rr._1, IO.asyncForIO)
+        r2 <- checkReactive[SyncIO](using rr._2, SyncIO.syncForSyncIO).to[IO]
         _ <- checkSameRt(r1, r2)
       } yield ()
     }

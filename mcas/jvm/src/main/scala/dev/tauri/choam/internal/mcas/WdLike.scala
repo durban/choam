@@ -177,7 +177,7 @@ package emcas {
   }
 
   private object EmcasWordDesc {
-    private[mcas] val Invalid: EmcasWordDesc[_] = new EmcasWordDesc[AnyRef](
+    private[mcas] val Invalid: EmcasWordDesc[?] = new EmcasWordDesc[AnyRef](
       parent = null,
       address = null,
       _ov = null,

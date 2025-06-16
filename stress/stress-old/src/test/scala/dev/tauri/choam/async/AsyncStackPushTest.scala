@@ -44,17 +44,17 @@ class AsyncStackPushTest {
 
   @Actor
   def push1(): Unit = {
-    stack.push[IO]("a").unsafeRunSync()(this.runtime)
+    stack.push[IO]("a").unsafeRunSync()(using this.runtime)
   }
 
   @Actor
   def push2(): Unit = {
-    stack.push[IO]("b").unsafeRunSync()(this.runtime)
+    stack.push[IO]("b").unsafeRunSync()(using this.runtime)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r1 = this.stack.pop.unsafeRunSync()(this.runtime)
-    r.r2 = this.stack.pop.unsafeRunSync()(this.runtime)
+    r.r1 = this.stack.pop.unsafeRunSync()(using this.runtime)
+    r.r2 = this.stack.pop.unsafeRunSync()(using this.runtime)
   }
 }

@@ -35,8 +35,8 @@ final class MixinSpec extends FunSuite {
   private[this] def _test[A](n: TestOptions)(body: => Task[A])(implicit loc: Location): Unit = {
     super.test(n) {
       val tsk: Task[A] = body
-      this.runtime.unsafe.runToFuture(tsk)(implicitly, zio.Unsafe)
-    } (loc)
+      this.runtime.unsafe.runToFuture(tsk)(using implicitly, zio.Unsafe)
+    } (using loc)
   }
 
   _test("RxnAppMixin") {

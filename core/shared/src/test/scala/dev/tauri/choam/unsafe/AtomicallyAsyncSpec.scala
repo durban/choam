@@ -51,13 +51,13 @@ trait AtomicallyAsyncSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =
         val ov = ref.value
         ref.value = ov + 1
         ov
-      } (F)
+      } (using F)
       _ <- assertEqualsF(r1, 0)
       _ <- assertResultF(ref.get.run, 1)
       r2 <- atomicallyInAsync[F, String](cede) { implicit ir =>
         updateRef(ref)(_ + 1)
         null
-      } (F)
+      } (using F)
       _ <- assertEqualsF(r2, null)
       _ <- assertResultF(ref.get.run, 2)
     } yield ()
@@ -66,20 +66,20 @@ trait AtomicallyAsyncSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =
   test("Forced retries") {
     for {
       ctr <- F.delay(new AtomicInteger)
-      ref <- atomicallyInAsync(RetryStrategy.Default)(newRef(42)(_))(F)
+      ref <- atomicallyInAsync(RetryStrategy.Default)(newRef(42)(using _))(using F)
       tsk = atomicallyInAsync(cede) { implicit ir =>
         updateRef(ref)(_ + 1)
         if (ctr.incrementAndGet() < 5) {
           alwaysRetry()
         }
         ref.value
-      } (F)
+      } (using F)
       _ <- assertResultF(tsk, 43)
-      _ <- assertResultF(F.delay(atomically(ref.value(_))), 43)
+      _ <- assertResultF(F.delay(atomically(ref.value(using _))), 43)
       _ <- assertResultF(F.delay(ctr.get()), 5)
       _ <- F.delay(ctr.set(0))
       _ <- assertResultF(tsk, 44)
-      _ <- assertResultF(F.delay(atomically(ref.value(_))), 44)
+      _ <- assertResultF(F.delay(atomically(ref.value(using _))), 44)
       _ <- assertResultF(F.delay(ctr.get()), 5)
     } yield ()
   }

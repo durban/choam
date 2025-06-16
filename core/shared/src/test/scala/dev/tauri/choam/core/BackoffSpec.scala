@@ -208,7 +208,7 @@ class BackoffSpec extends BaseSpec {
         val k = (token & BackoffPlatform.backoffTokenMask).toInt
         Pause(k)
       } else {
-        this.tokenToF(token)(testTemporal)
+        this.tokenToF(token)(using testTemporal)
       }
     }
 

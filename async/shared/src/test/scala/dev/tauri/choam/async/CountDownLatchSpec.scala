@@ -35,7 +35,7 @@ final class CountDownLatchSpec_ThreadConfinedMcas_IO_Ticked
 
 trait CountDownLatchSpecTicked[F[_]]
   extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+  with AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   test("Reaching 0 should call all registered `await`s") {
     for {
@@ -81,7 +81,7 @@ trait CountDownLatchSpec[F[_]]
     } yield ()
 
     assumeF(this.mcasImpl.isThreadSafe) *> (
-      tsk.parReplicateA_(if (this.isJvm()) 5000 else 1)(cats.effect.instances.spawn.parallelForGenSpawn)
+      tsk.parReplicateA_(if (this.isJvm()) 5000 else 1)(using cats.effect.instances.spawn.parallelForGenSpawn)
     )
   }
 

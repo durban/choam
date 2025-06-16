@@ -668,9 +668,9 @@ private[mcas] final class Emcas(
       }
     } // tryWord
 
-    def acquire(words: Array[WdLike[_]], newSeen: Long): Long = {
+    def acquire(words: Array[WdLike[?]], newSeen: Long): Long = {
       @tailrec
-      def go(words: Array[WdLike[_]], next: Int, len: Int, needsValidation: Boolean): Long = {
+      def go(words: Array[WdLike[?]], next: Int, len: Int, needsValidation: Boolean): Long = {
         if (next < len) {
           words(next) match {
             case null =>
@@ -717,9 +717,9 @@ private[mcas] final class Emcas(
       }
     } // acquire
 
-    def validate(words: Array[WdLike[_]], newSeen: Long): Long = {
+    def validate(words: Array[WdLike[?]], newSeen: Long): Long = {
       @tailrec
-      def go(words: Array[WdLike[_]], next: Int, len: Int): Long = {
+      def go(words: Array[WdLike[?]], next: Int, len: Int): Long = {
         if (next < len) {
           words(next) match {
             case null =>

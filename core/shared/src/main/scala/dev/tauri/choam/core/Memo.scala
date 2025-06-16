@@ -35,7 +35,7 @@ private object Memo {
 
     final override def getOrInit: Axn[A] = {
       state.updateAndGetWith { ov =>
-        if (ov.isInstanceOf[Initializer[_]]) {
+        if (ov.isInstanceOf[Initializer[?]]) {
           ov.asInstanceOf[Initializer[A]].act
         } else {
           Rxn.pure(ov.asInstanceOf[A])

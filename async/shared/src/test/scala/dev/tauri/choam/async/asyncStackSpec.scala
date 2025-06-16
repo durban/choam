@@ -33,14 +33,14 @@ final class AsyncStackSpec_Elimination_ThreadConfinedMcas_IO
   with AsyncStackSpec_Elimination[IO]
 
 trait AsyncStackSpec_Treiber[F[_]]
-  extends AsyncStackSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+  extends AsyncStackSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   protected final override def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[A]] =
     AsyncStack.treiberStack[A].run[G]
 }
 
 trait AsyncStackSpec_Elimination[F[_]]
-  extends AsyncStackSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+  extends AsyncStackSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   protected final override def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[A]] =
     AsyncStack.eliminationStack[A].run[G]
@@ -48,7 +48,7 @@ trait AsyncStackSpec_Elimination[F[_]]
 
 trait AsyncStackSpec[F[_]]
   extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+  with AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   protected def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[A]]
 

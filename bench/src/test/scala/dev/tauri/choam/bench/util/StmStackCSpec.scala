@@ -33,7 +33,7 @@ trait StmStackCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with Sp
 
   test("StmStackC should be a correct stack") {
     for {
-      s <- STM.runtime[F](STM.Make.asyncInstance(F))
+      s <- STM.runtime[F](using STM.Make.asyncInstance(using F))
       q <- {
         val qu = StmStackCLike[STM, F](s)
         s.commit(StmStackC.make(qu)(List(1, 2, 3)))

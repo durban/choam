@@ -42,7 +42,7 @@ final class LogMap2Spec extends ScalaCheckSuite with SpecDefaultMcas { self =>
       val refs = new Random(seed).shuffle(_refs.toList)
       var lm = LogMap2.empty[String]
       var tm = TreeMap.empty[MemoryLocation[String], LogEntry[String]](
-        MemoryLocation.orderingInstance
+        using MemoryLocation.orderingInstance
       )
       for (ref <- refs) {
         val hwd = LogEntry(ref, "x", "y", 0L)
@@ -88,7 +88,7 @@ final class LogMap2Spec extends ScalaCheckSuite with SpecDefaultMcas { self =>
     val refs = rng.shuffle(_refs.toList)
     var lm = LogMap2.empty[A]
     var tm = TreeMap.empty[MemoryLocation[A], LogEntry[A]](
-      MemoryLocation.orderingInstance
+      using MemoryLocation.orderingInstance
     )
     // insert everything:
     for (ref <- refs) {
@@ -158,7 +158,7 @@ final class LogMap2Spec extends ScalaCheckSuite with SpecDefaultMcas { self =>
         self.fail("not implemented")
       private[mcas] def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long =
         self.fail("not implemented")
-      def validateAndTryExtend(desc: AbstractDescriptor, hwd: LogEntry[_]): AbstractDescriptor.Aux[desc.D] =
+      def validateAndTryExtend(desc: AbstractDescriptor, hwd: LogEntry[?]): AbstractDescriptor.Aux[desc.D] =
         self.fail("not implemented")
     }
 

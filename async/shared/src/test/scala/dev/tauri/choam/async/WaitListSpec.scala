@@ -31,7 +31,7 @@ final class WaitListSpec_ThreadConfinedMcas_IO
 
 trait WaitListSpec[F[_]]
   extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+  with AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   test("WaitList around a Ref") {
     for {

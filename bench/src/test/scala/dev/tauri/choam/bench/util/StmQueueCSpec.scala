@@ -33,7 +33,7 @@ trait StmQueueCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with Sp
 
   test("StmQueueC should be a correct queue") {
     for {
-      s <- STM.runtime[F](STM.Make.asyncInstance(F))
+      s <- STM.runtime[F](using STM.Make.asyncInstance(using F))
       q <- {
         val qu = StmQueueCLike[STM, F](s)
         s.commit(StmQueueC.make(qu)(List.empty[Int]))
@@ -64,7 +64,7 @@ trait StmQueueCSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] with Sp
   test("StmQueueC should have composable transactions") {
     val N = 1000
     for {
-      s <- STM.runtime[F](STM.Make.asyncInstance(F))
+      s <- STM.runtime[F](using STM.Make.asyncInstance(using F))
       qu = StmQueueCLike[STM, F](s)
       qs <- {
         val tsk: F[qu.StmQueueC[Int]] = qu.stm.commit(StmQueueC.make[STM, F, Int](qu)(List.empty[Int]))

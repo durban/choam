@@ -21,7 +21,7 @@ import cats.effect.kernel.Async
 
 import munit.Location
 
-trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] with McasImplSpec =>
+trait UtilsForZIO { this: BaseSpecAsyncF[zio.Task] & McasImplSpec =>
 
   /** Subclasses may raise this to INFO, if they're interested */
   protected def zioUnhandledErrorLogLevel: zio.LogLevel =

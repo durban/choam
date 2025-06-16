@@ -234,8 +234,8 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     bp: BenchmarkParams,
     ip: IterationParams,
     ir: IterationResult
-  ): ju.Collection[_ <: Result[_]] = {
-    val res = new ju.ArrayList[Result[_]]
+  ): ju.Collection[? <: Result[?]] = {
+    val res = new ju.ArrayList[Result[?]]
     this.timeAfter = System.nanoTime()
     this.elapsedSeconds = getElapsedSeconds()
     this.statsAfter = getRetryStats()
@@ -346,11 +346,11 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     )
   }
 
-  private[this] final def countExchanges(): ju.List[Result[_ <: Result[_]]] = {
+  private[this] final def countExchanges(): ju.List[Result[? <: Result[?]]] = {
     val exchangesAfter = RxnProfiler.exchangeCounter.sum()
     val exchangeCount = (exchangesAfter - exchangesBefore).toDouble
     val exchangesPerSecond = computePerSecond(exchangeCount)
-    val res = new ju.ArrayList[Result[_]]
+    val res = new ju.ArrayList[Result[?]]
     if (config.exchangesPerSecond) {
       res.add(
         new ScalarResult(

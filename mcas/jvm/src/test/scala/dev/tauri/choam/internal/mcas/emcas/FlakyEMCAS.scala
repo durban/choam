@@ -76,7 +76,7 @@ final class FlakyEMCAS extends Mcas.UnsealedMcas { self =>
 
     final override def validateAndTryExtend(
       desc: AbstractDescriptor,
-      hwd: LogEntry[_],
+      hwd: LogEntry[?],
     ): AbstractDescriptor.Aux[desc.D] = {
       emcasCtx.validateAndTryExtend(desc, hwd)
     }

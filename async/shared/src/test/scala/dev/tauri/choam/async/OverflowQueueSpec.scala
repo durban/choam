@@ -39,14 +39,14 @@ final class OverflowQueueSpec_Lazy_ThreadConfinedMcas_IO
   with LazyOverflowQueueSpec[IO]
 
 trait StrictOverflowQueueSpec[F[_]]
-  extends OverflowQueueSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+  extends OverflowQueueSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   final override def newRingBuffer[A](capacity: Int): F[OverflowQueue[A]] =
     OverflowQueue.ringBuffer[A](capacity).run[F]
 }
 
 trait LazyOverflowQueueSpec[F[_]]
-  extends OverflowQueueSpec[F] { this: McasImplSpec with TestContextSpec[F] =>
+  extends OverflowQueueSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   final override def newRingBuffer[A](capacity: Int): F[OverflowQueue[A]] =
     OverflowQueue.lazyRingBuffer[A](capacity).run[F]
@@ -55,7 +55,7 @@ trait LazyOverflowQueueSpec[F[_]]
 trait OverflowQueueSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with AsyncReactiveSpec[F]
-  with ScalaCheckEffectSuite { this: McasImplSpec with TestContextSpec[F] =>
+  with ScalaCheckEffectSuite { this: McasImplSpec & TestContextSpec[F] =>
 
   def newRingBuffer[A](capacity: Int): F[OverflowQueue[A]]
 

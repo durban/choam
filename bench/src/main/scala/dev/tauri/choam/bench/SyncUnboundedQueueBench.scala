@@ -42,8 +42,8 @@ class SyncUnboundedQueueBench extends BenchUtils {
   @Benchmark
   def msQueue(s: MsSt, t: McasImplState, rnd: RandomState): Unit = {
     val tsk = rnd.nextBooleanIO.flatMap { enq =>
-      if (enq) s.michaelScottQueue.enqueue[IO](rnd.nextString())(t.reactive)
-      else s.michaelScottQueue.tryDeque.run[IO](t.reactive)
+      if (enq) s.michaelScottQueue.enqueue[IO](rnd.nextString())(using t.reactive)
+      else s.michaelScottQueue.tryDeque.run[IO](using t.reactive)
     }
     runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
   }
@@ -52,8 +52,8 @@ class SyncUnboundedQueueBench extends BenchUtils {
   @Benchmark
   def msQueueWithRemove(s: RmSt, t: McasImplState, rnd: RandomState): Unit = {
     val tsk = rnd.nextBooleanIO.flatMap { enq =>
-      if (enq) s.removeQueue.enqueue[IO](rnd.nextString())(t.reactive)
-      else s.removeQueue.tryDeque.run[IO](t.reactive)
+      if (enq) s.removeQueue.enqueue[IO](rnd.nextString())(using t.reactive)
+      else s.removeQueue.tryDeque.run[IO](using t.reactive)
     }
     runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
   }
@@ -135,7 +135,7 @@ object SyncUnboundedQueueBench {
 
     @Param(Array("2", "4", "6", "8", "10"))
     @nowarn("cat=unused-privates")
-    private[this] var _concurrentOps: Int = _
+    private[this] var _concurrentOps: Int = 0
 
     def concurrentOps: Int =
       this._concurrentOps
@@ -179,9 +179,9 @@ object SyncUnboundedQueueBench {
   class StmCSt extends BaseSt {
     // scalafix:off
     val runtime = cats.effect.unsafe.IORuntime.global
-    val s = STM.runtime[IO].unsafeRunSync()(runtime)
+    val s = STM.runtime[IO].unsafeRunSync()(using runtime)
     val qu = StmQueueCLike[STM, IO](s)
-    val stmQueue = s.commit(StmQueueC.make(qu)(Prefill.prefill().toList)).unsafeRunSync()(runtime)
+    val stmQueue = s.commit(StmQueueC.make(qu)(Prefill.prefill().toList)).unsafeRunSync()(using runtime)
     // scalafix:on
   }
 
@@ -196,7 +196,7 @@ object SyncUnboundedQueueBench {
   @State(Scope.Benchmark)
   class CeRefSt extends BaseSt {
     val runtime = cats.effect.unsafe.IORuntime.global
-    val ceQueue: CeQueue[IO, String] = CeQueue.fromList[IO, String](Prefill.prefill().toList).unsafeRunSync()(runtime)
+    val ceQueue: CeQueue[IO, String] = CeQueue.fromList[IO, String](Prefill.prefill().toList).unsafeRunSync()(using runtime)
   }
 
   @State(Scope.Benchmark)
