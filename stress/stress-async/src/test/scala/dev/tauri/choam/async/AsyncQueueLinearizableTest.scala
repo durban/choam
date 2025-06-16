@@ -28,7 +28,7 @@ import cats.effect.{ IO, SyncIO, Fiber }
 
 import ce.unsafeImplicits._
 
-// @JCStressTest // TODO: expected failure
+@JCStressTest
 @State
 @Description("AsyncQueue: it must be linearizable (cancelling dequeue)")
 @Outcomes(Array(

@@ -18,8 +18,9 @@
 package dev.tauri.choam
 package async
 
+import cats.~>
 import cats.syntax.all._
-import cats.effect.kernel.Async
+import cats.effect.kernel.{ Async, Cont, MonadCancel }
 
 import core.{ =#>, Rxn, Axn, AsyncReactive }
 
@@ -73,7 +74,7 @@ private[choam] object GenWaitList {
     tryGet: Axn[Option[A]],
     syncSet: A =#> Unit
   ): Axn[WaitList[A]] = {
-    data.Queue.unboundedWithRemove[A => Unit].map { waiters =>
+    data.Queue.unboundedWithRemove[Either[Throwable, Unit] => Unit].map { waiters =>
       new AsyncWaitList[A](tryGet, syncSet, waiters)
     }
   }
@@ -85,6 +86,14 @@ private[choam] object GenWaitList {
       Rxn.postCommit[B](Rxn.unsafe.delay { (b: B) =>
         cb(b)
       })
+    }
+
+    protected[this] final def callCbUnit(cb: Unit => Unit): Rxn[Any, Unit] = {
+      this.callCb(cb).provide(())
+    }
+
+    protected[this] final def callCbRightUnit(cb: Right[Nothing,Unit] => Unit): Rxn[Any, Unit] = {
+      this.callCb(cb).provide(RightUnit).void
     }
 
     protected[this] final def asyncGetImpl[F[_]](
@@ -201,16 +210,12 @@ private[choam] object GenWaitList {
     final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = {
       this.asyncGetImpl[F](waiters = this.getters, fallback = this.trySet0)
     }
-
-    private[this] final def callCbUnit(cb: Unit => Unit): Rxn[Any, Unit] = {
-      this.callCb(cb).provide(())
-    }
   }
 
   private final class AsyncWaitList[A](
     val tryGet: Axn[Option[A]],
     val syncSet0: A =#> Unit,
-    waiters: data.Queue.WithRemove[A => Unit],
+    waiters: data.Queue.WithRemove[Either[Throwable, Unit] => Unit],
   ) extends GenWaitListCommon[A]
     with WaitList[A] { self =>
 
@@ -219,7 +224,7 @@ private[choam] object GenWaitList {
         case None =>
           this.syncSet0.as(true)
         case Some(cb) =>
-          callCb(cb).as(false)
+          this.syncSet0 >>> callCbRightUnit(cb).as(false)
       }
     }
 
@@ -227,8 +232,40 @@ private[choam] object GenWaitList {
       F.asyncInst.void(F.apply(this.set0, a))
     }
 
-    final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = {
-      this.asyncGetImpl[F](waiters = this.waiters, fallback = this.set0)
+    final override def asyncGet[F[_]](implicit ar: AsyncReactive[F]): F[A] = {
+      implicit val F: Async[F] = ar.asyncInst
+
+      def go: F[A] = F.cont(new Cont[F, Unit, A] {
+        final override def apply[G[_]](
+          implicit G: MonadCancel[G, Throwable]
+        ): (Either[Throwable, Unit] => Unit, G[Unit], F ~> G) => G[A] = { (cb, get, lift) =>
+          G.uncancelable { poll =>
+            lift(ar.run(
+              self.tryGet.flatMapF {
+                case Some(a) =>
+                  Axn.pure(G.pure(a))
+                case None =>
+                  waiters.enqueueWithRemover.provide(cb).map { remover =>
+                    val cancel: F[Unit] = ar.run(remover.flatMapF { ok =>
+                      if (ok) {
+                        Axn.unit
+                      } else {
+                        // wake up someone else instead of ourselves:
+                        waiters.tryDeque.flatMapF {
+                          case None => Axn.unit
+                          case Some(other) => callCbRightUnit(other)
+                        }
+                      }
+                    })
+                    G.onCancel(poll(get), lift(cancel)) *> lift(go)
+                  }
+              }
+            )).flatten
+          }
+        }
+      })
+
+      go
     }
   }
 }
