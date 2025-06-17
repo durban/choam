@@ -113,8 +113,11 @@ trait AsyncStackSpec[F[_]]
       f3 <- s.pop.start
       _ <- this.tickAll
       _ <- s.push[F]("a")
+      _ <- this.tickAll
       _ <- s.push[F]("b")
+      _ <- this.tickAll
       _ <- s.push[F]("c")
+      _ <- this.tickAll
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f2.joinWithNever, "b")
       _ <- assertResultF(f3.joinWithNever, "c")
@@ -132,7 +135,9 @@ trait AsyncStackSpec[F[_]]
       _ <- this.tickAll
       _ <- f2.cancel
       _ <- s.push[F]("a")
+      _ <- this.tickAll
       _ <- s.push[F]("b")
+      _ <- this.tickAll
       _ <- s.push[F]("c")
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f3.joinWithNever, "b")
@@ -151,8 +156,11 @@ trait AsyncStackSpec[F[_]]
         s.tryPop
       )
       _ <- assertResultF(rxn.run[F], Some("c"))
-      _ <- assertResultF(f1.joinWithNever, "a")
-      _ <- assertResultF(f2.joinWithNever, "b")
+      _ <- this.tickAll
+      // since `rxn` awakes both fibers in its post-commit actions, their order is non-deterministic
+      v1 <- f1.joinWithNever
+      v2 <- f2.joinWithNever
+      _ <- assertEqualsF(Set(v1, v2), Set("b", "a"))
     } yield ()
   }
 }

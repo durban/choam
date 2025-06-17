@@ -98,8 +98,11 @@ trait UnboundedQueueSpec[F[_]]
       f3 <- s.deque.start
       _ <- this.tickAll
       _ <- s.enqueue[F]("a")
+      _ <- this.tickAll
       _ <- s.enqueue[F]("b")
+      _ <- this.tickAll
       _ <- s.enqueue[F]("c")
+      _ <- this.tickAll
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f2.joinWithNever, "b")
       _ <- assertResultF(f3.joinWithNever, "c")
@@ -117,9 +120,11 @@ trait UnboundedQueueSpec[F[_]]
       _ <- this.tickAll
       rxn = s.enqueue.provide("a") * s.enqueue.provide("b") * s.enqueue.provide("c")
       _ <- rxn.run[F]
-      _ <- assertResultF(f1.joinWithNever, "a")
-      _ <- assertResultF(f2.joinWithNever, "b")
-      _ <- assertResultF(f3.joinWithNever, "c")
+      // since `rxn` awakes all fibers in its post-commit actions, their order is non-deterministic:
+      v1 <- f1.joinWithNever
+      v2 <- f2.joinWithNever
+      v3 <- f3.joinWithNever
+      _ <- assertEqualsF(Set(v1, v2, v3), Set("a", "b", "c"))
     } yield ()
   }
 
@@ -134,9 +139,11 @@ trait UnboundedQueueSpec[F[_]]
         s.tryDeque
       )
       deqRes <- rxn.run[F]
-      _ <- assertEqualsF(deqRes, Some("c"))
-      _ <- assertResultF(f1.joinWithNever, "a")
-      _ <- assertResultF(f2.joinWithNever, "b")
+      _ <- assertEqualsF(deqRes, Some("a"))
+      // since `rxn` awakes all fibers in its post-commit actions, their order is non-deterministic:
+      v1 <- f1.joinWithNever
+      v2 <- f2.joinWithNever
+      _ <- assertEqualsF(Set(v1, v2), Set("b", "c"))
     } yield ()
   }
 }

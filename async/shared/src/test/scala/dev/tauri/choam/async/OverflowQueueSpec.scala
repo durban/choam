@@ -158,6 +158,7 @@ trait OverflowQueueSpec[F[_]]
       _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- q.enqueue[F](1)
+      _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f1.joinWithNever, 1)
       _ <- assertResultF(q.size.run[F], 0)
@@ -200,12 +201,15 @@ trait OverflowQueueSpec[F[_]]
       f3 <- q.deque.start
       _ <- this.tickAll
       _ <- q.enqueue[F](8)
+      _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f1.joinWithNever, 8)
       _ <- q.enqueue[F](9)
+      _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f2.joinWithNever, 9)
       _ <- q.enqueue[F](10)
+      _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f3.joinWithNever, 10)
       _ <- q.enqueue[F](11)
@@ -273,6 +277,7 @@ trait OverflowQueueSpec[F[_]]
       f1 <- q.deque.start
       _ <- this.tickAll
       _ <- q.enqueue[F](1)
+      _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f1.joinWithNever, 1)
       _ <- assertResultF(q.size.run[F], 0)
@@ -293,9 +298,11 @@ trait OverflowQueueSpec[F[_]]
       f3 <- q.deque.start
       _ <- this.tickAll
       _ <- q.enqueue[F](6)
+      _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f2.joinWithNever, 6)
       _ <- q.enqueue[F](7)
+      _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f3.joinWithNever, 7)
       _ <- assertResultF(q.size.run[F], 0)
@@ -313,9 +320,13 @@ trait OverflowQueueSpec[F[_]]
       f3 <- q.deque.start
       _ <- this.tickAll
       _ <- f2.cancel
+      _ <- this.tickAll
       _ <- q.enqueue(1)
+      _ <- this.tickAll
       _ <- q.enqueue(2)
+      _ <- this.tickAll
       _ <- q.enqueue(3)
+      _ <- this.tickAll
       _ <- assertResultF(f1.joinWithNever, 1)
       _ <- assertResultF(f3.joinWithNever, 2)
       _ <- assertResultF(q.size.run[F], 1)
@@ -335,9 +346,11 @@ trait OverflowQueueSpec[F[_]]
         q.tryDeque
       )
       deqRes <- rxn.run[F]
-      _ <- assertEqualsF(deqRes, Some(3))
-      _ <- assertResultF(f1.joinWithNever, 1)
-      _ <- assertResultF(f2.joinWithNever, 2)
+      _ <- assertEqualsF(deqRes, Some(1))
+      // since `rxn` awakes all fibers in its post-commit actions, their order is non-deterministic:
+      v1 <- f1.joinWithNever
+      v2 <- f2.joinWithNever
+      _ <- assertEqualsF(Set(v1, v2), Set(2, 3))
       _ <- assertResultF(q.size.run[F], 0)
     } yield ()
   }
@@ -349,6 +362,7 @@ trait OverflowQueueSpec[F[_]]
       f <- cq.take.start
       _ <- this.tickAll
       _ <- cq.offer(1)
+      _ <- this.tickAll
       _ <- assertResultF(cq.size, 0)
       _ <- assertResultF(f.joinWithNever, 1)
       _ <- cq.offer(2)
