@@ -88,7 +88,10 @@ object PubSub {
 
     private[PubSub] def newBuffer[F[_] : AsyncReactive, A]: Axn[PubSubBuffer[F, A]]
 
-    protected[this] final def mkWaitList[A](underlying: UnboundedDeque[Chunk[A]], size: Ref[Int]): Axn[WaitList[Chunk[A]]] = {
+    protected[this] final def mkWaitList[A](
+      underlying: UnboundedDeque[Chunk[A]],
+      size: Ref[Int]
+    ): Axn[WaitList[Chunk[A]]] = {
       WaitList.apply[Chunk[A]](
         tryGet = underlying.tryTakeLast.flatMapF {
           case None =>
@@ -97,7 +100,17 @@ object PubSub {
             if (chunk eq null) Axn.pure(some)
             else size.update(_ - chunk.size).as(some)
         },
-        syncSet = Rxn.computed(underlying.addFirst),
+        syncSet = Rxn.computed { chunk =>
+          if (chunk ne null) {
+            size.update { oldSize =>
+              val newSize = oldSize + chunk.size
+              Predef.assert(newSize >= oldSize) // check overflow (unlikely)
+              newSize
+            } >>> underlying.addFirst(chunk)
+          } else {
+            underlying.addFirst(chunk)
+          }
+        },
       )
     }
   }
@@ -123,8 +136,8 @@ object PubSub {
       private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Axn[PubSubBuffer[F, A]] = {
         UnboundedDeque[Chunk[A]].flatMapF { underlying =>
           Ref[Int](0).flatMapF { size =>
-            mkWaitList(underlying, size).map { gwl =>
-              new PubSubBuffer[F, A](bufferSize, size, gwl) {
+            mkWaitList(underlying, size).map { wl =>
+              new PubSubBuffer[F, A](bufferSize, size.get, wl) {
                 protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Axn[Result] =
                   Rxn.unsafe.retryWhenChanged
               }
@@ -139,8 +152,8 @@ object PubSub {
       private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Axn[PubSubBuffer[F, A]] = {
         UnboundedDeque[Chunk[A]].flatMapF { underlying =>
           Ref[Int](0).flatMapF { size =>
-            mkWaitList(underlying, size).map { gwl =>
-              new PubSubBuffer[F, A](Integer.MAX_VALUE, size, gwl) {
+            mkWaitList(underlying, size).map { wl =>
+              new PubSubBuffer[F, A](Integer.MAX_VALUE, size.get, wl) {
                 protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Axn[Result] =
                   impossible(s"OverflowStrategy.Unbounded#handleOverflow (chunkSize = ${newChunk.size}, missingCapacity = $missingCapacity)")
               }
@@ -157,14 +170,11 @@ object PubSub {
       private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Axn[PubSubBuffer[F, A]] = {
         UnboundedDeque[Chunk[A]].flatMapF { underlying =>
           Ref[Int](0).flatMapF { size =>
-            mkWaitList(underlying, size).map { gwl =>
-              new PubSubBuffer[F, A](bufferSize, size, gwl) {
+            mkWaitList(underlying, size).map { wl =>
+              new PubSubBuffer[F, A](bufferSize, size.get, wl) {
 
                 protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Axn[Result] =
-                  dropOldestN(missingCapacity) >>> gwl.set0.provide(newChunk).map { inserted =>
-                    _assert(inserted)
-                    Success
-                  }
+                  dropOldestN(missingCapacity) >>> size.update1(_ - missingCapacity) >>> wl.set0.provide(newChunk).as(Success)
 
                 private[this] final def dropOldestN(n: Int): Axn[Unit] = {
                   underlying.tryTakeLast.flatMapF {
@@ -180,7 +190,7 @@ object PubSub {
                       } else { // chunkSize == n
                         Axn.unit
                       }
-                  } // NB: we don't update `size`, since we'll add the `newChunk` anyway
+                  }
                 }
               }
             }
@@ -196,8 +206,8 @@ object PubSub {
       private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Axn[PubSubBuffer[F, A]] = {
         UnboundedDeque[Chunk[A]].flatMapF { underlying =>
           Ref[Int](0).flatMapF { size =>
-            mkWaitList(underlying, size).map { gwl =>
-              new PubSubBuffer[F, A](bufferSize, size, gwl) {
+            mkWaitList(underlying, size).map { wl =>
+              new PubSubBuffer[F, A](bufferSize, size.get, wl) {
                 protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Axn[Result] =
                   _axnSuccess
               }
@@ -256,17 +266,21 @@ object PubSub {
         if (isClosed) {
           _axnClosed
         } else {
-          subscriptions.get.flatMapF { subsMap =>
-            val itr = subsMap.valuesIterator
-            var acc: Axn[Result] = _axnSuccess
-            while (itr.hasNext) {
-              val pub1 = itr.next().publishChunkOrRetry(ch)
-              acc = acc >>> pub1
+          if (ch.isEmpty) {
+            _axnSuccess
+          } else {
+            subscriptions.get.flatMapF { subsMap =>
+              val itr = subsMap.valuesIterator
+              var acc: Axn[Result] = _axnSuccess
+              while (itr.hasNext) {
+                val pub1 = itr.next().publishChunkOrRetry(ch)
+                acc = acc >>> pub1
+              }
+              // TODO: If no subscription ever retries (because
+              // TODO: all have a strategy which doesn't need it),
+              // TODO: then we could avoid creating an `orElse`.
+              Rxn.unsafe.orElse(acc, _axnBackpressured)
             }
-            // TODO: If no subscription ever retries (because
-            // TODO: all have a strategy which doesn't need it),
-            // TODO: then we could avoid creating an `orElse`.
-            Rxn.unsafe.orElse(acc, _axnBackpressured)
           }
         }
       }
@@ -371,7 +385,7 @@ object PubSub {
 
   private[this] sealed abstract class PubSubBuffer[F[_], A](
     capacity: Int,
-    size: Ref[Int],
+    getSize: Axn[Int],
     wl: WaitList[Chunk[A]],
   )(implicit F: AsyncReactive[F]) {
 
@@ -381,18 +395,16 @@ object PubSub {
       wl.set0.provide(null).void
     }
 
-    final def enqueue(chunk: Chunk[A]): Axn[Result] = size.get.flatMapF { sz =>
+    final def enqueue(chunk: Chunk[A]): Axn[Result] = getSize.flatMapF { sz =>
       val chunkSize = chunk.size
+      _assert(chunkSize > 0)
       if (chunkSize > capacity) {
         // impossible to publish a chunk this big
         _axnBackpressured
       } else {
         val left = capacity - sz
         if (left >= chunkSize) { // OK
-          wl.set0.provide(chunk).flatMapF { inserted =>
-            if (inserted) size.set1(sz + chunkSize).as(Success)
-            else _axnSuccess
-          }
+          wl.set0.provide(chunk).as(Success)
         } else {
           val missing = chunkSize - left
           this.handleOverflow(chunk, missing)
