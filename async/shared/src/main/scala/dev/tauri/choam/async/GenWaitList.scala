@@ -233,39 +233,41 @@ private[choam] object GenWaitList {
     }
 
     final override def asyncGet[F[_]](implicit ar: AsyncReactive[F]): F[A] = {
-      implicit val F: Async[F] = ar.asyncInst
+      (new AsyncGetCont[F]).cont
+    }
 
-      def go: F[A] = F.cont(new Cont[F, Unit, A] {
-        final override def apply[G[_]](
-          implicit G: MonadCancel[G, Throwable]
-        ): (Either[Throwable, Unit] => Unit, G[Unit], F ~> G) => G[A] = { (cb, get, lift) =>
-          G.uncancelable { poll =>
-            lift(ar.run(
-              self.tryGet.flatMapF {
-                case Some(a) =>
-                  Axn.pure(G.pure(a))
-                case None =>
-                  waiters.enqueueWithRemover.provide(cb).map { remover =>
-                    val cancel: F[Unit] = ar.run(remover.flatMapF { ok =>
-                      if (ok) {
-                        Axn.unit
-                      } else {
-                        // wake up someone else instead of ourselves:
-                        waiters.tryDeque.flatMapF {
-                          case None => Axn.unit
-                          case Some(other) => callCbRightUnit(other)
-                        }
+    private[this] final class AsyncGetCont[F[_]]()(implicit ar: AsyncReactive[F]) extends Cont[F, Unit, A] {
+
+      val cont: F[A] =
+        ar.asyncInst.cont(this)
+
+      final override def apply[G[_]](
+        implicit G: MonadCancel[G, Throwable]
+      ): (Either[Throwable, Unit] => Unit, G[Unit], F ~> G) => G[A] = { (cb, get, lift) =>
+        G.uncancelable { poll =>
+          lift(ar.run(
+            self.tryGet.flatMapF {
+              case Some(a) =>
+                Axn.pure(G.pure(a))
+              case None =>
+                waiters.enqueueWithRemover.provide(cb).map { remover =>
+                  val cancel: F[Unit] = ar.run(remover.flatMapF { ok =>
+                    if (ok) {
+                      Axn.unit
+                    } else {
+                      // wake up someone else instead of ourselves:
+                      waiters.tryDeque.flatMapF {
+                        case None => Axn.unit
+                        case Some(other) => callCbRightUnit(other)
                       }
-                    })
-                    G.onCancel(poll(get), lift(cancel)) *> lift(go)
-                  }
-              }
-            )).flatten
-          }
+                    }
+                  })
+                  G.onCancel(poll(get), lift(cancel)) *> lift(this.cont)
+                }
+            }
+          )).flatten
         }
-      })
-
-      go
+      }
     }
   }
 }
