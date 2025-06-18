@@ -36,10 +36,7 @@ object AsyncStack {
     Stack.eliminationStack[A].flatMapF(fromSyncStack[A])
 
   private[this] final def fromSyncStack[A](stack: Stack[A]): Axn[AsyncStack[A]] = {
-    WaitList(
-      tryGet = stack.tryPop,
-      syncSet = stack.push
-    ).map { wl =>
+    WaitList(stack.tryPop, stack.push).map { wl =>
       new AsyncStack[A] {
         final override def push: A =#> Unit =
           wl.set0.void

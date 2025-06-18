@@ -93,14 +93,14 @@ object PubSub {
       size: Ref[Int]
     ): Axn[WaitList[Chunk[A]]] = {
       WaitList.apply[Chunk[A]](
-        tryGet = underlying.tryTakeLast.flatMapF {
+        underlying.tryTakeLast.flatMapF {
           case None =>
             Axn.none
           case some @ Some(chunk) =>
             if (chunk eq null) Axn.pure(some)
             else size.update(_ - chunk.size).as(some)
         },
-        syncSet = Rxn.computed { chunk =>
+        Rxn.computed { chunk =>
           if (chunk ne null) {
             size.update { oldSize =>
               val newSize = oldSize + chunk.size

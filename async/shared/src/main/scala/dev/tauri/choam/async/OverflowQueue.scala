@@ -52,7 +52,7 @@ object OverflowQueue {
   }
 
   private[this] final def makeRingBuffer[A](capacity: Int, underlying: data.Queue.WithSize[A]): Axn[OverflowQueue[A]] = {
-    WaitList(tryGet = underlying.tryDeque, syncSet = underlying.enqueue).map { wl =>
+    WaitList(underlying.tryDeque, underlying.enqueue).map { wl =>
       new RingBuffer(capacity, underlying, wl)
     }
   }

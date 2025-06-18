@@ -47,10 +47,10 @@ private[choam] sealed trait WaitList[A] extends GenWaitList[A] { self =>
 private[choam] object WaitList {
 
   final def apply[A](
-    tryGet: Axn[Option[A]],
-    syncSet: A =#> Unit
+    tryGetUnderlying: Axn[Option[A]],
+    setUnderlying: A =#> Unit
   ): Axn[WaitList[A]] = {
-    GenWaitList.waitListForAsync[A](tryGet, syncSet)
+    GenWaitList.waitListForAsync[A](tryGetUnderlying, setUnderlying)
   }
 }
 
