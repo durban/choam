@@ -23,7 +23,7 @@ import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
 import core.Ref
-import data.Queue
+import data.RemoveQueue
 
 @JCStressTest
 @State
@@ -35,7 +35,7 @@ import data.Queue
 ))
 class RemoveQueueComposedTest3 extends RemoveQueueStressTestBase {
 
-  private[this] val queue: Queue.WithRemove[String] =
+  private[this] val queue: RemoveQueue[String] =
     this.newQueue[String]()
 
   private[this] val latch =

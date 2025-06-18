@@ -21,7 +21,7 @@ import cats.effect.SyncIO
 
 import internal.mcas.Mcas
 import core.Reactive
-import data.{ Queue, QueueHelper }
+import data.{ Queue, QueueHelper, RemoveQueue }
 
 abstract class QueueStressTestBase extends StressTestBase {
 
@@ -51,6 +51,6 @@ abstract class MsQueueStressTestBase extends QueueStressTestBase {
 }
 
 abstract class RemoveQueueStressTestBase extends QueueStressTestBase {
-  protected final override def newQueue[A](as: A*): Queue.WithRemove[A] =
-    QueueHelper.fromList[SyncIO, Queue.WithRemove, A](Queue.unboundedWithRemove[A])(as.toList).unsafeRunSync()
+  protected final override def newQueue[A](as: A*): RemoveQueue[A] =
+    QueueHelper.fromList[SyncIO, RemoveQueue, A](RemoveQueue[A])(as.toList).unsafeRunSync()
 }

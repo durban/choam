@@ -27,7 +27,7 @@ import io.github.timwspence.cats.stm.STM
 import zio.stm.ZSTM
 
 import util._
-import data.{ Queue, QueueHelper }
+import data.{ Queue, QueueHelper, RemoveQueue }
 import ce.unsafeImplicits._
 
 @Fork(2)
@@ -153,8 +153,8 @@ object SyncUnboundedQueueBench {
   class RmSt extends BaseSt {
     val runtime =
       cats.effect.unsafe.IORuntime.global
-    val removeQueue: Queue.WithRemove[String] =
-      QueueHelper.fromList[SyncIO, Queue.WithRemove, String](Queue.unboundedWithRemove[String])(Prefill.prefill().toList).unsafeRunSync()
+    val removeQueue: RemoveQueue[String] =
+      QueueHelper.fromList[SyncIO, RemoveQueue, String](RemoveQueue[String])(Prefill.prefill().toList).unsafeRunSync()
   }
 
   @State(Scope.Benchmark)

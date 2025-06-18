@@ -23,14 +23,16 @@ import internal.mcas.RefIdGen
 import RemoveQueue.{ Elem, Node, End, dequeued, isDequeued, isRemoved }
 
 /**
+ * Internal API, for (Gen)WaitList to use.
+ *
  * Like `MsQueue`, but also has support for interior node deletion
  * (`remove`), based on the public domain JSR-166 ConcurrentLinkedQueue
  * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
  *
  * TODO: also unlink removed nodes (instead of just tombing them).
  */
-private final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: RefIdGen)
-  extends Queue.UnsealedWithRemove[A] {
+private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: RefIdGen)
+  extends Queue.UnsealedQueue[A] {
 
   // TODO: do the optimization with ticketRead (like in `MsQueue`)
 
@@ -73,7 +75,7 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: Re
   final override def tryEnqueue: Rxn[A, Boolean] =
     this.enqueue.as(true)
 
-  override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
+  override def enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
     Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref.unpadded(a).flatMap { dataRef =>
         findAndEnqueue(Node(dataRef, nextRef))
@@ -81,7 +83,7 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: Re
     }
   }
 
-  override val enqueueWithRemover: Rxn[A, Axn[Boolean]] = Rxn.computed { (a: A) =>
+  val enqueueWithRemover: Rxn[A, Axn[Boolean]] = Rxn.computed { (a: A) =>
     Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref.unpadded(a).flatMap { dataRef =>
         val newNode = Node(dataRef, nextRef)
@@ -106,7 +108,7 @@ private final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: Re
   }
 }
 
-private object RemoveQueue {
+private[choam] object RemoveQueue {
 
   def apply[A]: Axn[RemoveQueue[A]] =
     Axn.unsafe.delayContext { ctx => new RemoveQueue(ctx.refIdGen) }

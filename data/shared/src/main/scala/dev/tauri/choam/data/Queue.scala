@@ -67,14 +67,6 @@ object Queue {
   private[choam] trait UnsealedQueue[A]
     extends Queue[A]
 
-  /** Internal API, for (Gen)WaitList to use */
-  private[choam] sealed abstract class WithRemove[A] extends Queue[A] {
-    def enqueueWithRemover: Rxn[A, Axn[Boolean]]
-  }
-
-  private[choam] abstract class UnsealedWithRemove[A]
-    extends WithRemove[A]
-
   sealed trait WithSize[A] extends Queue[A] {
     def size: Axn[Int]
   }
@@ -84,10 +76,6 @@ object Queue {
 
   final def unbounded[A]: Axn[Queue[A]] =
     MsQueue[A]
-
-  /** Internal API, for (Gen)WaitList to use */
-  private[choam] final def unboundedWithRemove[A]: Axn[Queue.WithRemove[A]] =
-    RemoveQueue.apply[A]
 
   final def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
     dropping(bound)

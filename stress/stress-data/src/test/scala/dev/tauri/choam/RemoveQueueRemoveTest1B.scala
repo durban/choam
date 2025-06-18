@@ -25,7 +25,7 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 import cats.effect.SyncIO
 
 import core.Axn
-import data.Queue
+import data.RemoveQueue
 
 @JCStressTest
 @State
@@ -43,7 +43,7 @@ class RemoveQueueRemoveTest1B extends RemoveQueueStressTestBase {
     (q, remover)
   }
 
-  private[this] val queue: Queue.WithRemove[String] =
+  private[this] val queue: RemoveQueue[String] =
     queueAndRemover._1
 
   private[this] val remover: Axn[Boolean] =

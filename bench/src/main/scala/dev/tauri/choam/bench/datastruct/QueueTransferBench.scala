@@ -28,7 +28,7 @@ import zio.stm.ZSTM
 
 import util._
 import core.Axn
-import data.{ Queue, QueueHelper }
+import data.{ Queue, QueueHelper, RemoveQueue }
 import ce.unsafeImplicits._
 
 @Fork(1)
@@ -148,7 +148,7 @@ object QueueTransferBench {
   class RmSt extends MsStBase {
 
     protected override def newQueue(): Queue[String] =
-      QueueHelper.fromList[SyncIO, Queue, String](Queue.unboundedWithRemove[String])(Prefill.prefill().toList).unsafeRunSync()
+      QueueHelper.fromList[SyncIO, Queue, String](RemoveQueue[String])(Prefill.prefill().toList).unsafeRunSync()
 
     @Setup
     def setup(): Unit =

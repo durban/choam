@@ -63,19 +63,19 @@ private[choam] object GenWaitList {
     tryGet: Axn[Option[A]],
     trySet: A =#> Boolean,
   ): Axn[GenWaitList[A]] = {
-    data.Queue.unboundedWithRemove[A => Unit].flatMapF { getters =>
-      data.Queue.unboundedWithRemove[(A, Unit => Unit)].map { setters =>
+    data.RemoveQueue[A => Unit].flatMapF { getters =>
+      data.RemoveQueue[(A, Unit => Unit)].map { setters =>
         new AsyncGenWaitList[A](tryGet, trySet, getters, setters)
       }
     }
   }
 
   private[async] final def waitListForAsync[A](
-    tryGet: Axn[Option[A]],
-    syncSet: A =#> Unit
+    tryGetUnderlying: Axn[Option[A]],
+    setUnderlying: A =#> Unit
   ): Axn[WaitList[A]] = {
-    data.Queue.unboundedWithRemove[Either[Throwable, Unit] => Unit].map { waiters =>
-      new AsyncWaitList[A](tryGet, syncSet, waiters)
+    data.RemoveQueue[Either[Throwable, Unit] => Unit].map { waiters =>
+      new AsyncWaitList[A](tryGetUnderlying, setUnderlying, waiters)
     }
   }
 
@@ -97,7 +97,7 @@ private[choam] object GenWaitList {
     }
 
     protected[this] final def asyncGetImpl[F[_]](
-      waiters: data.Queue.WithRemove[A => Unit],
+      waiters: data.RemoveQueue[A => Unit],
       fallback: Rxn[A, Boolean],
     )(implicit ar: AsyncReactive[F]): F[A] = {
       implicit val F: Async[F] = ar.asyncInst
@@ -141,8 +141,8 @@ private[choam] object GenWaitList {
   private final class AsyncGenWaitList[A](
     _tryGet: Axn[Option[A]],
     _trySet: A =#> Boolean,
-    getters: data.Queue.WithRemove[A => Unit],
-    setters: data.Queue.WithRemove[(A, Unit => Unit)],
+    getters: data.RemoveQueue[A => Unit],
+    setters: data.RemoveQueue[(A, Unit => Unit)],
   ) extends GenWaitListCommon[A] {
 
     final override def trySet0: A =#> Boolean = {
@@ -213,18 +213,22 @@ private[choam] object GenWaitList {
   }
 
   private final class AsyncWaitList[A](
-    val tryGet: Axn[Option[A]],
-    val syncSet0: A =#> Unit,
-    waiters: data.Queue.WithRemove[Either[Throwable, Unit] => Unit],
+    tryGetUnderlying: Axn[Option[A]],
+    setUnderlying: A =#> Unit,
+    waiters: data.RemoveQueue[Either[Throwable, Unit] => Unit],
   ) extends GenWaitListCommon[A]
     with WaitList[A] { self =>
+
+    final override def tryGet: Axn[Option[A]] = {
+      tryGetUnderlying // TODO: this is unfair
+    }
 
     final override def set0: A =#> Boolean = {
       this.waiters.tryDeque.flatMap {
         case None =>
-          this.syncSet0.as(true)
+          this.setUnderlying.as(true)
         case Some(cb) =>
-          this.syncSet0 >>> callCbRightUnit(cb).as(false)
+          this.setUnderlying >>> callCbRightUnit(cb).as(false)
       }
     }
 
