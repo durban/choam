@@ -43,27 +43,35 @@ final class WaitListSpecPar_DefaultMcas_IO
 
 trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] { this: McasImplSpec =>
 
-  testDequeCancel("AsyncQueue.unbounded", AsyncQueue.unbounded[String].run[F].widen)
-  testDequeCancel("AsyncQueue.unboundedWithSize", AsyncQueue.unboundedWithSize[String].run[F].widen)
-  testDequeCancel("AsyncQueue.bounded", AsyncQueue.bounded[String](42).run[F].widen)
-  testDequeCancel("BoundedQueue.linked", BoundedQueue.linked[String](42).run[F].widen)
-  testDequeCancel("AsyncQueue.dropping", AsyncQueue.dropping[String](42).run[F].widen)
-  testDequeCancel("AsyncQueue.ringBuffer", AsyncQueue.ringBuffer[String](42).run[F].widen)
-  testDequeCancel("AsyncQueue.synchronous".fail, AsyncQueue.synchronous[String].run[F].widen) // TODO: expected failure
+  private val common = List[(TestOptions, F[AsyncQueueSource[String] & BoundedQueueSink[String]])](
+    ("AsyncQueue.unbounded", AsyncQueue.unbounded[String].run[F].widen),
+    ("AsyncQueue.unboundedWithSize", AsyncQueue.unboundedWithSize[String].run[F].widen),
+    ("AsyncQueue.bounded", AsyncQueue.bounded[String](42).run[F].widen),
+    ("BoundedQueue.linked", BoundedQueue.linked[String](42).run[F].widen),
+    ("AsyncQueue.dropping", AsyncQueue.dropping[String](42).run[F].widen),
+    ("AsyncQueue.ringBuffer", AsyncQueue.ringBuffer[String](42).run[F].widen),
+    // TODO: ("AsyncQueue.synchronous".fail, AsyncQueue.synchronous[String].run[F].widen), // TODO: expected failure
+  )
+
+  for ((testOpts, newEmptyQ) <- common) {
+    testDequeCancel(testOpts, newEmptyQ)
+    testDequeAndTryDequeRace(testOpts, newEmptyQ)
+  }
+
+  private def deqAndSave(q: AsyncQueueSource[String], ref: Ref[F, String]): F[Unit] = {
+    F.uncancelable { poll =>
+      poll(q.deque).flatMap { s =>
+        // if deque completes, we will certainly save the item:
+        ref.set(s)
+      }
+    }
+  }
 
   private def testDequeCancel(
     testOpts: TestOptions,
     newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
   ): Unit = {
     test(testOpts.withName(s"${testOpts.name}: deque cancel race")) {
-      def deqAndSave(q: AsyncQueueSource[String], ref: Ref[F, String]): F[Unit] = {
-        F.uncancelable { poll =>
-          poll(q.deque).flatMap { s =>
-            // if deque completes, we will certainly save the item:
-            ref.set(s)
-          }
-        }
-      }
       val t = for {
         q <- newEmptyQ
         r <- F.ref("")
@@ -81,6 +89,24 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
       t.parReplicateA_(100)
     }
   }
+
+  private def testDequeAndTryDequeRace(
+    testOpts: TestOptions,
+    newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
+  ): Unit = {
+    test(testOpts.withName(s"${testOpts.name}: deque and tryDeque race")) {
+      val t = for {
+        q <- newEmptyQ
+        fib <- q.deque[F, String].start
+        _ <- F.sleep(0.1.seconds) // wait for fiber to suspend
+        // to be fair(er), the item should be received by the suspended fiber, and NOT `tryDeque`
+        _ <- assertResultF(F.both(F.cede *> q.tryDeque.run[F], q.enqueue("foo")), (None, ()))
+        _ <- assertResultF(fib.joinWithNever, "foo")
+      } yield ()
+      t.parReplicateA_(100)
+    }
+  }
+
 
   testEnqueueCancelBounded("AsyncQueue.bounded", AsyncQueue.bounded[String](42).run[F].widen, bounds = List(1, 8))
   testEnqueueCancelBounded("BoundedQueue.linked", BoundedQueue.linked[String](42).run[F].widen, bounds = List(1, 8))
