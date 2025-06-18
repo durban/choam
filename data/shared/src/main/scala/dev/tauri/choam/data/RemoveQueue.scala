@@ -72,6 +72,27 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
     }
   }
 
+  val isEmpty: Axn[Boolean] = {
+    def go(from: Ref[Elem[A]]): Axn[Boolean] = {
+      from.get.flatMapF {
+        case Node(dataRef, nextRef) =>
+          dataRef.get.flatMapF { a =>
+            if (isRemoved(a)) {
+              go(nextRef)
+            } else if (isDequeued(a)) {
+              impossible("isEmpty found an already dequeued node")
+            } else {
+              Axn.pure(false)
+            }
+          }
+        case End() =>
+          Axn.pure(true)
+      }
+    }
+
+    head.get.flatMapF { node => go(node.next) }
+  }
+
   final override def tryEnqueue: Rxn[A, Boolean] =
     this.enqueue.as(true)
 

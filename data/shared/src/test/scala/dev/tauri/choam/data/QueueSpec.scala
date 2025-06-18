@@ -215,6 +215,34 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
       _ <- assertEqualsF(contents.length, expected.length)
     } yield ()
   }
+
+  test("RemoveQueue#isEmpty") {
+    for {
+      q <- newQueueFromList(List.empty[Int])
+      _ <- assertResultF(q.isEmpty.run[F], true)
+      _ <- assertResultF(q.isEmpty.run[F], true)
+      _ <- q.enqueueWithRemover[F](1)
+      _ <- assertResultF(q.isEmpty.run[F], false)
+      _ <- assertResultF(q.isEmpty.run[F], false)
+      r2 <- q.enqueueWithRemover[F](2)
+      r3 <- q.enqueueWithRemover[F](3)
+      _ <- assertResultF(q.isEmpty.run[F], false)
+      _ <- assertResultF(q.tryDeque.run[F], Some(1))
+      _ <- assertResultF(q.isEmpty.run[F], false)
+      _ <- assertResultF(r2.run, true)
+      _ <- assertResultF(q.isEmpty.run[F], false)
+      _ <- assertResultF(r3.run, true)
+      _ <- assertResultF(q.isEmpty.run[F], true)
+      _ <- q.enqueueWithRemover[F](42)
+      _ <- assertResultF(q.isEmpty.run[F], false)
+      _ <- q.enqueueWithRemover[F](43)
+      _ <- assertResultF(q.tryDeque.run[F], Some(42))
+      _ <- assertResultF(q.isEmpty.run[F], false)
+      _ <- assertResultF(q.tryDeque.run[F], Some(43))
+      _ <- assertResultF(q.isEmpty.run[F], true)
+      _ <- assertResultF(q.isEmpty.run[F], true)
+    } yield ()
+  }
 }
 
 trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
