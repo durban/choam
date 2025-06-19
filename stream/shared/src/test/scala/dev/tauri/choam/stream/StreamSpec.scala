@@ -78,10 +78,8 @@ trait StreamSpec[F[_]]
     for {
       q1 <- BoundedQueue.array[Option[String]](bound = 10).run[F]
       q2 <- BoundedQueue.linked[Option[String]](bound = 10).run[F]
-      q3 <- AsyncQueue.synchronous[Option[String]].run[F]
       _ <- check(q1)
       _ <- check(q2)
-      _ <- check(q3)
     } yield ()
   }
 

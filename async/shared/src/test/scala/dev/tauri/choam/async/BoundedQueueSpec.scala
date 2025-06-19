@@ -97,8 +97,11 @@ trait BoundedQueueSpec[F[_]]
       f3 <- s.deque.start
       _ <- this.tickAll
       _ <- s.enqueue("a")
+      _ <- this.tickAll
       _ <- s.enqueue("b")
+      _ <- this.tickAll
       _ <- s.enqueue("c")
+      _ <- this.tickAll
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f2.joinWithNever, "b")
       _ <- assertResultF(f3.joinWithNever, "c")
@@ -156,9 +159,11 @@ trait BoundedQueueSpec[F[_]]
       _ <- this.tickAll
       rxn = s.tryEnqueue.provide("a") * s.tryEnqueue.provide("b") * s.tryEnqueue.provide("c")
       _ <- rxn.run[F]
-      _ <- assertResultF(f1.joinWithNever, "a")
-      _ <- assertResultF(f2.joinWithNever, "b")
-      _ <- assertResultF(f3.joinWithNever, "c")
+      // since `rxn` awakes all fibers in its post-commit actions, their order is non-deterministic:
+      v1 <- f1.joinWithNever
+      v2 <- f2.joinWithNever
+      v3 <- f3.joinWithNever
+      _ <- assertEqualsF(Set(v1, v2, v3), Set("a", "b", "c"))
     } yield ()
   }
 
@@ -272,9 +277,13 @@ trait BoundedQueueSpec[F[_]]
       f3 <- s.deque.start
       _ <- this.tickAll
       _ <- f1.cancel
+      _ <- this.tickAll
       _ <- s.enqueue("a")
+      _ <- this.tickAll
       _ <- s.enqueue("b")
+      _ <- this.tickAll
       _ <- s.enqueue("c")
+      _ <- this.tickAll
       _ <- assertResultF(f2.joinWithNever, "a")
       _ <- assertResultF(f3.joinWithNever, "b")
       _ <- assertResultF(s.deque, "c")

@@ -20,9 +20,10 @@ package async
 
 import cats.~>
 import cats.syntax.all._
-import cats.effect.kernel.{ Async, Cont, MonadCancel }
+import cats.effect.kernel.{ Cont, MonadCancel }
 
 import core.{ =#>, Rxn, Axn, AsyncReactive }
+import data.RemoveQueue
 
 private[choam] sealed trait GenWaitList[A] { self =>
 
@@ -63,8 +64,8 @@ private[choam] object GenWaitList {
     tryGetUnderlying: Axn[Option[A]],
     trySetUnderlying: A =#> Boolean,
   ): Axn[GenWaitList[A]] = {
-    data.RemoveQueue[A => Unit].flatMapF { getters =>
-      data.RemoveQueue[(A, Unit => Unit)].map { setters =>
+    RemoveQueue[Either[Throwable, Unit] => Unit].flatMapF { getters =>
+      RemoveQueue[(A, Unit => Unit)].map { setters =>
         new AsyncGenWaitList[A](tryGetUnderlying, trySetUnderlying, getters, setters)
       }
     }
@@ -74,7 +75,7 @@ private[choam] object GenWaitList {
     tryGetUnderlying: Axn[Option[A]],
     setUnderlying: A =#> Unit
   ): Axn[WaitList[A]] = {
-    data.RemoveQueue[Either[Throwable, Unit] => Unit].map { waiters =>
+    RemoveQueue[Either[Throwable, Unit] => Unit].map { waiters =>
       new AsyncWaitList[A](tryGetUnderlying, setUnderlying, waiters)
     }
   }
@@ -96,111 +97,157 @@ private[choam] object GenWaitList {
       this.callCb(cb).provide(RightUnit).void
     }
 
+    private[this] final def wakeUpNextWaiter(waiters: RemoveQueue[Either[Throwable, Unit] => Unit]): Axn[Unit] = {
+      waiters.tryDeque.flatMapF {
+        case None => Axn.unit
+        case Some(other) => callCbRightUnit(other)
+      }
+    }
+
     protected[this] final def asyncGetImpl[F[_]](
-      waiters: data.RemoveQueue[A => Unit],
-      fallback: Rxn[A, Boolean],
+      isFirstTry: Boolean,
+      waiters: RemoveQueue[Either[Throwable, Unit] => Unit],
+      tryGetUnderlying: Axn[Option[A]],
     )(implicit ar: AsyncReactive[F]): F[A] = {
-      implicit val F: Async[F] = ar.asyncInst
-      SideChannel[F, A].flatMap { sideChannel =>
-        F.asyncCheckAttempt { cb =>
-          ar.run(
-            this.tryGet.flatMapF {
-              case Some(a) =>
-                Rxn.pure(Right(a))
-              case None =>
-                val cb2 = { (a: A) =>
-                  val ra = Right(a)
-                  if (sideChannel.completeSync(ra)) {
-                    cb(ra)
-                  } // else: we've lost anyway, no reason to call `cb`
-                }
-                waiters.enqueueWithRemover.provide(cb2).map { remover =>
-                  val cancel: F[Unit] = ar.run(remover).flatMap { ok =>
-                    if (!ok) {
-                      // TODO: Is this still linearizable?
-                      // TODO: Due to the sideChannel, there
-                      // TODO: is a point in time, then the
-                      // TODO: item is logically _in_ the queue,
-                      // TODO: but unaccessible (to tryGet at least).
-                      sideChannel.get.flatMap { a =>
-                        ar.apply(fallback.void, a)
+      ar.asyncInst.cont(new Cont[F, Unit, A] {
+        final override def apply[G[_]](
+          implicit G: MonadCancel[G, Throwable]
+        ): (Either[Throwable, Unit] => Unit, G[Unit], F ~> G) => G[A] = { (cb, get, lift) =>
+          G.uncancelable { poll =>
+            // when we're trying first, we must check for the
+            // existence of other waiters (to be fair); however,
+            // when we're woken up later, we're supposed to go
+            // directly to the underlying data structure:
+            val tg = if (isFirstTry) self.tryGet else tryGetUnderlying
+            lift(ar.run(
+              tg.flatMapF {
+                case Some(a) =>
+                  Axn.pure(G.pure(a))
+                case None =>
+                  waiters.enqueueWithRemover.provide(cb).map { remover =>
+                    val cancel: F[Unit] = ar.run(remover.flatMapF { ok =>
+                      if (ok) {
+                        Axn.unit
+                      } else {
+                        // wake up someone else instead of ourselves:
+                        wakeUpNextWaiter(waiters)
                       }
-                    } else {
-                      F.unit
+                    })
+                    G.onCancel(poll(get), lift(cancel)) *> {
+                      // we need a `poll` also on the recursive call,
+                      // because right now we're inside an `uncancelable`:
+                      G.onCancel(
+                        poll(/* cancellation gap right here */lift(asyncGetImpl(false,  waiters, tryGetUnderlying))),
+                        lift(ar.run(wakeUpNextWaiter(waiters))) // we need this due to the gap above
+                      )
                     }
                   }
-                  Left(Some(cancel))
-                }
-            }
-          )
+              }
+            )).flatten
+          }
         }
-      }
+      })
     }
   }
 
   private final class AsyncGenWaitList[A](
     tryGetUnderlying: Axn[Option[A]],
     trySetUnderlying: A =#> Boolean,
-    getters: data.RemoveQueue[A => Unit],
-    setters: data.RemoveQueue[(A, Unit => Unit)],
+    getters: RemoveQueue[Either[Throwable, Unit] => Unit],
+    setters: RemoveQueue[(A, Unit => Unit)],
   ) extends GenWaitListCommon[A] {
 
     final override def trySet0: A =#> Boolean = {
-      getters.tryDeque.flatMap {
-        case Some(cb) =>
-          callCb(cb).as(true)
-        case None =>
-          trySetUnderlying
+      setters.isEmpty.flatMap { noSetters =>
+        if (noSetters) {
+          getters.tryDeque.flatMap {
+            case None =>
+              trySetUnderlying
+            case Some(cb) =>
+              trySetUnderlying.flatMapF { ok =>
+                if (ok) {
+                  callCbRightUnit(cb).as(true)
+                } else {
+                  // TODO: this will actually happen with a synchronous queue
+                  impossible("AsyncGenWaitList#trySet0 found a getter, but trySetUnderlying failed")
+                }
+              }
+          }
+        } else {
+          Axn.pure(false)
+        }
       }
     }
 
     final override def tryGet: Axn[Option[A]] = {
-      tryGetUnderlying.flatMapF {
-        case s @ Some(_) =>
-          // success, try to unblock a setter:
-          setters.tryDeque.flatMapF {
-            case Some((setterVal, setterCb)) =>
-              trySetUnderlying.provide(setterVal).flatMapF { ok =>
-                if (ok) callCbUnit(setterCb).as(s)
-                else impossible("couldn't _trySet after successful _tryGet")
+      this.getters.isEmpty.flatMapF { noGetters =>
+        if (noGetters) {
+          this.tryGetUnderlying.flatMapF {
+            case s @ Some(_) =>
+              // success, try to unblock a setter:
+              setters.tryDeque.flatMapF {
+                case Some((setterVal, setterCb)) =>
+                  trySetUnderlying.provide(setterVal).flatMapF { ok =>
+                    if (ok) callCbUnit(setterCb).as(s)
+                    else impossible("couldn't _trySet after successful _tryGet")
+                  }
+                case None =>
+                  // no setter to unblock:
+                  Rxn.pure(s)
               }
             case None =>
-              // no setter to unblock:
-              Rxn.pure(s)
+              // can't get, so it's "empty"; however,
+              // it can also be "full" (e.g., queue of
+              // size 0), so we need to check setters:
+              setters.tryDeque.flatMapF {
+                case Some((setterVal, setterCb)) =>
+                  callCbUnit(setterCb).as(Some(setterVal))
+                case None =>
+                  Rxn.pure(None)
+              }
           }
-        case None =>
-          // can't get, so it's "empty"; however,
-          // it can also be "full" (e.g., queue of
-          // size 0), so we need to check setters:
-          setters.tryDeque.flatMapF {
-            case Some((setterVal, setterCb)) =>
-              callCbUnit(setterCb).as(Some(setterVal))
-            case None =>
-              Rxn.pure(None)
-          }
+        } else {
+          // there are already getters waiting
+          Axn.none
+        }
       }
     }
 
     final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = {
       F.asyncInst.asyncCheckAttempt { cb =>
         F.apply(
-          getters.tryDeque.flatMap {
-            case Some(getterCb) =>
-              callCb(getterCb).as(RightUnit)
-            case None =>
-              trySetUnderlying.flatMapF { ok =>
-                if (ok) {
-                  Rxn.pure(RightUnit)
-                } else {
-                  val cb2 = { (_: Unit) =>
-                    // TODO: ...
-                    cb(RightUnit)
+          setters.isEmpty.flatMap { noSetters =>
+            if (noSetters) {
+              getters.tryDeque.flatMap {
+                case None =>
+                  trySetUnderlying.flatMapF { ok =>
+                    if (ok) {
+                      Rxn.pure(RightUnit)
+                    } else {
+                      val cb2 = { (_: Unit) =>
+                        // TODO: ...
+                        cb(RightUnit)
+                      }
+                      setters.enqueueWithRemover.provide((a, cb2)).map { remover =>
+                        Left(Some(F.run(remover.void))) // TODO: don't .void
+                      }
+                    }
                   }
-                  setters.enqueueWithRemover.provide((a, cb2)).map { remover =>
-                    Left(Some(F.run(remover.void))) // TODO: don't .void
+                case Some(getterCb) =>
+                  trySetUnderlying.flatMapF { ok =>
+                    if (ok) {
+                      callCbRightUnit(getterCb).as(RightUnit)
+                    } else {
+                      // TODO: this will actually happen with a synchronous queue
+                      impossible("AsyncGenWaitList#asyncSet found a getter, but trySetUnderlying failed")
+                    }
                   }
-                }
               }
+            } else {
+              setters.enqueueWithRemover.provide((a, { _ => cb(RightUnit) })).map { remover =>
+                Left(Some(F.run(remover.void))) // TODO: don't .void
+              }
+            }
           },
           a
         )
@@ -208,7 +255,7 @@ private[choam] object GenWaitList {
     }
 
     final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = {
-      this.asyncGetImpl[F](waiters = this.getters, fallback = this.trySet0)
+      asyncGetImpl(isFirstTry = true, waiters = this.getters, tryGetUnderlying = this.tryGetUnderlying)
     }
   }
 
@@ -219,7 +266,7 @@ private[choam] object GenWaitList {
   private final class AsyncWaitList[A](
     tryGetUnderlying: Axn[Option[A]],
     setUnderlying: A =#> Unit,
-    waiters: data.RemoveQueue[Either[Throwable, Unit] => Unit],
+    waiters: RemoveQueue[Either[Throwable, Unit] => Unit],
   ) extends GenWaitListCommon[A]
     with WaitList[A] { self =>
 
@@ -247,55 +294,7 @@ private[choam] object GenWaitList {
     }
 
     final override def asyncGet[F[_]](implicit ar: AsyncReactive[F]): F[A] = {
-      asyncGetAwait[F](isFirstTry = true)
-    }
-
-    private[this] final def wakeUpNextWaiter: Axn[Unit] = {
-      waiters.tryDeque.flatMapF {
-        case None => Axn.unit
-        case Some(other) => callCbRightUnit(other)
-      }
-    }
-
-    private[this] final def asyncGetAwait[F[_]](isFirstTry: Boolean)(implicit ar: AsyncReactive[F]): F[A] = {
-      ar.asyncInst.cont(new Cont[F, Unit, A] {
-        final override def apply[G[_]](
-          implicit G: MonadCancel[G, Throwable]
-        ): (Either[Throwable, Unit] => Unit, G[Unit], F ~> G) => G[A] = { (cb, get, lift) =>
-          G.uncancelable { poll =>
-            // when we're trying first, we must check for the
-            // existence of other waiters (to be fair); however,
-            // when we're woken up later, we're supposed to go
-            // directly to the underlying data structure:
-            val tg = if (isFirstTry) self.tryGet else self.tryGetUnderlying
-            lift(ar.run(
-              tg.flatMapF {
-                case Some(a) =>
-                  Axn.pure(G.pure(a))
-                case None =>
-                  waiters.enqueueWithRemover.provide(cb).map { remover =>
-                    val cancel: F[Unit] = ar.run(remover.flatMapF { ok =>
-                      if (ok) {
-                        Axn.unit
-                      } else {
-                        // wake up someone else instead of ourselves:
-                        wakeUpNextWaiter
-                      }
-                    })
-                    G.onCancel(poll(get), lift(cancel)) *> {
-                      // we need a `poll` also on the recursive call,
-                      // because right now we're inside an `uncancelable`:
-                      G.onCancel(
-                        poll(/* cancellation gap right here */lift(asyncGetAwait(isFirstTry = false))),
-                        lift(ar.run(wakeUpNextWaiter)) // we need this due to the gap above
-                      )
-                    }
-                  }
-              }
-            )).flatten
-          }
-        }
-      })
+      asyncGetImpl[F](isFirstTry = true, waiters = this.waiters, tryGetUnderlying = this.tryGetUnderlying)
     }
   }
 }
