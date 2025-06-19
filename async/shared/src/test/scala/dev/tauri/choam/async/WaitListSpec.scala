@@ -55,10 +55,13 @@ trait WaitListSpec[F[_]]
     for {
       q <- AsyncQueue.unbounded[String].run[F]
       fib1 <- q.deque[F, String].start
-      _ <- this.tickAll // wait for fibers to suspend
+      _ <- this.tickAll // wait for fiber to suspend
+      fib2 <- q.deque[F, String].start
+      _ <- this.tickAll // wait for fiber to suspend
       // to be fair(er), the item should be received by the suspended fiber, and NOT `tryDeque`
       _ <- assertResultF(F.both(q.tryDeque.run[F], q.enqueue("foo")), (None, ()))
       _ <- assertResultF(fib1.joinWithNever, "foo")
+      _ <- fib2.cancel
     } yield ()
   }
 
