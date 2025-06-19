@@ -20,7 +20,7 @@ package async
 
 import scala.concurrent.duration._
 
-import cats.effect.IO
+import cats.effect.{ IO, Outcome }
 
 import core.{ Ref, AsyncReactiveSpec }
 
@@ -62,6 +62,52 @@ trait WaitListSpec[F[_]]
       _ <- assertResultF(F.both(q.tryDeque.run[F], q.enqueue("foo")), (None, ()))
       _ <- assertResultF(fib1.joinWithNever, "foo")
       _ <- fib2.cancel
+    } yield ()
+  }
+
+  test("deque wakes up, then goes to sleep again") {
+    for {
+      q <- AsyncQueue.unbounded[String].run[F]
+      fib1 <- q.deque[F, String].start
+      _ <- this.tickAll // wait for fiber to suspend
+      _ <- q.enqueue("foo") // this will wake up the fiber, but:
+      maybeResult <- q.tryDeque.run[F] // this has a chance of overtaking the fiber
+      // (depending on which task the ticked runtime runs first)
+      _ <- this.tickAll // fiber either completes, or goes back to sleep
+      _ <- maybeResult match {
+        case Some(item) =>
+          // fiber lost, it is sleeping now
+          assertEqualsF(item, "foo") *> fib1.cancel // this will hang if it's uncancelable (which is a bug)
+        case None =>
+          // fiber won, it's done now
+          assertResultF(fib1.joinWithNever, "foo")
+      }
+    } yield ()
+  }
+
+  test("deque gets cancelled right after (correctly) waking up") {
+    for {
+      q <- AsyncQueue.unbounded[String].run[F]
+      fib1 <- q.deque[F, String].start
+      _ <- this.tickAll // wait for fiber to suspend
+      fib2 <- q.deque[F, String].start
+      _ <- this.tickAll // add a second waiter
+      _ <- q.enqueue("foo") // this will wake up `fib1`, but:
+      _ <- fib1.cancel // we cancel it
+      // (depending on which task the ticked runtime runs first, it is either cancelled, or completed)
+      _ <- this.tickAll // `fib1` either completes, or cancelled
+      oc <- fib1.join
+      _ <- oc match {
+        case Outcome.Canceled() =>
+          // `fib1` was cancelled, it must wake up `fib2` instead of itself;
+          // if it didn't (which is a bug), this will hang:
+          assertResultF(fib2.joinWithNever, "foo")
+        case Outcome.Succeeded(fa) =>
+          // `fib1` completed, so it must have the item:
+          assertResultF(fa, "foo") *> fib2.cancel
+        case Outcome.Errored(ex) =>
+          failF(ex.toString)
+      }
     } yield ()
   }
 

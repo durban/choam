@@ -250,6 +250,13 @@ private[choam] object GenWaitList {
       asyncGetAwait[F](isFirstTry = true)
     }
 
+    private[this] final def wakeUpNextWaiter: Axn[Unit] = {
+      waiters.tryDeque.flatMapF {
+        case None => Axn.unit
+        case Some(other) => callCbRightUnit(other)
+      }
+    }
+
     private[this] final def asyncGetAwait[F[_]](isFirstTry: Boolean)(implicit ar: AsyncReactive[F]): F[A] = {
       ar.asyncInst.cont(new Cont[F, Unit, A] {
         final override def apply[G[_]](
@@ -272,13 +279,17 @@ private[choam] object GenWaitList {
                         Axn.unit
                       } else {
                         // wake up someone else instead of ourselves:
-                        waiters.tryDeque.flatMapF {
-                          case None => Axn.unit
-                          case Some(other) => callCbRightUnit(other)
-                        }
+                        wakeUpNextWaiter
                       }
                     })
-                    G.onCancel(poll(get), lift(cancel)) *> lift(asyncGetAwait(isFirstTry = false))
+                    G.onCancel(poll(get), lift(cancel)) *> {
+                      // we need a `poll` also on the recursive call,
+                      // because right now we're inside an `uncancelable`:
+                      G.onCancel(
+                        poll(/* cancellation gap right here */lift(asyncGetAwait(isFirstTry = false))),
+                        lift(ar.run(wakeUpNextWaiter)) // we need this due to the gap above
+                      )
+                    }
                   }
               }
             )).flatten
