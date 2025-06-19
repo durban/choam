@@ -20,7 +20,7 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import core.{ Rxn, Axn, AsyncReactive }
+import core.{ Axn, AsyncReactive }
 
 sealed trait AsyncQueueSource[+A] extends data.Queue.UnsealedQueueSource[A] {
   def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] // TODO:0.5: should be called `dequeue`
@@ -53,26 +53,33 @@ object AsyncQueue {
   final def unboundedWithSize[A]: Axn[UnboundedQueue.WithSize[A]] =
     UnboundedQueue.withSize[A]
 
-  final def synchronous[A]: Axn[BoundedQueue[A]] = {
-    GenWaitList[A](Rxn.pure(None), Rxn.ret(false)).map { gwl =>
-      new BoundedQueue.UnsealedBoundedQueue[A] {
-        final override def tryDeque: Axn[Option[A]] =
-          gwl.tryGet
-        final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
-          F.monad.widen(gwl.asyncGet)
-        final override def tryEnqueue: Rxn[A, Boolean] =
-          gwl.trySet0
-        final override def enqueue[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
-          gwl.asyncSet(a)
-        final override def bound: Int =
-          0
-        final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
-          new BoundedQueue.CatsQueueFromBoundedQueue[F, A](this)
-        final override def size: Axn[Int] =
-          Rxn.pure(0)
-      }
-    }
-  }
+  // TODO: final def synchronous[A]: Axn[BoundedQueue[A]] = ...
+  // TODO:
+  // TODO: Providing a synchronous queue which has operations
+  // TODO: in `Rxn` seems fundamentally impossible. Let's say
+  // TODO: we have something like this:
+  // TODO: trait SynchronousQueue[A] {
+  // TODO:   def take[F[_]]: F[A]
+  // TODO:   def offer[F[_]](a: A): F[Unit]
+  // TODO:   def tryTake: Axn[Option[A]]
+  // TODO:   def tryOffer(a: A): Axn[Boolean]
+  // TODO: }
+  // TODO: If `tryOffer` returns `true`, that should mean
+  // TODO: that someone will definitely receive the item.
+  // TODO: But, even if there is a waiting taker, we can't
+  // TODO: be sure that's true. The taker can be cancelled,
+  // TODO: in which case, we don't know what to do with the
+  // TODO: item. (Bounded queues have the underlying queue,
+  // TODO: which can store the item.)
+  // TODO: What could work is this:
+  // TODO: trait SynchronousQueue[A] {
+  // TODO:   def take[F[_]]: F[A]
+  // TODO:   def offer[F[_]](a: A): F[Unit]
+  // TODO: }
+  // TODO: But this is basically `cats.effect.std.Queue.synchronous`.
+  // TODO: We could implement it with `Rxn` internally. Would
+  // TODO: that have a performance advantage? Maybe if contention
+  // TODO: is high (because the CE queue uses an single Ref)?
 
   private[async] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: UnboundedQueue.WithSize[A])
     extends CatsQueue[F, A] {

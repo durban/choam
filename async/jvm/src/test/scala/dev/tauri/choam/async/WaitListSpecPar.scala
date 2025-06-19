@@ -50,8 +50,6 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
     ("BoundedQueue.linked", BoundedQueue.linked[String](42).run[F].widen),
     ("AsyncQueue.dropping", AsyncQueue.dropping[String](42).run[F].widen),
     ("AsyncQueue.ringBuffer", AsyncQueue.ringBuffer[String](42).run[F].widen),
-    ("AsyncQueue.synchronous".ignore, AsyncQueue.synchronous[String].run[F].widen),
-    // TODO: ^--- expected failure for `testDequeCancel`, hangs for `testDequeAndTryDequeRace`
   )
 
   for ((testOpts, newEmptyQ) <- common) {
