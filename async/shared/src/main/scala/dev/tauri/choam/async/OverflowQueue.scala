@@ -38,7 +38,7 @@ object OverflowQueue {
 
   final def droppingQueue[A](capacity: Int): Axn[OverflowQueue[A]] = {
     data.Queue.dropping[A](capacity).flatMapF { dq =>
-      GenWaitList[A](tryGet = dq.tryDeque, trySet = dq.tryEnqueue).map { gwl =>
+      GenWaitList[A](dq.tryDeque, dq.tryEnqueue).map { gwl =>
         new DroppingQueue[A](capacity, dq, gwl)
       }
     }

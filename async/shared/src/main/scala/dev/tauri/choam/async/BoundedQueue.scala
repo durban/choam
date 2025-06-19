@@ -45,11 +45,11 @@ object BoundedQueue {
     (Queue.unbounded[A] * Ref.unpadded[Int](0)).flatMapF {
       case (q, size) =>
         GenWaitList[A](
-          tryGet = q.tryDeque.flatMapF { res =>
+          q.tryDeque.flatMapF { res =>
             if (res.nonEmpty) size.update(_ - 1).as(res)
             else Rxn.pure(res)
           },
-          trySet = size.updWith[A, Boolean] { (s, a) =>
+          size.updWith[A, Boolean] { (s, a) =>
             if (s < bound) q.enqueue.provide(a).as((s + 1, true))
             else Rxn.pure((s, false))
           },
@@ -63,8 +63,8 @@ object BoundedQueue {
     require(bound > 0)
     Queue.dropping[A](bound).flatMapF { q =>
       GenWaitList[A](
-        tryGet = q.tryDeque,
-        trySet = q.tryEnqueue,
+        q.tryDeque,
+        q.tryEnqueue,
       ).map { gwl =>
         new ArrayBoundedQueue[A](bound, q, gwl)
       }

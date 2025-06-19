@@ -60,12 +60,12 @@ private[choam] object GenWaitList {
     Right(())
 
   final def apply[A](
-    tryGet: Axn[Option[A]],
-    trySet: A =#> Boolean,
+    tryGetUnderlying: Axn[Option[A]],
+    trySetUnderlying: A =#> Boolean,
   ): Axn[GenWaitList[A]] = {
     data.RemoveQueue[A => Unit].flatMapF { getters =>
       data.RemoveQueue[(A, Unit => Unit)].map { setters =>
-        new AsyncGenWaitList[A](tryGet, trySet, getters, setters)
+        new AsyncGenWaitList[A](tryGetUnderlying, trySetUnderlying, getters, setters)
       }
     }
   }
@@ -139,8 +139,8 @@ private[choam] object GenWaitList {
   }
 
   private final class AsyncGenWaitList[A](
-    _tryGet: Axn[Option[A]],
-    _trySet: A =#> Boolean,
+    tryGetUnderlying: Axn[Option[A]],
+    trySetUnderlying: A =#> Boolean,
     getters: data.RemoveQueue[A => Unit],
     setters: data.RemoveQueue[(A, Unit => Unit)],
   ) extends GenWaitListCommon[A] {
@@ -150,17 +150,17 @@ private[choam] object GenWaitList {
         case Some(cb) =>
           callCb(cb).as(true)
         case None =>
-          _trySet
+          trySetUnderlying
       }
     }
 
     final override def tryGet: Axn[Option[A]] = {
-      _tryGet.flatMapF {
+      tryGetUnderlying.flatMapF {
         case s @ Some(_) =>
           // success, try to unblock a setter:
           setters.tryDeque.flatMapF {
             case Some((setterVal, setterCb)) =>
-              _trySet.provide(setterVal).flatMapF { ok =>
+              trySetUnderlying.provide(setterVal).flatMapF { ok =>
                 if (ok) callCbUnit(setterCb).as(s)
                 else impossible("couldn't _trySet after successful _tryGet")
               }
@@ -188,7 +188,7 @@ private[choam] object GenWaitList {
             case Some(getterCb) =>
               callCb(getterCb).as(RightUnit)
             case None =>
-              _trySet.flatMapF { ok =>
+              trySetUnderlying.flatMapF { ok =>
                 if (ok) {
                   Rxn.pure(RightUnit)
                 } else {
@@ -212,7 +212,7 @@ private[choam] object GenWaitList {
     }
   }
 
-  // TODO: Look at all usages of WaitList, and make
+  // TODO: Look at all usages of (Gen)WaitList, and make
   // TODO: sure, that none of them uses the underlying
   // TODO: data structure directly (unless really
   // TODO: necessary), because that's dangerous.
