@@ -212,6 +212,10 @@ private[choam] object GenWaitList {
     }
   }
 
+  // TODO: Look at all usages of WaitList, and make
+  // TODO: sure, that none of them uses the underlying
+  // TODO: data structure directly (unless really
+  // TODO: necessary), because that's dangerous.
   private final class AsyncWaitList[A](
     tryGetUnderlying: Axn[Option[A]],
     setUnderlying: A =#> Unit,
@@ -220,7 +224,13 @@ private[choam] object GenWaitList {
     with WaitList[A] { self =>
 
     final override def tryGet: Axn[Option[A]] = {
-      tryGetUnderlying // TODO: this is unfair
+      this.waiters.isEmpty.flatMapF { noWaiters =>
+        if (noWaiters) {
+          this.tryGetUnderlying
+        } else {
+          Axn.none
+        }
+      }
     }
 
     final override def set0: A =#> Boolean = {
@@ -237,41 +247,44 @@ private[choam] object GenWaitList {
     }
 
     final override def asyncGet[F[_]](implicit ar: AsyncReactive[F]): F[A] = {
-      (new AsyncGetCont[F]).cont
+      asyncGetAwait[F](isFirstTry = true)
     }
 
-    private[this] final class AsyncGetCont[F[_]]()(implicit ar: AsyncReactive[F]) extends Cont[F, Unit, A] {
-
-      val cont: F[A] =
-        ar.asyncInst.cont(this)
-
-      final override def apply[G[_]](
-        implicit G: MonadCancel[G, Throwable]
-      ): (Either[Throwable, Unit] => Unit, G[Unit], F ~> G) => G[A] = { (cb, get, lift) =>
-        G.uncancelable { poll =>
-          lift(ar.run(
-            self.tryGet.flatMapF {
-              case Some(a) =>
-                Axn.pure(G.pure(a))
-              case None =>
-                waiters.enqueueWithRemover.provide(cb).map { remover =>
-                  val cancel: F[Unit] = ar.run(remover.flatMapF { ok =>
-                    if (ok) {
-                      Axn.unit
-                    } else {
-                      // wake up someone else instead of ourselves:
-                      waiters.tryDeque.flatMapF {
-                        case None => Axn.unit
-                        case Some(other) => callCbRightUnit(other)
+    private[this] final def asyncGetAwait[F[_]](isFirstTry: Boolean)(implicit ar: AsyncReactive[F]): F[A] = {
+      ar.asyncInst.cont(new Cont[F, Unit, A] {
+        final override def apply[G[_]](
+          implicit G: MonadCancel[G, Throwable]
+        ): (Either[Throwable, Unit] => Unit, G[Unit], F ~> G) => G[A] = { (cb, get, lift) =>
+          G.uncancelable { poll =>
+            // when we're trying first, we must check for the
+            // existence of other waiters (to be fair); however,
+            // when we're woken up later, we're supposed to go
+            // directly to the underlying data structure:
+            val tg = if (isFirstTry) self.tryGet else self.tryGetUnderlying
+            lift(ar.run(
+              tg.flatMapF {
+                case Some(a) =>
+                  Axn.pure(G.pure(a))
+                case None =>
+                  waiters.enqueueWithRemover.provide(cb).map { remover =>
+                    val cancel: F[Unit] = ar.run(remover.flatMapF { ok =>
+                      if (ok) {
+                        Axn.unit
+                      } else {
+                        // wake up someone else instead of ourselves:
+                        waiters.tryDeque.flatMapF {
+                          case None => Axn.unit
+                          case Some(other) => callCbRightUnit(other)
+                        }
                       }
-                    }
-                  })
-                  G.onCancel(poll(get), lift(cancel)) *> lift(this.cont)
-                }
-            }
-          )).flatten
+                    })
+                    G.onCancel(poll(get), lift(cancel)) *> lift(asyncGetAwait(isFirstTry = false))
+                  }
+              }
+            )).flatten
+          }
         }
-      }
+      })
     }
   }
 }

@@ -50,7 +50,8 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
     ("BoundedQueue.linked", BoundedQueue.linked[String](42).run[F].widen),
     ("AsyncQueue.dropping", AsyncQueue.dropping[String](42).run[F].widen),
     ("AsyncQueue.ringBuffer", AsyncQueue.ringBuffer[String](42).run[F].widen),
-    // TODO: ("AsyncQueue.synchronous".fail, AsyncQueue.synchronous[String].run[F].widen), // TODO: expected failure
+    ("AsyncQueue.synchronous".ignore, AsyncQueue.synchronous[String].run[F].widen),
+    // TODO: ^--- expected failure for `testDequeCancel`, hangs for `testDequeAndTryDequeRace`
   )
 
   for ((testOpts, newEmptyQ) <- common) {
@@ -97,16 +98,20 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
     test(testOpts.withName(s"${testOpts.name}: deque and tryDeque race")) {
       val t = for {
         q <- newEmptyQ
-        fib <- q.deque[F, String].start
-        _ <- F.sleep(0.1.seconds) // wait for fiber to suspend
+        fib1 <- q.deque[F, String].start
+        fib2 <- q.deque[F, String].start
+        _ <- F.sleep(1.seconds) // wait for fibers to suspend
         // to be fair(er), the item should be received by the suspended fiber, and NOT `tryDeque`
         _ <- assertResultF(F.both(F.cede *> q.tryDeque.run[F], q.enqueue("foo")), (None, ()))
-        _ <- assertResultF(fib.joinWithNever, "foo")
+        // ok, now unblock one of the fibers (the other one is already unblocked, but we don't know which):
+        _ <- q.enqueue("bar")
+        item1 <- fib1.joinWithNever
+        item2 <- fib2.joinWithNever
+        _ <- assertEqualsF(Set(item1, item2), Set("foo", "bar"))
       } yield ()
       t.parReplicateA_(100)
     }
   }
-
 
   testEnqueueCancelBounded("AsyncQueue.bounded", AsyncQueue.bounded[String](42).run[F].widen, bounds = List(1, 8))
   testEnqueueCancelBounded("BoundedQueue.linked", BoundedQueue.linked[String](42).run[F].widen, bounds = List(1, 8))
