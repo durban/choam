@@ -168,7 +168,6 @@ private[choam] object GenWaitList {
                 if (ok) {
                   callCbRightUnit(cb).as(true)
                 } else {
-                  // TODO: this will actually happen with a synchronous queue
                   impossible("AsyncGenWaitList#trySet0 found a getter, but trySetUnderlying failed")
                 }
               }
@@ -189,7 +188,7 @@ private[choam] object GenWaitList {
                 case Some((setterVal, setterCb)) =>
                   trySetUnderlying.provide(setterVal).flatMapF { ok =>
                     if (ok) callCbUnit(setterCb).as(s)
-                    else impossible("couldn't _trySet after successful _tryGet")
+                    else impossible("AsyncGenWaitList#tryGet couldn't trySetUnderlying after successful tryGetUnderlying")
                   }
                 case None =>
                   // no setter to unblock:
@@ -238,7 +237,6 @@ private[choam] object GenWaitList {
                     if (ok) {
                       callCbRightUnit(getterCb).as(RightUnit)
                     } else {
-                      // TODO: this will actually happen with a synchronous queue
                       impossible("AsyncGenWaitList#asyncSet found a getter, but trySetUnderlying failed")
                     }
                   }
