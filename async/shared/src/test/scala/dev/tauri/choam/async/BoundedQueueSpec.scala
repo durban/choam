@@ -188,14 +188,14 @@ trait BoundedQueueSpec[F[_]]
       f3 <- s.enqueue("g").start
       _ <- this.tickAll
       _ <- assertResultF(s.deque, "a")
-      _ <- assertResultF(s.size.run[F], 4)
       _ <- f1.joinWithNever
+      _ <- assertResultF(s.size.run[F], 4)
       _ <- assertResultF(s.deque, "b")
-      _ <- assertResultF(s.size.run[F], 4)
       _ <- f2.joinWithNever
-      _ <- assertResultF(s.deque, "c")
       _ <- assertResultF(s.size.run[F], 4)
+      _ <- assertResultF(s.deque, "c")
       _ <- f3.joinWithNever
+      _ <- assertResultF(s.size.run[F], 4)
       _ <- assertResultF(s.deque, "d")
       _ <- assertResultF(s.size.run[F], 3)
       _ <- assertResultF(s.deque, "e")
@@ -228,14 +228,14 @@ trait BoundedQueueSpec[F[_]]
       f3 <- s.enqueue("g").start
       _ <- this.tickAll
       _ <- assertResultF(s.tryDeque.run[F], Some("a"))
-      _ <- assertResultF(s.size.run[F], 4)
       _ <- f1.joinWithNever
+      _ <- assertResultF(s.size.run[F], 4)
       _ <- assertResultF(s.tryDeque.run[F], Some("b"))
-      _ <- assertResultF(s.size.run[F], 4)
       _ <- f2.joinWithNever
-      _ <- assertResultF(s.tryDeque.run[F], Some("c"))
       _ <- assertResultF(s.size.run[F], 4)
+      _ <- assertResultF(s.tryDeque.run[F], Some("c"))
       _ <- f3.joinWithNever
+      _ <- assertResultF(s.size.run[F], 4)
       _ <- assertResultF(s.tryDeque.run[F], Some("d"))
       _ <- assertResultF(s.size.run[F], 3)
       _ <- assertResultF(s.tryDeque.run[F], Some("e"))

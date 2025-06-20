@@ -35,7 +35,7 @@ import ce.unsafeImplicits._
   new Outcome(id = Array("null, a, cancelled"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled"),
   new Outcome(id = Array("null, b, .*"), expect = FORBIDDEN, desc = "cancelled, item 'a' lost"),
 ))
-class AsyncQueueCancelTest {
+class AsyncQueueCancelDeqTest {
 
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global

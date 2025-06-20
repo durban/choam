@@ -150,7 +150,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
       }
     }
 
-    test(s"$name: enqueue cancel race (1 waiter; bound = $bound)".ignore) { // TODO: should be .fail, but it's sporadic
+    test(s"$name: enqueue cancel race (1 waiter; bound = $bound)") {
       val t = for {
         _ <- assertF(bound > 0)
         q <- newEmptyQ
@@ -173,7 +173,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] 
       t.parReplicateA_(50000)
     }
 
-    test(s"$name: enqueue cancel race (2 waiters; bound = $bound)".ignore) { // TODO: should be .fail, but it's sporadic
+    test(s"$name: enqueue cancel race (2 waiters; bound = $bound)") {
       val t = for {
         _ <- assertF(bound > 0)
         q <- newEmptyQ
