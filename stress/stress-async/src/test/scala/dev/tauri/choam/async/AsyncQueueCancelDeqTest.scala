@@ -21,7 +21,7 @@ package async
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LLL_Result
+import org.openjdk.jcstress.infra.results.LLLLL_Result
 
 import cats.effect.{ IO, SyncIO, Fiber }
 
@@ -31,9 +31,8 @@ import ce.unsafeImplicits._
 @State
 @Description("AsyncQueue: cancelling dequeue must not lose items")
 @Outcomes(Array(
-  new Outcome(id = Array("a, b, completed: a"), expect = ACCEPTABLE, desc = "cancelled late"),
-  new Outcome(id = Array("null, a, cancelled"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled"),
-  new Outcome(id = Array("null, b, .*"), expect = FORBIDDEN, desc = "cancelled, item 'a' lost"),
+  new Outcome(id = Array("a, b, c, completed1: a, completed2: b"), expect = ACCEPTABLE, desc = "cancelled late"),
+  new Outcome(id = Array("null, a, b, cancelled1, completed2: a"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled"),
 ))
 class AsyncQueueCancelDeqTest {
 
@@ -43,38 +42,60 @@ class AsyncQueueCancelDeqTest {
   private[this] val q: UnboundedQueue[String] =
     AsyncQueue.unbounded[String].run[SyncIO].unsafeRunSync()
 
-  private[this] var result: String =
+  private[this] var result1: String =
     null
 
-  private[this] val taker: Fiber[IO, Throwable, String] = {
+  private[this] var result2: String =
+    null
+
+  private[this] val taker1: Fiber[IO, Throwable, String] = {
     val tsk = IO.uncancelable { poll =>
-      poll(q.deque[IO, String]).flatTap { s => IO { this.result = s } }
+      poll(q.deque[IO, String]).flatTap { s => IO { this.result1 = s } }
     }
-    tsk.start.unsafeRunSync()(using runtime)
+    val fib = tsk.start.unsafeRunSync()(using runtime)
+    Thread.`yield`()
+    fib
+  }
+
+  private[this] val taker2: Fiber[IO, Throwable, String] = {
+    val tsk = IO.uncancelable { poll =>
+      poll(q.deque[IO, String]).flatTap { s => IO { this.result2 = s } }
+    }
+    val fib = tsk.start.unsafeRunSync()(using runtime)
+    fib
   }
 
   @Actor
   def offer(): Unit = {
-    q.enqueue[IO]("a").unsafeRunSync()(using this.runtime)
+    (q.enqueue[IO]("a") *> q.enqueue[IO]("b")).unsafeRunSync()(using this.runtime)
   }
 
   @Actor
   def cancel(): Unit = {
-    taker.cancel.unsafeRunSync()(using runtime)
+    taker1.cancel.unsafeRunSync()(using runtime)
   }
 
   @Arbiter
-  def arbiter(r: LLL_Result): Unit = {
-    val oc: String = taker.join.flatMap { oc =>
+  def arbiter(r: LLLLL_Result): Unit = {
+    q.enqueue[IO]("c").unsafeRunSync()(using this.runtime)
+    val oc1: String = taker1.join.flatMap { oc =>
       oc.fold(
-        IO.pure("cancelled"),
-        ex => IO.pure("error: " + ex.getClass().getName()),
-        fa => fa.map { result => s"completed: $result" },
+        IO.pure("cancelled1"),
+        ex => IO.pure("error1: " + ex.getClass().getName()),
+        fa => fa.map { result => s"completed1: $result" },
       )
     }.unsafeRunSync()(using this.runtime)
-    r.r1 = this.result
-    q.enqueue[IO]("b").unsafeRunSync()(using this.runtime)
-    r.r2 = q.deque[IO, String].unsafeRunSync()(using this.runtime)
-    r.r3 = oc
+    val oc2: String = taker2.join.flatMap { oc =>
+      oc.fold(
+        IO.pure("cancelled2"),
+        ex => IO.pure("error2: " + ex.getClass().getName()),
+        fa => fa.map { result => s"completed2: $result" },
+      )
+    }.unsafeRunSync()(using this.runtime)
+    r.r1 = this.result1
+    r.r2 = this.result2
+    r.r3 = q.deque[IO, String].unsafeRunSync()(using this.runtime)
+    r.r4 = oc1
+    r.r5 = oc2
   }
 }
