@@ -59,7 +59,7 @@ def incrBoth(x: Ref[Int], y: Ref[Int]): Rxn[Any, Unit] = {
 }
 ```
 
-It can be executed with (for example) Cats Effect IO like this
+As an example, we can execute it with `cats.effect.IO` like this
 (the `choam-ce` module is also needed):
 
 <!-- Note: this needs to be kept in sync with `ReadmeSpec`! -->
@@ -90,7 +90,7 @@ object MyMain extends IOApp.Simple with RxnAppMixin {
 As noted [below](#related-work), `Rxn` is not a full-featured STM implementation (notably,
 it lacks Haskell-style "modular blocking"). However, the `dev.tauri.choam.stm`
 package contains a full-blown STM, built on top of `Rxn`. For now, this package is
-experimental (i.e., no backwards compatibility), and also lacks some features, but it
+experimental (i.e., no backwards compatibility), and also lacks some basic features, but it
 _does_ have modular blocking (`Txn.retry`).
 
 ## Modules
@@ -99,40 +99,35 @@ _does_ have modular blocking (`Txn.retry`).
   - core types, like
     [`Rxn`](core/shared/src/main/scala/dev/tauri/choam/core/Rxn.scala) and
     [`Ref`](core/shared/src/main/scala/dev/tauri/choam/refs/Ref.scala)
-  - integration with synchronous effect types in
-    [Cats Effect](https://github.com/typelevel/cats-effect)
+  - integration with effect types implementing the
+    [Cats Effect](https://github.com/typelevel/cats-effect) typeclasses
+    (specifically `Sync`/`Async`)
   - _experimental_ software transactional memory (STM) built on `Rxn`
 - [`choam-data`](data/shared/src/main/scala/dev/tauri/choam/data/):
-  concurrent data structures:
-  - queues
-  - stacks
-  - hash- and ordered maps and sets
-  - counter
+  concurrent data structures built on `Rxn`
+  - Examples: queues, stacks, hash- and ordered maps and sets
 - [`choam-async`](async/shared/src/main/scala/dev/tauri/choam/async/):
-  - Integration with asynchronous effect types in
-    [Cats Effect](https://github.com/typelevel/cats-effect):
-    - The main integration point is a `Promise`, which can be
-      completed as a `Rxn`, and can be waited on as an async `F[_]`:
+  - Asynchronous data structures; some of their operations are
+    *semantically* blocking (i.e., [fiber blocking
+    ](https://typelevel.org/cats-effect/docs/thread-model#fiber-blocking-previously-semantic-blocking)),
+    and so are in an `F[_] : Async` (note, that these `F[A]` operations are – obviously – *not* lock-free)
+  - These data structures (typically) also have some (lock-free) `Rxn` operations; thus they
+    provide a "bridge" between the (synchronous, lock-free) `Rxn` "world", and the (asynchronous) `F[_]` "world".
+  - The simplest example is `dev.tauri.choam.async.Promise`, which can be
+    completed as a `Rxn`, and can be waited on as an async `F[_]`:
       ```scala
-      trait Promise[A] {
-        def complete: Rxn[A, Boolean]
+      trait Promise[A] { // simplified API
+        def complete0: Rxn[A, Boolean]
         def get[F[_]]: F[A]
       }
       ```
-    - Asynchronous (dual) data structures can be built on this primitive
-  - Async data structures; some of their operations are
-    *semantically* blocking (i.e., [fiber blocking
-    ](https://typelevel.org/cats-effect/docs/thread-model#fiber-blocking-previously-semantic-blocking)),
-    and so are in an async `F[_]` (note, that these `F[A]` operations are – obviously – *not* lock-free):
-    - queues
-    - stacks
-    - `CountDownLatch`
+
 - [`choam-stream`](stream/shared/src/main/scala/dev/tauri/choam/stream/):
   integration with `fs2.Stream`s
 - [`choam-ce`](ce/shared/src/main/scala/dev/tauri/choam/ce/):
-  integration with `cats.effect.IOApp`
+  integration with `cats.effect.IOApp` (for convenience)
 - [`choam-zi`](zi/shared/src/main/scala/dev/tauri/choam/zi/):
-  integration with `zio.ZIOApp`
+  integration with `zio.ZIOApp` (for convenience)
 - [`choam-laws`](laws/shared/src/main/scala/dev/tauri/choam/laws/):
   properties fulfilled by the various `Rxn` combinators
 - [`choam-profiler`](profiler/src/main/scala/dev/tauri/choam/profiler/):
@@ -157,12 +152,12 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   [Racket](https://github.com/aturon/Caper).)
   The main diferences from the paper are:
   - Only lock-free features (and a few low-level ones) are implemented.
-  - `Rxn` has a referentially transparent ("pure functional" / "programs as values") API.
+  - `Rxn` has a referentially transparent ("purely functional" / "programs as values") API.
   - The interpreter (that executes `Rxn`s) is stack-safe.
   - We also support composing `Rxn`s which modify the same `Ref`
     (thus, an `Rxn` is closer to an STM transaction than a *reagent*;
     see below).
-  - Reads are always guaranteed to be consistent (this is called *opacity*, see below).
+  - Reads are _always_ guaranteed to be consistent (this is called *opacity*, see below).
 - Multi-word compare-and-swap (MCAS/*k*-CAS) implementations:
   - [A Practical Multi-Word Compare-and-Swap Operation](https://web.archive.org/web/20220121034605/https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf)
     (an earlier version used this algorithm)
@@ -174,7 +169,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - A `Rxn` is somewhat similar to a memory transaction, but there are
     important differences:
     - A `Rxn` is lock-free by construction (but see [below](#lock-freedom)); STM transactions are not (necessarily)
-      lock-free (e.g., STM "retry").
+      lock-free (see, e.g., the "retry" STM operation, called "modular blocking" in Haskell).
     - As a consequence of the previous point, `Rxn` cannot be used to implement
       "inherently not lock-free" logic (e.g., asynchronously waiting on a
       condition set by another thread/fiber/similar). However, `Rxn` is
@@ -182,9 +177,9 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       [Cats Effect](https://github.com/typelevel/cats-effect) typeclasses
       (see the `choam-async` module). This feature can be used to provide such
       "waiting" functionality (e.g., `dev.tauri.choam.async.AsyncQueue.unbounded`
-      is a queue with `enqueue` in `Rxn` and `deque` in, e.g., `IO` or another async `F[_]`).
+      is a queue with `enqueue` in `Rxn` and `deque` in, e.g., `IO` or another `F[_] : Async`).
     - The implementation (the `Rxn` interpreter) is also lock-free; STM implementations
-      are usually not (although there are exceptions).
+      usually use fine-grained locking (although there are exceptions).
     - STM transactions usually have a way of raising/handling errors
       (e.g., `MonadError`); `Rxn` has no such feature (but of course return
       values can encode errors with `Option`, `Either`, or similar).
@@ -192,9 +187,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       non-transactional code; `Rxn` doesn't support this, the contents of an
       `r: Ref[A]` can only be accessed from inside a `Rxn`.
   - Similarities between `Rxn`s and STM transactions include the following:
-    - atomicity
-    - consistency
-    - isolation
+    - atomicity, consistency and isolation
     - `Rxn` also provides a correctness property called
       [*opacity*](https://web.archive.org/web/20200918092715/https://nbronson.github.io/scala-stm/semantics.html#opacity);
       a lot of STM implementations also guarantee this property (e.g., `scala-stm`),
@@ -236,8 +229,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - `choam-profiler`
   - `choam-docs`
   - (and all unpublished modules)
-- There is no backwards compatibility for "hash" versions (e.g., `0.4-39d987a` or `0.4.3-2-39d987a`;
-  these are not even SemVer compatible).
+- There is no backwards compatibility for "hash" versions (e.g., `0.4-39d987a` or `0.4.3-2-39d987a`).
 
 ### Supported platforms:
 
@@ -248,8 +240,8 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
     - for secure random number generation, either the `Windows-PRNG`
       or (`/dev/random` and `/dev/urandom`) need to be available
   - Scala.js:
-    - works, but not really useful (we assume no multithreading)
-    - provided to ease cross-compiling
+    - works, but not really interesting (we assume no multithreading)
+    - provided to make cross-compiling easier for projects which use CHOAM
     - for secure random number generation, a `java.security.SecureRandom`
       implementation needs to be available (see [here](https://github.com/scala-js/scala-js-java-securerandom))
 - Scala versions: cross-compiled for 2.13 and 3.3
@@ -278,6 +270,6 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   is not necessarily lock-free
 - Only the default `Mcas` is lock-free, other `Mcas` implementations may not be
 
-Also note, that while `Rxn` operations are lock-free if these assumptions hold,
+Also note, that while `Rxn` operations are lock-free (if these assumptions hold),
 operations in an `F[_]` effect might not be lock-free (an obvious example is
 `Promise#get`, which is an `F[A]`, *not* a `Rxn`).
