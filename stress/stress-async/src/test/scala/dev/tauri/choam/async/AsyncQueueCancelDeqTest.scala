@@ -33,7 +33,7 @@ import ce.unsafeImplicits._
 @Outcomes(Array(
   new Outcome(id = Array("null, a, Some(b), cancelled1, completed2: a, None"), expect = ACCEPTABLE, desc = "cancelled1"),
   new Outcome(id = Array("a, null, Some(b), completed1: a, cancelled2, None"), expect = ACCEPTABLE, desc = "cancelled2"),
-  new Outcome(id = Array("null, null, Some(a), cancelled1, cancelled2, None"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled both"),
+  new Outcome(id = Array("null, null, Some(a), cancelled1, cancelled2, Some(b)"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled both"),
 ))
 class AsyncQueueCancelDeqTest {
 
