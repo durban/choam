@@ -75,7 +75,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(f1.joinWithNever, 42)
       _ <- assertResultF(f2.joinWithNever, "foo")
     } yield ()
-    tsk.replicateA(iterations)
+    tsk.replicateA_(iterations)
   }
 
   test("One side transient failure") {
@@ -91,7 +91,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(f1.joinWithNever, 99)
       _ <- assertResultF(f2.joinWithNever, "bar")
     } yield ()
-    tsk.replicateA(iterations)
+    tsk.replicateA_(iterations)
   }
 
   test("One side doesn't do exchange") {
@@ -108,7 +108,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(f2.joinWithNever, "baz")
       _ <- assertResultF(ref.get.run[F], "y")
     } yield ()
-    tsk.replicateA(iterations)
+    tsk.replicateA_(iterations)
   }
 
   test("Post-commit action can touch the same Refs") {
@@ -129,7 +129,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(r1.get.run[F], 2)
       _ <- assertResultF(r2.get.run[F], 2)
     } yield ()
-    tsk.replicateA(iterations)
+    tsk.replicateA_(iterations)
   }
 
   test("Exchange with postCommits on both sides") {
@@ -170,7 +170,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(r2d.get.run[F], 3) // "str".length
       _ <- assertResultF(r2e.get.run[F], 1) // exactly once
     } yield ()
-    tsk.replicateA(iterations)
+    tsk.replicateA_(iterations)
   }
 
   test("2 Exchangers in 1 Rxn (second never succeeds)") {
@@ -187,7 +187,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(f1.joinWithNever, (42, None))
       _ <- assertResultF(f2.joinWithNever, ("foo", None))
     } yield ()
-    tsk.replicateA(iterations)
+    tsk.replicateA_(iterations)
   }
 
   test("2 Exchangers in 1 Rxn (second must succeed)") {
@@ -204,7 +204,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(f1.joinWithNever, (None, "bar"))
       _ <- assertResultF(f2.joinWithNever, (None, 23))
     } yield ()
-    tsk.replicateA(iterations)
+    tsk.replicateA_(iterations)
   }
 
   test("Merging of non-disjoint logs must be detected, and cause a retry") {
@@ -262,6 +262,6 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(d1.get, 99)
       _ <- assertResultF(d2.get, "bar")
     } yield ()
-    tsk.replicateA(iterations)
+    tsk.replicateA_(iterations)
   }
 }

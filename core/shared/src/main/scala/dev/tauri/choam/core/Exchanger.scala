@@ -114,18 +114,62 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
       16,
   )
 
-  private[core] final case class Msg(
+  private[core] final case class Msg private (
     value: Any,
     contK: ListObjStack.Lst[Any],
     contT: Array[Byte],
     desc: Descriptor,
     postCommit: ListObjStack.Lst[Axn[Unit]],
     exchangerData: Rxn.ExStatMap,
+    state: Msg.State,
   )
 
   private[core] object Msg {
 
-    def fromFinishedEx(fx: FinishedEx[?], newStats: Rxn.ExStatMap, ctx: Mcas.ThreadContext): Msg = {
+    sealed abstract class State
+    final object Initial extends State
+    final object Claimed extends State
+    final object Finished extends State
+
+    final def newMsg(
+      value: Any,
+      contK: ListObjStack.Lst[Any],
+      contT: Array[Byte],
+      desc: Descriptor,
+      postCommit: ListObjStack.Lst[Axn[Unit]],
+      exchangerData: Rxn.ExStatMap,
+    ): Msg = {
+      Msg(
+        value = value,
+        contK = contK,
+        contT = contT,
+        desc = desc,
+        postCommit = postCommit,
+        exchangerData = exchangerData,
+        state = Initial,
+      )
+    }
+
+    final def fromClaimedExchange(
+      value: Any,
+      contK: ListObjStack.Lst[Any],
+      contT: Array[Byte],
+      desc: Descriptor,
+      postCommit: ListObjStack.Lst[Axn[Unit]],
+      exchangerData: Rxn.ExStatMap,
+    ): Msg = {
+      Msg(
+        value = value,
+        contK = contK,
+        contT = contT,
+        desc = desc,
+        postCommit = postCommit,
+        exchangerData = exchangerData,
+        state = Claimed,
+      )
+    }
+
+    final def fromFinishedExchange(fx: FinishedEx[?], newStats: Rxn.ExStatMap, ctx: Mcas.ThreadContext): Msg = {
       Msg(
         value = fx.result,
         contK = fx.contK,
@@ -133,6 +177,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
         desc = ctx.start().toImmutable, // TODO: could we avoid the `toImmutable`?
         postCommit = ListObjStack.Lst.empty[Axn[Unit]],
         exchangerData = newStats,
+        state = Finished,
       )
     }
   }

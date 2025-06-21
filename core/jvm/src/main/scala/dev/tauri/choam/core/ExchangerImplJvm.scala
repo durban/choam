@@ -160,7 +160,7 @@ private sealed trait ExchangerImplJvm[A, B]
           case fx: FinishedEx[_] =>
             debugLog(s"waitForClaimedOffer: found result - thread#${Thread.currentThread().getId()}")
             val newStats = msg.exchangerData.updated(this.key, Statistics.exchanged(stats, params))
-            Right(Msg.fromFinishedEx(fx, newStats, ctx))
+            Right(Msg.fromFinishedExchange(fx, newStats, ctx))
           case _: Rescinded[_] =>
             // we're the only one who can rescind this
             impossible("Someone rescinded our Node!")
@@ -176,7 +176,7 @@ private sealed trait ExchangerImplJvm[A, B]
             case fx: FinishedEx[_] =>
               debugLog(s"waitForClaimedOffer: found result - thread#${Thread.currentThread().getId()}")
               val newStats = msg.exchangerData.updated(this.key, Statistics.exchanged(stats, params))
-              Right(Msg.fromFinishedEx(fx, newStats, ctx))
+              Right(Msg.fromFinishedExchange(fx, newStats, ctx))
             case _: Rescinded[_] =>
               // we're the only one who can rescind this
               impossible("Someone rescinded our Node!")
@@ -214,7 +214,7 @@ private sealed trait ExchangerImplJvm[A, B]
     }
     if (mergedDesc ne null) {
       debugLog(s"merged logs - thread#${Thread.currentThread().getId()}")
-      val resMsg = Msg(
+      val resMsg = Msg.fromClaimedExchange(
         value = a,
         contK = newContK,
         contT = newContT,
@@ -261,6 +261,7 @@ private sealed trait ExchangerImplJvm[A, B]
   ): (Array[Byte], ListObjStack.Lst[Any]) = {
     // otherContK: |-|-|-|-...-|COMMIT|-|-...-|
     //             \-----------/
+    //               `prefix`
     // we'll need this first part (until the first commit)
     // and also need an extra op (see below)
     // after this, we'll continue with selfContK
@@ -273,8 +274,8 @@ private sealed trait ExchangerImplJvm[A, B]
           restOtherContK = rest,
           lenSelfContT = selfContT.length,
         )
-        val newContK = ListObjStack.Lst.concat(
-          prefix,
+        val newContK = ListObjStack.Lst.concat( // |-|-|-|-...-|FINISH_EX|-|-|-...-|
+          prefix,                               // \  prefix  /          \selfContK/
           ListObjStack.Lst(extraOp, selfContK),
         )
         val newContT = mergeContTs(selfContT = selfContT, otherContT = otherContT)

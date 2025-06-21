@@ -1648,14 +1648,13 @@ object Rxn extends RxnInstances0 {
       loadLocalsSnapshot(alts.pop().asInstanceOf[AnyRef])
     }
 
-    private[this] final def loadAltFrom(msg: Exchanger.Msg): Rxn[Any, R] = {
+    private[this] final def loadAltFrom(msg: Exchanger.Msg): Unit = {
       pc.loadSnapshot(msg.postCommit)
       contKList.loadSnapshot(msg.contK)
       contT.loadSnapshot(msg.contT)
       a = msg.value
       // TODO: write a test for this (exchange + STM)
       desc = this.mergeDescForOrElse(msg.desc, isPermanentFailure = false) // TODO: is `false` correct here?
-      next().asInstanceOf[Rxn[Any, R]]
     }
 
     private[this] final def popFinalResult(): Any = {
@@ -2128,7 +2127,7 @@ object Rxn extends RxnInstances0 {
           a = ctx.readDirect(c.ref)
           loop(next())
         case c: Exchange[_, _] => // Exchange
-          val msg = Exchanger.Msg(
+          val msg = Exchanger.Msg.newMsg(
             value = a,
             contK = contKList.takeSnapshot(),
             contT = contT.takeSnapshot(),
@@ -2150,7 +2149,16 @@ object Rxn extends RxnInstances0 {
               loop(retry())
             case Right(contMsg) =>
               _stats = contMsg.exchangerData
-              loop(loadAltFrom(contMsg))
+              loadAltFrom(contMsg)
+              _assert(contMsg.state match {
+                case Exchanger.Msg.Initial =>
+                  false // mustn't happen
+                case Exchanger.Msg.Claimed => // we've claimed the offer, and need to finish the exchange
+                  true // we can continue with anything
+                case Exchanger.Msg.Finished => // the other thread finished the exchange, we're done
+                  (contT.peek() == RxnConsts.ContAndThen) && equ(contK.peek(), commitSingleton)
+              })
+              loop(next())
           }
         case c: AndThen[_, _, _] => // AndThen
           contT.push(RxnConsts.ContAndThen)
