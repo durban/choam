@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package async
 
+import java.util.concurrent.CountDownLatch
+
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
@@ -33,6 +35,7 @@ import ce.unsafeImplicits._
 @Outcomes(Array(
   new Outcome(id = Array("a, b, c, completed1: a, completed2: b"), expect = ACCEPTABLE, desc = "cancelled late"),
   new Outcome(id = Array("null, a, b, cancelled1, completed2: a"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled"),
+  // this also happens:   b, a, c, completed1: b, completed2: a // <- TODO: is this a bug, or just taker2 subscribing first?
 ))
 class AsyncQueueCancelDeqTest {
 
@@ -48,12 +51,18 @@ class AsyncQueueCancelDeqTest {
   private[this] var result2: String =
     null
 
+  private[this] var latch1: CountDownLatch =
+    new CountDownLatch(1)
+
   private[this] val taker1: Fiber[IO, Throwable, String] = {
+    val latch2 = new CountDownLatch(1)
     val tsk = IO.uncancelable { poll =>
+      latch1.countDown()
+      latch2.countDown()
       poll(q.deque[IO, String]).flatTap { s => IO { this.result1 = s } }
     }
     val fib = tsk.start.unsafeRunSync()(using runtime)
-    Thread.`yield`()
+    latch2.await()
     fib
   }
 
@@ -61,6 +70,9 @@ class AsyncQueueCancelDeqTest {
     val tsk = IO.uncancelable { poll =>
       poll(q.deque[IO, String]).flatTap { s => IO { this.result2 = s } }
     }
+    latch1.await()
+    latch1 = null
+    Thread.`yield`()
     val fib = tsk.start.unsafeRunSync()(using runtime)
     fib
   }
