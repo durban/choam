@@ -76,7 +76,14 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       else n
     }
 
-    val res = compute()
+    var _res: Int = -1
+    val t = new Thread(() => {
+      _res = compute()
+    })
+    t.start()
+    t.join()
+    val res = _res
+    assert(res > 0)
     println(s"STACK_LIMIT <= ${res}")
     res
   }
