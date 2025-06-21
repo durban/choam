@@ -228,13 +228,14 @@ private sealed trait ExchangerImplJvm[A, B]
     } else {
       debugLog(s"Couldn't merge logs (or can't extend) - thread#${Thread.currentThread().getId()}")
       // from the point of view of the Exchanger, this is a
-      // "successful" exchange -- there reason we'll have to
-      // retry is due to the incompatible descriptors, so we
-      // count this as an exchange in the stats:
+      // "successful" exchange -- the reason we'll have to
+      // retry is the incompatible descriptors, so we count
+      // this as an exchange in the stats:
       Left(Statistics.exchanged(stats, params))
       // Note, that while this may seem like an "unconditional"
-      // retry (and thus, not lock-free), there are 2 cases:
-      // - The reason for retry is we can't extend; this means
+      // retry (and thus, not lock-free), there are 2 cases, and
+      // both are fine:
+      // - The reason for retry is that we can't extend; this means
       //   some other thread committed, so we're fine.
       // - The reason for retry is that the 2 descriptors
       //   were overlapping (i.e., contained at least one ref
@@ -243,10 +244,11 @@ private sealed trait ExchangerImplJvm[A, B]
       //   mechanism is really just an optimization for adding
       //   "elimination" to try to increase performance of otherwise
       //   lock-free operations. This is the reason `Exchanger`
-      //   by itself is `unsafe` (and deprecated in the public
+      //   by itself is `unsafe` (and not part of the public
       //   API). So if the original operation is lock-free, then
-      //   the exchange "failing" here and retrying _preserves_
-      //   lock-freedom. And that's enough for us here.
+      //   the exchange "failing" here and retrying (the original,
+      //   lock-free operation) _preserves_ lock-freedom. And
+      //   that's enough for us here.
     }
   }
 
