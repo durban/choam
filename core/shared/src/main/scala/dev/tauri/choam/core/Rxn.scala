@@ -2156,7 +2156,7 @@ object Rxn extends RxnInstances0 {
                 case Exchanger.Msg.Claimed => // we've claimed the offer, and need to finish the exchange
                   true // we can continue with anything
                 case Exchanger.Msg.Finished => // the other thread finished the exchange, we're done
-                  (contT.peek() == RxnConsts.ContAndThen) && equ(contK.peek(), commitSingleton)
+                  (contT.peek() == RxnConsts.ContAndThen) && equ(contK.peek(), commitSingleton) && contMsg.desc.isEmpty
               })
               loop(next())
           }

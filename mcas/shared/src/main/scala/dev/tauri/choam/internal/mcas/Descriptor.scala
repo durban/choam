@@ -36,6 +36,9 @@ final class Descriptor private (
   final override val readOnly: Boolean =
     this.map.definitelyReadOnly && (!this.hasVersionCas)
 
+  final def isEmpty: Boolean =
+    (this.size == 0)
+
   final override def toImmutable: Descriptor =
     this
 
