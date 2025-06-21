@@ -21,7 +21,7 @@ package async
 import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LLLLL_Result
+import org.openjdk.jcstress.infra.results.LLLLLL_Result
 
 import cats.effect.{ IO, SyncIO, Fiber }
 
@@ -31,9 +31,9 @@ import ce.unsafeImplicits._
 @State
 @Description("AsyncQueue: cancelling dequeue must not lose items")
 @Outcomes(Array(
-  new Outcome(id = Array("null, a, Some(b), cancelled1, completed2: a"), expect = ACCEPTABLE, desc = "cancelled1"),
-  new Outcome(id = Array("a, null, Some(b), completed1: a, cancelled2"), expect = ACCEPTABLE, desc = "cancelled2"),
-  new Outcome(id = Array("null, null, Some(a), cancelled1, cancelled2"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled both"),
+  new Outcome(id = Array("null, a, Some(b), cancelled1, completed2: a, None"), expect = ACCEPTABLE, desc = "cancelled1"),
+  new Outcome(id = Array("a, null, Some(b), completed1: a, cancelled2, None"), expect = ACCEPTABLE, desc = "cancelled2"),
+  new Outcome(id = Array("null, null, Some(a), cancelled1, cancelled2, None"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled both"),
 ))
 class AsyncQueueCancelDeqTest {
 
@@ -77,7 +77,7 @@ class AsyncQueueCancelDeqTest {
   }
 
   @Arbiter
-  def arbiter(r: LLLLL_Result): Unit = {
+  def arbiter(r: LLLLLL_Result): Unit = {
     q.enqueue[IO]("b").unsafeRunSync()(using this.runtime)
     val oc1: String = taker1.join.flatMap { oc =>
       oc.fold(
@@ -98,6 +98,6 @@ class AsyncQueueCancelDeqTest {
     r.r3 = q.tryDeque.run[IO].unsafeRunSync()(using this.runtime)
     r.r4 = oc1
     r.r5 = oc2
-    assert(q.tryDeque.run[IO].unsafeRunSync()(using this.runtime).isEmpty)
+    r.r6 = q.tryDeque.run[IO].unsafeRunSync()(using this.runtime)
   }
 }
