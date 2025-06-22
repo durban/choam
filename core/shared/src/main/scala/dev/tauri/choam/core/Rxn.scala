@@ -30,6 +30,7 @@ import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 import dev.tauri.choam.{ unsafe => unsafe2 }
 import stm.{ Txn, Transactive }
 import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, AbstractDescriptor, Consts, Hamt, Version }
+import internal.mcas.Hamt.IllegalInsertException
 import internal.random
 
 /**
@@ -825,7 +826,14 @@ object Rxn extends RxnInstances0 {
       hole: Ref[Exchanger.NodeResult[D]],
       restOtherContK: ListObjStack.Lst[Any],
       lenSelfContT: Int,
-    ): Rxn[D, Unit] = new Rxn.FinishExchange(hole, restOtherContK, lenSelfContT)
+      selfDesc: Descriptor,
+      mergeDescs: Rxn[Any, Any],
+    ): Rxn[D, Unit] = {
+      new Rxn.FinishExchange(hole, restOtherContK, lenSelfContT, selfDesc, mergeDescs.asInstanceOf[MergeDescs])
+    }
+
+    final def mergeDescs(): Rxn[Any, Any] =
+      new Rxn.MergeDescs
 
     final def newLocal(local: InternalLocal): RxnImpl[Any, Unit] =
       new Rxn.LocalNewEnd(local, isEnd = false)
@@ -983,10 +991,24 @@ object Rxn extends RxnInstances0 {
     val hole: Ref[Exchanger.NodeResult[D]],
     val restOtherContK: ListObjStack.Lst[Any],
     val lenSelfContT: Int,
+    val selfDesc: Descriptor,
+    val mergeDescs: MergeDescs,
   ) extends RxnImpl[D, Unit] {
+
     final override def toString: String = {
       val rockLen = ListObjStack.Lst.length(this.restOtherContK)
       s"FinishExchange(${hole}, <ListObjStack.Lst of length ${rockLen}>, ${lenSelfContT})"
+    }
+  }
+
+  private final class MergeDescs extends RxnImpl[Any, Any] {
+
+    /** TODO: this is a mess... */
+    var otherDesc: Descriptor =
+      null
+
+    final override def toString: String = {
+      "MergeDescs()"
     }
   }
 
@@ -1253,7 +1275,7 @@ object Rxn extends RxnInstances0 {
     ck
   }
 
-  final class MaxRetriesReached(val maxRetries: Int)
+  final class MaxRetriesReached(val maxRetries: Int) // TODO:0.5: -> MaxRetriesExceeded(?)
     extends Exception(s"reached maxRetries of ${maxRetries}") {
 
     final override def fillInStackTrace(): Throwable =
@@ -2216,10 +2238,43 @@ object Rxn extends RxnInstances0 {
             contK = c.restOtherContK,
             contT = otherContT,
           )
-          desc = ctx.addCasFromInitial(desc, c.hole.loc, null, fx)
           a = contK.pop() // the exchanged value we've got from the other thread
+          val otherDesc = ctx.addCasFromInitial(desc, c.hole.loc, null, fx).toImmutable
+          c.mergeDescs.otherDesc = otherDesc // pass it forward
+          desc = c.selfDesc
+          val nxt = if (otherDesc.validTs > desc.validTs) {
+            if (forceValidate(null)) {
+              next()
+            } else {
+              retry()
+            }
+          } else {
+            next()
+          }
           //println(s"FinishExchange: our result is '${a}' - thread#${Thread.currentThread().getId()}")
-          loop(next())
+          loop(nxt)
+        case c: MergeDescs =>
+          val selfDesc = descImm
+          val otherDesc = c.otherDesc
+          _assert(otherDesc ne null)
+          contT.push(RxnConsts.ContAndThen)
+          val nxt = try {
+            // TODO: this will extend even if there were tentative reads
+            ctx.addAll(selfDesc, otherDesc) match {
+              case null => // can't extend
+                clearDesc()
+                retry()
+              case mergedDesc =>
+                desc = mergedDesc
+                next()
+            }
+          } catch {
+            case _: IllegalInsertException =>
+              //println("can't merge overlapping descriptors")
+              clearDesc()
+              retry()
+          }
+          loop(nxt)
         case c: TicketRead[a] =>
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {

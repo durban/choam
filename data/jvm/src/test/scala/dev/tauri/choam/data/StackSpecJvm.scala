@@ -105,7 +105,7 @@ trait StackSpecJvm[F[_]] { this: StackSpec[F] & McasImplSpec =>
     tsk.replicateA(64).void
   }
 
-  test("Elimination stack conflict after the elimination".ignore) { // TODO: expected failure with EliminationStack
+  test("Elimination stack conflict after the elimination") { // TODO: expected failure with EliminationStack
     // This test works fine with a Treiber stack, but
     // (non-deterministically) can fail with an elimination
     // stack. There are 2 possible ways for it to fail:

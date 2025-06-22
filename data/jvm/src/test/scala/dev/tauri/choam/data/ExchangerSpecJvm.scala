@@ -18,11 +18,13 @@
 package dev.tauri.choam
 package data
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import scala.concurrent.duration._
 
 import cats.effect.{ IO, Outcome }
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Axn, Ref, RetryStrategy }
 
 final class ExchangerSpecCommon_Emcas_ZIO
   extends BaseSpecZIO
@@ -263,5 +265,54 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(d2.get, "bar")
     } yield ()
     tsk.replicateA_(iterations)
+  }
+
+  test("The 2 `Rxn`s run with separated logs") {
+    val maxRetries = Some(4096)
+    val str = RetryStrategy.Default.withCede(true).withMaxRetries(maxRetries)
+    for {
+      ref <- Ref(0).run[F]
+      leftReceived <- F.delay(new AtomicInteger(-1))
+      rightReceived <- F.delay(new AtomicInteger(-1))
+      countBgWrites <- F.delay(new AtomicInteger(0))
+      ex <- Rxn.unsafe.exchanger[Int, Int].run[F]
+      // as they run with separated logs, they should be
+      // able to (tentatively) update the same ref, and
+      // see their own writes; however, the conflict must
+      // be detected later, and they must never commit
+      left = (ref.updateAndGet(_ + 1) * ex.exchange.provide(42)).flatMapF { case (v1, i) =>
+        leftReceived.set(i)
+        ref.get.flatMapF { v2 =>
+          assertEquals(v2, v1) // it should see it's own write
+          ref.set1(v2 + 1)
+        }
+      }
+      right = (ref.updateAndGet(_ + 99) * ex.dual.exchange.provide(123)).flatMapF { case (v1, i) =>
+        rightReceived.set(i)
+        ref.get.flatMapF { v2 =>
+          assertEquals(v2, v1) // it should see it's own write
+          ref.set1(v2 + 100)
+        }
+      }
+      taskLeft = left.perform[F, Unit](null, this.mcasImpl, str)(using this.F)
+      taskRight = right.perform[F, Unit](null, this.mcasImpl, str)(using this.F)
+      backgroundTask = F.uncancelable(_ => ref.update(_ + 1).run[F] *> {
+        F.delay { countBgWrites.incrementAndGet(); () }
+      }) *> F.sleep(0.002.seconds).foreverM[Unit]
+      fib <- backgroundTask.start
+      r <- F.both(taskLeft.attempt, taskRight.attempt)
+      _ <- fib.cancel
+      _ <- r._1 match {
+        case Left(ex) => assertF(ex.isInstanceOf[Rxn.MaxRetriesReached], s"unexpected error (left): ${ex}")
+        case Right(r) => failF(s"unexpected success (left): $r")
+      }
+      _ <- r._2 match {
+        case Left(ex) => assertF(ex.isInstanceOf[Rxn.MaxRetriesReached], s"unexpected error (right): ${ex}")
+        case Right(r) => failF(s"unexpected success (right): $r")
+      }
+      _ <- assertResultF(F.delay(leftReceived.get()), 123)
+      _ <- assertResultF(F.delay(rightReceived.get()), 42)
+      _ <- assertResultF(ref.get.run[F], countBgWrites.get())
+    } yield ()
   }
 }

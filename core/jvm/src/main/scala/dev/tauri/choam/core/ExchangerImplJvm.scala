@@ -21,8 +21,9 @@ package core
 import java.util.Arrays
 import java.util.concurrent.atomic.AtomicReferenceArray
 
-import internal.mcas.Mcas
+import internal.mcas.{ Mcas, Descriptor }
 import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx, Params }
+import ListObjStack.Lst
 
 private sealed trait ExchangerImplJvm[A, B]
   extends Exchanger.UnsealedExchanger[A, B] {
@@ -196,94 +197,127 @@ private sealed trait ExchangerImplJvm[A, B]
     val a: A = selfMsg.value.asInstanceOf[A]
     val b: B = other.msg.value.asInstanceOf[B]
     debugLog(s"fulfillClaimedOffer: selfMsg.value = ${a}; other.msg.value = ${b} - thread#${Thread.currentThread().getId()}")
-    val (newContT, newContK) = mergeConts[D](
-      selfContT = selfMsg.contT,
-      // we put `b` on top of contK; `FinishExchange` will pop it:
-      selfContK = ListObjStack.Lst[Any](b, selfMsg.contK),
-      otherContT = other.msg.contT,
-      otherContK = other.msg.contK,
-      hole = other.hole,
-    )
-    debugLog(s"merged conts: newContT = ${java.util.Arrays.toString(newContT)}; newContK = [${ListObjStack.Lst.mkString(newContK)}] - thread#${Thread.currentThread().getId()}")
-    val mergedDesc = try {
-      ctx.addAll(selfMsg.desc, other.msg.desc) // returns null if we can't extend
-    } catch {
-      case _: internal.mcas.Hamt.IllegalInsertException =>
-        debugLog("can't merge overlapping descriptors")
-        null
+    // we'll continue with the other descriptor, make sure it's version is up to date:
+    val otherDesc = if (other.msg.desc.validTs < selfMsg.desc.validTs) {
+      ctx.validateAndTryExtend(other.msg.desc, hwd = null)
+    } else {
+      other.msg.desc
     }
-    if (mergedDesc ne null) {
-      debugLog(s"merged logs - thread#${Thread.currentThread().getId()}")
+    if (otherDesc ne null) {
+      // prepare "merged" cont stacks:
+      val (newContT, newContK) = mergeConts[D](
+        selfContT = selfMsg.contT,
+        // we put `b` on top of contK; `FinishExchange` will pop it:
+        selfContK = ListObjStack.Lst[Any](b, selfMsg.contK),
+        otherContT = other.msg.contT,
+        otherContK = other.msg.contK,
+        hole = other.hole,
+        selfDesc = selfMsg.desc,
+      )
+      debugLog(s"merged conts: newContT = ${java.util.Arrays.toString(newContT)}; newContK = [${ListObjStack.Lst.mkString(newContK)}] - thread#${Thread.currentThread().getId()}")
       val resMsg = Msg.fromClaimedExchange(
         value = a,
         contK = newContK,
         contT = newContT,
-        desc = mergedDesc,
-        postCommit = ListObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit),
+        desc = otherDesc.toImmutable, // TODO: .toImmutable must be a NOP here
+        postCommit = ListObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit), // TODO: why?
         // this thread will continue, so we use (and update) our data:
         exchangerData = selfMsg.exchangerData.updated(this.key, Statistics.exchanged(stats, params))
       )
       debugLog(s"merged postCommit: ${ListObjStack.Lst.mkString(resMsg.postCommit)} - thread#${Thread.currentThread().getId()}")
       Right(resMsg)
     } else {
-      debugLog(s"Couldn't merge logs (or can't extend) - thread#${Thread.currentThread().getId()}")
-      // from the point of view of the Exchanger, this is a
-      // "successful" exchange -- the reason we'll have to
-      // retry is the incompatible descriptors, so we count
-      // this as an exchange in the stats:
-      Left(Statistics.exchanged(stats, params))
-      // Note, that while this may seem like an "unconditional"
-      // retry (and thus, not lock-free), there are 2 cases, and
-      // both are fine:
-      // - The reason for retry is that we can't extend; this means
-      //   some other thread committed, so we're fine.
-      // - The reason for retry is that the 2 descriptors
-      //   were overlapping (i.e., contained at least one ref
-      //   which was common between them). In this case there
-      //   really are no "progress"; however, the whole `Exchanger`
-      //   mechanism is really just an optimization for adding
-      //   "elimination" to try to increase performance of otherwise
-      //   lock-free operations. This is the reason `Exchanger`
-      //   by itself is `unsafe` (and not part of the public
-      //   API). So if the original operation is lock-free, then
-      //   the exchange "failing" here and retrying (the original,
-      //   lock-free operation) _preserves_ lock-freedom. And
-      //   that's enough for us here.
+      successButFail(stats, params)
     }
+  }
+
+  private[this] final def successButFail(stats: Statistics, params: Params): Either[Statistics, Msg] = {
+    debugLog(s"Couldn't merge logs (or can't extend) - thread#${Thread.currentThread().getId()}")
+    // from the point of view of the Exchanger, this is a
+    // "successful" exchange -- the reason we'll have to
+    // retry is the incompatible descriptors, so we count
+    // this as an exchange in the stats:
+    Left(Statistics.exchanged(stats, params))
+    // Note, that while this may seem like an "unconditional"
+    // retry (and thus, not lock-free), there are 2 cases, and
+    // both are fine:
+    // - The reason for retry is that we can't extend; this means
+    //   some other thread committed, so we're fine.
+    // - The reason for retry is that the 2 descriptors
+    //   were overlapping (i.e., contained at least one ref
+    //   which was common between them). In this case there
+    //   really are no "progress"; however, the whole `Exchanger`
+    //   mechanism is really just an optimization for adding
+    //   "elimination" to try to increase performance of otherwise
+    //   lock-free operations. This is the reason `Exchanger`
+    //   by itself is `unsafe` (and not part of the public
+    //   API). So if the original operation is lock-free, then
+    //   the exchange "failing" here and retrying (the original,
+    //   lock-free operation) _preserves_ lock-freedom. And
+    //   that's enough for us here.
   }
 
   private[this] final def mergeConts[D](
     selfContT: Array[Byte],
-    selfContK: ListObjStack.Lst[Any],
+    selfContK: Lst[Any],
     otherContT: Array[Byte],
-    otherContK: ListObjStack.Lst[Any],
+    otherContK: Lst[Any],
     hole: Ref[NodeResult[D]],
-  ): (Array[Byte], ListObjStack.Lst[Any]) = {
+    selfDesc: Descriptor,
+  ): (Array[Byte], Lst[Any]) = {
     // otherContK: |-|-|-|-...-|COMMIT|-|-...-|
-    //             \-----------/
-    //               `prefix`
-    // we'll need this first part (until the first commit)
-    // and also need an extra op (see below)
-    // after this, we'll continue with selfContK
-    // (extra op: to fill `other.hole` with the result
+    //             \-----------/\-------------/
+    //              otherPrefix    otherRest
+    // We'll need this first part (until the first commit)
+    // and also need an extra op: FinishExchange (see below);
+    // after this, we'll continue with selfContK.
+    // (FinishExchange: to fill `other.hole` with the result
     // and also the remaining part of otherContK and otherContT)
-    ListObjStack.Lst.splitBefore[Any](lst = otherContK, item = Rxn.commitSingleton) match {
-      case (prefix, rest) =>
-        val extraOp = Rxn.internal.finishExchange[D](
-          hole = hole,
-          restOtherContK = rest,
-          lenSelfContT = selfContT.length,
-        )
-        val newContK = ListObjStack.Lst.concat( // |-|-|-|-...-|FINISH_EX|-|-|-...-|
-          prefix,                               // \  prefix  /          \selfContK/
-          ListObjStack.Lst(extraOp, selfContK),
-        )
-        val newContT = mergeContTs(selfContT = selfContT, otherContT = otherContT)
-        (newContT, newContK)
-      case null =>
-        val len = ListObjStack.Lst.length(otherContK)
-        if (len == 0) impossible("empty otherContK")
-        else impossible(s"no commit in otherContK: ${otherContK.mkString()}")
+    //
+    // selfContK: |-|-|-|-...-|COMMIT|-|-...-|
+    //            \-----------/\-------------/
+    //              selfPrefix     selfRest
+    // We'll need to insert a special operation before commit
+    // (after selfPrefix), to merge the 2 descriptors.
+    //
+    // The resulting contK will look like this:
+    // |..otherPrefix..|FinishExchange|..selfPrefix..|MergeDescs|..selfRest..|
+
+    val (otherPrefix, otherRest) = splitBeforeCommit(otherContK, "otherContK")
+    val extraMergeDescs = Rxn.internal.mergeDescs()
+    val extraFinishExchange = Rxn.internal.finishExchange[D](
+      hole = hole,
+      restOtherContK = otherRest,
+      lenSelfContT = selfContT.length,
+      selfDesc = selfDesc,
+      mergeDescs = extraMergeDescs,
+    )
+    val (selfPrefix, selfRest) = splitBeforeCommit(selfContK, "selfContK")
+    val newContK = Lst.concat(
+      otherPrefix,
+      Lst(
+        extraFinishExchange,
+        Lst.concat(
+          selfPrefix,
+          Lst(
+            extraMergeDescs,
+            selfRest,
+          )
+        ),
+      ),
+    )
+    val newContT = mergeContTs(selfContT = selfContT, otherContT = otherContT)
+    (newContT, newContK)
+  }
+
+  private[this] final def splitBeforeCommit(lst: Lst[Any], name: String): (Lst[Any], Lst[Any]) = {
+    val res = Lst.splitBefore[Any](lst, item = Rxn.commitSingleton)
+    if (res eq null) {
+      val len = ListObjStack.Lst.length(lst)
+      if (len == 0) impossible(s"empty ${name}")
+      else impossible(s"no commit in ${name}: ${lst.mkString()}")
+    } else {
+      res
     }
   }
 
