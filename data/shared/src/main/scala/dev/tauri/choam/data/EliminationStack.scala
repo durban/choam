@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Axn, Ref, EliminatorImpl }
+import core.{ Rxn, Axn, Ref, EliminatorImpl, Eliminator }
 
 private final class EliminationStack[A](underlying: Stack[A])
   extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), underlying.tryPop, _ => ())
@@ -39,6 +39,31 @@ private object EliminationStack {
   final def apply[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[Stack[A]] = {
     Stack.treiberStack[A](str).flatMapF { ul =>
       Axn.unsafe.delay { new EliminationStack[A](ul) }
+    }
+  }
+
+  sealed trait TaggedEliminationStack[A] {
+    def push: Rxn[A, Either[Unit, Unit]]
+    def tryPop: Axn[Either[Option[A], Option[A]]]
+  }
+
+  final def tagged[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[TaggedEliminationStack[A]] = {
+    Stack.treiberStack[A](str).flatMapF { ul =>
+      Eliminator.tagged[A, Unit, Any, Option[A]](
+        ul.push,
+        Some(_),
+        ul.tryPop,
+        _ => (),
+      ).map { elim =>
+        new TaggedEliminationStack[A] {
+
+          final override def push: Rxn[A, Either[Unit, Unit]] =
+            elim.leftOp
+
+          final override def tryPop: Axn[Either[Option[A], Option[A]]] =
+            elim.rightOp
+        }
+      }
     }
   }
 }

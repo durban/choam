@@ -133,4 +133,24 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
     } yield ()
     t.replicateA_(50000)
   }
+
+  test("TaggedEliminationStack") {
+    val t = for {
+      s <- EliminationStack.tagged[Int]().run[F]
+      _ <- assertResultF(s.tryPop.run[F], Left(None))
+      _ <- assertResultF(s.push[F](42), Left(()))
+      _ <- assertResultF(s.tryPop.run[F], Left(Some(42)))
+      _ <- concurrentPushPopTest(
+        s.tryPop.map {
+          case Left(underlying) =>
+            underlying
+          case Right(eliminated) =>
+            // println("elimination!")
+            eliminated
+        },
+        s.push.map(_.fold(x => x, x => x))
+      )
+    } yield ()
+    t.replicateA_(50000)
+  }
 }
