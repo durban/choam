@@ -20,7 +20,7 @@ package data
 
 import core.{ Rxn, Axn, Ref, EliminatorImpl }
 
-private final class EliminationStack2[A](underlying: Stack[A])
+private final class EliminationStack[A](underlying: Stack[A])
   extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), underlying.tryPop, _ => ())
   with Stack.UnsealedStack[A] {
 
@@ -34,14 +34,11 @@ private final class EliminationStack2[A](underlying: Stack[A])
     this.underlying.size
 }
 
-private object EliminationStack2 {
+private object EliminationStack {
 
-  def apply[A]: Axn[EliminationStack2[A]] =
-    apply(Ref.AllocationStrategy.Default)
-
-  def apply[A](str: Ref.AllocationStrategy): Axn[EliminationStack2[A]] = {
+  final def apply[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[Stack[A]] = {
     Stack.treiberStack[A](str).flatMapF { ul =>
-      Axn.unsafe.delay { new EliminationStack2[A](ul) }
+      Axn.unsafe.delay { new EliminationStack[A](ul) }
     }
   }
 }

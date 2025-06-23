@@ -47,4 +47,25 @@ object Eliminator {
   ): Eliminator[A, B, C, D] = {
     new EliminatorImpl[A, B, C, D](left, tLeft, right, tRight) {}
   }
+
+  /**
+   * Tags the result as a `Left(_)`, if it's from
+   * the underlying operation; or as a `Right(_)`,
+   * if it's from the exchanger.
+   *
+   * Mainly for testing and debugging.
+   */
+  private[choam] final def tagged[A, B, C, D](
+    left: A =#> B,
+    tLeft: A => D,
+    right: C =#> D,
+    tRight: C => B,
+  ): Axn[Eliminator[A, Either[B, B], C, Either[D, D]]] = {
+    apply[A, Either[B, B], C, Either[D, D]](
+      left.map(Left(_)),
+      tLeft.andThen(Right(_)),
+      right.map(Left(_)),
+      tRight.andThen(Right(_)),
+    )
+  }
 }

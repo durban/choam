@@ -45,7 +45,7 @@ object Stack {
 
   // TODO: on JS, we could just return a TreiberStack
   final def eliminationStack[A](str: Ref.AllocationStrategy): Axn[Stack[A]] =
-    EliminationStack2(str)
+    EliminationStack(str)
 
   private[choam] def fromList[F[_], A](mkEmpty: Axn[Stack[A]])(as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
     implicit val monadF: Monad[F] = F.monad

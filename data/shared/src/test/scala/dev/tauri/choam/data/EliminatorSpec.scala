@@ -42,6 +42,19 @@ trait EliminatorSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Eliminator.tagged") {
+    for {
+      e <- Eliminator.tagged[String, String, String, String](
+        Rxn.lift(s => s + "x"),
+        s => s,
+        Rxn.lift(s => s + "y"),
+        s => s,
+      ).run[F]
+      _ <- assertResultF(e.leftOp[F]("a"), Left("ax"))
+      _ <- assertResultF(e.rightOp[F]("b"), Left("by"))
+    } yield ()
+  }
+
   test("EliminationStackForTesting (basic)") {
     for {
       s <- EliminationStackForTesting[Int].run[F]
@@ -56,7 +69,7 @@ trait EliminatorSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("EliminationStack2 (basic)") {
     for {
-      s <- EliminationStack2[Int].run[F]
+      s <- EliminationStack[Int]().run[F]
       _ <- assertResultF(s.tryPop.run[F], None)
       _ <- s.push[F](1)
       _ <- (s.push.provide(2) *> s.push.provide(3)).run[F]

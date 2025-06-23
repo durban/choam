@@ -24,7 +24,7 @@ import cats.syntax.all._
 import cats.effect.IO
 import cats.effect.instances.spawn.parallelForGenSpawn
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Axn, Ref, Eliminator }
 
 final class EliminatorSpecJvm_Emcas_ZIO
   extends BaseSpecZIO
@@ -87,17 +87,17 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("EliminationStack2 (elimination)") {
+  test("EliminationStack (elimination)") {
     val t = for {
-      s <- EliminationStack2[Int].run[F]
+      s <- EliminationStack[Int]().run[F]
       _ <- concurrentPushPopTest(s.tryPop, s.push)
     } yield ()
     t.replicateA_(50000)
   }
 
-  test("EliminationStack2 (overlapping descriptors)") {
+  test("EliminationStack (overlapping descriptors)") {
     for {
-      s <- EliminationStack2[Int].run[F]
+      s <- EliminationStack[Int]().run[F]
       ref <- Ref(0).run[F]
       _ <- concurrentPushPopTest(
         // these 2 operations can never exchange
@@ -108,5 +108,29 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
         (ref.update(_ + 1) × s.push).contramap[Int](i => ((), i)).map(_._2),
       )
     } yield ()
+  }
+
+  test("Eliminator.tagged (parallel)") {
+    val t = for {
+      ctr1 <- Ref(0).run[F]
+      ctr2 <- Ref(0).run[F]
+      e <- Eliminator.tagged[String, Int, Int, String](
+        Rxn.lift[String, Int](s => s.toInt).flatTap(ctr1.update(_ + 1)),
+        s => s,
+        Rxn.lift[Int, String](i => i.toString).flatTap(ctr2.update(_ + 1)),
+        s => s,
+      ).run[F]
+      // due to these concurrent transactions, the underlying ops has a chance of retrying => elimination
+      bgFiber1 <- ((ctr1.update(_ + 1) *> ctr2.update(_ + 1)).run[F] *> F.cede).foreverM[Unit].start
+      rr <- F.both(F.cede *> e.leftOp[F]("42"), F.cede *> e.rightOp[F](99))
+      (leftRes, rightRes) = rr
+      _ <- (leftRes match {
+        case Left(underlyingLeftResult) =>
+          assertEqualsF(underlyingLeftResult, 42) *> assertEqualsF(rightRes, Left("99"))
+        case Right(eliminationLeftResult) =>
+          assertEqualsF(eliminationLeftResult, 99) *> assertEqualsF(rightRes, Right("42"))
+      }).guarantee(bgFiber1.cancel)
+    } yield ()
+    t.replicateA_(50000)
   }
 }
