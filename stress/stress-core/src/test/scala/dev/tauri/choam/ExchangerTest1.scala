@@ -24,9 +24,6 @@ import org.openjdk.jcstress.infra.results._
 
 import core.{ Rxn, Exchanger }
 
-// TODO: More Exchanger stress tests:
-// TODO: - elimination stack
-
 @JCStressTest
 @State
 @Description("Simple exchange")
