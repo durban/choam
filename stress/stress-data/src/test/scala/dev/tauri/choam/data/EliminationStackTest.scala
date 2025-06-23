@@ -28,12 +28,12 @@ import EliminationStack.TaggedEliminationStack
 
 @JCStressTest
 @State
-@Description("Elimination stack should never eliminate if descriptors are not disjoint")
+@Description("Elimination stack: elimination")
 @Outcomes(Array(
   new Outcome(id = Array("Left(()), Left(Some(a))"), expect = ACCEPTABLE, desc = "No exchange"),
   new Outcome(id = Array("Right(()), Right(Some(a))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange"),
 ))
-class EliminationStackConflictTest extends StressTestBase {
+class EliminationStackTest extends StressTestBase {
 
   private[this] val stack: TaggedEliminationStack[String] =
     EliminationStack.taggedFlaky[String]().unsafeRun(this.impl)
