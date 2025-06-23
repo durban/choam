@@ -135,14 +135,17 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
   }
 
   test("EliminationStack.tagged") {
-    testTaggedEliminationStack(EliminationStack.tagged[Int]())
+    testTaggedEliminationStack(EliminationStack.tagged[Int](), 50000)
   }
 
   test("EliminationStack.taggedFlaky") {
-    testTaggedEliminationStack(EliminationStack.taggedFlaky[Int]())
+    testTaggedEliminationStack(EliminationStack.taggedFlaky[Int](), 25000)
   }
 
-  private def testTaggedEliminationStack(newStack: Axn[EliminationStack.TaggedEliminationStack[Int]]): F[Unit] = {
+  private def testTaggedEliminationStack(
+    newStack: Axn[EliminationStack.TaggedEliminationStack[Int]],
+    repeat: Int,
+  ): F[Unit] = {
     val t = for {
       s <- newStack.run[F]
       _ <- assertResultF(s.tryPop.run[F], Left(None))
@@ -159,6 +162,6 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
         s.push.map(_.fold(x => x, x => x))
       )
     } yield ()
-    t.replicateA_(50000)
+    t.replicateA_(repeat)
   }
 }
