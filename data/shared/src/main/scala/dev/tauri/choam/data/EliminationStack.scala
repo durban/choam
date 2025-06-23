@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package data
 
+import java.util.concurrent.ThreadLocalRandom
+
 import core.{ Rxn, Axn, Ref, EliminatorImpl, Eliminator }
 
 private final class EliminationStack[A](underlying: Stack[A])
@@ -49,20 +51,45 @@ private object EliminationStack {
 
   final def tagged[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[TaggedEliminationStack[A]] = {
     Stack.treiberStack[A](str).flatMapF { ul =>
-      Eliminator.tagged[A, Unit, Any, Option[A]](
-        ul.push,
-        Some(_),
-        ul.tryPop,
-        _ => (),
-      ).map { elim =>
-        new TaggedEliminationStack[A] {
+      taggedFrom(ul.push, ul.tryPop)
+    }
+  }
 
-          final override def push: Rxn[A, Either[Unit, Unit]] =
-            elim.leftOp
+  final def taggedFlaky[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[TaggedEliminationStack[A]] = {
+    Stack.treiberStack[A](str).flatMapF { ul =>
+      taggedFrom(
+        ul.push.flatMapF { x =>
+          if (ThreadLocalRandom.current().nextBoolean()) Axn.pure(x)
+          else Rxn.unsafe.retry[Unit]
+        },
+        ul.tryPop.flatMapF {
+          case None =>
+            Axn.none
+          case s @ Some(_) =>
+            if (ThreadLocalRandom.current().nextBoolean()) Axn.pure(s)
+            else Rxn.unsafe.retry[Option[A]]
+        },
+      )
+    }
+  }
 
-          final override def tryPop: Axn[Either[Option[A], Option[A]]] =
-            elim.rightOp
-        }
+  private[this] final def taggedFrom[A](
+    push: Rxn[A, Unit],
+    tryPop: Axn[Option[A]],
+  ): Axn[TaggedEliminationStack[A]] = {
+    Eliminator.tagged[A, Unit, Any, Option[A]](
+      push,
+      Some(_),
+      tryPop,
+      _ => (),
+    ).map { elim =>
+      new TaggedEliminationStack[A] {
+
+        final override def push: Rxn[A, Either[Unit, Unit]] =
+          elim.leftOp
+
+        final override def tryPop: Axn[Either[Option[A], Option[A]]] =
+          elim.rightOp
       }
     }
   }
