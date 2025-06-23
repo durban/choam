@@ -16,47 +16,49 @@
  */
 
 package dev.tauri.choam
-package core
 
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results._
 
+import core.{ Rxn, Exchanger }
+
 // TODO: More Exchanger stress tests:
 // TODO: - elimination stack
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("Simple exchange")
 @Outcomes(Array(
   new Outcome(id = Array("None, None"), expect = ACCEPTABLE, desc = "No exchange"),
-  new Outcome(id = Array("Some(r), Some(l)"), expect = ACCEPTABLE_INTERESTING, desc = "Successful exchange")
+  new Outcome(id = Array("Some(Left(r)), Some(Left(l))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange 1st-1st"),
+  new Outcome(id = Array("Some(Left(r)), Some(Right(l))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange 1st-2nd"),
+  new Outcome(id = Array("Some(Right(r)), Some(Left(l))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange 2nd-1st"),
+  new Outcome(id = Array("Some(Right(r)), Some(Right(l))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange 2nd-2nd"),
 ))
 class ExchangerTest1 extends StressTestBase {
 
   private[this] val ex: Exchanger[String, String] =
-    Exchanger.unsafe[String, String]
+    Rxn.unsafe.exchanger[String, String].unsafeRun(this.impl)
 
-  private[this] val left: Rxn[String, Option[String]] =
-    ex.exchange.?
+  private[this] val leftSide: Rxn[String, Option[Either[String, String]]] = {
+    val once = ex.exchange
+    (once.map(Left(_)) + once.map(Right(_))).?
+  }
 
-  private[this] val lefts: Rxn[String, Option[String]] =
-    left + left
-
-  private[this] val right: Rxn[String, Option[String]] =
-    ex.dual.exchange.?
-
-  private[this] val rights: Rxn[String, Option[String]] =
-    right + right
+  private[this] val rightSide: Rxn[String, Option[Either[String, String]]] = {
+    val once = ex.dual.exchange
+    (once.map(Left(_)) + once.map(Right(_))).?
+  }
 
   @Actor
   def left(r: LL_Result): Unit = {
-    r.r1 = lefts.unsafePerform("l", this.impl)
+    r.r1 = leftSide.unsafePerform("l", this.impl)
   }
 
   @Actor
   def right(r: LL_Result): Unit = {
-    r.r2 = rights.unsafePerform("r", this.impl)
+    r.r2 = rightSide.unsafePerform("r", this.impl)
   }
 }
