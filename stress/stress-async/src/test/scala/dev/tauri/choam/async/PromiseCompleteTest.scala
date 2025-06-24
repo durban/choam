@@ -24,8 +24,9 @@ import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZLL_Result
 
 import cats.effect.SyncIO
+import cats.syntax.all._
 
-import core.{ Rxn, Axn }
+import core.Rxn
 import ce.unsafeImplicits._
 
 @JCStressTest
@@ -35,7 +36,7 @@ import ce.unsafeImplicits._
   new Outcome(id = Array("true, (None,None), (Some(x),Some(y))"), expect = ACCEPTABLE, desc = "get wins"),
   new Outcome(id = Array("true, (Some(x),Some(y)), (Some(x),Some(y))"), expect = ACCEPTABLE_INTERESTING, desc = "complete wins"),
 ))
-class PromiseComplete2Test {
+class PromiseCompleteTest {
 
   private[this] val p1: Promise[String] =
     Promise[String].run[SyncIO].unsafeRunSync()
@@ -46,8 +47,8 @@ class PromiseComplete2Test {
   private[this] val completeBoth: Rxn[(String, String), (Boolean, Boolean)] =
     p1.complete0 × p2.complete0
 
-  private[this] val tryGetBoth: Axn[(Option[String], Option[String])] =
-    p1.tryGet * p2.tryGet
+  private[this] val tryGetBoth: SyncIO[(Option[String], Option[String])] =
+    (p1.tryGet.run[SyncIO], p2.tryGet.run[SyncIO]).tupled
 
   @Actor
   def complete(r: ZLL_Result): Unit = {
@@ -57,11 +58,11 @@ class PromiseComplete2Test {
 
   @Actor
   def get(r: ZLL_Result): Unit = {
-    r.r2 = tryGetBoth.run[SyncIO].unsafeRunSync()
+    r.r2 = tryGetBoth.unsafeRunSync()
   }
 
   @Arbiter
   def arbiter(r: ZLL_Result): Unit = {
-    r.r3 = tryGetBoth.run[SyncIO].unsafeRunSync()
+    r.r3 = tryGetBoth.unsafeRunSync()
   }
 }
