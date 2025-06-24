@@ -20,42 +20,54 @@ package dev.tauri.choam
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results._
+import org.openjdk.jcstress.infra.results.LLLL_Result
 
-import core.{ Rxn, Exchanger }
+import core.{ Rxn, Exchanger, Ref }
 
 @JCStressTest
 @State
 @Description("Simple exchange")
 @Outcomes(Array(
-  new Outcome(id = Array("None, None"), expect = ACCEPTABLE, desc = "No exchange"),
-  new Outcome(id = Array("Some(Left(r)), Some(Left(l))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange 1st-1st"),
-  new Outcome(id = Array("Some(Left(r)), Some(Right(l))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange 1st-2nd"),
-  new Outcome(id = Array("Some(Right(r)), Some(Left(l))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange 2nd-1st"),
-  new Outcome(id = Array("Some(Right(r)), Some(Right(l))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange 2nd-2nd"),
+  new Outcome(id = Array("None, None, None, None"), expect = ACCEPTABLE, desc = "No exchange"),
+  new Outcome(id = Array("Some(Left(r)), Some(Left(r)), Some(Left(l)), Some(Left(l))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange 1st-1st"),
+  new Outcome(id = Array("Some(Left(r)), Some(Left(r)), Some(Right(l)), Some(Right(l))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange 1st-2nd"),
+  new Outcome(id = Array("Some(Right(r)), Some(Right(r)), Some(Left(l)), Some(Left(l))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange 2nd-1st"),
+  new Outcome(id = Array("Some(Right(r)), Some(Right(r)), Some(Right(l)), Some(Right(l))"), expect = ACCEPTABLE_INTERESTING, desc = "Exchange 2nd-2nd"),
 ))
 class ExchangerTest1 extends StressTestBase {
 
   private[this] val ex: Exchanger[String, String] =
     Rxn.unsafe.exchanger[String, String].unsafeRun(this.impl)
 
+  private[this] val leftPc: Ref[Option[Either[String, String]]] =
+    Ref[Option[Either[String, String]]](null).unsafePerform(null, this.impl)
+
+  private[this] val rightPc: Ref[Option[Either[String, String]]] =
+    Ref[Option[Either[String, String]]](null).unsafePerform(null, this.impl)
+
   private[this] val leftSide: Rxn[String, Option[Either[String, String]]] = {
     val once = ex.exchange
-    (once.map(Left(_)) + once.map(Right(_))).?
+    (once.map(Left(_)) + once.map(Right(_))).?.postCommit(leftPc.set0)
   }
 
   private[this] val rightSide: Rxn[String, Option[Either[String, String]]] = {
     val once = ex.dual.exchange
-    (once.map(Left(_)) + once.map(Right(_))).?
+    (once.map(Left(_)) + once.map(Right(_))).?.postCommit(rightPc.set0)
   }
 
   @Actor
-  def left(r: LL_Result): Unit = {
+  def left(r: LLLL_Result): Unit = {
     r.r1 = leftSide.unsafePerform("l", this.impl)
   }
 
   @Actor
-  def right(r: LL_Result): Unit = {
-    r.r2 = rightSide.unsafePerform("r", this.impl)
+  def right(r: LLLL_Result): Unit = {
+    r.r3 = rightSide.unsafePerform("r", this.impl)
+  }
+
+  @Arbiter
+  def arbiter(r: LLLL_Result): Unit = {
+    r.r2 = leftPc.get.unsafeRun(this.impl)
+    r.r4 = rightPc.get.unsafeRun(this.impl)
   }
 }
