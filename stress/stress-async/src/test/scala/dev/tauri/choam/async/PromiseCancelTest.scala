@@ -27,7 +27,7 @@ import cats.effect.{ IO, SyncIO, Fiber }
 
 import ce.unsafeImplicits._
 
-// @JCStressTest
+@JCStressTest
 @State
 @Description("Promise: get should be cancellable")
 @Outcomes(Array(
@@ -51,10 +51,10 @@ class PromiseCancelTest {
     null
 
   private[this] val getter1: Fiber[IO, Throwable, String] =
-    (p.get.flatTap { s => IO { result1 = s } }).start.unsafeRunSync()(using runtime)
+    IO.uncancelable(poll => poll(p.get).flatTap { s => IO { result1 = s } }).start.unsafeRunSync()(using runtime)
 
   private[this] val getter2: Fiber[IO, Throwable, String] =
-    (p.get.flatTap { s => IO { result2 = s } }).start.unsafeRunSync()(using runtime)
+    IO.uncancelable(poll => poll(p.get).flatTap { s => IO { result2 = s } }).start.unsafeRunSync()(using runtime)
 
   @Actor
   def complete(r: ZLL_Result): Unit = {
@@ -62,13 +62,8 @@ class PromiseCancelTest {
   }
 
   @Actor
-  def cancel1(): Unit = {
-    getter1.cancel.unsafeRunSync()(using this.runtime)
-  }
-
-  @Actor
-  def cancel2(): Unit = {
-    getter2.cancel.unsafeRunSync()(using this.runtime)
+  def cancel(): Unit = {
+    IO.both(getter1.cancel, getter2.cancel).void.unsafeRunSync()(using this.runtime)
   }
 
   @Arbiter
