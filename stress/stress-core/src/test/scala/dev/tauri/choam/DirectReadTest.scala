@@ -29,9 +29,10 @@ import core.{ Rxn, Axn, Ref }
 @Description("Direct read may see intermediate values, but not descriptors")
 @Outcomes(Array(
   new Outcome(id = Array("a, x, true"), expect = ACCEPTABLE, desc = "Sees old values"),
-  new Outcome(id = Array("b, x, true"), expect = ACCEPTABLE_INTERESTING, desc = "Sees new ref1"), // TODO: this doesn't seem to happen
-  new Outcome(id = Array("a, y, true"), expect = ACCEPTABLE_INTERESTING, desc = "Sees new ref2"),
-  new Outcome(id = Array("b, y, true"), expect = ACCEPTABLE, desc = "Sees new values")
+  new Outcome(id = Array("a, y, true"), expect = ACCEPTABLE_INTERESTING, desc = "Sees new ref2 only"),
+  new Outcome(id = Array("b, y, true"), expect = ACCEPTABLE, desc = "Sees new values"),
+  // The reads in `reader` are ordered, so this mustn't happen:
+  new Outcome(id = Array("b, x, true"), expect = FORBIDDEN, desc = "Sees new ref1 only"),
 ))
 class DirectReadTest extends StressTestBase {
 
