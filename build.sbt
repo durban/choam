@@ -303,7 +303,6 @@ lazy val choam = project.in(file("."))
     testExt.jvm, testExt.js,
     graalNiExample, // JVM
     bench, // JVM
-    stressOld, // JVM
     stressMcas, // JVM
     stressMcasSlow, // JVM
     stressCore, // JVM
@@ -695,19 +694,6 @@ lazy val stressRng = project.in(file("stress") / "stress-rng")
     // we have testing code in `main`:
     libraryDependencies ++= dependencies.test.value
   )
-
-lazy val stressOld = project.in(file("stress") / "stress-old")
-  .settings(name := "choam-stress-old")
-  .settings(commonSettings)
-  .settings(commonSettingsJvm)
-  .settings(stressSettings)
-  .settings(scalacOptions -= "-Ywarn-unused:patvars") // false positives
-  .settings(libraryDependencies += dependencies.zioStm.value) // TODO: temporary
-  .disablePlugins(disabledPluginsForStress: _*)
-  .enablePlugins(NoPublishPlugin)
-  .dependsOn(async.jvm % "compile->compile;test->test")
-  .dependsOn(stressMcas % "compile->compile;test->test")
-  .dependsOn(internalHelpers)
 
 lazy val layout = project.in(file("layout"))
   .settings(name := "choam-layout")
