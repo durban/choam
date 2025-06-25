@@ -123,8 +123,10 @@ class CatsAsyncTest {
 object CatsAsyncTest {
 
   val runtime: IORuntime = {
-    val (wstp, _, fin) = IORuntime.createWorkStealingComputeThreadPool(threads = 3)
-    IORuntime.builder().setCompute(wstp, fin).build()
+    val created = IORuntime.createWorkStealingComputeThreadPool(threads = 3)
+    val wstp = created._1
+    val closeWstp = created._3
+    IORuntime.builder().setCompute(wstp, closeWstp).build()
   }
 
   val dummyCb: (Either[Throwable, String] => Unit) = {
