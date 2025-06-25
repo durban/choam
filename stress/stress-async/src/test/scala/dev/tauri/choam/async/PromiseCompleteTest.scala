@@ -35,6 +35,7 @@ import ce.unsafeImplicits._
 @Outcomes(Array(
   new Outcome(id = Array("true, (None,None), (Some(x),Some(y))"), expect = ACCEPTABLE, desc = "get wins"),
   new Outcome(id = Array("true, (Some(x),Some(y)), (Some(x),Some(y))"), expect = ACCEPTABLE_INTERESTING, desc = "complete wins"),
+  new Outcome(id = Array("true, (None,Some(y)), (Some(x),Some(y))"), expect = ACCEPTABLE_INTERESTING, desc = "complete between the 2 reads"),
 ))
 class PromiseCompleteTest {
 
