@@ -85,7 +85,7 @@ jobs:
           - java: temurin@24
             scala: 2.13
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 240
+    timeout-minutes: 300
     steps:
       - name: Ignore line ending differences in git
         if: contains(runner.os, 'windows')
