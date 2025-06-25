@@ -404,7 +404,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     assertSameInstance(ov2, "b")
     val d2b = d1b.overwrite(d1b.getOrElseNull(r2).withNv("bb"))
     // merge:
-    val d3 = ctx.addAll(d2a.toImmutable, d2b.toImmutable)
+    val d3 = ctx.addAll(d2a.toImmutable, d2b.toImmutable, canExtend = true)
     assert(!d3.readOnly)
     assertEquals(d3.validTs, startTs + Version.Incr)
     // commit:
@@ -433,7 +433,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val Some((_, d2b)) = ctx.readMaybeFromLog(r1, d1b) : @unchecked
     // merge:
     try {
-      ctx.addAll(d2a.toImmutable, d2b.toImmutable)
+      ctx.addAll(d2a.toImmutable, d2b.toImmutable, canExtend = true)
       fail("expected exception thrown")
     } catch {
       case _: Hamt.IllegalInsertException => // OK

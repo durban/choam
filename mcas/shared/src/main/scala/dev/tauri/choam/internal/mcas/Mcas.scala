@@ -273,16 +273,19 @@ object Mcas extends McasCompanionPlatform {
 
     /**
      * Merges disjoint descriptors `to` and `from`.
+     * If `canExtend` is `true`, it tries to extend
+     * the result descriptor (if necessary).
      *
      * @return The merged descriptor, which contains
      *         all the ops either in `to` or `from`;
      *         or `null` if it couldn't extend the
-     *         merged descriptor.
+     *         merged descriptor (or it's not allowed
+     *         to, see `canExtend`).
      * @throws `Hamt.IllegalInsertException` in case of
      *         overlapping descriptors.
      */
-    private[choam] final def addAll(to: Descriptor, from: Descriptor): Descriptor = {
-      Descriptor.merge(to, from, this)
+    private[choam] final def addAll(to: Descriptor, from: Descriptor, canExtend: Boolean): Descriptor = {
+      Descriptor.merge(to, from, this, canExtend)
     }
 
     /**

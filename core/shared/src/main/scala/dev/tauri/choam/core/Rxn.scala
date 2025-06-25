@@ -1407,6 +1407,8 @@ object Rxn extends RxnInstances0 {
      * If `true`, instead of a possible log extension we just
      * retry (because in the presence of a `tentativeRead` we can't
      * revalidate the log).
+     *
+     * TODO: we should reset it to `false` when doing a FULL retry.
      */
     private[this] var hasTentativeRead: Boolean =
       false
@@ -2156,6 +2158,7 @@ object Rxn extends RxnInstances0 {
             desc = this.descImm, // TODO: could we just call `toImmutable`?
             postCommit = pc.takeSnapshot(),
             exchangerData = stats,
+            hasTentativeRead = this.hasTentativeRead,
           )
           c.exchanger.tryExchange(msg = msg, params = exParams, ctx = ctx) match {
             case Left(newStats) =>
@@ -2172,6 +2175,7 @@ object Rxn extends RxnInstances0 {
             case Right(contMsg) =>
               _stats = contMsg.exchangerData
               loadAltFrom(contMsg)
+              this.hasTentativeRead = contMsg.hasTentativeRead
               _assert(contMsg.state match {
                 case Exchanger.Msg.Initial =>
                   false // mustn't happen
@@ -2237,6 +2241,7 @@ object Rxn extends RxnInstances0 {
             result = aCastTo[d],
             contK = c.restOtherContK,
             contT = otherContT,
+            hasTentativeRead = this.hasTentativeRead,
           )
           a = contK.pop() // the exchanged value we've got from the other thread
           val otherDesc = ctx.addCasFromInitial(desc, c.hole.loc, null, fx).toImmutable
@@ -2259,8 +2264,7 @@ object Rxn extends RxnInstances0 {
           _assert(otherDesc ne null)
           contT.push(RxnConsts.ContAndThen)
           val nxt = try {
-            // TODO: this will extend even if there were tentative reads
-            ctx.addAll(selfDesc, otherDesc) match {
+            ctx.addAll(selfDesc, otherDesc, canExtend = !this.hasTentativeRead) match {
               case null => // can't extend
                 clearDesc()
                 retry()

@@ -331,6 +331,7 @@ object Descriptor {
     a: Descriptor,
     b: Descriptor,
     ctx: Mcas.ThreadContext,
+    canExtend: Boolean,
   ): Descriptor = {
     _assert((a.versionCas eq null) && (b.versionCas eq null) && (a.versionIncr == b.versionIncr))
     // throws `Hamt.IllegalInsertException` in case of conflict:
@@ -351,7 +352,11 @@ object Descriptor {
       false
     }
     if (needToExtend) {
-      merged = validateAndTryExtendMerged(merged, ctx)
+      if (canExtend) {
+        merged = validateAndTryExtendMerged(merged, ctx)
+      } else {
+        merged = null
+      }
     }
     merged
   }

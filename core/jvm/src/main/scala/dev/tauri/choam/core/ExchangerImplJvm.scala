@@ -197,9 +197,16 @@ private sealed trait ExchangerImplJvm[A, B]
     val a: A = selfMsg.value.asInstanceOf[A]
     val b: B = other.msg.value.asInstanceOf[B]
     debugLog(s"fulfillClaimedOffer: selfMsg.value = ${a}; other.msg.value = ${b} - thread#${Thread.currentThread().getId()}")
+    val canExtend = (!selfMsg.hasTentativeRead) && (!other.msg.hasTentativeRead)
     // we'll continue with the other descriptor, make sure it's version is up to date:
     val otherDesc = if (other.msg.desc.validTs < selfMsg.desc.validTs) {
-      ctx.validateAndTryExtend(other.msg.desc, hwd = null)
+      // need to extend the other descriptor, but can we?
+      if (canExtend) {
+        ctx.validateAndTryExtend(other.msg.desc, hwd = null)
+      } else {
+        // not allowed to extend due to tentative reads:
+        null
+      }
     } else {
       other.msg.desc
     }
@@ -222,7 +229,8 @@ private sealed trait ExchangerImplJvm[A, B]
         desc = otherDesc.toImmutable, // TODO: .toImmutable must be a NOP here
         postCommit = ListObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit), // TODO: why?
         // this thread will continue, so we use (and update) our data:
-        exchangerData = selfMsg.exchangerData.updated(this.key, Statistics.exchanged(stats, params))
+        exchangerData = selfMsg.exchangerData.updated(this.key, Statistics.exchanged(stats, params)),
+        hasTentativeRead = !canExtend,
       )
       debugLog(s"merged postCommit: ${ListObjStack.Lst.mkString(resMsg.postCommit)} - thread#${Thread.currentThread().getId()}")
       Right(resMsg)

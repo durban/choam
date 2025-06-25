@@ -121,6 +121,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
     desc: Descriptor,
     postCommit: ListObjStack.Lst[Axn[Unit]],
     exchangerData: Rxn.ExStatMap,
+    hasTentativeRead: Boolean,
     state: Msg.State,
   )
 
@@ -138,6 +139,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
       desc: Descriptor,
       postCommit: ListObjStack.Lst[Axn[Unit]],
       exchangerData: Rxn.ExStatMap,
+      hasTentativeRead: Boolean,
     ): Msg = {
       Msg(
         value = value,
@@ -146,6 +148,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
         desc = desc,
         postCommit = postCommit,
         exchangerData = exchangerData,
+        hasTentativeRead = hasTentativeRead,
         state = Initial,
       )
     }
@@ -157,6 +160,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
       desc: Descriptor,
       postCommit: ListObjStack.Lst[Axn[Unit]],
       exchangerData: Rxn.ExStatMap,
+      hasTentativeRead: Boolean,
     ): Msg = {
       Msg(
         value = value,
@@ -165,6 +169,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
         desc = desc,
         postCommit = postCommit,
         exchangerData = exchangerData,
+        hasTentativeRead = hasTentativeRead,
         state = Claimed,
       )
     }
@@ -177,6 +182,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
         desc = ctx.start().toImmutable, // TODO: could we avoid the `toImmutable`?
         postCommit = ListObjStack.Lst.empty[Axn[Unit]],
         exchangerData = newStats,
+        hasTentativeRead = fx.hasTentativeRead,
         state = Finished,
       )
     }
@@ -188,6 +194,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
     val result: C,
     val contK: ListObjStack.Lst[Any],
     val contT: Array[Byte],
+    val hasTentativeRead: Boolean,
   ) extends NodeResult[C]
 
   private[core] final class Rescinded[C]

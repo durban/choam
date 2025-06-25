@@ -449,6 +449,44 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("unsafe.tentativeRead + Exchanger") {
+    val t = for {
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      ref0 <- Ref(0).run[F]
+      ref1 <- Ref(0).run[F]
+      ref2 <- Ref(0).run[F]
+      latch1 <- F.delay(new CountDownLatch(2))
+      latch2 <- F.delay(new CountDownLatch(1))
+      leftTries <- F.delay(new AtomicInteger)
+      left = ref0.update(_ + 1) *> Axn.unsafe.delay {
+        latch1.countDown()
+        leftTries.getAndIncrement()
+        latch2.await()
+      } *> ex.exchange.provide("foo").flatMapF { exVal =>
+        ref1.getAndUpdate(_ + 1).map { ov =>
+          (ov, exVal)
+        }
+      }
+      concurrentUpdate1 = F.blocking(latch1.await()) *> ref1.update(_ + 1).run[F] *> F.delay(latch2.countDown())
+      rightTries <- F.delay(new AtomicInteger)
+      right = Rxn.unsafe.tentativeRead(ref2) *> Axn.unsafe.delay {
+        latch1.countDown()
+        rightTries.getAndIncrement()
+        latch2.await()
+      } *> ex.dual.exchange.provide(42)
+      rrr <- F.both(
+        concurrentUpdate1,
+        F.both(left.run[F], right.run[F])
+      )
+      _ <- assertEqualsF(rrr._2._1, (1, 42))
+      _ <- assertEqualsF(rrr._2._2, "foo")
+      // could be more than 2, exchanger is non-deterministic:
+      _ <- assertF(leftTries.get() > 1)
+      _ <- assertF(rightTries.get() > 1)
+    } yield ()
+    t.replicateA_(1000)
+  }
+
   test("Opacity with simple .get instead of unsafe.tentativeRead") {
     for {
       r1 <- Ref(0).run[F]
