@@ -164,11 +164,11 @@ object Mcas extends McasCompanionPlatform {
       java.lang.Long.remainderUnsigned(Consts.staffordMix13(Thread.currentThread().getId()), stripes.toLong).toInt
 
     /** Utility to first try to read from the log, and only from the ref if not found */
-    final def readMaybeFromLog[A](ref: MemoryLocation[A], log: AbstractDescriptor): Option[(A, AbstractDescriptor.Aux[log.D])] = {
+    final def readMaybeFromLog[A](ref: MemoryLocation[A], log: AbstractDescriptor, canExtend: Boolean): Option[(A, AbstractDescriptor.Aux[log.D])] = {
       log.getOrElseNull(ref) match {
         case null =>
           // not in log
-          this.readIntoLog(ref, log) match {
+          this.readIntoLog(ref, log, canExtend = canExtend) match {
             case null =>
               None // None means rollback needed
             case newLog =>
@@ -181,16 +181,20 @@ object Mcas extends McasCompanionPlatform {
       }
     }
 
-    private[this] final def readIntoLog[A](ref: MemoryLocation[A], log: AbstractDescriptor): AbstractDescriptor.Aux[log.D] = {
+    private[this] final def readIntoLog[A](ref: MemoryLocation[A], log: AbstractDescriptor, canExtend: Boolean): AbstractDescriptor.Aux[log.D] = {
       require(log.getOrElseNull(ref) eq null)
       val hwd = this.readIntoHwd(ref)
       val newLog: AbstractDescriptor.Aux[log.D] = log.add(hwd)
       if (!newLog.isValidHwd(hwd)) {
-        // this returns null if we need to roll back
-        // (and we pass on the null to our caller):
-        val res = this.validateAndTryExtend(newLog, hwd = null)
-        _assert((res eq null) || res.isValidHwd(hwd))
-        res
+        if (canExtend) {
+          // this returns null if we need to roll back
+          // (and we pass on the null to our caller):
+          val res = this.validateAndTryExtend(newLog, hwd = null)
+          _assert((res eq null) || res.isValidHwd(hwd))
+          res
+        } else {
+          null
+        }
       } else {
         newLog
       }
@@ -322,7 +326,7 @@ object Mcas extends McasCompanionPlatform {
     final def tryPerformSingleCas[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
       // TODO: this could be optimized (probably)
       val d0 = this.start()
-      val d1 = this.readIntoLog(ref, d0)
+      val d1 = this.readIntoLog(ref, d0, canExtend = true)
       _assert(d1 ne null)
       val hwd = d1.getOrElseNull(ref)
       _assert(hwd ne null)
@@ -337,13 +341,13 @@ object Mcas extends McasCompanionPlatform {
     // statistics/testing/benchmarking:
 
     /** Only for testing */
-    private[mcas] final def builder(): Builder = {
-      new Builder(this, this.start())
-    }
-
-    /** Only for testing */
-    private[mcas] final def builder(start: AbstractDescriptor): Builder = {
-      new Builder(this, start)
+    private[mcas] final def builder(start: AbstractDescriptor = null, canExtend: Boolean = true): Builder = {
+      val st = if (start eq null) {
+        this.start()
+      } else {
+        start
+      }
+      new Builder(this, st, canExtend = canExtend)
     }
 
     /** Only for testing/benchmarking */
@@ -507,8 +511,9 @@ object Mcas extends McasCompanionPlatform {
 
   /** Only for testing */
   private[mcas] final class Builder(
-    private[this] val ctx: ThreadContext,
-    private[this] val desc: AbstractDescriptor,
+    ctx: ThreadContext,
+    desc: AbstractDescriptor,
+    canExtend: Boolean,
   ) {
 
     final def readRef[A](ref: MemoryLocation[A]): Builder = {
@@ -516,13 +521,13 @@ object Mcas extends McasCompanionPlatform {
     }
 
     final def updateRef[A](ref: MemoryLocation[A], f: A => A): Builder = {
-      this.ctx.readMaybeFromLog(ref, this.desc) match {
+      this.ctx.readMaybeFromLog(ref, this.desc, this.canExtend) match {
         case Some((ov, newDesc)) =>
           val nv = f(ov)
           val newestDesc = newDesc.overwrite(
             newDesc.getOrElseNull(ref).withNv(nv)
           )
-          new Builder(this.ctx, newestDesc)
+          new Builder(this.ctx, newestDesc, this.canExtend)
         case None =>
           throw new IllegalStateException("couldn't extend, rollback is necessary")
       }
@@ -535,7 +540,7 @@ object Mcas extends McasCompanionPlatform {
     }
 
     final def tryCasRef[A](ref: MemoryLocation[A], from: A, to: A): Option[Builder] = {
-      this.ctx.readMaybeFromLog(ref, this.desc).map {
+      this.ctx.readMaybeFromLog(ref, this.desc, this.canExtend).map {
         case (ov, newDesc) =>
           val newestDesc = if (equ(ov, from)) {
             newDesc.overwrite(newDesc.getOrElseNull(ref).withNv(to))
@@ -544,7 +549,7 @@ object Mcas extends McasCompanionPlatform {
             val newHwd = LogEntry(ref, from, to, oldHwd.version)
             newDesc.overwrite(newHwd)
           }
-          new Builder(this.ctx, newestDesc)
+          new Builder(this.ctx, newestDesc, this.canExtend)
       }
     }
 

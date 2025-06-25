@@ -626,7 +626,7 @@ class EmcasSpec extends BaseSpec {
     val ctx = inst.currentContext()
     // T1:
     val d0 = ctx.start()
-    val Some((ov, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
+    val Some((ov, d1)) = ctx.readMaybeFromLog(ref, d0, canExtend = true) : @unchecked
     assertSameInstance(ov, "A")
     assertEquals(d1.getOrElseNull(ref).version, Version.Start)
     // T2:

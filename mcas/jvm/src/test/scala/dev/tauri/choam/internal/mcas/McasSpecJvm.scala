@@ -41,19 +41,19 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val r2 = MemoryLocation.unsafeUnpadded("b", this.rigInstance)
     val d0 = ctx.start()
     // read from r1 (not in the log):
-    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
     assertSameInstance(ov1, "a")
     if (this.isEmcas) assert(d1 eq d0) else assert(d1 ne d0)
     assert(d1 ne null)
     // read from r1 (already in the log):
-    val Some((ov1b, d2)) = ctx.readMaybeFromLog(r1, d1) : @unchecked
+    val Some((ov1b, d2)) = ctx.readMaybeFromLog(r1, d1, canExtend = true) : @unchecked
     assertSameInstance(ov1b, "a")
     assertSameInstance(d2, d1)
     // concurrently change version of r2 (so that it's newer than r1):
     var ok = false
     val t = new Thread(() => {
       val ctx = mcasImpl.currentContext()
-      val Some((ov2, dx)) = ctx.readMaybeFromLog(r2, ctx.start()) : @unchecked
+      val Some((ov2, dx)) = ctx.readMaybeFromLog(r2, ctx.start(), canExtend = true) : @unchecked
       assertSameInstance(ov2, "b")
       val hwd = dx.getOrElseNull(r2)
       assert(hwd ne null)
@@ -69,16 +69,23 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     t.start()
     t.join()
     assert(ok)
+    // create an immutable copy (to test an alternative path where canExtend = false):
+    val d2Imm = d2.toImmutable
     // continue with reading from r2 (version conflict only, will be extended):
     val d2vt = d2.validTs
-    val Some((ov2, d3)) = ctx.readMaybeFromLog(r2, d2) : @unchecked
+    val Some((ov2, d3)) = ctx.readMaybeFromLog(r2, d2, canExtend = true) : @unchecked
     val d3vt = d3.validTs
     assertSameInstance(ov2, "bb")
     assert(d3vt > d2vt)
     assertEquals(d3.getOrElseNull(r1).version, d2.getOrElseNull(r1).version)
     assertEquals(d3.getOrElseNull(r2).version, d3.validTs)
+    // OR, alternatively, will not be extended if it's not allowed:
+    assertEquals(d2Imm.validTs, d2vt)
+    val res = ctx.readMaybeFromLog(r2, d2Imm, canExtend = false)
+    assertEquals(res, None)
+    // END of alternative path
     // read r2 again (it's already in the log):
-    val Some((ov3, d4)) = ctx.readMaybeFromLog(r2, d3) : @unchecked
+    val Some((ov3, d4)) = ctx.readMaybeFromLog(r2, d3, canExtend = true) : @unchecked
     assertSameInstance(ov3, "bb")
     assertSameInstance(d4, d3)
     assert(d4.readOnly)
@@ -102,22 +109,22 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val r2 = MemoryLocation.unsafeUnpadded("b", this.rigInstance)
     val d0 = ctx.start()
     // read from r1 (not in the log):
-    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
     assertSameInstance(ov1, "a")
     if (this.isEmcas) assert(d1 eq d0) else assert(d1 ne d0)
     assert(d1 ne null)
     // read from r1 (already in the log):
-    val Some((ov1b, d2)) = ctx.readMaybeFromLog(r1, d1) : @unchecked
+    val Some((ov1b, d2)) = ctx.readMaybeFromLog(r1, d1, canExtend = true) : @unchecked
     assertSameInstance(ov1b, "a")
     assertSameInstance(d2, d1)
     // concurrently change r1 and r2:
     var ok = false
     val t = new Thread(() => {
       val ctx = mcasImpl.currentContext()
-      val Some((ov1, dx)) = ctx.readMaybeFromLog(r1, ctx.start()) : @unchecked
+      val Some((ov1, dx)) = ctx.readMaybeFromLog(r1, ctx.start(), canExtend = true) : @unchecked
       assertSameInstance(ov1, "a")
       val dx2 = dx.overwrite(dx.getOrElseNull(r1).withNv("x"))
-      val Some((ov2, dx3)) = ctx.readMaybeFromLog(r2, dx2) : @unchecked
+      val Some((ov2, dx3)) = ctx.readMaybeFromLog(r2, dx2, canExtend = true) : @unchecked
       assertSameInstance(ov2, "b")
       val dx4 = dx3.overwrite(dx3.getOrElseNull(r2).withNv("y"))
       assertEquals(ctx.tryPerform(dx4), McasStatus.Successful)
@@ -131,7 +138,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     t.join()
     assert(ok)
     // continue with reading from r2 (conflict with r1 must be detected):
-    val res = ctx.readMaybeFromLog(r2, d2)
+    val res = ctx.readMaybeFromLog(r2, d2, canExtend = true)
     assertSameInstance(res, None) // will need to roll back
     val hwd = ctx.readIntoHwd(r2)
     assert(!d2.isValidHwd(hwd))
@@ -144,10 +151,10 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val d0 = ctx.start()
     val startTs = d0.validTs
     // read both:
-    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
     assertSameInstance(ov1, "a")
     assert(d1.readOnly)
-    val Some((ov2, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
+    val Some((ov2, d2)) = ctx.readMaybeFromLog(r2, d1, canExtend = true) : @unchecked
     assertSameInstance(ov2, "b")
     assert(d2.readOnly)
     // concurrent commit:
@@ -155,8 +162,8 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val t = new Thread(() => {
       val ctx = mcasImpl.currentContext()
       val d0 = ctx.start()
-      val Some((_, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
-      val Some((_, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
+      val Some((_, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
+      val Some((_, d2)) = ctx.readMaybeFromLog(r2, d1, canExtend = true) : @unchecked
       val d3 = d2.overwrite(d2.getOrElseNull(r1).withNv("aa"))
       val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("bb"))
       assertEquals(ctx.tryPerform(d4), McasStatus.Successful)
@@ -184,10 +191,10 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val v1 = ctx.readVersion(r1)
     val v2 = ctx.readVersion(r2)
     // swap contents:
-    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
     assertSameInstance(ov1, "a")
     assert(d1.readOnly)
-    val Some((ov2, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
+    val Some((ov2, d2)) = ctx.readMaybeFromLog(r2, d1, canExtend = true) : @unchecked
     assertSameInstance(ov2, "b")
     assert(d2.readOnly)
     val d3 = d2.overwrite(d2.getOrElseNull(r1).withNv(ov2))
@@ -200,7 +207,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val t = new Thread(() => {
       val ctx = mcasImpl.currentContext()
       val d0 = ctx.start()
-      val Some((_, d1)) = ctx.readMaybeFromLog(r3, d0) : @unchecked
+      val Some((_, d1)) = ctx.readMaybeFromLog(r3, d0, canExtend = true) : @unchecked
       val d2 = d1.overwrite(d1.getOrElseNull(r3).withNv("cc"))
       assertEquals(ctx.tryPerform(d2), McasStatus.Successful)
       newVer = ctx.start().validTs
@@ -242,7 +249,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val d0 = ctx.start()
     val startTs = d0.validTs
     // one side:
-    val Some((ov1, d1a)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    val Some((ov1, d1a)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
     assertSameInstance(ov1, "a")
     val d2a = d1a.overwrite(d1a.getOrElseNull(r1).withNv("aa"))
     // concurrent:
@@ -250,7 +257,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val t = new Thread(() => {
       val ctx = mcasImpl.currentContext()
       val d0 = ctx.start()
-      val Some((_, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+      val Some((_, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
       val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("x"))
       assertEquals(ctx.tryPerform(d2), McasStatus.Successful)
       assertSameInstance(ctx.readDirect(r1), "x")
@@ -261,7 +268,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     assert(ok)
     assert(ctx.readVersion(r1) > startTs)
     // other side:
-    val Some((ov2, d1b)) = ctx.readMaybeFromLog(r2, ctx.start()) : @unchecked
+    val Some((ov2, d1b)) = ctx.readMaybeFromLog(r2, ctx.start(), canExtend = true) : @unchecked
     assertSameInstance(ov2, "b")
     val d2b = d1b.overwrite(d1b.getOrElseNull(r2).withNv("bb"))
     // try to merge; the logs are disjoint, but inconsistent:

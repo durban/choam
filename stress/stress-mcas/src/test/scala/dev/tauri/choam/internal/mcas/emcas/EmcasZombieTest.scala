@@ -48,9 +48,9 @@ class EmcasZombieTest {
   def write(r: LLLLLL_Result): Unit = {
     val ctx = inst.currentContext()
     val d0 = ctx.start()
-    val Some((_, d1)) = ctx.readMaybeFromLog(ref1, d0) : @unchecked
+    val Some((_, d1)) = ctx.readMaybeFromLog(ref1, d0, canExtend = true) : @unchecked
     val d2 = d1.overwrite(d1.getOrElseNull(ref1).withNv("x"))
-    val Some((_, d3)) = ctx.readMaybeFromLog(ref2, d2) : @unchecked
+    val Some((_, d3)) = ctx.readMaybeFromLog(ref2, d2, canExtend = true) : @unchecked
     val d4 = d3.overwrite(d3.getOrElseNull(ref2).withNv("y"))
     val ok = (ctx.tryPerform(d4) == McasStatus.Successful)
     r.r4 = ok // must be true
@@ -60,13 +60,13 @@ class EmcasZombieTest {
   def read(r: LLLLLL_Result): Unit = {
     val ctx = inst.currentContext()
     val d0 = ctx.start()
-    ctx.readMaybeFromLog(ref1, d0) match {
+    ctx.readMaybeFromLog(ref1, d0, canExtend = true) match {
       case None =>
         // this mustn't happen (the log is empty)
         r.r1 = None
       case Some((ov1, d1)) =>
         r.r1 = Some(ov1)
-        ctx.readMaybeFromLog(ref2, d1) match {
+        ctx.readMaybeFromLog(ref2, d1, canExtend = true) match {
           case None =>
             // OK, we detected the inconsistency
             r.r2 = None

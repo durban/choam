@@ -68,7 +68,7 @@ class McasTestVer extends StressTestBase {
     var idx = startIdx
     while (idx < refs.length) {
       val ref = refs(idx)
-      ctx.readMaybeFromLog(ref, d) match {
+      ctx.readMaybeFromLog(ref, d, canExtend = true) match {
         case Some((value, desc)) =>
           if (value eq ov) {
             d = desc.overwrite(desc.getOrElseNull(ref).withNv(nv))

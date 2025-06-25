@@ -248,24 +248,24 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val r2 = unsafe("b")
     val d0 = ctx.start()
     // read from r1 (not in the log):
-    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
     assertSameInstance(ov1, "a")
     if (this.isEmcas) assert(d1 eq d0) else assert(d1 ne d0)
     assert(d1 ne null)
     assert(d1.readOnly)
     // read from r1 (already in the log):
-    val Some((ov1b, d2)) = ctx.readMaybeFromLog(r1, d1) : @unchecked
+    val Some((ov1b, d2)) = ctx.readMaybeFromLog(r1, d1, canExtend = true) : @unchecked
     assertSameInstance(ov1b, "a")
     assertSameInstance(d2, d1)
     assert(d2.readOnly)
     // read from r2 (not in the log, but consistent):
-    val  Some((ov2, d3)) = ctx.readMaybeFromLog(r2, d2) : @unchecked
+    val  Some((ov2, d3)) = ctx.readMaybeFromLog(r2, d2, canExtend = true) : @unchecked
     assertSameInstance(ov2, "b")
     if (this.isEmcas) assert(d3 eq d2) else assert(d3 ne d2)
     assert(d3 ne null)
     assert(d3.readOnly)
     // read from r2 (now in the log):
-    val Some((ov2b, d4)) = ctx.readMaybeFromLog(r2, d3) : @unchecked
+    val Some((ov2b, d4)) = ctx.readMaybeFromLog(r2, d3, canExtend = true) : @unchecked
     assertSameInstance(ov2b, "b")
     assertSameInstance(d4, d3)
     assert(d4.readOnly)
@@ -298,10 +298,10 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val v2 = ctx.readVersion(r2)
     val startTs = d0.validTs
     // read both:
-    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
     assertSameInstance(ov1, "a")
     assert(d1.readOnly)
-    val Some((ov2, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
+    val Some((ov2, d2)) = ctx.readMaybeFromLog(r2, d1, canExtend = true) : @unchecked
     assertSameInstance(ov2, "b")
     assert(d2.readOnly)
     // commit:
@@ -320,10 +320,10 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val d0 = ctx.start()
     val startTs = d0.validTs
     // swap contents:
-    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
     assertSameInstance(ov1, "a")
     assert(d1.readOnly)
-    val Some((ov2, d2)) = ctx.readMaybeFromLog(r2, d1) : @unchecked
+    val Some((ov2, d2)) = ctx.readMaybeFromLog(r2, d1, canExtend = true) : @unchecked
     assertSameInstance(ov2, "b")
     assert(d2.readOnly)
     val d3 = d2.overwrite(d2.getOrElseNull(r1).withNv(ov2))
@@ -344,12 +344,12 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val r1 = unsafe("a")
     val r2 = unsafe("b")
     val d0 = ctx.start()
-    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
     assertSameInstance(ov1, "a")
     assert(d1.readOnly)
     val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("aa"))
     assert(!d2.readOnly)
-    val Some((ov2, d3)) = ctx.readMaybeFromLog(r2, d2) : @unchecked
+    val Some((ov2, d3)) = ctx.readMaybeFromLog(r2, d2, canExtend = true) : @unchecked
     assertSameInstance(ov2, "b")
     assert(!d3.readOnly)
     val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("bb"))
@@ -393,14 +393,14 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val d0 = ctx.start()
     val startTs = d0.validTs
     // one side:
-    val Some((ov1, d1a)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    val Some((ov1, d1a)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
     assertSameInstance(ov1, "a")
     val d2a = d1a.overwrite(d1a.getOrElseNull(r1).withNv("aa"))
     // simulate a concurrent commit which changes global version:
     assert(ctx.tryPerformSingleCas(r3, "x", "y"))
     assertEquals(ctx.start().validTs, startTs + Version.Incr)
     // other side:
-    val Some((ov2, d1b)) = ctx.readMaybeFromLog(r2, ctx.start()) : @unchecked
+    val Some((ov2, d1b)) = ctx.readMaybeFromLog(r2, ctx.start(), canExtend = true) : @unchecked
     assertSameInstance(ov2, "b")
     val d2b = d1b.overwrite(d1b.getOrElseNull(r2).withNv("bb"))
     // merge:
@@ -423,14 +423,14 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val r2 = unsafe("b")
     val d0 = ctx.start()
     // one side:
-    val Some((ov1, d1a)) = ctx.readMaybeFromLog(r1, d0) : @unchecked
+    val Some((ov1, d1a)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
     assertSameInstance(ov1, "a")
     val d2a = d1a.overwrite(d1a.getOrElseNull(r1).withNv("aa"))
     // other side:
-    val Some((ov2, d1b)) = ctx.readMaybeFromLog(r2, ctx.start()) : @unchecked
+    val Some((ov2, d1b)) = ctx.readMaybeFromLog(r2, ctx.start(), canExtend = true) : @unchecked
     assertSameInstance(ov2, "b")
     // touches the same ref:
-    val Some((_, d2b)) = ctx.readMaybeFromLog(r1, d1b) : @unchecked
+    val Some((_, d2b)) = ctx.readMaybeFromLog(r1, d1b, canExtend = true) : @unchecked
     // merge:
     try {
       ctx.addAll(d2a.toImmutable, d2b.toImmutable, canExtend = true)
@@ -573,7 +573,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val ref = unsafe("A")
     assert(ctx.tryPerformSingleCas(ref, "A", "B"))
     val d0 = ctx.start()
-    val Some((ov, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
+    val Some((ov, d1)) = ctx.readMaybeFromLog(ref, d0, canExtend = true) : @unchecked
     assertSameInstance(ov, "B")
     // concurrent changes:
     assert(ctx.tryPerformSingleCas(ref, "B", "C"))
@@ -601,7 +601,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
       }
     }
     val d0 = ctx.start()
-    val Some((_, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
+    val Some((_, d1)) = ctx.readMaybeFromLog(ref, d0, canExtend = true) : @unchecked
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv(("B")))
     assert(ctx.tryPerformOk(d2))
     assertEquals(ctr.get(), 1)
@@ -618,7 +618,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
       }
     }
     val d0 = ctx.start()
-    val Some((_, d1)) = ctx.readMaybeFromLog(ref, d0) : @unchecked
+    val Some((_, d1)) = ctx.readMaybeFromLog(ref, d0, canExtend = true) : @unchecked
     val e = d1.getOrElseNull(ref)
     val d2 = d1.overwrite(LogEntry(e.address, "X", "B", e.version))
     assert(!ctx.tryPerformOk(d2))
