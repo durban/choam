@@ -23,7 +23,7 @@ import scala.concurrent.duration._
 
 import cats.effect.kernel.{ Fiber, Outcome }
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
+import cats.effect.unsafe.{ IORuntime, SleepSystem }
 
 import org.openjdk.jcstress.annotations.{ Ref => _, Outcome => JOutcome, _ }
 import org.openjdk.jcstress.annotations.Expect._
@@ -126,7 +126,7 @@ object CatsAsyncTest {
     val created = IORuntime.createWorkStealingComputeThreadPool(threads = 3)
     val wstp = created._1
     val closeWstp = created._3
-    IORuntime.builder().setCompute(wstp, closeWstp).build()
+    IORuntime.builder().setCompute(wstp, closeWstp).setPollingSystem(SleepSystem).build()
   }
 
   val dummyCb: (Either[Throwable, String] => Unit) = {

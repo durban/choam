@@ -28,7 +28,7 @@ import scala.concurrent.ExecutionContext
 import org.openjdk.jmh.annotations._
 
 import cats.effect.IO
-import cats.effect.unsafe.{ IORuntime, IORuntimeBuilder }
+import cats.effect.unsafe.{ IORuntime, IORuntimeBuilder, SleepSystem }
 import cats.effect.std.Dispatcher
 
 import BackoffBenchIo._
@@ -261,7 +261,7 @@ object BackoffBenchIo {
         val created = IORuntime.createWorkStealingComputeThreadPool(threads = wstpSize)
         val wstp = created._1
         val closeWstp = created._3
-        val rt = IORuntimeBuilder().setCompute(wstp, closeWstp).build()
+        val rt = IORuntimeBuilder().setCompute(wstp, closeWstp).setPollingSystem(SleepSystem).build()
         val wit = ceRuntime.compareAndExchange(null, rt)
         if (wit eq null) {
           // we cheat, and never shut down this
