@@ -522,6 +522,27 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Changes committed  must be visible in post-commit actions") {
+    for {
+      r1 <- Ref(0).run[F]
+      r2 <- Ref(0).run
+      save1 <- Ref(-1).run
+      save2 <- Ref(-1).run
+      save3 <- Ref(-1).run
+      r = r1.update(_ + 1).postCommit(
+        (r2.update(_ + 1) *> r1.getAndSet.provide(42).flatMapF(save1.set1)).postCommit(
+          (r1.get >>> save2.set0) *> (r2.get >>> save3.set0)
+        )
+      )
+      _ <- r.run[F]
+      _ <- assertResultF(r1.get.run, 42)
+      _ <- assertResultF(r2.get.run, 1)
+      _ <- assertResultF(save1.get.run, 1)
+      _ <- assertResultF(save2.get.run, 42)
+      _ <- assertResultF(save3.get.run, 1)
+    } yield ()
+  }
+
   test("Formerly impossible CAS should not cause a runtime error") {
     for {
       ref <- Ref("a").run[F]

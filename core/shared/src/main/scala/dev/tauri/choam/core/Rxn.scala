@@ -721,7 +721,7 @@ object Rxn extends RxnInstances0 {
     final def unread[A](r: Ref[A]): Axn[Unit] =
       new Rxn.Unread(r)
 
-    private[choam] final def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] =
+    private[choam] final def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] = // TODO: do we even need this?
       new Rxn.Cas[A](r.loc, ov, nv)
 
     @inline
