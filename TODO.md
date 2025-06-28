@@ -29,10 +29,7 @@
 
 - Testing:
   - JCStress:
-    - `Exchanger`
     - replacing descriptors (weakref?)
-    - Other things (Promise?)
-  - Test with other IO impls (when they support ce3)
 - Optimization ideas:
   - Exchanger: there is a lot of `Array[Byte]` copying
   - Reducing allocations (we're allocating _a lot_)
@@ -61,18 +58,14 @@
     - Channel?
     - Optimize SignallingRef
 - API cleanup:
-  - MCAS API review
-    - is it usable outside of `choam`?
-    - if not, it doesn't really make sense to have it in a separate module(?)
-      - being in the same module would simplify using `ThreadContext` for `Rxn`-things
   - `Rxn.delay` use cases:
     - allocating:
       - `Ref` (most others are built on this)
       - `Ref.array`
       - `Exchanger`
     - calling async callbacks:
-      - only `Promise` really needs it
-      - `[Gen]WaitList` (as an optimization, to avoid `Promise`)
+      - `Promise`
+      - `[Gen]WaitList`
     - other special cases:
       - `UUIDGen`
       - `Unique` (this is a special case of "allocating")
@@ -84,21 +77,15 @@
       - If something can fail, return `Option` or `Either`
     - Transient errors can sometimes be handled with `+` (`Choice`)
       - but sometimes this can cause infinite retry
-- Composition of maybe-infinitely-retrying reactions:
-  - `stack.pop`, if empty, retries forever (unsafe, because non-lock-free)
-  - `exchanger.exchange`, if no partner found, retries forever (also unsafe)
-  - each can be made safe by `.?` (will only try once)
-  - however, composing the two is also an option (elimination stack)
-  - Can we have an API for composing unsafe parts into something which is safe?
-    - e.g., `PartialRxn[A, B]`
-    - `.?` would make a (safe) `Rxn` from it
-    - `.+(<something safe here>)` would also make it safe
+    - There is `Rxn.unsafe.panic`
+  - Add a safe API for `Rxn.unsafe.retryWhenChanged` combined with `orElse`
 - Think about global / thread-local state:
   - cleanup of unused exchanger stats
+- Internal:
+  - Review module structure (do we really want `-mcas` separate from `-core`?)
 
 ## Misc. ideas
 
-- Try building a native image with Graal, to see if it works
 - Other data structures:
   - concurrent bag (e.g., https://dl.acm.org/doi/10.1145/1989493.1989550)
   - dual data structures:
@@ -121,3 +108,4 @@
   - won't work, because we can't store a descriptor in them
 - `Ref` which is backed by mmapped memory / JS shared array
   - won't work, because we can't store a descriptor in them
+  - but: could we "flatten" a descriptor into mmapped memory?
