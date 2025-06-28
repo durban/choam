@@ -169,7 +169,8 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - A `Rxn` is somewhat similar to a memory transaction, but there are
     important differences:
     - A `Rxn` is lock-free by construction (but see [below](#lock-freedom)); STM transactions are not (necessarily)
-      lock-free (see, e.g., the "retry" STM operation, called "modular blocking" in Haskell).
+      lock-free (see, e.g., the "retry" STM operation, called
+      ["modular blocking" in Haskell](https://dl.acm.org/doi/pdf/10.1145/1378704.1378725)).
     - As a consequence of the previous point, `Rxn` cannot be used to implement
       "inherently not lock-free" logic (e.g., asynchronously waiting on a
       condition set by another thread/fiber/similar). However, `Rxn` is
@@ -202,6 +203,9 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       the system which guarantees *opacity* (see above) for `Rxn`s is based on
       the one in SwissTM (which is itself based on the one in TL2). However, TL2 and SwissTM
       are lock-based STM implementations; our implementation is lock-free.
+    - We also use some ideas from the
+      [Commit Phase Variations in Timestamp-based Software Transactional Memory](https://web.archive.org/web/20250628215946/https://repository.rice.edu/server/api/core/bitstreams/ec929767-5e4b-4c8e-9704-c649bf6328c9/content)
+      paper.
 
 ## Compatibility and assumptions
 
