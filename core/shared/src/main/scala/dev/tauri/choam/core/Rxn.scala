@@ -534,16 +534,6 @@ object Rxn extends RxnInstances0 {
   private[choam] final def unitImpl[A]: RxnImpl[A, Unit] =
     _unit
 
-  @inline
-  final def panic[A](ex: Throwable): Axn[A] = // TODO:0.5: should this be in `unsafe`?
-    panicImpl(ex)
-
-  private[choam] final def panicImpl[A](ex: Throwable): RxnImpl[Any, A] =
-    unsafe.delayImpl[Any, A] { _ => throw ex }
-
-  private[choam] final def assert(cond: Boolean): Axn[Unit] =
-    if (cond) unit[Any] else panic[Unit](new AssertionError)
-
   final def computed[A, B](f: A => Axn[B]): Rxn[A, B] =
     new Rxn.Computed(f)
 
@@ -750,6 +740,16 @@ object Rxn extends RxnInstances0 {
      */
     private[choam] final def axnDelayContextImpl[A](uf: Mcas.ThreadContext => A): RxnImpl[Any, A] =
       new Rxn.Ctx1[Any, A](uf)
+
+    @inline
+    final def panic[A](ex: Throwable): Axn[A] =
+      panicImpl(ex)
+
+    private[choam] final def panicImpl[A](ex: Throwable): RxnImpl[Any, A] =
+      delayImpl[Any, A] { _ => throw ex }
+
+    private[choam] final def assert(cond: Boolean): Axn[Unit] =
+      if (cond) unit[Any] else panic[Unit](new AssertionError)
 
     private[choam] final def exchanger[A, B]: Axn[Exchanger[A, B]] =
       Exchanger.apply[A, B]

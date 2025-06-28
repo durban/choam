@@ -70,9 +70,6 @@ object Txn extends TxnInstances0 {
   final def check(cond: Boolean): Txn[Unit] =
     if (cond) unit else retry
 
-  final def panic[A](ex: Throwable): Txn[A] =
-    Rxn.panicImpl(ex)
-
   final def tailRecM[A, B](a: A)(f: A => Txn[Either[A, B]]): Txn[B] =
     Rxn.tailRecMImpl(a)(f.asInstanceOf[Function1[A, Axn[Either[A, B]]]])
 
@@ -105,6 +102,9 @@ object Txn extends TxnInstances0 {
 
     private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Txn[A]): Txn[A] =
       delayContext(uf).flatten
+
+    final def panic[A](ex: Throwable): Txn[A] =
+      Rxn.unsafe.panicImpl(ex)
 
     /** Only for testing! */
     private[choam] final def retryUnconditionally[A]: Txn[A] =

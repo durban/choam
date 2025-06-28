@@ -512,7 +512,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
             }
           }
         case x =>
-          Rxn.panic(new AssertionError(s"unexpected: $x"))
+          Rxn.unsafe.panic(new AssertionError(s"unexpected: $x"))
       }
       bgFiber <- Axn.unsafe.delay(Random.shuffle(refs)).flatMapF { refs =>
         refs.traverse { ref => ref.update(_ + 1) }

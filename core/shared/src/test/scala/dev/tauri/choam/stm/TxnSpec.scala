@@ -158,14 +158,14 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Txn.panic") {
+  test("Txn.unsafe.panic") {
     val exc = new MyException
     for {
-      _ <- assertResultF(Txn.panic(exc).commit.attempt, Left(exc))
-      _ <- assertResultF((Txn.panic(exc) orElse Txn.pure[Int](42)).commit.attempt, Left(exc))
-      _ <- assertResultF((Txn.retry orElse Txn.panic(exc)).commit.attempt, Left(exc))
+      _ <- assertResultF(Txn.unsafe.panic(exc).commit.attempt, Left(exc))
+      _ <- assertResultF((Txn.unsafe.panic(exc) orElse Txn.pure[Int](42)).commit.attempt, Left(exc))
+      _ <- assertResultF((Txn.retry orElse Txn.unsafe.panic(exc)).commit.attempt, Left(exc))
       ref <- TRef[Int](0).commit
-      _ <- assertResultF((ref.update(_ + 1) *> Txn.panic(exc)).commit.attempt, Left(exc))
+      _ <- assertResultF((ref.update(_ + 1) *> Txn.unsafe.panic(exc)).commit.attempt, Left(exc))
       _ <- assertResultF(ref.get.commit, 0)
     } yield ()
   }
@@ -243,13 +243,13 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
                 if (ov == 0) { // ok
                   lift(Txn.unsafe.retryUnconditionally) // go to right
                 } else {
-                  lift(Txn.panic(new AssertionError))
+                  lift(Txn.unsafe.panic(new AssertionError))
                 }
               } else { // right
                 if (ov == 0) { // ok
                   lift(ref.get)
                 } else {
-                  lift(Txn.panic(new AssertionError))
+                  lift(Txn.unsafe.panic(new AssertionError))
                 }
               }
             }

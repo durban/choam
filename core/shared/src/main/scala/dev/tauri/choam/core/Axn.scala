@@ -39,9 +39,6 @@ object Axn {
   private[choam] final def none[A]: Axn[Option[A]] =
     _none
 
-  final def panic[A](ex: Throwable): Axn[A] =
-    Rxn.panic(ex)
-
   final object unsafe {
 
     @inline
@@ -65,5 +62,8 @@ object Axn {
     @inline
     private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =
       this.delayContext(uf).flatten
+
+    final def panic[A](ex: Throwable): Axn[A] =
+      Rxn.unsafe.panic(ex)
   }
 }
