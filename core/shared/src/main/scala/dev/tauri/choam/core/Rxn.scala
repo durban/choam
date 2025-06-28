@@ -28,7 +28,7 @@ import cats.effect.kernel.{ Async, Clock, Cont, Unique, MonadCancel, Ref => Cats
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
 import dev.tauri.choam.{ unsafe => unsafe2 }
-import stm.{ Txn, Transactive }
+import stm.Txn
 import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, AbstractDescriptor, Consts, Hamt, Version }
 import internal.mcas.Hamt.IllegalInsertException
 import internal.random
@@ -481,10 +481,6 @@ private[choam] sealed abstract class RxnImpl[-A, +B]
 
   final override def orElse[Y >: B](that: Txn[Y]): Txn[Y] = {
     new Rxn.OrElse(this, that.impl)
-  }
-
-  final override def commit[F[_], X >: B](implicit F: Transactive[F]): F[X] = {
-    F.commit(this)
   }
 
   private[choam] final override def impl: RxnImpl[Any, B] =

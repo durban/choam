@@ -52,8 +52,6 @@ sealed trait Txn[+B] {
   def orElse[Y >: B](that: Txn[Y]): Txn[Y]
 
   private[choam] def impl: RxnImpl[Any, B]
-
-  def commit[F[_], X >: B](implicit F: Transactive[F]): F[X] // TODO: look at Rxn.InvariantSyntax
 }
 
 object Txn extends TxnInstances0 {
@@ -117,6 +115,11 @@ object Txn extends TxnInstances0 {
       t1.asInstanceOf[RxnImpl[Any, A]] + t2.asInstanceOf[RxnImpl[Any, A]]
     }
   }
+
+  final class InvariantSyntax[A](private val self: Txn[A]) extends AnyVal {
+    final def commit[F[_]](implicit F: Transactive[F]): F[A] =
+      F.commit(self)
+  }
 }
 
 private[stm] sealed abstract class TxnInstances0 extends TxnInstances1 { self: Txn.type =>
@@ -179,7 +182,7 @@ private[stm] sealed abstract class TxnInstances0 extends TxnInstances1 { self: T
   }
 }
 
-private[stm] sealed abstract class TxnInstances1 extends TxnCompanionPlatform { self: Txn.type =>
+private[stm] sealed abstract class TxnInstances1 extends TxnSyntax0 { self: Txn.type =>
 
   implicit final def monoidInstance[B](implicit B: Monoid[B]): Monoid[Txn[B]] = new Monoid[Txn[B]] {
     final override def combine(x: Txn[B], y: Txn[B]): Txn[B] =
@@ -187,4 +190,12 @@ private[stm] sealed abstract class TxnInstances1 extends TxnCompanionPlatform { 
     final override def empty: Txn[B] =
       Txn.pure(B.empty)
   }
+}
+
+private[stm] sealed abstract class TxnSyntax0 extends TxnCompanionPlatform { self: Txn.type =>
+
+  import scala.language.implicitConversions
+
+  implicit final def invariantSyntax[A](self: Txn[A]): Txn.InvariantSyntax[A] =
+    new Txn.InvariantSyntax(self)
 }

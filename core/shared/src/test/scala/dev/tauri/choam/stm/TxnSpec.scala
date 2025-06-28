@@ -51,7 +51,7 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     for {
       r <- TRef[Int](42).commit
       _ <- assertResultF(txn(r).commit, (42, 99))
-      _ <- assertResultF(r.get.commit, 99)
+      _ <- assertResultF(r.get.commit[F], 99)
     } yield ()
   }
 
