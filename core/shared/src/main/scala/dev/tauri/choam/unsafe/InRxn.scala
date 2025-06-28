@@ -18,17 +18,7 @@
 package dev.tauri.choam
 package unsafe
 
-import cats.effect.kernel.Async
-
 import internal.mcas.{ Mcas, MemoryLocation, LogEntry }
-
-private[choam] trait CanSuspendInF {
-
-  def suspend[F[_]](
-    mcasImpl: Mcas,
-    mcasCtx: Mcas.ThreadContext,
-  )(implicit F: Async[F]): F[Unit]
-}
 
 sealed trait InRxn  {
   private[choam] def currentContext(): Mcas.ThreadContext
