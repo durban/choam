@@ -1439,18 +1439,6 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Tuple2 syntax") {
-    for {
-      r1 <- Ref("a").run[F]
-      r2 <- Ref("b").run[F]
-      r = r1.get.map2(r2.get)((_, _))
-      _ <- assertResultF(r.left.run[F], "a")
-      _ <- assertResultF(r.right.run[F], "b")
-      rr = r.split(Rxn.identity, Rxn.lift[String, String](_ + "x"))
-      _ <- assertResultF(rr.run[F], ("a", "bx"))
-    } yield ()
-  }
-
   test("Reactive is a FunctionK") {
     Reactive[F] : FunctionK[Axn, F]
   }

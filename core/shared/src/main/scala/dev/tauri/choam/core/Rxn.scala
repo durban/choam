@@ -1236,15 +1236,6 @@ object Rxn extends RxnInstances0 {
       F.run(self)
   }
 
-  final class Tuple2RxnSyntax[A, B, C](private val self: Rxn[A, (B, C)]) extends AnyVal {
-    final def left: Rxn[A, B] =
-      self.map(_._1)
-    final def right: Rxn[A, C] =
-      self.map(_._2)
-    final def split[X, Y](left: Rxn[B, X], right: Rxn[C, Y]): Rxn[A, (X, Y)] =
-      self >>> (left × right)
-  }
-
   // Interpreter:
 
   private[this] final class PostCommitResultMarker // TODO: make this a java enum?
@@ -2849,9 +2840,4 @@ private sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.type =>
 }
 
 private sealed abstract class RxnSyntax2 extends RxnCompanionPlatform { this: Rxn.type =>
-
-  import scala.language.implicitConversions
-
-  implicit final def rxnTuple2RxnSyntax[A, B, C](self: Rxn[A, (B, C)]): Rxn.Tuple2RxnSyntax[A, B, C] =
-    new Rxn.Tuple2RxnSyntax(self)
 }
