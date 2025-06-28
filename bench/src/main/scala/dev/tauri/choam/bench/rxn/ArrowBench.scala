@@ -54,7 +54,8 @@ import util._
  * question that this benchmark tries to answer.
  */
 @Fork(3)
-@Threads(2)
+@Threads(1)
+@BenchmarkMode(Array(Mode.AverageTime))
 class ArrowBench {
 
   import ArrowBench.{ SharedSt, ThreadSt, N }
@@ -106,7 +107,7 @@ object ArrowBench {
   class ThreadSt extends McasImplState {
 
     private[this] val preallocatedPromise: Promise[String] =
-      Promise[String].unsafeRun(this.mcasImpl)
+      (Promise[String].flatMapF(p => p.complete1("").as(p))).unsafeRun(this.mcasImpl)
 
     private[this] val preallocatedNode: Node =
       ArrowBench.newNode(42, null, null).unsafeRun(this.mcasImpl)
@@ -117,7 +118,7 @@ object ArrowBench {
      * allocating a new instance.
      */
     val newPromise: Axn[Promise[String]] =
-      Axn.unsafe.delay { this.preallocatedPromise }
+      Axn.pure(this.preallocatedPromise)
 
     /**
      * We're returning a pre-allocated `Node`, because
@@ -125,7 +126,7 @@ object ArrowBench {
      * allocating a new instance.
      */
     val newNode: Axn[Node] =
-      Axn.unsafe.delay { this.preallocatedNode }
+      Axn.pure(this.preallocatedNode)
   }
 
   @State(Scope.Benchmark)
