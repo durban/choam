@@ -1600,7 +1600,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Exception passthrough (Reactive)") {
     import RxnSpec.{ MyException, throwingRxns }
     throwingRxns.traverse_ { r =>
-      r.run[F](null).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      r.run[F].attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
     }
   }
 }
