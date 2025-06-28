@@ -113,7 +113,7 @@ _does_ have modular blocking (`Txn.retry`).
     and so are in an `F[_] : Async` (note, that these `F[A]` operations are – obviously – *not* lock-free)
   - These data structures (typically) also have some (lock-free) `Rxn` operations; thus they
     provide a "bridge" between the (synchronous, lock-free) `Rxn` "world", and the (asynchronous) `F[_]` "world".
-  - The simplest example is `dev.tauri.choam.async.Promise`, which can be
+  - <a name="promise"></a>The simplest example is `dev.tauri.choam.async.Promise`, which can be
     completed as a `Rxn`, and can be waited on as an async `F[_]`:
       ```scala
       trait Promise[A] { // simplified API
@@ -177,8 +177,8 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       interoperable with async data types which implement
       [Cats Effect](https://github.com/typelevel/cats-effect) typeclasses
       (see the `choam-async` module). This feature can be used to provide such
-      "waiting" functionality (e.g., `dev.tauri.choam.async.AsyncQueue.unbounded`
-      is a queue with `enqueue` in `Rxn` and `deque` in, e.g., `IO` or another `F[_] : Async`).
+      "waiting" functionality (e.g., with the `dev.tauri.choam.async.Promise` type,
+      see [above](#promise)).
     - The implementation (the `Rxn` interpreter) is also lock-free; STM implementations
       usually use fine-grained locking (although there are exceptions).
     - STM transactions usually have a way of raising/handling errors
