@@ -674,25 +674,6 @@ object Rxn extends RxnInstances0 {
         this.unsafeSet(this.unsafePeek)
     }
 
-    private[Rxn] final class TicketForTentativeRead[A](hwd: LogEntry[A])
-      extends Ticket[A] {
-
-      // TODO: Create, e.g., a `SaferTicket` type, or
-      // TODO: even just return `A` from `tentativeRead`.
-
-      final override def unsafePeek: A =
-        hwd.nv
-
-      final override def unsafeSet(nv: A): Axn[Unit] =
-        new Rxn.TicketWrite(hwd, nv)
-
-      final override def unsafeIsReadOnly: Boolean =
-        throw new UnsupportedOperationException
-
-      final override def unsafeValidate: Axn[Unit] =
-        throw new UnsupportedOperationException
-    }
-
     final def directRead[A](r: Ref[A]): Axn[A] =
       new Rxn.DirectRead[A](r.loc)
 
@@ -706,7 +687,7 @@ object Rxn extends RxnInstances0 {
      * so it is safer than `ticketRead`; but makes it impossible
      * to do a log extension later.
      */
-    final def tentativeRead[A](r: Ref[A]): Axn[Ticket[A]] =
+    final def tentativeRead[A](r: Ref[A]): Axn[A] =
       new Rxn.TentativeRead[A](r.loc)
 
     final def unread[A](r: Ref[A]): Axn[Unit] =
@@ -1220,7 +1201,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"LocalNewEnd(${local}, ${isEnd})"
   }
 
-  private final class TentativeRead[A](val loc: MemoryLocation[A]) extends RxnImpl[Any, unsafe.Ticket[A]] {
+  private final class TentativeRead[A](val loc: MemoryLocation[A]) extends RxnImpl[Any, A] {
     final override def toString: String = s"TentativeRead(${loc})"
   }
 
@@ -2335,12 +2316,13 @@ object Rxn extends RxnInstances0 {
           loop(next())
         case c: TentativeRead[_] => // TentativeRead
           val hwd = tentativeRead(c.loc)
-          if (hwd eq null) {
-            loop(retry())
+          val nxt = if (hwd eq null) {
+            retry()
           } else {
-            a = new unsafe.TicketForTentativeRead(hwd)
-            loop(next())
+            a = hwd.nv
+            next()
           }
+          loop(nxt)
       }
     }
 

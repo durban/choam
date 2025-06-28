@@ -357,14 +357,17 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ctr <- F.delay(new AtomicInteger(0))
       latch1 <- F.delay(new CountDownLatch(1))
       latch2 <- F.delay(new CountDownLatch(1))
-      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMapF { ticket1 =>
+      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMapF { v1 =>
         ctr.incrementAndGet()
         latch1.countDown()
         // concurrent change to r2
         latch2.await()
         // this will need to retry, because we mustn't extend the log:
-        Rxn.unsafe.tentativeRead(r2).flatMapF { ticket2 =>
-          ticket2.unsafeSet(99).as((ticket1.unsafePeek, ticket2.unsafePeek))
+        Rxn.unsafe.tentativeRead(r2).flatMapF { v2 =>
+          r2.update { ov =>
+            assertEquals(ov, v2)
+            99
+          }.as((v1, v2))
         }
       }
       rxn2Task = F.delay(latch1.await()) *> r2.update(_ + 1).run[F] *> F.delay(latch2.countDown())
@@ -383,13 +386,16 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ctr <- F.delay(new AtomicInteger(0))
       latch1 <- F.delay(new CountDownLatch(1))
       latch2 <- F.delay(new CountDownLatch(1))
-      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMapF { ticket1 =>
+      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMapF { v1 =>
         ctr.incrementAndGet()
         latch1.countDown()
         // concurrent change to r0
         latch2.await()
-        Rxn.unsafe.tentativeRead(r2).flatMapF { ticket2 =>
-          ticket2.unsafeSet(99).as((ticket1.unsafePeek, ticket2.unsafePeek))
+        Rxn.unsafe.tentativeRead(r2).flatMapF { v2 =>
+          r2.update { ov =>
+            assertEquals(ov, v2)
+            99
+          }.as((v1, v2))
         } <* r0.update(_ + 42) // <- this will need to retry, because we mustn't extend the log
       }
       rxn2Task = F.delay(latch1.await()) *> r0.update(_ + 1).run[F] *> F.delay(latch2.countDown())
@@ -409,13 +415,16 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ctr <- F.delay(new AtomicInteger(0))
       latch1 <- F.delay(new CountDownLatch(1))
       latch2 <- F.delay(new CountDownLatch(1))
-      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMapF { ticket1 =>
-        Rxn.unsafe.tentativeRead(r2).flatMapF { ticket2 =>
+      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMapF { v1 =>
+        Rxn.unsafe.tentativeRead(r2).flatMapF { v2 =>
           ctr.incrementAndGet()
           latch1.countDown()
           // concurrent change to r2
           latch2.await()
-          ticket1.unsafeSet(99).as((ticket1.unsafePeek, ticket2.unsafePeek))
+          r1.update { ov =>
+            assertEquals(ov, v1)
+            99
+          }.as((v1, v2))
         }
       }
       rxn2Task = F.delay(latch1.await()) *> r2.update(_ + 1).run[F] *> F.delay(latch2.countDown())
@@ -433,13 +442,16 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ctr <- F.delay(new AtomicInteger(0))
       latch1 <- F.delay(new CountDownLatch(1))
       latch2 <- F.delay(new CountDownLatch(1))
-      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMapF { ticket1 =>
-        Rxn.unsafe.tentativeRead(r2).flatMapF { ticket2 =>
+      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMapF { v1 =>
+        Rxn.unsafe.tentativeRead(r2).flatMapF { v2 =>
           ctr.incrementAndGet()
           latch1.countDown()
           // concurrent change to r2
           latch2.await()
-          ticket2.unsafeSet(99).as((ticket1.unsafePeek, ticket2.unsafePeek))
+          r2.update { ov =>
+            assertEquals(ov, v2)
+            99
+          }.as((v1, v2))
         }
       }
       rxn2Task = F.delay(latch1.await()) *> r2.update(_ + 1).run[F] *> F.delay(latch2.countDown())
@@ -493,8 +505,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       refs <- (1 to 5).toList.traverse { _ => Ref(0) }.run[F]
       rxn = Axn.unsafe.delay(Random.shuffle(refs).take(3)).flatMapF {
         case r1 :: r2 :: r3 :: Nil =>
-          r1.update(_ + 1) *> Rxn.unsafe.tentativeRead(r2).flatMapF { ticket =>
-            val tRead = ticket.unsafePeek
+          r1.update(_ + 1) *> Rxn.unsafe.tentativeRead(r2).flatMapF { tRead =>
             r3.update(_ + 1) *> r2.update { ov =>
               assertEquals(ov, tRead)
               ov + 1

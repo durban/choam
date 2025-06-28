@@ -1157,12 +1157,15 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("a").run[F]
-      r = Rxn.unsafe.tentativeRead(r2).flatMapF { ticket =>
-        r1.getAndUpdate(_ + ticket.unsafePeek).flatMapF { ov =>
+      r = Rxn.unsafe.tentativeRead(r2).flatMapF { v2 =>
+        r1.getAndUpdate(_ + v2).flatMapF { ov =>
           if (ov === "aa") {
             Rxn.unit
           } else {
-            ticket.unsafeSet(ticket.unsafePeek + "x")
+            r2.update { ov =>
+              assertEquals(ov, v2)
+              ov + "x"
+            }
           }
         }
       }
@@ -1182,8 +1185,11 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r2 <- Ref("a").run[F]
       r = r2.update(_ + "b").flatMapF { _ =>
-        Rxn.unsafe.tentativeRead(r2).flatMapF { ticket =>
-          ticket.unsafeSet(ticket.unsafePeek + "x")
+        Rxn.unsafe.tentativeRead(r2).flatMapF { v2 =>
+          r2.update { ov =>
+            assertEquals(ov, v2)
+            ov + "x"
+          }
         }
       }
       _ <- assertResultF(r.run[F], ())
