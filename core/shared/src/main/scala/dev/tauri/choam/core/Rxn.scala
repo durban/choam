@@ -231,7 +231,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     ).interpretSync()
   }
 
-  final def perform[F[_], X >: B]( // TODO:0.5: do we want this public?
+  final def perform[F[_], X >: B]( // TODO:0.5: do we want this public? (implicit Async is not great)
     a: A,
     rt: ChoamRuntime,
     strategy: RetryStrategy = RetryStrategy.Default,
