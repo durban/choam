@@ -148,7 +148,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   [Reagents: Expressing and Composing Fine-grained Concurrency
   ](https://web.archive.org/web/20220214132428/https://www.ccis.northeastern.edu/home/turon/reagents.pdf). (Other implementations or reagents:
   [Scala](https://github.com/aturon/ChemistrySet),
-  [OCaml](https://github.com/ocamllabs/reagents),
+  [OCaml](https://github.com/ocaml-multicore/reagents),
   [Racket](https://github.com/aturon/Caper).)
   The main diferences from the paper are:
   - Only lock-free features (and a few low-level ones) are implemented.
@@ -196,8 +196,14 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       are consistent with each other, even in running `Rxn`s (some STM systems only
       guarantee such consistency for transactions which actually commit).
   - Some STM implementations:
-    - Haskell: `Control.Concurrent.STM`.
-    - Scala: `scala-stm`, `cats-stm`, `ZSTM`.
+    - Haskell: [`Control.Concurrent.STM`](https://hackage.haskell.org/package/stm).
+    - Scala:
+      [Cats STM](https://github.com/TimWSpence/cats-stm),
+      [`kyo-stm`](https://github.com/getkyo/kyo/tree/main/kyo-stm/shared/src/main/scala/kyo),
+      [ScalaSTM](https://github.com/scala-stm/scala-stm),
+      [ZSTM](https://github.com/zio/zio/tree/series/2.x/core/shared/src/main/scala/zio/stm).
+    - Kotlin: [`arrow-fx-stm`](https://arrow-kt.io/learn/coroutines/stm).
+    - OCaml: [Kcas](https://github.com/ocaml-multicore/kcas).
     - [TL2](https://web.archive.org/web/20220205171142/https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.90.811&rep=rep1&type=pdf)
       and [SwissTM](https://web.archive.org/web/20220215230304/https://www.researchgate.net/profile/Aleksandar-Dragojevic/publication/37470225_Stretching_Transactional_Memory/links/0912f50d430e2cf991000000/Stretching-Transactional-Memory.pdf):
       the system which guarantees *opacity* (see above) for `Rxn`s is based on
