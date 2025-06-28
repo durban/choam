@@ -22,6 +22,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.{ AtomicReference, AtomicInteger, AtomicLong, AtomicBoolean }
 
 import scala.concurrent.duration._
+import scala.util.Random
 
 import cats.effect.IO
 
@@ -483,6 +484,29 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       // could be more than 2, exchanger is non-deterministic:
       _ <- assertF(leftTries.get() > 1)
       _ <- assertF(rightTries.get() > 1)
+    } yield ()
+    t.replicateA_(1000)
+  }
+
+  test("unsafe.tentativeRead, then update (must see the same value)") {
+    val t = for {
+      refs <- (1 to 5).toList.traverse { _ => Ref(0) }.run[F]
+      rxn = Axn.unsafe.delay(Random.shuffle(refs).take(3)).flatMapF {
+        case r1 :: r2 :: r3 :: Nil =>
+          r1.update(_ + 1) *> Rxn.unsafe.tentativeRead(r2).flatMapF { ticket =>
+            val tRead = ticket.unsafePeek
+            r3.update(_ + 1) *> r2.update { ov =>
+              assertEquals(ov, tRead)
+              ov + 1
+            }
+          }
+        case x =>
+          Rxn.panic(new AssertionError(s"unexpected: $x"))
+      }
+      bgFiber <- Axn.unsafe.delay(Random.shuffle(refs)).flatMapF { refs =>
+        refs.traverse { ref => ref.update(_ + 1) }
+      }.run[F].foreverM[Unit].start
+      _ <- F.both(F.cede *> rxn.run[F], F.cede *> rxn.run[F]).guarantee(bgFiber.cancel)
     } yield ()
     t.replicateA_(1000)
   }

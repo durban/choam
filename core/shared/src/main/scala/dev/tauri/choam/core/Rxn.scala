@@ -1874,12 +1874,12 @@ object Rxn extends RxnInstances0 {
      */
     private[this] final def tentativeRead[A](ref: MemoryLocation[A]): LogEntry[A] = {
       val hwd = readMaybeFromLog(ref)
-      // `desc` must be initialized (at the latest) when we
-      // execute the first `tentativeRead`, because for
-      // those, opacity is solely based on version numbers
-      // (so we need an initialized `validTs`):
-      _assert(_desc ne null)
       if (hwd ne null) {
+        // `desc` must be initialized (at the latest) when we
+        // execute the first `tentativeRead`, because for
+        // those, opacity is solely based on version numbers
+        // (so we need an initialized `validTs`):
+        _assert(_desc ne null)
         this.hasTentativeRead = true
       }
       hwd
