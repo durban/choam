@@ -86,6 +86,9 @@ abstract class McasImplStateBase {
 
   private[choam] val mcasImpl: Mcas =
     McasImplStateBase.mcasImpl
+
+  private[choam] val choamRuntime: ChoamRuntime =
+    McasImplStateBase.rt
 }
 
 private[bench] object McasImplStateBase {

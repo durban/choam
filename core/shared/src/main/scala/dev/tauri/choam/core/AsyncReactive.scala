@@ -49,7 +49,7 @@ object AsyncReactive {
     with AsyncReactive[F] {
 
     final override def applyAsync[A, B](r: Rxn[A, B], a: A, s: RetryStrategy = RetryStrategy.Default): F[B] =
-      r.perform[F, B](a, this.mcasImpl, s)(using F)
+      r.performInternal[F, B](a, this.mcasImpl, s)(using F)
 
     private[choam] final override def asyncInst =
       F

@@ -231,18 +231,13 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     ).interpretSync()
   }
 
-  final def perform[F[_], X >: B](
+  final def perform[F[_], X >: B]( // TODO:0.5: do we want this public?
     a: A,
     rt: ChoamRuntime,
-  )(implicit F: Async[F]): F[X] = this.perform(a, rt, RetryStrategy.Default)
+    strategy: RetryStrategy = RetryStrategy.Default,
+  )(implicit F: Async[F]): F[X] = this.performInternal(a, rt.mcasImpl, strategy)
 
-  final def perform[F[_], X >: B](
-    a: A,
-    rt: ChoamRuntime,
-    strategy: RetryStrategy,
-  )(implicit F: Async[F]): F[X] = this.perform(a, rt.mcasImpl, strategy)
-
-  private[choam] final def perform[F[_], X >: B](
+  private[choam] final def performInternal[F[_], X >: B](
     a: A,
     mcas: Mcas,
     strategy: RetryStrategy = RetryStrategy.Default,
@@ -251,7 +246,7 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     // this method, since it could be a `Stepper[G]`,
     // where `G` is different form `F`:
     require(!strategy.isDebug)
-    performInternal[F, X](a = a, mcas = mcas, strategy = strategy)
+    performInternal0[F, X](a = a, mcas = mcas, strategy = strategy)
   }
 
   private[choam] final def performWithStepper[F[_], X >: B](
@@ -259,10 +254,10 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
     mcas: Mcas,
     stepper: RetryStrategy.Internal.Stepper[F],
   )(implicit F: Async[F]): F[X] = {
-    performInternal[F, X](a = a, mcas = mcas, strategy = stepper)
+    performInternal0[F, X](a = a, mcas = mcas, strategy = stepper)
   }
 
-  private[this] final def performInternal[F[_], X >: B](
+  private[this] final def performInternal0[F[_], X >: B](
     a: A,
     mcas: Mcas,
     strategy: RetryStrategy,
