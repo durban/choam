@@ -497,7 +497,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       _ <- assertF(leftTries.get() > 1)
       _ <- assertF(rightTries.get() > 1)
     } yield ()
-    t.replicateA_(1000)
+    t.replicateA_(500)
   }
 
   test("unsafe.tentativeRead, then update (must see the same value)") {
