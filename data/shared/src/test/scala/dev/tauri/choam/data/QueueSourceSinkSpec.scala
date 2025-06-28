@@ -31,12 +31,12 @@ trait QueueSourceSinkSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =
     for {
       q <- Queue.bounded[Int](bound = 3).run[F]
       _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryEnqueue[F](1), true)
-      _ <- assertResultF(q.tryEnqueue[F](2), true)
+      _ <- assertResultF(q.tryEnqueue.run[F](1), true)
+      _ <- assertResultF(q.tryEnqueue.run[F](2), true)
       _ <- assertResultF(q.tryDeque.run[F], Some(1))
-      _ <- assertResultF(q.tryEnqueue[F](3), true)
-      _ <- assertResultF(q.tryEnqueue[F](4), true)
-      _ <- assertResultF(q.tryEnqueue[F](5), false)
+      _ <- assertResultF(q.tryEnqueue.run[F](3), true)
+      _ <- assertResultF(q.tryEnqueue.run[F](4), true)
+      _ <- assertResultF(q.tryEnqueue.run[F](5), false)
       _ <- assertResultF(q.tryDeque.run[F], Some(2))
       _ <- assertResultF(q.tryDeque.run[F], Some(3))
       _ <- assertResultF(q.tryDeque.run[F], Some(4))

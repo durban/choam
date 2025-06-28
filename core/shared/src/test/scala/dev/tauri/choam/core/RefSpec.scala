@@ -71,7 +71,7 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     for {
       ref <- newRef("ert")
       rea = lift((_: Int).toString) × (Rxn.unsafe.cas(ref, "ert", "xyz") >>> lift(_ => "boo"))
-      s12 <- rea((5, ()))
+      s12 <- rea.run((5, ()))
       (s1, s2) = s12
       _ <- assertEqualsF(s1, "5")
       _ <- assertEqualsF(s2, "boo")
@@ -104,7 +104,7 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       }
       res <- Rxn.loc.upd[String, Int, Double](r2) { (ov, i) =>
         (ov + "b", i.toDouble + 0.5)
-      }.apply[F](42)
+      }.run[F](42)
       _ <- assertEqualsF(res, 42.5)
       _ <- assertResultF(r1.get.run[F], "ab")
     } yield ()
@@ -122,10 +122,10 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
   test("Ref.array") {
     for {
       a <- Ref.array[String](size = 4, initial = "x").run[F]
-      _ <- a.unsafeGet(0).getAndSet("a")
-      _ <- a.unsafeGet(1).getAndSet("b")
-      _ <- a.unsafeGet(2).getAndSet("c")
-      _ <- a.unsafeGet(3).getAndSet("d")
+      _ <- a.unsafeGet(0).getAndSet.run("a")
+      _ <- a.unsafeGet(1).getAndSet.run("b")
+      _ <- a.unsafeGet(2).getAndSet.run("c")
+      _ <- a.unsafeGet(3).getAndSet.run("d")
       sw02 = Ref.swap(a.unsafeGet(0), a.unsafeGet(2))
       sw13 = Ref.swap(a.unsafeGet(1), a.unsafeGet(3))
       _ <- (sw02 * sw13).run[F]
@@ -150,7 +150,7 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         (tlr.nextInt().abs % (N - 2)) + 1
       }
       _ <- assertResultF(a.unsafeGet(idx).get.run[F], "x")
-      _ <- a.unsafeGet(idx).getAndSet[F]("foo")
+      _ <- a.unsafeGet(idx).getAndSet.run[F]("foo")
       _ <- assertResultF(a.unsafeGet(0).get.run[F], "x")
       _ <- assertResultF(a.unsafeGet(idx).get.run[F], "foo")
       _ <- assertResultF(a.unsafeGet(N - 1).get.run[F], "x")
@@ -235,7 +235,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r <- newRef("a")
       _ <- assertResultF(r.update1(_ + "b").run[F], ())
       _ <- assertResultF(r.get.run[F], "ab")
-      _ <- assertResultF(r.update2[String] { (ov, in) => ov + in + "d" }.apply[F]("c"), ())
+      _ <- assertResultF(r.update2[String] { (ov, in) => ov + in + "d" }.run[F]("c"), ())
       _ <- assertResultF(r.get.run[F], "abcd")
     } yield ()
   }
@@ -266,7 +266,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Ref#getAndSet") {
     for {
       r <- newRef("a")
-      _ <- assertResultF(r.getAndSet[F]("b"), "a")
+      _ <- assertResultF(r.getAndSet.run[F]("b"), "a")
       _ <- assertResultF(r.get.run[F], "b")
       rxn = r.get.flatMapF { v1 =>
         r.set0.provide("x").flatMapF { _ =>
@@ -283,7 +283,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r <- newRef("a")
       s0b = r.set1("b")
       s0c = r.set1("c")
-      _ <- assertResultF(s0b[F](42), ())
+      _ <- assertResultF(rF.apply(s0b, 42), ())
       _ <- assertResultF(r.get.run[F], "b")
       _ <- assertResultF(s0c.run[F], ())
       _ <- assertResultF(r.get.run[F], "c")
@@ -299,7 +299,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r <- newRef("a")
       s0b = r.set0.provide("b")
       s0c = r.set0.provide("c")
-      _ <- assertResultF(s0b[F](42), ())
+      _ <- assertResultF(rF.apply(s0b, 42), ())
       _ <- assertResultF(r.get.run[F], "b")
       _ <- assertResultF(s0c.run[F], ())
       _ <- assertResultF(r.get.run[F], "c")
@@ -313,7 +313,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("RefLike#getAndUpd") {
     for {
       r <- newRef("a")
-      _ <- assertResultF(r.getAndUpd[Int] { (ov, i) => ov + i.toString }.apply[F](42), "a")
+      _ <- assertResultF(r.getAndUpd[Int] { (ov, i) => ov + i.toString }.run[F](42), "a")
       _ <- assertResultF(r.get.run[F], "a42")
     } yield ()
   }
@@ -321,7 +321,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("RefLike#updAndGet") {
     for {
       r <- newRef("a")
-      _ <- assertResultF(r.updAndGet[Int] { (ov, i) => ov + i.toString }.apply[F](42), "a42")
+      _ <- assertResultF(r.updAndGet[Int] { (ov, i) => ov + i.toString }.run[F](42), "a42")
       _ <- assertResultF(r.get.run[F], "a42")
     } yield ()
   }

@@ -124,7 +124,7 @@ private[choam] object RefLike {
       self.get.run[F]
 
     override def set(a: A): F[Unit] =
-      self.set0[F](a)
+      self.set0.run[F](a)
 
     override def access: F[(A, A => F[Boolean])] = {
       F.monad.map(this.get) { ov =>

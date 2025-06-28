@@ -80,12 +80,12 @@ trait StackSpecJvm[F[_]] { this: StackSpec[F] & McasImplSpec =>
     val N = 4
     val tsk = for {
       s <- this.newStack[String]()
-      _ <- s.push[F]("a")
-      _ <- s.push[F]("b")
-      _ <- s.push[F]("c")
-      _ <- s.push[F]("d")
+      _ <- s.push.run[F]("a")
+      _ <- s.push.run[F]("b")
+      _ <- s.push.run[F]("c")
+      _ <- s.push.run[F]("d")
       poppers <- F.parReplicateAN(Int.MaxValue)(replicas = N, ma = s.tryPop.run[F]).start
-      pushers <- F.parReplicateAN(Int.MaxValue)(replicas = N, ma = s.push[F]("x")).start
+      pushers <- F.parReplicateAN(Int.MaxValue)(replicas = N, ma = s.push.run[F]("x")).start
       popRes <- poppers.joinWithNever
       _ <- pushers.joinWithNever
       remaining <- {

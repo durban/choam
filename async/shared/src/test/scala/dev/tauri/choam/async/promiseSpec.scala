@@ -74,7 +74,7 @@ trait PromiseSpecTicked[F[_]]
       f2 <- F.uncancelable { poll => poll(p.get).flatTap(_ => F.delay { flag2 = true }) }.start
       _ <- this.tickAll
       _ <- f1.cancel
-      ok <- p.complete0[F](42)
+      ok <- p.complete0.run[F](42)
       _ <- assertF(ok)
       _ <- assertResultF(f2.joinWithNever, 42)
       _ <- assertResultF(f1.join, Outcome.canceled[F, Throwable, Int])
@@ -91,9 +91,9 @@ trait PromiseSpec[F[_]]
   test("Completing a fulfilled promise should not be possible") {
     for {
       p <- Promise[Int].run[F]
-      _ <- assertResultF(p.complete0[F](42), true)
-      _ <- assertResultF(p.complete0[F](42), false)
-      _ <- assertResultF(p.complete0[F](99), false)
+      _ <- assertResultF(p.complete0.run[F](42), true)
+      _ <- assertResultF(p.complete0.run[F](42), false)
+      _ <- assertResultF(p.complete0.run[F](99), false)
       _ <- assertResultF(p.complete1(99).run[F], false)
     } yield ()
   }
@@ -101,7 +101,7 @@ trait PromiseSpec[F[_]]
   test("Completing a fulfilled promise should not call any callbacks") {
     for {
       p <- Promise[Int].run[F]
-      _ <- assertResultF(p.complete0[F](42), true)
+      _ <- assertResultF(p.complete0.run[F](42), true)
       cnt <- F.delay { new AtomicLong(0L) }
       act = p.get.map { x =>
         cnt.incrementAndGet()
@@ -127,7 +127,7 @@ trait PromiseSpec[F[_]]
       f1 <- (l1.release >> g).start
       f2 <- (l2.release >> g).start
       _ <- l1.await
-      ok <- p.complete0[F](42)
+      ok <- p.complete0.run[F](42)
       _ <- l2.await
       _ <- assertF(ok)
       _ <- assertResultF(g, 42)
@@ -141,7 +141,7 @@ trait PromiseSpec[F[_]]
     for {
       p <- Promise[Int].run[F]
       _ <- assertResultF(p.tryGet.run[F], None)
-      _ <- assertResultF(p.complete0[F](42), true)
+      _ <- assertResultF(p.complete0.run[F](42), true)
       _ <- assertResultF(p.tryGet.run[F], Some(42))
       _ <- assertResultF(p.tryGet.run[F], Some(42))
     } yield ()
@@ -153,7 +153,7 @@ trait PromiseSpec[F[_]]
       p <- Promise[Int].run[F]
       p2 = Invariant[Promise].imap(p)(_ * 2)(_ / 2)
       f <- p.get.start
-      _ <- assertResultF(p2.complete0[F](42), true)
+      _ <- assertResultF(p2.complete0.run[F](42), true)
       _ <- assertResultF(p2.complete1(99).run[F], false)
       _ <- assertResultF(f.joinWithNever, 21)
     } yield ()
@@ -167,7 +167,7 @@ trait PromiseSpec[F[_]]
       p2 = Contravariant[PromiseWrite[*]].contramap[Int, Int](pw)(_ / 2)
       f <- p.get.start
       _ <- assertResultF(p2.complete1(42).run[F], true)
-      _ <- assertResultF(p2.complete0[F](99), false)
+      _ <- assertResultF(p2.complete0.run[F](99), false)
       _ <- assertResultF(f.joinWithNever, 21)
     } yield ()
   }
@@ -179,7 +179,7 @@ trait PromiseSpec[F[_]]
       pr = (p : PromiseRead[Int])
       p2 = Functor[PromiseRead].map(pr)(_ * 2)
       f <- p2.get.start
-      _ <- assertResultF(p.complete0[F](21), true)
+      _ <- assertResultF(p.complete0.run[F](21), true)
       _ <- assertResultF(f.joinWithNever, 42)
       _ <- assertResultF(p.complete1(99).run, false)
     } yield ()
@@ -191,7 +191,7 @@ trait PromiseSpec[F[_]]
       p1 <- Promise[Int].run[F]
       d1 = p1.toCats
       fib1 <- d1.get.start
-      _ <- assertResultF(p1.complete0[F](42), true)
+      _ <- assertResultF(p1.complete0.run[F](42), true)
       _ <- assertResultF(fib1.joinWithNever, 42)
       p2 <- Promise[Int].run[F]
       d2 = p2.toCats

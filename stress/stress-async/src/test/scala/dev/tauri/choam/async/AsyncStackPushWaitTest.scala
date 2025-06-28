@@ -59,12 +59,12 @@ class AsyncStackPushWaitTest {
 
   @Actor
   def push1(): Unit = {
-    (stack.push[IO]("a") <* popper.cancel).unsafeRunSync()(using this.runtime)
+    (stack.push.run[IO]("a") <* popper.cancel).unsafeRunSync()(using this.runtime)
   }
 
   @Actor
   def push2(): Unit = {
-    (stack.push[IO]("b") <* popper.cancel).unsafeRunSync()(using this.runtime)
+    (stack.push.run[IO]("b") <* popper.cancel).unsafeRunSync()(using this.runtime)
   }
 
   @Arbiter

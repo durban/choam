@@ -55,7 +55,7 @@ trait SetSpec[F[_]]
   test("Empty contains") {
     PropF.forAllF { (x: String) =>
       mkEmptySet[String].flatMap { s =>
-        assertResultF(s.contains[F](x), false)
+        assertResultF(s.contains.run[F](x), false)
       }
     }
   }
@@ -65,15 +65,15 @@ trait SetSpec[F[_]]
       val xs = _xs.filter(_ =!= x)
       for {
         s <- mkEmptySet[String]
-        _ <- assertResultF(s.contains[F](x), false)
+        _ <- assertResultF(s.contains.run[F](x), false)
         _ <- xs.toList.traverse { x2 =>
-          assertResultF(s.add(x2), true)
+          assertResultF(s.add.run(x2), true)
         }
-        _ <- assertResultF(s.contains[F](x), false)
+        _ <- assertResultF(s.contains.run[F](x), false)
         _ <- xs.toList.traverse { x2 =>
-          assertResultF(s.contains(x2), true)
+          assertResultF(s.contains.run(x2), true)
         }
-        _ <- assertResultF(s.contains[F](x), false)
+        _ <- assertResultF(s.contains.run[F](x), false)
       } yield ()
     }
   }
@@ -84,17 +84,17 @@ trait SetSpec[F[_]]
       for {
         s <- mkEmptySet[String]
         _ <- xs.toList.traverse { x2 =>
-          assertResultF(s.add(x2), true)
+          assertResultF(s.add.run(x2), true)
         }
-        _ <- assertResultF(s.contains(x), false)
-        _ <- assertResultF(s.add(x), true)
-        _ <- assertResultF(s.contains(x), true)
-        _ <- assertResultF(s.remove(x), true)
-        _ <- assertResultF(s.contains(x), false)
-        _ <- assertResultF(s.remove(x), false)
-        _ <- assertResultF(s.contains(x), false)
+        _ <- assertResultF(s.contains.run(x), false)
+        _ <- assertResultF(s.add.run(x), true)
+        _ <- assertResultF(s.contains.run(x), true)
+        _ <- assertResultF(s.remove.run(x), true)
+        _ <- assertResultF(s.contains.run(x), false)
+        _ <- assertResultF(s.remove.run(x), false)
+        _ <- assertResultF(s.contains.run(x), false)
         _ <- xs.toList.traverse { x2 =>
-          assertResultF(s.contains(x2), true)
+          assertResultF(s.contains.run(x2), true)
         }
       } yield ()
     }

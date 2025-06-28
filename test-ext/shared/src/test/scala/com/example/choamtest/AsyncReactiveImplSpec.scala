@@ -33,7 +33,7 @@ final class AsyncReactiveImplSpec extends BaseSpecMyIO {
     for {
       p <- Promise[String].run[MyIO]
       fib <- p.get.start
-      _ <- assertResultF(p.complete0[MyIO]("foo"), true)
+      _ <- assertResultF(p.complete0.run[MyIO]("foo"), true)
       _ <- assertResultF(fib.joinWithNever, "foo")
     } yield ()
   }

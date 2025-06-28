@@ -72,8 +72,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Simple exchange") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      f1 <- logOutcome("f1", ex.exchange[F]("foo")).start
-      f2 <- logOutcome("f2", ex.dual.exchange[F](42)).start
+      f1 <- logOutcome("f1", ex.exchange.run[F]("foo")).start
+      f2 <- logOutcome("f2", ex.dual.exchange.run[F](42)).start
       _ <- assertResultF(f1.joinWithNever, 42)
       _ <- assertResultF(f2.joinWithNever, "foo")
     } yield ()
@@ -83,13 +83,13 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("One side transient failure") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      f1 <- logOutcome("f1", ex.exchange[F]("bar")).start
+      f1 <- logOutcome("f1", ex.exchange.run[F]("bar")).start
       ref <- Ref("x").run[F]
       r2 = (
         (ex.dual.exchange * Rxn.unsafe.cas(ref, "-", "y")) + // this will fail
         (ex.dual.exchange * Rxn.unsafe.cas(ref, "x", "y")) // this must succeed
       ).map(_._1)
-      f2 <- logOutcome("f2", r2[F](99)).start
+      f2 <- logOutcome("f2", r2.run[F](99)).start
       _ <- assertResultF(f1.joinWithNever, 99)
       _ <- assertResultF(f2.joinWithNever, "bar")
     } yield ()
@@ -99,13 +99,13 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("One side doesn't do exchange") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      f1 <- logOutcome("f1", ex.exchange[F]("baz")).start
+      f1 <- logOutcome("f1", ex.exchange.run[F]("baz")).start
       ref <- Ref("x").run[F]
       r2 = (
         (ex.dual.exchange * Rxn.unsafe.cas(ref, "x", "y")) + // this may succeed
         (Rxn.unsafe.cas(ref, "x", "z") * Rxn.unsafe.retry) // no exchange here, but will always fail
       ).map(_._1)
-      f2 <- logOutcome("f2", r2[F](64)).start
+      f2 <- logOutcome("f2", r2.run[F](64)).start
       _ <- assertResultF(f1.joinWithNever, 64)
       _ <- assertResultF(f2.joinWithNever, "baz")
       _ <- assertResultF(ref.get.run[F], "y")

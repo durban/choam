@@ -61,7 +61,7 @@ sealed trait PromiseWrite[A] { self =>
 
   final def toCats[F[_]](implicit F: Reactive[F]): DeferredSink[F, A] = new DeferredSink[F, A] {
     final override def complete(a: A): F[Boolean] =
-      self.complete0[F](a)
+      self.complete0.run[F](a)
   }
 }
 

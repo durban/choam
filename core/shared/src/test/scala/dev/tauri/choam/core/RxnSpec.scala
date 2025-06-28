@@ -560,7 +560,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Integration with IO should work") {
     val act: F[String] = for {
       ref <- Ref[String]("foo").run[F]
-      _ <- ref.upd { (s, p: String) => (s + p, ()) }[F]("bar")
+      _ <- ref.upd { (s, p: String) => (s + p, ()) }.run[F]("bar")
       res <- ref.get.run[F]
     } yield res
 
@@ -626,7 +626,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("b").run[F]
-      res <- (r1.getAndSet *> r2.getAndSet).apply[F]("x")
+      res <- (r1.getAndSet *> r2.getAndSet).run[F]("x")
       _ <- assertEqualsF(res, "b")
       _ <- assertResultF(r1.get.run[F], "x")
       _ <- assertResultF(r2.get.run[F], "x")
@@ -639,7 +639,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       else one >> foo(i - 1, one)
     }
     val rxn = foo(1024 * 1024, Rxn.lift[Int, Int](_ + 1))
-    assertResultF(rxn[F](0), 1)
+    assertResultF(rxn.run[F](0), 1)
   }
 
   test("<* and *>") {
@@ -682,7 +682,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("dimap") {
     for {
-      res <- Rxn.identity[Int].dimap[Int, String](_ * 2)(_.toString).apply[F](4)
+      res <- Rxn.identity[Int].dimap[Int, String](_ * 2)(_.toString).run[F](4)
       _ <- assertEqualsF(res, "8")
     } yield ()
   }
@@ -692,9 +692,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r <- Ref("x").run[F]
       rxn1 = r.getAndSet.flatMap { x => Rxn.identity[String].map((_, x)) }
       rxn2 = r.getAndSet.flatMapF { x => Rxn.pure(x) }
-      _ <- assertResultF(rxn1[F]("X"), ("X", "x"))
+      _ <- assertResultF(rxn1.run[F]("X"), ("X", "x"))
       _ <- assertResultF(Rxn.unsafe.directRead(r).run[F], "X")
-      _ <- assertResultF(rxn2[F]("y"), "X")
+      _ <- assertResultF(rxn2.run[F]("y"), "X")
       _ <- assertResultF(Rxn.unsafe.directRead(r).run[F], "y")
     } yield ()
   }
@@ -711,7 +711,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         c <- refs(2).getAndSet
         d <- refs(3).getAndSet
       } yield List(a, b, c, d)
-      res <- r.apply[F]("x")
+      res <- r.run[F]("x")
       _ <- assertEqualsF(res, l)
       nvs <- refs.traverse { ref =>
         ref.get
@@ -735,7 +735,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         case Nil =>
           Rxn.pure(Right(42))
       }
-      res <- r.apply[F]("x")
+      res <- r.run[F]("x")
       _ <- assertEqualsF(res, 42)
       nvs <- refs.traverse { ref =>
         ref.get
@@ -761,9 +761,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r <- Ref("x").run[F]
       rxn1 = r.getAndSet.as("foo")
       rxn2 = r.getAndSet.map(_ => "bar")
-      _ <- assertResultF(rxn1[F]("X"), "foo")
+      _ <- assertResultF(rxn1.run[F]("X"), "foo")
       _ <- assertResultF(Rxn.unsafe.directRead(r).run[F], "X")
-      _ <- assertResultF(rxn2[F]("Y"), "bar")
+      _ <- assertResultF(rxn2.run[F]("Y"), "bar")
       _ <- assertResultF(Rxn.unsafe.directRead(r).run[F], "Y")
     } yield ()
   }
@@ -775,7 +775,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(r1.get.map2(r2.get) { (s1, s2) => s1 + s2 }.run[F], "xa")
       s1s2 <- r1.upd[String, String] { (ov, s) => (ov + s, s) }.map2(
         r2.upd[String, String] { (ov, s) => (ov + s, s) }
-      ) { (s1, s2) => (s1, s2) }.apply[F]("z")
+      ) { (s1, s2) => (s1, s2) }.run[F]("z")
       _ <- assertSameInstanceF(s1s2._1, s1s2._2)
       _ <- assertEqualsF(s1s2._1, "z")
       _ <- assertResultF(
@@ -789,10 +789,10 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r <- Ref[String]("x").run[F]
       rxn = Rxn.unsafe.cas(r, "x", "y")
-      _ <- assertResultF(rxn[F](()), ())
+      _ <- assertResultF(rxn.run[F], ())
       _ <- assertResultF(r.get.run[F], "y")
-      _ <- r.getAndSet[F]("a")
-      _ <- assertResultF(rxn.attempt[F](0), None)
+      _ <- r.getAndSet.run[F]("a")
+      _ <- assertResultF(rxn.attempt.run[F], None)
       _ <- assertResultF(r.get.run[F], "a")
     } yield ()
   }
@@ -805,7 +805,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       }
       _ <- assertResultF(rxn.run[F], ())
       _ <- assertResultF(r.get.run[F], "y")
-      _ <- r.getAndSet[F]("a")
+      _ <- r.getAndSet.run[F]("a")
       _ <- assertResultF(rxn.run[F], ())
       _ <- assertResultF(r.get.run[F], "y")
     } yield ()
@@ -819,7 +819,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       }
       _ <- assertResultF(rxn.run[F], ())
       _ <- assertResultF(r.get.run[F], "z")
-      _ <- r.getAndSet[F]("a")
+      _ <- r.getAndSet.run[F]("a")
       _ <- assertResultF(rxn.run[F], ())
       _ <- assertResultF(r.get.run[F], "z")
     } yield ()
@@ -831,10 +831,10 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       rxn = r.upd[Int, Boolean] { (s: String, i: Int) =>
         (s.toUpperCase(java.util.Locale.ROOT), i > 0)
       }
-      _ <- assertResultF(rxn[F](42), true)
+      _ <- assertResultF(rxn.run[F](42), true)
       _ <- assertResultF(r.get.run[F], "X")
-      _ <- r.getAndSet[F]("a")
-      _ <- assertResultF(rxn[F](0), false)
+      _ <- r.getAndSet.run[F]("a")
+      _ <- assertResultF(rxn.run[F](0), false)
       _ <- assertResultF(r.get.run[F], "A")
     } yield ()
   }
@@ -847,10 +847,10 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           (s.toUpperCase(java.util.Locale.ROOT), (i > 0) && (ov eq "x"))
         }
       }
-      _ <- assertResultF(rxn[F](42), true)
+      _ <- assertResultF(rxn.run[F](42), true)
       _ <- assertResultF(r.get.run[F], "X")
-      _ <- r.getAndSet[F]("a")
-      _ <- assertResultF(rxn[F](42), false)
+      _ <- r.getAndSet.run[F]("a")
+      _ <- assertResultF(rxn.run[F](42), false)
       _ <- assertResultF(r.get.run[F], "A")
     } yield ()
   }
@@ -863,10 +863,10 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           (s.toUpperCase(java.util.Locale.ROOT), (i > 0) && (ov eq "x"))
         }
       }
-      _ <- assertResultF(rxn[F](42), false)
+      _ <- assertResultF(rxn.run[F](42), false)
       _ <- assertResultF(r.get.run[F], "Y")
-      _ <- r.getAndSet[F]("a")
-      _ <- assertResultF(rxn[F](42), false)
+      _ <- r.getAndSet.run[F]("a")
+      _ <- assertResultF(rxn.run[F](42), false)
       _ <- assertResultF(r.get.run[F], "Y")
     } yield ()
   }
@@ -880,11 +880,11 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           (s.toUpperCase(java.util.Locale.ROOT), b)
         }
       }
-      _ <- assertResultF(rxn[F](42), true)
+      _ <- assertResultF(rxn.run[F](42), true)
       _ <- assertResultF(r.get.run[F], "X")
       _ <- assertResultF(c.get.run[F], 1)
-      _ <- r.getAndSet[F]("a")
-      _ <- assertResultF(rxn[F](0), false)
+      _ <- r.getAndSet.run[F]("a")
+      _ <- assertResultF(rxn.run[F](0), false)
       _ <- assertResultF(r.get.run[F], "A")
       _ <- assertResultF(c.get.run[F], 2)
     } yield ()
@@ -919,7 +919,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           }.lmap[Float](f => f)
         }
       })
-      _ <- assertResultF(rxn1.map(_ + "bar").apply(0.4f), "foobar")
+      _ <- assertResultF(rxn1.map(_ + "bar").run(0.4f), "foobar")
       _ <- assertResultF(ref.get.run[F], 42)
     } yield ()
   }
@@ -942,7 +942,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           }.lmap[Float](f => f)
         }
       })
-      _ <- assertResultF(rxn1.map(_ + "bar").apply(0.4f), "foobar")
+      _ <- assertResultF(rxn1.map(_ + "bar").run(0.4f), "foobar")
       _ <- assertResultF(ref.get.run[F], (42, 42, 42))
       _ <- assertResultF(ref2.get.run[F], 99)
     } yield ()
@@ -1073,7 +1073,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           }.lmap[Float](f => f)
         }
       })
-      _ <- assertResultF(rxn1.apply(0.4f), "99")
+      _ <- assertResultF(rxn1.run(0.4f), "99")
       _ <- assertResultF(ref1.get.run[F], 42)
       _ <- assertResultF(ref2.get.run[F], 42)
     } yield ()
@@ -1088,7 +1088,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Rxn.unsafe.delayContext") {
     Rxn.unsafe.delayContext[Int, (Int, Boolean)] { (i: Int, tc: Mcas.ThreadContext) =>
       (i, tc eq this.mcasImpl.currentContext())
-    }.apply[F](42).flatMap {
+    }.run[F](42).flatMap {
       case (i, ok) =>
         assertEqualsF(i, 42) *> assertF(ok)
     }
@@ -1105,7 +1105,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       Rxn.lift[Int, Int](_ + 1).map { j =>
         (i, j, ctx eq this.mcasImpl.currentContext())
       }
-    }.apply[F](42).flatMap {
+    }.run[F](42).flatMap {
       case (i, j, ok) =>
         assertEqualsF(i, 42) *> assertEqualsF(j, 43) *> assertF(ok)
     }
@@ -1333,7 +1333,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           )
       }
       // but it should always work with small numbers:
-      _ <- ref.getAndSet[F](42)
+      _ <- ref.getAndSet.run[F](42)
       _ <- unsafeRxn.run[F]
       _ <- assertResultF(ref.get.run[F], 43)
     } yield ()
@@ -1353,7 +1353,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     ): G[Int, (String, Int)] = ga &&& gb
 
     assertResultF(
-      foo[Rxn](Rxn.lift(_.toString), Rxn.lift(_ + 1)).apply[F](42),
+      foo[Rxn](Rxn.lift(_.toString), Rxn.lift(_ + 1)).run[F](42),
       ("42", 43)
     )
   }
@@ -1371,7 +1371,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       e2 <- G.scope(G.ask)(42)
     } yield s"${e1}, ${e2}"
 
-    assertResultF(foo[Rxn[Int, *]].apply[F](21), "21, 42")
+    assertResultF(foo[Rxn[Int, *]].run[F](21), "21, 42")
   }
 
   test("Applicative instance") {
@@ -1384,11 +1384,11 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Align instance") {
     val inst = Align[Rxn[Int, *]]
     for {
-      res1 <- inst.align(Rxn.unsafe.retry[Int], Rxn.ret[Long](42L)).apply[F](0)
+      res1 <- inst.align(Rxn.unsafe.retry[Int], Rxn.ret[Long](42L)).run[F](0)
       _ <- assertEqualsF(res1, Ior.right(42L))
-      res2 <- inst.align(Rxn.ret[Int](42), Rxn.unsafe.retry[Long]).apply[F](0)
+      res2 <- inst.align(Rxn.ret[Int](42), Rxn.unsafe.retry[Long]).run[F](0)
       _ <- assertEqualsF(res2, Ior.left(42))
-      res3 <- inst.align(Rxn.ret[Int](42), Rxn.ret[Long](23L)).apply[F](0)
+      res3 <- inst.align(Rxn.ret[Int](42), Rxn.ret[Long](23L)).run[F](0)
       _ <- assertEqualsF(res3, Ior.both(42, 23L))
     } yield ()
   }
@@ -1402,14 +1402,14 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         Rxn.pure("result")
       }
       _ <- assertEqualsF(ctr.get(), 0)
-      _ <- assertResultF(rxn0[F](99), "result")
+      _ <- assertResultF(rxn0.run[F](99), "result")
       ref <- Ref.unpadded("-").run[F]
       rxn1 = inst.fix[Int] { rec =>
         Rxn.unsafe.cas(ref, "a", "b").as(42) + (Axn.unsafe.delay {
           if (!ref.loc.unsafeCasV("-", "a")) { throw new AssertionError }
         } *> Rxn.unsafe.retry) + rec
       }
-      _ <- assertResultF(rxn1[F](99), 42)
+      _ <- assertResultF(rxn1.run[F](99), 42)
       _ <- assertResultF(ref.get.run[F], "b")
     } yield ()
   }
@@ -1419,7 +1419,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val rxn = inst.refOf(42).flatMap { ref =>
       ref.get
     }
-    assertResultF(rxn[F](-1), 42)
+    assertResultF(rxn.run[F](-1), 42)
   }
 
   test("UUIDGen instance") {
@@ -1600,7 +1600,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Exception passthrough (Reactive)") {
     import RxnSpec.{ MyException, throwingRxns }
     throwingRxns.traverse_ { r =>
-      r.apply[F](null).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      r.run[F](null).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
     }
   }
 }

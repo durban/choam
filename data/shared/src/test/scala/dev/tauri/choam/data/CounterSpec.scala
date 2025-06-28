@@ -50,9 +50,9 @@ trait CounterSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(c.count.run[F], 0L)
       _ <- c.incr.run[F]
       _ <- assertResultF(c.count.run[F], 1L)
-      _ <- c.add[F](42L)
+      _ <- c.add.run[F](42L)
       _ <- assertResultF(c.count.run[F], 43L)
-      _ <- c.add[F](-43L)
+      _ <- c.add.run[F](-43L)
       _ <- assertResultF(c.count.run[F], 0L)
       _ <- c.decr.run[F]
       _ <- assertResultF(c.count.run[F], -1L)

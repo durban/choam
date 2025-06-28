@@ -51,7 +51,7 @@ object Stack {
     implicit val monadF: Monad[F] = F.monad
     mkEmpty.run[F].flatMap { stack =>
       as.traverse { a =>
-        stack.push[F](a)
+        stack.push.run[F](a)
       }.as(stack)
     }
   }

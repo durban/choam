@@ -144,7 +144,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       _ <- fib.cancel
       _ <- assertResultF(ref.get.run[F], n + 1) // no change
       // but it *seems* to work with small numbers:
-      _ <- ref.getAndSet[F](42)
+      _ <- ref.getAndSet.run[F](42)
       _ <- unsafeRxn.run[F]
       _ <- assertResultF(ref.get.run[F], 43)
     } yield ()

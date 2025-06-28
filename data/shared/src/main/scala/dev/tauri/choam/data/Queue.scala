@@ -121,7 +121,7 @@ object Queue {
   private[data] final def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
     implicit val m: Monad[F] = Reactive[F].monad
     mkEmpty.run[F].flatMap { q =>
-      as.traverse(a => q.enqueue[F](a)).as(q)
+      as.traverse(a => q.enqueue.run[F](a)).as(q)
     }
   }
 }

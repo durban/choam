@@ -33,7 +33,7 @@ import MsQueue._
  */
 private final class MsQueue[A] private[this] (
   sentinel: Node[A],
-  padded: Boolean,
+  padded: Boolean, // TODO:0.5: use AllocationStrategy instead
   initRig: RefIdGen,
 ) extends Queue.UnsealedQueue[A] {
 

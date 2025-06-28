@@ -1231,7 +1231,7 @@ object Rxn extends RxnInstances0 {
   // Syntax helpers:
 
   final class InvariantSyntax[A, B](private val self: Rxn[A, B]) extends AnyVal {
-    final def apply[F[_]](a: A)(implicit F: Reactive[F]): F[B] =
+    final def run[F[_]](a: A)(implicit F: Reactive[F]): F[B] =
       F.apply(self, a)
   }
 
@@ -2840,16 +2840,16 @@ private sealed abstract class RxnSyntax0 extends RxnSyntax1 { this: Rxn.type =>
 
   import scala.language.implicitConversions
 
-  implicit final def rxnInvariantSyntax[A, B](self: Rxn[A, B]): Rxn.InvariantSyntax[A, B] =
-    new Rxn.InvariantSyntax(self)
+  implicit final def rxnAxnSyntax[A](self: Axn[A]): Rxn.AxnSyntax[A] =
+    new Rxn.AxnSyntax(self)
 }
 
 private sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.type =>
 
   import scala.language.implicitConversions
 
-  implicit final def rxnAxnSyntax[A](self: Axn[A]): Rxn.AxnSyntax[A] =
-    new Rxn.AxnSyntax(self)
+  implicit final def rxnInvariantSyntax[A, B](self: Rxn[A, B]): Rxn.InvariantSyntax[A, B] =
+    new Rxn.InvariantSyntax(self)
 }
 
 private sealed abstract class RxnSyntax2 extends RxnCompanionPlatform { this: Rxn.type =>

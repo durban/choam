@@ -56,7 +56,7 @@ class AsyncStackBench extends BenchUtils {
 
   private[this] def push(s: AsyncStack[String]): IO[Unit] = {
     def go(left: Int): IO[Unit] = {
-      if (left > 0) s.push[IO]("foo") >> go(left - 1)
+      if (left > 0) s.push.run[IO]("foo") >> go(left - 1)
       else IO.unit
     }
     go(stackSize * multiplier)
@@ -82,7 +82,7 @@ class AsyncStackBench extends BenchUtils {
     for {
       fibs <- s.pop.start.replicateA(stackSize)
       _ <- fibs.take(stackSize / 2).traverse(_.cancel)
-      _ <- s.push[IO]("x").replicateA(stackSize)
+      _ <- s.push.run[IO]("x").replicateA(stackSize)
       _ <- fibs.drop(stackSize / 2).traverse(_.joinWithNever)
     } yield ()
   }

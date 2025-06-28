@@ -189,7 +189,7 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
           fib <- stepper.run(rxn, ()).guarantee(d.complete(()).void).start
           _ <- this.tickAll // we're stopping at the `t1` retry (because it read 0)
           // another transaction changes `ref`:
-          _ <- ref.set0[F](1)
+          _ <- ref.set0.run[F](1)
           // now try `t2`, which MUST read the same 0, and retry:
           _ <- stepper.stepAndTickAll
           _ <- assertResultF(d.tryGet, None)

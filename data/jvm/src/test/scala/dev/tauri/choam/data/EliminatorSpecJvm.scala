@@ -48,10 +48,10 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
     val k = 4
     for {
       _ <- F.cede
-      _ <- pushRxn[F](0)
+      _ <- pushRxn.run[F](0)
       res <- F.both(
         List.fill(k)(tryPopRxn.run[F]).parSequence,
-        List.tabulate(k)(idx => pushRxn[F](idx + 1)).parSequence_,
+        List.tabulate(k)(idx => pushRxn.run[F](idx + 1)).parSequence_,
       )
       popped = res._1.collect { case Some(i) => i }
       remaining = (k + 1) - popped.size
@@ -122,7 +122,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
       ).run[F]
       // due to these concurrent transactions, the underlying ops has a chance of retrying => elimination
       bgFiber1 <- ((ctr1.update(_ + 1) *> ctr2.update(_ + 1)).run[F] *> F.cede).foreverM[Unit].start
-      rr <- F.both(F.cede *> e.leftOp[F]("42"), F.cede *> e.rightOp[F](99))
+      rr <- F.both(F.cede *> e.leftOp.run[F]("42"), F.cede *> e.rightOp.run[F](99))
       (leftRes, rightRes) = rr
       _ <- (leftRes match {
         case Left(underlyingLeftResult) =>
@@ -149,7 +149,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
     val t = for {
       s <- newStack.run[F]
       _ <- assertResultF(s.tryPop.run[F], Left(None))
-      _ <- assertResultF(s.push[F](42), Left(()))
+      _ <- assertResultF(s.push.run[F](42), Left(()))
       _ <- assertResultF(s.tryPop.run[F], Left(Some(42)))
       _ <- concurrentPushPopTest(
         s.tryPop.map {

@@ -53,7 +53,7 @@ class PromiseCompleteTest {
 
   @Actor
   def complete(r: ZLL_Result): Unit = {
-    val res = completeBoth[SyncIO](("x", "y")).unsafeRunSync()
+    val res = completeBoth.run[SyncIO](("x", "y")).unsafeRunSync()
     r.r1 = res._1 && res._2
   }
 

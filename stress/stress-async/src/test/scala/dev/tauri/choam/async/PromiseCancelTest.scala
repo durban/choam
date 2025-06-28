@@ -58,7 +58,7 @@ class PromiseCancelTest {
 
   @Actor
   def complete(r: ZLL_Result): Unit = {
-    r.r1 = this.p.complete0[SyncIO]("s").unsafeRunSync()
+    r.r1 = this.p.complete0.run[SyncIO]("s").unsafeRunSync()
   }
 
   @Actor

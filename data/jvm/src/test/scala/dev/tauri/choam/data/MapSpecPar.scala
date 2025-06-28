@@ -71,20 +71,20 @@ trait MapSpecPar[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { th
       for {
         m <- this.mkEmptyMap[String, Int]
         _ <- (ks - k1 - k2).toList.traverse_ { k =>
-          m.put[F](k -> v)
+          m.put.run[F](k -> v)
         }
         t1 = F.both(
-          m.put[F](k1 -> v),
+          m.put.run[F](k1 -> v),
           F.both(
-            m.get[F](k1),
-            m.del[F](k1),
+            m.get.run[F](k1),
+            m.del.run[F](k1),
           ),
         ).replicateA(n)
         t2 = F.both(
-          m.put[F](k2 -> v).parReplicateA(n),
+          m.put.run[F](k2 -> v).parReplicateA(n),
           F.both(
-            m.get[F](k2).parReplicateA(n),
-            m.del[F](k2).parReplicateA(n),
+            m.get.run[F](k2).parReplicateA(n),
+            m.del.run[F](k2).parReplicateA(n),
           ),
         )
         r12 <- F.both(t1, t2)

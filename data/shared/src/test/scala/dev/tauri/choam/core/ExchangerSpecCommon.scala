@@ -32,7 +32,7 @@ trait ExchangerSpecCommon[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =
   test("A single party never succeeds with an exchange") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      _ <- assertResultF(ex.exchange.?.apply[F]("foo"), None)
+      _ <- assertResultF(ex.exchange.?.run[F]("foo"), None)
     } yield ()
     tsk.replicateA(iterations)
   }

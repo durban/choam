@@ -44,9 +44,9 @@ trait WaitListSpec[F[_]]
       _ <- this.tickAll
       f2 <- wl.asyncGet.start
       _ <- this.tickAll
-      _ <- wl.set0[F](42)
+      _ <- wl.set0.run[F](42)
       _ <- assertResultF(f1.joinWithNever, 42)
-      _ <- wl.set0[F](21)
+      _ <- wl.set0.run[F](21)
       _ <- assertResultF(f2.joinWithNever, 21)
     } yield ()
   }
@@ -64,7 +64,7 @@ trait WaitListSpec[F[_]]
         fib2 <- q.deque[F, String].start
         _ <- this.tickAll // wait for fiber to suspend
         // to be fair(er), the item should be received by the suspended fiber, and NOT `tryDeque`
-        _ <- assertResultF(F.both(q.tryDeque.run[F], q.tryEnqueue[F]("foo")), (None, true))
+        _ <- assertResultF(F.both(q.tryDeque.run[F], q.tryEnqueue.run[F]("foo")), (None, true))
         _ <- assertResultF(fib1.joinWithNever, "foo")
         _ <- fib2.cancel
       } yield ()
@@ -75,7 +75,7 @@ trait WaitListSpec[F[_]]
         q <- newQueue
         fib1 <- q.deque[F, String].start
         _ <- this.tickAll // wait for fiber to suspend
-        _ <- assertResultF(q.tryEnqueue[F]("foo"), true) // this will wake up the fiber, but:
+        _ <- assertResultF(q.tryEnqueue.run[F]("foo"), true) // this will wake up the fiber, but:
         maybeResult <- q.tryDeque.run[F] // this has a chance of overtaking the fiber
         // (depending on which task the ticked runtime runs first)
         _ <- this.tickAll // fiber either completes, or goes back to sleep
@@ -97,7 +97,7 @@ trait WaitListSpec[F[_]]
         _ <- this.tickAll // wait for fiber to suspend
         fib2 <- q.deque[F, String].start
         _ <- this.tickAll // add a second waiter
-        _ <- assertResultF(q.tryEnqueue[F]("foo"), true) // this will wake up `fib1`, but:
+        _ <- assertResultF(q.tryEnqueue.run[F]("foo"), true) // this will wake up `fib1`, but:
         _ <- fib1.cancel // we cancel it
         // (depending on which task the ticked runtime runs first, it is either cancelled, or completed)
         _ <- this.tickAll // `fib1` either completes, or cancelled
@@ -120,13 +120,13 @@ trait WaitListSpec[F[_]]
   test("GenWaitList: enqueue and tryEnqueue race") {
     for {
       q <- AsyncQueue.bounded[String](1).run[F]
-      _ <- assertResultF(q.tryEnqueue[F]("first"), true) // fill the queue
+      _ <- assertResultF(q.tryEnqueue.run[F]("first"), true) // fill the queue
       fib1 <- q.enqueue[F]("foo").start
       _ <- this.tickAll // wait for fiber to suspend
       fib2 <- q.enqueue[F]("bar").start
       _ <- this.tickAll // wait for fiber to suspend
       // to be fair(er), the suspended fiber should be able to insert its item, and NOT `tryEnqueue`
-      _ <- assertResultF(F.both(q.tryEnqueue[F]("xyz"), q.tryDeque.run[F]), (false, Some("first")))
+      _ <- assertResultF(F.both(q.tryEnqueue.run[F]("xyz"), q.tryDeque.run[F]), (false, Some("first")))
       _ <- assertResultF(fib1.joinWithNever, ())
       _ <- fib2.cancel
       _ <- this.tickAll
@@ -137,11 +137,11 @@ trait WaitListSpec[F[_]]
   test("GenWaitList: enqueue wakes up, then goes to sleep again") {
     for {
       q <- AsyncQueue.bounded[String](1).run[F]
-      _ <- assertResultF(q.tryEnqueue[F]("first"), true) // fill the queue
+      _ <- assertResultF(q.tryEnqueue.run[F]("first"), true) // fill the queue
       fib1 <- q.enqueue[F]("foo").start
       _ <- this.tickAll // wait for fiber to suspend
       _ <- assertResultF(q.tryDeque.run[F], Some("first")) // this will wake up the fiber, but:
-      succ <- q.tryEnqueue[F]("bar") // this has a chance of overtaking the fiber
+      succ <- q.tryEnqueue.run[F]("bar") // this has a chance of overtaking the fiber
       // (depending on which task the ticked runtime runs first)
       _ <- this.tickAll // fiber either completes, or goes back to sleep
       _ <- if (succ) {

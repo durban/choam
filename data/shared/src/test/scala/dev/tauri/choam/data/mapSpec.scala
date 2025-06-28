@@ -60,14 +60,14 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
       m <- mkEmptyMap[Int, String]
       _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
       _ <- (Rxn.pure(99 -> "bar") >>> m.put).run[F]
-      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
-      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
+      _ <- assertResultF(m.get.run[F](42), Some("foo"))
+      _ <- assertResultF(m.get.run[F](99), Some("bar"))
       _ <- assertResultF(m.clear.run[F], ())
-      _ <- assertResultF(m.get.apply[F](42), None)
-      _ <- assertResultF(m.get.apply[F](99), None)
+      _ <- assertResultF(m.get.run[F](42), None)
+      _ <- assertResultF(m.get.run[F](99), None)
       _ <- assertResultF(m.clear.run[F], ())
-      _ <- assertResultF(m.get.apply[F](42), None)
-      _ <- assertResultF(m.get.apply[F](99), None)
+      _ <- assertResultF(m.get.run[F](42), None)
+      _ <- assertResultF(m.get.run[F](99), None)
     } yield ()
   }
 
@@ -81,7 +81,7 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
       _ <- assertEqualsF(v1, Vector("bar", "foo"))
       _ <- (Rxn.pure(99 -> "xyz") >>> m.put).run[F]
       _ <- (Rxn.pure(128 -> "abc") >>> m.put).run[F]
-      _ <- m.del[F](42)
+      _ <- m.del.run[F](42)
       v2 <- m.values.run[F]
       _ <- assertEqualsF(v2, Vector("abc", "xyz"))
     } yield ()
@@ -97,7 +97,7 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
       _ <- assertEqualsF(v1.iterator.toSet, ScalaSet(42, 99))
       _ <- (Rxn.pure(99 -> "xyz") >>> m.put).run[F]
       _ <- (Rxn.pure(128 -> "abc") >>> m.put).run[F]
-      _ <- m.del[F](42)
+      _ <- m.del.run[F](42)
       v2 <- m.keys.run[F]
       _ <- assertEqualsF(v2.iterator.toSet, ScalaSet(99, 128))
     } yield ()
@@ -113,7 +113,7 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
       _ <- assertEqualsF(v1.iterator.toSet, ScalaSet("bar", "foo"))
       _ <- (Rxn.pure(99 -> "xyz") >>> m.put).run[F]
       _ <- (Rxn.pure(128 -> "abc") >>> m.put).run[F]
-      _ <- m.del[F](42)
+      _ <- m.del.run[F](42)
       v2 <- m.valuesUnsorted.run[F]
       _ <- assertEqualsF(v2.iterator.toSet, ScalaSet("abc", "xyz"))
     } yield ()
@@ -129,7 +129,7 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
       _ <- assertEqualsF(v1.iterator.toSet, ScalaSet(42 -> "foo", 99 -> "bar"))
       _ <- (Rxn.pure(99 -> "xyz") >>> m.put).run[F]
       _ <- (Rxn.pure(128 -> "abc") >>> m.put).run[F]
-      _ <- m.del[F](42)
+      _ <- m.del.run[F](42)
       v2 <- m.items.run[F]
       _ <- assertEqualsF(v2.iterator.toSet, ScalaSet(128 -> "abc", 99 -> "xyz"))
     } yield ()
@@ -148,13 +148,13 @@ trait MapSpec[F[_]]
     for {
       m <- mkEmptyMap[Int, Int]
       _ <- (Rxn.pure(42 -> 21) >>> m.put).run[F]
-      _ <- assertResultF(m.get[F](42), Some(21))
+      _ <- assertResultF(m.get.run[F](42), Some(21))
       _ <- (Rxn.pure(44 -> 22) >>> m.put).run[F]
-      _ <- assertResultF(m.get[F](42), Some(21))
-      _ <- assertResultF(m.get[F](44), Some(22))
+      _ <- assertResultF(m.get.run[F](42), Some(21))
+      _ <- assertResultF(m.get.run[F](44), Some(22))
       _ <- (Rxn.pure(42 -> 0) >>> m.put).run[F]
-      _ <- assertResultF(m.get[F](42), Some(0))
-      _ <- assertResultF(m.get[F](44), Some(22))
+      _ <- assertResultF(m.get.run[F](42), Some(0))
+      _ <- assertResultF(m.get.run[F](44), Some(22))
     } yield ()
   }
 
@@ -163,12 +163,12 @@ trait MapSpec[F[_]]
       m <- mkEmptyMap[Int, Int]
       _ <- (Rxn.pure(42 -> 21) >>> m.put).run[F]
       _ <- (Rxn.pure(-56 -> 99) >>> m.put).run[F]
-      _ <- assertResultF(m.get.apply[F](42), Some(21))
-      _ <- assertResultF(m.get.apply[F](-56), Some(99))
-      _ <- assertResultF(m.get.apply[F](56), None)
-      _ <- assertResultF(m.get.apply[F](99), None)
-      _ <- assertResultF(m.get.apply[F](42), Some(21))
-      _ <- assertResultF(m.get.apply[F](999999), None)
+      _ <- assertResultF(m.get.run[F](42), Some(21))
+      _ <- assertResultF(m.get.run[F](-56), Some(99))
+      _ <- assertResultF(m.get.run[F](56), None)
+      _ <- assertResultF(m.get.run[F](99), None)
+      _ <- assertResultF(m.get.run[F](42), Some(21))
+      _ <- assertResultF(m.get.run[F](999999), None)
     } yield ()
   }
 
@@ -177,17 +177,17 @@ trait MapSpec[F[_]]
       m <- mkEmptyMap[Int, Int]
       _ <- (Rxn.pure(42 -> 21) >>> m.put).run[F]
       _ <- (Rxn.pure(0 -> 9) >>> m.put).run[F]
-      _ <- assertResultF(m.get.apply[F](42), Some(21))
-      _ <- assertResultF(m.get.apply[F](0), Some(9))
+      _ <- assertResultF(m.get.run[F](42), Some(21))
+      _ <- assertResultF(m.get.run[F](0), Some(9))
       _ <- assertResultF((Rxn.pure(56) >>> m.del).run[F], false)
-      _ <- assertResultF(m.get.apply[F](42), Some(21))
-      _ <- assertResultF(m.get.apply[F](0), Some(9))
+      _ <- assertResultF(m.get.run[F](42), Some(21))
+      _ <- assertResultF(m.get.run[F](0), Some(9))
       _ <- assertResultF((Rxn.pure(42) >>> m.del).run[F], true)
-      _ <- assertResultF(m.get.apply[F](42), None)
-      _ <- assertResultF(m.get.apply[F](0), Some(9))
+      _ <- assertResultF(m.get.run[F](42), None)
+      _ <- assertResultF(m.get.run[F](0), Some(9))
       _ <- assertResultF((Rxn.pure(42) >>> m.del).run[F], false)
-      _ <- assertResultF(m.get.apply[F](42), None)
-      _ <- assertResultF(m.get.apply[F](0), Some(9))
+      _ <- assertResultF(m.get.run[F](42), None)
+      _ <- assertResultF(m.get.run[F](0), Some(9))
     } yield ()
   }
 
@@ -195,13 +195,13 @@ trait MapSpec[F[_]]
     for {
       m <- mkEmptyMap[Int, String]
       _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
-      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
-      _ <- assertResultF(m.replace.apply[F]((42, "xyz", "bar")), false)
-      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
-      _ <- assertResultF(m.replace.apply[F]((42, "foo", "bar")), true)
-      _ <- assertResultF(m.get.apply[F](42), Some("bar"))
-      _ <- assertResultF(m.replace.apply[F]((99, "foo", "bar")), false)
-      _ <- assertResultF(m.get.apply[F](42), Some("bar"))
+      _ <- assertResultF(m.get.run[F](42), Some("foo"))
+      _ <- assertResultF(m.replace.run[F]((42, "xyz", "bar")), false)
+      _ <- assertResultF(m.get.run[F](42), Some("foo"))
+      _ <- assertResultF(m.replace.run[F]((42, "foo", "bar")), true)
+      _ <- assertResultF(m.get.run[F](42), Some("bar"))
+      _ <- assertResultF(m.replace.run[F]((99, "foo", "bar")), false)
+      _ <- assertResultF(m.get.run[F](42), Some("bar"))
     } yield ()
   }
 
@@ -210,17 +210,17 @@ trait MapSpec[F[_]]
       m <- mkEmptyMap[Int, String]
       _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
       _ <- (Rxn.pure(99 -> "bar") >>> m.put).run[F]
-      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
-      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
-      _ <- assertResultF(m.remove.apply[F](42 -> "x"), false)
-      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
-      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
-      _ <- assertResultF(m.remove.apply[F](42 -> "foo"), true)
-      _ <- assertResultF(m.get.apply[F](42), None)
-      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
-      _ <- assertResultF(m.remove.apply[F](42 -> "foo"), false)
-      _ <- assertResultF(m.get.apply[F](42), None)
-      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
+      _ <- assertResultF(m.get.run[F](42), Some("foo"))
+      _ <- assertResultF(m.get.run[F](99), Some("bar"))
+      _ <- assertResultF(m.remove.run[F](42 -> "x"), false)
+      _ <- assertResultF(m.get.run[F](42), Some("foo"))
+      _ <- assertResultF(m.get.run[F](99), Some("bar"))
+      _ <- assertResultF(m.remove.run[F](42 -> "foo"), true)
+      _ <- assertResultF(m.get.run[F](42), None)
+      _ <- assertResultF(m.get.run[F](99), Some("bar"))
+      _ <- assertResultF(m.remove.run[F](42 -> "foo"), false)
+      _ <- assertResultF(m.get.run[F](42), None)
+      _ <- assertResultF(m.get.run[F](99), Some("bar"))
     } yield ()
   }
 
@@ -229,15 +229,15 @@ trait MapSpec[F[_]]
       m <- mkEmptyMap[Int, String]
       _ <- (Rxn.pure(42 -> "foo") >>> m.put).run[F]
       _ <- (Rxn.pure(99 -> "bar") >>> m.put).run[F]
-      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
-      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
-      _ <- assertResultF(m.putIfAbsent[F]((42, "xyz")), Some("foo"))
-      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
-      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
-      _ <- assertResultF(m.putIfAbsent[F]((84, "xyz")), None)
-      _ <- assertResultF(m.get.apply[F](42), Some("foo"))
-      _ <- assertResultF(m.get.apply[F](99), Some("bar"))
-      _ <- assertResultF(m.get.apply[F](84), Some("xyz"))
+      _ <- assertResultF(m.get.run[F](42), Some("foo"))
+      _ <- assertResultF(m.get.run[F](99), Some("bar"))
+      _ <- assertResultF(m.putIfAbsent.run[F]((42, "xyz")), Some("foo"))
+      _ <- assertResultF(m.get.run[F](42), Some("foo"))
+      _ <- assertResultF(m.get.run[F](99), Some("bar"))
+      _ <- assertResultF(m.putIfAbsent.run[F]((84, "xyz")), None)
+      _ <- assertResultF(m.get.run[F](42), Some("foo"))
+      _ <- assertResultF(m.get.run[F](99), Some("bar"))
+      _ <- assertResultF(m.get.run[F](84), Some("xyz"))
     } yield ()
   }
 
@@ -255,27 +255,27 @@ trait MapSpec[F[_]]
       _ <- (Rxn.pure(0 -> "0") >>> m.put).run[F]
       _ <- (Rxn.pure(1 -> "1") >>> m.put).run[F]
       _ <- (Rxn.pure(4 -> "4") >>> m.put).run[F]
-      _ <- assertResultF(m.get[F](0), Some("0"))
-      _ <- assertResultF(m.get[F](1), Some("1"))
-      _ <- assertResultF(m.get[F](4), Some("4"))
-      _ <- assertResultF(m.get[F](8), Some("0"))
+      _ <- assertResultF(m.get.run[F](0), Some("0"))
+      _ <- assertResultF(m.get.run[F](1), Some("1"))
+      _ <- assertResultF(m.get.run[F](4), Some("4"))
+      _ <- assertResultF(m.get.run[F](8), Some("0"))
       _ <- (Rxn.pure(8 -> "8") >>> m.put).run[F] // overwrites "0"
-      _ <- assertResultF(m.get[F](0), Some("8"))
-      _ <- assertResultF(m.get[F](1), Some("1"))
-      _ <- assertResultF(m.get[F](4), Some("4"))
-      _ <- assertResultF(m.get[F](8), Some("8"))
-      _ <- assertResultF(m.del[F](16), true) // deletes "8"
-      _ <- assertResultF(m.get[F](0), None)
-      _ <- assertResultF(m.get[F](1), Some("1"))
-      _ <- assertResultF(m.get[F](4), Some("4"))
-      _ <- assertResultF(m.get[F](8), None)
+      _ <- assertResultF(m.get.run[F](0), Some("8"))
+      _ <- assertResultF(m.get.run[F](1), Some("1"))
+      _ <- assertResultF(m.get.run[F](4), Some("4"))
+      _ <- assertResultF(m.get.run[F](8), Some("8"))
+      _ <- assertResultF(m.del.run[F](16), true) // deletes "8"
+      _ <- assertResultF(m.get.run[F](0), None)
+      _ <- assertResultF(m.get.run[F](1), Some("1"))
+      _ <- assertResultF(m.get.run[F](4), Some("4"))
+      _ <- assertResultF(m.get.run[F](8), None)
     } yield ()
   }
 
   test("Map get should not find anything in an empty map") {
     PropF.forAllF { (i: Int) =>
       mkEmptyMap[Int, Int].flatMap { m =>
-        assertResultF(m.get.apply[F](i), None)
+        assertResultF(m.get.run[F](i), None)
       }
     }
   }
@@ -284,10 +284,10 @@ trait MapSpec[F[_]]
     PropF.forAllF { (k: Int, i: Int) =>
       for {
         m <- mkEmptyMap[Int, String]
-        _ <- m.put.apply[F](k -> k.toString)
-        _ <- assertResultF(m.get.apply[F](k), Some(k.toString))
+        _ <- m.put.run[F](k -> k.toString)
+        _ <- assertResultF(m.get.run[F](k), Some(k.toString))
         _ <- if (i =!= k) {
-          assertResultF(m.get.apply[F](i), None)
+          assertResultF(m.get.run[F](i), None)
         } else {
           F.unit
         }
@@ -302,14 +302,14 @@ trait MapSpec[F[_]]
         shadow <- F.delay { new scala.collection.mutable.HashSet[Int] }
         _ <- ks.toList.traverse { k =>
           for {
-            _ <- m.put.apply[F](k -> k.toString)
+            _ <- m.put.run[F](k -> k.toString)
             _ <- F.delay { shadow += k }
             _ <- shadow.toList.traverse { i =>
-              assertResultF(m.get.apply[F](i), Some(i.toString))
+              assertResultF(m.get.run[F](i), Some(i.toString))
             }
             cont <- F.delay { shadow.contains(x) }
             _ <- if (!cont) {
-              assertResultF(m.get.apply[F](x), None)
+              assertResultF(m.get.run[F](x), None)
             } else {
               F.unit
             }
@@ -330,38 +330,38 @@ trait MapSpec[F[_]]
       Order.by[Int, Int](_ % 8)
     for {
       m <- mkEmptyMap[Int, String](using myHash, myOrder)
-      _ <- m.put[F](0 -> "0")
-      _ <- assertResultF(m.get(0), Some("0"))
-      _ <- assertResultF(m.get(8), Some("0"))
-      _ <- m.put(4 -> "4")
-      _ <- assertResultF(m.get(0), Some("0"))
-      _ <- assertResultF(m.get(8), Some("0"))
-      _ <- assertResultF(m.get(4), Some("4"))
-      _ <- assertResultF(m.get(12), Some("4"))
+      _ <- m.put.run[F](0 -> "0")
+      _ <- assertResultF(m.get.run(0), Some("0"))
+      _ <- assertResultF(m.get.run(8), Some("0"))
+      _ <- m.put.run(4 -> "4")
+      _ <- assertResultF(m.get.run(0), Some("0"))
+      _ <- assertResultF(m.get.run(8), Some("0"))
+      _ <- assertResultF(m.get.run(4), Some("4"))
+      _ <- assertResultF(m.get.run(12), Some("4"))
     } yield ()
   }
 
   test("Map del should remove the kv pair") {
     for {
       m <- mkEmptyMap[Int, String]
-      _ <- m.put[F](0 -> "0")
-      _ <- assertResultF(m.get(0), Some("0"))
-      _ <- assertResultF(m.del[F](0), true)
-      _ <- assertResultF(m.del[F](0), false)
-      _ <- m.put(1 -> "1")
-      _ <- m.put(2 -> "2")
-      _ <- m.put(3 -> "3")
-      _ <- m.put(4 -> "4")
-      _ <- m.put(5 -> "5")
-      _ <- m.put(6 -> "6")
-      _ <- m.put(7 -> "7")
-      _ <- m.put(8 -> "8")
-      _ <- assertResultF(m.get(1), Some("1"))
-      _ <- assertResultF(m.del[F](1), true)
-      _ <- assertResultF(m.del[F](1), false)
-      _ <- assertResultF(m.get(8), Some("8"))
-      _ <- assertResultF(m.del[F](8), true)
-      _ <- assertResultF(m.del[F](8), false)
+      _ <- m.put.run[F](0 -> "0")
+      _ <- assertResultF(m.get.run(0), Some("0"))
+      _ <- assertResultF(m.del.run[F](0), true)
+      _ <- assertResultF(m.del.run[F](0), false)
+      _ <- m.put.run(1 -> "1")
+      _ <- m.put.run(2 -> "2")
+      _ <- m.put.run(3 -> "3")
+      _ <- m.put.run(4 -> "4")
+      _ <- m.put.run(5 -> "5")
+      _ <- m.put.run(6 -> "6")
+      _ <- m.put.run(7 -> "7")
+      _ <- m.put.run(8 -> "8")
+      _ <- assertResultF(m.get.run(1), Some("1"))
+      _ <- assertResultF(m.del.run[F](1), true)
+      _ <- assertResultF(m.del.run[F](1), false)
+      _ <- assertResultF(m.get.run(8), Some("8"))
+      _ <- assertResultF(m.del.run[F](8), true)
+      _ <- assertResultF(m.del.run[F](8), false)
     } yield ()
   }
 
@@ -375,33 +375,33 @@ trait MapSpec[F[_]]
     PropF.forAllF { (ks: ScalaSet[Int], x: Int) =>
       for {
         m <- mkEmptyMap[Int, String](using myHash, Order[Int])
-        _ <- m.put[F](x -> x.toString)
-        _ <- assertResultF(m.get(x), Some(x.toString))
-        _ <- m.put(x + 8 -> (x + 8).toString)
-        _ <- assertResultF(m.get(x), Some(x.toString))
-        _ <- assertResultF(m.get(x + 8), Some((x + 8).toString))
-        _ <- m.put(x + 16 -> (x + 16).toString)
-        _ <- assertResultF(m.get(x), Some(x.toString))
-        _ <- assertResultF(m.get(x + 8), Some((x + 8).toString))
-        _ <- assertResultF(m.get(x + 16), Some((x + 16).toString))
-        _ <- m.put(x + 1 -> (x + 1).toString)
-        _ <- assertResultF(m.get(x), Some(x.toString))
-        _ <- assertResultF(m.get(x + 8), Some((x + 8).toString))
-        _ <- assertResultF(m.get(x + 16), Some((x + 16).toString))
-        _ <- assertResultF(m.get(x + 1), Some((x + 1).toString))
-        _ <- m.put(x + 9 -> (x + 9).toString)
-        _ <- assertResultF(m.get(x), Some(x.toString))
-        _ <- assertResultF(m.get(x + 8), Some((x + 8).toString))
-        _ <- assertResultF(m.get(x + 16), Some((x + 16).toString))
-        _ <- assertResultF(m.get(x + 1), Some((x + 1).toString))
-        _ <- assertResultF(m.get(x + 9), Some((x + 9).toString))
+        _ <- m.put.run[F](x -> x.toString)
+        _ <- assertResultF(m.get.run(x), Some(x.toString))
+        _ <- m.put.run(x + 8 -> (x + 8).toString)
+        _ <- assertResultF(m.get.run(x), Some(x.toString))
+        _ <- assertResultF(m.get.run(x + 8), Some((x + 8).toString))
+        _ <- m.put.run(x + 16 -> (x + 16).toString)
+        _ <- assertResultF(m.get.run(x), Some(x.toString))
+        _ <- assertResultF(m.get.run(x + 8), Some((x + 8).toString))
+        _ <- assertResultF(m.get.run(x + 16), Some((x + 16).toString))
+        _ <- m.put.run(x + 1 -> (x + 1).toString)
+        _ <- assertResultF(m.get.run(x), Some(x.toString))
+        _ <- assertResultF(m.get.run(x + 8), Some((x + 8).toString))
+        _ <- assertResultF(m.get.run(x + 16), Some((x + 16).toString))
+        _ <- assertResultF(m.get.run(x + 1), Some((x + 1).toString))
+        _ <- m.put.run(x + 9 -> (x + 9).toString)
+        _ <- assertResultF(m.get.run(x), Some(x.toString))
+        _ <- assertResultF(m.get.run(x + 8), Some((x + 8).toString))
+        _ <- assertResultF(m.get.run(x + 16), Some((x + 16).toString))
+        _ <- assertResultF(m.get.run(x + 1), Some((x + 1).toString))
+        _ <- assertResultF(m.get.run(x + 9), Some((x + 9).toString))
         _ <- ks.toList.traverse { k =>
-          m.put(k -> k.toString).flatMap { _ =>
-            assertResultF(m.get(k), Some(k.toString))
+          m.put.run(k -> k.toString).flatMap { _ =>
+            assertResultF(m.get.run(k), Some(k.toString))
           }
         }
-        _ <- m.put(x + 17 -> (x + 17).toString)
-        _ <- assertResultF(m.get(x + 17), Some((x + 17).toString))
+        _ <- m.put.run(x + 17 -> (x + 17).toString)
+        _ <- assertResultF(m.get.run(x + 17), Some((x + 17).toString))
       } yield ()
     }
   }
@@ -410,16 +410,16 @@ trait MapSpec[F[_]]
     for {
       m <- mkEmptyMap[Int, String]
       ctr <- Ref(0).run[F]
-      _ <- m.put[F](0 -> "x")
-      _ <- m.put(0 -> "0")
-      _ <- m.put(1 -> "1")
-      _ <- m.put(2 -> "2")
-      _ <- m.put(3 -> "3")
-      _ <- m.put(4 -> "4")
+      _ <- m.put.run[F](0 -> "x")
+      _ <- m.put.run(0 -> "0")
+      _ <- m.put.run(1 -> "1")
+      _ <- m.put.run(2 -> "2")
+      _ <- m.put.run(3 -> "3")
+      _ <- m.put.run(4 -> "4")
       ref = m.del.provide(0) >>> ctr.update(_ + 1) >>> m.put.provide(0 -> "y")
       _ <- ref.run[F]
       _ <- assertResultF(ctr.get.run[F], 1)
-      _ <- assertResultF(m.get[F](0), Some("y"))
+      _ <- assertResultF(m.get.run[F](0), Some("y"))
     } yield ()
   }
 
@@ -448,13 +448,13 @@ trait MapSpec[F[_]]
       _ <- r1.set(Some(42))
       _ <- assertResultF(r1.get, Some(42))
       _ <- r2.update(_ => Some(23))
-      _ <- assertResultF(m.get[F]("a"), Some(Some(42)))
-      _ <- assertResultF(m.get[F]("b"), Some(Some(23)))
-      _ <- assertResultF(m.get[F]("c"), None)
+      _ <- assertResultF(m.get.run[F]("a"), Some(Some(42)))
+      _ <- assertResultF(m.get.run[F]("b"), Some(Some(23)))
+      _ <- assertResultF(m.get.run[F]("c"), None)
       _ <- r3.set(Some(99))
-      _ <- assertResultF(m.get[F]("c"), Some(Some(99)))
+      _ <- assertResultF(m.get.run[F]("c"), Some(Some(99)))
       _ <- r3.set(None)
-      _ <- assertResultF(m.get[F]("c"), None) // NB: it's `None` and not `Some(None)`
+      _ <- assertResultF(m.get.run[F]("c"), None) // NB: it's `None` and not `Some(None)`
     } yield ()
   }
 
@@ -487,29 +487,29 @@ trait MapSpec[F[_]]
       val v = if (_v ne null) _v else "bar"
       for {
         m <- mkEmptyMap[String, String](using nullTolerantStringHash, nullTolerantStringOrder)
-        _ <- assertResultF(m.get(null), None)
+        _ <- assertResultF(m.get.run(null), None)
         _ <- ks.traverse_ { k =>
-          m.put[F]((k, v))
+          m.put.run[F]((k, v))
         }
-        _ <- assertResultF(m.get(null), None)
-        _ <- m.put[F]((k0, null))
-        _ <- assertResultF(m.get(null), None)
-        _ <- assertResultF(m.get(k0), Some(null))
+        _ <- assertResultF(m.get.run(null), None)
+        _ <- m.put.run[F]((k0, null))
+        _ <- assertResultF(m.get.run(null), None)
+        _ <- assertResultF(m.get.run(k0), Some(null))
         _ <- ks.traverse_ { k =>
-          assertResultF(m.get[F](k), Some(v))
+          assertResultF(m.get.run[F](k), Some(v))
         }
-        _ <- assertResultF(m.putIfAbsent((k0, v)), Some(null))
-        _ <- assertResultF(m.putIfAbsent((null, "x")), None)
-        _ <- assertResultF(m.get(null), Some("x"))
-        _ <- assertResultF(m.get(k0), Some(null))
+        _ <- assertResultF(m.putIfAbsent.run((k0, v)), Some(null))
+        _ <- assertResultF(m.putIfAbsent.run((null, "x")), None)
+        _ <- assertResultF(m.get.run(null), Some("x"))
+        _ <- assertResultF(m.get.run(k0), Some(null))
         _ <- ks.traverse_ { k =>
-          assertResultF(m.get[F](k), Some(v))
+          assertResultF(m.get.run[F](k), Some(v))
         }
-        _ <- assertResultF(m.replace((null, "x", null)), true)
-        _ <- assertResultF(m.get(null), Some(null))
-        _ <- assertResultF(m.get(k0), Some(null))
+        _ <- assertResultF(m.replace.run((null, "x", null)), true)
+        _ <- assertResultF(m.get.run(null), Some(null))
+        _ <- assertResultF(m.get.run(k0), Some(null))
         _ <- ks.traverse_ { k =>
-          assertResultF(m.get[F](k), Some(v))
+          assertResultF(m.get.run[F](k), Some(v))
         }
       } yield ()
     }

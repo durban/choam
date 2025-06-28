@@ -51,9 +51,9 @@ trait StackSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Stack push/pop") {
     for {
       s <- newStack[String]()
-      _ <- s.push[F]("a")
-      _ <- s.push[F]("b")
-      _ <- s.push[F]("c")
+      _ <- s.push.run[F]("a")
+      _ <- s.push.run[F]("b")
+      _ <- s.push.run[F]("c")
       _ <- assertResultF(s.tryPop.run[F], Some("c"))
       _ <- assertResultF(s.tryPop.run[F], Some("b"))
       _ <- assertResultF(s.tryPop.run[F], Some("a"))

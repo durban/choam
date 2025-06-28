@@ -40,7 +40,7 @@ class RemoveQueueComposedTest1 extends RemoveQueueStressTestBase {
     (for {
       //                0         2    3
       removers <- List("-", "a", "-", "-", "b", "c", "d").traverse { s =>
-        q.enqueueWithRemover[SyncIO](s)
+        q.enqueueWithRemover.run[SyncIO](s)
       }
       _ <- removers(0).run[SyncIO]
       _ <- removers(2).run[SyncIO]

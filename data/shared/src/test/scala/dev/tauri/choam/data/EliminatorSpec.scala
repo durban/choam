@@ -37,8 +37,8 @@ trait EliminatorSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         Rxn.lift(s => s + "y"),
         s => s,
       ).run[F]
-      _ <- assertResultF(e.leftOp[F]("a"), "ax")
-      _ <- assertResultF(e.rightOp[F]("b"), "by")
+      _ <- assertResultF(e.leftOp.run[F]("a"), "ax")
+      _ <- assertResultF(e.rightOp.run[F]("b"), "by")
     } yield ()
   }
 
@@ -50,8 +50,8 @@ trait EliminatorSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         Rxn.lift(s => s + "y"),
         s => s,
       ).run[F]
-      _ <- assertResultF(e.leftOp[F]("a"), Left("ax"))
-      _ <- assertResultF(e.rightOp[F]("b"), Left("by"))
+      _ <- assertResultF(e.leftOp.run[F]("a"), Left("ax"))
+      _ <- assertResultF(e.rightOp.run[F]("b"), Left("by"))
     } yield ()
   }
 
@@ -59,7 +59,7 @@ trait EliminatorSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       s <- EliminationStackForTesting[Int].run[F]
       _ <- assertResultF(s.tryPop.run[F], None)
-      _ <- s.push[F](1)
+      _ <- s.push.run[F](1)
       _ <- (s.push.provide(2) *> s.push.provide(3)).run[F]
       _ <- assertResultF(s.tryPop.run[F], Some(3))
       _ <- assertResultF((s.tryPop * s.tryPop).run[F], (Some(2), Some(1)))
@@ -71,7 +71,7 @@ trait EliminatorSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       s <- EliminationStack[Int]().run[F]
       _ <- assertResultF(s.tryPop.run[F], None)
-      _ <- s.push[F](1)
+      _ <- s.push.run[F](1)
       _ <- (s.push.provide(2) *> s.push.provide(3)).run[F]
       _ <- assertResultF(s.tryPop.run[F], Some(3))
       _ <- assertResultF((s.tryPop * s.tryPop).run[F], (Some(2), Some(1)))

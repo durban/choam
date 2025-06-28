@@ -209,8 +209,8 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     for {
       e <- RxnProfiler.profiledExchanger[String, Int].run[F]
       p <- simulateStart()
-      fib <- e.exchange[F]("foo").start
-      _ <- assertResultF(e.dual.exchange[F](42), "foo")
+      fib <- e.exchange.run[F]("foo").start
+      _ <- assertResultF(e.dual.exchange.run[F](42), "foo")
       _ <- assertResultF(fib.joinWithNever, 42)
       r <- simulateEnd(p)
       _ <- assertEqualsF(r(RxnProfiler.ExchangeCount).getScore, 1.0)

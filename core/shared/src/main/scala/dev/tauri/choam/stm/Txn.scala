@@ -53,7 +53,7 @@ sealed trait Txn[+B] {
 
   private[choam] def impl: RxnImpl[Any, B]
 
-  def commit[F[_], X >: B](implicit F: Transactive[F]): F[X]
+  def commit[F[_], X >: B](implicit F: Transactive[F]): F[X] // TODO: look at Rxn.InvariantSyntax
 }
 
 object Txn extends TxnInstances0 {

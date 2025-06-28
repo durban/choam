@@ -43,7 +43,7 @@ class RemoveQueueTest extends RemoveQueueStressTestBase {
     (for {
       //                0    1
       removers <- List("-", "-").traverse { s =>
-        q.enqueueWithRemover[SyncIO](s)
+        q.enqueueWithRemover.run[SyncIO](s)
       }
       _ <- removers(0).run[SyncIO]
       _ <- removers(1).run[SyncIO]
