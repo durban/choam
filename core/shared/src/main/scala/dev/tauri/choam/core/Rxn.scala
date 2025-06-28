@@ -1370,8 +1370,6 @@ object Rxn extends RxnInstances0 {
      * If `true`, instead of a possible log extension we just
      * retry (because in the presence of a `tentativeRead` we can't
      * revalidate the log).
-     *
-     * TODO: we should reset it to `false` when doing a FULL retry.
      */
     private[this] var hasTentativeRead: Boolean =
       false
@@ -1791,6 +1789,7 @@ object Rxn extends RxnInstances0 {
         val d = if (this.isStm) this._desc else null
         // restart everything:
         clearDesc()
+        hasTentativeRead = false
         a = startA
         resetConts()
         pc.clear()
