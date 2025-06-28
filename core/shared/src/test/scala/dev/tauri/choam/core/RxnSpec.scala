@@ -1272,6 +1272,28 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("panic in post-commit actions".fail) { // TODO: expected failure
+    val exc = new RxnSpec.MyException
+    for {
+      r0 <- Ref(0).run[F]
+      r1 <- Ref(0).run[F]
+      r2 <- Ref(0).run[F]
+      r3 <- Ref(0).run[F]
+      _ <- assertResultF(
+        r0.update(_ + 1).postCommit(
+          (r1.update(_ + 1) *> Rxn.unsafe.panic(exc)).postCommit(r2.update(_ + 1))
+        ).postCommit(
+          r3.update(_ + 1)
+        ).run[F].attempt,
+        Left(exc),
+      )
+      _ <- assertResultF(r0.get.run, 1)
+      _ <- assertResultF(r1.get.run, 0)
+      _ <- assertResultF(r2.get.run, 0)
+      _ <- assertResultF(r3.get.run, 1) // TODO: this fails
+    } yield ()
+  }
+
   // This tests an implementation detail,
   // because we depend on this implementation
   // detail when implementing `Rxn.unsafe.panic`:
