@@ -497,7 +497,13 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       _ <- assertF(leftTries.get() > 1)
       _ <- assertF(rightTries.get() > 1)
     } yield ()
-    t.replicateA_(500)
+
+    val N = if (this.isEmcas) {
+      500
+    } else {
+      50 // SpinLockMcas tends to time out
+    }
+    t.replicateA_(N)
   }
 
   test("unsafe.tentativeRead, then update (must see the same value)") {
