@@ -73,6 +73,12 @@ class ArrowBench {
   }
 
   @Benchmark
+  def node1Imperative(s: SharedSt, k: ThreadSt, r: RandomState): Unit = {
+    val head = s.headRefs(r.nextIntBounded(N))
+    s.nodeSetOnceWithUnsafe(head, k.newNode).unsafePerformInternal0(null, k.mcasCtx)
+  }
+
+  @Benchmark
   def promiseArrow(s: SharedSt, k: ThreadSt, r: RandomState): Boolean = {
     val ref = s.promiseRefs(r.nextIntBounded(N))
     s.promiseReplaceAndCompleteWithArrow(ref, k.newPromise, "foo").unsafePerformInternal0(null, k.mcasCtx)
@@ -82,6 +88,12 @@ class ArrowBench {
   def promiseMonad(s: SharedSt, k: ThreadSt, r: RandomState): Boolean = {
     val ref = s.promiseRefs(r.nextIntBounded(N))
     s.promiseReplaceAndCompleteWithMonad(ref, k.newPromise, "foo").unsafePerformInternal0(null, k.mcasCtx)
+  }
+
+  @Benchmark
+  def promiseImperative(s: SharedSt, k: ThreadSt, r: RandomState): Boolean = {
+    val ref = s.promiseRefs(r.nextIntBounded(N))
+    s.promiseReplaceAndCompleteWithUnsafe(ref, k.newPromise, "foo").unsafePerformInternal0(null, k.mcasCtx)
   }
 }
 
@@ -141,6 +153,21 @@ object ArrowBench {
       }
     }
 
+    final def promiseReplaceAndCompleteWithUnsafe(ref: Ref[Promise[String]], newPromise: Axn[Promise[String]], str: String): Rxn[Any, Boolean] = {
+      import unsafe._
+      newPromise.flatMapF { p =>
+        Rxn.unsafe.embedUnsafe { implicit ir =>
+          val ov = ref.value
+          ref.value = p
+          if (ov ne null) {
+            ov.unsafeComplete(str)
+          } else {
+            true
+          }
+        }
+      }
+    }
+
     // Scenario #2: Nodes
 
     val headRefs: Array[Ref[Node]] = Array.fill(N) {
@@ -157,6 +184,15 @@ object ArrowBench {
     final def nodeSetOnceWithMonad(head: Ref[Node], newNode: Axn[Node]): Rxn[Any, Unit] = {
       newNode.flatMapF { node =>
         head.set1(node)
+      }
+    }
+
+    final def nodeSetOnceWithUnsafe(head: Ref[Node], newNode: Axn[Node]): Rxn[Any, Unit] = {
+      import unsafe._
+      newNode.flatMapF { node =>
+        Rxn.unsafe.embedUnsafe { implicit ir =>
+          head.value = node
+        }
       }
     }
   }
