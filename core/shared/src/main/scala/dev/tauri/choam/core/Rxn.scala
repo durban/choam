@@ -20,9 +20,11 @@ package core
 
 import java.util.{ UUID, IdentityHashMap }
 
+import scala.util.control.NonFatal
+
 import cats.{ ~>, Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, MonoidK, Semigroup, Show }
 import cats.arrow.ArrowChoice
-import cats.data.{ Ior, State }
+import cats.data.{ Ior, State, NonEmptyList }
 import cats.mtl.Local
 import cats.effect.kernel.{ Async, Clock, Cont, Unique, MonadCancel, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
@@ -1248,6 +1250,18 @@ object Rxn extends RxnInstances0 {
       throw new IllegalStateException
   }
 
+  final class PostCommitException private[Rxn] (
+    val committedResult: Any,
+    val errors: NonEmptyList[Throwable],
+  ) extends Exception(s"${errors.size} exception(s) encountered during post-commit action(s)") {
+
+    final override def fillInStackTrace(): Throwable =
+      this
+
+    final override def initCause(cause: Throwable): Throwable =
+      throw new IllegalStateException
+  }
+
   private final class InterpreterState[X, R](
     rxn: Rxn[X, R],
     x: X,
@@ -1336,6 +1350,7 @@ object Rxn extends RxnInstances0 {
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
     private[this] var contK: ObjStack[Any] = mkInitialContK()
     private[this] val pc: ListObjStack[Rxn[Any, Unit]] = new ListObjStack[Rxn[Any, Unit]]()
+    private[this] var pcErrors: List[Throwable] = Nil
     private[this] val commit = commitSingleton
     contT.push2(RxnConsts.ContAfterPostCommit, RxnConsts.ContAndThen)
 
@@ -1649,34 +1664,66 @@ object Rxn extends RxnInstances0 {
     }
 
     @tailrec
-    private[this] final def nextPanicHandler(ex: Throwable): Rxn[Any, Any] = {
+    private[this] final def nextOnPanic(ex: Throwable): Rxn[Any, Any] = {
       val contK = this.contK
       (contT.pop() : @switch) match {
         case 0 => // ContAndThen
           contK.pop()
-          nextPanicHandler(ex)
+          nextOnPanic(ex)
         case 1 => // ContAndAlso
           contK.pop()
           contK.pop()
-          nextPanicHandler(ex)
+          nextOnPanic(ex)
         case 2 => // ContAndAlsoJoin
           contK.pop()
-          nextPanicHandler(ex)
+          nextOnPanic(ex)
         case 3 => // ContTailRecM
           contK.pop()
           contK.pop()
-          nextPanicHandler(ex)
+          nextOnPanic(ex)
         case 4 => // ContPostCommit
           impossible("nextPanicHandler reached ContPostCommit")
         case 5 => // ContAfterPostCommit
           // no handler found, just throw it:
+          _assert(this.pcErrors.isEmpty)
           throw ex
         case 6 => // ContCommitPostCommit
-          impossible("nextPanicHandler reached ContCommitPostCommit")
+          // post-commit action panic'd, so we won't
+          // commit it, just save the error for later:
+          this.pcErrors = ex :: this.pcErrors
+          next() // continue with next PC or final result
         case 7 => // ContUpdWith
           contK.pop()
           contK.pop()
-          nextPanicHandler(ex)
+          nextOnPanic(ex)
+        case 8 => // ContAs
+          contK.pop()
+          nextOnPanic(ex)
+        case 9 => // ContProductR
+          contK.pop()
+          contK.pop()
+          nextOnPanic(ex)
+        case 10 => // ContFlatMapF
+          contK.pop()
+          nextOnPanic(ex)
+        case 11 => // ContFlatMap
+          contK.pop()
+          contK.pop()
+          nextOnPanic(ex)
+        case 12 => // ContMap
+          contK.pop()
+          nextOnPanic(ex)
+        case 13 => // ContMap2Right
+          contK.pop()
+          contK.pop()
+          nextOnPanic(ex)
+        case 14 => // ContMap2Func
+          contK.pop()
+          contK.pop()
+          nextOnPanic(ex)
+        case 15 => // ContOrElse
+          discardStmAlt()
+          nextOnPanic(ex)
         case ct => // mustn't happen
           impossible(s"Unknown contT: ${ct} (nextPanicHandler)")
       }
@@ -1776,9 +1823,6 @@ object Rxn extends RxnInstances0 {
           next()
         case 15 => // ContOrElse
           discardStmAlt()
-          next()
-        case 16 => // ContPanicHandler
-          contK.pop() // discard handler
           next()
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
@@ -2088,9 +2132,18 @@ object Rxn extends RxnInstances0 {
         case c: PostCommit[_] => // PostCommit
           pc.push(c.pc.provide(aCastTo[A]))
           loop(next())
-        case c: Lift[_, _] => // Lift
-          a = c.func(aCastTo[A])
-          loop(next())
+        case c: Lift[a, b] => // Lift
+          // TODO: Do we need to catch exceptions elsewhere? (This covers `delay`.)
+          val aa: a = aCastTo[a]
+          val f = c.func
+          val nxt = try {
+            a = f(aa)
+            null
+          } catch {
+            case ex if NonFatal(ex) =>
+              nextOnPanic(ex)
+          }
+          loop(if (nxt ne null) nxt else next())
         case c: Computed[_, _] => // Computed
           val nxt = c.f(aCastTo[A])
           a = () : Any
@@ -2197,7 +2250,13 @@ object Rxn extends RxnInstances0 {
           a = xp._1
           loop(c.left)
         case c: Done[_] => // Done
-          c.result.asInstanceOf[R]
+          val committedResult: R = c.result.asInstanceOf[R]
+          this.pcErrors.reverse match {
+            case h :: t =>
+              throw new PostCommitException(committedResult, NonEmptyList(h, t))
+            case Nil =>
+              committedResult
+          }
         case c: Ctx[a, _] =>
           val b = c.uf(aCastTo[a], ctx, this)
           a = b

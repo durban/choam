@@ -35,5 +35,4 @@ private object RxnConsts {
   final val ContMap2Right = 13
   final val ContMap2Func = 14
   final val ContOrElse = 15
-  final val ContPanicHandler = 16
 }
