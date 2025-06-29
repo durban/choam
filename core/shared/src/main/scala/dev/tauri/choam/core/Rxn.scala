@@ -1649,6 +1649,40 @@ object Rxn extends RxnInstances0 {
     }
 
     @tailrec
+    private[this] final def nextPanicHandler(ex: Throwable): Rxn[Any, Any] = {
+      val contK = this.contK
+      (contT.pop() : @switch) match {
+        case 0 => // ContAndThen
+          contK.pop()
+          nextPanicHandler(ex)
+        case 1 => // ContAndAlso
+          contK.pop()
+          contK.pop()
+          nextPanicHandler(ex)
+        case 2 => // ContAndAlsoJoin
+          contK.pop()
+          nextPanicHandler(ex)
+        case 3 => // ContTailRecM
+          contK.pop()
+          contK.pop()
+          nextPanicHandler(ex)
+        case 4 => // ContPostCommit
+          impossible("nextPanicHandler reached ContPostCommit")
+        case 5 => // ContAfterPostCommit
+          // no handler found, just throw it:
+          throw ex
+        case 6 => // ContCommitPostCommit
+          impossible("nextPanicHandler reached ContCommitPostCommit")
+        case 7 => // ContUpdWith
+          contK.pop()
+          contK.pop()
+          nextPanicHandler(ex)
+        case ct => // mustn't happen
+          impossible(s"Unknown contT: ${ct} (nextPanicHandler)")
+      }
+    }
+
+    @tailrec
     private[this] final def next(): Rxn[Any, Any] = {
       val contK = this.contK
       (contT.pop() : @switch) match {
@@ -1743,9 +1777,12 @@ object Rxn extends RxnInstances0 {
         case 15 => // ContOrElse
           discardStmAlt()
           next()
+        case 16 => // ContPanicHandler
+          contK.pop() // discard handler
+          next()
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
-            s"Unknown contT: ${ct}"
+            s"Unknown contT: ${ct} (next)"
           )
       }
     }
