@@ -766,8 +766,8 @@ object Rxn extends RxnInstances0 {
     // Unsafe/imperative API:
 
     /** Embeds a block of code, which uses the unsafe/imperative API, into an `Axn`. */
-    final def embedUnsafe[A](unsafeBlock: dev.tauri.choam.unsafe.InRxn => A): Axn[A] = {
-      new Rxn.Ctx3[Any, Axn[A]]({ (_: Any, state: unsafe2.InRxn) =>
+    final def embedUnsafe[A](unsafeBlock: dev.tauri.choam.unsafe.InRxn2 => A): Axn[A] = {
+      new Rxn.Ctx3[Any, Axn[A]]({ (_: Any, state: unsafe2.InRxn2) =>
         try {
           pure[A](unsafeBlock(state))
         } catch {
@@ -931,19 +931,19 @@ object Rxn extends RxnInstances0 {
 
   private sealed abstract class Ctx[A, B] extends RxnImpl[A, B] {
     final override def toString: String = s"Ctx(<block>)"
-    def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn): B
+    def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B
   }
 
   private final class Ctx1[A, B](_uf: Mcas.ThreadContext => B) extends Ctx[A, B] {
-    final override def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn): B = _uf(ctx)
+    final override def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B = _uf(ctx)
   }
 
   private final class Ctx2[A, B](_uf: (A, Mcas.ThreadContext) => B) extends Ctx[A, B] {
-    final override def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn): B = _uf(a, ctx)
+    final override def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B = _uf(a, ctx)
   }
 
-  private final class Ctx3[A, B](_uf: (A, unsafe2.InRxn) => B) extends Ctx[A, B] {
-    final override def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn): B = _uf(a, ir)
+  private final class Ctx3[A, B](_uf: (A, unsafe2.InRxn2) => B) extends Ctx[A, B] {
+    final override def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B = _uf(a, ir)
   }
 
   private[core] final class Provide[A, B](val rxn: Rxn[A, B], val a: A) extends RxnImpl[Any, B] {
@@ -2463,6 +2463,10 @@ object Rxn extends RxnInstances0 {
         _assert(this._desc eq null)
         throw unsafe2.RetryException.notPermanentFailure
       }
+    }
+
+    final override def imperativePostCommit(pca: Axn[Unit]): Unit = {
+      pc.push(pca)
     }
 
     final override def imperativeCommit(): Boolean = {

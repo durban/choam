@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import core.Ref
+import core.{ Ref, Axn }
 
 package object unsafe {
 
@@ -73,6 +73,11 @@ package object unsafe {
   /** @see [[dev.tauri.choam.core.Ref.update]] */
   final def updateRef[A](ref: Ref[A])(f: A => A)(implicit ir: InRxn): Unit = {
     ir.updateRef(ref.loc, f)
+  }
+
+  /** @see [[dev.tauri.choam.core.Rxn.postCommit]] */
+  final def addPostCommit[A](pc: Axn[Unit])(implicit ir: InRxn2): Unit = {
+    ir.imperativePostCommit(pc)
   }
 
   /** @see [[dev.tauri.choam.core.Rxn.unsafe.tentativeRead]] */
