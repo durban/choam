@@ -73,20 +73,6 @@ class ArrowBench {
   }
 
   @Benchmark
-  def node2Arrow(s: SharedSt, k: ThreadSt, r: RandomState): Unit = {
-    val head = s.headRefs(r.nextIntBounded(N))
-    val tail = s.tailRefs(r.nextIntBounded(N))
-    s.nodeSetTwiceWithArrow(head, tail, k.newNode).unsafePerformInternal0(null, k.mcasCtx)
-  }
-
-  @Benchmark
-  def node2Monad(s: SharedSt, k: ThreadSt, r: RandomState): Unit = {
-    val head = s.headRefs(r.nextIntBounded(N))
-    val tail = s.tailRefs(r.nextIntBounded(N))
-    s.nodeSetTwiceWithMonad(head, tail, k.newNode).unsafePerformInternal0(null, k.mcasCtx)
-  }
-
-  @Benchmark
   def promiseArrow(s: SharedSt, k: ThreadSt, r: RandomState): Boolean = {
     val ref = s.promiseRefs(r.nextIntBounded(N))
     s.promiseReplaceAndCompleteWithArrow(ref, k.newPromise, "foo").unsafePerformInternal0(null, k.mcasCtx)
@@ -164,13 +150,6 @@ object ArrowBench {
       )
     }
 
-    val tailRefs: Array[Ref[Node]] = Array.fill(N) {
-      Ref.unsafePadded[Node](
-        null : Node,
-        this.mcasImpl.currentContext().refIdGen,
-      )
-    }
-
     final def nodeSetOnceWithArrow(head: Ref[Node], newNode: Axn[Node]): Rxn[Any, Unit] = {
       newNode >>> head.set0
     }
@@ -178,16 +157,6 @@ object ArrowBench {
     final def nodeSetOnceWithMonad(head: Ref[Node], newNode: Axn[Node]): Rxn[Any, Unit] = {
       newNode.flatMapF { node =>
         head.set1(node)
-      }
-    }
-
-    final def nodeSetTwiceWithArrow(head: Ref[Node], tail: Ref[Node], newNode: Axn[Node]): Rxn[Any, Unit] = {
-      newNode >>> (head.set0 * tail.set0).void
-    }
-
-    final def nodeSetTwiceWithMonad(head: Ref[Node], tail: Ref[Node], newNode: Axn[Node]): Rxn[Any, Unit] = {
-      newNode.flatMapF { node =>
-        head.set1(node) *> tail.set1(node)
       }
     }
   }
