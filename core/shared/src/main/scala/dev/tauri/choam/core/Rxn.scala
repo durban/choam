@@ -2400,11 +2400,13 @@ object Rxn extends RxnInstances0 {
     final override def imperativeRetry(): Option[unsafe2.CanSuspendInF] = {
       this.retry() match {
         case null =>
+          // atomically/atomicallyInAsync has `null` as `startRxn` (and no
+          // post-commit actions for now), so this means a full retry after spinning:
           None
         case s: SuspendUntil =>
-          Some(s) // TODO: avoid allocation
+          Some(s)
         case xyz =>
-          // this shouldn't happen, because imperative API has no alts (for now):
+          // this shouldn't happen, because atomically/atomicallyInAsync has no alts (for now):
           impossible(s"retry (called in imperativeRetry) returned $xyz")
       }
     }
