@@ -52,11 +52,15 @@ sealed trait PromiseWrite[A] { self =>
 
   def complete1(a: A): Axn[Boolean]
 
+  private[choam] def unsafeComplete(a: A)(implicit ir: unsafe.InRxn2): Boolean
+
   final def contramap[B](f: B => A): PromiseWrite[B] = new PromiseWrite[B] {
     final override def complete0: Rxn[B, Boolean] =
       self.complete0.contramap(f)
     final override def complete1(b: B): Axn[Boolean] =
       self.complete1(f(b))
+    final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
+      self.unsafeComplete(f(b))
   }
 
   final def toCats[F[_]](implicit F: Reactive[F]): DeferredSink[F, A] = new DeferredSink[F, A] {
@@ -159,6 +163,8 @@ object Promise {
         self.complete0.contramap(g)
       final override def complete1(b: B): Axn[Boolean] =
         self.complete1(g(b))
+      final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
+        self.unsafeComplete(g(b))
       final override def tryGet: Axn[Option[B]] =
         self.tryGet.map(_.map(f))
       final override def get[F[_]](implicit F: AsyncReactive[F]): F[B] =
@@ -214,6 +220,19 @@ object Promise {
         } else {
           Rxn.pure(false)
         }
+      }
+    }
+
+    private[choam] final override def unsafeComplete(a: A)(implicit ir: unsafe.InRxn2): Boolean = {
+      import unsafe.{ readRef, writeRef, addPostCommit }
+      val state = readRef(ref)
+      state match {
+        case w: Waiting[_] =>
+          writeRef(ref, new Done(a))
+          addPostCommit(callCbs(w.cbs, a))
+          true
+        case _: Done[_] =>
+          false
       }
     }
 
