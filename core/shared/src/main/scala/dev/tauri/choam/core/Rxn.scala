@@ -20,9 +20,11 @@ package core
 
 import java.util.{ UUID, IdentityHashMap }
 
+import scala.util.control.NonFatal
+
 import cats.{ ~>, Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, MonoidK, Semigroup, Show }
 import cats.arrow.ArrowChoice
-import cats.data.{ Ior, State }
+import cats.data.{ Ior, State, NonEmptyList }
 import cats.mtl.Local
 import cats.effect.kernel.{ Async, Clock, Cont, Unique, MonadCancel, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
@@ -1248,6 +1250,23 @@ object Rxn extends RxnInstances0 {
       throw new IllegalStateException
   }
 
+  final class PostCommitException private[Rxn] (
+    val committedResult: Any,
+    val errors: NonEmptyList[Throwable],
+  ) extends Exception(s"${errors.size} exception(s) encountered during post-commit action(s)") {
+
+    final override def fillInStackTrace(): Throwable =
+      this
+
+    final override def initCause(cause: Throwable): Throwable =
+      throw new IllegalStateException
+  }
+
+  /** Panic while doing execution for the "other" side of an exchange */
+  private[this] final class ExchangePanic(val ex: Throwable)
+
+  private[this] final object ExchangePanicMarker
+
   private final class InterpreterState[X, R](
     rxn: Rxn[X, R],
     x: X,
@@ -1336,6 +1355,7 @@ object Rxn extends RxnInstances0 {
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
     private[this] var contK: ObjStack[Any] = mkInitialContK()
     private[this] val pc: ListObjStack[Rxn[Any, Unit]] = new ListObjStack[Rxn[Any, Unit]]()
+    private[this] var pcErrors: List[Throwable] = Nil
     private[this] val commit = commitSingleton
     contT.push2(RxnConsts.ContAfterPostCommit, RxnConsts.ContAndThen)
 
@@ -1633,19 +1653,108 @@ object Rxn extends RxnInstances0 {
       loadLocalsSnapshot(alts.pop().asInstanceOf[AnyRef])
     }
 
-    private[this] final def loadAltFrom(msg: Exchanger.Msg): Unit = {
+    private[this] final def loadAltFrom(msg: Exchanger.Msg): Either[Throwable, Any] = {
       pc.loadSnapshot(msg.postCommit)
       contKList.loadSnapshot(msg.contK)
       contT.loadSnapshot(msg.contT)
-      a = msg.value
       // TODO: write a test for this (exchange + STM)
       desc = this.mergeDescForOrElse(msg.desc, isPermanentFailure = false) // TODO: is `false` correct here?
+      _assert(msg.state match {
+        case Exchanger.Msg.Initial =>
+          false // mustn't happen
+        case Exchanger.Msg.Claimed => // we've claimed the offer, and need to finish the exchange
+          true // we can continue with anything
+        case Exchanger.Msg.Finished => // the other thread finished the exchange, we're done
+          (contT.peek() == RxnConsts.ContAndThen) && equ(contK.peek(), commitSingleton) && msg.desc.isEmpty
+      })
+      msg.value match {
+        case l @ Left(_) =>
+          _assert(msg.state eq Exchanger.Msg.Finished)
+          l
+        case r @ Right(_) =>
+          r
+      }
     }
 
     private[this] final def popFinalResult(): Any = {
       val r = contK.pop()
       _assert(!equ(r, postCommitResultMarker))
       r
+    }
+
+    @tailrec
+    private[this] final def nextOnPanic(ex: Throwable): Rxn[Any, Any] = {
+      val contK = this.contK
+      (contT.pop() : @switch) match {
+        case 0 => // ContAndThen
+          contK.peek() match {
+            case _: FinishExchange[_] =>
+              // Special case: panic in the Rxn we're executing
+              // on behalf of the "other" side of the exchange;
+              // we'll pass back the exception to the other side
+              // (see FinishExchange handling).
+              a = new ExchangePanic(ex)
+              contT.push(RxnConsts.ContAndThen)
+              next()
+            case _ =>
+              contK.pop()
+              nextOnPanic(ex)
+          }
+        case 1 => // ContAndAlso
+          contK.pop() // next() does pop-pop-push
+          nextOnPanic(ex)
+        case 2 => // ContAndAlsoJoin
+          contK.pop()
+          nextOnPanic(ex)
+        case 3 => // ContTailRecM
+          contK.pop()
+          contK.pop()
+          nextOnPanic(ex)
+        case 4 => // ContPostCommit
+          impossible("nextPanicHandler reached ContPostCommit")
+        case 5 => // ContAfterPostCommit
+          // no handler found, just throw it:
+          _assert(this.pcErrors.isEmpty)
+          throw ex
+        case 6 => // ContCommitPostCommit
+          // post-commit action panic'd, so we won't
+          // commit it, just save the error for later:
+          this.pcErrors = ex :: this.pcErrors
+          next() // continue with next PC or final result
+        case 7 => // ContUpdWith
+          contK.pop()
+          contK.pop()
+          nextOnPanic(ex)
+        case 8 => // ContAs
+          contK.pop()
+          nextOnPanic(ex)
+        case 9 => // ContProductR
+          contK.pop()
+          contK.pop()
+          nextOnPanic(ex)
+        case 10 => // ContFlatMapF
+          contK.pop()
+          nextOnPanic(ex)
+        case 11 => // ContFlatMap
+          contK.pop()
+          contK.pop()
+          nextOnPanic(ex)
+        case 12 => // ContMap
+          contK.pop()
+          nextOnPanic(ex)
+        case 13 => // ContMap2Right
+          contK.pop() // next() does pop-pop-push
+          nextOnPanic(ex)
+        case 14 => // ContMap2Func
+          contK.pop()
+          contK.pop()
+          nextOnPanic(ex)
+        case 15 => // ContOrElse
+          discardStmAlt()
+          nextOnPanic(ex)
+        case ct => // mustn't happen
+          impossible(s"Unknown contT: ${ct} (nextPanicHandler)")
+      }
     }
 
     @tailrec
@@ -1745,7 +1854,7 @@ object Rxn extends RxnInstances0 {
           next()
         case ct => // mustn't happen
           throw new UnsupportedOperationException(
-            s"Unknown contT: ${ct}"
+            s"Unknown contT: ${ct} (next)"
           )
       }
     }
@@ -1973,7 +2082,7 @@ object Rxn extends RxnInstances0 {
           case _ =>
             false
         }
-        // `Succesful` is success; otherwise the result is:
+        // `Successful` is success; otherwise the result is:
         // - Either `McasStatus.FailedVal`, which means that
         //   (at least) one word had an unexpected value
         //   (so we can't commit), or unexpected version (so
@@ -2051,9 +2160,18 @@ object Rxn extends RxnInstances0 {
         case c: PostCommit[_] => // PostCommit
           pc.push(c.pc.provide(aCastTo[A]))
           loop(next())
-        case c: Lift[_, _] => // Lift
-          a = c.func(aCastTo[A])
-          loop(next())
+        case c: Lift[a, b] => // Lift
+          // TODO: Do we need to catch exceptions elsewhere? (This covers `delay`.)
+          val aa: a = aCastTo[a]
+          val f = c.func
+          val nxt = try {
+            a = f(aa)
+            null
+          } catch {
+            case ex if NonFatal(ex) =>
+              nextOnPanic(ex)
+          }
+          loop(if (nxt ne null) nxt else next())
         case c: Computed[_, _] => // Computed
           val nxt = c.f(aCastTo[A])
           a = () : Any
@@ -2136,17 +2254,18 @@ object Rxn extends RxnInstances0 {
               loop(retry())
             case Right(contMsg) =>
               _stats = contMsg.exchangerData
-              loadAltFrom(contMsg)
               this.hasTentativeRead = contMsg.hasTentativeRead
-              _assert(contMsg.state match {
-                case Exchanger.Msg.Initial =>
-                  false // mustn't happen
-                case Exchanger.Msg.Claimed => // we've claimed the offer, and need to finish the exchange
-                  true // we can continue with anything
-                case Exchanger.Msg.Finished => // the other thread finished the exchange, we're done
-                  (contT.peek() == RxnConsts.ContAndThen) && equ(contK.peek(), commitSingleton) && contMsg.desc.isEmpty
-              })
-              loop(next())
+              val nxt = loadAltFrom(contMsg) match {
+                case Left(ex) =>
+                  // the other side encountered a panic while
+                  // executing our Rxn, so we must handle it:
+                  a = ExchangePanicMarker // just to help with debugging if anyone uses this
+                  nextOnPanic(ex)
+                case Right(result) =>
+                  a = result
+                  next()
+              }
+              loop(nxt)
           }
         case c: AndThen[_, _, _] => // AndThen
           contT.push(RxnConsts.ContAndThen)
@@ -2160,7 +2279,13 @@ object Rxn extends RxnInstances0 {
           a = xp._1
           loop(c.left)
         case c: Done[_] => // Done
-          c.result.asInstanceOf[R]
+          val committedResult: R = c.result.asInstanceOf[R]
+          this.pcErrors.reverse match {
+            case h :: t =>
+              throw new PostCommitException(committedResult, NonEmptyList(h, t))
+            case Nil =>
+              committedResult
+          }
         case c: Ctx[a, _] =>
           val b = c.uf(aCastTo[a], ctx, this)
           a = b
@@ -2199,24 +2324,54 @@ object Rxn extends RxnInstances0 {
           //println(s"FinishExchange: passing back result '${a}' - thread#${Thread.currentThread().getId()}")
           //println(s"FinishExchange: passing back contT ${java.util.Arrays.toString(otherContT)} - thread#${Thread.currentThread().getId()}")
           //println(s"FinishExchange: passing back contK ${c.restOtherContK.mkString()} - thread#${Thread.currentThread().getId()}")
+          val resultToOther = a match {
+            case ep: ExchangePanic =>
+              // while executing the "other" Rxn, a panic happened
+              // this error is not ours, so we pass it back to the
+              // other side:
+              Left(ep.ex)
+            case _ =>
+              Right(aCastTo[d])
+          }
           val fx = new Exchanger.FinishedEx[d](
-            result = aCastTo[d],
+            result = resultToOther,
             contK = c.restOtherContK,
             contT = otherContT,
             hasTentativeRead = this.hasTentativeRead,
           )
           a = contK.pop() // the exchanged value we've got from the other thread
-          val otherDesc = ctx.addCasFromInitial(desc, c.hole.loc, null, fx).toImmutable
-          c.mergeDescs.otherDesc = otherDesc // pass it forward
-          desc = c.selfDesc
-          val nxt = if (otherDesc.validTs > desc.validTs) {
-            if (forceValidate(null)) {
-              next()
-            } else {
+          val nxt = resultToOther match {
+            case Left(_) =>
+              // While executing the "other" Rxn, a panic happened;
+              // normally we'd only fill c.hole when we commit, but
+              // this is a special case: we want the other side to
+              // immediately panic.
+              val singleCasDesc = ctx.addCasFromInitial(ctx.startSnap(), c.hole.loc, null, fx).toImmutable
+              ctx.tryPerform(singleCasDesc, Consts.PESSIMISTIC) match {
+                case McasStatus.Successful =>
+                  // ok, we passed back the panic to the other side
+                case Version.Reserved =>
+                  impossible("tryPerform returned Reserved when it was called with PESSIMISTIC")
+                case mcasResult =>
+                  _assert(mcasResult == McasStatus.FailedVal)
+                  // the other side rescinded before we could pass back
+                  // the panic to it; we can't do anything with that
+              }
+              // in any case, we can't go on with the exchange due to the panic, so we retry:
               retry()
-            }
-          } else {
-            next()
+            case Right(_) =>
+              val otherDesc = ctx.addCasFromInitial(desc, c.hole.loc, null, fx).toImmutable
+              c.mergeDescs.otherDesc = otherDesc // pass it forward
+              desc = c.selfDesc
+              if (otherDesc.validTs > desc.validTs) {
+                if (forceValidate(null)) {
+                  next()
+                } else {
+                  retry()
+                }
+              } else {
+                next()
+              }
           }
           //println(s"FinishExchange: our result is '${a}' - thread#${Thread.currentThread().getId()}")
           loop(nxt)
