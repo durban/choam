@@ -1671,8 +1671,7 @@ object Rxn extends RxnInstances0 {
           contK.pop()
           nextOnPanic(ex)
         case 1 => // ContAndAlso
-          contK.pop()
-          contK.pop()
+          contK.pop() // next() does pop-pop-push
           nextOnPanic(ex)
         case 2 => // ContAndAlsoJoin
           contK.pop()
@@ -1714,8 +1713,7 @@ object Rxn extends RxnInstances0 {
           contK.pop()
           nextOnPanic(ex)
         case 13 => // ContMap2Right
-          contK.pop()
-          contK.pop()
+          contK.pop() // next() does pop-pop-push
           nextOnPanic(ex)
         case 14 => // ContMap2Func
           contK.pop()

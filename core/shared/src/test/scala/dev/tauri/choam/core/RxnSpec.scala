@@ -1333,27 +1333,50 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  // This tests an implementation detail,
-  // because we depend on this implementation
-  // detail when implementing `Rxn.unsafe.panic`:
-  test("unsafe.delay(throw)") {
+  test("unsafe.delay(throw), i.e., unsafe.panic") {
     val exc = new RxnSpec.MyException
     def attemptRun[A](axn: Axn[A]): F[Either[Throwable, A]] = {
-      rF.run(axn).attempt
+      axn.run[F].attempt
+    }
+    def assertExc[A](axn: Axn[A]): F[Unit] = {
+      assertResultF(attemptRun(axn), Left(exc))
     }
     for {
       _ <- assertResultF(
         attemptRun[Int](Rxn.unsafe.delay { _ => 42 }),
         Right(42),
       )
-      _ <- assertResultF(
-        attemptRun[Int](Rxn.unsafe.delay { _ => throw exc }),
-        Left(exc),
-      )
-      _ <- assertResultF(
-        attemptRun[Int](Rxn.unsafe.delay[Any, Int] { _ => throw exc } >>> Rxn.unsafe.retry),
-        Left(exc),
-      )
+      _ <- assertExc((Rxn.unsafe.delay { _ => throw exc }))
+      _ <- assertExc(Rxn.unsafe.delay[Any, Int] { _ => throw exc } >>> Rxn.unsafe.retry)
+      _ <- assertExc(Rxn.unsafe.panic(exc) * Rxn.pure(42))
+      _ <- assertExc(Rxn.pure(42) * Rxn.unsafe.panic(exc))
+      _ <- assertExc(Rxn.tailRecM(0) { i =>
+        if (i < 5) Rxn.pure(Left(i + 1))
+        else Rxn.unsafe.panic(exc)
+      })
+      r1 <- Ref(0).run[F]
+      _ <- assertExc(Rxn.unsafe.panic(exc).postCommit(r1.update(_ + 1)))
+      _ <- assertResultF(r1.get.run, 0)
+      r2 <- Ref(0).run[F]
+      res <- r2.update(_ + 1).postCommit(Rxn.unsafe.panic(exc)).run[F].attempt
+      _ <- res match {
+        case Left(_: Rxn.PostCommitException) => F.unit // ok
+        case res => failF(s"unexpected result: $res")
+      }
+      _ <- assertResultF(r2.get.run, 1)
+      r3 <- Ref(0).run[F]
+      _ <- assertExc(r3.updWith[Any, String] { (_, _) => Rxn.unsafe.panic(exc) })
+      _ <- assertResultF(r3.get.run, 0)
+      _ <- assertExc(Rxn.unsafe.panic(exc).as(42))
+      _ <- assertExc(Rxn.unsafe.panic(exc) *> Axn.pure(42))
+      _ <- assertExc(Rxn.unsafe.panic[Int](exc).flatMapF { _ => Axn.pure(42) })
+      _ <- assertExc(Rxn.unsafe.panic[Int](exc).flatMap { _ => Axn.pure(42) })
+      _ <- assertExc(Rxn.unsafe.panic[Int](exc).map { _ => 42 })
+      _ <- assertExc(Rxn.unsafe.panic[Int](exc).map2(Axn.pure(42)) { (_, _) => 42 })
+      _ <- assertExc(Rxn.unsafe.orElse(
+        Rxn.unsafe.panic(exc) *> Rxn.unsafe.retryWhenChanged,
+        Rxn.pure(42)
+      ))
     } yield ()
   }
 
