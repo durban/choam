@@ -1252,7 +1252,6 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("panic") {
-    // TODO: test panic with Exchanger
     val exc = new RxnSpec.MyException
     for {
       _ <- assertResultF(Rxn.unsafe.panic(exc).run[F].attempt, Left(exc))

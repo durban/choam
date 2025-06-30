@@ -643,4 +643,36 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     } yield ()
     t.replicateA_(10000)
   }
+
+  test("panic + exchanger") {
+    val exc = new RxnSpec.MyException
+    val t = for {
+      r1 <- Ref(0).run[F]
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      left = (ex.exchange.provide("foo").flatMapF { (exchanged: Int) =>
+        Rxn.unsafe.panic(exc).as(exchanged)
+      }) + Axn.pure(0)
+      right = ex.dual.exchange.provide(42).flatMapF { (exchanged: String) =>
+        r1.update(_ + 1).as(exchanged)
+      } + Axn.pure("fallback")
+      rr <- F.both(
+        F.cede *> left.run[F].attempt,
+        F.cede *> right.run[F].attempt,
+      )
+      // there are 2 possibilities:
+      // 1. an exchange happens => left side panics, but right side should complete with the fallback
+      //    (regardless of which side actually executed the merged Rxn)
+      // 2. no exchange happens, both side should complete with the fallback
+      _ <- rr match {
+        case (Left(excActual), Right("fallback")) =>
+          assertSameInstanceF(excActual, exc)
+        case (Right(0), Right("fallback")) =>
+          F.unit // OK
+        case _ =>
+          failF(s"unexpected result: ${rr}")
+      }
+      _ <- assertResultF(r1.get.run, 0)
+    } yield ()
+    t.replicateA_(if (this.isEmcas) 500 else 50)
+  }
 }

@@ -115,7 +115,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
   )
 
   private[core] final case class Msg private (
-    value: Any,
+    value: Either[Throwable, Any],
     contK: ListObjStack.Lst[Any],
     contT: Array[Byte],
     desc: Descriptor,
@@ -142,7 +142,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
       hasTentativeRead: Boolean,
     ): Msg = {
       Msg(
-        value = value,
+        value = Right(value),
         contK = contK,
         contT = contT,
         desc = desc,
@@ -163,7 +163,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
       hasTentativeRead: Boolean,
     ): Msg = {
       Msg(
-        value = value,
+        value = Right(value),
         contK = contK,
         contT = contT,
         desc = desc,
@@ -191,7 +191,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
   private[core] sealed abstract class NodeResult[C]
 
   private[core] final class FinishedEx[C](
-    val result: C,
+    val result: Either[Throwable, C],
     val contK: ListObjStack.Lst[Any],
     val contT: Array[Byte],
     val hasTentativeRead: Boolean,

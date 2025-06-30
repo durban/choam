@@ -194,8 +194,14 @@ private sealed trait ExchangerImplJvm[A, B]
     params: Params,
     ctx: Mcas.ThreadContext,
   ): Either[Statistics, Msg] = {
-    val a: A = selfMsg.value.asInstanceOf[A]
-    val b: B = other.msg.value.asInstanceOf[B]
+    val a: A = selfMsg.value match {
+      case Left(_) => impossible("fulfillClaimedOffer found Left in selfMsg")
+      case Right(a) => a.asInstanceOf[A]
+    }
+    val b: B = other.msg.value match {
+      case Left(_) => impossible("fulfillClaimedOffer found Left in other.msg")
+      case Right(b) => b.asInstanceOf[B]
+    }
     debugLog(s"fulfillClaimedOffer: selfMsg.value = ${a}; other.msg.value = ${b} - thread#${Thread.currentThread().getId()}")
     val canExtend = (!selfMsg.hasTentativeRead) && (!other.msg.hasTentativeRead)
     // we'll continue with the other descriptor, make sure it's version is up to date:
