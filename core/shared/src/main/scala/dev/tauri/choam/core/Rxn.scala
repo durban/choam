@@ -1250,6 +1250,9 @@ object Rxn extends RxnInstances0 {
       throw new IllegalStateException
   }
 
+  // TODO: Consider using JVM exception chaining
+  // TODO: instead of this "composite" exception.
+  // TODO: But: where to store `committedResult`?
   final class PostCommitException private[Rxn] (
     val committedResult: Any,
     val errors: NonEmptyList[Throwable],
@@ -1684,6 +1687,14 @@ object Rxn extends RxnInstances0 {
 
     @tailrec
     private[this] final def nextOnPanic(ex: Throwable): Rxn[Any, Any] = {
+      // TODO: We don't actually have proper panic handlers.
+      // TODO: For now, we're special casing 2 situations
+      // TODO: where panic handling is needed: (1) post-commit
+      // TODO: actions (where subsequent PC actions need to be
+      // TODO: executed even if one of them panics); and
+      // TODO: (2) when executing the "other" side of an
+      // TODO: exchange (where we need to make the other side
+      // TODO: panic, but ourselves have to retry).
       val contK = this.contK
       (contT.pop() : @switch) match {
         case 0 => // ContAndThen
@@ -1711,7 +1722,7 @@ object Rxn extends RxnInstances0 {
           contK.pop()
           nextOnPanic(ex)
         case 4 => // ContPostCommit
-          impossible("nextPanicHandler reached ContPostCommit")
+          impossible("nextOnPanic reached ContPostCommit")
         case 5 => // ContAfterPostCommit
           // no handler found, just throw it:
           _assert(this.pcErrors.isEmpty)
@@ -1753,7 +1764,7 @@ object Rxn extends RxnInstances0 {
           discardStmAlt()
           nextOnPanic(ex)
         case ct => // mustn't happen
-          impossible(s"Unknown contT: ${ct} (nextPanicHandler)")
+          impossible(s"Unknown contT: ${ct} (nextOnPanic)")
       }
     }
 
@@ -1853,9 +1864,7 @@ object Rxn extends RxnInstances0 {
           discardStmAlt()
           next()
         case ct => // mustn't happen
-          throw new UnsupportedOperationException(
-            s"Unknown contT: ${ct} (next)"
-          )
+          impossible(s"Unknown contT: ${ct} (next)")
       }
     }
 
@@ -2326,7 +2335,7 @@ object Rxn extends RxnInstances0 {
           //println(s"FinishExchange: passing back contK ${c.restOtherContK.mkString()} - thread#${Thread.currentThread().getId()}")
           val resultToOther = a match {
             case ep: ExchangePanic =>
-              // while executing the "other" Rxn, a panic happened
+              // while executing the "other" Rxn, a panic happened;
               // this error is not ours, so we pass it back to the
               // other side:
               Left(ep.ex)

@@ -115,7 +115,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
   )
 
   private[core] final case class Msg private (
-    value: Either[Throwable, Any],
+    value: Either[Throwable, Any], // TODO: avoid Either by using (Any | Rxn.ExchangePanic)
     contK: ListObjStack.Lst[Any],
     contT: Array[Byte],
     desc: Descriptor,
