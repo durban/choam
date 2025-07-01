@@ -1,0 +1,112 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright 2016-2025 Daniel Urban and contributors listed in NOTICE.txt
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package dev.tauri.choam
+package bench
+package rxn
+
+import java.util.concurrent.ThreadLocalRandom
+
+import org.openjdk.jmh.annotations._
+import org.openjdk.jmh.infra.Blackhole
+
+import core.{ Rxn, Axn, Ref }
+import util._
+
+/** Compares the performance of `flatten` as a primitive and derived from `flatMapF` */
+@Fork(3)
+@Threads(2)
+class FlattenBench {
+
+  import FlattenBench.{ St, size }
+
+  @Benchmark
+  def flattenPrimitive(s: St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    val idx = Math.abs(rnd.nextInt()) % size
+    val r: Axn[String] = s.rsPrimitive(idx)
+    bh.consume(r.unsafePerform((), k.mcasImpl))
+  }
+
+  @Benchmark
+  def flattenDerived(s: St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+    val idx = Math.abs(rnd.nextInt()) % size
+    val r: Axn[String] = s.rsDerived(idx)
+    bh.consume(r.unsafePerform((), k.mcasImpl))
+  }
+}
+
+object FlattenBench {
+
+  final val size = 8
+  final val n = 16
+
+  sealed abstract class OpType extends Product with Serializable
+  final case object Primitive extends OpType
+  final case object Derived extends OpType
+
+  @State(Scope.Benchmark)
+  class St extends McasImplStateBase {
+
+    private[this] val dummy: Axn[Unit] =
+      Rxn.unsafe.delay { _ => () }
+
+    private[this] val refs = List.fill(size) {
+      Ref.unsafePadded[String](
+        ThreadLocalRandom.current().nextInt().toString,
+        this.mcasImpl.currentContext().refIdGen,
+      )
+    }
+
+    private[this] val addXs: List[Axn[Unit]] =
+      refs.map(_.update(_.substring(1) + "x"))
+
+    private[this] val addYs: List[Axn[String]] =
+      refs.map(_.updateAndGet(_.substring(1) + "y"))
+
+    val rsPrimitive: List[Axn[String]] =
+      mkReactions(opType = Primitive)
+
+    val rsDerived: List[Axn[String]] =
+      mkReactions(opType = Derived)
+
+    private[this] final def mkReactions(opType: OpType): List[Axn[String]] = {
+      List.tabulate(size) { idx =>
+        val idx2 = (idx + 1) % size
+        buildReaction(n, first = addXs(idx), last = addYs(idx2), opType = opType)
+      }
+    }
+
+    private[this] final def buildReaction(n: Int, first: Axn[Unit], last: Axn[String], opType: OpType): Axn[String] = {
+      def go(n: Int, acc: Axn[Unit]): Axn[Unit] = {
+        if (n < 1) {
+          acc
+        } else {
+          val newAcc = opType match {
+            case Primitive => acc.as(dummy).flatten
+            case Derived => acc.as(dummy).flattenOld
+          }
+          go(n - 1, newAcc)
+        }
+      }
+
+      opType match {
+        case Primitive => go(n, first).as(last).flatten
+        case Derived => go(n, first).as(last).flattenOld
+      }
+    }
+  }
+}

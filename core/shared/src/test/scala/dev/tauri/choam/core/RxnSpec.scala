@@ -611,6 +611,11 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("flatten") {
+    val inner: Axn[Int] = Axn.pure(42)
+    assertResultF(Rxn.lift[Int, Int](_ + 1).as(inner).flatten.run(99), 42)
+  }
+
   test("*> and >>") {
     for {
       r1 <- Ref("a").run[F]
@@ -1370,6 +1375,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertExc(Rxn.unsafe.panic(exc) *> Axn.pure(42))
       _ <- assertExc(Rxn.unsafe.panic[Int](exc).flatMapF { _ => Axn.pure(42) })
       _ <- assertExc(Rxn.unsafe.panic[Int](exc).flatMap { _ => Axn.pure(42) })
+      _ <- assertExc(Rxn.unsafe.panic[Int](exc).as(Axn.pure(42)).flatten)
       _ <- assertExc(Rxn.unsafe.panic[Int](exc).map { _ => 42 })
       _ <- assertExc(Rxn.unsafe.panic[Int](exc).map2(Axn.pure(42)) { (_, _) => 42 })
       _ <- assertExc(Rxn.unsafe.orElse(

@@ -187,6 +187,8 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
 
   def flatten[C](implicit ev: B <:< Axn[C]): Rxn[A, C]
 
+  private[choam] def flattenOld[C](implicit ev: B <:< Axn[C]): Rxn[A, C]
+
   def postCommit(pc: Rxn[B, Unit]): Rxn[A, B]
 
   /**
@@ -442,6 +444,9 @@ private[choam] sealed abstract class RxnImpl[-A, +B]
     this.flatMapF { b => rxn.provide(b).as(b) } // TODO: is this really better than the one with flatMap?
 
   final override def flatten[C](implicit ev: B <:< Axn[C]): RxnImpl[A, C] =
+    new Rxn.Flatten[A, C](this.asInstanceOf[Rxn[A, Axn[C]]])
+
+  private[choam] final override def flattenOld[C](implicit ev: B <:< Axn[C]): RxnImpl[A, C] =
     this.flatMapF(ev)
 
   final override def postCommit(pc: Rxn[B, Unit]): Rxn[A, B] =
@@ -454,7 +459,7 @@ private[choam] sealed abstract class RxnImpl[-A, +B]
   }
 
   final override def flatten[C](implicit ev: B <:< Txn[C]): Txn[C] = {
-    this.flatMap(ev)
+    new Rxn.Flatten[A, C](this.asInstanceOf[Rxn[A, Axn[C]]])
   }
 
   final override def map2[C, D](that: Txn[C])(f: (B, C) => D): Txn[D] = {
@@ -1008,6 +1013,10 @@ object Rxn extends RxnInstances0 {
 
   private[core] final class FlatMap[A, B, C](val rxn: Rxn[A, B], val f: B => Rxn[A, C]) extends RxnImpl[A, C] {
     final override def toString: String = s"FlatMap(${rxn}, <function>)"
+  }
+
+  private[core] final class Flatten[A, B](val rxn: Rxn[A, Axn[B]]) extends RxnImpl[A, B] {
+    final override def toString: String = s"Flatten(${rxn})"
   }
 
   /** Only the interpreter can use this! */
@@ -1763,6 +1772,8 @@ object Rxn extends RxnInstances0 {
         case 15 => // ContOrElse
           discardStmAlt()
           nextOnPanic(ex)
+        case 16 => // ContFlatten
+          nextOnPanic(ex)
         case ct => // mustn't happen
           impossible(s"Unknown contT: ${ct} (nextOnPanic)")
       }
@@ -1838,7 +1849,7 @@ object Rxn extends RxnInstances0 {
           contK.pop().asInstanceOf[Rxn[Any, Any]]
         case 10 => // ContFlatMapF
           val n = contK.pop().asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
-          a = () : Any
+          a = null
           n
         case 11 => // ContFlatMap
           val n = contK.pop().asInstanceOf[Function1[Any, Rxn[Any, Any]]].apply(a)
@@ -1863,6 +1874,10 @@ object Rxn extends RxnInstances0 {
         case 15 => // ContOrElse
           discardStmAlt()
           next()
+        case 16 => // ContFlatten
+          val nxt = a.asInstanceOf[Rxn[Any, Any]]
+          a = null
+          nxt
         case ct => // mustn't happen
           impossible(s"Unknown contT: ${ct} (next)")
       }
@@ -2434,6 +2449,9 @@ object Rxn extends RxnInstances0 {
         case c: FlatMap[_, _, _] => // FlatMap
           contT.push(RxnConsts.ContFlatMap)
           contK.push2(a, c.f)
+          loop(c.rxn)
+        case c: Flatten[_, _] =>
+          contT.push(RxnConsts.ContFlatten)
           loop(c.rxn)
         case _: SuspendUntil => // SuspendUntil
           _assert(this.canSuspend)
