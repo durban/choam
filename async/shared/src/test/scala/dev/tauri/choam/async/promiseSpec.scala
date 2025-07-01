@@ -115,7 +115,7 @@ trait PromiseSpecTicked[F[_]]
   test("Promise.unsafeNew") {
     for {
       pp <- Rxn.unsafe.embedUnsafe { implicit ir =>
-        (Promise.unsafeNew[Int], Promise.unsafeNew[String](Ref.AllocationStrategy.Padded))
+        (Promise.unsafeNew[Int](), Promise.unsafeNew[String](Ref.AllocationStrategy.Padded))
       }.run[F]
       (p1, p2) = pp
       fib1 <- p1.get.start
