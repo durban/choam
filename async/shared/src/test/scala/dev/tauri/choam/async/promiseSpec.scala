@@ -25,7 +25,7 @@ import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.Outcome
 
-import core.{ Rxn, AsyncReactiveSpec }
+import core.{ Rxn, AsyncReactiveSpec, Ref }
 
 final class PromiseSpec_ThreadConfinedMcas_IO_Real
   extends BaseSpecIO
@@ -109,6 +109,24 @@ trait PromiseSpecTicked[F[_]]
       }.run[F], false)
       _ <- assertResultF(fib1.joinWithNever, 42)
       _ <- assertResultF(fib2.joinWithNever, 42)
+    } yield ()
+  }
+
+  test("Promise.unsafeNew") {
+    for {
+      pp <- Rxn.unsafe.embedUnsafe { implicit ir =>
+        (Promise.unsafeNew[Int], Promise.unsafeNew[String](Ref.AllocationStrategy.Padded))
+      }.run[F]
+      (p1, p2) = pp
+      fib1 <- p1.get.start
+      fib2 <- p2.get.start
+      _ <- this.tickAll
+      _ <- p1.complete0.run(42)
+      _ <- Rxn.unsafe.embedUnsafe { implicit ir =>
+        p2.unsafeComplete("foo")
+      }.run
+      _ <- assertResultF(fib1.joinWithNever, 42)
+      _ <- assertResultF(fib2.joinWithNever, "foo")
     } yield ()
   }
 }

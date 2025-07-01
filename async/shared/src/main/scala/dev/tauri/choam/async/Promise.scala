@@ -98,6 +98,14 @@ object Promise {
     }
   }
 
+  private[choam] final def unsafeNew[A](implicit ir: unsafe.InRxn): Promise[A] =
+    unsafeNew(AllocationStrategy.Default)
+
+  private[choam] final def unsafeNew[A](str: AllocationStrategy)(implicit ir: unsafe.InRxn): Promise[A] = {
+    val ctx = ir.currentContext()
+    new PromiseImpl[A](Ref.unsafe[State[A]](Waiting.empty, str, ctx.refIdGen))
+  }
+
   implicit final def invariantFunctorForPromise: Invariant[Promise] =
     _invariantFunctorForPromise
 
