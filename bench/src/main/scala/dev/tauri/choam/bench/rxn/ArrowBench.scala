@@ -81,19 +81,19 @@ class ArrowBench {
   @Benchmark
   def promiseArrow(s: SharedSt, k: ThreadSt, r: RandomState): Boolean = {
     val ref = s.promiseRefs(r.nextIntBounded(N))
-    s.promiseReplaceAndCompleteWithArrow(ref, k.newPromise, "foo").unsafePerformInternal0(null, k.mcasCtx)
+    s.promiseReplaceAndCompleteWithArrow(ref, "foo").unsafePerformInternal0(null, k.mcasCtx)
   }
 
   @Benchmark
   def promiseMonad(s: SharedSt, k: ThreadSt, r: RandomState): Boolean = {
     val ref = s.promiseRefs(r.nextIntBounded(N))
-    s.promiseReplaceAndCompleteWithMonad(ref, k.newPromise, "foo").unsafePerformInternal0(null, k.mcasCtx)
+    s.promiseReplaceAndCompleteWithMonad(ref, "foo").unsafePerformInternal0(null, k.mcasCtx)
   }
 
   @Benchmark
   def promiseImperative(s: SharedSt, k: ThreadSt, r: RandomState): Boolean = {
     val ref = s.promiseRefs(r.nextIntBounded(N))
-    s.promiseReplaceAndCompleteWithUnsafe(ref, k.newPromise, "foo").unsafePerformInternal0(null, k.mcasCtx)
+    s.promiseReplaceAndCompleteWithUnsafe(ref, "foo").unsafePerformInternal0(null, k.mcasCtx)
   }
 }
 
@@ -104,19 +104,8 @@ object ArrowBench {
   @State(Scope.Thread)
   class ThreadSt extends McasImplState {
 
-    private[this] val preallocatedPromise: Promise[String] =
-      (Promise[String].flatMapF(p => p.complete1("").as(p))).unsafeRun(this.mcasImpl)
-
     private[this] val preallocatedNode: Node =
       ArrowBench.newNode(42, null, null).unsafeRun(this.mcasImpl)
-
-    /**
-     * We're returning a pre-allocated `Promise`, because
-     * otherwise we're mostly measuring the cost of
-     * allocating a new instance.
-     */
-    val newPromise: Axn[Promise[String]] =
-      Axn.pure(this.preallocatedPromise)
 
     /**
      * We're returning a pre-allocated `Node`, because
@@ -139,31 +128,29 @@ object ArrowBench {
       )
     }
 
-    final def promiseReplaceAndCompleteWithArrow(ref: Ref[Promise[String]], newPromise: Axn[Promise[String]], str: String): Rxn[Any, Boolean] = {
-      newPromise >>> ref.getAndSet.flatMapF { ov =>
+    final def promiseReplaceAndCompleteWithArrow(ref: Ref[Promise[String]], str: String): Rxn[Any, Boolean] = {
+      Promise[String] >>> ref.getAndSet.flatMapF { ov =>
         if (ov ne null) ov.complete1(str) else Rxn.pure(true)
       }
     }
 
-    final def promiseReplaceAndCompleteWithMonad(ref: Ref[Promise[String]], newPromise: Axn[Promise[String]], str: String): Rxn[Any, Boolean] = {
-      newPromise.flatMapF { p =>
+    final def promiseReplaceAndCompleteWithMonad(ref: Ref[Promise[String]], str: String): Rxn[Any, Boolean] = {
+      Promise[String].flatMapF { p =>
         ref.getAndUpdate { _ => p }.flatMapF { ov =>
           if (ov ne null) ov.complete1(str) else Rxn.pure(true)
         }
       }
     }
 
-    final def promiseReplaceAndCompleteWithUnsafe(ref: Ref[Promise[String]], newPromise: Axn[Promise[String]], str: String): Rxn[Any, Boolean] = {
+    final def promiseReplaceAndCompleteWithUnsafe(ref: Ref[Promise[String]], str: String): Rxn[Any, Boolean] = {
       import unsafe._
-      newPromise.flatMapF { p =>
-        Rxn.unsafe.embedUnsafe { implicit ir =>
-          val ov = ref.value
-          ref.value = p
-          if (ov ne null) {
-            ov.unsafeComplete(str)
-          } else {
-            true
-          }
+      Rxn.unsafe.embedUnsafe { implicit ir =>
+        val p = Promise.unsafeNew[String]()
+        val ov = getAndSetRef(ref, p)
+        if (ov ne null) {
+          ov.unsafeComplete(str)
+        } else {
+          true
         }
       }
     }
