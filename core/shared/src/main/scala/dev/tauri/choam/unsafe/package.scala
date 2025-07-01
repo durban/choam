@@ -75,6 +75,10 @@ package object unsafe {
     ir.updateRef(ref.loc, f)
   }
 
+  final def getAndSetRef[A](ref: Ref[A], nv: A)(implicit ir: InRxn): A = {
+    ir.getAndSetRef(ref.loc, nv)
+  }
+
   /** @see [[dev.tauri.choam.core.Rxn.postCommit]] */
   final def addPostCommit[A](pc: Axn[Unit])(implicit ir: InRxn2): Unit = {
     ir.imperativePostCommit(pc)

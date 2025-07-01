@@ -2621,6 +2621,18 @@ object Rxn extends RxnInstances0 {
       }
     }
 
+    final override def getAndSetRef[A](ref: MemoryLocation[A], nv: A): A = {
+      val c = new Rxn.UpdFull(ref, { (ov: A, _: Any) => (nv, ov) })
+      if (!handleUpd(c)) {
+        throw unsafe2.RetryException.notPermanentFailure
+      } else {
+        // TODO: we lose the previous this.a; is this a problem?
+        val ov = aCastTo[A]
+        a = null
+        ov
+      }
+    }
+
     final override def imperativeTentativeRead[A](ref: MemoryLocation[A]): A = {
       val hwd = tentativeRead(ref)
       if (hwd eq null) {

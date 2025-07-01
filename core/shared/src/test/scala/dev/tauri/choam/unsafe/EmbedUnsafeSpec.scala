@@ -74,6 +74,17 @@ trait EmbedUnsafeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("getAndSetRef") {
+    for {
+      r <- Ref(0).run[F]
+      ov <- Rxn.unsafe.embedUnsafe { implicit ir =>
+        getAndSetRef(r, 42)
+      }.run
+      _ <- assertEqualsF(ov, 0)
+      _ <- assertResultF(r.get.run, 42)
+    } yield ()
+  }
+
   test("Post-commit actions") {
     for {
       ref1 <- Ref(0).run[F]
