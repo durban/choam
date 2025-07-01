@@ -22,8 +22,6 @@ import scala.util.Try
 
 import cats.effect.IO
 
-import core.AsyncReactiveSpec
-
 final class BoundedQueueSpecLinked_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
   with SpecThreadConfinedMcas
@@ -49,8 +47,7 @@ trait BoundedQueueSpecArray[F[_]]
 }
 
 trait BoundedQueueSpec[F[_]]
-  extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   def newQueue[A](bound: Int): F[BoundedQueue[A]]
 

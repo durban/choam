@@ -26,8 +26,6 @@ import cats.effect.instances.spawn._
 
 import munit.TestOptions
 
-import core.AsyncReactiveSpec
-
 final class WaitListSpecPar_DefaultMcas_IO
   extends BaseSpecIO
   with SpecDefaultMcas
@@ -41,7 +39,7 @@ final class WaitListSpecPar_DefaultMcas_IO
 //   with SpecDefaultMcas
 //   with WaitListSpecPar[zio.Task]
 
-trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] with AsyncReactiveSpec[F] { this: McasImplSpec =>
+trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private val common = List[(TestOptions, F[AsyncQueueSource[String] & BoundedQueueSink[String]])](
     ("AsyncQueue.unbounded", AsyncQueue.unbounded[String].run[F].widen),

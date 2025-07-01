@@ -21,16 +21,13 @@ package stream
 import cats.effect.IO
 import fs2.Stream
 
-import core.AsyncReactiveSpec
-
 final class SignallingRefSpec_ThreadConfinedMcas_TickedIO
   extends BaseSpecTickedIO
   with SpecThreadConfinedMcas
   with SignallingRefSpec[IO]
 
 trait SignallingRefSpec[F[_]]
-  extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   test("RxnSignallingRef".ignore) {
     val N = 1000

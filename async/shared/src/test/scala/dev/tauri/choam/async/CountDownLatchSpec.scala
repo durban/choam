@@ -21,8 +21,6 @@ package async
 import cats.effect.IO
 import cats.effect.kernel.Outcome
 
-import core.AsyncReactiveSpec
-
 final class CountDownLatchSpec_ThreadConfinedMcas_IO_Real
   extends BaseSpecIO
   with SpecThreadConfinedMcas
@@ -34,8 +32,7 @@ final class CountDownLatchSpec_ThreadConfinedMcas_IO_Ticked
   with CountDownLatchSpecTicked[IO]
 
 trait CountDownLatchSpecTicked[F[_]]
-  extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   test("Reaching 0 should call all registered `await`s") {
     for {
@@ -68,8 +65,7 @@ trait CountDownLatchSpecTicked[F[_]]
 }
 
 trait CountDownLatchSpec[F[_]]
-  extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("Release race") {
     val tsk = for {

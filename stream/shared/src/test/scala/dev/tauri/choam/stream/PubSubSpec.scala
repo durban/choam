@@ -37,8 +37,7 @@ final class PubSubSpec_DefaultMcas_ZIO
   with PubSubSpec[zio.Task]
 
 trait PubSubSpec[F[_]]
-  extends BaseSpecAsyncF[F]
-  with core.AsyncReactiveSpec[F] { this: McasImplSpec =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   final override def munitTimeout: Duration =
     2 * super.munitTimeout

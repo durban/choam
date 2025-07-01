@@ -22,7 +22,7 @@ import cats.effect.{ IO, Outcome }
 
 import munit.TestOptions
 
-import core.{ Ref, AsyncReactiveSpec }
+import core.Ref
 
 final class WaitListSpec_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
@@ -30,8 +30,7 @@ final class WaitListSpec_ThreadConfinedMcas_IO
   with WaitListSpec[IO]
 
 trait WaitListSpec[F[_]]
-  extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   test("WaitList around a Ref") {
     for {

@@ -20,7 +20,7 @@ package async
 
 import cats.effect.IO
 
-import core.{ AsyncReactive, AsyncReactiveSpec }
+import core.AsyncReactive
 
 final class AsyncStackSpec_Treiber_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
@@ -47,8 +47,7 @@ trait AsyncStackSpec_Elimination[F[_]]
 }
 
 trait AsyncStackSpec[F[_]]
-  extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   protected def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[A]]
 

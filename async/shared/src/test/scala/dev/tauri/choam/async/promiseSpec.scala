@@ -25,7 +25,7 @@ import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.Outcome
 
-import core.{ Rxn, AsyncReactiveSpec, Ref }
+import core.{ Rxn, Ref }
 
 final class PromiseSpec_ThreadConfinedMcas_IO_Real
   extends BaseSpecIO
@@ -38,8 +38,7 @@ final class PromiseSpec_ThreadConfinedMcas_IO_Ticked
   with PromiseSpecTicked[IO]
 
 trait PromiseSpecTicked[F[_]]
-  extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   test("Completing an empty promise should call all registered callbacks (complete0)") {
     completeEmpty((i, p) => (Rxn.pure(i) >>> p.complete0).run[F])
@@ -132,8 +131,7 @@ trait PromiseSpecTicked[F[_]]
 }
 
 trait PromiseSpec[F[_]]
-  extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("Completing a fulfilled promise should not be possible") {
     for {

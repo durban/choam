@@ -24,7 +24,6 @@ import cats.effect.IO
 
 import fs2.{ Stream, Chunk }
 
-import core.AsyncReactiveSpec
 import async.{ AsyncQueue, UnboundedQueue, BoundedQueue, Promise }
 import syntax._
 
@@ -34,8 +33,7 @@ final class StreamSpec_ThreadConfinedMcas_IO
   with StreamSpec[IO]
 
 trait StreamSpec[F[_]]
-  extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("UnboundedQueue to stream") {
     def check(q: UnboundedQueue[String]): F[Unit] = {

@@ -23,12 +23,12 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{ Future, ExecutionContext }
 import scala.concurrent.duration._
 
-import cats.effect.{ Sync, Async, IO, SyncIO, MonadCancel, Temporal }
+import cats.effect.{ Sync, Async, IO, SyncIO }
 import cats.effect.kernel.Outcome
 import cats.effect.kernel.testkit.TestContext
 import cats.effect.unsafe.{ IORuntime, IORuntimeConfig, Scheduler }
 
-import core.{ Rxn, Reactive }
+import core.{ Rxn, Reactive, AsyncReactive }
 import core.RetryStrategy.Internal.Stepper
 
 import munit.{ CatsEffectSuite, Location, FunSuite, FailException }
@@ -42,11 +42,7 @@ trait BaseSpecF[F[_]]
 
   implicit def rF: Reactive[F]
 
-  implicit def mcF: MonadCancel[F, Throwable] =
-    this.F
-
-  /** Not implicit, so that `rF` is used for sure */
-  def F: Sync[F]
+  implicit def F: Sync[F]
 
   protected def absolutelyUnsafeRunSync[A](fa: F[A]): A
 
@@ -126,17 +122,17 @@ trait BaseSpecF[F[_]]
 }
 
 trait BaseSpecAsyncF[F[_]] extends BaseSpecF[F] { this: McasImplSpec =>
-  /** Not implicit, so that `rF` is used for sure */ // TODO: does this still matter? Could it be implicit?
-  override def F: Async[F]
-  override implicit def mcF: Temporal[F] =
-    this.F
-  override implicit def rF: Reactive[F] =
-    new Reactive.SyncReactive[F](this.mcasImpl)(using this.F)
+
+  override implicit def F: Async[F]
+
+  override implicit def rF: AsyncReactive[F] =
+    new AsyncReactive.AsyncReactiveImpl[F](this.mcasImpl)(using this.F)
 }
 
 trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] { this: McasImplSpec =>
-  /** Not implicit, so that `rF` is used for sure */
-  override def F: Sync[F]
+
+  override implicit def F: Sync[F]
+
   override implicit def rF: Reactive[F] =
     new Reactive.SyncReactive[F](this.mcasImpl)(using F)
 }

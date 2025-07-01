@@ -35,8 +35,7 @@ final class PubSubSpecTicked_DefaultMcas_IO
   with PubSubSpecTicked[IO]
 
 trait PubSubSpecTicked[F[_]]
-  extends BaseSpecAsyncF[F]
-  with core.AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   commonTests("DropOldest", dropOldest(64))
   droppingTests("DropOldest", dropOldest(4), 4)

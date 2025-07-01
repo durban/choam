@@ -20,7 +20,7 @@ package async
 
 import cats.effect.IO
 
-import core.{ AsyncReactive, AsyncReactiveSpec }
+import core.AsyncReactive
 
 final class UnboundedQueueSpec_Simple_ThreadConfinedMcas_IO
   extends BaseSpecTickedIO
@@ -69,8 +69,7 @@ trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: Mca
 }
 
 trait UnboundedQueueSpec[F[_]]
-  extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   type Q[G[_], A] <: UnboundedQueue[A]
 

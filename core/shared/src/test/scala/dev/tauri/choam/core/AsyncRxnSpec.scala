@@ -30,8 +30,7 @@ final class AsyncRxnSpec_ThreadConfinedMcas_IO
   with AsyncRxnSpec[IO]
 
 trait AsyncRxnSpec[F[_]]
-  extends BaseSpecAsyncF[F]
-  with AsyncReactiveSpec[F] { this: McasImplSpec =>
+  extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("applyAsync") {
     val r: Rxn[String, Int] =
