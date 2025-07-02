@@ -22,8 +22,6 @@
 ## Bugs
 
 - Can't run benchmarks with Scala 3
-- If a post-commit actions panics, futher post-commit actions are not executed
-  - See `RxnSpec.scala`: "panic in post-commit actions"
 
 ## Other improvements
 
