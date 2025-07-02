@@ -47,6 +47,9 @@ sealed trait Mcas {
   /** True iff `this` can be used to perform concurrent ops on separate threads */
   private[choam] def isThreadSafe: Boolean
 
+  /** True iff `this` can fail due to a global-version-CAS failing */
+  private[choam] def hasVersionFailure: Boolean
+
   /** Only for testing/benchmarking */
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     // implementations should override if

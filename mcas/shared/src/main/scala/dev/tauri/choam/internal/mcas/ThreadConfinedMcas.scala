@@ -28,6 +28,9 @@ private final class ThreadConfinedMcas(
   final override def currentContext(): Mcas.ThreadContext =
     _ctx
 
+  private[choam] final override def hasVersionFailure: Boolean =
+    true
+
   private[this] val _ctx = new Mcas.UnsealedThreadContext {
 
     final override type START = Descriptor

@@ -2377,7 +2377,7 @@ object Rxn extends RxnInstances0 {
                 case Version.Reserved =>
                   impossible("tryPerform returned Reserved when it was called with PESSIMISTIC")
                 case mcasResult =>
-                  _assert(mcasResult == McasStatus.FailedVal)
+                  _assert((mcasResult == McasStatus.FailedVal) || this.mcas.hasVersionFailure)
                   // the other side rescinded before we could pass back
                   // the panic to it; we can't do anything with that
               }

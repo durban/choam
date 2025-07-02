@@ -46,6 +46,9 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
   private[choam] final override def isThreadSafe =
     true
 
+  private[choam] final override def hasVersionFailure: Boolean =
+    true
+
   private[this] val commitTs: MemoryLocation[Long] =
     MemoryLocation.unsafePadded(Version.Start, this.rig)
 

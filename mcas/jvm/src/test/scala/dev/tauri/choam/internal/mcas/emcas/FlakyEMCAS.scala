@@ -85,6 +85,9 @@ final class FlakyEMCAS extends Mcas.UnsealedMcas { self =>
   private[choam] final override def isThreadSafe =
     true
 
+  private[choam] final override def hasVersionFailure: Boolean =
+    false
+
   private final def tryPerformInternal(hDesc: AbstractDescriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
     // perform or not the operation based on whether we've already seen it
     if (this.seen.putIfAbsent(hDesc.##, ()).isDefined) {

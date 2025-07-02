@@ -675,4 +675,58 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     } yield ()
     t.replicateA_(if (this.isEmcas) 500 else 50)
   }
+
+  test("panic + exchanger + panic in post-commit action") {
+    val exc = new RxnSpec.MyException
+    val exc2 = new RxnSpec.MyException
+    val exc3 = new RxnSpec.MyException
+    val t = for {
+      r1 <- Ref(0).run[F]
+      rPcLeft <- Ref(0).run[F]
+      rPcRight <- Ref(0).run[F]
+      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
+      left = ((ex.exchange.provide("foo").flatMapF { (exchanged: Int) =>
+        Rxn.unsafe.panic(exc).as(exchanged)
+      }) + Axn.pure(0)).postCommit(Rxn.unsafe.panic(exc2)).postCommit(rPcLeft.update(_ + 1))
+      right = (ex.dual.exchange.provide(42).flatMapF { (exchanged: String) =>
+        r1.update(_ + 1).as(exchanged)
+      } + Axn.pure("fallback")).postCommit(Rxn.unsafe.panic(exc3)).postCommit(rPcRight.update(_ + 1))
+      rr <- F.both(
+        F.cede *> left.run[F].attempt,
+        F.cede *> right.run[F].attempt,
+      )
+      // there are 2 possibilities:
+      // 1. an exchange happens => left side panics, but right side should complete with the fallback
+      //    (regardless of which side actually executed the merged Rxn)
+      //    in this case, right side must execute its post-commit actions
+      // 2. no exchange happens, both side should complete with the fallback
+      //    in this case, both sides must execute their post-commit actions
+      _ <- rr match {
+        case (Left(excActual), Left(pcExc: Rxn.PostCommitException)) if (!excActual.isInstanceOf[Rxn.PostCommitException]) =>
+          for {
+            _ <- assertSameInstanceF(excActual, exc)
+            _ <- assertEqualsF(pcExc.committedResult, "fallback")
+            _ <- assertEqualsF(pcExc.errors.size, 1)
+            _ <- assertSameInstanceF(pcExc.errors.head, exc3)
+            _ <- assertResultF(rPcLeft.get.run, 0)
+            _ <- assertResultF(rPcRight.get.run, 1)
+          } yield ()
+        case (Left(pcExcLeft: Rxn.PostCommitException), Left(pcExcRight: Rxn.PostCommitException)) =>
+          for {
+            _ <- assertEqualsF(pcExcLeft.committedResult, 0)
+            _ <- assertEqualsF(pcExcLeft.errors.size, 1)
+            _ <- assertSameInstanceF(pcExcLeft.errors.head, exc2)
+            _ <- assertEqualsF(pcExcRight.committedResult, "fallback")
+            _ <- assertEqualsF(pcExcRight.errors.size, 1)
+            _ <- assertSameInstanceF(pcExcRight.errors.head, exc3)
+            _ <- assertResultF(rPcLeft.get.run, 1)
+            _ <- assertResultF(rPcRight.get.run, 1)
+          } yield ()
+        case _ =>
+          failF(s"unexpected result: ${rr}")
+      }
+      _ <- assertResultF(r1.get.run, 0)
+    } yield ()
+    t.replicateA_(if (this.isEmcas) 500 else 50)
+  }
 }
