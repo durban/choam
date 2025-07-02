@@ -13,27 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-*.class
-*.log
-reading/
+# Dockerfile for creating a container image
+# for more reproducible benchmark results.
+#
+# To build the image, and run a container,
+# run the bench/start_new_container.sh
+# script from the project root.
 
-# sbt specific
-.cache
-.history
-.lib/
-dist/*
-target/
-lib_managed/
-src_managed/
-project/boot/
-project/plugins/project/
+FROM sbtscala/scala-sbt:eclipse-temurin-24.0.1_9_1.11.2_2.13.16
 
-# Metals/VSCode specific
-.bloop/
-.bsp/
-.metals/
-.vscode/
-
-# jcstress/JMH
-jcstress-results-*.bin.gz
-*.jfr
+COPY . /root/choam
+WORKDIR /root/choam
+RUN sbt update
+RUN sbt "measurePerformance -lp"

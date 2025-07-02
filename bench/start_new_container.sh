@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2016-2025 Daniel Urban and contributors listed in NOTICE.txt
 #
@@ -13,27 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-*.class
-*.log
-reading/
+# Note: run this script from the project root!
 
-# sbt specific
-.cache
-.history
-.lib/
-dist/*
-target/
-lib_managed/
-src_managed/
-project/boot/
-project/plugins/project/
+set -e -u -o pipefail
+IFS=$'\n\t'
 
-# Metals/VSCode specific
-.bloop/
-.bsp/
-.metals/
-.vscode/
+_IMAGE_TAG="choam-bench-image"
 
-# jcstress/JMH
-jcstress-results-*.bin.gz
-*.jfr
+docker build . -t "$_IMAGE_TAG" -f bench/Dockerfile
+
+docker run -it --rm --privileged \
+  --mount type=bind,src=./bench/results,dst=/root/choam/bench/results \
+  "$_IMAGE_TAG" \
+  /usr/bin/bash
