@@ -62,6 +62,8 @@ class ArrowBench {
 
   import ArrowBench.{ SharedSt, ThreadSt, N }
 
+  // node1:
+
   @Benchmark
   def node1Arrow(s: SharedSt, k: ThreadSt, r: RandomState): Unit = {
     val head = s.headRefs(r.nextIntBounded(N))
@@ -79,6 +81,31 @@ class ArrowBench {
     val head = s.headRefs(r.nextIntBounded(N))
     s.nodeSetOnceWithUnsafe(head).unsafePerformInternal0(null, k.mcasCtx)
   }
+
+  // node2:
+
+  @Benchmark
+  def node2Arrow(s: SharedSt, k: ThreadSt, r: RandomState): Unit = {
+    val head = s.headRefs(r.nextIntBounded(N))
+    val tail = s.tailRefs(r.nextIntBounded(N))
+    s.nodeSetTwiceWithArrow(head, tail).unsafePerformInternal0(null, k.mcasCtx)
+  }
+
+  @Benchmark
+  def node2Monad(s: SharedSt, k: ThreadSt, r: RandomState): Unit = {
+    val head = s.headRefs(r.nextIntBounded(N))
+    val tail = s.tailRefs(r.nextIntBounded(N))
+    s.nodeSetTwiceWithMonad(head, tail).unsafePerformInternal0(null, k.mcasCtx)
+  }
+
+  @Benchmark
+  def node2Imperative(s: SharedSt, k: ThreadSt, r: RandomState): Unit = {
+    val head = s.headRefs(r.nextIntBounded(N))
+    val tail = s.tailRefs(r.nextIntBounded(N))
+    s.nodeSetTwiceWithUnsafe(head, tail).unsafePerformInternal0(null, k.mcasCtx)
+  }
+
+  // promise:
 
   @Benchmark
   def promiseArrow(s: SharedSt, k: ThreadSt, r: RandomState): Boolean = {
@@ -154,6 +181,13 @@ object ArrowBench {
       )
     }
 
+    val tailRefs: Array[Ref[Node]] = Array.fill(N) {
+      Ref.unsafePadded[Node](
+        null : Node,
+        this.mcasImpl.currentContext().refIdGen,
+      )
+    }
+
     final def nodeSetOnceWithArrow(head: Ref[Node]): Rxn[Any, Unit] = {
       newNode(42, null, null) >>> head.set0
     }
@@ -169,6 +203,25 @@ object ArrowBench {
       Rxn.unsafe.embedUnsafe { implicit ir =>
         val node = unsafeNewNode(42, null, null)
         head.value = node
+      }
+    }
+
+    final def nodeSetTwiceWithArrow(head: Ref[Node], tail: Ref[Node]): Rxn[Any, Unit] = {
+      newNode(42, null, null) >>> (head.set0 * tail.set0).void
+    }
+
+    final def nodeSetTwiceWithMonad(head: Ref[Node], tail: Ref[Node]): Rxn[Any, Unit] = {
+      newNode(42, null, null).flatMapF { node =>
+        head.set1(node) *> tail.set1(node)
+      }
+    }
+
+    final def nodeSetTwiceWithUnsafe(head: Ref[Node], tail: Ref[Node]): Rxn[Any, Unit] = {
+      import unsafe._
+      Rxn.unsafe.embedUnsafe { implicit ir =>
+        val node = unsafeNewNode(42, null, null)
+        head.value = node
+        tail.value = node
       }
     }
   }
