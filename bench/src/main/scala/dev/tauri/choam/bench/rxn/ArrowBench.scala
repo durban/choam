@@ -27,6 +27,8 @@ import async.Promise
 import util._
 
 /**
+ * NOTE: run this with the `-gc true` JMH option!
+ *
  * Benchmarks to determine whether `Rxn` being an arrow (i.e.,
  * `Rxn[-A, +B]`) has performance advantages in realistic situations
  * over just being a monad (i.e., a hypothetical `Rxn[+B]`).
@@ -63,19 +65,19 @@ class ArrowBench {
   @Benchmark
   def node1Arrow(s: SharedSt, k: ThreadSt, r: RandomState): Unit = {
     val head = s.headRefs(r.nextIntBounded(N))
-    s.nodeSetOnceWithArrow(head, k.newNode).unsafePerformInternal0(null, k.mcasCtx)
+    s.nodeSetOnceWithArrow(head).unsafePerformInternal0(null, k.mcasCtx)
   }
 
   @Benchmark
   def node1Monad(s: SharedSt, k: ThreadSt, r: RandomState): Unit = {
     val head = s.headRefs(r.nextIntBounded(N))
-    s.nodeSetOnceWithMonad(head, k.newNode).unsafePerformInternal0(null, k.mcasCtx)
+    s.nodeSetOnceWithMonad(head).unsafePerformInternal0(null, k.mcasCtx)
   }
 
   @Benchmark
   def node1Imperative(s: SharedSt, k: ThreadSt, r: RandomState): Unit = {
     val head = s.headRefs(r.nextIntBounded(N))
-    s.nodeSetOnceWithUnsafe(head, k.newNode).unsafePerformInternal0(null, k.mcasCtx)
+    s.nodeSetOnceWithUnsafe(head).unsafePerformInternal0(null, k.mcasCtx)
   }
 
   @Benchmark
@@ -102,19 +104,7 @@ object ArrowBench {
   final val N = 32
 
   @State(Scope.Thread)
-  class ThreadSt extends McasImplState {
-
-    private[this] val preallocatedNode: Node =
-      ArrowBench.newNode(42, null, null).unsafeRun(this.mcasImpl)
-
-    /**
-     * We're returning a pre-allocated `Node`, because
-     * otherwise we're mostly measuring the cost of
-     * allocating a new instance.
-     */
-    val newNode: Axn[Node] =
-      Axn.pure(this.preallocatedNode)
-  }
+  class ThreadSt extends McasImplState
 
   @State(Scope.Benchmark)
   class SharedSt extends McasImplStateBase {
@@ -164,33 +154,39 @@ object ArrowBench {
       )
     }
 
-    final def nodeSetOnceWithArrow(head: Ref[Node], newNode: Axn[Node]): Rxn[Any, Unit] = {
-      newNode >>> head.set0
+    final def nodeSetOnceWithArrow(head: Ref[Node]): Rxn[Any, Unit] = {
+      newNode(42, null, null) >>> head.set0
     }
 
-    final def nodeSetOnceWithMonad(head: Ref[Node], newNode: Axn[Node]): Rxn[Any, Unit] = {
-      newNode.flatMapF { node =>
+    final def nodeSetOnceWithMonad(head: Ref[Node]): Rxn[Any, Unit] = {
+      newNode(42, null, null).flatMapF { node =>
         head.set1(node)
       }
     }
 
-    final def nodeSetOnceWithUnsafe(head: Ref[Node], newNode: Axn[Node]): Rxn[Any, Unit] = {
+    final def nodeSetOnceWithUnsafe(head: Ref[Node]): Rxn[Any, Unit] = {
       import unsafe._
-      newNode.flatMapF { node =>
-        Rxn.unsafe.embedUnsafe { implicit ir =>
-          head.value = node
-        }
+      Rxn.unsafe.embedUnsafe { implicit ir =>
+        val node = unsafeNewNode(42, null, null)
+        head.value = node
       }
     }
   }
 
   final class Node(val payload: Int, val prev: Ref[Node], val next: Ref[Node])
 
-  private[ArrowBench] final def newNode(payload: Int, prev: Node, next: Node): Axn[Node] = {
+  private[this] final def newNode(payload: Int, prev: Node, next: Node): Axn[Node] = {
     Ref[Node](prev).flatMapF { prev =>
       Ref[Node](next).map { next =>
         new Node(payload, prev, next)
       }
     }
+  }
+
+  private[this] final def unsafeNewNode(payload: Int, prev: Node, next: Node)(implicit ir: unsafe.InRxn): Node = {
+    import unsafe.newRef
+    val prevRef = newRef(prev)
+    val nextRef = newRef(next)
+    new Node(payload, prevRef, nextRef)
   }
 }
