@@ -21,10 +21,11 @@ set -e -u -o pipefail
 IFS=$'\n\t'
 
 _IMAGE_TAG="choam-bench-image"
+_RESULTS_DIR="$(pwd)/bench/results"
 
 docker build . -t "$_IMAGE_TAG" -f bench/Dockerfile
 
 docker run -it --rm --privileged \
-  --mount type=bind,src=./bench/results,dst=/root/choam/bench/results \
+  --mount type=bind,src="$_RESULTS_DIR",dst="/root/choam/bench/results" \
   "$_IMAGE_TAG" \
   /usr/bin/bash
