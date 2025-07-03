@@ -144,11 +144,9 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 ## Related work
 
-- Our `Rxn` is an extended version of *reagents*, described in [the Reagents paper][1][^1].
-  (Other implementations or reagents:
-  [Scala](https://github.com/aturon/ChemistrySet),
-  [OCaml](https://github.com/ocaml-multicore/reagents),
-  [Racket](https://github.com/aturon/Caper).)
+- Our `Rxn` is an extended version of *reagents*, described in [the Reagents paper][1][^1]
+  (originally implemented [in Scala](https://github.com/aturon/ChemistrySet); see also other
+  implementations [in OCaml](https://github.com/ocaml-multicore/reagents) and [in Racket](https://github.com/aturon/Caper).)
   The main diferences from the paper are:
   - Only lock-free features (and a few low-level ones) are implemented.
   - `Rxn` has a referentially transparent ("purely functional" / "programs as values") API.
@@ -163,22 +161,24 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 - Multi-word compare-and-swap (MCAS/*k*-CAS) implementations:
   - In an earlier version we used [CASN by Harris et al.][2][^2]
-  - [Efficient Multi-word Compare and Swap](https://web.archive.org/web/20220215225848/https://arxiv.org/pdf/2008.02527.pdf)
-    (`Mcas.Emcas` implements a variant of this algorithm; this is the default algorithm we use on the JVM)
-  - A simple, non-lock-free algorithm from the Reagents paper (see above) is implemented as
-    `Mcas.SpinLockMcas` (we use it for testing)
+  - The current version uses [EMCAS by Guerraoui et al.][3][^3]
+    (`Mcas.Emcas` implements a variant of this algorithm, this is the default algorithm we use on the JVM;
+    on JS we use a trivial single-threaded algorithm).
+  - A simple, non-lock-free algorithm from [the Reagents paper][1][^1] is implemented as
+    `Mcas.SpinLockMcas` (we use it for testing).
 
 [2]: https://web.archive.org/web/20220121034605/https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf
 [^2]: Harris, Timothy L., Keir Fraser, and Ian A. Pratt. "A practical multi-word compare-and-swap operation." In Distributed Computing: 16th International Conference, DISC 2002 Toulouse, France, October 28–30, 2002 Proceedings 16, pp. 265-279. Springer Berlin Heidelberg, 2002.
+[3]: https://arxiv.org/pdf/2008.02527.pdf
+[^3]: Guerraoui, Rachid, Alex Kogan, Virendra J. Marathe, and Igor Zablotchi. "Efficient Multi-Word Compare and Swap." In 34th International Symposium on Distributed Computing. 2020.
 
 - Software transactional memory (STM)
   - A `Rxn` is somewhat similar to a memory transaction, but there are
     important differences:
     - A `Rxn` is lock-free by construction (but see [below](#lock-freedom)); STM transactions are not (necessarily)
-      lock-free (see, e.g., the "retry" STM operation, called
-      ["modular blocking" in Haskell](https://dl.acm.org/doi/pdf/10.1145/1378704.1378725)).
+      lock-free (see, e.g., the "retry" STM operation, called ["modular blocking" in Haskell][4][^4]).
     - As a consequence of the previous point, `Rxn` cannot be used to implement
-      "inherently not lock-free" logic (e.g., asynchronously waiting on a
+      "inherently non-lock-free" logic (e.g., asynchronously waiting on a
       condition set by another thread/fiber/similar). However, `Rxn` is
       interoperable with async data types which implement
       [Cats Effect](https://github.com/typelevel/cats-effect) typeclasses
@@ -191,13 +191,13 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       (e.g., `MonadError`); `Rxn` has no such feature (but of course return
       values can encode errors with `Option`, `Either`, or similar).
     - Some STM systems allow access to transactional memory from
-      non-transactional code; `Rxn` doesn't support this, the contents of an
-      `r: Ref[A]` can only be accessed from inside a `Rxn`.
+      non-transactional code; `Rxn` doesn't support this, the contents of a
+      `Ref[A]` can only be accessed from inside a `Rxn`.
   - Similarities between `Rxn`s and STM transactions include the following:
-    - atomicity, consistency and isolation
+    - Atomicity, consistency and isolation.
     - `Rxn` also provides a correctness property called
-      [*opacity*](https://web.archive.org/web/20200918092715/https://nbronson.github.io/scala-stm/semantics.html#opacity);
-      a lot of STM implementations also guarantee this property (e.g., `scala-stm`),
+      [*opacity*][5][^5] (see a short introduction [here][opacity_intro]).
+      A lot of STM implementations also guarantee this property (e.g., ScalaSTM),
       but not all of them. Opacity basically guarantees that all observed values
       are consistent with each other, even in running `Rxn`s (some STM systems only
       guarantee such consistency for transactions which actually commit).
@@ -210,14 +210,23 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       [ZSTM](https://github.com/zio/zio/tree/series/2.x/core/shared/src/main/scala/zio/stm).
     - Kotlin: [`arrow-fx-stm`](https://arrow-kt.io/learn/coroutines/stm).
     - OCaml: [Kcas](https://github.com/ocaml-multicore/kcas).
-    - [TL2](https://web.archive.org/web/20220205171142/https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.90.811&rep=rep1&type=pdf)
-      and [SwissTM](https://web.archive.org/web/20220215230304/https://www.researchgate.net/profile/Aleksandar-Dragojevic/publication/37470225_Stretching_Transactional_Memory/links/0912f50d430e2cf991000000/Stretching-Transactional-Memory.pdf):
+    - [TL2][6][^6] and [SwissTM][7][^7]:
       the system which guarantees *opacity* (see above) for `Rxn`s is based on
       the one in SwissTM (which is itself based on the one in TL2). However, TL2 and SwissTM
       are lock-based STM implementations; our implementation is lock-free.
-    - We also use some ideas from the
-      [Commit Phase Variations in Timestamp-based Software Transactional Memory](https://web.archive.org/web/20250628215946/https://repository.rice.edu/server/api/core/bitstreams/ec929767-5e4b-4c8e-9704-c649bf6328c9/content)
-      paper.
+    - We also use some ideas from the [Commit Phase Variations paper][8][^8].
+
+[4]: https://dl.acm.org/doi/pdf/10.1145/1378704.1378725
+[^4]: Harris, Tim, Simon Marlow, Simon Peyton-Jones, and Maurice Herlihy. "Composable memory transactions." In Proceedings of the tenth ACM SIGPLAN symposium on Principles and practice of parallel programming, pp. 48-60. 2005.
+[5]: https://infoscience.epfl.ch/record/114303/files/opacity-ppopp08.pdf
+[^5]: Guerraoui, Rachid, and Michal Kapalka. "On the correctness of transactional memory." In Proceedings of the 13th ACM SIGPLAN Symposium on Principles and practice of parallel programming, pp. 175-184. 2008.
+[opacity_intro]: https://web.archive.org/web/20200918092715/https://nbronson.github.io/scala-stm/semantics.html#opacity
+[6]: https://disco.ethz.ch/courses/fs11/seminar/paper/johannes-2-1.pdf
+[^6]: Dice, Dave, Ori Shalev, and Nir Shavit. "Transactional locking II." In International Symposium on Distributed Computing, pp. 194-208. Berlin, Heidelberg: Springer Berlin Heidelberg, 2006.
+[7]: https://infoscience.epfl.ch/server/api/core/bitstreams/6b454d6b-0ae9-4b37-b341-6e2d092aef8e/content
+[^7]: Dragojević, Aleksandar, Rachid Guerraoui, and Michal Kapalka. "Stretching transactional memory." ACM sigplan notices 44, no. 6 (2009): 155-165.
+[8]: https://repository.rice.edu/server/api/core/bitstreams/ec929767-5e4b-4c8e-9704-c649bf6328c9/content
+[^8]: Zhang, Rui, Zoran Budimlic, and William N. Scherer III. Commit phase variations in timestamp-based software transactional memory. Technical Report TR08-03, Rice University, 2008.
 
 ## Compatibility and assumptions
 
