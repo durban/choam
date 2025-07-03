@@ -2626,10 +2626,10 @@ object Rxn extends RxnInstances0 {
       if (!handleUpd(c)) {
         throw unsafe2.RetryException.notPermanentFailure
       } else {
-        // TODO: we lose the previous this.a; is this a problem?
-        val ov = aCastTo[A]
-        a = null
-        ov
+        // Note: this.a is garbage now, but will be
+        // overwritten with the result immediately
+        // when `embedUnsafe` ends.
+        aCastTo[A]
       }
     }
 

@@ -100,4 +100,17 @@ trait EmbedUnsafeSpec[F[_]]
       _ <- assertResultF(ref3.get.run, 2)
     } yield ()
   }
+
+  test("Using input after embedUnsafe") {
+    def rxn(r: Ref[Int]): Rxn[Int, String] = {
+      (Rxn.lift[Int, String](_.toString) * Rxn.unsafe.embedUnsafe[String] { implicit ir =>
+        getAndSetRef(r, 56).toString
+      }) >>> Rxn.lift[(String, String), String](tup => tup._1 + "," + tup._2)
+    }
+    for {
+      r <- Ref(99).run
+      _ <- assertResultF(rxn(r).run(42), "42,99")
+      _ <- assertResultF(r.get.run, 56)
+    } yield ()
+  }
 }
