@@ -41,7 +41,9 @@ final class AtomicallyInAsyncSpec_DefaultMcas_IO
   with SpecDefaultMcas
   with AtomicallyInAsyncSpec[IO]
 
-trait EmbedUnsafeSpec[F[_]] extends CommonImperativeApiSpec[F] { this: McasImplSpec =>
+trait EmbedUnsafeSpec[F[_]]
+  extends CommonImperativeApiSpec[F]
+  with EmbedUnsafeSpecPlatform[F] { this: McasImplSpec =>
 
   final override def runBlock[A](block: InRxn => A): F[A] = {
     Rxn.unsafe.embedUnsafe(block).run[F]
@@ -168,7 +170,9 @@ object CommonImperativeApiSpec {
   final class MyException(val ref: Ref[Int]) extends Exception
 }
 
-trait CommonImperativeApiSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
+trait CommonImperativeApiSpec[F[_]]
+  extends BaseSpecAsyncF[F]
+  with CommonImperativeApiSpecPlatform[F] { this: McasImplSpec =>
 
   import CommonImperativeApiSpec.MyException
 
