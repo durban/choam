@@ -144,9 +144,8 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 ## Related work
 
-- Our `Rxn` is an extended version of *reagents*, described in
-  [Reagents: Expressing and Composing Fine-grained Concurrency
-  ](https://web.archive.org/web/20220214132428/https://www.ccis.northeastern.edu/home/turon/reagents.pdf). (Other implementations or reagents:
+- Our `Rxn` is an extended version of *reagents*, described in [the Reagents paper][1][^1].
+  (Other implementations or reagents:
   [Scala](https://github.com/aturon/ChemistrySet),
   [OCaml](https://github.com/ocaml-multicore/reagents),
   [Racket](https://github.com/aturon/Caper).)
@@ -158,13 +157,20 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
     (thus, an `Rxn` is closer to an STM transaction than a *reagent*;
     see below).
   - Reads are _always_ guaranteed to be consistent (this is called *opacity*, see below).
+
+[1]: https://web.archive.org/web/20220214132428/https://www.ccis.northeastern.edu/home/turon/reagents.pdf
+[^1]: Turon, Aaron. "Reagents: expressing and composing fine-grained concurrency." In Proceedings of the 33rd ACM SIGPLAN Conference on Programming Language Design and Implementation, pp. 157-168. 2012.
+
 - Multi-word compare-and-swap (MCAS/*k*-CAS) implementations:
-  - [A Practical Multi-Word Compare-and-Swap Operation](https://web.archive.org/web/20220121034605/https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf)
-    (an earlier version used this algorithm)
+  - In an earlier version we used [CASN by Harris et al.][2][^2]
   - [Efficient Multi-word Compare and Swap](https://web.archive.org/web/20220215225848/https://arxiv.org/pdf/2008.02527.pdf)
     (`Mcas.Emcas` implements a variant of this algorithm; this is the default algorithm we use on the JVM)
   - A simple, non-lock-free algorithm from the Reagents paper (see above) is implemented as
     `Mcas.SpinLockMcas` (we use it for testing)
+
+[2]: https://web.archive.org/web/20220121034605/https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf
+[^2]: Harris, Timothy L., Keir Fraser, and Ian A. Pratt. "A practical multi-word compare-and-swap operation." In Distributed Computing: 16th International Conference, DISC 2002 Toulouse, France, October 28–30, 2002 Proceedings 16, pp. 265-279. Springer Berlin Heidelberg, 2002.
+
 - Software transactional memory (STM)
   - A `Rxn` is somewhat similar to a memory transaction, but there are
     important differences:
