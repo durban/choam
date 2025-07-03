@@ -169,6 +169,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 [2]: https://web.archive.org/web/20220121034605/https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf
 [^2]: Harris, Timothy L., Keir Fraser, and Ian A. Pratt. "A practical multi-word compare-and-swap operation." In Distributed Computing: 16th International Conference, DISC 2002 Toulouse, France, October 28–30, 2002 Proceedings 16, pp. 265-279. Springer Berlin Heidelberg, 2002.
+
 [3]: https://arxiv.org/pdf/2008.02527.pdf
 [^3]: Guerraoui, Rachid, Alex Kogan, Virendra J. Marathe, and Igor Zablotchi. "Efficient Multi-Word Compare and Swap." In 34th International Symposium on Distributed Computing. 2020.
 
@@ -218,13 +219,17 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 [4]: https://dl.acm.org/doi/pdf/10.1145/1378704.1378725
 [^4]: Harris, Tim, Simon Marlow, Simon Peyton-Jones, and Maurice Herlihy. "Composable memory transactions." In Proceedings of the tenth ACM SIGPLAN symposium on Principles and practice of parallel programming, pp. 48-60. 2005.
+
 [5]: https://infoscience.epfl.ch/record/114303/files/opacity-ppopp08.pdf
 [^5]: Guerraoui, Rachid, and Michal Kapalka. "On the correctness of transactional memory." In Proceedings of the 13th ACM SIGPLAN Symposium on Principles and practice of parallel programming, pp. 175-184. 2008.
 [opacity_intro]: https://web.archive.org/web/20200918092715/https://nbronson.github.io/scala-stm/semantics.html#opacity
+
 [6]: https://disco.ethz.ch/courses/fs11/seminar/paper/johannes-2-1.pdf
 [^6]: Dice, Dave, Ori Shalev, and Nir Shavit. "Transactional locking II." In International Symposium on Distributed Computing, pp. 194-208. Berlin, Heidelberg: Springer Berlin Heidelberg, 2006.
+
 [7]: https://infoscience.epfl.ch/server/api/core/bitstreams/6b454d6b-0ae9-4b37-b341-6e2d092aef8e/content
 [^7]: Dragojević, Aleksandar, Rachid Guerraoui, and Michal Kapalka. "Stretching transactional memory." ACM sigplan notices 44, no. 6 (2009): 155-165.
+
 [8]: https://repository.rice.edu/server/api/core/bitstreams/ec929767-5e4b-4c8e-9704-c649bf6328c9/content
 [^8]: Zhang, Rui, Zoran Budimlic, and William N. Scherer III. Commit phase variations in timestamp-based software transactional memory. Technical Report TR08-03, Rice University, 2008.
 
