@@ -2151,6 +2151,22 @@ object Rxn extends RxnInstances0 {
       }
     }
 
+    private[this] final def preparePcActions(): Unit = {
+      val res = a
+      a = null
+      if (!equ(res, postCommitResultMarker)) {
+        // final result, Done will need it:
+        contK.push(res)
+      }
+      while (pc.nonEmpty()) {
+        contT.push2(
+          RxnConsts.ContCommitPostCommit, // commits the post-commit action
+          RxnConsts.ContPostCommit, // the post-commit action itself
+        )
+        contK.push(pc.pop())
+      }
+    }
+
     @tailrec
     private[this] final def loop[A, B](curr: Rxn[A, B]): R = {
       // TODO: While doing the runloop, we could
@@ -2169,19 +2185,7 @@ object Rxn extends RxnInstances0 {
         case _: Commit[_] => // Commit
           if (handleCommit()) {
             // ok, commit is done, but we still need to perform post-commit actions
-            val res = a
-            a = null
-            if (!equ(res, postCommitResultMarker)) {
-              // final result, Done will need it:
-              contK.push(res)
-            }
-            while (pc.nonEmpty()) {
-              contT.push2(
-                RxnConsts.ContCommitPostCommit, // commits the post-commit action
-                RxnConsts.ContPostCommit, // the post-commit action itself
-              )
-              contK.push(pc.pop())
-            }
+            preparePcActions()
             loop(next())
           } else {
             contK.push(commit)
