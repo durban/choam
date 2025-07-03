@@ -25,4 +25,5 @@ FROM sbtscala/scala-sbt:eclipse-temurin-24.0.1_9_1.11.2_2.13.16
 COPY . /root/choam
 WORKDIR /root/choam
 RUN sbt update
+RUN sbt staticAnalysis
 RUN sbt "measurePerformance -lp"
