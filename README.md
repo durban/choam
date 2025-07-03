@@ -161,9 +161,9 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 - Multi-word compare-and-swap (MCAS/*k*-CAS) implementations:
   - In an earlier version we used [CASN by Harris et al.][2][^2]
-  - The current version uses [EMCAS by Guerraoui et al.][3][^3]
-    (`Mcas.Emcas` implements a variant of this algorithm, this is the default algorithm we use on the JVM;
-    on JS we use a trivial single-threaded algorithm).
+  - The current version uses [EMCAS by Guerraoui et al.][3][^3];
+    `Mcas.Emcas` implements a variant of this algorithm, this is the default algorithm we use on the JVM;
+    on JS we use a trivial single-threaded algorithm.
   - A simple, non-lock-free algorithm from [the Reagents paper][1][^1] is implemented as
     `Mcas.SpinLockMcas` (we use it for testing).
 
@@ -196,7 +196,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - Similarities between `Rxn`s and STM transactions include the following:
     - Atomicity, consistency and isolation.
     - `Rxn` also provides a correctness property called
-      [*opacity*][5][^5] (see a short introduction [here][opacity_intro]).
+      [*opacity*][5][^5]; see a short introduction [here][opacity_intro].
       A lot of STM implementations also guarantee this property (e.g., ScalaSTM),
       but not all of them. Opacity basically guarantees that all observed values
       are consistent with each other, even in running `Rxn`s (some STM systems only
