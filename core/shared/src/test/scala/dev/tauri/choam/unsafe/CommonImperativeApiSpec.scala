@@ -238,4 +238,24 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertResultF(F.delay(flag.get()), false)
     } yield ()
   }
+
+  test("Create with Rxn, use imperatively") {
+    Ref(42).run[F].flatMap { ref =>
+      runBlock { implicit ir =>
+        assertEquals(ref.value, 42)
+        ref.value = 99
+        assertEquals(ref.value, 99)
+      } *> assertResultF(ref.get.run[F], 99)
+    }
+  }
+
+  test("Create imperatively, use with Rxn") {
+    for {
+      ref <- runBlock(newRef(42)(using _))
+      r <- ref.getAndUpdate(_ + 1).run[F]
+      _ <- assertEqualsF(r, 42)
+      _ <- assertResultF(ref.get.run[F], 43)
+      _ <- assertResultF(runBlock(readRef(ref)(using _)), 43)
+    } yield ()
+  }
 }
