@@ -222,6 +222,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 [5]: https://infoscience.epfl.ch/record/114303/files/opacity-ppopp08.pdf
 [^5]: Guerraoui, Rachid, and Michal Kapalka. "On the correctness of transactional memory." In Proceedings of the 13th ACM SIGPLAN Symposium on Principles and practice of parallel programming, pp. 175-184. 2008.
+
 [opacity_intro]: https://web.archive.org/web/20200918092715/https://nbronson.github.io/scala-stm/semantics.html#opacity
 
 [6]: https://disco.ethz.ch/courses/fs11/seminar/paper/johannes-2-1.pdf
