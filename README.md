@@ -98,7 +98,7 @@ _does_ have modular blocking (`Txn.retry`).
 - [`choam-core`](core/shared/src/main/scala/dev/tauri/choam/):
   - core types, like
     [`Rxn`](core/shared/src/main/scala/dev/tauri/choam/core/Rxn.scala) and
-    [`Ref`](core/shared/src/main/scala/dev/tauri/choam/refs/Ref.scala)
+    [`Ref`](core/shared/src/main/scala/dev/tauri/choam/core/Ref.scala)
   - integration with effect types implementing the
     [Cats Effect](https://github.com/typelevel/cats-effect) typeclasses
     (specifically `Sync`/`Async`)
@@ -134,9 +134,9 @@ _does_ have modular blocking (`Txn.retry`).
   JMH profiler "plugin" for `Rxn` statistics/measurements; enable it with
   `-prof dev.tauri.choam.profiler.RxnProfiler`.
 - Internal modules (don't use them directly):
-  - [`choam-mcas`](mcas/shared/src/main/scala/dev/tauri/choam/mcas/):
+  - [`choam-mcas`](mcas/shared/src/main/scala/dev/tauri/choam/internal/mcas/):
     low-level multi-word compare-and-swap (MCAS/*k*-CAS) implementations
-  - [`choam-internal`](internal/jvm/src/main/scala/dev/tauri/choam/skiplist/):
+  - [`choam-internal`](internal/shared/src/main/scala/dev/tauri/choam/internal/):
     a concurrent skip list map and other utilities for internal use
 
 JARs are on Maven Central. Browsable Scaladoc is available [here](
@@ -156,7 +156,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
     see below).
   - Reads are _always_ guaranteed to be consistent (this is called *opacity*, see below).
 
-[1]: https://web.archive.org/web/20220214132428/https://www.ccis.northeastern.edu/home/turon/reagents.pdf
+[1]: https://www.ccs.neu.edu/home/turon/reagents.pdf
 [^1]: Turon, Aaron. "Reagents: expressing and composing fine-grained concurrency." In Proceedings of the 33rd ACM SIGPLAN Conference on Programming Language Design and Implementation, pp. 157-168. 2012.
 
 - Multi-word compare-and-swap (MCAS/*k*-CAS) implementations:
@@ -167,7 +167,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - A simple, non-lock-free algorithm from [the Reagents paper][1][^1] is implemented as
     `Mcas.SpinLockMcas` (we use it for testing).
 
-[2]: https://web.archive.org/web/20220121034605/https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf
+[2]: https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf
 [^2]: Harris, Timothy L., Keir Fraser, and Ian A. Pratt. "A practical multi-word compare-and-swap operation." In Distributed Computing: 16th International Conference, DISC 2002 Toulouse, France, October 28–30, 2002 Proceedings 16, pp. 265-279. Springer Berlin Heidelberg, 2002.
 
 [3]: https://arxiv.org/pdf/2008.02527.pdf
@@ -223,7 +223,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 [5]: https://infoscience.epfl.ch/record/114303/files/opacity-ppopp08.pdf
 [^5]: Guerraoui, Rachid, and Michal Kapalka. "On the correctness of transactional memory." In Proceedings of the 13th ACM SIGPLAN Symposium on Principles and practice of parallel programming, pp. 175-184. 2008.
 
-[opacity_intro]: https://web.archive.org/web/20200918092715/https://nbronson.github.io/scala-stm/semantics.html#opacity
+[opacity_intro]: https://nbronson.github.io/scala-stm/semantics.html#opacity
 
 [6]: https://disco.ethz.ch/courses/fs11/seminar/paper/johannes-2-1.pdf
 [^6]: Dice, Dave, Ori Shalev, and Nir Shavit. "Transactional locking II." In International Symposium on Distributed Computing, pp. 194-208. Berlin, Heidelberg: Springer Berlin Heidelberg, 2006.
