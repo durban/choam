@@ -27,8 +27,6 @@ import async.Promise
 import util._
 
 /**
- * NOTE: run this with the `-gc true` JMH option!
- *
  * Benchmarks to determine whether `Rxn` being an arrow (i.e.,
  * `Rxn[-A, +B]`) has performance advantages in realistic situations
  * over just being a monad (i.e., a hypothetical `Rxn[+B]`).

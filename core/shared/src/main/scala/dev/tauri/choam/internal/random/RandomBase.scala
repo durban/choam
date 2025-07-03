@@ -32,7 +32,7 @@ import core.{ Rxn, Axn }
  *
  * Some of these derived methods were adapted from the algorithms
  * in the public domain JSR-166 ThreadLocalRandom
- * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
+ * (http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
  *
  * Note: some of the methods are implemented in terms of
  * each other, so subclasses *must* override either
