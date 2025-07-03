@@ -25,6 +25,11 @@ final class AtomicallySpec_DefaultMcas_IO
   with SpecDefaultMcas
   with AtomicallySpec[IO]
 
+final class AtomicallySpec_DefaultMcas_ZIO
+  extends BaseSpecZIO
+  with SpecDefaultMcas
+  with AtomicallySpec[zio.Task]
+
 trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
 
   final override def runBlock[A](block: InRxn => A): F[A] = {
