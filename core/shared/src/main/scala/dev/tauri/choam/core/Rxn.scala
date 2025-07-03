@@ -2135,6 +2135,22 @@ object Rxn extends RxnInstances0 {
       }
     }
 
+    private[this] final def handleCommit(): Boolean = {
+      val d = this._desc // we avoid calling `desc` here, in case it's `null`
+      this.clearDesc()
+      val dSize = if (d ne null) d.size else 0
+      if (performMcas(d)) {
+        if (Consts.statsEnabled) {
+          // save retry statistics:
+          ctx.recordCommit(retries = this.retries, committedRefs = dSize, descExtensions = this.descExtensions)
+        }
+        // Note: commit is done, but we still may need to perform post-commit actions
+        true
+      } else {
+        false // need to retry
+      }
+    }
+
     @tailrec
     private[this] final def loop[A, B](curr: Rxn[A, B]): R = {
       // TODO: While doing the runloop, we could
@@ -2151,17 +2167,10 @@ object Rxn extends RxnInstances0 {
       // TODO: something with long transactions.)
       curr match {
         case _: Commit[_] => // Commit
-          val d = this._desc // we avoid calling `desc` here, in case it's `null`
-          this.clearDesc()
-          val dSize = if (d ne null) d.size else 0
-          if (performMcas(d)) {
-            if (Consts.statsEnabled) {
-              // save retry statistics:
-              ctx.recordCommit(retries = this.retries, committedRefs = dSize, descExtensions = this.descExtensions)
-            }
+          if (handleCommit()) {
             // ok, commit is done, but we still need to perform post-commit actions
             val res = a
-            a = () : Any
+            a = null
             if (!equ(res, postCommitResultMarker)) {
               // final result, Done will need it:
               contK.push(res)
@@ -2664,20 +2673,9 @@ object Rxn extends RxnInstances0 {
     }
 
     final override def imperativeCommit(): Boolean = {
-      val d = this._desc // we avoid calling `desc` here, in case it's `null`
-      this.clearDesc()
-      val dSize = if (d ne null) d.size else 0
-      if (performMcas(d)) {
-        if (Consts.statsEnabled) {
-          // save retry statistics:
-          ctx.recordCommit(retries = this.retries, committedRefs = dSize, descExtensions = this.descExtensions)
-        }
-        // imperative API has no post-commit actions (for now)
-        _assert(pc.isEmpty())
-        true // we're done
-      } else {
-        false // need to retry
-      }
+      val ok = handleCommit()
+      _assert(pc.isEmpty()) // imperative API has no post-commit actions (for now)
+      ok
     }
 
     @inline
