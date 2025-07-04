@@ -27,7 +27,7 @@ import RemoveQueue.{ Elem, Node, End, dequeued, isDequeued, isRemoved }
  *
  * Like `MsQueue`, but also has support for interior node deletion
  * (`remove`), based on the public domain JSR-166 ConcurrentLinkedQueue
- * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
+ * (http://gee.cs.oswego.edu/dl/concurrency-interest/index.html).
  *
  * TODO: also unlink removed nodes (instead of just tombing them).
  */

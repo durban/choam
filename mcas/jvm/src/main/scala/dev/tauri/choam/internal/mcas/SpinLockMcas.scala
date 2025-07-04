@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 /**
  * Naïve k-CAS algorithm as described in [Reagents: Expressing and Composing
- * Fine-grained Concurrency](https://web.archive.org/web/20220214132428/https://www.ccis.northeastern.edu/home/turon/reagents.pdf)
+ * Fine-grained Concurrency](https://www.ccs.neu.edu/home/turon/reagents.pdf)
  * by Aaron Turon; originally implemented at [aturon/ChemistrySet](
  * https://github.com/aturon/ChemistrySet).
  *

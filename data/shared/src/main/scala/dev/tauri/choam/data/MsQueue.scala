@@ -24,12 +24,13 @@ import MsQueue._
 
 /**
  * Unbounded MPMC queue, based on the lock-free Michael-Scott queue described in
- * https://web.archive.org/web/20220123224641/https://www.cs.rochester.edu/~scott/papers/1996_PODC_queues.pdf.
+ * "Simple, Fast, and Practical Non-Blocking and Blocking Concurrent Queue Algorithms"
+ * (https://www.cs.rochester.edu/~scott/papers/1996_PODC_queues.pdf).
  *
  * Some optimizations are based on the public domain JSR-166 ConcurrentLinkedQueue
- * (https://web.archive.org/web/20220129102848/http://gee.cs.oswego.edu/dl/concurrency-interest/index.html),
+ * (http://gee.cs.oswego.edu/dl/concurrency-interest/index.html),
  * or on the implementation in the Reagents paper
- * (https://web.archive.org/web/20220214132428/https://www.ccis.northeastern.edu/home/turon/reagents.pdf).
+ * (https://www.ccs.neu.edu/home/turon/reagents.pdf).
  */
 private final class MsQueue[A] private[this] (
   sentinel: Node[A],

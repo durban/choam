@@ -35,10 +35,12 @@ private[mcas] abstract class OsRngPlatform {
    *   called `Windows-PRNG` is available (i.e., we're
    *   on Windows), we use that. It uses the Windows
    *   CrytoAPI (the `CryptGenRandom` call) to get
-   *   secure random bytes. According to the [white
-   *   paper](https://aka.ms/win10rng), this involves
-   *   a lock, but there is "very low contention" (page
-   *   6). This is probably the best we can do on Windows.
+   *   secure random bytes. According to "The Windows 10
+   *   random number generation infrastructure" paper
+   *   by Niels Ferguson (https://aka.ms/win10rng), this
+   *   involves a lock, but there is "very low contention"
+   *   (page 6). This is probably the best we can do on
+   *   Windows.
    *
    * - Otherwise (i.e., we're *not* on Windows), we assume
    *   that Unix-like `/dev/random` and `/dev/urandom`

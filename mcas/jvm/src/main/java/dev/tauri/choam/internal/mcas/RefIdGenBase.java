@@ -24,8 +24,17 @@ import dev.tauri.choam.internal.VarHandleHelper;
 
 public abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
 
+  /**
+   * Constant for Fibonacci hashing
+   *
+   * See Knuth, Donald E. "The Art of Computer Programming"
+   * vol. 3 "Sorting and Searching", section 6.4 "Hashing"
+   * (page 518 in the 2nd edition)
+   *
+   * See also https://en.wikipedia.org/wiki/Hash_function#Fibonacci_hashing
+   */
   public static final long GAMMA =
-    0x9e3779b97f4a7c15L; // Fibonacci hashing: https://web.archive.org/web/20161121124236/http://brpreiss.com/books/opus4/html/page214.html
+    0x9e3779b97f4a7c15L;
 
   private static final VarHandle CTR;
 

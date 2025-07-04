@@ -33,24 +33,25 @@ import Ttrie._
 /**
  * Based on `ttrie` in "Durability and Contention in Software
  * Transactional Memory" by Michael Schröder
- * (https://web.archive.org/web/20211203183825/https://mcschroeder.github.io/files/stmio_thesis.pdf),
+ * (https://mcschroeder.github.io/files/stmio_thesis.pdf),
  * which is itself based on the concurrent trie of
- * Prokopec, et al. (`scala.collection.concurrent.TrieMap` and
- * https://web.archive.org/web/20210506144154/https://lampwww.epfl.ch/~prokopec/ctries-snapshot.pdf).
+ * Prokopec, et al. (`scala.collection.concurrent.TrieMap` and the
+ * paper "Concurrent Tries with Efficient Non-Blocking Snapshots"
+ * https://lampwww.epfl.ch/~prokopec/ctries-snapshot.pdf).
  *
- * We're using a `TrieMap` directly (instead of reimplementing),
+ * We're using a `TrieMap` directly (instead of reimplementing it),
  * since we get it for free from the stdlib. (Also, this is
  * written against the `scala.collection.concurrent.Map`
  * interface, so it can work with other concurrent maps too.)
  *
- * Unlike `ttrie` in the paper (section 3.3), we don't leak
- * memory on failed lookups, and removal compacts the trie.
+ * Unlike `ttrie` in the Schröder paper (section 3.3), we don't
+ * leak memory on failed lookups, and removal compacts the trie.
  *
  * The basic idea of `ttrie` seems essentially the same as
  * the earlier idea of "transactional predication" in
  * "Composable Operations on High-Performance Concurrent
  * Collections" by Nathan G. Bronson
- * (https://web.archive.org/web/20221206161946/https://stacks.stanford.edu/file/druid:gm457gs5369/nbronson_thesis_final-augmented.pdf).
+ * (https://stacks.stanford.edu/file/druid:gm457gs5369/nbronson_thesis_final-augmented.pdf).
  * However, transactional predication has a more sophisticated
  * cleanup scheme than we have here (section 3.4.1–3).
  *

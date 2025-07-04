@@ -160,19 +160,19 @@ private[mcas] final class Emcas(
    * meaning, see `Version.isValid`). The version of a ref is the
    * commit version which last changed the ref (or `Version.Start` if it
    * was never changed). This system is based on the one in SwissTM
-   * (https://web.archive.org/web/20220215230304/https://www.researchgate.net/profile/Aleksandar-Dragojevic/publication/37470225_Stretching_Transactional_Memory/links/0912f50d430e2cf991000000/Stretching-Transactional-Memory.pdf),
+   * (https://infoscience.epfl.ch/server/api/core/bitstreams/6b454d6b-0ae9-4b37-b341-6e2d092aef8e/content),
    * although this implementation is lock-free.
    *
    * On top of this version-based validation system, we implement
-   * an optimization from the paper "Commit Phase in Timestamp-based STM"
-   * (https://web.archive.org/web/20220302005715/https://www.researchgate.net/profile/Zoran-Budimlic/publication/221257687_Commit_phase_in_timestamp-based_stm/links/004635254086f87ab9000000/Commit-phase-in-timestamp-based-stm.pdf).
+   * an optimization from the paper "Commit Phase Variations in Timestamp-based STM"
+   * (https://repository.rice.edu/server/api/core/bitstreams/ec929767-5e4b-4c8e-9704-c649bf6328c9/content).
    * We allow ops to *share* a commit-ts (if they do not conflict).
    * Our implementation is a lock-free version of algorithm "V1" from
    * the paper.
    *
-   * TODO: Consider using V4 (instead of V1) from the paper.
+   * TODO: Consider using V4 (instead of V1) from the Commit Phase paper.
    *
-   * The proof of correctness in the paper needs some changes for our system:
+   * The proof of correctness in the Commit Phase paper needs some changes for our system:
    * - The proof of "Lemma 1" considers three possible scenarios:
    *   - The first one is not possible for us not due to read-locking,
    *     but because at t₂ the validation performed by T₁ would help
@@ -229,10 +229,10 @@ private[mcas] final class Emcas(
   // TODO: figure out if we can use acq/rel, and still remain
   // TODO: correct.
 
-  // Listing 2 in the paper:
+  // Listing 2 in the EMCAS paper:
 
   /**
-   * A specialized version of `readInternal` from the paper
+   * A specialized version of `readInternal` from the EMCAS paper
    *
    * Only returns the actual value (after possibly helping).
    * Cannot be called from an ongoing MCAS operation (but
