@@ -290,7 +290,7 @@ class EmcasSpec extends BaseSpec {
       val hDesc = ctx.addVersionCas(
         ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
       )
-      val desc = EmcasDescriptor.prepare(hDesc, instRo = false)
+      val desc = new EmcasDescriptor(hDesc, instRo = false)
       val it = desc.getWordIterator()
       val d0 = it.next().asInstanceOf[EmcasWordDesc[String]]
       val mark = new McasMarker
@@ -409,7 +409,7 @@ class EmcasSpec extends BaseSpec {
       val hDesc = ctx.addVersionCas(
         ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
       )
-      val desc = EmcasDescriptor.prepare(hDesc, instRo = false)
+      val desc = new EmcasDescriptor(hDesc, instRo = false)
       val it = desc.getWordIterator()
       val d0 = it.next().asInstanceOf[EmcasWordDesc[String]]
       assert(d0.address eq r1)
@@ -462,7 +462,7 @@ class EmcasSpec extends BaseSpec {
     val r2 = MemoryLocation.unsafeWithId("r2")(42L)
     val ctx = inst.currentContext()
     val hOther = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "r2", "y")
-    val other = EmcasDescriptor.prepare(hOther, instRo = false)
+    val other = new EmcasDescriptor(hOther, instRo = false)
     val d0 = other.getWordIterator().next().asInstanceOf[EmcasWordDesc[String]]
     assert(d0.address eq r1)
     r1.unsafeSetV(d0.castToData)
@@ -482,7 +482,7 @@ class EmcasSpec extends BaseSpec {
     val r2 = MemoryLocation.unsafeWithId("r2")(99L)
     val ctx = inst.currentContext()
     val hOther = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "r1", "x"), r2, "zzz", "y")
-    val other = EmcasDescriptor.prepare(hOther, instRo = false)
+    val other = new EmcasDescriptor(hOther, instRo = false)
     val d0 = other.getWordIterator().next().asInstanceOf[EmcasWordDesc[String]]
     assert(d0.address eq r1)
     r1.unsafeSetV(d0.castToData)
@@ -577,7 +577,7 @@ class EmcasSpec extends BaseSpec {
     val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")
     val d2 = ctx.addCasFromInitial(d1, r3, "r3", "C")
     val d3 = ctx.addCasFromInitial(d2, r2, "r2", "B")
-    val d = EmcasDescriptor.prepare(d3, instRo = false)
+    val d = new EmcasDescriptor(d3, instRo = false)
     val it = d.getWordIterator()
     assertSameInstance(it.next().address, r1)
     assertSameInstance(it.next().address, r2)
@@ -590,7 +590,7 @@ class EmcasSpec extends BaseSpec {
       val ctx = inst.currentContext()
       val d0 = ctx.start()
       val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")
-      val ed = EmcasDescriptor.prepare(d1, instRo = false)
+      val ed = new EmcasDescriptor(d1, instRo = false)
       val wd = ed.getWordIterator().next()
       assert(wd.toString().startsWith("EmcasWordDesc("))
       assert(ctx.tryPerformOk(d1))
@@ -671,7 +671,7 @@ class EmcasSpec extends BaseSpec {
     val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")
     val d2 = ctx.addCasFromInitial(d1, r2, "bar", "foo")
     val d3 = ctx.addVersionCas(d2)
-    val d = EmcasDescriptor.prepare(d3, instRo = false)
+    val d = new EmcasDescriptor(d3, instRo = false)
     val lb = List.newBuilder[MemoryLocation[?]]
     val it = d.getWordIterator()
     while (it.hasNext()) {

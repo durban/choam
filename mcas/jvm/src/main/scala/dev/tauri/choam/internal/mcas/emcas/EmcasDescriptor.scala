@@ -186,10 +186,6 @@ private[mcas] final class EmcasDescriptor private[this] (
 
 private object EmcasDescriptor {
 
-  def prepare(half: AbstractDescriptor, instRo: Boolean): EmcasDescriptor = { // TODO: do we need this?
-    new EmcasDescriptor(half, instRo = instRo)
-  }
-
   private final class Iterator(words: Array[WdLike[?]])
     extends java.util.Iterator[WdLike[?]] {
 
