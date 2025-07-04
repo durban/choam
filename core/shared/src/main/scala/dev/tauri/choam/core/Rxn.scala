@@ -106,30 +106,6 @@ sealed abstract class Rxn[-A, +B] { // short for 'reaction'
    * TODO: maybe we could optimize `flatMap`.
    */
 
-  /*
-   * Tag for the interpreter (see `interpreter`)
-   *
-   * This attempts to be an optimization, inspired by an old optimization in
-   * the Scala compiler for matching on sealed subclasses
-   * (see https://github.com/scala/scala/commit/b98eb1d74141a4159539d373e6216e799d6b6dcd).
-   * Except we do it by hand, which is ugly, but might be worth it.
-   *
-   * In Cats Effect 3 the IO/SyncIO runloop also uses something like this
-   * (see https://github.com/typelevel/cats-effect/blob/v3.0.2/core/shared/src/main/scala/cats/effect/SyncIO.scala#L195),
-   *
-   * The ZIO runloop seems to do something similar too
-   * (see https://github.com/zio/zio/blob/v1.0.6/core/shared/src/main/scala/zio/internal/FiberContext.scala#L320).
-   *
-   * The idea is to `match` on `r.tag` instead of `r` itself. That match
-   * should be compiled to a JVM tableswitch instruction. Which is supposed
-   * to be very fast. The match arms require `.asInstanceOf`, which is unsafe
-   * and makes maintenance harder. However, if there are a lot of cases,
-   * a chain of instanceof/checkcast instructions could be slower.
-   *
-   * TODO: Check if it's indeed faster than a simple `match` (apparently "tag"
-   * TODO: was removed from the Scala compiler because it was not worth it).
-   */
-
   def + [X <: A, Y >: B](that: Rxn[X, Y]): Rxn[X, Y]
 
   def >>> [C](that: Rxn[B, C]): Rxn[A, C]
@@ -867,8 +843,6 @@ object Rxn extends RxnInstances0 {
   private final class Cas[A](val ref: MemoryLocation[A], val ov: A, val nv: A) extends RxnImpl[Any, Unit] {
     final override def toString: String = s"Cas(${ref}, ${ov}, ${nv})"
   }
-
-  // Note: tag = 8 is RefGetAxn (above)
 
   private[core] final class Map2[A, B, C, D](val left: Rxn[A, B], val right: Rxn[A, C], val f: (B, C) => D) extends RxnImpl[A, D] {
     final override def toString: String = s"Map2(${left}, ${right}, <function>)"
