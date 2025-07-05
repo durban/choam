@@ -251,7 +251,7 @@ private[mcas] final class Emcas(
     def go(mark: AnyRef, ver1: Long): LogEntry[A] = {
       ref.unsafeGetV() match {
         case wd: EmcasWordDesc[_] =>
-          if (mark eq null) {
+          if (false) { // mark eq null) {
             // not holding it yet
             val weakref = ref.unsafeGetMarkerV()
             val m = if (weakref ne null) weakref.get() else null
@@ -375,7 +375,7 @@ private[mcas] final class Emcas(
 
   private[this] final def cleanWeakRef[A](ref: MemoryLocation[A], weakref: WeakReference[AnyRef]): Unit = {
     if (weakref ne null) {
-      _assert(weakref.get() eq null)
+      // _assert(weakref.get() eq null)
       // We also delete the (now empty) `WeakReference`
       // object, to help the GC. If this CAS fails,
       // that means a new op already installed a new
@@ -536,7 +536,7 @@ private[mcas] final class Emcas(
         content = address.unsafeGetV()
         content match {
           case wd: EmcasWordDesc[_] =>
-            if (mark eq null) {
+            if (false) { // mark eq null) {
               // not holding it yet
               weakref = address.unsafeGetMarkerV()
               mark = if (weakref ne null) weakref.get() else null
@@ -655,7 +655,7 @@ private[mcas] final class Emcas(
         EmcasStatus.Break
       } else {
         // before installing our descriptor, make sure a valid mark exists:
-        val weakRefOk = if (mark eq null) {
+        val weakRefOk = if (false) { // mark eq null) {
           _assert((weakref eq null) || (weakref.get() eq null))
           // there was no old descriptor, or it was already unused;
           // we'll need a new mark:
