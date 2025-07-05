@@ -409,6 +409,10 @@ private[mcas] final class Emcas(
     instRo: Boolean,
   ): Long = {
     val ver1 = ref.unsafeGetVersionV()
+    // Note: the version we just read might not
+    // be the actual version; if the ref contains
+    // a descriptor, that descriptor will contain
+    // the correct version.
     ref.unsafeGetV() match {
       case wd: EmcasWordDesc[_] =>
         // TODO: we may need to hold the marker here!
@@ -435,9 +439,24 @@ private[mcas] final class Emcas(
           s
         }
       case _ => // value
+        // Note: we don't actually know that the `ver1`
+        // we read previously belongs to the value we
+        // just read (the value could've been written
+        // after we read `ver1`), so we must re-read
+        // the version.
         val ver2 = ref.unsafeGetVersionV()
-        if (ver1 == ver2) ver1
-        else readVersionInternal(ref, ctx, forMCAS = forMCAS, seen = seen, instRo = instRo) // retry
+        if (ver1 == ver2) {
+          // OK, as versions are monotonically increasing
+          // (and we increase the version before detaching
+          // a descriptor), we can be sure that the version
+          // is valid (and belongs to the value, although
+          // we don't need the value here):
+          ver1
+        } else {
+          // some other op (or `readValue`) changed the
+          // version (and completed), so we must retry:
+          readVersionInternal(ref, ctx, forMCAS = forMCAS, seen = seen, instRo = instRo) // retry
+        }
     }
   }
 
@@ -525,6 +544,7 @@ private[mcas] final class Emcas(
                 // continue with another iteration, and re-read the
                 // descriptor, while holding the mark
               } else { // mark eq null
+                // TODO: what if between reading `wd` and the mark, a lot of things happened...?
                 // the old descriptor is unused, could be detached
                 val parent = wd.parent
                 val parentStatus = parent.getStatusV()
@@ -648,10 +668,10 @@ private[mcas] final class Emcas(
           // we have a valid mark from reading
           true
         }
-        // If *right now* (after the CAS), another thread, which started
-        // reading before we installed a new weakref above, finishes its
-        // read, and detaches the *previous* descriptor (since we
-        // haven't installed ours yet, and that one was unused);
+        // If *right now* (after the CAS above), another thread, which
+        // started reading before we installed a new weakref above,
+        // finishes its read, and detaches the *previous* descriptor
+        // (since we haven't installed ours yet, and that one was unused);
         // then the following CAS will fail (not a problem), and
         // on our next retry, we may see a ref with a value *and*
         // a non-empty weakref (but this case is also handled, see above).
@@ -785,18 +805,18 @@ private[mcas] final class Emcas(
       // infinite loop (or possibly a stack overflow).
       BloomFilter64.insertIfAbsent(seen, desc.hashCode) match {
         case 0L =>
-          // We (probably) detected a cycle, need to fall
+          // We've detected a probable cycle, need to fall
           // back to `instRo = true`. Bloom filter is
           // probabilistic, so there is some chance that
           // there is no actual cycle; but falling back
           // doesn't affect correctness, only performance.
-          // (Actually, not falling back when needed _would_
+          // (And not falling back when needed _would_
           // affect correctness.)
           // Note: we still have to finalize `desc` with
           // the `CycleDetected` result.
           EmcasStatus.CycleDetected
         case bf =>
-          // fine, no cycle, we've added `desc` to `seen`
+          // fine, definitely no cycle, we've added `desc` to `seen`
           seen2 = bf
           acquire(desc.getWordDescArrOrNull(), seen2)
       }
@@ -987,7 +1007,7 @@ private[mcas] final class Emcas(
       // we try to increment it:
       val candidate = ts1 + Version.Incr
       Predef.assert(VersionFunctions.isValid(candidate)) // detect version overflow
-      val ctsWitness = global.cmpxchgCommitTs(ts1, candidate) // TODO: could this be `getAndAdd`? is it faster?
+      val ctsWitness = global.cmpxchgCommitTs(ts1, candidate)
       if (ctsWitness == ts1) {
         // ok, successful CAS:
         candidate
