@@ -30,7 +30,7 @@ import org.openjdk.jcstress.infra.results.LLLLLL_Result
 @Description("EmcasZombieTest")
 @Outcomes(Array(
   new Outcome(id = Array("Some(a), Some(b), true, true, x, y"), expect = ACCEPTABLE, desc = "Read before commit"),
-  new Outcome(id = Array("Some(a), None, null, true, x, y"), expect = ACCEPTABLE_INTERESTING, desc = "Detected inconsistency"),
+  new Outcome(id = Array("Some(a), None, null, true, x, y"), expect = ACCEPTABLE_INTERESTING, desc = "OK, we detected the inconsistency"),
   new Outcome(id = Array("Some(x), Some(y), true, true, x, y"), expect = ACCEPTABLE, desc = "Read after commit"),
 ))
 class EmcasZombieTest {
