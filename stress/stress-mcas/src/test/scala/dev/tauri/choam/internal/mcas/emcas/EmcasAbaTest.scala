@@ -29,7 +29,7 @@ import org.openjdk.jcstress.infra.results.LLLLL_Result
 @State
 @Description("EMCAS: ABA problem (should fail if we don't use markers)")
 @Outcomes(Array(
-  new Outcome(id = Array("a, x, true, true, a"), expect = ACCEPTABLE, desc = "the only acceptable result"),
+  new Outcome(id = Array("a, x, true, true, x"), expect = ACCEPTABLE, desc = "the only acceptable result"),
 ))
 class EmcasAbaTest {
 
@@ -83,13 +83,13 @@ class EmcasAbaTest {
           val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("a"))
           val Some((r2v, d3)) = ctx.readMaybeFromLog(r2, d2, canExtend = true) : @unchecked
           Predef.assert(r2v == "y")
-          val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("y"))
+          val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("x"))
           (ctx.tryPerform(d4) == McasStatus.Successful)
       }
     }
 
     r.r4 = go() // must be true
-    r.r5 = ctx.readDirect(r2) // can detach the descriptor
+    r.r5 = ctx.readDirect(r2) // this maybe can detach the descriptor (if we don't use markers)
   }
 
   @Arbiter

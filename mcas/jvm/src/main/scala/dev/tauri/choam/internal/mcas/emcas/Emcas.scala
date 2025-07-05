@@ -713,6 +713,10 @@ private[mcas] final class Emcas(
                 twr
               }
             case wd: LogEntry[_] =>
+              // TODO: we could validate `wd` here; we'd still
+              // TODO: need to validate after ACQUIRE, but if
+              // TODO: it's invalid here, we could abort earlier;
+              // TODO: need to experiment to see if it's worth doing...
               // read-only WD, which we don't
               // need to install; continue, but
               // we'll need to revalidate later:
