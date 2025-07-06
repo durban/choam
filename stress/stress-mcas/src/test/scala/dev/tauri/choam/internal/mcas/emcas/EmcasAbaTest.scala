@@ -23,7 +23,7 @@ package emcas
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LLLLLL_Result
+import org.openjdk.jcstress.infra.results.LLLL_Result
 
 @JCStressTest
 @State
@@ -56,7 +56,7 @@ class EmcasAbaTest {
   Predef.assert(MemoryLocation.globalCompare(r1, r2) < 0) // ref1 < ref2
 
   @Actor
-  def t1(r: LLLLLL_Result): Unit = {
+  def t1(r: LLLL_Result): Unit = {
     val ctx = inst.currentContext()
     val d0 = ctx.start()
     val Some((r1v, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
@@ -70,7 +70,7 @@ class EmcasAbaTest {
   }
 
   @Actor
-  def t2(r: LLLLLL_Result): Unit = {
+  def t2(r: LLLL_Result): Unit = {
     val ctx = inst.currentContext()
 
     @tailrec
@@ -106,7 +106,7 @@ class EmcasAbaTest {
   }
 
   @Arbiter
-  def arbiter(r: LLLLLL_Result): Unit = {
+  def arbiter(r: LLLL_Result): Unit = {
     val ctx = inst.currentContext()
     r.r1 = ctx.readDirect(r1)
     r.r2 = ctx.readDirect(r2)

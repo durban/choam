@@ -57,13 +57,25 @@ class EmcasAbaTest2 {
   @Actor
   def t1(r: LLLL_Result): Unit = {
     val ctx = inst.currentContext()
-    val d0 = ctx.start()
-    val Some((r1v, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
-    val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("b"))
-    val Some((r2v, d3)) = ctx.readMaybeFromLog(r2, d2, canExtend = true) : @unchecked
-    val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("y"))
-    val ok = (ctx.tryPerform(d4) == McasStatus.Successful)
-    r.r3 = ok // must be true
+
+    def go(): Boolean = {
+      val d0 = ctx.start()
+      ctx.readMaybeFromLog(r1, d0, canExtend = true) match {
+        case Some((_, d1)) =>
+          val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("b"))
+          ctx.readMaybeFromLog(r2, d2, canExtend = true) match {
+            case Some((_, d3)) =>
+              val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("y"))
+              (ctx.tryPerform(d4) == McasStatus.Successful)
+            case None =>
+              go()
+          }
+        case None =>
+          go()
+      }
+    }
+
+    r.r3 = go() // must be true
     ctx.readDirect(r2) // detach
     ()
   }
@@ -71,13 +83,25 @@ class EmcasAbaTest2 {
   @Actor
   def t2(r: LLLL_Result): Unit = {
     val ctx = inst.currentContext()
-    val d0 = ctx.start()
-    val Some((r1v, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
-    val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("a"))
-    val Some((r2v, d3)) = ctx.readMaybeFromLog(r2, d2, canExtend = true) : @unchecked
-    val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("x"))
-    val ok = (ctx.tryPerform(d4) == McasStatus.Successful)
-    r.r4 = ok // must be true
+
+    def go(): Boolean = {
+      val d0 = ctx.start()
+      ctx.readMaybeFromLog(r1, d0, canExtend = true) match {
+        case Some((_, d1)) =>
+          val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("a"))
+          ctx.readMaybeFromLog(r2, d2, canExtend = true) match {
+            case Some((_, d3)) =>
+              val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("x"))
+              (ctx.tryPerform(d4) == McasStatus.Successful)
+            case None =>
+              go()
+          }
+        case None =>
+          go()
+      }
+    }
+
+    r.r4 = go() // must be true
     ctx.readDirect(r2) // detach
     ()
   }
