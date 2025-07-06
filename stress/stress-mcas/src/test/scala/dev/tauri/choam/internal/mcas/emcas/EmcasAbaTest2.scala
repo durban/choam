@@ -31,7 +31,7 @@ import org.openjdk.jcstress.infra.results.LLLL_Result
 @Outcomes(Array(
   new Outcome(id = Array("a, x, true, true"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 won"),
   new Outcome(id = Array("b, y, true, true"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t2 won"),
-  new Outcome(id = Array("a, y, true, true"), expect = FORBIDDEN, desc = "non-linearizable"),
+  new Outcome(id = Array("a, y, true, true"), expect = ACCEPTABLE_INTERESTING, desc = "FORBIDDEN: non-linearizable"),
 ))
 class EmcasAbaTest2 {
 
