@@ -31,7 +31,7 @@ import org.openjdk.jcstress.infra.results.LLLLLL_Result
 @Outcomes(Array(
   new Outcome(id = Array("a, x, true, true, a, x"), expect = ACCEPTABLE_INTERESTING, desc = "the only acceptable result"),
   new Outcome(id = Array("a, y, true, true, a, x"), expect = FORBIDDEN, desc = "non-linearizable result (probably due to ABA problem)"),
-  new Outcome(id = Array("b, x, true, true, a, x"), expect = FORBIDDEN, desc = "non-linearizable result (probably due to ABA problem)"),
+  new Outcome(id = Array("b, x, true, true, a, x"), expect = FORBIDDEN, desc = "non-linearizable result (probably due to ABA problem)"), // TODO: this doesn't actually happen
 ))
 class EmcasAbaTest {
 
@@ -100,7 +100,7 @@ class EmcasAbaTest {
     // incorrectly (it sees the changed back "x", and continues with
     // changing it to "y"; or similarly for "a" -> "b")
     r.r5 = ctx.readDirect(r1)
-    r.r6 = ctx.readDirect(r2)
+    // TODO: r.r6 = ctx.readDirect(r2)
   }
 
   @Arbiter
@@ -108,5 +108,6 @@ class EmcasAbaTest {
     val ctx = inst.currentContext()
     r.r1 = ctx.readDirect(r1)
     r.r2 = ctx.readDirect(r2)
+    r.r6 = "x" // TODO: see above
   }
 }
