@@ -23,13 +23,15 @@ package emcas
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
-import org.openjdk.jcstress.infra.results.LLLLL_Result
+import org.openjdk.jcstress.infra.results.LLLLLL_Result
 
 @JCStressTest
 @State
 @Description("EMCAS: ABA problem (should fail if we don't use markers)")
 @Outcomes(Array(
-  new Outcome(id = Array("a, x, true, true, x"), expect = ACCEPTABLE, desc = "the only acceptable result"),
+  new Outcome(id = Array("a, x, true, true, a, x"), expect = ACCEPTABLE_INTERESTING, desc = "the only acceptable result"),
+  new Outcome(id = Array("a, y, true, true, a, x"), expect = FORBIDDEN, desc = "non-linearizable result (probably due to ABA problem)"),
+  new Outcome(id = Array("b, x, true, true, a, x"), expect = FORBIDDEN, desc = "non-linearizable result (probably due to ABA problem)"),
 ))
 class EmcasAbaTest {
 
@@ -55,7 +57,7 @@ class EmcasAbaTest {
   Predef.assert(MemoryLocation.globalCompare(r1, r2) < 0) // ref1 < ref2
 
   @Actor
-  def t1(r: LLLLL_Result): Unit = {
+  def t1(r: LLLLLL_Result): Unit = {
     val ctx = inst.currentContext()
     val d0 = ctx.start()
     val Some((r1v, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
@@ -69,7 +71,7 @@ class EmcasAbaTest {
   }
 
   @Actor
-  def t2(r: LLLLL_Result): Unit = {
+  def t2(r: LLLLLL_Result): Unit = {
     val ctx = inst.currentContext()
 
     @tailrec
@@ -78,8 +80,11 @@ class EmcasAbaTest {
       val Some((r1v, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
       r1v match {
         case "a" =>
-          go() // wait for t1
+          go() // wait for t1 to start
         case "b" =>
+          // t1 started, but possibly didn't finish,
+          // so our readValue may have helped it;
+          // no we change the values back:
           val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("a"))
           val Some((r2v, d3)) = ctx.readMaybeFromLog(r2, d2, canExtend = true) : @unchecked
           Predef.assert(r2v == "y")
@@ -89,11 +94,17 @@ class EmcasAbaTest {
     }
 
     r.r4 = go() // must be true
-    r.r5 = ctx.readDirect(r2) // this maybe can detach the descriptor (if we don't use markers)
+
+    // these maybe can detach the descriptor (if we don't use markers);
+    // so if t1 is still running, it may continue performing its op
+    // incorrectly (it sees the changed back "x", and continues with
+    // changing it to "y"; or similarly for "a" -> "b")
+    r.r5 = ctx.readDirect(r1)
+    r.r6 = ctx.readDirect(r2)
   }
 
   @Arbiter
-  def arbiter(r: LLLLL_Result): Unit = {
+  def arbiter(r: LLLLLL_Result): Unit = {
     val ctx = inst.currentContext()
     r.r1 = ctx.readDirect(r1)
     r.r2 = ctx.readDirect(r2)
