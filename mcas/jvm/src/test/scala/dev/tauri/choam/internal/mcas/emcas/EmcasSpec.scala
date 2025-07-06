@@ -852,4 +852,14 @@ class EmcasSpec extends BaseSpec {
     assertEquals(ed4.getWordsP(), null)
     assert(ctx.tryPerformOk(snapRo, optimism = Consts.PESSIMISTIC))
   }
+
+  test("Experiment: readDirect should detach desciptor (disabled marks)") {
+    val ref1 = MemoryLocation.unsafeUnpadded[String]("a", this.rigInstance)
+    val ctx = inst.currentContext()
+    val d = ctx.start().add(LogEntry(ref1, "a", "b", Version.Start))
+    assert(ctx.tryPerformOk(d, optimism = Consts.PESSIMISTIC))
+    assert(ref1.cast[Any].unsafeGetV().isInstanceOf[EmcasWordDesc[_]])
+    assertEquals(ctx.readDirect(ref1), "b") // detaches word desc
+    assertEquals(ref1.unsafeGetV(), "b")
+  }
 }

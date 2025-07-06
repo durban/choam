@@ -115,7 +115,7 @@ private final class EmcasThreadContext(
   }
 
   private[this] final def createReusableMarker(): AnyRef = {
-    val mark = new McasMarker
+    val mark: McasMarker = null // new McasMarker
     this.markerWeakRef = new WeakReference(mark)
     if (this.markerUsedCount > this.getMaxReuseEverP()) {
       // TODO: this is not exactly correct, because

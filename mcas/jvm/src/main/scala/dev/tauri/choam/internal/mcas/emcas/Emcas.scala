@@ -251,7 +251,7 @@ private[mcas] final class Emcas(
     def go(mark: AnyRef, ver1: Long): LogEntry[A] = {
       ref.unsafeGetV() match {
         case wd: EmcasWordDesc[_] =>
-          if (false) { // mark eq null) {
+          if (mark eq null) {
             // not holding it yet
             val weakref = ref.unsafeGetMarkerV()
             val m = if (weakref ne null) weakref.get() else null
