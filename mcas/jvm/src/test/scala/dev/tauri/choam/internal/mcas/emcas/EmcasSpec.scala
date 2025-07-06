@@ -853,7 +853,7 @@ class EmcasSpec extends BaseSpec {
     assert(ctx.tryPerformOk(snapRo, optimism = Consts.PESSIMISTIC))
   }
 
-  test("Experiment: readDirect should detach desciptor (disabled marks)".fail) {
+  test("Experiment: readDirect should detach desciptor (disabled marks)") {
     val ref1 = MemoryLocation.unsafeUnpadded[String]("a", this.rigInstance)
     val ctx = inst.currentContext()
     val d = ctx.start().add(LogEntry(ref1, "a", "b", Version.Start))

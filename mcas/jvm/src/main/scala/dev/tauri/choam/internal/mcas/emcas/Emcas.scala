@@ -296,6 +296,16 @@ private[mcas] final class Emcas(
               val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
               val currVer = if (successful) parentStatus else wd.oldVersion
               Reference.reachabilityFence(mark)
+              // Experiment:
+              this.maybeReplaceDescriptor[A](
+                ref,
+                wd.cast[A],
+                a,
+                weakref = ref.unsafeGetMarkerV(),
+                replace = replace,
+                currentVersion = currVer,
+              )
+              // /Experiment
               LogEntry(ref, ov = a, nv = a, version = currVer)
             }
           }
