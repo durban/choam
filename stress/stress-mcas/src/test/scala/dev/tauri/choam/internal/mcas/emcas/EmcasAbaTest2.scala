@@ -38,7 +38,8 @@ class EmcasAbaTest2 {
   // This a version of `EmcasAbaTest1` that is (hopefully)
   // less dependent of implementation details; but since
   // we're not forcing the timing, the non-linearizable
-  // result is VERY rare.
+  // result is VERY rare (in some runs it isn't observed
+  // on x86_64 linux).
 
   private[this] val inst =
     StressTestBase.emcasInst

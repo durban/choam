@@ -536,7 +536,7 @@ private[mcas] final class Emcas(
         content = address.unsafeGetV()
         content match {
           case wd: EmcasWordDesc[_] =>
-            if (false) { // mark eq null) {
+            if (mark eq null) {
               // not holding it yet
               weakref = address.unsafeGetMarkerV()
               mark = if (weakref ne null) weakref.get() else null
@@ -655,7 +655,7 @@ private[mcas] final class Emcas(
         EmcasStatus.Break
       } else {
         // before installing our descriptor, make sure a valid mark exists:
-        val weakRefOk = if (false) { // mark eq null) {
+        val weakRefOk = if (mark eq null) {
           _assert((weakref eq null) || (weakref.get() eq null))
           // there was no old descriptor, or it was already unused;
           // we'll need a new mark:
