@@ -29,13 +29,16 @@ import org.openjdk.jcstress.infra.results.LLLL_Result
 @State
 @Description("EMCAS: ABA problem 2 (should fail if we don't use markers)")
 @Outcomes(Array(
-  new Outcome(id = Array("a, x, true, true"), expect = ACCEPTABLE_INTERESTING, desc = "ok"),
-  new Outcome(id = Array("b, y, true, true"), expect = ACCEPTABLE_INTERESTING, desc = "ok"),
+  new Outcome(id = Array("a, x, true, true"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 won"),
+  new Outcome(id = Array("b, y, true, true"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t2 won"),
+  new Outcome(id = Array("a, y, true, true"), expect = FORBIDDEN, desc = "non-linearizable"),
 ))
 class EmcasAbaTest2 {
 
-  // This a version of `EmcasAbaTest` that is (hopefully)
-  // less dependent of implementation details.
+  // This a version of `EmcasAbaTest1` that is (hopefully)
+  // less dependent of implementation details; but since
+  // we're not forcing the timing, the non-linearizable
+  // result is VERY rare.
 
   private[this] val inst =
     StressTestBase.emcasInst

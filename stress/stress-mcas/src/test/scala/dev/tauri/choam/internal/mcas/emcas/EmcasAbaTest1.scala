@@ -29,14 +29,17 @@ import org.openjdk.jcstress.infra.results.LLLL_Result
 @State
 @Description("EMCAS: ABA problem 1 (should fail if we don't use markers)")
 @Outcomes(Array(
-  new Outcome(id = Array("a, x, true, true"), expect = ACCEPTABLE_INTERESTING, desc = "the only acceptable result"),
+  new Outcome(id = Array("a, x, true, true"), expect = ACCEPTABLE_INTERESTING, desc = "ok, this is the only acceptable result"),
   new Outcome(id = Array("a, y, true, true"), expect = FORBIDDEN, desc = "non-linearizable result"),
 ))
-class EmcasAbaTest {
+class EmcasAbaTest1 {
 
   // This is like the scenario the comment in Emcas.scala mentions:
   // t1: [(r1, "a", "b"), (r2, "x", "y")]
   // t2: [(r1, "b", "a"), (r2, "y", "x")]
+  // We're forcing t2 to start after t1 started installing
+  // descriptors; this makes this test somewhat implementation
+  // dependent, but makes observing a failure more likely.
 
   private[this] val inst =
     StressTestBase.emcasInst
