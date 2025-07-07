@@ -20,6 +20,8 @@ package internal
 package mcas
 package emcas
 
+import scala.runtime.BoxesRunTime.unboxToLong
+
 import org.openjdk.jcstress.annotations.{ Ref => _, _ }
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
@@ -29,10 +31,10 @@ import org.openjdk.jcstress.infra.results.LLLLLL_Result
 @State
 @Description("EMCAS: ABA problem 1/C (should fail if we don't use markers)")
 @Outcomes(Array(
-  new Outcome(id = Array("a, x, 0, 1, 0, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads its own new version"),
-  new Outcome(id = Array("a, x, 0, 1, 1, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads t2's new version"),
-  new Outcome(id = Array("a, y, 0, 1, 0, x"), expect = FORBIDDEN, desc = "non-linearizable result (1)"),
-  new Outcome(id = Array("a, y, 0, 1, 1, x"), expect = FORBIDDEN, desc = "non-linearizable result (2)"),
+  new Outcome(id = Array("a, x, -, -, t1v, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads its own new version"),
+  new Outcome(id = Array("a, x, -, -, t2v, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads t2's new version"),
+  new Outcome(id = Array("a, y, -, -, t1v, x"), expect = FORBIDDEN, desc = "non-linearizable result (1)"),
+  new Outcome(id = Array("a, y, -, -, t2v, x"), expect = FORBIDDEN, desc = "non-linearizable result (2)"),
 ))
 class EmcasAbaTest1c {
 
@@ -69,13 +71,9 @@ class EmcasAbaTest1c {
     val Some((r2v, d3)) = ctx.readMaybeFromLog(r2, d2, canExtend = true) : @unchecked
     Predef.assert(r2v == "x")
     val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("y"))
-    val newVersion = if (ctx.tryPerform(d4) == McasStatus.Successful) {
-      d4.newVersion
-    } else {
-      Version.None
-    }
+    val newVersion = tryPerformEmcas(ctx, d4)
     r.r5 = ctx.readVersion(r2)
-    r.r3 = if (newVersion != Version.None) java.lang.Long.valueOf(newVersion) else "err"
+    r.r3 = newVersion
   }
 
   @Actor
@@ -96,18 +94,12 @@ class EmcasAbaTest1c {
         case "b" =>
           // t1 started, but possibly didn't finish,
           // so our readValue may have helped it;
-          // no we change the values back:
+          // now we change the values back:
           val d2 = d1.overwrite(d1.getOrElseNull(r1).withNv("a"))
           val Some((r2v, d3)) = ctx.readMaybeFromLog(r2, d2, canExtend = true) : @unchecked
           Predef.assert(r2v == "y")
           val d4 = d3.overwrite(d3.getOrElseNull(r2).withNv("x"))
-          if (ctx.tryPerform(d4) == McasStatus.Successful) {
-            // ok, return new version
-            d4.newVersion
-          } else {
-            // this mustn't happen
-            Version.None
-          }
+          tryPerformEmcas(ctx, d4)
       }
     }
 
@@ -119,7 +111,7 @@ class EmcasAbaTest1c {
     // changing it to "y"):
     r.r6 = ctx.readDirect(r2)
 
-    r.r4 = if (newVersion != Version.None) java.lang.Long.valueOf(newVersion) else "err"
+    r.r4 = newVersion
   }
 
   @Arbiter
@@ -128,21 +120,40 @@ class EmcasAbaTest1c {
     r.r1 = ctx.readDirect(r1)
     r.r2 = ctx.readDirect(r2)
     // normalize versions:
-    val ver: Long = r.r5.asInstanceOf[java.lang.Long].longValue()
-    r.r3 match {
-      case t1NewVerBoxed: java.lang.Long =>
-        val t1NewVer: Long = t1NewVerBoxed.longValue()
-        r.r4 match {
-          case t2NewVerBoxed: java.lang.Long =>
-            val t2NewVer: Long = t2NewVerBoxed.longValue()
-            r.r3 = 0
-            r.r4 = t2NewVer - t1NewVer
-            r.r5 = ver - t1NewVer
-          case _ =>
-            // error, we leave it alone
-        }
-      case _ =>
-        // error, we leave it alone
+    val finalVer: Long = ctx.readVersion(r2)
+    val ver: Long = unboxToLong(r.r5)
+    val t1NewVer: Long = unboxToLong(r.r3)
+    val t2NewVer: Long = unboxToLong(r.r4)
+    Predef.assert(t1NewVer < t2NewVer)
+    Predef.assert(t1NewVer < finalVer)
+    val finalNormalized = finalVer - t1NewVer
+    val t2VerNormalized = t2NewVer - t1NewVer
+    val verNormalized = ver - t1NewVer
+    // The version read at the end of t1 should
+    // either be the version committed by t1,
+    // i.e., 0 normalized (if readVersion is fast
+    // enough); or it should be the version
+    // committed by t2, i.e., `t2VerNormalized`.
+    if (verNormalized == 0L) {
+      r.r5 = "t1v"
+      r.r3 = "-"
+      r.r4 = "-"
+    } else if (verNormalized == t2VerNormalized) {
+      r.r5 = "t2v"
+      r.r3 = "-"
+      r.r4 = "-"
+    } else {
+      // it is incorrect, save results for debugging:
+      r.r5 = verNormalized
+      r.r3 = finalNormalized
+      r.r4 = t2VerNormalized
     }
+  }
+
+  private[this] final def tryPerformEmcas(ctx0: Mcas.ThreadContext, desc: AbstractDescriptor): Long = {
+    val ctx = ctx0.asInstanceOf[EmcasThreadContext]
+    val result = ctx.impl.tryPerformDebug0(desc, ctx, Consts.OPTIMISTIC)
+    Predef.assert(EmcasStatusFunctions.isSuccessful(result)) // it should be a "proper" new version
+    result
   }
 }

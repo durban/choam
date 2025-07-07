@@ -31,8 +31,10 @@ import org.openjdk.jcstress.infra.results.LLLLLL_Result
 @Outcomes(Array(
   new Outcome(id = Array("a, x, true, true, x, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads t2's result"),
   new Outcome(id = Array("a, x, true, true, y, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads its own result"),
-  new Outcome(id = Array("a, y, true, true, x, x"), expect = FORBIDDEN, desc = "non-linearizable result (1)"),
-  new Outcome(id = Array("a, y, true, true, y, x"), expect = FORBIDDEN, desc = "non-linearizable result (2)"),
+  new Outcome(id = Array("a, y, true, true, y, x"), expect = FORBIDDEN, desc = "non-linearizable (and t1 reads its own result)"),
+  // Note: the non-linearizable result with t1 reading t2's result
+  // is not really possible, as "y" is the final result, and t1
+  // finishes after t2 in the non-linearizable case.
 ))
 class EmcasAbaTest1b {
 
