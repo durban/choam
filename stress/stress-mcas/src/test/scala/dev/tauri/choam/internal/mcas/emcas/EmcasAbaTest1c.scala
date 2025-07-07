@@ -34,7 +34,10 @@ import org.openjdk.jcstress.infra.results.LLLLLL_Result
   new Outcome(id = Array("a, x, -, -, t1v, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads its own new version"),
   new Outcome(id = Array("a, x, -, -, t2v, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads t2's new version"),
   new Outcome(id = Array("a, y, -, -, t1v, x"), expect = ACCEPTABLE_INTERESTING, desc = "FORBIDDEN: non-linearizable result (1)"),
-  new Outcome(id = Array("a, y, -, -, t2v, x"), expect = ACCEPTABLE_INTERESTING, desc = "FORBIDDEN: non-linearizable result (2)"), // TODO: this doesn't happen
+  // Note: a non-linearizable result with t1 reading t2's version
+  // doesn't seem to happen; due to the incorrect op, t1's version
+  // seems to be the final version (which is of course completely
+  // incorrect).
 ))
 class EmcasAbaTest1c {
 
@@ -125,7 +128,7 @@ class EmcasAbaTest1c {
     val t1NewVer: Long = unboxToLong(r.r3)
     val t2NewVer: Long = unboxToLong(r.r4)
     Predef.assert(t1NewVer < t2NewVer)
-    // Predef.assert(t1NewVer < finalVer) // TODO: this fails
+    // also (t1NewVer < finalVer) should be true, but may not, if we don't use markers (see below)
     val finalNormalized = finalVer - t1NewVer
     val t2VerNormalized = t2NewVer - t1NewVer
     val verNormalized = ver - t1NewVer
@@ -136,28 +139,31 @@ class EmcasAbaTest1c {
     // committed by t2, i.e., `t2VerNormalized`.
     if (verNormalized == 0L) {
       r.r5 = "t1v"
-      if (t1NewVer < finalVer) {
-        r.r3 = "-"
-        r.r4 = "-"
-      } else {
-        r.r3 = t1NewVer.toString
-        r.r4 = finalVer.toString
-      }
+      saveT1AndFinal(t1NewVer = t1NewVer, finalVer = finalVer, r = r)
     } else if (verNormalized == t2VerNormalized) {
       r.r5 = "t2v"
-      if (t1NewVer < finalVer) {
-        r.r3 = "-"
-        r.r4 = "-"
-      } else {
-        r.r3 = t1NewVer.toString
-        r.r4 = finalVer.toString
-      }
+      saveT1AndFinal(t1NewVer = t1NewVer, finalVer = finalVer, r = r)
     } else {
       // it is incorrect, save results for debugging:
       r.r5 = verNormalized
       r.r3 = finalNormalized
       r.r4 = t2VerNormalized
     }
+  }
+
+  private[this] final def saveT1AndFinal(t1NewVer: Long, finalVer: Long, r: LLLLLL_Result): Unit = {
+      if (t1NewVer < finalVer) {
+        r.r3 = "-"
+        r.r4 = "-"
+      } else if (t1NewVer == finalVer) {
+        // this is incorrect, can happen if we don't use marks:
+        r.r3 = "BAD"
+        r.r4 = "BAD"
+      } else {
+        // we don't know what is this, but it's incorrect; just save them for debugging:
+        r.r3 = t1NewVer.toString
+        r.r4 = finalVer.toString
+      }
   }
 
   private[this] final def tryPerformEmcas(ctx0: Mcas.ThreadContext, desc: AbstractDescriptor): Long = {
