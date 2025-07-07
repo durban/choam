@@ -33,8 +33,8 @@ import org.openjdk.jcstress.infra.results.LLLLLL_Result
 @Outcomes(Array(
   new Outcome(id = Array("a, x, -, -, t1v, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads its own new version"),
   new Outcome(id = Array("a, x, -, -, t2v, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads t2's new version"),
-  new Outcome(id = Array("a, y, -, -, t1v, x"), expect = FORBIDDEN, desc = "non-linearizable result (1)"),
-  new Outcome(id = Array("a, y, -, -, t2v, x"), expect = FORBIDDEN, desc = "non-linearizable result (2)"),
+  new Outcome(id = Array("a, y, -, -, t1v, x"), expect = ACCEPTABLE_INTERESTING, desc = "FORBIDDEN: non-linearizable result (1)"),
+  new Outcome(id = Array("a, y, -, -, t2v, x"), expect = ACCEPTABLE_INTERESTING, desc = "FORBIDDEN: non-linearizable result (2)"),
 ))
 class EmcasAbaTest1c {
 

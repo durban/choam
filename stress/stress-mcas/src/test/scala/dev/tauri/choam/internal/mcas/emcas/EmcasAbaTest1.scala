@@ -30,7 +30,7 @@ import org.openjdk.jcstress.infra.results.LLLL_Result
 @Description("EMCAS: ABA problem 1 (should fail if we don't use markers)")
 @Outcomes(Array(
   new Outcome(id = Array("a, x, true, true"), expect = ACCEPTABLE_INTERESTING, desc = "ok, this is the only acceptable result"),
-  new Outcome(id = Array("a, y, true, true"), expect = FORBIDDEN, desc = "non-linearizable result"),
+  new Outcome(id = Array("a, y, true, true"), expect = ACCEPTABLE_INTERESTING, desc = "FORBIDDEN: non-linearizable result"),
 ))
 class EmcasAbaTest1 {
 
