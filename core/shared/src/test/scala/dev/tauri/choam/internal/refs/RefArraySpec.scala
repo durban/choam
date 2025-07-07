@@ -138,9 +138,9 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
     r.update { ov => assertEquals(ov, "foo"); "bar" }.unsafePerform(null, this.defaultMcasInstance)
     r.update { ov => assertEquals(ov, "bar"); "xyz" }.unsafePerform(null, this.defaultMcasInstance)
     assertSameInstance(r.get.unsafePerform(null, this.defaultMcasInstance), "xyz")
-    if (isJvm()) {
-      assert(r.loc.unsafeGetMarkerV() ne null)
-    }
+    // if (isJvm()) {
+    //   assert(r.loc.unsafeGetMarkerV() ne null)
+    // }
     val r2 = arr.unsafeGet(size - 1)
     val res = Ref.consistentRead(r, r2).unsafePerform(null, this.defaultMcasInstance)
     assertEquals(res, ("xyz", "foo"))

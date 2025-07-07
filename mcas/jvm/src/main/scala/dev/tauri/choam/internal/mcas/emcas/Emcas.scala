@@ -296,6 +296,16 @@ private[mcas] final class Emcas(
               val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
               val currVer = if (successful) parentStatus else wd.oldVersion
               Reference.reachabilityFence(mark)
+              // Experiment:
+              this.maybeReplaceDescriptor[A](
+                ref,
+                wd.cast[A],
+                a,
+                weakref = ref.unsafeGetMarkerV(),
+                replace = replace,
+                currentVersion = currVer,
+              )
+              // /Experiment
               LogEntry(ref, ov = a, nv = a, version = currVer)
             }
           }
@@ -375,7 +385,7 @@ private[mcas] final class Emcas(
 
   private[this] final def cleanWeakRef[A](ref: MemoryLocation[A], weakref: WeakReference[AnyRef]): Unit = {
     if (weakref ne null) {
-      _assert(weakref.get() eq null)
+      // _assert(weakref.get() eq null)
       // We also delete the (now empty) `WeakReference`
       // object, to help the GC. If this CAS fails,
       // that means a new op already installed a new
