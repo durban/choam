@@ -368,6 +368,12 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     assertSameInstance(ctx.readDirect(r2), "x")
   }
 
+  test("empty descriptor") {
+    val ctx = mcasImpl.currentContext()
+    val d0 = ctx.start()
+    assert(ctx.tryPerform(d0) == McasStatus.Successful)
+  }
+
   test("singleCasDirect should work without changing the global commitTs") {
     assume(!this.isEmcas)
     val ctx = mcasImpl.currentContext()
