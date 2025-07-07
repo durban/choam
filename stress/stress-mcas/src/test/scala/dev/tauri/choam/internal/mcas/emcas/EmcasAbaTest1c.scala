@@ -33,7 +33,7 @@ import org.openjdk.jcstress.infra.results.LLLLLL_Result
 @Outcomes(Array(
   new Outcome(id = Array("a, x, -, -, t1v, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads its own new version"),
   new Outcome(id = Array("a, x, -, -, t2v, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads t2's new version"),
-  new Outcome(id = Array("a, y, -, -, t1v, x"), expect = ACCEPTABLE_INTERESTING, desc = "FORBIDDEN: non-linearizable result (1)"),
+  new Outcome(id = Array("a, y, BAD, BAD, t1v, x"), expect = ACCEPTABLE_INTERESTING, desc = "FORBIDDEN: non-linearizable result + bad versions"),
   // Note: a non-linearizable result with t1 reading t2's version
   // doesn't seem to happen; due to the incorrect op, t1's version
   // seems to be the final version (which is of course completely
