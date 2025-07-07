@@ -34,7 +34,7 @@ import org.openjdk.jcstress.infra.results.LLLLLL_Result
   new Outcome(id = Array("a, x, -, -, t1v, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads its own new version"),
   new Outcome(id = Array("a, x, -, -, t2v, x"), expect = ACCEPTABLE_INTERESTING, desc = "ok, t1 reads t2's new version"),
   new Outcome(id = Array("a, y, -, -, t1v, x"), expect = ACCEPTABLE_INTERESTING, desc = "FORBIDDEN: non-linearizable result (1)"),
-  new Outcome(id = Array("a, y, -, -, t2v, x"), expect = ACCEPTABLE_INTERESTING, desc = "FORBIDDEN: non-linearizable result (2)"),
+  new Outcome(id = Array("a, y, -, -, t2v, x"), expect = ACCEPTABLE_INTERESTING, desc = "FORBIDDEN: non-linearizable result (2)"), // TODO: this doesn't happen
 ))
 class EmcasAbaTest1c {
 
@@ -136,12 +136,22 @@ class EmcasAbaTest1c {
     // committed by t2, i.e., `t2VerNormalized`.
     if (verNormalized == 0L) {
       r.r5 = "t1v"
-      r.r3 = "-"
-      r.r4 = "-"
+      if (t1NewVer < finalVer) {
+        r.r3 = "-"
+        r.r4 = "-"
+      } else {
+        r.r3 = t1NewVer.toString
+        r.r4 = finalVer.toString
+      }
     } else if (verNormalized == t2VerNormalized) {
       r.r5 = "t2v"
-      r.r3 = "-"
-      r.r4 = "-"
+      if (t1NewVer < finalVer) {
+        r.r3 = "-"
+        r.r4 = "-"
+      } else {
+        r.r3 = t1NewVer.toString
+        r.r4 = finalVer.toString
+      }
     } else {
       // it is incorrect, save results for debugging:
       r.r5 = verNormalized
