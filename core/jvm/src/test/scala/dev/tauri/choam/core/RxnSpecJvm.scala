@@ -475,7 +475,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         latch1.countDown()
         leftTries.getAndIncrement()
         latch2.await()
-      } *> ex.exchange.provide("foo").flatMapF { exVal =>
+      } *> ex.exchange("foo").flatMapF { exVal =>
         ref1.getAndUpdate(_ + 1).map { ov =>
           (ov, exVal)
         }
@@ -486,7 +486,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         latch1.countDown()
         rightTries.getAndIncrement()
         latch2.await()
-      } *> ex.dual.exchange.provide(42)
+      } *> ex.dual.exchange(42)
       rrr <- F.both(
         concurrentUpdate1,
         F.both(left.run[F], right.run[F])
@@ -557,8 +557,8 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     val t = for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("x").run[F]
-      rxn1 = r1.getAndSet.provide("b") *> r2.get // [(r1, "a", "b"), (r2, "x", "x")]
-      rxn2 = r2.getAndSet.provide("y") *> r1.get // [(r1, "a", "a"), (r2, "x", "y")]
+      rxn1 = r1.getAndSet("b") *> r2.get // [(r1, "a", "b"), (r2, "x", "x")]
+      rxn2 = r2.getAndSet("y") *> r1.get // [(r1, "a", "a"), (r2, "x", "y")]
       rss <- F.both(rxn1.run[F], rxn2.run[F])
       (rs1, rs2) = rss
       _ <- assertF(((rs1 === "x") && (rs2 === "b")) || ((rs1 === "y") && (rs2 === "a")))
@@ -575,8 +575,8 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         case true => r1.get
         case false => r2.get
       }
-      rxn1 = r1.getAndSet.provide("b") *> r2.get // [(r1, "a", "b"), (r2, "x", "x")]
-      rxn2 = r2.getAndSet.provide("y") *> r1.get // [(r1, "a", "a"), (r2, "x", "y")]
+      rxn1 = r1.getAndSet("b") *> r2.get // [(r1, "a", "b"), (r2, "x", "x")]
+      rxn2 = r2.getAndSet("y") *> r1.get // [(r1, "a", "a"), (r2, "x", "y")]
       rss <- F.both(rxn0.run[F], F.both(rxn1.run[F], rxn2.run[F]))
       (rs0, (rs1, rs2)) = rss
       _ <- assertF((rs0 === "a") || (rs0 === "b") || (rs0 === "x") || (rs0 === "y"))
@@ -635,7 +635,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     val t = for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("x").run[F]
-      rxn1 = r1.set0.provide("b") *> r2.set1("y")
+      rxn1 = r1.set("b") *> r2.set1("y")
       rxn2 = r2.get * r1.get
       rss <- F.both(rxn1.run[F], rxn2.run[F])
       _ <- assertF((rss._2 === ("x", "a")) || (rss._2 === ("y", "b")))
@@ -649,10 +649,10 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     val t = for {
       r1 <- Ref(0).run[F]
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      left = (ex.exchange.provide("foo").flatMapF { (exchanged: Int) =>
+      left = (ex.exchange("foo").flatMapF { (exchanged: Int) =>
         Rxn.unsafe.panic(exc).as(exchanged)
       }) + Axn.pure(0)
-      right = ex.dual.exchange.provide(42).flatMapF { (exchanged: String) =>
+      right = ex.dual.exchange(42).flatMapF { (exchanged: String) =>
         r1.update(_ + 1).as(exchanged)
       } + Axn.pure("fallback")
       rr <- F.both(
@@ -685,10 +685,10 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       rPcLeft <- Ref(0).run[F]
       rPcRight <- Ref(0).run[F]
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      left = ((ex.exchange.provide("foo").flatMapF { (exchanged: Int) =>
+      left = ((ex.exchange("foo").flatMapF { (exchanged: Int) =>
         Rxn.unsafe.panic(exc).as(exchanged)
       }) + Axn.pure(0)).postCommit(Rxn.unsafe.panic(exc2)).postCommit(rPcLeft.update(_ + 1))
-      right = (ex.dual.exchange.provide(42).flatMapF { (exchanged: String) =>
+      right = (ex.dual.exchange(42).flatMapF { (exchanged: String) =>
         r1.update(_ + 1).as(exchanged)
       } + Axn.pure("fallback")).postCommit(Rxn.unsafe.panic(exc3)).postCommit(rPcRight.update(_ + 1))
       rr <- F.both(
