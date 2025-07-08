@@ -71,9 +71,9 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     for {
       ref <- newRef("ert")
       rea = Rxn.pure("foo") × (Rxn.unsafe.cas(ref, "ert", "xyz").map(_ => "boo"))
-      s12 <- rea.run((5, ()))
+      s12 <- rea.run[F]
       (s1, s2) = s12
-      _ <- assertEqualsF(s1, "5")
+      _ <- assertEqualsF(s1, "foo")
       _ <- assertEqualsF(s2, "boo")
       _ <- assertResultF(Rxn.unsafe.directRead(ref).run[F], "xyz")
     } yield ()
@@ -104,7 +104,7 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       }
       res <- Rxn.loc.upd[String, Int, Double](r2) { (ov, i) =>
         (ov + "b", i.toDouble + 0.5)
-      }.run[F](42)
+      }.run[F]
       _ <- assertEqualsF(res, 42.5)
       _ <- assertResultF(r1.get.run[F], "ab")
     } yield ()
@@ -122,10 +122,10 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
   test("Ref.array") {
     for {
       a <- Ref.array[String](size = 4, initial = "x").run[F]
-      _ <- a.unsafeGet(0).getAndSet.run("a")
-      _ <- a.unsafeGet(1).getAndSet.run("b")
-      _ <- a.unsafeGet(2).getAndSet.run("c")
-      _ <- a.unsafeGet(3).getAndSet.run("d")
+      _ <- a.unsafeGet(0).getAndSet("a").run
+      _ <- a.unsafeGet(1).getAndSet("b").run
+      _ <- a.unsafeGet(2).getAndSet("c").run
+      _ <- a.unsafeGet(3).getAndSet("d").run
       sw02 = Ref.swap(a.unsafeGet(0), a.unsafeGet(2))
       sw13 = Ref.swap(a.unsafeGet(1), a.unsafeGet(3))
       _ <- (sw02 * sw13).run[F]
@@ -150,7 +150,7 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         (tlr.nextInt().abs % (N - 2)) + 1
       }
       _ <- assertResultF(a.unsafeGet(idx).get.run[F], "x")
-      _ <- a.unsafeGet(idx).getAndSet.run[F]("foo")
+      _ <- a.unsafeGet(idx).getAndSet("foo").run
       _ <- assertResultF(a.unsafeGet(0).get.run[F], "x")
       _ <- assertResultF(a.unsafeGet(idx).get.run[F], "foo")
       _ <- assertResultF(a.unsafeGet(N - 1).get.run[F], "x")
@@ -230,13 +230,13 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Ref#update1 and #update2") {
+  test("Ref#update1") {
     for {
       r <- newRef("a")
       _ <- assertResultF(r.update1(_ + "b").run[F], ())
       _ <- assertResultF(r.get.run[F], "ab")
-      _ <- assertResultF(r.update2[String] { (ov, in) => ov + in + "d" }.run[F]("c"), ())
-      _ <- assertResultF(r.get.run[F], "abcd")
+      _ <- assertResultF(r.update1 { (ov) => ov + "c" }.run[F], ())
+      _ <- assertResultF(r.get.run[F], "abc")
     } yield ()
   }
 
@@ -245,7 +245,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       x <- newRef[Int](1)
       y <- newRef[Int](2)
       _ <- assertResultF(
-        (x.update(_ + 1) >>> y.update(_ + 1)).run[F],
+        (x.update(_ + 1) *> y.update(_ + 1)).run[F],
         ()
       )
       _ <- assertResultF(x.get.run[F], 2)
@@ -266,11 +266,11 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Ref#getAndSet") {
     for {
       r <- newRef("a")
-      _ <- assertResultF(r.getAndSet.run[F]("b"), "a")
+      _ <- assertResultF(r.getAndSet("b").run, "a")
       _ <- assertResultF(r.get.run[F], "b")
       rxn = r.get.flatMapF { v1 =>
-        r.set0.provide("x").flatMapF { _ =>
-          r.getAndSet.provide("y").map { v2 => (v1, v2) }
+        r.set("x").flatMap { _ =>
+          r.getAndSet("y").map { v2 => (v1, v2) }
         }
       }
       _ <- assertResultF(rxn.run[F], ("b", "x"))
@@ -297,8 +297,8 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Ref#set0") {
     for {
       r <- newRef("a")
-      s0b = r.set0.provide("b")
-      s0c = r.set0.provide("c")
+      s0b = r.set("b")
+      s0c = r.set("c")
       _ <- assertResultF(rF.apply(s0b, 42), ())
       _ <- assertResultF(r.get.run[F], "b")
       _ <- assertResultF(s0c.run[F], ())
@@ -313,7 +313,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("RefLike#getAndUpd") {
     for {
       r <- newRef("a")
-      _ <- assertResultF(r.getAndUpd[Int] { (ov, i) => ov + i.toString }.run[F](42), "a")
+      _ <- assertResultF(r.getAndUpdate { ov => ov + "42" }.run[F], "a")
       _ <- assertResultF(r.get.run[F], "a42")
     } yield ()
   }
@@ -321,7 +321,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("RefLike#updAndGet") {
     for {
       r <- newRef("a")
-      _ <- assertResultF(r.updAndGet[Int] { (ov, i) => ov + i.toString }.run[F](42), "a42")
+      _ <- assertResultF(r.updateAndGet { ov => ov + "42" }.run[F], "a42")
       _ <- assertResultF(r.get.run[F], "a42")
     } yield ()
   }

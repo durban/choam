@@ -35,11 +35,11 @@ sealed trait RefLike[A] {
 
   def upd[B, C](f: (A, B) => (A, C)): Rxn[C]
 
-  def set1(a: A): Axn[Unit] // TODO: create a `set` alias(?)
+  def set1(a: A): Axn[Unit] // TODO: remove
+
+  def set(a: A): Axn[Unit] = set1(a)
 
   def update1(f: A => A): Axn[Unit]
-
-  def update2[B](f: (A, B) => A): Rxn[Unit]
 
   // derived:
 
