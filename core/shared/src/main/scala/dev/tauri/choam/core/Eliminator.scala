@@ -19,8 +19,8 @@ package dev.tauri.choam
 package core
 
 sealed trait Eliminator[-A, +B, -C, +D] {
-  def leftOp: A =#> B
-  def rightOp: C =#> D
+  def leftOp(a: A): Rxn[B]
+  def rightOp(c: C): Rxn[D]
 }
 
 object Eliminator {

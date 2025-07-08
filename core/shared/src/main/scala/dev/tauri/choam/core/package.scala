@@ -20,7 +20,7 @@ package dev.tauri.choam
 package object core {
 
   /** Symbolic alias for `Rxn` */
-  final type =#>[-A, +B] = Rxn[A, B]
+  final type =#>[-A, +B] = Rxn[B]
 
   /**
    * The description of an effect, which (when executed),
@@ -36,5 +36,5 @@ package object core {
    * `Axn[A] ≡ Rxn[Any, A]`; or, alternatively
    * `Rxn[A, B] ≡ (A => Axn[B])` (see [[dev.tauri.choam.core.Rxn!.toFunction toFunction]]).
    */
-  final type Axn[+A] = Rxn[Any, A] // short for 'astaxanthin'
+  final type Axn[+A] = Rxn[A] // short for 'astaxanthin'
 }

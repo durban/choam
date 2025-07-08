@@ -86,7 +86,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Choice after >>>") {
+  test("Choice after *>") {
     for {
       a <- Ref("a").run[F]
       b <- Ref("b").run[F]
@@ -95,11 +95,11 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       q <- Ref("q").run[F]
       rea = (
         (
-          (Rxn.unsafe.cas(a, "a", "aa") + (Rxn.unsafe.cas(b, "b", "bb") >>> Rxn.unsafe.delay { _ =>
+          (Rxn.unsafe.cas(a, "a", "aa") + (Rxn.unsafe.cas(b, "b", "bb") *> Axn.unsafe.delay {
             this.mcasImpl.currentContext().tryPerformSingleCas(y.loc, "y", "-")
-          }).void) >>> Rxn.unsafe.cas(y, "-", "yy")
+          }).void) *> Rxn.unsafe.cas(y, "-", "yy")
         ) +
-        (Rxn.unsafe.cas(p, "p", "pp") >>> Rxn.unsafe.cas(q, "q", "qq"))
+        (Rxn.unsafe.cas(p, "p", "pp") *> Rxn.unsafe.cas(q, "q", "qq"))
       )
       _ <- assertResultF(F.delay { rea.unsafePerform((), this.mcasImpl) }, ())
       _ <- assertResultF(Rxn.unsafe.directRead(a).run, "a")
@@ -114,9 +114,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       a <- Ref("a").run[F]
       p <- Ref("p").run[F]
-      rea = a.update(_ => "b") >>> (
-        (a.getAndUpdate(_ => "c") >>> p.getAndSet >>> Rxn.unsafe.retry) +
-        (a.getAndUpdate(_ => "x") >>> p.getAndSet)
+      rea = a.update(_ => "b") *> (
+        (a.getAndUpdate(_ => "c").flatMap(p.getAndSet) *> Rxn.unsafe.retry) +
+        (a.getAndUpdate(_ => "x").flatMap(p.getAndSet))
       )
       _ <- assertResultF(F.delay { rea.unsafePerform((), this.mcasImpl) }, "p")
       _ <- assertResultF(Rxn.unsafe.directRead(a).run, "x")
@@ -132,9 +132,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       pc2 <- Ref("-").run[F]
       pc3 <- Ref("").run[F]
       pc4 <- Ref("").run[F]
-      rea = (Rxn.postCommit(pc1.update(_ + "pc1")) *> r0.update(_ + "b")) >>> (
-        (Rxn.postCommit(pc2.update(_ + "pc2")).postCommit(pc4.update(_ + "-")) *> Rxn.unsafe.cas(r1, "-", "b")) + ( // <- this will fail
-          Rxn.postCommit(pc3.update(_ + "pc3")).postCommit(pc4.update(_ + "pc4")) *> Rxn.unsafe.cas(r1, "a", "c")
+      rea = (Rxn.postCommit(pc1.update(_ + "pc1")) *> r0.update(_ + "b")) *> (
+        (Rxn.postCommit(pc2.update(_ + "pc2")).postCommit(_ => pc4.update(_ + "-")) *> Rxn.unsafe.cas(r1, "-", "b")) + ( // <- this will fail
+          Rxn.postCommit(pc3.update(_ + "pc3")).postCommit(_ => pc4.update(_ + "pc4")) *> Rxn.unsafe.cas(r1, "a", "c")
         )
       )
       _ <- rea.run
@@ -156,11 +156,11 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r3a <- Ref("3a").run[F]
       r3b <- Ref("3b").run[F]
       rea = {
-        Rxn.unsafe.cas(r1a, "1a", "xa") >>>
-        Rxn.unsafe.cas(r1b, "1b", "xb") >>>
+        Rxn.unsafe.cas(r1a, "1a", "xa") *>
+        Rxn.unsafe.cas(r1b, "1b", "xb") *>
         (
-          (Rxn.unsafe.cas(r2a, "2a", "ya") >>> Rxn.unsafe.cas(r2b, "2b", "yb")) +
-          (Rxn.unsafe.cas(r3a, "3a", "za") >>> Rxn.unsafe.cas(r3b, "3b", "zb"))
+          (Rxn.unsafe.cas(r2a, "2a", "ya") *> Rxn.unsafe.cas(r2b, "2b", "yb")) +
+          (Rxn.unsafe.cas(r3a, "3a", "za") *> Rxn.unsafe.cas(r3b, "3b", "zb"))
         )
       }
       // 1st choice selected:
@@ -195,12 +195,11 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r3a <- Ref("3a").run[F]
       r3b <- Ref("3b").run[F]
       rea = {
-        Rxn.unsafe.directRead(r1a) >>>
-        Rxn.computed { s =>
+        Rxn.unsafe.directRead(r1a).flatMap { s =>
           if (s eq "1a") {
-            Rxn.unsafe.cas(r1b, "1b", "xb") >>> (Rxn.unsafe.cas(r2a, "2a", "ya") + Rxn.unsafe.cas(r3a, "3a", "za"))
+            Rxn.unsafe.cas(r1b, "1b", "xb") *> (Rxn.unsafe.cas(r2a, "2a", "ya") + Rxn.unsafe.cas(r3a, "3a", "za"))
           } else {
-            Rxn.unsafe.cas(r1b, "1b", "xx") >>> (Rxn.unsafe.cas(r2b, "2b", "yb") + Rxn.unsafe.cas(r3b, "3b", "zb"))
+            Rxn.unsafe.cas(r1b, "1b", "xx") *> (Rxn.unsafe.cas(r2b, "2b", "yb") + Rxn.unsafe.cas(r3b, "3b", "zb"))
           }
         }
       }
@@ -331,7 +330,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     okRef3 <- Ref("foo3").run
     okRef4 <- Ref("foo4").run
     failRef <- Ref("fail").run
-    left = ok1 >>> ((ok2 >>> (Rxn.unsafe.cas(failRef, "x_fail", "y_fail") + Rxn.unsafe.retry)) + Rxn.unsafe.cas(okRef3, "foo3", "bar3"))
+    left = ok1 *> ((ok2 *> (Rxn.unsafe.cas(failRef, "x_fail", "y_fail") + Rxn.unsafe.retry)) + Rxn.unsafe.cas(okRef3, "foo3", "bar3"))
     right = Rxn.unsafe.cas(okRef4, "foo4", "bar4")
     r = left + right
     _ <- assertResultF(r.run[F], ())
@@ -379,7 +378,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           rRefs.traverse { ref => ref.update(_ => or).run[F] }
         }.void
       }
-    } yield (((left >>> leftCont) + (right >>> rightCont)).void, reset)
+    } yield (((left *> leftCont) + (right *> rightCont)).void, reset)
 
     for {
       leafs <- (0 until 16).toList.traverse(idx => Ref(s"foo-${idx}").run[F])
@@ -509,7 +508,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r1 <- Ref("a").run[F]
       r2 <- Ref("b").run[F]
       rxn = (
-        (r1.update(_ + "a").postCommit(log.update("a" :: _)) >>> Rxn.unsafe.retry) + (
+        (r1.update(_ + "a").postCommit(log.update("a" :: _)) *> Rxn.unsafe.retry) + (
           r1.update(_ + "b").postCommit(log.update("b" :: _)).postCommit(log.update("b2" :: _))
         ) >>> Rxn.postCommit(log.update("x" :: _)).postCommit(log.update("y" :: _))
       ) * (
@@ -530,8 +529,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       save2 <- Ref(-1).run
       save3 <- Ref(-1).run
       r = r1.update(_ + 1).postCommit(
-        (r2.update(_ + 1) *> r1.getAndSet.provide(42).flatMapF(save1.set1)).postCommit(
-          (r1.get >>> save2.set0) *> (r2.get >>> save3.set0)
+        (r2.update(_ + 1) *> r1.getAndSet(42).flatMap(save1.set1)).postCommit(
+          (r1.get.flatMap(save2.set1)) *> (r2.get.flatMap(save3.set1))
         )
       )
       _ <- r.run[F]
@@ -1692,12 +1691,12 @@ private[choam] object RxnSpec {
 
   private[choam] class MyException extends Exception
 
-  private[choam] val throwingRxns = List[Rxn[Any, Any]](
+  private[choam] val throwingRxns = List[Rxn[Any]](
     Rxn.unit.map(_ => throw new MyException),
     Rxn.unit.flatMapF(_ => throw new MyException),
-    Rxn.unit[Any].flatMap[Any, Unit](_ => throw new MyException),
+    Rxn.unit.flatMap[Unit](_ => throw new MyException),
     Rxn.unsafe.delay[Any, Unit] { _ => throw new MyException },
     Axn.unsafe.delay[Unit] { throw new MyException },
-    Axn.pure(42L).postCommit(Rxn.unit.map(_ => throw new MyException)),
+    Axn.pure(42L).postCommit(_ => Rxn.unit.map(_ => throw new MyException)),
   )
 }

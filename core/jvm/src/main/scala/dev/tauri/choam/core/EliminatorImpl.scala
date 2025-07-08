@@ -33,9 +33,9 @@ private[choam] abstract class EliminatorImpl[-A, +B, -C, +D] private[choam] (
   private[this] val exchanger: Exchanger[A, C] =
     Exchanger.unsafe[A, C]
 
-  final override val leftOp: A =#> B =
-    underlyingLeft + exchanger.exchange.map(transformRight)
+  final override def leftOp(a: A): Rxn[B] =
+    underlyingLeft + exchanger.exchange(a).map(transformRight)
 
-  final override val rightOp: C =#> D =
-    underlyingRight + exchanger.dual.exchange.map(transformLeft)
+  final override def rightOp(c: C): Rxn[D] =
+    underlyingRight + exchanger.dual.exchange(c).map(transformLeft)
 }

@@ -51,7 +51,7 @@ sealed trait Txn[+B] {
 
   def orElse[Y >: B](that: Txn[Y]): Txn[Y]
 
-  private[choam] def impl: RxnImpl[Any, B]
+  private[choam] def impl: RxnImpl[B]
 }
 
 object Txn extends TxnInstances0 {
@@ -62,7 +62,7 @@ object Txn extends TxnInstances0 {
     Rxn.pureImpl(a)
 
   final def unit: Txn[Unit] =
-    Rxn.unitImpl[Any]
+    Rxn.unitImpl
 
   final def retry[A]: Txn[A] =
     Rxn.StmImpl.retryWhenChanged[A]
@@ -112,7 +112,7 @@ object Txn extends TxnInstances0 {
 
     /** Only for testing! */
     private[choam] final def plus[A](t1: Txn[A], t2: Txn[A]): Txn[A] = {
-      t1.asInstanceOf[RxnImpl[Any, A]] + t2.asInstanceOf[RxnImpl[Any, A]]
+      t1.asInstanceOf[RxnImpl[A]] + t2.asInstanceOf[RxnImpl[A]]
     }
   }
 

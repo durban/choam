@@ -29,23 +29,21 @@ sealed trait RefLike[A] {
 
   def get: Axn[A]
 
-  def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C]
+  def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[C]
 
   // primitive (for performance):
 
-  def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C]
-
-  def set0: Rxn[A, Unit]
+  def upd[B, C](f: (A, B) => (A, C)): Rxn[C]
 
   def set1(a: A): Axn[Unit] // TODO: create a `set` alias(?)
 
   def update1(f: A => A): Axn[Unit]
 
-  def update2[B](f: (A, B) => A): Rxn[B, Unit]
+  def update2[B](f: (A, B) => A): Rxn[Unit]
 
   // derived:
 
-  final def getAndSet: Rxn[A, A] =
+  final def getAndSet(nv: A): Rxn[A] =
     upd[A, A] { (oa, na) => (na, oa) }
 
   @inline
@@ -64,7 +62,7 @@ sealed trait RefLike[A] {
     upd[Any, A] { (oa, _) => (f(oa), oa) }
 
   /** Returns previous value */
-  final def getAndUpd[B](f: (A, B) => A): Rxn[B, A] = // TODO: optimize
+  final def getAndUpd[B](f: (A, B) => A): Rxn[A] = // TODO: optimize
     upd[B, A] { (oa, b) => (f(oa, b), oa) }
 
     /** Returns previous value */
@@ -80,7 +78,7 @@ sealed trait RefLike[A] {
   }
 
   /** Returns new value */
-  final def updAndGet[B](f: (A, B) => A): Rxn[B, A] = { // TODO: optimize
+  final def updAndGet[B](f: (A, B) => A): Rxn[A] = { // TODO: optimize
     upd[B, A] { (oa, b) =>
       val na = f(oa, b)
       (na, na)
@@ -124,7 +122,7 @@ private[choam] object RefLike {
       self.get.run[F]
 
     override def set(a: A): F[Unit] =
-      self.set0.run[F](a)
+      self.set1(a).run[F]
 
     override def access: F[(A, A => F[Boolean])] = {
       F.monad.map(this.get) { ov =>

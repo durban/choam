@@ -145,7 +145,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       _ <- fib.cancel
       _ <- assertResultF(ref.get.run[F], n + 1) // no change
       // but it *seems* to work with small numbers:
-      _ <- ref.getAndSet.run[F](42)
+      _ <- ref.getAndSet(42).run[F]
       _ <- unsafeRxn.run[F]
       _ <- assertResultF(ref.get.run[F], 43)
     } yield ()
@@ -230,7 +230,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         }.flatMapF { _ =>
           ref.get.flatMapF { v2 =>
             log.accumulateAndGet(List(v2), (l1, l2) => l1 ++ l2)
-            Rxn.pure(v2 + "a") >>> ref.getAndSet
+            Rxn.pure(v2 + "a").flatMap(ref.getAndSet)
           }
         }
       }
@@ -316,7 +316,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         Rxn.unsafe.forceValidate.as(v1)
       }
       tsk1 = rxn1.run[F]
-      rxn2 = r2.set0.provide("y")
+      rxn2 = r2.set1("y")
       tsk2 = F.delay(latch1.await()) *> rxn2.run[F] *> F.delay(latch2.countDown())
       v1 <- F.both(tsk1, tsk2).map(_._1)
       _ <- assertEqualsF(v1, "b")

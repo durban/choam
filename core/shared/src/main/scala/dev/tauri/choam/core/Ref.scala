@@ -39,22 +39,19 @@ sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A]
   final override def get: Axn[A] =
     this
 
-  final override def set0: Rxn[A, Unit] =
-    Rxn.ref.updSet0(this)
-
   final override def set1(a: A): Axn[Unit] =
     Rxn.ref.updSet1(this, a)
 
   final override def update1(f: A => A): Axn[Unit] =
     Rxn.ref.updUpdate1(this)(f)
 
-  final override def update2[B](f: (A, B) => A): Rxn[B, Unit] =
+  final override def update2[B](f: (A, B) => A): Rxn[Unit] =
     Rxn.ref.updUpdate2(this)(f)
 
-  final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] =
+  final override def upd[B, C](f: (A, B) => (A, C)): Rxn[C] =
     Rxn.ref.upd(this)(f)
 
-  final override def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] =
+  final override def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[C] =
     Rxn.ref.updWith(this)(f)
 
   final override def toCats[F[_]](implicit F: core.Reactive[F]): CatsRef[F, A] =

@@ -39,8 +39,8 @@ private sealed trait ExchangerImplJvm[A, B]
 
   protected def initializeIfNeeded(retInc: Boolean): AtomicReferenceArray[ExchangerNode[?]]
 
-  final override def exchange: Rxn[A, B] =
-    Rxn.internal.exchange[A, B](this)
+  final override def exchange(a: A): Rxn[B] = ???
+    //Rxn.internal.exchange[A, B](this)
 
   private[this] final val isDebug =
     false

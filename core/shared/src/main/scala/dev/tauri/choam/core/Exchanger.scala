@@ -21,7 +21,7 @@ package core
 import java.util.concurrent.atomic.LongAdder
 
 private[choam] sealed trait Exchanger[A, B] {
-  def exchange: Rxn[A, B]
+  def exchange(a: A): Rxn[B]
   def dual: Exchanger[B, A]
   private[core] def key: Exchanger.Key
 }
@@ -61,15 +61,15 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
     private[this] val isPrimary: Boolean =
       d eq null
 
-    final override def exchange: Rxn[A, B] = {
+    final override def exchange(a: A): Rxn[B] = {
       // Every exchange has 2 sides, so only
       // the primary side increments the counter:
       if (this.isPrimary) {
-        underlying.exchange.postCommit(Axn.unsafe.delay {
+        underlying.exchange(a).postCommit(_ => Axn.unsafe.delay {
           counter.increment()
         })
       } else {
-        underlying.exchange
+        underlying.exchange(a)
       }
     }
 

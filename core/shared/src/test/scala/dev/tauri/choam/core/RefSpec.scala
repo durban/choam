@@ -70,7 +70,7 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
   test("Simple CAS should work as expected") {
     for {
       ref <- newRef("ert")
-      rea = lift((_: Int).toString) × (Rxn.unsafe.cas(ref, "ert", "xyz") >>> lift(_ => "boo"))
+      rea = Rxn.pure("foo") × (Rxn.unsafe.cas(ref, "ert", "xyz").map(_ => "boo"))
       s12 <- rea.run((5, ()))
       (s1, s2) = s12
       _ <- assertEqualsF(s1, "5")
