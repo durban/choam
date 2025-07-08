@@ -80,11 +80,15 @@ trait PubSubSpec[F[_]]
     test(s"$name - racing publishers (bufferSize = 1)") {
       val N = 512
       val nums = (1 to N).toVector
-      val str2 = str.fold(
-        unbounded = str, // can't set buffer size
-        backpressure = _ => OverflowStrategy.backpressure(1),
-        dropOldest = _ => OverflowStrategy.dropOldest(1),
-        dropNewest = _ => OverflowStrategy.dropNewest(1),
+      val defaultRepl = 5
+      val (str2, repl) = str.fold(
+        unbounded = (
+          str, // can't set buffer size
+          30, // we repeat the unbounded test more times (because it has a small chance of failing if markers are mishandled)
+        ),
+        backpressure = _ => (OverflowStrategy.backpressure(1), defaultRepl),
+        dropOldest = _ => (OverflowStrategy.dropOldest(1), defaultRepl),
+        dropNewest = _ => (OverflowStrategy.dropNewest(1), defaultRepl),
       )
       val t = for {
         hub <- PubSub[F, Int](str2).run[F]
@@ -107,7 +111,7 @@ trait PubSubSpec[F[_]]
         )
         _ <- checkOrder(v1, str2) // we may lose items, but the order must be correct
       } yield ()
-      t.replicateA_(if (isJs()) 1 else 5)
+      t.replicateA_(if (isJs()) 1 else repl)
     }
   }
 

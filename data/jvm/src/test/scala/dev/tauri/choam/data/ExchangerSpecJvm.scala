@@ -310,8 +310,12 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         case Left(ex) => assertF(ex.isInstanceOf[Rxn.MaxRetriesReached], s"unexpected error (right): ${ex}")
         case Right(r) => failF(s"unexpected success (right): $r")
       }
-      _ <- assertResultF(F.delay(leftReceived.get()), 123)
-      _ <- assertResultF(F.delay(rightReceived.get()), 42)
+      leftRec <- F.delay(leftReceived.get())
+      rightRec <- F.delay(rightReceived.get())
+      // Note: there is a chance that the 2 threads never even meet,
+      // and no exchange happens at all, so -1 is allowed here.
+      _ <- assertF((clue(leftRec) == 123) || (leftRec == -1))
+      _ <- assertF((clue(rightRec) == 42) || (rightRec == -1))
       _ <- assertResultF(ref.get.run[F], countBgWrites.get())
     } yield ()
   }

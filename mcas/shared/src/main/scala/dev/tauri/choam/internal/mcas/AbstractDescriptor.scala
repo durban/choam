@@ -52,7 +52,7 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   private[mcas] def addVersionCas(commitTsRef: MemoryLocation[Long]): AbstractDescriptor.Aux[D]
 
-  private[mcas] final def newVersion: Long =
+  private[mcas] final def newVersion: Long = // TODO: this is incorrect for EMCAS
     this.validTs + this.versionIncr
 
   private[choam] def hwdIterator: Iterator[LogEntry[Any]]

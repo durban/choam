@@ -713,6 +713,10 @@ private[mcas] final class Emcas(
                 twr
               }
             case wd: LogEntry[_] =>
+              // TODO: we could validate `wd` here; we'd still
+              // TODO: need to validate after ACQUIRE, but if
+              // TODO: it's invalid here, we could abort earlier;
+              // TODO: need to experiment to see if it's worth doing...
               // read-only WD, which we don't
               // need to install; continue, but
               // we'll need to revalidate later:
@@ -1042,6 +1046,20 @@ private[mcas] final class Emcas(
   }
 
   private[mcas] final def tryPerformDebug(desc: AbstractDescriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
+    val emcasRes = tryPerformDebug0(desc, ctx, optimism)
+    if (EmcasStatusFunctions.isSuccessful(emcasRes)) {
+      // `Emcas` stores a version in the descriptor,
+      // to signify success; however, here we return
+      // a constant, to follow the `Mcas` API:
+      McasStatus.Successful
+    } else {
+      _assert((emcasRes == McasStatus.Successful) || (emcasRes == McasStatus.FailedVal) || (emcasRes == Version.Reserved))
+      emcasRes
+    }
+  }
+
+  /** Note: returns the internal EMCAS result, and NOT the public `Mcas` result! */
+  private[mcas] final def tryPerformDebug0(desc: AbstractDescriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
     if (desc.nonEmpty) {
       _assert(!desc.readOnly)
       val instRo = (optimism.toInt : @switch) match {
@@ -1052,12 +1070,7 @@ private[mcas] final class Emcas(
       val fullDesc = new EmcasDescriptor(desc, instRo = instRo)
       if (fullDesc.getWordsP() ne null) {
         val res = MCAS(desc = fullDesc, ctx = ctx, seen = 0L)
-        if (EmcasStatusFunctions.isSuccessful(res)) {
-          // `Emcas` stores a version in the descriptor,
-          // to signify success; however, here we return
-          // a constant, to follow the `Mcas` API:
-          McasStatus.Successful
-        } else if (res == EmcasStatus.CycleDetected) {
+        if (res == EmcasStatus.CycleDetected) {
           _assert(!instRo)
           // we detected a (possible) cycle, so
           // we'll fall back to the method which
@@ -1066,17 +1079,15 @@ private[mcas] final class Emcas(
           val fallback = fullDesc.fallback
           _assert(fallback.instRo)
           val fbRes = MCAS(fallback, ctx = ctx, seen = 0L)
-          if (EmcasStatusFunctions.isSuccessful(fbRes)) {
-            McasStatus.Successful
-          } else {
-            // now we can't get CycleDetected for sure
-            _assert(fbRes == McasStatus.FailedVal)
-            // but we signal, that previously there WAS a cycle:
+          _assert(fbRes != EmcasStatus.CycleDetected) // now we can't get CycleDetected
+          if (fbRes == McasStatus.FailedVal) {
+            // we signal, that previously there WAS a cycle:
             Version.Reserved
+          } else {
+            fbRes
           }
         } else {
-          _assert(res == McasStatus.FailedVal)
-          McasStatus.FailedVal
+          res
         }
       } else {
         // The `readOnly` status of the `AbstractDescriptor`
