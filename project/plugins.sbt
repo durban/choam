@@ -22,6 +22,7 @@ addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 addSbtPlugin("pl.project13.sbt" % "sbt-jol" %  "0.1.4")
 addSbtPlugin("io.crashbox" % "sbt-gpg" % "0.2.1") // https://github.com/jodersky/sbt-gpg
 addSbtPlugin("ch.epfl.scala" % "sbt-version-policy" % "3.2.1") // https://github.com/scalacenter/sbt-version-policy
+  // ^-- Note: there is a 3.2.2 tagged, but no artifacts for it
 addSbtPlugin("org.typelevel" % "sbt-typelevel-no-publish" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-versioning" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-settings" % sbtTypelevelVersion)
@@ -30,7 +31,7 @@ addSbtPlugin("org.typelevel" % "sbt-typelevel-sonatype" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-github" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-github-actions" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-ci" % sbtTypelevelVersion)
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.4") // https://github.com/scalameta/sbt-scalafmt
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.5") // https://github.com/scalameta/sbt-scalafmt
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.10.0") // https://github.com/sbt/sbt-header
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.3") // https://github.com/scalacenter/sbt-scalafix
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.2") // https://github.com/portable-scala/sbt-crossproject

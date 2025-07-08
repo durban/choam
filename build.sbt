@@ -873,7 +873,7 @@ lazy val consts = new {
 lazy val dependencies = new {
 
   val catsVersion = "2.13.0" // https://github.com/typelevel/cats
-  val catsEffectVersion = "3.6.1" // https://github.com/typelevel/cats-effect
+  val catsEffectVersion = "3.6.2" // https://github.com/typelevel/cats-effect
   val catsMtlVersion = "1.5.0" // https://github.com/typelevel/cats-mtl
   val catsCollectionsVersion = "0.9.10" // https://github.com/typelevel/cats-collections
   val fs2Version = "3.12.0" // https://github.com/typelevel/fs2
@@ -898,7 +898,7 @@ lazy val dependencies = new {
   val catsMtlLaws = Def.setting("org.typelevel" %%% "cats-mtl-laws" % catsMtlVersion)
   val catsCollections = Def.setting("org.typelevel" %%% "cats-collections-core" % catsCollectionsVersion)
   val fs2 = Def.setting("co.fs2" %%% "fs2-core" % fs2Version)
-  val decline = Def.setting("com.monovore" %%% "decline" % "2.4.1") // https://github.com/bkirwi/decline
+  val decline = Def.setting("com.monovore" %%% "decline" % "2.5.0") // https://github.com/bkirwi/decline
 
   // JVM:
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % jolVersion)
