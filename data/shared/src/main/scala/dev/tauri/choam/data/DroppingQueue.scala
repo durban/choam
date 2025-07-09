@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ =#>, Axn, Ref }
+import core.{ Rxn, Axn, Ref }
 import ArrayQueue.empty
 
 // TODO: there should be a `BoundedQueue` with `def capacity: Int`
@@ -37,11 +37,11 @@ private final class DroppingQueue[A](
 ) extends ArrayQueue[A](capacity, arr, head, tail)
   with Queue.UnsealedWithSize[A] {
 
-  final override def tryEnqueue: A =#> Boolean =
-    super[ArrayQueue].tryEnqueue
+  final override def tryEnqueue(a: A): Rxn[Boolean] =
+    super[ArrayQueue].tryEnqueue(a)
 
-  def enqueue: A =#> Unit =
-    this.tryEnqueue.void
+  def enqueue(a: A): Rxn[Unit] =
+    this.tryEnqueue(a).void
 }
 
 private object DroppingQueue {

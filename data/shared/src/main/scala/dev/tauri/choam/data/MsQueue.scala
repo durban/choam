@@ -72,12 +72,12 @@ private final class MsQueue[A] private[this] (
     }
   }
 
-  override val enqueue: Rxn[A, Unit] = Rxn.unsafe.suspendContext { (a, ctx) =>
+  override def enqueue(a: A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
     findAndEnqueue(newNode(a, ctx))
   }
 
-  final override def tryEnqueue: Rxn[A, Boolean] =
-    this.enqueue.as(true)
+  final override def tryEnqueue(a: A): Rxn[Boolean] =
+    this.enqueue(a).as(true)
 
   private[this] def newNode(a: A, ctx: Mcas.ThreadContext): Node[A] = {
     val newRef: Ref[Elem[A]] = if (this.padded) {
@@ -98,7 +98,7 @@ private final class MsQueue[A] private[this] (
           case End() =>
             // found true tail; will update, and adjust the tail ref:
             // TODO: we could allow tail to lag by a constant
-            ticket.unsafeSet(node) >>> tail.set1(node)
+            ticket.unsafeSet(node) *> tail.set1(node)
           case nv @ Node(_, _) =>
             // not the true tail, continue;
             // no need to validate `n.next`

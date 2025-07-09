@@ -23,14 +23,15 @@ import java.util.concurrent.ThreadLocalRandom
 import core.{ Rxn, Axn, Ref, EliminatorImpl, Eliminator }
 
 private final class EliminationStack[A](underlying: Stack[A])
-  extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), underlying.tryPop, _ => ())
+  extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), _ => underlying.tryPop, _ => ())
+  // TODO: ^-- Unit could be Any(?); thus simplifying the conversion lambdas
   with Stack.UnsealedStack[A] {
 
-  final def push: Rxn[A, Unit] =
-    this.leftOp
+  final def push(a: A): Rxn[Unit] =
+    this.leftOp(a)
 
   final def tryPop: Axn[Option[A]] =
-    this.rightOp
+    this.rightOp(null)
 
   final def size: Axn[Int] =
     this.underlying.size
@@ -45,7 +46,7 @@ private object EliminationStack {
   }
 
   sealed trait TaggedEliminationStack[A] {
-    def push: Rxn[A, Either[Unit, Unit]]
+    def push(a: A): Rxn[Either[Unit, Unit]]
     def tryPop: Axn[Either[Option[A], Option[A]]]
   }
 
@@ -58,7 +59,7 @@ private object EliminationStack {
   final def taggedFlaky[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[TaggedEliminationStack[A]] = {
     Stack.treiberStack[A](str).flatMapF { ul =>
       taggedFrom(
-        ul.push.flatMapF { x =>
+        a => ul.push(a).flatMapF { x =>
           if (ThreadLocalRandom.current().nextBoolean()) Axn.pure(x)
           else Rxn.unsafe.retry[Unit]
         },
@@ -74,22 +75,22 @@ private object EliminationStack {
   }
 
   private[this] final def taggedFrom[A](
-    push: Rxn[A, Unit],
+    push: A => Rxn[Unit],
     tryPop: Axn[Option[A]],
   ): Axn[TaggedEliminationStack[A]] = {
     Eliminator.tagged[A, Unit, Any, Option[A]](
       push,
       Some(_),
-      tryPop,
+      _ => tryPop,
       _ => (),
     ).map { elim =>
       new TaggedEliminationStack[A] {
 
-        final override def push: Rxn[A, Either[Unit, Unit]] =
-          elim.leftOp
+        final override def push(a: A): Rxn[Either[Unit, Unit]] =
+          elim.leftOp(a)
 
         final override def tryPop: Axn[Either[Option[A], Option[A]]] =
-          elim.rightOp
+          elim.rightOp(null)
       }
     }
   }

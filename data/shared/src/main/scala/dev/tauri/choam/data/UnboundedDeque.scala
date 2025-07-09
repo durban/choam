@@ -50,17 +50,25 @@ private[choam] object UnboundedDeque {
 
     def addFirst(a: A): Axn[Unit] = first.get.flatMapF { fst =>
       if (fst.isSentinel) {
-        newNode(a, prev = null, next = null) >>> (first.set0 * last.set0).void
+        newNode(a, prev = null, next = null).flatMap { node =>
+          first.set(node) *> last.set(node)
+        }
       } else {
-        newNode(a, prev = null, next = fst) >>> (fst.prev.set0 * first.set0).void
+        newNode(a, prev = null, next = fst).flatMap { node =>
+          fst.prev.set(node) *> first.set(node)
+        }
       }
     }
 
     def addLast(a: A): Axn[Unit] = last.get.flatMapF { lst =>
       if (lst.isSentinel) {
-        newNode(a, prev = null, next = null) >>> (last.set0 * first.set0).void
+        newNode(a, prev = null, next = null).flatMap { node =>
+          last.set(node) *> first.set(node)
+        }
       } else {
-        newNode(a, prev = lst, next = null) >>> (lst.next.set0 * last.set0).void
+        newNode(a, prev = lst, next = null).flatMap { node =>
+          lst.next.set(node) *> last.set(node)
+        }
       }
     }
 
@@ -70,7 +78,9 @@ private[choam] object UnboundedDeque {
       } else {
         fst.next.get.flatMapF { nxt =>
           if (nxt eq null) {
-            newSentinelNode >>> (first.set0 * last.set0)
+            newSentinelNode[A].flatMap { node =>
+              first.set(node) *> last.set(node)
+            }
           } else {
             nxt.prev.set1(null) *> first.set1(nxt)
           }
@@ -84,7 +94,9 @@ private[choam] object UnboundedDeque {
       } else {
         lst.prev.get.flatMapF { prv =>
           if (prv eq null) {
-            newSentinelNode >>> (last.set0 * first.set0)
+            newSentinelNode[A].flatMap { node =>
+              last.set(node) *> first.set(node)
+            }
           } else {
             prv.next.set1(null) *> last.set1(prv)
           }

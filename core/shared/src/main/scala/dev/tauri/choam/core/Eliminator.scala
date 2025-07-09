@@ -29,9 +29,9 @@ object Eliminator {
     extends Eliminator[A, B, C, D]
 
   def apply[A, B, C, D](
-    left: A =#> B,
+    left: A => Rxn[B],
     tLeft: A => D,
-    right: C =#> D,
+    right: C => Rxn[D],
     tRight: C => B,
   ): Axn[Eliminator[A, B, C, D]] = {
     Axn.unsafe.delay {
@@ -40,9 +40,9 @@ object Eliminator {
   }
 
   private[choam] def unsafe[A, B, C, D](
-    left: A =#> B,
+    left: A => Rxn[B],
     tLeft: A => D,
-    right: C =#> D,
+    right: C => Rxn[D],
     tRight: C => B,
   ): Eliminator[A, B, C, D] = {
     new EliminatorImpl[A, B, C, D](left, tLeft, right, tRight) {}
@@ -56,16 +56,16 @@ object Eliminator {
    * Mainly for testing and debugging.
    */
   private[choam] final def tagged[A, B, C, D](
-    left: A =#> B,
+    left: A => Rxn[B],
     tLeft: A => D,
-    right: C =#> D,
+    right: C => Rxn[D],
     tRight: C => B,
   ): Axn[Eliminator[A, Either[B, B], C, Either[D, D]]] = {
     apply[A, Either[B, B], C, Either[D, D]](
-      left.map(Left(_)),
-      tLeft.andThen(Right(_)),
-      right.map(Left(_)),
-      tRight.andThen(Right(_)),
+      { a => left(a).map(Left(_)) },
+      { a => Right(tLeft(a)) },
+      { c => right(c).map(Left(_)) },
+      { c => Right(tRight(c)) },
     )
   }
 }

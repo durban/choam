@@ -24,7 +24,7 @@ import cats.syntax.all._
 import core.{ Rxn, Axn, Ref, Reactive }
 
 sealed trait Stack[A] {
-  def push: Rxn[A, Unit]
+  def push(a: A): Rxn[Unit]
   def tryPop: Axn[Option[A]]
   def size: Axn[Int]
 }
@@ -51,7 +51,7 @@ object Stack {
     implicit val monadF: Monad[F] = F.monad
     mkEmpty.run[F].flatMap { stack =>
       as.traverse { a =>
-        stack.push.run[F](a)
+        stack.push(a).run[F]
       }.as(stack)
     }
   }

@@ -56,21 +56,21 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
     }
   }
 
-  override val enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
+  override def enqueue(a: A): Rxn[Unit] = {
     Ref.padded[Elem[A]](End()).flatMapF { newRef =>
       findAndEnqueue(Node(a, newRef))
     }
   }
 
-  final override def tryEnqueue: Rxn[A, Boolean] =
-    this.enqueue.as(true)
+  final override def tryEnqueue(a: A): Rxn[Boolean] =
+    this.enqueue(a).as(true)
 
   private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
     def go(n: Node[A]): Axn[Unit] = {
       n.next.get.flatMapF {
         case End() =>
           // found true tail; will update, and adjust the tail ref:
-          n.next.set1(node) >>> tail.set1(node)
+          n.next.set(node) *> tail.set(node)
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and continue:
           go(n = nv)

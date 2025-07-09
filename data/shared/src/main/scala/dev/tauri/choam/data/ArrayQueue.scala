@@ -53,7 +53,7 @@ private abstract class ArrayQueue[A](
     }
   }
 
-  def tryEnqueue: Rxn[A, Boolean] = Rxn.computed[A, Boolean] { newVal =>
+  def tryEnqueue(newVal: A): Rxn[Boolean] = {
     tail.get.flatMapF { idx =>
       val ref = arr.unsafeGet(idx)
       ref.get.flatMapF { oldVal =>

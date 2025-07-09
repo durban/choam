@@ -26,7 +26,7 @@ private final class TreiberStack[A] private (
 
   import TreiberStack._
 
-  final override val push: Rxn[A, Unit] = head.upd { (as, a) =>
+  final override def push(a: A): Rxn[Unit] = head.modify { as =>
     (Cons(a, as), ())
   }
 

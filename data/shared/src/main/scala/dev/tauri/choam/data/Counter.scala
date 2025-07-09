@@ -25,7 +25,7 @@ import core.{ Rxn, Axn, Ref }
 
 sealed abstract class Counter {
 
-  def add: Rxn[Long, Unit]
+  def add(n: Long): Rxn[Unit]
 
   def incr: Axn[Unit]
 
@@ -66,15 +66,14 @@ object Counter {
 
   private[this] final class SimpleCounter(ref: Ref[Long]) extends Counter {
 
-    final override val add: Rxn[Long, Unit] = ref.update2[Long] { (cnt, n) =>
-      cnt + n
-    }
+    final override def add(n: Long): Rxn[Unit] =
+      ref.update { cnt => cnt + n }
 
     final override val incr: Axn[Unit] =
-      add.provide(1L)
+      add(1L)
 
     final override val decr: Axn[Unit] =
-      add.provide(-1L)
+      add(-1L)
 
     final override val count: Axn[Long] =
       ref.get
@@ -90,18 +89,16 @@ object Counter {
     private[this] final def getStripeId: Axn[Int] =
       Axn.unsafe.delayContext(_.stripeId)
 
-    final override val add: Rxn[Long, Unit] = getStripeId.flatMap { stripeId =>
+    final override def add(n: Long): Rxn[Unit] = getStripeId.flatMap { stripeId =>
       val ref = arr.unsafeGet(stripeId)
-      ref.update2[Long] { (cnt, n) =>
-        cnt + n
-      }
+      ref.update { cnt => cnt + n }
     }
 
     final override val incr: Axn[Unit] =
-      add.provide(1L)
+      add(1L)
 
     final override val decr: Axn[Unit] =
-      add.provide(-1L)
+      add(-1L)
 
     final override val count: Axn[Long] = {
       val len = arr.length

@@ -27,13 +27,13 @@ sealed trait RefLike[A] {
 
   // primitive:
 
-  def get: Axn[A]
+  def get: Rxn[A]
+
+  def modify[B](f: A => (A, B)): Rxn[B]
 
   def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[C]
 
   // primitive (for performance):
-
-  protected[this] def upd[B, C](f: (A, B) => (A, C)): Rxn[C] // TODO: remove this
 
   def set1(a: A): Axn[Unit] // TODO: remove
 
@@ -59,11 +59,7 @@ sealed trait RefLike[A] {
 
   /** Returns previous value */
   final def getAndUpdate(f: A => A): Axn[A] =
-    upd[Any, A] { (oa, _) => (f(oa), oa) }
-
-  /** Returns previous value */
-  final def getAndUpd[B](f: (A, B) => A): Rxn[A] = // TODO: optimize
-    upd[B, A] { (oa, b) => (f(oa, b), oa) }
+    modify { oa => (f(oa), oa) }
 
     /** Returns previous value */
   final def getAndUpdateWith(f: A => Axn[A]): Axn[A] =
@@ -71,16 +67,8 @@ sealed trait RefLike[A] {
 
   /** Returns new value */
   final def updateAndGet(f: A => A): Axn[A] = {
-    upd[Any, A] { (oa, _) =>
+    modify { oa =>
       val na = f(oa)
-      (na, na)
-    }
-  }
-
-  /** Returns new value */
-  final def updAndGet[B](f: (A, B) => A): Rxn[A] = { // TODO: optimize
-    upd[B, A] { (oa, b) =>
-      val na = f(oa, b)
       (na, na)
     }
   }
@@ -91,9 +79,6 @@ sealed trait RefLike[A] {
       f(oa).map { na => (na, na) }
     }
   }
-
-  final def modify[B](f: A => (A, B)): Axn[B] =
-    upd[Any, B] { (a, _) => f(a) }
 
   final def modifyWith[B](f: A => Axn[(A, B)]): Axn[B] =
     updWith[Any, B] { (oa, _) => f(oa) }

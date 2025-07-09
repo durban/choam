@@ -33,12 +33,12 @@ sealed trait Map[K, V] { self =>
 
   // TODO:0.5: figure out if we really want to take the key as input (instead of as an arg)
 
-  def put: Rxn[(K, V), Option[V]]
-  def putIfAbsent: Rxn[(K, V), Option[V]]
-  def replace: Rxn[(K, V, V), Boolean]
-  def get: Rxn[K, Option[V]]
-  def del: Rxn[K, Boolean]
-  def remove: Rxn[(K, V), Boolean]
+  def put(k: K, v: V): Rxn[Option[V]]
+  def putIfAbsent(k: K, v: V): Rxn[Option[V]]
+  def replace(k: K, ov: V, nv: V): Rxn[Boolean]
+  def get(k: K): Rxn[Option[V]]
+  def del(k: K): Rxn[Boolean]
+  def remove(k: K, v: V): Rxn[Boolean]
   def refLike(key: K, default: V): RefLike[V]
 
   def toCats[F[_]](default: V)(implicit F: Reactive[F]): MapRef[F, K, V] = {

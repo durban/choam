@@ -20,7 +20,7 @@ package data
 
 import cats.syntax.all._
 
-import core.{ =#>, Rxn, Axn, Ref }
+import core.{ Rxn, Axn, Ref }
 import ArrayQueue.{ empty, isEmpty }
 
 /**
@@ -40,10 +40,10 @@ private final class RingBuffer[A](
 
   require(capacity === arr.size)
 
-  final override def tryEnqueue: A =#> Boolean =
-    this.enqueue.as(true)
+  final override def tryEnqueue(a: A): Rxn[Boolean] =
+    this.enqueue(a).as(true)
 
-  final override def enqueue: Rxn[A, Unit] = Rxn.computed[A, Unit] { newVal =>
+  final override def enqueue(newVal: A): Rxn[Unit] = {
     tail.getAndUpdate(incrIdx).flatMapF { idx =>
       arr.unsafeGet(idx).updateWith { oldVal =>
         if (isEmpty(oldVal)) {

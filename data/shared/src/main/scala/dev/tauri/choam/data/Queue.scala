@@ -38,7 +38,7 @@ sealed trait QueueSource[+A] {
 }
 
 sealed trait QueueSink[-A] {
-  def tryEnqueue: Rxn[A, Boolean]
+  def tryEnqueue(a: A): Rxn[Boolean]
 }
 
 sealed trait QueueSourceSink[A]
@@ -46,7 +46,7 @@ sealed trait QueueSourceSink[A]
   with  QueueSink[A]
 
 sealed trait UnboundedQueueSink[-A] extends QueueSink[A] {
-  def enqueue: Rxn[A, Unit]
+  def enqueue(a: A): Rxn[Unit]
 }
 
 sealed trait Queue[A]
@@ -102,11 +102,11 @@ object Queue {
             }
           }
 
-          final override def enqueue: Rxn[A, Unit] =
-            s.update(_ + 1) *> q.enqueue
+          final override def enqueue(a: A): Rxn[Unit] =
+            s.update(_ + 1) *> q.enqueue(a)
 
-          final override def tryEnqueue: Rxn[A, Boolean] =
-            this.enqueue.as(true)
+          final override def tryEnqueue(a: A): Rxn[Boolean] =
+            this.enqueue(a).as(true)
 
           final override def size: Axn[Int] =
             s.get
@@ -121,7 +121,7 @@ object Queue {
   private[data] final def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
     implicit val m: Monad[F] = Reactive[F].monad
     mkEmpty.run[F].flatMap { q =>
-      as.traverse(a => q.enqueue.run[F](a)).as(q)
+      as.traverse(a => q.enqueue(a).run[F]).as(q)
     }
   }
 }

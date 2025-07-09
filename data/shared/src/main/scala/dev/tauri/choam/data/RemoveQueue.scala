@@ -93,10 +93,10 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
     head.get.flatMapF { node => go(node.next) }
   }
 
-  final override def tryEnqueue: Rxn[A, Boolean] =
-    this.enqueue.as(true)
+  final override def tryEnqueue(a: A): Rxn[Boolean] =
+    this.enqueue(a).as(true)
 
-  override def enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
+  override def enqueue(a: A): Rxn[Unit] = {
     Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref.unpadded(a).flatMap { dataRef =>
         findAndEnqueue(Node(dataRef, nextRef))
@@ -104,7 +104,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
     }
   }
 
-  val enqueueWithRemover: Rxn[A, Axn[Boolean]] = Rxn.computed { (a: A) =>
+  def enqueueWithRemover(a: A): Rxn[Axn[Boolean]] = {
     Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref.unpadded(a).flatMap { dataRef =>
         val newNode = Node(dataRef, nextRef)
@@ -119,7 +119,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
       n.next.get.flatMapF {
         case End() =>
           // found true tail; will update, and adjust the tail ref:
-          n.next.set1(node) >>> tail.set1(node)
+          n.next.set1(node) *> tail.set1(node)
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and continue:
           go(n = nv)
@@ -144,7 +144,7 @@ private[choam] object RemoveQueue {
     extends Elem[A] {
 
     final def remover: Axn[Boolean] = {
-      this.data.upd[Any, Boolean] { (ov, _) =>
+      this.data.modify { ov =>
         if (isDequeued(ov) || isRemoved(ov)) {
           // we can't cancel it, because either
           // it was already dequeued, or someone

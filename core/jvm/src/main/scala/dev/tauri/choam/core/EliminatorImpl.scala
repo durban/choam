@@ -24,9 +24,9 @@ package core
  * Note: this is duplicated on JS (where it doesn't do anything).
  */
 private[choam] abstract class EliminatorImpl[-A, +B, -C, +D] private[choam] (
-  underlyingLeft: A =#> B,
+  underlyingLeft: A => Rxn[B],
   transformLeft: A => D,
-  underlyingRight: C =#> D,
+  underlyingRight: C => Rxn[D],
   transformRight: C => B,
 ) extends Eliminator.UnsealedEliminator[A, B, C, D] {
 
@@ -34,8 +34,8 @@ private[choam] abstract class EliminatorImpl[-A, +B, -C, +D] private[choam] (
     Exchanger.unsafe[A, C]
 
   final override def leftOp(a: A): Rxn[B] =
-    underlyingLeft + exchanger.exchange(a).map(transformRight)
+    underlyingLeft(a) + exchanger.exchange(a).map(transformRight)
 
   final override def rightOp(c: C): Rxn[D] =
-    underlyingRight + exchanger.dual.exchange(c).map(transformLeft)
+    underlyingRight(c) + exchanger.dual.exchange(c).map(transformLeft)
 }
