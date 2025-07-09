@@ -36,4 +36,5 @@ private object RxnConsts {
   final val ContMap2Func = 14
   final val ContOrElse = 15
   final val ContFlatten = 16
+  final val ContRegisterPostCommit = 17
 }

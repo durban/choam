@@ -22,10 +22,8 @@ import java.util.{ UUID, IdentityHashMap }
 
 import scala.util.control.NonFatal
 
-import cats.{ ~>, Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, MonoidK, Semigroup, Show }
-import cats.arrow.ArrowChoice
+import cats.{ ~>, Align, Applicative, Defer, Functor, StackSafeMonad, Monoid, Semigroup, Show }
 import cats.data.{ Ior, State, NonEmptyList }
-import cats.mtl.Local
 import cats.effect.kernel.{ Async, Clock, Cont, Unique, MonadCancel, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
@@ -97,8 +95,6 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
 
   def + [Y >: B](that: Rxn[Y]): Rxn[Y]
 
-  def × [D](that: Rxn[D]): Rxn[(B, D)]
-
   def * [C](that: Rxn[C]): Rxn[(B, C)]
 
   def product[C](that: Rxn[C]): Rxn[(B, C)]
@@ -127,7 +123,8 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
 
   def flatMap[C](f: B => Rxn[C]): Rxn[C]
 
-  def flatMapF[C](f: B => Rxn[C]): Rxn[C] = this.flatMap(f) // TODO: remove this
+  def flatMapF[C](f: B => Rxn[C]): Rxn[C] = // TODO: remove this
+    this.flatMap(f)
 
   def >> [C](that: => Rxn[C]): Rxn[C]
 
@@ -136,7 +133,9 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   def flatten[C](implicit ev: B <:< Rxn[C]): Rxn[C]
 
   def postCommit(pc: B => Rxn[Unit]): Rxn[B]
-  def postCommit(pc: Rxn[Unit]): Rxn[B] = ???
+
+  final def postCommit(pc: Rxn[Unit]): Rxn[B] =
+    this.postCommit { _ => pc }
 
   /**
    * Execute the [[Rxn]] with the specified input `a`.
@@ -309,10 +308,8 @@ private[choam] sealed abstract class RxnImpl[+B]
   final override def + [Y >: B](that: Rxn[Y]): RxnImpl[Y] =
     new Rxn.Choice[Y](this, that)
 
-  final override def × [D](that: Rxn[D]): RxnImpl[(B, D)] =
-    new Rxn.AndAlso[B, D](this, that)
-
-  final override def * [C](that: Rxn[C]): RxnImpl[(B, C)] = ???//(this × that).contramap[X](x => (x, x))
+  final override def * [C](that: Rxn[C]): RxnImpl[(B, C)] =
+    new Rxn.AndAlso[B, C](this, that)
 
   final override def product[C](that: Rxn[C]): Rxn[(B, C)] =
     this * that
@@ -347,26 +344,29 @@ private[choam] sealed abstract class RxnImpl[+B]
   final override def *> [C](that: Rxn[C]): Rxn[C] =
     this.productR(that)
 
-  final override def productR[C](that: Rxn[C]): RxnImpl[C] = ???//new Rxn.ProductR[B, C](this, that)
+  final override def productR[C](that: Rxn[C]): RxnImpl[C] =
+    new Rxn.ProductR[B, C](this, that)
 
-  final override def flatMap[C](f: B => Rxn[C]): Rxn[C] = ???//new Rxn.FlatMap(this, f)
+  final override def flatMap[C](f: B => Rxn[C]): Rxn[C] =
+    new Rxn.FlatMap(this, f)
 
-  // TODO: optimize
   final override def >> [C](that: => Rxn[C]): Rxn[C] =
     this.flatMap { _ => that }
 
-  final override def flatTap(rxn: B => Rxn[Unit]): Rxn[B] = {
-    ???///this.flatMapF { b => rxn.provide(b).as(b) } // TODO: is this really better than the one with flatMap?
+  final override def flatTap(f: B => Rxn[Unit]): Rxn[B] = {
+    this.flatMap { b => f(b).as(b) }
   }
 
-  final override def flatten[C](implicit ev: B <:< Rxn[C]): RxnImpl[C] = ???//new Rxn.Flatten[C](this.asInstanceOf[Rxn[A, Axn[C]]])
+  final override def flatten[C](implicit ev: B <:< Rxn[C]): RxnImpl[C] =
+    new Rxn.Flatten[C](this.asInstanceOf[Rxn[Rxn[C]]])
 
-  final override def postCommit(pc: B => Rxn[Unit]): Rxn[B] = ???//this >>> Rxn.postCommit[B](pc)
+  final override def postCommit(pc: B => Rxn[Unit]): Rxn[B] =
+    Rxn.postCommit(this, pc)
 
   // STM:
 
   final override def flatMap[C](f: B => Txn[C]): Txn[C] = {
-    ???//this.flatMapF(f.asInstanceOf[Function1[B, Axn[C]]])
+    new Rxn.FlatMap(this, f.asInstanceOf[Function1[B, Rxn[C]]])
   }
 
   final override def flatten[C](implicit ev: B <:< Txn[C]): Txn[C] = {
@@ -374,23 +374,23 @@ private[choam] sealed abstract class RxnImpl[+B]
   }
 
   final override def map2[C, D](that: Txn[C])(f: (B, C) => D): Txn[D] = {
-    ???//this.map2[C, D](that.impl)(f)
+    this.map2[C, D](that.impl : Rxn[C])(f)
   }
 
   final override def productR[C](that: Txn[C]): Txn[C] = {
-    ???//this.productR[C](that.impl)
+    this.productR[C](that.impl : Rxn[C])
   }
 
   final override def *> [C](that: Txn[C]): Txn[C] = {
-    ???//this.productR[C](that.impl)
+    this.productR[C](that.impl : Rxn[C])
   }
 
   final override def productL[C](that: Txn[C]): Txn[B] = {
-    ???//this.productL[C](that.impl)
+    this.productL[C](that.impl : Rxn[C])
   }
 
   final override def <* [C](that: Txn[C]): Txn[B] = {
-    ???//this.productL[C](that.impl)
+    this.productL[C](that.impl : Rxn[C])
   }
 
   final override def product[C](that: Txn[C]): Txn[(B, C)] = {
@@ -427,7 +427,7 @@ object Rxn extends RxnInstances0 {
     new Rxn.Pure[A](a)
 
   /** Old name of `pure` */
-  private[choam] final def ret[A](a: A): Axn[A] =
+  private[choam] final def ret[A](a: A): Rxn[A] =
     pure(a)
 
   private[this] val _unit: RxnImpl[Unit] =
@@ -442,11 +442,11 @@ object Rxn extends RxnInstances0 {
   private[choam] final def unitImpl: RxnImpl[Unit] =
     _unit
 
-  final def computed[A, B](f: A => Axn[B]): Rxn[B] =
-    new Rxn.Computed(f)
+  final def postCommit(pc: Rxn[Unit]): Rxn[Unit] =
+    new Rxn.PostCommit[Unit](unit, _ => pc)
 
-  final def postCommit[A](pc: Rxn[Unit]): Rxn[A] = ???
-    //new Rxn.PostCommit[A](pc)
+  private[core] final def postCommit[A](rxn: Rxn[A], pc: A => Rxn[Unit]): Rxn[A] =
+    new Rxn.PostCommit(rxn, pc)
 
   @inline
   final def tailRecM[A, B](a: A)(f: A => Rxn[Either[A, B]]): Rxn[B] =
@@ -457,43 +457,43 @@ object Rxn extends RxnInstances0 {
 
   // Utilities:
 
-  private[this] val _fastRandom: Random[Axn] =
+  private[this] val _fastRandom: Random[Rxn] =
     random.newFastRandom
 
-  private[this] val _secureRandom: SecureRandom[Axn] =
+  private[this] val _secureRandom: SecureRandom[Rxn] =
     random.newSecureRandom
 
-  private[this] val _unique: RxnImpl[Unique.Token] = ???
-    //Axn.unsafe.delayImpl { new Unique.Token() }
+  private[this] val _unique: RxnImpl[Unique.Token] =
+    Rxn.unsafe.delayImpl { new Unique.Token() }
 
   @inline
-  final def unique: Axn[Unique.Token] =
+  final def unique: Rxn[Unique.Token] =
     uniqueImpl
 
   private[choam] final def uniqueImpl: RxnImpl[Unique.Token] =
     _unique
 
   @inline
-  final def newUuid: Axn[UUID] =
+  final def newUuid: Rxn[UUID] =
     newUuidImpl
 
-  private[core] final val newUuidImpl: RxnImpl[UUID] = ???
-    //random.newUuidImpl
+  private[core] final val newUuidImpl: RxnImpl[UUID] =
+    random.newUuidImpl
 
-  final def fastRandom: Random[Axn] =
+  final def fastRandom: Random[Rxn] =
     _fastRandom
 
-  final def secureRandom: SecureRandom[Axn] =
+  final def secureRandom: SecureRandom[Rxn] =
     _secureRandom
 
-  final def deterministicRandom(initialSeed: Long): Axn[random.SplittableRandom[Axn]] =
+  final def deterministicRandom(initialSeed: Long): Rxn[random.SplittableRandom[Rxn]] =
     deterministicRandom(initialSeed, Ref.AllocationStrategy.Default)
 
-  final def deterministicRandom(initialSeed: Long, str: Ref.AllocationStrategy): Axn[random.SplittableRandom[Axn]] =
+  final def deterministicRandom(initialSeed: Long, str: Ref.AllocationStrategy): Rxn[random.SplittableRandom[Rxn]] =
     random.deterministicRandom(initialSeed, str)
 
-  final def memoize[A](axn: Axn[A], str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[Memo[A]] =
-    Memo(axn, str)
+  final def memoize[A](rxn: Rxn[A], str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Memo[A]] =
+    Memo(rxn, str)
 
   private[choam] final object ref {
 
@@ -507,13 +507,13 @@ object Rxn extends RxnInstances0 {
     private[choam] final def updSet1[A](r: Ref[A], nv: A): Rxn[Unit] =
       new Rxn.UpdSet1(r.loc, nv)
 
-    private[choam] final def updUpdate1[A](r: Ref[A])(f: A => A): Axn[Unit] =
+    private[choam] final def updUpdate1[A](r: Ref[A])(f: A => A): Rxn[Unit] =
       new Rxn.UpdUpdate1(r.loc, f)
 
     private[choam] final def updUpdate2[A, B](r: Ref[A])(f: (A, B) => A): Rxn[Unit] =
       new Rxn.UpdUpdate2(r.loc, f)
 
-    private[choam] final def updWith[A, B, C](r: Ref[A])(f: (A, B) => Axn[(A, C)]): Rxn[C] =
+    private[choam] final def updWith[A, B, C](r: Ref[A])(f: (A, B) => Rxn[(A, C)]): Rxn[C] =
       new Rxn.UpdWith[A, B, C](r.loc, f)
   }
 
@@ -551,9 +551,9 @@ object Rxn extends RxnInstances0 {
 
     sealed abstract class Ticket[A] {
       def unsafePeek: A
-      def unsafeSet(nv: A): Axn[Unit]
+      def unsafeSet(nv: A): Rxn[Unit]
       def unsafeIsReadOnly: Boolean
-      def unsafeValidate: Axn[Unit]
+      def unsafeValidate: Rxn[Unit]
     }
 
     private[Rxn] final class TicketForTicketRead[A](hwd: LogEntry[A])
@@ -562,20 +562,20 @@ object Rxn extends RxnInstances0 {
       final override def unsafePeek: A =
         hwd.nv
 
-      final override def unsafeSet(nv: A): Axn[Unit] =
+      final override def unsafeSet(nv: A): Rxn[Unit] =
         new Rxn.TicketWrite(hwd, nv)
 
       final override def unsafeIsReadOnly: Boolean =
         hwd.readOnly
 
-      final override def unsafeValidate: Axn[Unit] =
+      final override def unsafeValidate: Rxn[Unit] =
         this.unsafeSet(this.unsafePeek)
     }
 
-    final def directRead[A](r: Ref[A]): Axn[A] =
+    final def directRead[A](r: Ref[A]): Rxn[A] =
       new Rxn.DirectRead[A](r.loc)
 
-    final def ticketRead[A](r: Ref[A]): Axn[unsafe.Ticket[A]] =
+    final def ticketRead[A](r: Ref[A]): Rxn[unsafe.Ticket[A]] =
       new Rxn.TicketRead[A](r.loc)
 
     /**
@@ -585,17 +585,17 @@ object Rxn extends RxnInstances0 {
      * so it is safer than `ticketRead`; but makes it impossible
      * to do a log extension later.
      */
-    final def tentativeRead[A](r: Ref[A]): Axn[A] =
+    final def tentativeRead[A](r: Ref[A]): Rxn[A] =
       new Rxn.TentativeRead[A](r.loc)
 
-    final def unread[A](r: Ref[A]): Axn[Unit] =
+    final def unread[A](r: Ref[A]): Rxn[Unit] =
       new Rxn.Unread(r)
 
-    private[choam] final def cas[A](r: Ref[A], ov: A, nv: A): Axn[Unit] = // TODO: do we even need this?
+    private[choam] final def cas[A](r: Ref[A], ov: A, nv: A): Rxn[Unit] = // TODO: do we even need this?
       new Rxn.Cas[A](r.loc, ov, nv)
 
     @inline
-    private[choam] final def retry[A]: Axn[A] =
+    private[choam] final def retry[A]: Rxn[A] =
       retryImpl[A]
 
     private[choam] final def retryImpl[A]: RxnImpl[A] =
@@ -611,7 +611,7 @@ object Rxn extends RxnInstances0 {
      * `(... *> retryWhenChanged) orElse (<someting which doesn't retry>)`.
      */
     @inline
-    private[choam] final def retryWhenChanged[A]: Axn[A] =
+    private[choam] final def retryWhenChanged[A]: Rxn[A] =
       StmImpl.retryWhenChanged[A]
 
     /**
@@ -623,42 +623,40 @@ object Rxn extends RxnInstances0 {
       new OrElse(left, right)
 
     @inline
-    final def delay[A, B](uf: A => B): Rxn[B] =
+    final def delay[B](uf: => B): Rxn[B] =
       delayImpl(uf)
 
     @inline
-    private[choam] final def delayImpl[A, B](uf: A => B): RxnImpl[B] = ???
+    private[choam] final def delayImpl[B](uf: => B): RxnImpl[B] =
+      new Rxn.Lift[B](() => { uf })
 
-    private[choam] final def suspend[A, B](uf: A => Rxn[B]): Rxn[B] =
+    private[choam] final def suspend[B](uf: => Rxn[B]): Rxn[B] =
       delay(uf).flatten // TODO: optimize
 
-    private[choam] final def suspend[A, B](uf: => Rxn[B]): Rxn[B] =
-      Axn.unsafe.delay(uf).flatMap { x => x } // TODO: optimize
+    private[choam] final def delayContext[B](uf: Mcas.ThreadContext => B): Rxn[B] =
+      new Rxn.Ctx1[B](uf)
 
-    private[choam] final def delayContext[A, B](uf: (A, Mcas.ThreadContext) => B): Rxn[B] =
-      new Rxn.Ctx2[A, B](uf)
-
-    private[choam] final def suspendContext[A, B](uf: (A, Mcas.ThreadContext) => Rxn[B]): Rxn[B] =
-      delayContext(uf).flatMap { x => x }
+    private[choam] final def suspendContext[B](uf: Mcas.ThreadContext => Rxn[B]): Rxn[B] =
+      delayContext(uf).flatten
 
     /**
      * Calling `unsafePerform` (or similar) inside
      * `uf` is dangerous, so handle with care!
      */
-    private[choam] final def axnDelayContextImpl[A](uf: Mcas.ThreadContext => A): RxnImpl[A] =
-      new Rxn.Ctx1[Any, A](uf)
+    private[choam] final def delayContextImpl[A](uf: Mcas.ThreadContext => A): RxnImpl[A] =
+      new Rxn.Ctx1[A](uf)
 
     @inline
-    final def panic[A](ex: Throwable): Axn[A] =
+    final def panic[A](ex: Throwable): Rxn[A] =
       panicImpl(ex)
 
     private[choam] final def panicImpl[A](ex: Throwable): RxnImpl[A] =
-      delayImpl[Any, A] { _ => throw ex }
+      delayImpl[A] { throw ex }
 
     private[choam] final def assert(cond: Boolean): Rxn[Unit] =
       if (cond) unit else panic[Unit](new AssertionError)
 
-    private[choam] final def exchanger[A, B]: Axn[Exchanger[A, B]] =
+    private[choam] final def exchanger[A, B]: Rxn[Exchanger[A, B]] =
       Exchanger.apply[A, B]
 
     /**
@@ -667,14 +665,14 @@ object Rxn extends RxnInstances0 {
      * is handled automatically otherwise). This is why it
      * is part of the `unsafe` API.
      */
-    final def forceValidate: Axn[Unit] =
+    final def forceValidate: Rxn[Unit] =
       new Rxn.ForceValidate
 
     // Unsafe/imperative API:
 
-    /** Embeds a block of code, which uses the unsafe/imperative API, into an `Axn`. */
-    final def embedUnsafe[A](unsafeBlock: dev.tauri.choam.unsafe.InRxn2 => A): Axn[A] = {
-      new Rxn.Ctx3[Any, Axn[A]]({ (_: Any, state: unsafe2.InRxn2) =>
+    /** Embeds a block of code, which uses the unsafe/imperative API, into a `Rxn`. */
+    final def embedUnsafe[A](unsafeBlock: dev.tauri.choam.unsafe.InRxn2 => A): Rxn[A] = {
+      new Rxn.Ctx3[Rxn[A]]({ (state: unsafe2.InRxn2) =>
         try {
           pure[A](unsafeBlock(state))
         } catch {
@@ -741,16 +739,12 @@ object Rxn extends RxnInstances0 {
   private[core] val _AlwaysRetry: RxnImpl[Any] =
     new AlwaysRetry
 
-  private final class PostCommit[A](val pc: A => Rxn[Unit]) extends RxnImpl[A] {
-    final override def toString: String = s"PostCommit(${pc})"
+  private final class PostCommit[A](val rxn: Rxn[A], val pc: A => Rxn[Unit]) extends RxnImpl[A] {
+    final override def toString: String = s"PostCommit(${rxn}, <function>)"
   }
 
-  private final class Lift[A, B](val func: A => B) extends RxnImpl[B] {
+  private final class Lift[B](val func: Function0[B]) extends RxnImpl[B] {
     final override def toString: String = "Lift(<function>)"
-  }
-
-  private final class Computed[A, B](val f: A => Axn[B]) extends RxnImpl[B] {
-    final override def toString: String = "Computed(<function>)"
   }
 
   private[this] final class RetryWhenChanged[A]() extends RxnImpl[A] { // STM
@@ -830,24 +824,20 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Done(${result})"
   }
 
-  private sealed abstract class Ctx[A, B] extends RxnImpl[B] {
+  private sealed abstract class Ctx[B] extends RxnImpl[B] {
     final override def toString: String = s"Ctx(<block>)"
-    def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B
+    def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B
   }
 
-  private final class Ctx1[A, B](_uf: Mcas.ThreadContext => B) extends Ctx[A, B] {
-    final override def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B = _uf(ctx)
+  private final class Ctx1[B](_uf: Mcas.ThreadContext => B) extends Ctx[B] {
+    final override def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B = _uf(ctx)
   }
 
-  private final class Ctx2[A, B](_uf: (A, Mcas.ThreadContext) => B) extends Ctx[A, B] {
-    final override def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B = _uf(a, ctx)
+  private final class Ctx3[B](_uf: unsafe2.InRxn2 => B) extends Ctx[B] {
+    final override def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B = _uf(ir)
   }
 
-  private final class Ctx3[A, B](_uf: (A, unsafe2.InRxn2) => B) extends Ctx[A, B] {
-    final override def uf(a: A, ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B = _uf(a, ir)
-  }
-
-  private final class UpdWith[A, B, C](val ref: MemoryLocation[A], val f: (A, B) => Axn[(A, C)]) extends RxnImpl[C] {
+  private final class UpdWith[A, B, C](val ref: MemoryLocation[A], val f: (A, B) => Rxn[(A, C)]) extends RxnImpl[C] {
     final override def toString: String = s"UpdWith(${ref}, <function>)"
   }
 
@@ -1104,11 +1094,7 @@ object Rxn extends RxnInstances0 {
 
   // Syntax helpers:
 
-  final class InvariantSyntax[B](private val self: Rxn[B]) extends AnyVal {
-    final def run[F[_]](a: Any)(implicit F: Reactive[F]): F[B] = ???//F.apply(self, a)
-  }
-
-  final class AxnSyntax[A](private val self: Axn[A]) extends AnyVal {
+  final class InvariantSyntax[A](private val self: Rxn[A]) extends AnyVal {
     final def run[F[_]](implicit F: Reactive[F]): F[A] =
       F.run(self)
   }
@@ -1659,6 +1645,9 @@ object Rxn extends RxnInstances0 {
           nextOnPanic(ex)
         case 16 => // ContFlatten
           nextOnPanic(ex)
+        case 17 => // ContRegisterPostCommit
+          contK.pop()
+          nextOnPanic(ex)
         case ct => // mustn't happen
           impossible(s"Unknown contT: ${ct} (nextOnPanic)")
       }
@@ -1763,6 +1752,10 @@ object Rxn extends RxnInstances0 {
           val nxt = a.asInstanceOf[Rxn[Any]]
           a = null
           nxt
+        case 17 => // ContRegisterPostCommit
+          val f = contK.pop().asInstanceOf[Any => Rxn[Unit]]
+          pc.push(f(a))
+          next()
         case ct => // mustn't happen
           impossible(s"Unknown contT: ${ct} (next)")
       }
@@ -2079,25 +2072,21 @@ object Rxn extends RxnInstances0 {
           }
         case _: AlwaysRetry[_] => // AlwaysRetry
           loop(retry())
-        case c: PostCommit[_] => // PostCommit
-          ??? // pc.push(c.pc.provide(aCastTo[A]))
-          loop(next())
-        case c: Lift[a, b] => // Lift
+        case c: PostCommit[a] => // PostCommit
+          contT.push(RxnConsts.ContRegisterPostCommit)
+          contK.push(c.pc)
+          loop(c.rxn)
+        case c: Lift[_] => // Lift
           // TODO: Do we need to catch exceptions elsewhere? (This covers `delay`.)
-          val aa: a = aCastTo[a]
           val f = c.func
           val nxt = try {
-            a = f(aa)
+            a = f()
             null
           } catch {
             case ex if NonFatal(ex) =>
               nextOnPanic(ex)
           }
           loop(if (nxt ne null) nxt else next())
-        case c: Computed[_, _] => // Computed
-          val nxt = ???//c.f(aCastTo[A])
-          a = () : Any
-          loop(nxt)
         case _: RetryWhenChanged[_] => // RetryWhenChanged (STM)
           loop(retry(canSuspend = this.canSuspend, permanent = true))
         case c: Choice[_] => // Choice
@@ -2204,8 +2193,8 @@ object Rxn extends RxnInstances0 {
             case Nil =>
               committedResult
           }
-        case c: Ctx[a, _] =>
-          val b = c.uf(aCastTo[a], ctx, this)
+        case c: Ctx[_] =>
+          val b = c.uf(ctx, this)
           a = b
           loop(next())
         case c: UpdWith[_, a, _] =>
@@ -2214,12 +2203,12 @@ object Rxn extends RxnInstances0 {
             loop(retry())
           } else {
             val ox = hwd.nv
-            val axn = c.f(ox, aCastTo[a])
+            val rxn = c.f(ox, aCastTo[a])
             desc = desc.addOrOverwrite(hwd)
             contT.push(RxnConsts.ContUpdWith)
             contK.push2(c.ref, ox)
-            // TODO: if `axn` writes to the same ref, we'll throw (see above)
-            loop(axn)
+            // TODO: if `rxn` writes to the same ref, we'll throw (see above)
+            loop(rxn)
           }
         case c: As[_, _, _] => // As
           contT.push(RxnConsts.ContAs)
@@ -2653,7 +2642,7 @@ private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.ty
     _deferInstance.asInstanceOf[Defer[Rxn]]
 
   private[this] val _deferInstance: Defer[Rxn] = new Defer[Rxn] {
-    final override def defer[A](fa: => Rxn[A]): Rxn[A] = ???//self.computed[A] { x => fa.provide(x) }
+    final override def defer[A](fa: => Rxn[A]): Rxn[A] = Rxn.unsafe.suspend(fa)
     final override def fix[A](fn: Rxn[A] => Rxn[A]): Rxn[A] = {
       // Instead of a `lazy val` (like in the superclass), we just
       // do a rel/acq here, because we know exactly how `defer`
@@ -2818,16 +2807,11 @@ private sealed abstract class RxnSyntax0 extends RxnSyntax1 { this: Rxn.type =>
 
   import scala.language.implicitConversions
 
-  implicit final def rxnAxnSyntax[A](self: Axn[A]): Rxn.AxnSyntax[A] =
-    new Rxn.AxnSyntax(self)
+  implicit final def rxnInvariantSyntax[A](self: Rxn[A]): Rxn.InvariantSyntax[A] =
+    new Rxn.InvariantSyntax(self)
 }
 
 private sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.type =>
-
-  import scala.language.implicitConversions
-
-  implicit final def rxnInvariantSyntax[A, B](self: Rxn[B]): Rxn.InvariantSyntax[B] =
-    new Rxn.InvariantSyntax(self)
 }
 
 private sealed abstract class RxnSyntax2 extends RxnCompanionPlatform { this: Rxn.type =>

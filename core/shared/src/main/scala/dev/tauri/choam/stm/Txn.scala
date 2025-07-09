@@ -98,7 +98,7 @@ object Txn extends TxnInstances0 {
 
     @inline
     private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Txn[A] =
-      Rxn.unsafe.axnDelayContextImpl(uf)
+      Rxn.unsafe.delayContextImpl(uf)
 
     private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Txn[A]): Txn[A] =
       delayContext(uf).flatten

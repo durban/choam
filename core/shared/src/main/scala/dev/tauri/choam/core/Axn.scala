@@ -45,8 +45,7 @@ object Axn {
     final def delay[A](da: => A): Axn[A] =
       delayImpl(da)
 
-    private[choam] final def delayImpl[A](da: => A): RxnImpl[A] =
-      Rxn.unsafe.delayImpl[Any, A](_ => da)
+    private[choam] final def delayImpl[A](da: => A): RxnImpl[A] = ???
 
     @inline
     private[choam] final def suspend[A](daa: => Axn[A]): Axn[A] =
@@ -57,7 +56,7 @@ object Axn {
 
     @inline
     private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Axn[A] =
-      Rxn.unsafe.axnDelayContextImpl(uf)
+      Rxn.unsafe.delayContextImpl(uf)
 
     @inline
     private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Axn[A]): Axn[A] =

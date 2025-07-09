@@ -58,27 +58,27 @@ private[choam] object StripedRef extends StripedRefCompanionPlatform {
       go(0, z)
     }
 
-    final override def get: Axn[A] = Rxn.unsafe.suspendContext { (_: Any, ctx) =>
+    final override def get: Axn[A] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.get
     }
 
-    final override def set1(a: A): Axn[Unit] = Rxn.unsafe.suspendContext { (_: Any, ctx) =>
+    final override def set1(a: A): Axn[Unit] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.set1(a)
     }
 
-    final override def update1(f: A => A): Axn[Unit] = Rxn.unsafe.suspendContext { (_: Any, ctx) =>
+    final override def update1(f: A => A): Axn[Unit] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.update1(f)
     }
 
-    final override def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[C] = Rxn.unsafe.suspendContext { (_: Any, ctx) =>
+    final override def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[C] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.updWith(f)
     }
 
-    final override def upd[B, C](f: (A, B) => (A, C)): Rxn[C] = Rxn.unsafe.suspendContext { (_: Any, ctx) =>
+    final override def upd[B, C](f: (A, B) => (A, C)): Rxn[C] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.upd(f)
     }

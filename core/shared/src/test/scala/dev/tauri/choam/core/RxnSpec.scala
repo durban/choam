@@ -1595,8 +1595,7 @@ private[choam] object RxnSpec {
     Rxn.unit.map(_ => throw new MyException),
     Rxn.unit.flatMapF(_ => throw new MyException),
     Rxn.unit.flatMap[Unit](_ => throw new MyException),
-    Rxn.unsafe.delay[Any, Unit] { _ => throw new MyException },
-    Axn.unsafe.delay[Unit] { throw new MyException },
+    Rxn.unsafe.delay[Unit] { throw new MyException },
     Axn.pure(42L).postCommit(_ => Rxn.unit.map(_ => throw new MyException)),
   )
 }

@@ -27,7 +27,7 @@ import core.{ Axn, Ref }
 package object random {
 
   private[choam] final def newUuidImpl: core.RxnImpl[UUID] = {
-    core.Rxn.unsafe.axnDelayContextImpl(RxnUuidGen.unsafeRandomUuidInternal)
+    core.Rxn.unsafe.delayContextImpl(RxnUuidGen.unsafeRandomUuidInternal)
   }
 
   private[random] def uuidFromRandomBytes(buff: Array[Byte]): UUID = {
