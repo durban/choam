@@ -503,8 +503,8 @@ object Rxn extends RxnInstances0 {
     private[choam] final def updUpdate1[A](r: Ref[A])(f: A => A): Rxn[Unit] =
       new Rxn.UpdUpdate1(r.loc, f)
 
-    private[choam] final def updWith[A, B, C](r: Ref[A])(f: (A, B) => Rxn[(A, C)]): Rxn[C] =
-      new Rxn.UpdWith[A, B, C](r.loc, f)
+    private[choam] final def modifyWith[A, B, C](r: Ref[A])(f: A => Rxn[(A, C)]): Rxn[C] =
+      new Rxn.UpdWith[A, C](r.loc, f)
   }
 
   private[choam] final object loc {
@@ -817,7 +817,7 @@ object Rxn extends RxnInstances0 {
     final override def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B = _uf(ir)
   }
 
-  private final class UpdWith[A, B, C](val ref: MemoryLocation[A], val f: (A, B) => Rxn[(A, C)]) extends RxnImpl[C] {
+  private final class UpdWith[A, C](val ref: MemoryLocation[A], val f: A => Rxn[(A, C)]) extends RxnImpl[C] {
     final override def toString: String = s"UpdWith(${ref}, <function>)"
   }
 
@@ -2175,13 +2175,13 @@ object Rxn extends RxnInstances0 {
           val b = c.uf(ctx, this)
           a = b
           loop(next())
-        case c: UpdWith[_, a, _] =>
+        case c: UpdWith[_, _] =>
           val hwd = readMaybeFromLog(c.ref)
           if (hwd eq null) {
             loop(retry())
           } else {
             val ox = hwd.nv
-            val rxn = c.f(ox, aCastTo[a])
+            val rxn = c.f(ox)
             desc = desc.addOrOverwrite(hwd)
             contT.push(RxnConsts.ContUpdWith)
             contK.push2(c.ref, ox)

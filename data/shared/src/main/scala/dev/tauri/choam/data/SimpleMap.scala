@@ -150,10 +150,10 @@ private final class SimpleMap[K, V] private (
       }
     }
 
-    final def updWith[B, C](f: (V, B) => Rxn[(V, C)]): Rxn[C] = {
+    final def modifyWith[C](f: V => Rxn[(V, C)]): Rxn[C] = {
       repr.modifyWith { hm =>
         val currVal = hm.getOrElse(key, default)
-        f(currVal, ???).map {
+        f(currVal).map {
           case (newVal, c) =>
             if (equ(newVal, default)) (hm.removed(key), c)
             else (hm.updated(key, newVal), c)

@@ -24,7 +24,7 @@ import cats.kernel.Order
 import cats.data.Chain
 import cats.collections.AvlMap
 
-import core.{ =#>, Rxn, Axn, Ref, RefLike }
+import core.{ Rxn, Axn, Ref, RefLike }
 
 private final class SimpleOrderedMap[K, V] private (
   repr: Ref[AvlMap[K, V]]
@@ -161,10 +161,10 @@ private final class SimpleOrderedMap[K, V] private (
       }
     }
 
-    final def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
+    final def modifyWith[C](f: V => Axn[(V, C)]): Rxn[C] = {
       repr.modifyWith { am =>
         val currVal = am.get(key).getOrElse(default)
-        f(currVal, ???).map {
+        f(currVal).map {
           case (newVal, c) =>
             if (equ(newVal, default)) (am.remove(key), c)
             else (am + ((key, newVal)), c)

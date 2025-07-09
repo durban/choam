@@ -307,17 +307,17 @@ private final class Ttrie[K, V] private (
     }
 
     final override def modify[C](f: V => (V, C)): Rxn[C] = // TODO: optimize this
-      this.updWith[Any, C] { (v, _) => Rxn.pure(f(v)) }
+      this.modifyWith { v => Rxn.pure(f(v)) }
 
-    final override def updWith[B, C](f: (V, B) => Axn[(V, C)]): Rxn[C] = {
+    final override def modifyWith[C](f: V => Axn[(V, C)]): Rxn[C] = {
       getRef(key).flatMap { ref =>
-        ref.updWith[B, C] { (oldVal, b) =>
+        ref.modifyWith[C] { oldVal =>
           val currVal = if (isInit(oldVal) || isEnd(oldVal)) {
             default
           } else {
             oldVal
           }
-          f(currVal, b).flatMapF {
+          f(currVal).flatMapF {
             case (newVal, c) =>
               if (equ(newVal, default)) {
                 // it is possible, that we created
