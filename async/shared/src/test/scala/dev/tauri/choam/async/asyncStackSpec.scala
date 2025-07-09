@@ -54,8 +54,8 @@ trait AsyncStackSpec[F[_]]
   test("pop on a non-empty stack should work like on Treiber stack") {
     for {
       s <- newStack[F, String]
-      _ <- s.push.run[F]("foo")
-      _ <- s.push.run[F]("bar")
+      _ <- s.push("foo").run[F]
+      _ <- s.push("bar").run[F]
       _ <- assertResultF(s.pop, "bar")
       _ <- assertResultF(s.pop, "foo")
     } yield ()
@@ -64,9 +64,9 @@ trait AsyncStackSpec[F[_]]
   test("pop on a non-empty stack should work for concurrent pops") {
     for {
       s <- newStack[F, String]
-      _ <- s.push.run[F]("xyz")
-      _ <- s.push.run[F]("foo")
-      _ <- s.push.run[F]("bar")
+      _ <- s.push("xyz").run[F]
+      _ <- s.push("foo").run[F]
+      _ <- s.push("bar").run[F]
       pop = s.pop
       f1 <- pop.start
       f2 <- pop.start
@@ -82,7 +82,7 @@ trait AsyncStackSpec[F[_]]
       s <- newStack[F, String]
       f1 <- s.pop.start
       _ <- this.tickAll
-      _ <- s.push.run[F]("foo")
+      _ <- s.push("foo").run[F]
       p1 <- f1.joinWithNever
       _ <- assertEqualsF(p1, "foo")
     } yield ()
@@ -95,9 +95,9 @@ trait AsyncStackSpec[F[_]]
       _ <- this.tickAll
       f2 <- s.pop.start
       _ <- this.tickAll
-      _ <- s.push.run[F]("foo")
+      _ <- s.push("foo").run[F]
       _ <- assertResultF(f1.joinWithNever, "foo")
-      _ <- s.push.run[F]("bar")
+      _ <- s.push("bar").run[F]
       _ <- assertResultF(f2.joinWithNever, "bar")
     } yield ()
   }
@@ -111,11 +111,11 @@ trait AsyncStackSpec[F[_]]
       _ <- this.tickAll
       f3 <- s.pop.start
       _ <- this.tickAll
-      _ <- s.push.run[F]("a")
+      _ <- s.push("a").run[F]
       _ <- this.tickAll
-      _ <- s.push.run[F]("b")
+      _ <- s.push("b").run[F]
       _ <- this.tickAll
-      _ <- s.push.run[F]("c")
+      _ <- s.push("c").run[F]
       _ <- this.tickAll
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f2.joinWithNever, "b")
@@ -133,11 +133,11 @@ trait AsyncStackSpec[F[_]]
       f3 <- s.pop.start
       _ <- this.tickAll
       _ <- f2.cancel
-      _ <- s.push.run[F]("a")
+      _ <- s.push("a").run[F]
       _ <- this.tickAll
-      _ <- s.push.run[F]("b")
+      _ <- s.push("b").run[F]
       _ <- this.tickAll
-      _ <- s.push.run[F]("c")
+      _ <- s.push("c").run[F]
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f3.joinWithNever, "b")
       _ <- assertResultF(s.pop, "c")
@@ -151,7 +151,7 @@ trait AsyncStackSpec[F[_]]
       _ <- this.tickAll
       f2 <- s.pop.start
       _ <- this.tickAll
-      rxn = (s.push.provide("a") * s.push.provide("b") * s.push.provide("c")) *> (
+      rxn = (s.push("a") * s.push("b") * s.push("c")) *> (
         s.tryPop
       )
       _ <- assertResultF(rxn.run[F], Some("c"))

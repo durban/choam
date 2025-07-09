@@ -49,8 +49,8 @@ object BoundedQueue {
             if (res.nonEmpty) size.update(_ - 1).as(res)
             else Rxn.pure(res)
           },
-          size.updWith[A, Boolean] { (s, a) =>
-            if (s < bound) q.enqueue.provide(a).as((s + 1, true))
+          a => size.modifyWith { s =>
+            if (s < bound) q.enqueue(a).as((s + 1, true))
             else Rxn.pure((s, false))
           },
         ).map { gwl =>
@@ -83,10 +83,10 @@ object BoundedQueue {
     final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(gwl.asyncGet)
 
-    final override def tryEnqueue: Rxn[A, Boolean] =
-      gwl.trySet0
+    final override def tryEnqueue(a: A): Rxn[Boolean] =
+      gwl.trySet0(a)
 
-    final override def enqueue[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
+    final override def enqueueAsync[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
       gwl.asyncSet(a)
 
     final override def bound: Int =
@@ -112,10 +112,10 @@ object BoundedQueue {
     final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(gwl.asyncGet)
 
-    final override def tryEnqueue: Rxn[A, Boolean] =
-      gwl.trySet0
+    final override def tryEnqueue(a: A): Rxn[Boolean] =
+      gwl.trySet0(a)
 
-    final override def enqueue[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
+    final override def enqueueAsync[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
       gwl.asyncSet(a)
 
     final override def bound: Int =
@@ -139,8 +139,8 @@ object BoundedQueue {
     final override def size: F[Int] =
       F.run(self.size)
     final override def offer(a: A): F[Unit] =
-      self.enqueue(a)
+      self.enqueueAsync(a)
     final override def tryOffer(a: A): F[Boolean] =
-      F.apply(self.tryEnqueue, a)
+      F.apply(self.tryEnqueue(a))
   }
 }

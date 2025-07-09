@@ -52,7 +52,7 @@ trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: Mca
       _ <- assertResultF(cq.size, 0)
       f <- cq.take.start
       _ <- this.tickAll
-      _ <- q.enqueue[F]("a")
+      _ <- q.enqueueAsync[F]("a")
       _ <- assertResultF(f.joinWithNever, "a")
       _ <- assertResultF(cq.size, 0)
       _ <- assertResultF(cq.tryTake, None)
@@ -78,9 +78,9 @@ trait UnboundedQueueSpec[F[_]]
   test("UnboundedQueue non-empty deque") {
     for {
       s <- newQueue[F, String]
-      _ <- s.enqueue[F]("a")
-      _ <- s.enqueue[F]("b")
-      _ <- s.enqueue[F]("c")
+      _ <- s.enqueueAsync[F]("a")
+      _ <- s.enqueueAsync[F]("b")
+      _ <- s.enqueueAsync[F]("c")
       _ <- assertResultF(s.deque, "a")
       _ <- assertResultF(s.deque, "b")
       _ <- assertResultF(s.deque, "c")
@@ -96,11 +96,11 @@ trait UnboundedQueueSpec[F[_]]
       _ <- this.tickAll
       f3 <- s.deque.start
       _ <- this.tickAll
-      _ <- s.enqueue[F]("a")
+      _ <- s.enqueueAsync[F]("a")
       _ <- this.tickAll
-      _ <- s.enqueue[F]("b")
+      _ <- s.enqueueAsync[F]("b")
       _ <- this.tickAll
-      _ <- s.enqueue[F]("c")
+      _ <- s.enqueueAsync[F]("c")
       _ <- this.tickAll
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f2.joinWithNever, "b")
@@ -117,7 +117,7 @@ trait UnboundedQueueSpec[F[_]]
       _ <- this.tickAll
       f3 <- s.deque.start
       _ <- this.tickAll
-      rxn = s.enqueue.provide("a") * s.enqueue.provide("b") * s.enqueue.provide("c")
+      rxn = s.enqueue("a") * s.enqueue("b") * s.enqueue("c")
       _ <- rxn.run[F]
       // since `rxn` awakes all fibers in its post-commit actions, their order is non-deterministic:
       v1 <- f1.joinWithNever
@@ -134,7 +134,7 @@ trait UnboundedQueueSpec[F[_]]
       _ <- this.tickAll
       f2 <- s.deque.start
       _ <- this.tickAll
-      rxn = (s.enqueue.provide("a") * s.enqueue.provide("b") * s.enqueue.provide("c")) *> (
+      rxn = (s.enqueue("a") * s.enqueue("b") * s.enqueue("c")) *> (
         s.tryDeque
       )
       deqRes <- rxn.run[F]

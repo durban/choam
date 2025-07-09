@@ -18,11 +18,11 @@
 package dev.tauri.choam
 package async
 
-import core.{ =#>, Rxn, Axn, AsyncReactive }
+import core.{ Rxn, Axn, AsyncReactive }
 import data.Stack
 
 sealed trait AsyncStack[A] {
-  def push: Rxn[A, Unit]
+  def push(a: A): Rxn[Unit]
   def pop[F[_]](implicit F: AsyncReactive[F]): F[A]
   def tryPop: Axn[Option[A]]
 }
@@ -38,8 +38,8 @@ object AsyncStack {
   private[this] final def fromSyncStack[A](stack: Stack[A]): Axn[AsyncStack[A]] = {
     WaitList(stack.tryPop, stack.push).map { wl =>
       new AsyncStack[A] {
-        final override def push: A =#> Unit =
-          wl.set0.void
+        final override def push(a: A): Rxn[Unit] =
+          wl.set0(a).void
         final override def pop[F[_]](implicit F: AsyncReactive[F]): F[A] =
           wl.asyncGet
         final override def tryPop: Axn[Option[A]] =

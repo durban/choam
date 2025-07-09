@@ -81,7 +81,7 @@ trait PromiseSpecJvm[F[_]] extends PromiseSpec[F] { this: McasImplSpec =>
       // give a chance for registration to happen:
       _ <- F.sleep(1.second)
       // complete the promise:
-      ok <- p.complete0.run[F](42)
+      ok <- p.complete1(42).run[F]
       // now the fiber spins, hopefully on some other thread
       _ <- assertF(ok)
       // at this point, we don't want to release this

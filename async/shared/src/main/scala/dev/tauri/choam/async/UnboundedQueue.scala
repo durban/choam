@@ -20,15 +20,15 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import core.{ =#>, Axn, AsyncReactive }
+import core.{ Rxn, Axn, AsyncReactive }
 
 sealed trait UnboundedQueue[A]
   extends data.Queue.UnsealedQueue[A]
   with AsyncQueue.UnsealedAsyncQueueSource[A]
   with AsyncQueue.UnsealedBoundedQueueSink[A] {
 
-  final override def enqueue[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
-    F.apply(this.enqueue, a)
+  final override def enqueueAsync[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
+    F.apply(this.enqueue(a))
 }
 
 object UnboundedQueue {
@@ -47,10 +47,10 @@ object UnboundedQueue {
     data.Queue.unbounded[A].flatMapF { q =>
       WaitList[A](q.tryDeque, q.enqueue).map { wl =>
         new UnboundedQueue[A] {
-          final override def tryEnqueue: A =#> Boolean =
-            this.enqueue.as(true)
-          final override def enqueue: A =#> Unit =
-            wl.set0.void
+          final override def tryEnqueue(a: A): Rxn[Boolean] =
+            this.enqueue(a).as(true)
+          final override def enqueue(a: A): Rxn[Unit] =
+            wl.set0(a).void
           final override def tryDeque: Axn[Option[A]] =
             wl.tryGet
           final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
@@ -64,10 +64,10 @@ object UnboundedQueue {
     data.Queue.unboundedWithSize[A].flatMapF { q =>
       WaitList[A](q.tryDeque, q.enqueue).map { wl =>
         new UnboundedQueue.WithSize[A] {
-          final override def tryEnqueue: A =#> Boolean =
-            this.enqueue.as(true)
-          final override def enqueue: A =#> Unit =
-            wl.set0.void
+          final override def tryEnqueue(a: A): Rxn[Boolean] =
+            this.enqueue(a).as(true)
+          final override def enqueue(a: A): Rxn[Unit] =
+            wl.set0(a).void
           final override def tryDeque: Axn[Option[A]] =
             wl.tryGet
           final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =

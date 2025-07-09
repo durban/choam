@@ -23,7 +23,7 @@ import scala.collection.immutable.LongMap
 import cats.{ Functor, Invariant, Contravariant }
 import cats.effect.kernel.{ Deferred, DeferredSink, DeferredSource }
 
-import core.{ =#>, Rxn, Axn, Ref, Reactive, AsyncReactive }
+import core.{ Rxn, Axn, Ref, Reactive, AsyncReactive }
 import Ref.AllocationStrategy
 
 sealed trait PromiseRead[A] { self =>
@@ -48,15 +48,11 @@ object PromiseRead {
 
 sealed trait PromiseWrite[A] { self =>
 
-  def complete0: A =#> Boolean
-
-  def complete1(a: A): Axn[Boolean]
+  def complete1(a: A): Axn[Boolean] // TODO: rename to complete
 
   private[choam] def unsafeComplete(a: A)(implicit ir: unsafe.InRxn2): Boolean
 
   final def contramap[B](f: B => A): PromiseWrite[B] = new PromiseWrite[B] {
-    final override def complete0: Rxn[B, Boolean] =
-      self.complete0.contramap(f)
     final override def complete1(b: B): Axn[Boolean] =
       self.complete1(f(b))
     final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
@@ -65,7 +61,7 @@ sealed trait PromiseWrite[A] { self =>
 
   final def toCats[F[_]](implicit F: Reactive[F]): DeferredSink[F, A] = new DeferredSink[F, A] {
     final override def complete(a: A): F[Boolean] =
-      self.complete0.run[F](a)
+      self.complete1(a).run[F]
   }
 }
 
@@ -164,8 +160,6 @@ object Promise {
     with Promise[A] { self =>
 
     final def imap[B](f: A => B)(g: B => A): Promise[B] = new PromiseImplBase[B] {
-      final override def complete0: Rxn[B, Boolean] =
-        self.complete0.contramap(g)
       final override def complete1(b: B): Axn[Boolean] =
         self.complete1(g(b))
       final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
@@ -182,7 +176,7 @@ object Promise {
       final override def tryGet: F[Option[A]] =
         F.run(self.tryGet)
       final override def complete(a: A): F[Boolean] =
-        F.apply(self.complete0, a)
+        F.apply(self.complete1(a))
     }
   }
 
@@ -200,26 +194,15 @@ object Promise {
       }
     }
 
-    final override def complete0: A =#> Boolean = {
-      ref.updWith[A, Boolean] { (state, a) =>
-        state match {
-          case w: Waiting[_] =>
-            Rxn.postCommit[Any](callCbs(w.cbs, a)).as((new Done(a), true))
-          case d: Done[_] =>
-            Rxn.pure((d, false))
-        }
-      }
-    }
-
     final override def complete1(a: A): Axn[Boolean] = {
-      ref.upd[Any, LongMap[Right[Throwable, A] => Unit]] { (state, _) =>
+      ref.modify { state =>
         state match {
           case w: Waiting[_] =>
             (new Done(a), w.cbs)
           case d: Done[_] =>
             (d, null)
         }
-      }.flatMapF { cbs =>
+      }.flatMap { cbs =>
         if (cbs ne null) {
           Rxn.pure(true).postCommit(callCbs(cbs, a))
         } else {

@@ -69,11 +69,11 @@ object OverflowQueue {
     final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
       new AsyncQueue.CatsQueueAdapter(this)
 
-    final override def tryEnqueue: Rxn[A, Boolean] =
-      this.enqueue.as(true)
+    final override def tryEnqueue(a: A): Rxn[Boolean] =
+      this.enqueue(a).as(true)
 
-    final override def enqueue: Rxn[A, Unit] =
-      wl.set0.void
+    final override def enqueue(a: A): Rxn[Unit] =
+      wl.set0(a).void
 
     final override def tryDeque: Axn[Option[A]] =
       wl.tryGet
@@ -94,11 +94,11 @@ object OverflowQueue {
     final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
       new AsyncQueue.CatsQueueAdapter(this)
 
-    final override def tryEnqueue: Rxn[A, Boolean] =
-      gwl.trySet0
+    final override def tryEnqueue(a: A): Rxn[Boolean] =
+      gwl.trySet0(a)
 
-    final override def enqueue: Rxn[A, Unit] =
-      this.tryEnqueue.void
+    final override def enqueue(a: A): Rxn[Unit] =
+      this.tryEnqueue(a).void
 
     final override def tryDeque: Axn[Option[A]] =
       gwl.tryGet
