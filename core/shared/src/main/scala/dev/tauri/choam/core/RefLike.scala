@@ -33,7 +33,7 @@ sealed trait RefLike[A] {
 
   // primitive (for performance):
 
-  def upd[B, C](f: (A, B) => (A, C)): Rxn[C]
+  protected[this] def upd[B, C](f: (A, B) => (A, C)): Rxn[C] // TODO: remove this
 
   def set1(a: A): Axn[Unit] // TODO: remove
 

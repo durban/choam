@@ -182,7 +182,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r2 <- newRef("x")
       r = r1.getAndUpdateWith { ov =>
         if (ov eq "foo") Rxn.ret("bar")
-        else r2.upd[Any, String] { (o2, _) => (ov, o2) }
+        else r2.getAndSet(ov)
       }
       _ <- r.run
       _ <- assertResultF(r1.get.run, "bar")
