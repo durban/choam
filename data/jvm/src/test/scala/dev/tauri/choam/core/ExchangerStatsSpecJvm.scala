@@ -102,7 +102,7 @@ trait ExchangerStatsSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec
 
   private[this] final def startExchange[A, B](ex: Exchanger[A, B], a: A): F[Fiber[F, Throwable, (B, Option[SMap[AnyRef, AnyRef]])]] = {
     F.interruptible {
-      val b: B = ex.exchange.unsafePerform(a, this.mcasImpl)
+      val b: B = ex.exchange(a).unsafePerform(null, this.mcasImpl)
       val ctx = Axn.unsafe.delayContext(ctx => ctx).unsafeRun(this.mcasImpl)
       (b, getStats(ctx))
     }.start
@@ -146,7 +146,7 @@ trait ExchangerStatsSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec
       task1 = startExchange(ex, "foo")
       task2 = startExchange(ex2, "bar")
       f1 <- (task1.flatMap(_.joinWithNever), task2.flatMap(_.joinWithNever)).mapN(_ -> _).start
-      f2 <- (ex.dual.exchange.run[F](42), ex2.dual.exchange.run[F](23)).mapN(_ -> _).start
+      f2 <- (ex.dual.exchange(42).run[F], ex2.dual.exchange(23).run[F]).mapN(_ -> _).start
       r1 <- f1.joinWithNever
       (res11, res12) = r1
       _ <- assertEqualsF(res11._1, 42)
@@ -172,7 +172,7 @@ trait ExchangerStatsSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec
     val tsk0 = this.assumeNotZio *> (for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       f1 <- startExchange(ex, "foo")
-      f2 <- ex.dual.exchange.run[F](42).start
+      f2 <- ex.dual.exchange(42).run[F].start
       r1 <- f1.joinWithNever
       _ <- assertEqualsF(r1._1, 42)
       _ <- assertResultF(f2.joinWithNever, "foo")

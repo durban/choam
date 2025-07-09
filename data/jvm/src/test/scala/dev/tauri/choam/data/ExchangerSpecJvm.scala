@@ -72,8 +72,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Simple exchange") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      f1 <- logOutcome("f1", ex.exchange.run[F]("foo")).start
-      f2 <- logOutcome("f2", ex.dual.exchange.run[F](42)).start
+      f1 <- logOutcome("f1", ex.exchange("foo").run[F]).start
+      f2 <- logOutcome("f2", ex.dual.exchange(42).run[F]).start
       _ <- assertResultF(f1.joinWithNever, 42)
       _ <- assertResultF(f2.joinWithNever, "foo")
     } yield ()
@@ -83,13 +83,13 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("One side transient failure") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      f1 <- logOutcome("f1", ex.exchange.run[F]("bar")).start
+      f1 <- logOutcome("f1", ex.exchange("bar").run[F]).start
       ref <- Ref("x").run[F]
       r2 = (
-        (ex.dual.exchange * Rxn.unsafe.cas(ref, "-", "y")) + // this will fail
-        (ex.dual.exchange * Rxn.unsafe.cas(ref, "x", "y")) // this must succeed
-      ).map(_._1)
-      f2 <- logOutcome("f2", r2.run[F](99)).start
+        (ex.dual.exchange(99) <* Rxn.unsafe.cas(ref, "-", "y")) + // this will fail
+        (ex.dual.exchange(99) <* Rxn.unsafe.cas(ref, "x", "y")) // this must succeed
+      )
+      f2 <- logOutcome("f2", r2.run[F]).start
       _ <- assertResultF(f1.joinWithNever, 99)
       _ <- assertResultF(f2.joinWithNever, "bar")
     } yield ()
@@ -99,13 +99,13 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("One side doesn't do exchange") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      f1 <- logOutcome("f1", ex.exchange.run[F]("baz")).start
+      f1 <- logOutcome("f1", ex.exchange("baz").run[F]).start
       ref <- Ref("x").run[F]
       r2 = (
-        (ex.dual.exchange * Rxn.unsafe.cas(ref, "x", "y")) + // this may succeed
+        (ex.dual.exchange(64) * Rxn.unsafe.cas(ref, "x", "y")) + // this may succeed
         (Rxn.unsafe.cas(ref, "x", "z") * Rxn.unsafe.retry) // no exchange here, but will always fail
       ).map(_._1)
-      f2 <- logOutcome("f2", r2.run[F](64)).start
+      f2 <- logOutcome("f2", r2.run[F]).start
       _ <- assertResultF(f1.joinWithNever, 64)
       _ <- assertResultF(f2.joinWithNever, "baz")
       _ <- assertResultF(ref.get.run[F], "y")
@@ -118,10 +118,10 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       r1 <- Ref(0).run[F]
       r2 <- Ref(0).run[F]
-      rxn1 = (r1.update(_ + 1) *> ex.exchange.provide("str")).postCommit(
+      rxn1 = (r1.update(_ + 1) *> ex.exchange("str")).postCommit(
         r1.update(_ + 1)
       )
-      rxn2 = (r2.update(_ + 1) *> ex.dual.exchange.provide(9)).postCommit(
+      rxn2 = (r2.update(_ + 1) *> ex.dual.exchange(9)).postCommit(
         r2.update(_ + 1)
       )
       f1 <- rxn1.run[F].start
@@ -147,13 +147,13 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r2c <- Ref(0).run[F]
       r2d <- Ref(0).run[F]
       r2e <- Ref(0).run[F]
-      rxn1 = r1a.update(_ + 1).postCommit(r1b.update(_ + 1)) >>> (
-        ex.exchange.postCommit(r1c.getAndSet.void).provide("str").flatMapF { (i: Int) =>
+      rxn1 = r1a.update(_ + 1).postCommit(r1b.update(_ + 1)) *> (
+        ex.exchange("str").postCommit(x => r1c.getAndSet(x).void).flatMap { (i: Int) =>
           r1d.update(_ + i).postCommit(r1e.update(_ + 1))
         }
       )
-      rxn2 = r2a.update(_ + 1).postCommit(r2b.update(_ + 1)) >>> (
-        ex.dual.exchange.map(_.length).postCommit(r2c.getAndSet.void).provide(9).flatMapF { (i: Int) =>
+      rxn2 = r2a.update(_ + 1).postCommit(r2b.update(_ + 1)) *> (
+        ex.dual.exchange(9).map(_.length).postCommit(x => r2c.getAndSet(x).void).flatMap { (i: Int) =>
           r2d.update(_ + i).postCommit(r2e.update(_ + 1))
         }
       )
@@ -179,8 +179,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val tsk = for {
       ex1 <- Rxn.unsafe.exchanger[String, Int].run[F]
       ex2 <- Rxn.unsafe.exchanger[String, Int].run[F]
-      tsk1 = (ex1.exchange.provide("foo") * ex2.dual.exchange.provide(23).?).run[F]
-      tsk2 = (ex1.dual.exchange.provide(42) * ex2.exchange.provide("bar").?).run[F]
+      tsk1 = (ex1.exchange("foo") * ex2.dual.exchange(23).?).run[F]
+      tsk2 = (ex1.dual.exchange(42) * ex2.exchange("bar").?).run[F]
       f1 <- logOutcome("f1", F.cede *> tsk1).start
       f2 <- logOutcome("f2", F.cede *> tsk2).start
       // The second exchange will never succeed, since
@@ -196,8 +196,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val tsk = for {
       ex1 <- Rxn.unsafe.exchanger[String, Int].run[F]
       ex2 <- Rxn.unsafe.exchanger[String, Int].run[F]
-      tsk1 = (ex1.exchange.provide("foo").? * ex2.dual.exchange.provide(23)).run[F]
-      tsk2 = (ex1.dual.exchange.provide(42).? * ex2.exchange.provide("bar")).run[F]
+      tsk1 = (ex1.exchange("foo").? * ex2.dual.exchange(23)).run[F]
+      tsk2 = (ex1.dual.exchange(42).? * ex2.exchange("bar")).run[F]
       f1 <- logOutcome("f1", F.cede *> tsk1).start
       f2 <- logOutcome("f2", F.cede *> tsk2).start
       // The second exchange must always succeed,
@@ -223,8 +223,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       d2 <- F.deferred[String]
       // these 2 can never exchange with each other,
       // and would retry forever:
-      rxn1 = (ref.update(_ + "d") >>> ex.exchange.provide("foo"))
-      rxn2 = (ref.update(_ + "x") >>> ex.dual.exchange.provide(42))
+      rxn1 = (ref.update(_ + "d") *> ex.exchange("foo"))
+      rxn2 = (ref.update(_ + "x") *> ex.dual.exchange(42))
       tsk1 = runWithCede(rxn1).guaranteeCase { oc =>
         oc.fold(canceled = d1.complete(-1), errored = _ => d1.complete(-2), completed = _.flatMap(d1.complete)).void
       }
@@ -234,8 +234,8 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       // so after a while, we'll start 2 fallbacks,
       // which can exchange with the forever retrying
       // ones, thus making them able to finish:
-      fallback1 = ex.dual.exchange.provide(99) // will exchange with `rxn1`
-      fallback2 = ex.exchange.provide("bar") // will exchange with `rxn2`
+      fallback1 = ex.dual.exchange(99) // will exchange with `rxn1`
+      fallback2 = ex.exchange("bar") // will exchange with `rxn2`
       _ <- F.cede
       results <- F.uncancelable { poll =>
         for {
@@ -280,14 +280,14 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       // able to (tentatively) update the same ref, and
       // see their own writes; however, the conflict must
       // be detected later, and they must never commit
-      left = (ref.updateAndGet(_ + 1) * ex.exchange.provide(42)).flatMapF { case (v1, i) =>
+      left = (ref.updateAndGet(_ + 1) * ex.exchange(42)).flatMapF { case (v1, i) =>
         leftReceived.set(i)
         ref.get.flatMapF { v2 =>
           assertEquals(v2, v1) // it should see it's own write
           ref.set1(v2 + 1)
         }
       }
-      right = (ref.updateAndGet(_ + 99) * ex.dual.exchange.provide(123)).flatMapF { case (v1, i) =>
+      right = (ref.updateAndGet(_ + 99) * ex.dual.exchange(123)).flatMapF { case (v1, i) =>
         rightReceived.set(i)
         ref.get.flatMapF { v2 =>
           assertEquals(v2, v1) // it should see it's own write

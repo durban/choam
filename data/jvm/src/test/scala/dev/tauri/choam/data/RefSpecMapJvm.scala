@@ -97,10 +97,10 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
     def task(m: MapType[String, String], size: Int): F[Unit] = {
       randomStrings(size).flatMap { (keys: Vector[String]) =>
         keys.parTraverseN(NCPU) { key =>
-          m.put.run[F](key -> constValue) *> assertResultF(m.get.run[F](key), Some(constValue))
+          m.put(key, constValue).run[F] *> assertResultF(m.get(key).run[F], Some(constValue))
         } >> (
           keys.parTraverseN(NCPU) { key =>
-            assertResultF(m.del.run[F](key), true)
+            assertResultF(m.del(key).run[F], true)
           }
         ) >> (
           assertResultF(m.unsafeTrieMapSize.run[F], 0)
@@ -117,7 +117,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
     def task(m: MapType[String, String], size: Int): F[Unit] = {
       randomStrings(size).flatMap { (keys: Vector[String]) =>
         keys.parTraverseN(NCPU) { key =>
-          assertResultF(m.get.run[F](key), None)
+          assertResultF(m.get(key).run[F], None)
         } >> (
           assertResultF(m.unsafeTrieMapSize.run[F], 0)
         )
@@ -133,7 +133,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
     def task(m: MapType[String, String], size: Int): F[Unit] = {
       randomStrings(size).flatMap { (keys: Vector[String]) =>
         keys.parTraverseN(NCPU) { key =>
-          assertResultF(m.del.run[F](key), false)
+          assertResultF(m.del(key).run[F], false)
         } >> (
           assertResultF(m.unsafeTrieMapSize.run[F], 0)
         )

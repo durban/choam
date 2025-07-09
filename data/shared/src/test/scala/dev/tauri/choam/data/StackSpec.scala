@@ -51,9 +51,9 @@ trait StackSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Stack push/pop") {
     for {
       s <- newStack[String]()
-      _ <- s.push.run[F]("a")
-      _ <- s.push.run[F]("b")
-      _ <- s.push.run[F]("c")
+      _ <- s.push("a").run[F]
+      _ <- s.push("b").run[F]
+      _ <- s.push("c").run[F]
       _ <- assertResultF(s.tryPop.run[F], Some("c"))
       _ <- assertResultF(s.tryPop.run[F], Some("b"))
       _ <- assertResultF(s.tryPop.run[F], Some("a"))
@@ -64,7 +64,7 @@ trait StackSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Stack multiple ops in one Rxn") {
     for {
       s <- newStack[String]()
-      rxn = (s.push.provide("a") * s.push.provide("b")) *> (
+      rxn = (s.push("a") * s.push("b")) *> (
         s.tryPop
       )
       _ <- assertResultF(rxn.run[F], Some("b"))

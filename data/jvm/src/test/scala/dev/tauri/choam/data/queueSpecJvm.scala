@@ -104,7 +104,7 @@ trait QueueJvmTests[F[_]] { this: McasImplSpec & BaseQueueSpec[F] =>
       q <- newQueueFromList(List.empty[String])
       produce = F.blocking {
         for (i <- 0 until max) {
-          q.enqueue.unsafePerform(i.toString, this.mcasImpl)
+          q.enqueue(i.toString).unsafePerform(null, this.mcasImpl)
         }
       }
       cs <- F.delay { new ConcurrentLinkedQueue[String] }

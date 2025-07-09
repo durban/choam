@@ -76,7 +76,7 @@ trait RingBufferSpec[F[_]]
             }
           } else {
             // enq:
-            q.enqueue.run[F](i) *> s.offer(i) *> (
+            q.enqueue(i).run[F] *> s.offer(i) *> (
               checkSize(q, s)
             )
           }
@@ -94,16 +94,16 @@ trait RingBufferSpec[F[_]]
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- q.enqueue.run[F](1)
+      _ <- q.enqueue(1).run[F]
       _ <- assertResultF(q.size.run[F], 1)
       _ <- assertResultF(q.tryDeque.run[F], Some(1))
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- q.enqueue.run[F](2)
+      _ <- q.enqueue(2).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](3)
+      _ <- q.enqueue(3).run[F]
       _ <- assertResultF(q.size.run[F], 2)
       _ <- assertResultF(q.tryDeque.run[F], Some(2))
       _ <- assertResultF(q.size.run[F], 1)
@@ -113,13 +113,13 @@ trait RingBufferSpec[F[_]]
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
     def part2(q: Queue.WithSize[Int]): F[Unit] = for {
-      _ <- q.enqueue.run[F](4)
+      _ <- q.enqueue(4).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](5)
+      _ <- q.enqueue(5).run[F]
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- q.enqueue.run[F](6)
+      _ <- q.enqueue(6).run[F]
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- q.enqueue.run[F](7) // full
+      _ <- q.enqueue(7).run[F] // full
       _ <- assertResultF(q.size.run[F], 4)
       _ <- assertResultF(q.tryDeque.run[F], Some(4))
       _ <- assertResultF(q.size.run[F], 3)
@@ -133,17 +133,17 @@ trait RingBufferSpec[F[_]]
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
     def part3(q: Queue.WithSize[Int]): F[Unit] = for {
-      _ <- q.enqueue.run[F](8)
+      _ <- q.enqueue(8).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](9)
+      _ <- q.enqueue(9).run[F]
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- q.enqueue.run[F](10)
+      _ <- q.enqueue(10).run[F]
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- q.enqueue.run[F](11) // full
+      _ <- q.enqueue(11).run[F] // full
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- q.enqueue.run[F](12) // overwrites 8
+      _ <- q.enqueue(12).run[F] // overwrites 8
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- q.enqueue.run[F](13) // overwrites 9
+      _ <- q.enqueue(13).run[F] // overwrites 9
       _ <- assertResultF(q.size.run[F], 4)
       _ <- assertResultF(q.tryDeque.run[F], Some(10))
       _ <- assertResultF(q.size.run[F], 3)
@@ -157,25 +157,25 @@ trait RingBufferSpec[F[_]]
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
     def part4(q: Queue.WithSize[Int]): F[Unit] = for {
-      _ <- q.enqueue.run[F](14)
+      _ <- q.enqueue(14).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](15)
+      _ <- q.enqueue(15).run[F]
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- q.enqueue.run[F](16)
+      _ <- q.enqueue(16).run[F]
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- q.enqueue.run[F](17) // full
+      _ <- q.enqueue(17).run[F] // full
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- q.enqueue.run[F](18) // overwrites 14
+      _ <- q.enqueue(18).run[F] // overwrites 14
       _ <- assertResultF(q.size.run[F], 4)
       _ <- assertResultF(q.tryDeque.run[F], Some(15))
       _ <- assertResultF(q.size.run[F], 3)
       _ <- assertResultF(q.tryDeque.run[F], Some(16))
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- q.enqueue.run[F](19)
+      _ <- q.enqueue(19).run[F]
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- q.enqueue.run[F](20) // full
+      _ <- q.enqueue(20).run[F] // full
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- q.enqueue.run[F](21) // overwrites 17
+      _ <- q.enqueue(21).run[F] // overwrites 17
       _ <- assertResultF(q.size.run[F], 4)
       _ <- assertResultF(q.tryDeque.run[F], Some(18))
       _ <- assertResultF(q.size.run[F], 3)
@@ -206,27 +206,27 @@ trait RingBufferSpec[F[_]]
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- q.enqueue.run[F](1)
+      _ <- q.enqueue(1).run[F]
       _ <- assertResultF(q.size.run[F], 1)
       _ <- assertResultF(q.tryDeque.run[F], Some(1))
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- q.enqueue.run[F](2)
+      _ <- q.enqueue(2).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](3)
+      _ <- q.enqueue(3).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](4)
+      _ <- q.enqueue(4).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](5)
+      _ <- q.enqueue(5).run[F]
       _ <- assertResultF(q.size.run[F], 1)
       _ <- assertResultF(q.tryDeque.run[F], Some(5))
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- q.enqueue.run[F](6)
+      _ <- q.enqueue(6).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](7)
+      _ <- q.enqueue(7).run[F]
       _ <- assertResultF(q.size.run[F], 1)
       _ <- assertResultF(q.tryDeque.run[F], Some(7))
       _ <- assertResultF(q.size.run[F], 0)
@@ -239,7 +239,7 @@ trait RingBufferSpec[F[_]]
     for {
       q <- newRingBuffer[Int](3)
       _ <- assertResultF(q.size.run[F], 0)
-      rxn = (q.enqueue.provide(1) * q.enqueue.provide(2)) *> (
+      rxn = (q.enqueue(1) * q.enqueue(2)) *> (
         q.tryDeque
       )
       deqRes <- rxn.run[F]

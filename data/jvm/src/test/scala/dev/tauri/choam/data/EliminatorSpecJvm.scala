@@ -43,15 +43,15 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
 
   private def concurrentPushPopTest(
     tryPopRxn: Axn[Option[Int]],
-    pushRxn: Rxn[Int, Unit],
+    pushRxn: Int => Rxn[Unit],
   ): F[Unit] = {
     val k = 4
     for {
       _ <- F.cede
-      _ <- pushRxn.run[F](0)
+      _ <- pushRxn(0).run[F]
       res <- F.both(
         List.fill(k)(tryPopRxn.run[F]).parSequence,
-        List.tabulate(k)(idx => pushRxn.run[F](idx + 1)).parSequence_,
+        List.tabulate(k)(idx => pushRxn(idx + 1).run[F]).parSequence_,
       )
       popped = res._1.collect { case Some(i) => i }
       remaining = (k + 1) - popped.size
@@ -82,7 +82,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
         // `ref` before trying to exchange; but
         // the stack should work correctly nevertheless:
         ref.update(_ + 1) *> s.tryPop,
-        (ref.update(_ + 1) × s.push).contramap[Int](i => ((), i)).map(_._2),
+        i => (ref.update(_ + 1) * s.push(i)).map(_._2),
       )
     } yield ()
   }
@@ -105,7 +105,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
         // `ref` before trying to exchange; but
         // the stack should work correctly nevertheless:
         ref.update(_ + 1) *> s.tryPop,
-        (ref.update(_ + 1) × s.push).contramap[Int](i => ((), i)).map(_._2),
+        i => (ref.update(_ + 1) * s.push(i)).map(_._2),
       )
     } yield ()
   }
@@ -115,14 +115,14 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
       ctr1 <- Ref(0).run[F]
       ctr2 <- Ref(0).run[F]
       e <- Eliminator.tagged[String, Int, Int, String](
-        Rxn.lift[String, Int](s => s.toInt).flatTap(ctr1.update(_ + 1)),
+        s => Rxn.pure(s.toInt).flatTap(_ => ctr1.update(_ + 1)),
         s => s,
-        Rxn.lift[Int, String](i => i.toString).flatTap(ctr2.update(_ + 1)),
+        i => Rxn.pure(i.toString).flatTap(_ => ctr2.update(_ + 1)),
         s => s,
       ).run[F]
       // due to these concurrent transactions, the underlying ops has a chance of retrying => elimination
       bgFiber1 <- ((ctr1.update(_ + 1) *> ctr2.update(_ + 1)).run[F] *> F.cede).foreverM[Unit].start
-      rr <- F.both(F.cede *> e.leftOp.run[F]("42"), F.cede *> e.rightOp.run[F](99))
+      rr <- F.both(F.cede *> e.leftOp("42").run[F], F.cede *> e.rightOp(99).run[F])
       (leftRes, rightRes) = rr
       _ <- (leftRes match {
         case Left(underlyingLeftResult) =>
@@ -149,7 +149,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
     val t = for {
       s <- newStack.run[F]
       _ <- assertResultF(s.tryPop.run[F], Left(None))
-      _ <- assertResultF(s.push.run[F](42), Left(()))
+      _ <- assertResultF(s.push(42).run[F], Left(()))
       _ <- assertResultF(s.tryPop.run[F], Left(Some(42)))
       _ <- concurrentPushPopTest(
         s.tryPop.map {
@@ -159,7 +159,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
             // println("elimination!")
             eliminated
         },
-        s.push.map(_.fold(x => x, x => x))
+        i => s.push(i).map(_.fold(x => x, x => x))
       )
     } yield ()
     t.replicateA_(repeat)

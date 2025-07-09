@@ -56,10 +56,10 @@ trait QueueWithSizeSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(q.size.run[F], 0)
       rxn = for {
         s0 <- q.size
-        _ <- q.enqueue.provide("a")
-        _ <- q.enqueue.provide("b")
+        _ <- q.enqueue("a")
+        _ <- q.enqueue("b")
         s1 <- q.size
-        _ <- q.enqueue.provide("c")
+        _ <- q.enqueue("c")
         _ <- q.tryDeque
         s2 <- q.size
         _ <- q.tryDeque
@@ -84,11 +84,11 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
     for {
       q <- newQueueFromList(List.empty[String])
       // ("a", "b", "c", "d", "e")
-      remA <- q.enqueueWithRemover.run[F]("a")
-      _ <- q.enqueueWithRemover.run[F]("b")
-      remC <- q.enqueueWithRemover.run[F]("c")
-      remD <- q.enqueueWithRemover.run[F]("d")
-      _ <- q.enqueueWithRemover.run[F]("e")
+      remA <- q.enqueueWithRemover("a").run[F]
+      _ <- q.enqueueWithRemover("b").run[F]
+      remC <- q.enqueueWithRemover("c").run[F]
+      remD <- q.enqueueWithRemover("d").run[F]
+      _ <- q.enqueueWithRemover("e").run[F]
       _ <- assertResultF(remA.run[F], true)
       _ <- assertResultF(remA.run[F], false)
       _ <- assertResultF(q.tryDeque.run[F], Some("b"))
@@ -103,20 +103,20 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
   test("Queue.WithRemove removers with enq/deq") {
     for {
       q <- newQueueFromList(List.empty[String])
-      remA <- q.enqueueWithRemover.run[F]("a")
-      _ <- q.enqueueWithRemover.run[F]("b")
-      remC <- q.enqueueWithRemover.run[F]("c")
-      remD <- q.enqueueWithRemover.run[F]("d")
-      _ <- q.enqueueWithRemover.run[F]("e")
+      remA <- q.enqueueWithRemover("a").run[F]
+      _ <- q.enqueueWithRemover("b").run[F]
+      remC <- q.enqueueWithRemover("c").run[F]
+      remD <- q.enqueueWithRemover("d").run[F]
+      _ <- q.enqueueWithRemover("e").run[F]
       _ <- assertResultF(remA.run[F], true)
       _ <- assertResultF(remC.run, true)
       _ <- assertResultF(remD.run, true)
-      remF <- q.enqueueWithRemover.run[F]("f")
+      remF <- q.enqueueWithRemover("f").run[F]
       _ <- assertResultF(q.tryDeque.run[F], Some("b"))
       _ <- assertResultF(remF.run, true)
       _ <- assertResultF(remF.run, false)
       _ <- assertResultF(q.tryDeque.run[F], Some("e"))
-      _ <- q.enqueueWithRemover.run[F]("x")
+      _ <- q.enqueueWithRemover("x").run[F]
       _ <- assertResultF(q.tryDeque.run[F], Some("x"))
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
@@ -125,11 +125,11 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
   test("Queue.WithRemove enq then remove") {
     for {
       q <- newQueueFromList(List.empty[String])
-      _ <- q.enqueueWithRemover.run[F]("a")
-      _ <- q.enqueueWithRemover.run[F]("b")
-      _ <- q.enqueueWithRemover.run[F]("c")
+      _ <- q.enqueueWithRemover("a").run[F]
+      _ <- q.enqueueWithRemover("b").run[F]
+      _ <- q.enqueueWithRemover("c").run[F]
       _ <- assertResultF(q.tryDeque.run[F], Some("a"))
-      remX <- q.enqueueWithRemover.run[F]("x")
+      remX <- q.enqueueWithRemover("x").run[F]
       _ <- assertResultF(q.tryDeque.run[F], Some("b"))
       _ <- assertResultF(remX.run, true)
       _ <- assertResultF(q.tryDeque.run[F], Some("c"))
@@ -140,17 +140,17 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
   test("Null element") {
     for {
       q <- newQueueFromList(List.empty[String])
-      _ <- q.enqueueWithRemover.run[F]("a")
-      _ <- q.enqueueWithRemover.run[F]("b")
-      _ <- q.enqueueWithRemover.run[F]("c")
-      remNull1 <- q.enqueueWithRemover.run[F](null : String)
+      _ <- q.enqueueWithRemover("a").run[F]
+      _ <- q.enqueueWithRemover("b").run[F]
+      _ <- q.enqueueWithRemover("c").run[F]
+      remNull1 <- q.enqueueWithRemover(null : String).run[F]
       _ <- assertResultF(q.drainOnce, List("a", "b", "c", null))
       _ <- assertResultF(q.tryDeque.run[F], None)
-      remNull2 <- q.enqueueWithRemover.run[F](null : String)
-      remA1 <- q.enqueueWithRemover.run[F]("a")
-      remNull3 <- q.enqueueWithRemover.run[F](null : String)
-      _ <- q.enqueueWithRemover.run[F]("b")
-      _ <- q.enqueueWithRemover.run[F]("a")
+      remNull2 <- q.enqueueWithRemover(null : String).run[F]
+      remA1 <- q.enqueueWithRemover("a").run[F]
+      remNull3 <- q.enqueueWithRemover(null : String).run[F]
+      _ <- q.enqueueWithRemover("b").run[F]
+      _ <- q.enqueueWithRemover("a").run[F]
       // null, a, null, b, a
       _ <- assertResultF(remA1.run, true)
       _ <- assertResultF(remA1.run, false)
@@ -170,9 +170,9 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
   test("enqueueWithRemover") {
     for {
       q <- newQueueFromList(List.empty[Int])
-      r1 <- q.enqueueWithRemover.run[F](1)
-      r2 <- q.enqueueWithRemover.run[F](2)
-      r3 <- q.enqueueWithRemover.run[F](3)
+      r1 <- q.enqueueWithRemover(1).run[F]
+      r2 <- q.enqueueWithRemover(2).run[F]
+      r3 <- q.enqueueWithRemover(3).run[F]
       _ <- assertResultF(q.tryDeque.run[F], Some(1))
       _ <- r1.run[F] // does nothing
       _ <- r2.run[F] // removes 2
@@ -182,9 +182,9 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- r3.run[F] // does nothing
       _ <- assertResultF(q.tryDeque.run[F], None)
-      r42 <- q.enqueueWithRemover.run[F](42)
+      r42 <- q.enqueueWithRemover(42).run[F]
       _ <- r42.run[F] // removes 42
-      _ <- q.enqueue.run[F](33)
+      _ <- q.enqueue(33).run[F]
       _ <- assertResultF(q.tryDeque.run[F], Some(33))
       _ <- assertResultF(q.tryDeque.run[F], None)
     } yield ()
@@ -197,7 +197,7 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
       _ <- assumeF(this.mcasImpl.isThreadSafe)
       q <- newQueueFromList(List.empty[String])
       directRemovers <- (1 to N).toList.parTraverseN(P) { idx =>
-        q.enqueueWithRemover.run[F](idx.toString).map { remover =>
+        q.enqueueWithRemover(idx.toString).run[F].map { remover =>
           // we only want to remove even indices:
           if ((idx % 2) == 0) remover
           else Rxn.pure(true)
@@ -221,11 +221,11 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
       q <- newQueueFromList(List.empty[Int])
       _ <- assertResultF(q.isEmpty.run[F], true)
       _ <- assertResultF(q.isEmpty.run[F], true)
-      _ <- q.enqueueWithRemover.run[F](1)
+      _ <- q.enqueueWithRemover(1).run[F]
       _ <- assertResultF(q.isEmpty.run[F], false)
       _ <- assertResultF(q.isEmpty.run[F], false)
-      r2 <- q.enqueueWithRemover.run[F](2)
-      r3 <- q.enqueueWithRemover.run[F](3)
+      r2 <- q.enqueueWithRemover(2).run[F]
+      r3 <- q.enqueueWithRemover(3).run[F]
       _ <- assertResultF(q.isEmpty.run[F], false)
       _ <- assertResultF(q.tryDeque.run[F], Some(1))
       _ <- assertResultF(q.isEmpty.run[F], false)
@@ -233,9 +233,9 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(q.isEmpty.run[F], false)
       _ <- assertResultF(r3.run, true)
       _ <- assertResultF(q.isEmpty.run[F], true)
-      _ <- q.enqueueWithRemover.run[F](42)
+      _ <- q.enqueueWithRemover(42).run[F]
       _ <- assertResultF(q.isEmpty.run[F], false)
-      _ <- q.enqueueWithRemover.run[F](43)
+      _ <- q.enqueueWithRemover(43).run[F]
       _ <- assertResultF(q.tryDeque.run[F], Some(42))
       _ <- assertResultF(q.isEmpty.run[F], false)
       _ <- assertResultF(q.tryDeque.run[F], Some(43))
@@ -256,11 +256,11 @@ trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
     for {
       q <- newQueueFromList[Int](Nil)
       _ <- assertResultF(q.tailLag.run[F], 0)
-      _ <- q.enqueue.run[F](1)
+      _ <- q.enqueue(1).run[F]
       _ <- assertResultF(q.tailLag.run[F], 0)
-      _ <- q.enqueue.run[F](2)
+      _ <- q.enqueue(2).run[F]
       _ <- assertResultF(q.tailLag.run[F], 0)
-      _ <- q.enqueue.run[F](3)
+      _ <- q.enqueue(3).run[F]
       _ <- assertResultF(q.tailLag.run[F], 0)
       _ <- assertResultF(q.tryDeque.run[F], Some(1))
       _ <- assertResultF(q.tailLag.run[F], 0)
@@ -270,7 +270,7 @@ trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(q.tailLag.run[F], 0)
       _ <- assertResultF(q.tryDeque.run[F], None)
       _ <- assertResultF(q.tailLag.run[F], 0)
-      _ <- (q.enqueue.provide(1) *> q.enqueue.provide(2) *> q.enqueue.provide(3) *> q.enqueue.provide(4)).run[F]
+      _ <- (q.enqueue(1) *> q.enqueue(2) *> q.enqueue(3) *> q.enqueue(4)).run[F]
       _ <- assertResultF(q.tailLag.run[F], 0)
       _ <- assertResultF(
         (q.tryDeque * q.tryDeque * q.tryDeque * q.tryDeque).run[F],
@@ -308,7 +308,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       q1 <- newQueueFromList(1 :: 2 :: 3 :: Nil)
       q2 <- newQueueFromList(List.empty[Int])
-      r = q1.tryDeque.map(_.getOrElse(0)) >>> q2.enqueue
+      r = q1.tryDeque.map(_.getOrElse(0)).flatMap(q2.enqueue)
       _ <- r.run[F]
       _ <- r.run[F]
       _ <- assertResultF(q1.drainOnce, List(3))
@@ -326,16 +326,16 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(q.tryDeque.run, None)
       _ <- assertResultF(q.tryDeque.run[F], None)
 
-      _ <- q.enqueue.run("a")
+      _ <- q.enqueue("a").run
       _ <- assertResultF(q.tryDeque.run, Some("a"))
       _ <- assertResultF(q.tryDeque.run, None)
 
-      _ <- q.enqueue.run("a")
-      _ <- q.enqueue.run("b")
-      _ <- q.enqueue.run("c")
+      _ <- q.enqueue("a").run
+      _ <- q.enqueue("b").run
+      _ <- q.enqueue("c").run
       _ <- assertResultF(q.tryDeque.run, Some("a"))
 
-      _ <- q.enqueue.run("x")
+      _ <- q.enqueue("x").run
       _ <- assertResultF(q.drainOnce, List("b", "c", "x"))
       _ <- assertResultF(q.tryDeque.run, None)
     } yield ()
@@ -346,12 +346,12 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       q <- newQueueFromList(List.empty[String])
       _ <- assertResultF(q.tryDeque.run[F], None)
       rxn = for {
-        _ <- q.enqueue.provide("a")
-        _ <- q.enqueue.provide("b")
-        _ <- q.enqueue.provide("c")
+        _ <- q.enqueue("a")
+        _ <- q.enqueue("b")
+        _ <- q.enqueue("c")
         a <- q.tryDeque
         b <- q.tryDeque
-        _ <- q.enqueue.provide("d")
+        _ <- q.enqueue("d")
         c <- q.tryDeque
         d <- q.tryDeque
       } yield (a, b, c, d)
@@ -369,7 +369,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       val shifted = idx << 8
       require(shifted >= idx) // ensure no overflow
       val items = (1 to RxnSize).toList.map(_ | shifted)
-      val rxn: Axn[Unit] = items.traverse_ { item => q.enqueue.provide(item) }
+      val rxn: Axn[Unit] = items.traverse_ { item => q.enqueue(item) }
       rF.run(rxn)
     }
     def deqTask(q: QueueType[Int]): F[Int] = {

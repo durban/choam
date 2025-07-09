@@ -31,11 +31,11 @@ final class EliminationStackForTesting[A] private (
   eliminator: Eliminator[A, Unit, Any, Option[A]],
 ) extends Stack.UnsealedStack[A] {
 
-  override def push: Rxn[A, Unit] =
-    eliminator.leftOp
+  override def push(a: A): Rxn[Unit] =
+    eliminator.leftOp(a)
 
   override def tryPop: Axn[Option[A]] =
-    eliminator.rightOp
+    eliminator.rightOp(null)
 
   override def size: Axn[Int] =
     underlying.size
@@ -47,7 +47,7 @@ final object EliminationStackForTesting {
       Eliminator[A, Unit, Any, Option[A]](
         underlying.push,
         Some(_),
-        underlying.tryPop,
+        _ => underlying.tryPop,
         _ => (),
       ).map { eliminator =>
         new EliminationStackForTesting(underlying, eliminator)

@@ -32,26 +32,26 @@ trait EliminatorSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Eliminator.apply") {
     for {
       e <- Eliminator[String, String, String, String](
-        Rxn.lift(s => s + "x"),
+        s => Rxn.pure(s + "x"),
         s => s,
-        Rxn.lift(s => s + "y"),
+        s => Rxn.pure(s + "y"),
         s => s,
       ).run[F]
-      _ <- assertResultF(e.leftOp.run[F]("a"), "ax")
-      _ <- assertResultF(e.rightOp.run[F]("b"), "by")
+      _ <- assertResultF(e.leftOp("a").run[F], "ax")
+      _ <- assertResultF(e.rightOp("b").run[F], "by")
     } yield ()
   }
 
   test("Eliminator.tagged") {
     for {
       e <- Eliminator.tagged[String, String, String, String](
-        Rxn.lift(s => s + "x"),
+        s => Rxn.pure(s + "x"),
         s => s,
-        Rxn.lift(s => s + "y"),
+        s => Rxn.pure(s + "y"),
         s => s,
       ).run[F]
-      _ <- assertResultF(e.leftOp.run[F]("a"), Left("ax"))
-      _ <- assertResultF(e.rightOp.run[F]("b"), Left("by"))
+      _ <- assertResultF(e.leftOp("a").run[F], Left("ax"))
+      _ <- assertResultF(e.rightOp("b").run[F], Left("by"))
     } yield ()
   }
 
@@ -59,8 +59,8 @@ trait EliminatorSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       s <- EliminationStackForTesting[Int].run[F]
       _ <- assertResultF(s.tryPop.run[F], None)
-      _ <- s.push.run[F](1)
-      _ <- (s.push.provide(2) *> s.push.provide(3)).run[F]
+      _ <- s.push(1).run[F]
+      _ <- (s.push(2) *> s.push(3)).run[F]
       _ <- assertResultF(s.tryPop.run[F], Some(3))
       _ <- assertResultF((s.tryPop * s.tryPop).run[F], (Some(2), Some(1)))
       _ <- assertResultF(s.tryPop.run[F], None)
@@ -71,8 +71,8 @@ trait EliminatorSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       s <- EliminationStack[Int]().run[F]
       _ <- assertResultF(s.tryPop.run[F], None)
-      _ <- s.push.run[F](1)
-      _ <- (s.push.provide(2) *> s.push.provide(3)).run[F]
+      _ <- s.push(1).run[F]
+      _ <- (s.push(2) *> s.push(3)).run[F]
       _ <- assertResultF(s.tryPop.run[F], Some(3))
       _ <- assertResultF((s.tryPop * s.tryPop).run[F], (Some(2), Some(1)))
       _ <- assertResultF(s.tryPop.run[F], None)

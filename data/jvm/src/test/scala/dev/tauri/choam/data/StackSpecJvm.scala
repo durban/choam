@@ -64,7 +64,7 @@ trait StackSpecElimination12Jvm[F[_]]
     val once = for {
       ref <- Ref.unpadded(0).run[F]
       stack <- this.newStack[String]()
-      rxn1 = ref.update(_ + 1) *> stack.push.provide("a")
+      rxn1 = ref.update(_ + 1) *> stack.push("a")
       rxn2 = ref.update(_ + 2) *> stack.tryPop
       tsk = F.both(F.cede *> rxn1.run[F], F.cede *> rxn2.run[F])
       _ <- F.cede
@@ -80,12 +80,12 @@ trait StackSpecJvm[F[_]] { this: StackSpec[F] & McasImplSpec =>
     val N = 4
     val tsk = for {
       s <- this.newStack[String]()
-      _ <- s.push.run[F]("a")
-      _ <- s.push.run[F]("b")
-      _ <- s.push.run[F]("c")
-      _ <- s.push.run[F]("d")
+      _ <- s.push("a").run[F]
+      _ <- s.push("b").run[F]
+      _ <- s.push("c").run[F]
+      _ <- s.push("d").run[F]
       poppers <- F.parReplicateAN(Int.MaxValue)(replicas = N, ma = s.tryPop.run[F]).start
-      pushers <- F.parReplicateAN(Int.MaxValue)(replicas = N, ma = s.push.run[F]("x")).start
+      pushers <- F.parReplicateAN(Int.MaxValue)(replicas = N, ma = s.push("x").run[F]).start
       popRes <- poppers.joinWithNever
       _ <- pushers.joinWithNever
       remaining <- {
@@ -119,16 +119,16 @@ trait StackSpecJvm[F[_]] { this: StackSpec[F] & McasImplSpec =>
       ref <- Ref.unpadded(0).run[F]
       ref2 <- Ref.unpadded(0).run[F] // invariant: always twice the value of `ref`
       stack <- this.newStack[String]()
-      rxn1 = ref.getAndSet.provide(42).flatMap { ov =>
-        stack.push.provide("a") *> ref2.getAndSet.provide(84).map { ov2 => (ov, ov2) }
+      rxn1 = ref.getAndSet(42).flatMap { ov =>
+        stack.push("a") *> ref2.getAndSet(84).map { ov2 => (ov, ov2) }
       }
       rxn2 = stack.tryPop.flatMapF {
         case None => Rxn.unsafe.retry
-        case Some(s) => ref2.getAndSet.provide(66).flatMap { ov2 =>
-          ref.getAndSet.provide(33).map { ov => (ov, ov2, s) }
+        case Some(s) => ref2.getAndSet(66).flatMap { ov2 =>
+          ref.getAndSet(33).map { ov => (ov, ov2, s) }
         }
       }
-      misc1 = stack.push.provide("b")
+      misc1 = stack.push("b")
       misc2 = stack.tryPop
       tsk = F.both(
         F.both(F.cede *> rxn1.run[F], F.cede *> rxn2.run[F]),

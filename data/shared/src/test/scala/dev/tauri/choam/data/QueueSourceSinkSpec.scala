@@ -31,12 +31,12 @@ trait QueueSourceSinkSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =
     for {
       q <- Queue.bounded[Int](bound = 3).run[F]
       _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryEnqueue.run[F](1), true)
-      _ <- assertResultF(q.tryEnqueue.run[F](2), true)
+      _ <- assertResultF(q.tryEnqueue(1).run[F], true)
+      _ <- assertResultF(q.tryEnqueue(2).run[F], true)
       _ <- assertResultF(q.tryDeque.run[F], Some(1))
-      _ <- assertResultF(q.tryEnqueue.run[F](3), true)
-      _ <- assertResultF(q.tryEnqueue.run[F](4), true)
-      _ <- assertResultF(q.tryEnqueue.run[F](5), false)
+      _ <- assertResultF(q.tryEnqueue(3).run[F], true)
+      _ <- assertResultF(q.tryEnqueue(4).run[F], true)
+      _ <- assertResultF(q.tryEnqueue(5).run[F], false)
       _ <- assertResultF(q.tryDeque.run[F], Some(2))
       _ <- assertResultF(q.tryDeque.run[F], Some(3))
       _ <- assertResultF(q.tryDeque.run[F], Some(4))
@@ -48,8 +48,8 @@ trait QueueSourceSinkSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =
     for {
       q <- Queue.bounded[Int](bound = 2).run[F]
       _ <- assertResultF(q.tryDeque.run[F], None)
-      rxn = (q.tryEnqueue.provide(1) *> q.tryEnqueue.provide(2) *> q.tryEnqueue.provide(3)) * (
-        q.tryDeque * q.tryEnqueue.provide(4)
+      rxn = (q.tryEnqueue(1) *> q.tryEnqueue(2) *> q.tryEnqueue(3)) * (
+        q.tryDeque * q.tryEnqueue(4)
       )
       _ <- assertResultF(rxn.run[F], (false, (Some(1), true)))
       _ <- assertResultF(q.tryDeque.run[F], Some(2))
