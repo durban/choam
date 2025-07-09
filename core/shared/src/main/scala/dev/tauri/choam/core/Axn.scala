@@ -45,7 +45,8 @@ object Axn {
     final def delay[A](da: => A): Axn[A] =
       delayImpl(da)
 
-    private[choam] final def delayImpl[A](da: => A): RxnImpl[A] = ???
+    private[choam] final def delayImpl[A](da: => A): RxnImpl[A] =
+      Rxn.unsafe.delayImpl(da)
 
     @inline
     private[choam] final def suspend[A](daa: => Axn[A]): Axn[A] =

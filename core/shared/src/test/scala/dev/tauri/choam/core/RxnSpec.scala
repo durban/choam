@@ -23,12 +23,11 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 
 import cats.kernel.Monoid
-import cats.{ ~>, Applicative, Monad, StackSafeMonad, Align, Defer }
-import cats.arrow.{ ArrowChoice, FunctionK }
+import cats.{ ~>, Applicative, StackSafeMonad, Align, Defer }
+import cats.arrow.FunctionK
 import cats.data.Ior
 import cats.effect.IO
 import cats.effect.kernel.{ Ref => CatsRef }
-import cats.mtl.Local
 
 import internal.mcas.Mcas
 import core.{ RetryStrategy, RxnLocal }
@@ -483,12 +482,9 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r1 <- Ref("a").run[F]
       r2 <- Ref("").run
       r3 <- Ref("").run
-      r = r1.upd[Any, String] { case (s, _) =>
-        val r = s + "a"
-        (r, r)
-      }
-      pc1 = r.postCommit(r2.upd[String, Unit] { case (_, x) => (x, ()) })
-      pc2 = pc1.postCommit(r3.upd[String, Unit] { case (_, x) => (x, ()) })
+      r = r1.updateAndGet { s => s + "a" }
+      pc1 = r.postCommit(r2.set)
+      pc2 = pc1.postCommit(r3.set)
 
       _ <- assertResultF(pc1.run[F], "aa")
       _ <- assertResultF(Rxn.unsafe.directRead(r1).run[F], "aa")
@@ -630,7 +626,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("b").run[F]
-      res <- (r1.getAndSet("x") *> r2.getAndSet("x")).run[F]
+      res <- (r1.getAndSet("x") *> r2.getAndSet("y")).run[F]
       _ <- assertEqualsF(res, "b")
       _ <- assertResultF(r1.get.run[F], "x")
       _ <- assertResultF(r2.get.run[F], "y")

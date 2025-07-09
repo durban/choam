@@ -44,7 +44,7 @@ sealed trait RefLike[A] {
   // derived:
 
   final def getAndSet(nv: A): Rxn[A] =
-    upd[A, A] { (oa, na) => (na, oa) }
+    getAndUpdate { _ => nv }
 
   @inline
   final def update(f: A => A): Axn[Unit] =

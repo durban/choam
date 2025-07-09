@@ -89,7 +89,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Creating and running deeply nested Rxn's should both be stack-safe") {
-    val one = Rxn.pure(1)
+    val one = Rxn.pure(43)
     def nest(
       n: Int,
       combine: (Rxn[Int], Rxn[Int]) => Rxn[Int]
@@ -109,10 +109,10 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val r4: Rxn[Int] = nest(N, _ >> _)
     val r5: Rxn[Int] = nest(N, _ + _)
     val r7: Rxn[Int] = Monad[Rxn].tailRecM(N) { n =>
-      if (n > 0) ???//Rxn.lift[Int, Either[Int, Int]](_ => Left(n - 1))
+      if (n > 0) Rxn.unit.map(_ => Left(n - 1))
       else Rxn.ret(Right(99))
     }
-    assertEquals(r1.unsafePerform(42, this.mcasImpl), 42 + N)
+    assertEquals(r1.unsafePerform(42, this.mcasImpl), 43)
     assertEquals(r2.unsafePerform(42, this.mcasImpl), 42 + N)
     assertEquals(r3.unsafePerform(42, this.mcasImpl), 42 + 1)
     assertEquals(r3left.unsafePerform(42, this.mcasImpl), 42 + 1)

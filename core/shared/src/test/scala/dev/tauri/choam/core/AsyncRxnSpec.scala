@@ -33,7 +33,7 @@ trait AsyncRxnSpec[F[_]]
   extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("applyAsync") {
-    val r: Rxn[Int] = Rxn.pure(42)
+    val r: Rxn[Int] = Rxn.pure(3)
     val never: Rxn[Int] = Rxn.unsafe.retry
     val sSpin = RetryStrategy.spin(
       maxRetries = Some(128),

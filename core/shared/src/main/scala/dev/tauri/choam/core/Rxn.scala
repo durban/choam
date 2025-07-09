@@ -521,6 +521,9 @@ object Rxn extends RxnInstances0 {
 
     private[choam] final def upd[A, B, C](r: MemoryLocation[A])(f: (A, B) => (A, C)): RxnImpl[C] =
       new Rxn.UpdFull(r, f)
+
+    private[choam] final def modify[A, B](r: MemoryLocation[A])(f: A => (A, B)): RxnImpl[B] =
+      new Rxn.UpdFull(r, { (a: A, _: Any) => f(a) })
   }
 
   final object unsafe {
@@ -696,8 +699,8 @@ object Rxn extends RxnInstances0 {
 
   private[choam] final object internal {
 
-    final def exchange[A, B](ex: ExchangerImpl[A, B]): Rxn[B] =
-      new Rxn.Exchange[A, B](ex)
+    final def exchange[A, B](ex: ExchangerImpl[A, B], a: A): Rxn[B] =
+      new Rxn.Exchange[A, B](ex, a)
 
     final def finishExchange[D](
       hole: Ref[Exchanger.NodeResult[D]],
@@ -811,8 +814,8 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"DirectRead(${ref})"
   }
 
-  private final class Exchange[A, B](val exchanger: ExchangerImpl[A, B]) extends RxnImpl[B] {
-    final override def toString: String = s"Exchange(${exchanger})"
+  private final class Exchange[A, B](val exchanger: ExchangerImpl[A, B], val a: A) extends RxnImpl[B] {
+    final override def toString: String = s"Exchange(${exchanger}, ${a})"
   }
 
   private[core] final class AndAlso[B, D](val left: Rxn[B], val right: Rxn[D]) extends RxnImpl[(B, D)] {
@@ -2143,7 +2146,7 @@ object Rxn extends RxnInstances0 {
           loop(next())
         case c: Exchange[_, _] => // Exchange
           val msg = Exchanger.Msg.newMsg(
-            value = a,
+            value = c.a,
             contK = contKList.takeSnapshot(),
             contT = contT.takeSnapshot(),
             desc = this.descImm, // TODO: could we just call `toImmutable`?
@@ -2179,11 +2182,9 @@ object Rxn extends RxnInstances0 {
               loop(nxt)
           }
         case c: AndAlso[_, _] => // AndAlso
-          val xp = aCastTo[Tuple2[?, ?]]
           contT.push2(RxnConsts.ContAndAlsoJoin, RxnConsts.ContAndAlso)
-          contK.push2(c.right, xp._2)
+          contK.push2(c.right, a)
           // left:
-          a = xp._1
           loop(c.left)
         case c: Done[_] => // Done
           val committedResult: R = c.result.asInstanceOf[R]
