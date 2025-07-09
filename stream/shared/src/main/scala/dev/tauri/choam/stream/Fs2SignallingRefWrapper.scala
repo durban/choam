@@ -24,7 +24,7 @@ import cats.syntax.traverse._
 
 import fs2.Stream
 
-import core.{ =#>, Rxn, Axn, Ref, RefLike, AsyncReactive }
+import core.{ Rxn, Axn, Ref, RefLike, AsyncReactive }
 import data.Map
 import async.Promise
 
@@ -45,35 +45,24 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
     final override def get: Axn[A] =
       underlying.get
 
-    final override def set0: Rxn[A, Unit] = {
-      Rxn.computed(set1)
-    }
-
     final override def set1(a: A): Axn[Unit] = {
-      underlying.set1(a) >>> notifyListeners(a)
+      underlying.set1(a) *> notifyListeners(a)
     }
 
     final override def update1(f: A => A): Axn[Unit] = {
-      underlying.updateAndGet(f) >>> Rxn.computed(notifyListeners)
+      underlying.updateAndGet(f).flatMap(notifyListeners)
     }
 
-    final override def update2[B](f: (A, B) => A): Rxn[B, Unit] = {
-      underlying.upd[B, A] { (ov, b) =>
-        val nv = f(ov, b)
-        (nv, nv)
-      } >>> Rxn.computed(notifyListeners)
-    }
-
-    final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] = {
-      underlying.updWith[B, C] { (oldVal, b) =>
-        val ac = f(oldVal, b)
+    final override def modify[C](f: A => (A, C)): Rxn[C] = {
+      underlying.modifyWith { (oldVal) =>
+        val ac = f(oldVal)
         notifyListeners(ac._1).as(ac)
       }
     }
 
-    final override def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] = {
-      underlying.updWith[B, C] { (oldVal, b) =>
-        f(oldVal, b).flatMapF { ac =>
+    final override def modifyWith[C](f: A => Axn[(A, C)]): Rxn[C] = {
+      underlying.modifyWith { oldVal =>
+        f(oldVal).flatMapF { ac =>
           notifyListeners(ac._1).as(ac)
         }
       }
@@ -107,31 +96,33 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
       (Rxn.unique * underlying.get).flatMapF { case (tok, current) =>
         Ref.unpadded[Listener[F, A]](Full(current)).flatMapF { ref =>
           val tup = (tok, ref)
-          listeners.put.provide(tup).as(tup)
+          listeners.put(tok, ref).as(tup)
         }
       }
     }
 
-    val rel: Unique.Token =#> Unit =
-      listeners.del.void
+    def rel(tok: Unique.Token): Rxn[Unit] =
+      listeners.del(tok).void
 
     def nextElement(ref: Ref[Listener[F, A]]): F[A] = {
-      val rxn = Promise[A] >>> ref.upd { (l, p) =>
-        l match {
-          case Full(a) =>
-            (Empty(), F.monad.pure(a))
-          case Empty() =>
-            (Waiting(p), p.get)
-          case Waiting(_) =>
-            impossible("got Waiting, but shouldn't, because before the Promise is completed, Waiting is removed")
-            // (see `notifyListeners`)
+      val rxn = Promise[A].flatMap { p =>
+        ref.modify { l =>
+          l match {
+            case Full(a) =>
+              (Empty(), F.monad.pure(a))
+            case Empty() =>
+              (Waiting(p), p.get)
+            case Waiting(_) =>
+              impossible("got Waiting, but shouldn't, because before the Promise is completed, Waiting is removed")
+              // (see `notifyListeners`)
+          }
         }
       }
       F.monad.flatten(F.run(rxn))
     }
 
     Stream.bracket(acquire = F.run(acq))(release = { tokRef =>
-      F.apply(rel, tokRef._1)
+      F.apply(rel(tokRef._1))
     }).flatMap { tokRef =>
       Stream.repeatEval(nextElement(tokRef._2))
     }

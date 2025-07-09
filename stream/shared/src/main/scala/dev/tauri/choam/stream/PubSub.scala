@@ -100,13 +100,13 @@ object PubSub {
             if (chunk eq null) Axn.pure(some)
             else size.update(_ - chunk.size).as(some)
         },
-        Rxn.computed { chunk =>
+        { chunk =>
           if (chunk ne null) {
             size.update { oldSize =>
               val newSize = oldSize + chunk.size
               Predef.assert(newSize >= oldSize) // check overflow (unlikely)
               newSize
-            } >>> underlying.addFirst(chunk)
+            } *> underlying.addFirst(chunk)
           } else {
             underlying.addFirst(chunk)
           }
@@ -174,7 +174,7 @@ object PubSub {
               new PubSubBuffer[F, A](bufferSize, size.get, wl) {
 
                 protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Axn[Result] =
-                  dropOldestN(missingCapacity) >>> size.update1(_ - missingCapacity) >>> wl.set0.provide(newChunk).as(Success)
+                  dropOldestN(missingCapacity) *> size.update1(_ - missingCapacity) *> wl.set0(newChunk).as(Success)
 
                 private[this] final def dropOldestN(n: Int): Axn[Unit] = {
                   underlying.tryTakeLast.flatMapF {
@@ -274,7 +274,7 @@ object PubSub {
               var acc: Axn[Result] = _axnSuccess
               while (itr.hasNext) {
                 val pub1 = itr.next().publishChunkOrRetry(ch)
-                acc = acc >>> pub1
+                acc = acc *> pub1
               }
               // TODO: If no subscription ever retries (because
               // TODO: all have a strategy which doesn't need it),
@@ -298,7 +298,7 @@ object PubSub {
             while (itr.hasNext) {
               cnt += 1L
               val subs = itr.next()
-              acc = acc >>> subs.closeExternal
+              acc = acc *> subs.closeExternal
             }
             acc.as(if (cnt > 0L) Backpressured else Success)
           }
@@ -392,7 +392,7 @@ object PubSub {
     protected[this] def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Axn[Result]
 
     final def close: Axn[Unit] = {
-      wl.set0.provide(null).void
+      wl.set0(null).void
     }
 
     final def enqueue(chunk: Chunk[A]): Axn[Result] = getSize.flatMapF { sz =>
@@ -404,7 +404,7 @@ object PubSub {
       } else {
         val left = capacity - sz
         if (left >= chunkSize) { // OK
-          wl.set0.provide(chunk).as(Success)
+          wl.set0(chunk).as(Success)
         } else {
           val missing = chunkSize - left
           this.handleOverflow(chunk, missing)
