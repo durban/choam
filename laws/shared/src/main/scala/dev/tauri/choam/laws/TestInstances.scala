@@ -23,7 +23,7 @@ import cats.data.Ior
 
 import org.scalacheck.{ Gen, Arbitrary, Cogen }
 
-import core.{ =#>, Rxn, Axn, Ref, Ref2 }
+import core.{ Rxn, Axn, Ref, Ref2 }
 import internal.mcas.{ Mcas, RefIdGen }
 
 trait TestInstances extends TestInstancesLowPrio0 { self =>
@@ -101,16 +101,8 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
     }
   }
 
-  implicit def testingEqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]] = new Eq[Axn[A]] {
-    override def eqv(x: Axn[A], y: Axn[A]): Boolean = {
-      val rx = self.unsafePerformForTest(x, ())
-      val ry = self.unsafePerformForTest(y, ())
-      equA.eqv(rx, ry)
-    }
-  }
-
-  private[choam] final def unsafePerformForTest[A, B](rxn: A =#> B, a: A): B = {
-    rxn.unsafePerform(a, self.mcasImpl)
+  private[choam] final def unsafePerformForTest[A, B](rxn: Rxn[B]): B = {
+    rxn.unsafePerform(null, self.mcasImpl)
   }
 }
 
@@ -122,7 +114,7 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
     arbB: Arbitrary[B],
     arbAB: Arbitrary[A => B],
     arbAA: Arbitrary[A => A]
-  ): Arbitrary[Rxn[A, B]] = Arbitrary {
+  ): Arbitrary[Rxn[B]] = Arbitrary {
     arbResetRxn[A, B].arbitrary.map(_.toRxn)
   }
 
@@ -132,13 +124,20 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
     arbB: Arbitrary[B],
     arbAB: Arbitrary[A => B],
     arbAA: Arbitrary[A => A]
-  ): Arbitrary[ResetRxn[A, B]] = Arbitrary {
+  ): Arbitrary[ResetRxn[B]] = Arbitrary {
+    // Note: if too much of the choices (in the `oneOf`)
+    // calls recursively `arbResetRxn`, then scalacheck
+    // will (with high probability) recurse very deeply
+    // during the generation, which either takes a lot of
+    // time, or even can overflow the stack. This is why
+    // we have a few very trivial `Rxn`s among the choices.
     Gen.oneOf(
-      arbAB.arbitrary.map(ab => ResetRxn(Rxn.lift[A, B](ab))),
-      arbB.arbitrary.map(b => ResetRxn(Rxn.ret(b))),
+      arbB.arbitrary.map(b => ResetRxn(Rxn.pure(b))),
+      arbB.arbitrary.map(b => ResetRxn(Rxn.unsafe.delay { b })),
+      arbB.arbitrary.map(b => ResetRxn(Rxn.unit.as(b))),
       Gen.lzy {
         arbResetRxn[A, B].arbitrary.map { rxn =>
-          ResetRxn(Rxn.identity[A]) >>> rxn
+          ResetRxn(Rxn.unit) *> rxn
         }
       },
       Gen.lzy {
@@ -151,7 +150,7 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
         for {
           one <- arbResetRxn[A, A].arbitrary
           two <- arbResetRxn[A, B].arbitrary
-        } yield one >>> two
+        } yield one *> two
       },
       Gen.lzy {
         for {
@@ -163,15 +162,22 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
       arbB.arbitrary.flatMap { b =>
         Gen.delay {
           val ref = Ref.unsafePadded(b, this.rigInstance)
+          ResetRxn(ref.get, Set(ResetRef(ref, b)))
+        }
+      },
+      arbB.arbitrary.flatMap { b =>
+        Gen.delay {
+          val ref = Ref.unsafePadded(b, this.rigInstance)
           ResetRxn(Rxn.unsafe.directRead(ref), Set(ResetRef(ref, b)))
         }
       },
       for {
         ab <- arbAB.arbitrary
         a0 <- arbA.arbitrary
+        aa <- arbAA.arbitrary
         ref <- Gen.delay { Ref.unsafePadded(a0, this.rigInstance) }
       } yield {
-        val rxn = ref.upd[A, B] { (aOld, aInput) => (aInput, ab(aOld)) }
+        val rxn = ref.modify[B] { aOld => (aa(aOld), ab(aOld)) }
         ResetRxn(rxn, Set(ResetRef(ref, a0)))
       },
       // TODO: this generates `r: Rxn[A, B]` so that `r * r` can never commit
@@ -195,7 +201,7 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
           ref <- Gen.delay { Ref.unsafePadded[B](b, this.rigInstance) }
         } yield {
           ResetRxn(
-            r.rxn.postCommit(ref.upd[B, Unit] { case (_, _) => (b2, ()) }),
+            r.rxn.postCommit(ref.set(b2)),
             r.refs + ResetRef(ref, b)
           )
         }
@@ -205,29 +211,17 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
           ResetRxn(Rxn.unsafe.retry[B]) + rxn
         }
       },
-      Gen.lzy {
-        Arbitrary.arbString.arbitrary.flatMap { s =>
-          arbResetRxn[A, B].arbitrary.map { rr =>
-            ResetRxn(
-              rr.rxn.first[String].contramap[A](a => (a, s)).map(_._1),
-              rr.refs
-            )
-          }
-        }
-      },
     )
   }
 
-  implicit def testingEqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]] = new Eq[Rxn[A, B]] {
-    override def eqv(x: Rxn[A, B], y: Rxn[A, B]): Boolean = {
-      (1 to 32).forall { _ =>
-        val a = arbA.arbitrary.sample.getOrElse {
-          throw new IllegalStateException("no sample")
-        }
-        val rx = self.unsafePerformForTest(x, a)
-        val ry = self.unsafePerformForTest(y, a)
-        equB.eqv(rx, ry)
-      }
+  implicit def testingEqRxn[B](implicit equB: Eq[B]): Eq[Rxn[B]] = new Eq[Rxn[B]] {
+    override def eqv(x: Rxn[B], y: Rxn[B]): Boolean = {
+      // Note: we only generate `Rxn`s with deterministic results
+      val rx1 = self.unsafePerformForTest(x)
+      val ry1 = self.unsafePerformForTest(y)
+      val rx2 = self.unsafePerformForTest(x)
+      val ry2 = self.unsafePerformForTest(y)
+      equB.eqv(rx1, ry1) && equB.eqv(rx1, rx2) && equB.eqv(rx2, ry2)
     }
   }
 }

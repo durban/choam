@@ -40,7 +40,7 @@ class ConsistentRead extends StressTestBase {
     Ref.unsafePadded("y", this.rig)
 
   private[this] val upd: Axn[Unit] =
-    ref1.update(_ + "1") >>> ref2.update(_ + "1")
+    ref1.update(_ + "1") *> ref2.update(_ + "1")
 
   private[this] val get: Axn[(String, String)] =
     ref1.get * ref2.get

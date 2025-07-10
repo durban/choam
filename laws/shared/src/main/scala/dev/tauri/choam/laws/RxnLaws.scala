@@ -21,83 +21,47 @@ package laws
 import cats.laws.IsEq
 import cats.laws.IsEqArrow
 
-import core.{ =#>, Rxn, Axn }
-import core.Rxn.{ pure, ret, lift, computed }
+import core.Rxn
 import core.Rxn.unsafe.retry
 
 sealed trait RxnLaws {
 
   // This is to make sure our `Arbitrary` instance
   // only creates deterministic `Rxn`s.
-  def equalsItself[A, B](rxn: Rxn[A, B]): IsEq[Rxn[A, B]] = {
+  def equalsItself[B](rxn: Rxn[B]): IsEq[Rxn[B]] = {
     rxn <-> rxn
   }
 
-  def asIsMap[A, B, C](rxn: A =#> B, c: C): IsEq[A =#> C] =
+  def asIsMap[B, C](rxn: Rxn[B], c: C): IsEq[Rxn[C]] =
     rxn.as(c) <-> rxn.map[C](_ => c)
 
-  def voidIsMap[A, B](rxn: A =#> B): IsEq[A =#> Unit] =
+  def voidIsMap[B](rxn: Rxn[B]): IsEq[Rxn[Unit]] =
     rxn.void <-> rxn.map[Unit](_ => ())
 
-  def provideIsContramap[A, B](a: A, rxn: A =#> B): IsEq[Axn[B]] =
-    rxn.provide(a) <-> rxn.contramap[Any](_ => a)
+  def distributiveAndThenChoice1[B, C](x: Rxn[B], y: Rxn[C], z: Rxn[C]): IsEq[Rxn[C]] =
+    (x *> (y + z)) <-> ((x *> y) + (x *> z))
 
-  def pureIsRet[A](a: A): IsEq[Axn[A]] =
-    pure(a) <-> ret(a)
+  def distributiveAndThenChoice2[B, C](x: Rxn[B], y: Rxn[B], z: Rxn[C]): IsEq[Rxn[C]] =
+    ((x + y) *> z) <-> ((x *> z) + (y *> z))
 
-  def toFunctionIsProvide[A, B](rxn: A =#> B, a: A): IsEq[Axn[B]] =
-    rxn.toFunction(a) <-> rxn.provide(a)
+  def distributiveAndAlsoChoice1[B, D](x: Rxn[B], y: Rxn[D], z: Rxn[D]): IsEq[Rxn[(B, D)]] =
+    (x * (y + z)) <-> ((x * y) + (x * z))
 
-  def mapIsAndThenLift[A, B, C](rxn: A =#> B, f: B => C): IsEq[Rxn[A, C]] =
-    rxn.map(f) <-> (rxn >>> lift(f))
+  def distributiveAndAlsoChoice2[B, D](x: Rxn[B], y: Rxn[B], z: Rxn[D]): IsEq[Rxn[(B, D)]] =
+    ((x + y) * z) <-> ((x * z) + (y * z))
 
-  def contramapIsLiftAndThen[A, B, C](f: A => B, rxn: B =#> C): IsEq[Rxn[A, C]] =
-    rxn.contramap(f) <-> (lift(f) >>> rxn)
-
-  def timesIsAndAlso[A, B, C](x: A =#> B, y: A =#> C): IsEq[A =#> (B, C)] =
-    (x * y) <-> (x × y).contramap[A](a => (a, a))
-
-  def andAlsoIsAndThen[A, B, C, D](x: A =#> B, y: C =#> D): IsEq[Rxn[(A, C), (B, D)]] =
-    (x × y) <-> (x.first[C] >>> y.second[B])
-
-  def distributiveAndThenChoice1[A, B, C](x: A =#> B, y: B =#> C, z: B =#> C): IsEq[Rxn[A, C]] =
-    (x >>> (y + z)) <-> ((x >>> y) + (x >>> z))
-
-  def distributiveAndThenChoice2[A, B, C](x: A =#> B, y: A =#> B, z: B =#> C): IsEq[Rxn[A, C]] =
-    ((x + y) >>> z) <-> ((x >>> z) + (y >>> z))
-
-  def distributiveAndAlsoChoice1[A, B, C, D](x: A =#> B, y: C =#> D, z: C =#> D): IsEq[Rxn[(A, C), (B, D)]] =
-    (x × (y + z)) <-> ((x × y) + (x × z))
-
-  def distributiveAndAlsoChoice2[A, B, C, D](x: A =#> B, y: A =#> B, z: C =#> D): IsEq[Rxn[(A, C), (B, D)]] =
-    ((x + y) × z) <-> ((x × z) + (y × z))
-
-  def associativeAndAlso[A, B, C, D, E, F](x: A =#> B, y: C =#> D, z: E =#> F): IsEq[Rxn[((A, C), E), ((B, D), F)]] = {
-    ((x × y) × z) <-> (x × (y × z)).dimap[((A, C), E), ((B, D), F)](
-      ac_e => (ac_e._1._1, (ac_e._1._2, ac_e._2))
-    )(
+  def associativeAndAlso[B, D, F](x: Rxn[B], y: Rxn[D], z: Rxn[F]): IsEq[Rxn[((B, D), F)]] = {
+    ((x * y) * z) <-> (x * (y * z)).map(
       b_df => ((b_df._1, b_df._2._1), b_df._2._2)
     )
   }
 
-  def flatMapFIsAndThenComputed[A, B, C](x: A =#> B, f: B => Axn[C]): IsEq[Rxn[A, C]] =
-    x.flatMapF(f) <-> (x >>> computed(f))
-
-  def flatMapIsSecondAndThenComputed[A, B, C](x: A =#> B, f: B => Rxn[A, C]): IsEq[Rxn[A, C]] =
-    x.flatMap(f) <-> flatMapDerived(x, f)
-
-  private def flatMapDerived[A, B, C](rxn: Rxn[A, B], f: B => Rxn[A, C]): Rxn[A, C] = {
-    val self: Rxn[A, (A, B)] = rxn.second[A].contramap[A](x => (x, x))
-    val comp: Rxn[(A, B), C] = computed[(A, B), C](xb => f(xb._2).provide(xb._1))
-    self >>> comp
-  }
-
   // TODO: does this always hold?
-  def choiceRetryNeutralRight[A, B](x: A =#> B) =
+  def choiceRetryNeutralRight[B](x: Rxn[B]) =
     (x + retry[B]) <-> x
 
   // TODO: does this always hold?
-  def choiceRetryNeutralLeft[A, B](x: A =#> B) =
+  def choiceRetryNeutralLeft[B](x: Rxn[B]) =
     (retry[B] + x) <-> x
 
   // TODO: do these make a monoid with `+`?

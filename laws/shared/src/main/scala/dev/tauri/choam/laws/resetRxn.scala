@@ -18,35 +18,37 @@
 package dev.tauri.choam
 package laws
 
+import cats.syntax.all._
+
 import core.{ Rxn, Ref }
 
-private final case class ResetRxn[-A, +B](
-  rxn: Rxn[A, B],
+private final case class ResetRxn[+B](
+  rxn: Rxn[B],
   refs: Set[ResetRef[?]] = Set.empty,
 ) {
 
-  def toRxn: Rxn[A, B] =
-    rxn.postCommit(Rxn.unsafe.delay(_ => unsafeResetAll()))
+  def toRxn: Rxn[B] =
+    rxn.postCommit(this.resetAll)
 
-  def unsafeResetAll(): Unit = {
-    refs.foreach(_.unsafeReset())
+  private[this] final def resetAll: Rxn[Unit] = {
+    refs.toList.traverse_(resetRef => resetRef.reset)
   }
 
-  def + [X <: A, Y >: B](that: ResetRxn[X, Y]): ResetRxn[X, Y] =
+  def + [Y >: B](that: ResetRxn[Y]): ResetRxn[Y] =
     ResetRxn(this.rxn + that.rxn, this.refs union that.refs)
 
-  def >>> [C](that: ResetRxn[B, C]): ResetRxn[A, C] =
-    ResetRxn(this.rxn >>> that.rxn, this.refs union that.refs)
+  def *> [C](that: ResetRxn[C]): ResetRxn[C] =
+    ResetRxn(this.rxn *> that.rxn, this.refs union that.refs)
 
-  def * [X <: A, C](that: ResetRxn[X, C]): ResetRxn[X, (B, C)] =
+  def * [C](that: ResetRxn[C]): ResetRxn[(B, C)] =
     ResetRxn(this.rxn * that.rxn, this.refs union that.refs)
 
-  def map[C](f: B => C): ResetRxn[A, C] =
+  def map[C](f: B => C): ResetRxn[C] =
     ResetRxn(this.rxn.map(f), this.refs)
 }
 
 private final case class ResetRef[A](ref: Ref[A], resetTo: A) {
-  def unsafeReset(): Unit = {
-    ref.loc.unsafeSetV(resetTo)
+  final def reset: Rxn[Unit] = {
+    ref.set(resetTo)
   }
 }

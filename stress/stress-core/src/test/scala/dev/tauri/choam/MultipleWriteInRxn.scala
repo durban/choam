@@ -37,7 +37,7 @@ class MultipleWriteInRxn extends StressTestBase {
     Ref.unsafePadded("a", this.rig)
 
   private[this] val write: Axn[String] =
-    ref.update(_ => "b") >>> ref.modify(b => ("c", b))
+    ref.update(_ => "b") *> ref.modify(b => ("c", b))
 
   private[this] val read: Axn[String] =
     Rxn.unsafe.directRead(ref)

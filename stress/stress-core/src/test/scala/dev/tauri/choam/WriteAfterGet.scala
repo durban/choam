@@ -37,16 +37,20 @@ class WriteAfterGet extends StressTestBase {
     Ref.unsafePadded("a", this.rig)
 
   private[this] val write1: Axn[String] = {
-    ref.get >>> ref.upd { (old, input) =>
-      if (old eq input) ("1", old)
-      else (old, "ERR")
+    ref.get.flatMap { old1 =>
+      ref.modify { old2 =>
+        if (old1 eq old2) ("1", old1)
+        else (old2, "ERR")
+      }
     }
   }
 
   private[this] val write2: Axn[String] = {
-    ref.get >>> ref.upd { (old, input) =>
-      if (old eq input) ("2", old)
-      else (old, "ERR")
+    ref.get.flatMap { old1 =>
+      ref.modify { old2 =>
+        if (old1 eq old2) ("2", old1)
+        else (old2, "ERR")
+      }
     }
   }
 

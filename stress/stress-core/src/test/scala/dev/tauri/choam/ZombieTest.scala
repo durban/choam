@@ -45,7 +45,7 @@ class ZombieTest extends StressTestBase {
 
   // a 2-CAS, setting both atomically "a" -> "b":
   private[this] val upd: Axn[Unit] =
-    Rxn.unsafe.cas(ref1, "a", "b") >>> Rxn.unsafe.cas(ref2, "a", "b")
+    Rxn.unsafe.cas(ref1, "a", "b") *> Rxn.unsafe.cas(ref2, "a", "b")
 
   // a consistent read of both:
   private[this] val _get: Axn[(String, String)] =

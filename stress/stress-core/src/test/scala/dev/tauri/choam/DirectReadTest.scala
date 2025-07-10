@@ -49,7 +49,7 @@ class DirectReadTest extends StressTestBase {
     Rxn.unsafe.directRead(ref2)
 
   private[this] val write =
-    ref1.update(_ => "b") >>> ref2.update(_ => "y")
+    ref1.update(_ => "b") *> ref2.update(_ => "y")
 
   @Actor
   def writer(): Unit = {

@@ -26,7 +26,7 @@ import org.scalacheck.Arbitrary
 import org.scalacheck.Prop.forAll
 import org.typelevel.discipline.Laws
 
-import core.{ =#>, Reactive, AsyncReactive }
+import core.{ Rxn, Reactive, AsyncReactive }
 
 sealed trait ReactiveLawTests[F[_]] extends Laws {
 
@@ -39,15 +39,14 @@ sealed trait ReactiveLawTests[F[_]] extends Laws {
     implicit
     arbA: Arbitrary[A],
     arbAB: Arbitrary[A => B],
-    arbAxB: Arbitrary[A =#> B],
+    arbRxnA: Arbitrary[Rxn[A]],
     equFA: Eq[F[A]],
     equFB: Eq[F[B]],
   ): RuleSet = new DefaultRuleSet(
     name = "Reactive",
     parent = None, // TODO: monad
     "run pure" -> forAll(laws.runPure[A]),
-    "run lift" -> forAll(laws.runLift[A, B]),
-    "run toFunction" -> forAll(laws.runToFunction[A, B]),
+    "map in Rxn and F" -> forAll(laws.mapInRxnAndF[A, B])
   )
 }
 
@@ -71,7 +70,7 @@ sealed trait AsyncReactiveLawTests[F[_]] extends ReactiveLawTests[F] {
     implicit
     arbA: Arbitrary[A],
     arbAB: Arbitrary[A => B],
-    arbAxB: Arbitrary[A =#> B],
+    arbRxnA: Arbitrary[Rxn[A]],
     equFA: Eq[F[A]],
     equFB: Eq[F[B]],
     equFBoolA: Eq[F[(Boolean, A)]],
