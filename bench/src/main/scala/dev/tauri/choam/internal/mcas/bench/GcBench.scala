@@ -66,7 +66,7 @@ object GcBench {
     def circle: List[Queue[String]]
 
     final def transferOne(idx: Int): Axn[Unit] = {
-      circle(idx % circleSize).tryDeque.map(_.get) >>> circle((idx + 1) % circleSize).enqueue
+      circle(idx % circleSize).tryDeque.map(_.get).flatMap(circle((idx + 1) % circleSize).enqueue)
     }
   }
 

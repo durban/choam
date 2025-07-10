@@ -29,7 +29,7 @@ import internal.mcas.Mcas
 // TODO: with the `Default` (e.g., CDL#toCats).
 
 sealed trait Reactive[F[_]] extends ~>[Axn, F] { self =>
-  def apply[A, B](r: Rxn[B], a: A, s: RetryStrategy.Spin = RetryStrategy.Default): F[B]
+  def apply[A, B](r: Rxn[B], a: A /* TODO: <- remove this */, s: RetryStrategy.Spin = RetryStrategy.Default): F[B]
   private[choam] def mcasImpl: Mcas
   def monad: Monad[F]
   final def run[A](a: Axn[A], s: RetryStrategy.Spin = RetryStrategy.Default): F[A] =

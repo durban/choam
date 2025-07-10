@@ -147,7 +147,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
    * @return the result of the executed [[Rxn]].
    */
   final def unsafePerform(
-    a: Any,
+    a: Any, // TODO: remove this
     rt: ChoamRuntime,
   ): B = this.unsafePerform(a, rt.mcasImpl, RetryStrategy.Default)
 
@@ -162,13 +162,13 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
    * @return the result of the executed [[Rxn]].
    */
   final def unsafePerform(
-    a: Any,
+    a: Any, // TODO: remove this
     rt: ChoamRuntime,
     strategy: RetryStrategy.Spin,
   ): B = this.unsafePerform(a, rt.mcasImpl, strategy)
 
   private[choam] final def unsafePerform(
-    a: Any,
+    a: Any, // TODO: remove this
     mcas: Mcas,
     strategy: RetryStrategy.Spin = RetryStrategy.Default,
   ): B = {
@@ -182,13 +182,13 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   }
 
   final def perform[F[_], X >: B]( // TODO:0.5: do we want this public? (implicit Async is not great)
-    a: Any,
+    a: Any, // TODO: remove this
     rt: ChoamRuntime,
     strategy: RetryStrategy = RetryStrategy.Default,
   )(implicit F: Async[F]): F[X] = this.performInternal(a, rt.mcasImpl, strategy)
 
   private[choam] final def performInternal[F[_], X >: B](
-    a: Any,
+    a: Any, // TODO: remove this
     mcas: Mcas,
     strategy: RetryStrategy = RetryStrategy.Default,
   )(implicit F: Async[F]): F[X] = {
@@ -200,7 +200,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   }
 
   private[choam] final def performWithStepper[F[_], X >: B](
-    a: Any,
+    a: Any, // TODO: remove this
     mcas: Mcas,
     stepper: RetryStrategy.Internal.Stepper[F],
   )(implicit F: Async[F]): F[X] = {
@@ -208,7 +208,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   }
 
   private[this] final def performInternal0[F[_], X >: B](
-    a: Any,
+    a: Any, // TODO: remove this
     mcas: Mcas,
     strategy: RetryStrategy,
   )(implicit F: Async[F]): F[X] = {
@@ -227,7 +227,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
 
   /** Only for tests/benchmarks */
   private[choam] final def unsafePerformInternal0(
-    a: Any,
+    a: Any, // TODO: remove this
     ctx: Mcas.ThreadContext,
   ): B = {
     new Rxn.InterpreterState[Any, B](
@@ -241,7 +241,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
 
   /** Only for tests/benchmarks */
   private[choam] final def unsafePerformInternal(
-    a: Any,
+    a: Any, // TODO: remove this
     ctx: Mcas.ThreadContext,
     maxBackoff: Int = BackoffPlatform.maxPauseDefault,
     randomizeBackoff: Boolean = BackoffPlatform.randomizePauseDefault,
@@ -261,7 +261,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   }
 
   private[choam] final def performStm[F[_], X >: B](
-    a: Any,
+    a: Any, // TODO: remove this
     mcas: Mcas,
     strategy: RetryStrategy,
   )(implicit F: Async[F]): F[X] = {
@@ -273,7 +273,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   }
 
   private[choam] final def performStmWithStepper[F[_], X >: B](
-    a: Any,
+    a: Any, // TODO: remove this
     mcas: Mcas,
     stepper: RetryStrategy.Internal.Stepper[F],
   )(implicit F: Async[F]): F[X] = {
@@ -281,7 +281,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   }
 
   private[this] final def performStmInternal[F[_], X >: B](
-    a: Any,
+    a: Any, // TODO: remove this
     mcas: Mcas,
     strategy: RetryStrategy,
   )(implicit F: Async[F]): F[X] = {

@@ -42,14 +42,14 @@ class RetryBench {
   @Benchmark
   def retry010k(st: St10k): Unit = {
     IO { new AtomicInteger }.flatMap { ctr =>
-      st.rxn.perform[IO, String](ctr, st.choamRuntime, st.str)
+      st.rxn(ctr).perform[IO, String](null, st.choamRuntime, st.str)
     }.replicateA_(R).unsafeRunSync()(using st.rt)
   }
 
   @Benchmark
   def retry100k(st: St100k): Unit = {
     IO { new AtomicInteger }.flatMap { ctr =>
-      st.rxn.perform[IO, String](ctr, st.choamRuntime, st.str)
+      st.rxn(ctr).perform[IO, String](null, st.choamRuntime, st.str)
     }.replicateA_(R).unsafeRunSync()(using st.rt)
   }
 }
@@ -64,12 +64,12 @@ object RetryBench {
     private[this] var ctr: Int =
       0
 
-    val rxn: Rxn[Any, String] = {
-      Axn.unsafe.delay {
+    val rxn: Rxn[String] = {
+      Rxn.unsafe.delay {
         this.ctr += 1
         0
-      }.flatMapF { _ =>
-        Axn.pure("foo")
+      }.flatMap { _ =>
+        Rxn.pure("foo")
       }
     }
 
@@ -89,8 +89,8 @@ object RetryBench {
   @State(Scope.Thread)
   abstract class St(N: Int) extends McasImplStateBase {
 
-    val rxn: Rxn[AtomicInteger, String] = Rxn.computed { ctr =>
-      Axn.unsafe.delay { ctr.incrementAndGet() }.flatMapF { c =>
+    def rxn(ctr: AtomicInteger): Rxn[String] = {
+      Axn.unsafe.delay { ctr.incrementAndGet() }.flatMap { c =>
         if (c > N) Axn.pure("foo")
         else Rxn.unsafe.retry
       }

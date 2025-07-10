@@ -40,33 +40,30 @@ class ResourceAllocationRxn {
     val rss = t.selectResources(s.rss, rnd)
 
     @tailrec
-    def read(i: Int, rea: Axn[Array[String]]): Axn[Array[String]] = {
+    def read(i: Int, arr: Array[String], acc: Axn[Unit]): Axn[Unit] = {
       if (i >= n) {
-        rea
+        acc
       } else {
         val r = Rxn.unsafe.directRead(rss(i))
-        read(i + 1, rea.map2(r) { (arr, s) =>
-          arr(i) = s
-          arr
+        read(i + 1, arr, acc *> r.flatMap { s =>
+          Rxn.unsafe.delay { arr(i) = s }
         })
       }
     }
 
     @tailrec
-    def write(i: Int, rea: Rxn[Array[String], Unit]): Rxn[Array[String], Unit] = {
+    def write(i: Int, ovs: Array[String], acc: Rxn[Unit]): Rxn[Unit] = {
       if (i >= n) {
-        rea
+        acc
       } else {
-        val r = Rxn.computed[Array[String], Unit] { ovs =>
-          Rxn.unsafe.cas(rss(i), ovs(i), ovs((i + 1) % n))
-        }
-        write(i + 1, (rea * r).void)
+        val r = Rxn.unsafe.cas(rss(i), ovs(i), ovs((i + 1) % n))
+        write(i + 1, ovs, (acc *> r))
       }
     }
 
-    val r = read(0, Rxn.ret(t.ovs))
-    val w = write(0, Rxn.unit)
-    (r >>> w).unsafePerform((), t.mcasImpl)
+    val r = read(0, t.ovs, Rxn.unit)
+    val w = write(0, t.ovs, Rxn.unit)
+    (r *> w).unsafePerform((), t.mcasImpl)
 
     Blackhole.consumeCPU(t.tokens)
   }
