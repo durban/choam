@@ -91,18 +91,18 @@ class DataMapBench {
           val dummyKeys = s.dummyKeys
           dummyKeys(rnd.nextIntBounded(dummyKeys.length))
         }
-        val res: Option[String] = map.get.unsafePerformInternal(key, mcasCtx)
+        val res: Option[String] = map.get(key).unsafePerformInternal(null, mcasCtx)
         bh.consume(res)
       case n @ (2 | 3) =>
         val delInsKeys = s.delInsKeys
         val key = delInsKeys(rnd.nextIntBounded(delInsKeys.length))
         if (n == 2) {
           // insert:
-          val res: Option[String] = map.put.unsafePerformInternal((key, s.constValue), mcasCtx)
+          val res: Option[String] = map.put(key, s.constValue).unsafePerformInternal(null, mcasCtx)
           bh.consume(res)
         } else {
           // remove:
-          val res: Boolean = map.del.unsafePerformInternal(key, mcasCtx)
+          val res: Boolean = map.del(key).unsafePerformInternal(null, mcasCtx)
           bh.consume(res)
         }
       case x =>
@@ -240,7 +240,7 @@ class DataMapBench {
     val map = s.map
     val keys = s.keys
     val key = keys(rnd.nextIntBounded(keys.length))
-    val res: Boolean = map.replace.unsafePerformInternal((key, s.constValue, s.constValue2), mcasCtx)
+    val res: Boolean = map.replace(key, s.constValue, s.constValue2).unsafePerformInternal(null, mcasCtx)
     bh.consume(res)
   }
 }
@@ -354,14 +354,14 @@ object DataMapBench {
       while (idx < delInsKeys.length) {
         val key = delInsKeys(idx)
         assert(key ne null)
-        assert(this.map.put.unsafePerform(key -> constValue, this.mcasImpl).isEmpty)
+        assert(this.map.put(key, constValue).unsafePerform(null, this.mcasImpl).isEmpty)
         idx += 1
       }
       idx = 0
       while (idx < keys.length) {
         val key = keys(idx)
         assert(key ne null)
-        assert(this.map.put.unsafePerform(key -> constValue, this.mcasImpl).isEmpty)
+        assert(this.map.put(key, constValue).unsafePerform(null, this.mcasImpl).isEmpty)
         idx += 1
       }
     }

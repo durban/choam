@@ -48,7 +48,10 @@ object PromiseRead {
 
 sealed trait PromiseWrite[A] { self =>
 
-  def complete1(a: A): Axn[Boolean] // TODO: rename to complete
+  def complete1(a: A): Axn[Boolean] // TODO: remove this
+
+  def complete(a: A): Axn[Boolean] =
+    this.complete1(a)
 
   private[choam] def unsafeComplete(a: A)(implicit ir: unsafe.InRxn2): Boolean
 

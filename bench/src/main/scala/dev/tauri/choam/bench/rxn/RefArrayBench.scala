@@ -95,7 +95,7 @@ object RefArrayBench {
     def setup(): Unit = {
       val a = this.mkArr(this.size)
       (0 until this.size).foreach { idx =>
-        a.unsafeGet(idx).set0.provide(
+        a.unsafeGet(idx).set(
           ThreadLocalRandom.current().nextInt().toString
         ).unsafePerform(null, this.mcasImpl)
       }

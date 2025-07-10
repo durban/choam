@@ -27,7 +27,7 @@ import org.openjdk.jmh.infra.Blackhole
 import core.{ Rxn, Axn, Ref }
 import util._
 
-/** Compares the performance of `flatMap`, `flatMapF`, and `*>` */
+/** Compares the performance of `flatMap` and `*>` */
 @Fork(3)
 @Threads(2)
 class FlatMapBench {
@@ -36,13 +36,6 @@ class FlatMapBench {
   def withFlatMap(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
     val r: Axn[String] = s.rsWithFlatMap(idx)
-    bh.consume(r.unsafePerform((), k.mcasImpl))
-  }
-
-  @Benchmark
-  def withFlatMapF(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
-    val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
-    val r: Axn[String] = s.rsWithFlatMapF(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 
@@ -61,14 +54,13 @@ object FlatMapBench {
 
   sealed abstract class OpType extends Product with Serializable
   final case object FlatMap extends OpType
-  final case object FlatMapF extends OpType
   final case object StarGreater extends OpType
 
   @State(Scope.Benchmark)
   class St extends McasImplStateBase {
 
     private[this] val dummy: Axn[Unit] =
-      Rxn.unsafe.delay { _ => () }
+      Rxn.unsafe.delay { () }
 
     private[this] val refs = List.fill(size) {
       Ref.unsafePadded[String](
@@ -93,9 +85,6 @@ object FlatMapBench {
     val rsWithFlatMap: List[Axn[String]] =
       mkReactions(opType = FlatMap)
 
-    val rsWithFlatMapF: List[Axn[String]] =
-      mkReactions(opType = FlatMapF)
-
     val rsWithStarGreater: List[Axn[String]] =
       mkReactions(opType = StarGreater)
 
@@ -106,7 +95,6 @@ object FlatMapBench {
         } else {
           val newAcc = opType match {
             case FlatMap => acc.flatMap { _ => dummy }
-            case FlatMapF => acc.flatMapF { _ => dummy }
             case StarGreater => acc *> dummy
           }
           go(n - 1, newAcc)
@@ -115,7 +103,6 @@ object FlatMapBench {
 
       opType match {
         case FlatMap => go(n, first).flatMap { _ => last }
-        case FlatMapF => go(n, first).flatMapF { _ => last }
         case StarGreater => go(n, first) *> last
       }
     }

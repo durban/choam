@@ -33,14 +33,7 @@ class RefSetBench {
   @Benchmark
   def getAndSetProvideVoid(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
-    val r: Axn[Unit] = s.getAndSetVoid(idx).provide(rnd.nextString())
-    r.unsafePerform(null, k.mcasImpl)
-  }
-
-  @Benchmark
-  def set0Provide(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
-    val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
-    val r: Axn[Unit] = s.set0(idx).provide(rnd.nextString())
+    val r: Axn[Unit] = s.getAndSetVoid(idx)(rnd.nextString())
     r.unsafePerform(null, k.mcasImpl)
   }
 
@@ -52,10 +45,10 @@ class RefSetBench {
   }
 
   @Benchmark
-  def upd(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
+  def modify(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val str = rnd.nextString()
-    val r: Axn[Unit] = s.refs(idx).upd[Any, Unit] { (_, _) => (str, ()) }
+    val r: Axn[Unit] = s.refs(idx).modify { _ => (str, ()) }
     r.unsafePerform(null, k.mcasImpl)
   }
 
@@ -64,14 +57,6 @@ class RefSetBench {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val str = rnd.nextString()
     val r: Axn[Unit] = s.refs(idx).update1(_ => str)
-    r.unsafePerform(null, k.mcasImpl)
-  }
-
-  @Benchmark
-  def update2(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
-    val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
-    val str = rnd.nextString()
-    val r: Axn[Unit] = s.refs(idx).update2 { (_, _) => str }
     r.unsafePerform(null, k.mcasImpl)
   }
 
@@ -111,8 +96,6 @@ object RefSetBench {
       Ref.unsafePadded[String](ThreadLocalRandom.current().nextInt().toString, this.mcasImpl.currentContext().refIdGen)
     }
 
-    val getAndSetVoid: Array[Rxn[String, Unit]] = refs.map { _.getAndSet.void }
-
-    val set0: Array[Rxn[String, Unit]] = refs.map { _.set0 }
+    val getAndSetVoid: Array[String => Rxn[Unit]] = refs.map { ref => { s => ref.getAndSet(s).void } }
   }
 }

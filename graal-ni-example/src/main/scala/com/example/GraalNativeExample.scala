@@ -29,7 +29,7 @@ import dev.tauri.choam.ce.{ RxnAppMixin, TxnAppMixin }
 object GraalNativeExample extends IOApp.Simple with RxnAppMixin with TxnAppMixin {
 
   private final def rxn(map: Map[String, Int], i: Int): Axn[Int] =
-    map.putIfAbsent.provide("foo" -> i).map(_.getOrElse(0))
+    map.putIfAbsent("foo", i).map(_.getOrElse(0))
 
   private final def txn(ref: TRef[String], s: String): Txn[String] =
     ref.getAndUpdate(_ => s)

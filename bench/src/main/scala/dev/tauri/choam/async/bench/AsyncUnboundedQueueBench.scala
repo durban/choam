@@ -52,7 +52,7 @@ class AsyncUnboundedQueueBench extends BenchUtils {
     for {
       fibs <- q.deque.start.replicateA(queueSize)
       _ <- fibs.take(queueSize / 2).traverse(_.cancel)
-      _ <- q.enqueue[IO]("x").replicateA(queueSize)
+      _ <- q.enqueueAsync[IO]("x").replicateA(queueSize)
       _ <- fibs.drop(queueSize / 2).traverse(_.joinWithNever)
     } yield ()
   }

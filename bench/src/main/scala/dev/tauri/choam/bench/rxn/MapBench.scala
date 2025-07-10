@@ -34,13 +34,6 @@ import util._
 class MapBench {
 
   @Benchmark
-  def map_andThenLift(s: MapBench.St, k: McasImplState, rnd: RandomState): String = {
-    val idx = Math.abs(rnd.nextInt()) % MapBench.size
-    val r: Axn[String] = s.rsWithAndThenLift(idx)
-    r.unsafePerform((), k.mcasImpl)
-  }
-
-  @Benchmark
   def map_directMap(s: MapBench.St, k: McasImplState, rnd: RandomState): String = {
     val idx = Math.abs(rnd.nextInt()) % MapBench.size
     val r: Axn[String] = s.rsWithMapDirect(idx)
@@ -83,7 +76,6 @@ object MapBench {
 
   sealed abstract class OpType extends Product with Serializable
   final case object MapDirect extends OpType
-  final case object AndThenLift extends OpType
   final case object MonadMap extends OpType
   final case object Map2AndAlsoTupled extends OpType
   final case object Map2FlatMapMap extends OpType
@@ -123,9 +115,6 @@ object MapBench {
     val rsWithMapDirect: List[Axn[String]] =
       mkReactions(opType = MapDirect)
 
-    val rsWithAndThenLift: List[Axn[String]] =
-      mkReactions(opType = AndThenLift)
-
     val rsWithMonadMap: List[Axn[String]] =
       mkReactions(opType = MonadMap)
 
@@ -146,8 +135,6 @@ object MapBench {
           val newAcc = opType match {
             case MapDirect =>
               acc.map(dummy)
-            case AndThenLift =>
-              acc >>> Rxn.lift(dummy)
             case MonadMap =>
               monadMap(acc, dummy)(using Rxn.monadInstance)
             case Map2AndAlsoTupled =>
@@ -168,15 +155,15 @@ object MapBench {
       F.map(fa)(f)
     }
 
-    private[this] final def map2WithAndAlsoTupled[X, A, B, Z](fa: Rxn[X, A], fb: Rxn[X, B])(f: (A, B) => Z): Rxn[X, Z] = {
+    private[this] final def map2WithAndAlsoTupled[X, A, B, Z](fa: Rxn[A], fb: Rxn[B])(f: (A, B) => Z): Rxn[Z] = {
       (fa * fb).map(f.tupled)
     }
 
-    private[this] final def map2WithFlatMap[X, A, B, Z](fa: Rxn[X, A], fb: Rxn[X, B])(f: (A, B) => Z): Rxn[X, Z] = {
+    private[this] final def map2WithFlatMap[X, A, B, Z](fa: Rxn[A], fb: Rxn[B])(f: (A, B) => Z): Rxn[Z] = {
       fa.flatMap { a => fb.map { b => f(a, b) } }
     }
 
-    private[this] final def map2WithPrimitive[X, A, B, Z](fa: Rxn[X, A], fb: Rxn[X, B])(f: (A, B) => Z): Rxn[X, Z] = {
+    private[this] final def map2WithPrimitive[X, A, B, Z](fa: Rxn[A], fb: Rxn[B])(f: (A, B) => Z): Rxn[Z] = {
       fa.map2(fb)(f)
     }
   }
