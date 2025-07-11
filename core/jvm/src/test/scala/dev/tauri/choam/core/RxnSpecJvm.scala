@@ -600,7 +600,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       _ <- tsk.parReplicateA_(P)(using cats.effect.instances.spawn.parallelForGenSpawn)
       _ <- assertResultF(refs.traverse(_.get).map(_.sum).run[F], P)
     } yield ()
-    t.replicateA_(if (this.isOpenJdk()) 10000 else 1000)
+    t.replicateA_(if (this.isOpenJdk() || this.isGraal()) 10000 else 1000)
   }
 
   test("read-only `Rxn`s") {
