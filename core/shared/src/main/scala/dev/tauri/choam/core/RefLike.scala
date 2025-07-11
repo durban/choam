@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package core
 
-import core.{ Rxn, Axn }
-
 import cats.data.State
 import cats.effect.kernel.{ Ref => CatsRef }
 
@@ -31,15 +29,15 @@ sealed trait RefLike[A] {
 
   def modify[B](f: A => (A, B)): Rxn[B]
 
-  def modifyWith[B](f: A => Axn[(A, B)]): Rxn[B]
+  def modifyWith[B](f: A => Rxn[(A, B)]): Rxn[B]
 
   // primitive (for performance):
 
-  def set1(a: A): Axn[Unit] // TODO: remove
+  def set1(a: A): Rxn[Unit] // TODO: remove
 
-  def set(a: A): Axn[Unit] = set1(a)
+  def set(a: A): Rxn[Unit] = set1(a)
 
-  def update1(f: A => A): Axn[Unit]
+  def update1(f: A => A): Rxn[Unit]
 
   // derived:
 
@@ -47,26 +45,26 @@ sealed trait RefLike[A] {
     getAndUpdate { _ => nv }
 
   @inline
-  final def update(f: A => A): Axn[Unit] =
+  final def update(f: A => A): Rxn[Unit] =
     update1(f)
 
-  final def updateWith(f: A => Axn[A]): Axn[Unit] =
+  final def updateWith(f: A => Rxn[A]): Rxn[Unit] =
     modifyWith { oa => f(oa).map(na => (na, ())) }
 
   /** Returns `false` iff the update failed */
-  final def tryUpdate(f: A => A): Axn[Boolean] =
+  final def tryUpdate(f: A => A): Rxn[Boolean] =
     update1(f).maybe
 
   /** Returns previous value */
-  final def getAndUpdate(f: A => A): Axn[A] =
+  final def getAndUpdate(f: A => A): Rxn[A] =
     modify { oa => (f(oa), oa) }
 
     /** Returns previous value */
-  final def getAndUpdateWith(f: A => Axn[A]): Axn[A] =
+  final def getAndUpdateWith(f: A => Rxn[A]): Rxn[A] =
     modifyWith { oa => f(oa).map(na => (na, oa)) }
 
   /** Returns new value */
-  final def updateAndGet(f: A => A): Axn[A] = {
+  final def updateAndGet(f: A => A): Rxn[A] = {
     modify { oa =>
       val na = f(oa)
       (na, na)
@@ -74,13 +72,13 @@ sealed trait RefLike[A] {
   }
 
   /** Returns new value */
-  final def updateAndGetWith(f: A => Axn[A]): Axn[A] = { // TODO: optimize
+  final def updateAndGetWith(f: A => Rxn[A]): Rxn[A] = { // TODO: optimize
     modifyWith { oa =>
       f(oa).map { na => (na, na) }
     }
   }
 
-  final def tryModify[B](f: A => (A, B)): Axn[Option[B]] =
+  final def tryModify[B](f: A => (A, B)): Rxn[Option[B]] =
     modify(f).?
 
   // interop:

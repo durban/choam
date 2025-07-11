@@ -21,8 +21,6 @@ package core
 import cats.effect.IO
 import cats.effect.instances.all._
 
-import core.Memo
-
 final class MemoSpec_DefaultMcas_IO
   extends BaseSpecIO
   with SpecDefaultMcas
