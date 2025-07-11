@@ -25,7 +25,7 @@ import scala.util.hashing.byteswap32
 import cats.kernel.{ Hash, Order }
 import cats.syntax.all._
 
-import core.{ =#>, Rxn, Ref, RefLike }
+import core.{ Rxn, Ref, RefLike }
 import internal.skiplist.SkipListMap
 import internal.mcas.Mcas
 import Ttrie._
@@ -193,7 +193,7 @@ private final class Ttrie[K, V] private (
     else Rxn.unit
   }
 
-  final def get(key: K): K =#> Option[V] = {
+  final def get(key: K): Rxn[Option[V]] = {
     getRef(key).flatMap { ref =>
       ref.modify { v =>
         if (isInit(v) || isEnd(v)) {
