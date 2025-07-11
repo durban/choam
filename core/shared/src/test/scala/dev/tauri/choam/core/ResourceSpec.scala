@@ -46,7 +46,7 @@ abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuit
 
   test("AsyncReactive.forAsync") {
     AsyncReactive.forAsync[F].use { reactive =>
-      reactive.applyAsync(Rxn.pure(42), null).flatMap { v =>
+      reactive.applyAsync(Rxn.pure(42)).flatMap { v =>
         F.delay { assertEquals(v, 42) }
       }
     }
@@ -54,7 +54,7 @@ abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuit
 
   test("AsyncReactive.forAsyncIn") {
     val (reactive, close) = AsyncReactive.forAsyncIn[SyncIO, F].allocated.unsafeRunSync()
-    reactive.applyAsync(Rxn.pure(42), null).flatMap { v =>
+    reactive.applyAsync(Rxn.pure(42)).flatMap { v =>
       F.delay { assertEquals(v, 42) }
     }.guarantee(close.to[F])
   }
