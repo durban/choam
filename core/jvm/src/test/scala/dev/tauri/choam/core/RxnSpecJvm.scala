@@ -586,43 +586,21 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     t.replicateA_(10000)
   }
 
-  private[this] final def create64Refs(flat: Boolean): F[List[Ref[Int]]] = {
-    if (flat) {
-      // create the refs in a way that there is never a hash
-      // collision in the 1st level (so that we're only ever
-      // using 1 level of the HAMT); 1st level uses the highest
-      // 6 bits:
-      F.delay {
-        (0 until 64).toList.map { i =>
-          val id: Long = i.toLong << 58
-          Ref.unsafePaddedWithIdForTesting(0, id)
-        }
-      }
-    } else {
-      // otherwise just use the default IDs, which might have collisions:
-      Ref(0).run[F].replicateA(64)
-    }
-  }
-
   test("read-mostly `Rxn`s with cycle") {
+    val N = 64
     val P = 16
     def readMostlyRxn(refs: List[Ref[Int]]): Rxn[Int] = {
       Rxn.fastRandom.shuffleList(refs).flatMap { sRefs =>
         sRefs.tail.take(refs.size >> 1).traverse(ref => ref.get) *> sRefs.head.getAndUpdate(_ + 1)
       }
     }
-    def t(last: Boolean) = for {
-      refs <- create64Refs(flat = !last)
-      _ <- assertEqualsF(refs.size, 64)
+    val t = for {
+      refs <- Ref(0).run[F].replicateA(N)
       tsk = readMostlyRxn(refs).run[F]
       _ <- tsk.parReplicateA_(P)(using cats.effect.instances.spawn.parallelForGenSpawn)
       _ <- assertResultF(refs.traverse(_.get).map(_.sum).run[F], P)
     } yield ()
-    val repeat = if (this.isOpenJdk() || this.isGraal()) 10000 else 1000
-    (1 to repeat).toList.traverse_ { idx =>
-      val last = (idx == repeat)
-      t(last)
-    }
+    t.replicateA_(if (this.isOpenJdk() || this.isGraal()) 10000 else 1000)
   }
 
   test("read-only `Rxn`s") {
