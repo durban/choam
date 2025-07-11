@@ -31,13 +31,13 @@ sealed trait OverflowQueue[A]
 object OverflowQueue {
 
   final def ringBuffer[A](capacity: Int): Rxn[OverflowQueue[A]] = {
-    data.Queue.ringBuffer[A](capacity).flatMapF { rb =>
+    data.Queue.ringBuffer[A](capacity).flatMap { rb =>
       makeRingBuffer(capacity, rb)
     }
   }
 
   final def droppingQueue[A](capacity: Int): Rxn[OverflowQueue[A]] = {
-    data.Queue.dropping[A](capacity).flatMapF { dq =>
+    data.Queue.dropping[A](capacity).flatMap { dq =>
       GenWaitList[A](dq.tryDeque, dq.tryEnqueue).map { gwl =>
         new DroppingQueue[A](capacity, dq, gwl)
       }
@@ -46,7 +46,7 @@ object OverflowQueue {
 
   // TODO: do we need this?
   private[choam] final def lazyRingBuffer[A](capacity: Int): Rxn[OverflowQueue[A]] = {
-    data.Queue.lazyRingBuffer[A](capacity).flatMapF { rb =>
+    data.Queue.lazyRingBuffer[A](capacity).flatMap { rb =>
       makeRingBuffer(capacity, rb)
     }
   }

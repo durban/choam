@@ -62,19 +62,19 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
 
     final override def modifyWith[C](f: A => Rxn[(A, C)]): Rxn[C] = {
       underlying.modifyWith { oldVal =>
-        f(oldVal).flatMapF { ac =>
+        f(oldVal).flatMap { ac =>
           notifyListeners(ac._1).as(ac)
         }
       }
     }
 
     private[this] def notifyListeners(newVal: A): Rxn[Unit] = {
-      listeners.values.flatMapF(_.traverse { lRef =>
+      listeners.values.flatMap(_.traverse { lRef =>
         lRef.modify {
           case Waiting(next) => (Empty(), Some(next))
           case Full(_) => (Full(newVal), None) // TODO:0.5: here we lose a value
           case Empty() => (Full(newVal), None)
-        }.flatMapF {
+        }.flatMap {
           case Some(next) => next.complete1(newVal).void
           case None => Rxn.unit
         }
@@ -93,8 +93,8 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
   final override def discrete: Stream[F, A] = {
 
     val acq: Rxn[(Unique.Token, Ref[Listener[F, A]])] = {
-      (Rxn.unique * underlying.get).flatMapF { case (tok, current) =>
-        Ref.unpadded[Listener[F, A]](Full(current)).flatMapF { ref =>
+      (Rxn.unique * underlying.get).flatMap { case (tok, current) =>
+        Ref.unpadded[Listener[F, A]](Full(current)).flatMap { ref =>
           val tup = (tok, ref)
           listeners.put(tok, ref).as(tup)
         }

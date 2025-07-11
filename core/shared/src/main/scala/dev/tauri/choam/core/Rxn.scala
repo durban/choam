@@ -121,9 +121,6 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
 
   def flatMap[C](f: B => Rxn[C]): Rxn[C]
 
-  def flatMapF[C](f: B => Rxn[C]): Rxn[C] = // TODO: remove this
-    this.flatMap(f)
-
   def >> [C](that: => Rxn[C]): Rxn[C]
 
   def flatTap(f: B => Rxn[Unit]): Rxn[B]
@@ -1611,8 +1608,7 @@ object Rxn extends RxnInstances0 {
           contK.pop()
           nextOnPanic(ex)
         case 10 => // ContFlatMapF
-          contK.pop()
-          nextOnPanic(ex)
+          impossible("ContFlatMapF")
         case 11 => // ContFlatMap
           contK.pop()
           contK.pop()
@@ -1709,9 +1705,7 @@ object Rxn extends RxnInstances0 {
           a = contK.pop()
           contK.pop().asInstanceOf[Rxn[Any]]
         case 10 => // ContFlatMapF
-          val n = contK.pop().asInstanceOf[Function1[Any, Rxn[Any]]].apply(a)
-          a = null
-          n
+          impossible("ContFlatMapF")
         case 11 => // ContFlatMap
           val n = contK.pop().asInstanceOf[Function1[Any, Rxn[Any]]].apply(a)
           a = contK.pop()

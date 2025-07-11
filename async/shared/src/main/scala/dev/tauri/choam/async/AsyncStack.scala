@@ -30,10 +30,10 @@ sealed trait AsyncStack[A] {
 object AsyncStack {
 
   final def treiberStack[A]: Rxn[AsyncStack[A]] =
-    Stack.treiberStack[A].flatMapF(fromSyncStack[A])
+    Stack.treiberStack[A].flatMap(fromSyncStack[A])
 
   final def eliminationStack[A]: Rxn[AsyncStack[A]] =
-    Stack.eliminationStack[A].flatMapF(fromSyncStack[A])
+    Stack.eliminationStack[A].flatMap(fromSyncStack[A])
 
   private[this] final def fromSyncStack[A](stack: Stack[A]): Rxn[AsyncStack[A]] = {
     WaitList(stack.tryPop, stack.push).map { wl =>

@@ -55,7 +55,7 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
 
   private def retryOnceThenSucceedWith[A](name: String, result: A): Rxn[A] = {
     val flag = new AtomicBoolean(true)
-    Rxn.unsafe.delay { flag.getAndSet(false) }.flatMapF { doRetry =>
+    Rxn.unsafe.delay { flag.getAndSet(false) }.flatMap { doRetry =>
       if (doRetry) {
         // we "simulate" a transient failure
         // with an unconditional retry here
@@ -73,7 +73,7 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
   }
 
   private def succeedIf[A](name: String, ref: Ref[Int], result: A, predicate: Int => Boolean): Rxn[A] = {
-    ref.get.flatMapF { i =>
+    ref.get.flatMap { i =>
       if (predicate(i)) {
         rlog(s" $name succeeding with $result") *> Rxn.pure(result)
       } else {

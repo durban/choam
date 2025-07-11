@@ -337,8 +337,8 @@ trait BoundedQueueSpec[F[_]]
       q <- newQueue[String](bound = 8)
       _ <- assertResultF(q.size.run[F], 0)
       rxn = (
-        (q.tryEnqueue("a") *> q.size).flatMapF { s1 =>
-          (q.tryEnqueue("b") *> q.size).flatMapF { s2 =>
+        (q.tryEnqueue("a") *> q.size).flatMap { s1 =>
+          (q.tryEnqueue("b") *> q.size).flatMap { s2 =>
             (q.tryDeque *> q.size).map { s3 =>
               (s1, s2, s3)
             }

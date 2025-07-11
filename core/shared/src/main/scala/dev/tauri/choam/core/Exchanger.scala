@@ -32,7 +32,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
     Rxn.unsafe.delay { this.unsafe[A, B] }
 
   private[choam] def profiled[A, B](counter: LongAdder): Rxn[Exchanger[A, B]] = { // TODO: should be private[core]
-    this.apply[A, B].flatMapF { underlying =>
+    this.apply[A, B].flatMap { underlying =>
       Rxn.unsafe.delay {
         new ProfiledExchanger[A, B](
           d = null,

@@ -1006,7 +1006,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
                 local2.get.flatMap { ov2 =>
                   lift2(Rxn.unsafe.assert(ov2 == 99)).as(45.0f) <* local2.set(42)
                 } <* {
-                  lift2(Rxn.fastRandom.nextBoolean.flatMapF { retry =>
+                  lift2(Rxn.fastRandom.nextBoolean.flatMap { retry =>
                     if (retry) Rxn.unsafe.retry[Unit] else Rxn.unit
                   }) *> local2.get.flatMap(v2 => lift2(ref2.set1(v2)))
                 }
@@ -1041,8 +1041,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("a").run[F]
-      r = Rxn.unsafe.ticketRead(r2).flatMapF { ticket =>
-        r1.getAndUpdate(_ + ticket.unsafePeek).flatMapF { ov =>
+      r = Rxn.unsafe.ticketRead(r2).flatMap { ticket =>
+        r1.getAndUpdate(_ + ticket.unsafePeek).flatMap { ov =>
           if (ov === "aa") {
             Rxn.unit
           } else {
@@ -1065,8 +1065,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("unsafe.ticketRead (already in log)") {
     for {
       r2 <- Ref("a").run[F]
-      r = r2.update(_ + "b").flatMapF { _ =>
-        Rxn.unsafe.ticketRead(r2).flatMapF { ticket =>
+      r = r2.update(_ + "b").flatMap { _ =>
+        Rxn.unsafe.ticketRead(r2).flatMap { ticket =>
           ticket.unsafeSet(ticket.unsafePeek + "x")
         }
       }
@@ -1083,8 +1083,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("a").run[F]
-      r = Rxn.unsafe.tentativeRead(r2).flatMapF { v2 =>
-        r1.getAndUpdate(_ + v2).flatMapF { ov =>
+      r = Rxn.unsafe.tentativeRead(r2).flatMap { v2 =>
+        r1.getAndUpdate(_ + v2).flatMap { ov =>
           if (ov === "aa") {
             Rxn.unit
           } else {
@@ -1110,8 +1110,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("unsafe.tentativeRead (already in log)") {
     for {
       r2 <- Ref("a").run[F]
-      r = r2.update(_ + "b").flatMapF { _ =>
-        Rxn.unsafe.tentativeRead(r2).flatMapF { v2 =>
+      r = r2.update(_ + "b").flatMap { _ =>
+        Rxn.unsafe.tentativeRead(r2).flatMap { v2 =>
           r2.update { ov =>
             assertEquals(ov, v2)
             ov + "x"
@@ -1131,8 +1131,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r1 <- Ref("a").run[F]
       _ <- r1.update { _ => "x" }.run[F]
-      rxn = r1.get.flatMapF { v1 =>
-        Rxn.unsafe.forceValidate.flatMapF { _ =>
+      rxn = r1.get.flatMap { v1 =>
+        Rxn.unsafe.forceValidate.flatMap { _ =>
           r1.get.map { v2 => (v1, v2) }
         }
       }
@@ -1294,7 +1294,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(r3.get.run, 0)
       _ <- assertExc(Rxn.unsafe.panic(exc).as(42))
       _ <- assertExc(Rxn.unsafe.panic(exc) *> Rxn.pure(42))
-      _ <- assertExc(Rxn.unsafe.panic[Int](exc).flatMapF { _ => Rxn.pure(42) })
+      _ <- assertExc(Rxn.unsafe.panic[Int](exc).flatMap { _ => Rxn.pure(42) })
       _ <- assertExc(Rxn.unsafe.panic[Int](exc).flatMap { _ => Rxn.pure(42) })
       _ <- assertExc(Rxn.unsafe.panic[Int](exc).as(Rxn.pure(42)).flatten)
       _ <- assertExc(Rxn.unsafe.panic[Int](exc).map { _ => 42 })
@@ -1445,7 +1445,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       Rxn.unsafe.delay { ctr.getAndIncrement() } *> Rxn.unsafe.retry[Int]
     }
     def succeedsOn3rdRetry(ctr: AtomicInteger) = {
-      Rxn.unsafe.delay { ctr.getAndIncrement() }.flatMapF { retries =>
+      Rxn.unsafe.delay { ctr.getAndIncrement() }.flatMap { retries =>
         if (retries == 3) Rxn.pure("foo")
         else Rxn.unsafe.retry[String]
       }
@@ -1547,7 +1547,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Executing a Rxn which doesn't change Refs shouldn't change the global version") {
-    val r = Ref.unpadded("foo").flatMapF { ref =>
+    val r = Ref.unpadded("foo").flatMap { ref =>
       Rxn.unsafe.delay { new Exception }.map { ex =>
         (ref, ex)
       }
@@ -1588,7 +1588,7 @@ private[choam] object RxnSpec {
 
   private[choam] val throwingRxns = List[Rxn[Any]](
     Rxn.unit.map(_ => throw new MyException),
-    Rxn.unit.flatMapF(_ => throw new MyException),
+    Rxn.unit.flatMap(_ => throw new MyException),
     Rxn.unit.flatMap[Unit](_ => throw new MyException),
     Rxn.unsafe.delay[Unit] { throw new MyException },
     Rxn.pure(42L).postCommit(_ => Rxn.unit.map(_ => throw new MyException)),

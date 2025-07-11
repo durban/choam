@@ -34,8 +34,8 @@ private[choam] sealed abstract class UnboundedDeque[A] { // TODO: consider makin
 private[choam] object UnboundedDeque {
 
   final def apply[A]: Rxn[UnboundedDeque[A]] = {
-    newSentinelNode[A].flatMapF { node =>
-      Ref(node).flatMapF { first =>
+    newSentinelNode[A].flatMap { node =>
+      Ref(node).flatMap { first =>
         Ref(node).map { last =>
           new UnboundedDequeImpl(first, last)
         }
@@ -48,7 +48,7 @@ private[choam] object UnboundedDeque {
     last: Ref[Node[A]],
   ) extends UnboundedDeque[A] {
 
-    def addFirst(a: A): Rxn[Unit] = first.get.flatMapF { fst =>
+    def addFirst(a: A): Rxn[Unit] = first.get.flatMap { fst =>
       if (fst.isSentinel) {
         newNode(a, prev = null, next = null).flatMap { node =>
           first.set(node) *> last.set(node)
@@ -60,7 +60,7 @@ private[choam] object UnboundedDeque {
       }
     }
 
-    def addLast(a: A): Rxn[Unit] = last.get.flatMapF { lst =>
+    def addLast(a: A): Rxn[Unit] = last.get.flatMap { lst =>
       if (lst.isSentinel) {
         newNode(a, prev = null, next = null).flatMap { node =>
           last.set(node) *> first.set(node)
@@ -72,11 +72,11 @@ private[choam] object UnboundedDeque {
       }
     }
 
-    def tryTakeFirst: Rxn[Option[A]] = first.get.flatMapF { fst =>
+    def tryTakeFirst: Rxn[Option[A]] = first.get.flatMap { fst =>
       if (fst.isSentinel) {
         Rxn.none
       } else {
-        fst.next.get.flatMapF { nxt =>
+        fst.next.get.flatMap { nxt =>
           if (nxt eq null) {
             newSentinelNode[A].flatMap { node =>
               first.set(node) *> last.set(node)
@@ -88,11 +88,11 @@ private[choam] object UnboundedDeque {
       }
     }
 
-    def tryTakeLast: Rxn[Option[A]] = last.get.flatMapF { lst =>
+    def tryTakeLast: Rxn[Option[A]] = last.get.flatMap { lst =>
       if (lst.isSentinel) {
         Rxn.none
       } else {
-        lst.prev.get.flatMapF { prv =>
+        lst.prev.get.flatMap { prv =>
           if (prv eq null) {
             newSentinelNode[A].flatMap { node =>
               last.set(node) *> first.set(node)
@@ -110,7 +110,7 @@ private[choam] object UnboundedDeque {
   }
 
   private[this] final def newNode[A](a: A, prev: Node[A], next: Node[A]): Rxn[Node[A]] = {
-    Ref[Node[A]](prev).flatMapF { prev =>
+    Ref[Node[A]](prev).flatMap { prev =>
       Ref[Node[A]](next).map { next =>
         new Node(a, prev, next)
       }
@@ -121,7 +121,7 @@ private[choam] object UnboundedDeque {
     new AnyRef
 
   private[this] final def newSentinelNode[A]: Rxn[Node[A]] = {
-    Ref[Node[A]](null).flatMapF { prev =>
+    Ref[Node[A]](null).flatMap { prev =>
       Ref[Node[A]](null).map { next =>
         new Node(_sentinel.asInstanceOf[A], prev, next)
       }

@@ -42,8 +42,8 @@ class VirtualThreadsBench {
   private[this] final val N = 1024
 
   private def doThings(st: AbstractSt, n: Int): IO[Unit] = {
-    val rxn: Rxn[String] = st.selectRndRef.flatMapF { r1 =>
-      r1.update(_.##.toString) *> st.selectRndRef.flatMapF { r2 =>
+    val rxn: Rxn[String] = st.selectRndRef.flatMap { r1 =>
+      r1.update(_.##.toString) *> st.selectRndRef.flatMap { r2 =>
         r2.get
       }
     }

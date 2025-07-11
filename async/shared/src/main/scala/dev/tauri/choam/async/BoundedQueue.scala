@@ -42,10 +42,10 @@ object BoundedQueue {
 
   final def linked[A](bound: Int): Rxn[BoundedQueue[A]] = {
     require(bound > 0)
-    (Queue.unbounded[A] * Ref.unpadded[Int](0)).flatMapF {
+    (Queue.unbounded[A] * Ref.unpadded[Int](0)).flatMap {
       case (q, size) =>
         GenWaitList[A](
-          q.tryDeque.flatMapF { res =>
+          q.tryDeque.flatMap { res =>
             if (res.nonEmpty) size.update(_ - 1).as(res)
             else Rxn.pure(res)
           },
@@ -61,7 +61,7 @@ object BoundedQueue {
 
   final def array[A](bound: Int): Rxn[BoundedQueue[A]] = {
     require(bound > 0)
-    Queue.dropping[A](bound).flatMapF { q =>
+    Queue.dropping[A](bound).flatMap { q =>
       GenWaitList[A](
         q.tryDeque,
         q.tryEnqueue,

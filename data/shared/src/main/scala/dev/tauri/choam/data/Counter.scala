@@ -107,7 +107,7 @@ object Counter {
           Rxn.pure(acc)
         } else {
           val ref = arr.unsafeGet(idx)
-          ref.get.flatMapF { c =>
+          ref.get.flatMap { c =>
             go(idx + 1, acc + c)
           }
         }

@@ -377,7 +377,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         if (acc.length == RxnSize) {
           Rxn.pure(acc.reverse)
         } else {
-          q.tryDeque.flatMapF {
+          q.tryDeque.flatMap {
             case None =>
               Rxn.unsafe.delay(assert(acc.isEmpty)).as(Nil)
             case Some(item) =>

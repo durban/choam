@@ -42,7 +42,7 @@ class EliminationStackTest extends StressTestBase {
     stack.push(s)
 
   private[this] val _tryPop: Rxn[Either[Option[String], Option[String]]] = {
-    stack.tryPop.flatMapF {
+    stack.tryPop.flatMap {
       case e @ (Left(Some(_)) | Right(Some(_))) => Rxn.pure(e)
       case Left(None) | Right(None) => Rxn.unsafe.retry
     }

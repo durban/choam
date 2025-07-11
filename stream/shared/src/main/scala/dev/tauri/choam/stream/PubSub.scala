@@ -49,9 +49,9 @@ sealed abstract class PubSub[F[_], A] {
 object PubSub {
 
   final def apply[F[_] : AsyncReactive, A](defaultStrategy: OverflowStrategy): Rxn[PubSub[F, A]] = {
-    Rxn.unsafe.delay { new AtomicLong }.flatMapF { nextId =>
-      Ref(LongMap.empty[Subscription[F, A]]).flatMapF { subscriptions =>
-        Ref(false).flatMapF { isClosed =>
+    Rxn.unsafe.delay { new AtomicLong }.flatMap { nextId =>
+      Ref(LongMap.empty[Subscription[F, A]]).flatMap { subscriptions =>
+        Ref(false).flatMap { isClosed =>
           Promise[Unit].map { awaitClosed =>
             new PubSubImpl[F, A](nextId, subscriptions, isClosed, awaitClosed, defaultStrategy)
           }
@@ -93,7 +93,7 @@ object PubSub {
       size: Ref[Int]
     ): Rxn[WaitList[Chunk[A]]] = {
       WaitList.apply[Chunk[A]](
-        underlying.tryTakeLast.flatMapF {
+        underlying.tryTakeLast.flatMap {
           case None =>
             Rxn.none
           case some @ Some(chunk) =>
@@ -134,8 +134,8 @@ object PubSub {
       require(bufferSize > 0)
 
       private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Rxn[PubSubBuffer[F, A]] = {
-        UnboundedDeque[Chunk[A]].flatMapF { underlying =>
-          Ref[Int](0).flatMapF { size =>
+        UnboundedDeque[Chunk[A]].flatMap { underlying =>
+          Ref[Int](0).flatMap { size =>
             mkWaitList(underlying, size).map { wl =>
               new PubSubBuffer[F, A](bufferSize, size.get, wl) {
                 protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
@@ -150,8 +150,8 @@ object PubSub {
     private final object Unbounded extends OverflowStrategy {
 
       private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Rxn[PubSubBuffer[F, A]] = {
-        UnboundedDeque[Chunk[A]].flatMapF { underlying =>
-          Ref[Int](0).flatMapF { size =>
+        UnboundedDeque[Chunk[A]].flatMap { underlying =>
+          Ref[Int](0).flatMap { size =>
             mkWaitList(underlying, size).map { wl =>
               new PubSubBuffer[F, A](Integer.MAX_VALUE, size.get, wl) {
                 protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
@@ -168,8 +168,8 @@ object PubSub {
       require(bufferSize > 0)
 
       private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Rxn[PubSubBuffer[F, A]] = {
-        UnboundedDeque[Chunk[A]].flatMapF { underlying =>
-          Ref[Int](0).flatMapF { size =>
+        UnboundedDeque[Chunk[A]].flatMap { underlying =>
+          Ref[Int](0).flatMap { size =>
             mkWaitList(underlying, size).map { wl =>
               new PubSubBuffer[F, A](bufferSize, size.get, wl) {
 
@@ -177,7 +177,7 @@ object PubSub {
                   dropOldestN(missingCapacity) *> size.update1(_ - missingCapacity) *> wl.set0(newChunk).as(Success)
 
                 private[this] final def dropOldestN(n: Int): Rxn[Unit] = {
-                  underlying.tryTakeLast.flatMapF {
+                  underlying.tryTakeLast.flatMap {
                     case None =>
                       Rxn.unit
                     case Some(chunk) =>
@@ -204,8 +204,8 @@ object PubSub {
       require(bufferSize > 0)
 
       private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Rxn[PubSubBuffer[F, A]] = {
-        UnboundedDeque[Chunk[A]].flatMapF { underlying =>
-          Ref[Int](0).flatMapF { size =>
+        UnboundedDeque[Chunk[A]].flatMap { underlying =>
+          Ref[Int](0).flatMap { size =>
             mkWaitList(underlying, size).map { wl =>
               new PubSubBuffer[F, A](bufferSize, size.get, wl) {
                 protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
@@ -235,11 +235,11 @@ object PubSub {
     final override def subscribe(strategy: PubSub.OverflowStrategy): Stream[F, A] = {
       val acqSubs = FF.delay(nextId.getAndIncrement()).flatMap { id =>
         FF.deferred[Unit].flatMap { sd =>
-          val act: Rxn[Subscription[F, A]] = isClosed.get.flatMapF { isClosed =>
+          val act: Rxn[Subscription[F, A]] = isClosed.get.flatMap { isClosed =>
             if (isClosed) {
               Rxn.pure(null : Subscription[F, A])
             } else {
-              strategy.newBuffer[F, A].flatMapF { buf =>
+              strategy.newBuffer[F, A].flatMap { buf =>
                 val subs = new Subscription[F, A](id, buf, sd, this)
                 subscriptions.update(_.updated(id, subs)).as(subs)
               }
@@ -262,14 +262,14 @@ object PubSub {
     }
 
     final override def publishChunk(ch: Chunk[A]): Rxn[Result] = {
-      isClosed.get.flatMapF { isClosed =>
+      isClosed.get.flatMap { isClosed =>
         if (isClosed) {
           _axnClosed
         } else {
           if (ch.isEmpty) {
             _axnSuccess
           } else {
-            subscriptions.get.flatMapF { subsMap =>
+            subscriptions.get.flatMap { subsMap =>
               val itr = subsMap.valuesIterator
               var acc: Rxn[Result] = _axnSuccess
               while (itr.hasNext) {
@@ -287,11 +287,11 @@ object PubSub {
     }
 
     final override def close: Rxn[Result] = {
-      isClosed.getAndUpdate(_ => true).flatMapF { wasClosed =>
+      isClosed.getAndUpdate(_ => true).flatMap { wasClosed =>
         if (wasClosed) {
           _axnClosed
         } else {
-          awaitClosed.complete1(()) *> subscriptions.get.flatMapF { subsMap =>
+          awaitClosed.complete1(()) *> subscriptions.get.flatMap { subsMap =>
             val itr = subsMap.valuesIterator
             var acc = Rxn.unit
             var cnt = 0L
@@ -395,7 +395,7 @@ object PubSub {
       wl.set0(null).void
     }
 
-    final def enqueue(chunk: Chunk[A]): Rxn[Result] = getSize.flatMapF { sz =>
+    final def enqueue(chunk: Chunk[A]): Rxn[Result] = getSize.flatMap { sz =>
       val chunkSize = chunk.size
       _assert(chunkSize > 0)
       if (chunkSize > capacity) {

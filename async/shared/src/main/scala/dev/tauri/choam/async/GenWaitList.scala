@@ -64,7 +64,7 @@ private[choam] object GenWaitList {
     tryGetUnderlying: Rxn[Option[A]],
     trySetUnderlying: A => Rxn[Boolean],
   ): Rxn[GenWaitList[A]] = {
-    RemoveQueue[Either[Throwable, Unit] => Unit].flatMapF { getters =>
+    RemoveQueue[Either[Throwable, Unit] => Unit].flatMap { getters =>
       RemoveQueue[Either[Throwable, Unit] => Unit].map { setters =>
         new AsyncGenWaitList[A](tryGetUnderlying, trySetUnderlying, getters, setters)
       }
@@ -98,7 +98,7 @@ private[choam] object GenWaitList {
     }
 
     protected[this] final def wakeUpNextWaiter(waiters: RemoveQueue[Either[Throwable, Unit] => Unit]): Rxn[Unit] = {
-      waiters.tryDeque.flatMapF {
+      waiters.tryDeque.flatMap {
         case None => Rxn.unit
         case Some(other) => callCbRightUnit(other)
       }
@@ -121,7 +121,7 @@ private[choam] object GenWaitList {
             // directly to the underlying data structure:
             val tg = if (isFirstTry) self.tryGet else tryGetUnderlying
             lift(ar.run(
-              tg.flatMapF {
+              tg.flatMap {
                 case Some(a) =>
                   // in GenWaitList, we may need to notify a setter now:
                   if ((!isFirstTry) && (settersOrNull ne null)) {
@@ -131,7 +131,7 @@ private[choam] object GenWaitList {
                   }
                 case None =>
                   getters.enqueueWithRemover(cb).map { remover =>
-                    val cancel: F[Unit] = ar.run(remover.flatMapF { ok =>
+                    val cancel: F[Unit] = ar.run(remover.flatMap { ok =>
                       if (ok) {
                         Rxn.unit
                       } else {
@@ -187,12 +187,12 @@ private[choam] object GenWaitList {
     }
 
     final override def tryGet: Rxn[Option[A]] = {
-      this.getters.isEmpty.flatMapF { noGetters =>
+      this.getters.isEmpty.flatMap { noGetters =>
         if (noGetters) {
-          this.tryGetUnderlying.flatMapF {
+          this.tryGetUnderlying.flatMap {
             case s @ Some(_) =>
               // success, try to unblock a setter:
-              setters.tryDeque.flatMapF {
+              setters.tryDeque.flatMap {
                 case Some(setterCb) =>
                   callCbRightUnit(setterCb).as(s)
                 case None =>
@@ -231,7 +231,7 @@ private[choam] object GenWaitList {
                   }
                 } else {
                   setters.enqueueWithRemover(cb).map { remover =>
-                    val cancel: F[Unit] = ar.run(remover.flatMapF { ok =>
+                    val cancel: F[Unit] = ar.run(remover.flatMap { ok =>
                       if (ok) {
                         Rxn.unit
                       } else {
@@ -277,7 +277,7 @@ private[choam] object GenWaitList {
     with WaitList[A] { self =>
 
     final override def tryGet: Rxn[Option[A]] = {
-      this.waiters.isEmpty.flatMapF { noWaiters =>
+      this.waiters.isEmpty.flatMap { noWaiters =>
         if (noWaiters) {
           this.tryGetUnderlying
         } else {

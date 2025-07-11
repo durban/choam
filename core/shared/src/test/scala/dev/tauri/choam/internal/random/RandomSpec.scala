@@ -127,7 +127,7 @@ trait RandomSpec[F[_]]
         dr1 <- Rxn.deterministicRandom(seed).run[F]
         dr2 <- Rxn.deterministicRandom(seed).run[F]
         ref <- F.delay(new AtomicLong)
-        rxn = dr1.nextLong.flatMapF { n =>
+        rxn = dr1.nextLong.flatMap { n =>
           ref.set(n)
           Rxn.unsafe.retry[Int]
         }.?

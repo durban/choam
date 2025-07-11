@@ -40,7 +40,7 @@ private final class EliminationStack[A](underlying: Stack[A])
 private object EliminationStack {
 
   final def apply[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Stack[A]] = {
-    Stack.treiberStack[A](str).flatMapF { ul =>
+    Stack.treiberStack[A](str).flatMap { ul =>
       Rxn.unsafe.delay { new EliminationStack[A](ul) }
     }
   }
@@ -51,19 +51,19 @@ private object EliminationStack {
   }
 
   final def tagged[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[TaggedEliminationStack[A]] = {
-    Stack.treiberStack[A](str).flatMapF { ul =>
+    Stack.treiberStack[A](str).flatMap { ul =>
       taggedFrom(ul.push, ul.tryPop)
     }
   }
 
   final def taggedFlaky[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[TaggedEliminationStack[A]] = {
-    Stack.treiberStack[A](str).flatMapF { ul =>
+    Stack.treiberStack[A](str).flatMap { ul =>
       taggedFrom(
-        a => ul.push(a).flatMapF { x =>
+        a => ul.push(a).flatMap { x =>
           if (ThreadLocalRandom.current().nextBoolean()) Rxn.pure(x)
           else Rxn.unsafe.retry[Unit]
         },
-        ul.tryPop.flatMapF {
+        ul.tryPop.flatMap {
           case None =>
             Rxn.none
           case s @ Some(_) =>

@@ -44,7 +44,7 @@ private final class RingBuffer[A](
     this.enqueue(a).as(true)
 
   final override def enqueue(newVal: A): Rxn[Unit] = {
-    tail.getAndUpdate(incrIdx).flatMapF { idx =>
+    tail.getAndUpdate(incrIdx).flatMap { idx =>
       arr.unsafeGet(idx).updateWith { oldVal =>
         if (isEmpty(oldVal)) {
           Rxn.pure(newVal)
@@ -62,7 +62,7 @@ private object RingBuffer {
 
   def apply[A](capacity: Int): Rxn[RingBuffer[A]] = {
     require(capacity > 0)
-    Ref.array[A](size = capacity, initial = empty[A]).flatMapF { arr =>
+    Ref.array[A](size = capacity, initial = empty[A]).flatMap { arr =>
       makeRingBuffer(capacity, arr)
     }
   }
@@ -75,7 +75,7 @@ private object RingBuffer {
       size = capacity,
       initial = empty[A],
       strategy = str,
-    ).flatMapF { arr =>
+    ).flatMap { arr =>
       makeRingBuffer(capacity, arr)
     }
   }

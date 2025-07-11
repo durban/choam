@@ -91,12 +91,12 @@ object Queue {
     RingBuffer.lazyRingBuffer[A](capacity)
 
   final def unboundedWithSize[A]: Rxn[Queue.WithSize[A]] = {
-    Queue.unbounded[A].flatMapF { q =>
+    Queue.unbounded[A].flatMap { q =>
       Ref.unpadded[Int](0).map { s =>
         new WithSize[A] {
 
           final override def tryDeque: Rxn[Option[A]] = {
-            q.tryDeque.flatMapF {
+            q.tryDeque.flatMap {
               case r @ Some(_) => s.update(_ - 1).as(r)
               case None => Rxn.pure(None)
             }

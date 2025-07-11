@@ -39,7 +39,7 @@ trait StripedRefSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private def sum[A](sr: StripedRef[A])(implicit A: Monoid[A]): Rxn[A] = {
     sr.fold(Rxn.pure(A.empty)) { (acc, ref) =>
-      acc.flatMapF { acc =>
+      acc.flatMap { acc =>
         ref.get.map { a =>
           A.combine(acc, a)
         }

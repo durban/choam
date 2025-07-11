@@ -77,7 +77,7 @@ private abstract class RandomBase
     def go(arr: Array[Byte], idx: Int): Rxn[Unit] = {
       if (idx < n) {
         val remaining = n - idx
-        nextLong.flatMapF { (r: Long) =>
+        nextLong.flatMap { (r: Long) =>
           if (remaining >= 8) {
             Rxn.unsafe.delay(this.putLongAtIdxP(arr, idx, r)) *> go(arr, idx + 8)
           } else {
@@ -102,7 +102,7 @@ private abstract class RandomBase
     if ((bound & m) == 0L) { // power of 2
       this.nextLong.map { (r: Long) => r & m }
     } else {
-      def go: Rxn[Long] = this.nextLong.flatMapF { (next: Long) =>
+      def go: Rxn[Long] = this.nextLong.flatMap { (next: Long) =>
         val u: Long = next >>> 1
         val r: Long = u % bound
         if ((u + m - r) < 0L) go
@@ -121,7 +121,7 @@ private abstract class RandomBase
     } else if (n > 0L) { // no underflow
       this.nextLongBounded(n).map { (r: Long) => r + minInclusive }
     } else { // range not representable as Long
-      def go: Rxn[Long] = this.nextLong.flatMapF { (r: Long) =>
+      def go: Rxn[Long] = this.nextLong.flatMap { (r: Long) =>
         if ((r < minInclusive) || (r >= maxExclusive)) go
         else Rxn.pure(r)
       }
@@ -135,7 +135,7 @@ private abstract class RandomBase
     if ((bound & m) == 0) { // power of 2
       this.nextInt.map { (r: Int) => r & m }
     } else {
-      def go: Rxn[Int] = this.nextInt.flatMapF { (next: Int) =>
+      def go: Rxn[Int] = this.nextInt.flatMap { (next: Int) =>
         val u: Int = next >>> 1
         val r: Int = u % bound
         if ((u + m - r) < 0) go
@@ -154,7 +154,7 @@ private abstract class RandomBase
     } else if (n > 0) { // no underflow
       this.nextIntBounded(n).map { (r: Int) => r + minInclusive }
     } else { // range not representable as Int
-      def go: Rxn[Int] = this.nextInt.flatMapF { (r: Int) =>
+      def go: Rxn[Int] = this.nextInt.flatMap { (r: Int) =>
         if ((r < minInclusive) || (r >= maxExclusive)) go
         else Rxn.pure(r)
       }
@@ -192,7 +192,7 @@ private abstract class RandomBase
 
   /** Box-Muller transform / Marsaglia polar method */
   def nextGaussian: Rxn[Double] = {
-    (this.nextDouble * this.nextDouble).flatMapF { dd =>
+    (this.nextDouble * this.nextDouble).flatMap { dd =>
       val (d1, d2) = dd
       val v1: Double = (2 * d1) - 1
       val v2: Double = (2 * d2) - 1
@@ -267,16 +267,16 @@ private abstract class RandomBase
           if (idx < length) {
             if ((idx + 1) == length) {
               // last char, can't generate surrogates:
-              this.nextNonSurrogate.flatMapF(write(idx, _))
+              this.nextNonSurrogate.flatMap(write(idx, _))
             } else {
               // inside char, but can't generate a
               // low surrogate, because a surrogate
               // pair starts with a high surrogate:
-              this.nextNormalOrHighSurrogate.flatMapF { (r: Char) =>
+              this.nextNormalOrHighSurrogate.flatMap { (r: Char) =>
                 write(idx, r) *> (
                   if (isHighSurrogate(r)) {
                     // we also generate its pair:
-                    this.nextLowSurrogate.flatMapF(write(idx + 1, _)) *> go(idx + 2)
+                    this.nextLowSurrogate.flatMap(write(idx + 1, _)) *> go(idx + 2)
                   } else {
                     go(idx + 1)
                   }
@@ -287,7 +287,7 @@ private abstract class RandomBase
             Rxn.unit
           }
         }
-        go(0).flatMapF(_ => Rxn.unsafe.delay(new String(arr)))
+        go(0).flatMap(_ => Rxn.unsafe.delay(new String(arr)))
       }
     }
   }
@@ -359,7 +359,7 @@ private abstract class RandomBase
     def go(i: Int): Rxn[Unit] = {
       if (i > 0) {
         val bound: Int = i + 1
-        this.nextIntBounded(bound).flatMapF { (j: Int) =>
+        this.nextIntBounded(bound).flatMap { (j: Int) =>
           Rxn.unsafe.delay(swap(j, i)) *> go(i - 1)
         }
       } else {

@@ -46,7 +46,7 @@ private final class MsQueue[A] private[this] (
 
   override val tryDeque: Rxn[Option[A]] = {
     head.modifyWith { node =>
-      Rxn.unsafe.ticketRead(node.next).flatMapF { ticket =>
+      Rxn.unsafe.ticketRead(node.next).flatMap { ticket =>
         ticket.unsafePeek match {
           case n @ Node(a, _) =>
             // No need to validate `node.next` here, since
@@ -90,11 +90,11 @@ private final class MsQueue[A] private[this] (
 
   private[this] def findAndEnqueue(node: Node[A]): Rxn[Unit] = {
     def go(n: Node[A]): Rxn[Unit] = {
-      Rxn.unsafe.ticketRead(n.next).flatMapF { ticket =>
+      Rxn.unsafe.ticketRead(n.next).flatMap { ticket =>
         ticket.unsafePeek match {
           // TODO: if we allow the tail to lag:
           // case null =>
-          //   head.get.flatMapF { h => go(h) }
+          //   head.get.flatMap { h => go(h) }
           case End() =>
             // found true tail; will update, and adjust the tail ref:
             // TODO: we could allow tail to lag by a constant
@@ -107,13 +107,13 @@ private final class MsQueue[A] private[this] (
         }
       }
     }
-    tail.get.flatMapF(go)
+    tail.get.flatMap(go)
   }
 
   /** For testing */
   private[data] def tailLag: Rxn[Int] = {
     def go(n: Node[A], acc: Int): Rxn[Int] = {
-      Rxn.unsafe.ticketRead(n.next).flatMapF { ticket =>
+      Rxn.unsafe.ticketRead(n.next).flatMap { ticket =>
         ticket.unsafePeek match {
           case null =>
             Rxn.pure(-1)
@@ -124,7 +124,7 @@ private final class MsQueue[A] private[this] (
         }
       }
     }
-    tail.get.flatMapF { t => go(t, 0) }
+    tail.get.flatMap { t => go(t, 0) }
   }
 }
 

@@ -43,7 +43,7 @@ final class EliminationStackForTesting[A] private (
 
 final object EliminationStackForTesting {
   def apply[A]: Rxn[EliminationStackForTesting[A]] = {
-    TreiberStack[A](Ref.AllocationStrategy.Default).flatMapF { underlying =>
+    TreiberStack[A](Ref.AllocationStrategy.Default).flatMap { underlying =>
       Eliminator[A, Unit, Any, Option[A]](
         underlying.push,
         Some(_),

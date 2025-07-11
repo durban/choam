@@ -42,7 +42,7 @@ class NewRefConsistency extends StressTestBase {
     existingRef.update(_ + "b") *> Ref("x").flatMap(holder.set)
 
   private[this] val _readNewRef: Rxn[(String, String)] = {
-    existingRef.get * holder.get.flatMapF {
+    existingRef.get * holder.get.flatMap {
       case null => Rxn.unsafe.retry
       case newRef => newRef.get
     }

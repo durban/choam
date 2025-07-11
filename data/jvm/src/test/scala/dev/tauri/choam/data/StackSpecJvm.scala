@@ -122,7 +122,7 @@ trait StackSpecJvm[F[_]] { this: StackSpec[F] & McasImplSpec =>
       rxn1 = ref.getAndSet(42).flatMap { ov =>
         stack.push("a") *> ref2.getAndSet(84).map { ov2 => (ov, ov2) }
       }
-      rxn2 = stack.tryPop.flatMapF {
+      rxn2 = stack.tryPop.flatMap {
         case None => Rxn.unsafe.retry
         case Some(s) => ref2.getAndSet(66).flatMap { ov2 =>
           ref.getAndSet(33).map { ov => (ov, ov2, s) }

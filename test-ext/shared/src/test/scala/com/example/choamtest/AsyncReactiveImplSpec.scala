@@ -23,7 +23,7 @@ import dev.tauri.choam.async.Promise
 final class AsyncReactiveImplSpec extends BaseSpecMyIO {
 
   test("Ref") {
-    val rxn = Ref[String]("foo").flatMapF { ref =>
+    val rxn = Ref[String]("foo").flatMap { ref =>
       ref.updateAndGet(_ + "bar")
     }
     assertResultF(rxn.run[MyIO], "foobar")

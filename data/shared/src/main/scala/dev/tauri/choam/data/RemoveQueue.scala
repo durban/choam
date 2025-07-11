@@ -56,9 +56,9 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
   }
 
   private[this] def skipRemoved(from: Ref[Elem[A]]): Rxn[Option[(A, Node[A])]] = {
-    from.get.flatMapF {
+    from.get.flatMap {
       case n @ Node(dataRef, nextRef) =>
-        dataRef.get.flatMapF { a =>
+        dataRef.get.flatMap { a =>
           if (isRemoved(a)) {
             skipRemoved(nextRef)
           } else if (isDequeued(a)) {
@@ -74,9 +74,9 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
 
   val isEmpty: Rxn[Boolean] = {
     def go(from: Ref[Elem[A]]): Rxn[Boolean] = {
-      from.get.flatMapF {
+      from.get.flatMap {
         case Node(dataRef, nextRef) =>
-          dataRef.get.flatMapF { a =>
+          dataRef.get.flatMap { a =>
             if (isRemoved(a)) {
               go(nextRef)
             } else if (isDequeued(a)) {
@@ -90,7 +90,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
       }
     }
 
-    head.get.flatMapF { node => go(node.next) }
+    head.get.flatMap { node => go(node.next) }
   }
 
   final override def tryEnqueue(a: A): Rxn[Boolean] =
@@ -116,7 +116,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
   // TODO: we could allow tail to lag by a constant
   private[this] def findAndEnqueue(node: Node[A]): Rxn[Unit] = {
     def go(n: Node[A]): Rxn[Unit] = {
-      n.next.get.flatMapF {
+      n.next.get.flatMap {
         case End() =>
           // found true tail; will update, and adjust the tail ref:
           n.next.set1(node) *> tail.set1(node)
@@ -125,7 +125,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
           go(n = nv)
       }
     }
-    tail.get.flatMapF(go)
+    tail.get.flatMap(go)
   }
 }
 

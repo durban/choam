@@ -37,7 +37,7 @@ trait CounterSpecSimple[F[_]] extends CounterSpec[F] { this: McasImplSpec =>
 
 trait CounterSpecStriped[F[_]] extends CounterSpec[F] { this: McasImplSpec =>
   final override def mkCounter(initial: Long): F[Counter] =
-    Counter.striped.flatMapF(ctr => ctr.add(initial).as(ctr)).run[F]
+    Counter.striped.flatMap(ctr => ctr.add(initial).as(ctr)).run[F]
 }
 
 trait CounterSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>

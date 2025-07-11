@@ -32,12 +32,12 @@ trait MemoSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private final class GetCtr[A] private (memo: Memo[(A, Ref[Int])]) {
 
-    def get: Rxn[A] = memo.getOrInit.flatMapF {
+    def get: Rxn[A] = memo.getOrInit.flatMap {
       case (a, ctr) =>
         ctr.update(_ + 1).as(a)
     }
 
-    def currentCount: Rxn[Int] = memo.getOrInit.flatMapF {
+    def currentCount: Rxn[Int] = memo.getOrInit.flatMap {
       case (_ , ctr) =>
         ctr.get
     }

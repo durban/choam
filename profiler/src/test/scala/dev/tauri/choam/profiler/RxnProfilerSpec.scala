@@ -146,7 +146,7 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     this.assume(Consts.statsEnabled)
     def succeedAfter(after: Int, optRef: Option[Ref[Int]] = None): F[Rxn[Int]] = {
       F.delay(new AtomicInteger).map { ctr =>
-        Rxn.unsafe.delay { ctr.getAndIncrement() }.flatMapF { retries =>
+        Rxn.unsafe.delay { ctr.getAndIncrement() }.flatMap { retries =>
           if (retries >= after) {
             optRef match {
               case Some(ref) => ref.getAndUpdate(_ + 1)

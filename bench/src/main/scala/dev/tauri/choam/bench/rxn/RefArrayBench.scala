@@ -114,7 +114,7 @@ object RefArrayBench {
       var idx = r.nextIntBounded(4)
       while (idx < len) {
         val hs = arr.unsafeGet(idx).get.map(_.##)
-        acc = acc.flatMapF { acc => hs.map(_ ^ acc) }
+        acc = acc.flatMap { acc => hs.map(_ ^ acc) }
         idx += incr
       }
       acc

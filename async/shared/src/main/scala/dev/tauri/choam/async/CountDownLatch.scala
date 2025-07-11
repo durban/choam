@@ -41,7 +41,7 @@ object CountDownLatch {
           c.getAndUpdate { ov =>
             if (ov > 0) ov - 1
             else ov
-          }.flatMapF { ov =>
+          }.flatMap { ov =>
             if (ov == 1) p.complete1(()).void
             else Rxn.unit
           }

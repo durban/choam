@@ -45,7 +45,7 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
 
   override val tryDeque: Rxn[Option[A]] = {
     head.modifyWith { node =>
-      node.next.get.flatMapF { next =>
+      node.next.get.flatMap { next =>
         next match {
           case n @ Node(a, _) =>
             Rxn.pure((n.copy(data = nullOf[A]), Some(a)))
@@ -57,7 +57,7 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
   }
 
   override def enqueue(a: A): Rxn[Unit] = {
-    Ref.padded[Elem[A]](End()).flatMapF { newRef =>
+    Ref.padded[Elem[A]](End()).flatMap { newRef =>
       findAndEnqueue(Node(a, newRef))
     }
   }
@@ -67,7 +67,7 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
 
   private[this] def findAndEnqueue(node: Node[A]): Rxn[Unit] = {
     def go(n: Node[A]): Rxn[Unit] = {
-      n.next.get.flatMapF {
+      n.next.get.flatMap {
         case End() =>
           // found true tail; will update, and adjust the tail ref:
           n.next.set(node) *> tail.set(node)
@@ -76,7 +76,7 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
           go(n = nv)
       }
     }
-    tail.get.flatMapF(go)
+    tail.get.flatMap(go)
   }
 }
 

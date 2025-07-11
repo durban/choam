@@ -63,7 +63,7 @@ trait RxnSpecJvm_Emcas[F[_]] extends RxnSpecJvm[F] with SpecEmcas {
       ctr <- F.delay(new AtomicInteger(0))
       latch1 <- F.delay(new CountDownLatch(1))
       latch2 <- F.delay(new CountDownLatch(1))
-      rxn1 = ref1.get.flatMapF { a =>
+      rxn1 = ref1.get.flatMap { a =>
         ctr.incrementAndGet()
         latch1.countDown()
         // another commit changes the global version here
@@ -159,7 +159,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       writerDone <- F.delay(new AtomicBoolean(false))
       unsafeLog <- F.delay(new AtomicReference[List[(String, String)]](Nil))
       writer = (ref1.update { v1 => v1 + "a" } *> ref2.update(_ + "b")).run[F]
-      reader = ref1.get.flatMapF { v1 =>
+      reader = ref1.get.flatMap { v1 =>
         // we already read `ref1`; now we start
         // `writer`, and hard block until it's
         // committed
@@ -222,13 +222,13 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     for {
       ref <- Ref("a").run[F]
       log <- F.delay(new AtomicReference[List[String]](Nil))
-      r = ref.get.flatMapF { v0 =>
+      r = ref.get.flatMap { v0 =>
         log.accumulateAndGet(List(v0), (l1, l2) => l1 ++ l2)
         ref.update { v1 =>
           log.accumulateAndGet(List(v1), (l1, l2) => l1 ++ l2)
           v1 + "a"
-        }.flatMapF { _ =>
-          ref.get.flatMapF { v2 =>
+        }.flatMap { _ =>
+          ref.get.flatMap { v2 =>
             log.accumulateAndGet(List(v2), (l1, l2) => l1 ++ l2)
             Rxn.pure(v2 + "a").flatMap(ref.getAndSet)
           }
@@ -288,8 +288,8 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     val t = for {
       r1 <- Ref(0).run[F]
       r <- F.both(
-        F.cede *> r1.get.flatMapF { v0 =>
-          Rxn.unsafe.unread(r1) *> r1.get.flatMapF { v1 =>
+        F.cede *> r1.get.flatMap { v0 =>
+          Rxn.unsafe.unread(r1) *> r1.get.flatMap { v1 =>
             r1.get.map { v2 => (v0, v1, v2) }
           }
         }.run,
@@ -308,7 +308,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       latch1 <- F.delay(new CountDownLatch(1))
       latch2 <- F.delay(new CountDownLatch(1))
       _ <- r1.update { _ => "b" }.run[F]
-      rxn1 = r1.get.flatMapF { v1 =>
+      rxn1 = r1.get.flatMap { v1 =>
         ctr.incrementAndGet()
         latch1.countDown()
         // concurrent unrelated change to r2
@@ -333,7 +333,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       latch1 <- F.delay(new CountDownLatch(1))
       latch2 <- F.delay(new CountDownLatch(1))
       _ <- r1.update { _ => "b" }.run[F]
-      rxn1 = r1.get.flatMapF { v1 =>
+      rxn1 = r1.get.flatMap { v1 =>
         ctr.incrementAndGet()
         latch1.countDown()
         // concurrent conflicting change to r1
@@ -357,13 +357,13 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ctr <- F.delay(new AtomicInteger(0))
       latch1 <- F.delay(new CountDownLatch(1))
       latch2 <- F.delay(new CountDownLatch(1))
-      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMapF { v1 =>
+      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMap { v1 =>
         ctr.incrementAndGet()
         latch1.countDown()
         // concurrent change to r2
         latch2.await()
         // this will need to retry, because we mustn't extend the log:
-        Rxn.unsafe.tentativeRead(r2).flatMapF { v2 =>
+        Rxn.unsafe.tentativeRead(r2).flatMap { v2 =>
           r2.update { ov =>
             assertEquals(ov, v2)
             99
@@ -386,12 +386,12 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ctr <- F.delay(new AtomicInteger(0))
       latch1 <- F.delay(new CountDownLatch(1))
       latch2 <- F.delay(new CountDownLatch(1))
-      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMapF { v1 =>
+      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMap { v1 =>
         ctr.incrementAndGet()
         latch1.countDown()
         // concurrent change to r0
         latch2.await()
-        Rxn.unsafe.tentativeRead(r2).flatMapF { v2 =>
+        Rxn.unsafe.tentativeRead(r2).flatMap { v2 =>
           r2.update { ov =>
             assertEquals(ov, v2)
             99
@@ -415,8 +415,8 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ctr <- F.delay(new AtomicInteger(0))
       latch1 <- F.delay(new CountDownLatch(1))
       latch2 <- F.delay(new CountDownLatch(1))
-      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMapF { v1 =>
-        Rxn.unsafe.tentativeRead(r2).flatMapF { v2 =>
+      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMap { v1 =>
+        Rxn.unsafe.tentativeRead(r2).flatMap { v2 =>
           ctr.incrementAndGet()
           latch1.countDown()
           // concurrent change to r2
@@ -442,8 +442,8 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ctr <- F.delay(new AtomicInteger(0))
       latch1 <- F.delay(new CountDownLatch(1))
       latch2 <- F.delay(new CountDownLatch(1))
-      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMapF { v1 =>
-        Rxn.unsafe.tentativeRead(r2).flatMapF { v2 =>
+      rxn1 = Rxn.unsafe.tentativeRead(r1).flatMap { v1 =>
+        Rxn.unsafe.tentativeRead(r2).flatMap { v2 =>
           ctr.incrementAndGet()
           latch1.countDown()
           // concurrent change to r2
@@ -475,7 +475,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         latch1.countDown()
         leftTries.getAndIncrement()
         latch2.await()
-      } *> ex.exchange("foo").flatMapF { exVal =>
+      } *> ex.exchange("foo").flatMap { exVal =>
         ref1.getAndUpdate(_ + 1).map { ov =>
           (ov, exVal)
         }
@@ -509,9 +509,9 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
   test("unsafe.tentativeRead, then update (must see the same value)") {
     val t = for {
       refs <- (1 to 5).toList.traverse { _ => Ref(0) }.run[F]
-      rxn = Rxn.unsafe.delay(Random.shuffle(refs).take(3)).flatMapF {
+      rxn = Rxn.unsafe.delay(Random.shuffle(refs).take(3)).flatMap {
         case r1 :: r2 :: r3 :: Nil =>
-          r1.update(_ + 1) *> Rxn.unsafe.tentativeRead(r2).flatMapF { tRead =>
+          r1.update(_ + 1) *> Rxn.unsafe.tentativeRead(r2).flatMap { tRead =>
             r3.update(_ + 1) *> r2.update { ov =>
               assertEquals(ov, tRead)
               ov + 1
@@ -520,7 +520,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         case x =>
           Rxn.unsafe.panic(new AssertionError(s"unexpected: $x"))
       }
-      bgFiber <- Rxn.unsafe.delay(Random.shuffle(refs)).flatMapF { refs =>
+      bgFiber <- Rxn.unsafe.delay(Random.shuffle(refs)).flatMap { refs =>
         refs.traverse { ref => ref.update(_ + 1) }
       }.run[F].foreverM[Unit].start
       _ <- F.both(F.cede *> rxn.run[F], F.cede *> rxn.run[F]).guarantee(bgFiber.cancel)
@@ -535,13 +535,13 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ctr <- F.delay(new AtomicInteger(0))
       latch1 <- F.delay(new CountDownLatch(1))
       latch2 <- F.delay(new CountDownLatch(1))
-      rxn1 = r1.get.flatMapF { v1 =>
+      rxn1 = r1.get.flatMap { v1 =>
         ctr.incrementAndGet()
         latch1.countDown()
         // concurrent change to r2
         latch2.await()
         // this will NOT need to retry, because we can extend the log:
-        r2.get.flatMapF { v2 =>
+        r2.get.flatMap { v2 =>
           r2.set1(99).as((v1, v2))
         }
       }
@@ -571,7 +571,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       r0 <- Ref(0).run[F]
       r1 <- Ref("a").run[F]
       r2 <- Ref("x").run[F]
-      rxn0 = r0.update(_ + 1) *> Rxn.fastRandom.nextBoolean.flatMapF {
+      rxn0 = r0.update(_ + 1) *> Rxn.fastRandom.nextBoolean.flatMap {
         case true => r1.get
         case false => r2.get
       }
@@ -590,7 +590,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     val N = 64
     val P = 16
     def readMostlyRxn(refs: List[Ref[Int]]): Rxn[Int] = {
-      Rxn.fastRandom.shuffleList(refs).flatMapF { sRefs =>
+      Rxn.fastRandom.shuffleList(refs).flatMap { sRefs =>
         sRefs.tail.take(refs.size >> 1).traverse(ref => ref.get) *> sRefs.head.getAndUpdate(_ + 1)
       }
     }
@@ -649,10 +649,10 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     val t = for {
       r1 <- Ref(0).run[F]
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      left = (ex.exchange("foo").flatMapF { (exchanged: Int) =>
+      left = (ex.exchange("foo").flatMap { (exchanged: Int) =>
         Rxn.unsafe.panic(exc).as(exchanged)
       }) + Rxn.pure(0)
-      right = ex.dual.exchange(42).flatMapF { (exchanged: String) =>
+      right = ex.dual.exchange(42).flatMap { (exchanged: String) =>
         r1.update(_ + 1).as(exchanged)
       } + Rxn.pure("fallback")
       rr <- F.both(
@@ -685,10 +685,10 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       rPcLeft <- Ref(0).run[F]
       rPcRight <- Ref(0).run[F]
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      left = ((ex.exchange("foo").flatMapF { (exchanged: Int) =>
+      left = ((ex.exchange("foo").flatMap { (exchanged: Int) =>
         Rxn.unsafe.panic(exc).as(exchanged)
       }) + Rxn.pure(0)).postCommit(Rxn.unsafe.panic(exc2)).postCommit(rPcLeft.update(_ + 1))
-      right = (ex.dual.exchange(42).flatMapF { (exchanged: String) =>
+      right = (ex.dual.exchange(42).flatMap { (exchanged: String) =>
         r1.update(_ + 1).as(exchanged)
       } + Rxn.pure("fallback")).postCommit(Rxn.unsafe.panic(exc3)).postCommit(rPcRight.update(_ + 1))
       rr <- F.both(

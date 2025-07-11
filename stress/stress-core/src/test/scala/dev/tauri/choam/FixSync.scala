@@ -50,7 +50,7 @@ class FixSync extends StressTestBase {
     // then this test fails on ARM Linux, because a `null`
     // can be read from `ref.elem` in `fix`. This demonstrates
     // that the rel/acq fences in `fix` are really necessary.
-      this.incrCtr.flatMapF { c =>
+      this.incrCtr.flatMap { c =>
         if (c > 0) Rxn.pure("foo")
         else rec
       }

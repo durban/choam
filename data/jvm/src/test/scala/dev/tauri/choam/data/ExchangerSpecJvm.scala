@@ -280,16 +280,16 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       // able to (tentatively) update the same ref, and
       // see their own writes; however, the conflict must
       // be detected later, and they must never commit
-      left = (ref.updateAndGet(_ + 1) * ex.exchange(42)).flatMapF { case (v1, i) =>
+      left = (ref.updateAndGet(_ + 1) * ex.exchange(42)).flatMap { case (v1, i) =>
         leftReceived.set(i)
-        ref.get.flatMapF { v2 =>
+        ref.get.flatMap { v2 =>
           assertEquals(v2, v1) // it should see it's own write
           ref.set1(v2 + 1)
         }
       }
-      right = (ref.updateAndGet(_ + 99) * ex.dual.exchange(123)).flatMapF { case (v1, i) =>
+      right = (ref.updateAndGet(_ + 99) * ex.dual.exchange(123)).flatMap { case (v1, i) =>
         rightReceived.set(i)
-        ref.get.flatMapF { v2 =>
+        ref.get.flatMap { v2 =>
           assertEquals(v2, v1) // it should see it's own write
           ref.set1(v2 + 100)
         }

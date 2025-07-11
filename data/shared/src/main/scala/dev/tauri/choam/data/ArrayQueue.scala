@@ -54,9 +54,9 @@ private abstract class ArrayQueue[A](
   }
 
   def tryEnqueue(newVal: A): Rxn[Boolean] = {
-    tail.get.flatMapF { idx =>
+    tail.get.flatMap { idx =>
       val ref = arr.unsafeGet(idx)
-      ref.get.flatMapF { oldVal =>
+      ref.get.flatMap { oldVal =>
         if (isEmpty(oldVal)) {
           // ok, we can enqueue:
           ref.set1(newVal) *> tail.set1(incrIdx(idx)).as(true)
@@ -69,7 +69,7 @@ private abstract class ArrayQueue[A](
   }
 
   def size: Rxn[Int] = {
-    (head.get * tail.get).flatMapF {
+    (head.get * tail.get).flatMap {
       case (h, t) =>
         if (h < t) {
           Rxn.pure(t - h)
