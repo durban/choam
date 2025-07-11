@@ -383,6 +383,10 @@ object Ref extends RefInstances0 {
     unsafePaddedWithId(initial, rig.nextId())
   }
 
+  private[core] final def unsafePaddedWithIdForTesting[A](initial: A, id: Long): Ref[A] = {
+    unsafePaddedWithId(initial, id)
+  }
+
   private[this] final def unsafePaddedWithId[A](initial: A, id: Long): Ref[A] = {
     internal.refs.unsafeNewRefP1(initial)(id)
   }
