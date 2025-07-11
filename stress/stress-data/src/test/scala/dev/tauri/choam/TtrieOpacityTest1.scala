@@ -55,16 +55,16 @@ class TtrieOpacityTest1 extends StressTestBase {
 
   @Actor
   def ins(r: LLLL_Result): Unit = {
-    r.r1 = insert(key, "a").unsafePerform(null, this.impl)
+    r.r1 = insert(key, "a").unsafePerform(this.impl)
   }
 
   @Actor
   def get(r: LLLL_Result): Unit = {
-    r.r2 = lookup(r, key).unsafePerform(null, this.impl)
+    r.r2 = lookup(r, key).unsafePerform(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLLL_Result): Unit = {
-    r.r3 = lookup(null, key).unsafePerform(null, this.impl)
+    r.r3 = lookup(null, key).unsafePerform(this.impl)
   }
 }

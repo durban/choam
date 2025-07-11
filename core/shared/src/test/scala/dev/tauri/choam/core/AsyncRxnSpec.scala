@@ -57,20 +57,20 @@ trait AsyncRxnSpec[F[_]]
       randomizeSleep = false,
     )
     for {
-      _ <- assertResultF(AsyncReactive[F].applyAsync(r, "foo", sSpin), 3)
-      _ <- assertResultF(AsyncReactive[F].applyAsync(r, "foo", sCede), 3)
-      _ <- assertResultF(AsyncReactive[F].applyAsync(r, "foo", sSleep), 3)
-      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, "foo", sSpin), _.isInstanceOf[Rxn.MaxRetriesReached])
-      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, "foo", sCede), _.isInstanceOf[Rxn.MaxRetriesReached])
-      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, "foo", sSleep), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertResultF(AsyncReactive[F].applyAsync(r, sSpin), 3)
+      _ <- assertResultF(AsyncReactive[F].applyAsync(r, sCede), 3)
+      _ <- assertResultF(AsyncReactive[F].applyAsync(r, sSleep), 3)
+      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, sSpin), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, sCede), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, sSleep), _.isInstanceOf[Rxn.MaxRetriesReached])
     } yield ()
   }
 
   test("Exception passthrough (AsyncReactive)") {
     throwingRxns.traverse_[F, Unit] { r =>
-      AsyncReactive[F].applyAsync(r, null, RetryStrategy.Default).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
-      AsyncReactive[F].applyAsync(r, null, RetryStrategy.Default.withCede(true)).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
-      AsyncReactive[F].applyAsync(r, null, RetryStrategy.Default.withSleep(true)).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      AsyncReactive[F].applyAsync(r, RetryStrategy.Default).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      AsyncReactive[F].applyAsync(r, RetryStrategy.Default.withCede(true)).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      AsyncReactive[F].applyAsync(r, RetryStrategy.Default.withSleep(true)).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
     }
   }
 }

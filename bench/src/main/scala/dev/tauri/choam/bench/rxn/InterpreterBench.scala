@@ -37,22 +37,22 @@ class InterpreterBench {
 
   @Benchmark
   def rxnNew(s: St, k: McasImplState): String = {
-    s.rxn.unsafePerform(null, k.mcasImpl)
+    s.rxn.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark
   def rxnNewDisjoint(s: DisjointSt, k: McasImplState): String = {
-    s.rxn.unsafePerform(null, k.mcasImpl)
+    s.rxn.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark
   def readHeavy(s: St, k: McasImplState): String = {
-    s.rhRxn.unsafePerform(null, k.mcasImpl)
+    s.rhRxn.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark
   def readHeavyDisjoint(s: DisjointSt, k: McasImplState): String = {
-    s.rhRxn.unsafePerform(null, k.mcasImpl)
+    s.rhRxn.unsafePerform(k.mcasImpl)
   }
 }
 

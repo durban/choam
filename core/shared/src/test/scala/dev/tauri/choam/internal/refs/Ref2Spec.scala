@@ -24,13 +24,13 @@ import core.Ref2
 final class Ref2SpecP1P1 extends Ref2Spec {
 
   override def mkRef2[A, B](a: A, b: B): Ref2[A, B] =
-    Ref2.p1p1(a, b).unsafePerform(null, this.mcasImpl)
+    Ref2.p1p1(a, b).unsafePerform(this.mcasImpl)
 }
 
 final class Ref2SpecP2 extends Ref2Spec {
 
   override def mkRef2[A, B](a: A, b: B): Ref2[A, B] =
-    Ref2.p2(a, b).unsafePerform(null, this.mcasImpl)
+    Ref2.p2(a, b).unsafePerform(this.mcasImpl)
 }
 
 abstract class Ref2Spec extends BaseSpec with SpecDefaultMcas {
@@ -64,7 +64,7 @@ abstract class Ref2Spec extends BaseSpec with SpecDefaultMcas {
 
   test("consistentRead") {
     val rr = mkRef2[String, Int]("a", 42)
-    val (s, i) = rr.consistentRead.unsafePerform((), this.defaultMcasInstance)
+    val (s, i) = rr.consistentRead.unsafePerform(this.defaultMcasInstance)
     assert(s eq "a")
     assert(i == 42)
   }

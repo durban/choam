@@ -40,10 +40,10 @@ trait TestInstances { self =>
           Gen.delay(Ref.unsafePadded(a, this.rigInstance)),
         ),
         Gen.oneOf(
-          Gen.delay(Ref2.p1p1[A, String](a, "foo").unsafePerform(null, this.mcasImpl)._1),
-          Gen.delay(Ref2.p1p1[String, A]("foo", a).unsafePerform(null, this.mcasImpl)._2),
-          Gen.delay(Ref2.p2[A, String](a, "foo").unsafePerform(null, this.mcasImpl)._1),
-          Gen.delay(Ref2.p2[String, A]("foo", a).unsafePerform(null, this.mcasImpl)._2),
+          Gen.delay(Ref2.p1p1[A, String](a, "foo").unsafePerform(this.mcasImpl)._1),
+          Gen.delay(Ref2.p1p1[String, A]("foo", a).unsafePerform(this.mcasImpl)._2),
+          Gen.delay(Ref2.p2[A, String](a, "foo").unsafePerform(this.mcasImpl)._1),
+          Gen.delay(Ref2.p2[String, A]("foo", a).unsafePerform(this.mcasImpl)._2),
         ),
         Gen.choose(1, 8).flatMap { s =>
           Arbitrary.arbBool.arbitrary.flatMap { sparse =>
@@ -102,7 +102,7 @@ trait TestInstances { self =>
   }
 
   private[choam] final def unsafePerformForTest[A, B](rxn: Rxn[B]): B = {
-    rxn.unsafePerform(null, self.mcasImpl)
+    rxn.unsafePerform(self.mcasImpl)
   }
 
   private def arbRxn[A, B](

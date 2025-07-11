@@ -34,14 +34,14 @@ class RefSetBench {
   def getAndSetProvideVoid(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val r: Rxn[Unit] = s.getAndSetVoid(idx)(rnd.nextString())
-    r.unsafePerform(null, k.mcasImpl)
+    r.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark
   def set1(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val r: Rxn[Unit] = s.refs(idx).set1(rnd.nextString())
-    r.unsafePerform(null, k.mcasImpl)
+    r.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark
@@ -49,7 +49,7 @@ class RefSetBench {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val str = rnd.nextString()
     val r: Rxn[Unit] = s.refs(idx).modify { _ => (str, ()) }
-    r.unsafePerform(null, k.mcasImpl)
+    r.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark
@@ -57,7 +57,7 @@ class RefSetBench {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val str = rnd.nextString()
     val r: Rxn[Unit] = s.refs(idx).update1(_ => str)
-    r.unsafePerform(null, k.mcasImpl)
+    r.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark

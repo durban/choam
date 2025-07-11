@@ -75,14 +75,14 @@ trait LawsSpec
 
     checkAll("Monad[Rxn]", MonadTests[Rxn].monad[Int, String, Int])
     checkAll("Unique[Rxn]", UniqueTests[Rxn].unique(using { (act: Rxn[Boolean]) =>
-      Prop(act.unsafePerform(null, self.mcasImpl))
+      Prop(act.unsafePerform(self.mcasImpl))
     }))
     checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[Int]](using Rxn.choiceSemigroup).semigroup)
     checkAll("Monoid[Rxn]", MonoidTests[Rxn[Int]](using Rxn.monoidInstance).monoid)
     checkAll("Defer[Rxn]", DeferTests[Rxn].defer[Int])
     checkAll("Align[Rxn]", AlignTests[Rxn].align[Int, Float, Double, Long])
     checkAll("Clock[Rxn]", ClockTests[Rxn].clock(using { (act: Rxn[Boolean]) =>
-      Prop(act.unsafePerform(null : String, self.mcasImpl))
+      Prop(act.unsafePerform(self.mcasImpl))
     }))
 
     checkAll("Order[Ref[Int]]", OrderTests[Ref[Int]].order)

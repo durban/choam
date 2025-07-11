@@ -68,9 +68,9 @@ trait RefSpecJvm_Real[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Real[F] { thi
 trait RefLikeSpecJvm[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
 
   test("version") {
-    val p1p1 = Ref.refP1P1("a", "a").unsafePerform(null, this.mcasImpl)
-    val p2 = Ref.refP2("a", "a").unsafePerform(null, this.mcasImpl)
-    val arr = Ref.array(size = 3, initial = "a").unsafePerform(null, this.mcasImpl)
+    val p1p1 = Ref.refP1P1("a", "a").unsafePerform(this.mcasImpl)
+    val p2 = Ref.refP2("a", "a").unsafePerform(this.mcasImpl)
+    val arr = Ref.array(size = 3, initial = "a").unsafePerform(this.mcasImpl)
     val rig = this.mcasImpl.currentContext().refIdGen
     val refs = List[MemoryLocation[String]](
       MemoryLocation.unsafePadded("a", rig),

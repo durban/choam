@@ -104,7 +104,7 @@ trait QueueJvmTests[F[_]] { this: McasImplSpec & BaseQueueSpec[F] =>
       q <- newQueueFromList(List.empty[String])
       produce = F.blocking {
         for (i <- 0 until max) {
-          q.enqueue(i.toString).unsafePerform(null, this.mcasImpl)
+          q.enqueue(i.toString).unsafePerform(this.mcasImpl)
         }
       }
       cs <- F.delay { new ConcurrentLinkedQueue[String] }
@@ -112,7 +112,7 @@ trait QueueJvmTests[F[_]] { this: McasImplSpec & BaseQueueSpec[F] =>
       consume = F.blocking {
         @tailrec
         def go(last: Boolean = false): Unit = {
-          q.tryDeque.unsafePerform((), this.mcasImpl) match {
+          q.tryDeque.unsafePerform(this.mcasImpl) match {
             case Some(s) =>
               cs.offer(s)
               go(last = last)

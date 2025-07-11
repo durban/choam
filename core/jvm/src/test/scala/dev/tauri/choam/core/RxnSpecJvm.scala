@@ -94,7 +94,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       val cdl = new CountDownLatch(1)
       val t = new Thread(() => {
         cdl.countDown()
-        never.unsafePerform(null, this.mcasImpl)
+        never.unsafePerform(this.mcasImpl)
       })
       t.setUncaughtExceptionHandler((_, ex) => {
         if (!ex.isInstanceOf[InterruptedException]) {
@@ -139,7 +139,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         }
       }
       fib <- F.interruptible {
-        unsafeRxn.unsafePerform((), this.mcasImpl)
+        unsafeRxn.unsafePerform(this.mcasImpl)
       }.start
       _ <- F.sleep(0.5.second)
       _ <- fib.cancel

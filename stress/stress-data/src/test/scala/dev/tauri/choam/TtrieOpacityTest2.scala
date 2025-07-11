@@ -38,7 +38,7 @@ class TtrieOpacityTest2 extends StressTestBase {
 
   private[this] val ttrie = {
     val m = TtrieTest.newRandomTtrie(size = 128, avoid = key)
-    m.put(key, "a").unsafePerform(null, this.impl)
+    m.put(key, "a").unsafePerform(this.impl)
     m
   }
 
@@ -58,16 +58,16 @@ class TtrieOpacityTest2 extends StressTestBase {
 
   @Actor
   def del(r: LLLL_Result): Unit = {
-    r.r1 = delete(key).unsafePerform(null, this.impl)
+    r.r1 = delete(key).unsafePerform(this.impl)
   }
 
   @Actor
   def get(r: LLLL_Result): Unit = {
-    r.r2 = lookup(r, key).unsafePerform(null, this.impl)
+    r.r2 = lookup(r, key).unsafePerform(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLLL_Result): Unit = {
-    r.r3 = lookup(null, key).unsafePerform(null, this.impl)
+    r.r3 = lookup(null, key).unsafePerform(this.impl)
   }
 }

@@ -112,14 +112,14 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       if (n > 0) Rxn.unit.map(_ => Left(n - 1))
       else Rxn.ret(Right(99))
     }
-    assertEquals(r1.unsafePerform(42, this.mcasImpl), 43)
-    assertEquals(r2.unsafePerform(42, this.mcasImpl), 42 + N)
-    assertEquals(r3.unsafePerform(42, this.mcasImpl), 42 + 1)
-    assertEquals(r3left.unsafePerform(42, this.mcasImpl), 42 + 1)
-    assertEquals(r3right.unsafePerform(42, this.mcasImpl), 42 + 1)
-    assertEquals(r4.unsafePerform(42, this.mcasImpl), 42 + 1)
-    assertEquals(r5.unsafePerform(42, this.mcasImpl), 42 + 1)
-    assertEquals(r7.unsafePerform(42, this.mcasImpl), 99)
+    assertEquals(r1.unsafePerform(this.mcasImpl), 43)
+    assertEquals(r2.unsafePerform(this.mcasImpl), 42 + N)
+    assertEquals(r3.unsafePerform(this.mcasImpl), 42 + 1)
+    assertEquals(r3left.unsafePerform(this.mcasImpl), 42 + 1)
+    assertEquals(r3right.unsafePerform(this.mcasImpl), 42 + 1)
+    assertEquals(r4.unsafePerform(this.mcasImpl), 42 + 1)
+    assertEquals(r5.unsafePerform(this.mcasImpl), 42 + 1)
+    assertEquals(r7.unsafePerform(this.mcasImpl), 99)
 
     def rNegativeTest: Rxn[Int] = {
       // NOT @tailrec
@@ -130,7 +130,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       go(N * 4)
     }
     try {
-      rNegativeTest.unsafePerform(42, this.mcasImpl)
+      rNegativeTest.unsafePerform(this.mcasImpl)
       this.fail("unexpected success")
     } catch {
       case _: StackOverflowError =>
@@ -145,7 +145,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       }
       go(N * 4)
     }
-    assertEquals(rPositiveTest.unsafePerform(42, this.mcasImpl), 42 + 1)
+    assertEquals(rPositiveTest.unsafePerform(this.mcasImpl), 42 + 1)
   }
 
   test("postCommit") {

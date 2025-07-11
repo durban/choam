@@ -36,7 +36,7 @@ import EliminationStack.TaggedEliminationStack
 class EliminationStackTest extends StressTestBase {
 
   private[this] val stack: TaggedEliminationStack[String] =
-    EliminationStack.taggedFlaky[String]().unsafePerform(null, this.impl)
+    EliminationStack.taggedFlaky[String]().unsafePerform(this.impl)
 
   private[this] final def _push(s: String): Rxn[Either[Unit, Unit]] =
     stack.push(s)
@@ -50,11 +50,11 @@ class EliminationStackTest extends StressTestBase {
 
   @Actor
   def push(r: LL_Result): Unit = {
-    r.r1 = _push("a").unsafePerform(null, this.impl)
+    r.r1 = _push("a").unsafePerform(this.impl)
   }
 
   @Actor
   def pop(r: LL_Result): Unit = {
-    r.r2 = _tryPop.unsafePerform(null, this.impl)
+    r.r2 = _tryPop.unsafePerform(this.impl)
   }
 }

@@ -56,12 +56,12 @@ class WriteAfterGet extends StressTestBase {
 
   @Actor
   def writer1(r: LLL_Result): Unit = {
-    r.r1 = this.write1.unsafePerform(null, this.impl)
+    r.r1 = this.write1.unsafePerform(this.impl)
   }
 
   @Actor
   def writer2(r: LLL_Result): Unit = {
-    r.r2 = this.write2.unsafePerform(null, this.impl)
+    r.r2 = this.write2.unsafePerform(this.impl)
   }
 
   @Arbiter

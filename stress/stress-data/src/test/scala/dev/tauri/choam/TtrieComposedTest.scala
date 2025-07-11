@@ -51,17 +51,17 @@ class TtrieComposedTest extends StressTestBase {
 
   @Actor
   def ins(r: LLL_Result): Unit = {
-    r.r1 = insert(14, "x", 1, "y").unsafePerform(null, this.impl)
+    r.r1 = insert(14, "x", 1, "y").unsafePerform(this.impl)
   }
 
   @Actor
   def get(r: LLL_Result): Unit = {
-    r.r2 = lookup(14, 1).unsafePerform(null, this.impl)
+    r.r2 = lookup(14, 1).unsafePerform(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r3 = lookup(14, 1).unsafePerform(null, this.impl)
+    r.r3 = lookup(14, 1).unsafePerform(this.impl)
   }
 }
 
@@ -77,11 +77,11 @@ object TtrieComposedTest {
       override def hash(x: Int): Int =
         x % 7
     }
-    val m = MapHelper.ttrie[Int, String](using h).unsafePerform(null, initMcas)
-    m.put(0, "0").unsafePerform(null, initMcas)
-    m.put(1, "1").unsafePerform(null, initMcas)
-    m.put(7, "7").unsafePerform(null, initMcas)
-    m.put(8, "8").unsafePerform(null, initMcas)
+    val m = MapHelper.ttrie[Int, String](using h).unsafePerform(initMcas)
+    m.put(0, "0").unsafePerform(initMcas)
+    m.put(1, "1").unsafePerform(initMcas)
+    m.put(7, "7").unsafePerform(initMcas)
+    m.put(8, "8").unsafePerform(initMcas)
     m
   }
 }

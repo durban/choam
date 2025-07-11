@@ -63,7 +63,7 @@ class ResourceAllocationRxn {
 
     val r = read(0, t.ovs, Rxn.unit)
     val w = write(0, t.ovs, Rxn.unit)
-    (r *> w).unsafePerform((), t.mcasImpl)
+    (r *> w).unsafePerform(t.mcasImpl)
 
     Blackhole.consumeCPU(t.tokens)
   }

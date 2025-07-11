@@ -70,7 +70,7 @@ object RxnModelTest {
     @Operation
     def writeOnly(s: String, t: String, i: Int): (String, String) = {
       val (ref1, ref2) = this.select2(i)
-      (ref1.getAndUpdate(s + _), ref2.getAndUpdate(t + _)).tupled.unsafePerform(null, emcas)
+      (ref1.getAndUpdate(s + _), ref2.getAndUpdate(t + _)).tupled.unsafePerform(emcas)
     }
 
     @Operation
@@ -81,7 +81,7 @@ object RxnModelTest {
       } else {
         ref2.get * ref1.getAndSet(s)
       }
-      rxn.unsafePerform(null, emcas)
+      rxn.unsafePerform(emcas)
     }
 
     @Operation
@@ -91,7 +91,7 @@ object RxnModelTest {
       } else {
         (r2.get, r1.get, r3.get)
       }
-      tup.tupled.unsafePerform(null, emcas)
+      tup.tupled.unsafePerform(emcas)
     }
   }
 }

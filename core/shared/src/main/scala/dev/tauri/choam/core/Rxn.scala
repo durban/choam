@@ -142,9 +142,8 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
    * @return the result of the executed [[Rxn]].
    */
   final def unsafePerform(
-    a: Any, // TODO: remove this
     rt: ChoamRuntime,
-  ): B = this.unsafePerform(a, rt.mcasImpl, RetryStrategy.Default)
+  ): B = this.unsafePerform(rt.mcasImpl, RetryStrategy.Default)
 
   /**
    * Execute the [[Rxn]] with the specified input `a`.
@@ -157,19 +156,17 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
    * @return the result of the executed [[Rxn]].
    */
   final def unsafePerform(
-    a: Any, // TODO: remove this
     rt: ChoamRuntime,
     strategy: RetryStrategy.Spin,
-  ): B = this.unsafePerform(a, rt.mcasImpl, strategy)
+  ): B = this.unsafePerform(rt.mcasImpl, strategy)
 
   private[choam] final def unsafePerform(
-    a: Any, // TODO: remove this
     mcas: Mcas,
     strategy: RetryStrategy.Spin = RetryStrategy.Default,
   ): B = {
     new Rxn.InterpreterState[Any, B](
       rxn = this,
-      x = a,
+      x = null, // TODO
       mcas = mcas,
       strategy = strategy,
       isStm = false,
@@ -177,13 +174,11 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   }
 
   final def perform[F[_], X >: B]( // TODO:0.5: do we want this public? (implicit Async is not great)
-    a: Any, // TODO: remove this
     rt: ChoamRuntime,
     strategy: RetryStrategy = RetryStrategy.Default,
-  )(implicit F: Async[F]): F[X] = this.performInternal(a, rt.mcasImpl, strategy)
+  )(implicit F: Async[F]): F[X] = this.performInternal(rt.mcasImpl, strategy)
 
   private[choam] final def performInternal[F[_], X >: B](
-    a: Any, // TODO: remove this
     mcas: Mcas,
     strategy: RetryStrategy = RetryStrategy.Default,
   )(implicit F: Async[F]): F[X] = {
@@ -191,19 +186,17 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
     // this method, since it could be a `Stepper[G]`,
     // where `G` is different form `F`:
     require(!strategy.isDebug)
-    performInternal0[F, X](a = a, mcas = mcas, strategy = strategy)
+    performInternal0[F, X](mcas = mcas, strategy = strategy)
   }
 
   private[choam] final def performWithStepper[F[_], X >: B](
-    a: Any, // TODO: remove this
     mcas: Mcas,
     stepper: RetryStrategy.Internal.Stepper[F],
   )(implicit F: Async[F]): F[X] = {
-    performInternal0[F, X](a = a, mcas = mcas, strategy = stepper)
+    performInternal0[F, X](mcas = mcas, strategy = stepper)
   }
 
   private[this] final def performInternal0[F[_], X >: B](
-    a: Any, // TODO: remove this
     mcas: Mcas,
     strategy: RetryStrategy,
   )(implicit F: Async[F]): F[X] = {
@@ -211,7 +204,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
       F.defer {
         new Rxn.InterpreterState[Any, X](
           this,
-          a,
+          null, // TODO
           mcas = mcas,
           strategy = strategy,
           isStm = false,
@@ -222,12 +215,11 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
 
   /** Only for tests/benchmarks */
   private[choam] final def unsafePerformInternal0(
-    a: Any, // TODO: remove this
     ctx: Mcas.ThreadContext,
   ): B = {
     new Rxn.InterpreterState[Any, B](
       this,
-      a,
+      null, // TODO
       ctx.impl,
       strategy = RetryStrategy.Default,
       isStm = false,
@@ -236,7 +228,6 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
 
   /** Only for tests/benchmarks */
   private[choam] final def unsafePerformInternal(
-    a: Any, // TODO: remove this
     ctx: Mcas.ThreadContext,
     maxBackoff: Int = BackoffPlatform.maxPauseDefault,
     randomizeBackoff: Boolean = BackoffPlatform.randomizePauseDefault,
@@ -248,7 +239,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
       .withRandomizeSpin(randomizeBackoff)
     new Rxn.InterpreterState[Any, B](
       this,
-      a,
+      null, // TODO
       ctx.impl,
       strategy = str,
       isStm = false,
@@ -256,7 +247,6 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   }
 
   private[choam] final def performStm[F[_], X >: B](
-    a: Any, // TODO: remove this
     mcas: Mcas,
     strategy: RetryStrategy,
   )(implicit F: Async[F]): F[X] = {
@@ -264,19 +254,17 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
     // this method, since it could be a `Stepper[G]`,
     // where `G` is different form `F`:
     require(!strategy.isDebug)
-    this.performStmInternal[F, X](a, mcas, strategy)
+    this.performStmInternal[F, X](mcas, strategy)
   }
 
   private[choam] final def performStmWithStepper[F[_], X >: B](
-    a: Any, // TODO: remove this
     mcas: Mcas,
     stepper: RetryStrategy.Internal.Stepper[F],
   )(implicit F: Async[F]): F[X] = {
-    this.performStmInternal[F, X](a, mcas, stepper)
+    this.performStmInternal[F, X](mcas, stepper)
   }
 
   private[this] final def performStmInternal[F[_], X >: B](
-    a: Any, // TODO: remove this
     mcas: Mcas,
     strategy: RetryStrategy,
   )(implicit F: Async[F]): F[X] = {
@@ -285,7 +273,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
       F.defer {
         new Rxn.InterpreterState[Any, X](
           this,
-          a,
+          null, // TODO
           mcas = mcas,
           strategy = strategy,
           isStm = true,

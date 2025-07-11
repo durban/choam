@@ -36,20 +36,20 @@ class RetryBench {
 
   @Benchmark
   def dontRetry1000(st: StDont): Unit = {
-    st.rxn.perform[IO, String](null, st.choamRuntime, st.str).replicateA_(R * 1000).unsafeRunSync()(using st.rt)
+    st.rxn.perform[IO, String](st.choamRuntime, st.str).replicateA_(R * 1000).unsafeRunSync()(using st.rt)
   }
 
   @Benchmark
   def retry010k(st: St10k): Unit = {
     IO { new AtomicInteger }.flatMap { ctr =>
-      st.rxn(ctr).perform[IO, String](null, st.choamRuntime, st.str)
+      st.rxn(ctr).perform[IO, String](st.choamRuntime, st.str)
     }.replicateA_(R).unsafeRunSync()(using st.rt)
   }
 
   @Benchmark
   def retry100k(st: St100k): Unit = {
     IO { new AtomicInteger }.flatMap { ctr =>
-      st.rxn(ctr).perform[IO, String](null, st.choamRuntime, st.str)
+      st.rxn(ctr).perform[IO, String](st.choamRuntime, st.str)
     }.replicateA_(R).unsafeRunSync()(using st.rt)
   }
 }

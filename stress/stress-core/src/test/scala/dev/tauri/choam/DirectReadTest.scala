@@ -53,13 +53,13 @@ class DirectReadTest extends StressTestBase {
 
   @Actor
   def writer(): Unit = {
-    write.unsafePerform(null, this.impl)
+    write.unsafePerform(this.impl)
   }
 
   @Actor
   def reader(r: LLZ_Result): Unit = {
-    r.r1 = read1.unsafePerform(null, this.impl)
-    r.r2 = read2.unsafePerform(null, this.impl)
+    r.r1 = read1.unsafePerform(this.impl)
+    r.r2 = read2.unsafePerform(this.impl)
   }
 
   @Arbiter

@@ -99,7 +99,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         ) +
         (Rxn.unsafe.cas(p, "p", "pp") *> Rxn.unsafe.cas(q, "q", "qq"))
       )
-      _ <- assertResultF(F.delay { rea.unsafePerform((), this.mcasImpl) }, ())
+      _ <- assertResultF(F.delay { rea.unsafePerform(this.mcasImpl) }, ())
       _ <- assertResultF(Rxn.unsafe.directRead(a).run, "a")
       _ <- assertResultF(Rxn.unsafe.directRead(b).run, "bb")
       _ <- assertResultF(Rxn.unsafe.directRead(y).run, "yy")
@@ -116,7 +116,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         (a.getAndUpdate(_ => "c").flatMap(p.getAndSet) *> Rxn.unsafe.retry) +
         (a.getAndUpdate(_ => "x").flatMap(p.getAndSet))
       )
-      _ <- assertResultF(F.delay { rea.unsafePerform((), this.mcasImpl) }, "p")
+      _ <- assertResultF(F.delay { rea.unsafePerform(this.mcasImpl) }, "p")
       _ <- assertResultF(Rxn.unsafe.directRead(a).run, "x")
       _ <- assertResultF(Rxn.unsafe.directRead(p).run, "b")
     } yield ()
@@ -1189,10 +1189,10 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF((Rxn.unsafe.retry[Int] + Rxn.unsafe.panic[Int](exc)).run[F].attempt, Left(exc))
       _ <- assertResultF((Rxn.unsafe.retry[Int] + Rxn.unsafe.panic[Int](exc)).run[F].attempt, Left(exc))
       _ <- assertResultF(F.delay {
-        Rxn.unsafe.panic[Int](exc).unsafePerform(null, this.mcasImpl)
+        Rxn.unsafe.panic[Int](exc).unsafePerform(this.mcasImpl)
       }.attempt, Left(exc))
       _ <- assertResultF(F.delay {
-        Rxn.unsafe.panic[Int](exc).unsafePerform(null, this.mcasImpl)
+        Rxn.unsafe.panic[Int](exc).unsafePerform(this.mcasImpl)
       }.attempt, Left(exc))
     } yield ()
   }
@@ -1336,7 +1336,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         }
       }
       res <- F.delay {
-        unsafeRxn.?.unsafePerform((), this.mcasImpl)
+        unsafeRxn.?.unsafePerform(this.mcasImpl)
       }
       _ <- res match {
         case Some(_) =>
@@ -1454,16 +1454,16 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       RetryStrategy.Default.withMaxRetries(mr)
     for {
       // finite maxRetries:
-      _ <- assertRaisesF(F.delay(never.unsafePerform((), this.mcasImpl, maxRetries(Some(4096)))), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertRaisesF(F.delay(never.unsafePerform(this.mcasImpl, maxRetries(Some(4096)))), _.isInstanceOf[Rxn.MaxRetriesReached])
       ctr <- F.delay(new AtomicInteger)
-      _ <- assertRaisesF(F.delay(countTries(ctr).unsafePerform((), this.mcasImpl, maxRetries(Some(42)))), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertRaisesF(F.delay(countTries(ctr).unsafePerform(this.mcasImpl, maxRetries(Some(42)))), _.isInstanceOf[Rxn.MaxRetriesReached])
       _ <- assertResultF(F.delay(ctr.get()), 42 + 1)
-      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform((), this.mcasImpl, maxRetries(Some(0)))), _.isInstanceOf[Rxn.MaxRetriesReached])
-      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform((), this.mcasImpl, maxRetries(Some(2)))), _.isInstanceOf[Rxn.MaxRetriesReached])
-      _ <- assertResultF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform((), this.mcasImpl, maxRetries(Some(3)))), "foo")
+      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform(this.mcasImpl, maxRetries(Some(0)))), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform(this.mcasImpl, maxRetries(Some(2)))), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertResultF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform(this.mcasImpl, maxRetries(Some(3)))), "foo")
       // infinite maxRetries:
-      _ <- assertResultF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform((), this.mcasImpl, maxRetries(None))), "foo")
-      _ <- assertResultF(F.delay(Rxn.pure("foo").unsafePerform((), this.mcasImpl, maxRetries(None))), "foo")
+      _ <- assertResultF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform(this.mcasImpl, maxRetries(None))), "foo")
+      _ <- assertResultF(F.delay(Rxn.pure("foo").unsafePerform(this.mcasImpl, maxRetries(None))), "foo")
     } yield ()
   }
 
@@ -1474,7 +1474,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       .withMaxSpin(1024)
       .withMaxRetries(Some(42))
     assertRaisesF(
-      Reactive[F].apply(never, 99, s),
+      Reactive[F].apply(never, s),
       _.isInstanceOf[Rxn.MaxRetriesReached],
     )
   }
@@ -1487,13 +1487,13 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("Running with Strategy.spin") {
     val r: Rxn[Int] = Rxn.pure(3)
-    assertResultF(Reactive[F].apply(r, "foo", sSpin), 3)
+    assertResultF(Reactive[F].apply(r, sSpin), 3)
   }
 
   test("Running with Strategy.spin, but with interpretAsync") {
     // TODO: we should test that running it this way is uncancelable
     val r: Rxn[Int] = Rxn.pure(3)
-    assertResultF(r.perform[F, Int]("foo", this.runtime, sSpin)(using F), 3)
+    assertResultF(r.perform[F, Int](this.runtime, sSpin)(using F), 3)
   }
 
   private[this] val sCede = RetryStrategy.cede(
@@ -1506,13 +1506,13 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("Running with Strategy.cede") {
     val r: Rxn[Int] = Rxn.pure(3)
-    assertResultF(r.perform[F, Int]("foo", this.runtime, sCede)(using F), 3)
+    assertResultF(r.perform[F, Int](this.runtime, sCede)(using F), 3)
   }
 
   test("Running with Strategy.cede should be cancellable") {
     val r: Rxn[Int] = Rxn.unsafe.retry
     val tsk: F[Int] =
-      r.perform[F, Int]("foo", this.runtime, sCede)(using F).timeoutTo(0.1.second, F.pure(42))
+      r.perform[F, Int](this.runtime, sCede)(using F).timeoutTo(0.1.second, F.pure(42))
     assertResultF(tsk, 42)
   }
 
@@ -1528,13 +1528,13 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("Running with Strategy.sleep") {
     val r: Rxn[Int] = Rxn.pure(3)
-    assertResultF(r.perform[F, Int]("foo", this.runtime, sSleep)(using F), 3)
+    assertResultF(r.perform[F, Int](this.runtime, sSleep)(using F), 3)
   }
 
   test("Running with Strategy.sleep should be cancellable") {
     val r: Rxn[Int] = Rxn.unsafe.retry
     val tsk: F[Int] =
-      r.perform[F, Int]("foo", this.runtime, sSleep)(using F).timeoutTo(0.1.second, F.pure(42))
+      r.perform[F, Int](this.runtime, sSleep)(using F).timeoutTo(0.1.second, F.pure(42))
     assertResultF(tsk, 42)
   }
 
@@ -1542,7 +1542,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val r: Rxn[Int] =
       Rxn.pure(42)
     val tsk =
-      r.perform[F, Int](null, this.runtime, sCede)(using F)
+      r.perform[F, Int](this.runtime, sCede)(using F)
     assertResultF(tsk.replicateA(3), List(42, 42, 42))
   }
 
@@ -1569,7 +1569,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     import RxnSpec.{ MyException, throwingRxns }
     for (r <- throwingRxns) {
       assert(Either.catchOnly[MyException] {
-        r.unsafePerform(42, this.mcasImpl)
+        r.unsafePerform(this.mcasImpl)
       }.isLeft)
     }
   }

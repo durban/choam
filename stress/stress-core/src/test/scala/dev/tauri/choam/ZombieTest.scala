@@ -65,17 +65,17 @@ class ZombieTest extends StressTestBase {
 
   @Actor
   def update(): Unit = {
-    upd.unsafePerform(null, this.impl)
+    upd.unsafePerform(this.impl)
   }
 
   @Actor
   def read(r: LLL_Result): Unit = {
-    r.r1 = get(r).unsafePerform(null, this.impl)
+    r.r1 = get(r).unsafePerform(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r2 = (ref1.get.unsafePerform(null, this.impl), ref2.get.unsafePerform(null, this.impl))
+    r.r2 = (ref1.get.unsafePerform(this.impl), ref2.get.unsafePerform(this.impl))
     if (r.r3 eq null) {
       // no inconsistency was observed
       r.r3 = "-"

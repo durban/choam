@@ -51,11 +51,11 @@ class MsQueueComposedTest3 extends MsQueueStressTestBase {
 
   @Actor
   def deq(r: LL_Result): Unit = {
-    r.r1 = deq.unsafePerform(null, this.impl)
+    r.r1 = deq.unsafePerform(this.impl)
   }
 
   @Actor
   def enq(r: LL_Result): Unit = {
-    r.r2 = enq.unsafePerform(null, this.impl)
+    r.r2 = enq.unsafePerform(this.impl)
   }
 }

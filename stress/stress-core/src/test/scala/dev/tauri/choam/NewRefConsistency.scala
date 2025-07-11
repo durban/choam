@@ -33,10 +33,10 @@ import core.{ Rxn, Ref }
 class NewRefConsistency extends StressTestBase {
 
   private[this] val holder: Ref[Ref[String]] =
-    Ref[Ref[String]](null).unsafePerform(null, this.impl)
+    Ref[Ref[String]](null).unsafePerform(this.impl)
 
   private[this] val existingRef: Ref[String] =
-    Ref("a").unsafePerform(null, this.impl)
+    Ref("a").unsafePerform(this.impl)
 
   private[this] val _createNewRef: Rxn[Unit] =
     existingRef.update(_ + "b") *> Ref("x").flatMap(holder.set)
@@ -50,12 +50,12 @@ class NewRefConsistency extends StressTestBase {
 
   @Actor
   def createNewRef(): Unit = {
-    this._createNewRef.unsafePerform(null, this.impl)
+    this._createNewRef.unsafePerform(this.impl)
   }
 
   @Actor
   def rxn2(r: LL_Result): Unit = {
-    val res = this._readNewRef.unsafePerform(null, this.impl)
+    val res = this._readNewRef.unsafePerform(this.impl)
     r.r1 = res._1
     r.r2 = res._2
   }

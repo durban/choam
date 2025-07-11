@@ -45,12 +45,12 @@ class MsQueueComposedTest1 extends MsQueueStressTestBase {
 
   @Actor
   def transfer1(): Unit = {
-    tfer.unsafePerform((), this.impl)
+    tfer.unsafePerform(this.impl)
   }
 
   @Actor
   def transfer2(): Unit = {
-    tfer.unsafePerform((), this.impl)
+    tfer.unsafePerform(this.impl)
   }
 
   @Arbiter

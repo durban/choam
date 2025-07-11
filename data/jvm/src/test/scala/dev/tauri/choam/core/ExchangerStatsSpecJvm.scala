@@ -102,8 +102,8 @@ trait ExchangerStatsSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec
 
   private[this] final def startExchange[A, B](ex: Exchanger[A, B], a: A): F[Fiber[F, Throwable, (B, Option[SMap[AnyRef, AnyRef]])]] = {
     F.interruptible {
-      val b: B = ex.exchange(a).unsafePerform(null, this.mcasImpl)
-      val ctx = Rxn.unsafe.delayContext(ctx => ctx).unsafePerform(null, this.mcasImpl)
+      val b: B = ex.exchange(a).unsafePerform(this.mcasImpl)
+      val ctx = Rxn.unsafe.delayContext(ctx => ctx).unsafePerform(this.mcasImpl)
       (b, getStats(ctx))
     }.start
   }

@@ -38,7 +38,7 @@ class GcBench {
     val ctx = m.mcasCtx
     var idx = 0
     while (idx < s.size) {
-      s.transferOne(idx).unsafePerformInternal(a = null : Any, ctx = ctx)
+      s.transferOne(idx).unsafePerformInternal(ctx = ctx)
       idx += 1
     }
   }
@@ -48,7 +48,7 @@ class GcBench {
     val ctx = m.mcasCtx
     var idx = 0
     while (idx < s.size) {
-      s.transferOne(idx).unsafePerformInternal(a = null : Any, ctx = ctx)
+      s.transferOne(idx).unsafePerformInternal(ctx = ctx)
       idx += 1
     }
   }

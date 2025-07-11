@@ -113,7 +113,7 @@ final class JolSpec extends BaseSpec with SpecDefaultMcas {
   test("Ref2 P1P1 should be double-padded") {
     assumeOpenJdk()
     assumeNotMac()
-    val ref: Ref2[?, ?] = Ref2.p1p1[String, Object]("bar", new AnyRef).unsafePerform(null, this.mcasImpl)
+    val ref: Ref2[?, ?] = Ref2.p1p1[String, Object]("bar", new AnyRef).unsafePerform(this.mcasImpl)
     val (left1, _) = getLeftRightPaddedSize(ref, JolSpec.fieldNamesA)
     val (left2, _) = getLeftRightPaddedSize(ref, JolSpec.fieldNamesB)
     assert(clue(left2) >= (clue(left1) + 256))

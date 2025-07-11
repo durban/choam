@@ -37,35 +37,35 @@ class MapBench {
   def map_directMap(s: MapBench.St, k: McasImplState, rnd: RandomState): String = {
     val idx = Math.abs(rnd.nextInt()) % MapBench.size
     val r: Rxn[String] = s.rsWithMapDirect(idx)
-    r.unsafePerform((), k.mcasImpl)
+    r.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark
   def map_monadMap(s: MapBench.St, k: McasImplState, rnd: RandomState): String = {
     val idx = Math.abs(rnd.nextInt()) % MapBench.size
     val r: Rxn[String] = s.rsWithMonadMap(idx)
-    r.unsafePerform((), k.mcasImpl)
+    r.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark
   def map2_andAlsoTupled(s: MapBench.St, k: McasImplState, rnd: RandomState): String = {
     val idx = Math.abs(rnd.nextInt()) % MapBench.size
     val r: Rxn[String] = s.rs2WithAndAlsoTupled(idx)
-    r.unsafePerform(null, k.mcasImpl)
+    r.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark
   def map2_flatMapMap(s: MapBench.St, k: McasImplState, rnd: RandomState): String = {
     val idx = Math.abs(rnd.nextInt()) % MapBench.size
     val r: Rxn[String] = s.rs2WithFlatMapMap(idx)
-    r.unsafePerform(null, k.mcasImpl)
+    r.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark
   def map2_primitive(s: MapBench.St, k: McasImplState, rnd: RandomState): String = {
     val idx = Math.abs(rnd.nextInt()) % MapBench.size
     val r: Rxn[String] = s.rs2WithPrimitive(idx)
-    r.unsafePerform(null, k.mcasImpl)
+    r.unsafePerform(k.mcasImpl)
   }
 }
 

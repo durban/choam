@@ -44,12 +44,12 @@ class MultipleWriteInRxn extends StressTestBase {
 
   @Actor
   def writer(r: LLL_Result): Unit = {
-    r.r1 = this.write.unsafePerform(null, this.impl)
+    r.r1 = this.write.unsafePerform(this.impl)
   }
 
   @Actor
   def reader(r: LLL_Result): Unit = {
-    r.r2 = this.read.unsafePerform(null, this.impl)
+    r.r2 = this.read.unsafePerform(this.impl)
   }
 
   @Arbiter

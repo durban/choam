@@ -34,7 +34,7 @@ import core.{ Rxn, Ref }
 class FixSync extends StressTestBase {
 
   private[this] val ctr: Ref[Int] =
-    Ref[Int](0).unsafePerform(null, this.impl)
+    Ref[Int](0).unsafePerform(this.impl)
 
   private[this] val incrCtr: Rxn[Int] =
     ctr.getAndUpdate(_ + 1)
@@ -64,7 +64,7 @@ class FixSync extends StressTestBase {
     if (rxn eq null) {
       () // (null, null)
     } else {
-      r.r2 = rxn.unsafePerform(null, this.impl)
+      r.r2 = rxn.unsafePerform(this.impl)
       r.r1 = "res"
     }
   }

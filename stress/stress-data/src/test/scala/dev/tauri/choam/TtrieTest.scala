@@ -43,17 +43,17 @@ class TtrieTest extends StressTestBase {
 
   @Actor
   def ins1(r: LLLL_Result): Unit = {
-    r.r1 = ttrie.put(14, "x").unsafePerform(null, this.impl)
+    r.r1 = ttrie.put(14, "x").unsafePerform(this.impl)
   }
 
   @Actor
   def ins2(r: LLLL_Result): Unit = {
-    r.r2 = ttrie.put(0, "y").unsafePerform(null, this.impl)
+    r.r2 = ttrie.put(0, "y").unsafePerform(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLLL_Result): Unit = {
-    r.r3 = ttrie.get(0).unsafePerform(null, this.impl)
+    r.r3 = ttrie.get(0).unsafePerform(this.impl)
     r.r4 = true
     checkVal(1, "1", r)
     checkVal(2, "2", r)
@@ -65,7 +65,7 @@ class TtrieTest extends StressTestBase {
   }
 
   private[this] final def checkVal(key: Int, expVal: String, r: LLLL_Result): Unit = {
-    val res: String = ttrie.get(key).unsafePerform(null, this.impl).get
+    val res: String = ttrie.get(key).unsafePerform(this.impl).get
     if (!expVal.equals(res)) {
       r.r4 = res // error
     }
@@ -84,18 +84,18 @@ object TtrieTest {
       override def hash(x: Int): Int =
         x % 7
     }
-    val m = MapHelper.ttrie[Int, String](using h).unsafePerform(null, initMcas)
-    m.put(1, "1").unsafePerform(null, initMcas)
-    m.put(2, "2").unsafePerform(null, initMcas)
-    m.put(3, "3").unsafePerform(null, initMcas)
-    m.put(4, "4").unsafePerform(null, initMcas)
-    m.put(7, "7").unsafePerform(null, initMcas)
-    m.put(8, "8").unsafePerform(null, initMcas)
-    m.put(9, "9").unsafePerform(null, initMcas)
+    val m = MapHelper.ttrie[Int, String](using h).unsafePerform(initMcas)
+    m.put(1, "1").unsafePerform(initMcas)
+    m.put(2, "2").unsafePerform(initMcas)
+    m.put(3, "3").unsafePerform(initMcas)
+    m.put(4, "4").unsafePerform(initMcas)
+    m.put(7, "7").unsafePerform(initMcas)
+    m.put(8, "8").unsafePerform(initMcas)
+    m.put(9, "9").unsafePerform(initMcas)
     val tlr = ThreadLocalRandom.current()
     for (_ <- 1 to 25) {
       val key = Iterator.continually(tlr.nextInt(1024)).dropWhile(h.eqv(_, 0)).next()
-      m.put(key, (key % 14).toString).unsafePerform(null, initMcas)
+      m.put(key, (key % 14).toString).unsafePerform(initMcas)
     }
     m
   }
@@ -103,7 +103,7 @@ object TtrieTest {
   final def newRandomTtrie(size: Int, avoid: Int): Map[Int, String] = {
     require(size >= 0)
     require(size < 0x10000000)
-    val m = MapHelper.ttrie[Int, String].unsafePerform(null, initMcas)
+    val m = MapHelper.ttrie[Int, String].unsafePerform(initMcas)
     val tlr = ThreadLocalRandom.current()
     // save memory by using a single value:
     val value = "e52262dfbfdf08fb"
@@ -111,7 +111,7 @@ object TtrieTest {
     while (currSize < size) {
       val key = tlr.nextInt(0x40000000)
       if (key != avoid) {
-        if (m.put(key, value).unsafePerform(null, initMcas).isEmpty) {
+        if (m.put(key, value).unsafePerform(initMcas).isEmpty) {
           currSize += 1
         } // else: we just overwrote an existing value
       }

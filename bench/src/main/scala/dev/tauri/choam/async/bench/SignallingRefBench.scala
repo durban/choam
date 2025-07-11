@@ -71,7 +71,7 @@ object SignallingRefBench {
     val fs2Reset: IO[Unit] =
       reset(fs2)
     val rxn: SignallingRef[IO, String] =
-      stream.signallingRef[IO, String]("initial").unsafePerform(null, asyncReactiveForIO.mcasImpl)
+      stream.signallingRef[IO, String]("initial").unsafePerform(asyncReactiveForIO.mcasImpl)
     val rxnReset: IO[Unit] =
       reset(rxn)
 

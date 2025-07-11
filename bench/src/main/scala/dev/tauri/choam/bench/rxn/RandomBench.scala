@@ -36,37 +36,37 @@ class RandomBench {
 
   @Benchmark
   def baseline(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
-    s.baseline(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
+    s.baseline(s.bound(rnd)).unsafePerformInternal(k.mcasCtx)
   }
 
   @Benchmark
   def rndFast(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
-    s.rndFast.nextLongBounded(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
+    s.rndFast.nextLongBounded(s.bound(rnd)).unsafePerformInternal(k.mcasCtx)
   }
 
   @Benchmark
   def rndDeterministic(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
-    s.rndDeterministic.nextLongBounded(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
+    s.rndDeterministic.nextLongBounded(s.bound(rnd)).unsafePerformInternal(k.mcasCtx)
   }
 
   @Benchmark
   def rndMinimal1(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
-    s.rndMinimal1.nextLongBounded(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
+    s.rndMinimal1.nextLongBounded(s.bound(rnd)).unsafePerformInternal(k.mcasCtx)
   }
 
   @Benchmark
   def rndMinimal2(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
-    s.rndMinimal2.nextLongBounded(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
+    s.rndMinimal2.nextLongBounded(s.bound(rnd)).unsafePerformInternal(k.mcasCtx)
   }
 
   @Benchmark
   def rndSecure(s: RandomBench.St, k: McasImplState, rnd: RandomState): Long = {
-    s.rndSecure.nextLongBounded(s.bound(rnd)).unsafePerformInternal(null, k.mcasCtx)
+    s.rndSecure.nextLongBounded(s.bound(rnd)).unsafePerformInternal(k.mcasCtx)
   }
 
   @Benchmark
   def rxnUuidGen(s: RandomBench.St, k: McasImplState): UUID = {
-    s.uuidGen.randomUUID.unsafePerformInternal(null, k.mcasCtx)
+    s.uuidGen.randomUUID.unsafePerformInternal(k.mcasCtx)
   }
 }
 
@@ -83,11 +83,11 @@ object RandomBench {
     val rndFast: Random[Rxn] =
       Rxn.fastRandom
     val rndDeterministic: Random[Rxn] =
-      Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafePerform(null, McasImplStateBase.mcasImpl)
+      Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafePerform(McasImplStateBase.mcasImpl)
     val rndMinimal1: Random[Rxn] =
-      internal.random.minimalRandom1(ThreadLocalRandom.current().nextLong()).unsafePerform(null, McasImplStateBase.mcasImpl)
+      internal.random.minimalRandom1(ThreadLocalRandom.current().nextLong()).unsafePerform(McasImplStateBase.mcasImpl)
     val rndMinimal2: Random[Rxn] =
-      internal.random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafePerform(null, McasImplStateBase.mcasImpl)
+      internal.random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafePerform(McasImplStateBase.mcasImpl)
     val rndSecure: SecureRandom[Rxn] =
       Rxn.secureRandom
     val uuidGen: UUIDGen[Rxn] =

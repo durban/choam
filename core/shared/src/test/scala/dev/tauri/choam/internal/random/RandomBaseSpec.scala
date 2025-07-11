@@ -40,9 +40,9 @@ abstract class RandomBaseSpec extends BaseSpec {
       }
     }
     val rng1 = new DummyRng(Array.fill(8)(0x01.toByte))
-    assertEquals(rng1.nextLong.unsafePerform(null, this.mcas), 0x0101010101010101L)
+    assertEquals(rng1.nextLong.unsafePerform(this.mcas), 0x0101010101010101L)
     val rng2 = new DummyRng({ val arr = Array.fill(8)(0x01.toByte); arr(0) = 0xff.toByte; arr })
-    assertEquals(rng2.nextLong.unsafePerform(null, this.mcas), 0x01010101010101ffL)
+    assertEquals(rng2.nextLong.unsafePerform(this.mcas), 0x01010101010101ffL)
   }
 
   test("ByteBuffer endianness") {
@@ -59,7 +59,7 @@ abstract class RandomBaseSpec extends BaseSpec {
 
   test("RxnUuidGen") {
     def unsafeRandomUuid(): UUID = {
-      newUuidImpl.unsafePerform(null, this.mcas)
+      newUuidImpl.unsafePerform(this.mcas)
     }
     val first = unsafeRandomUuid()
     def checkUuid(u: UUID): Unit = {

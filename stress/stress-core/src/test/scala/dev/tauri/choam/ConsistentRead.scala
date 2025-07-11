@@ -49,21 +49,21 @@ class ConsistentRead extends StressTestBase {
 
   private[this] final def init(): Unit = {
     val initRxn = ref1.update(_ => "x")
-    initRxn.unsafePerform(null, this.impl)
+    initRxn.unsafePerform(this.impl)
   }
 
   @Actor
   def update(): Unit = {
-    upd.unsafePerform(null, this.impl)
+    upd.unsafePerform(this.impl)
   }
 
   @Actor
   def read(r: LL_Result): Unit = {
-    r.r1 = get.unsafePerform(null, this.impl)
+    r.r1 = get.unsafePerform(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = (ref1.get.unsafePerform(null, this.impl), ref2.get.unsafePerform(null, this.impl))
+    r.r2 = (ref1.get.unsafePerform(this.impl), ref2.get.unsafePerform(this.impl))
   }
 }

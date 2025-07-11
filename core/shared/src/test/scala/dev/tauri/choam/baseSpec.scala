@@ -335,7 +335,7 @@ trait TestContextSpec[F[_]] { self: BaseSpecAsyncF[F] & McasImplSpec =>
     }
 
     final def run[A, B](r: Rxn[B]): F[B] = {
-      r.performWithStepper(null, self.mcasImpl, stepper)(using F)
+      r.performWithStepper(self.mcasImpl, stepper)(using F)
     }
   }
 }

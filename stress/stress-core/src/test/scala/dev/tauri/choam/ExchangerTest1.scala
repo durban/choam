@@ -37,13 +37,13 @@ import core.{ Rxn, Exchanger, Ref }
 class ExchangerTest1 extends StressTestBase {
 
   private[this] val ex: Exchanger[String, String] =
-    Rxn.unsafe.exchanger[String, String].unsafePerform(null, this.impl)
+    Rxn.unsafe.exchanger[String, String].unsafePerform(this.impl)
 
   private[this] val leftPc: Ref[Option[Either[String, String]]] =
-    Ref[Option[Either[String, String]]](null).unsafePerform(null, this.impl)
+    Ref[Option[Either[String, String]]](null).unsafePerform(this.impl)
 
   private[this] val rightPc: Ref[Option[Either[String, String]]] =
-    Ref[Option[Either[String, String]]](null).unsafePerform(null, this.impl)
+    Ref[Option[Either[String, String]]](null).unsafePerform(this.impl)
 
   private[this] final def leftSide(s: String): Rxn[Option[Either[String, String]]] = {
     val once = ex.exchange(s)
@@ -57,17 +57,17 @@ class ExchangerTest1 extends StressTestBase {
 
   @Actor
   def left(r: LLLL_Result): Unit = {
-    r.r1 = leftSide("l").unsafePerform(null, this.impl)
+    r.r1 = leftSide("l").unsafePerform(this.impl)
   }
 
   @Actor
   def right(r: LLLL_Result): Unit = {
-    r.r3 = rightSide("r").unsafePerform(null, this.impl)
+    r.r3 = rightSide("r").unsafePerform(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLLL_Result): Unit = {
-    r.r2 = leftPc.get.unsafePerform(null, this.impl)
-    r.r4 = rightPc.get.unsafePerform(null, this.impl)
+    r.r2 = leftPc.get.unsafePerform(this.impl)
+    r.r4 = rightPc.get.unsafePerform(this.impl)
   }
 }

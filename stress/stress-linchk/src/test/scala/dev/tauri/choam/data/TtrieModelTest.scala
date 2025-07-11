@@ -59,34 +59,34 @@ private[data] object TtrieModelTest {
 
     @Operation
     def insert(k: String, v: String): Option[String] = {
-      m.put(k, v).unsafePerform(null, emcas)
+      m.put(k, v).unsafePerform(emcas)
     }
 
     @Operation
     def insertIfAbsent(k: String, v: String): Option[String] = {
-      m.putIfAbsent(k, v).unsafePerform(null, emcas)
+      m.putIfAbsent(k, v).unsafePerform(emcas)
     }
 
     @Operation
     def lookup(k: String): Option[String] = {
-      m.get(k).unsafePerform(null, emcas)
+      m.get(k).unsafePerform(emcas)
     }
 
     @Operation
     def removeKey(k: String): Boolean = {
-      m.del(k).unsafePerform(null, emcas)
+      m.del(k).unsafePerform(emcas)
     }
   }
 
   class TrieMapTestState extends AbstractTestState {
     protected[this] override val m: Ttrie[String, String] =
-      Ttrie[String, String](Ref.AllocationStrategy.Default).unsafePerform(null, emcas)
+      Ttrie[String, String](Ref.AllocationStrategy.Default).unsafePerform(emcas)
   }
 
   class SkipListTestState extends AbstractTestState {
     protected[this] override val m: Ttrie[String, String] =
       Ttrie.skipListBased[String, String](Ref.AllocationStrategy.Default).flatMap { (m: Ttrie[String, String]) =>
         m.get("dummy").as(m) // FIXME?
-      }.unsafePerform(null, emcas)
+      }.unsafePerform(emcas)
   }
 }

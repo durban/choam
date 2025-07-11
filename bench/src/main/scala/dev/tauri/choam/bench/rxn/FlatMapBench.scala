@@ -36,14 +36,14 @@ class FlatMapBench {
   def withFlatMap(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
     val r: Rxn[String] = s.rsWithFlatMap(idx)
-    bh.consume(r.unsafePerform((), k.mcasImpl))
+    bh.consume(r.unsafePerform(k.mcasImpl))
   }
 
   @Benchmark
   def withStarGreater(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
     val r: Rxn[String] = s.rsWithStarGreater(idx)
-    bh.consume(r.unsafePerform((), k.mcasImpl))
+    bh.consume(r.unsafePerform(k.mcasImpl))
   }
 }
 

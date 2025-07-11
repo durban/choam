@@ -38,8 +38,8 @@ class RemoveQueueRemoveTest1B extends RemoveQueueStressTestBase {
 
   private[this] val queueAndRemover = {
     val q = this.newQueue[String]()
-    val remover = q.enqueueWithRemover("z").unsafePerform(null, this.impl)
-    q.enqueue("x").unsafePerform(null, this.impl)
+    val remover = q.enqueueWithRemover("z").unsafePerform(this.impl)
+    q.enqueue("x").unsafePerform(this.impl)
     (q, remover)
   }
 
@@ -54,12 +54,12 @@ class RemoveQueueRemoveTest1B extends RemoveQueueStressTestBase {
 
   @Actor
   def deq(r: LLL_Result): Unit = {
-    r.r2 = tryDeque.unsafePerform(null, this.impl)
+    r.r2 = tryDeque.unsafePerform(this.impl)
   }
 
   @Actor
   def rem(r: LLL_Result): Unit = {
-    val wasRemoved: Boolean = remover.unsafePerform(null : Any, this.impl)
+    val wasRemoved: Boolean = remover.unsafePerform(this.impl)
     r.r3 = wasRemoved
   }
 

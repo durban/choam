@@ -60,18 +60,18 @@ class ZombieTestSwap extends StressTestBase {
 
   @Actor
   def swap1(): Unit = {
-    swap.unsafePerform(null, this.impl)
+    swap.unsafePerform(this.impl)
   }
 
   @Actor
   def swap2(r: LLL_Result): Unit = {
-    swapObserve(r).unsafePerform(null, this.impl)
+    swapObserve(r).unsafePerform(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r1 = ref1.get.unsafePerform(null, this.impl)
-    r.r2 = ref2.get.unsafePerform(null, this.impl)
+    r.r1 = ref1.get.unsafePerform(this.impl)
+    r.r2 = ref2.get.unsafePerform(this.impl)
     if (r.r3 eq null) {
       // no inconsistency was observed
       r.r3 = "-"

@@ -97,13 +97,13 @@ object RefArrayBench {
       (0 until this.size).foreach { idx =>
         a.unsafeGet(idx).set(
           ThreadLocalRandom.current().nextInt().toString
-        ).unsafePerform(null, this.mcasImpl)
+        ).unsafePerform(this.mcasImpl)
       }
       this._arr = a
     }
 
     final def foldSparse(r: RandomState): Int = {
-      this.foldSparseAxn(r).unsafePerform(null, this.mcasImpl)
+      this.foldSparseAxn(r).unsafePerform(this.mcasImpl)
     }
 
     final def foldSparseAxn(r: RandomState): Rxn[Int] = {
@@ -122,7 +122,7 @@ object RefArrayBench {
 
     final def swapAndGet(r: RandomState): String = {
       val len = this.size
-      swapAndGetAxn(r.nextIntBounded(len), r.nextIntBounded(len), r.nextIntBounded(len)).unsafePerform(null, this.mcasImpl)
+      swapAndGetAxn(r.nextIntBounded(len), r.nextIntBounded(len), r.nextIntBounded(len)).unsafePerform(this.mcasImpl)
     }
 
     final def swapAndGetAxn(idx1: Int, idx2: Int, idx3: Int): Rxn[String] = {
@@ -138,7 +138,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false),
-      ).unsafePerform(null, this.mcasImpl)
+      ).unsafePerform(this.mcasImpl)
     }
   }
 
@@ -149,7 +149,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false),
-      ).unsafePerform(null, this.mcasImpl)
+      ).unsafePerform(this.mcasImpl)
     }
   }
 
@@ -160,7 +160,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false),
-      ).unsafePerform(null, this.mcasImpl)
+      ).unsafePerform(this.mcasImpl)
     }
   }
 
@@ -171,7 +171,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false),
-      ).unsafePerform(null, this.mcasImpl)
+      ).unsafePerform(this.mcasImpl)
     }
   }
 }
