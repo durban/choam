@@ -114,7 +114,8 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     for {
       r <- newRef("a")
       _ <- assertResultF(r.updateWith(s => Rxn.ret(s + "c")).run[F], ())
-      _ <- assertResultF(r.getAndUpdateWith(s => Rxn.ret(s + "f")).run[F], "abcde")
+      _ <- assertResultF(r.getAndUpdateWith(s => Rxn.ret(s + "f")).run[F], "ac")
+      _ <- assertResultF(r.get.run, "acf")
     } yield ()
   }
 
@@ -122,7 +123,7 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     for {
       r <- newRef("a")
       _ <- assertResultF(r.modifyWith(s => Rxn.ret((s + "c", 43))).run[F], 43)
-      _ <- assertResultF(r.get.run[F], "abcd")
+      _ <- assertResultF(r.get.run[F], "ac")
     } yield ()
   }
 
@@ -249,8 +250,8 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r <- newRef("a")
       _ <- assertResultF(r.update(_ + "b").run[F], ())
       _ <- assertResultF(r.tryUpdate(_ + "d").run[F], true)
-      _ <- assertResultF(r.getAndUpdate(_ + "e").run[F], "abcd")
-      _ <- assertResultF(r.updateAndGet(_ + "g").run[F], "abcdefg")
+      _ <- assertResultF(r.getAndUpdate(_ + "e").run[F], "abd")
+      _ <- assertResultF(r.updateAndGet(_ + "g").run[F], "abdeg")
     } yield ()
   }
 
@@ -282,7 +283,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r <- newRef("a")
       _ <- assertResultF(r.modify(s => (s + "b", 42)).run[F], 42)
       _ <- assertResultF(r.tryModify(s => (s + "d", 44)).run[F], Some(44))
-      _ <- assertResultF(r.get.run[F], "abcd")
+      _ <- assertResultF(r.get.run[F], "abd")
     } yield ()
   }
 
