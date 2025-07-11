@@ -247,8 +247,7 @@ private[choam] object GenWaitList {
                     }
                   }
                 }
-              },
-              null
+              }
             )).flatten
           }
         }
