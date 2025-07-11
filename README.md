@@ -128,8 +128,6 @@ _does_ have modular blocking (`Txn.retry`).
   integration with `cats.effect.IOApp` (for convenience)
 - [`choam-zi`](zi/shared/src/main/scala/dev/tauri/choam/zi/):
   integration with `zio.ZIOApp` (for convenience)
-- [`choam-laws`](laws/shared/src/main/scala/dev/tauri/choam/laws/):
-  properties fulfilled by the various `Rxn` combinators
 - [`choam-profiler`](profiler/src/main/scala/dev/tauri/choam/profiler/):
   JMH profiler "plugin" for `Rxn` statistics/measurements; enable it with
   `-prof dev.tauri.choam.profiler.RxnProfiler`.
@@ -138,6 +136,8 @@ _does_ have modular blocking (`Txn.retry`).
     low-level multi-word compare-and-swap (MCAS/*k*-CAS) implementations
   - [`choam-internal`](internal/shared/src/main/scala/dev/tauri/choam/internal/):
     a concurrent skip list map and other utilities for internal use
+  - [`choam-laws`](laws/shared/src/main/scala/dev/tauri/choam/laws/):
+    properties fulfilled by the various `Rxn` combinators
 
 JARs are on Maven Central. Browsable Scaladoc is available [here](
 https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).

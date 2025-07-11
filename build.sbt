@@ -476,7 +476,7 @@ lazy val internalHelpers = project.in(file("internal-helpers"))
     assertionsEnabled := false, // so that we can test that they're disabled
   )
 
-lazy val laws = crossProject(JVMPlatform, JSPlatform)
+lazy val laws = crossProject(JVMPlatform, JSPlatform) // TODO: don't publish this
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
   .in(file("laws"))
@@ -513,7 +513,6 @@ lazy val unidocs = project
       data.jvm,
       async.jvm,
       stream.jvm,
-      laws.jvm,
       ce.jvm,
       zi.jvm,
       profiler,
