@@ -29,8 +29,6 @@ sealed trait RefLike[A] {
 
   def modify[B](f: A => (A, B)): Rxn[B]
 
-  def modifyWith[B](f: A => Rxn[(A, B)]): Rxn[B]
-
   // primitive (for performance):
 
   def set1(a: A): Rxn[Unit] // TODO: remove
@@ -48,9 +46,6 @@ sealed trait RefLike[A] {
   final def update(f: A => A): Rxn[Unit] =
     update1(f)
 
-  final def updateWith(f: A => Rxn[A]): Rxn[Unit] =
-    modifyWith { oa => f(oa).map(na => (na, ())) }
-
   /** Returns `false` iff the update failed */
   final def tryUpdate(f: A => A): Rxn[Boolean] =
     update1(f).maybe
@@ -59,22 +54,11 @@ sealed trait RefLike[A] {
   final def getAndUpdate(f: A => A): Rxn[A] =
     modify { oa => (f(oa), oa) }
 
-    /** Returns previous value */
-  final def getAndUpdateWith(f: A => Rxn[A]): Rxn[A] =
-    modifyWith { oa => f(oa).map(na => (na, oa)) }
-
   /** Returns new value */
   final def updateAndGet(f: A => A): Rxn[A] = {
     modify { oa =>
       val na = f(oa)
       (na, na)
-    }
-  }
-
-  /** Returns new value */
-  final def updateAndGetWith(f: A => Rxn[A]): Rxn[A] = { // TODO: optimize
-    modifyWith { oa =>
-      f(oa).map { na => (na, na) }
     }
   }
 

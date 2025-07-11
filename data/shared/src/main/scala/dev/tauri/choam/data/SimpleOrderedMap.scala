@@ -160,17 +160,6 @@ private final class SimpleOrderedMap[K, V] private (
         else (am + ((key, newVal)), c)
       }
     }
-
-    final def modifyWith[C](f: V => Rxn[(V, C)]): Rxn[C] = {
-      repr.modifyWith { am =>
-        val currVal = am.get(key).getOrElse(default)
-        f(currVal).map {
-          case (newVal, c) =>
-            if (equ(newVal, default)) (am.remove(key), c)
-            else (am + ((key, newVal)), c)
-        }
-      }
-    }
   }
 
   private[data] final def unsafeSnapshot: Rxn[ScalaMap[K, V]] = {

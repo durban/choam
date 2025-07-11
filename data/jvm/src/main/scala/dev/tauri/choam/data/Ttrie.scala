@@ -28,7 +28,6 @@ import cats.syntax.all._
 import core.{ Rxn, Ref, RefLike }
 import internal.skiplist.SkipListMap
 import internal.mcas.Mcas
-import Ttrie._
 
 /**
  * Based on `ttrie` in "Durability and Contention in Software
@@ -61,6 +60,8 @@ private final class Ttrie[K, V] private (
   m: CMap[K, Ref[V]],
   str: Ref.AllocationStrategy,
 ) extends Map.UnsealedMap[K, V] { self =>
+
+  import Ttrie.{ ReplaceResult, ModifyResult, Init, isInit, End, isEnd, TrueNoCleanup, FalseNoCleanup, FalseCleanup }
 
   /*
    * We store refs in a `TrieMap`; the management
@@ -183,8 +184,13 @@ private final class Ttrie[K, V] private (
     else Rxn.unit
   }
 
-  private[this] final def cleanupLaterIfNeeded(key: K, ref: Ref[V])(rr: ReplaceResult): Rxn[Unit] = {
+  private[this] final def cleanupLaterIfNeededR(key: K, ref: Ref[V])(rr: ReplaceResult): Rxn[Unit] = {
     if (rr.needsCleanup) cleanupLater(key, ref)
+    else Rxn.unit
+  }
+
+  private[this] final def cleanupLaterIfNeededM[C](key: K, ref: Ref[V])(mr: ModifyResult[C]): Rxn[Unit] = {
+    if (mr.needsCleanup) cleanupLater(key, ref)
     else Rxn.unit
   }
 
@@ -241,7 +247,7 @@ private final class Ttrie[K, V] private (
           if (equ(cv, ov)) (nv, TrueNoCleanup)
           else (cv, FalseNoCleanup)
         }
-      }.postCommit(cleanupLaterIfNeeded(k, ref)).map { rr =>
+      }.postCommit(cleanupLaterIfNeededR(k, ref)).map { rr =>
         rr.toBoolean
       }
     }
@@ -300,35 +306,30 @@ private final class Ttrie[K, V] private (
             // write `End`, to not leak memory:
             (End[V], true) // <- needs cleanup
           } else {
-            (newVal, false) // <- no ned for cleanup
+            (newVal, false) // <- no need for cleanup
           }
         }.postCommit(cleanupLaterIfTrue(key, ref)).void
       }
     }
 
-    final override def modify[C](f: V => (V, C)): Rxn[C] = // TODO: optimize this
-      this.modifyWith { v => Rxn.pure(f(v)) }
-
-    final override def modifyWith[C](f: V => Rxn[(V, C)]): Rxn[C] = {
-      getRef(key).flatMap { ref =>
-        ref.modifyWith[C] { oldVal =>
+    final override def modify[C](f: V => (V, C)): Rxn[C] = {
+      getRef(key).flatMap {ref =>
+        ref.modify[ModifyResult[C]] { oldVal =>
           val currVal = if (isInit(oldVal) || isEnd(oldVal)) {
             default
           } else {
             oldVal
           }
-          f(currVal).flatMap {
-            case (newVal, c) =>
-              if (equ(newVal, default)) {
-                // it is possible, that we created
-                // the ref with `Init`, so we must
-                // write `End`, to not leak memory:
-                Rxn.postCommit(cleanupLater(key, ref)).as((End[V], c))
-              } else {
-                Rxn.pure((newVal, c))
-              }
+          val (newVal, c) = f(currVal)
+          if (equ(newVal, default)) {
+            // it is possible, that we created
+            // the ref with `Init`, so we must
+            // write `End`, to not leak memory:
+            (End[V], new ModifyResult(c, needsCleanup = true))
+          } else {
+            (newVal, new ModifyResult(c, needsCleanup = false))
           }
-        }
+        }.postCommit(cleanupLaterIfNeededM[C](key, ref)).map(_.c)
       }
     }
   }
@@ -401,6 +402,11 @@ private object Ttrie {
 
   @inline private final def isEnd[V](v: V): Boolean =
     equ[V](v, End[V])
+
+  private final class ModifyResult[C](
+    val c: C,
+    val needsCleanup: Boolean,
+  )
 
   private sealed abstract class ReplaceResult {
     def toBoolean: Boolean

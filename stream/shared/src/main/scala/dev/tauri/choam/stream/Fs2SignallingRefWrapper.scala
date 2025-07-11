@@ -60,14 +60,6 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
       }
     }
 
-    final override def modifyWith[C](f: A => Rxn[(A, C)]): Rxn[C] = {
-      underlying.modifyWith { oldVal =>
-        f(oldVal).flatMap { ac =>
-          notifyListeners(ac._1).as(ac)
-        }
-      }
-    }
-
     private[this] def notifyListeners(newVal: A): Rxn[Unit] = {
       listeners.values.flatMap(_.traverse { lRef =>
         lRef.modify {

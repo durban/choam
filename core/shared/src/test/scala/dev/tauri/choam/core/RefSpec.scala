@@ -93,6 +93,49 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("updWith should behave correctly when used through getAndUpdateWith") {
+    for {
+      r1 <- newRef("foo")
+      r2 <- newRef("x")
+      r = r1.getAndUpdateWith { ov =>
+        if (ov eq "foo") Rxn.ret("bar")
+        else r2.getAndSet(ov)
+      }
+      _ <- r.run
+      _ <- assertResultF(r1.get.run, "bar")
+      _ <- assertResultF(r2.get.run, "x")
+      _ <- r.run
+      _ <- assertResultF(r1.get.run, "x")
+      _ <- assertResultF(r2.get.run, "bar")
+    } yield ()
+  }
+
+  test("Ref#updateWith et. al.") {
+    for {
+      r <- newRef("a")
+      _ <- assertResultF(r.updateWith(s => Rxn.ret(s + "c")).run[F], ())
+      _ <- assertResultF(r.getAndUpdateWith(s => Rxn.ret(s + "f")).run[F], "abcde")
+    } yield ()
+  }
+
+  test("Ref#modifyWith et. al.") {
+    for {
+      r <- newRef("a")
+      _ <- assertResultF(r.modifyWith(s => Rxn.ret((s + "c", 43))).run[F], 43)
+      _ <- assertResultF(r.get.run[F], "abcd")
+    } yield ()
+  }
+
+  test("Ref#updateAndGetWith") {
+    for {
+      ctr <- newRef(0)
+      r <- newRef("a")
+      _ <- assertResultF(r.updateAndGetWith { ov => ctr.update(_ + 1).as(ov + "b") }.run[F], "ab")
+      _ <- assertResultF(r.get.run[F], "ab")
+      _ <- assertResultF(ctr.get.run[F], 1)
+    } yield ()
+  }
+
   test("MemoryLocation#cast") {
     for {
       r1 <- newRef("a")
@@ -176,23 +219,6 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   def newRef[A](initial: A): F[RefType[A]]
 
-  test("updWith should behave correctly when used through getAndUpdateWith") {
-    for {
-      r1 <- newRef("foo")
-      r2 <- newRef("x")
-      r = r1.getAndUpdateWith { ov =>
-        if (ov eq "foo") Rxn.ret("bar")
-        else r2.getAndSet(ov)
-      }
-      _ <- r.run
-      _ <- assertResultF(r1.get.run, "bar")
-      _ <- assertResultF(r2.get.run, "x")
-      _ <- r.run
-      _ <- assertResultF(r1.get.run, "x")
-      _ <- assertResultF(r2.get.run, "bar")
-    } yield ()
-  }
-
   test("ifM instead of guard/guardNot") {
     for {
       trueRef <- newRef(true)
@@ -222,10 +248,8 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r <- newRef("a")
       _ <- assertResultF(r.update(_ + "b").run[F], ())
-      _ <- assertResultF(r.updateWith(s => Rxn.ret(s + "c")).run[F], ())
       _ <- assertResultF(r.tryUpdate(_ + "d").run[F], true)
       _ <- assertResultF(r.getAndUpdate(_ + "e").run[F], "abcd")
-      _ <- assertResultF(r.getAndUpdateWith(s => Rxn.ret(s + "f")).run[F], "abcde")
       _ <- assertResultF(r.updateAndGet(_ + "g").run[F], "abcdefg")
     } yield ()
   }
@@ -257,7 +281,6 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r <- newRef("a")
       _ <- assertResultF(r.modify(s => (s + "b", 42)).run[F], 42)
-      _ <- assertResultF(r.modifyWith(s => Rxn.ret((s + "c", 43))).run[F], 43)
       _ <- assertResultF(r.tryModify(s => (s + "d", 44)).run[F], Some(44))
       _ <- assertResultF(r.get.run[F], "abcd")
     } yield ()
@@ -323,16 +346,6 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r <- newRef("a")
       _ <- assertResultF(r.updateAndGet { ov => ov + "42" }.run[F], "a42")
       _ <- assertResultF(r.get.run[F], "a42")
-    } yield ()
-  }
-
-  test("RefLike#updateAndGetWith") {
-    for {
-      ctr <- newRef(0)
-      r <- newRef("a")
-      _ <- assertResultF(r.updateAndGetWith { ov => ctr.update(_ + 1).as(ov + "b") }.run[F], "ab")
-      _ <- assertResultF(r.get.run[F], "ab")
-      _ <- assertResultF(ctr.get.run[F], 1)
     } yield ()
   }
 
