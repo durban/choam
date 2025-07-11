@@ -29,7 +29,7 @@ private object RxnConsts {
   final val ContUpdWith = 7
   final val ContAs = 8
   final val ContProductR = 9
-  final val ContFlatMapF = 10
+  // 10 was ContFlatMapF
   final val ContFlatMap = 11
   final val ContMap = 12
   final val ContMap2Right = 13
