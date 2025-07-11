@@ -21,20 +21,4 @@ package object core {
 
   /** Symbolic alias for `Rxn` */
   final type =#>[-A, +B] = Rxn[B] // TODO: remove this
-
-  /**
-   * The description of an effect, which (when executed),
-   * results in a value of type `A`; during execution,
-   * it may update any number of [[dev.tauri.choam.core.Ref Ref]]s
-   * atomically (and it may also create new `Ref`s).
-   *
-   * This type forms a `Monad`. However, when composing
-   * these kinds of effects, also consider using [[dev.tauri.choam.core.Rxn Rxn]]
-   * and `>>>` or `*>` instead of `flatMap`.
-   *
-   * The relation between [[Axn]] and [[dev.tauri.choam.core.Rxn Rxn]] is approximately
-   * `Axn[A] ≡ Rxn[Any, A]`; or, alternatively
-   * `Rxn[A, B] ≡ (A => Axn[B])` (see [[dev.tauri.choam.core.Rxn!.toFunction toFunction]]).
-   */
-  final type Axn[+A] = Rxn[A] // short for 'astaxanthin'
 }

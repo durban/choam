@@ -66,7 +66,7 @@ class RemoveQueueTest extends RemoveQueueStressTestBase {
 
   @Actor
   def deq(r: LL_Result): Unit = {
-    r.r1 = tryDeque.unsafeRun(this.impl)
+    r.r1 = tryDeque.unsafePerform(null, this.impl)
   }
 
   @Arbiter

@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Axn, Ref, Reactive }
+import core.{ Rxn, Ref, Reactive }
 import internal.mcas.RefIdGen
 import GcHostileMsQueue._
 
@@ -43,7 +43,7 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
   private def this(initRig: RefIdGen) =
     this(Node(nullOf[A], Ref.unsafePadded(End[A](), initRig)), initRig)
 
-  override val tryDeque: Axn[Option[A]] = {
+  override val tryDeque: Rxn[Option[A]] = {
     head.modifyWith { node =>
       node.next.get.flatMapF { next =>
         next match {
@@ -65,8 +65,8 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
   final override def tryEnqueue(a: A): Rxn[Boolean] =
     this.enqueue(a).as(true)
 
-  private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    def go(n: Node[A]): Axn[Unit] = {
+  private[this] def findAndEnqueue(node: Node[A]): Rxn[Unit] = {
+    def go(n: Node[A]): Rxn[Unit] = {
       n.next.get.flatMapF {
         case End() =>
           // found true tail; will update, and adjust the tail ref:
@@ -86,8 +86,8 @@ private object GcHostileMsQueue {
   private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
   private final case class End[A]() extends Elem[A]
 
-  def apply[A]: Axn[GcHostileMsQueue[A]] =
-    Axn.unsafe.delayContext { ctx => new GcHostileMsQueue[A](ctx.refIdGen) }
+  def apply[A]: Rxn[GcHostileMsQueue[A]] =
+    Rxn.unsafe.delayContext { ctx => new GcHostileMsQueue[A](ctx.refIdGen) }
 
   def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[GcHostileMsQueue[A]] = {
     Queue.fromList[F, GcHostileMsQueue, A](this.apply[A])(as)

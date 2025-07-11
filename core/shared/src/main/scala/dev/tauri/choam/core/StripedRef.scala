@@ -29,7 +29,7 @@ private[choam] sealed abstract class StripedRef[A] {
 
 private[choam] object StripedRef extends StripedRefCompanionPlatform {
 
-  final def apply[A](initial: A): Axn[StripedRef[A]] = Axn.unsafe.suspendContext { ctx =>
+  final def apply[A](initial: A): Rxn[StripedRef[A]] = Rxn.unsafe.suspendContext { ctx =>
     val size = ctx.stripes
     Ref.array(size, initial, this.strategy).map { arr =>
       new StripedRefImpl(arr)
@@ -58,7 +58,7 @@ private[choam] object StripedRef extends StripedRefCompanionPlatform {
       go(0, z)
     }
 
-    final override def get: Axn[A] = Rxn.unsafe.suspendContext { ctx =>
+    final override def get: Rxn[A] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.get
     }
@@ -68,17 +68,17 @@ private[choam] object StripedRef extends StripedRefCompanionPlatform {
       ref.modify(f)
     }
 
-    final override def set1(a: A): Axn[Unit] = Rxn.unsafe.suspendContext { ctx =>
+    final override def set1(a: A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.set1(a)
     }
 
-    final override def update1(f: A => A): Axn[Unit] = Rxn.unsafe.suspendContext { ctx =>
+    final override def update1(f: A => A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.update1(f)
     }
 
-    final override def modifyWith[C](f: A => Axn[(A, C)]): Rxn[C] = Rxn.unsafe.suspendContext { ctx =>
+    final override def modifyWith[C](f: A => Rxn[(A, C)]): Rxn[C] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.modifyWith(f)
     }

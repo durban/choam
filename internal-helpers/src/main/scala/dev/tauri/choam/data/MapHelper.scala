@@ -20,7 +20,7 @@ package data
 
 import cats.kernel.Hash
 
-import core.{ Axn, Ref }
+import core.{ Rxn, Ref }
 
 /**
  * Public access to package-private utilities
@@ -28,6 +28,6 @@ import core.{ Axn, Ref }
  */
 object MapHelper {
 
-  def ttrie[K: Hash, V]: Axn[Map[K, V]] =
+  def ttrie[K: Hash, V]: Rxn[Map[K, V]] =
     Ttrie.apply[K, V](Ref.AllocationStrategy.Default)
 }

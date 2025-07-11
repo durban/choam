@@ -20,7 +20,7 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import core.{ Rxn, Axn, AsyncReactive }
+import core.{ Rxn, AsyncReactive }
 
 sealed trait OverflowQueue[A]
   extends UnboundedQueue.UnsealedWithSize[A] {
@@ -30,13 +30,13 @@ sealed trait OverflowQueue[A]
 
 object OverflowQueue {
 
-  final def ringBuffer[A](capacity: Int): Axn[OverflowQueue[A]] = {
+  final def ringBuffer[A](capacity: Int): Rxn[OverflowQueue[A]] = {
     data.Queue.ringBuffer[A](capacity).flatMapF { rb =>
       makeRingBuffer(capacity, rb)
     }
   }
 
-  final def droppingQueue[A](capacity: Int): Axn[OverflowQueue[A]] = {
+  final def droppingQueue[A](capacity: Int): Rxn[OverflowQueue[A]] = {
     data.Queue.dropping[A](capacity).flatMapF { dq =>
       GenWaitList[A](dq.tryDeque, dq.tryEnqueue).map { gwl =>
         new DroppingQueue[A](capacity, dq, gwl)
@@ -45,13 +45,13 @@ object OverflowQueue {
   }
 
   // TODO: do we need this?
-  private[choam] final def lazyRingBuffer[A](capacity: Int): Axn[OverflowQueue[A]] = {
+  private[choam] final def lazyRingBuffer[A](capacity: Int): Rxn[OverflowQueue[A]] = {
     data.Queue.lazyRingBuffer[A](capacity).flatMapF { rb =>
       makeRingBuffer(capacity, rb)
     }
   }
 
-  private[this] final def makeRingBuffer[A](capacity: Int, underlying: data.Queue.WithSize[A]): Axn[OverflowQueue[A]] = {
+  private[this] final def makeRingBuffer[A](capacity: Int, underlying: data.Queue.WithSize[A]): Rxn[OverflowQueue[A]] = {
     WaitList(underlying.tryDeque, underlying.enqueue).map { wl =>
       new RingBuffer(capacity, underlying, wl)
     }
@@ -63,7 +63,7 @@ object OverflowQueue {
     wl: WaitList[A],
   ) extends OverflowQueue[A] {
 
-    final override def size: Axn[Int] =
+    final override def size: Rxn[Int] =
       buff.size
 
     final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
@@ -75,7 +75,7 @@ object OverflowQueue {
     final override def enqueue(a: A): Rxn[Unit] =
       wl.set0(a).void
 
-    final override def tryDeque: Axn[Option[A]] =
+    final override def tryDeque: Rxn[Option[A]] =
       wl.tryGet
 
     final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
@@ -88,7 +88,7 @@ object OverflowQueue {
     gwl: GenWaitList[A],
   ) extends OverflowQueue[A] {
 
-    final override def size: Axn[Int] =
+    final override def size: Rxn[Int] =
       q.size
 
     final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
@@ -100,7 +100,7 @@ object OverflowQueue {
     final override def enqueue(a: A): Rxn[Unit] =
       this.tryEnqueue(a).void
 
-    final override def tryDeque: Axn[Option[A]] =
+    final override def tryDeque: Rxn[Option[A]] =
       gwl.tryGet
 
     final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =

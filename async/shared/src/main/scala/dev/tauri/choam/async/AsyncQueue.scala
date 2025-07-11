@@ -20,7 +20,7 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import core.{ Axn, AsyncReactive }
+import core.{ Rxn, AsyncReactive }
 
 sealed trait AsyncQueueSource[+A] extends data.Queue.UnsealedQueueSource[A] {
   def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] // TODO:0.5: should be called `dequeue`; also: InvariantSyntax
@@ -38,22 +38,22 @@ object AsyncQueue {
   private[choam] trait UnsealedBoundedQueueSink[-A]
     extends BoundedQueueSink[A]
 
-  final def unbounded[A]: Axn[UnboundedQueue[A]] =
+  final def unbounded[A]: Rxn[UnboundedQueue[A]] =
     UnboundedQueue[A]
 
-  final def bounded[A](bound: Int): Axn[BoundedQueue[A]] =
+  final def bounded[A](bound: Int): Rxn[BoundedQueue[A]] =
     BoundedQueue.array[A](bound)
 
-  final def dropping[A](capacity: Int): Axn[OverflowQueue[A]] =
+  final def dropping[A](capacity: Int): Rxn[OverflowQueue[A]] =
     OverflowQueue.droppingQueue[A](capacity)
 
-  final def ringBuffer[A](capacity: Int): Axn[OverflowQueue[A]] =
+  final def ringBuffer[A](capacity: Int): Rxn[OverflowQueue[A]] =
     OverflowQueue.ringBuffer[A](capacity)
 
-  final def unboundedWithSize[A]: Axn[UnboundedQueue.WithSize[A]] =
+  final def unboundedWithSize[A]: Rxn[UnboundedQueue.WithSize[A]] =
     UnboundedQueue.withSize[A]
 
-  // TODO: final def synchronous[A]: Axn[BoundedQueue[A]] = ...
+  // TODO: final def synchronous[A]: Rxn[BoundedQueue[A]] = ...
   // TODO:
   // TODO: Providing a synchronous queue which has operations
   // TODO: in `Rxn` seems fundamentally impossible. Let's say
@@ -61,8 +61,8 @@ object AsyncQueue {
   // TODO: trait SynchronousQueue[A] {
   // TODO:   def take[F[_]]: F[A]
   // TODO:   def offer[F[_]](a: A): F[Unit]
-  // TODO:   def tryTake: Axn[Option[A]]
-  // TODO:   def tryOffer(a: A): Axn[Boolean]
+  // TODO:   def tryTake: Rxn[Option[A]]
+  // TODO:   def tryOffer(a: A): Rxn[Boolean]
   // TODO: }
   // TODO: If `tryOffer` returns `true`, that should mean
   // TODO: that someone will definitely receive the item.

@@ -34,7 +34,7 @@ import org.openjdk.jmh.util.SingletonStatistics
 
 import com.monovore.decline.{ Opts, Command }
 
-import core.{ Axn, Exchanger }
+import core.{ Rxn, Exchanger }
 
 import internal.mcas.Consts
 import internal.mcas.Mcas.RetryStats
@@ -502,7 +502,7 @@ object RxnProfiler {
   final val ExchangeCount = "rxn.exchangeCount"
   final val ExchangerStats = "rxn.exchangerStats"
 
-  final def profiledExchanger[A, B]: Axn[Exchanger[A, B]] =
+  final def profiledExchanger[A, B]: Rxn[Exchanger[A, B]] =
     Exchanger.profiled[A, B](this.exchangeCounter)
 
   private[choam] final val exchangeCounter: LongAdder =

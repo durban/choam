@@ -42,15 +42,13 @@ import internal.random
  * preserves their atomicity. That is, all affected [[Ref]]s
  * will be updated atomically.
  *
+ * TODO: fix this ------v
  * A [[Rxn]] forms an [[cats.arrow.Arrow Arrow]] (more
  * specifically, an [[cats.arrow.ArrowChoice ArrowChoice]]).
  * It also forms a [[cats.Monad Monad]] in `B`; however, consider
  * using the arrow combinators (when possible) instead of `flatMap`
  * (since a static combination of `Rxn`s may be more performant).
  *
- * The relation between [[Rxn]] and [[Axn]] is approximately
- * `Rxn[A, B] ≡ (A => Axn[B])`; or, alternatively
- * `Axn[A] ≡ Rxn[Any, A]`.
  */
 sealed abstract class Rxn[+B] { // short for 'reaction'
 
@@ -433,7 +431,7 @@ object Rxn extends RxnInstances0 {
   private[this] val _unit: RxnImpl[Unit] =
     pureImpl(())
 
-  private[this] final val _none: Axn[Option[Nothing]] =
+  private[this] final val _none: Rxn[Option[Nothing]] =
     pure(None)
 
   // TODO: private[this] val _true: RxnImpl[Any, Boolean] = ... // and _false
@@ -445,7 +443,7 @@ object Rxn extends RxnInstances0 {
   private[choam] final def unitImpl: RxnImpl[Unit] =
     _unit
 
-  private[choam] final def none[A]: Axn[Option[A]] =
+  private[choam] final def none[A]: Rxn[Option[A]] =
     _none
 
   final def postCommit(pc: Rxn[Unit]): Rxn[Unit] =
@@ -627,7 +625,10 @@ object Rxn extends RxnInstances0 {
       new Rxn.Lift[B](() => { uf })
 
     private[choam] final def suspend[B](uf: => Rxn[B]): Rxn[B] =
-      delay(uf).flatten // TODO: optimize
+      suspendImpl(uf)
+
+    private[choam] final def suspendImpl[A](uf: => Rxn[A]): RxnImpl[A] =
+      delayImpl(uf).flatten // TODO: optimize
 
     private[choam] final def delayContext[B](uf: Mcas.ThreadContext => B): Rxn[B] =
       new Rxn.Ctx1[B](uf)
@@ -2519,7 +2520,7 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    final override def imperativePostCommit(pca: Axn[Unit]): Unit = {
+    final override def imperativePostCommit(pca: Rxn[Unit]): Unit = {
       pc.push(pca)
     }
 
@@ -2741,9 +2742,9 @@ private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.
     final override def applicative: Applicative[Rxn] =
       Rxn.monadInstance
     final override def monotonic: Rxn[FiniteDuration] =
-      Axn.unsafe.delay { FiniteDuration(System.nanoTime(), NANOSECONDS) }
+      Rxn.unsafe.delay { FiniteDuration(System.nanoTime(), NANOSECONDS) }
     final override def realTime: Rxn[FiniteDuration] =
-      Axn.unsafe.delay { FiniteDuration(System.currentTimeMillis(), MILLISECONDS) }
+      Rxn.unsafe.delay { FiniteDuration(System.currentTimeMillis(), MILLISECONDS) }
   }
 }
 

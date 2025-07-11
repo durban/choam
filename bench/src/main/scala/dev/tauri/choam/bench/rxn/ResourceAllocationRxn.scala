@@ -22,7 +22,7 @@ package rxn
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import util.{ McasImplStateBase, RandomState }
 
 /**
@@ -40,7 +40,7 @@ class ResourceAllocationRxn {
     val rss = t.selectResources(s.rss, rnd)
 
     @tailrec
-    def read(i: Int, arr: Array[String], acc: Axn[Unit]): Axn[Unit] = {
+    def read(i: Int, arr: Array[String], acc: Rxn[Unit]): Rxn[Unit] = {
       if (i >= n) {
         acc
       } else {

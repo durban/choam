@@ -24,7 +24,7 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 
 import cats.effect.SyncIO
 
-import core.Axn
+import core.Rxn
 import data.RemoveQueue
 
 @JCStressTest
@@ -46,7 +46,7 @@ class RemoveQueueRemoveTest1B extends RemoveQueueStressTestBase {
   private[this] val queue: RemoveQueue[String] =
     queueAndRemover._1
 
-  private[this] val remover: Axn[Boolean] =
+  private[this] val remover: Rxn[Boolean] =
     queueAndRemover._2
 
   private[this] val tryDeque =
@@ -54,7 +54,7 @@ class RemoveQueueRemoveTest1B extends RemoveQueueStressTestBase {
 
   @Actor
   def deq(r: LLL_Result): Unit = {
-    r.r2 = tryDeque.unsafeRun(this.impl)
+    r.r2 = tryDeque.unsafePerform(null, this.impl)
   }
 
   @Actor

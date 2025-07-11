@@ -25,7 +25,7 @@ import cats.Monad
 
 import org.openjdk.jmh.annotations._
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import util._
 
 /** Compares the performance of possible `map` and `map2` implementations */
@@ -36,35 +36,35 @@ class MapBench {
   @Benchmark
   def map_directMap(s: MapBench.St, k: McasImplState, rnd: RandomState): String = {
     val idx = Math.abs(rnd.nextInt()) % MapBench.size
-    val r: Axn[String] = s.rsWithMapDirect(idx)
+    val r: Rxn[String] = s.rsWithMapDirect(idx)
     r.unsafePerform((), k.mcasImpl)
   }
 
   @Benchmark
   def map_monadMap(s: MapBench.St, k: McasImplState, rnd: RandomState): String = {
     val idx = Math.abs(rnd.nextInt()) % MapBench.size
-    val r: Axn[String] = s.rsWithMonadMap(idx)
+    val r: Rxn[String] = s.rsWithMonadMap(idx)
     r.unsafePerform((), k.mcasImpl)
   }
 
   @Benchmark
   def map2_andAlsoTupled(s: MapBench.St, k: McasImplState, rnd: RandomState): String = {
     val idx = Math.abs(rnd.nextInt()) % MapBench.size
-    val r: Axn[String] = s.rs2WithAndAlsoTupled(idx)
+    val r: Rxn[String] = s.rs2WithAndAlsoTupled(idx)
     r.unsafePerform(null, k.mcasImpl)
   }
 
   @Benchmark
   def map2_flatMapMap(s: MapBench.St, k: McasImplState, rnd: RandomState): String = {
     val idx = Math.abs(rnd.nextInt()) % MapBench.size
-    val r: Axn[String] = s.rs2WithFlatMapMap(idx)
+    val r: Rxn[String] = s.rs2WithFlatMapMap(idx)
     r.unsafePerform(null, k.mcasImpl)
   }
 
   @Benchmark
   def map2_primitive(s: MapBench.St, k: McasImplState, rnd: RandomState): String = {
     val idx = Math.abs(rnd.nextInt()) % MapBench.size
-    val r: Axn[String] = s.rs2WithPrimitive(idx)
+    val r: Rxn[String] = s.rs2WithPrimitive(idx)
     r.unsafePerform(null, k.mcasImpl)
   }
 }
@@ -99,36 +99,36 @@ object MapBench {
       )
     }
 
-    private[this] val addXs: List[Axn[String]] =
+    private[this] val addXs: List[Rxn[String]] =
       refs.map(_.updateAndGet(_.substring(1) + "x"))
 
-    private[this] val addYs: List[Axn[String]] =
+    private[this] val addYs: List[Rxn[String]] =
       refs.map(_.updateAndGet(_.substring(1) + "y"))
 
-    private[this] final def mkReactions(opType: OpType): List[Axn[String]] = {
+    private[this] final def mkReactions(opType: OpType): List[Rxn[String]] = {
       List.tabulate(size) { idx =>
         val idx2 = (idx + 1) % size
         buildReaction(n, first = addXs(idx), last = addYs(idx2), opType = opType)
       }
     }
 
-    val rsWithMapDirect: List[Axn[String]] =
+    val rsWithMapDirect: List[Rxn[String]] =
       mkReactions(opType = MapDirect)
 
-    val rsWithMonadMap: List[Axn[String]] =
+    val rsWithMonadMap: List[Rxn[String]] =
       mkReactions(opType = MonadMap)
 
-    val rs2WithAndAlsoTupled: List[Axn[String]] =
+    val rs2WithAndAlsoTupled: List[Rxn[String]] =
       mkReactions(opType = Map2AndAlsoTupled)
 
-    val rs2WithFlatMapMap: List[Axn[String]] =
+    val rs2WithFlatMapMap: List[Rxn[String]] =
       mkReactions(opType = Map2FlatMapMap)
 
-    val rs2WithPrimitive: List[Axn[String]] =
+    val rs2WithPrimitive: List[Rxn[String]] =
       mkReactions(opType = Map2Primitive)
 
-    private[this] final def buildReaction(n: Int, first: Axn[String], last: Axn[String], opType: OpType): Axn[String] = {
-      def go(n: Int, acc: Axn[String]): Axn[String] = {
+    private[this] final def buildReaction(n: Int, first: Rxn[String], last: Rxn[String], opType: OpType): Rxn[String] = {
+      def go(n: Int, acc: Rxn[String]): Rxn[String] = {
         if (n < 1) {
           acc
         } else {

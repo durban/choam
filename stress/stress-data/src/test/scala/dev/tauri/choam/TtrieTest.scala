@@ -84,7 +84,7 @@ object TtrieTest {
       override def hash(x: Int): Int =
         x % 7
     }
-    val m = MapHelper.ttrie[Int, String](using h).unsafeRun(initMcas)
+    val m = MapHelper.ttrie[Int, String](using h).unsafePerform(null, initMcas)
     m.put(1, "1").unsafePerform(null, initMcas)
     m.put(2, "2").unsafePerform(null, initMcas)
     m.put(3, "3").unsafePerform(null, initMcas)
@@ -103,7 +103,7 @@ object TtrieTest {
   final def newRandomTtrie(size: Int, avoid: Int): Map[Int, String] = {
     require(size >= 0)
     require(size < 0x10000000)
-    val m = MapHelper.ttrie[Int, String].unsafeRun(initMcas)
+    val m = MapHelper.ttrie[Int, String].unsafePerform(null, initMcas)
     val tlr = ThreadLocalRandom.current()
     // save memory by using a single value:
     val value = "e52262dfbfdf08fb"

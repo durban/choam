@@ -25,7 +25,7 @@ import cats.effect.IO
 
 import org.openjdk.jmh.annotations._
 
-import core.{ Rxn, Axn, RetryStrategy }
+import core.{ Rxn, RetryStrategy }
 import util.McasImplStateBase
 
 @Threads(1)
@@ -90,8 +90,8 @@ object RetryBench {
   abstract class St(N: Int) extends McasImplStateBase {
 
     def rxn(ctr: AtomicInteger): Rxn[String] = {
-      Axn.unsafe.delay { ctr.incrementAndGet() }.flatMap { c =>
-        if (c > N) Axn.pure("foo")
+      Rxn.unsafe.delay { ctr.incrementAndGet() }.flatMap { c =>
+        if (c > N) Rxn.pure("foo")
         else Rxn.unsafe.retry
       }
     }

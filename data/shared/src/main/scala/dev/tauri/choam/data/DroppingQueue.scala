@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import ArrayQueue.empty
 
 // TODO: there should be a `BoundedQueue` with `def capacity: Int`
@@ -46,7 +46,7 @@ private final class DroppingQueue[A](
 
 private object DroppingQueue {
 
-  def apply[A](capacity: Int): Axn[Queue.WithSize[A]] = {
+  def apply[A](capacity: Int): Rxn[Queue.WithSize[A]] = {
     require(capacity > 0)
     Ref.array[A](size = capacity, initial = empty[A]).flatMapF { arr =>
       (Ref.padded(0) * Ref.padded(0)).map {

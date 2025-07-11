@@ -23,7 +23,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import core.{ Rxn, Axn }
+import core.Rxn
 import EliminationStack.TaggedEliminationStack
 
 @JCStressTest
@@ -36,14 +36,14 @@ import EliminationStack.TaggedEliminationStack
 class EliminationStackTest extends StressTestBase {
 
   private[this] val stack: TaggedEliminationStack[String] =
-    EliminationStack.taggedFlaky[String]().unsafeRun(this.impl)
+    EliminationStack.taggedFlaky[String]().unsafePerform(null, this.impl)
 
   private[this] final def _push(s: String): Rxn[Either[Unit, Unit]] =
     stack.push(s)
 
-  private[this] val _tryPop: Axn[Either[Option[String], Option[String]]] = {
+  private[this] val _tryPop: Rxn[Either[Option[String], Option[String]]] = {
     stack.tryPop.flatMapF {
-      case e @ (Left(Some(_)) | Right(Some(_))) => Axn.pure(e)
+      case e @ (Left(Some(_)) | Right(Some(_))) => Rxn.pure(e)
       case Left(None) | Right(None) => Rxn.unsafe.retry
     }
   }

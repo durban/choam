@@ -20,7 +20,7 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import core.{ Rxn, Axn, AsyncReactive }
+import core.{ Rxn, AsyncReactive }
 
 sealed trait UnboundedQueue[A]
   extends data.Queue.UnsealedQueue[A]
@@ -35,7 +35,7 @@ object UnboundedQueue {
 
   sealed trait WithSize[A] extends UnboundedQueue[A] {
 
-    def size: Axn[Int]
+    def size: Rxn[Int]
 
     def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
   }
@@ -43,7 +43,7 @@ object UnboundedQueue {
   private[choam] trait UnsealedWithSize[A]
     extends WithSize[A]
 
-  final def apply[A]: Axn[UnboundedQueue[A]] = {
+  final def apply[A]: Rxn[UnboundedQueue[A]] = {
     data.Queue.unbounded[A].flatMapF { q =>
       WaitList[A](q.tryDeque, q.enqueue).map { wl =>
         new UnboundedQueue[A] {
@@ -51,7 +51,7 @@ object UnboundedQueue {
             this.enqueue(a).as(true)
           final override def enqueue(a: A): Rxn[Unit] =
             wl.set0(a).void
-          final override def tryDeque: Axn[Option[A]] =
+          final override def tryDeque: Rxn[Option[A]] =
             wl.tryGet
           final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
             F.monad.widen(wl.asyncGet)
@@ -60,7 +60,7 @@ object UnboundedQueue {
     }
   }
 
-  final def withSize[A]: Axn[UnboundedQueue.WithSize[A]] = {
+  final def withSize[A]: Rxn[UnboundedQueue.WithSize[A]] = {
     data.Queue.unboundedWithSize[A].flatMapF { q =>
       WaitList[A](q.tryDeque, q.enqueue).map { wl =>
         new UnboundedQueue.WithSize[A] {
@@ -68,11 +68,11 @@ object UnboundedQueue {
             this.enqueue(a).as(true)
           final override def enqueue(a: A): Rxn[Unit] =
             wl.set0(a).void
-          final override def tryDeque: Axn[Option[A]] =
+          final override def tryDeque: Rxn[Option[A]] =
             wl.tryGet
           final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
             F.monad.widen(wl.asyncGet)
-          final override def size: Axn[Int] =
+          final override def size: Rxn[Int] =
             q.size
           final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
             new AsyncQueue.CatsQueueAdapter(this)

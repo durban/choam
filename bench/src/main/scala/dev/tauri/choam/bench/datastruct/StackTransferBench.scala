@@ -25,7 +25,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util._
-import core.Axn
+import core.Rxn
 import data.Stack
 import helpers.StackHelper
 import ce.unsafeImplicits._
@@ -85,7 +85,7 @@ object StackTransferBench {
       StackHelper.treiberStackFromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
     val treiberStack2: Stack[String] =
       StackHelper.treiberStackFromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
-    val transfer: Axn[Unit] =
+    val transfer: Rxn[Unit] =
       treiberStack1.tryPop.map(_.get).flatMap(treiberStack2.push)
   }
 

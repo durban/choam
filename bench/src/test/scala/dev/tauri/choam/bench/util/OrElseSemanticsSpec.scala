@@ -32,7 +32,7 @@ import munit.CatsEffectSuite
 import io.github.timwspence.cats.stm.STM
 import zio.{ stm => zstm }
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import ce.unsafeImplicits._
 
 /**
@@ -200,7 +200,7 @@ final class OrElseSemanticsSpec extends CatsEffectSuite {
         v2 + 1
       })
       // force a retry *once*:
-      v3 <- Axn.unsafe.delay { ref3.getAndIncrement() }
+      v3 <- Rxn.unsafe.delay { ref3.getAndIncrement() }
       _ <- if (v3 > 0) {
         Rxn.unit
       } else {

@@ -21,14 +21,14 @@ import scala.concurrent.duration._
 
 import cats.effect.{ IO, IOApp }
 
-import dev.tauri.choam.core.Axn
+import dev.tauri.choam.core.Rxn
 import dev.tauri.choam.data.Map
 import dev.tauri.choam.stm.{ Txn, TRef }
 import dev.tauri.choam.ce.{ RxnAppMixin, TxnAppMixin }
 
 object GraalNativeExample extends IOApp.Simple with RxnAppMixin with TxnAppMixin {
 
-  private final def rxn(map: Map[String, Int], i: Int): Axn[Int] =
+  private final def rxn(map: Map[String, Int], i: Int): Rxn[Int] =
     map.putIfAbsent("foo", i).map(_.getOrElse(0))
 
   private final def txn(ref: TRef[String], s: String): Txn[String] =

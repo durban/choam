@@ -29,10 +29,10 @@ final class AxnSpec_ThreadConfinedMcas_IO
 
 trait AxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
-  test("Axn.unsafe.delay/suspend") {
+  test("Rxn.unsafe.delay/suspend") {
     val ctr = new AtomicInteger
-    val rxn1 = Axn.unsafe.delay { ctr.incrementAndGet() }
-    val rxn2 = Axn.unsafe.suspend {
+    val rxn1 = Rxn.unsafe.delay { ctr.incrementAndGet() }
+    val rxn2 = Rxn.unsafe.suspend {
       val x = ctr.incrementAndGet()
       Rxn.pure(x)
     }
@@ -44,11 +44,11 @@ trait AxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Axn.unsafe.delayContext/suspendContext") {
-    val rxn1 = Axn.unsafe.delayContext { ctx =>
+  test("Rxn.unsafe.delayContext/suspendContext") {
+    val rxn1 = Rxn.unsafe.delayContext { ctx =>
       ctx.random.nextLong(42L)
     }
-    val rxn2 = Axn.unsafe.suspendContext { ctx =>
+    val rxn2 = Rxn.unsafe.suspendContext { ctx =>
       val x = ctx.random.nextLong(42L)
       Rxn.pure(x)
     }

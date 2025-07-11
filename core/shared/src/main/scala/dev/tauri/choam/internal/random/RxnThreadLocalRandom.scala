@@ -21,36 +21,36 @@ package random
 
 import java.util.concurrent.ThreadLocalRandom
 
-import core.Axn
+import core.Rxn
 
 private final class RxnThreadLocalRandom
   extends RandomBase {
 
-  import Axn.unsafe.delayContext
+  import Rxn.unsafe.delayContext
 
   // override these, because TLR is faster:
 
-  final override def nextLong: Axn[Long] =
+  final override def nextLong: Rxn[Long] =
     delayContext { ctx => (ctx.random : ThreadLocalRandom).nextLong() }
 
-  final override def nextInt: Axn[Int] =
+  final override def nextInt: Rxn[Int] =
     delayContext { ctx => ctx.random.nextInt() }
 
-  final override def nextLongBounded(n: Long): Axn[Long] =
+  final override def nextLongBounded(n: Long): Rxn[Long] =
     delayContext { ctx => ctx.random.nextLong(n) }
 
-  final override def nextIntBounded(n: Int): Axn[Int] =
+  final override def nextIntBounded(n: Int): Rxn[Int] =
     delayContext { ctx => ctx.random.nextInt(n) }
 
-  final override def nextDouble: Axn[Double] =
+  final override def nextDouble: Rxn[Double] =
     delayContext { ctx => ctx.random.nextDouble() }
 
-  final override def nextGaussian: Axn[Double] =
+  final override def nextGaussian: Rxn[Double] =
     delayContext { ctx => ctx.random.nextGaussian() }
 
-  final override def nextFloat: Axn[Float] =
+  final override def nextFloat: Rxn[Float] =
     delayContext { ctx => ctx.random.nextFloat() }
 
-  final override def nextBoolean: Axn[Boolean] =
+  final override def nextBoolean: Rxn[Boolean] =
     delayContext { ctx => ctx.random.nextBoolean() }
 }

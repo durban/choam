@@ -94,7 +94,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       val cdl = new CountDownLatch(1)
       val t = new Thread(() => {
         cdl.countDown()
-        never.unsafeRun(this.mcasImpl)
+        never.unsafePerform(null, this.mcasImpl)
       })
       t.setUncaughtExceptionHandler((_, ex) => {
         if (!ex.isInstanceOf[InterruptedException]) {

@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-import core.{ Axn, Ref }
+import core.{ Rxn, Ref }
 
 @JCStressTest
 @State
@@ -36,7 +36,7 @@ class WriteAfterGet extends StressTestBase {
   private[this] val ref: Ref[String] =
     Ref.unsafePadded("a", this.rig)
 
-  private[this] val write1: Axn[String] = {
+  private[this] val write1: Rxn[String] = {
     ref.get.flatMap { old1 =>
       ref.modify { old2 =>
         if (old1 eq old2) ("1", old1)
@@ -45,7 +45,7 @@ class WriteAfterGet extends StressTestBase {
     }
   }
 
-  private[this] val write2: Axn[String] = {
+  private[this] val write2: Rxn[String] = {
     ref.get.flatMap { old1 =>
       ref.modify { old2 =>
         if (old1 eq old2) ("2", old1)

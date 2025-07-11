@@ -80,13 +80,13 @@ private[data] object TtrieModelTest {
 
   class TrieMapTestState extends AbstractTestState {
     protected[this] override val m: Ttrie[String, String] =
-      Ttrie[String, String](Ref.AllocationStrategy.Default).unsafeRun(emcas)
+      Ttrie[String, String](Ref.AllocationStrategy.Default).unsafePerform(null, emcas)
   }
 
   class SkipListTestState extends AbstractTestState {
     protected[this] override val m: Ttrie[String, String] =
       Ttrie.skipListBased[String, String](Ref.AllocationStrategy.Default).flatMapF { (m: Ttrie[String, String]) =>
         m.get("dummy").as(m) // FIXME?
-      }.unsafeRun(emcas)
+      }.unsafePerform(null, emcas)
   }
 }

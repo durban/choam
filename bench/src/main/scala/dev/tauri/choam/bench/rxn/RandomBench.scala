@@ -26,7 +26,7 @@ import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
 import org.openjdk.jmh.annotations._
 
-import core.{ Rxn, Axn }
+import core.Rxn
 import util._
 
 @Fork(3)
@@ -78,19 +78,19 @@ object RandomBench {
   class St {
     def bound(k: RandomState): Long =
       k.nextIntBounded(1024*1024*1024).toLong + 1L
-    def baseline(n: Long): Axn[Long] =
+    def baseline(n: Long): Rxn[Long] =
       Rxn.pure(n)
-    val rndFast: Random[Axn] =
+    val rndFast: Random[Rxn] =
       Rxn.fastRandom
-    val rndDeterministic: Random[Axn] =
-      Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafeRun(McasImplStateBase.mcasImpl)
-    val rndMinimal1: Random[Axn] =
-      internal.random.minimalRandom1(ThreadLocalRandom.current().nextLong()).unsafeRun(McasImplStateBase.mcasImpl)
-    val rndMinimal2: Random[Axn] =
-      internal.random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafeRun(McasImplStateBase.mcasImpl)
-    val rndSecure: SecureRandom[Axn] =
+    val rndDeterministic: Random[Rxn] =
+      Rxn.deterministicRandom(ThreadLocalRandom.current().nextLong()).unsafePerform(null, McasImplStateBase.mcasImpl)
+    val rndMinimal1: Random[Rxn] =
+      internal.random.minimalRandom1(ThreadLocalRandom.current().nextLong()).unsafePerform(null, McasImplStateBase.mcasImpl)
+    val rndMinimal2: Random[Rxn] =
+      internal.random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafePerform(null, McasImplStateBase.mcasImpl)
+    val rndSecure: SecureRandom[Rxn] =
       Rxn.secureRandom
-    val uuidGen: UUIDGen[Axn] =
+    val uuidGen: UUIDGen[Rxn] =
       Rxn.uuidGenInstance
   }
 }

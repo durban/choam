@@ -1189,10 +1189,10 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF((Rxn.unsafe.retry[Int] + Rxn.unsafe.panic[Int](exc)).run[F].attempt, Left(exc))
       _ <- assertResultF((Rxn.unsafe.retry[Int] + Rxn.unsafe.panic[Int](exc)).run[F].attempt, Left(exc))
       _ <- assertResultF(F.delay {
-        Rxn.unsafe.panic[Int](exc).unsafeRun(this.mcasImpl)
+        Rxn.unsafe.panic[Int](exc).unsafePerform(null, this.mcasImpl)
       }.attempt, Left(exc))
       _ <- assertResultF(F.delay {
-        Rxn.unsafe.panic[Int](exc).unsafeRun(this.mcasImpl)
+        Rxn.unsafe.panic[Int](exc).unsafePerform(null, this.mcasImpl)
       }.attempt, Left(exc))
     } yield ()
   }

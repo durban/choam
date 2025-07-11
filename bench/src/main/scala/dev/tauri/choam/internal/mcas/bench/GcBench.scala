@@ -22,7 +22,7 @@ package bench
 
 import org.openjdk.jmh.annotations._
 
-import core.Axn
+import core.Rxn
 import data.{ Queue, QueueHelper }
 import dev.tauri.choam.bench.util.{ Prefill, McasImplState }
 import ce.unsafeImplicits._
@@ -65,7 +65,7 @@ object GcBench {
 
     def circle: List[Queue[String]]
 
-    final def transferOne(idx: Int): Axn[Unit] = {
+    final def transferOne(idx: Int): Rxn[Unit] = {
       circle(idx % circleSize).tryDeque.map(_.get).flatMap(circle((idx + 1) % circleSize).enqueue)
     }
   }

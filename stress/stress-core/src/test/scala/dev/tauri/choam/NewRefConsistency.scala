@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 
 @JCStressTest
 @State
@@ -38,10 +38,10 @@ class NewRefConsistency extends StressTestBase {
   private[this] val existingRef: Ref[String] =
     Ref("a").unsafePerform(null, this.impl)
 
-  private[this] val _createNewRef: Axn[Unit] =
+  private[this] val _createNewRef: Rxn[Unit] =
     existingRef.update(_ + "b") *> Ref("x").flatMap(holder.set)
 
-  private[this] val _readNewRef: Axn[(String, String)] = {
+  private[this] val _readNewRef: Rxn[(String, String)] = {
     existingRef.get * holder.get.flatMapF {
       case null => Rxn.unsafe.retry
       case newRef => newRef.get

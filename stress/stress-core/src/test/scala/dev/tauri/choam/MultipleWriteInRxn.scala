@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 
 @JCStressTest
 @State
@@ -36,10 +36,10 @@ class MultipleWriteInRxn extends StressTestBase {
   private[this] val ref: Ref[String] =
     Ref.unsafePadded("a", this.rig)
 
-  private[this] val write: Axn[String] =
+  private[this] val write: Rxn[String] =
     ref.update(_ => "b") *> ref.modify(b => ("c", b))
 
-  private[this] val read: Axn[String] =
+  private[this] val read: Rxn[String] =
     Rxn.unsafe.directRead(ref)
 
   @Actor

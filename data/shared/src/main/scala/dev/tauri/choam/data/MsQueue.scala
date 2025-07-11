@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Axn, Ref, Reactive }
+import core.{ Rxn, Ref, Reactive }
 import internal.mcas.{ Mcas, RefIdGen }
 import MsQueue._
 
@@ -44,7 +44,7 @@ private final class MsQueue[A] private[this] (
   private def this(padded: Boolean, initRig: RefIdGen) =
     this(Node(nullOf[A], if (padded) Ref.unsafePadded(End[A](), initRig) else Ref.unsafeUnpadded(End[A](), initRig)), padded = padded, initRig = initRig)
 
-  override val tryDeque: Axn[Option[A]] = {
+  override val tryDeque: Rxn[Option[A]] = {
     head.modifyWith { node =>
       Rxn.unsafe.ticketRead(node.next).flatMapF { ticket =>
         ticket.unsafePeek match {
@@ -88,8 +88,8 @@ private final class MsQueue[A] private[this] (
     Node(a, newRef)
   }
 
-  private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    def go(n: Node[A]): Axn[Unit] = {
+  private[this] def findAndEnqueue(node: Node[A]): Rxn[Unit] = {
+    def go(n: Node[A]): Rxn[Unit] = {
       Rxn.unsafe.ticketRead(n.next).flatMapF { ticket =>
         ticket.unsafePeek match {
           // TODO: if we allow the tail to lag:
@@ -111,8 +111,8 @@ private final class MsQueue[A] private[this] (
   }
 
   /** For testing */
-  private[data] def tailLag: Axn[Int] = {
-    def go(n: Node[A], acc: Int): Axn[Int] = {
+  private[data] def tailLag: Rxn[Int] = {
+    def go(n: Node[A], acc: Int): Rxn[Int] = {
       Rxn.unsafe.ticketRead(n.next).flatMapF { ticket =>
         ticket.unsafePeek match {
           case null =>
@@ -145,19 +145,19 @@ private object MsQueue {
       _end.asInstanceOf[End[A]]
   }
 
-  def apply[A]: Axn[MsQueue[A]] =
+  def apply[A]: Rxn[MsQueue[A]] =
     padded[A]
 
-  def padded[A]: Axn[MsQueue[A]] =
+  def padded[A]: Rxn[MsQueue[A]] =
     applyInternal(padded = true)
 
-  def unpadded[A]: Axn[MsQueue[A]] =
+  def unpadded[A]: Rxn[MsQueue[A]] =
     applyInternal(padded = false)
 
   private[data] def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[MsQueue[A]] = {
     Queue.fromList[F, MsQueue, A](this.apply[A])(as)
   }
 
-  private[this] def applyInternal[A](padded: Boolean): Axn[MsQueue[A]] =
-    Axn.unsafe.delayContext { ctx => new MsQueue(padded = padded, initRig = ctx.refIdGen) }
+  private[this] def applyInternal[A](padded: Boolean): Rxn[MsQueue[A]] =
+    Rxn.unsafe.delayContext { ctx => new MsQueue(padded = padded, initRig = ctx.refIdGen) }
 }

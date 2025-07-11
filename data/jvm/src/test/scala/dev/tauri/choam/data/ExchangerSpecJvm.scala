@@ -24,7 +24,7 @@ import scala.concurrent.duration._
 
 import cats.effect.{ IO, Outcome }
 
-import core.{ Rxn, Axn, Ref, RetryStrategy }
+import core.{ Rxn, Ref, RetryStrategy }
 
 final class ExchangerSpecCommon_Emcas_ZIO
   extends BaseSpecZIO
@@ -210,7 +210,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Merging of non-disjoint logs must be detected, and cause a retry") {
-    def runWithCede[A](rxn: Axn[A]): F[A] = {
+    def runWithCede[A](rxn: Rxn[A]): F[A] = {
       // we'll run the `Rxn`s with CEDE strategy, because otherwise
       // the retrying in a tight loop could cause the timer not to
       // fire, and thus the fallbacks wouldn't start:

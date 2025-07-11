@@ -23,7 +23,7 @@ import scala.util.hashing.byteswap32
 import cats.syntax.all._
 import cats.effect.{ IO, IOApp }
 
-import dev.tauri.choam.core.{ Axn, Ref }
+import dev.tauri.choam.core.{ Rxn, Ref }
 import dev.tauri.choam.ce.RxnAppMixin
 
 /** Simple program to interactively try the JMX MBean (with visualvm, or jconsole, or similar) */
@@ -41,8 +41,8 @@ object JmxDemo extends IOApp.Simple with RxnAppMixin {
         arr.unsafeGet(idx).update(_ + "y")
       }.run[IO].parReplicateA_(0xfff)
       _ <- IO.both(IO.both(tsk, tsk), arrTsk)
-      ta1 = trickyAxn(r1, r2)
-      ta2 = trickyAxn(r2, r1)
+      ta1 = trickyRxn(r1, r2)
+      ta2 = trickyRxn(r2, r1)
       runTricky = IO.both(ta1.run[IO], ta2.run[IO])
       _ <- (runTricky *> IO.sleep(0.01.second)).foreverM.background.use { _ =>
         (IO.sleep(1.second) *> Ref.swap(arr.unsafeGet(1), arr.unsafeGet(2)).run[IO]).replicateA_(120)
@@ -51,7 +51,7 @@ object JmxDemo extends IOApp.Simple with RxnAppMixin {
     } yield ()
   }
 
-  private def trickyAxn(r1: Ref[String], r2: Ref[String]): Axn[String] = {
+  private def trickyRxn(r1: Ref[String], r2: Ref[String]): Rxn[String] = {
     r1.update(s => byteswap32(s.length).toString) *> r2.get
   }
 

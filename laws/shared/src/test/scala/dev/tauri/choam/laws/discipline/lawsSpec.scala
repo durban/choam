@@ -29,7 +29,7 @@ import cats.effect.{ IO, SyncIO }
 import org.scalacheck.Prop
 import munit.DisciplineSuite
 
-import core.{ Rxn, Axn, Ref, Reactive, AsyncReactive }
+import core.{ Rxn, Ref, Reactive, AsyncReactive }
 import internal.mcas.Mcas
 
 final class LawsSpecThreadConfinedMcas
@@ -74,8 +74,8 @@ trait LawsSpec
     checkAll("AsyncReactive", AsyncReactiveLawTests[IO].asyncReactive[String, Int])
 
     checkAll("Monad[Rxn]", MonadTests[Rxn].monad[Int, String, Int])
-    checkAll("Unique[Rxn]", UniqueTests[Rxn].unique(using { (act: Axn[Boolean]) =>
-      Prop(act.unsafeRun(self.mcasImpl))
+    checkAll("Unique[Rxn]", UniqueTests[Rxn].unique(using { (act: Rxn[Boolean]) =>
+      Prop(act.unsafePerform(null, self.mcasImpl))
     }))
     checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[Int]](using Rxn.choiceSemigroup).semigroup)
     checkAll("Monoid[Rxn]", MonoidTests[Rxn[Int]](using Rxn.monoidInstance).monoid)

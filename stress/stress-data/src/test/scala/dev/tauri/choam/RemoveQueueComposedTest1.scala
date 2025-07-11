@@ -25,7 +25,7 @@ import org.openjdk.jcstress.infra.results.LL_Result
 import cats.syntax.all._
 import cats.effect.SyncIO
 
-import core.Axn
+import core.Rxn
 
 @JCStressTest
 @State
@@ -52,7 +52,7 @@ class RemoveQueueComposedTest1 extends RemoveQueueStressTestBase {
   private[this] val queue2 =
     this.newQueue[String]()
 
-  private[this] val tfer: Axn[Unit] =
+  private[this] val tfer: Rxn[Unit] =
     queue1.tryDeque.map(_.getOrElse("x")).flatMap(queue2.enqueue)
 
   @Actor

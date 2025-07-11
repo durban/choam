@@ -23,12 +23,12 @@ import scala.collection.immutable.LongMap
 import cats.{ Functor, Invariant, Contravariant }
 import cats.effect.kernel.{ Deferred, DeferredSink, DeferredSource }
 
-import core.{ Rxn, Axn, Ref, Reactive, AsyncReactive }
+import core.{ Rxn, Ref, Reactive, AsyncReactive }
 import Ref.AllocationStrategy
 
 sealed trait PromiseRead[A] { self =>
   def get[F[_]](implicit F: AsyncReactive[F]): F[A]
-  def tryGet: Axn[Option[A]]
+  def tryGet: Rxn[Option[A]]
   def map[B](f: A => B): PromiseRead[B]
   def toCats[F[_]](implicit F: AsyncReactive[F]): DeferredSource[F, A]
 }
@@ -48,15 +48,15 @@ object PromiseRead {
 
 sealed trait PromiseWrite[A] { self =>
 
-  def complete1(a: A): Axn[Boolean] // TODO: remove this
+  def complete1(a: A): Rxn[Boolean] // TODO: remove this
 
-  def complete(a: A): Axn[Boolean] =
+  def complete(a: A): Rxn[Boolean] =
     this.complete1(a)
 
   private[choam] def unsafeComplete(a: A)(implicit ir: unsafe.InRxn2): Boolean
 
   final def contramap[B](f: B => A): PromiseWrite[B] = new PromiseWrite[B] {
-    final override def complete1(b: B): Axn[Boolean] =
+    final override def complete1(b: B): Rxn[Boolean] =
       self.complete1(f(b))
     final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
       self.unsafeComplete(f(b))
@@ -88,11 +88,11 @@ sealed trait Promise[A] extends PromiseRead[A] with PromiseWrite[A] {
 
 object Promise {
 
-  final def apply[A]: Axn[Promise[A]] =
+  final def apply[A]: Rxn[Promise[A]] =
     apply[A](AllocationStrategy.Default)
 
-  final def apply[A](str: AllocationStrategy): Axn[Promise[A]] = {
-    Axn.unsafe.delayContext { ctx =>
+  final def apply[A](str: AllocationStrategy): Rxn[Promise[A]] = {
+    Rxn.unsafe.delayContext { ctx =>
       new PromiseImpl[A](Ref.unsafe[State[A]](Waiting.empty, str, ctx.refIdGen))
     }
   }
@@ -146,7 +146,7 @@ object Promise {
     final def map[B](f: A => B): PromiseRead[B] = new PromiseReadImpl[B] {
       final override def get[F[_]](implicit F: AsyncReactive[F]): F[B] =
         F.monad.map(self.get)(f)
-      final override def tryGet: Axn[Option[B]] =
+      final override def tryGet: Rxn[Option[B]] =
         self.tryGet.map(_.map(f))
     }
 
@@ -163,11 +163,11 @@ object Promise {
     with Promise[A] { self =>
 
     final def imap[B](f: A => B)(g: B => A): Promise[B] = new PromiseImplBase[B] {
-      final override def complete1(b: B): Axn[Boolean] =
+      final override def complete1(b: B): Rxn[Boolean] =
         self.complete1(g(b))
       final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
         self.unsafeComplete(g(b))
-      final override def tryGet: Axn[Option[B]] =
+      final override def tryGet: Rxn[Option[B]] =
         self.tryGet.map(_.map(f))
       final override def get[F[_]](implicit F: AsyncReactive[F]): F[B] =
         F.monad.map(self.get)(f)
@@ -187,8 +187,8 @@ object Promise {
     ref: Ref[State[A]]
   ) extends PromiseImplBase[A] {
 
-    private[this] final def callCbs(cbs: LongMap[Right[Throwable, A] => Unit], a: A): Axn[Unit] = {
-      Axn.unsafe.delay {
+    private[this] final def callCbs(cbs: LongMap[Right[Throwable, A] => Unit], a: A): Rxn[Unit] = {
+      Rxn.unsafe.delay {
         val ra = Right(a)
         val itr = cbs.valuesIterator
         while (itr.hasNext) {
@@ -197,7 +197,7 @@ object Promise {
       }
     }
 
-    final override def complete1(a: A): Axn[Boolean] = {
+    final override def complete1(a: A): Rxn[Boolean] = {
       ref.modify { state =>
         state match {
           case w: Waiting[_] =>
@@ -227,7 +227,7 @@ object Promise {
       }
     }
 
-    final override def tryGet: Axn[Option[A]] = {
+    final override def tryGet: Rxn[Option[A]] = {
       ref.get.map {
         case d: Done[_] => Some(d.a)
         case _: Waiting[_] => None
@@ -250,7 +250,7 @@ object Promise {
       }
     }
 
-    private[this] final def insertCallback(cb: Either[Throwable, A] => Unit): Axn[InsertRes[A]] = {
+    private[this] final def insertCallback(cb: Either[Throwable, A] => Unit): Rxn[InsertRes[A]] = {
       ref.getAndUpdate {
         case w: Waiting[_] =>
           val nid = w.nextId

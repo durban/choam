@@ -31,7 +31,7 @@ import cats.effect.std.{ UUIDGen, Random, SecureRandom }
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.effect.PropF
 
-import core.{ Rxn, Axn }
+import core.Rxn
 
 final class RandomSpec_ThreadConfinedMcas_SyncIO
   extends BaseSpecSyncIO
@@ -45,7 +45,7 @@ trait RandomSpec[F[_]]
   final val N = 128
 
   test("UUIDGen") {
-    val gen = UUIDGen[Axn]
+    val gen = UUIDGen[Rxn]
     (1 to N).toList.traverse(_ => gen.randomUUID.run[F]).flatMap { uuidList =>
       uuidList.sliding(2).toList.traverse {
         case prev :: curr :: Nil =>
@@ -59,7 +59,7 @@ trait RandomSpec[F[_]]
   }
 
   test("Unique") {
-    val gen = Unique[Axn]
+    val gen = Unique[Rxn]
     (1 to N).toList.traverse(_ => gen.unique.run[F]).flatMap { tokenList =>
       F.defer {
         val s = new IdentityHashMap[Unique.Token, Unit]
@@ -70,7 +70,7 @@ trait RandomSpec[F[_]]
   }
 
   test("secureRandom must implement cats.effect.std.SecureRandom") {
-    Rxn.secureRandom : SecureRandom[Axn]
+    Rxn.secureRandom : SecureRandom[Rxn]
   }
 
   // TODO: more tests for Rxn.*Random
@@ -79,7 +79,7 @@ trait RandomSpec[F[_]]
   checkRandom("Rxn.secureRandom", _ => F.pure(Rxn.secureRandom))
   checkRandom(
     "Rxn.deterministicRandom",
-    seed => Rxn.deterministicRandom(seed).run[F].widen[Random[Axn]],
+    seed => Rxn.deterministicRandom(seed).run[F].widen[Random[Rxn]],
   )
   checkRandom(
     "MinimalRandom1",
@@ -202,7 +202,7 @@ trait RandomSpec[F[_]]
 
   private def checkRandom(
     name: String,
-    mk: Long => F[Random[Axn]],
+    mk: Long => F[Random[Rxn]],
   ): Unit = {
     test(s"${name} nextDouble") {
       checkNextDouble(mk)
@@ -251,18 +251,18 @@ trait RandomSpec[F[_]]
     }
   }
 
-  private def assertSameRng[A](rng1: Random[Axn], rng2: Random[Axn], f: Random[Axn] => Axn[A], clue: String): F[Unit] = {
+  private def assertSameRng[A](rng1: Random[Rxn], rng2: Random[Rxn], f: Random[Rxn] => Rxn[A], clue: String): F[Unit] = {
     val fa1 = f(rng1).run[F]
     val fa2 = f(rng2).run[F]
     assertSameResult(fa1, fa2, clue = clue)
   }
 
   /** Checks that `rnd1` and `rnd2` generates the same numbers */
-  private def checkSame(mkRnd1: Long => Axn[Random[Axn]], mkRnd2: Long => Axn[Random[Axn]]): PropF[F] = {
+  private def checkSame(mkRnd1: Long => Rxn[Random[Rxn]], mkRnd2: Long => Rxn[Random[Rxn]]): PropF[F] = {
     PropF.forAllF { (seed: Long, lst: List[Int], bound: Int) =>
       (mkRnd1(seed) * mkRnd2(seed)).run[F].flatMap {
         case (rnd1, rnd2) =>
-          def checkBoth[A](f: Random[Axn] => Axn[A], clue: String = "different results"): F[Unit] =
+          def checkBoth[A](f: Random[Rxn] => Rxn[A], clue: String = "different results"): F[Unit] =
             assertSameRng(rnd1, rnd2, f, clue = clue)
           for {
             _ <- checkBoth(_.nextLong, "nextLong")
@@ -292,7 +292,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  private def checkNextDouble(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkNextDouble(mkRnd: Long => F[Random[Rxn]]): PropF[F] = {
     PropF.forAllF { (seed: Long) =>
       mkRnd(seed).flatMap { rnd =>
         (rnd.nextDouble.run[F], rnd.nextDouble.run[F]).tupled.flatMap { dd =>
@@ -306,8 +306,8 @@ trait RandomSpec[F[_]]
     }
   }
 
-  private def checkBetweenDouble(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
-    def checkOne(rnd: Random[Axn], minIncl: Double, maxExcl: Double): F[Double] = {
+  private def checkBetweenDouble(mkRnd: Long => F[Random[Rxn]]): PropF[F] = {
+    def checkOne(rnd: Random[Rxn], minIncl: Double, maxExcl: Double): F[Double] = {
       rnd.betweenDouble(minIncl, maxExcl).run[F].flatMap { d =>
         assertF((clue(d) >= clue(minIncl)) && (d < (clue(maxExcl)))).as(d)
       }
@@ -354,8 +354,8 @@ trait RandomSpec[F[_]]
     }
   }
 
-  private def checkBetweenFloat(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
-    def checkOne(rnd: Random[Axn], minIncl: Float, maxExcl: Float): F[Float] = {
+  private def checkBetweenFloat(mkRnd: Long => F[Random[Rxn]]): PropF[F] = {
+    def checkOne(rnd: Random[Rxn], minIncl: Float, maxExcl: Float): F[Float] = {
       rnd.betweenFloat(minIncl, maxExcl).run[F].flatMap { d =>
         assertF((clue(d) >= clue(minIncl)) && (d < (clue(maxExcl)))).as(d)
       }
@@ -402,7 +402,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  private def checkNextLong(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkNextLong(mkRnd: Long => F[Random[Rxn]]): PropF[F] = {
     PropF.forAllF { (seed: Long) =>
       mkRnd(seed).flatMap { rnd =>
         (rnd.nextLong.run[F], rnd.nextLong.run[F]).tupled.flatMap { nn =>
@@ -412,7 +412,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  private def checkNextLongBounded(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkNextLongBounded(mkRnd: Long => F[Random[Rxn]]): PropF[F] = {
     PropF.forAllF { (seed: Long, n: Long) =>
       val bound = if (n > 0L) {
         n
@@ -431,7 +431,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  private def checkShuffle(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkShuffle(mkRnd: Long => F[Random[Rxn]]): PropF[F] = {
     PropF.forAllF { (seed: Long, lst: List[Int]) =>
       mkRnd(seed).flatMap { rnd =>
         (rnd.shuffleList(lst).run[F], rnd.shuffleVector(lst.toVector).run[F]).mapN(Tuple2(_, _)).flatMap { lv =>
@@ -445,7 +445,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  private def checkGaussian(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkGaussian(mkRnd: Long => F[Random[Rxn]]): PropF[F] = {
     PropF.forAllF { (seed: Long) =>
       mkRnd(seed).flatMap { rnd =>
         (rnd.nextGaussian.run[F], rnd.nextGaussian.run[F]).tupled.flatMap {
@@ -462,7 +462,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  private def checkPrintableChar(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkPrintableChar(mkRnd: Long => F[Random[Rxn]]): PropF[F] = {
     PropF.forAllF { (seed: Long) =>
       mkRnd(seed).flatMap { rnd =>
         rnd.nextPrintableChar.run[F].flatMap { chr =>
@@ -472,7 +472,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  private def checkNextAlphaNumeric(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkNextAlphaNumeric(mkRnd: Long => F[Random[Rxn]]): PropF[F] = {
     PropF.forAllF { (seed: Long) =>
       mkRnd(seed).flatMap { rnd =>
         rnd.nextAlphaNumeric.run[F].flatMap { alnum =>
@@ -497,7 +497,7 @@ trait RandomSpec[F[_]]
     }
   }
 
-  private def checkNextString(mkRnd: Long => F[Random[Axn]]): PropF[F] = {
+  private def checkNextString(mkRnd: Long => F[Random[Rxn]]): PropF[F] = {
     PropF.forAllF { (length: Int, seed: Long) =>
       if ((length >= 0) && (length <= (1024*1024))) {
         mkRnd(seed).flatMap { rnd =>

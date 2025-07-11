@@ -20,7 +20,7 @@ package data
 
 import cats.kernel.{ Hash, Order }
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 
 sealed trait Set[A] {
 
@@ -35,16 +35,16 @@ sealed trait Set[A] {
 
 object Set {
 
-  final def hashSet[A](implicit A: Hash[A]): Axn[Set[A]] =
+  final def hashSet[A](implicit A: Hash[A]): Rxn[Set[A]] =
     Map.hashMap[A, Unit].map(new SetFromMap(_))
 
-  final def hashSet[A](str: Ref.AllocationStrategy)(implicit A: Hash[A]): Axn[Set[A]] =
+  final def hashSet[A](str: Ref.AllocationStrategy)(implicit A: Hash[A]): Rxn[Set[A]] =
     Map.hashMap[A, Unit](str).map(new SetFromMap(_))
 
-  final def orderedSet[A](implicit A: Order[A]): Axn[Set[A]] =
+  final def orderedSet[A](implicit A: Order[A]): Rxn[Set[A]] =
     Map.orderedMap[A, Unit].map(new SetFromMap(_))
 
-  final def orderedSet[A](str: Ref.AllocationStrategy)(implicit A: Order[A]): Axn[Set[A]] =
+  final def orderedSet[A](str: Ref.AllocationStrategy)(implicit A: Order[A]): Rxn[Set[A]] =
     Map.orderedMap[A, Unit](str).map(new SetFromMap(_))
 
   private[this] final class SetFromMap[A](m: Map[A, Unit]) extends Set[A] {

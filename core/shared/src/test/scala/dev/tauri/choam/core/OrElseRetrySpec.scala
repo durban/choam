@@ -35,19 +35,19 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
   private[this] final def log(msg: String): F[Unit] =
     F.delay { ulog(msg) }
 
-  private[this] final def rlog(msg: String): Axn[Unit] =
-    Axn.unsafe.delay { ulog(msg) }
+  private[this] final def rlog(msg: String): Rxn[Unit] =
+    Rxn.unsafe.delay { ulog(msg) }
 
 
-  private def succeedWith[A](name: String, result: A): Axn[A] = {
-    Axn.unsafe.delay {
+  private def succeedWith[A](name: String, result: A): Rxn[A] = {
+    Rxn.unsafe.delay {
       ulog(s" $name succeeding with $result")
       result
     }
   }
 
-  private def failWith[A](name: String, ex: Throwable): Axn[A] = {
-    Axn.unsafe.delay {
+  private def failWith[A](name: String, ex: Throwable): Rxn[A] = {
+    Rxn.unsafe.delay {
       ulog(s" $name throwing $ex")
       throw ex
     }

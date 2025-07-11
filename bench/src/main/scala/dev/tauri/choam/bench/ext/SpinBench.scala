@@ -23,7 +23,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util.McasImplStateBase
-import core.{ Axn, Ref }
+import core.{ Rxn, Ref }
 import SpinBench._
 
 @Fork(3)
@@ -146,12 +146,12 @@ object SpinBench {
   class SpinSt extends McasImplStateBase {
 
     val ref: Ref[String] = Ref.unsafePadded("0", this.mcasImpl.currentContext().refIdGen)
-    val single: Axn[String] = ref.getAndUpdate(mod)
+    val single: Rxn[String] = ref.getAndUpdate(mod)
 
     val ref1: Ref[String] = Ref.unsafePadded("0", this.mcasImpl.currentContext().refIdGen)
     val ref2: Ref[String] = Ref.unsafePadded("0", this.mcasImpl.currentContext().refIdGen)
-    val forward: Axn[(String, String)] = (ref1.getAndUpdate(mod) * ref2.getAndUpdate(mod))
-    val backward: Axn[(String, String)] = (ref2.getAndUpdate(mod) * ref1.getAndUpdate(mod))
+    val forward: Rxn[(String, String)] = (ref1.getAndUpdate(mod) * ref2.getAndUpdate(mod))
+    val backward: Rxn[(String, String)] = (ref2.getAndUpdate(mod) * ref1.getAndUpdate(mod))
 
     def mod(s: String): String =
       (s + s.length.toString).takeRight(4)

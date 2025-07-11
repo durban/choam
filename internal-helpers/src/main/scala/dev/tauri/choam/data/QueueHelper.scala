@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Axn, Reactive }
+import core.{ Rxn, Reactive }
 
 /**
  * Public access to package-private utilities
@@ -26,7 +26,7 @@ import core.{ Axn, Reactive }
  */
 object QueueHelper {
 
-  def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] =
+  def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Rxn[Q[A]])(as: List[A]): F[Q[A]] =
     Queue.fromList(mkEmpty)(as)
 
   def msQueueFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Queue[A]] =

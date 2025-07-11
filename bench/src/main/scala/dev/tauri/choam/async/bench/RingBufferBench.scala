@@ -74,8 +74,8 @@ object RingBufferBench {
     val catsQ: CatsQueue[IO, String] =
       CatsQueue.circularBuffer[IO, String](Capacity).unsafeRunSync()(using runtime)
     val rxnQStrict: CatsQueue[IO, String] =
-      OverflowQueue.ringBuffer[String](Capacity).unsafeRun(asyncReactiveForIO.mcasImpl).toCats[IO]
+      OverflowQueue.ringBuffer[String](Capacity).unsafePerform(null, asyncReactiveForIO.mcasImpl).toCats[IO]
     val rxnQLazy: CatsQueue[IO, String] =
-      OverflowQueue.lazyRingBuffer[String](Capacity).unsafeRun(asyncReactiveForIO.mcasImpl).toCats[IO]
+      OverflowQueue.lazyRingBuffer[String](Capacity).unsafePerform(null, asyncReactiveForIO.mcasImpl).toCats[IO]
   }
 }

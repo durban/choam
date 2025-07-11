@@ -27,7 +27,7 @@ import io.github.timwspence.cats.stm.STM
 import zio.stm.ZSTM
 
 import util._
-import core.Axn
+import core.Rxn
 import data.{ Queue, QueueHelper, RemoveQueue }
 import ce.unsafeImplicits._
 
@@ -104,8 +104,8 @@ object QueueTransferBench {
 
     val runtime = cats.effect.unsafe.IORuntime.global
 
-    def transfer(idx: Int): Axn[Unit] = {
-      def transferOne(circle: List[Queue[String]]): Axn[Unit] = {
+    def transfer(idx: Int): Rxn[Unit] = {
+      def transferOne(circle: List[Queue[String]]): Rxn[Unit] = {
         circle(idx % circleSize).tryDeque.map(_.get).flatMap(circle((idx + 1) % circleSize).enqueue)
       }
 

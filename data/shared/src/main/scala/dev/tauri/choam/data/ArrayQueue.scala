@@ -22,7 +22,7 @@ import java.lang.Integer.remainderUnsigned
 
 import cats.syntax.all._
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import ArrayQueue.{ empty, isEmpty }
 
 /** Common functionality for array-based queues */
@@ -39,7 +39,7 @@ private abstract class ArrayQueue[A](
     remainderUnsigned(idx + 1, capacity)
   }
 
-  def tryDeque: Axn[Option[A]] = {
+  def tryDeque: Rxn[Option[A]] = {
     head.modifyWith { idx =>
       arr.unsafeGet(idx).modify { a =>
         if (isEmpty(a)) {
@@ -68,7 +68,7 @@ private abstract class ArrayQueue[A](
     }
   }
 
-  def size: Axn[Int] = {
+  def size: Rxn[Int] = {
     (head.get * tail.get).flatMapF {
       case (h, t) =>
         if (h < t) {

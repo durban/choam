@@ -21,11 +21,11 @@ package data
 import cats.Monad
 import cats.syntax.all._
 
-import core.{ Rxn, Axn, Ref, Reactive }
+import core.{ Rxn, Ref, Reactive }
 
 sealed trait QueueSource[+A] {
 
-  def tryDeque: Axn[Option[A]] // TODO:0.5: should be called `tryDequeue`
+  def tryDeque: Rxn[Option[A]] // TODO:0.5: should be called `tryDequeue`
 
   private[choam] final def drainOnce[F[_], AA >: A](implicit F: Reactive[F]): F[List[AA]] = {
     F.monad.tailRecM(List.empty[AA]) { acc =>
@@ -68,34 +68,34 @@ object Queue {
     extends Queue[A]
 
   sealed trait WithSize[A] extends Queue[A] {
-    def size: Axn[Int]
+    def size: Rxn[Int]
   }
 
   private[choam] trait UnsealedWithSize[A]
     extends WithSize[A]
 
-  final def unbounded[A]: Axn[Queue[A]] =
+  final def unbounded[A]: Rxn[Queue[A]] =
     MsQueue[A]
 
-  final def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
+  final def bounded[A](bound: Int): Rxn[QueueSourceSink[A]] =
     dropping(bound)
 
-  final def dropping[A](capacity: Int): Axn[Queue.WithSize[A]] =
+  final def dropping[A](capacity: Int): Rxn[Queue.WithSize[A]] =
     DroppingQueue.apply[A](capacity)
 
-  final def ringBuffer[A](capacity: Int): Axn[Queue.WithSize[A]] =
+  final def ringBuffer[A](capacity: Int): Rxn[Queue.WithSize[A]] =
     RingBuffer.apply[A](capacity)
 
   // TODO: do we need this?
-  private[choam] def lazyRingBuffer[A](capacity: Int): Axn[Queue.WithSize[A]] =
+  private[choam] def lazyRingBuffer[A](capacity: Int): Rxn[Queue.WithSize[A]] =
     RingBuffer.lazyRingBuffer[A](capacity)
 
-  final def unboundedWithSize[A]: Axn[Queue.WithSize[A]] = {
+  final def unboundedWithSize[A]: Rxn[Queue.WithSize[A]] = {
     Queue.unbounded[A].flatMapF { q =>
       Ref.unpadded[Int](0).map { s =>
         new WithSize[A] {
 
-          final override def tryDeque: Axn[Option[A]] = {
+          final override def tryDeque: Rxn[Option[A]] = {
             q.tryDeque.flatMapF {
               case r @ Some(_) => s.update(_ - 1).as(r)
               case None => Rxn.pure(None)
@@ -108,17 +108,17 @@ object Queue {
           final override def tryEnqueue(a: A): Rxn[Boolean] =
             this.enqueue(a).as(true)
 
-          final override def size: Axn[Int] =
+          final override def size: Rxn[Int] =
             s.get
         }
       }
     }
   }
 
-  private[data] final def unpadded[A]: Axn[Queue[A]] =
+  private[data] final def unpadded[A]: Rxn[Queue[A]] =
     MsQueue.unpadded[A]
 
-  private[data] final def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
+  private[data] final def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Rxn[Q[A]])(as: List[A]): F[Q[A]] = {
     implicit val m: Monad[F] = Reactive[F].monad
     mkEmpty.run[F].flatMap { q =>
       as.traverse(a => q.enqueue(a).run[F]).as(q)

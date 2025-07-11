@@ -24,7 +24,7 @@ import cats.effect.kernel.Outcome
 import cats.effect.IO
 import fs2.Chunk
 
-import core.Axn
+import core.Rxn
 
 import PubSub.OverflowStrategy
 import PubSub.OverflowStrategy.{ dropOldest, dropNewest, backpressure, unbounded }
@@ -221,7 +221,7 @@ trait PubSubSpecTicked[F[_]]
         hub <- PubSub[F, Int](str).run[F]
         fib <- hub.subscribe.evalMap(_ => F.never[Int]).compile.toVector.start // infinitely slow subscriber
         _ <- this.tickAll // wait for subscription to happen
-        pub = (hub.publish : (Int => Axn[PubSub.Result]))
+        pub = (hub.publish : (Int => Rxn[PubSub.Result]))
         _ <- (1 to (1024 * 256)).toList.traverse(i => assertResultF(pub(i).run[F], PubSub.Success))
         _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         _ <- fib.cancel

@@ -33,8 +33,8 @@ object Eliminator {
     tLeft: A => D,
     right: C => Rxn[D],
     tRight: C => B,
-  ): Axn[Eliminator[A, B, C, D]] = {
-    Axn.unsafe.delay {
+  ): Rxn[Eliminator[A, B, C, D]] = {
+    Rxn.unsafe.delay {
       this.unsafe(left, tLeft, right, tRight)
     }
   }
@@ -60,7 +60,7 @@ object Eliminator {
     tLeft: A => D,
     right: C => Rxn[D],
     tRight: C => B,
-  ): Axn[Eliminator[A, Either[B, B], C, Either[D, D]]] = {
+  ): Rxn[Eliminator[A, Either[B, B], C, Either[D, D]]] = {
     apply[A, Either[B, B], C, Either[D, D]](
       { a => left(a).map(Left(_)) },
       { a => Right(tLeft(a)) },

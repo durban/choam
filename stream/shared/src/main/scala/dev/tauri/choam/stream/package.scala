@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import fs2.{ Chunk, Stream }
 
-import core.{ Axn, AsyncReactive }
+import core.{ Rxn, AsyncReactive }
 import async.UnboundedQueue
 
 package object stream {
@@ -29,7 +29,7 @@ package object stream {
   // TODO: SignallingMapRef
   // TODO: Topic
 
-  final def signallingRef[F[_] : AsyncReactive, A](initial: A): Axn[RxnSignallingRef[F, A]] =
+  final def signallingRef[F[_] : AsyncReactive, A](initial: A): Rxn[RxnSignallingRef[F, A]] =
     RxnSignallingRef[F, A](initial)
 
   final def fromQueueUnterminated[F[_], A](q: UnboundedQueue[A], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =

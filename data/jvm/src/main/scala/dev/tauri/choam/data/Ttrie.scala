@@ -25,7 +25,7 @@ import scala.util.hashing.byteswap32
 import cats.kernel.{ Hash, Order }
 import cats.syntax.all._
 
-import core.{ =#>, Rxn, Axn, Ref, RefLike }
+import core.{ =#>, Rxn, Ref, RefLike }
 import internal.skiplist.SkipListMap
 import internal.mcas.Mcas
 import Ttrie._
@@ -113,7 +113,7 @@ private final class Ttrie[K, V] private (
    * *different* ref.
    */
   private[this] final def getRef(k: K): Rxn[Ref[V]] = {
-    Axn.unsafe.suspendContext { ctx =>
+    Rxn.unsafe.suspendContext { ctx =>
       val newRef = Ref.unsafe[V](Init[V], str, ctx.refIdGen)
       val ref = m.putIfAbsent(k, newRef) match {
         case Some(existingRef) =>
@@ -133,7 +133,7 @@ private final class Ttrie[K, V] private (
           // => it will never change, so ref can be removed,
           //    and we'll retry
           // (NB: in this case, `ref` won't be inserted into the log)
-          Axn.unsafe.delayContext(unsafeDelRef(k, ref, _)) *> getRef(k)
+          Rxn.unsafe.delayContext(unsafeDelRef(k, ref, _)) *> getRef(k)
         } else {
           // Make sure `ref` is in the log, then force re-validation:
           ticket.unsafeValidate *> Rxn.unsafe.forceValidate.as(ref)
@@ -164,14 +164,14 @@ private final class Ttrie[K, V] private (
     m.remove(k, ref) : Unit
   }
 
-  private[this] final def cleanupLater(key: K, ref: Ref[V]): Axn[Unit] = {
+  private[this] final def cleanupLater(key: K, ref: Ref[V]): Rxn[Unit] = {
     // First we need to check, if `End` was actually
     // committed (into `ref`), since the Rxn
     // which added us as a post-commit action
     // might've chaged it back later (in its log):
     Rxn.unsafe.directRead(ref).flatMapF { v =>
       if (isEnd[V](v)) { // OK, we can delete it:
-        Axn.unsafe.delayContext(unsafeDelRef(key, ref, _))
+        Rxn.unsafe.delayContext(unsafeDelRef(key, ref, _))
       } else { // oops, don't delete it:
         Rxn.unit
       }
@@ -274,10 +274,10 @@ private final class Ttrie[K, V] private (
 
   final override def refLike(key: K, default: V): RefLike[V] = new RefLike.UnsealedRefLike[V] {
 
-    final def get: Axn[V] =
+    final def get: Rxn[V] =
       self.get(key).map(_.getOrElse(default))
 
-    final override def set1(nv: V): Axn[Unit] = {
+    final override def set1(nv: V): Rxn[Unit] = {
       if (equ(nv, default)) {
         self.del(key).void
       } else {
@@ -285,7 +285,7 @@ private final class Ttrie[K, V] private (
       }
     }
 
-    final override def update1(f: V => V): Axn[Unit] = {
+    final override def update1(f: V => V): Rxn[Unit] = {
       getRef(key).flatMap { ref =>
         ref.modify { oldVal =>
           val currVal = if (isInit(oldVal) || isEnd(oldVal)) {
@@ -309,7 +309,7 @@ private final class Ttrie[K, V] private (
     final override def modify[C](f: V => (V, C)): Rxn[C] = // TODO: optimize this
       this.modifyWith { v => Rxn.pure(f(v)) }
 
-    final override def modifyWith[C](f: V => Axn[(V, C)]): Rxn[C] = {
+    final override def modifyWith[C](f: V => Rxn[(V, C)]): Rxn[C] = {
       getRef(key).flatMap { ref =>
         ref.modifyWith[C] { oldVal =>
           val currVal = if (isInit(oldVal) || isEnd(oldVal)) {
@@ -333,13 +333,13 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  private[data] final def unsafeSnapshot: Axn[ScalaMap[K, V]] = {
+  private[data] final def unsafeSnapshot: Rxn[ScalaMap[K, V]] = {
     // NB: this is not composable,
     // as running it twice in one Rxn
     // may return a different set of
     // refs; this is one reason why
     // this method is `unsafe`.
-    Axn.unsafe.delay { m.iterator.toList }.flatMapF { kvs =>
+    Rxn.unsafe.delay { m.iterator.toList }.flatMapF { kvs =>
       kvs.traverse { kv =>
         kv._2.get.map { v => (kv._1, v) }
       }.map { kvs =>
@@ -360,9 +360,9 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  private[data] final def unsafeTrieMapSize: Axn[Int] = {
+  private[data] final def unsafeTrieMapSize: Rxn[Int] = {
     // NB: non-composable, sees empty refs, etc.
-    Axn.unsafe.delay { m.size }
+    Rxn.unsafe.delay { m.size }
   }
 }
 
@@ -422,8 +422,8 @@ private object Ttrie {
     final override def needsCleanup = true
   }
 
-  def apply[K, V](str: Ref.AllocationStrategy)(implicit K: Hash[K]): Axn[Ttrie[K, V]] = {
-    Axn.unsafe.delay {
+  def apply[K, V](str: Ref.AllocationStrategy)(implicit K: Hash[K]): Rxn[Ttrie[K, V]] = {
+    Rxn.unsafe.delay {
       val m = new TrieMap[K, Ref[V]](
         hashf = { k => byteswap32(K.hash(k)) },
         ef = K.eqv(_, _),
@@ -432,8 +432,8 @@ private object Ttrie {
     }
   }
 
-  def skipListBased[K, V](str: Ref.AllocationStrategy)(implicit K: Order[K]): Axn[Ttrie[K, V]] = {
-    Axn.unsafe.delay {
+  def skipListBased[K, V](str: Ref.AllocationStrategy)(implicit K: Order[K]): Rxn[Ttrie[K, V]] = {
+    Rxn.unsafe.delay {
       val m = new SkipListMap[K, Ref[V]]()
       new Ttrie[K, V](m, str)
     }

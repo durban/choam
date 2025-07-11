@@ -68,10 +68,10 @@ object RxnLocal {
   private[this] final class RxnLocalImpl[A](private[this] var a: A)
     extends RxnLocal[Rxn, A]
     with InternalLocal {
-    final override def get: Rxn[A] = Axn.unsafe.delay { this.a }
-    final override def set(a: A): Rxn[Unit] = Axn.unsafe.delay { this.a = a }
-    final override def update(f: A => A): Rxn[Unit] = Axn.unsafe.delay { this.a = f(this.a) }
-    final override def getAndUpdate(f: A => A): Rxn[A] = Axn.unsafe.delay {
+    final override def get: Rxn[A] = Rxn.unsafe.delay { this.a }
+    final override def set(a: A): Rxn[Unit] = Rxn.unsafe.delay { this.a = a }
+    final override def update(f: A => A): Rxn[Unit] = Rxn.unsafe.delay { this.a = f(this.a) }
+    final override def getAndUpdate(f: A => A): Rxn[A] = Rxn.unsafe.delay {
       val ov = this.a
       this.a = f(ov)
       ov
@@ -92,13 +92,13 @@ object RxnLocal {
     final override def unsafeGet(idx: Int): Rxn[A] = {
       val arr = this.arr
       internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
-      Axn.unsafe.delay { arr(idx).asInstanceOf[A] }
+      Rxn.unsafe.delay { arr(idx).asInstanceOf[A] }
     }
 
     final override def unsafeSet(idx: Int, nv: A): Rxn[Unit] = {
       val arr = this.arr
       internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
-      Axn.unsafe.delay { arr(idx) = box(nv) }
+      Rxn.unsafe.delay { arr(idx) = box(nv) }
     }
 
     final override def takeSnapshot(): AnyRef = {

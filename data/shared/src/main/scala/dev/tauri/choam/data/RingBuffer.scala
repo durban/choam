@@ -20,7 +20,7 @@ package data
 
 import cats.syntax.all._
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import ArrayQueue.{ empty, isEmpty }
 
 /**
@@ -60,7 +60,7 @@ private final class RingBuffer[A](
 
 private object RingBuffer {
 
-  def apply[A](capacity: Int): Axn[RingBuffer[A]] = {
+  def apply[A](capacity: Int): Rxn[RingBuffer[A]] = {
     require(capacity > 0)
     Ref.array[A](size = capacity, initial = empty[A]).flatMapF { arr =>
       makeRingBuffer(capacity, arr)
@@ -68,7 +68,7 @@ private object RingBuffer {
   }
 
   // TODO: do we need this?
-  private[data] def lazyRingBuffer[A](capacity: Int): Axn[RingBuffer[A]] = {
+  private[data] def lazyRingBuffer[A](capacity: Int): Rxn[RingBuffer[A]] = {
     require(capacity > 0)
     val str = Ref.Array.AllocationStrategy.Default.withSparse(true)
     Ref.array[A](
@@ -80,7 +80,7 @@ private object RingBuffer {
     }
   }
 
-  private[this] def makeRingBuffer[A](capacity: Int, underlying: Ref.Array[A]): Axn[RingBuffer[A]] = {
+  private[this] def makeRingBuffer[A](capacity: Int, underlying: Ref.Array[A]): Rxn[RingBuffer[A]] = {
     require(capacity > 0)
     require(underlying.size === capacity)
     (Ref.padded(0) * Ref.padded(0)).map {

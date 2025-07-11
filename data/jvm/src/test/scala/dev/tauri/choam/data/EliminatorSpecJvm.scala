@@ -24,7 +24,7 @@ import cats.syntax.all._
 import cats.effect.IO
 import cats.effect.instances.spawn.parallelForGenSpawn
 
-import core.{ Rxn, Axn, Ref, Eliminator }
+import core.{ Rxn, Ref, Eliminator }
 
 final class EliminatorSpecJvm_Emcas_ZIO
   extends BaseSpecZIO
@@ -42,7 +42,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
     super.munitTimeout * 2
 
   private def concurrentPushPopTest(
-    tryPopRxn: Axn[Option[Int]],
+    tryPopRxn: Rxn[Option[Int]],
     pushRxn: Int => Rxn[Unit],
   ): F[Unit] = {
     val k = 4
@@ -143,7 +143,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
   }
 
   private def testTaggedEliminationStack(
-    newStack: Axn[EliminationStack.TaggedEliminationStack[Int]],
+    newStack: Rxn[EliminationStack.TaggedEliminationStack[Int]],
     repeat: Int,
   ): F[Unit] = {
     val t = for {

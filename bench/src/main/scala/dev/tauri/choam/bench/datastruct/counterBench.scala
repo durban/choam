@@ -68,10 +68,10 @@ object CounterBench {
   @State(Scope.Benchmark)
   class ReactSt extends McasImplStateBase {
     val rxnSimpleUnpadded: Counter =
-      Counter.simple(Ref.AllocationStrategy(padded = false)).unsafeRun(this.mcasImpl)
+      Counter.simple(Ref.AllocationStrategy(padded = false)).unsafePerform(null, this.mcasImpl)
     val rxnSimplePadded: Counter =
-      Counter.simple(Ref.AllocationStrategy(padded = true)).unsafeRun(this.mcasImpl)
+      Counter.simple(Ref.AllocationStrategy(padded = true)).unsafePerform(null, this.mcasImpl)
     val rxnStripedPadded: Counter =
-      Counter.striped(Ref.AllocationStrategy.Padded).unsafeRun(this.mcasImpl)
+      Counter.striped(Ref.AllocationStrategy.Padded).unsafePerform(null, this.mcasImpl)
   }
 }

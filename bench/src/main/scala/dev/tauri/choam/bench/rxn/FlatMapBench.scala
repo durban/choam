@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import util._
 
 /** Compares the performance of `flatMap` and `*>` */
@@ -35,14 +35,14 @@ class FlatMapBench {
   @Benchmark
   def withFlatMap(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
-    val r: Axn[String] = s.rsWithFlatMap(idx)
+    val r: Rxn[String] = s.rsWithFlatMap(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 
   @Benchmark
   def withStarGreater(s: FlatMapBench.St, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % FlatMapBench.size
-    val r: Axn[String] = s.rsWithStarGreater(idx)
+    val r: Rxn[String] = s.rsWithStarGreater(idx)
     bh.consume(r.unsafePerform((), k.mcasImpl))
   }
 }
@@ -59,7 +59,7 @@ object FlatMapBench {
   @State(Scope.Benchmark)
   class St extends McasImplStateBase {
 
-    private[this] val dummy: Axn[Unit] =
+    private[this] val dummy: Rxn[Unit] =
       Rxn.unsafe.delay { () }
 
     private[this] val refs = List.fill(size) {
@@ -69,27 +69,27 @@ object FlatMapBench {
       )
     }
 
-    private[this] val addXs: List[Axn[Unit]] =
+    private[this] val addXs: List[Rxn[Unit]] =
       refs.map(_.update(_.substring(1) + "x"))
 
-    private[this] val addYs: List[Axn[String]] =
+    private[this] val addYs: List[Rxn[String]] =
       refs.map(_.updateAndGet(_.substring(1) + "y"))
 
-    private[this] final def mkReactions(opType: OpType): List[Axn[String]] = {
+    private[this] final def mkReactions(opType: OpType): List[Rxn[String]] = {
       List.tabulate(size) { idx =>
         val idx2 = (idx + 1) % size
         buildReaction(n, first = addXs(idx), last = addYs(idx2), opType = opType)
       }
     }
 
-    val rsWithFlatMap: List[Axn[String]] =
+    val rsWithFlatMap: List[Rxn[String]] =
       mkReactions(opType = FlatMap)
 
-    val rsWithStarGreater: List[Axn[String]] =
+    val rsWithStarGreater: List[Rxn[String]] =
       mkReactions(opType = StarGreater)
 
-    private[this] def buildReaction(n: Int, first: Axn[Unit], last: Axn[String], opType: OpType): Axn[String] = {
-      def go(n: Int, acc: Axn[Unit]): Axn[Unit] = {
+    private[this] def buildReaction(n: Int, first: Rxn[Unit], last: Rxn[String], opType: OpType): Rxn[String] = {
+      def go(n: Int, acc: Rxn[Unit]): Rxn[Unit] = {
         if (n < 1) {
           acc
         } else {

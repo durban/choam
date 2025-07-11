@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom
 import org.openjdk.jmh.annotations._
 
 import util._
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 
 @Fork(3)
 @Threads(1)
@@ -33,14 +33,14 @@ class RefSetBench {
   @Benchmark
   def getAndSetProvideVoid(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
-    val r: Axn[Unit] = s.getAndSetVoid(idx)(rnd.nextString())
+    val r: Rxn[Unit] = s.getAndSetVoid(idx)(rnd.nextString())
     r.unsafePerform(null, k.mcasImpl)
   }
 
   @Benchmark
   def set1(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
-    val r: Axn[Unit] = s.refs(idx).set1(rnd.nextString())
+    val r: Rxn[Unit] = s.refs(idx).set1(rnd.nextString())
     r.unsafePerform(null, k.mcasImpl)
   }
 
@@ -48,7 +48,7 @@ class RefSetBench {
   def modify(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val str = rnd.nextString()
-    val r: Axn[Unit] = s.refs(idx).modify { _ => (str, ()) }
+    val r: Rxn[Unit] = s.refs(idx).modify { _ => (str, ()) }
     r.unsafePerform(null, k.mcasImpl)
   }
 
@@ -56,7 +56,7 @@ class RefSetBench {
   def update1(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val str = rnd.nextString()
-    val r: Axn[Unit] = s.refs(idx).update1(_ => str)
+    val r: Rxn[Unit] = s.refs(idx).update1(_ => str)
     r.unsafePerform(null, k.mcasImpl)
   }
 

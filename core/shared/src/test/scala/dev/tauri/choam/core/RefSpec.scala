@@ -366,10 +366,10 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("CatsRef[Axn, A]") {
+  test("CatsRef[Rxn, A]") {
     for {
-      r <- implicitly[CatsRef.Make[Axn]].refOf("a").run[F]
-      _ <- testCatsRef[Axn](r, initial = "a", run = this.rF)
+      r <- implicitly[CatsRef.Make[Rxn]].refOf("a").run[F]
+      _ <- testCatsRef[Rxn](r, initial = "a", run = this.rF)
     } yield ()
   }
 

@@ -77,7 +77,7 @@ object TtrieComposedTest {
       override def hash(x: Int): Int =
         x % 7
     }
-    val m = MapHelper.ttrie[Int, String](using h).unsafeRun(initMcas)
+    val m = MapHelper.ttrie[Int, String](using h).unsafePerform(null, initMcas)
     m.put(0, "0").unsafePerform(null, initMcas)
     m.put(1, "1").unsafePerform(null, initMcas)
     m.put(7, "7").unsafePerform(null, initMcas)

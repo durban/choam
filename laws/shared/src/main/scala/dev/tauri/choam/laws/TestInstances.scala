@@ -23,10 +23,10 @@ import cats.data.Ior
 
 import org.scalacheck.{ Gen, Arbitrary, Cogen }
 
-import core.{ Rxn, Axn, Ref, Ref2 }
+import core.{ Rxn, Ref, Ref2 }
 import internal.mcas.{ Mcas, RefIdGen }
 
-trait TestInstances extends TestInstancesLowPrio0 { self =>
+trait TestInstances { self =>
 
   def mcasImpl: Mcas
 
@@ -40,10 +40,10 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
           Gen.delay(Ref.unsafePadded(a, this.rigInstance)),
         ),
         Gen.oneOf(
-          Gen.delay(Ref2.p1p1[A, String](a, "foo").unsafeRun(this.mcasImpl)._1),
-          Gen.delay(Ref2.p1p1[String, A]("foo", a).unsafeRun(this.mcasImpl)._2),
-          Gen.delay(Ref2.p2[A, String](a, "foo").unsafeRun(this.mcasImpl)._1),
-          Gen.delay(Ref2.p2[String, A]("foo", a).unsafeRun(this.mcasImpl)._2),
+          Gen.delay(Ref2.p1p1[A, String](a, "foo").unsafePerform(null, this.mcasImpl)._1),
+          Gen.delay(Ref2.p1p1[String, A]("foo", a).unsafePerform(null, this.mcasImpl)._2),
+          Gen.delay(Ref2.p2[A, String](a, "foo").unsafePerform(null, this.mcasImpl)._1),
+          Gen.delay(Ref2.p2[String, A]("foo", a).unsafePerform(null, this.mcasImpl)._2),
         ),
         Gen.choose(1, 8).flatMap { s =>
           Arbitrary.arbBool.arbitrary.flatMap { sparse =>
@@ -70,7 +70,7 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
   implicit def arbAxn[B](
     implicit
     arbB: Arbitrary[B],
-  ): Arbitrary[Axn[B]] = {
+  ): Arbitrary[Rxn[B]] = {
     implicit val arbAny: Arbitrary[Any] = Arbitrary(
       Gen.oneOf(
         Gen.const(()),
@@ -104,11 +104,8 @@ trait TestInstances extends TestInstancesLowPrio0 { self =>
   private[choam] final def unsafePerformForTest[A, B](rxn: Rxn[B]): B = {
     rxn.unsafePerform(null, self.mcasImpl)
   }
-}
 
-private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 { self: TestInstances =>
-
-  implicit def arbRxn[A, B](
+  private def arbRxn[A, B](
     implicit
     arbA: Arbitrary[A],
     arbB: Arbitrary[B],
@@ -224,7 +221,4 @@ private[choam] sealed trait TestInstancesLowPrio0 extends TestInstancesLowPrio1 
       equB.eqv(rx1, ry1) && equB.eqv(rx1, rx2) && equB.eqv(rx2, ry2)
     }
   }
-}
-
-private[choam] sealed trait TestInstancesLowPrio1 { self: TestInstances =>
 }

@@ -23,7 +23,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import EliminationStack.TaggedEliminationStack
 
 @JCStressTest
@@ -36,17 +36,17 @@ import EliminationStack.TaggedEliminationStack
 class EliminationStackConflictTest extends StressTestBase {
 
   private[this] val stack: TaggedEliminationStack[String] =
-    EliminationStack.taggedFlaky[String]().unsafeRun(this.impl)
+    EliminationStack.taggedFlaky[String]().unsafePerform(null, this.impl)
 
   private[this] val ref: Ref[Int] =
-    Ref(0).unsafeRun(this.impl)
+    Ref(0).unsafePerform(null, this.impl)
 
   private[this] final def _push(s: String): Rxn[Either[Unit, Unit]] =
     ref.update(_ + 42) *> stack.push(s)
 
-  private[this] val _tryPop: Axn[Either[Option[String], Option[String]]] = {
+  private[this] val _tryPop: Rxn[Either[Option[String], Option[String]]] = {
     stack.tryPop.flatMapF {
-      case e @ (Left(Some(_)) | Right(Some(_))) => Axn.pure(e)
+      case e @ (Left(Some(_)) | Right(Some(_))) => Rxn.pure(e)
       case Left(None) | Right(None) => Rxn.unsafe.retry
     } <* ref.update(_ + 99)
   }
@@ -63,6 +63,6 @@ class EliminationStackConflictTest extends StressTestBase {
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r3 = ref.get.unsafeRun(this.impl)
+    r.r3 = ref.get.unsafePerform(null, this.impl)
   }
 }

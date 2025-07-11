@@ -28,12 +28,12 @@ private[choam] sealed trait Exchanger[A, B] {
 
 private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: should be private[core]
 
-  private[choam] def apply[A, B]: Axn[Exchanger[A, B]] =
-    Axn.unsafe.delay { this.unsafe[A, B] }
+  private[choam] def apply[A, B]: Rxn[Exchanger[A, B]] =
+    Rxn.unsafe.delay { this.unsafe[A, B] }
 
-  private[choam] def profiled[A, B](counter: LongAdder): Axn[Exchanger[A, B]] = { // TODO: should be private[core]
+  private[choam] def profiled[A, B](counter: LongAdder): Rxn[Exchanger[A, B]] = { // TODO: should be private[core]
     this.apply[A, B].flatMapF { underlying =>
-      Axn.unsafe.delay {
+      Rxn.unsafe.delay {
         new ProfiledExchanger[A, B](
           d = null,
           underlying = underlying,
@@ -65,7 +65,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
       // Every exchange has 2 sides, so only
       // the primary side increments the counter:
       if (this.isPrimary) {
-        underlying.exchange(a).postCommit(_ => Axn.unsafe.delay {
+        underlying.exchange(a).postCommit(_ => Rxn.unsafe.delay {
           counter.increment()
         })
       } else {
@@ -119,7 +119,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
     contK: ListObjStack.Lst[Any],
     contT: Array[Byte],
     desc: Descriptor,
-    postCommit: ListObjStack.Lst[Axn[Unit]],
+    postCommit: ListObjStack.Lst[Rxn[Unit]],
     exchangerData: Rxn.ExStatMap,
     hasTentativeRead: Boolean,
     state: Msg.State,
@@ -137,7 +137,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
       contK: ListObjStack.Lst[Any],
       contT: Array[Byte],
       desc: Descriptor,
-      postCommit: ListObjStack.Lst[Axn[Unit]],
+      postCommit: ListObjStack.Lst[Rxn[Unit]],
       exchangerData: Rxn.ExStatMap,
       hasTentativeRead: Boolean,
     ): Msg = {
@@ -158,7 +158,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
       contK: ListObjStack.Lst[Any],
       contT: Array[Byte],
       desc: Descriptor,
-      postCommit: ListObjStack.Lst[Axn[Unit]],
+      postCommit: ListObjStack.Lst[Rxn[Unit]],
       exchangerData: Rxn.ExStatMap,
       hasTentativeRead: Boolean,
     ): Msg = {
@@ -180,7 +180,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform { // TODO: sh
         contK = fx.contK,
         contT = fx.contT,
         desc = ctx.start().toImmutable, // TODO: could we avoid the `toImmutable`?
-        postCommit = ListObjStack.Lst.empty[Axn[Unit]],
+        postCommit = ListObjStack.Lst.empty[Rxn[Unit]],
         exchangerData = newStats,
         hasTentativeRead = fx.hasTentativeRead,
         state = Finished,

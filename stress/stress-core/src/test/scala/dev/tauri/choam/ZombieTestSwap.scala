@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-import core.{ Axn, Ref }
+import core.{ Rxn, Ref }
 
 @JCStressTest
 @State
@@ -40,11 +40,11 @@ class ZombieTestSwap extends StressTestBase {
     Ref.unsafePadded("b", this.rig)
 
   // atomically swap the contents of the refs:
-  private[this] val swap: Axn[Unit] =
+  private[this] val swap: Rxn[Unit] =
     Ref.swap(ref1, ref2)
 
   // another swap, but checks the observed values:
-  private[this] final def swapObserve(r: LLL_Result): Axn[Unit] = {
+  private[this] final def swapObserve(r: LLL_Result): Rxn[Unit] = {
     ref1.updateWith { o1 =>
       ref2.modify[String] { o2 =>
         if (o1 eq o2) {
@@ -60,18 +60,18 @@ class ZombieTestSwap extends StressTestBase {
 
   @Actor
   def swap1(): Unit = {
-    swap.unsafeRun(this.impl)
+    swap.unsafePerform(null, this.impl)
   }
 
   @Actor
   def swap2(r: LLL_Result): Unit = {
-    swapObserve(r).unsafeRun(this.impl)
+    swapObserve(r).unsafePerform(null, this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r1 = ref1.get.unsafeRun(this.impl)
-    r.r2 = ref2.get.unsafeRun(this.impl)
+    r.r1 = ref1.get.unsafePerform(null, this.impl)
+    r.r2 = ref2.get.unsafePerform(null, this.impl)
     if (r.r3 eq null) {
       // no inconsistency was observed
       r.r3 = "-"

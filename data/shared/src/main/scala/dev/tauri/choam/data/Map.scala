@@ -23,7 +23,7 @@ import cats.data.Chain
 import cats.effect.kernel.{ Ref => CatsRef }
 import cats.effect.std.MapRef
 
-import core.{ Rxn, Axn, Ref, RefLike, Reactive }
+import core.{ Rxn, Ref, RefLike, Reactive }
 
 sealed trait Map[K, V] { self =>
 
@@ -54,33 +54,33 @@ object Map extends MapPlatform {
   sealed trait Extra[K, V] extends Map[K, V] {
 
     // TODO: type Snapshot
-    // TODO: def snapshot: Axn[Snapshot]
+    // TODO: def snapshot: Rxn[Snapshot]
 
-    def clear: Axn[Unit]
+    def clear: Rxn[Unit]
 
-    def values(implicit V: Order[V]): Axn[Vector[V]] // TODO:0.5: remove this
+    def values(implicit V: Order[V]): Rxn[Vector[V]] // TODO:0.5: remove this
 
-    def keys: Axn[Chain[K]]
+    def keys: Rxn[Chain[K]]
 
-    def valuesUnsorted: Axn[Chain[V]] // TODO:0.5: rename to `values`
+    def valuesUnsorted: Rxn[Chain[V]] // TODO:0.5: rename to `values`
 
-    def items: Axn[Chain[(K, V)]]
+    def items: Rxn[Chain[(K, V)]]
   }
 
   private[data] trait UnsealedMap[K, V] extends Map[K, V]
 
   private[data] trait UnsealedMapExtra[K, V] extends Map.Extra[K, V]
 
-  final override def simpleHashMap[K: Hash, V]: Axn[Extra[K, V]] =
+  final override def simpleHashMap[K: Hash, V]: Rxn[Extra[K, V]] =
     SimpleMap[K, V](Ref.AllocationStrategy.Default)
 
-  final override def simpleHashMap[K: Hash, V](str: Ref.AllocationStrategy): Axn[Extra[K, V]] =
+  final override def simpleHashMap[K: Hash, V](str: Ref.AllocationStrategy): Rxn[Extra[K, V]] =
     SimpleMap[K, V](str)
 
-  final override def simpleOrderedMap[K: Order, V]: Axn[Extra[K, V]] =
+  final override def simpleOrderedMap[K: Order, V]: Rxn[Extra[K, V]] =
     SimpleOrderedMap[K, V](Ref.AllocationStrategy.Default)
 
-  final override def simpleOrderedMap[K: Order, V](str: Ref.AllocationStrategy): Axn[Extra[K, V]] =
+  final override def simpleOrderedMap[K: Order, V](str: Ref.AllocationStrategy): Rxn[Extra[K, V]] =
     SimpleOrderedMap[K, V](str)
 
   private[data] final override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {

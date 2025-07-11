@@ -22,7 +22,7 @@ package random
 import java.util.{ Arrays, UUID }
 import java.nio.{ ByteBuffer, ByteOrder }
 
-import core.Axn
+import core.Rxn
 import internal.mcas.Mcas
 
 abstract class RandomBaseSpec extends BaseSpec {
@@ -32,17 +32,17 @@ abstract class RandomBaseSpec extends BaseSpec {
 
   test("byteArrayViewVarHandle") {
     final class DummyRng(const: Array[Byte]) extends RandomBase {
-      final override def nextBytes(n: Int): Axn[Array[Byte]] = {
+      final override def nextBytes(n: Int): Rxn[Array[Byte]] = {
         require(n == 8)
-        Axn.unsafe.delay {
+        Rxn.unsafe.delay {
           Arrays.copyOf(const, const.length)
         }
       }
     }
     val rng1 = new DummyRng(Array.fill(8)(0x01.toByte))
-    assertEquals(rng1.nextLong.unsafeRun(this.mcas), 0x0101010101010101L)
+    assertEquals(rng1.nextLong.unsafePerform(null, this.mcas), 0x0101010101010101L)
     val rng2 = new DummyRng({ val arr = Array.fill(8)(0x01.toByte); arr(0) = 0xff.toByte; arr })
-    assertEquals(rng2.nextLong.unsafeRun(this.mcas), 0x01010101010101ffL)
+    assertEquals(rng2.nextLong.unsafePerform(null, this.mcas), 0x01010101010101ffL)
   }
 
   test("ByteBuffer endianness") {
@@ -59,7 +59,7 @@ abstract class RandomBaseSpec extends BaseSpec {
 
   test("RxnUuidGen") {
     def unsafeRandomUuid(): UUID = {
-      newUuidImpl.unsafeRun(this.mcas)
+      newUuidImpl.unsafePerform(null, this.mcas)
     }
     val first = unsafeRandomUuid()
     def checkUuid(u: UUID): Unit = {

@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 
 @JCStressTest
 @State
@@ -44,14 +44,14 @@ class ZombieTest extends StressTestBase {
     Ref.unsafePadded("a", this.rig)
 
   // a 2-CAS, setting both atomically "a" -> "b":
-  private[this] val upd: Axn[Unit] =
+  private[this] val upd: Rxn[Unit] =
     Rxn.unsafe.cas(ref1, "a", "b") *> Rxn.unsafe.cas(ref2, "a", "b")
 
   // a consistent read of both:
-  private[this] val _get: Axn[(String, String)] =
+  private[this] val _get: Rxn[(String, String)] =
     ref1.get * ref2.get
 
-  private[this] final def get(r: LLL_Result): Axn[(String, String)] = {
+  private[this] final def get(r: LLL_Result): Rxn[(String, String)] = {
     this._get.map { result =>
       if (result._1 ne result._2) {
         // we've observed an inconsistent state
@@ -65,17 +65,17 @@ class ZombieTest extends StressTestBase {
 
   @Actor
   def update(): Unit = {
-    upd.unsafeRun(this.impl)
+    upd.unsafePerform(null, this.impl)
   }
 
   @Actor
   def read(r: LLL_Result): Unit = {
-    r.r1 = get(r).unsafeRun(this.impl)
+    r.r1 = get(r).unsafePerform(null, this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r2 = (ref1.get.unsafeRun(this.impl), ref2.get.unsafeRun(this.impl))
+    r.r2 = (ref1.get.unsafePerform(null, this.impl), ref2.get.unsafePerform(null, this.impl))
     if (r.r3 eq null) {
       // no inconsistency was observed
       r.r3 = "-"

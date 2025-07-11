@@ -37,7 +37,7 @@ import core.{ Rxn, Exchanger, Ref }
 class ExchangerTest1 extends StressTestBase {
 
   private[this] val ex: Exchanger[String, String] =
-    Rxn.unsafe.exchanger[String, String].unsafeRun(this.impl)
+    Rxn.unsafe.exchanger[String, String].unsafePerform(null, this.impl)
 
   private[this] val leftPc: Ref[Option[Either[String, String]]] =
     Ref[Option[Either[String, String]]](null).unsafePerform(null, this.impl)
@@ -67,7 +67,7 @@ class ExchangerTest1 extends StressTestBase {
 
   @Arbiter
   def arbiter(r: LLLL_Result): Unit = {
-    r.r2 = leftPc.get.unsafeRun(this.impl)
-    r.r4 = rightPc.get.unsafeRun(this.impl)
+    r.r2 = leftPc.get.unsafePerform(null, this.impl)
+    r.r4 = rightPc.get.unsafePerform(null, this.impl)
   }
 }

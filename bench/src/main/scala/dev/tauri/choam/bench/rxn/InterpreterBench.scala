@@ -21,7 +21,7 @@ package rxn
 
 import org.openjdk.jmh.annotations._
 
-import core.{ =#>, Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import util._
 import InterpreterBench._
 
@@ -160,7 +160,7 @@ object InterpreterBench {
       }
     }
 
-    private[this] def mkRhRxn2(ref4: Ref[String], ref5: Ref[String]): Int =#> String = {
+    private[this] def mkRhRxn2(ref4: Ref[String], ref5: Ref[String]): Rxn[String] = {
       Rxn.fastRandom.nextInt.flatMap { (i: Int) =>
         ref4.modify { ov4 =>
           (ov4, i + 1)
@@ -170,7 +170,7 @@ object InterpreterBench {
       }
     }
 
-    private[this] def mkRhRxn3(ref6: Ref[String], ref7: Ref[String], ref8: Ref[String]): Axn[Unit] = {
+    private[this] def mkRhRxn3(ref6: Ref[String], ref7: Ref[String], ref8: Ref[String]): Rxn[Unit] = {
       (ref6.get *> ref7.get *> ref8.get).void
     }
   }

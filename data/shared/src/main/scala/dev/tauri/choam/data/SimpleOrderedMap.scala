@@ -24,7 +24,7 @@ import cats.kernel.Order
 import cats.data.Chain
 import cats.collections.AvlMap
 
-import core.{ Rxn, Axn, Ref, RefLike }
+import core.{ Rxn, Ref, RefLike }
 
 private final class SimpleOrderedMap[K, V] private (
   repr: Ref[AvlMap[K, V]]
@@ -87,10 +87,10 @@ private final class SimpleOrderedMap[K, V] private (
     }
   }
 
-  final override def clear: Axn[Unit] =
+  final override def clear: Rxn[Unit] =
     repr.update(_ => AvlMap.empty[K, V])
 
-  final override def values(implicit V: Order[V]): Axn[Vector[V]] = {
+  final override def values(implicit V: Order[V]): Rxn[Vector[V]] = {
     repr.get.map { am =>
       val b = scala.collection.mutable.ArrayBuffer.newBuilder[V]
       b.sizeHint(am.set.size)
@@ -100,7 +100,7 @@ private final class SimpleOrderedMap[K, V] private (
     }
   }
 
-  final override def keys: Axn[Chain[K]] = {
+  final override def keys: Rxn[Chain[K]] = {
     repr.get.map { m =>
       Chain.fromSeq(
         m.foldLeft(Vector.newBuilder[K]) { (vb, kv) =>
@@ -110,7 +110,7 @@ private final class SimpleOrderedMap[K, V] private (
     }
   }
 
-  final override def valuesUnsorted: Axn[Chain[V]] = {
+  final override def valuesUnsorted: Rxn[Chain[V]] = {
     repr.get.map { m =>
       Chain.fromSeq(
         m.foldLeft(Vector.newBuilder[V]) { (vb, kv) =>
@@ -120,7 +120,7 @@ private final class SimpleOrderedMap[K, V] private (
     }
   }
 
-  final override def items: Axn[Chain[(K, V)]] = {
+  final override def items: Rxn[Chain[(K, V)]] = {
     repr.get.map { m =>
       Chain.fromSeq(
         m.foldLeft(Vector.newBuilder[(K, V)]) { (vb, kv) =>
@@ -132,10 +132,10 @@ private final class SimpleOrderedMap[K, V] private (
 
   final override def refLike(key: K, default: V): RefLike[V] = new RefLike.UnsealedRefLike[V] {
 
-    final def get: Axn[V] =
+    final def get: Rxn[V] =
       self.get(key).map(_.getOrElse(default))
 
-    final override def set1(nv: V): Axn[Unit] = {
+    final override def set1(nv: V): Rxn[Unit] = {
       if (equ(nv, default)) {
         repr.update { am => am.remove(key) }
       } else {
@@ -143,7 +143,7 @@ private final class SimpleOrderedMap[K, V] private (
       }
     }
 
-    final override def update1(f: V => V): Axn[Unit] = {
+    final override def update1(f: V => V): Rxn[Unit] = {
       repr.update1 { am =>
         val currVal = am.get(key).getOrElse(default)
         val newVal = f(currVal)
@@ -161,7 +161,7 @@ private final class SimpleOrderedMap[K, V] private (
       }
     }
 
-    final def modifyWith[C](f: V => Axn[(V, C)]): Rxn[C] = {
+    final def modifyWith[C](f: V => Rxn[(V, C)]): Rxn[C] = {
       repr.modifyWith { am =>
         val currVal = am.get(key).getOrElse(default)
         f(currVal).map {
@@ -173,7 +173,7 @@ private final class SimpleOrderedMap[K, V] private (
     }
   }
 
-  private[data] final def unsafeSnapshot: Axn[ScalaMap[K, V]] = {
+  private[data] final def unsafeSnapshot: Rxn[ScalaMap[K, V]] = {
     repr.get.map { am =>
       // NB: ScalaMap won't use our
       // Order; this is one reason why
@@ -189,7 +189,7 @@ private final class SimpleOrderedMap[K, V] private (
 
 private object SimpleOrderedMap {
 
-  private[data] final def apply[K: Order, V](str: Ref.AllocationStrategy): Axn[Map.Extra[K, V]] = {
+  private[data] final def apply[K: Order, V](str: Ref.AllocationStrategy): Rxn[Map.Extra[K, V]] = {
     Ref(AvlMap.empty[K, V], str).map(new SimpleOrderedMap(_))
   }
 }

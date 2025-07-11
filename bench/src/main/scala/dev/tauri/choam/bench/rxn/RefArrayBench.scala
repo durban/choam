@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 import org.openjdk.jmh.annotations._
 
-import core.{ Axn, Ref }
+import core.{ Rxn, Ref }
 import bench.util.{ McasImplStateBase, RandomState }
 import RefArrayBench._
 
@@ -106,11 +106,11 @@ object RefArrayBench {
       this.foldSparseAxn(r).unsafePerform(null, this.mcasImpl)
     }
 
-    final def foldSparseAxn(r: RandomState): Axn[Int] = {
+    final def foldSparseAxn(r: RandomState): Rxn[Int] = {
       val arr = this.arr
       val len = arr.length
       val incr = 16
-      var acc = Axn.pure(0)
+      var acc = Rxn.pure(0)
       var idx = r.nextIntBounded(4)
       while (idx < len) {
         val hs = arr.unsafeGet(idx).get.map(_.##)
@@ -125,7 +125,7 @@ object RefArrayBench {
       swapAndGetAxn(r.nextIntBounded(len), r.nextIntBounded(len), r.nextIntBounded(len)).unsafePerform(null, this.mcasImpl)
     }
 
-    final def swapAndGetAxn(idx1: Int, idx2: Int, idx3: Int): Axn[String] = {
+    final def swapAndGetAxn(idx1: Int, idx2: Int, idx3: Int): Rxn[String] = {
       val arr = this.arr
       Ref.swap(arr.unsafeGet(idx1), arr.unsafeGet(idx2)) *> arr.unsafeGet(idx3).get
     }
@@ -138,7 +138,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false),
-      ).unsafeRun(this.mcasImpl)
+      ).unsafePerform(null, this.mcasImpl)
     }
   }
 
@@ -149,7 +149,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false),
-      ).unsafeRun(this.mcasImpl)
+      ).unsafePerform(null, this.mcasImpl)
     }
   }
 
@@ -160,7 +160,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false),
-      ).unsafeRun(this.mcasImpl)
+      ).unsafePerform(null, this.mcasImpl)
     }
   }
 
@@ -171,7 +171,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false),
-      ).unsafeRun(this.mcasImpl)
+      ).unsafePerform(null, this.mcasImpl)
     }
   }
 }

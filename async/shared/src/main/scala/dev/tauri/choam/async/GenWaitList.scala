@@ -22,14 +22,14 @@ import cats.~>
 import cats.syntax.all._
 import cats.effect.kernel.{ Cont, MonadCancel }
 
-import core.{ Rxn, Axn, AsyncReactive }
+import core.{ Rxn, AsyncReactive }
 import data.RemoveQueue
 
 private[choam] sealed trait GenWaitList[A] { self =>
 
   def trySet0(a: A): Rxn[Boolean]
 
-  def tryGet: Axn[Option[A]]
+  def tryGet: Rxn[Option[A]]
 
   def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
 
@@ -48,9 +48,9 @@ private[choam] sealed trait WaitList[A] extends GenWaitList[A] { self =>
 private[choam] object WaitList {
 
   final def apply[A](
-    tryGetUnderlying: Axn[Option[A]],
+    tryGetUnderlying: Rxn[Option[A]],
     setUnderlying: A => Rxn[Unit],
-  ): Axn[WaitList[A]] = {
+  ): Rxn[WaitList[A]] = {
     GenWaitList.waitListForAsync[A](tryGetUnderlying, setUnderlying)
   }
 }
@@ -61,9 +61,9 @@ private[choam] object GenWaitList {
     Right(())
 
   final def apply[A](
-    tryGetUnderlying: Axn[Option[A]],
+    tryGetUnderlying: Rxn[Option[A]],
     trySetUnderlying: A => Rxn[Boolean],
-  ): Axn[GenWaitList[A]] = {
+  ): Rxn[GenWaitList[A]] = {
     RemoveQueue[Either[Throwable, Unit] => Unit].flatMapF { getters =>
       RemoveQueue[Either[Throwable, Unit] => Unit].map { setters =>
         new AsyncGenWaitList[A](tryGetUnderlying, trySetUnderlying, getters, setters)
@@ -72,9 +72,9 @@ private[choam] object GenWaitList {
   }
 
   private[async] final def waitListForAsync[A](
-    tryGetUnderlying: Axn[Option[A]],
+    tryGetUnderlying: Rxn[Option[A]],
     setUnderlying: A => Rxn[Unit],
-  ): Axn[WaitList[A]] = {
+  ): Rxn[WaitList[A]] = {
     RemoveQueue[Either[Throwable, Unit] => Unit].map { waiters =>
       new AsyncWaitList[A](tryGetUnderlying, setUnderlying, waiters)
     }
@@ -97,9 +97,9 @@ private[choam] object GenWaitList {
       this.callCb(cb, RightUnit)
     }
 
-    protected[this] final def wakeUpNextWaiter(waiters: RemoveQueue[Either[Throwable, Unit] => Unit]): Axn[Unit] = {
+    protected[this] final def wakeUpNextWaiter(waiters: RemoveQueue[Either[Throwable, Unit] => Unit]): Rxn[Unit] = {
       waiters.tryDeque.flatMapF {
-        case None => Axn.unit
+        case None => Rxn.unit
         case Some(other) => callCbRightUnit(other)
       }
     }
@@ -107,7 +107,7 @@ private[choam] object GenWaitList {
     protected[this] final def asyncGetImpl[F[_]](
       isFirstTry: Boolean,
       getters: RemoveQueue[Either[Throwable, Unit] => Unit],
-      tryGetUnderlying: Axn[Option[A]],
+      tryGetUnderlying: Rxn[Option[A]],
       settersOrNull: RemoveQueue[Either[Throwable, Unit] => Unit],
     )(implicit ar: AsyncReactive[F]): F[A] = {
       ar.asyncInst.cont(new Cont[F, Unit, A] {
@@ -127,13 +127,13 @@ private[choam] object GenWaitList {
                   if ((!isFirstTry) && (settersOrNull ne null)) {
                     wakeUpNextWaiter(settersOrNull).as(G.pure(a))
                   } else {
-                    Axn.pure(G.pure(a))
+                    Rxn.pure(G.pure(a))
                   }
                 case None =>
                   getters.enqueueWithRemover(cb).map { remover =>
                     val cancel: F[Unit] = ar.run(remover.flatMapF { ok =>
                       if (ok) {
-                        Axn.unit
+                        Rxn.unit
                       } else {
                         // wake up someone else instead of ourselves:
                         wakeUpNextWaiter(getters)
@@ -159,7 +159,7 @@ private[choam] object GenWaitList {
   }
 
   private final class AsyncGenWaitList[A](
-    tryGetUnderlying: Axn[Option[A]],
+    tryGetUnderlying: Rxn[Option[A]],
     trySetUnderlying: A => Rxn[Boolean],
     getters: RemoveQueue[Either[Throwable, Unit] => Unit],
     setters: RemoveQueue[Either[Throwable, Unit] => Unit],
@@ -181,12 +181,12 @@ private[choam] object GenWaitList {
               }
           }
         } else {
-          Axn.pure(false)
+          Rxn.pure(false)
         }
       }
     }
 
-    final override def tryGet: Axn[Option[A]] = {
+    final override def tryGet: Rxn[Option[A]] = {
       this.getters.isEmpty.flatMapF { noGetters =>
         if (noGetters) {
           this.tryGetUnderlying.flatMapF {
@@ -204,7 +204,7 @@ private[choam] object GenWaitList {
           }
         } else {
           // there are already getters waiting
-          Axn.none
+          Rxn.none
         }
       }
     }
@@ -233,7 +233,7 @@ private[choam] object GenWaitList {
                   setters.enqueueWithRemover(cb).map { remover =>
                     val cancel: F[Unit] = ar.run(remover.flatMapF { ok =>
                       if (ok) {
-                        Axn.unit
+                        Rxn.unit
                       } else {
                         // wake up someone else instead of ourselves:
                         wakeUpNextWaiter(setters)
@@ -270,18 +270,18 @@ private[choam] object GenWaitList {
   // TODO: data structure directly (unless really
   // TODO: necessary), because that's dangerous.
   private final class AsyncWaitList[A](
-    tryGetUnderlying: Axn[Option[A]],
+    tryGetUnderlying: Rxn[Option[A]],
     setUnderlying: A => Rxn[Unit],
     waiters: RemoveQueue[Either[Throwable, Unit] => Unit],
   ) extends GenWaitListCommon[A]
     with WaitList[A] { self =>
 
-    final override def tryGet: Axn[Option[A]] = {
+    final override def tryGet: Rxn[Option[A]] = {
       this.waiters.isEmpty.flatMapF { noWaiters =>
         if (noWaiters) {
           this.tryGetUnderlying
         } else {
-          Axn.none
+          Rxn.none
         }
       }
     }

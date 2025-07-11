@@ -371,7 +371,7 @@ object DataMapBench {
   class SimpleHashSt extends RxnMapSt {
 
     private[this] val simple: Map[String, String] =
-      Map.simpleHashMap[String, String].unsafeRun(this.mcasImpl)
+      Map.simpleHashMap[String, String].unsafePerform(null, this.mcasImpl)
 
     final def map: Map[String, String] =
       simple
@@ -381,7 +381,7 @@ object DataMapBench {
   class SimpleOrderedSt extends RxnMapSt {
 
     private[this] val simple: Map[String, String] =
-      Map.simpleOrderedMap[String, String].unsafeRun(this.mcasImpl)
+      Map.simpleOrderedMap[String, String].unsafePerform(null, this.mcasImpl)
 
     final def map: Map[String, String] =
       simple
@@ -391,7 +391,7 @@ object DataMapBench {
   class TMapHashSt extends RxnMapSt {
 
     private[this] val m: Map[String, String] =
-      Map.hashMap[String, String].unsafeRun(this.mcasImpl)
+      Map.hashMap[String, String].unsafePerform(null, this.mcasImpl)
 
     final def map: Map[String, String] =
       m
@@ -401,7 +401,7 @@ object DataMapBench {
   class TMapOrderedSt extends RxnMapSt {
 
     private[this] val m: Map[String, String] =
-      Map.orderedMap[String, String].unsafeRun(this.mcasImpl)
+      Map.orderedMap[String, String].unsafePerform(null, this.mcasImpl)
 
     final def map: Map[String, String] =
       m

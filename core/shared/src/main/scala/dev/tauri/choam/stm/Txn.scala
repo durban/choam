@@ -22,7 +22,7 @@ import cats.kernel.Monoid
 import cats.{ ~>, Applicative, Defer, StackSafeMonad }
 import cats.effect.kernel.Unique
 
-import core.{ Rxn, Axn, RxnImpl }
+import core.{ Rxn, RxnImpl }
 import internal.mcas.Mcas
 
 sealed trait Txn[+B] {
@@ -71,10 +71,10 @@ object Txn extends TxnInstances0 {
     if (cond) unit else retry
 
   final def tailRecM[A, B](a: A)(f: A => Txn[Either[A, B]]): Txn[B] =
-    Rxn.tailRecMImpl(a)(f.asInstanceOf[Function1[A, Axn[Either[A, B]]]])
+    Rxn.tailRecMImpl(a)(f.asInstanceOf[Function1[A, Rxn[Either[A, B]]]])
 
   final def defer[A](fa: => Txn[A]): Txn[A] =
-    Axn.unsafe.suspendImpl { fa.impl }
+    Rxn.unsafe.suspendImpl { fa.impl }
 
   final def unique: Txn[Unique.Token] =
     Rxn.uniqueImpl
@@ -91,7 +91,7 @@ object Txn extends TxnInstances0 {
 
     @inline
     private[choam] final def delay[A](uf: => A): Txn[A] =
-      Axn.unsafe.delayImpl[A](uf)
+      Rxn.unsafe.delayImpl[A](uf)
 
     private[choam] final def suspend[A](uf: => Txn[A]): Txn[A] =
       delay(uf).flatten

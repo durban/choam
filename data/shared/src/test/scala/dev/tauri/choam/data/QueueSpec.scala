@@ -20,7 +20,7 @@ package data
 
 import cats.effect.IO
 
-import core.{ Rxn, Axn }
+import core.Rxn
 
 final class QueueMsSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
@@ -369,17 +369,17 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       val shifted = idx << 8
       require(shifted >= idx) // ensure no overflow
       val items = (1 to RxnSize).toList.map(_ | shifted)
-      val rxn: Axn[Unit] = items.traverse_ { item => q.enqueue(item) }
+      val rxn: Rxn[Unit] = items.traverse_ { item => q.enqueue(item) }
       rF.run(rxn)
     }
     def deqTask(q: QueueType[Int]): F[Int] = {
-      def goOnce(acc: List[Int]): Axn[List[Int]] = {
+      def goOnce(acc: List[Int]): Rxn[List[Int]] = {
         if (acc.length == RxnSize) {
           Rxn.pure(acc.reverse)
         } else {
           q.tryDeque.flatMapF {
             case None =>
-              Axn.unsafe.delay(assert(acc.isEmpty)).as(Nil)
+              Rxn.unsafe.delay(assert(acc.isEmpty)).as(Nil)
             case Some(item) =>
               goOnce(item :: acc)
           }

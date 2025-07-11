@@ -20,7 +20,7 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import core.{ Rxn, Axn, Ref, AsyncReactive }
+import core.{ Rxn, Ref, AsyncReactive }
 import data.Queue
 
 sealed trait BoundedQueue[A]
@@ -32,7 +32,7 @@ sealed trait BoundedQueue[A]
 
   def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
 
-  def size: Axn[Int]
+  def size: Rxn[Int]
 }
 
 object BoundedQueue {
@@ -40,7 +40,7 @@ object BoundedQueue {
   private[choam] trait UnsealedBoundedQueue[A]
     extends BoundedQueue[A]
 
-  final def linked[A](bound: Int): Axn[BoundedQueue[A]] = {
+  final def linked[A](bound: Int): Rxn[BoundedQueue[A]] = {
     require(bound > 0)
     (Queue.unbounded[A] * Ref.unpadded[Int](0)).flatMapF {
       case (q, size) =>
@@ -59,7 +59,7 @@ object BoundedQueue {
     }
   }
 
-  final def array[A](bound: Int): Axn[BoundedQueue[A]] = {
+  final def array[A](bound: Int): Rxn[BoundedQueue[A]] = {
     require(bound > 0)
     Queue.dropping[A](bound).flatMapF { q =>
       GenWaitList[A](
@@ -77,7 +77,7 @@ object BoundedQueue {
     gwl: GenWaitList[A],
   ) extends BoundedQueue[A] {
 
-    final override def tryDeque: Axn[Option[A]] =
+    final override def tryDeque: Rxn[Option[A]] =
       gwl.tryGet
 
     final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
@@ -96,7 +96,7 @@ object BoundedQueue {
       new CatsQueueFromBoundedQueue(this)
     }
 
-    final override def size: Axn[Int] =
+    final override def size: Rxn[Int] =
       s.get
   }
 
@@ -106,7 +106,7 @@ object BoundedQueue {
     gwl: GenWaitList[A],
   ) extends BoundedQueue[A] { self =>
 
-    final override def tryDeque: Axn[Option[A]] =
+    final override def tryDeque: Rxn[Option[A]] =
       gwl.tryGet
 
     final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
@@ -125,7 +125,7 @@ object BoundedQueue {
       new CatsQueueFromBoundedQueue[F, A](this)(using F)
     }
 
-    final override def size: Axn[Int] =
+    final override def size: Rxn[Int] =
       q.size
   }
 
