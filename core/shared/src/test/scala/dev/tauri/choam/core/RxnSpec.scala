@@ -1454,12 +1454,12 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       RetryStrategy.Default.withMaxRetries(mr)
     for {
       // finite maxRetries:
-      _ <- assertRaisesF(F.delay(never.unsafePerform(this.mcasImpl, maxRetries(Some(4096)))), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertRaisesF(F.delay(never.unsafePerform(this.mcasImpl, maxRetries(Some(4096)))), _.isInstanceOf[Rxn.MaxRetriesExceeded])
       ctr <- F.delay(new AtomicInteger)
-      _ <- assertRaisesF(F.delay(countTries(ctr).unsafePerform(this.mcasImpl, maxRetries(Some(42)))), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertRaisesF(F.delay(countTries(ctr).unsafePerform(this.mcasImpl, maxRetries(Some(42)))), _.isInstanceOf[Rxn.MaxRetriesExceeded])
       _ <- assertResultF(F.delay(ctr.get()), 42 + 1)
-      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform(this.mcasImpl, maxRetries(Some(0)))), _.isInstanceOf[Rxn.MaxRetriesReached])
-      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform(this.mcasImpl, maxRetries(Some(2)))), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform(this.mcasImpl, maxRetries(Some(0)))), _.isInstanceOf[Rxn.MaxRetriesExceeded])
+      _ <- assertRaisesF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform(this.mcasImpl, maxRetries(Some(2)))), _.isInstanceOf[Rxn.MaxRetriesExceeded])
       _ <- assertResultF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform(this.mcasImpl, maxRetries(Some(3)))), "foo")
       // infinite maxRetries:
       _ <- assertResultF(F.delay(succeedsOn3rdRetry(new AtomicInteger).unsafePerform(this.mcasImpl, maxRetries(None))), "foo")
@@ -1475,7 +1475,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       .withMaxRetries(Some(42))
     assertRaisesF(
       Reactive[F].apply(never, s),
-      _.isInstanceOf[Rxn.MaxRetriesReached],
+      _.isInstanceOf[Rxn.MaxRetriesExceeded],
     )
   }
 

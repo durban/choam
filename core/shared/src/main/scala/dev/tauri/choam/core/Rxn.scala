@@ -1086,8 +1086,8 @@ object Rxn extends RxnInstances0 {
     ck
   }
 
-  final class MaxRetriesReached(val maxRetries: Int) // TODO:0.5: -> MaxRetriesExceeded(?)
-    extends Exception(s"reached maxRetries of ${maxRetries}") {
+  final class MaxRetriesExceeded(val maxRetries: Int)
+    extends Exception(s"exceeded maxRetries of ${maxRetries}") {
 
     final override def fillInStackTrace(): Throwable =
       this
@@ -1751,7 +1751,7 @@ object Rxn extends RxnInstances0 {
         val mr = this.maxRetries
         if ((mr >= 0) && ((retriesNow > mr) || (retriesNow == Integer.MAX_VALUE))) {
           // TODO: maybe we could represent "infinity" with MAX_VALUE instead of -1?
-          throw new MaxRetriesReached(mr)
+          throw new MaxRetriesExceeded(mr)
         } else {
           maybeCheckInterrupt(retriesNow)
         }

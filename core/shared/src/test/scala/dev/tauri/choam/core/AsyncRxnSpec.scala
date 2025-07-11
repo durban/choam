@@ -60,9 +60,9 @@ trait AsyncRxnSpec[F[_]]
       _ <- assertResultF(AsyncReactive[F].applyAsync(r, sSpin), 3)
       _ <- assertResultF(AsyncReactive[F].applyAsync(r, sCede), 3)
       _ <- assertResultF(AsyncReactive[F].applyAsync(r, sSleep), 3)
-      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, sSpin), _.isInstanceOf[Rxn.MaxRetriesReached])
-      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, sCede), _.isInstanceOf[Rxn.MaxRetriesReached])
-      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, sSleep), _.isInstanceOf[Rxn.MaxRetriesReached])
+      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, sSpin), _.isInstanceOf[Rxn.MaxRetriesExceeded])
+      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, sCede), _.isInstanceOf[Rxn.MaxRetriesExceeded])
+      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, sSleep), _.isInstanceOf[Rxn.MaxRetriesExceeded])
     } yield ()
   }
 

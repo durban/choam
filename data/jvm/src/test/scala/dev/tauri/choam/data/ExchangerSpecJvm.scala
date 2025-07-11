@@ -303,11 +303,11 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r <- F.both(taskLeft.attempt, taskRight.attempt)
       _ <- fib.cancel
       _ <- r._1 match {
-        case Left(ex) => assertF(ex.isInstanceOf[Rxn.MaxRetriesReached], s"unexpected error (left): ${ex}")
+        case Left(ex) => assertF(ex.isInstanceOf[Rxn.MaxRetriesExceeded], s"unexpected error (left): ${ex}")
         case Right(r) => failF(s"unexpected success (left): $r")
       }
       _ <- r._2 match {
-        case Left(ex) => assertF(ex.isInstanceOf[Rxn.MaxRetriesReached], s"unexpected error (right): ${ex}")
+        case Left(ex) => assertF(ex.isInstanceOf[Rxn.MaxRetriesExceeded], s"unexpected error (right): ${ex}")
         case Right(r) => failF(s"unexpected success (right): $r")
       }
       leftRec <- F.delay(leftReceived.get())
