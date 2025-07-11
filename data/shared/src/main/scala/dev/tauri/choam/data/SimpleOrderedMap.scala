@@ -90,16 +90,6 @@ private final class SimpleOrderedMap[K, V] private (
   final override def clear: Rxn[Unit] =
     repr.update(_ => AvlMap.empty[K, V])
 
-  final override def values(implicit V: Order[V]): Rxn[Vector[V]] = {
-    repr.get.map { am =>
-      val b = scala.collection.mutable.ArrayBuffer.newBuilder[V]
-      b.sizeHint(am.set.size)
-      am.foldLeft(b) { (b, kv) =>
-        b += kv._2
-      }.result().sortInPlace()(using V.toOrdering).toVector
-    }
-  }
-
   final override def keys: Rxn[Chain[K]] = {
     repr.get.map { m =>
       Chain.fromSeq(
@@ -110,7 +100,7 @@ private final class SimpleOrderedMap[K, V] private (
     }
   }
 
-  final override def valuesUnsorted: Rxn[Chain[V]] = {
+  final override def values: Rxn[Chain[V]] = {
     repr.get.map { m =>
       Chain.fromSeq(
         m.foldLeft(Vector.newBuilder[V]) { (vb, kv) =>

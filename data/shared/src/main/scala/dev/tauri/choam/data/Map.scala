@@ -31,8 +31,6 @@ sealed trait Map[K, V] { self =>
   // TODO: a variant of `del` could return the old value (if any)
   // TODO: think about a `putIfPresent` (in CSLM this is another overload of `replace`)
 
-  // TODO:0.5: figure out if we really want to take the key as input (instead of as an arg)
-
   def put(k: K, v: V): Rxn[Option[V]]
   def putIfAbsent(k: K, v: V): Rxn[Option[V]]
   def replace(k: K, ov: V, nv: V): Rxn[Boolean]
@@ -58,11 +56,9 @@ object Map extends MapPlatform {
 
     def clear: Rxn[Unit]
 
-    def values(implicit V: Order[V]): Rxn[Vector[V]] // TODO:0.5: remove this
-
     def keys: Rxn[Chain[K]]
 
-    def valuesUnsorted: Rxn[Chain[V]] // TODO:0.5: rename to `values`
+    def values: Rxn[Chain[V]]
 
     def items: Rxn[Chain[(K, V)]]
   }

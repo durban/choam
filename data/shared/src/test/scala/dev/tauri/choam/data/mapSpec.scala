@@ -71,22 +71,6 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Map.Extra should perform `values` correctly") {
-    for {
-      m <- mkEmptyMap[Int, String]
-      _ <- assertResultF(m.values.run[F], Vector.empty)
-      _ <- (m.put(42, "foo")).run[F]
-      _ <- (m.put(99, "bar")).run[F]
-      v1 <- m.values.run[F]
-      _ <- assertEqualsF(v1, Vector("bar", "foo"))
-      _ <- (m.put(99, "xyz")).run[F]
-      _ <- (m.put(128, "abc")).run[F]
-      _ <- m.del(42).run[F]
-      v2 <- m.values.run[F]
-      _ <- assertEqualsF(v2, Vector("abc", "xyz"))
-    } yield ()
-  }
-
   test("Map.Extra should perform `keys` correctly") {
     for {
       m <- mkEmptyMap[Int, String]
@@ -103,18 +87,18 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Map.Extra should perform `valuesUnsorted` correctly") {
+  test("Map.Extra should perform `values` correctly") {
     for {
       m <- mkEmptyMap[Int, String]
-      _ <- assertResultF(m.valuesUnsorted.run[F], Chain.empty)
+      _ <- assertResultF(m.values.run[F], Chain.empty)
       _ <- (m.put(42, "foo")).run[F]
       _ <- (m.put(99, "bar")).run[F]
-      v1 <- m.valuesUnsorted.run[F]
+      v1 <- m.values.run[F]
       _ <- assertEqualsF(v1.iterator.toSet, ScalaSet("bar", "foo"))
       _ <- (m.put(99, "xyz")).run[F]
       _ <- (m.put(128, "abc")).run[F]
       _ <- m.del(42).run[F]
-      v2 <- m.valuesUnsorted.run[F]
+      v2 <- m.values.run[F]
       _ <- assertEqualsF(v2.iterator.toSet, ScalaSet("abc", "xyz"))
     } yield ()
   }

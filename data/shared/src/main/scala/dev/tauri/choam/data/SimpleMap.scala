@@ -20,7 +20,7 @@ package data
 
 import scala.collection.immutable.{ Map => ScalaMap }
 
-import cats.kernel.{ Hash, Order }
+import cats.kernel.Hash
 import cats.data.Chain
 import cats.collections.HashMap
 
@@ -89,25 +89,13 @@ private final class SimpleMap[K, V] private (
   override def clear: Rxn[Unit] =
     repr.update(_ => HashMap.empty[K, V])
 
-  override def values(implicit V: Order[V]): Rxn[Vector[V]] = {
-    repr.get.map { hm =>
-      val b = scala.collection.mutable.ArrayBuffer.newBuilder[V]
-      b.sizeHint(hm.size)
-      val it =  hm.valuesIterator
-      while (it.hasNext) {
-        b += it.next()
-      }
-      b.result().sortInPlace()(using V.toOrdering).toVector
-    }
-  }
-
   final override def keys: Rxn[Chain[K]] = {
     repr.get.map { hm =>
       Chain.fromIterableOnce(hm.keysIterator)
     }
   }
 
-  final override def valuesUnsorted: Rxn[Chain[V]] = {
+  final override def values: Rxn[Chain[V]] = {
     repr.get.map { hm =>
       Chain.fromIterableOnce(hm.valuesIterator)
     }
