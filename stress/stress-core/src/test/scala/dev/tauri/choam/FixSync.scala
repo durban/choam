@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 
 @JCStressTest
 @State
@@ -36,7 +36,7 @@ class FixSync extends StressTestBase {
   private[this] val ctr: Ref[Int] =
     Ref[Int](0).unsafePerform(null, this.impl)
 
-  private[this] val incrCtr: Axn[Int] =
+  private[this] val incrCtr: Rxn[Int] =
     ctr.getAndUpdate(_ + 1)
 
   private[this] var holder: Rxn[String] =
@@ -51,7 +51,7 @@ class FixSync extends StressTestBase {
     // can be read from `ref.elem` in `fix`. This demonstrates
     // that the rel/acq fences in `fix` are really necessary.
       this.incrCtr.flatMapF { c =>
-        if (c > 0) Axn.pure("foo")
+        if (c > 0) Rxn.pure("foo")
         else rec
       }
     }

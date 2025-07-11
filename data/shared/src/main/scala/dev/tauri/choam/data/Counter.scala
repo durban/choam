@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 
 // TODO: elimination counter (what do with different add values?)
 // TODO: do some benchmarks (`val`s may not worth it)
@@ -27,41 +27,41 @@ sealed abstract class Counter {
 
   def add(n: Long): Rxn[Unit]
 
-  def incr: Axn[Unit]
+  def incr: Rxn[Unit]
 
-  def decr: Axn[Unit]
+  def decr: Rxn[Unit]
 
-  def count: Axn[Long]
+  def count: Rxn[Long]
 }
 
 object Counter {
 
-  final def simple: Axn[Counter] =
+  final def simple: Rxn[Counter] =
     simple(Ref.AllocationStrategy.Default)
 
-  final def simple(str: Ref.AllocationStrategy): Axn[Counter] =
+  final def simple(str: Ref.AllocationStrategy): Rxn[Counter] =
     Ref(0L, str).map(new SimpleCounter(_))
 
-  final def striped: Axn[Counter] = {
+  final def striped: Rxn[Counter] = {
     // default to padded, because for a striped
     // counter it is very likely to be more useful:
     striped(Ref.AllocationStrategy.Padded)
   }
 
-  final def striped(str: Ref.AllocationStrategy): Axn[Counter] = {
+  final def striped(str: Ref.AllocationStrategy): Rxn[Counter] = {
     val arrStr = str match {
       case Ref.AllocationStrategy(padded) =>
         // TODO: use flat = true when it supports padding
         Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = padded)
     }
-    Axn.unsafe.suspendContext { ctx =>
+    Rxn.unsafe.suspendContext { ctx =>
       Ref.array(size = ctx.stripes, initial = 0L, strategy = arrStr).map { arr =>
         new StripedCounter(arr)
       }
     }
   }
 
-  private[choam] final def simple(initial: Long): Axn[Counter] =
+  private[choam] final def simple(initial: Long): Rxn[Counter] =
     Ref(initial).map(new SimpleCounter(_))
 
   private[this] final class SimpleCounter(ref: Ref[Long]) extends Counter {
@@ -69,13 +69,13 @@ object Counter {
     final override def add(n: Long): Rxn[Unit] =
       ref.update { cnt => cnt + n }
 
-    final override val incr: Axn[Unit] =
+    final override val incr: Rxn[Unit] =
       add(1L)
 
-    final override val decr: Axn[Unit] =
+    final override val decr: Rxn[Unit] =
       add(-1L)
 
-    final override val count: Axn[Long] =
+    final override val count: Rxn[Long] =
       ref.get
   }
 
@@ -86,25 +86,25 @@ object Counter {
     // TODO: Look at java.util.concurrent.atomic.Striped64,
     // TODO: which seems similar.
 
-    private[this] final def getStripeId: Axn[Int] =
-      Axn.unsafe.delayContext(_.stripeId)
+    private[this] final def getStripeId: Rxn[Int] =
+      Rxn.unsafe.delayContext(_.stripeId)
 
     final override def add(n: Long): Rxn[Unit] = getStripeId.flatMap { stripeId =>
       val ref = arr.unsafeGet(stripeId)
       ref.update { cnt => cnt + n }
     }
 
-    final override val incr: Axn[Unit] =
+    final override val incr: Rxn[Unit] =
       add(1L)
 
-    final override val decr: Axn[Unit] =
+    final override val decr: Rxn[Unit] =
       add(-1L)
 
-    final override val count: Axn[Long] = {
+    final override val count: Rxn[Long] = {
       val len = arr.length
-      def go(idx: Int, acc: Long): Axn[Long] = {
+      def go(idx: Int, acc: Long): Rxn[Long] = {
         if (idx >= len) {
-          Axn.pure(acc)
+          Rxn.pure(acc)
         } else {
           val ref = arr.unsafeGet(idx)
           ref.get.flatMapF { c =>

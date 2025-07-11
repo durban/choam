@@ -25,19 +25,6 @@ import internal.mcas.Mcas
  */
 object Axn {
 
-  // Note: don't put implicits here, because it is not a real companion object!
-
-  final def pure[A](a: A): Axn[A] =
-    Rxn.pure(a)
-
-  final def unit: Axn[Unit] =
-    pure(())
-
-  private[this] final val _none: Axn[Option[Nothing]] =
-    pure(None)
-
-  private[choam] final def none[A]: Axn[Option[A]] =
-    _none
 
   final object unsafe {
 

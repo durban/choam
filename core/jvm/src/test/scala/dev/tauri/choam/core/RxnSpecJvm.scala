@@ -244,18 +244,18 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
 
   test("unsafe.unread should make a conflict disappear") {
     val N = 50000
-    def withoutUnread(r1: Ref[String], r2: Ref[String], r3: Ref[String]): Axn[Int] = {
+    def withoutUnread(r1: Ref[String], r2: Ref[String], r3: Ref[String]): Rxn[Int] = {
       // without unread, this will sometimes retry if
       // there is a concurrent change to `r1`, and will
       // return `2`:
-      (r1.get *> r2.update(_ + "x") *> r3.update(_ + "y")).as(1) + Axn.pure(2)
+      (r1.get *> r2.update(_ + "x") *> r3.update(_ + "y")).as(1) + Rxn.pure(2)
     }
-    def withUnread(r1: Ref[String], r2: Ref[String], r3: Ref[String]): Axn[Int] = {
+    def withUnread(r1: Ref[String], r2: Ref[String], r3: Ref[String]): Rxn[Int] = {
       // with unread, this must never retry, so must
       // always return `1`:
-      (r1.get *> r2.update(_ + "x") *> r3.update(_ + "y") *> Rxn.unsafe.unread(r1)).as(1) + Axn.pure(2)
+      (r1.get *> r2.update(_ + "x") *> r3.update(_ + "y") *> Rxn.unsafe.unread(r1)).as(1) + Rxn.pure(2)
     }
-    def tst(withOrWithout: (Ref[String], Ref[String], Ref[String]) => Axn[Int]): F[Int] = for {
+    def tst(withOrWithout: (Ref[String], Ref[String], Ref[String]) => Rxn[Int]): F[Int] = for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("b").run[F]
       r3 <- Ref("c").run[F]
@@ -471,7 +471,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       latch1 <- F.delay(new CountDownLatch(2))
       latch2 <- F.delay(new CountDownLatch(1))
       leftTries <- F.delay(new AtomicInteger)
-      left = ref0.update(_ + 1) *> Axn.unsafe.delay {
+      left = ref0.update(_ + 1) *> Rxn.unsafe.delay {
         latch1.countDown()
         leftTries.getAndIncrement()
         latch2.await()
@@ -482,7 +482,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       }
       concurrentUpdate1 = F.blocking(latch1.await()) *> ref1.update(_ + 1).run[F] *> F.delay(latch2.countDown())
       rightTries <- F.delay(new AtomicInteger)
-      right = Rxn.unsafe.tentativeRead(ref2) *> Axn.unsafe.delay {
+      right = Rxn.unsafe.tentativeRead(ref2) *> Rxn.unsafe.delay {
         latch1.countDown()
         rightTries.getAndIncrement()
         latch2.await()
@@ -509,7 +509,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
   test("unsafe.tentativeRead, then update (must see the same value)") {
     val t = for {
       refs <- (1 to 5).toList.traverse { _ => Ref(0) }.run[F]
-      rxn = Axn.unsafe.delay(Random.shuffle(refs).take(3)).flatMapF {
+      rxn = Rxn.unsafe.delay(Random.shuffle(refs).take(3)).flatMapF {
         case r1 :: r2 :: r3 :: Nil =>
           r1.update(_ + 1) *> Rxn.unsafe.tentativeRead(r2).flatMapF { tRead =>
             r3.update(_ + 1) *> r2.update { ov =>
@@ -520,7 +520,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         case x =>
           Rxn.unsafe.panic(new AssertionError(s"unexpected: $x"))
       }
-      bgFiber <- Axn.unsafe.delay(Random.shuffle(refs)).flatMapF { refs =>
+      bgFiber <- Rxn.unsafe.delay(Random.shuffle(refs)).flatMapF { refs =>
         refs.traverse { ref => ref.update(_ + 1) }
       }.run[F].foreverM[Unit].start
       _ <- F.both(F.cede *> rxn.run[F], F.cede *> rxn.run[F]).guarantee(bgFiber.cancel)
@@ -589,7 +589,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
   test("read-mostly `Rxn`s with cycle") {
     val N = 64
     val P = 16
-    def readMostlyRxn(refs: List[Ref[Int]]): Axn[Int] = {
+    def readMostlyRxn(refs: List[Ref[Int]]): Rxn[Int] = {
       Rxn.fastRandom.shuffleList(refs).flatMapF { sRefs =>
         sRefs.tail.take(refs.size >> 1).traverse(ref => ref.get) *> sRefs.head.getAndUpdate(_ + 1)
       }
@@ -651,10 +651,10 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       left = (ex.exchange("foo").flatMapF { (exchanged: Int) =>
         Rxn.unsafe.panic(exc).as(exchanged)
-      }) + Axn.pure(0)
+      }) + Rxn.pure(0)
       right = ex.dual.exchange(42).flatMapF { (exchanged: String) =>
         r1.update(_ + 1).as(exchanged)
-      } + Axn.pure("fallback")
+      } + Rxn.pure("fallback")
       rr <- F.both(
         F.cede *> left.run[F].attempt,
         F.cede *> right.run[F].attempt,
@@ -687,10 +687,10 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       left = ((ex.exchange("foo").flatMapF { (exchanged: Int) =>
         Rxn.unsafe.panic(exc).as(exchanged)
-      }) + Axn.pure(0)).postCommit(Rxn.unsafe.panic(exc2)).postCommit(rPcLeft.update(_ + 1))
+      }) + Rxn.pure(0)).postCommit(Rxn.unsafe.panic(exc2)).postCommit(rPcLeft.update(_ + 1))
       right = (ex.dual.exchange(42).flatMapF { (exchanged: String) =>
         r1.update(_ + 1).as(exchanged)
-      } + Axn.pure("fallback")).postCommit(Rxn.unsafe.panic(exc3)).postCommit(rPcRight.update(_ + 1))
+      } + Rxn.pure("fallback")).postCommit(Rxn.unsafe.panic(exc3)).postCommit(rPcRight.update(_ + 1))
       rr <- F.both(
         F.cede *> left.run[F].attempt,
         F.cede *> right.run[F].attempt,

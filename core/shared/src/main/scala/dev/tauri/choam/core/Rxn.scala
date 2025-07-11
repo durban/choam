@@ -433,6 +433,9 @@ object Rxn extends RxnInstances0 {
   private[this] val _unit: RxnImpl[Unit] =
     pureImpl(())
 
+  private[this] final val _none: Axn[Option[Nothing]] =
+    pure(None)
+
   // TODO: private[this] val _true: RxnImpl[Any, Boolean] = ... // and _false
 
   @inline
@@ -441,6 +444,9 @@ object Rxn extends RxnInstances0 {
 
   private[choam] final def unitImpl: RxnImpl[Unit] =
     _unit
+
+  private[choam] final def none[A]: Axn[Option[A]] =
+    _none
 
   final def postCommit(pc: Rxn[Unit]): Rxn[Unit] =
     new Rxn.PostCommit[Unit](unit, _ => pc)

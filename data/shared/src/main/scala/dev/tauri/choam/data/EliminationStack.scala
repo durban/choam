@@ -20,7 +20,7 @@ package data
 
 import java.util.concurrent.ThreadLocalRandom
 
-import core.{ Rxn, Axn, Ref, EliminatorImpl, Eliminator }
+import core.{ Rxn, Ref, EliminatorImpl, Eliminator }
 
 private final class EliminationStack[A](underlying: Stack[A])
   extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), _ => underlying.tryPop, _ => ())
@@ -30,44 +30,44 @@ private final class EliminationStack[A](underlying: Stack[A])
   final def push(a: A): Rxn[Unit] =
     this.leftOp(a)
 
-  final def tryPop: Axn[Option[A]] =
+  final def tryPop: Rxn[Option[A]] =
     this.rightOp(null)
 
-  final def size: Axn[Int] =
+  final def size: Rxn[Int] =
     this.underlying.size
 }
 
 private object EliminationStack {
 
-  final def apply[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[Stack[A]] = {
+  final def apply[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Stack[A]] = {
     Stack.treiberStack[A](str).flatMapF { ul =>
-      Axn.unsafe.delay { new EliminationStack[A](ul) }
+      Rxn.unsafe.delay { new EliminationStack[A](ul) }
     }
   }
 
   sealed trait TaggedEliminationStack[A] {
     def push(a: A): Rxn[Either[Unit, Unit]]
-    def tryPop: Axn[Either[Option[A], Option[A]]]
+    def tryPop: Rxn[Either[Option[A], Option[A]]]
   }
 
-  final def tagged[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[TaggedEliminationStack[A]] = {
+  final def tagged[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[TaggedEliminationStack[A]] = {
     Stack.treiberStack[A](str).flatMapF { ul =>
       taggedFrom(ul.push, ul.tryPop)
     }
   }
 
-  final def taggedFlaky[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[TaggedEliminationStack[A]] = {
+  final def taggedFlaky[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[TaggedEliminationStack[A]] = {
     Stack.treiberStack[A](str).flatMapF { ul =>
       taggedFrom(
         a => ul.push(a).flatMapF { x =>
-          if (ThreadLocalRandom.current().nextBoolean()) Axn.pure(x)
+          if (ThreadLocalRandom.current().nextBoolean()) Rxn.pure(x)
           else Rxn.unsafe.retry[Unit]
         },
         ul.tryPop.flatMapF {
           case None =>
-            Axn.none
+            Rxn.none
           case s @ Some(_) =>
-            if (ThreadLocalRandom.current().nextBoolean()) Axn.pure(s)
+            if (ThreadLocalRandom.current().nextBoolean()) Rxn.pure(s)
             else Rxn.unsafe.retry[Option[A]]
         },
       )
@@ -76,8 +76,8 @@ private object EliminationStack {
 
   private[this] final def taggedFrom[A](
     push: A => Rxn[Unit],
-    tryPop: Axn[Option[A]],
-  ): Axn[TaggedEliminationStack[A]] = {
+    tryPop: Rxn[Option[A]],
+  ): Rxn[TaggedEliminationStack[A]] = {
     Eliminator.tagged[A, Unit, Any, Option[A]](
       push,
       Some(_),
@@ -89,7 +89,7 @@ private object EliminationStack {
         final override def push(a: A): Rxn[Either[Unit, Unit]] =
           elim.leftOp(a)
 
-        final override def tryPop: Axn[Either[Option[A], Option[A]]] =
+        final override def tryPop: Rxn[Either[Option[A], Option[A]]] =
           elim.rightOp(null)
       }
     }

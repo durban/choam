@@ -18,22 +18,22 @@
 package dev.tauri.choam
 package data
 
-import core.{ Axn, Ref }
+import core.{ Ref, Rxn }
 
 private[choam] sealed abstract class UnboundedDeque[A] { // TODO: consider making it public
 
-  def addFirst(a: A): Axn[Unit]
+  def addFirst(a: A): Rxn[Unit]
 
-  def addLast(a: A): Axn[Unit]
+  def addLast(a: A): Rxn[Unit]
 
-  def tryTakeFirst: Axn[Option[A]]
+  def tryTakeFirst: Rxn[Option[A]]
 
-  def tryTakeLast: Axn[Option[A]]
+  def tryTakeLast: Rxn[Option[A]]
 }
 
 private[choam] object UnboundedDeque {
 
-  final def apply[A]: Axn[UnboundedDeque[A]] = {
+  final def apply[A]: Rxn[UnboundedDeque[A]] = {
     newSentinelNode[A].flatMapF { node =>
       Ref(node).flatMapF { first =>
         Ref(node).map { last =>
@@ -48,7 +48,7 @@ private[choam] object UnboundedDeque {
     last: Ref[Node[A]],
   ) extends UnboundedDeque[A] {
 
-    def addFirst(a: A): Axn[Unit] = first.get.flatMapF { fst =>
+    def addFirst(a: A): Rxn[Unit] = first.get.flatMapF { fst =>
       if (fst.isSentinel) {
         newNode(a, prev = null, next = null).flatMap { node =>
           first.set(node) *> last.set(node)
@@ -60,7 +60,7 @@ private[choam] object UnboundedDeque {
       }
     }
 
-    def addLast(a: A): Axn[Unit] = last.get.flatMapF { lst =>
+    def addLast(a: A): Rxn[Unit] = last.get.flatMapF { lst =>
       if (lst.isSentinel) {
         newNode(a, prev = null, next = null).flatMap { node =>
           last.set(node) *> first.set(node)
@@ -72,9 +72,9 @@ private[choam] object UnboundedDeque {
       }
     }
 
-    def tryTakeFirst: Axn[Option[A]] = first.get.flatMapF { fst =>
+    def tryTakeFirst: Rxn[Option[A]] = first.get.flatMapF { fst =>
       if (fst.isSentinel) {
-        Axn.none
+        Rxn.none
       } else {
         fst.next.get.flatMapF { nxt =>
           if (nxt eq null) {
@@ -88,9 +88,9 @@ private[choam] object UnboundedDeque {
       }
     }
 
-    def tryTakeLast: Axn[Option[A]] = last.get.flatMapF { lst =>
+    def tryTakeLast: Rxn[Option[A]] = last.get.flatMapF { lst =>
       if (lst.isSentinel) {
-        Axn.none
+        Rxn.none
       } else {
         lst.prev.get.flatMapF { prv =>
           if (prv eq null) {
@@ -109,7 +109,7 @@ private[choam] object UnboundedDeque {
     final def isSentinel: Boolean = equ(this.a, _sentinel)
   }
 
-  private[this] final def newNode[A](a: A, prev: Node[A], next: Node[A]): Axn[Node[A]] = {
+  private[this] final def newNode[A](a: A, prev: Node[A], next: Node[A]): Rxn[Node[A]] = {
     Ref[Node[A]](prev).flatMapF { prev =>
       Ref[Node[A]](next).map { next =>
         new Node(a, prev, next)
@@ -120,7 +120,7 @@ private[choam] object UnboundedDeque {
   private[this] val _sentinel: AnyRef =
     new AnyRef
 
-  private[this] final def newSentinelNode[A]: Axn[Node[A]] = {
+  private[this] final def newSentinelNode[A]: Rxn[Node[A]] = {
     Ref[Node[A]](null).flatMapF { prev =>
       Ref[Node[A]](null).map { next =>
         new Node(_sentinel.asInstanceOf[A], prev, next)

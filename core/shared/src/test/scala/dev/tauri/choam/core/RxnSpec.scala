@@ -93,7 +93,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       q <- Ref("q").run[F]
       rea = (
         (
-          (Rxn.unsafe.cas(a, "a", "aa") + (Rxn.unsafe.cas(b, "b", "bb") *> Axn.unsafe.delay {
+          (Rxn.unsafe.cas(a, "a", "aa") + (Rxn.unsafe.cas(b, "b", "bb") *> Rxn.unsafe.delay {
             this.mcasImpl.currentContext().tryPerformSingleCas(y.loc, "y", "-")
           }).void) *> Rxn.unsafe.cas(y, "-", "yy")
         ) +
@@ -252,7 +252,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       ref <- Ref("foo").run[F]
       successfulCas = Rxn.unsafe.cas(ref, "foo", "bar")
-      fails = (1 to n).foldLeft[Axn[Unit]](Rxn.unsafe.retry) { (r, _) =>
+      fails = (1 to n).foldLeft[Rxn[Unit]](Rxn.unsafe.retry) { (r, _) =>
         r + Rxn.unsafe.retry
       }
       r = fails + successfulCas
@@ -269,7 +269,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       refs <- (1 to n).toList.traverse { _ =>
         Ref("x").run[F]
       }
-      fails = refs.foldLeft[Axn[Unit]](Rxn.unsafe.retry) { (r, ref) =>
+      fails = refs.foldLeft[Rxn[Unit]](Rxn.unsafe.retry) { (r, ref) =>
         r + Rxn.unsafe.cas(ref, "y", "this will never happen")
       }
       r = fails + successfulCas
@@ -361,7 +361,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
    */
   def backtrackTest2(x: Int): F[Unit] = {
 
-    def oneChoice(leftCont: Axn[Unit], rightCont: Axn[Unit], x: Int, label: String): F[(Axn[Unit], F[Unit])] = for {
+    def oneChoice(leftCont: Rxn[Unit], rightCont: Rxn[Unit], x: Int, label: String): F[(Rxn[Unit], F[Unit])] = for {
       _ <- F.unit
       ol = s"old-${label}-left"
       nl = s"new-${label}-left"
@@ -380,7 +380,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
     for {
       leafs <- (0 until 16).toList.traverse(idx => Ref(s"foo-${idx}").run[F])
-      lr1 <- leafs.grouped(2).toList.traverse[F, (Axn[Unit], F[Unit])] {
+      lr1 <- leafs.grouped(2).toList.traverse[F, (Rxn[Unit], F[Unit])] {
         case List(refLeft, refRight) =>
           Rxn.unsafe.directRead(refLeft).run[F].flatMap { ol =>
             Rxn.unsafe.directRead(refRight).run[F].flatMap { or =>
@@ -393,7 +393,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       (l1, rss1) = lr1
       _ <- assertEqualsF(l1.size, 8)
 
-      lr2 <- l1.grouped(2).toList.traverse[F, (Axn[Unit], F[Unit])] {
+      lr2 <- l1.grouped(2).toList.traverse[F, (Rxn[Unit], F[Unit])] {
         case List(rl, rr) =>
           oneChoice(rl, rr, x, "l2")
         case _ =>
@@ -402,7 +402,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       (l2, rss2) = lr2
       _ <- assertEqualsF(l2.size, 4)
 
-      lr3 <- l2.grouped(2).toList.traverse[F, (Axn[Unit], F[Unit])] {
+      lr3 <- l2.grouped(2).toList.traverse[F, (Rxn[Unit], F[Unit])] {
         case List(rl, rr) =>
           oneChoice(rl, rr, x, "l3")
         case _ =>
@@ -432,7 +432,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  def mkOkCASes(n: Int, ov: String, nv: String): F[(List[Ref[String]], Axn[Unit])] = for {
+  def mkOkCASes(n: Int, ov: String, nv: String): F[(List[Ref[String]], Rxn[Unit])] = for {
     ref0 <- Ref(ov).run[F]
     refs <- Ref(ov).run[F].replicateA(n - 1)
     r = refs.foldLeft(Rxn.unsafe.cas(ref0, ov, nv)) { (r, ref) =>
@@ -444,7 +444,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     def m(r: Ref[Int]) =
       r.update { v => v + 1 }
     def retryOnce(r: AtomicInteger) = {
-      Axn.unsafe.delay { r.getAndIncrement }.flatMap { ctr =>
+      Rxn.unsafe.delay { r.getAndIncrement }.flatMap { ctr =>
         if (ctr > 0) Rxn.unit
         else Rxn.unsafe.retry
       }
@@ -606,7 +606,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("flatten") {
-    val inner: Axn[Int] = Axn.pure(42)
+    val inner: Rxn[Int] = Rxn.pure(42)
     assertResultF(Rxn.pure(99).as(inner).flatten.run, 42)
   }
 
@@ -1025,15 +1025,15 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Axn.unsafe.delayContext") {
-    Axn.unsafe.delayContext { (tc: Mcas.ThreadContext) =>
+  test("Rxn.unsafe.delayContext") {
+    Rxn.unsafe.delayContext { (tc: Mcas.ThreadContext) =>
       tc eq this.mcasImpl.currentContext()
     }.run[F].flatMap(ok => assertF(ok))
   }
 
-  test("Axn.unsafe.suspendContext") {
-    Axn.unsafe.suspendContext { ctx =>
-      Axn.pure(ctx eq this.mcasImpl.currentContext())
+  test("Rxn.unsafe.suspendContext") {
+    Rxn.unsafe.suspendContext { ctx =>
+      Rxn.pure(ctx eq this.mcasImpl.currentContext())
     }.run[F].flatMap(ok => assertF(ok))
   }
 
@@ -1181,18 +1181,18 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val exc = new RxnSpec.MyException
     for {
       _ <- assertResultF(Rxn.unsafe.panic(exc).run[F].attempt, Left(exc))
-      _ <- assertResultF(Axn.unsafe.panic(exc).run[F].attempt, Left(exc))
+      _ <- assertResultF(Rxn.unsafe.panic(exc).run[F].attempt, Left(exc))
       _ <- assertResultF((Rxn.unsafe.panic(exc) *> Rxn.unsafe.retry).run[F].attempt, Left(exc))
-      _ <- assertResultF((Axn.unsafe.panic(exc) *> Rxn.unsafe.retry).run[F].attempt, Left(exc))
-      _ <- assertResultF((Rxn.unsafe.panic(exc) + Axn.pure(42)).run[F].attempt, Left(exc))
-      _ <- assertResultF((Axn.unsafe.panic(exc) + Axn.pure(42)).run[F].attempt, Left(exc))
+      _ <- assertResultF((Rxn.unsafe.panic(exc) *> Rxn.unsafe.retry).run[F].attempt, Left(exc))
+      _ <- assertResultF((Rxn.unsafe.panic(exc) + Rxn.pure(42)).run[F].attempt, Left(exc))
+      _ <- assertResultF((Rxn.unsafe.panic(exc) + Rxn.pure(42)).run[F].attempt, Left(exc))
       _ <- assertResultF((Rxn.unsafe.retry[Int] + Rxn.unsafe.panic[Int](exc)).run[F].attempt, Left(exc))
-      _ <- assertResultF((Rxn.unsafe.retry[Int] + Axn.unsafe.panic[Int](exc)).run[F].attempt, Left(exc))
+      _ <- assertResultF((Rxn.unsafe.retry[Int] + Rxn.unsafe.panic[Int](exc)).run[F].attempt, Left(exc))
       _ <- assertResultF(F.delay {
         Rxn.unsafe.panic[Int](exc).unsafeRun(this.mcasImpl)
       }.attempt, Left(exc))
       _ <- assertResultF(F.delay {
-        Axn.unsafe.panic[Int](exc).unsafeRun(this.mcasImpl)
+        Rxn.unsafe.panic[Int](exc).unsafeRun(this.mcasImpl)
       }.attempt, Left(exc))
     } yield ()
   }
@@ -1260,19 +1260,19 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("unsafe.delay(throw), i.e., unsafe.panic") {
     val exc = new RxnSpec.MyException
-    def attemptRun[A](axn: Axn[A]): F[Either[Throwable, A]] = {
+    def attemptRun[A](axn: Rxn[A]): F[Either[Throwable, A]] = {
       axn.run[F].attempt
     }
-    def assertExc[A](axn: Axn[A]): F[Unit] = {
+    def assertExc[A](axn: Rxn[A]): F[Unit] = {
       assertResultF(attemptRun(axn), Left(exc))
     }
     for {
       _ <- assertResultF(
-        attemptRun[Int](Axn.unsafe.delay { 42 }),
+        attemptRun[Int](Rxn.unsafe.delay { 42 }),
         Right(42),
       )
-      _ <- assertExc((Axn.unsafe.delay { throw exc }))
-      _ <- assertExc(Axn.unsafe.delay { throw exc } *> Rxn.unsafe.retry)
+      _ <- assertExc((Rxn.unsafe.delay { throw exc }))
+      _ <- assertExc(Rxn.unsafe.delay { throw exc } *> Rxn.unsafe.retry)
       _ <- assertExc(Rxn.unsafe.panic(exc) * Rxn.pure(42))
       _ <- assertExc(Rxn.pure(42) * Rxn.unsafe.panic(exc))
       _ <- assertExc(Rxn.tailRecM(0) { i =>
@@ -1293,12 +1293,12 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertExc(r3.modifyWith { _ => Rxn.unsafe.panic(exc) })
       _ <- assertResultF(r3.get.run, 0)
       _ <- assertExc(Rxn.unsafe.panic(exc).as(42))
-      _ <- assertExc(Rxn.unsafe.panic(exc) *> Axn.pure(42))
-      _ <- assertExc(Rxn.unsafe.panic[Int](exc).flatMapF { _ => Axn.pure(42) })
-      _ <- assertExc(Rxn.unsafe.panic[Int](exc).flatMap { _ => Axn.pure(42) })
-      _ <- assertExc(Rxn.unsafe.panic[Int](exc).as(Axn.pure(42)).flatten)
+      _ <- assertExc(Rxn.unsafe.panic(exc) *> Rxn.pure(42))
+      _ <- assertExc(Rxn.unsafe.panic[Int](exc).flatMapF { _ => Rxn.pure(42) })
+      _ <- assertExc(Rxn.unsafe.panic[Int](exc).flatMap { _ => Rxn.pure(42) })
+      _ <- assertExc(Rxn.unsafe.panic[Int](exc).as(Rxn.pure(42)).flatten)
       _ <- assertExc(Rxn.unsafe.panic[Int](exc).map { _ => 42 })
-      _ <- assertExc(Rxn.unsafe.panic[Int](exc).map2(Axn.pure(42)) { (_, _) => 42 })
+      _ <- assertExc(Rxn.unsafe.panic[Int](exc).map2(Rxn.pure(42)) { (_, _) => 42 })
       _ <- assertExc(Rxn.unsafe.orElse(
         Rxn.unsafe.panic(exc) *> Rxn.unsafe.retryWhenChanged,
         Rxn.pure(42)
@@ -1366,7 +1366,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     def foo[G: Monoid](g1: G, g2: G): G =
       Monoid[G].combine(g1, g2)
 
-    assertResultF(foo[Axn[String]](Axn.pure("a"), Axn.pure("b")).run[F], "ab")
+    assertResultF(foo[Rxn[String]](Rxn.pure("a"), Rxn.pure("b")).run[F], "ab")
   }
 
   test("Applicative instance") {
@@ -1400,7 +1400,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(rxn0.run[F], "result")
       ref <- Ref.unpadded("-").run[F]
       rxn1 = inst.fix[Int] { rec =>
-        Rxn.unsafe.cas(ref, "a", "b").as(42) + (Axn.unsafe.delay {
+        Rxn.unsafe.cas(ref, "a", "b").as(42) + (Rxn.unsafe.delay {
           if (!ref.loc.unsafeCasV("-", "a")) { throw new AssertionError }
         } *> Rxn.unsafe.retry) + rec
       }
@@ -1427,7 +1427,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Clock instance") {
-    val inst = cats.effect.kernel.Clock[Axn]
+    val inst = cats.effect.kernel.Clock[Rxn]
     for {
       t1t2 <- (inst.monotonic * inst.monotonic).run[F]
       _ <- assertF(t1t2._1 <= t1t2._2)
@@ -1435,18 +1435,18 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Reactive is a FunctionK") {
-    Reactive[F] : FunctionK[Axn, F]
+    Reactive[F] : FunctionK[Rxn, F]
   }
 
   private val never = Rxn.unsafe.retry[Int]
 
   test("maxRetries") {
     def countTries(ctr: AtomicInteger) = {
-      Axn.unsafe.delay { ctr.getAndIncrement() } *> Rxn.unsafe.retry[Int]
+      Rxn.unsafe.delay { ctr.getAndIncrement() } *> Rxn.unsafe.retry[Int]
     }
     def succeedsOn3rdRetry(ctr: AtomicInteger) = {
-      Axn.unsafe.delay { ctr.getAndIncrement() }.flatMapF { retries =>
-        if (retries == 3) Axn.pure("foo")
+      Rxn.unsafe.delay { ctr.getAndIncrement() }.flatMapF { retries =>
+        if (retries == 3) Rxn.pure("foo")
         else Rxn.unsafe.retry[String]
       }
     }
@@ -1548,7 +1548,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("Executing a Rxn which doesn't change Refs shouldn't change the global version") {
     val r = Ref.unpadded("foo").flatMapF { ref =>
-      Axn.unsafe.delay { new Exception }.map { ex =>
+      Rxn.unsafe.delay { new Exception }.map { ex =>
         (ref, ex)
       }
     }
@@ -1591,6 +1591,6 @@ private[choam] object RxnSpec {
     Rxn.unit.flatMapF(_ => throw new MyException),
     Rxn.unit.flatMap[Unit](_ => throw new MyException),
     Rxn.unsafe.delay[Unit] { throw new MyException },
-    Axn.pure(42L).postCommit(_ => Rxn.unit.map(_ => throw new MyException)),
+    Rxn.pure(42L).postCommit(_ => Rxn.unit.map(_ => throw new MyException)),
   )
 }
