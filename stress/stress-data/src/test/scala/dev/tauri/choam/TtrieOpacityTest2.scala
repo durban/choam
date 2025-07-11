@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLLL_Result
 
-import core.=#>
+import core.Rxn
 
 @JCStressTest
 @State
@@ -38,15 +38,15 @@ class TtrieOpacityTest2 extends StressTestBase {
 
   private[this] val ttrie = {
     val m = TtrieTest.newRandomTtrie(size = 128, avoid = key)
-    m.put.unsafePerform(key -> "a", this.impl)
+    m.put(key, "a").unsafePerform(null, this.impl)
     m
   }
 
-  private[this] val delete: Int =#> Boolean =
-    ttrie.del
+  private[this] final def delete(k: Int): Rxn[Boolean] =
+    ttrie.del(k)
 
-  private[this] final def lookup(r: LLLL_Result): Int =#> (Option[String], Option[String]) = {
-    (ttrie.get * ttrie.get).map { optopt =>
+  private[this] final def lookup(r: LLLL_Result, k: Int): Rxn[(Option[String], Option[String])] = {
+    (ttrie.get(k) * ttrie.get(k)).map { optopt =>
       if (optopt._1 != optopt._2) {
         if (r ne null) {
           r.r4 = optopt
@@ -58,16 +58,16 @@ class TtrieOpacityTest2 extends StressTestBase {
 
   @Actor
   def del(r: LLLL_Result): Unit = {
-    r.r1 = delete.unsafePerform(key, this.impl)
+    r.r1 = delete(key).unsafePerform(null, this.impl)
   }
 
   @Actor
   def get(r: LLLL_Result): Unit = {
-    r.r2 = lookup(r).unsafePerform(key, this.impl)
+    r.r2 = lookup(r, key).unsafePerform(null, this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLLL_Result): Unit = {
-    r.r3 = lookup(null).unsafePerform(key, this.impl)
+    r.r3 = lookup(null, key).unsafePerform(null, this.impl)
   }
 }

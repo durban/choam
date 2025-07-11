@@ -43,25 +43,25 @@ class TtrieComposedTest extends StressTestBase {
   private[this] val ct2 =
     TtrieComposedTest.newTtrie714Small()
 
-  private[this] val insert: Rxn[((Int, String), (Int, String)), (Option[String], Option[String])] =
-    ct1.put × ct2.put
+  private[this] final def insert(k1: Int, v1: String, k2: Int, v2: String): Rxn[(Option[String], Option[String])] =
+    ct1.put(k1, v1) * ct2.put(k2, v2)
 
-  private[this] val lookup: Rxn[(Int, Int), (Option[String], Option[String])] =
-    ct1.get × ct2.get
+  private[this] final def lookup(k1: Int, k2: Int): Rxn[(Option[String], Option[String])] =
+    ct1.get(k1) * ct2.get(k2)
 
   @Actor
   def ins(r: LLL_Result): Unit = {
-    r.r1 = insert.unsafePerform((14 -> "x", 1 -> "y"), this.impl)
+    r.r1 = insert(14, "x", 1, "y").unsafePerform(null, this.impl)
   }
 
   @Actor
   def get(r: LLL_Result): Unit = {
-    r.r2 = lookup.unsafePerform((14, 1), this.impl)
+    r.r2 = lookup(14, 1).unsafePerform(null, this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r3 = lookup.unsafePerform((14, 1), this.impl)
+    r.r3 = lookup(14, 1).unsafePerform(null, this.impl)
   }
 }
 
@@ -78,10 +78,10 @@ object TtrieComposedTest {
         x % 7
     }
     val m = MapHelper.ttrie[Int, String](using h).unsafeRun(initMcas)
-    m.put.unsafePerform(0 -> "0", initMcas)
-    m.put.unsafePerform(1 -> "1", initMcas)
-    m.put.unsafePerform(7 -> "7", initMcas)
-    m.put.unsafePerform(8 -> "8", initMcas)
+    m.put(0, "0").unsafePerform(null, initMcas)
+    m.put(1, "1").unsafePerform(null, initMcas)
+    m.put(7, "7").unsafePerform(null, initMcas)
+    m.put(8, "8").unsafePerform(null, initMcas)
     m
   }
 }

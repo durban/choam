@@ -38,8 +38,8 @@ class RemoveQueueRemoveTest1B extends RemoveQueueStressTestBase {
 
   private[this] val queueAndRemover = {
     val q = this.newQueue[String]()
-    val remover = q.enqueueWithRemover.unsafePerform("z", this.impl)
-    q.enqueue.unsafePerform("x", this.impl)
+    val remover = q.enqueueWithRemover("z").unsafePerform(null, this.impl)
+    q.enqueue("x").unsafePerform(null, this.impl)
     (q, remover)
   }
 

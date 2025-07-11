@@ -59,22 +59,22 @@ private[data] object TtrieModelTest {
 
     @Operation
     def insert(k: String, v: String): Option[String] = {
-      m.put.unsafePerform(k -> v, emcas)
+      m.put(k, v).unsafePerform(null, emcas)
     }
 
     @Operation
     def insertIfAbsent(k: String, v: String): Option[String] = {
-      m.putIfAbsent.unsafePerform(k -> v, emcas)
+      m.putIfAbsent(k, v).unsafePerform(null, emcas)
     }
 
     @Operation
     def lookup(k: String): Option[String] = {
-      m.get.unsafePerform(k, emcas)
+      m.get(k).unsafePerform(null, emcas)
     }
 
     @Operation
     def removeKey(k: String): Boolean = {
-      m.del.unsafePerform(k, emcas)
+      m.del(k).unsafePerform(null, emcas)
     }
   }
 
@@ -86,7 +86,7 @@ private[data] object TtrieModelTest {
   class SkipListTestState extends AbstractTestState {
     protected[this] override val m: Ttrie[String, String] =
       Ttrie.skipListBased[String, String](Ref.AllocationStrategy.Default).flatMapF { (m: Ttrie[String, String]) =>
-        m.get.provide("dummy").as(m) // FIXME?
+        m.get("dummy").as(m) // FIXME?
       }.unsafeRun(emcas)
   }
 }

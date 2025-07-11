@@ -41,8 +41,8 @@ class EliminationStackConflictTest extends StressTestBase {
   private[this] val ref: Ref[Int] =
     Ref(0).unsafeRun(this.impl)
 
-  private[this] val _push: Rxn[String, Either[Unit, Unit]] =
-    ref.update(_ + 42) *> stack.push
+  private[this] final def _push(s: String): Rxn[Either[Unit, Unit]] =
+    ref.update(_ + 42) *> stack.push(s)
 
   private[this] val _tryPop: Axn[Either[Option[String], Option[String]]] = {
     stack.tryPop.flatMapF {
@@ -53,7 +53,7 @@ class EliminationStackConflictTest extends StressTestBase {
 
   @Actor
   def push(r: LLL_Result): Unit = {
-    r.r1 = _push.unsafePerform("a", this.impl)
+    r.r1 = _push("a").unsafePerform(null, this.impl)
   }
 
   @Actor

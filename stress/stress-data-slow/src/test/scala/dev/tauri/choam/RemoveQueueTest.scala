@@ -43,7 +43,7 @@ class RemoveQueueTest extends RemoveQueueStressTestBase {
     (for {
       //                0    1
       removers <- List("-", "-").traverse { s =>
-        q.enqueueWithRemover.run[SyncIO](s)
+        q.enqueueWithRemover(s).run[SyncIO]
       }
       _ <- removers(0).run[SyncIO]
       _ <- removers(1).run[SyncIO]
@@ -51,20 +51,17 @@ class RemoveQueueTest extends RemoveQueueStressTestBase {
     q
   }
 
-  private[this] val enqueue =
-    queue.enqueue
-
   private[this] val tryDeque =
     queue.tryDeque
 
   @Actor
   def enq1(): Unit = {
-    enqueue.unsafePerform("x", this.impl)
+    queue.enqueue("x").unsafePerform(null, this.impl)
   }
 
   @Actor
   def enq2(): Unit = {
-    enqueue.unsafePerform("y", this.impl)
+    queue.enqueue("y").unsafePerform(null, this.impl)
   }
 
   @Actor

@@ -38,8 +38,8 @@ class EliminationStackTest extends StressTestBase {
   private[this] val stack: TaggedEliminationStack[String] =
     EliminationStack.taggedFlaky[String]().unsafeRun(this.impl)
 
-  private[this] val _push: Rxn[String, Either[Unit, Unit]] =
-    stack.push
+  private[this] final def _push(s: String): Rxn[Either[Unit, Unit]] =
+    stack.push(s)
 
   private[this] val _tryPop: Axn[Either[Option[String], Option[String]]] = {
     stack.tryPop.flatMapF {
@@ -50,7 +50,7 @@ class EliminationStackTest extends StressTestBase {
 
   @Actor
   def push(r: LL_Result): Unit = {
-    r.r1 = _push.unsafePerform("a", this.impl)
+    r.r1 = _push("a").unsafePerform(null, this.impl)
   }
 
   @Actor

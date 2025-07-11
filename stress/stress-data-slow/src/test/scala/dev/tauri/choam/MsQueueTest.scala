@@ -38,20 +38,18 @@ class MsQueueTest extends MsQueueStressTestBase {
   private[this] val queue =
     this.newQueue[String]()
 
-  private[this] val enqueue =
-    queue.enqueue
 
   private[this] val tryDeque =
     queue.tryDeque
 
   @Actor
   def enq1(): Unit = {
-    enqueue.unsafePerform("x", this.impl)
+    queue.enqueue("x").unsafePerform(null, this.impl)
   }
 
   @Actor
   def enq2(): Unit = {
-    enqueue.unsafePerform("y", this.impl)
+    queue.enqueue("y").unsafePerform(null, this.impl)
   }
 
   @Actor

@@ -20,7 +20,7 @@ package dev.tauri.choam
 package object core {
 
   /** Symbolic alias for `Rxn` */
-  final type =#>[-A, +B] = Rxn[B]
+  final type =#>[-A, +B] = Rxn[B] // TODO: remove this
 
   /**
    * The description of an effect, which (when executed),

@@ -41,7 +41,7 @@ class AsyncQueueCancelEnqTest {
 
   private[this] val q: BoundedQueue[String] = {
     val q = AsyncQueue.bounded[String](1).run[SyncIO].unsafeRunSync()
-    assert(q.tryEnqueue.run[SyncIO]("x").unsafeRunSync()) // make it full
+    assert(q.tryEnqueue("x").run[SyncIO].unsafeRunSync()) // make it full
     q
   }
 
@@ -50,7 +50,7 @@ class AsyncQueueCancelEnqTest {
 
   private[this] val offerer: Fiber[IO, Throwable, Unit] = {
     val tsk = IO.uncancelable { poll =>
-      poll(q.enqueue[IO]("a")).flatTap { _ => IO { this.result = true } }
+      poll(q.enqueueAsync[IO]("a")).flatTap { _ => IO { this.result = true } }
     }
     tsk.start.unsafeRunSync()(using runtime)
   }

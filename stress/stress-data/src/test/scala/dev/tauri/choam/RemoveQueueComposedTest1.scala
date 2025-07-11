@@ -40,7 +40,7 @@ class RemoveQueueComposedTest1 extends RemoveQueueStressTestBase {
     (for {
       //                0         2    3
       removers <- List("-", "a", "-", "-", "b", "c", "d").traverse { s =>
-        q.enqueueWithRemover.run[SyncIO](s)
+        q.enqueueWithRemover(s).run[SyncIO]
       }
       _ <- removers(0).run[SyncIO]
       _ <- removers(2).run[SyncIO]
@@ -53,7 +53,7 @@ class RemoveQueueComposedTest1 extends RemoveQueueStressTestBase {
     this.newQueue[String]()
 
   private[this] val tfer: Axn[Unit] =
-    queue1.tryDeque.map(_.getOrElse("x")) >>> queue2.enqueue
+    queue1.tryDeque.map(_.getOrElse("x")).flatMap(queue2.enqueue)
 
   @Actor
   def transfer1(): Unit = {

@@ -24,15 +24,15 @@ package core
  * Note: this is duplicated on JVM (where it actually uses an `Exchanger`).
  */
 private[choam] abstract class EliminatorImpl[-A, +B, -C, +D] private[choam] (
-  underlyingLeft: A =#> B,
+  underlyingLeft: A => Rxn[B],
   @unused transformLeft: A => D,
-  underlyingRight: C =#> D,
+  underlyingRight: C => Rxn[D],
   @unused transformRight: C => B,
 ) extends Eliminator.UnsealedEliminator[A, B, C, D] {
 
-  final override def leftOp: A =#> B =
-    underlyingLeft
+  final override def leftOp(a: A): Rxn[B] =
+    underlyingLeft(a)
 
-  final override def rightOp: C =#> D =
-    underlyingRight
+  final override def rightOp(c: C): Rxn[D] =
+    underlyingRight(c)
 }

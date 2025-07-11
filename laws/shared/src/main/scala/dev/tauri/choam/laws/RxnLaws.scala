@@ -57,11 +57,11 @@ sealed trait RxnLaws {
   }
 
   // TODO: does this always hold?
-  def choiceRetryNeutralRight[B](x: Rxn[B]) =
+  def choiceRetryNeutralRight[B](x: Rxn[B]): IsEq[Rxn[B]] =
     (x + retry[B]) <-> x
 
   // TODO: does this always hold?
-  def choiceRetryNeutralLeft[B](x: Rxn[B]) =
+  def choiceRetryNeutralLeft[B](x: Rxn[B]): IsEq[Rxn[B]] =
     (retry[B] + x) <-> x
 
   // TODO: do these make a monoid with `+`?
