@@ -25,13 +25,13 @@
 
 ## Overview
 
-The type [`Rxn[-A, +B]`](core/shared/src/main/scala/dev/tauri/choam/core/Rxn.scala)
-is similar to an effectful function from `A` to `B` (that is, `A => F[B]`), but:
+The type [`Rxn[+A]`](core/shared/src/main/scala/dev/tauri/choam/core/Rxn.scala)
+is an effect type with result type `A`. Thus, it is similar to, e.g., `IO[A]`, but:
 
 - The only effect it can perform is lock-free updates to
   [`Ref`s](core/shared/src/main/scala/dev/tauri/choam/refs/Ref.scala)
   (mutable memory locations with a pure API).
-  - For example, if `x` is a `Ref[Int]`, then `x.update(_ + 1)` is a `Rxn` which
+  - For example, if `x` is a `Ref[Int]`, then `x.update(_ + 1)` is a `Rxn[Unit]` which
     (when executed) will increment its value.
 - Multiple `Rxn`s can be composed (by using various combinators),
   and the resulting `Rxn` will *update all affected memory locations atomically*.
@@ -47,8 +47,8 @@ libraryDependencies += "dev.tauri" %%% "choam-core" % choamVersion // see above 
 The `choam-core` module contains the fundamental types for working with `Rxn`s.
 For more modules, see [below](#modules).
 
-The complete version of the example [above](#overview), which increments the value of
-two `Ref`s is as follows:
+The complete version of the example [above](#overview), (which increments the value of
+two `Ref`s) is as follows:
 
 <!-- Note: this needs to be kept in sync with `ReadmeSpec`! -->
 ```scala
@@ -113,7 +113,7 @@ _does_ have modular blocking (`Txn.retry`).
     and so are in an `F[_] : Async` (note, that these `F[A]` operations are – obviously – *not* lock-free)
   - These data structures (typically) also have some (lock-free) `Rxn` operations; thus they
     provide a "bridge" between the (synchronous, lock-free) `Rxn` "world", and the (asynchronous) `F[_]` "world".
-  - <a name="promise"></a>The simplest example is `dev.tauri.choam.async.Promise`, which can be
+  - <a name="promise"></a>The simplest example is the data type `dev.tauri.choam.async.Promise`, which can be
     completed as a `Rxn`, and can be waited on as an async `F[_]`:
       ```scala
       trait Promise[A] { // simplified API
@@ -149,7 +149,8 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   implementations [in OCaml](https://github.com/ocaml-multicore/reagents) and [in Racket](https://github.com/aturon/Caper).)
   The main diferences from the paper are:
   - Only lock-free features (and a few low-level ones) are implemented.
-  - `Rxn` has a referentially transparent ("purely functional" / "programs as values") API.
+  - `Rxn` has a referentially transparent ("purely functional" / "programs as values") monadic API.
+    (A limited imperative API is also available in the `dev.tauri.choam.unsafe` package.)
   - The interpreter (that executes `Rxn`s) is stack-safe.
   - We also support composing `Rxn`s which modify the same `Ref`
     (thus, an `Rxn` is closer to an STM transaction than a *reagent*;
@@ -302,5 +303,5 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 - Only the default `Mcas` is lock-free, other `Mcas` implementations may not be
 
 Also note, that while `Rxn` operations are lock-free (if these assumptions hold),
-operations in an `F[_]` effect might not be lock-free (an obvious example is
-`Promise#get`, which is an `F[A]`, *not* a `Rxn`).
+operations in an async `F[_]` effect might not be lock-free (an obvious example is
+`Promise#get`, which is an async `F[A]`, *not* a `Rxn`).
