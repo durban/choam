@@ -164,9 +164,8 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
     mcas: Mcas,
     strategy: RetryStrategy.Spin = RetryStrategy.Default,
   ): B = {
-    new Rxn.InterpreterState[Any, B](
+    new Rxn.InterpreterState[B](
       rxn = this,
-      x = null, // TODO
       mcas = mcas,
       strategy = strategy,
       isStm = false,
@@ -202,9 +201,8 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   )(implicit F: Async[F]): F[X] = {
     F.uncancelable { poll =>
       F.defer {
-        new Rxn.InterpreterState[Any, X](
+        new Rxn.InterpreterState[X](
           this,
-          null, // TODO
           mcas = mcas,
           strategy = strategy,
           isStm = false,
@@ -217,9 +215,8 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   private[choam] final def unsafePerformInternal0(
     ctx: Mcas.ThreadContext,
   ): B = {
-    new Rxn.InterpreterState[Any, B](
+    new Rxn.InterpreterState[B](
       this,
-      null, // TODO
       ctx.impl,
       strategy = RetryStrategy.Default,
       isStm = false,
@@ -237,9 +234,8 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
       .Default
       .withMaxSpin(maxBackoff)
       .withRandomizeSpin(randomizeBackoff)
-    new Rxn.InterpreterState[Any, B](
+    new Rxn.InterpreterState[B](
       this,
-      null, // TODO
       ctx.impl,
       strategy = str,
       isStm = false,
@@ -271,9 +267,8 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
     require(strategy.canSuspend)
     F.uncancelable { poll =>
       F.defer {
-        new Rxn.InterpreterState[Any, X](
+        new Rxn.InterpreterState[X](
           this,
-          null, // TODO
           mcas = mcas,
           strategy = strategy,
           isStm = true,
@@ -666,9 +661,8 @@ object Rxn extends RxnInstances0 {
 
     /** Internal API called by `atomically` */
     private[choam] final def startImperative(mcasImpl: Mcas, str: RetryStrategy): unsafe2.InRxn = {
-      new Rxn.InterpreterState[Null, Any](
+      new Rxn.InterpreterState[Any](
         rxn = null,
-        x = null,
         mcas = mcasImpl,
         strategy = str,
         isStm = false,
@@ -1122,9 +1116,8 @@ object Rxn extends RxnInstances0 {
 
   private[this] final object ExchangePanicMarker
 
-  private final class InterpreterState[X, R](
+  private final class InterpreterState[R](
     rxn: Rxn[R],
-    x: X,
     mcas: Mcas,
     strategy: RetryStrategy,
     isStm: Boolean,
@@ -1153,7 +1146,6 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] var startRxn: Rxn[Any] = rxn.asInstanceOf[Rxn[Any]]
-    private[this] var startA: Any = x
 
     private[this] var _desc: AbstractDescriptor =
       null
@@ -1217,8 +1209,7 @@ object Rxn extends RxnInstances0 {
     private[this] var contTReset: Array[Byte] = contT.takeSnapshot()
     private[this] var contKReset: ListObjStack.Lst[Any] = objStackWithOneCommit
 
-    private[this] var a: Any =
-      x
+    private[this] var a: Any = null
 
     @inline
     private[this] final def aCastTo[A]: A = {
@@ -1658,8 +1649,7 @@ object Rxn extends RxnInstances0 {
           val pcAction = contK.pop().asInstanceOf[Rxn[Any]]
           clearAlts()
           setContReset()
-          a = () : Any
-          startA = () : Any
+          a = null
           startRxn = pcAction
           this.retries = 0
           clearDesc()
@@ -1770,7 +1760,7 @@ object Rxn extends RxnInstances0 {
         // restart everything:
         clearDesc()
         hasTentativeRead = false
-        a = startA
+        a = null
         resetConts()
         pc.clear()
         clearLocals()
