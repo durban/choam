@@ -62,7 +62,7 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
     }
   }
 
-  final override def tryEnqueue(a: A): Rxn[Boolean] =
+  final override def offer(a: A): Rxn[Boolean] =
     this.enqueue(a).as(true)
 
   private[this] def findAndEnqueue(node: Node[A]): Rxn[Unit] = {

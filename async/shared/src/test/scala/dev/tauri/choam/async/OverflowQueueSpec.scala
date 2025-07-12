@@ -131,7 +131,7 @@ trait OverflowQueueSpec[F[_]]
             }
           } else {
             // enq:
-            q.tryEnqueue(i).run[F].flatMap { qr =>
+            q.offer(i).run[F].flatMap { qr =>
               qc.tryOffer(i).flatMap { qcr =>
                 s.tryOffer(i).flatMap { sr =>
                   assertEqualsF(qr, sr) *> assertEqualsF(qcr, sr) *> checkSize(q, qc, s)
@@ -381,14 +381,14 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.size.run[F], 1)
       _ <- (q.enqueue(2) * q.enqueue(3)).run[F]
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- assertResultF(q.tryEnqueue(4).run[F], true)
+      _ <- assertResultF(q.offer(4).run[F], true)
       _ <- assertResultF(q.size.run[F], 4)
       _ <- q.enqueue(5).run[F]
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- assertResultF(q.tryEnqueue(5).run[F], false)
+      _ <- assertResultF(q.offer(5).run[F], false)
       _ <- assertResultF(q.poll.run[F], Some(1))
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- assertResultF(q.tryEnqueue(5).run[F], true)
+      _ <- assertResultF(q.offer(5).run[F], true)
       _ <- assertResultF(q.size.run[F], 4)
       _ <- assertResultF(q.deque, 2)
       _ <- assertResultF(q.deque, 3)

@@ -113,33 +113,33 @@ trait BoundedQueueSpec[F[_]]
     } yield ()
   }
 
-  test("BoundedQueue tryEnqueue") {
+  test("BoundedQueue offer") {
     for {
       s <- newQueue[String](bound = 4)
-      _ <- assertResultF(s.tryEnqueue("a").run[F], true)
-      _ <- assertResultF(s.tryEnqueue("b").run[F], true)
-      _ <- assertResultF(s.tryEnqueue("c").run[F], true)
+      _ <- assertResultF(s.offer("a").run[F], true)
+      _ <- assertResultF(s.offer("b").run[F], true)
+      _ <- assertResultF(s.offer("c").run[F], true)
       _ <- assertResultF(s.poll.run[F], Some("a"))
-      _ <- assertResultF(s.tryEnqueue("d").run[F], true)
-      _ <- assertResultF(s.tryEnqueue("e").run[F], true)
-      _ <- assertResultF(s.tryEnqueue("x").run[F], false)
+      _ <- assertResultF(s.offer("d").run[F], true)
+      _ <- assertResultF(s.offer("e").run[F], true)
+      _ <- assertResultF(s.offer("x").run[F], false)
       _ <- assertResultF(s.drainOnce, List("b", "c", "d", "e"))
       _ <- assertResultF(s.poll.run[F], None)
     } yield ()
   }
 
-  test("BoundedQueue tryEnqueue with waiters") {
+  test("BoundedQueue offer with waiters") {
     for {
       s <- newQueue[String](bound = 4)
       f1 <- s.deque.start
       _ <- this.tickAll
       f2 <- s.deque.start
       _ <- this.tickAll
-      _ <- assertResultF(s.tryEnqueue("a").run[F], true)
+      _ <- assertResultF(s.offer("a").run[F], true)
       _ <- assertResultF(f1.joinWithNever, "a")
-      _ <- assertResultF(s.tryEnqueue("b").run[F], true)
+      _ <- assertResultF(s.offer("b").run[F], true)
       _ <- assertResultF(f2.joinWithNever, "b")
-      _ <- assertResultF(s.tryEnqueue("c").run[F], true)
+      _ <- assertResultF(s.offer("c").run[F], true)
       _ <- assertResultF(s.poll.run[F], Some("c"))
       _ <- assertResultF(s.poll.run[F], None)
     } yield ()
@@ -154,7 +154,7 @@ trait BoundedQueueSpec[F[_]]
       _ <- this.tickAll
       f3 <- s.deque.start
       _ <- this.tickAll
-      rxn = s.tryEnqueue("a") * s.tryEnqueue("b") * s.tryEnqueue("c")
+      rxn = s.offer("a") * s.offer("b") * s.offer("c")
       _ <- rxn.run[F]
       // since `rxn` awakes all fibers in its post-commit actions, their order is non-deterministic:
       v1 <- f1.joinWithNever
@@ -176,7 +176,7 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(s.size.run[F], 3)
       _ <- s.enqueueAsync("d")
       _ <- assertResultF(s.size.run[F], 4)
-      _ <- assertResultF(s.tryEnqueue("x").run[F], false)
+      _ <- assertResultF(s.offer("x").run[F], false)
       _ <- assertResultF(s.size.run[F], 4)
       f1 <- s.enqueueAsync("e").start
       _ <- this.tickAll
@@ -216,7 +216,7 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(s.size.run[F], 3)
       _ <- s.enqueueAsync("d")
       _ <- assertResultF(s.size.run[F], 4)
-      _ <- assertResultF(s.tryEnqueue("x").run[F], false)
+      _ <- assertResultF(s.offer("x").run[F], false)
       _ <- assertResultF(s.size.run[F], 4)
       f1 <- s.enqueueAsync("e").start
       _ <- this.tickAll
@@ -249,7 +249,7 @@ trait BoundedQueueSpec[F[_]]
     for {
       s <- newQueue[String](bound = 1)
       _ <- s.enqueueAsync("a")
-      _ <- assertResultF(s.tryEnqueue("x").run[F], false)
+      _ <- assertResultF(s.offer("x").run[F], false)
       fib <- s.enqueueAsync("b").start
       _ <- this.tickAll
       _ <- assertResultF(s.deque, "a")
@@ -293,7 +293,7 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(s.size.run[F], 0)
       _ <- s.enqueueAsync("a")
       _ <- assertResultF(s.size.run[F], 1)
-      _ <- assertResultF(s.tryEnqueue("x").run[F], false)
+      _ <- assertResultF(s.offer("x").run[F], false)
       f1 <- s.enqueueAsync("b").start
       _ <- this.tickAll
       f2 <- s.enqueueAsync("c").start
@@ -337,8 +337,8 @@ trait BoundedQueueSpec[F[_]]
       q <- newQueue[String](bound = 8)
       _ <- assertResultF(q.size.run[F], 0)
       rxn = (
-        (q.tryEnqueue("a") *> q.size).flatMap { s1 =>
-          (q.tryEnqueue("b") *> q.size).flatMap { s2 =>
+        (q.offer("a") *> q.size).flatMap { s1 =>
+          (q.offer("b") *> q.size).flatMap { s2 =>
             (q.poll *> q.size).map { s3 =>
               (s1, s2, s3)
             }

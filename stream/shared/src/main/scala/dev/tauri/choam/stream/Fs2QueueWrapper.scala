@@ -35,5 +35,5 @@ private final class Fs2QueueWrapper[F[_], A](
   final override def offer(a: A): F[Unit] =
     self.enqueueAsync[F](a)
   final override def tryOffer(a: A): F[Boolean] =
-    F.apply(self.tryEnqueue(a))
+    F.apply(self.offer(a))
 }

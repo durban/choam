@@ -47,7 +47,7 @@ object UnboundedQueue {
     data.Queue.unbounded[A].flatMap { q =>
       WaitList[A](q.poll, q.enqueue).map { wl =>
         new UnboundedQueue[A] {
-          final override def tryEnqueue(a: A): Rxn[Boolean] =
+          final override def offer(a: A): Rxn[Boolean] =
             this.enqueue(a).as(true)
           final override def enqueue(a: A): Rxn[Unit] =
             wl.set0(a).void
@@ -64,7 +64,7 @@ object UnboundedQueue {
     data.Queue.unboundedWithSize[A].flatMap { q =>
       WaitList[A](q.poll, q.enqueue).map { wl =>
         new UnboundedQueue.WithSize[A] {
-          final override def tryEnqueue(a: A): Rxn[Boolean] =
+          final override def offer(a: A): Rxn[Boolean] =
             this.enqueue(a).as(true)
           final override def enqueue(a: A): Rxn[Unit] =
             wl.set0(a).void

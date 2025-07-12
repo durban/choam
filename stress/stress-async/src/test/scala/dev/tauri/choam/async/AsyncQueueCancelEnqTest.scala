@@ -41,7 +41,7 @@ class AsyncQueueCancelEnqTest {
 
   private[this] val q: BoundedQueue[String] = {
     val q = AsyncQueue.bounded[String](1).run[SyncIO].unsafeRunSync()
-    assert(q.tryEnqueue("x").run[SyncIO].unsafeRunSync()) // make it full
+    assert(q.offer("x").run[SyncIO].unsafeRunSync()) // make it full
     q
   }
 

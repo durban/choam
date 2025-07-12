@@ -38,7 +38,7 @@ object OverflowQueue {
 
   final def droppingQueue[A](capacity: Int): Rxn[OverflowQueue[A]] = {
     data.Queue.dropping[A](capacity).flatMap { dq =>
-      GenWaitList[A](dq.poll, dq.tryEnqueue).map { gwl =>
+      GenWaitList[A](dq.poll, dq.offer).map { gwl =>
         new DroppingQueue[A](capacity, dq, gwl)
       }
     }
@@ -69,7 +69,7 @@ object OverflowQueue {
     final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
       new AsyncQueue.CatsQueueAdapter(this)
 
-    final override def tryEnqueue(a: A): Rxn[Boolean] =
+    final override def offer(a: A): Rxn[Boolean] =
       this.enqueue(a).as(true)
 
     final override def enqueue(a: A): Rxn[Unit] =
@@ -94,11 +94,11 @@ object OverflowQueue {
     final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
       new AsyncQueue.CatsQueueAdapter(this)
 
-    final override def tryEnqueue(a: A): Rxn[Boolean] =
+    final override def offer(a: A): Rxn[Boolean] =
       gwl.trySet0(a)
 
     final override def enqueue(a: A): Rxn[Unit] =
-      this.tryEnqueue(a).void
+      this.offer(a).void
 
     final override def poll: Rxn[Option[A]] =
       gwl.tryGet

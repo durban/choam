@@ -40,7 +40,7 @@ private final class RingBuffer[A](
 
   require(capacity === arr.size)
 
-  final override def tryEnqueue(a: A): Rxn[Boolean] =
+  final override def offer(a: A): Rxn[Boolean] =
     this.enqueue(a).as(true)
 
   final override def enqueue(newVal: A): Rxn[Unit] = {

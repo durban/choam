@@ -64,7 +64,7 @@ object BoundedQueue {
     Queue.dropping[A](bound).flatMap { q =>
       GenWaitList[A](
         q.poll,
-        q.tryEnqueue,
+        q.offer,
       ).map { gwl =>
         new ArrayBoundedQueue[A](bound, q, gwl)
       }
@@ -83,7 +83,7 @@ object BoundedQueue {
     final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(gwl.asyncGet)
 
-    final override def tryEnqueue(a: A): Rxn[Boolean] =
+    final override def offer(a: A): Rxn[Boolean] =
       gwl.trySet0(a)
 
     final override def enqueueAsync[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
@@ -112,7 +112,7 @@ object BoundedQueue {
     final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(gwl.asyncGet)
 
-    final override def tryEnqueue(a: A): Rxn[Boolean] =
+    final override def offer(a: A): Rxn[Boolean] =
       gwl.trySet0(a)
 
     final override def enqueueAsync[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
@@ -141,6 +141,6 @@ object BoundedQueue {
     final override def offer(a: A): F[Unit] =
       self.enqueueAsync(a)
     final override def tryOffer(a: A): F[Boolean] =
-      F.apply(self.tryEnqueue(a))
+      F.apply(self.offer(a))
   }
 }

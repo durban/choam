@@ -38,7 +38,7 @@ sealed trait QueueSource[+A] {
 }
 
 sealed trait QueueSink[-A] {
-  def tryEnqueue(a: A): Rxn[Boolean]
+  def offer(a: A): Rxn[Boolean]
 }
 
 sealed trait QueueSourceSink[A]
@@ -65,7 +65,7 @@ sealed trait Queue[A]
  *
  * |         | `Rxn` (may fail)   | `Rxn` (succeeds) |
  * |---------|--------------------|------------------|
- * | insert  | `offer`            | `add`            |
+ * | insert  | `QueueSink#offer`  | `add`            |
  * | remove  | `QueueSource#poll` | `remove`         |
  * | examine | `peek`             | -                |
  *
@@ -128,7 +128,7 @@ object Queue {
           final override def enqueue(a: A): Rxn[Unit] =
             s.update(_ + 1) *> q.enqueue(a)
 
-          final override def tryEnqueue(a: A): Rxn[Boolean] =
+          final override def offer(a: A): Rxn[Boolean] =
             this.enqueue(a).as(true)
 
           final override def size: Rxn[Int] =

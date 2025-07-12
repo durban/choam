@@ -76,7 +76,7 @@ private final class MsQueue[A] private[this] (
     findAndEnqueue(newNode(a, ctx))
   }
 
-  final override def tryEnqueue(a: A): Rxn[Boolean] =
+  final override def offer(a: A): Rxn[Boolean] =
     this.enqueue(a).as(true)
 
   private[this] def newNode(a: A, ctx: Mcas.ThreadContext): Node[A] = {
