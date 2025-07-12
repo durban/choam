@@ -49,11 +49,8 @@ object Counter {
   }
 
   final def striped(str: Ref.AllocationStrategy): Rxn[Counter] = {
-    val arrStr = str match {
-      case Ref.AllocationStrategy(padded) =>
-        // TODO: use flat = true when it supports padding
-        Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = padded)
-    }
+    val arrStr = // TODO: use flat = true when it supports padding
+      Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = str.padded)
     Rxn.unsafe.suspendContext { ctx =>
       Ref.array(size = ctx.stripes, initial = 0L, strategy = arrStr).map { arr =>
         new StripedCounter(arr)

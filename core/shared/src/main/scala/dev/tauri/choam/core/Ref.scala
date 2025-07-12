@@ -81,25 +81,34 @@ private[choam] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] & c
 
 object Ref extends RefInstances0 {
 
-  final case class AllocationStrategy private (padded: Boolean) {
-
-    final def withPadded(padded: Boolean): AllocationStrategy =
-      this.copy(padded = padded)
-
-    final def toArrayAllocationStrategy: Array.AllocationStrategy =
-      Array.AllocationStrategy.Default.withPadded(padded = this.padded)
+  sealed abstract class AllocationStrategy {
+    def padded: Boolean
+    def withPadded(padded: Boolean): Ref.AllocationStrategy
+    def toArrayAllocationStrategy: Array.AllocationStrategy
   }
 
   final object AllocationStrategy {
 
-    final val Default: AllocationStrategy =
+    final val Default: Ref.AllocationStrategy =
       AllocationStrategy(padded = false)
 
-    final def apply(padded: Boolean): AllocationStrategy =
-      new AllocationStrategy(padded = padded)
+    final def apply(padded: Boolean): Ref.AllocationStrategy =
+      new AllocationStrategyImpl(padded = padded)
 
-    private[choam] final val Padded: AllocationStrategy =
-      new AllocationStrategy(padded = true)
+    private[choam] final val Padded: Ref.AllocationStrategy =
+      Ref.AllocationStrategy(padded = true)
+  }
+
+  private[this] final class AllocationStrategyImpl(final override val padded: Boolean)
+    extends AllocationStrategy {
+
+    final override def withPadded(padded: Boolean): AllocationStrategy = {
+      if (this.padded == padded) this
+      else new AllocationStrategyImpl(padded)
+    }
+
+    final override def toArrayAllocationStrategy: Array.AllocationStrategy =
+      Array.AllocationStrategy.Default.withPadded(padded = this.padded)
   }
 
   sealed trait Array[A] {
@@ -116,22 +125,17 @@ object Ref extends RefInstances0 {
 
   final object Array {
 
-    final case class AllocationStrategy private ( // TODO:0.5: could be a subtype of Ref.AllocationStrategy
-      sparse: Boolean,
-      flat: Boolean,
-      padded: Boolean,
-    ) {
+    sealed abstract class AllocationStrategy extends Ref.AllocationStrategy {
 
-      require(!(padded && flat), "padding is currently not supported for flat = true")
+      def sparse: Boolean
+      def withSparse(sparse: Boolean): Array.AllocationStrategy
+      def flat: Boolean
+      def withFlat(flat: Boolean): Array.AllocationStrategy
 
-      final def withSparse(sparse: Boolean): AllocationStrategy =
-        this.copy(sparse = sparse)
+      override def withPadded(padded: Boolean): Array.AllocationStrategy
 
-      final def withFlat(flat: Boolean): AllocationStrategy =
-        this.copy(flat = flat)
-
-      final def withPadded(padded: Boolean): AllocationStrategy =
-        this.copy(padded = padded)
+      final override def toArrayAllocationStrategy: Array.AllocationStrategy =
+        this
 
       private[Ref] final def toInt: Int = {
         var r = 0
@@ -150,20 +154,44 @@ object Ref extends RefInstances0 {
 
     final object AllocationStrategy {
 
-      final val Default: AllocationStrategy =
+      final val Default: Array.AllocationStrategy =
         this.apply(sparse = false, flat = true, padded = false)
 
-      private[choam] val SparseFlat: AllocationStrategy =
+      private[choam] val SparseFlat: Array.AllocationStrategy =
         this.apply(sparse = true, flat = true, padded = false)
 
       private[Ref] final val DefaultInt: Int =
         2
 
-      final def apply(sparse: Boolean, flat: Boolean, padded: Boolean): AllocationStrategy =
-        new AllocationStrategy(sparse = sparse, flat = flat, padded = padded)
+      final def apply(sparse: Boolean, flat: Boolean, padded: Boolean): Array.AllocationStrategy =
+        new AllocationStrategyImpl(sparse = sparse, flat = flat, padded = padded)
+    }
 
-      final def fromRefAllocationStrategy(ras: Ref.AllocationStrategy): AllocationStrategy =
-        ras.toArrayAllocationStrategy
+    private[this] final class AllocationStrategyImpl (
+      final override val sparse: Boolean,
+      final override val flat: Boolean,
+      final override val padded: Boolean,
+    ) extends AllocationStrategy {
+
+      require(!(padded && flat), "padding is currently not supported for flat = true")
+
+      final override def withSparse(sparse: Boolean): AllocationStrategy =
+        this.copy(sparse = sparse)
+
+      final override def withFlat(flat: Boolean): AllocationStrategy =
+        this.copy(flat = flat)
+
+      final override def withPadded(padded: Boolean): AllocationStrategy =
+        this.copy(padded = padded)
+
+      private[this] final def copy(
+        sparse: Boolean = this.sparse,
+        flat: Boolean = this.flat,
+        padded: Boolean = this.padded,
+      ): AllocationStrategyImpl = {
+        if ((sparse == this.sparse) && (flat == this.flat) && (padded == this.padded)) this
+        else new AllocationStrategyImpl(sparse = sparse, flat = flat, padded = padded)
+      }
     }
   }
 
