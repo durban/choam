@@ -31,7 +31,7 @@ private abstract class ArrayQueue[A](
   arr: Ref.Array[A],
   head: Ref[Int], // index for next element to deque
   tail: Ref[Int], // index for next element to enqueue
-) {
+) extends Queue.UnsealedQueueSource[A] {
 
   require(capacity === arr.size)
 
@@ -39,7 +39,7 @@ private abstract class ArrayQueue[A](
     remainderUnsigned(idx + 1, capacity)
   }
 
-  def tryDeque: Rxn[Option[A]] = {
+  final override def poll: Rxn[Option[A]] = {
     head.modifyWith { idx =>
       arr.unsafeGet(idx).modify { a =>
         if (isEmpty(a)) {

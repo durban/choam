@@ -98,7 +98,7 @@ private[choam] object GenWaitList {
     }
 
     protected[this] final def wakeUpNextWaiter(waiters: RemoveQueue[Either[Throwable, Unit] => Unit]): Rxn[Unit] = {
-      waiters.tryDeque.flatMap {
+      waiters.poll.flatMap {
         case None => Rxn.unit
         case Some(other) => callCbRightUnit(other)
       }
@@ -168,7 +168,7 @@ private[choam] object GenWaitList {
     final override def trySet0(a: A): Rxn[Boolean] = {
       setters.isEmpty.flatMap { noSetters =>
         if (noSetters) {
-          getters.tryDeque.flatMap {
+          getters.poll.flatMap {
             case None =>
               trySetUnderlying(a)
             case Some(cb) =>
@@ -192,7 +192,7 @@ private[choam] object GenWaitList {
           this.tryGetUnderlying.flatMap {
             case s @ Some(_) =>
               // success, try to unblock a setter:
-              setters.tryDeque.flatMap {
+              setters.poll.flatMap {
                 case Some(setterCb) =>
                   callCbRightUnit(setterCb).as(s)
                 case None =>
@@ -286,7 +286,7 @@ private[choam] object GenWaitList {
     }
 
     final override def set0(a: A): Rxn[Boolean] = {
-      this.waiters.tryDeque.flatMap {
+      this.waiters.poll.flatMap {
         case None =>
           this.setUnderlying(a).as(true)
         case Some(cb) =>

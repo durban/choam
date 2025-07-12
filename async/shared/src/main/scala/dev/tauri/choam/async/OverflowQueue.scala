@@ -38,7 +38,7 @@ object OverflowQueue {
 
   final def droppingQueue[A](capacity: Int): Rxn[OverflowQueue[A]] = {
     data.Queue.dropping[A](capacity).flatMap { dq =>
-      GenWaitList[A](dq.tryDeque, dq.tryEnqueue).map { gwl =>
+      GenWaitList[A](dq.poll, dq.tryEnqueue).map { gwl =>
         new DroppingQueue[A](capacity, dq, gwl)
       }
     }
@@ -52,7 +52,7 @@ object OverflowQueue {
   }
 
   private[this] final def makeRingBuffer[A](capacity: Int, underlying: data.Queue.WithSize[A]): Rxn[OverflowQueue[A]] = {
-    WaitList(underlying.tryDeque, underlying.enqueue).map { wl =>
+    WaitList(underlying.poll, underlying.enqueue).map { wl =>
       new RingBuffer(capacity, underlying, wl)
     }
   }
@@ -75,7 +75,7 @@ object OverflowQueue {
     final override def enqueue(a: A): Rxn[Unit] =
       wl.set0(a).void
 
-    final override def tryDeque: Rxn[Option[A]] =
+    final override def poll: Rxn[Option[A]] =
       wl.tryGet
 
     final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
@@ -100,7 +100,7 @@ object OverflowQueue {
     final override def enqueue(a: A): Rxn[Unit] =
       this.tryEnqueue(a).void
 
-    final override def tryDeque: Rxn[Option[A]] =
+    final override def poll: Rxn[Option[A]] =
       gwl.tryGet
 
     final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =

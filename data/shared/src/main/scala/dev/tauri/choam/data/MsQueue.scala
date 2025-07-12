@@ -44,7 +44,7 @@ private final class MsQueue[A] private[this] (
   private def this(padded: Boolean, initRig: RefIdGen) =
     this(Node(nullOf[A], if (padded) Ref.unsafePadded(End[A](), initRig) else Ref.unsafeUnpadded(End[A](), initRig)), padded = padded, initRig = initRig)
 
-  override val tryDeque: Rxn[Option[A]] = {
+  final override val poll: Rxn[Option[A]] = {
     head.modifyWith { node =>
       Rxn.unsafe.ticketRead(node.next).flatMap { ticket =>
         ticket.unsafePeek match {
@@ -72,7 +72,7 @@ private final class MsQueue[A] private[this] (
     }
   }
 
-  override def enqueue(a: A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
+  final override def enqueue(a: A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
     findAndEnqueue(newNode(a, ctx))
   }
 

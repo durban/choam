@@ -52,7 +52,7 @@ class RemoveQueueTest extends RemoveQueueStressTestBase {
   }
 
   private[this] val tryDeque =
-    queue.tryDeque
+    queue.poll
 
   @Actor
   def enq1(): Unit = {

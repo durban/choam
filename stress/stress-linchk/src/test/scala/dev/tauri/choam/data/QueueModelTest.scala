@@ -58,7 +58,7 @@ private[data] object QueueModelTest {
 
     @Operation
     def tryDeq(): Option[String] = {
-      q.tryDeque.unsafePerform(emcas)
+      q.poll.unsafePerform(emcas)
     }
   }
 

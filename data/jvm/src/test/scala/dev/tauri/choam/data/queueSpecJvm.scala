@@ -112,7 +112,7 @@ trait QueueJvmTests[F[_]] { this: McasImplSpec & BaseQueueSpec[F] =>
       consume = F.blocking {
         @tailrec
         def go(last: Boolean = false): Unit = {
-          q.tryDeque.unsafePerform(this.mcasImpl) match {
+          q.poll.unsafePerform(this.mcasImpl) match {
             case Some(s) =>
               cs.offer(s)
               go(last = last)

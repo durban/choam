@@ -43,7 +43,7 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
   private def this(initRig: RefIdGen) =
     this(Node(nullOf[A], Ref.unsafePadded(End[A](), initRig)), initRig)
 
-  override val tryDeque: Rxn[Option[A]] = {
+  final override val poll: Rxn[Option[A]] = {
     head.modifyWith { node =>
       node.next.get.flatMap { next =>
         next match {
@@ -56,7 +56,7 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
     }
   }
 
-  override def enqueue(a: A): Rxn[Unit] = {
+  final override def enqueue(a: A): Rxn[Unit] = {
     Ref.padded[Elem[A]](End()).flatMap { newRef =>
       findAndEnqueue(Node(a, newRef))
     }

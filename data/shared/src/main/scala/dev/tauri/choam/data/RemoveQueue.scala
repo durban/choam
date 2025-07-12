@@ -42,7 +42,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
   def this(initRig: RefIdGen) =
     this(Node(nullOf[Ref[A]], Ref.unsafeUnpadded(End[A](), initRig)), initRig = initRig)
 
-  override val tryDeque: Rxn[Option[A]] = {
+  final override val poll: Rxn[Option[A]] = {
     head.modifyWith { node =>
       skipRemoved(from = node.next).flatMap {
         case None =>
@@ -55,14 +55,14 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
     }
   }
 
-  private[this] def skipRemoved(from: Ref[Elem[A]]): Rxn[Option[(A, Node[A])]] = {
+  private[this] final def skipRemoved(from: Ref[Elem[A]]): Rxn[Option[(A, Node[A])]] = {
     from.get.flatMap {
       case n @ Node(dataRef, nextRef) =>
         dataRef.get.flatMap { a =>
           if (isRemoved(a)) {
             skipRemoved(nextRef)
           } else if (isDequeued(a)) {
-            impossible("tryDeque found an already dequeued node")
+            impossible("poll found an already dequeued node")
           } else {
             dataRef.set1(dequeued[A]).as(Some((a, n)))
           }
@@ -96,7 +96,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
   final override def tryEnqueue(a: A): Rxn[Boolean] =
     this.enqueue(a).as(true)
 
-  override def enqueue(a: A): Rxn[Unit] = {
+  final override def enqueue(a: A): Rxn[Unit] = {
     Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref.unpadded(a).flatMap { dataRef =>
         findAndEnqueue(Node(dataRef, nextRef))
@@ -104,7 +104,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
     }
   }
 
-  def enqueueWithRemover(a: A): Rxn[Rxn[Boolean]] = {
+  final def enqueueWithRemover(a: A): Rxn[Rxn[Boolean]] = {
     Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref.unpadded(a).flatMap { dataRef =>
         val newNode = Node(dataRef, nextRef)
@@ -114,7 +114,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
   }
 
   // TODO: we could allow tail to lag by a constant
-  private[this] def findAndEnqueue(node: Node[A]): Rxn[Unit] = {
+  private[this] final def findAndEnqueue(node: Node[A]): Rxn[Unit] = {
     def go(n: Node[A]): Rxn[Unit] = {
       n.next.get.flatMap {
         case End() =>

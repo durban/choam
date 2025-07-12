@@ -41,7 +41,7 @@ class MsQueueComposedTest1 extends MsQueueStressTestBase {
     this.newQueue[String]()
 
   private[this] val tfer: Rxn[Unit] =
-    queue1.tryDeque.map(_.getOrElse("x")).flatMap(queue2.enqueue)
+    queue1.poll.map(_.getOrElse("x")).flatMap(queue2.enqueue)
 
   @Actor
   def transfer1(): Unit = {

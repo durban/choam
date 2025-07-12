@@ -45,13 +45,13 @@ object UnboundedQueue {
 
   final def apply[A]: Rxn[UnboundedQueue[A]] = {
     data.Queue.unbounded[A].flatMap { q =>
-      WaitList[A](q.tryDeque, q.enqueue).map { wl =>
+      WaitList[A](q.poll, q.enqueue).map { wl =>
         new UnboundedQueue[A] {
           final override def tryEnqueue(a: A): Rxn[Boolean] =
             this.enqueue(a).as(true)
           final override def enqueue(a: A): Rxn[Unit] =
             wl.set0(a).void
-          final override def tryDeque: Rxn[Option[A]] =
+          final override def poll: Rxn[Option[A]] =
             wl.tryGet
           final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
             F.monad.widen(wl.asyncGet)
@@ -62,13 +62,13 @@ object UnboundedQueue {
 
   final def withSize[A]: Rxn[UnboundedQueue.WithSize[A]] = {
     data.Queue.unboundedWithSize[A].flatMap { q =>
-      WaitList[A](q.tryDeque, q.enqueue).map { wl =>
+      WaitList[A](q.poll, q.enqueue).map { wl =>
         new UnboundedQueue.WithSize[A] {
           final override def tryEnqueue(a: A): Rxn[Boolean] =
             this.enqueue(a).as(true)
           final override def enqueue(a: A): Rxn[Unit] =
             wl.set0(a).void
-          final override def tryDeque: Rxn[Option[A]] =
+          final override def poll: Rxn[Option[A]] =
             wl.tryGet
           final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
             F.monad.widen(wl.asyncGet)

@@ -95,9 +95,9 @@ class AsyncQueueCancelDeqTest {
     }.unsafeRunSync()(using this.runtime)
     r.r1 = this.result1
     r.r2 = this.result2
-    r.r3 = q.tryDeque.run[IO].unsafeRunSync()(using this.runtime)
+    r.r3 = q.poll.run[IO].unsafeRunSync()(using this.runtime)
     r.r4 = oc1
     r.r5 = oc2
-    r.r6 = q.tryDeque.run[IO].unsafeRunSync()(using this.runtime)
+    r.r6 = q.poll.run[IO].unsafeRunSync()(using this.runtime)
   }
 }

@@ -52,7 +52,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   for ((testOpts, newEmptyQ) <- common) {
     testDequeCancel(testOpts, newEmptyQ)
-    testDequeAndTryDequeRace(testOpts, newEmptyQ)
+    testDequeAndPollRace(testOpts, newEmptyQ)
   }
 
   private def deqAndSave(q: AsyncQueueSource[String], ref: Ref[F, String]): F[Unit] = {
@@ -78,27 +78,27 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         _ <- fib.join
         s <- r.get
         _ <- if (s.nonEmpty) { // deque completed
-          assertEqualsF(s, "foo") *> assertResultF(q.tryDeque.run[F], None, "item is duplicated")
+          assertEqualsF(s, "foo") *> assertResultF(q.poll.run[F], None, "item is duplicated")
         } else { // deque cancelled
-          assertResultF(q.tryDeque.run[F], Some("foo"), "item is lost")
+          assertResultF(q.poll.run[F], Some("foo"), "item is lost")
         }
       } yield ()
       t.parReplicateA_(100)
     }
   }
 
-  private def testDequeAndTryDequeRace(
+  private def testDequeAndPollRace(
     testOpts: TestOptions,
     newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
   ): Unit = {
-    test(testOpts.withName(s"${testOpts.name}: deque and tryDeque race")) {
+    test(testOpts.withName(s"${testOpts.name}: deque and poll race")) {
       val t = for {
         q <- newEmptyQ
         fib1 <- q.deque[F, String].start
         fib2 <- q.deque[F, String].start
         _ <- F.sleep(1.seconds) // wait for fibers to suspend
-        // to be fair(er), the item should be received by the suspended fiber, and NOT `tryDeque`
-        _ <- assertResultF(F.both(F.cede *> q.tryDeque.run[F], q.enqueueAsync("foo")), (None, ()))
+        // to be fair(er), the item should be received by the suspended fiber, and NOT `poll`
+        _ <- assertResultF(F.both(F.cede *> q.poll.run[F], q.enqueueAsync("foo")), (None, ()))
         // ok, now unblock one of the fibers (the other one is already unblocked, but we don't know which):
         _ <- q.enqueueAsync("bar")
         item1 <- fib1.joinWithNever
@@ -163,9 +163,9 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         _ <- assertResultF(d.get, "1")
         _ <- (2 to bound).toList.traverse_(i => assertResultF(q.deque, i.toString))
         _ <- if (flag) { // enqueue completed
-          assertResultF(q.tryDeque.run[F], Some("foo"), "item lost")
+          assertResultF(q.poll.run[F], Some("foo"), "item lost")
         } else { // enqueue cancelled
-          assertResultF(q.tryDeque.run[F], None, "item duplicated")
+          assertResultF(q.poll.run[F], None, "item duplicated")
         }
       } yield ()
       t.parReplicateA_(50000)

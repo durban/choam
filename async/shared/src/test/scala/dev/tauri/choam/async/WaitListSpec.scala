@@ -55,15 +55,15 @@ trait WaitListSpec[F[_]]
 
   private def commonTests(topts: TestOptions, newQueue: F[AsyncQueueSource[String] & data.QueueSink[String]]): Unit = {
 
-    test(topts.withName(s"${topts.name}: deque and tryDeque race")) {
+    test(topts.withName(s"${topts.name}: deque and poll race")) {
       for {
         q <- newQueue
         fib1 <- q.deque[F, String].start
         _ <- this.tickAll // wait for fiber to suspend
         fib2 <- q.deque[F, String].start
         _ <- this.tickAll // wait for fiber to suspend
-        // to be fair(er), the item should be received by the suspended fiber, and NOT `tryDeque`
-        _ <- assertResultF(F.both(q.tryDeque.run[F], q.tryEnqueue("foo").run[F]), (None, true))
+        // to be fair(er), the item should be received by the suspended fiber, and NOT `poll`
+        _ <- assertResultF(F.both(q.poll.run[F], q.tryEnqueue("foo").run[F]), (None, true))
         _ <- assertResultF(fib1.joinWithNever, "foo")
         _ <- fib2.cancel
       } yield ()
@@ -75,7 +75,7 @@ trait WaitListSpec[F[_]]
         fib1 <- q.deque[F, String].start
         _ <- this.tickAll // wait for fiber to suspend
         _ <- assertResultF(q.tryEnqueue("foo").run[F], true) // this will wake up the fiber, but:
-        maybeResult <- q.tryDeque.run[F] // this has a chance of overtaking the fiber
+        maybeResult <- q.poll.run[F] // this has a chance of overtaking the fiber
         // (depending on which task the ticked runtime runs first)
         _ <- this.tickAll // fiber either completes, or goes back to sleep
         _ <- maybeResult match {
@@ -125,11 +125,11 @@ trait WaitListSpec[F[_]]
       fib2 <- q.enqueueAsync[F]("bar").start
       _ <- this.tickAll // wait for fiber to suspend
       // to be fair(er), the suspended fiber should be able to insert its item, and NOT `tryEnqueue`
-      _ <- assertResultF(F.both(q.tryEnqueue("xyz").run[F], q.tryDeque.run[F]), (false, Some("first")))
+      _ <- assertResultF(F.both(q.tryEnqueue("xyz").run[F], q.poll.run[F]), (false, Some("first")))
       _ <- assertResultF(fib1.joinWithNever, ())
       _ <- fib2.cancel
       _ <- this.tickAll
-      _ <- assertResultF(q.tryDeque.run[F], Some("foo"))
+      _ <- assertResultF(q.poll.run[F], Some("foo"))
     } yield ()
   }
 
@@ -139,7 +139,7 @@ trait WaitListSpec[F[_]]
       _ <- assertResultF(q.tryEnqueue("first").run[F], true) // fill the queue
       fib1 <- q.enqueueAsync[F]("foo").start
       _ <- this.tickAll // wait for fiber to suspend
-      _ <- assertResultF(q.tryDeque.run[F], Some("first")) // this will wake up the fiber, but:
+      _ <- assertResultF(q.poll.run[F], Some("first")) // this will wake up the fiber, but:
       succ <- q.tryEnqueue("bar").run[F] // this has a chance of overtaking the fiber
       // (depending on which task the ticked runtime runs first)
       _ <- this.tickAll // fiber either completes, or goes back to sleep
@@ -163,7 +163,7 @@ trait WaitListSpec[F[_]]
       _ <- this.tickAll // wait for fiber to suspend
       fib2 <- q.enqueueAsync[F]("bar").start
       _ <- this.tickAll // add a second waiter
-      _ <- assertResultF(q.tryDeque.run[F], Some("first")) // this will wake up `fib1`, but:
+      _ <- assertResultF(q.poll.run[F], Some("first")) // this will wake up `fib1`, but:
       _ <- fib1.cancel // we cancel it
       // (depending on which task the ticked runtime runs first, it is either cancelled, or completed)
       _ <- this.tickAll // `fib1` either completes, or cancelled
@@ -172,7 +172,7 @@ trait WaitListSpec[F[_]]
         case Outcome.Canceled() =>
           // `fib1` was cancelled, it must wake up `fib2` instead of itself;
           // if it didn't (which is a bug), this will hang:
-          assertResultF(fib2.joinWithNever, ()) *> assertResultF(q.tryDeque.run[F], Some("bar"))
+          assertResultF(fib2.joinWithNever, ()) *> assertResultF(q.poll.run[F], Some("bar"))
         case Outcome.Succeeded(fa) =>
           // `fib1` completed, so the other one should still be suspended
           assertResultF(fa, ()) *> fib2.cancel *> assertResultF(fib2.join, Outcome.canceled[F, Throwable, Unit])

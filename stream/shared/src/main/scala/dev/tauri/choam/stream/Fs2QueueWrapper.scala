@@ -29,7 +29,7 @@ private final class Fs2QueueWrapper[F[_], A](
   final override def take: F[A] =
     self.deque
   final override def tryTake: F[Option[A]] =
-    self.tryDeque.run[F]
+    self.poll.run[F]
   final override def size: F[Int] =
     F.asyncInst.raiseError(new AssertionError) // FS2 doesn't really need `size`, so we cheat
   final override def offer(a: A): F[Unit] =

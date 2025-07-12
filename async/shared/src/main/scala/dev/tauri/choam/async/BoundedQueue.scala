@@ -45,7 +45,7 @@ object BoundedQueue {
     (Queue.unbounded[A] * Ref.unpadded[Int](0)).flatMap {
       case (q, size) =>
         GenWaitList[A](
-          q.tryDeque.flatMap { res =>
+          q.poll.flatMap { res =>
             if (res.nonEmpty) size.update(_ - 1).as(res)
             else Rxn.pure(res)
           },
@@ -63,7 +63,7 @@ object BoundedQueue {
     require(bound > 0)
     Queue.dropping[A](bound).flatMap { q =>
       GenWaitList[A](
-        q.tryDeque,
+        q.poll,
         q.tryEnqueue,
       ).map { gwl =>
         new ArrayBoundedQueue[A](bound, q, gwl)
@@ -77,7 +77,7 @@ object BoundedQueue {
     gwl: GenWaitList[A],
   ) extends BoundedQueue[A] {
 
-    final override def tryDeque: Rxn[Option[A]] =
+    final override def poll: Rxn[Option[A]] =
       gwl.tryGet
 
     final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
@@ -106,7 +106,7 @@ object BoundedQueue {
     gwl: GenWaitList[A],
   ) extends BoundedQueue[A] { self =>
 
-    final override def tryDeque: Rxn[Option[A]] =
+    final override def poll: Rxn[Option[A]] =
       gwl.tryGet
 
     final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
@@ -135,7 +135,7 @@ object BoundedQueue {
     final override def take: F[A] =
       self.deque
     final override def tryTake: F[Option[A]] =
-      F.run(self.tryDeque)
+      F.run(self.poll)
     final override def size: F[Int] =
       F.run(self.size)
     final override def offer(a: A): F[Unit] =

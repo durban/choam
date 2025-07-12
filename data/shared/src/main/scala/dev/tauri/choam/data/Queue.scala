@@ -25,11 +25,11 @@ import core.{ Rxn, Ref, Reactive }
 
 sealed trait QueueSource[+A] {
 
-  def tryDeque: Rxn[Option[A]] // TODO:0.5: should be called `tryDequeue`
+  def poll: Rxn[Option[A]]
 
   private[choam] final def drainOnce[F[_], AA >: A](implicit F: Reactive[F]): F[List[AA]] = {
     F.monad.tailRecM(List.empty[AA]) { acc =>
-      F.monad.map(F.run(this.tryDeque)) {
+      F.monad.map(F.run(this.poll)) {
         case Some(a) => Left(a :: acc)
         case None => Right(acc.reverse)
       }
@@ -53,6 +53,26 @@ sealed trait Queue[A]
   extends QueueSourceSink[A]
   with UnboundedQueueSink[A]
 
+/**
+ * Various synchronous queues
+ *
+ * The operations that may fail (e.g., trying to remove
+ * an element form an empty queue) return either a `Boolean`
+ * or an `Option` (e.g., removing from an empty queue returns
+ * `None`).
+ *
+ * Method summary of the various operations:
+ *
+ * |         | `Rxn` (may fail)   | `Rxn` (succeeds) |
+ * |---------|--------------------|------------------|
+ * | insert  | `offer`            | `add`            |
+ * | remove  | `QueueSource#poll` | `remove`         |
+ * | examine | `peek`             | -                |
+ *
+ * @see [[dev.tauri.choam.async.AsyncQueue]]
+ *      for asynchronous (possibly fiber-blocking)
+ *      variants of these methods
+ */
 object Queue {
 
   private[choam] trait UnsealedQueueSource[+A]
@@ -98,8 +118,8 @@ object Queue {
       Ref.unpadded[Int](0).map { s =>
         new WithSize[A] {
 
-          final override def tryDeque: Rxn[Option[A]] = {
-            q.tryDeque.flatMap {
+          final override def poll: Rxn[Option[A]] = {
+            q.poll.flatMap {
               case r @ Some(_) => s.update(_ - 1).as(r)
               case None => Rxn.pure(None)
             }

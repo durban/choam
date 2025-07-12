@@ -50,7 +50,7 @@ class RemoveQueueRemoveTest1B extends RemoveQueueStressTestBase {
     queueAndRemover._2
 
   private[this] val tryDeque =
-    queue.tryDeque
+    queue.poll
 
   @Actor
   def deq(r: LLL_Result): Unit = {

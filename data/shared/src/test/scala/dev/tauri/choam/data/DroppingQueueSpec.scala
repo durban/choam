@@ -55,7 +55,7 @@ trait DroppingQueueSpec[F[_]]
         _ <- ints.traverse_ { i =>
           if ((i % 4) == 0) {
             // deq:
-            q.tryDeque.run[F].flatMap { qr =>
+            q.poll.run[F].flatMap { qr =>
               s.tryTake.flatMap { sr =>
                 assertEqualsF(qr, sr) *> checkSize(q, s)
               }
@@ -86,14 +86,14 @@ trait DroppingQueueSpec[F[_]]
       _ <- q.enqueue(5).run[F]
       _ <- assertResultF(q.size.run[F], 4)
       _ <- assertResultF(q.tryEnqueue(5).run[F], false)
-      _ <- assertResultF(q.tryDeque.run[F], Some(1))
+      _ <- assertResultF(q.poll.run[F], Some(1))
       _ <- assertResultF(q.size.run[F], 3)
       _ <- assertResultF(q.tryEnqueue(5).run[F], true)
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- assertResultF(q.tryDeque.run[F], Some(2))
-      _ <- assertResultF(q.tryDeque.run[F], Some(3))
-      _ <- assertResultF(q.tryDeque.run[F], Some(4))
-      _ <- assertResultF(q.tryDeque.run[F], Some(5))
+      _ <- assertResultF(q.poll.run[F], Some(2))
+      _ <- assertResultF(q.poll.run[F], Some(3))
+      _ <- assertResultF(q.poll.run[F], Some(4))
+      _ <- assertResultF(q.poll.run[F], Some(5))
       _ <- assertResultF(q.size.run[F], 0)
     } yield ()
   }
@@ -103,12 +103,12 @@ trait DroppingQueueSpec[F[_]]
       q <- newDq[Int](3)
       _ <- assertResultF(q.size.run[F], 0)
       rxn = (q.enqueue(1) * q.enqueue(2)) *> (
-        q.tryDeque
+        q.poll
       )
       deqRes <- rxn.run[F]
       _ <- assertEqualsF(deqRes, Some(1))
-      _ <- assertResultF(q.tryDeque.run[F], Some(2))
-      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- assertResultF(q.poll.run[F], Some(2))
+      _ <- assertResultF(q.poll.run[F], None)
     } yield ()
   }
 }

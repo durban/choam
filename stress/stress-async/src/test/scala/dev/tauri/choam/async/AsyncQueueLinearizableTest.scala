@@ -77,7 +77,7 @@ class AsyncQueueLinearizableTest {
     val result2: String = ocAndResult2._2
     r.r1 = this.result
     r.r2 = result2
-    r.r3 = q.tryDeque.run[SyncIO].unsafeRunSync()
+    r.r3 = q.poll.run[SyncIO].unsafeRunSync()
     r.r4 = oc
   }
 }

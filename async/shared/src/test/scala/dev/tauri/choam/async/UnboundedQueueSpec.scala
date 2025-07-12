@@ -62,7 +62,7 @@ trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: Mca
       _ <- assertResultF(cq.size, 0)
       _ <- assertResultF(cq.tryOffer("c"), true)
       _ <- assertResultF(cq.size, 1)
-      _ <- assertResultF(q.tryDeque.run[F], Some("c"))
+      _ <- assertResultF(q.poll.run[F], Some("c"))
       _ <- assertResultF(cq.size, 0)
     } yield ()
   }
@@ -135,7 +135,7 @@ trait UnboundedQueueSpec[F[_]]
       f2 <- s.deque.start
       _ <- this.tickAll
       rxn = (s.enqueue("a") * s.enqueue("b") * s.enqueue("c")) *> (
-        s.tryDeque
+        s.poll
       )
       deqRes <- rxn.run[F]
       _ <- assertEqualsF(deqRes, Some("a"))
