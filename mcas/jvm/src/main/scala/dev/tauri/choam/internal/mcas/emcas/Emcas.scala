@@ -415,7 +415,6 @@ private[mcas] final class Emcas(
     // the correct version.
     ref.unsafeGetV() match {
       case wd: EmcasWordDesc[_] =>
-        // TODO: we may need to hold the marker here!
         val parent = wd.parent
         val s = parent.getStatusV()
         if (s == McasStatus.Active) {
