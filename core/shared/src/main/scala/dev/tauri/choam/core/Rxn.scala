@@ -172,7 +172,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
     ).interpretSync()
   }
 
-  final def perform[F[_], X >: B]( // TODO:0.5: do we want this public? (implicit Async is not great)
+  private[choam] final def perform[F[_], X >: B](
     rt: ChoamRuntime,
     strategy: RetryStrategy = RetryStrategy.Default,
   )(implicit F: Async[F]): F[X] = this.performInternal(rt.mcasImpl, strategy)
