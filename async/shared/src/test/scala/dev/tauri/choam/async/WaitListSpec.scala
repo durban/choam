@@ -58,9 +58,9 @@ trait WaitListSpec[F[_]]
     test(topts.withName(s"${topts.name}: deque and poll race")) {
       for {
         q <- newQueue
-        fib1 <- q.deque[F, String].start
+        fib1 <- q.take[F, String].start
         _ <- this.tickAll // wait for fiber to suspend
-        fib2 <- q.deque[F, String].start
+        fib2 <- q.take[F, String].start
         _ <- this.tickAll // wait for fiber to suspend
         // to be fair(er), the item should be received by the suspended fiber, and NOT `poll`
         _ <- assertResultF(F.both(q.poll.run[F], q.offer("foo").run[F]), (None, true))
@@ -72,7 +72,7 @@ trait WaitListSpec[F[_]]
     test(topts.withName(s"${topts.name}: deque wakes up, then goes to sleep again")) {
       for {
         q <- newQueue
-        fib1 <- q.deque[F, String].start
+        fib1 <- q.take[F, String].start
         _ <- this.tickAll // wait for fiber to suspend
         _ <- assertResultF(q.offer("foo").run[F], true) // this will wake up the fiber, but:
         maybeResult <- q.poll.run[F] // this has a chance of overtaking the fiber
@@ -92,9 +92,9 @@ trait WaitListSpec[F[_]]
     test(topts.withName(s"${topts.name}: deque gets cancelled right after (correctly) waking up")) {
       for {
         q <- newQueue
-        fib1 <- q.deque[F, String].start
+        fib1 <- q.take[F, String].start
         _ <- this.tickAll // wait for fiber to suspend
-        fib2 <- q.deque[F, String].start
+        fib2 <- q.take[F, String].start
         _ <- this.tickAll // add a second waiter
         _ <- assertResultF(q.offer("foo").run[F], true) // this will wake up `fib1`, but:
         _ <- fib1.cancel // we cancel it
@@ -146,11 +146,11 @@ trait WaitListSpec[F[_]]
       _ <- if (succ) {
         // fiber lost, it is sleeping now
         fib1.cancel *> { // this will hang if it's uncancelable (which is a bug)
-          assertResultF(q.deque[F, String], "bar")
+          assertResultF(q.take[F, String], "bar")
         }
       } else {
         // fiber won, it's done now
-        assertResultF(fib1.joinWithNever, ()) *> assertResultF(q.deque[F, String], "foo")
+        assertResultF(fib1.joinWithNever, ()) *> assertResultF(q.take[F, String], "foo")
       }
     } yield ()
   }

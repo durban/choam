@@ -56,7 +56,7 @@ trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: Mca
       _ <- assertResultF(f.joinWithNever, "a")
       _ <- assertResultF(cq.size, 0)
       _ <- assertResultF(cq.tryTake, None)
-      f <- q.deque.start
+      f <- q.take.start
       _ <- cq.offer("b")
       _ <- assertResultF(f.joinWithNever, "b")
       _ <- assertResultF(cq.size, 0)
@@ -75,26 +75,26 @@ trait UnboundedQueueSpec[F[_]]
 
   protected def newQueue[G[_] : AsyncReactive, A]: G[Q[G, A]]
 
-  test("UnboundedQueue non-empty deque") {
+  test("UnboundedQueue non-empty take") {
     for {
       s <- newQueue[F, String]
       _ <- s.enqueueAsync[F]("a")
       _ <- s.enqueueAsync[F]("b")
       _ <- s.enqueueAsync[F]("c")
-      _ <- assertResultF(s.deque, "a")
-      _ <- assertResultF(s.deque, "b")
-      _ <- assertResultF(s.deque, "c")
+      _ <- assertResultF(s.take, "a")
+      _ <- assertResultF(s.take, "b")
+      _ <- assertResultF(s.take, "c")
     } yield ()
   }
 
-  test("UnboundedQueue empty deque") {
+  test("UnboundedQueue empty take") {
     for {
       s <- newQueue[F, String]
-      f1 <- s.deque.start
+      f1 <- s.take.start
       _ <- this.tickAll
-      f2 <- s.deque.start
+      f2 <- s.take.start
       _ <- this.tickAll
-      f3 <- s.deque.start
+      f3 <- s.take.start
       _ <- this.tickAll
       _ <- s.enqueueAsync[F]("a")
       _ <- this.tickAll
@@ -111,11 +111,11 @@ trait UnboundedQueueSpec[F[_]]
   test("UnboundedQueue more enq in one Rxn") {
     for {
       s <- newQueue[F, String]
-      f1 <- s.deque.start
+      f1 <- s.take.start
       _ <- this.tickAll
-      f2 <- s.deque.start
+      f2 <- s.take.start
       _ <- this.tickAll
-      f3 <- s.deque.start
+      f3 <- s.take.start
       _ <- this.tickAll
       rxn = s.add("a") * s.add("b") * s.add("c")
       _ <- rxn.run[F]
@@ -130,9 +130,9 @@ trait UnboundedQueueSpec[F[_]]
   test("UnboundedQueue enq and deq in one Rxn") {
     for {
       s <- newQueue[F, String]
-      f1 <- s.deque.start
+      f1 <- s.take.start
       _ <- this.tickAll
-      f2 <- s.deque.start
+      f2 <- s.take.start
       _ <- this.tickAll
       rxn = (s.add("a") * s.add("b") * s.add("c")) *> (
         s.poll

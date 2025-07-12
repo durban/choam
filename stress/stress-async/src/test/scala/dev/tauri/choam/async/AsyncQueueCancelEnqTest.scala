@@ -57,7 +57,7 @@ class AsyncQueueCancelEnqTest {
 
   @Actor
   def take(r: LLLL_Result): Unit = {
-    r.r2 = q.deque[IO, String].unsafeRunSync()(using this.runtime)
+    r.r2 = q.take[IO, String].unsafeRunSync()(using this.runtime)
   }
 
   @Actor

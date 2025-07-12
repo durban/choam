@@ -50,7 +50,7 @@ class AsyncUnboundedQueueBench extends BenchUtils {
 
   private[this] def task(q: UnboundedQueue[String]): IO[Unit] = {
     for {
-      fibs <- q.deque.start.replicateA(queueSize)
+      fibs <- q.take.start.replicateA(queueSize)
       _ <- fibs.take(queueSize / 2).traverse(_.cancel)
       _ <- q.enqueueAsync[IO]("x").replicateA(queueSize)
       _ <- fibs.drop(queueSize / 2).traverse(_.joinWithNever)

@@ -23,7 +23,8 @@ import cats.effect.std.{ Queue => CatsQueue }
 import core.{ Rxn, AsyncReactive }
 
 sealed trait AsyncQueueSource[+A] extends data.Queue.UnsealedQueueSource[A] {
-  def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] // TODO:0.5: should be called `dequeue`; also: InvariantSyntax
+  // TODO: add InvariantSyntax (to be able to call it like `.take[F]`)
+  def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]
 }
 
 sealed trait BoundedQueueSink[-A] extends data.Queue.UnsealedQueueSink[A] {
@@ -43,11 +44,11 @@ sealed trait BoundedQueueSink[-A] extends data.Queue.UnsealedQueueSink[A] {
  *
  * Method summary of the various operations:
  *
- * |         | `Rxn` (may fail) | `Rxn` (succeeds) | `F` (may block) |
- * |---------|------------------|------------------|-----------------|
- * | insert  | `offer`          | `add`            | `put`           |
- * | remove  | `poll`           | `remove`         | `take`          |
- * | examine | `peek`           | -                | -               |
+ * |         | `Rxn` (may fail)   | `Rxn` (succeeds)         | `F` (may block)         |
+ * |---------|--------------------|--------------------------|-------------------------|
+ * | insert  | `QueueSink#offer`  | `UnboundedQueueSink#add` | `put`                   |
+ * | remove  | `QueueSource#poll` | -                        | `AsyncQueueSource#take` |
+ * | examine | `peek`             | -                        | -                       |
  *
  * @see [[dev.tauri.choam.data.Queue]]
  *      for the synchronous methods (all except
@@ -108,7 +109,7 @@ object AsyncQueue {
     extends CatsQueue[F, A] {
 
     final override def take: F[A] =
-      self.deque
+      self.take
     final override def tryTake: F[Option[A]] =
       self.poll.run[F]
     final override def size: F[Int] =

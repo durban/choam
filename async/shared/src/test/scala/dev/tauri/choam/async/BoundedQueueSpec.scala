@@ -59,15 +59,15 @@ trait BoundedQueueSpec[F[_]]
     }
   }
 
-  test("BoundedQueue non-empty deque") {
+  test("BoundedQueue non-empty take") {
     for {
       s <- newQueue[String](bound = 4)
       _ <- s.enqueueAsync("a")
       _ <- s.enqueueAsync("b")
       _ <- s.enqueueAsync("c")
-      _ <- assertResultF(s.deque, "a")
-      _ <- assertResultF(s.deque, "b")
-      _ <- assertResultF(s.deque, "c")
+      _ <- assertResultF(s.take, "a")
+      _ <- assertResultF(s.take, "b")
+      _ <- assertResultF(s.take, "c")
     } yield ()
   }
 
@@ -84,14 +84,14 @@ trait BoundedQueueSpec[F[_]]
     } yield ()
   }
 
-  test("BoundedQueue empty deque") {
+  test("BoundedQueue empty take") {
     for {
       s <- newQueue[String](bound = 4)
-      f1 <- s.deque.start
+      f1 <- s.take.start
       _ <- this.tickAll
-      f2 <- s.deque.start
+      f2 <- s.take.start
       _ <- this.tickAll
-      f3 <- s.deque.start
+      f3 <- s.take.start
       _ <- this.tickAll
       _ <- s.enqueueAsync("a")
       _ <- this.tickAll
@@ -131,9 +131,9 @@ trait BoundedQueueSpec[F[_]]
   test("BoundedQueue offer with waiters") {
     for {
       s <- newQueue[String](bound = 4)
-      f1 <- s.deque.start
+      f1 <- s.take.start
       _ <- this.tickAll
-      f2 <- s.deque.start
+      f2 <- s.take.start
       _ <- this.tickAll
       _ <- assertResultF(s.offer("a").run[F], true)
       _ <- assertResultF(f1.joinWithNever, "a")
@@ -148,11 +148,11 @@ trait BoundedQueueSpec[F[_]]
   test("BoundedQueue multiple enq in a Rxn") {
     for {
       s <- newQueue[String](bound = 4)
-      f1 <- s.deque.start
+      f1 <- s.take.start
       _ <- this.tickAll
-      f2 <- s.deque.start
+      f2 <- s.take.start
       _ <- this.tickAll
-      f3 <- s.deque.start
+      f3 <- s.take.start
       _ <- this.tickAll
       rxn = s.offer("a") * s.offer("b") * s.offer("c")
       _ <- rxn.run[F]
@@ -164,7 +164,7 @@ trait BoundedQueueSpec[F[_]]
     } yield ()
   }
 
-  test("BoundedQueue full enqueue / deque") {
+  test("BoundedQueue full enqueue / take") {
     for {
       s <- newQueue[String](bound = 4)
       _ <- assertResultF(s.size.run[F], 0)
@@ -184,22 +184,22 @@ trait BoundedQueueSpec[F[_]]
       _ <- this.tickAll
       f3 <- s.enqueueAsync("g").start
       _ <- this.tickAll
-      _ <- assertResultF(s.deque, "a")
+      _ <- assertResultF(s.take, "a")
       _ <- f1.joinWithNever
       _ <- assertResultF(s.size.run[F], 4)
-      _ <- assertResultF(s.deque, "b")
+      _ <- assertResultF(s.take, "b")
       _ <- f2.joinWithNever
       _ <- assertResultF(s.size.run[F], 4)
-      _ <- assertResultF(s.deque, "c")
+      _ <- assertResultF(s.take, "c")
       _ <- f3.joinWithNever
       _ <- assertResultF(s.size.run[F], 4)
-      _ <- assertResultF(s.deque, "d")
+      _ <- assertResultF(s.take, "d")
       _ <- assertResultF(s.size.run[F], 3)
-      _ <- assertResultF(s.deque, "e")
+      _ <- assertResultF(s.take, "e")
       _ <- assertResultF(s.size.run[F], 2)
-      _ <- assertResultF(s.deque, "f")
+      _ <- assertResultF(s.take, "f")
       _ <- assertResultF(s.size.run[F], 1)
-      _ <- assertResultF(s.deque, "g")
+      _ <- assertResultF(s.take, "g")
       _ <- assertResultF(s.size.run[F], 0)
     } yield ()
   }
@@ -252,9 +252,9 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(s.offer("x").run[F], false)
       fib <- s.enqueueAsync("b").start
       _ <- this.tickAll
-      _ <- assertResultF(s.deque, "a")
+      _ <- assertResultF(s.take, "a")
       _ <- fib.joinWithNever
-      _ <- assertResultF(s.deque, "b")
+      _ <- assertResultF(s.take, "b")
     } yield ()
   }
 
@@ -267,11 +267,11 @@ trait BoundedQueueSpec[F[_]]
   test("BoundedQueue canceled getter") {
     for {
       s <- newQueue[String](bound = 4)
-      f1 <- s.deque.start
+      f1 <- s.take.start
       _ <- this.tickAll
-      f2 <- s.deque.start
+      f2 <- s.take.start
       _ <- this.tickAll
-      f3 <- s.deque.start
+      f3 <- s.take.start
       _ <- this.tickAll
       _ <- f1.cancel
       _ <- this.tickAll
@@ -283,7 +283,7 @@ trait BoundedQueueSpec[F[_]]
       _ <- this.tickAll
       _ <- assertResultF(f2.joinWithNever, "a")
       _ <- assertResultF(f3.joinWithNever, "b")
-      _ <- assertResultF(s.deque, "c")
+      _ <- assertResultF(s.take, "c")
     } yield ()
   }
 
@@ -303,9 +303,9 @@ trait BoundedQueueSpec[F[_]]
       _ <- f1.cancel
       _ <- this.tickAll
       _ <- assertResultF(s.size.run[F], 1)
-      _ <- assertResultF(s.deque, "a")
+      _ <- assertResultF(s.take, "a")
       _ <- f2.joinWithNever
-      _ <- assertResultF(s.deque, "c")
+      _ <- assertResultF(s.take, "c")
       _ <- f3.joinWithNever
       _ <- assertResultF(s.poll.run[F], Some("d"))
       _ <- assertResultF(s.size.run[F], 0)
@@ -347,11 +347,11 @@ trait BoundedQueueSpec[F[_]]
       )
       _ <- assertResultF(rxn.run[F], (1, 2, 1))
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.deque, "b")
+      _ <- assertResultF(q.take, "b")
       _ <- q.enqueueAsync("x")
       _ <- assertResultF(rxn.run[F], (2, 3, 2))
-      _ <- assertResultF(q.deque, "a")
-      _ <- assertResultF(q.deque, "b")
+      _ <- assertResultF(q.take, "a")
+      _ <- assertResultF(q.take, "b")
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.poll.run[F], None)
     } yield ()

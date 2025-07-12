@@ -53,7 +53,7 @@ object UnboundedQueue {
             wl.set0(a).void
           final override def poll: Rxn[Option[A]] =
             wl.tryGet
-          final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
+          final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
             F.monad.widen(wl.asyncGet)
         }
       }
@@ -70,7 +70,7 @@ object UnboundedQueue {
             wl.set0(a).void
           final override def poll: Rxn[Option[A]] =
             wl.tryGet
-          final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
+          final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
             F.monad.widen(wl.asyncGet)
           final override def size: Rxn[Int] =
             q.size

@@ -43,8 +43,8 @@ trait StreamSpec[F[_]]
         _ <- (1 to 8).toList.traverse { idx => q.enqueueAsync[F](idx.toString) }
         _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
         _ <- List(9, 10).traverse { idx => q.enqueueAsync[F](idx.toString) }
-        _ <- assertResultF(q.deque, "9")
-        _ <- assertResultF(q.deque, "10")
+        _ <- assertResultF(q.take, "9")
+        _ <- assertResultF(q.take, "10")
       } yield ()
     }
     for {
@@ -68,8 +68,8 @@ trait StreamSpec[F[_]]
         _ <- q.enqueueAsync(None)
         _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
         fib2 <- List(9, 10).traverse { idx => q.enqueueAsync(Some(idx.toString)) }.start
-        _ <- assertResultF(q.deque, Some("9"))
-        _ <- assertResultF(q.deque, Some("10"))
+        _ <- assertResultF(q.take, Some("9"))
+        _ <- assertResultF(q.take, Some("10"))
         _ <- fib2.joinWithNever
       } yield ()
     }

@@ -56,7 +56,7 @@ trait BoundedQueueSpecJvm[F[_]] { this: BoundedQueueSpec[F] & McasImplSpec & Tes
       _ <- F.replicateA(n, q.enqueueAsync("foo"))
       _ <- assertResultF(q.size.run[F], n)
       fib <- q.enqueueAsync("bar").start
-      _ <- assertResultF(q.deque, "foo")
+      _ <- assertResultF(q.take, "foo")
       _ <- fib.joinWithNever
       _ <- assertResultF(q.size.run[F], n)
     } yield ()
@@ -65,7 +65,7 @@ trait BoundedQueueSpecJvm[F[_]] { this: BoundedQueueSpec[F] & McasImplSpec & Tes
   test("Sleeping") {
     for {
       q <- newQueue[String](bound = 42)
-      fib <- q.deque.start
+      fib <- q.take.start
       _ <- F.sleep(2.seconds)
       _ <- q.enqueueAsync("foo")
       _ <- assertResultF(fib.joinWithNever, "foo")

@@ -78,7 +78,7 @@ object OverflowQueue {
     final override def poll: Rxn[Option[A]] =
       wl.tryGet
 
-    final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
+    final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(wl.asyncGet)
   }
 
@@ -103,7 +103,7 @@ object OverflowQueue {
     final override def poll: Rxn[Option[A]] =
       gwl.tryGet
 
-    final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
+    final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(gwl.asyncGet)
   }
 }

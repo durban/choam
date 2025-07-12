@@ -151,7 +151,7 @@ trait OverflowQueueSpec[F[_]]
     def part1(q: OverflowQueue[Int]): F[Unit] = for {
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.poll.run[F], None)
-      f1 <- q.deque.start
+      f1 <- q.take.start
       _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- q.enqueueAsync[F](1)
@@ -163,9 +163,9 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.size.run[F], 1)
       _ <- q.enqueueAsync[F](3)
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- assertResultF(q.deque, 2)
+      _ <- assertResultF(q.take, 2)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.deque, 3)
+      _ <- assertResultF(q.take, 3)
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.poll.run[F], None)
     } yield ()
@@ -179,23 +179,23 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.size.run[F], 3)
       _ <- q.enqueueAsync[F](7) // full
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- assertResultF(q.deque, 4)
+      _ <- assertResultF(q.take, 4)
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- assertResultF(q.deque, 5)
+      _ <- assertResultF(q.take, 5)
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- assertResultF(q.deque, 6)
+      _ <- assertResultF(q.take, 6)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.deque, 7)
+      _ <- assertResultF(q.take, 7)
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.poll.run[F], None)
     } yield ()
     def part3(q: OverflowQueue[Int]): F[Unit] = for {
       _ <- assertResultF(q.size.run[F], 0)
-      f1 <- q.deque.start
+      f1 <- q.take.start
       _ <- this.tickAll
-      f2 <- q.deque.start
+      f2 <- q.take.start
       _ <- this.tickAll
-      f3 <- q.deque.start
+      f3 <- q.take.start
       _ <- this.tickAll
       _ <- q.enqueueAsync[F](8)
       _ <- this.tickAll
@@ -215,11 +215,11 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.size.run[F], 2)
       _ <- q.enqueueAsync[F](13)
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- assertResultF(q.deque, 11)
+      _ <- assertResultF(q.take, 11)
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- assertResultF(q.deque, 12)
+      _ <- assertResultF(q.take, 12)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.deque, 13)
+      _ <- assertResultF(q.take, 13)
       _ <- assertResultF(q.size.run[F], 0)
     } yield ()
     def part4(q: OverflowQueue[Int]): F[Unit] = for {
@@ -234,9 +234,9 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.size.run[F], 4)
       _ <- q.enqueueAsync[F](18) // overwrites 14
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- assertResultF(q.deque, 15)
+      _ <- assertResultF(q.take, 15)
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- assertResultF(q.deque, 16)
+      _ <- assertResultF(q.take, 16)
       _ <- assertResultF(q.size.run[F], 2)
       _ <- q.enqueueAsync[F](19)
       _ <- assertResultF(q.size.run[F], 3)
@@ -244,13 +244,13 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.size.run[F], 4)
       _ <- q.enqueueAsync[F](21) // overwrites 17
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- assertResultF(q.deque, 18)
+      _ <- assertResultF(q.take, 18)
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- assertResultF(q.deque, 19)
+      _ <- assertResultF(q.take, 19)
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- assertResultF(q.deque, 20)
+      _ <- assertResultF(q.take, 20)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.deque, 21)
+      _ <- assertResultF(q.take, 21)
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.poll.run[F], None)
     } yield ()
@@ -271,7 +271,7 @@ trait OverflowQueueSpec[F[_]]
       q <- newRingBuffer[Int](capacity = 1)
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.poll.run[F], None)
-      f1 <- q.deque.start
+      f1 <- q.take.start
       _ <- this.tickAll
       _ <- q.enqueueAsync[F](1)
       _ <- this.tickAll
@@ -287,12 +287,12 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.size.run[F], 1)
       _ <- q.enqueueAsync[F](5)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.deque, 5)
+      _ <- assertResultF(q.take, 5)
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.poll.run[F], None)
-      f2 <- q.deque.start
+      f2 <- q.take.start
       _ <- this.tickAll
-      f3 <- q.deque.start
+      f3 <- q.take.start
       _ <- this.tickAll
       _ <- q.enqueueAsync[F](6)
       _ <- this.tickAll
@@ -310,11 +310,11 @@ trait OverflowQueueSpec[F[_]]
   test("RingBuffer cancellation") {
     for {
       q <- newRingBuffer[Int](capacity = 3)
-      f1 <- q.deque.start
+      f1 <- q.take.start
       _ <- this.tickAll
-      f2 <- q.deque.start
+      f2 <- q.take.start
       _ <- this.tickAll
-      f3 <- q.deque.start
+      f3 <- q.take.start
       _ <- this.tickAll
       _ <- f2.cancel
       _ <- this.tickAll
@@ -327,7 +327,7 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(f1.joinWithNever, 1)
       _ <- assertResultF(f3.joinWithNever, 2)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.deque, 3)
+      _ <- assertResultF(q.take, 3)
       _ <- assertResultF(q.size.run[F], 0)
     } yield ()
   }
@@ -335,9 +335,9 @@ trait OverflowQueueSpec[F[_]]
   test("RingBuffer multiple ops in one Rxn") {
     for {
       q <- newRingBuffer[Int](capacity = 3)
-      f1 <- q.deque.start
+      f1 <- q.take.start
       _ <- this.tickAll
-      f2 <- q.deque.start
+      f2 <- q.take.start
       _ <- this.tickAll
       rxn = (q.add(1) * q.add(2) * q.add(3)) *> (
         q.poll
@@ -390,9 +390,9 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.size.run[F], 3)
       _ <- assertResultF(q.offer(5).run[F], true)
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- assertResultF(q.deque, 2)
-      _ <- assertResultF(q.deque, 3)
-      _ <- assertResultF(q.deque, 4)
+      _ <- assertResultF(q.take, 2)
+      _ <- assertResultF(q.take, 3)
+      _ <- assertResultF(q.take, 4)
       _ <- assertResultF(q.poll.run[F], Some(5))
       _ <- assertResultF(q.size.run[F], 0)
     } yield ()
@@ -407,7 +407,7 @@ trait OverflowQueueSpec[F[_]]
       )
       deqRes <- rxn.run[F]
       _ <- assertEqualsF(deqRes, Some(1))
-      _ <- assertResultF(q.deque, 2)
+      _ <- assertResultF(q.take, 2)
       _ <- assertResultF(q.poll.run[F], None)
     } yield ()
   }

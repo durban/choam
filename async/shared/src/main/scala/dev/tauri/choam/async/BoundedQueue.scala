@@ -80,7 +80,7 @@ object BoundedQueue {
     final override def poll: Rxn[Option[A]] =
       gwl.tryGet
 
-    final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
+    final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(gwl.asyncGet)
 
     final override def offer(a: A): Rxn[Boolean] =
@@ -109,7 +109,7 @@ object BoundedQueue {
     final override def poll: Rxn[Option[A]] =
       gwl.tryGet
 
-    final override def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
+    final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(gwl.asyncGet)
 
     final override def offer(a: A): Rxn[Boolean] =
@@ -133,7 +133,7 @@ object BoundedQueue {
     self: BoundedQueue[A]
   )(implicit F: AsyncReactive[F]) extends CatsQueue[F, A] {
     final override def take: F[A] =
-      self.deque
+      self.take
     final override def tryTake: F[Option[A]] =
       F.run(self.poll)
     final override def size: F[Int] =

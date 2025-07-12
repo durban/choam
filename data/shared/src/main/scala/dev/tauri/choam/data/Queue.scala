@@ -66,7 +66,7 @@ sealed trait Queue[A]
  * |         | `Rxn` (may fail)   | `Rxn` (succeeds)         |
  * |---------|--------------------|--------------------------|
  * | insert  | `QueueSink#offer`  | `UnboundedQueueSink#add` |
- * | remove  | `QueueSource#poll` | `remove`                 |
+ * | remove  | `QueueSource#poll` | -                        |
  * | examine | `peek`             | -                        |
  *
  * @see [[dev.tauri.choam.async.AsyncQueue]]

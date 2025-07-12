@@ -54,14 +54,14 @@ class AsyncQueueCancelDeqTest {
 
   private[this] val taker1: Fiber[IO, Throwable, String] = {
     val tsk = IO.uncancelable { poll =>
-      poll(q.deque[IO, String]).flatTap { s => IO { this.result1 = s } }
+      poll(q.take[IO, String]).flatTap { s => IO { this.result1 = s } }
     }
     tsk.start.unsafeRunSync()(using runtime)
   }
 
   private[this] val taker2: Fiber[IO, Throwable, String] = {
     val tsk = IO.uncancelable { poll =>
-      poll(q.deque[IO, String]).flatTap { s => IO { this.result2 = s } }
+      poll(q.take[IO, String]).flatTap { s => IO { this.result2 = s } }
     }
     tsk.start.unsafeRunSync()(using runtime)
   }

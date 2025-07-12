@@ -27,7 +27,7 @@ private final class Fs2QueueWrapper[F[_], A](
   self: AsyncQueueSource[A] & BoundedQueueSink[A],
 )(implicit F: AsyncReactive[F]) extends CatsQueue[F, A] {
   final override def take: F[A] =
-    self.deque
+    self.take
   final override def tryTake: F[Option[A]] =
     self.poll.run[F]
   final override def size: F[Int] =

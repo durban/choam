@@ -57,7 +57,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private def deqAndSave(q: AsyncQueueSource[String], ref: Ref[F, String]): F[Unit] = {
     F.uncancelable { poll =>
-      poll(q.deque).flatMap { s =>
+      poll(q.take).flatMap { s =>
         // if deque completes, we will certainly save the item:
         ref.set(s)
       }
@@ -94,8 +94,8 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     test(testOpts.withName(s"${testOpts.name}: deque and poll race")) {
       val t = for {
         q <- newEmptyQ
-        fib1 <- q.deque[F, String].start
-        fib2 <- q.deque[F, String].start
+        fib1 <- q.take[F, String].start
+        fib2 <- q.take[F, String].start
         _ <- F.sleep(1.seconds) // wait for fibers to suspend
         // to be fair(er), the item should be received by the suspended fiber, and NOT `poll`
         _ <- assertResultF(F.both(F.cede *> q.poll.run[F], q.enqueueAsync("foo")), (None, ()))
@@ -139,7 +139,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
     def deqIntoDeferred(q: AsyncQueueSource[String], d: Deferred[F, String]): F[Unit] = {
       F.uncancelable { poll =>
-        poll(q.deque[F, String]).flatMap { s =>
+        poll(q.take[F, String]).flatMap { s =>
           d.complete(s).flatMap { ok =>
             if (ok) F.unit
             else F.raiseError(new AssertionError)
@@ -161,7 +161,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         _ <- enqFib.join
         flag <- r.get
         _ <- assertResultF(d.get, "1")
-        _ <- (2 to bound).toList.traverse_(i => assertResultF(q.deque, i.toString))
+        _ <- (2 to bound).toList.traverse_(i => assertResultF(q.take, i.toString))
         _ <- if (flag) { // enqueue completed
           assertResultF(q.poll.run[F], Some("foo"), "item lost")
         } else { // enqueue cancelled
@@ -186,17 +186,17 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         _ <- enqFib1.join
         flag <- r1.get
         _ <- assertResultF(d.get, "1")
-        _ <- (2 to bound).toList.traverse_(i => assertResultF(q.deque, i.toString))
+        _ <- (2 to bound).toList.traverse_(i => assertResultF(q.take, i.toString))
         _ <- if (flag) { // enqueue1 completed
-          q.deque.flatMap { item =>
+          q.take.flatMap { item =>
             if (item == "foo1") { // enqueue1 won
-              assertResultF(q.deque, "foo2")
+              assertResultF(q.take, "foo2")
             } else { // enqueue2 won
-              assertEqualsF(item, "foo2") *> assertResultF(q.deque, "foo1")
+              assertEqualsF(item, "foo2") *> assertResultF(q.take, "foo1")
             }
           } *> enqFib2.joinWithNever
         } else { // enqueue1 cancelled
-          assertResultF(q.deque, "foo2") *> enqFib2.joinWithNever
+          assertResultF(q.take, "foo2") *> enqFib2.joinWithNever
         }
       } yield ()
       t.parReplicateA_(50000)
